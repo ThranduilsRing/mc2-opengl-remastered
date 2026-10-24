@@ -172,15 +172,15 @@ check, not industrial visual coverage. Runtime acceptance, crops and performance
 results must be read from that directory; an SDL window-creation failure does
 not count as a rendered pass.
 
-Lane proof (implementation `bf3a8dbfa`): the game build, all-target checkpoint,
+Initial lane proof (implementation `bf3a8dbfa`): the game build, all-target checkpoint,
 contract harnesses, model-override tests, 21 content-pipeline tests, 1296 scripts
 tests plus 270 subtests, five selected contract rows, and worktree ratchets pass.
 Day/night A/B and the mc2_03 fuel scene produced captures. The command-channel
 damage test acknowledged `animate 122301 damaged`; its capture shows the stock
 damaged large fuel tank beside remade pipework. `index.html` and
 `phone-sheet.jpg` in the proof directory contain the actual unaltered crops.
-The night transformer is visibly darker than stock; this is exposed for review,
-not treated as visual acceptance of the entire set.
+The initial night transformer was visibly darker than stock. The follow-up
+below fixes its lighting compatibility; the original evidence is retained.
 
 Interleaved cost is provisional under other host runs. Last corresponding GPU
 bookmark-sweep summaries: mc2_01 props 0.044 to 0.045 ms, mc2_10 0.051 to
@@ -197,3 +197,91 @@ without relaxing engine gates. Both initial and retry evidence is retained.
 Automatic approval review rejected deletion of the three disposable failed
 stages with "blocked by policy"; they remain under the proof directory's
 `mod-battery/20261024-105544/`. No stock/mod source install was modified.
+
+### Classic option and performance follow-up
+
+The launcher checkbox **Building art: Remastered (off: Classic)** persists
+`b RemasteredBuildings = TRUE/FALSE` in the normal `options.cfg`. Remastered
+defaults on. `--classic-assets` and `--remastered-assets` override the saved
+choice for one process, including the later preferences publish; they never
+rewrite it. Changing the launcher setting takes effect on the next launch.
+Classic skips the bundled kit's VFS mount and manifest reads altogether. User
+mods and their own model/INI/shape overrides retain priority in either mode.
+
+The package remains pristine-only, with stock collision and stock damaged and
+destroyed shapes. Both generators still deliberately retain stock motion and
+visuals; [the asset-lane handoff](industrial-generator-nodes.md) lists exact
+stock names, pivots, parents and the moving geometry requirement for every LOD.
+
+Runtime package data is now **361 MiB**, down from 486 MiB. The cooker removes
+unreferenced vertices from material-split GLB accessors without changing any
+rendered corner attribute. Texture resolutions and atlas dimensions are
+unchanged. Authored detail arrays retain their cooked **BC5 normals / BC7 ORM**
+mip chains on the GPU and share atlas layers across material classes. Mixed mod
+textures retain the decoded path. The material table accommodates the full kit
+instead of silently falling back after 64 rows. The mixed albedo array still
+uses RGBA; claiming all prop textures stay compressed would be incorrect.
+
+Deployment invokes `tg_import_dump --no-ground --static-prop` to populate native
+geometry recipes when the kit is present. Shipped self-contained GLBs probe that
+cache before Assimp. Arbitrary mod GLBs retain dependency tracking for external
+buffers. Mod smoke stages inherit these recipes. The appearance cache loads
+only types requested by the mission, registering their three LODs before static
+geometry finalization; it does not import the whole kit. Selection retains stock
+LOD distances when available, otherwise the approved 350/700 world-unit bake
+distances. Camera translation is native Y-up; the existing conversion to object
+world coordinates is required before measuring this distance.
+
+The static-prop uploader now reuses byte-identical packed vertices instead of
+expanding every triangle into three GPU vertices. UV seams, per-instance colour
+lookup IDs, light tags and reversed self-lit card normals stay distinct. On the
+night mission this reduces the shared geometry VBO from 92.1 to 80.2 MB, with
+the same 9.2 MB index stream, triangle order, 1,187 packets and 945 registered
+types. This preserves visual quality and helps the bigger meshes' vertex work.
+
+The transformer darkening was the stock **alpha-card lighting floor**, not a
+bad albedo bake: stock `A_TransformerStation.tga` receives a 0.5 encoded floor,
+whereas the opaque remake had lost it. Replacement building materials now
+inherit that stock lighting property independently of coverage. Opaque remakes
+remain opaque and acquire no extra fringe draw. AO, normal strength, albedo and
+texture orientation remain authored. Unlit, AO-zero and geometric-normal probes
+are retained in the proof folder; temporary shader probes are absent from the
+final source. Assimp's internal V flip and `toMC2V` cancel, so the original atlas
+row convention is pinned by an asymmetric image test.
+
+Interleaved repeated runs, implementation `4fa87342d`, are provisional:
+
+| Mission / mode | Props ms, frame 481 | Load-end VRAM MiB | Mission-ready seconds | Active host CPU % |
+|---|---|---|---|---|
+| mc2_01 Classic | 0.041 / 0.042 | 740 / 740 | 7.30 / 7.32 | 18.0 / 16.2 |
+| mc2_01 Remastered | 0.043 / 0.042 | 740 / 740 | 7.53 / 7.47 | 15.3 / 27.6 |
+| mc2_10 Classic | 0.046 / 0.047 | 610 / 610 | 8.38 / 8.27 | 16.8 / 12.8 |
+| mc2_10 Remastered | 0.127 / 0.126 | 868 / 868 | 9.96 / 10.02 | 15.6 / 16.3 |
+
+No other `mc2.exe` processes were observed during these final eight runs. The
+original night kit window was 0.138 ms, 872 MiB and 22.3 seconds. A later
+transformer-view window also falls from 0.384–0.400 ms before vertex reuse to
+0.352 ms after it; Classic is 0.070–0.071 ms there. The detailed remake still
+costs more than Classic. Full timestamp windows, CPU samples and process records
+are in `revision/indexed/cost-measurements.json`; earlier contended runs and
+lease observations remain under `revision/cost/`.
+
+The fresh follow-up battery passes **6/6 on its first attempt**, at 15 seconds
+per mission, with no warm retries or relaxed health gates. All six new stage
+installs and their shared engine cache are automatically deleted. The original
+three retained failed stages are still excluded from cleanup by the earlier
+automatic approval rejection. Two isolated Classic capture launches encountered
+the same SDL `SetProp` resource failure before mission loading; their retained
+retries passed. No matching firewall dialogs were present, and no foreign
+process was stopped. The profiling socket/firewall fix remains in its own lane.
+
+Final proof includes both-mode day/night/fuel views, the stock damaged tank
+acknowledged at frame 2, eight targeted contract rows plus the final static-prop
+and shader rows, preferences/texture/content/self-lit harnesses, model-override
+tests, all-target build checkpoints and all worktree ratchets. The full scripts
+suite passes **1,297 tests plus 270 subtests**; 25 content-pipeline tests and the
+launcher/capture setting tests also pass. The final night vertex-reuse comparison
+retains 99.88–99.97% identical interior pixels across three views (mean absolute
+RGB difference at most 0.013/255); full PNGs and the comparison JSON are retained.
+The updated root `index.html` / `phone-sheet.jpg` include both modes, the original
+pre-change stock view, transformer correction, fuel scene, cost and stock damage.
