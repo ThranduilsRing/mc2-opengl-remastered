@@ -244,6 +244,7 @@ ResidentTextureRef TextureResidency::acquire(const RenderCore::TextureKey& key, 
     auto handle=service_.acquire(key,RenderCore::kNoTextureNode,dimensions);
     if (!handle.isValid()) return {};
     if (residents_.contains(handle.raw())) return ResidentTextureRef(*this,handle,arrayView);
+    std::fprintf(stderr,"[EARLY_TEXTURE] request frame=%llu handle=%u key=%s\n",ctx_.tracker().frameNo(),handle.raw(),key.source.c_str());
     residents_.emplace(handle.raw(),Resident{{},0,mc2tex::wantsMipmaps(key.hints),layers,arrayView});
     residents_.at(handle.raw()).contentVersion=service_.contentVersion(handle);
     residents_.at(handle.raw()).vegetation=key.source.starts_with("vegetation:P2|");
@@ -288,6 +289,7 @@ void TextureResidency::pump() {
         const size_t bytes=p.image->pixels.size();
         if (table_->full(uploading_.size()) || !budget_.reserve(bytes)) break;
         Upload upload; upload.handle=p.handle; upload.bytes=bytes; upload.contentVersion=p.contentVersion;
+        std::fprintf(stderr,"[EARLY_TEXTURE] upload frame=%llu handle=%u extent=%dx%d bytes=%llu\n",ctx_.tracker().frameNo(),p.handle.raw(),p.image->width,p.image->height,static_cast<unsigned long long>(bytes));
         if (this->upload(*p.image,it->second.useMips,&upload,it->second.layers,it->second.arrayView,it->second.vegetation)) uploading_.push_back(std::move(upload));
         else budget_.complete(bytes);
         pending_.pop_front();
