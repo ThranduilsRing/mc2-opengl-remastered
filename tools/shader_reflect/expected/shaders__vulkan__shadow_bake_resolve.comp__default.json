@@ -1,0 +1,112 @@
+{
+  "defines": [],
+  "outputs": [],
+  "shader": "shaders/vulkan/shadow_bake_resolve.comp",
+  "ssbos": [
+    {
+      "binding": 3,
+      "members": [
+        {
+          "array_stride": 4,
+          "matrix_stride": null,
+          "name": "h",
+          "offset": 0,
+          "type": "float"
+        }
+      ],
+      "name": "BakeHeights"
+    },
+    {
+      "binding": 8,
+      "members": [
+        {
+          "array_stride": 4,
+          "matrix_stride": null,
+          "name": "texels",
+          "offset": 0,
+          "type": "uint"
+        }
+      ],
+      "name": "BakeMaskOut"
+    }
+  ],
+  "stage": "comp",
+  "ubos": [
+    {
+      "binding": 0,
+      "members": [
+        {
+          "array_stride": null,
+          "matrix_stride": 16,
+          "name": "window",
+          "offset": 0,
+          "type": "mat4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "region",
+          "offset": 64,
+          "type": "vec4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "regionInfo",
+          "offset": 80,
+          "type": "ivec4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "sun",
+          "offset": 96,
+          "type": "vec4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "windowInfo",
+          "offset": 112,
+          "type": "vec4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "heightInfo",
+          "offset": 128,
+          "type": "vec4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "fade",
+          "offset": 144,
+          "type": "vec4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "march",
+          "offset": 160,
+          "type": "vec4"
+        }
+      ],
+      "name": "BakeTile"
+    },
+    {
+      "binding": 9,
+      "members": [
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "mode",
+          "offset": 0,
+          "type": "ivec4"
+        }
+      ],
+      "name": "BakePass"
+    }
+  ],
+  "variant": "default"
+}

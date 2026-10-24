@@ -1,0 +1,141 @@
+{
+  "defines": [],
+  "outputs": [],
+  "shader": "shaders/vulkan/mech_depth.vert",
+  "ssbos": [
+    {
+      "binding": 1,
+      "members": [
+        {
+          "array_stride": 64,
+          "matrix_stride": null,
+          "name": "instances",
+          "offset": 0,
+          "type": "_32"
+        }
+      ],
+      "name": "InstanceBuffer"
+    },
+    {
+      "binding": 2,
+      "members": [
+        {
+          "array_stride": 64,
+          "matrix_stride": null,
+          "name": "bones",
+          "offset": 0,
+          "type": "_106"
+        }
+      ],
+      "name": "BoneBuffer"
+    }
+  ],
+  "stage": "vert",
+  "ubos": [
+    {
+      "binding": 0,
+      "members": [
+        {
+          "array_stride": null,
+          "matrix_stride": 16,
+          "name": "worldToClipGL",
+          "offset": 0,
+          "type": "mat4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "objectDepthBias",
+          "offset": 64,
+          "type": "float"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "materialReady",
+          "offset": 68,
+          "type": "int"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "lightingReady",
+          "offset": 72,
+          "type": "int"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "sunAxisMc2Fix",
+          "offset": 76,
+          "type": "int"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "fogColorRGB",
+          "offset": 80,
+          "type": "vec4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "cameraWorldPos",
+          "offset": 96,
+          "type": "vec4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "shadeA",
+          "offset": 112,
+          "type": "vec4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "shadeB",
+          "offset": 128,
+          "type": "vec4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "shadeC",
+          "offset": 144,
+          "type": "vec4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "poolF",
+          "offset": 160,
+          "type": "vec4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "poolI",
+          "offset": 176,
+          "type": "ivec4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "miscI",
+          "offset": 192,
+          "type": "ivec4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "environmentAmbient",
+          "offset": 208,
+          "type": "vec4"
+        }
+      ],
+      "name": "MechFrameUBO"
+    }
+  ],
+  "variant": "default"
+}

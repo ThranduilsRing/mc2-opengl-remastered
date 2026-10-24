@@ -1,0 +1,65 @@
+{
+  "defines": [],
+  "outputs": [],
+  "shader": "shaders/vulkan/shadow_prop.vert",
+  "ssbos": [
+    {
+      "binding": 1,
+      "members": [
+        {
+          "array_stride": 112,
+          "matrix_stride": null,
+          "name": "i",
+          "offset": 0,
+          "type": "_33"
+        }
+      ],
+      "name": "Instances"
+    }
+  ],
+  "stage": "vert",
+  "ubos": [
+    {
+      "binding": 0,
+      "members": [
+        {
+          "array_stride": null,
+          "matrix_stride": 16,
+          "name": "lightSpaceMatrix",
+          "offset": 0,
+          "type": "mat4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "instBase",
+          "offset": 64,
+          "type": "int"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "_pad0",
+          "offset": 68,
+          "type": "int"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "_pad1",
+          "offset": 72,
+          "type": "int"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "_pad2",
+          "offset": 76,
+          "type": "int"
+        }
+      ],
+      "name": "ShadowFrameUBO"
+    }
+  ],
+  "variant": "default"
+}
