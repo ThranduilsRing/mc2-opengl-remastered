@@ -138,8 +138,8 @@ def test_runtime_prunes_unreferenced_vertices_without_changing_corners(tmp_path)
 
 
 def test_authored_image_rows_match_native_tg_uvs(tmp_path):
-    # The native importer flips glTF V. Use an asymmetric image so inverted
-    # storage cannot pass by sampling a uniform-colour fixture.
+    # Assimp glTF2Importer flips V, then toMC2V flips it back. Preserve the
+    # original glTF/PIL row order; a uniform-colour fixture cannot test this.
     src, *_ = make_gltf(tmp_path)
     pixels = np.full((8, 8, 4), 255, np.uint8)
     pixels[:4, :, :3] = [220, 30, 10]
@@ -150,9 +150,9 @@ def test_authored_image_rows_match_native_tg_uvs(tmp_path):
     record = json.loads((out / "data/model_overrides/models.json").read_text())["overrides"][0]
     doc, binary = gltf_io.split_glb((out / "data/model_overrides" / record["source"]).read_bytes())
     texture = texcook.load_rgba(next((out / "data/tgl/32").glob("*.ktx2")))
-    # glTF V=.25 samples the top/red half. Native TG uses 1-.25=.75.
-    assert tuple(texture[6, 2, :3]) == (220, 30, 10)
-    assert tuple(texture[2, 2, :3]) == (10, 50, 230)
+    # glTF V=.25 -> Assimp .75 -> toMC2V .25 -> top/red half.
+    assert tuple(texture[2, 2, :3]) == (220, 30, 10)
+    assert tuple(texture[6, 2, :3]) == (10, 50, 230)
     raw = gltf_io.read_accessor(doc, [binary], doc["meshes"][0]["primitives"][0]["attributes"]["TEXCOORD_0"])
     assert np.allclose(raw[:, 1], [0, 0, 1, 1])
 
