@@ -1,28 +1,7 @@
-// VK-P10 TERRAIN TIER-1 — 2-output GBuffer FS (in-place shared-GBuffer co-write).
-// =============================================================================
-// Co-writes the LOD0 terrain patch IN-PLACE into the SHARED scene GBuffer (no
-// side-image, no composite), exactly like the prop Tier-1 FS but with the TERRAIN
-// shadow-class alpha:
-//
-//   location=0 color  -> sceneColorTex_  (MRT0, RGBA16F). ★COLORMAP-BASE sub-slice:
-//                        samples the REAL colormap atlas (VK-owned copy-once import
-//                        of the GL g_atlasGLTex; see vulkan_terrain_island.cpp) at
-//                        the SAME world-XY -> atlas-UV as the GL LOD-chunk frag
-//                        (terrain_lod_chunk.frag:462-482). The shared surface cook
-//                        supplies the filtered macro color and coast correction.
-//                        cement/road/overlay-sidecar/detail/POM/lighting are STILL
-//                        DEFERRED (later sub-slices). Fail-soft: if the colormap is
-//                        not importable/ready (uT.colormapReady==0) fall back to the
-//                        olive placeholder so the pass never crashes or holes.
-//                        a=1 (opaque, in-place — NOT premult; Tier-1 does not blend).
-//
-//   location=1 GBuffer1 -> sceneNormalTex_ (MRT1, RGBA16F). ★TERRAIN encoding
-//                        vec4(0.5, 0.5, 1.0, 1.0): flat-up normal (0.5,0.5,1.0) +
-//                        ★a=1.0 = terrain shadow-class "I handle my own shadow"
-//                        (rc_gbuffer1_shadowHandled). BIT-EXACT with
-//                        terrain_lod_chunk.frag:430 `vec4(0.5,0.5,1.0,1.0)`. This is
-//                        the ONE difference vs props (a=0.25); the coverage oracle
-//                        histograms a==1.0 inside the terrain silhouette.
+// LOD terrain patches co-write the shared scene GBuffer in place.
+// MRT0: opaque colormap with cement, material detail, shadows and local lighting.
+// MRT1: flat-up normal plus alpha=1, the terrain's self-shadowed receiver class.
+// Colormap UVs and material shading retain terrain_lod_chunk.frag conventions.
 #version 450
 // VK-TERRAIN-LIGHTING sub-slice: make the VK terrain LIT (directional relief + baked
 // static sun shadow) so it matches the GL LOD-chunk terrain instead of flat. Uses the
@@ -86,14 +65,20 @@ vec2 mv_hash22(vec2 p) {
     return fract((p3.xx + p3.yz) * p3.zy);
 }
 vec4 mv_sampleAntiTileArr(int layer, vec2 uv, float scale, vec2 dx, vec2 dy) {
-    vec2 off1 = mv_hash22(floor(uv / scale)) * scale;
-    vec2 off2 = mv_hash22(floor(uv / scale) + vec2(7.0, 13.0)) * scale;
     vec4 s0 = textureGrad(u_matNormalArray, vec3(uv,        float(layer)), dx, dy);
-    vec4 s1 = textureGrad(u_matNormalArray, vec3(uv + off1, float(layer)), dx, dy);
-    vec4 s2 = textureGrad(u_matNormalArray, vec3(uv + off2, float(layer)), dx, dy);
     vec2 f = fract(uv / scale);
     float w1 = smoothstep(0.2, 0.5, f.x) * smoothstep(0.2, 0.5, f.y);
     float w2 = smoothstep(0.2, 0.5, 1.0 - f.x) * smoothstep(0.2, 0.5, 1.0 - f.y);
+    // Explicit gradients keep these zero-weight branches safe at quad boundaries.
+    vec4 s1 = vec4(0.0), s2 = vec4(0.0);
+    if (w1 != 0.0) {
+        vec2 off1 = mv_hash22(floor(uv / scale)) * scale;
+        s1 = textureGrad(u_matNormalArray, vec3(uv + off1, float(layer)), dx, dy);
+    }
+    if (w2 != 0.0) {
+        vec2 off2 = mv_hash22(floor(uv / scale) + vec2(7.0, 13.0)) * scale;
+        s2 = textureGrad(u_matNormalArray, vec3(uv + off2, float(layer)), dx, dy);
+    }
     return (s0 + s1 * w1 + s2 * w2) / (1.0 + w1 + w2);
 }
 
@@ -247,6 +232,7 @@ float mv_computeLodNear(vec2 worldXY, float worldZ) {
 //PORT-END:lodNear
 
 vec3 mv_detailNormal(vec4 w, float snowWeight, vec2 worldXY, float lodNear, float macroNz, vec2 uvDx, vec2 uvDy) {
+    if (lodNear == 0.0) return vec3(0.0);
     vec2 uv = worldXY * (uT.detailTiling / MATV_WU_PER_TILE);
     vec2 uvRock     = uv * (MATV_TILING.x / 3.0);
     vec2 uvGrass    = uv * MATV_TILING.y;
@@ -294,31 +280,31 @@ vec3 mv_detailNormal(vec4 w, float snowWeight, vec2 worldXY, float lodNear, floa
 
     vec3 dN = vec3(0.0);
     // rock: boost/3 (GL parity — rock detail was too dense/strong). GL :392-397.
-    if (w.x > 0.01 && fwRock != 0.0 && lodNear != 0.0) {
+    if (w.x > 0.01 && fwRock != 0.0) {
         vec4 s = (atsRock > 0.01 && fwRock > 0.5)
                ? mv_sampleAntiTileArr(MAT_LAYER_ROCK, uvRock, atsRock, uvDx * (MATV_TILING.x / 3.0), uvDy * (MATV_TILING.x / 3.0))
                : textureGrad(u_matNormalArray, vec3(uvRock, float(MAT_LAYER_ROCK)), uvDx * (MATV_TILING.x / 3.0), uvDy * (MATV_TILING.x / 3.0));
         dN += w.x * (MATV_NORMAL_BOOST.x / 3.0) * fwRock * (s.rgb * 2.0 - 1.0);
     }
-    if (w.y > 0.01 && fwGrass != 0.0 && lodNear != 0.0) {
+    if (w.y > 0.01 && fwGrass != 0.0) {
         vec4 s = (atsGrass > 0.01 && fwGrass > 0.5)
                ? mv_sampleAntiTileArr(MAT_LAYER_GRASS, uvGrass, atsGrass, uvDx * MATV_TILING.y, uvDy * MATV_TILING.y)
                : textureGrad(u_matNormalArray, vec3(uvGrass, float(MAT_LAYER_GRASS)), uvDx * MATV_TILING.y, uvDy * MATV_TILING.y);
         dN += w.y * MATV_NORMAL_BOOST.y * fwGrass * (s.rgb * 2.0 - 1.0);
     }
-    if (w.z > 0.01 && fwDirt != 0.0 && lodNear != 0.0) {
+    if (w.z > 0.01 && fwDirt != 0.0) {
         vec4 s = (atsDirt > 0.01 && fwDirt > 0.5)
                ? mv_sampleAntiTileArr(MAT_LAYER_DIRT, uvDirt, atsDirt, uvDx * MATV_TILING.z, uvDy * MATV_TILING.z)
                : textureGrad(u_matNormalArray, vec3(uvDirt, float(MAT_LAYER_DIRT)), uvDx * MATV_TILING.z, uvDy * MATV_TILING.z);
         dN += w.z * MATV_NORMAL_BOOST.z * fwDirt * (s.rgb * 2.0 - 1.0);
     }
-    if (w.w > 0.01 && fwConcrete != 0.0 && lodNear != 0.0) {
+    if (w.w > 0.01 && fwConcrete != 0.0) {
         vec4 s = (atsConc > 0.01 && fwConcrete > 0.5)
                ? mv_sampleAntiTileArr(MAT_LAYER_CONCRETE, uvConcrete, atsConc, uvDx * MATV_TILING.w, uvDy * MATV_TILING.w)
                : textureGrad(u_matNormalArray, vec3(uvConcrete, float(MAT_LAYER_CONCRETE)), uvDx * MATV_TILING.w, uvDy * MATV_TILING.w);
         dN += w.w * MATV_NORMAL_BOOST.w * fwConcrete * (s.rgb * 2.0 - 1.0);
     }
-    if (snowWeight > 0.01 && fwSnow != 0.0 && lodNear != 0.0) {
+    if (snowWeight > 0.01 && fwSnow != 0.0) {
         dN += snowWeight * 0.9 * fwSnow *
               (textureGrad(u_matNormalArray, vec3(uvSnow, float(MAT_LAYER_SNOW)),
                            uvDx * MATV_TILING_SNOW, uvDy * MATV_TILING_SNOW).rgb * 2.0 - 1.0);
@@ -338,9 +324,6 @@ float cCutLt(float x, float fw) {
 }
 
 void main() {
-    // Valid even for quads straddling cement, zero weights or the LOD fade.
-    vec2 detailUv = v_worldPos.xy * (uT.detailTiling / MATV_WU_PER_TILE);
-    vec2 detailUvDx = dFdx(detailUv), detailUvDy = dFdy(detailUv);
     float cdRoad = 0.0;   // CONCRETE-ROAD-PBR-DETAIL: the cement atlas texel is asphalt (roads, runway)
     vec3 base;
     float cookedBreakup = 0.5;
@@ -566,6 +549,9 @@ void main() {
         baseColor *= mix(1.0, uT.snowBrightnessDampen, f3Snow);
     }
 
+    // Uniform flow, close to use: avoid keeping the footprint live through cement/tint work.
+    vec2 detailUv = v_worldPos.xy * (uT.detailTiling / MATV_WU_PER_TILE);
+    vec2 detailUvDx = dFdx(detailUv), detailUvDy = dFdy(detailUv);
     vec3 lit = base;
     if (uT.lightingEnabled != 0) {
         // Colormaps are prelit: authored burnins, or sources baked by the loader.
@@ -611,6 +597,21 @@ void main() {
         float staticS=uT.enableShadows!=0?terrainStaticShadow(v_worldPos):1.0;
         float dynS=terrainDynamicShadow(v_worldPos,shadowN);
         float shadow = min(staticS, dynS);
+        // CSM-BLACKOUT-RECON-1: one-shot debug viz (env MC2_VK_TERRAIN_CSM_DEBUG=N).
+        // Resolve before local lighting so the debug inputs do not stay live through its loop.
+        // Bypasses the normal composite entirely so each channel can be inspected in
+        // isolation on a live capture. No effect when uT.csmDebugMode==0.
+        if (uT.csmDebugMode == 1)      { fragColor = vec4(vec3(normalLight), 1.0); GBuffer1 = vec4(0.5,0.5,1.0,1.0); return; }
+        else if (uT.csmDebugMode == 2) { fragColor = vec4(lightDir * 0.5 + 0.5, 1.0); GBuffer1 = vec4(0.5,0.5,1.0,1.0); return; }
+        else if (uT.csmDebugMode == 3) { fragColor = vec4(vec3(staticS), 1.0); GBuffer1 = vec4(0.5,0.5,1.0,1.0); return; }
+        else if (uT.csmDebugMode == 4) { fragColor = vec4(vec3(dynS), 1.0); GBuffer1 = vec4(0.5,0.5,1.0,1.0); return; }
+        else if (uT.csmDebugMode == 5) { fragColor = vec4(vec3(shadow), 1.0); GBuffer1 = vec4(0.5,0.5,1.0,1.0); return; }
+        else if (uT.csmDebugMode == 6) { fragColor = vec4(baseColor, 1.0); GBuffer1 = vec4(0.5,0.5,1.0,1.0); return; }   // VK-PARITY-F3: albedo (GL MC2_LIGHTING_DEBUG_VIEW=40)
+        else if (uT.csmDebugMode == 7) { fragColor = vec4(vec3(clamp(dot(N, lightDir), 0.02, 1.0)), 1.0); GBuffer1 = vec4(0.5,0.5,1.0,1.0); return; }   // sun N.L diffuse (GL MC2_LIGHTING_DEBUG_VIEW=sun)
+        else if (uT.csmDebugMode == 8) { fragColor = vec4(N * 0.5 + 0.5, 1.0); GBuffer1 = vec4(0.5,0.5,1.0,1.0); return; }   // surface normal (GL ...=normal)
+        else if (uT.csmDebugMode == 9) { fragColor = vec4(dbgBaseN * 0.5 + 0.5, 1.0); GBuffer1 = vec4(0.5,0.5,1.0,1.0); return; }
+        else if (uT.csmDebugMode == 10) { fragColor = vec4(dbgDN * 0.5 + 0.5, 1.0); GBuffer1 = vec4(0.5,0.5,1.0,1.0); return; }
+
         lit = shadeGround(baseColor, N, normalLight, shadow, pureConcrete ? 1.0 : 0.0, v_worldPos);
         lit = max(lit + cdSpec * shadow, vec3(0.0));
 
@@ -670,20 +671,6 @@ void main() {
                 }
             }
         }
-
-        // CSM-BLACKOUT-RECON-1: one-shot debug viz (env MC2_VK_TERRAIN_CSM_DEBUG=N).
-        // Bypasses the normal composite entirely so each channel can be inspected in
-        // isolation on a live capture. No effect when uT.csmDebugMode==0.
-        if (uT.csmDebugMode == 1)      { fragColor = vec4(vec3(normalLight), 1.0); GBuffer1 = vec4(0.5,0.5,1.0,1.0); return; }
-        else if (uT.csmDebugMode == 2) { fragColor = vec4(lightDir * 0.5 + 0.5, 1.0); GBuffer1 = vec4(0.5,0.5,1.0,1.0); return; }
-        else if (uT.csmDebugMode == 3) { fragColor = vec4(vec3(staticS), 1.0); GBuffer1 = vec4(0.5,0.5,1.0,1.0); return; }
-        else if (uT.csmDebugMode == 4) { fragColor = vec4(vec3(dynS), 1.0); GBuffer1 = vec4(0.5,0.5,1.0,1.0); return; }
-        else if (uT.csmDebugMode == 5) { fragColor = vec4(vec3(shadow), 1.0); GBuffer1 = vec4(0.5,0.5,1.0,1.0); return; }
-        else if (uT.csmDebugMode == 6) { fragColor = vec4(baseColor, 1.0); GBuffer1 = vec4(0.5,0.5,1.0,1.0); return; }   // VK-PARITY-F3: albedo (GL MC2_LIGHTING_DEBUG_VIEW=40)
-        else if (uT.csmDebugMode == 7) { fragColor = vec4(vec3(clamp(dot(N, lightDir), 0.02, 1.0)), 1.0); GBuffer1 = vec4(0.5,0.5,1.0,1.0); return; }   // sun N.L diffuse (GL MC2_LIGHTING_DEBUG_VIEW=sun)
-        else if (uT.csmDebugMode == 8) { fragColor = vec4(N * 0.5 + 0.5, 1.0); GBuffer1 = vec4(0.5,0.5,1.0,1.0); return; }   // surface normal (GL ...=normal)
-        else if (uT.csmDebugMode == 9) { fragColor = vec4(dbgBaseN * 0.5 + 0.5, 1.0); GBuffer1 = vec4(0.5,0.5,1.0,1.0); return; }
-        else if (uT.csmDebugMode == 10) { fragColor = vec4(dbgDN * 0.5 + 0.5, 1.0); GBuffer1 = vec4(0.5,0.5,1.0,1.0); return; }
     }
 
     fragColor = vec4(lit, 1.0);   // opaque in-place (a=1, NOT premult)
