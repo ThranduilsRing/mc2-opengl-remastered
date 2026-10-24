@@ -15,6 +15,7 @@ from typing import List, Optional
 from . import nofocus, vk_validation
 from .gates import GateConfig, Verdict, evaluate
 from .logparse import LogSummary, parse_log
+from .firewall_dialog import Guard as FirewallGuard
 
 
 def _reader_thread(stream, q: "queue.Queue[tuple[str, float] | tuple[None, float]]",
@@ -292,6 +293,7 @@ def run_one(cfg: RunConfig) -> RunResult:
     # To allow the walltime cap to fire promptly we push reads onto a background
     # daemon thread and poll a queue with a short timeout on the main thread.
     lines: list[str] = []
+    firewall = FirewallGuard(Path(argv[0]))
     line_wallclocks: list[float] = []
     killed = False
     line_q: queue.Queue[tuple] = queue.Queue()
@@ -300,6 +302,7 @@ def run_one(cfg: RunConfig) -> RunResult:
     reader.start()
     try:
         while True:
+            firewall.poll()
             if time.monotonic() - t0 > cap:
                 proc.kill()
                 killed = True
@@ -322,6 +325,7 @@ def run_one(cfg: RunConfig) -> RunResult:
             proc.wait(timeout=2)
         # Drain any remaining items so the reader thread can unblock and exit.
         reader.join(timeout=2)
+        firewall.poll(final=True)
     walltime = time.monotonic() - t0
     stdout = "\n".join(lines)
 

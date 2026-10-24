@@ -8,6 +8,7 @@ on claude/nifty-mendeleev. Lanes may only inspect the plan with --dry-run.
 from __future__ import annotations
 
 import argparse
+import json
 from contextlib import redirect_stdout, redirect_stderr
 import os
 from pathlib import Path
@@ -22,7 +23,7 @@ sys.path.insert(0, str(ROOT / "tools"))
 from lane_merge import git_bash, run_logged  # noqa: E402
 
 
-def plan(jobs, proof_dir=None, capture_before_runs=1):
+def plan(jobs, proof_dir=None, capture_before_runs=1, before_dir=None):
     if capture_before_runs < 1:
         raise ValueError("--capture-before-runs must be positive")
     py = sys.executable
@@ -54,6 +55,10 @@ def plan(jobs, proof_dir=None, capture_before_runs=1):
                                      str(proof / f"noise-{run}")], {}),
         ])
     steps[1:1] = noise
+    if before_dir is not None:
+        before = str(proof / "before")
+        steps = [(name, [str(before_dir) if arg == before else arg for arg in cmd], env)
+                 for name, cmd, env in steps if name != "capture-before"]
     for mission in ("mc2_03", "mc2_10", "mc2_24"):
         steps.append(("determinism-" + mission,
                       [py, "tools/sim_determinism.py", "check", mission, "--install", install], {}))
@@ -76,8 +81,42 @@ def run_child(command, cwd, env):
     return run_logged(cwd, command, env=env)
 
 
+def validate_before(before_dir, expected_sha):
+    """Require saved day/night evidence from the explicitly named pre-deploy exe."""
+    if not expected_sha or len(expected_sha) != 64 or any(c not in "0123456789abcdefABCDEF" for c in expected_sha):
+        raise ValueError("--before-dir requires --expect-pre-exe-sha (64 hex characters)")
+    try:
+        manifest = json.loads((Path(before_dir) / "capture_run.json").read_text(encoding="utf-8"))
+        actual = manifest["identity"]["exe"]["sha256"]
+        if actual.lower() != expected_sha.lower():
+            raise ValueError("before evidence exe SHA does not match --expect-pre-exe-sha")
+        poses = {pose["bookmark"]: pose for pose in manifest["poses"]}
+        for bookmark in ("mc2_01_saved_205644", "mc2_10_saved_204523"):
+            pose = poses[bookmark]
+            png = Path(pose["primary_png"])
+            if not png.is_absolute():
+                png = Path(before_dir) / png
+            if not pose["all_present"] or not png.is_file():
+                raise ValueError(f"before evidence missing capture: {bookmark}")
+    except (OSError, KeyError, TypeError, AttributeError) as exc:
+        raise ValueError(f"invalid before evidence: {exc}") from exc
+
+
+def log_lease_holders():
+    from smoke_lib import host_lease
+    state = host_lease.status()
+    for rec in state["slots"]:
+        elapsed = max(0, time.time() - float(rec.get("since", time.time())))
+        print(f"[merge_gate] lease holder pid={rec.get('pid')} label={rec.get('label')} "
+              f"cwd={rec.get('cwd')} held={elapsed:.0f}s", flush=True)
+    if not state["slots"]:
+        print("[merge_gate] lease slots free", flush=True)
+
+
 def execute(steps, head, dry_run=False, runner=run_child):
     """Fail fast, show all remaining steps as skipped, and return nonzero on red."""
+    if not steps:
+        raise ValueError("no stages selected; gate requires at least one stage")
     results = []
     failed = False
     for name, command, overrides in steps:
@@ -91,6 +130,7 @@ def execute(steps, head, dry_run=False, runner=run_child):
                 if git("rev-parse", "HEAD") != head:
                     raise RuntimeError("HEAD changed during gate; rerun verification and gate")
                 print(f"[merge_gate] {name}", flush=True)
+                log_lease_holders()
                 result = runner(command, cwd=ROOT, env=dict(os.environ, **overrides, MC2_IN_GATE="1"))
                 status = "PASS" if result.returncode == 0 else f"FAIL ({result.returncode})"
             except (OSError, RuntimeError, subprocess.SubprocessError) as exc:
@@ -115,7 +155,13 @@ def select_stages(steps, stages=None, skip=None):
         raise ValueError("unknown stages: " + ", ".join(sorted(unknown)) + "; available: " + ", ".join(available))
     if len(requested) != len(set(requested)):
         raise ValueError("duplicate stages")
-    return [available[name] for name in requested or available if name not in omitted]
+    overlap = set(requested) & omitted
+    if overlap:
+        raise ValueError("stages both selected and skipped: " + ", ".join(sorted(overlap)))
+    selected = [available[name] for name in requested or available if name not in omitted]
+    if not selected or stages == []:
+        raise ValueError("no stages selected; gate requires at least one stage")
+    return selected
 
 
 class Tee:
@@ -144,6 +190,9 @@ def main(argv=None):
     ap.add_argument("--stages", nargs="+", help="stage names in execution order (space or comma separated)")
     ap.add_argument("--skip", nargs="+", help="stage names to omit (space or comma separated)")
     ap.add_argument("--log", type=Path, help="gate log path (default: timestamped merge-gate proof directory)")
+    ap.add_argument("--proofs-dir", type=Path, help="exact proof directory for this invocation")
+    ap.add_argument("--before-dir", type=Path, help="reuse a previous capture-before directory")
+    ap.add_argument("--expect-pre-exe-sha", help="required executable SHA256 for --before-dir evidence")
     try:
         jobs = Path("A:/Games/mc2-ops/JOBS").read_text().strip()
     except OSError:
@@ -152,9 +201,15 @@ def main(argv=None):
     args = ap.parse_args(argv)
     if args.j < 1:
         ap.error("-j must be positive")
-    proof = Path("E:/mc2-archive-2026-10/proofs/merge-gate") / time.strftime("%Y%m%d-%H%M%S")
+    proof = args.proofs_dir or Path("E:/mc2-archive-2026-10/proofs/merge-gate") / time.strftime("%Y%m%d-%H%M%S")
     try:
-        steps = select_stages(plan(args.j, proof, args.capture_before_runs), args.stages, args.skip)
+        if args.before_dir:
+            validate_before(args.before_dir, args.expect_pre_exe_sha)
+        elif args.expect_pre_exe_sha:
+            raise ValueError("--expect-pre-exe-sha requires --before-dir")
+        planned = (plan(args.j, proof, args.capture_before_runs, args.before_dir) if args.before_dir
+                   else plan(args.j, proof, args.capture_before_runs))
+        steps = select_stages(planned, args.stages, args.skip)
     except ValueError as exc:
         ap.error(str(exc))
     head = git("rev-parse", "HEAD")

@@ -1829,11 +1829,13 @@ void Profiler::Worker()
 
     ListenSocket listen;
     bool isListening = false;
-    if( !dataPortSearch )
+    // MC2: an explicit TRACY_PORT opts into the local profiling listener.
+    // TRACY_ON_DEMAND alone still binds at startup and prompts Windows Firewall.
+    if( m_userPort != 0 && !dataPortSearch )
     {
         isListening = listen.Listen( dataPort, 4 );
     }
-    else
+    else if( m_userPort != 0 )
     {
         for( uint32_t i=0; i<20; i++ )
         {

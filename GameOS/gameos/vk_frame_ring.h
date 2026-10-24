@@ -106,6 +106,8 @@ private:
     OwnedBuffer buffer_;
     uint8_t* mapped_ = nullptr;
     uint32_t growths_ = 0;
+    uint64_t policyRefusals_ = 0;
+    VkDeviceSize refusedCapacity_ = 0;
 };
 #endif
 

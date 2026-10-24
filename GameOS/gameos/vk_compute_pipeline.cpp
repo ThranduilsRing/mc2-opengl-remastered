@@ -22,9 +22,9 @@ void clog(const char* fmt, ...) {
 }
 }  // namespace
 
-bool ComputePipeline::create(VkDevice device, std::string_view spvPath, const std::vector<ComputeBinding>& bindings, std::string_view name) {
+bool ComputePipeline::create(VkDevice device, std::string_view spvPath, const std::vector<ComputeBinding>& bindings, std::string_view name, bool logFailures) {
     bindings_ = bindings;
-    module_ = OwnedShaderModule(device, vk_island_util::loadSpv(device, spvPath, clog));
+    module_ = OwnedShaderModule(device, vk_island_util::loadSpv(device, spvPath, logFailures ? clog : nullptr));
     if (!module_) return false;
 
     std::vector<VkDescriptorSetLayoutBinding> b(bindings.size());
@@ -40,7 +40,7 @@ bool ComputePipeline::create(VkDevice device, std::string_view spvPath, const st
     lci.bindingCount = static_cast<uint32_t>(b.size());
     lci.pBindings = b.data();
     if (!mc2vk::create(dsl_, device, [&](VkDescriptorSetLayout* h) { return vkCreateDescriptorSetLayout(device, &lci, nullptr, h); })) {
-        clog("%.*s: vkCreateDescriptorSetLayout failed.", static_cast<int>(name.size()), name.data());
+        if (logFailures) clog("%.*s: vkCreateDescriptorSetLayout failed.", static_cast<int>(name.size()), name.data());
         return false;
     }
     VkPipelineLayoutCreateInfo plci{};
@@ -49,7 +49,7 @@ bool ComputePipeline::create(VkDevice device, std::string_view spvPath, const st
     plci.setLayoutCount = 1;
     plci.pSetLayouts = &dslHandle;
     if (!mc2vk::create(layout_, device, [&](VkPipelineLayout* h) { return vkCreatePipelineLayout(device, &plci, nullptr, h); })) {
-        clog("%.*s: vkCreatePipelineLayout failed.", static_cast<int>(name.size()), name.data());
+        if (logFailures) clog("%.*s: vkCreatePipelineLayout failed.", static_cast<int>(name.size()), name.data());
         return false;
     }
     VkComputePipelineCreateInfo cpci{};
@@ -60,7 +60,7 @@ bool ComputePipeline::create(VkDevice device, std::string_view spvPath, const st
     cpci.stage.pName = "main";
     cpci.layout = layout_.get();
     if (!mc2vk::create(pipe_, device, [&](VkPipeline* h) { return mc2vk::infra::compute(device, VK_NULL_HANDLE, 1, &cpci, nullptr, h); })) {
-        clog("%.*s: vkCreateComputePipelines failed.", static_cast<int>(name.size()), name.data());
+        if (logFailures) clog("%.*s: vkCreateComputePipelines failed.", static_cast<int>(name.size()), name.data());
         return false;
     }
     nameObject(device, pipe_.get(), name);
@@ -72,7 +72,7 @@ void ComputePipeline::bind(VkCommandBuffer cb, VkDescriptorSet set, std::span<co
     vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_COMPUTE, layout_.get(), 0, 1, &set, static_cast<uint32_t>(dynamicOffsets.size()), dynamicOffsets.data());
 }
 
-bool ComputeSets::create(VkDevice device, const ComputePipeline& pipe, uint32_t count, std::string_view name) {
+bool ComputeSets::create(VkDevice device, const ComputePipeline& pipe, uint32_t count, std::string_view name, bool logFailures) {
     // One pool size per descriptor type the layout uses: storage, uniform, storage dynamic, uniform dynamic.
     const VkDescriptorType kTypes[4] = {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
                                         VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC};
@@ -89,7 +89,7 @@ bool ComputeSets::create(VkDevice device, const ComputePipeline& pipe, uint32_t 
     pci.poolSizeCount = nSizes;
     pci.pPoolSizes = sizes;
     if (!mc2vk::create(pool_, device, [&](VkDescriptorPool* h) { return vkCreateDescriptorPool(device, &pci, nullptr, h); })) {
-        clog("%.*s: vkCreateDescriptorPool failed.", static_cast<int>(name.size()), name.data());
+        if (logFailures) clog("%.*s: vkCreateDescriptorPool failed.", static_cast<int>(name.size()), name.data());
         return false;
     }
     std::vector<VkDescriptorSetLayout> layouts(count, pipe.setLayout());
@@ -100,7 +100,7 @@ bool ComputeSets::create(VkDevice device, const ComputePipeline& pipe, uint32_t 
     dsai.descriptorSetCount = count;
     dsai.pSetLayouts = layouts.data();
     if (vkAllocateDescriptorSets(device, &dsai, sets_.data()) != VK_SUCCESS) {
-        clog("%.*s: vkAllocateDescriptorSets failed.", static_cast<int>(name.size()), name.data());
+        if (logFailures) clog("%.*s: vkAllocateDescriptorSets failed.", static_cast<int>(name.size()), name.data());
         sets_.clear();
         return false;
     }

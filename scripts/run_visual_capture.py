@@ -94,6 +94,7 @@ import manifest_schema as ms  # noqa: E402
 from smoke_lib import nofocus  # noqa: E402
 from smoke_lib import capture_backend, render_options_pin, render_resolution  # noqa: E402
 from smoke_lib import exe_guard  # noqa: E402
+from smoke_lib.firewall_dialog import Guard as FirewallGuard
 
 DEFAULT_EXE = Path(r"A:/Games/mc2-opengl/mc2-win64-v0.4/mc2.exe")
 BOOKMARK_DIR = (Path(os.environ["MC2_VISUAL_BOOKMARK_DIR"])
@@ -352,6 +353,7 @@ def run_one(exe: Path, mission: str, bookmarks_path: Path, out_dir: Path,
                              cwd=str(exe.parent), env=env,
                              show_window=show_window, small_window=False)
         _ACTIVE.append(proc)  # HARNESS-ISOLATION-1: track for own-only reap
+        firewall = FirewallGuard(exe)
         # The budget starts once the engine is running: spawn() blocks on the host-wide game lease, and a wait
         # behind another lane's smoke must not eat the poses' time (it did, twice).
         t0 = time.time()
@@ -364,6 +366,7 @@ def run_one(exe: Path, mission: str, bookmarks_path: Path, out_dir: Path,
         done_early = False
         last_sizes = None
         while time.time() < deadline:
+            firewall.poll()
             park_cursor_center()
             if all(p.exists() for p in expected_pngs.values()):
                 # CAPTURE-EARLY-EXIT-1: finished only when every PNG + sidecar
@@ -404,6 +407,7 @@ def run_one(exe: Path, mission: str, bookmarks_path: Path, out_dir: Path,
                 proc.wait(timeout=10)
             except Exception:
                 pass
+        firewall.poll(final=True)
         print(f"[viscap] capture {'complete, early exit' if done_early else 'ended'}"
               f" after {time.time() - t0:.1f}s (budget {duration}s)")
     finally:

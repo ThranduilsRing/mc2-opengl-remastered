@@ -185,6 +185,7 @@ def game_env(arm: str, fixed_timestep: bool, fps_cap, pose, extra_env) -> dict:
         if k.startswith("MC2_VK") or k == "MC2_RENDER_BACKEND":
             env.pop(k)
     env.update({
+        "TRACY_PORT": "8086",  # explicit opt-in to the loopback profiling listener
         "MC2_NO_LAUNCHER": "1",
         "MC2_SMOKE_MODE": "1",
         # Never fullscreen / never grab the pointer.

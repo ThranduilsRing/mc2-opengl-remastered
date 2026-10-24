@@ -633,13 +633,66 @@ def test_regeneration_reports_only_owned_outputs(env, monkeypatch, capsys):
         lm.regenerate_all(str(repo))
 
 
+def test_regeneration_normalizes_windows_json_without_touching_binary(env, monkeypatch):
+    lm = _load_module()
+    repo, _ = env
+    write(repo, "generate.py", "open('artifact.json', 'wb').write(b'new\\r\\n')\n")
+    write(repo, "artifact.json", "old\n")
+    (repo / "artifact.spv").write_bytes(b"\r\n\x00")
+    commit_all(repo, "generator")
+    monkeypatch.setattr(lm, "ARTIFACTS", ["artifact.json", "artifact.spv"])
+    monkeypatch.setattr(lm, "GENERATORS", [("fixture", "generate.py", [])])
+    assert lm.regenerate_all(str(repo)) == ["artifact.json"]
+    assert (repo / "artifact.json").read_bytes() == b"new\n"
+    assert (repo / "artifact.spv").read_bytes() == b"\r\n\x00"
+
+
+@pytest.mark.parametrize("mode", ["build", "none"])
+def test_contained_batch_still_verifies(env, monkeypatch, mode):
+    lm = _load_module()
+    repo, tools = env
+    verifies = []
+    monkeypatch.setattr(lm, "verify_merged", lambda root, mode: (verifies.append(mode), ("OK", []))[1])
+    monkeypatch.setattr(lm, "merge_tip", lambda *a: pytest.fail("contained tip merged"))
+    assert lm.main(["--batch", "HEAD", "--verify", mode, "--root", str(repo), "--tools-dir", str(tools)]) == 0
+    assert verifies == [mode]
+
+
 def test_regeneration_failure_stops_before_later_generators(env, monkeypatch):
     lm = _load_module()
     repo, _ = env
     write(repo, "generate.py", "raise SystemExit('broken generator')\n")
+    commit_all(repo, "generator")
     monkeypatch.setattr(lm, "GENERATORS", [("fixture", "generate.py", []), ("never", "missing.py", [])])
     with pytest.raises(lm.Stop, match="broken generator"):
         lm.regenerate_all(str(repo))
+
+
+def test_dirty_source_cannot_contaminate_artifact_commit(env, monkeypatch):
+    lm = _load_module()
+    repo, tools = env
+    write(repo, "generate.py", "from pathlib import Path\nPath('artifact.json').write_bytes(Path('b.txt').read_bytes())\n")
+    write(repo, "artifact.json", "b\n")
+    commit_all(repo, "generator")
+    lane_branch(repo, {"a.txt": "lane\n"})
+    monkeypatch.setattr(lm, "ARTIFACTS", ["artifact.json"])
+    monkeypatch.setattr(lm, "GENERATORS", [("fixture", "generate.py", [])])
+    before = git(repo, "rev-parse", "HEAD")
+    write(repo, "b.txt", "uncommitted source must never enter artifacts\n")
+    for action in (lambda: lm.regenerate_all(str(repo)),
+                   lambda: lm.merge_tip(str(repo), str(tools), lm.plan(str(repo), "lane"), "merge lane", {})):
+        with pytest.raises(lm.Stop, match="requires a clean tree.*"):
+            action()
+        assert git(repo, "rev-parse", "HEAD") == before
+        assert (repo / "artifact.json").read_bytes() == b"b\n"
+        assert "uncommitted source" in (repo / "b.txt").read_text()
+    # Once the input is committed, only its generated artifact enters the follow-up.
+    git(repo, "add", "--", "b.txt")
+    git(repo, "commit", "-q", "-m", "commit generator input")
+    _, follow, failed = lm.merge_tip(str(repo), str(tools), lm.plan(str(repo), "lane"), "merge lane", {})
+    assert follow and not failed
+    assert git(repo, "diff-tree", "--no-commit-id", "--name-only", "-r", "HEAD") == "artifact.json"
+    assert "uncommitted source" in git(repo, "show", "HEAD:artifact.json")
 
 
 def test_regeneration_dry_run_leaves_original_untouched(env, monkeypatch):
