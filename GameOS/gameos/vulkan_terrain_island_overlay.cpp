@@ -328,7 +328,7 @@ extern "C" int mc2_vk_overlay_prewarm(int w,int h) {
     // Preserve any queued draws; the first real frame submits its own stream.
     auto pending = std::move(g_ovlPending);
     g_ovlPending.clear();
-    gos_terrain_indirect::DrawDecalStatic();
+    if (gos_terrain_indirect::IsFrameOverlayArmed()) gos_terrain_indirect::DrawDecalStatic();
     const bool ready = ovl_prepare_static(s, s->ovl.get(), g_ovlPending);
     for (const auto& p : g_ovlPending)
         for (const auto& d : p.draws)
