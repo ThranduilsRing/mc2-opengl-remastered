@@ -6,6 +6,9 @@
 #include <cmath>
 #include <vector>
 #include <string>
+#include <filesystem>
+#include <fstream>
+#include <iterator>
 #include "stock_lamp_fixture.h"
 #include "../../mclib/stock_lamp_definition.h"
 
@@ -108,6 +111,29 @@ TEST_CASE("stock lamp definitions exclude every authored override") {
             mod.replace(offset, 5, radius);
             CHECK_FALSE(mc2_stock_lamp::definition("2civliving", mod, false));
         }
+    }
+}
+
+TEST_CASE("loose stock lamps retune by hash and mod ownership, independent of disk source") {
+    const auto source = std::filesystem::path(__FILE__).parent_path().parent_path().parent_path();
+    std::ifstream caller(source / "mclib/bdactor_type.cpp");
+    REQUIRE(caller.good());
+    const std::string code{std::istreambuf_iterator<char>(caller), {}};
+    const auto begin = code.find("stockTerrainLamp = mc2_stock_lamp::definition(");
+    REQUIRE(begin != std::string::npos);
+    const auto call = code.substr(begin, code.find(';', begin) - begin);
+    CHECK(call.find("isLoadedFromDisk") == std::string::npos);
+    CHECK(call.find("LookupModOwner(iniName) != nullptr") != std::string::npos);
+
+    const auto loose = std::filesystem::temp_directory_path() / "mc2-stock-lamp-regression.ini";
+    struct Cleanup { std::filesystem::path path; ~Cleanup() { std::filesystem::remove(path); } } cleanup{loose};
+    for (bool changed : {false, true}) {
+        { std::ofstream out(loose, std::ios::binary); out << kStockLampFixture; if (changed) out << "\r\n; authored"; }
+        std::ifstream in(loose, std::ios::binary);
+        REQUIRE(in.good());
+        const std::string bytes{std::istreambuf_iterator<char>(in), {}};
+        CHECK(mc2_stock_lamp::definition("2civliving", bytes, false) == !changed);
+        CHECK_FALSE(mc2_stock_lamp::definition("2civliving", bytes, true));
     }
 }
 
