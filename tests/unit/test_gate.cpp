@@ -1133,8 +1133,6 @@ TEST_CASE("G5 static-prop clamp rows reproduce the lambdas they replaced") {
     };
     CHECK(fl("MC2_OBJECT_POLY_OFFSET_FACTOR", nullptr) == -1.0f);
     // texture tier and the billboard mode keep their snapping / first-character logic at the site
-    CHECK(in("MC2_STATICPROP_TEX_TIER", nullptr) == 512);
-    CHECK(in("MC2_STATICPROP_TEX_TIER", "300") == 300);
     CHECK(g1b::rowNamed("MC2_LIGHT_BILLBOARD_FACING").kind == Kind::String);
 }
 

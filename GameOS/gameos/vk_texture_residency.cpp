@@ -303,6 +303,16 @@ bool TextureResidency::ready(RenderCore::TextureHandle handle) const {
     auto it=residents_.find(handle.raw());
     return it!=residents_.end() && it->second.image && service_.isLive(handle);
 }
+uint64_t TextureResidency::residentBytes() const {
+    uint64_t total=0;
+    for (const auto& [handle,resident] : residents_) {
+        if (!resident.image) continue;
+        VmaAllocationInfo info{};
+        vmaGetAllocationInfo(ctx_.allocator(),resident.image->image.allocation(),&info);
+        total+=info.size;
+    }
+    return total;
+}
 void TextureResidency::finishLoading() {
     const auto start=std::chrono::steady_clock::now();
     worker_.waitIdle();

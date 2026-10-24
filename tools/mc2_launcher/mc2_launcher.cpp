@@ -97,7 +97,6 @@ inline constexpr int IDC_GFX_AA = 1590;
 #define IDC_GFX_OK             1501
 #define IDC_GFX_CANCEL         1502
 #define IDC_GFX_TEXPACK_BASE   1503  // texture-pack radios: +0=None +1..N=packs (up to TEXPACK_DLG_SLOTS)
-#define IDC_GFX_TEXQUAL_BASE   1510  // texture-quality radios: +0=Low +1=Med +2=High +3=Ultra
 #define IDC_GFX_SHADQUAL_BASE  1520  // shadow-quality radios:  +0=Low +1=Med +2=High
 #define IDC_GFX_FRAMECAP_CHK   1530  // "Limit frame rate" checkbox
 #define IDC_GFX_FRAMECAP_EDIT  1531  // FPS edit control
@@ -297,14 +296,12 @@ static void UpdateForSelection();
 // VSync: enabled flag
 //
 // Engine vars driven by these:
-//   MC2_STATICPROP_TEX_TIER  = "128" / "256" / "512" / "1024"
 //     (NOTE: engine side must read this var to select the texture resolution tier;
 //      launcher sets it here — wire the engine read in MaterialGpu/texarray loader)
 //   MC2_FPS_CAP         = "<N>" or unset
 //   MC2_VSYNC           = "1" or unset
 
 static int  s_gfxAA           = 1;   // SMAA 1x
-static int  s_gfxTexQual      = 2;   // default High (512px)
 static int  s_gfxShadQual     = 2;   // default High (8192)
 static bool s_gfxFrameCapOn   = false;
 static int  s_gfxFrameCapFps  = 60;
@@ -323,19 +320,16 @@ static char s_savedAddons[1024]   = "";   // comma-delimited folder names, "" = 
 static char s_savedFasterWeapons[4] = ""; // "1" or "0" or ""
 static char s_savedDataDriven[4]    = ""; // "1" or "0" or "" (generated defs toggle)
 
-static const char* k_texTierValues[]    = { "128", "256", "512", "1024" };
-static const char* k_texTierLabels[]    = { "Low (128px)", "Medium (256px)", "High (512px)", "Ultra (1024px)" };
 
 static const char* k_shadQualLabels[]   = { "Potato", "Medium", "High" };
-static const int   k_texVramMB[]        = { 40, 160, 640, 2560 };  // texture array VRAM by tier
 static const int   k_shadVramMB[]       = { 27, 107, 164 };       // resident mask, static-object and mover images
 
-struct GfxPreset { int texQual; int shadQual; bool frameCap; int fps; };
+struct GfxPreset { int shadQual; bool frameCap; int fps; };
 static const GfxPreset k_gfxPresets[] = {
-    { 0, 0, true,  60  },   // Low
-    { 1, 1, true,  60  },   // Medium
-    { 2, 2, true,  165 },   // High
-    { 3, 2, false, 165 },   // Ultra (uncapped)
+    { 0, true,  60  },   // Low
+    { 1, true,  60  },   // Medium
+    { 2, true,  165 },   // High
+    { 2, false, 165 },   // Ultra (uncapped)
 };
 static const char* k_gfxPresetLabels[] = { "Low", "Medium", "High", "Ultra" };
 
@@ -344,7 +338,6 @@ static HWND s_hGraphicsDlg = NULL;
 
 static void GfxSetDefaults() {
     s_gfxAA           = 1;
-    s_gfxTexQual      = 2;
     s_gfxShadQual     = 2;
     s_gfxFrameCapOn   = true;
     s_gfxFrameCapFps  = 165;
@@ -366,14 +359,6 @@ static void LoadGfxJson() {
     buf[got] = '\0';
 
     char val[256] = "";
-    // Texture tier
-    if (JsonGetString(buf, "MC2_STATICPROP_TEX_TIER", val, sizeof(val))) {
-        int tier = atoi(val);
-        if      (tier == 128)  s_gfxTexQual = 0;
-        else if (tier == 256)  s_gfxTexQual = 1;
-        else if (tier == 512)  s_gfxTexQual = 2;
-        else if (tier == 1024) s_gfxTexQual = 3;
-    }
     // Frame cap
     val[0] = '\0';
     if (JsonGetString(buf, "MC2_FPS_CAP", val, sizeof(val)) && val[0]) {
@@ -412,21 +397,14 @@ static bool SaveGfxJson() {
         out += line;
         first = false;
     }
-    // Texture tier (always write so the engine always gets a value)
+    // A texture pack is content selected independently of render quality.
+    const char* packFolder = "";
+    if (s_gfxTexPackIdx > 0 && (s_gfxTexPackIdx - 1) < s_texQualCount)
+        packFolder = s_texQual[s_gfxTexPackIdx - 1].folderName;
     if (!first) out += ",\n";
-    out += std::string("  \"MC2_STATICPROP_TEX_TIER\": \"") + k_texTierValues[s_gfxTexQual] + "\"";
-    // Shadow map size (always write)
-    // Frame cap (only if enabled)
+    out += std::string("  \"tex_pack_mod\": \"") + packFolder + "\"";
     if (s_gfxFrameCapOn) out += ",\n  \"MC2_FPS_CAP\": \"" + std::to_string(s_gfxFrameCapFps) + "\"";
-    // VSync (only if enabled)
     if (s_gfxVsync) out += ",\n  \"MC2_VSYNC\": \"1\"";
-    // Texture pack mod (always write; empty string = None)
-    {
-        const char* packFolder = "";
-        if (s_gfxTexPackIdx > 0 && (s_gfxTexPackIdx - 1) < s_texQualCount)
-            packFolder = s_texQual[s_gfxTexPackIdx - 1].folderName;
-        out += std::string(",\n  \"tex_pack_mod\": \"") + packFolder + "\"";
-    }
     // Main-page selections (always write)
     out += std::string(",\n  \"last_campaign\": \"") + s_savedCampaign + "\"";
     out += std::string(",\n  \"last_base\": \"") + s_savedBase + "\"";
@@ -906,7 +884,7 @@ static void LauncherLogLine(const std::string& line) {
 // They are dropped by the next save without a word unless they are named, so the migration counts and names them. A key is a quoted MC2_ name
 // followed by a colon; a value that happens to start with MC2_ is not a key. `names` receives at most `cap` names, the count is complete.
 static int CountUnknownEnvKeys(const std::string& json, std::string& names, int cap) {
-    static const char* const k_kept[] = { "MC2_STATICPROP_TEX_TIER", "MC2_FPS_CAP", "MC2_VSYNC" };   // the graphics-dialog keys
+    static const char* const k_kept[] = { "MC2_FPS_CAP", "MC2_VSYNC" };   // the graphics-dialog keys
     int count = 0;
     std::string seen;   // ",NAME," entries, so a key repeated in the file counts once
     for (size_t at = json.find("\"MC2_"); at != std::string::npos; at = json.find("\"MC2_", at + 1)) {
@@ -1153,7 +1131,7 @@ static void ShowOptionsDialog(HWND owner) {
     int clientW = OPT_DLG_W;
     int clientH = contentH;
     DWORD style = WS_POPUP | WS_CAPTION | WS_SYSMENU;
-    RECT rc = { 0, 0, clientW, clientH };
+    RECT rc = { 0, clientW, clientH };
     AdjustWindowRect(&rc, style, FALSE);
     int ww = rc.right - rc.left;
     int wh = rc.bottom - rc.top;
@@ -1189,10 +1167,9 @@ static void ShowOptionsDialog(HWND owner) {
 #define GFX_VRAM_H      130   // tall enough for ~8 lines of monospace text
 
 // Build the VRAM estimate string into out[]. outSz should be >= 512.
-// Reads s_gfxTexQual, s_gfxShadQual; reads MC2_HDRI_BC6H from s_envVarValues.
+// Reads s_gfxShadQual; reads MC2_HDRI_BC6H from s_envVarValues.
 // MC2_HDRI_BC6H default is ON (BC6H 4K = 8 MB); set =0 for RGBA16F (134 MB).
 static void RecalcVram(char* out, int outSz) {
-    int texMB  = k_texVramMB[s_gfxTexQual];
     int shadMB = k_shadVramMB[s_gfxShadQual];
     int fboMB  = 96;    // GL_RGBA16F 1080p x3 attachments + bloom
 
@@ -1211,15 +1188,15 @@ static void RecalcVram(char* out, int outSz) {
         : "HDRI (BC6H 4K):    %d MB";
 
     int baseMB  = 256;
-    int totalMB = texMB + shadMB + fboMB + hdriMB + baseMB;
+    int totalMB = shadMB + fboMB + hdriMB + baseMB;
 
     char hdriLine[64];
     _snprintf(hdriLine, sizeof(hdriLine), hdriLabel, hdriMB);
     hdriLine[sizeof(hdriLine)-1] = '\0';
 
     _snprintf(out, outSz,
-        "Estimated VRAM: ~%d MB\r\n"
-        "  Textures:      %d MB\r\n"
+        "Estimated fixed VRAM: ~%d MB\r\n"
+        "  Textures: mission-dependent\r\n"
         "  Shadow maps:   %d MB\r\n"
         "  Scene FBOs:     %d MB\r\n"
         "  %s\r\n"
@@ -1227,7 +1204,7 @@ static void RecalcVram(char* out, int outSz) {
         "  Base overhead: %d MB\r\n"
         "  ---------------------\r\n"
         "  (excl. terrain, water, mission geometry)",
-        totalMB, texMB, shadMB, fboMB, hdriLine, baseMB);
+        totalMB, shadMB, fboMB, hdriLine, baseMB);
     out[outSz-1] = '\0';
 }
 
@@ -1242,13 +1219,6 @@ static void GfxDialogReadControls(HWND hwnd) {
             if (h && SendMessageA(h, BM_GETCHECK, 0, 0) == BST_CHECKED) {
                 s_gfxTexPackIdx = i; break;
             }
-        }
-    }
-    // Texture quality radios
-    for (int i = 0; i < 4; i++) {
-        HWND h = GetDlgItem(hwnd, IDC_GFX_TEXQUAL_BASE + i);
-        if (h && SendMessageA(h, BM_GETCHECK, 0, 0) == BST_CHECKED) {
-            s_gfxTexQual = i; break;
         }
     }
     // Shadow quality radios
@@ -1342,27 +1312,6 @@ static LRESULT CALLBACK GraphicsDlgProc(HWND hwnd, UINT msg, WPARAM wParam, LPAR
                 SendMessageA(hNone, WM_SETFONT, (WPARAM)hFont, TRUE);
                 y += GFX_ROW_STEP;
             }
-        }
-        y += 6;
-
-        // --- Texture Resolution (engine-side atlas detail — not a mod) ---
-        HWND hS = CreateWindowA("STATIC", "Texture Resolution  (engine atlas detail level)",
-            WS_CHILD | WS_VISIBLE | SS_LEFT,
-            GFX_MARGIN, y, GFX_DLG_W - 2*GFX_MARGIN, GFX_SEC_H,
-            hwnd, (HMENU)(INT_PTR)-1, s_hInst, NULL);
-        SendMessageA(hS, WM_SETFONT, (WPARAM)hFontBold, TRUE);
-        y += GFX_SEC_STEP;
-
-        for (int i = 0; i < 4; i++) {
-            DWORD st = WS_CHILD | WS_VISIBLE | BS_AUTORADIOBUTTON;
-            if (i == 0) st |= WS_GROUP;
-            HWND hR = CreateWindowA("BUTTON", k_texTierLabels[i], st,
-                GFX_MARGIN + 8, y, GFX_DLG_W - 2*GFX_MARGIN - 8, GFX_ROW_H,
-                hwnd, (HMENU)(INT_PTR)(IDC_GFX_TEXQUAL_BASE + i), s_hInst, NULL);
-            SendMessageA(hR, WM_SETFONT, (WPARAM)hFont, TRUE);
-            SendMessageA(hR, BM_SETCHECK,
-                (i == s_gfxTexQual) ? BST_CHECKED : BST_UNCHECKED, 0);
-            y += GFX_ROW_STEP;
         }
         y += 6;
 
@@ -1481,26 +1430,21 @@ static LRESULT CALLBACK GraphicsDlgProc(HWND hwnd, UINT msg, WPARAM wParam, LPAR
         // Recalc VRAM whenever a quality radio changes.
         bool qualChanged = false;
         if (notif == BN_CLICKED) {
-            if (id >= IDC_GFX_TEXQUAL_BASE && id < IDC_GFX_TEXQUAL_BASE + 4) qualChanged = true;
             if (id >= IDC_GFX_SHADQUAL_BASE && id < IDC_GFX_SHADQUAL_BASE + 3) qualChanged = true;
         }
         if (qualChanged) {
             // Read current radio selections for recalc (don't commit to globals yet)
-            int tq = s_gfxTexQual, sq = s_gfxShadQual;
-            for (int i = 0; i < 4; i++) {
-                HWND h = GetDlgItem(hwnd, IDC_GFX_TEXQUAL_BASE + i);
-                if (h && SendMessageA(h, BM_GETCHECK, 0, 0) == BST_CHECKED) { tq = i; break; }
-            }
+            int sq = s_gfxShadQual;
             for (int i = 0; i < 3; i++) {
                 HWND h = GetDlgItem(hwnd, IDC_GFX_SHADQUAL_BASE + i);
                 if (h && SendMessageA(h, BM_GETCHECK, 0, 0) == BST_CHECKED) { sq = i; break; }
             }
-            int savedTq = s_gfxTexQual, savedSq = s_gfxShadQual;
-            s_gfxTexQual = tq; s_gfxShadQual = sq;
+            int savedSq = s_gfxShadQual;
+            s_gfxShadQual = sq;
             char vramBuf[512]; RecalcVram(vramBuf, sizeof(vramBuf));
             HWND hVt = GetDlgItem(hwnd, IDC_GFX_VRAM_TEXT);
             if (hVt) SetWindowTextA(hVt, vramBuf);
-            s_gfxTexQual = savedTq; s_gfxShadQual = savedSq;
+            s_gfxShadQual = savedSq;
         }
 
         // Preset button clicked: apply preset values to all controls.
@@ -1508,10 +1452,6 @@ static LRESULT CALLBACK GraphicsDlgProc(HWND hwnd, UINT msg, WPARAM wParam, LPAR
         if (pidx >= 0 && pidx < 4 && notif == BN_CLICKED) {
             const GfxPreset& p = k_gfxPresets[pidx];
             SendDlgItemMessageA(hwnd, IDC_GFX_AA, CB_SETCURSEL, pidx == 0 ? 2 : 1, 0);
-            for (int i = 0; i < 4; i++) {
-                HWND h = GetDlgItem(hwnd, IDC_GFX_TEXQUAL_BASE + i);
-                if (h) SendMessageA(h, BM_SETCHECK, (i == p.texQual) ? BST_CHECKED : BST_UNCHECKED, 0);
-            }
             for (int i = 0; i < 3; i++) {
                 HWND h = GetDlgItem(hwnd, IDC_GFX_SHADQUAL_BASE + i);
                 if (h) SendMessageA(h, BM_SETCHECK, (i == p.shadQual) ? BST_CHECKED : BST_UNCHECKED, 0);
@@ -1524,12 +1464,12 @@ static LRESULT CALLBACK GraphicsDlgProc(HWND hwnd, UINT msg, WPARAM wParam, LPAR
                 SetWindowTextA(hEd, fpsBuf);
             }
             // Update VRAM display for the preset.
-            int savedTq = s_gfxTexQual, savedSq = s_gfxShadQual;
-            s_gfxTexQual = p.texQual; s_gfxShadQual = p.shadQual;
+            int savedSq = s_gfxShadQual;
+            s_gfxShadQual = p.shadQual;
             char vramBuf[512]; RecalcVram(vramBuf, sizeof(vramBuf));
             HWND hVt = GetDlgItem(hwnd, IDC_GFX_VRAM_TEXT);
             if (hVt) SetWindowTextA(hVt, vramBuf);
-            s_gfxTexQual = savedTq; s_gfxShadQual = savedSq;
+            s_gfxShadQual = savedSq;
         }
 
         if (id == IDC_GFX_OK) {
@@ -1594,8 +1534,6 @@ static void ShowGraphicsDialog(HWND owner) {
         if (s_texQualCount == 0) nPackSlots = 1;  // placeholder row
         contentH += GFX_SEC_STEP + nPackSlots * GFX_ROW_STEP + 6;
     }
-    // Texture Quality
-    contentH += GFX_SEC_STEP + 4 * GFX_ROW_STEP + 6;
     // Shadow Quality
     contentH += GFX_SEC_STEP + 3 * GFX_ROW_STEP + 6;
     contentH += GFX_ROW_STEP + 6; // Spatial AA selector
@@ -1610,7 +1548,7 @@ static void ShowGraphicsDialog(HWND owner) {
     int clientW = GFX_DLG_W;
     int clientH = contentH;
     DWORD style = WS_POPUP | WS_CAPTION | WS_SYSMENU;
-    RECT rc = { 0, 0, clientW, clientH };
+    RECT rc = { 0, clientW, clientH };
     AdjustWindowRect(&rc, style, FALSE);
     int ww = rc.right - rc.left;
     int wh = rc.bottom - rc.top;
@@ -2295,9 +2233,6 @@ static void DoLaunch(HWND hwnd) {
     SaveCfgRows();
 
     // Apply Graphics Options env vars.
-    // MC2_STATICPROP_TEX_TIER: texture resolution tier (engine reads this in the
-    //   texture-array loader to pick which mip level / atlas to load).
-    SetEnvironmentVariableA("MC2_STATICPROP_TEX_TIER", k_texTierValues[s_gfxTexQual]);
     // MC2_FPS_CAP: frame cap in FPS (gameosmain.cpp reads this).
     if (s_gfxFrameCapOn) {
         char fpsBuf[32];
@@ -2578,7 +2513,7 @@ static void RegisterProgClass() {
 static void ShowProgressDialog(HWND owner) {
     RegisterProgClass();
     int w = 360, h = 130;
-    RECT rc = { 0, 0, w, h };
+    RECT rc = { 0, w, h };
     DWORD style = WS_POPUP | WS_CAPTION | WS_VISIBLE;
     AdjustWindowRect(&rc, style, FALSE);
     int ww = rc.right - rc.left, wh = rc.bottom - rc.top;
@@ -3227,7 +3162,7 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE, LPSTR lpCmd, int) {
     DWORD style = WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX;
     int clientW = LP_CLIENT_W;                           // 10+320+15+230+10 = 585
     int clientH = LP_BTN_Y + LP_BTN_H + LP_MARGIN;       // bottom button row + margin
-    RECT rc = { 0, 0, clientW, clientH };
+    RECT rc = { 0, clientW, clientH };
     AdjustWindowRect(&rc, style, FALSE);
     int wW = rc.right - rc.left;
     int wH = rc.bottom - rc.top;

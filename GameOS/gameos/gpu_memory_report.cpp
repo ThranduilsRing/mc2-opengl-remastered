@@ -15,6 +15,7 @@
 
 #ifdef MC2_VULKAN
 #include "vulkan_context.h"
+#include "vk_texture_residency.h"
 #endif
 
 #ifdef _WIN32
@@ -152,6 +153,11 @@ std::string toJson(const Snapshot& s) {
 void log(std::string_view phase) {
     if (!SmokeMode::state().enabled && !mc2DiagVerbose()) return;
     const Snapshot snapshot = take();
+#ifdef MC2_VULKAN
+    if (mc2vk::engineVulkanContextValid())
+        std::fprintf(stderr,"[TEXTURE_RESIDENT] phase=%.*s bytes=%llu\n",int(phase.size()),phase.data(),
+            static_cast<unsigned long long>(mc2vk::getOrCreateEngineVulkanContext().textures().residentBytes()));
+#endif
 #ifdef _WIN32
     static bool adapterLogged = false;                          // the rule that picked the DXGI adapter, once, after the first take() resolved it
     if (!adapterLogged) {

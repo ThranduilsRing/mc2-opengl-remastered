@@ -96,7 +96,6 @@ G("MC2_STABLE_LIGHT_SKIP_TOUCH", Bool, false, "props", "", "Std Bool row: any te
 // Static-prop ORM (PBR) — load-only feature + trace
 // history: docs/gate-history.md#MC2_STATICPROP_MATERIAL_PBR_SLOTS
 L(Lead0Kill, "MC2_STATICPROP_RECIPE_SPOTLIGHT_SKIP", Bool, true, "props", "", "", passthrough | verified),
-P("MC2_STATICPROP_TEX_TIER", Int, 512, "props", "", "", verified),
 L(Presence, "MC2_STATIC_FORCE_ADMIT", Bool, false, "props", "", "2026-05-10 diag: MC2_STATIC_FORCE_ADMIT mirrors registry::flush behavior so the env-var A/B (cull-bypassed vs cull-active) covers BOTH substrate-record...", passthrough | verified),
 L(Presence, "MC2_STATIC_LEAF_DIAG", Bool, false, "props", "", "", verified),
 // history: docs/gate-history.md#MC2_STATIC_LIGHT_UPLOAD_SPLIT

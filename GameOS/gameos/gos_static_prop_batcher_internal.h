@@ -320,7 +320,6 @@ extern const bool s_viewUniformsDisabled;
 extern const RenderCore::IblShSet* s_currentShSet;
 const float* iblShCoeffsForUpload();
 extern int s_staticPropDebugMaterialMode;
-int texTier();
 extern bool s_materialGpuSidecarValid;
 extern std::vector<uint32_t>                s_packetMaterialIdx;
 extern std::vector<RenderCore::MaterialGpu> s_materialGpuTable;
@@ -417,27 +416,6 @@ static std::string deriveOrmSidecar(const char* srcName) {
     if (dot != std::string::npos && (sep == std::string::npos || dot > sep))
         s.erase(dot);
     return s + ".orm.ktx2";
-}
-
-// MC2_STATICPROP_TEX_TIER — derive the tiered KTX2 path from a SOURCE texture name.
-// getTextureName() returns the .tga/.txm source path (e.g. "data/tgl/foo.tga").
-// This function constructs the tier-directory path:
-//   "data/tgl/foo.tga" + tier=512 -> "data/tgl/512/foo.ktx2"
-// The tier subdirectory is inserted between the parent directory and the filename.
-// If no tier directory is found the plain sidecar path (flat .ktx2) is returned
-// so the existing fallback / miss path handles it gracefully.
-static std::string deriveTieredKtxPath(const char* srcName, int tier) {
-    std::string s(srcName ? srcName : "");
-    const size_t sep = s.find_last_of("/\\");
-    const size_t dot = s.find_last_of('.');
-    if (dot != std::string::npos && (sep == std::string::npos || dot > sep))
-        s.erase(dot);
-    const size_t lastSep = s.find_last_of("/\\");
-    if (lastSep == std::string::npos) {
-        return std::to_string(tier) + "/" + s + ".ktx2";
-    }
-    return s.substr(0, lastSep + 1) + std::to_string(tier) + "/"
-           + s.substr(lastSep + 1) + ".ktx2";
 }
 
 // The [TREE_DIAG] stream is named for the 2026-05-05 "black billboard square"
