@@ -192,7 +192,7 @@
    "LG05": 111,
    "LG06": 528,
    "LG07": 0,
-   "LG08": 47,
+   "LG08": 45,
    "LG09": 2,
    "LG10": 19,
    "LG11": 51,
@@ -3151,8 +3151,7 @@
    "LG17": 1
   },
   "mclib/spotlight_diag.cpp": {
-   "LG05": 1,
-   "LG08": 2
+   "LG05": 1
   },
   "mclib/spotlight_diag.h": {
    "LG05": 1
@@ -3508,7 +3507,7 @@
    "LG20": 3
   }
  },
- "head": "51aee7078",
+ "head": "bf531bfd0",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
