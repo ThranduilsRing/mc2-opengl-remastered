@@ -151,10 +151,17 @@ void Mech3DAppearance::destroy (void)
 	// (E) T1.8: paired cleanup for SpotLight_-child illumination from T1.6.
 	// Walks CACHED state only (spotlightLights_/spotlightSlotIds_); does NOT
 	// call getNodeIdPosition or any mechShape method — same destroy-ordering
-	// discipline as bdactor.cpp T1.5 (C-r2 M5). NOTE: the pre-existing
-	// `pointLight` (anubis searchlight) is intentionally NOT cleaned up here
-	// — that's a documented R1 leak in the existing code, out-of-scope for
-	// (E) per plan "Vedette/LRMC anubis-leak audit" follow-up.
+	// discipline as bdactor.cpp T1.5 (C-r2 M5).
+	// The Anubis searchlight owns a camera slot and tag too. Retire it before
+	// replacing the appearance, rather than leaving an ownerless mover light.
+	if (pointLight)
+	{
+		if (eye)
+			eye->removeWorldLight(lightId, pointLight);
+		free(pointLight);
+		pointLight = nullptr;
+		lightId = 0xffffffff;
+	}
 	for (size_t k = 0; k < spotlightLights_.size(); ++k)
 	{
 		if (eye)
