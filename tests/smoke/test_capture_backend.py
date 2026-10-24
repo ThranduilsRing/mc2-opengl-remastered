@@ -140,6 +140,25 @@ def test_run_visual_capture_multi_run_exits_1_when_any_run_drew_the_wrong_backen
     assert rvc.main() == 1
 
 
+@pytest.mark.parametrize("runs", [1, 2])
+def test_classic_assets_reaches_each_capture(drivers, monkeypatch, tmp_path, runs):
+    _capture, rvc = drivers
+    (tmp_path / "mc2.exe").write_bytes(b"")
+    (tmp_path / "bm.json").write_text("{}", encoding="utf-8")
+    choices = []
+
+    def capture(*a, **k):
+        choices.append(a[-1])
+        return run_result([])
+
+    monkeypatch.setattr(rvc, "run_one", capture)
+    monkeypatch.setattr(sys, "argv", ["run_visual_capture.py", "--exe", str(tmp_path / "mc2.exe"),
+                                    "--bookmarks", str(tmp_path / "bm.json"), "--out-dir", str(tmp_path / "out"),
+                                    "--runs", str(runs), "--classic-assets"])
+    assert rvc.main() == 0
+    assert choices == [True] * runs
+
+
 @pytest.mark.parametrize("drew,rc", [("vulkan", 0), ("gl", 1)])
 def test_capture_main_exits_1_when_the_sweep_drew_the_wrong_backend(drivers, monkeypatch, tmp_path, drew, rc):
     capture, rvc = drivers

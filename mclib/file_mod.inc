@@ -18,6 +18,7 @@
 #include <string_view>
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"
+#include "Gates/render_options.h"
 #include "../GameOS/gameos/utils/mc2log.h"
 
 namespace
@@ -764,10 +765,12 @@ void InitModSearchPaths(const char* modsRoot) {
 
     // MC2_ACTIVE_MOD is re-read here on every mount: the editor's mod picker changes it
     // with _putenv_s at run time, so no reader may cache it in a static.
-    const std::string envModStr = mc2::gate::str<"MC2_ACTIVE_MOD">();
+    std::string envModStr = mc2::gate::str<"MC2_ACTIVE_MOD">();
+    if (!mc2::options::current().remasteredBuildings && envModStr == "mc2-industrial-kit") envModStr.clear();
     const char* envMod = envModStr.c_str();
     const bool stockMode = !envMod[0];
-    const bool industrialKit = GetFileAttributesA("mods/mc2-industrial-kit/mod.json") != INVALID_FILE_ATTRIBUTES;
+    const bool industrialKit = mc2::options::current().remasteredBuildings &&
+        GetFileAttributesA("mods/mc2-industrial-kit/mod.json") != INVALID_FILE_ATTRIBUTES;
     if (stockMode) {
         // Stock campaign: no active mod. Add-on layers (MC2_MOD_DEPS) may still mount
         // (e.g. "stock + Omnitech mechs"). With NO deps either, this is pure base game.
@@ -842,6 +845,8 @@ void InitModSearchPaths(const char* modsRoot) {
         }
     }
     // Shipped art is the lowest mod layer; campaign and user add-ons win.
+    if (!mc2::options::current().remasteredBuildings)
+        std::erase(deps, "mc2-industrial-kit");
     if (industrialKit && modId != "mc2-industrial-kit" &&
         std::find(deps.begin(), deps.end(), "mc2-industrial-kit") == deps.end())
         deps.push_back("mc2-industrial-kit");

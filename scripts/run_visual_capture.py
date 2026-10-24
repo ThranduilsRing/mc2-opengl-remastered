@@ -275,7 +275,7 @@ def default_duration(n_bookmarks: int, trigger_frame: int, settle: int) -> int:
 def run_one(exe: Path, mission: str, bookmarks_path: Path, out_dir: Path,
             trigger_frame: int, settle: int, duration: int | None,
             deterministic_clock: bool, show_window: bool = False,
-            declared_env: dict | None = None) -> dict:
+            declared_env: dict | None = None, classic_assets: bool = False) -> dict:
     """Launch one capture sweep; return a result dict (never raises on engine
     failure -- records it instead)."""
     if not guard_exe(exe):
@@ -324,6 +324,8 @@ def run_one(exe: Path, mission: str, bookmarks_path: Path, out_dir: Path,
 
     # The render options are an input of the capture like the drawable size: the install's options.cfg plus MC2_OPTIONS_OVERRIDE.
     options_rec = render_options_pin.record(exe.parent, env)
+    if classic_assets:
+        options_rec["values"]["RemasteredBuildings"] = False
     for rj in options_rec["rejected"]:
         print(f"[viscap] WARN render option rejected by the engine's grammar: {rj}", file=sys.stderr)
 
@@ -331,6 +333,8 @@ def run_one(exe: Path, mission: str, bookmarks_path: Path, out_dir: Path,
         duration = default_duration(len(marks), trigger_frame, settle)
     proc_args = [str(exe), "--profile", "stock", "--mission", mission_token,
                  "--duration", str(duration)]
+    if classic_assets:
+        proc_args.append("--classic-assets")
     print(f"[viscap] mission={mission_token} bookmarks={len(marks)} "
           f"trigger={trigger_frame} settle={settle} dur={duration}s "
           f"fixed_clock={deterministic_clock}")
@@ -651,6 +655,7 @@ def main() -> int:
     ap.add_argument("--bookmarks", default=None,
                     help="explicit bookmark JSON path (overrides --mission lookup)")
     ap.add_argument("--exe", default=str(DEFAULT_EXE))
+    ap.add_argument("--classic-assets", action="store_true", help="use stock building art; override this run only")
     ap.add_argument("--out-dir", default=None,
                     help="output dir (default tests/visual/captures/<mission>)")
     ap.add_argument("--trigger-frame", type=int, default=120)
@@ -748,7 +753,7 @@ def main() -> int:
     if n_runs == 1:
         result = run_one(exe, args.mission, bookmarks_path, base_out,
                          args.trigger_frame, args.settle, args.duration,
-                         det_clock, args.show_window, declared_env)
+                         det_clock, args.show_window, declared_env, args.classic_assets)
         man = write_manifest(result, exe)
         _print_result(result, man)
         return 0 if (result["all_present"] and result["engine_capture_fired"] and not result["backend"]["disagree"]) else 1
@@ -763,7 +768,7 @@ def main() -> int:
         out_i = base_out / f"r{i}"
         r = run_one(exe, args.mission, bookmarks_path, out_i,
                     args.trigger_frame, args.settle, args.duration, det_clock,
-                    args.show_window, declared_env)
+                    args.show_window, declared_env, args.classic_assets)
         write_manifest(r, exe)
         runs.append(r)
         time.sleep(2)
