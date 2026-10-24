@@ -786,7 +786,7 @@
         },
         {
           "path": "scripts/run_visual_capture.py",
-          "line": 158,
+          "line": 159,
           "evidence": "command",
           "reference": "scripts/check-disk-space.py",
           "text": "subprocess.run([sys.executable, str(guard), \"--path\", str(path),"
@@ -2120,7 +2120,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1551,
+          "line": 1552,
           "evidence": "command",
           "reference": "scripts/check_sim_include_firewall.py",
           "text": "run_check \"sim_include_firewall\"        \"py -3 -B scripts/tests/test_sim_include_firewall.py && py -3 scripts/check_sim_include_firewall.py\""
@@ -2581,6 +2581,13 @@
         {
           "path": "scripts/smoke_lib/exe_guard.py",
           "line": 45,
+          "evidence": "import",
+          "reference": "console_child",
+          "text": "from console_child import child_kwargs"
+        },
+        {
+          "path": "scripts/smoke_lib/firewall_dialog.py",
+          "line": 11,
           "evidence": "import",
           "reference": "console_child",
           "text": "from console_child import child_kwargs"
@@ -3861,7 +3868,7 @@
         },
         {
           "path": "scripts/smoke_lib/runner.py",
-          "line": 175,
+          "line": 176,
           "evidence": "import",
           "reference": "gate_table_reader",
           "text": "import gate_table_reader"
@@ -4687,7 +4694,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1549,
+          "line": 1550,
           "evidence": "command",
           "reference": "scripts/run_tools_tests.py",
           "text": "run_check_tri \"tools_tests\"             \"py -3 scripts/run_tools_tests.py\""
@@ -5525,6 +5532,21 @@
           "evidence": "import",
           "reference": "scripts.smoke_lib.fingerprint",
           "text": "from scripts.smoke_lib.fingerprint import load_build_inputs"
+        }
+      ]
+    },
+    {
+      "path": "scripts/smoke_lib/firewall_dialog.py",
+      "basename": "firewall_dialog.py",
+      "stem": "firewall_dialog",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "scripts/smoke_lib/runner.py",
+          "line": 18,
+          "evidence": "import",
+          "reference": "scripts.smoke_lib.firewall_dialog",
+          "text": "from .firewall_dialog import Guard as FirewallGuard"
         }
       ]
     },
@@ -6736,6 +6758,13 @@
       "callers_by_stem": []
     },
     {
+      "path": "scripts/tests/test_firewall_dialog.py",
+      "basename": "test_firewall_dialog.py",
+      "stem": "test_firewall_dialog",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
       "path": "scripts/tests/test_gate_table_gen.py",
       "basename": "test_gate_table_gen.py",
       "stem": "test_gate_table_gen",
@@ -6869,6 +6898,13 @@
       "callers_by_stem": []
     },
     {
+      "path": "scripts/tests/test_network_startup.py",
+      "basename": "test_network_startup.py",
+      "stem": "test_network_startup",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
       "path": "scripts/tests/test_no_gl_compiler.py",
       "basename": "test_no_gl_compiler.py",
       "stem": "test_no_gl_compiler",
@@ -6952,7 +6988,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1551,
+          "line": 1552,
           "evidence": "command",
           "reference": "scripts/tests/test_sim_include_firewall.py",
           "text": "run_check \"sim_include_firewall\"        \"py -3 -B scripts/tests/test_sim_include_firewall.py && py -3 scripts/check_sim_include_firewall.py\""
@@ -13703,7 +13739,7 @@
       "callers_by_basename": [
         {
           "path": "GameOS/gameos/CMakeLists.txt",
-          "line": 483,
+          "line": 487,
           "evidence": "cmake command",
           "reference": "${CMAKE_SOURCE_DIR}/tools/shader_offline_build/slang_compile.py",
           "text": "COMMAND \"${Python3_EXECUTABLE}\""
