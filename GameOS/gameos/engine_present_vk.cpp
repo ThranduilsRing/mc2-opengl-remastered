@@ -10,6 +10,7 @@
 #include "mc2_hitch_trace.h"   // frame-fence wait attribution for the hitch trace
 #include "vk_island_util.h"
 #include "vk_texture_residency.h"
+#include "vk_one_shot.h"
 #include "texture_decode.h"   // gos_GetTextureTexelsByGlName
 
 #if defined(MC2_VULKAN) && defined(MC2_VULKAN_ISLAND)
@@ -2177,9 +2178,55 @@ bool EnginePresentVk::renderNativeCsmShadowDebugOverlay(void* csmArrayView, int 
 bool EnginePresentVk::prewarmPipelines() {
     if (!created_ || !impl_) return false;
     Impl& s=*impl_;
-    return ensureCompositeObjects(s) && ensureHudColorObjects(s) && ensureHudTexObjects(s) &&
+    const bool ready = ensureCompositeObjects(s) && ensureHudColorObjects(s) && ensureHudTexObjects(s) &&
         (!ImGui::GetCurrentContext() || ensureImguiVulkan(s)) &&
         s.spatialAA.prepare(*s.ctx, s.sharedImg, mc2::options::current().spatialAA);
+    if (!ready) return false;
+    // Pipeline creation alone leaves driver work for the first command recording.
+    // This load-only composite is overwritten by the first scene; it never presents
+    // or advances the frame clock, and the bounded submit retires its ring data.
+    ZoneScopedN("VKIsl.Present.WarmRecord");
+    const bool armed = nativeCompositeArmed_, owned = presentImageVkOwned_;
+    const auto composites = health_.composite_vk_frames;
+    nativeCompositeArmed_ = true;
+    const bool recorded = renderNativeCompositeVisual(1.0f, 0, 0, 1.0f, nullptr,
+        false, 0.0f, 0, 0, 0, s.imgW, s.imgH);
+    bool submitted = false;
+    if (recorded) {
+        const VkCommandBuffer cb = s.curCompositeCbuf();
+        VkSubmitInfo si{VK_STRUCTURE_TYPE_SUBMIT_INFO};
+        si.commandBufferCount = 1; si.pCommandBuffers = &cb;
+        submitted = submitAndWait(*s.ctx, si, 5ull * 1000 * 1000 * 1000, "present_load_record");
+    }
+    s.compositePending = false;
+    nativeCompositeArmed_ = armed;
+    presentImageVkOwned_ = owned;
+    health_.composite_vk_frames = composites;
+    if (!recorded || !submitted) return false;
+    auto pendingHud = std::move(s.pendingHudDraws);
+    // Degenerate off-screen triangles exercise the HUD's color and descriptor
+    // paths without changing any pixels or borrowing a live UI texture identity.
+    constexpr uint32_t warmTexture = UINT32_MAX - 1;
+    VkHudDraw draw;
+    draw.kind = 2;
+    draw.vertices.resize(3);
+    for (auto& v : draw.vertices) v.x = v.y = -1000000.0f;
+    s.pendingHudDraws.push_back(draw);
+    draw.textureHandle = warmTexture;
+    draw.textureSerial = warmTexture;
+    draw.textureWidth = draw.textureHeight = 1;
+    draw.textureRgba = std::make_shared<const std::vector<uint8_t>>(4, 255);
+    s.pendingHudDraws.push_back(std::move(draw));
+    const bool hudSubmitted = submitOneShot(*s.ctx, [&](VkCommandBuffer cb) {
+        recordPendingHudColorProof(s, cb, nullptr, nullptr, nullptr);
+    }, "present_load_hud");
+    s.pendingHudDraws = std::move(pendingHud);
+    const uint64_t key = (uint64_t(warmTexture) << 32) | warmTexture;
+    if (auto it = s.hudTextureMirrors.find(key); it != s.hudTextureMirrors.end()) {
+        vkFreeDescriptorSets(s.dev, s.hudTexPool.get(), 1, &it->second.set);
+        s.hudTextureMirrors.erase(it);
+    }
+    return hudSubmitted;
 }
 
 bool EnginePresentVk::prepareImguiVulkanFrame() {
