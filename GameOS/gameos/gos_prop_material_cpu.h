@@ -105,7 +105,7 @@ inline void decodeDetailArray(mc2tex::TextureArrayCpu& a, bool normal) {
 inline bool addMaterial(MaterialSources& dst, const ModelOverrideRecord& owner,
                          const ModelOverrideMaterial& input) {
     if (dst.table.size() >= kMaxMaterials) return false;
-    auto cooked = [&](const std::string& source, uint32_t format) -> std::optional<RenderCore::KtxImage> {
+    auto cooked = [&](std::string_view source, uint32_t format) -> std::optional<RenderCore::KtxImage> {
         if (!isKtx2(source)) return std::nullopt;
         RenderCore::KtxImage image;
         const auto path = (std::filesystem::path(owner.manifestDir) / source).generic_string();
@@ -122,9 +122,9 @@ inline bool addMaterial(MaterialSources& dst, const ModelOverrideRecord& owner,
     };
     if (n && o && n->width == o->width && n->height == o->height &&
         compatible(dst.normal, *n) && compatible(dst.orm, *o)) {
-        auto append = [&](auto& a, auto& layers, const auto& image, const std::string& source) {
+        auto append = [&](auto& a, auto& layers, const auto& image, std::string_view source) {
             const auto path = (std::filesystem::path(owner.manifestDir) / source).generic_string();
-            if (const auto it = layers.find(path); it != layers.end()) return it->second;
+            if (const auto it = layers.find(path); it != layers.end()) { const auto& [pathKey, cachedLayer] = *it; return cachedLayer; }
             const auto layer = a.layers++;
             a.width = image.width; a.height = image.height; a.vkFormat = image.vkFormat;
             a.levels.resize(image.mipCount);
