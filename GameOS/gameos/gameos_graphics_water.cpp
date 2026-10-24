@@ -4,6 +4,8 @@
 #include "mdi_submit.h"                            // MDI-SUBMISSION-SCAFFOLD-1: this piece issues indirect draws
 #include "mc2fmt.h"
 
+float mc2NightLightFactor();   // mclib/camera.cpp: 0 day .. 1 full night
+
 
 // gos_terrain_bridge_bindThinUniforms deleted by DEAD-BRIDGE-DELETE-1: zero external
 // callers (the internal terrainBindThinUniformsForPatchStream IS live; this standalone
@@ -324,6 +326,10 @@ void gosRenderer::renderWaterFastPath(
         fsP.f2[3] = vkHdriAvail ? mc2WaterHdriLodDefault() : -1.0f;   // u_waterHdriLod
         fsP.f3[0] = static_cast<float>(ppVk->getWidth());                          // u_waterScreenSize
         fsP.f3[1] = static_cast<float>(ppVk->getHeight());
+        // Night dim of the water's light (scattered light, ambient floor, glint, tint, reflected sky):
+        // 0 by day and evening, 0.6 at full night (mclib/camera.cpp mc2NightLightFactor).
+        const float night = mc2NightLightFactor();
+        fsP.f3[2] = 0.6f * (night < 0.0f ? 0.0f : night > 1.0f ? 1.0f : night);
     }
     memcpy(fsP.deep,    g_waterDeepColor,    3*sizeof(float));
     memcpy(fsP.shallow, g_waterShallowColor, 3*sizeof(float));

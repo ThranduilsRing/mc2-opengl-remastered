@@ -20,10 +20,10 @@ float terrainStaticShadow(vec3 worldPos) {
     if (!terrainStaticMaskBound()) return 1.0;
     float under=smoothstep(0.0,TERRAIN_WATER_SHADOW_DEPTH,uT.shorelineWaterElev-worldPos.z);
     float shadow = terrainStaticMask(worldPos.xy);
-    return mix(mix(0.4, 1.0, shadow), 1.0, under);
+    return mix(mix(sunShadowFloor(0.4), 1.0, shadow), 1.0, under);
 }
 float terrainDynamicShadow(vec3 worldPos,vec3 N) {
     float shadow = moverVisibility(worldPos, N);
-    return mix(0.4, 1.0, shadow);
+    return mix(sunShadowFloor(0.4), 1.0, shadow);
 }
 #endif

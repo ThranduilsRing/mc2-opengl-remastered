@@ -13,10 +13,11 @@ struct alignas(16) MoverShadowFrame {
     float sun[4]{};
     float mask[4]{};   // west, north, reciprocal world span, ready
     int32_t flags[4]{}; // active, coverage enabled, quality, union path
+    float light[4]{};   // x: night fade of every directional sun shadow (0 = day strength, 1 = none); yzw reserved
     std::array<uint32_t, 2048> coverage{}; // two (min,max) UNORM8 intervals per word
 };
-static_assert(sizeof(MoverShadowFrame) == 8320);
-static_assert(offsetof(MoverShadowFrame, coverage) == 128);
+static_assert(sizeof(MoverShadowFrame) == 8336);
+static_assert(offsetof(MoverShadowFrame, coverage) == 144);
 
 inline Vec3 shadowEnd(MoverSphere s, Vec3 sun, float ground) {
     const float reach = (std::max)(0.0f, s.center.z + s.radius - ground) / (std::max)(sun.z, 0.001f);

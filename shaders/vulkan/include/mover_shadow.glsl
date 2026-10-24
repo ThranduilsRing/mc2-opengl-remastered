@@ -9,8 +9,13 @@ layout(std140, set = 0, binding = 25) uniform MoverShadowFrame {
     vec4 sun;
     vec4 mask; // west, north, reciprocal world span, ready
     ivec4 flags; // active, coverage enabled, quality, reserved
+    vec4 light; // x: night fade of every directional sun shadow (0 = day strength, 1 = none)
     uvec4 coverage[512]; // packed min/max UNORM8, two cells per word
 } moverFrame;
+
+// Floor of a directional sun shadow for this mission's light: the day floor by day, rising toward 1
+// (no shadow) as the night profile takes the sun away. Every sun-shadow receiver uses it.
+float sunShadowFloor(float dayFloor) { return mix(dayFloor, 1.0, moverFrame.light.x); }
 
 float moverCompare(vec2 uv, float depth) {
     vec4 taps = step(vec4(depth), textureGather(moverShadowMap, uv, 0));

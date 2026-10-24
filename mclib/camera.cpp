@@ -153,6 +153,7 @@ constexpr MissionLightProfile kMissionLightProfiles[] = {
 	{"mc2_10", 0.45f, 0.40f, 0.55f},   // airbase raid just after sunset: fairly dark, lamps carry it
 };
 float g_sceneLightScale = 1.0f;
+float g_nightFactor = 0.0f;       // how night-like the mission sun is (0 day .. 1 full night)
 bool  g_profileApplied = false;   // the live camera colours carry the profile (Camera::save records it)
 
 const MissionLightProfile& missionLightProfile()
@@ -175,6 +176,7 @@ void applyMissionLightProfile(Camera& c, bool alreadyApplied)
 	const float altitude = c.lightPitch > 90.0f ? 180.0f - c.lightPitch : c.lightPitch;
 	const float night = std::clamp((NIGHT_START_PITCH - altitude) / (NIGHT_START_PITCH - NIGHT_LIGHT_PITCH), 0.0f, 1.0f);
 	g_sceneLightScale = 1.0f;
+	g_nightFactor = night;
 	g_profileApplied = false;
 	if (night <= 0.0f) return;
 	const MissionLightProfile& p = missionLightProfile();
@@ -206,6 +208,15 @@ void mc2SetMissionLightProfileName(std::string_view missionFileName)
 
 // The mission's scale of the prelit ground (terrain / overlay / vegetation UBO sceneLightScale).
 float mc2SceneLightScale() { return g_sceneLightScale; }
+
+// How dark the mission's night is: 0 for day and evening suns (night <= 0.35, e.g. mc2_14's low
+// orange sun keeps its soft shadows), easing to 1 at full night. Drives the sun-shadow fade and
+// the water's night sky (GameOS receivers declare it extern, like mc2SceneLightScale).
+float mc2NightLightFactor()
+{
+	const float t = std::clamp((g_nightFactor - 0.35f) / 0.65f, 0.0f, 1.0f);
+	return t * t * (3.0f - 2.0f * t);
+}
 
 //---------------------------------------------------------------------------
 // Camera Class

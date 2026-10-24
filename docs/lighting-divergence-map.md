@@ -57,6 +57,8 @@ screen-space shadow pass applies it later); **SH** = `rc_gbuffer1_shadowHandled*
 
 The live guard also pins the existing `moverShadow` floors in `screen_shadow_csm.frag`: 0.4 for props and 0.55 for mechs.
 
+NIGHT-CONSISTENCY (INTENTIONAL, 2026-10-23): every VK sun-shadow floor (ground static and mover, object static and mover, water static and mover) now goes through `sunShadowFloor(dayFloor)` in `shaders/vulkan/include/mover_shadow.glsl`, which rises toward 1.0 by the night fade `moverFrame.light.x` (0.85 x `mc2NightLightFactor()`), so the inline-floor scanner sees only the GL `shadow.hglsl` sites. The day floors (0.4, 0.55 mechs) are unchanged.
+
 The Vulkan terrain path uses mission environment ambient plus sun and shared shadows.
 The legacy ambient floor and pad-glow strength knobs were retired after their VK shader terms were removed.
 
