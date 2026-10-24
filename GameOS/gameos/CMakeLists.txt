@@ -1,6 +1,10 @@
 cmake_minimum_required (VERSION 3.10)
 project(gameos)
 
+# Profiling is local debugging: never advertise or accept remote connections.
+set_source_files_properties(${CMAKE_SOURCE_DIR}/3rdparty/tracy/TracyClient.cpp
+    PROPERTIES COMPILE_DEFINITIONS "TRACY_ONLY_LOCALHOST;TRACY_NO_BROADCAST")
+
 # G2: the root configure rejects MC2_VULKAN=OFF (Vulkan is the required renderer backend). Fail here
 # too so a standalone/partial configure cannot silently drop the Vulkan sources and the
 # MC2_VULKAN_ISLAND layout define. Unset (standalone tool trees) keeps the historical behaviour.
