@@ -2211,12 +2211,20 @@ bool EnginePresentVk::prewarmPipelines() {
     draw.kind = 2;
     draw.vertices.resize(3);
     for (auto& v : draw.vertices) v.x = v.y = -1000000.0f;
-    s.pendingHudDraws.push_back(draw);
-    draw.textureHandle = warmTexture;
     draw.textureSerial = warmTexture;
     draw.textureWidth = draw.textureHeight = 1;
     draw.textureRgba = std::make_shared<const std::vector<uint8_t>>(4, 255);
-    s.pendingHudDraws.push_back(std::move(draw));
+    for (uint32_t alpha : {0u, 3u, 2u, 4u}) {
+        draw.alphaMode = alpha;
+        draw.kind = 2;
+        draw.textureHandle = 0;
+        s.pendingHudDraws.push_back(draw);
+        draw.kind = 1;
+        s.pendingHudDraws.push_back(draw);
+        draw.kind = 2;
+        draw.textureHandle = warmTexture;
+        s.pendingHudDraws.push_back(draw);
+    }
     const bool hudSubmitted = submitOneShot(*s.ctx, [&](VkCommandBuffer cb) {
         recordPendingHudColorProof(s, cb, nullptr, nullptr, nullptr);
     }, "present_load_hud");
