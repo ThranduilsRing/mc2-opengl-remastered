@@ -767,10 +767,11 @@ void InitModSearchPaths(const char* modsRoot) {
     const std::string envModStr = mc2::gate::str<"MC2_ACTIVE_MOD">();
     const char* envMod = envModStr.c_str();
     const bool stockMode = !envMod[0];
+    const bool industrialKit = GetFileAttributesA("mods/mc2-industrial-kit/mod.json") != INVALID_FILE_ATTRIBUTES;
     if (stockMode) {
         // Stock campaign: no active mod. Add-on layers (MC2_MOD_DEPS) may still mount
         // (e.g. "stock + Omnitech mechs"). With NO deps either, this is pure base game.
-        if (mc2::gate::str<"MC2_MOD_DEPS">().empty()) {
+        if (!industrialKit && mc2::gate::str<"MC2_MOD_DEPS">().empty()) {
             printf("[mod] base game mode (MC2_ACTIVE_MOD not set, MC2_MOD_DEPS not set)\n");
             fflush(stdout);
             return;
@@ -840,6 +841,10 @@ void InitModSearchPaths(const char* modsRoot) {
             i = j + 1;
         }
     }
+    // Shipped art is the lowest mod layer; campaign and user add-ons win.
+    if (industrialKit && modId != "mc2-industrial-kit" &&
+        std::find(deps.begin(), deps.end(), "mc2-industrial-kit") == deps.end())
+        deps.push_back("mc2-industrial-kit");
     // Priority order: base data < dep[N-1] < ... < dep[0] < active mod.
     // Index is first-wins, so scan highest priority first.
     // Duplicates: winner keeps its slot; loser is logged when MC2_LOG_FILE_RESOLVE=1.

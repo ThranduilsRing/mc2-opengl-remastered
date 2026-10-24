@@ -331,7 +331,7 @@ long BldgAppearance::markMoveMap (bool passable, long* lineOfSightRect, bool use
 
 	if (currentLOD || renderOverridden)
 	{
-		TG_TypeMultiShape* source = appearType->bldgShape[currentLOD];
+		TG_TypeMultiShape* source = appearType->bldgShape[0];
 		if (renderOverridden && status == OBJECT_STATUS_DESTROYED && appearType->bldgDmgShape)
 			source = appearType->bldgDmgShape;
 		tempBldgShape = source->CreateFrom();

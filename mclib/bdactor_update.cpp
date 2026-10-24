@@ -19,6 +19,31 @@ static unsigned long s_spotDiagBldgOverflows  = 0;   // pool-overflow count
 static unsigned long s_spotDiagBldgActors     = 0;   // actor first-hits
 static unsigned long s_spotDiagBldgCalls      = 0;   // update() call counter
 
+long BldgAppearance::desiredRenderLOD() const
+{
+	if (!eye || !appearType || !appearType->bldgRenderShape || status != OBJECT_STATUS_NORMAL) return 0;
+	const auto origin = eye->getCameraOrigin();
+	const float distance = glm::length(position - renderToMc2(origin));
+	long lod = 0;
+	for (long i = 1; i < MAX_LODS; ++i)
+		if (appearType->bldgRenderLods[i] && appearType->lodDistance[i] > 0 && distance >= appearType->lodDistance[i]) lod = i;
+	return lod;
+}
+
+void BldgAppearance::updateRenderLOD()
+{
+	const long lod = desiredRenderLOD();
+	if (lod == currentLOD || !appearType || !appearType->bldgRenderShape || status != OBJECT_STATUS_NORMAL) return;
+	// All LOD geometry and textures were registered before mission finalization.
+	invalidateStaticRegistration();
+	releaseBldgShape();
+	currentLOD = lod;
+	bldgShape = appearType->getBldgRenderShape(lod)->CreateFrom();
+	rotationalNodeId = -1;
+	beenInView = false;
+	needsFullBakeNextFrame = true;
+}
+
 long BldgAppearance::update (bool animate)
 {
 	if (simPresentationPass) presentEffects();
@@ -52,6 +77,7 @@ long BldgAppearance::update (bool animate)
 
         if (simulationOwned()) { updateSimPose(); return TRUE; }
     }
+	updateRenderLOD();
    	if (appearType->terrainLightRGB != 0xffffffff && (eye->nightFactor > 0.0f) && !forceLightsOut)
    	{
    		if (!pointLight)

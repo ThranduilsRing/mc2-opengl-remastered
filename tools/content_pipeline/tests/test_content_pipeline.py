@@ -230,6 +230,21 @@ def test_bt2018_recipe_retains_skin_source_bytes(tmp_path):
 
 # --------------------------------------------------------------------------- cache key
 
+def test_authored_materials_share_albedo_without_merging_surface_classes(tmp_path):
+    import copy
+    src, *_ = make_gltf(tmp_path)
+    a = gltf_file.to_ir("panel", "staticProp:panel", src, work_dir=tmp_path / "work")
+    twin = copy.deepcopy(a.materials[0])
+    twin.material_class = "painted_metal"
+    twin.metallic = 0.0
+    a.materials.append(twin)
+    out = package.build_package([a], tmp_path / "out", mod_id="shared", compress=False)
+    images = list((out / "data/tgl/128").glob("*.ktx2"))
+    assert len(images) == 1
+    record = json.loads((out / "data/model_overrides/models.json").read_text())["overrides"][0]
+    assert len(record["materials"]["slots"]) == 2
+
+
 def test_cache_key_is_content_not_name(tmp_path):
     a = tmp_path / "x.png"
     b = tmp_path / "renamed.png"

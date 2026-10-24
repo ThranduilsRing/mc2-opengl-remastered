@@ -362,6 +362,10 @@ ModelOverrideRegistry& ModelOverrideRegistry::instance() {
         int base = g.loadFromFile("data/model_overrides/models.json", "data/model_overrides");
         g.mergeConditionsFromFile("data/model_overrides/conditions.json");
         mc2::fmt::print_err("[MODOVERRIDE] base registry: {:d} override(s)\n", mc2::fmt::as_i32(base));
+        // Same lowest-priority bundled layer as the file VFS. Explicit mod records
+        // below replace these entries, including each record's source directory.
+        g.mergeFromFile("mods/mc2-industrial-kit/data/model_overrides/models.json",
+                        "mods/mc2-industrial-kit/data/model_overrides");
         // Every mounted mod (content packs ride MC2_MOD_DEPS beside any campaign mod) merges in VFS
         // priority order, so the highest-priority provider wins a duplicate key. Source paths are
         // relative to that mod's model_overrides directory: Assimp opens files directly, so the

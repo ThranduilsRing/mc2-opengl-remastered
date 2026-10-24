@@ -578,34 +578,17 @@ void TG_AnimateShape::SetAnimationState (TG_MultiShapePtr shape)
 	long i=0;
 	shape->ClearAnimation();
 
-	if (!shapeIdsSet)
+	// Animation objects are shared by stock simulation shapes and imported render
+	// LODs. Their node order differs, so bind names on the destination shape.
+	for (long j = 0; j < count; ++j)
 	{
-		for (long j=0;j<count;j++)
+		for (i = 0; i < shape->GetNumShapes(); ++i)
 		{
-			bool foundNode = false;
-			for (i=0;i<shape->GetNumShapes();i++)
+			if (S_stricmp(listOfAnimation[j].nodeId, shape->GetNodeId(i)) == 0)
 			{
-				if (S_stricmp(listOfAnimation[j].nodeId,shape->GetNodeId(i)) == 0)
-				{
-					shape->SetCurrentAnimation(i,&listOfAnimation[j]);
-					listOfAnimation[j].shapeId = i;
-					foundNode = true;
-					break;
-				}
+				shape->SetCurrentAnimation(i, &listOfAnimation[j]);
+				break;
 			}
-
-			if (!foundNode)
-				listOfAnimation[j].shapeId = -1;	//This node is missing.  Probably an arm off!
-		}
-		
-		shapeIdsSet = true;
-	}
-	else
-	{
-		for (long j=0;j<count;j++)
-		{
-			if (listOfAnimation[j].shapeId != 0xffffffff)
-				shape->SetCurrentAnimation(listOfAnimation[j].shapeId,&listOfAnimation[j]);
 		}
 	}
 }	

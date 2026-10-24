@@ -484,6 +484,7 @@ bool BldgAppearance::prewarmStaticLightBake(Camera* cam)
 bool BldgAppearance::IsStaticNow() const
 {
 	return staticReg.registered
+		&& currentLOD == desiredRenderLOD()
 		&& staticReg.shape == bldgShape
 		&& !needsFullBakeNextFrame
 		&& isStaticEligible();

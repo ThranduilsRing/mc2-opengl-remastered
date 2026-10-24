@@ -99,11 +99,16 @@ def cook_base_colors(asset, out, entry, compress, runtime_names=None):
     # Base colour: stock slots name stock textures; authored slots get real tiers.
     aid = _safe(asset.id)
     names = {}
+    shared = {}
     for slot, m in enumerate(asset.materials):
         if m.base_color is None and m.base_color_policy == "stock":
             continue
         if m.base_color is not None and (m.base_color_policy == "stock" or m.base_color.passthrough):
             names[slot] = stock_texture_name(m)
+            continue
+        key = (m.base_color.sha256 if m.base_color else None, tuple(m.base_color_factor), m.alpha_mode, m.alpha_cutoff)
+        if runtime_names is None and key in shared:
+            names[slot] = shared[key]
             continue
         rgba = texcook.load_rgba(m.base_color.path) if m.base_color else np.full((1, 1, 4), 255, np.uint8)
         if tuple(m.base_color_factor) != (1.0, 1.0, 1.0, 1.0):
@@ -116,6 +121,7 @@ def cook_base_colors(asset, out, entry, compress, runtime_names=None):
             rgba[..., 3] = 255
         name = (runtime_names or {}).get(slot) or _texture_name(aid, slot, m)
         names[slot] = name
+        shared[key] = name
         cutoff = m.alpha_cutoff if m.alpha_mode == "MASK" else None
         for tier, img in texcook.base_color_tiers(rgba, texel_scale=int(asset.frontend.get("texel_scale", 1))).items():
             tdir = out / "data" / "tgl" / str(tier)

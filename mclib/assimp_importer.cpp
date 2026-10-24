@@ -487,7 +487,8 @@ long ImportShapeFromMesh(const aiScene* scene, unsigned meshIdx,
 		center = toMC2Pos(pos);
 	}
 	const bool keepPivot = instanceWorld &&
-		(S_strnicmp(nodeNm, "SpotLight_", 10) == 0 || S_strnicmp(nodeNm, "LitWin", 6) == 0);
+		(S_strnicmp(nodeNm, "SpotLight_", 10) == 0 || S_strnicmp(nodeNm, "LitWin", 6) == 0
+		 || (meshNode && meshNode->mMetaData && meshNode->mMetaData->HasKey("mc2_pivot_tg_wu")));
 	if (keepPivot) {
 		center = toMC2Pos(aiVector3D(instanceWorld->a4, instanceWorld->b4, instanceWorld->c4));
 		parentNm = "None";

@@ -222,6 +222,17 @@ void BldgAppearanceType::init (const char * fileName)
 			if (bldgRenderShape)
 			{
 				propMaterialSource = ov;
+				const auto& lods = cond ? cond->intact.lods : ov->lods;
+				for (const auto& lod : lods)
+				{
+					if (lod.lod <= 0 || lod.lod >= MAX_LODS || bldgRenderLods[lod.lod]) continue;
+					auto shape = std::make_unique<TG_TypeMultiShape>();
+					if (importOverrideRenderShape(*ov, lod.sourceRelPath, bldgBaseName, "LOD", shape.get()))
+					{
+						bldgRenderLods[lod.lod] = std::move(shape);
+						if (lodDistance[lod.lod] <= 0) lodDistance[lod.lod] = lod.distance;
+					}
+				}
 				if (destroyed.present())
 				{
 					bldgDmgRenderShape = std::make_unique<TG_TypeMultiShape>();
@@ -467,6 +478,7 @@ void BldgAppearanceType::destroy (void)
 			delete bldgShape[i];
 			bldgShape[i] = nullptr;
 		}
+		bldgRenderLods[i].reset();
 	}
 
 	// MODEL-OVERRIDE dual-shape: free the render override shape if loaded.
