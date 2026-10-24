@@ -1,0 +1,9 @@
+{
+  "defines": [],
+  "outputs": [],
+  "shader": "shaders/vulkan/edge_fog.vert",
+  "ssbos": [],
+  "stage": "vert",
+  "ubos": [],
+  "variant": "default"
+}

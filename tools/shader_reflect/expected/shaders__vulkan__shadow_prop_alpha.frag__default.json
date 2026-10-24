@@ -1,0 +1,9 @@
+{
+  "defines": [],
+  "outputs": [],
+  "shader": "shaders/vulkan/shadow_prop_alpha.frag",
+  "ssbos": [],
+  "stage": "frag",
+  "ubos": [],
+  "variant": "default"
+}

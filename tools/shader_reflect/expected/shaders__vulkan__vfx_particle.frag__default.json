@@ -1,0 +1,20 @@
+{
+  "defines": [],
+  "outputs": [
+    {
+      "location": 0,
+      "name": "o_color",
+      "type": "vec4"
+    },
+    {
+      "location": 1,
+      "name": "o_normal",
+      "type": "vec4"
+    }
+  ],
+  "shader": "shaders/vulkan/vfx_particle.frag",
+  "ssbos": [],
+  "stage": "frag",
+  "ubos": [],
+  "variant": "default"
+}

@@ -1,0 +1,9 @@
+{
+  "defines": [],
+  "outputs": [],
+  "shader": "shaders/vulkan/cloud_shadow.vert",
+  "ssbos": [],
+  "stage": "vert",
+  "ubos": [],
+  "variant": "default"
+}

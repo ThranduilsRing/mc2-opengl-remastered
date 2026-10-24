@@ -1,0 +1,23 @@
+{
+  "defines": [],
+  "outputs": [],
+  "shader": "shaders/vulkan/terrain_overlay_tier1.vert",
+  "ssbos": [],
+  "stage": "vert",
+  "ubos": [
+    {
+      "binding": 0,
+      "members": [
+        {
+          "array_stride": null,
+          "matrix_stride": 16,
+          "name": "worldToClipGL",
+          "offset": 0,
+          "type": "mat4"
+        }
+      ],
+      "name": "TerrainFrameUBO"
+    }
+  ],
+  "variant": "default"
+}

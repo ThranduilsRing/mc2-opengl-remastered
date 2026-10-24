@@ -19,7 +19,8 @@ Usage:
   --tools-dir DIR  where the ratchet scripts live (default: <root>/tools); same relative layout
 
 Steps: (a) dirty-overlap and staged-index refusal, (b) git merge --no-ff with regenerable
-baseline conflicts resolved to the lane's side, (c) ratchet checks with --tighten at the merged
+baseline conflicts resolved to the lane's side, regenerate-all and one artifact follow-up commit,
+(c) ratchet checks with --tighten at the merged
 HEAD, (d) a follow-up commit of exactly the tightened baseline files.
 
 Step (e), on by default: build the merged tree (scripts/ninja_build.py) and run the doctest tier (scripts/run-unit-tests.sh); `--verify full`
@@ -47,6 +48,7 @@ import shutil
 import subprocess
 import sys
 import time
+import tempfile
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.join(HERE, "..", "scripts"))
@@ -57,6 +59,28 @@ import _git_util  # noqa: E402  (shared git helpers)
 #: Commit trailer line(s): --trailer or $MC2_COMMIT_TRAILER (or $MC2_MERGE_TRAILER); none by default (the merging model names itself).
 TRAILER = os.environ.get("MC2_COMMIT_TRAILER") or os.environ.get("MC2_MERGE_TRAILER", "")
 FOLLOWUP_SUBJECT = "merge follow-up: ratchet baselines tightened at merged HEAD"
+ARTIFACT_SUBJECT = "merge follow-up: regenerated artifacts"
+
+# Explicit output scopes: never stage unrelated work or compiler scratch files.
+ARTIFACTS = [
+    "tests/unit/log_tag_baseline.json", "tests/unit/pointer_order_baseline.json",
+    "docs/render-backend-seams/gated-layout-macros.md",
+    "docs/render-backend-seams/binding-slot-occupancy.json",
+    "tools/shader_reflect/expected", "shaders/spv",
+    "tests/unit/own_inventory_baseline.json", "tests/callers.json",
+    ".claude/cleanup/vk-ownership-ledger.md",
+]
+GENERATORS = [
+    ("log tags", "tools/log_tag_census.py", ["--write"]),
+    ("pointer order", "tools/pointer_order_scan.py", ["--write-baseline"]),
+    ("gated layout", "scripts/check-gated-layout-macros.py", ["--write", "--quiet"]),
+    ("binding slots", "scripts/check-binding-slots.py", ["--json", ARTIFACTS[3], "--quiet"]),
+    ("shader reflection", "tools/shader_reflect/reflect.py", ["--update"]),
+    ("SPIR-V pilots", "tools/shader_offline_build/build_variants.py", []),
+    ("ownership inventory", "tools/own_inventory.py", ["--write-baseline"]),
+    ("script callers", "tools/callers.py", []),
+    ("Vulkan ownership", "tools/vk_ownership_ledger.py", ["--write"]),
+]
 
 # Files that are pure functions of the tree: on conflict the lane's copy is taken and the
 # ratchet --tighten run below regenerates them against the merged result.
@@ -67,6 +91,11 @@ REGENERABLE = {
     "tools/axis_swizzle_ratchet.baseline.json",
     "scripts/gl_shader_variants.json",
 }
+REGENERABLE.update(p for p in ARTIFACTS if p.endswith((".json", ".md")))
+
+
+def is_regenerable(path):
+    return path in REGENERABLE or any(path.startswith(scope + "/") for scope in ARTIFACTS)
 # The baselines the follow-up commit may contain (never a glob over tools/).
 TIGHTENED_BASELINES = [
     "tools/file_size_ratchet.baseline.json",
@@ -108,13 +137,26 @@ def run_logged(root, cmd, env=None, log_path=None):
                               text=True, encoding="utf-8", errors="replace",
                               **console_child.child_kwargs(redirected=True)) as child:
             tail = deque(maxlen=8)
+            failures = []
             for line in child.stdout:
                 print(line, end="", flush=True)
                 if log:
                     log.write(line)
                     log.flush()
                 tail.append(line)
-            return subprocess.CompletedProcess(cmd, child.wait(), "".join(tail))
+                if failure_line(line):
+                    failures.append(line)
+            return subprocess.CompletedProcess(cmd, child.wait(), "".join(dict.fromkeys(failures + list(tail))))
+
+
+def failure_line(line):
+    """Keep pytest/doctest names and source locations even before a long tail."""
+    return bool(re.search(r"FAILED|FAIL:|ERROR|VIOLATION|test case:|TEST CASE:|\.(?:py|cpp|h)[:(]\d+", line))
+
+
+def failure_summary(output):
+    rows = output.splitlines()
+    return "\n".join(dict.fromkeys([line for line in rows if failure_line(line)] + rows[-8:]))
 
 
 def git(root: str, *args: str) -> subprocess.CompletedProcess:
@@ -312,7 +354,7 @@ def do_merge(root: str, sha: str, message: str, lane_files=(), lock_path: str | 
             abort_and_clean(root, lane_files)
             raise Stop(5, f"{p}: both sides changed the same row or the text outside the rows; it cannot be merged mechanically "
                           "(keep both and renumber by hand); merge aborted")
-    foreign = [p for p in conflicted if p not in REGENERABLE]
+    foreign = [p for p in conflicted if not is_regenerable(p)]
     if foreign or not (conflicted or tables or resolutions):
         abort_and_clean(root, lane_files)
         what = foreign or ["(merge failed without conflicts)"]
@@ -442,7 +484,7 @@ def quick_rows(root: str, runner=run) -> list[tuple[str, int, str]]:
             continue  # a throwaway root without the script has nothing to check
         r = runner(root, [sys.executable] + args)
         if r.returncode != 0:
-            failed.append((label, r.returncode, "\n".join(r.stdout.splitlines()[-8:])))
+            failed.append((label, r.returncode, failure_summary(r.stdout)))
     return failed
 
 
@@ -476,7 +518,7 @@ def verify_merged(root: str, mode: str, runner=None) -> tuple[str, list[tuple[st
             with open(log_path, "a", encoding="utf-8") as log:
                 log.write(r.stdout)
             print(r.stdout, end="", flush=True)
-        tail = "\n".join(r.stdout.splitlines()[-8:])
+        tail = failure_summary(r.stdout)
         results.append((label, r.returncode, tail))
         if r.returncode != 0:
             return "FAIL", results
@@ -499,6 +541,52 @@ def commit_tightened(root: str, pre_dirty: set[str]) -> str | None:
         raise Stop(5, "follow-up commit failed: " + str(e))
 
 
+def artifact_changes(root):
+    changed = set()
+    for args in (("diff", "HEAD", "--name-only"), ("ls-files", "--others", "--exclude-standard")):
+        result = _git_util.git(root, *args, "-z", "--", *ARTIFACTS)
+        if result.returncode:
+            raise Stop(6, "cannot list artifacts: " + result.stderr)
+        changed.update(p for p in result.stdout.split("\0") if p)
+    return sorted(changed)
+
+
+def regenerate_all(root, *, dry_run=False):
+    """Regenerate the committed tree in isolation for dry runs; never bless preexisting edits."""
+    if dry_run:
+        # A disposable local clone lets every generator use its normal paths and
+        # git inventory. No generator writes into the caller's checkout.
+        proof_root = "E:/mc2-archive-2026-10/proofs" if os.path.isdir("E:/mc2-archive-2026-10/proofs") else None
+        with tempfile.TemporaryDirectory(prefix="regen-", dir=proof_root) as scratch:
+            snapshot = os.path.join(scratch, "tree")
+            r = run(root, ["git", "clone", "--quiet", "--shared", "--no-checkout", os.path.abspath(root), snapshot])
+            if r.returncode:
+                raise Stop(6, r.stdout)
+            sha = git_out(root, "rev-parse", "HEAD")
+            git_out(snapshot, "checkout", "--quiet", "--detach", sha)
+            changed = regenerate_all(snapshot)
+            print(f"regenerate-all dry-run at {sha[:9]}: " + (", ".join(changed) or "nothing to change"))
+            return changed
+    overlaps = artifact_changes(root)
+    if overlaps:
+        raise Stop(6, "regenerate-all refuses preexisting artifact edits: " + ", ".join(sorted(overlaps)))
+    # Tiny fixture repos used by merge tests do not carry the engine generators.
+    if not os.path.exists(os.path.join(root, GENERATORS[0][1])):
+        if os.path.exists(os.path.join(root, "CLAUDE.md")):
+            raise Stop(6, "regenerate-all: missing log_tag_census.py")
+        return []
+    for label, script, args in GENERATORS:
+        r = run(root, [sys.executable, "-B", os.path.join(root, script), *args])
+        print(f"regenerate-all: {label}: {'OK' if r.returncode == 0 else 'FAIL'}", flush=True)
+        if r.returncode:
+            raise Stop(6, f"regenerate-all {label} failed:\n{r.stdout}")
+    changed = artifact_changes(root)
+    print("regenerate-all: " + (", ".join(changed) or "nothing to change"))
+    if changed:
+        print(git_out(root, "diff", "--stat", "--", *changed))
+    return changed
+
+
 def build_parser() -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("ref", nargs="?", help="lane tip: sha or branch")
@@ -507,6 +595,8 @@ def build_parser() -> argparse.ArgumentParser:
     ap.add_argument("--message", help="merge commit subject; with --batch a template: {subject} = the tip's subject, {n} = its position")
     ap.add_argument("--trailer", help="commit trailer line (default $MC2_COMMIT_TRAILER (or $MC2_MERGE_TRAILER), else none)")
     ap.add_argument("--dry-run", action="store_true")
+    ap.add_argument("--regenerate-all", action="store_true",
+                    help="regenerate artifacts without merging; --dry-run checks committed HEAD in an isolated clone")
     ap.add_argument("--root", default=os.path.abspath(os.path.join(HERE, "..")))
     ap.add_argument("--tools-dir")
     ap.add_argument("--resolution", action="append", default=[], metavar="PATH=FILE",
@@ -532,8 +622,8 @@ def print_plan(root: str, p: dict, args, message: str, resolutions: dict, head_r
     if conf is None:
         print("PLAN conflicts: unknown (git merge-tree unavailable)")
     else:
-        regen = [c for c in conf if c in REGENERABLE or c in BUG_TABLES]
-        other = [c for c in conf if c not in REGENERABLE and c not in BUG_TABLES and c not in resolutions]
+        regen = [c for c in conf if is_regenerable(c) or c in BUG_TABLES]
+        other = [c for c in conf if not is_regenerable(c) and c not in BUG_TABLES and c not in resolutions]
         print(f"PLAN conflicts={len(conf)} regenerable={len(regen)} blocking={len(other)}"
               + ("" if not other else " (merge would abort): " + ", ".join(other)))
         would_abort = bool(other)
@@ -567,9 +657,17 @@ def merge_tip(root: str, tools_dir: str, p: dict, message: str, resolutions: dic
     pre_dirty = {path for _, path in status_entries(root)}
     do_merge(root, p["sha"], message, lane_files=p["lane_files"], resolutions=resolutions)
     merge_sha = git_out(root, "rev-parse", "--short=9", "HEAD")
+    artifacts = regenerate_all(root)
+    artifact_follow = None
+    if artifacts:
+        try:
+            artifact_follow = _git_util.commit_paths(root, artifacts, ARTIFACT_SUBJECT, TRAILER or None)
+            print(f"lane_merge: {ARTIFACT_SUBJECT}: {artifact_follow}")
+        except _git_util.GitError as exc:
+            raise Stop(6, "artifact follow-up commit failed: " + str(exc)) from exc
     results = run_ratchets(root, tools_dir)
     follow = commit_tightened(root, pre_dirty)
-    return merge_sha, follow, [(label, rc, tail) for label, rc, tail in results if rc != 0]
+    return merge_sha, follow or artifact_follow, [(label, rc, tail) for label, rc, tail in results if rc != 0]
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -577,8 +675,10 @@ def main(argv: list[str] | None = None) -> int:
         stream.reconfigure(errors="replace")
     ap = build_parser()
     args = ap.parse_args(argv)
-    if bool(args.ref) == bool(args.batch):
+    if not args.regenerate_all and bool(args.ref) == bool(args.batch):
         ap.error("give one lane tip, or --batch with several")
+    if args.regenerate_all and (args.ref or args.batch):
+        ap.error("--regenerate-all does not take lane tips")
     refs = args.batch or [args.ref]
     batch = bool(args.batch)
     if batch and args.resolution:
@@ -589,6 +689,9 @@ def main(argv: list[str] | None = None) -> int:
     root = args.root
     tools_dir = args.tools_dir or os.path.join(root, "tools")
     try:
+        if args.regenerate_all:
+            regenerate_all(root, dry_run=args.dry_run)
+            return 0
         def resolutions_for(p, head_ref="HEAD"):
             resolutions = load_resolutions(args.resolution)
             if resolutions:
@@ -600,7 +703,8 @@ def main(argv: list[str] | None = None) -> int:
         if args.dry_run:
             would_abort = plan_batch(root, args, refs, resolutions_for)
             print("PLAN then: " + ", ".join(label for label, _, _ in RATCHETS)
-                  + "; follow-up commit of tightened baselines only" + (" (after each tip; verify once at the end)" if batch else ""))
+                  + "; regenerate-all and commit changed artifacts; follow-up commit of tightened baselines only"
+                  + (" (after each tip; verify once at the end)" if batch else ""))
             print("[dry-run] nothing changed")
             if would_abort:
                 print("lane_merge: the merge would abort on the blocking conflicts above", file=sys.stderr)

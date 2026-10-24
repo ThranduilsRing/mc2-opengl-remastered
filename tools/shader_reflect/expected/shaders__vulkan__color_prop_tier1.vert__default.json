@@ -1,0 +1,228 @@
+{
+  "defines": [],
+  "outputs": [],
+  "shader": "shaders/vulkan/color_prop_tier1.vert",
+  "ssbos": [
+    {
+      "binding": 1,
+      "members": [
+        {
+          "array_stride": 112,
+          "matrix_stride": null,
+          "name": "i",
+          "offset": 0,
+          "type": "_378"
+        }
+      ],
+      "name": "Instances"
+    },
+    {
+      "binding": 2,
+      "members": [
+        {
+          "array_stride": 4,
+          "matrix_stride": null,
+          "name": "layer",
+          "offset": 0,
+          "type": "int"
+        }
+      ],
+      "name": "TypeAlbedoLayer"
+    },
+    {
+      "binding": 4,
+      "members": [
+        {
+          "array_stride": 3600,
+          "matrix_stride": null,
+          "name": "light",
+          "offset": 0,
+          "type": "_904"
+        }
+      ],
+      "name": "LightsData"
+    },
+    {
+      "binding": 5,
+      "members": [
+        {
+          "array_stride": 4,
+          "matrix_stride": null,
+          "name": "layer",
+          "offset": 0,
+          "type": "int"
+        }
+      ],
+      "name": "TypeAlbedoLayerOn"
+    },
+    {
+      "binding": 7,
+      "members": [
+        {
+          "array_stride": 16,
+          "matrix_stride": null,
+          "name": "c",
+          "offset": 0,
+          "type": "vec4"
+        }
+      ],
+      "name": "TypeHotColors"
+    },
+    {
+      "binding": 9,
+      "members": [
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "culled",
+          "offset": 0,
+          "type": "uint"
+        },
+        {
+          "array_stride": 4,
+          "matrix_stride": null,
+          "name": "visible",
+          "offset": 4,
+          "type": "uint"
+        }
+      ],
+      "name": "HzbVisibility"
+    }
+  ],
+  "stage": "vert",
+  "ubos": [
+    {
+      "binding": 0,
+      "members": [
+        {
+          "array_stride": null,
+          "matrix_stride": 16,
+          "name": "worldToClipGL",
+          "offset": 0,
+          "type": "mat4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "objectDepthBias",
+          "offset": 64,
+          "type": "float"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "instBase",
+          "offset": 68,
+          "type": "int"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "materialReady",
+          "offset": 72,
+          "type": "int"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "materialReadyOn",
+          "offset": 76,
+          "type": "int"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "terrainSunMC2",
+          "offset": 80,
+          "type": "vec4"
+        },
+        {
+          "array_stride": 16,
+          "matrix_stride": null,
+          "name": "iblSh",
+          "offset": 96,
+          "type": "vec4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "iblShStrength",
+          "offset": 240,
+          "type": "float"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "lightingReady",
+          "offset": 244,
+          "type": "int"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "isNight",
+          "offset": 248,
+          "type": "int"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "nightFactor",
+          "offset": 252,
+          "type": "float"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "nightDarkness",
+          "offset": 256,
+          "type": "float"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "hotTableReady",
+          "offset": 260,
+          "type": "int"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "pbrV1Strength",
+          "offset": 264,
+          "type": "float"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "pbrV1RoughnessOverride",
+          "offset": 268,
+          "type": "float"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "cameraWorldPos",
+          "offset": 272,
+          "type": "vec4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "poolF",
+          "offset": 288,
+          "type": "vec4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "poolI",
+          "offset": 304,
+          "type": "ivec4"
+        }
+      ],
+      "name": "ColorFrameUBO"
+    }
+  ],
+  "variant": "default"
+}

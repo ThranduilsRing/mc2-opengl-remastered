@@ -492,6 +492,13 @@ def stage_mod(cache: Path, layers: list[Path], target: Path, stem: str,
     return stats
 
 
+def stage_bookmarks(base_install: Path, target: Path, keep_stages: bool):
+    """Kept smoke installs are also capture targets; give them independent camera files."""
+    source = base_install / 'saved_bookmarks'
+    if keep_stages and source.is_dir():
+        place_tree(source, target / 'saved_bookmarks', False)
+
+
 # ---------------------------------------------------------------------------
 # Health assertions
 # ---------------------------------------------------------------------------
@@ -691,6 +698,7 @@ def battery(args) -> int:
         staged = run_root / folder
         staged.mkdir()
         stats = stage_mod(cache, layers, staged, stem, base_install)
+        stage_bookmarks(base_install, staged, args.keep_stages)
         _load_deploy_payload().ensure_terrain_materials(str(staged))
         print(f'[mod_smoke] {display}: mission {stem} ({how}); staged {stats}', flush=True)
         result = run_mod(staged, stem, args.duration, args.timeout)

@@ -1,0 +1,9 @@
+{
+  "defines": [],
+  "outputs": [],
+  "shader": "shaders/vulkan/hud_tex.vert",
+  "ssbos": [],
+  "stage": "vert",
+  "ubos": [],
+  "variant": "default"
+}

@@ -11,7 +11,7 @@
           "matrix_stride": null,
           "name": "instances",
           "offset": 0,
-          "type": "_640"
+          "type": "_355"
         }
       ],
       "name": "InstanceBuffer"
@@ -24,7 +24,7 @@
           "matrix_stride": null,
           "name": "bones",
           "offset": 0,
-          "type": "_697"
+          "type": "_419"
         }
       ],
       "name": "BoneBuffer"
@@ -37,7 +37,7 @@
           "matrix_stride": null,
           "name": "light",
           "offset": 0,
-          "type": "_85"
+          "type": "_86"
         }
       ],
       "name": "LightsData"
@@ -138,6 +138,13 @@
           "name": "miscI",
           "offset": 192,
           "type": "ivec4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "environmentAmbient",
+          "offset": 208,
+          "type": "vec4"
         }
       ],
       "name": "MechFrameUBO"

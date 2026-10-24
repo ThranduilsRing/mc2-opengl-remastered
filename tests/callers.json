@@ -705,7 +705,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/deploy_payload.py",
-          "line": 1865,
+          "line": 1866,
           "evidence": "command",
           "reference": "scripts/check-deploy-hygiene.py",
           "text": "r = subprocess.run([sys.executable, hygiene, target],"
@@ -2755,7 +2755,7 @@
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 12,
+          "line": 13,
           "evidence": "import",
           "reference": "console_child",
           "text": "import console_child  # noqa: E402"
@@ -3119,7 +3119,7 @@
         },
         {
           "path": "tools/lane_merge.py",
-          "line": 53,
+          "line": 55,
           "evidence": "import",
           "reference": "console_child",
           "text": "import console_child  # noqa: E402  (windowless console children without a conhost each)"
@@ -3689,14 +3689,21 @@
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 133,
+          "line": 134,
           "evidence": "import",
           "reference": "deploy_payload",
           "text": "import deploy_payload as dp"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 154,
+          "line": 155,
+          "evidence": "import",
+          "reference": "deploy_payload",
+          "text": "import deploy_payload as dp"
+        },
+        {
+          "path": "scripts/tests/test_merge_speedups.py",
+          "line": 218,
           "evidence": "import",
           "reference": "deploy_payload",
           "text": "import deploy_payload as dp"
@@ -4071,63 +4078,70 @@
       "callers_by_stem": [
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 165,
+          "line": 166,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 185,
+          "line": 186,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 194,
+          "line": 241,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 206,
+          "line": 250,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 214,
+          "line": 262,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 228,
+          "line": 270,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 239,
+          "line": 284,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 251,
+          "line": 295,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 261,
+          "line": 307,
+          "evidence": "import",
+          "reference": "merge_gate",
+          "text": "import merge_gate as gate"
+        },
+        {
+          "path": "scripts/tests/test_merge_speedups.py",
+          "line": 317,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
@@ -4193,7 +4207,7 @@
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 13,
+          "line": 14,
           "evidence": "import",
           "reference": "ninja_build",
           "text": "import ninja_build  # noqa: E402"
@@ -4559,7 +4573,7 @@
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 596,
+          "line": 603,
           "evidence": "command",
           "reference": "scripts/run_smoke.py",
           "text": "proc = subprocess.run(cmd, cwd=str(ROOT), capture_output=True,"
@@ -7047,7 +7061,7 @@
         },
         {
           "path": "tools/lane_merge.py",
-          "line": 55,
+          "line": 57,
           "evidence": "import",
           "reference": "_git_util",
           "text": "import _git_util  # noqa: E402  (shared git helpers)"
@@ -9371,7 +9385,7 @@
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 11,
+          "line": 12,
           "evidence": "import",
           "reference": "tools.lane_merge",
           "text": "from tools import lane_merge as lm  # noqa: E402"

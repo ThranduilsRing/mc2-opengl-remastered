@@ -80,54 +80,23 @@ KNOWN_VARIANT_MACROS: frozenset[str] = frozenset(
 # To change a value here, update the spec and this table in the same commit.
 # ---------------------------------------------------------------------------
 REQUIRED_INVARIANTS: list[dict] = [
-    # objectId MRT: static_prop.frag must write v_objectId at location=2.
-    # Check BOTH object-ID variants (objectid AND coalesce_objectid).
+    # Active Vulkan props and mechs co-write the shared scene normal target.
+    # The deleted GL object-ID variants and PerDrawEntry SSBO have no native equivalent.
     {
-        "shader": "shaders/static_prop.frag",
-        "variant": "objectid",
-        "check": "output",
-        "name": "v_objectId",
-        "location": 2,
-        "type": "uint",
-    },
-    {
-        "shader": "shaders/static_prop.frag",
-        "variant": "coalesce_objectid",
-        "check": "output",
-        "name": "v_objectId",
-        "location": 2,
-        "type": "uint",
-    },
-    # GBuffer1 normal: static_prop variants must write GBuffer1 at location=1.
-    {
-        "shader": "shaders/static_prop.frag",
+        "shader": "shaders/vulkan/color_prop_tier1.frag",
         "variant": "default",
         "check": "output",
-        "name": "GBuffer1",
+        "name": "oGBuffer1",
         "location": 1,
         "type": "vec4",
     },
-    # GBuffer1 normal: mech.frag must write GBuffer1 at location=1.
     {
-        "shader": "shaders/mech.frag",
+        "shader": "shaders/vulkan/mech_tier1.frag",
         "variant": "default",
         "check": "output",
-        "name": "GBuffer1",
+        "name": "oGBuffer1",
         "location": 1,
         "type": "vec4",
-    },
-    # objectIdRaw offset: PerDrawEntry.objectIdRaw must be at offset 24.
-    # PerDrawEntry is the element type of PerDrawData.entries[].
-    # "type_member" checks the named struct type directly in raw["types"],
-    # not the SSBO block (which only has an "entries" array member).
-    # Value confirmed by an --update bootstrap run.
-    {
-        "shader": "shaders/static_prop.frag",
-        "variant": "coalesce_objectid",
-        "check": "type_member",
-        "type_name": "PerDrawEntry",
-        "member": "objectIdRaw",
-        "offset": 24,
     },
     # MaterialGpu field offsets — lock struct layout independently of golden.
     # type_name "MaterialGpu" confirmed by bootstrap spirv-cross inspection (Task 3).

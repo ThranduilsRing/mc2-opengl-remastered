@@ -94,9 +94,8 @@ class ModuleTestCache:
             return "ABSENT"
         if not os.path.isfile(full):
             return "ABSENT"
-        m = self.memo.get(rel)
-        if m and m[0] == st.st_size and m[1] == st.st_mtime_ns:
-            return m[2]
+        # Windows may publish identical last-write times for consecutive same-size
+        # writes (including restoring a file). Metadata alone is not an identity.
         try:
             sha = _sha_file(full)
         except OSError:

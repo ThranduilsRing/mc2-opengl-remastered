@@ -1,0 +1,51 @@
+{
+  "defines": [],
+  "outputs": [],
+  "shader": "shaders/vulkan/vfx_particle.vert",
+  "ssbos": [
+    {
+      "binding": 1,
+      "members": [
+        {
+          "array_stride": 64,
+          "matrix_stride": null,
+          "name": "particles",
+          "offset": 0,
+          "type": "_53"
+        }
+      ],
+      "name": "Particles"
+    }
+  ],
+  "stage": "vert",
+  "ubos": [
+    {
+      "binding": 0,
+      "members": [
+        {
+          "array_stride": null,
+          "matrix_stride": 16,
+          "name": "worldToClipGL",
+          "offset": 0,
+          "type": "mat4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "camRight",
+          "offset": 64,
+          "type": "vec4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "camUp",
+          "offset": 80,
+          "type": "vec4"
+        }
+      ],
+      "name": "VfxVsParams"
+    }
+  ],
+  "variant": "default"
+}

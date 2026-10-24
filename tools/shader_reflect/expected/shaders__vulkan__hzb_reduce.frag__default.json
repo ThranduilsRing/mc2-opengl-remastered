@@ -1,0 +1,36 @@
+{
+  "defines": [],
+  "outputs": [
+    {
+      "location": 0,
+      "name": "FragColor",
+      "type": "vec4"
+    }
+  ],
+  "shader": "shaders/vulkan/hzb_reduce.frag",
+  "ssbos": [],
+  "stage": "frag",
+  "ubos": [
+    {
+      "binding": 1,
+      "members": [
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "uSrcTexel",
+          "offset": 0,
+          "type": "vec2"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "uReduce",
+          "offset": 8,
+          "type": "int"
+        }
+      ],
+      "name": "HzbParams"
+    }
+  ],
+  "variant": "default"
+}

@@ -24,6 +24,19 @@ def _campaign(first: str, second: str = "") -> str:
     return out
 
 
+def test_kept_stage_copies_independent_bookmarks(tmp_path):
+    source, target = tmp_path / "base", tmp_path / "stage"
+    bookmark = _w(source / "saved_bookmarks/mc2_10.json", "camera")
+    ms.stage_bookmarks(source, target, False)
+    assert not target.exists()
+    ms.stage_bookmarks(source, target, True)
+    copied = target / "saved_bookmarks/mc2_10.json"
+    assert copied.read_text() == "camera"
+    copied.write_text("edited")
+    assert bookmark.read_text() == "camera"
+    ms.stage_bookmarks(tmp_path / "missing", target, True)
+
+
 # --- mission selection -------------------------------------------------------
 
 def test_campaign_first_mission_wins(tmp_path):

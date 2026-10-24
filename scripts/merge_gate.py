@@ -22,7 +22,9 @@ sys.path.insert(0, str(ROOT / "tools"))
 from lane_merge import git_bash, run_logged  # noqa: E402
 
 
-def plan(jobs, proof_dir=None):
+def plan(jobs, proof_dir=None, capture_before_runs=1):
+    if capture_before_runs < 1:
+        raise ValueError("--capture-before-runs must be positive")
     py = sys.executable
     install = "A:/Games/mc2-opengl/mc2-win64-v0.4"
     proof = Path(proof_dir or "E:/mc2-archive-2026-10/proofs/merge-gate")
@@ -41,10 +43,21 @@ def plan(jobs, proof_dir=None):
          {"MC2_DEBUG_STATE_DUMP": "1", "MC2_DIAG_TAGS": "CONFIG,BUILD,DEVICE"}),
         ("mods", [py, "tools/mod_smoke.py", "--battery", "--exe", install + "/mc2.exe", "--build-dir", "build64-ninja"], {}),
     ]
+    # Preserve the original stage names and paths for existing --stages callers.
+    noise = []
+    for run in range(2, capture_before_runs + 1):
+        before = proof / f"before-{run}"
+        noise.extend([
+            (f"capture-before-{run}", capture + ["--out", str(before)], {}),
+            (f"compare-noise-{run}", [py, "tools/visual_verify/ab.py", "--compare-only",
+                                     str(proof / "before"), str(before), "--out-root",
+                                     str(proof / f"noise-{run}")], {}),
+        ])
+    steps[1:1] = noise
     for mission in ("mc2_03", "mc2_10", "mc2_24"):
         steps.append(("determinism-" + mission,
                       [py, "tools/sim_determinism.py", "check", mission, "--install", install], {}))
-    for mission in ("mc2_01", "mc2_16"):
+    for mission in ("mc2_01", "mc2_03", "mc2_10", "mc2_16", "mc2_24"):
         steps.append(("saveload-" + mission,
                       [py, "tools/saveload_roundtrip.py", "check", "--mission", mission,
                        "--install", install, "--mask", "tools/save_noise_mask.json", "--first-save-only"], {}))
@@ -125,6 +138,8 @@ def main(argv=None):
     if "MC2_IN_GATE" in os.environ:
         ap.error("MC2_IN_GATE is set: nested merge gates are forbidden")
     ap.add_argument("--dry-run", action="store_true", help="print commands only; no builds, deploys, or game launches")
+    ap.add_argument("--capture-before-runs", type=int, default=1,
+                    help="pre-deploy capture sweeps; extra runs are compared with the first to measure noise")
     ap.add_argument("--expect-head", help="ref that HEAD must resolve to, e.g. the reviewed merge SHA")
     ap.add_argument("--stages", nargs="+", help="stage names in execution order (space or comma separated)")
     ap.add_argument("--skip", nargs="+", help="stage names to omit (space or comma separated)")
@@ -139,7 +154,7 @@ def main(argv=None):
         ap.error("-j must be positive")
     proof = Path("E:/mc2-archive-2026-10/proofs/merge-gate") / time.strftime("%Y%m%d-%H%M%S")
     try:
-        steps = select_stages(plan(args.j, proof), args.stages, args.skip)
+        steps = select_stages(plan(args.j, proof, args.capture_before_runs), args.stages, args.skip)
     except ValueError as exc:
         ap.error(str(exc))
     head = git("rev-parse", "HEAD")

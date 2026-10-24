@@ -2,6 +2,7 @@
 import os
 import sys
 import types
+import subprocess
 import pytest
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -164,7 +165,7 @@ def test_deploy_stale_refusal_precedes_payload_copy(tmp_path, monkeypatch):
 def test_gate_plan_uses_verified_ninja_and_required_checks():
     import merge_gate as gate
     steps = gate.plan(6)
-    assert len(steps) == 15
+    assert len(steps) == 18
     by_name = {name: (cmd, env) for name, cmd, env in steps}
     assert by_name["contracts"][0][-1] == "-j6"
     assert by_name["harnesses"][0][-2:] == ["-j", "6"]
@@ -179,6 +180,61 @@ def test_gate_plan_uses_verified_ninja_and_required_checks():
         assert "--first-save-only" in cmd
         assert cmd[cmd.index("--mask") + 1] == "tools/save_noise_mask.json"
     assert steps[-1][2] == {"MC2_VULKAN_VALIDATION": "1"}
+
+
+def test_gate_repeated_before_captures_measure_noise_before_deploy(tmp_path):
+    import merge_gate as gate
+    steps = gate.plan(6, tmp_path, 3)
+    names = [s[0] for s in steps]
+    assert names[:6] == ["capture-before", "capture-before-2", "compare-noise-2",
+                         "capture-before-3", "compare-noise-3", "deploy"]
+    commands = {name: cmd for name, cmd, _ in steps}
+    assert commands["capture-before-3"][-1] == str(tmp_path / "before-3")
+    assert commands["compare-noise-3"][3:5] == [str(tmp_path / "before"), str(tmp_path / "before-3")]
+    with pytest.raises(ValueError, match="positive"):
+        gate.plan(6, tmp_path, 0)
+
+
+def test_lane_failure_summary_keeps_early_case_and_location():
+    output = "FAILED test_cache.py::test_restore\ntest_cache.py:65: AssertionError\n" + "noise\n" * 50
+    summary = lm.failure_summary(output)
+    assert "test_cache.py::test_restore" in summary and "test_cache.py:65" in summary
+    assert summary.count("noise") <= 8
+
+
+def test_native_reflection_invariants_reject_wrong_normal_target():
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("gate_reflect", os.path.join(ROOT, "tools/shader_reflect/reflect.py"))
+    reflect = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(reflect)
+    key = "shaders/vulkan/mech_tier1.frag/default"
+    contract = {"outputs": [{"name": "oGBuffer1", "location": 1, "type": "vec4"}]}
+    assert reflect.check_invariants({key: contract}, {}, allow_partial=True) == []
+    contract["outputs"][0]["location"] = 2
+    assert reflect.check_invariants({key: contract}, {}, allow_partial=True)
+
+
+def test_deploy_clean_refusal_explains_rebuild(monkeypatch, tmp_path, capsys):
+    import deploy_payload as dp
+    monkeypatch.setattr(dp, "check_exe_fresh", lambda *a, **k: None)
+    monkeypatch.setattr(dp, "git_head", lambda *a: "base")
+    monkeypatch.setattr(dp, "require_head_exe", lambda *a: {"sha": "base", "dirty": True})
+    args = types.SimpleNamespace(allow_stale_exe=False, build64_root=None, require_clean=True)
+    with pytest.raises(SystemExit):
+        dp.run_deploy(args, str(tmp_path), str(tmp_path), str(tmp_path), "mc2.exe", "mc2.pdb")
+    output = capsys.readouterr()
+    assert "--require-clean refused deploy" in output.out + output.err
+    assert "rebuild" in output.out + output.err
+
+
+@pytest.mark.parametrize("jobs", [1, 6])
+def test_contracts_collect_all_red_rows(jobs):
+    result = subprocess.run([lm.git_bash(), "scripts/check-contracts.sh", "--selftest-render", f"-j{jobs}"],
+                            cwd=ROOT, capture_output=True, text=True, **console_child.child_kwargs(redirected=True))
+    assert result.returncode == 1
+    for label in ("st_fail_talks", "st_fail_chatty", "st_tri_fail"):
+        assert label in result.stdout
+    assert "WHY THE FAILING ROW(S) FAILED" in result.stdout
 
 
 def test_gate_dry_run_never_executes(monkeypatch, capsys):

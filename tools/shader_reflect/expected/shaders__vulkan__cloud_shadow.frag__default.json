@@ -1,0 +1,78 @@
+{
+  "defines": [],
+  "outputs": [
+    {
+      "location": 0,
+      "name": "FragColor",
+      "type": "vec4"
+    }
+  ],
+  "shader": "shaders/vulkan/cloud_shadow.frag",
+  "ssbos": [],
+  "stage": "frag",
+  "ubos": [
+    {
+      "binding": 1,
+      "members": [
+        {
+          "array_stride": null,
+          "matrix_stride": 16,
+          "name": "invViewProj",
+          "offset": 0,
+          "type": "mat4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "cloudScroll",
+          "offset": 64,
+          "type": "vec2"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "cloudThreshold",
+          "offset": 72,
+          "type": "vec2"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "timeSec",
+          "offset": 80,
+          "type": "float"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "cloudScale",
+          "offset": 84,
+          "type": "float"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "cloudStrength",
+          "offset": 88,
+          "type": "float"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "cloudOctaves",
+          "offset": 92,
+          "type": "int"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "cloudEnable",
+          "offset": 96,
+          "type": "int"
+        }
+      ],
+      "name": "CloudFxParams"
+    }
+  ],
+  "variant": "default"
+}

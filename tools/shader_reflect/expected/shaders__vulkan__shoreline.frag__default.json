@@ -1,0 +1,36 @@
+{
+  "defines": [],
+  "outputs": [
+    {
+      "location": 0,
+      "name": "FragColor",
+      "type": "vec4"
+    }
+  ],
+  "shader": "shaders/vulkan/shoreline.frag",
+  "ssbos": [],
+  "stage": "frag",
+  "ubos": [
+    {
+      "binding": 2,
+      "members": [
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "fxScreenSize",
+          "offset": 0,
+          "type": "vec2"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "fxTime",
+          "offset": 8,
+          "type": "float"
+        }
+      ],
+      "name": "ShorelineFxParams"
+    }
+  ],
+  "variant": "default"
+}

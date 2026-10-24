@@ -26,6 +26,7 @@
     "tools/tracy_capture_compare.py": "engine launcher through nofocus.spawn/run (vetted by exe_guard); launch-site audit 2026-10-10"
   },
   "direct_spawn": {
+    "scripts/tests/test_merge_speedups.py": "Runs only Git Bash check-contracts --selftest-render synthetic rows, with hidden console child kwargs; no engine or real board is launched.",
     "tests/mapgen/test_mission_codec.py": "Test runs the supplied offline doctest reader (MC2_CODEC_READER, a unit-test binary) with captured output; it never launches the game.",
     "tools/scifi_kit/art/batch.py": "The kit commit gate runs the kit pytest (sys.executable) and git add/commit by pathspec through console_child.child_kwargs(redirected=True); the game is never launched from this file.",
     "tools/scifi_kit/art/run.py": "Runs the discovered headless Blender (art render jobs: no game, no window) with captured output through console_child.child_kwargs(redirected=True); the game is never launched from this file.",

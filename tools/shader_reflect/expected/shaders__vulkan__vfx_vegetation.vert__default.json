@@ -1,0 +1,77 @@
+{
+  "defines": [],
+  "outputs": [],
+  "shader": "shaders/vulkan/vfx_vegetation.vert",
+  "ssbos": [
+    {
+      "binding": 0,
+      "members": [
+        {
+          "array_stride": 16,
+          "matrix_stride": null,
+          "name": "inst",
+          "offset": 0,
+          "type": "_617"
+        }
+      ],
+      "name": "VegInst"
+    },
+    {
+      "binding": 1,
+      "members": [
+        {
+          "array_stride": 4,
+          "matrix_stride": null,
+          "name": "dense",
+          "offset": 0,
+          "type": "uint"
+        }
+      ],
+      "name": "VegDense"
+    }
+  ],
+  "stage": "vert",
+  "ubos": [
+    {
+      "binding": 0,
+      "members": [
+        {
+          "array_stride": null,
+          "matrix_stride": 16,
+          "name": "worldToClipGL",
+          "offset": 0,
+          "type": "mat4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "camRight",
+          "offset": 64,
+          "type": "vec4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "camUp",
+          "offset": 80,
+          "type": "vec4"
+        }
+      ],
+      "name": "VfxVsParams"
+    },
+    {
+      "binding": 2,
+      "members": [
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "D",
+          "offset": 0,
+          "type": "_200"
+        }
+      ],
+      "name": "VegDrawParams"
+    }
+  ],
+  "variant": "default"
+}

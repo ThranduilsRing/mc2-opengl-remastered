@@ -1810,7 +1810,8 @@ def run_deploy(args, src_root, build_dir, target, exe_name, pdb_name):
         msg = (f"embedded fingerprint says dirty build at {fp['sha']}. "
                "COMMIT FIRST, rebuild, then deploy.")
         if args.require_clean:
-            fail(msg)
+            fail("--require-clean refused deploy: " + msg +
+                 " lane_merge verification must build the committed HEAD before the gate deploy stage.")
         log(f"WARNING (dirty build): {msg}")
         src_commit += "-dirty"
 

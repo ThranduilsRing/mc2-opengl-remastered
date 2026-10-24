@@ -1,0 +1,119 @@
+{
+  "defines": [],
+  "outputs": [
+    {
+      "location": 0,
+      "name": "FragColor",
+      "type": "vec4"
+    }
+  ],
+  "shader": "shaders/vulkan/screen_shadow_csm.frag",
+  "ssbos": [],
+  "stage": "frag",
+  "ubos": [
+    {
+      "binding": 3,
+      "members": [
+        {
+          "array_stride": null,
+          "matrix_stride": 16,
+          "name": "inverseViewProj",
+          "offset": 0,
+          "type": "mat4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": 16,
+          "name": "lightSpaceMatrix",
+          "offset": 64,
+          "type": "mat4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "enableShadows",
+          "offset": 128,
+          "type": "int"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "enableDynamicShadows",
+          "offset": 132,
+          "type": "int"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "mechSoft",
+          "offset": 136,
+          "type": "float"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "debugMode",
+          "offset": 140,
+          "type": "int"
+        }
+      ],
+      "name": "ScreenShadowParams"
+    },
+    {
+      "binding": 25,
+      "members": [
+        {
+          "array_stride": null,
+          "matrix_stride": 16,
+          "name": "matrix",
+          "offset": 0,
+          "type": "mat4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "params",
+          "offset": 64,
+          "type": "vec4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "sun",
+          "offset": 80,
+          "type": "vec4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "mask",
+          "offset": 96,
+          "type": "vec4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "flags",
+          "offset": 112,
+          "type": "ivec4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "light",
+          "offset": 128,
+          "type": "vec4"
+        },
+        {
+          "array_stride": 16,
+          "matrix_stride": null,
+          "name": "coverage",
+          "offset": 144,
+          "type": "uvec4"
+        }
+      ],
+      "name": "MoverShadowFrame"
+    }
+  ],
+  "variant": "default"
+}
