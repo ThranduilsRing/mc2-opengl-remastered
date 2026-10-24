@@ -617,3 +617,39 @@ def test_compiled_input_classifier():
         assert lm.COMPILED_INPUTS.search(rel), rel
     for rel in ("tools/a.py", "docs/a.md", "scripts/check-contracts.sh", "data/x.json"):
         assert not lm.COMPILED_INPUTS.search(rel), rel
+
+
+def test_regeneration_reports_only_owned_outputs(env, monkeypatch, capsys):
+    lm = _load_module()
+    repo, _ = env
+    write(repo, "generate.py", "open('artifact.json', 'w').write('new\\n')\nopen('decoy', 'w').write('no')\n")
+    write(repo, "artifact.json", "old\n")
+    commit_all(repo, "generator")
+    monkeypatch.setattr(lm, "ARTIFACTS", ["artifact.json"])
+    monkeypatch.setattr(lm, "GENERATORS", [("fixture", "generate.py", [])])
+    assert lm.regenerate_all(str(repo)) == ["artifact.json"]
+    assert "artifact.json" in capsys.readouterr().out
+    with pytest.raises(lm.Stop, match="preexisting artifact edits"):
+        lm.regenerate_all(str(repo))
+
+
+def test_regeneration_failure_stops_before_later_generators(env, monkeypatch):
+    lm = _load_module()
+    repo, _ = env
+    write(repo, "generate.py", "raise SystemExit('broken generator')\n")
+    monkeypatch.setattr(lm, "GENERATORS", [("fixture", "generate.py", []), ("never", "missing.py", [])])
+    with pytest.raises(lm.Stop, match="broken generator"):
+        lm.regenerate_all(str(repo))
+
+
+def test_regeneration_dry_run_leaves_original_untouched(env, monkeypatch):
+    lm = _load_module()
+    repo, _ = env
+    write(repo, "generate.py", "open('artifact.json', 'w').write('new\\n')\n")
+    write(repo, "artifact.json", "old\n")
+    commit_all(repo, "generator")
+    monkeypatch.setattr(lm, "ARTIFACTS", ["artifact.json"])
+    monkeypatch.setattr(lm, "GENERATORS", [("fixture", "generate.py", [])])
+    assert lm.regenerate_all(str(repo), dry_run=True) == ["artifact.json"]
+    assert (repo / "artifact.json").read_text() == "old\n"
+    assert git(repo, "status", "--porcelain") == ""

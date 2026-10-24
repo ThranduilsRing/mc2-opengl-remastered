@@ -59,9 +59,13 @@ def test_hit_needs_every_recorded_input(tmp_path, monkeypatch):
     _run(cache, repo)
     assert cache.lookup("m", "cmd")
     assert not cache.lookup("m", "other cmd")                       # command is part of the key
+    # Force the Windows last-write-time alias deterministically, without sleeps.
+    stamp = (repo / "data" / "in.txt").stat()
     (repo / "data" / "in.txt").write_text("two\n")                  # a file the module read
+    os.utime(repo / "data" / "in.txt", ns=(stamp.st_atime_ns, stamp.st_mtime_ns))
     assert not cache.lookup("m", "cmd")
     (repo / "data" / "in.txt").write_text("one\n")
+    os.utime(repo / "data" / "in.txt", ns=(stamp.st_atime_ns, stamp.st_mtime_ns))
     assert cache.lookup("m", "cmd")
     (repo / "data" / "extra.txt").write_text("new\n")               # a new file in a directory it listed
     assert not cache.lookup("m", "cmd")
