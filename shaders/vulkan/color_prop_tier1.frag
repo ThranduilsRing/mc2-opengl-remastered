@@ -250,7 +250,7 @@ void main() {
         rgb = propEncodeColor(min(albedo,composeGroundLighting(albedo,max(ambient,vec3(0))*vTree.x*materialAO,direct,treeVisibility(N),vec3(0))));
         rgb += propPoolLight(propEncodeColor(albedo)) + vHighlight.rgb*vHighlight.a;
     }
-    oColor = vec4(haveAlbedo ? materialAlbedo : rgb, cover); // temporary atlas diagnostic
+    oColor = vec4(rgb, cover);
 
     // location 1: GBuffer1 — bit-adjacent to static_prop.frag:657-661, which selects
     // between TWO shadow classes off the packet's alpha-test bit:

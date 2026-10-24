@@ -21,7 +21,10 @@ vec3 propAuthoredColor(SurfaceMaterial s, bool alphaTest, bool authoredOrm) {
     vec3 lit = s.emission * wrap
         + (max(ibl,vec3(0))*s.ao + propDecodeColor(vMaterialSun)*propNightSunWeight(ndl, s.normal)) / 3.14159265
         + propDecodeColor(vHighlight.rgb);
-    if (alphaTest) lit = max(lit,vec3(0.21404114)); // legacy 0.5 encoded floor
+    // A solid remake may replace stock alpha cards. Preserve their light floor
+    // independently of coverage, without creating a redundant fringe draw.
+    bool stockAlphaLighting = uPropMaterials.materials[uPacket.materialId].metadata.w != 0u;
+    if (alphaTest || stockAlphaLighting) lit = max(lit,vec3(0.21404114)); // legacy 0.5 encoded floor
     vec3 color = s.baseColor * lit * (1.0 - 0.65*s.metallic);
     vec3 V = uFrame.cameraWorldPos.xyz - vWorldPos;
     if (authoredOrm && dot(V,V) > 1e-8 && dot(vSunColor,vSunColor) > 0.0) {

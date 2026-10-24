@@ -336,7 +336,7 @@ void GpuStaticPropBatcher::registerType(TG_TypeShape* typeShape, TG_TypeMultiSha
 }
 
 void GpuStaticPropBatcher::registerMultiShape(TG_TypeMultiShape* multiShape, bool isOverride,
-                                            const ModelOverrideRecord* materialSource, bool tree) {
+                                             const ModelOverrideRecord* materialSource, bool tree, bool stockAlphaLighting) {
     if (!multiShape) return;
     const long n       = multiShape->GetNumShapes();
     const long numTxms = multiShape->GetNumTextures();
@@ -367,6 +367,7 @@ void GpuStaticPropBatcher::registerMultiShape(TG_TypeMultiShape* multiShape, boo
                         // A legacy/idempotent registration cannot erase the
                         // winning authored owner recorded by the load pre-pass.
                         if (materialSource) s_types[typeId].materialSource = materialSource;
+                        s_types[typeId].stockAlphaLighting |= stockAlphaLighting;
                     }
                 }
             }

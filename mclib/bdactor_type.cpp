@@ -500,9 +500,16 @@ void BldgAppearanceType::init (const char * fileName)
 void BldgAppearanceType::registerRenderShapes (void)
 {
 	const bool isOverride = (bldgRenderShape != nullptr);
+	bool stockAlphaLighting = false;
+	if (isOverride && bldgShape[0])
+		for (long t = 0; t < bldgShape[0]->GetNumTextures(); ++t) {
+			char name[256]{};
+			bldgShape[0]->GetTextureName(t, name, sizeof(name));
+			stockAlphaLighting |= S_strnicmp(name, "a_", 2) == 0;
+		}
 	for (int i = 0; i < MAX_LODS; ++i)
 		GpuStaticPropBatcher::instance().registerMultiShape(getBldgRenderShape(i), isOverride,
-			isOverride ? propMaterialSource : nullptr);
+			isOverride ? propMaterialSource : nullptr, false, stockAlphaLighting);
 	GpuStaticPropBatcher::instance().registerMultiShape(getBldgDmgRenderShape(), bldgDmgRenderShape != nullptr,
 		bldgDmgRenderShape ? propMaterialSource : nullptr);
 }
