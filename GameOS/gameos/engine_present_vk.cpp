@@ -2223,7 +2223,8 @@ bool EnginePresentVk::prewarmPipelines() {
     s.pendingHudDraws = std::move(pendingHud);
     const uint64_t key = (uint64_t(warmTexture) << 32) | warmTexture;
     if (auto it = s.hudTextureMirrors.find(key); it != s.hudTextureMirrors.end()) {
-        vkFreeDescriptorSets(s.dev, s.hudTexPool.get(), 1, &it->second.set);
+        auto& [identity, mirror] = *it;
+        vkFreeDescriptorSets(s.dev, s.hudTexPool.get(), 1, &mirror.set);
         s.hudTextureMirrors.erase(it);
     }
     return hudSubmitted;
