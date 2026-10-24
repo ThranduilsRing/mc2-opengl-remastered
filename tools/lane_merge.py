@@ -662,6 +662,7 @@ def merge_tip(root: str, tools_dir: str, p: dict, message: str, resolutions: dic
     if artifacts:
         try:
             artifact_follow = _git_util.commit_paths(root, artifacts, ARTIFACT_SUBJECT, TRAILER or None)
+            print(f"lane_merge: {ARTIFACT_SUBJECT}: {artifact_follow}")
         except _git_util.GitError as exc:
             raise Stop(6, "artifact follow-up commit failed: " + str(exc)) from exc
     results = run_ratchets(root, tools_dir)
