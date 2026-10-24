@@ -163,6 +163,9 @@ def test_nested_animated_chain_matches_stock_over_clip(tmp_path, intermediary, p
         scene.nodes.append(ir.Node("Static", parent=0))
     scene.nodes.append(ir.Node("Pitch", parent=len(scene.nodes)-1, matrix=cm, mesh=0,
                                extras={"mc2_anim_node": "Pitch"}))
+    detail = np.eye(4)
+    detail[:3, 3] = [1, 2, 3]
+    scene.nodes.append(ir.Node("Detail", parent=len(scene.nodes)-1, matrix=detail, mesh=0))
     raw = gltf_io.write_runtime_glb(scene, [ir.Material("probe")], {})
     doc, binary = gltf_io.split_glb(raw)
     path = tmp_path / "nested.glb"
@@ -183,6 +186,8 @@ def test_nested_animated_chain_matches_stock_over_clip(tmp_path, intermediary, p
         np.testing.assert_allclose(actual["Pitch"], expected, atol=1e-6)
         np.testing.assert_allclose(actual["Pitch"], pose_matrices(stock, tracks, frame / 4)["Pitch"], atol=1e-6)
         np.testing.assert_allclose(actual["Pitch_1"], expected, atol=1e-6)
+        np.testing.assert_allclose(actual["Detail"], expected @ detail, atol=1e-6)
+        np.testing.assert_allclose(actual["Detail_1"], expected @ detail, atol=1e-6)
 
 
 def test_runtime_frame_is_axis0_inverse(tmp_path):
