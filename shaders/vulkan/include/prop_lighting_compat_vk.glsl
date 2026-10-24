@@ -18,9 +18,7 @@ vec3 propAuthoredColor(SurfaceMaterial s, bool alphaTest, bool authoredOrm) {
     // AO affects ambient fill only; emission, direct sun and local pools survive.
     // SH is irradiance; legacy sun/seed/highlight inputs are authored sRGB.
     // Sum in linear light and apply Lambert once, never decode the sum.
-    // Preserve the same baked light input as the stock vertex path. It is
-    // lighting, separate from material emission; dropping it blacks out remakes.
-    vec3 lit = propDecodeColor(vMaterialSeed) * wrap + s.emission * wrap
+    vec3 lit = s.emission * wrap
         + (max(ibl,vec3(0))*s.ao + propDecodeColor(vMaterialSun)*propNightSunWeight(ndl, s.normal)) / 3.14159265
         + propDecodeColor(vHighlight.rgb);
     if (alphaTest) lit = max(lit,vec3(0.21404114)); // legacy 0.5 encoded floor

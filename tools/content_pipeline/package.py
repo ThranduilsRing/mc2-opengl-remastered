@@ -64,6 +64,12 @@ def _detail(material: ir.Material, which: str, report: dict, compress: bool):
         rgba = np.array(texcook.Image.fromarray(rgba, "RGBA").resize((DETAIL_EDGE, DETAIL_EDGE),
                         texcook.Image.Resampling.LANCZOS), dtype=np.uint8)
         report.setdefault("resampled", []).append(f"{material.name}:{which}")
+    # Native TG V is opposite the glTF/PIL row convention. Keep every map in
+    # the same frame as the albedo; tangent-space Y reverses with V.
+    rgba = np.flipud(rgba).copy()
+    if which == "normal":
+        rgba[..., 1] = 255 - rgba[..., 1]
+    source = ir.sha256_bytes(bytes.fromhex(source) + rgba.tobytes())
     return texcook.cook_ktx2(rgba, which, compress=compress, source_sha256=source)
 
 
@@ -119,6 +125,7 @@ def cook_base_colors(asset, out, entry, compress, runtime_names=None):
         if m.alpha_mode == "OPAQUE":
             rgba = rgba.copy()
             rgba[..., 3] = 255
+        rgba = np.flipud(rgba).copy()  # native TG V convention
         name = (runtime_names or {}).get(slot) or _texture_name(aid, slot, m)
         names[slot] = name
         shared[key] = name
