@@ -40,6 +40,8 @@ A --batch run prints one such line per merged tip (verify=DEFERRED) and a final 
 from __future__ import annotations
 
 import argparse
+import json
+from pathlib import Path
 from collections import deque
 from contextlib import nullcontext
 import os
@@ -484,6 +486,13 @@ def quick_rows(root: str, runner=run) -> list[tuple[str, int, str]]:
             continue  # a throwaway root without the script has nothing to check
         r = runner(root, [sys.executable] + args)
         if r.returncode != 0:
+            if label == "script_callers":
+                for path in re.findall(r"tracked script has no caller and is not allowlisted: ([^\r\n]+)", r.stdout):
+                    reason = ("Pytest-discovered module through the scripts_tests/tools_tests contract row."
+                              if Path(path).name.startswith("test_") or Path(path).name.endswith("_test.py")
+                              else "Operator-run entry point; document its intended invocation here.")
+                    print("lane_merge: review the caller wiring; if intentional, add to tests/callers_allowlist.json: "
+                          + json.dumps(path) + ": " + json.dumps(reason), file=sys.stderr)
             failed.append((label, r.returncode, failure_summary(r.stdout)))
     return failed
 
@@ -580,6 +589,16 @@ def regenerate_all(root, *, dry_run=False):
         print(f"regenerate-all: {label}: {'OK' if r.returncode == 0 else 'FAIL'}", flush=True)
         if r.returncode:
             raise Stop(6, f"regenerate-all {label} failed:\n{r.stdout}")
+    # Windows text-mode generators can otherwise dirty every expected JSON
+    # with CRLF alone. Never decode/rewrite binary artifacts (notably SPIR-V).
+    paths = git_out(root, "ls-files", "-z", "--", *ARTIFACTS).split("\0")
+    for path in set(paths) | set(artifact_changes(root)):
+        output = Path(root) / path
+        if output.is_file() and output.suffix in {".json", ".md"}:
+            data = output.read_bytes()
+            lf = data.replace(b"\r\n", b"\n")
+            if lf != data:
+                output.write_bytes(lf)
     changed = artifact_changes(root)
     print("regenerate-all: " + (", ".join(changed) or "nothing to change"))
     if changed:
@@ -738,7 +757,7 @@ def main(argv: list[str] | None = None) -> int:
                 break
             if batch and ref != refs[-1]:
                 print(f"{tag} ratchets=OK verify=DEFERRED overlap=0")
-        if not merged:
+        if not merged and not batch:
             return 0
         mode = "none" if args.no_verify else args.verify
         if batch and merged and not stopped:
@@ -752,7 +771,7 @@ def main(argv: list[str] | None = None) -> int:
             verdict, vresults = "SKIPPED(ratchet-failure)", []
         else:
             verdict, vresults = verify_merged(root, mode)
-        merge_sha, follow, _ = merged[-1]
+        merge_sha, follow, _ = merged[-1] if merged else (git_out(root, "rev-parse", "--short=9", "HEAD"), None, 0)
         print(f"MERGED {merge_sha}" + (f" (+{follow})" if follow else "") + f" files={sum(m[2] for m in merged)} "
               f"ratchets={'FAIL' if stopped else 'OK'} verify={verdict} overlap=0" + (f" batch={len(merged)}" if batch else ""))
         if verdict == "FAIL":

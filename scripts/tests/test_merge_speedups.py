@@ -306,11 +306,66 @@ def test_gate_stage_selection():
     import pytest
     import merge_gate as gate
     steps = gate.plan(6)
-    assert [s[0] for s in gate.select_stages(steps, ["deploy,capture-after", "contracts"], ["contracts"])] == ["deploy", "capture-after"]
+    assert [s[0] for s in gate.select_stages(steps, ["deploy,capture-after"])] == ["deploy", "capture-after"]
     assert "pytest" not in [s[0] for s in gate.select_stages(steps, skip=["pytest"])]
-    for stages, skip in ((["missing"], None), (None, ["missing"]), (["deploy", "deploy"], None)):
+    for stages, skip in ((["missing"], None), (None, ["missing"]), (["deploy", "deploy"], None),
+                         (["deploy"], ["deploy"]), ([], None), (None, list(s[0] for s in steps))):
         with pytest.raises(ValueError):
             gate.select_stages(steps, stages, skip)
+
+
+def test_callers_failure_names_exact_allowlist_entry(capsys):
+    output = "tracked script has no caller and is not allowlisted: scripts/tests/test_new.py\n"
+    assert lm.quick_rows(ROOT, lambda *a: _r(1, output))
+    hint = capsys.readouterr().err
+    assert 'tests/callers_allowlist.json' in hint
+    assert '"scripts/tests/test_new.py": "Pytest-discovered module' in hint
+
+
+def test_gate_reuses_before_evidence(tmp_path):
+    import json
+    import merge_gate as gate
+    png = tmp_path / "capture.png"
+    png.write_bytes(b"png")
+    manifest = {"identity": {"exe": {"sha256": "a" * 64}}, "poses": [
+        {"bookmark": name, "primary_png": str(png), "all_present": True}
+        for name in ("mc2_01_saved_205644", "mc2_10_saved_204523")]}
+    (tmp_path / "capture_run.json").write_text(json.dumps(manifest))
+    gate.validate_before(tmp_path, "a" * 64)
+    for sha in (None, "b" * 64):
+        with pytest.raises(ValueError, match="exe|SHA"):
+            gate.validate_before(tmp_path, sha)
+    steps = gate.plan(6, tmp_path / "proof", before_dir=tmp_path)
+    assert "capture-before" not in [s[0] for s in steps]
+    compare = next(cmd for name, cmd, _ in steps if name == "compare-captures")
+    assert compare[compare.index("--compare-only") + 1] == str(tmp_path)
+    png.unlink()
+    with pytest.raises(ValueError, match="missing capture"):
+        gate.validate_before(tmp_path, "a" * 64)
+
+
+def test_gate_proofs_dir_routes_log_and_commands(tmp_path, monkeypatch):
+    import merge_gate as gate
+    with pytest.raises(ValueError, match="no stages selected"):
+        gate.execute([], "head", dry_run=True)
+    monkeypatch.delenv("MC2_IN_GATE", raising=False)
+    monkeypatch.setattr(gate, "git", lambda *a: "head")
+    seen = []
+    monkeypatch.setattr(gate, "execute", lambda steps, *a: seen.extend(steps) or 0)
+    assert gate.main(["--dry-run", "--proofs-dir", str(tmp_path)]) == 0
+    assert (tmp_path / "gate.log").is_file()
+    assert str(tmp_path / "before") in seen[0][1]
+
+
+def test_gate_logs_lease_holder_and_age(monkeypatch, capsys):
+    import merge_gate as gate
+    from smoke_lib import host_lease
+    monkeypatch.setattr(host_lease, "status", lambda: {"slots": [
+        {"pid": 123, "label": "capture lane", "cwd": "lane", "since": 100}]})
+    monkeypatch.setattr(gate.time, "time", lambda: 160)
+    gate.log_lease_holders()
+    output = capsys.readouterr().out
+    assert "pid=123" in output and "held=60s" in output and "capture lane" in output
 
 
 def test_gate_log_includes_child_stdout_and_stderr(tmp_path, monkeypatch, capsys):

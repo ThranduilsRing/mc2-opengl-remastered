@@ -633,6 +633,31 @@ def test_regeneration_reports_only_owned_outputs(env, monkeypatch, capsys):
         lm.regenerate_all(str(repo))
 
 
+def test_regeneration_normalizes_windows_json_without_touching_binary(env, monkeypatch):
+    lm = _load_module()
+    repo, _ = env
+    write(repo, "generate.py", "open('artifact.json', 'wb').write(b'new\\r\\n')\n")
+    write(repo, "artifact.json", "old\n")
+    (repo / "artifact.spv").write_bytes(b"\r\n\x00")
+    commit_all(repo, "generator")
+    monkeypatch.setattr(lm, "ARTIFACTS", ["artifact.json", "artifact.spv"])
+    monkeypatch.setattr(lm, "GENERATORS", [("fixture", "generate.py", [])])
+    assert lm.regenerate_all(str(repo)) == ["artifact.json"]
+    assert (repo / "artifact.json").read_bytes() == b"new\n"
+    assert (repo / "artifact.spv").read_bytes() == b"\r\n\x00"
+
+
+@pytest.mark.parametrize("mode", ["build", "none"])
+def test_contained_batch_still_verifies(env, monkeypatch, mode):
+    lm = _load_module()
+    repo, tools = env
+    verifies = []
+    monkeypatch.setattr(lm, "verify_merged", lambda root, mode: (verifies.append(mode), ("OK", []))[1])
+    monkeypatch.setattr(lm, "merge_tip", lambda *a: pytest.fail("contained tip merged"))
+    assert lm.main(["--batch", "HEAD", "--verify", mode, "--root", str(repo), "--tools-dir", str(tools)]) == 0
+    assert verifies == [mode]
+
+
 def test_regeneration_failure_stops_before_later_generators(env, monkeypatch):
     lm = _load_module()
     repo, _ = env

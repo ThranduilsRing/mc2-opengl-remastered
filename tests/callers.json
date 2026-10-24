@@ -2517,7 +2517,7 @@
         },
         {
           "path": "scripts/merge_gate.py",
-          "line": 18,
+          "line": 19,
           "evidence": "import",
           "reference": "console_child",
           "text": "import console_child"
@@ -3119,7 +3119,7 @@
         },
         {
           "path": "tools/lane_merge.py",
-          "line": 55,
+          "line": 57,
           "evidence": "import",
           "reference": "console_child",
           "text": "import console_child  # noqa: E402  (windowless console children without a conhost each)"
@@ -4141,7 +4141,28 @@
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 317,
+          "line": 327,
+          "evidence": "import",
+          "reference": "merge_gate",
+          "text": "import merge_gate as gate"
+        },
+        {
+          "path": "scripts/tests/test_merge_speedups.py",
+          "line": 348,
+          "evidence": "import",
+          "reference": "merge_gate",
+          "text": "import merge_gate as gate"
+        },
+        {
+          "path": "scripts/tests/test_merge_speedups.py",
+          "line": 361,
+          "evidence": "import",
+          "reference": "merge_gate",
+          "text": "import merge_gate as gate"
+        },
+        {
+          "path": "scripts/tests/test_merge_speedups.py",
+          "line": 372,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
@@ -7068,7 +7089,7 @@
         },
         {
           "path": "tools/lane_merge.py",
-          "line": 57,
+          "line": 59,
           "evidence": "import",
           "reference": "_git_util",
           "text": "import _git_util  # noqa: E402  (shared git helpers)"
@@ -9378,7 +9399,7 @@
       "callers_by_stem": [
         {
           "path": "scripts/merge_gate.py",
-          "line": 22,
+          "line": 23,
           "evidence": "import",
           "reference": "lane_merge",
           "text": "from lane_merge import git_bash, run_logged  # noqa: E402"
