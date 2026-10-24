@@ -393,16 +393,14 @@ bool NativeInputSourceReady() {
 #endif
 }
 
-bool GetNativeCapacity(uint32_t& vertices, uint32_t& eligibleBound) {
-    if (!NativeInputSourceReady()) return false;
+std::optional<NativeCapacity> GetNativeCapacity() {
+    if (!NativeInputSourceReady()) return std::nullopt;
     const uint32_t side = static_cast<uint32_t>(Terrain::realVerticesMapSide);
-    vertices = side * side;
     const float threshold = Terrain::waterElevation + EffShoreExt(MapData::alphaDepth) + 64.0f;
     uint32_t n = 0;
     for (const auto& r : g_recipes)
         if ((r.waterBits & 0x01010101u) != 0u || r.v0e < threshold || r.v1e < threshold || r.v2e < threshold || r.v3e < threshold) ++n;
-    eligibleBound = n + n / 8u + 4096u;
-    return true;
+    return NativeCapacity{side * side, n + n / 8u + 4096u};
 }
 
 // STEP 3.4P: the native Vulkan cull/pack produces the thin records on the GPU (the GL compute dispatch, the CPU thin pack, the GL thin ring,

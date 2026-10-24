@@ -16,6 +16,7 @@
 // shaders read different fields. Co-indexing forces padding-pad in both schemas.
 
 #pragma once
+#include <optional>
 
 #include <cstdint>
 #include <cstddef>
@@ -177,7 +178,8 @@ bool GetVkNativeInputs(VkNativeInputs& out);
 // its per-frame MVP/scalars. Does not read a previous frame's captured snapshot.
 bool NativeInputSourceReady();
 // Mission-static allocation bounds, available before the first lighting pack.
-bool GetNativeCapacity(uint32_t& vertices, uint32_t& eligibleBound);
+struct NativeCapacity { uint32_t vertices, eligibleBound; };
+std::optional<NativeCapacity> GetNativeCapacity();
 
 // Captures the per-frame native-producer scalars at the water pass (the GL compute dispatch, the CPU thin pack, the GL draw and the readback
 // feed are gone). False = no water this frame.

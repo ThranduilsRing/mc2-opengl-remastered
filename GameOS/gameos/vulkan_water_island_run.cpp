@@ -17,8 +17,8 @@ namespace {
 bool prepareNative(WaterIsland* s, mc2vk::VulkanContext& ctx) {
     if (s->native && s->native->ready()) return true;
     if (s->nativeFailed) return false;
-    uint32_t vertices = 0, eligibleBound = 0;
-    if (!WaterStream::GetNativeCapacity(vertices, eligibleBound)) return false;
+    const auto capacity = WaterStream::GetNativeCapacity();
+    if (!capacity) return false;
     ZoneScopedN("VKIsl.Water.PrepareNative");
     if (!s->recipeUploaded) {
         if (!upload_recipes_device(s, WaterStream::GetRecipes(), WaterStream::GetRecipeCount())) return false;
@@ -27,7 +27,7 @@ bool prepareNative(WaterIsland* s, mc2vk::VulkanContext& ctx) {
     }
     ctx.waitIdle("water_native_init");
     auto np = s->native ? std::move(s->native) : std::make_unique<mc2vk::NativeProducers>();
-    if (!np->init(ctx, vertices, WaterStream::GetRecipeCount(), s->recipeBuf.get(), eligibleBound)) {
+    if (!np->init(ctx, capacity->vertices, WaterStream::GetRecipeCount(), s->recipeBuf.get(), capacity->eligibleBound)) {
         s->nativeFailed = true;
         vlog("native producers unavailable - no water (the GL cull/pack readback feed is gone).");
         return false;
@@ -66,12 +66,12 @@ extern "C" int mc2_vk_water_island_prewarm(int w,int h) {
     // gameplay dispatch must not pay driver first-use work or buffer clears.
     // This off-screen cull is never drawn; the real feed overwrites both slots.
     ZoneScopedN("VKIsl.Water.WarmDispatch");
-    uint32_t vertices = 0, eligibleBound = 0;
-    if (!WaterStream::GetNativeCapacity(vertices, eligibleBound)) return 0;
+    const auto capacity = WaterStream::GetNativeCapacity();
+    if (!capacity) return 0;
     gos_terrain_lighting::VkProducerSnapshot light{};
-    light.numVertices = vertices;
+    light.numVertices = capacity->vertices;
     mc2vk::WaterCullFrame water{};
-    water.mapSide = static_cast<uint32_t>(std::sqrt(static_cast<double>(vertices)));
+    water.mapSide = static_cast<uint32_t>(std::sqrt(static_cast<double>(capacity->vertices)));
     water.mvp[0] = water.mvp[5] = water.mvp[10] = water.mvp[15] = 1.0f;
     water.mvp[12] = 1e9f;
     bool recorded = true;
