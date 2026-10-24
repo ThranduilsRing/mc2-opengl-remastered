@@ -57,6 +57,7 @@
 #include "vulkan_shared_scene_depth.h"   // TIER-1: fetch shared scene depth (island accessors)
 
 extern const float* gos_GetTerrainMVPMat4();   // live camera matrix (matrix diag only)
+float mc2NightLightFactor();   // mclib/camera.cpp: 0 day/evening .. 1 full night
 
 #include <cstdio>
 #include <cstdlib>
@@ -1611,7 +1612,7 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
         u.isNight      = haveLightFeed ? lightFeed.isNight : 0;
         u.nightFactor  = haveLightFeed ? lightFeed.nightFactor : 0.0f;
         u.hotTableReady = s->hotReady ? 1 : 0;   // the shader reads the table only when the real one is bound
-        u.ambientV1Strength = haveLightFeed ? lightFeed.ambientV1Strength : 0.0f;
+        u.nightDarkness = mc2NightLightFactor();   // the retired ambient-fill slot; same value the shadows and water use
         u.pbrV1Strength = haveLightFeed ? lightFeed.pbrV1Strength : 0.0f;
         u.pbrV1RoughnessOverride = haveLightFeed ? lightFeed.pbrV1RoughnessOverride : -1.0f;
         for (int k = 0; k < 4; ++k) u.cameraWorldPos[k] = haveLightFeed ? lightFeed.cameraWorldPos[k] : 0.0f;

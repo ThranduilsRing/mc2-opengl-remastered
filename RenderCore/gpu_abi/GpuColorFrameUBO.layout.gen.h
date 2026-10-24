@@ -16,7 +16,7 @@ static_assert(offsetof(ColorFrameUBO, iblShStrength) == 240, "iblShStrength offs
 static_assert(offsetof(ColorFrameUBO, lightingReady) == 244, "lightingReady offset");
 static_assert(offsetof(ColorFrameUBO, isNight) == 248, "isNight offset");
 static_assert(offsetof(ColorFrameUBO, nightFactor) == 252, "nightFactor offset");
-static_assert(offsetof(ColorFrameUBO, ambientV1Strength) == 256, "ambientV1Strength offset");
+static_assert(offsetof(ColorFrameUBO, nightDarkness) == 256, "nightDarkness offset");
 static_assert(offsetof(ColorFrameUBO, hotTableReady) == 260, "hotTableReady offset");
 static_assert(offsetof(ColorFrameUBO, pbrV1Strength) == 264, "pbrV1Strength offset");
 static_assert(offsetof(ColorFrameUBO, pbrV1RoughnessOverride) == 268, "pbrV1RoughnessOverride offset");
