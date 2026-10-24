@@ -768,6 +768,16 @@ void PackAndDispatch() {
             // as Mech), which dimmed them 4x, shrank them and denied them a shadow tile.
             gl._pad1           = (!coned && lightIsMover(tl)) ? 1.0f : 0.0f;
             gl.intensity       = tl->intensity;
+            // Lamp-type variation: terrain fixtures (runway, taxiway and pad edge lights, dozens per base)
+            // marked the ground with rows of identical small bright discs. They are markers, not floodlights:
+            // a wide, faint wash. Building and mover lamps keep their pools.
+            if (!coned && tl->lightType == TG_LIGHT_TERRAIN) {
+                constexpr float kFixtureSpread = 1.6f, kFixtureIntensity = 0.35f;
+                gl.farDistance    *= kFixtureSpread;
+                gl.closeDistance  *= kFixtureSpread;
+                gl.oneOverDistance = 1.0f / std::max(gl.farDistance - gl.closeDistance, 1.0f);
+                gl.intensity      *= kFixtureIntensity;
+            }
             ++numLights;
         }
 

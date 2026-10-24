@@ -237,9 +237,15 @@ void fill_frame_ubo(TerrainIsland* s, const Mc2TerrainTier1Feed& feed,
     u.sceneLightScale   = mc2SceneLightScale();   // LOCAL-LIGHTS-4 (mclib/camera.cpp mission profile)
     u.ambientFloor      = feed.ambientFloor;
     u.ambientDayGate    = feed.ambientDayGate;
-    u.missionFlatR      = feed.missionFlatLight[0];
-    u.missionFlatG      = feed.missionFlatLight[1];
-    u.missionFlatB      = feed.missionFlatLight[2];
+    {
+        // The flat light only tints cement (pads, roads, runways). Keep its brightness but take out 60% of
+        // its hue: a low orange sun (mc2_14) read as warm-tinted concrete at night. Grey suns are unchanged.
+        const float* f = feed.missionFlatLight;
+        const float lum = 0.2126f * f[0] + 0.7152f * f[1] + 0.0722f * f[2];
+        u.missionFlatR = lum + 0.4f * (f[0] - lum);
+        u.missionFlatG = lum + 0.4f * (f[1] - lum);
+        u.missionFlatB = lum + 0.4f * (f[2] - lum);
+    }
     // VK-PARITY-TERRAIN-2: pool/grid/pad-glow knobs from the shared producers.
     u.numPoolLights       = vkPoolLights;
     u.lightGridDim        = vkGridDim;
