@@ -148,7 +148,8 @@ def test_animated_material_splits_share_pivot_and_parent(tmp_path):
 
 
 @pytest.mark.parametrize("intermediary", [False, True])
-def test_nested_animated_chain_matches_stock_over_clip(tmp_path, intermediary):
+@pytest.mark.parametrize("parent_mesh", [None, 0])
+def test_nested_animated_chain_matches_stock_over_clip(tmp_path, intermediary, parent_mesh):
     from tools.anim_parity.audit import document_model, pose_matrices, rotation
     fixture = json.loads((Path(__file__).parents[2] / "anim_parity/nested_chain.json").read_text())
     parent, child = fixture["parent"], fixture["child"]
@@ -157,7 +158,7 @@ def test_nested_animated_chain_matches_stock_over_clip(tmp_path, intermediary):
     scene = ir.Scene(meshes=[ir.Mesh("probe", [prim, prim])])
     pm, cm = np.eye(4), np.eye(4)
     pm[:3, 3], cm[:3, 3] = parent["pivot"], child["offset"]
-    scene.nodes.append(ir.Node("Yaw", matrix=pm, mesh=0, extras={"mc2_anim_node": "Yaw"}))
+    scene.nodes.append(ir.Node("Yaw", matrix=pm, mesh=parent_mesh, extras={"mc2_anim_node": "Yaw"}))
     if intermediary:
         scene.nodes.append(ir.Node("Static", parent=0))
     scene.nodes.append(ir.Node("Pitch", parent=len(scene.nodes)-1, matrix=cm, mesh=0,

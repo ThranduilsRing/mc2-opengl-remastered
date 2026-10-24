@@ -424,12 +424,20 @@ def write_runtime_glb(scene: Scene, materials: list[Material], texture_names: di
         if parent >= 0:
             animated_parents[node.name] = scene.nodes[parent].name
             pivots.setdefault(node.name, worlds[i][:3, 3].tolist())
+    inherited_nodes = []
     # Attachment-only nodes carry authored light contracts and must survive baking.
     for node, world in zip(scene.nodes, scene.world_matrices()):
         if node.mesh is not None or not node.extras:
             continue
         matrix = to_runtime @ world
-        doc["nodes"].append({"name": node.name, "matrix": matrix.T.reshape(-1).tolist(), "extras": node.extras})
+        attachment = {"name": node.name, "matrix": matrix.T.reshape(-1).tolist(), "extras": dict(node.extras)}
+        if node.extras.get("mc2_anim_node"):
+            attachment.pop("matrix")
+            attachment["translation"] = (np.asarray(pivots[node.name]) * [-1, -1, 1]).tolist()
+            attachment["extras"]["mc2_pivot_tg_wu"] = pivots[node.name]
+        doc["nodes"].append(attachment)
+        if node.name in animated_parents:
+            inherited_nodes.append((len(doc["nodes"])-1, node.name, animated_parents[node.name]))
         doc["scenes"][0]["nodes"].append(len(doc["nodes"]) - 1)
         used[node.name] = 1
     animated_roots = {}
@@ -478,6 +486,8 @@ def write_runtime_glb(scene: Scene, materials: list[Material], texture_names: di
             node.setdefault("extras", {})["mc2_pivot_tg_wu"] = pivot
         doc["nodes"].append(node)
         index = len(doc["nodes"]) - 1
+        if source_name in animated_parents and not (k and properties.get("mc2_anim_node")):
+            inherited_nodes.append((index, source_name, animated_parents[source_name]))
         if pivot is not None and properties.get("mc2_anim_node"):
             if k == 0:
                 animated_roots[source_name] = index
@@ -490,10 +500,8 @@ def write_runtime_glb(scene: Scene, materials: list[Material], texture_names: di
     # Keep inherited motion, including through static intermediary nodes. Geometry
     # remains baked in world orientation; only the pivot translations are local.
     by_name = {node["name"]: i for i, node in enumerate(doc["nodes"])}
-    for name, parent in animated_parents.items():
-        if name not in by_name:
-            continue
-        index, parent_index = by_name[name], by_name[parent]
+    for index, name, parent in inherited_nodes:
+        parent_index = by_name[parent]
         node = doc["nodes"][index]
         node.pop("matrix", None)
         node["translation"] = ((np.asarray(pivots[name]) - pivots[parent]) * [-1, -1, 1]).tolist()

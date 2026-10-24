@@ -1553,6 +1553,8 @@ static void CollectMeshInstances(const aiNode* node, const aiMatrix4x4& parent,
 	const aiMatrix4x4 world = parent * node->mTransformation;
 	for (unsigned i = 0; i < node->mNumMeshes; ++i)
 		out.emplace_back(node->mMeshes[i], node, world);
+	if (!node->mNumMeshes && node->mMetaData && node->mMetaData->HasKey("mc2_anim_node"))
+		out.emplace_back(~0u, node, world);
 	for (unsigned c = 0; c < node->mNumChildren; ++c)
 		CollectMeshInstances(node->mChildren[c], world, out);
 }
@@ -1757,6 +1759,7 @@ long ImportGeometryFromFile(const char* path, TG_TypeMultiShape* out, bool autoG
     asset.parameters = std::to_string(s_gltfAxis()) + ":" + ContentFloatKey(s_gltfYoff()) + ":" +
         ContentFloatKey(s_gltfYawDeg()) + ":" + std::to_string(authoredColors) + ":" + std::to_string(bakeNodeTransforms) +
         ":" + bake.forcedClip + ":" + std::to_string(bake.forcedFrame) + ":" + ContentFloatKey(bake.scale);
+    if (bakeNodeTransforms) asset.parameters += ":nested-pivots/1";
     std::sort(sources->dependencies.begin(), sources->dependencies.end());
     for (const auto& [dependencyPath, digest] : sources->dependencies)
         asset.parameters += ":" + std::to_string(digest);
@@ -1813,6 +1816,16 @@ long ImportGeometryFromFile(const char* path, TG_TypeMultiShape* out, bool autoG
 	BuildTextureList(scene, asset);
 	for (size_t i = 0; i < instances.size(); ++i) {
 		const auto& [meshIdx, node, world] = instances[i];
+		if (meshIdx == ~0u) {
+			auto& helper = asset.nodes[i];
+			helper.name = node->mName.C_Str(); helper.parent = "None"; helper.helper = true;
+			helper.center = helper.relativeCenter = toMC2Pos(aiVector3D(world.a4, world.b4, world.c4));
+			if (node->mParent && node->mParent->mMetaData && node->mParent->mMetaData->HasKey("mc2_anim_node")) {
+				helper.parent = node->mParent->mName.C_Str();
+				helper.relativeCenter = toMC2Pos(aiVector3D(node->mTransformation.a4, node->mTransformation.b4, node->mTransformation.c4));
+			}
+			continue;
+		}
 		long r = ImportShapeFromMesh(scene, meshIdx, asset.nodes[i], nullptr, nullptr,
 		                             authoredColors, node, &world);
 		if (r != 0) {

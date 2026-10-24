@@ -2120,7 +2120,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1552,
+          "line": 1553,
           "evidence": "command",
           "reference": "scripts/check_sim_include_firewall.py",
           "text": "run_check \"sim_include_firewall\"        \"py -3 -B scripts/tests/test_sim_include_firewall.py && py -3 scripts/check_sim_include_firewall.py\""
@@ -6995,7 +6995,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1552,
+          "line": 1553,
           "evidence": "command",
           "reference": "scripts/tests/test_sim_include_firewall.py",
           "text": "run_check \"sim_include_firewall\"        \"py -3 -B scripts/tests/test_sim_include_firewall.py && py -3 scripts/check_sim_include_firewall.py\""
@@ -7182,6 +7182,35 @@
           "text": "import abl_writer_census as awc  # noqa: E402"
         }
       ]
+    },
+    {
+      "path": "tools/anim_parity/audit.py",
+      "basename": "audit.py",
+      "stem": "audit",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tools/anim_parity/test_audit.py",
+          "line": 8,
+          "evidence": "import",
+          "reference": "tools.anim_parity.audit",
+          "text": "from tools.anim_parity.audit import (Stock, agl, tgl, pose, check_nodes, gate_check,"
+        },
+        {
+          "path": "tools/content_pipeline/tests/test_content_pipeline.py",
+          "line": 153,
+          "evidence": "import",
+          "reference": "tools.anim_parity.audit",
+          "text": "from tools.anim_parity.audit import document_model, pose_matrices, rotation"
+        }
+      ]
+    },
+    {
+      "path": "tools/anim_parity/test_audit.py",
+      "basename": "test_audit.py",
+      "stem": "test_audit",
+      "callers_by_basename": [],
+      "callers_by_stem": []
     },
     {
       "path": "tools/ase_to_glb.py",
@@ -7805,7 +7834,7 @@
       "callers_by_stem": [
         {
           "path": "tools/content_pipeline/tests/test_content_pipeline.py",
-          "line": 491,
+          "line": 529,
           "evidence": "import",
           "reference": "test_ase_submaterial",
           "text": "from test_ase_submaterial import SINGLE_MAT_ASE"
@@ -8297,6 +8326,13 @@
           "text": "from tools.content_pipeline import cache"
         },
         {
+          "path": "tools/anim_parity/audit.py",
+          "line": 20,
+          "evidence": "import",
+          "reference": "tools.content_pipeline",
+          "text": "from tools.content_pipeline import gltf_io, ir"
+        },
+        {
           "path": "tools/assets/replace.py",
           "line": 280,
           "evidence": "import",
@@ -8461,21 +8497,21 @@
         },
         {
           "path": "tools/content_pipeline/tests/test_content_pipeline.py",
-          "line": 198,
+          "line": 236,
           "evidence": "import",
           "reference": "tools.content_pipeline.cook",
           "text": "from tools.content_pipeline.cook import build_asset"
         },
         {
           "path": "tools/content_pipeline/tests/test_content_pipeline.py",
-          "line": 266,
+          "line": 304,
           "evidence": "import",
           "reference": "tools.content_pipeline.cook",
           "text": "from tools.content_pipeline.cook import cook"
         },
         {
           "path": "tools/content_pipeline/tests/test_content_pipeline.py",
-          "line": 279,
+          "line": 317,
           "evidence": "import",
           "reference": "tools.content_pipeline.cook",
           "text": "from tools.content_pipeline.cook import cook"
@@ -8525,7 +8561,7 @@
         },
         {
           "path": "tools/content_pipeline/tests/test_content_pipeline.py",
-          "line": 251,
+          "line": 289,
           "evidence": "import",
           "reference": "tools.content_pipeline.frontends",
           "text": "from tools.content_pipeline.frontends import stock_meshdump"
@@ -8655,7 +8691,7 @@
         },
         {
           "path": "tools/content_pipeline/tests/test_content_pipeline.py",
-          "line": 251,
+          "line": 289,
           "evidence": "import",
           "reference": "tools.content_pipeline.frontends.stock_meshdump",
           "text": "from tools.content_pipeline.frontends import stock_meshdump"
@@ -8674,6 +8710,20 @@
           "evidence": "import",
           "reference": "tools.content_pipeline.gltf_io",
           "text": "from tools.content_pipeline import cache, gltf_io, validate"
+        },
+        {
+          "path": "tools/anim_parity/audit.py",
+          "line": 19,
+          "evidence": "import",
+          "reference": "tools.content_pipeline.gltf_io",
+          "text": "from tools.content_pipeline.gltf_io import load_document, read_accessor, node_matrix, frame_matrix"
+        },
+        {
+          "path": "tools/anim_parity/audit.py",
+          "line": 20,
+          "evidence": "import",
+          "reference": "tools.content_pipeline.gltf_io",
+          "text": "from tools.content_pipeline import gltf_io, ir"
         },
         {
           "path": "tools/content_pipeline/frontends/gltf_file.py",
@@ -8732,6 +8782,13 @@
       "stem": "ir",
       "callers_by_basename": [],
       "callers_by_stem": [
+        {
+          "path": "tools/anim_parity/audit.py",
+          "line": 20,
+          "evidence": "import",
+          "reference": "tools.content_pipeline.ir",
+          "text": "from tools.content_pipeline import gltf_io, ir"
+        },
         {
           "path": "tools/assets/replace.py",
           "line": 280,
@@ -9210,7 +9267,7 @@
       "callers_by_stem": [
         {
           "path": "tools/content_pipeline/tests/test_content_pipeline.py",
-          "line": 265,
+          "line": 303,
           "evidence": "import",
           "reference": "tools.examples.build_modern_tree_pack",
           "text": "from tools.examples.build_modern_tree_pack import recipe"
@@ -11011,6 +11068,13 @@
           "text": "from tools.mc2x_import.fst import fst_entries, decompress_entry  # noqa: E402"
         },
         {
+          "path": "tools/anim_parity/audit.py",
+          "line": 21,
+          "evidence": "import",
+          "reference": "tools.mc2x_import.fst",
+          "text": "from tools.mc2x_import.fst import decompress_entry"
+        },
+        {
           "path": "tools/bt2018_mechs/build_pack.py",
           "line": 74,
           "evidence": "import",
@@ -11261,6 +11325,13 @@
           "evidence": "import",
           "reference": "tools.mission_codec",
           "text": "from tools.mission_codec import (decode_move, encode_move, encode_objects,"
+        },
+        {
+          "path": "tools/anim_parity/audit.py",
+          "line": 22,
+          "evidence": "import",
+          "reference": "tools.mission_codec",
+          "text": "from tools.mission_codec import fit_sections"
         },
         {
           "path": "tools/assets/catalog.py",

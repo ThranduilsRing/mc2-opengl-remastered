@@ -1,4 +1,14 @@
-## Current runtime binding: why parent-name mismatches were false failures
+## Runtime binding and cooker correction
+
+The findings below describe the pre-fix anim-parity audit. On anim-cooker,
+`write_runtime_glb` preserves animated ancestors and child relative pivots;
+the importer computes relative centres from each animated parent's world pivot.
+Material splits retain zero offsets. Empty animated transform nodes survive as
+helpers, and both cook caches have new versions. No art was reparented.
+The inventory's `nested_composition` rows evaluate every stock clip frame at
+authored bind pivots through the actual runtime writer. Missing art nodes and
+translation-frame differences remain art findings. The historical pipeline
+failures and coil captures below are retained as provenance, not fresh proof.
 
 The follow-up audits the read-only **A:/Games/mc2-main at f5b21b39217a**, the current nifty/v0.4 build inspected for this report. Earlier trigger citations below remain relative to base `6298b6eef` unless explicitly qualified.
 

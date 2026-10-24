@@ -324,6 +324,31 @@ def check_nodes(stock, remake, required, tracks=None):
     return failures,warnings
 
 
+def nested_composition(stock, remake, runtime, tracks):
+    """Stock local-transform evaluation at authored pivots versus cooked playback."""
+    nested = []
+    for name in tracks:
+        parent = stock.get(name, {}).get('parent')
+        while parent in stock:
+            if parent in tracks and moving(tracks[parent]):
+                nested.append(name)
+                break
+            parent = stock[parent]['parent']
+    if not nested:
+        return None
+    frames = max(t['frames'] for t in tracks.values())
+    errors = {name: 0.0 for name in nested if name in remake and name in runtime}
+    for frame in range(frames):
+        fraction = frame / max(frames-1, 1)
+        expected = pose_matrices(remake, tracks, fraction)
+        actual = pose_matrices(runtime, tracks, fraction)
+        for name in errors:
+            errors[name] = max(errors[name], float(np.max(np.abs(expected[name]-actual[name]))))
+    return dict(nodes=nested, frames=frames, max_world_matrix_error=errors,
+                missing=[name for name in nested if name not in errors],
+                passed=len(errors)==len(nested) and all(e < 1e-5 for e in errors.values()))
+
+
 def gate_check(model, tracks, required):
     failures, metrics = [], {}
     moving_names = set().union(*(descendants(model,n) for n in required if n in model)) if required else set()
@@ -595,6 +620,11 @@ def main():
                                   nodes={n:dict(parent=v['parent'],pivot=v['pivot'],triangles=len(v['triangles'])) for n,v in remake.items()},
                                   failures=problems,warnings=warnings)
                     detail['extreme_poses'] = {state:extremes(model,runtime,tracks) for state,tracks in clip_tracks.items()}
+                    detail['nested_composition'] = {state: proof for state, tracks in clip_tracks.items()
+                                                    if (proof := nested_composition(model, remake, runtime, tracks))}
+                    for state, proof in detail['nested_composition'].items():
+                        if not proof['passed'] and not proof['missing']:
+                            problems.append(f'REAL/PIPELINE nested world transforms differ in state {state}: {proof}')
                     if rotational in required and rotational.lower()!='none':
                         sweep = {rotational:dict(frames=5,fps=1,ticks=1,p=np.empty((0,3)),
                                                 q=np.array([[0,np.sin(a/2),0,np.cos(a/2)] for a in np.linspace(0,2*np.pi,5)]))}

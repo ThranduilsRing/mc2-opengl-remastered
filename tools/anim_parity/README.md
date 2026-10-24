@@ -22,3 +22,9 @@ position-track frame errors and lost animated ancestors in the cooked hierarchy.
 
 `evidence.md` is included verbatim in each generated REPORT.md. It records the
 audited engine trigger sites and the reason no in-game proof was attempted.
+
+The runtime writer now preserves animated ancestry, including static intermediaries
+and material splits. `nested_composition` in inventory.json checks every clip frame
+against stock local-transform evaluation at the authored bind pivots. The synthetic
+yaw/pitch fixture additionally compares child world matrices with stock bind pivots
+and an independent matrix product. Art pivot/frame differences remain separate.
