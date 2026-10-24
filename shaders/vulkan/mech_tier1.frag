@@ -37,29 +37,16 @@ layout(set = 0, binding = 3) uniform sampler2D uAlbedo;   // copy-once slot-0 pa
 layout(set = 0, binding = 6) uniform sampler2D uMechAo;   // AO-1 (imported; GL unit 6)
 layout(set = 0, binding = 7) uniform sampler2D uMechNrm;  // NORMALS-1 (imported; GL unit 7)
 
-// POOL-CONSUMERS-1: CPU copy of the GL binding-28 pool array (GpuTerrainLight, 48B).
-struct PoolLight {
-    vec3  position;
-    uint  lightType;
-    vec3  color;
-    float closeDistance;
-    float farDistance;
-    float oneOverDistance;
-    float _plPad1;
-    float intensity;
-};
-layout(set = 0, binding = 5, std430) readonly buffer MechPoolLightsVK {
-    PoolLight poolLights[];
-};
+#define PREC highp
+#define TERRAIN_RESOURCE_SET 1
+#define TERRAIN_OBJECT_RECEIVER 1
+#include "include/terrain_frame_vk.glsl"
 layout(push_constant) uniform MechRunPC {
     uint materialFlags;    // bit0 = ALPHA_TEST (mech.frag ALPHA_TEST_BIT)
     uint poolFirst;
     uint poolCount;
 } uRun;
-#define MC2_OBJECT_POOL_LIST 1
-// LOCAL-LIGHTS-2: local-light shadow atlas (shadow island; D16 depth, plain sampler + gather).
-layout(set = 0, binding = 8) uniform sampler2D u_localShadowAtlas;
-#define MC2_LOCAL_SHADOW_ATLAS 1
+#define MC2_OBJECT_TERRAIN_GRID 1
 #include "../include/object_light_pool.hglsl"
 #include "../include/mech_shading.hglsl"
 

@@ -167,6 +167,9 @@ extern "C" int mc2_vk_water_island_run(
       fsC = vkImageResourceBeginFrame(s->sColorRes); }
     us_fence_wait = usSince(tFence0);
     const uint32_t par = fsC.parity & 1u;
+    const auto ground = mc2_vk_ground_lighting_frame();
+    if (!ground) return 0;
+    s->groundLighting.copy(s->device, par, *ground);
     if (!mc2vk::bindMoverShadowDescriptors(s->device,s->set[par])) { setFallback("mover_receiver_unavailable"); s->disabled=true; return 0; }
 
     const clk::time_point tStage0 = clk::now();
@@ -301,6 +304,8 @@ extern "C" int mc2_vk_water_island_run(
         mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->pipe.get());
         const uint32_t uboOffsets[2] = {static_cast<uint32_t>(uboSpan.offset), static_cast<uint32_t>(uboSpan.offset + fsUboOff)};
         vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 0, 1, &s->set[par], 2, uboOffsets);
+        const auto groundSet = s->groundLighting.set(par);
+        vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 1, 1, &groundSet, 4, ground->offsets.data());
         vkCmdDrawIndirect(cb, s->native->drawArgs(par), 0, 1, 16);
         vkCmdEndRenderPass(cb);
         gpuScope.end();

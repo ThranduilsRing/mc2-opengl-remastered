@@ -26,6 +26,7 @@
 #include "vk_hdri_source.h"
 #include "vk_native_producers.h"   // STEP 3.4P: native compute producers
 #include "vulkan_context.h"
+#include "vk_vegetation_ground.h"
 #include "gos_terrain_water_stream.h"
 #include "terrain_field_store.h"   // the shore sidecars' CPU copies
 
@@ -126,6 +127,7 @@ static_assert(offsetof(WaterFsParams, f0) == 16 && offsetof(WaterFsParams, f3) =
 
 // The persistent island state.
 struct WaterIsland : mc2vk::IslandState {
+    mc2veg::GroundLighting groundLighting;
     bool disabled = false;
     bool inited   = false;
     bool useInterop = false;

@@ -18,6 +18,31 @@
 //
 // NOTE: bare float/vec types only -- no PREC qualifier.
 
+// One ordered light contribution, shared by the uniform short walk and lists.
+void olp_addPoolLight(int i, vec3 worldPosMC2, int poolSoft, float moverDim,
+                      float moverScale, int moverMax, inout vec3 pool, inout vec3 poolMover)
+{
+    if (poolLights[i].lightType == 0u) return;
+    vec3  vtl = worldPosMC2 - poolLights[i].position;
+    bool  mover = poolLights[i]._plPad1 > 0.5;
+    float nearD = poolLights[i].closeDistance;
+    float len, falloff;
+    if (!lpa_falloff(vtl, mover, moverScale, poolSoft, nearD,
+                     poolLights[i].farDistance, poolLights[i].oneOverDistance, len, falloff)) return;
+    falloff = lpa_spotCone(vtl, poolLights[i].lightType, len, poolLights[i].farDistance, falloff);   // LOCAL-LIGHTS-1/3
+    if (falloff <= 0.0) return;
+    falloff *= lpa_localShadow(worldPosMC2, poolLights[i].position, poolLights[i].lightType, poolLights[i].farDistance);   // LOCAL-LIGHTS-2
+    vec3 plCol = poolLights[i].color * poolLights[i].intensity;
+    if (mover) {
+        plCol *= moverDim;
+        if (moverMax != 0) {
+            poolMover = max(poolMover, plCol * falloff);
+            return;
+        }
+    }
+    pool += plCol * falloff;
+}
+
 // Additive pool light reaching worldPosMC2 (MC2/Stuff frame). Mirrors the
 // terrain_lod_chunk.frag loop exactly (soft tail, mover dim/scale/max-blend,
 // tone compression), then applies the object-side scale.
@@ -28,6 +53,15 @@ vec3 olp_objectPoolLight(vec3 worldPosMC2, int numPoolLights, int poolSoft,
     if (numPoolLights <= 0 || objScale <= 0.0) return vec3(0.0);
     vec3 pool      = vec3(0.0);
     vec3 poolMover = vec3(0.0);
+#ifdef MC2_OBJECT_SHORT_POOL
+    // The stock runway scene packs fewer than 100 lights. Grid lookup and
+    // dependent record loads cost more than this uniform, contiguous short walk.
+    if (numPoolLights <= 128) {
+        for (int i = 0; i < numPoolLights; ++i)
+            olp_addPoolLight(i, worldPosMC2, poolSoft, moverDim, moverScale, moverMax, pool, poolMover);
+    } else
+#endif
+    {
     int lo = 0, hi = numPoolLights;
     bool indexed = false;
 #ifdef MC2_OBJECT_POOL_LIST
@@ -47,6 +81,15 @@ vec3 olp_objectPoolLight(vec3 worldPosMC2, int numPoolLights, int poolSoft,
         indexed = true;
     }
 #endif
+#ifdef MC2_OBJECT_TERRAIN_GRID
+    if (uT.lightGridDim > 0) {
+        ivec2 cell = ivec2(floor((worldPosMC2.xy - vec2(uT.lightGridMinX, uT.lightGridMinY)) *
+                               vec2(uT.lightGridInvCellX, uT.lightGridInvCellY)));
+        if (any(lessThan(cell, ivec2(0))) || any(greaterThanEqual(cell, ivec2(uT.lightGridDim)))) return vec3(0.0);
+        uvec2 range = lightGridCells[cell.y * uT.lightGridDim + cell.x];
+        lo = int(range.x); hi = int(range.x + range.y); indexed = true;
+    }
+#endif
     for (int k = lo; k < hi; ++k) {
         int i = k;
 #ifdef MC2_OBJECT_POOL_GRID
@@ -54,25 +97,12 @@ vec3 olp_objectPoolLight(vec3 worldPosMC2, int numPoolLights, int poolSoft,
         // A mod can enlarge the terrain pool beyond the existing object cap.
         if (i >= numPoolLights) continue;
 #endif
-        if (poolLights[i].lightType == 0u) continue;
-        vec3  vtl = worldPosMC2 - poolLights[i].position;
-        bool  mover = poolLights[i]._plPad1 > 0.5;
-        float nearD = poolLights[i].closeDistance;
-        float len, falloff;
-        if (!lpa_falloff(vtl, mover, moverScale, poolSoft, nearD,
-                         poolLights[i].farDistance, poolLights[i].oneOverDistance, len, falloff)) continue;
-        falloff = lpa_spotCone(vtl, poolLights[i].lightType, len, poolLights[i].farDistance, falloff);   // LOCAL-LIGHTS-1/3
-        if (falloff <= 0.0) continue;
-        falloff *= lpa_localShadow(worldPosMC2, poolLights[i].position, poolLights[i].lightType, poolLights[i].farDistance);   // LOCAL-LIGHTS-2
-        vec3 plCol = poolLights[i].color * poolLights[i].intensity;
-        if (mover) {
-            plCol *= moverDim;
-            if (moverMax != 0) {
-                poolMover = max(poolMover, plCol * falloff);
-                continue;
-            }
-        }
-        pool += plCol * falloff;
+#ifdef MC2_OBJECT_TERRAIN_GRID
+        if (indexed) i = int(lightGridIndices[k]);
+        if (i >= numPoolLights) continue;
+#endif
+        olp_addPoolLight(i, worldPosMC2, poolSoft, moverDim, moverScale, moverMax, pool, poolMover);
+    }
     }
     pool += poolMover;
     vec3 outPool;

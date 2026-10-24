@@ -446,6 +446,10 @@ extern "C" int mc2_vk_overlay_run(int w, int h) {
     bi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
     bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
     if (vkBeginCommandBuffer(cb, &bi) != VK_SUCCESS) { o->disabled = true; return 0; }
+    {
+        MC2_VK_GPU_SCOPE(listsScope, cb, "VKIsl.LightLists");
+        s->lightLists.record(rctx, cb, par);
+    }
     VkRenderPassBeginInfo rbi{};
     rbi.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
     rbi.renderPass = o->rpass.get(); rbi.framebuffer = o->fb.get();

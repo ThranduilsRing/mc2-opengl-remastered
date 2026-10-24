@@ -23,6 +23,7 @@
 #include "vk_texture_residency.h"
 #include "vk_gpu_timestamps.h"   // VK-DRAW-PERF-1: MC2_VK_GPU_TIMESTAMPS GPU segment timers
 #include "vulkan_context.h"
+#include "vk_light_lists.h"
 #include "vulkan_terrain_island.h"
 #include "vulkan_ground_lighting.h"
 #include "Gates/gate_cold.h"   // gate::get<>() and str<>()
@@ -132,6 +133,7 @@ struct TerrainIsland : mc2vk::IslandState {
     mc2vk::OwnedDescriptorSetLayout dsl;
     mc2vk::OwnedDescriptorPool  pool;
     VkDescriptorSet   set[2] = {VK_NULL_HANDLE, VK_NULL_HANDLE};   // per parity slot (VK-TERRAIN-FENCE-DEFER-1); set[i] binds ubo[i]
+    mc2vk::LightLists lightLists;
     Mc2GroundLightingFrame groundFrame{};
     uint64_t groundFrameNo = ~uint64_t(0);
     mc2vk::OwnedPipelineLayout  playout;
