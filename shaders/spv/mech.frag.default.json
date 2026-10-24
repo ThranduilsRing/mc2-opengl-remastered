@@ -6,21 +6,46 @@
   "specializationParams": [],
   "artifact": "mech.frag.default.dbbae7d3.spv",
   "spv_dir": "shaders/spv",
-  "source_sha256": "4d561d45b1707da6fdd35fbec1e10f899854011458f8dcf2efaf0f38703ffd4a",
-  "spirv_sha256": "bfd30ade6aec925e109205150e170dad931c46f62ee42e06d313dd2e588c54b5",
+  "source_sha256": "959b41b3b5209cccf4d52b5039e051baaedf37596d6e1893eab57b5de57cac29",
+  "spirv_sha256": "3a72038762c9ee2e0c9cdcd217ada91499fd863b59ccd7f0dff56bf62fea1b4f",
   "bindings": {
     "ubos": [
       {
+        "name": "TerrainFrameUBO",
+        "binding": 0,
+        "set": 1
+      },
+      {
         "name": "MechFrameUBO",
         "binding": 0,
+        "set": 0
+      },
+      {
+        "name": "MoverShadowFrame",
+        "binding": 25,
         "set": 0
       }
     ],
     "ssbos": [
       {
-        "name": "MechPoolLightsVK",
-        "binding": 5,
-        "set": 0
+        "name": "TerrainLightPoolVK",
+        "binding": 11,
+        "set": 1
+      },
+      {
+        "name": "TerrainLightGridHeaderVK",
+        "binding": 12,
+        "set": 1
+      },
+      {
+        "name": "TerrainLightGridIndicesVK",
+        "binding": 13,
+        "set": 1
+      },
+      {
+        "name": "TerrainCementBuf",
+        "binding": 4,
+        "set": 1
       }
     ],
     "samplers": [
@@ -28,7 +53,7 @@
         "name": "u_localShadowAtlas",
         "type": "sampler2D",
         "location": null,
-        "binding": 8
+        "binding": 19
       },
       {
         "name": "uMechAo",
@@ -44,6 +69,24 @@
       },
       {
         "name": "uAlbedo",
+        "type": "sampler2D",
+        "location": null,
+        "binding": 3
+      },
+      {
+        "name": "moverShadowMap",
+        "type": "sampler2D",
+        "location": null,
+        "binding": 24
+      },
+      {
+        "name": "u_colormap",
+        "type": "sampler2D",
+        "location": null,
+        "binding": 2
+      },
+      {
+        "name": "u_cementAtlas",
         "type": "sampler2D",
         "location": null,
         "binding": 3

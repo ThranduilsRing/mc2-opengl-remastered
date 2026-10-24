@@ -1,134 +1,37 @@
 {
   "summary": {
-    "cpp_binding_constants": 36,
-    "glsl_blocks_with_binding": 138,
+    "cpp_binding_constants": 17,
+    "glsl_blocks_with_binding": 74,
     "shared_named_pairs": [
       "LIGHT_DATA_ATTACHMENT_SLOT",
       "LIGHT_DATA_SSBO_BINDING",
       "SCENE_DATA_ATTACHMENT_SLOT"
     ],
     "fails": 0,
-    "warns": 30
+    "warns": 17
   },
   "fails": [],
   "warns": [
-    "mode-alternate (intentional): shaders/gpu_cull.comp SSBO slot 9 = 'VisibleIds' / 'DebugOut' on exclusive #if branches",
-    "mode-alternate (intentional): shaders/lightgrid_build.comp SSBO slot 0 = 'LG_SphereOut' / 'LG_SphereIn' on exclusive #if branches",
-    "mode-alternate (intentional): shaders/lightgrid_build.comp SSBO slot 1 = 'LG_SphereCount' / 'LG_IndexPool' on exclusive #if branches",
     "unresolved binding token 'N' in shaders/include/material_gpu.hglsl:14 (MaterialTable)",
-    "134 GLSL block bindings are bare numeric literals not tied to a named constant (lockstep-by-hand surface)",
-    "cross-pass reuse: SSBO:5 bound in 9 shader files (expected \u2014 multiplexed)",
-    "cross-pass reuse: UBO:1 bound in 9 shader files (expected \u2014 multiplexed)",
-    "cross-pass reuse: SSBO:0 bound in 12 shader files (expected \u2014 multiplexed)",
-    "cross-pass reuse: SSBO:2 bound in 9 shader files (expected \u2014 multiplexed)",
-    "cross-pass reuse: SSBO:1 bound in 16 shader files (expected \u2014 multiplexed)",
-    "cross-pass reuse: SSBO:4 bound in 7 shader files (expected \u2014 multiplexed)",
-    "cross-pass reuse: SSBO:20 bound in 3 shader files (expected \u2014 multiplexed)",
-    "cross-pass reuse: SSBO:6 bound in 5 shader files (expected \u2014 multiplexed)",
-    "cross-pass reuse: SSBO:7 bound in 3 shader files (expected \u2014 multiplexed)",
-    "cross-pass reuse: SSBO:12 bound in 4 shader files (expected \u2014 multiplexed)",
-    "cross-pass reuse: SSBO:8 bound in 3 shader files (expected \u2014 multiplexed)",
-    "cross-pass reuse: SSBO:9 bound in 2 shader files (expected \u2014 multiplexed)",
-    "cross-pass reuse: SSBO:10 bound in 4 shader files (expected \u2014 multiplexed)",
-    "cross-pass reuse: SSBO:11 bound in 3 shader files (expected \u2014 multiplexed)",
-    "cross-pass reuse: SSBO:13 bound in 3 shader files (expected \u2014 multiplexed)",
-    "cross-pass reuse: SSBO:14 bound in 3 shader files (expected \u2014 multiplexed)",
-    "cross-pass reuse: UBO:2 bound in 4 shader files (expected \u2014 multiplexed)",
-    "cross-pass reuse: SSBO:16 bound in 2 shader files (expected \u2014 multiplexed)",
-    "cross-pass reuse: SSBO:15 bound in 2 shader files (expected \u2014 multiplexed)",
-    "cross-pass reuse: SSBO:3 bound in 3 shader files (expected \u2014 multiplexed)",
-    "cross-pass reuse: SSBO:23 bound in 2 shader files (expected \u2014 multiplexed)",
-    "cross-pass reuse: SSBO:25 bound in 2 shader files (expected \u2014 multiplexed)",
-    "cross-pass reuse: SSBO:28 bound in 3 shader files (expected \u2014 multiplexed)",
-    "cross-pass reuse: UBO:3 bound in 3 shader files (expected \u2014 multiplexed)",
-    "cross-pass reuse: UBO:0 bound in 8 shader files (expected \u2014 multiplexed)"
+    "71 GLSL block bindings are bare numeric literals not tied to a named constant (lockstep-by-hand surface)",
+    "cross-pass reuse: UBO:1 bound in 7 shader files (expected \u2014 multiplexed)",
+    "cross-pass reuse: UBO:3 bound in 2 shader files (expected \u2014 multiplexed)",
+    "cross-pass reuse: SSBO:4 bound in 3 shader files (expected \u2014 multiplexed)",
+    "cross-pass reuse: SSBO:1 bound in 11 shader files (expected \u2014 multiplexed)",
+    "cross-pass reuse: SSBO:2 bound in 7 shader files (expected \u2014 multiplexed)",
+    "cross-pass reuse: SSBO:5 bound in 4 shader files (expected \u2014 multiplexed)",
+    "cross-pass reuse: SSBO:7 bound in 2 shader files (expected \u2014 multiplexed)",
+    "cross-pass reuse: SSBO:0 bound in 2 shader files (expected \u2014 multiplexed)",
+    "cross-pass reuse: UBO:2 bound in 3 shader files (expected \u2014 multiplexed)",
+    "cross-pass reuse: UBO:0 bound in 14 shader files (expected \u2014 multiplexed)",
+    "cross-pass reuse: SSBO:10 bound in 2 shader files (expected \u2014 multiplexed)",
+    "cross-pass reuse: SSBO:6 bound in 2 shader files (expected \u2014 multiplexed)",
+    "cross-pass reuse: SSBO:12 bound in 2 shader files (expected \u2014 multiplexed)",
+    "cross-pass reuse: SSBO:3 bound in 2 shader files (expected \u2014 multiplexed)",
+    "cross-pass reuse: SSBO:8 bound in 2 shader files (expected \u2014 multiplexed)"
   ],
   "occupancy": {
     "SSBO:0": [
-      {
-        "side": "glsl",
-        "file": "shaders/cardcloud_sim.comp",
-        "line": 30,
-        "role": "CardCloudSimBuf",
-        "std": "std430"
-      },
-      {
-        "side": "glsl",
-        "file": "shaders/gos_terrain.tesc",
-        "line": 34,
-        "role": "QuadRecordBuf",
-        "std": "std430"
-      },
-      {
-        "side": "glsl",
-        "file": "shaders/gos_terrain_lighting.comp",
-        "line": 42,
-        "role": "VertexInputs",
-        "std": "std430"
-      },
-      {
-        "side": "glsl",
-        "file": "shaders/gpu_driven_cmd_patch.comp",
-        "line": 57,
-        "role": "Header",
-        "std": "std430"
-      },
-      {
-        "side": "glsl",
-        "file": "shaders/gpu_driven_terrain_solid.comp",
-        "line": 141,
-        "role": "Recipes",
-        "std": "std430"
-      },
-      {
-        "side": "glsl",
-        "file": "shaders/gpu_driven_water.comp",
-        "line": 121,
-        "role": "Recipes",
-        "std": "std430"
-      },
-      {
-        "side": "glsl",
-        "file": "shaders/lightgrid_build.comp",
-        "line": 78,
-        "role": "LG_SphereOut",
-        "std": "std430"
-      },
-      {
-        "side": "glsl",
-        "file": "shaders/lightgrid_build.comp",
-        "line": 146,
-        "role": "LG_SphereIn",
-        "std": "std430"
-      },
-      {
-        "side": "glsl",
-        "file": "shaders/mech.vert",
-        "line": 47,
-        "role": "InstanceBuffer",
-        "std": "std430"
-      },
-      {
-        "side": "glsl",
-        "file": "shaders/shadow_mech.vert",
-        "line": 14,
-        "role": "InstanceBuffer",
-        "std": "std430"
-      },
-      {
-        "side": "glsl",
-        "file": "shaders/shadow_static_prop.vert",
-        "line": 22,
-        "role": "Instances",
-        "std": "std430"
-      },
-      {
-        "side": "glsl",
-        "file": "shaders/static_prop.vert",
-        "line": 46,
-        "role": "Instances",
-        "std": "std430"
-      },
       {
         "side": "glsl",
         "file": "shaders/vulkan/hud_tex.frag",
@@ -137,151 +40,60 @@
         "std": "std430"
       },
       {
-        "side": "cpp",
-        "file": "GameOS/gameos/gos_static_prop_batcher.cpp",
-        "line": 9537,
-        "role": "glBindBufferBase(literal)"
-      },
-      {
-        "side": "cpp",
-        "file": "GameOS/gameos/gos_static_prop_batcher.cpp",
-        "line": 9726,
-        "role": "glBindBufferBase(literal)"
-      },
-      {
-        "side": "cpp",
-        "file": "GameOS/gameos/gos_terrain_indirect.cpp",
-        "line": 4662,
-        "role": "glBindBufferBase(literal)"
-      },
-      {
-        "side": "cpp",
-        "file": "GameOS/gameos/gos_terrain_indirect.cpp",
-        "line": 5067,
-        "role": "glBindBufferBase(literal)"
-      },
-      {
-        "side": "cpp",
-        "file": "GameOS/gameos/gos_terrain_water_stream.cpp",
-        "line": 1679,
-        "role": "glBindBufferBase(literal)"
-      },
-      {
-        "side": "cpp",
-        "file": "GameOS/gameos/gos_terrain_water_stream.cpp",
-        "line": 2123,
-        "role": "glBindBufferBase(literal)"
-      },
-      {
-        "side": "cpp",
-        "file": "GameOS/gameos/gos_terrain_water_stream.cpp",
-        "line": 2151,
-        "role": "glBindBufferBase(literal)"
+        "side": "glsl",
+        "file": "shaders/vulkan/vfx_vegetation.vert",
+        "line": 15,
+        "role": "VegInst",
+        "std": "std430"
       }
     ],
     "SSBO:1": [
       {
         "side": "glsl",
-        "file": "shaders/gos_terrain_lighting.comp",
-        "line": 43,
-        "role": "LightInputs",
-        "std": "std430"
-      },
-      {
-        "side": "glsl",
-        "file": "shaders/gos_terrain_thin.vert",
-        "line": 32,
-        "role": "RecipeBuf",
-        "std": "std430"
-      },
-      {
-        "side": "glsl",
-        "file": "shaders/gpu_driven_cmd_patch.comp",
-        "line": 58,
-        "role": "Cmds",
-        "std": "std430"
-      },
-      {
-        "side": "glsl",
-        "file": "shaders/gpu_driven_terrain_solid.comp",
-        "line": 142,
-        "role": "Lighting",
-        "std": "std430"
-      },
-      {
-        "side": "glsl",
-        "file": "shaders/gpu_driven_water.comp",
-        "line": 122,
-        "role": "Lighting",
-        "std": "std430"
-      },
-      {
-        "side": "glsl",
-        "file": "shaders/lightgrid_build.comp",
-        "line": 84,
-        "role": "LG_SphereCount",
-        "std": "std430"
-      },
-      {
-        "side": "glsl",
-        "file": "shaders/lightgrid_build.comp",
-        "line": 154,
-        "role": "LG_IndexPool",
-        "std": "std430"
-      },
-      {
-        "side": "glsl",
-        "file": "shaders/mech.vert",
-        "line": 53,
-        "role": "BoneBuffer",
-        "std": "std430"
-      },
-      {
-        "side": "glsl",
-        "file": "shaders/shadow_mech.vert",
-        "line": 15,
-        "role": "BoneBuffer",
-        "std": "std430"
-      },
-      {
-        "side": "glsl",
-        "file": "shaders/static_prop.vert",
-        "line": 47,
-        "role": "Colors",
-        "std": "std430"
-      },
-      {
-        "side": "glsl",
         "file": "shaders/vulkan/color_prop_tier1.vert",
-        "line": 83,
+        "line": 63,
         "role": "Instances",
         "std": "std430"
       },
       {
         "side": "glsl",
+        "file": "shaders/vulkan/hzb_cull.comp",
+        "line": 6,
+        "role": "ProjectedBounds",
+        "std": "std430"
+      },
+      {
+        "side": "glsl",
+        "file": "shaders/vulkan/mech_depth.vert",
+        "line": 11,
+        "role": "InstanceBuffer",
+        "std": "std430"
+      },
+      {
+        "side": "glsl",
         "file": "shaders/vulkan/mech_tier1.vert",
-        "line": 34,
+        "line": 35,
+        "role": "InstanceBuffer",
+        "std": "std430"
+      },
+      {
+        "side": "glsl",
+        "file": "shaders/vulkan/shadow_mech.vert",
+        "line": 25,
         "role": "InstanceBuffer",
         "std": "std430"
       },
       {
         "side": "glsl",
         "file": "shaders/vulkan/shadow_prop.vert",
-        "line": 52,
+        "line": 55,
         "role": "Instances",
         "std": "std430"
       },
       {
         "side": "glsl",
-        "file": "shaders/vulkan/terrain_tier1.frag",
-        "line": 48,
-        "role": "TerrainHeightBufFS",
-        "std": "std430"
-      },
-      {
-        "side": "glsl",
         "file": "shaders/vulkan/terrain_tier1.vert",
-        "line": 30,
+        "line": 31,
         "role": "TerrainHeightBuf",
         "std": "std430"
       },
@@ -295,272 +107,93 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/vfx_particle.vert",
-        "line": 29,
+        "line": 31,
         "role": "Particles",
         "std": "std430"
       },
       {
-        "side": "cpp",
-        "file": "GameOS/gameos/gameos_graphics.cpp",
-        "line": 4387,
-        "role": "glBindBufferBase(literal)"
+        "side": "glsl",
+        "file": "shaders/vulkan/vfx_vegetation.vert",
+        "line": 16,
+        "role": "VegDense",
+        "std": "std430"
       },
       {
-        "side": "cpp",
-        "file": "GameOS/gameos/gameos_graphics.cpp",
-        "line": 4534,
-        "role": "glBindBufferBase(literal)"
-      },
-      {
-        "side": "cpp",
-        "file": "GameOS/gameos/gos_terrain_indirect.cpp",
-        "line": 4663,
-        "role": "glBindBufferBase(literal)"
-      },
-      {
-        "side": "cpp",
-        "file": "GameOS/gameos/gos_terrain_indirect.cpp",
-        "line": 5068,
-        "role": "glBindBufferBase(literal)"
-      },
-      {
-        "side": "cpp",
-        "file": "GameOS/gameos/gos_terrain_water_stream.cpp",
-        "line": 1680,
-        "role": "glBindBufferBase(literal)"
-      },
-      {
-        "side": "cpp",
-        "file": "GameOS/gameos/gos_terrain_water_stream.cpp",
-        "line": 2124,
-        "role": "glBindBufferBase(literal)"
-      },
-      {
-        "side": "cpp",
-        "file": "GameOS/gameos/gos_terrain_water_stream.cpp",
-        "line": 2152,
-        "role": "glBindBufferBase(literal)"
+        "side": "glsl",
+        "file": "shaders/vulkan/include/vegetation_cull_common.glsl",
+        "line": 4,
+        "role": "VegVis",
+        "std": "std430"
       }
     ],
     "SSBO:2": [
       {
         "side": "glsl",
-        "file": "shaders/gos_terrain.frag",
-        "line": 114,
-        "role": "ThinRecordBufFrag",
-        "std": "std430"
-      },
-      {
-        "side": "glsl",
-        "file": "shaders/gos_terrain_lighting.comp",
-        "line": 44,
-        "role": "LightOutputs",
-        "std": "std430"
-      },
-      {
-        "side": "glsl",
-        "file": "shaders/gos_terrain_thin.vert",
-        "line": 23,
-        "role": "ThinRecordBuf",
-        "std": "std430"
-      },
-      {
-        "side": "glsl",
-        "file": "shaders/gpu_driven_terrain_solid.comp",
-        "line": 143,
-        "role": "HandleLut",
-        "std": "std430"
-      },
-      {
-        "side": "glsl",
-        "file": "shaders/gpu_driven_water.comp",
-        "line": 123,
-        "role": "Window",
-        "std": "std430"
-      },
-      {
-        "side": "glsl",
-        "file": "shaders/lightgrid_build.comp",
-        "line": 159,
-        "role": "LG_Cursor",
-        "std": "std430"
-      },
-      {
-        "side": "glsl",
-        "file": "shaders/static_prop.vert",
-        "line": 48,
-        "role": "PerType",
-        "std": "std430"
-      },
-      {
-        "side": "glsl",
         "file": "shaders/vulkan/color_prop_tier1.vert",
-        "line": 89,
+        "line": 69,
         "role": "TypeAlbedoLayer",
         "std": "std430"
       },
       {
         "side": "glsl",
-        "file": "shaders/vulkan/mech_tier1.vert",
-        "line": 40,
+        "file": "shaders/vulkan/hzb_cull.comp",
+        "line": 7,
+        "role": "Visibility",
+        "std": "std430"
+      },
+      {
+        "side": "glsl",
+        "file": "shaders/vulkan/mech_depth.vert",
+        "line": 13,
         "role": "BoneBuffer",
         "std": "std430"
       },
       {
-        "side": "cpp",
-        "file": "GameOS/gameos/gameos_graphics.cpp",
-        "line": 4535,
-        "role": "glBindBufferBase(literal)"
+        "side": "glsl",
+        "file": "shaders/vulkan/mech_tier1.vert",
+        "line": 41,
+        "role": "BoneBuffer",
+        "std": "std430"
       },
       {
-        "side": "cpp",
-        "file": "GameOS/gameos/gos_mech_batcher.cpp",
-        "line": 2361,
-        "role": "glBindBufferBase(literal)"
+        "side": "glsl",
+        "file": "shaders/vulkan/shadow_bake_bc4.comp",
+        "line": 9,
+        "role": "Bc4Blocks",
+        "std": "std430"
       },
       {
-        "side": "cpp",
-        "file": "GameOS/gameos/gos_static_prop_batcher.cpp",
-        "line": 6610,
-        "role": "glBindBufferBase(literal)"
+        "side": "glsl",
+        "file": "shaders/vulkan/shadow_mech.vert",
+        "line": 26,
+        "role": "BoneBuffer",
+        "std": "std430"
       },
       {
-        "side": "cpp",
-        "file": "GameOS/gameos/gos_static_prop_batcher.cpp",
-        "line": 6946,
-        "role": "glBindBufferBase(literal)"
-      },
-      {
-        "side": "cpp",
-        "file": "GameOS/gameos/gos_terrain_indirect.cpp",
-        "line": 4664,
-        "role": "glBindBufferBase(literal)"
-      },
-      {
-        "side": "cpp",
-        "file": "GameOS/gameos/gos_terrain_indirect.cpp",
-        "line": 5069,
-        "role": "glBindBufferBase(literal)"
-      },
-      {
-        "side": "cpp",
-        "file": "GameOS/gameos/gos_terrain_water_stream.cpp",
-        "line": 1681,
-        "role": "glBindBufferBase(literal)"
-      },
-      {
-        "side": "cpp",
-        "file": "GameOS/gameos/gos_terrain_water_stream.cpp",
-        "line": 2153,
-        "role": "glBindBufferBase(literal)"
+        "side": "glsl",
+        "file": "shaders/vulkan/include/vegetation_cull_common.glsl",
+        "line": 5,
+        "role": "VegInst",
+        "std": "std430"
       }
     ],
     "SSBO:3": [
       {
         "side": "glsl",
-        "file": "shaders/gpu_driven_terrain_solid.comp",
-        "line": 154,
-        "role": "Thin",
+        "file": "shaders/vulkan/include/shadow_bake_common.glsl",
+        "line": 21,
+        "role": "BakeHeights",
         "std": "std430"
       },
       {
         "side": "glsl",
-        "file": "shaders/gpu_driven_water.comp",
-        "line": 124,
-        "role": "Thin",
+        "file": "shaders/vulkan/include/vegetation_cull_common.glsl",
+        "line": 6,
+        "role": "VegReg",
         "std": "std430"
-      },
-      {
-        "side": "glsl",
-        "file": "shaders/static_prop.vert",
-        "line": 58,
-        "role": "ParityOut",
-        "std": "std430"
-      },
-      {
-        "side": "cpp",
-        "file": "GameOS/gameos/gos_terrain_water_stream.cpp",
-        "line": 1713,
-        "role": "glBindBufferBase(literal)"
-      },
-      {
-        "side": "cpp",
-        "file": "GameOS/gameos/gos_terrain_water_stream.cpp",
-        "line": 1723,
-        "role": "glBindBufferBase(literal)"
-      },
-      {
-        "side": "cpp",
-        "file": "GameOS/gameos/gos_terrain_water_stream.cpp",
-        "line": 1733,
-        "role": "glBindBufferBase(literal)"
-      },
-      {
-        "side": "cpp",
-        "file": "GameOS/gameos/gos_terrain_water_stream.cpp",
-        "line": 1751,
-        "role": "glBindBufferBase(literal)"
-      },
-      {
-        "side": "cpp",
-        "file": "GameOS/gameos/gos_terrain_water_stream.cpp",
-        "line": 1763,
-        "role": "glBindBufferBase(literal)"
-      },
-      {
-        "side": "cpp",
-        "file": "GameOS/gameos/gos_terrain_water_stream.cpp",
-        "line": 1945,
-        "role": "glBindBufferBase(literal)"
-      },
-      {
-        "side": "cpp",
-        "file": "GameOS/gameos/gos_terrain_water_stream.cpp",
-        "line": 2026,
-        "role": "glBindBufferBase(literal)"
-      },
-      {
-        "side": "cpp",
-        "file": "GameOS/gameos/gos_terrain_water_stream.cpp",
-        "line": 2039,
-        "role": "glBindBufferBase(literal)"
-      },
-      {
-        "side": "cpp",
-        "file": "GameOS/gameos/gos_terrain_water_stream.cpp",
-        "line": 2154,
-        "role": "glBindBufferBase(literal)"
       }
     ],
     "SSBO:4": [
-      {
-        "side": "glsl",
-        "file": "shaders/gos_terrain_mask_solid.vert",
-        "line": 37,
-        "role": "LightingBuf",
-        "std": "std430"
-      },
-      {
-        "side": "glsl",
-        "file": "shaders/gos_terrain_mask_water.vert",
-        "line": 41,
-        "role": "LightingBuf",
-        "std": "std430"
-      },
-      {
-        "side": "glsl",
-        "file": "shaders/static_prop.frag",
-        "line": 101,
-        "role": "PerDrawData",
-        "std": "std430"
-      },
-      {
-        "side": "glsl",
-        "file": "shaders/static_prop_depth.frag",
-        "line": 51,
-        "role": "PerDrawData",
-        "std": "std430"
-      },
       {
         "side": "glsl",
         "file": "shaders/vulkan/color_prop_tier1.vert",
@@ -571,382 +204,110 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/mech_tier1.vert",
-        "line": 60,
+        "line": 62,
         "role": "LightsData",
         "std": "std430"
       },
       {
         "side": "glsl",
         "file": "shaders/vulkan/include/terrain_frame_vk.glsl",
-        "line": 20,
+        "line": 21,
         "role": "TerrainCementBuf",
         "std": "std430"
-      },
-      {
-        "side": "cpp",
-        "file": "GameOS/gameos/gameos_graphics.cpp",
-        "line": 4769,
-        "role": "glBindBufferBase(literal)"
-      },
-      {
-        "side": "cpp",
-        "file": "GameOS/gameos/gameos_graphics.cpp",
-        "line": 4799,
-        "role": "glBindBufferBase(literal)"
-      },
-      {
-        "side": "cpp",
-        "file": "GameOS/gameos/gameos_graphics.cpp",
-        "line": 4935,
-        "role": "glBindBufferBase(literal)"
-      },
-      {
-        "side": "cpp",
-        "file": "GameOS/gameos/gameos_graphics.cpp",
-        "line": 4965,
-        "role": "glBindBufferBase(literal)"
-      },
-      {
-        "side": "cpp",
-        "file": "GameOS/gameos/gos_static_prop_batcher.cpp",
-        "line": 7522,
-        "role": "glBindBufferBase(literal)"
       }
     ],
     "SSBO:5": [
       {
         "side": "glsl",
-        "file": "shaders/building_pbr.frag",
-        "line": 10,
-        "role": "MaterialTable",
-        "std": "std430"
-      },
-      {
-        "side": "glsl",
-        "file": "shaders/gos_terrain_mask_water.vert",
-        "line": 33,
-        "role": "WaterRecipeBuf",
-        "std": "std430"
-      },
-      {
-        "side": "glsl",
-        "file": "shaders/gos_terrain_water_fast.vert",
-        "line": 31,
-        "role": "WaterRecipeBuf",
-        "std": "std430"
-      },
-      {
-        "side": "glsl",
-        "file": "shaders/gos_terrain_water_fast_mdi.vert",
-        "line": 28,
-        "role": "WaterRecipeBuf",
-        "std": "std430"
-      },
-      {
-        "side": "glsl",
-        "file": "shaders/static_prop.frag",
-        "line": 113,
-        "role": "MaterialTable",
-        "std": "std430"
-      },
-      {
-        "side": "glsl",
-        "file": "shaders/static_prop_depth.frag",
-        "line": 60,
-        "role": "MaterialTable",
-        "std": "std430"
-      },
-      {
-        "side": "glsl",
         "file": "shaders/vulkan/color_prop_tier1.vert",
-        "line": 95,
+        "line": 75,
         "role": "TypeAlbedoLayerOn",
         "std": "std430"
       },
       {
         "side": "glsl",
-        "file": "shaders/vulkan/mech_tier1.frag",
-        "line": 49,
-        "role": "MechPoolLightsVK",
-        "std": "std430"
-      },
-      {
-        "side": "glsl",
         "file": "shaders/vulkan/water_geom.vert",
-        "line": 33,
+        "line": 34,
         "role": "WaterRecipeBuf",
         "std": "std430"
       },
       {
-        "side": "cpp",
-        "file": "GameOS/gameos/gameos_graphics.cpp",
-        "line": 3590,
-        "role": "glBindBufferBase(literal)"
+        "side": "glsl",
+        "file": "shaders/vulkan/include/impact_decal_common.glsl",
+        "line": 4,
+        "role": "Decals",
+        "std": "std430"
       },
       {
-        "side": "cpp",
-        "file": "GameOS/gameos/gameos_graphics.cpp",
-        "line": 3791,
-        "role": "glBindBufferBase(literal)"
-      },
-      {
-        "side": "cpp",
-        "file": "GameOS/gameos/gameos_graphics.cpp",
-        "line": 3807,
-        "role": "glBindBufferBase(literal)"
-      },
-      {
-        "side": "cpp",
-        "file": "GameOS/gameos/gameos_graphics.cpp",
-        "line": 3889,
-        "role": "glBindBufferBase(literal)"
-      },
-      {
-        "side": "cpp",
-        "file": "GameOS/gameos/gameos_graphics.cpp",
-        "line": 4931,
-        "role": "glBindBufferBase(literal)"
-      },
-      {
-        "side": "cpp",
-        "file": "GameOS/gameos/gameos_graphics.cpp",
-        "line": 4963,
-        "role": "glBindBufferBase(literal)"
-      },
-      {
-        "side": "cpp",
-        "file": "GameOS/gameos/gos_static_prop_batcher.cpp",
-        "line": 6621,
-        "role": "glBindBufferBase(literal)"
-      },
-      {
-        "side": "cpp",
-        "file": "GameOS/gameos/gos_static_prop_batcher.cpp",
-        "line": 7529,
-        "role": "glBindBufferBase(literal)"
-      },
-      {
-        "side": "cpp",
-        "file": "mclib/txmmgr.cpp",
-        "line": 2507,
-        "role": "glBindBufferBase(literal)"
-      },
-      {
-        "side": "cpp",
-        "file": "mclib/txmmgr.cpp",
-        "line": 2533,
-        "role": "glBindBufferBase(literal)"
+        "side": "glsl",
+        "file": "shaders/vulkan/include/vegetation_cull_common.glsl",
+        "line": 7,
+        "role": "VegCounts",
+        "std": "std430"
       }
     ],
     "SSBO:6": [
       {
         "side": "glsl",
-        "file": "shaders/gos_terrain_water_fast.vert",
-        "line": 49,
-        "role": "WaterThinBuf",
-        "std": "std430"
-      },
-      {
-        "side": "glsl",
-        "file": "shaders/gos_terrain_water_fast_mdi.vert",
-        "line": 38,
-        "role": "WaterThinBuf",
-        "std": "std430"
-      },
-      {
-        "side": "glsl",
-        "file": "shaders/gpu_driven_terrain_solid.comp",
-        "line": 155,
-        "role": "Header",
-        "std": "std430"
-      },
-      {
-        "side": "glsl",
-        "file": "shaders/gpu_driven_water.comp",
-        "line": 125,
-        "role": "Header",
-        "std": "std430"
-      },
-      {
-        "side": "glsl",
         "file": "shaders/vulkan/water_geom.vert",
-        "line": 43,
+        "line": 44,
         "role": "WaterThinBuf",
         "std": "std430"
       },
       {
-        "side": "cpp",
-        "file": "GameOS/gameos/gameos_graphics.cpp",
-        "line": 3792,
-        "role": "glBindBufferBase(literal)"
-      },
-      {
-        "side": "cpp",
-        "file": "GameOS/gameos/gameos_graphics.cpp",
-        "line": 3890,
-        "role": "glBindBufferBase(literal)"
-      },
-      {
-        "side": "cpp",
-        "file": "GameOS/gameos/gos_terrain_indirect.cpp",
-        "line": 4673,
-        "role": "glBindBufferBase(literal)"
-      },
-      {
-        "side": "cpp",
-        "file": "GameOS/gameos/gos_terrain_indirect.cpp",
-        "line": 5076,
-        "role": "glBindBufferBase(literal)"
-      },
-      {
-        "side": "cpp",
-        "file": "GameOS/gameos/gos_terrain_water_stream.cpp",
-        "line": 1691,
-        "role": "glBindBufferBase(literal)"
-      },
-      {
-        "side": "cpp",
-        "file": "GameOS/gameos/gos_terrain_water_stream.cpp",
-        "line": 2027,
-        "role": "glBindBufferBase(literal)"
-      },
-      {
-        "side": "cpp",
-        "file": "GameOS/gameos/gos_terrain_water_stream.cpp",
-        "line": 2040,
-        "role": "glBindBufferBase(literal)"
+        "side": "glsl",
+        "file": "shaders/vulkan/include/vegetation_cull_common.glsl",
+        "line": 8,
+        "role": "VegOffsets",
+        "std": "std430"
       }
     ],
     "SSBO:7": [
       {
         "side": "glsl",
-        "file": "shaders/gos_terrain_water_fast_mdi.vert",
-        "line": 55,
-        "role": "PerCmdBuf",
+        "file": "shaders/vulkan/color_prop_tier1.vert",
+        "line": 100,
+        "role": "TypeHotColors",
         "std": "std430"
       },
       {
         "side": "glsl",
-        "file": "shaders/gpu_cull_patch.comp",
-        "line": 76,
-        "role": "CmdToBucket",
+        "file": "shaders/vulkan/include/vegetation_cull_common.glsl",
+        "line": 9,
+        "role": "VegDense",
         "std": "std430"
-      },
-      {
-        "side": "glsl",
-        "file": "shaders/gpu_driven_terrain_solid.comp",
-        "line": 162,
-        "role": "Canary",
-        "std": "std430"
-      },
-      {
-        "side": "cpp",
-        "file": "GameOS/gameos/gameos_graphics.cpp",
-        "line": 3592,
-        "role": "glBindBufferBase(literal)"
-      },
-      {
-        "side": "cpp",
-        "file": "GameOS/gameos/gameos_graphics.cpp",
-        "line": 3793,
-        "role": "glBindBufferBase(literal)"
-      },
-      {
-        "side": "cpp",
-        "file": "GameOS/gameos/gos_terrain_indirect.cpp",
-        "line": 4674,
-        "role": "glBindBufferBase(literal)"
-      },
-      {
-        "side": "cpp",
-        "file": "GameOS/gameos/gpu_cull_compute.cpp",
-        "line": 1265,
-        "role": "glBindBufferBase(literal)"
       }
     ],
     "SSBO:8": [
       {
         "side": "glsl",
-        "file": "shaders/gpu_cull.comp",
-        "line": 51,
-        "role": "RecordsBuf",
+        "file": "shaders/vulkan/include/shadow_bake_common.glsl",
+        "line": 26,
+        "role": "BakeMaskOut",
         "std": "std430"
       },
       {
         "side": "glsl",
-        "file": "shaders/gpu_cull_block_rollup.comp",
-        "line": 44,
-        "role": "RecordsBuf",
+        "file": "shaders/vulkan/include/vegetation_cull_common.glsl",
+        "line": 10,
+        "role": "VegArgs",
         "std": "std430"
-      },
-      {
-        "side": "glsl",
-        "file": "shaders/gpu_driven_terrain_solid.comp",
-        "line": 168,
-        "role": "CmdBuf",
-        "std": "std430"
-      },
-      {
-        "side": "cpp",
-        "file": "GameOS/gameos/gos_terrain_indirect.cpp",
-        "line": 4682,
-        "role": "glBindBufferBase(literal)"
-      },
-      {
-        "side": "cpp",
-        "file": "GameOS/gameos/gos_terrain_indirect.cpp",
-        "line": 5073,
-        "role": "glBindBufferBase(literal)"
       }
     ],
     "SSBO:9": [
       {
         "side": "glsl",
-        "file": "shaders/gpu_cull.comp",
-        "line": 73,
-        "role": "VisibleIds",
+        "file": "shaders/vulkan/color_prop_tier1.vert",
+        "line": 137,
+        "role": "HzbVisibility",
         "std": "std430"
-      },
-      {
-        "side": "glsl",
-        "file": "shaders/gpu_cull.comp",
-        "line": 131,
-        "role": "DebugOut",
-        "std": "std430"
-      },
-      {
-        "side": "glsl",
-        "file": "shaders/gpu_driven_terrain_solid.comp",
-        "line": 176,
-        "role": "SolidWin",
-        "std": "std430"
-      },
-      {
-        "side": "cpp",
-        "file": "GameOS/gameos/gos_terrain_indirect.cpp",
-        "line": 4688,
-        "role": "glBindBufferBase(literal)"
       }
     ],
     "SSBO:10": [
       {
         "side": "glsl",
-        "file": "shaders/gpu_cull.comp",
-        "line": 81,
-        "role": "BucketCounts",
-        "std": "std430"
-      },
-      {
-        "side": "glsl",
-        "file": "shaders/gpu_cull_patch.comp",
-        "line": 46,
-        "role": "BucketCounts",
-        "std": "std430"
-      },
-      {
-        "side": "glsl",
         "file": "shaders/vulkan/terrain_tier1.vert",
-        "line": 37,
+        "line": 38,
         "role": "TerrainVisualHeightBuf",
         "std": "std430"
       },
@@ -961,22 +322,8 @@
     "SSBO:11": [
       {
         "side": "glsl",
-        "file": "shaders/gpu_cull.comp",
-        "line": 91,
-        "role": "BucketCaps",
-        "std": "std430"
-      },
-      {
-        "side": "glsl",
-        "file": "shaders/gpu_cull_patch.comp",
-        "line": 54,
-        "role": "IndirectCmds",
-        "std": "std430"
-      },
-      {
-        "side": "glsl",
         "file": "shaders/vulkan/include/terrain_frame_vk.glsl",
-        "line": 38,
+        "line": 39,
         "role": "TerrainLightPoolVK",
         "std": "std430"
       }
@@ -984,466 +331,93 @@
     "SSBO:12": [
       {
         "side": "glsl",
-        "file": "shaders/gos_vegetation_card.vert",
-        "line": 44,
-        "role": "BlockVis",
-        "std": "std430"
-      },
-      {
-        "side": "glsl",
-        "file": "shaders/gpu_cull.comp",
-        "line": 97,
-        "role": "ActorVis",
-        "std": "std430"
-      },
-      {
-        "side": "glsl",
-        "file": "shaders/gpu_cull_block_rollup.comp",
-        "line": 51,
-        "role": "ActorVis",
+        "file": "shaders/vulkan/include/prop_material_vk.glsl",
+        "line": 15,
+        "role": "PropMaterials",
         "std": "std430"
       },
       {
         "side": "glsl",
         "file": "shaders/vulkan/include/terrain_frame_vk.glsl",
-        "line": 41,
+        "line": 42,
         "role": "TerrainLightGridHeaderVK",
         "std": "std430"
-      },
-      {
-        "side": "cpp",
-        "file": "GameOS/gameos/gos_vegetation.cpp",
-        "line": 477,
-        "role": "glBindBufferBase(literal)"
-      },
-      {
-        "side": "cpp",
-        "file": "GameOS/gameos/gos_vegetation.cpp",
-        "line": 490,
-        "role": "glBindBufferBase(literal)"
       }
     ],
     "SSBO:13": [
       {
         "side": "glsl",
-        "file": "shaders/gpu_cull.comp",
-        "line": 124,
-        "role": "BlockVis",
-        "std": "std430"
-      },
-      {
-        "side": "glsl",
-        "file": "shaders/gpu_cull_block_rollup.comp",
-        "line": 63,
-        "role": "BlockVis",
-        "std": "std430"
-      },
-      {
-        "side": "glsl",
         "file": "shaders/vulkan/include/terrain_frame_vk.glsl",
-        "line": 44,
+        "line": 45,
         "role": "TerrainLightGridIndicesVK",
         "std": "std430"
-      }
-    ],
-    "SSBO:14": [
-      {
-        "side": "glsl",
-        "file": "shaders/gpu_cull.comp",
-        "line": 146,
-        "role": "ReadbackBuf",
-        "std": "std430"
-      },
-      {
-        "side": "glsl",
-        "file": "shaders/particle_billboard.vert",
-        "line": 26,
-        "role": "Particles",
-        "std": "std430"
-      },
-      {
-        "side": "glsl",
-        "file": "shaders/tube_ribbon.vert",
-        "line": 24,
-        "role": "RibbonPos",
-        "std": "std430"
-      },
-      {
-        "side": "cpp",
-        "file": "GameOS/gameos/gos_particle_bridge.cpp",
-        "line": 609,
-        "role": "glBindBufferBase(literal)"
-      },
-      {
-        "side": "cpp",
-        "file": "GameOS/gameos/gos_particle_bridge.cpp",
-        "line": 650,
-        "role": "glBindBufferBase(literal)"
-      },
-      {
-        "side": "cpp",
-        "file": "GameOS/gameos/gos_particle_bridge.cpp",
-        "line": 847,
-        "role": "glBindBufferBase(literal)"
-      },
-      {
-        "side": "cpp",
-        "file": "GameOS/gameos/gos_particle_bridge.cpp",
-        "line": 895,
-        "role": "glBindBufferBase(literal)"
-      }
-    ],
-    "SSBO:15": [
-      {
-        "side": "glsl",
-        "file": "shaders/gpu_cull_patch.comp",
-        "line": 69,
-        "role": "PermutationBuf",
-        "std": "std430"
-      },
-      {
-        "side": "glsl",
-        "file": "shaders/tube_ribbon.vert",
-        "line": 25,
-        "role": "RibbonColor",
-        "std": "std430"
-      },
-      {
-        "side": "cpp",
-        "file": "GameOS/gameos/gos_particle_bridge.cpp",
-        "line": 610,
-        "role": "glBindBufferBase(literal)"
-      },
-      {
-        "side": "cpp",
-        "file": "GameOS/gameos/gos_particle_bridge.cpp",
-        "line": 651,
-        "role": "glBindBufferBase(literal)"
-      },
-      {
-        "side": "cpp",
-        "file": "GameOS/gameos/gos_particle_bridge.cpp",
-        "line": 848,
-        "role": "glBindBufferBase(literal)"
-      },
-      {
-        "side": "cpp",
-        "file": "GameOS/gameos/gos_particle_bridge.cpp",
-        "line": 896,
-        "role": "glBindBufferBase(literal)"
-      },
-      {
-        "side": "cpp",
-        "file": "GameOS/gameos/gpu_cull_compute.cpp",
-        "line": 1250,
-        "role": "glBindBufferBase(literal)"
-      }
-    ],
-    "SSBO:16": [
-      {
-        "side": "glsl",
-        "file": "shaders/gpu_cull_patch.comp",
-        "line": 35,
-        "role": "BaseInstanceByCmd",
-        "std": "std430"
-      },
-      {
-        "side": "glsl",
-        "file": "shaders/tube_ribbon.vert",
-        "line": 26,
-        "role": "RibbonUv",
-        "std": "std430"
-      },
-      {
-        "side": "cpp",
-        "file": "GameOS/gameos/gos_particle_bridge.cpp",
-        "line": 611,
-        "role": "glBindBufferBase(literal)"
-      },
-      {
-        "side": "cpp",
-        "file": "GameOS/gameos/gos_particle_bridge.cpp",
-        "line": 652,
-        "role": "glBindBufferBase(literal)"
-      },
-      {
-        "side": "cpp",
-        "file": "GameOS/gameos/gos_particle_bridge.cpp",
-        "line": 849,
-        "role": "glBindBufferBase(literal)"
-      },
-      {
-        "side": "cpp",
-        "file": "GameOS/gameos/gos_particle_bridge.cpp",
-        "line": 897,
-        "role": "glBindBufferBase(literal)"
-      }
-    ],
-    "SSBO:17": [
-      {
-        "side": "glsl",
-        "file": "shaders/gos_terrain_mask_solid.vert",
-        "line": 20,
-        "role": "SolidMaskBuf",
-        "std": "std430"
-      },
-      {
-        "side": "cpp",
-        "file": "GameOS/gameos/gameos_graphics.cpp",
-        "line": 4764,
-        "role": "glBindBufferBase(literal)"
-      },
-      {
-        "side": "cpp",
-        "file": "GameOS/gameos/gameos_graphics.cpp",
-        "line": 4796,
-        "role": "glBindBufferBase(literal)"
-      }
-    ],
-    "SSBO:18": [
-      {
-        "side": "glsl",
-        "file": "shaders/gos_terrain_mask_water.vert",
-        "line": 30,
-        "role": "WaterMaskBuf",
-        "std": "std430"
-      },
-      {
-        "side": "cpp",
-        "file": "GameOS/gameos/gameos_graphics.cpp",
-        "line": 4930,
-        "role": "glBindBufferBase(literal)"
-      },
-      {
-        "side": "cpp",
-        "file": "GameOS/gameos/gameos_graphics.cpp",
-        "line": 4962,
-        "role": "glBindBufferBase(literal)"
-      }
-    ],
-    "SSBO:19": [
-      {
-        "side": "glsl",
-        "file": "shaders/gos_terrain_mask_solid.vert",
-        "line": 29,
-        "role": "RecipeBuf",
-        "std": "std430"
-      },
-      {
-        "side": "cpp",
-        "file": "GameOS/gameos/gameos_graphics.cpp",
-        "line": 4765,
-        "role": "glBindBufferBase(literal)"
-      },
-      {
-        "side": "cpp",
-        "file": "GameOS/gameos/gameos_graphics.cpp",
-        "line": 4797,
-        "role": "glBindBufferBase(literal)"
       }
     ],
     "SSBO:20": [
       {
         "side": "glsl",
-        "file": "shaders/gos_terrain_surface.vert",
-        "line": 60,
-        "role": "SurfaceVertexBuf",
-        "std": "std430"
-      },
-      {
-        "side": "glsl",
-        "file": "shaders/lightgrid_build.comp",
-        "line": 73,
-        "role": "LG_LightsData",
-        "std": "std430"
-      },
-      {
-        "side": "glsl",
         "file": "shaders/include/lighting.hglsl",
-        "line": 48,
+        "line": 49,
         "role": "LightsData",
-        "std": "std430"
-      },
-      {
-        "side": "cpp",
-        "file": "GameOS/gameos/gameos_graphics.cpp",
-        "line": 4096,
-        "role": "glBindBufferBase(literal)"
-      },
-      {
-        "side": "cpp",
-        "file": "GameOS/gameos/gameos_graphics.cpp",
-        "line": 4147,
-        "role": "glBindBufferBase(literal)"
-      }
-    ],
-    "SSBO:21": [
-      {
-        "side": "glsl",
-        "file": "shaders/gos_terrain_surface.vert",
-        "line": 63,
-        "role": "SurfaceIndexBuf",
-        "std": "std430"
-      },
-      {
-        "side": "cpp",
-        "file": "GameOS/gameos/gameos_graphics.cpp",
-        "line": 4128,
-        "role": "glBindBufferBase(literal)"
-      },
-      {
-        "side": "cpp",
-        "file": "GameOS/gameos/gameos_graphics.cpp",
-        "line": 4148,
-        "role": "glBindBufferBase(literal)"
-      }
-    ],
-    "SSBO:22": [
-      {
-        "side": "glsl",
-        "file": "shaders/gos_terrain_surface.vert",
-        "line": 78,
-        "role": "SurfaceTileBuf",
-        "std": "std430"
-      },
-      {
-        "side": "cpp",
-        "file": "GameOS/gameos/gameos_graphics.cpp",
-        "line": 4105,
-        "role": "glBindBufferBase(literal)"
-      },
-      {
-        "side": "cpp",
-        "file": "GameOS/gameos/gameos_graphics.cpp",
-        "line": 4149,
-        "role": "glBindBufferBase(literal)"
-      }
-    ],
-    "SSBO:23": [
-      {
-        "side": "glsl",
-        "file": "shaders/terrain_lod_chunk.frag",
-        "line": 182,
-        "role": "TerrainHeightBufFrag",
-        "std": "std430"
-      },
-      {
-        "side": "glsl",
-        "file": "shaders/terrain_lod_chunk.vert",
-        "line": 25,
-        "role": "TerrainHeightBuf",
-        "std": "std430"
-      }
-    ],
-    "SSBO:24": [
-      {
-        "side": "glsl",
-        "file": "shaders/terrain_lod_chunk.vert",
-        "line": 30,
-        "role": "TerrainTypeBuf",
-        "std": "std430"
-      }
-    ],
-    "SSBO:25": [
-      {
-        "side": "glsl",
-        "file": "shaders/terrain_lod_chunk.frag",
-        "line": 187,
-        "role": "TerrainCementBufFrag",
-        "std": "std430"
-      },
-      {
-        "side": "glsl",
-        "file": "shaders/terrain_overlay.frag",
-        "line": 103,
-        "role": "TerrainCementBufOverlay",
-        "std": "std430"
-      }
-    ],
-    "SSBO:26": [
-      {
-        "side": "glsl",
-        "file": "shaders/terrain_lod_chunk.vert",
-        "line": 36,
-        "role": "TerrainVisualHeightBuf",
-        "std": "std430"
-      }
-    ],
-    "SSBO:27": [
-      {
-        "side": "glsl",
-        "file": "shaders/terrain_lod_chunk.vert",
-        "line": 43,
-        "role": "TerrainVisualDampBuf",
         "std": "std430"
       }
     ],
     "SSBO:28": [
       {
         "side": "glsl",
-        "file": "shaders/terrain_lod_chunk.frag",
-        "line": 209,
-        "role": "TerrainLightPoolFrag",
-        "std": "std430"
-      },
-      {
-        "side": "glsl",
-        "file": "shaders/terrain_overlay.frag",
-        "line": 83,
-        "role": "TerrainLightPoolOverlay",
-        "std": "std430"
-      },
-      {
-        "side": "glsl",
         "file": "shaders/include/light_pools.hglsl",
         "line": 32,
         "role": "ObjectLightPool",
-        "std": "std430"
-      },
-      {
-        "side": "cpp",
-        "file": "GameOS/gameos/gos_terrain_lighting.cpp",
-        "line": 730,
-        "role": "glBindBufferBase(literal)"
-      }
-    ],
-    "SSBO:29": [
-      {
-        "side": "glsl",
-        "file": "shaders/terrain_lod_chunk.frag",
-        "line": 229,
-        "role": "TerrainLightGridHeader",
-        "std": "std430"
-      }
-    ],
-    "SSBO:30": [
-      {
-        "side": "glsl",
-        "file": "shaders/terrain_lod_chunk.frag",
-        "line": 232,
-        "role": "TerrainLightGridIndices",
         "std": "std430"
       }
     ],
     "UBO:0": [
       {
         "side": "glsl",
+        "file": "shaders/vulkan/shadow_bake_bc4.comp",
+        "line": 7,
+        "role": "Bc4Level",
+        "std": "std140"
+      },
+      {
+        "side": "glsl",
+        "file": "shaders/vulkan/shadow_mech.vert",
+        "line": 13,
+        "role": "ShadowFrameUBO",
+        "std": "std140"
+      },
+      {
+        "side": "glsl",
         "file": "shaders/vulkan/shadow_prop.vert",
-        "line": 38,
+        "line": 40,
+        "role": "ShadowFrameUBO",
+        "std": "std140"
+      },
+      {
+        "side": "glsl",
+        "file": "shaders/vulkan/shadow_terrain_static.vert",
+        "line": 10,
         "role": "ShadowFrameUBO",
         "std": "std140"
       },
       {
         "side": "glsl",
         "file": "shaders/vulkan/vfx_particle.vert",
-        "line": 33,
+        "line": 35,
+        "role": "VfxVsParams",
+        "std": "std140"
+      },
+      {
+        "side": "glsl",
+        "file": "shaders/vulkan/vfx_vegetation.vert",
+        "line": 8,
         "role": "VfxVsParams",
         "std": "std140"
       },
       {
         "side": "glsl",
         "file": "shaders/vulkan/water_geom.vert",
-        "line": 52,
+        "line": 53,
         "role": "WaterVsParams",
         "std": "std140"
       },
@@ -1470,8 +444,15 @@
       },
       {
         "side": "glsl",
-        "file": "shaders/vulkan/include/terrain_frame_ubo_vk.glsl",
+        "file": "shaders/vulkan/include/shadow_bake_common.glsl",
         "line": 7,
+        "role": "BakeTile",
+        "std": "std140"
+      },
+      {
+        "side": "glsl",
+        "file": "shaders/vulkan/include/terrain_frame_ubo_vk.glsl",
+        "line": 10,
         "role": "TerrainFrameUBO",
         "std": "std140"
       },
@@ -1481,23 +462,16 @@
         "line": 17,
         "role": "TerrainFrameUBO",
         "std": "std140"
+      },
+      {
+        "side": "glsl",
+        "file": "shaders/vulkan/include/vegetation_cull_common.glsl",
+        "line": 3,
+        "role": "VegParams",
+        "std": "std140"
       }
     ],
     "UBO:1": [
-      {
-        "side": "glsl",
-        "file": "shaders/building_pbr.vert",
-        "line": 11,
-        "role": "mesh_data",
-        "std": "std140"
-      },
-      {
-        "side": "glsl",
-        "file": "shaders/gos_tex_vertex_lighted.vert",
-        "line": 12,
-        "role": "mesh_data",
-        "std": "std140"
-      },
       {
         "side": "glsl",
         "file": "shaders/include/scene.hglsl",
@@ -1529,33 +503,26 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/hzb_reduce.frag",
-        "line": 27,
+        "line": 6,
         "role": "HzbParams",
         "std": "std140"
       },
       {
         "side": "glsl",
-        "file": "shaders/vulkan/ssao_apply.frag",
-        "line": 29,
-        "role": "SSAOApplyParams",
+        "file": "shaders/vulkan/water_geom.frag",
+        "line": 33,
+        "role": "WaterFsParams",
         "std": "std140"
       },
       {
         "side": "glsl",
-        "file": "shaders/vulkan/water_geom.frag",
-        "line": 29,
+        "file": "shaders/vulkan/water_geom.vert",
+        "line": 63,
         "role": "WaterFsParams",
         "std": "std140"
       }
     ],
     "UBO:2": [
-      {
-        "side": "glsl",
-        "file": "shaders/gpu_cull.comp",
-        "line": 169,
-        "role": "CullUBO",
-        "std": "std140"
-      },
       {
         "side": "glsl",
         "file": "shaders/vulkan/postprocess.frag",
@@ -1572,9 +539,9 @@
       },
       {
         "side": "glsl",
-        "file": "shaders/vulkan/ssao.frag",
-        "line": 62,
-        "role": "SSAOParams",
+        "file": "shaders/vulkan/vfx_vegetation.vert",
+        "line": 17,
+        "role": "VegDrawParams",
         "std": "std140"
       }
     ],
@@ -1589,15 +556,35 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/screen_shadow_csm.frag",
-        "line": 25,
-        "role": "ScreenShadowCsmParams",
+        "line": 11,
+        "role": "ScreenShadowParams",
         "std": "std140"
-      },
+      }
+    ],
+    "UBO:4": [
       {
         "side": "glsl",
-        "file": "shaders/vulkan/screen_shadow_static.frag",
-        "line": 18,
-        "role": "ScreenShadowStaticParams",
+        "file": "shaders/vulkan/include/impact_decal_common.glsl",
+        "line": 5,
+        "role": "ImpactFrame",
+        "std": "std140"
+      }
+    ],
+    "UBO:9": [
+      {
+        "side": "glsl",
+        "file": "shaders/vulkan/include/shadow_bake_common.glsl",
+        "line": 17,
+        "role": "BakePass",
+        "std": "std140"
+      }
+    ],
+    "UBO:25": [
+      {
+        "side": "glsl",
+        "file": "shaders/vulkan/include/mover_shadow.glsl",
+        "line": 6,
+        "role": "MoverShadowFrame",
         "std": "std140"
       }
     ]

@@ -4439,28 +4439,6 @@
    "count": 1
   },
   {
-   "tag": "KTX2_MIP",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [],
-   "count": 2
-  },
-  {
-   "tag": "KTX_SIDECAR",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "node",
-    "srcName",
-    "path",
-    "load",
-    "ktxDims",
-    "glDims",
-    "match"
-   ],
-   "count": 1
-  },
-  {
    "tag": "LAUNCHER_ENV",
    "ver": 1,
    "stream": "stderr",
@@ -6212,6 +6190,32 @@
    "count": 1
   },
   {
+   "tag": "OVERLAY_PRESTAGE",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "identical",
+    "old_verts",
+    "verts",
+    "cement_skip",
+    "sidecar_skip",
+    "unresolved"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "OVERLAY_PRESTAGE",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "verts",
+    "draws",
+    "cement_ready",
+    "sidecar"
+   ],
+   "count": 1
+  },
+  {
    "tag": "OVERLAY_TILE_HIRES",
    "ver": 1,
    "stream": "stdout",
@@ -7769,18 +7773,6 @@
    "count": 1
   },
   {
-   "tag": "SEAMPROBE",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "type",
-    "pkt",
-    "layer",
-    "group"
-   ],
-   "count": 1
-  },
-  {
    "tag": "SHADOW_BAKE",
    "ver": -1,
    "stream": "stderr",
@@ -8618,40 +8610,6 @@
    "count": 1
   },
   {
-   "tag": "STATICPROP_BC7",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "group",
-    "layers",
-    "dims",
-    "levels",
-    "internalformat",
-    "bytes"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "STATICPROP_BC7",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "group",
-    "reason"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "STATICPROP_BC7",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "group",
-    "srcVkFormat"
-   ],
-   "count": 1
-  },
-  {
    "tag": "STATIC_LIGHT_ROW",
    "ver": 1,
    "stream": "stderr",
@@ -9042,6 +9000,16 @@
    "stream": "log",
    "keys": [],
    "count": 13
+  },
+  {
+   "tag": "TEXTURE_RESIDENT",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "phase",
+    "bytes"
+   ],
+   "count": 1
   },
   {
    "tag": "TEXTURE_RGBA",
@@ -10454,6 +10422,17 @@
    "ver": -1,
    "stream": "stderr",
    "keys": [],
+   "count": 1
+  },
+  {
+   "tag": "VK_PRESENT_WARM",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "hud_variants",
+    "complete",
+    "submitted"
+   ],
    "count": 1
   },
   {
