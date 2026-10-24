@@ -93,6 +93,14 @@ def test_floats_compare_at_engine_precision():
     rop.require_same({"values": values(StaticPropIblSunRotateFloor=0.45)}, {"values": values(StaticPropIblSunRotateFloor=0.44999998807907104)})
 
 
+def test_old_capture_missing_option_uses_default():
+    old = values()
+    del old["RemasteredBuildings"]
+    rop.require_same({"values": old}, {"values": values()})
+    with pytest.raises(rop.OptionsMismatch, match="RemasteredBuildings"):
+        rop.require_same({"values": old}, {"values": values(RemasteredBuildings=False)})
+
+
 def test_engine_report_must_agree_with_the_harness_reading():
     assert rop.check_engine(values(), None) == []
     assert rop.check_engine(values(), values()) == []

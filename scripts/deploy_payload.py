@@ -1204,35 +1204,6 @@ def ensure_terrain_materials(target_dir):
     return hashes
 
 
-def ensure_industrial_model_cooks(target_dir, cooker=subprocess.run):
-    """Populate native static-GLB recipes before the player's first mission."""
-    target = Path(target_dir)
-    kit = target / "mods/mc2-industrial-kit/data/model_overrides"
-    if not kit.is_dir():
-        return
-    tool = Path(__file__).resolve().parents[1] / "build-cc-tgdump/tg_import_dump.exe"
-    if not tool.is_file():
-        log("[DEPLOY] WARN: industrial native cook skipped: build tg_import_dump first")
-        return
-    models = sorted(kit.glob("*/*.glb"))
-    digest = hashlib.sha256(tool.read_bytes())
-    for model in models:
-        digest.update(model.read_bytes())
-    stamp = target / "cache/content-model/industrial-cook.sha256"
-    identity = digest.hexdigest()
-    if stamp.is_file() and stamp.read_text() == identity:
-        return
-    for model in models:
-        result = cooker([str(tool), model.relative_to(target).as_posix(), "--no-ground", "--static-prop"],
-                        cwd=target, capture_output=True, text=True, timeout=120,
-                        **console_child.child_kwargs(redirected=True))
-        if result.returncode:
-            fail(f"industrial native cook failed: {model.name}: {result.stderr[-300:]}")
-    stamp.parent.mkdir(parents=True, exist_ok=True)
-    stamp.write_text(identity)
-    log(f"industrial native recipes cooked before launch: {len(models)} GLBs")
-
-
 def deploy(items, target_dir, allow_stale_pdb, preserve=(), cache=None,
            full_verify=False):
     """Copy + verify the payload.
@@ -1247,7 +1218,6 @@ def deploy(items, target_dir, allow_stale_pdb, preserve=(), cache=None,
     """
     src_hashes = ensure_terrain_materials(target_dir)
     ensure_engine_normal_cooks(target_dir)
-    ensure_industrial_model_cooks(target_dir)
     shader_mismatches = []
     pdb_problem = None
     preserve = {p.replace(os.sep, "/") for p in preserve}
@@ -1680,6 +1650,8 @@ def main():
                     help="canned target preset: 'game' (v0.4, mc2.exe) or "
                     "'editor' (dev v0.4, Mission Editor.exe, EditRel build dir). "
                     "Sets defaults only; explicit flags still override.")
+    ap.add_argument("--classic-assets", action="store_true",
+                    help="deploy without the Remastered building kit (also honors RemasteredBuildings=FALSE)")
     ap.add_argument("--source-root", default=repo_root(),
                     help="source worktree root (default: this script's repo)")
     ap.add_argument("--build-dir", default=None,
@@ -1847,6 +1819,18 @@ def run_deploy(args, src_root, build_dir, target, exe_name, pdb_name):
 
     items = enumerate_payload(src_root, build_dir, exe_name, pdb_name,
                               build64_root=args.build64_root)
+    import kit_payload
+    from smoke_lib import render_options_pin
+    kit_manifest = None
+    kit_tool = None
+    remastered = render_options_pin.record(Path(target), os.environ)["values"]["RemasteredBuildings"]
+    if not args.classic_assets and remastered:
+        try:
+            kit_manifest, kit_items = kit_payload.payload(src_root)
+            items.extend(kit_items)
+            kit_tool = kit_payload.build_importer(src_root)
+        except (OSError, ValueError, KeyError) as exc:
+            fail(f"RemasteredBuildings requires the pinned kit: {exc}; use --classic-assets for Classic")
     log(f"payload: {len(items)} files "
         f"({sum(1 for *_x, k in items if k == 'shader')} shaders, "
         f"{sum(1 for *_x, k in items if k == 'defs')} defs)")
@@ -1873,6 +1857,11 @@ def run_deploy(args, src_root, build_dir, target, exe_name, pdb_name):
     cache = {} if args.full_verify else read_manifest(target)
     hashes = deploy(items, target, args.allow_stale_pdb, preserve=args.preserve,
                     cache=cache, full_verify=args.full_verify)
+    if kit_manifest:
+        try:
+            kit_payload.finish(target, kit_manifest, kit_tool)
+        except (OSError, ValueError, KeyError, subprocess.SubprocessError) as exc:
+            fail(f"pinned industrial kit deploy failed: {exc}")
     installed = os.path.join(target, exe_name)
     require_head_exe(installed, source_head)
     if sha256_file(installed) != sha256_file(os.path.join(build_dir, exe_name)):

@@ -246,7 +246,7 @@ def test_gate_dry_run_never_executes(monkeypatch, capsys):
     assert "validation | DRY-RUN" in capsys.readouterr().out
 
 
-def test_gate_red_stops_remaining_stages(monkeypatch, capsys):
+def test_gate_reports_all_failed_stages(monkeypatch, capsys):
     import merge_gate as gate
     monkeypatch.setattr(gate, "git", lambda *a: "head")
     calls = []
@@ -254,8 +254,8 @@ def test_gate_red_stops_remaining_stages(monkeypatch, capsys):
         calls.append(cmd)
         return _r(2)
     assert gate.execute(gate.plan(6), "head", runner=runner) == 1
-    assert len(calls) == 1
-    assert "deploy | SKIPPED" in capsys.readouterr().out
+    assert len(calls) == len(gate.plan(6))
+    assert "deploy | FAIL (2)" in capsys.readouterr().out
 
 
 def test_gate_refuses_changed_head(monkeypatch):

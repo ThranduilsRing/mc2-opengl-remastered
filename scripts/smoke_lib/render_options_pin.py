@@ -201,10 +201,9 @@ def differences(a: Mapping[str, object], b: Mapping[str, object], vary: Iterable
     for opt in table():
         if opt.key.lower() in allowed:
             continue
-        if opt.key not in a or opt.key not in b:
-            out.append(f"{opt.key}: A={a.get(opt.key, 'unrecorded')} B={b.get(opt.key, 'unrecorded')}")
-        elif canon(opt, a[opt.key]) != canon(opt, b[opt.key]):
-            out.append(f"{opt.key}: A={a[opt.key]} B={b[opt.key]}")
+        av, bv = a.get(opt.key, opt.default), b.get(opt.key, opt.default)
+        if canon(opt, av) != canon(opt, bv):
+            out.append(f"{opt.key}: A={av} B={bv}")
     return out
 
 

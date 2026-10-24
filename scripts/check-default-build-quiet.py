@@ -40,13 +40,18 @@ USAGE
   py -3 scripts/check-default-build-quiet.py --update-baseline   # re-seed (review the diff!)
 
 Exit 0 = no new tags, 1 = new unconditional diagnostic output found.
-Exits 0 with a SKIP when no log is available (so it is safe in check-contracts.sh
-on a machine that has not run a smoke).
+With no explicit logs, launches a fresh default smoke and fails if it cannot be graded.
+--smoke-artifacts explicitly opts into historical logs for offline analysis.
 """
 from __future__ import annotations
 
 import argparse
 import json
+import os
+import subprocess
+import tempfile
+
+import console_child
 import re
 import sys
 from pathlib import Path
@@ -142,6 +147,26 @@ def load_baseline() -> dict:
     return json.loads(BASELINE.read_text(encoding="utf-8"))
 
 
+def fresh_smoke_logs(exe=None):
+    """Grade only the smoke launched by this invocation, never historical artifacts."""
+    proof = Path("E:/mc2-archive-2026-10/proofs/default-build-quiet")
+    proof.mkdir(parents=True, exist_ok=True)
+    run_root = Path(tempfile.mkdtemp(prefix="run-", dir=proof))
+    env = {k: v for k, v in os.environ.items() if not k.startswith("MC2_")}
+    env["MC2_SMOKE_ARTIFACT_ROOT"] = str(run_root)
+    command = [sys.executable, str(ROOT / "scripts/run_smoke.py"), "--mission", "mc2_10",
+               "--duration", "15", "--keep-logs"]
+    command += ["--exe", str(exe)] if exe else ["--deploy", "0.4"]
+    result = subprocess.run(command, cwd=ROOT, env=env, **console_child.child_kwargs())
+    if result.returncode:
+        raise RuntimeError(f"fresh default smoke failed ({result.returncode}); logs: {run_root}")
+    runs = [p for p in run_root.iterdir() if p.is_dir() and is_default_env_run(p)]
+    logs = [log for run in runs for log in console_logs(run)]
+    if not logs or any(not p.stat().st_size for p in logs):
+        raise RuntimeError(f"fresh default smoke produced no default console logs: {run_root}")
+    return logs
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--log", action="append", default=[],
@@ -151,11 +176,18 @@ def main() -> int:
     ap.add_argument("--update-baseline", action="store_true",
                     help="re-seed the baseline from the graded logs")
     ap.add_argument("--quiet", action="store_true")
+    ap.add_argument("--exe", type=Path, help="install executable for the fresh default smoke")
     args = ap.parse_args()
 
     logs = [Path(p) for p in args.log]
-    if args.smoke_artifacts or not logs:
+    if args.smoke_artifacts:
         logs.extend(newest_smoke_logs())
+    elif not logs:
+        try:
+            logs = fresh_smoke_logs(args.exe)
+        except (OSError, RuntimeError) as exc:
+            print(f"[quiet-ratchet] FAIL: {exc}")
+            return 1
     logs = [p for p in logs if p.is_file()]
 
     if not logs:
