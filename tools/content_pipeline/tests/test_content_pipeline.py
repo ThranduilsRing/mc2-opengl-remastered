@@ -132,6 +132,7 @@ def test_animated_material_splits_share_pivot_and_parent(tmp_path):
     assert split["translation"] == [0, 0, 0]
     path = tmp_path / "runtime.glb"
     path.write_bytes(data)
+    assert validate.errors(validate.validate_runtime_glb(path)) == []
     back, _, _ = gltf_io.read_gltf(path, frame="mc2_runtime")
     for (_, expected), (_, actual) in zip(scene.flattened(), back.flattened()):
         assert actual.positions == pytest.approx(expected.positions)
