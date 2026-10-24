@@ -353,8 +353,6 @@ void aObject::init(FitIniFile* file, const char* blockName, DWORD neverFlush)
 				strcat( buffer, ".tga" );
 			int ID = mc2::textures::load( buffer, bAlpha ? gos_Texture_Alpha : gos_Texture_Keyed, 0, 0, neverFlush);
 			textureHandle = ID;
-			// Queue UI decoding before the mission's texture load barrier.
-			mc2::textures::uiId(textureHandle);
 			if ( mc2::gate::get<"MC2_LOG_MECH_ICON">() && strstr(buffer, "mechicon") )
 			{
 				printf("[mechicon-load] aObject::init loading '%s' (blockName='%s')\n",
@@ -733,7 +731,6 @@ void	aObject::setTexture( const char* fileName )
 	if ( textureHandle )
 		mc2::textures::release( textureHandle );
 	textureHandle = mc2::textures::load( fileName, gos_Texture_Keyed, 0, 0, 0x2);
-	mc2::textures::uiId(textureHandle);
 	DWORD logicalWidth = 0;
 	DWORD logicalHeight = 0;
 	if ( mc2::textures::logicalSize( textureHandle, logicalWidth, logicalHeight ) )
@@ -753,7 +750,6 @@ void	aObject::setTexture(unsigned long newHandle )
 		mc2::textures::release( textureHandle );
 	
 	textureHandle = newHandle;
-	mc2::textures::uiId(textureHandle);
 	
 	if ( newHandle )
 	{

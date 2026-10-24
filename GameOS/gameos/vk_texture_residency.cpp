@@ -20,9 +20,6 @@
 
 namespace mc2vk {
 bool uiTextureServiceReady() { return engineVulkanContextValid() && getOrCreateEnginePresentVk().valid(); }
-void finishUiTextureLoading() {
-    if (uiTextureServiceReady()) getOrCreateEngineVulkanContext().textures().finishLoading();
-}
 bool hasUiImage(RenderCore::TextureHandle handle) { return engineVulkanContextValid() && getOrCreateEngineVulkanContext().textures().contains(handle); }
 void invalidateUiImage(RenderCore::TextureHandle handle) {
     if (engineVulkanContextValid()) getOrCreateEngineVulkanContext().textures().invalidate(handle);
@@ -204,15 +201,16 @@ std::shared_ptr<TextureResidency::Image> TextureResidency::upload(const RenderCo
         return {};
     }
     OwnedBuffer staging;
-    if (!staging.createFilled(ctx_.allocator(),ctx_.device(),image.pixels.data(),image.pixels.size(),VK_BUFFER_USAGE_TRANSFER_SRC_BIT,vegetation ? "veg.stage.atlas" : "texture.service.staging")) return {};
+    { ZoneScopedN("TextureResidency.Stage");
+      if (!staging.createFilled(ctx_.allocator(),ctx_.device(),image.pixels.data(),image.pixels.size(),VK_BUFFER_USAGE_TRANSFER_SRC_BIT,vegetation ? "veg.stage.atlas" : "texture.service.staging")) return {}; }
     auto resource=std::make_shared<Image>();
-    if (arrayView) {
+    { ZoneScopedN("TextureResidency.CreateImage"); if (arrayView) {
         VkImageCreateInfo ci{VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO}; ci.imageType=VK_IMAGE_TYPE_2D; ci.format=VkFormat(image.vkFormat);
         ci.extent={w,h,1}; ci.mipLevels=uint32_t(image.mipCount); ci.arrayLayers=layers; ci.samples=VK_SAMPLE_COUNT_1_BIT;
         ci.tiling=VK_IMAGE_TILING_OPTIMAL; ci.usage=VK_IMAGE_USAGE_SAMPLED_BIT|VK_IMAGE_USAGE_TRANSFER_DST_BIT;
         VmaAllocationCreateInfo aci{}; aci.usage=VMA_MEMORY_USAGE_AUTO;
         if (!resource->image.create(ctx_.allocator(),ctx_.device(),ci,aci,vegetation ? "veg.atlas" : "texture.service.array")) return {};
-    } else if (!resource->image.createSampled2D(ctx_.allocator(),ctx_.device(),VkFormat(image.vkFormat),w,h,image.mipCount,0,"texture.service.image")) return {};
+    } else if (!resource->image.createSampled2D(ctx_.allocator(),ctx_.device(),VkFormat(image.vkFormat),w,h,image.mipCount,0,"texture.service.image")) return {}; }
     const auto record=[&](VkCommandBuffer cb){
         VkImageMemoryBarrier b{VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER}; b.oldLayout=VK_IMAGE_LAYOUT_UNDEFINED; b.newLayout=VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
         b.srcQueueFamilyIndex=b.dstQueueFamilyIndex=VK_QUEUE_FAMILY_IGNORED; b.image=resource->image.get(); b.subresourceRange={VK_IMAGE_ASPECT_COLOR_BIT,0,uint32_t(image.mipCount),0,layers};
@@ -228,6 +226,7 @@ std::shared_ptr<TextureResidency::Image> TextureResidency::upload(const RenderCo
     // This context creates only the graphics family. Copy and shader barriers therefore stay on the same queue;
     // no unsupported transfer family or ownership handoff is assumed.
     if (async) {
+        ZoneScopedN("TextureResidency.SubmitUpload");
         VkCommandBuffer cb=VK_NULL_HANDLE;
         if (!beginTransientCommandBuffer(ctx_,async->pool,cb)) return {};
         record(cb);
@@ -244,7 +243,6 @@ ResidentTextureRef TextureResidency::acquire(const RenderCore::TextureKey& key, 
     auto handle=service_.acquire(key,RenderCore::kNoTextureNode,dimensions);
     if (!handle.isValid()) return {};
     if (residents_.contains(handle.raw())) return ResidentTextureRef(*this,handle,arrayView);
-    std::fprintf(stderr,"[EARLY_TEXTURE] request frame=%llu handle=%u key=%s\n",ctx_.tracker().frameNo(),handle.raw(),key.source.c_str());
     residents_.emplace(handle.raw(),Resident{{},0,mc2tex::wantsMipmaps(key.hints),layers,arrayView});
     residents_.at(handle.raw()).contentVersion=service_.contentVersion(handle);
     residents_.at(handle.raw()).vegetation=key.source.starts_with("vegetation:P2|");
@@ -289,7 +287,6 @@ void TextureResidency::pump() {
         const size_t bytes=p.image->pixels.size();
         if (table_->full(uploading_.size()) || !budget_.reserve(bytes)) break;
         Upload upload; upload.handle=p.handle; upload.bytes=bytes; upload.contentVersion=p.contentVersion;
-        std::fprintf(stderr,"[EARLY_TEXTURE] upload frame=%llu handle=%u extent=%dx%d bytes=%llu\n",ctx_.tracker().frameNo(),p.handle.raw(),p.image->width,p.image->height,static_cast<unsigned long long>(bytes));
         if (this->upload(*p.image,it->second.useMips,&upload,it->second.layers,it->second.arrayView,it->second.vegetation)) uploading_.push_back(std::move(upload));
         else budget_.complete(bytes);
         pending_.pop_front();

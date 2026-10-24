@@ -10,7 +10,6 @@
 //===========================================================================//
 
 #include "mechcmd2_internal.h"
-#include "../GameOS/gameos/ui_texture.h"
 #include "render_resource_owners.h"
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"   // str<>()
@@ -1165,11 +1164,6 @@ void __stdcall InitializeGameEngine()
 		{ ZoneScopedN("InitializeGameEngine initDialogs");
 		initDialogs();
 		}
-		// Dialog images are created after Mission::init's load barrier.
-#ifdef MC2_VULKAN_ISLAND
-		{ ZoneScopedN("InitializeGameEngine finish UI textures");
-		  mc2vk::finishUiTextureLoading(); }
-#endif
 	
 		{ ZoneScopedN("InitializeGameEngine loseFocusBehavior");
 		gos_EnableSetting(gos_Set_LoseFocusBehavior, 2 );
