@@ -1,0 +1,29 @@
+{
+  "defines": [],
+  "outputs": [
+    {
+      "location": 0,
+      "name": "outColor",
+      "type": "vec4"
+    }
+  ],
+  "shader": "shaders/vulkan/hud_tex.frag",
+  "ssbos": [
+    {
+      "binding": 0,
+      "members": [
+        {
+          "array_stride": 4,
+          "matrix_stride": null,
+          "name": "texels",
+          "offset": 0,
+          "type": "uint"
+        }
+      ],
+      "name": "HudTexels"
+    }
+  ],
+  "stage": "frag",
+  "ubos": [],
+  "variant": "default"
+}

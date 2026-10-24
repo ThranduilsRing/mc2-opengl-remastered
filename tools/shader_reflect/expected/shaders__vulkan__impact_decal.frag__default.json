@@ -1,0 +1,71 @@
+{
+  "defines": [],
+  "outputs": [
+    {
+      "location": 0,
+      "name": "oColor",
+      "type": "vec4"
+    }
+  ],
+  "shader": "shaders/vulkan/impact_decal.frag",
+  "ssbos": [
+    {
+      "binding": 5,
+      "members": [
+        {
+          "array_stride": 128,
+          "matrix_stride": null,
+          "name": "d",
+          "offset": 0,
+          "type": "_89"
+        }
+      ],
+      "name": "Decals"
+    }
+  ],
+  "stage": "frag",
+  "ubos": [
+    {
+      "binding": 4,
+      "members": [
+        {
+          "array_stride": null,
+          "matrix_stride": 16,
+          "name": "viewProj",
+          "offset": 0,
+          "type": "mat4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": 16,
+          "name": "invViewProj",
+          "offset": 64,
+          "type": "mat4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "eye",
+          "offset": 128,
+          "type": "vec4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "lightDir",
+          "offset": 144,
+          "type": "vec4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "screen",
+          "offset": 160,
+          "type": "vec4"
+        }
+      ],
+      "name": "ImpactFrame"
+    }
+  ],
+  "variant": "default"
+}

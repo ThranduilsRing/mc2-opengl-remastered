@@ -1,0 +1,41 @@
+{
+  "defines": [],
+  "outputs": [
+    {
+      "location": 0,
+      "name": "oColor",
+      "type": "vec4"
+    },
+    {
+      "location": 1,
+      "name": "oGBuffer1",
+      "type": "vec4"
+    }
+  ],
+  "shader": "shaders/vulkan/legacy_shape_tier1.frag",
+  "ssbos": [],
+  "stage": "frag",
+  "ubos": [
+    {
+      "binding": 0,
+      "members": [
+        {
+          "array_stride": null,
+          "matrix_stride": 16,
+          "name": "proj",
+          "offset": 0,
+          "type": "mat4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "fogColor",
+          "offset": 64,
+          "type": "vec4"
+        }
+      ],
+      "name": "LegacyFrameUBO"
+    }
+  ],
+  "variant": "default"
+}

@@ -1,0 +1,15 @@
+{
+  "defines": [],
+  "outputs": [
+    {
+      "location": 0,
+      "name": "outColor",
+      "type": "vec4"
+    }
+  ],
+  "shader": "shaders/vulkan/aa_smaa_blend.frag",
+  "ssbos": [],
+  "stage": "frag",
+  "ubos": [],
+  "variant": "default"
+}

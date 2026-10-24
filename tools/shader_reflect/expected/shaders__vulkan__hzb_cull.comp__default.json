@@ -1,0 +1,43 @@
+{
+  "defines": [],
+  "outputs": [],
+  "shader": "shaders/vulkan/hzb_cull.comp",
+  "ssbos": [
+    {
+      "binding": 1,
+      "members": [
+        {
+          "array_stride": 32,
+          "matrix_stride": null,
+          "name": "bounds",
+          "offset": 0,
+          "type": "_32"
+        }
+      ],
+      "name": "ProjectedBounds"
+    },
+    {
+      "binding": 2,
+      "members": [
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "culled",
+          "offset": 0,
+          "type": "uint"
+        },
+        {
+          "array_stride": 4,
+          "matrix_stride": null,
+          "name": "visible",
+          "offset": 4,
+          "type": "uint"
+        }
+      ],
+      "name": "Visibility"
+    }
+  ],
+  "stage": "comp",
+  "ubos": [],
+  "variant": "default"
+}
