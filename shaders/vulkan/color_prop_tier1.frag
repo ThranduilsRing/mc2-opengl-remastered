@@ -156,6 +156,7 @@ float treeVisibility(vec3 N) {
 void main() {
     vec3 rgb;
     vec3 materialAlbedo = vec3(0);
+    vec3 poolLight = vec3(0);
     bool haveAlbedo = false;
     float materialAO = 1.0;
     vec3 outputNormalStuff = vNormalStuff;
@@ -192,7 +193,8 @@ void main() {
         materialAlbedo = texc.rgb; haveAlbedo = true;
         rgb = texc.rgb * max(vArgb, vec3(0.5));
         rgb += vHighlight.rgb * vHighlight.a;
-        rgb += propPoolLight(texc.rgb);
+        poolLight = propPoolLight(vec3(1));
+        rgb += texc.rgb * poolLight;
     } else if (uFrame.materialReady != 0 && vLayer >= 0) {
         // ALPHA-OFF group. Real albedo texture (GL_REPEAT restored via fract, then
         // cropped to this packet's sub-region -- FENCE-UVSCALE-1, mirrors GL's
@@ -215,7 +217,8 @@ void main() {
             alphaTestClass = true;
         }
         rgb += vHighlight.rgb * vHighlight.a;
-        rgb += propPoolLight(albedo);
+        poolLight = propPoolLight(vec3(1));
+        rgb += albedo * poolLight;
     } else {
         // Fail-soft flat teal placeholder. IN-PLACE opaque write.
         rgb = vec3(0.35, 0.62, 0.68) * (0.6 + 0.4 * vUv.x);
@@ -229,7 +232,7 @@ void main() {
         if (materialCoverage > 0.0) {
             materialAO = mix(1.0, surface.ao, materialCoverage);
             if (!treeMaterial) rgb = mix(rgb, propAuthoredColor(surface, alphaTestClass,
-                          propHasAuthoredOrm(uPacket.materialId)), materialCoverage);
+                          propHasAuthoredOrm(uPacket.materialId), poolLight), materialCoverage);
             outputNormalStuff = mix(vNormalStuff, renderToMc2(surface.normal), materialCoverage);
         }
     }
@@ -248,7 +251,7 @@ void main() {
         vec3 direct = propDecodeColor(vMaterialSun) * (propNightSunWeight(wrap, N) + transmission * propNightDirectShare());
         // SH already contains linear irradiance. Preserve the stock albedo exposure ceiling.
         rgb = propEncodeColor(min(albedo,composeGroundLighting(albedo,max(ambient,vec3(0))*vTree.x*materialAO,direct,treeVisibility(N),vec3(0))));
-        rgb += propPoolLight(propEncodeColor(albedo)) + vHighlight.rgb*vHighlight.a;
+        rgb += propEncodeColor(albedo) * poolLight + vHighlight.rgb*vHighlight.a;
     }
     oColor = vec4(rgb, cover);
 

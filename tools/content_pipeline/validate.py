@@ -170,7 +170,7 @@ def validate_gltf(path):
 
 def validate_runtime_glb(path, *, max_triangles=None, texture_root=None):
     """The engine-bound profile: structurally valid, no skins/animations, identity
-    nodes (transforms already baked), NORMAL on every primitive, base-colour images
+    nodes (transforms already baked, except explicit animated pivot groups), NORMAL on every primitive, base-colour images
     resolvable under texture_root (data/tgl/<tier>), triangle budget."""
     issues = validate_gltf(path)
     if any(s == "error" for s, _, _ in issues):

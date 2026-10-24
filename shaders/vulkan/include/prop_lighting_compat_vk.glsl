@@ -1,7 +1,8 @@
 // Static-prop compatibility lighting: one environment ambient, directional light
 // and local pools. Specular requires a valid authored ORM sidecar.
 #include "prop_night_vk.glsl"
-vec3 propAuthoredColor(SurfaceMaterial s, bool alphaTest, bool authoredOrm) {
+// Reuse the legacy path's pool walk when blending authored coverage.
+vec3 propAuthoredColor(SurfaceMaterial s, bool alphaTest, bool authoredOrm, vec3 poolLight) {
     if ((vMaterialFlags & 2u) != 0u)
         return propEncodeColor(s.emission) + vHighlight.rgb * vHighlight.a;   // window emission already carries the albedo
     vec3 nStuff = renderToMc2(s.normal);
@@ -43,5 +44,5 @@ vec3 propAuthoredColor(SurfaceMaterial s, bool alphaTest, bool authoredOrm) {
             color += propDecodeColor(vSunColor)*D*G*F*ndl/max(4.0*nv*ndl,1e-4);
         }
     }
-    return propEncodeColor(color) + vHighlight.rgb*vHighlight.a + propPoolLight(propEncodeColor(s.baseColor));
+    return propEncodeColor(color) + vHighlight.rgb*vHighlight.a + propEncodeColor(s.baseColor) * poolLight;
 }

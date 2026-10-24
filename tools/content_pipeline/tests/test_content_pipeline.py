@@ -136,6 +136,15 @@ def test_animated_material_splits_share_pivot_and_parent(tmp_path):
     back, _, _ = gltf_io.read_gltf(path, frame="mc2_runtime")
     for (_, expected), (_, actual) in zip(scene.flattened(), back.flattened()):
         assert actual.positions == pytest.approx(expected.positions)
+    # A split with another transform would break the shared rotation origin.
+    runtime["nodes"][1]["translation"] = [1, 0, 0]
+    _, binary = gltf_io.split_glb(data)
+    body = json.dumps(runtime).encode()
+    body += b" " * (-len(body) % 4)
+    path.write_bytes(struct.pack("<III", gltf_io.GLB_MAGIC, 2, 28 + len(body) + len(binary))
+                     + struct.pack("<II", len(body), gltf_io.CHUNK_JSON) + body
+                     + struct.pack("<II", len(binary), gltf_io.CHUNK_BIN) + binary)
+    assert any("RUNTIME_NODE" in e for e in validate.errors(validate.validate_runtime_glb(path)))
 
 
 def test_runtime_frame_is_axis0_inverse(tmp_path):

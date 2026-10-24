@@ -5,8 +5,11 @@ in all three LODs. Both generators ship in Remastered; Classic and damaged/
 destroyed appearances keep stock meshes. The art worktree was only read.
 The historical stock pivots below describe the animation source, not a pivot
 to impose on the new geometry: its authored glTF pivot is `(0, 6.9, 0)` metres,
-or `(0, 27.6, 0)` in native TG world units after the bake's scale of four.
-The cooker preserves that origin and parents all four material splits under
+before the parent's stock alignment transform and scale of four. The resulting
+native pivots are `(-20.7206, 2.6720, -22.3358)` for powergenerator and
+`(-21.4392, 2.6720, -22.3358)` for l_turretgenerator (the import probe records
+all six LODs in `final/generator-import.json` under the lane proof directory).
+The cooker preserves those origins and parents all four material splits under
 the first `Coil` mesh. The stock rotation track binds by name to this parent;
 the other sections inherit its transform rather than remaining stationary.
 
