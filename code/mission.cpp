@@ -1202,8 +1202,6 @@ void Mission::destroy (bool initLogistics)
 	}
 
 
-	// Appearances are destroyed after the camera, so their slot tags have no live owner now.
-	mc2_spotlight_diag::reset();
 	if (MasterComponent::masterList)
 	{
 		MasterComponent::freeMasterList();

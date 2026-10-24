@@ -1407,7 +1407,7 @@ class Camera
 				if (!worldLights[i])
 				{
 					// A recycled camera slot must not inherit its previous appearance's tag.
-					mc2_spotlight_diag::untag_slot(i);
+					mc2_spotlight_diag::untag_slot(this, i);
 					worldLights[i] = light;
 					lightAdded = true;
 					return i;
@@ -1421,7 +1421,7 @@ class Camera
 		{
 			if ((lightNum < MAX_LIGHTS_IN_WORLD) && (worldLights[lightNum] == light))
 			{
-				mc2_spotlight_diag::untag_slot(static_cast<long>(lightNum));
+				mc2_spotlight_diag::untag_slot(this, static_cast<long>(lightNum));
 				worldLights[lightNum] = nullptr;			//Up to class that created light to free it!!!!!!
 
                 // sebi: ORG BUG FIX because worldLights are copied to activeLights and terrainLights in eye->update() and then later this function can be called, this means that activeLights and terrainLights may point to freed memory, so call this to fox it
@@ -1436,7 +1436,7 @@ class Camera
 			{
 				if (worldLights[i] == light)
 				{
-					mc2_spotlight_diag::untag_slot(i);
+					mc2_spotlight_diag::untag_slot(this, i);
 					worldLights[i] = nullptr;
 				}
 			}

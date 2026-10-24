@@ -176,7 +176,7 @@ extern uint16_t g_cementAlphaLayerIndexBySlot[MC_MAX_TERRAIN_TXMS];
 extern bool     g_cementAlphaLayerMapReady;
 void CementCellComputeStats(const std::vector<uint32_t>& atlasBuf, int atlasPixelSide, int gridSide, int txmSize, int k, CementCellStats& s);
 int ClassifyConcreteFamily(std::vector<CementCellStats>& st, int NT, float& refR, float& refG, float& refB);
-bool TileRoadAdjacent8(long r, long c, long mapSide, PostcompVertexPtr blocks);
+bool TileRoadAdjacent8(long r, long c, long mapSide, PostcompVertexPtr blocks, bool overlayMetadata = true);
 void PopulateRecipeCementWords();
 extern std::vector<uint32_t> g_uniqueTerrainNodeIds;
 void CollectUniqueNodeIds();

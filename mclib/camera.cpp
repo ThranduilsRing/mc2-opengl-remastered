@@ -549,6 +549,7 @@ long Camera::init (FitIniFilePtr cameraFile )
 //---------------------------------------------------------------------------
 void Camera::destroy (void)
 {
+    mc2_spotlight_diag::reset(this);
 	if (worldLights)
 	{
 		std::free(worldLights[1]);

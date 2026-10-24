@@ -608,7 +608,7 @@ void Camera::updateLights()
 					// daytime pool.
 					if (ownerOk && !isNight) {
 						mc2_spotlight_diag::SourceClass lsrc;
-						if (mc2_spotlight_diag::is_e_slot(i, &lsrc)
+						if (mc2_spotlight_diag::is_e_slot(this, i, &lsrc)
 							&& lsrc == mc2_spotlight_diag::Bldg)
 							ownerOk = false;
 					}
@@ -621,7 +621,7 @@ void Camera::updateLights()
 				// snapshot below at end of updateLights() every 600 frames.
 				if (mc2_spotlight_diag::is_enabled()) {
 					mc2_spotlight_diag::SourceClass src;
-					if (mc2_spotlight_diag::is_e_slot(i, &src)) {
+					if (mc2_spotlight_diag::is_e_slot(this, i, &src)) {
 						if (s_spotDiagT16LastActive.size() < static_cast<size_t>(MAX_LIGHTS_IN_WORLD))
 							s_spotDiagT16LastActive.assign(MAX_LIGHTS_IN_WORLD, 0xFFu);
 						const unsigned char curActive = light->active ? 1u : 0u;
@@ -684,7 +684,7 @@ void Camera::updateLights()
 		// is_e_slot() recognizes as tagged.
 		for (long si = 0; si < MAX_LIGHTS_IN_WORLD; ++si) {
 			mc2_spotlight_diag::SourceClass src;
-			if (mc2_spotlight_diag::is_e_slot(si, &src)) {
+			if (mc2_spotlight_diag::is_e_slot(this, si, &src)) {
 				TG_LightPtr l = worldLights[si];
 				const char* srcName =
 					(src == mc2_spotlight_diag::Bldg ? "bldg" :

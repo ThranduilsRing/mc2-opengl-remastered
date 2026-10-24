@@ -206,6 +206,7 @@ std::vector<DecalDrawRange>  g_decalDrawRanges;
 // VK overlay owner can draw it into the shared GBuffer. Version bumps per rebuild.
 std::vector<DecalVert>       g_decalVertsCpu;
 uint64_t                     g_decalBakeVersion   = 0;
+bool                         g_decalLoadPending   = false;
 #endif
 
 // Mirrors quad.cpp's OVERLAY_ELEV_OFFSET (0.15f) + the fixed overlay UV
@@ -266,6 +267,7 @@ void ResetDecalStaticVBO() {
     g_decalVBODirty  = true;
     g_decalDrawRanges.clear();
 #ifdef MC2_VULKAN_ISLAND
+    g_decalLoadPending = false;
     g_decalVertsCpu.clear();
 #endif
     if (IsTraceEnabled()) {
@@ -278,7 +280,7 @@ void ResetDecalStaticVBO() {
 // cache exactly as MapData::buildTerrainFaceCache does (mapdata.cpp:262-309):
 // same tile range, same 4-corner block layout, same worldQuadUVMode formula.
 bool CementWordSuppressesDecal(const MapData::WorldQuadTerrainCacheEntry* e,
-                                Overlays overlayType, long tileR, long tileC) {
+                                Overlays overlayType, long tileR, long tileC, bool overlayMetadata = true) {
     const long mapSide = Terrain::realVerticesMapSide;
     const auto blocks = Terrain::mapData->getBlocks();
             if (e->isCement() && e->isAlpha() && overlayType == INVALID_OVERLAY) {
@@ -319,7 +321,7 @@ bool CementWordSuppressesDecal(const MapData::WorldQuadTerrainCacheEntry* e,
                     // revert to the stock decal (PopulateRecipeCementWords
                     // bakes NO cement word for them — complementary predicate).
                     if (fragOwnsTile && PadEdgeRoadFixEnabled()
-                        && TileRoadAdjacent8(tileR, tileC, mapSide, blocks))
+                        && TileRoadAdjacent8(tileR, tileC, mapSide, blocks, overlayMetadata))
                         fragOwnsTile = false;
                 }
                 return fragOwnsTile;
@@ -327,7 +329,7 @@ bool CementWordSuppressesDecal(const MapData::WorldQuadTerrainCacheEntry* e,
     return false;
 }
 
-void BuildDecalStaticVBO() {
+void BuildDecalStaticVBOFromInputs(bool overlayMetadata) {
     g_decalVertCount = 0;
     g_decalDrawRanges.clear();
 
@@ -396,6 +398,7 @@ void BuildDecalStaticVBO() {
     // in spirit).
     struct PendingTri { uint32_t texId; DecalVert v[3]; };
     std::vector<PendingTri> pending;
+    int cementSuppressed = 0, sidecarSuppressed = 0, unresolved = 0;
 
     for (long tileR = 0; tileR < cacheW; ++tileR) {
         for (long tileC = 0; tileC < cacheW; ++tileC) {
@@ -441,11 +444,12 @@ void BuildDecalStaticVBO() {
             // concrete transition: isCement()&&isAlpha() AND no road overlay on the tile.
             Overlays decalOverlayType = INVALID_OVERLAY;
             DWORD    decalOverlayOffset = 0;
-            Terrain::mapData->getOverlay(tileR, tileC, decalOverlayType, decalOverlayOffset);
-            if (CementWordSuppressesDecal(e, decalOverlayType, tileR, tileC)) continue;
+            if (overlayMetadata)
+                Terrain::mapData->getOverlay(tileR, tileC, decalOverlayType, decalOverlayOffset);
+            if (CementWordSuppressesDecal(e, decalOverlayType, tileR, tileC, overlayMetadata)) { ++cementSuppressed; continue; }
 
             const DWORD overlayTexId = tex_resolve(overlayHandle);
-            if (overlayTexId == 0) continue;
+            if (overlayTexId == 0) { ++unresolved; continue; }
 
             // OVERLAY-TILE-HIRES-1 (gated, default OFF => kOld* constants used
             // verbatim). Mirror quad.cpp's per-overlay half-texel inset: a
@@ -519,7 +523,7 @@ void BuildDecalStaticVBO() {
                         if (c[k].wx < bMinX || c[k].wx > bMaxX ||
                             c[k].wy < bMinY || c[k].wy > bMaxY) { allInside = false; break; }
                     }
-                    if (allInside) continue;   // sidecar owns this tile's overlay
+                    if (allInside) { ++sidecarSuppressed; continue; }   // sidecar owns this tile's overlay
                 }
             }
 
@@ -614,22 +618,31 @@ void BuildDecalStaticVBO() {
     }
 
     g_decalVertCount = static_cast<int>(verts.size());
+    g_decalVBODirty = unresolved != 0;
 #ifdef MC2_VULKAN_ISLAND
     if (mc2_vk_overlay_enabled()) {
-        g_decalVertsCpu = verts;
-        ++g_decalBakeVersion;
+        const bool identical = g_decalVertsCpu.size() == verts.size() &&
+            (verts.empty() || std::memcmp(g_decalVertsCpu.data(), verts.data(), verts.size() * sizeof(DecalVert)) == 0);
+        if (g_decalLoadPending) {
+            mc2::fmt::print_out("[OVERLAY_PRESTAGE] validate identical={} old_verts={} verts={} cement_skip={} sidecar_skip={} unresolved={}\n",
+                identical, g_decalVertsCpu.size(), verts.size(), cementSuppressed, sidecarSuppressed, unresolved);
+            g_decalLoadPending = false;
+        }
+        if (!identical) { g_decalVertsCpu = verts; ++g_decalBakeVersion; }
     }
 #endif
 
 }
+
+void BuildDecalStaticVBO() { BuildDecalStaticVBOFromInputs(true); }
 
 // Mirror RebuildMineStaticVBOIfDirty (no texture-array first-build step —
 // cement overlay uses the existing per-mission terrain texture nodes via
 // tex_resolve, not a dedicated 2-layer array).
 void RebuildDecalStaticVBOIfDirty() {
     if (!g_decalVBODirty) return;
+    if (!Terrain::mapData || !Terrain::mapData->getBlocks() || !g_recipeReady) return;
     BuildDecalStaticVBO();
-    g_decalVBODirty = false;
 }
 
 
@@ -877,6 +890,29 @@ bool DrawDecalStatic() {
 }
 
 }  // namespace gos_terrain_indirect
+
+#ifdef MC2_VULKAN_ISLAND
+extern "C" int mc2_terrain_overlay_get_load_stream(const void** verts, uint32_t* vertCount,
+    const Mc2VkOverlayDraw** draws, uint32_t* drawCount, uint64_t* version) {
+    using namespace gos_terrain_indirect;
+    if (!Terrain::mapData || !Terrain::mapData->getBlocks() || !g_recipeReady || !mc2_vk_overlay_enabled()) return 0;
+    // Mission::update calls TerrainTextures::update before the first draw. That
+    // purges overlays/numOverlays: getOverlay then returns INVALID_OVERLAY and
+    // road adjacency changes (mc2_01: 450 load vertices versus 228 at draw).
+    // Supply the post-purge classification without purging the live load metadata.
+    BuildDecalStaticVBOFromInputs(false);
+    if (g_decalVBODirty) return 0;
+    // Validate the explicit snapshot at first draw; mutations remain retryable.
+    g_decalLoadPending = true;
+    g_decalVBODirty = true;
+    *verts = g_decalVertsCpu.data(); *vertCount = static_cast<uint32_t>(g_decalVertsCpu.size());
+    *draws = reinterpret_cast<const Mc2VkOverlayDraw*>(g_decalDrawRanges.data());
+    *drawCount = static_cast<uint32_t>(g_decalDrawRanges.size()); *version = g_decalBakeVersion;
+    mc2::fmt::print_out("[OVERLAY_PRESTAGE] load verts={} draws={} cement_ready={} sidecar={}\n",
+        *vertCount, *drawCount, g_cementLayerMapReady, gos_TerrainLodChunk_OverlaySidecarLoaded());
+    return 1;
+}
+#endif
 
 // C-linkage forwarder for the cement-mutation invalidation sites (code/
 // bldng.cpp bridge-destroy + mclib/terrain.cpp Terrain::setOverlay). Mirrors

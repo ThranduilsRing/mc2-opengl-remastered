@@ -265,7 +265,7 @@ void Mech3DAppearance::updateGeometry (void)
 				// the light-pool producer can classify it (tags are recorded
 				// unconditionally; MC2_SPOT_DIAG gates only the printing).
 				if (lightId >= 0)
-					mc2_spotlight_diag::tag_slot(lightId, mc2_spotlight_diag::Mech, this);
+					mc2_spotlight_diag::tag_slot(eye, lightId, mc2_spotlight_diag::Mech, this);
 
 				// MOVER-LIGHT-HALOGEN-1: warm halogen instead of legacy pure
 				// yellow (MC2_LIGHT_POOL_MOVER_COLOR override).

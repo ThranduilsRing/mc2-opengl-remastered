@@ -458,10 +458,10 @@ int ClassifyConcreteFamily(std::vector<CementCellStats>& st, int NT,
 // cement-ALPHA transition art tile with NO cement-terrain corner (the
 // MISSING-RUNWAY-1 decal-baked road/runway class). Requires
 // g_cementLayerMapReady (callers guard).
-static bool TileIsRoadArt(long r, long c, long mapSide, PostcompVertexPtr blocks) {
+static bool TileIsRoadArt(long r, long c, long mapSide, PostcompVertexPtr blocks, bool overlayMetadata = true) {
     if (r < 0 || c < 0 || r >= mapSide - 1 || c >= mapSide - 1) return false;
     Overlays ovT = INVALID_OVERLAY; DWORD ovO = 0;
-    Terrain::mapData->getOverlay(r, c, ovT, ovO);
+    if (overlayMetadata) Terrain::mapData->getOverlay(r, c, ovT, ovO);
     if (ovT != INVALID_OVERLAY) return true;
     auto* tt = Terrain::terrainTextures;
     if (!tt || !blocks) return false;
@@ -478,11 +478,11 @@ static bool TileIsRoadArt(long r, long c, long mapSide, PostcompVertexPtr blocks
              || cemCorner(r + 1, c + 1) || cemCorner(r + 1, c));
 }
 
-bool TileRoadAdjacent8(long r, long c, long mapSide, PostcompVertexPtr blocks) {
+bool TileRoadAdjacent8(long r, long c, long mapSide, PostcompVertexPtr blocks, bool overlayMetadata) {
     for (long dr = -1; dr <= 1; ++dr)
         for (long dc = -1; dc <= 1; ++dc) {
             if (dr == 0 && dc == 0) continue;
-            if (TileIsRoadArt(r + dr, c + dc, mapSide, blocks)) return true;
+            if (TileIsRoadArt(r + dr, c + dc, mapSide, blocks, overlayMetadata)) return true;
         }
     return false;
 }

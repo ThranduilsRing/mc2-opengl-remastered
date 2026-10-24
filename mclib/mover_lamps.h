@@ -35,7 +35,7 @@ bool registerLamps(TG_MultiShape* shape, long nodeId, NodeIds& nodeIds, Lights& 
 		nodeIds.push_back(nodeId);
 		lights.push_back(light);
 		slots.push_back(static_cast<DWORD>(slotId));
-		mc2_spotlight_diag::tag_slot(slotId, src, owner);   // T1.16: (E)-owned
+		mc2_spotlight_diag::tag_slot(eye, slotId, src, owner);   // T1.16: (E)-owned
 	}
 	return true;
 }

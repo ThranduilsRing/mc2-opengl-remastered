@@ -1530,7 +1530,8 @@ bool recordPendingImgui(EnginePresentVk::Impl& s, VkCommandBuffer cb) {
 uint32_t recordPendingHudColorProof(EnginePresentVk::Impl& s, VkCommandBuffer cb,
                                     uint32_t* nativeDraws,
                                     uint32_t* texturedDraws,
-                                    uint32_t* textureUploadsOut) {
+                                    uint32_t* textureUploadsOut,
+                                    std::vector<VkPipeline>* recordedPipelines = nullptr) {
     if (s.pendingHudDraws.empty())
         return 0;
     const uint32_t draws = static_cast<uint32_t>(s.pendingHudDraws.size());
@@ -1743,6 +1744,7 @@ uint32_t recordPendingHudColorProof(EnginePresentVk::Impl& s, VkCommandBuffer cb
                 : (td.opaque ? s.hudColorLineOpaquePipe.get() : s.hudColorLinePipe.get());
             if (boundPipe != pipe) {
                 mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, pipe);
+                if (recordedPipelines) recordedPipelines->push_back(pipe);
                 boundPipe = pipe;
             }
             if (boundStream != 0) {
@@ -1760,6 +1762,7 @@ uint32_t recordPendingHudColorProof(EnginePresentVk::Impl& s, VkCommandBuffer cb
                                                : (td.oneInvAlpha ? s.hudTexOneInvAlphaPipe.get() : s.hudTexPipe.get()));
             if (boundPipe != pipe) {
                 mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, pipe);
+                if (recordedPipelines) recordedPipelines->push_back(pipe);
                 boundPipe = pipe;
             }
             if (boundStream != 1) {
@@ -2214,23 +2217,28 @@ bool EnginePresentVk::prewarmPipelines() {
     draw.textureSerial = warmTexture;
     draw.textureWidth = draw.textureHeight = 1;
     draw.textureRgba = std::make_shared<const std::vector<uint8_t>>(4, 255);
-    for (uint32_t alpha : {0u, 3u, 2u, 4u}) {
-        draw.alphaMode = alpha;
-        draw.kind = 2;
-        draw.textureHandle = 0;
-        s.pendingHudDraws.push_back(draw);
-        draw.kind = 1;
-        s.pendingHudDraws.push_back(draw);
-        draw.kind = 2;
-        draw.textureHandle = warmTexture;
+    s.pendingHudDraws.clear();
+    // Each distinct triangle, line and textured pipeline, including opaque.
+    struct WarmVariant { uint32_t kind, texture, alpha; };
+    constexpr WarmVariant variants[] = {
+        {2, 0, 1}, {2, 0, 3}, {2, 0, 2}, {2, 0, 4},
+        {1, 0, 1}, {1, 0, 3},
+        {2, warmTexture, 1}, {2, warmTexture, 3},
+        {2, warmTexture, 2}, {2, warmTexture, 4},
+    };
+    for (const auto& variant : variants) {
+        draw.alphaMode = variant.alpha;
+        draw.kind = variant.kind;
+        draw.textureHandle = variant.texture;
         s.pendingHudDraws.push_back(draw);
     }
+    std::vector<VkPipeline> recordedPipelines;
     const bool hudSubmitted = submitOneShot(*s.ctx, [&](VkCommandBuffer cb) {
         barrier(cb, s.sharedImg.image.get(),
             VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
             VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
             VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
-        recordPendingHudColorProof(s, cb, nullptr, nullptr, nullptr);
+        recordPendingHudColorProof(s, cb, nullptr, nullptr, nullptr, &recordedPipelines);
     }, "present_load_hud");
     s.pendingHudDraws = std::move(pendingHud);
     const uint64_t key = (uint64_t(warmTexture) << 32) | warmTexture;
@@ -2239,7 +2247,19 @@ bool EnginePresentVk::prewarmPipelines() {
         vkFreeDescriptorSets(s.dev, s.hudTexPool.get(), 1, &mirror.set);
         s.hudTextureMirrors.erase(it);
     }
-    return hudSubmitted;
+    const VkPipeline expected[] = {
+        s.hudColorTriOpaquePipe.get(), s.hudColorTriPipe.get(),
+        s.hudColorTriOneOnePipe.get(), s.hudColorTriOneInvAlphaPipe.get(),
+        s.hudColorLineOpaquePipe.get(), s.hudColorLinePipe.get(),
+        s.hudTexOpaquePipe.get(), s.hudTexPipe.get(),
+        s.hudTexOneOnePipe.get(), s.hudTexOneInvAlphaPipe.get(),
+    };
+    const bool covered = std::all_of(std::begin(expected), std::end(expected), [&](VkPipeline pipe) {
+        return pipe && std::find(recordedPipelines.begin(), recordedPipelines.end(), pipe) != recordedPipelines.end();
+    });
+    std::fprintf(stderr, "[VK_PRESENT_WARM] hud_variants=%zu complete=%d submitted=%d\n",
+        recordedPipelines.size(), int(covered), int(hudSubmitted));
+    return hudSubmitted && covered;
 }
 
 bool EnginePresentVk::prepareImguiVulkanFrame() {
