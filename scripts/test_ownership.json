@@ -2,6 +2,8 @@
   "schema_version": 1,
   "aggregate_owner": "scripts_tests",
   "tests": [
+    {"module": "scripts/tests/test_firewall_dialog.py", "owners": ["network_startup"]},
+    {"module": "scripts/tests/test_network_startup.py", "owners": ["network_startup"]},
     {"module": "scripts/tests/test_review_launcher_sizing.py", "owners": ["scripts_tests"]},
     {"module": "scripts/tests/test_veg_card_cook.py", "owners": ["scripts_tests"]},
     {"module": "scripts/tests/test_rule_defaults.py", "owners": ["scripts_tests"]},
