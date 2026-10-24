@@ -336,7 +336,7 @@ const void* GetObjectLightPoolUpload(size_t& bytes) {
             }
             std::nth_element(order.begin(), order.begin() + count, order.end());
             std::vector<uint32_t> keep(count);
-            for (uint32_t k = 0; k < count; ++k) keep[k] = order[k].second;
+            for (uint32_t k = 0; k < count; ++k) { const auto& [dist, index] = order[k]; (void)dist; keep[k] = index; }
             std::sort(keep.begin(), keep.end());
             std::vector<uint32_t> remap(s_lastNumLights, UINT32_MAX);
             for (uint32_t k = 0; k < count; ++k) {

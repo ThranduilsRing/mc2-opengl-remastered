@@ -1,7 +1,7 @@
 // Which static-prop types are self-lit cards (drawn double-sided). Header-only, so it is unit-tested.
 #pragma once
-#include <cstddef>
 #include <cstdint>
+#include <span>
 
 namespace mc2_prop {
 
@@ -9,12 +9,12 @@ namespace mc2_prop {
 // ("other light, add as authored"). An imported override (GLB/FBX, or the load placeholder) also
 // defaults to 0xffffffff when it has no authored colours, so imports are never cards.
 template <class Vertex>
-inline bool isSelfLitTwoSidedCard(bool importedMesh, const Vertex* verts, std::size_t count)
+inline bool isSelfLitTwoSidedCard(bool importedMesh, std::span<const Vertex> verts)
 {
-    if (importedMesh || !verts || count == 0)
+    if (importedMesh || verts.empty())
         return false;
-    for (std::size_t v = 0; v < count; ++v)
-        if (verts[v].aRGBLight != 0xffffffffu)
+    for (const Vertex& v : verts)
+        if (v.aRGBLight != 0xffffffffu)
             return false;
     return true;
 }

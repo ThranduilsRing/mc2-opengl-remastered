@@ -220,7 +220,7 @@ void GpuStaticPropBatcher::registerType(TG_TypeShape* typeShape, TG_TypeMultiSha
 
     // Stock self-lit card (every vertex 0xffffffff); imported overrides default to that too, so they are excluded.
     const bool selfLitTwoSided = mc2_prop::isSelfLitTwoSidedCard(
-        typeShape->importedMesh, typeShape->listOfTypeVertices, typeShape->numTypeVertices);
+        typeShape->importedMesh, std::span<const TG_TypeVertex>(typeShape->listOfTypeVertices, typeShape->numTypeVertices));
     if (selfLitTwoSided) {
         static uint32_t s_doubledTypes = 0, s_doubledTris = 0;
         s_doubledTris += numTris;

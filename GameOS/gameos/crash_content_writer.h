@@ -37,7 +37,7 @@ class ContentWriter {
         // The prefix must end on a path separator boundary: a profile of ...\Joe must not rewrite ...\Joel.
         if (!profile_.empty() && p.size() >= profile_.size() &&
             _strnicmp(p.data(), profile_.data(), profile_.size()) == 0 &&
-            (p.size() == profile_.size() || p[profile_.size()] == '\\' || p[profile_.size()] == '/'))
+            (p.size() == profile_.size() || p[profile_.size()] == char(92) || p[profile_.size()] == '/'))
             return "%USERPROFILE%" + std::string(p.substr(profile_.size()));
         return std::string(p);
     }
