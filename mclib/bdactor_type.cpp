@@ -231,7 +231,7 @@ void BldgAppearanceType::init (const char * fileName)
 		if (mc2::gate::get<"MC2_MODOVERRIDE_TRACE">())
 			mc2::fmt::print_err("[MODOVERRIDE_TRACE] staticProp '{}'\n", mc2::fmt::safe(bldgBaseName));
 		if (const ModelOverrideRecord* ov = ModelOverrideRegistry::instance().resolve("staticProp", bldgBaseName);
-			ov && !bundledOverrideShadowed(*ov, iniName, bldgBaseName))
+			ov && !bundledOverrideShadowed(*ov, static_cast<const char*>(iniName), bldgBaseName))
 		{
 			const std::string condName = ModelOverrideRegistry::instance().selectedCondition(missionName, bldgBaseName);
 			const ModelOverrideCondition* cond = ov->condition(condName);
