@@ -38,6 +38,8 @@ RECORD_SIZES = {372: "GameObjectData", 3288: "MoverData", 720: "TerrainObjectDat
                 432: "ArtilleryData", 396: "CarnageData", 3992: "MechData", 3424: "GroundVehicleData", 600: "WeaponBoltData",
                 60: "ObjectManagerData", 40: "StaticMechWarriorData", 19864: "MechWarriorData", 80: "TeamStaticData", 488: "TeamData",
                 8: "StaticCommanderData", 1288: "CommanderData"}
+PILOT_SIZE = 19864
+PILOT_SUFFIX_MAX = 4096
 #: A run of this many written packets of one kind is split so a digest mismatch still points into the run.
 CHUNK = 256
 
@@ -51,6 +53,9 @@ def kind(typ: int, size: int) -> str:
     """The class of one packet: unwritten, a named record by size, or `data` for everything else."""
     if typ == NUL:
         return "empty"
+    # A pilot packet is the pinned struct plus a variable v2 suffix (queued target watch ids, da5c619c9): any size from the pinned one up to a bound.
+    if PILOT_SIZE <= size <= PILOT_SIZE + PILOT_SUFFIX_MAX:
+        return "MechWarriorData"
     return RECORD_SIZES.get(size, "data")
 
 

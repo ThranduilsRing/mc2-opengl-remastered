@@ -26,6 +26,24 @@ class GeneratedLayoutTests(unittest.TestCase):
         cls.profile = load_json(PROFILE_PATH)
         cls.example = generate(180, 42, profile=cls.profile)
 
+    def test_output_invariants(self):
+        """Loose shape checks any generate() result must keep, whatever the placement rules do."""
+        for size, seed in ((96, 7), (180, 42)):
+            with self.subTest(size=size, seed=seed):
+                layout = generate(size, seed, profile=self.profile)
+                self.assertEqual((layout["size"]["rows"], layout["size"]["cols"]), (size, size))
+                self.assertTrue(layout["bases"])
+                self.assertTrue(layout["roads_wu"])
+                ids = [b["id"] for b in layout["bases"]]
+                self.assertEqual(len(ids), len(set(ids)))
+                for base in layout["bases"]:
+                    c0, r0, c1, r1 = base["bounds"]
+                    self.assertTrue(0 <= c0 < c1 <= size and 0 <= r0 < r1 <= size)
+                for road in layout["roads_wu"]:
+                    self.assertGreaterEqual(len(road["points"]), 2)
+                    self.assertGreater(road["width_wu"], 0)
+                self.assertEqual(layout, generate(size, seed, profile=self.profile))   # same seed, same layout
+
     def test_seed_sweep(self):
         for seed in range(24):
             size = (96, 128, 180, 300)[seed % 4]

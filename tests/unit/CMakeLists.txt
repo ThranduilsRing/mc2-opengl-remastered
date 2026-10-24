@@ -165,6 +165,8 @@ add_executable(mc2_tests
     test_debug_line_project.cpp  # debug overlay segment projection; header-only
     test_hitch_fence.cpp # hitch trace Vulkan fence-wait record; header-only, no Vulkan
     test_screenshot_slot.cpp  # screenshot request slot and its expiry; header-only
+    test_tgl_force_z.cpp  # forceZ reverse-Z mirror, both render paths
+    test_static_prop_selflit.cpp  # self-lit two-sided card predicate (stock coil yes, imported override no)
     test_ktx_parse.cpp  # the KTX2 container parser every sidecar texture goes through (bounds on hostile files)
     ${MC2_WORKTREE_ROOT}/RenderCore/KtxLoader.cpp
 

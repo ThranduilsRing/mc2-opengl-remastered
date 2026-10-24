@@ -44,4 +44,22 @@ TEST_CASE("crash-bundle/writer preserves identities and snapshots without the li
     CHECK(text.find("data/input.bin") != std::string::npos);
     CHECK(mc2::crash::hash("hellp", 5) != mc2::crash::hash("hello", 5));
 }
+
+TEST_CASE("crash-bundle/profile scrub stops at a path separator") {
+    namespace fs = std::filesystem;
+    const auto dir = fs::temp_directory_path() / ("mc2-crash-scrub-" + std::to_string(GetCurrentProcessId()));
+    fs::create_directories(dir);
+    struct Cleanup { fs::path path; ~Cleanup() { std::error_code ec; fs::remove_all(path, ec); } } cleanup{dir};
+    SetEnvironmentVariableA("USERPROFILE", "C:\\Users\\Joe");
+    {
+        mc2::crash::ContentWriter writer;
+        REQUIRE(writer.init((dir / "j.jsonl").string()));
+        writer.savePoint("a", "C:\\Users\\Joe\\save.fit");
+        writer.savePoint("b", "C:\\Users\\Joel\\save.fit");
+    }
+    std::ifstream in(dir / "j.jsonl", std::ios::binary);
+    const std::string text{std::istreambuf_iterator<char>(in), {}};
+    CHECK(text.find("%USERPROFILE%\\\\save.fit") != std::string::npos);
+    CHECK(text.find("C:\\\\Users\\\\Joel\\\\save.fit") != std::string::npos);
+}
 #endif

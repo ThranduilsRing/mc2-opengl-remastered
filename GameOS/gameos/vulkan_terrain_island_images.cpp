@@ -449,13 +449,19 @@ void import_matnormal(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
     const auto* fields = gos_TerrainFieldStore();
     if (fields && fields->materialNormals().image) {
         const auto& cooked = fields->materialNormals();
-        if (cooked.version == s->matNormalCookedVersion) return;
+        // Latch the version once tried, but keep falling through to the slot-texture import when the cooked array is not the live one
+        // (refused, or the fallback is still Pending): returning here would leave the placeholder bound for good.
+        const bool cookedLive = s->matNormalReady && s->matNormalVersionImported == 0;
+        if (cooked.version == s->matNormalCookedVersion && cookedLive) return;
+        const bool cookedTried = cooked.version == s->matNormalCookedVersion;
         s->matNormalCookedVersion = cooked.version;
         const uint32_t side = uint32_t(cooked.image->width);
         RenderCore::TextureKey key;
         key.source = RenderCore::makeTextureSourceId("terrain-detail-normals", "bc7-array", cooked.version);
         key.format = cooked.image->vkFormat; key.hints = gosHint_MipmapFilter0;
-        if (auto tex = mc2vk::getOrCreateEngineVulkanContext().textures().acquire(key, *cooked.image, {side, side, side, side}, cooked.layers, true)) {
+        if (cookedTried) {
+            // already refused at this version: straight to the slot-texture import below
+        } else if (auto tex = mc2vk::getOrCreateEngineVulkanContext().textures().acquire(key, *cooked.image, {side, side, side, side}, cooked.layers, true)) {
             s->matNormalTexture = std::move(tex);
             s->matNormalLayers = cooked.layers;
             s->matNormalReady = true;
@@ -465,7 +471,8 @@ void import_matnormal(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
                  side, side, cooked.layers, cooked.image->mipCount);
             return;
         }
-        vlog("VK-TERRAIN-DETAIL: the cooked detail-normal array was refused; importing the slot textures.");
+        if (!cookedTried)
+            vlog("VK-TERRAIN-DETAIL: the cooked detail-normal array was refused; importing the slot textures.");
     } else {
         s->matNormalCookedVersion = 0;
     }

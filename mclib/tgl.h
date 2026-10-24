@@ -694,6 +694,7 @@ class TG_TypeShape : public TG_TypeNode
 
 		bool					alphaTestOn;				//Decides if we should draw alphaTest On or not!
 		bool					filterOn;					//Decides if we should filter the shape or not!
+		bool					importedMesh = false;		//Filled by InitFromImportedMesh (GLB/FBX override or load placeholder), not a stock shape
 
 		HGOSBUFFER				vb_;
 		HGOSBUFFER				ib_;

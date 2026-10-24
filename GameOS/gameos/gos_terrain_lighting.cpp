@@ -110,6 +110,7 @@ static std::vector<uint32_t> s_gridIndices;
 static std::vector<uint32_t> s_gridCounts;   // scratch: per-cell counter
 static std::vector<uint32_t> s_objectPoolUpload;
 static bool s_objectPoolDirty = true;
+static float s_poolCamXY[2] = {0.0f, 0.0f};   // camera target of the last pack: which lights the capped object pool keeps
 static uint32_t s_lightGridDim     = 0;      // 0 => grid not active this frame
 static float    s_lightGridMin[2]  = {0.0f, 0.0f};
 static float    s_lightGridInvCell[2] = {0.0f, 0.0f};
@@ -318,12 +319,48 @@ const void* GetObjectLightPoolUpload(size_t& bytes) {
         static bool warnedOverflow = false;
         if (s_lastNumLights > kObjectPoolLights && !warnedOverflow) {
             warnedOverflow = true;
-            MC2_DIAGFE(stderr, "[OBJECT_POOL_CAP v1] wanted=%u cap=%u policy=source_order_prefix dropped=%u\n",
+            MC2_DIAGFE(stderr, "[OBJECT_POOL_CAP v1] wanted=%u cap=%u policy=nearest_to_camera dropped=%u\n",
                 s_lastNumLights, kObjectPoolLights, s_lastNumLights - kObjectPoolLights);
         }
-        if (count) std::memcpy(header.lights, s_lightBuf.data(), count * sizeof(GpuTerrainLight));
+        // Over the cap, keep the lights whose circle reaches closest to the camera (not the first by source order),
+        // in source order, and remap the grid's indices to the kept slots.
+        std::vector<uint32_t> keptHeader, keptIndices;
         LightGridCpu grid{};
         const bool indexed = GetLightGridCpu(grid);
+        if (s_lastNumLights > kObjectPoolLights) {
+            std::vector<std::pair<float, uint32_t>> order(s_lastNumLights);
+            for (uint32_t i = 0; i < s_lastNumLights; ++i) {
+                const GpuTerrainLight& L = s_lightBuf[i];
+                const float dx = L.position[0] - s_poolCamXY[0], dy = L.position[1] - s_poolCamXY[1];
+                order[i] = { std::max(0.0f, std::sqrt(dx * dx + dy * dy) - L.farDistance), i };
+            }
+            std::nth_element(order.begin(), order.begin() + count, order.end());
+            std::vector<uint32_t> keep(count);
+            for (uint32_t k = 0; k < count; ++k) { const auto& [dist, index] = order[k]; (void)dist; keep[k] = index; }
+            std::sort(keep.begin(), keep.end());
+            std::vector<uint32_t> remap(s_lastNumLights, UINT32_MAX);
+            for (uint32_t k = 0; k < count; ++k) {
+                remap[keep[k]] = k;
+                header.lights[k] = s_lightBuf[keep[k]];
+            }
+            if (indexed) {
+                const uint32_t cells = grid.headerWords / 2u;
+                keptHeader.resize(grid.headerWords);
+                for (uint32_t c = 0; c < cells; ++c) {
+                    keptHeader[c * 2u] = static_cast<uint32_t>(keptIndices.size());
+                    for (uint32_t j = 0; j < grid.header[c * 2u + 1u]; ++j) {
+                        const uint32_t m = remap[grid.indices[grid.header[c * 2u] + j]];
+                        if (m != UINT32_MAX) keptIndices.push_back(m);
+                    }
+                    keptHeader[c * 2u + 1u] = static_cast<uint32_t>(keptIndices.size()) - keptHeader[c * 2u];
+                }
+                grid.header = keptHeader.data();
+                grid.indices = keptIndices.data();
+                grid.indexWords = static_cast<uint32_t>(keptIndices.size());
+            }
+        } else if (count) {
+            std::memcpy(header.lights, s_lightBuf.data(), count * sizeof(GpuTerrainLight));
+        }
         size_t words = 0;
         if (indexed) {
             header.minInvXY[0] = grid.minXY[0]; header.minInvXY[1] = grid.minXY[1];
@@ -812,6 +849,7 @@ void PackAndDispatch() {
         const bool shadowTiles = false;
 #endif
         const float camX = eye ? eye->getPosition().x : 0.0f, camY = eye ? eye->getPosition().y : 0.0f;
+        s_poolCamXY[0] = camX; s_poolCamXY[1] = camY;
         mc2localshadow::selectTiles(std::span(s_lightBuf.data(), numLights), camX, camY, shadowTiles);
     }
     // NIGHT-LIGHT-POOLS-1: publish this frame's packed count for the forward
