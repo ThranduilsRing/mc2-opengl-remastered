@@ -705,7 +705,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/deploy_payload.py",
-          "line": 1866,
+          "line": 1896,
           "evidence": "command",
           "reference": "scripts/check-deploy-hygiene.py",
           "text": "r = subprocess.run([sys.executable, hygiene, target],"
@@ -3767,7 +3767,7 @@
         },
         {
           "path": "scripts/deploy_payload.py",
-          "line": 1787,
+          "line": 1817,
           "evidence": "import",
           "reference": "exe_fingerprint",
           "text": "from exe_fingerprint import extract, sha_agrees"
@@ -4608,7 +4608,7 @@
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 603,
+          "line": 607,
           "evidence": "command",
           "reference": "scripts/run_smoke.py",
           "text": "proc = subprocess.run(cmd, cwd=str(ROOT), capture_output=True,"
@@ -5628,7 +5628,7 @@
         },
         {
           "path": "tests/smoke/test_render_options_pin.py",
-          "line": 147,
+          "line": 148,
           "evidence": "import",
           "reference": "scripts.smoke_lib.gates",
           "text": "from scripts.smoke_lib.gates import Verdict"
@@ -5834,7 +5834,7 @@
         },
         {
           "path": "tests/smoke/test_render_options_pin.py",
-          "line": 148,
+          "line": 149,
           "evidence": "import",
           "reference": "scripts.smoke_lib.logparse",
           "text": "from scripts.smoke_lib.logparse import LogSummary"
@@ -7805,7 +7805,7 @@
       "callers_by_stem": [
         {
           "path": "tools/content_pipeline/tests/test_content_pipeline.py",
-          "line": 400,
+          "line": 491,
           "evidence": "import",
           "reference": "test_ase_submaterial",
           "text": "from test_ase_submaterial import SINGLE_MAT_ASE"
@@ -8393,6 +8393,13 @@
           "evidence": "import",
           "reference": "tools.content_pipeline",
           "text": "from tools.content_pipeline import package"
+        },
+        {
+          "path": "tools/scifi_kit/industrial_package.py",
+          "line": 18,
+          "evidence": "import",
+          "reference": "tools.content_pipeline",
+          "text": "from tools.content_pipeline import package"
         }
       ]
     },
@@ -8454,21 +8461,21 @@
         },
         {
           "path": "tools/content_pipeline/tests/test_content_pipeline.py",
-          "line": 126,
+          "line": 198,
           "evidence": "import",
           "reference": "tools.content_pipeline.cook",
           "text": "from tools.content_pipeline.cook import build_asset"
         },
         {
           "path": "tools/content_pipeline/tests/test_content_pipeline.py",
-          "line": 194,
+          "line": 266,
           "evidence": "import",
           "reference": "tools.content_pipeline.cook",
           "text": "from tools.content_pipeline.cook import cook"
         },
         {
           "path": "tools/content_pipeline/tests/test_content_pipeline.py",
-          "line": 207,
+          "line": 279,
           "evidence": "import",
           "reference": "tools.content_pipeline.cook",
           "text": "from tools.content_pipeline.cook import cook"
@@ -8518,7 +8525,7 @@
         },
         {
           "path": "tools/content_pipeline/tests/test_content_pipeline.py",
-          "line": 179,
+          "line": 251,
           "evidence": "import",
           "reference": "tools.content_pipeline.frontends",
           "text": "from tools.content_pipeline.frontends import stock_meshdump"
@@ -8526,6 +8533,13 @@
         {
           "path": "tools/scifi_kit/art/content.py",
           "line": 174,
+          "evidence": "import",
+          "reference": "tools.content_pipeline.frontends",
+          "text": "from tools.content_pipeline.frontends import gltf_file"
+        },
+        {
+          "path": "tools/scifi_kit/industrial_package.py",
+          "line": 19,
           "evidence": "import",
           "reference": "tools.content_pipeline.frontends",
           "text": "from tools.content_pipeline.frontends import gltf_file"
@@ -8587,6 +8601,13 @@
           "evidence": "import",
           "reference": "tools.content_pipeline.frontends.gltf_file",
           "text": "from tools.content_pipeline.frontends import gltf_file"
+        },
+        {
+          "path": "tools/scifi_kit/industrial_package.py",
+          "line": 19,
+          "evidence": "import",
+          "reference": "tools.content_pipeline.frontends.gltf_file",
+          "text": "from tools.content_pipeline.frontends import gltf_file"
         }
       ]
     },
@@ -8634,7 +8655,7 @@
         },
         {
           "path": "tools/content_pipeline/tests/test_content_pipeline.py",
-          "line": 179,
+          "line": 251,
           "evidence": "import",
           "reference": "tools.content_pipeline.frontends.stock_meshdump",
           "text": "from tools.content_pipeline.frontends import stock_meshdump"
@@ -8834,6 +8855,13 @@
         {
           "path": "tools/scifi_kit/art/content.py",
           "line": 295,
+          "evidence": "import",
+          "reference": "tools.content_pipeline.package",
+          "text": "from tools.content_pipeline import package"
+        },
+        {
+          "path": "tools/scifi_kit/industrial_package.py",
+          "line": 18,
           "evidence": "import",
           "reference": "tools.content_pipeline.package",
           "text": "from tools.content_pipeline import package"
@@ -9182,7 +9210,7 @@
       "callers_by_stem": [
         {
           "path": "tools/content_pipeline/tests/test_content_pipeline.py",
-          "line": 193,
+          "line": 265,
           "evidence": "import",
           "reference": "tools.examples.build_modern_tree_pack",
           "text": "from tools.examples.build_modern_tree_pack import recipe"
@@ -11026,14 +11054,14 @@
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 420,
+          "line": 424,
           "evidence": "import_module",
           "reference": "fst",
           "text": "fst_lib = importlib.import_module('fst')"
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 456,
+          "line": 460,
           "evidence": "import_module",
           "reference": "fst",
           "text": "fst_lib = importlib.import_module('fst')"
@@ -11343,14 +11371,14 @@
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 336,
+          "line": 340,
           "evidence": "import",
           "reference": "fst_listing",
           "text": "import fst_listing"
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 438,
+          "line": 442,
           "evidence": "import",
           "reference": "fst_listing",
           "text": "import fst_listing"
@@ -13682,6 +13710,13 @@
       ]
     },
     {
+      "path": "tools/scifi_kit/industrial_package.py",
+      "basename": "industrial_package.py",
+      "stem": "industrial_package",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
       "path": "tools/scifi_kit/kit.py",
       "basename": "kit.py",
       "stem": "kit",
@@ -15795,7 +15830,7 @@
       "callers_by_basename": [
         {
           "path": "tests/smoke/test_render_options_pin.py",
-          "line": 124,
+          "line": 125,
           "evidence": "load module",
           "reference": "tools/tracy_capture_compare.py",
           "text": "spec = importlib.util.spec_from_file_location(\"tracy_capture_compare_under_test\", ROOT / \"tools\" / \"tracy_capture_compare.py\")"
@@ -16547,7 +16582,7 @@
       "callers_by_stem": [
         {
           "path": "tests/smoke/test_render_options_pin.py",
-          "line": 104,
+          "line": 105,
           "evidence": "import",
           "reference": "capture_ab",
           "text": "import capture_ab"

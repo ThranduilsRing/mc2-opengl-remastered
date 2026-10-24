@@ -1,5 +1,9 @@
 # Industrial generator animation handoff
 
+Rebuild the approved package manually (art is read-only):
+`py -3 tools/scifi_kit/industrial_package.py --out E:/mc2-archive-2026-10/proofs/kit-ingame-2/final/package --overwrite`.
+This is an operator entry point; deployment consumes the precooked package.
+
 The approved b7 exports (`1e3d3bca3`) now retain actual moving `Coil` geometry
 in all three LODs. Both generators ship in Remastered; Classic and damaged/
 destroyed appearances keep stock meshes. The art worktree was only read.
@@ -45,3 +49,31 @@ multiplied by `(-1,-1,1)` (the importer's axis-0 inverse). Keep the static base
 and the Coil separate through material splitting and meshoptimizer LOD export.
 The runtime binds stock tracks by node name and rejects the whole replacement
 chain if an animated name is absent from any LOD.
+
+## Post-reboot verification (2026-10-24)
+
+Proof root: `E:/mc2-archive-2026-10/proofs/kit-ingame-2/final/`.
+`coil-frame-180` and `coil-frame-197` capture the same mc2_03 generator view
+at simulation frames 179 and 196, after the existing test command starts
+stock gesture 0 on parts 126619 and 126621. The visible Coil sections rotate;
+the static bases remain aligned. Bookmark sweeps freeze the simulation, so
+two bookmarks within one sweep are not evidence of animation. The separate
+`reboot-generator-damaged` capture drives both through `setObjStatus` and
+shows the stock wrecks. `reboot-generator-classic` records the Classic view.
+The retained native-import probe covers Coil and its children in all six
+generator LODs. These game captures exercise L_TurretGenerator, not a second
+in-game PowerGenerator fixture.
+
+Night cost is not intrinsically a night-only regression: mc2_01 contains no
+industrial-kit objects. On the same mc2_10 bookmarks, frame-481 Props samples
+are 0.045-0.048 ms Classic / 0.173-0.175 ms Remastered at night, and
+0.057 / 0.189 ms after setting daylight. Turning object pools off gives
+0.031-0.042 / 0.166-0.167 ms: local pool walks explain only a small fraction.
+The Props scope excludes the separately timed shadow passes. The remaining
+cost tracks the replacement geometry/material workload; this does not isolate
+geometry from normal/ORM shading or window emission. Reusing the pool result
+removes a redundant walk, but these runs do not establish a shader-only speedup.
+The old 0.126-0.127 ms result predates the animated generator replacements and
+is not a matched shader baseline. All timings are provisional under shared
+host load; CPU samples, full timing windows and foreign process observations
+are in `reboot-cost-summary.json` and the raw measurement JSON files.
