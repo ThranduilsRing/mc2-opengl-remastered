@@ -7,7 +7,7 @@
   "RenderCore": 402,
   "RenderWorld": 0,
   "code": 14010,
-  "mclib": 28595,
+  "mclib": 28566,
   "shaders": 602
  },
  "dirs": [
@@ -263,7 +263,7 @@
   "mclib/bdactor.h": 52,
   "mclib/bdactor_render.cpp": 145,
   "mclib/bdactor_static.cpp": 99,
-  "mclib/bdactor_terrain.cpp": 216,
+  "mclib/bdactor_terrain.cpp": 187,
   "mclib/bdactor_tree.cpp": 238,
   "mclib/bdactor_tree_static.cpp": 48,
   "mclib/bdactor_type.cpp": 110,
@@ -322,14 +322,14 @@
   "mclib/gvactor.h": 17,
   "mclib/gvactor_geometry.cpp": 260,
   "mclib/gvactor_render.cpp": 100,
-  "mclib/gvactor_update.cpp": 257,
+  "mclib/gvactor_update.cpp": 258,
   "mclib/inifile.cpp": 298,
   "mclib/inifile.h": 9,
   "mclib/inifile_arrays.cpp": 706,
   "mclib/inifile_read.cpp": 262,
   "mclib/mapdata.cpp": 468,
   "mclib/mathfunc.cpp": 18,
-  "mclib/mech3d.cpp": 67,
+  "mclib/mech3d.cpp": 66,
   "mclib/mech3d.h": 8,
   "mclib/mech3d_geometry.cpp": 287,
   "mclib/mech3d_init.cpp": 219,
@@ -515,8 +515,8 @@
   "shaders/vulkan/terrain_tier1.vert": 71,
   "shaders/vulkan/terrain_tier1_skirt.vert": 71
  },
- "head": "5ea82d09e",
+ "head": "51aee7078",
  "n": 8,
- "total": 45912,
+ "total": 45883,
  "version": 1
 }
