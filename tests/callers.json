@@ -4099,7 +4099,7 @@
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 207,
+          "line": 208,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
@@ -12112,7 +12112,7 @@
       "callers_by_stem": [
         {
           "path": "tools/save_inspect.py",
-          "line": 31,
+          "line": 33,
           "evidence": "import",
           "reference": "save_craft_stale",
           "text": "import save_craft_stale as scs  # noqa: E402"

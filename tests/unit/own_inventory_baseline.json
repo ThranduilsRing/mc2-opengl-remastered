@@ -254,10 +254,10 @@
    "delete_array": 0,
    "files": {
     "code/objtype.cpp": {
-     "new": 3
+     "new": 2
     }
    },
-   "new": 3,
+   "new": 2,
    "new_array": 0,
    "owners": []
   },
@@ -4043,12 +4043,12 @@
    ]
   },
   "TG_TypeMultiShape": {
-   "delete": 30,
+   "delete": 25,
    "delete_array": 0,
    "files": {
     "mclib/bdactor_type.cpp": {
-     "delete": 13,
-     "new": 9
+     "delete": 8,
+     "new": 7
     },
     "mclib/genactor.cpp": {
      "delete": 3,
@@ -4063,7 +4063,7 @@
      "new": 10
     }
    },
-   "new": 27,
+   "new": 25,
    "new_array": 0,
    "owners": [
     "BldgAppearanceType",
@@ -5451,8 +5451,7 @@
   "code/mainmenu.cpp": 2,
   "code/mech_move.cpp": 2,
   "code/mechcmd2_debugwins.cpp": 1,
-  "code/mechcmd2_frame.cpp": 3,
-  "code/mechicon.cpp": 2,
+  "code/mechcmd2_frame.cpp": 1,
   "code/mission.cpp": 3,
   "code/mission_init.cpp": 1,
   "code/missionbegin.cpp": 3,
@@ -5480,9 +5479,8 @@
   "gui/asystem.cpp": 1,
   "mclib/ablenv.cpp": 1,
   "mclib/apprtype.cpp": 3,
-  "mclib/bdactor.cpp": 2,
-  "mclib/bdactor_static.cpp": 1,
-  "mclib/bdactor_terrain.cpp": 11,
+  "mclib/bdactor_static.cpp": 2,
+  "mclib/bdactor_terrain.cpp": 2,
   "mclib/bdactor_tree.cpp": 5,
   "mclib/bdactor_tree_static.cpp": 1,
   "mclib/bdactor_type.cpp": 1,
