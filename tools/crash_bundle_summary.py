@@ -43,10 +43,10 @@ def summarise(folder: Path) -> tuple[str, bool]:
                 elif record.get("kind") == "save_point":
                     save = record
     lines += ["Loaded mods: " + (", ".join(mods) or "unavailable"),
-              f"Content: {len(content)} identities (fnv1a64; loaded loose files and decompressed FST members)",
+              f"Content: {len(content)} identities (fnv1a64 of the first 64 KiB, with size and mtime; loaded loose files and decompressed FST members)",
               f"Save point: {save.get('operation', '?')} {save.get('path', '?')}"]
     for record in content[-3:]:
-        lines.append(f"  {record.get('hash')} {record.get('source')} {record.get('path')}")
+        lines.append(f"  {record.get('hash')} {record.get('source')} {record.get('path')} bytes={record.get('bytes')} mtime={record.get('mtime', '?')}")
     if invalid:
         lines.append(f"WARNING: {invalid} invalid/truncated journal records")
     complete = not missing and not invalid and bool(mods) and bool(content) and bool(save)

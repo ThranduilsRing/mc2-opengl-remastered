@@ -664,6 +664,7 @@ void TG_TypeShape::InitFromImportedMesh(const char* nodeIdIn, const char* parent
 	InitContentNode(nodeIdIn ? nodeIdIn : "", parentIdIn ? parentIdIn : "None", center, center);
 
 	// Take ownership of the caller's geometry; the lists stay views of the stores.
+	importedMesh       = true;
 	typeVertexStore    = std::move(vertices);
 	typeTriangleStore  = std::move(triangles);
 	numTypeVertices    = static_cast<DWORD>(typeVertexStore.size());

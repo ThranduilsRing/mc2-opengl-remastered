@@ -3,6 +3,7 @@
 // TG shapes: TG_Shape::Render, per-poly selection and the render-shape PBR override.
 // Declared in the class headers; shared names in tgl_internal.h.
 #include "tgl_internal.h"
+#include "tgl_force_z.h"
 #include "texture_assets.h"
 #include "Gates/gate.h"
 
@@ -222,11 +223,8 @@ void TG_Shape::Render (float forceZ, bool isHudElement, BYTE alphaValue, bool is
 				{
 					if ((forceZ >= 0.0f) && (forceZ < 1.0f))
 					{
-						// forceZ is authored in forward-Z terms (0 = front, 1 = back: spinning
-						// building parts 0.00001, sky 0.99999). The camera clip depth is
-						// reverse-Z (near = 1, far = 0), so mirror it or "front" lands on the far plane
-						// and the part fails the GEQUAL depth test (the generator coil vanished).
-						const float rz = 1.0f - forceZ;
+						// forceZ is forward-Z; mirror to reverse-Z (see tgl_force_z.h).
+						const float rz = mc2_tgl::forceZClipDepth(forceZ);
 						gVertex[0].z	= rz;
 						gVertex[1].z	= rz;
 						gVertex[2].z	= rz;
@@ -309,13 +307,10 @@ void TG_Shape::Render (float forceZ, bool isHudElement, BYTE alphaValue, bool is
 			TG_TypeTriangle triType = firstTriType;
 
 			glm::mat4 mvp;
-			if ((forceZ >= 0.0f) && (forceZ < 1.0f))
+			if (mc2_tgl::forceZActive(forceZ))
 			{
-				// matrix that will make (x,y,w * forceZ, w) from (x,y,z,w), so that later after division by w, it will become just forceZ
-				glm::mat4 forceZMatrix = glm::mat4(1.0f);
-				forceZMatrix[2][2] = 0.0f;
-				forceZMatrix[2][3] = forceZ;
-				mvp = cur_shape2clip * forceZMatrix;
+				// (x,y,z,w) -> (x,y,w * reverse-Z depth,w), so after division by w clip depth is just the mirrored forceZ
+				mvp = cur_shape2clip * mc2_tgl::forceZMatrix(forceZ);
 			}
 			else {
 				mvp = cur_shape2clip;

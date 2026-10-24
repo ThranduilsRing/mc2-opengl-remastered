@@ -3,6 +3,7 @@
 #include <algorithm>
 #include "gos_static_prop_batcher_internal.h"
 #include "static_caster_set.h"
+#include "gos_static_prop_selflit.h"
 #include "../../mclib/texture_assets.h"
 #include "mc2fmt.h"
 
@@ -217,10 +218,14 @@ void GpuStaticPropBatcher::registerType(TG_TypeShape* typeShape, TG_TypeMultiSha
     const uint32_t baseVertex = static_cast<uint32_t>(s_stagingVbo.size() / kVertexStride);
     const uint32_t newTypeID  = static_cast<uint32_t>(s_types.size());
 
-    // Every vertex carries the 0xffffffff "other light, add as authored" tag: a self-lit card.
-    bool selfLitTwoSided = typeShape->numTypeVertices > 0;
-    for (uint32_t v = 0; selfLitTwoSided && v < typeShape->numTypeVertices; ++v)
-        selfLitTwoSided = (typeShape->listOfTypeVertices[v].aRGBLight == 0xffffffffu);
+    // Stock self-lit card (every vertex 0xffffffff); imported overrides default to that too, so they are excluded.
+    const bool selfLitTwoSided = mc2_prop::isSelfLitTwoSidedCard(
+        typeShape->importedMesh, typeShape->listOfTypeVertices, typeShape->numTypeVertices);
+    if (selfLitTwoSided) {
+        static uint32_t s_doubledTypes = 0, s_doubledTris = 0;
+        s_doubledTris += numTris;
+        MC2_DIAGFE(stderr, "[STATIC_PROP] self-lit two-sided types=%u tris=%u\n", ++s_doubledTypes, s_doubledTris);
+    }
 
     // Group triangles with the same localTextureHandle into contiguous packets,
     // preserving authored listOfTypeTriangles order. Each packet emits 3

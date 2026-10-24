@@ -34,8 +34,10 @@ class ContentWriter {
     // Bundles get attached to reports: drop the \\?\ prefix and the user profile directory from recorded paths.
     std::string scrub(std::string_view p) const {
         if (p.starts_with("\\\\?\\")) p.remove_prefix(4);
+        // The prefix must end on a path separator boundary: a profile of ...\Joe must not rewrite ...\Joel.
         if (!profile_.empty() && p.size() >= profile_.size() &&
-            _strnicmp(p.data(), profile_.data(), profile_.size()) == 0)
+            _strnicmp(p.data(), profile_.data(), profile_.size()) == 0 &&
+            (p.size() == profile_.size() || p[profile_.size()] == '\\' || p[profile_.size()] == '/'))
             return "%USERPROFILE%" + std::string(p.substr(profile_.size()));
         return std::string(p);
     }
@@ -70,9 +72,10 @@ public:
         std::lock_guard lock(mutex_);
         append("{\"kind\":\"save_point\",\"operation\":" + quote(op) + ",\"path\":" + quote(scrub(path)) + "}");
     }
-    void identity(std::string_view name, std::string_view source, uint64_t h, uint64_t size) {
-        append(std::format("{{\"kind\":\"content\",\"path\":{},\"source\":{},\"hash\":\"{:016x}\",\"bytes\":{}}}",
-                           quote(name), quote(source), h, size));
+    // mtime is the file's FILETIME (100 ns ticks since 1601), 0 for an FST member.
+    void identity(std::string_view name, std::string_view source, uint64_t h, uint64_t size, uint64_t mtime = 0) {
+        append(std::format("{{\"kind\":\"content\",\"path\":{},\"source\":{},\"hash\":\"{:016x}\",\"bytes\":{},\"mtime\":{}}}",
+                           quote(name), quote(source), h, size, mtime));
     }
     void image(std::string_view name, const void* data, size_t size) {
         std::lock_guard lock(mutex_);
@@ -81,6 +84,7 @@ public:
         if (auto [it, fresh] = seen_.insert(key); fresh) identity(name, "fst-member", h, size);
     }
     void fd(int fd, std::string_view logical, std::string_view owner) {
+        if (journal_ == INVALID_HANDLE_VALUE) return;   // init failed: no journal, so no handle query or hashing
         char physical[MAX_PATH]{};
         const auto native = reinterpret_cast<HANDLE>(_get_osfhandle(fd));
         const DWORD pathLength = GetFinalPathNameByHandleA(native, physical, MAX_PATH, FILE_NAME_NORMALIZED);
@@ -91,7 +95,7 @@ public:
         const uint64_t fileSize = (uint64_t(info.nFileSizeHigh) << 32) | info.nFileSizeLow;
         const auto key = std::string(physical) + ':' + std::to_string(fileSize) + ':' +
                          std::to_string(info.ftLastWriteTime.dwHighDateTime) + ':' + std::to_string(info.ftLastWriteTime.dwLowDateTime);
-        { std::lock_guard lock(mutex_); if (auto [it, fresh] = seen_.insert(key); !fresh) return; }
+        { std::lock_guard lock(mutex_); if (seen_.contains(key)) return; }
         // Identity is size + mtime + the first 64 KiB, read on a separate handle (the loader's file offset and CRT buffering stay untouched), outside the lock.
         HANDLE file = CreateFileA(physical, GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE,
                                   nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
@@ -102,7 +106,9 @@ public:
         if (!ok) return;
         const uint64_t h = hash(bytes, got);
         std::lock_guard lock(mutex_);
-        identity(logical, owner, h, fileSize);
+        // Recorded only after a successful open and read, so a failed attempt is retried on the next open.
+        if (auto [it, fresh] = seen_.insert(key); !fresh) return;
+        identity(logical, owner, h, fileSize, (uint64_t(info.ftLastWriteTime.dwHighDateTime) << 32) | info.ftLastWriteTime.dwLowDateTime);
         append("{\"kind\":\"physical\",\"logical\":" + quote(logical) + ",\"path\":" + quote(scrub(physical)) + "}");
     }
     // Exception path: no mutex, allocation, CRT streams or traversal. A concurrent final

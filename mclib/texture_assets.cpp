@@ -15,6 +15,7 @@
 #include "mc2fmt.h"
 #include <algorithm>
 #include <cctype>
+#include <filesystem>
 #include <cstring>
 #include <limits>
 #include <string_view>
@@ -110,6 +111,14 @@ static bool txmLoadCooked(const char* source, const char* sidecar, bool prefer, 
     const int sourceRank = LookupModPriority(source) + (exists && !original.isLoadedFromDisk() ? 1 : 0);
     const int cookedRank = LookupModPriority(sidecar) + (!cooked.isLoadedFromDisk() ? 1 : 0);
     if (!RenderCore::preferCookedSource(exists, sourceRank, cookedRank, prefer)) return false;
+    // Same provider, both loose: a source edited in place after the sidecar was cooked makes the sidecar stale.
+    if (exists && sourceRank == cookedRank && original.isLoadedFromDisk() && cooked.isLoadedFromDisk() &&
+        original.getFilename() && cooked.getFilename()) {
+        std::error_code ecSource, ecCooked;
+        const auto sourceTime = std::filesystem::last_write_time(original.getFilename(), ecSource);
+        const auto cookedTime = std::filesystem::last_write_time(cooked.getFilename(), ecCooked);
+        if (!ecSource && !ecCooked && sourceTime > cookedTime) return false;
+    }
     const long size = cooked.fileSize();
     if (size <= 0 || size > 256 * 1024 * 1024) return false;
     std::vector<uint8_t> bytes(size);

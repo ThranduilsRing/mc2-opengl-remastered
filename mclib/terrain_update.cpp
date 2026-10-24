@@ -97,10 +97,11 @@ static uint8_t chooseProjectedLod(const TerrainBlockMeta& bm, float halfMap, Cam
         return level;
     }
     static uint64_t cachedVersion = 0;
+    static int cachedSide = 0;
     static std::vector<std::array<float, 6>> errors;
     const int side = store->mapSide();
     const int blockSide = (side - 1 + 19) / 20;
-    if (cachedVersion != store->heightVersion()) {
+    if (cachedVersion != store->heightVersion() || cachedSide != side) {
         errors.resize(size_t(blockSide) * blockSide);
         for (int y = 0; y < blockSide; ++y) for (int x = 0; x < blockSide; ++x)
             errors[x + y * blockSide] = mc2terrain::terrainPatchHeightErrors(store->height(), side,
@@ -108,8 +109,11 @@ static uint8_t chooseProjectedLod(const TerrainBlockMeta& bm, float halfMap, Cam
                 std::min(20, side - 1 - x * 20),
                 std::min(20, side - 1 - y * 20));
         cachedVersion = store->heightVersion();
+        cachedSide = side;
     }
-    const auto& error = errors[bm.originX / 20 + bm.originY / 20 * blockSide];
+    const size_t errorIndex = size_t(bm.originX / 20) + size_t(bm.originY / 20) * size_t(blockSide);
+    if (errorIndex >= errors.size()) return bm.lodLevel;   // block outside the cooked grid: keep its authored level
+    const auto& error = errors[errorIndex];
     // Projection derivatives use the camera's own transform and pixel convention.
     // The absolute numerator is affine over the box; its extrema are at corners.
     Stuff::Vector4D zero, up;
