@@ -81,6 +81,7 @@ bool BldgAppearance::isStaticEligible() const
 	const bool hasRotationalNode =
 		appearType->rotationalNodeId[0] != '\0'
 		&& S_stricmp(appearType->rotationalNodeId, "NONE") != 0;
+	if (hasRotationalNode) return false;
 	const bool overrideStatic =
 		appearType->bldgRenderShape && !bldgTypeHasAnimations(appearType) && !hasRotationalNode;
 	const bool activeGestureHasAnimation =
