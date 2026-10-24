@@ -171,3 +171,29 @@ turret generator), and none on stock `mc2_01`. The day mission is a regression
 check, not industrial visual coverage. Runtime acceptance, crops and performance
 results must be read from that directory; an SDL window-creation failure does
 not count as a rendered pass.
+
+Lane proof (implementation `bf3a8dbfa`): the game build, all-target checkpoint,
+contract harnesses, model-override tests, 21 content-pipeline tests, 1296 scripts
+tests plus 270 subtests, five selected contract rows, and worktree ratchets pass.
+Day/night A/B and the mc2_03 fuel scene produced captures. The command-channel
+damage test acknowledged `animate 122301 damaged`; its capture shows the stock
+damaged large fuel tank beside remade pipework. `index.html` and
+`phone-sheet.jpg` in the proof directory contain the actual unaltered crops.
+The night transformer is visibly darker than stock; this is exposed for review,
+not treated as visual acceptance of the entire set.
+
+Interleaved cost is provisional under other host runs. Last corresponding GPU
+bookmark-sweep summaries: mc2_01 props 0.044 to 0.045 ms, mc2_10 0.051 to
+0.138 ms. Night load-end process VRAM was 610 to 872 MiB; engine startup was
+11.0 to 22.3 s (first cold kit startup took about 46 s). Day VRAM stayed
+740 MiB and startup was 11.1 to 9.7 s. Full sample ranges, CPU samples,
+approximate active-window CPU load and observed other mc2 process IDs are in
+`performance/measurements.json`; lease-wait observations are distinguished.
+Runtime payload is 486 MiB: 102 GLBs, 304 KTX2s, no TGA duplicates.
+
+The mod battery initially passed 3/6; retained resource-failure/cold-timeout
+stages then passed warm retries, yielding passing coverage for all six mods
+without relaxing engine gates. Both initial and retry evidence is retained.
+Automatic approval review rejected deletion of the three disposable failed
+stages with "blocked by policy"; they remain under the proof directory's
+`mod-battery/20261024-105544/`. No stock/mod source install was modified.
