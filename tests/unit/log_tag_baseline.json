@@ -10523,7 +10523,8 @@
     "refused",
     "bytes",
     "policy",
-    "fallback"
+    "fallback",
+    "count"
    ],
    "count": 1
   },
@@ -10628,6 +10629,15 @@
    "ver": 1,
    "stream": "stderr",
    "keys": [
+    "refused_count"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_RESIDENCY",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
     "thinned",
     "stride",
     "instances"
@@ -10710,6 +10720,24 @@
    "ver": -1,
    "stream": "stdout",
    "keys": [],
+   "count": 1
+  },
+  {
+   "tag": "VK_TERRAIN_ISLAND",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "count"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_TERRAIN_ISLAND",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "failed_attempts"
+   ],
    "count": 1
   },
   {

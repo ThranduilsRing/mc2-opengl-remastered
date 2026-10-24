@@ -139,12 +139,7 @@ bool stage_light_pool(TerrainIsland* s, const Mc2TerrainTier1Feed& feed,
             vkGridDim = mc2vk::LightLists::kDim;
             return true;
         }
-        // Local lighting is optional; retry the accelerator next frame while retaining terrain.
-        static const char* reportedFailure = nullptr;
-        if (reportedFailure != failure) {
-            reportedFailure = failure;
-            vlog("[VK_TERRAIN_ISLAND] light lists failed (%s); using linear lighting, will retry.", reportedFailure);
-        }
+        // Local lighting is optional; the accelerator owns retry/backoff and diagnostics.
         vkGridDim = 0;
     }
     {
