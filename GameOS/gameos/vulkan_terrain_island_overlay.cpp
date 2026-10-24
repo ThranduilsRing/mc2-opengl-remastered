@@ -4,7 +4,6 @@
 #include "vulkan_mover_shadow.h"
 #include "vk_gpu_profile.h"   // VK-GPU-ZONES: MC2_VK_GPU_SCOPE
 #include "texture_decode.h"   // gos_GetTextureTexels
-#include "gos_terrain_indirect.h"
 
 #ifdef MC2_VULKAN_ISLAND
 
@@ -328,7 +327,8 @@ extern "C" int mc2_vk_overlay_prewarm(int w,int h) {
     // Preserve any queued draws; the first real frame submits its own stream.
     auto pending = std::move(g_ovlPending);
     g_ovlPending.clear();
-    if (gos_terrain_indirect::IsFrameOverlayArmed()) gos_terrain_indirect::DrawDecalStatic();
+    // No DrawDecalStatic() here: baking the cement decal VBO at load time (before the first frame)
+    // changes the cement slab edges (a dark 1px outline on mc2_01). The first real frame bakes and submits it.
     const bool ready = ovl_prepare_static(s, s->ovl.get(), g_ovlPending);
     for (const auto& p : g_ovlPending)
         for (const auto& d : p.draws)
