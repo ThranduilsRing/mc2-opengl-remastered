@@ -16,6 +16,7 @@
 #include <SDL2/SDL.h>
 #include <string>
 #include <cstdio>
+#include <tracy/Tracy.hpp>
 #ifdef _WIN32
 #include <windows.h>
 #endif
@@ -167,6 +168,7 @@ void shutdownVulkanBackend() {
 // The render-object handle slots reuse an index only after the frame that may name it completed. One clock for every host (game and editor): it runs
 // after the present that closed the frame, whatever that present did.
 static void advanceHandleClock(unsigned long frameCounter) {
+    ZoneScopedN("Host.AdvanceHandleClock");
     uint64_t frameNo = frameCounter, doneFrame = frameNo > 2 ? frameNo - 2 : 0;
 #ifdef MC2_VULKAN
     if (mc2vk::engineVulkanContextValid()) {
@@ -228,7 +230,7 @@ void presentOrSwap(graphics::RenderWindowHandle win, unsigned long frameCounter)
         }
         if (vkpres.valid()) {
             int pdw = 0, pdh = 0;
-            graphics::get_drawable_size(win, &pdw, &pdh);
+            { ZoneScopedN("Host.PresentDrawableSize"); graphics::get_drawable_size(win, &pdw, &pdh); }
             // T5 content verification: readback on a light cadence for
             // the first stretch (proves real, changing frame content
             // without a per-frame readback stall). A pinned PPM dump
@@ -262,7 +264,7 @@ void presentOrSwap(graphics::RenderWindowHandle win, unsigned long frameCounter)
             if (vkpres.presentFrame(static_cast<uint32_t>(pdw), static_cast<uint32_t>(pdh), verify)) {
                 vkPresented = true;
                 static unsigned long s_vkHealthCadence = 0;
-                if ((s_vkHealthCadence++ % 300) == 0) vkpres.logHealth();
+                if ((s_vkHealthCadence++ % 300) == 0) { ZoneScopedN("Host.PresentHealth"); vkpres.logHealth(); }
             } else {
                 // VK-FAILSOFT-DISARM-2: a mid-run present failure is
                 // almost always the transient swapchain flake
