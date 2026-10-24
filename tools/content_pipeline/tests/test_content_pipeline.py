@@ -111,6 +111,42 @@ def test_ir_round_trip_preserves_transforms_normals_alpha(tmp_path):
         assert np.allclose(np.abs(prim.tangents[:, 3]), 1)
 
 
+def test_animated_material_splits_share_pivot_and_parent(tmp_path):
+    src, doc, *_ = make_gltf(tmp_path)
+    doc["nodes"] = [{"name": "Coil", "mesh": 0, "translation": [0, 6.9, 0],
+                     "extras": {"mc2_anim_node": "Coil"}}]
+    doc["meshes"][0]["primitives"] *= 2
+    src.write_text(json.dumps(doc))
+    asset = gltf_file.to_ir("generator", "staticProp:generator", src,
+                            meta={"frame": "gltf", "wu_per_unit": 4}, work_dir=tmp_path / "w")
+    scene = asset.lod0()
+    for node, world in zip(scene.nodes, scene.world_matrices()):
+        if node.extras.get("mc2_anim_node"):
+            node.extras["mc2_pivot_tg_wu"] = world[:3, 3].tolist()
+    data = gltf_io.write_runtime_glb(scene, asset.materials, {0: "albedo.png"})
+    runtime, _ = gltf_io.split_glb(data)
+    coil, split = runtime["nodes"]
+    assert coil["name"] == "Coil" and split["name"] == "Coil_1"
+    assert coil["children"] == [1] and runtime["scenes"][0]["nodes"] == [0]
+    assert coil["translation"] == pytest.approx([0, -27.6, 0])
+    assert split["translation"] == [0, 0, 0]
+    path = tmp_path / "runtime.glb"
+    path.write_bytes(data)
+    assert validate.errors(validate.validate_runtime_glb(path)) == []
+    back, _, _ = gltf_io.read_gltf(path, frame="mc2_runtime")
+    for (_, expected), (_, actual) in zip(scene.flattened(), back.flattened()):
+        assert actual.positions == pytest.approx(expected.positions)
+    # A split with another transform would break the shared rotation origin.
+    runtime["nodes"][1]["translation"] = [1, 0, 0]
+    _, binary = gltf_io.split_glb(data)
+    body = json.dumps(runtime).encode()
+    body += b" " * (-len(body) % 4)
+    path.write_bytes(struct.pack("<III", gltf_io.GLB_MAGIC, 2, 28 + len(body) + len(binary))
+                     + struct.pack("<II", len(body), gltf_io.CHUNK_JSON) + body
+                     + struct.pack("<II", len(binary), gltf_io.CHUNK_BIN) + binary)
+    assert any("RUNTIME_NODE" in e for e in validate.errors(validate.validate_runtime_glb(path)))
+
+
 def test_runtime_frame_is_axis0_inverse(tmp_path):
     src, *_ = make_gltf(tmp_path)
     asset = gltf_file.to_ir("panel", "staticProp:panel", src, meta={"frame": "gltf"}, work_dir=tmp_path / "w")
@@ -119,6 +155,42 @@ def test_runtime_frame_is_axis0_inverse(tmp_path):
     raw = gltf_io.read_accessor(doc, [binary], doc["meshes"][0]["primitives"][0]["attributes"]["POSITION"])
     tg = asset.lod0().flattened()[0][1].positions
     assert np.allclose(raw, tg * [-1, -1, 1], atol=1e-5)
+
+
+def test_runtime_prunes_unreferenced_vertices_without_changing_corners(tmp_path):
+    src, *_ = make_gltf(tmp_path)
+    asset = gltf_file.to_ir("panel", "staticProp:panel", src, meta={"frame": "gltf"}, work_dir=tmp_path / "w")
+    prim = asset.lod0().meshes[0].primitives[0]
+    prim.indices = np.array([[3, 0, 2]])
+    expected = asset.lod0().flattened()[0][1]
+    doc, binary = gltf_io.split_glb(gltf_io.write_runtime_glb(asset.lod0(), asset.materials, {}))
+    output = doc["meshes"][0]["primitives"][0]
+    idx = gltf_io.read_accessor(doc, [binary], output["indices"]).reshape(-1)
+    for key, values in (("POSITION", expected.positions * [-1, -1, 1]),
+                        ("COLOR_0", expected.color0)):
+        actual = gltf_io.read_accessor(doc, [binary], output["attributes"][key])
+        assert len(actual) == 3
+        assert np.allclose(actual[idx], values[expected.indices.reshape(-1)], atol=1e-5)
+
+
+def test_authored_image_rows_match_native_tg_uvs(tmp_path):
+    # Assimp glTF2Importer flips V, then toMC2V flips it back. Preserve the
+    # original glTF/PIL row order; a uniform-colour fixture cannot test this.
+    src, *_ = make_gltf(tmp_path)
+    pixels = np.full((8, 8, 4), 255, np.uint8)
+    pixels[:4, :, :3] = [220, 30, 10]
+    pixels[4:, :, :3] = [10, 50, 230]
+    Image.fromarray(pixels).save(tmp_path / "albedo.png")
+    asset = gltf_file.to_ir("panel", "staticProp:panel", src, meta={"frame": "gltf"}, work_dir=tmp_path / "w")
+    out = package.build_package([asset], tmp_path / "out", mod_id="uv", compress=False)
+    record = json.loads((out / "data/model_overrides/models.json").read_text())["overrides"][0]
+    doc, binary = gltf_io.split_glb((out / "data/model_overrides" / record["source"]).read_bytes())
+    texture = texcook.load_rgba(next((out / "data/tgl/32").glob("*.ktx2")))
+    # glTF V=.25 -> Assimp .75 -> toMC2V .25 -> top/red half.
+    assert tuple(texture[2, 2, :3]) == (220, 30, 10)
+    assert tuple(texture[6, 2, :3]) == (10, 50, 230)
+    raw = gltf_io.read_accessor(doc, [binary], doc["meshes"][0]["primitives"][0]["attributes"]["TEXCOORD_0"])
+    assert np.allclose(raw[:, 1], [0, 0, 1, 1])
 
 
 @pytest.mark.parametrize("light_mesh", [None, 0])
@@ -229,6 +301,25 @@ def test_bt2018_recipe_retains_skin_source_bytes(tmp_path):
 
 
 # --------------------------------------------------------------------------- cache key
+
+def test_authored_materials_share_albedo_without_merging_surface_classes(tmp_path):
+    import copy
+    src, *_ = make_gltf(tmp_path)
+    a = gltf_file.to_ir("panel", "staticProp:panel", src, work_dir=tmp_path / "work")
+    normal = tmp_path / "normal.png"
+    Image.new("RGBA", (4, 4), (128, 128, 255, 255)).save(normal)
+    a.materials[0].normal = ir.TextureRef.of(normal, "normal")
+    twin = copy.deepcopy(a.materials[0])
+    twin.material_class = "painted_metal"
+    twin.metallic = 0.0
+    a.materials.append(twin)
+    out = package.build_package([a], tmp_path / "out", mod_id="shared", compress=False)
+    images = list((out / "data/tgl/128").glob("*.ktx2"))
+    assert len(images) == 1
+    record = json.loads((out / "data/model_overrides/models.json").read_text())["overrides"][0]
+    assert len(record["materials"]["slots"]) == 2
+    assert len({s["normal"] for s in record["materials"]["slots"]}) == 1
+
 
 def test_cache_key_is_content_not_name(tmp_path):
     a = tmp_path / "x.png"

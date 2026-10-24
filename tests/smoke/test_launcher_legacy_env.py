@@ -204,6 +204,17 @@ def test_every_environment_option_has_exactly_one_legacy_name():
     table = (ROOT / "Gates" / "render_options_legacy_env.h").read_text()
     mapped = re.findall(r'\{"(MC2_[A-Z0-9_]+)",\s*"(\w+)"\}', table)
     options = re.findall(r'detail::\w+Opt\s*\(\s*"(\w+)"', (ROOT / "Gates" / "render_options.h").read_text())
-    options_cfg_from_the_start = {"PostCAS", "PostCASSharpness", "TonemapMode", "ShadowQuality", "SpatialAA", "ImpactDecals"}
+    options_cfg_from_the_start = {"PostCAS", "PostCASSharpness", "TonemapMode", "ShadowQuality", "SpatialAA", "ImpactDecals", "RemasteredBuildings"}
     assert sorted(o for _, o in mapped) == sorted(set(options) - options_cfg_from_the_start)
     assert len({e for e, _ in mapped}) == len(mapped)
+
+
+@needs_launcher
+@pytest.mark.parametrize("choice,expected", [(None, "TRUE"), ("0", "FALSE"), ("1", "TRUE")])
+def test_building_art_setting_round_trip(tmp_path, choice, expected):
+    d = install(tmp_path, {} if choice is None else {"RemasteredBuildings": choice})
+    sync(d)
+    assert cfg_value(d, "RemasteredBuildings") == expected
+    assert cfg_value(d, "MusicVolume") == "128"
+    sync(d)
+    assert cfg_value(d, "RemasteredBuildings") == expected

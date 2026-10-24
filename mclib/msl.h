@@ -804,6 +804,7 @@ class TG_AnimateShape
 		//This function copies the pointers to the animation data in this class to the
 		//TG_MultiShape being drawn.  Nothing else happens.
 		void SetAnimationState (TG_MultiShapePtr mShape);
+		const char* MissingAnimationNode(TG_TypeMultiShape* shape) const;
 
 		float GetFrameRate (void)
 		{

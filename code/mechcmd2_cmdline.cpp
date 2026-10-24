@@ -52,6 +52,7 @@ static long textToLong (char *num)
 	return(result);
 }
 
+#include "Gates/render_options.h"
 //----------------------------------------------------------------------------
 // Same command line Parser as MechCommander
 void ParseCommandLine(const char *command_line)
@@ -83,6 +84,7 @@ void ParseCommandLine(const char *command_line)
 	i=0;
 	while (i<n_args)
 	{
+		if (mc2::options::buildingArtArgument(argv[i])) { ++i; continue; }
 		if (S_stricmp(argv[i],"-mission") == 0)
 		{
 			i++;

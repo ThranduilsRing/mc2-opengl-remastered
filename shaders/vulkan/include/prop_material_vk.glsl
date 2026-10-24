@@ -48,6 +48,10 @@ SurfaceMaterial propSurface(int id, vec3 albedo) {
     s.normal = normalize(mc2ToRender(vNormalStuff));
     if (row.material.normalTex != 0xffffffffu) {
         vec3 sampleN = texture(uPropNormal, vec3(uv, float(row.material.normalTex))).rgb;
+        if (row.metadata.z != 0u) {
+            vec2 xy = sampleN.xy * 2.0 - 1.0;
+            sampleN.z = 0.5 + 0.5 * sqrt(max(0.0, 1.0 - dot(xy, xy)));
+        }
         s.normal = propDetailNormal(s.normal, uv, sampleN, row.normalStrength);
     }
     // No ORM map: the class scalars (row factors) with neutral AO and full coverage.

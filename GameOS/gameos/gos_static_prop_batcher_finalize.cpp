@@ -643,6 +643,7 @@ void GpuStaticPropBatcher::buildAuthoredMaterials() {
                 const int32_t id = static_cast<int32_t>(materialSources_.table.size());
                 const bool ok = mc2prop::addMaterial(materialSources_, *owner, input);
                 materialId = ok ? id : -1;
+                if (ok) materialSources_.table[id].reserved[2] = type.stockAlphaLighting ? 1u : 0u;
                 mc2::fmt::print_err("[MODOVERRIDE] authored material {} slot={} id={}\n",
                     owner->appearanceName, input.slot, materialId);
             }

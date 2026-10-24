@@ -26,7 +26,7 @@ import numpy as np
 from . import cache, gltf_io, ir, texcook, validate
 
 PACKAGE_VERSION = "mc2-content-package/1"
-COOKER_VERSION = "mc2-content-cooker/4"  # transforms, damage chains and attachment payloads
+COOKER_VERSION = "mc2-content-cooker/6"  # animated material splits retain their parent
 GEOMETRY_CACHE = cache.CacheKind("model-", ".glb")
 SKIN_CACHE = cache.CacheKind("skin-", ".glb")
 DETAIL_EDGE = 512        # every authored detail map in a mission shares this extent (engine array)
@@ -99,11 +99,16 @@ def cook_base_colors(asset, out, entry, compress, runtime_names=None):
     # Base colour: stock slots name stock textures; authored slots get real tiers.
     aid = _safe(asset.id)
     names = {}
+    shared = {}
     for slot, m in enumerate(asset.materials):
         if m.base_color is None and m.base_color_policy == "stock":
             continue
         if m.base_color is not None and (m.base_color_policy == "stock" or m.base_color.passthrough):
             names[slot] = stock_texture_name(m)
+            continue
+        key = (m.base_color.sha256 if m.base_color else None, tuple(m.base_color_factor), m.alpha_mode, m.alpha_cutoff)
+        if runtime_names is None and key in shared:
+            names[slot] = shared[key]
             continue
         rgba = texcook.load_rgba(m.base_color.path) if m.base_color else np.full((1, 1, 4), 255, np.uint8)
         if tuple(m.base_color_factor) != (1.0, 1.0, 1.0, 1.0):
@@ -116,6 +121,7 @@ def cook_base_colors(asset, out, entry, compress, runtime_names=None):
             rgba[..., 3] = 255
         name = (runtime_names or {}).get(slot) or _texture_name(aid, slot, m)
         names[slot] = name
+        shared[key] = name
         cutoff = m.alpha_cutoff if m.alpha_mode == "MASK" else None
         for tier, img in texcook.base_color_tiers(rgba, texel_scale=int(asset.frontend.get("texel_scale", 1))).items():
             tdir = out / "data" / "tgl" / str(tier)
@@ -245,6 +251,7 @@ def cook_asset(asset: ir.Asset, out: Path, *, compress=True, max_triangles=None,
             record["conditions"][cond] = c
 
     slots = []
+    detail_paths = {}
     for slot, m in enumerate(asset.materials):
         if not m.authored():
             continue
@@ -258,9 +265,12 @@ def cook_asset(asset: ir.Asset, out: Path, *, compress=True, max_triangles=None,
             row["alphaCutoff"] = m.alpha_cutoff
         for which in ("normal", "orm"):
             if getattr(m, which) is not None:
-                rel = f"{aid}/detail/{slot}_{which}.ktx2"
-                _write(mo / rel, _detail(m, which, entry, compress))
-                row[which] = rel
+                key = (which, getattr(m, which).sha256)
+                if key not in detail_paths:
+                    rel = f"{aid}/detail/{slot}_{which}.ktx2"
+                    _write(mo / rel, _detail(m, which, entry, compress))
+                    detail_paths[key] = rel
+                row[which] = detail_paths[key]
         slots.append(row)
     if slots:
         record["materials"] = {"version": 2, "slots": slots}

@@ -487,10 +487,14 @@ long ImportShapeFromMesh(const aiScene* scene, unsigned meshIdx,
 		center = toMC2Pos(pos);
 	}
 	const bool keepPivot = instanceWorld &&
-		(S_strnicmp(nodeNm, "SpotLight_", 10) == 0 || S_strnicmp(nodeNm, "LitWin", 6) == 0);
+		(S_strnicmp(nodeNm, "SpotLight_", 10) == 0 || S_strnicmp(nodeNm, "LitWin", 6) == 0
+		 || (meshNode && meshNode->mMetaData && meshNode->mMetaData->HasKey("mc2_pivot_tg_wu")));
 	if (keepPivot) {
 		center = toMC2Pos(aiVector3D(instanceWorld->a4, instanceWorld->b4, instanceWorld->c4));
-		parentNm = "None";
+		// Material splits below an animated source follow the same stock track.
+		if (!(meshNode && meshNode->mParent && meshNode->mParent->mMetaData
+		      && meshNode->mParent->mMetaData->HasKey("mc2_anim_node")))
+			parentNm = "None";
 	}
 	// Baked instance: positions by the world matrix, normals by its inverse transpose; a mirroring
 	// transform reverses winding so faces stay front-facing.
@@ -606,6 +610,8 @@ long ImportShapeFromMesh(const aiScene* scene, unsigned meshIdx,
 	// Hand ownership of the vectors to the shape (no copy).
 	outShape.name = nodeNm; outShape.parent = parentNm;
 	outShape.center = outShape.relativeCenter = center;
+	if (keepPivot && strcmp(parentNm, "None") != 0)
+		outShape.relativeCenter = glm::vec3(0); // split and source share an absolute pivot
 	outShape.vertices = std::move(verts); outShape.triangles = std::move(tris);
 	return 0;
 }
@@ -1602,8 +1608,18 @@ static void CollectContentSockets(const aiNode* node, mc2::content::Asset& asset
 long ImportGeometryFromFile(const char* path, TG_TypeMultiShape* out, bool autoGround, bool authoredColors,
                             bool bakeNodeTransforms) {
 	if (!path || !out) return -1;
-
-
+	// The shipped cooker's GLBs contain their vertex/index buffers. Keep arbitrary
+	// mod GLBs on dependency tracking (they may reference external buffers).
+	const bool staticGlb = bakeNodeTransforms && std::string_view(path).ends_with(".glb") &&
+		std::string_view(path).starts_with("mods/mc2-industrial-kit/data/model_overrides/");
+	const std::string staticParameters = std::to_string(s_gltfAxis()) + ":" + ContentFloatKey(s_gltfYoff()) + ":" +
+		ContentFloatKey(s_gltfYawDeg()) + ":" + std::to_string(authoredColors) + ":static-glb/1";
+	if (staticGlb) {
+		mc2::content::Asset cached;
+		cached.ground = autoGround ? mc2::gate::get<"MC2_GLTF_GROUND">() : 0;
+		cached.parameters = staticParameters;
+		if (mc2::content::loadCached(cached, path)) return out->BuildContentIR(std::move(cached), path);
+	}
 	Assimp::Importer imp;
 	auto io = std::make_unique<ContentIO>();
 	auto* sources = io.get();
@@ -1739,6 +1755,9 @@ long ImportGeometryFromFile(const char* path, TG_TypeMultiShape* out, bool autoG
     std::sort(sources->dependencies.begin(), sources->dependencies.end());
     for (const auto& [dependencyPath, digest] : sources->dependencies)
         asset.parameters += ":" + std::to_string(digest);
+    // Skinned imports keep their skeleton/clip path; they never populate the
+    // static cache namespace that can bypass scene decoding.
+    if (staticGlb && !bake.active) asset.parameters = staticParameters;
     if (!bake.active && mc2::content::loadCached(asset, path))
         return out->BuildContentIR(std::move(asset), path);
     CollectContentSockets(scene->mRootNode, asset);

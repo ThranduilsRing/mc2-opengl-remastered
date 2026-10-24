@@ -186,6 +186,7 @@ struct EnvVarDef {
 //   - Default-ON vars where toggling is rarely useful interactively
 static const EnvVarDef k_envVars[] = {
     // --- Rendering ---
+    { "RemasteredBuildings",         "Building art: Remastered (off: Classic)", true, NULL, "Rendering", "0", true },
     // Rows marked `true` in the last column are options.cfg settings (Gates/render_options.h), not environment variables: the key is the
     // options.cfg key and the engine reads it once at startup through CPrefs. The dialog starts such a row from the engine's own default for
     // that key (RowDefault), so a fresh dialog shows what the game does with no key in options.cfg and Launch never writes a value the engine

@@ -363,3 +363,45 @@ TEST_CASE("content cook contract: a cooked KTX2 detail chain is used as stored")
     CHECK(sources.orm.levels[0] == l0);
     CHECK(sources.orm.levels[1] == l1);
 }
+
+TEST_CASE("authored prop detail: GPU blocks share layers and mixed mods remain valid") {
+    const auto root = std::filesystem::temp_directory_path();
+    auto write = [&](const char* name, uint32_t format) {
+        std::vector<uint8_t> f = {0xAB,0x4B,0x54,0x58,0x20,0x32,0x30,0xBB,0x0D,0x0A,0x1A,0x0A};
+        auto u32 = [&](uint32_t v) { for (int i=0;i<4;++i) f.push_back(uint8_t(v>>(8*i))); };
+        auto u64 = [&](uint64_t v) { for (int i=0;i<8;++i) f.push_back(uint8_t(v>>(8*i))); };
+        for (uint32_t v : {format,1u,4u,4u,0u,0u,1u,3u,0u}) u32(v);
+        for (int i=0;i<4;++i) u32(0);
+        u64(0); u64(0);
+        for (int level=0;level<3;++level) { u64(152+level*16); u64(16); u64(16); }
+        f.resize(200,0);
+        std::ofstream out(root/name,std::ios::binary);
+        out.write(reinterpret_cast<const char*>(f.data()),f.size());
+    };
+    write("mc2-detail-blocks-normal.ktx2",141);
+    write("mc2-detail-blocks-orm.ktx2",145);
+    ModelOverrideRecord owner; owner.manifestDir=root.generic_string();
+    ModelOverrideMaterial input;
+    input.normalPath="mc2-detail-blocks-normal.ktx2"; input.ormPath="mc2-detail-blocks-orm.ktx2";
+    mc2prop::MaterialSources dst;
+    REQUIRE(mc2prop::addMaterial(dst,owner,input));
+    input.roughness=0.6f;
+    REQUIRE(mc2prop::addMaterial(dst,owner,input));
+    CHECK(dst.table.size()==2);
+    CHECK(dst.normal.layers==1); CHECK(dst.orm.layers==1);
+    CHECK(dst.normal.vkFormat==141); CHECK(dst.orm.vkFormat==145);
+    CHECK(dst.normal.levels[0].size()==16);
+    CHECK(mc2tex::textureArrayLevelBytes(dst.normal,2)==16);
+    CHECK(dst.table[1].material.normalTex==0); CHECK(dst.table[1].reserved[1]==1);
+    const auto rgbaFile=root/"mc2-detail-blocks-mixed.tga";
+    const auto bytes=tga(4,4,32,std::vector<uint8_t>(64,255));
+    { std::ofstream out(rgbaFile,std::ios::binary); out.write(reinterpret_cast<const char*>(bytes.data()),bytes.size()); }
+    input.normalPath=rgbaFile.filename().generic_string();
+    REQUIRE(mc2prop::addMaterial(dst,owner,input));
+    CHECK(dst.normal.vkFormat==37); CHECK(dst.orm.vkFormat==37);
+    CHECK(dst.normal.layers==2); CHECK(dst.orm.layers==2);
+    CHECK(dst.table[0].reserved[1]==0);
+    std::filesystem::remove(root/"mc2-detail-blocks-normal.ktx2");
+    std::filesystem::remove(root/"mc2-detail-blocks-orm.ktx2");
+    std::filesystem::remove(rgbaFile);
+}

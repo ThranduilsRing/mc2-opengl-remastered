@@ -1204,6 +1204,35 @@ def ensure_terrain_materials(target_dir):
     return hashes
 
 
+def ensure_industrial_model_cooks(target_dir, cooker=subprocess.run):
+    """Populate native static-GLB recipes before the player's first mission."""
+    target = Path(target_dir)
+    kit = target / "mods/mc2-industrial-kit/data/model_overrides"
+    if not kit.is_dir():
+        return
+    tool = Path(__file__).resolve().parents[1] / "build-cc-tgdump/tg_import_dump.exe"
+    if not tool.is_file():
+        log("[DEPLOY] WARN: industrial native cook skipped: build tg_import_dump first")
+        return
+    models = sorted(kit.glob("*/*.glb"))
+    digest = hashlib.sha256(tool.read_bytes())
+    for model in models:
+        digest.update(model.read_bytes())
+    stamp = target / "cache/content-model/industrial-cook.sha256"
+    identity = digest.hexdigest()
+    if stamp.is_file() and stamp.read_text() == identity:
+        return
+    for model in models:
+        result = cooker([str(tool), model.relative_to(target).as_posix(), "--no-ground", "--static-prop"],
+                        cwd=target, capture_output=True, text=True, timeout=120,
+                        **console_child.child_kwargs(redirected=True))
+        if result.returncode:
+            fail(f"industrial native cook failed: {model.name}: {result.stderr[-300:]}")
+    stamp.parent.mkdir(parents=True, exist_ok=True)
+    stamp.write_text(identity)
+    log(f"industrial native recipes cooked before launch: {len(models)} GLBs")
+
+
 def deploy(items, target_dir, allow_stale_pdb, preserve=(), cache=None,
            full_verify=False):
     """Copy + verify the payload.
@@ -1218,6 +1247,7 @@ def deploy(items, target_dir, allow_stale_pdb, preserve=(), cache=None,
     """
     src_hashes = ensure_terrain_materials(target_dir)
     ensure_engine_normal_cooks(target_dir)
+    ensure_industrial_model_cooks(target_dir)
     shader_mismatches = []
     pdb_problem = None
     preserve = {p.replace(os.sep, "/") for p in preserve}

@@ -14,6 +14,32 @@ from scripts import deploy_payload as dp  # noqa: E402
 EXE = "mc2.exe"
 
 
+def test_industrial_recipes_are_cooked_at_deploy_and_invalidate_with_mesh(tmp_path, monkeypatch):
+    from types import SimpleNamespace
+    monkeypatch.setattr(dp, "__file__", str(tmp_path / "scripts/deploy_payload.py"))
+    tool = tmp_path / "build-cc-tgdump/tg_import_dump.exe"
+    tool.parent.mkdir()
+    tool.write_bytes(b"cooker")
+    target = tmp_path / "install"
+    model = target / "mods/mc2-industrial-kit/data/model_overrides/tank/lod0.glb"
+    model.parent.mkdir(parents=True)
+    model.write_bytes(b"mesh")
+    calls = []
+
+    def cook(cmd, **kw):
+        calls.append(cmd)
+        assert kw["cwd"] == target
+        assert cmd[1:] == [model.relative_to(target).as_posix(), "--no-ground", "--static-prop"]
+        return SimpleNamespace(returncode=0)
+
+    dp.ensure_industrial_model_cooks(target, cooker=cook)
+    dp.ensure_industrial_model_cooks(target, cooker=cook)
+    assert len(calls) == 1
+    model.write_bytes(b"new mesh")
+    dp.ensure_industrial_model_cooks(target, cooker=cook)
+    assert len(calls) == 2
+
+
 def test_completeness(tmp_path, monkeypatch):
     monkeypatch.setattr(dp, "_pe_imports", lambda path: set())  # the fake MZ exe is not a PE
     build, target = tmp_path / "build", tmp_path / "target"

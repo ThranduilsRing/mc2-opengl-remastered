@@ -20,6 +20,7 @@ namespace mc2::options {
 
 // Defaults here ARE the shipped defaults: a missing key, a missing file, and a tool that never loads options.cfg all behave alike.
 struct RenderOptions {
+    bool remasteredBuildings = true; // bundled building art; Classic leaves campaign/mod assets intact
     // Post-process look.
     bool  postCas          = false;   // contrast-adaptive sharpening on the final image
     float postCasSharpness = 0.5f;
@@ -71,6 +72,7 @@ constexpr Option floatOpt(const char* k, float RenderOptions::*m, double lo, dou
 }  // namespace detail
 
 inline constexpr Option kOptions[] = {
+    detail::boolOpt ("RemasteredBuildings",           &RenderOptions::remasteredBuildings),
     detail::boolOpt ("PostCAS",                       &RenderOptions::postCas),
     detail::floatOpt("PostCASSharpness",              &RenderOptions::postCasSharpness, 0.0, 1.0),
     detail::longOpt ("TonemapMode",                   &RenderOptions::tonemapMode, 0, 3),
@@ -236,10 +238,19 @@ inline const RenderOptions& current(std::source_location where = std::source_loc
     return g_current;
 }
 inline bool          g_publishChanged = false;
+inline int g_buildingArtCommandLine = -1;
+
+inline bool buildingArtArgument(std::string_view argument) {
+    if (argument == "--classic-assets") { g_buildingArtCommandLine = 0; return true; }
+    if (argument == "--remastered-assets") { g_buildingArtCommandLine = 1; return true; }
+    return false;
+}
 
 inline void publish(const RenderOptions& o) {
-    if (g_published && !(g_current == o)) g_publishChanged = true;
-    g_current = o;
+    auto effective = o;
+    if (g_buildingArtCommandLine >= 0) effective.remasteredBuildings = g_buildingArtCommandLine != 0;
+    if (g_published && !(g_current == effective)) g_publishChanged = true;
+    g_current = effective;
     g_published = true;
 }
 inline int  earlyReads() { return g_earlyReads; }

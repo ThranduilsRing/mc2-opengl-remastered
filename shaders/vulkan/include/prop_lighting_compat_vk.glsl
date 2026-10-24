@@ -1,7 +1,8 @@
 // Static-prop compatibility lighting: one environment ambient, directional light
 // and local pools. Specular requires a valid authored ORM sidecar.
 #include "prop_night_vk.glsl"
-vec3 propAuthoredColor(SurfaceMaterial s, bool alphaTest, bool authoredOrm) {
+// Reuse the legacy path's pool walk when blending authored coverage.
+vec3 propAuthoredColor(SurfaceMaterial s, bool alphaTest, bool authoredOrm, vec3 poolLight) {
     if ((vMaterialFlags & 2u) != 0u)
         return propEncodeColor(s.emission) + vHighlight.rgb * vHighlight.a;   // window emission already carries the albedo
     vec3 nStuff = renderToMc2(s.normal);
@@ -21,7 +22,10 @@ vec3 propAuthoredColor(SurfaceMaterial s, bool alphaTest, bool authoredOrm) {
     vec3 lit = s.emission * wrap
         + (max(ibl,vec3(0))*s.ao + propDecodeColor(vMaterialSun)*propNightSunWeight(ndl, s.normal)) / 3.14159265
         + propDecodeColor(vHighlight.rgb);
-    if (alphaTest) lit = max(lit,vec3(0.21404114)); // legacy 0.5 encoded floor
+    // A solid remake may replace stock alpha cards. Preserve their light floor
+    // independently of coverage, without creating a redundant fringe draw.
+    bool stockAlphaLighting = uPropMaterials.materials[uPacket.materialId].metadata.w != 0u;
+    if (alphaTest || stockAlphaLighting) lit = max(lit,vec3(0.21404114)); // legacy 0.5 encoded floor
     vec3 color = s.baseColor * lit * (1.0 - 0.65*s.metallic);
     vec3 V = uFrame.cameraWorldPos.xyz - vWorldPos;
     if (authoredOrm && dot(V,V) > 1e-8 && dot(vSunColor,vSunColor) > 0.0) {
@@ -40,5 +44,5 @@ vec3 propAuthoredColor(SurfaceMaterial s, bool alphaTest, bool authoredOrm) {
             color += propDecodeColor(vSunColor)*D*G*F*ndl/max(4.0*nv*ndl,1e-4);
         }
     }
-    return propEncodeColor(color) + vHighlight.rgb*vHighlight.a + propPoolLight(propEncodeColor(s.baseColor));
+    return propEncodeColor(color) + vHighlight.rgb*vHighlight.a + propEncodeColor(s.baseColor) * poolLight;
 }

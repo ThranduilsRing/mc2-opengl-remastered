@@ -9,6 +9,29 @@
 
 extern char missionName[];
 
+static bool bundledOverrideShadowed(const ModelOverrideRecord& ov, std::string_view iniName, std::string_view baseName)
+{
+	if (ov.manifestDir != "mods/mc2-industrial-kit/data/model_overrides") return false;
+	const std::string iniPath(iniName), shapeName(baseName);
+	if (LookupModOwner(iniPath.c_str())) return true;
+	for (const char* ext : {".tgl", ".ase", ".glb", ".gltf"})
+	{
+		FullPathFileName path;
+		path.init(tglPath, shapeName.c_str(), ext);
+		if (LookupModOwner(path)) return true;
+	}
+	return false;
+}
+
+static void discardBldgRenderOverrides(BldgAppearanceType& type)
+{
+	delete type.bldgRenderShape;
+	type.bldgRenderShape = nullptr;
+	for (auto& lod : type.bldgRenderLods) lod.reset();
+	type.bldgDmgRenderShape.reset();
+	type.propMaterialSource = nullptr;
+}
+
 // Imports one manifest-relative override GLB into shape and resolves its textures; false (logged)
 // on any failure, and the caller frees the shape and keeps stock. Static-prop overrides carry
 // their pivot already (no auto-ground) and have node transforms applied.
@@ -207,7 +230,8 @@ void BldgAppearanceType::init (const char * fileName)
 	{
 		if (mc2::gate::get<"MC2_MODOVERRIDE_TRACE">())
 			mc2::fmt::print_err("[MODOVERRIDE_TRACE] staticProp '{}'\n", mc2::fmt::safe(bldgBaseName));
-		if (const ModelOverrideRecord* ov = ModelOverrideRegistry::instance().resolve("staticProp", bldgBaseName))
+		if (const ModelOverrideRecord* ov = ModelOverrideRegistry::instance().resolve("staticProp", bldgBaseName);
+			ov && !bundledOverrideShadowed(*ov, static_cast<const char*>(iniName), bldgBaseName))
 		{
 			const std::string condName = ModelOverrideRegistry::instance().selectedCondition(missionName, bldgBaseName);
 			const ModelOverrideCondition* cond = ov->condition(condName);
@@ -222,6 +246,17 @@ void BldgAppearanceType::init (const char * fileName)
 			if (bldgRenderShape)
 			{
 				propMaterialSource = ov;
+				const auto& lods = cond ? cond->intact.lods : ov->lods;
+				for (const auto& lod : lods)
+				{
+					if (lod.lod <= 0 || lod.lod >= MAX_LODS || bldgRenderLods[lod.lod]) continue;
+					auto shape = std::make_unique<TG_TypeMultiShape>();
+					if (importOverrideRenderShape(*ov, lod.sourceRelPath, bldgBaseName, "LOD", shape.get()))
+					{
+						bldgRenderLods[lod.lod] = std::move(shape);
+						if (lodDistance[lod.lod] <= 0) lodDistance[lod.lod] = lod.distance;
+					}
+				}
 				if (destroyed.present())
 				{
 					bldgDmgRenderShape = std::make_unique<TG_TypeMultiShape>();
@@ -376,6 +411,25 @@ void BldgAppearanceType::init (const char * fileName)
 		}
 	}
 	
+	// A flattened bake must never freeze a stock moving part. Keep the stock
+	// render chain until every cooked LOD retains the animation's nodes.
+	if (bldgRenderShape)
+	{
+		const char* missing = nullptr;
+		for (auto* animation : bdAnimData)
+		{
+			if (!animation) continue;
+			for (long lod = 0; lod < MAX_LODS && !missing; ++lod)
+				missing = animation->MissingAnimationNode(getBldgRenderShape(lod));
+			if (missing) break;
+		}
+		if (missing)
+		{
+			mc2::fmt::print_err("[MODOVERRIDE] staticProp '{}': missing animation node '{}'; keeping stock moving parts\n",
+				mc2::fmt::safe(bldgBaseName), mc2::fmt::safe(missing));
+			discardBldgRenderOverrides(*this);
+		}
+	}
 	result = iniFile.seekBlock("AnimationNode");
 	if (result == NO_ERR)
 	{
@@ -446,9 +500,16 @@ void BldgAppearanceType::init (const char * fileName)
 void BldgAppearanceType::registerRenderShapes (void)
 {
 	const bool isOverride = (bldgRenderShape != nullptr);
+	bool stockAlphaLighting = false;
+	if (isOverride && bldgShape[0])
+		for (long t = 0; t < bldgShape[0]->GetNumTextures(); ++t) {
+			char name[256]{};
+			bldgShape[0]->GetTextureName(t, name, sizeof(name));
+			stockAlphaLighting |= S_strnicmp(name, "a_", 2) == 0;
+		}
 	for (int i = 0; i < MAX_LODS; ++i)
 		GpuStaticPropBatcher::instance().registerMultiShape(getBldgRenderShape(i), isOverride,
-			isOverride ? propMaterialSource : nullptr);
+			isOverride ? propMaterialSource : nullptr, false, stockAlphaLighting);
 	GpuStaticPropBatcher::instance().registerMultiShape(getBldgDmgRenderShape(), bldgDmgRenderShape != nullptr,
 		bldgDmgRenderShape ? propMaterialSource : nullptr);
 }
@@ -470,13 +531,7 @@ void BldgAppearanceType::destroy (void)
 	}
 
 	// MODEL-OVERRIDE dual-shape: free the render override shape if loaded.
-	if (bldgRenderShape)
-	{
-		delete bldgRenderShape;
-		bldgRenderShape = nullptr;
-	}
-	bldgDmgRenderShape.reset();
-    propMaterialSource = nullptr;
+	discardBldgRenderOverrides(*this);
 
  	if (bldgDmgShape)
 	{

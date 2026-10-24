@@ -115,6 +115,7 @@ struct GpuStaticPropType {
     // batcher routes such packets to a valid default texture layer so the
     // override RASTERIZES (flat/wrong-texture box) instead of vanishing.
     bool     isOverride;
+    bool     stockAlphaLighting = false; // retain stock light floor, independent of remake coverage
     const ModelOverrideRecord* materialSource = nullptr;
     float treeCanopy[3]{}; // local crown Y, radius, signed half height; zero for other props
 };
@@ -158,7 +159,8 @@ public:
     // render-override (see GpuStaticPropType::isOverride). Default false keeps
     // the stock call sites byte-identical.
     void registerMultiShape(TG_TypeMultiShape* multiShape, bool isOverride = false,
-                            const ModelOverrideRecord* materialSource = nullptr, bool tree = false);
+                            const ModelOverrideRecord* materialSource = nullptr, bool tree = false,
+                            bool stockAlphaLighting = false);
     const mc2prop::MaterialSources& materialSources() const { return materialSources_; }
 
     // Called at end of registration to upload the immutable VBO/IBO.

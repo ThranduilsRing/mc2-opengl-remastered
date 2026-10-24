@@ -248,6 +248,10 @@ def build_engine_cache(cache: Path, build: Path, build64: Path, base_install: Pa
         place_rel(rel, keep=None if rel in ENGINE_DATA_UNFILTERED else not_stock)
     for rel in ENGINE_DATA_FILES:
         place_rel(rel)
+    # Exercise the shipped lowest-priority art layer alongside each campaign.
+    place_rel('mods/mc2-industrial-kit/mod.json')
+    place_rel('mods/mc2-industrial-kit/data')
+    place_rel('cache/content-model')  # deploy-cooked recipes; no first-mission Assimp cook
     place_rel(HDR_TREE, keep=lambda p: p.stat().st_size <= HDR_MAX_BYTES and not_stock(p))
     for dll in sorted(base_install.glob('*.dll')):
         # runtime DLLs the build dir does not carry (SDL2*, glew, zlib, mc2res_64)

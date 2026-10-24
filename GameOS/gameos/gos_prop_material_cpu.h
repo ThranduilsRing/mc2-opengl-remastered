@@ -16,15 +16,17 @@
 #include <filesystem>
 #include <optional>
 #include <string_view>
+#include <unordered_map>
 
 namespace mc2prop {
 struct MaterialSources {
     mc2tex::TextureArrayCpu normal, orm;
     std::vector<RenderCore::PropMaterialGpu> table;
     std::vector<int32_t> packetIds;
+    std::unordered_map<std::string, uint32_t> normalLayers, ormLayers;
 };
 
-inline constexpr size_t kMaxMaterials = 64;
+inline constexpr size_t kMaxMaterials = 512; // bounded table; a mission may contain the whole kit
 inline constexpr uint32_t kMaxDetailEdge = 2048;
 
 // Normal mips average vectors and renormalize; a cancelling footprint is flat.
@@ -78,9 +80,74 @@ inline bool isKtx2(std::string_view path) {
     return path.size() > 5 && (path.substr(path.size() - 5) == ".ktx2" || path.substr(path.size() - 5) == ".KTX2");
 }
 
+// Mixed mod inputs keep the RGBA path. A fully cooked array stays in its GPU
+// block format, including every authored mip; no runtime codec or resampling.
+inline void decodeDetailArray(mc2tex::TextureArrayCpu& a, bool normal) {
+    if (!a.layers || a.vkFormat == mc2tex::kVkFormatRgba8Unorm) return;
+    for (uint32_t level = 0; level < a.levels.size(); ++level) {
+        RenderCore::KtxImage img;
+        img.width = mc2tex::mipExtent(a.width, level); img.height = mc2tex::mipExtent(a.height, level);
+        img.vkFormat = a.vkFormat; img.isCompressed = true; img.mipCount = 1; img.mipByteOffsets = {0};
+        const size_t bytes = mc2tex::bc7LevelBytes(img.width, img.height);
+        std::vector<uint8_t> decoded;
+        for (uint32_t layer = 0; layer < a.layers; ++layer) {
+            img.pixels.assign(a.levels[level].begin() + layer*bytes, a.levels[level].begin() + (layer+1)*bytes);
+            std::vector<uint8_t> pixels;
+            if (!RenderCore::ktxDecodeBlocksToRgba8(img, 0, pixels)) return;
+            if (normal) rebuildNormalZ(pixels), normalizeNormals(pixels);
+            decoded.insert(decoded.end(), pixels.begin(), pixels.end());
+        }
+        a.levels[level] = std::move(decoded);
+    }
+    a.vkFormat = mc2tex::kVkFormatRgba8Unorm;
+}
+
 inline bool addMaterial(MaterialSources& dst, const ModelOverrideRecord& owner,
                          const ModelOverrideMaterial& input) {
     if (dst.table.size() >= kMaxMaterials) return false;
+    auto cooked = [&](const std::string& source, uint32_t format) -> std::optional<RenderCore::KtxImage> {
+        if (!isKtx2(source)) return std::nullopt;
+        RenderCore::KtxImage image;
+        const auto path = (std::filesystem::path(owner.manifestDir) / source).generic_string();
+        if (!RenderCore::ktxLoadRgba8(path.c_str(), image) || image.vkFormat != format ||
+            image.width > kMaxDetailEdge || image.height > kMaxDetailEdge ||
+            mc2tex::mipExtent(image.width, image.mipCount-1) != 1 ||
+            mc2tex::mipExtent(image.height, image.mipCount-1) != 1) return std::nullopt;
+        return image;
+    };
+    const auto n = cooked(input.normalPath, 141), o = cooked(input.ormPath, 145);
+    auto compatible = [](const mc2tex::TextureArrayCpu& a, const RenderCore::KtxImage& image) {
+        return !a.layers || (a.vkFormat == image.vkFormat && a.width == image.width && a.height == image.height &&
+                             a.levels.size() == image.mipByteOffsets.size());
+    };
+    if (n && o && n->width == o->width && n->height == o->height &&
+        compatible(dst.normal, *n) && compatible(dst.orm, *o)) {
+        auto append = [&](auto& a, auto& layers, const auto& image, const std::string& source) {
+            const auto path = (std::filesystem::path(owner.manifestDir) / source).generic_string();
+            if (const auto it = layers.find(path); it != layers.end()) return it->second;
+            const auto layer = a.layers++;
+            a.width = image.width; a.height = image.height; a.vkFormat = image.vkFormat;
+            a.levels.resize(image.mipCount);
+            for (int level = 0; level < image.mipCount; ++level) {
+                const auto begin = image.pixels.begin() + image.mipByteOffsets[level];
+                const auto bytes = mc2tex::bc7LevelBytes(mc2tex::mipExtent(a.width, level), mc2tex::mipExtent(a.height, level));
+                a.levels[level].insert(a.levels[level].end(), begin, begin + bytes);
+            }
+            layers.emplace(path, layer);
+            return layer;
+        };
+        RenderCore::PropMaterialGpu gpu{};
+        gpu.material.albedoTex = gpu.material.emissiveTex = RenderCore::kMaterialTexAbsent;
+        gpu.material.normalTex = append(dst.normal, dst.normalLayers, *n, input.normalPath);
+        gpu.material.metallicRoughnessTex = append(dst.orm, dst.ormLayers, *o, input.ormPath);
+        gpu.material.flags = RenderCore::MaterialFlags::kNormalMap | RenderCore::MaterialFlags::kMetallicRoughness;
+        gpu.material.baseColorFactor = 1; gpu.material.metallicFactor = input.metallic; gpu.material.roughnessFactor = input.roughness;
+        gpu.uvScale[0] = input.uvScale[0]; gpu.uvScale[1] = input.uvScale[1];
+        gpu.normalStrength = input.normalStrength; gpu.aoStrength = input.aoStrength;
+        gpu.materialClass = input.materialClass; gpu.reserved[0] = input.alphaMode; gpu.reserved[1] = 1; // BC5 XY
+        dst.table.push_back(gpu);
+        return true;
+    }
     auto read = [&](std::string_view source) -> std::optional<mc2tex::DecodedTexture> {
         if (source.empty()) return std::nullopt;
         const auto path = (std::filesystem::path(owner.manifestDir) / source).generic_string();
@@ -119,6 +186,8 @@ inline bool addMaterial(MaterialSources& dst, const ModelOverrideRecord& owner,
             t->pixels.size() == static_cast<size_t>(w)*h*4);
     };
     if (!valid(normal) || !valid(orm)) return false;
+    decodeDetailArray(dst.normal, true); decodeDetailArray(dst.orm, false);
+    for (auto& row : dst.table) row.reserved[1] = 0;
     auto chain = [](const auto& t) -> const std::vector<std::vector<uint8_t>>* {
         return t && t->mipLevels.size() > 1 ? &t->mipLevels : nullptr;
     };

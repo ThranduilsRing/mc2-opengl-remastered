@@ -170,7 +170,7 @@ def validate_gltf(path):
 
 def validate_runtime_glb(path, *, max_triangles=None, texture_root=None):
     """The engine-bound profile: structurally valid, no skins/animations, identity
-    nodes (transforms already baked), NORMAL on every primitive, base-colour images
+    nodes (transforms already baked, except explicit animated pivot groups), NORMAL on every primitive, base-colour images
     resolvable under texture_root (data/tgl/<tier>), triangle budget."""
     issues = validate_gltf(path)
     if any(s == "error" for s, _, _ in issues):
@@ -180,7 +180,13 @@ def validate_runtime_glb(path, *, max_triangles=None, texture_root=None):
         _err(issues, "RUNTIME_SKIN", "static runtime GLB carries skins/animations")
     for i, n in enumerate(doc.get("nodes", [])):
         pivot = "mc2_pivot_tg_wu" in n.get("extras", {}) and not any(k in n for k in ("matrix", "rotation", "scale"))
-        if ("mesh" in n and not pivot and any(k in n for k in ("matrix", "translation", "rotation", "scale"))) or n.get("children"):
+        animated_splits = pivot and n.get("extras", {}).get("mc2_anim_node") == n.get("name") and all(
+            isinstance(c, int) and 0 <= c < len(doc["nodes"])
+            and doc["nodes"][c].get("translation") == [0, 0, 0]
+            and doc["nodes"][c].get("extras", {}).get("mc2_pivot_tg_wu") == n["extras"]["mc2_pivot_tg_wu"]
+            and not any(k in doc["nodes"][c] for k in ("matrix", "rotation", "scale", "children"))
+            for c in n.get("children", []))
+        if ("mesh" in n and not pivot and any(k in n for k in ("matrix", "translation", "rotation", "scale"))) or (n.get("children") and not animated_splits):
             _err(issues, "RUNTIME_NODE", f"node {i} is not an identity leaf (transforms must be baked)")
     names = [n.get("name", "") for n in doc.get("nodes", [])]
     dups = sorted({n for n in names if n and names.count(n) > 1})

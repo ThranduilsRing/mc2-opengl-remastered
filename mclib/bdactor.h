@@ -59,6 +59,7 @@ class BldgAppearanceType : public AppearanceType
 		// NULL = no override → render falls back to stock bldgShape[lod].
 		// Collision/damage NEVER read this; they read bldgShape[lod] directly.
 		TG_TypeMultiShapePtr		bldgRenderShape;
+		std::unique_ptr<TG_TypeMultiShape> bldgRenderLods[MAX_LODS];
 		// Destroyed-state render override (the cooked "destroyed" chain); NULL = stock bldgDmgShape.
 		std::unique_ptr<TG_TypeMultiShape>	bldgDmgRenderShape;
         const ModelOverrideRecord* propMaterialSource = nullptr; // transient; registry owns it
@@ -190,11 +191,11 @@ class BldgAppearanceType : public AppearanceType
 		virtual void destroy (void);
 
 		// MODEL-OVERRIDE dual-shape accessors.
-		// Render authority: override if present, else stock LOD. LOD-collapses
-		// under override (returns the single override shape for every LOD).
+		// Render authority: cooked LOD when available, else override LOD0 or stock.
 		TG_TypeMultiShape* getBldgRenderShape (long lod)
 		{
-			return bldgRenderShape ? bldgRenderShape : bldgShape[lod];
+			if (!bldgRenderShape) return bldgShape[lod];
+			return bldgRenderLods[lod] ? bldgRenderLods[lod].get() : bldgRenderShape;
 		}
 		// Collision authority: ALWAYS stock. Collision must never call the
 		// render accessor (it already reads bldgShape[lod] directly).
@@ -222,6 +223,8 @@ class BldgAppearance : public ObjectAppearance
 		std::unique_ptr<TG_MultiShape> simulationShape_;
 		TG_TypeMultiShape* simulationType_ = nullptr;
 		void updateSimPose();
+		long desiredRenderLOD() const;
+		void updateRenderLOD();
 		void refreshSimPose() override { updateSimPose(); }
 
 		// Slice 2 (object-offload): set true by the GPU-object batcher's

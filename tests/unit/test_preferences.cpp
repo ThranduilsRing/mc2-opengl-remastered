@@ -18,6 +18,38 @@ void load(const std::string& text, Preferences& p, RenderOptions& render) {
     file.close();
     mc2::options::cfg::loadFromText(render, text);
 }
+TEST_CASE("Preferences/building art persists and command line overrides only the process") {
+    using namespace mc2::options;
+    CHECK(RenderOptions{}.remasteredBuildings);
+    const auto* option = find("RemasteredBuildings");
+    REQUIRE(option);
+    auto text = cfg::set("FITini\n[MechCommander2]\nFITend\n", *option, "false");
+    RenderOptions loaded;
+    cfg::loadFromText(loaded, text);
+    CHECK_FALSE(loaded.remasteredBuildings);
+    text = cfg::set(text, *option, "true");
+    cfg::loadFromText(loaded, text);
+    CHECK(loaded.remasteredBuildings);
+    const auto old = g_current;
+    const auto oldArgument = g_buildingArtCommandLine;
+    const auto oldPublished = g_published;
+    const auto oldChanged = g_publishChanged;
+    REQUIRE(buildingArtArgument("--classic-assets"));
+    publish(loaded);
+    CHECK_FALSE(current().remasteredBuildings);
+    publish(loaded); // CPrefs publishes again after the early options read.
+    CHECK_FALSE(current().remasteredBuildings);
+    CHECK(loaded.remasteredBuildings); // transient flag never changes the saved draft
+    REQUIRE(buildingArtArgument("--remastered-assets"));
+    loaded.remasteredBuildings = false;
+    publish(loaded);
+    CHECK(current().remasteredBuildings);
+    CHECK_FALSE(buildingArtArgument("--classic-assets-other"));
+    g_buildingArtCommandLine = oldArgument;
+    g_current = old;
+    g_published = oldPublished;
+    g_publishChanged = oldChanged;
+}
 }
 TEST_CASE("Preferences/unchanged options.cfg retains every byte") {
     const char* source = std::getenv("MC2_PREFS_TEST_CFG");
