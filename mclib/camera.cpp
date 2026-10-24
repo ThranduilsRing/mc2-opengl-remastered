@@ -199,9 +199,9 @@ void applyMissionLightProfile(Camera& c, bool alreadyApplied)
 }
 } // namespace
 
-void mc2SetMissionLightProfileName(const char* missionFileName)
+void mc2SetMissionLightProfileName(std::string_view missionFileName)
 {
-	g_profileMission = missionFileName ? missionFileName : "";
+	g_profileMission = missionFileName;
 }
 
 // The mission's scale of the prelit ground (terrain / overlay / vegetation UBO sceneLightScale).

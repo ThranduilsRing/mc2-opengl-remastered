@@ -27,6 +27,7 @@
 // header weight low. projectZ() bumps n_calls_eventdriven when called
 // outside the render loop (TLS flag tracked by RenderLoopGuard).
 #include <cstdint>  // int64_t for cull_admission_*_ns
+#include <string_view>
 #include "Gates/gate.h"
 namespace mc2_cpu_proj_cost {
     extern bool g_cpuProjEnabled;
@@ -1821,7 +1822,7 @@ extern CameraPtr eye;
 //---------------------------------------------------------------------------
 // LOCAL-LIGHTS-4 per-mission night profile (camera.cpp). The Mission names itself before
 // creating the camera; the profile applies in Camera::init.
-void  mc2SetMissionLightProfileName(const char* missionFileName);
+void  mc2SetMissionLightProfileName(std::string_view missionFileName);
 float mc2SceneLightScale();
 
 //---------------------------------------------------------------------------

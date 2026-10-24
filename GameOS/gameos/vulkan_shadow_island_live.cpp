@@ -117,7 +117,6 @@ VkShaderModule load_spv(VkDevice device, std::string_view path) {
     return vk_island_util::loadSpv(device, path, vlog);
 }
 
-
 // std140 per-frame UBO (LOCKSTEP with shadow_prop.vert ShadowFrameUBO).
 struct ShadowFrameUBO {
     float lightSpaceMatrix[16]; // getDynamicLightSpaceMatrix() — GL_FALSE   (off 0)
@@ -126,7 +125,6 @@ struct ShadowFrameUBO {
 };
 static_assert(sizeof(ShadowFrameUBO) == 80, "ShadowFrameUBO std140 size (shadow_prop.vert)");
 static_assert(offsetof(ShadowFrameUBO, instBase) == 64, "ShadowFrameUBO instBase offset");
-
 
 // Per-type packet (subset of GpuStaticPropPacket the draw loop needs). Copied once
 // per map from the batcher's accessor.
@@ -209,7 +207,6 @@ struct ShadowIsland : mc2vk::IslandState {
     bool        alphaReady = false;   // this frame: the array is bound and the table is built
     // The single dynamic map is only the fallback of a receiver that has no cascades, so its pass is held until the frame's cascades are known: it is recorded
     // at the submit when the cascade array and the full-map cascade were not both produced, and never otherwise.
-
 
     // OWNED objects, declared in creation order: the destructor releases them in reverse, so a framebuffer goes before the view and render pass it uses.
     mc2vk::OwnedBuffer vbo;   // VK-owned copies of the shared static-prop VBO/IBO (P8a (B))
@@ -466,7 +463,6 @@ bool init_island(ShadowIsland* s, int size) {
         g_health.deviceName[sizeof(g_health.deviceName) - 1] = '\0';
     }
 
-
     // Readiness gates (context + gate) passed: any failure past this point is a PERMANENT
     // build failure -> the island declines for the session (item-2 boot-decline).
     g_shadowInitReachedBuild = 1;
@@ -686,10 +682,6 @@ bool init_island(ShadowIsland* s, int size) {
     return true;
 }
 
-
-
-
-
 void release_geometry(ShadowIsland* s) {
     if (s->vbo || s->ibo) mc2vk::getOrCreateEngineVulkanContext().waitIdle("shadow_geometry_release");
     s->vbo.reset();
@@ -891,14 +883,11 @@ static void refresh_alpha_casters(ShadowIsland* s) {
 // per generation, never per frame. It counts as a pass of the frame, so the frame is submitted even when every other pass declines.
 // Static inputs and dirty versions schedule the bake independently of camera motion.
 
-
 static bool mover_shadows_enabled() {
     static const bool enabled=mc2::gate::get<"MC2_SHADOW_ENABLE">();
     const auto* pp=getGosPostProcess();
     return enabled && pp && pp->shadowsEnabled_;
 }
-
-
 
 // The static shadow bake: retires a finished bake and records the next one when its inputs are ready and differ from the last. Like the static map it
 // counts as a pass, so its frame is submitted even when every other pass declines.
@@ -928,7 +917,6 @@ static void record_bake(ShadowIsland* s) {
 }
 
 // The start every pass shares: the island is up, the caster geometry is resident, the frame's recording is open and the casters are staged.
-
 
 // The static-prop caster draws of a run list (alpha-tested packets switch to the alpha pipeline and set 1, and back).
 static void draw_static_runs(ShadowIsland* s, VkCommandBuffer cb, const std::vector<InstRun>& runs, bool& alphaBound) {
@@ -1346,9 +1334,7 @@ extern "C" void mc2_vk_shadow_island_run_movers(const float cameraRows[16], cons
 // The pass is only RECORDED here; the frame is submitted by mc2_vk_shadow_island_submit_frame(). Always returns 0: the consumers read the product through the
 // view accessors.
 
-
 // The catch-all (full-map) cascade: the last cascade matrix into a separate D32 image the terrain island binds directly.
-
 
 // One near cascade layer of the VK D32 array the terrain island binds at binding 8. The array is ready once every layer of the frame has been recorded.
 
