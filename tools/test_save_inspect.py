@@ -42,3 +42,29 @@ def test_noise_mask_file_is_well_formed():
     assert not mod.masked(mask, "MechWarriorData", 10071, False) and not mod.masked(mask, "MechWarriorData", 14872, False)
     # The pilot strings and the numeric pilot state are never masked.
     assert not any(mod.masked(mask, "MechWarriorData", o, True) for o in range(0, 2168))
+
+
+def test_pilot_suffix_requires_validated_schema():
+    import struct
+    prefix = bytes(mod.PILOT_SIZE)
+    # signature, version, targets count, global path count, cursor, goal count
+    suffix = struct.pack("<IIIIiI", 0x32545157, 2, 0, 0, 0, 0)
+    assert mod.packet_kind(4, prefix + suffix) == "MechWarriorData"
+    extended = struct.pack("<III2II", 0x32545157, 2, 2, 1, 2, 1)
+    extended += struct.pack("<iii6fiii", 0, 1, 2, 1., 2., 3., 4., 5., 6., 2, 3, 4)
+    extended += struct.pack("<iI2h", 1, 2, 3, 4)
+    assert mod.packet_kind(4, prefix + extended) == "MechWarriorData"
+    for bad in (suffix[:-1], suffix + b"x", suffix.replace(b"WQT2", b"WQT3"),
+                struct.pack("<IIIIiI", 0x32545157, 3, 0, 0, 0, 0),
+                struct.pack("<IIIIiI", 0x32545157, 2, 17, 0, 0, 0),
+                struct.pack("<IIIIiI", 0x32545157, 2, 0, 0, -2, 0)):
+        assert mod.packet_kind(4, prefix + bad) == "data"
+    for size in (19865, 20000, 23960):
+        assert mod.packet_kind(4, b"a" * size) == "text"
+        assert mod.packet_kind(4, bytes(size)) == "data"
+    mask = mod.load_mask(os.path.join(HERE, "save_noise_mask.json"))
+    text = b"a" * 20000
+    changed = bytearray(text); changed[10072] = ord("b")
+    result = mod.compare([(4, text)], [(4, bytes(changed))], mask)
+    assert not result["masked"]
+    assert result["outside"] == {"text": [1, 1]}

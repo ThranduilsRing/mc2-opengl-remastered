@@ -24,6 +24,8 @@ import hashlib
 import json
 import os
 import sys
+import struct
+import math
 import tempfile
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -39,7 +41,7 @@ RECORD_SIZES = {372: "GameObjectData", 3288: "MoverData", 720: "TerrainObjectDat
                 60: "ObjectManagerData", 40: "StaticMechWarriorData", 19864: "MechWarriorData", 80: "TeamStaticData", 488: "TeamData",
                 8: "StaticCommanderData", 1288: "CommanderData"}
 PILOT_SIZE = 19864
-PILOT_SUFFIX_MAX = 4096
+PILOT_SUFFIX_MAX = 16 * 1024
 #: A run of this many written packets of one kind is split so a digest mismatch still points into the run.
 CHUNK = 256
 
@@ -53,9 +55,6 @@ def kind(typ: int, size: int) -> str:
     """The class of one packet: unwritten, a named record by size, or `data` for everything else."""
     if typ == NUL:
         return "empty"
-    # A pilot packet is the pinned struct plus a variable v2 suffix (queued target watch ids, da5c619c9): any size from the pinned one up to a bound.
-    if PILOT_SIZE <= size <= PILOT_SIZE + PILOT_SUFFIX_MAX:
-        return "MechWarriorData"
     return RECORD_SIZES.get(size, "data")
 
 
@@ -65,10 +64,55 @@ def is_text(raw: bytes) -> bool:
     return bool(head) and all(c in (9, 10, 13) or 32 <= c < 127 for c in head)
 
 
+def valid_pilot_suffix(raw: bytes) -> bool:
+    """Validate the WQT2 v2 schema written by SavedQueueTargets, including exact consumption."""
+    if not PILOT_SIZE < len(raw) <= PILOT_SIZE + PILOT_SUFFIX_MAX:
+        return False
+    data = raw[PILOT_SIZE:]
+    pos = 0
+
+    def take(fmt):
+        nonlocal pos
+        values = struct.unpack_from("<" + fmt, data, pos)
+        pos += struct.calcsize("<" + fmt)
+        return values
+
+    try:
+        if take("II") != (0x32545157, 2):
+            return False
+        count, = take("I")
+        if count > 16:
+            return False
+        if any(t > 0x7fffffff for t in take("I" * count)):
+            return False
+        steps, = take("I")
+        if steps > 256:
+            return False
+        for _ in range(steps):
+            step = take("iii6fiii")
+            if not all(math.isfinite(v) for v in step[3:9]):
+                return False
+        cursor, = take("i")
+        if not -1 <= cursor <= (steps if steps else 256):
+            return False
+        goals, = take("I")
+        if goals > 256:
+            return False
+        take("h" * goals)
+        return pos == len(data)
+    except struct.error:
+        return False
+
+
 def packet_kind(typ: int, raw: bytes) -> str:
-    """kind() of a packet, with text packets told apart from other data."""
-    k = kind(typ, len(raw))
-    return "text" if k == "data" and is_text(raw) else k
+    """Text takes precedence; variable pilot records require a validated suffix."""
+    if typ == NUL:
+        return "empty"
+    if is_text(raw):
+        return "text"
+    if valid_pilot_suffix(raw):
+        return "MechWarriorData"
+    return kind(typ, len(raw))
 
 
 def first_diff(a: bytes, b: bytes) -> int:

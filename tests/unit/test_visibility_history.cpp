@@ -70,3 +70,37 @@ TEST_CASE("bad actor handles and impossible record counts never index outside sa
     CHECK(h.consume(badCount)==VisibilityTier::Tier3_Conservative);
 }
 }
+
+#include "../../GameOS/gameos/static_prop_visible_set.h"
+#include <vector>
+
+TEST_CASE("visible static store clears nonempty empty different populations and preserves frozen records") {
+    struct Store {
+        uint64_t generation = 7;
+        std::vector<uint32_t> instances;
+        uint64_t persistentStaticGen() const { return generation; }
+        void clearPersistentStatic() { instances.clear(); generation = ~uint64_t(0); }
+    } store;
+    uint64_t signature = 0;
+    const std::vector<uint32_t> first{1, 2}, empty, next{3};
+    auto flush = [&](const std::vector<uint32_t>& visible, bool frozen = false) {
+        const bool dirty = static_prop::prepareVisibleStore(store, visible, frozen, 7, signature);
+        if (dirty) { store.instances = visible; store.generation = 7; }
+        return dirty;
+    };
+    REQUIRE(flush(first));
+    REQUIRE(store.instances.size() == 2);
+    CHECK(store.instances[0] == 1);
+    CHECK_FALSE(flush(first));
+    REQUIRE(flush(empty));
+    CHECK(store.instances.empty());
+    CHECK_FALSE(flush(empty));
+    REQUIRE(flush(next));
+    REQUIRE(store.instances.size() == 1);
+    CHECK(store.instances[0] == 3);
+    const auto beforeFrozen = signature;
+    CHECK_FALSE(flush(empty, true));
+    REQUIRE(store.instances.size() == 1);
+    CHECK(store.instances[0] == 3);
+    CHECK(signature == beforeFrozen);
+}

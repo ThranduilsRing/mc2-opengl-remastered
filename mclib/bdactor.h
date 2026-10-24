@@ -81,6 +81,7 @@ class BldgAppearanceType : public AppearanceType
 		float						terrainLightIntensity;
 		float						terrainLightInnerRadius;
 		float						terrainLightOuterRadius;
+		bool stockTerrainLamp = false;
 		
 		long						numWeaponNodes;
 		NodeData					*nodeData;			//View of nodeDataStore
@@ -321,6 +322,8 @@ class BldgAppearance : public ObjectAppearance
 		std::vector<DWORD>							spotlightSlotIds_;
 		std::vector<int>							spotlightNodeIds_;  // bldgShape NodeNameId
 		bool										spotlightsRegistered_;
+		void clearSpotlights();
+		void releaseBldgShape();
 		
 		bool										fogLightSet;
 		DWORD										lightRGB;

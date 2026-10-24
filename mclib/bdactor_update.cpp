@@ -9,10 +9,6 @@
 
 // LOCAL-LIGHTS-1: authored lamps per SpotLight_ leaf (the stock leaves carry up to 3).
 static constexpr int kMaxBeamsPerNode = 8;
-// LIGHTS-R4: the stock inis author building lights at 0.07 / 0.1 / 0.2 (occupancy spill); at or
-// above this an ini authors a real lamp (mods) and keeps its own values.
-static constexpr float kStockBuildingLightMax = 0.5f;
-
 // T1.15 SpotLight_ illumination diagnostic — registration probe (bldg class).
 // Env-gated per Debug Instrumentation Rule. First-hit is always-on (one stderr
 // line per BldgAppearance instance that walks the lazy-init block). Periodic
@@ -62,18 +58,13 @@ long BldgAppearance::update (bool animate)
    		{
 			pointLight = static_cast<TG_LightPtr>(malloc(sizeof(TG_Light)));
    			pointLight->init(TG_LIGHT_TERRAIN);
+			pointLight->stockTerrainLamp = appearType->stockTerrainLamp;
    			lightId = eye->addWorldLight(pointLight);
    	
    			pointLight->SetaRGB(appearType->terrainLightRGB);
    			pointLight->SetIntensity(appearType->terrainLightIntensity);
-			// LOCAL-LIGHTS-1: the stock radii (inner defaults to 100 -- the inis misspell
-			// "TerrainLightInnerRadus" -- outer 200-250, then x2.2 pool spill) spread the
-			// lamp over a 450-550 unit disc at 0.05-0.1 additive: the power generator's
-			// light read as off. Same energy idea, concentrated: half the reach, no flat
-			// plateau, intensity raised below (BuildingLightIntensity).
-			// LIGHTS-R4: only the stock occupancy values (0.07/0.1/0.2) are retuned; a mod
-			// that authors a real lamp (>= 0.5) keeps its own radii and intensity.
-			if (appearType->terrainLightIntensity < kStockBuildingLightMax)
+			// Retune only verified stock definitions; mods retain authored lamp values.
+			if (appearType->stockTerrainLamp)
    				pointLight->SetFalloffDistances(0.0f, appearType->terrainLightOuterRadius * 0.35f);   // LIGHTS-R3: tighter pools
 			else
 				pointLight->SetFalloffDistances(appearType->terrainLightInnerRadius, appearType->terrainLightOuterRadius);
@@ -105,7 +96,7 @@ long BldgAppearance::update (bool animate)
 			}
 			// LIGHTS-R3: occupancy spill, not a stage light -- several of these overlap in a
 			// base centre (owner: "too bright in the middle compared to the ambient").
-			const float buildingLightIntensity = appearType->terrainLightIntensity < kStockBuildingLightMax
+			const float buildingLightIntensity = appearType->stockTerrainLamp
 				? std::min(appearType->terrainLightIntensity * 1.5f, 0.15f) : appearType->terrainLightIntensity;
 			pointLight->SetIntensity(buildingLightIntensity * eye->getNightFactor() *
                 visualTuning_environment().buildingSpillIntensityScale);
@@ -233,13 +224,8 @@ long BldgAppearance::update (bool animate)
 			{
 				beamNode = spotlightNodeIds_[k];
 				beamIdx = 0;
-				// LIGHTS-R4: a building does not move -- once every lamp of the node holds its
-				// pose (spotCosOuter set), keep it (nBeams = -1, the keep-pose path) instead of
-				// re-deriving the beams from the mesh every frame.
-				bool allPosed = true;
-				for (size_t j = k; j < spotlightLights_.size() && spotlightNodeIds_[j] == beamNode && allPosed; ++j)
-					allPosed = spotlightLights_[j]->spotCosOuter > 0.0f;
-				nBeams = allPosed ? -1 : mc2_cone_glow::GetNodeBeams(bldgShape, beamNode, beams, kMaxBeamsPerNode);
+				// Animated nodes and shape transforms can change while the building is stationary.
+				nBeams = mc2_cone_glow::GetNodeBeams(bldgShape, beamNode, beams, kMaxBeamsPerNode);
 			}
 			else
 				++beamIdx;
