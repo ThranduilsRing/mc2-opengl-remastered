@@ -81,6 +81,7 @@ OvlTex* ovl_get_tex(TerrainIsland* s, OvlState* o, uint32_t gosHandle) {
         it->second.source=texels.bytes; return &it->second;
     }
     if (o->texs.size() >= kOvlMaxTex) return nullptr;
+    ZoneScopedN("VKIsl.Overlay.TextureFirstUse");
 
     if (w == 0 || h == 0 || w > 8192 || h > 8192) return nullptr;
 
@@ -103,6 +104,7 @@ bool ovl_prepare_static(TerrainIsland* s, OvlState* o, const std::vector<OvlPend
         if (!p.isStatic) continue;
         const VkDeviceSize bytes = static_cast<VkDeviceSize>(p.vertCount) * kOvlVertStride;
         if (o->statVersion == p.version && o->stat && bytes <= o->statCap) continue;
+        ZoneScopedN("VKIsl.Overlay.StaticUpload");
         mc2vk::getOrCreateEngineVulkanContext().waitIdle("terrain_overlay_static_grow");
         o->stat.reset();
         o->statCap = bytes + 256;
