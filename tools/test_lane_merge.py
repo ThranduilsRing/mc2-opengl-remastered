@@ -653,3 +653,19 @@ def test_regeneration_dry_run_leaves_original_untouched(env, monkeypatch):
     assert lm.regenerate_all(str(repo), dry_run=True) == ["artifact.json"]
     assert (repo / "artifact.json").read_text() == "old\n"
     assert git(repo, "status", "--porcelain") == ""
+
+
+def test_merge_commits_regenerated_artifacts_before_verification(env, monkeypatch):
+    lm = _load_module()
+    repo, tools = env
+    write(repo, "generate.py", "open('artifact.json', 'w').write('new\\n')\nopen('decoy', 'w').write('no')\n")
+    write(repo, "artifact.json", "old\n")
+    commit_all(repo, "generator")
+    lane_branch(repo, {"a.txt": "lane\n"})
+    monkeypatch.setattr(lm, "ARTIFACTS", ["artifact.json"])
+    monkeypatch.setattr(lm, "GENERATORS", [("fixture", "generate.py", [])])
+    _, follow, failed = lm.merge_tip(str(repo), str(tools), lm.plan(str(repo), "lane"), "merge lane", {})
+    assert follow and not failed
+    assert git(repo, "log", "-1", "--format=%s") == "merge follow-up: regenerated artifacts"
+    assert git(repo, "diff-tree", "--no-commit-id", "--name-only", "-r", "HEAD") == "artifact.json"
+    assert git(repo, "status", "--porcelain") == "?? decoy"

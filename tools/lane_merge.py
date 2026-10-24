@@ -19,7 +19,8 @@ Usage:
   --tools-dir DIR  where the ratchet scripts live (default: <root>/tools); same relative layout
 
 Steps: (a) dirty-overlap and staged-index refusal, (b) git merge --no-ff with regenerable
-baseline conflicts resolved to the lane's side, (c) ratchet checks with --tighten at the merged
+baseline conflicts resolved to the lane's side, regenerate-all and one artifact follow-up commit,
+(c) ratchet checks with --tighten at the merged
 HEAD, (d) a follow-up commit of exactly the tightened baseline files.
 
 Step (e), on by default: build the merged tree (scripts/ninja_build.py) and run the doctest tier (scripts/run-unit-tests.sh); `--verify full`
@@ -483,7 +484,7 @@ def quick_rows(root: str, runner=run) -> list[tuple[str, int, str]]:
             continue  # a throwaway root without the script has nothing to check
         r = runner(root, [sys.executable] + args)
         if r.returncode != 0:
-            failed.append((label, r.returncode, "\n".join(r.stdout.splitlines()[-8:])))
+            failed.append((label, r.returncode, failure_summary(r.stdout)))
     return failed
 
 
@@ -701,7 +702,8 @@ def main(argv: list[str] | None = None) -> int:
         if args.dry_run:
             would_abort = plan_batch(root, args, refs, resolutions_for)
             print("PLAN then: " + ", ".join(label for label, _, _ in RATCHETS)
-                  + "; follow-up commit of tightened baselines only" + (" (after each tip; verify once at the end)" if batch else ""))
+                  + "; regenerate-all and commit changed artifacts; follow-up commit of tightened baselines only"
+                  + (" (after each tip; verify once at the end)" if batch else ""))
             print("[dry-run] nothing changed")
             if would_abort:
                 print("lane_merge: the merge would abort on the blocking conflicts above", file=sys.stderr)

@@ -3119,7 +3119,7 @@
         },
         {
           "path": "tools/lane_merge.py",
-          "line": 54,
+          "line": 55,
           "evidence": "import",
           "reference": "console_child",
           "text": "import console_child  # noqa: E402  (windowless console children without a conhost each)"
@@ -7061,7 +7061,7 @@
         },
         {
           "path": "tools/lane_merge.py",
-          "line": 56,
+          "line": 57,
           "evidence": "import",
           "reference": "_git_util",
           "text": "import _git_util  # noqa: E402  (shared git helpers)"
