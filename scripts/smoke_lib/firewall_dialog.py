@@ -8,7 +8,10 @@ import sys
 import time
 from pathlib import Path
 
-from console_child import child_kwargs
+try:
+    from ..console_child import child_kwargs
+except ImportError:    # top-level smoke_lib with scripts/ on sys.path
+    from console_child import child_kwargs
 
 
 def matching_pids(rows, exe: Path) -> set[int]:
