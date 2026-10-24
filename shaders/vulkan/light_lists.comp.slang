@@ -22,8 +22,8 @@ void main(uint3 tid : SV_DispatchThreadID) {
     for (uint i = 0; i < n; ++i) {
         PoolLight l = lights[i];
         float2 delta = l.position.xy - clamp(l.position.xy, lo, hi);
-        // Unscaled radius also covers movers for every existing radius knob.
-        float r = l.farDistance * 1.00001;
+        float scale = asfloat(P.info.z);
+        float r = l.farDistance * (l.mover > 0.5 && scale < 0.999 ? max(scale, 0.05) : 1.0) * 1.00001;
         if (l.lightType != 0 && r > 0 && dot(delta, delta) <= r * r)
             indices[first + count++] = i;
     }

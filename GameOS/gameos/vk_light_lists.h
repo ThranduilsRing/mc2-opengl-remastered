@@ -5,6 +5,7 @@
 #include "gos_terrain_lighting.h"
 #include <algorithm>
 #include <array>
+#include <bit>
 #include <cstring>
 #include <limits>
 
@@ -18,9 +19,9 @@ class LightLists {
     uint64_t frame_ = ~uint64_t(0), recorded_ = ~uint64_t(0);
     std::array<FrameAlloc, 3> spans_{};
 public:
-    static constexpr uint32_t kDim = 32;
+    static constexpr uint32_t kDim = 64;
     float minInv[4]{};
-    bool stage(VulkanContext& ctx, const void* pool, uint32_t count, FrameAlloc (&out)[3]) {
+    bool stage(VulkanContext& ctx, const void* pool, uint32_t count, float moverScale, FrameAlloc (&out)[3]) {
         const auto frame = ctx.tracker().frameNo();
         if (frame != frame_) {
             if (!pipeline_ && (!pipeline_.create(ctx.device(), "shaders/vulkan/light_lists.comp.spv",
@@ -33,9 +34,10 @@ public:
             for (uint32_t i = 0; i < count; ++i) {
                 const auto& l = lights[i];
                 if (!l.lightType || !(l.farDistance > 0)) continue;
+                const float radius = l.farDistance * (l._pad1 > 0.5f && moverScale < 0.999f ? (std::max)(moverScale, 0.05f) : 1.0f);
                 for (unsigned a = 0; a < 2; ++a) {
-                    lo[a] = (std::min)(lo[a], l.position[a] - l.farDistance);
-                    hi[a] = (std::max)(hi[a], l.position[a] + l.farDistance);
+                    lo[a] = (std::min)(lo[a], l.position[a] - radius);
+                    hi[a] = (std::max)(hi[a], l.position[a] + radius);
                 }
             }
             for (unsigned a = 0; a < 2; ++a) {
@@ -50,7 +52,7 @@ public:
             if (!spans_[0] || !spans_[1] || !spans_[2] || !params_) return false;
             std::memcpy(spans_[0].ptr, pool, size_t(count) * 48);
             std::memcpy(params_.ptr, minInv, 16);
-            const uint32_t info[]{kDim, count, 0, 0};
+            const uint32_t info[]{kDim, count, std::bit_cast<uint32_t>(moverScale), 0};
             std::memcpy(static_cast<char*>(params_.ptr) + 16, info, 16);
             frame_ = frame;
         }
