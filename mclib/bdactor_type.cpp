@@ -5,6 +5,7 @@
 #include "mc2fmt.h"
 #include "gos_static_prop_batcher.h"
 #include <string_view>
+#include "stock_lamp_definition.h"
 
 extern char missionName[];
 
@@ -54,6 +55,10 @@ void BldgAppearanceType::init (const char * fileName)
 	long result = iniFile.open(iniName);
 	if (result != NO_ERR)
 		STOP(("Could not find building appearance INI file %s",iniName));
+	std::string lampDefinition(iniFile.fileSize(), '\0');
+	iniFile.read(0, reinterpret_cast<MemoryPtr>(lampDefinition.data()), static_cast<long>(lampDefinition.size()));
+	stockTerrainLamp = mc2_stock_lamp::definition(fileName, lampDefinition,
+		iniFile.isLoadedFromDisk() || LookupModOwner(iniName) != nullptr);
 
 	// ASSIMP-BLDG-IMPORT-1 — optional GLB probe for buildings/trees. Mirror of
 	// mech3d.cpp [Import] pattern. An optional [Import] section with Source=

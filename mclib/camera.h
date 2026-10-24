@@ -28,6 +28,7 @@
 // outside the render loop (TLS flag tracked by RenderLoopGuard).
 #include <cstdint>  // int64_t for cull_admission_*_ns
 #include <string_view>
+#include <string>
 #include "Gates/gate.h"
 #include "spotlight_diag.h"
 namespace mc2_cpu_proj_cost {
@@ -392,8 +393,15 @@ class Camera
 
 	public:
 	
+		std::string missionLightName;
+		bool missionLightApplied = false;
+		float missionGroundScale = 1.0f;
+
 		virtual void init (void)
 		{
+			missionLightName.clear();
+			missionLightApplied = false;
+			missionGroundScale = 1.0f;
 			projectionAngle = 30;
 
 			screenResolution.x = 400.0;

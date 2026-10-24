@@ -5,6 +5,9 @@
 #include "../../mclib/mission_light_profile.h"
 #include <cmath>
 #include <vector>
+#include <string>
+#include "stock_lamp_fixture.h"
+#include "../../mclib/stock_lamp_definition.h"
 
 using gos_terrain_lighting::GpuTerrainLight;
 using gos_terrain_lighting::PackPoolLightType;
@@ -86,4 +89,110 @@ TEST_CASE("mission light profile matches the base mission and its saves") {
     CHECK_FALSE(matches("mc2_100", "mc2_10"));
     CHECK_FALSE(matches("mc2_1", "mc2_10"));
     CHECK_FALSE(matches("", "mc2_10"));
+}
+
+TEST_CASE("stock lamp definitions exclude every authored override") {
+    const std::string stock(kStockLampFixture);
+    REQUIRE(mc2_stock_lamp::definition("2civliving", stock, false));
+    CHECK(mc2_stock_lamp::definition("Data/TGL/2CivLiving.INI", stock, false));
+    CHECK_FALSE(mc2_stock_lamp::definition("2civliving", stock, true));
+    CHECK_FALSE(mc2_stock_lamp::definition("custom", stock, false));
+    for (const char* intensity : {"0.4", "0.5", "1.0"}) {
+        for (const char* radius : {"39.0", "40.0", "41.0", "100.0"}) {
+            std::string mod = stock;
+            auto offset = mod.find("0.07");
+            REQUIRE(offset != std::string::npos);
+            mod.replace(offset, 4, intensity);
+            offset = mod.find("200.0");
+            REQUIRE(offset != std::string::npos);
+            mod.replace(offset, 5, radius);
+            CHECK_FALSE(mc2_stock_lamp::definition("2civliving", mod, false));
+        }
+    }
+}
+
+TEST_CASE("mission darkness follows night noon night without accumulating color scales") {
+    CHECK(mc2_mission_light::darkness(270.0f) == 1.0f);
+    CHECK(mc2_mission_light::darkness(90.0f) == 0.0f);
+    CHECK(mc2_mission_light::darkness(270.0f) == 1.0f);
+    CHECK(mc2_mission_light::darkness(25.0f) == 0.0f);
+    CHECK(mc2_mission_light::darkness(20.0f) == 0.0f);
+    CHECK(mc2_mission_light::darkness(15.0f) > 0.0f);
+    CHECK(mc2_mission_light::nightFromSun(160.0f) == doctest::Approx(1.0f / 3.0f));
+}
+
+TEST_CASE("mission profiles keep frontend colors ground and save markers camera owned") {
+    struct CameraFixture {
+        std::string missionLightName;
+        float lightPitch = 22.5f;
+        float missionGroundScale = 1.0f;
+        bool missionLightApplied = false;
+        unsigned char lightRed = 100;
+        unsigned char lightGreen = 100;
+        unsigned char lightBlue = 100;
+        unsigned char dayLightRed = 100;
+        unsigned char dayLightGreen = 100;
+        unsigned char dayLightBlue = 100;
+        unsigned char nightLightRed = 100;
+        unsigned char nightLightGreen = 100;
+        unsigned char nightLightBlue = 100;
+        unsigned char sunsetLightRed = 100;
+        unsigned char sunsetLightGreen = 100;
+        unsigned char sunsetLightBlue = 100;
+        unsigned char ambientRed = 100;
+        unsigned char ambientGreen = 100;
+        unsigned char ambientBlue = 100;
+        unsigned char dayAmbientRed = 100;
+        unsigned char dayAmbientGreen = 100;
+        unsigned char dayAmbientBlue = 100;
+        unsigned char nightAmbientRed = 100;
+        unsigned char nightAmbientGreen = 100;
+        unsigned char nightAmbientBlue = 100;
+        unsigned char terrainShadowRed = 100;
+        unsigned char terrainShadowGreen = 100;
+        unsigned char terrainShadowBlue = 100;
+    };
+    using mc2_mission_light::apply;
+    using mc2_mission_light::sceneScale;
+    CameraFixture coldFrontend;
+    apply(coldFrontend, false);
+    CHECK(coldFrontend.lightRed == 100);
+    CHECK(coldFrontend.ambientRed == 100);
+    CHECK(sceneScale(coldFrontend) == 1.0f);
+    CHECK_FALSE(coldFrontend.missionLightApplied);
+    CameraFixture mission;
+    mission.missionLightName = "mc2_10";
+    mission.lightPitch = 270;
+    apply(mission, false);
+    CHECK(mission.lightRed == 45);
+    CHECK(mission.ambientRed == 40);
+    CHECK(sceneScale(mission) == doctest::Approx(0.55f));
+    CHECK(mission.missionLightApplied);
+    CameraFixture frontendAfterNight;
+    apply(frontendAfterNight, false);
+    CHECK(frontendAfterNight.lightRed == coldFrontend.lightRed);
+    CHECK(frontendAfterNight.ambientRed == coldFrontend.ambientRed);
+    CHECK(sceneScale(frontendAfterNight) == 1.0f);
+    CHECK(mission.missionLightApplied);
+    auto loaded = mission;
+    loaded.lightPitch = 90; // Saved after changing a night mission to noon.
+    apply(loaded, mission.missionLightApplied);
+    CHECK(loaded.lightRed == 45);
+    CHECK(loaded.ambientRed == 40);
+    CHECK(loaded.missionLightApplied);
+    CHECK(sceneScale(loaded) == 1.0f);
+    loaded.lightPitch = 270;
+    apply(loaded, loaded.missionLightApplied);
+    CHECK(loaded.lightRed == 45);
+    CHECK(sceneScale(loaded) == doctest::Approx(0.55f));
+    CameraFixture day;
+    day.missionLightName = "mc2_01";
+    day.lightPitch = 90;
+    apply(day, false);
+    CHECK(day.lightRed == 100);
+    CHECK(day.ambientRed == 100);
+    CHECK(sceneScale(day) == 1.0f);
+    CHECK_FALSE(day.missionLightApplied);
+    day.lightPitch = 270;
+    CHECK(sceneScale(day) == doctest::Approx(0.8f));
 }

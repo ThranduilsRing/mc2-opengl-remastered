@@ -17,9 +17,7 @@ long BldgAppearance::calcCellsCovered (glm::vec3& pos, short* cellList) {
 	{
 		currentLOD = 0;
 	
-		bldgShape->ClearAnimation();
-		delete bldgShape;
-		bldgShape = nullptr;
+		releaseBldgShape();
 	
 		bldgShape = appearType->getBldgRenderShape(currentLOD)->CreateFrom();   // render shape stays the override
 		if (unitAnim().bdAnimationState != -1)
@@ -91,9 +89,7 @@ void BldgAppearance::markTerrain (_ScenarioMapCellInfo* pInfo, int type, int cou
 	{
 		currentLOD = 0;
 	
-		bldgShape->ClearAnimation();
-		delete bldgShape;
-		bldgShape = nullptr;
+		releaseBldgShape();
 	
 		bldgShape = appearType->bldgShape[currentLOD]->CreateFrom();
 		if (unitAnim().bdAnimationState != -1)
@@ -149,9 +145,7 @@ void BldgAppearance::markTerrain (_ScenarioMapCellInfo* pInfo, int type, int cou
 		{
 			if (appearType->bldgShape[0])
 			{
-				bldgShape->ClearAnimation();
-				delete bldgShape;
-				bldgShape = nullptr;
+				releaseBldgShape();
 					
 				bldgShape = appearType->bldgShape[0]->CreateFrom();
 				if (unitAnim().bdAnimationState != -1)
@@ -163,9 +157,7 @@ void BldgAppearance::markTerrain (_ScenarioMapCellInfo* pInfo, int type, int cou
 		{
 			if (appearType->bldgDmgShape)
 			{
-				bldgShape->ClearAnimation();
-				delete bldgShape;
-				bldgShape = nullptr;
+				releaseBldgShape();
 					
 				bldgShape = appearType->bldgDmgShape->CreateFrom();
 				if (unitAnim().bdAnimationState != -1)
@@ -244,9 +236,7 @@ void BldgAppearance::markTerrain (_ScenarioMapCellInfo* pInfo, int type, int cou
 		{
 			if (appearType->bldgDmgShape)
 			{
-				bldgShape->ClearAnimation();
-				delete bldgShape;
-				bldgShape = nullptr;
+				releaseBldgShape();
 					
 				bldgShape = appearType->bldgDmgShape->CreateFrom();
 				if (unitAnim().bdAnimationState != -1)
@@ -258,9 +248,7 @@ void BldgAppearance::markTerrain (_ScenarioMapCellInfo* pInfo, int type, int cou
 		{
 			if (appearType->bldgShape[0])
 			{
-				bldgShape->ClearAnimation();
-				delete bldgShape;
-				bldgShape = nullptr;
+				releaseBldgShape();
 					
 				bldgShape = appearType->bldgShape[0]->CreateFrom();
 				if (unitAnim().bdAnimationState != -1)
@@ -310,9 +298,7 @@ void BldgAppearance::markTerrain (_ScenarioMapCellInfo* pInfo, int type, int cou
 			
 		if ((status != OBJECT_STATUS_DESTROYED) && appearType->bldgShape[0])
 		{
-			bldgShape->ClearAnimation();
-			delete bldgShape;
-			bldgShape = nullptr;
+			releaseBldgShape();
 						
 			bldgShape = appearType->bldgShape[0]->CreateFrom();
 			if (unitAnim().bdAnimationState != -1)
@@ -320,9 +306,7 @@ void BldgAppearance::markTerrain (_ScenarioMapCellInfo* pInfo, int type, int cou
 		}
 		else if ((status == OBJECT_STATUS_DESTROYED) && appearType->bldgDmgShape)
 		{
-			bldgShape->ClearAnimation();
-			delete bldgShape;
-			bldgShape = nullptr;
+			releaseBldgShape();
 					
 			bldgShape = appearType->bldgDmgShape->CreateFrom();
 			if (unitAnim().bdAnimationState != -1)
@@ -533,9 +517,7 @@ void BldgAppearance::calcAdjCell (long& row, long& col)
 	{
 		currentLOD = 0;
 	
-		bldgShape->ClearAnimation();
-		delete bldgShape;
-		bldgShape = nullptr;
+		releaseBldgShape();
 	
 		bldgShape = appearType->bldgShape[currentLOD]->CreateFrom();
 		if (unitAnim().bdAnimationState != -1)

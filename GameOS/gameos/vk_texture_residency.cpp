@@ -275,6 +275,7 @@ void TextureResidency::pump() {
       RenderCore::publishTextureUploads(service_,*table_,uploading_,residents_,budget_,
                                        [this](GpuTicket ticket) { return ctx_.isComplete(ticket); }); }
     const size_t firstNew = uploading_.size();
+    std::deque<Pending> batch;
     while (!pending_.empty()) {
         auto& p=pending_.front();
         auto it=residents_.find(p.handle.raw());
@@ -282,8 +283,12 @@ void TextureResidency::pump() {
         const size_t bytes=p.image->pixels.size();
         if (table_->full(uploading_.size()) || !budget_.reserve(bytes)) break;
         Upload upload; upload.handle=p.handle; upload.bytes=bytes; upload.contentVersion=p.contentVersion;
-        if (this->upload(*p.image,it->second.useMips,&upload,it->second.layers,it->second.arrayView,it->second.vegetation)) uploading_.push_back(std::move(upload));
-        else budget_.complete(bytes);
+        if (!this->upload(*p.image,it->second.useMips,&upload,it->second.layers,it->second.arrayView,it->second.vegetation)) {
+            budget_.complete(bytes);
+            break; // Retain decoded pixels for a later pump, including allocation failures.
+        }
+        uploading_.push_back(std::move(upload));
+        batch.push_back(std::move(p));
         pending_.pop_front();
     }
     if (uploading_.size() > firstNew) {
@@ -291,14 +296,7 @@ void TextureResidency::pump() {
         // One command buffer and submit for the ready batch. Each image and
         // staging owner stays queued until this shared completion ticket retires.
         const GpuTicket ticket = ctx_.flushUploads();
-        if (ticket.gfx) {
-            for (size_t i=firstNew; i<uploading_.size(); ++i) uploading_[i].ticket=ticket;
-        } else {
-            while (uploading_.size() > firstNew) {
-                budget_.complete(uploading_.back().bytes);
-                uploading_.pop_back();
-            }
-        }
+        RenderCore::finishTextureUploadBatch(uploading_,firstNew,pending_,batch,budget_,ticket);
     }
 }
 bool TextureResidency::ready(RenderCore::TextureHandle handle) const {

@@ -142,60 +142,18 @@ frameOfRef		Camera::cameraFrame;
 // before the camera is created, and restored from a save's MissionName), so campaign
 // loads and saves ("mc2_10_saved_*") resolve the profile like a command-line launch.
 namespace {
-std::string g_profileMission;
-// light/ambient scale the mission's sun and ambient colours (object lighting, burn-ins);
-// ground scales the PRELIT terrain/vegetation colour (the colormap carries the authored
-// night already, so it needs its own, gentler factor). Local light pools are added
-// after `ground`, so the lamps keep their full strength.
-struct MissionLightProfile { const char* mission; float light; float ambient; float ground; };
-constexpr MissionLightProfile kDefaultNightProfile{nullptr, 0.65f, 0.6f, 0.8f};
-constexpr MissionLightProfile kMissionLightProfiles[] = {
-	{"mc2_10", 0.45f, 0.40f, 0.55f},   // airbase raid just after sunset: fairly dark, lamps carry it
-};
-float g_sceneLightScale = 1.0f;
-float g_nightFactor = 0.0f;       // how night-like the mission sun is (0 day .. 1 full night)
-bool  g_profileApplied = false;   // the live camera colours carry the profile (Camera::save records it)
-
-const MissionLightProfile& missionLightProfile()
-{
-	for (const auto& profile : kMissionLightProfiles)
-		if (mc2_mission_light::matches(g_profileMission, profile.mission))
-			return profile;
-	return kDefaultNightProfile;
-}
-
-unsigned char scaleChannel(unsigned char v, float s)
-{
-	return static_cast<unsigned char>(std::clamp(std::lround(v * s), 0L, 255L));
-}
-
-// `alreadyApplied`: the camera block came from a save whose colours carry the profile; only the ground
-// scale (not saved) is restored.
 void applyMissionLightProfile(Camera& c, bool alreadyApplied)
 {
-	const float altitude = c.lightPitch > 90.0f ? 180.0f - c.lightPitch : c.lightPitch;
-	const float night = std::clamp((NIGHT_START_PITCH - altitude) / (NIGHT_START_PITCH - NIGHT_LIGHT_PITCH), 0.0f, 1.0f);
-	g_sceneLightScale = 1.0f;
-	g_nightFactor = night;
-	g_profileApplied = false;
-	if (night <= 0.0f) return;
-	const MissionLightProfile& p = missionLightProfile();
-	g_sceneLightScale = 1.0f + (p.ground - 1.0f) * night;
-	g_profileApplied = true;
-	const float ls = alreadyApplied ? 1.0f : 1.0f + (p.light - 1.0f) * night;
-	const float as = alreadyApplied ? 1.0f : 1.0f + (p.ambient - 1.0f) * night;
-	if (!alreadyApplied)
-	for (unsigned char* v : {&c.lightRed, &c.lightGreen, &c.lightBlue, &c.dayLightRed, &c.dayLightGreen, &c.dayLightBlue,
-	                         &c.nightLightRed, &c.nightLightGreen, &c.nightLightBlue, &c.sunsetLightRed, &c.sunsetLightGreen, &c.sunsetLightBlue})
-		*v = scaleChannel(*v, ls);
-	if (!alreadyApplied)
-	for (unsigned char* v : {&c.ambientRed, &c.ambientGreen, &c.ambientBlue, &c.dayAmbientRed, &c.dayAmbientGreen, &c.dayAmbientBlue,
-	                         &c.nightAmbientRed, &c.nightAmbientGreen, &c.nightAmbientBlue,
-	                         &c.terrainShadowRed, &c.terrainShadowGreen, &c.terrainShadowBlue})
-		*v = scaleChannel(*v, as);
+    mc2_mission_light::apply(c, alreadyApplied);
+    if (c.missionLightName.empty()) return;
+    const float night = mc2_mission_light::nightFromSun(c.lightPitch);
+    if (night <= 0.0f) return;
+    const auto& p = mc2_mission_light::missionLightProfile(c.missionLightName);
+    const float ls = alreadyApplied ? 1.0f : 1.0f + (p.light - 1.0f) * night;
+    const float as = alreadyApplied ? 1.0f : 1.0f + (p.ambient - 1.0f) * night;
 	MC2_EVENT(Render, "MISSION_LIGHT", 1,
 		"mission={} night={:.2f} light_scale={:.2f} ambient_scale={:.2f} ground_scale={:.2f} from_save={} light=({},{},{}) ambient=({},{},{})",
-		g_profileMission.c_str(), night, ls, as, g_sceneLightScale, alreadyApplied ? 1 : 0,
+		c.missionLightName.c_str(), night, ls, as, 1.0f + (p.ground - 1.0f) * night, alreadyApplied ? 1 : 0,
 		static_cast<unsigned>(c.lightRed), static_cast<unsigned>(c.lightGreen), static_cast<unsigned>(c.lightBlue),
 		static_cast<unsigned>(c.ambientRed), static_cast<unsigned>(c.ambientGreen), static_cast<unsigned>(c.ambientBlue));
 }
@@ -203,19 +161,21 @@ void applyMissionLightProfile(Camera& c, bool alreadyApplied)
 
 void mc2SetMissionLightProfileName(std::string_view missionFileName)
 {
-	g_profileMission = missionFileName;
+	if (eye) eye->missionLightName = missionFileName;
 }
 
 // The mission's scale of the prelit ground (terrain / overlay / vegetation UBO sceneLightScale).
-float mc2SceneLightScale() { return g_sceneLightScale; }
+float mc2SceneLightScale()
+{
+	return eye ? mc2_mission_light::sceneScale(*eye) : 1.0f;
+}
 
 // How dark the mission's night is: 0 for day and evening suns (night <= 0.35, e.g. mc2_14's low
 // orange sun keeps its soft shadows), easing to 1 at full night. Drives the sun-shadow fade and
 // the water's night sky (GameOS receivers declare it extern, like mc2SceneLightScale).
 float mc2NightLightFactor()
 {
-	const float t = std::clamp((g_nightFactor - 0.35f) / 0.65f, 0.0f, 1.0f);
-	return t * t * (3.0f - 2.0f * t);
+	return eye && !eye->missionLightName.empty() ? mc2_mission_light::darkness(eye->lightPitch) : 0.0f;
 }
 
 //---------------------------------------------------------------------------
@@ -843,7 +803,7 @@ bool Camera::save( FitIniFile* file )
 	file->writeIdFloat( "PositionZ", 0.0 );
 	file->writeIdBoolean( "Ready", true );
 	// LOCAL-LIGHTS-4: the colours below already carry the mission night profile; a load must not scale them twice.
-	file->writeIdBoolean( "NightProfileApplied", g_profileApplied );
+	file->writeIdBoolean( "NightProfileApplied", missionLightApplied );
 
 	file->writeIdUChar( "LightRed", lightRed );
 	file->writeIdUChar( "LightGreen", lightGreen );

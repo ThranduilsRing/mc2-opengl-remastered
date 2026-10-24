@@ -446,9 +446,7 @@ void BldgAppearance::setObjStatus (long oStatus)
 			{
 				if (bldgShape)
 				{
-					bldgShape->ClearAnimation();
-					delete bldgShape;
-					bldgShape = nullptr;
+					releaseBldgShape();
 				}
 				
 				bldgShape = dmgRender->CreateFrom();
@@ -468,9 +466,7 @@ void BldgAppearance::setObjStatus (long oStatus)
 			{
 				if (bldgShape)
 				{
-					bldgShape->ClearAnimation();
-					delete bldgShape;
-					bldgShape = nullptr;
+					releaseBldgShape();
 				}
 
 				// MODEL-OVERRIDE dual-shape: restore the per-instance RENDER

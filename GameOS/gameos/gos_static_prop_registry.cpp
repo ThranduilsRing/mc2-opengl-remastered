@@ -1,3 +1,4 @@
+#include "static_prop_visible_set.h"
 #include "gos_static_prop_registry_internal.h"
 #include "../../mclib/texture_assets.h"
 
@@ -708,7 +709,6 @@ void flush() {
     // V1A: latch BEFORE any early return so queryVisibility() always sees
     // a current-frame value (0 when disabled or nothing visible this frame).
     s_lastFlushLiveCount = static_cast<uint64_t>(s_liveRangeIndices.size());
-    if (s_liveRangeIndices.empty()) return;
     const uint32_t currentFrame = g_mc2FrameCounter;
     GpuStaticPropBatcher& batcher = GpuStaticPropBatcher::instance();
     // 2026-05-10 diag: per-frame outcome counters across all ranges.
@@ -752,17 +752,10 @@ void flush() {
     // drew none of its static buildings, walls or trees (mc2_10 base 1 night sheet).
     // Only the store is rebuilt: the registry generation (registry-wide consumers such as the
     // shadow caster fetch and the render snapshot) is not about visibility and is not bumped.
-    bool liveSetChanged = false;
-    if (!s_staticFrozenReg) {
-        static uint64_t s_storeLiveSig = 0;
-        uint64_t liveSig = 1469598103934665603ull;
-        for (uint32_t r : s_liveRangeIndices) { liveSig ^= r; liveSig *= 1099511628211ull; }
-        liveSetChanged = liveSig != s_storeLiveSig;
-        s_storeLiveSig = liveSig;
-    }
-    const uint64_t s_currentGen   = getRegistryGeneration();
-    const bool     s_storeDirty   = batcher_pb.persistentStaticGen() != s_currentGen || liveSetChanged;
-    if (s_storeDirty) batcher_pb.clearPersistentStatic();
+    static uint64_t s_storeLiveSig = 0;
+    const uint64_t s_currentGen = getRegistryGeneration();
+    const bool s_storeDirty = static_prop::prepareVisibleStore(batcher_pb, s_liveRangeIndices,
+        s_staticFrozenReg, s_currentGen, s_storeLiveSig);
     flushFrozenStoreRebuild(batcher_pb, s_storeDirty);
 
     for (uint32_t regIdx : s_liveRangeIndices) {

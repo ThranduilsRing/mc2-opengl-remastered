@@ -67,6 +67,26 @@ struct TextureStagingBudget {
     void complete(size_t bytes) { assert(bytes<=used); used-=bytes; }
 };
 
+// Decoded requests remain owned until the whole command buffer is submitted.
+// A refused batch publishes nothing and returns every request for a later pump.
+template<class Uploads, class Pending, class Ticket>
+void finishTextureUploadBatch(Uploads& uploads, size_t firstNew, Pending& pending,
+                              Pending& batch, TextureStagingBudget& budget, Ticket ticket) {
+    if (ticket.gfx) {
+        for (size_t i=firstNew; i<uploads.size(); ++i) uploads[i].ticket=ticket;
+        batch.clear();
+    } else {
+        while (uploads.size() > firstNew) {
+            budget.complete(uploads.back().bytes);
+            uploads.pop_back();
+        }
+        while (!batch.empty()) {
+            pending.push_front(std::move(batch.back()));
+            batch.pop_back();
+        }
+    }
+}
+
 // Completed images retain their slot reservation and staging charge until publication
 // succeeds (or the source is cancelled). A full table must never strand a live handle.
 template<class Uploads, class Residents, class Complete>

@@ -482,3 +482,44 @@ TEST_CASE("TextureService: reload keeps identity and rejects an older decoded re
     CHECK(service.isLive(handle));
     CHECK(results.front().contentVersion!=service.contentVersion(handle));
 }
+
+TEST_CASE("TextureService: refused upload batches retain decoded requests and retry") {
+    // Allocation, command-buffer end and queue-submit failures all return no ticket.
+    for (const char* failure : {"allocate", "end", "submit"}) {
+        CAPTURE(failure);
+        PublicationFixture f;
+        const auto older=f.service.acquire(keyOf("unit","older",1));
+        REQUIRE(f.queue(older));
+        const auto handle=f.service.acquire(keyOf("unit","retry",1));
+        struct Pending { TextureHandle handle; std::shared_ptr<int> pixels; };
+        auto decoded=std::make_shared<int>(42);
+        std::deque<Pending> pending{{handle,decoded}}, batch;
+        const size_t firstNew=f.uploads.size();
+        REQUIRE(f.budget.reserve(4));
+        const auto version=f.service.contentVersion(handle);
+        f.residents[handle.raw()].contentVersion=version;
+        f.uploads.push_back({handle,std::make_shared<int>(2),{},4,version});
+        batch.push_back(std::move(pending.front())); pending.pop_front();
+        finishTextureUploadBatch(f.uploads,firstNew,pending,batch,f.budget,mc2vk::GpuTicket{});
+        REQUIRE(f.uploads.size()==firstNew);
+        CHECK(f.budget.used==4); // Only the earlier submitted batch remains charged.
+        REQUIRE(pending.size()==1);
+        CHECK(pending.front().handle==handle);
+        CHECK(pending.front().pixels.get()==decoded.get());
+        CHECK_FALSE(bool(f.residents[handle.raw()].image));
+        CHECK(f.table.index(handle)==0);
+        f.complete(); f.pump();
+        REQUIRE(f.service.release(older)); REQUIRE(f.table.erase(older));
+        REQUIRE(f.budget.reserve(4));
+        f.uploads.push_back({handle,std::make_shared<int>(42),{},4,version});
+        batch.push_back(std::move(pending.front())); pending.pop_front();
+        const mc2vk::GpuTicket ticket{f.tracker.noteSubmit(mc2vk::QueueKind::Graphics),0};
+        finishTextureUploadBatch(f.uploads,0,pending,batch,f.budget,ticket);
+        CHECK(batch.empty()); CHECK(pending.empty());
+        f.pump(); CHECK_FALSE(bool(f.residents[handle.raw()].image));
+        f.complete(); f.pump();
+        REQUIRE(bool(f.residents[handle.raw()].image));
+        CHECK(*f.residents[handle.raw()].image==42);
+        CHECK(f.budget.used==0);
+    }
+}

@@ -739,16 +739,7 @@ void BldgAppearance::destroy (void)
 	// `pointLight` (alloc/free per night/day boundary), spotlightLights_
 	// stay allocated for the building's lifetime — this destroy hook is the
 	// only cleanup site.
-	for (size_t k = 0; k < spotlightLights_.size(); ++k)
-	{
-		if (eye)
-			eye->removeWorldLight(spotlightSlotIds_[k], spotlightLights_[k]);
-		free(spotlightLights_[k]);
-	}
-	spotlightLights_.clear();
-	spotlightSlotIds_.clear();
-	spotlightNodeIds_.clear();
-	spotlightsRegistered_ = false;
+	clearSpotlights();
 
 	if (activity)
 	{
@@ -763,4 +754,26 @@ void BldgAppearance::destroy (void)
 	}
 
 	appearanceTypeList->removeAppearance(appearType);
+}
+
+void BldgAppearance::clearSpotlights()
+{
+	for (size_t k = 0; k < spotlightLights_.size(); ++k)
+	{
+		if (eye)
+			eye->removeWorldLight(spotlightSlotIds_[k], spotlightLights_[k]);
+		free(spotlightLights_[k]);
+	}
+	spotlightLights_.clear();
+	spotlightSlotIds_.clear();
+	spotlightNodeIds_.clear();
+	spotlightsRegistered_ = false;
+}
+
+void BldgAppearance::releaseBldgShape()
+{
+    clearSpotlights();
+    bldgShape->ClearAnimation();
+    delete bldgShape;
+    bldgShape = nullptr;
 }

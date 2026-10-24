@@ -231,6 +231,7 @@ struct _TG_Light
 	// LIGHTS-R4: a lamp carried by a mover (mech / vehicle). Its shadow tile holds only the
 	// dynamic casters (it moves every frame, so a static bake would redo itself per frame).
 	bool					moverLamp;
+	bool stockTerrainLamp;
 
 	void init (DWORD lType)
 	{
@@ -248,6 +249,7 @@ struct _TG_Light
 		maxSpotLength = 0.0f;
 		spotCosOuter = 0.0f;
 		moverLamp = false;
+		stockTerrainLamp = false;
 		active = false;
 		ownerEnabled = 1;	//LIGHT-CULL-RADIUS-1: enabled until an owner says otherwise
 	}
