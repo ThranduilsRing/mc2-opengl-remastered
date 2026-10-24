@@ -750,14 +750,18 @@ void flush() {
     // structural change too. Without this a clean generation reused the last dirty frame's
     // visible set: while paused (stable lights, no spawns) a camera moved to another base
     // drew none of its static buildings, walls or trees (mc2_10 base 1 night sheet).
+    // Only the store is rebuilt: the registry generation (registry-wide consumers such as the
+    // shadow caster fetch and the render snapshot) is not about visibility and is not bumped.
+    bool liveSetChanged = false;
     if (!s_staticFrozenReg) {
         static uint64_t s_storeLiveSig = 0;
         uint64_t liveSig = 1469598103934665603ull;
         for (uint32_t r : s_liveRangeIndices) { liveSig ^= r; liveSig *= 1099511628211ull; }
-        if (liveSig != s_storeLiveSig) { s_storeLiveSig = liveSig; ++s_registryGeneration; }
+        liveSetChanged = liveSig != s_storeLiveSig;
+        s_storeLiveSig = liveSig;
     }
     const uint64_t s_currentGen   = getRegistryGeneration();
-    const bool     s_storeDirty   = batcher_pb.persistentStaticGen() != s_currentGen;
+    const bool     s_storeDirty   = batcher_pb.persistentStaticGen() != s_currentGen || liveSetChanged;
     if (s_storeDirty) batcher_pb.clearPersistentStatic();
     flushFrozenStoreRebuild(batcher_pb, s_storeDirty);
 
