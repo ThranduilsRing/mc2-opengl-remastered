@@ -573,6 +573,19 @@ long TG_AnimateShape::LoadTGMultiShapeAnimationFromASE (const char *fileName, TG
 //-------------------------------------------------------------------------------
 //This function copies the pointers to the animation data in this class to the
 //TG_MultiShape being drawn.  Nothing else happens.
+const char* TG_AnimateShape::MissingAnimationNode(TG_TypeMultiShape* shape) const
+{
+	for (long j = 0; j < count; ++j)
+	{
+		if (!listOfAnimation[j].quat && !listOfAnimation[j].pos) continue;
+		bool found = false;
+		for (long i = 0; i < shape->GetNumShapes(); ++i)
+			if (S_stricmp(listOfAnimation[j].nodeId, shape->GetNodeId(i)) == 0) { found = true; break; }
+		if (!found) return listOfAnimation[j].nodeId;
+	}
+	return nullptr;
+}
+
 void TG_AnimateShape::SetAnimationState (TG_MultiShapePtr shape)
 {
 	long i=0;

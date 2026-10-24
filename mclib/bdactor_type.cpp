@@ -387,6 +387,29 @@ void BldgAppearanceType::init (const char * fileName)
 		}
 	}
 	
+	// A flattened bake must never freeze a stock moving part. Keep the stock
+	// render chain until every cooked LOD retains the animation's nodes.
+	if (bldgRenderShape)
+	{
+		const char* missing = nullptr;
+		for (auto* animation : bdAnimData)
+		{
+			if (!animation) continue;
+			for (long lod = 0; lod < MAX_LODS && !missing; ++lod)
+				missing = animation->MissingAnimationNode(getBldgRenderShape(lod));
+			if (missing) break;
+		}
+		if (missing)
+		{
+			mc2::fmt::print_err("[MODOVERRIDE] staticProp '{}': missing animation node '{}'; keeping stock moving parts\n",
+				mc2::fmt::safe(bldgBaseName), mc2::fmt::safe(missing));
+			delete bldgRenderShape;
+			bldgRenderShape = nullptr;
+			for (auto& lod : bldgRenderLods) lod.reset();
+			bldgDmgRenderShape.reset();
+			propMaterialSource = nullptr;
+		}
+	}
 	result = iniFile.seekBlock("AnimationNode");
 	if (result == NO_ERR)
 	{
