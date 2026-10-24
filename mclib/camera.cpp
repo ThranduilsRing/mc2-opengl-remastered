@@ -7,6 +7,7 @@
 //===========================================================================//
 
 #include "camera_internal.h"
+#include "Gates/gate.h"
 #include "../GameOS/gameos/utils/mc2log.h"   // LOCAL-LIGHTS-4: [MISSION_LIGHT v1]
 #include "mission_light_profile.h"
 
@@ -151,11 +152,13 @@ void applyMissionLightProfile(Camera& c, bool alreadyApplied)
     const auto& p = mc2_mission_light::missionLightProfile(c.missionLightName);
     const float ls = alreadyApplied ? 1.0f : 1.0f + (p.light - 1.0f) * night;
     const float as = alreadyApplied ? 1.0f : 1.0f + (p.ambient - 1.0f) * night;
-	MC2_EVENT(Render, "MISSION_LIGHT", 1,
-		"mission={} night={:.2f} light_scale={:.2f} ambient_scale={:.2f} ground_scale={:.2f} from_save={} light=({},{},{}) ambient=({},{},{})",
-		c.missionLightName.c_str(), night, ls, as, 1.0f + (p.ground - 1.0f) * night, alreadyApplied ? 1 : 0,
-		static_cast<unsigned>(c.lightRed), static_cast<unsigned>(c.lightGreen), static_cast<unsigned>(c.lightBlue),
-		static_cast<unsigned>(c.ambientRed), static_cast<unsigned>(c.ambientGreen), static_cast<unsigned>(c.ambientBlue));
+	if (mc2::gate::get<"MC2_DIAG_VERBOSE">()) {
+		MC2_EVENT(Render, "MISSION_LIGHT", 1,
+			"mission={} night={:.2f} light_scale={:.2f} ambient_scale={:.2f} ground_scale={:.2f} from_save={} light=({},{},{}) ambient=({},{},{})",
+			c.missionLightName.c_str(), night, ls, as, 1.0f + (p.ground - 1.0f) * night, alreadyApplied ? 1 : 0,
+			static_cast<unsigned>(c.lightRed), static_cast<unsigned>(c.lightGreen), static_cast<unsigned>(c.lightBlue),
+			static_cast<unsigned>(c.ambientRed), static_cast<unsigned>(c.ambientGreen), static_cast<unsigned>(c.ambientBlue));
+	}
 }
 } // namespace
 
