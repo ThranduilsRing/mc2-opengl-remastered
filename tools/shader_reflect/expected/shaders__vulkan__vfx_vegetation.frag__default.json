@@ -1,0 +1,940 @@
+{
+  "defines": [],
+  "outputs": [
+    {
+      "location": 0,
+      "name": "o_color",
+      "type": "vec4"
+    },
+    {
+      "location": 1,
+      "name": "o_normal",
+      "type": "vec4"
+    }
+  ],
+  "shader": "shaders/vulkan/vfx_vegetation.frag",
+  "ssbos": [
+    {
+      "binding": 4,
+      "members": [
+        {
+          "array_stride": 4,
+          "matrix_stride": null,
+          "name": "cementWordsF",
+          "offset": 0,
+          "type": "uint"
+        }
+      ],
+      "name": "TerrainCementBuf"
+    },
+    {
+      "binding": 11,
+      "members": [
+        {
+          "array_stride": 48,
+          "matrix_stride": null,
+          "name": "poolLights",
+          "offset": 0,
+          "type": "_1198"
+        }
+      ],
+      "name": "TerrainLightPoolVK"
+    },
+    {
+      "binding": 12,
+      "members": [
+        {
+          "array_stride": 8,
+          "matrix_stride": null,
+          "name": "lightGridCells",
+          "offset": 0,
+          "type": "uvec2"
+        }
+      ],
+      "name": "TerrainLightGridHeaderVK"
+    },
+    {
+      "binding": 13,
+      "members": [
+        {
+          "array_stride": 4,
+          "matrix_stride": null,
+          "name": "lightGridIndices",
+          "offset": 0,
+          "type": "uint"
+        }
+      ],
+      "name": "TerrainLightGridIndicesVK"
+    }
+  ],
+  "stage": "frag",
+  "ubos": [
+    {
+      "binding": 0,
+      "members": [
+        {
+          "array_stride": null,
+          "matrix_stride": 16,
+          "name": "worldToClipGL",
+          "offset": 0,
+          "type": "mat4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "mapSide",
+          "offset": 64,
+          "type": "int"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "halfMap",
+          "offset": 68,
+          "type": "float"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "blockOriginX",
+          "offset": 72,
+          "type": "int"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "blockOriginY",
+          "offset": 76,
+          "type": "int"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "atlasTopLeftX",
+          "offset": 80,
+          "type": "float"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "atlasTopLeftY",
+          "offset": 84,
+          "type": "float"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "atlasOneOverWorldUnits",
+          "offset": 88,
+          "type": "float"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "colormapReady",
+          "offset": 92,
+          "type": "int"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "useCement",
+          "offset": 96,
+          "type": "int"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "cementGridSide",
+          "offset": 100,
+          "type": "int"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "cementWUPT",
+          "offset": 104,
+          "type": "float"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "useTransitionMask",
+          "offset": 108,
+          "type": "int"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "cementDiagConnect",
+          "offset": 112,
+          "type": "int"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "_lightPad0",
+          "offset": 116,
+          "type": "int"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "_lightPad1",
+          "offset": 120,
+          "type": "int"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "_lightPad2",
+          "offset": 124,
+          "type": "int"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "terrainLightDir",
+          "offset": 128,
+          "type": "vec4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": 16,
+          "name": "staticLightSpaceMatrix",
+          "offset": 144,
+          "type": "mat4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "lightingEnabled",
+          "offset": 208,
+          "type": "int"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "enableShadows",
+          "offset": 212,
+          "type": "int"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "shadowSoftness",
+          "offset": 216,
+          "type": "float"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "sceneLightScale",
+          "offset": 220,
+          "type": "float"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "detailEnabled",
+          "offset": 224,
+          "type": "int"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "detailReady",
+          "offset": 228,
+          "type": "int"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "nfhStrength",
+          "offset": 232,
+          "type": "float"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "detailTiling",
+          "offset": 236,
+          "type": "float"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "detailStrength",
+          "offset": 240,
+          "type": "float"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "enableDynShadows",
+          "offset": 244,
+          "type": "int"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "_dynPad0",
+          "offset": 248,
+          "type": "int"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "_dynPad1",
+          "offset": 252,
+          "type": "int"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": 16,
+          "name": "dynamicLightSpaceMatrix",
+          "offset": 256,
+          "type": "mat4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "cameraPosMC2",
+          "offset": 320,
+          "type": "vec4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "lodFadeEnabled",
+          "offset": 336,
+          "type": "int"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "skirtDepth",
+          "offset": 340,
+          "type": "float"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "_csmPad0",
+          "offset": 344,
+          "type": "int"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "_csmPad1",
+          "offset": 348,
+          "type": "int"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "csmEnabled",
+          "offset": 352,
+          "type": "int"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "csmCount",
+          "offset": 356,
+          "type": "int"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "csmDepthSpan",
+          "offset": 360,
+          "type": "float"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "csmDebugMode",
+          "offset": 364,
+          "type": "int"
+        },
+        {
+          "array_stride": 64,
+          "matrix_stride": 16,
+          "name": "csmCascadeMatrices",
+          "offset": 368,
+          "type": "mat4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "csmCascadeTexelWorld",
+          "offset": 560,
+          "type": "vec4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "csmFullMapTexelWorld",
+          "offset": 576,
+          "type": "float"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "visualSide",
+          "offset": 580,
+          "type": "int"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "visualDisplaceFar",
+          "offset": 584,
+          "type": "float"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "visualMode",
+          "offset": 588,
+          "type": "int"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "edgeStitch",
+          "offset": 592,
+          "type": "int"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "quadCountX",
+          "offset": 596,
+          "type": "int"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "quadCountY",
+          "offset": 600,
+          "type": "int"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "ambientFloor",
+          "offset": 604,
+          "type": "float"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "ambientDayGate",
+          "offset": 608,
+          "type": "float"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "missionFlatR",
+          "offset": 612,
+          "type": "float"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "missionFlatG",
+          "offset": 616,
+          "type": "float"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "missionFlatB",
+          "offset": 620,
+          "type": "float"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "numPoolLights",
+          "offset": 624,
+          "type": "int"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "lightGridDim",
+          "offset": 628,
+          "type": "int"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "lightGridMinX",
+          "offset": 632,
+          "type": "float"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "lightGridMinY",
+          "offset": 636,
+          "type": "float"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "lightGridInvCellX",
+          "offset": 640,
+          "type": "float"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "lightGridInvCellY",
+          "offset": 644,
+          "type": "float"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "lightPoolSoft",
+          "offset": 648,
+          "type": "int"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "lightPoolMoverDim",
+          "offset": 652,
+          "type": "float"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "lightPoolMoverScale",
+          "offset": 656,
+          "type": "float"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "lightPoolMoverMax",
+          "offset": 660,
+          "type": "int"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "lightPoolCompress",
+          "offset": 664,
+          "type": "int"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "moverContactShadow",
+          "offset": 668,
+          "type": "float"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "padGlowR",
+          "offset": 672,
+          "type": "float"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "padGlowG",
+          "offset": 676,
+          "type": "float"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "padGlowB",
+          "offset": 680,
+          "type": "float"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "padGlowSpill",
+          "offset": 684,
+          "type": "float"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "shadowDistFadeWu",
+          "offset": 688,
+          "type": "float"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "shadowDistFadeMax",
+          "offset": 692,
+          "type": "float"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "shadowMinSunSin",
+          "offset": 696,
+          "type": "float"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "shadowKnobFlags",
+          "offset": 700,
+          "type": "int"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "tintRockR",
+          "offset": 704,
+          "type": "float"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "tintRockG",
+          "offset": 708,
+          "type": "float"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "tintRockB",
+          "offset": 712,
+          "type": "float"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "tintGrassR",
+          "offset": 716,
+          "type": "float"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "tintGrassG",
+          "offset": 720,
+          "type": "float"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "tintGrassB",
+          "offset": 724,
+          "type": "float"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "tintDirtR",
+          "offset": 728,
+          "type": "float"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "tintDirtG",
+          "offset": 732,
+          "type": "float"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "tintDirtB",
+          "offset": 736,
+          "type": "float"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "tintConcreteR",
+          "offset": 740,
+          "type": "float"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "tintConcreteG",
+          "offset": 744,
+          "type": "float"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "tintConcreteB",
+          "offset": 748,
+          "type": "float"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "tintSnowR",
+          "offset": 752,
+          "type": "float"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "tintSnowG",
+          "offset": 756,
+          "type": "float"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "tintSnowB",
+          "offset": 760,
+          "type": "float"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "tintStrengthScale",
+          "offset": 764,
+          "type": "float"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "snowBrightnessDampen",
+          "offset": 768,
+          "type": "float"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "edgeFeatherStrength",
+          "offset": 772,
+          "type": "float"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "cementAtlasSeamFix",
+          "offset": 776,
+          "type": "int"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "shorelineOn",
+          "offset": 780,
+          "type": "int"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "shorelineHasMask",
+          "offset": 784,
+          "type": "int"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "shorelineWaterElev",
+          "offset": 788,
+          "type": "float"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "shorelineTime",
+          "offset": 792,
+          "type": "float"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "shorelineStrength",
+          "offset": 796,
+          "type": "float"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "shorelineFoamStrength",
+          "offset": 800,
+          "type": "float"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "shorelineWetRun",
+          "offset": 804,
+          "type": "float"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "shorelineFoamRun",
+          "offset": 808,
+          "type": "float"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "shorelineEdgeJitter",
+          "offset": 812,
+          "type": "float"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "shorelineBoundsX",
+          "offset": 816,
+          "type": "float"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "shorelineBoundsY",
+          "offset": 820,
+          "type": "float"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "shorelineBoundsW",
+          "offset": 824,
+          "type": "float"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "shorelineBoundsH",
+          "offset": 828,
+          "type": "float"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "shoreFieldOn",
+          "offset": 832,
+          "type": "int"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "shoreFieldIsSdf",
+          "offset": 836,
+          "type": "int"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "shoreFieldBoundsX",
+          "offset": 840,
+          "type": "float"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "shoreFieldBoundsY",
+          "offset": 844,
+          "type": "float"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "shoreFieldBoundsW",
+          "offset": 848,
+          "type": "float"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "shoreFieldBoundsH",
+          "offset": 852,
+          "type": "float"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "concreteDetail",
+          "offset": 856,
+          "type": "int"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "concreteDetailStrength",
+          "offset": 860,
+          "type": "float"
+        }
+      ],
+      "name": "TerrainFrameUBO"
+    },
+    {
+      "binding": 25,
+      "members": [
+        {
+          "array_stride": null,
+          "matrix_stride": 16,
+          "name": "matrix",
+          "offset": 0,
+          "type": "mat4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "params",
+          "offset": 64,
+          "type": "vec4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "sun",
+          "offset": 80,
+          "type": "vec4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "mask",
+          "offset": 96,
+          "type": "vec4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "flags",
+          "offset": 112,
+          "type": "ivec4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "light",
+          "offset": 128,
+          "type": "vec4"
+        },
+        {
+          "array_stride": 16,
+          "matrix_stride": null,
+          "name": "coverage",
+          "offset": 144,
+          "type": "uvec4"
+        }
+      ],
+      "name": "MoverShadowFrame"
+    }
+  ],
+  "variant": "default"
+}
