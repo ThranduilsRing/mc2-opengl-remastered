@@ -496,6 +496,7 @@ void Mission::loadWeatherCamera(MissionLoadFrame& f) {
 	eye->init();
 	gosASSERT(eye != nullptr);
 
+	mc2SetMissionLightProfileName(missionFileName);   // LOCAL-LIGHTS-4: the save's MissionName (authored mission)
 	result = eye->init(&missionFile);
 	gosASSERT(result == NO_ERR);
 	eye->inMovieMode = false;
