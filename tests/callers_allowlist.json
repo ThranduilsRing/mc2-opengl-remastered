@@ -1,4 +1,6 @@
 {
+  "scripts/tests/test_firewall_dialog.py": "Discovered by the network_startup contract row through scripts/test_ownership.json; covers the firewall-dialog detector used by the smoke and capture runners.",
+  "scripts/tests/test_network_startup.py": "Discovered by the network_startup contract row through scripts/test_ownership.json; covers loopback-only, opt-in Tracy listener startup.",
   "scripts/tests/test_veg_card_cook.py": "Pytest-discovered module through scripts/run_scripts_tests.py (scripts_tests); coverage, dilation, trim and deterministic mip tests.",
   "scripts/vk_shader_reload.py": "Operator-run native Vulkan shader reload command, documented in its module help; compiles and validates an ABI-compatible shader for an already-running game.",
   "scripts/tests/test_review_launcher_sizing.py": "Discovered dynamically by scripts/run_scripts_tests.py through scripts/test_ownership.json; covers the launcher window rect sizing fix.",
