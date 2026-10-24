@@ -39,6 +39,8 @@ A --batch run prints one such line per merged tip (verify=DEFERRED) and a final 
 from __future__ import annotations
 
 import argparse
+from collections import deque
+from contextlib import nullcontext
 import os
 import re
 import shutil
@@ -95,6 +97,24 @@ class Stop(Exception):
 def run(root: str, cmd: list[str], env: dict | None = None) -> subprocess.CompletedProcess:  # non-git commands (the ratchets)
     return subprocess.run(cmd, cwd=root, env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
                           encoding="utf-8", errors="replace", **console_child.child_kwargs(redirected=True))
+
+
+def run_logged(root, cmd, env=None, log_path=None):
+    """Stream merged child output to the console and optional persistent log; retain a short failure tail."""
+    if log_path:
+        os.makedirs(os.path.dirname(os.path.abspath(log_path)), exist_ok=True)
+    with open(log_path, "a", encoding="utf-8") if log_path else nullcontext() as log:
+        with subprocess.Popen(cmd, cwd=root, env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                              text=True, encoding="utf-8", errors="replace",
+                              **console_child.child_kwargs(redirected=True)) as child:
+            tail = deque(maxlen=8)
+            for line in child.stdout:
+                print(line, end="", flush=True)
+                if log:
+                    log.write(line)
+                    log.flush()
+                tail.append(line)
+            return subprocess.CompletedProcess(cmd, child.wait(), "".join(tail))
 
 
 def git(root: str, *args: str) -> subprocess.CompletedProcess:
@@ -434,7 +454,7 @@ def verify_env(root: str) -> dict:
     return dict(os.environ, MC2_NINJA_TREE="build64-ninja", MC2_UNIT_BUILD_DIR=os.path.join(root, "build64-tests"))
 
 
-def verify_merged(root: str, mode: str, runner=run) -> tuple[str, list[tuple[str, int, str]]]:
+def verify_merged(root: str, mode: str, runner=None) -> tuple[str, list[tuple[str, int, str]]]:
     """Build and test the merged tree. -> ("OK"|"FAIL"|"SKIPPED", [(step, rc, tail)]). Stops at the first failing step."""
     if mode == "none":
         return "SKIPPED", []
@@ -444,7 +464,18 @@ def verify_merged(root: str, mode: str, runner=run) -> tuple[str, list[tuple[str
         if not os.path.exists(path):
             return ("SKIPPED" if not results else "OK"), results
         cmd = [git_bash(), path] + rest if script.endswith(".sh") else [sys.executable, path] + rest
-        r = runner(root, cmd, env=verify_env(root))
+        log_path = os.path.join(root, "build64-ninja", "lane-merge-verify-" + label + ".log")
+        print(f"lane_merge: {label} log: {log_path}", flush=True)
+        os.makedirs(os.path.dirname(log_path), exist_ok=True)
+        with open(log_path, "w", encoding="utf-8") as log:
+            log.write(subprocess.list2cmdline(cmd) + "\n")
+        if runner is None:
+            r = run_logged(root, cmd, env=verify_env(root), log_path=log_path)
+        else:
+            r = runner(root, cmd, env=verify_env(root))
+            with open(log_path, "a", encoding="utf-8") as log:
+                log.write(r.stdout)
+            print(r.stdout, end="", flush=True)
         tail = "\n".join(r.stdout.splitlines()[-8:])
         results.append((label, r.returncode, tail))
         if r.returncode != 0:
@@ -551,7 +582,7 @@ def main(argv: list[str] | None = None) -> int:
     refs = args.batch or [args.ref]
     batch = bool(args.batch)
     if batch and args.resolution:
-        ap.error("--resolution is per tip; it cannot be combined with --batch")
+        ap.error("--resolution is per tip; merge that tip alone with --resolution PATH=FILE, then run --batch for the remaining tips")
     global TRAILER
     if args.trailer is not None:
         TRAILER = args.trailer

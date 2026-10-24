@@ -1,5 +1,6 @@
 #ifdef MC2_VULKAN_ISLAND
 #include "vk_texture_residency.h"
+#include "vk_texture_pending.h"
 #include <tracy/Tracy.hpp>
 #include "RenderCore/GpuResidencyPolicy.h"
 #include "Gates/render_options.h"
@@ -276,21 +277,15 @@ void TextureResidency::pump() {
                                        [this](GpuTicket ticket) { return ctx_.isComplete(ticket); }); }
     const size_t firstNew = uploading_.size();
     std::deque<Pending> batch;
-    while (!pending_.empty()) {
-        auto& p=pending_.front();
+    pumpPendingTextureUploads(pending_,uploading_,batch,budget_,[this](const Pending& p) {
         auto it=residents_.find(p.handle.raw());
-        if (it==residents_.end() || !service_.isLive(p.handle) || it->second.contentVersion!=p.contentVersion) { pending_.pop_front(); continue; }
-        const size_t bytes=p.image->pixels.size();
-        if (table_->full(uploading_.size()) || !budget_.reserve(bytes)) break;
-        Upload upload; upload.handle=p.handle; upload.bytes=bytes; upload.contentVersion=p.contentVersion;
-        if (!this->upload(*p.image,it->second.useMips,&upload,it->second.layers,it->second.arrayView,it->second.vegetation)) {
-            budget_.complete(bytes);
-            break; // Retain decoded pixels for a later pump, including allocation failures.
-        }
-        uploading_.push_back(std::move(upload));
-        batch.push_back(std::move(p));
-        pending_.pop_front();
-    }
+        return it!=residents_.end() && service_.isLive(p.handle) && it->second.contentVersion==p.contentVersion;
+    },[this] { return table_->full(uploading_.size()); },[this](const Pending& p, Upload& next) {
+        const auto& r=residents_.at(p.handle.raw());
+        return bool(upload(*p.image,r.useMips,&next,r.layers,r.arrayView,r.vegetation));
+    },[](const Pending& p) {
+        std::fprintf(stderr,"[VK_RESIDENCY v1] dropped=upload handle=%u attempts=%u fallback=placeholder\n",p.handle.raw(),p.attempts);
+    });
     if (uploading_.size() > firstNew) {
         ZoneScopedN("TextureResidency.SubmitBatch");
         // One command buffer and submit for the ready batch. Each image and

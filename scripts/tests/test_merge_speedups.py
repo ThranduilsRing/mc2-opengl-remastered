@@ -2,6 +2,7 @@
 import os
 import sys
 import types
+import pytest
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, ROOT)
@@ -163,12 +164,17 @@ def test_deploy_stale_refusal_precedes_payload_copy(tmp_path, monkeypatch):
 def test_gate_plan_uses_verified_ninja_and_required_checks():
     import merge_gate as gate
     steps = gate.plan(6)
-    assert len(steps) == 11
-    assert steps[0][1][-1] == "-j6"
-    assert steps[1][1][-2:] == ["-j", "6"]
-    assert "--ninja" in steps[3][1] and "--require-clean" in steps[3][1]
+    assert len(steps) == 15
+    by_name = {name: (cmd, env) for name, cmd, env in steps}
+    assert by_name["contracts"][0][-1] == "-j6"
+    assert by_name["harnesses"][0][-2:] == ["-j", "6"]
+    assert "--ninja" in by_name["deploy"][0] and "--require-clean" in by_name["deploy"][0]
+    assert [name for name, _, _ in steps[:5]] == ["capture-before", "deploy", "capture-after", "compare-captures", "contracts"]
+    assert by_name["determinism-mc2_24"][0][2:4] == ["check", "mc2_24"]
     assert not any("ninja_build.py" in arg for _, cmd, _ in steps for arg in cmd)
-    for _, cmd, _ in steps[8:10]:
+    for name, cmd, _ in steps:
+        if not name.startswith("saveload-"):
+            continue
         assert cmd[2] == "check"
         assert "--first-save-only" in cmd
         assert cmd[cmd.index("--mask") + 1] == "tools/save_noise_mask.json"
@@ -181,10 +187,10 @@ def test_gate_dry_run_never_executes(monkeypatch, capsys):
     def forbidden(*a, **k):
         raise AssertionError("launched subprocess in dry run")
     assert gate.execute(gate.plan(6), "base", True, forbidden) == 0
-    assert "validation smoke-lite | DRY-RUN" in capsys.readouterr().out
+    assert "validation | DRY-RUN" in capsys.readouterr().out
 
 
-def test_gate_red_stops_before_deploy(monkeypatch, capsys):
+def test_gate_red_stops_remaining_stages(monkeypatch, capsys):
     import merge_gate as gate
     monkeypatch.setattr(gate, "git", lambda *a: "head")
     calls = []
@@ -193,7 +199,7 @@ def test_gate_red_stops_before_deploy(monkeypatch, capsys):
         return _r(2)
     assert gate.execute(gate.plan(6), "head", runner=runner) == 1
     assert len(calls) == 1
-    assert "deploy v0.4 | SKIPPED" in capsys.readouterr().out
+    assert "deploy | SKIPPED" in capsys.readouterr().out
 
 
 def test_gate_refuses_changed_head(monkeypatch):
@@ -214,3 +220,77 @@ def test_gate_refuses_real_run_in_lane(monkeypatch):
     with pytest.raises(SystemExit) as exc:
         gate.main([])
     assert exc.value.code == 2
+
+
+@pytest.mark.parametrize("marker", ["1", "0", ""])
+def test_gate_recursion_guard_precedes_git_and_execution(monkeypatch, marker):
+    import pytest
+    import merge_gate as gate
+    monkeypatch.setenv("MC2_IN_GATE", marker)
+    monkeypatch.setattr(gate, "git", lambda *a: pytest.fail("git reached in nested gate"))
+    monkeypatch.setattr(gate, "execute", lambda *a, **k: pytest.fail("nested gate executed"))
+    for args in ([], ["--dry-run"]):
+        with pytest.raises(SystemExit) as exc:
+            gate.main(args)
+        assert exc.value.code == 2
+
+
+def test_gate_children_are_marked(monkeypatch):
+    import merge_gate as gate
+    monkeypatch.setattr(gate, "git", lambda *a: "head")
+    seen = []
+    def runner(cmd, **kw):
+        seen.append(kw["env"])
+        return _r(0)
+    assert gate.execute([("test", ["mock-child"], {"CUSTOM": "yes"})], "head", runner=runner) == 0
+    assert seen[0]["MC2_IN_GATE"] == "1" and seen[0]["CUSTOM"] == "yes"
+
+
+def test_gate_stage_selection():
+    import pytest
+    import merge_gate as gate
+    steps = gate.plan(6)
+    assert [s[0] for s in gate.select_stages(steps, ["deploy,capture-after", "contracts"], ["contracts"])] == ["deploy", "capture-after"]
+    assert "pytest" not in [s[0] for s in gate.select_stages(steps, skip=["pytest"])]
+    for stages, skip in ((["missing"], None), (None, ["missing"]), (["deploy", "deploy"], None)):
+        with pytest.raises(ValueError):
+            gate.select_stages(steps, stages, skip)
+
+
+def test_gate_log_includes_child_stdout_and_stderr(tmp_path, monkeypatch, capsys):
+    import merge_gate as gate
+    monkeypatch.delenv("MC2_IN_GATE", raising=False)
+    monkeypatch.setattr(gate, "git", lambda *a: "head")
+    child = [sys.executable, "-c", "import sys; print('child-out'); print('child-err', file=sys.stderr)"]
+    monkeypatch.setattr(gate, "plan", lambda *a: [("child", child, {})])
+    execute = gate.execute
+    # main is mocked at the execution boundary: it can only run the synthetic child above.
+    monkeypatch.setattr(gate, "execute", lambda steps, head, dry: execute(steps, head))
+    log = tmp_path / "gate.log"
+    assert gate.main(["--dry-run", "--log", str(log)]) == 0
+    for output in (log.read_text(), capsys.readouterr().out):
+        assert "child-out" in output and "child-err" in output and "| child | PASS" in output
+
+
+@pytest.mark.parametrize("returncode", [0, 7])
+def test_lane_verify_tees_output_and_keeps_failure_tail(tmp_path, capsys, returncode):
+    script = tmp_path / "scripts/ninja_build.py"
+    script.parent.mkdir()
+    script.write_text("import sys\nprint('build-start', flush=True)\nfor n in range(20): print(n)\n"
+                      "print('build-out', flush=True)\nprint('build-err', file=sys.stderr)\nsys.exit(" + str(returncode) + ")\n")
+    verdict, results = lm.verify_merged(str(tmp_path), "build")
+    assert verdict == ("FAIL" if returncode else "OK") and results[0][1] == returncode
+    log = (tmp_path / "build64-ninja/lane-merge-verify-build.log").read_text()
+    console = capsys.readouterr().out
+    assert "build-start" in log and "build-start" in console and "build-start" not in results[0][2]
+    for token in ("build-out", "build-err"):
+        assert token in log and token in console and token in results[0][2]
+
+
+def test_batch_resolution_error_explains_next_step(monkeypatch, capsys):
+    import pytest
+    monkeypatch.setattr(lm, "plan", lambda *a: pytest.fail("merge reached"))
+    with pytest.raises(SystemExit) as exc:
+        lm.main(["--batch", "one", "two", "--resolution", "path=file"])
+    assert exc.value.code == 2
+    assert "merge that tip alone with --resolution PATH=FILE, then run --batch" in capsys.readouterr().err

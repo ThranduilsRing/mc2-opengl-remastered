@@ -1,4 +1,4 @@
-// Exact stock lamp definitions; unknown, loose and mounted-mod definitions stay authored.
+// Exact stock lamp definitions (loose or packed); changed and mod-owned definitions stay authored.
 // Source: claude-night-consistency/tgl.fst SHA256 18e0f57996b212aac3fa8ddd36c5d73aa7e6fd14099e04934ae704bd6f0b9d14
 #pragma once
 #include <cstdint>
