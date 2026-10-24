@@ -52,6 +52,7 @@ public:
     void pump();
     // Load-only barrier: decode, upload and publish before entering gameplay.
     void finishLoading();
+    uint64_t residentBytes() const;
     void invalidate(RenderCore::TextureHandle handle);
     void requestDecoded(RenderCore::TextureHandle handle, std::function<std::shared_ptr<const RenderCore::KtxImage>()> decode);
     bool ready(RenderCore::TextureHandle handle) const;
