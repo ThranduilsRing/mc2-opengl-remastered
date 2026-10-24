@@ -29,6 +29,7 @@
 #include <cstdint>  // int64_t for cull_admission_*_ns
 #include <string_view>
 #include "Gates/gate.h"
+#include "spotlight_diag.h"
 namespace mc2_cpu_proj_cost {
     extern bool g_cpuProjEnabled;
     extern thread_local bool tls_inRenderLoop;
@@ -1397,6 +1398,8 @@ class Camera
 			{
 				if (!worldLights[i])
 				{
+					// A recycled camera slot must not inherit its previous appearance's tag.
+					mc2_spotlight_diag::untag_slot(i);
 					worldLights[i] = light;
 					lightAdded = true;
 					return i;
@@ -1410,6 +1413,7 @@ class Camera
 		{
 			if ((lightNum < MAX_LIGHTS_IN_WORLD) && (worldLights[lightNum] == light))
 			{
+				mc2_spotlight_diag::untag_slot(static_cast<long>(lightNum));
 				worldLights[lightNum] = nullptr;			//Up to class that created light to free it!!!!!!
 
                 // sebi: ORG BUG FIX because worldLights are copied to activeLights and terrainLights in eye->update() and then later this function can be called, this means that activeLights and terrainLights may point to freed memory, so call this to fox it
@@ -1423,7 +1427,10 @@ class Camera
 			for (long i=0;i<MAX_LIGHTS_IN_WORLD;i++)
 			{
 				if (worldLights[i] == light)
+				{
+					mc2_spotlight_diag::untag_slot(i);
 					worldLights[i] = nullptr;
+				}
 			}
 
             // sebi: ORG BUG FIX because worldLights are copied to activeLights and terrainLights in eye->update() and then later this function can be called, this means that activeLights and terrainLights may point to freed memory, so call this to fox it

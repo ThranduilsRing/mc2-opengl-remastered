@@ -743,8 +743,6 @@ void BldgAppearance::destroy (void)
 	{
 		if (eye)
 			eye->removeWorldLight(spotlightSlotIds_[k], spotlightLights_[k]);
-		// T1.16 — pair untag with removeWorldLight before free().
-		mc2_spotlight_diag::untag_slot(static_cast<long>(spotlightSlotIds_[k]));
 		free(spotlightLights_[k]);
 	}
 	spotlightLights_.clear();
