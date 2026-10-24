@@ -120,6 +120,29 @@ def read_frames(directory):
     return rows
 
 
+# These scopes are timed inside an already measured inclusive scope. Other
+# dotted names (e.g. Terrain.CullCompute) are separate passes, not children.
+NESTED_GPU_SCOPES = {"VKIsl.Vfx.Vegetation", "VKIsl.Props.Trees"}
+
+
+def gpu_pass_sum(passes):
+    return sum(value for name, value in passes.items() if name not in NESTED_GPU_SCOPES)
+
+
+def machine_load():
+    """Sample outside the benchmark lifetime, so every mc2 PID is another run."""
+    try:
+        import psutil
+        cpu = psutil.cpu_percent(interval=0.5)
+        engines = []
+        for proc in psutil.process_iter(["pid", "name", "exe"]):
+            if (proc.info.get("name") or "").lower() == "mc2.exe":
+                engines.append(dict(proc.info))
+        return {"cpu_percent": cpu, "other_mc2_processes": engines, "sampled_at": time.time()}
+    except Exception as exc:  # advisory evidence; unavailable data stays explicitly unknown
+        return {"cpu_percent": None, "other_mc2_processes": None, "error": str(exc)}
+
+
 def summarize(directory, log, scenario):
     rows = read_frames(directory)
     worlds = [r for r in rows if r["type"] == "world"]
@@ -148,6 +171,7 @@ def summarize(directory, log, scenario):
     if destruction <= 0 or not any(r["type"] == "orders" and r["attacks"] > 0 for r in rows):
         raise ValueError("battle did not produce destruction and attack orders")
     return {"gpu_frame": distribution([r["ms"] for r in gpu]), "gpu_passes": by_pass,
+            "gpu_pass_sum": distribution([gpu_pass_sum(r["passes"]) for r in gpu]),
             "gpu_scopes": {k: distribution([r["passes"].get(k, 0) for r in gpu]) for k in scopes},
             "cpu_frame": distribution([r["ms"] for r in cpu]), "sim_tick": distribution([r["ms"] for r in ticks]),
             "tick_spikes_over_1ms": [r for r in ticks if r["ms"] > 1],
@@ -163,7 +187,7 @@ def summarize(directory, log, scenario):
                 "new_destructions": destruction, "samples": worlds},
             "views": [r for r in rows if r["type"] == "view"], "warmup_sim_seconds": 0,
             "driver_receipts": [line for line in log.splitlines() if re.search(r"\[.*(?:DEVICE|VK_DEVICE|VULKAN).*\]|driver|deviceName", line, re.I)],
-            "scope_note": "Vegetation is nested inside Vfx; inclusive Vfx must not be added to vegetation. GPU frame is the timestamp span, not a sum of passes.",
+            "scope_note": "Pass sum excludes nested Vfx.Vegetation and Props.Trees. GPU frame is the timestamp span, not a sum of passes; gaps and overlap can differ.",
             "raw": str(directory / "frames.jsonl")}
 
 
@@ -188,6 +212,7 @@ def perf_run(exe, directory, scenario, phase, size, duration, expected_sha):
     for key in runner.POPPED_ENV: actual.pop(key, None)
     actual.update(env)
     record["effective"] = {k: v for k, v in actual.items() if k.startswith("MC2_")}
+    load_before = machine_load()
     done, errors = threading.Event(), []
     thread = threading.Thread(target=drive_views, args=(channel, scenario["bookmarks"], duration, done, errors), daemon=True)
     thread.start()
@@ -197,12 +222,14 @@ def perf_run(exe, directory, scenario, phase, size, duration, expected_sha):
             grace_s=240, env_extra=env, show_window=True))
     finally:
         done.set(); thread.join(timeout=2)
+    load_after = machine_load()
     (directory / "engine.log").write_text(result.stdout_text, encoding="utf-8")
     (directory / "environment.json").write_text(json.dumps(record, indent=2), encoding="utf-8")
     verify_runtime(result.stdout_text, expected_sha)
     if result.exit_code or result.killed_by_timeout or not result.verdict.passed or errors:
         raise RuntimeError(f"smoke failed: {directory}; exit={result.exit_code}; verdict={result.verdict}; camera={errors}")
     summary = summarize(directory, result.stdout_text, scenario)
+    summary["machine_load"] = {"before": load_before, "after": load_after}
     if len(summary["views"]) != len(scenario["bookmarks"]):
         raise ValueError("camera sweep incomplete")
     return summary
@@ -243,12 +270,18 @@ def montage(paths, target):
 
 
 def table(report):
-    lines = ["| Run / scene | GPU p50/p95/p99 ms | CPU p95/p99 ms | Tick p95/p99 ms | VRAM MiB | Load ms |", "|---|---:|---:|---:|---:|---:|"]
+    lines = ["| Run / scene | GPU p50/p95/p99 ms | Pass sum p50/p95/p99 ms | Host CPU before/after % | Other mc2 PIDs before/after | CPU p95/p99 ms | Tick p95/p99 ms | VRAM MiB | Load ms |", "|---|---:|---:|---:|---|---:|---:|---:|---:|"]
     for run in report["runs"]:
         for key, row in run["perf"].items():
             def timing(name, ps):
                 return "/".join(f"{row[name][f'p{p}_ms']:.3f}" for p in ps)
-            lines.append(f"| {run['index']} / {key} | {timing('gpu_frame', (50,95,99))} | {timing('cpu_frame', (95,99))} | {timing('sim_tick', (95,99))} | {row['memory']['vram_peak_mib']} | {row['load_ms']} |")
+            load = row.get("machine_load", {})
+            host_cpu = "/".join(str(load.get(phase, {}).get("cpu_percent", "unknown")) for phase in ("before", "after"))
+            other_pids = "/".join(str([p["pid"] for p in load.get(phase, {}).get("other_mc2_processes") or []])
+                                  if load.get(phase, {}).get("other_mc2_processes") is not None else "unknown"
+                                  for phase in ("before", "after"))
+            pass_sum = timing("gpu_pass_sum", (50,95,99)) if row.get("gpu_pass_sum") else "unmeasured"
+            lines.append(f"| {run['index']} / {key} | {timing('gpu_frame', (50,95,99))} | {pass_sum} | {host_cpu} | {other_pids} | {timing('cpu_frame', (95,99))} | {timing('sim_tick', (95,99))} | {row['memory']['vram_peak_mib']} | {row['load_ms']} |")
     return lines
 
 
@@ -263,7 +296,7 @@ def write_report(report, out):
                 cells = " | ".join(f"{t[f'p{p}_ms']:.3f}" if t else "unmeasured" for p in (50,95,99))
                 lines.append(f"| {run['index']} / {scene} | {name} | {cells} |")
             notes.append(f"{run['index']}/{scene}: {len(row['tick_spikes_over_1ms'])} ticks >1ms; {len(row['catch_up_bursts'])} catch-up bursts; max {row['max_ticks_per_frame']} ticks/frame; {row['world']['new_destructions']} destructions; {row['world']['movers_peak']} movers.")
-    lines += ["", *notes, "", "Load policy: first launch vs repeated launch; OS/driver disk caches uncontrolled. CPU frame is elapsed work before the FPS cap, including driver waits. GPU frame is the first-to-last timestamped scope span, excluding present/vsync; remaining scopes are in JSON. VRAM is sampled, working set is OS lifetime peak.", "", "Variance (p95 max-min / mean):", "", "```json", json.dumps(report.get("variance", {}), indent=2), "```", "", "Budget overruns (ms above p95 ceiling):", "", "```json", json.dumps(report.get("budget_violations", []), indent=2), "```", "", f"Montage: {out / 'montage.png'}"]
+    lines += ["", *notes, "", "Load policy: first launch vs repeated launch; OS/driver disk caches uncontrolled. CPU frame is elapsed work before the FPS cap, including driver waits. GPU frame is the first-to-last timestamped scope span, excluding present/vsync; pass sum excludes nested Vfx.Vegetation and Props.Trees. Host load is sampled before and after each process, not continuously; every mc2 PID in these snapshots belongs to another run. Remaining scopes are in JSON. VRAM is sampled, working set is OS lifetime peak.", "", "Variance (p95 max-min / mean):", "", "```json", json.dumps(report.get("variance", {}), indent=2), "```", "", "Budget overruns (ms above p95 ceiling):", "", "```json", json.dumps(report.get("budget_violations", []), indent=2), "```", "", f"Montage: {out / 'montage.png'}"]
     (out / "battle-bench.json").write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
     (out / "battle-bench.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
 

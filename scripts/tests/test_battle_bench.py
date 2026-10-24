@@ -132,3 +132,31 @@ def test_visual_capture_default_duration_is_about_15s_and_grows_only_for_big_swe
 def test_run_smoke_falls_back_to_15s():
     import run_smoke
     assert run_smoke.DEFAULT_DURATION_S == 15
+
+
+
+def test_pass_sum_excludes_nested_scopes_but_keeps_separate_compute(evidence):
+    for row in evidence[1]:
+        if row["type"] == "gpu":
+            row["passes"] = {"VKIsl.Terrain": 2, "VKIsl.Terrain.CullCompute": 1,
+                             "VKIsl.Props": 3, "VKIsl.Props.Trees": 1,
+                             "VKIsl.Vfx": 4, "VKIsl.Vfx.Vegetation": 2}
+    report = summarize(evidence)
+    assert report["gpu_pass_sum"]["p50_ms"] == 10
+    assert report["gpu_frame"]["p50_ms"] == 1
+    report["machine_load"] = {phase: {"cpu_percent": 42, "other_mc2_processes": [{"pid": 123}]}
+                              for phase in ("before", "after")}
+    table = "\n".join(bench.table({"runs": [{"index": 1, "perf": {"day": report}}]}))
+    assert "Pass sum" in table and "42/42" in table and "[123]/[123]" in table
+
+
+def test_machine_load_records_other_engine_pids(monkeypatch):
+    import types
+    import sys
+    fake = types.SimpleNamespace(cpu_percent=lambda interval: 37.5,
+        process_iter=lambda fields: [types.SimpleNamespace(info={"pid": 9, "name": "mc2.exe", "exe": "other/mc2.exe"}),
+                                    types.SimpleNamespace(info={"pid": 10, "name": "ninja.exe", "exe": "ninja.exe"})])
+    monkeypatch.setitem(sys.modules, "psutil", fake)
+    load = bench.machine_load()
+    assert load["cpu_percent"] == 37.5
+    assert [p["pid"] for p in load["other_mc2_processes"]] == [9]

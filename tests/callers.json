@@ -2516,6 +2516,13 @@
           "text": "import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)"
         },
         {
+          "path": "scripts/merge_gate.py",
+          "line": 17,
+          "evidence": "import",
+          "reference": "console_child",
+          "text": "import console_child"
+        },
+        {
           "path": "scripts/module_test_cache.py",
           "line": 37,
           "evidence": "import",
@@ -3681,6 +3688,20 @@
           "text": "import deploy_payload  # noqa: E402"
         },
         {
+          "path": "scripts/tests/test_merge_speedups.py",
+          "line": 132,
+          "evidence": "import",
+          "reference": "deploy_payload",
+          "text": "import deploy_payload as dp"
+        },
+        {
+          "path": "scripts/tests/test_merge_speedups.py",
+          "line": 153,
+          "evidence": "import",
+          "reference": "deploy_payload",
+          "text": "import deploy_payload as dp"
+        },
+        {
           "path": "scripts/tests/test_rule_defaults.py",
           "line": 82,
           "evidence": "import",
@@ -3722,6 +3743,13 @@
           "evidence": "import",
           "reference": "exe_fingerprint",
           "text": "import exe_fingerprint as ef        # noqa: E402"
+        },
+        {
+          "path": "scripts/deploy_payload.py",
+          "line": 1785,
+          "evidence": "import",
+          "reference": "exe_fingerprint",
+          "text": "from exe_fingerprint import extract, sha_agrees"
         },
         {
           "path": "scripts/manifest_schema.py",
@@ -4032,6 +4060,49 @@
           "evidence": "import",
           "reference": "mechbay_preview_harness",
           "text": "import mechbay_preview_harness as mbh  # noqa: E402"
+        }
+      ]
+    },
+    {
+      "path": "scripts/merge_gate.py",
+      "basename": "merge_gate.py",
+      "stem": "merge_gate",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "scripts/tests/test_merge_speedups.py",
+          "line": 164,
+          "evidence": "import",
+          "reference": "merge_gate",
+          "text": "import merge_gate as gate"
+        },
+        {
+          "path": "scripts/tests/test_merge_speedups.py",
+          "line": 179,
+          "evidence": "import",
+          "reference": "merge_gate",
+          "text": "import merge_gate as gate"
+        },
+        {
+          "path": "scripts/tests/test_merge_speedups.py",
+          "line": 188,
+          "evidence": "import",
+          "reference": "merge_gate",
+          "text": "import merge_gate as gate"
+        },
+        {
+          "path": "scripts/tests/test_merge_speedups.py",
+          "line": 200,
+          "evidence": "import",
+          "reference": "merge_gate",
+          "text": "import merge_gate as gate"
+        },
+        {
+          "path": "scripts/tests/test_merge_speedups.py",
+          "line": 207,
+          "evidence": "import",
+          "reference": "merge_gate",
+          "text": "import merge_gate as gate"
         }
       ]
     },
@@ -9256,6 +9327,13 @@
       "stem": "lane_merge",
       "callers_by_basename": [],
       "callers_by_stem": [
+        {
+          "path": "scripts/merge_gate.py",
+          "line": 21,
+          "evidence": "import",
+          "reference": "lane_merge",
+          "text": "from lane_merge import git_bash  # noqa: E402"
+        },
         {
           "path": "scripts/tests/test_board_selftests.py",
           "line": 15,

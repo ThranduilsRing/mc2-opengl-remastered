@@ -90,7 +90,7 @@ def main():
     # 2026-10-15) caps a build that names no -j of its own.
     if not any(a.startswith("-j") for a in argv):
         argv.insert(0, "-j" + os.environ.get("MC2_BUILD_JOBS", "2"))
-    # MC2_NINJA_TREE names another tree under the repo root (lane_merge's verify builds in build-merge/ so it never collides with a lane's own
+    # MC2_NINJA_TREE names another tree under the repo root (merge verification deliberately uses build64-ninja/ so deploy reuses the verified
     # build); it is configured on first use.
     if tree != DEFAULT_TREE and not os.path.exists(f"{root}/{tree}/build.ninja"):
         configure(root, tree)

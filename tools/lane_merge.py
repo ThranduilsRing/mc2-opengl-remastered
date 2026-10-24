@@ -32,8 +32,8 @@ build-alltargets/.tidy.lock to clear and retries once); 6 a ratchet failed (merg
 7 the merged tree does not build or its doctest fails (the merge commit stays; fix forward).
 Final line: MERGED <sha> (+<follow-up sha>) files=<n> ratchets=OK/FAIL verify=OK/FAIL/SKIPPED overlap=0
 A --batch run first plans every tip (a tip that would abort refuses the whole batch, exit 5, nothing merged); a ratchet failure mid-batch prints
-BATCH STOPPED at <ref> merged=<n> remaining=<refs>, verifies the partial tree and exits 6. The verify is skipped (verify=SKIPPED(tooling-only))
-when nothing compiled changed (C/C++/shader/CMake/Gates).
+BATCH STOPPED at <ref> merged=<n> remaining=<refs>, skips the build and exits 6.
+Every successful merged batch verifies, including tooling-only tips, so the embedded SHA is HEAD.
 A --batch run prints one such line per merged tip (verify=DEFERRED) and a final one for the last tip carrying the single verify verdict (files = total, batch=<n>).
 """
 from __future__ import annotations
@@ -74,10 +74,10 @@ TIGHTENED_BASELINES = [
 ]
 # (label, script relative to the tools dir, args)
 RATCHETS = [
-    ("file_size", "file_size_ratchet.py", ["--check", "--tighten"]),
-    ("cxx17", "cxx17_ratchet/cxx17_ratchet.py", ["--check", "--tighten"]),
-    ("dup_lines", "dup_lines_ratchet.py", ["--check", "--tighten"]),
-    ("axis_swizzle", "axis_swizzle_ratchet.py", ["--check", "--tighten"]),
+    ("file_size", "file_size_ratchet.py", ["--check", "--tighten", "--worktree"]),
+    ("cxx17", "cxx17_ratchet/cxx17_ratchet.py", ["--check", "--tighten", "--worktree"]),
+    ("dup_lines", "dup_lines_ratchet.py", ["--check", "--tighten", "--worktree"]),
+    ("axis_swizzle", "axis_swizzle_ratchet.py", ["--check", "--tighten", "--worktree"]),
     ("split_map", "split/split_map.py", ["--check"]),
 ]
 # Row tables where both sides append rows: merged mechanically (keep both, the lane's new rows renumbered after ours).
@@ -175,7 +175,7 @@ def render_message(template: str, subject: str, n: int) -> str:
     return template.replace("{subject}", subject).replace("{n}", str(n))
 
 
-#: Files whose change needs a rebuild; a batch that touches none of them skips the build + doctest verify.
+#: Build-input classifier retained for callers. Verification also refreshes SHA for tooling-only merges.
 COMPILED_INPUTS = re.compile(r"\.(cpp|h|hpp|inc|c|glsl|hglsl|frag|vert|comp|slang|rc|def|ini|in|manifest)$|CMakeLists|\.cmake$|(^|/)cmake/|(^|/)Gates/|(^|/)shaders/|(^|/)scripts/(gen|generate|configure)[^/]*\.py$")
 
 
@@ -427,9 +427,11 @@ def quick_rows(root: str, runner=run) -> list[tuple[str, int, str]]:
 
 
 def verify_env(root: str) -> dict:
-    """The environment of the verify steps: their own Ninja tree and doctest tree, so a verify never collides with a lane's build in
-    build64-ninja/ or build64-tests/ (a coordinator merge of a tools-only tip once failed that way)."""
-    return dict(os.environ, MC2_NINJA_TREE="build-merge", MC2_UNIT_BUILD_DIR=os.path.join(root, "build-merge-tests"))
+    """Leave the canonical Ninja tree ready for deploy_payload.py --ninja.
+
+    The orchestrator owns this worktree exclusively during a merge window.
+    """
+    return dict(os.environ, MC2_NINJA_TREE="build64-ninja", MC2_UNIT_BUILD_DIR=os.path.join(root, "build64-tests"))
 
 
 def verify_merged(root: str, mode: str, runner=run) -> tuple[str, list[tuple[str, int, str]]]:
@@ -574,7 +576,6 @@ def main(argv: list[str] | None = None) -> int:
             return 5 if would_abort else 0
         if batch and plan_batch(root, args, refs, resolutions_for):
             raise Stop(5, "BATCH REFUSED: a tip would abort on the blocking conflict(s) above; nothing was merged")
-        pre = git_out(root, "rev-parse", "HEAD")
         merged = []        # (merge sha, follow-up sha, files) per merged tip
         stopped = None     # (ref, failed ratchets) when a ratchet failed mid-batch
         for idx, ref in enumerate(refs, 1):
@@ -593,7 +594,7 @@ def main(argv: list[str] | None = None) -> int:
             tag = f"MERGED {merge_sha}" + (f" (+{follow})" if follow else "") + f" files={len(p['lane_files'])}"
             if failed:
                 for label, rc, tail in failed:
-                    print(f"lane_merge: ratchet {label} exited {rc}; last lines:\n{tail}", file=sys.stderr)
+                    print(f"lane_merge: tip {ref} ratchet {label} exited {rc}; last lines:\n{tail}", file=sys.stderr)
                 if not batch:
                     print(f"{tag} ratchets=FAIL verify=SKIPPED overlap=0")
                     return 6
@@ -612,8 +613,8 @@ def main(argv: list[str] | None = None) -> int:
                     print(f"lane_merge: quick row {label} exited {rc}; last lines:\n{tail}", file=sys.stderr)
                 print(f"BATCH STOPPED at quick rows ({', '.join(q[0] for q in qfailed)}) merged={len(merged)} remaining=(none)")
                 return 6
-        if mode != "none" and not compiled_inputs_changed(root, pre):
-            verdict, vresults = "SKIPPED(tooling-only)", []
+        if stopped:
+            verdict, vresults = "SKIPPED(ratchet-failure)", []
         else:
             verdict, vresults = verify_merged(root, mode)
         merge_sha, follow, _ = merged[-1]
