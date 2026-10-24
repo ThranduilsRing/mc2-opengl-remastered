@@ -228,9 +228,10 @@ void GpuStaticPropBatcher::registerType(TG_TypeShape* typeShape, TG_TypeMultiSha
     }
 
     // Group triangles with the same localTextureHandle into contiguous packets,
-    // preserving authored listOfTypeTriangles order. Each packet emits 3
-    // vertices per triangle into s_stagingVbo and 3 consecutive indices into
-    // s_stagingIbo (triangle-soup -- see vertex layout note above).
+    // preserving authored triangle order. Reuse byte-identical packed vertices:
+    // corner UV seams, source vertex IDs/light tags and reversed card normals
+    // remain separate, while dense imported meshes keep GPU vertex-cache reuse.
+    std::unordered_map<std::string, uint32_t> vertexIndices;
     uint32_t runStart = 0;
     uint32_t packetCountForThisType = 0;
     while (runStart < numTris) {
@@ -285,12 +286,11 @@ void GpuStaticPropBatcher::registerType(TG_TypeShape* typeShape, TG_TypeMultiSha
                 // byte order on little-endian x86, matching memory/mc2_argb_packing.md.
                 // Raw DWORD memcpy preserves the exact bit pattern.
                 std::memcpy(vert + 36, &src.aRGBLight,  4);
-                s_stagingVbo.insert(s_stagingVbo.end(), vert, vert + kVertexStride);
-
-                const uint32_t expandedIdx =
-                    static_cast<uint32_t>((s_stagingVbo.size() / kVertexStride) -
-                                          1 - baseVertex);
-                s_stagingIbo.push_back(expandedIdx);
+                const auto candidate = static_cast<uint32_t>(s_stagingVbo.size() / kVertexStride - baseVertex);
+                const std::string key(reinterpret_cast<const char*>(vert), kVertexStride);
+                const auto [entry, inserted] = vertexIndices.try_emplace(key, candidate);
+                if (inserted) s_stagingVbo.insert(s_stagingVbo.end(), vert, vert + kVertexStride);
+                s_stagingIbo.push_back(entry->second);
             }
         }
 
