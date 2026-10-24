@@ -111,8 +111,12 @@ static bool txmLoadCooked(const char* source, const char* sidecar, bool prefer, 
     const int sourceRank = LookupModPriority(source) + (exists && !original.isLoadedFromDisk() ? 1 : 0);
     const int cookedRank = LookupModPriority(sidecar) + (!cooked.isLoadedFromDisk() ? 1 : 0);
     if (!RenderCore::preferCookedSource(exists, sourceRank, cookedRank, prefer)) return false;
-    // Same provider, both loose: a source edited in place after the sidecar was cooked makes the sidecar stale.
-    if (exists && sourceRank == cookedRank && original.isLoadedFromDisk() && cooked.isLoadedFromDisk() &&
+    // One mod provides both, both loose: a source edited in place after the sidecar was cooked makes the sidecar stale.
+    // Base-game files are exempt: their mtimes come from the install copy, not from editing.
+    const char* sourceMod = LookupModOwner(source);
+    const char* cookedMod = LookupModOwner(sidecar);
+    if (exists && sourceMod && cookedMod && std::string_view(sourceMod) == cookedMod &&
+        sourceRank == cookedRank && original.isLoadedFromDisk() && cooked.isLoadedFromDisk() &&
         original.getFilename() && cooked.getFilename()) {
         std::error_code ecSource, ecCooked;
         const auto sourceTime = std::filesystem::last_write_time(original.getFilename(), ecSource);
