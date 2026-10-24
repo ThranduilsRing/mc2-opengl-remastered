@@ -893,6 +893,7 @@ void Mission::initWeatherCamera(MissionInitFrame& f) {
 	eye->init();
 	gosASSERT(eye != nullptr);
 
+	mc2SetMissionLightProfileName(missionFileName);   // LOCAL-LIGHTS-4: before the profile applies in init
 	result = eye->init(missionFile);
 	gosASSERT(result == NO_ERR);
 

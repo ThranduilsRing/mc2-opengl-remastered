@@ -5410,6 +5410,7 @@
     "light_scale",
     "ambient_scale",
     "ground_scale",
+    "from_save",
     "light",
     "ambient"
    ],

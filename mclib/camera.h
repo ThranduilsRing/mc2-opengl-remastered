@@ -1819,6 +1819,12 @@ class Camera
 extern CameraPtr eye;
 
 //---------------------------------------------------------------------------
+// LOCAL-LIGHTS-4 per-mission night profile (camera.cpp). The Mission names itself before
+// creating the camera; the profile applies in Camera::init.
+void  mc2SetMissionLightProfileName(const char* missionFileName);
+float mc2SceneLightScale();
+
+//---------------------------------------------------------------------------
 #endif
 
 //---------------------------------------------------------------------------

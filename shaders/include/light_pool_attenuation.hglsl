@@ -30,6 +30,19 @@ bool lpa_falloff(vec3 delta, bool mover, float moverScale, int soft,
 // Omni records keep the exact pre-cone value (type in the low bits only), so the
 // equality tests of the vertex-lighting compute still see them; coned records fail
 // those tests on purpose and light only through these per-fragment loops.
+
+// LIGHTS-R3: the pool term's slow radial gradient quantised into concentric bands in the
+// 8-bit scene target. A screen-space triangular dither of +-1 LSB (two interleaved-gradient
+// noise taps) breaks the bands; unlit fragments (no pool) are returned untouched.
+vec3 lpa_dither(vec3 c)
+{
+    if (max(c.r, max(c.g, c.b)) <= 0.0) return c;
+    const vec3 k = vec3(0.06711056, 0.00583715, 52.9829189);
+    float n1 = fract(k.z * fract(dot(gl_FragCoord.xy, k.xy)));
+    float n2 = fract(k.z * fract(dot(gl_FragCoord.xy + vec2(19.0, 47.0), k.xy)));
+    return max(c + vec3((n1 + n2 - 1.0) * (1.0 / 255.0)), vec3(0.0));
+}
+
 vec3 lpa_octDecode(vec2 e)
 {
     vec3 v = vec3(e, 1.0 - abs(e.x) - abs(e.y));
@@ -45,13 +58,20 @@ vec3 lpa_spotAim(uint packed)
 // rim), a squared smooth roll-off from the axis to the outer half-angle. Distance:
 // inverse-square with a smooth window to zero at farD, so the pool fades gradually
 // from the lamp instead of ending at an edge. Omni lights keep `omniFalloff`.
+// LIGHTS-R4: acos for x in [0,1] (Abramowitz-Stegun 4.4.45, |err| < 7e-5 rad): no transcendental per fragment
+// and light. Negative cosines are behind the lamp and clamp to the outer edge, so [0,1] suffices.
+float lpa_acos01(float x)
+{
+    x = clamp(x, 0.0, 1.0);
+    return sqrt(1.0 - x) * (1.5707288 + x * (-0.2121144 + x * (0.0742610 - 0.0187293 * x)));
+}
 float lpa_spotCone(vec3 delta, uint packed, float len, float farD, float omniFalloff)
 {
     uint c = packed >> 24;
     if (c == 0u) return omniFalloff;
-    float outer = acos(float(c) * (1.0 / 255.0));
+    float outer = lpa_acos01(float(c) * (1.0 / 255.0));
     float cd = dot(delta, lpa_spotAim(packed)) / max(len, 1e-3);
-    float t = clamp(1.0 - acos(clamp(cd, -1.0, 1.0)) / max(outer, 1e-3), 0.0, 1.0);
+    float t = clamp(1.0 - lpa_acos01(cd) / max(outer, 1e-3), 0.0, 1.0);
     float angular = t * t * (3.0 - 2.0 * t) * t;
     float d0 = 0.35 * farD;
     float r = len / max(farD, 1e-3);

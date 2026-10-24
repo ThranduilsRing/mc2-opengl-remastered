@@ -7,6 +7,8 @@
 //===========================================================================//
 
 #include "camera_internal.h"
+#include "../GameOS/gameos/utils/mc2log.h"   // LOCAL-LIGHTS-4: [MISSION_LIGHT v1]
+#include "mission_light_profile.h"
 
 
 inline float agsqrt( float _a, float _b )
@@ -136,8 +138,11 @@ frameOfRef		Camera::cameraFrame;
 // its sun is (lightAltitude between NIGHT_START_PITCH and NIGHT_LIGHT_PITCH; exactly
 // 1.0 on day missions, so day maps are byte-unchanged). A mission may name its own
 // target; the rest of the night missions use the default.
-extern char missionName[];
+// The name is the loading mission's authored file name (Mission::missionFileName, set
+// before the camera is created, and restored from a save's MissionName), so campaign
+// loads and saves ("mc2_10_saved_*") resolve the profile like a command-line launch.
 namespace {
+std::string g_profileMission;
 // light/ambient scale the mission's sun and ambient colours (object lighting, burn-ins);
 // ground scales the PRELIT terrain/vegetation colour (the colormap carries the authored
 // night already, so it needs its own, gentler factor). Local light pools are added
@@ -148,16 +153,13 @@ constexpr MissionLightProfile kMissionLightProfiles[] = {
 	{"mc2_10", 0.45f, 0.40f, 0.55f},   // airbase raid just after sunset: fairly dark, lamps carry it
 };
 float g_sceneLightScale = 1.0f;
+bool  g_profileApplied = false;   // the live camera colours carry the profile (Camera::save records it)
 
 const MissionLightProfile& missionLightProfile()
 {
-	const std::string_view full(missionName);
-	const std::string_view name = full.substr(full.find_last_of("/\\") + 1);
-	for (const auto& profile : kMissionLightProfiles) {
-		const size_t n = std::strlen(profile.mission);
-		if (name.size() >= n && S_strnicmp(name.data(), profile.mission, n) == 0 && (name.size() == n || name[n] == '.'))
+	for (const auto& profile : kMissionLightProfiles)
+		if (mc2_mission_light::matches(g_profileMission, profile.mission))
 			return profile;
-	}
 	return kDefaultNightProfile;
 }
 
@@ -166,27 +168,41 @@ unsigned char scaleChannel(unsigned char v, float s)
 	return static_cast<unsigned char>(std::clamp(std::lround(v * s), 0L, 255L));
 }
 
-void applyMissionLightProfile(Camera& c)
+// `alreadyApplied`: the camera block came from a save whose colours carry the profile; only the ground
+// scale (not saved) is restored.
+void applyMissionLightProfile(Camera& c, bool alreadyApplied)
 {
 	const float altitude = c.lightPitch > 90.0f ? 180.0f - c.lightPitch : c.lightPitch;
 	const float night = std::clamp((NIGHT_START_PITCH - altitude) / (NIGHT_START_PITCH - NIGHT_LIGHT_PITCH), 0.0f, 1.0f);
 	g_sceneLightScale = 1.0f;
+	g_profileApplied = false;
 	if (night <= 0.0f) return;
 	const MissionLightProfile& p = missionLightProfile();
 	g_sceneLightScale = 1.0f + (p.ground - 1.0f) * night;
-	const float ls = 1.0f + (p.light - 1.0f) * night;
-	const float as = 1.0f + (p.ambient - 1.0f) * night;
+	g_profileApplied = true;
+	const float ls = alreadyApplied ? 1.0f : 1.0f + (p.light - 1.0f) * night;
+	const float as = alreadyApplied ? 1.0f : 1.0f + (p.ambient - 1.0f) * night;
+	if (!alreadyApplied)
 	for (unsigned char* v : {&c.lightRed, &c.lightGreen, &c.lightBlue, &c.dayLightRed, &c.dayLightGreen, &c.dayLightBlue,
 	                         &c.nightLightRed, &c.nightLightGreen, &c.nightLightBlue, &c.sunsetLightRed, &c.sunsetLightGreen, &c.sunsetLightBlue})
 		*v = scaleChannel(*v, ls);
+	if (!alreadyApplied)
 	for (unsigned char* v : {&c.ambientRed, &c.ambientGreen, &c.ambientBlue, &c.dayAmbientRed, &c.dayAmbientGreen, &c.dayAmbientBlue,
 	                         &c.nightAmbientRed, &c.nightAmbientGreen, &c.nightAmbientBlue,
 	                         &c.terrainShadowRed, &c.terrainShadowGreen, &c.terrainShadowBlue})
 		*v = scaleChannel(*v, as);
-	std::fprintf(stderr, "[MISSION_LIGHT v1] mission=%s night=%.2f light_scale=%.2f ambient_scale=%.2f ground_scale=%.2f light=(%u,%u,%u) ambient=(%u,%u,%u)\n",
-		missionName, night, ls, as, g_sceneLightScale, c.lightRed, c.lightGreen, c.lightBlue, c.ambientRed, c.ambientGreen, c.ambientBlue);
+	MC2_EVENT(Render, "MISSION_LIGHT", 1,
+		"mission={} night={:.2f} light_scale={:.2f} ambient_scale={:.2f} ground_scale={:.2f} from_save={} light=({},{},{}) ambient=({},{},{})",
+		g_profileMission.c_str(), night, ls, as, g_sceneLightScale, alreadyApplied ? 1 : 0,
+		static_cast<unsigned>(c.lightRed), static_cast<unsigned>(c.lightGreen), static_cast<unsigned>(c.lightBlue),
+		static_cast<unsigned>(c.ambientRed), static_cast<unsigned>(c.ambientGreen), static_cast<unsigned>(c.ambientBlue));
 }
 } // namespace
+
+void mc2SetMissionLightProfileName(const char* missionFileName)
+{
+	g_profileMission = missionFileName ? missionFileName : "";
+}
 
 // The mission's scale of the prelit ground (terrain / overlay / vegetation UBO sceneLightScale).
 float mc2SceneLightScale() { return g_sceneLightScale; }
@@ -379,7 +395,13 @@ long Camera::init (FitIniFilePtr cameraFile )
 		lightDirection.z = sin(lightPitch * DEGREES_TO_RADS);
 	}
 
-	applyMissionLightProfile(*this);
+	{
+		// A save's camera block already carries the scaled colours (Camera::save marks it).
+		bool profileApplied = false;
+		if (cameraFile->readIdBoolean("NightProfileApplied", profileApplied) != NO_ERR)
+			profileApplied = false;
+		applyMissionLightProfile(*this, profileApplied);
+	}
 
 	result = cameraFile->readIdFloat("NewScale",newScaleFactor);
 	gosASSERT(result == NO_ERR);
@@ -809,6 +831,8 @@ bool Camera::save( FitIniFile* file )
 	file->writeIdFloat( "PositionY", position.y );
 	file->writeIdFloat( "PositionZ", 0.0 );
 	file->writeIdBoolean( "Ready", true );
+	// LOCAL-LIGHTS-4: the colours below already carry the mission night profile; a load must not scale them twice.
+	file->writeIdBoolean( "NightProfileApplied", g_profileApplied );
 
 	file->writeIdUChar( "LightRed", lightRed );
 	file->writeIdUChar( "LightGreen", lightGreen );

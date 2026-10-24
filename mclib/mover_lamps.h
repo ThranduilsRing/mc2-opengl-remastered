@@ -29,6 +29,7 @@ bool registerLamps(TG_MultiShape* shape, long nodeId, NodeIds& nodeIds, Lights& 
 		light->SetaRGB(mc2_spotlight_diag::mover_light_argb());   // MOVER-LIGHT-HALOGEN-1: warm halogen, not legacy yellow
 		light->SetIntensity(0.15f);                // anubis default
 		light->SetFalloffDistances(50.0f, 250.0f); // anubis default
+		light->moverLamp = true;                    // LIGHTS-R4: dynamic-only shadow tile
 		const long slotId = eye->addWorldLight(light);
 		if (slotId < 0) { free(light); return false; }
 		nodeIds.push_back(nodeId);
