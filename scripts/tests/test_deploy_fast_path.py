@@ -14,6 +14,8 @@ from __future__ import annotations
 import os
 import sys
 from pathlib import Path
+import types
+import pytest
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
@@ -95,3 +97,47 @@ def test_lane_worktree_must_name_its_install():
     assert dp.implicit_target_refusal("A:/Games/mc2-flash3", "E:/mc2-installs/flash3") is None
     assert dp.implicit_target_refusal("A:/Games/mc2-main", None) is None
     assert dp.implicit_target_refusal("D:/work/checkout", None) is None
+
+
+def test_executable_same_size_replacement_is_repaired_despite_cache(tmp_path, monkeypatch):
+    src, target, _ = _setup(tmp_path, monkeypatch)
+    items=[(src, "mc2.exe", "exe")]
+    hashes=dp.deploy(items, target, False)
+    cache=_cache_after(src, target, "mc2.exe", hashes)
+    installed=Path(target)/"mc2.exe"
+    installed.write_bytes(b"x"*installed.stat().st_size)
+    dp.deploy(items, target, False, cache=cache)
+    assert installed.read_bytes()==Path(src).read_bytes()
+
+
+@pytest.mark.parametrize("full_verify", [False, True])
+def test_preserved_executable_must_match_source(tmp_path, monkeypatch, full_verify):
+    src, target, _ = _setup(tmp_path, monkeypatch)
+    installed=Path(target)/"mc2.exe"
+    installed.write_bytes(b"x"*Path(src).stat().st_size)
+    with pytest.raises(SystemExit):
+        dp.deploy([(src,"mc2.exe","exe")],target,False,preserve=["mc2.exe"],full_verify=full_verify)
+    installed.write_bytes(Path(src).read_bytes())
+    assert "mc2.exe" in dp.deploy([(src,"mc2.exe","exe")],target,False,preserve=["mc2.exe"],full_verify=full_verify)
+
+
+@pytest.mark.parametrize("bad_target", ["sha", "bytes"])
+def test_installed_exe_refuses_before_manifest_even_if_copy_retains_it(tmp_path, monkeypatch, bad_target):
+    head="a"*40
+    def image(sha):
+        return ("MC2FP1|"+sha+"|0|claude/test|2026-10-24T12:00:00|A:/Games/test|FP1END").encode()
+    build=tmp_path/"build"; build.mkdir()
+    target=tmp_path/"target"; target.mkdir()
+    (build/"mc2.exe").write_bytes(image(head[:12]))
+    (target/"mc2.exe").write_bytes(image("b"*12) if bad_target=="sha" else image(head[:12])+b"tampered")
+    monkeypatch.setattr(dp,"check_exe_fresh",lambda *a,**k: None)
+    monkeypatch.setattr(dp,"git_head",lambda *a: head)
+    monkeypatch.setattr(dp,"enumerate_payload",lambda *a,**k: [])
+    monkeypatch.setattr(dp,"check_free_space_for_payload",lambda *a: None)
+    monkeypatch.setattr(dp,"check_hardlink_isolation",lambda *a: None)
+    monkeypatch.setattr(dp,"deploy",lambda *a,**k: {})
+    monkeypatch.setattr(dp,"write_manifest",lambda *a: pytest.fail("published success for wrong installed exe"))
+    args=types.SimpleNamespace(allow_stale_exe=False,build64_root=None,require_clean=True,
+                              full_verify=False,allow_stale_pdb=False,preserve=[])
+    with pytest.raises(SystemExit):
+        dp.run_deploy(args,str(tmp_path),str(build),str(target),"mc2.exe","mc2.pdb")

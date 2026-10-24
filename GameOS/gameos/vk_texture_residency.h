@@ -71,7 +71,7 @@ public:
 private:
     struct Image { OwnedImage image; OwnedImageView view; void markDeferred() { image.markDeferred(); } };
     struct Resident { std::shared_ptr<Image> image; uint32_t descriptor = 0; bool useMips = true; uint32_t layers = 1; bool arrayView = false; bool highPriority = false; uint32_t contentVersion=0; bool vegetation=false; };
-    struct Pending { RenderCore::TextureHandle handle; std::shared_ptr<const RenderCore::KtxImage> image; uint32_t contentVersion=0; };
+    struct Pending { RenderCore::TextureHandle handle; std::shared_ptr<const RenderCore::KtxImage> image; uint32_t contentVersion=0; unsigned attempts=0; };
     struct Upload {
         RenderCore::TextureHandle handle;
         std::shared_ptr<Image> image;

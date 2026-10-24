@@ -1209,7 +1209,7 @@ def deploy(items, target_dir, allow_stale_pdb, preserve=(), cache=None,
     """Copy + verify the payload.
 
     `cache` is read_manifest()'s relpath -> (sha256, bytes, mtime_ns). A file
-    whose source size and mtime_ns still match the recorded row, and whose
+    other than an executable whose source size and mtime_ns still match the recorded row, and whose
     deployed copy is still the recorded size, is skipped: not copied, not
     re-hashed. `full_verify` (--full-verify) ignores the cache and does what
     every deploy did before: copy every file and hash source + target.
@@ -1231,13 +1231,15 @@ def deploy(items, target_dir, allow_stale_pdb, preserve=(), cache=None,
             pdb_problem = f"source PDB missing: {src}"
             continue
         if rel.replace(os.sep, "/") in preserve and os.path.isfile(dst):
+            if kind == "exe" and sha256_file(src) != sha256_file(dst):
+                fail(f"REFUSING preserved executable differs from source: {dst}")
             # user-owned file at target (e.g. hand-edited run-with-log.bat):
             # keep the deployed copy, record its hash so the manifest matches
             # what's actually on disk.
             src_hashes[rel] = (sha256_file(dst), os.path.getsize(dst))
             log(f"preserved {rel} (existing target copy kept)")
             continue
-        if not full_verify and not rel.endswith(".mcasset.json"):
+        if kind != "exe" and not full_verify and not rel.endswith(".mcasset.json"):
             row = cache.get(rel)
             stamp = source_stamp(src)
             if (row is not None and row[2] is not None and stamp == (row[1], row[2])
@@ -1801,7 +1803,8 @@ def run_deploy(args, src_root, build_dir, target, exe_name, pdb_name):
     # DIRTY-BUILD GUARD: record what the exe was actually BUILT from, not just
     # git HEAD at deploy time. A dirty-tree build is unattributable to any
     # exact source state (2026-07-12 grey-regression P0 mis-diagnosis class).
-    src_commit = git_head(src_root)
+    source_head = git_head(src_root)
+    src_commit = source_head
     fp = require_head_exe(os.path.join(build_dir, exe_name), src_commit)
     if fp["dirty"]:
         msg = (f"embedded fingerprint says dirty build at {fp['sha']}. "
@@ -1839,6 +1842,10 @@ def run_deploy(args, src_root, build_dir, target, exe_name, pdb_name):
     cache = {} if args.full_verify else read_manifest(target)
     hashes = deploy(items, target, args.allow_stale_pdb, preserve=args.preserve,
                     cache=cache, full_verify=args.full_verify)
+    installed = os.path.join(target, exe_name)
+    require_head_exe(installed, source_head)
+    if sha256_file(installed) != sha256_file(os.path.join(build_dir, exe_name)):
+        fail(f"REFUSING installed executable differs from validated source: {installed}")
     # Completeness BEFORE the manifest: a failure must not leave a manifest that says the deploy is complete.
     gaps = check_install_complete(target, exe_name, build_dir)
     if gaps:

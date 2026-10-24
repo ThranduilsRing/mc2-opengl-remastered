@@ -705,7 +705,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/deploy_payload.py",
-          "line": 1858,
+          "line": 1865,
           "evidence": "command",
           "reference": "scripts/check-deploy-hygiene.py",
           "text": "r = subprocess.run([sys.executable, hygiene, target],"
@@ -3654,7 +3654,7 @@
         },
         {
           "path": "scripts/tests/test_deploy_fast_path.py",
-          "line": 21,
+          "line": 23,
           "evidence": "import",
           "reference": "scripts.deploy_payload",
           "text": "from scripts import deploy_payload as dp  # noqa: E402"
@@ -3746,7 +3746,7 @@
         },
         {
           "path": "scripts/deploy_payload.py",
-          "line": 1785,
+          "line": 1787,
           "evidence": "import",
           "reference": "exe_fingerprint",
           "text": "from exe_fingerprint import extract, sha_agrees"

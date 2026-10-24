@@ -5,6 +5,7 @@
 #include "MaterialRegistry.h"
 #include "TextureService.h"
 #include "TextureStream.h"
+#include "../../GameOS/gameos/vk_texture_pending.h"
 #include <future>
 #include "../../GameOS/gameos/vk_completion_tracker.h"
 
@@ -522,4 +523,43 @@ TEST_CASE("TextureService: refused upload batches retain decoded requests and re
         CHECK(*f.residents[handle.raw()].image==42);
         CHECK(f.budget.used==0);
     }
+}
+
+TEST_CASE("TextureService: poisoned uploads cannot starve good requests and transient retries retain pixels") {
+    PublicationFixture f;
+    f.table=TextureDescriptorTable(10);
+    struct Pending { TextureHandle handle; std::shared_ptr<KtxImage> image; uint32_t contentVersion=0; unsigned attempts=0; };
+    std::deque<Pending> pending,batch;
+    std::vector<TextureHandle> handles;
+    auto pixels=std::make_shared<KtxImage>(); pixels->pixels.resize(4);
+    for (int i=0;i<6;++i) {
+        auto key=keyOf("unit","poison-queue",i+1);
+        auto h=f.service.acquire(key); handles.push_back(h);
+        const auto version=f.service.contentVersion(h);
+        f.residents[h.raw()].contentVersion=version;
+        pending.push_back({h,pixels,version});
+    }
+    unsigned poisonAttempts=0,transientAttempts=0,dropped=0;
+    for (unsigned pump=0;pump<3;++pump) {
+        const size_t firstNew=f.uploads.size();
+        mc2vk::pumpPendingTextureUploads(pending,f.uploads,batch,f.budget,
+            [](const Pending&) { return true; },[&] { return f.table.full(f.uploads.size()); },
+            [&](const Pending& p, PublicationFixture::Upload& next) {
+                CHECK(p.image.get()==pixels.get());
+                if (p.handle==handles[0]) { ++poisonAttempts; return false; }
+                if (p.handle==handles[1] && ++transientAttempts==1) return false;
+                next.image=std::make_shared<int>(42); return true;
+            },[&](const Pending& p) { CHECK(p.handle==handles[0]); CHECK(p.attempts==3); ++dropped; });
+        if (f.uploads.size()>firstNew) {
+            const mc2vk::GpuTicket ticket{f.tracker.noteSubmit(mc2vk::QueueKind::Graphics),0};
+            finishTextureUploadBatch(f.uploads,firstNew,pending,batch,f.budget,ticket);
+            f.complete(); f.pump();
+        }
+        CHECK(f.budget.used==0);
+        // All four unrelated requests publish on the very first pump.
+        for (size_t i=2;i<handles.size();++i) CHECK(f.table.index(handles[i])!=0);
+    }
+    CHECK(pending.empty()); CHECK(batch.empty());
+    CHECK(poisonAttempts==3); CHECK(transientAttempts==2); CHECK(dropped==1);
+    CHECK(f.table.index(handles[0])==0); CHECK(f.table.index(handles[1])!=0);
 }
