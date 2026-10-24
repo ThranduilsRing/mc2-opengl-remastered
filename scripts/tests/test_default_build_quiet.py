@@ -24,7 +24,7 @@ def test_fresh_smoke_requires_success_and_new_logs(tmp_path, monkeypatch, rc, lo
         if logs:
             run_dir = tmp_path / "fresh"
             run_dir.mkdir()
-            (run_dir / "manifest.json").write_text(json.dumps(dict(env_gates={}, missions=["mc2_10"])))
+            (run_dir / "manifest.json").write_text(json.dumps(dict(env_gates={"MC2_SMOKE_ARTIFACT_ROOT": str(tmp_path)}, missions=["mc2_10"])))
             (run_dir / "mc2_10.log").write_text("[NEW_SPAM v1]")
         return SimpleNamespace(returncode=rc)
     monkeypatch.setattr(quiet.subprocess, "run", run)

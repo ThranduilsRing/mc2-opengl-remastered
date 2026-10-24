@@ -74,7 +74,7 @@ DIAG_ENV_HINTS = ("MC2_DIAG_TAGS", "_DIAG", "_TRACE", "_PROBE", "MC2_DEBUG_")
 
 # env_gates keys that do NOT change what the engine prints, so a run carrying
 # only these is still a valid default-build sample.
-BENIGN_ENV = ("MC2_SMOKE_REQUIRE_FINGERPRINT",)
+BENIGN_ENV = ("MC2_SMOKE_REQUIRE_FINGERPRINT", "MC2_SMOKE_ARTIFACT_ROOT")
 
 
 def is_default_env_run(run_dir: Path) -> bool:
