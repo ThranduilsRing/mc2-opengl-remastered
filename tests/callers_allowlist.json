@@ -1,7 +1,8 @@
 {
   "scripts/tests/test_veg_card_cook.py": "Pytest-discovered module through scripts/run_scripts_tests.py (scripts_tests); coverage, dilation, trim and deterministic mip tests.",
   "scripts/vk_shader_reload.py": "Operator-run native Vulkan shader reload command, documented in its module help; compiles and validates an ABI-compatible shader for an already-running game.",
-  "scripts/tests/test_battle_bench.py": "Discovered dynamically by scripts/run_scripts_tests.py through scripts/test_ownership.json; validates integrated battle evidence and workload identity.",
+  "scripts/tests/test_review_launcher_sizing.py": "Discovered dynamically by scripts/run_scripts_tests.py through scripts/test_ownership.json; covers the launcher window rect sizing fix.",
+  "scripts/tests/test_battle_bench.py":"Discovered dynamically by scripts/run_scripts_tests.py through scripts/test_ownership.json; validates integrated battle evidence and workload identity.",
   "tools/command_replay.py": "Manual command replay recorder/player and proof entry point requested by game-logic R2; invokes the existing smoke harness and never starts the engine directly.",
   "scripts/tests/test_check_doc_links.py": "Discovered dynamically by scripts/run_scripts_tests.py through scripts/test_ownership.json; exercises the tracked-document link contract.",
   "tools/mapgen/__init__.py": "Python package marker for the mapgen command modules; not an executable entry point.",
