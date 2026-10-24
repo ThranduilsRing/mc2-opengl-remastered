@@ -234,6 +234,9 @@ def test_authored_materials_share_albedo_without_merging_surface_classes(tmp_pat
     import copy
     src, *_ = make_gltf(tmp_path)
     a = gltf_file.to_ir("panel", "staticProp:panel", src, work_dir=tmp_path / "work")
+    normal = tmp_path / "normal.png"
+    Image.new("RGBA", (4, 4), (128, 128, 255, 255)).save(normal)
+    a.materials[0].normal = ir.TextureRef.of(normal, "normal")
     twin = copy.deepcopy(a.materials[0])
     twin.material_class = "painted_metal"
     twin.metallic = 0.0
@@ -243,6 +246,7 @@ def test_authored_materials_share_albedo_without_merging_surface_classes(tmp_pat
     assert len(images) == 1
     record = json.loads((out / "data/model_overrides/models.json").read_text())["overrides"][0]
     assert len(record["materials"]["slots"]) == 2
+    assert len({s["normal"] for s in record["materials"]["slots"]}) == 1
 
 
 def test_cache_key_is_content_not_name(tmp_path):

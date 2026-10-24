@@ -130,3 +130,44 @@ Destroyed chains may use `{"intact": "rubble_lod0.glb", "lods": [["rubble_lod1.g
 exposes TG/WU position, direction, colour, range, cone, activity and destruction
 policy to lighting. Stock `SpotLight_`/`LitWin` attachment pivots survive static
 baking. Source conditions/damage with no emitters stay empty; no lamps are invented.
+
+## Approved industrial intent set
+
+`tools/scifi_kit/industrial_package.py` reads the 34 approved industrial bakes
+from `E:/mc2-ref/scifi-kit/art/intent-pass/_work`: round 1 `t1`, round 2 `r2`,
+transformerstation `e1` (`7809b383d`), and both generators `e5` (`f57d04c6a`).
+It uses the common IR cooker, keeps LOD0/1/2, and shares BC7 albedo and BC5/BC7
+normal/ORM atlases across material classes. Generated payloads stay outside git.
+
+Cook with `py -3 tools/scifi_kit/industrial_package.py --out <proof>/package`.
+Copy only `package/data` and `package/mod.json` into the lane install's
+`mods/mc2-industrial-kit/`. The reproducibility IR and report under `content/`
+are proof artifacts, not runtime payload. The installed kit mounts automatically
+as the lowest mod layer. Campaign/add-on manifests merge above it; a mod-owned
+appearance INI or source mesh also suppresses the bundled record for that shape.
+The stock install's meshes, INIs, archives and collision data are not rewritten.
+
+The remakes are pristine only. No damaged, destroyed, worn or abandoned chain is
+emitted. Both disabled and destroyed buildings keep their stock damage geometry.
+Imported LODs use the existing building distance thresholds where present, or
+the bake's 350/700 WU distances when stock supplies only one mesh. Each LOD's
+geometry and textures register before GPU finalization; swaps invalidate the
+old static recipe. Stock building LOD policy is unchanged.
+
+Stock base-shape animation is still read from `[Animation:N]` and advances in
+the ordinary building update. Binding resolves node names on each destination,
+including the independent stock simulation shape and imported render LODs.
+Authored pivot metadata survives the importer. An override missing any stock
+animation track's node falls back to the stock render chain. **The supplied e5
+generator bakes contain one flattened node and no `Coil` child: their entries
+are packaged, but both generators retain stock visuals and animation. This is
+an unresolved source-bake gap, so the complete 34-remake goal is not accepted.**
+The same binding seam supports retained stock node names such as `LOS_Radar`,
+`Spinner` and `Sensorpivot`; those military assets still require their own proof.
+
+Proof directory: `E:/mc2-archive-2026-10/proofs/kit-ingame-2/`. Mission inventory
+finds 48 approved-set instances on `mc2_10`, 50 on `mc2_03` (fuel tanks plus a
+turret generator), and none on stock `mc2_01`. The day mission is a regression
+check, not industrial visual coverage. Runtime acceptance, crops and performance
+results must be read from that directory; an SDL window-creation failure does
+not count as a rendered pass.

@@ -251,6 +251,7 @@ def cook_asset(asset: ir.Asset, out: Path, *, compress=True, max_triangles=None,
             record["conditions"][cond] = c
 
     slots = []
+    detail_paths = {}
     for slot, m in enumerate(asset.materials):
         if not m.authored():
             continue
@@ -264,9 +265,12 @@ def cook_asset(asset: ir.Asset, out: Path, *, compress=True, max_triangles=None,
             row["alphaCutoff"] = m.alpha_cutoff
         for which in ("normal", "orm"):
             if getattr(m, which) is not None:
-                rel = f"{aid}/detail/{slot}_{which}.ktx2"
-                _write(mo / rel, _detail(m, which, entry, compress))
-                row[which] = rel
+                key = (which, getattr(m, which).sha256)
+                if key not in detail_paths:
+                    rel = f"{aid}/detail/{slot}_{which}.ktx2"
+                    _write(mo / rel, _detail(m, which, entry, compress))
+                    detail_paths[key] = rel
+                row[which] = detail_paths[key]
         slots.append(row)
     if slots:
         record["materials"] = {"version": 2, "slots": slots}
