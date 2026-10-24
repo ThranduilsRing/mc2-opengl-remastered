@@ -4,14 +4,13 @@
  "load_at": 1100,
  "gates": {
   "MC2_SMOKE_FIXED_TIMESTEP": "1",
-  "MC2_DETERMINISTIC_RNG": "1",
   "MC2_SIM_IDENTITY_TRACE": "1",
   "MC2_SMOKE_FREEZE_ANIM": "1",
   "MC2_BOOT_QUICKSAVE_AT": "1000",
   "MC2_BOOT_QUICKLOAD_AT": "1100"
  },
  "exe": {
-  "sha": "248e1ac7e1ba",
+  "sha": "6cca622599a9",
   "dirty": 0
  },
  "comparison": {
@@ -107,8 +106,9 @@
   }
  },
  "judged": "first-save-only",
+ "resave_present": true,
  "packets": 20000,
- "overall": "2160a2817584cf4f",
+ "overall": "ba1dbe8034f2bef9",
  "resave_identical": false,
  "resave_matches_policy": false,
  "runs": [
@@ -116,15 +116,15 @@
    "data",
    0,
    2,
-   41,
-   "294696c877fa8bc4"
+   40,
+   "aff84c57f086183a"
   ],
   [
    "text",
    2,
    1,
-   34212,
-   "eee1d70c7bf039d6"
+   34205,
+   "563d4c16ea855caa"
   ],
   [
    "data",
@@ -180,252 +180,252 @@
    1795,
    111,
    36767,
-   "49200357bd17d803"
+   "afd8121116a928da"
   ],
   [
    "StaticMechWarriorData",
    1906,
    1,
    40,
-   "8df7660fa169ae20"
+   "8265f22e8e21340c"
   ],
   [
    "MechWarriorData",
    1907,
-   120,
-   2383680,
-   "966a23a39fbf05c2"
+   256,
+   5091328,
+   "411d17c2faec83a6"
   ],
   [
    "TeamStaticData",
-   2027,
+   2163,
    1,
    80,
    "76406ab0050a4c77"
   ],
   [
    "TeamData",
-   2028,
+   2164,
    2,
    976,
    "2b9fb0b838b72930"
   ],
   [
    "ObjectManagerData",
-   2030,
+   2166,
    1,
    60,
    "5cf80dfba6a75f08"
   ],
   [
    "empty",
-   2031,
+   2167,
    1,
    0,
    "df3f619804a92fdb"
   ],
   [
    "MechData",
-   2032,
+   2168,
    134,
    534928,
-   "b7f3b0f0b559c3f4"
+   "8e6ff2fc28b7796c"
   ],
   [
    "GroundVehicleData",
-   2166,
+   2302,
    151,
    517024,
    "8aff57b0e3b0ab73"
   ],
   [
    "TerrainObjectData",
-   2317,
+   2453,
    79,
    56880,
    "e0271414db5b7e41"
   ],
   [
    "BuildingData",
-   2396,
+   2532,
    4,
    3024,
    "2ea72df4c432f4af"
   ],
   [
    "TerrainObjectData",
-   2400,
+   2536,
    256,
    184320,
    "b8e522b7007d64fe"
   ],
   [
    "TerrainObjectData",
-   2656,
+   2792,
    63,
    45360,
    "27af428d2c222506"
   ],
   [
    "BuildingData",
-   2719,
+   2855,
    6,
    4536,
-   "3ee544e1700fe51e"
+   "02aceea3709d945a"
   ],
   [
    "TerrainObjectData",
-   2725,
+   2861,
    11,
    7920,
    "c85bea586d87c600"
   ],
   [
    "BuildingData",
-   2736,
+   2872,
    2,
    1512,
    "60efe27045342d82"
   ],
   [
    "TerrainObjectData",
-   2738,
+   2874,
    43,
    30960,
    "25a0e645495e8b1f"
   ],
   [
    "BuildingData",
-   2781,
+   2917,
    3,
    2268,
    "fe6a4c2f70d48ec7"
   ],
   [
    "TerrainObjectData",
-   2784,
+   2920,
    109,
    78480,
    "f9a0dfe808e70930"
   ],
   [
    "BuildingData",
-   2893,
+   3029,
    2,
    1512,
    "aaae4ba40c565bc7"
   ],
   [
    "TerrainObjectData",
-   2895,
+   3031,
    94,
    67680,
    "fe4c4d86be27655e"
   ],
   [
    "BuildingData",
-   2989,
+   3125,
    2,
    1512,
    "fed62d2b2c337116"
   ],
   [
    "TerrainObjectData",
-   2991,
+   3127,
    44,
    31680,
    "6e177d679afad1d1"
   ],
   [
    "BuildingData",
-   3035,
+   3171,
    24,
    18144,
    "28c0e4da08c63a44"
   ],
   [
    "TerrainObjectData",
-   3059,
+   3195,
    165,
    118800,
    "29023de4e71728f2"
   ],
   [
    "BuildingData",
-   3224,
+   3360,
    1,
    756,
    "9c80e615e109e2ae"
   ],
   [
    "TerrainObjectData",
-   3225,
+   3361,
    92,
    66240,
    "7aa6952d3c0f8f27"
   ],
   [
    "WeaponBoltData",
-   3317,
+   3453,
    100,
    60000,
    "909029cb9fde02f4"
   ],
   [
    "CarnageData",
-   3417,
+   3553,
    50,
    19800,
    "46ba83b94178fd4c"
   ],
   [
    "ArtilleryData",
-   3467,
+   3603,
    130,
    56160,
    "ba71f035193227bf"
   ],
   [
    "data",
-   3597,
+   3733,
    1,
    6264,
    "3a7c3c8691b6fa2b"
   ],
   [
    "StaticCommanderData",
-   3598,
+   3734,
    1,
    8,
    "17cae935378238b9"
   ],
   [
    "CommanderData",
-   3599,
+   3735,
    2,
    2576,
    "01efaac6bc65c6a0"
   ],
   [
    "text",
-   3601,
+   3737,
    1,
    67828,
    "52bb728f60e16f40"
   ],
   [
    "data",
-   3602,
-   2,
-   8,
-   "e815bbb0774dd30f"
+   3738,
+   3,
+   214385,
+   "cec1a5459900b3b8"
   ],
   [
    "empty",
-   3604,
-   16396,
+   3741,
+   16259,
    0,
-   "3e32d13c81fe21a1"
+   "62a0c70aa4bcc4cb"
   ]
  ],
  "about": "digest of the quicksave a round-trip fixture writes; tools/saveload_roundtrip.py --baseline / --check",
