@@ -1,5 +1,6 @@
 #ifdef MC2_VULKAN_ISLAND
 #include "vk_texture_residency.h"
+#include <tracy/Tracy.hpp>
 #include "RenderCore/GpuResidencyPolicy.h"
 #include "Gates/render_options.h"
 #include "Gates/gate_cold.h"
@@ -126,6 +127,8 @@ bool TextureResidency::init() {
 }
 
 std::shared_ptr<TextureResidency::Image> TextureResidency::upload(const RenderCore::KtxImage& image, bool useMips, Upload* async, uint32_t layers, bool arrayView, bool vegetation) {
+    ZoneScopedN("TextureResidency.Upload");
+    ZoneValue(image.pixels.size());
     const bool rgba=image.vkFormat==37 || image.vkFormat==43;
     const bool floating=image.vkFormat==97 || image.vkFormat==100 || image.vkFormat==VK_FORMAT_R32G32_SFLOAT;
     const size_t stride=(image.vkFormat==97 || image.vkFormat==VK_FORMAT_R32G32_SFLOAT) ? 8u : 4u;
@@ -256,24 +259,25 @@ ResidentTextureRef TextureResidency::requestKtx(const RenderCore::TextureKey& ke
     return ResidentTextureRef(*this,handle);
 }
 void TextureResidency::pump() {
-    service_.collectSourceRetirements();
+    { ZoneScopedN("TextureResidency.CollectSources"); service_.collectSourceRetirements(); }
     std::vector<RenderCore::TextureHandle> retired;
     { std::lock_guard lock(retiredMutex_); retired.swap(retired_); }
-    for (auto handle : retired) {
+    { ZoneScopedN("TextureResidency.RetireImages"); for (auto handle : retired) {
         table_->erase(handle);
         auto it=residents_.find(handle.raw());
         if (it!=residents_.end()) { if (it->second.image) ctx_.retire(std::move(it->second.image)); residents_.erase(it); }
-    }
-    for (auto& result : worker_.take()) {
+    } }
+    { ZoneScopedN("TextureResidency.TakeDecoded"); for (auto& result : worker_.take()) {
         auto it=residents_.find(result.handle.raw());
         if (!result.image || !service_.isLive(result.handle) || it==residents_.end() || result.contentVersion!=it->second.contentVersion) continue;
         Pending pending{result.handle,std::move(result.image),result.contentVersion};
         if (it->second.highPriority) pending_.push_front(std::move(pending));
         else pending_.push_back(std::move(pending));
-    }
+    } }
     // Queue order makes completion a prefix: idle resident images are never scanned.
-    RenderCore::publishTextureUploads(service_,*table_,uploading_,residents_,budget_,
-                                     [this](GpuTicket ticket) { return ctx_.isComplete(ticket); });
+    { ZoneScopedN("TextureResidency.Publish");
+      RenderCore::publishTextureUploads(service_,*table_,uploading_,residents_,budget_,
+                                       [this](GpuTicket ticket) { return ctx_.isComplete(ticket); }); }
     while (!pending_.empty()) {
         auto& p=pending_.front();
         auto it=residents_.find(p.handle.raw());
