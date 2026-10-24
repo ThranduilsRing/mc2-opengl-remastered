@@ -1126,7 +1126,8 @@ static void record_local_shadows(ShadowIsland* s) {
     for (uint32_t t = 0; t < kTiles && t < tileCount; ++t) {
         if (!tiles[t].used) continue;
         used[usedCount++] = t;
-        if (tiles[t].key != L.bakedKey[t]) bake[bakeCount++] = t;
+        // LIGHTS-R4: a mover lamp's tile is never baked (its projection changes every frame).
+        if (!tiles[t].mover && tiles[t].key != L.bakedKey[t]) bake[bakeCount++] = t;
     }
     if (usedCount == 0) return;
 
@@ -1194,15 +1195,18 @@ static void record_local_shadows(ShadowIsland* s) {
     toDst.srcAccessMask = 0; toDst.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
     vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &toDst);
     VkImageCopy regions[kTiles]{};
+    uint32_t copyCount = 0;
     for (uint32_t i = 0; i < usedCount; ++i) {
         const uint32_t t = used[i];
-        VkImageCopy& r = regions[i];
+        if (tiles[t].mover) continue;   // cleared in the live pass instead
+        VkImageCopy& r = regions[copyCount++];
         r.srcSubresource = r.dstSubresource = {VK_IMAGE_ASPECT_DEPTH_BIT, 0, 0, 1};
         r.srcOffset = r.dstOffset = {static_cast<int32_t>((t % kCols) * kTileSide), static_cast<int32_t>((t / kCols) * kTileSide), 0};
         r.extent = {kTileSide, kTileSide, 1};
     }
-    vkCmdCopyImage(cb, L.staticAtlas.image.get(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-                   L.liveAtlas.image.get(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, usedCount, regions);
+    if (copyCount > 0)
+        vkCmdCopyImage(cb, L.staticAtlas.image.get(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                       L.liveAtlas.image.get(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, copyCount, regions);
     // The mech pass loads the copied tiles.
     local_barrier(cb, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_TRANSFER_WRITE_BIT,
                   VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
@@ -1212,6 +1216,14 @@ static void record_local_shadows(ShadowIsland* s) {
     rbi.renderArea = {{0, 0}, {kAtlasW, kAtlasH}};
     MC2_VK_GPU_SCOPE(liveScope, cb, "VKIsl.Shadow.LocalLive");
     vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
+    for (uint32_t i = 0; i < usedCount; ++i) {
+        const uint32_t t = used[i];
+        if (!tiles[t].mover) continue;
+        VkClearAttachment ca{VK_IMAGE_ASPECT_DEPTH_BIT, 0, {}};
+        ca.clearValue.depthStencil = {1.0f, 0};
+        const VkClearRect cr{{{static_cast<int32_t>((t % kCols) * kTileSide), static_cast<int32_t>((t / kCols) * kTileSide)}, {kTileSide, kTileSide}}, 0, 1};
+        vkCmdClearAttachments(cb, 1, &ca, 1, &cr);
+    }
     if (s->mech.hasCasters()) {
         for (uint32_t i = 0; i < usedCount; ++i) {
             const uint32_t t = used[i];

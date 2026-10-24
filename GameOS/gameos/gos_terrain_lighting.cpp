@@ -709,7 +709,7 @@ void PackAndDispatch() {
             const bool coned = gl.lightType != 0u && tl->spotCosOuter > 0.0f;
             if (coned)
                 gl.lightType = PackPoolLightType(gl.lightType, tl->spotDir.x, tl->spotDir.y,
-                                                 tl->spotDir.z, tl->spotCosOuter, 0u);
+                                                 tl->spotDir.z, tl->spotCosOuter, 0u, tl->moverLamp);
             // Preserve source color; each receiver applies the separate intensity once.
             const DWORD argb = tl->GetSourceRGB();
             gl.color[0]        = static_cast<float>((argb >> 16) & 0xFFu) / 255.0f;  // R

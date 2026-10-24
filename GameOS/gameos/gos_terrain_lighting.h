@@ -56,8 +56,10 @@ static_assert(offsetof(GpuTerrainLight, color) == 16, "color vec3 must stay @16 
 // LOCAL-LIGHTS-1: pack a coned light into GpuTerrainLight::lightType. Bit layout and
 // decode: shaders/include/light_pool_attenuation.hglsl (lpa_spotCone; lockstep).
 // aim = unit vector, MC2 world frame; cosOuter in (0,1); shadowTile1 = tile + 1 (0 = none).
+// moverLamp sets kPoolMoverLampBit (bit 3; the type itself needs bits 0-1).
+inline constexpr uint32_t kPoolMoverLampBit = 1u << 3;
 inline uint32_t PackPoolLightType(uint32_t type, float ax, float ay, float az,
-                                  float cosOuter, uint32_t shadowTile1) {
+                                  float cosOuter, uint32_t shadowTile1, bool moverLamp = false) {
     const float l1 = (ax < 0 ? -ax : ax) + (ay < 0 ? -ay : ay) + (az < 0 ? -az : az);
     float u = l1 > 0.0f ? ax / l1 : 0.0f, v = l1 > 0.0f ? ay / l1 : 0.0f;
     if (az < 0.0f) {
@@ -72,7 +74,7 @@ inline uint32_t PackPoolLightType(uint32_t type, float ax, float ay, float az,
     };
     uint32_t c = q(cosOuter, 0.0f, 1.0f);
     if (c == 0u) c = 1u;   // keep a coned light coned
-    return (type & 0xFu) | ((shadowTile1 & 0xFu) << 4) | (q(u, -1.0f, 1.0f) << 8)
+    return (type & 0x3u) | (moverLamp ? kPoolMoverLampBit : 0u) | ((shadowTile1 & 0xFu) << 4) | (q(u, -1.0f, 1.0f) << 8)
          | (q(v, -1.0f, 1.0f) << 16) | (c << 24);
 }
 

@@ -25,10 +25,15 @@ inline constexpr uint32_t kAtlasW = kCols * kTileSide, kAtlasH = kRows * kTileSi
 inline constexpr float kNear = 12.0f;
 inline constexpr float kFovMargin = 1.05f;
 
+// LIGHTS-R4: lightType bit 3 = a mover's lamp (gos_terrain_lighting.h kPoolMoverLampBit; lockstep).
+inline constexpr uint32_t kMoverLampBit = 1u << 3;
+
 // One tile's light: the pool record fields the projection is built from. key identifies the light AND its
-// projection, so a tile whose key is unchanged keeps its baked static casters.
+// projection, so a tile whose key is unchanged keeps its baked static casters. A mover lamp's tile
+// (mover = 1) is never baked: it moves every frame, so it holds only the dynamic casters.
 struct Tile {
     uint32_t used = 0;
+    uint32_t mover = 0;
     float pos[3] = {0, 0, 0};       // MC2 world frame
     uint32_t packedType = 0;        // the pool record's lightType without the tile bits
     float farDistance = 0.0f;
@@ -123,9 +128,11 @@ inline void selectTiles(std::span<Light> lights, float camX, float camY, bool en
     bool kept[kTiles] = {};
     for (uint32_t k = 0; k < nBest; ++k) {
         const Light& L = lights[best[k].index];
+        // A mover lamp has no stable key (it moves every frame) and owns no static bake.
+        if ((L.lightType & kMoverLampBit) != 0u) continue;
         best[k].key = tileKey(L.position, L.lightType, L.farDistance);
         for (uint32_t t = 0; t < kTiles; ++t)
-            if (!kept[t] && g_tiles[t].used && g_tiles[t].key == best[k].key) { best[k].tile = static_cast<int>(t); kept[t] = true; break; }
+            if (!kept[t] && g_tiles[t].used && !g_tiles[t].mover && g_tiles[t].key == best[k].key) { best[k].tile = static_cast<int>(t); kept[t] = true; break; }
     }
     for (uint32_t k = 0; k < nBest; ++k) {
         if (best[k].tile >= 0) continue;
@@ -134,6 +141,7 @@ inline void selectTiles(std::span<Light> lights, float camX, float camY, bool en
             const Light& L = lights[best[k].index];
             Tile& T = g_tiles[t];
             T.used = 1;
+            T.mover = (L.lightType & kMoverLampBit) != 0u ? 1u : 0u;
             T.pos[0] = L.position[0]; T.pos[1] = L.position[1]; T.pos[2] = L.position[2];
             T.packedType = L.lightType & ~0xF0u;
             T.farDistance = L.farDistance;

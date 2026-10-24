@@ -228,6 +228,9 @@ struct _TG_Light
 	// pool; 0 = omni. When set, `position` is the lamp and `spotDir` the unit aim (MC2
 	// world frame); the pool packs both into the record (gos_terrain_lighting.cpp).
 	float					spotCosOuter;
+	// LIGHTS-R4: a lamp carried by a mover (mech / vehicle). Its shadow tile holds only the
+	// dynamic casters (it moves every frame, so a static bake would redo itself per frame).
+	bool					moverLamp;
 
 	void init (DWORD lType)
 	{
@@ -244,6 +247,7 @@ struct _TG_Light
 		spotDir.x = spotDir.y = spotDir.z = 0.0f;
 		maxSpotLength = 0.0f;
 		spotCosOuter = 0.0f;
+		moverLamp = false;
 		active = false;
 		ownerEnabled = 1;	//LIGHT-CULL-RADIUS-1: enabled until an owner says otherwise
 	}
