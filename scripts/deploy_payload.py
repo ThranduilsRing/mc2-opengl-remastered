@@ -1689,8 +1689,8 @@ def main():
     ap.add_argument("--strict", action="store_true",
                     help="with --verify-only: drift = nonzero exit")
     ap.add_argument("--require-clean", action="store_true",
-                    help="refuse to deploy a build whose build_fingerprint.h says "
-                         "MC2_BUILD_GIT_DIRTY=1 (built from an uncommitted tree)")
+                    help="refuse an executable whose embedded fingerprint says "
+                         "dirty=1 (built from an uncommitted tree)")
     ap.add_argument("--allow-new-target", action="store_true",
                     help="DELIBERATELY deploy to a NON-canonical / new ~5GB install "
                          "(release cut, fresh install). Off by default -- deploys are "
@@ -1780,6 +1780,20 @@ def main():
             release_folder_lease(target)
 
 
+def require_head_exe(exe, head):
+    """Reject stale/missing provenance from the executable bytes, never a header."""
+    from exe_fingerprint import extract, sha_agrees
+    fp = extract(exe)
+    if not fp.get("present") or sha_agrees(fp.get("sha"), head) is not True:
+        fail(f"REFUSING stale/unattributable executable: {exe}\n"
+             f"  embedded build sha={fp.get('sha', 'absent')} != HEAD {head} "
+             f"({fp.get('reason', 'SHA mismatch')}).\n"
+             "  Commit first, rebuild this HEAD with scripts/ninja_build.py, "
+             "then deploy --ninja (or name that same tree with --build-dir). "
+             "--allow-stale-exe only relaxes object timestamps, never provenance.")
+    return fp
+
+
 def run_deploy(args, src_root, build_dir, target, exe_name, pdb_name):
     check_exe_fresh(os.path.join(build_dir, exe_name), build_dir, args.allow_stale_exe,
                     build64_root=args.build64_root)
@@ -1788,28 +1802,14 @@ def run_deploy(args, src_root, build_dir, target, exe_name, pdb_name):
     # git HEAD at deploy time. A dirty-tree build is unattributable to any
     # exact source state (2026-07-12 grey-regression P0 mis-diagnosis class).
     src_commit = git_head(src_root)
-    fp = read_build_fingerprint(build_dir)
-    if fp:
-        if fp["sha"] and not src_commit.startswith(fp["sha"]):
-            log(f"WARNING: build fingerprint sha {fp['sha']} != git HEAD "
-                f"{src_commit[:12]} — the exe was built from a DIFFERENT commit "
-                f"than the tree you are deploying from. Manifest records the "
-                f"BUILD sha.")
-            src_commit = fp["sha"]
-        if fp["dirty"]:
-            msg = (f"build_fingerprint.h says MC2_BUILD_GIT_DIRTY=1 — this exe "
-                   f"was built from an UNCOMMITTED tree at {fp['sha']}. Its exact "
-                   f"source state cannot be reproduced. COMMIT FIRST, rebuild, "
-                   f"then deploy.")
-            if args.require_clean:
-                fail(msg)
-            log("=" * 72)
-            log(f"WARNING (dirty build): {msg}")
-            log("=" * 72)
-            src_commit = src_commit + "-dirty"
-    else:
-        log("note: no build_fingerprint.h found next to the build dir; "
-            "manifest src_commit falls back to git HEAD (dirty state unknown)")
+    fp = require_head_exe(os.path.join(build_dir, exe_name), src_commit)
+    if fp["dirty"]:
+        msg = (f"embedded fingerprint says dirty build at {fp['sha']}. "
+               "COMMIT FIRST, rebuild, then deploy.")
+        if args.require_clean:
+            fail(msg)
+        log(f"WARNING (dirty build): {msg}")
+        src_commit += "-dirty"
 
     items = enumerate_payload(src_root, build_dir, exe_name, pdb_name,
                               build64_root=args.build64_root)

@@ -117,7 +117,7 @@ def test_clean_merge(env):
     commit_all(repo, "main work")
     rc, out, err = merge(env, "--trailer", "Co-Authored-By: Test Model <t@example.com>")
     assert rc == 0, err
-    assert out.startswith("MERGED ") and "files=1 ratchets=OK verify=SKIPPED(tooling-only) overlap=0" in out and "(+" not in out
+    assert out.startswith("MERGED ") and "files=1 ratchets=OK verify=SKIPPED overlap=0" in out and "(+" not in out
     assert len(parents(repo)) == 2
     assert git(repo, "log", "-1", "--format=%s") == "merge lane: lane: add thing"
     assert "Co-Authored-By: Test Model" in git(repo, "log", "-1", "--format=%B")
@@ -393,7 +393,7 @@ def test_verify_runs_build_then_doctest_and_stops_at_the_first_failure(tmp_path)
     calls = []
 
     def runner(root, cmd, env=None):
-        assert env["MC2_NINJA_TREE"] == "build-merge"
+        assert env["MC2_NINJA_TREE"] == "build64-ninja"
         calls.append(os.path.basename(cmd[1]))
         return _R(1 if cmd[1].endswith("ninja_build.py") else 0, "boom")
 
@@ -595,11 +595,11 @@ def test_batch_ratchet_failure_stops_and_names_the_rest(env, capsys):
     assert rc == 6 and verifies == []     # a tooling-only partial tree has nothing to build
     assert "BATCH STOPPED at lane_a merged=1 remaining=lane_b lane_c" in out
     last = out.strip().splitlines()[-1]
-    assert last.startswith("MERGED ") and "ratchets=FAIL" in last and "SKIPPED(tooling-only)" in last
+    assert last.startswith("MERGED ") and "ratchets=FAIL" in last and "SKIPPED(ratchet-failure)" in last
     assert (repo / "a_lane.txt").exists() and not (repo / "b_lane.txt").exists()
 
 
-def test_batch_with_compiled_changes_verifies_the_partial_tree(env, capsys):
+def test_batch_with_compiled_changes_skips_build_on_ratchet_failure(env, capsys):
     repo, _ = env
     _branch(repo, "lane_a", "src/a.cpp", "int a;\n", "lane a")
     _branch(repo, "lane_b", "b_lane.txt", "b\n", "lane b")
@@ -607,7 +607,7 @@ def test_batch_with_compiled_changes_verifies_the_partial_tree(env, capsys):
     commit_all(repo, "main work")
     set_mode(env, "cxx17_ratchet/cxx17_ratchet.py", "fail")
     rc, verifies = _run_batch(env, "lane_a", "lane_b")
-    assert rc == 6 and verifies == ["build"]
+    assert rc == 6 and verifies == []
     assert "remaining=lane_b" in capsys.readouterr().out
 
 
