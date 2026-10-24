@@ -31,7 +31,7 @@ long BldgAppearance::calcCellsCovered (glm::vec3& pos, short* cellList) {
 	TG_MultiShapePtr coverShape = bldgShape;
 	if (appearType->bldgRenderShape || appearType->bldgDmgRenderShape)
 	{
-		TG_TypeMultiShape* source = appearType->bldgShape[0];
+		TG_TypeMultiShape* source = appearType->getBldgCollisionShape(0);
 		if (status == OBJECT_STATUS_DESTROYED && appearType->bldgDmgShape)
 			source = appearType->bldgDmgShape;
 		stockCover.reset(source->CreateFrom());
@@ -331,7 +331,7 @@ long BldgAppearance::markMoveMap (bool passable, long* lineOfSightRect, bool use
 
 	if (currentLOD || renderOverridden)
 	{
-		TG_TypeMultiShape* source = appearType->bldgShape[0];
+		TG_TypeMultiShape* source = appearType->getBldgCollisionShape(0);
 		if (renderOverridden && status == OBJECT_STATUS_DESTROYED && appearType->bldgDmgShape)
 			source = appearType->bldgDmgShape;
 		tempBldgShape = source->CreateFrom();
