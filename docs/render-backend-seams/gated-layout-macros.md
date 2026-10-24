@@ -518,6 +518,22 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
+- Header: `GameOS/gameos/vk_frame_ring.h:109`
+- Class: `FrameRing`  (data-member)
+- Member: `uint64_t policyRefusals_ = 0;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vk_frame_ring.h:110`
+- Class: `FrameRing`  (data-member)
+- Member: `VkDeviceSize refusedCapacity_ = 0;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
 - Header: `GameOS/gameos/vk_image_resource.h:30`
 - Class: `VkImageResource`  (data-member)
 - Member: `mc2vk::OwnedRawImage     image;`
@@ -582,7 +598,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_light_lists.h:16`
+- Header: `GameOS/gameos/vk_light_lists.h:17`
 - Class: `LightLists`  (data-member)
 - Member: `ComputePipeline pipeline_;`
 - Consuming targets: gameos
@@ -590,7 +606,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_light_lists.h:17`
+- Header: `GameOS/gameos/vk_light_lists.h:18`
 - Class: `LightLists`  (data-member)
 - Member: `ComputeSets sets_;`
 - Consuming targets: gameos
@@ -598,7 +614,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_light_lists.h:18`
+- Header: `GameOS/gameos/vk_light_lists.h:19`
 - Class: `LightLists`  (data-member)
 - Member: `FrameAlloc params_;`
 - Consuming targets: gameos
@@ -606,7 +622,47 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_light_lists.h:33`
+- Header: `GameOS/gameos/vk_light_lists.h:21`
+- Class: `LightLists`  (data-member)
+- Member: `uint64_t attempted_ = ~uint64_t(0), retryAt_ = 0, failures_ = 0;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vk_light_lists.h:22`
+- Class: `LightLists`  (data-member)
+- Member: `uint32_t retryDelay_ = 1;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vk_light_lists.h:23`
+- Class: `LightLists`  (data-member)
+- Member: `const char* failure_ = nullptr;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vk_light_lists.h:34`
+- Class: `LightLists`  (data-member)
+- Member: `const bool logFailures = failures_ == 0;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vk_light_lists.h:42`
+- Class: `LightLists`  (data-member)
+- Member: `return false;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vk_light_lists.h:50`
 - Class: `LightLists`  (data-member)
 - Member: `const auto* lights = static_cast<const gos_terrain_lighting::GpuTerrainLight*>(pool);`
 - Consuming targets: gameos
@@ -614,7 +670,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_light_lists.h:37`
+- Header: `GameOS/gameos/vk_light_lists.h:54`
 - Class: `LightLists`  (data-member)
 - Member: `const auto& l = lights[i];`
 - Consuming targets: gameos
@@ -622,7 +678,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_light_lists.h:39`
+- Header: `GameOS/gameos/vk_light_lists.h:56`
 - Class: `LightLists`  (data-member)
 - Member: `const float radius = l.farDistance * (l._pad1 > 0.5f && moverScale < 0.999f ? (std::max)(moverScale, 0.05f) : 1.0f);`
 - Consuming targets: gameos
@@ -630,7 +686,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_light_lists.h:64`
+- Header: `GameOS/gameos/vk_light_lists.h:85`
 - Class: `LightLists`  (data-member)
 - Member: `return true;`
 - Consuming targets: gameos
@@ -638,7 +694,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_light_lists.h:71`
+- Header: `GameOS/gameos/vk_light_lists.h:92`
 - Class: `LightLists`  (data-member)
 - Member: `const auto type = b == 0 ? VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC : VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;`
 - Consuming targets: gameos
@@ -3054,4 +3110,4 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ---
 
-Result: 381 guard(s) analyzed, 0 violation(s).
+Result: 388 guard(s) analyzed, 0 violation(s).
