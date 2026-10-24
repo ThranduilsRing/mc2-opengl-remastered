@@ -24,6 +24,7 @@
 #endif
 
 #include "vulkan_context.h"
+#include <tracy/Tracy.hpp>
 #include "mc2_diag_verbose.h"
 #include "diagnostic_trace.h"
 #include "vk_device_profile.h"
@@ -615,10 +616,10 @@ bool VulkanContext::wait(const GpuTicket& t, uint64_t timeoutNs, std::string_vie
 
 void VulkanContext::beginFrame() {
     if (tracker_.frameOpen()) return;
-    poll();
+    { ZoneScopedN("VKContext.Poll"); poll(); }
     tracker_.beginFrame();
-    deferred_.collect(tracker_);
-    infra::frame();
+    { ZoneScopedN("VKContext.Collect"); deferred_.collect(tracker_); }
+    { ZoneScopedN("VKContext.InfraFrame"); infra::frame(); }
 #ifdef MC2_VULKAN_ISLAND
     // The ring slot of this frame was last written by frame F-2: its work must be done before the slot restarts. The islands' own fences keep this
     // true today; the wait only costs anything if one of them let a frame run further ahead.
@@ -627,6 +628,7 @@ void VulkanContext::beginFrame() {
     // incomplete (device lost) the slot keeps its head, so the CPU never overwrites bytes the GPU may still read.
     bool slotFree = true;
     if (f > FrameRingCore::kSlots) {
+        ZoneScopedN("VKContext.RingWait");
         const GpuTicket t = tracker_.frameTicket(f - FrameRingCore::kSlots);
         if (!wait(t, 5ull * 1000 * 1000 * 1000, "frame_ring_slot")) {
             waitIdle("frame_ring_slot_timeout");
@@ -636,7 +638,10 @@ void VulkanContext::beginFrame() {
         }
     }
     frameRing_.beginFrame(f, slotFree);
-    if (textures_) { textures_->pump(); textures_->descriptors(); }
+    if (textures_) {
+        { ZoneScopedN("VKContext.TexturePump"); textures_->pump(); }
+        { ZoneScopedN("VKContext.TextureDescriptors"); textures_->descriptors(); }
+    }
 #endif
 }
 
@@ -649,6 +654,7 @@ void VulkanContext::drainDeferred(std::string_view why) {
 }
 
 void VulkanContext::endFrame() {
+    ZoneScopedN("VKContext.EndFrame");
 #ifdef MC2_VULKAN_ISLAND
     flushUploads();   // an upload queued this frame is submitted inside it, so the frame ticket covers its staging
 #endif
