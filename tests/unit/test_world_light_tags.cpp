@@ -1,6 +1,7 @@
 #include "doctest.h"
 #include "../../mclib/spotlight_diag.h"
 #include <cstdint>
+#include <memory>
 
 namespace {
 using DWORD = uint32_t;
@@ -15,6 +16,23 @@ struct CameraSlots {
     void updateLights() { ++updates; }
 #include "camera_world_lights.inc"
 };
+using CameraPtr = CameraSlots*;
+CameraPtr eye = nullptr;
+bool appearanceTypeList = true;
+struct PreviewAppearance {
+    CameraPtr* observed;
+    TG_LightPtr light;
+    long slot;
+    ~PreviewAppearance() {
+        *observed = eye;
+        eye->removeWorldLight(static_cast<DWORD>(slot), light);
+    }
+};
+struct SimpleCamera : CameraSlots {
+    std::unique_ptr<PreviewAppearance> pObject;
+    void releaseObject();
+};
+#include "camera_release_object.inc"
 using namespace mc2_spotlight_diag;
 struct Tags {
     Tags() { reset(); }
@@ -70,4 +88,25 @@ TEST_CASE("WorldLightTags/full pool and absent removal preserve live owners") {
     camera.removeWorldLight(UINT32_MAX, &lights[2]);
     CHECK_FALSE(is_e_slot(2, nullptr));
     CHECK(slot_owner(1) == &lights[1]);
+}
+
+TEST_CASE("WorldLightTags/preview teardown uses its owner camera and restores the active camera") {
+    Tags cleanup;
+    CameraSlots mainCamera;
+    SimpleCamera preview;
+    Light lamp;
+    const long slot = preview.addWorldLight(&lamp);
+    tag_slot(slot, Mech, &preview);
+    CameraPtr observed = nullptr;
+    preview.pObject = std::make_unique<PreviewAppearance>();
+    preview.pObject->observed = &observed;
+    preview.pObject->light = &lamp;
+    preview.pObject->slot = slot;
+    eye = &mainCamera;
+    preview.releaseObject();
+    CHECK(observed == &preview);
+    CHECK(eye == &mainCamera);
+    CHECK(preview.worldLights[slot] == nullptr);
+    CHECK_FALSE(is_e_slot(slot, nullptr));
+    eye = nullptr;
 }

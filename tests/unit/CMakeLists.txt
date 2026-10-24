@@ -532,6 +532,9 @@ endfunction()
 mc2_height_slice(camera_world_lights mclib/camera.h
     "long addWorldLight (" "glm::vec3 getScreenRes (")
 file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/camera_world_lights.inc" CONTENT "${camera_world_lights}")
+mc2_height_slice(camera_release_object code/simplecamera.cpp
+    "void SimpleCamera::releaseObject()" "SimpleCamera::~SimpleCamera()")
+file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/camera_release_object.inc" CONTENT "${camera_release_object}")
 target_sources(mc2_tests PRIVATE test_world_light_tags.cpp ${MC2_WORKTREE_ROOT}/mclib/spotlight_diag.cpp)
 set_source_files_properties(test_world_light_tags.cpp PROPERTIES INCLUDE_DIRECTORIES "${CMAKE_CURRENT_BINARY_DIR}")
 if(TARGET glm::glm)

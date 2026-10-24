@@ -61,7 +61,13 @@ SimpleCamera::SimpleCamera()
 void SimpleCamera::releaseObject()
 {
 	if (appearanceTypeList)
+	{
+		// Appearance-owned lamps belong to this preview camera, even when it is not rendering.
+		CameraPtr savedCamera = eye;
+		eye = this;
 		pObject.reset();
+		eye = savedCamera;
+	}
 	else
 		(void)pObject.release();
 }
