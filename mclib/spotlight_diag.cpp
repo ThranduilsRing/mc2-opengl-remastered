@@ -1,9 +1,6 @@
 // T1.16 — (E)-owned spotlight slot tagging registry implementation.
 //
-// See spotlight_diag.h. File-scope unordered_map<long, uint8_t> mapping
-// slotId -> SourceClass. Cheap O(1) lookups in Camera::updateLights; only
-// queried when MC2_SPOT_DIAG is set (callers check is_enabled() first to
-// avoid the lookup entirely in the default-off case).
+// Camera identity scopes slot numbers, including the shipped mover classification.
 
 #include "spotlight_diag.h"
 
@@ -18,9 +15,10 @@ namespace {
 
 struct SlotTag { uint8_t src; const void* owner; };
 
-std::unordered_map<long, SlotTag>& slot_map()
+using CameraTags = std::unordered_map<const void*, std::unordered_map<long, SlotTag>>;
+CameraTags& slot_map()
 {
-    static std::unordered_map<long, SlotTag> s_map;
+    static CameraTags s_map;
     return s_map;
 }
 
@@ -28,38 +26,55 @@ bool s_enabled_cached = mc2::gate::get<"MC2_SPOT_DIAG">();
 
 } // namespace
 
-void tag_slot(long slot, SourceClass src, const void* owner)
+void tag_slot(const void* camera, long slot, SourceClass src, const void* owner)
 {
     SlotTag t;
     t.src = static_cast<uint8_t>(src);
     t.owner = owner;
-    slot_map()[slot] = t;
+    slot_map()[camera][slot] = t;
 }
 
-const void* slot_owner(long slot)
+const void* slot_owner(const void* camera, long slot)
 {
-    auto& m = slot_map();
+    const auto cam = slot_map().find(camera);
+    if (cam == slot_map().end()) return nullptr;
+    const auto& [identity, m] = *cam;
     auto it = m.find(slot);
-    return (it == m.end()) ? nullptr : it->second.owner;
+    if (it == m.end()) return nullptr;
+    const auto& [index, tag] = *it;
+    return tag.owner;
 }
 
-void untag_slot(long slot)
+void untag_slot(const void* camera, long slot)
 {
-    slot_map().erase(slot);
+    auto& cameras = slot_map();
+    const auto cam = cameras.find(camera);
+    if (cam == cameras.end()) return;
+    auto& [identity, tags] = *cam;
+    tags.erase(slot);
+    if (tags.empty()) cameras.erase(cam);
 }
 
-bool is_e_slot(long slot, SourceClass* outSrc)
+bool is_e_slot(const void* camera, long slot, SourceClass* outSrc)
 {
-    auto& m = slot_map();
+    const auto cam = slot_map().find(camera);
+    if (cam == slot_map().end()) return false;
+    const auto& [identity, m] = *cam;
     auto it = m.find(slot);
     if (it == m.end()) return false;
-    if (outSrc) *outSrc = static_cast<SourceClass>(it->second.src);
+    const auto& [index, tag] = *it;
+    if (outSrc) *outSrc = static_cast<SourceClass>(tag.src);
     return true;
 }
 
 void reset()
 {
     slot_map().clear();
+}
+
+void reset(const void* camera)
+{
+    slot_map().erase(camera);
 }
 
 bool is_enabled()

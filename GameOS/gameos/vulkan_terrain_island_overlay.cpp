@@ -104,10 +104,13 @@ bool ovl_prepare_static(TerrainIsland* s, OvlState* o, const std::vector<OvlPend
         const VkDeviceSize bytes = static_cast<VkDeviceSize>(p.vertCount) * kOvlVertStride;
         if (o->statVersion == p.version && o->stat && bytes <= o->statCap) continue;
         ZoneScopedN("VKIsl.Overlay.StaticUpload");
-        mc2vk::getOrCreateEngineVulkanContext().waitIdle("terrain_overlay_static_grow");
-        o->stat.reset();
-        o->statCap = bytes + 256;
-        if (!make_buffer(s, o->stat, o->statCap, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, true, "terrain.overlay.stat")) return false;
+        if (!o->stat || o->statUsed || bytes > o->statCap) {
+            // A replaced bake may still be referenced by the preceding frame.
+            mc2vk::getOrCreateEngineVulkanContext().retire(std::move(o->stat), o->statCap);
+            o->statCap = bytes + 256;
+            if (!make_buffer(s, o->stat, o->statCap, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, true, "terrain.overlay.stat")) return false;
+            o->statUsed = false;
+        }
         void* dst = nullptr;
         if (vmaMapMemory(s->allocator, o->stat.allocation(), &dst) != VK_SUCCESS) return false;
         std::memcpy(dst, p.staticPtr, static_cast<size_t>(bytes));
@@ -323,17 +326,25 @@ extern "C" int mc2_vk_overlay_prewarm(int w,int h) {
         if(!ovl_init(s,s->ovl.get(),w,h)) { ovl_destroy(s); return 0; }
     }
     ZoneScopedN("VKIsl.Overlay.WarmStatic");
-    // Stage the mission-static stream and its texture descriptors while loading.
-    // Preserve any queued draws; the first real frame submits its own stream.
-    auto pending = std::move(g_ovlPending);
-    g_ovlPending.clear();
-    // No DrawDecalStatic() here: baking the cement decal VBO at load time (before the first frame)
-    // changes the cement slab edges (a dark 1px outline on mc2_01). The first real frame bakes and submits it.
-    const bool ready = ovl_prepare_static(s, s->ovl.get(), g_ovlPending);
-    for (const auto& p : g_ovlPending)
+    const void* verts = nullptr;
+    const Mc2VkOverlayDraw* draws = nullptr;
+    uint32_t vertCount = 0, drawCount = 0;
+    uint64_t version = 0;
+    if (!mc2_terrain_overlay_get_load_stream(&verts, &vertCount, &draws, &drawCount, &version)) return 0;
+    std::vector<OvlPending> staging;
+    if (vertCount && drawCount) {
+        OvlPending p;
+        p.isStatic = true; p.version = version; p.vertCount = vertCount;
+        p.staticPtr = static_cast<const uint8_t*>(verts);
+        p.draws.assign(draws, draws + drawCount);
+        staging.push_back(std::move(p));
+    }
+    bool ready = ovl_prepare_static(s, s->ovl.get(), staging);
+    for (const auto& p : staging)
         for (const auto& d : p.draws)
-            if (d.vertCount) ovl_get_tex(s, s->ovl.get(), d.texHandle);
-    g_ovlPending = std::move(pending);
+            if (d.vertCount && !ovl_get_tex(s, s->ovl.get(), d.texHandle)) ready = false;
+    vlog("[VK_TERRAIN_OVERLAY] prestage verts=%u draws=%u textures=%zu ready=%d.",
+        vertCount, drawCount, s->ovl->texs.size(), int(ready));
     return ready ? 1 : 0;
 }
 
@@ -367,7 +378,7 @@ extern "C" int mc2_vk_overlay_run(int w, int h) {
     VkDeviceSize dynBytes = 0;
     for (const OvlPending& p : pending) if (!p.isStatic) dynBytes += static_cast<VkDeviceSize>(p.vertCount) * kOvlVertStride;
 
-    // Persistent static bake: (re)upload when its version changes (device-idle: rare, mission load).
+    // Persistent static bake: upload only changed vertices, retiring the preceding version.
     if (!ovl_prepare_static(s, o, pending)) { o->disabled = true; return 0; }
     // Draw list in submission order; dynamic verts packed back to back.
     VkDeviceSize dynOff = 0;
@@ -487,6 +498,8 @@ extern "C" int mc2_vk_overlay_run(int w, int h) {
     si.commandBufferCount = 1; si.pCommandBuffers = &cb;
     { ZoneScopedN("VKIsl.Overlay.Submit");
       if (mc2vk::submitGraphics(si, fsC.fence) != VK_SUCCESS) { o->disabled = true; return 0; } }
+    if (boundStatic == 1 || std::any_of(items.begin(), items.end(), [](const Item& item) { return (item.kind & 4u) != 0; }))
+        o->statUsed = true;
 
     static bool s_firstOk = false;
     static unsigned long s_frames = 0;
@@ -515,6 +528,7 @@ extern "C" void mc2_vk_overlay_reset() {
     o->texs.clear();
     o->stat.reset();
     o->statCap = 0; o->statVersion = UINT64_MAX;
+    o->statUsed = false;
     if (o->texPool) vkResetDescriptorPool(s->device, o->texPool.get(), 0);
     o->dummy.set[0]=o->dummy.set[1]=VK_NULL_HANDLE;
     if (!ovl_alloc_tex_set(s, o, o->dummy)) { o->disabled = true; vlog("[VK_TERRAIN_OVERLAY] reset: dummy set failed -- disabled."); }

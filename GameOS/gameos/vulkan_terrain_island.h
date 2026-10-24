@@ -322,6 +322,9 @@ struct Mc2VkOverlayDraw {          // layout-matches GosDecalStaticDraw / Overla
     uint32_t firstVert;
     uint32_t vertCount;
 };
+// Load snapshot only; never queues a draw. The producer revalidates on frame 1.
+int mc2_terrain_overlay_get_load_stream(const void** verts, uint32_t* vertCount,
+    const Mc2VkOverlayDraw** draws, uint32_t* drawCount, uint64_t* version);
 struct Mc2VkOverlayFrame {         // GL-side per-frame overlay inputs (gameos_graphics.cpp)
     float   fogColor[4];           // gosRenderer fog_color_ (decal vertex-fog mix)
     float   artFlatExempt;         // always 0 (stock flat-pad multiply); kept for the push-constant layout

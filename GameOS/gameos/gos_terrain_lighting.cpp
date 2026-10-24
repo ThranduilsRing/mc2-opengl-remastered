@@ -649,7 +649,7 @@ void PackAndDispatch() {
             for (long s = 0; s < MAX_LIGHTS_IN_WORLD; ++s) {
                 if (!wl[s]) continue;
                 mc2_spotlight_diag::SourceClass src;
-                if (mc2_spotlight_diag::is_e_slot(s, &src)
+                if (mc2_spotlight_diag::is_e_slot(eye, s, &src)
                     && (src == mc2_spotlight_diag::Mech
                         || src == mc2_spotlight_diag::Gv))
                     s_moverLightPtrs.push_back(wl[s]);
@@ -710,7 +710,7 @@ void PackAndDispatch() {
             if (dumpThisFrame) {
                 const long slot = slotOf(tl);
                 mc2_spotlight_diag::SourceClass src;
-                const bool eOwned = mc2_spotlight_diag::is_e_slot(slot, &src);
+                const bool eOwned = mc2_spotlight_diag::is_e_slot(eye, slot, &src);
                 // owner prints like printf %p on MSVC x64: 16 upper-case hex digits, no 0x.
                 MC2_EVENT(Terrain, "LIGHT_POOL_DUMP", 1,
                     "idx={} slot={} type={} active={} ownerEnabled={} "
@@ -722,7 +722,7 @@ void PackAndDispatch() {
                     eOwned ? (src == mc2_spotlight_diag::Bldg ? "bldg"
                               : src == mc2_spotlight_diag::Mech ? "mech" : "gv")
                            : "other",
-                    reinterpret_cast<std::uintptr_t>(mc2_spotlight_diag::slot_owner(slot)),
+                    reinterpret_cast<std::uintptr_t>(mc2_spotlight_diag::slot_owner(eye, slot)),
                     (!s_visGate || tl->active) ? 1 : 0);
                 std::fflush(stderr);
             }

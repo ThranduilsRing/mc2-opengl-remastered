@@ -307,8 +307,9 @@ struct OvlState {
     mc2vk::OwnedDescriptorSetLayout texDsl;
     mc2vk::OwnedDescriptorPool texPool;
     mc2vk::OwnedSampler samp;
-    mc2vk::OwnedBuffer stat;   // persistent static bake (re-uploaded under a device idle at a map change); the dynamic stream is a frame-ring span
+    mc2vk::OwnedBuffer stat;   // persistent bake; replaced buffers retire after their last GPU use
     VkDeviceSize statCap = 0; uint64_t statVersion = UINT64_MAX;
+    bool statUsed = false;    // a load snapshot can be corrected in place before its first submit
     VkCommandBuffer cbuf[2] = {};   // allocated from the island's pool
     OvlTex dummy;
     std::unordered_map<uint32_t, OvlTex> texs;   // key: gos texture handle

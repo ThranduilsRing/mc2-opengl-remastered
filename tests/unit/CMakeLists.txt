@@ -539,6 +539,17 @@ mc2_height_slice(camera_release_object code/simplecamera.cpp
 file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/camera_release_object.inc" CONTENT "${camera_release_object}")
 target_sources(mc2_tests PRIVATE test_world_light_tags.cpp ${MC2_WORKTREE_ROOT}/mclib/spotlight_diag.cpp)
 set_source_files_properties(test_world_light_tags.cpp PROPERTIES INCLUDE_DIRECTORIES "${CMAKE_CURRENT_BINARY_DIR}")
+mc2_height_slice(overlay_static_upload GameOS/gameos/vulkan_terrain_island_overlay.cpp
+    "bool ovl_prepare_static(" "bool ovl_init(")
+file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/overlay_static_upload.inc" CONTENT "${overlay_static_upload}")
+mc2_height_slice(hud_warm_variants GameOS/gameos/engine_present_vk.cpp
+    "struct WarmVariant {" "for (const auto& variant : variants)")
+file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/hud_warm_variants.inc" CONTENT "${hud_warm_variants}")
+mc2_height_slice(overlay_road_inputs GameOS/gameos/gos_terrain_indirect_cement.cpp
+    "static bool TileIsRoadArt(" "void PopulateRecipeCementWords()")
+file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/overlay_road_inputs.inc" CONTENT "${overlay_road_inputs}")
+target_sources(mc2_tests PRIVATE test_overlay_prestage.cpp)
+set_source_files_properties(test_overlay_prestage.cpp PROPERTIES INCLUDE_DIRECTORIES "${CMAKE_CURRENT_BINARY_DIR}")
 if(TARGET glm::glm)
     mc2_height_slice(height_index mclib/mapdata.cpp
         "float MapData::terrainElevation( long indexY, long indexX )" "void MapData::setTerrain(")
