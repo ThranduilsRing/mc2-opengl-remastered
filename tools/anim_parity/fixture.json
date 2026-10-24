@@ -1,0 +1,4 @@
+{
+  "leaf": {"name": "GateDoor", "parent": "Frame", "pivot": [0, 0, 0], "min": [-1, 0, -2], "max": [1, 4, 2]},
+  "opening": {"frames": 3, "fps": 2, "positions": [[0, 0, 0], [0, -2.5, 0], [0, -5, 0]]}
+}

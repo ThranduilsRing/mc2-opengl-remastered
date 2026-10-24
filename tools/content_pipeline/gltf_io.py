@@ -413,6 +413,17 @@ def write_runtime_glb(scene: Scene, materials: list[Material], texture_names: di
     used = {}
     extras = {n.name: n.extras for n in scene.nodes if n.extras}
     pivots = {n.name: n.extras["mc2_pivot_tg_wu"] for n in scene.nodes if "mc2_pivot_tg_wu" in n.extras}
+    worlds = scene.world_matrices()
+    animated_parents = {}
+    for i, node in enumerate(scene.nodes):
+        if node.extras.get("mc2_anim_node"):
+            pivots.setdefault(node.name, worlds[i][:3, 3].tolist())
+        parent = node.parent
+        while parent >= 0 and not scene.nodes[parent].extras.get("mc2_anim_node"):
+            parent = scene.nodes[parent].parent
+        if parent >= 0:
+            animated_parents[node.name] = scene.nodes[parent].name
+            pivots.setdefault(node.name, worlds[i][:3, 3].tolist())
     # Attachment-only nodes carry authored light contracts and must survive baking.
     for node, world in zip(scene.nodes, scene.world_matrices()):
         if node.mesh is not None or not node.extras:
@@ -476,6 +487,18 @@ def write_runtime_glb(scene: Scene, materials: list[Material], texture_names: di
                 doc["nodes"][animated_roots[source_name]].setdefault("children", []).append(index)
                 continue
         doc["scenes"][0]["nodes"].append(index)
+    # Keep inherited motion, including through static intermediary nodes. Geometry
+    # remains baked in world orientation; only the pivot translations are local.
+    by_name = {node["name"]: i for i, node in enumerate(doc["nodes"])}
+    for name, parent in animated_parents.items():
+        if name not in by_name:
+            continue
+        index, parent_index = by_name[name], by_name[parent]
+        node = doc["nodes"][index]
+        node.pop("matrix", None)
+        node["translation"] = ((np.asarray(pivots[name]) - pivots[parent]) * [-1, -1, 1]).tolist()
+        doc["nodes"][parent_index].setdefault("children", []).append(index)
+        doc["scenes"][0]["nodes"].remove(index)
     if not doc["meshes"]:
         raise ValueError("scene has no geometry to write")
     if images:

@@ -611,7 +611,12 @@ long ImportShapeFromMesh(const aiScene* scene, unsigned meshIdx,
 	outShape.name = nodeNm; outShape.parent = parentNm;
 	outShape.center = outShape.relativeCenter = center;
 	if (keepPivot && strcmp(parentNm, "None") != 0)
-		outShape.relativeCenter = glm::vec3(0); // split and source share an absolute pivot
+	{
+		aiMatrix4x4 parentWorld;
+		for (const aiNode* ancestor = meshNode->mParent; ancestor; ancestor = ancestor->mParent)
+			parentWorld = ancestor->mTransformation * parentWorld;
+		outShape.relativeCenter -= toMC2Pos(aiVector3D(parentWorld.a4, parentWorld.b4, parentWorld.c4));
+	}
 	outShape.vertices = std::move(verts); outShape.triangles = std::move(tris);
 	return 0;
 }
@@ -1613,7 +1618,7 @@ long ImportGeometryFromFile(const char* path, TG_TypeMultiShape* out, bool autoG
 	const bool staticGlb = bakeNodeTransforms && std::string_view(path).ends_with(".glb") &&
 		std::string_view(path).starts_with("mods/mc2-industrial-kit/data/model_overrides/");
 	const std::string staticParameters = std::to_string(s_gltfAxis()) + ":" + ContentFloatKey(s_gltfYoff()) + ":" +
-		ContentFloatKey(s_gltfYawDeg()) + ":" + std::to_string(authoredColors) + ":static-glb/1";
+		ContentFloatKey(s_gltfYawDeg()) + ":" + std::to_string(authoredColors) + ":static-glb/2";
 	if (staticGlb) {
 		mc2::content::Asset cached;
 		cached.ground = autoGround ? mc2::gate::get<"MC2_GLTF_GROUND">() : 0;

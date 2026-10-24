@@ -1,0 +1,4 @@
+{
+  "parent": {"name": "Yaw", "pivot": [3, 4, 5], "axis": [0, 1, 0], "degrees": [0, 45, 90, 135, 180]},
+  "child": {"name": "Pitch", "offset": [2, 3, 1], "axis": [1, 0, 0], "degrees": [0, 20, 40, 20, 0]}
+}
