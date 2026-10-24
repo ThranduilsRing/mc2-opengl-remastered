@@ -20,6 +20,9 @@
 
 namespace mc2vk {
 bool uiTextureServiceReady() { return engineVulkanContextValid() && getOrCreateEnginePresentVk().valid(); }
+void finishUiTextureLoading() {
+    if (uiTextureServiceReady()) getOrCreateEngineVulkanContext().textures().finishLoading();
+}
 bool hasUiImage(RenderCore::TextureHandle handle) { return engineVulkanContextValid() && getOrCreateEngineVulkanContext().textures().contains(handle); }
 void invalidateUiImage(RenderCore::TextureHandle handle) {
     if (engineVulkanContextValid()) getOrCreateEngineVulkanContext().textures().invalidate(handle);

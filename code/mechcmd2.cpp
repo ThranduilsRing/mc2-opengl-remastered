@@ -10,6 +10,7 @@
 //===========================================================================//
 
 #include "mechcmd2_internal.h"
+#include "../GameOS/gameos/ui_texture.h"
 #include "render_resource_owners.h"
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"   // str<>()
@@ -1167,7 +1168,7 @@ void __stdcall InitializeGameEngine()
 		// Dialog images are created after Mission::init's load barrier.
 #ifdef MC2_VULKAN_ISLAND
 		{ ZoneScopedN("InitializeGameEngine finish UI textures");
-		  mc2vk::getOrCreateEngineVulkanContext().textures().finishLoading(); }
+		  mc2vk::finishUiTextureLoading(); }
 #endif
 	
 		{ ZoneScopedN("InitializeGameEngine loseFocusBehavior");
@@ -1289,7 +1290,3 @@ void __stdcall InitializeGameEngine()
     // sebi WTF? do we ned to do it for InitDW?
 	//__asm pop esi;
 }
-#ifdef MC2_VULKAN_ISLAND
-#include "../GameOS/gameos/vulkan_context.h"
-#include "../GameOS/gameos/vk_texture_residency.h"
-#endif
