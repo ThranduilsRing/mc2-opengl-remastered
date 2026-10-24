@@ -80,6 +80,7 @@ OvlTex* ovl_get_tex(TerrainIsland* s, OvlState* o, uint32_t gosHandle) {
         it->second.source=texels.bytes; return &it->second;
     }
     if (o->texs.size() >= kOvlMaxTex) return nullptr;
+    ZoneScopedN("VKIsl.Overlay.TextureFirstUse");
 
     if (w == 0 || h == 0 || w > 8192 || h > 8192) return nullptr;
 
@@ -95,6 +96,25 @@ OvlTex* ovl_get_tex(TerrainIsland* s, OvlState* o, uint32_t gosHandle) {
     vlog("[VK_TERRAIN_OVERLAY] texture cached: handle=%u %ux%u format=%u (%zu/%u).",
          gosHandle, w, h, texels.vkFormat, o->texs.size() + 1, kOvlMaxTex);
     return &o->texs.emplace(gosHandle, std::move(t)).first->second;
+}
+
+bool ovl_prepare_static(TerrainIsland* s, OvlState* o, const std::vector<OvlPending>& pending) {
+    for (const OvlPending& p : pending) {
+        if (!p.isStatic) continue;
+        const VkDeviceSize bytes = static_cast<VkDeviceSize>(p.vertCount) * kOvlVertStride;
+        if (o->statVersion == p.version && o->stat && bytes <= o->statCap) continue;
+        ZoneScopedN("VKIsl.Overlay.StaticUpload");
+        mc2vk::getOrCreateEngineVulkanContext().waitIdle("terrain_overlay_static_grow");
+        o->stat.reset();
+        o->statCap = bytes + 256;
+        if (!make_buffer(s, o->stat, o->statCap, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, true, "terrain.overlay.stat")) return false;
+        void* dst = nullptr;
+        if (vmaMapMemory(s->allocator, o->stat.allocation(), &dst) != VK_SUCCESS) return false;
+        std::memcpy(dst, p.staticPtr, static_cast<size_t>(bytes));
+        vmaUnmapMemory(s->allocator, o->stat.allocation());
+        o->statVersion = p.version;
+    }
+    return true;
 }
 
 bool ovl_init(TerrainIsland* s, OvlState* o, int w, int h) {
@@ -298,10 +318,23 @@ extern "C" void mc2_vk_overlay_submit(uint32_t kind, const void* verts, uint32_t
 extern "C" int mc2_vk_overlay_prewarm(int w,int h) {
     TerrainIsland* s=parkedIsland();
     if(!s || !s->inited || !mc2_vk_overlay_enabled()) return 0;
-    if(s->ovl) return 1;
-    s->ovl=std::make_unique<OvlState>();
-    if(!ovl_init(s,s->ovl.get(),w,h)) { ovl_destroy(s); return 0; }
-    return 1;
+    if(!s->ovl) {
+        s->ovl=std::make_unique<OvlState>();
+        if(!ovl_init(s,s->ovl.get(),w,h)) { ovl_destroy(s); return 0; }
+    }
+    ZoneScopedN("VKIsl.Overlay.WarmStatic");
+    // Stage the mission-static stream and its texture descriptors while loading.
+    // Preserve any queued draws; the first real frame submits its own stream.
+    auto pending = std::move(g_ovlPending);
+    g_ovlPending.clear();
+    // No DrawDecalStatic() here: baking the cement decal VBO at load time (before the first frame)
+    // changes the cement slab edges (a dark 1px outline on mc2_01). The first real frame bakes and submits it.
+    const bool ready = ovl_prepare_static(s, s->ovl.get(), g_ovlPending);
+    for (const auto& p : g_ovlPending)
+        for (const auto& d : p.draws)
+            if (d.vertCount) ovl_get_tex(s, s->ovl.get(), d.texHandle);
+    g_ovlPending = std::move(pending);
+    return ready ? 1 : 0;
 }
 
 extern "C" int mc2_vk_overlay_run(int w, int h) {
@@ -335,22 +368,7 @@ extern "C" int mc2_vk_overlay_run(int w, int h) {
     for (const OvlPending& p : pending) if (!p.isStatic) dynBytes += static_cast<VkDeviceSize>(p.vertCount) * kOvlVertStride;
 
     // Persistent static bake: (re)upload when its version changes (device-idle: rare, mission load).
-    for (const OvlPending& p : pending) {
-        if (!p.isStatic) continue;
-        const VkDeviceSize bytes = static_cast<VkDeviceSize>(p.vertCount) * kOvlVertStride;
-        if (o->statVersion == p.version && o->stat && bytes <= o->statCap) continue;
-        mc2vk::getOrCreateEngineVulkanContext().waitIdle("terrain_overlay_static_grow");
-        o->stat.reset();
-        o->statCap = bytes + 256;
-        if (!make_buffer(s, o->stat, o->statCap, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, true, "terrain.overlay.stat")) {
-            o->disabled = true; return 0;
-        }
-        void* dst = nullptr;
-        if (vmaMapMemory(s->allocator, o->stat.allocation(), &dst) != VK_SUCCESS) { o->disabled = true; return 0; }
-        std::memcpy(dst, p.staticPtr, static_cast<size_t>(bytes));
-        vmaUnmapMemory(s->allocator, o->stat.allocation());
-        o->statVersion = p.version;
-    }
+    if (!ovl_prepare_static(s, o, pending)) { o->disabled = true; return 0; }
     // Draw list in submission order; dynamic verts packed back to back.
     VkDeviceSize dynOff = 0;
     std::vector<std::pair<const OvlPending*, uint32_t>> dynRuns;   // (pending, first vertex in the dyn stream)

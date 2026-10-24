@@ -3,11 +3,10 @@
 // Single-source tag/untag set for the per-slot per-frame diagnostic that
 // converts T1.15's population-level "86-88% rejection" stat into per-slot
 // ground truth. Tagged at the three lazy-init sites (bldg/mech/gv) and
-// untagged at the matching destroy sites. Camera::updateLights consults
+// untagged by the camera when a slot is removed or reused. Camera::updateLights consults
 // is_e_slot() inside the POINT/SPOT branch to emit only on (E)-owned slots.
 //
-// Env-gated: MC2_SPOT_DIAG=1 enables the probe; default-off zero runtime
-// cost. See Debug Instrumentation Rule (demote-not-delete).
+// Tags also classify shipped mover pools; MC2_SPOT_DIAG gates diagnostic output.
 
 #pragma once
 #include <cstdint>
@@ -28,7 +27,7 @@ void tag_slot(long slot, SourceClass src, const void* owner = nullptr);
 // GHOST-LIGHT-DUMP-1: owner appearance recorded at tag time (null if none).
 const void* slot_owner(long slot);
 
-// Untag on destroy/teardown.
+// Camera slot ownership clears this on removal and before reuse.
 void untag_slot(long slot);
 
 // Membership probe — used by Camera::updateLights.
