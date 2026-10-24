@@ -9,17 +9,27 @@
 
 extern char missionName[];
 
-static bool bundledOverrideShadowed(const ModelOverrideRecord& ov, const char* iniName, const char* baseName)
+static bool bundledOverrideShadowed(const ModelOverrideRecord& ov, std::string_view iniName, std::string_view baseName)
 {
 	if (ov.manifestDir != "mods/mc2-industrial-kit/data/model_overrides") return false;
-	if (LookupModOwner(iniName)) return true;
+	const std::string iniPath(iniName), shapeName(baseName);
+	if (LookupModOwner(iniPath.c_str())) return true;
 	for (const char* ext : {".tgl", ".ase", ".glb", ".gltf"})
 	{
 		FullPathFileName path;
-		path.init(tglPath, baseName, ext);
+		path.init(tglPath, shapeName.c_str(), ext);
 		if (LookupModOwner(path)) return true;
 	}
 	return false;
+}
+
+static void discardBldgRenderOverrides(BldgAppearanceType& type)
+{
+	delete type.bldgRenderShape;
+	type.bldgRenderShape = nullptr;
+	for (auto& lod : type.bldgRenderLods) lod.reset();
+	type.bldgDmgRenderShape.reset();
+	type.propMaterialSource = nullptr;
 }
 
 // Imports one manifest-relative override GLB into shape and resolves its textures; false (logged)
@@ -417,11 +427,7 @@ void BldgAppearanceType::init (const char * fileName)
 		{
 			mc2::fmt::print_err("[MODOVERRIDE] staticProp '{}': missing animation node '{}'; keeping stock moving parts\n",
 				mc2::fmt::safe(bldgBaseName), mc2::fmt::safe(missing));
-			delete bldgRenderShape;
-			bldgRenderShape = nullptr;
-			for (auto& lod : bldgRenderLods) lod.reset();
-			bldgDmgRenderShape.reset();
-			propMaterialSource = nullptr;
+			discardBldgRenderOverrides(*this);
 		}
 	}
 	result = iniFile.seekBlock("AnimationNode");
@@ -515,17 +521,10 @@ void BldgAppearanceType::destroy (void)
 			delete bldgShape[i];
 			bldgShape[i] = nullptr;
 		}
-		bldgRenderLods[i].reset();
 	}
 
 	// MODEL-OVERRIDE dual-shape: free the render override shape if loaded.
-	if (bldgRenderShape)
-	{
-		delete bldgRenderShape;
-		bldgRenderShape = nullptr;
-	}
-	bldgDmgRenderShape.reset();
-    propMaterialSource = nullptr;
+	discardBldgRenderOverrides(*this);
 
  	if (bldgDmgShape)
 	{
