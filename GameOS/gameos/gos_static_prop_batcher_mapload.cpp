@@ -290,7 +290,7 @@ void GpuStaticPropBatcher::registerType(TG_TypeShape* typeShape, TG_TypeMultiSha
                 const std::string key(reinterpret_cast<const char*>(vert), kVertexStride);
                 const auto [entry, inserted] = vertexIndices.try_emplace(key, candidate);
                 if (inserted) s_stagingVbo.insert(s_stagingVbo.end(), vert, vert + kVertexStride);
-                s_stagingIbo.push_back(entry->second);
+                s_stagingIbo.push_back(std::get<1>(*entry));
             }
         }
 
