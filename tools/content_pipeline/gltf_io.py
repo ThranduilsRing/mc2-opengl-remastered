@@ -421,7 +421,9 @@ def write_runtime_glb(scene: Scene, materials: list[Material], texture_names: di
         doc["nodes"].append({"name": node.name, "matrix": matrix.T.reshape(-1).tolist(), "extras": node.extras})
         doc["scenes"][0]["nodes"].append(len(doc["nodes"]) - 1)
         used[node.name] = 1
+    animated_roots = {}
     for node_name, prim in scene.flattened():
+        source_name = node_name
         pivot = pivots.get(node_name)
         properties = extras.get(node_name, {})
         # The engine importer keys shapes by node name: every runtime node name is unique.
@@ -464,7 +466,16 @@ def write_runtime_glb(scene: Scene, materials: list[Material], texture_names: di
             node["translation"] = (np.asarray(pivot) * [-1, -1, 1]).tolist()
             node.setdefault("extras", {})["mc2_pivot_tg_wu"] = pivot
         doc["nodes"].append(node)
-        doc["scenes"][0]["nodes"].append(len(doc["nodes"]) - 1)
+        index = len(doc["nodes"]) - 1
+        if pivot is not None and properties.get("mc2_anim_node"):
+            if k == 0:
+                animated_roots[source_name] = index
+            else:
+                # Material splits share the animated source's pivot and track.
+                node["translation"] = [0, 0, 0]
+                doc["nodes"][animated_roots[source_name]].setdefault("children", []).append(index)
+                continue
+        doc["scenes"][0]["nodes"].append(index)
     if not doc["meshes"]:
         raise ValueError("scene has no geometry to write")
     if images:

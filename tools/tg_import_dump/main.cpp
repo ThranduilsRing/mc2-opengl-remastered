@@ -108,6 +108,9 @@ int main(int argc, char** argv) {
 
         std::printf("%s    {\"index\": %ld, \"node\": \"%s\", \"verts\": %d, \"tris\": %ld, \"slot0Tex\": \"%s\"",
                     firstShape ? "" : ",\n", i, s->getNodeId(), nv, nt, texbuf);
+        const auto pivot = s->GetNodeCenter(), relative = s->GetRelativeNodeCenter();
+        std::printf(", \"parent\": \"%s\", \"pivot\": [%.4f, %.4f, %.4f], \"relativePivot\": [%.4f, %.4f, %.4f]",
+                    s->getParentId(), pivot.x, pivot.y, pivot.z, relative.x, relative.y, relative.z);
         if (nv > 0)
             std::printf(", \"bbox\": {\"min\": [%.4f, %.4f, %.4f], \"max\": [%.4f, %.4f, %.4f]}",
                         lo[0], lo[1], lo[2], hi[0], hi[1], hi[2]);

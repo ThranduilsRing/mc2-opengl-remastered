@@ -21,8 +21,8 @@ from tools.content_pipeline.frontends import gltf_file
 ROUND1 = "smallfueltank pipetank largefueltank liquidstorage watertower straightpipe1 straightpipe2 straightpipe3 cornerpipe threewaypipe fourwaypipe endpipe fuelpipe industrialplant heavyindustrial factorymd".split()
 ROUND2 = "factorysm factorylg industrialcomplex processingplant purificationplant chemicalplant valvestation wasteprocessor weaponsfacility grainstorage civstoragea civstorageb civstoragec gantry crane".split()
 BAKES = {**dict.fromkeys(ROUND1, "t1"), **dict.fromkeys(ROUND2, "r2"),
-         "transformerstation": "e1", "powergenerator": "e5", "l_turretgenerator": "e5"}
-REVISIONS = {"t1": "round 1", "r2": "round 2", "e1": "7809b383d", "e5": "f57d04c6a"}
+         "transformerstation": "e1", "powergenerator": "b7", "l_turretgenerator": "b7"}
+REVISIONS = {"t1": "round 1", "r2": "round 2", "e1": "7809b383d", "b7": "1e3d3bca3"}
 
 
 def assets(root, work):
@@ -39,6 +39,9 @@ def assets(root, work):
         # preserves those transforms and fixes mirrored winding when flattening.
         repaired = 0
         for lod in a.states["intact"]:
+            for node, world in zip(lod.scene.nodes, lod.scene.world_matrices()):
+                if node.extras.get("mc2_anim_node"):
+                    node.extras["mc2_pivot_tg_wu"] = world[:3, 3].tolist()
             for mesh in lod.scene.meshes:
                 for p in mesh.primitives:
                     if p.tangents is None:

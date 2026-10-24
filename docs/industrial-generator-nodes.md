@@ -1,9 +1,14 @@
 # Industrial generator animation handoff
 
-The approved `f57d04c6a` exports flatten the moving geometry into one mesh.
-Both generators therefore deliberately keep their stock visuals and motion.
-The art worktree was only read. Add the following nodes to **every LOD** before
-replacing the stock render chain. Damaged/destroyed states remain stock.
+The approved b7 exports (`1e3d3bca3`) now retain actual moving `Coil` geometry
+in all three LODs. Both generators ship in Remastered; Classic and damaged/
+destroyed appearances keep stock meshes. The art worktree was only read.
+The historical stock pivots below describe the animation source, not a pivot
+to impose on the new geometry: its authored glTF pivot is `(0, 6.9, 0)` metres,
+or `(0, 27.6, 0)` in native TG world units after the bake's scale of four.
+The cooker preserves that origin and parents all four material splits under
+the first `Coil` mesh. The stock rotation track binds by name to this parent;
+the other sections inherit its transform rather than remaining stationary.
 
 Coordinates below are exact stock ASE `TM_POS`, followed by the native TG node
 centre `(-ASE.x, ASE.z, ASE.y)` in engine world units. These are absolute pivots,

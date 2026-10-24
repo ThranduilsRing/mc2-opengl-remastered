@@ -111,6 +111,32 @@ def test_ir_round_trip_preserves_transforms_normals_alpha(tmp_path):
         assert np.allclose(np.abs(prim.tangents[:, 3]), 1)
 
 
+def test_animated_material_splits_share_pivot_and_parent(tmp_path):
+    src, doc, *_ = make_gltf(tmp_path)
+    doc["nodes"] = [{"name": "Coil", "mesh": 0, "translation": [0, 6.9, 0],
+                     "extras": {"mc2_anim_node": "Coil"}}]
+    doc["meshes"][0]["primitives"] *= 2
+    src.write_text(json.dumps(doc))
+    asset = gltf_file.to_ir("generator", "staticProp:generator", src,
+                            meta={"frame": "gltf", "wu_per_unit": 4}, work_dir=tmp_path / "w")
+    scene = asset.lod0()
+    for node, world in zip(scene.nodes, scene.world_matrices()):
+        if node.extras.get("mc2_anim_node"):
+            node.extras["mc2_pivot_tg_wu"] = world[:3, 3].tolist()
+    data = gltf_io.write_runtime_glb(scene, asset.materials, {0: "albedo.png"})
+    runtime, _ = gltf_io.split_glb(data)
+    coil, split = runtime["nodes"]
+    assert coil["name"] == "Coil" and split["name"] == "Coil_1"
+    assert coil["children"] == [1] and runtime["scenes"][0]["nodes"] == [0]
+    assert coil["translation"] == pytest.approx([0, -27.6, 0])
+    assert split["translation"] == [0, 0, 0]
+    path = tmp_path / "runtime.glb"
+    path.write_bytes(data)
+    back, _, _ = gltf_io.read_gltf(path, frame="mc2_runtime")
+    for (_, expected), (_, actual) in zip(scene.flattened(), back.flattened()):
+        assert actual.positions == pytest.approx(expected.positions)
+
+
 def test_runtime_frame_is_axis0_inverse(tmp_path):
     src, *_ = make_gltf(tmp_path)
     asset = gltf_file.to_ir("panel", "staticProp:panel", src, meta={"frame": "gltf"}, work_dir=tmp_path / "w")

@@ -491,7 +491,10 @@ long ImportShapeFromMesh(const aiScene* scene, unsigned meshIdx,
 		 || (meshNode && meshNode->mMetaData && meshNode->mMetaData->HasKey("mc2_pivot_tg_wu")));
 	if (keepPivot) {
 		center = toMC2Pos(aiVector3D(instanceWorld->a4, instanceWorld->b4, instanceWorld->c4));
-		parentNm = "None";
+		// Material splits below an animated source follow the same stock track.
+		if (!(meshNode && meshNode->mParent && meshNode->mParent->mMetaData
+		      && meshNode->mParent->mMetaData->HasKey("mc2_anim_node")))
+			parentNm = "None";
 	}
 	// Baked instance: positions by the world matrix, normals by its inverse transpose; a mirroring
 	// transform reverses winding so faces stay front-facing.
@@ -607,6 +610,8 @@ long ImportShapeFromMesh(const aiScene* scene, unsigned meshIdx,
 	// Hand ownership of the vectors to the shape (no copy).
 	outShape.name = nodeNm; outShape.parent = parentNm;
 	outShape.center = outShape.relativeCenter = center;
+	if (keepPivot && strcmp(parentNm, "None") != 0)
+		outShape.relativeCenter = glm::vec3(0); // split and source share an absolute pivot
 	outShape.vertices = std::move(verts); outShape.triangles = std::move(tris);
 	return 0;
 }
