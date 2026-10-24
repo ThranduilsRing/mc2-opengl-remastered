@@ -2587,7 +2587,14 @@
         },
         {
           "path": "scripts/smoke_lib/firewall_dialog.py",
-          "line": 11,
+          "line": 12,
+          "evidence": "import",
+          "reference": "scripts.console_child",
+          "text": "from ..console_child import child_kwargs"
+        },
+        {
+          "path": "scripts/smoke_lib/firewall_dialog.py",
+          "line": 14,
           "evidence": "import",
           "reference": "console_child",
           "text": "from console_child import child_kwargs"
