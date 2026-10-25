@@ -73,16 +73,16 @@ PYTEST = [sys.executable, "-B", "-m", "pytest", "-q", "-p", "no:cacheprovider",
 TIMEOUT_S = 600
 
 
-ART_PREFIXES = ("tools/scifi_kit/", "tools/blender_pipeline/", "tools/kit/", "tools/mc2data/", "tools/content_pipeline/", "tools/ase_to_glb.py", "release_assets_src/", "examples/mods/", "mods/", "gameassets/", "data/")
+ART_PREFIXES = ("tools/scifi_kit/", "tools/blender_pipeline/", "tools/kit/", "tools/mc2data/", "tools/content_pipeline/", "tools/ase_to_glb.py", "tools/asset_cook/", "tools/material_cook/", "tools/mc2texcook/", "tools/mc2x_import/", "release_assets_src/", "examples/mods/", "mods/", "gameassets/", "data/")
 
 
 def art_changed(base: str) -> bool:
-    result = subprocess.run(["git", "diff", "--name-only", base, "HEAD"], cwd=ROOT,
+    result = subprocess.run(["git", "diff", "--name-only", "-z", base, "HEAD"], cwd=ROOT,
                             capture_output=True, text=True, check=True,
                             **console_child.child_kwargs(redirected=True))
     return any(p.startswith(ART_PREFIXES) or p.endswith((".blend", ".glb", ".ktx2", ".png", ".tga", ".fit", ".pak", ".fst"))
-               or p.startswith(("scripts/kit", "scripts/run_tools_tests", "scripts/check-contracts", "scripts/console_child", "scripts/module_test_cache", "scripts/test_audit_site/", "requirements", "pyproject.toml", "pytest.ini", "conftest.py"))
-               for p in (line.replace("\\", "/").lower() for line in result.stdout.splitlines()))
+               or p.startswith(("scripts/kit", "scripts/run_tools_tests", "scripts/check-contracts", "scripts/console_child", "scripts/manifest_schema", "scripts/mc2_env_pin", "scripts/module_test_cache", "scripts/test_audit_site/", "requirements", "pyproject.toml", "pytest.ini", "conftest.py"))
+               for p in (line.replace("\\", "/").lower() for line in result.stdout.split("\0")))
 
 
 def is_art_test(path):

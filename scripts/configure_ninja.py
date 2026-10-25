@@ -51,7 +51,9 @@ def compile_cache_env(root):
         roots |= {ln[9:].strip().replace("\\", "/") for ln in out.splitlines() if ln.startswith("worktree ")}
     except OSError:
         pass
-    return {"SCCACHE_DIR": SCCACHE_DIR, "SCCACHE_CACHE_SIZE": os.environ.get("SCCACHE_CACHE_SIZE", "50G"),
+    legacy = SCCACHE_DIR.replace("\\", "/").rstrip("/").lower() == "e:/mc2-compile-cache"
+    return {"SCCACHE_DIR": "G:/mc2-build/compile-cache" if legacy else SCCACHE_DIR,
+            "SCCACHE_CACHE_SIZE": "50G" if legacy else os.environ.get("SCCACHE_CACHE_SIZE", "50G"),
             "SCCACHE_BASEDIRS": ";".join(sorted(roots))}
 
 
@@ -65,9 +67,10 @@ def ensure_cache_server(root, env_extra):
     wanted_dir = env_extra["SCCACHE_DIR"].replace("\\", "/").lower()
     if want not in shown or wanted_dir not in shown.replace("\\", "/"):
         if os.name == "nt":
-            active = subprocess.run(["tasklist", "/FO", "CSV", "/NH"], capture_output=True, text=True,
-                                    **console_child.child_kwargs(redirected=True)).stdout.lower()
-            if any('"' + name + '"' in active for name in ("ninja.exe", "cl.exe", "link.exe")):
+            inventory = subprocess.run(["tasklist", "/FO", "CSV", "/NH"], capture_output=True, text=True,
+                                       **console_child.child_kwargs(redirected=True))
+            active = inventory.stdout.lower()
+            if inventory.returncode or any('"' + name + '"' in active for name in ("ninja.exe", "cl.exe", "link.exe")):
                 print("[sccache] restart deferred: a ninja/cl/link process is running", flush=True)
                 return
         subprocess.run([SCCACHE_EXE, "--stop-server"], env=env, capture_output=True, **console_child.child_kwargs(redirected=True))

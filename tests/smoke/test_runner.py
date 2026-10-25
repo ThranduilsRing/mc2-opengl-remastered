@@ -18,7 +18,7 @@ def test_run_fake_pass(tmp_path):
         exe=[sys.executable, str(FIX / "fake_mc2_pass.py")],
         profile="stock", stem="mc2_05", duration=1,
         heartbeat_timeout_load_s=60, heartbeat_timeout_play_s=3,
-        grace_s=5, env_extra={},
+        grace_s=30, env_extra={},
     )
     result = run_one(cfg)
     assert result.verdict.passed
@@ -54,7 +54,9 @@ def _run_fault(fault, *, load_to=60, play_to=3):
         exe=[sys.executable, str(FIX / "fake_mc2_fault.py"), "--fault", fault],
         profile="stock", stem="mc2_05", duration=1,
         heartbeat_timeout_load_s=load_to, heartbeat_timeout_play_s=play_to,
-        grace_s=5, env_extra={},
+        # Parallel contract rows can delay a synthetic Python child startup.
+        # The dedicated timeout fixture above keeps its zero-grace wall cap.
+        grace_s=30, env_extra={},
     )
     return run_one(cfg)
 
@@ -144,3 +146,14 @@ def test_run_fault_heartbeat_freeze_play():
     assert r.summary.mission_ready_ms is not None
     assert r.verdict.buckets == ["heartbeat_freeze_play"]
     assert not r.verdict.passed
+
+
+def test_fault_fixture_allows_slow_python_startup(tmp_path, monkeypatch):
+    real = FIX / "fake_mc2_fault.py"
+    delayed = tmp_path / "fake_mc2_fault.py"
+    delayed.write_text("import runpy, time\ntime.sleep(7)\nrunpy.run_path(" + repr(str(real)) + ", run_name='__main__')\n", encoding="utf-8")
+    monkeypatch.setitem(globals(), "FIX", tmp_path)
+    result = _run_fault("missing_file")
+    assert not result.killed_by_timeout
+    assert result.summary.missing_files >= 1
+    assert result.verdict.buckets == ["missing_file"]

@@ -94,7 +94,7 @@ def test_cached_immutable_overlay_preserves_links_and_private_configs(tmp_path):
     assert (layer / "data/types.fit").read_bytes() == b"private"
 
 
-@pytest.mark.parametrize("crash", [False, True])
+@pytest.mark.parametrize("crash", [False, True, "engine"])
 def test_battery_reuses_one_stage_and_cleans_even_on_exception(tmp_path, monkeypatch, crash):
     import os
     from types import SimpleNamespace
@@ -114,6 +114,8 @@ def test_battery_reuses_one_stage_and_cleans_even_on_exception(tmp_path, monkeyp
     def engine(cache, *a):
         cache.mkdir()
         (cache / "mc2.exe").write_bytes(b"exe")
+        if crash == "engine":
+            raise OSError("fixture launch failure")
         return {}
     monkeypatch.setattr(mod_smoke, "build_engine_cache", engine)
     monkeypatch.setattr(mod_smoke, "_load_deploy_payload", lambda: SimpleNamespace(ensure_terrain_materials=lambda *a: None))
@@ -138,7 +140,55 @@ def test_battery_reuses_one_stage_and_cleans_even_on_exception(tmp_path, monkeyp
             mod_smoke.battery(args)
     else:
         assert mod_smoke.battery(args) == 0
-    assert len(runs) == 2 and runs[0] == runs[1]
+    if crash == "engine":
+        assert runs == []
+    else:
+        assert len(runs) == 2 and runs[0] == runs[1]
     assert not list((tmp_path / "stages").rglob("*.pak"))
     assert not list((tmp_path / "stages").rglob("mc2.exe"))
     assert (mods / "parent/data/shared.pak").read_bytes() == b"packed"
+
+
+def test_cross_volume_asset_links_survive_cached_overlay_and_leave_sources_unchanged(tmp_path, monkeypatch):
+    import os
+    source, cache, staged = (tmp_path / n for n in ("source", "cache", "stage"))
+    (source / "data/missions").mkdir(parents=True)
+    (source / "data/missions/first.fit").write_bytes(b"mission")
+    (source / "data/packed.pak").write_bytes(b"packed")
+    (source / "data/config.fit").write_bytes(b"original")
+    probe = tmp_path / "link-probe"
+    try:
+        os.symlink(source / "data/packed.pak", probe)
+    except OSError as error:
+        if getattr(error, "winerror", None) == 1314:
+            pytest.skip("Windows file-link privilege unavailable; copy fallback has separate coverage")
+        raise
+    finally:
+        probe.unlink(missing_ok=True)
+    def different_volume(*a, **k):
+        raise OSError("fixture: cross-volume hardlink")
+    monkeypatch.setattr(os, "link", different_volume)
+    mod_smoke.overlay_mod(source, cache)
+    assert (cache / "data/packed.pak").is_symlink()
+    mod_smoke.overlay_mod(cache, staged, cached_links=True)
+    assert (staged / "data/packed.pak").read_bytes() == b"packed"
+    assert os.path.samefile(staged / "data/packed.pak", source / "data/packed.pak")
+    assert not (staged / "data/config.fit").is_symlink()
+    (staged / "data/config.fit").write_bytes(b"runtime edits")
+    assert (source / "data/config.fit").read_bytes() == b"original"
+    import shutil
+    shutil.rmtree(staged)
+    shutil.rmtree(cache)
+    assert (source / "data/packed.pak").read_bytes() == b"packed"
+
+
+def test_file_link_failure_falls_back_to_independent_copy(tmp_path, monkeypatch):
+    import os
+    source, dest = tmp_path / "asset.pak", tmp_path / "copy.pak"
+    source.write_bytes(b"asset")
+    def denied(*a, **k):
+        raise OSError("fixture: linking unavailable")
+    monkeypatch.setattr(os, "link", denied)
+    monkeypatch.setattr(os, "symlink", denied)
+    assert mod_smoke.place_file(source, dest) == "copy"
+    assert dest.read_bytes() == b"asset" and not os.path.samefile(source, dest)

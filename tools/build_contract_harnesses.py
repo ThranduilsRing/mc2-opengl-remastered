@@ -254,6 +254,7 @@ def main(argv=None):
     ap.add_argument("--config", default="RelWithDebInfo", choices=("RelWithDebInfo",))
     ap.add_argument("--unit", action="store_true", help="compatibility flag; native contracts now use doctest")
     ap.add_argument("--unit-only", action="store_true", help="omit Python contract suites")
+    ap.add_argument("--python-only", action="store_true", help="run only Python contracts; merge gate reuses its verified native unit receipt")
     ap.add_argument("--asan", action="store_true", help="MSVC AddressSanitizer; implies --unit-only")
     ap.add_argument("--preset", choices=bd.PRESETS, help="compiler preset; omitted preserves the MSVC trees")
     ap.add_argument("--keep-going", action="store_true", help="Ninja -k 0 / NMake /K in the selected preset tree")
@@ -267,6 +268,8 @@ def main(argv=None):
     ap.add_argument("--log-dir", help="complete mc2_tests configure/build logs")
     ap.add_argument("-j", dest="jobs", help="parallel jobs")
     args = ap.parse_args(argv)
+    if args.python_only and (not args.run or args.only or args.unit_only or args.unit or args.asan or args.seam):
+        ap.error("--python-only needs --run and cannot select native unit/seam checks")
     if args.seam_prebuilt and not args.seam_tree:
         ap.error("--seam-prebuilt needs --seam-tree")
     if args.seam_tree and not args.compile_cache:
@@ -280,12 +283,16 @@ def main(argv=None):
         unknown = unknown_selection(args.only)
         if unknown:
             ap.error("no registered contract or doctest case matches: " + ", ".join(sorted(unknown)))
-    ok, info = build_and_run_unit_tests(args.config, args.run, args.asan, args.only,
-                                       preset=args.preset, keep_going=args.keep_going,
-                                       log_dir=args.log_dir, jobs=args.jobs, cache=args.compile_cache, build_root=args.build_root)
-    print(f"  [{'PASS' if ok else 'FAIL'}] mc2_tests: {info}")
-    if not ok:
-        return 1
+    if args.python_only:
+        ok = True
+        print("[contracts] Python-only selection; native units are not rerun")
+    else:
+        ok, info = build_and_run_unit_tests(args.config, args.run, args.asan, args.only,
+                                           preset=args.preset, keep_going=args.keep_going,
+                                           log_dir=args.log_dir, jobs=args.jobs, cache=args.compile_cache, build_root=args.build_root)
+        print(f"  [{'PASS' if ok else 'FAIL'}] mc2_tests: {info}")
+        if not ok:
+            return 1
     if args.seam and not (args.asan or args.only):
         if args.build_root and not args.seam_tree:
             args.seam_tree = str(Path(args.build_root) / ("build-cc-order-seam" if args.compile_cache else "build64-order-seam"))

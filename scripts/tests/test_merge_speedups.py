@@ -126,7 +126,7 @@ def test_oversize_pdb_that_cannot_be_deleted_is_reported(tmp_path, monkeypatch, 
 
 def test_merge_ratchets_scan_worktree_before_verify():
     assert len([r for r in lm.RATCHETS if "--worktree" in r[2]]) == 4
-    assert lm.verify_env(ROOT)["MC2_NINJA_TREE"] == "build64-ninja" and lm.verify_env(ROOT)["MC2_UNIT_BUILD_DIR"] == os.path.join(ROOT, "build64-tests")
+    assert lm.verify_env(ROOT)["MC2_NINJA_TREE"] == "build64-ninja" and lm.verify_env(ROOT)["MC2_UNIT_BUILD_DIR"] == os.path.join(ROOT, "build-cc-tests")
 
 
 def test_deploy_checks_exe_bytes_even_with_fresh_header(tmp_path, capsys):
@@ -356,7 +356,7 @@ def test_gate_proofs_dir_routes_log_and_commands(tmp_path, monkeypatch):
     monkeypatch.setattr(gate, "execute", lambda steps, *a: seen.extend(steps) or 0)
     assert gate.main(["--dry-run", "--proofs-dir", str(tmp_path)]) == 0
     assert (tmp_path / "gate.log").is_file()
-    assert str(tmp_path / "before") in seen[0][1]
+    assert str(tmp_path / "before") in next(c for n, c, _ in seen if n == "capture-before")
 
 
 def test_gate_logs_lease_holder_and_age(monkeypatch, capsys):
@@ -420,6 +420,17 @@ def test_batch_resolution_error_explains_next_step(monkeypatch, capsys):
     (["scripts/generate_gates.py"], True, True),
     (["unknown/file.xyz"], True, True),
     (["tools/foo.py", "code/mission.cpp"], True, True),
+    (["scripts/deploy_payload.py"], True, True),
+    (["tools/mod_smoke.py"], True, True),
+    (["scripts/merge_gate.py"], True, True),
+    (["tests/saveload/baselines/mc2_10.json"], True, True),
+    (["tests/smoke/sim_determinism/data_overlay.json"], True, True),
+    (["tests/contract/default_build_quiet_baseline.json"], True, True),
+    (["tools/save_noise_mask.json"], True, True),
+    (["scripts/console_child.py"], True, True),
+    (["scripts/mc2_env_pin.py"], True, True),
+    (["tools/unknown_runtime_helper.py"], True, True),
+    (["scripts/tests/test_example.py"], False, False),
 ])
 def test_gate_diff_coverage(paths, sim, game):
     import merge_gate as gate
@@ -491,7 +502,161 @@ def test_gate_retains_both_art_modes_for_affected_saves_and_captures():
     assert names.index("capture-before-classic") < names.index("deploy")
     assert names.index("capture-after-classic") > names.index("deploy")
     assert "compare-captures-classic" in names
+    captures = {n: c for n, c, _ in steps if n.startswith("capture-")}
+    assert all("MC2_OPTIONS_OVERRIDE=RemasteredBuildings=" + ("FALSE" if n.endswith("-classic") else "TRUE") in c for n, c in captures.items())
     for mission in ("mc2_01", "mc2_03", "mc2_10", "mc2_16", "mc2_24"):
         modes = [(c, e) for n, c, e in steps if n.startswith("saveload-" + mission)]
         assert len(modes) == 2 and modes[0][0] != modes[1][0]
-        assert {e["MC2_OPTIONS_OVERRIDE"] for _, e in modes} == {"StaticPropPbr=TRUE", "StaticPropPbr=FALSE"}
+        assert {e["MC2_OPTIONS_OVERRIDE"] for _, e in modes} == {"RemasteredBuildings=TRUE", "RemasteredBuildings=FALSE"}
+
+
+@pytest.mark.parametrize("generator", ["Ninja", "Visual Studio", "missing"])
+def test_unit_runner_engine_cache_layout_and_required_coverage(tmp_path, generator):
+    from pathlib import Path
+    root = tmp_path / "repo"
+    (root / "scripts").mkdir(parents=True)
+    script = root / "scripts/run-unit-tests.sh"
+    script.write_bytes(Path(ROOT, "scripts/run-unit-tests.sh").read_bytes())
+    engine = "build64-ninja" if generator == "Ninja" else "build64"
+    (root / engine).mkdir()
+    (root / engine / "CMakeCache.txt").write_bytes(("CMAKE_GENERATOR:INTERNAL=" + generator + "\r\n").encode())
+    cfg = "" if generator == "Ninja" else "RelWithDebInfo/"
+    outputs = ["build64-tests/RelWithDebInfo/mc2_tests.exe", "build64-tests/RelWithDebInfo/test_render_contract_3.exe",
+               engine + "/tests/model_override/" + cfg + "model_override_tests.exe",
+               engine + "/tests/static_natural_skip/" + cfg + "static_natural_skip_policy_tests.exe"]
+    (root / "scripts/ninja_build.py").write_text("from pathlib import Path\nimport sys\nPath(__file__).parents[1].joinpath('ninja-calls').write_text(' '.join(sys.argv[1:]))\n")
+    fake = root / "cmake.sh"
+    fake.write_text('#!/usr/bin/env bash\nset -eu\nhere="$(cd "$(dirname "$0")" && pwd)"\n'
+                    'echo "$*" >> "$here/cmake-calls"\nfor rel in ' + " ".join(outputs) + '; do\n'
+                    'mkdir -p "$(dirname "$here/$rel")"\nprintf "#!/usr/bin/env bash\\nexit 0\\n" > "$here/$rel"\n'
+                    'chmod +x "$here/$rel"\ndone\n', encoding="utf-8", newline="\n")
+    fake.chmod(0o755)
+    env = dict(os.environ, MC2_CMAKE=fake.as_posix(), MC2_BUILD_JOBS="1", MC2_UNIT_BUILD_DIR=(root / "build64-tests").as_posix())
+    env.pop("MC2_NINJA_TREE", None)
+    if generator == "Ninja":
+        env["MC2_NINJA_TREE"] = "build64-ninja"
+    elif generator == "missing":
+        env["MC2_NINJA_TREE"] = "absent-engine"
+    result = subprocess.run([lm.git_bash(), script.as_posix()], cwd=root, env=env,
+                            capture_output=True, text=True, **console_child.child_kwargs(redirected=True))
+    if generator == "missing":
+        assert result.returncode != 0 and "requested engine cache is missing" in result.stdout
+    else:
+        assert result.returncode == 0, result.stdout + result.stderr
+        assert "run model_override_tests" in result.stdout
+        assert "run static_natural_skip_policy_tests" in result.stdout
+        assert "SKIP" not in result.stdout
+        if generator == "Ninja":
+            assert "model_override_tests static_natural_skip_policy_tests" in (root / "ninja-calls").read_text()
+
+
+@pytest.mark.parametrize("fail", [False, True])
+def test_game_batch_releases_and_reaps_its_holder(monkeypatch, fail):
+    import merge_gate as gate
+    import psutil
+    from smoke_lib import host_lease
+    monkeypatch.delenv(host_lease.BATCH_ENV, raising=False)
+    calls = []
+    monkeypatch.setattr(host_lease, "hold", lambda tag, **kw: calls.append(("hold", tag, kw)) or 123)
+    monkeypatch.setattr(host_lease, "release_batch", lambda tag: calls.append(("release", tag)))
+    monkeypatch.setattr(psutil, "Process", lambda pid: types.SimpleNamespace(wait=lambda **kw: calls.append(("wait", pid))))
+    try:
+        with gate.game_batch() as env:
+            assert env[host_lease.BATCH_ENV] == calls[0][1]
+            assert calls[0][2]["exclusive"] is None  # host policy / caller decides
+            if fail:
+                raise RuntimeError("fixture failed")
+    except RuntimeError as exc:
+        assert fail and str(exc) == "fixture failed"
+    assert [c[0] for c in calls] == ["hold", "release", "wait"]
+
+
+def test_runtime_chain_acquires_once_after_offline_checks(monkeypatch):
+    from contextlib import contextmanager
+    import merge_gate as gate
+    calls = []
+    @contextmanager
+    def batch():
+        calls.append("hold")
+        try:
+            yield {"MC2_HOST_LEASE_BATCH": "fixture"}
+        finally:
+            calls.append("release")
+    def runner(cmd, **kw):
+        calls.append(cmd[0])
+        if cmd[0] != "offline":
+            assert kw["env"]["MC2_HOST_LEASE_BATCH"] == "fixture"
+        return _r(0)
+    monkeypatch.setattr(gate, "run_child", runner)
+    monkeypatch.setattr(gate, "game_batch", batch)
+    monkeypatch.setattr(gate, "git", lambda *a: "head")
+    steps = [("contracts", ["offline"], {}), ("capture-before", ["before"], {}), ("deploy", ["deploy"], {}), ("tier1", ["smoke"], {})]
+    assert gate.execute(steps, "head", runner=runner) == 0
+    assert calls == ["offline", "hold", "before", "deploy", "smoke", "release"]
+
+
+@pytest.mark.parametrize("fresh", [True, False])
+def test_gate_reuses_only_fresh_same_head_unit_receipt(tmp_path, monkeypatch, fresh):
+    monkeypatch.delenv("MC2_IN_GATE", raising=False)
+    import json
+    import time
+    import merge_gate as gate
+    (tmp_path / "build64-ninja").mkdir()
+    (tmp_path / "build64-ninja/merge-window.json").write_text(json.dumps(
+        dict(head="head", base="base", verify="OK", started=time.time() - (0 if fresh else 3600))))
+    monkeypatch.setattr(gate, "ROOT", tmp_path)
+    monkeypatch.setattr(gate, "git", lambda *a: "head")
+    seen = []
+    monkeypatch.setattr(gate, "execute", lambda steps, *a: seen.extend(steps) or 0)
+    assert gate.main(["--dry-run", "--proofs-dir", str(tmp_path / "proof")]) == 0
+    cmd = next(c for n, c, _ in seen if n == "harnesses")
+    assert ("--python-only" in cmd) == fresh
+
+
+def test_art_selection_handles_git_quoted_unicode_paths(tmp_path, monkeypatch):
+    import run_tools_tests as tt
+    root = _throwaway_repo(tmp_path)
+    base = subprocess.check_output(["git", "-C", str(root), "rev-parse", "HEAD"], text=True,
+                                   **console_child.child_kwargs(redirected=True)).strip()
+    asset = root / "data/kit/caf\u00e9.glb"
+    asset.parent.mkdir(parents=True)
+    asset.write_bytes(b"fixture")
+    for args in (["add", "--", str(asset)], ["-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "asset"]):
+        subprocess.run(["git", "-C", str(root), *args], check=True, capture_output=True,
+                       **console_child.child_kwargs(redirected=True))
+    monkeypatch.setattr(tt, "ROOT", str(root))
+    assert tt.art_changed(base)
+
+
+def test_gate_without_window_receipt_keeps_full_both_mode_coverage(tmp_path, monkeypatch):
+    import merge_gate as gate
+    monkeypatch.delenv("MC2_IN_GATE", raising=False)
+    monkeypatch.setattr(gate, "ROOT", tmp_path)
+    monkeypatch.setattr(gate, "git", lambda *a: "head")
+    seen = []
+    monkeypatch.setattr(gate, "execute", lambda steps, *a: seen.extend(steps) or 0)
+    assert gate.main(["--dry-run", "--proofs-dir", str(tmp_path / "proof")]) == 0
+    assert len([n for n, _, _ in seen if n.startswith("saveload-")]) == 10
+    assert "capture-before-classic" in {n for n, _, _ in seen}
+    assert all("MC2_GATE_SKIP_REASON" not in env for name, _, env in seen
+               if name.startswith(("capture-", "saveload-", "determinism-")))
+
+
+def test_blocked_game_stages_report_missing_proof_without_launching(monkeypatch, capsys):
+    from contextlib import contextmanager
+    import merge_gate as gate
+    @contextmanager
+    def unavailable():
+        raise RuntimeError("fixture: FIFO queue busy")
+        yield {}
+    def runner(*a, **k):
+        pytest.fail("blocked stage must not launch")
+    monkeypatch.setattr(gate, "game_batch", unavailable)
+    monkeypatch.setattr(gate, "run_child", runner)
+    monkeypatch.setattr(gate, "git", lambda *a: "head")
+    steps=[("capture-before", ["capture"], {}), ("tier1", ["smoke"], {"MC2_GATE_COVERAGE": "missions assigned to shared proofs"})]
+    assert gate.execute(steps, "head", runner=runner) == 1
+    output=capsys.readouterr().out
+    assert output.count("FAIL: host game lease unavailable (not run)") == 2
+    assert "Coverage plan tier1:" in output
+    assert "Coverage tier1:" not in output

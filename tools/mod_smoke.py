@@ -120,7 +120,7 @@ def resolve_build(explicit: str | None, build_dir: str) -> tuple[Path, Path]:
 
 def place_file(source: Path, target: Path, link_ok: bool = True) -> str:
     """Put source at target, replacing whatever is there. Hardlink when the two
-    share a volume, else copy. The target is unlinked first so an existing
+    share a volume; immutable assets may use a file symlink across volumes. The target is unlinked first so an existing
     hardlink is replaced rather than written through. Returns 'link' or 'copy'."""
     target.parent.mkdir(parents=True, exist_ok=True)
     # Runtime immutable files may share a cached layer's inode. Keep a shared layer's existing link.
@@ -135,11 +135,17 @@ def place_file(source: Path, target: Path, link_ok: bool = True) -> str:
             return 'link'
         except OSError:
             pass
+        if source.suffix.lower() in IMMUTABLE_SUFFIXES - {'.exe', '.dll'}:
+            try:
+                os.symlink(source.resolve(), target)
+                return 'link'
+            except OSError:
+                pass  # hosts without file-link privilege retain the copy fallback
     shutil.copy2(source, target)
     return 'copy'
 
 
-def place_tree(source: Path, target: Path, link_ok: bool = True, keep=None, private_loose=False) -> dict:
+def place_tree(source: Path, target: Path, link_ok: bool = True, keep=None, private_loose=False, cached_links=False) -> dict:
     stats = {'files': 0, 'bytes': 0, 'linked': 0}
     for dirpath, dirnames, filenames in os.walk(source):
         dirnames.sort()
@@ -147,7 +153,7 @@ def place_tree(source: Path, target: Path, link_ok: bool = True, keep=None, priv
         (target / rel_dir).mkdir(parents=True, exist_ok=True)
         for name in sorted(filenames):
             src = Path(dirpath) / name
-            if src.is_symlink() or not src.is_file():
+            if (src.is_symlink() and not cached_links) or not src.is_file():
                 continue
             if keep is not None and not keep(src):
                 continue
@@ -295,14 +301,14 @@ def mod_layers(mod_root: Path, folder: str, base_mod: str | None) -> list[Path]:
     return layers
 
 
-def overlay_mod(layer: Path, target: Path, link_ok: bool = True) -> dict:
+def overlay_mod(layer: Path, target: Path, link_ok: bool = True, cached_links=False) -> dict:
     data = layer / 'data'
     if not data.is_dir():
         raise FileNotFoundError(f'mod has no data dir: {data}')
-    stats = place_tree(data, target / 'data', link_ok=link_ok, private_loose=True)
+    stats = place_tree(data, target / 'data', link_ok=link_ok, private_loose=True, cached_links=cached_links)
     assets = layer / 'assets'
     if assets.is_dir():
-        extra = place_tree(assets, target / 'assets', link_ok=link_ok, private_loose=True)
+        extra = place_tree(assets, target / 'assets', link_ok=link_ok, private_loose=True, cached_links=cached_links)
         stats['files'] += extra['files']
         stats['bytes'] += extra['bytes']
     stock = {s.lower() for s in STOCK_ROOT_FILES}
@@ -489,10 +495,10 @@ def fill_stock_gap(base_install: Path, target: Path) -> dict:
 
 
 def stage_mod(cache: Path, layers: list[Path], target: Path, stem: str,
-              base_install: Path | None = None) -> dict:
+              base_install: Path | None = None, cached_layers=False) -> dict:
     stats = {'engine': link_engine(cache, target), 'mod_files': 0, 'mod_bytes': 0}
     for layer in layers:
-        s = overlay_mod(layer, target)
+        s = overlay_mod(layer, target, cached_links=cached_layers)
         stats['mod_files'] += s['files']
         stats['mod_bytes'] += s['bytes']
     if base_install is not None:
@@ -587,7 +593,7 @@ def tree_identity(path: Path) -> dict:
         dirnames.sort()
         for name in sorted(filenames):
             file = Path(dirpath) / name
-            if not file.is_file() or file.is_symlink():
+            if not file.is_file():
                 continue
             count += 1
             total += file.stat().st_size
@@ -700,19 +706,19 @@ def battery(args) -> int:
     run_root.mkdir(parents=True, exist_ok=False)
     print('[mod_smoke] engine:', build)
     cache = run_root / '_engine'
-    summary = build_engine_cache(cache, build, build64, base_install)
-    print('[mod_smoke] engine payload:', json.dumps(summary), flush=True)
     rows = []
     layer_cache = {}
     staged = run_root / 'current'
-    staged.mkdir()
     try:
+        summary = build_engine_cache(cache, build, build64, base_install)
+        print('[mod_smoke] engine payload:', json.dumps(summary), flush=True)
+        staged.mkdir()
         for display, folder, layers, stem, how in plan:   # strictly one game at a time
             cached = []
             for layer in layers:
                 if layer not in layer_cache:
                     dest = run_root / '_layers' / layer.name
-                    overlay_mod(layer, dest, link_ok=False)
+                    overlay_mod(layer, dest)
                     layer_cache[layer] = dest
                 cached.append(layer_cache[layer])
             # Erase stale overlays and runtime output before switching mods. Files belonging
@@ -722,7 +728,7 @@ def battery(args) -> int:
             for old in staged.rglob('*'):
                 if old.is_file() and old.relative_to(staged) not in wanted:
                     old.unlink()
-            stats = stage_mod(cache, cached, staged, stem, base_install)
+            stats = stage_mod(cache, cached, staged, stem, base_install, cached_layers=True)
             stage_bookmarks(base_install, staged, args.keep_stages)
             _load_deploy_payload().ensure_terrain_materials(str(staged))
             print(f'[mod_smoke] {display}: mission {stem} ({how}); staged {stats}', flush=True)
@@ -743,6 +749,9 @@ def battery(args) -> int:
                     shutil.rmtree(disposable)
             for result in rows:
                 result['staged'] = 'deleted (logs retained)'
+            if not any(run_root.iterdir()):
+                run_root.rmdir()
+    run_root.mkdir(exist_ok=True)
     report = run_root / 'battery.json'
     report.write_text(json.dumps(rows, indent=2), encoding='utf-8')
     print(format_table(rows))

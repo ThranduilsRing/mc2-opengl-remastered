@@ -533,7 +533,7 @@ def verify_env(root: str) -> dict:
 
     The orchestrator owns this worktree exclusively during a merge window.
     """
-    return dict(os.environ, MC2_BUILD_JOBS=host_jobs(), CONTRACTS_JOBS=host_jobs(), MC2_NINJA_TREE="build64-ninja", MC2_UNIT_BUILD_DIR=os.path.join(root, "build64-tests"))
+    return dict(os.environ, MC2_BUILD_JOBS=host_jobs(), CONTRACTS_JOBS=host_jobs(), MC2_NINJA_TREE="build64-ninja", MC2_UNIT_BUILD_DIR=os.path.join(root, "build-cc-tests"))
 
 
 def verify_merged(root: str, mode: str, runner=None) -> tuple[str, list[tuple[str, int, str]]]:
