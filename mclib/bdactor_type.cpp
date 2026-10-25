@@ -487,6 +487,23 @@ void BldgAppearanceType::init (const char * fileName)
 	strcpy(elevationNodeId, "NONE");
 	if (iniFile.seekBlock("AnimationNode") == NO_ERR)
 		iniFile.readIdString("ElevationNodeId", elevationNodeId, TG_NODE_ID);
+	if (bldgRenderShape && S_stricmp(elevationNodeId, "NONE") != 0) {
+		bool complete = true;
+		for (long lod = 0; lod < MAX_LODS && complete; ++lod) {
+			auto* shape = getBldgRenderShape(lod);
+			for (const char* joint : {rotationalNodeId, elevationNodeId}) {
+				bool found = false;
+				for (long node = 0; node < shape->GetNumShapes(); ++node)
+					found |= S_stricmp(shape->GetNodeId(node), joint) == 0;
+				complete &= found;
+			}
+		}
+		if (!complete) {
+			mc2::fmt::print_err("[MODOVERRIDE] staticProp '{}': missing searchlight joint; keeping stock moving parts\n",
+				mc2::fmt::safe(bldgBaseName));
+			discardBldgRenderOverrides(*this);
+		}
+	}
 	
 	if (nFrameRate != 0.0f)
 	{
