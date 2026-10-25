@@ -38,7 +38,7 @@
         },
         {
           "path": "scripts/kit_payload.py",
-          "line": 67,
+          "line": 102,
           "evidence": "import",
           "reference": "bootstrap_worktree_build",
           "text": "from bootstrap_worktree_build import find_cmake"
@@ -741,7 +741,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/deploy_payload.py",
-          "line": 1889,
+          "line": 1891,
           "evidence": "command",
           "reference": "scripts/check-deploy-hygiene.py",
           "text": "r = subprocess.run([sys.executable, hygiene, target],"
@@ -1048,6 +1048,21 @@
           "evidence": "command",
           "reference": "scripts/check-json-isolation.sh",
           "text": "run_check \"json_isolation\"             \"sh scripts/check-json-isolation.sh\""
+        }
+      ],
+      "callers_by_stem": []
+    },
+    {
+      "path": "scripts/check-kit-visibility.py",
+      "basename": "check-kit-visibility.py",
+      "stem": "check-kit-visibility",
+      "callers_by_basename": [
+        {
+          "path": "scripts/tests/test_kit_visibility.py",
+          "line": 103,
+          "evidence": "load module",
+          "reference": "scripts/check-kit-visibility.py",
+          "text": "spec = importlib.util.spec_from_file_location(\"kit_check\", ROOT / \"scripts/check-kit-visibility.py\")"
         }
       ],
       "callers_by_stem": []
@@ -2119,7 +2134,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1532,
+          "line": 1533,
           "evidence": "command",
           "reference": "scripts/check_sim_include_firewall.py",
           "text": "run_check \"sim_include_firewall\"        \"py -3 -B scripts/tests/test_sim_include_firewall.py && py -3 scripts/check_sim_include_firewall.py\""
@@ -2221,7 +2236,7 @@
         },
         {
           "path": "scripts/kit_payload.py",
-          "line": 66,
+          "line": 101,
           "evidence": "import",
           "reference": "configure_ninja",
           "text": "import configure_ninja as cn"
@@ -2459,6 +2474,13 @@
           "text": "import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)"
         },
         {
+          "path": "scripts/check-kit-visibility.py",
+          "line": 10,
+          "evidence": "import",
+          "reference": "console_child",
+          "text": "import console_child"
+        },
+        {
           "path": "scripts/check-no-gl-compiler.py",
           "line": 14,
           "evidence": "import",
@@ -2509,7 +2531,7 @@
         },
         {
           "path": "scripts/kit_payload.py",
-          "line": 10,
+          "line": 11,
           "evidence": "import",
           "reference": "console_child",
           "text": "import console_child"
@@ -2786,6 +2808,13 @@
           "evidence": "import",
           "reference": "console_child",
           "text": "import console_child  # noqa: E402"
+        },
+        {
+          "path": "scripts/tests/test_kit_visibility.py",
+          "line": 16,
+          "evidence": "import",
+          "reference": "console_child",
+          "text": "import console_child"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
@@ -3991,6 +4020,13 @@
           "evidence": "import",
           "reference": "kit_payload",
           "text": "import kit_payload as kit"
+        },
+        {
+          "path": "scripts/tests/test_kit_visibility.py",
+          "line": 13,
+          "evidence": "import",
+          "reference": "kit_payload",
+          "text": "import kit_payload as kit"
         }
       ]
     },
@@ -4174,6 +4210,13 @@
       "stem": "merge_gate",
       "callers_by_basename": [],
       "callers_by_stem": [
+        {
+          "path": "scripts/tests/test_kit_visibility.py",
+          "line": 109,
+          "evidence": "import",
+          "reference": "merge_gate",
+          "text": "import merge_gate"
+        },
         {
           "path": "scripts/tests/test_merge_speedups.py",
           "line": 210,
@@ -4939,14 +4982,14 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1528,
+          "line": 1529,
           "evidence": "command",
           "reference": "scripts/run_tools_tests.py",
           "text": "run_check_tri \"tools_tests\"             \"py -3 scripts/run_tools_tests.py\""
         },
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1529,
+          "line": 1530,
           "evidence": "command",
           "reference": "scripts/run_tools_tests.py",
           "text": "run_check_tri \"kit_art\"                 \"py -3 scripts/run_tools_tests.py --suite art\""
@@ -7122,6 +7165,13 @@
       "callers_by_stem": []
     },
     {
+      "path": "scripts/tests/test_kit_visibility.py",
+      "basename": "test_kit_visibility.py",
+      "stem": "test_kit_visibility",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
       "path": "scripts/tests/test_lane_names.py",
       "basename": "test_lane_names.py",
       "stem": "test_lane_names",
@@ -7289,7 +7339,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1532,
+          "line": 1533,
           "evidence": "command",
           "reference": "scripts/tests/test_sim_include_firewall.py",
           "text": "run_check \"sim_include_firewall\"        \"py -3 -B scripts/tests/test_sim_include_firewall.py && py -3 scripts/check_sim_include_firewall.py\""
@@ -11168,6 +11218,13 @@
       "callers_by_basename": [],
       "callers_by_stem": [
         {
+          "path": "scripts/tests/test_kit_visibility.py",
+          "line": 14,
+          "evidence": "import",
+          "reference": "batch_cook",
+          "text": "import batch_cook"
+        },
+        {
           "path": "tools/mc2texcook/tests/test_mc2texcook.py",
           "line": 261,
           "evidence": "import",
@@ -11254,6 +11311,20 @@
       "stem": "mc2texcook",
       "callers_by_basename": [],
       "callers_by_stem": [
+        {
+          "path": "scripts/kit_payload.py",
+          "line": 27,
+          "evidence": "import",
+          "reference": "mc2texcook",
+          "text": "import mc2texcook"
+        },
+        {
+          "path": "scripts/tests/test_kit_visibility.py",
+          "line": 15,
+          "evidence": "import",
+          "reference": "mc2texcook",
+          "text": "import mc2texcook"
+        },
         {
           "path": "tools/mc2texcook/batch_cook.py",
           "line": 38,
