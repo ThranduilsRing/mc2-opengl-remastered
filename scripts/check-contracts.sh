@@ -1505,6 +1505,7 @@ run_check "manifest_schema"            "py -3 scripts/check-manifest-schema.py -
 run_check "mission_codec_golden"       "MC2_CODEC_REQUIRED=1 py -3 -B -m pytest tests/mapgen/test_mission_codec.py -q -p no:cacheprovider"
 run_check "scripts_tests"              "py -3 scripts/run_scripts_tests.py"
 run_check "network_startup"            "py -3 -B -m pytest scripts/tests/test_network_startup.py scripts/tests/test_firewall_dialog.py -q -p no:cacheprovider"
+run_check "kit_visibility"             "py -3 -B -m pytest scripts/tests/test_kit_visibility.py -q -p no:cacheprovider"
 
 # ---------------------------------------------------------------------------
 # TOOLS-TESTS-WIRE-1 (2026-10-09) -- the pytest modules that live NEXT TO their tools

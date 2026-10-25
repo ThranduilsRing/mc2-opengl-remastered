@@ -6,12 +6,47 @@ import re
 from pathlib import Path, PureWindowsPath
 import subprocess
 import sys
+from concurrent.futures import ThreadPoolExecutor
 
 import console_child
 
 KIT_REL = Path("mods/mc2-industrial-kit")
 MANIFEST = Path("data/kit/industrial-kit.json")
 IMPORT_ARGS = ["--no-ground", "--static-prop"]
+
+
+def reconcile_stock_textures(target_dir, inventory=None, jobs=1):
+    """Receipt only byte-proven stock sources and deterministic stock sidecars.
+
+    The pinned hashes were generated from stock art with batch_cook. Deployment
+    never trusts paired source existence, target art, or MOD overlay contents.
+    Unknown recipes and mismatched bytes retain user priority.
+    """
+    tools = Path(__file__).resolve().parents[1] / "tools/mc2texcook"
+    sys.path.insert(0, str(tools))
+    import mc2texcook
+    target = Path(target_dir)
+    if inventory is None:
+        inventory = json.loads((Path(__file__).resolve().parents[1] /
+            "data/kit/stock-textures.json").read_text())
+    sources = inventory["sha256"]
+    cooks = inventory["cooked_sha256"]
+
+    def reconcile(item):
+        rel, expected = item
+        path = contained_path(target, rel)
+        if not path.is_file():
+            return 0
+        data = path.read_bytes()
+        if hashlib.sha256(data).hexdigest() != expected:
+            return 0
+        mc2texcook.record_cook(path, verified_bytes=data)
+        return int(path.suffix == ".ktx2")
+
+    with ThreadPoolExecutor(max_workers=jobs) as pool:
+        count = sum(pool.map(reconcile, sorted({**sources, **cooks}.items())))
+    print(f"[deploy_payload] stock texture receipts verified/backfilled: {count}", flush=True)
+    return count
 
 
 def sha(path):

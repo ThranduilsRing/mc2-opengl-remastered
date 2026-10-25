@@ -14,11 +14,9 @@ static bool userBuildingAsset(std::string_view name)
 {
 	const std::string storage(name);
 	const auto* path = storage.c_str();
-	if (const auto* owner = LookupModOwner(path); owner && strcmp(owner, "mc2-industrial-kit") != 0)
-		return true;
-	if (!std::filesystem::is_regular_file(path)) return false;
-	if (verifiedLooseTextureCook(std::filesystem::path(storage))) return false;
-	return looseAssetDiffers(path, ReadArchiveBytes(path, 64u * 1024u * 1024u));
+	const auto* owner = LookupModOwner(path);
+	return userLooseBuildingAsset(name, owner ? owner : "",
+		[&] { return ReadArchiveBytes(path, 64u * 1024u * 1024u); });
 }
 
 static bool userBuildingShape(std::string_view name)

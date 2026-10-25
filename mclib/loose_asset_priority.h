@@ -8,7 +8,8 @@
 // Only a matching receipt proves cook provenance; a stock source alone does not.
 inline bool verifiedLooseTextureCook(const std::filesystem::path& path)
 {
-    if (path.extension() != ".ktx2") return false;
+    // Deploy also receipts byte-verified stock TGA sources (some are loose-only).
+    if (path.extension() != ".ktx2" && path.extension() != ".tga") return false;
     std::error_code error;
     const bool hasStamp = std::filesystem::exists(path.string() + ".cookstamp", error);
     if (error) return false;
@@ -39,4 +40,15 @@ inline bool looseAssetDiffers(std::string_view name, std::span<const unsigned ch
     for (unsigned char byte : stock)
         if (input.get() != byte) return true;
     return false;
+}
+
+template<class StockReader>
+inline bool userLooseBuildingAsset(std::string_view name, std::string_view owner,
+                                   StockReader&& readStock)
+{
+    if (!owner.empty() && owner != "mc2-industrial-kit") return true;
+    std::error_code error;
+    if (!std::filesystem::is_regular_file(std::filesystem::path(name), error)) return false;
+    if (verifiedLooseTextureCook(std::filesystem::path(name))) return false;
+    return looseAssetDiffers(name, readStock());
 }

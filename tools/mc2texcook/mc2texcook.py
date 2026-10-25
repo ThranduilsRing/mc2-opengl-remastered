@@ -316,10 +316,10 @@ def _generate_mips(base_img):
 # KTX2 writer
 # ---------------------------------------------------------------------------
 
-def record_cook(out_path: Path) -> None:
+def record_cook(out_path: Path, *, verified_bytes: bytes | None = None) -> None:
     """Record FNV-1a-64 of output bytes; edited sidecars retain user priority."""
     value = 14695981039346656037
-    for byte in out_path.read_bytes():
+    for byte in out_path.read_bytes() if verified_bytes is None else verified_bytes:
         value = ((value ^ byte) * 1099511628211) & 0xffffffffffffffff
     Path(str(out_path) + '.cookstamp').write_text(f'{value:016x}\n', encoding='ascii')
 
