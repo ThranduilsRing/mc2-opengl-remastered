@@ -53,3 +53,13 @@ def test_prune_removes_only_stages_older_than_a_day(tmp_path_factory):
     os.utime(old, (t, t))
     assert stage_root.prune_old(tmp_path) == 1
     assert not old.exists() and new.exists() and (tmp_path / "keep.txt").exists()
+
+
+def test_prune_preserves_persistent_cache(tmp_path):
+    root = tmp_path / 'mod_smoke-stage'
+    cache = root / '_cache'
+    cache.mkdir(parents=True)
+    old = time.time() - 3 * 86400
+    os.utime(cache, (old, old))
+    assert stage_root.prune_old(root, exclude=('_cache',)) == 0
+    assert cache.is_dir()

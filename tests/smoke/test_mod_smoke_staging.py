@@ -95,8 +95,9 @@ def test_cached_immutable_overlay_preserves_links_and_private_configs(tmp_path):
 
 
 @pytest.mark.parametrize("crash", [False, True, "engine"])
-def test_battery_reuses_one_stage_and_cleans_even_on_exception(tmp_path, monkeypatch, crash):
+def test_battery_isolates_workers_and_cleans_even_on_exception(tmp_path, monkeypatch, crash):
     import os
+    import threading
     from types import SimpleNamespace
     mods, base, build = tmp_path / "mods", tmp_path / "base", tmp_path / "build64-ninja"
     for root in (base, build):
@@ -120,14 +121,23 @@ def test_battery_reuses_one_stage_and_cleans_even_on_exception(tmp_path, monkeyp
     monkeypatch.setattr(mod_smoke, "build_engine_cache", engine)
     monkeypatch.setattr(mod_smoke, "_load_deploy_payload", lambda: SimpleNamespace(ensure_terrain_materials=lambda *a: None))
     runs = []
+    rendezvous = threading.Barrier(2)
+    warmed = False
     def run(stage, *a):
         runs.append((stage, (stage / "data/shared.pak").stat().st_ino))
-        if len(runs) == 2:
+        rendezvous.wait(timeout=5)  # both game workers must enter before either finishes
+        if stage.name == 'two':
             assert not (stage / "data/one-only.fit").exists()
             assert not (stage / "data/runtime-leak.fit").exists()
             if crash:
                 raise OSError("fixture launch failure")
         (stage / "data/runtime-leak.fit").write_bytes(b"runtime")
+        if warmed:
+            assert (stage / 'cache/content-model/model-one.mci').read_bytes() == b'cooked'
+            assert (stage / 'cache/content-model/model-two.mci').read_bytes() == b'cooked'
+        recipes = stage / 'cache/content-model'
+        recipes.mkdir(parents=True, exist_ok=True)
+        (recipes / f'model-{stage.name}.mci').write_bytes(b'cooked')
         (stage / "smoke.log").write_text("fixture")
         return {"exit": 0, "health": {"mech_ok": True, "ai_ok": True,
                  "mech_instances_max": 1, "mlr_mech_draws": 0, "first_brain_s": 0.2, "first_order_s": None}}
@@ -143,10 +153,16 @@ def test_battery_reuses_one_stage_and_cleans_even_on_exception(tmp_path, monkeyp
     if crash == "engine":
         assert runs == []
     else:
-        assert len(runs) == 2 and runs[0] == runs[1]
-    assert not list((tmp_path / "stages").rglob("*.pak"))
+        assert len(runs) == 2 and runs[0][0] != runs[1][0]
+        assert runs[0][1] == runs[1][1]  # same immutable parent inode
+        assert all(not stage.exists() for stage, _ in runs)
+    assert all('_cache' in p.parts for p in (tmp_path / "stages").rglob("*.pak"))
     assert not list((tmp_path / "stages").rglob("mc2.exe"))
     assert (mods / "parent/data/shared.pak").read_bytes() == b"packed"
+    if not crash:
+        warmed = True
+        assert mod_smoke.battery(args) == 0
+        assert len(runs) == 4
 
 
 def test_cross_volume_asset_links_survive_cached_overlay_and_leave_sources_unchanged(tmp_path, monkeypatch):
@@ -169,6 +185,9 @@ def test_cross_volume_asset_links_survive_cached_overlay_and_leave_sources_uncha
         raise OSError("fixture: cross-volume hardlink")
     monkeypatch.setattr(os, "link", different_volume)
     mod_smoke.overlay_mod(source, cache)
+    engine_stage = tmp_path / 'engine-stage'
+    mod_smoke.link_engine(cache, engine_stage)
+    assert (engine_stage / 'data/packed.pak').read_bytes() == b'packed'
     assert (cache / "data/packed.pak").is_symlink()
     mod_smoke.overlay_mod(cache, staged, cached_links=True)
     assert (staged / "data/packed.pak").read_bytes() == b"packed"

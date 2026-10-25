@@ -61,6 +61,7 @@ LEDGER = os.path.join(ROOT, "scripts", "tools_tests.known-failures")
 # Modules driven by a different check-contracts row; running them again here
 # would only double the cost.
 EXCLUDE = {
+    "tests/smoke/test_mod_smoke_staging.py",  # row mod_smoke
     "tools/cxx17_ratchet/test_cxx17_ratchet.py",  # row cxx17_ratchet_selftest
     "tools/vfx_oracle/test_compare_combat_traces.py",  # collected by test_vfx_parity_oracle
     # Assembles release zips and launches a game smoke: needs artifacts + a

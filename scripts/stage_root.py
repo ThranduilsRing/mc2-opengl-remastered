@@ -26,7 +26,7 @@ def preflight(root, min_gb=MIN_FREE_GB):
                       f"free space or pass --stage-root on another drive")
 
 
-def prune_old(root, days=1):
+def prune_old(root, days=1, exclude=()):
     """Delete stage directories directly under root that were last modified more than days ago (a PASS deletes its own stage,
     so what is left is failed runs). Returns the number removed."""
     root = Path(root)
@@ -37,6 +37,8 @@ def prune_old(root, days=1):
     cutoff = time.time() - days * 86400
     removed = 0
     for child in root.iterdir():
+        if child.name in exclude:
+            continue
         try:
             if child.is_dir() and child.stat().st_mtime < cutoff:
                 shutil.rmtree(child, ignore_errors=True)
