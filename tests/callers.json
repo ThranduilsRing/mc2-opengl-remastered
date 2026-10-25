@@ -8249,7 +8249,7 @@
       "callers_by_stem": [
         {
           "path": "tools/content_pipeline/tests/test_content_pipeline.py",
-          "line": 561,
+          "line": 581,
           "evidence": "import",
           "reference": "test_ase_submaterial",
           "text": "from test_ase_submaterial import SINGLE_MAT_ASE"
@@ -8920,21 +8920,21 @@
         },
         {
           "path": "tools/content_pipeline/tests/test_content_pipeline.py",
-          "line": 268,
+          "line": 288,
           "evidence": "import",
           "reference": "tools.content_pipeline.cook",
           "text": "from tools.content_pipeline.cook import build_asset"
         },
         {
           "path": "tools/content_pipeline/tests/test_content_pipeline.py",
-          "line": 336,
+          "line": 356,
           "evidence": "import",
           "reference": "tools.content_pipeline.cook",
           "text": "from tools.content_pipeline.cook import cook"
         },
         {
           "path": "tools/content_pipeline/tests/test_content_pipeline.py",
-          "line": 349,
+          "line": 369,
           "evidence": "import",
           "reference": "tools.content_pipeline.cook",
           "text": "from tools.content_pipeline.cook import cook"
@@ -8984,7 +8984,7 @@
         },
         {
           "path": "tools/content_pipeline/tests/test_content_pipeline.py",
-          "line": 321,
+          "line": 341,
           "evidence": "import",
           "reference": "tools.content_pipeline.frontends",
           "text": "from tools.content_pipeline.frontends import stock_meshdump"
@@ -9114,7 +9114,7 @@
         },
         {
           "path": "tools/content_pipeline/tests/test_content_pipeline.py",
-          "line": 321,
+          "line": 341,
           "evidence": "import",
           "reference": "tools.content_pipeline.frontends.stock_meshdump",
           "text": "from tools.content_pipeline.frontends import stock_meshdump"
@@ -9690,7 +9690,7 @@
       "callers_by_stem": [
         {
           "path": "tools/content_pipeline/tests/test_content_pipeline.py",
-          "line": 335,
+          "line": 355,
           "evidence": "import",
           "reference": "tools.examples.build_modern_tree_pack",
           "text": "from tools.examples.build_modern_tree_pack import recipe"

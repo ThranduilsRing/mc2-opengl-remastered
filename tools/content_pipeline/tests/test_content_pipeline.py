@@ -243,6 +243,26 @@ def test_runtime_prunes_unreferenced_vertices_without_changing_corners(tmp_path)
         assert np.allclose(actual[idx], values[expected.indices.reshape(-1)], atol=1e-5)
 
 
+def test_glass_panes_export_distinct_flat_cell_ids():
+    points = np.array([[0, 0, 0], [1, 0, 0], [1, 1, 0], [0, 1, 0],
+                       [2, 0, 0], [3, 0, 0], [3, 1, 0], [2, 1, 0]], float)
+    faces = np.array([[0, 1, 2], [0, 2, 3], [4, 5, 6], [4, 6, 7]])
+    scene = ir.Scene(nodes=[ir.Node("panes", mesh=0), ir.Node("wall", mesh=1)], meshes=[
+        ir.Mesh("panes", [ir.Primitive(points, faces, 0)]),
+        ir.Mesh("wall", [ir.Primitive(points, faces, 1)])])
+    materials = [ir.Material.for_class("panes", "glass"), ir.Material("wall")]
+    raw = gltf_io.write_runtime_glb(scene, materials, {})
+    assert raw == gltf_io.write_runtime_glb(scene, materials, {})
+    doc, binary = gltf_io.split_glb(raw)
+    glass, wall = [m["primitives"][0] for m in doc["meshes"]]
+    ids = gltf_io.read_accessor(doc, [binary], glass["attributes"]["TEXCOORD_1"])
+    assert np.all(ids[:4, 0] == 1) and np.all(ids[4:, 0] == 2)
+    assert np.all(ids[:, 1] == 0) and "TEXCOORD_1" not in wall["attributes"]
+    for field in ("POSITION", "NORMAL"):
+        np.testing.assert_array_equal(gltf_io.read_accessor(doc, [binary], glass["attributes"][field]),
+                                      gltf_io.read_accessor(doc, [binary], wall["attributes"][field]))
+
+
 def test_authored_image_rows_match_native_tg_uvs(tmp_path):
     # Assimp glTF2Importer flips V, then toMC2V flips it back. Preserve the
     # original glTF/PIL row order; a uniform-colour fixture cannot test this.

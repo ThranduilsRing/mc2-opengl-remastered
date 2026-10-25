@@ -366,6 +366,36 @@ class _Builder:
         return len(self.accessors) - 1
 
 
+def _tag_glass_cells(doc, builder):
+    """UV1 carries stable connected-pane IDs for the engine's night windows."""
+    cell = 1
+    for mesh in doc.get("meshes", []):
+        for prim in mesh["primitives"]:
+            material = doc["materials"][prim.get("material", 0)]
+            attrs = prim["attributes"]
+            if material.get("extras", {}).get("mc2_material_class") != "glass" or "TEXCOORD_1" in attrs:
+                continue
+            count = doc["accessors"][attrs["POSITION"]]["count"]
+            parent = list(range(count))
+
+            def root(i):
+                while parent[i] != i:
+                    parent[i] = parent[parent[i]]
+                    i = parent[i]
+                return i
+
+            triangles = read_accessor(doc, [builder.bin], prim["indices"]).reshape(-1, 3)
+            for a, b, c in triangles:
+                parent[root(int(b))] = parent[root(int(c))] = root(int(a))
+            _, ids = np.unique([root(i) for i in range(count)], return_inverse=True)
+            uv = np.zeros((count, 2), "<f4")
+            uv[:, 0] = ids + cell
+            cell += int(ids.max()) + 1
+            if cell > 16777216:
+                raise ValueError("glass cell IDs exceed the engine's 24-bit range")
+            attrs["TEXCOORD_1"] = builder.add(uv, "VEC2", 5126, 34962)
+
+
 def smooth_normals(positions, indices):
     """Angle-weighted vertex normals for a primitive that arrived without any."""
     tri = positions[indices]
@@ -523,10 +553,11 @@ def write_runtime_glb(scene: Scene, materials: list[Material], texture_names: di
         doc["scenes"][0]["nodes"] = [len(doc["nodes"]) - 1]
     if images:
         doc["images"], doc["textures"] = images, textures
+    doc["bufferViews"], doc["accessors"] = b.views, b.accessors
+    _tag_glass_cells(doc, b)
     while len(b.bin) % 4:
         b.bin.append(0)
     doc["buffers"] = [{"byteLength": len(b.bin)}]
-    doc["bufferViews"], doc["accessors"] = b.views, b.accessors
     body = json.dumps(doc, separators=(",", ":"), sort_keys=True).encode("utf-8")
     body += b" " * (-len(body) % 4)
     total = 12 + 8 + len(body) + 8 + len(b.bin)
