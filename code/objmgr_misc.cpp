@@ -520,12 +520,15 @@ void presentationPose(GameObject* object, glm::vec3& pos, float& rot)
 	if (handle < 0 || static_cast<size_t>(handle) >= s_interpPose.size()) return;
 	const InterpPose& prev = s_interpPose[handle];
 	if (prev.stamp != s_interpStamp) return;   // spawned since the snapshot: nothing to blend from
-	auto animation = prev.animation;
+	// Copy straight into the retained render state; a temporary would allocate
+	// fresh weapon-node vectors for every mover on every presentation frame.
+	auto* appearance = object->getAppearance();
+	appearance->presentAnimation(prev.animation);
+	auto& animation = appearance->unitAnim();
 	if (animation.currentGestureId == prev.previousAnimation.currentGestureId &&
         animation.currentFrame >= prev.previousAnimation.currentFrame)
         animation.currentFrame = prev.previousAnimation.currentFrame +
             (animation.currentFrame - prev.previousAnimation.currentFrame) * s_presentationAlpha;
-	object->getAppearance()->presentAnimation(animation);
 	pos = prev.current; rot = prev.heading;
 	const float a = s_presentationAlpha;
 	pos.x = prev.pos.x + (pos.x - prev.pos.x) * a;
@@ -585,6 +588,7 @@ void GameObjectManager::updateAppearancesOnly( bool terrain, bool movers, bool o
 
 	if (terrain && renderObjects)
 	{
+		ZoneScopedN("GameLogic.Presentation.Terrain");
         updateReadbackSnapshot();
         updateActiveSweep();
 		int frameJobsPrePassCount = 0;
@@ -607,7 +611,7 @@ void GameObjectManager::updateAppearancesOnly( bool terrain, bool movers, bool o
 						Terrain::objVertexActive[objList[objIndex]->getVertexNum()] &&
 						objList[objIndex]->getExists())
 					{
-						if (objList[objIndex]->getAppearance()->recalcBounds()) 
+						if (objList[objIndex]->getAppearance()->recalcBounds())
 						{
 							// Must force here as well.
 							glm::vec3 pos = objList[objIndex]->getPosition();
@@ -634,10 +638,12 @@ void GameObjectManager::updateAppearancesOnly( bool terrain, bool movers, bool o
 		}
 	}
 
-	if (movers) 
+	if (movers)
 	{
+		ZoneScopedN("GameLogic.Presentation.Movers");
 		if (mechs) 
 		{
+			ZoneScopedN("GameLogic.Presentation.Mechs");
 			for (long i = 0; i < numMechs; i++)
 				if (mechs[i] && mechs[i]->getExists())
 				{
@@ -664,6 +670,7 @@ void GameObjectManager::updateAppearancesOnly( bool terrain, bool movers, bool o
 
 		if (vehicles) 
 		{
+			ZoneScopedN("GameLogic.Presentation.Vehicles");
 			for (long i = 0; i < numVehicles; i++)
 				if (vehicles[i] && vehicles[i]->getExists())
 				{
@@ -687,6 +694,7 @@ void GameObjectManager::updateAppearancesOnly( bool terrain, bool movers, bool o
 	}
 
 	if (other) {
+		ZoneScopedN("GameLogic.Presentation.Other");
 		//---------------------------------------
 		// All other objects should be updated...
 		if (turrets) 

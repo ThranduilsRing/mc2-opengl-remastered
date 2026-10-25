@@ -12,6 +12,7 @@
 
 #include <algorithm>
 #include "cone_glow.h"
+#include "cone_beam_links.h"
 #include "vis_semantics.h"   // VISIBILITY-SEMANTICS-1 supersession
 
 #include "msl.h"
@@ -474,15 +475,23 @@ int GetNodeBeams(TG_MultiShape* shape, long nodeId, NodeBeam* out, int maxBeams)
     const int nVerts = const_cast<TG_TypeShape*>(ts)->GetNumTypeVertices();
     const long nTris = ts->GetNumTypeTriangles();
     if (!verts || !tris || nVerts < 3 || nVerts > kMaxConeVerts || nTris <= 0) return 0;
+    bool apexTags[kMaxConeVerts] = {};
+    int apexCount = 0;
+    for (int a = 0; a < nVerts; ++a) {
+        apexTags[a] = isApexTag(verts[a].aRGBLight);
+        apexCount += apexTags[a] ? 1 : 0;
+    }
     if (!out) {   // count only (mesh data; no pose needed)
-        int n = 0;
-        for (int a = 0; a < nVerts; ++a) n += isApexTag(verts[a].aRGBLight) ? 1 : 0;
-        return std::min(n, maxBeams);
+        return std::min(apexCount, maxBeams);
     }
     {   // Not transformed yet (same sentinel as QueueConeGlow): the beams have no world pose.
         const float* m = glm::value_ptr(rec->shapeToWorld);
         if (std::fabs(m[3]) + std::fabs(m[7]) + std::fabs(m[11]) < 0.01f) return -1;
     }
+    // A uniformly tagged mesh has no dark beam base. In particular, white
+    // override meshes used to rescan every triangle for every vertex here.
+    if (apexCount == 0 || apexCount == nVerts) return 0;
+    const auto links = beamBaseLinks(apexTags, nVerts, tris, nTris);
     const float scalar = rec->node->GetShapeScalarValue();
     const float sc = scalar > 0.0f ? scalar : 1.0f;
     const auto toWorld = [&](const glm::vec3& local) {
@@ -492,16 +501,8 @@ int GetNodeBeams(TG_MultiShape* shape, long nodeId, NodeBeam* out, int maxBeams)
     int count = 0;
     for (int a = 0; a < nVerts && count < maxBeams; ++a)
     {
-        if (!isApexTag(verts[a].aRGBLight)) continue;
-        bool linked[kMaxConeVerts] = {};
-        for (long f = 0; f < nTris; ++f)
-        {
-            const DWORD* v = tris[f].Vertices;
-            if (v[0] != static_cast<DWORD>(a) && v[1] != static_cast<DWORD>(a) && v[2] != static_cast<DWORD>(a)) continue;
-            for (int k = 0; k < 3; ++k)
-                if (v[k] < static_cast<DWORD>(nVerts) && v[k] != static_cast<DWORD>(a) && !isApexTag(verts[v[k]].aRGBLight))
-                    linked[v[k]] = true;
-        }
+        if (!apexTags[a]) continue;
+        const auto& linked = links[a];
         const glm::vec3 apexW = toWorld(verts[a].position);
         glm::vec3 baseW(0.0f);
         int nb = 0;

@@ -461,13 +461,15 @@ void Mission::updatePresentationOnly(bool moversOnly, float alpha) {
 	const float renderLength = frameLength;
 	mc2::sim::PresentationScope presentationScope;
 	ObjectManager->setPresentationAlpha(alpha);
+	{ ZoneScopedN("GameLogic.Presentation.Appearances");
 	if (moversOnly)
 		ObjectManager->updateAppearancesOnly( false, true, false );
 	else
 		ObjectManager->updateAppearancesOnly( true, true, true );
-	ObjectManager->updatePresentationCull();
-	missionInterface->updateVTol();
-	updateDisplacementDamp();
+	}
+	{ ZoneScopedN("GameLogic.Presentation.Cull"); ObjectManager->updatePresentationCull(); }
+	{ ZoneScopedN("GameLogic.Presentation.VTol"); missionInterface->updateVTol(); }
+	{ ZoneScopedN("GameLogic.Presentation.Damp"); updateDisplacementDamp(); }
 	ObjectManager->setPresentationAlpha(1.0f);
 	frameLength = renderLength;
 }
