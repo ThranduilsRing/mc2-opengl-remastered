@@ -369,9 +369,14 @@ def source_index(directory: Path) -> dict[str, Path]:
         return hit
     root = Path(directory)
     out: dict[str, Path] = {}
-    for p in root.rglob("*"):
-        if p.is_file():
-            out[str(p.relative_to(root)).replace("\\", "/").lower()] = p
+    # os.walk + string slicing: the pathlib rglob/relative_to/is_file walk took ~45 s per 140k-file source tree and
+    # pushed the --selftest past its 120 s pytest timeout.
+    base = str(root)
+    for dirpath, _dirs, files in os.walk(base):
+        rel_dir = os.path.relpath(dirpath, base)
+        for name in files:
+            rel = name if rel_dir == "." else rel_dir + os.sep + name
+            out[rel.replace("\\", "/").lower()] = root / rel
     _INDEX_CACHE[key] = out
     return out
 
