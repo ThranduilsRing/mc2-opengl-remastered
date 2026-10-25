@@ -247,6 +247,8 @@ long BldgAppearance::update (bool animate)
 		long beamNode = -1;
 		for (size_t k = 0; k < spotlightLights_.size(); ++k)
 		{
+			const bool fieldLamp = S_stricmp(appearType->elevationNodeId, "NONE") != 0 &&
+				spotlightNodeIds_[k] == bldgShape->GetNodeNameId(appearType->elevationNodeId);
 			glm::vec3 childPos =
 				getNodeIdPosition(spotlightNodeIds_[k]);
 			// LOCAL-LIGHTS-1: k-th light of a node = its k-th authored beam.
@@ -256,8 +258,7 @@ long BldgAppearance::update (bool animate)
 				beamIdx = 0;
 				// Animated nodes and shape transforms can change while the building is stationary.
 				nBeams = mc2_cone_glow::GetNodeBeams(bldgShape, beamNode, beams, kMaxBeamsPerNode);
-				if (S_stricmp(appearType->elevationNodeId, "NONE") != 0 &&
-					beamNode == bldgShape->GetNodeNameId(appearType->elevationNodeId)) {
+				if (fieldLamp) {
 					const auto lamp = mc2_cone_glow::GetSearchlightBeam(bldgShape, beamNode);
 					nBeams = lamp ? 1 : -1;
 					if (lamp) beams[0] = *lamp;
@@ -292,7 +293,7 @@ long BldgAppearance::update (bool animate)
 				glm::vec3 aimW;
 				float coneLen = 0.0f;
 				bool haveAim = false;
-				if (beamIdx < nBeams && beams[beamIdx].aim.z <= 0.15f)
+				if (beamIdx < nBeams && (fieldLamp || beams[beamIdx].aim.z <= 0.15f))
 				{
 					// The lamp sits at the beam apex (mc2_cone_glow::ConfigureBeamLight).
 					const mc2_cone_glow::NodeBeam& b = beams[beamIdx];
@@ -490,8 +491,7 @@ long BldgAppearance::update (bool animate)
 			// MC2_LIGHT_CONE_GLOW=0 kills it.
 			// Gated on ownerLit, NOT on ->active: a beam whose pool was
 			// suppressed for missing the ground is still a visible volume.
-			if (ownerLit && beamIdx == 0 && S_stricmp(appearType->elevationNodeId, "NONE") != 0 &&
-				beamNode == bldgShape->GetNodeNameId(appearType->elevationNodeId))
+			if (ownerLit && beamIdx == 0 && fieldLamp)
 				mc2_cone_glow::QueueSearchlightGlow(bldgShape, beamNode,
 					spotlightLights_[k]->GetaRGB(), eye->getNightFactor());
 			else if (ownerLit && beamIdx == 0)   // the glow draws the whole leaf once

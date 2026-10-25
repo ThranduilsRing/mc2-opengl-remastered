@@ -19,7 +19,7 @@ void BldgAppearance::updateSearchlight()
         searchlightTime_ += dt;
         const float phase = position.x * 0.013f + position.y * 0.007f;
         float yaw = 65.0f * std::sin(searchlightTime_ * 0.12f + phase);
-        float pitch = 14.0f + 6.0f * std::sin(searchlightTime_ * 0.09f + phase);
+        float pitch = 18.0f + 4.0f * std::sin(searchlightTime_ * 0.09f + phase);
         glm::vec3 lamp = position + glm::vec3(0.0f, 0.0f, 85.0f);
         if (const auto beam = mc2_cone_glow::GetSearchlightBeam(bldgShape, pitchNode)) lamp = beam->apex;
         float best = 400.0f * 400.0f;
