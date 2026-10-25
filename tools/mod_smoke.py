@@ -78,6 +78,9 @@ HDR_MAX_BYTES = 20 * 1024 * 1024   # skip the 128 MB 16k sky cubes
 STOCK_FSTS = ('mission.fst', 'tgl.fst', 'art.fst', 'textures.fst', 'misc.fst',
               'camera.fst', 'effect.fst', 'insignia.fst')
 IMMUTABLE_SUFFIXES = {'.fst', '.pak', '.exe', '.dll', '.spv', '.glsl', '.hglsl', '.frag', '.vert', '.comp', '.png', '.tga', '.bmp', '.dds', '.ktx2', '.glb', '.wav', '.ogg', '.ttf', '.otf'}
+# Cooked model entries replace via temp+rename (cook_cache.cpp), never write through
+# an existing inode. Sharing these 500+ MB saves a copy for every mod.
+IMMUTABLE_SUFFIXES.update(('.mci', '.exr'))
 CONFIG_FILES = ('prefs.cfg', 'options.cfg', 'minprefs.cfg')
 # Root data files that override the mod pack and must not be copied over it.
 STOCK_ROOT_FILES = ('prefs.cfg', 'options.cfg', 'system.cfg')
@@ -494,18 +497,23 @@ def fill_stock_gap(base_install: Path, target: Path, cache: Path | None = None) 
             stat = src.stat()
             key = hashlib.sha256(f'{src.resolve()}:{stat.st_size}:{stat.st_mtime_ns}'.encode()).hexdigest()
             cached = cache / name / key
+            if cached.parent.is_dir():
+                for obsolete in cached.parent.iterdir():
+                    if obsolete.name != key and re.fullmatch('[0-9a-f]{64}', obsolete.name):
+                        shutil.rmtree(obsolete)
             # Only read archive payload bytes when a missing member needs extraction.
-            for entry in fst_listing.parse_fst(str(src)):
+            entries = fst_listing.parse_fst(str(src))
+            for entry in entries:
                 member = fst_listing.normalize_key(entry['name'])
                 saved = cached / member
-                if wanted(member) and saved.is_file():
+                if wanted(member) and saved.is_file() and saved.stat().st_size == entry['realSize']:
                     out = target / member
                     place_file(saved, out, link_ok=out.suffix.lower() in IMMUTABLE_SUFFIXES)
                     have.add(member)
                     stats['from_fst'] += 1
                     stats['bytes'] += entry['realSize']
             if not any(wanted(fst_listing.normalize_key(e['name']))
-                       for e in fst_listing.parse_fst(str(src))):
+                       for e in entries):
                 continue
         for off, comp, real, member, is_lz, blob in fst_lib.fst_entries(src):
             key = member.lower().replace(chr(92), '/')
@@ -517,7 +525,7 @@ def fill_stock_gap(base_install: Path, target: Path, cache: Path | None = None) 
                 out.write_bytes(fst_lib.decompress_entry(off, comp, real, is_lz, blob))
             else:
                 saved = cached / key
-                if not saved.is_file():
+                if not saved.is_file() or saved.stat().st_size != real:
                     saved.parent.mkdir(parents=True, exist_ok=True)
                     saved.write_bytes(fst_lib.decompress_entry(off, comp, real, is_lz, blob))
                 place_file(saved, out, link_ok=out.suffix.lower() in IMMUTABLE_SUFFIXES)

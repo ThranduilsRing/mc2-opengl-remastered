@@ -152,6 +152,18 @@ def test_place_file_replaces_hardlink(tmp_path):
     assert a.read_text() == "A" and b.read_text() == "C"
 
 
+def test_cooked_model_cache_links_allow_atomic_runtime_replacement(tmp_path):
+    cache = tmp_path / 'cache'
+    source = _w(cache / 'cache/content-model/model-key.mci', 'cooked')
+    stage = tmp_path / 'stage'
+    ms.link_engine(cache, stage)
+    target = stage / source.relative_to(cache)
+    assert os.path.samefile(source, target)
+    replacement = _w(stage / 'cache/content-model/model-key.mci.tmp', 'runtime')
+    os.replace(replacement, target)
+    assert source.read_text() == 'cooked' and target.read_text() == 'runtime'
+
+
 def test_engine_payload_comes_from_deploy_manifest():
     # The shaders and exe come from deploy_payload.enumerate_payload, not a local list.
     build = ROOT / "build64-ninja"
