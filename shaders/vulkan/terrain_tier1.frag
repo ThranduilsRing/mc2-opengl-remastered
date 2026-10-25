@@ -3,11 +3,6 @@
 // MRT1: flat-up normal plus alpha=1, the terrain's self-shadowed receiver class.
 // Colormap UVs and material shading retain terrain_lod_chunk.frag conventions.
 #version 450
-// VK-TERRAIN-LIGHTING sub-slice: make the VK terrain LIT (directional relief + baked
-// static sun shadow) so it matches the GL LOD-chunk terrain instead of flat. Uses the
-// REUSABLE lighting/shadow helper (props/mechs reuse it later). Gate MC2_VK_TERRAIN_LIGHTING
-// (requires MC2_VK_TERRAIN_TIER1): OFF -> uT.lightingEnabled==0 -> the compose is the
-// identity (base only), byte-identical to the pre-lighting colormap+cement frame.
 #extension GL_GOOGLE_include_directive : require
 #ifndef PREC
 #define PREC highp
@@ -69,16 +64,12 @@ vec4 mv_sampleAntiTileArr(int layer, vec2 uv, float scale, vec2 dx, vec2 dy) {
     vec2 f = fract(uv / scale);
     float w1 = smoothstep(0.2, 0.5, f.x) * smoothstep(0.2, 0.5, f.y);
     float w2 = smoothstep(0.2, 0.5, 1.0 - f.x) * smoothstep(0.2, 0.5, 1.0 - f.y);
-    // Explicit gradients keep these zero-weight branches safe at quad boundaries.
-    vec4 s1 = vec4(0.0), s2 = vec4(0.0);
-    if (w1 != 0.0) {
-        vec2 off1 = mv_hash22(floor(uv / scale)) * scale;
-        s1 = textureGrad(u_matNormalArray, vec3(uv + off1, float(layer)), dx, dy);
-    }
-    if (w2 != 0.0) {
-        vec2 off2 = mv_hash22(floor(uv / scale) + vec2(7.0, 13.0)) * scale;
-        s2 = textureGrad(u_matNormalArray, vec3(uv + off2, float(layer)), dx, dy);
-    }
+    // Independent taps overlap without divergent texture branches on NVIDIA.
+    // Explicit gradients and the original zero blend weights preserve the footprint.
+    vec2 off1 = mv_hash22(floor(uv / scale)) * scale;
+    vec4 s1 = textureGrad(u_matNormalArray, vec3(uv + off1, float(layer)), dx, dy);
+    vec2 off2 = mv_hash22(floor(uv / scale) + vec2(7.0, 13.0)) * scale;
+    vec4 s2 = textureGrad(u_matNormalArray, vec3(uv + off2, float(layer)), dx, dy);
     return (s0 + s1 * w1 + s2 * w2) / (1.0 + w1 + w2);
 }
 
@@ -107,15 +98,17 @@ vec2 mv_parallax(vec2 uv, float scale, vec4 w, vec3 viewDirTS) {
     vec2 dUV = P / numLayers;
     vec2 curUV = uv;
     float curD = mv_pomDisplacement(curUV, w);
+    float prevD = curD;
     for (int i = 0; i < 16; ++i) {
         if (curLayer >= curD) break;
+        prevD = curD;
         curUV -= dUV;
         curD = mv_pomDisplacement(curUV, w);
         curLayer += layerDepth;
     }
     vec2 prevUV = curUV + dUV;
     float after  = curD - curLayer;
-    float before = mv_pomDisplacement(prevUV, w) - curLayer + layerDepth;
+    float before = prevD - curLayer + layerDepth;
     return mix(curUV, prevUV, after / max(abs(after - before), 1.0e-6));
 }
 
@@ -138,15 +131,17 @@ vec2 mv_cliffParallaxPlane(vec2 uv, vec2 viewPlane, float depth, float steps) {
     float curDepth = 0.0;
     vec2  curUV    = uv;
     float curH = 1.0 - mv_cliffHeight(curUV);
+    float prevH = curH;
     for (int i = 0; i < 32; ++i) {
         if (float(i) >= nSteps || curDepth >= curH) break;
+        prevH = curH;
         curUV   += deltaUV;
         curDepth += layerDepth;
         curH = 1.0 - mv_cliffHeight(curUV);
     }
     vec2  prevUV = curUV - deltaUV;
     float afterH = curH - curDepth;
-    float beforeH = (1.0 - mv_cliffHeight(prevUV)) - (curDepth - layerDepth);
+    float beforeH = prevH - (curDepth - layerDepth);
     float t = afterH / (afterH - beforeH + 1e-5);
     return mix(curUV, prevUV, clamp(t, 0.0, 1.0));
 }

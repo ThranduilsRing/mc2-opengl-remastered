@@ -49,14 +49,17 @@ float moverVisibility(vec3 worldPos, vec3 N) {
         for (int x = -1; x <= 1; ++x) {
             vec2 offset = vec2(x, y) * search;
             vec4 depths = textureGather(moverShadowMap, pc.xy + offset * worldToUV, 0);
-            for (int k = 0; k < 4; ++k) {
-                float d = (pc.z - depths[k]) / moverFrame.params.y;
-                float lift = 1.0 + 2.0 * (1.0 - clamp(d / 200.0, 0.0, 1.0));
-                if (depths[k] < pc.z - bias && d * tanT * lift >= length(offset) - moverFrame.params.x) {
-                    sumD += d;
-                    found += 1.0;
-                }
-            }
+            // Mask the gathered vector instead of looping over dynamic components.
+            // Keep the scalar accumulation order so blocker depth and count agree.
+            vec4 d = (vec4(pc.z) - depths) / moverFrame.params.y;
+            vec4 lift = 1.0 + 2.0 * (1.0 - clamp(d / 200.0, 0.0, 1.0));
+            bvec4 near = lessThan(depths, vec4(pc.z - bias));
+            bvec4 reach = greaterThanEqual(d * tanT * lift, vec4(length(offset) - moverFrame.params.x));
+            bvec4 accept = bvec4(near.x && reach.x, near.y && reach.y, near.z && reach.z, near.w && reach.w);
+            vec4 ds = mix(vec4(0.0), d, accept);
+            vec4 ns = mix(vec4(0.0), vec4(1.0), accept);
+            sumD += ds.x; sumD += ds.y; sumD += ds.z; sumD += ds.w;
+            found += ns.x; found += ns.y; found += ns.z; found += ns.w;
         }
     }
     if (found == 0.0) return 1.0;
