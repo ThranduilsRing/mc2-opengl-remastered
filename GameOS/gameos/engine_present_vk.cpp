@@ -2103,11 +2103,13 @@ bool EnginePresentVk::renderNativeCompositeVisual(float exposure,
     vkCmdBindDescriptorSets(cc, VK_PIPELINE_BIND_POINT_GRAPHICS, s.compositeLayout.get(),
                             0, 1, &s.compositeSet, 0, nullptr);
     const auto& output = visualTuning_environment().output;
+    const bool upscale = mc2::gate::get<"MC2_RENDER_SCALE">() < 1.0 &&
+                         (scene->w < s.imgW || scene->h < s.imgH);
     float pc[32] = {
         exposure,
-        1.0f / static_cast<float>(scene->w),
-        1.0f / static_cast<float>(scene->h),
-        (scene->w < s.imgW || scene->h < s.imgH) ? 1.0f : 0.0f,
+        1.0f / static_cast<float>(upscale ? scene->w : s.imgW),
+        1.0f / static_cast<float>(upscale ? scene->h : s.imgH),
+        upscale ? 1.0f : 0.0f,
         0.0f,
         0.0f,
         0.0f,
