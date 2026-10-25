@@ -80,6 +80,8 @@ def test_first_save_only_records_a_masked_baseline_although_the_resave_leaves_th
     first, noisy_first, resave = save("a.ims"), save("b.ims", 10100), save("c.ims", 5)    # 10100 is masked run noise; 5 is a pilot string byte, never masked
     monkeypatch.setattr(rt, "BASELINE_DIR", str(tmp_path / "baselines"))
     monkeypatch.setattr(rt, "ROOT", str(tmp_path))                  # the tool prints the baseline path relative to the repo root
+    # This synthetic save fixture has no real install; never read the owner's default install.
+    monkeypatch.setattr(rt.sd, "data_fingerprint", lambda *a, **k: {"digest": "fixture", "problems": []})
     monkeypatch.setattr(rt, "run_fixture", lambda *a, **k: (str(tmp_path), first, resave, {"sha": "x", "dirty": 0}, 0))
 
     def main(*extra):
@@ -158,6 +160,7 @@ def test_check_fails_when_the_run_has_no_resave_even_under_first_save_only(tmp_p
     first, resave = _save(tmp_path / "a.ims"), _save(tmp_path / "b.ims")
     monkeypatch.setattr(rt, "BASELINE_DIR", str(tmp_path / "baselines"))
     monkeypatch.setattr(rt, "ROOT", str(tmp_path))
+    monkeypatch.setattr(rt.sd, "data_fingerprint", lambda *a, **k: {"digest": "fixture", "problems": []})
     monkeypatch.setattr(rt, "run_fixture", lambda *a, **k: (str(tmp_path), first, resave, {"sha": "x", "dirty": 0}, 0))
     assert rt.main(["baseline", "--mission", "m", "--first-save-only"]) == 0
     monkeypatch.setattr(rt, "run_fixture", lambda *a, **k: (str(tmp_path), first, None, {"sha": "x", "dirty": 0}, 0))
