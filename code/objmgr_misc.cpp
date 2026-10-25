@@ -3,6 +3,7 @@
 #include "objmgr_internal.h"
 #include "sim_world_trace.h"
 #include "impact_presentation.h"
+#include <intrin.h>
 
 
 //---------------------------------------------------------------------------
@@ -586,6 +587,8 @@ void GameObjectManager::updateAppearancesOnly( bool terrain, bool movers, bool o
 	if (terrain && renderObjects)
 	{
 		ZoneScopedN("GameLogic.Presentation.Terrain");
+		uint64_t cpuTerrain[5] = {};
+		uint64_t cpuCount = 0, cpuUpdates = 0;
         updateReadbackSnapshot();
         updateActiveSweep();
 		int frameJobsPrePassCount = 0;
@@ -608,8 +611,13 @@ void GameObjectManager::updateAppearancesOnly( bool terrain, bool movers, bool o
 						Terrain::objVertexActive[objList[objIndex]->getVertexNum()] &&
 						objList[objIndex]->getExists())
 					{
-						if (objList[objIndex]->getAppearance()->recalcBounds()) 
+						auto cpuMark = __rdtsc();
+						const bool cpuInView = objList[objIndex]->getAppearance()->recalcBounds();
+						cpuTerrain[0] += __rdtsc() - cpuMark;
+						if (cpuInView)
 						{
+							++cpuCount;
+							cpuMark = __rdtsc();
 							// Must force here as well.
 							glm::vec3 pos = objList[objIndex]->getPosition();
 							float rot = objList[objIndex]->getRotation();
@@ -617,25 +625,38 @@ void GameObjectManager::updateAppearancesOnly( bool terrain, bool movers, bool o
 							long drawFlags = objList[objIndex]->drawFlags;
 							int teamID = objList[objIndex]->getTeamId();
 							objList[objIndex]->getAppearance()->setObjectParameters(pos,rot,drawFlags,teamID,Team::getRelation(teamID, Team::home->getId()));
+							cpuTerrain[1] += __rdtsc() - cpuMark;
+							cpuMark = __rdtsc();
 
 							MC2_WORLD_UPDATE("appearance_terrain", objList[objIndex]);
 
 							auto* appearance = objList[objIndex]->getAppearance();
                             appearance->presentAnimation(*appearance->simulationAnimation());
                             appearance->presentEffects();
-                            if (appearance->IsStaticNow() && !objList[objIndex]->getFlag(OBJECT_FLAG_FALLING))
+                            cpuTerrain[2] += __rdtsc() - cpuMark;
+                            cpuMark = __rdtsc();
+                            const bool cpuStatic = appearance->IsStaticNow() && !objList[objIndex]->getFlag(OBJECT_FLAG_FALLING);
+                            cpuTerrain[3] += __rdtsc() - cpuMark;
+                            cpuMark = __rdtsc();
+                            if (cpuStatic)
                                 appearance->touch();
-                            else
+                            else {
+                                ++cpuUpdates;
                                 appearance->update(false);
+                            }
+                            cpuTerrain[4] += __rdtsc() - cpuMark;
 							objList[objIndex]->getAppearance()->setVisibility(true, true);	
 						}
 					}
 				}
 			}
 		}
+	static uint64_t cpuFrames = 0, cpuTotals[5] = {}, cpuObjects = 0, cpuUpdateTotal = 0;
+	for (int cpuI = 0; cpuI < 5; ++cpuI) cpuTotals[cpuI] += cpuTerrain[cpuI];
+	cpuObjects += cpuCount; cpuUpdateTotal += cpuUpdates;
+	if (++cpuFrames % 120 == 0) mc2::fmt::print_err("[CPU_TERRAIN] frames={} objects={} updates={} bounds={} params={} effects={} eligible={} touch_update={}\n", cpuFrames, cpuObjects, cpuUpdateTotal, cpuTotals[0], cpuTotals[1], cpuTotals[2], cpuTotals[3], cpuTotals[4]);
 	}
-
-	if (movers) 
+	if (movers)
 	{
 		ZoneScopedN("GameLogic.Presentation.Movers");
 		if (mechs) 
