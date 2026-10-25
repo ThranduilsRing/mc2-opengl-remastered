@@ -3,9 +3,9 @@
 #include "../../Gates/gate_name.h"
 
 inline constexpr const char* k_presetKeys[] = {
-    gate::name<"MC2_VEGETATION_MAX">(), gate::name<"MC2_SHADOW_ENABLE">(),
-    gate::name<"MC2_VK_POST_SCREENFX_SHADOW">(), gate::name<"MC2_CLOUD_SHADOW">(),
-    gate::name<"MC2_SHADOW_MOVER_SAMPLES">(), gate::name<"MC2_RENDER_SCALE">(),
+    mc2::gate::name<"MC2_VEGETATION_MAX">(), mc2::gate::name<"MC2_SHADOW_ENABLE">(),
+    mc2::gate::name<"MC2_VK_POST_SCREENFX_SHADOW">(), mc2::gate::name<"MC2_CLOUD_SHADOW">(),
+    mc2::gate::name<"MC2_SHADOW_MOVER_SAMPLES">(), mc2::gate::name<"MC2_RENDER_SCALE">(),
 };
 struct GfxPreset {
     const char* label;
