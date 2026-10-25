@@ -45,7 +45,8 @@ prohibit generated files over about 1 MB. The native cache is derived, and is
 never a release source.
 
 Normal game/editor deploys install and verify the package, rebuild the standalone
-importer through Ninja's dependency checks, and cook all 627 native recipes. A
+importer through Ninja's dependency checks, and cook all 627 GLBs into 592 distinct
+native recipes (identical small-prop LODs share a recipe). A
 receipt pins recipes to package and importer hashes and verifies their output
 hashes on subsequent deploys. Missing or altered source bytes fail the deploy;
 missing or altered cache entries trigger cooking. Extra installed kit files fail
