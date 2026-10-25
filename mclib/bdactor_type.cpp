@@ -413,6 +413,8 @@ void BldgAppearanceType::init (const char * fileName)
 	// cooked with one, the destroyed render shape; the mission's conditions.json may pick
 	// a worn/abandoned variant (default pristine). Any failure falls back to stock.
 	bldgBaseName[sizeof(bldgBaseName) - 1] = 0;
+	if (mc2::gate::get<"MC2_DEBUG_STATE_DUMP">())
+		mc2::fmt::print_err("[BLDG_IDENTITY] {}|key={}\n", fileName, bldgBaseName);
 	if (bldgBaseName[0])
 	{
 		if (mc2::gate::get<"MC2_MODOVERRIDE_TRACE">())

@@ -444,6 +444,15 @@
    "count": 1
   },
   {
+   "tag": "BLDG_ART",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "applied"
+   ],
+   "count": 1
+  },
+  {
    "tag": "BLDG_DIAG",
    "ver": 1,
    "stream": "stderr",
@@ -465,6 +474,15 @@
    "ver": -1,
    "stream": "stderr",
    "keys": [],
+   "count": 1
+  },
+  {
+   "tag": "BLDG_IDENTITY",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "key"
+   ],
    "count": 1
   },
   {
@@ -11234,7 +11252,9 @@
   "APPEAR_AUDIT",
   "ASSET_LOAD",
   "ASSET_SCALE",
+  "BLDG_ART",
   "BLDG_GAMEPLAY",
+  "BLDG_IDENTITY",
   "BUILD_FINGERPRINT",
   "CONFIG",
   "CONTENT_COOK",
