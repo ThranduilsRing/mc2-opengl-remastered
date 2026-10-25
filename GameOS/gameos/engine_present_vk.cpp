@@ -17,7 +17,7 @@
 
 // Win32 surface entrypoints + names are gated behind this macro (matches
 // vulkan_context.cpp / vk_image_resource.h). Define BEFORE volk.h.
-#ifndef VK_USE_PLATFORM_WIN32_KHR
+#if defined(_WIN32) && !defined(VK_USE_PLATFORM_WIN32_KHR)
 #define VK_USE_PLATFORM_WIN32_KHR
 #endif
 
@@ -36,7 +36,9 @@
 
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_vulkan.h>
+#ifdef _WIN32
 #include <SDL2/SDL_syswm.h>   // P13b: SDL_GetWindowWMInfo -> HWND / HINSTANCE
+#endif
 
 #include <cstdarg>
 #include <cstddef>
@@ -1871,6 +1873,7 @@ bool EnginePresentVk::init(VulkanContext& ctx, SDL_Window* window, uint32_t w, u
 
     // Create the Vulkan surface on the visible SDL_WINDOW_VULKAN game window.
     // Reuse its HWND so presentation and input belong to the same window.
+#ifdef _WIN32
     SDL_SysWMinfo wm; SDL_VERSION(&wm.version);
     if (SDL_GetWindowWMInfo(window_, &wm) != SDL_TRUE) {
         return fail(std::string("P13b SDL_GetWindowWMInfo: ") + SDL_GetError());
@@ -1905,6 +1908,12 @@ bool EnginePresentVk::init(VulkanContext& ctx, SDL_Window* window, uint32_t w, u
     }
     plog("P13b: VK surface created on the VISIBLE GL game window HWND=%p (no hidden "
          "window; GL keeps input+focus).", static_cast<void*>(hwnd));
+#else
+    VkSurfaceKHR rawSurface = VK_NULL_HANDLE;
+    if (!SDL_Vulkan_CreateSurface(window_, s.inst, &rawSurface))
+        return fail(std::string("SDL_Vulkan_CreateSurface: ") + SDL_GetError());
+    s.surface = mc2vk::OwnedSurface(s.inst, rawSurface);
+#endif
 
     // ---- queue confirm + present mode -------------------------------------
     {
