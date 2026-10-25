@@ -1,4 +1,6 @@
 {
+  "scripts/tests/test_native_binding_contracts.py": "Pytest-discovered by scripts/run_scripts_tests.py through scripts/test_ownership.json; native Vulkan descriptor and lighting contract regression coverage.",
+  "scripts/tests/test_postprocess_cas_upscale.py": "Pytest-discovered by scripts/run_scripts_tests.py through scripts/test_ownership.json; compiled CAS and Catmull-Rom shader regression coverage.",
   "tools/scifi_kit/art/building_cells.py": "Operator-run stock/remake blocking-cell comparison; invocation documented in its module header.",
   "tools/scifi_kit/art/intent_run.py": "Operator-run single-asset check/bake command documented in tools/scifi_kit/art/BUILDING.md.",
   "tools/scifi_kit/art/tgl_decode.py": "Operator-run stock TGL extractor documented in its module header and tools/scifi_kit/art/BUILDING.md.",
