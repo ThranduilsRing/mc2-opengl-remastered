@@ -147,6 +147,49 @@ def test_animated_material_splits_share_pivot_and_parent(tmp_path):
     assert any("RUNTIME_NODE" in e for e in validate.errors(validate.validate_runtime_glb(path)))
 
 
+@pytest.mark.parametrize("intermediary", [False, True])
+@pytest.mark.parametrize("parent_mesh", [None, 0])
+def test_nested_animated_chain_matches_stock_over_clip(tmp_path, intermediary, parent_mesh):
+    from tools.anim_parity.audit import document_model, pose_matrices, rotation
+    fixture = json.loads((Path(__file__).parents[2] / "anim_parity/nested_chain.json").read_text())
+    parent, child = fixture["parent"], fixture["child"]
+    points = np.array([[0, 0, 0], [1, 0, 0], [0, 1, 1]], float)
+    prim = ir.Primitive(points, np.array([[0, 1, 2]]), 0)
+    scene = ir.Scene(meshes=[ir.Mesh("probe", [prim, prim])])
+    pm, cm = np.eye(4), np.eye(4)
+    pm[:3, 3], cm[:3, 3] = parent["pivot"], child["offset"]
+    scene.nodes.append(ir.Node("Yaw", matrix=pm, mesh=parent_mesh, extras={"mc2_anim_node": "Yaw"}))
+    if intermediary:
+        scene.nodes.append(ir.Node("Static", parent=0))
+    scene.nodes.append(ir.Node("Pitch", parent=len(scene.nodes)-1, matrix=cm, mesh=0,
+                               extras={"mc2_anim_node": "Pitch"}))
+    detail = np.eye(4)
+    detail[:3, 3] = [1, 2, 3]
+    scene.nodes.append(ir.Node("Detail", parent=len(scene.nodes)-1, matrix=detail, mesh=0))
+    raw = gltf_io.write_runtime_glb(scene, [ir.Material("probe")], {})
+    doc, binary = gltf_io.split_glb(raw)
+    path = tmp_path / "nested.glb"
+    path.write_bytes(raw)
+    assert not validate.errors(validate.validate_runtime_glb(path))
+    cooked = document_model(doc, [binary], gltf_io.TG_FROM_RUNTIME)
+    stock = {"Yaw": {"parent": "None", "pivot": np.array(parent["pivot"])},
+             "Pitch": {"parent": "Yaw", "pivot": np.array(parent["pivot"]) + child["offset"]}}
+    tracks = {row["name"]: dict(frames=5, q=np.array([quat(row["axis"], a) for a in row["degrees"]]),
+                                p=np.empty((0, 3))) for row in (parent, child)}
+    for frame in range(5):
+        expected = pm.copy()
+        expected[:3, :3] = rotation(tracks["Yaw"]["q"][frame])
+        local = cm.copy()
+        local[:3, :3] = rotation(tracks["Pitch"]["q"][frame])
+        expected = expected @ local
+        actual = pose_matrices(cooked, tracks, frame / 4)
+        np.testing.assert_allclose(actual["Pitch"], expected, atol=1e-6)
+        np.testing.assert_allclose(actual["Pitch"], pose_matrices(stock, tracks, frame / 4)["Pitch"], atol=1e-6)
+        np.testing.assert_allclose(actual["Pitch_1"], expected, atol=1e-6)
+        np.testing.assert_allclose(actual["Detail"], expected @ detail, atol=1e-6)
+        np.testing.assert_allclose(actual["Detail_1"], expected @ detail, atol=1e-6)
+
+
 def test_runtime_frame_is_axis0_inverse(tmp_path):
     src, *_ = make_gltf(tmp_path)
     asset = gltf_file.to_ir("panel", "staticProp:panel", src, meta={"frame": "gltf"}, work_dir=tmp_path / "w")

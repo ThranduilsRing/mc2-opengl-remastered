@@ -182,9 +182,11 @@ def validate_runtime_glb(path, *, max_triangles=None, texture_root=None):
         pivot = "mc2_pivot_tg_wu" in n.get("extras", {}) and not any(k in n for k in ("matrix", "rotation", "scale"))
         animated_splits = pivot and n.get("extras", {}).get("mc2_anim_node") == n.get("name") and all(
             isinstance(c, int) and 0 <= c < len(doc["nodes"])
-            and doc["nodes"][c].get("translation") == [0, 0, 0]
-            and doc["nodes"][c].get("extras", {}).get("mc2_pivot_tg_wu") == n["extras"]["mc2_pivot_tg_wu"]
-            and not any(k in doc["nodes"][c] for k in ("matrix", "rotation", "scale", "children"))
+            and "mc2_pivot_tg_wu" in doc["nodes"][c].get("extras", {})
+            and np.allclose(doc["nodes"][c].get("translation", [0, 0, 0]),
+                            (np.asarray(doc["nodes"][c]["extras"]["mc2_pivot_tg_wu"])
+                             - n["extras"]["mc2_pivot_tg_wu"]) * [-1, -1, 1], atol=1e-5)
+            and not any(k in doc["nodes"][c] for k in ("matrix", "rotation", "scale"))
             for c in n.get("children", []))
         if ("mesh" in n and not pivot and any(k in n for k in ("matrix", "translation", "rotation", "scale"))) or (n.get("children") and not animated_splits):
             _err(issues, "RUNTIME_NODE", f"node {i} is not an identity leaf (transforms must be baked)")

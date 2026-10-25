@@ -611,7 +611,12 @@ long ImportShapeFromMesh(const aiScene* scene, unsigned meshIdx,
 	outShape.name = nodeNm; outShape.parent = parentNm;
 	outShape.center = outShape.relativeCenter = center;
 	if (keepPivot && strcmp(parentNm, "None") != 0)
-		outShape.relativeCenter = glm::vec3(0); // split and source share an absolute pivot
+	{
+		aiMatrix4x4 parentWorld;
+		for (const aiNode* ancestor = meshNode->mParent; ancestor; ancestor = ancestor->mParent)
+			parentWorld = ancestor->mTransformation * parentWorld;
+		outShape.relativeCenter -= toMC2Pos(aiVector3D(parentWorld.a4, parentWorld.b4, parentWorld.c4));
+	}
 	outShape.vertices = std::move(verts); outShape.triangles = std::move(tris);
 	return 0;
 }
@@ -1548,6 +1553,8 @@ static void CollectMeshInstances(const aiNode* node, const aiMatrix4x4& parent,
 	const aiMatrix4x4 world = parent * node->mTransformation;
 	for (unsigned i = 0; i < node->mNumMeshes; ++i)
 		out.emplace_back(node->mMeshes[i], node, world);
+	if (!node->mNumMeshes && node->mMetaData && node->mMetaData->HasKey("mc2_anim_node"))
+		out.emplace_back(~0u, node, world);
 	for (unsigned c = 0; c < node->mNumChildren; ++c)
 		CollectMeshInstances(node->mChildren[c], world, out);
 }
@@ -1613,7 +1620,7 @@ long ImportGeometryFromFile(const char* path, TG_TypeMultiShape* out, bool autoG
 	const bool staticGlb = bakeNodeTransforms && std::string_view(path).ends_with(".glb") &&
 		std::string_view(path).starts_with("mods/mc2-industrial-kit/data/model_overrides/");
 	const std::string staticParameters = std::to_string(s_gltfAxis()) + ":" + ContentFloatKey(s_gltfYoff()) + ":" +
-		ContentFloatKey(s_gltfYawDeg()) + ":" + std::to_string(authoredColors) + ":static-glb/1";
+		ContentFloatKey(s_gltfYawDeg()) + ":" + std::to_string(authoredColors) + ":static-glb/2";
 	if (staticGlb) {
 		mc2::content::Asset cached;
 		cached.ground = autoGround ? mc2::gate::get<"MC2_GLTF_GROUND">() : 0;
@@ -1752,6 +1759,7 @@ long ImportGeometryFromFile(const char* path, TG_TypeMultiShape* out, bool autoG
     asset.parameters = std::to_string(s_gltfAxis()) + ":" + ContentFloatKey(s_gltfYoff()) + ":" +
         ContentFloatKey(s_gltfYawDeg()) + ":" + std::to_string(authoredColors) + ":" + std::to_string(bakeNodeTransforms) +
         ":" + bake.forcedClip + ":" + std::to_string(bake.forcedFrame) + ":" + ContentFloatKey(bake.scale);
+    if (bakeNodeTransforms) asset.parameters += ":nested-pivots/1";
     std::sort(sources->dependencies.begin(), sources->dependencies.end());
     for (const auto& [dependencyPath, digest] : sources->dependencies)
         asset.parameters += ":" + std::to_string(digest);
@@ -1808,6 +1816,16 @@ long ImportGeometryFromFile(const char* path, TG_TypeMultiShape* out, bool autoG
 	BuildTextureList(scene, asset);
 	for (size_t i = 0; i < instances.size(); ++i) {
 		const auto& [meshIdx, node, world] = instances[i];
+		if (meshIdx == ~0u) {
+			auto& helper = asset.nodes[i];
+			helper.name = node->mName.C_Str(); helper.parent = "None"; helper.helper = true;
+			helper.center = helper.relativeCenter = toMC2Pos(aiVector3D(world.a4, world.b4, world.c4));
+			if (node->mParent && node->mParent->mMetaData && node->mParent->mMetaData->HasKey("mc2_anim_node")) {
+				helper.parent = node->mParent->mName.C_Str();
+				helper.relativeCenter = toMC2Pos(aiVector3D(node->mTransformation.a4, node->mTransformation.b4, node->mTransformation.c4));
+			}
+			continue;
+		}
 		long r = ImportShapeFromMesh(scene, meshIdx, asset.nodes[i], nullptr, nullptr,
 		                             authoredColors, node, &world);
 		if (r != 0) {
