@@ -22,6 +22,12 @@ TEX = Path('G:/mc2-assets/pbr/scifi-kit')
 
 
 # ------------------------------------------------------------------ scene
+# lamp classes: base colour, emission colour, marker gradient low / top
+LAMPS = {'lamp': ((0.6, 0.55, 0.4), (1.0, .82, .55), (.60, .50, .008), (.70, .68, .55)),
+         'lamp_red': ((0.5, 0.03, 0.02), (1.0, .05, .03), (.60, .012, .006), (.70, .60, .60)),
+         'lamp_green': ((0.03, 0.5, 0.06), (.1, 1.0, .2), (.01, .55, .03), (.62, .78, .64)),
+         'lamp_blue': ((0.03, 0.12, 0.6), (.15, .4, 1.0), (.01, .1, .6), (.66, .72, .82))}
+
 def reset():
     bpy.ops.wm.read_factory_settings(use_empty=True)
     scene = bpy.context.scene
@@ -299,15 +305,39 @@ def material(key, palette_name, cond_name):
         speck = b.noise(P, 55.0, 2, .5)
         col = b.mix(b.remap(speck, .35, .7), tuple(c * .65 for c in c0), tuple(min(1, c * 1.5) for c in c0))
         bump_h = speck
+    elif cls == 'brick':
+        # Running bond projected per wall plane: u = x on Y-facing walls, y on X-facing walls.
+        c0 = pal.get('brick2' if slot == 'second' else 'brick', pal['main'])
+        pick = b.math('GREATER_THAN', b.math('ABSOLUTE', sepn.outputs['X']), b.math('ABSOLUTE', sepn.outputs['Y']))
+        u = b.add(sep.outputs['X'], b.mul(pick, b.add(sep.outputs['Y'], b.mul(sep.outputs['X'], -1.0))))
+        uv2 = b.node('ShaderNodeCombineXYZ')
+        b.feed(uv2.inputs['X'], u)
+        b.feed(uv2.inputs['Y'], z)
+        br = b.node('ShaderNodeTexBrick', offset=.5, squash=1.0)
+        b.feed(br.inputs['Vector'], uv2.outputs[0])
+        br.inputs['Scale'].default_value = 1.0
+        br.inputs['Brick Width'].default_value = .24
+        br.inputs['Row Height'].default_value = .075
+        br.inputs['Mortar Size'].default_value = .011
+        br.inputs['Color1'].default_value = (*[c * .8 for c in c0], 1)
+        br.inputs['Color2'].default_value = (*[min(1, c * 1.2) for c in c0], 1)
+        br.inputs['Mortar'].default_value = (0.2, 0.19, 0.17, 1)
+        col = b.mix(b.mul(b.remap(big, .3, .7), .35), br.outputs['Color'], tuple(c * .7 for c in c0))
+        bump_h = b.mul(br.outputs['Fac'], -1.0)
+        rough_s = .86
     elif cls == 'rubber':
         col = (0.02, 0.021, 0.022)
-    elif cls in ('lamp', 'lamp_red'):
-        col = (0.6, 0.55, 0.4) if cls == 'lamp' else (0.5, 0.03, 0.02)
+    elif cls == 'lamp_cool':          # cyan coil / emitter glow (the in-game mc2_10 generator cue)
+        col = (0.08, 0.45, 0.55)
         if cond_name in ('pristine', 'worn'):
-            emission = ((1.0, .82, .55) if cls == 'lamp' else (1.0, .05, .03), 6.0)
+            emission = ((0.15, .85, 1.0), 4.0)
+        else:
+            col = (0.04, 0.06, 0.07)
+    elif cls in LAMPS:               # lamp, lamp_red, lamp_green, lamp_blue (marker beacons)
+        col, em_col, low, top = LAMPS[cls]
+        if cond_name in ('pristine', 'worn'):
+            emission = (em_col, 6.0)
             if slot == 'marker':
-                low = (.60,.50,.008) if cls == 'lamp' else (.60,.012,.006)
-                top = (.70,.68,.55) if cls == 'lamp' else (.70,.60,.60)
                 col = b.mix(b.remap(z,.07,.711),low,top)
                 emission = (col,.65)
         else:
@@ -327,12 +357,12 @@ def material(key, palette_name, cond_name):
         col = (0.3, 0.3, 0.3)
 
     if weather:
-        if cls in ('ferro', 'paint', 'corr', 'wood', 'canvas', 'metal', 'grate'):
+        if cls in ('ferro', 'paint', 'corr', 'wood', 'canvas', 'metal', 'grate', 'brick'):
             # Casting/panel batches vary subtly; exposed tops bleach above dirty bases.
             tint = b.node('ShaderNodeAttribute', attribute_name='tint').outputs['Fac']
             tone = b.mul(b.remap(tint, 0, 1, .94, 1.06), b.remap(z, 0, 5, .92, 1.03))
             col = b.mix(1., col, tone, blend='MULTIPLY')
-        if cls in ('ferro', 'paint', 'corr', 'hazard', 'wood', 'canvas', 'metal', 'grate'):
+        if cls in ('ferro', 'paint', 'corr', 'hazard', 'wood', 'canvas', 'metal', 'grate', 'brick'):
             # Shared grime layer, driven only by the per-state WEAR table (lang.json
             # conditions): tonal blotch, speckle, base gradient, edge dirt, dark stains,
             # seam-led rust streaks. Keys missing from a state read as 0 (unchanged look).
@@ -411,7 +441,7 @@ ROLES = ['mass', 'skin', 'frame', 'roof', 'glass', 'detail']
 
 
 def mesh_from_pieces(name, pieces, palette, cond_name, collection, role):
-    verts, faces, mats, keys, uvs, seam, tints = [], [], [], [], [], [], []
+    verts, faces, mats, keys, uvs, seam, tints, anim = [], [], [], [], [], [], [], []
     for pc in pieces:
         off = len(verts)
         verts += pc['v']
@@ -423,6 +453,7 @@ def mesh_from_pieces(name, pieces, palette, cond_name, collection, role):
         tints += [random.Random(seed).random()] * len(pc['v'])
         for f in pc['f']:
             faces.append(tuple(off + i for i in f))
+            anim.append(int(pc.get('anim_id', 0)))
             uvs.append([pc.get('uv',[(0.,0.)]*len(pc['v']))[i] for i in f])
             if pc['m'] not in keys:
                 keys.append(pc['m'])
@@ -436,6 +467,10 @@ def mesh_from_pieces(name, pieces, palette, cond_name, collection, role):
         attr.data.foreach_set('value', seam)
         attr = me.attributes.new('tint', 'FLOAT', 'POINT')
         attr.data.foreach_set('value', tints)
+    if any(anim) and len(me.polygons) == len(anim):
+        # animated stock node (radar dipole, spinner, sensor head): kept as its own glTF node by bake.split_anim
+        attr = me.attributes.new('mc2_anim', 'INT', 'FACE')
+        attr.data.foreach_set('value', anim)
     uv=me.uv_layers.new(name='UVMap')
     for poly,coords in zip(me.polygons,uvs):
         for loop,co in zip(poly.loop_indices,coords):uv.data[loop].uv=co
@@ -871,7 +906,7 @@ def export_glb(objs, path, k, cond_name):
                     except AttributeError:
                         em.blend_method = 'BLEND'
                 if cls.startswith('lamp') and cond_name in ('pristine', 'worn'):
-                    bsdf.inputs['Emission Color'].default_value = (1, .82, .55, 1) if cls == 'lamp' else (1, .05, .03, 1)
+                    bsdf.inputs['Emission Color'].default_value = (*LAMPS.get(cls, LAMPS['lamp'])[1], 1) if cls != 'lamp_cool' else (.15, .85, 1, 1)
                     bsdf.inputs['Emission Strength'].default_value = 1.0
                 em['mc2_material_class'] = cls
                 em['mc2_slot'] = slot
@@ -966,29 +1001,31 @@ def assembly_job(job):
             baked=None
             if k.meta.get('draft') and job.get('export',True):
                 import bake
-                low,baked=bake.bake(list(objs.values()),k,cond,out/'pbr')
-            cam.data.ortho_scale, cam.location, cam.rotation_euler = framing[0], framing[1], framing[2]
-            render(out / f'{name}_{cond}_beauty.png', (1100, 760), job.get('samples', 48))
-            if cond == 'pristine':
-                scene.render.film_transparent=True
-                scene.render.image_settings.color_mode='RGBA'
-                bpy.data.objects['ground'].hide_render=True
-                render(out/f'{name}_palette.png',(440,304),16)
-                bpy.data.objects['ground'].hide_render=False
-                scene.render.film_transparent=False
-                frame_camera(cam, [low] if baked else list(objs.values()), direction=(-1.0, -1.25, 2.4), margin=2.6, aspect=2.0)
-                # One world scale across the batch: 0.24 authoring m per pixel.
-                # This is a declared RTS proxy, not a runtime camera capture.
-                cam.data.ortho_scale = 360 * .24
-                render(out / f'{name}_pristine_rts.png', (360, 180), 32)
-                # All sides are visible in the count proof, including the left
-                # tower door and rear quonset end omitted by the beauty camera.
-                for side,direction in [('front',(0,-1,.08)),('left',(-1,0,.08)),
-                                       ('rear',(0,1,.08)),('right',(1,0,.08)),
-                                       ('top',(0.0001,-0.0001,1))]:
-                    frame_camera(cam,[low] if baked else list(objs.values()),
-                                 direction=direction,margin=1.14,aspect=1.4)
-                    render(out/f'{name}_count_{side}.png',(700,500),16)
+                low,baked=bake.bake(list(objs.values()),k,cond,out/'pbr',res=k.meta.get('atlas_res',2048))
+            if job.get('render', True):
+                cam.data.ortho_scale, cam.location, cam.rotation_euler = framing[0], framing[1], framing[2]
+                render(out / f'{name}_{cond}_beauty.png', (1100, 760), job.get('samples', 48))
+                if cond == 'pristine':
+                    scene.render.film_transparent=True
+                    scene.render.image_settings.color_mode='RGBA'
+                    bpy.data.objects['ground'].hide_render=True
+                    render(out/f'{name}_palette.png',(440,304),16)
+                    bpy.data.objects['ground'].hide_render=False
+                    scene.render.film_transparent=False
+                    frame_camera(cam, [low] if baked else list(objs.values()), direction=(-1.0, -1.25, 2.4), margin=2.6, aspect=2.0)
+                    # One world scale across the batch: 0.24 authoring m per pixel.
+                    # This is a declared RTS proxy, not a runtime camera capture.
+                    cam.data.ortho_scale = 360 * .24
+                    render(out / f'{name}_pristine_rts.png', (360, 180), 32)
+                    # All sides are visible in the count proof, including the left
+                    # tower door and rear quonset end omitted by the beauty camera.
+                    for side,direction in [('front',(0,-1,.08)),('left',(-1,0,.08)),
+                                           ('rear',(0,1,.08)),('right',(1,0,.08)),
+                                           ('top',(0.0001,-0.0001,1))]:
+                        # the animated stock-node children (spotlight head, gate leaves) are part of the silhouette
+                        frame_camera(cam,[low,*[c for c in low.children_recursive if c.type=='MESH']] if baked else list(objs.values()),
+                                     direction=direction,margin=1.14,aspect=1.4)
+                        render(out/f'{name}_count_{side}.png',(700,500),16)
             if job.get('export', True) and not baked:
                 glb = out / 'glb' / f'{name}_{cond}.glb'
                 glb.parent.mkdir(parents=True, exist_ok=True)
@@ -1016,3 +1053,6 @@ if __name__ == '__main__':
     elif job['kind'] == 'baked_review':
         import baked_review
         baked_review.run(job,sys.modules[__name__])
+    elif job['kind'] == 'intent_preview':
+        import intent_views
+        intent_views.run(job, sys.modules[__name__])

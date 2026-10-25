@@ -101,7 +101,8 @@ def source_lights(path,name,condition):
         if 'children' in node:node['children']=[remap[c] for c in node['children'] if c in remap]
         nodes.append(node)
     for scene in doc['scenes']:scene['nodes']=[remap[i] for i in scene['nodes'] if i in remap]
-    specs=from_kit(drafts.build(name,condition),condition)
+    import assemble
+    specs=from_kit(assemble.build(name,condition),condition)
     for spec in specs:
         node=light_node(spec,counts.origin(name))
         spec['position_gltf_m']=node['extras']['mc2_light_position_gltf_m']

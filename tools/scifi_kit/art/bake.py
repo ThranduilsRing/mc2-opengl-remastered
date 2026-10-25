@@ -14,7 +14,7 @@ from mathutils import Vector
 CLASSES = {'paint':'painted_metal','corr':'painted_metal','hazard':'painted_metal',
            'metal':'bare_metal','grate':'grating','ferro':'concrete','glass':'glass',
            'wood':'wood','canvas':'fabric','rubber':'rubber','gravel':'dielectric',
-           'char':'dielectric','veg':'dielectric','lamp':'emissive','lamp_red':'emissive'}
+           'char':'dielectric','brick':'concrete','veg':'dielectric','lamp':'emissive','lamp_red':'emissive','lamp_cool':'emissive','lamp_green':'emissive','lamp_blue':'emissive'}
 from bake_budget import BUDGETS, budget  # noqa: F401
 # Sonnet runner buildings: panelled shells keep whole faces at distance (generic collapse bottoms out above 18%).
 PANEL_LOD_BUILDINGS = ('genericmilitary','geodesicdome','liquidstorage','largefueltank','ammodump')
@@ -161,12 +161,46 @@ def sockets(k,condition):
     return nodes
 
 
+def split_anim(low,k):
+    """Separate faces of animated stock nodes (k.meta['anim_nodes'], face attribute mc2_anim) into child
+    objects named like the stock node, origin at the rotation pivot, so they survive as glTF nodes."""
+    import bmesh
+    from mathutils import Matrix
+    specs=k.meta.get('anim_nodes') or []
+    made={}
+    if not specs or 'mc2_anim' not in low.data.attributes:return made
+    for idx in range(len(specs),0,-1):
+        spec=specs[idx-1]
+        ids=np.zeros(len(low.data.polygons),dtype=np.int32)
+        low.data.attributes['mc2_anim'].data.foreach_get('value',ids)
+        keep=ids==idx
+        if not keep.any():continue
+        dup=low.copy();dup.data=low.data.copy();bpy.context.collection.objects.link(dup)
+        for ob,want in ((dup,True),(low,False)):
+            bm=bmesh.new();bm.from_mesh(ob.data);bm.faces.ensure_lookup_table()
+            bmesh.ops.delete(bm,geom=[f for f in bm.faces if bool(keep[f.index])!=want],context='FACES')
+            loose=[v for v in bm.verts if not v.link_faces]
+            if loose:bmesh.ops.delete(bm,geom=loose,context='VERTS')
+            bm.to_mesh(ob.data);bm.free();ob.data.update()
+        piv=Vector(spec['pivot'])
+        dup.data.transform(Matrix.Translation(-piv))
+        dup.name=spec['name'];dup.data.name=spec['name']+'_mesh'
+        dup['mc2_anim_node']=spec['name'];dup['mc2_anim_axis_local']=list(spec.get('axis',(0,0,1)))
+        dup['mc2_anim_stock_node']=spec.get('stock') or spec['name']
+        made[spec['name']]=(dup,piv,spec.get('parent'))
+    for name,(dup,piv,parent) in made.items():
+        par,ppiv=(made[parent][0],made[parent][1]) if parent in made else (low,Vector((0,0,0)))
+        dup.parent=par;dup.matrix_parent_inverse=Matrix.Identity(4);dup.location=piv-ppiv
+    return made
+
+
 def export(ob,path,nodes,k,condition):
     # Preserve the stock origin, including off-centre lots. Only measurements
     # from the census enter this transform; no stock vertex/UV data is read.
     pivot=Vector(k.meta.get('stock_origin_offset_m',(0,0,0)))
     for item in [ob,*nodes]:item.location+=pivot
-    select(ob,nodes)
+    kids=[c for c in ob.children_recursive if c.type=='MESH']
+    select(ob,list(nodes)+kids)
     bpy.ops.export_scene.gltf(filepath=str(path),export_format='GLB',use_selection=True,
         export_yup=True,export_apply=True,export_extras=True,export_normals=True,
         export_tangents=True,export_materials='EXPORT',export_texcoords=True)
@@ -176,7 +210,8 @@ def export(ob,path,nodes,k,condition):
     path.with_suffix('.asset.json').write_text(json.dumps(dict(frame='gltf',wu_per_unit=4,
         license='Original MC2 kit geometry and authored shaders; CC0 Poly Haven base detail',
         source_url='local:tools/scifi_kit/art',condition=condition,
-        stock=k.meta['stock'],light_schema='mc2-building-light/1'),indent=2))
+        stock=k.meta['stock'],light_schema='mc2-building-light/1',
+        animated_nodes=[dict(n,pivot_gltf=[n['pivot'][0],n['pivot'][2],-n['pivot'][1]]) for n in k.meta.get('anim_nodes',[])]),indent=2))
 
 
 def bake(objs,k,condition,out,res=2048):
@@ -338,7 +373,10 @@ def bake(objs,k,condition,out,res=2048):
         nt=mat.node_tree;bs=nt.nodes.get('Principled BSDF')
         if mat['mc2_material_class']=='emissive' and condition in ('pristine','worn'):
             red='lamp_red' in mat.name
-            bs.inputs['Emission Color'].default_value=(1,.04,.02,1) if red else (1,.78,.30,1)
+            cool='lamp_cool' in mat.name
+            green='lamp_green' in mat.name
+            blue='lamp_blue' in mat.name
+            bs.inputs['Emission Color'].default_value=(1,.04,.02,1) if red else ((.15,.85,1,1) if cool else ((.1,1,.2,1) if green else ((.15,.4,1,1) if blue else (1,.78,.30,1))))
             bs.inputs['Emission Strength'].default_value=2.
         node.image=maps['basecolor'];nt.links.new(node.outputs['Color'],bs.inputs['Base Color'])
         if '.marker' in mat.name and condition in ('pristine','worn'):
@@ -360,9 +398,11 @@ def bake(objs,k,condition,out,res=2048):
         oc=nt.nodes.new('ShaderNodeGroup');oc.node_tree=group
         nt.links.new(sep.outputs['Red'],oc.inputs['Occlusion'])
     high.hide_render=True;high.hide_set(True)
+    split_anim(low,k)
     lights=sockets(k,condition)
     lods=[]
     for i,ratio in enumerate((1,.45,.18)):
+        if i and k.meta.get('meshopt_lods'):break      # intent pass: LOD1/LOD2 are meshoptimizer bakes (meshopt_lods.py)
         ob=low
         if i:
             ob=low.copy();ob.data=low.data.copy();bpy.context.collection.objects.link(ob)
