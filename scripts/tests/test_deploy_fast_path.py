@@ -137,7 +137,7 @@ def test_installed_exe_refuses_before_manifest_even_if_copy_retains_it(tmp_path,
     monkeypatch.setattr(dp,"check_hardlink_isolation",lambda *a: None)
     monkeypatch.setattr(dp,"deploy",lambda *a,**k: {})
     monkeypatch.setattr(dp,"write_manifest",lambda *a: pytest.fail("published success for wrong installed exe"))
-    args=types.SimpleNamespace(allow_stale_exe=False,build64_root=None,require_clean=True,
+    args=types.SimpleNamespace(allow_stale_exe=False,build64_root=None,require_clean=True,classic_assets=True,
                               full_verify=False,allow_stale_pdb=False,preserve=[])
     with pytest.raises(SystemExit):
         dp.run_deploy(args,str(tmp_path),str(build),str(target),"mc2.exe","mc2.pdb")

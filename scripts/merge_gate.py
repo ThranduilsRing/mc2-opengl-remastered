@@ -114,7 +114,7 @@ def log_lease_holders():
 
 
 def execute(steps, head, dry_run=False, runner=run_child):
-    """Fail fast, show all remaining steps as skipped, and return nonzero on red."""
+    """Run every stage and return nonzero if any stage failed."""
     if not steps:
         raise ValueError("no stages selected; gate requires at least one stage")
     results = []
@@ -124,7 +124,7 @@ def execute(steps, head, dry_run=False, runner=run_child):
         if dry_run:
             print("PLAN " + " ".join(f"{k}={v}" for k, v in overrides.items()) + " " + subprocess.list2cmdline(command))
             status = "DRY-RUN"
-        elif not failed:
+        else:
             started = time.monotonic()
             try:
                 if git("rev-parse", "HEAD") != head:
@@ -137,7 +137,7 @@ def execute(steps, head, dry_run=False, runner=run_child):
                 print(f"[merge_gate] {name}: {exc}", file=sys.stderr)
                 status = "FAIL"
             elapsed = time.monotonic() - started
-            failed = status != "PASS"
+            failed |= status != "PASS"
         results.append((name, status, elapsed))
     print(f"Merge gate HEAD {head} (deploy tree: build64-ninja)")
     print("| Step | Result | Seconds |\n|---|---|---:|")

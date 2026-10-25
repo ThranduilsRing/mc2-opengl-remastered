@@ -1,0 +1,2233 @@
+{
+  "schema": 1,
+  "id": "mc2-industrial-kit",
+  "package": "kit-ingame-2-merge56",
+  "store": "E:\\mc2-ref\\packages\\mc2-industrial-kit\\kit-ingame-2-merge56",
+  "source_bake_commit": "20dd4af35c5666cbfe31e3a7383f7ff1fcd25cce",
+  "packaging_commit": "3e7300f0e",
+  "source_root": "E:/mc2-ref/scifi-kit/art/intent-pass",
+  "assets": [
+    {
+      "id": "chemicalplant",
+      "source_bake_tag": "r2",
+      "source_bake": "_work/r2/pbr/chemicalplant_pristine-bake.json"
+    },
+    {
+      "id": "civstoragea",
+      "source_bake_tag": "r2",
+      "source_bake": "_work/r2/pbr/civstoragea_pristine-bake.json"
+    },
+    {
+      "id": "civstorageb",
+      "source_bake_tag": "r2",
+      "source_bake": "_work/r2/pbr/civstorageb_pristine-bake.json"
+    },
+    {
+      "id": "civstoragec",
+      "source_bake_tag": "r2",
+      "source_bake": "_work/r2/pbr/civstoragec_pristine-bake.json"
+    },
+    {
+      "id": "cornerpipe",
+      "source_bake_tag": "t1",
+      "source_bake": "_work/t1/pbr/cornerpipe_pristine-bake.json"
+    },
+    {
+      "id": "crane",
+      "source_bake_tag": "r2",
+      "source_bake": "_work/r2/pbr/crane_pristine-bake.json"
+    },
+    {
+      "id": "endpipe",
+      "source_bake_tag": "t1",
+      "source_bake": "_work/t1/pbr/endpipe_pristine-bake.json"
+    },
+    {
+      "id": "factorylg",
+      "source_bake_tag": "r2",
+      "source_bake": "_work/r2/pbr/factorylg_pristine-bake.json"
+    },
+    {
+      "id": "factorymd",
+      "source_bake_tag": "t1",
+      "source_bake": "_work/t1/pbr/factorymd_pristine-bake.json"
+    },
+    {
+      "id": "factorysm",
+      "source_bake_tag": "r2",
+      "source_bake": "_work/r2/pbr/factorysm_pristine-bake.json"
+    },
+    {
+      "id": "fourwaypipe",
+      "source_bake_tag": "t1",
+      "source_bake": "_work/t1/pbr/fourwaypipe_pristine-bake.json"
+    },
+    {
+      "id": "fuelpipe",
+      "source_bake_tag": "t1",
+      "source_bake": "_work/t1/pbr/fuelpipe_pristine-bake.json"
+    },
+    {
+      "id": "gantry",
+      "source_bake_tag": "r2",
+      "source_bake": "_work/r2/pbr/gantry_pristine-bake.json"
+    },
+    {
+      "id": "grainstorage",
+      "source_bake_tag": "r2",
+      "source_bake": "_work/r2/pbr/grainstorage_pristine-bake.json"
+    },
+    {
+      "id": "heavyindustrial",
+      "source_bake_tag": "t1",
+      "source_bake": "_work/t1/pbr/heavyindustrial_pristine-bake.json"
+    },
+    {
+      "id": "industrialcomplex",
+      "source_bake_tag": "r2",
+      "source_bake": "_work/r2/pbr/industrialcomplex_pristine-bake.json"
+    },
+    {
+      "id": "industrialplant",
+      "source_bake_tag": "t1",
+      "source_bake": "_work/t1/pbr/industrialplant_pristine-bake.json"
+    },
+    {
+      "id": "l_turretgenerator",
+      "source_bake_tag": "b7",
+      "source_bake": "_work/b7/pbr/l_turretgenerator_pristine-bake.json"
+    },
+    {
+      "id": "largefueltank",
+      "source_bake_tag": "t1",
+      "source_bake": "_work/t1/pbr/largefueltank_pristine-bake.json"
+    },
+    {
+      "id": "liquidstorage",
+      "source_bake_tag": "t1",
+      "source_bake": "_work/t1/pbr/liquidstorage_pristine-bake.json"
+    },
+    {
+      "id": "pipetank",
+      "source_bake_tag": "t1",
+      "source_bake": "_work/t1/pbr/pipetank_pristine-bake.json"
+    },
+    {
+      "id": "powergenerator",
+      "source_bake_tag": "b7",
+      "source_bake": "_work/b7/pbr/powergenerator_pristine-bake.json"
+    },
+    {
+      "id": "processingplant",
+      "source_bake_tag": "r2",
+      "source_bake": "_work/r2/pbr/processingplant_pristine-bake.json"
+    },
+    {
+      "id": "purificationplant",
+      "source_bake_tag": "r2",
+      "source_bake": "_work/r2/pbr/purificationplant_pristine-bake.json"
+    },
+    {
+      "id": "smallfueltank",
+      "source_bake_tag": "t1",
+      "source_bake": "_work/t1/pbr/smallfueltank_pristine-bake.json"
+    },
+    {
+      "id": "straightpipe1",
+      "source_bake_tag": "t1",
+      "source_bake": "_work/t1/pbr/straightpipe1_pristine-bake.json"
+    },
+    {
+      "id": "straightpipe2",
+      "source_bake_tag": "t1",
+      "source_bake": "_work/t1/pbr/straightpipe2_pristine-bake.json"
+    },
+    {
+      "id": "straightpipe3",
+      "source_bake_tag": "t1",
+      "source_bake": "_work/t1/pbr/straightpipe3_pristine-bake.json"
+    },
+    {
+      "id": "threewaypipe",
+      "source_bake_tag": "t1",
+      "source_bake": "_work/t1/pbr/threewaypipe_pristine-bake.json"
+    },
+    {
+      "id": "transformerstation",
+      "source_bake_tag": "e1",
+      "source_bake": "_work/e1/pbr/transformerstation_pristine-bake.json"
+    },
+    {
+      "id": "valvestation",
+      "source_bake_tag": "r2",
+      "source_bake": "_work/r2/pbr/valvestation_pristine-bake.json"
+    },
+    {
+      "id": "wasteprocessor",
+      "source_bake_tag": "r2",
+      "source_bake": "_work/r2/pbr/wasteprocessor_pristine-bake.json"
+    },
+    {
+      "id": "watertower",
+      "source_bake_tag": "t1",
+      "source_bake": "_work/t1/pbr/watertower_pristine-bake.json"
+    },
+    {
+      "id": "weaponsfacility",
+      "source_bake_tag": "r2",
+      "source_bake": "_work/r2/pbr/weaponsfacility_pristine-bake.json"
+    }
+  ],
+  "files": [
+    {
+      "path": "data/model_overrides/chemicalplant/detail/0_normal.ktx2",
+      "sha256": "263447580060d3890d3e3c16a723ee1fde1ad41db99594dfc7a18103c20d0d4e",
+      "bytes": 349936
+    },
+    {
+      "path": "data/model_overrides/chemicalplant/detail/0_orm.ktx2",
+      "sha256": "00b21ee4c48acbd6838ac1ca40f3c77e6c489df0318e997720281c74555971e8",
+      "bytes": 349920
+    },
+    {
+      "path": "data/model_overrides/chemicalplant/detail/2_orm.ktx2",
+      "sha256": "8abba35c8c7cf52221df8de3339f984971f9a7ed50fd9736458b5edb7760b054",
+      "bytes": 349920
+    },
+    {
+      "path": "data/model_overrides/chemicalplant/pristine_intact_lod0.glb",
+      "sha256": "4cb01bf5ad853f70be7a122cb0836665b20da30e5e624ce436496874750ddfe2",
+      "bytes": 8101188
+    },
+    {
+      "path": "data/model_overrides/chemicalplant/pristine_intact_lod1.glb",
+      "sha256": "db2f38fa167e187688a9d89e253b2e98f81ae689cb43b96510b9104cd409a0c9",
+      "bytes": 5116884
+    },
+    {
+      "path": "data/model_overrides/chemicalplant/pristine_intact_lod2.glb",
+      "sha256": "b4da244a31f559b031cd5e6c51cc62f95880e334bee8941d4e5175d2af3a6679",
+      "bytes": 3010056
+    },
+    {
+      "path": "data/model_overrides/civstoragea/detail/0_normal.ktx2",
+      "sha256": "dc05295c6b93471475281017923e69a03216eeb4ca9e0f47f05792babda0aa5e",
+      "bytes": 349936
+    },
+    {
+      "path": "data/model_overrides/civstoragea/detail/0_orm.ktx2",
+      "sha256": "e740d6003a2f7d3d6d4b9a9613982078ad14564c5643a33455d3d493eaed5a39",
+      "bytes": 349920
+    },
+    {
+      "path": "data/model_overrides/civstoragea/pristine_intact_lod0.glb",
+      "sha256": "1e3af054e9008a77fb0ce1c9f5eb881e09a8139040769703b720d67cd551d4ea",
+      "bytes": 1734236
+    },
+    {
+      "path": "data/model_overrides/civstoragea/pristine_intact_lod1.glb",
+      "sha256": "b684ea05a296a5e869259cf661244f949da951f096816fd15e58405590c73245",
+      "bytes": 1224552
+    },
+    {
+      "path": "data/model_overrides/civstoragea/pristine_intact_lod2.glb",
+      "sha256": "209209b6c9e4d3f03e8af93cad5e6bf459399340a1379fa72a900aa6e663ce18",
+      "bytes": 366592
+    },
+    {
+      "path": "data/model_overrides/civstorageb/detail/0_normal.ktx2",
+      "sha256": "ac8c78bff3ffab0c34fc731b23ccee06590b6d29becdd29cfc6ee3539d453cb1",
+      "bytes": 349936
+    },
+    {
+      "path": "data/model_overrides/civstorageb/detail/0_orm.ktx2",
+      "sha256": "00171bd4b381e477b134f1d2ca15e04329e2b54c7045509a753673c6663a03c9",
+      "bytes": 349920
+    },
+    {
+      "path": "data/model_overrides/civstorageb/pristine_intact_lod0.glb",
+      "sha256": "3f88b28c3190fd4a7e006929b04c6ebae6dddd10853c105def135ed5ac97ed6c",
+      "bytes": 1898760
+    },
+    {
+      "path": "data/model_overrides/civstorageb/pristine_intact_lod1.glb",
+      "sha256": "555a433305aacda97b3e9496a330ad5ec9c593f38e4fd2b245439ec8727ad77e",
+      "bytes": 1384040
+    },
+    {
+      "path": "data/model_overrides/civstorageb/pristine_intact_lod2.glb",
+      "sha256": "042817f9c16dd31e1ee1f6e5da90d6b0ce4ef26873a2ee8770c6902f0e1156f7",
+      "bytes": 712640
+    },
+    {
+      "path": "data/model_overrides/civstoragec/detail/0_normal.ktx2",
+      "sha256": "ce90f603e42bf914526c48b3a5340eb805611f209b25221bc8faf16d75377333",
+      "bytes": 349936
+    },
+    {
+      "path": "data/model_overrides/civstoragec/detail/0_orm.ktx2",
+      "sha256": "3e58d8d20b2de921d01e73702b38fe3e212251b5331806d43a43fb715fa4c706",
+      "bytes": 349920
+    },
+    {
+      "path": "data/model_overrides/civstoragec/detail/3_orm.ktx2",
+      "sha256": "63fd9ffd3dd12de71958a317b1bca808aff09c0e332ec0c0b9a8acd9b86abb8e",
+      "bytes": 349920
+    },
+    {
+      "path": "data/model_overrides/civstoragec/pristine_intact_lod0.glb",
+      "sha256": "a589b8a5f6f6fc76edf720433f0e27419ee94c21cced405a8b635ccee10a95f7",
+      "bytes": 1104244
+    },
+    {
+      "path": "data/model_overrides/civstoragec/pristine_intact_lod1.glb",
+      "sha256": "7607034c02a4d672cef50f7b68a17fe07292516f9e005c170f2763b6f7ccb857",
+      "bytes": 788992
+    },
+    {
+      "path": "data/model_overrides/civstoragec/pristine_intact_lod2.glb",
+      "sha256": "aaa6649da3618aa5424c55979671fab4a2b05ccfe93a0c892b936d679e96d773",
+      "bytes": 208204
+    },
+    {
+      "path": "data/model_overrides/cornerpipe/detail/0_normal.ktx2",
+      "sha256": "74eebc70ec7b284a1a91cad97d81c8052f3857b71749b79bd974a6944affbd82",
+      "bytes": 349936
+    },
+    {
+      "path": "data/model_overrides/cornerpipe/detail/0_orm.ktx2",
+      "sha256": "a98ab809407c313be53ac06fdb42cbfc1e6be93c5e042493cc436df45f7a7db0",
+      "bytes": 349920
+    },
+    {
+      "path": "data/model_overrides/cornerpipe/detail/2_orm.ktx2",
+      "sha256": "aab5afa8c734a931f886ce743920cd1256a22005a81a3cf648bdacf9c78199db",
+      "bytes": 349920
+    },
+    {
+      "path": "data/model_overrides/cornerpipe/pristine_intact_lod0.glb",
+      "sha256": "ba0bf58c2b74dbb3347f0ff02025e0fdb0dbed62090ca4eb9da8421dfeb9000e",
+      "bytes": 2735236
+    },
+    {
+      "path": "data/model_overrides/cornerpipe/pristine_intact_lod1.glb",
+      "sha256": "f805ea6998301adae39107a8fb0b07b1eb3c97a343649d566ed7667e02b98be5",
+      "bytes": 1305684
+    },
+    {
+      "path": "data/model_overrides/cornerpipe/pristine_intact_lod2.glb",
+      "sha256": "7f2534c29a385c0cfccce25ba1b92ceb286cfe111579d53bab985743d7857fab",
+      "bytes": 584360
+    },
+    {
+      "path": "data/model_overrides/crane/detail/0_normal.ktx2",
+      "sha256": "a5ac9bce686995e74a6716560f48d2ac6d4ef8eda1ed0fe8f57ac8201474f7e2",
+      "bytes": 349936
+    },
+    {
+      "path": "data/model_overrides/crane/detail/0_orm.ktx2",
+      "sha256": "1b323262b78d7d20a5c1f38d9241d8d5ae7577f36a51b09dd7be8334a9c871ef",
+      "bytes": 349920
+    },
+    {
+      "path": "data/model_overrides/crane/detail/2_orm.ktx2",
+      "sha256": "2f551bbbe3e8ad6338e647716165d6b2c21fba33dc93fec3a3219fff2d672854",
+      "bytes": 349920
+    },
+    {
+      "path": "data/model_overrides/crane/pristine_intact_lod0.glb",
+      "sha256": "6e9067cfc66449d08bd58c186f100de1078df8df6458503b9f97ad3dd0426c9e",
+      "bytes": 1770768
+    },
+    {
+      "path": "data/model_overrides/crane/pristine_intact_lod1.glb",
+      "sha256": "3434d1d134f8afa98b8834e811449a9323c79338a7f85f935d4b9b8e91fa47b3",
+      "bytes": 1038988
+    },
+    {
+      "path": "data/model_overrides/crane/pristine_intact_lod2.glb",
+      "sha256": "0bd80434cce9ca1b1c7e9483f84917eb840417962183a5cd3ddba7f234ba3469",
+      "bytes": 418216
+    },
+    {
+      "path": "data/model_overrides/endpipe/detail/0_normal.ktx2",
+      "sha256": "5af7150e07a62594f8718d572241429a478afa7f8195c6f4425ea4d436ed93fa",
+      "bytes": 349936
+    },
+    {
+      "path": "data/model_overrides/endpipe/detail/0_orm.ktx2",
+      "sha256": "7a5fee565d3fe23768cd428df6764787085191d3122b168a0e9b3d012d2b0ea5",
+      "bytes": 349920
+    },
+    {
+      "path": "data/model_overrides/endpipe/detail/2_orm.ktx2",
+      "sha256": "0124bf8f39450b4bd7e7c8372378bc4f3a881471bcb05a5fae1e33120a206b06",
+      "bytes": 349920
+    },
+    {
+      "path": "data/model_overrides/endpipe/pristine_intact_lod0.glb",
+      "sha256": "32d11cc5c3f429dbe847569abd90055d4a04f7a20a1a4b3fb3e7351843084855",
+      "bytes": 2299936
+    },
+    {
+      "path": "data/model_overrides/endpipe/pristine_intact_lod1.glb",
+      "sha256": "5dc0f0b7ef9ade01d8f36499eb456016a2e68ab76f824d0d235ffa763b92bfe0",
+      "bytes": 1074392
+    },
+    {
+      "path": "data/model_overrides/endpipe/pristine_intact_lod2.glb",
+      "sha256": "dba50013c2def21b22e7a70aa7d39cd68243f831f505bdfeb44197cd238ff09c",
+      "bytes": 516852
+    },
+    {
+      "path": "data/model_overrides/factorylg/detail/0_normal.ktx2",
+      "sha256": "47704c6efad8128183681fcad17239eeddb6a099e5ca46266216f17cf8b1d218",
+      "bytes": 349936
+    },
+    {
+      "path": "data/model_overrides/factorylg/detail/0_orm.ktx2",
+      "sha256": "c0aaa97232191be1c57d076423d8c4aee69e33faf2818b913882018fc1132c95",
+      "bytes": 349920
+    },
+    {
+      "path": "data/model_overrides/factorylg/detail/3_orm.ktx2",
+      "sha256": "d5c0dd3851bd3b3655cbe93462257462a4e16670d63b23e8df7fe22e9e891e9f",
+      "bytes": 349920
+    },
+    {
+      "path": "data/model_overrides/factorylg/pristine_intact_lod0.glb",
+      "sha256": "5ac1451586fba978754130663f95ea0dd7b9f1f40ae9b9f0ee75159fb1fc4c42",
+      "bytes": 4358004
+    },
+    {
+      "path": "data/model_overrides/factorylg/pristine_intact_lod1.glb",
+      "sha256": "193f0416d2af89927a3488d11fe93cd15fb58c577ed98c51effe9062a410d934",
+      "bytes": 3221208
+    },
+    {
+      "path": "data/model_overrides/factorylg/pristine_intact_lod2.glb",
+      "sha256": "58cc7b8aaa40fb3837c837c4fd0084ffc45d8699203f723d759f969dbc67bf1b",
+      "bytes": 2669116
+    },
+    {
+      "path": "data/model_overrides/factorymd/detail/0_normal.ktx2",
+      "sha256": "d13ebd730cb1f542e7502a75740d838cb01de5de54b5645b4b0aea2e462ece9c",
+      "bytes": 349936
+    },
+    {
+      "path": "data/model_overrides/factorymd/detail/0_orm.ktx2",
+      "sha256": "475e7d93c79d7b26fa2315f91dd8e7828aeab074905207761fcc165c72281a81",
+      "bytes": 349920
+    },
+    {
+      "path": "data/model_overrides/factorymd/detail/2_orm.ktx2",
+      "sha256": "ca9d56203efbe77e59611b8006c7410fe25cf92b2484478eb78e05e80e2c924a",
+      "bytes": 349920
+    },
+    {
+      "path": "data/model_overrides/factorymd/pristine_intact_lod0.glb",
+      "sha256": "ef53fc12c8830d2f77c88517a82fa0f4719d94a71af63a0cabe35d10d02ba2f1",
+      "bytes": 4180296
+    },
+    {
+      "path": "data/model_overrides/factorymd/pristine_intact_lod1.glb",
+      "sha256": "7bf5c1d2e04df6c7beaa9598e8284e7ea0f5a1f878efeb0598d6480c4c9a3042",
+      "bytes": 3194556
+    },
+    {
+      "path": "data/model_overrides/factorymd/pristine_intact_lod2.glb",
+      "sha256": "ca84674c05a0fd6d5844a2eb4f7a6d6a4928fbcb05cf710f77973a4de521715a",
+      "bytes": 2310520
+    },
+    {
+      "path": "data/model_overrides/factorysm/detail/0_normal.ktx2",
+      "sha256": "97bb15c572980b09381d86bbfd496ccc236ff2ff065723e5892e8aeeff10d03b",
+      "bytes": 349936
+    },
+    {
+      "path": "data/model_overrides/factorysm/detail/0_orm.ktx2",
+      "sha256": "5ef52e671c33fae659b653b25f7a997a509c446119e1527db43fa44a9e68e24c",
+      "bytes": 349920
+    },
+    {
+      "path": "data/model_overrides/factorysm/detail/3_orm.ktx2",
+      "sha256": "979416c503c4d5e1b074a0a75ca17b9339bc80c0347a051b6667efd73333e986",
+      "bytes": 349920
+    },
+    {
+      "path": "data/model_overrides/factorysm/pristine_intact_lod0.glb",
+      "sha256": "9d75b2b9be4fea40ca8356bee7e63daba8739b841274f4fce91132058e51c356",
+      "bytes": 5155828
+    },
+    {
+      "path": "data/model_overrides/factorysm/pristine_intact_lod1.glb",
+      "sha256": "3d2a64f56f8008d2e2c5e407efe98f5c7066c988283db566a55cb67608fae9f3",
+      "bytes": 2987480
+    },
+    {
+      "path": "data/model_overrides/factorysm/pristine_intact_lod2.glb",
+      "sha256": "c1b7295120f2edb4bc0b7a9ea5e23f2c3fa46023675df481b685351f294348cc",
+      "bytes": 1582576
+    },
+    {
+      "path": "data/model_overrides/fourwaypipe/detail/0_normal.ktx2",
+      "sha256": "ffc4e024170d05efd8d9d2ad0fb1245b32ed3731b930d0167ebf44363004a103",
+      "bytes": 349936
+    },
+    {
+      "path": "data/model_overrides/fourwaypipe/detail/0_orm.ktx2",
+      "sha256": "a6bc5429df24a3a346a7cd7f3b05a7cf94016819cb8d126a217fba0b5e8f4318",
+      "bytes": 349920
+    },
+    {
+      "path": "data/model_overrides/fourwaypipe/detail/2_orm.ktx2",
+      "sha256": "610ab34efd8990f75d025b47f99fd50fff7f66d421abdcc57cb9810a3b3bf94d",
+      "bytes": 349920
+    },
+    {
+      "path": "data/model_overrides/fourwaypipe/pristine_intact_lod0.glb",
+      "sha256": "d49bd8c5a9c22760610d638c86fbf0c7d5907ba518a38ce585d9bad3296c5d05",
+      "bytes": 3613008
+    },
+    {
+      "path": "data/model_overrides/fourwaypipe/pristine_intact_lod1.glb",
+      "sha256": "68e4a5465f0da967351aca243c64dc7dbde332dd6bd71e5936e94f01ef22c71a",
+      "bytes": 1893164
+    },
+    {
+      "path": "data/model_overrides/fourwaypipe/pristine_intact_lod2.glb",
+      "sha256": "a8aa0bed2408b94f3a8a942d5ca807faa9e451a698baa796c73a28777f4c678e",
+      "bytes": 765052
+    },
+    {
+      "path": "data/model_overrides/fuelpipe/detail/0_normal.ktx2",
+      "sha256": "5cc46f8ab244c95ee2e8e057d0101b8009f57eaea9b7bea5dddb021a222d491b",
+      "bytes": 349936
+    },
+    {
+      "path": "data/model_overrides/fuelpipe/detail/0_orm.ktx2",
+      "sha256": "e5072f31c40197033b04ace8687858a0d91dc77d70d85bf6943f0ed4cc49b499",
+      "bytes": 349920
+    },
+    {
+      "path": "data/model_overrides/fuelpipe/detail/2_orm.ktx2",
+      "sha256": "3e3819d53b964c4767317c3942b51cf2aaa07c6108269d08b5507eec713ed557",
+      "bytes": 349920
+    },
+    {
+      "path": "data/model_overrides/fuelpipe/pristine_intact_lod0.glb",
+      "sha256": "ca26fc4c097f2dc0ca0ee910ff2d0eb0e460d635fc8dbf64e47f68523c89d193",
+      "bytes": 510456
+    },
+    {
+      "path": "data/model_overrides/fuelpipe/pristine_intact_lod1.glb",
+      "sha256": "6c4c7d3cce497759fcc2f59af26e8f63854fdfc991cd2a2952894b2f49065854",
+      "bytes": 279092
+    },
+    {
+      "path": "data/model_overrides/fuelpipe/pristine_intact_lod2.glb",
+      "sha256": "1b360e2a55d0cec0c756436a40b10ab758e137274b1a5663e445a196e1c3f800",
+      "bytes": 120348
+    },
+    {
+      "path": "data/model_overrides/gantry/detail/0_normal.ktx2",
+      "sha256": "9f618ed2e9e84fe5048b2d983a015d1040b2a70c76555f7834d2e009fa397242",
+      "bytes": 349936
+    },
+    {
+      "path": "data/model_overrides/gantry/detail/0_orm.ktx2",
+      "sha256": "b0de57ce8f6d38c978a729b284d339a3f2c2398d387c94a74fbe1a4026cc0527",
+      "bytes": 349920
+    },
+    {
+      "path": "data/model_overrides/gantry/detail/2_orm.ktx2",
+      "sha256": "f320f15219e13a0c3ae176a97e982781b628dccaa700daccfcc83b509d51595f",
+      "bytes": 349920
+    },
+    {
+      "path": "data/model_overrides/gantry/pristine_intact_lod0.glb",
+      "sha256": "e9ac2018188cafb65312c84233755f70d59fbad61f30e1aa58b42082fbf3d948",
+      "bytes": 8150252
+    },
+    {
+      "path": "data/model_overrides/gantry/pristine_intact_lod1.glb",
+      "sha256": "4b1424ca29c2994b5d6763783a5179c8e7291fe342ad1d2518950d7fafd4b285",
+      "bytes": 4956656
+    },
+    {
+      "path": "data/model_overrides/gantry/pristine_intact_lod2.glb",
+      "sha256": "af473ade6de323bda3650273cacae1363745d17f1225ab5158e6570590db4069",
+      "bytes": 3438632
+    },
+    {
+      "path": "data/model_overrides/grainstorage/detail/0_normal.ktx2",
+      "sha256": "5e216f011b5b5682d52ef81d86079b27075bb99526b80f8b64a92c6b66923484",
+      "bytes": 349936
+    },
+    {
+      "path": "data/model_overrides/grainstorage/detail/0_orm.ktx2",
+      "sha256": "da3c69261319f5a53621c5bbbb23735fc9128651c0fb2ba3fde47b81f9030d1a",
+      "bytes": 349920
+    },
+    {
+      "path": "data/model_overrides/grainstorage/detail/3_orm.ktx2",
+      "sha256": "b9cd6a89e8d2ec441d9e14edf7e669a8d3c35a728aed0c85a3cddf18e498f286",
+      "bytes": 349920
+    },
+    {
+      "path": "data/model_overrides/grainstorage/pristine_intact_lod0.glb",
+      "sha256": "952cd055588923cd992a9b4dd7cffff398d4fe863d5e5f79bb3453c56ffe5a89",
+      "bytes": 6766348
+    },
+    {
+      "path": "data/model_overrides/grainstorage/pristine_intact_lod1.glb",
+      "sha256": "87ed5484f84d800bc35746589e261f47f95812b31afd5b10e5069057c4b55254",
+      "bytes": 4642628
+    },
+    {
+      "path": "data/model_overrides/grainstorage/pristine_intact_lod2.glb",
+      "sha256": "6d41486d64e95186500cbd49c86e7e7150f287755d3b4cc00201328382ff7553",
+      "bytes": 3371040
+    },
+    {
+      "path": "data/model_overrides/heavyindustrial/detail/0_normal.ktx2",
+      "sha256": "b2c6fb000b04da2796377c2967aa66d4f37012f697c53042d5ea6ae16d2db9fe",
+      "bytes": 349936
+    },
+    {
+      "path": "data/model_overrides/heavyindustrial/detail/0_orm.ktx2",
+      "sha256": "fcd21a7fd684354f7baf003d4f379e026ec70910fca76c25f17f6706159805c8",
+      "bytes": 349920
+    },
+    {
+      "path": "data/model_overrides/heavyindustrial/detail/2_orm.ktx2",
+      "sha256": "7ac05864dad2694b16a6ae867fee06fd8f2d84b0b71525944d037c58143821f3",
+      "bytes": 349920
+    },
+    {
+      "path": "data/model_overrides/heavyindustrial/pristine_intact_lod0.glb",
+      "sha256": "e285017a67545527694ba2286e0e060cabad4d7bcdadddb617e8108011cca6e4",
+      "bytes": 5574608
+    },
+    {
+      "path": "data/model_overrides/heavyindustrial/pristine_intact_lod1.glb",
+      "sha256": "3bd68692a781d7869c2914aa4d5a216b3a8c920a8e2511e3829eea53bca04c65",
+      "bytes": 3332652
+    },
+    {
+      "path": "data/model_overrides/heavyindustrial/pristine_intact_lod2.glb",
+      "sha256": "59f0fddf972e689579cf4a2a58ca591cd10576a6f53261a496f8e7e4ac05c2e3",
+      "bytes": 2006596
+    },
+    {
+      "path": "data/model_overrides/industrialcomplex/detail/0_normal.ktx2",
+      "sha256": "8066ee6f639d1e73c85f2040c1e5039f0f4c9547007f9ef1969f5d515582789b",
+      "bytes": 349936
+    },
+    {
+      "path": "data/model_overrides/industrialcomplex/detail/0_orm.ktx2",
+      "sha256": "6ea88768e9969123e5466245be3af6fbe7207fd2cbcd2f4eb2a068f859dabbd6",
+      "bytes": 349920
+    },
+    {
+      "path": "data/model_overrides/industrialcomplex/detail/2_orm.ktx2",
+      "sha256": "71badd672f05cb2455e2e41d76a2b0c810c1468d1e08be7a2c1e0f3d0550452e",
+      "bytes": 349920
+    },
+    {
+      "path": "data/model_overrides/industrialcomplex/pristine_intact_lod0.glb",
+      "sha256": "2d89b9a0b1502c733fed745890412efa77d1830c3047baf14daa3c8a1a50eeae",
+      "bytes": 3331516
+    },
+    {
+      "path": "data/model_overrides/industrialcomplex/pristine_intact_lod1.glb",
+      "sha256": "804d8a1d5cedd4ebe30baf5e86b3cacabbd04b1996200cdb7d547a9bf4dab4a2",
+      "bytes": 2599080
+    },
+    {
+      "path": "data/model_overrides/industrialcomplex/pristine_intact_lod2.glb",
+      "sha256": "5d45e3afd1f3796235592adb08984da09bb870706930bc5cf09c411d13401745",
+      "bytes": 1603436
+    },
+    {
+      "path": "data/model_overrides/industrialplant/detail/0_normal.ktx2",
+      "sha256": "6bfb1318f39e5bf97ba517a1df4866f86dfbd681c598c78a5650e3159860ad0f",
+      "bytes": 349936
+    },
+    {
+      "path": "data/model_overrides/industrialplant/detail/0_orm.ktx2",
+      "sha256": "a2fa9fc0d8a7f9bb3a47d887470a9f4059d85672637ce046290bdd49f616285b",
+      "bytes": 349920
+    },
+    {
+      "path": "data/model_overrides/industrialplant/detail/3_orm.ktx2",
+      "sha256": "52a948fa67be15b98462b0994ee4c482f8e9193e96aefacb5c5268bd674546f6",
+      "bytes": 349920
+    },
+    {
+      "path": "data/model_overrides/industrialplant/pristine_intact_lod0.glb",
+      "sha256": "758400ce8ffdde04fd71106654cd92e4c94a583974b17fc4b7b70aa8357b65fc",
+      "bytes": 5693144
+    },
+    {
+      "path": "data/model_overrides/industrialplant/pristine_intact_lod1.glb",
+      "sha256": "13894c6a1ff975c63370f7639487e0c82dec9c02611394a1f7cabb386745007c",
+      "bytes": 3627312
+    },
+    {
+      "path": "data/model_overrides/industrialplant/pristine_intact_lod2.glb",
+      "sha256": "5d33006109c4ce39da1ef77531201c566af0a42d7fc573f8e4a5eb7cdd281f91",
+      "bytes": 2134504
+    },
+    {
+      "path": "data/model_overrides/l_turretgenerator/detail/0_normal.ktx2",
+      "sha256": "c81a1eaa98a4f76b9b310393315e8fa633ef838af9990a6cabde0ece4553c886",
+      "bytes": 349936
+    },
+    {
+      "path": "data/model_overrides/l_turretgenerator/detail/0_orm.ktx2",
+      "sha256": "c0d0b4428b7bbfeeb65e3a1df1345cb0ad63d9a49266787bf4b013bfd83de707",
+      "bytes": 349920
+    },
+    {
+      "path": "data/model_overrides/l_turretgenerator/detail/2_orm.ktx2",
+      "sha256": "b701a6ba684d2ed97b126b71b3726d06dbe57aad48d5b9848ab6ba4a1adeb62c",
+      "bytes": 349920
+    },
+    {
+      "path": "data/model_overrides/l_turretgenerator/detail/3_orm.ktx2",
+      "sha256": "f720d0913020f5f6c3060deed267279dcd03e7c5d334a77185cb2bd86ebcd043",
+      "bytes": 349920
+    },
+    {
+      "path": "data/model_overrides/l_turretgenerator/pristine_intact_lod0.glb",
+      "sha256": "1fd5546f0adae132e264a7fb722b3ad283641368cadf32484b7997612ea846da",
+      "bytes": 5912672
+    },
+    {
+      "path": "data/model_overrides/l_turretgenerator/pristine_intact_lod1.glb",
+      "sha256": "045962ae2895458f13286f9c6bb76f0997d90b7586cb1613903d5cb908068a19",
+      "bytes": 3255788
+    },
+    {
+      "path": "data/model_overrides/l_turretgenerator/pristine_intact_lod2.glb",
+      "sha256": "baf370d39f682cac0fea89837a0eee85928ec33dd9ab160f2f5c8c4717ca6203",
+      "bytes": 2365412
+    },
+    {
+      "path": "data/model_overrides/largefueltank/detail/0_normal.ktx2",
+      "sha256": "95e6abba05379ac13b14b9efafa8c201c7b53aac7457f9f59ac9089839769810",
+      "bytes": 349936
+    },
+    {
+      "path": "data/model_overrides/largefueltank/detail/0_orm.ktx2",
+      "sha256": "f821c8f7ed1a972b9bd131311a5d4ccd72e2fff680e749bb68c7addb61df0fea",
+      "bytes": 349920
+    },
+    {
+      "path": "data/model_overrides/largefueltank/detail/3_orm.ktx2",
+      "sha256": "2abfdf2711b84b6246a6f00c25b372b9e892885dab75f19594037f7b1065b7ae",
+      "bytes": 349920
+    },
+    {
+      "path": "data/model_overrides/largefueltank/pristine_intact_lod0.glb",
+      "sha256": "39b15a7b8a5d3c1fddfe69b1f4f8699093b37a0fed228c6fd692048bf00d13a3",
+      "bytes": 6328868
+    },
+    {
+      "path": "data/model_overrides/largefueltank/pristine_intact_lod1.glb",
+      "sha256": "4aa1783fa7ec7c8bf7530dcb5280688fba1d277d72fd1f7a2bf37dbe92f6c67c",
+      "bytes": 3305576
+    },
+    {
+      "path": "data/model_overrides/largefueltank/pristine_intact_lod2.glb",
+      "sha256": "c32e84c57271c07e2e0adeb5c598dfaf7249ff738f93b7817531f80bbd067ac0",
+      "bytes": 2461748
+    },
+    {
+      "path": "data/model_overrides/liquidstorage/detail/0_normal.ktx2",
+      "sha256": "ffea9a92d3d76aec1cf3b193a93e1db1257246d1120ed892440cfca2d33ed43d",
+      "bytes": 349936
+    },
+    {
+      "path": "data/model_overrides/liquidstorage/detail/0_orm.ktx2",
+      "sha256": "3e9ce2bc50664bf658765a7fabd668ce9fec3aa66c48540703f167f3833168d1",
+      "bytes": 349920
+    },
+    {
+      "path": "data/model_overrides/liquidstorage/detail/3_orm.ktx2",
+      "sha256": "6fbfd8ee7fe366c148de1daaf576b3ee6b422fcd379d899b8a603de4c61a3ee8",
+      "bytes": 349920
+    },
+    {
+      "path": "data/model_overrides/liquidstorage/pristine_intact_lod0.glb",
+      "sha256": "801bb419ae385f44c02c1fdff11e4e22fe1384a1e6428546c4bc98e8f5f496ae",
+      "bytes": 7202868
+    },
+    {
+      "path": "data/model_overrides/liquidstorage/pristine_intact_lod1.glb",
+      "sha256": "6a3ab42b27cea7a15f97a3d982067ad654cad52b0e7869287034825df2fb0649",
+      "bytes": 4425652
+    },
+    {
+      "path": "data/model_overrides/liquidstorage/pristine_intact_lod2.glb",
+      "sha256": "0866afc0b1e476f16bdcb4bcf4264147a9118110a0912a466909b3b7838b6b08",
+      "bytes": 3728732
+    },
+    {
+      "path": "data/model_overrides/models.json",
+      "sha256": "91b2630a3cb39dd852ed16dfd8c72cb7316283007a3e2f66e3df0ac21ed9e21b",
+      "bytes": 165689
+    },
+    {
+      "path": "data/model_overrides/pipetank/detail/0_normal.ktx2",
+      "sha256": "d9cd41813d267a73ef64484872c1f5e9bf70eab48997dc9c91c74961cf054f5c",
+      "bytes": 349936
+    },
+    {
+      "path": "data/model_overrides/pipetank/detail/0_orm.ktx2",
+      "sha256": "8e57e11d702f82a92a28e42f7bc6023f3a8504551fbf5db6ec066524659a9354",
+      "bytes": 349920
+    },
+    {
+      "path": "data/model_overrides/pipetank/detail/3_orm.ktx2",
+      "sha256": "e9a819c03a974644746a0560d6eeb5314181ef520571f070ca3145c27fbdffa0",
+      "bytes": 349920
+    },
+    {
+      "path": "data/model_overrides/pipetank/pristine_intact_lod0.glb",
+      "sha256": "2698159d457af952f9cdf67d7eb4c898f679f7511a2c5ddbe14674d8933c849a",
+      "bytes": 5310980
+    },
+    {
+      "path": "data/model_overrides/pipetank/pristine_intact_lod1.glb",
+      "sha256": "0f1fe2441c4e2f8bbaa7d9dc939210b12a3dff94e9c5df0258371a37414a83bd",
+      "bytes": 2841548
+    },
+    {
+      "path": "data/model_overrides/pipetank/pristine_intact_lod2.glb",
+      "sha256": "05ef47e63795e812ec1b150b596cf9c17eea4c277c1d37c2033879cae20c5067",
+      "bytes": 2124044
+    },
+    {
+      "path": "data/model_overrides/powergenerator/detail/0_normal.ktx2",
+      "sha256": "bd3aee2f22ede48f762a104b19a50241b819fbb6d5c10bc10766ed04f48bf302",
+      "bytes": 349936
+    },
+    {
+      "path": "data/model_overrides/powergenerator/detail/0_orm.ktx2",
+      "sha256": "bd4af8e98086c5a32293efc232f5451bc22c2f25fe201963f8c141556adc7523",
+      "bytes": 349920
+    },
+    {
+      "path": "data/model_overrides/powergenerator/detail/2_orm.ktx2",
+      "sha256": "9c9c52c0d1f0105dbe250d6b4207b915c41adc5b75b840e9312b03798e36b6d8",
+      "bytes": 349920
+    },
+    {
+      "path": "data/model_overrides/powergenerator/detail/3_orm.ktx2",
+      "sha256": "5bf6c86a990fa8fb723f77221934e09484adb5b661b1096d7d611c56b90b34e5",
+      "bytes": 349920
+    },
+    {
+      "path": "data/model_overrides/powergenerator/pristine_intact_lod0.glb",
+      "sha256": "7f45ea604a4a8979a048cfb23bfdd4390289dd3d0e57c789474ad55b35fc3b9c",
+      "bytes": 6215432
+    },
+    {
+      "path": "data/model_overrides/powergenerator/pristine_intact_lod1.glb",
+      "sha256": "44fbf44effea9b810920f61f2e436520a7fff1741225130fbcdebb6e2186e506",
+      "bytes": 3661188
+    },
+    {
+      "path": "data/model_overrides/powergenerator/pristine_intact_lod2.glb",
+      "sha256": "b3d6a88fcb016fc4e622352c629eeea45b408897fcdb09a95b7e0bf991676b80",
+      "bytes": 2784080
+    },
+    {
+      "path": "data/model_overrides/processingplant/detail/0_normal.ktx2",
+      "sha256": "d66e31105bb34485e355ee08770f951a2ab1bc8de2d7be4df897fa4423916ccf",
+      "bytes": 349936
+    },
+    {
+      "path": "data/model_overrides/processingplant/detail/0_orm.ktx2",
+      "sha256": "07cd3787c42e9a6d3b223d7739e4ca01ebc6eea5a4f3e95ec41a357bdd87e0bf",
+      "bytes": 349920
+    },
+    {
+      "path": "data/model_overrides/processingplant/detail/3_orm.ktx2",
+      "sha256": "7e0eaf8b282afcd46215da8b3e64560f99440621c0c31dd00a9da71283b3326d",
+      "bytes": 349920
+    },
+    {
+      "path": "data/model_overrides/processingplant/pristine_intact_lod0.glb",
+      "sha256": "8b013a21386b8f08cc9a71a895d6fa362ccf328e2bd058ecd17e0b9781ee9b84",
+      "bytes": 8172604
+    },
+    {
+      "path": "data/model_overrides/processingplant/pristine_intact_lod1.glb",
+      "sha256": "5b1405e0ece40c6f3674cdfea9a4f547f96d5048fbb3939e8056186958366e61",
+      "bytes": 5403152
+    },
+    {
+      "path": "data/model_overrides/processingplant/pristine_intact_lod2.glb",
+      "sha256": "a76bc4814c132fec4b271a0ce3e8e205877a152d4eb19be6f899821fed222910",
+      "bytes": 4477208
+    },
+    {
+      "path": "data/model_overrides/purificationplant/detail/0_normal.ktx2",
+      "sha256": "e4a2fa44a3323799686e6c87e7181e4be06eba8aad064901207191061311507c",
+      "bytes": 349936
+    },
+    {
+      "path": "data/model_overrides/purificationplant/detail/0_orm.ktx2",
+      "sha256": "7ae57f5cdf2b2f595c1ae9cbf957de7dc61e2c5a0c15c235f5a09bda2d176b91",
+      "bytes": 349920
+    },
+    {
+      "path": "data/model_overrides/purificationplant/detail/3_orm.ktx2",
+      "sha256": "fc93600913cb2c6d508da7d5d30ecce19a82faaa919bd375d8808f81f242d1cd",
+      "bytes": 349920
+    },
+    {
+      "path": "data/model_overrides/purificationplant/pristine_intact_lod0.glb",
+      "sha256": "345cacca7d92309c2e806784f80b148f6aa7feb98270eb7ab1aebecb257a72a5",
+      "bytes": 4334964
+    },
+    {
+      "path": "data/model_overrides/purificationplant/pristine_intact_lod1.glb",
+      "sha256": "475faaf03f9290807bdaa46bb72f03e4f7b2b4dd9a02b650d0813c9a8eadc0e1",
+      "bytes": 2730724
+    },
+    {
+      "path": "data/model_overrides/purificationplant/pristine_intact_lod2.glb",
+      "sha256": "6ecf5b7fd85dc2862a89bc34590df6b97285e526b74934e1908122d509119821",
+      "bytes": 2234992
+    },
+    {
+      "path": "data/model_overrides/smallfueltank/detail/0_normal.ktx2",
+      "sha256": "8d6157adc135586e9f68c91e0eb79d08a58b20ad2b9a3fd18883d97af7efeec4",
+      "bytes": 349936
+    },
+    {
+      "path": "data/model_overrides/smallfueltank/detail/0_orm.ktx2",
+      "sha256": "388ac06c3d09f9d970f6328dff01b7a77ba57c8e7fca74aeb8197d0af7d6cca9",
+      "bytes": 349920
+    },
+    {
+      "path": "data/model_overrides/smallfueltank/detail/2_orm.ktx2",
+      "sha256": "449d3952b7daef07d02c5743abc2dc3c4f6b636da34932ea7253e788e5f44a52",
+      "bytes": 349920
+    },
+    {
+      "path": "data/model_overrides/smallfueltank/pristine_intact_lod0.glb",
+      "sha256": "45b9a4f1afb0394d8793dfad4db5a471f16a8914b5cfc70fca7de73c11f700b7",
+      "bytes": 1681400
+    },
+    {
+      "path": "data/model_overrides/smallfueltank/pristine_intact_lod1.glb",
+      "sha256": "5cd78d629ce2e62544a4f442e7c5a863d9463716302ac1ccc68914fd37ce1fbe",
+      "bytes": 1038720
+    },
+    {
+      "path": "data/model_overrides/smallfueltank/pristine_intact_lod2.glb",
+      "sha256": "c1caceb36926d3bfeb8844c532691357b787155ff9841426f1a6a99a5108eddd",
+      "bytes": 596728
+    },
+    {
+      "path": "data/model_overrides/straightpipe1/detail/0_normal.ktx2",
+      "sha256": "6cf97e5cf9581a44fd1a04dc9efa03f307c808b0fc115f32c113f7db4485ddae",
+      "bytes": 349936
+    },
+    {
+      "path": "data/model_overrides/straightpipe1/detail/0_orm.ktx2",
+      "sha256": "1774b8b586ae81718e416e78556fa561106d2865cea7d7814eba86d246fa11fb",
+      "bytes": 349920
+    },
+    {
+      "path": "data/model_overrides/straightpipe1/detail/2_orm.ktx2",
+      "sha256": "cb67c8326b7a527c087a0f705baa5bffe840a17a9c6c5a2bbcc40abe54660e04",
+      "bytes": 349920
+    },
+    {
+      "path": "data/model_overrides/straightpipe1/pristine_intact_lod0.glb",
+      "sha256": "2e7f9d6cad0e49bee8a134d0dc45feb6e45342d3fc04406ed9f60326f1aff8da",
+      "bytes": 344032
+    },
+    {
+      "path": "data/model_overrides/straightpipe1/pristine_intact_lod1.glb",
+      "sha256": "3555718fd9ed369f6da34c24eacb314444bef1aa741d301df670084fd5bffe48",
+      "bytes": 262556
+    },
+    {
+      "path": "data/model_overrides/straightpipe1/pristine_intact_lod2.glb",
+      "sha256": "f9c6fe9134d230912942be63222b9fd364f6d967b041176286439a9d53835cf3",
+      "bytes": 78336
+    },
+    {
+      "path": "data/model_overrides/straightpipe2/detail/0_normal.ktx2",
+      "sha256": "11d7eb82f0e326bda3b085dd066c414cc5e1b564c9b5581eedd787ad246b0b10",
+      "bytes": 349936
+    },
+    {
+      "path": "data/model_overrides/straightpipe2/detail/0_orm.ktx2",
+      "sha256": "fe3b1458fef534f191dff7e95d132c81cab6bc8abacde92bbafeafdc8cc004fe",
+      "bytes": 349920
+    },
+    {
+      "path": "data/model_overrides/straightpipe2/detail/2_orm.ktx2",
+      "sha256": "c230f88b6445dc50d8ac22ea9378e9e8d43c0f323ec84104c6c8faeb40e58dce",
+      "bytes": 349920
+    },
+    {
+      "path": "data/model_overrides/straightpipe2/pristine_intact_lod0.glb",
+      "sha256": "7d69856c58a41ad78082064e82e5818b919d73a8acd8d2be25e4a4c53f7f640c",
+      "bytes": 517480
+    },
+    {
+      "path": "data/model_overrides/straightpipe2/pristine_intact_lod1.glb",
+      "sha256": "d9f304cb28f479e399fc90d51bfb646f0eea9e02f975b0d6902267226e132f71",
+      "bytes": 412480
+    },
+    {
+      "path": "data/model_overrides/straightpipe2/pristine_intact_lod2.glb",
+      "sha256": "1bb2ab55c8fe5be97a38b7184c43d16a1de8abac3058b8e9e89624071a5a95e9",
+      "bytes": 109316
+    },
+    {
+      "path": "data/model_overrides/straightpipe3/detail/0_normal.ktx2",
+      "sha256": "d5cbb32b0caac626c91110f0694a253033110274f5d4df3b5178e57fca920fb7",
+      "bytes": 349936
+    },
+    {
+      "path": "data/model_overrides/straightpipe3/detail/0_orm.ktx2",
+      "sha256": "9db4b9b84508b0c6b92e0af5a0d3065beae20b2d82c106f066931e7238d106b9",
+      "bytes": 349920
+    },
+    {
+      "path": "data/model_overrides/straightpipe3/detail/2_orm.ktx2",
+      "sha256": "92d60380f92b75d7f99b221c52872b2587e5df9ce8e8a7be1679452b7f431081",
+      "bytes": 349920
+    },
+    {
+      "path": "data/model_overrides/straightpipe3/pristine_intact_lod0.glb",
+      "sha256": "9b6b51daff4e159ab6e3617d070c046538b495e72279a5de4faaf12ecdf4e3e4",
+      "bytes": 523544
+    },
+    {
+      "path": "data/model_overrides/straightpipe3/pristine_intact_lod1.glb",
+      "sha256": "5b335654a24d587cb4130992c308eb87af06a070803951a579fd1ab2442b9649",
+      "bytes": 418544
+    },
+    {
+      "path": "data/model_overrides/straightpipe3/pristine_intact_lod2.glb",
+      "sha256": "cc2f206cf2de8b7b20535eb24243476c917b96858c2a0f89f59f11e6b6d1e371",
+      "bytes": 111396
+    },
+    {
+      "path": "data/model_overrides/threewaypipe/detail/0_normal.ktx2",
+      "sha256": "bc013266ab17c7fad30cd6224ecebd5a0344b4497275a85486ac1f4b4f7a2d59",
+      "bytes": 349936
+    },
+    {
+      "path": "data/model_overrides/threewaypipe/detail/0_orm.ktx2",
+      "sha256": "9da3755bd68a7fe94e5879f9a4938e0d581e4387a23f3bcffbb9e5fae5fbb026",
+      "bytes": 349920
+    },
+    {
+      "path": "data/model_overrides/threewaypipe/detail/2_orm.ktx2",
+      "sha256": "e59181ded7dcfdf380e663b5d3a8b5f0861a09056871b428cac51da26903b363",
+      "bytes": 349920
+    },
+    {
+      "path": "data/model_overrides/threewaypipe/pristine_intact_lod0.glb",
+      "sha256": "cc680f0bfe3667b44a6bb78e031f7c85688bbbb1466572f2b26b39d5d5855b1b",
+      "bytes": 3136444
+    },
+    {
+      "path": "data/model_overrides/threewaypipe/pristine_intact_lod1.glb",
+      "sha256": "c49de18a00c9333e6c89f8c3ec3f164768d00e27d9f5eed65baeecf95b79f45a",
+      "bytes": 1545892
+    },
+    {
+      "path": "data/model_overrides/threewaypipe/pristine_intact_lod2.glb",
+      "sha256": "9cb56334fbc9ea6e5001fe6d7befb4e79884d74f92d3e260383c550b35290b62",
+      "bytes": 663132
+    },
+    {
+      "path": "data/model_overrides/transformerstation/detail/0_normal.ktx2",
+      "sha256": "75f7d9b3a9f31eed2ff5f5885c1ad8f9327e7f8cbecdefa5b5ba0ecf892e220b",
+      "bytes": 349936
+    },
+    {
+      "path": "data/model_overrides/transformerstation/detail/0_orm.ktx2",
+      "sha256": "41c0c24b0aac1ad5e3ac09bbd2656d1e52555fbaaaaf4750f744e218af9415a9",
+      "bytes": 349920
+    },
+    {
+      "path": "data/model_overrides/transformerstation/detail/2_orm.ktx2",
+      "sha256": "a9ae9ea2d75bf8bdbf4178b4fddcfdea1ec2e64838744fe7ae3a2914c7fa557f",
+      "bytes": 349920
+    },
+    {
+      "path": "data/model_overrides/transformerstation/pristine_intact_lod0.glb",
+      "sha256": "9308aa1156fe2e639eef07e6ec2c0accfd01814ca9e73003960d12542638c260",
+      "bytes": 4818148
+    },
+    {
+      "path": "data/model_overrides/transformerstation/pristine_intact_lod1.glb",
+      "sha256": "33bdd02e0d934266e53344af384b47302b28743e988abd02323318efaa064fe7",
+      "bytes": 2633956
+    },
+    {
+      "path": "data/model_overrides/transformerstation/pristine_intact_lod2.glb",
+      "sha256": "c7252ce00c1c57385e49428b25b0ea7b72fb4e1bebd3e0113cfcc8d3ee038708",
+      "bytes": 1109052
+    },
+    {
+      "path": "data/model_overrides/valvestation/detail/0_normal.ktx2",
+      "sha256": "222c85c33344881c28787f059efa41ecfd208a2059b83134a665545e4120b876",
+      "bytes": 349936
+    },
+    {
+      "path": "data/model_overrides/valvestation/detail/0_orm.ktx2",
+      "sha256": "b53ad1668b8420b97d3183640d7fed74c770f4cc21ac7bd31961288555d3ec80",
+      "bytes": 349920
+    },
+    {
+      "path": "data/model_overrides/valvestation/detail/3_orm.ktx2",
+      "sha256": "e7db1058f83e964d7564fe196161e1e5720fb122c89244118532ee2f77785a8e",
+      "bytes": 349920
+    },
+    {
+      "path": "data/model_overrides/valvestation/pristine_intact_lod0.glb",
+      "sha256": "7f020e898c8a1dba491faddff6eb1cb23ead2dcba21edaa68724c3bff1cd0329",
+      "bytes": 3355320
+    },
+    {
+      "path": "data/model_overrides/valvestation/pristine_intact_lod1.glb",
+      "sha256": "a54c71b84505bb93de1255b7ed0f7a7b35532e449b0db444f0531fdc020b64a2",
+      "bytes": 2355332
+    },
+    {
+      "path": "data/model_overrides/valvestation/pristine_intact_lod2.glb",
+      "sha256": "4eb5504702215a62e081bf33799de5e06ab0651acdb1892dfb1f8fdfe4ae832d",
+      "bytes": 1350244
+    },
+    {
+      "path": "data/model_overrides/wasteprocessor/detail/0_normal.ktx2",
+      "sha256": "9acf174100239229c33b1972a09f6b0e0e9254ab7a8e2f8ef4b1822ba0d59d74",
+      "bytes": 349936
+    },
+    {
+      "path": "data/model_overrides/wasteprocessor/detail/0_orm.ktx2",
+      "sha256": "49a04ec32d1bdc0fb7ab1b204650596287a44ab809406d669d62a97626df822f",
+      "bytes": 349920
+    },
+    {
+      "path": "data/model_overrides/wasteprocessor/detail/3_orm.ktx2",
+      "sha256": "7ecf0339ff124aebe95b42ba2e28e36cb309dc875e77726541bde34361b6a9b6",
+      "bytes": 349920
+    },
+    {
+      "path": "data/model_overrides/wasteprocessor/pristine_intact_lod0.glb",
+      "sha256": "d1d70af729a230cd5f7ad42cfd5bbbce82393bba366fb1d9cf62383dc3c8e981",
+      "bytes": 3863816
+    },
+    {
+      "path": "data/model_overrides/wasteprocessor/pristine_intact_lod1.glb",
+      "sha256": "d2f5d8750f789f61ad1f758ff3951b79c00836e0f3a5da001180ae9c5420347a",
+      "bytes": 2934552
+    },
+    {
+      "path": "data/model_overrides/wasteprocessor/pristine_intact_lod2.glb",
+      "sha256": "53d5d911cda5698c9951e2179f37de416cdfcd94822ff04b846f2de790a6feed",
+      "bytes": 1469920
+    },
+    {
+      "path": "data/model_overrides/watertower/detail/0_normal.ktx2",
+      "sha256": "65d7fc1ef5844db5d145d300accd74751f8473a074fc79a8dd9356f53f5ca81f",
+      "bytes": 349936
+    },
+    {
+      "path": "data/model_overrides/watertower/detail/0_orm.ktx2",
+      "sha256": "1fe6df2efde3075b58281e97cf9e1aff05b9b5957fb1636cf3e187dc64ca7c57",
+      "bytes": 349920
+    },
+    {
+      "path": "data/model_overrides/watertower/detail/2_orm.ktx2",
+      "sha256": "db76887569d98b8a7fefd9c3105712e7b3962f9b0f4578dd1690de33a1f3f2c8",
+      "bytes": 349920
+    },
+    {
+      "path": "data/model_overrides/watertower/pristine_intact_lod0.glb",
+      "sha256": "0534e99ed1f9922bc6dc28af728954f75809952d3a07770f0bbc171ea3cba2ac",
+      "bytes": 3209484
+    },
+    {
+      "path": "data/model_overrides/watertower/pristine_intact_lod1.glb",
+      "sha256": "2efb07437238b3bb192258e59b47d81e9c9d6cff70dc2fe27d05a9d70802755a",
+      "bytes": 1839884
+    },
+    {
+      "path": "data/model_overrides/watertower/pristine_intact_lod2.glb",
+      "sha256": "61f56993fb4d1b6e56850e5aa0cc6d421f8752f6499bfe50eb0166384f5dba78",
+      "bytes": 1085276
+    },
+    {
+      "path": "data/model_overrides/weaponsfacility/detail/0_normal.ktx2",
+      "sha256": "792b1430d6ccdd239f302122a6fe19402bc9b197ef1a2a36a5a659b51d4a7454",
+      "bytes": 349936
+    },
+    {
+      "path": "data/model_overrides/weaponsfacility/detail/0_orm.ktx2",
+      "sha256": "f9ed07c757db34af39d12160c21e7c63d3d0f3d72422cc5454f38c46a4e084e7",
+      "bytes": 349920
+    },
+    {
+      "path": "data/model_overrides/weaponsfacility/detail/2_orm.ktx2",
+      "sha256": "5ede2556b4ee4d8ac2f9a8dc53ffa2c88b41f145c474ffcbbce4b338563d31a2",
+      "bytes": 349920
+    },
+    {
+      "path": "data/model_overrides/weaponsfacility/pristine_intact_lod0.glb",
+      "sha256": "9a343547d4ad2ba985ec0668778be23735bb7a0f9e1128b2496ba974d1818760",
+      "bytes": 7372060
+    },
+    {
+      "path": "data/model_overrides/weaponsfacility/pristine_intact_lod1.glb",
+      "sha256": "1f83ed886800b5874f26e3238aeca349ca1ae68d77e0ab5353e02d3479cd49a9",
+      "bytes": 4819768
+    },
+    {
+      "path": "data/model_overrides/weaponsfacility/pristine_intact_lod2.glb",
+      "sha256": "2f8e003cfb8b55aea96ff9640ed552bbe3885316c0b98c497ced9615a5e55834",
+      "bytes": 2075840
+    },
+    {
+      "path": "data/tgl/1024/cp_chemicalplant_0.ktx2",
+      "sha256": "e72ad01fbd0747f65f9701906f3b79ff61e4e71a11a8d8db8376cc8617d6c7b1",
+      "bytes": 1398528
+    },
+    {
+      "path": "data/tgl/1024/cp_civstoragea_0.ktx2",
+      "sha256": "c774bdee8b210d25ccf431cf6ea6f12b6d5abaf5f0cf27a31575d4317fc5535a",
+      "bytes": 1398528
+    },
+    {
+      "path": "data/tgl/1024/cp_civstorageb_0.ktx2",
+      "sha256": "fa4b5f88dda3be1348e50ab25f7fa0cafef0d748712c476a542c67664b1dbdef",
+      "bytes": 1398528
+    },
+    {
+      "path": "data/tgl/1024/cp_civstoragec_0.ktx2",
+      "sha256": "916afb147e6c3c33940aba3acfd2136b20fd28f538f282e667d090e45df98520",
+      "bytes": 1398528
+    },
+    {
+      "path": "data/tgl/1024/cp_cornerpipe_0.ktx2",
+      "sha256": "6b95c2ca45d596b9c889688a9335adc9961dc43bbe9ae4a00c623b4d07bf8b50",
+      "bytes": 1398528
+    },
+    {
+      "path": "data/tgl/1024/cp_crane_0.ktx2",
+      "sha256": "936ca762e3512fc0aef66799e13e00afcce992638c07109463685912f2ff6271",
+      "bytes": 1398528
+    },
+    {
+      "path": "data/tgl/1024/cp_endpipe_0.ktx2",
+      "sha256": "43e7020db2a59a9a0c864a7af2f52a5b5be94d7cea002f9cbe93d4127106a2be",
+      "bytes": 1398528
+    },
+    {
+      "path": "data/tgl/1024/cp_factorylg_0.ktx2",
+      "sha256": "35e1b2cb73badd16c241754dceac285b74217ea2b8ec743e60ad9fcc691055db",
+      "bytes": 1398528
+    },
+    {
+      "path": "data/tgl/1024/cp_factorymd_0.ktx2",
+      "sha256": "62f6368183924bf47c17aedc48e5bd06c8b5880f7283d254fea6136cc058bf71",
+      "bytes": 1398528
+    },
+    {
+      "path": "data/tgl/1024/cp_factorysm_0.ktx2",
+      "sha256": "1694ac91365345c57c091a91fbdba1a19c7d64761f9b7df3e7aaa96f8a60040d",
+      "bytes": 1398528
+    },
+    {
+      "path": "data/tgl/1024/cp_fourwaypipe_0.ktx2",
+      "sha256": "36145266465098ab74e446e3d8c376234064bc8980bfb7f42f3f6597d6e84837",
+      "bytes": 1398528
+    },
+    {
+      "path": "data/tgl/1024/cp_fuelpipe_0.ktx2",
+      "sha256": "04d360294ef708efa76103e58f09f0f336ef20b345553a61082166da6412ebd5",
+      "bytes": 1398528
+    },
+    {
+      "path": "data/tgl/1024/cp_gantry_0.ktx2",
+      "sha256": "95090ba346add76d8b9766954781b6a2aeaaa607604bc0d3f9d1c7188e52f358",
+      "bytes": 1398528
+    },
+    {
+      "path": "data/tgl/1024/cp_grainstorage_0.ktx2",
+      "sha256": "d084def82080f9bf73d5ec64911c09d39377ade6a736f880d492940a883f6240",
+      "bytes": 1398528
+    },
+    {
+      "path": "data/tgl/1024/cp_heavyindustrial_0.ktx2",
+      "sha256": "3aad55081919e0e1084e4da35a39193dcee51e2b7eb09367090c3e82b107f9c0",
+      "bytes": 1398528
+    },
+    {
+      "path": "data/tgl/1024/cp_industrialcomplex_0.ktx2",
+      "sha256": "c8c1924aeb40aa32fa5885fc93a7edfc828cc696f2f59a7f3cdf07d6fe0f5f47",
+      "bytes": 1398528
+    },
+    {
+      "path": "data/tgl/1024/cp_industrialplant_0.ktx2",
+      "sha256": "f0e0c5d2de7b3c632169785e4ef531111e6a531c99816eb39adcbdb8134e35e8",
+      "bytes": 1398528
+    },
+    {
+      "path": "data/tgl/1024/cp_l_turretgenerator_0.ktx2",
+      "sha256": "8a7c9b93a09d1f86f3f527b9a45b39e6af06dcbadd0fccc284b41797d93b90d5",
+      "bytes": 1398528
+    },
+    {
+      "path": "data/tgl/1024/cp_largefueltank_0.ktx2",
+      "sha256": "006988a7772b384283babc9dfff158f0efdc75197adf0fe8d9094f139626bf91",
+      "bytes": 1398528
+    },
+    {
+      "path": "data/tgl/1024/cp_liquidstorage_0.ktx2",
+      "sha256": "94a52b35d62d1702bbd99c0e3f0415f0c8ac230c90fe4b787900c9fab8ead261",
+      "bytes": 1398528
+    },
+    {
+      "path": "data/tgl/1024/cp_pipetank_0.ktx2",
+      "sha256": "d816898e1d5eae565ef6da472f18bc012de864a4cc9593d732e175afe5949baf",
+      "bytes": 1398528
+    },
+    {
+      "path": "data/tgl/1024/cp_powergenerator_0.ktx2",
+      "sha256": "22080a6f615c6b67c7dfdcb4121bf79b323fbc5ac936900e2ac71950d9a7f6ea",
+      "bytes": 1398528
+    },
+    {
+      "path": "data/tgl/1024/cp_processingplant_0.ktx2",
+      "sha256": "6546db2145730024f17be61078abc22113027b41b01210d0354001702d80e7bb",
+      "bytes": 1398528
+    },
+    {
+      "path": "data/tgl/1024/cp_purificationplant_0.ktx2",
+      "sha256": "c257a2e8d85316bdffe4f45ae74d9473dd0c47b11db916e9152d3745d939a001",
+      "bytes": 1398528
+    },
+    {
+      "path": "data/tgl/1024/cp_smallfueltank_0.ktx2",
+      "sha256": "33c110d66a9aaa27fa05419db608ea956b90d6fa513743e1df9d44737d9912b0",
+      "bytes": 1398528
+    },
+    {
+      "path": "data/tgl/1024/cp_straightpipe1_0.ktx2",
+      "sha256": "e2b87852a190e8d50799f218bd941453fd5ac7eacce62d9e27718116834cb860",
+      "bytes": 1398528
+    },
+    {
+      "path": "data/tgl/1024/cp_straightpipe2_0.ktx2",
+      "sha256": "07053d33f761c8630b698b04eecc0a82d7056f25add492fa05f0a63a0ff740b8",
+      "bytes": 1398528
+    },
+    {
+      "path": "data/tgl/1024/cp_straightpipe3_0.ktx2",
+      "sha256": "aefc7926166f8ff29efcba033ff7d32923f936076b669d0c77d5380bab028251",
+      "bytes": 1398528
+    },
+    {
+      "path": "data/tgl/1024/cp_threewaypipe_0.ktx2",
+      "sha256": "f508c8caadb1222c075d17894164050571ff43c1a507814e7c43e2223bba4ebf",
+      "bytes": 1398528
+    },
+    {
+      "path": "data/tgl/1024/cp_transformerstation_0.ktx2",
+      "sha256": "1f3251f0f63991a212fc67d2b400a3621fb56f8aac1e43d115aa900773347a34",
+      "bytes": 1398528
+    },
+    {
+      "path": "data/tgl/1024/cp_valvestation_0.ktx2",
+      "sha256": "334f6869f0a3d3550eb711bb02f5e7d77540143d581893a892dd6194d6c983b9",
+      "bytes": 1398528
+    },
+    {
+      "path": "data/tgl/1024/cp_wasteprocessor_0.ktx2",
+      "sha256": "bd7bc45715e6ba43ffa3467f37a4bc23df0e75ec4e145c1efe26d64aa4b204a3",
+      "bytes": 1398528
+    },
+    {
+      "path": "data/tgl/1024/cp_watertower_0.ktx2",
+      "sha256": "2fc71b44c9800453b98de68a70a85b2cf699b32004e0488dcc0bccb33b94d41f",
+      "bytes": 1398528
+    },
+    {
+      "path": "data/tgl/1024/cp_weaponsfacility_0.ktx2",
+      "sha256": "6d0e6655fa56d2d0bb8215951a1b68cc9358c3d1a54004b140c8e2bc2c64051c",
+      "bytes": 1398528
+    },
+    {
+      "path": "data/tgl/128/cp_chemicalplant_0.ktx2",
+      "sha256": "0fc3466eb8b75b8f385ddc11ed9c2df14d08112108ac6d45f2c7bea48adc9e9f",
+      "bytes": 22192
+    },
+    {
+      "path": "data/tgl/128/cp_civstoragea_0.ktx2",
+      "sha256": "95bcfb38e0eb5716e751c242bf63c7d1effd4c042b7a34a1eacb2dfa3032a235",
+      "bytes": 22192
+    },
+    {
+      "path": "data/tgl/128/cp_civstorageb_0.ktx2",
+      "sha256": "a0e42fcb2c8423bfa6ab10612e7b98d3c0b8f5507b83947728623ea56e117086",
+      "bytes": 22192
+    },
+    {
+      "path": "data/tgl/128/cp_civstoragec_0.ktx2",
+      "sha256": "d36fbcc5a2ef45c6e92337c57090710794d33bf34c06765b238a40f2e80a1515",
+      "bytes": 22192
+    },
+    {
+      "path": "data/tgl/128/cp_cornerpipe_0.ktx2",
+      "sha256": "cc47b8c0ca06c85237ab5ad84d14ae98c5e4c21379917fc889a886b585f4a6f6",
+      "bytes": 22192
+    },
+    {
+      "path": "data/tgl/128/cp_crane_0.ktx2",
+      "sha256": "e9cf4ed4f3f3c3944d8bcc35db427d64ac3d73f25f7403b49886c7b541d0d6fc",
+      "bytes": 22192
+    },
+    {
+      "path": "data/tgl/128/cp_endpipe_0.ktx2",
+      "sha256": "72b881b57ab206d779ffa577f175d9457bf1c302ccaf05588e42457a4f00f39e",
+      "bytes": 22192
+    },
+    {
+      "path": "data/tgl/128/cp_factorylg_0.ktx2",
+      "sha256": "bbc8447125b216ea1347e07765263d1428e12e166d1bf7fa5ab5ebe8465580a4",
+      "bytes": 22192
+    },
+    {
+      "path": "data/tgl/128/cp_factorymd_0.ktx2",
+      "sha256": "352fcbd9f7e5879e5877c4468bfae27a26bc27485a787a6cd582952a52021b20",
+      "bytes": 22192
+    },
+    {
+      "path": "data/tgl/128/cp_factorysm_0.ktx2",
+      "sha256": "3180a06bd9dbe1cdc052bfcfd2f34ed6b936bee6a9672d9d907f120ed7e77d3c",
+      "bytes": 22192
+    },
+    {
+      "path": "data/tgl/128/cp_fourwaypipe_0.ktx2",
+      "sha256": "b1e07f5a411ae0c1300c72e85fbad450a758f562060f894051a2a8bb702cc7d8",
+      "bytes": 22192
+    },
+    {
+      "path": "data/tgl/128/cp_fuelpipe_0.ktx2",
+      "sha256": "33d98fcb6cd472730c9aedb25be6c2fd7ec3a296184a0f35ee999a6a63fb944a",
+      "bytes": 22192
+    },
+    {
+      "path": "data/tgl/128/cp_gantry_0.ktx2",
+      "sha256": "f938867d736942756c604ea3723e1ebf414aa1e2ddc67e389ffbcb396f3b472a",
+      "bytes": 22192
+    },
+    {
+      "path": "data/tgl/128/cp_grainstorage_0.ktx2",
+      "sha256": "877cd967cfdaa89864d6edf3b80cefd874e828eda90b373681b7e42e45d4e2eb",
+      "bytes": 22192
+    },
+    {
+      "path": "data/tgl/128/cp_heavyindustrial_0.ktx2",
+      "sha256": "b909d00f8af5853e9d1198c1a5f1ace9469636c834470ae1ad39abc4669940ff",
+      "bytes": 22192
+    },
+    {
+      "path": "data/tgl/128/cp_industrialcomplex_0.ktx2",
+      "sha256": "0f511f26cd5b223fc4133ea50a8dd56ddda41d90de494e5fe293b842e1784347",
+      "bytes": 22192
+    },
+    {
+      "path": "data/tgl/128/cp_industrialplant_0.ktx2",
+      "sha256": "b8651320e928a89a6d0e9af55fcd691da49980be02180fb59f6f36b87e68e1ab",
+      "bytes": 22192
+    },
+    {
+      "path": "data/tgl/128/cp_l_turretgenerator_0.ktx2",
+      "sha256": "54ee9a62b8945c6efeb77c37b162cd04bf533904a9e780cab385478408aa3e9b",
+      "bytes": 22192
+    },
+    {
+      "path": "data/tgl/128/cp_largefueltank_0.ktx2",
+      "sha256": "d46d9eb7f5be8ebe5afb8cf4beb8e54bf7fd87a3babe514a1e79f3c5b19e88d3",
+      "bytes": 22192
+    },
+    {
+      "path": "data/tgl/128/cp_liquidstorage_0.ktx2",
+      "sha256": "d9d74efb2246944945156a3e84f384ac71b900131e55d416afbdfeda3ec30a52",
+      "bytes": 22192
+    },
+    {
+      "path": "data/tgl/128/cp_pipetank_0.ktx2",
+      "sha256": "5cc1ea26d09375eb5663647a8d80c74ff78cc1649465c3733783fcfe3d0361ba",
+      "bytes": 22192
+    },
+    {
+      "path": "data/tgl/128/cp_powergenerator_0.ktx2",
+      "sha256": "3b3ed26f4a91d35aa23171ee60ac4b303858923e2cb84c2a1d7246cdfdb21bbe",
+      "bytes": 22192
+    },
+    {
+      "path": "data/tgl/128/cp_processingplant_0.ktx2",
+      "sha256": "43e172702725f84066bd9b603401249252ec097dff5a25e93510d76e7ab49739",
+      "bytes": 22192
+    },
+    {
+      "path": "data/tgl/128/cp_purificationplant_0.ktx2",
+      "sha256": "664addf30b011dd055c966adc50701fb4c53cdf58375fe73d16f22ef3412d81a",
+      "bytes": 22192
+    },
+    {
+      "path": "data/tgl/128/cp_smallfueltank_0.ktx2",
+      "sha256": "98cddd0f933b17bdfad6bdbda876e35e8388b73b30ae7dbcde1972092a6f8a9e",
+      "bytes": 22192
+    },
+    {
+      "path": "data/tgl/128/cp_straightpipe1_0.ktx2",
+      "sha256": "08b9b6bc124dc6bdd704144cd9d9b517a93a934253becf2f735936ce46182033",
+      "bytes": 22192
+    },
+    {
+      "path": "data/tgl/128/cp_straightpipe2_0.ktx2",
+      "sha256": "8fae50c011c03b582a0a056938bf9c157cb0a575f7272a81ce78037501af05f6",
+      "bytes": 22192
+    },
+    {
+      "path": "data/tgl/128/cp_straightpipe3_0.ktx2",
+      "sha256": "85e0a0d478afb3131ccf0b021a9895b8482f962c72e321365e2ec66ac59afaf8",
+      "bytes": 22192
+    },
+    {
+      "path": "data/tgl/128/cp_threewaypipe_0.ktx2",
+      "sha256": "708d5e4c61f3a0e20dc3ea60c0283424f2be115ee9a67b28995c0d50eb50f803",
+      "bytes": 22192
+    },
+    {
+      "path": "data/tgl/128/cp_transformerstation_0.ktx2",
+      "sha256": "74d827062ef4c5b3956125d9ae61396fda66477ac003bb1cd35e84f6c1604e63",
+      "bytes": 22192
+    },
+    {
+      "path": "data/tgl/128/cp_valvestation_0.ktx2",
+      "sha256": "389f85e401c4f606efd0ecd7dfa132fa264b579fb33f91a5e40afa33c8cf7ca0",
+      "bytes": 22192
+    },
+    {
+      "path": "data/tgl/128/cp_wasteprocessor_0.ktx2",
+      "sha256": "ae3e14e7278226572018127282bf2335862371d6fb192dcfc00522a2620f209e",
+      "bytes": 22192
+    },
+    {
+      "path": "data/tgl/128/cp_watertower_0.ktx2",
+      "sha256": "c7e42fcd83cef80b65b77d5e09ffc0a517b2e46156cc30f6d61ac7f61ffaa52d",
+      "bytes": 22192
+    },
+    {
+      "path": "data/tgl/128/cp_weaponsfacility_0.ktx2",
+      "sha256": "8f66fcfcb7b6c2dee0b332ceb6561a76b4f69efe1c371114301d51f36d280301",
+      "bytes": 22192
+    },
+    {
+      "path": "data/tgl/256/cp_chemicalplant_0.ktx2",
+      "sha256": "0857794b07db900b9642a97f29080ae6d6095e435e192f72875fa6861fdf68ea",
+      "bytes": 87760
+    },
+    {
+      "path": "data/tgl/256/cp_civstoragea_0.ktx2",
+      "sha256": "a63913f8bb1c0556723e85a3818ddfd96c11027d519a43a9206e7e2e0a1e92c6",
+      "bytes": 87760
+    },
+    {
+      "path": "data/tgl/256/cp_civstorageb_0.ktx2",
+      "sha256": "cf47293b52b981e1d107bacf9ecba9c4412ccd48768ed4e42ace040d2c31a69e",
+      "bytes": 87760
+    },
+    {
+      "path": "data/tgl/256/cp_civstoragec_0.ktx2",
+      "sha256": "e96d494af46efae1f927f9621a84119fde985c3d573b20602b13381422abb962",
+      "bytes": 87760
+    },
+    {
+      "path": "data/tgl/256/cp_cornerpipe_0.ktx2",
+      "sha256": "080d72c3ffe34a0ed91c5da7cad5df3d5e13e10edb6a9b1d83245f2f0f8efafa",
+      "bytes": 87760
+    },
+    {
+      "path": "data/tgl/256/cp_crane_0.ktx2",
+      "sha256": "af5661835fe76a5114fd4cf86b11978398ecef54bd3ec59f08b5177739b5b9f1",
+      "bytes": 87760
+    },
+    {
+      "path": "data/tgl/256/cp_endpipe_0.ktx2",
+      "sha256": "097dda660ecef410d1d599619a50933c2f758469a253df42809efc287ef15eb2",
+      "bytes": 87760
+    },
+    {
+      "path": "data/tgl/256/cp_factorylg_0.ktx2",
+      "sha256": "13b6b587269af437738b9c53221a38c624b5ea60e0aa4fd502f9f9cdcb8bae53",
+      "bytes": 87760
+    },
+    {
+      "path": "data/tgl/256/cp_factorymd_0.ktx2",
+      "sha256": "20b3aa9d0920a42aa84b4b2608350b9abbd2c62abcdba0b0803390977feca598",
+      "bytes": 87760
+    },
+    {
+      "path": "data/tgl/256/cp_factorysm_0.ktx2",
+      "sha256": "75528b8ee42fba4ebb6828b26c7a6bc0c193682d4b47ddb7375fc3a0d3500e20",
+      "bytes": 87760
+    },
+    {
+      "path": "data/tgl/256/cp_fourwaypipe_0.ktx2",
+      "sha256": "96aedd43cf34fe3124b99f1e6e62311723448e4abb183ffccd6dd7c1bc2aa577",
+      "bytes": 87760
+    },
+    {
+      "path": "data/tgl/256/cp_fuelpipe_0.ktx2",
+      "sha256": "de15136d325d31238d33d2ed95c44c56f473e0cf11541597da3f9c32fbf90c38",
+      "bytes": 87760
+    },
+    {
+      "path": "data/tgl/256/cp_gantry_0.ktx2",
+      "sha256": "9c740f28c033378d78b0c6d73f0b5e1fb23fb30ec79f245d65353b9e4ae8e212",
+      "bytes": 87760
+    },
+    {
+      "path": "data/tgl/256/cp_grainstorage_0.ktx2",
+      "sha256": "367fc03c2295a9c0865c4476956af7c81f3f863063cf16736075349e4787680e",
+      "bytes": 87760
+    },
+    {
+      "path": "data/tgl/256/cp_heavyindustrial_0.ktx2",
+      "sha256": "e653d0ee1df5b4a7d6113064bd77ecabd4789fe69c19e09e08bcd4cd9c001a55",
+      "bytes": 87760
+    },
+    {
+      "path": "data/tgl/256/cp_industrialcomplex_0.ktx2",
+      "sha256": "bd3ac04b9b276d683cb456df5f7c78cdd0efc1947f72fbb19aa6c33d5c2af74a",
+      "bytes": 87760
+    },
+    {
+      "path": "data/tgl/256/cp_industrialplant_0.ktx2",
+      "sha256": "b3e0ae28f3be161493561627a05ee647ba7f204b343d31edfca2b8b0c867510f",
+      "bytes": 87760
+    },
+    {
+      "path": "data/tgl/256/cp_l_turretgenerator_0.ktx2",
+      "sha256": "1fe7f7f972f7c78f2851341bbe1dd572ceb49ae84f83ac207bb57378c19a1462",
+      "bytes": 87760
+    },
+    {
+      "path": "data/tgl/256/cp_largefueltank_0.ktx2",
+      "sha256": "894480520363e89460d798f2c5ee09a445d15f0030683702652b27ad2899042e",
+      "bytes": 87760
+    },
+    {
+      "path": "data/tgl/256/cp_liquidstorage_0.ktx2",
+      "sha256": "2a927e75f648aa7c26f89f67938e40430bbc7546546792e1ccd5b4b02f910a4f",
+      "bytes": 87760
+    },
+    {
+      "path": "data/tgl/256/cp_pipetank_0.ktx2",
+      "sha256": "8d5ff9738321a0d6f4c3e132a5ad1f28d922d7a4af9bd5652c2e8431ad58fa85",
+      "bytes": 87760
+    },
+    {
+      "path": "data/tgl/256/cp_powergenerator_0.ktx2",
+      "sha256": "e8cd5af20361fb2a72d600852eabc0c199ea438d4b3bcf3321a5305fdb182f95",
+      "bytes": 87760
+    },
+    {
+      "path": "data/tgl/256/cp_processingplant_0.ktx2",
+      "sha256": "9ac545b8e3e53c34e24f0d978a1a9d717b9d4a9192ab1e6d0a56780c2f7b81a1",
+      "bytes": 87760
+    },
+    {
+      "path": "data/tgl/256/cp_purificationplant_0.ktx2",
+      "sha256": "3551050b7ae4ab44a47e215c4f493ac2d9b5b4f77fc4088ff932e2e6b1667cfa",
+      "bytes": 87760
+    },
+    {
+      "path": "data/tgl/256/cp_smallfueltank_0.ktx2",
+      "sha256": "9e8a40b124510e14e18b6d7ecde3a5bbc867c7514b79e4d7326c6f8f16561020",
+      "bytes": 87760
+    },
+    {
+      "path": "data/tgl/256/cp_straightpipe1_0.ktx2",
+      "sha256": "07fb8e30192b1609033f7f56005f15dadf245a5d94bed62499e4ef69e0455d51",
+      "bytes": 87760
+    },
+    {
+      "path": "data/tgl/256/cp_straightpipe2_0.ktx2",
+      "sha256": "7a5ad745288519442c7498a2e788a2eabcc558a64f6eb40cb9c493c5fb459c2a",
+      "bytes": 87760
+    },
+    {
+      "path": "data/tgl/256/cp_straightpipe3_0.ktx2",
+      "sha256": "fded171b574d6d44b983e3f361bef8f1f2079ad8de73d00b8cf2f218300e2d30",
+      "bytes": 87760
+    },
+    {
+      "path": "data/tgl/256/cp_threewaypipe_0.ktx2",
+      "sha256": "1d81e186b3815cb550a580e71e6b002b7105345ebf02f4763aad18c628dcefc4",
+      "bytes": 87760
+    },
+    {
+      "path": "data/tgl/256/cp_transformerstation_0.ktx2",
+      "sha256": "104529dd2075ce024630b73e7ac38496c802ff5bd7e21c4040f70bb49e880db6",
+      "bytes": 87760
+    },
+    {
+      "path": "data/tgl/256/cp_valvestation_0.ktx2",
+      "sha256": "4e92cd8a1d3cbd7494fd3269d1a5010172f06863ee8370f97200aefcfc3869f9",
+      "bytes": 87760
+    },
+    {
+      "path": "data/tgl/256/cp_wasteprocessor_0.ktx2",
+      "sha256": "53abc0620e1f3adf0b04f0663f740886e6ae900c87e3ab75bd7b6d76858f3e9e",
+      "bytes": 87760
+    },
+    {
+      "path": "data/tgl/256/cp_watertower_0.ktx2",
+      "sha256": "d2b4d635c363453a131cd43a630435600c787820cffe627992867f854022ef10",
+      "bytes": 87760
+    },
+    {
+      "path": "data/tgl/256/cp_weaponsfacility_0.ktx2",
+      "sha256": "33ff92612ddb2ce1254839f5f9146a6397069895f3775ec495967363f30d94e3",
+      "bytes": 87760
+    },
+    {
+      "path": "data/tgl/32/cp_chemicalplant_0.ktx2",
+      "sha256": "7454cd53f193d6167cde3db60d89739839c7b5ec98c63b94edb54e261b3e7db9",
+      "bytes": 1664
+    },
+    {
+      "path": "data/tgl/32/cp_civstoragea_0.ktx2",
+      "sha256": "9ef0dd34c25f31fc505c2fd0617f200e8b561ebd3f42a6105a64141191f90d3d",
+      "bytes": 1664
+    },
+    {
+      "path": "data/tgl/32/cp_civstorageb_0.ktx2",
+      "sha256": "04f1e331bf755faab1da2e8b42814c4597920ae748725b9e418276973d92bac0",
+      "bytes": 1664
+    },
+    {
+      "path": "data/tgl/32/cp_civstoragec_0.ktx2",
+      "sha256": "1fcb3915b80d36873c7bd305e183ef0b7a2633b59610d9633008c8f213ee85a5",
+      "bytes": 1664
+    },
+    {
+      "path": "data/tgl/32/cp_cornerpipe_0.ktx2",
+      "sha256": "257365a66fb8a5a98025ec95d95b50d1d1ae01873f67c7a29e318b7fc4731d54",
+      "bytes": 1664
+    },
+    {
+      "path": "data/tgl/32/cp_crane_0.ktx2",
+      "sha256": "fa3f4c38cc06305e155eb171f4c93b150fc10848c02e8b819c1d17f4ba2c68fa",
+      "bytes": 1664
+    },
+    {
+      "path": "data/tgl/32/cp_endpipe_0.ktx2",
+      "sha256": "3fdffdbaaebc9f2f2adc731235c0c0f0b004d67c11d8cde39511ae4f19bab799",
+      "bytes": 1664
+    },
+    {
+      "path": "data/tgl/32/cp_factorylg_0.ktx2",
+      "sha256": "b99c45fcaf071fd12ef8ea75313af9eee4a47d6e3edefa793cd15c3eccd950f9",
+      "bytes": 1664
+    },
+    {
+      "path": "data/tgl/32/cp_factorymd_0.ktx2",
+      "sha256": "451e20f715a96d83567e2e0498bd7e3985526b4abaf81229992ab0450d33f0d5",
+      "bytes": 1664
+    },
+    {
+      "path": "data/tgl/32/cp_factorysm_0.ktx2",
+      "sha256": "79feb2421d9898c580b0c015a77fbfd03a9f3c3fe8a13985cdd79e22e05722ca",
+      "bytes": 1664
+    },
+    {
+      "path": "data/tgl/32/cp_fourwaypipe_0.ktx2",
+      "sha256": "4819d2536f19b80708032c9a284c488cdc81726142c475016e56014e6b22a71f",
+      "bytes": 1664
+    },
+    {
+      "path": "data/tgl/32/cp_fuelpipe_0.ktx2",
+      "sha256": "596813c71fe32dbb7ed8f31316bc35e0e6a22fae3d7ca4e55f7399d3b7fa75df",
+      "bytes": 1664
+    },
+    {
+      "path": "data/tgl/32/cp_gantry_0.ktx2",
+      "sha256": "e724505ea57a662a73ce280d647480fbe045f3c46231be1420f33f285fc69509",
+      "bytes": 1664
+    },
+    {
+      "path": "data/tgl/32/cp_grainstorage_0.ktx2",
+      "sha256": "b57b234a4fb556829a81ac90fe5c62f2519636944ffa4f10099e4bd79ce23fd3",
+      "bytes": 1664
+    },
+    {
+      "path": "data/tgl/32/cp_heavyindustrial_0.ktx2",
+      "sha256": "b9291744db9637b6140719ad75ea7d3e3a02ac1510ceebbc37cb3eb1d9275d14",
+      "bytes": 1664
+    },
+    {
+      "path": "data/tgl/32/cp_industrialcomplex_0.ktx2",
+      "sha256": "763de92c6b2c25890b19261a26309d08a731b9e33f7bc0658c102c1d5445010f",
+      "bytes": 1664
+    },
+    {
+      "path": "data/tgl/32/cp_industrialplant_0.ktx2",
+      "sha256": "fe16f5e571c1d489a48dde3d13acd5042dff4b05949093c5268f906cc9adbb04",
+      "bytes": 1664
+    },
+    {
+      "path": "data/tgl/32/cp_l_turretgenerator_0.ktx2",
+      "sha256": "71bacbb30c190e2dbcfe6e56bb1cfde9796654066e7d69eb8d494d05f1757e70",
+      "bytes": 1664
+    },
+    {
+      "path": "data/tgl/32/cp_largefueltank_0.ktx2",
+      "sha256": "d92c4b5a2e1eff94167744ef61e9299c5e2ad2574a63aeb1c417f49d03d022f7",
+      "bytes": 1664
+    },
+    {
+      "path": "data/tgl/32/cp_liquidstorage_0.ktx2",
+      "sha256": "0ef9b1bcc9014c321c5043165d8cdb11e85e84512c91dcba7c4831f70a3d39a3",
+      "bytes": 1664
+    },
+    {
+      "path": "data/tgl/32/cp_pipetank_0.ktx2",
+      "sha256": "746ea920cb6d806e1d9c3137087c2436ecdfe68193405b6abb2525569d8ab600",
+      "bytes": 1664
+    },
+    {
+      "path": "data/tgl/32/cp_powergenerator_0.ktx2",
+      "sha256": "5bf856841b98cca99b8efb06dfdbf0414f73df8545f9be60740a4359a69c6254",
+      "bytes": 1664
+    },
+    {
+      "path": "data/tgl/32/cp_processingplant_0.ktx2",
+      "sha256": "0d92f0cc51f2230ed0de3155750a68b4986a559f3f28cda2f44d9aedb5717288",
+      "bytes": 1664
+    },
+    {
+      "path": "data/tgl/32/cp_purificationplant_0.ktx2",
+      "sha256": "ae0eacfb7191b6bace11083c81dfe202530cde76de3aa30a40c4be3876d61ad4",
+      "bytes": 1664
+    },
+    {
+      "path": "data/tgl/32/cp_smallfueltank_0.ktx2",
+      "sha256": "90368550e4e21a2d6961493b280562df31897be33014278ff67e7d746e399adf",
+      "bytes": 1664
+    },
+    {
+      "path": "data/tgl/32/cp_straightpipe1_0.ktx2",
+      "sha256": "45c5ca278fa2ccea480d7478ebabba5cb24a604740da70a2ef572259780b8e1e",
+      "bytes": 1664
+    },
+    {
+      "path": "data/tgl/32/cp_straightpipe2_0.ktx2",
+      "sha256": "2dc7f6e83f3f816c3fda68145a04e5e25c6cb6794a748a9f34c4029c45e1d753",
+      "bytes": 1664
+    },
+    {
+      "path": "data/tgl/32/cp_straightpipe3_0.ktx2",
+      "sha256": "69afcb26cd844a25274e6a783df78a1d29d38d4b9f7c0a64417d6c1fa1a34ae7",
+      "bytes": 1664
+    },
+    {
+      "path": "data/tgl/32/cp_threewaypipe_0.ktx2",
+      "sha256": "3689b9ebd53d99fb2449bd0d2c9ec15fd9fbd024732c1a67e39584f7b30e0524",
+      "bytes": 1664
+    },
+    {
+      "path": "data/tgl/32/cp_transformerstation_0.ktx2",
+      "sha256": "61a2c948fab492be5935b2c83a06103c80bdbbc92026e2c63aab25c867486405",
+      "bytes": 1664
+    },
+    {
+      "path": "data/tgl/32/cp_valvestation_0.ktx2",
+      "sha256": "488e11c8b135eae8f4f8e1f763ac8758b354eebddd9d968e6e717b7db97126da",
+      "bytes": 1664
+    },
+    {
+      "path": "data/tgl/32/cp_wasteprocessor_0.ktx2",
+      "sha256": "ecd400388bb3ee08fd098c69d8926f73c19769d6d0108205532cee97365bdedd",
+      "bytes": 1664
+    },
+    {
+      "path": "data/tgl/32/cp_watertower_0.ktx2",
+      "sha256": "5ffe909cf8f11b28b5cbe41d8a6ae0bf46e326697c59e63c1e892bb24712a0d2",
+      "bytes": 1664
+    },
+    {
+      "path": "data/tgl/32/cp_weaponsfacility_0.ktx2",
+      "sha256": "fae0ffede0abd064a3e4c718bcbf0222d822e97a36130f817c49e5743755a7d8",
+      "bytes": 1664
+    },
+    {
+      "path": "data/tgl/512/cp_chemicalplant_0.ktx2",
+      "sha256": "53fd9b9e290d13427a2b723e8114619057d3c8b833cb41f9727d3b57f1bc9949",
+      "bytes": 349920
+    },
+    {
+      "path": "data/tgl/512/cp_civstoragea_0.ktx2",
+      "sha256": "2fd4eca86f17ca532a87dccdb32337f41ed1cc85373f1a5c96145991c984ebcc",
+      "bytes": 349920
+    },
+    {
+      "path": "data/tgl/512/cp_civstorageb_0.ktx2",
+      "sha256": "a912a4640d20a93409a2b4da661248bef30eee4c61a6af047b8f416a8a22d97a",
+      "bytes": 349920
+    },
+    {
+      "path": "data/tgl/512/cp_civstoragec_0.ktx2",
+      "sha256": "fd5a19d20fa796b348f6e1659fd86e4f45d76456786c8ab811d0856e74846512",
+      "bytes": 349920
+    },
+    {
+      "path": "data/tgl/512/cp_cornerpipe_0.ktx2",
+      "sha256": "fdf2f13f76c461bdd4d28acabb7461febb59a8947e4b59e5cb4113fbaeb80a8f",
+      "bytes": 349920
+    },
+    {
+      "path": "data/tgl/512/cp_crane_0.ktx2",
+      "sha256": "ec89901e37f72d0943d2fcfbd29cc80d08e6d7d7239d570c9827caa869e45fb3",
+      "bytes": 349920
+    },
+    {
+      "path": "data/tgl/512/cp_endpipe_0.ktx2",
+      "sha256": "ee2f0af9fd9075e6a133e85ff0d85a6250500ae078ab873793378d8e04d4b627",
+      "bytes": 349920
+    },
+    {
+      "path": "data/tgl/512/cp_factorylg_0.ktx2",
+      "sha256": "2a6108103a113fa26377bd02b6477a65ac2a0db821163f3128bbfd78361c8808",
+      "bytes": 349920
+    },
+    {
+      "path": "data/tgl/512/cp_factorymd_0.ktx2",
+      "sha256": "fe1bf328929260c93562eceb8d6f5d573300d62bc0fa7b8be6e2e182719efd8b",
+      "bytes": 349920
+    },
+    {
+      "path": "data/tgl/512/cp_factorysm_0.ktx2",
+      "sha256": "1c13caeebd91783ff6087de7c1cb3e201187e19c6ab410a946e3ebb1a3fb69f9",
+      "bytes": 349920
+    },
+    {
+      "path": "data/tgl/512/cp_fourwaypipe_0.ktx2",
+      "sha256": "53da88575085e43645aa60d5823785c4448321572d069ab9bc4ee135365447a9",
+      "bytes": 349920
+    },
+    {
+      "path": "data/tgl/512/cp_fuelpipe_0.ktx2",
+      "sha256": "7caec9c3968a6716c2eaa625361213d5867c4450a56f7a8ab6821d6c72363f6c",
+      "bytes": 349920
+    },
+    {
+      "path": "data/tgl/512/cp_gantry_0.ktx2",
+      "sha256": "70684c351034c69e06cf357a7f40d01601b5b2a8e5fd37fc747bd29c53f0dbae",
+      "bytes": 349920
+    },
+    {
+      "path": "data/tgl/512/cp_grainstorage_0.ktx2",
+      "sha256": "67d06bccffdb0f4258e8f870c8dc7860b7a7f74dfca472cf65d0b7c2db36ed3e",
+      "bytes": 349920
+    },
+    {
+      "path": "data/tgl/512/cp_heavyindustrial_0.ktx2",
+      "sha256": "7b20eed097beb3808e0eba1b10f99cc556af7f6714b5f49f4721e009a695a548",
+      "bytes": 349920
+    },
+    {
+      "path": "data/tgl/512/cp_industrialcomplex_0.ktx2",
+      "sha256": "654f2a23ca22dfb567958a2a120e1663a1ec0ecfc68d8162502e2e95cace9df9",
+      "bytes": 349920
+    },
+    {
+      "path": "data/tgl/512/cp_industrialplant_0.ktx2",
+      "sha256": "4beb56ec14403d1e9ab84605090415afa1e1acadebd44c6c15b9757e45f01d98",
+      "bytes": 349920
+    },
+    {
+      "path": "data/tgl/512/cp_l_turretgenerator_0.ktx2",
+      "sha256": "4007c53a49e1ae47c349a1eb76b11dbe321e1dfa96f956047c56263195b54896",
+      "bytes": 349920
+    },
+    {
+      "path": "data/tgl/512/cp_largefueltank_0.ktx2",
+      "sha256": "0ed0d938e4194e1c2f57f71f07abb57f9d1a5ab8066db23849560de4715b35ad",
+      "bytes": 349920
+    },
+    {
+      "path": "data/tgl/512/cp_liquidstorage_0.ktx2",
+      "sha256": "0f20d2869f6031f41412ca09287676b1d6e6575b78a3edcfa979d4d43f2060ef",
+      "bytes": 349920
+    },
+    {
+      "path": "data/tgl/512/cp_pipetank_0.ktx2",
+      "sha256": "8e0fba8c843a19c1b9ce86eeb13f339b7e83bf3b0450a6125f58cc5d9cb92be1",
+      "bytes": 349920
+    },
+    {
+      "path": "data/tgl/512/cp_powergenerator_0.ktx2",
+      "sha256": "193b655b336352675aff60929f6c8cd3de47a331214c735b4bc2cc542c283fc0",
+      "bytes": 349920
+    },
+    {
+      "path": "data/tgl/512/cp_processingplant_0.ktx2",
+      "sha256": "ef60464d693424749c178e225427640589a3c50d216c7953ef3c619706d435cb",
+      "bytes": 349920
+    },
+    {
+      "path": "data/tgl/512/cp_purificationplant_0.ktx2",
+      "sha256": "32f85940eda8680bd00f47fd09bf673830515e1ebeacde80f65fc5c8f4af8e73",
+      "bytes": 349920
+    },
+    {
+      "path": "data/tgl/512/cp_smallfueltank_0.ktx2",
+      "sha256": "6e37a54b4764fee06c2b8593dd52b2f4e79ffe17af5682b46db07f9330b57d84",
+      "bytes": 349920
+    },
+    {
+      "path": "data/tgl/512/cp_straightpipe1_0.ktx2",
+      "sha256": "b8d9425300b9c052953de05d9ba45d44e282d62cdd94d87c66ee25e5b8ff024a",
+      "bytes": 349920
+    },
+    {
+      "path": "data/tgl/512/cp_straightpipe2_0.ktx2",
+      "sha256": "7e798e9ea445083a907a7e48b6468b202b34a4d02ce0d23443bbff0ab8e42842",
+      "bytes": 349920
+    },
+    {
+      "path": "data/tgl/512/cp_straightpipe3_0.ktx2",
+      "sha256": "a83aae230150728d5cc8f25b6bede4951c478128ce27fd4a4176849f54659ba6",
+      "bytes": 349920
+    },
+    {
+      "path": "data/tgl/512/cp_threewaypipe_0.ktx2",
+      "sha256": "59ea30f11705a988e0f992044947accca84b8873fa24c54743e6586fb97215d9",
+      "bytes": 349920
+    },
+    {
+      "path": "data/tgl/512/cp_transformerstation_0.ktx2",
+      "sha256": "c72268ab642ce2af76451f0b9d87b982a7d83e0142a64f69cdb092db506d5964",
+      "bytes": 349920
+    },
+    {
+      "path": "data/tgl/512/cp_valvestation_0.ktx2",
+      "sha256": "c1abaf0ad7283aad9d80e2b58f509ca78432273550b5aa9b449c1100e5d4dce5",
+      "bytes": 349920
+    },
+    {
+      "path": "data/tgl/512/cp_wasteprocessor_0.ktx2",
+      "sha256": "8da4bb84933d458c365b71481f15ab0f873bcdf8b9c0ea6d41073f4111283ab5",
+      "bytes": 349920
+    },
+    {
+      "path": "data/tgl/512/cp_watertower_0.ktx2",
+      "sha256": "b56464b3f8f0c2ca7e3ca35c0de5e294f2085badf3798ac85aadc4e12f2aacb0",
+      "bytes": 349920
+    },
+    {
+      "path": "data/tgl/512/cp_weaponsfacility_0.ktx2",
+      "sha256": "3686150d8563eb4fb081752b871024ebffa9427c1150360be23dbccf4bd13ef9",
+      "bytes": 349920
+    },
+    {
+      "path": "data/tgl/64/cp_chemicalplant_0.ktx2",
+      "sha256": "fce1aca642e2df86a8f80e88c30d37d975fb3175c78b2b653de649710c8c8627",
+      "bytes": 5792
+    },
+    {
+      "path": "data/tgl/64/cp_civstoragea_0.ktx2",
+      "sha256": "37b470d4f052548d2266a34fc6f8b79cce51466ff9a13a6b1f9c622d895c6cbb",
+      "bytes": 5792
+    },
+    {
+      "path": "data/tgl/64/cp_civstorageb_0.ktx2",
+      "sha256": "2192bafb5cdaf13b78d795f786ec537be0009b4072b073a21cc28c622e489f88",
+      "bytes": 5792
+    },
+    {
+      "path": "data/tgl/64/cp_civstoragec_0.ktx2",
+      "sha256": "13cf5ea00d3c1520ea960d07ee6ef42d58d8095e7d3a85b3627513f15a96ee87",
+      "bytes": 5792
+    },
+    {
+      "path": "data/tgl/64/cp_cornerpipe_0.ktx2",
+      "sha256": "828cbdebbd2281db9dd36b31bb1ad5394b8af7dca70a568c75c1021050fcd39c",
+      "bytes": 5792
+    },
+    {
+      "path": "data/tgl/64/cp_crane_0.ktx2",
+      "sha256": "1fd2e433f00c15cf3bf3770b14cb8f78418627ea4a159c67f25e8145e370f016",
+      "bytes": 5792
+    },
+    {
+      "path": "data/tgl/64/cp_endpipe_0.ktx2",
+      "sha256": "2d30aac0dfec87f8939a7be9f16172ef8ea5236ba2f5bc23aa3125e0141a4e8f",
+      "bytes": 5792
+    },
+    {
+      "path": "data/tgl/64/cp_factorylg_0.ktx2",
+      "sha256": "2a9b5dfdab5edc691cc6b8615376e46955134e6564ad2ee360788f791c548631",
+      "bytes": 5792
+    },
+    {
+      "path": "data/tgl/64/cp_factorymd_0.ktx2",
+      "sha256": "59e223fba56256b6a82ca3a8ab329df12b2f0ab3794f938e5b4e22a3b958784b",
+      "bytes": 5792
+    },
+    {
+      "path": "data/tgl/64/cp_factorysm_0.ktx2",
+      "sha256": "dc59273698f8505995b48f730fb2740d1f23a529e3a4c7e83fc4a1d21014d8ba",
+      "bytes": 5792
+    },
+    {
+      "path": "data/tgl/64/cp_fourwaypipe_0.ktx2",
+      "sha256": "29e937c3f66ef8fbbc8fec0c9b38bf42a2206147e043a622a01cf4e607c4dcfc",
+      "bytes": 5792
+    },
+    {
+      "path": "data/tgl/64/cp_fuelpipe_0.ktx2",
+      "sha256": "27a49215f6df8b51ba61f0e7c3d20b1c72609c36ee9359816242cee3ad950eec",
+      "bytes": 5792
+    },
+    {
+      "path": "data/tgl/64/cp_gantry_0.ktx2",
+      "sha256": "fc1d2c3b31f19b0c3841784fe3127f855cd8249e7b5eb6387b38e72bb84348f0",
+      "bytes": 5792
+    },
+    {
+      "path": "data/tgl/64/cp_grainstorage_0.ktx2",
+      "sha256": "c70fcdd9000fc7de86c043d0907ba316fb2b13d2edb408e2060b82af9a51542b",
+      "bytes": 5792
+    },
+    {
+      "path": "data/tgl/64/cp_heavyindustrial_0.ktx2",
+      "sha256": "9add126b019c8678d84ac6ce956656c14447621b72d9c361e53e3f4918d43da3",
+      "bytes": 5792
+    },
+    {
+      "path": "data/tgl/64/cp_industrialcomplex_0.ktx2",
+      "sha256": "b9b3c3a21712c2140bea8e2d40eae85752fcbd90ec681a7618868ea59cc51a2f",
+      "bytes": 5792
+    },
+    {
+      "path": "data/tgl/64/cp_industrialplant_0.ktx2",
+      "sha256": "1fe89c75128926f1daebc48912705a550f8b5cd33265739cb25d59148ff30960",
+      "bytes": 5792
+    },
+    {
+      "path": "data/tgl/64/cp_l_turretgenerator_0.ktx2",
+      "sha256": "446a62fefcf54f5ba42a6234bad21ed0191102d4e425b8e69631918904ff3ad4",
+      "bytes": 5792
+    },
+    {
+      "path": "data/tgl/64/cp_largefueltank_0.ktx2",
+      "sha256": "7d8754f5d27bf699394d39bebdd611e90f6eddc9b9c8c87dd3443fc884d5d62e",
+      "bytes": 5792
+    },
+    {
+      "path": "data/tgl/64/cp_liquidstorage_0.ktx2",
+      "sha256": "479d276a4ad5b710e65e5447e108b4d2692172f307063a6e09b3b15bb5d4fc8c",
+      "bytes": 5792
+    },
+    {
+      "path": "data/tgl/64/cp_pipetank_0.ktx2",
+      "sha256": "c147d06255c69d1cabddb32977202629a1d7cfec3f34277308895db9643ab61c",
+      "bytes": 5792
+    },
+    {
+      "path": "data/tgl/64/cp_powergenerator_0.ktx2",
+      "sha256": "dc7d176a5b332a03cd01ad61ff2cd9928a27d24115a12a39f97a15de13743cc3",
+      "bytes": 5792
+    },
+    {
+      "path": "data/tgl/64/cp_processingplant_0.ktx2",
+      "sha256": "df72f8bd096caba0ba5d39cfde7db92368890759df86e55f49d0e469390d79ea",
+      "bytes": 5792
+    },
+    {
+      "path": "data/tgl/64/cp_purificationplant_0.ktx2",
+      "sha256": "57334673ff8f0c59e5db306cad433058dd6f2594564232b31843d41c8c72c720",
+      "bytes": 5792
+    },
+    {
+      "path": "data/tgl/64/cp_smallfueltank_0.ktx2",
+      "sha256": "3039941bf1d928342ceab0d95cbd27fe82964821fcc7e54b819fda0a3bb41d63",
+      "bytes": 5792
+    },
+    {
+      "path": "data/tgl/64/cp_straightpipe1_0.ktx2",
+      "sha256": "c85dc84d0c76de5acc940b80b608aa0a121011a067ee5fb7e81ea5c2a089cf2d",
+      "bytes": 5792
+    },
+    {
+      "path": "data/tgl/64/cp_straightpipe2_0.ktx2",
+      "sha256": "0239f35bff7bb13d3e702e86f7316785834f6a593b3b29c77abec436bde25d1c",
+      "bytes": 5792
+    },
+    {
+      "path": "data/tgl/64/cp_straightpipe3_0.ktx2",
+      "sha256": "e2075f41ab8f0d140bd825d5c4eb9f44119f3d7a34ee76f049197e946885a6d8",
+      "bytes": 5792
+    },
+    {
+      "path": "data/tgl/64/cp_threewaypipe_0.ktx2",
+      "sha256": "73ad9d5da2fce47bc05f4aea2a0a7009970d38ff2a5094c04845ee8945e23289",
+      "bytes": 5792
+    },
+    {
+      "path": "data/tgl/64/cp_transformerstation_0.ktx2",
+      "sha256": "176a94f50f5d8aeb1030b5258e239c741c27d16b3d7206a4aa347921e128253a",
+      "bytes": 5792
+    },
+    {
+      "path": "data/tgl/64/cp_valvestation_0.ktx2",
+      "sha256": "3db31cb1551c2d8dfb5763d75e980f42a2bdb5c8db1537dfd198a112b1a854c6",
+      "bytes": 5792
+    },
+    {
+      "path": "data/tgl/64/cp_wasteprocessor_0.ktx2",
+      "sha256": "d096a53ecb20f0cbbc94a62b8a9c876600fa77b72a0338d546321da1eae4fc12",
+      "bytes": 5792
+    },
+    {
+      "path": "data/tgl/64/cp_watertower_0.ktx2",
+      "sha256": "5877005ab89ee2e01fb2364d0ac5f8728afe50a6692421bbeb67410029f7c6a7",
+      "bytes": 5792
+    },
+    {
+      "path": "data/tgl/64/cp_weaponsfacility_0.ktx2",
+      "sha256": "548e76f6ec3b93780a3d93fd7f4e7b8ab8e48b3c32928413a45e073e55754849",
+      "bytes": 5792
+    },
+    {
+      "path": "mod.json",
+      "sha256": "0aa5788e095558fc62d71f4c3808f0668aac9aa9c2b1ce5b3b353393389ed840",
+      "bytes": 182
+    }
+  ]
+}
