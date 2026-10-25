@@ -405,6 +405,10 @@ _par_worker() {   # $1 idx
 
 # Pool size: CONTRACTS_JOBS / -jN, else min(cores, 16).
 _default_jobs() {
+    if [ -f A:/Games/mc2-ops/JOBS ]; then
+        cat A:/Games/mc2-ops/JOBS
+        return
+    fi
     local n="${NUMBER_OF_PROCESSORS:-}"
     [ -n "$n" ] || n="$(nproc 2>/dev/null || echo 4)"
     [ "$n" -gt 16 ] && n=16
@@ -819,8 +823,8 @@ if [ "$SELFTEST_RENDER" -eq 1 ]; then
 else
 [ -n "$JOBS" ] || JOBS="$(_default_jobs)"
 if [ "$JOBS" -gt 1 ]; then PARALLEL=1; fi
-# The pool already runs JOBS rows at once; the per-module test runners get one worker each so the lane stays at its core cap.
-if [ "$JOBS" -gt 1 ]; then export MC2_TEST_JOBS=1; fi
+# Keep the long module suites parallel after short rows drain; honor an explicit caller cap.
+if [ "$JOBS" -gt 1 ]; then export MC2_TEST_JOBS="${MC2_TEST_JOBS:-$JOBS}"; fi
 # A --selftest child must never re-enter the FULL board. One dropped flag on the
 # fail_reason_selftest row below turns this file into a fork bomb, so it is
 # refused structurally rather than by remembering.
@@ -1547,6 +1551,7 @@ run_check "network_startup"            "py -3 -B -m pytest scripts/tests/test_ne
 # Excluded: test_cxx17_ratchet (own row above) and test_release_zip_install
 # (assembles release zips + launches a smoke; not an offline contract).
 run_check_tri "tools_tests"             "py -3 scripts/run_tools_tests.py"
+run_check_tri "kit_art"                 "py -3 scripts/run_tools_tests.py --suite art"
 run_check "anim_parity"                 "py -3 -B -m pytest tools/anim_parity/test_audit.py tools/content_pipeline/tests -q -p no:cacheprovider"
 run_check "mapgen_fof"                  "py -3 -B -m pytest tests/mapgen/test_fields_of_fire.py tests/mapgen/test_footprints.py tests/mapgen/test_pixel_generate.py tests/mapgen/test_mission_writer.py -q -p no:cacheprovider"
 run_check "sim_include_firewall"        "py -3 -B scripts/tests/test_sim_include_firewall.py && py -3 scripts/check_sim_include_firewall.py"

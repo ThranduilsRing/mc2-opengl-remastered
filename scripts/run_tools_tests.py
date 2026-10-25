@@ -37,6 +37,7 @@ from __future__ import annotations
 import argparse
 import concurrent.futures as cf
 import os
+from pathlib import Path
 import tempfile
 import re
 import subprocess
@@ -72,7 +73,23 @@ PYTEST = [sys.executable, "-B", "-m", "pytest", "-q", "-p", "no:cacheprovider",
 TIMEOUT_S = 600
 
 
-def discover() -> list[str]:
+ART_PREFIXES = ("tools/scifi_kit/", "tools/blender_pipeline/", "tools/kit/", "tools/mc2data/", "tools/content_pipeline/", "tools/ase_to_glb.py", "tools/asset_cook/", "tools/material_cook/", "tools/mc2texcook/", "tools/mc2x_import/", "release_assets_src/", "examples/mods/", "mods/", "gameassets/", "data/")
+
+
+def art_changed(base: str) -> bool:
+    result = subprocess.run(["git", "diff", "--name-only", "-z", base, "HEAD"], cwd=ROOT,
+                            capture_output=True, text=True, check=True,
+                            **console_child.child_kwargs(redirected=True))
+    return any(p.startswith(ART_PREFIXES) or p.endswith((".blend", ".glb", ".ktx2", ".png", ".tga", ".fit", ".pak", ".fst"))
+               or p.startswith(("scripts/kit", "scripts/run_tools_tests", "scripts/check-contracts", "scripts/console_child", "scripts/manifest_schema", "scripts/mc2_env_pin", "scripts/module_test_cache", "scripts/test_audit_site/", "requirements", "pyproject.toml", "pytest.ini", "conftest.py"))
+               for p in (line.replace("\\", "/").lower() for line in result.stdout.split("\0")))
+
+
+def is_art_test(path):
+    return path.startswith(("tools/scifi_kit/", "tools/blender_pipeline/"))
+
+
+def discover(suite="all") -> list[str]:
     out = subprocess.run(
         ["git", "ls-files", "*test_*.py", "*_test.py"],
         cwd=ROOT, capture_output=True, text=True, check=True,
@@ -86,7 +103,9 @@ def discover() -> list[str]:
             continue
         if not os.path.isfile(os.path.join(ROOT, p)):
             continue  # deleted in the working tree, not yet committed
-        mods.append(p)
+        is_art = is_art_test(p)
+        if suite == "all" or is_art == (suite == "art"):
+            mods.append(p)
     return sorted(mods)
 
 
@@ -183,16 +202,28 @@ def run_all(mods: list[str], jobs: int, tier: str, no_cache: bool = False, repor
     return results
 
 
+def default_jobs():
+    try:
+        return max(1, int(Path("A:/Games/mc2-ops/JOBS").read_text().strip()))
+    except (OSError, ValueError):
+        return min(6, os.cpu_count() or 2)
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[1])
     ap.add_argument("--jobs", type=int,
-                    default=int(os.environ.get("MC2_TEST_JOBS", "") or min(2, os.cpu_count() or 2)))   # the 2-core lane cap; measured: batching modules into few pytest processes was NOT faster (tests, not startup, dominate)
+                    default=int(os.environ.get("MC2_TEST_JOBS", "") or default_jobs()))
     ap.add_argument("--list", action="store_true", help="print modules and exit")
+    ap.add_argument("--suite", choices=("tools", "art", "all"), default="tools")
+    ap.add_argument("--base", default=os.environ.get("MC2_GATE_BASE"), help="art row: skip only for an unaffected committed diff")
     ap.add_argument("--no-cache", action="store_true", help="run every module (also CONTRACTS_NO_CACHE=1)")
     ap.add_argument("--report", action="store_true", help="print cache hits and the opaque (whole-tree) modules")
     args = ap.parse_args()
 
-    mods = discover()
+    mods = discover(args.suite)
+    if args.suite == "art" and args.base and not art_changed(args.base):
+        print("kit_art: SKIP: window diff has no art/kit inputs")
+        return 0
     if args.list:
         print("\n".join(mods))
         return 0
@@ -200,12 +231,13 @@ def main() -> int:
         print("VIOLATION: tools_tests discovered zero modules (row would pass on an empty set)")
         return 1
 
-    led_fail = load_ledger()
+    led_fail = {node: reason for node, reason in load_ledger().items()
+                if args.suite == "all" or is_art_test(node.split("::")[0]) == (args.suite == "art")}
     bad: list[str] = []
     seen_fail: set[str] = set()
     passed = 0
 
-    for mod, rc, failed, tail in run_all(mods, args.jobs, "tools", args.no_cache, args.report):
+    for mod, rc, failed, tail in run_all(mods, args.jobs, "tools-" + args.suite, args.no_cache, args.report):
         if rc == 0:
             passed += 1
             continue
@@ -216,7 +248,7 @@ def main() -> int:
             if node in led_fail:
                 seen_fail.add(node)
             else:
-                bad.append(f"{node}: NEW failure (not in the ledger)")
+                bad.append(f"{node}: NEW failure (not in the ledger)\n{tail}")
 
     all_mods = set(mods)
     for node in led_fail:

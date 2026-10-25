@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """run_scripts_tests.py -- the `scripts_tests` check-contracts row (pytest over scripts/tests/).
 
-Each test module runs in its own pytest process, two at a time (the lane's 2-core cap), through the per-module result
+Each test module runs in its own pytest process, using the host JOBS limit, through the per-module result
 cache of scripts/module_test_cache.py: a module that fully passed last time and whose recorded inputs (files read,
 directories listed) are unchanged is not run again. See that file for exactly what is recorded and what is not.
 tests/ for the tools live in run_tools_tests.py (the `tools_tests` row).
@@ -90,7 +90,7 @@ def select_modules(modules: list[str], data: dict, requested: list[str] | None =
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[1])
-    ap.add_argument("--jobs", type=int, default=int(os.environ.get("MC2_TEST_JOBS", "") or min(2, os.cpu_count() or 2)))
+    ap.add_argument("--jobs", type=int, default=int(os.environ.get("MC2_TEST_JOBS", "") or rtt.default_jobs()))
     ap.add_argument("--list", action="store_true")
     ap.add_argument("--no-cache", action="store_true")
     ap.add_argument("--report", action="store_true")

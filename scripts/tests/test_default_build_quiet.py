@@ -17,8 +17,10 @@ spec.loader.exec_module(quiet)
 def test_fresh_smoke_requires_success_and_new_logs(tmp_path, monkeypatch, rc, logs):
     monkeypatch.setattr(quiet.tempfile, "mkdtemp", lambda **kw: str(tmp_path))
     monkeypatch.setenv("MC2_DEBUG_STATE_DUMP", "1")
+    monkeypatch.setenv("MC2_HOST_LEASE_BATCH", "fixture-chain")
     def run(command, **kw):
         assert "MC2_DEBUG_STATE_DUMP" not in kw["env"]
+        assert kw["env"]["MC2_HOST_LEASE_BATCH"] == "fixture-chain"
         assert kw["env"]["MC2_SMOKE_ARTIFACT_ROOT"] == str(tmp_path)
         assert command[-2:] == ["--exe", "own/mc2.exe"]
         if logs:

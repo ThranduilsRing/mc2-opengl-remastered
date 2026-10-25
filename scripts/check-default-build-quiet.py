@@ -77,7 +77,7 @@ DIAG_ENV_HINTS = ("MC2_DIAG_TAGS", "_DIAG", "_TRACE", "_PROBE", "MC2_DEBUG_")
 
 # env_gates keys that do NOT change what the engine prints, so a run carrying
 # only these is still a valid default-build sample.
-BENIGN_ENV = ("MC2_SMOKE_REQUIRE_FINGERPRINT", "MC2_SMOKE_ARTIFACT_ROOT")
+BENIGN_ENV = ("MC2_SMOKE_REQUIRE_FINGERPRINT", "MC2_SMOKE_ARTIFACT_ROOT", "MC2_HOST_LEASE_BATCH")
 
 
 def is_default_env_run(run_dir: Path) -> bool:
@@ -160,6 +160,8 @@ def fresh_smoke_logs(exe):
     proof.mkdir(parents=True, exist_ok=True)
     run_root = Path(tempfile.mkdtemp(prefix="run-", dir=proof))
     env = {k: v for k, v in os.environ.items() if not k.startswith("MC2_")}
+    if os.environ.get("MC2_HOST_LEASE_BATCH"):
+        env["MC2_HOST_LEASE_BATCH"] = os.environ["MC2_HOST_LEASE_BATCH"]
     env["MC2_SMOKE_ARTIFACT_ROOT"] = str(run_root)
     command = [sys.executable, str(ROOT / "scripts/run_smoke.py"), "--mission", "mc2_10",
                "--duration", "15", "--keep-logs"]
