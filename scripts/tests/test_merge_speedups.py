@@ -563,7 +563,7 @@ def test_game_batch_releases_and_reaps_its_holder(monkeypatch, fail):
     try:
         with gate.game_batch() as env:
             assert env[host_lease.BATCH_ENV] == calls[0][1]
-            assert calls[0][2]["exclusive"] is None  # host policy / caller decides
+            assert calls[0][2]["exclusive"] is True  # captures require all host slots
             if fail:
                 raise RuntimeError("fixture failed")
     except RuntimeError as exc:

@@ -255,7 +255,7 @@ def game_batch():
         yield {}
         return
     tag = f"merge-gate-{os.getpid()}"
-    pid = host_lease.hold(tag, ttl_s=1800, timeout_s=1200, exclusive=None)
+    pid = host_lease.hold(tag, ttl_s=1800, timeout_s=1200, exclusive=True)
     try:
         yield {host_lease.BATCH_ENV: tag}
     finally:
