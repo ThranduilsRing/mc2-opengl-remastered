@@ -8,7 +8,7 @@
   "RenderWorld": 0,
   "code": 14010,
   "mclib": 28499,
-  "shaders": 592
+  "shaders": 416
  },
  "dirs": [
   "code",
@@ -494,17 +494,13 @@
   "mclib/utilities.cpp": 16,
   "mclib/vk_scene_renderer_overlays.cpp": 16,
   "mclib/vk_scene_renderer_phases.cpp": 30,
-  "shaders/include/light_pools.hglsl": 10,
-  "shaders/include/lighting.hglsl": 20,
   "shaders/include/noise.hglsl": 40,
-  "shaders/include/shadow.hglsl": 136,
   "shaders/vulkan/aa_fxaa.frag": 30,
   "shaders/vulkan/cloud_shadow.frag": 21,
   "shaders/vulkan/edge_fog.frag": 10,
   "shaders/vulkan/hud_color.vert": 14,
   "shaders/vulkan/hud_tex.frag": 10,
   "shaders/vulkan/hud_tex.vert": 14,
-  "shaders/vulkan/include/terrain_frame_vk.glsl": 10,
   "shaders/vulkan/include/terrain_overlay_vs.glsl": 11,
   "shaders/vulkan/postprocess.frag": 39,
   "shaders/vulkan/postprocess_visual.frag": 9,
@@ -514,8 +510,8 @@
   "shaders/vulkan/terrain_tier1.vert": 71,
   "shaders/vulkan/terrain_tier1_skirt.vert": 71
  },
- "head": "616ad87f2",
+ "head": "3e38360a3",
  "n": 8,
- "total": 45806,
+ "total": 45630,
  "version": 1
 }
