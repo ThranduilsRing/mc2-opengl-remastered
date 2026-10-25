@@ -326,6 +326,7 @@ void gosRenderer::renderWaterFastPath(
         fsP.f2[3] = vkHdriAvail ? mc2WaterHdriLodDefault() : -1.0f;   // u_waterHdriLod
         fsP.f3[0] = static_cast<float>(ppVk->getWidth());                          // u_waterScreenSize
         fsP.f3[1] = static_cast<float>(ppVk->getHeight());
+        fsP.f3[3] = ppVk->getWidth() < ppVk->getOutputWidth() || ppVk->getHeight() < ppVk->getOutputHeight() ? 1.0f : 0.0f;
         // Night dim of the water's light (scattered light, ambient floor, glint, tint, reflected sky):
         // 0 by day and evening, 0.6 at full night (mclib/camera.cpp mc2NightLightFactor).
         const float night = mc2NightLightFactor();

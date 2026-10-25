@@ -35,7 +35,7 @@ layout(set = 0, binding = 1, std140) uniform WaterFsParams {
     vec4 f0;              // (time, cameraPosX, cameraPosY, cameraPosZ)
     vec4 f1;              // (alphaDepth, ABSORPTION_DENSITY, WATER_MAX_ALPHA, RIPPLE_GAIN)
     vec4 f2;              // (GLINT_GAIN, u_waterReflStrength, u_skyYaw, u_waterHdriLod)
-    vec4 f3;              // (screenW, screenH, _pad, _pad)  -- u_waterScreenSize
+    vec4 f3;              // screenW, screenH, night dim, defer waves on scaled presets
     vec4 DEEP_COLOR;      // .xyz
     vec4 SHALLOW_COLOR;   // .xyz
     // VK-PARITY-WATER-SHORE-1 (WATER-SHORE-EDGE-1): shore-feather inputs.
@@ -178,7 +178,9 @@ void main(void)
     PREC float sc = time * WAVE_SPEED * WAVE_FREQ;
     PREC vec2  q0 = WorldPos.xy * WAVE_FREQ        + vec2( 1.00,  0.60) * sc;
     PREC vec2  q1 = WorldPos.xy * WAVE_FREQ * 1.70 + vec2(-0.80, -1.10) * sc;
-    PREC float nz = (fbm3(q0) + fbm3(q1)) - 0.875;
+    // Native quality keeps the original wave/derivative evaluation. Scaled
+    // presets avoid the wave noise on fragments the shore mask will discard.
+    PREC float nz = F.f3.w < 0.5 ? (fbm3(q0) + fbm3(q1)) - 0.875 : 0.0;
 
     // SHORE-FIELD-1: deep/shallow tint from the smooth shore field (mode 3), not the coarse
     // per-vertex thickness -- no more deep-water diamonds around single low vertices.
@@ -207,6 +209,7 @@ void main(void)
                                  WorldPos.xy, F.f7.x);
     }
     if (shore <= 0.0) discard;
+    if (F.f3.w >= 0.5) nz = (fbm3(q0) + fbm3(q1)) - 0.875;
 
     // Night: the scattered light, sky ambient floor, glint, sky tint and reflected sky take the mission's night
     // dim (f3.z, 0 by day), so open water reads as dark as the ground around it instead of daylight teal.
