@@ -78,6 +78,7 @@ long BldgAppearance::update (bool animate)
         if (simulationOwned()) { updateSimPose(); return TRUE; }
     }
 	updateRenderLOD();
+	updateSearchlight();
    	if (appearType->terrainLightRGB != 0xffffffff && (eye->nightFactor > 0.0f) && !forceLightsOut)
    	{
    		if (!pointLight)
@@ -167,7 +168,9 @@ long BldgAppearance::update (bool animate)
 				// gos_static_prop_batcher.cpp (C-r3 M1).
 				if (!child || !recp->processMe) continue;
 				++diagChildrenWalked;
-				if (!child->GetIsSpotlight()) continue;  // tgl.h
+				const bool fieldLamp = S_stricmp(appearType->elevationNodeId, "NONE") != 0 &&
+					S_stricmp(child->getNodeName(), appearType->elevationNodeId) == 0;
+				if (!child->GetIsSpotlight() && !fieldLamp) continue;
 				++diagSpotlightsFound;
 
 				// Resolve node-NAME id (NOT listOfShapes index) per the anubis
@@ -179,7 +182,8 @@ long BldgAppearance::update (bool animate)
 
 				// LOCAL-LIGHTS-1: one light per authored beam of the leaf (a leaf may
 				// carry several lamps); the node id repeats once per beam, in beam order.
-				const int nBeams = std::max(1, mc2_cone_glow::GetNodeBeams(bldgShape, nodeId, nullptr, kMaxBeamsPerNode));
+				const int nBeams = fieldLamp ? 1 : std::max(1,
+					mc2_cone_glow::GetNodeBeams(bldgShape, nodeId, nullptr, kMaxBeamsPerNode));
 				for (int beam = 0; beam < nBeams; ++beam)
 				{
 					TG_LightPtr light = static_cast<TG_LightPtr>(malloc(sizeof(TG_Light)));
@@ -243,6 +247,8 @@ long BldgAppearance::update (bool animate)
 		long beamNode = -1;
 		for (size_t k = 0; k < spotlightLights_.size(); ++k)
 		{
+			const bool fieldLamp = S_stricmp(appearType->elevationNodeId, "NONE") != 0 &&
+				spotlightNodeIds_[k] == bldgShape->GetNodeNameId(appearType->elevationNodeId);
 			glm::vec3 childPos =
 				getNodeIdPosition(spotlightNodeIds_[k]);
 			// LOCAL-LIGHTS-1: k-th light of a node = its k-th authored beam.
@@ -252,6 +258,11 @@ long BldgAppearance::update (bool animate)
 				beamIdx = 0;
 				// Animated nodes and shape transforms can change while the building is stationary.
 				nBeams = mc2_cone_glow::GetNodeBeams(bldgShape, beamNode, beams, kMaxBeamsPerNode);
+				if (fieldLamp) {
+					const auto lamp = mc2_cone_glow::GetSearchlightBeam(bldgShape, beamNode);
+					nBeams = lamp ? 1 : -1;
+					if (lamp) beams[0] = *lamp;
+				}
 			}
 			else
 				++beamIdx;
@@ -282,7 +293,7 @@ long BldgAppearance::update (bool animate)
 				glm::vec3 aimW;
 				float coneLen = 0.0f;
 				bool haveAim = false;
-				if (beamIdx < nBeams && beams[beamIdx].aim.z <= 0.15f)
+				if (beamIdx < nBeams && (fieldLamp || beams[beamIdx].aim.z <= 0.15f))
 				{
 					// The lamp sits at the beam apex (mc2_cone_glow::ConfigureBeamLight).
 					const mc2_cone_glow::NodeBeam& b = beams[beamIdx];
@@ -480,7 +491,10 @@ long BldgAppearance::update (bool animate)
 			// MC2_LIGHT_CONE_GLOW=0 kills it.
 			// Gated on ownerLit, NOT on ->active: a beam whose pool was
 			// suppressed for missing the ground is still a visible volume.
-			if (ownerLit && beamIdx == 0)   // the glow draws the whole leaf once
+			if (ownerLit && beamIdx == 0 && fieldLamp)
+				mc2_cone_glow::QueueSearchlightGlow(bldgShape, beamNode,
+					spotlightLights_[k]->GetaRGB(), eye->getNightFactor());
+			else if (ownerLit && beamIdx == 0)   // the glow draws the whole leaf once
 				mc2_cone_glow::QueueConeGlow(bldgShape, spotlightNodeIds_[k],
 					spotlightLights_[k]->GetaRGB(), eye->getNightFactor());
 		}
@@ -603,12 +617,14 @@ long BldgAppearance::update (bool animate)
 		else
 			bldgShape->SetFogRGB(0xffffffff);
 	
+		if (S_stricmp(appearType->elevationNodeId, "NONE") == 0) {
 		glm::quat turretRot;
 		turretRot = mc2::math::quatFromEuler(mc2::math::Euler((unitAnim().pitch * DEGREES_TO_RADS),(unitAnim().turretRotation * DEGREES_TO_RADS),0.0f));
 		if (rotationalNodeId == -1)
 	   		rotationalNodeId = bldgShape->SetNodeRotation(appearType->rotationalNodeId,&turretRot);
    
 	   	bldgShape->SetNodeRotation(rotationalNodeId,&turretRot);
+		}
 	}
 
 	float oldFrame = unitAnim().currentFrame;

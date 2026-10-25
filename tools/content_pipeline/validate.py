@@ -179,6 +179,10 @@ def validate_runtime_glb(path, *, max_triangles=None, texture_root=None):
     if doc.get("skins") or doc.get("animations"):
         _err(issues, "RUNTIME_SKIN", "static runtime GLB carries skins/animations")
     for i, n in enumerate(doc.get("nodes", [])):
+        scene_wrapper = (n.get("name") == "MC2Scene" and set(n) == {"name", "children"}
+                         and doc["scenes"][doc.get("scene", 0)].get("nodes") == [i]
+                         and len(n["children"]) == 1
+                         and doc["nodes"][n["children"][0]].get("extras", {}).get("mc2_anim_node"))
         pivot = "mc2_pivot_tg_wu" in n.get("extras", {}) and not any(k in n for k in ("matrix", "rotation", "scale"))
         animated_splits = pivot and n.get("extras", {}).get("mc2_anim_node") == n.get("name") and all(
             isinstance(c, int) and 0 <= c < len(doc["nodes"])
@@ -188,7 +192,7 @@ def validate_runtime_glb(path, *, max_triangles=None, texture_root=None):
                              - n["extras"]["mc2_pivot_tg_wu"]) * [-1, -1, 1], atol=1e-5)
             and not any(k in doc["nodes"][c] for k in ("matrix", "rotation", "scale"))
             for c in n.get("children", []))
-        if ("mesh" in n and not pivot and any(k in n for k in ("matrix", "translation", "rotation", "scale"))) or (n.get("children") and not animated_splits):
+        if ("mesh" in n and not pivot and any(k in n for k in ("matrix", "translation", "rotation", "scale"))) or (n.get("children") and not (animated_splits or scene_wrapper)):
             _err(issues, "RUNTIME_NODE", f"node {i} is not an identity leaf (transforms must be baked)")
     names = [n.get("name", "") for n in doc.get("nodes", [])]
     dups = sorted({n for n in names if n and names.count(n) > 1})

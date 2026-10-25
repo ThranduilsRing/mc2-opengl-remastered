@@ -5416,7 +5416,7 @@
    "ver": -1,
    "stream": "stderr",
    "keys": [],
-   "count": 11
+   "count": 12
   },
   {
    "tag": "MODOVERRIDE",
@@ -7776,6 +7776,20 @@
     "numTris",
     "numVerts",
     "finalized"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SEARCHLIGHT",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "x",
+    "y",
+    "yaw",
+    "pitch",
+    "apex",
+    "aim"
    ],
    "count": 1
   },

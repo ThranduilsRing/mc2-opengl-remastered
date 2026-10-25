@@ -1155,6 +1155,59 @@ void QueueBeaconGlow(TG_MultiShape* shape, float nightFactor)
     }
 }
 
+std::optional<NodeBeam> GetSearchlightBeam(TG_MultiShape* shape, long nodeId)
+{
+    const TG_ShapeRec* rec = shape ? shape->GetShapeRec(static_cast<int>(nodeId)) : nullptr;
+    if (!rec || !rec->node || !rec->processMe) return std::nullopt;
+    const auto origin = mc2::math::transformPoint(glm::vec3(0, 0, 8), rec->shapeToWorld);
+    const auto tip = mc2::math::transformPoint(glm::vec3(0, 0, 408), rec->shapeToWorld);
+    const auto axis = mc2ToRender(tip - origin);
+    if (glm::length(axis) < 1.0f) return std::nullopt;
+    return NodeBeam{mc2ToRender(origin), glm::normalize(axis), 400.0f, 0.990268f}; // 8 degrees
+}
+
+void QueueSearchlightGlow(TG_MultiShape* shape, long nodeId, unsigned long argb, float nightFactor)
+{
+    if (!eye || !glow_enabled() || nightFactor <= 0.0f || !mc2::renderSubmissions().active()) return;
+    const TG_ShapeRec* rec = shape ? shape->GetShapeRec(static_cast<int>(nodeId)) : nullptr;
+    if (!rec || !rec->node || !rec->processMe) return;
+    if (s_queueTurn != turn) { s_tris.clear(); s_queueTurn = turn; }
+    const glm::mat4 clip = rec->shapeToWorld * TG_Shape::s_worldToClip;
+    // A faint, feathered shaft. Share the lamp hierarchy with the physical spot light;
+    // use the existing additive queue, never the opaque static-prop pass.
+    for (int band = 0; band < 8; ++band) {
+        for (int side = 0; side < 12; ++side) {
+            gos_VERTEX v[4]{};
+            bool valid = true;
+            for (int corner = 0; corner < 4; ++corner) {
+                const float t = (band + (corner >= 2 ? 1.0f : 0.0f)) / 8.0f;
+                const float angle = (side + (corner == 1 || corner == 2 ? 1.0f : 0.0f)) * 6.2831853f / 12.0f;
+                const float radius = 2.0f + t * 56.0f;
+                const glm::vec3 local(radius * std::cos(angle), radius * std::sin(angle), 8.0f + t * 400.0f);
+                Stuff::Vector4D xf; xf.MultiplyPoint(local, clip);
+                const float rhw = eye->usePerspective && xf.w != 0.0f ? 1.0f / xf.w : 1.0f;
+                auto& dst = v[corner];
+                dst.x = (eye->usePerspective ? xf.x * rhw : 1.0f - xf.x) * TG_Shape::viewMulX + TG_Shape::viewAddX;
+                dst.y = (eye->usePerspective ? xf.y * rhw : 1.0f - xf.y) * TG_Shape::viewMulY + TG_Shape::viewAddY;
+                dst.z = eye->usePerspective ? xf.z * rhw : xf.z;
+                dst.rhw = eye->usePerspective ? std::fabs(rhw) : 0.000001f;
+                valid &= dst.z >= 0.0f && dst.z < 1.0f && (!eye->usePerspective || xf.w > 0.0f);
+                const float fade = nightFactor * 0.018f * (1.0f - t) * (1.0f - t);
+                const auto r = static_cast<DWORD>(((argb >> 16) & 255) * fade);
+                const auto g = static_cast<DWORD>(((argb >> 8) & 255) * fade);
+                const auto b = static_cast<DWORD>((argb & 255) * fade);
+                const auto alpha = static_cast<DWORD>(255.0f * fade);
+                dst.argb = (alpha << 24) | (r << 16) | (g << 8) | b;
+            }
+            if (!valid || s_tris.size() + 2 > kMaxFrameTris) continue;
+            s_tris.push_back(QueuedTri{{v[0], v[1], v[2]}});
+            s_tris.push_back(QueuedTri{{v[0], v[2], v[3]}});
+            mc2::renderSubmissions().addTriangle(0xffffffff, MC2_ISSPOTLGT);
+            mc2::renderSubmissions().addTriangle(0xffffffff, MC2_ISSPOTLGT);
+        }
+    }
+}
+
 void FlushFrame()
 {
     if (s_tris.empty()) return;
