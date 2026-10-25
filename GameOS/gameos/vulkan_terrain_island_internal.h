@@ -100,7 +100,54 @@ struct SkirtMesh {
 // VK-TERRAIN-SKIRT vertex: mirrors GL's SkirtVertex { int16 lx, ly, isSkirt, _pad }.
 struct SkirtVertex { int16_t lx, ly, isSkirt, _pad; };
 
-struct OvlState;
+struct OvlPC {                       // LOCKSTEP with OverlayPC in terrain_overlay_tier1.{vert,frag}
+    float   fogColor[4];             // off 0
+    float   artFlatExempt;           // off 16
+    float   mapHalfExtent;           // off 20
+    int32_t biasLegacy;              // off 24
+    int32_t cementAdopt;             // off 28
+    int32_t seamFix;                 // off 32
+    int32_t _pad[3];                 // off 36..47
+};
+static_assert(sizeof(OvlPC) == 48, "OvlPC push-constant lockstep");
+
+struct OvlTex {
+    mc2vk::ResidentTextureRef texture;
+    VkDescriptorSet set[2] = {};
+    VkImageView bound[2] = {};   // freed with the pool
+    // The texels this import came from; a reloaded texture publishes a new vector, so identity says when to re-import.
+    std::shared_ptr<const std::vector<uint8_t>> source;
+};
+
+struct OvlPending {
+    uint32_t kind = 0;               // 0 = terrain overlay (cement/road art), 1 = decal
+    bool     isStatic = false;       // persistent bake (verts stay owned by the caller)
+    uint64_t version = 0;            // static bake version
+    const uint8_t* staticPtr = nullptr;
+    std::vector<uint8_t> verts;      // per-frame copy (28B WorldOverlayVert each)
+    uint32_t vertCount = 0;
+    std::vector<Mc2VkOverlayDraw> draws;
+};
+
+struct OvlState {
+    int w = 0, h = 0;
+    bool inited = false, disabled = false;
+    // OWNED objects in creation order, released in reverse (pipelines before their layout, framebuffer before its render pass, textures first).
+    mc2vk::OwnedRenderPass rpass;
+    mc2vk::OwnedFramebuffer fb;
+    mc2vk::OwnedShaderModule vert[2], frag[2];
+    mc2vk::OwnedPipeline pipe[2];
+    mc2vk::OwnedPipelineLayout playout;
+    mc2vk::OwnedDescriptorSetLayout texDsl;
+    mc2vk::OwnedDescriptorPool texPool;
+    mc2vk::OwnedSampler samp;
+    mc2vk::OwnedBuffer stat;   // persistent bake; replaced buffers retire after their last GPU use
+    VkDeviceSize statCap = 0; uint64_t statVersion = UINT64_MAX;
+    bool statUsed = false;    // a load snapshot can be corrected in place before its first submit
+    VkCommandBuffer cbuf[2] = {};   // allocated from the island's pool
+    OvlTex dummy;
+    std::unordered_map<uint32_t, OvlTex> texs;   // key: gos texture handle
+};
 
 // The island state. The engine context owns it while it is parked (IslandSlot::Terrain), so the objects below are released by the context ahead of
 // the allocator and device they were made on. The owners are declared in creation order and released in reverse.
@@ -264,57 +311,8 @@ struct TerrainIsland : mc2vk::IslandState {
     // The overlay / decal pass built on this island's pool and shared state; declared last, so it is released first.
     std::unique_ptr<OvlState> ovl;
 
-    TerrainIsland();
-    ~TerrainIsland() override;
-};
-
-struct OvlPC {                       // LOCKSTEP with OverlayPC in terrain_overlay_tier1.{vert,frag}
-    float   fogColor[4];             // off 0
-    float   artFlatExempt;           // off 16
-    float   mapHalfExtent;           // off 20
-    int32_t biasLegacy;              // off 24
-    int32_t cementAdopt;             // off 28
-    int32_t seamFix;                 // off 32
-    int32_t _pad[3];                 // off 36..47
-};
-static_assert(sizeof(OvlPC) == 48, "OvlPC push-constant lockstep");
-
-struct OvlTex {
-    mc2vk::ResidentTextureRef texture;
-    VkDescriptorSet set[2] = {};
-    VkImageView bound[2] = {};   // freed with the pool
-    // The texels this import came from; a reloaded texture publishes a new vector, so identity says when to re-import.
-    std::shared_ptr<const std::vector<uint8_t>> source;
-};
-
-struct OvlPending {
-    uint32_t kind = 0;               // 0 = terrain overlay (cement/road art), 1 = decal
-    bool     isStatic = false;       // persistent bake (verts stay owned by the caller)
-    uint64_t version = 0;            // static bake version
-    const uint8_t* staticPtr = nullptr;
-    std::vector<uint8_t> verts;      // per-frame copy (28B WorldOverlayVert each)
-    uint32_t vertCount = 0;
-    std::vector<Mc2VkOverlayDraw> draws;
-};
-
-struct OvlState {
-    int w = 0, h = 0;
-    bool inited = false, disabled = false;
-    // OWNED objects in creation order, released in reverse (pipelines before their layout, framebuffer before its render pass, textures first).
-    mc2vk::OwnedRenderPass rpass;
-    mc2vk::OwnedFramebuffer fb;
-    mc2vk::OwnedShaderModule vert[2], frag[2];
-    mc2vk::OwnedPipeline pipe[2];
-    mc2vk::OwnedPipelineLayout playout;
-    mc2vk::OwnedDescriptorSetLayout texDsl;
-    mc2vk::OwnedDescriptorPool texPool;
-    mc2vk::OwnedSampler samp;
-    mc2vk::OwnedBuffer stat;   // persistent bake; replaced buffers retire after their last GPU use
-    VkDeviceSize statCap = 0; uint64_t statVersion = UINT64_MAX;
-    bool statUsed = false;    // a load snapshot can be corrected in place before its first submit
-    VkCommandBuffer cbuf[2] = {};   // allocated from the island's pool
-    OvlTex dummy;
-    std::unordered_map<uint32_t, OvlTex> texs;   // key: gos texture handle
+    TerrainIsland() = default;
+    ~TerrainIsland() override { gpuTimer.destroy(); }
 };
 
 const uint32_t kOvlMaxTex = 480;

@@ -26,8 +26,6 @@
 
 namespace vk_terrain_detail {
 
-TerrainIsland::TerrainIsland() = default;
-TerrainIsland::~TerrainIsland() { gpuTimer.destroy(); }
 
 bool g_ovlDeclined = false;
 std::vector<OvlPending> g_ovlPending;
