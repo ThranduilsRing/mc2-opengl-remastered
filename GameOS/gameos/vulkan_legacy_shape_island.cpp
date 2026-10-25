@@ -3,9 +3,9 @@
 // solid-object vertex loop (ground vehicles etc.). See the header for the why;
 // structure = vulkan_mech_island.cpp's shared-GBuffer co-write path (LOAD-preserve
 // MRT0 color + MRT1 normal + shared D32S8 depth, GEQUAL reverse-Z, no composite,
-// ticket-retired submit slots) with a much simpler feed:
+// parity-fenced submit) with a much simpler feed:
 //   * geometry: the node's CPU gos_VERTEX array (pre-transformed screen-space,
-//     CPU-lit) is memcpy'd into the engine frame ring;
+//     CPU-lit) is memcpy'd each frame into a per-parity host-visible vertex buffer;
 //   * textures: copy-once import of the handle's decoded texels, keyed on the mc2::textures::ready() node;
 //   * no lights / no instancing: vertex colour is already CPU-lit.
 // The whole TU compiles to nothing unless MC2_VULKAN_ISLAND is defined.
@@ -82,15 +82,13 @@ VkShaderModule load_spv(VkDevice device, std::string_view path) {
 // RenderCore/gpu_abi/GpuLegacyFrameUBO.h; its generated block feeds both legacy shaders.
 
 const uint32_t kVertexStride = 32;       // gos_VERTEX: x,y,z,rhw, argb, frgb, u, v
-const uint32_t kMaxTextures  = 192;
-// Solid, blob-shadow and alpha draws can each submit in both in-flight frames.
-const uint32_t kSubmissionSlots = 6;
+const uint32_t kMaxTextures  = 192;      // descriptor-set budget (x2 parity)
 
 // The view is declared after the image so it is released first.
 struct TexEntry {
     mc2vk::ResidentTextureRef texture;
-    VkImageView bound[kSubmissionSlots] = {};
-    VkDescriptorSet set[kSubmissionSlots] = {};   // allocated from the island's pool, freed with it
+    VkImageView bound[2] = {};
+    VkDescriptorSet set[2] = {};   // allocated from the island's pool, freed with it
 };
 
 // Owned objects are declared in creation order and released in reverse by the destructor, while the device is alive (the engine context releases the
@@ -112,11 +110,9 @@ struct Island : mc2vk::IslandState {
 
     // Per-frame data (the frame UBO, then the vertex stream) lives in the engine frame ring; every texture set binds the UBO with a dynamic offset.
     // ringBound[par] = the ring buffer binding 0 of every [par] set currently points at; a frame whose span came from another buffer (the ring grew), or a
-    // set created since, re-points them after the submission slot retired.
-    VkBuffer ringBound[kSubmissionSlots] = {};
-    VkCommandBuffer cbuf[kSubmissionSlots] = {};   // allocated from `cpool`, freed with it
-    mc2vk::GpuTicket submitted[kSubmissionSlots];
-    uint32_t nextSlot = 0;
+    // set created since, re-points them after beginFrame retired the parity.
+    VkBuffer ringBound[2] = {};
+    VkCommandBuffer cbuf[2] = {};   // allocated from `cpool`, freed with it
 
     mc2vk::OwnedCommandPool cpool;
     mc2vk::OwnedSampler samp;
@@ -153,15 +149,14 @@ bool upload_image(Island* s, TexEntry& e, uint32_t w, uint32_t h, VkFormat fmt, 
     return bool(e.texture);
 }
 
-// Per-submission descriptor set for one texture: 0 = frame UBO, 1 = albedo.
+// Per-parity descriptor set for one texture: 0 = frame UBO, 1 = albedo.
 bool alloc_tex_sets(Island* s, TexEntry& t) {
-    VkDescriptorSetLayout layouts[kSubmissionSlots];
-    for (auto& layout : layouts) layout = s->dsl.get();
+    VkDescriptorSetLayout layouts[2] = {s->dsl.get(), s->dsl.get()};
     VkDescriptorSetAllocateInfo dsai{};
     dsai.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-    dsai.descriptorPool = s->pool.get(); dsai.descriptorSetCount = kSubmissionSlots; dsai.pSetLayouts = layouts;
+    dsai.descriptorPool = s->pool.get(); dsai.descriptorSetCount = 2; dsai.pSetLayouts = layouts;
     if (vkAllocateDescriptorSets(s->device, &dsai, t.set) != VK_SUCCESS) return false;
-    for (uint32_t par = 0; par < kSubmissionSlots; ++par) {
+    for (uint32_t par = 0; par < 2; ++par) {
         VkDescriptorImageInfo ii{};
         ii.sampler = s->samp.get(); ii.imageView = mc2vk::getOrCreateEngineVulkanContext().textures().view(t.texture.get()); ii.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
         VkWriteDescriptorSet w[1]{};
@@ -169,7 +164,7 @@ bool alloc_tex_sets(Island* s, TexEntry& t) {
         w[0].descriptorCount = 1; w[0].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; w[0].pImageInfo = &ii;
         vkUpdateDescriptorSets(s->device, 1, w, 0, nullptr);
         t.bound[par]=ii.imageView;
-        // Binding 0 follows the ring buffer when this submission slot is reused.
+        // Binding 0 (the frame UBO) at the ring's current buffer; the parity is re-pointed at its next frame.
         if (const VkBuffer ring = mc2vk::getOrCreateEngineVulkanContext().frameRingBuffer())
             mc2vk::writeDynamicBinding(s->device, t.set[par], 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, ring, sizeof(LegacyFrameUBO));
         s->ringBound[par] = VK_NULL_HANDLE;
@@ -187,7 +182,7 @@ TexEntry* get_tex(Island* s,uint32_t texNode,uint32_t gosHandle) {
     if (auto it=s->texs.find(texNode);it!=s->texs.end()) {
         if (it->second.texture.get()!=handle) {
             it->second.texture=textures.retain(handle);
-            for (auto& bound : it->second.bound) bound = VK_NULL_HANDLE; // recycled VkImageView names still require fresh descriptors
+            it->second.bound[0]=it->second.bound[1]=VK_NULL_HANDLE; // recycled VkImageView names still require fresh descriptors
         }
         return &it->second;
     }
@@ -235,7 +230,7 @@ bool init_island(Island* s, int w, int h) {
     }
     g_initReachedBuild = 1;   // readiness gates passed: failures past here are PERMANENT
 
-    {   // command pool + per-submission command buffers
+    {   // command pool + per-parity command buffers
         VkCommandPoolCreateInfo cpi{};
         cpi.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
         cpi.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
@@ -243,7 +238,7 @@ bool init_island(Island* s, int w, int h) {
         if (!mc2vk::create(s->cpool, s->device, [&](VkCommandPool* h) { return vkCreateCommandPool(s->device, &cpi, nullptr, h); })) { setFallback("cmdpool_failed"); return false; }
         VkCommandBufferAllocateInfo cbi{};
         cbi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-        cbi.commandPool = s->cpool.get(); cbi.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; cbi.commandBufferCount = kSubmissionSlots;
+        cbi.commandPool = s->cpool.get(); cbi.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; cbi.commandBufferCount = 2;
         if (vkAllocateCommandBuffers(s->device, &cbi, s->cbuf) != VK_SUCCESS) { setFallback("cmdbuf_failed"); return false; }
     }
 
@@ -327,11 +322,11 @@ bool init_island(Island* s, int w, int h) {
         if (!mc2vk::create(s->dsl, s->device, [&](VkDescriptorSetLayout* h) { return vkCreateDescriptorSetLayout(s->device, &lci, nullptr, h); })) { setFallback("dsl_failed"); return false; }
         const uint32_t N = kMaxTextures + 1;   // + dummy
         VkDescriptorPoolSize sizes[2]{};
-        sizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC; sizes[0].descriptorCount = kSubmissionSlots * N;
-        sizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; sizes[1].descriptorCount = kSubmissionSlots * N;
+        sizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC; sizes[0].descriptorCount = 2 * N;
+        sizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; sizes[1].descriptorCount = 2 * N;
         VkDescriptorPoolCreateInfo pci{};
         pci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-        pci.maxSets = kSubmissionSlots * N; pci.poolSizeCount = 2; pci.pPoolSizes = sizes;
+        pci.maxSets = 2 * N; pci.poolSizeCount = 2; pci.pPoolSizes = sizes;
         if (!mc2vk::create(s->pool, s->device, [&](VkDescriptorPool* h) { return vkCreateDescriptorPool(s->device, &pci, nullptr, h); })) { setFallback("pool_failed"); return false; }
 
         const uint8_t px[4] = {255, 255, 255, 255};
@@ -511,29 +506,23 @@ extern "C" int mc2_vk_legacy_shape_island_run(int w, int h, const Mc2LegacyMlrFr
         totalBytes += static_cast<VkDeviceSize>(d.vertexCount) * kVertexStride;
     }
 
-    // The frame UBO and vertex stream belong to the engine frame ring, independently of the submission slot.
+    // The frame UBO and the vertex stream go into the engine frame ring BEFORE beginFrame (a ring failure after it could strand the fence). The ring slot
+    // belongs to the frame, not to the parity, so staging here races nothing.
     mc2vk::VulkanContext& rctx = mc2vk::getOrCreateEngineVulkanContext();
     const VkDeviceSize vtxOff = mc2vk::alignUp(sizeof(LegacyFrameUBO), rctx.frameAlignment());
     const mc2vk::FrameAlloc span = rctx.frameAlloc(vtxOff + (totalBytes ? totalBytes : kVertexStride));
     if (!span) { s->disabled = true; setFallback("frame_ring_alloc_failed"); return 0; }
 
+    VkImageResource* colorRes = reinterpret_cast<VkImageResource*>(s->colorRes);
+    VkFrameSync fsC{};
     if (s->preview) {
         // The UI samples this target after the preview submit; wait the preceding sealed frame before overwriting it.
         const auto frameNo=rctx.tracker().frameNo();
         const auto sampled=frameNo>1 ? rctx.tracker().frameTicket(frameNo-1) : mc2vk::GpuTicket{};
         if (!rctx.wait(mc2vk::GpuTicket::both(sampled,s->previewTicket),5000000000ull,"preview target reuse")) return 0;
-    }
-    // The GBuffer's two fences are shared by all islands. Cycling them here can
-    // wait on terrain/props submitted earlier in THIS frame. Only this slot's
-    // prior legacy submit must retire before its command buffer and sets change;
-    // render-pass dependencies still order the shared attachment accesses.
-    const uint32_t par = s->nextSlot;
-    {
-        ZoneScopedN("VKIsl.Legacy.FenceWait");
-        if (!rctx.wait(s->submitted[par], 5000000000ull, "legacy submission slot")) {
-            setFallback("submission_slot_timeout"); s->disabled = true; return 0;
-        }
-    }
+        fsC.parity=rctx.frameContext().slot;
+    } else { ZoneScopedN("VKIsl.Legacy.FenceWait"); fsC=vkImageResourceBeginFrame(colorRes); }
+    const uint32_t par = fsC.parity & 1u;
 
     {   // per-frame vertex stream + UBO
         uint8_t* const base = static_cast<uint8_t*>(span.ptr);
@@ -556,7 +545,7 @@ extern "C" int mc2_vk_legacy_shape_island_run(int w, int h, const Mc2LegacyMlrFr
         w.descriptorType=VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; w.pImageInfo=&ii;
         vkUpdateDescriptorSets(s->device,1,&w,0,nullptr); r.t->bound[par]=view;
     }
-    // Every texture set of this slot follows the ring buffer the span came from; the draw passes the UBO offset.
+    // Every texture set of this parity follows the ring buffer the span came from; the draw passes the UBO offset.
     if (s->ringBound[par] != span.buffer) {
         for (auto& kv : s->texs)
             if (kv.second.set[par] != VK_NULL_HANDLE) mc2vk::writeDynamicBinding(s->device, kv.second.set[par], 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, span.buffer, sizeof(LegacyFrameUBO));
@@ -618,9 +607,7 @@ extern "C" int mc2_vk_legacy_shape_island_run(int w, int h, const Mc2LegacyMlrFr
     si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
     si.commandBufferCount = 1; si.pCommandBuffers = &cb;
     { ZoneScopedN("VKIsl.Legacy.Submit");
-      if (mc2vk::submitGraphics(si, VK_NULL_HANDLE) != VK_SUCCESS) { setFallback("submit_failed"); s->disabled = true; return 0; } }
-    s->submitted[par] = rctx.tracker().now();
-    s->nextSlot = (par + 1) % kSubmissionSlots;
+      if (mc2vk::submitGraphics(si, fsC.fence) != VK_SUCCESS) { setFallback("submit_failed"); s->disabled = true; return 0; } }
 
     if (s->preview) { s->previewPublished=true; s->previewTicket=rctx.tracker().now(); }
     g_health.nodesDrawn += drawn;
