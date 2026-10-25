@@ -133,8 +133,9 @@ def test_battery_isolates_workers_and_cleans_even_on_exception(tmp_path, monkeyp
                 raise OSError("fixture launch failure")
         (stage / "data/runtime-leak.fit").write_bytes(b"runtime")
         if warmed:
-            assert (stage / 'cache/content-model/model-one.mci').read_bytes() == b'cooked'
-            assert (stage / 'cache/content-model/model-two.mci').read_bytes() == b'cooked'
+            assert not (stage / 'cache/content-model/model-one.mci').exists()
+            assert not (stage / 'cache/content-model/model-two.mci').exists()
+            assert not (stage / 'cache/content-model/model-old-version.mci').exists()
         recipes = stage / 'cache/content-model'
         recipes.mkdir(parents=True, exist_ok=True)
         (recipes / f'model-{stage.name}.mci').write_bytes(b'cooked')
@@ -161,7 +162,11 @@ def test_battery_isolates_workers_and_cleans_even_on_exception(tmp_path, monkeyp
     assert (mods / "parent/data/shared.pak").read_bytes() == b"packed"
     if not crash:
         warmed = True
+        stale = tmp_path / "stages/_cache/cooked/model-old-version.mci"
+        stale.parent.mkdir(parents=True, exist_ok=True)
+        stale.write_bytes(b"obsolete cooker")
         assert mod_smoke.battery(args) == 0
+        assert not stale.parent.exists()
         assert len(runs) == 4
 
 

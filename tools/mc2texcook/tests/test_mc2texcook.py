@@ -28,16 +28,6 @@ if str(_TOOLS_DIR) not in sys.path:
 import mc2texcook  # noqa: E402
 
 
-def test_cook_stamp_matches_engine_hash(tmp_path):
-    output = tmp_path / 'building.ktx2'
-    output.write_bytes(b'hello')
-    mc2texcook.record_cook(output)
-    stamp = Path(str(output) + '.cookstamp')
-    assert stamp.read_text() == 'a430d84680aabd0b\n'
-    output.write_bytes(b'jello')
-    assert stamp.read_text() == 'a430d84680aabd0b\n'
-
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------

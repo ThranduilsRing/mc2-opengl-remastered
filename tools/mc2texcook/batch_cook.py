@@ -101,7 +101,6 @@ def _cook_one_bc7(src_path: Path, dst_path: Path, ktx_tool: str,
                     f"ktx step failed ({step[1]}): rc={r.returncode} "
                     f"{(r.stderr or r.stdout).strip()[:300]}")
 
-    mc2texcook.record_cook(dst_path)
     return src_w, src_h
 
 

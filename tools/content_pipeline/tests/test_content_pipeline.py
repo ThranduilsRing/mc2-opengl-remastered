@@ -589,3 +589,17 @@ def test_uvless_stock_helpers_keep_zero_uv(tmp_path):
         view = gltf["bufferViews"][acc["bufferView"]]
         uv = [struct.unpack_from("<2f", raw, view["byteOffset"] + i * 8) for i in range(acc["count"])]
         assert uv == [(0, 0)] * acc["count"]   # TG's explicit no-TFACE default, not the flipped roof-corner texel
+
+
+def test_authored_glass_ids_survive_ingest_and_export(tmp_path):
+    src, doc, *_ = make_gltf(tmp_path)
+    doc['meshes'][0]['primitives'][0]['attributes']['TEXCOORD_1'] = 3
+    doc['materials'][0]['extras']['mc2_material_class'] = 'glass'
+    src.write_text(json.dumps(doc))
+    scene, materials, _ = gltf_io.read_gltf(src)
+    expected = np.array([[0, 0], [1, 0], [0, 1], [1, 1]], float)
+    np.testing.assert_array_equal(scene.meshes[0].primitives[0].uv1, expected)
+    raw = gltf_io.write_runtime_glb(scene, materials, {})
+    output, binary = gltf_io.split_glb(raw)
+    attrs = output['meshes'][0]['primitives'][0]['attributes']
+    np.testing.assert_array_equal(gltf_io.read_accessor(output, [binary], attrs['TEXCOORD_1']), expected)
