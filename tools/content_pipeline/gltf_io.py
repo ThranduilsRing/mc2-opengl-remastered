@@ -503,8 +503,14 @@ def write_runtime_glb(scene: Scene, materials: list[Material], texture_names: di
     for index, name, parent in inherited_nodes:
         parent_index = by_name[parent]
         node = doc["nodes"][index]
-        node.pop("matrix", None)
-        node["translation"] = ((np.asarray(pivots[name]) - pivots[parent]) * [-1, -1, 1]).tolist()
+        offset = ((np.asarray(pivots[name]) - pivots[parent]) * [-1, -1, 1]).tolist()
+        if "matrix" in node:
+            # Static attachments retain their authored world orientation/scale;
+            # the animated parent contributes only its pivot at bind pose.
+            node["matrix"][12:15] = offset
+            node["extras"]["mc2_pivot_tg_wu"] = pivots[name]
+        else:
+            node["translation"] = offset
         doc["nodes"][parent_index].setdefault("children", []).append(index)
         doc["scenes"][0]["nodes"].remove(index)
     if not doc["meshes"]:

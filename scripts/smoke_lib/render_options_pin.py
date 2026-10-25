@@ -17,6 +17,7 @@ from __future__ import annotations
 import json
 import re
 import struct
+import sys
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
@@ -198,6 +199,10 @@ def differences(a: Mapping[str, object], b: Mapping[str, object], vary: Iterable
     if bad:
         raise ValueError(f"--vary names unknown option(s) {bad}; known: {', '.join(keys())}")
     out = []
+    for name, values in (("A", a), ("B", b)):
+        missing = [o.key for o in table() if o.key not in values and o.key.lower() not in allowed]
+        if missing:
+            print(f"[render_options] {name} defaulted missing options: {', '.join(missing)}", file=sys.stderr)
     for opt in table():
         if opt.key.lower() in allowed:
             continue

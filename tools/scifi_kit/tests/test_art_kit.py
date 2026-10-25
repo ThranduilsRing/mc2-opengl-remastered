@@ -11,6 +11,34 @@ import geo  # noqa: E402
 CONDITIONS = ['pristine', 'worn', 'abandoned', 'destroyed']
 
 
+def test_intent_check_rejects_lint_only_failure(monkeypatch):
+    import numpy as np
+    import analyze
+    import clearance
+    import footprint
+    import intent
+    import intent_run
+    import lint
+    k = geo.Kit('lint_fixture', 'slate_oxide')
+    k.box((0, 0, 1), (2, 2, 2), 'steel', role='mass')
+    k.box((0, 0, 4), (2, 2, .2), 'steel', role='roof')  # unsupported roof
+    k.meta['bounds_m'] = [[-1, -1, 0], [1, 1, 4.1]]
+    monkeypatch.setitem(intent.ASSETS, 'lint_fixture', dict(counts={}, cls='small'))
+    monkeypatch.setattr(intent, 'build', lambda name: k)
+    monkeypatch.setattr(analyze, 'load_stock', lambda name: {'V': np.array(k.meta['bounds_m'])})
+    monkeypatch.setattr(intent, 'height_grid_stock', lambda *a: np.ones((2, 2)))
+    monkeypatch.setattr(intent, 'height_grid_kit', lambda *a: np.ones((2, 2)))
+    monkeypatch.setattr(clearance, 'check', lambda k: [])
+    monkeypatch.setattr(footprint, 'check', lambda name: dict(metrics={}, kind='fixture', fails=[]))
+    assert lint.check(k)
+    result = intent.check('lint_fixture')
+    assert not result['ok'] and result['fails'] == ['lint: ' + x for x in result['lint']]
+    monkeypatch.setattr(sys, 'argv', ['intent_run.py', 'check', 'lint_fixture'])
+    with pytest.raises(SystemExit) as exc:
+        intent_run.main()
+    assert exc.value.code == 1
+
+
 def _parked(fn, *a):
     """Build, or skip an asset whose stock shape needs a builder capability that does not exist yet (state needs_builder)."""
     try:

@@ -316,6 +316,14 @@ def _generate_mips(base_img):
 # KTX2 writer
 # ---------------------------------------------------------------------------
 
+def record_cook(out_path: Path) -> None:
+    """Record FNV-1a-64 of output bytes; edited sidecars retain user priority."""
+    value = 14695981039346656037
+    for byte in out_path.read_bytes():
+        value = ((value ^ byte) * 1099511628211) & 0xffffffffffffffff
+    Path(str(out_path) + '.cookstamp').write_text(f'{value:016x}\n', encoding='ascii')
+
+
 def write_ktx2(out_path: Path, mips, vk_format: int, dfd: bytes) -> None:
     """Write a valid KTX2 file (RGBA8, no supercompression) to out_path.
 
@@ -403,6 +411,7 @@ def write_ktx2(out_path: Path, mips, vk_format: int, dfd: bytes) -> None:
         buf += mb
 
     out_path.write_bytes(bytes(buf))
+    record_cook(out_path)
 
 
 # ---------------------------------------------------------------------------

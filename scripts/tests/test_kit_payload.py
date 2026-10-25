@@ -66,23 +66,23 @@ def test_cooks_then_validates_receipt_and_repairs_corrupt_cache(tmp_path, monkey
     kit.finish(target, manifest, tool, cook)
     assert len(calls) == 3
     kit.finish(target, manifest, tool, cook)
-    assert len(calls) == 3
+    assert len(calls) == 6
     next((target / "cache/content-model").glob("*.mci")).write_bytes(b"bad")
     kit.finish(target, manifest, tool, cook)
-    assert len(calls) == 6
+    assert len(calls) == 9
     tool.write_bytes(b"rebuilt importer")
     kit.finish(target, manifest, tool, cook)
-    assert len(calls) == 9
+    assert len(calls) == 12
     # A retained receipt cannot hide a pruned recipe or an incomplete inventory.
     next((target / "cache/content-model").glob("*.mci")).unlink()
     kit.finish(target, manifest, tool, cook)
-    assert len(calls) == 12
+    assert len(calls) == 15
     receipt = target / "cache/content-model/industrial-cook.json"
     partial = json.loads(receipt.read_text())
     partial["files"].pop()
     receipt.write_text(json.dumps(partial))
     kit.finish(target, manifest, tool, cook)
-    assert len(calls) == 15
+    assert len(calls) == 18
     (target / kit.KIT_REL / "extra.glb").write_bytes(b"unversioned")
     with pytest.raises(ValueError, match="unpinned"):
         kit.finish(target, manifest, tool, cook)
@@ -134,3 +134,83 @@ def test_existing_importer_still_runs_ninja_dependency_check(tmp_path, monkeypat
     monkeypatch.setattr(cn, "under_vcvars", lambda *a: 1)
     with pytest.raises(ValueError, match="build failed"):
         kit.build_importer(tmp_path)
+
+
+@pytest.fixture
+def cook_install(tmp_path, monkeypatch):
+    import shutil
+    manifest, store = package(tmp_path, monkeypatch)
+    target = tmp_path / "install"
+    shutil.copytree(store, target / kit.KIT_REL)
+    tool = tmp_path / "tool.exe"
+    tool.write_bytes(b"tool")
+    calls = []
+    def cook(command, **kwargs):
+        calls.append(command[1])
+        key = hashlib.sha256(command[1].encode()).hexdigest()[:16]
+        cache = target / "cache/content-model"
+        cache.mkdir(parents=True, exist_ok=True)
+        (cache / f"model-{key}.mci").write_bytes(command[1].encode())
+        return SimpleNamespace(returncode=0, stdout=f"[CONTENT_COOK] key={key}", stderr="")
+    return target, manifest, tool, cook, calls
+
+
+def test_full_receipt_cannot_substitute_an_unrelated_valid_recipe(cook_install):
+    target, manifest, tool, cook, calls = cook_install
+    kit.finish(target, manifest, tool, cook)
+    receipt = target / "cache/content-model/industrial-cook.json"
+    previous = json.loads(receipt.read_text())
+    original = previous["files"][0]["path"]
+    cache = receipt.parent
+    unrelated = cache / "model-ffffffffffffffff.mci"
+    unrelated.write_bytes(b"unrelated valid recipe")
+    previous["files"][0] = dict(path=unrelated.name, bytes=unrelated.stat().st_size, sha256=kit.sha(unrelated))
+    receipt.write_text(json.dumps(previous))
+    (cache / original).unlink()
+    kit.finish(target, manifest, tool, cook)
+    assert len(calls) == 6
+    assert (cache / original).is_file()
+    assert unrelated.name not in {r["path"] for r in json.loads(receipt.read_text())["files"]}
+
+
+@pytest.mark.parametrize("problem", ["absolute", "drive", "rooted", "parent", "dot", "duplicate", "junction"])
+def test_kit_copy_rejects_unsafe_destinations(tmp_path, monkeypatch, problem):
+    import deploy_payload as dp
+    manifest, store = package(tmp_path, monkeypatch)
+    rel = manifest["files"][0]["path"]
+    bad = {"absolute": str(store / rel), "drive": "C:relative.glb", "rooted": "\\root.glb",
+           "parent": "data/../file.glb", "dot": "./file.glb"}
+    if problem in bad:
+        manifest["files"][0]["path"] = bad[problem]
+    elif problem == "duplicate":
+        row = dict(manifest["files"][0], path=rel.upper())
+        manifest["files"].append(row)
+    else:
+        import subprocess
+        target = tmp_path / "target"
+        outside = tmp_path / "outside"
+        target.mkdir()
+        outside.mkdir()
+        # Windows junctions require no symlink privilege.
+        result = subprocess.run(["cmd", "/c", "mklink", "/J", str(target / "mods"), str(outside)],
+                                capture_output=True, **kit.console_child.child_kwargs(redirected=True))
+        assert result.returncode == 0
+        monkeypatch.setattr(dp, "ensure_terrain_materials", lambda *a: {})
+        monkeypatch.setattr(dp, "ensure_engine_normal_cooks", lambda *a: None)
+        with pytest.raises(ValueError, match="unsafe"):
+            dp.deploy([(str(store / rel), (kit.KIT_REL / rel).as_posix(), "kit")], target, False)
+        assert list(outside.iterdir()) == []
+        return
+    with pytest.raises(ValueError, match="unsafe|duplicate"):
+        kit.checked_files(store, manifest["files"])
+
+
+def test_input_mutation_during_cook_prevents_receipt(cook_install):
+    target, manifest, tool, cook, calls = cook_install
+    def mutate(command, **kwargs):
+        result = cook(command, **kwargs)
+        (target / kit.KIT_REL / manifest["files"][0]["path"]).write_bytes(b"changed")
+        return result
+    with pytest.raises(ValueError, match="missing/mismatched"):
+        kit.finish(target, manifest, tool, mutate)
+    assert not (target / "cache/content-model/industrial-cook.json").exists()

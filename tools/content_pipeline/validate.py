@@ -187,10 +187,12 @@ def validate_runtime_glb(path, *, max_triangles=None, texture_root=None):
         animated_splits = pivot and n.get("extras", {}).get("mc2_anim_node") == n.get("name") and all(
             isinstance(c, int) and 0 <= c < len(doc["nodes"])
             and "mc2_pivot_tg_wu" in doc["nodes"][c].get("extras", {})
-            and np.allclose(doc["nodes"][c].get("translation", [0, 0, 0]),
+            and np.allclose(gltf_io.node_matrix(doc["nodes"][c])[:3, 3],
                             (np.asarray(doc["nodes"][c]["extras"]["mc2_pivot_tg_wu"])
                              - n["extras"]["mc2_pivot_tg_wu"]) * [-1, -1, 1], atol=1e-5)
-            and not any(k in doc["nodes"][c] for k in ("matrix", "rotation", "scale"))
+            and (not any(k in doc["nodes"][c] for k in ("matrix", "rotation", "scale"))
+                 or ("mesh" not in doc["nodes"][c] and "matrix" in doc["nodes"][c]
+                     and not doc["nodes"][c].get("extras", {}).get("mc2_anim_node")))
             for c in n.get("children", []))
         if ("mesh" in n and not pivot and any(k in n for k in ("matrix", "translation", "rotation", "scale"))) or (n.get("children") and not (animated_splits or scene_wrapper)):
             _err(issues, "RUNTIME_NODE", f"node {i} is not an identity leaf (transforms must be baked)")

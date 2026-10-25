@@ -831,7 +831,7 @@ def main(argv: list[str] | None = None) -> int:
             verdict, vresults = verify_merged(root, mode)
         merge_sha, follow, _ = merged[-1] if merged else (git_out(root, "rev-parse", "--short=9", "HEAD"), None, 0)
         record.update(verify=verdict, merge_seconds=time.time() - window_started)
-        if Path(root, "scripts/ninja_build.py").is_file():
+        if merged and Path(root, "scripts/ninja_build.py").is_file():
             record_path.parent.mkdir(parents=True, exist_ok=True)
             record_path.write_text(json.dumps(record), encoding="utf-8")
             print(f"lane_merge: elapsed={record['merge_seconds']:.1f}s base={window_base}; gate continues this window clock")

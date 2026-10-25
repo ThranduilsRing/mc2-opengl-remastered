@@ -38,7 +38,7 @@
         },
         {
           "path": "scripts/kit_payload.py",
-          "line": 54,
+          "line": 67,
           "evidence": "import",
           "reference": "bootstrap_worktree_build",
           "text": "from bootstrap_worktree_build import find_cmake"
@@ -726,7 +726,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/deploy_payload.py",
-          "line": 1886,
+          "line": 1889,
           "evidence": "command",
           "reference": "scripts/check-deploy-hygiene.py",
           "text": "r = subprocess.run([sys.executable, hygiene, target],"
@@ -2243,7 +2243,7 @@
         },
         {
           "path": "scripts/kit_payload.py",
-          "line": 53,
+          "line": 66,
           "evidence": "import",
           "reference": "configure_ninja",
           "text": "import configure_ninja as cn"
@@ -3392,7 +3392,7 @@
         },
         {
           "path": "tools/stock_blocking.py",
-          "line": 15,
+          "line": 16,
           "evidence": "import",
           "reference": "console_child",
           "text": "import console_child"
@@ -3765,6 +3765,13 @@
           "text": "import deploy_payload as dp"
         },
         {
+          "path": "scripts/tests/test_kit_payload.py",
+          "line": 178,
+          "evidence": "import",
+          "reference": "deploy_payload",
+          "text": "import deploy_payload as dp"
+        },
+        {
           "path": "scripts/tests/test_lane_names.py",
           "line": 13,
           "evidence": "import",
@@ -3773,21 +3780,21 @@
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 134,
+          "line": 170,
           "evidence": "import",
           "reference": "deploy_payload",
           "text": "import deploy_payload as dp"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 155,
+          "line": 191,
           "evidence": "import",
           "reference": "deploy_payload",
           "text": "import deploy_payload as dp"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 220,
+          "line": 256,
           "evidence": "import",
           "reference": "deploy_payload",
           "text": "import deploy_payload as dp"
@@ -3837,7 +3844,7 @@
         },
         {
           "path": "scripts/deploy_payload.py",
-          "line": 1790,
+          "line": 1793,
           "evidence": "import",
           "reference": "exe_fingerprint",
           "text": "from exe_fingerprint import extract, sha_agrees"
@@ -3988,7 +3995,14 @@
       "callers_by_stem": [
         {
           "path": "scripts/deploy_payload.py",
-          "line": 1823,
+          "line": 1232,
+          "evidence": "import",
+          "reference": "kit_payload",
+          "text": "from kit_payload import contained_path"
+        },
+        {
+          "path": "scripts/deploy_payload.py",
+          "line": 1826,
           "evidence": "import",
           "reference": "kit_payload",
           "text": "import kit_payload"
@@ -4184,168 +4198,168 @@
       "callers_by_stem": [
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 166,
+          "line": 202,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 188,
+          "line": 224,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 243,
+          "line": 279,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 252,
+          "line": 288,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 264,
+          "line": 300,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 272,
+          "line": 308,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 286,
+          "line": 322,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 297,
+          "line": 333,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 309,
+          "line": 345,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 329,
+          "line": 365,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 350,
+          "line": 386,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 363,
+          "line": 399,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 374,
+          "line": 410,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 436,
+          "line": 472,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 448,
+          "line": 484,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 458,
+          "line": 494,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 468,
+          "line": 504,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 485,
+          "line": 521,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 499,
+          "line": 535,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 555,
+          "line": 609,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 576,
+          "line": 630,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 603,
+          "line": 657,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 632,
+          "line": 686,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 647,
+          "line": 701,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
@@ -4398,7 +4412,7 @@
           "line": 130,
           "evidence": "command",
           "reference": "$ROOT/scripts/ninja_build.py",
-          "text": "py -3 \"$ROOT/scripts/ninja_build.py\" -j\"$JOBS\" model_override_tests static_natural_skip_policy_tests"
+          "text": "MC2_NINJA_TREE=\"${ENGINE_BUILD#\"$ROOT/\"}\" py -3 \"$ROOT/scripts/ninja_build.py\" -j\"$JOBS\" model_override_tests static_natural_skip_policy_tests"
         },
         {
           "path": "tests/mapgen/test_mission_codec.py",
@@ -4819,7 +4833,7 @@
         },
         {
           "path": "tools/stock_blocking.py",
-          "line": 44,
+          "line": 77,
           "evidence": "command",
           "reference": "scripts/run_smoke.py",
           "text": "result = subprocess.run("
@@ -4921,14 +4935,14 @@
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 477,
+          "line": 513,
           "evidence": "import",
           "reference": "run_tools_tests",
           "text": "import run_tools_tests as tt"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 617,
+          "line": 671,
           "evidence": "import",
           "reference": "run_tools_tests",
           "text": "import run_tools_tests as tt"
@@ -5846,7 +5860,7 @@
         },
         {
           "path": "tests/smoke/test_render_options_pin.py",
-          "line": 156,
+          "line": 166,
           "evidence": "import",
           "reference": "scripts.smoke_lib.gates",
           "text": "from scripts.smoke_lib.gates import Verdict"
@@ -6052,7 +6066,7 @@
         },
         {
           "path": "tests/smoke/test_render_options_pin.py",
-          "line": 157,
+          "line": 167,
           "evidence": "import",
           "reference": "scripts.smoke_lib.logparse",
           "text": "from scripts.smoke_lib.logparse import LogSummary"
@@ -8066,7 +8080,7 @@
       "callers_by_stem": [
         {
           "path": "tools/content_pipeline/tests/test_content_pipeline.py",
-          "line": 540,
+          "line": 561,
           "evidence": "import",
           "reference": "test_ase_submaterial",
           "text": "from test_ase_submaterial import SINGLE_MAT_ASE"
@@ -8737,21 +8751,21 @@
         },
         {
           "path": "tools/content_pipeline/tests/test_content_pipeline.py",
-          "line": 247,
+          "line": 268,
           "evidence": "import",
           "reference": "tools.content_pipeline.cook",
           "text": "from tools.content_pipeline.cook import build_asset"
         },
         {
           "path": "tools/content_pipeline/tests/test_content_pipeline.py",
-          "line": 315,
+          "line": 336,
           "evidence": "import",
           "reference": "tools.content_pipeline.cook",
           "text": "from tools.content_pipeline.cook import cook"
         },
         {
           "path": "tools/content_pipeline/tests/test_content_pipeline.py",
-          "line": 328,
+          "line": 349,
           "evidence": "import",
           "reference": "tools.content_pipeline.cook",
           "text": "from tools.content_pipeline.cook import cook"
@@ -8801,7 +8815,7 @@
         },
         {
           "path": "tools/content_pipeline/tests/test_content_pipeline.py",
-          "line": 300,
+          "line": 321,
           "evidence": "import",
           "reference": "tools.content_pipeline.frontends",
           "text": "from tools.content_pipeline.frontends import stock_meshdump"
@@ -8931,7 +8945,7 @@
         },
         {
           "path": "tools/content_pipeline/tests/test_content_pipeline.py",
-          "line": 300,
+          "line": 321,
           "evidence": "import",
           "reference": "tools.content_pipeline.frontends.stock_meshdump",
           "text": "from tools.content_pipeline.frontends import stock_meshdump"
@@ -9507,7 +9521,7 @@
       "callers_by_stem": [
         {
           "path": "tools/content_pipeline/tests/test_content_pipeline.py",
-          "line": 314,
+          "line": 335,
           "evidence": "import",
           "reference": "tools.examples.build_modern_tree_pack",
           "text": "from tools.examples.build_modern_tree_pack import recipe"
@@ -11122,7 +11136,7 @@
       "callers_by_stem": [
         {
           "path": "tools/mc2texcook/tests/test_mc2texcook.py",
-          "line": 251,
+          "line": 261,
           "evidence": "import",
           "reference": "batch_cook",
           "text": "import batch_cook, tempfile, subprocess"
@@ -11213,6 +11227,13 @@
           "evidence": "import",
           "reference": "mc2texcook",
           "text": "import mc2texcook  # noqa: E402"
+        },
+        {
+          "path": "tools/mc2texcook/cook_tgl_tiers.py",
+          "line": 19,
+          "evidence": "import",
+          "reference": "mc2texcook",
+          "text": "from mc2texcook import record_cook"
         },
         {
           "path": "tools/mc2texcook/tests/test_mc2texcook.py",
@@ -13143,7 +13164,7 @@
         },
         {
           "path": "tools/scifi_kit/tests/test_art_kit.py",
-          "line": 116,
+          "line": 144,
           "evidence": "import",
           "reference": "bake_budget",
           "text": "import bake_budget"
@@ -13350,6 +13371,13 @@
           "evidence": "import",
           "reference": "clearance",
           "text": "import clearance"
+        },
+        {
+          "path": "tools/scifi_kit/tests/test_art_kit.py",
+          "line": 17,
+          "evidence": "import",
+          "reference": "clearance",
+          "text": "import clearance"
         }
       ]
     },
@@ -13531,7 +13559,7 @@
         },
         {
           "path": "tools/scifi_kit/tests/test_art_kit.py",
-          "line": 150,
+          "line": 178,
           "evidence": "import",
           "reference": "counts",
           "text": "import counts"
@@ -13700,7 +13728,7 @@
         },
         {
           "path": "tools/scifi_kit/tests/test_art_kit.py",
-          "line": 77,
+          "line": 105,
           "evidence": "import",
           "reference": "drafts",
           "text": "import drafts  # noqa: E402"
@@ -13744,7 +13772,7 @@
         },
         {
           "path": "tools/scifi_kit/art/intent.py",
-          "line": 842,
+          "line": 843,
           "evidence": "import",
           "reference": "footprint",
           "text": "import footprint                     # owner 2026-10-24: hard footprint rule (strict for walls/gates/fences/posts)"
@@ -13752,6 +13780,13 @@
         {
           "path": "tools/scifi_kit/art/intent_civic.py",
           "line": 141,
+          "evidence": "import",
+          "reference": "footprint",
+          "text": "import footprint"
+        },
+        {
+          "path": "tools/scifi_kit/tests/test_art_kit.py",
+          "line": 18,
           "evidence": "import",
           "reference": "footprint",
           "text": "import footprint"
@@ -14185,6 +14220,13 @@
           "evidence": "import",
           "reference": "intent",
           "text": "import intent"
+        },
+        {
+          "path": "tools/scifi_kit/tests/test_art_kit.py",
+          "line": 19,
+          "evidence": "import",
+          "reference": "intent",
+          "text": "import intent"
         }
       ]
     },
@@ -14196,7 +14238,7 @@
       "callers_by_stem": [
         {
           "path": "tools/scifi_kit/art/intent.py",
-          "line": 866,
+          "line": 867,
           "evidence": "import",
           "reference": "intent_city",
           "text": "import intent_city  # noqa: E402  civilian family, group 2: city blocks"
@@ -14218,7 +14260,7 @@
       "callers_by_stem": [
         {
           "path": "tools/scifi_kit/art/intent.py",
-          "line": 864,
+          "line": 865,
           "evidence": "import",
           "reference": "intent_civ",
           "text": "import intent_civ  # noqa: E402  civilian family, group 1"
@@ -14233,7 +14275,7 @@
       "callers_by_stem": [
         {
           "path": "tools/scifi_kit/art/intent.py",
-          "line": 868,
+          "line": 869,
           "evidence": "import",
           "reference": "intent_civic",
           "text": "import intent_civic  # noqa: E402  civilian family, groups 3 and 4: civic, palace, government, bridge, promenades, flags"
@@ -14248,7 +14290,7 @@
       "callers_by_stem": [
         {
           "path": "tools/scifi_kit/art/intent.py",
-          "line": 870,
+          "line": 871,
           "evidence": "import",
           "reference": "intent_generic",
           "text": "import intent_generic  # noqa: E402  walls/gates completion pass: generic and cut-content variants (stock from MC2X-CVE-G)"
@@ -14263,7 +14305,7 @@
       "callers_by_stem": [
         {
           "path": "tools/scifi_kit/art/intent.py",
-          "line": 860,
+          "line": 861,
           "evidence": "import",
           "reference": "intent_military",
           "text": "import intent_military  # noqa: E402  military base family, batch 1"
@@ -14313,7 +14355,7 @@
       "callers_by_stem": [
         {
           "path": "tools/scifi_kit/art/intent.py",
-          "line": 862,
+          "line": 863,
           "evidence": "import",
           "reference": "intent_military2",
           "text": "import intent_military2  # noqa: E402  military batch 8: barracks, repair building, diagonal walls, field props"
@@ -14328,7 +14370,7 @@
       "callers_by_stem": [
         {
           "path": "tools/scifi_kit/art/intent.py",
-          "line": 858,
+          "line": 859,
           "evidence": "import",
           "reference": "intent_power",
           "text": "import intent_power  # noqa: E402  electrical/power redo (owner: \"too blocky\") supersedes set 3"
@@ -14354,7 +14396,15 @@
       "basename": "intent_run.py",
       "stem": "intent_run",
       "callers_by_basename": [],
-      "callers_by_stem": []
+      "callers_by_stem": [
+        {
+          "path": "tools/scifi_kit/tests/test_art_kit.py",
+          "line": 20,
+          "evidence": "import",
+          "reference": "intent_run",
+          "text": "import intent_run"
+        }
+      ]
     },
     {
       "path": "tools/scifi_kit/art/intent_set2.py",
@@ -14364,7 +14414,7 @@
       "callers_by_stem": [
         {
           "path": "tools/scifi_kit/art/intent.py",
-          "line": 852,
+          "line": 853,
           "evidence": "import",
           "reference": "intent_set2",
           "text": "import intent_set2  # noqa: E402  industrial set 2 (large tanks, water tower, modular pipeline)"
@@ -14379,7 +14429,7 @@
       "callers_by_stem": [
         {
           "path": "tools/scifi_kit/art/intent.py",
-          "line": 854,
+          "line": 855,
           "evidence": "import",
           "reference": "intent_set3",
           "text": "import intent_set3  # noqa: E402  industrial round 2: factories, plants, services"
@@ -14429,7 +14479,7 @@
       "callers_by_stem": [
         {
           "path": "tools/scifi_kit/art/intent.py",
-          "line": 856,
+          "line": 857,
           "evidence": "import",
           "reference": "intent_set4",
           "text": "import intent_set4  # noqa: E402  industrial round 2: depots, warehouses, yard structures"
@@ -14487,7 +14537,7 @@
         },
         {
           "path": "tools/scifi_kit/tests/test_art_kit.py",
-          "line": 151,
+          "line": 179,
           "evidence": "import",
           "reference": "lights",
           "text": "import lights"
@@ -14503,6 +14553,13 @@
         {
           "path": "tools/scifi_kit/art/intent.py",
           "line": 840,
+          "evidence": "import",
+          "reference": "lint",
+          "text": "import lint"
+        },
+        {
+          "path": "tools/scifi_kit/tests/test_art_kit.py",
+          "line": 21,
           "evidence": "import",
           "reference": "lint",
           "text": "import lint"
@@ -17052,7 +17109,7 @@
       "callers_by_basename": [
         {
           "path": "tests/smoke/test_render_options_pin.py",
-          "line": 133,
+          "line": 143,
           "evidence": "load module",
           "reference": "tools/tracy_capture_compare.py",
           "text": "spec = importlib.util.spec_from_file_location(\"tracy_capture_compare_under_test\", ROOT / \"tools\" / \"tracy_capture_compare.py\")"
@@ -17804,7 +17861,7 @@
       "callers_by_stem": [
         {
           "path": "tests/smoke/test_render_options_pin.py",
-          "line": 113,
+          "line": 123,
           "evidence": "import",
           "reference": "capture_ab",
           "text": "import capture_ab"

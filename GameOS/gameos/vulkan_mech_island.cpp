@@ -690,12 +690,16 @@ bool init_island(MechIsland* s, int w, int h) {
         gp.pMultisampleState = &ms; gp.pDepthStencilState = &ds; gp.pColorBlendState = &cb;
         gp.pDynamicState = &dsci;
         gp.layout = s->playout.get(); gp.renderPass = s->rpass.get(); gp.subpass = 0;
+        // The depth shader consumes only position, UV and skinning attributes.
+        const VkVertexInputAttributeDescription depthVia[]{via[0], via[2], via[3], via[4]};
+        vin.vertexAttributeDescriptionCount = 4; vin.pVertexAttributeDescriptions = depthVia;
         stages[0].module=s->depthVert.get();stages[1].module=s->depthFrag.get();
         for(auto& attachment:cba)attachment.colorWriteMask=0;
         if (!mc2vk::create(s->depthPipe,s->device,[&](VkPipeline* h) { return mc2vk::infra::graphics(s->device,VK_NULL_HANDLE,1,&gp,nullptr,h); })) {
             setFallback("depth_pipeline_failed");return false;
         }
         mc2vk::nameObject(s->device,s->depthPipe.get(),"mech.depth");
+        vin.vertexAttributeDescriptionCount = 7; vin.pVertexAttributeDescriptions = via;
         stages[0].module=s->vert.get();stages[1].module=s->frag.get();
         for(auto& attachment:cba)attachment.colorWriteMask=VK_COLOR_COMPONENT_R_BIT|VK_COLOR_COMPONENT_G_BIT|VK_COLOR_COMPONENT_B_BIT|VK_COLOR_COMPONENT_A_BIT;
         ds.depthWriteEnable=VK_FALSE;
