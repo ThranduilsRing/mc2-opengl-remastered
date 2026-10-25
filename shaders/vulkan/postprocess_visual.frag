@@ -67,19 +67,23 @@ vec3 upscaleColor(vec2 uv) {
     return gradeSample(max(color, vec3(0.0)), uv);
 }
 
+vec3 reconstructedColor(vec2 uv) {
+    return u.p0.w != 0.0 ? upscaleColor(uv) : gradeColor(uv);
+}
+
 // Options.cfg PostCAS: contrast adaptive sharpening (AMD FidelityFX CAS) on the graded colour. Adaptive weight from the local min/max of the
 // 3x3 neighbourhood, blended over the diamond ring; PostCASSharpness 0..1 maps to the AMD peak -1/8 .. -1/5.
 vec3 casFilter(vec2 uv) {
     vec2 rcp = vec2(u.p0.y, u.p0.z);
-    vec3 a = gradeColor(uv + vec2(-rcp.x, -rcp.y));
-    vec3 b = gradeColor(uv + vec2( 0.0,   -rcp.y));
-    vec3 c = gradeColor(uv + vec2( rcp.x, -rcp.y));
-    vec3 d = gradeColor(uv + vec2(-rcp.x,  0.0));
-    vec3 e = gradeColor(uv);
-    vec3 f = gradeColor(uv + vec2( rcp.x,  0.0));
-    vec3 g = gradeColor(uv + vec2(-rcp.x,  rcp.y));
-    vec3 h = gradeColor(uv + vec2( 0.0,    rcp.y));
-    vec3 i = gradeColor(uv + vec2( rcp.x,  rcp.y));
+    vec3 a = reconstructedColor(uv + vec2(-rcp.x, -rcp.y));
+    vec3 b = reconstructedColor(uv + vec2( 0.0,   -rcp.y));
+    vec3 c = reconstructedColor(uv + vec2( rcp.x, -rcp.y));
+    vec3 d = reconstructedColor(uv + vec2(-rcp.x,  0.0));
+    vec3 e = reconstructedColor(uv);
+    vec3 f = reconstructedColor(uv + vec2( rcp.x,  0.0));
+    vec3 g = reconstructedColor(uv + vec2(-rcp.x,  rcp.y));
+    vec3 h = reconstructedColor(uv + vec2( 0.0,    rcp.y));
+    vec3 i = reconstructedColor(uv + vec2( rcp.x,  rcp.y));
 
     vec3 mnRing = min(min(min(d, e), min(f, b)), h);
     vec3 mnCorner = min(min(a, c), min(g, i));
@@ -146,9 +150,8 @@ float ignTriangle(vec2 p) {
 }
 
 void main() {
-    // CAS already reconstructs from the source neighbourhood when selected.
     vec3 color = (u.p1.w != 0.0) ? casFilter(TexCoord)
-               : u.p0.w != 0.0 ? upscaleColor(TexCoord) : gradeColor(TexCoord);
+               : reconstructedColor(TexCoord);
     color = applyTonemap(color);
     color = clamp(color + ignTriangle(floor(gl_FragCoord.xy)) / 255.0, 0.0, 1.0);
 

@@ -162,6 +162,14 @@ def test_the_names_in_the_log_line_are_capped_at_eight_but_the_count_is_complete
 
 
 @needs_launcher
+def test_headless_sync_preserves_graphics_choices(tmp_path):
+    d = install(tmp_path, {}, cfg=CFG + "l ShadowQuality = 0\r\nl SpatialAA = 0\r\n")
+    sync(d)
+    assert cfg_value(d, "ShadowQuality") == "0"
+    assert cfg_value(d, "SpatialAA") == "0"
+
+
+@needs_launcher
 def test_headless_sync_of_a_minimal_file_writes_the_gui_graphics_defaults(tmp_path):
     d = install(tmp_path, {"MC2_CPU_PHONG_RETIRE": "0"})        # no MC2_STATICPROP_TEX_TIER / MC2_SHADOW_MAP_SIZE in the file
     sync(d)

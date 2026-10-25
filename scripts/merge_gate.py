@@ -222,50 +222,6 @@ def install_plan(steps, install):
     return result
 
 
-def reuse_stock_runs(steps, proof):
-    """Attach post-deploy day/night captures to tier1; keep pre-deploy evidence.
-
-    Classic captures remain separate because tier1 grades the shipping mode.
-    mc2_03 supplies a default quiet sample; its strict pair retains optional audits.
-    """
-    names = {n for n, _, e in steps if not e.get("MC2_GATE_SKIP_REASON")}
-    if not {"tier1", "capture-after", "quiet", "determinism-mc2_10"} <= names:
-        return steps
-    after = next(c for n, c, _ in steps if n == "capture-after")
-    install = Path(after[after.index("--install") + 1])
-    out = after[after.index("--out") + 1]
-    result = []
-    tier = None
-    for name, command, overrides in steps:
-        command, overrides = list(command), dict(overrides)
-        if name == "tier1":
-            overrides = {k: v for k, v in overrides.items() if k not in
-                         ("MC2_VULKAN_VALIDATION", "MC2_DEBUG_STATE_DUMP", "MC2_DIAG_TAGS")}
-            overrides["MC2_SMOKE_ARTIFACT_ROOT"] = str(proof / "tier1")
-            if "--mission" in command and "mc2_10" not in command:
-                command += ["--mission", "mc2_10"]
-            if "--mission" in command and "mc2_03" not in command:
-                command += ["--mission", "mc2_03"]
-            command += ["--capture-out", out, "--quiet-sample", "mc2_03"]
-            for bookmark in ("mc2_01_saved_205644", "mc2_10_saved_204523"):
-                command += ["--capture-bookmark", str(install / "saved_bookmarks" / (bookmark + ".json"))]
-            overrides["MC2_GATE_COVERAGE"] = "tier1 includes day/night bookmark captures and default mc2_03 quiet sample; strict mc2_03 retains audits/validation, tier1 mc2_17 retains its audit"
-            tier = (name, command, overrides)
-            continue
-        if name == "capture-after":
-            overrides.update(MC2_GATE_SKIP_REASON="tier1 owns matching post-deploy day/night bookmark captures",
-                             MC2_GATE_REUSE_STAGE="tier1")
-        if name == "quiet":
-            command = [sys.executable, "scripts/check-default-build-quiet.py", "--run-root", str(proof / "tier1"),
-                       "--mission", "mc2_03"]
-        if name == "validation" and "determinism-mc2_10" in names:
-            overrides["MC2_GATE_REUSE_STAGE"] = "determinism-mc2_10"
-        result.append((name, command, overrides))
-    # Shared tier1 evidence must exist before comparisons or quiet grading.
-    result.insert(next(i for i, s in enumerate(result) if s[0] == "capture-after"), tier)
-    return result
-
-
 def git(*args):
     return subprocess.check_output(["git", *args], cwd=ROOT, text=True,
                                    **console_child.child_kwargs(redirected=True)).strip()
@@ -359,6 +315,12 @@ def execute_parallel(steps, head, dry_run=False):
                 install = Path(command[command.index("--install") + 1]).resolve()
                 copy_context = stock_copy(install)
                 copy_future = pool.submit(copy_context.__enter__)
+                # Snapshot before any runtime harness mutates the live install.
+                try:
+                    copy_future.result()
+                except (OSError, RuntimeError) as exc:
+                    print(f"[merge_gate] stock-copy FAIL (not waived): {exc}", flush=True)
+                    return 1
             def auxiliary():
                 try:
                     result = execute(mods, head, runner=runner)
@@ -617,7 +579,6 @@ def main(argv=None):
         if install.parent != allowed or install.name.lower() in ("v0.4", "mc2-win64-v0.4", "lane2", "lane3"):
             ap.error("--install must be a dedicated lane directory directly under E:/mc2-installs")
         steps = install_plan(steps, install)
-    steps = reuse_stock_runs(steps, proof)
     for name, _, env in steps:
         if name == "mods" or name.startswith(("determinism-", "saveload-")):
             env["MC2_SMOKE_ARTIFACT_ROOT"] = str(proof / "smokes" / name)
