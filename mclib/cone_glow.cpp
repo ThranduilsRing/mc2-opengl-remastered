@@ -1196,7 +1196,8 @@ void QueueSearchlightGlow(TG_MultiShape* shape, long nodeId, unsigned long argb,
                 const auto r = static_cast<DWORD>(((argb >> 16) & 255) * fade);
                 const auto g = static_cast<DWORD>(((argb >> 8) & 255) * fade);
                 const auto b = static_cast<DWORD>((argb & 255) * fade);
-                dst.argb = 0xff000000u | (r << 16) | (g << 8) | b;
+                const auto alpha = static_cast<DWORD>(255.0f * fade);
+                dst.argb = (alpha << 24) | (r << 16) | (g << 8) | b;
             }
             if (!valid || s_tris.size() + 2 > kMaxFrameTris) continue;
             s_tris.push_back(QueuedTri{{v[0], v[1], v[2]}});
