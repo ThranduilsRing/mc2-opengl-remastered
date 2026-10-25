@@ -430,6 +430,7 @@ Split commit: `6456f46eb`.
 | `bdactor_lightbake.cpp` | BldgAppearance / TreeAppearance: static-actor light bake gate (mc2CacheOrBakeStaticGpuLight) and the cone ground-hit march. |
 | `bdactor_render.cpp` | BldgAppearance / TreeAppearance: BldgAppearance and TreeAppearance render and renderShadows. |
 | `bdactor_sidecar.cpp` | BldgAppearance / TreeAppearance: [Import] sidecar axis/yaw and override render-shape texture residency. |
+| `bdactor_spotlight.cpp` | The field searchlight is an operator-controlled visual, independent of the sim pose. |
 | `bdactor_static.cpp` | BldgAppearance / TreeAppearance: BldgAppearance static registry: eligibility, registerStatic, touch*, rebake gates, invalidate, destroy. |
 | `bdactor_terrain.cpp` | BldgAppearance / TreeAppearance: BldgAppearance terrain/move-map/line-of-sight marking and cell coverage. |
 | `bdactor_tree.cpp` | BldgAppearance / TreeAppearance: TreeAppearance init, status, bounds, update, terrain marking, LOD select and destroy. |
