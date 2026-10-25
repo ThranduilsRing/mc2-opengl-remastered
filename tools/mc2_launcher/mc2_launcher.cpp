@@ -193,13 +193,13 @@ static const EnvVarDef k_envVars[] = {
     // that key (RowDefault), so a fresh dialog shows what the game does with no key in options.cfg and Launch never writes a value the engine
     // did not choose; its defaultVal column is ignored. offVal "0" on a default-ON row records that unchecking means FALSE.
     // The engine defaults off and the launcher starts on. Persist an explicit zero so an unchecked row survives the next launcher load.
-    { "MC2_CLOUD_SHADOW",            "Cloud shadows (engine OFF; launcher ON)", true, "1",  "Rendering", "0" },
+    { k_presetKeys[3],               "Cloud shadows (engine OFF; launcher ON)", true, "1",  "Rendering", "0" },
     { "StaticPropPbr",               "Static prop PBR specular (OFF)",        true,  NULL,   "Rendering", NULL, true },
     { "StaticPropAmbient",           "Static prop hemisphere ambient (ON)",   true,  NULL,   "Rendering", "0", true },
     // The TREE/PROP A/B knob (see READ-ME-FIRST-AB-TESTS.md); default ON.
     { "StaticPropIblSh",             "Static prop SH-L2 IBL ambient (ON)",    true,  NULL,   "Rendering", "0", true },
-    { "MC2_SHADOW_ENABLE",           "Object shadows (ON)",                  true,  "1",    "Rendering", "0" },
-    { "MC2_VK_POST_SCREENFX_SHADOW",  "Object shadow resolve (ON)",           true,  "1",    "Rendering", "0" },
+    { k_presetKeys[1],               "Object shadows (ON)",                  true,  "1",    "Rendering", "0" },
+    { k_presetKeys[2],               "Object shadow resolve (ON)",           true,  "1",    "Rendering", "0" },
     // --- Display ---
     { "MC2_FORCE_43",                "Force 4:3 aspect (pillarbox widescreen)", true, "",    "Display"   },
     { "MC2_WINDOWED",                "Windowed mode",                          true,  "",    "Display"   },
@@ -217,9 +217,9 @@ static const EnvVarDef k_envVars[] = {
     // (leading-'0' test, so the exact token "0" this row emits disables it). Sole
     // reader. offVal="0" mandatory: unsetting alone left the atlas on its ON default.
     { "MC2_COLORMAP_KTX2",           "BC7 KTX2 colormap atlas (ON)",          true,  "1",    "Terrain", "0" },
-    { "MC2_VEGETATION_MAX",           "Vegetation population cap",            false, "5000000", "Terrain" },
-    { "MC2_SHADOW_MOVER_SAMPLES",     "Mover shadow filter samples (4-32)",   false, "32", "Terrain" },
-    { "MC2_RENDER_SCALE",            "Scene resolution scale (0.5-1)",       false, "1", "Terrain" },
+    { k_presetKeys[0],               "Vegetation population cap",            false, "5000000", "Terrain" },
+    { k_presetKeys[4],               "Mover shadow filter samples (4-32)",   false, "32", "Terrain" },
+    { k_presetKeys[5],               "Scene resolution scale (0.5-1)",       false, "1", "Terrain" },
     // --- Water / VFX ---
     // NO offVal, and adding one would be ACTIVELY WRONG. Primary reader
     // gameos_graphics.cpp:2867 `(v && v[0] && v[0] != '0') ? 0.15f : 0.0f` --

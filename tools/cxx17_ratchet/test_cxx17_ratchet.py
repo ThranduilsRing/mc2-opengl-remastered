@@ -289,6 +289,8 @@ class NameLiterals(unittest.TestCase):
         self.assertEqual(n('#define GATE_NAME "MC2_X"\n', "LG20"), 1)
 
     def test_typed_readers_do_not_count(self):
+        self.assertEqual(n('auto key = gate::name<"MC2_RENDER_SCALE">();\n', "LG20"), 0)
+        self.assertEqual(n('auto key = name<"MC2_RENDER_SCALE">();\n', "LG20"), 1)
         self.assertEqual(n('bool b = gate::get<"MC2_X">();\n', "LG20"), 0)
         self.assertEqual(n('bool b = mc2::gate::get<"MC2_X", Rule::Presence>();\n', "LG20"), 0)
         self.assertEqual(n('auto s = gate::str<"MC2_LOG">(); bool a = gate::isSet<"MC2_Y">();\n', "LG20"), 0)

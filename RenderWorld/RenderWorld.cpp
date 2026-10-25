@@ -1,14 +1,7 @@
 // RenderWorld/RenderWorld.cpp
-//
-// Slice M1: thin forwarder. RenderWorld::upsertStaticProp routes into
-// GpuStaticPropRegistry::registerRecipe; no new GPU behavior.
-//
-// Sentinel translation happens HERE on the engine side too: registry
-// returns int32_t with -1 sentinel; we translate to RenderObjectHandle.
-// The mirror translation (game-side -1 -> invalid()) happens in the
-// adapter. Both endpoints translate so int32_t -1 cannot leak upward
-// AND RenderObjectHandle::invalid() cannot leak downward. (Spec
-// Section 10 amendment 2026-05-22: two seams in M1.)
+// M1 forwards static props to GpuStaticPropRegistry::registerRecipe.
+// Engine and game adapters translate int32_t(-1) <-> invalid handles at
+// their boundaries (spec Section 10 amendment 2026-05-22).
 
 #include "RenderWorld.h"
 #include "ScreenPick.h"

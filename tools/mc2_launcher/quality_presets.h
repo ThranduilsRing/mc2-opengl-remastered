@@ -1,9 +1,11 @@
 // Renderer controls grouped for the launcher's explicit quality buttons.
 #pragma once
+#include "../../Gates/gate_name.h"
 
 inline constexpr const char* k_presetKeys[] = {
-    "MC2_VEGETATION_MAX", "MC2_SHADOW_ENABLE", "MC2_VK_POST_SCREENFX_SHADOW", "MC2_CLOUD_SHADOW",
-    "MC2_SHADOW_MOVER_SAMPLES", "MC2_RENDER_SCALE",
+    gate::name<"MC2_VEGETATION_MAX">(), gate::name<"MC2_SHADOW_ENABLE">(),
+    gate::name<"MC2_VK_POST_SCREENFX_SHADOW">(), gate::name<"MC2_CLOUD_SHADOW">(),
+    gate::name<"MC2_SHADOW_MOVER_SAMPLES">(), gate::name<"MC2_RENDER_SCALE">(),
 };
 struct GfxPreset {
     const char* label;
