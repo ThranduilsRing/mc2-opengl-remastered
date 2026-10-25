@@ -35,8 +35,28 @@ def test_fresh_smoke_requires_success_and_new_logs(tmp_path, monkeypatch, rc, lo
         assert quiet.tags_in_log(quiet.fresh_smoke_logs("own/mc2.exe")[0]) == {"NEW_SPAM v1"}
 
 
-def test_default_invocation_never_selects_historical_logs(monkeypatch):
+def test_offline_default_invocation_never_reaches_game_launch(monkeypatch, capsys):
+    """check-contracts runs this tool with no flags: it must never spawn anything, only grade or SKIP."""
     monkeypatch.setattr(sys, "argv", ["quiet"])
-    monkeypatch.setattr(quiet, "newest_smoke_logs", lambda: pytest.fail("stale logs selected"))
-    monkeypatch.setattr(quiet, "fresh_smoke_logs", lambda exe: (_ for _ in ()).throw(RuntimeError("fresh failed")))
+    monkeypatch.setattr(quiet, "newest_smoke_logs", lambda: [])
+    monkeypatch.setattr(quiet, "fresh_smoke_logs", lambda exe: pytest.fail("game-launch path reached"))
+    monkeypatch.setattr(quiet.subprocess, "run", lambda *a, **k: pytest.fail("subprocess spawned"))
+    assert quiet.main() == 0
+    assert "graded at merge gate" in capsys.readouterr().out
+
+
+def test_contracts_row_is_offline_and_launch_needs_explicit_exe():
+    root = Path(__file__).resolve().parents[2]
+    row = next(l for l in (root / "scripts/check-contracts.sh").read_text(encoding="utf-8").splitlines()
+               if 'run_check "default_build_quiet"' in l)
+    assert "--fresh-smoke" not in row and "--exe" not in row
+    with pytest.raises(RuntimeError):
+        quiet.fresh_smoke_logs(None)
+    body = Path(quiet.__file__).read_text(encoding="utf-8").split("def fresh_smoke_logs", 1)[1].split("def main", 1)[0]
+    assert "--deploy" not in body
+
+
+def test_fresh_smoke_flag_requires_exe(monkeypatch):
+    monkeypatch.setattr(sys, "argv", ["quiet", "--fresh-smoke"])
+    monkeypatch.setattr(quiet.subprocess, "run", lambda *a, **k: pytest.fail("subprocess spawned"))
     assert quiet.main() == 1
