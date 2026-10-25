@@ -564,6 +564,7 @@ def test_unit_runner_engine_cache_layout_and_required_coverage(tmp_path, generat
     (root / "scripts/ninja_build.py").write_text(
         "from pathlib import Path\nimport os, sys\nroot = Path(__file__).parents[1]\n"
         "tree = Path(os.environ.get('MC2_NINJA_TREE', 'build64-ninja'))\n"
+        "assert not tree.is_absolute(), 'ninja_build requires a repo-relative tree'\n"
         "if not tree.is_absolute(): tree = root / tree\n"
         "root.joinpath('ninja-calls').write_text(' '.join(sys.argv[1:]))\n"
         + ("sys.exit(9)\n" if failure == 'build' else '')
