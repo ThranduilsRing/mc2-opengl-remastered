@@ -22,6 +22,15 @@ BOOL QueryPerformanceFrequency(LARGE_INTEGER*);
 DWORD GetCurrentThreadId();
 DWORD GetCurrentProcessId();
 void Sleep(DWORD);
+#define MOVEFILE_REPLACE_EXISTING 1
+#define MOVEFILE_WRITE_THROUGH 8
+BOOL MoveFileExW(LPCWSTR, LPCWSTR, DWORD);
+inline LONG InterlockedIncrement(volatile LONG* value) { return __atomic_add_fetch(value, 1, __ATOMIC_SEQ_CST); }
+inline LONG InterlockedExchange(volatile LONG* value, LONG next) { return __atomic_exchange_n(value, next, __ATOMIC_SEQ_CST); }
+inline LONG InterlockedCompareExchange(volatile LONG* value, LONG next, LONG expected) {
+    __atomic_compare_exchange_n(value, &expected, next, false, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST);
+    return expected;
+}
 HANDLE CreateFileA(LPCSTR, DWORD, DWORD, LPSECURITY_ATTRIBUTES, DWORD, DWORD, HANDLE);
 BOOL ReadFile(HANDLE, LPVOID, DWORD, DWORD*, LPVOID);
 BOOL WriteFile(HANDLE, LPCVOID, DWORD, DWORD*, LPVOID);

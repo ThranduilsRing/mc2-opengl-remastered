@@ -42,7 +42,11 @@
 #include <string>
 #include <vector>
 
+#ifdef _WIN32
 #include <direct.h>   // _mkdir / _rmdir
+#else
+#include "platform_io.h"
+#endif
 
 namespace
 {

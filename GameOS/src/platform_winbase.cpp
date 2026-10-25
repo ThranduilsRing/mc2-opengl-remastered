@@ -68,6 +68,22 @@ BOOL WriteFile(HANDLE file, LPCVOID data, DWORD size, DWORD* count, LPVOID)
     return TRUE;
 }
 BOOL CloseHandle(HANDLE file) { return close(int(intptr_t(file) - 1)) == 0; }
+BOOL MoveFileExW(LPCWSTR from, LPCWSTR to, DWORD flags)
+{
+    std::error_code error;
+    const std::filesystem::path destination(to);
+    if (!(flags & MOVEFILE_REPLACE_EXISTING) && std::filesystem::exists(destination, error)) return FALSE;
+    std::filesystem::rename(std::filesystem::path(from), destination, error);
+    if (error) return FALSE;
+    if (flags & MOVEFILE_WRITE_THROUGH) {
+        const int fd = open(destination.c_str(), O_RDONLY);
+        if (fd < 0) return FALSE;
+        const bool flushed = fsync(fd) == 0;
+        close(fd);
+        if (!flushed) return FALSE;
+    }
+    return TRUE;
+}
 DWORD GetFileAttributesA(LPCSTR path)
 {
     struct stat st{};

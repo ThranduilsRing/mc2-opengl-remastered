@@ -11,6 +11,9 @@
     #include <unistd.h>
     #include <fcntl.h>
     #define _access access
+    #define _getpid getpid
+    #define _rmdir rmdir
+    inline int _mkdir(const char* path) { return mkdir(path, 0777); }
 #endif
 
 #include <stdio.h> // fseek ftell etc...

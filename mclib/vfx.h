@@ -39,6 +39,7 @@
 
 #ifndef VFX_H
 #define VFX_H
+#include <stdint.h>
 
 #ifndef TRUE
 #define TRUE -1
@@ -74,7 +75,11 @@ extern "C" {
 
 using UBYTE = unsigned char;
 using UWORD = unsigned short;
+#ifdef _WIN32
 using ULONG = unsigned long;
+#else
+using ULONG = uint32_t;
+#endif
 using BYTE = unsigned char;
 
 // sebi
@@ -82,10 +87,14 @@ using BYTE = unsigned char;
 //typedef unsigned		  WORD;
 //#endif
 
+#ifdef _WIN32
 using LONG = signed   long;
+#else
+using LONG = int32_t;
+#endif
 using FLOAT = float;
-using FIXED16 = signed   long;   // 16:16 fixed-VFX_POINT type [-32K,+32K]
-using FIXED30 = signed   long;   // 2:30 fixed-VFX_POINT type [-1.999,+1.999]
+using FIXED16 = LONG;   // 16:16 fixed-VFX_POINT type [-32K,+32K]
+using FIXED30 = LONG;   // 2:30 fixed-VFX_POINT type [-1.999,+1.999]
 
 #endif
 

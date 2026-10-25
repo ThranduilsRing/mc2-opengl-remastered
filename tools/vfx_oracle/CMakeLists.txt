@@ -11,7 +11,7 @@ add_executable(vfx_lifecycle_tests
     "${MC2_WORKTREE_ROOT}/mclib/fx_trace/fx_cost_split.cpp"
     ${VFX_LIFECYCLE_SOURCES})
 target_compile_features(vfx_lifecycle_tests PRIVATE cxx_std_23)
-target_compile_definitions(vfx_lifecycle_tests PRIVATE PLATFORM_WINDOWS LINUX_BUILD _CRT_SECURE_NO_WARNINGS)
+target_compile_definitions(vfx_lifecycle_tests PRIVATE $<$<PLATFORM_ID:Windows>:PLATFORM_WINDOWS> LINUX_BUILD _CRT_SECURE_NO_WARNINGS)
 target_include_directories(vfx_lifecycle_tests PRIVATE
     "${MC2_WORKTREE_ROOT}" "${MC2_WORKTREE_ROOT}/mclib"
     "${MC2_WORKTREE_ROOT}/mclib/stuff" "${MC2_WORKTREE_ROOT}/mclib/gosfx"
@@ -21,7 +21,12 @@ target_include_directories(vfx_lifecycle_tests PRIVATE
     "${MC2_WORKTREE_ROOT}/tests/unit")
 mc2_link_gate(vfx_lifecycle_tests)
 mc2_asan_runtime(vfx_lifecycle_tests)
-target_link_libraries(vfx_lifecycle_tests PRIVATE Psapi "${MC2_WORKTREE_ROOT}/3rdparty/lib/x64/zlib.lib")
+if(WIN32)
+    target_link_libraries(vfx_lifecycle_tests PRIVATE Psapi "${MC2_WORKTREE_ROOT}/3rdparty/lib/x64/zlib.lib")
+else()
+    find_package(ZLIB REQUIRED)
+    target_link_libraries(vfx_lifecycle_tests PRIVATE ZLIB::ZLIB)
+endif()
 add_dependencies(mc2_tests vfx_lifecycle_tests)
 target_sources(mc2_tests PRIVATE "${MC2_WORKTREE_ROOT}/tools/vfx_oracle/lifecycle_driver.cpp")
 

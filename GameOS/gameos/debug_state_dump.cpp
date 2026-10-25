@@ -120,12 +120,14 @@ extern "C" void mc2_render_backend_mech_region_health(
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
+#ifdef _WIN32
 #include <process.h>   // for _getpid()
+#endif
 #include <sstream>
 #include <string>
 #include <string_view>
 #define WIN32_LEAN_AND_MEAN
-#include <windows.h>
+#include "platform_windows.h"
 #include "Gates/gate.h"
 #include "Gates/render_options.h"
 #include "gpu_memory_report.h"

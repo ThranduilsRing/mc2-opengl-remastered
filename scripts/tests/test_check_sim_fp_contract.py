@@ -32,7 +32,7 @@ def test_clean_databases_pass(tmp_path):
 
 
 def test_native_compilers_require_precise_math(tmp_path):
-    for compiler in ("/usr/bin/c++", "/usr/bin/g++", "/usr/bin/clang++"):
+    for compiler in ("/usr/bin/c++", "/usr/bin/g++", "/usr/bin/clang++", "/usr/bin/clang++-20"):
         command = compiler + " -std=c++23 -fno-fast-math -ffp-contract=off -c " + SIM_SRC
         assert fp.check_db(_db(tmp_path, [command])) == (1, [])
         for flag in (" -fno-fast-math", " -ffp-contract=off"):

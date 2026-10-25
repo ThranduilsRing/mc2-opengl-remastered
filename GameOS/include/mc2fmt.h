@@ -92,8 +92,8 @@ int print(std::FILE* f, std::format_string<A...> fmt, A&&... a) noexcept {
         return kFormatError;
     }
 }
-template <class... A> int print_err(std::format_string<A...> fmt, A&&... a) noexcept { return print(stderr, fmt, std::forward<A>(a)...); }
-template <class... A> int print_out(std::format_string<A...> fmt, A&&... a) noexcept { return print(stdout, fmt, std::forward<A>(a)...); }
+template <class... A> int print_err(std::format_string<A...> fmt, A&&... a) noexcept { return mc2::fmt::print(stderr, fmt, std::forward<A>(a)...); }
+template <class... A> int print_out(std::format_string<A...> fmt, A&&... a) noexcept { return mc2::fmt::print(stdout, fmt, std::forward<A>(a)...); }
 
 // OutputDebugString without <windows.h> (this header is included by tools that do not link GameOS): the Windows debugger channel; stderr elsewhere.
 // One entry point for every site that wrote to the debugger, so the sink can change in one place.

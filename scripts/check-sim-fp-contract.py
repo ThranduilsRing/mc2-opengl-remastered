@@ -61,7 +61,7 @@ def check_entry(command, is_clang=None):
             problems.append(f"forbidden flag {t}")
     fps = [m.group(1).lower() for m in (FP_RE.match(t) for t in tokens) if m]
     compiler = os.path.basename(tokens[0].strip('"')).lower() if tokens else ""
-    native = compiler in {"c++", "g++", "gcc", "cc", "clang", "clang++"}
+    native = bool(re.fullmatch(r"(?:c\+\+|g\+\+|gcc|cc|clang(?:\+\+)?)(?:-\d+(?:\.\d+)*)?", compiler))
     if native:
         if "-fno-fast-math" not in tokens:
             problems.append("native compiler needs -fno-fast-math")
