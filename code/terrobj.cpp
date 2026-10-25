@@ -190,7 +190,7 @@ void g_staticUpdateEmitSummary(uint32_t frame) {
 // Accumulators defined here (terrobj.cpp) so objmgr.cpp can call the once-
 // per-frame roll via g_tobjSplitRollAndMaybeEmit() (static_update_counters.h).
 // Probe points in mclib/bdactor.cpp use extern-declarations to reach these.
-#include <intrin.h>
+#include "platform_intrinsics.h"
 #include <stdlib.h>
 #include <stdio.h>
 static bool s_tobjSplitEnabled = mc2::gate::get<"MC2_TOBJ_COST_SPLIT">();

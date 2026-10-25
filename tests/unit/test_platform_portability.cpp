@@ -11,10 +11,12 @@ TEST_CASE("platform/Win32 data widths and monotonic counter")
     LARGE_INTEGER before{}, after{}, frequency{};
     REQUIRE(QueryPerformanceFrequency(&frequency));
     REQUIRE(QueryPerformanceCounter(&before));
+    const auto milliseconds = GetTickCount64();
     Sleep(1);
     REQUIRE(QueryPerformanceCounter(&after));
     CHECK(frequency.QuadPart > 0);
     CHECK(after.QuadPart > before.QuadPart);
+    CHECK(GetTickCount64() >= milliseconds);
 }
 
 TEST_CASE("platform/file handles and atomic replacement preserve bytes")

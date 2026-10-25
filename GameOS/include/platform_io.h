@@ -28,6 +28,7 @@
 
 #ifndef PLATFORM_WINDOWS
 #define _stat ::stat
+#define _stat64 stat
 #define _fstat ::fstat
 #define _creat ::creat
 #define _open mc2_open

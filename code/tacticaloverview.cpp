@@ -5,7 +5,6 @@
 #include <cmath>
 // DEBUGWINS_print is defined in code/ablmc2.cpp (not exported via a header).
 // Use OutputDebugStringA as the debug log sink for this TU.
-#include <windows.h>
 #include "../mclib/camera.h"
 #include "../mclib/appear.h"   // DRAW_BARS (maskWorldBars)
 #include "Gates/gate.h"

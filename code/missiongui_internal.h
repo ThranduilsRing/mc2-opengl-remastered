@@ -140,7 +140,7 @@
 #include "logisticsdialog.h"  // UI-COMMAND-CHANNEL-1: LogisticsOKDialog (press dialog.YES/NO)
 #include "../GameOS/gameos/gos_dev_shell.h"  // UI-COMMAND-CHANNEL-1: scheduleScreenshot reuse
 #include <sys/stat.h>  // UI-COMMAND-CHANNEL-1: cheap per-frame size probe (_stat64)
-#include <direct.h>    // UI-COMMAND-CHANNEL-1: _mkdir (dev_shell_out for screenshots)
+#include "platform_io.h" // UI-COMMAND-CHANNEL-1: _mkdir (dev_shell_out for screenshots)
 #include <string>      // UI-COMMAND-CHANNEL-1: command line parsing
 #include <vector>      // UI-COMMAND-CHANNEL-1: command line list
 // CGui sub-phase per-frame ns accumulators -- DEFINED in controlgui.cpp.

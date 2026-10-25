@@ -21,6 +21,7 @@ BOOL QueryPerformanceCounter(LARGE_INTEGER*);
 BOOL QueryPerformanceFrequency(LARGE_INTEGER*);
 DWORD GetCurrentThreadId();
 DWORD GetCurrentProcessId();
+ULONGLONG GetTickCount64();
 void Sleep(DWORD);
 #define MOVEFILE_REPLACE_EXISTING 1
 #define MOVEFILE_WRITE_THROUGH 8

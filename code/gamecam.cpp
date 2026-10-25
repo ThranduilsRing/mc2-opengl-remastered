@@ -49,7 +49,7 @@
 
 #include<mlr/mlr.hpp>
 #include <tracy/Tracy.hpp>
-#include <direct.h>   // _mkdir (mc2_save_camera_bookmark output dir)
+#include "platform_io.h" // _mkdir (mc2_save_camera_bookmark output dir)
 #include <time.h>     // timestamped bookmark names
 #include "cpu_proj_cost_split.h"  // F3 CPU projection cost-baseline (RAII scope)
 #include "../GameAdapters/StaticPropRenderAdapter.h"  // M1 CI-gate: firewall bridge for frameBegin()

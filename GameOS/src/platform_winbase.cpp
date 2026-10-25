@@ -37,6 +37,12 @@ BOOL QueryPerformanceCounter(LARGE_INTEGER* value)
 BOOL QueryPerformanceFrequency(LARGE_INTEGER* value) { value->QuadPart = 1000000000; return TRUE; }
 DWORD GetCurrentThreadId() { return static_cast<DWORD>(syscall(SYS_gettid)); }
 DWORD GetCurrentProcessId() { return static_cast<DWORD>(getpid()); }
+ULONGLONG GetTickCount64()
+{
+    timespec ts{};
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return ULONGLONG(ts.tv_sec) * 1000 + ts.tv_nsec / 1000000;
+}
 void Sleep(DWORD ms) { timespec ts{ms / 1000, long(ms % 1000) * 1000000}; while (nanosleep(&ts, &ts) && errno == EINTR) {} }
 
 HANDLE CreateFileA(LPCSTR path, DWORD access, DWORD, LPSECURITY_ATTRIBUTES, DWORD disposition, DWORD, HANDLE)
