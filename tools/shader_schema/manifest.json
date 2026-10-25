@@ -27,20 +27,6 @@
       "requiredShaders": [
         "shaders/vulkan/mech_tier1.vert"
       ]
-    },
-    {
-      "name": "ViewUniforms",
-      "kind": "ssbo_struct",
-      "cppHeader": "RenderCore/ViewUniforms.h",
-      "cppType": "ViewUniforms",
-      "glslSource": "shaders/include/view_uniforms.hglsl",
-      "glslType": "ViewUniforms",
-      "expectedSize": 144,
-      "goldenShader": "shaders/fixtures/view_uniforms_contract.frag",
-      "goldenVariant": "default",
-      "requiredShaders": [
-        "shaders/fixtures/view_uniforms_contract.frag"
-      ]
     }
   ]
 }

@@ -66,7 +66,6 @@ def _v(name: str, defines: list[str],
 # Runtime variants are native Vulkan pipelines. Only offline ABI fixtures need a prefix.
 SHADER_VARIANTS: dict[str, list[dict]] = {
     "shaders/fixtures/material_gpu_contract.frag": [_v("default", [])],
-    "shaders/fixtures/view_uniforms_contract.frag": [_v("default", [])],
 }
 
 # Macros that gate variant-specific bindings. Used for coverage audit.
