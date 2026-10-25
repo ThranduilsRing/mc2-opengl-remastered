@@ -45,7 +45,7 @@
         },
         {
           "path": "scripts/tests/test_kit_payload.py",
-          "line": 124,
+          "line": 132,
           "evidence": "import",
           "reference": "bootstrap_worktree_build",
           "text": "import bootstrap_worktree_build as bootstrap"
@@ -2293,7 +2293,7 @@
         },
         {
           "path": "scripts/tests/test_kit_payload.py",
-          "line": 123,
+          "line": 131,
           "evidence": "import",
           "reference": "configure_ninja",
           "text": "import configure_ninja as cn"
@@ -3809,14 +3809,14 @@
         },
         {
           "path": "scripts/tests/test_kit_payload.py",
-          "line": 106,
+          "line": 114,
           "evidence": "import",
           "reference": "deploy_payload",
           "text": "import deploy_payload as dp"
         },
         {
           "path": "scripts/tests/test_kit_payload.py",
-          "line": 178,
+          "line": 186,
           "evidence": "import",
           "reference": "deploy_payload",
           "text": "import deploy_payload as dp"
