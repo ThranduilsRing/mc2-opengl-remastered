@@ -601,8 +601,12 @@ std::vector<unsigned char> ReadArchiveBytes(const char* dataPath, size_t maxByte
 
 int LookupModPriority(const char* dataPath) {
     const char* owner = LookupModOwner(dataPath);
+    // Source and cooked-sidecar keys can differ. A legacy loose TGA must also
+    // outrank the kit's KTX, while the kit still outranks packed stock assets.
+    if (owner && std::string_view(owner) == "mc2-industrial-kit") return 999999;
     auto it = owner ? g_modPriority.find(owner) : g_modPriority.end();
-    return it == g_modPriority.end() ? 1000000 : it->second;
+    if (it != g_modPriority.end()) return it->second;
+    return _access(dataPath, 4) == 0 ? 999998 : 1000000;
 }
 
 const char* LookupModOwner(const char* dataPath) {
@@ -766,7 +770,7 @@ void InitModSearchPaths(const char* modsRoot) {
     // MC2_ACTIVE_MOD is re-read here on every mount: the editor's mod picker changes it
     // with _putenv_s at run time, so no reader may cache it in a static.
     std::string envModStr = mc2::gate::str<"MC2_ACTIVE_MOD">();
-    if (!mc2::options::current().remasteredBuildings && envModStr == "mc2-industrial-kit") envModStr.clear();
+    if (envModStr == "mc2-industrial-kit") envModStr.clear(); // Bundled art is never an active user layer.
     const char* envMod = envModStr.c_str();
     const bool stockMode = !envMod[0];
     const bool industrialKit = mc2::options::current().remasteredBuildings &&
@@ -845,10 +849,8 @@ void InitModSearchPaths(const char* modsRoot) {
         }
     }
     // Shipped art is the lowest mod layer; campaign and user add-ons win.
-    if (!mc2::options::current().remasteredBuildings)
-        std::erase(deps, "mc2-industrial-kit");
-    if (industrialKit && modId != "mc2-industrial-kit" &&
-        std::find(deps.begin(), deps.end(), "mc2-industrial-kit") == deps.end())
+    std::erase(deps, "mc2-industrial-kit");
+    if (industrialKit)
         deps.push_back("mc2-industrial-kit");
     // Priority order: base data < dep[N-1] < ... < dep[0] < active mod.
     // Index is first-wins, so scan highest priority first.
@@ -919,6 +921,15 @@ void InitModSearchPaths(const char* modsRoot) {
         }
         printf("[mod] stock-AI guard: dropped %zu dep ABL override(s) under data/missions/\n", erased);
         fflush(stdout);
+    }
+
+    // Install-overlay mods predate mods/<id>. Keep their loose files above the
+    // bundled kit for every reader (File, texture probes and importer adapters),
+    // including when the index came from cache. Other mounted mods still win.
+    for (auto it = g_modIndex.begin(); it != g_modIndex.end(); ) {
+        if (it->second.modId == "mc2-industrial-kit" && _access(it->first.c_str(), 4) == 0)
+            it = g_modIndex.erase(it);
+        else ++it;
     }
 
     // MOD-LOAD-ORDER-CONFLICT-REPORT-1: never-silent conflict report.

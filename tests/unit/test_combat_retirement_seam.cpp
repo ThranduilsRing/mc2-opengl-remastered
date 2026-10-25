@@ -104,6 +104,8 @@ struct Bolt : WeaponBolt {
     WeaponBoltType* type;
     explicit Bolt(WeaponBoltType& value) : type(&value) {}
     ObjectTypePtr getObjectType() override { return type; }
+    void textureHandles(DWORD mc, DWORD gos) { mcTextureHandle = mc; gosTextureHandle = gos; }
+    DWORD textureHandle() const { return mcTextureHandle; }
 };
 
 void loadType(WeaponBoltType& type, std::string_view afterHit, bool beam = false) {
@@ -127,6 +129,29 @@ void loadType(WeaponBoltType& type, std::string_view afterHit, bool beam = false
     REQUIRE(source.open(path.string().c_str(), READ) == NO_ERR);
     REQUIRE(type.init(&source, static_cast<unsigned long>(text.size())) == NO_ERR);
 }
+}
+
+TEST_CASE("CombatRetirementProduction/texture allocation order never enters bolt saves") {
+    World world;
+    WeaponBoltType type;
+    loadType(type, "");
+    Bolt bolt(type);
+    WeaponBoltData classic{}, remastered{};
+    bolt.textureHandles(1125, 900);
+    bolt.CopyTo(&classic);
+    bolt.textureHandles(1121, 901);
+    bolt.CopyTo(&remastered);
+    CHECK(std::memcmp(&classic, &remastered, sizeof(classic)) == 0);
+    CHECK(classic.mcTextureHandle == 0);
+    CHECK(classic.gosTextureHandle == 0);
+    // The unchanged versioned record reader must ignore nonzero slots from old saves.
+    classic.mcTextureHandle = 1125;
+    classic.gosTextureHandle = 900;
+    bolt.Load(&classic);
+    CHECK(bolt.textureHandle() == 1121);
+    WeaponBoltData resaved{};
+    bolt.CopyTo(&resaved);
+    CHECK(std::memcmp(&resaved, &remastered, sizeof(resaved)) == 0);
 }
 
 TEST_CASE("CombatRetirementProduction/rejected explosion types leave the carnage pool untouched") {

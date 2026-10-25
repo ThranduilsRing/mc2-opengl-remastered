@@ -578,7 +578,7 @@ void WeaponBolt::CopyTo (WeaponBoltData *data)
 	data->hsPos = hsPos;
 
 	data->hitLeft = hitLeft;
-	data->mcTextureHandle = mcTextureHandle;
+	data->mcTextureHandle = 0; // Reserved on disk; runtime handles are resolved from the bolt type at init.
 	data->gosTextureHandle = 0; // Runtime texture creation order must not affect saves; Load ignores this field.
 	data->startUV = startUV;
 	data->goalHeight = goalHeight;
@@ -596,6 +596,8 @@ void WeaponBolt::CopyTo (WeaponBoltData *data)
 //---------------------------------------------------------------------------
 void WeaponBolt::Load (WeaponBoltData *data)
 {
+	// All supported save versions use the same reserved handle slots. Ignore
+	// legacy nonzero values; init resolved this bolt type's textures for this run.
 	GameObject::Load(data); 
 
 	ownerWID = data->ownerWID;
