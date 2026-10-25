@@ -823,8 +823,8 @@ if [ "$SELFTEST_RENDER" -eq 1 ]; then
 else
 [ -n "$JOBS" ] || JOBS="$(_default_jobs)"
 if [ "$JOBS" -gt 1 ]; then PARALLEL=1; fi
-# Keep the long module suites parallel after short rows drain; honor an explicit caller cap.
-if [ "$JOBS" -gt 1 ]; then export MC2_TEST_JOBS="${MC2_TEST_JOBS:-$JOBS}"; fi
+# The outer board owns the host budget; each active row gets one worker.
+export MC2_TEST_JOBS=1
 # A --selftest child must never re-enter the FULL board. One dropped flag on the
 # fail_reason_selftest row below turns this file into a fork bomb, so it is
 # refused structurally rather than by remembering.

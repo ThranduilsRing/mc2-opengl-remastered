@@ -70,6 +70,42 @@ def test_batch_runs_verify_when_quick_rows_green(tmp_path, monkeypatch):
     assert len(verifies) == 1
 
 
+def test_noop_batch_preserves_window_receipt(tmp_path, monkeypatch):
+    root = _throwaway_repo(tmp_path)
+    (root / 'scripts').mkdir()
+    (root / 'scripts/ninja_build.py').touch()
+    monkeypatch.setattr(lm, 'RATCHETS', [])
+    monkeypatch.setattr(lm, 'QUICK_ROWS', [])
+    verifies = []
+    monkeypatch.setattr(lm, 'verify_merged', lambda *a: verifies.append(a) or ('OK', []))
+    args = ['--batch', 'lane', '--root', str(root), '--tools-dir', str(root / 'tools')]
+    assert lm.main(args) == 0
+    receipt = root / 'build64-ninja/merge-window.json'
+    original = receipt.read_bytes()
+    import json
+    window = json.loads(original)
+    assert window['base'] != window['head']
+    assert lm.main(args) == 0
+    assert receipt.read_bytes() == original and len(verifies) == 2
+    receipt.unlink()
+    assert lm.main(args) == 0
+    assert not receipt.exists()  # An empty batch cannot mint a new empty window either.
+
+
+@pytest.mark.parametrize('jobs', [1, 6])
+def test_contract_board_owns_inner_worker_budget(tmp_path, jobs):
+    from pathlib import Path
+    script = Path(ROOT, 'scripts/check-contracts.sh').read_text()
+    script = script.replace('py -3 scripts/run_scripts_tests.py', r'test \"$MC2_TEST_JOBS\" -eq 1')
+    fixture = tmp_path / 'board.sh'
+    fixture.write_text(script, encoding='utf-8', newline='\n')
+    result = subprocess.run([lm.git_bash(), fixture.as_posix(), '--rows', '^scripts_tests$', '--no-cache', f'-j{jobs}'],
+                            cwd=ROOT, env=dict(os.environ, MC2_TEST_JOBS='18'), capture_output=True, text=True,
+                            **console_child.child_kwargs(redirected=True))
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert 'scripts_tests' in result.stdout
+
+
 def test_missing_quick_row_script_is_an_error_in_the_real_root_only(tmp_path, monkeypatch):
     never = lambda root, cmd, env=None: _r(0)
     monkeypatch.setattr(lm, "QUICK_ROWS", [("gone", ["tools/no_such_row.py"])])
@@ -510,8 +546,9 @@ def test_gate_retains_both_art_modes_for_affected_saves_and_captures():
         assert {e["MC2_OPTIONS_OVERRIDE"] for _, e in modes} == {"RemasteredBuildings=TRUE", "RemasteredBuildings=FALSE"}
 
 
-@pytest.mark.parametrize("generator", ["Ninja", "Visual Studio", "missing"])
-def test_unit_runner_engine_cache_layout_and_required_coverage(tmp_path, generator):
+@pytest.mark.parametrize("generator,failure", [("Ninja", ""), ("Visual Studio", ""), ("missing", ""),
+                                               ("Ninja-fallback", ""), ("Ninja-fallback", "build"), ("Ninja-fallback", "native")])
+def test_unit_runner_engine_cache_layout_and_required_coverage(tmp_path, generator, failure):
     from pathlib import Path
     root = tmp_path / "repo"
     (root / "scripts").mkdir(parents=True)
@@ -519,15 +556,29 @@ def test_unit_runner_engine_cache_layout_and_required_coverage(tmp_path, generat
     script.write_bytes(Path(ROOT, "scripts/run-unit-tests.sh").read_bytes())
     engine = "build64-ninja" if generator == "Ninja" else "build64"
     (root / engine).mkdir()
-    (root / engine / "CMakeCache.txt").write_bytes(("CMAKE_GENERATOR:INTERNAL=" + generator + "\r\n").encode())
-    cfg = "" if generator == "Ninja" else "RelWithDebInfo/"
+    (root / engine / "CMakeCache.txt").write_bytes(("CMAKE_GENERATOR:INTERNAL=" + generator.replace('-fallback', '') + "\r\n").encode())
+    cfg = "" if generator.startswith("Ninja") else "RelWithDebInfo/"
     outputs = ["build64-tests/RelWithDebInfo/mc2_tests.exe", "build64-tests/RelWithDebInfo/test_render_contract_3.exe",
                engine + "/tests/model_override/" + cfg + "model_override_tests.exe",
                engine + "/tests/static_natural_skip/" + cfg + "static_natural_skip_policy_tests.exe"]
-    (root / "scripts/ninja_build.py").write_text("from pathlib import Path\nimport sys\nPath(__file__).parents[1].joinpath('ninja-calls').write_text(' '.join(sys.argv[1:]))\n")
+    (root / "scripts/ninja_build.py").write_text(
+        "from pathlib import Path\nimport os, sys\nroot = Path(__file__).parents[1]\n"
+        "tree = Path(os.environ.get('MC2_NINJA_TREE', 'build64-ninja'))\n"
+        "if not tree.is_absolute(): tree = root / tree\n"
+        "root.joinpath('ninja-calls').write_text(' '.join(sys.argv[1:]))\n"
+        + ("sys.exit(9)\n" if failure == 'build' else '')
+        + "for folder, name in [('model_override', 'model_override_tests'), ('static_natural_skip', 'static_natural_skip_policy_tests')]:\n"
+        "    exe = tree / 'tests' / folder / (name + '.exe')\n"
+        "    exe.parent.mkdir(parents=True, exist_ok=True)\n"
+        f"    exe.write_text('#!/usr/bin/env bash\\nexit {7 if failure == 'native' else 0}\\n', newline='\\n')\n")
+    # A wrong-tree build leaves these failing stale binaries behind.
+    for rel in outputs[2:]:
+        exe = root / rel
+        exe.parent.mkdir(parents=True, exist_ok=True)
+        exe.write_text('#!/usr/bin/env bash\nexit 8\n', newline='\n')
     fake = root / "cmake.sh"
     fake.write_text('#!/usr/bin/env bash\nset -eu\nhere="$(cd "$(dirname "$0")" && pwd)"\n'
-                    'echo "$*" >> "$here/cmake-calls"\nfor rel in ' + " ".join(outputs) + '; do\n'
+                    'echo "$*" >> "$here/cmake-calls"\nfor rel in ' + " ".join(outputs[:2] if generator.startswith('Ninja') else outputs) + '; do\n'
                     'mkdir -p "$(dirname "$here/$rel")"\nprintf "#!/usr/bin/env bash\\nexit 0\\n" > "$here/$rel"\n'
                     'chmod +x "$here/$rel"\ndone\n', encoding="utf-8", newline="\n")
     fake.chmod(0o755)
@@ -541,12 +592,14 @@ def test_unit_runner_engine_cache_layout_and_required_coverage(tmp_path, generat
                             capture_output=True, text=True, **console_child.child_kwargs(redirected=True))
     if generator == "missing":
         assert result.returncode != 0 and "requested engine cache is missing" in result.stdout
+    elif failure:
+        assert result.returncode != 0, result.stdout + result.stderr
     else:
         assert result.returncode == 0, result.stdout + result.stderr
         assert "run model_override_tests" in result.stdout
         assert "run static_natural_skip_policy_tests" in result.stdout
         assert "SKIP" not in result.stdout
-        if generator == "Ninja":
+        if generator.startswith("Ninja"):
             assert "model_override_tests static_natural_skip_policy_tests" in (root / "ninja-calls").read_text()
 
 

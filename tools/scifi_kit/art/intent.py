@@ -839,6 +839,7 @@ def check(name):
     res['platforms'] = len(kg.meta.get('platforms', []))
     import lint
     res['lint'] = lint.check(kg)
+    res['fails'] += ['lint: ' + x for x in res['lint']]
     import footprint                     # owner 2026-10-24: hard footprint rule (strict for walls/gates/fences/posts)
     fp = footprint.check(name)
     res['footprint'] = fp['metrics']

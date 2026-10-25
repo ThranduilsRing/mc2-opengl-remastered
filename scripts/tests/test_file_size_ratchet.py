@@ -108,6 +108,17 @@ def test_check_new_oversized_file_fails_and_is_listed():
     assert "code/new_big.cpp" in out.getvalue() and "files_over_1500" in out.getvalue()
 
 
+def test_military_tooling_is_registered_and_growth_fails(repo):
+    name = 'tools/scifi_kit/art/intent_military.py'
+    put(repo, name, 3363)
+    commit(repo, 'register military tooling', name)
+    assert fsr.main(_common(repo) + ['--write-baseline']) == 0
+    baseline = json.loads((repo / 'base.json').read_text())
+    assert baseline['files_over_1500'][name] == 3363
+    put(repo, name, 3364)
+    assert fsr.main(_common(repo) + ['--check', '--worktree']) == 1
+
+
 def test_check_one_dir_rising_fails_even_if_other_dir_falls():
     base = _base(b=1600)                                   # code has one big file, mclib has one
     res = fsr.measure({"mclib/a.cpp": lines(1900), "mclib/a2.cpp": lines(1600), "code/b.cpp": lines(10)})

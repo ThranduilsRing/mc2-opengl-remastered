@@ -52,7 +52,9 @@ BASELINE = os.path.join(HERE, "file_size_ratchet.baseline.json")
 EXCLUDE_FILE_REL = "tools/file_size_ratchet.exclude"
 
 DEFAULT_DIRS = ["code", "mclib", "GameOS", "RenderCore", "GuiRuntime", "RenderWorld",
-                "GameAdapters", "HostServices", "shaders", "editor", "gui"]
+                "GameAdapters", "HostServices", "shaders", "editor", "gui", "tools"]
+# Explicit tooling debt registration; keep unrelated Python outside this change.
+REGISTERED_TOOLING = {"tools/scifi_kit/art/intent_military.py"}
 EXTS = (".cpp", ".cc", ".h", ".hpp", ".inl",
         ".glsl", ".hglsl", ".vert", ".frag", ".comp", ".tesc", ".tese")
 BUILTIN_EXCLUDES = ["3rdparty/", "*/3rdparty/", "shaders/spv/", "*.gen.*",
@@ -86,7 +88,9 @@ def gitattr_generated(text):
 
 
 def wanted(rel, dirs, patterns):
-    if rel.split("/", 1)[0] not in dirs or not rel.endswith(EXTS):
+    if rel.startswith("tools/") and rel not in REGISTERED_TOOLING:
+        return False
+    if rel.split("/", 1)[0] not in dirs or not (rel.endswith(EXTS) or rel in REGISTERED_TOOLING):
         return False
     if any(p.startswith("build") for p in rel.split("/")[:-1]):
         return False

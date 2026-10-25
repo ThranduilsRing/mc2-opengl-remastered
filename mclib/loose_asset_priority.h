@@ -3,18 +3,24 @@
 #include <fstream>
 #include <span>
 #include <string_view>
+#include <cstdint>
 
-// The texture cooker writes KTX2 beside its TGA/TXM input, without a receipt.
-// Source textures are classified separately so edited loose bitmaps still win.
-template <class SourceExists>
-inline bool looseTextureCookHasSource(std::filesystem::path path, SourceExists sourceExists)
+// Only an unchanged, receipted cook may yield to bundled art. A paired source
+// (even archived stock) says nothing about whether the user edited the KTX2.
+inline bool verifiedLooseTextureCook(const std::filesystem::path& path)
 {
     if (path.extension() != ".ktx2") return false;
-    for (const char* ext : {".tga", ".txm"}) {
-        path.replace_extension(ext);
-        if (sourceExists(path)) return true;
-    }
-    return false;
+    std::ifstream stamp(path.string() + ".cookstamp"); // path-audit: loose-only cook provenance
+    uint64_t expected = 0;
+    if (!(stamp >> std::hex >> expected)) return false;
+    std::ifstream input(path, std::ios::binary); // path-audit: loose-only cook verification
+    if (!input) return false;
+    uint64_t hash = 14695981039346656037ull;
+    char buffer[65536];
+    while (input.read(buffer, sizeof(buffer)) || input.gcount())
+        for (std::streamsize i = 0; i < input.gcount(); ++i)
+            hash = (hash ^ static_cast<unsigned char>(buffer[i])) * 1099511628211ull;
+    return input.eof() && hash == expected;
 }
 
 // Extracted stock files are common in legacy installs. Only different loose
