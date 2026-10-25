@@ -1155,16 +1155,15 @@ void QueueBeaconGlow(TG_MultiShape* shape, float nightFactor)
     }
 }
 
-bool GetSearchlightBeam(TG_MultiShape* shape, long nodeId, NodeBeam& out)
+std::optional<NodeBeam> GetSearchlightBeam(TG_MultiShape* shape, long nodeId)
 {
     const TG_ShapeRec* rec = shape ? shape->GetShapeRec(static_cast<int>(nodeId)) : nullptr;
-    if (!rec || !rec->node || !rec->processMe) return false;
+    if (!rec || !rec->node || !rec->processMe) return std::nullopt;
     const auto origin = mc2::math::transformPoint(glm::vec3(0, 0, 8), rec->shapeToWorld);
     const auto tip = mc2::math::transformPoint(glm::vec3(0, 0, 408), rec->shapeToWorld);
     const auto axis = mc2ToRender(tip - origin);
-    if (glm::length(axis) < 1.0f) return false;
-    out = NodeBeam{mc2ToRender(origin), glm::normalize(axis), 400.0f, 0.990268f}; // 8 degrees
-    return true;
+    if (glm::length(axis) < 1.0f) return std::nullopt;
+    return NodeBeam{mc2ToRender(origin), glm::normalize(axis), 400.0f, 0.990268f}; // 8 degrees
 }
 
 void QueueSearchlightGlow(TG_MultiShape* shape, long nodeId, unsigned long argb, float nightFactor)

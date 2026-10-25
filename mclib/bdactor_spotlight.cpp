@@ -7,7 +7,7 @@
 
 void BldgAppearance::updateSearchlight()
 {
-    if (!appearType || !bldgShape || S_stricmp(appearType->elevationNodeId, "NONE") == 0)
+    if (!simPresentationPass || !appearType || !bldgShape || S_stricmp(appearType->elevationNodeId, "NONE") == 0)
         return;
     const long yawNode = bldgShape->GetNodeNameId(appearType->rotationalNodeId);
     const long pitchNode = bldgShape->GetNodeNameId(appearType->elevationNodeId);
@@ -21,8 +21,7 @@ void BldgAppearance::updateSearchlight()
         float yaw = 65.0f * std::sin(searchlightTime_ * 0.12f + phase);
         float pitch = 14.0f + 6.0f * std::sin(searchlightTime_ * 0.09f + phase);
         glm::vec3 lamp = position + glm::vec3(0.0f, 0.0f, 85.0f);
-        mc2_cone_glow::NodeBeam beam;
-        if (mc2_cone_glow::GetSearchlightBeam(bldgShape, pitchNode, beam)) lamp = beam.apex;
+        if (const auto beam = mc2_cone_glow::GetSearchlightBeam(bldgShape, pitchNode)) lamp = beam->apex;
         float best = 400.0f * 400.0f;
         if (ObjectManager && Team::home) {
             for (long i = 0; i < ObjectManager->getNumMechs(); ++i) {
@@ -56,10 +55,10 @@ void BldgAppearance::updateSearchlight()
     bldgShape->TransformMultiShape_HierarchyOnly(&translation, &root);
     if (mc2::gate::get<"MC2_LIGHT_CONE_DIAG">()) {
         static unsigned count = 0;
-        mc2_cone_glow::NodeBeam beam;
-        if ((count++ % 120) < 2 && mc2_cone_glow::GetSearchlightBeam(bldgShape, pitchNode, beam))
+        const auto beam = mc2_cone_glow::GetSearchlightBeam(bldgShape, pitchNode);
+        if ((count++ % 120) < 2 && beam)
             mc2::fmt::print_err("[SEARCHLIGHT] x={:.1f} y={:.1f} yaw={:.2f} pitch={:.2f} apex=({:.1f},{:.1f},{:.1f}) aim=({:.3f},{:.3f},{:.3f})\n",
-                position.x, position.y, searchlightYaw_, searchlightPitch_, beam.apex.x, beam.apex.y, beam.apex.z,
-                beam.aim.x, beam.aim.y, beam.aim.z);
+                position.x, position.y, searchlightYaw_, searchlightPitch_, beam->apex.x, beam->apex.y, beam->apex.z,
+                beam->aim.x, beam->aim.y, beam->aim.z);
     }
 }

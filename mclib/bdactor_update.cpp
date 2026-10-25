@@ -256,8 +256,11 @@ long BldgAppearance::update (bool animate)
 				// Animated nodes and shape transforms can change while the building is stationary.
 				nBeams = mc2_cone_glow::GetNodeBeams(bldgShape, beamNode, beams, kMaxBeamsPerNode);
 				if (S_stricmp(appearType->elevationNodeId, "NONE") != 0 &&
-					beamNode == bldgShape->GetNodeNameId(appearType->elevationNodeId))
-					nBeams = mc2_cone_glow::GetSearchlightBeam(bldgShape, beamNode, beams[0]) ? 1 : -1;
+					beamNode == bldgShape->GetNodeNameId(appearType->elevationNodeId)) {
+					const auto lamp = mc2_cone_glow::GetSearchlightBeam(bldgShape, beamNode);
+					nBeams = lamp ? 1 : -1;
+					if (lamp) beams[0] = *lamp;
+				}
 			}
 			else
 				++beamIdx;

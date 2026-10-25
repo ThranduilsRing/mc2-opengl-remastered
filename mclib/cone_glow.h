@@ -40,6 +40,7 @@
 #pragma once
 
 #include <stuff/stuff.hpp>
+#include <optional>
 
 class TG_MultiShape;
 
@@ -102,7 +103,7 @@ struct NodeBeam {
 };
 int GetNodeBeams(TG_MultiShape* shape, long nodeId, NodeBeam* out, int maxBeams);
 // Field lamp drum: no stock cone leaf; +Z is the lens axis in MAX space.
-bool GetSearchlightBeam(TG_MultiShape* shape, long nodeId, NodeBeam& out);
+std::optional<NodeBeam> GetSearchlightBeam(TG_MultiShape* shape, long nodeId);
 void QueueSearchlightGlow(TG_MultiShape* shape, long nodeId, unsigned long argb, float nightFactor);
 
 // LOCAL-LIGHTS-3: turn `light` into the spot light of `beam` (position at the lamp,
