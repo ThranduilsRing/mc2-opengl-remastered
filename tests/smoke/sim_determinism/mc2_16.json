@@ -8,7 +8,7 @@
  "sha": "9a6721f5fc94",
  "seed": "0x1B7EBC0D",
  "data_fingerprint": {
-  "digest": "f661cb89cce34e73",
+  "digest": "0dfcd001ffde73d0",
   "inputs": [
    "mission.fst",
    "tgl.fst",
@@ -21,7 +21,7 @@
    "data/missions/",
    "data/warriors/"
   ],
-  "stock_digest": "46f088cea575a969",
+  "stock_digest": "8703ccf15c7c117f",
   "overlay": {
    "data/missions/gaea_peaks_01.fit": "aa24a7b6e35ae2b2",
    "data/missions/gaea_peaks_01.pak": "af7be4e2f5a9c1c4",

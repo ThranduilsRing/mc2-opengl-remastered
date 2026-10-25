@@ -326,7 +326,7 @@ def greenhouse(k):
         for x in (-4.6, 4.6):
             k.box((x, y, .95), (3.4, 2.0, .1), 'wood.crate', 'frame')
             k.box((x, y, .72), (3.0, 1.6, .44), 'paint.steel', 'frame')
-            k.box((x, y, 1.08), (3.2, 1.8, .16), 'veg', 'detail')
+            k.box((x, y, 1.08), (3.2, 1.8, .16), 'veg.grass', 'detail')
 
 
 # ------------------------------------------------------------------ fences and street props
