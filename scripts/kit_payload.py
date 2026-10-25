@@ -3,7 +3,7 @@ import hashlib
 import json
 import os
 import re
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 import subprocess
 import sys
 
@@ -18,14 +18,27 @@ def sha(path):
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
 
+def contained_path(root, rel):
+    """Require a canonical relative member and a contained resolved destination."""
+    win = PureWindowsPath(rel)
+    if (not rel or win.drive or win.root or "\\" in rel
+            or any(p in ("", ".", "..") for p in rel.split("/"))):
+        raise ValueError(f"unsafe kit path: {rel}")
+    root = Path(root).resolve()
+    path = (root / rel).resolve()
+    if not path.is_relative_to(root):
+        raise ValueError(f"unsafe kit path: {rel}")
+    return path
+
+
 def checked_files(root, rows):
     """Reject absent, altered and unsafe package members before copying any bytes."""
     root = Path(root).resolve()
     seen = set()
     for row in rows:
         rel = row["path"]
-        path = (root / rel).resolve()
-        if not path.is_relative_to(root) or rel in seen:
+        path = contained_path(root, rel)
+        if rel.casefold() in {p.casefold() for p in seen}:
             raise ValueError(f"unsafe/duplicate kit path: {rel}")
         seen.add(rel)
         if not path.is_file() or path.stat().st_size != row["bytes"] or sha(path) != row["sha256"]:
@@ -87,13 +100,8 @@ def finish(target_dir, manifest, tool, cooker=subprocess.run):
                                + json.dumps(IMPORT_ARGS)).encode()).hexdigest()
     cache = target / "cache/content-model"
     receipt = cache / "industrial-cook.json"
-    try:
-        previous = json.loads(receipt.read_text())
-        if previous["identity"] == identity and len(previous["files"]) == len(models):
-            checked_files(cache, previous["files"])
-            return
-    except (OSError, ValueError, KeyError):
-        pass
+    # Only the importer can bind a source model to its native recipe. A receipt
+    # inventory cannot prove that mapping; let the importer's cache check it.
     outputs = set()
     for rel in models:
         result = cooker([str(tool), (KIT_REL / rel).as_posix(), *IMPORT_ARGS],
@@ -110,5 +118,6 @@ def finish(target_dir, manifest, tool, cooker=subprocess.run):
         raise ValueError(f"industrial cook incomplete: {len(outputs)} recipes for {len(models)} GLBs")
     rows = [dict(path=p.name, bytes=p.stat().st_size, sha256=sha(p)) for p in outputs]
     checked_files(cache, rows)
+    checked_files(kit, manifest["files"])
     receipt.write_text(json.dumps(dict(identity=identity, files=rows), indent=2) + "\n")
     print(f"[deploy_payload] pinned industrial kit verified: {len(models)} GLBs cooked")

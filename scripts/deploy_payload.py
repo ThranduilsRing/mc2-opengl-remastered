@@ -1228,6 +1228,9 @@ def deploy(items, target_dir, allow_stale_pdb, preserve=(), cache=None,
 
     for src, rel, kind in items:
         dst = os.path.join(target_dir, rel)
+        if kind == "kit":
+            from kit_payload import contained_path
+            dst = str(contained_path(target_dir, rel))
         if kind == "pdb" and not os.path.isfile(src):
             pdb_problem = f"source PDB missing: {src}"
             continue
