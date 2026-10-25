@@ -132,6 +132,8 @@ def finish(target_dir, manifest, tool, cooker=subprocess.run):
     if extra:
         raise ValueError(f"unpinned kit files in install: {sorted(extra)}")
     models = sorted(p for p in paths if p.endswith(".glb"))
+    # Identical small-prop LODs share a content-addressed native recipe.
+    unique_models = len({r["sha256"] for r in manifest["files"] if r["path"].endswith(".glb")})
     identity = hashlib.sha256((sha(tool) + json.dumps(manifest, sort_keys=True)
                                + json.dumps(IMPORT_ARGS)).encode()).hexdigest()
     cache = target / "cache/content-model"
@@ -141,7 +143,7 @@ def finish(target_dir, manifest, tool, cooker=subprocess.run):
         recipes = previous["recipes"]
         rows = previous["files"]
         if (previous["identity"] == identity and isinstance(recipes, dict) and set(recipes) == set(models)
-                and len(rows) == len(models)
+                and len(rows) == unique_models
                 and set(recipes.values()) == {r["path"] for r in rows}):
             checked_files(cache, rows)
             print(f"[deploy_payload] pinned industrial kit verified: {len(models)} GLBs cached; cook skipped")
@@ -163,8 +165,8 @@ def finish(target_dir, manifest, tool, cooker=subprocess.run):
         outputs.add(cache / f"model-{keys[0]}.mci")
         recipes[rel] = f"model-{keys[0]}.mci"
     outputs = sorted(outputs)
-    if len(outputs) != len(models) or any(not p.is_file() or p.stat().st_size == 0 for p in outputs):
-        raise ValueError(f"industrial cook incomplete: {len(outputs)} recipes for {len(models)} GLBs")
+    if len(outputs) != unique_models or any(not p.is_file() or p.stat().st_size == 0 for p in outputs):
+        raise ValueError(f"industrial cook incomplete: {len(outputs)} recipes for {unique_models} distinct GLBs")
     rows = [dict(path=p.name, bytes=p.stat().st_size, sha256=sha(p)) for p in outputs]
     checked_files(cache, rows)
     checked_files(kit, manifest["files"])

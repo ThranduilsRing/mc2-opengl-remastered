@@ -46,8 +46,15 @@ def test_bad_package_fails_before_copy(tmp_path, monkeypatch, problem):
         kit.payload(tmp_path)
 
 
-def test_cooks_then_validates_receipt_and_repairs_corrupt_cache(tmp_path, monkeypatch):
+@pytest.mark.parametrize("shared_lods", [False, True])
+def test_cooks_then_validates_receipt_and_repairs_corrupt_cache(tmp_path, monkeypatch, shared_lods):
     manifest, store = package(tmp_path, monkeypatch)
+    if shared_lods:
+        for row in manifest["files"]:
+            path = store / row["path"]
+            path.write_bytes(b"shared LOD")
+            row.update(bytes=path.stat().st_size, sha256=kit.sha(path))
+        (tmp_path / kit.MANIFEST).write_text(json.dumps(manifest))
     _, items = kit.payload(tmp_path)
     assert len(items) == 3 and all(i[2] == "kit" for i in items)
     target = tmp_path / "install"
@@ -58,13 +65,14 @@ def test_cooks_then_validates_receipt_and_repairs_corrupt_cache(tmp_path, monkey
     calls = []
     def cook(command, **kwargs):
         calls.append(command)
-        key = hashlib.sha256(command[1].encode()).hexdigest()[:16]
+        key = hashlib.sha256(b"shared LOD" if shared_lods else command[1].encode()).hexdigest()[:16]
         cache = target / "cache/content-model"
         cache.mkdir(parents=True, exist_ok=True)
         (cache / f"model-{key}.mci").write_bytes(b"recipe")
         return SimpleNamespace(returncode=0, stdout="", stderr=f"[CONTENT_COOK] key={key} cache=miss")
     kit.finish(target, manifest, tool, cook)
     assert len(calls) == 3
+    assert len(list((target / "cache/content-model").glob("*.mci"))) == (1 if shared_lods else 3)
     kit.finish(target, manifest, tool, cook)
     assert len(calls) == 3
     next((target / "cache/content-model").glob("*.mci")).write_bytes(b"broken") # same-size hash mismatch
