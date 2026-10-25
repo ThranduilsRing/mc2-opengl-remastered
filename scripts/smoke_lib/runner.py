@@ -271,14 +271,14 @@ def run_one(cfg: RunConfig) -> RunResult:
     # it is neither minimized nor on the desktop.
     show_window = bool(getattr(cfg, "show_window", False)
                        or os.environ.get("MC2_SMOKE_VISIBLE"))
-    # t0 must be captured BEFORE spawning the reader thread so both the reader
-    # and the main loop share the same monotonic reference point.
-    t0 = time.monotonic()
     # small_window=False: smoke grades perf/pixels at options.cfg size, so
     # the 640x480 MC2_WIDTH/HEIGHT default must not be injected here.
     proc = nofocus.spawn(argv, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                          env=env, text=True, bufsize=1, cwd=exe_dir,
                          show_window=show_window, small_window=False)
+    # The host-lease wait belongs to spawn, not the child's walltime budget.
+    # Capture this before the reader starts so line stamps use the same clock.
+    t0 = time.monotonic()
 
     # Stream lines and record per-line wallclock so freeze detection can use
     # runner walltime rather than engine-emitted elapsed_ms (which is mission-
