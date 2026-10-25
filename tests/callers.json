@@ -3780,21 +3780,21 @@
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 170,
+          "line": 178,
           "evidence": "import",
           "reference": "deploy_payload",
           "text": "import deploy_payload as dp"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 191,
+          "line": 199,
           "evidence": "import",
           "reference": "deploy_payload",
           "text": "import deploy_payload as dp"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 256,
+          "line": 264,
           "evidence": "import",
           "reference": "deploy_payload",
           "text": "import deploy_payload as dp"
@@ -4198,35 +4198,28 @@
       "callers_by_stem": [
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 202,
+          "line": 210,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 224,
+          "line": 232,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 279,
+          "line": 287,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 288,
-          "evidence": "import",
-          "reference": "merge_gate",
-          "text": "import merge_gate as gate"
-        },
-        {
-          "path": "scripts/tests/test_merge_speedups.py",
-          "line": 300,
+          "line": 296,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
@@ -4240,175 +4233,182 @@
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 322,
+          "line": 316,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 333,
+          "line": 330,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 345,
+          "line": 341,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 365,
+          "line": 353,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 386,
+          "line": 373,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 399,
+          "line": 394,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 410,
+          "line": 407,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 472,
+          "line": 418,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 484,
+          "line": 480,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 494,
+          "line": 492,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 504,
+          "line": 502,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 521,
+          "line": 512,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 538,
+          "line": 529,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 556,
+          "line": 546,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 565,
+          "line": 564,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 582,
+          "line": 573,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 637,
+          "line": 590,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 650,
+          "line": 645,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 674,
+          "line": 658,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 695,
+          "line": 682,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 798,
+          "line": 703,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 819,
+          "line": 806,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 846,
+          "line": 827,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 875,
+          "line": 854,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 893,
+          "line": 883,
+          "evidence": "import",
+          "reference": "merge_gate",
+          "text": "import merge_gate as gate"
+        },
+        {
+          "path": "scripts/tests/test_merge_speedups.py",
+          "line": 901,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
@@ -4984,14 +4984,14 @@
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 513,
+          "line": 521,
           "evidence": "import",
           "reference": "run_tools_tests",
           "text": "import run_tools_tests as tt"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 860,
+          "line": 868,
           "evidence": "import",
           "reference": "run_tools_tests",
           "text": "import run_tools_tests as tt"
@@ -5042,7 +5042,7 @@
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 607,
+          "line": 615,
           "evidence": "import",
           "reference": "run_visual_capture",
           "text": "import run_visual_capture as capture"
