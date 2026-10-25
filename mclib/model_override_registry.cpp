@@ -360,14 +360,13 @@ ModelOverrideRegistry& ModelOverrideRegistry::instance() {
     static ModelOverrideRegistry g;
     static std::once_flag once;
     std::call_once(once, [] {
-        int base = g.loadFromFile("data/model_overrides/models.json", "data/model_overrides");
-        g.mergeConditionsFromFile("data/model_overrides/conditions.json");
-        mc2::fmt::print_err("[MODOVERRIDE] base registry: {:d} override(s)\n", mc2::fmt::as_i32(base));
-        // Same lowest-priority bundled layer as the file VFS. Explicit mod records
-        // below replace these entries, including each record's source directory.
+        // Bundled art is below install-local manifests and all mounted mods.
         if (mc2::options::current().remasteredBuildings)
-            g.mergeFromFile("mods/mc2-industrial-kit/data/model_overrides/models.json",
-                            "mods/mc2-industrial-kit/data/model_overrides");
+            g.loadFromFile("mods/mc2-industrial-kit/data/model_overrides/models.json",
+                           "mods/mc2-industrial-kit/data/model_overrides");
+        const int base = g.mergeFromFile("data/model_overrides/models.json", "data/model_overrides");
+        g.mergeConditionsFromFile("data/model_overrides/conditions.json");
+        mc2::fmt::print_err("[MODOVERRIDE] install registry: {:d} override(s)\n", mc2::fmt::as_i32(base));
         // Every mounted mod (content packs ride MC2_MOD_DEPS beside any campaign mod) merges in VFS
         // priority order, so the highest-priority provider wins a duplicate key. Source paths are
         // relative to that mod's model_overrides directory: Assimp opens files directly, so the
@@ -375,7 +374,7 @@ ModelOverrideRegistry& ModelOverrideRegistry::instance() {
         std::string active = mc2::gate::str<"MC2_ACTIVE_MOD">();
         if (!mc2::options::current().remasteredBuildings && active == "mc2-industrial-kit") active.clear();
         for (const auto& root : modelOverrideMountOrder(active, mc2::gate::str<"MC2_MOD_DEPS">(), activeModJsonDeps(active))) {
-            if (!mc2::options::current().remasteredBuildings && root == "mods/mc2-industrial-kit") continue;
+            if (root == "mods/mc2-industrial-kit") continue; // Already merged at lowest priority.
             const std::string dir = (std::filesystem::path(root) / "data/model_overrides").generic_string();
             const int n = g.mergeFromFile(dir + "/models.json", dir);
             const int c = g.mergeConditionsFromFile(dir + "/conditions.json");

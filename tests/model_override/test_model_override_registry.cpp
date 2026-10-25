@@ -3,6 +3,7 @@
 #include "model_override_registry.h"
 #include <cstdio>
 #include <string>
+#include "loose_asset_priority.h"
 
 static int failures = 0;
 #define CHECK(c) do{ if(!(c)){ printf("FAIL %s:%d %s\n",__FILE__,__LINE__,#c); ++failures; } }while(0)
@@ -10,6 +11,30 @@ static int failures = 0;
 int main(int argc, char** argv) {
     const std::string dir = (argc > 1) ? argv[1] : "fixtures";
     auto fx = [&](const char* f){ return dir + "/" + f; };
+
+    {   // A legacy overlay of a kit building must win; extracted stock must not.
+        const auto fixture = std::filesystem::temp_directory_path() / "mc2-building-priority-fixture";
+        std::filesystem::create_directories(fixture / "mods/test/data/tgl");
+        const std::vector<unsigned char> stock{'s', 't', 'o', 'c', 'k'};
+        for (const char* name : {"chemicalplant.ini", "chemicalplant.tgl", "chemicalplant.ase",
+                                 "chemicalplant.glb", "chemicalplantd.tgl", "chemicalplant.agl", "cp.tga", "cp.ktx2"}) {
+            const auto path = fixture / "mods/test/data/tgl" / name;
+            { std::ofstream out(path, std::ios::binary); out << "stock"; }
+            CHECK(!looseAssetDiffers(path.string().c_str(), stock));
+            { std::ofstream out(path, std::ios::binary); out << "modded building"; }
+            CHECK(looseAssetDiffers(path.string().c_str(), stock));
+            CHECK(looseAssetDiffers(path.string().c_str(), {}));
+            std::filesystem::remove(path);
+            CHECK(!looseAssetDiffers(path.string().c_str(), stock));
+        }
+        // Root manifests merge after the kit, with provider-relative sources retained.
+        ModelOverrideRegistry r;
+        CHECK(r.loadFromFile(fx("valid.json"), "mods/mc2-industrial-kit/data/model_overrides") == 1);
+        CHECK(r.mergeFromFile(fx("valid.json"), "data/model_overrides") == 1);
+        CHECK(r.resolve("staticProp", "example_name")->manifestDir == "data/model_overrides");
+        CHECK(r.mergeFromFile(fx("valid.json"), "mods/test/data/model_overrides") == 1);
+        CHECK(r.resolve("staticProp", "example_name")->manifestDir == "mods/test/data/model_overrides");
+    }
 
     {   ModelOverrideRegistry r;
         int n = r.loadFromFile(fx("valid.json"), dir);

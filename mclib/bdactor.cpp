@@ -308,40 +308,45 @@ void BldgAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 			}
 		}
 		
+		// Gameplay bounds use the original asset; render overrides only own raster geometry.
+		std::unique_ptr<TG_MultiShape> stockBounds;
+		if (appearType->bldgRenderShape || appearType->bldgDmgRenderShape)
+			stockBounds.reset(appearType->getBldgCollisionShape(0)->CreateFrom());
+		auto* boundsShape = stockBounds ? stockBounds.get() : bldgShape;
 		glm::vec3 boxCoords[8];
-		glm::vec3 nodeCenter = bldgShape->GetRootNodeCenter();
+		glm::vec3 nodeCenter = boundsShape->GetRootNodeCenter();
 
-		boxCoords[0].x = position.x + bldgShape->GetMinBox().x + nodeCenter.x;
-		boxCoords[0].y = position.y + bldgShape->GetMinBox().z + nodeCenter.z;
-		boxCoords[0].z = position.z + bldgShape->GetMaxBox().y + nodeCenter.y;
+		boxCoords[0].x = position.x + boundsShape->GetMinBox().x + nodeCenter.x;
+		boxCoords[0].y = position.y + boundsShape->GetMinBox().z + nodeCenter.z;
+		boxCoords[0].z = position.z + boundsShape->GetMaxBox().y + nodeCenter.y;
 		
-		boxCoords[1].x = position.x + bldgShape->GetMinBox().x + nodeCenter.x;
-		boxCoords[1].y = position.y + bldgShape->GetMaxBox().z + nodeCenter.z;
-		boxCoords[1].z = position.z + bldgShape->GetMaxBox().y + nodeCenter.y;
+		boxCoords[1].x = position.x + boundsShape->GetMinBox().x + nodeCenter.x;
+		boxCoords[1].y = position.y + boundsShape->GetMaxBox().z + nodeCenter.z;
+		boxCoords[1].z = position.z + boundsShape->GetMaxBox().y + nodeCenter.y;
 		
-		boxCoords[2].x = position.x + bldgShape->GetMaxBox().x + nodeCenter.x;
-		boxCoords[2].y = position.y + bldgShape->GetMaxBox().z + nodeCenter.z;
-		boxCoords[2].z = position.z + bldgShape->GetMaxBox().y + nodeCenter.y;
+		boxCoords[2].x = position.x + boundsShape->GetMaxBox().x + nodeCenter.x;
+		boxCoords[2].y = position.y + boundsShape->GetMaxBox().z + nodeCenter.z;
+		boxCoords[2].z = position.z + boundsShape->GetMaxBox().y + nodeCenter.y;
 		
-		boxCoords[3].x = position.x + bldgShape->GetMaxBox().x + nodeCenter.x;
-		boxCoords[3].y = position.y + bldgShape->GetMinBox().z + nodeCenter.z;
-		boxCoords[3].z = position.z + bldgShape->GetMaxBox().y + nodeCenter.y;
+		boxCoords[3].x = position.x + boundsShape->GetMaxBox().x + nodeCenter.x;
+		boxCoords[3].y = position.y + boundsShape->GetMinBox().z + nodeCenter.z;
+		boxCoords[3].z = position.z + boundsShape->GetMaxBox().y + nodeCenter.y;
 		
-		boxCoords[4].x = position.x + bldgShape->GetMinBox().x + nodeCenter.x;
-		boxCoords[4].y = position.y + bldgShape->GetMinBox().z + nodeCenter.z;
-		boxCoords[4].z = position.z + bldgShape->GetMinBox().y + nodeCenter.y;
+		boxCoords[4].x = position.x + boundsShape->GetMinBox().x + nodeCenter.x;
+		boxCoords[4].y = position.y + boundsShape->GetMinBox().z + nodeCenter.z;
+		boxCoords[4].z = position.z + boundsShape->GetMinBox().y + nodeCenter.y;
 		
-		boxCoords[5].x = position.x + bldgShape->GetMaxBox().x + nodeCenter.x;
-		boxCoords[5].y = position.y + bldgShape->GetMinBox().z + nodeCenter.z;
-		boxCoords[5].z = position.z + bldgShape->GetMinBox().y + nodeCenter.y;
+		boxCoords[5].x = position.x + boundsShape->GetMaxBox().x + nodeCenter.x;
+		boxCoords[5].y = position.y + boundsShape->GetMinBox().z + nodeCenter.z;
+		boxCoords[5].z = position.z + boundsShape->GetMinBox().y + nodeCenter.y;
 		
-		boxCoords[6].x = position.x + bldgShape->GetMaxBox().x + nodeCenter.x;
-		boxCoords[6].y = position.y + bldgShape->GetMaxBox().z + nodeCenter.z;
-		boxCoords[6].z = position.z + bldgShape->GetMinBox().y + nodeCenter.y;
+		boxCoords[6].x = position.x + boundsShape->GetMaxBox().x + nodeCenter.x;
+		boxCoords[6].y = position.y + boundsShape->GetMaxBox().z + nodeCenter.z;
+		boxCoords[6].z = position.z + boundsShape->GetMinBox().y + nodeCenter.y;
 		
-		boxCoords[7].x = position.x + bldgShape->GetMinBox().x + nodeCenter.x;
-		boxCoords[7].y = position.y + bldgShape->GetMaxBox().z + nodeCenter.z;
-		boxCoords[7].z = position.z + bldgShape->GetMinBox().y + nodeCenter.y;
+		boxCoords[7].x = position.x + boundsShape->GetMinBox().x + nodeCenter.x;
+		boxCoords[7].y = position.y + boundsShape->GetMaxBox().z + nodeCenter.z;
+		boxCoords[7].z = position.z + boundsShape->GetMinBox().y + nodeCenter.y;
 		
  		float testRadius = 0.0;
 		
@@ -363,9 +368,9 @@ void BldgAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 		
 		if (!appearType->getDesignerTypeBounds())
 		{
-			glm::vec3 nodeCenter = bldgShape->GetRootNodeCenter();
-			appearType->typeUpperLeft = bldgShape->GetMinBox() + nodeCenter;
-			appearType->typeLowerRight = bldgShape->GetMaxBox() + nodeCenter;
+			glm::vec3 nodeCenter = boundsShape->GetRootNodeCenter();
+			appearType->typeUpperLeft = boundsShape->GetMinBox() + nodeCenter;
+			appearType->typeLowerRight = boundsShape->GetMaxBox() + nodeCenter;
 		}
 		
 		if (appearType->numWeaponNodes > 0)

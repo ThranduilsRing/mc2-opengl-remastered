@@ -455,7 +455,14 @@ class BldgAppearance : public ObjectAppearance
 		
 		virtual float getRadius (void)
 		{
-			float ext = bldgShape ? bldgShape->GetExtentRadius() : 0.0f;
+			if (!appearType || (!appearType->bldgRenderShape && !appearType->bldgDmgRenderShape)) {
+				float ext = bldgShape ? bldgShape->GetExtentRadius() : 0.0f;
+				return OBBRadius > ext ? OBBRadius : ext;
+			}
+			auto* source = appearType->getBldgCollisionShape(0);
+			if (source && status == OBJECT_STATUS_DESTROYED && appearType->bldgDmgShape)
+				source = appearType->bldgDmgShape;
+			float ext = source ? source->extentRadius : 0.0f;
 			return OBBRadius > ext ? OBBRadius : ext;
 		}
 
