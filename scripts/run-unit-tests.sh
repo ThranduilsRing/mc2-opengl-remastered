@@ -127,7 +127,7 @@ if [ ! -f "$ENGINE_BUILD/CMakeCache.txt" ]; then
 else
     note "build engine test tier ($CFG; $ENGINE_BUILD)"
     if [ -z "$ENGINE_CFG" ]; then
-        py -3 "$ROOT/scripts/ninja_build.py" -j"$JOBS" model_override_tests static_natural_skip_policy_tests
+        MC2_NINJA_TREE="$ENGINE_BUILD" py -3 "$ROOT/scripts/ninja_build.py" -j"$JOBS" model_override_tests static_natural_skip_policy_tests
     else
         "$CMAKE" --build "$ENGINE_BUILD" --config "$CFG" --target model_override_tests static_natural_skip_policy_tests --parallel "$JOBS"
     fi

@@ -12,31 +12,29 @@ int main(int argc, char** argv) {
     const std::string dir = (argc > 1) ? argv[1] : "fixtures";
     auto fx = [&](const char* f){ return dir + "/" + f; };
 
-    {   // Deploy cooks do not claim user priority; their edited sources still do.
+    {   // Only a matching cook receipt yields priority, even with a paired stock TGA.
         const auto fixture = std::filesystem::temp_directory_path() / "mc2-sidecar-priority-fixture";
         std::filesystem::create_directories(fixture);
-        const auto sourceExists = [&](const auto& path) {
-            return std::filesystem::is_regular_file(path) || path == fixture / "packed.tga";
-        };
         const auto sidecar = fixture / "building.ktx2";
-        { std::ofstream out(sidecar); out << "cooked"; }
-        CHECK(!looseTextureCookHasSource(sidecar, sourceExists));
-        CHECK(looseTextureCookHasSource(fixture / "packed.ktx2", sourceExists));
+        const auto source = fixture / "building.tga";
+        const auto stamp = sidecar.string() + ".cookstamp";
+        { std::ofstream out(source); out << "stock"; }
+        { std::ofstream out(sidecar); out << "hello"; }
+        CHECK(!verifiedLooseTextureCook(sidecar));
+        // FNV-1a-64 standard vector, also emitted by mc2texcook.record_cook.
+        { std::ofstream out(stamp); out << "a430d84680aabd0b\n"; }
+        CHECK(verifiedLooseTextureCook(sidecar));
+        CHECK(!verifiedLooseTextureCook(source));
+        { std::ofstream out(sidecar); out << "jello"; } // same-size user edit
+        CHECK(!verifiedLooseTextureCook(sidecar));
         CHECK(looseAssetDiffers(sidecar.string(), {}));
-        const std::vector<unsigned char> stock{'s', 't', 'o', 'c', 'k'};
-        for (const char* ext : {".tga", ".txm"}) {
-            auto source = sidecar;
-            source.replace_extension(ext);
-            { std::ofstream out(source); out << "stock"; }
-            CHECK(looseTextureCookHasSource(sidecar, sourceExists));
-            CHECK(!looseTextureCookHasSource(source, sourceExists));
-            CHECK(!looseAssetDiffers(source.string(), stock));
-            { std::ofstream out(source); out << "user art"; }
-            CHECK(looseAssetDiffers(source.string(), stock));
-            std::filesystem::remove(source);
-            CHECK(!looseTextureCookHasSource(sidecar, sourceExists));
-        }
+        std::filesystem::remove(source); // archived-only sources do not change the verdict
+        CHECK(!verifiedLooseTextureCook(sidecar));
+        { std::ofstream out(stamp); out << "invalid"; }
+        CHECK(!verifiedLooseTextureCook(sidecar));
         std::filesystem::remove(sidecar);
+        CHECK(!verifiedLooseTextureCook(sidecar));
+        std::filesystem::remove(stamp);
         std::filesystem::remove(fixture);
     }
 

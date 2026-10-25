@@ -4,7 +4,7 @@
    0.25 m (e.g. a rectangular roof slab sticking out past a chamfered pod's plan);
 2. hidden opening: a door leaf or glazing whose face is covered by a mass piece on BOTH sides within
    1.2 m (e.g. strip windows hidden behind a glacis skirt).
-Findings are warnings for review, not failures (deliberate eaves and cantilevers also show as overhang).
+Findings fail intent validation; deliberate eaves and cantilevers can use lint_skip.
 """
 import numpy as np
 
