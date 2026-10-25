@@ -533,7 +533,7 @@ def test_tier1_reuses_only_strict_validated_determinism_smokes():
 
 def test_gate_retains_both_art_modes_for_affected_saves_and_captures():
     import merge_gate as gate
-    steps = gate.affected_plan(gate.plan(6), ["code/game.cpp"])
+    steps = gate.affected_plan(gate.plan(6), ["mclib/bdactor_type.cpp"])
     names = [n for n, _, _ in steps]
     assert names.index("capture-before-classic") < names.index("deploy")
     assert names.index("capture-after-classic") > names.index("deploy")
@@ -544,6 +544,81 @@ def test_gate_retains_both_art_modes_for_affected_saves_and_captures():
         modes = [(c, e) for n, c, e in steps if n.startswith("saveload-" + mission)]
         assert len(modes) == 2 and modes[0][0] != modes[1][0]
         assert {e["MC2_OPTIONS_OVERRIDE"] for _, e in modes} == {"RemasteredBuildings=TRUE", "RemasteredBuildings=FALSE"}
+
+
+@pytest.mark.parametrize("paths,count", [(["code/mission.cpp"], 2), (["scripts/kit_payload.py"], 10),
+                                        (["tools/scifi_kit/art/intent.py"], 10)])
+def test_gate_save_matrix_tracks_art_path(paths, count):
+    import merge_gate as gate
+    cases = [(n, e) for n, _, e in gate.affected_plan(gate.plan(6), paths)
+             if n.startswith("saveload-") and not e.get("MC2_GATE_SKIP_REASON")]
+    assert len(cases) == count
+    if count == 2:
+        assert {n for n, _ in cases} == {"saveload-mc2_01", "saveload-mc2_10"}
+
+
+def test_shared_stock_evidence_is_ordered_and_validation_retained(tmp_path):
+    import merge_gate as gate
+    steps = gate.reuse_stock_runs(gate.install_plan(
+        gate.affected_plan(gate.plan(6, tmp_path), ["scripts/kit_payload.py"]), tmp_path / "install"), tmp_path)
+    names = [n for n, _, _ in steps]
+    assert names.index("deploy") < names.index("tier1") < names.index("capture-after") < names.index("compare-captures")
+    by_name = {n: (c, e) for n, c, e in steps}
+    command, env = by_name["tier1"]
+    assert command.count("--capture-bookmark") == 2 and "mc2_10" in command
+    assert not {"MC2_VULKAN_VALIDATION", "MC2_DIAG_TAGS", "MC2_DEBUG_STATE_DUMP"} & env.keys()
+    assert by_name["determinism-mc2_10"][1]["MC2_VULKAN_VALIDATION"] == "1"
+    assert by_name["validation"][1]["MC2_GATE_REUSE_STAGE"] == "determinism-mc2_10"
+    assert "--fresh-smoke" not in by_name["quiet"][0]
+
+
+@pytest.mark.parametrize("failure", [False, True])
+def test_parallel_gate_joins_mods_and_keeps_deploy_barrier(monkeypatch, failure):
+    import threading
+    import merge_gate as gate
+    started, stock_done = threading.Event(), threading.Event()
+    calls = []
+    monkeypatch.setattr(gate, "git", lambda *a: "head")
+    def runner(command, **kw):
+        calls.append(command[0])
+        assert "MC2_HOST_LEASE_BATCH" not in kw["env"]
+        if command == ["mods"]:
+            assert "deploy" in calls
+            started.set()
+            assert stock_done.wait(2)
+            return _r(1 if failure else 0)
+        if command == ["stock"]:
+            assert started.wait(2)
+            stock_done.set()
+        return _r(0)
+    monkeypatch.setattr(gate, "run_child", runner)
+    monkeypatch.delenv("MC2_HOST_LEASE_BATCH", raising=False)
+    assert gate.execute_parallel([("deploy", ["deploy"], {}), ("mods", ["mods"], {}),
+                                  ("tier1", ["stock"], {})], "head") == int(failure)
+    assert started.is_set() and stock_done.is_set()
+
+
+def test_smoke_bookmark_capture_rejects_missing_or_wrong_evidence(tmp_path):
+    import json
+    import run_visual_capture as capture
+    bookmark = tmp_path / "day.json"
+    bookmark.write_text(json.dumps({"mission": "mc2_01", "bookmarks": [{"name": "one"}, {"name": "two"}]}))
+    out = tmp_path / "out"
+    assert capture.smoke_capture([bookmark], "mc2_17", out) == {}
+    env = capture.smoke_capture([bookmark], "mc2_01", out)
+    assert env["MC2_VISUAL_CAPTURE_FRAME"] == "431"
+    assert env["MC2_SMOKE_FIXED_TIMESTEP"] == "1"
+    with pytest.raises(RuntimeError, match="missing"):
+        capture.smoke_capture([bookmark], "mc2_01", out, True)
+    for name in ("one", "two"):
+        png = out / "day" / f"mc2_01_{name}.png"
+        png.write_bytes(b"png")
+        png.with_suffix(".json").write_text(json.dumps({"deterministic": True, "backend": "vulkan",
+                                                        "render_options": {"RemasteredBuildings": True}}))
+    capture.smoke_capture([bookmark], "mc2_01", out, True)
+    png.with_suffix(".json").write_text('{}')
+    with pytest.raises(RuntimeError, match="invalid"):
+        capture.smoke_capture([bookmark], "mc2_01", out, True)
 
 
 @pytest.mark.parametrize("generator,failure", [("Ninja", ""), ("Visual Studio", ""), ("missing", ""),
@@ -693,7 +768,8 @@ def test_gate_without_window_receipt_keeps_full_both_mode_coverage(tmp_path, mon
     assert len([n for n, _, _ in seen if n.startswith("saveload-")]) == 10
     assert "capture-before-classic" in {n for n, _, _ in seen}
     assert all("MC2_GATE_SKIP_REASON" not in env for name, _, env in seen
-               if name.startswith(("capture-", "saveload-", "determinism-")))
+               if name.startswith(("capture-", "saveload-", "determinism-")) and name != "capture-after")
+    assert next(e for n, _, e in seen if n == "capture-after")["MC2_GATE_REUSE_STAGE"] == "tier1"
 
 
 def test_blocked_game_stages_report_missing_proof_without_launching(monkeypatch, capsys):

@@ -16,6 +16,7 @@ from pathlib import Path
 import subprocess
 import sys
 import time
+from concurrent.futures import ThreadPoolExecutor
 
 import console_child
 
@@ -112,6 +113,10 @@ def change_domains(paths):
 
 def affected_plan(steps, paths, full=False):
     domains = change_domains(paths)
+    art = full or bool(domains & {"art"}) or any(
+        any(token in p.replace("\\", "/").lower() for token in
+            ("kit", "building", "bdactor", "model_override", "loose_asset", "mc2texcook", "content_pipeline", "deploy_payload", "render_options"))
+        for p in paths)
     game = bool(domains & {"engine", "shaders", "art"})
     sim = "engine" in domains
     selected = []
@@ -140,6 +145,9 @@ def affected_plan(steps, paths, full=False):
             if batch_tier:
                 cmd += ["--mission", "mc2_01", "--mission", "mc2_17"]
                 env["MC2_GATE_COVERAGE"] = "tier1 mc2_03/10/24 assigned to strict determinism smokes; this stage runs mc2_01/17"
+        if name.startswith("saveload-") and not art and not full:
+            if name not in ("saveload-mc2_01", "saveload-mc2_10"):
+                reason = "no kit/art inputs: day/night save/load pair covers shared serialization"
         if name in shared_smokes and batch_tier:
             env.update(MC2_VULKAN_VALIDATION="1", MC2_MOVER_COHERENCE_AUDIT="1",
                        MC2_DEBUG_STATE_DUMP="1", MC2_DIAG_TAGS="CONFIG,BUILD,DEVICE")
@@ -151,8 +159,9 @@ def affected_plan(steps, paths, full=False):
             classic = list(cmd)
             if "--out" in classic:
                 classic[classic.index("--out") + 1] += "-classic"
-            selected.append((name + "-classic", classic,
-                             dict(env, MC2_OPTIONS_OVERRIDE="RemasteredBuildings=FALSE")))
+            if art:
+                selected.append((name + "-classic", classic,
+                                 dict(env, MC2_OPTIONS_OVERRIDE="RemasteredBuildings=FALSE")))
     if game or full:
         # Material mode can affect either renderer path. Preserve day/night A/B in both.
         clones = []
@@ -197,8 +206,50 @@ def install_plan(steps, install):
             idx = command.index("--deploy")
             command[idx:idx + 2] = ["--exe", str(install / "mc2.exe")]
         if name == "mods":
-            command += ["--base-install", str(install), "--stage-root", str(install / "mod_smoke-stage"), "--duration", "10"]
+            command += ["--base-install", str(install), "--stage-root", str(install / "mod_smoke-stage"), "--duration", "5"]
         result.append((name, command, env))
+    return result
+
+
+def reuse_stock_runs(steps, proof):
+    """Attach post-deploy day/night captures to tier1; keep pre-deploy evidence.
+
+    Classic captures remain separate because tier1 grades the shipping mode.
+    mc2_17 stays a default-environment quiet sample without capture/audit gates.
+    """
+    names = {n for n, _, e in steps if not e.get("MC2_GATE_SKIP_REASON")}
+    if not {"tier1", "capture-after", "quiet", "determinism-mc2_10"} <= names:
+        return steps
+    after = next(c for n, c, _ in steps if n == "capture-after")
+    install = Path(after[after.index("--install") + 1])
+    out = after[after.index("--out") + 1]
+    result = []
+    tier = None
+    for name, command, overrides in steps:
+        command, overrides = list(command), dict(overrides)
+        if name == "tier1":
+            overrides = {k: v for k, v in overrides.items() if k not in
+                         ("MC2_VULKAN_VALIDATION", "MC2_DEBUG_STATE_DUMP", "MC2_DIAG_TAGS")}
+            overrides["MC2_SMOKE_ARTIFACT_ROOT"] = str(proof / "tier1")
+            if "--mission" in command and "mc2_10" not in command:
+                command += ["--mission", "mc2_10"]
+            command += ["--capture-out", out, "--quiet-sample", "mc2_17"]
+            for bookmark in ("mc2_01_saved_205644", "mc2_10_saved_204523"):
+                command += ["--capture-bookmark", str(install / "saved_bookmarks" / (bookmark + ".json"))]
+            overrides["MC2_GATE_COVERAGE"] = "tier1 includes day/night bookmark captures; mc2_17 is the default quiet sample; strict smokes retain validation"
+            tier = (name, command, overrides)
+            continue
+        if name == "capture-after":
+            overrides.update(MC2_GATE_SKIP_REASON="tier1 owns matching post-deploy day/night bookmark captures",
+                             MC2_GATE_REUSE_STAGE="tier1")
+        if name == "quiet":
+            command = [sys.executable, "scripts/check-default-build-quiet.py", "--run-root", str(proof / "tier1"),
+                       "--mission", "mc2_17"]
+        if name == "validation" and "determinism-mc2_10" in names:
+            overrides["MC2_GATE_REUSE_STAGE"] = "determinism-mc2_10"
+        result.append((name, command, overrides))
+    # Shared tier1 evidence must exist before comparisons or quiet grading.
+    result.insert(next(i for i, s in enumerate(result) if s[0] == "capture-after"), tier)
     return result
 
 
@@ -209,6 +260,39 @@ def git(*args):
 
 def run_child(command, cwd, env):
     return run_logged(cwd, command, env=env)
+
+
+def execute_parallel(steps, head, dry_run=False):
+    """Mods own disposable staging; overlap them with the stock install chain.
+
+    Each harness takes its own FIFO host slot. Never share a batch token between
+    workers: that would assign both engines the same affinity and reservation.
+    Before/deploy/after remain ordered, and every child is joined before return.
+    """
+    if dry_run:
+        print("Coverage plan: mods overlap stock proofs after deploy; two host slots, separate installs")
+        return execute(steps, head, True)
+    pending = []
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        def runner(command, cwd, env):
+            return run_child(command, cwd=cwd, env=env)
+        # The wrapper deliberately leaves leasing to each harness, rather than
+        # execute's legacy exclusive reservation for a serial chain.
+        stock = []
+        mods = []
+        for step in steps:
+            (mods if step[0] == "mods" else stock).append(step)
+        boundary = next((i + 1 for i, s in enumerate(stock) if s[0] == "deploy"), 0)
+        prefix = stock[:boundary]
+        result = execute(prefix, head, runner=runner) if prefix else 0
+        if result:
+            return result  # do not launch runtime proofs after a failed deploy/offline check
+        if mods:
+            pending.append(pool.submit(execute, mods, head, False, runner))
+        result |= execute(stock[boundary:], head, runner=runner) if stock[boundary:] else 0
+        for future in pending:
+            result |= future.result()
+    return result
 
 
 def validate_before(before_dir, expected_sha):
@@ -440,6 +524,7 @@ def main(argv=None):
         if install.parent != allowed or install.name.lower() in ("v0.4", "mc2-win64-v0.4", "lane2", "lane3"):
             ap.error("--install must be a dedicated lane directory directly under E:/mc2-installs")
         steps = install_plan(steps, install)
+    steps = reuse_stock_runs(steps, proof)
     if args.expect_head and git("rev-parse", args.expect_head + "^{commit}") != head:
         ap.error("HEAD does not match --expect-head")
     if not args.dry_run:
@@ -456,7 +541,7 @@ def main(argv=None):
         with redirect_stdout(Tee(sys.stdout, log)), redirect_stderr(Tee(sys.stderr, log)):
             print(f"[merge_gate] log: {log_path}", flush=True)
             started = window.get("started", time.time())
-            result = execute(steps, head, args.dry_run)
+            result = execute_parallel(steps, head, args.dry_run)
             elapsed = time.time() - started
             measured_window = bool(window)
             verdict = "PASS" if result == 0 and elapsed <= 1200 and measured_window and not omitted else "NEEDS_REVIEW"

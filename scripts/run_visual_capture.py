@@ -267,6 +267,35 @@ def build_capture_env(bookmarks_path: Path, out_dir: Path, trigger_frame: int, s
 DEFAULT_DURATION_S = 15
 
 
+def smoke_capture(bookmarks, mission, out, verify=False):
+    """Share a stock smoke boot with matching deterministic bookmark captures."""
+    env = {}
+    matching = [b for b in bookmarks if _load_bookmarks(b)[0] == mission]
+    if len(matching) > 1:
+        raise ValueError(f"multiple capture bookmarks for {mission}")
+    for bookmark in matching:
+        _, marks = _load_bookmarks(bookmark)
+        pose_dir = out.resolve() / bookmark.stem
+        if not verify:
+            pose_dir.mkdir(parents=True, exist_ok=False)
+            values, _ = build_capture_env(bookmark.resolve(), pose_dir, 431, 30, True,
+                                         {"MC2_OPTIONS_OVERRIDE": "RemasteredBuildings=TRUE"})
+            env.update({k: v for k, v in values.items() if k.startswith("MC2_")})
+        else:
+            if len(marks) < 2:
+                raise RuntimeError("capture requires at least two bookmark poses")
+            for mark in marks:
+                png = pose_dir / f"{mission}_{_safe_name(mark['name'])}.png"
+                side = png.with_suffix(".json")
+                if not png.is_file() or not side.is_file():
+                    raise RuntimeError(f"tier1 capture missing PNG/sidecar: {png}")
+                metadata = json.loads(side.read_text(encoding="utf-8"))
+                if (not metadata.get("deterministic") or metadata.get("backend") != "vulkan"
+                        or metadata.get("render_options", {}).get("RemasteredBuildings") is not True):
+                    raise RuntimeError(f"invalid tier1 capture: {side}")
+    return env
+
+
 def default_duration(n_bookmarks: int, trigger_frame: int, settle: int) -> int:
     """About 15 s of in-mission time (owner rule); longer only when the sweep's frames cannot fit at 15 fps. The run still ends
     as soon as the PNGs and sidecars are complete, so this is a timeout."""
