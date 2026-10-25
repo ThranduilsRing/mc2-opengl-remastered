@@ -16,6 +16,9 @@ from pathlib import Path
 import subprocess
 import sys
 import time
+import shutil
+import tempfile
+from concurrent.futures import ThreadPoolExecutor
 
 import console_child
 
@@ -112,6 +115,16 @@ def change_domains(paths):
 
 def affected_plan(steps, paths, full=False):
     domains = change_domains(paths)
+    art = full or bool(domains & {"art"}) or any(
+        any(token in p.replace("\\", "/").lower() for token in
+            ("kit", "building", "bdactor", "model_override", "loose_asset", "mc2texcook", "content_pipeline", "content_ir",
+             "appearance", "texture", "material", "gltf", "deploy_payload", "render_options"))
+        for p in paths)
+    # Unknown runtime inputs may change asset routing; only recognized C++
+    # domains can use the reduced non-art serialization pair.
+    art |= any("engine" in change_domains([p]) and not (
+        p.replace("\\", "/").lower().startswith(("code/", "mclib/", "rendercore/", "gameos/"))
+        and Path(p).suffix.lower() in (".cpp", ".h", ".hpp", ".inc")) for p in paths)
     game = bool(domains & {"engine", "shaders", "art"})
     sim = "engine" in domains
     selected = []
@@ -140,9 +153,15 @@ def affected_plan(steps, paths, full=False):
             if batch_tier:
                 cmd += ["--mission", "mc2_01", "--mission", "mc2_17"]
                 env["MC2_GATE_COVERAGE"] = "tier1 mc2_03/10/24 assigned to strict determinism smokes; this stage runs mc2_01/17"
+        if name.startswith("saveload-") and not art and not full:
+            if name not in ("saveload-mc2_01", "saveload-mc2_10"):
+                reason = "no kit/art inputs: day/night save/load pair covers shared serialization"
         if name in shared_smokes and batch_tier:
             env.update(MC2_VULKAN_VALIDATION="1", MC2_MOVER_COHERENCE_AUDIT="1",
                        MC2_DEBUG_STATE_DUMP="1", MC2_DIAG_TAGS="CONFIG,BUILD,DEVICE")
+            if not full:
+                cmd += ["--sim-speed", "2"]
+                env["MC2_GATE_COVERAGE"] = "2 fixed sim ticks per drawn frame; exact pinned chains still required; daily --full retains 1x"
         if reason:
             env["MC2_GATE_SKIP_REASON"] = reason
         selected.append((name, cmd, env))
@@ -151,8 +170,9 @@ def affected_plan(steps, paths, full=False):
             classic = list(cmd)
             if "--out" in classic:
                 classic[classic.index("--out") + 1] += "-classic"
-            selected.append((name + "-classic", classic,
-                             dict(env, MC2_OPTIONS_OVERRIDE="RemasteredBuildings=FALSE")))
+            if art:
+                selected.append((name + "-classic", classic,
+                                 dict(env, MC2_OPTIONS_OVERRIDE="RemasteredBuildings=FALSE")))
     if game or full:
         # Material mode can affect either renderer path. Preserve day/night A/B in both.
         clones = []
@@ -197,8 +217,52 @@ def install_plan(steps, install):
             idx = command.index("--deploy")
             command[idx:idx + 2] = ["--exe", str(install / "mc2.exe")]
         if name == "mods":
-            command += ["--base-install", str(install), "--stage-root", str(install / "mod_smoke-stage"), "--duration", "10"]
+            command += ["--base-install", str(install), "--stage-root", str(install / "mod_smoke-stage"), "--duration", "5"]
         result.append((name, command, env))
+    return result
+
+
+def reuse_stock_runs(steps, proof):
+    """Attach post-deploy day/night captures to tier1; keep pre-deploy evidence.
+
+    Classic captures remain separate because tier1 grades the shipping mode.
+    mc2_03 supplies a default quiet sample; its strict pair retains optional audits.
+    """
+    names = {n for n, _, e in steps if not e.get("MC2_GATE_SKIP_REASON")}
+    if not {"tier1", "capture-after", "quiet", "determinism-mc2_10"} <= names:
+        return steps
+    after = next(c for n, c, _ in steps if n == "capture-after")
+    install = Path(after[after.index("--install") + 1])
+    out = after[after.index("--out") + 1]
+    result = []
+    tier = None
+    for name, command, overrides in steps:
+        command, overrides = list(command), dict(overrides)
+        if name == "tier1":
+            overrides = {k: v for k, v in overrides.items() if k not in
+                         ("MC2_VULKAN_VALIDATION", "MC2_DEBUG_STATE_DUMP", "MC2_DIAG_TAGS")}
+            overrides["MC2_SMOKE_ARTIFACT_ROOT"] = str(proof / "tier1")
+            if "--mission" in command and "mc2_10" not in command:
+                command += ["--mission", "mc2_10"]
+            if "--mission" in command and "mc2_03" not in command:
+                command += ["--mission", "mc2_03"]
+            command += ["--capture-out", out, "--quiet-sample", "mc2_03"]
+            for bookmark in ("mc2_01_saved_205644", "mc2_10_saved_204523"):
+                command += ["--capture-bookmark", str(install / "saved_bookmarks" / (bookmark + ".json"))]
+            overrides["MC2_GATE_COVERAGE"] = "tier1 includes day/night bookmark captures and default mc2_03 quiet sample; strict mc2_03 retains audits/validation, tier1 mc2_17 retains its audit"
+            tier = (name, command, overrides)
+            continue
+        if name == "capture-after":
+            overrides.update(MC2_GATE_SKIP_REASON="tier1 owns matching post-deploy day/night bookmark captures",
+                             MC2_GATE_REUSE_STAGE="tier1")
+        if name == "quiet":
+            command = [sys.executable, "scripts/check-default-build-quiet.py", "--run-root", str(proof / "tier1"),
+                       "--mission", "mc2_03"]
+        if name == "validation" and "determinism-mc2_10" in names:
+            overrides["MC2_GATE_REUSE_STAGE"] = "determinism-mc2_10"
+        result.append((name, command, overrides))
+    # Shared tier1 evidence must exist before comparisons or quiet grading.
+    result.insert(next(i for i, s in enumerate(result) if s[0] == "capture-after"), tier)
     return result
 
 
@@ -209,6 +273,117 @@ def git(*args):
 
 def run_child(command, cwd, env):
     return run_logged(cwd, command, env=env)
+
+
+@contextmanager
+def stock_copy(install, parent=None):
+    """A real copy isolates mutable engine outputs; never hardlink game installs."""
+    install = Path(install).resolve()
+    parent = Path(parent or ("E:/mc2-installs" if os.name == "nt" else install.parent)).resolve()
+    prefix = install.name + "-stock-"
+    target = Path(tempfile.mkdtemp(prefix=prefix, dir=parent)).resolve()
+    started = time.monotonic()
+    try:
+        def ignore(directory, names):
+            if Path(directory).resolve() != install:
+                return []
+            return [n for n in names if n.startswith(".gate-stock-") or n in
+                    ("mod_smoke-stage", "debug_state", "dev_shell_out")]
+        shutil.copytree(install, target, dirs_exist_ok=True, ignore=ignore)
+        print(f"| stock-copy | PASS | {time.monotonic() - started:.1f} |", flush=True)
+        yield target
+    finally:
+        if target.parent != parent or not target.name.startswith(prefix):
+            raise RuntimeError(f"refusing cleanup outside lane install: {target}")
+        size = sum(p.stat().st_size for p in target.rglob("*") if p.is_file())
+        shutil.rmtree(target)
+        print(f"[merge_gate] removed {target}: {size / 2**30:.2f} GiB logical (physical space not measured)", flush=True)
+
+
+def execute_parallel(steps, head, dry_run=False):
+    """Overlap mods, then isolated determinism, with the stock install chain.
+
+    Each harness takes its own FIFO host slot. Never share a batch token between
+    workers: that would assign both engines the same affinity and reservation.
+    Before/deploy/after remain ordered, and every child is joined before return.
+    """
+    if dry_run:
+        print("Coverage plan: two host slots; mods then isolated determinism overlap stock captures/save-load; contracts/harnesses overlap")
+        return execute(steps, head, True)
+    if os.environ.get("MC2_HOST_LEASE_BATCH"):
+        print("Coverage plan: inherited batch reservation requires serial execution")
+        return execute(steps, head)
+    pending = []
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        harness = next((s for s in steps if s[0] == "harnesses" and not s[2].get("MC2_GATE_SKIP_REASON")), None)
+        contracts = next((s for s in steps if s[0] == "contracts" and not s[2].get("MC2_GATE_SKIP_REASON")), None)
+        harness_future = None
+        def timed_child(command, cwd, env):
+            started = time.monotonic()
+            result = run_child(command, cwd=cwd, env=env)
+            result.gate_elapsed = time.monotonic() - started
+            return result
+        def runner(command, cwd, env):
+            nonlocal harness_future
+            if contracts and harness and command == contracts[1]:
+                harness_future = pool.submit(timed_child, harness[1], cwd,
+                    dict(os.environ, **harness[2], MC2_IN_GATE="1"))
+            if harness_future and command == harness[1]:
+                return harness_future.result()
+            return run_child(command, cwd=cwd, env=env)
+        # The wrapper deliberately leaves leasing to each harness, rather than
+        # execute's legacy exclusive reservation for a serial chain.
+        stock = []
+        mods, determinism = [], []
+        for step in steps:
+            (mods if step[0] == "mods" else stock).append(step)
+        # Save fixtures share Windows' user save directory, so stay on one worker.
+        # Determinism has no writes there and consumes its own named artifacts.
+        if any(not s[2].get("MC2_GATE_SKIP_REASON") for s in mods):
+            determinism = [s for s in stock if s[0].startswith("determinism-") and not s[2].get("MC2_GATE_SKIP_REASON")]
+        if determinism:
+            source_names = {s[0] for s in determinism}
+            validation = [s for s in stock if s[0] == "validation" and
+                          set(s[2].get("MC2_GATE_REUSE_STAGE", "").split(",")) <= source_names]
+            determinism += validation
+            stock = [s for s in stock if s not in determinism]
+        boundary = next((i + 1 for i, s in enumerate(stock) if s[0] == "deploy"), 0)
+        prefix = stock[:boundary]
+        result = execute(prefix, head, runner=runner) if prefix else 0
+        if result:
+            return result  # do not launch runtime proofs after a failed deploy/offline check
+        if mods:
+            copy_context, copy_future = None, None
+            if determinism:
+                command = determinism[0][1]
+                install = Path(command[command.index("--install") + 1]).resolve()
+                copy_context = stock_copy(install)
+                copy_future = pool.submit(copy_context.__enter__)
+            def auxiliary():
+                try:
+                    result = execute(mods, head, runner=runner)
+                    if copy_future:
+                        clone = copy_future.result()
+                        remapped = [(n, [a.replace(str(install), str(clone)).replace(install.as_posix(), clone.as_posix())
+                                         for a in c], e) for n, c, e in determinism]
+                        result |= execute(remapped, head, runner=runner)
+                    return result
+                except (OSError, RuntimeError) as exc:
+                    print(f"[merge_gate] stock-copy/determinism FAIL (not waived): {exc}", flush=True)
+                    return 1
+                finally:
+                    if copy_future:
+                        try:
+                            copy_future.result()
+                        except (OSError, RuntimeError):
+                            pass  # stock_copy already cleaned an incomplete copy
+                        else:
+                            copy_context.__exit__(None, None, None)
+            pending.append(pool.submit(auxiliary))
+        result |= execute(stock[boundary:], head, runner=runner) if stock[boundary:] else 0
+        for future in pending:
+            result |= future.result()
+    return result
 
 
 def validate_before(before_dir, expected_sha):
@@ -298,6 +473,7 @@ def execute(steps, head, dry_run=False, runner=run_child):
                 status = "DRY-RUN"
             else:
                 started = time.monotonic()
+                measured = None
                 try:
                     if git("rev-parse", "HEAD") != head:
                         raise RuntimeError("HEAD changed during gate; rerun verification and gate")
@@ -320,11 +496,12 @@ def execute(steps, head, dry_run=False, runner=run_child):
                         results.append(("game-lease", "PASS", time.monotonic() - lease_started))
                         started = time.monotonic()
                     result = runner(command, cwd=ROOT, env=dict(os.environ, **overrides, **batch_env, MC2_IN_GATE="1"))
+                    measured = getattr(result, "gate_elapsed", None)
                     status = "PASS" if result.returncode == 0 else f"FAIL ({result.returncode})"
                 except (OSError, RuntimeError, subprocess.SubprocessError) as exc:
                     print(f"[merge_gate] {name}: {exc}", file=sys.stderr)
                     status = "FAIL: host game lease unavailable (not run)" if lease_error else "FAIL: " + str(exc).replace("|", "/").replace("\n", " ")
-                elapsed = time.monotonic() - started
+                elapsed = time.monotonic() - started if measured is None else measured
                 failed |= status != "PASS"
             results.append((name, status, elapsed))
     finally:
@@ -440,6 +617,10 @@ def main(argv=None):
         if install.parent != allowed or install.name.lower() in ("v0.4", "mc2-win64-v0.4", "lane2", "lane3"):
             ap.error("--install must be a dedicated lane directory directly under E:/mc2-installs")
         steps = install_plan(steps, install)
+    steps = reuse_stock_runs(steps, proof)
+    for name, _, env in steps:
+        if name == "mods" or name.startswith(("determinism-", "saveload-")):
+            env["MC2_SMOKE_ARTIFACT_ROOT"] = str(proof / "smokes" / name)
     if args.expect_head and git("rev-parse", args.expect_head + "^{commit}") != head:
         ap.error("HEAD does not match --expect-head")
     if not args.dry_run:
@@ -456,7 +637,7 @@ def main(argv=None):
         with redirect_stdout(Tee(sys.stdout, log)), redirect_stderr(Tee(sys.stderr, log)):
             print(f"[merge_gate] log: {log_path}", flush=True)
             started = window.get("started", time.time())
-            result = execute(steps, head, args.dry_run)
+            result = execute_parallel(steps, head, args.dry_run)
             elapsed = time.time() - started
             measured_window = bool(window)
             verdict = "PASS" if result == 0 and elapsed <= 1200 and measured_window and not omitted else "NEEDS_REVIEW"

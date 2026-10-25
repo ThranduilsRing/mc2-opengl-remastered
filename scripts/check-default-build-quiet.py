@@ -188,9 +188,27 @@ def main() -> int:
     ap.add_argument("--fresh-smoke", action="store_true",
                     help="launch a fresh default smoke of --exe and grade it (merge-gate stage only)")
     ap.add_argument("--exe", type=Path, help="install executable for --fresh-smoke")
+    ap.add_argument("--run-root", type=Path, help="grade a named current gate's smoke evidence; never search historical runs")
+    ap.add_argument("--mission", default="mc2_17")
     args = ap.parse_args()
 
     logs = [Path(p) for p in args.log]
+    if args.run_root:
+        logs = list(args.run_root.glob(f"*/{args.mission}.log"))
+        if len(logs) != 1 or not logs[0].stat().st_size:
+            print("[quiet-ratchet] FAIL: missing or ambiguous current tier1 quiet sample")
+            return 1
+        try:
+            sample = json.loads((logs[0].parent / "quiet_sample.json").read_text(encoding="utf-8"))
+            env = {**sample["ambient"], **sample["env_extra"]}
+            dirty = [k for k in env if (any(hint in k for hint in DIAG_ENV_HINTS)
+                     or k in ("MC2_MOVER_COHERENCE_AUDIT", "MC2_VULKAN_VALIDATION")
+                     or k.startswith("MC2_VISUAL_")) and env[k] not in ("0", "", "FALSE")]
+            if sample["mission"] != args.mission or not sample["passed"] or dirty:
+                raise ValueError(f"non-default or failed quiet sample: {dirty}")
+        except (OSError, ValueError, KeyError) as exc:
+            print(f"[quiet-ratchet] FAIL: {exc}")
+            return 1
     if args.smoke_artifacts:
         logs.extend(newest_smoke_logs())
     if args.fresh_smoke:

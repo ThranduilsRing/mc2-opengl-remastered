@@ -680,7 +680,13 @@ def main():
                          "skips both subprocesses when the deploy manifest + "
                          "shader tree + HEAD are unchanged since the last "
                          "cached run; the staleness check always runs fresh)")
+    ap.add_argument("--capture-bookmark", type=Path, action="append", default=[],
+                    help="capture this saved camera during its matching mission; repeat for day/night")
+    ap.add_argument("--capture-out", type=Path)
+    ap.add_argument("--quiet-sample", help="mission to run without optional diagnostic/audit gates")
     args = ap.parse_args()
+    if args.capture_bookmark and not args.capture_out:
+        ap.error("--capture-bookmark requires --capture-out")
     _fp_require = os.environ.get("MC2_SMOKE_REQUIRE_FINGERPRINT", "1") != "0"
     _fp_reference = None
     if _fingerprint is not None:
@@ -1422,7 +1428,7 @@ def main():
                 # MC2_DEBUG_STATE_DUMP in the canonical command — shipping
                 # default stays OFF). Any [MOVER_COHERENCE] VIOLATION line
                 # red-flags the mission via the mover_coherence marker bucket.
-                **({"MC2_MOVER_COHERENCE_AUDIT": "1"} if args.tier else {}),
+                **({"MC2_MOVER_COHERENCE_AUDIT": "1"} if args.tier and e.stem != args.quiet_sample else {}),
                 **({"MC2_SIM_SPEED": str(args.sim_speed)} if args.sim_speed else {}),
                 **(render_resolution.tier_size_env(tier, e.resolution) if e.resolution or args.tier == "resolution" or args.show_window
                    else {"MC2_WIDTH": "854", "MC2_HEIGHT": "480"}),
@@ -1441,6 +1447,11 @@ def main():
                 **{k: v for k, v in os.environ.items() if k in _SMOKE_PASSTHROUGH},
             },
         )
+        if args.quiet_sample and e.stem != args.quiet_sample:
+            cfg.env_extra.update(MC2_VULKAN_VALIDATION="1", MC2_DEBUG_STATE_DUMP="1", MC2_DIAG_TAGS="CONFIG,BUILD,DEVICE")
+        if args.capture_bookmark:
+            from run_visual_capture import smoke_capture
+            cfg.env_extra.update(smoke_capture(args.capture_bookmark, e.stem, args.capture_out))
         # SMOKE-GATE-GUARD-1 / HARNESS-HYGIENE-3: ENV-DROP guard, corrected.
         #
         # THE OLD DIAGNOSIS WAS WRONG. This guard used to flag every MC2_* var
@@ -1544,6 +1555,14 @@ def main():
         print(f"[runner] running {label} (tier={tier} duration={duration})",
               file=sys.stderr)
         result = run_one(cfg)
+        if e.stem == args.quiet_sample:
+            (artifact_dir / "quiet_sample.json").write_text(json.dumps({
+                "mission": e.stem, "env_extra": cfg.env_extra,
+                "ambient": {k: v for k, v in os.environ.items() if k in (_smoke_runner.known_gate_names() or ())},
+                "passed": result.verdict.passed,
+            }), encoding="utf-8")
+        if args.capture_bookmark:
+            smoke_capture(args.capture_bookmark, e.stem, args.capture_out, verify=True, exe=cfg.exe[0])
 
         # Deploy-fingerprint scan of the captured log. A mismatch/absence sets
         # _fp_hard_fail, which clears `passed` at the end of main() unless
@@ -1591,8 +1610,7 @@ def main():
         key = baselines.key(cfg.profile, label, tier, duration)
         delta = baselines.destroys_delta(baseline_data, key, result.summary.destroys)
 
-        _asked = (render_resolution.asked_size(tier, e.resolution) if e.resolution or args.tier == "resolution" or args.show_window
-                  else (854, 480))
+        _asked = render_resolution.asked_size(tier, e.resolution, cfg.env_extra)
         if _asked:
             # The size must have reached the engine: a clamped or ignored request would make this tier green without testing the size.
             _asked_w, _asked_h = _asked
@@ -1840,7 +1858,7 @@ def main():
     # failed check. Only runs when MC2_DEBUG_STATE_DUMP=1 was active.
     try:
         _diag_require = os.environ.get("MC2_SMOKE_REQUIRE_DIAG_STATE") == "1"
-        _diag_dump_active = os.environ.get("MC2_DEBUG_STATE_DUMP") == "1"
+        _diag_dump_active = os.environ.get("MC2_DEBUG_STATE_DUMP") == "1" or bool(args.quiet_sample)
         if _diag_dump_active:
             _diag_state_dir_env = os.environ.get("MC2_DEBUG_STATE_DUMP_DIR", "")
             _diag_state_dir = (Path(_diag_state_dir_env)

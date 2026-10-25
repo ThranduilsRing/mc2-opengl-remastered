@@ -13,6 +13,22 @@ quiet = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(quiet)
 
 
+@pytest.mark.parametrize("problem", ["none", "missing", "diagnostic", "failed", "ambiguous"])
+def test_gate_tier1_quiet_sample_fails_closed(tmp_path, monkeypatch, problem):
+    run = tmp_path / "run"
+    run.mkdir()
+    (run / "mc2_17.log").write_text("[SMOKE v1] done")
+    if problem != "missing":
+        (run / "quiet_sample.json").write_text(json.dumps({"mission": "mc2_17", "passed": problem != "failed",
+            "env_extra": {}, "ambient": {"MC2_DEBUG_STATE_DUMP": "1"} if problem == "diagnostic" else {}}))
+    if problem == "ambiguous":
+        (tmp_path / "second").mkdir()
+        (tmp_path / "second/mc2_17.log").write_text("old green")
+    monkeypatch.setattr(sys, "argv", ["quiet", "--run-root", str(tmp_path)])
+    monkeypatch.setattr(quiet, "load_baseline", lambda: {"tags": {"SMOKE v1": {}}})
+    assert quiet.main() == (0 if problem == "none" else 1)
+
+
 @pytest.mark.parametrize("rc,logs", [(2, True), (0, False), (0, True)])
 def test_fresh_smoke_requires_success_and_new_logs(tmp_path, monkeypatch, rc, logs):
     monkeypatch.setattr(quiet.tempfile, "mkdtemp", lambda **kw: str(tmp_path))

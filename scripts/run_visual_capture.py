@@ -267,6 +267,58 @@ def build_capture_env(bookmarks_path: Path, out_dir: Path, trigger_frame: int, s
 DEFAULT_DURATION_S = 15
 
 
+def smoke_capture(bookmarks, mission, out, verify=False, exe=None):
+    """Share a stock smoke boot with matching deterministic bookmark captures."""
+    env = {}
+    matching = [b for b in bookmarks if _load_bookmarks(b)[0] == mission]
+    if len(matching) > 1:
+        raise ValueError(f"multiple capture bookmarks for {mission}")
+    for bookmark in matching:
+        _, marks = _load_bookmarks(bookmark)
+        pose_dir = out.resolve() / bookmark.stem
+        if not verify:
+            pose_dir.mkdir(parents=True, exist_ok=False)
+            values, _ = build_capture_env(bookmark.resolve(), pose_dir, 431, 30, True,
+                                         {"MC2_OPTIONS_OVERRIDE": "RemasteredBuildings=TRUE", "MC2_VISUAL_CAPTURE_CLEAN": "1"})
+            env.update({k: v for k, v in values.items() if k.startswith("MC2_")})
+        else:
+            if len(marks) < 2:
+                raise RuntimeError("capture requires at least two bookmark poses")
+            for mark in marks:
+                png = pose_dir / f"{mission}_{_safe_name(mark['name'])}.png"
+                side = png.with_suffix(".json")
+                if not png.is_file() or not side.is_file():
+                    raise RuntimeError(f"tier1 capture missing PNG/sidecar: {png}")
+                metadata = json.loads(side.read_text(encoding="utf-8"))
+                if (not metadata.get("deterministic") or metadata.get("backend") != "vulkan"
+                        or metadata.get("render_options", {}).get("RemasteredBuildings") is not True):
+                    raise RuntimeError(f"invalid tier1 capture: {side}")
+            if exe:
+                # Keep the ordinary capture-sweep artifact contract, including
+                # executable identity for a later --before-dir reuse.
+                path = out / "capture_run.json"
+                manifest = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {
+                    "kind": "visual-verify-capture", "schema_v": 2, "poses": [],
+                    "frame": 431, "settle": 30, "deterministic_clock": True,
+                    "n_requested": len(bookmarks), "install": str(Path(exe).resolve().parent),
+                    "render_options": metadata["render_options"],
+                    "backend": {"requested": "vulkan", "drew": ["vulkan"]},
+                }
+                if manifest.get("identity") and manifest["identity"]["exe"]["sha256"] != ms.file_sha256(exe):
+                    raise RuntimeError("shared capture executable changed")
+                primary = next((m for m in marks if not m["name"].endswith("_dup")), marks[0])
+                png = pose_dir / f"{mission}_{_safe_name(primary['name'])}.png"
+                manifest["poses"] = [p for p in manifest["poses"] if p["bookmark"] != bookmark.stem]
+                manifest["poses"].append({"bookmark": bookmark.stem, "mission": mission,
+                    "primary_png": str(png), "primary_sha256": ms.file_sha256(png),
+                    "all_present": True, "engine_deterministic": True})
+                manifest["n_captured"] = len(manifest["poses"])
+                ms.attach(manifest, ms.identity_block(generator="tier1_shared_capture", exe_path=exe,
+                                                      repo_root=str(ROOT), deploy_target=str(Path(exe).resolve().parent)))
+                path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
+    return env
+
+
 def default_duration(n_bookmarks: int, trigger_frame: int, settle: int) -> int:
     """About 15 s of in-mission time (owner rule); longer only when the sweep's frames cannot fit at 15 fps. The run still ends
     as soon as the PNGs and sidecars are complete, so this is a timeout."""

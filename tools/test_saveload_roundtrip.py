@@ -195,7 +195,11 @@ def test_run_retains_failed_smoke_evidence_and_limits_liveness_fixture(tmp_path,
     observed = []
     def smoke(*args, **kwargs):
         observed.append(kwargs["env"])
-        return subprocess.CompletedProcess(args, 1, "failed gate")
+        # A newer foreign run must never replace this invocation's evidence.
+        other = artifact.with_name("2099-foreign")
+        other.mkdir(exist_ok=True)
+        (other / "mc2_01.log").write_text("foreign green run")
+        return subprocess.CompletedProcess(args, 1, f"[runner] artifacts: {artifact}\nfailed gate")
     monkeypatch.setattr(rt.subprocess, "run", smoke)
     ok, report = rt.run("mc2_01", 300, False, str(tmp_path / "out"), "lane3")
     assert not ok and "failed gate" in report and any("no load found" in line for line in report)
