@@ -11,6 +11,7 @@
 // Section 10 amendment 2026-05-22: two seams in M1.)
 
 #include "RenderWorld.h"
+#include "ScreenPick.h"
 #include "mc2_diag_verbose.h"
 #include "Gates/gate.h"
 #include "RenderWorld_internal.h"
@@ -828,6 +829,11 @@ LookupResult lookupAtPixel(int screenX, int screenY) {
             warned = true;
         }
         out.lookupFailReason = "NO_POSTPROCESS";
+        return out;
+    }
+    if (!screenPickScenePixel(screenX, screenY, pp->getOutputWidth(), pp->getOutputHeight(),
+                              pp->getWidth(), pp->getHeight())) {
+        out.lookupFailReason = "NATIVE_READBACK_UNAVAILABLE";
         return out;
     }
     mc2vk::ScenePixel pixel;
