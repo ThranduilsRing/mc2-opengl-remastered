@@ -5,11 +5,14 @@
 #include <string_view>
 #include <cstdint>
 
-// Only an unchanged, receipted cook may yield to bundled art. A paired source
-// (even archived stock) says nothing about whether the user edited the KTX2.
-inline bool verifiedLooseTextureCook(const std::filesystem::path& path)
+// Receipts detect user edits; legacy cooks without receipts use a paired stock source.
+inline bool verifiedLooseTextureCook(const std::filesystem::path& path, bool pairedStockSource = false)
 {
     if (path.extension() != ".ktx2") return false;
+    std::error_code error;
+    const bool hasStamp = std::filesystem::exists(path.string() + ".cookstamp", error);
+    if (error) return false;
+    if (!hasStamp) return pairedStockSource && std::filesystem::is_regular_file(path, error);
     std::ifstream stamp(path.string() + ".cookstamp"); // path-audit: loose-only cook provenance
     uint64_t expected = 0;
     if (!(stamp >> std::hex >> expected)) return false;
