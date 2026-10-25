@@ -73,6 +73,16 @@ def test_cooks_then_validates_receipt_and_repairs_corrupt_cache(tmp_path, monkey
     tool.write_bytes(b"rebuilt importer")
     kit.finish(target, manifest, tool, cook)
     assert len(calls) == 9
+    # A retained receipt cannot hide a pruned recipe or an incomplete inventory.
+    next((target / "cache/content-model").glob("*.mci")).unlink()
+    kit.finish(target, manifest, tool, cook)
+    assert len(calls) == 12
+    receipt = target / "cache/content-model/industrial-cook.json"
+    partial = json.loads(receipt.read_text())
+    partial["files"].pop()
+    receipt.write_text(json.dumps(partial))
+    kit.finish(target, manifest, tool, cook)
+    assert len(calls) == 15
     (target / kit.KIT_REL / "extra.glb").write_bytes(b"unversioned")
     with pytest.raises(ValueError, match="unpinned"):
         kit.finish(target, manifest, tool, cook)

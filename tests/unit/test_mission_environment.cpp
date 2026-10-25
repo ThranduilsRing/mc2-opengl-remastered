@@ -255,3 +255,33 @@ TEST_CASE("MissionEnvironment/explicit session profile wins over mounted active 
     CHECK(exposure==2.5f);
     CHECK(GameAdapters::Environment::readProfileSource("data/visual_tuning.json").provider=="mod:env-active");
 }
+
+TEST_CASE("MissionEnvironment/loose building and texture overlays beat bundled kit through real VFS") {
+    MountedProfiles files;
+    mc2::gate::ScopedOverride<"MC2_ACTIVE_MOD"> active(nullptr);
+    mc2::gate::ScopedOverride<"MC2_MOD_DEPS"> deps("mc2-industrial-kit,env-a");
+    mc2::gate::ScopedOverride<"MC2_REBUILD_MOD_CACHE"> rebuild("1");
+    files.put("mods/mc2-industrial-kit/mod.json", R"({"id":"mc2-industrial-kit"})");
+    for (const char* key : {"data/tgl/chemicalplant.tgl", "data/tgl/1024/cp_chemicalplant_0.ktx2"}) {
+        const std::string kit = std::string("mods/mc2-industrial-kit/") + key;
+        files.put(kit, "kit");
+        InitModSearchPaths("mods");
+        REQUIRE(LookupModOwner(key));
+        CHECK(std::string(LookupModOwner(key)) == "mc2-industrial-kit");
+        files.put(key, "legacy building override");
+        InitModSearchPaths("mods");
+        CHECK(LookupModOwner(key) == nullptr);
+        CHECK(LookupModAbsolutePath(key) == nullptr);
+        CHECK(fileExists(key) == FILE_ON_DISK);
+        File input;
+        REQUIRE(input.open(key) == NO_ERR);
+        std::string bytes(input.fileSize(), '\0');
+        input.read(0, reinterpret_cast<MemoryPtr>(bytes.data()), static_cast<long>(bytes.size()));
+        CHECK(bytes == "legacy building override");
+        input.close();
+        files.put(std::string("mods/env-a/") + key, "mounted user building");
+        InitModSearchPaths("mods");
+        REQUIRE(LookupModOwner(key));
+        CHECK(std::string(LookupModOwner(key)) == "env-a");
+    }
+}

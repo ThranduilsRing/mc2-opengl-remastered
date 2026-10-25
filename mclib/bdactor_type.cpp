@@ -6,19 +6,45 @@
 #include "gos_static_prop_batcher.h"
 #include <string_view>
 #include "stock_lamp_definition.h"
+#include "loose_asset_priority.h"
 
 extern char missionName[];
 
-static bool bundledOverrideShadowed(const ModelOverrideRecord& ov, std::string_view iniName, std::string_view baseName)
+static bool userBuildingAsset(const char* path)
 {
-	if (ov.manifestDir != "mods/mc2-industrial-kit/data/model_overrides") return false;
-	const std::string iniPath(iniName), shapeName(baseName);
-	if (LookupModOwner(iniPath.c_str())) return true;
-	for (const char* ext : {".tgl", ".ase", ".glb", ".gltf"})
+	if (const char* owner = LookupModOwner(path); owner && strcmp(owner, "mc2-industrial-kit") != 0)
+		return true;
+	if (!std::filesystem::is_regular_file(path)) return false;
+	return looseAssetDiffers(path, ReadArchiveBytes(path, 64u * 1024u * 1024u));
+}
+
+static bool userBuildingShape(const char* name)
+{
+	for (const char* ext : {".tgl", ".ase", ".glb", ".gltf", ".fbx", ".mcasset.json", ".package.json"})
 	{
 		FullPathFileName path;
-		path.init(tglPath, shapeName.c_str(), ext);
-		if (LookupModOwner(path)) return true;
+		path.init(tglPath, name, ext);
+		if (userBuildingAsset(path)) return true;
+	}
+	return false;
+}
+
+static bool userBuildingTextures(TG_TypeMultiShape* shape)
+{
+	if (!shape) return false;
+	for (long i = 0; i < shape->GetNumTextures(); ++i)
+	{
+		char name[1024];
+		shape->GetTextureName(i, name, sizeof(name));
+		// Both legacy bitmaps and cooked sidecars can customize a stock material.
+		for (int size : {32, 64, 128, 256, 512, 1024, static_cast<int>(ObjectTextureSize)})
+		{
+			const auto path = std::filesystem::path(tglPath) / std::to_string(size) / name;
+			if (userBuildingAsset(path.string().c_str())) return true;
+			auto sidecar = path;
+			sidecar.replace_extension(".ktx2");
+			if (userBuildingAsset(sidecar.string().c_str())) return true;
+		}
 	}
 	return false;
 }
@@ -78,6 +104,7 @@ void BldgAppearanceType::init (const char * fileName)
 	long result = iniFile.open(iniName);
 	if (result != NO_ERR)
 		STOP(("Could not find building appearance INI file %s",iniName));
+	bool userArt = userBuildingAsset(iniName);
 	std::string lampDefinition(iniFile.fileSize(), '\0');
 	iniFile.read(0, reinterpret_cast<MemoryPtr>(lampDefinition.data()), static_cast<long>(lampDefinition.size()));
 	stockTerrainLamp = mc2_stock_lamp::definition(fileName, lampDefinition,
@@ -165,6 +192,7 @@ void BldgAppearanceType::init (const char * fileName)
 			result = iniFile.readIdString(baseName,aseFileName,511);
 			if (result == NO_ERR)
 			{
+				userArt |= userBuildingShape(aseFileName);
 				result = iniFile.readIdFloat(baseLODDist,lodDistance[i]);
 				if (result != NO_ERR)
 					STOP(("LOD %d has no distance value in file %s",i,fileName));
@@ -204,6 +232,7 @@ void BldgAppearanceType::init (const char * fileName)
 	}
 	else
 	{
+		userArt |= userBuildingShape(aseFileName);
 		bldgShape[0] = new TG_TypeMultiShape;
 		gosASSERT(bldgShape[0] != nullptr);
 
@@ -220,58 +249,6 @@ void BldgAppearanceType::init (const char * fileName)
 		strncpy(bldgBaseName, aseFileName, sizeof(bldgBaseName) - 1);
 	}
 
-	// MODEL-OVERRIDE dual-shape: render-only overrides for static props. The stock
-	// bldgShape[] / bldgDmgShape loads stay UNCHANGED (collision, passability and LOS
-	// authority). A registry record supplies the intact render shape and, when it was
-	// cooked with one, the destroyed render shape; the mission's conditions.json may pick
-	// a worn/abandoned variant (default pristine). Any failure falls back to stock.
-	bldgBaseName[sizeof(bldgBaseName) - 1] = 0;
-	if (bldgBaseName[0])
-	{
-		if (mc2::gate::get<"MC2_MODOVERRIDE_TRACE">())
-			mc2::fmt::print_err("[MODOVERRIDE_TRACE] staticProp '{}'\n", mc2::fmt::safe(bldgBaseName));
-		if (const ModelOverrideRecord* ov = ModelOverrideRegistry::instance().resolve("staticProp", bldgBaseName);
-			ov && !bundledOverrideShadowed(*ov, static_cast<const char*>(iniName), bldgBaseName))
-		{
-			const std::string condName = ModelOverrideRegistry::instance().selectedCondition(missionName, bldgBaseName);
-			const ModelOverrideCondition* cond = ov->condition(condName);
-			const std::string& intactSrc = cond ? cond->intact.sourceRelPath : ov->sourceRelPath;
-			const ModelOverrideChain& destroyed = (cond && cond->destroyed.present()) ? cond->destroyed : ov->destroyed;
-			bldgRenderShape = new TG_TypeMultiShape;
-			if (!importOverrideRenderShape(*ov, intactSrc, bldgBaseName, "intact", bldgRenderShape))
-			{
-				delete bldgRenderShape;
-				bldgRenderShape = nullptr;   // stock fallback
-			}
-			if (bldgRenderShape)
-			{
-				propMaterialSource = ov;
-				const auto& lods = cond ? cond->intact.lods : ov->lods;
-				for (const auto& lod : lods)
-				{
-					if (lod.lod <= 0 || lod.lod >= MAX_LODS || bldgRenderLods[lod.lod]) continue;
-					auto shape = std::make_unique<TG_TypeMultiShape>();
-					if (importOverrideRenderShape(*ov, lod.sourceRelPath, bldgBaseName, "LOD", shape.get()))
-					{
-						bldgRenderLods[lod.lod] = std::move(shape);
-						if (lodDistance[lod.lod] <= 0) lodDistance[lod.lod] = lod.distance;
-					}
-				}
-				if (destroyed.present())
-				{
-					bldgDmgRenderShape = std::make_unique<TG_TypeMultiShape>();
-					if (!importOverrideRenderShape(*ov, destroyed.sourceRelPath, bldgBaseName, "destroyed", bldgDmgRenderShape.get()))
-					{
-						bldgDmgRenderShape.reset();   // stock damage fallback
-					}
-				}
-				mc2::fmt::print_err("[MODOVERRIDE] staticProp '{}': render override applied (condition={} destroyed={})\n",
-					mc2::fmt::safe(bldgBaseName), mc2::fmt::safe(cond ? condName.c_str() : "pristine"),
-					mc2::fmt::safe(bldgDmgRenderShape ? "override" : "stock"));
-				fflush(stderr);
-			}
-		}
-	}
 
 	result = iniFile.seekBlock("TGLDamage");
 	if (result == NO_ERR)
@@ -280,6 +257,7 @@ void BldgAppearanceType::init (const char * fileName)
 		if (result != NO_ERR)
 			Fatal(result,"Could not find ASE FileName in building appearance INI file");
 	
+		userArt |= userBuildingShape(aseFileName);
 		FullPathFileName dmgName;
 		dmgName.init(tglPath,aseFileName,".ase");
 	
@@ -387,6 +365,11 @@ void BldgAppearanceType::init (const char * fileName)
 			if (result != NO_ERR)
 				bdStartF[i] = 0;
 				
+			for (const char* ext : {".ase", ".agl"}) {
+				FullPathFileName path;
+				path.init(tglPath, animName, ext);
+				userArt |= userBuildingAsset(path);
+			}
 			FullPathFileName animPath;
 			animPath.init(tglPath,animName,".ase");
 
@@ -411,6 +394,64 @@ void BldgAppearanceType::init (const char * fileName)
 		}
 	}
 	
+	if (importSourceBase[0]) userArt |= userBuildingShape(importSourceBase);
+	for (auto* shape : bldgShape) userArt |= userBuildingTextures(shape);
+	userArt |= userBuildingTextures(bldgDmgShape);
+	if (userArt) mc2::fmt::print_err("[MODOVERRIDE] building '{}': user assets take priority over bundled kit\n", fileName);
+
+	// MODEL-OVERRIDE dual-shape: render-only overrides for static props. The stock
+	// bldgShape[] / bldgDmgShape loads stay UNCHANGED (collision, passability and LOS
+	// authority). A registry record supplies the intact render shape and, when it was
+	// cooked with one, the destroyed render shape; the mission's conditions.json may pick
+	// a worn/abandoned variant (default pristine). Any failure falls back to stock.
+	bldgBaseName[sizeof(bldgBaseName) - 1] = 0;
+	if (bldgBaseName[0])
+	{
+		if (mc2::gate::get<"MC2_MODOVERRIDE_TRACE">())
+			mc2::fmt::print_err("[MODOVERRIDE_TRACE] staticProp '{}'\n", mc2::fmt::safe(bldgBaseName));
+		if (const ModelOverrideRecord* ov = ModelOverrideRegistry::instance().resolve("staticProp", bldgBaseName);
+			ov && !(userArt && ov->manifestDir == "mods/mc2-industrial-kit/data/model_overrides"))
+		{
+			const std::string condName = ModelOverrideRegistry::instance().selectedCondition(missionName, bldgBaseName);
+			const ModelOverrideCondition* cond = ov->condition(condName);
+			const std::string& intactSrc = cond ? cond->intact.sourceRelPath : ov->sourceRelPath;
+			const ModelOverrideChain& destroyed = (cond && cond->destroyed.present()) ? cond->destroyed : ov->destroyed;
+			bldgRenderShape = new TG_TypeMultiShape;
+			if (!importOverrideRenderShape(*ov, intactSrc, bldgBaseName, "intact", bldgRenderShape))
+			{
+				delete bldgRenderShape;
+				bldgRenderShape = nullptr;   // stock fallback
+			}
+			if (bldgRenderShape)
+			{
+				propMaterialSource = ov;
+				const auto& lods = cond ? cond->intact.lods : ov->lods;
+				for (const auto& lod : lods)
+				{
+					if (lod.lod <= 0 || lod.lod >= MAX_LODS || bldgRenderLods[lod.lod]) continue;
+					auto shape = std::make_unique<TG_TypeMultiShape>();
+					if (importOverrideRenderShape(*ov, lod.sourceRelPath, bldgBaseName, "LOD", shape.get()))
+					{
+						bldgRenderLods[lod.lod] = std::move(shape);
+						if (lodDistance[lod.lod] <= 0) lodDistance[lod.lod] = lod.distance;
+					}
+				}
+				if (destroyed.present())
+				{
+					bldgDmgRenderShape = std::make_unique<TG_TypeMultiShape>();
+					if (!importOverrideRenderShape(*ov, destroyed.sourceRelPath, bldgBaseName, "destroyed", bldgDmgRenderShape.get()))
+					{
+						bldgDmgRenderShape.reset();   // stock damage fallback
+					}
+				}
+				mc2::fmt::print_err("[MODOVERRIDE] staticProp '{}': render override applied (condition={} destroyed={})\n",
+					mc2::fmt::safe(bldgBaseName), mc2::fmt::safe(cond ? condName.c_str() : "pristine"),
+					mc2::fmt::safe(bldgDmgRenderShape ? "override" : "stock"));
+				fflush(stderr);
+			}
+		}
+	}
+
 	// A flattened bake must never freeze a stock moving part. Keep the stock
 	// render chain until every cooked LOD retains the animation's nodes.
 	if (bldgRenderShape)

@@ -11,6 +11,7 @@ import console_child
 
 KIT_REL = Path("mods/mc2-industrial-kit")
 MANIFEST = Path("data/kit/industrial-kit.json")
+IMPORT_ARGS = ["--no-ground", "--static-prop"]
 
 
 def sha(path):
@@ -81,20 +82,21 @@ def finish(target_dir, manifest, tool, cooker=subprocess.run):
     extra -= paths | {".modindex-cache"}
     if extra:
         raise ValueError(f"unpinned kit files in install: {sorted(extra)}")
-    identity = hashlib.sha256((sha(tool) + json.dumps(manifest, sort_keys=True)).encode()).hexdigest()
+    models = sorted(p for p in paths if p.endswith(".glb"))
+    identity = hashlib.sha256((sha(tool) + json.dumps(manifest, sort_keys=True)
+                               + json.dumps(IMPORT_ARGS)).encode()).hexdigest()
     cache = target / "cache/content-model"
     receipt = cache / "industrial-cook.json"
     try:
         previous = json.loads(receipt.read_text())
-        if previous["identity"] == identity and previous["files"]:
+        if previous["identity"] == identity and len(previous["files"]) == len(models):
             checked_files(cache, previous["files"])
             return
     except (OSError, ValueError, KeyError):
         pass
-    models = sorted(p for p in paths if p.endswith(".glb"))
     outputs = set()
     for rel in models:
-        result = cooker([str(tool), (KIT_REL / rel).as_posix(), "--no-ground", "--static-prop"],
+        result = cooker([str(tool), (KIT_REL / rel).as_posix(), *IMPORT_ARGS],
                         cwd=target, capture_output=True, text=True, timeout=120,
                         **console_child.child_kwargs(redirected=True))
         if result.returncode:
