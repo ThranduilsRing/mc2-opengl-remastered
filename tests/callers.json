@@ -362,10 +362,17 @@
       "callers_by_stem": [
         {
           "path": "scripts/check-vulkan-bindings.py",
-          "line": 242,
+          "line": 84,
           "evidence": "import_module",
           "reference": "check-binding-slots",
-          "text": "_, blocks = import_module(\"check-binding-slots\").scan_glsl(args.root)"
+          "text": "import_module('check-binding-slots').mutually_exclusive("
+        },
+        {
+          "path": "scripts/check-vulkan-bindings.py",
+          "line": 262,
+          "evidence": "import_module",
+          "reference": "check-binding-slots",
+          "text": "scanner = import_module(\"check-binding-slots\")"
         },
         {
           "path": "scripts/tests/test_native_binding_contracts.py",
@@ -373,6 +380,20 @@
           "evidence": "import_module",
           "reference": "check-binding-slots",
           "text": "checker = importlib.import_module('check-binding-slots')"
+        },
+        {
+          "path": "scripts/tests/test_native_binding_contracts.py",
+          "line": 110,
+          "evidence": "import_module",
+          "reference": "check-binding-slots",
+          "text": "scanner = importlib.import_module('check-binding-slots')"
+        },
+        {
+          "path": "scripts/tests/test_native_binding_contracts.py",
+          "line": 153,
+          "evidence": "import_module",
+          "reference": "check-binding-slots",
+          "text": "assert importlib.import_module('check-binding-slots').main() == 0"
         }
       ]
     },
@@ -1737,7 +1758,7 @@
           "line": 971,
           "evidence": "command",
           "reference": "scripts/check-spirv-artifacts.py",
-          "text": "run_check \"spirv_artifacts\"        \"py -3 scripts/check-spirv-artifacts.py --quiet\""
+          "text": "run_check \"spirv_artifacts\"        \"py -3 scripts/check-spirv-artifacts.py --quiet && py -3 -B -m pytest scripts/tests/test_spirv_fixups.py -q -p no:cacheprovider\""
         }
       ],
       "callers_by_stem": []
@@ -2058,7 +2079,22 @@
           "text": "_assert_pass(subprocess.run([sys.executable, \"scripts/check-vulkan-bindings.py\", \"--self-test\"], **OPTS, **console_child.child_kwargs(redirected=True)))"
         }
       ],
-      "callers_by_stem": []
+      "callers_by_stem": [
+        {
+          "path": "scripts/tests/test_native_binding_contracts.py",
+          "line": 136,
+          "evidence": "import_module",
+          "reference": "check-vulkan-bindings",
+          "text": "checker = importlib.import_module('check-vulkan-bindings')"
+        },
+        {
+          "path": "scripts/tests/test_native_binding_contracts.py",
+          "line": 155,
+          "evidence": "import_module",
+          "reference": "check-vulkan-bindings",
+          "text": "assert importlib.import_module('check-vulkan-bindings').main() == 1"
+        }
+      ]
     },
     {
       "path": "scripts/check-worktree-context.sh",
@@ -2850,6 +2886,13 @@
           "evidence": "import",
           "reference": "console_child",
           "text": "import console_child  # noqa: E402"
+        },
+        {
+          "path": "scripts/tests/test_window_emission.py",
+          "line": 9,
+          "evidence": "import",
+          "reference": "console_child",
+          "text": "import console_child"
         },
         {
           "path": "scripts/verify_campaign_assets.py",
@@ -5112,6 +5155,20 @@
           "text": "import shader_common  # noqa: E402"
         },
         {
+          "path": "scripts/tests/test_spirv_fixups.py",
+          "line": 13,
+          "evidence": "import",
+          "reference": "shader_common",
+          "text": "import shader_common"
+        },
+        {
+          "path": "scripts/tests/test_window_emission.py",
+          "line": 10,
+          "evidence": "import",
+          "reference": "shader_common",
+          "text": "import shader_common"
+        },
+        {
           "path": "tools/shader_offline_build/build_variants.py",
           "line": 40,
           "evidence": "import",
@@ -7355,6 +7412,13 @@
       "callers_by_stem": []
     },
     {
+      "path": "scripts/tests/test_spirv_fixups.py",
+      "basename": "test_spirv_fixups.py",
+      "stem": "test_spirv_fixups",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
       "path": "scripts/tests/test_stage_root.py",
       "basename": "test_stage_root.py",
       "stem": "test_stage_root",
@@ -7393,6 +7457,13 @@
       "path": "scripts/tests/test_vk_offline_proofs.py",
       "basename": "test_vk_offline_proofs.py",
       "stem": "test_vk_offline_proofs",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
+      "path": "scripts/tests/test_window_emission.py",
+      "basename": "test_window_emission.py",
+      "stem": "test_window_emission",
       "callers_by_basename": [],
       "callers_by_stem": []
     },
@@ -8593,7 +8664,7 @@
           "line": 980,
           "evidence": "command",
           "reference": "tools/check_vk_shaders.py",
-          "text": "run_check \"vk_shaders_compile\"     \"py -3 tools/check_vk_shaders.py\""
+          "text": "run_check \"vk_shaders_compile\"     \"py -3 tools/check_vk_shaders.py && py -3 -B -m pytest scripts/tests/test_window_emission.py -q -p no:cacheprovider\""
         }
       ],
       "callers_by_stem": [
@@ -9781,8 +9852,15 @@
           "text": "import gpu_abi_gen as abi"
         },
         {
+          "path": "scripts/tests/test_spirv_fixups.py",
+          "line": 12,
+          "evidence": "import",
+          "reference": "gpu_abi_gen",
+          "text": "import gpu_abi_gen"
+        },
+        {
           "path": "tools/shader_offline_build/slang_compile.py",
-          "line": 144,
+          "line": 152,
           "evidence": "import",
           "reference": "gpu_abi_gen",
           "text": "import gpu_abi_gen as abi"
@@ -15159,7 +15237,7 @@
           "line": 35,
           "evidence": "import",
           "reference": "build_variants",
-          "text": "from build_variants import occupancy_slots as native_occupancy_slots  # noqa: E402"
+          "text": "from build_variants import occupancy_slots as native_occupancy_slots, descriptors  # noqa: E402"
         },
         {
           "path": "scripts/check-spirv-reflection-contract.py",
@@ -15167,6 +15245,13 @@
           "evidence": "import",
           "reference": "build_variants",
           "text": "from build_variants import occupancy_slots  # noqa: E402"
+        },
+        {
+          "path": "scripts/tests/test_spirv_fixups.py",
+          "line": 11,
+          "evidence": "import",
+          "reference": "build_variants",
+          "text": "import build_variants"
         }
       ]
     },
@@ -15192,11 +15277,25 @@
           "text": "import slang_compile  # noqa: E402"
         },
         {
+          "path": "scripts/check-spirv-reflection-contract.py",
+          "line": 44,
+          "evidence": "import",
+          "reference": "slang_compile",
+          "text": "import slang_compile  # noqa: E402"
+        },
+        {
           "path": "scripts/tests/test_slang_build.py",
           "line": 25,
           "evidence": "import",
           "reference": "slang_compile",
           "text": "import slang_compile  # noqa: E402"
+        },
+        {
+          "path": "scripts/tests/test_spirv_fixups.py",
+          "line": 14,
+          "evidence": "import",
+          "reference": "slang_compile",
+          "text": "import slang_compile"
         },
         {
           "path": "scripts/vk_shader_reload.py",
