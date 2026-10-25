@@ -38,7 +38,7 @@
         },
         {
           "path": "scripts/kit_payload.py",
-          "line": 54,
+          "line": 67,
           "evidence": "import",
           "reference": "bootstrap_worktree_build",
           "text": "from bootstrap_worktree_build import find_cmake"
@@ -726,7 +726,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/deploy_payload.py",
-          "line": 1886,
+          "line": 1889,
           "evidence": "command",
           "reference": "scripts/check-deploy-hygiene.py",
           "text": "r = subprocess.run([sys.executable, hygiene, target],"
@@ -2243,7 +2243,7 @@
         },
         {
           "path": "scripts/kit_payload.py",
-          "line": 53,
+          "line": 66,
           "evidence": "import",
           "reference": "configure_ninja",
           "text": "import configure_ninja as cn"
@@ -3765,6 +3765,13 @@
           "text": "import deploy_payload as dp"
         },
         {
+          "path": "scripts/tests/test_kit_payload.py",
+          "line": 178,
+          "evidence": "import",
+          "reference": "deploy_payload",
+          "text": "import deploy_payload as dp"
+        },
+        {
           "path": "scripts/tests/test_lane_names.py",
           "line": 13,
           "evidence": "import",
@@ -3837,7 +3844,7 @@
         },
         {
           "path": "scripts/deploy_payload.py",
-          "line": 1790,
+          "line": 1793,
           "evidence": "import",
           "reference": "exe_fingerprint",
           "text": "from exe_fingerprint import extract, sha_agrees"
@@ -3988,7 +3995,14 @@
       "callers_by_stem": [
         {
           "path": "scripts/deploy_payload.py",
-          "line": 1823,
+          "line": 1232,
+          "evidence": "import",
+          "reference": "kit_payload",
+          "text": "from kit_payload import contained_path"
+        },
+        {
+          "path": "scripts/deploy_payload.py",
+          "line": 1826,
           "evidence": "import",
           "reference": "kit_payload",
           "text": "import kit_payload"
@@ -5846,7 +5860,7 @@
         },
         {
           "path": "tests/smoke/test_render_options_pin.py",
-          "line": 156,
+          "line": 166,
           "evidence": "import",
           "reference": "scripts.smoke_lib.gates",
           "text": "from scripts.smoke_lib.gates import Verdict"
@@ -6052,7 +6066,7 @@
         },
         {
           "path": "tests/smoke/test_render_options_pin.py",
-          "line": 157,
+          "line": 167,
           "evidence": "import",
           "reference": "scripts.smoke_lib.logparse",
           "text": "from scripts.smoke_lib.logparse import LogSummary"
@@ -8066,7 +8080,7 @@
       "callers_by_stem": [
         {
           "path": "tools/content_pipeline/tests/test_content_pipeline.py",
-          "line": 540,
+          "line": 561,
           "evidence": "import",
           "reference": "test_ase_submaterial",
           "text": "from test_ase_submaterial import SINGLE_MAT_ASE"
@@ -8737,21 +8751,21 @@
         },
         {
           "path": "tools/content_pipeline/tests/test_content_pipeline.py",
-          "line": 247,
+          "line": 268,
           "evidence": "import",
           "reference": "tools.content_pipeline.cook",
           "text": "from tools.content_pipeline.cook import build_asset"
         },
         {
           "path": "tools/content_pipeline/tests/test_content_pipeline.py",
-          "line": 315,
+          "line": 336,
           "evidence": "import",
           "reference": "tools.content_pipeline.cook",
           "text": "from tools.content_pipeline.cook import cook"
         },
         {
           "path": "tools/content_pipeline/tests/test_content_pipeline.py",
-          "line": 328,
+          "line": 349,
           "evidence": "import",
           "reference": "tools.content_pipeline.cook",
           "text": "from tools.content_pipeline.cook import cook"
@@ -8801,7 +8815,7 @@
         },
         {
           "path": "tools/content_pipeline/tests/test_content_pipeline.py",
-          "line": 300,
+          "line": 321,
           "evidence": "import",
           "reference": "tools.content_pipeline.frontends",
           "text": "from tools.content_pipeline.frontends import stock_meshdump"
@@ -8931,7 +8945,7 @@
         },
         {
           "path": "tools/content_pipeline/tests/test_content_pipeline.py",
-          "line": 300,
+          "line": 321,
           "evidence": "import",
           "reference": "tools.content_pipeline.frontends.stock_meshdump",
           "text": "from tools.content_pipeline.frontends import stock_meshdump"
@@ -9507,7 +9521,7 @@
       "callers_by_stem": [
         {
           "path": "tools/content_pipeline/tests/test_content_pipeline.py",
-          "line": 314,
+          "line": 335,
           "evidence": "import",
           "reference": "tools.examples.build_modern_tree_pack",
           "text": "from tools.examples.build_modern_tree_pack import recipe"
@@ -17095,7 +17109,7 @@
       "callers_by_basename": [
         {
           "path": "tests/smoke/test_render_options_pin.py",
-          "line": 133,
+          "line": 143,
           "evidence": "load module",
           "reference": "tools/tracy_capture_compare.py",
           "text": "spec = importlib.util.spec_from_file_location(\"tracy_capture_compare_under_test\", ROOT / \"tools\" / \"tracy_capture_compare.py\")"
@@ -17847,7 +17861,7 @@
       "callers_by_stem": [
         {
           "path": "tests/smoke/test_render_options_pin.py",
-          "line": 113,
+          "line": 123,
           "evidence": "import",
           "reference": "capture_ab",
           "text": "import capture_ab"
