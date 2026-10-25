@@ -108,7 +108,7 @@ def data_fingerprint(install: str = INSTALL_DIR, manifest: dict | None = None) -
     """-> {"digest", "inputs", "stock_digest", "overlay", "problems"}: a digest of the install data the simulation reads.
 
     The digest covers two parts. STOCK: the archives by content and the loose trees by relative path and size, leaving out the declared
-    overlay and the `*.beauty` presentation sidecars (render-only, they differ per lane without touching the simulation). OVERLAY: the
+    overlay, `*.beauty` presentation sidecars and texture cook receipts (render-only). OVERLAY: the
     files tests/smoke/sim_determinism/data_overlay.json declares, by content. `problems` names a declared overlay file that is missing or
     changed and a stock part that no longer equals the manifest's `stock_digest`, so a dirty install says why instead of only differing.
     """
@@ -129,6 +129,8 @@ def data_fingerprint(install: str = INSTALL_DIR, manifest: dict | None = None) -
         for dp, dn, fns in os.walk(base):
             dn[:] = [d for d in dn if not d.endswith(".beauty")]
             for fn in fns:
+                if tree == "data/tgl" and fn.endswith(".cookstamp"):
+                    continue  # Texture provenance receipts do not affect simulation data.
                 full = os.path.join(dp, fn)
                 rel = os.path.relpath(full, install).replace(os.sep, "/")
                 if rel not in declared:
@@ -469,6 +471,9 @@ def selftest() -> int:
         with open(os.path.join(inst, "data", "tgl", "x.ini"), "wb") as fh:
             fh.write(b"1234")
         f1 = data_fingerprint(inst, {})
+        with open(os.path.join(inst, "data", "tgl", "x.tga.cookstamp"), "wb") as fh:
+            fh.write(b"123456789abcdef0\n")
+        expect(data_fingerprint(inst, {}) == f1, "texture provenance receipts do not move the data fingerprint")
         with open(os.path.join(inst, "data", "tgl", "x.ini"), "wb") as fh:
             fh.write(b"12345")
         expect(f1["digest"] != data_fingerprint(inst, {})["digest"] and f1["inputs"] == ["mission.fst", "data/tgl/"],
