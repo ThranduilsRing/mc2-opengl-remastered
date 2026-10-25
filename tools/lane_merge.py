@@ -366,7 +366,7 @@ def do_merge(root: str, sha: str, message: str, lane_files=(), lock_path: str | 
             else:
                 with open(os.path.join(root, path), "wb") as f:
                     f.write(data)
-                result = git(root, "add", "--", path)
+                result = git(root, "add", "-u", "--", path)
             if result.returncode:
                 raise OSError(result.stdout.strip())
         except OSError as e:
