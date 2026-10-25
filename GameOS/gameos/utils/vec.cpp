@@ -331,7 +331,7 @@ float dot(const vec4 &u, const vec4 &v){
 	return u.x * v.x + u.y * v.y + u.z * v.z + u.w * v.w;
 }
 
-float lerp(const float u, const float v, const float x){
+float vec_lerp(const float u, const float v, const float x){
 	return u * (1 - x) + v * x;
 }
 

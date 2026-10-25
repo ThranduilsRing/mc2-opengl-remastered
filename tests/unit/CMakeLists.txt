@@ -258,10 +258,15 @@ target_include_directories(mc2_tests PRIVATE
 
 # MINIMAL-VIABLE-HARNESS-1: ffile.cpp/packet.cpp call zlib (compress2/uncompress).
 # 3rdparty/lib/x64/zlib.lib is the static build -- no zlib1.dll needed at run time.
-target_link_libraries(mc2_tests PRIVATE
-    ${MC2_WORKTREE_ROOT}/3rdparty/lib/x64/zlib.lib
-    ole32 windowscodecs   # utils/Image.cpp decodes PNG through WIC
-)
+if(WIN32)
+    target_link_libraries(mc2_tests PRIVATE
+        ${MC2_WORKTREE_ROOT}/3rdparty/lib/x64/zlib.lib
+        ole32 windowscodecs   # utils/Image.cpp decodes PNG through WIC
+    )
+else()
+    find_package(ZLIB REQUIRED)
+    target_link_libraries(mc2_tests PRIVATE ZLIB::ZLIB)
+endif()
 
 # Match main build's preprocessor environment so engine headers parse the
 # same way they do in production. LINUX_BUILD is the load-bearing one
@@ -275,7 +280,7 @@ target_compile_definitions(mc2_tests PRIVATE
     # platform branch on PLATFORM_WINDOWS and disables the x86 inline-asm matrix
     # path on USE_ASSEMBLER_CODE=0 -- both match the main build's global defines
     # (CMakeLists.txt:62,136). Header-include only; no GL context is created.
-    PLATFORM_WINDOWS
+    $<$<PLATFORM_ID:Windows>:PLATFORM_WINDOWS>
     USE_ASSEMBLER_CODE=0
     # MINIMAL-VIABLE-HARNESS-1: on-disk fixtures for the file-stack tests.
     MC2_TEST_FIXTURE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/fixtures"

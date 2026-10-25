@@ -239,7 +239,7 @@ float dot(const vec2 &u, const vec2 &v);
 float dot(const vec3 &u, const vec3 &v);
 float dot(const vec4 &u, const vec4 &v);
 
-float lerp(const float u, const float v, const float x);
+float vec_lerp(const float u, const float v, const float x);
 vec2  lerp(const vec2 &u, const vec2 &v, const float x);
 vec3  lerp(const vec3 &u, const vec3 &v, const float x);
 vec4  lerp(const vec4 &u, const vec4 &v, const float x);

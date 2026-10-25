@@ -1,3 +1,7 @@
+#if !defined(_WIN32)
+// This compatibility header must not shadow the native POSIX declarations.
+#include_next <unistd.h>
+#else
 #ifndef _UNISTD_H
 #define _UNISTD_H    1
 
@@ -60,3 +64,4 @@ typedef unsigned __int64  uint64_t;
 #endif
 
 #endif /* unistd.h  */
+#endif

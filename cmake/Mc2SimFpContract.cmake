@@ -26,4 +26,7 @@ if(MSVC)
     if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
         add_compile_options("$<$<COMPILE_LANGUAGE:C,CXX>:/clang:-ffp-contract=off>")
     endif()
+elseif(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    add_compile_options("$<$<COMPILE_LANGUAGE:C,CXX>:-fno-fast-math>"
+                        "$<$<COMPILE_LANGUAGE:C,CXX>:-ffp-contract=off>")
 endif()
