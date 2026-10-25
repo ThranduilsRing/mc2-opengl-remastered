@@ -69,8 +69,12 @@ float lpa_spotCone(vec3 delta, uint packed, float len, float farD, float omniFal
 {
     uint c = packed >> 24;
     if (c == 0u) return omniFalloff;
-    float outer = lpa_acos01(float(c) * (1.0 / 255.0));
     float cd = dot(delta, lpa_spotAim(packed)) / max(len, 1e-3);
+    float cosOuter = float(c) * (1.0 / 255.0);
+    // Outside the cone the angular ramp is exactly zero. Keep the 255 case:
+    // its zero angle uses the original 1e-3 floor and still lights the axis.
+    if (c != 255u && cd <= cosOuter) return 0.0;
+    float outer = lpa_acos01(cosOuter);
     float t = clamp(1.0 - lpa_acos01(cd) / max(outer, 1e-3), 0.0, 1.0);
     float angular = t * t * (3.0 - 2.0 * t) * t;
     float d0 = 0.35 * farD;
