@@ -1562,7 +1562,7 @@ def main():
                 "passed": result.verdict.passed,
             }), encoding="utf-8")
         if args.capture_bookmark:
-            smoke_capture(args.capture_bookmark, e.stem, args.capture_out, verify=True)
+            smoke_capture(args.capture_bookmark, e.stem, args.capture_out, verify=True, exe=cfg.exe[0])
 
         # Deploy-fingerprint scan of the captured log. A mismatch/absence sets
         # _fp_hard_fail, which clears `passed` at the end of main() unless

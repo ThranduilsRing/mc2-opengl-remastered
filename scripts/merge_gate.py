@@ -618,6 +618,9 @@ def main(argv=None):
             ap.error("--install must be a dedicated lane directory directly under E:/mc2-installs")
         steps = install_plan(steps, install)
     steps = reuse_stock_runs(steps, proof)
+    for name, _, env in steps:
+        if name == "mods" or name.startswith(("determinism-", "saveload-")):
+            env["MC2_SMOKE_ARTIFACT_ROOT"] = str(proof / "smokes" / name)
     if args.expect_head and git("rev-parse", args.expect_head + "^{commit}") != head:
         ap.error("HEAD does not match --expect-head")
     if not args.dry_run:

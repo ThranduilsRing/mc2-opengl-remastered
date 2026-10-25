@@ -267,7 +267,7 @@ def build_capture_env(bookmarks_path: Path, out_dir: Path, trigger_frame: int, s
 DEFAULT_DURATION_S = 15
 
 
-def smoke_capture(bookmarks, mission, out, verify=False):
+def smoke_capture(bookmarks, mission, out, verify=False, exe=None):
     """Share a stock smoke boot with matching deterministic bookmark captures."""
     env = {}
     matching = [b for b in bookmarks if _load_bookmarks(b)[0] == mission]
@@ -293,6 +293,29 @@ def smoke_capture(bookmarks, mission, out, verify=False):
                 if (not metadata.get("deterministic") or metadata.get("backend") != "vulkan"
                         or metadata.get("render_options", {}).get("RemasteredBuildings") is not True):
                     raise RuntimeError(f"invalid tier1 capture: {side}")
+            if exe:
+                # Keep the ordinary capture-sweep artifact contract, including
+                # executable identity for a later --before-dir reuse.
+                path = out / "capture_run.json"
+                manifest = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {
+                    "kind": "visual-verify-capture", "schema_v": 2, "poses": [],
+                    "frame": 431, "settle": 30, "deterministic_clock": True,
+                    "n_requested": len(bookmarks), "install": str(Path(exe).resolve().parent),
+                    "render_options": metadata["render_options"],
+                    "backend": {"requested": "vulkan", "drew": ["vulkan"]},
+                }
+                if manifest.get("identity") and manifest["identity"]["exe"]["sha256"] != ms.file_sha256(exe):
+                    raise RuntimeError("shared capture executable changed")
+                primary = next((m for m in marks if not m["name"].endswith("_dup")), marks[0])
+                png = pose_dir / f"{mission}_{_safe_name(primary['name'])}.png"
+                manifest["poses"] = [p for p in manifest["poses"] if p["bookmark"] != bookmark.stem]
+                manifest["poses"].append({"bookmark": bookmark.stem, "mission": mission,
+                    "primary_png": str(png), "primary_sha256": ms.file_sha256(png),
+                    "all_present": True, "engine_deterministic": True})
+                manifest["n_captured"] = len(manifest["poses"])
+                ms.attach(manifest, ms.identity_block(generator="tier1_shared_capture", exe_path=exe,
+                                                      repo_root=str(ROOT), deploy_target=str(Path(exe).resolve().parent)))
+                path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
     return env
 
 

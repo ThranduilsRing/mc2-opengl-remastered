@@ -550,7 +550,8 @@ def test_gate_retains_both_art_modes_for_affected_saves_and_captures():
 
 
 @pytest.mark.parametrize("paths,count", [(["code/mission.cpp"], 2), (["scripts/kit_payload.py"], 10),
-                                        (["tools/scifi_kit/art/intent.py"], 10), (["unknown/runtime.xyz"], 10)])
+                                        (["tools/scifi_kit/art/intent.py"], 10), (["unknown/runtime.xyz"], 10),
+                                        (["mclib/content_ir.cpp"], 10)])
 def test_gate_save_matrix_tracks_art_path(paths, count):
     import merge_gate as gate
     cases = [(n, e) for n, _, e in gate.affected_plan(gate.plan(6), paths)
@@ -601,7 +602,7 @@ def test_parallel_gate_joins_mods_and_keeps_deploy_barrier(monkeypatch, failure)
     assert started.is_set() and stock_done.is_set()
 
 
-def test_smoke_bookmark_capture_rejects_missing_or_wrong_evidence(tmp_path):
+def test_smoke_bookmark_capture_rejects_missing_or_wrong_evidence(tmp_path, monkeypatch):
     import json
     import run_visual_capture as capture
     bookmark = tmp_path / "day.json"
@@ -620,7 +621,13 @@ def test_smoke_bookmark_capture_rejects_missing_or_wrong_evidence(tmp_path):
         png.write_bytes(b"png")
         png.with_suffix(".json").write_text(json.dumps({"deterministic": True, "backend": "vulkan",
                                                         "render_options": {"RemasteredBuildings": True}}))
-    capture.smoke_capture([bookmark], "mc2_01", out, True)
+    exe = tmp_path / "mc2.exe"
+    exe.write_bytes(b"fixture exe")
+    monkeypatch.setattr(capture.ms, "identity_block", lambda **kw: {"exe": {"sha256": capture.ms.file_sha256(exe)}})
+    capture.smoke_capture([bookmark], "mc2_01", out, True, exe=exe)
+    manifest = json.loads((out / "capture_run.json").read_text())
+    assert manifest["n_captured"] == manifest["n_requested"] == 1
+    assert manifest["identity"]["exe"]["sha256"] == capture.ms.file_sha256(exe)
     png.with_suffix(".json").write_text('{}')
     with pytest.raises(RuntimeError, match="invalid"):
         capture.smoke_capture([bookmark], "mc2_01", out, True)
@@ -877,6 +884,8 @@ def test_gate_without_window_receipt_keeps_full_both_mode_coverage(tmp_path, mon
     assert all("MC2_GATE_SKIP_REASON" not in env for name, _, env in seen
                if name.startswith(("capture-", "saveload-", "determinism-")) and name != "capture-after")
     assert next(e for n, _, e in seen if n == "capture-after")["MC2_GATE_REUSE_STAGE"] == "tier1"
+    assert all(e["MC2_SMOKE_ARTIFACT_ROOT"] == str(tmp_path / "proof/smokes" / n)
+               for n, _, e in seen if n == "mods" or n.startswith(("determinism-", "saveload-")))
 
 
 def test_blocked_game_stages_report_missing_proof_without_launching(monkeypatch, capsys):
