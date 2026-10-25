@@ -1,16 +1,81 @@
 {
   "schema": 1,
   "id": "mc2-industrial-kit",
-  "package": "kit-intent-lods-20261025",
-  "store": "E:\\mc2-ref\\packages\\mc2-industrial-kit\\kit-intent-lods-20261025",
+  "package": "kit-civ-faith-20261025",
+  "store": "E:\\mc2-ref\\packages\\mc2-industrial-kit\\kit-civ-faith-20261025",
   "source_bake_commit": "556288c2d42ae4630ba1e088ca6a30dcd784f440",
   "packaging_commit": "05917c3e0a1fc214839179ee353a4527ef5abbb0",
   "source_root": "E:/mc2-ref/scifi-kit/art/intent-pass",
   "assets": [
     {
+      "id": "centerlobby",
+      "source_bake_tag": "faith",
+      "source_bake": "_work/faith/pbr/centerlobby_pristine-bake.json"
+    },
+    {
       "id": "chemicalplant",
       "source_bake_tag": "r2",
       "source_bake": "_work/r2/pbr/chemicalplant_pristine-bake.json"
+    },
+    {
+      "id": "city2storya",
+      "source_bake_tag": "faith",
+      "source_bake": "_work/faith/pbr/city2storya_pristine-bake.json"
+    },
+    {
+      "id": "city2storyb",
+      "source_bake_tag": "faith",
+      "source_bake": "_work/faith/pbr/city2storyb_pristine-bake.json"
+    },
+    {
+      "id": "city2storyc",
+      "source_bake_tag": "faith",
+      "source_bake": "_work/faith/pbr/city2storyc_pristine-bake.json"
+    },
+    {
+      "id": "city4storya",
+      "source_bake_tag": "faith",
+      "source_bake": "_work/faith/pbr/city4storya_pristine-bake.json"
+    },
+    {
+      "id": "city4storyb",
+      "source_bake_tag": "faith",
+      "source_bake": "_work/faith/pbr/city4storyb_pristine-bake.json"
+    },
+    {
+      "id": "city4storyc",
+      "source_bake_tag": "faith",
+      "source_bake": "_work/faith/pbr/city4storyc_pristine-bake.json"
+    },
+    {
+      "id": "city6storya",
+      "source_bake_tag": "faith",
+      "source_bake": "_work/faith/pbr/city6storya_pristine-bake.json"
+    },
+    {
+      "id": "city6storyb",
+      "source_bake_tag": "faith",
+      "source_bake": "_work/faith/pbr/city6storyb_pristine-bake.json"
+    },
+    {
+      "id": "city6storyc",
+      "source_bake_tag": "faith",
+      "source_bake": "_work/faith/pbr/city6storyc_pristine-bake.json"
+    },
+    {
+      "id": "city8storya",
+      "source_bake_tag": "faith",
+      "source_bake": "_work/faith/pbr/city8storya_pristine-bake.json"
+    },
+    {
+      "id": "city8storyb",
+      "source_bake_tag": "faith",
+      "source_bake": "_work/faith/pbr/city8storyb_pristine-bake.json"
+    },
+    {
+      "id": "city8storyc",
+      "source_bake_tag": "faith",
+      "source_bake": "_work/faith/pbr/city8storyc_pristine-bake.json"
     },
     {
       "id": "civstoragea",
@@ -83,6 +148,11 @@
       "source_bake": "_work/fit1a/pbr/heavyindustrial_pristine-bake.json"
     },
     {
+      "id": "hub",
+      "source_bake_tag": "faith",
+      "source_bake": "_work/faith/pbr/hub_pristine-bake.json"
+    },
+    {
       "id": "industrialcomplex",
       "source_bake_tag": "fit1a",
       "source_bake": "_work/fit1a/pbr/industrialcomplex_pristine-bake.json"
@@ -91,6 +161,46 @@
       "id": "industrialplant",
       "source_bake_tag": "t1",
       "source_bake": "_work/t1/pbr/industrialplant_pristine-bake.json"
+    },
+    {
+      "id": "l_guardhouse",
+      "source_bake_tag": "faith",
+      "source_bake": "_work/faith/pbr/l_guardhouse_pristine-bake.json"
+    },
+    {
+      "id": "l_palacecore",
+      "source_bake_tag": "faith",
+      "source_bake": "_work/faith/pbr/l_palacecore_pristine-bake.json"
+    },
+    {
+      "id": "l_palacegate",
+      "source_bake_tag": "faith",
+      "source_bake": "_work/faith/pbr/l_palacegate_pristine-bake.json"
+    },
+    {
+      "id": "l_palacetwr",
+      "source_bake_tag": "faith",
+      "source_bake": "_work/faith/pbr/l_palacetwr_pristine-bake.json"
+    },
+    {
+      "id": "l_palacewing",
+      "source_bake_tag": "faith",
+      "source_bake": "_work/faith/pbr/l_palacewing_pristine-bake.json"
+    },
+    {
+      "id": "l_residencecore",
+      "source_bake_tag": "faith",
+      "source_bake": "_work/faith/pbr/l_residencecore_pristine-bake.json"
+    },
+    {
+      "id": "l_residenceleft",
+      "source_bake_tag": "faith",
+      "source_bake": "_work/faith/pbr/l_residenceleft_pristine-bake.json"
+    },
+    {
+      "id": "l_residenceright",
+      "source_bake_tag": "faith",
+      "source_bake": "_work/faith/pbr/l_residenceright_pristine-bake.json"
     },
     {
       "id": "l_turretgenerator",
@@ -106,6 +216,11 @@
       "id": "liquidstorage",
       "source_bake_tag": "t1",
       "source_bake": "_work/t1/pbr/liquidstorage_pristine-bake.json"
+    },
+    {
+      "id": "lobby",
+      "source_bake_tag": "faith",
+      "source_bake": "_work/faith/pbr/lobby_pristine-bake.json"
     },
     {
       "id": "pipetank",
@@ -126,6 +241,66 @@
       "id": "purificationplant",
       "source_bake_tag": "r2",
       "source_bake": "_work/r2/pbr/purificationplant_pristine-bake.json"
+    },
+    {
+      "id": "s_admin_core",
+      "source_bake_tag": "faith",
+      "source_bake": "_work/faith/pbr/s_admin_core_pristine-bake.json"
+    },
+    {
+      "id": "s_admin_entry",
+      "source_bake_tag": "faith",
+      "source_bake": "_work/faith/pbr/s_admin_entry_pristine-bake.json"
+    },
+    {
+      "id": "s_admin_wing",
+      "source_bake_tag": "faith",
+      "source_bake": "_work/faith/pbr/s_admin_wing_pristine-bake.json"
+    },
+    {
+      "id": "s_adminquarter",
+      "source_bake_tag": "faith",
+      "source_bake": "_work/faith/pbr/s_adminquarter_pristine-bake.json"
+    },
+    {
+      "id": "s_gov1",
+      "source_bake_tag": "faith",
+      "source_bake": "_work/faith/pbr/s_gov1_pristine-bake.json"
+    },
+    {
+      "id": "s_gov2",
+      "source_bake_tag": "faith",
+      "source_bake": "_work/faith/pbr/s_gov2_pristine-bake.json"
+    },
+    {
+      "id": "s_govresidence",
+      "source_bake_tag": "faith",
+      "source_bake": "_work/faith/pbr/s_govresidence_pristine-bake.json"
+    },
+    {
+      "id": "s_main",
+      "source_bake_tag": "faith",
+      "source_bake": "_work/faith/pbr/s_main_pristine-bake.json"
+    },
+    {
+      "id": "s_main_leftwing",
+      "source_bake_tag": "faith",
+      "source_bake": "_work/faith/pbr/s_main_leftwing_pristine-bake.json"
+    },
+    {
+      "id": "s_main_rightwing",
+      "source_bake_tag": "faith",
+      "source_bake": "_work/faith/pbr/s_main_rightwing_pristine-bake.json"
+    },
+    {
+      "id": "s_main_stairs",
+      "source_bake_tag": "faith",
+      "source_bake": "_work/faith/pbr/s_main_stairs_pristine-bake.json"
+    },
+    {
+      "id": "s_quetragon",
+      "source_bake_tag": "faith",
+      "source_bake": "_work/faith/pbr/s_quetragon_pristine-bake.json"
     },
     {
       "id": "smallfueltank",
@@ -180,6 +355,386 @@
   ],
   "files": [
     {
+      "path": "content/centerlobby.mc2ir.json",
+      "sha256": "512f4b40ff12b57b52e652b81d4c65bb4893e2a6b8502aac9c4b705374d1f197",
+      "bytes": 16123343
+    },
+    {
+      "path": "content/chemicalplant.mc2ir.json",
+      "sha256": "9b6beba63c8db9c193225f4eaf4aa960b73c7dadaf53841123528d0b990e18de",
+      "bytes": 32858639
+    },
+    {
+      "path": "content/city2storya.mc2ir.json",
+      "sha256": "3e506b9f6f1e9db843082a3d5768db3588b09aeab1e89b18ea2410683da9ac60",
+      "bytes": 26324569
+    },
+    {
+      "path": "content/city2storyb.mc2ir.json",
+      "sha256": "8dba0dd3981aa648f48eefb784ff5fda2d74e7b71371dd956aa77fa1a0340e75",
+      "bytes": 26329951
+    },
+    {
+      "path": "content/city2storyc.mc2ir.json",
+      "sha256": "4afca5ebf5224bca28aff279c534a97d3f78106182189da64238e7a6f62f15b4",
+      "bytes": 25720206
+    },
+    {
+      "path": "content/city4storya.mc2ir.json",
+      "sha256": "8b07d78d862668f203d7816e0ff5db9942fa1dc461812831035d2ce9a4dfcb8b",
+      "bytes": 19007947
+    },
+    {
+      "path": "content/city4storyb.mc2ir.json",
+      "sha256": "9dbbcdca4031334e516bb826f7fc87c7e3e0f6043fb8179f5a3ccf23063c2a09",
+      "bytes": 20552160
+    },
+    {
+      "path": "content/city4storyc.mc2ir.json",
+      "sha256": "e03a1bc6e54396023a328702935b90e439fa9b630d574c36bb52ea4610b6b829",
+      "bytes": 19007946
+    },
+    {
+      "path": "content/city6storya.mc2ir.json",
+      "sha256": "019b0bd520611744dd9839a8dad2b96071051d98740a5f3c7d3f2a016935c6d4",
+      "bytes": 10062294
+    },
+    {
+      "path": "content/city6storyb.mc2ir.json",
+      "sha256": "6df313dbe85ea3638f87710cf21b33ba0b90a33a28cf298fe63596e54a2de59e",
+      "bytes": 10062294
+    },
+    {
+      "path": "content/city6storyc.mc2ir.json",
+      "sha256": "866c3695ef5b83c950920af9282ba501603f6a3fd43283f4c0c889607536dc75",
+      "bytes": 10062294
+    },
+    {
+      "path": "content/city8storya.mc2ir.json",
+      "sha256": "c8942631ff6dd3c566c5fdd434a98fb7bb575431fbf8999d629e1350fc8d4a41",
+      "bytes": 13218335
+    },
+    {
+      "path": "content/city8storyb.mc2ir.json",
+      "sha256": "a4d7850b50b02c5ae76079787fa02c27b7b538b558fea34c5024819e0728b4cc",
+      "bytes": 13218327
+    },
+    {
+      "path": "content/city8storyc.mc2ir.json",
+      "sha256": "6f65266318f4499177ce68d03466f2fd5aed867d78c63a20719fbbbd93add83e",
+      "bytes": 13218327
+    },
+    {
+      "path": "content/civ-approved.json",
+      "sha256": "158e5b85c29acdcd477e8d75209acc73aaf24c99973fbdb28c5202d6f9e82efb",
+      "bytes": 29652
+    },
+    {
+      "path": "content/civstoragea.mc2ir.json",
+      "sha256": "0900d28f8a4e8d2439dd16bb5c6b46fae0ce83f754e495e2a53a25ad54cd8329",
+      "bytes": 7238773
+    },
+    {
+      "path": "content/civstorageb.mc2ir.json",
+      "sha256": "23c88e185bb4b3591c888658eb1c158117c41b7dc7db472c4dc3da1cfcac5c0d",
+      "bytes": 7726755
+    },
+    {
+      "path": "content/civstoragec.mc2ir.json",
+      "sha256": "1851b38659e139c4da3642716207c39118fac88f67da0f276480e9248fc11a56",
+      "bytes": 4526315
+    },
+    {
+      "path": "content/cornerpipe.mc2ir.json",
+      "sha256": "0fa8522149b12b405b035be0c07cf30f87b9d278c6cdd2e5d2410ba1b7ec9645",
+      "bytes": 11226870
+    },
+    {
+      "path": "content/crane.mc2ir.json",
+      "sha256": "85952f34f34856aaca56f679905de06cba7158e86ca3a58bed8a7033a71b04fb",
+      "bytes": 7290602
+    },
+    {
+      "path": "content/endpipe.mc2ir.json",
+      "sha256": "4f2dfe8a367937e91fe3abba41d6724ad1a667f49368406d41565b3cc86ffde6",
+      "bytes": 9477060
+    },
+    {
+      "path": "content/factorylg.mc2ir.json",
+      "sha256": "a08be40be08ef2d110619ee031554dc7f1f0ab8f16a0e1627e6c09c004e382d7",
+      "bytes": 17966631
+    },
+    {
+      "path": "content/factorymd.mc2ir.json",
+      "sha256": "2440cd74d857b07f35cae496ff5b40d4176da49dfb217ea0d483c25a2f63b626",
+      "bytes": 16987351
+    },
+    {
+      "path": "content/factorysm.mc2ir.json",
+      "sha256": "48396cc90a86f6891109004fb7ff7c977873419927c4b3edc397d90a059e6cae",
+      "bytes": 20894582
+    },
+    {
+      "path": "content/fourwaypipe.mc2ir.json",
+      "sha256": "0d7c778466c332f195a3dfae64d2a4695e5d827fc4eeff0e186e5be13ecdf947",
+      "bytes": 14746396
+    },
+    {
+      "path": "content/fuelpipe.mc2ir.json",
+      "sha256": "46887118eb7fa27fbbd67037461856aae62250639fbe9dd653fef764832e1383",
+      "bytes": 2099572
+    },
+    {
+      "path": "content/gantry.mc2ir.json",
+      "sha256": "2e58cf7e34de71d9c4ee1d5b1f824182543b0d05b0ed96c1d4050e0f1f00877d",
+      "bytes": 33826099
+    },
+    {
+      "path": "content/grainstorage.mc2ir.json",
+      "sha256": "28991d8dcb44e4c7a08baf2cd1a7a1c66a861caa3f8e625bddaf14afbec15b37",
+      "bytes": 27949851
+    },
+    {
+      "path": "content/heavyindustrial.mc2ir.json",
+      "sha256": "ce69bacf6bae5a72de2447a11dcfeb5c4251a8a5558f42cad9e3ec35f1af08d3",
+      "bytes": 23087316
+    },
+    {
+      "path": "content/hub.mc2ir.json",
+      "sha256": "ded89ffe322d1068232632fcefeddc1efbfcc81d7ceb0409f661869051b47d21",
+      "bytes": 31859218
+    },
+    {
+      "path": "content/industrialcomplex.mc2ir.json",
+      "sha256": "a9730007e2d606eaf4a1e878cfee53e1a746618830ed29aa7f2f5faef5c0c894",
+      "bytes": 13726298
+    },
+    {
+      "path": "content/industrialplant.mc2ir.json",
+      "sha256": "1be1bfe9f858b74a4eda878c585a7bdc299a59d958fdaeca9ac9596f829b8256",
+      "bytes": 23327804
+    },
+    {
+      "path": "content/l_guardhouse.mc2ir.json",
+      "sha256": "6a984c72579ae456d69505016ff2ec6232aa273f80e539d68449e1e0dc1a21c6",
+      "bytes": 24899721
+    },
+    {
+      "path": "content/l_palacecore.mc2ir.json",
+      "sha256": "8c0b4a48e1b372d14073e9d1e7da20004fd24530c7f82468aa84f5cb65483d87",
+      "bytes": 10856229
+    },
+    {
+      "path": "content/l_palacegate.mc2ir.json",
+      "sha256": "c585df7e80a797a2bdcf8a58ee0893f94864ce3bd57034b75e4df978677dada7",
+      "bytes": 29596504
+    },
+    {
+      "path": "content/l_palacetwr.mc2ir.json",
+      "sha256": "d30f4d014f55926c659975e185bc1fe4a6d10218c1c7e962d3459b8165ad523b",
+      "bytes": 15781499
+    },
+    {
+      "path": "content/l_palacewing.mc2ir.json",
+      "sha256": "59986f54936191c716ed9271bcee08878d973cce7bec0c0272a5163ba0204479",
+      "bytes": 10435115
+    },
+    {
+      "path": "content/l_residencecore.mc2ir.json",
+      "sha256": "543e1c23089af863ec16f337d8aa99cf3abfb011516fef04e28b07d9e37cc835",
+      "bytes": 17333462
+    },
+    {
+      "path": "content/l_residenceleft.mc2ir.json",
+      "sha256": "409ca93085cda4c94e9f48e097c3e5f494efb2cde509a0eebf8a3201a7f511eb",
+      "bytes": 23088504
+    },
+    {
+      "path": "content/l_residenceright.mc2ir.json",
+      "sha256": "be384b2f526ac5402b49e36f6bf917a6f1f318a7fe26f460b293a8ab1ef26d46",
+      "bytes": 23174888
+    },
+    {
+      "path": "content/l_turretgenerator.mc2ir.json",
+      "sha256": "eeb7dd2b38b286e65a2ad1b6688f85de71073438eb1567173bc82c55a75f8cb5",
+      "bytes": 23940782
+    },
+    {
+      "path": "content/largefueltank.mc2ir.json",
+      "sha256": "c82c53b305f73c0f0599699fe86bc7e954d603f4bfcb8a61a986215aaadbda5c",
+      "bytes": 26123105
+    },
+    {
+      "path": "content/liquidstorage.mc2ir.json",
+      "sha256": "eadf69a1d0bc27badc607b7ca0945d38b7eaff894a7118a6a626b5838d34a14c",
+      "bytes": 29234276
+    },
+    {
+      "path": "content/lobby.mc2ir.json",
+      "sha256": "70e2c7eefbeef1d51fa3370edfbb0e96907fbf2f347b25e9e7da08b9962fa5c3",
+      "bytes": 18654688
+    },
+    {
+      "path": "content/pipetank.mc2ir.json",
+      "sha256": "8c86dc5165e888677a5b162172ca606679459a3c42f2700544f278eb6681bcfc",
+      "bytes": 21849512
+    },
+    {
+      "path": "content/powergenerator.mc2ir.json",
+      "sha256": "ae7c75392536c60d7be78af5fb1236665566d9a0dea5f26cabcc0aa880151bbc",
+      "bytes": 25152749
+    },
+    {
+      "path": "content/processingplant.mc2ir.json",
+      "sha256": "2280936e1b7a8ddef94dd6d86d8c36b5c5ab392d2432647812f23f805fdfb8e5",
+      "bytes": 33075239
+    },
+    {
+      "path": "content/purificationplant.mc2ir.json",
+      "sha256": "dec7c76a86729f49cc7fefe1fcaf167d5e4663d1ddcd5a89b696d90d448f8795",
+      "bytes": 17711787
+    },
+    {
+      "path": "content/report.json",
+      "sha256": "dee0a2984ee078dc0285ddc1cdca02d4c999535a6b49e562dab2873c9d9825dd",
+      "bytes": 8799551
+    },
+    {
+      "path": "content/s_admin_core.mc2ir.json",
+      "sha256": "063c8317253d9ac77c10ee821bd2c5369d61cca82d96d5c79ef948bd4f77c871",
+      "bytes": 37962465
+    },
+    {
+      "path": "content/s_admin_entry.mc2ir.json",
+      "sha256": "8012adaaa8c904e4467d6fa0154efb751f1aef9b82a57311ddc29919defde929",
+      "bytes": 22060111
+    },
+    {
+      "path": "content/s_admin_wing.mc2ir.json",
+      "sha256": "63acf7ce1a613888ba74522df59b42116c308936bb8285600494b5051b5de9ba",
+      "bytes": 7353839
+    },
+    {
+      "path": "content/s_adminquarter.mc2ir.json",
+      "sha256": "9b2f035b8b31396881facd2809d6d23bf4cba9872808658f7522e53395ccc0c9",
+      "bytes": 22619740
+    },
+    {
+      "path": "content/s_gov1.mc2ir.json",
+      "sha256": "be1940d0e0beb2af3ab7f5e5528600609b95a0f56c26505a1d312e2aa30175b8",
+      "bytes": 11976737
+    },
+    {
+      "path": "content/s_gov2.mc2ir.json",
+      "sha256": "c55872680da7334fe73a36935a79d021cad1863fab4b3f5ba69e313c99f6f7d9",
+      "bytes": 7263821
+    },
+    {
+      "path": "content/s_govresidence.mc2ir.json",
+      "sha256": "4b35d82ec27cebee6c0257b502c5fb2b0eab427053073d03b4545fb26c9009a7",
+      "bytes": 20680903
+    },
+    {
+      "path": "content/s_main.mc2ir.json",
+      "sha256": "df6e20dd64b275a6476c286d6e7b4e32b34019d5a878b066752df2c861863fe3",
+      "bytes": 15186895
+    },
+    {
+      "path": "content/s_main_leftwing.mc2ir.json",
+      "sha256": "390bc9ca0f51d12cbfa57e018b5e31f7460f7d9d9579d23dc01dff1eb197efd8",
+      "bytes": 8242905
+    },
+    {
+      "path": "content/s_main_rightwing.mc2ir.json",
+      "sha256": "c5354a90815bba15b0140b63f897938a746cd2727d5198ea0aa8e5cf37f1a80a",
+      "bytes": 9790130
+    },
+    {
+      "path": "content/s_main_stairs.mc2ir.json",
+      "sha256": "280c63ab63f63223baaa0692bb97848b6201fd5f0e03fc48bd26c89d7b0599d0",
+      "bytes": 8536766
+    },
+    {
+      "path": "content/s_quetragon.mc2ir.json",
+      "sha256": "a948740cb8f991d0d0605056584820c2fd45970a7909b47f9e80b5a96a80d3e8",
+      "bytes": 9140363
+    },
+    {
+      "path": "content/smallfueltank.mc2ir.json",
+      "sha256": "67e32148381fd7b25fc9a9247ce84fc67600aa4be2ff3a0a27aaa09c81ddba00",
+      "bytes": 6908737
+    },
+    {
+      "path": "content/straightpipe1.mc2ir.json",
+      "sha256": "b7ce11f9c46ca6344c7f948b2a229f93e1a9ef91464c9e18b982844e5001d085",
+      "bytes": 1424337
+    },
+    {
+      "path": "content/straightpipe2.mc2ir.json",
+      "sha256": "7b3649e355db585485834db24bdf473210cd6c3dabaf971a9cca2ac003eaf454",
+      "bytes": 2129856
+    },
+    {
+      "path": "content/straightpipe3.mc2ir.json",
+      "sha256": "aec1eac42bdc0784559f806dc3f4b9ae570928a3693048ab66791222ecb653ee",
+      "bytes": 2154018
+    },
+    {
+      "path": "content/threewaypipe.mc2ir.json",
+      "sha256": "ac2b7034710d767dca52b2bfdefa60aa4f1f76ad8cfb893525726e5cd7cb595b",
+      "bytes": 12824929
+    },
+    {
+      "path": "content/transformerstation.mc2ir.json",
+      "sha256": "18be7f0d6bcff08c2dca0fa1a8af7c60bae2242bdd5d546c794707dc6f9f0fea",
+      "bytes": 19574932
+    },
+    {
+      "path": "content/valvestation.mc2ir.json",
+      "sha256": "c15b449cc3de618f3f5508fb2aaff2d6bbe66c469965c1c7071d5425b9ef72a2",
+      "bytes": 13704945
+    },
+    {
+      "path": "content/wasteprocessor.mc2ir.json",
+      "sha256": "2b67de9dabe04d72b6e96486c8e60b034e8ae8fc29291d1de6e37dca8a9fde59",
+      "bytes": 15692204
+    },
+    {
+      "path": "content/watertower.mc2ir.json",
+      "sha256": "23d5abafa79c42cd8ae2a0fea4e78d9b72e9401a2a935ebbb8188b460e7897b1",
+      "bytes": 13224377
+    },
+    {
+      "path": "content/weaponsfacility.mc2ir.json",
+      "sha256": "848df38cba71453111dcca606f81470e70fce3828803cfd0d2760a1af1cfc638",
+      "bytes": 29953936
+    },
+    {
+      "path": "data/model_overrides/centerlobby/detail/0_normal.ktx2",
+      "sha256": "d0c5b6fe0f5684ce1e112d56ad53f97b8027fea6cc690ea2bbcbca65181674f4",
+      "bytes": 349936
+    },
+    {
+      "path": "data/model_overrides/centerlobby/detail/0_orm.ktx2",
+      "sha256": "8035bc96eae90b02df94a35002e69e89ceb29e5e2eecfca63ccefb85565a124f",
+      "bytes": 349920
+    },
+    {
+      "path": "data/model_overrides/centerlobby/pristine_intact_lod0.glb",
+      "sha256": "7aed378abc4c52fa2d003f82ace09cf89a4a553b22c249fd2b7c9bc80bdf665b",
+      "bytes": 3970808
+    },
+    {
+      "path": "data/model_overrides/centerlobby/pristine_intact_lod1.glb",
+      "sha256": "d8f1d9a86059b94aa1827e87bf243d50d5a1975cb85ef043668c5dc59a1b4f85",
+      "bytes": 1896984
+    },
+    {
+      "path": "data/model_overrides/centerlobby/pristine_intact_lod2.glb",
+      "sha256": "7a3149abf7a4700d8fa50bbf09a6e9b772dad5f009a352b14c6e8db56fe400ad",
+      "bytes": 1282228
+    },
+    {
       "path": "data/model_overrides/chemicalplant/detail/0_normal.ktx2",
       "sha256": "263447580060d3890d3e3c16a723ee1fde1ad41db99594dfc7a18103c20d0d4e",
       "bytes": 349936
@@ -208,6 +763,366 @@
       "path": "data/model_overrides/chemicalplant/pristine_intact_lod2.glb",
       "sha256": "0af077ca188727422ad96b0fabaa7896186e4d49185e3a4f057a0ec932c48192",
       "bytes": 2823024
+    },
+    {
+      "path": "data/model_overrides/city2storya/detail/0_normal.ktx2",
+      "sha256": "c7a77be1cf4e9c9e0e7e71e3a9b976bb2afbfcec728846711c0a8c8ddef677ea",
+      "bytes": 349936
+    },
+    {
+      "path": "data/model_overrides/city2storya/detail/0_orm.ktx2",
+      "sha256": "34378993fa051a5e9b0be96b9cef1c7323554409b896f7da5dbe962947991181",
+      "bytes": 349920
+    },
+    {
+      "path": "data/model_overrides/city2storya/detail/3_orm.ktx2",
+      "sha256": "06bd217d68faa6e8d3034f97fd49b5e4be0592944063483a4d3a6fa5d32fb05f",
+      "bytes": 349920
+    },
+    {
+      "path": "data/model_overrides/city2storya/pristine_intact_lod0.glb",
+      "sha256": "c7239cb4eda2ef9baadce366302e7a8a1b48cd9a4ace6c05795e3f07fc5a6d24",
+      "bytes": 6514032
+    },
+    {
+      "path": "data/model_overrides/city2storya/pristine_intact_lod1.glb",
+      "sha256": "83946f825fc322ab1d5e7543d37c5bcde331cf4851a026007cab833e479a0c3c",
+      "bytes": 3028728
+    },
+    {
+      "path": "data/model_overrides/city2storya/pristine_intact_lod2.glb",
+      "sha256": "cd7d1a72dd9c7b50ff7a2d02db449d996f35da4e265a55f53e062a94d916f85f",
+      "bytes": 1472464
+    },
+    {
+      "path": "data/model_overrides/city2storyb/detail/0_normal.ktx2",
+      "sha256": "81e88388a52a95a0616de4e66baeb12e7e81e384a346f4d9177f2a9d769a94f1",
+      "bytes": 349936
+    },
+    {
+      "path": "data/model_overrides/city2storyb/detail/0_orm.ktx2",
+      "sha256": "9478f85b96e99221fae4860fde12e238ea289a323bda4dd704bb32266dcfdbf2",
+      "bytes": 349920
+    },
+    {
+      "path": "data/model_overrides/city2storyb/detail/3_orm.ktx2",
+      "sha256": "be72eaef949b9e41bf134124be01c1363bbe64de5c9d90fb24d1b6b8ad380227",
+      "bytes": 349920
+    },
+    {
+      "path": "data/model_overrides/city2storyb/pristine_intact_lod0.glb",
+      "sha256": "950712ced3c40f46f1ac6279be60be8234d51b453f5b79fe0327e2ddb8aabbd2",
+      "bytes": 6515380
+    },
+    {
+      "path": "data/model_overrides/city2storyb/pristine_intact_lod1.glb",
+      "sha256": "8f958075ea917ab967c48d0bb13c38a25466d1635b2ca92e611c479ff06e38ef",
+      "bytes": 3030564
+    },
+    {
+      "path": "data/model_overrides/city2storyb/pristine_intact_lod2.glb",
+      "sha256": "4f6e95ccb9d7df602eb8a01600f6f9592d4821c83ceb972536ca32c835ac0aa7",
+      "bytes": 1471456
+    },
+    {
+      "path": "data/model_overrides/city2storyc/detail/0_normal.ktx2",
+      "sha256": "3946b7d37c9a26689dfd3f3351866b5eca08edbf9254e681c8707fc499f542de",
+      "bytes": 349936
+    },
+    {
+      "path": "data/model_overrides/city2storyc/detail/0_orm.ktx2",
+      "sha256": "d9da38346e2fbece5308fe577ee3ce336e7433542121f79ca231ced08e0a7eac",
+      "bytes": 349920
+    },
+    {
+      "path": "data/model_overrides/city2storyc/detail/3_orm.ktx2",
+      "sha256": "fe34a821a68b8da3d05f98443d8ded497ad24c864f62a35a01e0de81e465ad53",
+      "bytes": 349920
+    },
+    {
+      "path": "data/model_overrides/city2storyc/pristine_intact_lod0.glb",
+      "sha256": "cf4d661183e4fd9698b663bb3170445cd3b1196251209f4aea8e7c07b2162cb0",
+      "bytes": 6362940
+    },
+    {
+      "path": "data/model_overrides/city2storyc/pristine_intact_lod1.glb",
+      "sha256": "1143f1c19b8799662bfa2db7b40be55fc1b870ba40c52aacd88cc48d7ad021e8",
+      "bytes": 2969320
+    },
+    {
+      "path": "data/model_overrides/city2storyc/pristine_intact_lod2.glb",
+      "sha256": "de19423723760db4d5fc66347449e295669cab21720c551e5066a897b04fc466",
+      "bytes": 1437084
+    },
+    {
+      "path": "data/model_overrides/city4storya/detail/0_normal.ktx2",
+      "sha256": "28c045257baacdc2316bcdbb5114c93775d306fc63963c2c179a3892e77a406c",
+      "bytes": 349936
+    },
+    {
+      "path": "data/model_overrides/city4storya/detail/0_orm.ktx2",
+      "sha256": "a46a86bd5a425a04f3d759d729b8dce15340c0a0144737e4c5f4ff82ae6f3bbd",
+      "bytes": 349920
+    },
+    {
+      "path": "data/model_overrides/city4storya/detail/3_orm.ktx2",
+      "sha256": "64d60ded09d7ea90bbca3a3ef09418879335e4d9c0c1a596460f93e1d3e3b1c8",
+      "bytes": 349920
+    },
+    {
+      "path": "data/model_overrides/city4storya/pristine_intact_lod0.glb",
+      "sha256": "96882e96d262747df469d39bab9a336b0ad24f08ebf08e68df819d27e661b9fe",
+      "bytes": 4690892
+    },
+    {
+      "path": "data/model_overrides/city4storya/pristine_intact_lod1.glb",
+      "sha256": "027603516666d6d6a48a236ca8f379c09e0afeb297040a6b4d41312699a44df4",
+      "bytes": 2201568
+    },
+    {
+      "path": "data/model_overrides/city4storya/pristine_intact_lod2.glb",
+      "sha256": "b61917d25f96b609e773f273aa0519c6e8407314e536e5bab8e782ae82c1759e",
+      "bytes": 1016824
+    },
+    {
+      "path": "data/model_overrides/city4storyb/detail/0_normal.ktx2",
+      "sha256": "c33183349ee7e09c60e99a48dbe964559fc25e305d13ad724ffadcc1dbc36fd8",
+      "bytes": 349936
+    },
+    {
+      "path": "data/model_overrides/city4storyb/detail/0_orm.ktx2",
+      "sha256": "fd8a034357b22d7074ff46124f34790d6ad806f5d76c90282eb46f413cc2c1aa",
+      "bytes": 349920
+    },
+    {
+      "path": "data/model_overrides/city4storyb/detail/3_orm.ktx2",
+      "sha256": "27b63bb8583b047a0809797d1fe621ad183ef75ed93c33492ca2412ff579ec77",
+      "bytes": 349920
+    },
+    {
+      "path": "data/model_overrides/city4storyb/pristine_intact_lod0.glb",
+      "sha256": "6f3cd8f18902ac9ba16340e73d7ca521a23d548935009a299a75ad9c47e3a723",
+      "bytes": 5072944
+    },
+    {
+      "path": "data/model_overrides/city4storyb/pristine_intact_lod1.glb",
+      "sha256": "067bc0b5feb8ed2e6afdc7db9f99d11d724f180ab387d0b8d9132760b734f4fb",
+      "bytes": 2280552
+    },
+    {
+      "path": "data/model_overrides/city4storyb/pristine_intact_lod2.glb",
+      "sha256": "b64fb3d6a066ec6f0cb6ad038fc523ee981e81e82be1e1f04395f8156c710b53",
+      "bytes": 1061676
+    },
+    {
+      "path": "data/model_overrides/city4storyc/detail/0_normal.ktx2",
+      "sha256": "edf9ad304ed60131c93e896baf73d38e406fe6a6c694aebb1ce90887c89b413d",
+      "bytes": 349936
+    },
+    {
+      "path": "data/model_overrides/city4storyc/detail/0_orm.ktx2",
+      "sha256": "3f3565e311b1d322030496ff9a25ead41ec9dda775571d701d0fd9b8a0fa9bea",
+      "bytes": 349920
+    },
+    {
+      "path": "data/model_overrides/city4storyc/detail/3_orm.ktx2",
+      "sha256": "2f9409c6c12f0c398e7eee807fa9f601aad26fa306b18689359260376793fddd",
+      "bytes": 349920
+    },
+    {
+      "path": "data/model_overrides/city4storyc/pristine_intact_lod0.glb",
+      "sha256": "6e8f62b0a47f9ba9b20a61a65e775d32c99ec5c988c726fdd77805939f6a750b",
+      "bytes": 4690888
+    },
+    {
+      "path": "data/model_overrides/city4storyc/pristine_intact_lod1.glb",
+      "sha256": "7b46430c86fbd928d6800182e642cec94a44c8f7555d592874048dc5c504b6de",
+      "bytes": 2201564
+    },
+    {
+      "path": "data/model_overrides/city4storyc/pristine_intact_lod2.glb",
+      "sha256": "31409da3ba5beed380acfcc02fc3969cf2f4c088ae3f5c2b09263404a475c901",
+      "bytes": 1016824
+    },
+    {
+      "path": "data/model_overrides/city6storya/detail/0_normal.ktx2",
+      "sha256": "310d11c1792d82ae95cc48d31371783384c541740a12790eccf2dba697548d9e",
+      "bytes": 349936
+    },
+    {
+      "path": "data/model_overrides/city6storya/detail/0_orm.ktx2",
+      "sha256": "077bd65f597c474f23cdb88cf9eba728e0314d65e3b6356442fe1cd400105629",
+      "bytes": 349920
+    },
+    {
+      "path": "data/model_overrides/city6storya/detail/3_orm.ktx2",
+      "sha256": "84aaf487b3e9271e7717652f7fbb041c7fdf6c6e0dfc3ad5b2ebef3e1fd4a612",
+      "bytes": 349920
+    },
+    {
+      "path": "data/model_overrides/city6storya/pristine_intact_lod0.glb",
+      "sha256": "8158a6b1a146788d1ebbb574317970fbcdfbc76475b0cfc93c04dafa265e08d4",
+      "bytes": 2398956
+    },
+    {
+      "path": "data/model_overrides/city6storya/pristine_intact_lod1.glb",
+      "sha256": "f06257a3797939e142a620239eb2dfd306d14a1b90d36ce17a2d43abddbaa21d",
+      "bytes": 2097708
+    },
+    {
+      "path": "data/model_overrides/city6storya/pristine_intact_lod2.glb",
+      "sha256": "13069dbc773a46fce8b4118e11d76eae79f192959db02a50413b2b65e8abc143",
+      "bytes": 1008492
+    },
+    {
+      "path": "data/model_overrides/city6storyb/detail/0_normal.ktx2",
+      "sha256": "310d11c1792d82ae95cc48d31371783384c541740a12790eccf2dba697548d9e",
+      "bytes": 349936
+    },
+    {
+      "path": "data/model_overrides/city6storyb/detail/0_orm.ktx2",
+      "sha256": "f3b3aacd5e9f2fa7a795f5c7888d4d27e17137d1f74b43499fe1ab57afc7362c",
+      "bytes": 349920
+    },
+    {
+      "path": "data/model_overrides/city6storyb/detail/3_orm.ktx2",
+      "sha256": "9308c593c8fbd3aaef4b333518a7098f958c58e19f8bf24a4440d2cf8aecb9a9",
+      "bytes": 349920
+    },
+    {
+      "path": "data/model_overrides/city6storyb/pristine_intact_lod0.glb",
+      "sha256": "bca259402923daaf289f1f8411a630ab2788d1d57a2ee1ab8c84aa046e6e0956",
+      "bytes": 2398956
+    },
+    {
+      "path": "data/model_overrides/city6storyb/pristine_intact_lod1.glb",
+      "sha256": "273175c037e69b83164c9c28d8d3b7eb27c0e4c95e4ec5cbaeb1bc40a98b8aa9",
+      "bytes": 2097708
+    },
+    {
+      "path": "data/model_overrides/city6storyb/pristine_intact_lod2.glb",
+      "sha256": "b384d075923486325c49444a62ad585d9a46931bd8ccca5ad6e10d6e3f06b665",
+      "bytes": 1008492
+    },
+    {
+      "path": "data/model_overrides/city6storyc/detail/0_normal.ktx2",
+      "sha256": "310d11c1792d82ae95cc48d31371783384c541740a12790eccf2dba697548d9e",
+      "bytes": 349936
+    },
+    {
+      "path": "data/model_overrides/city6storyc/detail/0_orm.ktx2",
+      "sha256": "5f76ee93d1cb12be1393e17c6f2b935771c465d5036fc2ff8fe3b6ddefbbdcba",
+      "bytes": 349920
+    },
+    {
+      "path": "data/model_overrides/city6storyc/detail/3_orm.ktx2",
+      "sha256": "8b7100edfb631819556687afdbd0dcfe138ec5cb336226d0bb11ec60108aa79e",
+      "bytes": 349920
+    },
+    {
+      "path": "data/model_overrides/city6storyc/pristine_intact_lod0.glb",
+      "sha256": "8e6be959a5ccd3ea8ae01a174a3e728cee623c9524f509bbaeaf8a252e6718a5",
+      "bytes": 2398956
+    },
+    {
+      "path": "data/model_overrides/city6storyc/pristine_intact_lod1.glb",
+      "sha256": "68d1e36b738554c512cfdb693ef6d3de59ecf849f8f0eb557fa6e09c583ef252",
+      "bytes": 2097708
+    },
+    {
+      "path": "data/model_overrides/city6storyc/pristine_intact_lod2.glb",
+      "sha256": "2f6b9fa45afbdd1b438feff572e804ba8c047f8408c4228fd4ae88a8d7703ffb",
+      "bytes": 1008492
+    },
+    {
+      "path": "data/model_overrides/city8storya/detail/0_normal.ktx2",
+      "sha256": "01ae11407367d18d6f7190861a46fdefba79d3a811e83dada55f7f8bb6a70c65",
+      "bytes": 349936
+    },
+    {
+      "path": "data/model_overrides/city8storya/detail/0_orm.ktx2",
+      "sha256": "3c703e30adb5b4322ce1c8469305339a5a2b5ea2c1ca1bb8b1c5fa5067624446",
+      "bytes": 349920
+    },
+    {
+      "path": "data/model_overrides/city8storya/detail/3_orm.ktx2",
+      "sha256": "a515ad026b869785ee605f3eede0d542e8adb49f7844561ec679fb082b012f56",
+      "bytes": 349920
+    },
+    {
+      "path": "data/model_overrides/city8storya/pristine_intact_lod0.glb",
+      "sha256": "4344500f80a158121d996133f42d558d19cb8bb4b97b930f017445710b27b4ae",
+      "bytes": 3156168
+    },
+    {
+      "path": "data/model_overrides/city8storya/pristine_intact_lod1.glb",
+      "sha256": "f482e82a147d4a48747e26f2c5e1d452aed43dd461e353258b1fe9b82416ff3b",
+      "bytes": 2755748
+    },
+    {
+      "path": "data/model_overrides/city8storya/pristine_intact_lod2.glb",
+      "sha256": "4482929eb960f2e33f3c80340e3f01aecc0087b1d58822da5d0d2180a7e9f207",
+      "bytes": 1305180
+    },
+    {
+      "path": "data/model_overrides/city8storyb/detail/0_normal.ktx2",
+      "sha256": "ad48d0fc0275e1f494c173353cc14e5c46338c250853f2ab8403c5853fceae61",
+      "bytes": 349936
+    },
+    {
+      "path": "data/model_overrides/city8storyb/detail/0_orm.ktx2",
+      "sha256": "a9a5d354b614fdb9375cd82cfe219aea66aa950be192d5b78950595ca5f4c5db",
+      "bytes": 349920
+    },
+    {
+      "path": "data/model_overrides/city8storyb/detail/3_orm.ktx2",
+      "sha256": "7150816a7df756f2f67f97cd81bd93ce94f272af33c45561c7ca7a0690374d15",
+      "bytes": 349920
+    },
+    {
+      "path": "data/model_overrides/city8storyb/pristine_intact_lod0.glb",
+      "sha256": "4be6d5c3b8ca58dd482da88c501b98ff2da25928ca86d00c438885888bbb59e5",
+      "bytes": 3156168
+    },
+    {
+      "path": "data/model_overrides/city8storyb/pristine_intact_lod1.glb",
+      "sha256": "67d600404cd8e0e82483cae8f3d96a964eed6b95ffcfe602e958c721ce6ae871",
+      "bytes": 2755844
+    },
+    {
+      "path": "data/model_overrides/city8storyb/pristine_intact_lod2.glb",
+      "sha256": "db31d6f362935dc031b497ec0f2ca0f0b6f335a461658630131f88665c2cbe6d",
+      "bytes": 1305124
+    },
+    {
+      "path": "data/model_overrides/city8storyc/detail/0_normal.ktx2",
+      "sha256": "ad48d0fc0275e1f494c173353cc14e5c46338c250853f2ab8403c5853fceae61",
+      "bytes": 349936
+    },
+    {
+      "path": "data/model_overrides/city8storyc/detail/0_orm.ktx2",
+      "sha256": "9f5db4a842b380ff3cc6a1a74814d24a2884677e181ba50d901d2eee703f46f2",
+      "bytes": 349920
+    },
+    {
+      "path": "data/model_overrides/city8storyc/detail/3_orm.ktx2",
+      "sha256": "0125773ecd1571cdd22c0c3d353056b20a0a7b7ac9580c21117c936684779576",
+      "bytes": 349920
+    },
+    {
+      "path": "data/model_overrides/city8storyc/pristine_intact_lod0.glb",
+      "sha256": "96cbecc796035303cf0dfb0bbae482e389c1a0f876377fb4e2f6397551952393",
+      "bytes": 3156168
+    },
+    {
+      "path": "data/model_overrides/city8storyc/pristine_intact_lod1.glb",
+      "sha256": "9cf6b28104ffe67bffcb543435dfe27d8dbd88bf962089042f92a652fb8a9f19",
+      "bytes": 2755844
+    },
+    {
+      "path": "data/model_overrides/city8storyc/pristine_intact_lod2.glb",
+      "sha256": "6865ba865c52ceb0f865b7a46b12dceeb14e845bdc806b8e5be104a7cfce20eb",
+      "bytes": 1305124
     },
     {
       "path": "data/model_overrides/civstoragea/detail/0_normal.ktx2",
@@ -620,6 +1535,31 @@
       "bytes": 2703256
     },
     {
+      "path": "data/model_overrides/hub/detail/0_normal.ktx2",
+      "sha256": "b8e3c6c1c30dc9a69d5a24aa6f97bba7de9faef13c61401d4f3b33e8826383ff",
+      "bytes": 349936
+    },
+    {
+      "path": "data/model_overrides/hub/detail/0_orm.ktx2",
+      "sha256": "ba303f8c5ddb2b0b5966ef4f9cd99f6ce813482ab663a407d840ba2680f869f9",
+      "bytes": 349920
+    },
+    {
+      "path": "data/model_overrides/hub/pristine_intact_lod0.glb",
+      "sha256": "145455f115411ea0add7dbb31c90b9871fdd5b6ce31d5a3affc2a894fdf39a05",
+      "bytes": 7982560
+    },
+    {
+      "path": "data/model_overrides/hub/pristine_intact_lod1.glb",
+      "sha256": "ec795ec0f0212b9d1e74b8ccb9c694a6c3ad49ba84581e5c5fd9f61132baafe4",
+      "bytes": 4337200
+    },
+    {
+      "path": "data/model_overrides/hub/pristine_intact_lod2.glb",
+      "sha256": "7e9dd6a96378b99f902c97e85f84227079b59cdae18f3edd5db354b4b707b495",
+      "bytes": 4211336
+    },
+    {
       "path": "data/model_overrides/industrialcomplex/detail/0_normal.ktx2",
       "sha256": "07adecf20902db9dacbc99c0830761d0d0c22cc5c640034a10a87196acfddd01",
       "bytes": 349936
@@ -678,6 +1618,206 @@
       "path": "data/model_overrides/industrialplant/pristine_intact_lod2.glb",
       "sha256": "8e93ce5de6cd866bd43a181ba5cd6d4d979fafbc12706813f421088ab04367fd",
       "bytes": 2973548
+    },
+    {
+      "path": "data/model_overrides/l_guardhouse/detail/0_normal.ktx2",
+      "sha256": "ba2f51aa8b6cdb51e802e24383a2f8ef32662291a1a61a0e4d820e4e1d2215b5",
+      "bytes": 349936
+    },
+    {
+      "path": "data/model_overrides/l_guardhouse/detail/0_orm.ktx2",
+      "sha256": "0ad177ff898a45cf64f01657dc6437047535ffd691b0233a390ba4f29e17808e",
+      "bytes": 349920
+    },
+    {
+      "path": "data/model_overrides/l_guardhouse/pristine_intact_lod0.glb",
+      "sha256": "66031ed26272076ab91de715cd26dd964bfec700cf1672a0492810ccad7c5840",
+      "bytes": 6150048
+    },
+    {
+      "path": "data/model_overrides/l_guardhouse/pristine_intact_lod1.glb",
+      "sha256": "ebe2085aa853e15ad48eb966d7ca6f530c18f63d8337563425e64e84201b44cf",
+      "bytes": 2759664
+    },
+    {
+      "path": "data/model_overrides/l_guardhouse/pristine_intact_lod2.glb",
+      "sha256": "197fae3f75a2bc20af8cb4a40a20742f3d9cebf22c7bbb7cd36c2d7d2a8a4bd5",
+      "bytes": 1515620
+    },
+    {
+      "path": "data/model_overrides/l_palacecore/detail/0_normal.ktx2",
+      "sha256": "3b7ebcca470c171d433747e1cd6985227ce14a675f5f5ac6cb0276af65359bcc",
+      "bytes": 349936
+    },
+    {
+      "path": "data/model_overrides/l_palacecore/detail/0_orm.ktx2",
+      "sha256": "568edd4a8ac092b9c88a8a08ca1dd0793190786ff530e36efa411df8bd1ba129",
+      "bytes": 349920
+    },
+    {
+      "path": "data/model_overrides/l_palacecore/pristine_intact_lod0.glb",
+      "sha256": "14fd26c075f7a228ca20438f6c35e84e868a77342e2b1bff2026b65d6f9fdb73",
+      "bytes": 2555344
+    },
+    {
+      "path": "data/model_overrides/l_palacecore/pristine_intact_lod1.glb",
+      "sha256": "e37ab3618141483eb838f745a23020258f4bbf438982b24d4235a955814fdd6f",
+      "bytes": 2364672
+    },
+    {
+      "path": "data/model_overrides/l_palacecore/pristine_intact_lod2.glb",
+      "sha256": "3b0a25c6299e0d853105ac7a4a6b19e1386036e52be9a9853c335cedcaa0ca96",
+      "bytes": 2186528
+    },
+    {
+      "path": "data/model_overrides/l_palacegate/detail/0_normal.ktx2",
+      "sha256": "c49f368f4e7149a23fa5f1b779a48957ae1683f986b4445ca19034ba2c777e0e",
+      "bytes": 349936
+    },
+    {
+      "path": "data/model_overrides/l_palacegate/detail/0_orm.ktx2",
+      "sha256": "356a6701427b1a57bfb23a9582c158c2c1085eb6f22691f0ba6ee4901603cd53",
+      "bytes": 349920
+    },
+    {
+      "path": "data/model_overrides/l_palacegate/pristine_intact_lod0.glb",
+      "sha256": "f40feb011179ed68b554d83b3e0d71911416555ed433e01a6690bb2987c99277",
+      "bytes": 7317668
+    },
+    {
+      "path": "data/model_overrides/l_palacegate/pristine_intact_lod1.glb",
+      "sha256": "4e9a91d04fcc9c6382f5ea1dbcd66c42e5958d1d353413b3afba1a1472ff9f00",
+      "bytes": 3385036
+    },
+    {
+      "path": "data/model_overrides/l_palacegate/pristine_intact_lod2.glb",
+      "sha256": "08d6ff9669d1095f3343d905fe99d4c5e778466df31e06f89c50fb5286d3d753",
+      "bytes": 2094432
+    },
+    {
+      "path": "data/model_overrides/l_palacetwr/detail/0_normal.ktx2",
+      "sha256": "2b7f26a2e42d50101fc7bf3adfbf79665f34932e7d94fff41569651c2d1b8f1e",
+      "bytes": 349936
+    },
+    {
+      "path": "data/model_overrides/l_palacetwr/detail/0_orm.ktx2",
+      "sha256": "27543d533452f862ccafb95740b9a65a962bd627d60b568a511e012380f8e4a3",
+      "bytes": 349920
+    },
+    {
+      "path": "data/model_overrides/l_palacetwr/pristine_intact_lod0.glb",
+      "sha256": "9eac79cfdc94d489665f6f46ca4facae7ab746938248181da1bccc92a2e53a6b",
+      "bytes": 3891452
+    },
+    {
+      "path": "data/model_overrides/l_palacetwr/pristine_intact_lod1.glb",
+      "sha256": "d19bbbd351eff8f80bcd42f4fa734be0463bce72d5709beeacb859222796e61a",
+      "bytes": 1824404
+    },
+    {
+      "path": "data/model_overrides/l_palacetwr/pristine_intact_lod2.glb",
+      "sha256": "c70be1dfdb191d23d00894eb78051851ee6ed741374c0215fe9dd2ab249dbbf0",
+      "bytes": 1010140
+    },
+    {
+      "path": "data/model_overrides/l_palacewing/detail/0_normal.ktx2",
+      "sha256": "d0fc238e5c5b3dc0a0b0a54016afd3f8db341a76f1af14b8876b210d5b847462",
+      "bytes": 349936
+    },
+    {
+      "path": "data/model_overrides/l_palacewing/detail/0_orm.ktx2",
+      "sha256": "de0d9d2a348e2860358bd3a43848af57012811cc62f345842f3878a4e54b43d3",
+      "bytes": 349920
+    },
+    {
+      "path": "data/model_overrides/l_palacewing/pristine_intact_lod0.glb",
+      "sha256": "f10e683cf9ccd046458746bfd8b3483b8e3c28b68ff7c3833655cdff5bb748e0",
+      "bytes": 2477684
+    },
+    {
+      "path": "data/model_overrides/l_palacewing/pristine_intact_lod1.glb",
+      "sha256": "838443bcf91b547c2cf46ff5f3ab191d58605dd8891ab1550f4b934b8db9d76c",
+      "bytes": 2254208
+    },
+    {
+      "path": "data/model_overrides/l_palacewing/pristine_intact_lod2.glb",
+      "sha256": "9367bcec0153a4e9aebd7260b13bf43143c40bc7b8339efe71ca5d2987db20f2",
+      "bytes": 1521248
+    },
+    {
+      "path": "data/model_overrides/l_residencecore/detail/0_normal.ktx2",
+      "sha256": "58704c3ae148e70cef32201b9648c0993fce860dbf59faadf9c1171711243882",
+      "bytes": 349936
+    },
+    {
+      "path": "data/model_overrides/l_residencecore/detail/0_orm.ktx2",
+      "sha256": "da65c9f54a2a05d9d116c22d861771ba21ded182c72c0978cd4b776358ab9a35",
+      "bytes": 349920
+    },
+    {
+      "path": "data/model_overrides/l_residencecore/pristine_intact_lod0.glb",
+      "sha256": "06d7a86c17e9c2b121be41f7408a2d8b761e5e0122415a6739d16526f702effc",
+      "bytes": 4221656
+    },
+    {
+      "path": "data/model_overrides/l_residencecore/pristine_intact_lod1.glb",
+      "sha256": "c50dd9af3c1c84a3c63617e1e2ad5d24f967702f0e90eed8a2732604f855792b",
+      "bytes": 1569708
+    },
+    {
+      "path": "data/model_overrides/l_residencecore/pristine_intact_lod2.glb",
+      "sha256": "fad9e2e3c283b0c4de64714b53c60baba307f88dd91702e3fd14ad4b0163df69",
+      "bytes": 1174824
+    },
+    {
+      "path": "data/model_overrides/l_residenceleft/detail/0_normal.ktx2",
+      "sha256": "011e0c0374d1bbb2e06d03c23679a3a9ac2a9a0abae50d8672bf3dc914545902",
+      "bytes": 349936
+    },
+    {
+      "path": "data/model_overrides/l_residenceleft/detail/0_orm.ktx2",
+      "sha256": "7c67239a9559b6f651a85c9ad6a34c8db549531704a2d6426e9a90b6a396f026",
+      "bytes": 349920
+    },
+    {
+      "path": "data/model_overrides/l_residenceleft/pristine_intact_lod0.glb",
+      "sha256": "9fb4b80303e357b7f1d2bf37d6cc29e0d614111f1f857580c58a1269456c5711",
+      "bytes": 5694992
+    },
+    {
+      "path": "data/model_overrides/l_residenceleft/pristine_intact_lod1.glb",
+      "sha256": "d1640ae76a2fa1243f6814b2f0e2f2df691ead6f5024bdf661b5a179fae546fa",
+      "bytes": 2643496
+    },
+    {
+      "path": "data/model_overrides/l_residenceleft/pristine_intact_lod2.glb",
+      "sha256": "59691e28ebf142d74b0d8834a6689f5b01c2b73b898e783a00c97dcbd931ae06",
+      "bytes": 1700156
+    },
+    {
+      "path": "data/model_overrides/l_residenceright/detail/0_normal.ktx2",
+      "sha256": "2e9dc1cd0af18f589534e858af7b24762f321abf46399a3970ad0500d90e5071",
+      "bytes": 349936
+    },
+    {
+      "path": "data/model_overrides/l_residenceright/detail/0_orm.ktx2",
+      "sha256": "605183cfcff764b7ff8c1764643dc7e28a0d5b49030f33607c6e3e199802dcc9",
+      "bytes": 349920
+    },
+    {
+      "path": "data/model_overrides/l_residenceright/pristine_intact_lod0.glb",
+      "sha256": "91834f47f719e8c514ebfd80590fd22fed05e2805a2fbf17b70aa55483d148ff",
+      "bytes": 5707260
+    },
+    {
+      "path": "data/model_overrides/l_residenceright/pristine_intact_lod1.glb",
+      "sha256": "f00f045820a93596d9a904ab446c9f11b7c4f402119da425527726536cd999e4",
+      "bytes": 2701260
+    },
+    {
+      "path": "data/model_overrides/l_residenceright/pristine_intact_lod2.glb",
+      "sha256": "40674cc8612829761cfbab9d3903e335f49c6507dd31e3658fdd18c0bce724a8",
+      "bytes": 2021072
     },
     {
       "path": "data/model_overrides/l_turretgenerator/detail/0_normal.ktx2",
@@ -770,9 +1910,34 @@
       "bytes": 2792952
     },
     {
+      "path": "data/model_overrides/lobby/detail/0_normal.ktx2",
+      "sha256": "79d5cbb8d2dbcd57f03ab91be644e1fa7dc9da92c23df12bbe3b6003becad0e6",
+      "bytes": 349936
+    },
+    {
+      "path": "data/model_overrides/lobby/detail/0_orm.ktx2",
+      "sha256": "f3ab67fb24feff4d4c6014801454442ee421bbd1ee5e562230e4f796096b4ba9",
+      "bytes": 349920
+    },
+    {
+      "path": "data/model_overrides/lobby/pristine_intact_lod0.glb",
+      "sha256": "9a75f64c749ddbbd0ab47db2fda9d23ac37899f459560e2d953efc2b2f1e6b19",
+      "bytes": 4531776
+    },
+    {
+      "path": "data/model_overrides/lobby/pristine_intact_lod1.glb",
+      "sha256": "df150fafcd625bb8cd2e1d7c7d8b4d9655d54813b60095402b7914dd0836b320",
+      "bytes": 2918604
+    },
+    {
+      "path": "data/model_overrides/lobby/pristine_intact_lod2.glb",
+      "sha256": "2efd070b6e65969f2798ef801d8251faf84a4a2de5f68c4c956696a7bbd77e04",
+      "bytes": 2890748
+    },
+    {
       "path": "data/model_overrides/models.json",
-      "sha256": "43c1e6b25a0b164e4e64f9c996f47bba4026bcb50610d8f0bd5b651318ae922d",
-      "bytes": 165870
+      "sha256": "d7d7b11ffbe586b2377d42cceaab7a2e155fa86fb3024db924ddae151ecb5db8",
+      "bytes": 260081
     },
     {
       "path": "data/model_overrides/pipetank/detail/0_normal.ktx2",
@@ -893,6 +2058,306 @@
       "path": "data/model_overrides/purificationplant/pristine_intact_lod2.glb",
       "sha256": "399f57a6a16626e0f3ca91fc85c8ca4b9aa11779ff7d9acc32103ced9bbca13a",
       "bytes": 1872328
+    },
+    {
+      "path": "data/model_overrides/s_admin_core/detail/0_normal.ktx2",
+      "sha256": "7da2470ac32bd1649b832b74b0b69948396731177f00a1695c737776084bca52",
+      "bytes": 349936
+    },
+    {
+      "path": "data/model_overrides/s_admin_core/detail/0_orm.ktx2",
+      "sha256": "9d86d93c6efb579fbb2f5b6a9447d5fb7a6469f52c665f75a3bad3f6017f6626",
+      "bytes": 349920
+    },
+    {
+      "path": "data/model_overrides/s_admin_core/pristine_intact_lod0.glb",
+      "sha256": "7a74df2026c646c9865c13abdff01c7eee5515e089b74b2a0fccd310d6271e18",
+      "bytes": 9520140
+    },
+    {
+      "path": "data/model_overrides/s_admin_core/pristine_intact_lod1.glb",
+      "sha256": "228ae04be923ba11c728390db0a6fdf3651da832e0b13d2111a9c8884295e17a",
+      "bytes": 4499072
+    },
+    {
+      "path": "data/model_overrides/s_admin_core/pristine_intact_lod2.glb",
+      "sha256": "e113219be3d23332d4cd05409bfdce088c15c176b99ca08d64562824cc44a474",
+      "bytes": 4215524
+    },
+    {
+      "path": "data/model_overrides/s_admin_entry/detail/0_normal.ktx2",
+      "sha256": "2cfcc1fddfa97bb8d76da9d3da4554e5b7eaabdaf790ba8cf95d4651c421b810",
+      "bytes": 349936
+    },
+    {
+      "path": "data/model_overrides/s_admin_entry/detail/0_orm.ktx2",
+      "sha256": "b00254a4903af3b454bf0e9546b54693d8a7c427b2a6801bdf91d9c6182fa82c",
+      "bytes": 349920
+    },
+    {
+      "path": "data/model_overrides/s_admin_entry/pristine_intact_lod0.glb",
+      "sha256": "51634aec8a7ed3e130e9a7b1716b6641cd66c9c48071d772b848810c347ca5de",
+      "bytes": 5448660
+    },
+    {
+      "path": "data/model_overrides/s_admin_entry/pristine_intact_lod1.glb",
+      "sha256": "f2e1589816c754efa89c2a6ad8021e5dce357530d630baeb7ee0df5ed573255f",
+      "bytes": 2466608
+    },
+    {
+      "path": "data/model_overrides/s_admin_entry/pristine_intact_lod2.glb",
+      "sha256": "272d9969fb92d152012c0e033102c0e59cd08651da1de5c2988167d1e6aae7dc",
+      "bytes": 1386116
+    },
+    {
+      "path": "data/model_overrides/s_admin_wing/detail/0_normal.ktx2",
+      "sha256": "10a612419d2ed1ee43d46eef4e61a7498beba66aaaf5c6569b30af7cd6af3462",
+      "bytes": 349936
+    },
+    {
+      "path": "data/model_overrides/s_admin_wing/detail/0_orm.ktx2",
+      "sha256": "9cee86531394833523ad58323230c7749d8600ca8a7cc0d29c1fc1167e02ecb1",
+      "bytes": 349920
+    },
+    {
+      "path": "data/model_overrides/s_admin_wing/pristine_intact_lod0.glb",
+      "sha256": "f866bfd6e9b36a5dee41d29094756d5b5a1ecc26fe2f27225ed7e7fc8c384990",
+      "bytes": 1730140
+    },
+    {
+      "path": "data/model_overrides/s_admin_wing/pristine_intact_lod1.glb",
+      "sha256": "7a8f745aeab1d4df7e805f45760c1cf769aca84128803024a90fb9a0dfef1eb9",
+      "bytes": 1579544
+    },
+    {
+      "path": "data/model_overrides/s_admin_wing/pristine_intact_lod2.glb",
+      "sha256": "63f394c8049bc9aaa474b408816c81f81bc7b572fadffee7878201e1085a8070",
+      "bytes": 1555136
+    },
+    {
+      "path": "data/model_overrides/s_adminquarter/detail/0_normal.ktx2",
+      "sha256": "56e78d83fd18a999623f2ac1999ef4f53d5cd233f62450bb5cc909c111d56e21",
+      "bytes": 349936
+    },
+    {
+      "path": "data/model_overrides/s_adminquarter/detail/0_orm.ktx2",
+      "sha256": "8cf5051a96631d56ad4e19f301cbd4650cb2fb18b6592b83239b40c0c232384e",
+      "bytes": 349920
+    },
+    {
+      "path": "data/model_overrides/s_adminquarter/pristine_intact_lod0.glb",
+      "sha256": "2f5d6152f6ed8d409969410065c59a941ebdadbc9fdac2d2ab05d561032922c1",
+      "bytes": 5570684
+    },
+    {
+      "path": "data/model_overrides/s_adminquarter/pristine_intact_lod1.glb",
+      "sha256": "1c536a4a19da28d064552e5340d2f745295eb0ccc5f5aba951d2df0bfd1f31f2",
+      "bytes": 2536268
+    },
+    {
+      "path": "data/model_overrides/s_adminquarter/pristine_intact_lod2.glb",
+      "sha256": "778a7da4d104e87c5e5bcadaa12acbb98a13d5b110d9f67527dc3a7324671154",
+      "bytes": 2058144
+    },
+    {
+      "path": "data/model_overrides/s_gov1/detail/0_normal.ktx2",
+      "sha256": "ec522beadbb1c93ba49ad40deef5c9bee60a185e0c65005a03c914c05cebeb45",
+      "bytes": 349936
+    },
+    {
+      "path": "data/model_overrides/s_gov1/detail/0_orm.ktx2",
+      "sha256": "4d401ece5067f947b136592ce9206c61df8d45901ef9e0be25cabd1092ce4e74",
+      "bytes": 349920
+    },
+    {
+      "path": "data/model_overrides/s_gov1/pristine_intact_lod0.glb",
+      "sha256": "77cc7c1e856db6f8fa8192cf03ffd54d839f0abd0acf0bb22f3cb5194e1dc69c",
+      "bytes": 2837580
+    },
+    {
+      "path": "data/model_overrides/s_gov1/pristine_intact_lod1.glb",
+      "sha256": "a1bfe420bbdef69ae5113bcd47d332a77fe7d30ef3b85ce7beb078813ee5f42e",
+      "bytes": 2414448
+    },
+    {
+      "path": "data/model_overrides/s_gov1/pristine_intact_lod2.glb",
+      "sha256": "9af0c5a8a2910f146b0d37193b0916b48bfc42e955a0dc1c5327e2a71a30b7a9",
+      "bytes": 2267640
+    },
+    {
+      "path": "data/model_overrides/s_gov2/detail/0_normal.ktx2",
+      "sha256": "3a765206daac8d8084760dc2fc15fedc7f2e744e36e462617f6c3b372301aaff",
+      "bytes": 349936
+    },
+    {
+      "path": "data/model_overrides/s_gov2/detail/0_orm.ktx2",
+      "sha256": "8a6ee3abafcf9e5a5e5b584578b9fe901669349f9f9da7e6ce9e0a888e7a71a3",
+      "bytes": 349920
+    },
+    {
+      "path": "data/model_overrides/s_gov2/pristine_intact_lod0.glb",
+      "sha256": "1d3d876b6079cd7858a1d8d59c9af4137ef2e80bc6e438aba4cae243631798d5",
+      "bytes": 1713744
+    },
+    {
+      "path": "data/model_overrides/s_gov2/pristine_intact_lod1.glb",
+      "sha256": "9e3f98105f16fa3e00071300b079e48e0df6adf1fd63d41d42e490798657cc86",
+      "bytes": 1501084
+    },
+    {
+      "path": "data/model_overrides/s_gov2/pristine_intact_lod2.glb",
+      "sha256": "37f37306f1a32a870fc3827e37385ae987b574dfcc21d1de8fda412cf85c8681",
+      "bytes": 1427872
+    },
+    {
+      "path": "data/model_overrides/s_govresidence/detail/0_normal.ktx2",
+      "sha256": "33eefb3f3d582d74751517babdd6821f4629d70a459e2884392cdfad752e2673",
+      "bytes": 349936
+    },
+    {
+      "path": "data/model_overrides/s_govresidence/detail/0_orm.ktx2",
+      "sha256": "f6dcf9687b12a157dec192100d5a002fef51435502f404962ccef7498f458366",
+      "bytes": 349920
+    },
+    {
+      "path": "data/model_overrides/s_govresidence/pristine_intact_lod0.glb",
+      "sha256": "6b068661838d8ad1e0da8db6ecf36ad652b6b9b1e53385a9a7253379c7bb54a1",
+      "bytes": 5104724
+    },
+    {
+      "path": "data/model_overrides/s_govresidence/pristine_intact_lod1.glb",
+      "sha256": "c9777142d347cea88363d47616055fd27b375ed11d9eac36f1c395b0658a66f0",
+      "bytes": 2311988
+    },
+    {
+      "path": "data/model_overrides/s_govresidence/pristine_intact_lod2.glb",
+      "sha256": "f9daf92bf03da2d8cf275f34b24b458c55f57b82c36ee89e915c262805e397be",
+      "bytes": 1354216
+    },
+    {
+      "path": "data/model_overrides/s_main/detail/0_normal.ktx2",
+      "sha256": "12478d263acc6f5d1f70c9af059e451170d4de31f1c6e9591310333af9c79f20",
+      "bytes": 349936
+    },
+    {
+      "path": "data/model_overrides/s_main/detail/0_orm.ktx2",
+      "sha256": "928be9d6403c4dc82b9dbbc41a6ddaaa337afec280de81a7a40a6e848f3250a1",
+      "bytes": 349920
+    },
+    {
+      "path": "data/model_overrides/s_main/pristine_intact_lod0.glb",
+      "sha256": "2b441cf45b7f9884d406f8fe0cc8812de09c130f5e421755813cd2c7b810647f",
+      "bytes": 3615440
+    },
+    {
+      "path": "data/model_overrides/s_main/pristine_intact_lod1.glb",
+      "sha256": "d4ad609f5169956a66f3e45896d8f6d1ecd6f45c576f638188913e6d89f76702",
+      "bytes": 3045824
+    },
+    {
+      "path": "data/model_overrides/s_main/pristine_intact_lod2.glb",
+      "sha256": "a89e45ad91e8411523644483532a5d2c4e3485ac6c989cfc4736ed506a872ad5",
+      "bytes": 2390376
+    },
+    {
+      "path": "data/model_overrides/s_main_leftwing/detail/0_normal.ktx2",
+      "sha256": "7fcc807b1bd91b2ec0e0d507a03b18ac03916209508ddf5127f6913dd7ddf22c",
+      "bytes": 349936
+    },
+    {
+      "path": "data/model_overrides/s_main_leftwing/detail/0_orm.ktx2",
+      "sha256": "0527ba8cfa949f8daaf1020cb6fa26317f8dcb503f45f52c3d5ecc38d6e6d3a0",
+      "bytes": 349920
+    },
+    {
+      "path": "data/model_overrides/s_main_leftwing/pristine_intact_lod0.glb",
+      "sha256": "3b08d894d260cb92771b1d6c0cb2e686b8054d672e7bc0a6108aff97b6ad6b8c",
+      "bytes": 1935804
+    },
+    {
+      "path": "data/model_overrides/s_main_leftwing/pristine_intact_lod1.glb",
+      "sha256": "d6b8f07c1c74db37d610a754c303a250cbe79aa0ec3cf4d77488cb78fcbcd393",
+      "bytes": 1676780
+    },
+    {
+      "path": "data/model_overrides/s_main_leftwing/pristine_intact_lod2.glb",
+      "sha256": "c4c061fb8241956d10841a9c3e6686b16aadfef9bfe797b51b2100caedbca0f8",
+      "bytes": 1635860
+    },
+    {
+      "path": "data/model_overrides/s_main_rightwing/detail/0_normal.ktx2",
+      "sha256": "bbc92550c7a2a8e93d7e0c742a9b3515a850eb7c46349d3187a441769c090e61",
+      "bytes": 349936
+    },
+    {
+      "path": "data/model_overrides/s_main_rightwing/detail/0_orm.ktx2",
+      "sha256": "1fc7de0ff732635371a2cb2d9c145a280d9a5b09175b426769c5c4d5a6d4d690",
+      "bytes": 349920
+    },
+    {
+      "path": "data/model_overrides/s_main_rightwing/pristine_intact_lod0.glb",
+      "sha256": "af7cc10600366fee28e58f115c55efdccadcf17571d40d8ce805915f8b9779d1",
+      "bytes": 2332380
+    },
+    {
+      "path": "data/model_overrides/s_main_rightwing/pristine_intact_lod1.glb",
+      "sha256": "712d77cd36cac208234a77430de71ca6a4f3a9af288945494bfa7d756e75d259",
+      "bytes": 1963480
+    },
+    {
+      "path": "data/model_overrides/s_main_rightwing/pristine_intact_lod2.glb",
+      "sha256": "281d758136c103406c4a9db33fa883d8a07f753dd6dce73c33409a89e1342184",
+      "bytes": 1523852
+    },
+    {
+      "path": "data/model_overrides/s_main_stairs/detail/0_normal.ktx2",
+      "sha256": "f1aba4eb56e85b7fda32aa76617db323aff0128db86bae9bdfe074d1cb70bb91",
+      "bytes": 349936
+    },
+    {
+      "path": "data/model_overrides/s_main_stairs/detail/0_orm.ktx2",
+      "sha256": "7d878befec20c82588a802717161ddf1810f3f2dd9336757e1ace6edbf69c781",
+      "bytes": 349920
+    },
+    {
+      "path": "data/model_overrides/s_main_stairs/pristine_intact_lod0.glb",
+      "sha256": "199b0ede80ac2a5d2fba2c1a637d4eecfd9c35b46c3ffb6de764cfd493faa98d",
+      "bytes": 2113264
+    },
+    {
+      "path": "data/model_overrides/s_main_stairs/pristine_intact_lod1.glb",
+      "sha256": "8582d606195cc736613cc9bb1a9a3f484b7ef8ea7f3fe1c7fb9414fef798026d",
+      "bytes": 935484
+    },
+    {
+      "path": "data/model_overrides/s_main_stairs/pristine_intact_lod2.glb",
+      "sha256": "35784a77973e95f78d39a62bed2b54393cb43f8d4ca1757efbf9552175c57aaa",
+      "bytes": 457812
+    },
+    {
+      "path": "data/model_overrides/s_quetragon/detail/0_normal.ktx2",
+      "sha256": "905e5fe62ee8e52d89b1271688e38b9cf12de24113d8300cb3b8805455c60bfa",
+      "bytes": 349936
+    },
+    {
+      "path": "data/model_overrides/s_quetragon/detail/0_orm.ktx2",
+      "sha256": "b6395872abdd2a48868535c7de5b047d1bf762156e9b08e8ad1372d0d7e6e5c6",
+      "bytes": 349920
+    },
+    {
+      "path": "data/model_overrides/s_quetragon/pristine_intact_lod0.glb",
+      "sha256": "888724e04aed630b2be395f1576d5c9569df01cdeb97f975850d3a76e679da5d",
+      "bytes": 2165668
+    },
+    {
+      "path": "data/model_overrides/s_quetragon/pristine_intact_lod1.glb",
+      "sha256": "9ddd209ec3c932e9e6b8b17e765be8437e4dc2bdb99bcf50a38a2d2df56906e3",
+      "bytes": 1821560
+    },
+    {
+      "path": "data/model_overrides/s_quetragon/pristine_intact_lod2.glb",
+      "sha256": "5a5a334c077fe78e00ab9153cc0b996e75da7c4cdcee17e0507f29b2deac29a8",
+      "bytes": 1745160
     },
     {
       "path": "data/model_overrides/smallfueltank/detail/0_normal.ktx2",
@@ -1195,8 +2660,73 @@
       "bytes": 3241656
     },
     {
+      "path": "data/tgl/1024/cp_centerlobby_0.ktx2",
+      "sha256": "9d789d554eb2ba65325dfcd5e0e1ff1dd103e89d5b6d3521654c0029ed3ea6ae",
+      "bytes": 1398528
+    },
+    {
       "path": "data/tgl/1024/cp_chemicalplant_0.ktx2",
       "sha256": "e72ad01fbd0747f65f9701906f3b79ff61e4e71a11a8d8db8376cc8617d6c7b1",
+      "bytes": 1398528
+    },
+    {
+      "path": "data/tgl/1024/cp_city2storya_0.ktx2",
+      "sha256": "a6b885ddd6fea6395e10e4aa41cdbd2bf05b564a703952e53d3df30eb8fb5600",
+      "bytes": 1398528
+    },
+    {
+      "path": "data/tgl/1024/cp_city2storyb_0.ktx2",
+      "sha256": "e81c3a176666b07eaf807c05e09d2b2f0077f588db7f1fefea11f878ccc8a57d",
+      "bytes": 1398528
+    },
+    {
+      "path": "data/tgl/1024/cp_city2storyc_0.ktx2",
+      "sha256": "077716041a3b899db07c5754e2b53eed82e587e4c52fa1c65a1bfe5a614fc122",
+      "bytes": 1398528
+    },
+    {
+      "path": "data/tgl/1024/cp_city4storya_0.ktx2",
+      "sha256": "5f835d12fc256b47b709b7b31db477baeacb93e80c446e6325f6ed8a07c59471",
+      "bytes": 1398528
+    },
+    {
+      "path": "data/tgl/1024/cp_city4storyb_0.ktx2",
+      "sha256": "19dc813e11ab9a3b3d7993a1ae4a00dc984e9b17d74c8e51750a17aa2c817d36",
+      "bytes": 1398528
+    },
+    {
+      "path": "data/tgl/1024/cp_city4storyc_0.ktx2",
+      "sha256": "fb4c256d4db92d0aa434251ddb1bd8f948a2218f6764fc6dc65b0ed774dea18b",
+      "bytes": 1398528
+    },
+    {
+      "path": "data/tgl/1024/cp_city6storya_0.ktx2",
+      "sha256": "2f594e7f00081c65c78d34d14e08399d979cee1c66fbbc1406aad4c56f06fa89",
+      "bytes": 1398528
+    },
+    {
+      "path": "data/tgl/1024/cp_city6storyb_0.ktx2",
+      "sha256": "2ecaec8320b88366518764e9cbe17d6adc226ba866f402dd4717a5f9d3471add",
+      "bytes": 1398528
+    },
+    {
+      "path": "data/tgl/1024/cp_city6storyc_0.ktx2",
+      "sha256": "8994fc6c7c845782748b3fb0c315f67f2be427d0773f12035ff3781581bd4f56",
+      "bytes": 1398528
+    },
+    {
+      "path": "data/tgl/1024/cp_city8storya_0.ktx2",
+      "sha256": "38b3e94fb23b8da6718283cf90003d9f203cef72383fd9561d6ccf07b840d5da",
+      "bytes": 1398528
+    },
+    {
+      "path": "data/tgl/1024/cp_city8storyb_0.ktx2",
+      "sha256": "12ae60d62160175860c006bfc2173d3208d7e00f3c6d1524da423cfa4d15ae94",
+      "bytes": 1398528
+    },
+    {
+      "path": "data/tgl/1024/cp_city8storyc_0.ktx2",
+      "sha256": "e1bece6230a4a25584ae283741cca8b702c9eba651e163ca4bf848e885715292",
       "bytes": 1398528
     },
     {
@@ -1270,6 +2800,11 @@
       "bytes": 1398528
     },
     {
+      "path": "data/tgl/1024/cp_hub_0.ktx2",
+      "sha256": "9c8d486afda46f692a191df56e9d577db0fbad0e946f8fafb4ba070d9ad881b3",
+      "bytes": 1398528
+    },
+    {
       "path": "data/tgl/1024/cp_industrialcomplex_0.ktx2",
       "sha256": "0587f84ce16cbc23a83a5f4a2b67a419f42ca8d053ac020eedb0d210d85306db",
       "bytes": 1398528
@@ -1277,6 +2812,46 @@
     {
       "path": "data/tgl/1024/cp_industrialplant_0.ktx2",
       "sha256": "f0e0c5d2de7b3c632169785e4ef531111e6a531c99816eb39adcbdb8134e35e8",
+      "bytes": 1398528
+    },
+    {
+      "path": "data/tgl/1024/cp_l_guardhouse_0.ktx2",
+      "sha256": "8a9dd78633adb743e8946334837a3982b0b75c29313eb500f4c1494f98ca199a",
+      "bytes": 1398528
+    },
+    {
+      "path": "data/tgl/1024/cp_l_palacecore_0.ktx2",
+      "sha256": "fae605da27711779819e55a6cb3b89296f1461fb1911ab919b429f033f5845b1",
+      "bytes": 1398528
+    },
+    {
+      "path": "data/tgl/1024/cp_l_palacegate_0.ktx2",
+      "sha256": "20c0faeb85c4424d20533870882f93c416c808af4576ddf7c79d82537173677e",
+      "bytes": 1398528
+    },
+    {
+      "path": "data/tgl/1024/cp_l_palacetwr_0.ktx2",
+      "sha256": "5f0240f0d6d81135fa90f2c1b19976e1e2e0106f97a6dab264ee4a75634dc653",
+      "bytes": 1398528
+    },
+    {
+      "path": "data/tgl/1024/cp_l_palacewing_0.ktx2",
+      "sha256": "eaea1f85b072d8e574d3bb96e4fec5dd3dab2bcddc544b006efefe7ba4aace7b",
+      "bytes": 1398528
+    },
+    {
+      "path": "data/tgl/1024/cp_l_residencecore_0.ktx2",
+      "sha256": "a125f01650dad8026de90c161f0e398b5c61c10ad629189a395a2529f5ed4091",
+      "bytes": 1398528
+    },
+    {
+      "path": "data/tgl/1024/cp_l_residenceleft_0.ktx2",
+      "sha256": "bfcbc407c0198da464c91a4f9850e1eb2f95f7cdf1ff9e2d658d1093e5a5b3c3",
+      "bytes": 1398528
+    },
+    {
+      "path": "data/tgl/1024/cp_l_residenceright_0.ktx2",
+      "sha256": "3262c1214e0625d4cdb7374320332f82e7c5ac326a5872705d0390c99dac4b55",
       "bytes": 1398528
     },
     {
@@ -1292,6 +2867,11 @@
     {
       "path": "data/tgl/1024/cp_liquidstorage_0.ktx2",
       "sha256": "94a52b35d62d1702bbd99c0e3f0415f0c8ac230c90fe4b787900c9fab8ead261",
+      "bytes": 1398528
+    },
+    {
+      "path": "data/tgl/1024/cp_lobby_0.ktx2",
+      "sha256": "f01b9a1067d9bb4abd52c326744d85228e37270fdfba2432b6abec339c2a1ea2",
       "bytes": 1398528
     },
     {
@@ -1312,6 +2892,66 @@
     {
       "path": "data/tgl/1024/cp_purificationplant_0.ktx2",
       "sha256": "c257a2e8d85316bdffe4f45ae74d9473dd0c47b11db916e9152d3745d939a001",
+      "bytes": 1398528
+    },
+    {
+      "path": "data/tgl/1024/cp_s_admin_core_0.ktx2",
+      "sha256": "aaacafb6e7e449018fc011e05d09fad1c510e78a349f29d1a0c8676409e7132d",
+      "bytes": 1398528
+    },
+    {
+      "path": "data/tgl/1024/cp_s_admin_entry_0.ktx2",
+      "sha256": "1b775af2be37ffac233403e5e962ba3072f61a4f5fea6a13480cdf43d372e0d7",
+      "bytes": 1398528
+    },
+    {
+      "path": "data/tgl/1024/cp_s_admin_wing_0.ktx2",
+      "sha256": "dc88764adf258a6368d348dcda851b646c8e2ee1ec6bf99d811d05067da208c6",
+      "bytes": 1398528
+    },
+    {
+      "path": "data/tgl/1024/cp_s_adminquarter_0.ktx2",
+      "sha256": "60c0fba67e56b5055231c4b54e5c2a6a5e0413ae8bc6ba989d9ee24d7bf51d1b",
+      "bytes": 1398528
+    },
+    {
+      "path": "data/tgl/1024/cp_s_gov1_0.ktx2",
+      "sha256": "ce5bfe334f9b9d03139ca0c1d62f01cf642083e809c6030e1b3b23f942810b0e",
+      "bytes": 1398528
+    },
+    {
+      "path": "data/tgl/1024/cp_s_gov2_0.ktx2",
+      "sha256": "c06ca9f7f0dc2fc4c3b707e138798b1b4219b34c6c6e8769ec92d5a13d25e63c",
+      "bytes": 1398528
+    },
+    {
+      "path": "data/tgl/1024/cp_s_govresidence_0.ktx2",
+      "sha256": "4569637e939e3a491c7cd2c9ebc583c163883edd7ea1e4ea709befda129783a7",
+      "bytes": 1398528
+    },
+    {
+      "path": "data/tgl/1024/cp_s_main_0.ktx2",
+      "sha256": "98cafc04f721f4bb2ac75a6c6bf75199434e33dee66631704b7b3bbf5791bfe0",
+      "bytes": 1398528
+    },
+    {
+      "path": "data/tgl/1024/cp_s_main_leftwing_0.ktx2",
+      "sha256": "b46894f94f1f586827f5b233e3bd7a120500e2ecd941c672831b5ec70d7f526a",
+      "bytes": 1398528
+    },
+    {
+      "path": "data/tgl/1024/cp_s_main_rightwing_0.ktx2",
+      "sha256": "7cdf27cde71511f3c74c36a2be28359cf8e9cdf6385933ddb91582bb3cfc4304",
+      "bytes": 1398528
+    },
+    {
+      "path": "data/tgl/1024/cp_s_main_stairs_0.ktx2",
+      "sha256": "3b69f53a79ffa8c834ed6073a1400f65db026bc442f216e27ec7d94067513bcc",
+      "bytes": 1398528
+    },
+    {
+      "path": "data/tgl/1024/cp_s_quetragon_0.ktx2",
+      "sha256": "ef73a09064ce39d306928f1e075536fd471ad4e3a9dfe2b3e21a982f000fda95",
       "bytes": 1398528
     },
     {
@@ -1365,8 +3005,73 @@
       "bytes": 1398528
     },
     {
+      "path": "data/tgl/128/cp_centerlobby_0.ktx2",
+      "sha256": "bf75d1aebec46f9c1d62054aec38c9987ed8939064293d8f03e1c12bf530f188",
+      "bytes": 22192
+    },
+    {
       "path": "data/tgl/128/cp_chemicalplant_0.ktx2",
       "sha256": "0fc3466eb8b75b8f385ddc11ed9c2df14d08112108ac6d45f2c7bea48adc9e9f",
+      "bytes": 22192
+    },
+    {
+      "path": "data/tgl/128/cp_city2storya_0.ktx2",
+      "sha256": "f7783450d258d12105ca1868ed505ded2c9303123adecae56ccc9e7baa33a1ff",
+      "bytes": 22192
+    },
+    {
+      "path": "data/tgl/128/cp_city2storyb_0.ktx2",
+      "sha256": "5a67e75594d976e5c8e69ffdc225ad18dae107e09891155003796f1c7423fd0b",
+      "bytes": 22192
+    },
+    {
+      "path": "data/tgl/128/cp_city2storyc_0.ktx2",
+      "sha256": "561096fa84f728ae73be53f22b10636f1f1325b8d0ec670bbbf91e7a7210c81c",
+      "bytes": 22192
+    },
+    {
+      "path": "data/tgl/128/cp_city4storya_0.ktx2",
+      "sha256": "f5c9bdd90235ea3a0642a58d0ae2c866f5c05d9f6cb6197d840e48d85d5eceaf",
+      "bytes": 22192
+    },
+    {
+      "path": "data/tgl/128/cp_city4storyb_0.ktx2",
+      "sha256": "a51e57bb38aeb2c1131c72beb622d6e5f6e8f7a2b93349f0a9ae186b17722fb8",
+      "bytes": 22192
+    },
+    {
+      "path": "data/tgl/128/cp_city4storyc_0.ktx2",
+      "sha256": "538c03df00e0632af9224a4da53a3f25cd225c7ccad397d0d611e06abece9bf8",
+      "bytes": 22192
+    },
+    {
+      "path": "data/tgl/128/cp_city6storya_0.ktx2",
+      "sha256": "c05d271a6bd871b3680f99e6018dc09fb7fbd08554ef323d3d1a73a0373ccece",
+      "bytes": 22192
+    },
+    {
+      "path": "data/tgl/128/cp_city6storyb_0.ktx2",
+      "sha256": "a520a3901fab178f7fc451eab049f8621dd5c353a565ce0c48fcab91e1e702b7",
+      "bytes": 22192
+    },
+    {
+      "path": "data/tgl/128/cp_city6storyc_0.ktx2",
+      "sha256": "da3521779504ee11e52d52f03e711f9f0e20fd40b4237dbbed6f15df84e3acd7",
+      "bytes": 22192
+    },
+    {
+      "path": "data/tgl/128/cp_city8storya_0.ktx2",
+      "sha256": "c35f77e60ab864737cde6af45cfd801503399c57d23b725a40337ac8b90af33b",
+      "bytes": 22192
+    },
+    {
+      "path": "data/tgl/128/cp_city8storyb_0.ktx2",
+      "sha256": "72dee87817ec72d709e3c32782b70436c1ee7143c84decab9a8696aa1fbbf007",
+      "bytes": 22192
+    },
+    {
+      "path": "data/tgl/128/cp_city8storyc_0.ktx2",
+      "sha256": "1c7cc966196f4834eff66556d8b871f072b6ce0edb54d5f82c8c34a1b74cae0c",
       "bytes": 22192
     },
     {
@@ -1440,6 +3145,11 @@
       "bytes": 22192
     },
     {
+      "path": "data/tgl/128/cp_hub_0.ktx2",
+      "sha256": "43db30908d31c8fc19111fb99d59ecc5b5addca952e9b24fbb17ce72529fc7a4",
+      "bytes": 22192
+    },
+    {
       "path": "data/tgl/128/cp_industrialcomplex_0.ktx2",
       "sha256": "16c51fd544c16f975d9df2db188d7758d9e404821097e0a81846433de7f578b3",
       "bytes": 22192
@@ -1447,6 +3157,46 @@
     {
       "path": "data/tgl/128/cp_industrialplant_0.ktx2",
       "sha256": "b8651320e928a89a6d0e9af55fcd691da49980be02180fb59f6f36b87e68e1ab",
+      "bytes": 22192
+    },
+    {
+      "path": "data/tgl/128/cp_l_guardhouse_0.ktx2",
+      "sha256": "5d1ed5ea5218ce1474d4474240bf5cc2fe89f881594ad49ff87b2f68eda595ae",
+      "bytes": 22192
+    },
+    {
+      "path": "data/tgl/128/cp_l_palacecore_0.ktx2",
+      "sha256": "5cabee998ad9d273469e4881ffae9007ee38ebb59817a6acdd5a0be9debc8752",
+      "bytes": 22192
+    },
+    {
+      "path": "data/tgl/128/cp_l_palacegate_0.ktx2",
+      "sha256": "72325ef51fa1298c44ae8a4a0481bb9bac415d6c69d0e615ef16fa7a95b9662e",
+      "bytes": 22192
+    },
+    {
+      "path": "data/tgl/128/cp_l_palacetwr_0.ktx2",
+      "sha256": "a73784f99aa3b6bf749b80d2f89847389e0e409654d07170a107869fc8f3bf51",
+      "bytes": 22192
+    },
+    {
+      "path": "data/tgl/128/cp_l_palacewing_0.ktx2",
+      "sha256": "a3fa94fb25ece9eb6f3e146b43a8294df1a556f33590215c66bd66daa6231092",
+      "bytes": 22192
+    },
+    {
+      "path": "data/tgl/128/cp_l_residencecore_0.ktx2",
+      "sha256": "2e6b152ace69e251083dc723c8700bea99bdc31aa3099773e0d1fcfc34576934",
+      "bytes": 22192
+    },
+    {
+      "path": "data/tgl/128/cp_l_residenceleft_0.ktx2",
+      "sha256": "919c7e838e117e1a6ea212cec927a03920dc99d6c0cf438ceae600e19d20632f",
+      "bytes": 22192
+    },
+    {
+      "path": "data/tgl/128/cp_l_residenceright_0.ktx2",
+      "sha256": "576ca09a9bff0249e07cb189debfafaf003a77820468f61353e37e669fdcee4d",
       "bytes": 22192
     },
     {
@@ -1462,6 +3212,11 @@
     {
       "path": "data/tgl/128/cp_liquidstorage_0.ktx2",
       "sha256": "d9d74efb2246944945156a3e84f384ac71b900131e55d416afbdfeda3ec30a52",
+      "bytes": 22192
+    },
+    {
+      "path": "data/tgl/128/cp_lobby_0.ktx2",
+      "sha256": "7da3d1c1750769bfe73c2101d191121bb1d592ccd620918b5de9e1832978203d",
       "bytes": 22192
     },
     {
@@ -1482,6 +3237,66 @@
     {
       "path": "data/tgl/128/cp_purificationplant_0.ktx2",
       "sha256": "664addf30b011dd055c966adc50701fb4c53cdf58375fe73d16f22ef3412d81a",
+      "bytes": 22192
+    },
+    {
+      "path": "data/tgl/128/cp_s_admin_core_0.ktx2",
+      "sha256": "698cf9a11a96d0b5aae9acd713ae8d22cb7fb84a9a25a5001d5a40fe9e9b119c",
+      "bytes": 22192
+    },
+    {
+      "path": "data/tgl/128/cp_s_admin_entry_0.ktx2",
+      "sha256": "c77ca93f66522c41b21f88aa74e4e55ffa8e04d2602f153ebf0906e1ba344336",
+      "bytes": 22192
+    },
+    {
+      "path": "data/tgl/128/cp_s_admin_wing_0.ktx2",
+      "sha256": "d4a46d7d0dddb0bc90707df34201deda8c70db9ca974560d48c1d7919285bb0d",
+      "bytes": 22192
+    },
+    {
+      "path": "data/tgl/128/cp_s_adminquarter_0.ktx2",
+      "sha256": "965c71af434971a96af7354175d21878619028bb0dca8083ec318cf1f3bbd668",
+      "bytes": 22192
+    },
+    {
+      "path": "data/tgl/128/cp_s_gov1_0.ktx2",
+      "sha256": "33b7f0aea7317e4d244d27373ec1a9790867911ff6121cf86d23c619cd25af0f",
+      "bytes": 22192
+    },
+    {
+      "path": "data/tgl/128/cp_s_gov2_0.ktx2",
+      "sha256": "ab4396eedf37540a020e2a221b4ffcfee8e46005d5c20669060dd95569da6a4f",
+      "bytes": 22192
+    },
+    {
+      "path": "data/tgl/128/cp_s_govresidence_0.ktx2",
+      "sha256": "726b3d5af6fabf236a6aee2959f5acdd6c6c67980aa94ba8743dd11f9e3578e1",
+      "bytes": 22192
+    },
+    {
+      "path": "data/tgl/128/cp_s_main_0.ktx2",
+      "sha256": "88c8b76e3bc9f4e7568fd58647b36334530645f26b8b015ea5205afe1303b017",
+      "bytes": 22192
+    },
+    {
+      "path": "data/tgl/128/cp_s_main_leftwing_0.ktx2",
+      "sha256": "ea81b4e308dc337b5a56bd36597ed13eec98c911e7ac20498ef02da9b46b161f",
+      "bytes": 22192
+    },
+    {
+      "path": "data/tgl/128/cp_s_main_rightwing_0.ktx2",
+      "sha256": "521ebd06281d226f03da4976239ad1154ccf75edead77ef9f400f27d1d786afe",
+      "bytes": 22192
+    },
+    {
+      "path": "data/tgl/128/cp_s_main_stairs_0.ktx2",
+      "sha256": "ae9c61c56093c7f8a5ff895576246665700c6846d5458348ad41734194feebe9",
+      "bytes": 22192
+    },
+    {
+      "path": "data/tgl/128/cp_s_quetragon_0.ktx2",
+      "sha256": "74458fa333400fe9fb25174de23b87c617cb10944a01c01271191d47ceffaa59",
       "bytes": 22192
     },
     {
@@ -1535,8 +3350,73 @@
       "bytes": 22192
     },
     {
+      "path": "data/tgl/256/cp_centerlobby_0.ktx2",
+      "sha256": "bf1f1bc3cc745be28b6cd3eb3089b3e7436d01327bed8ae9c19dba6112ea589b",
+      "bytes": 87760
+    },
+    {
       "path": "data/tgl/256/cp_chemicalplant_0.ktx2",
       "sha256": "0857794b07db900b9642a97f29080ae6d6095e435e192f72875fa6861fdf68ea",
+      "bytes": 87760
+    },
+    {
+      "path": "data/tgl/256/cp_city2storya_0.ktx2",
+      "sha256": "38770e38093c4d9656618baf2f887b81f1d70bbd2d83940c91712cd7b33a2251",
+      "bytes": 87760
+    },
+    {
+      "path": "data/tgl/256/cp_city2storyb_0.ktx2",
+      "sha256": "cd2f7fd68aed8898b36a09a217ec1766778b0b56a128eb2816b91416e1a5895c",
+      "bytes": 87760
+    },
+    {
+      "path": "data/tgl/256/cp_city2storyc_0.ktx2",
+      "sha256": "8e598cbef2a8d67fad187a779ad4dfac57fa267ef5b43daa6edb99c39718aaef",
+      "bytes": 87760
+    },
+    {
+      "path": "data/tgl/256/cp_city4storya_0.ktx2",
+      "sha256": "6c6584e9cf45f94d4be3057866a438b246aaa2de6ada3d88e2f465384a5512bc",
+      "bytes": 87760
+    },
+    {
+      "path": "data/tgl/256/cp_city4storyb_0.ktx2",
+      "sha256": "829e886fde98fd0e7ce5cb5db8b9820251f3af8785e5ac1ff8b938653bd4e660",
+      "bytes": 87760
+    },
+    {
+      "path": "data/tgl/256/cp_city4storyc_0.ktx2",
+      "sha256": "813b52a643dc2324959668cb56fc1ed5cb126869ec85915b2dea7c8091332982",
+      "bytes": 87760
+    },
+    {
+      "path": "data/tgl/256/cp_city6storya_0.ktx2",
+      "sha256": "afcaa4b329395f7fdbc94386e55dcf0e1a8684150af02e38f8fddf94cc46c918",
+      "bytes": 87760
+    },
+    {
+      "path": "data/tgl/256/cp_city6storyb_0.ktx2",
+      "sha256": "3683a1c80199573c37046a10e91e091222f8a8c356518725c5a1f6d77a1b5918",
+      "bytes": 87760
+    },
+    {
+      "path": "data/tgl/256/cp_city6storyc_0.ktx2",
+      "sha256": "5f1416d083ed432a52c2b127ffaee21565b81d9e782489cd23122828eca74873",
+      "bytes": 87760
+    },
+    {
+      "path": "data/tgl/256/cp_city8storya_0.ktx2",
+      "sha256": "8ea317961d220adda50aaa1e133a31700f9d89c2816ca3891527673477131801",
+      "bytes": 87760
+    },
+    {
+      "path": "data/tgl/256/cp_city8storyb_0.ktx2",
+      "sha256": "67f631971d7bdc900bbb872698c60870a8816c1e8522f26caa13ac388714ba4b",
+      "bytes": 87760
+    },
+    {
+      "path": "data/tgl/256/cp_city8storyc_0.ktx2",
+      "sha256": "7caa45beec820c4e6aefd83b77c58c125960e53a0aba6511b98bc56fc52bb791",
       "bytes": 87760
     },
     {
@@ -1610,6 +3490,11 @@
       "bytes": 87760
     },
     {
+      "path": "data/tgl/256/cp_hub_0.ktx2",
+      "sha256": "9269602a1539ca93a6b0a15a71396fb2cf41788f8dbeba64948e02395e77ac94",
+      "bytes": 87760
+    },
+    {
       "path": "data/tgl/256/cp_industrialcomplex_0.ktx2",
       "sha256": "b68d6de29b63414de0502b76412abfe28a08a3b9dc2ddb76ac3235b90829cdd6",
       "bytes": 87760
@@ -1617,6 +3502,46 @@
     {
       "path": "data/tgl/256/cp_industrialplant_0.ktx2",
       "sha256": "b3e0ae28f3be161493561627a05ee647ba7f204b343d31edfca2b8b0c867510f",
+      "bytes": 87760
+    },
+    {
+      "path": "data/tgl/256/cp_l_guardhouse_0.ktx2",
+      "sha256": "5dbc8aa7523050694633f6f946d669af51b93943e0fe8f744df1de5aadb3b32f",
+      "bytes": 87760
+    },
+    {
+      "path": "data/tgl/256/cp_l_palacecore_0.ktx2",
+      "sha256": "cd1b816be7cae40827ee42e5bfd3e6839b66edd099e76bac7da4cfd661e95f06",
+      "bytes": 87760
+    },
+    {
+      "path": "data/tgl/256/cp_l_palacegate_0.ktx2",
+      "sha256": "da547ba1b95fcccc0a5dc7f62c656f37782972214dca4fe7c3adf1e3413a93c3",
+      "bytes": 87760
+    },
+    {
+      "path": "data/tgl/256/cp_l_palacetwr_0.ktx2",
+      "sha256": "aa6bdc1a3f6a7311bb0054ba5bf90536a5b39612b6f9bf51c2b76a1902be63cf",
+      "bytes": 87760
+    },
+    {
+      "path": "data/tgl/256/cp_l_palacewing_0.ktx2",
+      "sha256": "a67db7c3351dab27337bdbfa6cb143c8a63d24c96f0dd73fce66a37b6c9aeffd",
+      "bytes": 87760
+    },
+    {
+      "path": "data/tgl/256/cp_l_residencecore_0.ktx2",
+      "sha256": "69b240d3db20e403272292010f8bccf10c65d5238b6409419522ae66fde51984",
+      "bytes": 87760
+    },
+    {
+      "path": "data/tgl/256/cp_l_residenceleft_0.ktx2",
+      "sha256": "eb2264af016da3ce0c05c1b03ba0d951d006f245d674682b7fb2573341e6f568",
+      "bytes": 87760
+    },
+    {
+      "path": "data/tgl/256/cp_l_residenceright_0.ktx2",
+      "sha256": "67c0a16b1f952f008d7226fdc01e2bb4b2053a6838b9cf442d9371ec78f27cfc",
       "bytes": 87760
     },
     {
@@ -1632,6 +3557,11 @@
     {
       "path": "data/tgl/256/cp_liquidstorage_0.ktx2",
       "sha256": "2a927e75f648aa7c26f89f67938e40430bbc7546546792e1ccd5b4b02f910a4f",
+      "bytes": 87760
+    },
+    {
+      "path": "data/tgl/256/cp_lobby_0.ktx2",
+      "sha256": "510224530eaa9d556efd07fbbc3f8aec33e884a9c9abe1cfc1b8ba08def5825a",
       "bytes": 87760
     },
     {
@@ -1652,6 +3582,66 @@
     {
       "path": "data/tgl/256/cp_purificationplant_0.ktx2",
       "sha256": "3551050b7ae4ab44a47e215c4f493ac2d9b5b4f77fc4088ff932e2e6b1667cfa",
+      "bytes": 87760
+    },
+    {
+      "path": "data/tgl/256/cp_s_admin_core_0.ktx2",
+      "sha256": "8c0cba718197270378df5bb65c6617c241ab313d3a2b50ea32c01332e9e52f2f",
+      "bytes": 87760
+    },
+    {
+      "path": "data/tgl/256/cp_s_admin_entry_0.ktx2",
+      "sha256": "4e7f545126904ce7a0e732bfeb49fbd39f17f0b3d10511feca15486abbdce46c",
+      "bytes": 87760
+    },
+    {
+      "path": "data/tgl/256/cp_s_admin_wing_0.ktx2",
+      "sha256": "aff6894874837268a88fa5b921981eab79dcb96e32d3e77f3938ae7e7cb63818",
+      "bytes": 87760
+    },
+    {
+      "path": "data/tgl/256/cp_s_adminquarter_0.ktx2",
+      "sha256": "a8baa106dda9d398865df72b11b8f263081792c79317d2e98943725938fab947",
+      "bytes": 87760
+    },
+    {
+      "path": "data/tgl/256/cp_s_gov1_0.ktx2",
+      "sha256": "e0fbea5f7bcaec96b8d8ae16ed6eeb53ee17ae46ebb7d2a46ef46cce87a12c3c",
+      "bytes": 87760
+    },
+    {
+      "path": "data/tgl/256/cp_s_gov2_0.ktx2",
+      "sha256": "4e73e667c840bfdaa3d1db8e636d8fe13641ce77103fd6314286e8ca28255c4a",
+      "bytes": 87760
+    },
+    {
+      "path": "data/tgl/256/cp_s_govresidence_0.ktx2",
+      "sha256": "8482b565edf7c5032acad4d2dac15cebf60fc40baac201408413bc7df7998a94",
+      "bytes": 87760
+    },
+    {
+      "path": "data/tgl/256/cp_s_main_0.ktx2",
+      "sha256": "77289da0ac48463c63ec73704ad3c9dc08c46c61b6961578e5941690829953e5",
+      "bytes": 87760
+    },
+    {
+      "path": "data/tgl/256/cp_s_main_leftwing_0.ktx2",
+      "sha256": "7cf4b0cbfc572be51a2be034774abf6078e5325e8c9d150c380aba39794c57a4",
+      "bytes": 87760
+    },
+    {
+      "path": "data/tgl/256/cp_s_main_rightwing_0.ktx2",
+      "sha256": "dfa2684197bda5d5b45490f1452e5e57a1dd93b2aba18c81a6b22e56c87392e0",
+      "bytes": 87760
+    },
+    {
+      "path": "data/tgl/256/cp_s_main_stairs_0.ktx2",
+      "sha256": "a156e69d8986d88eef0d8e30c1752c570bddf4daad44a834ce9e29360f19c543",
+      "bytes": 87760
+    },
+    {
+      "path": "data/tgl/256/cp_s_quetragon_0.ktx2",
+      "sha256": "be1fb54558c9a8f4e60580ed1e69040ce488d89af5a6f3a6cbb06ddb451df64e",
       "bytes": 87760
     },
     {
@@ -1705,8 +3695,73 @@
       "bytes": 87760
     },
     {
+      "path": "data/tgl/32/cp_centerlobby_0.ktx2",
+      "sha256": "5f3dbc7372d4c430698177b4fac9abf66582002bde11e9f599c91a26800e5d7c",
+      "bytes": 1664
+    },
+    {
       "path": "data/tgl/32/cp_chemicalplant_0.ktx2",
       "sha256": "7454cd53f193d6167cde3db60d89739839c7b5ec98c63b94edb54e261b3e7db9",
+      "bytes": 1664
+    },
+    {
+      "path": "data/tgl/32/cp_city2storya_0.ktx2",
+      "sha256": "1171b050459d487683ddeda11e36b97e1077d8cba47b2c37a78623836c7c1878",
+      "bytes": 1664
+    },
+    {
+      "path": "data/tgl/32/cp_city2storyb_0.ktx2",
+      "sha256": "decdddde306106196c0b454b8413dc0738d8755e1550a739166ac01625842b8c",
+      "bytes": 1664
+    },
+    {
+      "path": "data/tgl/32/cp_city2storyc_0.ktx2",
+      "sha256": "a64f363337ca2891c590dfa6f5969f3186e05e78d633a2aa0dc6869264a2bc71",
+      "bytes": 1664
+    },
+    {
+      "path": "data/tgl/32/cp_city4storya_0.ktx2",
+      "sha256": "8537aaf5d9b96f7497b3df109ff993adb2036872c8c8ee2715119142a1bbb213",
+      "bytes": 1664
+    },
+    {
+      "path": "data/tgl/32/cp_city4storyb_0.ktx2",
+      "sha256": "e077b0b539a6b2433e8d2a1636f8245e03ae0c24ddc5b255bc3d8ba75508719b",
+      "bytes": 1664
+    },
+    {
+      "path": "data/tgl/32/cp_city4storyc_0.ktx2",
+      "sha256": "fb6e4df0cbecf52de46514133ad7c05cffb790433546616e2ebe76c277e24c7d",
+      "bytes": 1664
+    },
+    {
+      "path": "data/tgl/32/cp_city6storya_0.ktx2",
+      "sha256": "90bb7cb75616276f935179f41c4c842adfe2f38a515dc60931e2a4b54a4df9e3",
+      "bytes": 1664
+    },
+    {
+      "path": "data/tgl/32/cp_city6storyb_0.ktx2",
+      "sha256": "8053a4762c08b9432f28aec576c2c7ecbd7e5c6a396b62b668e41bdaf20a4b36",
+      "bytes": 1664
+    },
+    {
+      "path": "data/tgl/32/cp_city6storyc_0.ktx2",
+      "sha256": "3c3ed7e9c6f8f571f5a7bb5bcc648f21e1770243e9e5cff04e9c0fbeaeaf4938",
+      "bytes": 1664
+    },
+    {
+      "path": "data/tgl/32/cp_city8storya_0.ktx2",
+      "sha256": "e590f3ef039458b24e142b7ed7878c7ee124fb5ad63b1c64028c559acc207f36",
+      "bytes": 1664
+    },
+    {
+      "path": "data/tgl/32/cp_city8storyb_0.ktx2",
+      "sha256": "4de13ddaf37553e57d7aa93b33ea88c0f35554fba76ce2084e5056d760b5f700",
+      "bytes": 1664
+    },
+    {
+      "path": "data/tgl/32/cp_city8storyc_0.ktx2",
+      "sha256": "3a88f03d513ee0b8e1ef462ed7eb26911e3aeeb631621309e7c1c28f6aa3626b",
       "bytes": 1664
     },
     {
@@ -1780,6 +3835,11 @@
       "bytes": 1664
     },
     {
+      "path": "data/tgl/32/cp_hub_0.ktx2",
+      "sha256": "946f74f07834b90499124d9d684b90f9c2245ac0911b4af4b13bcf3a0df61996",
+      "bytes": 1664
+    },
+    {
       "path": "data/tgl/32/cp_industrialcomplex_0.ktx2",
       "sha256": "53c6c2c453f44874ae65f80c75757389158335059a78cb838402ea91e6792bcb",
       "bytes": 1664
@@ -1787,6 +3847,46 @@
     {
       "path": "data/tgl/32/cp_industrialplant_0.ktx2",
       "sha256": "fe16f5e571c1d489a48dde3d13acd5042dff4b05949093c5268f906cc9adbb04",
+      "bytes": 1664
+    },
+    {
+      "path": "data/tgl/32/cp_l_guardhouse_0.ktx2",
+      "sha256": "e237607c91c6248c5145a01a23e0fa4ac02ccc72c4530b7b0e22146180b83590",
+      "bytes": 1664
+    },
+    {
+      "path": "data/tgl/32/cp_l_palacecore_0.ktx2",
+      "sha256": "a2ddba071ff37e5091091290441966cd8276e3ac55923dd04e7116239c71330a",
+      "bytes": 1664
+    },
+    {
+      "path": "data/tgl/32/cp_l_palacegate_0.ktx2",
+      "sha256": "8fe3120a6fcb44be0f2dbccc370b0bf9131d5fc651fe8f936313508dbb2650da",
+      "bytes": 1664
+    },
+    {
+      "path": "data/tgl/32/cp_l_palacetwr_0.ktx2",
+      "sha256": "e011262ec111f35d6753ff94941983ec058ac6dbfbba62f6c685e07ed91116c6",
+      "bytes": 1664
+    },
+    {
+      "path": "data/tgl/32/cp_l_palacewing_0.ktx2",
+      "sha256": "b20596f0c38c6bdcab7beca73e68253221cb211f15fe3e903b861f1dec7b75a2",
+      "bytes": 1664
+    },
+    {
+      "path": "data/tgl/32/cp_l_residencecore_0.ktx2",
+      "sha256": "20981f7fa30397d67fe920d01cc2a35fda1664f19452ae88ef59d0db5ac588e3",
+      "bytes": 1664
+    },
+    {
+      "path": "data/tgl/32/cp_l_residenceleft_0.ktx2",
+      "sha256": "69a355e03d4f32b3a00924cd228ceef7f9d83ab0edf6b53b8ed47dbd69175205",
+      "bytes": 1664
+    },
+    {
+      "path": "data/tgl/32/cp_l_residenceright_0.ktx2",
+      "sha256": "33f3b62f632f410c762838e603ab1dcf5d4ecac697a5cd907577f408e818873b",
       "bytes": 1664
     },
     {
@@ -1802,6 +3902,11 @@
     {
       "path": "data/tgl/32/cp_liquidstorage_0.ktx2",
       "sha256": "0ef9b1bcc9014c321c5043165d8cdb11e85e84512c91dcba7c4831f70a3d39a3",
+      "bytes": 1664
+    },
+    {
+      "path": "data/tgl/32/cp_lobby_0.ktx2",
+      "sha256": "90ab0dea60fdc8bccd6e4d1bf1d09b40000bd2a1ceceb02045886a64c2e6ff9e",
       "bytes": 1664
     },
     {
@@ -1822,6 +3927,66 @@
     {
       "path": "data/tgl/32/cp_purificationplant_0.ktx2",
       "sha256": "ae0eacfb7191b6bace11083c81dfe202530cde76de3aa30a40c4be3876d61ad4",
+      "bytes": 1664
+    },
+    {
+      "path": "data/tgl/32/cp_s_admin_core_0.ktx2",
+      "sha256": "0705723cf23ea959d9ecac52c27b43ff1ff96545aa4f6de4c282973734fcbabd",
+      "bytes": 1664
+    },
+    {
+      "path": "data/tgl/32/cp_s_admin_entry_0.ktx2",
+      "sha256": "2df1b4c035edb4b8a5f4a7b99e83ec12d5f978eb57b747c4ee753625a62e0fb6",
+      "bytes": 1664
+    },
+    {
+      "path": "data/tgl/32/cp_s_admin_wing_0.ktx2",
+      "sha256": "fd6e7246d943707f867d5fbcc0c5566cab228ef2083dcc798d4b32751727ea35",
+      "bytes": 1664
+    },
+    {
+      "path": "data/tgl/32/cp_s_adminquarter_0.ktx2",
+      "sha256": "5f57e7dfbd8ea77ef16bd9303dc439aac57b1a475e2adf9520fc19e0aa09a520",
+      "bytes": 1664
+    },
+    {
+      "path": "data/tgl/32/cp_s_gov1_0.ktx2",
+      "sha256": "d2c6e00b2787b5f8b87bed067492845f45460d271af506f111ce380163bc91a1",
+      "bytes": 1664
+    },
+    {
+      "path": "data/tgl/32/cp_s_gov2_0.ktx2",
+      "sha256": "1ab8eb772d46979cf5f3e9bad74ebe32b9eed93dfa51b47c5168f4cea3b6253c",
+      "bytes": 1664
+    },
+    {
+      "path": "data/tgl/32/cp_s_govresidence_0.ktx2",
+      "sha256": "a500cac790fb68665d094d3f6439c97b5dc8747e7ed9e31825cd10d2b1c79de3",
+      "bytes": 1664
+    },
+    {
+      "path": "data/tgl/32/cp_s_main_0.ktx2",
+      "sha256": "2752b8769a78e48b5f47f170cfe30e46b3a4f6ce35679cf520ad5872ecb7b520",
+      "bytes": 1664
+    },
+    {
+      "path": "data/tgl/32/cp_s_main_leftwing_0.ktx2",
+      "sha256": "bc24235788229efcef4ade2d1c9988b9e7fea8ec88e100a2347e29970c8270af",
+      "bytes": 1664
+    },
+    {
+      "path": "data/tgl/32/cp_s_main_rightwing_0.ktx2",
+      "sha256": "67128e1bc21d6be1be3f5b6483d17382946a39a3f37aeaa0dd3d9fa18badfb4b",
+      "bytes": 1664
+    },
+    {
+      "path": "data/tgl/32/cp_s_main_stairs_0.ktx2",
+      "sha256": "186a9706730bb8bcea3df932a24366abff0987303130d1c67d142622cad9955a",
+      "bytes": 1664
+    },
+    {
+      "path": "data/tgl/32/cp_s_quetragon_0.ktx2",
+      "sha256": "ac3bf3a27eda0c77c89f0ce8438522626224c6a9a423f06ac05ad9820587a946",
       "bytes": 1664
     },
     {
@@ -1875,8 +4040,73 @@
       "bytes": 1664
     },
     {
+      "path": "data/tgl/512/cp_centerlobby_0.ktx2",
+      "sha256": "e997f9c1b64522a5c5f1aa25ddb6ebcf2dbcc3a9f46554468d0e60998df116b8",
+      "bytes": 349920
+    },
+    {
       "path": "data/tgl/512/cp_chemicalplant_0.ktx2",
       "sha256": "53fd9b9e290d13427a2b723e8114619057d3c8b833cb41f9727d3b57f1bc9949",
+      "bytes": 349920
+    },
+    {
+      "path": "data/tgl/512/cp_city2storya_0.ktx2",
+      "sha256": "48e63f4e55f300efc9672b731815dd47e3b6750edac8c709634ecf61f7a235bc",
+      "bytes": 349920
+    },
+    {
+      "path": "data/tgl/512/cp_city2storyb_0.ktx2",
+      "sha256": "e80dac71325c6fe4628f8bab1ecfd3da6e54f6a588bcaf2cdd70b6a386d58826",
+      "bytes": 349920
+    },
+    {
+      "path": "data/tgl/512/cp_city2storyc_0.ktx2",
+      "sha256": "36be7676689c5a2a02498e14472b5926dd04d5f80ccf3316dc0fd9a64088ecae",
+      "bytes": 349920
+    },
+    {
+      "path": "data/tgl/512/cp_city4storya_0.ktx2",
+      "sha256": "1b5d94a151b7a21b3f7e8576bea9fdb58d62295071ef8e1135b9c0cec083d939",
+      "bytes": 349920
+    },
+    {
+      "path": "data/tgl/512/cp_city4storyb_0.ktx2",
+      "sha256": "ba225178c8bae4d48d6e11f1e6dbc710ed79393892f8b0bc2f1e7a43812f9f35",
+      "bytes": 349920
+    },
+    {
+      "path": "data/tgl/512/cp_city4storyc_0.ktx2",
+      "sha256": "11bb57612d7cf3ec5d7d55fe9e605c81cd74d8bca4bac7ca05d14957a84ec7be",
+      "bytes": 349920
+    },
+    {
+      "path": "data/tgl/512/cp_city6storya_0.ktx2",
+      "sha256": "875855e5114e8ff772ec6814068f568d475ede562579a275f427a0dc5091545f",
+      "bytes": 349920
+    },
+    {
+      "path": "data/tgl/512/cp_city6storyb_0.ktx2",
+      "sha256": "6b358e4a41912706aea8a6939cdda6de54abe7604b3b73d92a6dde6aabad9904",
+      "bytes": 349920
+    },
+    {
+      "path": "data/tgl/512/cp_city6storyc_0.ktx2",
+      "sha256": "4223b142e7459074dd8be010cb8e533ccd023c67755b1f8d51d268a70657918c",
+      "bytes": 349920
+    },
+    {
+      "path": "data/tgl/512/cp_city8storya_0.ktx2",
+      "sha256": "dc1fde14503ba63a28e20b32aae33e3c66d114f544069af52b327ae5c0a1586a",
+      "bytes": 349920
+    },
+    {
+      "path": "data/tgl/512/cp_city8storyb_0.ktx2",
+      "sha256": "6bbf7f4f63e9e8a62fb79c53ce44cab5ce980b6e5f51d53512ddc2384c3fe5ba",
+      "bytes": 349920
+    },
+    {
+      "path": "data/tgl/512/cp_city8storyc_0.ktx2",
+      "sha256": "7e6d6e9b578d2070a0a990d85d5c5278b944e37f8273a784ed63afa2bd380291",
       "bytes": 349920
     },
     {
@@ -1950,6 +4180,11 @@
       "bytes": 349920
     },
     {
+      "path": "data/tgl/512/cp_hub_0.ktx2",
+      "sha256": "1b6c8d0bcda298110ed6819e8e1c1f1a18024f228aed520c73bc75e5505c7f34",
+      "bytes": 349920
+    },
+    {
       "path": "data/tgl/512/cp_industrialcomplex_0.ktx2",
       "sha256": "316e92244d9adfdd0b089e49c1b8f42248dbc5f84896570ecb57e0122a0db2d1",
       "bytes": 349920
@@ -1957,6 +4192,46 @@
     {
       "path": "data/tgl/512/cp_industrialplant_0.ktx2",
       "sha256": "4beb56ec14403d1e9ab84605090415afa1e1acadebd44c6c15b9757e45f01d98",
+      "bytes": 349920
+    },
+    {
+      "path": "data/tgl/512/cp_l_guardhouse_0.ktx2",
+      "sha256": "8662aa84db27a1251a9bb6807c2db43b6604c0e82a1c32de1de0a703fb29b151",
+      "bytes": 349920
+    },
+    {
+      "path": "data/tgl/512/cp_l_palacecore_0.ktx2",
+      "sha256": "d15056070531bc4a6076819241e3281f697f7a718a7ab134034959da5aadf3c5",
+      "bytes": 349920
+    },
+    {
+      "path": "data/tgl/512/cp_l_palacegate_0.ktx2",
+      "sha256": "8c52f6e9a19b76ae3c578c438b625c40dacacf9ed1fc721d16155b4d112cc015",
+      "bytes": 349920
+    },
+    {
+      "path": "data/tgl/512/cp_l_palacetwr_0.ktx2",
+      "sha256": "a0f88d5c2468a15300f34d79651b13b981cf942727ec8e350b61b21e0036cf8f",
+      "bytes": 349920
+    },
+    {
+      "path": "data/tgl/512/cp_l_palacewing_0.ktx2",
+      "sha256": "1127d2fc0140554719bdfcdd095051e83536ab7c96fcc3bf282d3683f995a165",
+      "bytes": 349920
+    },
+    {
+      "path": "data/tgl/512/cp_l_residencecore_0.ktx2",
+      "sha256": "47751955f7c2a6bdbcf260e4ac8f1602230e1f457fc36d242a257f528fee14d8",
+      "bytes": 349920
+    },
+    {
+      "path": "data/tgl/512/cp_l_residenceleft_0.ktx2",
+      "sha256": "bd8000b5e7814985092d6aa299ee038d40f08841856738a73ddb51c9632a585c",
+      "bytes": 349920
+    },
+    {
+      "path": "data/tgl/512/cp_l_residenceright_0.ktx2",
+      "sha256": "f1cc27b35099f24b2711b00594e35029c5eb4bdc656cf06108b67173bf2f692d",
       "bytes": 349920
     },
     {
@@ -1972,6 +4247,11 @@
     {
       "path": "data/tgl/512/cp_liquidstorage_0.ktx2",
       "sha256": "0f20d2869f6031f41412ca09287676b1d6e6575b78a3edcfa979d4d43f2060ef",
+      "bytes": 349920
+    },
+    {
+      "path": "data/tgl/512/cp_lobby_0.ktx2",
+      "sha256": "7495effaa63ea675f1e8445321c4c15e3504ee4efddc0d11c85f7fae9ee09505",
       "bytes": 349920
     },
     {
@@ -1992,6 +4272,66 @@
     {
       "path": "data/tgl/512/cp_purificationplant_0.ktx2",
       "sha256": "32f85940eda8680bd00f47fd09bf673830515e1ebeacde80f65fc5c8f4af8e73",
+      "bytes": 349920
+    },
+    {
+      "path": "data/tgl/512/cp_s_admin_core_0.ktx2",
+      "sha256": "afbe1210d6da9b8eb1d00ee6dc5911500b26e644ee04afd2d2f156cfc4faf559",
+      "bytes": 349920
+    },
+    {
+      "path": "data/tgl/512/cp_s_admin_entry_0.ktx2",
+      "sha256": "29a183199ace807533348527177273a577970018b3ae0869d56bc5b459ac5f70",
+      "bytes": 349920
+    },
+    {
+      "path": "data/tgl/512/cp_s_admin_wing_0.ktx2",
+      "sha256": "8a7190e9035e526b7d120741484e810922f0aa261197159b5f2fce40ab50a887",
+      "bytes": 349920
+    },
+    {
+      "path": "data/tgl/512/cp_s_adminquarter_0.ktx2",
+      "sha256": "7241d611bfbfacc4c66c23d4e67ef17acaebad034d4d4e109cb7125556e932b5",
+      "bytes": 349920
+    },
+    {
+      "path": "data/tgl/512/cp_s_gov1_0.ktx2",
+      "sha256": "d4dc91ebb17eb2dc0d99f0270c7eeeb79c929afe051489c3311ea84d53ae017d",
+      "bytes": 349920
+    },
+    {
+      "path": "data/tgl/512/cp_s_gov2_0.ktx2",
+      "sha256": "da7b57b198d6456edb41fd6e9c373871f9a64a302bc42de11b73811ad7caf013",
+      "bytes": 349920
+    },
+    {
+      "path": "data/tgl/512/cp_s_govresidence_0.ktx2",
+      "sha256": "7181dfccfeac633e4f5c34e234ff7de776b5514b2f756ca92a68a89e393f3a91",
+      "bytes": 349920
+    },
+    {
+      "path": "data/tgl/512/cp_s_main_0.ktx2",
+      "sha256": "f89937150888e4b5eb15d3b9caf7fce921af89c5ec84b882a0079c5d68d1a159",
+      "bytes": 349920
+    },
+    {
+      "path": "data/tgl/512/cp_s_main_leftwing_0.ktx2",
+      "sha256": "c19e1ac021a59eb9e0c5337a4b0dbd9e0790bc9d30b841352d3cc25024a76041",
+      "bytes": 349920
+    },
+    {
+      "path": "data/tgl/512/cp_s_main_rightwing_0.ktx2",
+      "sha256": "972cee3097e5cddbc06b1727d62979cdf45cae0c26aaef57eb1dda0120716376",
+      "bytes": 349920
+    },
+    {
+      "path": "data/tgl/512/cp_s_main_stairs_0.ktx2",
+      "sha256": "6a25e58894d23b6b2c76f46a9034bbd76bc39f0390f992186b9ba4f8cb064e79",
+      "bytes": 349920
+    },
+    {
+      "path": "data/tgl/512/cp_s_quetragon_0.ktx2",
+      "sha256": "fe216a10c853d5429e859ae479b21fd57aba93e8726dc6ea2b3602f407f84f6d",
       "bytes": 349920
     },
     {
@@ -2045,8 +4385,73 @@
       "bytes": 349920
     },
     {
+      "path": "data/tgl/64/cp_centerlobby_0.ktx2",
+      "sha256": "a1d8c1e6892ee6447620495fffab7b148f552fc50497d486c7fc8d29c37e5882",
+      "bytes": 5792
+    },
+    {
       "path": "data/tgl/64/cp_chemicalplant_0.ktx2",
       "sha256": "fce1aca642e2df86a8f80e88c30d37d975fb3175c78b2b653de649710c8c8627",
+      "bytes": 5792
+    },
+    {
+      "path": "data/tgl/64/cp_city2storya_0.ktx2",
+      "sha256": "226580e241b2598e1c7c3b3e9022cf2a1314ddd34ccf787eb6cafde02ec45417",
+      "bytes": 5792
+    },
+    {
+      "path": "data/tgl/64/cp_city2storyb_0.ktx2",
+      "sha256": "5b7f0bc9f7ba8ad5cb4b3d3e0ed0987bd9fbabc0cbe731af4d5adf6930e1ef3a",
+      "bytes": 5792
+    },
+    {
+      "path": "data/tgl/64/cp_city2storyc_0.ktx2",
+      "sha256": "39a6a90e07a3b1311ad8e5db9255ec8dbc9683a676149af34300b8f035f46133",
+      "bytes": 5792
+    },
+    {
+      "path": "data/tgl/64/cp_city4storya_0.ktx2",
+      "sha256": "f2ee4af290507c16ffc96bc8f9e125b49ada2cc81b6e592a0dc1e7fc2bf26133",
+      "bytes": 5792
+    },
+    {
+      "path": "data/tgl/64/cp_city4storyb_0.ktx2",
+      "sha256": "8621cceb13e7399029d1279e19315a2e4985337f39951192564aa65cdfb631ce",
+      "bytes": 5792
+    },
+    {
+      "path": "data/tgl/64/cp_city4storyc_0.ktx2",
+      "sha256": "f7d54604ae78e01a059774a0d9368e297e93b67269efb55a5fbb5b8cf16c1b16",
+      "bytes": 5792
+    },
+    {
+      "path": "data/tgl/64/cp_city6storya_0.ktx2",
+      "sha256": "55af6a86e343537e1b1b394cc8bb738a69e8cdeebe1e0fc7878f2342ae9403d5",
+      "bytes": 5792
+    },
+    {
+      "path": "data/tgl/64/cp_city6storyb_0.ktx2",
+      "sha256": "fc9bd119827710446b378fa8fc023c78921ac8703835047b715bd9ffa0f05962",
+      "bytes": 5792
+    },
+    {
+      "path": "data/tgl/64/cp_city6storyc_0.ktx2",
+      "sha256": "21f0f23d9a8eeb8a8cbde69b6fde7bb04942e591e7b1cae2b9c091f831e96828",
+      "bytes": 5792
+    },
+    {
+      "path": "data/tgl/64/cp_city8storya_0.ktx2",
+      "sha256": "e338c476078c0285e7ab489488736f0f4ebb2eff65b0e38d2c19038aceaea500",
+      "bytes": 5792
+    },
+    {
+      "path": "data/tgl/64/cp_city8storyb_0.ktx2",
+      "sha256": "d46284458bdfdd81521bed13b40b839c049ab674cced663c852831b3f49035ab",
+      "bytes": 5792
+    },
+    {
+      "path": "data/tgl/64/cp_city8storyc_0.ktx2",
+      "sha256": "e3159971e3abab64785477422bab5e33fcee9c0d497010e257e6a25250baa091",
       "bytes": 5792
     },
     {
@@ -2120,6 +4525,11 @@
       "bytes": 5792
     },
     {
+      "path": "data/tgl/64/cp_hub_0.ktx2",
+      "sha256": "f55d0d1c2717b9862330364d8414b6274763ff9ad149fcd4e5ec0691196698b8",
+      "bytes": 5792
+    },
+    {
       "path": "data/tgl/64/cp_industrialcomplex_0.ktx2",
       "sha256": "0f2b74e0d7df699c5df40840448b7ed9c1a3b8d0e6c09b1fd8af7a95ba73d285",
       "bytes": 5792
@@ -2127,6 +4537,46 @@
     {
       "path": "data/tgl/64/cp_industrialplant_0.ktx2",
       "sha256": "1fe89c75128926f1daebc48912705a550f8b5cd33265739cb25d59148ff30960",
+      "bytes": 5792
+    },
+    {
+      "path": "data/tgl/64/cp_l_guardhouse_0.ktx2",
+      "sha256": "12f734c8ecde75c508a7c9d5dc3332f5a81f9b217321c57be10f80cdd8970c8c",
+      "bytes": 5792
+    },
+    {
+      "path": "data/tgl/64/cp_l_palacecore_0.ktx2",
+      "sha256": "cdb4ff80b07d28bbc749eab5de578394e61fe7e87acb2c9c194c318815ee6d32",
+      "bytes": 5792
+    },
+    {
+      "path": "data/tgl/64/cp_l_palacegate_0.ktx2",
+      "sha256": "7a9699058d83cbc834e1f247c02e04bf73dca4ced9b84a6aa1948c91bf8bdd2b",
+      "bytes": 5792
+    },
+    {
+      "path": "data/tgl/64/cp_l_palacetwr_0.ktx2",
+      "sha256": "f2bed934a0d01ebb0216e1d20604e5aedb1f49dbc08abd1d53fab87c5c76cb5d",
+      "bytes": 5792
+    },
+    {
+      "path": "data/tgl/64/cp_l_palacewing_0.ktx2",
+      "sha256": "af3d3cdb54a4235419521d2660a1846e4a17f4a4c5bfb23eecd7024ddd450f76",
+      "bytes": 5792
+    },
+    {
+      "path": "data/tgl/64/cp_l_residencecore_0.ktx2",
+      "sha256": "d3c329a880358c6f42e5dcc2bd297fe9f2ad959a96d9ba8b5fea1586251f5506",
+      "bytes": 5792
+    },
+    {
+      "path": "data/tgl/64/cp_l_residenceleft_0.ktx2",
+      "sha256": "2209e526dd359ddb7c54ed7c7f874908f386b174a1f897bd6c88163ac31f1422",
+      "bytes": 5792
+    },
+    {
+      "path": "data/tgl/64/cp_l_residenceright_0.ktx2",
+      "sha256": "65e1bc604576acacb991263c502d2af9f9f0eecc3181042a65b8a67309bcc597",
       "bytes": 5792
     },
     {
@@ -2142,6 +4592,11 @@
     {
       "path": "data/tgl/64/cp_liquidstorage_0.ktx2",
       "sha256": "479d276a4ad5b710e65e5447e108b4d2692172f307063a6e09b3b15bb5d4fc8c",
+      "bytes": 5792
+    },
+    {
+      "path": "data/tgl/64/cp_lobby_0.ktx2",
+      "sha256": "299fcef8c9f83f9bd52c7691edebebf79d211e965d5e56e2a2994aaf5503aa85",
       "bytes": 5792
     },
     {
@@ -2162,6 +4617,66 @@
     {
       "path": "data/tgl/64/cp_purificationplant_0.ktx2",
       "sha256": "57334673ff8f0c59e5db306cad433058dd6f2594564232b31843d41c8c72c720",
+      "bytes": 5792
+    },
+    {
+      "path": "data/tgl/64/cp_s_admin_core_0.ktx2",
+      "sha256": "c93120556c1d5599771a32c4ee90f7cc25b0202aab80199a49e82fd3e246ec18",
+      "bytes": 5792
+    },
+    {
+      "path": "data/tgl/64/cp_s_admin_entry_0.ktx2",
+      "sha256": "a853ddf6bcb72b2782845b9c585e0d21ecefb03025a22ed629eed0355d40fc9a",
+      "bytes": 5792
+    },
+    {
+      "path": "data/tgl/64/cp_s_admin_wing_0.ktx2",
+      "sha256": "be1762d06d9e5c48e968bcdb15a36cbfd51ac6d3e1b996faeabe782dcd2c9414",
+      "bytes": 5792
+    },
+    {
+      "path": "data/tgl/64/cp_s_adminquarter_0.ktx2",
+      "sha256": "dbcb5a58fb3c65ca841199f83d5df8e8b8de2f8b105ca01876b0bf90c90e4e17",
+      "bytes": 5792
+    },
+    {
+      "path": "data/tgl/64/cp_s_gov1_0.ktx2",
+      "sha256": "2bef771a030cfd1f4fb325a0f3b25455192b6305cf06a144461f51acc143ef97",
+      "bytes": 5792
+    },
+    {
+      "path": "data/tgl/64/cp_s_gov2_0.ktx2",
+      "sha256": "d2914735597fa98458bf0e52d2feafb2d7201402f97ff95c6f3dc5a609c7bf12",
+      "bytes": 5792
+    },
+    {
+      "path": "data/tgl/64/cp_s_govresidence_0.ktx2",
+      "sha256": "7c97fef5a61dc7e38bfb5ae90c0591cc6377a2b4160b999e51989b295cb44662",
+      "bytes": 5792
+    },
+    {
+      "path": "data/tgl/64/cp_s_main_0.ktx2",
+      "sha256": "79d2d051961bad50345614b52194aa3384a57083375ebe61218bf98fc3bf88d3",
+      "bytes": 5792
+    },
+    {
+      "path": "data/tgl/64/cp_s_main_leftwing_0.ktx2",
+      "sha256": "fa817f340874a4fe977684b168da61d6a03004e40199ada0dcad2df09dbd3dc4",
+      "bytes": 5792
+    },
+    {
+      "path": "data/tgl/64/cp_s_main_rightwing_0.ktx2",
+      "sha256": "944d1add706e438ef0632a3ff34bf89cc9c4f0976764f90178473a20d430a912",
+      "bytes": 5792
+    },
+    {
+      "path": "data/tgl/64/cp_s_main_stairs_0.ktx2",
+      "sha256": "78c3fcc69f28b955267e8bb4c161a9d829a17d4ad4977f02c3cbb67aaee50585",
+      "bytes": 5792
+    },
+    {
+      "path": "data/tgl/64/cp_s_quetragon_0.ktx2",
+      "sha256": "ebe465891db9972a272fc750fecc5f4c12a6b43ef6fa3c9d43583c8302d7e15d",
       "bytes": 5792
     },
     {
@@ -2216,8 +4731,10 @@
     },
     {
       "path": "mod.json",
-      "sha256": "0aa5788e095558fc62d71f4c3808f0668aac9aa9c2b1ce5b3b353393389ed840",
-      "bytes": 182
+      "sha256": "79d54b097c217f200496f926e96a0a6b846f151f8fa6271906a730512fb87b64",
+      "bytes": 184
     }
-  ]
+  ],
+  "civilian_source_bake_commit": "a1b73dbd9cabef5cd4d37c64398e0fceaa357055",
+  "civilian_approval": "content/civ-approved.json"
 }
