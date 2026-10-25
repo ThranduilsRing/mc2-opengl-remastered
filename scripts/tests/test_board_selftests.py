@@ -121,7 +121,8 @@ def test_order_gate_selftest():
 
 
 def test_mover_registry_selftest():
-    _assert_pass(subprocess.run(["sh", "scripts/check-mover-registry-coherence.sh", "--self-test"], **OPTS, **console_child.child_kwargs(redirected=True)))
+    # Idle-priority shell pipelines can spend most of their wall time unscheduled.
+    _assert_pass(subprocess.run(["sh", "scripts/check-mover-registry-coherence.sh", "--self-test"], **dict(OPTS, timeout=600), **console_child.child_kwargs(redirected=True)))
 
 
 def test_tgl_load_selftest():
@@ -173,7 +174,7 @@ def test_review_pack_registry_guard():
 
 
 def test_fail_reason_selftest():
-    _assert_pass(subprocess.run([git_bash(), "scripts/check-contracts.sh", "--selftest"], **OPTS, **console_child.child_kwargs(redirected=True)))
+    _assert_pass(subprocess.run([git_bash(), "scripts/check-contracts.sh", "--selftest"], **dict(OPTS, timeout=600), **console_child.child_kwargs(redirected=True)))
 
 
 def test_object_mvp_currency_selftest():

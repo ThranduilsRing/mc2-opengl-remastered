@@ -17,8 +17,8 @@ def test_run_fake_pass(tmp_path):
     cfg = RunConfig(
         exe=[sys.executable, str(FIX / "fake_mc2_pass.py")],
         profile="stock", stem="mc2_05", duration=1,
-        heartbeat_timeout_load_s=60, heartbeat_timeout_play_s=3,
-        grace_s=30, env_extra={},
+        heartbeat_timeout_load_s=180, heartbeat_timeout_play_s=180,
+        grace_s=180, env_extra={},
     )
     result = run_one(cfg)
     assert result.verdict.passed
@@ -49,14 +49,15 @@ def test_run_fake_timeout(tmp_path):
 # the run did not pass, and no foreign bucket leaked in.
 # ---------------------------------------------------------------------------
 
-def _run_fault(fault, *, load_to=60, play_to=3):
+def _run_fault(fault, *, load_to=180, play_to=180):
     cfg = RunConfig(
         exe=[sys.executable, str(FIX / "fake_mc2_fault.py"), "--fault", fault],
         profile="stock", stem="mc2_05", duration=1,
         heartbeat_timeout_load_s=load_to, heartbeat_timeout_play_s=play_to,
-        # Parallel contract rows can delay a synthetic Python child startup.
+        # Idle-priority startup and reader scheduling must not add timeout/freeze
+        # buckets to fixtures testing a different fault.
         # The dedicated timeout fixture above keeps its zero-grace wall cap.
-        grace_s=30, env_extra={},
+        grace_s=180, env_extra={},
     )
     return run_one(cfg)
 
@@ -148,10 +149,10 @@ def test_run_fault_heartbeat_freeze_play():
     assert not r.verdict.passed
 
 
-def test_fault_fixture_allows_slow_python_startup(tmp_path, monkeypatch):
+def test_fault_fixture_allows_slow_python_startup_and_teardown(tmp_path, monkeypatch):
     real = FIX / "fake_mc2_fault.py"
     delayed = tmp_path / "fake_mc2_fault.py"
-    delayed.write_text("import runpy, time\ntime.sleep(7)\nrunpy.run_path(" + repr(str(real)) + ", run_name='__main__')\n", encoding="utf-8")
+    delayed.write_text("import atexit, runpy, time\natexit.register(lambda: time.sleep(4))\ntime.sleep(7)\nrunpy.run_path(" + repr(str(real)) + ", run_name='__main__')\n", encoding="utf-8")
     monkeypatch.setitem(globals(), "FIX", tmp_path)
     result = _run_fault("missing_file")
     assert not result.killed_by_timeout
