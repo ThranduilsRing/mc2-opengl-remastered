@@ -117,8 +117,14 @@ def affected_plan(steps, paths, full=False):
     domains = change_domains(paths)
     art = full or bool(domains & {"art"}) or any(
         any(token in p.replace("\\", "/").lower() for token in
-            ("kit", "building", "bdactor", "model_override", "loose_asset", "mc2texcook", "content_pipeline", "deploy_payload", "render_options"))
+            ("kit", "building", "bdactor", "model_override", "loose_asset", "mc2texcook", "content_pipeline", "content_ir",
+             "appearance", "texture", "material", "gltf", "deploy_payload", "render_options"))
         for p in paths)
+    # Unknown runtime inputs may change asset routing; only recognized C++
+    # domains can use the reduced non-art serialization pair.
+    art |= any("engine" in change_domains([p]) and not (
+        p.replace("\\", "/").lower().startswith(("code/", "mclib/", "rendercore/", "gameos/"))
+        and Path(p).suffix.lower() in (".cpp", ".h", ".hpp", ".inc")) for p in paths)
     game = bool(domains & {"engine", "shaders", "art"})
     sim = "engine" in domains
     selected = []
@@ -153,6 +159,9 @@ def affected_plan(steps, paths, full=False):
         if name in shared_smokes and batch_tier:
             env.update(MC2_VULKAN_VALIDATION="1", MC2_MOVER_COHERENCE_AUDIT="1",
                        MC2_DEBUG_STATE_DUMP="1", MC2_DIAG_TAGS="CONFIG,BUILD,DEVICE")
+            if not full:
+                cmd += ["--sim-speed", "2"]
+                env["MC2_GATE_COVERAGE"] = "2 fixed sim ticks per drawn frame; exact pinned chains still required; daily --full retains 1x"
         if reason:
             env["MC2_GATE_SKIP_REASON"] = reason
         selected.append((name, cmd, env))
@@ -279,7 +288,7 @@ def stock_copy(install, parent=None):
             if Path(directory).resolve() != install:
                 return []
             return [n for n in names if n.startswith(".gate-stock-") or n in
-                    ("mod_smoke-stage", "cache", "debug_state", "dev_shell_out")]
+                    ("mod_smoke-stage", "debug_state", "dev_shell_out")]
         shutil.copytree(install, target, dirs_exist_ok=True, ignore=ignore)
         print(f"| stock-copy | PASS | {time.monotonic() - started:.1f} |", flush=True)
         yield target
@@ -330,7 +339,7 @@ def execute_parallel(steps, head, dry_run=False):
             (mods if step[0] == "mods" else stock).append(step)
         # Save fixtures share Windows' user save directory, so stay on one worker.
         # Determinism has no writes there and consumes its own named artifacts.
-        if mods:
+        if any(not s[2].get("MC2_GATE_SKIP_REASON") for s in mods):
             determinism = [s for s in stock if s[0].startswith("determinism-") and not s[2].get("MC2_GATE_SKIP_REASON")]
         if determinism:
             source_names = {s[0] for s in determinism}
@@ -344,20 +353,32 @@ def execute_parallel(steps, head, dry_run=False):
         if result:
             return result  # do not launch runtime proofs after a failed deploy/offline check
         if mods:
+            copy_context, copy_future = None, None
+            if determinism:
+                command = determinism[0][1]
+                install = Path(command[command.index("--install") + 1]).resolve()
+                copy_context = stock_copy(install)
+                copy_future = pool.submit(copy_context.__enter__)
             def auxiliary():
-                result = execute(mods, head, runner=runner)
-                if determinism:
-                    command = determinism[0][1]
-                    install = Path(command[command.index("--install") + 1]).resolve()
-                    try:
-                        with stock_copy(install) as clone:
-                            remapped = [(n, [a.replace(str(install), str(clone)).replace(install.as_posix(), clone.as_posix())
-                                             for a in c], e) for n, c, e in determinism]
-                            result |= execute(remapped, head, runner=runner)
-                    except (OSError, RuntimeError) as exc:
-                        print(f"[merge_gate] stock-copy/determinism FAIL (not waived): {exc}", flush=True)
-                        result = 1
-                return result
+                try:
+                    result = execute(mods, head, runner=runner)
+                    if copy_future:
+                        clone = copy_future.result()
+                        remapped = [(n, [a.replace(str(install), str(clone)).replace(install.as_posix(), clone.as_posix())
+                                         for a in c], e) for n, c, e in determinism]
+                        result |= execute(remapped, head, runner=runner)
+                    return result
+                except (OSError, RuntimeError) as exc:
+                    print(f"[merge_gate] stock-copy/determinism FAIL (not waived): {exc}", flush=True)
+                    return 1
+                finally:
+                    if copy_future:
+                        try:
+                            copy_future.result()
+                        except (OSError, RuntimeError):
+                            pass  # stock_copy already cleaned an incomplete copy
+                        else:
+                            copy_context.__exit__(None, None, None)
             pending.append(pool.submit(auxiliary))
         result |= execute(stock[boundary:], head, runner=runner) if stock[boundary:] else 0
         for future in pending:

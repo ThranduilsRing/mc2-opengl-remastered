@@ -48,9 +48,11 @@ def pinned_env() -> "dict[str, str]":
 PINNED_TIERS = ("tier1",)
 
 
-def asked_size(tier: str, entry_resolution: str = "") -> "Optional[tuple[int, int]]":
+def asked_size(tier: str, entry_resolution: str = "", effective_env=None) -> "Optional[tuple[int, int]]":
     """The (width, height) a smoke entry asks the engine for: its own `resolution=` when it has one, the pinned size for a pinned tier, else None
     (the install's options.cfg size applies)."""
+    if effective_env and all(k in effective_env for k in ("MC2_WIDTH", "MC2_HEIGHT")):
+        return int(effective_env["MC2_WIDTH"]), int(effective_env["MC2_HEIGHT"])
     if entry_resolution:
         return parse(entry_resolution)
     return (PINNED_WIDTH, PINNED_HEIGHT) if tier in PINNED_TIERS else None

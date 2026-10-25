@@ -1610,7 +1610,7 @@ def main():
         key = baselines.key(cfg.profile, label, tier, duration)
         delta = baselines.destroys_delta(baseline_data, key, result.summary.destroys)
 
-        _asked = (int(cfg.env_extra["MC2_WIDTH"]), int(cfg.env_extra["MC2_HEIGHT"]))
+        _asked = render_resolution.asked_size(tier, e.resolution, cfg.env_extra)
         if _asked:
             # The size must have reached the engine: a clamped or ignored request would make this tier green without testing the size.
             _asked_w, _asked_h = _asked

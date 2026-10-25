@@ -524,11 +524,14 @@ def test_tier1_reuses_only_strict_validated_determinism_smokes():
     cmd, _ = by_name["tier1"]
     assert cmd[-4:] == ["--mission", "mc2_01", "--mission", "mc2_17"]
     for mission in ("mc2_03", "mc2_10", "mc2_24"):
-        _, env = by_name["determinism-" + mission]
+        command, env = by_name["determinism-" + mission]
+        assert command[-2:] == ["--sim-speed", "2"]
         assert env["MC2_VULKAN_VALIDATION"] == env["MC2_MOVER_COHERENCE_AUDIT"] == "1"
     assert by_name["validation"][1]["MC2_GATE_REUSE_STAGE"] == "tier1,determinism-mc2_10"
     art = gate.affected_plan(gate.plan(6), ["release_assets_src/model.glb"])
     assert "--mission" not in next(c for n, c, _ in art if n == "tier1")
+    full = gate.affected_plan(gate.plan(6), ["code/game.cpp"], full=True)
+    assert all("--sim-speed" not in c for n, c, _ in full if n.startswith("determinism-"))
 
 
 def test_gate_retains_both_art_modes_for_affected_saves_and_captures():
@@ -547,7 +550,7 @@ def test_gate_retains_both_art_modes_for_affected_saves_and_captures():
 
 
 @pytest.mark.parametrize("paths,count", [(["code/mission.cpp"], 2), (["scripts/kit_payload.py"], 10),
-                                        (["tools/scifi_kit/art/intent.py"], 10)])
+                                        (["tools/scifi_kit/art/intent.py"], 10), (["unknown/runtime.xyz"], 10)])
 def test_gate_save_matrix_tracks_art_path(paths, count):
     import merge_gate as gate
     cases = [(n, e) for n, _, e in gate.affected_plan(gate.plan(6), paths)
@@ -641,11 +644,14 @@ def test_stock_copy_is_private_and_always_removed(tmp_path, fail):
     install = tmp_path / "install"
     (install / "data").mkdir(parents=True)
     (install / "data/asset").write_text("source")
+    (install / "cache").mkdir()
+    (install / "cache/model.mci").write_text("warm cache")
     (install / "mod_smoke-stage").mkdir()
     (install / "mod_smoke-stage/large").write_text("disposable")
     try:
         with gate.stock_copy(install, tmp_path) as clone:
             assert not (clone / "mod_smoke-stage").exists()
+            assert (clone / "cache/model.mci").read_text() == "warm cache"
             assert not list(clone.glob(".gate-stock-*"))
             (clone / "data/asset").write_text("changed")
             assert (install / "data/asset").read_text() == "source"
@@ -682,14 +688,18 @@ def test_auxiliary_determinism_uses_copy_while_saves_stay_serial(tmp_path, monke
     import merge_gate as gate
     install, clone = tmp_path / "install", tmp_path / "clone"
     saves, det = threading.Event(), threading.Event()
+    copying = threading.Event()
     calls = []
     @contextmanager
     def copy(source):
         assert source == install.resolve()
+        copying.set()
         yield clone
         calls.append("cleaned")
     def runner(command, **kw):
         calls.append(command[0])
+        if command[0] == "mods":
+            assert copying.wait(2)
         if command[0] == "det":
             assert command[-1] == str(clone)
             det.set()
@@ -706,6 +716,16 @@ def test_auxiliary_determinism_uses_copy_while_saves_stay_serial(tmp_path, monke
         ("determinism-mc2_10", ["det", "--install", str(install)], {}),
         ("saveload-mc2_01", ["save"], {})], "head") == 0
     assert calls.index("mods") < calls.index("det") < calls.index("cleaned")
+
+
+@pytest.mark.parametrize("tier,env,expected", [
+    ("tier1", {"MC2_WIDTH": "1920", "MC2_HEIGHT": "1080"}, (1920, 1080)),
+    ("tier1", {"MC2_WIDTH": "854", "MC2_HEIGHT": "480"}, (854, 480)),
+    ("tier1", {}, (1920, 1080)), ("adhoc", {}, None),
+])
+def test_resolution_proof_uses_effective_capture_size_and_keeps_unpinned_window(tier, env, expected):
+    from smoke_lib import render_resolution
+    assert render_resolution.asked_size(tier, effective_env=env) == expected
 
 
 @pytest.mark.parametrize("generator,failure", [("Ninja", ""), ("Visual Studio", ""), ("missing", ""),
