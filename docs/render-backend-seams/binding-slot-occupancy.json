@@ -616,7 +616,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/color_prop_tier1.frag",
-        "line": 1068,
+        "line": 1069,
         "role": "uPropNormal",
         "std": null,
         "type": "sampler2DArray"
@@ -642,7 +642,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/color_prop_tier1.frag",
-        "line": 1069,
+        "line": 1070,
         "role": "uPropOrm",
         "std": null,
         "type": "sampler2DArray"
@@ -676,7 +676,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/color_prop_tier1.frag",
-        "line": 1070,
+        "line": 1071,
         "role": "PropMaterials",
         "std": "std430",
         "type": "buffer"
@@ -736,7 +736,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/color_prop_tier1.frag",
-        "line": 810,
+        "line": 811,
         "role": "uTreeObjectMap",
         "std": null,
         "type": "sampler2DShadow"
@@ -774,7 +774,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/color_prop_tier1.frag",
-        "line": 742,
+        "line": 743,
         "role": "u_staticMask",
         "std": null,
         "type": "sampler2D"
@@ -1046,7 +1046,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/color_prop_tier1.frag",
-        "line": 390,
+        "line": 391,
         "role": "moverShadowMap",
         "std": null,
         "type": "sampler2D"
@@ -1112,7 +1112,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/color_prop_tier1.frag",
-        "line": 391,
+        "line": 392,
         "role": "MoverShadowFrame",
         "std": "std140",
         "type": "uniform"
@@ -1554,7 +1554,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/color_prop_tier1.vert",
-        "line": 224,
+        "line": 225,
         "role": "TypeHotColors",
         "std": "std430",
         "type": "buffer"
@@ -1678,7 +1678,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/color_prop_tier1.vert",
-        "line": 281,
+        "line": 282,
         "role": "HzbVisibility",
         "std": "std430",
         "type": "buffer"
@@ -1712,7 +1712,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/color_prop_tier1.frag",
-        "line": 267,
+        "line": 268,
         "role": "TerrainFrameUBO",
         "std": "std140",
         "type": "uniform"
@@ -1778,7 +1778,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/color_prop_tier1.frag",
-        "line": 494,
+        "line": 495,
         "role": "TerrainLightPoolVK",
         "std": "std430",
         "type": "buffer"
@@ -1804,7 +1804,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/color_prop_tier1.frag",
-        "line": 497,
+        "line": 498,
         "role": "TerrainLightGridHeaderVK",
         "std": "std430",
         "type": "buffer"
@@ -1830,7 +1830,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/color_prop_tier1.frag",
-        "line": 500,
+        "line": 501,
         "role": "TerrainLightGridIndicesVK",
         "std": "std430",
         "type": "buffer"
@@ -1856,7 +1856,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/color_prop_tier1.frag",
-        "line": 504,
+        "line": 505,
         "role": "u_localShadowAtlas",
         "std": null,
         "type": "sampler2D"
@@ -1882,7 +1882,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/color_prop_tier1.frag",
-        "line": 472,
+        "line": 473,
         "role": "u_colormap",
         "std": null,
         "type": "sampler2D"
@@ -1908,7 +1908,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/color_prop_tier1.frag",
-        "line": 475,
+        "line": 476,
         "role": "u_cementAtlas",
         "std": null,
         "type": "sampler2D"
@@ -1934,7 +1934,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/color_prop_tier1.frag",
-        "line": 476,
+        "line": 477,
         "role": "TerrainCementBuf",
         "std": "std430",
         "type": "buffer"
