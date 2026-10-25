@@ -2,6 +2,54 @@
 // Declared in the class headers; shared names in bdactor_internal.h.
 #include "bdactor_internal.h"
 #include <memory>
+#include <map>
+#include <set>
+#include <sstream>
+#include <span>
+#include "mc2fmt.h"
+
+// Debug snapshots include actual coverage plus the original intact/rubble LOS samples.
+// No retained vertices or second mesh: CreateFrom shares the type's existing geometry.
+static void dumpGameplay(BldgAppearance& a, glm::vec3 pos, std::span<const short> cells)
+{
+    if (!mc2::gate::get<"MC2_DEBUG_STATE_DUMP">()) return;
+    std::ostringstream out;
+    out << a.appearType->name << "|" << pos.x << "," << pos.y << "," << pos.z
+        << "|" << a.rotation << "|" << a.status << "|" << a.getRadius() << "," << a.getTopZ();
+    std::set<std::pair<int, int>> covered;
+    for (long i = 0; i < static_cast<long>(cells.size()); i += 2) covered.emplace(cells[i], cells[i + 1]);
+    out << "|covered=";
+    for (auto [r, c] : covered) out << r << "," << c << ";";
+    for (auto* source : {a.appearType->getBldgCollisionShape(0), a.appearType->bldgDmgShape}) {
+        out << "|state=";
+        if (!source) { out << "absent"; continue; }
+        std::unique_ptr<TG_MultiShape> shape(source->CreateFrom());
+        std::set<std::pair<int, int>> blocking;
+        std::map<std::pair<int, int>, float> los;
+        for (long i = 0; i < shape->GetNumShapes(); ++i) {
+            const auto* id = shape->GetNodeId(i);
+            for (long j = 0; j < shape->GetNumVerticesInShape(i); ++j) {
+                auto v = shape->GetShapeVertexInEditor(i, j, -a.rotation);
+                int r, c;
+                land->worldToCell(pos + v, r, c);
+                if (r < 0 || c < 0 || r >= GameMap->height || c >= GameMap->width) continue;
+                if (S_strnicmp(id, "_PAB", 4) != 0 &&
+                    (a.appearType->isForestClump ? v.z <= 1.0f : v.z >= 1.0f)) blocking.emplace(r, c);
+                if (S_strnicmp(id, "LOS_", 4) != 0 && S_strnicmp(id, "SpotLight_", 10) != 0) {
+                    const float h = std::min(v.z * metersPerWorldUnit * 0.25f, 15.0f);
+                    los[{r, c}] = std::max(los[{r, c}], h);
+                }
+            }
+        }
+        for (auto [r, c] : blocking) out << r << "," << c << ";";
+        out << "/los=";
+        for (auto [cell, h] : los) {
+            auto [r, c] = cell;
+            out << r << "," << c << "," << h << ";";
+        }
+    }
+    mc2::fmt::print_err("[BLDG_GAMEPLAY] {}\n", out.str());
+}
 
 inline constexpr float HEIGHT_THRESHOLD = 10.0f;
 
@@ -75,6 +123,7 @@ long BldgAppearance::calcCellsCovered (glm::vec3& pos, short* cellList) {
 		}
 	}
 	
+	dumpGameplay(*this, pos, std::span<const short>(cellList, numCoords));
 	return(numCoords);
 }
 
@@ -83,32 +132,44 @@ void BldgAppearance::markTerrain (_ScenarioMapCellInfo* pInfo, int type, int cou
 	if (appearType->spinMe)			//We are a marker
 		return;						//Do not mark impassable
 		
-	//MUST force building to HIGHEST LOD!!!  IMpassability data is only valid at this LOD!!
-	// Building will reset its LOD on next draw!!
-	if (currentLOD)
-	{
-		currentLOD = 0;
-	
-		releaseBldgShape();
-	
-		bldgShape = appearType->bldgShape[currentLOD]->CreateFrom();
+	// A temporary hierarchy shares the original type's mesh buffers. Never replace the
+	// render instance while computing editor terrain, LOS or permanent gate rubble.
+	const bool overridden = appearType->bldgRenderShape || appearType->bldgDmgRenderShape;
+	std::unique_ptr<TG_MultiShape> terrainShape;
+	TG_MultiShapePtr terrain = overridden ? nullptr : bldgShape;
+	auto useShape = [&](TG_TypeMultiShape* source) {
+		if (overridden) {
+			if (terrain) terrain->ClearAnimation();
+			terrainShape.reset(source->CreateFrom());
+			terrain = terrainShape.get();
+		} else {
+			releaseBldgShape();
+			terrain = bldgShape = source->CreateFrom();
+		}
 		if (unitAnim().bdAnimationState != -1)
-			appearType->setAnimation(bldgShape,unitAnim().bdAnimationState);
+			appearType->setAnimation(terrain, unitAnim().bdAnimationState);
+	};
+	if (overridden)
+		useShape(status == OBJECT_STATUS_DESTROYED && appearType->bldgDmgShape ?
+			appearType->bldgDmgShape : appearType->getBldgCollisionShape(0));
+	else if (currentLOD) {
+		currentLOD = 0;
+		useShape(appearType->getBldgCollisionShape(0));
 	}
 
 	int cellR, cellC;
 	land->worldToCell(position, cellR, cellC);
 	if (appearType->isForestClump)
 	{
-		for (int i=0;i<bldgShape->GetNumShapes();i++)
+		for (int i=0;i<terrain->GetNumShapes();i++)
 		{
 			//Check if the artists meant for this piece to NOT block passability!!
-			if (S_strnicmp(bldgShape->GetNodeId(i),"_PAB",4) != 0)
+			if (S_strnicmp(terrain->GetNodeId(i),"_PAB",4) != 0)
 			{
-				for (int j=0;j<bldgShape->GetNumVerticesInShape(i);j++)
+				for (int j=0;j<terrain->GetNumVerticesInShape(i);j++)
 				{
 					glm::vec3 vertexPos, worldPos;
-					vertexPos = bldgShape->GetShapeVertexInEditor(i,j,-rotation);
+					vertexPos = terrain->GetShapeVertexInEditor(i,j,-rotation);
 					worldPos = position + vertexPos;
 		
 					int cellR, cellC;
@@ -145,11 +206,7 @@ void BldgAppearance::markTerrain (_ScenarioMapCellInfo* pInfo, int type, int cou
 		{
 			if (appearType->bldgShape[0])
 			{
-				releaseBldgShape();
-					
-				bldgShape = appearType->bldgShape[0]->CreateFrom();
-				if (unitAnim().bdAnimationState != -1)
-					appearType->setAnimation(bldgShape,unitAnim().bdAnimationState);
+				useShape(appearType->bldgShape[0]);
 			}
 		}
 
@@ -157,23 +214,19 @@ void BldgAppearance::markTerrain (_ScenarioMapCellInfo* pInfo, int type, int cou
 		{
 			if (appearType->bldgDmgShape)
 			{
-				releaseBldgShape();
-					
-				bldgShape = appearType->bldgDmgShape->CreateFrom();
-				if (unitAnim().bdAnimationState != -1)
-					appearType->setAnimation(bldgShape,unitAnim().bdAnimationState);
+				useShape(appearType->bldgDmgShape);
 			}
 		}
 
-		for (int i=0;i<bldgShape->GetNumShapes();i++)
+		for (int i=0;i<terrain->GetNumShapes();i++)
 		{
 			//Check if the artists meant for this piece to NOT block passability!!
-			if (S_strnicmp(bldgShape->GetNodeId(i),"_PAB",4) != 0)
+			if (S_strnicmp(terrain->GetNodeId(i),"_PAB",4) != 0)
 			{
-				for (int j=0;j<bldgShape->GetNumVerticesInShape(i);j++)
+				for (int j=0;j<terrain->GetNumVerticesInShape(i);j++)
 				{
 					glm::vec3 vertexPos, worldPos;
-					vertexPos = bldgShape->GetShapeVertexInEditor(i,j,-rotation);
+					vertexPos = terrain->GetShapeVertexInEditor(i,j,-rotation);
 					worldPos = position + vertexPos;
 		
 					int cellR, cellC;
@@ -236,11 +289,7 @@ void BldgAppearance::markTerrain (_ScenarioMapCellInfo* pInfo, int type, int cou
 		{
 			if (appearType->bldgDmgShape)
 			{
-				releaseBldgShape();
-					
-				bldgShape = appearType->bldgDmgShape->CreateFrom();
-				if (unitAnim().bdAnimationState != -1)
-					appearType->setAnimation(bldgShape,unitAnim().bdAnimationState);
+				useShape(appearType->bldgDmgShape);
 			}
 		}
 
@@ -248,23 +297,19 @@ void BldgAppearance::markTerrain (_ScenarioMapCellInfo* pInfo, int type, int cou
 		{
 			if (appearType->bldgShape[0])
 			{
-				releaseBldgShape();
-					
-				bldgShape = appearType->bldgShape[0]->CreateFrom();
-				if (unitAnim().bdAnimationState != -1)
-					appearType->setAnimation(bldgShape,unitAnim().bdAnimationState);
+				useShape(appearType->bldgShape[0]);
 			}
 		}
 
-		for (int i=0;i<bldgShape->GetNumShapes();i++)
+		for (int i=0;i<terrain->GetNumShapes();i++)
 		{
 			//Check if the artists meant for this piece to NOT block passability!!
-			if (S_strnicmp(bldgShape->GetNodeId(i),"_PAB",4) != 0)
+			if (S_strnicmp(terrain->GetNodeId(i),"_PAB",4) != 0)
 			{
-				for (int j=0;j<bldgShape->GetNumVerticesInShape(i);j++)
+				for (int j=0;j<terrain->GetNumVerticesInShape(i);j++)
 				{
 					glm::vec3 vertexPos, worldPos;
-					vertexPos = bldgShape->GetShapeVertexInEditor(i,j,-rotation);
+					vertexPos = terrain->GetShapeVertexInEditor(i,j,-rotation);
 					worldPos = position + vertexPos;
 		
 					int cellR, cellC;
@@ -296,23 +341,12 @@ void BldgAppearance::markTerrain (_ScenarioMapCellInfo* pInfo, int type, int cou
 			}
 		}
 			
-		if ((status != OBJECT_STATUS_DESTROYED) && appearType->bldgShape[0])
-		{
-			releaseBldgShape();
-						
-			bldgShape = appearType->bldgShape[0]->CreateFrom();
-			if (unitAnim().bdAnimationState != -1)
-				appearType->setAnimation(bldgShape,unitAnim().bdAnimationState);
-		}
-		else if ((status == OBJECT_STATUS_DESTROYED) && appearType->bldgDmgShape)
-		{
-			releaseBldgShape();
-					
-			bldgShape = appearType->bldgDmgShape->CreateFrom();
-			if (unitAnim().bdAnimationState != -1)
-				appearType->setAnimation(bldgShape,unitAnim().bdAnimationState);
-		}
 	}
+	if (overridden) terrain->ClearAnimation();
+	else if (!appearType->isForestClump && status != OBJECT_STATUS_DESTROYED && appearType->bldgShape[0])
+		useShape(appearType->bldgShape[0]);
+	else if (!appearType->isForestClump && status == OBJECT_STATUS_DESTROYED && appearType->bldgDmgShape)
+		useShape(appearType->bldgDmgShape);
 }
 
 long BldgAppearance::markMoveMap (bool passable, long* lineOfSightRect, bool useHeight, short* cellList)

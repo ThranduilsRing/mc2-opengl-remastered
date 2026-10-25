@@ -461,6 +461,13 @@
    "count": 1
   },
   {
+   "tag": "BLDG_GAMEPLAY",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [],
+   "count": 1
+  },
+  {
    "tag": "BLDG_REG_DIAG",
    "ver": 1,
    "stream": "stderr",
@@ -11213,6 +11220,7 @@
   "APPEAR_AUDIT",
   "ASSET_LOAD",
   "ASSET_SCALE",
+  "BLDG_GAMEPLAY",
   "BUILD_FINGERPRINT",
   "CONFIG",
   "CONTENT_COOK",

@@ -1,4 +1,5 @@
 {
+  "tools/stock_blocking.py": "Operator-run 24-mission Classic/Remastered gameplay comparison requested for the stock-blocking lane; --exe and --out are mandatory, launches only through run_smoke.py.",
   "tools/anim_parity/test_audit.py": "Pytest-discovered by scripts/run_tools_tests.py (tools_tests) and the anim_parity contract row; the caller scanner does not resolve pytest operands after -m.",
   "scripts/tests/test_kit_payload.py": "Pytest-discovered by scripts/run_scripts_tests.py through scripts/test_ownership.json; pinned kit deploy and fresh-smoke regression coverage.",
   "scripts/tests/test_default_build_quiet.py": "Pytest-discovered by scripts/run_scripts_tests.py through scripts/test_ownership.json; pinned kit deploy and fresh-smoke regression coverage.",
