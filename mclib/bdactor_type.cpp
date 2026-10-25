@@ -10,20 +10,23 @@
 
 extern char missionName[];
 
-static bool userBuildingAsset(const char* path)
+static bool userBuildingAsset(std::string_view name)
 {
-	if (const char* owner = LookupModOwner(path); owner && strcmp(owner, "mc2-industrial-kit") != 0)
+	const std::string storage(name);
+	const auto* path = storage.c_str();
+	if (const auto* owner = LookupModOwner(path); owner && strcmp(owner, "mc2-industrial-kit") != 0)
 		return true;
 	if (!std::filesystem::is_regular_file(path)) return false;
 	return looseAssetDiffers(path, ReadArchiveBytes(path, 64u * 1024u * 1024u));
 }
 
-static bool userBuildingShape(const char* name)
+static bool userBuildingShape(std::string_view name)
 {
-	for (const char* ext : {".tgl", ".ase", ".glb", ".gltf", ".fbx", ".mcasset.json", ".package.json"})
+	const std::string storage(name);
+	for (const char* ext : {".tgl", ".ase", ".glb", ".gltf", ".fbx", ".mcasset.json", ".package.json", ".tga", ".ktx2"})
 	{
 		FullPathFileName path;
-		path.init(tglPath, name, ext);
+		path.init(tglPath, storage.c_str(), ext);
 		if (userBuildingAsset(path)) return true;
 	}
 	return false;

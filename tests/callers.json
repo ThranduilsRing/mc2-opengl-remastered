@@ -38,14 +38,14 @@
         },
         {
           "path": "scripts/kit_payload.py",
-          "line": 53,
+          "line": 54,
           "evidence": "import",
           "reference": "bootstrap_worktree_build",
           "text": "from bootstrap_worktree_build import find_cmake"
         },
         {
           "path": "scripts/tests/test_kit_payload.py",
-          "line": 114,
+          "line": 124,
           "evidence": "import",
           "reference": "bootstrap_worktree_build",
           "text": "import bootstrap_worktree_build as bootstrap"
@@ -2243,7 +2243,7 @@
         },
         {
           "path": "scripts/kit_payload.py",
-          "line": 52,
+          "line": 53,
           "evidence": "import",
           "reference": "configure_ninja",
           "text": "import configure_ninja as cn"
@@ -2264,7 +2264,7 @@
         },
         {
           "path": "scripts/tests/test_kit_payload.py",
-          "line": 113,
+          "line": 123,
           "evidence": "import",
           "reference": "configure_ninja",
           "text": "import configure_ninja as cn"
@@ -3745,7 +3745,7 @@
         },
         {
           "path": "scripts/tests/test_kit_payload.py",
-          "line": 96,
+          "line": 106,
           "evidence": "import",
           "reference": "deploy_payload",
           "text": "import deploy_payload as dp"
