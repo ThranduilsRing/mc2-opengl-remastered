@@ -1,21 +1,16 @@
 {
   "summary": {
     "cpp_binding_constants": 17,
-    "glsl_blocks_with_binding": 74,
-    "shared_named_pairs": [
-      "LIGHT_DATA_ATTACHMENT_SLOT",
-      "LIGHT_DATA_SSBO_BINDING",
-      "SCENE_DATA_ATTACHMENT_SLOT"
-    ],
+    "glsl_blocks_with_binding": 70,
+    "shared_named_pairs": [],
     "fails": 0,
-    "warns": 17
+    "warns": 16
   },
   "fails": [],
   "warns": [
     "unresolved binding token 'N' in shaders/include/material_gpu.hglsl:14 (MaterialTable)",
-    "71 GLSL block bindings are bare numeric literals not tied to a named constant (lockstep-by-hand surface)",
-    "cross-pass reuse: UBO:1 bound in 7 shader files (expected \u2014 multiplexed)",
-    "cross-pass reuse: UBO:3 bound in 2 shader files (expected \u2014 multiplexed)",
+    "69 GLSL block bindings are bare numeric literals not tied to a named constant (lockstep-by-hand surface)",
+    "cross-pass reuse: UBO:1 bound in 6 shader files (expected \u2014 multiplexed)",
     "cross-pass reuse: SSBO:4 bound in 3 shader files (expected \u2014 multiplexed)",
     "cross-pass reuse: SSBO:1 bound in 11 shader files (expected \u2014 multiplexed)",
     "cross-pass reuse: SSBO:2 bound in 7 shader files (expected \u2014 multiplexed)",
@@ -353,24 +348,6 @@
         "std": "std430"
       }
     ],
-    "SSBO:20": [
-      {
-        "side": "glsl",
-        "file": "shaders/include/lighting.hglsl",
-        "line": 49,
-        "role": "LightsData",
-        "std": "std430"
-      }
-    ],
-    "SSBO:28": [
-      {
-        "side": "glsl",
-        "file": "shaders/include/light_pools.hglsl",
-        "line": 32,
-        "role": "ObjectLightPool",
-        "std": "std430"
-      }
-    ],
     "UBO:0": [
       {
         "side": "glsl",
@@ -474,13 +451,6 @@
     "UBO:1": [
       {
         "side": "glsl",
-        "file": "shaders/include/scene.hglsl",
-        "line": 16,
-        "role": "SceneData",
-        "std": "std140"
-      },
-      {
-        "side": "glsl",
         "file": "shaders/vulkan/cloud_shadow.frag",
         "line": 42,
         "role": "CloudFxParams",
@@ -546,13 +516,6 @@
       }
     ],
     "UBO:3": [
-      {
-        "side": "glsl",
-        "file": "shaders/include/view_uniforms.hglsl",
-        "line": 23,
-        "role": "ViewUniformsBlock",
-        "std": "std140"
-      },
       {
         "side": "glsl",
         "file": "shaders/vulkan/screen_shadow_csm.frag",
