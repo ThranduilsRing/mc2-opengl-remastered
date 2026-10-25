@@ -56,6 +56,7 @@
     "scripts/tests/test_file_size_ratchet.py": "program is a variable (git, ninja, glslang, ktx, blender, cook tools, python); launch-site audit 2026-10-10: console tool, not the game",
     "scripts/tests/test_fingerprint.py": "fingerprint generator tests invoke git in tmp_path and CMake -P through console_child.child_kwargs; no game or window is launched",
     "scripts/tests/test_merge_speedups.py": "Runs only Git Bash check-contracts --selftest-render synthetic rows, with hidden console child kwargs; no engine or real board is launched.",
+    "scripts/tests/test_postprocess_cas_upscale.py": "Runs only glslangValidator and spirv-dis to inspect compiled shader calls, with hidden console child kwargs; never launches the game.",
     "scripts/tests/test_phase_tools.py": "program is a variable (git, ninja, glslang, ktx, blender, cook tools, python); launch-site audit 2026-10-10: console tool, not the game",
     "scripts/vk_shader_reload.py": "Developer command runs the discovered glslangValidator shader compiler with captured output through console_child.child_kwargs; it publishes a request to an already-running game and never launches the game",
     "tests/analyze/analyze_dangling.py": "runs clang-cl under vcvars64 for the lifetime gate; a compiler, not the game; children use console_child.child_kwargs",
