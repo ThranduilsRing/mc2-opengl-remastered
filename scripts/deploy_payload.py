@@ -46,6 +46,7 @@ import datetime
 import hashlib
 import json
 import os
+import ntpath
 from pathlib import Path
 import re
 import shutil
@@ -1611,7 +1612,8 @@ def implicit_target_refusal(src_root, explicit_target):
     """A lane worktree (A:/Games/mc2-<lane>, not mc2-main) must name its own install; None when the deploy may proceed."""
     if explicit_target:
         return None
-    root = os.path.normpath(os.path.abspath(src_root)).replace("\\", "/")
+    root = (ntpath.normpath(src_root) if ntpath.splitdrive(src_root)[0]
+            else os.path.normpath(os.path.abspath(src_root))).replace("\\", "/")
     parent, name = os.path.split(root)
     if parent.lower() == "a:/games" and name.lower().startswith("mc2-") and name.lower() != "mc2-main":
         return (f"no deploy target named, and {name} is a lane worktree: the implicit default install is mc2-main's. "

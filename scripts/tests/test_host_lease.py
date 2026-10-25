@@ -477,12 +477,15 @@ def test_slot_affinity_reaches_child_process(lease, monkeypatch, width, exclusiv
                             **console_child.child_kwargs(redirected=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
     try:
         host_lease.apply_affinity(proc)
-        get_mask = ctypes.WinDLL("kernel32", use_last_error=True).GetProcessAffinityMask
-        get_mask.argtypes = [wintypes.HANDLE, ctypes.POINTER(ctypes.c_size_t), ctypes.POINTER(ctypes.c_size_t)]
-        get_mask.restype = wintypes.BOOL
-        process_mask, system_mask = ctypes.c_size_t(), ctypes.c_size_t()
-        assert get_mask(int(proc._handle), ctypes.byref(process_mask), ctypes.byref(system_mask))
-        assert process_mask.value == expected
+        if sys.platform == "win32":
+            get_mask = ctypes.WinDLL("kernel32", use_last_error=True).GetProcessAffinityMask
+            get_mask.argtypes = [wintypes.HANDLE, ctypes.POINTER(ctypes.c_size_t), ctypes.POINTER(ctypes.c_size_t)]
+            get_mask.restype = wintypes.BOOL
+            process_mask, system_mask = ctypes.c_size_t(), ctypes.c_size_t()
+            assert get_mask(int(proc._handle), ctypes.byref(process_mask), ctypes.byref(system_mask))
+            assert process_mask.value == expected
+        else:
+            assert os.sched_getaffinity(proc.pid) == {i for i in range(16) if expected & (1 << i)}
     finally:
         proc.kill()
         proc.communicate(timeout=10)

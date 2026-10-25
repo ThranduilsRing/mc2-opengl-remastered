@@ -55,6 +55,12 @@ def pid_alive(pid: int) -> bool:
             return code.value == _STILL_ACTIVE
         finally:
             k32.CloseHandle(h)
+    if sys.platform == "linux":
+        try:
+            if Path(f"/proc/{pid}/stat").read_text().rsplit(")", 1)[1].split()[0] == "Z":
+                return False  # Exited children remain in /proc until their parent reaps them.
+        except (OSError, IndexError):
+            pass
     try:
         os.kill(int(pid), 0)    # POSIX only: signal 0 sends nothing
     except ProcessLookupError:

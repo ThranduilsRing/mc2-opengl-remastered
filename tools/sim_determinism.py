@@ -507,9 +507,9 @@ def selftest() -> int:
             seen.append(cmd)
             raise _Stop
 
-        with patch(__name__ + ".subprocess.run", side_effect=fake):
+        with tempfile.TemporaryDirectory() as out, patch(__name__ + ".subprocess.run", side_effect=fake):
             try:
-                run_mission("m", "10", tempfile.gettempdir(), sim_speed=speed)
+                run_mission("m", "10", out, sim_speed=speed)
             except _Stop:
                 pass
         return seen[0] if seen else []
