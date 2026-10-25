@@ -16,7 +16,7 @@ MANIFEST = Path("data/kit/industrial-kit.json")
 IMPORT_ARGS = ["--no-ground", "--static-prop"]
 
 
-def reconcile_stock_textures(target_dir, stock_dir, jobs=1):
+def reconcile_stock_textures(target_dir, stock_dir, jobs=1, stock_hashes=None):
     """Receipt only byte-proven stock sources and deterministic stock sidecars.
 
     The read-only stock reference is the same golden install used for deploy
@@ -28,6 +28,9 @@ def reconcile_stock_textures(target_dir, stock_dir, jobs=1):
     import batch_cook
     import mc2texcook
     target, stock = Path(target_dir), Path(stock_dir)
+    if stock_hashes is None:
+        stock_hashes = json.loads((Path(__file__).resolve().parents[1] /
+            "data/kit/stock-textures.json").read_text())["sha256"]
     if not (stock / "data/tgl").is_dir():
         raise ValueError(f"stock texture reference missing: {stock}")
 
@@ -35,6 +38,8 @@ def reconcile_stock_textures(target_dir, stock_dir, jobs=1):
         rel = source.relative_to(stock)
         installed = target / rel
         stock_bytes = source.read_bytes()
+        if hashlib.sha256(stock_bytes).hexdigest() != stock_hashes.get(rel.as_posix()):
+            return 0
         if not installed.is_file() or installed.read_bytes() != stock_bytes:
             return 0
         # Stock TGAs can be loose-only (not present in an FST). Record their
