@@ -14,7 +14,7 @@
   "tools"
  ],
  "files_over_1500": {
-  "GameOS/gameos/engine_present_vk.cpp": 2902,
+  "GameOS/gameos/engine_present_vk.cpp": 2904,
   "GameOS/gameos/vulkan_color_prop_island.cpp": 1954,
   "GameOS/include/gameos.hpp": 3661,
   "code/artlry.cpp": 1701,
@@ -55,7 +55,7 @@
   "mclib/tgl.h": 1821,
   "tools/scifi_kit/art/intent_military.py": 3363
  },
- "head": "646924ff1",
+ "head": "d9521c90e",
  "per_dir": {
   "GameAdapters": {
    "files": 13,
@@ -85,7 +85,7 @@
    "files": 8,
    "files_over_1500": 0,
    "files_over_3000": 0,
-   "max_lines": 1027
+   "max_lines": 1026
   },
   "code": {
    "files": 435,
@@ -106,7 +106,7 @@
    "max_lines": 1513
   },
   "mclib": {
-   "files": 586,
+   "files": 587,
    "files_over_1500": 13,
    "files_over_3000": 0,
    "max_lines": 2518
@@ -139,7 +139,7 @@
   },
   {
    "file": "GameOS/gameos/engine_present_vk.cpp",
-   "lines": 2902
+   "lines": 2904
   },
   {
    "file": "code/brain_special_dispatch.cpp",
@@ -251,7 +251,7 @@
   }
  ],
  "total": {
-  "files": 1934,
+  "files": 1935,
   "files_over_1500": 40,
   "files_over_3000": 2,
   "max_lines": 3661

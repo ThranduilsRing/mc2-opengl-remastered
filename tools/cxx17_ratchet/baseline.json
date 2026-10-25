@@ -251,7 +251,7 @@
    "LG17": 0,
    "LG18": 0,
    "LG19": 1,
-   "LG20": 46
+   "LG20": 45
   }
  },
  "dirs": [
@@ -3497,7 +3497,7 @@
   },
   "tools/mc2_launcher/mc2_launcher.cpp": {
    "LG19": 1,
-   "LG20": 37
+   "LG20": 36
   },
   "tools/mc2fx_preview/main.cpp": {
    "LG20": 1
@@ -3506,7 +3506,7 @@
    "LG20": 3
   }
  },
- "head": "028c344c0",
+ "head": "d9521c90e",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
