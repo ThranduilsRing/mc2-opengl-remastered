@@ -33,16 +33,27 @@ from blender_runner import find_blender_exe  # noqa: E402
 
 OUT = Path('E:/mc2-ref/scifi-kit/art')
 THUMBS = Path('E:/mc2-archive-2026-10/asset-modernize/docs/assets/sheets/thumbs')
+BLENDER_VERSION = '5.1.1'  # Reference bake toolchain; warn on any version drift.
 CONDITIONS = ['pristine', 'worn', 'abandoned', 'partial', 'destroyed']
 
 
 def blender(job, log, timeout=None):
     import psutil
+    exe = find_blender_exe()
+    sys.path.insert(0, str(ROOT / 'scripts'))
+    from console_child import child_kwargs
+    version = subprocess.check_output([str(exe), '--version'], text=True,
+                                      **child_kwargs(redirected=True)).splitlines()[0]
+    if version != f'Blender {BLENDER_VERSION}':
+        print(f'WARNING: reference Blender is {BLENDER_VERSION}; found {version}', file=sys.stderr)
     path = OUT / 'jobs' / (job['tag'] + '.json')
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(job, indent=1), encoding='utf-8')
     log.parent.mkdir(parents=True, exist_ok=True)
-    cmd = [str(find_blender_exe()), '--background', '--factory-startup', '--threads', os.environ.get('MC2_BLENDER_THREADS', '4'), '--python-exit-code', '1',
+    jobs = ROOT.parent / 'mc2-ops' / 'JOBS'
+    threads = jobs.read_text().strip() if jobs.exists() else os.environ.get('MC2_BLENDER_THREADS', '4')
+    env = dict(os.environ, MC2_BLENDER_THREADS=threads)
+    cmd = [str(exe), '--background', '--factory-startup', '--threads', threads, '--python-exit-code', '1',
            '--python', str(HERE / 'blend.py'), '--', str(path)]
     print('[art]', ' '.join(cmd), flush=True)
     sys.path.insert(0,str(ROOT/'scripts'))
@@ -50,7 +61,7 @@ def blender(job, log, timeout=None):
     kwargs=child_kwargs(redirected=True)
     kwargs['creationflags']=kwargs.get('creationflags',0)|0x00004000
     with log.open('w', encoding='utf-8') as fh:
-        proc = subprocess.Popen(cmd, stdout=fh, stderr=subprocess.STDOUT, **kwargs)  # background-launch: allow kwargs come from console_child.child_kwargs(redirected=True) plus below-normal priority
+        proc = subprocess.Popen(cmd, stdout=fh, stderr=subprocess.STDOUT, env=env, **kwargs)  # background-launch: allow kwargs come from console_child.child_kwargs(redirected=True) plus below-normal priority
         try:
             cores = list(range(psutil.cpu_count()))
             psutil.Process(proc.pid).cpu_affinity(cores)

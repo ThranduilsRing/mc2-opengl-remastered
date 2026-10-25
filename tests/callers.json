@@ -3301,7 +3301,14 @@
         },
         {
           "path": "tools/scifi_kit/art/run.py",
-          "line": 49,
+          "line": 44,
+          "evidence": "import",
+          "reference": "console_child",
+          "text": "from console_child import child_kwargs"
+        },
+        {
+          "path": "tools/scifi_kit/art/run.py",
+          "line": 60,
           "evidence": "import",
           "reference": "console_child",
           "text": "from console_child import child_kwargs"
@@ -8644,21 +8651,21 @@
         },
         {
           "path": "tools/scifi_kit/art/content.py",
-          "line": 173,
+          "line": 174,
           "evidence": "import",
           "reference": "tools.content_pipeline",
           "text": "from tools.content_pipeline import gltf_io,ir,validate"
         },
         {
           "path": "tools/scifi_kit/art/content.py",
-          "line": 265,
+          "line": 266,
           "evidence": "import",
           "reference": "tools.content_pipeline",
           "text": "from tools.content_pipeline import gltf_io,validate"
         },
         {
           "path": "tools/scifi_kit/art/content.py",
-          "line": 295,
+          "line": 296,
           "evidence": "import",
           "reference": "tools.content_pipeline",
           "text": "from tools.content_pipeline import package"
@@ -8801,7 +8808,7 @@
         },
         {
           "path": "tools/scifi_kit/art/content.py",
-          "line": 174,
+          "line": 175,
           "evidence": "import",
           "reference": "tools.content_pipeline.frontends",
           "text": "from tools.content_pipeline.frontends import gltf_file"
@@ -8866,7 +8873,7 @@
         },
         {
           "path": "tools/scifi_kit/art/content.py",
-          "line": 174,
+          "line": 175,
           "evidence": "import",
           "reference": "tools.content_pipeline.frontends.gltf_file",
           "text": "from tools.content_pipeline.frontends import gltf_file"
@@ -8995,14 +9002,14 @@
         },
         {
           "path": "tools/scifi_kit/art/content.py",
-          "line": 173,
+          "line": 174,
           "evidence": "import",
           "reference": "tools.content_pipeline.gltf_io",
           "text": "from tools.content_pipeline import gltf_io,ir,validate"
         },
         {
           "path": "tools/scifi_kit/art/content.py",
-          "line": 265,
+          "line": 266,
           "evidence": "import",
           "reference": "tools.content_pipeline.gltf_io",
           "text": "from tools.content_pipeline import gltf_io,validate"
@@ -9108,7 +9115,7 @@
         },
         {
           "path": "tools/scifi_kit/art/content.py",
-          "line": 173,
+          "line": 174,
           "evidence": "import",
           "reference": "tools.content_pipeline.ir",
           "text": "from tools.content_pipeline import gltf_io,ir,validate"
@@ -9144,7 +9151,7 @@
         },
         {
           "path": "tools/scifi_kit/art/content.py",
-          "line": 295,
+          "line": 296,
           "evidence": "import",
           "reference": "tools.content_pipeline.package",
           "text": "from tools.content_pipeline import package"
@@ -9223,14 +9230,14 @@
         },
         {
           "path": "tools/scifi_kit/art/content.py",
-          "line": 173,
+          "line": 174,
           "evidence": "import",
           "reference": "tools.content_pipeline.validate",
           "text": "from tools.content_pipeline import gltf_io,ir,validate"
         },
         {
           "path": "tools/scifi_kit/art/content.py",
-          "line": 265,
+          "line": 266,
           "evidence": "import",
           "reference": "tools.content_pipeline.validate",
           "text": "from tools.content_pipeline import gltf_io,validate"
@@ -11378,6 +11385,13 @@
           "text": "from tools.mc2x_import.fst import decompress_entry  # noqa: E402"
         },
         {
+          "path": "tools/scifi_kit/art/tgl_decode.py",
+          "line": 22,
+          "evidence": "import",
+          "reference": "tools.mc2x_import.fst",
+          "text": "from tools.mc2x_import.fst import fst_entries, decompress_entry  # noqa: E402"
+        },
+        {
           "path": "tools/terrain_beautify/cook_shore_field.py",
           "line": 64,
           "evidence": "import",
@@ -12745,6 +12759,27 @@
           "text": "import analyze"
         },
         {
+          "path": "tools/scifi_kit/art/fit.py",
+          "line": 93,
+          "evidence": "import",
+          "reference": "analyze",
+          "text": "import analyze"
+        },
+        {
+          "path": "tools/scifi_kit/art/intent.py",
+          "line": 765,
+          "evidence": "import",
+          "reference": "analyze",
+          "text": "import analyze"
+        },
+        {
+          "path": "tools/scifi_kit/art/intent.py",
+          "line": 789,
+          "evidence": "import",
+          "reference": "analyze",
+          "text": "import analyze"
+        },
+        {
           "path": "tools/scifi_kit/art/npviews.py",
           "line": 12,
           "evidence": "import",
@@ -12753,14 +12788,14 @@
         },
         {
           "path": "tools/scifi_kit/art/run.py",
-          "line": 163,
+          "line": 174,
           "evidence": "import",
           "reference": "analyze",
           "text": "import analyze"
         },
         {
           "path": "tools/scifi_kit/art/run.py",
-          "line": 217,
+          "line": 228,
           "evidence": "import",
           "reference": "analyze",
           "text": "import analyze"
@@ -12782,6 +12817,20 @@
         {
           "path": "tools/scifi_kit/art/shape.py",
           "line": 448,
+          "evidence": "import",
+          "reference": "analyze",
+          "text": "import analyze"
+        },
+        {
+          "path": "tools/scifi_kit/art/stock_massing.py",
+          "line": 22,
+          "evidence": "import",
+          "reference": "analyze",
+          "text": "import analyze"
+        },
+        {
+          "path": "tools/scifi_kit/art/topdown.py",
+          "line": 15,
           "evidence": "import",
           "reference": "analyze",
           "text": "import analyze"
@@ -12916,7 +12965,7 @@
         },
         {
           "path": "tools/scifi_kit/art/drafts.py",
-          "line": 1382,
+          "line": 1393,
           "evidence": "import",
           "reference": "archetypes",
           "text": "import archetypes  # noqa: E402: params-driven assets (assets/*.params.json) join the registries last"
@@ -12930,14 +12979,14 @@
         },
         {
           "path": "tools/scifi_kit/art/run.py",
-          "line": 164,
+          "line": 175,
           "evidence": "import",
           "reference": "archetypes",
           "text": "import archetypes"
         },
         {
           "path": "tools/scifi_kit/art/run.py",
-          "line": 218,
+          "line": 229,
           "evidence": "import",
           "reference": "archetypes",
           "text": "import archetypes"
@@ -12987,7 +13036,7 @@
       "callers_by_stem": [
         {
           "path": "tools/scifi_kit/art/bake.py",
-          "line": 198,
+          "line": 233,
           "evidence": "import",
           "reference": "assemble",
           "text": "import geo,assemble,sys"
@@ -13001,21 +13050,28 @@
         },
         {
           "path": "tools/scifi_kit/art/blend.py",
-          "line": 937,
+          "line": 972,
+          "evidence": "import",
+          "reference": "assemble",
+          "text": "import assemble"
+        },
+        {
+          "path": "tools/scifi_kit/art/content.py",
+          "line": 104,
           "evidence": "import",
           "reference": "assemble",
           "text": "import assemble"
         },
         {
           "path": "tools/scifi_kit/art/drafts.py",
-          "line": 561,
+          "line": 572,
           "evidence": "import",
           "reference": "assemble",
           "text": "from assemble import end_wall"
         },
         {
           "path": "tools/scifi_kit/art/run.py",
-          "line": 293,
+          "line": 304,
           "evidence": "import",
           "reference": "assemble",
           "text": "import assemble"
@@ -13044,7 +13100,7 @@
       "callers_by_stem": [
         {
           "path": "tools/scifi_kit/art/blend.py",
-          "line": 968,
+          "line": 1003,
           "evidence": "import",
           "reference": "bake",
           "text": "import bake"
@@ -13072,6 +13128,13 @@
           "text": "from bake_budget import BUDGETS, budget  # noqa: F401"
         },
         {
+          "path": "tools/scifi_kit/art/intent.py",
+          "line": 703,
+          "evidence": "import",
+          "reference": "bake_budget",
+          "text": "import bake_budget"
+        },
+        {
           "path": "tools/scifi_kit/art/validate.py",
           "line": 28,
           "evidence": "import",
@@ -13095,7 +13158,7 @@
       "callers_by_stem": [
         {
           "path": "tools/scifi_kit/art/blend.py",
-          "line": 1017,
+          "line": 1054,
           "evidence": "import",
           "reference": "baked_review",
           "text": "import baked_review"
@@ -13110,7 +13173,7 @@
       "callers_by_stem": [
         {
           "path": "tools/scifi_kit/art/run.py",
-          "line": 209,
+          "line": 220,
           "evidence": "import",
           "reference": "batch",
           "text": "import batch"
@@ -13132,7 +13195,7 @@
       "callers_by_stem": [
         {
           "path": "tools/scifi_kit/art/drafts.py",
-          "line": 1365,
+          "line": 1376,
           "evidence": "import",
           "reference": "batch2",
           "text": "import batch2  # noqa: E402: reuses the construction helpers above"
@@ -13175,10 +13238,31 @@
         },
         {
           "path": "tools/scifi_kit/art/drafts.py",
-          "line": 1371,
+          "line": 1382,
           "evidence": "import",
           "reference": "batch3",
           "text": "import batch3  # noqa: E402: construction helpers and batch two are registered first"
+        },
+        {
+          "path": "tools/scifi_kit/art/intent_generic.py",
+          "line": 10,
+          "evidence": "import",
+          "reference": "batch3",
+          "text": "import batch3"
+        },
+        {
+          "path": "tools/scifi_kit/art/intent_military.py",
+          "line": 1300,
+          "evidence": "import",
+          "reference": "batch3",
+          "text": "import batch3"
+        },
+        {
+          "path": "tools/scifi_kit/art/intent_military2.py",
+          "line": 361,
+          "evidence": "import",
+          "reference": "batch3",
+          "text": "import batch3"
         }
       ]
     },
@@ -13190,7 +13274,7 @@
       "callers_by_stem": [
         {
           "path": "tools/scifi_kit/art/drafts.py",
-          "line": 1376,
+          "line": 1387,
           "evidence": "import",
           "reference": "batch_son",
           "text": "import batch_son  # noqa: E402: Sonnet runner batches (building / turret / wall)"
@@ -13212,6 +13296,64 @@
       "callers_by_stem": []
     },
     {
+      "path": "tools/scifi_kit/art/building_cells.py",
+      "basename": "building_cells.py",
+      "stem": "building_cells",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
+      "path": "tools/scifi_kit/art/cells.py",
+      "basename": "cells.py",
+      "stem": "cells",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tools/scifi_kit/art/building_cells.py",
+          "line": 11,
+          "evidence": "import",
+          "reference": "cells",
+          "text": "import cells"
+        },
+        {
+          "path": "tools/scifi_kit/art/footprint.py",
+          "line": 116,
+          "evidence": "import",
+          "reference": "cells",
+          "text": "import cells"
+        },
+        {
+          "path": "tools/scifi_kit/art/intent_generic.py",
+          "line": 116,
+          "evidence": "import",
+          "reference": "cells",
+          "text": "import cells  # noqa: E402"
+        }
+      ]
+    },
+    {
+      "path": "tools/scifi_kit/art/clearance.py",
+      "basename": "clearance.py",
+      "stem": "clearance",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tools/scifi_kit/art/intent.py",
+          "line": 835,
+          "evidence": "import",
+          "reference": "clearance",
+          "text": "import clearance"
+        },
+        {
+          "path": "tools/scifi_kit/art/lint.py",
+          "line": 11,
+          "evidence": "import",
+          "reference": "clearance",
+          "text": "import clearance"
+        }
+      ]
+    },
+    {
       "path": "tools/scifi_kit/art/content.py",
       "basename": "content.py",
       "stem": "content",
@@ -13219,14 +13361,14 @@
       "callers_by_stem": [
         {
           "path": "tools/scifi_kit/art/bake.py",
-          "line": 174,
+          "line": 208,
           "evidence": "import",
           "reference": "content",
           "text": "from content import source_lights"
         },
         {
           "path": "tools/scifi_kit/art/bake.py",
-          "line": 398,
+          "line": 438,
           "evidence": "import",
           "reference": "content",
           "text": "from content import shared_quonset_variant"
@@ -13276,7 +13418,7 @@
         },
         {
           "path": "tools/scifi_kit/art/run.py",
-          "line": 198,
+          "line": 209,
           "evidence": "import_module",
           "reference": "contract",
           "text": "print('[calibrate] thresholds are hash-locked: paste contract.file_sha(THRESH) into contract.THRESH_SHA ->', __import__('contract').file_sha(validate.THRESH))"
@@ -13340,7 +13482,35 @@
         },
         {
           "path": "tools/scifi_kit/art/drafts.py",
-          "line": 1327,
+          "line": 1338,
+          "evidence": "import",
+          "reference": "counts",
+          "text": "import counts"
+        },
+        {
+          "path": "tools/scifi_kit/art/fit.py",
+          "line": 57,
+          "evidence": "import",
+          "reference": "counts",
+          "text": "import counts"
+        },
+        {
+          "path": "tools/scifi_kit/art/intent.py",
+          "line": 702,
+          "evidence": "import",
+          "reference": "counts",
+          "text": "import counts"
+        },
+        {
+          "path": "tools/scifi_kit/art/intent.py",
+          "line": 718,
+          "evidence": "import",
+          "reference": "counts",
+          "text": "import counts"
+        },
+        {
+          "path": "tools/scifi_kit/art/intent_generic.py",
+          "line": 16,
           "evidence": "import",
           "reference": "counts",
           "text": "import counts"
@@ -13404,7 +13574,7 @@
         },
         {
           "path": "tools/scifi_kit/art/assemble.py",
-          "line": 483,
+          "line": 486,
           "evidence": "import",
           "reference": "drafts",
           "text": "import drafts"
@@ -13432,7 +13602,7 @@
         },
         {
           "path": "tools/scifi_kit/art/batch3.py",
-          "line": 297,
+          "line": 298,
           "evidence": "import",
           "reference": "drafts",
           "text": "import drafts as kit  # noqa: E402: reuse the existing construction helpers"
@@ -13447,6 +13617,41 @@
         {
           "path": "tools/scifi_kit/art/content.py",
           "line": 17,
+          "evidence": "import",
+          "reference": "drafts",
+          "text": "import drafts"
+        },
+        {
+          "path": "tools/scifi_kit/art/intent_generic.py",
+          "line": 11,
+          "evidence": "import",
+          "reference": "drafts",
+          "text": "import drafts"
+        },
+        {
+          "path": "tools/scifi_kit/art/intent_military.py",
+          "line": 903,
+          "evidence": "import",
+          "reference": "drafts",
+          "text": "import drafts"
+        },
+        {
+          "path": "tools/scifi_kit/art/intent_military.py",
+          "line": 1301,
+          "evidence": "import",
+          "reference": "drafts",
+          "text": "import drafts"
+        },
+        {
+          "path": "tools/scifi_kit/art/intent_military2.py",
+          "line": 345,
+          "evidence": "import",
+          "reference": "drafts",
+          "text": "import drafts"
+        },
+        {
+          "path": "tools/scifi_kit/art/intent_military2.py",
+          "line": 353,
           "evidence": "import",
           "reference": "drafts",
           "text": "import drafts"
@@ -13467,21 +13672,21 @@
         },
         {
           "path": "tools/scifi_kit/art/run.py",
-          "line": 203,
+          "line": 214,
           "evidence": "import_module",
           "reference": "drafts",
           "text": "for n in names or list(__import__('drafts').DRAFTS):"
         },
         {
           "path": "tools/scifi_kit/art/run.py",
-          "line": 219,
+          "line": 230,
           "evidence": "import",
           "reference": "drafts",
           "text": "import drafts"
         },
         {
           "path": "tools/scifi_kit/art/run.py",
-          "line": 288,
+          "line": 299,
           "evidence": "import",
           "reference": "drafts",
           "text": "import drafts"
@@ -13499,6 +13704,57 @@
           "evidence": "import",
           "reference": "drafts",
           "text": "import drafts  # noqa: E402"
+        }
+      ]
+    },
+    {
+      "path": "tools/scifi_kit/art/fit.py",
+      "basename": "fit.py",
+      "stem": "fit",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tools/scifi_kit/art/intent.py",
+          "line": 730,
+          "evidence": "import",
+          "reference": "fit",
+          "text": "import fit"
+        }
+      ]
+    },
+    {
+      "path": "tools/scifi_kit/art/footprint.py",
+      "basename": "footprint.py",
+      "stem": "footprint",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tools/scifi_kit/art/fit.py",
+          "line": 31,
+          "evidence": "import",
+          "reference": "footprint",
+          "text": "import footprint"
+        },
+        {
+          "path": "tools/scifi_kit/art/fit.py",
+          "line": 58,
+          "evidence": "import",
+          "reference": "footprint",
+          "text": "import footprint"
+        },
+        {
+          "path": "tools/scifi_kit/art/intent.py",
+          "line": 842,
+          "evidence": "import",
+          "reference": "footprint",
+          "text": "import footprint                     # owner 2026-10-24: hard footprint rule (strict for walls/gates/fences/posts)"
+        },
+        {
+          "path": "tools/scifi_kit/art/intent_civic.py",
+          "line": 141,
+          "evidence": "import",
+          "reference": "footprint",
+          "text": "import footprint"
         }
       ]
     },
@@ -13552,7 +13808,7 @@
         },
         {
           "path": "tools/scifi_kit/art/bake.py",
-          "line": 198,
+          "line": 233,
           "evidence": "import",
           "reference": "geo",
           "text": "import geo,assemble,sys"
@@ -13607,6 +13863,83 @@
           "text": "from geo import Kit, rect_poly"
         },
         {
+          "path": "tools/scifi_kit/art/ind_parts.py",
+          "line": 14,
+          "evidence": "import",
+          "reference": "geo",
+          "text": "import geo"
+        },
+        {
+          "path": "tools/scifi_kit/art/ind_parts.py",
+          "line": 15,
+          "evidence": "import",
+          "reference": "geo",
+          "text": "from geo import rect_poly, subtract_rect"
+        },
+        {
+          "path": "tools/scifi_kit/art/intent.py",
+          "line": 16,
+          "evidence": "import",
+          "reference": "geo",
+          "text": "import geo  # noqa: E402"
+        },
+        {
+          "path": "tools/scifi_kit/art/intent.py",
+          "line": 18,
+          "evidence": "import",
+          "reference": "geo",
+          "text": "from geo import Kit  # noqa: E402"
+        },
+        {
+          "path": "tools/scifi_kit/art/intent_civ.py",
+          "line": 8,
+          "evidence": "import",
+          "reference": "geo",
+          "text": "import geo"
+        },
+        {
+          "path": "tools/scifi_kit/art/intent_military.py",
+          "line": 13,
+          "evidence": "import",
+          "reference": "geo",
+          "text": "import geo"
+        },
+        {
+          "path": "tools/scifi_kit/art/intent_military2.py",
+          "line": 8,
+          "evidence": "import",
+          "reference": "geo",
+          "text": "import geo"
+        },
+        {
+          "path": "tools/scifi_kit/art/intent_power.py",
+          "line": 11,
+          "evidence": "import",
+          "reference": "geo",
+          "text": "import geo"
+        },
+        {
+          "path": "tools/scifi_kit/art/intent_set2.py",
+          "line": 112,
+          "evidence": "import",
+          "reference": "geo",
+          "text": "import geo"
+        },
+        {
+          "path": "tools/scifi_kit/art/intent_set3.py",
+          "line": 9,
+          "evidence": "import",
+          "reference": "geo",
+          "text": "import geo"
+        },
+        {
+          "path": "tools/scifi_kit/art/intent_set4.py",
+          "line": 7,
+          "evidence": "import",
+          "reference": "geo",
+          "text": "import geo"
+        },
+        {
           "path": "tools/scifi_kit/art/lights.py",
           "line": 75,
           "evidence": "import",
@@ -13622,14 +13955,14 @@
         },
         {
           "path": "tools/scifi_kit/art/run.py",
-          "line": 96,
+          "line": 107,
           "evidence": "import",
           "reference": "geo",
           "text": "import geo"
         },
         {
           "path": "tools/scifi_kit/art/run.py",
-          "line": 274,
+          "line": 285,
           "evidence": "import",
           "reference": "geo",
           "text": "import geo"
@@ -13649,6 +13982,13 @@
           "text": "from geo import subtract_rect"
         },
         {
+          "path": "tools/scifi_kit/art/topdown.py",
+          "line": 38,
+          "evidence": "import",
+          "reference": "geo",
+          "text": "import geo"
+        },
+        {
           "path": "tools/scifi_kit/art/validate.py",
           "line": 32,
           "evidence": "import",
@@ -13661,6 +14001,438 @@
           "evidence": "import",
           "reference": "geo",
           "text": "import geo  # noqa: E402"
+        }
+      ]
+    },
+    {
+      "path": "tools/scifi_kit/art/ind_parts.py",
+      "basename": "ind_parts.py",
+      "stem": "ind_parts",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tools/scifi_kit/art/intent.py",
+          "line": 17,
+          "evidence": "import",
+          "reference": "ind_parts",
+          "text": "import ind_parts as ip  # noqa: E402"
+        },
+        {
+          "path": "tools/scifi_kit/art/intent_civ.py",
+          "line": 9,
+          "evidence": "import",
+          "reference": "ind_parts",
+          "text": "import ind_parts as ip"
+        },
+        {
+          "path": "tools/scifi_kit/art/intent_military.py",
+          "line": 14,
+          "evidence": "import",
+          "reference": "ind_parts",
+          "text": "import ind_parts as ip"
+        },
+        {
+          "path": "tools/scifi_kit/art/intent_military2.py",
+          "line": 9,
+          "evidence": "import",
+          "reference": "ind_parts",
+          "text": "import ind_parts as ip"
+        },
+        {
+          "path": "tools/scifi_kit/art/intent_power.py",
+          "line": 12,
+          "evidence": "import",
+          "reference": "ind_parts",
+          "text": "import ind_parts as ip"
+        },
+        {
+          "path": "tools/scifi_kit/art/intent_set2.py",
+          "line": 9,
+          "evidence": "import",
+          "reference": "ind_parts",
+          "text": "import ind_parts as ip"
+        },
+        {
+          "path": "tools/scifi_kit/art/intent_set3.py",
+          "line": 10,
+          "evidence": "import",
+          "reference": "ind_parts",
+          "text": "import ind_parts as ip"
+        },
+        {
+          "path": "tools/scifi_kit/art/intent_set4.py",
+          "line": 8,
+          "evidence": "import",
+          "reference": "ind_parts",
+          "text": "import ind_parts as ip"
+        },
+        {
+          "path": "tools/scifi_kit/art/lint.py",
+          "line": 12,
+          "evidence": "import",
+          "reference": "ind_parts",
+          "text": "import ind_parts as ip"
+        }
+      ]
+    },
+    {
+      "path": "tools/scifi_kit/art/intent.py",
+      "basename": "intent.py",
+      "stem": "intent",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tools/scifi_kit/art/assemble.py",
+          "line": 482,
+          "evidence": "import",
+          "reference": "intent",
+          "text": "import intent"
+        },
+        {
+          "path": "tools/scifi_kit/art/fit.py",
+          "line": 92,
+          "evidence": "import",
+          "reference": "intent",
+          "text": "import intent"
+        },
+        {
+          "path": "tools/scifi_kit/art/footprint.py",
+          "line": 152,
+          "evidence": "import",
+          "reference": "intent",
+          "text": "import intent"
+        },
+        {
+          "path": "tools/scifi_kit/art/intent_city.py",
+          "line": 7,
+          "evidence": "import",
+          "reference": "intent",
+          "text": "import intent as I"
+        },
+        {
+          "path": "tools/scifi_kit/art/intent_civ.py",
+          "line": 10,
+          "evidence": "import",
+          "reference": "intent",
+          "text": "import intent as I"
+        },
+        {
+          "path": "tools/scifi_kit/art/intent_civic.py",
+          "line": 21,
+          "evidence": "import",
+          "reference": "intent",
+          "text": "import intent as I"
+        },
+        {
+          "path": "tools/scifi_kit/art/intent_generic.py",
+          "line": 32,
+          "evidence": "import",
+          "reference": "intent",
+          "text": "import intent"
+        },
+        {
+          "path": "tools/scifi_kit/art/intent_military.py",
+          "line": 15,
+          "evidence": "import",
+          "reference": "intent",
+          "text": "import intent as I"
+        },
+        {
+          "path": "tools/scifi_kit/art/intent_military2.py",
+          "line": 10,
+          "evidence": "import",
+          "reference": "intent",
+          "text": "import intent as I"
+        },
+        {
+          "path": "tools/scifi_kit/art/intent_power.py",
+          "line": 13,
+          "evidence": "import",
+          "reference": "intent",
+          "text": "import intent as I"
+        },
+        {
+          "path": "tools/scifi_kit/art/intent_run.py",
+          "line": 7,
+          "evidence": "import",
+          "reference": "intent",
+          "text": "import intent"
+        },
+        {
+          "path": "tools/scifi_kit/art/intent_set3.py",
+          "line": 11,
+          "evidence": "import",
+          "reference": "intent",
+          "text": "import intent as I"
+        },
+        {
+          "path": "tools/scifi_kit/art/intent_set4.py",
+          "line": 9,
+          "evidence": "import",
+          "reference": "intent",
+          "text": "import intent as I"
+        },
+        {
+          "path": "tools/scifi_kit/art/stock_massing.py",
+          "line": 23,
+          "evidence": "import",
+          "reference": "intent",
+          "text": "from intent import _sample_tris"
+        },
+        {
+          "path": "tools/scifi_kit/art/topdown.py",
+          "line": 39,
+          "evidence": "import",
+          "reference": "intent",
+          "text": "import intent"
+        }
+      ]
+    },
+    {
+      "path": "tools/scifi_kit/art/intent_city.py",
+      "basename": "intent_city.py",
+      "stem": "intent_city",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tools/scifi_kit/art/intent.py",
+          "line": 866,
+          "evidence": "import",
+          "reference": "intent_city",
+          "text": "import intent_city  # noqa: E402  civilian family, group 2: city blocks"
+        },
+        {
+          "path": "tools/scifi_kit/art/intent_civic.py",
+          "line": 22,
+          "evidence": "import",
+          "reference": "intent_city",
+          "text": "import intent_city as C"
+        }
+      ]
+    },
+    {
+      "path": "tools/scifi_kit/art/intent_civ.py",
+      "basename": "intent_civ.py",
+      "stem": "intent_civ",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tools/scifi_kit/art/intent.py",
+          "line": 864,
+          "evidence": "import",
+          "reference": "intent_civ",
+          "text": "import intent_civ  # noqa: E402  civilian family, group 1"
+        }
+      ]
+    },
+    {
+      "path": "tools/scifi_kit/art/intent_civic.py",
+      "basename": "intent_civic.py",
+      "stem": "intent_civic",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tools/scifi_kit/art/intent.py",
+          "line": 868,
+          "evidence": "import",
+          "reference": "intent_civic",
+          "text": "import intent_civic  # noqa: E402  civilian family, groups 3 and 4: civic, palace, government, bridge, promenades, flags"
+        }
+      ]
+    },
+    {
+      "path": "tools/scifi_kit/art/intent_generic.py",
+      "basename": "intent_generic.py",
+      "stem": "intent_generic",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tools/scifi_kit/art/intent.py",
+          "line": 870,
+          "evidence": "import",
+          "reference": "intent_generic",
+          "text": "import intent_generic  # noqa: E402  walls/gates completion pass: generic and cut-content variants (stock from MC2X-CVE-G)"
+        }
+      ]
+    },
+    {
+      "path": "tools/scifi_kit/art/intent_military.py",
+      "basename": "intent_military.py",
+      "stem": "intent_military",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tools/scifi_kit/art/intent.py",
+          "line": 860,
+          "evidence": "import",
+          "reference": "intent_military",
+          "text": "import intent_military  # noqa: E402  military base family, batch 1"
+        },
+        {
+          "path": "tools/scifi_kit/art/intent_city.py",
+          "line": 8,
+          "evidence": "import",
+          "reference": "intent_military",
+          "text": "import intent_military as M"
+        },
+        {
+          "path": "tools/scifi_kit/art/intent_civ.py",
+          "line": 11,
+          "evidence": "import",
+          "reference": "intent_military",
+          "text": "import intent_military as M"
+        },
+        {
+          "path": "tools/scifi_kit/art/intent_civic.py",
+          "line": 23,
+          "evidence": "import",
+          "reference": "intent_military",
+          "text": "import intent_military as M"
+        },
+        {
+          "path": "tools/scifi_kit/art/intent_generic.py",
+          "line": 12,
+          "evidence": "import",
+          "reference": "intent_military",
+          "text": "import intent_military as M"
+        },
+        {
+          "path": "tools/scifi_kit/art/intent_military2.py",
+          "line": 11,
+          "evidence": "import",
+          "reference": "intent_military",
+          "text": "import intent_military as M"
+        }
+      ]
+    },
+    {
+      "path": "tools/scifi_kit/art/intent_military2.py",
+      "basename": "intent_military2.py",
+      "stem": "intent_military2",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tools/scifi_kit/art/intent.py",
+          "line": 862,
+          "evidence": "import",
+          "reference": "intent_military2",
+          "text": "import intent_military2  # noqa: E402  military batch 8: barracks, repair building, diagonal walls, field props"
+        }
+      ]
+    },
+    {
+      "path": "tools/scifi_kit/art/intent_power.py",
+      "basename": "intent_power.py",
+      "stem": "intent_power",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tools/scifi_kit/art/intent.py",
+          "line": 858,
+          "evidence": "import",
+          "reference": "intent_power",
+          "text": "import intent_power  # noqa: E402  electrical/power redo (owner: \"too blocky\") supersedes set 3"
+        },
+        {
+          "path": "tools/scifi_kit/art/intent_military.py",
+          "line": 16,
+          "evidence": "import",
+          "reference": "intent_power",
+          "text": "import intent_power as PW"
+        },
+        {
+          "path": "tools/scifi_kit/art/intent_military2.py",
+          "line": 12,
+          "evidence": "import",
+          "reference": "intent_power",
+          "text": "import intent_power as PW"
+        }
+      ]
+    },
+    {
+      "path": "tools/scifi_kit/art/intent_run.py",
+      "basename": "intent_run.py",
+      "stem": "intent_run",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
+      "path": "tools/scifi_kit/art/intent_set2.py",
+      "basename": "intent_set2.py",
+      "stem": "intent_set2",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tools/scifi_kit/art/intent.py",
+          "line": 852,
+          "evidence": "import",
+          "reference": "intent_set2",
+          "text": "import intent_set2  # noqa: E402  industrial set 2 (large tanks, water tower, modular pipeline)"
+        }
+      ]
+    },
+    {
+      "path": "tools/scifi_kit/art/intent_set3.py",
+      "basename": "intent_set3.py",
+      "stem": "intent_set3",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tools/scifi_kit/art/intent.py",
+          "line": 854,
+          "evidence": "import",
+          "reference": "intent_set3",
+          "text": "import intent_set3  # noqa: E402  industrial round 2: factories, plants, services"
+        },
+        {
+          "path": "tools/scifi_kit/art/intent_military.py",
+          "line": 1176,
+          "evidence": "import",
+          "reference": "intent_set3",
+          "text": "import intent_set3 as S"
+        },
+        {
+          "path": "tools/scifi_kit/art/intent_military.py",
+          "line": 3135,
+          "evidence": "import",
+          "reference": "intent_set3",
+          "text": "import intent_set3 as S"
+        },
+        {
+          "path": "tools/scifi_kit/art/intent_military.py",
+          "line": 3154,
+          "evidence": "import",
+          "reference": "intent_set3",
+          "text": "import intent_set3 as S"
+        },
+        {
+          "path": "tools/scifi_kit/art/intent_military.py",
+          "line": 3181,
+          "evidence": "import",
+          "reference": "intent_set3",
+          "text": "import intent_set3 as S"
+        },
+        {
+          "path": "tools/scifi_kit/art/intent_set4.py",
+          "line": 10,
+          "evidence": "import",
+          "reference": "intent_set3",
+          "text": "import intent_set3 as S"
+        }
+      ]
+    },
+    {
+      "path": "tools/scifi_kit/art/intent_set4.py",
+      "basename": "intent_set4.py",
+      "stem": "intent_set4",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tools/scifi_kit/art/intent.py",
+          "line": 856,
+          "evidence": "import",
+          "reference": "intent_set4",
+          "text": "import intent_set4  # noqa: E402  industrial round 2: depots, warehouses, yard structures"
         }
       ]
     },
@@ -13723,6 +14495,36 @@
       ]
     },
     {
+      "path": "tools/scifi_kit/art/lint.py",
+      "basename": "lint.py",
+      "stem": "lint",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tools/scifi_kit/art/intent.py",
+          "line": 840,
+          "evidence": "import",
+          "reference": "lint",
+          "text": "import lint"
+        }
+      ]
+    },
+    {
+      "path": "tools/scifi_kit/art/lod_check.py",
+      "basename": "lod_check.py",
+      "stem": "lod_check",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tools/scifi_kit/art/meshopt_lods.py",
+          "line": 192,
+          "evidence": "import",
+          "reference": "lod_check",
+          "text": "import lod_check                       # silhouette guard: a level that changes the outline backs off"
+        }
+      ]
+    },
+    {
       "path": "tools/scifi_kit/art/material_sources.py",
       "basename": "material_sources.py",
       "stem": "material_sources",
@@ -13730,17 +14532,39 @@
       "callers_by_stem": [
         {
           "path": "tools/scifi_kit/art/blend.py",
-          "line": 259,
+          "line": 265,
           "evidence": "import",
           "reference": "material_sources",
           "text": "from material_sources import lookup"
         },
         {
           "path": "tools/scifi_kit/art/blend.py",
-          "line": 378,
+          "line": 408,
           "evidence": "import",
           "reference": "material_sources",
           "text": "from material_sources import lookup"
+        }
+      ]
+    },
+    {
+      "path": "tools/scifi_kit/art/meshopt_lods.py",
+      "basename": "meshopt_lods.py",
+      "stem": "meshopt_lods",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tools/scifi_kit/art/intent_run.py",
+          "line": 21,
+          "evidence": "import",
+          "reference": "meshopt_lods",
+          "text": "import meshopt_lods"
+        },
+        {
+          "path": "tools/scifi_kit/art/lod_check.py",
+          "line": 26,
+          "evidence": "import",
+          "reference": "meshopt_lods",
+          "text": "import meshopt_lods as m  # noqa: E402"
         }
       ]
     },
@@ -13788,7 +14612,7 @@
       "callers_by_stem": [
         {
           "path": "tools/scifi_kit/art/run.py",
-          "line": 186,
+          "line": 197,
           "evidence": "import",
           "reference": "preview",
           "text": "import preview"
@@ -13822,6 +14646,13 @@
           "evidence": "import",
           "reference": "run",
           "text": "import run as runmod"
+        },
+        {
+          "path": "tools/scifi_kit/art/intent_run.py",
+          "line": 20,
+          "evidence": "import",
+          "reference": "run",
+          "text": "import run"
         }
       ]
     },
@@ -13898,6 +14729,21 @@
       ]
     },
     {
+      "path": "tools/scifi_kit/art/stock_massing.py",
+      "basename": "stock_massing.py",
+      "stem": "stock_massing",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tools/scifi_kit/art/intent_civic.py",
+          "line": 34,
+          "evidence": "import",
+          "reference": "stock_massing",
+          "text": "import stock_massing"
+        }
+      ]
+    },
+    {
       "path": "tools/scifi_kit/art/stock_views.py",
       "basename": "stock_views.py",
       "stem": "stock_views",
@@ -13905,10 +14751,67 @@
       "callers_by_stem": [
         {
           "path": "tools/scifi_kit/art/blend.py",
-          "line": 1014,
+          "line": 1051,
           "evidence": "import",
           "reference": "stock_views",
           "text": "import stock_views"
+        }
+      ]
+    },
+    {
+      "path": "tools/scifi_kit/art/tgl_decode.py",
+      "basename": "tgl_decode.py",
+      "stem": "tgl_decode",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
+      "path": "tools/scifi_kit/art/topdown.py",
+      "basename": "topdown.py",
+      "stem": "topdown",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tools/scifi_kit/art/building_cells.py",
+          "line": 12,
+          "evidence": "import",
+          "reference": "topdown",
+          "text": "import topdown"
+        },
+        {
+          "path": "tools/scifi_kit/art/cells.py",
+          "line": 96,
+          "evidence": "import",
+          "reference": "topdown",
+          "text": "import topdown"
+        },
+        {
+          "path": "tools/scifi_kit/art/cells.py",
+          "line": 140,
+          "evidence": "import",
+          "reference": "topdown",
+          "text": "import topdown"
+        },
+        {
+          "path": "tools/scifi_kit/art/fit.py",
+          "line": 59,
+          "evidence": "import",
+          "reference": "topdown",
+          "text": "import topdown"
+        },
+        {
+          "path": "tools/scifi_kit/art/footprint.py",
+          "line": 25,
+          "evidence": "import",
+          "reference": "topdown",
+          "text": "import topdown"
+        },
+        {
+          "path": "tools/scifi_kit/art/intent_civic.py",
+          "line": 140,
+          "evidence": "import",
+          "reference": "topdown",
+          "text": "import topdown"
         }
       ]
     },
@@ -13948,7 +14851,7 @@
         },
         {
           "path": "tools/scifi_kit/art/run.py",
-          "line": 191,
+          "line": 202,
           "evidence": "import",
           "reference": "validate",
           "text": "import validate"
