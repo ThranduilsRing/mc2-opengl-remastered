@@ -26,6 +26,8 @@
     "tools/tracy_capture_compare.py": "engine launcher through nofocus.spawn/run (vetted by exe_guard); launch-site audit 2026-10-10"
   },
   "direct_spawn": {
+    "scripts/tests/test_kit_visibility.py": "Compiles and runs the temporary stock-priority fixture with compiler and fixture paths; console tools only, launched hidden through console_child.child_kwargs.",
+    "scripts/tests/test_window_emission.py": "Runs glslangValidator and spirv-dis from shader_common.find_tool to verify compiled emission composition; hidden console tools through console_child.child_kwargs(redirected=True).",
     ".claude/hooks/check_game_running.py": "program is a variable (git, ninja, glslang, ktx, blender, cook tools, python); launch-site audit 2026-10-10: console tool, not the game",
     "scripts/bake_colormap_ktx2.py": "program is a variable (git, ninja, glslang, ktx, blender, cook tools, python); launch-site audit 2026-10-10: console tool, not the game",
     "scripts/bootstrap_worktree_build.py": "program is a variable (git, ninja, glslang, ktx, blender, cook tools, python); launch-site audit 2026-10-10: console tool, not the game",
