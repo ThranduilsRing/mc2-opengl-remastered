@@ -234,6 +234,10 @@ if(NOT MC2_ASAN)
     add_definitions(-DTRACY_ON_DEMAND)
     # Disable ETW kernel sampling (requires elevated privileges, not needed for zone profiling)
     add_definitions(-DTRACY_NO_SYSTEM_TRACING)
+    if(NOT WIN32)
+        # Linux guests may hide invariant TSC; Tracy uses CLOCK_MONOTONIC_RAW.
+        add_compile_definitions(TRACY_TIMER_FALLBACK)
+    endif()
 endif()
 
 find_package(SDL2 REQUIRED CONFIG REQUIRED COMPONENTS SDL2)

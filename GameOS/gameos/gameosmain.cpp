@@ -842,10 +842,15 @@ int main(int argc, char** argv)
     // and decides stream liveness: set to anything (incl. legacy "1", or a
     // "cat:level" spec) = live; unset = redirect, exactly as before.
     if (!mc2::log::init()) {
-        FILE* sink = freopen("NUL", "w", stdout);
+#ifdef _WIN32
+        const char* nullDevice = "NUL";
+#else
+        const char* nullDevice = "/dev/null";
+#endif
+        FILE* sink = freopen(nullDevice, "w", stdout);
         (void)sink;  // NUL is always present on Windows; if it failed, the stream
                      // simply stays connected (correct but hitchy) -- never fatal.
-        FILE* esink = freopen("NUL", "w", stderr);
+        FILE* esink = freopen(nullDevice, "w", stderr);
         (void)esink;
     }
 
