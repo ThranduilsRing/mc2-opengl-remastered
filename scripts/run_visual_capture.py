@@ -279,7 +279,7 @@ def smoke_capture(bookmarks, mission, out, verify=False):
         if not verify:
             pose_dir.mkdir(parents=True, exist_ok=False)
             values, _ = build_capture_env(bookmark.resolve(), pose_dir, 431, 30, True,
-                                         {"MC2_OPTIONS_OVERRIDE": "RemasteredBuildings=TRUE"})
+                                         {"MC2_OPTIONS_OVERRIDE": "RemasteredBuildings=TRUE", "MC2_VISUAL_CAPTURE_CLEAN": "1"})
             env.update({k: v for k, v in values.items() if k.startswith("MC2_")})
         else:
             if len(marks) < 2:

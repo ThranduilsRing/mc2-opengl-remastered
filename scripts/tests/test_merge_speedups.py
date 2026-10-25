@@ -606,7 +606,7 @@ def test_smoke_bookmark_capture_rejects_missing_or_wrong_evidence(tmp_path):
     out = tmp_path / "out"
     assert capture.smoke_capture([bookmark], "mc2_17", out) == {}
     env = capture.smoke_capture([bookmark], "mc2_01", out)
-    assert env["MC2_VISUAL_CAPTURE_FRAME"] == "431"
+    assert env["MC2_VISUAL_CAPTURE_FRAME"] == "431" and env["MC2_VISUAL_CAPTURE_CLEAN"] == "1"
     assert env["MC2_SMOKE_FIXED_TIMESTEP"] == "1"
     with pytest.raises(RuntimeError, match="missing"):
         capture.smoke_capture([bookmark], "mc2_01", out, True)
