@@ -52,6 +52,9 @@
 #include <unordered_map>
 #include <vector>
 
+extern uint32_t g_mc2RenderFrame;
+extern uint32_t g_mc2FxFireCaptureFrame;
+
 namespace mc2vk {
 
 namespace {
@@ -2722,8 +2725,6 @@ void EnginePresentVk::verifyReadbackContent() {
         // overheats/depletes the mechs, so the default overwrite-latest catches a
         // post-fire frame). Unset -> legacy overwrite-each-verify-tick behaviour.
         {
-            extern uint32_t g_mc2RenderFrame;
-            extern uint32_t g_mc2FxFireCaptureFrame;
             if (mc2::gate::isNonEmpty<"MC2_VK_PRESENT_DUMP_FRAME">()) {
                 const unsigned long pin = static_cast<unsigned long>(mc2::gate::get<"MC2_VK_PRESENT_DUMP_FRAME">());
                 if (s_ppmDone || static_cast<unsigned long>(g_mc2RenderFrame) < pin)
@@ -2791,7 +2792,6 @@ void EnginePresentVk::verifyReadbackContent() {
     const uint32_t rw = s.imgW, rh = s.imgH;
     const VkDeviceSize needed = static_cast<VkDeviceSize>(rw) * rh * 4u;
     if (needed == 0) return;
-    extern uint32_t g_mc2RenderFrame;
     const uint64_t tag = g_mc2RenderFrame;
     VkBuffer dst = VK_NULL_HANDLE;
     const mc2vk::ReadbackToken tok = ctx.readbacks().request(ctx, needed, tag, &dst);
