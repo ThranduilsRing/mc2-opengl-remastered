@@ -196,6 +196,27 @@ def test_nested_animated_chain_matches_stock_over_clip(tmp_path, intermediary, p
         np.testing.assert_allclose(actual["Detail_1"], expected @ detail, atol=1e-6)
 
 
+def test_rotated_scaled_attachment_under_animated_parent(tmp_path):
+    points = np.array([[0, 0, 0], [1, 0, 0], [0, 1, 1]], float)
+    scene = ir.Scene(meshes=[ir.Mesh("probe", [ir.Primitive(points, np.array([[0, 1, 2]]), 0)])])
+    parent = np.eye(4)
+    parent[:3, 3] = [5, 6, 7]
+    attachment = np.array([[0, -3, 0, 1], [2, 0, 0, 2], [0, 0, 4, 3], [0, 0, 0, 1]], float)
+    scene.nodes = [ir.Node("Yaw", matrix=parent, mesh=0, extras={"mc2_anim_node": "Yaw"}),
+                   ir.Node("Lamp", parent=0, matrix=attachment, extras={"mc2_attachment": "light"})]
+    raw = gltf_io.write_runtime_glb(scene, [ir.Material("probe")], {})
+    doc, _ = gltf_io.split_glb(raw)
+    lamp = next(n for n in doc["nodes"] if n["name"] == "Lamp")
+    yaw = next(n for n in doc["nodes"] if n["name"] == "Yaw")
+    assert doc["nodes"].index(lamp) in yaw["children"]
+    expected = gltf_io.TG_FROM_RUNTIME @ parent @ attachment
+    actual = gltf_io.node_matrix(yaw) @ gltf_io.node_matrix(lamp)
+    np.testing.assert_allclose(actual, expected)
+    path = tmp_path / "attachment.glb"
+    path.write_bytes(raw)
+    assert not validate.errors(validate.validate_runtime_glb(path))
+
+
 def test_runtime_frame_is_axis0_inverse(tmp_path):
     src, *_ = make_gltf(tmp_path)
     asset = gltf_file.to_ir("panel", "staticProp:panel", src, meta={"frame": "gltf"}, work_dir=tmp_path / "w")

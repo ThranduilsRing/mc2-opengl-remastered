@@ -101,6 +101,16 @@ def test_old_capture_missing_option_uses_default():
         rop.require_same({"values": old}, {"values": values(RemasteredBuildings=False)})
 
 
+def test_historical_capture_logs_all_defaulted_options(capsys):
+    old = values()
+    del old["RemasteredBuildings"]
+    del old["PostCASSharpness"]
+    rop.require_same({"values": old}, {"values": values()})
+    log = capsys.readouterr().err
+    assert "A defaulted missing options:" in log
+    assert "RemasteredBuildings" in log and "PostCASSharpness" in log
+
+
 def test_engine_report_must_agree_with_the_harness_reading():
     assert rop.check_engine(values(), None) == []
     assert rop.check_engine(values(), values()) == []
