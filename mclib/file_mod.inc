@@ -601,8 +601,12 @@ std::vector<unsigned char> ReadArchiveBytes(const char* dataPath, size_t maxByte
 
 int LookupModPriority(const char* dataPath) {
     const char* owner = LookupModOwner(dataPath);
+    // Source and cooked-sidecar keys can differ. A legacy loose TGA must also
+    // outrank the kit's KTX, while the kit still outranks packed stock assets.
+    if (owner && std::string_view(owner) == "mc2-industrial-kit") return 999999;
     auto it = owner ? g_modPriority.find(owner) : g_modPriority.end();
-    return it == g_modPriority.end() ? 1000000 : it->second;
+    if (it != g_modPriority.end()) return it->second;
+    return _access(dataPath, 4) == 0 ? 999998 : 1000000;
 }
 
 const char* LookupModOwner(const char* dataPath) {
