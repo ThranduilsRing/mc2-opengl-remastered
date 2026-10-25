@@ -287,6 +287,8 @@ private:
     // Dimensions
     int width_;
     int height_;
+    int outputWidth_ = 0;
+    int outputHeight_ = 0;
 
     bool initialized_;
 

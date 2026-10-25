@@ -2105,9 +2105,9 @@ bool EnginePresentVk::renderNativeCompositeVisual(float exposure,
     const auto& output = visualTuning_environment().output;
     float pc[32] = {
         exposure,
-        1.0f / static_cast<float>(s.imgW),
-        1.0f / static_cast<float>(s.imgH),
-        0.0f, // AA runs on the final output color below, after tone/output.
+        1.0f / static_cast<float>(scene->w),
+        1.0f / static_cast<float>(scene->h),
+        (scene->w < s.imgW || scene->h < s.imgH) ? 1.0f : 0.0f,
         0.0f,
         0.0f,
         0.0f,

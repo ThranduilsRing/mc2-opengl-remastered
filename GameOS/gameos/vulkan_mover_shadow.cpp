@@ -169,6 +169,7 @@ bool MoverShadowState::prepare(int mapSide, const float cameraRows[16], Vec3 sun
     frame_.sun[0]=sun.x; frame_.sun[1]=sun.y; frame_.sun[2]=sun.z;
     frame_.sun[3]=std::tan(kSunAngularRadiusDeg * 0.01745329252f);
     frame_.light[0]=nightShadowFade();
+    frame_.light[1]=static_cast<float>(mc2::gate::get<"MC2_SHADOW_MOVER_SAMPLES">());
     int side=0; float halfMap=0; gos_GetTerrainChunkGridInfo(&side,&halfMap);
     frame_.mask[0]=-halfMap; frame_.mask[1]=halfMap;
     frame_.mask[2]=1.0f/((std::max)(side-1,1)*kWorldUnitsPerVertex); frame_.mask[3]=maskReady?1.0f:0.0f;

@@ -9,7 +9,7 @@ layout(std140, set = 0, binding = 25) uniform MoverShadowFrame {
     vec4 sun;
     vec4 mask; // west, north, reciprocal world span, ready
     ivec4 flags; // active, coverage enabled, quality, reserved
-    vec4 light; // x: night fade of every directional sun shadow (0 = day strength, 1 = none)
+    vec4 light; // x: night fade; y: spatial filter sample count
     uvec4 coverage[512]; // packed min/max UNORM8, two cells per word
 } moverFrame;
 
@@ -66,7 +66,7 @@ float moverVisibility(vec3 worldPos, vec3 N) {
     float meanD = sumD / found;
     float lift = 1.0 + 2.0 * (1.0 - clamp(meanD / 200.0, 0.0, 1.0));
     float radius = max(meanD * tanT * lift, 0.75 * moverFrame.params.x);
-    int count = moverFrame.flags.z == 0 ? 12 : 32;
+    int count = min(moverFrame.flags.z == 0 ? 12 : 32, int(moverFrame.light.y));
     // World-anchored rotation breaks up repeated edge bands without a temporal
     // sequence or a camera-dependent pattern.
     vec2 cell = floor(worldPos.xy / max(0.5 * moverFrame.params.x, 1.0));

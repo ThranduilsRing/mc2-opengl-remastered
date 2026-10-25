@@ -8,6 +8,12 @@
 #endif
 #include <cstdlib>
 
+namespace {
+int sceneSide(int pixels) {
+    return (std::max)(1, int(std::lround(pixels * mc2::gate::get<"MC2_RENDER_SCALE">())));
+}
+}
+
 bool gosPostProcess::sceneColorReady() const {
 #ifdef MC2_VULKAN_ISLAND
     return sharedSceneColor_ != nullptr;
@@ -31,8 +37,10 @@ bool gosPostProcess::sceneObjectIdReady() const {
 }
 
 void gosPostProcess::createSceneTargets(int w, int h) {
-    width_ = w > 0 ? w : 1;
-    height_ = h > 0 ? h : 1;
+    outputWidth_ = w > 0 ? w : 1;
+    outputHeight_ = h > 0 ? h : 1;
+    width_ = sceneSide(outputWidth_);
+    height_ = sceneSide(outputHeight_);
 #ifdef MC2_VULKAN_ISLAND
     const char* reason = "unknown";
     auto require = [&](bool ready, const char* slot) {
@@ -62,8 +70,9 @@ void gosPostProcess::createSceneTargets(int w, int h) {
     describe(RenderResourceId::MainDepth,RenderResourceFormat::Depth32F,"MainDepth",8,sharedSceneDepth_ != nullptr);
     describe(RenderResourceId::MainNormal,RenderResourceFormat::RGBA16F,"MainNormal",8,sceneNormalReady());
     describe(RenderResourceId::SceneObjectId,RenderResourceFormat::Unknown,"SceneObjectId",4,sceneObjectIdReady());
-    mc2::fmt::print_err("[SCENE_TARGETS] backend=Vulkan extent={:d}x{:d} object_id={:d}\n",
-        mc2::fmt::as_i32(width_),mc2::fmt::as_i32(height_),mc2::fmt::as_i32(sceneObjectIdReady() ? 1 : 0));
+    mc2::fmt::print_err("[SCENE_TARGETS] backend=Vulkan extent={:d}x{:d} object_id={:d} output={:d}x{:d}\n",
+        mc2::fmt::as_i32(width_),mc2::fmt::as_i32(height_),mc2::fmt::as_i32(sceneObjectIdReady() ? 1 : 0),
+        mc2::fmt::as_i32(outputWidth_),mc2::fmt::as_i32(outputHeight_));
 #else
     mc2::fmt::print_err("[SCENE_TARGETS] Vulkan support is required\n");
     std::abort();
@@ -93,7 +102,7 @@ void gosPostProcess::destroySceneTargets() {
 }
 
 void gosPostProcess::resize(int w,int h) {
-    if (w<=0 || h<=0 || (w==width_ && h==height_)) return;
+    if (w<=0 || h<=0 || (w==outputWidth_ && h==outputHeight_)) return;
     destroySceneTargets();
     createSceneTargets(w,h);
 }

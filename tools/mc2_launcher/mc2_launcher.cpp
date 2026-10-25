@@ -218,6 +218,8 @@ static const EnvVarDef k_envVars[] = {
     // reader. offVal="0" mandatory: unsetting alone left the atlas on its ON default.
     { "MC2_COLORMAP_KTX2",           "BC7 KTX2 colormap atlas (ON)",          true,  "1",    "Terrain", "0" },
     { "MC2_VEGETATION_MAX",           "Vegetation population cap",            false, "5000000", "Terrain" },
+    { "MC2_SHADOW_MOVER_SAMPLES",     "Mover shadow filter samples (4-32)",   false, "32", "Terrain" },
+    { "MC2_RENDER_SCALE",            "Scene resolution scale (0.5-1)",       false, "1", "Terrain" },
     // --- Water / VFX ---
     // NO offVal, and adding one would be ACTIVELY WRONG. Primary reader
     // gameos_graphics.cpp:2867 `(v && v[0] && v[0] != '0') ? 0.15f : 0.0f` --
@@ -1468,7 +1470,7 @@ static LRESULT CALLBACK GraphicsDlgProc(HWND hwnd, UINT msg, WPARAM wParam, LPAR
             GfxDialogReadControls(hwnd);
             if (s_pendingPreset >= 0) {
                 const auto& p = k_gfxPresets[s_pendingPreset];
-                for (int k = 0; k < 4; ++k)
+                for (int k = 0; k < int(sizeof(k_presetKeys) / sizeof(k_presetKeys[0])); ++k)
                     for (int row = 0; row < k_envVarCount; ++row)
                         if (strcmp(k_presetKeys[k], k_envVars[row].key) == 0) {
                             _snprintf(s_envVarValues[row], sizeof(s_envVarValues[row]), "%s", p.values[k]);
