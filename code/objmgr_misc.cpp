@@ -585,6 +585,7 @@ void GameObjectManager::updateAppearancesOnly( bool terrain, bool movers, bool o
 
 	if (terrain && renderObjects)
 	{
+		ZoneScopedN("GameLogic.Presentation.Terrain");
         updateReadbackSnapshot();
         updateActiveSweep();
 		int frameJobsPrePassCount = 0;
@@ -636,8 +637,10 @@ void GameObjectManager::updateAppearancesOnly( bool terrain, bool movers, bool o
 
 	if (movers) 
 	{
+		ZoneScopedN("GameLogic.Presentation.Movers");
 		if (mechs) 
 		{
+			ZoneScopedN("GameLogic.Presentation.Mechs");
 			for (long i = 0; i < numMechs; i++)
 				if (mechs[i] && mechs[i]->getExists())
 				{
@@ -664,6 +667,7 @@ void GameObjectManager::updateAppearancesOnly( bool terrain, bool movers, bool o
 
 		if (vehicles) 
 		{
+			ZoneScopedN("GameLogic.Presentation.Vehicles");
 			for (long i = 0; i < numVehicles; i++)
 				if (vehicles[i] && vehicles[i]->getExists())
 				{
@@ -687,6 +691,7 @@ void GameObjectManager::updateAppearancesOnly( bool terrain, bool movers, bool o
 	}
 
 	if (other) {
+		ZoneScopedN("GameLogic.Presentation.Other");
 		//---------------------------------------
 		// All other objects should be updated...
 		if (turrets) 
