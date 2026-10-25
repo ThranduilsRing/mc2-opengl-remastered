@@ -199,7 +199,7 @@ def test_nested_animated_chain_matches_stock_over_clip(tmp_path, intermediary, p
 def test_rotated_scaled_attachment_under_animated_parent(tmp_path):
     points = np.array([[0, 0, 0], [1, 0, 0], [0, 1, 1]], float)
     scene = ir.Scene(meshes=[ir.Mesh("probe", [ir.Primitive(points, np.array([[0, 1, 2]]), 0)])])
-    parent = np.eye(4)
+    parent = np.array([[0, -2, 0, 0], [3, 0, 0, 0], [0, 0, 4, 0], [0, 0, 0, 1]], float)
     parent[:3, 3] = [5, 6, 7]
     attachment = np.array([[0, -3, 0, 1], [2, 0, 0, 2], [0, 0, 4, 3], [0, 0, 0, 1]], float)
     scene.nodes = [ir.Node("Yaw", matrix=parent, mesh=0, extras={"mc2_anim_node": "Yaw"}),

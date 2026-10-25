@@ -47,9 +47,8 @@ static void dumpGameplay(BldgAppearance& a, glm::vec3 pos, std::span<const short
             if (destroyed && !a.appearType->bldgDmgShape) { out << "absent"; continue; }
             probe.status = destroyed ? OBJECT_STATUS_DESTROYED : OBJECT_STATUS_NORMAL;
             if (probe.bldgShape) probe.releaseBldgShape();
-            auto* source = destroyed ? (a.appearType->bldgDmgRenderShape ?
-                a.appearType->bldgDmgRenderShape.get() : a.appearType->bldgDmgShape) :
-                a.appearType->getBldgRenderShape(0);
+            auto* source = destroyed ? a.appearType->bldgDmgShape :
+                a.appearType->getBldgCollisionShape(0);
             probe.bldgShape = source->CreateFrom();
             std::fill(terrain.begin(), terrain.end(), MissionMapCellInfo{});
             for (auto& cell : terrain) cell.passable = true;
@@ -60,6 +59,7 @@ static void dumpGameplay(BldgAppearance& a, glm::vec3 pos, std::span<const short
         }
         mc2::fmt::print_err("[BLDG_GAMEPLAY] {}\n", out.str());
     }
+    if (probe.bldgShape) probe.releaseBldgShape();
 }
 
 inline constexpr float HEIGHT_THRESHOLD = 10.0f;
