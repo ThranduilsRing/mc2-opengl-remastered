@@ -8549,7 +8549,7 @@
       "callers_by_stem": [
         {
           "path": "scripts/tests/test_slang_build.py",
-          "line": 260,
+          "line": 259,
           "evidence": "import",
           "reference": "check_vk_shaders",
           "text": "import check_vk_shaders as gate"
@@ -9725,14 +9725,14 @@
       "callers_by_stem": [
         {
           "path": "scripts/tests/test_slang_build.py",
-          "line": 228,
+          "line": 227,
           "evidence": "import",
           "reference": "gpu_abi_gen",
           "text": "import gpu_abi_gen as abi"
         },
         {
           "path": "tools/shader_offline_build/slang_compile.py",
-          "line": 145,
+          "line": 144,
           "evidence": "import",
           "reference": "gpu_abi_gen",
           "text": "import gpu_abi_gen as abi"
@@ -12269,7 +12269,7 @@
         },
         {
           "path": "scripts/tests/test_slang_build.py",
-          "line": 245,
+          "line": 244,
           "evidence": "import",
           "reference": "binding_index",
           "text": "import binding_index"
@@ -15075,6 +15075,13 @@
           "evidence": "import",
           "reference": "build_variants",
           "text": "from build_variants import occupancy_slots as native_occupancy_slots  # noqa: E402"
+        },
+        {
+          "path": "scripts/check-spirv-reflection-contract.py",
+          "line": 43,
+          "evidence": "import",
+          "reference": "build_variants",
+          "text": "from build_variants import occupancy_slots  # noqa: E402"
         }
       ]
     },

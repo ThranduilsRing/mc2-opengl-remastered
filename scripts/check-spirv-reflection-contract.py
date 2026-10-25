@@ -38,21 +38,17 @@ import os
 import sys
 from pathlib import Path
 
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / 'tools/shader_offline_build'))
+from build_variants import occupancy_slots  # noqa: E402
+
 PILOTS = "tools/shader_offline_build/pilots.json"
 BINDING_OCC = "docs/render-backend-seams/binding-slot-occupancy.json"
 SAMPLER_OCC = "docs/render-backend-seams/sampler-unit-occupancy.json"
 
 
 def occ_slots(p):
-    if not p.exists():
-        return None
-    occ = json.load(open(p, encoding="utf-8")).get("occupancy", {})
-    out = set()
-    for key in occ:
-        ns, _, slot = key.partition(":")
-        if slot.isdigit():
-            out.add((ns, int(slot)))
-    return out
+    return occupancy_slots(p)
 
 
 def sampler_names(p):
@@ -86,6 +82,8 @@ def main():
     root = Path(args.root) if args.root else Path(__file__).resolve().parents[1]
 
     cfg = json.load(open(root / PILOTS, encoding="utf-8"))
+    sources = {(p['program'], stage): rel for p in cfg['pilots']
+               for stage, rel in p['stages'].items()}
     spv_dir = root / cfg.get("spv_dir", "shaders/spv")
     occ = occ_slots(root / BINDING_OCC)
     smp = sampler_names(root / SAMPLER_OCC)
@@ -112,8 +110,8 @@ def main():
         b = meta.get("bindings", {}); i = meta.get("interface", {})
         if kind == "outputs":  return {x["name"]: x.get("location") for x in i.get("outputs", [])}
         if kind == "inputs":   return {x["name"]: x.get("location") for x in i.get("inputs", [])}
-        if kind == "ubos":     return {x["name"]: x.get("binding")  for x in b.get("ubos", [])}
-        if kind == "ssbos":    return {x["name"]: x.get("binding")  for x in b.get("ssbos", [])}
+        if kind in ("ubos", "ssbos"):
+            return {x["name"]: (x.get("set", 0), x.get("binding")) for x in b.get(kind, [])}
         if kind == "samplers": return {x["name"]: x.get("location") for x in b.get("samplers", [])}
         return {}
 
@@ -152,7 +150,7 @@ def main():
                 if kind in ("ubos", "ssbos") and occ is not None:
                     ns = "UBO" if kind == "ubos" else "SSBO"
                     b = next(iter(vals)) if len(vals) == 1 else None
-                    if b is not None and (ns, b) not in occ:
+                    if b is not None and (ns, *b, name, sources[base, stage]) not in occ:
                         fails.append(f"{base}.{stage} {ns} '{name}' binding={b} "
                                      f"absent from binding-slot-occupancy.json")
                 if kind == "samplers" and smp is not None and name not in smp:

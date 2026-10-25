@@ -307,6 +307,12 @@ void main() { result.value[0] = 42u; }
                              **console_child.child_kwargs(redirected=True))
     assert checked.returncode == 0, checked.stdout + checked.stderr
     assert run_build(work, '--check', '--quiet').returncode == 0
+    def check_variants():
+        return subprocess.run([sys.executable, '-I', os.path.join(ROOT, 'scripts/check-spirv-reflection-contract.py'),
+                               '--root', work], capture_output=True, text=True,
+                              **console_child.child_kwargs(redirected=True))
+    assert check_variants().returncode == 0
     census.write_text(json.dumps({'occupancy': {'set0:binding0': [site]}}))
     rejected = run_build(work, '--check')
     assert rejected.returncode == 1 and 'binding-slot-occupancy.json (drift)' in rejected.stdout
+    assert check_variants().returncode == 1
