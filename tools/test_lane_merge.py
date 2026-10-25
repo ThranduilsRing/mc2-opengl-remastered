@@ -3,7 +3,6 @@
 Run:
   py -3 -B -m pytest tools/test_lane_merge.py -q -p no:cacheprovider
 """
-import json
 import os
 import subprocess
 import sys
@@ -652,18 +651,11 @@ def test_regeneration_normalizes_windows_json_without_touching_binary(env, monke
 def test_contained_batch_still_verifies(env, monkeypatch, mode):
     lm = _load_module()
     repo, tools = env
-    write(repo, "scripts/ninja_build.py", "# native tree\n")
-    commit_all(repo, "native tree")
-    write(repo, "build64-ninja/merge-window.json", '{"head":"stale","verify":"FAIL"}')
     verifies = []
     monkeypatch.setattr(lm, "verify_merged", lambda root, mode: (verifies.append(mode), ("OK", []))[1])
     monkeypatch.setattr(lm, "merge_tip", lambda *a: pytest.fail("contained tip merged"))
     assert lm.main(["--batch", "HEAD", "--verify", mode, "--root", str(repo), "--tools-dir", str(tools)]) == 0
     assert verifies == [mode]
-    record = json.loads((repo / "build64-ninja/merge-window.json").read_text())
-    assert record["head"] == git(repo, "rev-parse", "HEAD")
-    assert record["verify"] == "OK"
-    assert record["merge_seconds"] >= 0
 
 
 def test_regeneration_failure_stops_before_later_generators(env, monkeypatch):

@@ -70,7 +70,7 @@ def test_batch_runs_verify_when_quick_rows_green(tmp_path, monkeypatch):
     assert len(verifies) == 1
 
 
-def test_noop_batch_preserves_window_receipt(tmp_path, monkeypatch):
+def test_contained_batch_refreshes_window_receipt(tmp_path, monkeypatch):
     root = _throwaway_repo(tmp_path)
     (root / 'scripts').mkdir()
     (root / 'scripts/ninja_build.py').touch()
@@ -85,11 +85,19 @@ def test_noop_batch_preserves_window_receipt(tmp_path, monkeypatch):
     import json
     window = json.loads(original)
     assert window['base'] != window['head']
+    # A fix-forward makes the previous receipt stale while containing the lane.
+    (root / 'a.txt').write_text('fixed')
+    lm.git_out(str(root), 'add', '--', 'a.txt')
+    lm.git_out(str(root), '-c', 'user.name=t', '-c', 'user.email=t@t',
+               'commit', '-qm', 'fix forward')
+    head = lm.git_out(str(root), 'rev-parse', 'HEAD')
     assert lm.main(args) == 0
-    assert receipt.read_bytes() == original and len(verifies) == 2
+    refreshed = json.loads(receipt.read_bytes())
+    assert refreshed['head'] == head and refreshed['verify'] == 'OK'
+    assert refreshed['head'] != window['head'] and len(verifies) == 2
     receipt.unlink()
     assert lm.main(args) == 0
-    assert not receipt.exists()  # An empty batch cannot mint a new empty window either.
+    assert json.loads(receipt.read_bytes())['head'] == head
 
 
 @pytest.mark.parametrize('jobs', [1, 6])
