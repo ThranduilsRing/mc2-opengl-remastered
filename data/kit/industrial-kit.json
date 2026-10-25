@@ -1,10 +1,10 @@
 {
   "schema": 1,
   "id": "mc2-industrial-kit",
-  "package": "kit-civ-faith-20261025",
-  "store": "E:\\mc2-ref\\packages\\mc2-industrial-kit\\kit-civ-faith-20261025",
+  "package": "kit-civ-faith-window-cells-20261025",
+  "store": "E:\\mc2-ref\\packages\\mc2-industrial-kit\\kit-civ-faith-window-cells-20261025",
   "source_bake_commit": "556288c2d42ae4630ba1e088ca6a30dcd784f440",
-  "packaging_commit": "05917c3e0a1fc214839179ee353a4527ef5abbb0",
+  "packaging_commit": "60dc27755cef6d0440af06a6daee133350092bc9",
   "source_root": "E:/mc2-ref/scifi-kit/art/intent-pass",
   "assets": [
     {
@@ -721,18 +721,18 @@
     },
     {
       "path": "data/model_overrides/centerlobby/pristine_intact_lod0.glb",
-      "sha256": "7aed378abc4c52fa2d003f82ace09cf89a4a553b22c249fd2b7c9bc80bdf665b",
-      "bytes": 3970808
+      "sha256": "311597d19287d5b3756c15212a6f05a0dfdfe0610316374c6646fd7f72e7d0c5",
+      "bytes": 4033380
     },
     {
       "path": "data/model_overrides/centerlobby/pristine_intact_lod1.glb",
-      "sha256": "d8f1d9a86059b94aa1827e87bf243d50d5a1975cb85ef043668c5dc59a1b4f85",
-      "bytes": 1896984
+      "sha256": "352a203d779810f974610bc093379d8feb750fe25d6f6cbf9d33c9c242835dcb",
+      "bytes": 1901932
     },
     {
       "path": "data/model_overrides/centerlobby/pristine_intact_lod2.glb",
-      "sha256": "7a3149abf7a4700d8fa50bbf09a6e9b772dad5f009a352b14c6e8db56fe400ad",
-      "bytes": 1282228
+      "sha256": "eda3cdcfea2f81d4ed61403f5baad1ba86e3bba012f0484b709e31a2d5eb7a06",
+      "bytes": 1287176
     },
     {
       "path": "data/model_overrides/chemicalplant/detail/0_normal.ktx2",
@@ -751,18 +751,18 @@
     },
     {
       "path": "data/model_overrides/chemicalplant/pristine_intact_lod0.glb",
-      "sha256": "4cb01bf5ad853f70be7a122cb0836665b20da30e5e624ce436496874750ddfe2",
-      "bytes": 8101188
+      "sha256": "a7f331914537d6348eb4905b454af6612e5193c129f3a4c3db64ebece38bc993",
+      "bytes": 8125228
     },
     {
       "path": "data/model_overrides/chemicalplant/pristine_intact_lod1.glb",
-      "sha256": "4bcf9f313afb49caa79330568f7769c67aaa9585e186c3184f1a92a487215424",
-      "bytes": 3877720
+      "sha256": "8066b85cc10ba92565203e2279c65c8ab47b5aae34c187d30e34877d23e664b3",
+      "bytes": 3879852
     },
     {
       "path": "data/model_overrides/chemicalplant/pristine_intact_lod2.glb",
-      "sha256": "0af077ca188727422ad96b0fabaa7896186e4d49185e3a4f057a0ec932c48192",
-      "bytes": 2823024
+      "sha256": "1423f28545a0db7ae679422bb50682eba7ff2276880800bf85edeb658f9bb83b",
+      "bytes": 2823812
     },
     {
       "path": "data/model_overrides/city2storya/detail/0_normal.ktx2",
@@ -781,18 +781,18 @@
     },
     {
       "path": "data/model_overrides/city2storya/pristine_intact_lod0.glb",
-      "sha256": "c7239cb4eda2ef9baadce366302e7a8a1b48cd9a4ace6c05795e3f07fc5a6d24",
-      "bytes": 6514032
+      "sha256": "b216b2385497a14043690ff593288a78b72b5bad35d1e68fd82eda14c3af7de3",
+      "bytes": 6612664
     },
     {
       "path": "data/model_overrides/city2storya/pristine_intact_lod1.glb",
-      "sha256": "83946f825fc322ab1d5e7543d37c5bcde331cf4851a026007cab833e479a0c3c",
-      "bytes": 3028728
+      "sha256": "71b710a53aa86e585893a9f6092101363d26f63c8da0dd4fef3bcd48f45c0f23",
+      "bytes": 3057008
     },
     {
       "path": "data/model_overrides/city2storya/pristine_intact_lod2.glb",
-      "sha256": "cd7d1a72dd9c7b50ff7a2d02db449d996f35da4e265a55f53e062a94d916f85f",
-      "bytes": 1472464
+      "sha256": "049b682a2cc2dcc5ef8f28130480fbbb2aa207b0c2331832b1e35d09bf85636d",
+      "bytes": 1475300
     },
     {
       "path": "data/model_overrides/city2storyb/detail/0_normal.ktx2",
@@ -811,18 +811,18 @@
     },
     {
       "path": "data/model_overrides/city2storyb/pristine_intact_lod0.glb",
-      "sha256": "950712ced3c40f46f1ac6279be60be8234d51b453f5b79fe0327e2ddb8aabbd2",
-      "bytes": 6515380
+      "sha256": "fbb302407a7b16f7c364649210e592bb17ee8e09d0ef483e19235e0faaef0d84",
+      "bytes": 6613964
     },
     {
       "path": "data/model_overrides/city2storyb/pristine_intact_lod1.glb",
-      "sha256": "8f958075ea917ab967c48d0bb13c38a25466d1635b2ca92e611c479ff06e38ef",
-      "bytes": 3030564
+      "sha256": "1ea0b66349774337b46b65a56985abcb33b4c95d6a95c8041aab9a7cc4764103",
+      "bytes": 3059036
     },
     {
       "path": "data/model_overrides/city2storyb/pristine_intact_lod2.glb",
-      "sha256": "4f6e95ccb9d7df602eb8a01600f6f9592d4821c83ceb972536ca32c835ac0aa7",
-      "bytes": 1471456
+      "sha256": "8956c79a136ae8a88f933ae72349112b9e4c6caab55c477b244ce6461afb850b",
+      "bytes": 1474292
     },
     {
       "path": "data/model_overrides/city2storyc/detail/0_normal.ktx2",
@@ -841,18 +841,18 @@
     },
     {
       "path": "data/model_overrides/city2storyc/pristine_intact_lod0.glb",
-      "sha256": "cf4d661183e4fd9698b663bb3170445cd3b1196251209f4aea8e7c07b2162cb0",
-      "bytes": 6362940
+      "sha256": "3f9432f7045ab230ae9dc6f2ae353b31842aec378144a044507a9c273a4a11aa",
+      "bytes": 6457120
     },
     {
       "path": "data/model_overrides/city2storyc/pristine_intact_lod1.glb",
-      "sha256": "1143f1c19b8799662bfa2db7b40be55fc1b870ba40c52aacd88cc48d7ad021e8",
-      "bytes": 2969320
+      "sha256": "2a5872f9b5d6bbd78134c800418ffd8a2646e7c5638333a7e207574a7fcb56ed",
+      "bytes": 2990876
     },
     {
       "path": "data/model_overrides/city2storyc/pristine_intact_lod2.glb",
-      "sha256": "de19423723760db4d5fc66347449e295669cab21720c551e5066a897b04fc466",
-      "bytes": 1437084
+      "sha256": "89acdf398c42076389054d64a908962da5dc1ea618e32ddc33ffb0df9042a653",
+      "bytes": 1439792
     },
     {
       "path": "data/model_overrides/city4storya/detail/0_normal.ktx2",
@@ -871,18 +871,18 @@
     },
     {
       "path": "data/model_overrides/city4storya/pristine_intact_lod0.glb",
-      "sha256": "96882e96d262747df469d39bab9a336b0ad24f08ebf08e68df819d27e661b9fe",
-      "bytes": 4690892
+      "sha256": "30d3ab391777eec277627e9db9431730df26b03c59170b95d37a1244c1d759e8",
+      "bytes": 4763920
     },
     {
       "path": "data/model_overrides/city4storya/pristine_intact_lod1.glb",
-      "sha256": "027603516666d6d6a48a236ca8f379c09e0afeb297040a6b4d41312699a44df4",
-      "bytes": 2201568
+      "sha256": "1a23c8ca9cac2f7a1ce3c9db2b70fe449a1e96a24fe3c9904c6766f5d32f4633",
+      "bytes": 2212428
     },
     {
       "path": "data/model_overrides/city4storya/pristine_intact_lod2.glb",
-      "sha256": "b61917d25f96b609e773f273aa0519c6e8407314e536e5bab8e782ae82c1759e",
-      "bytes": 1016824
+      "sha256": "3ec5773885d8cb787aa346e5ca0427841e5c8066e626160dd8e2781cc815d41b",
+      "bytes": 1022220
     },
     {
       "path": "data/model_overrides/city4storyb/detail/0_normal.ktx2",
@@ -901,18 +901,18 @@
     },
     {
       "path": "data/model_overrides/city4storyb/pristine_intact_lod0.glb",
-      "sha256": "6f3cd8f18902ac9ba16340e73d7ca521a23d548935009a299a75ad9c47e3a723",
-      "bytes": 5072944
+      "sha256": "2f99cf77e6fc77c6c0ed5492f9036826d5f1d87e62e9c434f4ca02746ad476a9",
+      "bytes": 5151912
     },
     {
       "path": "data/model_overrides/city4storyb/pristine_intact_lod1.glb",
-      "sha256": "067bc0b5feb8ed2e6afdc7db9f99d11d724f180ab387d0b8d9132760b734f4fb",
-      "bytes": 2280552
+      "sha256": "a9ae462ee94f4fcdcd6aae179e924c680074fc46f304a5e77b4f454af0110f2a",
+      "bytes": 2301312
     },
     {
       "path": "data/model_overrides/city4storyb/pristine_intact_lod2.glb",
-      "sha256": "b64fb3d6a066ec6f0cb6ad038fc523ee981e81e82be1e1f04395f8156c710b53",
-      "bytes": 1061676
+      "sha256": "99fbbc2e41ab661cd57d2d0765dfa981e5e00783fc6d82489757d388b6952c1a",
+      "bytes": 1067296
     },
     {
       "path": "data/model_overrides/city4storyc/detail/0_normal.ktx2",
@@ -931,18 +931,18 @@
     },
     {
       "path": "data/model_overrides/city4storyc/pristine_intact_lod0.glb",
-      "sha256": "6e8f62b0a47f9ba9b20a61a65e775d32c99ec5c988c726fdd77805939f6a750b",
-      "bytes": 4690888
+      "sha256": "37e1e17cd0b021d2a5e1b85fdcc6b18c67e796b74d80a4d8f4aeb3000762be29",
+      "bytes": 4763920
     },
     {
       "path": "data/model_overrides/city4storyc/pristine_intact_lod1.glb",
-      "sha256": "7b46430c86fbd928d6800182e642cec94a44c8f7555d592874048dc5c504b6de",
-      "bytes": 2201564
+      "sha256": "f6b9e2647aaaab50c4da5c44945d634ffbffe77e9abbbaddbbd949f232c6200c",
+      "bytes": 2212428
     },
     {
       "path": "data/model_overrides/city4storyc/pristine_intact_lod2.glb",
-      "sha256": "31409da3ba5beed380acfcc02fc3969cf2f4c088ae3f5c2b09263404a475c901",
-      "bytes": 1016824
+      "sha256": "d2f7151c97193e9277dfd6623e7bfd11aad9db35af60f62f1e02a5ca7a8deebc",
+      "bytes": 1022220
     },
     {
       "path": "data/model_overrides/city6storya/detail/0_normal.ktx2",
@@ -961,18 +961,18 @@
     },
     {
       "path": "data/model_overrides/city6storya/pristine_intact_lod0.glb",
-      "sha256": "8158a6b1a146788d1ebbb574317970fbcdfbc76475b0cfc93c04dafa265e08d4",
-      "bytes": 2398956
+      "sha256": "d8a2b73a3b5549b8aad06149bed698ee3a74dded3c2cd87b153a7d7c2ebe00c4",
+      "bytes": 2445380
     },
     {
       "path": "data/model_overrides/city6storya/pristine_intact_lod1.glb",
-      "sha256": "f06257a3797939e142a620239eb2dfd306d14a1b90d36ce17a2d43abddbaa21d",
-      "bytes": 2097708
+      "sha256": "1d490f4f2f15c8de6c115e637e206cb96d88283218a02b67274eaa1f11062b61",
+      "bytes": 2113280
     },
     {
       "path": "data/model_overrides/city6storya/pristine_intact_lod2.glb",
-      "sha256": "13069dbc773a46fce8b4118e11d76eae79f192959db02a50413b2b65e8abc143",
-      "bytes": 1008492
+      "sha256": "4dada5c9f6efdbed86d1de88bf9e998b68145cb24db49075c5cb12c5c3fee563",
+      "bytes": 1024064
     },
     {
       "path": "data/model_overrides/city6storyb/detail/0_normal.ktx2",
@@ -991,18 +991,18 @@
     },
     {
       "path": "data/model_overrides/city6storyb/pristine_intact_lod0.glb",
-      "sha256": "bca259402923daaf289f1f8411a630ab2788d1d57a2ee1ab8c84aa046e6e0956",
-      "bytes": 2398956
+      "sha256": "05230771d2b94919ea54d8d3c8c392f09404835b7c1de1062eef21d7e029749c",
+      "bytes": 2445380
     },
     {
       "path": "data/model_overrides/city6storyb/pristine_intact_lod1.glb",
-      "sha256": "273175c037e69b83164c9c28d8d3b7eb27c0e4c95e4ec5cbaeb1bc40a98b8aa9",
-      "bytes": 2097708
+      "sha256": "9ef3183fe3784014de1fd99faa0403dfc260cf0a45b7138da546ca376d6b4ef3",
+      "bytes": 2113280
     },
     {
       "path": "data/model_overrides/city6storyb/pristine_intact_lod2.glb",
-      "sha256": "b384d075923486325c49444a62ad585d9a46931bd8ccca5ad6e10d6e3f06b665",
-      "bytes": 1008492
+      "sha256": "99ba3bc0d26a825159a048b7b1ae88f01bb89fd75223c875bda7259c85002d9e",
+      "bytes": 1024064
     },
     {
       "path": "data/model_overrides/city6storyc/detail/0_normal.ktx2",
@@ -1021,18 +1021,18 @@
     },
     {
       "path": "data/model_overrides/city6storyc/pristine_intact_lod0.glb",
-      "sha256": "8e6be959a5ccd3ea8ae01a174a3e728cee623c9524f509bbaeaf8a252e6718a5",
-      "bytes": 2398956
+      "sha256": "c80203fcb0229a9ef28ddc37bed0266d1dbd1d3cadedb7aabd387370ae32eb72",
+      "bytes": 2445380
     },
     {
       "path": "data/model_overrides/city6storyc/pristine_intact_lod1.glb",
-      "sha256": "68d1e36b738554c512cfdb693ef6d3de59ecf849f8f0eb557fa6e09c583ef252",
-      "bytes": 2097708
+      "sha256": "134b37aab049fd2bf28da05c62ea17b532c8d9e266a2e35419da1f25b496ce0c",
+      "bytes": 2113280
     },
     {
       "path": "data/model_overrides/city6storyc/pristine_intact_lod2.glb",
-      "sha256": "2f6b9fa45afbdd1b438feff572e804ba8c047f8408c4228fd4ae88a8d7703ffb",
-      "bytes": 1008492
+      "sha256": "e4da0b60cb7e31eef8668520328eb2a17dd1756230f51a25636ea1711cb79335",
+      "bytes": 1024064
     },
     {
       "path": "data/model_overrides/city8storya/detail/0_normal.ktx2",
@@ -1051,18 +1051,18 @@
     },
     {
       "path": "data/model_overrides/city8storya/pristine_intact_lod0.glb",
-      "sha256": "4344500f80a158121d996133f42d558d19cb8bb4b97b930f017445710b27b4ae",
-      "bytes": 3156168
+      "sha256": "737ab3a3b1e32d1692f91d1abe50c751354afb84903040f4e4ce4c3d48de5585",
+      "bytes": 3217948
     },
     {
       "path": "data/model_overrides/city8storya/pristine_intact_lod1.glb",
-      "sha256": "f482e82a147d4a48747e26f2c5e1d452aed43dd461e353258b1fe9b82416ff3b",
-      "bytes": 2755748
+      "sha256": "78fffca2d4c59b1dd030eb8efa485cefceffb788e6ea30c08fbecdc28933f3c8",
+      "bytes": 2776440
     },
     {
       "path": "data/model_overrides/city8storya/pristine_intact_lod2.glb",
-      "sha256": "4482929eb960f2e33f3c80340e3f01aecc0087b1d58822da5d0d2180a7e9f207",
-      "bytes": 1305180
+      "sha256": "9ee33cfd6f900162d4aef5f80098c37c67851c420626ff63be32bc71ea9b9178",
+      "bytes": 1325872
     },
     {
       "path": "data/model_overrides/city8storyb/detail/0_normal.ktx2",
@@ -1081,18 +1081,18 @@
     },
     {
       "path": "data/model_overrides/city8storyb/pristine_intact_lod0.glb",
-      "sha256": "4be6d5c3b8ca58dd482da88c501b98ff2da25928ca86d00c438885888bbb59e5",
-      "bytes": 3156168
+      "sha256": "78b523c7acd514799bf450499e7f050a44946b770d251eb4b4ec09468ee095a8",
+      "bytes": 3217948
     },
     {
       "path": "data/model_overrides/city8storyb/pristine_intact_lod1.glb",
-      "sha256": "67d600404cd8e0e82483cae8f3d96a964eed6b95ffcfe602e958c721ce6ae871",
-      "bytes": 2755844
+      "sha256": "91d10162d841e79df6f4bb0d67a80b85069818e4bc101414752aaa22cc15d2ad",
+      "bytes": 2776536
     },
     {
       "path": "data/model_overrides/city8storyb/pristine_intact_lod2.glb",
-      "sha256": "db31d6f362935dc031b497ec0f2ca0f0b6f335a461658630131f88665c2cbe6d",
-      "bytes": 1305124
+      "sha256": "12a9c5920fa5845e8bf472241e9ad6bc529f6c872f1d143e2b4b8f3638eb5eb5",
+      "bytes": 1325816
     },
     {
       "path": "data/model_overrides/city8storyc/detail/0_normal.ktx2",
@@ -1111,18 +1111,18 @@
     },
     {
       "path": "data/model_overrides/city8storyc/pristine_intact_lod0.glb",
-      "sha256": "96cbecc796035303cf0dfb0bbae482e389c1a0f876377fb4e2f6397551952393",
-      "bytes": 3156168
+      "sha256": "bdff881d836760c1e3a6885c848d996cccc179b6704d37753157e4bc75a0e550",
+      "bytes": 3217948
     },
     {
       "path": "data/model_overrides/city8storyc/pristine_intact_lod1.glb",
-      "sha256": "9cf6b28104ffe67bffcb543435dfe27d8dbd88bf962089042f92a652fb8a9f19",
-      "bytes": 2755844
+      "sha256": "2c6fbb0576ae63d20c476e55c59d44e364e80b73645faba7cb7b828bbf127773",
+      "bytes": 2776536
     },
     {
       "path": "data/model_overrides/city8storyc/pristine_intact_lod2.glb",
-      "sha256": "6865ba865c52ceb0f865b7a46b12dceeb14e845bdc806b8e5be104a7cfce20eb",
-      "bytes": 1305124
+      "sha256": "0bf61eaaf085dc258a52a6ac158998957d758c5f2a6a00c02efb6d49a2540df9",
+      "bytes": 1325816
     },
     {
       "path": "data/model_overrides/civstoragea/detail/0_normal.ktx2",
@@ -1136,18 +1136,18 @@
     },
     {
       "path": "data/model_overrides/civstoragea/pristine_intact_lod0.glb",
-      "sha256": "6f1a0a21c402d0d0affd2148bb706b1c7be24ed1cab7a1ef86042072b62bf264",
-      "bytes": 1775864
+      "sha256": "4fda75c71727eb3cecd326141e4ecc9bac24e4e8d4169fcb2bf9772fdf5e189b",
+      "bytes": 1785768
     },
     {
       "path": "data/model_overrides/civstoragea/pristine_intact_lod1.glb",
-      "sha256": "4bbf3369c46886616e98b849f1ee502ed620a02c2c44e6ad067e72fca48e4ce9",
-      "bytes": 845212
+      "sha256": "e51ce85185357887ca0d64fc82c39b771a6b86895b6f19ddc8e92971da71dc71",
+      "bytes": 846640
     },
     {
       "path": "data/model_overrides/civstoragea/pristine_intact_lod2.glb",
-      "sha256": "290336ad7c511f29cd27ace28a58de0241be661a13732c5812222a2647cde002",
-      "bytes": 399116
+      "sha256": "8e903db06720f763fec75885e91107b8b0cf1b3a144924aa288c925c6fbe4c88",
+      "bytes": 400540
     },
     {
       "path": "data/model_overrides/civstorageb/detail/0_normal.ktx2",
@@ -1161,18 +1161,18 @@
     },
     {
       "path": "data/model_overrides/civstorageb/pristine_intact_lod0.glb",
-      "sha256": "3f88b28c3190fd4a7e006929b04c6ebae6dddd10853c105def135ed5ac97ed6c",
-      "bytes": 1898760
+      "sha256": "d48fb8e75eab1d85934d804e05bdcdeaa7b15db650848fd9a8e1f5bbb8a7b1f6",
+      "bytes": 1912612
     },
     {
       "path": "data/model_overrides/civstorageb/pristine_intact_lod1.glb",
-      "sha256": "6ee467ae5fa817b95fb4fad2e522de4a0844df9f2951ff5142dca0e2852795b1",
-      "bytes": 904284
+      "sha256": "81993c8218fe2af7ee3bb559669675c94f4e8dcf13d16400f78426d6cae291ca",
+      "bytes": 905776
     },
     {
       "path": "data/model_overrides/civstorageb/pristine_intact_lod2.glb",
-      "sha256": "ba4b262cc18b3fc129771b1dfaabffa9a34c1a1d4892589e55c8263a2ffa2ae2",
-      "bytes": 422492
+      "sha256": "63c0ad06b362a20a84f374e6f1e330d5a726e790c028a6ecadcf0b77bdb983d2",
+      "bytes": 423984
     },
     {
       "path": "data/model_overrides/civstoragec/detail/0_normal.ktx2",
@@ -1191,18 +1191,18 @@
     },
     {
       "path": "data/model_overrides/civstoragec/pristine_intact_lod0.glb",
-      "sha256": "a589b8a5f6f6fc76edf720433f0e27419ee94c21cced405a8b635ccee10a95f7",
-      "bytes": 1104244
+      "sha256": "7ab3564d792e15fd81bbc9e51a778d60657e5c8f672df5d671a5e6bdf113d538",
+      "bytes": 1105208
     },
     {
       "path": "data/model_overrides/civstoragec/pristine_intact_lod1.glb",
-      "sha256": "fd4ec1f5b4c965ba2ec498a1926a06eebef5dc2d9ab21767bc779607eaa71142",
-      "bytes": 521972
+      "sha256": "b9fee94785ad86f6701af48a26c4bb336aa00de0c866314244659d274814ec01",
+      "bytes": 522440
     },
     {
       "path": "data/model_overrides/civstoragec/pristine_intact_lod2.glb",
-      "sha256": "39fecf9efbd4fa00aa0b353122d78c2eb2b0954564ffefb902e37bf69c3bdc7a",
-      "bytes": 359632
+      "sha256": "4cf7cf3f5107a2749659c2d57a78613d95774e831e42880bd07f857fd7c074ca",
+      "bytes": 359840
     },
     {
       "path": "data/model_overrides/cornerpipe/detail/0_normal.ktx2",
@@ -1251,18 +1251,18 @@
     },
     {
       "path": "data/model_overrides/crane/pristine_intact_lod0.glb",
-      "sha256": "6e9067cfc66449d08bd58c186f100de1078df8df6458503b9f97ad3dd0426c9e",
-      "bytes": 1770768
+      "sha256": "4e0dae43649d8db97226c9ce25b7b62208cfaf8af8bb02a1b916e3880746cafa",
+      "bytes": 1771044
     },
     {
       "path": "data/model_overrides/crane/pristine_intact_lod1.glb",
-      "sha256": "2949530e613b915703c3d634cb3acf74c724d0e68b09041b9a0d99ca7e09e39e",
-      "bytes": 1056576
+      "sha256": "2a407991e4248c7b955a888f15df48706cdc75ab668c4a4aec1b6aa810c87038",
+      "bytes": 1056852
     },
     {
       "path": "data/model_overrides/crane/pristine_intact_lod2.glb",
-      "sha256": "c677826028311aced018f09c400406e840c586f078855a629bd78550c53c4532",
-      "bytes": 1048156
+      "sha256": "aab227cce151078e52d6e383dc4aa9908a02f10811e0864f88f148e27a206517",
+      "bytes": 1048432
     },
     {
       "path": "data/model_overrides/endpipe/detail/0_normal.ktx2",
@@ -1311,18 +1311,18 @@
     },
     {
       "path": "data/model_overrides/factorylg/pristine_intact_lod0.glb",
-      "sha256": "21dd95effe36d0c09e22f0a9646cf87569afa74988721855608f725fb4482e0b",
-      "bytes": 4435004
+      "sha256": "48483c8f84da659e75fcaddf1c5eb2a31fd2b5d030ebcc2680adca2b9b938f04",
+      "bytes": 4449456
     },
     {
       "path": "data/model_overrides/factorylg/pristine_intact_lod1.glb",
-      "sha256": "613dfb5d0cd921ed063463c1148beb4fe853419d9b2e80574ff0e444bfe80dfa",
-      "bytes": 2102460
+      "sha256": "d8d35a88d8a880c608aee34b6f3e64d0eb623c5ee39db1060b855eb24dcf3c37",
+      "bytes": 2103632
     },
     {
       "path": "data/model_overrides/factorylg/pristine_intact_lod2.glb",
-      "sha256": "47871ecc867768dc8617fdb1075ad78cbed3a0bc3c7e6810ac4aa3fcb0cf5d02",
-      "bytes": 975808
+      "sha256": "b49b3644d42897a369b40e8c6771eef6dc9caf2c53e9b061d898c30b3ec014a6",
+      "bytes": 976980
     },
     {
       "path": "data/model_overrides/factorymd/detail/0_normal.ktx2",
@@ -1341,18 +1341,18 @@
     },
     {
       "path": "data/model_overrides/factorymd/pristine_intact_lod0.glb",
-      "sha256": "ef53fc12c8830d2f77c88517a82fa0f4719d94a71af63a0cabe35d10d02ba2f1",
-      "bytes": 4180296
+      "sha256": "682b3eabe70aaf5bb261cf5385b0f334b10f4eadd70ccd083c0d8cff0f2b4b0f",
+      "bytes": 4195868
     },
     {
       "path": "data/model_overrides/factorymd/pristine_intact_lod1.glb",
-      "sha256": "8ebb44866e00b5df39d4fc7c711a0074ea589e6531bcf156ca2badf55c74bfae",
-      "bytes": 1979780
+      "sha256": "a868b7f1ff40cfebacdc8142d5e395c0857518e68e82b4118cf2203413278298",
+      "bytes": 1982168
     },
     {
       "path": "data/model_overrides/factorymd/pristine_intact_lod2.glb",
-      "sha256": "813840e278475033bdfbe4f78a6140112e388c451c68724e590b7167c2add16e",
-      "bytes": 1318660
+      "sha256": "e8f2fbfce5a60a75381ba5ed80690e08e7089ea7b145cbf7086d1e986bf10df0",
+      "bytes": 1319896
     },
     {
       "path": "data/model_overrides/factorysm/detail/0_normal.ktx2",
@@ -1371,18 +1371,18 @@
     },
     {
       "path": "data/model_overrides/factorysm/pristine_intact_lod0.glb",
-      "sha256": "9d75b2b9be4fea40ca8356bee7e63daba8739b841274f4fce91132058e51c356",
-      "bytes": 5155828
+      "sha256": "0a1db59063baf26c5023bbfd91e786cbe7169bf7aa896b03f8f757217e04ef23",
+      "bytes": 5171944
     },
     {
       "path": "data/model_overrides/factorysm/pristine_intact_lod1.glb",
-      "sha256": "3323b2d7924901cf3ce85bc5a923de37a7d5e9f3f4589eef78ea685fa5787ec5",
-      "bytes": 2431940
+      "sha256": "88c9905ab92a8658cd2ffb04b4005e2d4fb6bd90956ceceba07829d9e8bc7c30",
+      "bytes": 2433240
     },
     {
       "path": "data/model_overrides/factorysm/pristine_intact_lod2.glb",
-      "sha256": "f1b48cdf7c0f19e30093e6fe06c6234d78c57ef7e57be5c918dd62e50216d402",
-      "bytes": 1263508
+      "sha256": "f8033259dd19731b24f80aab9956b36f9c29a22bea0f6afa26502f11401b9621",
+      "bytes": 1264808
     },
     {
       "path": "data/model_overrides/fourwaypipe/detail/0_normal.ktx2",
@@ -1461,18 +1461,18 @@
     },
     {
       "path": "data/model_overrides/gantry/pristine_intact_lod0.glb",
-      "sha256": "e9ac2018188cafb65312c84233755f70d59fbad61f30e1aa58b42082fbf3d948",
-      "bytes": 8150252
+      "sha256": "ef436e83ba19af2b72ce510dbbbd57c24962bde15c5fd6d7284a3607d4870d0d",
+      "bytes": 8157680
     },
     {
       "path": "data/model_overrides/gantry/pristine_intact_lod1.glb",
-      "sha256": "ff8793277a9a11e0fd36e221b5821135a354d8fbd1da85db612fd104ae7e146c",
-      "bytes": 7235708
+      "sha256": "a25dc7b9e2d476032ff0558dcff7aeb8b1a5aa1726bc0a1018793071c8e1e387",
+      "bytes": 7236048
     },
     {
       "path": "data/model_overrides/gantry/pristine_intact_lod2.glb",
-      "sha256": "0bd8dbce5bfcc34476a02569212ae610fcf1879fd9c8e3a7f231dd24a53c06da",
-      "bytes": 7208960
+      "sha256": "9325abe7fb3cc817c39f906d0bb9d4e7360eea84bed2d0f626204cf010f4867e",
+      "bytes": 7209296
     },
     {
       "path": "data/model_overrides/grainstorage/detail/0_normal.ktx2",
@@ -1491,18 +1491,18 @@
     },
     {
       "path": "data/model_overrides/grainstorage/pristine_intact_lod0.glb",
-      "sha256": "63517cf68b1da6ce1b5ac0963abec8f6831b1f24717a88d1592fee175732c92e",
-      "bytes": 6913772
+      "sha256": "e86ed346671425ec03c8b7be17317ddc150307021469ce54fca8f3f1241cfab1",
+      "bytes": 6940592
     },
     {
       "path": "data/model_overrides/grainstorage/pristine_intact_lod1.glb",
-      "sha256": "de1f1ceb74aeb3f2ba07b3dc03b0ff06c1cb5f7926d93a4cca7e15faa2ebf531",
-      "bytes": 3230064
+      "sha256": "c3a56ab416cc4e41e6d34f3535e369720118710b829777bea85c73ce19ccba9a",
+      "bytes": 3236916
     },
     {
       "path": "data/model_overrides/grainstorage/pristine_intact_lod2.glb",
-      "sha256": "9dd4791fca459f7a8ab2668048bd507639f40f1404923f4120c866821aaf00cd",
-      "bytes": 1473292
+      "sha256": "9d5504ef7aa552b6299bdbbba595bfe9cbadd6ed273a9c9a7df6af1f781117ca",
+      "bytes": 1475744
     },
     {
       "path": "data/model_overrides/heavyindustrial/detail/0_normal.ktx2",
@@ -1521,18 +1521,18 @@
     },
     {
       "path": "data/model_overrides/heavyindustrial/pristine_intact_lod0.glb",
-      "sha256": "e6638e4961f82f9fc2b719f93113dd7b2d854b3d8a781c4c52fa09e455c38ef6",
-      "bytes": 5649616
+      "sha256": "9a9e3ee9413c84ee29de79718a0ce5cff45eac5aeba3b3f7a8550e533865bcca",
+      "bytes": 5675960
     },
     {
       "path": "data/model_overrides/heavyindustrial/pristine_intact_lod1.glb",
-      "sha256": "2fea0324cda764ee03cdd21a0b30edf4118010992d9ee2f844a92558c048606e",
-      "bytes": 2869744
+      "sha256": "9fb8b8e46e2d4ba0457a14fd1d5056fda3febdb36459f097eaf22b151e27595c",
+      "bytes": 2871764
     },
     {
       "path": "data/model_overrides/heavyindustrial/pristine_intact_lod2.glb",
-      "sha256": "05d92ab1128339c5551bfa76fdd35c4ffa1847e3bb01c48188e4f44ee48dd657",
-      "bytes": 2703256
+      "sha256": "e6ee9ab04c19ab0e476a71dabca4908a72a46f14969018b571b1d75f4a755a09",
+      "bytes": 2705276
     },
     {
       "path": "data/model_overrides/hub/detail/0_normal.ktx2",
@@ -1546,18 +1546,18 @@
     },
     {
       "path": "data/model_overrides/hub/pristine_intact_lod0.glb",
-      "sha256": "145455f115411ea0add7dbb31c90b9871fdd5b6ce31d5a3affc2a894fdf39a05",
-      "bytes": 7982560
+      "sha256": "4e20d10ff0058ba4f781c259b68aed0050325bd42fb5b802f327ca1c819a2026",
+      "bytes": 8089736
     },
     {
       "path": "data/model_overrides/hub/pristine_intact_lod1.glb",
-      "sha256": "ec795ec0f0212b9d1e74b8ccb9c694a6c3ad49ba84581e5c5fd9f61132baafe4",
-      "bytes": 4337200
+      "sha256": "b550d10c726ac6d0144fb8f362b1c58958beadf1371320ba8de1cd04435b28be",
+      "bytes": 4340356
     },
     {
       "path": "data/model_overrides/hub/pristine_intact_lod2.glb",
-      "sha256": "7e9dd6a96378b99f902c97e85f84227079b59cdae18f3edd5db354b4b707b495",
-      "bytes": 4211336
+      "sha256": "35fa1f405198a25f6e3a77eac930b3372d7731d9948eb2f3a2faa2dddf2465f8",
+      "bytes": 4214492
     },
     {
       "path": "data/model_overrides/industrialcomplex/detail/0_normal.ktx2",
@@ -1576,18 +1576,18 @@
     },
     {
       "path": "data/model_overrides/industrialcomplex/pristine_intact_lod0.glb",
-      "sha256": "e91ad8dea29c81e9dc5b8828e529000bc4650ca6fb1fe026046838092fce782c",
-      "bytes": 3384248
+      "sha256": "1bc1335d1d2f154323c4338c8fb02d4baa903603e761d2f00eb9caf6daff49e3",
+      "bytes": 3397676
     },
     {
       "path": "data/model_overrides/industrialcomplex/pristine_intact_lod1.glb",
-      "sha256": "df10c8d80e05f6188be4ebc1e22c7188807e549fb90aa3410ec66208752f79aa",
-      "bytes": 1620052
+      "sha256": "deaffb5496b0379f55891bd3da0d694ac26e7630c8d08a9907948267b64769a0",
+      "bytes": 1621912
     },
     {
       "path": "data/model_overrides/industrialcomplex/pristine_intact_lod2.glb",
-      "sha256": "cbec26e528dca493821d8d863f4960b26083d04fbd39cf5dbeb1688b81c739fc",
-      "bytes": 730836
+      "sha256": "5c10968a8640555aa9b2a4b97816ce84464327e649e84623b1e3dad7b3e551c3",
+      "bytes": 732104
     },
     {
       "path": "data/model_overrides/industrialplant/detail/0_normal.ktx2",
@@ -1606,18 +1606,18 @@
     },
     {
       "path": "data/model_overrides/industrialplant/pristine_intact_lod0.glb",
-      "sha256": "758400ce8ffdde04fd71106654cd92e4c94a583974b17fc4b7b70aa8357b65fc",
-      "bytes": 5693144
+      "sha256": "e656ae02483ebdc2abbf21ff578db0ee403293d1a340bd33e48969258327f136",
+      "bytes": 5707372
     },
     {
       "path": "data/model_overrides/industrialplant/pristine_intact_lod1.glb",
-      "sha256": "90f18e9d3d9d11cd32877b6d49f5bfe1f94eb72d131f120a72a2aef850e4e17b",
-      "bytes": 3231564
+      "sha256": "e11c1b82a1d5bdb7d8326f5222a4d1ca97e23bfeac29dd6bfe79d1eac7a5fc93",
+      "bytes": 3232768
     },
     {
       "path": "data/model_overrides/industrialplant/pristine_intact_lod2.glb",
-      "sha256": "8e93ce5de6cd866bd43a181ba5cd6d4d979fafbc12706813f421088ab04367fd",
-      "bytes": 2973548
+      "sha256": "da68cd10246df2938adea3a76cb3d2f22a48d155f89ebf3e81805dd732bc7287",
+      "bytes": 2974752
     },
     {
       "path": "data/model_overrides/l_guardhouse/detail/0_normal.ktx2",
@@ -1631,18 +1631,18 @@
     },
     {
       "path": "data/model_overrides/l_guardhouse/pristine_intact_lod0.glb",
-      "sha256": "66031ed26272076ab91de715cd26dd964bfec700cf1672a0492810ccad7c5840",
-      "bytes": 6150048
+      "sha256": "f58aff3a25e0088b01c487895d4a02037fc77910df2c7df13de847f16d53b089",
+      "bytes": 6198456
     },
     {
       "path": "data/model_overrides/l_guardhouse/pristine_intact_lod1.glb",
-      "sha256": "ebe2085aa853e15ad48eb966d7ca6f530c18f63d8337563425e64e84201b44cf",
-      "bytes": 2759664
+      "sha256": "247ff8c9d0cc93dbe87bdd94ecec40d67055d2d4462f63381711f113ea9121fd",
+      "bytes": 2764532
     },
     {
       "path": "data/model_overrides/l_guardhouse/pristine_intact_lod2.glb",
-      "sha256": "197fae3f75a2bc20af8cb4a40a20742f3d9cebf22c7bbb7cd36c2d7d2a8a4bd5",
-      "bytes": 1515620
+      "sha256": "95028c945a5e13e68ab1fb99c8137ab6732ae2c56c0ab7bb699bb173823d8c8a",
+      "bytes": 1519400
     },
     {
       "path": "data/model_overrides/l_palacecore/detail/0_normal.ktx2",
@@ -1656,18 +1656,18 @@
     },
     {
       "path": "data/model_overrides/l_palacecore/pristine_intact_lod0.glb",
-      "sha256": "14fd26c075f7a228ca20438f6c35e84e868a77342e2b1bff2026b65d6f9fdb73",
-      "bytes": 2555344
+      "sha256": "d9aa3fbef70239af5c7350c81cc6571cc0dda9df40b40d22711c8661fa33dd6a",
+      "bytes": 2580644
     },
     {
       "path": "data/model_overrides/l_palacecore/pristine_intact_lod1.glb",
-      "sha256": "e37ab3618141483eb838f745a23020258f4bbf438982b24d4235a955814fdd6f",
-      "bytes": 2364672
+      "sha256": "57b58ced740f2d787cbbe4bfcfd71262af1a29c7f7a36dca4f452a54b0806ba7",
+      "bytes": 2373204
     },
     {
       "path": "data/model_overrides/l_palacecore/pristine_intact_lod2.glb",
-      "sha256": "3b0a25c6299e0d853105ac7a4a6b19e1386036e52be9a9853c335cedcaa0ca96",
-      "bytes": 2186528
+      "sha256": "1c7b595d7ebcf376c51c230637d16a9a4c595ba4b80fcc74fcba90ea6ae855b5",
+      "bytes": 2195064
     },
     {
       "path": "data/model_overrides/l_palacegate/detail/0_normal.ktx2",
@@ -1681,18 +1681,18 @@
     },
     {
       "path": "data/model_overrides/l_palacegate/pristine_intact_lod0.glb",
-      "sha256": "f40feb011179ed68b554d83b3e0d71911416555ed433e01a6690bb2987c99277",
-      "bytes": 7317668
+      "sha256": "e8d4a80780cfe240e2352d6c6deea060da8f453e6329004e31a31adef68ec9d8",
+      "bytes": 7373016
     },
     {
       "path": "data/model_overrides/l_palacegate/pristine_intact_lod1.glb",
-      "sha256": "4e9a91d04fcc9c6382f5ea1dbcd66c42e5958d1d353413b3afba1a1472ff9f00",
-      "bytes": 3385036
+      "sha256": "be1d087277ad3588d8e5f6eac69dd4e4e5d1db7d064fd70224474f32925a0a0a",
+      "bytes": 3399116
     },
     {
       "path": "data/model_overrides/l_palacegate/pristine_intact_lod2.glb",
-      "sha256": "08d6ff9669d1095f3343d905fe99d4c5e778466df31e06f89c50fb5286d3d753",
-      "bytes": 2094432
+      "sha256": "f3d47125282ab9c03bdcd6f0f2381800cf55766dc555178dbb43b3391da48847",
+      "bytes": 2096052
     },
     {
       "path": "data/model_overrides/l_palacetwr/detail/0_normal.ktx2",
@@ -1706,18 +1706,18 @@
     },
     {
       "path": "data/model_overrides/l_palacetwr/pristine_intact_lod0.glb",
-      "sha256": "9eac79cfdc94d489665f6f46ca4facae7ab746938248181da1bccc92a2e53a6b",
-      "bytes": 3891452
+      "sha256": "dfa8dd0ebffbe268cc2bf1c324bab0d31c63086a92915319fc563ed17f0a860a",
+      "bytes": 3925344
     },
     {
       "path": "data/model_overrides/l_palacetwr/pristine_intact_lod1.glb",
-      "sha256": "d19bbbd351eff8f80bcd42f4fa734be0463bce72d5709beeacb859222796e61a",
-      "bytes": 1824404
+      "sha256": "57f10749286a0cfab998f969f98d7d2451ec252e6a1363b7e15f6663690a6236",
+      "bytes": 1830968
     },
     {
       "path": "data/model_overrides/l_palacetwr/pristine_intact_lod2.glb",
-      "sha256": "c70be1dfdb191d23d00894eb78051851ee6ed741374c0215fe9dd2ab249dbbf0",
-      "bytes": 1010140
+      "sha256": "37fd2e19af0a60cc32cd7beb6f5268ae12b32d7654dd067aaa5b8b1643c7672e",
+      "bytes": 1012912
     },
     {
       "path": "data/model_overrides/l_palacewing/detail/0_normal.ktx2",
@@ -1731,18 +1731,18 @@
     },
     {
       "path": "data/model_overrides/l_palacewing/pristine_intact_lod0.glb",
-      "sha256": "f10e683cf9ccd046458746bfd8b3483b8e3c28b68ff7c3833655cdff5bb748e0",
-      "bytes": 2477684
+      "sha256": "223eba3747dff66d5e29bc06f45281334d85bcef43970a4150db9b5ad059eab8",
+      "bytes": 2507788
     },
     {
       "path": "data/model_overrides/l_palacewing/pristine_intact_lod1.glb",
-      "sha256": "838443bcf91b547c2cf46ff5f3ab191d58605dd8891ab1550f4b934b8db9d76c",
-      "bytes": 2254208
+      "sha256": "843d81496f8b31bc6db2b642273e39c4d579d167e3cafff87579d127b331f711",
+      "bytes": 2264340
     },
     {
       "path": "data/model_overrides/l_palacewing/pristine_intact_lod2.glb",
-      "sha256": "9367bcec0153a4e9aebd7260b13bf43143c40bc7b8339efe71ca5d2987db20f2",
-      "bytes": 1521248
+      "sha256": "ede068d6de7f67be4d4162f0ae359e342e9e737dda5a6792553c7ae87dec503c",
+      "bytes": 1531384
     },
     {
       "path": "data/model_overrides/l_residencecore/detail/0_normal.ktx2",
@@ -1756,18 +1756,18 @@
     },
     {
       "path": "data/model_overrides/l_residencecore/pristine_intact_lod0.glb",
-      "sha256": "06d7a86c17e9c2b121be41f7408a2d8b761e5e0122415a6739d16526f702effc",
-      "bytes": 4221656
+      "sha256": "76ee269006b721d6cb577f4a59d23dfc2ff763b933268e0e40eeaac4f8836c62",
+      "bytes": 4287960
     },
     {
       "path": "data/model_overrides/l_residencecore/pristine_intact_lod1.glb",
-      "sha256": "c50dd9af3c1c84a3c63617e1e2ad5d24f967702f0e90eed8a2732604f855792b",
-      "bytes": 1569708
+      "sha256": "8719186a26f36265a12d47299f4b514d7e31de9a8257ea379f0523b6eaad3065",
+      "bytes": 1581916
     },
     {
       "path": "data/model_overrides/l_residencecore/pristine_intact_lod2.glb",
-      "sha256": "fad9e2e3c283b0c4de64714b53c60baba307f88dd91702e3fd14ad4b0163df69",
-      "bytes": 1174824
+      "sha256": "bda363726dd0ac3c7fd1f7c94dc8a10bf80089142ed384e3fca91740151bf606",
+      "bytes": 1187032
     },
     {
       "path": "data/model_overrides/l_residenceleft/detail/0_normal.ktx2",
@@ -1781,18 +1781,18 @@
     },
     {
       "path": "data/model_overrides/l_residenceleft/pristine_intact_lod0.glb",
-      "sha256": "9fb4b80303e357b7f1d2bf37d6cc29e0d614111f1f857580c58a1269456c5711",
-      "bytes": 5694992
+      "sha256": "80860c538579d3ffb40a21a9a6bf5c355551779a3720779e26fd978c90b66925",
+      "bytes": 5729592
     },
     {
       "path": "data/model_overrides/l_residenceleft/pristine_intact_lod1.glb",
-      "sha256": "d1640ae76a2fa1243f6814b2f0e2f2df691ead6f5024bdf661b5a179fae546fa",
-      "bytes": 2643496
+      "sha256": "647aae4074459e21a7676d6ef198249d987ab0a1f7e9d5436c7074a363503a72",
+      "bytes": 2647868
     },
     {
       "path": "data/model_overrides/l_residenceleft/pristine_intact_lod2.glb",
-      "sha256": "59691e28ebf142d74b0d8834a6689f5b01c2b73b898e783a00c97dcbd931ae06",
-      "bytes": 1700156
+      "sha256": "702b34c947a55ce675119ea7a99ee1cb3398c961ab2c0df137b0c93e47411e3b",
+      "bytes": 1702880
     },
     {
       "path": "data/model_overrides/l_residenceright/detail/0_normal.ktx2",
@@ -1806,18 +1806,18 @@
     },
     {
       "path": "data/model_overrides/l_residenceright/pristine_intact_lod0.glb",
-      "sha256": "91834f47f719e8c514ebfd80590fd22fed05e2805a2fbf17b70aa55483d148ff",
-      "bytes": 5707260
+      "sha256": "9c265ce9262379bca156b1add28350c3c6250568b72b4fd90b372d5f3972854d",
+      "bytes": 5741828
     },
     {
       "path": "data/model_overrides/l_residenceright/pristine_intact_lod1.glb",
-      "sha256": "f00f045820a93596d9a904ab446c9f11b7c4f402119da425527726536cd999e4",
-      "bytes": 2701260
+      "sha256": "f3fa2747b464b9b317fe90cc9286e7afd990fb5a0c9087c9295c2b4e3344230e",
+      "bytes": 2705840
     },
     {
       "path": "data/model_overrides/l_residenceright/pristine_intact_lod2.glb",
-      "sha256": "40674cc8612829761cfbab9d3903e335f49c6507dd31e3658fdd18c0bce724a8",
-      "bytes": 2021072
+      "sha256": "b80c426f9b9fbb48abf23ada08d5c59a5ca44d4beac525f844b420f29d816de2",
+      "bytes": 2023796
     },
     {
       "path": "data/model_overrides/l_turretgenerator/detail/0_normal.ktx2",
@@ -1866,18 +1866,18 @@
     },
     {
       "path": "data/model_overrides/largefueltank/pristine_intact_lod0.glb",
-      "sha256": "8c9699f4dda19464ffd1cad80077b595b605dc60ac822cb2d774590ce51a11f3",
-      "bytes": 6331164
+      "sha256": "0f17d491f3fc97036e5a84723c6afc1f5a8b4d63fb43ffac13eb8a607f427e45",
+      "bytes": 6333040
     },
     {
       "path": "data/model_overrides/largefueltank/pristine_intact_lod1.glb",
-      "sha256": "ba0a3c136ec92ab7dba0c52a91d226ba6188d2cce73962ee4245ea5bb16e5d9b",
-      "bytes": 4492136
+      "sha256": "dd3e4a8c62a8c5e5e3bec924e49f8589638403be2ae65e5e1a916ea87cac64db",
+      "bytes": 4492412
     },
     {
       "path": "data/model_overrides/largefueltank/pristine_intact_lod2.glb",
-      "sha256": "3eeaa5c58ac138c9ebe0d9392a2760e9cd704be008f6bcdd17f2d579c97e6c23",
-      "bytes": 4386500
+      "sha256": "ba5cd2ff5888080c70fd19a4773e688376d401226155376d2b8c8d80fc9e2c11",
+      "bytes": 4386776
     },
     {
       "path": "data/model_overrides/liquidstorage/detail/0_normal.ktx2",
@@ -1896,18 +1896,18 @@
     },
     {
       "path": "data/model_overrides/liquidstorage/pristine_intact_lod0.glb",
-      "sha256": "801bb419ae385f44c02c1fdff11e4e22fe1384a1e6428546c4bc98e8f5f496ae",
-      "bytes": 7202868
+      "sha256": "e6ddb20c3a5eb7896ac5a7fcbe8b2b3b68082cd944abcc5ef1d51d64c852ec5c",
+      "bytes": 7209992
     },
     {
       "path": "data/model_overrides/liquidstorage/pristine_intact_lod1.glb",
-      "sha256": "b03e15ef863189eb43b620e2fc5773e0031d1e34e2a614170016edfb787a7d97",
-      "bytes": 3440992
+      "sha256": "cbd17a643ab934acd115ee098186ecc180305feceebbdfaed96d7bf441e116ba",
+      "bytes": 3441716
     },
     {
       "path": "data/model_overrides/liquidstorage/pristine_intact_lod2.glb",
-      "sha256": "f9e74ee8fd01a446b10f40da773b2c4504bb9dcd3496c60dbbc888641abf2e21",
-      "bytes": 2792952
+      "sha256": "3924cd0e7a5598377846d3272166fae11063a8a721f4f6bba71d166afa044428",
+      "bytes": 2793288
     },
     {
       "path": "data/model_overrides/lobby/detail/0_normal.ktx2",
@@ -1921,18 +1921,18 @@
     },
     {
       "path": "data/model_overrides/lobby/pristine_intact_lod0.glb",
-      "sha256": "9a75f64c749ddbbd0ab47db2fda9d23ac37899f459560e2d953efc2b2f1e6b19",
-      "bytes": 4531776
+      "sha256": "de593f952f249d73bc88a3f8d8e2002915bd0fefe26c03ce8b78cbcf5d0335b3",
+      "bytes": 4603768
     },
     {
       "path": "data/model_overrides/lobby/pristine_intact_lod1.glb",
-      "sha256": "df150fafcd625bb8cd2e1d7c7d8b4d9655d54813b60095402b7914dd0836b320",
-      "bytes": 2918604
+      "sha256": "8c8956e85a15d7cf0464e65a7ec1253bd4631c373aea82fbfda20e11dce95a0c",
+      "bytes": 2923872
     },
     {
       "path": "data/model_overrides/lobby/pristine_intact_lod2.glb",
-      "sha256": "2efd070b6e65969f2798ef801d8251faf84a4a2de5f68c4c956696a7bbd77e04",
-      "bytes": 2890748
+      "sha256": "bb1a663ceede196e5b6eab3aac1b8b6f315c7064005df13599508eec8c73609f",
+      "bytes": 2896016
     },
     {
       "path": "data/model_overrides/models.json",
@@ -1956,18 +1956,18 @@
     },
     {
       "path": "data/model_overrides/pipetank/pristine_intact_lod0.glb",
-      "sha256": "2698159d457af952f9cdf67d7eb4c898f679f7511a2c5ddbe14674d8933c849a",
-      "bytes": 5310980
+      "sha256": "4d0ba94113f7c0ff60d53c901d60b1e12a61fbd92578d607935ba11559917530",
+      "bytes": 5312952
     },
     {
       "path": "data/model_overrides/pipetank/pristine_intact_lod1.glb",
-      "sha256": "eaf3a36a827ca18b33aeb505625536da43abe4666b32f1639ce5967808095149",
-      "bytes": 3388756
+      "sha256": "e58eb71e01c6354058862b3b3d80bb667b117c322929470dcd3af14767eacc41",
+      "bytes": 3389032
     },
     {
       "path": "data/model_overrides/pipetank/pristine_intact_lod2.glb",
-      "sha256": "3a3d712e7712b2a5ce2ab20833b4776bec090ebcd38266778a604d96a82d0fa6",
-      "bytes": 3183828
+      "sha256": "e11547b251fe1f83c384d0ae5027dc7e05cbc220a557d9b9af98ca33f1936482",
+      "bytes": 3184100
     },
     {
       "path": "data/model_overrides/powergenerator/detail/0_normal.ktx2",
@@ -2016,18 +2016,18 @@
     },
     {
       "path": "data/model_overrides/processingplant/pristine_intact_lod0.glb",
-      "sha256": "8b013a21386b8f08cc9a71a895d6fa362ccf328e2bd058ecd17e0b9781ee9b84",
-      "bytes": 8172604
+      "sha256": "b92f40f8d57a9458b9e9bd6a379bc40b155c6de37cc9bbd6360ff0102e1b06e9",
+      "bytes": 8192148
     },
     {
       "path": "data/model_overrides/processingplant/pristine_intact_lod1.glb",
-      "sha256": "6d46a798398a754d8f7061df6d668ebcfed932fb513e4c5efa1c191062c38fa9",
-      "bytes": 3957376
+      "sha256": "cfaef5946f448d9f90fb8c9e29460bb51867546e036a65a55fe8c0b35c7e7d51",
+      "bytes": 3959548
     },
     {
       "path": "data/model_overrides/processingplant/pristine_intact_lod2.glb",
-      "sha256": "58beca51931ed929b6a2ef8f1848951d669494a3ffb35ceeae11fa401461a2fd",
-      "bytes": 2485788
+      "sha256": "9e2062d0e2dac2d8d5ae0f90f2f54db46f4c94579110e16d3d803dc44e2a6ba6",
+      "bytes": 2486444
     },
     {
       "path": "data/model_overrides/purificationplant/detail/0_normal.ktx2",
@@ -2046,18 +2046,18 @@
     },
     {
       "path": "data/model_overrides/purificationplant/pristine_intact_lod0.glb",
-      "sha256": "345cacca7d92309c2e806784f80b148f6aa7feb98270eb7ab1aebecb257a72a5",
-      "bytes": 4334964
+      "sha256": "8e4b68f3aaaad347b1d73e42364604a18e5d40de6ee953eca068f3d39f2368a7",
+      "bytes": 4344632
     },
     {
       "path": "data/model_overrides/purificationplant/pristine_intact_lod1.glb",
-      "sha256": "181d8db0b0acad7bd6ceeee9fb1d3ec4ba16b6045573e02732043b8bbbdd0da3",
-      "bytes": 2017984
+      "sha256": "b4fbcdb822c13aa0a2d7274ffa4c443f06bacd4662df39fce8ed1cb59e7de489",
+      "bytes": 2018836
     },
     {
       "path": "data/model_overrides/purificationplant/pristine_intact_lod2.glb",
-      "sha256": "399f57a6a16626e0f3ca91fc85c8ca4b9aa11779ff7d9acc32103ced9bbca13a",
-      "bytes": 1872328
+      "sha256": "9d3ba5683790ab69f6e7577673d41e8fcab0e13d2dc88ed5bbdf9d0f2721a0ce",
+      "bytes": 1873180
     },
     {
       "path": "data/model_overrides/s_admin_core/detail/0_normal.ktx2",
@@ -2071,18 +2071,18 @@
     },
     {
       "path": "data/model_overrides/s_admin_core/pristine_intact_lod0.glb",
-      "sha256": "7a74df2026c646c9865c13abdff01c7eee5515e089b74b2a0fccd310d6271e18",
-      "bytes": 9520140
+      "sha256": "84b8a6e8538ba0e756a70a1d19197a6378eb25a7a5af93547400286dfdf974ac",
+      "bytes": 9993924
     },
     {
       "path": "data/model_overrides/s_admin_core/pristine_intact_lod1.glb",
-      "sha256": "228ae04be923ba11c728390db0a6fdf3651da832e0b13d2111a9c8884295e17a",
-      "bytes": 4499072
+      "sha256": "86193e63d34db3fec6e9d26f0ca8a92b9b2e4148def2e87066746bfe127ebf1a",
+      "bytes": 4541012
     },
     {
       "path": "data/model_overrides/s_admin_core/pristine_intact_lod2.glb",
-      "sha256": "e113219be3d23332d4cd05409bfdce088c15c176b99ca08d64562824cc44a474",
-      "bytes": 4215524
+      "sha256": "ea66219e0f022fe1a6f819f39f4a0eb5dee16de46d038a55583677aa84d8e3a1",
+      "bytes": 4250536
     },
     {
       "path": "data/model_overrides/s_admin_entry/detail/0_normal.ktx2",
@@ -2096,18 +2096,18 @@
     },
     {
       "path": "data/model_overrides/s_admin_entry/pristine_intact_lod0.glb",
-      "sha256": "51634aec8a7ed3e130e9a7b1716b6641cd66c9c48071d772b848810c347ca5de",
-      "bytes": 5448660
+      "sha256": "ea58c56de5865b898ad4eb63ec631e480d3f5738ee043410c6577c713f54bd9c",
+      "bytes": 5476680
     },
     {
       "path": "data/model_overrides/s_admin_entry/pristine_intact_lod1.glb",
-      "sha256": "f2e1589816c754efa89c2a6ad8021e5dce357530d630baeb7ee0df5ed573255f",
-      "bytes": 2466608
+      "sha256": "f0fb8cfd415fe7e29ba34c1103f9f84b1d39ae7c5e39a6b118badb4bd98acd42",
+      "bytes": 2471308
     },
     {
       "path": "data/model_overrides/s_admin_entry/pristine_intact_lod2.glb",
-      "sha256": "272d9969fb92d152012c0e033102c0e59cd08651da1de5c2988167d1e6aae7dc",
-      "bytes": 1386116
+      "sha256": "634a2247fb992a8e4ea79db71fe4b0eb17e4cbe2cc224660563b3569970b4c79",
+      "bytes": 1388312
     },
     {
       "path": "data/model_overrides/s_admin_wing/detail/0_normal.ktx2",
@@ -2121,18 +2121,18 @@
     },
     {
       "path": "data/model_overrides/s_admin_wing/pristine_intact_lod0.glb",
-      "sha256": "f866bfd6e9b36a5dee41d29094756d5b5a1ecc26fe2f27225ed7e7fc8c384990",
-      "bytes": 1730140
+      "sha256": "80b0310d338102d59bc5982049ffe94ba7192bdf307e548244ceb07f8f002760",
+      "bytes": 1738736
     },
     {
       "path": "data/model_overrides/s_admin_wing/pristine_intact_lod1.glb",
-      "sha256": "7a8f745aeab1d4df7e805f45760c1cf769aca84128803024a90fb9a0dfef1eb9",
-      "bytes": 1579544
+      "sha256": "0ca26c8e9473befbc0a3a95b451d0eb7c69cde7734a858b325986cd782444668",
+      "bytes": 1582508
     },
     {
       "path": "data/model_overrides/s_admin_wing/pristine_intact_lod2.glb",
-      "sha256": "63f394c8049bc9aaa474b408816c81f81bc7b572fadffee7878201e1085a8070",
-      "bytes": 1555136
+      "sha256": "74061632da0524a2678eb515e326b9248357e9f0199c31cb081c7f2331c93a29",
+      "bytes": 1558100
     },
     {
       "path": "data/model_overrides/s_adminquarter/detail/0_normal.ktx2",
@@ -2146,18 +2146,18 @@
     },
     {
       "path": "data/model_overrides/s_adminquarter/pristine_intact_lod0.glb",
-      "sha256": "2f5d6152f6ed8d409969410065c59a941ebdadbc9fdac2d2ab05d561032922c1",
-      "bytes": 5570684
+      "sha256": "5d9920fdd40d72a4874449ac5080da87deef408e2c4713fbdad67307e7464a13",
+      "bytes": 5612032
     },
     {
       "path": "data/model_overrides/s_adminquarter/pristine_intact_lod1.glb",
-      "sha256": "1c536a4a19da28d064552e5340d2f745295eb0ccc5f5aba951d2df0bfd1f31f2",
-      "bytes": 2536268
+      "sha256": "2ff843b5b26e80e5ca85f2d6d5c53021ab8f5d2d8552654381cbdece793ba705",
+      "bytes": 2545936
     },
     {
       "path": "data/model_overrides/s_adminquarter/pristine_intact_lod2.glb",
-      "sha256": "778a7da4d104e87c5e5bcadaa12acbb98a13d5b110d9f67527dc3a7324671154",
-      "bytes": 2058144
+      "sha256": "e6f379b78409cebf0b4d3507f5f5dfcca060d53895012af447a781be8db74ae3",
+      "bytes": 2061404
     },
     {
       "path": "data/model_overrides/s_gov1/detail/0_normal.ktx2",
@@ -2171,18 +2171,18 @@
     },
     {
       "path": "data/model_overrides/s_gov1/pristine_intact_lod0.glb",
-      "sha256": "77cc7c1e856db6f8fa8192cf03ffd54d839f0abd0acf0bb22f3cb5194e1dc69c",
-      "bytes": 2837580
+      "sha256": "16eb9ddef6f0de06f81d12c0afb1bac1ff097da5c76f9c1c2e695b8c88cbc638",
+      "bytes": 2856740
     },
     {
       "path": "data/model_overrides/s_gov1/pristine_intact_lod1.glb",
-      "sha256": "a1bfe420bbdef69ae5113bcd47d332a77fe7d30ef3b85ce7beb078813ee5f42e",
-      "bytes": 2414448
+      "sha256": "a7e26d90b7347a9086f24d18e2ad5e53c85a922630c709bfba82c72c2d4fb9d4",
+      "bytes": 2420932
     },
     {
       "path": "data/model_overrides/s_gov1/pristine_intact_lod2.glb",
-      "sha256": "9af0c5a8a2910f146b0d37193b0916b48bfc42e955a0dc1c5327e2a71a30b7a9",
-      "bytes": 2267640
+      "sha256": "f7bfed9bc0003c679baa7ee197f6154ff55c6f4a5ca0f53471209cbc0f913b9c",
+      "bytes": 2274124
     },
     {
       "path": "data/model_overrides/s_gov2/detail/0_normal.ktx2",
@@ -2196,18 +2196,18 @@
     },
     {
       "path": "data/model_overrides/s_gov2/pristine_intact_lod0.glb",
-      "sha256": "1d3d876b6079cd7858a1d8d59c9af4137ef2e80bc6e438aba4cae243631798d5",
-      "bytes": 1713744
+      "sha256": "ebd4b4ea53960f15fcbe93c2bc34e39c15120bb695cda1889da25c9665d5f1a3",
+      "bytes": 1721956
     },
     {
       "path": "data/model_overrides/s_gov2/pristine_intact_lod1.glb",
-      "sha256": "9e3f98105f16fa3e00071300b079e48e0df6adf1fd63d41d42e490798657cc86",
-      "bytes": 1501084
+      "sha256": "8456949847a7cae1071c7a1341c445fb6d79af4c91fda06eed4fea9614ac500f",
+      "bytes": 1503920
     },
     {
       "path": "data/model_overrides/s_gov2/pristine_intact_lod2.glb",
-      "sha256": "37f37306f1a32a870fc3827e37385ae987b574dfcc21d1de8fda412cf85c8681",
-      "bytes": 1427872
+      "sha256": "1eb712f0161227d825c85d6e67e9e8ccc060446e6c2b812645293c4584fb56eb",
+      "bytes": 1430708
     },
     {
       "path": "data/model_overrides/s_govresidence/detail/0_normal.ktx2",
@@ -2221,18 +2221,18 @@
     },
     {
       "path": "data/model_overrides/s_govresidence/pristine_intact_lod0.glb",
-      "sha256": "6b068661838d8ad1e0da8db6ecf36ad652b6b9b1e53385a9a7253379c7bb54a1",
-      "bytes": 5104724
+      "sha256": "072a68aeb18598a6557d56ff7cc689bbd5ebfed469d1a34a9159c750cd32a2a1",
+      "bytes": 5132248
     },
     {
       "path": "data/model_overrides/s_govresidence/pristine_intact_lod1.glb",
-      "sha256": "c9777142d347cea88363d47616055fd27b375ed11d9eac36f1c395b0658a66f0",
-      "bytes": 2311988
+      "sha256": "4811de95c276651e491707d9a0f324f92ecfc065bdf1a775d4be7bf7bfa7113f",
+      "bytes": 2318232
     },
     {
       "path": "data/model_overrides/s_govresidence/pristine_intact_lod2.glb",
-      "sha256": "f9daf92bf03da2d8cf275f34b24b458c55f57b82c36ee89e915c262805e397be",
-      "bytes": 1354216
+      "sha256": "83f290f05c4dd1ef2834c5e32fa2dc5c2f690b144cb6fededbcee66b54ba918c",
+      "bytes": 1356412
     },
     {
       "path": "data/model_overrides/s_main/detail/0_normal.ktx2",
@@ -2246,18 +2246,18 @@
     },
     {
       "path": "data/model_overrides/s_main/pristine_intact_lod0.glb",
-      "sha256": "2b441cf45b7f9884d406f8fe0cc8812de09c130f5e421755813cd2c7b810647f",
-      "bytes": 3615440
+      "sha256": "f94dd800cde55cf2d5647bec08cde2250b34e9e91b5660345e305ba393684fb3",
+      "bytes": 3649812
     },
     {
       "path": "data/model_overrides/s_main/pristine_intact_lod1.glb",
-      "sha256": "d4ad609f5169956a66f3e45896d8f6d1ecd6f45c576f638188913e6d89f76702",
-      "bytes": 3045824
+      "sha256": "5ca75e39f22a72d050276c314366e8a5ef5561c09557cc2a0a56f43e4bf4e10e",
+      "bytes": 3057784
     },
     {
       "path": "data/model_overrides/s_main/pristine_intact_lod2.glb",
-      "sha256": "a89e45ad91e8411523644483532a5d2c4e3485ac6c989cfc4736ed506a872ad5",
-      "bytes": 2390376
+      "sha256": "b12d1b8b3d75eca039bc2803800a060a3497d1f5d95e51d1fb13c3d5979178cc",
+      "bytes": 2402336
     },
     {
       "path": "data/model_overrides/s_main_leftwing/detail/0_normal.ktx2",
@@ -2271,18 +2271,18 @@
     },
     {
       "path": "data/model_overrides/s_main_leftwing/pristine_intact_lod0.glb",
-      "sha256": "3b08d894d260cb92771b1d6c0cb2e686b8054d672e7bc0a6108aff97b6ad6b8c",
-      "bytes": 1935804
+      "sha256": "e6c5b67d3f3b64d8836985e8037f458f1ef24fbb400fb0e889a8ff8f0066aa95",
+      "bytes": 1964372
     },
     {
       "path": "data/model_overrides/s_main_leftwing/pristine_intact_lod1.glb",
-      "sha256": "d6b8f07c1c74db37d610a754c303a250cbe79aa0ec3cf4d77488cb78fcbcd393",
-      "bytes": 1676780
+      "sha256": "c4ca9e7b04592a6195a8674edf93eccba2d4021e736b3ea7510d8f5140162d90",
+      "bytes": 1686532
     },
     {
       "path": "data/model_overrides/s_main_leftwing/pristine_intact_lod2.glb",
-      "sha256": "c4c061fb8241956d10841a9c3e6686b16aadfef9bfe797b51b2100caedbca0f8",
-      "bytes": 1635860
+      "sha256": "2898ef88df07b18beac3955a1f94bf394f2ef53eb63632f4bf01797bf6b435f6",
+      "bytes": 1645612
     },
     {
       "path": "data/model_overrides/s_main_rightwing/detail/0_normal.ktx2",
@@ -2296,18 +2296,18 @@
     },
     {
       "path": "data/model_overrides/s_main_rightwing/pristine_intact_lod0.glb",
-      "sha256": "af7cc10600366fee28e58f115c55efdccadcf17571d40d8ce805915f8b9779d1",
-      "bytes": 2332380
+      "sha256": "2495957f083f20f1535317d0652eed4f5d4ce484ec80e1145120b2d0b29430a9",
+      "bytes": 2351540
     },
     {
       "path": "data/model_overrides/s_main_rightwing/pristine_intact_lod1.glb",
-      "sha256": "712d77cd36cac208234a77430de71ca6a4f3a9af288945494bfa7d756e75d259",
-      "bytes": 1963480
+      "sha256": "a66aff1b9264a08638009910652768309048d60b5689c4d6e91bea8d21a979f3",
+      "bytes": 1969964
     },
     {
       "path": "data/model_overrides/s_main_rightwing/pristine_intact_lod2.glb",
-      "sha256": "281d758136c103406c4a9db33fa883d8a07f753dd6dce73c33409a89e1342184",
-      "bytes": 1523852
+      "sha256": "f6b89e78865318c9c5fe73df2810a8463adfc7443c4b6a06421c0817b6b07206",
+      "bytes": 1530336
     },
     {
       "path": "data/model_overrides/s_main_stairs/detail/0_normal.ktx2",
@@ -2346,18 +2346,18 @@
     },
     {
       "path": "data/model_overrides/s_quetragon/pristine_intact_lod0.glb",
-      "sha256": "888724e04aed630b2be395f1576d5c9569df01cdeb97f975850d3a76e679da5d",
-      "bytes": 2165668
+      "sha256": "690b20ea98b4728ae592873d8823784cadf32a71e27f24fde387854b69854f87",
+      "bytes": 2181852
     },
     {
       "path": "data/model_overrides/s_quetragon/pristine_intact_lod1.glb",
-      "sha256": "9ddd209ec3c932e9e6b8b17e765be8437e4dc2bdb99bcf50a38a2d2df56906e3",
-      "bytes": 1821560
+      "sha256": "359675b751c8591a5f037dfe17a343dbd2518d3c1cc5d4285d663c7bdee68032",
+      "bytes": 1826796
     },
     {
       "path": "data/model_overrides/s_quetragon/pristine_intact_lod2.glb",
-      "sha256": "5a5a334c077fe78e00ab9153cc0b996e75da7c4cdcee17e0507f29b2deac29a8",
-      "bytes": 1745160
+      "sha256": "927d2c0d70bd1bea1e18866e7bf9849764748286163a433080800652bfffe59c",
+      "bytes": 1750396
     },
     {
       "path": "data/model_overrides/smallfueltank/detail/0_normal.ktx2",
@@ -2556,18 +2556,18 @@
     },
     {
       "path": "data/model_overrides/valvestation/pristine_intact_lod0.glb",
-      "sha256": "7f020e898c8a1dba491faddff6eb1cb23ead2dcba21edaa68724c3bff1cd0329",
-      "bytes": 3355320
+      "sha256": "f2a11ff1979a69d602b53d3e6345d072386bd21bf70302c8ab0dd051bf5c79c5",
+      "bytes": 3364160
     },
     {
       "path": "data/model_overrides/valvestation/pristine_intact_lod1.glb",
-      "sha256": "89dfa03eb5e8c2259e68c837385d47683c96bfc7ebe47c8ea0a3d858e828c9c6",
-      "bytes": 1593508
+      "sha256": "6e56b9903e65a3c21761e1e1f6615146be26130df31f44f43e146d2c098e4cea",
+      "bytes": 1594296
     },
     {
       "path": "data/model_overrides/valvestation/pristine_intact_lod2.glb",
-      "sha256": "2cabd6d2c4d78bf3efa4b89cdfd4de31aed779e9ca011f563f3d6eb8d65e9265",
-      "bytes": 1268164
+      "sha256": "15e8afa913596d134c8ee31ce3e58aca24bd4116c13ce8be05ee04ad1d81c6d3",
+      "bytes": 1268952
     },
     {
       "path": "data/model_overrides/wasteprocessor/detail/0_normal.ktx2",
@@ -2586,18 +2586,18 @@
     },
     {
       "path": "data/model_overrides/wasteprocessor/pristine_intact_lod0.glb",
-      "sha256": "d1d70af729a230cd5f7ad42cfd5bbbce82393bba366fb1d9cf62383dc3c8e981",
-      "bytes": 3863816
+      "sha256": "35df4fde099fbd1a0bcc394e4f5f25ab1619328c13fcf97bc40dde1b337c7eba",
+      "bytes": 3885456
     },
     {
       "path": "data/model_overrides/wasteprocessor/pristine_intact_lod1.glb",
-      "sha256": "2d1335dd96e62dfbc33156856aeb55e453f6d2777d0ec620e1ea66f1adaf5838",
-      "bytes": 1836964
+      "sha256": "3c6dc7cc468bc9eb222233bcda4795e713f7d81ce37e20ba564d734c5cd96c69",
+      "bytes": 1837716
     },
     {
       "path": "data/model_overrides/wasteprocessor/pristine_intact_lod2.glb",
-      "sha256": "a24ca479d35850bf707866a220c4bb82946cee57b0daf7971fed97772a872ab4",
-      "bytes": 1008160
+      "sha256": "ab4e1c6ee64a197a1946e0f0f1207497c75eb68029371d408c468d54aa95ee01",
+      "bytes": 1008912
     },
     {
       "path": "data/model_overrides/watertower/detail/0_normal.ktx2",
@@ -2616,18 +2616,18 @@
     },
     {
       "path": "data/model_overrides/watertower/pristine_intact_lod0.glb",
-      "sha256": "0534e99ed1f9922bc6dc28af728954f75809952d3a07770f0bbc171ea3cba2ac",
-      "bytes": 3209484
+      "sha256": "5677b8066c4bfcd3db42b4f09da9a3eaed0db5a5ba674847ea12f6a0a8291836",
+      "bytes": 3211984
     },
     {
       "path": "data/model_overrides/watertower/pristine_intact_lod1.glb",
-      "sha256": "0bdadd669e762c8b2327e6b4b62ecb4e9d2dcb33d2cd95dd0f81c1561a1f0fdf",
-      "bytes": 2153720
+      "sha256": "6b9840932a606cb137d349d7f39ba9a9d229ae579faa85e5771173837b6808b5",
+      "bytes": 2153928
     },
     {
       "path": "data/model_overrides/watertower/pristine_intact_lod2.glb",
-      "sha256": "274bcbaceae188ce3b208189a9655055ffb09d7029356a766772e09dde3a9b52",
-      "bytes": 2123876
+      "sha256": "5da220b71130805183611db643f610c8b2d4dc25d2c320c451dd826ae1dba5f6",
+      "bytes": 2124084
     },
     {
       "path": "data/model_overrides/weaponsfacility/detail/0_normal.ktx2",
@@ -2646,18 +2646,18 @@
     },
     {
       "path": "data/model_overrides/weaponsfacility/pristine_intact_lod0.glb",
-      "sha256": "9a343547d4ad2ba985ec0668778be23735bb7a0f9e1128b2496ba974d1818760",
-      "bytes": 7372060
+      "sha256": "ba1dbd28fb7d07a5c1429edf4fd704033aaec89fc440cf9260b7b5ecda5e54b5",
+      "bytes": 7403952
     },
     {
       "path": "data/model_overrides/weaponsfacility/pristine_intact_lod1.glb",
-      "sha256": "57247032164a38ace8e2fb68c51cdd12ef68d0c5b40a8341e895a2d77793d9bb",
-      "bytes": 3588776
+      "sha256": "40feadaf645d396bda85c17123bd764d56b65b94cfc6ae11a7a77812631f6e09",
+      "bytes": 3591420
     },
     {
       "path": "data/model_overrides/weaponsfacility/pristine_intact_lod2.glb",
-      "sha256": "69839f4a424294c2ebfbe14fc9159fcfdf8164a2f82dadf9bf404bdf4d1343bf",
-      "bytes": 3241656
+      "sha256": "eabcc12f430970e5cb8d7cb08a7741db6a9371e846efd481f229ee812f69552d",
+      "bytes": 3242636
     },
     {
       "path": "data/tgl/1024/cp_centerlobby_0.ktx2",
