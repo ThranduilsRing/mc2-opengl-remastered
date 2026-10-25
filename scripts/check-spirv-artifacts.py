@@ -32,6 +32,7 @@ sys.path.insert(0, str(ROOT / "scripts"))
 import shader_common  # noqa: E402
 sys.path.insert(0, str(ROOT / 'tools/shader_offline_build'))
 import slang_compile  # noqa: E402
+from build_variants import occupancy_slots as native_occupancy_slots  # noqa: E402
 
 PILOTS = "tools/shader_offline_build/pilots.json"
 BINDING_OCC = "docs/render-backend-seams/binding-slot-occupancy.json"
@@ -56,16 +57,7 @@ def variant_id(base, defines):
 
 
 def occupancy_slots(root):
-    p = root / BINDING_OCC
-    if not p.exists():
-        return None
-    occ = json.load(open(p, encoding="utf-8")).get("occupancy", {})
-    out = set()
-    for key in occ:
-        ns, _, slot = key.partition(":")
-        if slot.isdigit():
-            out.add((ns, int(slot)))
-    return out
+    return native_occupancy_slots(root / BINDING_OCC)
 
 
 def main():
@@ -127,12 +119,12 @@ def main():
                         fails.append(f'{tag}: {e}')
                 for blk in ([] if is_slang else meta.get("bindings", {}).get("ubos", [])):
                     b = blk.get("binding")
-                    if b is not None and occ is not None and ("UBO", b) not in occ:
+                    if b is not None and occ is not None and ("UBO", blk.get("set", 0), b, blk.get("name"), rel) not in occ:
                         fails.append(f"{tag}: UBO '{blk.get('name')}' binding={b} "
                                      f"absent from binding-slot-occupancy.json")
                 for blk in ([] if is_slang else meta.get("bindings", {}).get("ssbos", [])):
                     b = blk.get("binding")
-                    if b is not None and occ is not None and ("SSBO", b) not in occ:
+                    if b is not None and occ is not None and ("SSBO", blk.get("set", 0), b, blk.get("name"), rel) not in occ:
                         fails.append(f"{tag}: SSBO '{blk.get('name')}' binding={b} "
                                      f"absent from binding-slot-occupancy.json")
                 # 5: index coverage — the consumer keys on base|stage|sorted-defines.
