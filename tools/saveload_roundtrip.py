@@ -21,7 +21,6 @@ With MC2_SIM_IDENTITY_TRACE_DETAIL=1 the first divergent frame is explained move
 from __future__ import annotations
 
 import argparse
-import glob
 import json
 import os
 import re
@@ -262,7 +261,7 @@ def run(mission: str, frames: int, deploy: bool, out: str | None, install: str =
         r = subprocess.run([sys.executable, os.path.join(ROOT, "scripts", "run_smoke.py"), "--mission", mission, "--duration", "28", *smoke_target(install, ref_exe, ref_commit),
                             "--keep-logs", *speed_args(sim_speed)], env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, errors="replace",
                            **console_child.child_kwargs(redirected=True))
-    arts = sorted(glob.glob(os.path.join(ROOT, "tests", "smoke", "artifacts", "20*")), key=os.path.getmtime)
+    arts = [line.removeprefix("[runner] artifacts: ").strip() for line in r.stdout.splitlines() if line.startswith("[runner] artifacts: ")]
     if not arts or not os.path.exists(os.path.join(arts[-1], mission + ".log")):
         sys.exit("saveload_roundtrip: the smoke run produced no log:\n" + "\n".join(r.stdout.splitlines()[-8:]))
     dest = out or tempfile.mkdtemp(prefix="saveload_")
@@ -314,7 +313,7 @@ def run_fixture(mission: str, save_at: int, load_at: int, deploy: bool, out: str
         r = subprocess.run([sys.executable, os.path.join(ROOT, "scripts", "run_smoke.py"), "--mission", mission, "--duration", str(duration),
                             *smoke_target(install, ref_exe, ref_commit), "--keep-logs", *speed_args(sim_speed)], env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, errors="replace",
                            **console_child.child_kwargs(redirected=True))
-        arts = sorted(glob.glob(os.path.join(ROOT, "tests", "smoke", "artifacts", "20*")), key=os.path.getmtime)
+        arts = [line.removeprefix("[runner] artifacts: ").strip() for line in r.stdout.splitlines() if line.startswith("[runner] artifacts: ")]
         if not arts or not os.path.exists(os.path.join(arts[-1], mission + ".log")):
             sys.exit("saveload_roundtrip: the smoke run produced no log:\n" + "\n".join(r.stdout.splitlines()[-8:]))
         shutil.copytree(arts[-1], os.path.join(dest, "run"), dirs_exist_ok=True)

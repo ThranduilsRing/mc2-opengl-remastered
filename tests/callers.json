@@ -2566,7 +2566,7 @@
         },
         {
           "path": "scripts/merge_gate.py",
-          "line": 21,
+          "line": 23,
           "evidence": "import",
           "reference": "console_child",
           "text": "import console_child"
@@ -3287,7 +3287,7 @@
         },
         {
           "path": "tools/saveload_roundtrip.py",
-          "line": 37,
+          "line": 36,
           "evidence": "import",
           "reference": "console_child",
           "text": "import console_child  # noqa: E402"
@@ -4359,35 +4359,56 @@
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 698,
+          "line": 640,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 719,
+          "line": 661,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 746,
+          "line": 682,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 775,
+          "line": 771,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 791,
+          "line": 792,
+          "evidence": "import",
+          "reference": "merge_gate",
+          "text": "import merge_gate as gate"
+        },
+        {
+          "path": "scripts/tests/test_merge_speedups.py",
+          "line": 819,
+          "evidence": "import",
+          "reference": "merge_gate",
+          "text": "import merge_gate as gate"
+        },
+        {
+          "path": "scripts/tests/test_merge_speedups.py",
+          "line": 848,
+          "evidence": "import",
+          "reference": "merge_gate",
+          "text": "import merge_gate as gate"
+        },
+        {
+          "path": "scripts/tests/test_merge_speedups.py",
+          "line": 864,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
@@ -4970,7 +4991,7 @@
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 760,
+          "line": 833,
           "evidence": "import",
           "reference": "run_tools_tests",
           "text": "import run_tools_tests as tt"
@@ -5014,7 +5035,7 @@
         },
         {
           "path": "scripts/run_smoke.py",
-          "line": 1451,
+          "line": 1453,
           "evidence": "import",
           "reference": "run_visual_capture",
           "text": "from run_visual_capture import smoke_capture"
@@ -9823,7 +9844,7 @@
       "callers_by_stem": [
         {
           "path": "scripts/merge_gate.py",
-          "line": 25,
+          "line": 27,
           "evidence": "import",
           "reference": "lane_merge",
           "text": "from lane_merge import git_bash, run_logged  # noqa: E402"
@@ -12664,7 +12685,7 @@
         },
         {
           "path": "tools/saveload_roundtrip.py",
-          "line": 38,
+          "line": 37,
           "evidence": "import",
           "reference": "save_inspect",
           "text": "import save_inspect as si  # noqa: E402"
@@ -12708,7 +12729,7 @@
         },
         {
           "path": "tools/saveload_roundtrip.py",
-          "line": 39,
+          "line": 38,
           "evidence": "import",
           "reference": "savegame_backup",
           "text": "import savegame_backup  # noqa: E402"
@@ -15227,7 +15248,7 @@
         },
         {
           "path": "tools/saveload_roundtrip.py",
-          "line": 40,
+          "line": 39,
           "evidence": "import",
           "reference": "sim_determinism",
           "text": "import sim_determinism as sd  # noqa: E402"

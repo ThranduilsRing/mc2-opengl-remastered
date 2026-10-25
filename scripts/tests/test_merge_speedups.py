@@ -635,6 +635,79 @@ def test_parallel_gate_respects_inherited_batch_and_failed_deploy(monkeypatch):
     assert gate.execute_parallel(steps, "head") == 1 and seen == steps[:1]
 
 
+@pytest.mark.parametrize("fail", [False, True])
+def test_stock_copy_is_private_and_always_removed(tmp_path, fail):
+    import merge_gate as gate
+    install = tmp_path / "install"
+    (install / "data").mkdir(parents=True)
+    (install / "data/asset").write_text("source")
+    (install / "mod_smoke-stage").mkdir()
+    (install / "mod_smoke-stage/large").write_text("disposable")
+    try:
+        with gate.stock_copy(install, tmp_path) as clone:
+            assert not (clone / "mod_smoke-stage").exists()
+            assert not list(clone.glob(".gate-stock-*"))
+            (clone / "data/asset").write_text("changed")
+            assert (install / "data/asset").read_text() == "source"
+            if fail:
+                raise RuntimeError("fixture")
+    except RuntimeError:
+        assert fail
+    assert not clone.exists()
+
+
+def test_offline_stages_overlap_before_deploy(monkeypatch):
+    import threading
+    import merge_gate as gate
+    harness_started = threading.Event()
+    calls = []
+    def runner(command, **kw):
+        if command == ["harness"]:
+            harness_started.set()
+        if command == ["contracts"]:
+            assert harness_started.wait(2)
+        calls.append(command[0])
+        return _r(0)
+    monkeypatch.delenv("MC2_HOST_LEASE_BATCH", raising=False)
+    monkeypatch.setattr(gate, "git", lambda *a: "head")
+    monkeypatch.setattr(gate, "run_child", runner)
+    assert gate.execute_parallel([("contracts", ["contracts"], {}), ("harnesses", ["harness"], {}),
+                                  ("deploy", ["deploy"], {})], "head") == 0
+    assert calls[-1] == "deploy" and set(calls) == {"contracts", "harness", "deploy"}
+
+
+def test_auxiliary_determinism_uses_copy_while_saves_stay_serial(tmp_path, monkeypatch):
+    import threading
+    from contextlib import contextmanager
+    import merge_gate as gate
+    install, clone = tmp_path / "install", tmp_path / "clone"
+    saves, det = threading.Event(), threading.Event()
+    calls = []
+    @contextmanager
+    def copy(source):
+        assert source == install.resolve()
+        yield clone
+        calls.append("cleaned")
+    def runner(command, **kw):
+        calls.append(command[0])
+        if command[0] == "det":
+            assert command[-1] == str(clone)
+            det.set()
+            assert saves.wait(2)
+        if command[0] == "save":
+            saves.set()
+            assert det.wait(2)
+        return _r(0)
+    monkeypatch.delenv("MC2_HOST_LEASE_BATCH", raising=False)
+    monkeypatch.setattr(gate, "git", lambda *a: "head")
+    monkeypatch.setattr(gate, "stock_copy", copy)
+    monkeypatch.setattr(gate, "run_child", runner)
+    assert gate.execute_parallel([("deploy", ["deploy"], {}), ("mods", ["mods"], {}),
+        ("determinism-mc2_10", ["det", "--install", str(install)], {}),
+        ("saveload-mc2_01", ["save"], {})], "head") == 0
+    assert calls.index("mods") < calls.index("det") < calls.index("cleaned")
+
+
 @pytest.mark.parametrize("generator,failure", [("Ninja", ""), ("Visual Studio", ""), ("missing", ""),
                                                ("Ninja-fallback", ""), ("Ninja-fallback", "build"), ("Ninja-fallback", "native")])
 def test_unit_runner_engine_cache_layout_and_required_coverage(tmp_path, generator, failure):
