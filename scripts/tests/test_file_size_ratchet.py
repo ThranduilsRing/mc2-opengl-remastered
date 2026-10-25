@@ -119,6 +119,15 @@ def test_military_tooling_is_registered_and_growth_fails(repo):
     assert fsr.main(_common(repo) + ['--check', '--worktree']) == 1
 
 
+def test_unregistered_tool_cannot_cross_size_limit(repo):
+    name = 'tools/nested/new_tool.py'
+    put(repo, name, 1500)
+    commit(repo, 'small tool', name)
+    assert fsr.main(_common(repo) + ['--write-baseline']) == 0
+    put(repo, name, 1501)
+    assert fsr.main(_common(repo) + ['--check', '--worktree']) == 1
+
+
 def test_check_one_dir_rising_fails_even_if_other_dir_falls():
     base = _base(b=1600)                                   # code has one big file, mclib has one
     res = fsr.measure({"mclib/a.cpp": lines(1900), "mclib/a2.cpp": lines(1600), "code/b.cpp": lines(10)})

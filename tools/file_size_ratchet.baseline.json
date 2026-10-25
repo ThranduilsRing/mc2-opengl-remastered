@@ -53,9 +53,13 @@
   "mclib/move.h": 1895,
   "mclib/terrtxm.cpp": 1816,
   "mclib/tgl.h": 1821,
-  "tools/scifi_kit/art/intent_military.py": 3363
+  "tools/cite_guard.py": 1553,
+  "tools/comment_guard.py": 1790,
+  "tools/mc2_launcher/mc2_launcher.cpp": 3195,
+  "tools/scifi_kit/art/intent_military.py": 3363,
+  "tools/terrain_beautify/visual_heightfield.py": 1510
  },
- "head": "646924ff1",
+ "head": "2c5761ade",
  "per_dir": {
   "GameAdapters": {
    "files": 13,
@@ -106,7 +110,7 @@
    "max_lines": 1513
   },
   "mclib": {
-   "files": 586,
+   "files": 587,
    "files_over_1500": 13,
    "files_over_3000": 0,
    "max_lines": 2518
@@ -118,9 +122,9 @@
    "max_lines": 675
   },
   "tools": {
-   "files": 1,
-   "files_over_1500": 1,
-   "files_over_3000": 1,
+   "files": 618,
+   "files_over_1500": 5,
+   "files_over_3000": 2,
    "max_lines": 3363
   }
  },
@@ -136,6 +140,10 @@
   {
    "file": "tools/scifi_kit/art/intent_military.py",
    "lines": 3363
+  },
+  {
+   "file": "tools/mc2_launcher/mc2_launcher.cpp",
+   "lines": 3195
   },
   {
    "file": "GameOS/gameos/engine_present_vk.cpp",
@@ -244,16 +252,12 @@
   {
    "file": "mclib/ablrtn.cpp",
    "lines": 1799
-  },
-  {
-   "file": "mclib/file.cpp",
-   "lines": 1739
   }
  ],
  "total": {
-  "files": 1934,
-  "files_over_1500": 40,
-  "files_over_3000": 2,
+  "files": 2552,
+  "files_over_1500": 44,
+  "files_over_3000": 3,
   "max_lines": 3661
  },
  "version": 1
