@@ -6,6 +6,9 @@
 #include <string>
 #include <vector>
 
+// The opaque call prevents legal new/delete elision in these optimized fixtures.
+void observeProbeAllocation(const void*) noexcept;
+
 TEST_SUITE("alloc_probe")
 {
 
@@ -13,6 +16,7 @@ TEST_CASE("the probe counts a block from new to delete, with its bytes")
 {
 	ScopedLeakCheck lc;
 	char* p = new char[100];
+    observeProbeAllocation(p);
 	CHECK(lc.delta() == 1);
 	CHECK(lc.bytesDelta() == 100);
 	CHECK(lc.allocated());
@@ -27,6 +31,7 @@ TEST_CASE("a leak is a positive delta, a stray release a negative one")
 	{
 		ScopedLeakCheck lc;
 		leaked = new int(7);
+        observeProbeAllocation(leaked);
 		CHECK(lc.delta() == 1);
 	}
 	ScopedLeakCheck after;
@@ -62,6 +67,9 @@ TEST_CASE("standard owners balance: vector, string, unique_ptr")
 		std::vector<int> v(1000, 1);
 		std::string s(200, 'x');
 		auto u = std::make_unique<double[]>(64);
+        observeProbeAllocation(v.data());
+        observeProbeAllocation(s.data());
+        observeProbeAllocation(u.get());
 		CHECK(lc.delta() == 3);
 	}
 	CHECK(lc.delta() == 0);

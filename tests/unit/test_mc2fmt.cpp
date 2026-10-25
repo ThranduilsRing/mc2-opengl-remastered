@@ -4,6 +4,7 @@
 #include "doctest.h"
 
 #include "mc2fmt.h"
+#include "msvc_printf_reference.h"
 
 #include <cstdio>
 #include <cstdlib>
@@ -98,10 +99,10 @@ TEST_CASE("%p is 16 upper-case hex digits without 0x on the MSVC CRT")
 	char a[40], b[40];
 	int x = 0;
 	void* p = &x;
-	std::snprintf(a, sizeof a, "%p", p);
+	corpusSnprintf(a, sizeof a, "%p", p);
 	mc2::fmt::to_buf(b, "{:016X}", mc2::fmt::as_ptr(p));
 	CHECK(std::strcmp(a, b) == 0);
-	std::snprintf(a, sizeof a, "%p", static_cast<void*>(nullptr));
+	corpusSnprintf(a, sizeof a, "%p", static_cast<void*>(nullptr));
 	mc2::fmt::to_buf(b, "{:016X}", mc2::fmt::as_ptr(static_cast<void*>(nullptr)));
 	CHECK(std::strcmp(a, b) == 0);
 }

@@ -2,6 +2,7 @@
 // Level filtering must not evaluate args, brace escaping, runtime-format fail-soft,
 // MC2_EVENT byte-exactness vs legacy printf, MC2_LOG spec parsing (incl. legacy "1").
 #include "doctest.h"
+#include "msvc_printf_reference.h"
 #include "../../GameOS/gameos/utils/mc2log.h"
 
 #include <cstdint>
@@ -238,7 +239,7 @@ TEST_CASE("mc2log: gos_terrain_lighting events equal the legacy printf bytes") {
     for (const void* owner : owners) {
         Capture cap(mc2::log::Stream::Err);
         char legacy[512];
-        std::snprintf(legacy, sizeof legacy,
+        corpusSnprintf(legacy, sizeof legacy,
             "[LIGHT_POOL_DUMP v1] idx=%ld slot=%ld type=%ld active=%d ownerEnabled=%d "
             "pos=(%.1f,%.1f,%.1f) argb=%08lx far=%.0f class=%s owner=%p packed=%d\n",
             5L, -1L, 3L, 1, 0, -3288.34f, 2739.96f, 0.0f, 0xff746438ul, 80.0f, "bldg", owner, 1);

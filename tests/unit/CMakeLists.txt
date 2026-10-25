@@ -241,7 +241,9 @@ set_source_files_properties(test_abl_position.cpp test_cast_census.cpp test_gui_
 set_target_properties(mc2_tests PROPERTIES CXX_STANDARD 20 CXX_STANDARD_REQUIRED ON)
 
 # The generated printf corpus (one TEST_CASE per converted format pair, thousands of them) exceeds the 65279-section limit of a normal object.
-set_source_files_properties(test_printf_corpus.cpp PROPERTIES COMPILE_FLAGS "/bigobj")
+if(MSVC)
+    set_source_files_properties(test_printf_corpus.cpp PROPERTIES COMPILE_FLAGS "/bigobj")
+endif()
 
 target_include_directories(mc2_tests PRIVATE
     ${MC2_WORKTREE_ROOT}           # for "RenderCore/RenderPassContract.h" style includes
@@ -266,7 +268,13 @@ if(WIN32)
 else()
     find_package(ZLIB REQUIRED)
     target_link_libraries(mc2_tests PRIVATE ZLIB::ZLIB)
+    target_sources(mc2_tests PRIVATE
+        ${MC2_WORKTREE_ROOT}/GameOS/src/platform_winbase.cpp
+        ${MC2_WORKTREE_ROOT}/GameOS/src/platform_winuser.cpp
+        ${MC2_WORKTREE_ROOT}/GameOS/src/platform_stdlib.cpp
+        ${MC2_WORKTREE_ROOT}/GameOS/src/platform_io.cpp)
 endif()
+target_sources(mc2_tests PRIVATE test_platform_portability.cpp)
 
 # Match main build's preprocessor environment so engine headers parse the
 # same way they do in production. LINUX_BUILD is the load-bearing one
@@ -290,6 +298,13 @@ if(MSVC)
     target_compile_options(mc2_tests PRIVATE /W4 /WX-)
 endif()
 mc2_asan_runtime(mc2_tests)
+
+if(NOT WIN32)
+    file(READ "${CMAKE_CURRENT_SOURCE_DIR}/printf_corpus_gen.inc" _native_corpus)
+    string(REPLACE "std::snprintf(" "corpusSnprintf(" _native_corpus "${_native_corpus}")
+    file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/printf_corpus_native.inc" CONTENT "${_native_corpus}")
+    set_source_files_properties(test_printf_corpus.cpp PROPERTIES INCLUDE_DIRECTORIES "${CMAKE_CURRENT_BINARY_DIR}")
+endif()
 
 # Make `cmake --build ... --target check` run the tests after build.
 add_custom_target(check
@@ -396,8 +411,8 @@ target_include_directories(mc2_tests PRIVATE
     ${MC2_WORKTREE_ROOT}/3rdparty/include/SDL2
 )
 find_package(Threads REQUIRED)
-list(PREPEND CMAKE_PREFIX_PATH "${MC2_WORKTREE_ROOT}/3rdparty" "${MC2_WORKTREE_ROOT}/3rdparty/cmake")
 if(WIN32)
+    list(PREPEND CMAKE_PREFIX_PATH "${MC2_WORKTREE_ROOT}/3rdparty" "${MC2_WORKTREE_ROOT}/3rdparty/cmake")
     list(PREPEND CMAKE_LIBRARY_PATH "${MC2_WORKTREE_ROOT}/3rdparty/lib/x64")
 endif()
 find_package(SDL2 CONFIG REQUIRED COMPONENTS SDL2)
@@ -584,5 +599,5 @@ if(TARGET glm::glm)
     target_sources(mc2_tests PRIVATE test_terrain_height_compat.cpp)
     set_source_files_properties(test_terrain_height_compat.cpp PROPERTIES
         INCLUDE_DIRECTORIES "${CMAKE_CURRENT_BINARY_DIR}"
-        COMPILE_OPTIONS "/fp:precise")
+        COMPILE_OPTIONS "$<$<BOOL:${MSVC}>:/fp:precise>")
 endif()

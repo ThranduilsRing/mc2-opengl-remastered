@@ -25,6 +25,7 @@
 
 #include "vulkan_context.h"
 #ifndef _WIN32
+#define NO_SDL_VULKAN_TYPEDEFS
 #include <SDL2/SDL_vulkan.h>
 #endif
 #include <tracy/Tracy.hpp>

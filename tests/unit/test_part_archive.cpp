@@ -23,6 +23,8 @@ void TargetPriorityList::init() {}
 void TargetPriorityList::destroy() {}
 void GameObjectManager::init() {}
 void GameObjectManager::destroy() {}
+GameObjectManager::GameObjectManager() { init(); }
+GameObjectManager::~GameObjectManager() { destroy(); }
 void ObjectTypeManager::destroy() {}
 void ObjectType::operator delete(void*) {}
 long ObjectType::init(FilePtr, unsigned long) { return NO_ERR; }

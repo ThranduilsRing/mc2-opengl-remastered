@@ -264,8 +264,8 @@ struct TerrainIsland : mc2vk::IslandState {
     // The overlay / decal pass built on this island's pool and shared state; declared last, so it is released first.
     std::unique_ptr<OvlState> ovl;
 
-    TerrainIsland() = default;
-    ~TerrainIsland() override { gpuTimer.destroy(); }
+    TerrainIsland();
+    ~TerrainIsland() override;
 };
 
 struct OvlPC {                       // LOCKSTEP with OverlayPC in terrain_overlay_tier1.{vert,frag}

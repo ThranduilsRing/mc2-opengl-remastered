@@ -7,6 +7,7 @@
 
 #ifdef PLATFORM_WINDOWS
     #include <io.h> 
+    #define mc2_stat _stat
 #else
     #include <unistd.h>
     #include <fcntl.h>
@@ -14,6 +15,13 @@
     #define _getpid getpid
     #define _rmdir rmdir
     inline int _mkdir(const char* path) { return mkdir(path, 0777); }
+    #define _dup dup
+    #define _fileno fileno
+    inline int _dup2(int source, int destination) { return dup2(source, destination) < 0 ? -1 : 0; }
+    #include <string>
+    std::string mc2_native_path(const char* path);
+    int mc2_open(const char* path, int flags, mode_t mode = 0666);
+    int mc2_stat(const char* path, struct stat* info);
 #endif
 
 #include <stdio.h> // fseek ftell etc...
@@ -22,7 +30,7 @@
 #define _stat ::stat
 #define _fstat ::fstat
 #define _creat ::creat
-#define _open ::open
+#define _open mc2_open
 #define _close ::close
 #define _read ::read
 #define _write ::write

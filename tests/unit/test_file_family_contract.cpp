@@ -503,8 +503,13 @@ struct CwdRestore
 	CwdRestore &operator= (const CwdRestore &) = delete;
 };
 
-void writeWholeFile (const fs::path &path, const std::string &bytes)
+void writeWholeFile (const fs::path &inputPath, const std::string &bytes)
 {
+    fs::path path = inputPath;
+#ifndef _WIN32
+    // Materialize the corpus as Windows does: Data/ and data/ share a directory.
+    path = mc2_native_path(path.string().c_str());
+#endif
 	std::error_code ec;
 	fs::create_directories(path.parent_path(), ec);
 	std::ofstream out(path, std::ios::binary | std::ios::trunc);
@@ -711,7 +716,10 @@ TEST_CASE("FC9 the resolver corpus hands back the provider and bytes it names")
 		// Loose provider: the probe reports disk, the named file exists under
 		// the deploy root and holds exactly the bytes the ladder returned.
 		CHECK(fileExists(request.c_str()) == FILE_ON_DISK);
-		const fs::path provider = deploy.root / path;
+		fs::path provider = deploy.root / path;
+#ifndef _WIN32
+        provider = mc2_native_path(provider.string().c_str());
+#endif
 		CHECK(fs::exists(provider));
 		CHECK(readWholeFile(provider) == resolved.bytes);
 	}

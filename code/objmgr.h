@@ -329,15 +329,11 @@ class GameObjectManager {
 		
 		void init (void);
 		
-		GameObjectManager (void) {
-			init();
-		}
+		GameObjectManager (void);
 
 		void destroy (void);
 
-		~GameObjectManager (void) {
-			destroy();
-		}
+		~GameObjectManager (void);
 		
 		void init (const char* objTypeDataFile, long objTypeCacheSize, long objCacheSize);
 

@@ -26,6 +26,10 @@ if(WIN32)
 else()
     find_package(ZLIB REQUIRED)
     target_link_libraries(vfx_lifecycle_tests PRIVATE ZLIB::ZLIB)
+    target_sources(vfx_lifecycle_tests PRIVATE
+        "${MC2_WORKTREE_ROOT}/GameOS/src/platform_winuser.cpp"
+        "${MC2_WORKTREE_ROOT}/GameOS/src/platform_stdlib.cpp"
+        "${MC2_WORKTREE_ROOT}/GameOS/src/platform_eh.cpp")
 endif()
 add_dependencies(mc2_tests vfx_lifecycle_tests)
 target_sources(mc2_tests PRIVATE "${MC2_WORKTREE_ROOT}/tools/vfx_oracle/lifecycle_driver.cpp")

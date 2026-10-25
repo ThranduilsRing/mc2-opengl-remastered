@@ -25,7 +25,7 @@
 #include <cstring>
 #include <sys/syscall.h>
 
-static int gGetLastError = 0;
+static thread_local int gGetLastError = 0;
 
 BOOL QueryPerformanceCounter(LARGE_INTEGER* value)
 {
@@ -43,7 +43,7 @@ HANDLE CreateFileA(LPCSTR path, DWORD access, DWORD, LPSECURITY_ATTRIBUTES, DWOR
 {
     int flags = (access & GENERIC_WRITE) ? ((access & GENERIC_READ) ? O_RDWR : O_WRONLY) : O_RDONLY;
     if (disposition == CREATE_ALWAYS) flags |= O_CREAT | O_TRUNC;
-    const int fd = open(path, flags, 0666);
+    const int fd = mc2_open(path, flags, 0666);
     if (fd < 0) { gGetLastError = errno; return INVALID_HANDLE_VALUE; }
     return reinterpret_cast<HANDLE>(intptr_t(fd) + 1);
 }
@@ -87,13 +87,13 @@ BOOL MoveFileExW(LPCWSTR from, LPCWSTR to, DWORD flags)
 DWORD GetFileAttributesA(LPCSTR path)
 {
     struct stat st{};
-    if (stat(path, &st)) return INVALID_FILE_ATTRIBUTES;
+    if (mc2_stat(path, &st)) return INVALID_FILE_ATTRIBUTES;
     return S_ISDIR(st.st_mode) ? FILE_ATTRIBUTE_DIRECTORY : FILE_ATTRIBUTE_NORMAL;
 }
 BOOL GetFileAttributesExA(LPCSTR path, GET_FILEEX_INFO_LEVELS, LPVOID output)
 {
     struct stat st{};
-    if (stat(path, &st)) return FALSE;
+    if (mc2_stat(path, &st)) return FALSE;
     auto& out = *static_cast<WIN32_FILE_ATTRIBUTE_DATA*>(output);
     out = {};
     out.dwFileAttributes = S_ISDIR(st.st_mode) ? FILE_ATTRIBUTE_DIRECTORY : FILE_ATTRIBUTE_NORMAL;
@@ -363,7 +363,7 @@ WINBASEAPI DWORD WINAPI GetLastError()
     return gGetLastError;
 }
 
-static const char* g_current_wildcard = nullptr;
+static thread_local const char* g_current_wildcard = nullptr;
 static int path_filter(const struct dirent* e) {
     return 0 == fnmatch(g_current_wildcard, e->d_name, FNM_PATHNAME);
 }
@@ -375,48 +375,18 @@ struct FindFileData {
     bool initialized;
 };
 
-static void FillFindData(const char* dir_name, const char* entry_name, LPWIN32_FIND_DATAA lpFindFileData) {
-
-        char entry_path[MAX_PATH];
-        (*std::format_to_n(entry_path, (MAX_PATH-1) - 1, "{}/{}", mc2::fmt::safe(dir_name), mc2::fmt::safe(entry_name)).out = '\0');
-
-        struct stat s;
-        stat(entry_path, &s);
-
-        if(S_ISDIR(s.st_mode))
-            lpFindFileData->dwFileAttributes = FILE_ATTRIBUTE_DIRECTORY;
-        if(S_ISREG(s.st_mode))
-            lpFindFileData->dwFileAttributes = FILE_ATTRIBUTE_NORMAL;
-        if(S_ISBLK(s.st_mode))
-            lpFindFileData->dwFileAttributes = FILE_ATTRIBUTE_DEVICE;
-
-        // Contains a 64-bit value representing the number of 100-nanosecond intervals since January 1, 1601 (UTC).
-        uint64_t sec_since = 60*60*24*365*1601L; // well approximately
-
-        // all date setting is incorrect
-        uint64_t sec = s.st_atim.tv_sec - sec_since;
-        uint64_t nsec = sec*1e9 + s.st_atim.tv_sec;
-	    lpFindFileData->ftLastAccessTime.dwLowDateTime = static_cast<DWORD>(nsec)&0xffffffff;
-	    lpFindFileData->ftLastAccessTime.dwHighDateTime = static_cast<DWORD>((nsec>>32))&0xffffffff;
-
-        sec = s.st_ctim.tv_sec - sec_since;
-        nsec = sec*1e9 + s.st_ctim.tv_sec;
-	    lpFindFileData->ftCreationTime.dwLowDateTime = static_cast<DWORD>(nsec)&0xffffffff;
-	    lpFindFileData->ftCreationTime.dwHighDateTime = static_cast<DWORD>((nsec>>32))&0xffffffff;
-
-        sec = s.st_ctim.tv_sec - sec_since;
-        nsec = sec*1e9 + s.st_ctim.tv_sec;
-	    lpFindFileData->ftLastWriteTime.dwLowDateTime = static_cast<DWORD>(nsec)&0xffffffff;
-	    lpFindFileData->ftLastWriteTime.dwHighDateTime = static_cast<DWORD>((nsec>>32))&0xffffffff;
-
-        
-	    lpFindFileData->nFileSizeHigh = s.st_size&0xffffffff;
-	    lpFindFileData->nFileSizeLow = (s.st_size>>32)&0xffffffff;;
-
-        int copy_size = strlen(entry_name);
-        copy_size = copy_size < MAX_PATH ? copy_size : MAX_PATH-1;
-        strncpy(lpFindFileData->cFileName, entry_name, copy_size);
-        lpFindFileData->cFileName[copy_size] = '\0';
+static void FillFindData(const char* dir, const char* name, LPWIN32_FIND_DATAA out) {
+    *out = {};
+    WIN32_FILE_ATTRIBUTE_DATA attributes{};
+    const auto path = (std::filesystem::path(dir) / name).string();
+    if (!GetFileAttributesExA(path.c_str(), GetFileExInfoStandard, &attributes)) return;
+    out->dwFileAttributes = attributes.dwFileAttributes;
+    out->ftCreationTime = attributes.ftCreationTime;
+    out->ftLastAccessTime = attributes.ftLastAccessTime;
+    out->ftLastWriteTime = attributes.ftLastWriteTime;
+    out->nFileSizeLow = attributes.nFileSizeLow;
+    out->nFileSizeHigh = attributes.nFileSizeHigh;
+    std::snprintf(out->cFileName, sizeof(out->cFileName), "%s", name);
 }
 
 HANDLE WINAPI FindFirstFileA( LPCTSTR lpFileName, LPWIN32_FIND_DATAA lpFindFileData)
