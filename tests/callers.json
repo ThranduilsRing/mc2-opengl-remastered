@@ -359,7 +359,22 @@
           "text": "run_check \"binding_slots\"          \"py -3 scripts/check-binding-slots.py --quiet\""
         }
       ],
-      "callers_by_stem": []
+      "callers_by_stem": [
+        {
+          "path": "scripts/check-vulkan-bindings.py",
+          "line": 242,
+          "evidence": "import_module",
+          "reference": "check-binding-slots",
+          "text": "_, blocks = import_module(\"check-binding-slots\").scan_glsl(args.root)"
+        },
+        {
+          "path": "scripts/tests/test_native_binding_contracts.py",
+          "line": 103,
+          "evidence": "import_module",
+          "reference": "check-binding-slots",
+          "text": "checker = importlib.import_module('check-binding-slots')"
+        }
+      ]
     },
     {
       "path": "scripts/check-brain-fit-schema.py",
@@ -1116,7 +1131,15 @@
           "text": "spec = importlib.util.spec_from_file_location('lighting_divergence', ROOT / 'scripts/check-lighting-divergence.py')"
         }
       ],
-      "callers_by_stem": []
+      "callers_by_stem": [
+        {
+          "path": "scripts/check-binding-slots.py",
+          "line": 17,
+          "evidence": "import_module",
+          "reference": "check-lighting-divergence",
+          "text": "strip_comments = import_module(\"check-lighting-divergence\").strip_comments"
+        }
+      ]
     },
     {
       "path": "scripts/check-manifest-schema.py",
@@ -2010,7 +2033,7 @@
           "line": 968,
           "evidence": "command",
           "reference": "scripts/check-vulkan-bindings.py",
-          "text": "run_check \"vulkan_bindings\"        \"py -3 scripts/check-vulkan-bindings.py --quiet\""
+          "text": "run_check \"vulkan_bindings\"        \"py -3 scripts/check-vulkan-bindings.py --strict --quiet && py -3 -B -m pytest scripts/tests/test_native_binding_contracts.py -q -p no:cacheprovider\""
         },
         {
           "path": "scripts/tests/test_board_selftests.py",
@@ -2784,6 +2807,13 @@
           "evidence": "import",
           "reference": "console_child",
           "text": "import console_child  # noqa: E402"
+        },
+        {
+          "path": "scripts/tests/test_postprocess_cas_upscale.py",
+          "line": 11,
+          "evidence": "import",
+          "reference": "console_child",
+          "text": "import console_child"
         },
         {
           "path": "scripts/tests/test_slang_build.py",
@@ -4293,70 +4323,70 @@
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 590,
+          "line": 594,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 645,
+          "line": 649,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 658,
+          "line": 662,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 682,
+          "line": 686,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 703,
+          "line": 707,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 806,
+          "line": 815,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 827,
+          "line": 836,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 854,
+          "line": 863,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 883,
+          "line": 892,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 901,
+          "line": 909,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
@@ -4939,7 +4969,7 @@
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 868,
+          "line": 877,
           "evidence": "import",
           "reference": "run_tools_tests",
           "text": "import run_tools_tests as tt"
@@ -4990,7 +5020,7 @@
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 615,
+          "line": 619,
           "evidence": "import",
           "reference": "run_visual_capture",
           "text": "import run_visual_capture as capture"
@@ -7141,6 +7171,13 @@
       "callers_by_stem": []
     },
     {
+      "path": "scripts/tests/test_native_binding_contracts.py",
+      "basename": "test_native_binding_contracts.py",
+      "stem": "test_native_binding_contracts",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
       "path": "scripts/tests/test_native_executor_health.py",
       "basename": "test_native_executor_health.py",
       "stem": "test_native_executor_health",
@@ -7200,6 +7237,13 @@
       "path": "scripts/tests/test_phase_tools.py",
       "basename": "test_phase_tools.py",
       "stem": "test_phase_tools",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
+      "path": "scripts/tests/test_postprocess_cas_upscale.py",
+      "basename": "test_postprocess_cas_upscale.py",
+      "stem": "test_postprocess_cas_upscale",
       "callers_by_basename": [],
       "callers_by_stem": []
     },
@@ -15024,6 +15068,13 @@
           "evidence": "import",
           "reference": "build_variants",
           "text": "import build_variants as bv  # noqa: E402"
+        },
+        {
+          "path": "scripts/check-spirv-artifacts.py",
+          "line": 35,
+          "evidence": "import",
+          "reference": "build_variants",
+          "text": "from build_variants import occupancy_slots as native_occupancy_slots  # noqa: E402"
         }
       ]
     },
@@ -15034,7 +15085,7 @@
       "callers_by_basename": [
         {
           "path": "GameOS/gameos/CMakeLists.txt",
-          "line": 487,
+          "line": 488,
           "evidence": "cmake command",
           "reference": "${CMAKE_SOURCE_DIR}/tools/shader_offline_build/slang_compile.py",
           "text": "COMMAND \"${Python3_EXECUTABLE}\""

@@ -291,6 +291,10 @@ void main() { result.value[0] = 42u; }
     cfg = {'spv_dir': 'out', 'pilots': [{'program': 'native_probe',
            'stages': {'comp': 'native.comp'}, 'variants': [{'name': 'default', 'defines': []}]}]}
     Path(work, 'pilots.json').write_text(json.dumps(cfg), encoding='utf-8')
+    census = Path(work, 'docs/render-backend-seams/binding-slot-occupancy.json')
+    census.parent.mkdir(parents=True)
+    site = {'type': 'buffer', 'role': 'Out', 'file': 'native.comp'}
+    census.write_text(json.dumps({'occupancy': {'set1:binding0': [site]}}))
     built = run_build(work)
     assert built.returncode == 0, built.stdout + built.stderr
     meta = json.loads(Path(work, 'out/native_probe.comp.default.json').read_text())
@@ -304,3 +308,6 @@ void main() { result.value[0] = 42u; }
                              **console_child.child_kwargs(redirected=True))
     assert checked.returncode == 0, checked.stdout + checked.stderr
     assert run_build(work, '--check', '--quiet').returncode == 0
+    census.write_text(json.dumps({'occupancy': {'set0:binding0': [site]}}))
+    rejected = run_build(work, '--check')
+    assert rejected.returncode == 1 and 'binding-slot-occupancy.json (drift)' in rejected.stdout

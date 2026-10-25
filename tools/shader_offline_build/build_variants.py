@@ -83,16 +83,20 @@ def sidecar_name(base, stage, variant):
     return f"{base}.{stage}.{variant}.json"
 
 
-def occupancy_slots():
-    """Return {('SSBO'|'UBO', slot)} present in binding-slot-occupancy.json."""
-    if not BINDING_OCC.exists():
+def occupancy_slots(path=BINDING_OCC):
+    """Return native buffer descriptors from the Vulkan binding census."""
+    if not path.exists():
         return None
-    occ = json.load(open(BINDING_OCC, encoding="utf-8")).get("occupancy", {})
+    occ = json.load(open(path, encoding="utf-8")).get("occupancy", {})
     out = set()
-    for key in occ:  # keys look like "SSBO:2" / "UBO:3"
-        ns, _, slot = key.partition(":")
-        if slot.isdigit():
-            out.add((ns, int(slot)))
+    for key, sites in occ.items():
+        match = _re.fullmatch(r"set(\d+):binding(\d+)", key)
+        if match:
+            descriptor_set, binding = map(int, match.groups())
+            for site in sites:
+                ns = {"uniform": "UBO", "buffer": "SSBO"}.get(site["type"])
+                if ns:
+                    out.add((ns, descriptor_set, binding, site["role"], site["file"]))
     return out
 
 
@@ -276,7 +280,7 @@ def main():
             print(f"[build_variants] FAIL: {verr}", file=sys.stderr)
             return 2
     spv_dir = root / cfg.get("spv_dir", "shaders/spv")
-    occ = occupancy_slots()
+    occ = occupancy_slots(root / BINDING_OCC.relative_to(ROOT))
     if not args.check:
         spv_dir.mkdir(parents=True, exist_ok=True)
 
@@ -340,14 +344,13 @@ def main():
                     spirv_hash = sha256(out.read_bytes())
                     refl = reflect(out, spirv_cross)
 
-                # binding-manifest agreement (UBO/SSBO only; samplers are
-                # location-based default-uniforms here, not binding-base).
+                # Match native buffers by source, role, descriptor set and binding.
                 for blk in refl["ubos"] + refl["ssbos"]:
                     b = blk.get("binding")
                     if b is None:
                         continue
                     ns = "UBO" if blk in refl["ubos"] else "SSBO"
-                    if occ is not None and (ns, b) not in occ:
+                    if occ is not None and (ns, blk.get("set", 0), b, blk["name"], rel) not in occ:
                         fails.append(
                             f"{art}: reflected {ns} '{blk['name']}' binding={b} "
                             f"not present in binding-slot-occupancy.json (drift)")

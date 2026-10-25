@@ -11,7 +11,9 @@
 #pragma once
 
 #include "ImpactDecals.h"
+#include "../3rdparty/fastnoiselite/FastNoiseLite.h"
 
+#include <bit>
 #include <cmath>
 #include <cstdint>
 #include <vector>
@@ -21,16 +23,13 @@ namespace impact::atlas {
 inline constexpr uint32_t kSize = 256;   // per-layer edge; 8 layers x 2 stacks x 256 KB, plus mips
 
 namespace detail {
-inline float h01(int x, int y, uint32_t salt) {
-    return static_cast<float>(hash32(static_cast<uint32_t>(x) * 0x8DA6B343U ^ static_cast<uint32_t>(y) * 0xD8163841U ^ salt) >> 8) *
-           (1.0f / 16777216.0f);
-}
 inline float smooth(float t) { return t * t * (3.0f - 2.0f * t); }
 inline float vnoise(float x, float y, uint32_t salt) {
-    const int xi = static_cast<int>(std::floor(x)), yi = static_cast<int>(std::floor(y));
-    const float fx = smooth(x - static_cast<float>(xi)), fy = smooth(y - static_cast<float>(yi));
-    const float a = h01(xi, yi, salt), b = h01(xi + 1, yi, salt), c = h01(xi, yi + 1, salt), d = h01(xi + 1, yi + 1, salt);
-    return (a + (b - a) * fx) + ((c + (d - c) * fx) - (a + (b - a) * fx)) * fy;
+    // Keep cubic value interpolation, unit lattice and [0,1] masks; only the hash pattern changes.
+    FastNoiseLite noise(std::bit_cast<int32_t>(salt));
+    noise.SetNoiseType(FastNoiseLite::NoiseType_Value);
+    noise.SetFrequency(1.0f);
+    return noise.GetNoise(x, y) * 0.5f + 0.5f;
 }
 inline float fbm(float x, float y, uint32_t salt, int oct = 4) {
     float s = 0.0f, amp = 0.5f, f = 1.0f;

@@ -1,3 +1,9 @@
+> Native checker update (window 62 fixups): `inline_light_floor` pins an empty
+> baseline of hardcoded numeric inline floors in the live Vulkan shader sweep.
+> Adding `mix(0.25, 1.0, shadow)` or `(0.50 + 0.50 * NdotL)` fails the contract.
+> Calls through `sunShadowFloor(...)` are shared helper policy, outside this
+> deliberately narrow numeric-floor pattern. Historical GL rows below are archival.
+
 <!-- doc-status: current | reviewed:2026-10-11 -->
 # Lighting divergence map (ARCH-CONVERGE-S2)
 

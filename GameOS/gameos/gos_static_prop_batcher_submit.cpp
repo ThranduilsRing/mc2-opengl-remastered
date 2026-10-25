@@ -67,7 +67,7 @@ bool GpuStaticPropBatcher::submit(TG_Shape* shape,
     std::memcpy(inst.modelMatrix, &shapeToWorld, 16 * sizeof(float));
     inst.typeID           = typeID;
     inst.firstColorOffset = firstColorOffset;
-    inst.flags            = flags;
+    inst.flags            = flags | (type.isOverride ? (1u << 6) : 0u);
     // Slice 2 (object-offload) — Stage 2.C: per-actor dedup-cache index
     // into the LightsData[32] UBO. Same value for every leaf of one
     // multishape (caller hoisted the gather between the two loops).

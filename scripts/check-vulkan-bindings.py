@@ -1,58 +1,17 @@
 #!/usr/bin/env python3
-"""check-vulkan-bindings.py — VULKAN-BINDINGS-CHECK-1 / PER-PIPELINE-CLASSIFIER-1
+"""Per-pipeline Vulkan GLSL descriptor collision check.
 
-Offline Vulkan-prep report over the GPU binding-slot census
-(`docs/render-backend-seams/binding-slot-occupancy.json`), classified BY PIPELINE.
-
-WHY THIS EXISTS
----------------
-Under GL, a buffer binding-base slot number is only semantic *inside* a pass:
-the same slot is legally rebound to different buffers in unrelated passes
-(intentional multiplexing — see `binding-slot-occupancy.md`). Under Vulkan a
-descriptor-set layout pins a fixed `(set, binding)` per pipeline. The ONLY real
-Vulkan blocker is two DISTINCT resources sharing one `(set, binding)` *inside the
-SAME pipeline's* descriptor-set layout. A slot shared by distinct resources that
-live in DIFFERENT (disjoint) pipelines is per-pipeline-isolatable — benign.
-
-ROOT-CAUSE FIX (slice BINDING-CHECKER-PER-PIPELINE-CLASSIFIER-1)
----------------------------------------------------------------
-The previous version aggregated physical-slot reuse across the WHOLE shader
-corpus, so it flagged benign disjoint-pipeline shares (SurfaceVertexBuf@20 in
-terrain-surface vs LightsData@20 in the lit pipelines) as collisions — a false
-alarm. The fix is better CLASSIFICATION, not renumbering: group each slot's GLSL
-role-declarations by owning pipeline (declared manifest
-`docs/render-backend-seams/pipeline-shader-map.json`) and only ERROR when ONE
-pipeline owns >1 distinct role on a slot.
-
-THREE VERDICTS
---------------
-  ERROR : same pipeline, same (set,)binding, >1 distinct resource
-          -> real Vulkan descriptor collision. FAILS (exit nonzero).
-  WARN  : one binding reused across DISJOINT pipelines, NOT yet classified benign
-          -> visible, non-failing; needs a human to classify (add to allowlist
-          or split). Exit 0.
-  OK    : disjoint-pipeline share WITH an explicit benign classification in the
-          allowlist (`scripts/check-vulkan-bindings.allowlist.json`) -> listed,
-          non-failing.
-
-A role declared in an `.hglsl` include belongs to every pipeline that includes
-that file (an include is NOT itself a pipeline). C++ `glBindBufferBase(literal)`
-sites carry no GLSL logical role and are ignored for resource-distinctness.
-
-Exit code: ERROR present -> nonzero. OK/benign + WARN only -> 0. `--strict`
-additionally fails on any un-allowlisted WARN (future tightening).
-
-Tooling only. No runtime, no engine change, no shader edit.
-
-Usage:
-  py -3 scripts/check-vulkan-bindings.py [--json <occupancy.json>]
-        [--pipeline-map <map.json>] [--allowlist <allowlist.json>]
-        [--strict] [--quiet] [--self-test]
+Scan live shader sources by default; --json explicitly reads a saved census.
+ERROR: distinct resources on the same (set, binding) within one pipeline.
+WARN: unmodeled stage (fails under --strict, as used by check-contracts.sh).
+OK: reuse across independent pipelines. Includes are expanded into each stage.
+Slang descriptors are covered by separate Slang contracts.
 """
 import argparse
 import json
 import os
 import sys
+from importlib import import_module
 
 
 # ---------------------------------------------------------------------------
@@ -119,12 +78,12 @@ def classify_slot(slot, entries, file_to_pipelines):
 
     if colliding:
         verdict = "error"
-    elif len(distinct_roles) <= 1:
-        verdict = "single"
     elif unmodeled_files:
-        # >1 distinct role but at least one declarer has no known pipeline:
+        # At least one declarer has no known pipeline:
         # cannot prove disjoint -> surface as unmodeled (WARN-worthy).
         verdict = "unmodeled"
+    elif len(distinct_roles) <= 1:
+        verdict = "single"
     else:
         verdict = "disjoint"
 
@@ -188,10 +147,10 @@ def classify(occupancy, file_to_pipelines, allowlist):
 
         if v == "single":
             rec["report_verdict"] = "single"
-        elif v == "disjoint" and slot in benign:
+        elif v == "disjoint":
             rec["report_verdict"] = "OK"
-            rec["benign_rationale"] = benign[slot].get("rationale", "")
-            rec["benign_evidence"] = benign[slot].get("evidence", "")
+            rec["benign_rationale"] = benign.get(slot, {}).get("rationale", "distinct pipelines have independent descriptor layouts")
+            rec["benign_evidence"] = benign.get(slot, {}).get("evidence", "pipeline-shader-map.json")
         else:  # disjoint (not allowlisted) or unmodeled
             rec["report_verdict"] = "WARN"
         out[slot] = rec
@@ -247,14 +206,14 @@ def run_self_test():
 def main():
     here = os.path.dirname(os.path.abspath(__file__))
     seams = os.path.join(here, "..", "docs", "render-backend-seams")
-    default_json = os.path.join(seams, "binding-slot-occupancy.json")
     default_map = os.path.join(seams, "pipeline-shader-map.json")
     default_allow = os.path.join(here, "check-vulkan-bindings.allowlist.json")
 
     ap = argparse.ArgumentParser(
         description="Per-pipeline Vulkan shared-binding collision report.")
-    ap.add_argument("--json", default=default_json,
-                    help="path to binding-slot-occupancy.json")
+    ap.add_argument("--root", default=os.path.dirname(here), help="source tree to scan live")
+    ap.add_argument("--json", default=None,
+                    help="optional saved occupancy instead of the live source scan")
     ap.add_argument("--pipeline-map", default=default_map,
                     help="path to pipeline-shader-map.json")
     ap.add_argument("--allowlist", default=default_allow,
@@ -270,15 +229,24 @@ def main():
     if args.self_test:
         return run_self_test()
 
-    for label, path in (("occupancy JSON", args.json),
-                        ("pipeline map", args.pipeline_map),
+    for label, path in (("pipeline map", args.pipeline_map),
                         ("allowlist", args.allowlist)):
         if not os.path.isfile(os.path.normpath(path)):
             print("check-vulkan-bindings: %s not found: %s"
                   % (label, os.path.normpath(path)), file=sys.stderr)
             return 2
 
-    occupancy = load_json(os.path.normpath(args.json)).get("occupancy", {})
+    if args.json:
+        occupancy = load_json(args.json).get("occupancy", {})
+    else:
+        _, blocks = import_module("check-binding-slots").scan_glsl(args.root)
+        occupancy = {}
+        for b in blocks:
+            occupancy.setdefault(f"set{b['set']}:binding{b['binding_token']}", []).append(
+                {"side": "glsl", "file": b["file"], "role": b["type"] + " " + b["block"]})
+    if not occupancy:
+        print("check-vulkan-bindings: FAIL -- empty descriptor census", file=sys.stderr)
+        return 1
     pipeline_map = load_json(os.path.normpath(args.pipeline_map))
     allowlist = load_json(os.path.normpath(args.allowlist))
 
@@ -294,7 +262,7 @@ def main():
         print("=" * 72)
         print("  VULKAN PER-PIPELINE BINDING REPORT  (PER-PIPELINE-CLASSIFIER-1)")
         print("=" * 72)
-        print("  occupancy : %s" % os.path.normpath(args.json))
+        print("  occupancy : %s" % (os.path.normpath(args.json) if args.json else "live Vulkan sources"))
         print("  pipelines : %s" % os.path.normpath(args.pipeline_map))
         print("  allowlist : %s" % os.path.normpath(args.allowlist))
         print("  total slots : %d   ERROR %d / WARN %d / OK-benign %d / single %d"

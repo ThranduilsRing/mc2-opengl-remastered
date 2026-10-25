@@ -554,11 +554,20 @@ long ImportShapeFromMesh(const aiScene* scene, unsigned meshIdx,
                 verts[v].aRGBLight |= (channel(color.r) << 16) | (channel(color.g) << 8) | channel(color.b);
             }
         }
+		// Kit TEXCOORD_1 marks glass cells (zero elsewhere). Reuse the light word
+		// for black/white seeds so stock geometry and the GPU vertex stride stay unchanged.
+		if (instanceWorld && mesh->HasTextureCoords(1)) {
+			const float id = mesh->mTextureCoords[1][v].x;
+			const DWORD seed = verts[v].aRGBLight;
+			if (std::isfinite(id) && id >= 1.0f && id <= 16777215.0f && id == std::floor(id)
+			    && (seed == 0xff000000 || seed == 0xffffffff))
+				verts[v].aRGBLight = (seed == 0xff000000 ? 0x7e000000u : 0x7d000000u)
+				    | static_cast<DWORD>(id);
+		}
 
 	}
 
-	// UV channel 0 is the standard diffuse channel. Mechs with UV1+ are out
-	// of MVP scope; we drop the extra channels (renderer doesn't read them).
+	// UV channel 0 remains the diffuse channel; static glass cell IDs use UV1 above.
 	const bool hasUV = mesh->HasTextureCoords(0);
 
 	for (unsigned f = 0; f < mesh->mNumFaces; f++) {
@@ -1620,7 +1629,7 @@ long ImportGeometryFromFile(const char* path, TG_TypeMultiShape* out, bool autoG
 	const bool staticGlb = bakeNodeTransforms && std::string_view(path).ends_with(".glb") &&
 		std::string_view(path).starts_with("mods/mc2-industrial-kit/data/model_overrides/");
 	const std::string staticParameters = std::to_string(s_gltfAxis()) + ":" + ContentFloatKey(s_gltfYoff()) + ":" +
-		ContentFloatKey(s_gltfYawDeg()) + ":" + std::to_string(authoredColors) + ":static-glb/2";
+		ContentFloatKey(s_gltfYawDeg()) + ":" + std::to_string(authoredColors) + ":static-glb/3-windows";
 	if (staticGlb) {
 		mc2::content::Asset cached;
 		cached.ground = autoGround ? mc2::gate::get<"MC2_GLTF_GROUND">() : 0;
@@ -1759,7 +1768,7 @@ long ImportGeometryFromFile(const char* path, TG_TypeMultiShape* out, bool autoG
     asset.parameters = std::to_string(s_gltfAxis()) + ":" + ContentFloatKey(s_gltfYoff()) + ":" +
         ContentFloatKey(s_gltfYawDeg()) + ":" + std::to_string(authoredColors) + ":" + std::to_string(bakeNodeTransforms) +
         ":" + bake.forcedClip + ":" + std::to_string(bake.forcedFrame) + ":" + ContentFloatKey(bake.scale);
-    if (bakeNodeTransforms) asset.parameters += ":nested-pivots/1";
+    if (bakeNodeTransforms) asset.parameters += ":nested-pivots/1:windows/1";
     std::sort(sources->dependencies.begin(), sources->dependencies.end());
     for (const auto& [dependencyPath, digest] : sources->dependencies)
         asset.parameters += ":" + std::to_string(digest);
