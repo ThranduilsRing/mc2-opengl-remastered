@@ -125,9 +125,11 @@ def test_animated_material_splits_share_pivot_and_parent(tmp_path):
             node.extras["mc2_pivot_tg_wu"] = world[:3, 3].tolist()
     data = gltf_io.write_runtime_glb(scene, asset.materials, {0: "albedo.png"})
     runtime, _ = gltf_io.split_glb(data)
-    coil, split = runtime["nodes"]
+    coil, split = runtime["nodes"][:2]
     assert coil["name"] == "Coil" and split["name"] == "Coil_1"
-    assert coil["children"] == [1] and runtime["scenes"][0]["nodes"] == [0]
+    assert coil["children"] == [1]
+    wrapper = runtime["nodes"][runtime["scenes"][0]["nodes"][0]]
+    assert wrapper["name"] == "MC2Scene" and wrapper["children"] == [0]
     assert coil["translation"] == pytest.approx([0, -27.6, 0])
     assert split["translation"] == [0, 0, 0]
     path = tmp_path / "runtime.glb"
@@ -137,14 +139,16 @@ def test_animated_material_splits_share_pivot_and_parent(tmp_path):
     for (_, expected), (_, actual) in zip(scene.flattened(), back.flattened()):
         assert actual.positions == pytest.approx(expected.positions)
     # A split with another transform would break the shared rotation origin.
-    runtime["nodes"][1]["translation"] = [1, 0, 0]
     _, binary = gltf_io.split_glb(data)
-    body = json.dumps(runtime).encode()
-    body += b" " * (-len(body) % 4)
-    path.write_bytes(struct.pack("<III", gltf_io.GLB_MAGIC, 2, 28 + len(body) + len(binary))
-                     + struct.pack("<II", len(body), gltf_io.CHUNK_JSON) + body
-                     + struct.pack("<II", len(binary), gltf_io.CHUNK_BIN) + binary)
-    assert any("RUNTIME_NODE" in e for e in validate.errors(validate.validate_runtime_glb(path)))
+    for corrupt_node in (1, 2):  # moved material split, then non-identity scene wrapper
+        corrupt = json.loads(json.dumps(runtime))
+        corrupt["nodes"][corrupt_node]["translation"] = [1, 0, 0]
+        body = json.dumps(corrupt).encode()
+        body += b" " * (-len(body) % 4)
+        path.write_bytes(struct.pack("<III", gltf_io.GLB_MAGIC, 2, 28 + len(body) + len(binary))
+                         + struct.pack("<II", len(body), gltf_io.CHUNK_JSON) + body
+                         + struct.pack("<II", len(binary), gltf_io.CHUNK_BIN) + binary)
+        assert any("RUNTIME_NODE" in e for e in validate.errors(validate.validate_runtime_glb(path)))
 
 
 @pytest.mark.parametrize("intermediary", [False, True])
@@ -168,6 +172,8 @@ def test_nested_animated_chain_matches_stock_over_clip(tmp_path, intermediary, p
     scene.nodes.append(ir.Node("Detail", parent=len(scene.nodes)-1, matrix=detail, mesh=0))
     raw = gltf_io.write_runtime_glb(scene, [ir.Material("probe")], {})
     doc, binary = gltf_io.split_glb(raw)
+    root_index = doc["scenes"][0]["nodes"][0]
+    assert doc["nodes"][root_index] == {"name": "MC2Scene", "children": [0]}
     path = tmp_path / "nested.glb"
     path.write_bytes(raw)
     assert not validate.errors(validate.validate_runtime_glb(path))

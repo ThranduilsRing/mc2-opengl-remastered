@@ -26,7 +26,7 @@ import numpy as np
 from . import cache, gltf_io, ir, texcook, validate
 
 PACKAGE_VERSION = "mc2-content-package/1"
-COOKER_VERSION = "mc2-content-cooker/7"  # nested animated nodes retain relative pivots
+COOKER_VERSION = "mc2-content-cooker/8"  # keep animated joint chains below an explicit scene root
 GEOMETRY_CACHE = cache.CacheKind("model-", ".glb")
 SKIN_CACHE = cache.CacheKind("skin-", ".glb")
 DETAIL_EDGE = 512        # every authored detail map in a mission shares this extent (engine array)
