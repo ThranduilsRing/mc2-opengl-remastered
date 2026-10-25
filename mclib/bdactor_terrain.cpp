@@ -31,6 +31,7 @@ static void dumpGameplay(BldgAppearance& a, glm::vec3 pos, std::span<const short
         ~RestoreMap() { live.swap(GameMap->map); }
     } restore{live};
     BldgAppearance probe;
+    probe.bldgShape = nullptr;
     probe.appearType = a.appearType;
     // The probe borrows the type without acquiring a registry reference.
     struct ClearType { BldgAppearance& probe; ~ClearType() { probe.appearType = nullptr; } } clearType{probe};
@@ -45,7 +46,7 @@ static void dumpGameplay(BldgAppearance& a, glm::vec3 pos, std::span<const short
             out << "|state=";
             if (destroyed && !a.appearType->bldgDmgShape) { out << "absent"; continue; }
             probe.status = destroyed ? OBJECT_STATUS_DESTROYED : OBJECT_STATUS_NORMAL;
-            delete probe.bldgShape;
+            if (probe.bldgShape) probe.releaseBldgShape();
             auto* source = destroyed ? (a.appearType->bldgDmgRenderShape ?
                 a.appearType->bldgDmgRenderShape.get() : a.appearType->bldgDmgShape) :
                 a.appearType->getBldgRenderShape(0);
