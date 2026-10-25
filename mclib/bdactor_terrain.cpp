@@ -7,9 +7,9 @@
 #include <sstream>
 #include <span>
 #include "mc2fmt.h"
+#include "building_gameplay_observation.h"
 
-// Debug snapshots include actual coverage plus the original intact/rubble LOS samples.
-// No retained vertices or second mesh: CreateFrom shares the type's existing geometry.
+// Exercise production marking on isolated maps; never modify the live placement or map.
 static void dumpGameplay(BldgAppearance& a, glm::vec3 pos, std::span<const short> cells)
 {
     if (!mc2::gate::get<"MC2_DEBUG_STATE_DUMP">()) return;
@@ -20,35 +20,46 @@ static void dumpGameplay(BldgAppearance& a, glm::vec3 pos, std::span<const short
     for (long i = 0; i < static_cast<long>(cells.size()); i += 2) covered.emplace(cells[i], cells[i + 1]);
     out << "|covered=";
     for (auto [r, c] : covered) out << r << "," << c << ";";
-    for (auto* source : {a.appearType->getBldgCollisionShape(0), a.appearType->bldgDmgShape}) {
-        out << "|state=";
-        if (!source) { out << "absent"; continue; }
-        std::unique_ptr<TG_MultiShape> shape(source->CreateFrom());
-        std::set<std::pair<int, int>> blocking;
-        std::map<std::pair<int, int>, float> los;
-        for (long i = 0; i < shape->GetNumShapes(); ++i) {
-            const auto* id = shape->GetNodeId(i);
-            for (long j = 0; j < shape->GetNumVerticesInShape(i); ++j) {
-                auto v = shape->GetShapeVertexInEditor(i, j, -a.rotation);
-                int r, c;
-                land->worldToCell(pos + v, r, c);
-                if (r < 0 || c < 0 || r >= GameMap->height || c >= GameMap->width) continue;
-                if (S_strnicmp(id, "_PAB", 4) != 0 &&
-                    (a.appearType->isForestClump ? v.z <= 1.0f : v.z >= 1.0f)) blocking.emplace(r, c);
-                if (S_strnicmp(id, "LOS_", 4) != 0 && S_strnicmp(id, "SpotLight_", 10) != 0) {
-                    const float h = std::min(v.z * metersPerWorldUnit * 0.25f, 15.0f);
-                    los[{r, c}] = std::max(los[{r, c}], h);
-                }
-            }
+    const auto prefix = out.str();
+    const auto* art = a.appearType->propMaterialSource;
+    mc2::fmt::print_err("[BLDG_ART] {}|applied={}\n", prefix,
+                        art && a.appearType->bldgRenderShape ? art->appearanceName : "-");
+    std::vector<MapCell> live;
+    live.swap(GameMap->map);
+    struct RestoreMap {
+        std::vector<MapCell>& live;
+        ~RestoreMap() { live.swap(GameMap->map); }
+    } restore{live};
+    BldgAppearance probe;
+    probe.bldgShape = nullptr;
+    probe.appearType = a.appearType;
+    // The probe borrows the type without acquiring a registry reference.
+    struct ClearType { BldgAppearance& probe; ~ClearType() { probe.appearType = nullptr; } } clearType{probe};
+    probe.position = pos;
+    probe.rotation = a.rotation;
+    const int side = Terrain::realVerticesMapSide * MAPCELL_DIM;
+    std::vector<MissionMapCellInfo> terrain(side * side);
+    for (int type : {SPECIAL_NONE, SPECIAL_GATE, SPECIAL_WALL}) {
+        out.str("");
+        out << prefix << "|kind=" << type;
+        for (bool destroyed : {false, true}) {
+            out << "|state=";
+            if (destroyed && !a.appearType->bldgDmgShape) { out << "absent"; continue; }
+            probe.status = destroyed ? OBJECT_STATUS_DESTROYED : OBJECT_STATUS_NORMAL;
+            if (probe.bldgShape) probe.releaseBldgShape();
+            auto* source = destroyed ? (a.appearType->bldgDmgRenderShape ?
+                a.appearType->bldgDmgRenderShape.get() : a.appearType->bldgDmgShape) :
+                a.appearType->getBldgRenderShape(0);
+            probe.bldgShape = source->CreateFrom();
+            std::fill(terrain.begin(), terrain.end(), MissionMapCellInfo{});
+            for (auto& cell : terrain) cell.passable = true;
+            GameMap->map.assign(live.size(), MapCell{});
+            probe.markTerrain(terrain.data(), type, 1);
+            probe.markLOS();
+            writeBuildingGameplayState(out, terrain, GameMap->map, side);
         }
-        for (auto [r, c] : blocking) out << r << "," << c << ";";
-        out << "/los=";
-        for (auto [cell, h] : los) {
-            auto [r, c] = cell;
-            out << r << "," << c << "," << h << ";";
-        }
+        mc2::fmt::print_err("[BLDG_GAMEPLAY] {}\n", out.str());
     }
-    mc2::fmt::print_err("[BLDG_GAMEPLAY] {}\n", out.str());
 }
 
 inline constexpr float HEIGHT_THRESHOLD = 10.0f;
