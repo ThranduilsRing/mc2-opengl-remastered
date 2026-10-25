@@ -41,8 +41,8 @@ vec3 gradeSample(vec3 sampleColor, vec2 uv) {
 
 vec3 gradeColor(vec2 uv) { return gradeSample(texture(sceneTex, uv).rgb, uv); }
 
-// Catmull-Rom reconstruction with the small corner lobes omitted and the
-// remaining five bilinear fetches normalized to preserve constant colour.
+// Separable Catmull-Rom reconstruction: merge the two positive middle weights
+// with bilinear filtering, reducing sixteen source texels to nine fetches.
 vec3 upscaleColor(vec2 uv) {
     vec2 size = vec2(textureSize(sceneTex, 0));
     vec2 p = uv * size - 0.5;
@@ -55,12 +55,15 @@ vec3 upscaleColor(vec2 uv) {
     vec2 a = (base - 0.5) / size;
     vec2 b = (base + 0.5 + w2 / w12) / size;
     vec2 c = (base + 2.5) / size;
-    vec3 color = texture(sceneTex, vec2(b.x,a.y)).rgb * w12.x * w0.y
+    vec3 color = texture(sceneTex, vec2(a.x,a.y)).rgb * w0.x * w0.y
+               + texture(sceneTex, vec2(b.x,a.y)).rgb * w12.x * w0.y
+               + texture(sceneTex, vec2(c.x,a.y)).rgb * w3.x * w0.y
                + texture(sceneTex, vec2(a.x,b.y)).rgb * w0.x * w12.y
                + texture(sceneTex, vec2(b.x,b.y)).rgb * w12.x * w12.y
                + texture(sceneTex, vec2(c.x,b.y)).rgb * w3.x * w12.y
-               + texture(sceneTex, vec2(b.x,c.y)).rgb * w12.x * w3.y;
-    color /= w12.x * (w0.y + w12.y + w3.y) + (w0.x + w3.x) * w12.y;
+               + texture(sceneTex, vec2(a.x,c.y)).rgb * w0.x * w3.y
+               + texture(sceneTex, vec2(b.x,c.y)).rgb * w12.x * w3.y
+               + texture(sceneTex, vec2(c.x,c.y)).rgb * w3.x * w3.y;
     return gradeSample(max(color, vec3(0.0)), uv);
 }
 
