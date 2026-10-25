@@ -257,3 +257,64 @@ def test_stock_gap_fills_from_base_fst_but_never_overrides(tmp_path):
     assert stats["from_fst"] == 1
 
 
+def test_layer_refresh_updates_deletes_and_preserves_unchanged(tmp_path):
+    source, cache = tmp_path / 'source', tmp_path / 'cache'
+    _w(source / 'data/a.fit', 'old')
+    _w(source / 'data/remove.fit')
+    _w(source / 'data/keep.pak')
+    ms.refresh_layer(source, cache)
+    inode = (cache / 'data/keep.pak').stat().st_ino
+    _w(source / 'data/a.fit', 'changed')
+    (source / 'data/remove.fit').unlink()
+    ms.refresh_layer(source, cache)
+    assert (cache / 'data/a.fit').read_text() == 'changed'
+    assert not (cache / 'data/remove.fit').exists()
+    assert (cache / 'data/keep.pak').stat().st_ino == inode
+    (cache / 'data/a.fit').write_text('private')
+    assert (source / 'data/a.fit').read_text() == 'changed'
+
+
+def test_stock_gap_cache_reuses_extraction_and_invalidates_archive(tmp_path, monkeypatch):
+    base, cache = tmp_path / 'base', tmp_path / 'cache'
+    archive = base / 'camera.fst'
+    _write_fst(archive, {'data/cameras/a.fit': b'first'})
+    ms.fill_stock_gap(base, tmp_path / 'one', cache)
+    import fst
+    original = fst.decompress_entry
+    def no_extract(*a):
+        raise AssertionError('unchanged FST decompressed twice')
+    monkeypatch.setattr(fst, 'decompress_entry', no_extract)
+    ms.fill_stock_gap(base, tmp_path / 'two', cache)
+    assert (tmp_path / 'two/data/cameras/a.fit').read_bytes() == b'first'
+    monkeypatch.setattr(fst, 'decompress_entry', original)
+    _write_fst(archive, {'data/cameras/a.fit': b'new payload'})
+    ms.fill_stock_gap(base, tmp_path / 'three', cache)
+    assert (tmp_path / 'three/data/cameras/a.fit').read_bytes() == b'new payload'
+    (tmp_path / 'two/data/cameras/a.fit').write_text('runtime')
+    ms.fill_stock_gap(base, tmp_path / 'four', cache)
+    assert (tmp_path / 'four/data/cameras/a.fit').read_bytes() == b'new payload'
+
+
+def test_health_artifacts_are_scoped_to_worker(tmp_path):
+    _w(tmp_path / 'one/stamp/mc2_01.log', GOOD)
+    _w(tmp_path / 'two/stamp/mc2_01.log', 'instances=0')
+    assert ms.analyze_health(ms.artifact_log_text(0, 'mc2_01', tmp_path / 'one'))['ai_ok']
+    assert not ms.analyze_health(ms.artifact_log_text(0, 'mc2_01', tmp_path / 'two'))['ai_ok']
+
+
+def test_run_mod_preserves_head_default_and_forwards_explicit_reference(tmp_path, monkeypatch):
+    from types import SimpleNamespace
+    seen = []
+    def run(cmd, **kw):
+        seen.append((cmd, kw['env']))
+        return SimpleNamespace(returncode=0, stdout=GOOD, stderr='')
+    monkeypatch.setattr(ms.subprocess, 'run', run)
+    stage = tmp_path / 'mod'
+    stage.mkdir()
+    ms.run_mod(stage, 'mc2_01', 5, 60)
+    ms.run_mod(stage, 'mc2_01', 5, 60, tmp_path / 'reference.exe')
+    assert '--ref-exe' not in seen[0][0]
+    assert seen[1][0][-2:] == ['--ref-exe', str(tmp_path / 'reference.exe')]
+    assert seen[0][1]['MC2_SMOKE_ARTIFACT_ROOT'] == str(tmp_path / 'artifacts/mod')
+
+

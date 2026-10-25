@@ -95,8 +95,9 @@ def test_cached_immutable_overlay_preserves_links_and_private_configs(tmp_path):
 
 
 @pytest.mark.parametrize("crash", [False, True, "engine"])
-def test_battery_reuses_one_stage_and_cleans_even_on_exception(tmp_path, monkeypatch, crash):
+def test_battery_isolates_workers_and_cleans_even_on_exception(tmp_path, monkeypatch, crash):
     import os
+    import threading
     from types import SimpleNamespace
     mods, base, build = tmp_path / "mods", tmp_path / "base", tmp_path / "build64-ninja"
     for root in (base, build):
@@ -120,9 +121,11 @@ def test_battery_reuses_one_stage_and_cleans_even_on_exception(tmp_path, monkeyp
     monkeypatch.setattr(mod_smoke, "build_engine_cache", engine)
     monkeypatch.setattr(mod_smoke, "_load_deploy_payload", lambda: SimpleNamespace(ensure_terrain_materials=lambda *a: None))
     runs = []
+    rendezvous = threading.Barrier(2)
     def run(stage, *a):
         runs.append((stage, (stage / "data/shared.pak").stat().st_ino))
-        if len(runs) == 2:
+        rendezvous.wait(timeout=5)  # both game workers must enter before either finishes
+        if stage.name == 'two':
             assert not (stage / "data/one-only.fit").exists()
             assert not (stage / "data/runtime-leak.fit").exists()
             if crash:
@@ -143,8 +146,10 @@ def test_battery_reuses_one_stage_and_cleans_even_on_exception(tmp_path, monkeyp
     if crash == "engine":
         assert runs == []
     else:
-        assert len(runs) == 2 and runs[0] == runs[1]
-    assert not list((tmp_path / "stages").rglob("*.pak"))
+        assert len(runs) == 2 and runs[0][0] != runs[1][0]
+        assert runs[0][1] == runs[1][1]  # same immutable parent inode
+        assert all(not stage.exists() for stage, _ in runs)
+    assert all('_cache' in p.parts for p in (tmp_path / "stages").rglob("*.pak"))
     assert not list((tmp_path / "stages").rglob("mc2.exe"))
     assert (mods / "parent/data/shared.pak").read_bytes() == b"packed"
 
