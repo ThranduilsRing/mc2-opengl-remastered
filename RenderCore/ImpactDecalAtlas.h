@@ -26,9 +26,13 @@ namespace detail {
 inline float smooth(float t) { return t * t * (3.0f - 2.0f * t); }
 inline float vnoise(float x, float y, uint32_t salt) {
     // Keep cubic value interpolation, unit lattice and [0,1] masks; only the hash pattern changes.
-    FastNoiseLite noise(std::bit_cast<int32_t>(salt));
-    noise.SetNoiseType(FastNoiseLite::NoiseType_Value);
-    noise.SetFrequency(1.0f);
+    static thread_local FastNoiseLite noise = [] {
+        FastNoiseLite n;
+        n.SetNoiseType(FastNoiseLite::NoiseType_Value);
+        n.SetFrequency(1.0f);
+        return n;
+    }();
+    noise.SetSeed(std::bit_cast<int32_t>(salt));
     return noise.GetNoise(x, y) * 0.5f + 0.5f;
 }
 inline float fbm(float x, float y, uint32_t salt, int oct = 4) {

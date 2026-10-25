@@ -12,8 +12,8 @@ Asserts (FAIL):
   1. every pilot (variant, stage) has a .spv + sidecar on disk;
   2. the sidecar source_sha256 matches the CURRENT flattened GLSL source
      (a GLSL edit without a rebuild = stale artifact = drift);
-  3. every reflected UBO/SSBO binding in a sidecar is present in
-     binding-slot-occupancy.json (binding drift);
+  3. every reflected descriptor is present in binding-slot-occupancy.json,
+     and decorated GPU ABI member layouts match their headers;
   4. the sidecar's named .spv exists.
 
 Usage:
@@ -32,7 +32,7 @@ sys.path.insert(0, str(ROOT / "scripts"))
 import shader_common  # noqa: E402
 sys.path.insert(0, str(ROOT / 'tools/shader_offline_build'))
 import slang_compile  # noqa: E402
-from build_variants import occupancy_slots as native_occupancy_slots  # noqa: E402
+from build_variants import occupancy_slots as native_occupancy_slots, descriptors  # noqa: E402
 
 PILOTS = "tools/shader_offline_build/pilots.json"
 BINDING_OCC = "docs/render-backend-seams/binding-slot-occupancy.json"
@@ -100,32 +100,28 @@ def main():
                     fails.append(f"{tag}: .spv artifact missing ({meta.get('artifact')})")
                 # 2: source hash in sync with current GLSL
                 try:
-                    if rel.endswith(".slang"):
-                        cur = slang_compile.source_bundle(root / rel)
-                    else:
-                        cur = slang_compile.source_bundle(root / rel)
+                    cur = slang_compile.source_bundle(root / rel)
                     if meta.get("source_sha256") != sha256(cur):
                         fails.append(f"{tag}: source drift - shader changed since bake "
                                      f"(rebuild with build_variants.py)")
                 except Exception as e:
                     fails.append(f"{tag}: cannot rebuild source: {e}")
                 is_slang = rel.endswith(".slang")
+                bindings = dict(meta.get('bindings', {}), types=meta.get('types', {}))
+                if (bindings.get('ubos') or bindings.get('ssbos')) and not bindings['types']:
+                    fails.append(f'{tag}: gpu_abi: buffer reflection is missing types')
                 if is_slang:
-                    bindings = meta.get('bindings', {})
                     try:
                         errors = slang_compile.validate_reflection(bindings, root / rel, root)
                         fails.extend(f'{tag}: {e}' for e in errors)
                     except (OSError, ValueError) as e:
                         fails.append(f'{tag}: {e}')
-                for blk in ([] if is_slang else meta.get("bindings", {}).get("ubos", [])):
+                else:
+                    fails.extend(f'{tag}: {e}' for e in slang_compile.validate_abi(bindings, root))
+                for ns, blk in ([] if is_slang else descriptors(meta.get("bindings", {}))):
                     b = blk.get("binding")
-                    if b is not None and occ is not None and ("UBO", blk.get("set", 0), b, blk.get("name"), rel) not in occ:
-                        fails.append(f"{tag}: UBO '{blk.get('name')}' binding={b} "
-                                     f"absent from binding-slot-occupancy.json")
-                for blk in ([] if is_slang else meta.get("bindings", {}).get("ssbos", [])):
-                    b = blk.get("binding")
-                    if b is not None and occ is not None and ("SSBO", blk.get("set", 0), b, blk.get("name"), rel) not in occ:
-                        fails.append(f"{tag}: SSBO '{blk.get('name')}' binding={b} "
+                    if b is None or occ is None or (ns, blk.get("set", 0), b, blk.get("name"), rel) not in occ:
+                        fails.append(f"{tag}: {ns} '{blk.get('name')}' binding={b} "
                                      f"absent from binding-slot-occupancy.json")
                 # 5: index coverage — the consumer keys on base|stage|sorted-defines.
                 ikey = f"{base}|{stage}|" + ";".join(sorted(defines))

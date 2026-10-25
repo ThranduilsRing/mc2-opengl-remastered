@@ -260,7 +260,10 @@ void main() {
         h ^= h >> 15; h *= 0x846ca68bu; h ^= h >> 16;
         if (float(h & 0xffffu) < 0.35 * 65536.0) {
             float warmth = float(h >> 16) / 65535.0;
-            rgb += uFrame.nightDarkness * mix(vec3(0.72, 0.36, 0.12), vec3(1.0, 0.70, 0.34), warmth);
+            vec3 emission = uFrame.nightDarkness * propDecodeColor(
+                mix(vec3(0.72, 0.36, 0.12), vec3(1.0, 0.70, 0.34), warmth));
+            // Compose radiance before the scene fog/tonemap passes. Keep coverage in oColor.a.
+            rgb = propAddWindowEmission(rgb, emission);
         }
     }
     oColor = vec4(rgb, cover);

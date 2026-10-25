@@ -51,6 +51,7 @@ def classify_slot(slot, entries, file_to_pipelines):
       cpp_sites        : count of C++ glBindBufferBase literal sites
     """
     pipeline_roles = {}   # pipeline -> set(role)
+    pipeline_entries = {}
     distinct_roles = []
     unmodeled_files = []
     cpp_sites = 0
@@ -72,9 +73,19 @@ def classify_slot(slot, entries, file_to_pipelines):
             continue
         for p in pipes:
             pipeline_roles.setdefault(p, set()).add(role)
+            pipeline_entries.setdefault(p, []).append(e)
 
     # A pipeline owning >1 DISTINCT role on this slot is a real collision.
-    colliding = [(p, sorted(rs)) for p, rs in pipeline_roles.items() if len(rs) > 1]
+    def conflicts(a, b):
+        if a.get('role') == b.get('role'):
+            return False
+        # Branch group IDs are local to one expanded stage.
+        exclusive = (a.get('file') == b.get('file') and
+                     import_module('check-binding-slots').mutually_exclusive(
+                         a.get('branch', {}), b.get('branch', {})))
+        return not exclusive
+    colliding = [(p, sorted(pipeline_roles[p])) for p, es in pipeline_entries.items()
+                 if any(conflicts(a, b) for i, a in enumerate(es) for b in es[i+1:])]
 
     if colliding:
         verdict = "error"
@@ -237,13 +248,25 @@ def main():
             return 2
 
     if args.json:
-        occupancy = load_json(args.json).get("occupancy", {})
+        census = load_json(args.json)
+        if args.strict and 'stages' not in census:
+            print('check-vulkan-bindings: FAIL (--strict): saved census is missing stage inventory', file=sys.stderr)
+            return 1
+        occupancy = census.get("occupancy", {})
+        stages_seen = set(census.get('stages', []))
+        for entries in occupancy.values():
+            for e in entries:
+                if e.get('side') == 'glsl':
+                    e['role'] = e.get('type', '') + ' ' + e['role']
     else:
-        _, blocks = import_module("check-binding-slots").scan_glsl(args.root)
+        scanner = import_module("check-binding-slots")
+        _, blocks = scanner.scan_glsl(args.root)
+        stages_seen = {rel for _, rel in scanner.walk(args.root, [scanner.GLSL_DIR], scanner.GLSL_EXT)}
         occupancy = {}
         for b in blocks:
             occupancy.setdefault(f"set{b['set']}:binding{b['binding_token']}", []).append(
-                {"side": "glsl", "file": b["file"], "role": b["type"] + " " + b["block"]})
+                {"side": "glsl", "file": b["file"], "role": b["type"] + " " + b["block"],
+                 "branch": b["branch"]})
     if not occupancy:
         print("check-vulkan-bindings: FAIL -- empty descriptor census", file=sys.stderr)
         return 1
@@ -251,6 +274,11 @@ def main():
     allowlist = load_json(os.path.normpath(args.allowlist))
 
     file_to_pipelines = build_file_to_pipelines(pipeline_map)
+    unmodeled_stages = sorted(stages_seen - file_to_pipelines.keys())
+    if args.strict and unmodeled_stages:
+        print('check-vulkan-bindings: FAIL (--strict): unmodeled stages: ' +
+              ', '.join(unmodeled_stages), file=sys.stderr)
+        return 1
     results = classify(occupancy, file_to_pipelines, allowlist)
 
     errors = [r for r in results.values() if r["report_verdict"] == "ERROR"]

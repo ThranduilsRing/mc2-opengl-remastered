@@ -11,9 +11,11 @@
   "bindings": {
     "ubos": [
       {
+        "type": "_119",
         "name": "PostCompositeParams",
-        "binding": 2,
-        "set": 0
+        "block_size": 64,
+        "set": 0,
+        "binding": 2
       }
     ],
     "ssbos": [],
@@ -22,15 +24,45 @@
         "name": "sceneTex",
         "type": "sampler2D",
         "location": null,
-        "binding": 0
+        "binding": 0,
+        "set": 0
       },
       {
         "name": "u_objectIdTex",
         "type": "usampler2D",
         "location": null,
-        "binding": 1
+        "binding": 1,
+        "set": 0
       }
-    ]
+    ],
+    "images": []
+  },
+  "types": {
+    "_119": {
+      "name": "PostCompositeParams",
+      "members": [
+        {
+          "name": "p0",
+          "type": "vec4",
+          "offset": 0
+        },
+        {
+          "name": "p1",
+          "type": "vec4",
+          "offset": 16
+        },
+        {
+          "name": "p2",
+          "type": "vec4",
+          "offset": 32
+        },
+        {
+          "name": "p3",
+          "type": "vec4",
+          "offset": 48
+        }
+      ]
+    }
   },
   "interface": {
     "inputs": [

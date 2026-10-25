@@ -20,13 +20,14 @@ GLSL_DIR = "shaders/vulkan"
 GLSL_EXT = (".vert", ".frag", ".comp", ".tesc", ".tese", ".geom")
 
 # GLSL forms ------------------------------------------------------------------
-RE_GLSL_DEFINE = re.compile(r"^\s*#\s*define\s+([A-Za-z_]\w*)\s+(\d+)\b")
 # layout(... binding = N ...) [readonly|writeonly|coherent|restrict|volatile]* (buffer|uniform) Block {
 # value may be a number OR a macro token.
 RE_GLSL_BLOCK = re.compile(
     r"layout\s*\(([^)]*)\)\s*"
-    r"(?:(?:readonly|writeonly|coherent|restrict|volatile|std140|std430)\s+)*"
-    r"(buffer|uniform)\s+([A-Za-z_]\w*)\s*(?:\{|([A-Za-z_]\w*)\s*(?:\[[^]]*\])?\s*;)"
+    r"(?:(?:readonly|writeonly|coherent|restrict|volatile|highp|mediump|lowp)\s+)*"
+    r"(buffer|uniform)\s+"
+    r"(?:(?:readonly|writeonly|coherent|restrict|volatile|highp|mediump|lowp)\s+)*"
+    r"([A-Za-z_]\w*)\s*(?:\{|([A-Za-z_]\w*)\s*(?:\[[^]]*\])?\s*;)"
 )
 RE_BINDING_IN_LAYOUT = re.compile(r"\bbinding\s*=\s*([A-Za-z_]\w*|\d+)")
 RE_SET = re.compile(r"\bset\s*=\s*([A-Za-z_]\w*|\d+)")
@@ -89,22 +90,68 @@ def mutually_exclusive(p1, p2):
     return False
 
 
-def shader_text(path, seen=None):
-    """Expand local includes once per stage, retaining conditional branches.
-
-    These Vulkan shaders use include guards and numeric descriptor-set macros.
-    Default #ifndef macros follow the includer's override; first definition wins.
-    Branch paths still distinguish alternate declarations for collision checks.
-    """
+def shader_lines(path, seen=None):
+    """Expand includes with original file/line provenance."""
     seen = set() if seen is None else seen
     path = Path(path).resolve()
     if path in seen:
-        return ""
+        return []
     seen.add(path)
-    text = strip_comments(read(path))
-    return re.sub(r'^\s*#\s*include\s+"([^"\n]+)"[^\n]*',
-                  lambda m: shader_text(path.parent / m.group(1), seen), text,
-                  flags=re.M)
+    out = []
+    for number, line in enumerate(strip_comments(read(path)).splitlines(), 1):
+        inc = re.match(r'^\s*#\s*include\s+"([^"\n]+)"', line)
+        if inc:
+            out.extend(shader_lines(path.parent / inc[1], seen))
+        else:
+            out.append((line, path, number))
+    seen.remove(path)
+    return out
+
+
+def macro_states(lines):
+    """Resolve macros in order; fork unknown conditionals and merge only agreed values."""
+    defs, stack, states, active = {}, [], {}, True
+    for i, (line, _, _) in enumerate(lines, 1):
+        pp = re.match(r'^\s*#\s*(\w+)\s*(.*)', line)
+        if pp:
+            op, arg = pp.groups()
+            if op in ('if', 'ifdef', 'ifndef'):
+                # Unknown feature conditions retain both branches for the census.
+                known = (arg not in defs if op == 'ifndef' else True if op == 'ifdef' and arg in defs
+                         else bool(int(arg)) if op == 'if' and arg in ('0', '1') else None)
+                stack.append([dict(defs), [], active, known, False])
+                active = active and known is not False
+            elif op in ('else', 'elif') and stack:
+                base, ends, parent, known, _ = stack[-1]
+                if active:
+                    ends.append(dict(defs))
+                defs = dict(base)
+                stack[-1][4] = True
+                active = parent and (known is not True)
+            elif op == 'endif' and stack:
+                base, ends, parent, known, has_else = stack.pop()
+                if active:
+                    ends.append(dict(defs))
+                if not has_else and known is not True:
+                    ends.append(base)
+                defs = {k: v for k, v in ends[0].items() if all(e.get(k) == v for e in ends)} if ends else base
+                active = parent
+            elif op == 'define' and active:
+                parts = arg.split(None, 1)
+                name, value = parts[0], parts[1].strip() if len(parts) > 1 else ''
+                defs[name] = value
+            elif op == 'undef' and active:
+                defs.pop(arg.strip(), None)
+        states[i] = dict(defs) if active else None
+    return states
+
+
+def macro_value(token, defs):
+    seen = set()
+    while token in defs and token not in seen:
+        seen.add(token)
+        token = defs[token]
+    return int(token) if token.isdigit() else None
 
 
 def scan_glsl(root):
@@ -113,13 +160,9 @@ def scan_glsl(root):
     for p, rel in walk(root, [GLSL_DIR], GLSL_EXT):
         if not rel.endswith((".vert", ".frag", ".comp", ".tesc", ".tese", ".geom")):
             continue
-        text = shader_text(p)
-        local_defs = {}
-        for i, line in enumerate(text.splitlines(), 1):
-            m = RE_GLSL_DEFINE.match(line)
-            if m:
-                local_defs.setdefault(m.group(1), [(int(m.group(2)), rel, i)])
-                defines.setdefault(m.group(1), local_defs[m.group(1)])
+        lines = shader_lines(p)
+        text = '\n'.join(line for line, _, _ in lines)
+        states = macro_states(lines)
         branch_paths = compute_branch_paths(text)
         for m in RE_GLSL_BLOCK.finditer(text):
             layout, kind, block, resource = m.groups()
@@ -127,13 +170,18 @@ def scan_glsl(root):
             if not bm:
                 continue  # push constants, not descriptors
             sm = RE_SET.search(layout)
-            slot, _ = resolve_token(bm.group(1), local_defs, {})
-            descriptor_set, _ = resolve_token(sm.group(1) if sm else "0", local_defs, {})
+            line = text.count("\n", 0, m.start()) + 1
+            local_defs = states[line]
+            if local_defs is None:
+                continue
+            slot = macro_value(bm.group(1), local_defs)
+            descriptor_set = macro_value(sm.group(1) if sm else "0", local_defs)
             if slot is None or descriptor_set is None:
                 raise ValueError(f"unresolved Vulkan set/binding in {rel}: {layout}")
-            line = text.count("\n", 0, m.start()) + 1
+            _, source, source_line = lines[line - 1]
             std = RE_STD.search(layout)
-            blocks.append({"file": rel, "line": line, "kind": kind,
+            blocks.append({"file": rel, "line": source_line,
+                           "source": os.path.relpath(source, root).replace('\\', '/'), "kind": kind,
                            "block": resource or block, "type": block if resource else kind,
                            "binding_token": str(slot), "set": descriptor_set,
                            "std": ("std" + std.group(1)) if std else None,
@@ -229,7 +277,8 @@ def main():
         v, _ = resolve_token(b["binding_token"], glsl_defs, {})
         occ.setdefault(f"set{b['set']}:binding{v}", []).append(
             {"side": "glsl", "file": b["file"], "line": b["line"],
-             "role": b["block"], "std": b["std"], "type": b["type"]}
+             "role": b["block"], "std": b["std"], "type": b["type"],
+             "source": b["source"], "branch": b["branch"]}
         )
     report = {
         "summary": {
@@ -241,6 +290,7 @@ def main():
         "fails": fails,
         "warns": warns,
         "occupancy": {k: occ[k] for k in sorted(occ)},
+        "stages": sorted(rel for _, rel in walk(root, [GLSL_DIR], GLSL_EXT)),
     }
 
     if args.json:

@@ -11,41 +11,59 @@
   "bindings": {
     "ubos": [
       {
+        "type": "_770",
         "name": "TerrainFrameUBO",
-        "binding": 0,
-        "set": 1
+        "block_size": 864,
+        "set": 1,
+        "binding": 0
       },
       {
+        "type": "_1112",
         "name": "MechFrameUBO",
-        "binding": 0,
-        "set": 0
+        "block_size": 224,
+        "set": 0,
+        "binding": 0
       },
       {
+        "type": "_1389",
         "name": "MoverShadowFrame",
-        "binding": 25,
-        "set": 0
+        "block_size": 8336,
+        "set": 0,
+        "binding": 25
       }
     ],
     "ssbos": [
       {
+        "type": "_624",
         "name": "TerrainLightPoolVK",
-        "binding": 11,
-        "set": 1
+        "readonly": true,
+        "block_size": 0,
+        "set": 1,
+        "binding": 11
       },
       {
+        "type": "_826",
         "name": "TerrainLightGridHeaderVK",
-        "binding": 12,
-        "set": 1
+        "readonly": true,
+        "block_size": 0,
+        "set": 1,
+        "binding": 12
       },
       {
+        "type": "_865",
         "name": "TerrainLightGridIndicesVK",
-        "binding": 13,
-        "set": 1
+        "readonly": true,
+        "block_size": 0,
+        "set": 1,
+        "binding": 13
       },
       {
+        "type": "_1395",
         "name": "TerrainCementBuf",
-        "binding": 4,
-        "set": 1
+        "readonly": true,
+        "block_size": 0,
+        "set": 1,
+        "binding": 4
       }
     ],
     "samplers": [
@@ -53,45 +71,940 @@
         "name": "u_localShadowAtlas",
         "type": "sampler2D",
         "location": null,
-        "binding": 19
+        "binding": 19,
+        "set": 1
       },
       {
         "name": "uMechAo",
         "type": "sampler2D",
         "location": null,
-        "binding": 6
+        "binding": 6,
+        "set": 0
       },
       {
         "name": "uMechNrm",
         "type": "sampler2D",
         "location": null,
-        "binding": 7
+        "binding": 7,
+        "set": 0
       },
       {
         "name": "uAlbedo",
         "type": "sampler2D",
         "location": null,
-        "binding": 3
+        "binding": 3,
+        "set": 0
       },
       {
         "name": "moverShadowMap",
         "type": "sampler2D",
         "location": null,
-        "binding": 24
+        "binding": 24,
+        "set": 0
       },
       {
         "name": "u_colormap",
         "type": "sampler2D",
         "location": null,
-        "binding": 2
+        "binding": 2,
+        "set": 1
       },
       {
         "name": "u_cementAtlas",
         "type": "sampler2D",
         "location": null,
-        "binding": 3
+        "binding": 3,
+        "set": 1
       }
-    ]
+    ],
+    "images": []
+  },
+  "types": {
+    "_120": {
+      "name": "SurfaceMaterial",
+      "members": [
+        {
+          "name": "baseColor",
+          "type": "vec3"
+        },
+        {
+          "name": "normal",
+          "type": "vec3"
+        },
+        {
+          "name": "roughness",
+          "type": "float"
+        },
+        {
+          "name": "metallic",
+          "type": "float"
+        },
+        {
+          "name": "ao",
+          "type": "float"
+        },
+        {
+          "name": "emission",
+          "type": "vec3"
+        },
+        {
+          "name": "alphaMode",
+          "type": "uint"
+        },
+        {
+          "name": "materialClass",
+          "type": "uint"
+        }
+      ]
+    },
+    "_622": {
+      "name": "PoolLight",
+      "members": [
+        {
+          "name": "position",
+          "type": "vec3",
+          "offset": 0
+        },
+        {
+          "name": "lightType",
+          "type": "uint",
+          "offset": 12
+        },
+        {
+          "name": "color",
+          "type": "vec3",
+          "offset": 16
+        },
+        {
+          "name": "closeDistance",
+          "type": "float",
+          "offset": 28
+        },
+        {
+          "name": "farDistance",
+          "type": "float",
+          "offset": 32
+        },
+        {
+          "name": "oneOverDistance",
+          "type": "float",
+          "offset": 36
+        },
+        {
+          "name": "_plPad1",
+          "type": "float",
+          "offset": 40
+        },
+        {
+          "name": "intensity",
+          "type": "float",
+          "offset": 44
+        }
+      ]
+    },
+    "_624": {
+      "name": "TerrainLightPoolVK",
+      "members": [
+        {
+          "name": "poolLights",
+          "type": "_622",
+          "array": [
+            0
+          ],
+          "array_size_is_literal": [
+            true
+          ],
+          "offset": 0,
+          "array_stride": 48
+        }
+      ]
+    },
+    "_770": {
+      "name": "TerrainFrameUBO",
+      "members": [
+        {
+          "name": "worldToClipGL",
+          "type": "mat4",
+          "offset": 0,
+          "matrix_stride": 16
+        },
+        {
+          "name": "mapSide",
+          "type": "int",
+          "offset": 64
+        },
+        {
+          "name": "halfMap",
+          "type": "float",
+          "offset": 68
+        },
+        {
+          "name": "blockOriginX",
+          "type": "int",
+          "offset": 72
+        },
+        {
+          "name": "blockOriginY",
+          "type": "int",
+          "offset": 76
+        },
+        {
+          "name": "atlasTopLeftX",
+          "type": "float",
+          "offset": 80
+        },
+        {
+          "name": "atlasTopLeftY",
+          "type": "float",
+          "offset": 84
+        },
+        {
+          "name": "atlasOneOverWorldUnits",
+          "type": "float",
+          "offset": 88
+        },
+        {
+          "name": "colormapReady",
+          "type": "int",
+          "offset": 92
+        },
+        {
+          "name": "useCement",
+          "type": "int",
+          "offset": 96
+        },
+        {
+          "name": "cementGridSide",
+          "type": "int",
+          "offset": 100
+        },
+        {
+          "name": "cementWUPT",
+          "type": "float",
+          "offset": 104
+        },
+        {
+          "name": "useTransitionMask",
+          "type": "int",
+          "offset": 108
+        },
+        {
+          "name": "cementDiagConnect",
+          "type": "int",
+          "offset": 112
+        },
+        {
+          "name": "_lightPad0",
+          "type": "int",
+          "offset": 116
+        },
+        {
+          "name": "_lightPad1",
+          "type": "int",
+          "offset": 120
+        },
+        {
+          "name": "_lightPad2",
+          "type": "int",
+          "offset": 124
+        },
+        {
+          "name": "terrainLightDir",
+          "type": "vec4",
+          "offset": 128
+        },
+        {
+          "name": "staticLightSpaceMatrix",
+          "type": "mat4",
+          "offset": 144,
+          "matrix_stride": 16
+        },
+        {
+          "name": "lightingEnabled",
+          "type": "int",
+          "offset": 208
+        },
+        {
+          "name": "enableShadows",
+          "type": "int",
+          "offset": 212
+        },
+        {
+          "name": "shadowSoftness",
+          "type": "float",
+          "offset": 216
+        },
+        {
+          "name": "sceneLightScale",
+          "type": "float",
+          "offset": 220
+        },
+        {
+          "name": "detailEnabled",
+          "type": "int",
+          "offset": 224
+        },
+        {
+          "name": "detailReady",
+          "type": "int",
+          "offset": 228
+        },
+        {
+          "name": "nfhStrength",
+          "type": "float",
+          "offset": 232
+        },
+        {
+          "name": "detailTiling",
+          "type": "float",
+          "offset": 236
+        },
+        {
+          "name": "detailStrength",
+          "type": "float",
+          "offset": 240
+        },
+        {
+          "name": "enableDynShadows",
+          "type": "int",
+          "offset": 244
+        },
+        {
+          "name": "_dynPad0",
+          "type": "int",
+          "offset": 248
+        },
+        {
+          "name": "_dynPad1",
+          "type": "int",
+          "offset": 252
+        },
+        {
+          "name": "dynamicLightSpaceMatrix",
+          "type": "mat4",
+          "offset": 256,
+          "matrix_stride": 16
+        },
+        {
+          "name": "cameraPosMC2",
+          "type": "vec4",
+          "offset": 320
+        },
+        {
+          "name": "lodFadeEnabled",
+          "type": "int",
+          "offset": 336
+        },
+        {
+          "name": "skirtDepth",
+          "type": "float",
+          "offset": 340
+        },
+        {
+          "name": "_csmPad0",
+          "type": "int",
+          "offset": 344
+        },
+        {
+          "name": "_csmPad1",
+          "type": "int",
+          "offset": 348
+        },
+        {
+          "name": "csmEnabled",
+          "type": "int",
+          "offset": 352
+        },
+        {
+          "name": "csmCount",
+          "type": "int",
+          "offset": 356
+        },
+        {
+          "name": "csmDepthSpan",
+          "type": "float",
+          "offset": 360
+        },
+        {
+          "name": "csmDebugMode",
+          "type": "int",
+          "offset": 364
+        },
+        {
+          "name": "csmCascadeMatrices",
+          "type": "mat4",
+          "array": [
+            3
+          ],
+          "array_size_is_literal": [
+            true
+          ],
+          "offset": 368,
+          "array_stride": 64,
+          "matrix_stride": 16
+        },
+        {
+          "name": "csmCascadeTexelWorld",
+          "type": "vec4",
+          "offset": 560
+        },
+        {
+          "name": "csmFullMapTexelWorld",
+          "type": "float",
+          "offset": 576
+        },
+        {
+          "name": "visualSide",
+          "type": "int",
+          "offset": 580
+        },
+        {
+          "name": "visualDisplaceFar",
+          "type": "float",
+          "offset": 584
+        },
+        {
+          "name": "visualMode",
+          "type": "int",
+          "offset": 588
+        },
+        {
+          "name": "edgeStitch",
+          "type": "int",
+          "offset": 592
+        },
+        {
+          "name": "quadCountX",
+          "type": "int",
+          "offset": 596
+        },
+        {
+          "name": "quadCountY",
+          "type": "int",
+          "offset": 600
+        },
+        {
+          "name": "ambientFloor",
+          "type": "float",
+          "offset": 604
+        },
+        {
+          "name": "ambientDayGate",
+          "type": "float",
+          "offset": 608
+        },
+        {
+          "name": "missionFlatR",
+          "type": "float",
+          "offset": 612
+        },
+        {
+          "name": "missionFlatG",
+          "type": "float",
+          "offset": 616
+        },
+        {
+          "name": "missionFlatB",
+          "type": "float",
+          "offset": 620
+        },
+        {
+          "name": "numPoolLights",
+          "type": "int",
+          "offset": 624
+        },
+        {
+          "name": "lightGridDim",
+          "type": "int",
+          "offset": 628
+        },
+        {
+          "name": "lightGridMinX",
+          "type": "float",
+          "offset": 632
+        },
+        {
+          "name": "lightGridMinY",
+          "type": "float",
+          "offset": 636
+        },
+        {
+          "name": "lightGridInvCellX",
+          "type": "float",
+          "offset": 640
+        },
+        {
+          "name": "lightGridInvCellY",
+          "type": "float",
+          "offset": 644
+        },
+        {
+          "name": "lightPoolSoft",
+          "type": "int",
+          "offset": 648
+        },
+        {
+          "name": "lightPoolMoverDim",
+          "type": "float",
+          "offset": 652
+        },
+        {
+          "name": "lightPoolMoverScale",
+          "type": "float",
+          "offset": 656
+        },
+        {
+          "name": "lightPoolMoverMax",
+          "type": "int",
+          "offset": 660
+        },
+        {
+          "name": "lightPoolCompress",
+          "type": "int",
+          "offset": 664
+        },
+        {
+          "name": "moverContactShadow",
+          "type": "float",
+          "offset": 668
+        },
+        {
+          "name": "padGlowR",
+          "type": "float",
+          "offset": 672
+        },
+        {
+          "name": "padGlowG",
+          "type": "float",
+          "offset": 676
+        },
+        {
+          "name": "padGlowB",
+          "type": "float",
+          "offset": 680
+        },
+        {
+          "name": "padGlowSpill",
+          "type": "float",
+          "offset": 684
+        },
+        {
+          "name": "shadowDistFadeWu",
+          "type": "float",
+          "offset": 688
+        },
+        {
+          "name": "shadowDistFadeMax",
+          "type": "float",
+          "offset": 692
+        },
+        {
+          "name": "shadowMinSunSin",
+          "type": "float",
+          "offset": 696
+        },
+        {
+          "name": "shadowKnobFlags",
+          "type": "int",
+          "offset": 700
+        },
+        {
+          "name": "tintRockR",
+          "type": "float",
+          "offset": 704
+        },
+        {
+          "name": "tintRockG",
+          "type": "float",
+          "offset": 708
+        },
+        {
+          "name": "tintRockB",
+          "type": "float",
+          "offset": 712
+        },
+        {
+          "name": "tintGrassR",
+          "type": "float",
+          "offset": 716
+        },
+        {
+          "name": "tintGrassG",
+          "type": "float",
+          "offset": 720
+        },
+        {
+          "name": "tintGrassB",
+          "type": "float",
+          "offset": 724
+        },
+        {
+          "name": "tintDirtR",
+          "type": "float",
+          "offset": 728
+        },
+        {
+          "name": "tintDirtG",
+          "type": "float",
+          "offset": 732
+        },
+        {
+          "name": "tintDirtB",
+          "type": "float",
+          "offset": 736
+        },
+        {
+          "name": "tintConcreteR",
+          "type": "float",
+          "offset": 740
+        },
+        {
+          "name": "tintConcreteG",
+          "type": "float",
+          "offset": 744
+        },
+        {
+          "name": "tintConcreteB",
+          "type": "float",
+          "offset": 748
+        },
+        {
+          "name": "tintSnowR",
+          "type": "float",
+          "offset": 752
+        },
+        {
+          "name": "tintSnowG",
+          "type": "float",
+          "offset": 756
+        },
+        {
+          "name": "tintSnowB",
+          "type": "float",
+          "offset": 760
+        },
+        {
+          "name": "tintStrengthScale",
+          "type": "float",
+          "offset": 764
+        },
+        {
+          "name": "snowBrightnessDampen",
+          "type": "float",
+          "offset": 768
+        },
+        {
+          "name": "edgeFeatherStrength",
+          "type": "float",
+          "offset": 772
+        },
+        {
+          "name": "cementAtlasSeamFix",
+          "type": "int",
+          "offset": 776
+        },
+        {
+          "name": "shorelineOn",
+          "type": "int",
+          "offset": 780
+        },
+        {
+          "name": "shorelineHasMask",
+          "type": "int",
+          "offset": 784
+        },
+        {
+          "name": "shorelineWaterElev",
+          "type": "float",
+          "offset": 788
+        },
+        {
+          "name": "shorelineTime",
+          "type": "float",
+          "offset": 792
+        },
+        {
+          "name": "shorelineStrength",
+          "type": "float",
+          "offset": 796
+        },
+        {
+          "name": "shorelineFoamStrength",
+          "type": "float",
+          "offset": 800
+        },
+        {
+          "name": "shorelineWetRun",
+          "type": "float",
+          "offset": 804
+        },
+        {
+          "name": "shorelineFoamRun",
+          "type": "float",
+          "offset": 808
+        },
+        {
+          "name": "shorelineEdgeJitter",
+          "type": "float",
+          "offset": 812
+        },
+        {
+          "name": "shorelineBoundsX",
+          "type": "float",
+          "offset": 816
+        },
+        {
+          "name": "shorelineBoundsY",
+          "type": "float",
+          "offset": 820
+        },
+        {
+          "name": "shorelineBoundsW",
+          "type": "float",
+          "offset": 824
+        },
+        {
+          "name": "shorelineBoundsH",
+          "type": "float",
+          "offset": 828
+        },
+        {
+          "name": "shoreFieldOn",
+          "type": "int",
+          "offset": 832
+        },
+        {
+          "name": "shoreFieldIsSdf",
+          "type": "int",
+          "offset": 836
+        },
+        {
+          "name": "shoreFieldBoundsX",
+          "type": "float",
+          "offset": 840
+        },
+        {
+          "name": "shoreFieldBoundsY",
+          "type": "float",
+          "offset": 844
+        },
+        {
+          "name": "shoreFieldBoundsW",
+          "type": "float",
+          "offset": 848
+        },
+        {
+          "name": "shoreFieldBoundsH",
+          "type": "float",
+          "offset": 852
+        },
+        {
+          "name": "concreteDetail",
+          "type": "int",
+          "offset": 856
+        },
+        {
+          "name": "concreteDetailStrength",
+          "type": "float",
+          "offset": 860
+        }
+      ]
+    },
+    "_826": {
+      "name": "TerrainLightGridHeaderVK",
+      "members": [
+        {
+          "name": "lightGridCells",
+          "type": "uvec2",
+          "array": [
+            0
+          ],
+          "array_size_is_literal": [
+            true
+          ],
+          "offset": 0,
+          "array_stride": 8
+        }
+      ]
+    },
+    "_865": {
+      "name": "TerrainLightGridIndicesVK",
+      "members": [
+        {
+          "name": "lightGridIndices",
+          "type": "uint",
+          "array": [
+            0
+          ],
+          "array_size_is_literal": [
+            true
+          ],
+          "offset": 0,
+          "array_stride": 4
+        }
+      ]
+    },
+    "_1112": {
+      "name": "MechFrameUBO",
+      "members": [
+        {
+          "name": "worldToClipGL",
+          "type": "mat4",
+          "offset": 0,
+          "matrix_stride": 16
+        },
+        {
+          "name": "objectDepthBias",
+          "type": "float",
+          "offset": 64
+        },
+        {
+          "name": "materialReady",
+          "type": "int",
+          "offset": 68
+        },
+        {
+          "name": "lightingReady",
+          "type": "int",
+          "offset": 72
+        },
+        {
+          "name": "sunAxisMc2Fix",
+          "type": "int",
+          "offset": 76
+        },
+        {
+          "name": "fogColorRGB",
+          "type": "vec4",
+          "offset": 80
+        },
+        {
+          "name": "cameraWorldPos",
+          "type": "vec4",
+          "offset": 96
+        },
+        {
+          "name": "shadeA",
+          "type": "vec4",
+          "offset": 112
+        },
+        {
+          "name": "shadeB",
+          "type": "vec4",
+          "offset": 128
+        },
+        {
+          "name": "shadeC",
+          "type": "vec4",
+          "offset": 144
+        },
+        {
+          "name": "poolF",
+          "type": "vec4",
+          "offset": 160
+        },
+        {
+          "name": "poolI",
+          "type": "ivec4",
+          "offset": 176
+        },
+        {
+          "name": "miscI",
+          "type": "ivec4",
+          "offset": 192
+        },
+        {
+          "name": "environmentAmbient",
+          "type": "vec4",
+          "offset": 208
+        }
+      ]
+    },
+    "_1170": {
+      "name": "MechRunPC",
+      "members": [
+        {
+          "name": "materialFlags",
+          "type": "uint",
+          "offset": 0
+        },
+        {
+          "name": "poolFirst",
+          "type": "uint",
+          "offset": 4
+        },
+        {
+          "name": "poolCount",
+          "type": "uint",
+          "offset": 8
+        }
+      ]
+    },
+    "_1389": {
+      "name": "MoverShadowFrame",
+      "members": [
+        {
+          "name": "matrix",
+          "type": "mat4",
+          "offset": 0,
+          "matrix_stride": 16
+        },
+        {
+          "name": "params",
+          "type": "vec4",
+          "offset": 64
+        },
+        {
+          "name": "sun",
+          "type": "vec4",
+          "offset": 80
+        },
+        {
+          "name": "mask",
+          "type": "vec4",
+          "offset": 96
+        },
+        {
+          "name": "flags",
+          "type": "ivec4",
+          "offset": 112
+        },
+        {
+          "name": "light",
+          "type": "vec4",
+          "offset": 128
+        },
+        {
+          "name": "coverage",
+          "type": "uvec4",
+          "array": [
+            512
+          ],
+          "array_size_is_literal": [
+            true
+          ],
+          "offset": 144,
+          "array_stride": 16
+        }
+      ]
+    },
+    "_1395": {
+      "name": "TerrainCementBuf",
+      "members": [
+        {
+          "name": "cementWordsF",
+          "type": "uint",
+          "array": [
+            0
+          ],
+          "array_size_is_literal": [
+            true
+          ],
+          "offset": 0,
+          "array_stride": 4
+        }
+      ]
+    }
   },
   "interface": {
     "inputs": [

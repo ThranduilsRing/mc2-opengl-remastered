@@ -104,3 +104,52 @@ def test_including_stage_set_override_is_preserved(source):
     _, blocks = checker.scan_glsl(source)
     assert {b['set'] for b in blocks if b['block'] == 'TerrainFrameUBO' and
             b['file'] == 'shaders/vulkan/vfx_vegetation.frag'} == {3}
+
+
+def test_qualified_images_ordered_macros_branches_and_saved_parity(source, monkeypatch, tmp_path):
+    scanner = importlib.import_module('check-binding-slots')
+    path = source / 'shaders/vulkan/terrain_tier1.vert'
+    with path.open('a', encoding='utf-8') as out:
+        out.write('''
+#define TEST_SLOT 80
+#if FEATURE
+layout(set=0, binding=TEST_SLOT, rgba8) uniform writeonly highp image2D first;
+#undef TEST_SLOT
+#define TEST_SLOT 81
+#else
+layout(set=0, binding=TEST_SLOT, rgba8) readonly uniform highp image2D alternate;
+#endif
+#undef TEST_SLOT
+#define TEST_SLOT 82
+layout(set=0, binding=TEST_SLOT) uniform sampler2D last;
+''')
+    _, blocks = scanner.scan_glsl(source)
+    selected = {b['block']: b for b in blocks if b['block'] in ('first', 'alternate', 'last')}
+    assert {k: b['binding_token'] for k, b in selected.items()} == {
+        'first': '80', 'alternate': '80', 'last': '82'}
+    assert selected['last']['line'] <= len(path.read_text().splitlines())
+    census = tmp_path / 'census.json'
+    def saved():
+        monkeypatch.setattr(sys, 'argv', ['check-binding-slots', '--root', str(source),
+                                        '--json', str(census), '--quiet'])
+        a = scanner.main()
+        checker = importlib.import_module('check-vulkan-bindings')
+        monkeypatch.setattr(sys, 'argv', ['check-vulkan-bindings', '--json', str(census), '--strict', '--quiet'])
+        return a, checker.main()
+    assert run('vulkan-bindings', source, monkeypatch) == 0
+    assert saved() == (0, 0)
+    change(source, 'shaders/vulkan/terrain_tier1.vert', '#define TEST_SLOT 80', '#define TEST_SLOT 0')
+    assert run('vulkan-bindings', source, monkeypatch) == 1
+    assert saved() == (1, 1)
+
+
+def test_strict_rejects_descriptor_free_stage_in_live_and_saved_census(source, monkeypatch, tmp_path):
+    (source / 'shaders/vulkan/unmodeled.vert').write_text(
+        '#version 450\nvoid main() { gl_Position = vec4(0); }\n', encoding='utf-8')
+    assert run('vulkan-bindings', source, monkeypatch) == 1
+    census = tmp_path / 'census.json'
+    monkeypatch.setattr(sys, 'argv', ['check-binding-slots', '--root', str(source),
+                                    '--json', str(census), '--quiet'])
+    assert importlib.import_module('check-binding-slots').main() == 0
+    monkeypatch.setattr(sys, 'argv', ['check-vulkan-bindings', '--json', str(census), '--strict', '--quiet'])
+    assert importlib.import_module('check-vulkan-bindings').main() == 1
