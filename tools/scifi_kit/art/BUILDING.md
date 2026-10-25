@@ -57,3 +57,13 @@ an older bake. No review renders, sheets, game launch, or C++ build is involved.
    generation checks silhouettes and preserves animated stock nodes. Preserve
    `anim_nodes` pivot metadata for gates and rotating spotlights. Fit factors
    in `assets/fit_scales.json` are build inputs; keep them with the source.
+
+Rebuild probe (Blender reference version, six threads): smallfueltank 19.61 s,
+s_mediumgate 52.81 s, spotlight 21.97 s. LOD0 geometry/nodes/pivots match the
+reference bakes exactly. The gate's older shipped LOD1 uses the pre-`d80c82733`
+selection rule; current output is repeatable but selects different triangles.
+Texture differences were left alone: tank/spotlight differ by at most 1/255;
+gate per-map mean absolute differences range from 0.000263 to 1.131425/255.
+These are baked-image differences, not geometry drift; do not expect byte-identical
+textures across bake runs/tool revisions. The approved tank currently fails its
+source footprint/access checks; approval and current automated checks differ.
