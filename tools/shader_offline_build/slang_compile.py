@@ -122,12 +122,10 @@ def resource_bindings(text):
 
 
 def validate_reflection(raw, src, root=ROOT):
-    """Reject implicit/duplicate descriptors, unknown buffer slots and ABI drift."""
+    """Reject implicit/duplicate descriptors, buffer type mismatches and ABI drift."""
     declarations = [r for t in dependencies(src).values() for r in resource_bindings(t)]
     errors = [f"{r['name']}: explicit vk::binding required" for r in declarations
               if r['binding'] is None]
-    occ_path = Path(root) / 'docs/render-backend-seams/binding-slot-occupancy.json'
-    occ = json.loads(occ_path.read_text(encoding='utf-8'))['occupancy'] if occ_path.exists() else None
     seen = set()
     for group in ('ubos', 'ssbos', 'textures', 'separate_images', 'separate_samplers', 'images', 'samplers'):
         for r in raw.get(group, []):
@@ -137,10 +135,11 @@ def validate_reflection(raw, src, root=ROOT):
             if slot not in {(d['set'], d['binding']) for d in declarations}:
                 errors.append(f"{r.get('name')}: descriptor {slot} has no explicit source binding")
             seen.add(slot)
-            if group in ('ubos', 'ssbos') and slot[0] == 0 and occ is not None:
-                key = f"{'UBO' if group == 'ubos' else 'SSBO'}:{slot[1]}"
-                if key not in occ:
-                    errors.append(f'{key}: absent from binding-slot-occupancy.json')
+            if group in ('ubos', 'ssbos'):
+                ns = 'ubo' if group == 'ubos' else 'ssbo'
+                if (slot[0], slot[1], ns) not in {
+                        (d['set'], d['binding'], d['namespace']) for d in declarations}:
+                    errors.append(f'{r.get("name")}: descriptor {slot} source buffer type mismatch')
     sys.path.insert(0, str(ROOT / 'tools'))
     import gpu_abi_gen as abi
     types = raw.get('types', {})

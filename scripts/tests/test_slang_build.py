@@ -210,17 +210,16 @@ def test_bindings_reject_implicit_duplicate_and_unknown_slots(tmp_path):
     src = tmp_path / 'probe.comp.slang'
     src.write_text('ConstantBuffer<P> params;\n')
     assert any('explicit vk::binding' in e for e in slang_compile.validate_reflection({}, src, tmp_path))
-    src.write_text('[[vk::binding(9, 0)]] ConstantBuffer<P> params;\n')
-    occ = tmp_path / 'docs/render-backend-seams'
-    occ.mkdir(parents=True)
-    (occ / 'binding-slot-occupancy.json').write_text('{"occupancy": {"UBO:0": {}}}')
+    src.write_text('[[vk::binding(8, 0)]] ConstantBuffer<P> params;\n')
     raw = {'ubos': [{'name': 'P', 'binding': 9, 'set': 0}]}
-    assert any('absent from' in e for e in slang_compile.validate_reflection(raw, src, tmp_path))
+    assert any('no explicit source binding' in e for e in slang_compile.validate_reflection(raw, src, tmp_path))
     raw['separate_samplers'] = raw['ubos']
     assert any('duplicate descriptor' in e for e in slang_compile.validate_reflection(raw, src, tmp_path))
     raw = {'ubos': [{'name': 'P', 'binding': 9, 'set': 1}]}
     src.write_text('[[vk::binding(9, 1)]] ConstantBuffer<P> params;\n')
     assert slang_compile.validate_reflection(raw, src, tmp_path) == []
+    raw = {'ssbos': raw['ubos']}
+    assert any('source buffer type mismatch' in e for e in slang_compile.validate_reflection(raw, src, tmp_path))
 
 
 def test_gpu_abi_rejects_wrong_offset_and_array_stride(tmp_path, monkeypatch):
