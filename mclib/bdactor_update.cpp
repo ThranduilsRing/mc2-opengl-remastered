@@ -182,7 +182,8 @@ long BldgAppearance::update (bool animate)
 
 				// LOCAL-LIGHTS-1: one light per authored beam of the leaf (a leaf may
 				// carry several lamps); the node id repeats once per beam, in beam order.
-				const int nBeams = std::max(1, mc2_cone_glow::GetNodeBeams(bldgShape, nodeId, nullptr, kMaxBeamsPerNode));
+				const int nBeams = fieldLamp ? 1 : std::max(1,
+					mc2_cone_glow::GetNodeBeams(bldgShape, nodeId, nullptr, kMaxBeamsPerNode));
 				for (int beam = 0; beam < nBeams; ++beam)
 				{
 					TG_LightPtr light = static_cast<TG_LightPtr>(malloc(sizeof(TG_Light)));
