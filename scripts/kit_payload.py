@@ -16,9 +16,9 @@ IMPORT_ARGS = ["--no-ground", "--static-prop"]
 
 
 def reconcile_stock_textures(target_dir, inventory=None, jobs=1):
-    """Receipt only byte-proven stock sources and deterministic stock sidecars.
+    """Receipt only byte-proven stock sources and pinned stock sidecars.
 
-    The pinned hashes were generated from stock art with batch_cook. Deployment
+    The pins include current batch_cook output and verified golden legacy cooks. Deployment
     never trusts paired source existence, target art, or MOD overlay contents.
     Unknown recipes and mismatched bytes retain user priority.
     """
@@ -38,7 +38,8 @@ def reconcile_stock_textures(target_dir, inventory=None, jobs=1):
         if not path.is_file():
             return 0
         data = path.read_bytes()
-        if hashlib.sha256(data).hexdigest() != expected:
+        accepted = [expected] if isinstance(expected, str) else expected
+        if hashlib.sha256(data).hexdigest() not in accepted:
             return 0
         mc2texcook.record_cook(path, verified_bytes=data)
         return int(path.suffix == ".ktx2")

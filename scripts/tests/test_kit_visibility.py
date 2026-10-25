@@ -44,7 +44,7 @@ int main(int argc, char** argv) {
     return user
 
 
-@pytest.mark.parametrize("case", ["fresh", "fresh-no-sidecar", "legacy", "legacy-no-source", "legacy-bc7", "user-ktx", "user-tga", "mod", "edited-reference"])
+@pytest.mark.parametrize("case", ["fresh", "fresh-no-sidecar", "legacy", "legacy-no-source", "legacy-bc7", "legacy-alternate-cook", "user-ktx", "user-tga", "mod", "edited-reference"])
 def test_four_way_kit_priority(tmp_path, priority_probe, case):
     from PIL import Image
     stock = tmp_path / "stock"
@@ -58,15 +58,19 @@ def test_four_way_kit_priority(tmp_path, priority_probe, case):
     installed.write_bytes(source.read_bytes())
     output = installed.with_suffix(".ktx2")
     batch_cook._cook_one(source, output, "albedo", 0)
-    if case == "legacy-bc7":
+    current_hash = hashlib.sha256(output.read_bytes()).hexdigest()
+    if case in ("legacy-bc7", "legacy-alternate-cook"):
         batch_cook._cook_one_bc7(source, output, batch_cook._DEFAULT_KTX_TOOL, 0)
     stamp = Path(str(output) + ".cookstamp")
-    if case in ("legacy", "legacy-no-source", "legacy-bc7", "user-ktx"):
+    if case in ("legacy", "legacy-no-source", "legacy-bc7", "legacy-alternate-cook", "user-ktx"):
         stamp.unlink()
     original = output.read_bytes()
     stock_hashes = {rel.as_posix(): hashlib.sha256(source.read_bytes()).hexdigest()}
     inventory = dict(sha256=stock_hashes, cooked_sha256={
         rel.with_suffix(".ktx2").as_posix(): hashlib.sha256(original).hexdigest()})
+    if case == "legacy-alternate-cook":
+        inventory["cooked_sha256"][rel.with_suffix(".ktx2").as_posix()] = [
+            current_hash, hashlib.sha256(original).hexdigest()]
     if case == "fresh-no-sidecar":
         output.unlink()
         stamp.unlink()
@@ -88,10 +92,10 @@ def test_four_way_kit_priority(tmp_path, priority_probe, case):
         assert not priority_probe(installed, no_stock_read=True)
     if case == "mod":
         assert priority_probe(output, owner, no_stock_read=True)
-    if case in ("legacy", "legacy-no-source", "legacy-bc7"):
+    if case in ("legacy", "legacy-no-source", "legacy-bc7", "legacy-alternate-cook"):
         assert stamp.is_file() and output.read_bytes() == original
     # Repeated deploy must preserve edits, including edits after receipt creation.
-    if case == "fresh":
+    if case in ("fresh", "legacy-alternate-cook"):
         output.write_bytes(original[:-1] + bytes([original[-1] ^ 1]))
         kit.reconcile_stock_textures(target, inventory)
         assert priority_probe(output)
@@ -106,6 +110,8 @@ def test_gate_rejects_zero_overrides_and_missing_evidence(monkeypatch):
     assert not check.grade("")["must_check_pass"]
     assert not check.grade("[BLDG_ART] foo|applied=-\n")["must_check_pass"]
     assert check.grade("[BLDG_ART] foo|applied=watertower\n")["must_check_pass"]
+    assert not check.grade("[BLDG_ART] foo|applied=watertower\n"
+                           "[MODOVERRIDE] building 'City2StoryA': user assets take priority\n")["must_check_pass"]
     import merge_gate
     monkeypatch.setattr(merge_gate, "git", lambda *args: "head")
     monkeypatch.setattr(merge_gate, "log_lease_holders", lambda: None)

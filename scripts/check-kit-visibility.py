@@ -13,9 +13,10 @@ import console_child
 def grade(text):
     applied = re.findall(r"\[BLDG_ART\].*?\|applied=([^\s]+)", text)
     count = sum(name != "-" for name in applied)
+    priority = re.findall(r"building '([^']+)': user assets take priority", text)
     return dict(bldg_art_rows=len(applied), render_override_instances=count,
-                user_priority_types=re.findall(r"building '([^']+)': user assets take priority", text),
-                must_check_pass=count > 0)
+                user_priority_types=priority,
+                must_check_pass=count > 0 and not priority)
 
 
 def main():
