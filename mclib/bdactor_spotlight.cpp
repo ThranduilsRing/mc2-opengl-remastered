@@ -1,8 +1,8 @@
 // The field searchlight is an operator-controlled visual, independent of the sim pose.
 #include "bdactor_internal.h"
 #include "objmgr.h"
-#include "mech.h"
-#include "team.h"
+#include "mover.h"
+#include "mech3d.h"
 #include "searchlight_aim.h"
 
 void BldgAppearance::updateSearchlight()
@@ -23,14 +23,17 @@ void BldgAppearance::updateSearchlight()
         glm::vec3 lamp = position + glm::vec3(0.0f, 0.0f, 85.0f);
         if (const auto beam = mc2_cone_glow::GetSearchlightBeam(bldgShape, pitchNode)) lamp = beam->apex;
         float best = 400.0f * 400.0f;
-        if (ObjectManager && Team::home) {
-            for (long i = 0; i < ObjectManager->getNumMechs(); ++i) {
-                auto* mech = ObjectManager->getMech(i);
-                if (!mech || !mech->getExists() || mech->isDestroyed() || mech->isDisabled()) continue;
+        if (ObjectManager) {
+            for (long i = 0; i < ObjectManager->getNumMovers(); ++i) {
+                auto* mech = ObjectManager->getMover(i);
+                if (!mech || mech->getObjectClass() != BATTLEMECH ||
+                    !mech->getExists() || mech->isDestroyed() || mech->isDisabled()) continue;
                 // A hidden sensor contact must never be disclosed by a beam.
-                const bool friendly = mech->isFriendly(Team::home);
-                if (!friendly && (!mech->getContactInfo() ||
-                    mech->getContactInfo()->getContactStatus(Team::home->getId(), true) != CONTACT_VISUAL)) continue;
+                const auto* appearance = static_cast<Mech3DAppearance*>(mech->getAppearance());
+                if (!appearance) continue;
+                const auto visibility = appearance->buildVisState();
+                if (!mc2_vis::meshDrawn(visibility)) continue;
+                const bool friendly = mc2_vis::friendly(visibility);
                 const glm::vec3 delta = mech->getPosition() + glm::vec3(0, 0, 12) - lamp;
                 const float distance2 = glm::dot(delta, delta);
                 if (distance2 > 400.0f * 400.0f) continue;
