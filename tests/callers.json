@@ -2134,7 +2134,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1533,
+          "line": 1534,
           "evidence": "command",
           "reference": "scripts/check_sim_include_firewall.py",
           "text": "run_check \"sim_include_firewall\"        \"py -3 -B scripts/tests/test_sim_include_firewall.py && py -3 scripts/check_sim_include_firewall.py\""
@@ -3245,7 +3245,7 @@
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 44,
+          "line": 46,
           "evidence": "import",
           "reference": "console_child",
           "text": "import console_child  # noqa: E402  (windowless console children)"
@@ -3829,7 +3829,7 @@
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 180,
+          "line": 189,
           "evidence": "import_module",
           "reference": "deploy_payload",
           "text": "return importlib.import_module('deploy_payload')"
@@ -4444,7 +4444,7 @@
       "callers_by_stem": [
         {
           "path": "scripts/run_tools_tests.py",
-          "line": 172,
+          "line": 173,
           "evidence": "import",
           "reference": "module_test_cache",
           "text": "import module_test_cache as mtc"
@@ -4882,7 +4882,7 @@
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 618,
+          "line": 678,
           "evidence": "command",
           "reference": "scripts/run_smoke.py",
           "text": "proc = subprocess.run(cmd, cwd=str(ROOT), capture_output=True,"
@@ -4982,14 +4982,14 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1529,
+          "line": 1530,
           "evidence": "command",
           "reference": "scripts/run_tools_tests.py",
           "text": "run_check_tri \"tools_tests\"             \"py -3 scripts/run_tools_tests.py\""
         },
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1530,
+          "line": 1531,
           "evidence": "command",
           "reference": "scripts/run_tools_tests.py",
           "text": "run_check_tri \"kit_art\"                 \"py -3 scripts/run_tools_tests.py --suite art\""
@@ -6715,7 +6715,7 @@
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 45,
+          "line": 47,
           "evidence": "import",
           "reference": "stage_root",
           "text": "import stage_root as stages  # noqa: E402  (default staging roots on E:, free-space preflight)"
@@ -7339,7 +7339,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1533,
+          "line": 1534,
           "evidence": "command",
           "reference": "scripts/tests/test_sim_include_firewall.py",
           "text": "run_check \"sim_include_firewall\"        \"py -3 -B scripts/tests/test_sim_include_firewall.py && py -3 scripts/check_sim_include_firewall.py\""
@@ -11433,6 +11433,13 @@
           "text": "from tools.mc2x_import.fst import fst_entries, decompress_entry  # noqa: E402"
         },
         {
+          "path": "scripts/tests/test_mod_smoke.py",
+          "line": 294,
+          "evidence": "import",
+          "reference": "fst",
+          "text": "import fst"
+        },
+        {
           "path": "tools/anim_parity/audit.py",
           "line": 21,
           "evidence": "import",
@@ -11483,14 +11490,14 @@
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 435,
+          "line": 444,
           "evidence": "import_module",
           "reference": "fst",
           "text": "fst_lib = importlib.import_module('fst')"
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 471,
+          "line": 480,
           "evidence": "import_module",
           "reference": "fst",
           "text": "fst_lib = importlib.import_module('fst')"
@@ -11807,21 +11814,28 @@
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 222,
+          "line": 231,
           "evidence": "import",
           "reference": "fst_listing",
           "text": "import fst_listing"
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 351,
+          "line": 360,
           "evidence": "import",
           "reference": "fst_listing",
           "text": "import fst_listing"
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 453,
+          "line": 462,
+          "evidence": "import",
+          "reference": "fst_listing",
+          "text": "import fst_listing"
+        },
+        {
+          "path": "tools/mod_smoke.py",
+          "line": 481,
           "evidence": "import",
           "reference": "fst_listing",
           "text": "import fst_listing"
