@@ -73,7 +73,6 @@
     {"module": "scripts/tests/test_omnitech_abl_stack_balance.py", "owners": ["scripts_tests"]},
     {"module": "scripts/tests/test_parent_watchdog.py", "owners": ["scripts_tests"]},
     {"module": "scripts/tests/test_phase_tools.py", "owners": ["scripts_tests"]},
-    {"module": "scripts/tests/test_raw_gl_firewall.py", "owners": ["scripts_tests"]},
     {"module": "scripts/tests/test_ref_passthrough.py", "owners": ["scripts_tests"]},
     {"module": "scripts/tests/test_runner_env_drop.py", "owners": ["scripts_tests"]},
     {"module": "scripts/tests/test_sim_determinism_strict.py", "owners": ["sim_determinism"]},

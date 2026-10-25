@@ -155,33 +155,14 @@ def test_wanted_filters():
     assert not asr.wanted("graphify-out/a.cpp") and not asr.wanted("shaders/include/x.gen.hglsl")
 
 
-# ---------------------------------------------------------------- twins
-def test_twins_by_name_tier1_and_registry():
-    paths = {"shaders/a.vert", "shaders/vulkan/a.vert", "shaders/mech.vert", "shaders/vulkan/mech_tier1.vert",
-             "shaders/include/lighting.hglsl", "shaders/lone.frag"}
-    pairs = [("shaders/include/lighting.hglsl", "shaders/vulkan/mech_tier1.vert")]
-    assert asr.twins_for("shaders/a.vert", paths, pairs) == [("shaders/vulkan/a.vert", "same name")]
-    assert asr.twins_for("shaders/vulkan/a.vert", paths, pairs) == [("shaders/a.vert", "same name")]
-    assert asr.twins_for("shaders/mech.vert", paths, pairs) == [("shaders/vulkan/mech_tier1.vert", "_tier1 name")]
-    assert dict(asr.twins_for("shaders/vulkan/mech_tier1.vert", paths, pairs)) == {
-        "shaders/mech.vert": "_tier1 name", "shaders/include/lighting.hglsl": "glsl_port_diff registry"}
-    assert asr.twins_for("shaders/lone.frag", paths, pairs) == []
-    assert asr.twins_for("mclib/x.cpp", paths, pairs) == []
-
-
-def test_registry_pairs_parse():
-    txt = 'Port("calc_light", "shaders/include/lighting.hglsl", "shaders/vulkan/mech_tier1.vert",\n rename=[])'
-    assert asr.registry_pairs(txt) == [("shaders/include/lighting.hglsl", "shaders/vulkan/mech_tier1.vert")]
-
-
 def test_doc_is_deterministic_and_lists_sites():
     sw = "vec3 g = vec3(-a.x, a.z, a.y);\n"
     files = {"shaders/a.vert": sw, "shaders/vulkan/a.vert": sw}
-    d1 = asr.render_doc(asr.scan(files), set(files), [])
-    d2 = asr.render_doc(asr.scan(dict(reversed(list(files.items())))), set(files), [])
+    d1 = asr.render_doc(asr.scan(files))
+    d2 = asr.render_doc(asr.scan(dict(reversed(list(files.items())))))
     assert d1 == d2
     assert "`shaders/a.vert:1` triplet-ctor" in d1
-    assert "| `shaders/a.vert` | 1 | `shaders/vulkan/a.vert` | same name | 1 |" in d1
+    assert "`shaders/vulkan/a.vert:1` triplet-ctor" in d1
 
 
 # ---------------------------------------------------------------- check()

@@ -234,31 +234,6 @@ def main():
                 f"{glsl_defs[name][0][2]})"
             )
 
-    # Known C++-const <-> GLSL-literal pairs that are NOT shared #defines but
-    # must stay in lockstep by convention. Value comes from C++; GLSL uses a bare
-    # literal. We assert the literal is present at the expected value in the named
-    # shader; absence/mismatch is a FAIL.
-    KNOWN_LITERAL_PAIRS = [
-        # (cpp_const_name, glsl_file_substr, role)
-        ("kViewUniformsBinding", "view_uniforms.hglsl", "ViewUniforms UBO"),
-    ]
-    for cname, gfile, role in KNOWN_LITERAL_PAIRS:
-        if cname not in cpp_defs:
-            warns.append(f"known-pair: C++ const {cname} not found (skipped {role})")
-            continue
-        cval = cpp_defs[cname][0][0]
-        hit = [b for b in blocks if gfile in b["file"]]
-        resolved = []
-        for b in hit:
-            v, _ = resolve_token(b["binding_token"], glsl_defs, cpp_defs)
-            if v is not None:
-                resolved.append(v)
-        if hit and cval not in resolved:
-            fails.append(
-                f"known-pair mismatch: {cname}={cval} but {gfile} binds "
-                f"{sorted(set(resolved))} (role {role})"
-            )
-
     # --- FAIL 2: same-file slot collision (two distinct blocks, one binding) -
     by_file = {}
     for b in blocks:

@@ -161,20 +161,7 @@ REASONS=()
 # how six checks sat red for weeks without being seen. Slowness is not a
 # cosmetic property of a guard; it is the mechanism by which guards go dark.
 #
-# The distribution is not "the suite is slow". Median is 0.24s and 75% of rows
-# finish under a second. EIGHT rows breach the 5s promise and account for 79%
-# of the runtime, and just TWO of them are 60% of the whole suite:
-#     no_raw_gl_from_game  121.7s
-#     include_firewall      95.8s
-# Both are shell scripts doing repeated repo-wide greps. Fixing those two takes
-# the suite from ~6min to ~2.4min without touching the other 128 rows.
-#
-# DELIBERATELY NOT A GATE YET. A budget ratchet wired today would be red on
-# arrival on 8 rows, and a permanently-red row teaches everyone to skip red --
-# the same blindness this lane spent its time removing, in a different colour.
-# So this measures and reports; it does not fail. TRIGGER for making it a gate:
-# once the two offenders above are fixed, set BUDGET_SEC and fail on new
-# breaches.
+# Report timing overruns without turning the runtime budget into a gate.
 BUDGET_SEC=5
 
 _now_ms() { date +%s%N 2>/dev/null | cut -c1-13; }
@@ -417,7 +404,7 @@ _default_jobs() {
 }
 
 # Rows measured slow go first so the pool does not end on a long tail.
-_SLOW_FIRST=" no_raw_gl_from_game include_firewall delivery_installs input_capture_visibility_selftest sampler_bindings scripts_tests tools_tests "
+_SLOW_FIRST=" include_firewall delivery_installs input_capture_visibility_selftest scripts_tests tools_tests "
 
 _drain_queue() {
     local n="${#Q_LABEL[@]}" i
@@ -893,7 +880,6 @@ run_check "smoke_env_inheritance"  "py -3 scripts/check-smoke-env-inheritance.py
 run_check "material_gpu_mirror"    "sh scripts/check-material-gpu-mirror.sh"
 run_check "visibility_log_schema"  "sh scripts/check-visibility-log-schema.sh"
 run_check "include_firewall"       "sh scripts/check-include-firewall.sh"
-run_check "no_raw_gl_from_game"    "sh scripts/check-no-raw-gl-from-game.sh"
 run_check "vk_submit_funnel"       "sh scripts/check-vk-submit-funnel.sh"
 run_check "vk_pipeline_infra"      "sh scripts/check-vk-submit-funnel.sh --pipelines"
 run_check "sim_no_audio_reads"     "sh scripts/check-sim-no-audio-reads.sh"
@@ -920,10 +906,6 @@ run_check "light_row_freshness"          "py -3 scripts/check-light-row-freshnes
 # is distinct from exit 1 (real drift); the comment-stripper witness is a live
 # shipping shader, not a fixture.
 run_check "lighting_divergence"    "py -3 scripts/check-lighting-divergence.py"
-run_check "sampler_bindings"       "py -3 scripts/check-sampler-bindings.py --quiet"
-# MULTIPLEX-ANCHOR-1 (VERIFY-DEBT-1): proves the per-pass anchor that replaced the
-# inert DEMOTED_ANCHORS tuple actually FAILS on drift -- inverted unit comments,
-# a rebound unit, a de-multiplexed name, an unrecorded third pass.
 # GOLDEN-COVERAGE-LEDGER-1 (VERIFY-DEBT-1): committed golden sets must account for
 # every region they could cover, and must contain no un-failable (flat) crops.
 run_check "golden_coverage"          "py -3 scripts/check-golden-coverage.py --quiet"
@@ -984,9 +966,7 @@ run_check "mdi_submission"         "py -3 scripts/check-mdi-submission-ownership
 run_check "buffer_lifetime"        "py -3 scripts/check-buffer-lifetime-ownership.py --quiet"
 run_check "render_resource_ids"    "py -3 scripts/check-render-resource-ids.py"
 run_check "vulkan_bindings"        "py -3 scripts/check-vulkan-bindings.py --quiet"
-# GL-VARIANT-MATRIX-1: every GL program variant the C++ can build (manifest re-extracted
-# from GameOS/gameos and diffed) is assembled like shader_builder and glslang compile+LINKED;
-# also proves a malformed directive in a live fragment fails compilation. ~6s, offline.
+# Reject reintroduced GL runtime, SDK and link dependencies.
 run_check "no_gl_compiler"         "py -3 scripts/check-no-gl-compiler.py --quiet && py -3 -B -m pytest scripts/tests/test_no_gl_compiler.py -q -p no:cacheprovider"
 run_check "spirv_artifacts"        "py -3 scripts/check-spirv-artifacts.py --quiet"
 # SLANG-TOOLCHAIN-1: .slang -> SPIR-V through build_variants.py (fixtures only; no shipped Slang yet).
@@ -995,13 +975,8 @@ run_check "gpu_abi"                "py -3 tools/gpu_abi_gen.py --check && py -3 
 run_check "spirv_reflection"       "py -3 scripts/check-spirv-reflection-contract.py --quiet"
 run_check "vk_pipeline_layout"    "py -3 scripts/check-vk-pipeline-layout.py --quiet && py -3 -B -m pytest scripts/tests/test_check_vk_pipeline_layout.py -q -p no:cacheprovider"
 run_check "shader_package"         "py -3 scripts/check-shader-package.py --quiet"
-# D1/D2 (opus-consistency-review A2): the three tools/ offline provers that used to be
-# orphaned. check_ubo_layout cross-checks 13 C++ UBO mirror structs against their GLSL
-# std140 blocks; glsl_port_diff proves the marked GL->VK shader ports verbatim (post
-# rename map) with the two known VK gaps pinned in tools/glsl_port_diff.allowlist;
-# check_vk_shaders compiles every shaders/vulkan/* file with glslang.
+# Vulkan UBO layout and offline shader compilation remain required.
 run_check "vk_ubo_layout"          "py -3 tools/check_ubo_layout.py"
-run_check "glsl_port_diff"         "py -3 tools/glsl_port_diff.py --all"
 run_check "vk_shaders_compile"     "py -3 tools/check_vk_shaders.py"
 # CONTRACT-TRUTH-2: the census above enforces that shaders ROUTE THROUGH the
 # rc_* helpers. It says nothing about whether the helpers' own documentation is

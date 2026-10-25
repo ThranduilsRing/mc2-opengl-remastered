@@ -24,8 +24,6 @@ target_include_directories(gameadapters PRIVATE
     ${CMAKE_SOURCE_DIR}/GameOS/gameos
 )
 
-# Inherit thirdparty include dirs (GLEW, etc) — same as renderworld
-# needs because gos_static_prop_batcher.h transitively pulls GL/glew.h.
 target_include_directories(gameadapters PRIVATE
     ${THIRDPARTY_INCLUDE_DIRS}
 )

@@ -74,7 +74,6 @@ import sys
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 CONSUMERS = [
-    "shaders/include/lighting.hglsl",
     # Same ObjectLights record, same slot range, same failure
     # mode. Correctly bounded on entry; in scope so a rewrite cannot go quiet.
     "shaders/vulkan/mech_tier1.vert",

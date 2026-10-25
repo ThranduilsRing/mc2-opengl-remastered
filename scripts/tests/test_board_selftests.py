@@ -35,9 +35,6 @@ def test_light_row_freshness_selftest():
     _assert_pass(subprocess.run([sys.executable, "scripts/check-light-row-freshness.py", "--selftest"], **OPTS, **console_child.child_kwargs(redirected=True)))
 
 
-def test_sampler_bindings_selftest():
-    _assert_pass(subprocess.run([sys.executable, "scripts/check-sampler-bindings-selftest.py"], **OPTS, **console_child.child_kwargs(redirected=True)))
-
 
 def test_golden_coverage_selftest():
     _assert_pass(subprocess.run([sys.executable, "scripts/check-golden-coverage.py", "--selftest"], **OPTS, **console_child.child_kwargs(redirected=True)))

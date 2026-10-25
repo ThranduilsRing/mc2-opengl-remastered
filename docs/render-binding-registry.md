@@ -252,8 +252,8 @@ reviewers don't try to "clean them up":
   `BASE_INSTANCE_SSBO_BINDING = 16`.
 - `GameOS/include/gameos.hpp:2823,2827` — `LIGHT_DATA_ATTACHMENT_SLOT=0`
   (legacy UBO), `LIGHT_DATA_SSBO_BINDING=20`.
-- `shaders/include/view_uniforms.hglsl` — shader-side ViewUniforms include.
-- `shaders/include/lighting.hglsl` — shader-side LightsData/calc_light
+- `36544d925:shaders/include/view_uniforms.hglsl` — shader-side ViewUniforms include.
+- `36544d925:shaders/include/lighting.hglsl` — shader-side LightsData/calc_light
   with the post-`LIGHTSSBO v1` SSBO layout.
 - `tools/shader_reflect/` — reflection contract that diffs shader binding
   layouts against committed JSON goldens (shader-domain background lives in

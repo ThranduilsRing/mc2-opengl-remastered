@@ -1871,7 +1871,7 @@ bool EnginePresentVk::init(VulkanContext& ctx, SDL_Window* window, uint32_t w, u
 
     // ---- P13b: raw Win32 surface on the EXISTING visible GL game window -----
     // No hidden VK window. Pull the native HWND+HINSTANCE from the game's GL
-    // window (SDL_WINDOW_OPENGL, g_sdl_window) via SDL_GetWindowWMInfo -- exactly
+    // window (SDL_WINDOW_VULKAN, g_sdl_window) via SDL_GetWindowWMInfo -- exactly
     // as the mouse grab does (gos_render.cpp:64-74) and as the T0 probe proved --
     // then vkCreateWin32SurfaceKHR straight onto that HWND. The GL context owns
     // the pixel format/HDC; VK presents via the WSI/compositor path on the same

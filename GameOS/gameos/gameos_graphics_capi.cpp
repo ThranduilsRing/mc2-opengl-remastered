@@ -480,7 +480,6 @@ void __stdcall gos_SetRenderViewport(float x, float y, float w, float h)
 	// props/mechs/trees/water visibly slide off the terrain while panning.
 	// The defs/ImGui UI never needed this: it scales via
 	// GuiRuntime::GetDisplaySize, and the preview FBO sets its own viewport.
-	//glViewport(x, y, w, h);
 	g_gos_renderer->setRenderViewport(vec4(x, y, w, h));
 }
 

@@ -54,7 +54,6 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 DEFAULT_ROOT = os.path.abspath(os.path.join(HERE, ".."))
 BASELINE = os.path.join(HERE, "axis_swizzle_ratchet.baseline.json")
 DOC_REL = "docs/axis-conversion-sites.md"
-PORT_DIFF_REL = "tools/glsl_port_diff.py"
 
 EXTS = (".cpp", ".cc", ".cxx", ".c", ".h", ".hpp", ".hxx", ".inl",
         ".frag", ".vert", ".comp", ".tesc", ".tese", ".geom", ".mesh", ".task",
@@ -366,36 +365,6 @@ def blob_text(root, source, rev, rel):
     return raw.decode("utf-8", "replace") if raw else ""
 
 
-# ---------------------------------------------------------------- GL/VK twin map
-def registry_pairs(port_diff_text):
-    """(gl, vk) shader pairs registered with glsl_port_diff.py (read-only parse)."""
-    return sorted(set(re.findall(r'Port\(\s*"[^"]+"\s*,\s*"([^"]+)"\s*,\s*"([^"]+)"', port_diff_text)))
-
-
-def twins_for(path, all_paths, pairs):
-    """Counterpart shader files of `path` as [(file, why)], sorted."""
-    if not path.endswith(SHADER_EXTS) or not path.startswith("shaders/"):
-        return []
-    out = {}
-    stem, ext = os.path.splitext(os.path.basename(path))
-    if path.startswith("shaders/vulkan/"):
-        rel = path[len("shaders/vulkan/"):]
-        cand = ["shaders/" + rel]
-        if stem.endswith("_tier1"):
-            cand.append("shaders/" + rel[:-len(stem + ext)] + stem[:-len("_tier1")] + ext)
-    else:
-        rel = path[len("shaders/"):]
-        cand = ["shaders/vulkan/" + rel, "shaders/vulkan/" + rel[:-len(ext)] + "_tier1" + ext]
-    for c in cand:
-        if c in all_paths and c != path:
-            out[c] = "same name" if os.path.basename(c) == os.path.basename(path) else "_tier1 name"
-    for gl, vk in pairs:
-        other = vk if path == gl else gl if path == vk else None
-        if other and other in all_paths:
-            out.setdefault(other, "glsl_port_diff registry")
-    return sorted(out.items())
-
-
 # ---------------------------------------------------------------- baseline / check
 def make_baseline(res, root, rev):
     return {"version": 1, "head": head_sha(root, rev), "total": res.total,
@@ -455,7 +424,7 @@ def _md(s):
     return s.replace("|", "\\|")
 
 
-def render_doc(res, all_paths, pairs):
+def render_doc(res):
     """Deterministic D11 work queue (no timestamps, no shas)."""
     o = []
     o.append("# MC2 <-> render-space axis conversion sites (D11 work queue)")
@@ -495,29 +464,6 @@ def render_doc(res, all_paths, pairs):
     o.append("|---|---:|")
     for d, n in sorted(res.per_dir.items(), key=lambda kv: (-kv[1], kv[0])):
         o.append("| `%s` | %d |" % (d, n))
-    o.append("")
-
-    sh_sites = defaultdict(list)
-    for s in res.sites:
-        if s.path.endswith(SHADER_EXTS):
-            sh_sites[s.path].append(s)
-    o.append("## GL/VK shader twins")
-    o.append("")
-    o.append("Shaders that carry sites, with their counterpart in the other backend. Twins must migrate in "
-             "the same slice so `tools/glsl_port_diff.py` (verbatim-port prover) stays green. "
-             "Pairing is by identical name, `_tier1` suffix, or the glsl_port_diff registry; a row with no counterpart "
-             "may still have a VK/GL twin under a different name, so check by hand before migrating. "
-             "A site inside a `//PORT-BEGIN`..`//PORT-END` block is marked `port` under Sites: edit both sides "
-             "of that block together, then re-run `py -3 tools/glsl_port_diff.py --all`.")
-    o.append("")
-    o.append("| Shader | Sites | Counterpart | Why paired | Counterpart sites |")
-    o.append("|---|---:|---|---|---:|")
-    for f in sorted(sh_sites):
-        tw = twins_for(f, all_paths, pairs)
-        if not tw:
-            o.append("| `%s` | %d | _no counterpart found_ | | |" % (f, len(sh_sites[f])))
-        for t, why in tw:
-            o.append("| `%s` | %d | `%s` | %s | %d |" % (f, len(sh_sites[f]), t, why, res.per_file.get(t, 0)))
     o.append("")
 
     o.append("## Sites")
@@ -583,9 +529,8 @@ def main(argv=None):
               % (a.baseline, nb["head"], res.total, len(res.per_file)))
         return 0
     if a.write_doc:
-        pairs = registry_pairs(blob_text(a.repo, source, a.rev, PORT_DIFF_REL))
         # twin lookup needs every shader path, not only the ones in `files` that matched EXTS
-        doc = render_doc(res, set(files), pairs)
+        doc = render_doc(res)
         with open(os.path.join(a.repo, DOC_REL), "w", encoding="utf-8", newline="\n") as fh:
             fh.write(doc)
         print("axis_swizzle_ratchet: wrote %s (%d sites)" % (DOC_REL, res.total))

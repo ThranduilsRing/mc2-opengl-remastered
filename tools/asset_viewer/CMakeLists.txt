@@ -72,8 +72,7 @@ add_library(mc2_tglloader STATIC
     # LINK-CONFIG-FIX: tgl.cpp references render_contract::noteRenderPass and
     # msl.cpp references g_isFrameJobsWorker (frame_jobs.h). Both defining TUs
     # are otherwise compiled only into mc2.exe's source list, so this isolated
-    # loader lib must carry them too. render_contract.cpp's GL calls are runtime-
-    # gated and resolve against the GLEW/OpenGL the viewer exe links.
+    # loader lib must carry them too.
     "${CMAKE_SOURCE_DIR}/mclib/render_contract.cpp"
     # MC2-JOBS-CORE-1: frame_jobs.cpp -> job_system.cpp (+ jobs_fatal.cpp).
     "${CMAKE_SOURCE_DIR}/code/job_system.cpp"
@@ -126,7 +125,6 @@ target_include_directories(mc2_tglloader PRIVATE
     "${CMAKE_SOURCE_DIR}/mclib/stuff"
     "${CMAKE_SOURCE_DIR}/GameOS/include"
     "${CMAKE_SOURCE_DIR}/GameOS/gameos"
-    # GL/glew.h needed as a header (tgl.cpp -> gos_static_prop_batcher.h). No GL .lib linked.
     "${CMAKE_SOURCE_DIR}/3rdparty/include"
     "${CMAKE_SOURCE_DIR}/3rdparty/tracy"
     "${CMAKE_SOURCE_DIR}"

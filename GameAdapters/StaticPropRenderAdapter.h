@@ -150,7 +150,7 @@ void getRecipeShapeName(int32_t recipeIndex, char* out, size_t outLen);
 //
 // They exist HERE rather than as a direct
 // `#include "gos_static_prop_registry.h"` in code/missiongui.cpp because that
-// header drags <GL/glew.h> and Stuff/Stuff.hpp behind it, and because this
+// header drags Stuff/Stuff.hpp behind it, and because this
 // adapter is the sanctioned seam for exactly this traffic (the neighbouring
 // getRecipeShapeName is already used by the inspector for the same reason).
 // Each is a straight pass-through to the identically-named

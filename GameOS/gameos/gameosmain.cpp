@@ -603,16 +603,6 @@ static void draw_screen( void )
         pp->beginScene();
     }
 
-	/*
-    glMatrixMode(GL_PROJECTION);
-    glPushMatrix();
-    glLoadTransposeMatrixf((const float*)proj);
-
-    glMatrixMode(GL_MODELVIEW);
-    glPushMatrix();
-    glLoadTransposeMatrixf((const float*)viewM);
-	*/
-
 
     // TODO: reset all states to sane defaults!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 

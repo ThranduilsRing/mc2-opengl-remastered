@@ -1,8 +1,4 @@
-"""Regression tests for the tools/ offline provers wired in by D1/D2:
-tools/check_ubo_layout.py (std140 parser) and tools/glsl_port_diff.py (rename map +
-pinned-debt allowlist). Each test injects the defect the tool exists to catch and
-proves it still fires.
-"""
+"""Regression tests for the Vulkan std140 layout checker."""
 import importlib.util
 import os
 import sys
@@ -21,7 +17,6 @@ def _load(name):
 
 
 ubo = _load("check_ubo_layout")
-gpd = _load("glsl_port_diff")
 
 
 # --- check_ubo_layout -------------------------------------------------------
@@ -71,71 +66,5 @@ def test_live_registry_is_clean():
         for e in ubo.REGISTRY:
             code, lines = ubo.check_pair(*e)
             assert code == 0, "\n".join(lines)
-    finally:
-        os.chdir(cwd)
-
-
-# --- glsl_port_diff ---------------------------------------------------------
-
-def _port_files(tmp_path, gl_body, vk_body):
-    gl = tmp_path / "gl.frag"
-    vk = tmp_path / "vk.frag"
-    gl.write_text("//PORT-BEGIN:t\n" + gl_body + "\n//PORT-END:t\n", encoding="utf-8")
-    vk.write_text("//PORT-BEGIN:t\n" + vk_body + "\n//PORT-END:t\n", encoding="utf-8")
-    return str(gl), str(vk)
-
-
-def test_rename_map_folds_vk_spelling_onto_gl(tmp_path):
-    gl, vk = _port_files(tmp_path, "float x = u_skirtDepth * 2.0;", "float x = uT.skirtDepth * 2.0;")
-    assert gpd.diff_block(gpd.Port("t", gl, vk))[0] == 1          # without the map: diverges
-    assert gpd.diff_block(gpd.Port("t", gl, vk, rename=[gpd.UT_TO_U]))[0] == 0
-
-
-def test_rename_map_does_not_hide_arithmetic(tmp_path):
-    gl, vk = _port_files(tmp_path, "float x = u_skirtDepth * 2.0;", "float x = uT.skirtDepth * 3.0;")
-    assert gpd.diff_block(gpd.Port("t", gl, vk, rename=[gpd.UT_TO_U]))[0] == 1
-
-
-def test_call_wrapping_is_not_a_divergence(tmp_path):
-    gl, vk = _port_files(tmp_path, "f(a,\n  b, c);", "f(a, b,\n  c);")
-    assert gpd.diff_block(gpd.Port("t", gl, vk))[0] == 0
-
-
-def test_missing_markers_exit_2(tmp_path):
-    gl = tmp_path / "gl.frag"
-    gl.write_text("float x;\n", encoding="utf-8")
-    assert gpd.diff_block(gpd.Port("t", str(gl), str(gl)))[0] == 2
-
-
-def _run_registry_with(monkeypatch, tmp_path, ports, allow_text):
-    al = tmp_path / "al.txt"
-    al.write_text(allow_text, encoding="utf-8")
-    monkeypatch.setattr(gpd, "REGISTRY", ports)
-    monkeypatch.setattr(gpd, "ALLOWLIST", str(al))
-    return gpd.run_registry(False)
-
-
-def test_pinned_debt_passes_stale_and_drift_fail(tmp_path, monkeypatch, capsys):
-    gl, vk = _port_files(tmp_path, "a();\nb();", "a();")
-    port = gpd.Port("t", gl, vk)
-    h = gpd.diff_block(port)[2]
-    # pinned and unchanged: green
-    assert _run_registry_with(monkeypatch, tmp_path, [port], f"t\t{vk}\t{h}\tgap\n") == 0
-    # no entry: red
-    assert _run_registry_with(monkeypatch, tmp_path, [port], "") == 1
-    # entry pins a different diff (the debt moved): red
-    assert _run_registry_with(monkeypatch, tmp_path, [port], f"t\t{vk}\t000000000000\tgap\n") == 1
-    # port became verbatim but the entry remains: stale, red
-    gl2, vk2 = _port_files(tmp_path, "a();", "a();")
-    port2 = gpd.Port("t", gl2, vk2)
-    assert _run_registry_with(monkeypatch, tmp_path, [port2], f"t\t{vk2}\t{h}\tgap\n") == 1
-    assert "STALE-ALLOWLIST" in capsys.readouterr().out
-
-
-def test_live_registry_is_green():
-    cwd = os.getcwd()
-    os.chdir(ROOT)
-    try:
-        assert gpd.run_registry(False) == 0
     finally:
         os.chdir(cwd)
