@@ -7,7 +7,7 @@
   "RenderCore": 402,
   "RenderWorld": 0,
   "code": 14010,
-  "mclib": 28566,
+  "mclib": 28516,
   "shaders": 592
  },
  "dirs": [
@@ -263,7 +263,7 @@
   "mclib/bdactor.h": 52,
   "mclib/bdactor_render.cpp": 145,
   "mclib/bdactor_static.cpp": 99,
-  "mclib/bdactor_terrain.cpp": 187,
+  "mclib/bdactor_terrain.cpp": 137,
   "mclib/bdactor_tree.cpp": 238,
   "mclib/bdactor_tree_static.cpp": 48,
   "mclib/bdactor_type.cpp": 110,
@@ -514,8 +514,8 @@
   "shaders/vulkan/terrain_tier1.vert": 71,
   "shaders/vulkan/terrain_tier1_skirt.vert": 71
  },
- "head": "47dc56526",
+ "head": "66216c08d",
  "n": 8,
- "total": 45873,
+ "total": 45823,
  "version": 1
 }
