@@ -965,7 +965,7 @@ run_check "static_prop_family"     "py -3 scripts/check-static-prop-family.py --
 run_check "mdi_submission"         "py -3 scripts/check-mdi-submission-ownership.py --quiet && py -3 -B -m pytest scripts/tests/test_check_native_post_contracts.py -k mdi -q -p no:cacheprovider"
 run_check "buffer_lifetime"        "py -3 scripts/check-buffer-lifetime-ownership.py --quiet"
 run_check "render_resource_ids"    "py -3 scripts/check-render-resource-ids.py"
-run_check "vulkan_bindings"        "py -3 scripts/check-vulkan-bindings.py --quiet"
+run_check "vulkan_bindings"        "py -3 scripts/check-vulkan-bindings.py --strict --quiet && py -3 -B -m pytest scripts/tests/test_native_binding_contracts.py -q -p no:cacheprovider"
 # Reject reintroduced GL runtime, SDK and link dependencies.
 run_check "no_gl_compiler"         "py -3 scripts/check-no-gl-compiler.py --quiet && py -3 -B -m pytest scripts/tests/test_no_gl_compiler.py -q -p no:cacheprovider"
 run_check "spirv_artifacts"        "py -3 scripts/check-spirv-artifacts.py --quiet"

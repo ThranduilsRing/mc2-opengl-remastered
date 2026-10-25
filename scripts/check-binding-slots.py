@@ -1,80 +1,23 @@
 #!/usr/bin/env python3
-"""check-binding-slots.py — GPU-BINDING-SLOTS-LOCKSTEP-1
+"""Vulkan GLSL descriptor census and explicit native C++/GLSL lockstep.
 
-CI/check-time lockstep + occupancy checker for GPU buffer BASE BINDING slots
-(SSBO / UBO binding-base points). NOT a flat global registry: the census proved
-slot numbers are multiplexed per-pass (slot 0 is bound by 7 different buffers in
-different passes), so a number is only semantic INSIDE a pass/pipeline. This
-script gives visibility instead of a false flat namespace:
-
-  - which file binds which role to which slot (occupancy table)
-  - do C++ and GLSL agree where a binding is SHARED (a #define present on both
-    sides, or a known C++const<->GLSL-literal pair)?
-  - does any single GLSL stage file bind two different blocks to one slot?
-  - which bindings are bare GLSL literals not tied to a named constant?
-
-Exit code: 0 unless a FAIL is found (named C++/GLSL pair mismatch, or a same-file
-slot collision). WARN never fails the build. Intentional cross-pass reuse is
-DOCUMENTED, not failed.
-
-Texture-unit bindings (layout(binding=N) uniform sampler*) are OUT of scope —
-that is the GL_TEXTURE_* namespace, not the buffer-binding-base namespace.
-
-Usage:
-  py -3 scripts/check-binding-slots.py [--root <repo>] [--json <out.json>] [--quiet]
+Expand local includes per stage; compare seven live mech layout records with
+shader set/binding/type. Reject same-stage (set, binding) collisions across ALL
+descriptor types. Cross-stage checks belong to check-vulkan-bindings.py.
+Slang layouts are covered by separate contracts. See binding-slot-occupancy.md.
 """
 import argparse
 import json
 import os
 import re
 import sys
+from pathlib import Path
 
-# ---- scope -----------------------------------------------------------------
-# Engine C++ that defines binding constants. We scan all .h/.hpp/.cpp under
-# these dirs; tool-only binders (tools/asset_viewer) and GLSL test fixtures are
-# excluded because they intentionally diverge (recon: view_uniforms_contract.frag
-# declares slot 3 as an SSBO while production declares it a UBO).
-CPP_DIRS = ["GameOS", "RenderCore", "RenderWorld", "GameAdapters", "mclib", "code"]
-GLSL_DIR = "shaders"
-EXCLUDE_SUBSTR = [
-    os.path.join("tools", ""),
-    os.path.join("shaders", "fixtures", ""),
-    os.path.join("build64", ""),
-    os.path.join("3rdparty", ""),
-    os.path.join(".claude", ""),
-]
+from importlib import import_module
+strip_comments = import_module("check-lighting-divergence").strip_comments
 
-CPP_EXT = (".h", ".hpp", ".cpp", ".cc", ".cxx")
-GLSL_EXT = (".vert", ".frag", ".comp", ".tesc", ".tese", ".geom", ".glsl", ".hglsl")
-
-# Cross-file same-PIPELINE collisions that were RESOLVED deliberately
-# (this same-file checker cannot see cross-file/cross-stage collisions — the
-# per-pipeline classifier scripts/check-vulkan-bindings.py owns that. This list
-# is a documentation cross-reference + regression breadcrumb, printed for
-# visibility. Format: (namespace, slot) -> note).
-RESOLVED_COLLISIONS = {
-    ("SSBO", 2): (
-        "VK-H2-BINDING-SPLIT-1: former terrain-mask-solid/water same-pipeline "
-        "collision (vert LightingBuf@2 vs frag ThinRecordBufFrag@2) RESOLVED — "
-        "LightingBuf moved to SSBO slot 4. Slot 2 now carries only "
-        "ThinRecordBufFrag in the mask programs. Do NOT reintroduce a second "
-        "buffer at SSBO:2 in the terrain mask VS (check-vulkan-bindings.py "
-        "enforces the ERROR)."
-    ),
-}
-
-# A name is "binding-ish" if it plausibly names a buffer binding-base slot.
-BINDINGISH = re.compile(r"(BINDING|_SLOT|SsboBinding|Binding)\b", re.IGNORECASE)
-
-# C++ define / const forms ----------------------------------------------------
-RE_CPP_DEFINE = re.compile(r"^\s*#\s*define\s+([A-Za-z_]\w*)\s+(\d+)\b")
-RE_CPP_CONST = re.compile(
-    r"\b(?:static\s+)?(?:constexpr|const)\s+(?:\w+\s+)*?([A-Za-z_]\w*)\s*=\s*(\d+)\s*u?\s*;"
-)
-# literal glBindBufferBase(GL_SHADER_STORAGE_BUFFER|GL_UNIFORM_BUFFER, N, ...)
-RE_CPP_BINDBASE = re.compile(
-    r"glBindBufferBase\s*\(\s*(GL_SHADER_STORAGE_BUFFER|GL_UNIFORM_BUFFER)\s*,\s*(\d+)\s*u?\s*,"
-)
+GLSL_DIR = "shaders/vulkan"
+GLSL_EXT = (".vert", ".frag", ".comp", ".tesc", ".tese", ".geom")
 
 # GLSL forms ------------------------------------------------------------------
 RE_GLSL_DEFINE = re.compile(r"^\s*#\s*define\s+([A-Za-z_]\w*)\s+(\d+)\b")
@@ -83,9 +26,10 @@ RE_GLSL_DEFINE = re.compile(r"^\s*#\s*define\s+([A-Za-z_]\w*)\s+(\d+)\b")
 RE_GLSL_BLOCK = re.compile(
     r"layout\s*\(([^)]*)\)\s*"
     r"(?:(?:readonly|writeonly|coherent|restrict|volatile|std140|std430)\s+)*"
-    r"(buffer|uniform)\s+([A-Za-z_]\w*)\s*\{"
+    r"(buffer|uniform)\s+([A-Za-z_]\w*)\s*(?:\{|([A-Za-z_]\w*)\s*(?:\[[^]]*\])?\s*;)"
 )
 RE_BINDING_IN_LAYOUT = re.compile(r"\bbinding\s*=\s*([A-Za-z_]\w*|\d+)")
+RE_SET = re.compile(r"\bset\s*=\s*([A-Za-z_]\w*|\d+)")
 RE_STD = re.compile(r"\bstd(140|430)\b")
 
 
@@ -100,32 +44,12 @@ def walk(root, dirs, exts):
                     continue
                 p = os.path.join(dp, fn)
                 rel = os.path.relpath(p, root).replace("\\", "/")
-                if any(s.replace("\\", "/") in rel + "/" for s in EXCLUDE_SUBSTR):
-                    continue
                 yield p, rel
 
 
 def read(p):
     with open(p, "r", encoding="utf-8", errors="replace") as f:
         return f.read()
-
-
-def scan_cpp(root):
-    """Return: defines{name:[(val,rel,line)]}, bindbases[(target,val,rel,line)]"""
-    defines = {}
-    bindbases = []
-    for p, rel in walk(root, CPP_DIRS, CPP_EXT):
-        for i, line in enumerate(read(p).splitlines(), 1):
-            m = RE_CPP_DEFINE.match(line)
-            if m and BINDINGISH.search(m.group(1)):
-                defines.setdefault(m.group(1), []).append((int(m.group(2)), rel, i))
-                continue
-            m = RE_CPP_CONST.search(line)
-            if m and BINDINGISH.search(m.group(1)):
-                defines.setdefault(m.group(1), []).append((int(m.group(2)), rel, i))
-            for m in RE_CPP_BINDBASE.finditer(line):
-                bindbases.append((m.group(1), int(m.group(2)), rel, i))
-    return defines, bindbases
 
 
 RE_PP_OPEN = re.compile(r"^\s*#\s*(if|ifdef|ifndef)\b")
@@ -165,37 +89,86 @@ def mutually_exclusive(p1, p2):
     return False
 
 
+def shader_text(path, seen=None):
+    """Expand local includes once per stage, retaining conditional branches.
+
+    These Vulkan shaders use include guards and numeric descriptor-set macros.
+    Default #ifndef macros follow the includer's override; first definition wins.
+    Branch paths still distinguish alternate declarations for collision checks.
+    """
+    seen = set() if seen is None else seen
+    path = Path(path).resolve()
+    if path in seen:
+        return ""
+    seen.add(path)
+    text = strip_comments(read(path))
+    return re.sub(r'^\s*#\s*include\s+"([^"\n]+)"[^\n]*',
+                  lambda m: shader_text(path.parent / m.group(1), seen), text,
+                  flags=re.M)
+
+
 def scan_glsl(root):
-    """Return: defines{name:[(val,rel,line)]}, blocks[ {..} ]"""
-    defines = {}
-    blocks = []
+    """Census live Vulkan stages, including their buffer, sampler and image declarations."""
+    defines, blocks = {}, []
     for p, rel in walk(root, [GLSL_DIR], GLSL_EXT):
-        text = read(p)
+        if not rel.endswith((".vert", ".frag", ".comp", ".tesc", ".tese", ".geom")):
+            continue
+        text = shader_text(p)
+        local_defs = {}
         for i, line in enumerate(text.splitlines(), 1):
             m = RE_GLSL_DEFINE.match(line)
-            if m and BINDINGISH.search(m.group(1)):
-                defines.setdefault(m.group(1), []).append((int(m.group(2)), rel, i))
+            if m:
+                local_defs.setdefault(m.group(1), [(int(m.group(2)), rel, i)])
+                defines.setdefault(m.group(1), local_defs[m.group(1)])
         branch_paths = compute_branch_paths(text)
-        # block decls may span lines; scan the whole text with line attribution
         for m in RE_GLSL_BLOCK.finditer(text):
-            layout, kind, block = m.group(1), m.group(2), m.group(3)
+            layout, kind, block, resource = m.groups()
             bm = RE_BINDING_IN_LAYOUT.search(layout)
             if not bm:
-                continue  # block without explicit binding — not our concern
+                continue  # push constants, not descriptors
+            sm = RE_SET.search(layout)
+            slot, _ = resolve_token(bm.group(1), local_defs, {})
+            descriptor_set, _ = resolve_token(sm.group(1) if sm else "0", local_defs, {})
+            if slot is None or descriptor_set is None:
+                raise ValueError(f"unresolved Vulkan set/binding in {rel}: {layout}")
             line = text.count("\n", 0, m.start()) + 1
             std = RE_STD.search(layout)
-            blocks.append(
-                {
-                    "file": rel,
-                    "line": line,
-                    "kind": kind,  # buffer (SSBO) | uniform (UBO)
-                    "block": block,
-                    "binding_token": bm.group(1),
-                    "std": ("std" + std.group(1)) if std else None,
-                    "branch": branch_paths.get(line, {}),
-                }
-            )
+            blocks.append({"file": rel, "line": line, "kind": kind,
+                           "block": resource or block, "type": block if resource else kind,
+                           "binding_token": str(slot), "set": descriptor_set,
+                           "std": ("std" + std.group(1)) if std else None,
+                           "branch": branch_paths.get(line, {})})
     return defines, blocks
+
+
+def native_lockstep(root, blocks):
+    """Compare seven live mech descriptors to the actual C++ layout assignments.
+
+    Array indices identify C++ layout records, NOT binding numbers. The set is
+    read from the pipeline's pSetLayouts array. Missing source/pairs fail closed.
+    Other native layouts are outside this explicit lockstep surface.
+    """
+    source = strip_comments(read(os.path.join(root, "GameOS/gameos/vulkan_mech_island.cpp")))
+    layout = re.search(r'const VkDescriptorSetLayout layouts\[\]\s*\{([^}]+)\}', source)
+    sets = [item.strip() for item in layout.group(1).split(",")] if layout else []
+    descriptor_set = sets.index("s->dsl.get()") if "s->dsl.get()" in sets else None
+    pairs = {0: "MechFrameUBO", 1: "InstanceBuffer", 2: "BoneBuffer",
+             3: "uAlbedo", 4: "LightsData", 6: "uMechAo", 7: "uMechNrm"}
+    fails = []
+    for index, role in pairs.items():
+        match = re.search(rf'\bb\[{index}\]\.binding\s*=\s*(\d+)\s*;\s*'
+                          rf'b\[{index}\]\.descriptorType\s*=\s*VK_DESCRIPTOR_TYPE_(\w+)', source)
+        sites = [b for b in blocks if b["file"] in
+                 ("shaders/vulkan/mech_tier1.vert", "shaders/vulkan/mech_tier1.frag")
+                 and b["block"] == role]
+        expected_type = {"UNIFORM_BUFFER_DYNAMIC": "uniform",
+                         "STORAGE_BUFFER_DYNAMIC": "buffer",
+                         "COMBINED_IMAGE_SAMPLER": "sampler2D"}.get(match[2]) if match else None
+        if (not match or descriptor_set is None or not sites or
+                any((b["set"], int(b["binding_token"]), b["type"]) !=
+                    (descriptor_set, int(match[1]), expected_type) for b in sites)):
+            fails.append(f"native-pair mismatch: mech {role} vs C++ b[{index}] layout set/binding/type")
+    return fails, len(pairs)
 
 
 def resolve_token(token, glsl_defs, cpp_defs):
@@ -217,101 +190,57 @@ def main():
 
     root = args.root or os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-    cpp_defs, bindbases = scan_cpp(root)
     glsl_defs, blocks = scan_glsl(root)
 
-    fails, warns = [], []
+    fails, pair_count = native_lockstep(root, blocks)
+    warns = []
+    if not blocks:
+        fails.append("Vulkan descriptor census is empty")
 
-    # --- FAIL 1: shared C++<->GLSL named define mismatch --------------------
-    shared = set(cpp_defs) & set(glsl_defs)
-    for name in sorted(shared):
-        cv = cpp_defs[name][0][0]
-        gv = glsl_defs[name][0][0]
-        if cv != gv:
-            fails.append(
-                f"named-pair mismatch: {name} = {cv} (C++ {cpp_defs[name][0][1]}:"
-                f"{cpp_defs[name][0][2]}) vs {gv} (GLSL {glsl_defs[name][0][1]}:"
-                f"{glsl_defs[name][0][2]})"
-            )
-
-    # --- FAIL 2: same-file slot collision (two distinct blocks, one binding) -
+    # --- Same-stage check: same-file slot collision (two distinct blocks, one binding) -
     by_file = {}
     for b in blocks:
         by_file.setdefault(b["file"], []).append(b)
     for f, bs in sorted(by_file.items()):
-        seen = {}  # (namespace, slot) -> list of block dicts
+        seen = {}  # (set, binding) -> list of descriptor declarations
         for b in bs:
-            v, _ = resolve_token(b["binding_token"], glsl_defs, cpp_defs)
-            if v is None:
-                continue
-            ns = "UBO" if b["kind"] == "uniform" else "SSBO"
-            key = (ns, v)
+            v, _ = resolve_token(b["binding_token"], glsl_defs, {})
+            key = (b["set"], v)
             for prev in seen.get(key, []):
-                if prev["block"] == b["block"]:
+                if (prev["block"], prev["type"]) == (b["block"], b["type"]):
                     continue  # same block re-declared (e.g. include) — fine
                 if mutually_exclusive(prev["branch"], b["branch"]):
                     warns.append(
-                        f"mode-alternate (intentional): {f} {ns} slot {v} = "
+                        f"mode-alternate (intentional): {f} set {b['set']} binding {v} = "
                         f"'{prev['block']}' / '{b['block']}' on exclusive "
                         f"#if branches"
                     )
                 else:
                     fails.append(
-                        f"same-pass collision in {f}: {ns} slot {v} bound by "
+                        f"same-pass collision in {f}: set {b['set']} binding {v} bound by "
                         f"'{prev['block']}' and '{b['block']}' (not on exclusive "
                         f"branches)"
                     )
             seen.setdefault(key, []).append(b)
 
-    # --- WARN: bare literals + unresolved tokens ----------------------------
-    bare = 0
-    for b in blocks:
-        v, how = resolve_token(b["binding_token"], glsl_defs, cpp_defs)
-        if how == "literal":
-            bare += 1
-        elif how == "unresolved":
-            warns.append(
-                f"unresolved binding token '{b['binding_token']}' in "
-                f"{b['file']}:{b['line']} ({b['block']})"
-            )
-    if bare:
-        warns.append(
-            f"{bare} GLSL block bindings are bare numeric literals not tied to a "
-            f"named constant (lockstep-by-hand surface)"
-        )
-
-    # --- occupancy: slot -> usages (cross-pass reuse is informational) ------
+    # Descriptor occupancy, keyed by Vulkan set and binding.
     occ = {}
     for b in blocks:
-        v, _ = resolve_token(b["binding_token"], glsl_defs, cpp_defs)
-        if v is None:
-            continue
-        ns = "UBO" if b["kind"] == "uniform" else "SSBO"
-        occ.setdefault(f"{ns}:{v}", []).append(
+        v, _ = resolve_token(b["binding_token"], glsl_defs, {})
+        occ.setdefault(f"set{b['set']}:binding{v}", []).append(
             {"side": "glsl", "file": b["file"], "line": b["line"],
-             "role": b["block"], "std": b["std"]}
+             "role": b["block"], "std": b["std"], "type": b["type"]}
         )
-    for tgt, v, rel, ln in bindbases:
-        ns = "UBO" if tgt == "GL_UNIFORM_BUFFER" else "SSBO"
-        occ.setdefault(f"{ns}:{v}", []).append(
-            {"side": "cpp", "file": rel, "line": ln, "role": "glBindBufferBase(literal)"}
-        )
-    for slot, uses in occ.items():
-        files = {u["file"] for u in uses if u["side"] == "glsl"}
-        if len(files) > 1:
-            warns.append(f"cross-pass reuse: {slot} bound in {len(files)} shader files (expected — multiplexed)")
-
     report = {
         "summary": {
-            "cpp_binding_constants": len(cpp_defs),
             "glsl_blocks_with_binding": len(blocks),
-            "shared_named_pairs": sorted(shared),
+            "native_pairs": pair_count,
             "fails": len(fails),
             "warns": len(warns),
         },
         "fails": fails,
         "warns": warns,
-        "occupancy": {k: occ[k] for k in sorted(occ, key=lambda s: (s.split(":")[0], int(s.split(":")[1])))},
+        "occupancy": {k: occ[k] for k in sorted(occ)},
     }
 
     if args.json:
@@ -320,11 +249,8 @@ def main():
 
     if not args.quiet:
         print("[check-binding-slots] GPU-BINDING-SLOTS-LOCKSTEP-1")
-        print(f"  C++ binding constants : {len(cpp_defs)}")
+        print(f"  native layout pairs    : {pair_count}")
         print(f"  GLSL bound blocks     : {len(blocks)}")
-        print(f"  shared named pairs    : {', '.join(sorted(shared)) or '(none)'}")
-        for (ns, slot), note in sorted(RESOLVED_COLLISIONS.items()):
-            print(f"  RESOLVED: {ns}:{slot} — {note}")
         for w in warns:
             print(f"  WARN: {w}")
         for fl in fails:

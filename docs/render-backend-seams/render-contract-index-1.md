@@ -22,7 +22,7 @@ lifetime/sync**.
 | Dimension | Authoritative artifact(s) | Status | Gap |
 |---|---|---|---|
 | **Buffer bindings (SSBO/UBO)** | `scripts/check-binding-slots.py` + `docs/render-backend-seams/binding-slot-occupancy.{md,json}` | **COVERED** (checked + regenerated; multiplexed-per-pass model) | Bare GLSL literals WARN-only (hand-lockstep) |
-| **Sampler / texture units** | `36544d925:scripts/check-sampler-bindings.py` + `docs/render-backend-seams/sampler-unit-occupancy.{md,json}` (registered in `check-contracts.sh` as `sampler_bindings`) | **COVERED** (SHADER-SAMPLER-BINDING-MANIFEST-1 shipped 2026-06-22; multiplexed-per-pass, derive-from-code, FAIL on intra-program contradiction / non-multiplexed comment-vs-code drift) | Literal loc-cache binders are `UNKNOWN` rows (WARN) until migrated to named binds; `building_pbr` dormant; 2D_ARRAY-target leak residual recorded |
+| **Sampler / texture units** | `sampler-unit-occupancy.md` | **RETIRED** (GL renderer removed) | Vulkan GLSL descriptors: `binding_slots` + `vulkan_bindings`; Slang has separate contracts |
 | **Render passes (identity)** | `mclib/render_contract.h` `PassIdentity` (15) · `RenderCore/RenderPassContract.h` `RenderPassId` (5) | **PARTIAL/SPLIT** | Two un-reconciled taxonomies; 10 PassIdentity orphans have no RenderPassId. → RENDERPASS-ENUM-RECON-1 (largely done below) |
 | **Pass resource flow / barriers** | `RenderCore/RenderPassContract.h` `reads[4]`/`writes[4]`/`barrierAfter` + `RenderResourceRegistry.h` | **SKELETON EXISTS** | No load/store ops, no layout transitions, no ordered pass list, only 5 of ~15 passes have rows. → RENDER-PASS-DAG-CONTRACT-1 |
 | **Pass GL-state (blend/depth/MRT)** | `mclib/render_contract.h` `PassStateContract` | **COVERED** (separate file, different enum key) | Split from resource-flow half; not joined to DAG |
@@ -83,11 +83,10 @@ per-axis `--all` audit modes and standalone capstone command no longer exist.
 
 ### GLSL includes (`shaders/include/`)
 - `render_contract.hglsl` — GBuffer1 `rc_*` helpers
-- `view_uniforms.hglsl` — `layout(binding=3, std140) ViewUniformsBlock` (mirrors ViewUniforms.h)
-- `scene.hglsl` — `SCENE_DATA_ATTACHMENT_SLOT 1` (UBO)
-- `lighting.hglsl` — `LIGHT_DATA_SSBO_BINDING 20`, legacy `LIGHT_DATA_ATTACHMENT_SLOT 0`
-- `material_gpu.hglsl` — `MaterialTable` SSBO binding=5 (mirrors MaterialGpu.h)
-- **No** `binding_slots.hglsl` exists yet, and **no** GLSL sampler carries `layout(binding=)` — units live only in trailing comments
+- The GL `view_uniforms.hglsl`, `scene.hglsl`, `lighting.hglsl` and
+  `material_gpu.hglsl` binding declarations were retired.
+- Live Vulkan buffer, sampler and image descriptors use explicit set/binding
+  declarations in `shaders/vulkan/`; see `binding-slot-occupancy.md`.
 
 ## RENDERPASS-ENUM-RECON-1 result (folded in — this recon is effectively complete)
 
@@ -113,7 +112,7 @@ A DAG keyed off either enum today is wrong: `RenderPassId` omits the entire post
 The original "fastest sane sequence" assumed several already-done slices. Corrected:
 
 1. **RENDER-CONTRACT-INDEX-1** ← *this doc* (DONE 2026-06-22). Also folded: RENDERPASS-ENUM-RECON-1 (below) and the RenderWorld/API-spine modern-vs-legacy routing (now in `docs/engine-standalone-seams.md` + `docs/render-contract.md`).
-2. **SHADER-SAMPLER-BINDING-MANIFEST-1** ✅ **SHIPPED 2026-06-22** — `36544d925:scripts/check-sampler-bindings.py` + `sampler-unit-occupancy.{md,json}`, registered as `sampler_bindings`. Derive-from-code (not a hand golden); FAILs on intra-program contradiction + non-multiplexed comment-vs-code drift; WARNs on the multiplex/UNKNOWN-binder surface. Verified: clean tree PASS exit 0; planted `sceneTex` drift → FAIL exit 1; reverted clean. Records target per sampler → subsumes the 2D_ARRAY-leak residual. **Next within this dimension (future):** migrate literal loc-cache binders (terrain/mech/static-prop) to named binds + a generated `sampler_units` constant pair, to drop the `UNKNOWN`/WARN rows.
+2. **SHADER-SAMPLER-BINDING-MANIFEST-1** -- RETIRED with the GL renderer; see `sampler-unit-occupancy.md`.
 3. **RENDER-PASS-DAG-CONTRACT-1** — widen `RenderPassId` to cover the 10 orphans (append-only before `_SentinelLast`, update table + static_assert same commit); add `PassIdentity→RenderPassId` mapping fn (keep PassIdentity — 10 live callsites); add load/store + layout + `dependsOn[]` fields to `RenderPassContract`; emit ordered `kFramePassOrder[]` with the shadow-before-geometry edge; cross-ref (don't merge yet) `PassStateContract` blend/depth/MRT.
 4. **GPU-UPDATE-BUFFER-COUNTER-1** — measurement-only, reuse `g_mc2HitchAccum`, gate `MC2_GPUBUF_COUNTER`, HUD pilot. Byte-identical output; tier1 5/5 is the gate.
 5. **XFORM-CONVENTION-LEDGER-1** — single ledger of per-subsystem transform ownership (mech bone-fold / static model-matrix / terrain global / ViewUniforms). Docs-only.

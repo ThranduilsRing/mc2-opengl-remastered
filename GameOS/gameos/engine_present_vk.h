@@ -109,7 +109,7 @@ struct VkHudDraw {
 };
 
 // The engine VK present object. Reuses the T2 shared VulkanContext device;
-// owns the hidden present window + surface + swapchain + interop image.
+// owns the surface and swapchain on the visible SDL game window.
 class EnginePresentVk {
 public:
     EnginePresentVk() = default;
@@ -118,22 +118,14 @@ public:
     EnginePresentVk(const EnginePresentVk&) = delete;
     EnginePresentVk& operator=(const EnginePresentVk&) = delete;
 
-    // Stand up the present surface + swapchain + interop image on the EXISTING
-    // visible GL game window (P13b: same-HWND raw vkCreateWin32SurfaceKHR, no
-    // second window), sized to (w,h) == the GL drawable extent. `window` is the
-    // game's SDL_WINDOW_VULKAN window (g_sdl_window) whose HWND we present to; it
-    // stays visible and owns all input. `ctx` MUST be a valid, present-capable
-    // (init(wantPresent=true)) engine context. Returns false + sets
-    // health.fallback_reason on any error (fail-soft: partial state torn down).
+    // Create the surface and swapchain on the visible SDL_WINDOW_VULKAN game
+    // window, sized to its drawable extent. ctx must be present-capable.
+    // Returns false and records fallback_reason on failure.
     bool init(VulkanContext& ctx, SDL_Window* window, uint32_t w, uint32_t h);
 
-    // Present ONE finished GL frame. `glFbo0DrawableW/H` is the current GL
-    // drawable size (for resize detection). Runs copy-1 (GL blit FBO-0 -> shared
-    // GL texture), the GL->VK signal, then copy-2 (VK blit -> swapchain) +
-    // present. Rebuilds the swapchain + shared image on drawable resize.
-    // Returns false (fail-soft) on a hard error -- caller then forces GL.
-    // `verifyReadback` (T5): if true, reads back the shared image once this frame
-    // and folds a cheap checksum into health (proves real, changing content).
+    // Present the native Vulkan frame; rebuild the swapchain on drawable resize.
+    // verifyReadback folds the frame's readback checksum into health.
+    // Returns false on a hard error.
     //
     // The present IS the frame boundary: every exit of this function (presented, skipped for a zero extent or a swapchain rebuild, declined, or
     // failed) ends with the context's frameBoundary(), so any host that presents through it (the game, the editor viewport) advances the frame

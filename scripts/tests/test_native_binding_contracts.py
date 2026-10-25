@@ -1,0 +1,106 @@
+"""Run the real contract entry points on clean and deliberately broken source copies."""
+import importlib
+import shutil
+import sys
+from pathlib import Path
+
+import pytest
+
+ROOT = Path(__file__).resolve().parents[2]
+
+
+@pytest.fixture
+def source(tmp_path, monkeypatch):
+    monkeypatch.syspath_prepend(str(ROOT / 'scripts'))
+    shutil.copytree(ROOT / 'shaders', tmp_path / 'shaders')
+    for rel in ('GameOS/gameos/vulkan_mech_island.cpp', 'mclib/camera.cpp',
+                '3rdparty/smaa/SMAA.hlsl'):
+        target = tmp_path / rel
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(ROOT / rel, target)
+    return tmp_path
+
+
+def run(name, source, monkeypatch):
+    checker = importlib.import_module('check-' + name)
+    args = ['check-' + name]
+    if name == 'lighting-divergence':
+        monkeypatch.setattr(checker, 'ROOT', source)
+    else:
+        args += ['--root', str(source), '--quiet']
+        if name == 'vulkan-bindings':
+            args += ['--strict']
+    monkeypatch.setattr(sys, 'argv', args)
+    return checker.main()
+
+
+def change(source, rel, before, after):
+    path = source / rel
+    text = path.read_text(encoding='utf-8')
+    assert before in text
+    path.write_text(text.replace(before, after), encoding='utf-8')
+
+
+@pytest.mark.parametrize('name', ['lighting-divergence', 'binding-slots', 'vulkan-bindings'])
+def test_clean_source_passes(name, source, monkeypatch):
+    assert run(name, source, monkeypatch) == 0
+
+
+@pytest.mark.parametrize('floor', ['mix(0.25, 1.0, shadow)', '(0.50 + 0.50 * NdotL)'])
+def test_new_inline_floor_fails(floor, source, monkeypatch):
+    path = source / 'shaders/vulkan/terrain_tier1.frag'
+    with path.open('a', encoding='utf-8') as out:
+        out.write('\nfloat regression = ' + floor + ';\n')
+    assert run('lighting-divergence', source, monkeypatch) == 1
+
+
+def test_cross_stage_collision_fails_on_live_source(source, monkeypatch):
+    path = source / 'shaders/vulkan/terrain_tier1.frag'
+    with path.open('a', encoding='utf-8') as out:
+        out.write('\nlayout(set=0, binding=1) uniform Incompatible { vec4 bad; };\n')
+    assert run('vulkan-bindings', source, monkeypatch) == 1
+
+
+@pytest.mark.parametrize('side', ['cpp', 'glsl', 'set', 'cpp_set', 'type', 'cpp_type'])
+def test_native_lockstep_fails(side, source, monkeypatch):
+    if side == 'cpp':
+        change(source, 'GameOS/gameos/vulkan_mech_island.cpp',
+               'b[4].binding = 4;', 'b[4].binding = 42;')
+    elif side == 'cpp_set':
+        change(source, 'GameOS/gameos/vulkan_mech_island.cpp',
+               'layouts[]{s->dsl.get(), s->groundLighting.layout()}',
+               'layouts[]{s->groundLighting.layout(), s->dsl.get()}')
+    elif side == 'cpp_type':
+        change(source, 'GameOS/gameos/vulkan_mech_island.cpp',
+               'b[3].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER',
+               'b[3].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE')
+    elif side == 'type':
+        change(source, 'shaders/vulkan/mech_tier1.vert',
+               'readonly buffer LightsData', 'uniform LightsData')
+    else:
+        change(source, 'shaders/vulkan/mech_tier1.vert',
+               'set = 0, binding = 4', 'set = 0, binding = 42' if side == 'glsl'
+               else 'set = 2, binding = 4')
+    assert run('binding-slots', source, monkeypatch) == 1
+
+
+def test_sets_are_distinct_but_descriptor_types_share_one_namespace(source, monkeypatch):
+    path = source / 'shaders/vulkan/terrain_tier1.vert'
+    with path.open('a', encoding='utf-8') as out:
+        out.write('\nlayout(set=2, binding=1) uniform DifferentSet { vec4 fine; };\n')
+    assert run('binding-slots', source, monkeypatch) == 0
+    change(source, 'shaders/vulkan/terrain_tier1.vert', 'set=2, binding=1', 'set=0, binding=1')
+    assert run('binding-slots', source, monkeypatch) == 1
+
+
+def test_strict_rejects_unmodeled_stage_even_on_single_slot(source, monkeypatch):
+    (source / 'shaders/vulkan/new.frag').write_text(
+        'layout(set=9, binding=99) uniform Unknown { vec4 v; };\n', encoding='utf-8')
+    assert run('vulkan-bindings', source, monkeypatch) == 1
+
+
+def test_including_stage_set_override_is_preserved(source):
+    checker = importlib.import_module('check-binding-slots')
+    _, blocks = checker.scan_glsl(source)
+    assert {b['set'] for b in blocks if b['block'] == 'TerrainFrameUBO' and
+            b['file'] == 'shaders/vulkan/vfx_vegetation.frag'} == {3}
