@@ -271,7 +271,7 @@ void GosVegetation::flush(float lx, float ly, float lz, float lw, float time,
     cp.clipRow[0]=mvp[3]; cp.clipRow[1]=mvp[7]; cp.clipRow[2]=mvp[11]; cp.clipRow[3]=mvp[15];
     cp.cam[0]=cx; cp.cam[1]=cy; cp.cam[2]=cz; cp.cam[3]=maxDist;
     cp.misc[0]=fadeStart;
-    cp.misc[1]=0.5f*pp->getHeight()*std::sqrt(mvp[1]*mvp[1]+mvp[5]*mvp[5]+mvp[9]*mvp[9]);
+    cp.misc[1]=0.5f*pp->getOutputHeight()*std::sqrt(mvp[1]*mvp[1]+mvp[5]*mvp[5]+mvp[9]*mvp[9]);
     cp.misc[2]=std::max(lz,0.0f);
     cp.misc[3]=time;
     cp.grid[0]=halfMap; cp.grid[1]=blockSide;
