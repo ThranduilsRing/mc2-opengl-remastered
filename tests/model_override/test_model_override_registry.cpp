@@ -12,7 +12,7 @@ int main(int argc, char** argv) {
     const std::string dir = (argc > 1) ? argv[1] : "fixtures";
     auto fx = [&](const char* f){ return dir + "/" + f; };
 
-    {   // Only a matching cook receipt yields priority, even with a paired stock TGA.
+    {   // Legacy cooks use paired stock; an existing receipt always takes precedence.
         const auto fixture = std::filesystem::temp_directory_path() / "mc2-sidecar-priority-fixture";
         std::filesystem::create_directories(fixture);
         const auto sidecar = fixture / "building.ktx2";
@@ -21,19 +21,24 @@ int main(int argc, char** argv) {
         { std::ofstream out(source); out << "stock"; }
         { std::ofstream out(sidecar); out << "hello"; }
         CHECK(!verifiedLooseTextureCook(sidecar));
+        CHECK(verifiedLooseTextureCook(sidecar, true)); // paired archived stock TGA
         // FNV-1a-64 standard vector, also emitted by mc2texcook.record_cook.
         { std::ofstream out(stamp); out << "a430d84680aabd0b\n"; }
         CHECK(verifiedLooseTextureCook(sidecar));
+        CHECK(verifiedLooseTextureCook(sidecar, true));
         CHECK(!verifiedLooseTextureCook(source));
         { std::ofstream out(sidecar); out << "jello"; } // same-size user edit
         CHECK(!verifiedLooseTextureCook(sidecar));
+        CHECK(!verifiedLooseTextureCook(sidecar, true)); // edited KTX2 still wins
         CHECK(looseAssetDiffers(sidecar.string(), {}));
         std::filesystem::remove(source); // archived-only sources do not change the verdict
         CHECK(!verifiedLooseTextureCook(sidecar));
         { std::ofstream out(stamp); out << "invalid"; }
         CHECK(!verifiedLooseTextureCook(sidecar));
+        CHECK(!verifiedLooseTextureCook(sidecar, true));
         std::filesystem::remove(sidecar);
         CHECK(!verifiedLooseTextureCook(sidecar));
+        CHECK(!verifiedLooseTextureCook(sidecar, true));
         std::filesystem::remove(stamp);
         std::filesystem::remove(fixture);
     }
