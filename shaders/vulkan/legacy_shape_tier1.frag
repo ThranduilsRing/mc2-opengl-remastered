@@ -27,6 +27,13 @@ void main() {
     vec4 tex = texture(uAlbedo, vUv);
     if ((pc.flags & 1u) != 0u && tex.a < 0.5) discard;        // ALPHA_TEST variant
     vec4 c = vColor * tex;
+    // QueueBeaconGlow reserves this UV range for an untextured additive disc.
+    // Evaluate the circular rim and falloff per pixel, independent of tessellation.
+    if ((pc.flags & 2u) != 0u && vUv.x >= -102.0 && vUv.x <= -100.0) {
+        float r = length(vec2(vUv.x + 101.0, vUv.y));
+        if (r >= 1.0) discard;
+        c = vColor * ((1.0 - r) * (1.0 - r));
+    }
     if ((pc.flags & 2u) == 0u &&
         (uFrame.fogColor.x > 0.0 || uFrame.fogColor.y > 0.0 ||
          uFrame.fogColor.z > 0.0 || uFrame.fogColor.w > 0.0))

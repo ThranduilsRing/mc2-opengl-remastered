@@ -980,8 +980,6 @@ void QueueBeaconGlow(TG_MultiShape* shape, float nightFactor)
     // beacons still get proportionally smaller pools.
     struct SV { float x, y, z, rhw; bool ok; };
 
-    const int kSeg = 12;   // disc tessellation (12 wedges reads as round)
-
     // BEACON-DIAG-1 (MC2_LIGHT_CONE_DIAG=1): attribute a missing beacon glow to
     // the stage that dropped it — no billboards on the shape at all vs found
     // but untransformed vs found but clipped.
@@ -1044,103 +1042,35 @@ void QueueBeaconGlow(TG_MultiShape* shape, float nightFactor)
         if (radPx < 2.0f)   { ++dClipped; continue; }   // sub-pixel -> skip
         if (radPx > 400.0f) radPx = 400.0f;             // sanity clamp
 
-        // BEACON-GEOMETRY-2: the disc is built as CONCENTRIC RINGS, not a
-        // single centre-anchored fan, and its intensity is PRE-MULTIPLIED into
-        // the RGB channels.
-        //
-        // Why rings: this batch renders FLAT-SHADED. A centre-anchored fan
-        // gives every triangle the same provoking (centre) vertex, so the whole
-        // disc took one uniform colour and rendered as a solid hard-edged blob
-        // — the very artefact this slice exists to remove. The authored cone
-        // meshes get away with per-vertex alpha only because they carry many
-        // triangles along the beam, so flat shading still steps a gradient.
-        // Banding the disc into kRings uniform-coloured bands reproduces that:
-        // each band is flat, but band-to-band it steps smoothly, and under
-        // additive blend at these alphas the steps are invisible.
-        //
-        // Why pre-multiplied RGB: the pass is gos_Alpha_OneOne (dst += src) and
-        // untextured, so scaling RGB is the reliable way to scale contribution
-        // regardless of how alpha is treated. Alpha is scaled in lockstep.
-        //
-        // Depth: rings inherit the fixture's depth nudged slightly toward the
-        // camera. Without the nudge the lower half of every disc was clipped by
-        // the ground in front of it (a half-moon, visible in the r40 probe).
-        const int kRings = 5;
-        const float zBias = c.z * 0.998f;
-
-        const float cr = static_cast<float>(((rgb >> 16) & 0xFFu));
-        const float cg = static_cast<float>(((rgb >>  8) & 0xFFu));
-        const float cb = static_cast<float>(( rgb        & 0xFFu));
+        // A quad carries a unit-disc coordinate to legacy_shape_tier1.frag.
+        // Its analytic falloff avoids the old five flat bands and twelve-sided rim.
+        // U in [-102,-100] is reserved for this untextured additive beacon batch.
+        if (s_tris.size() + 2 > kMaxFrameTris) { ++dEmitted; return; }
+        const float zBias = c.z * 1.002f; // reverse-Z: move toward the camera
         const float aScale = clampf(peak / 255.0f, 0.0f, 1.0f);
-
-        auto mkVert = [&](float px, float py, float inten, gos_VERTEX& gv) {
-            gv.x = px; gv.y = py; gv.z = zBias; gv.rhw = c.rhw;
-            gv.u = 0.0f; gv.v = 0.0f;
-            DWORD R = static_cast<DWORD>((cr * inten * aScale));
-            DWORD G = static_cast<DWORD>((cg * inten * aScale));
-            DWORD B = static_cast<DWORD>((cb * inten * aScale));
-            if (R > 255) R = 255; if (G > 255) G = 255; if (B > 255) B = 255;
-            DWORD A = static_cast<DWORD>((255.0f * inten * aScale));
-            if (A > 255) A = 255;
+        const DWORD R = static_cast<DWORD>(float((rgb >> 16) & 0xFFu) * aScale);
+        const DWORD G = static_cast<DWORD>(float((rgb >> 8) & 0xFFu) * aScale);
+        const DWORD B = static_cast<DWORD>(float(rgb & 0xFFu) * aScale);
+        const DWORD A = static_cast<DWORD>(255.0f * aScale);
+        auto mkVert = [&](float x, float y, gos_VERTEX& gv) {
+            gv.x = c.x + x * radPx; gv.y = c.y + y * radPx;
+            gv.z = zBias; gv.rhw = c.rhw;
+            gv.u = x - 101.0f; gv.v = y;
             gv.argb = (A << 24) | (R << 16) | (G << 8) | B;
             gv.frgb = 0x00000000;
         };
-        // Smooth inverse-ish falloff: full at the fixture, 0 at the rim.
-        auto ringInten = [&](float t) { const float u = 1.0f - t; return u * u; };
-
-        bool emittedAny = false;
-        for (int rg = 0; rg < kRings; ++rg)
-        {
-            const float t0 = static_cast<float>(rg) / static_cast<float>(kRings);
-            const float t1 = static_cast<float>((rg + 1)) / static_cast<float>(kRings);
-            const float r0 = t0 * radPx, r1 = t1 * radPx;
-            // One flat colour per band (see the flat-shading note above).
-            const float inten = ringInten((t0 + t1) * 0.5f);
-            if (inten <= 0.002f) continue;
-
-            for (int s = 0; s < kSeg; ++s)
-            {
-                if (s_tris.size() + 2 > kMaxFrameTris) { ++dEmitted; return; }
-                const float a0 = static_cast<float>(s) * (6.28318530718f / static_cast<float>(kSeg));
-                const float a1 = static_cast<float>((s + 1)) * (6.28318530718f / static_cast<float>(kSeg));
-                const float c0 = std::cos(a0), s0 = std::sin(a0);
-                const float c1 = std::cos(a1), s1 = std::sin(a1);
-
-                const float ix0 = c.x + c0 * r0, iy0 = c.y + s0 * r0;
-                const float ix1 = c.x + c1 * r0, iy1 = c.y + s1 * r0;
-                const float ox0 = c.x + c0 * r1, oy0 = c.y + s0 * r1;
-                const float ox1 = c.x + c1 * r1, oy1 = c.y + s1 * r1;
-
-                if (rg == 0)
-                {
-                    // Innermost band degenerates to a fan triangle.
-                    QueuedTri qt;
-                    mkVert(c.x, c.y, inten, qt.v[0]);
-                    mkVert(ox0, oy0, inten, qt.v[1]);
-                    mkVert(ox1, oy1, inten, qt.v[2]);
-                    s_tris.push_back(qt);
-                    mc2::renderSubmissions().addTriangle(0xffffffff, MC2_ISSPOTLGT);
-                }
-                else
-                {
-                    QueuedTri q1;
-                    mkVert(ix0, iy0, inten, q1.v[0]);
-                    mkVert(ox0, oy0, inten, q1.v[1]);
-                    mkVert(ox1, oy1, inten, q1.v[2]);
-                    s_tris.push_back(q1);
-                    mc2::renderSubmissions().addTriangle(0xffffffff, MC2_ISSPOTLGT);
-
-                    QueuedTri q2;
-                    mkVert(ix0, iy0, inten, q2.v[0]);
-                    mkVert(ox1, oy1, inten, q2.v[1]);
-                    mkVert(ix1, iy1, inten, q2.v[2]);
-                    s_tris.push_back(q2);
-                    mc2::renderSubmissions().addTriangle(0xffffffff, MC2_ISSPOTLGT);
-                }
-                emittedAny = true;
-            }
-        }
-        if (emittedAny) ++dEmitted;
+        QueuedTri q1, q2;
+        mkVert(-1.0f, -1.0f, q1.v[0]);
+        mkVert( 1.0f, -1.0f, q1.v[1]);
+        mkVert( 1.0f,  1.0f, q1.v[2]);
+        mkVert(-1.0f, -1.0f, q2.v[0]);
+        mkVert( 1.0f,  1.0f, q2.v[1]);
+        mkVert(-1.0f,  1.0f, q2.v[2]);
+        s_tris.push_back(q1);
+        s_tris.push_back(q2);
+        mc2::renderSubmissions().addTriangle(0xffffffff, MC2_ISSPOTLGT);
+        mc2::renderSubmissions().addTriangle(0xffffffff, MC2_ISSPOTLGT);
+        ++dEmitted;
     }
 
     if (aim_diag_enabled())
