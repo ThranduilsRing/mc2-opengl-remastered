@@ -100,8 +100,20 @@ def finish(target_dir, manifest, tool, cooker=subprocess.run):
                                + json.dumps(IMPORT_ARGS)).encode()).hexdigest()
     cache = target / "cache/content-model"
     receipt = cache / "industrial-cook.json"
-    # Only the importer can bind a source model to its native recipe. A receipt
-    # inventory cannot prove that mapping; let the importer's cache check it.
+    try:
+        previous = json.loads(receipt.read_text())
+        recipes = previous["recipes"]
+        rows = previous["files"]
+        if (previous["identity"] == identity and isinstance(recipes, dict) and set(recipes) == set(models)
+                and len(rows) == len(models)
+                and set(recipes.values()) == {r["path"] for r in rows}):
+            checked_files(cache, rows)
+            print(f"[deploy_payload] pinned industrial kit verified: {len(models)} GLBs cached; cook skipped")
+            return
+    except (OSError, ValueError, KeyError, TypeError):
+        pass
+    # Record the importer's source-to-recipe mapping with the verified inventory.
+    recipes = {}
     outputs = set()
     for rel in models:
         result = cooker([str(tool), (KIT_REL / rel).as_posix(), *IMPORT_ARGS],
@@ -113,11 +125,12 @@ def finish(target_dir, manifest, tool, cooker=subprocess.run):
         if len(keys) != 1:
             raise ValueError(f"industrial importer did not report one native recipe: {rel}")
         outputs.add(cache / f"model-{keys[0]}.mci")
+        recipes[rel] = f"model-{keys[0]}.mci"
     outputs = sorted(outputs)
     if len(outputs) != len(models) or any(not p.is_file() or p.stat().st_size == 0 for p in outputs):
         raise ValueError(f"industrial cook incomplete: {len(outputs)} recipes for {len(models)} GLBs")
     rows = [dict(path=p.name, bytes=p.stat().st_size, sha256=sha(p)) for p in outputs]
     checked_files(cache, rows)
     checked_files(kit, manifest["files"])
-    receipt.write_text(json.dumps(dict(identity=identity, files=rows), indent=2) + "\n")
+    receipt.write_text(json.dumps(dict(identity=identity, recipes=recipes, files=rows), indent=2) + "\n")
     print(f"[deploy_payload] pinned industrial kit verified: {len(models)} GLBs cooked")
