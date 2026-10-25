@@ -5404,6 +5404,32 @@
    "count": 1
   },
   {
+   "tag": "MISSION_FRAME",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "index",
+    "frame",
+    "ms",
+    "logic",
+    "render",
+    "present",
+    "cap",
+    "fence"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "MISSION_FRAME",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "ready_tail_ms",
+    "frame"
+   ],
+   "count": 1
+  },
+  {
    "tag": "MISSION_LIGHT",
    "ver": 1,
    "stream": "stderr",

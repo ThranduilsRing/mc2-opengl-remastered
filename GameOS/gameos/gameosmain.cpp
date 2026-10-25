@@ -727,6 +727,8 @@ extern float frameRate;
 // so code/mission.cpp can declare these by forward-decl and call into them
 // without a new header. Pattern mirrors the startup timing above.
 static Uint64 g_mission_t0 = 0;
+static unsigned g_missionTraceFrames = 5;
+static Uint64 g_missionReadyTrace = 0;
 
 // LOAD-PHASE-FACTS-1: coarse wall-clock phase breakdown for the mission-load
 // critical path (FST/pak parse, texture prewarm, object/actor spawn, etc).
@@ -745,6 +747,8 @@ namespace {
 
 extern "C" void mission_phase_begin()
 {
+    g_missionTraceFrames = 5;
+    g_missionReadyTrace = 0;
     g_mission_t0 = SDL_GetPerformanceCounter();
     const double freq = static_cast<double>(SDL_GetPerformanceFrequency());
     (void)freq; // suppress unused-var if compiler gets clever
@@ -772,6 +776,8 @@ extern "C" void mission_phase_mark(const char* name)
 // for the first mark), so the numbers sum to the final mark's total.
 extern "C" void mission_phase_report()
 {
+    g_missionTraceFrames = 0;
+    g_missionReadyTrace = SDL_GetPerformanceCounter();
     char buf[1024];
     int off = 0;
     double prev_ms = 0.0;
@@ -1033,6 +1039,10 @@ int main(int argc, char** argv)
 
 		uint64_t start_tick = timing::gettickcount();
         mc2_hitch::BeginFrame(s_hitchFrame);
+        // The frame containing mission load is excluded: time the first five
+        // complete gameplay frames, with the existing hitch phase breakdown.
+        const bool traceMissionFrame = g_mc2HitchEnabled && g_missionTraceFrames < 5;
+        const auto missionFrameStart = traceMissionFrame ? SDL_GetPerformanceCounter() : 0;
 
     frameThrottleLogicEvents();
 
@@ -1115,6 +1125,20 @@ int main(int argc, char** argv)
 		else
 			frameRate = dt ? (1000.0f / static_cast<float>(dt)) : 0.0f;
         mc2_hitch::EndFrame(s_hitchFrame, static_cast<double>(dt));
+        if (g_mc2HitchEnabled && g_missionReadyTrace) {
+            fprintf(stderr, "[MISSION_FRAME] ready_tail_ms=%.3f frame=%u\n",
+                1000.0 * static_cast<double>(SDL_GetPerformanceCounter() - g_missionReadyTrace) /
+                    static_cast<double>(SDL_GetPerformanceFrequency()), s_hitchFrame);
+            g_missionReadyTrace = 0;
+        }
+        if (traceMissionFrame) {
+            const double frameMs = 1000.0 * static_cast<double>(SDL_GetPerformanceCounter() - missionFrameStart) /
+                static_cast<double>(SDL_GetPerformanceFrequency());
+            const auto& a = g_mc2HitchAccum;
+            fprintf(stderr, "[MISSION_FRAME] index=%u frame=%u ms=%.3f logic=%.3f render=%.3f present=%.3f cap=%.3f fence=%.3f\n",
+                ++g_missionTraceFrames, s_hitchFrame, frameMs, a.phaseLogicMs, a.phaseRenderMs,
+                a.phasePresentMs, a.phaseCapMs, a.vkFence.totalMs);
+        }
         ++s_hitchFrame;
 
         // Validation mode: record frame and check exit condition
