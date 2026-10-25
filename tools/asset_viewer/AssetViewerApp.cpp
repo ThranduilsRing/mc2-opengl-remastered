@@ -23,7 +23,6 @@
 #include "TextureMetadata.h"
 #include "TexturePreview2D.h"
 #include "Ktx2Decoder.h"
-#include "ShaderIncludeResolver.h"
 #include <SDL.h>
 #include "tool_vk_gpu.h"
 #include <cmath>
@@ -34,8 +33,6 @@
 AssetViewerApp::AssetViewerApp()  {
     // Deploy root is the viewer's cwd; "." -> ./tgl.fst for TglMeshLoader.
     meshSurface_.setDeployDir(".");
-    engineShaderPreview_.setDeployDir(".");
-    engineShaderPreview_.setShaderRoot("shaders");
     workbenchPanel_.setDeployDir(".");
     workbench_.setDeployDir(".");
 }
@@ -63,7 +60,6 @@ void AssetViewerApp::drawUi()
         if (modelBrowser_.hasSelection()) {
             std::string sel = modelBrowser_.takeSelection();
             meshSurface_.setSource(sel);
-            engineShaderPreview_.setSource(sel);
         }
     } else if (sidebar_.active() == AssetType::ModWorkbench) {
         ImGui::TextDisabled("Drop a GLB on the window.");
@@ -93,24 +89,7 @@ void AssetViewerApp::drawUi()
         materialSurface_.draw(ImGui::GetContentRegionAvail());      // lit sphere + approximate label
         break;
       case AssetType::StaticProps: {
-        ImVec2 avail = ImGui::GetContentRegionAvail();
-        ImGui::TextUnformatted("Preview backend:");
-        ImGui::SameLine(); ImGui::RadioButton("Backend-B: Approximate", &backend_, 0);
-        ImGui::SameLine(); ImGui::RadioButton("Backend-A: Engine Shader", &backend_, 1);
-        // Shrink avail by the radio row height so the preview fills the remainder.
-        avail.y -= ImGui::GetFrameHeightWithSpacing();
-        if (backend_ == 1) {
-            // Draw first so the lazy compile runs before we check ok().
-            engineShaderPreview_.draw(avail);
-            if (!engineShaderPreview_.ok()) {
-                ImGui::TextColored(ImVec4(1, 0.6f, 0.3f, 1),
-                    "Backend-A unavailable - showing Backend-B. See Shader Contract below.");
-                meshSurface_.draw(avail);   // FAIL OPEN
-            }
-            DrawShaderContractReport(engineShaderPreview_.report());
-        } else {
-            meshSurface_.draw(avail);
-        }
+        meshSurface_.draw(ImGui::GetContentRegionAvail());
         break;
       }
       case AssetType::ModWorkbench:
@@ -989,23 +968,6 @@ int AssetViewerApp::runSmokeCentralMergePreserve(const char* fixtureDir, const c
     return ok ? 0 : 1;
 }
 
-int AssetViewerApp::runSmokeShaderInclude(const char* fixtureDir) {
-    std::string root = std::string(fixtureDir) + "/shaderinc";
-    ShaderResolveResult r = ResolveShaderIncludes(root, "root.glsl");
-    bool ok = r.ok
-           && r.source.find("#include") == std::string::npos
-           && r.source.find("b_val") != std::string::npos
-           && r.source.find("a_val") != std::string::npos
-           && r.includedFiles.size() == 3
-           && r.unresolved.empty();
-    ShaderResolveResult c = ResolveShaderIncludes(root, "inc/cycle.hglsl");
-    ok &= (!c.error.empty());
-    printf("[smoke] shader-include %s (includes=%zu)\n", ok ? "PASS" : "FAIL",
-           r.includedFiles.size());
-    return ok ? 0 : 1;
-}
-
-
 // Launch-and-capture support: open a view without a click (the --view command line option; see main.cpp).
 //   textures <file> | materials | props <name.tgl> | workbench
 void AssetViewerApp::scriptedView(const char* kind, const char* arg) {
@@ -1017,7 +979,7 @@ void AssetViewerApp::scriptedView(const char* kind, const char* arg) {
         sidebar_.setActive(AssetType::Materials);
     } else if (k == "props") {
         sidebar_.setActive(AssetType::StaticProps);
-        if (arg) { meshSurface_.setSource(arg); engineShaderPreview_.setSource(arg); }
+        if (arg) { meshSurface_.setSource(arg); }
     } else if (k == "workbench") {
         sidebar_.setActive(AssetType::ModWorkbench);
     }

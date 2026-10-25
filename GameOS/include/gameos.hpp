@@ -2901,17 +2901,6 @@ void __stdcall gos_DestroyVertexDeclaration(HGOSVERTEXDECLARATION buffer);
 
 
 //
-// Uniform buffers attachment slots (indices)
-// 
-#define LIGHT_DATA_ATTACHMENT_SLOT	0
-// [LIGHTSSBO v1] LightsData is now an SSBO at this binding (was UBO at
-// LIGHT_DATA_ATTACHMENT_SLOT). Lockstep with shaders/include/lighting.hglsl
-// LIGHT_DATA_SSBO_BINDING. SSBO bindings 0-19 are allocated elsewhere.
-#define LIGHT_DATA_SSBO_BINDING		20
-#define SCENE_DATA_ATTACHMENT_SLOT	1
-
-
-//
 // This call is only valid during GameLogic (not inside update renderers).
 //
 // Applications should not assume the mode has changed, because the user could always override it, enter a window mode, an error caused software rendering etc...

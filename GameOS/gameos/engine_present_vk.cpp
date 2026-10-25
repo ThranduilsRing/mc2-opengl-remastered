@@ -1869,20 +1869,14 @@ bool EnginePresentVk::init(VulkanContext& ctx, SDL_Window* window, uint32_t w, u
         return false;
     };
 
-    // ---- P13b: raw Win32 surface on the EXISTING visible GL game window -----
-    // No hidden VK window. Pull the native HWND+HINSTANCE from the game's GL
-    // window (SDL_WINDOW_VULKAN, g_sdl_window) via SDL_GetWindowWMInfo -- exactly
-    // as the mouse grab does (gos_render.cpp:64-74) and as the T0 probe proved --
-    // then vkCreateWin32SurfaceKHR straight onto that HWND. The GL context owns
-    // the pixel format/HDC; VK presents via the WSI/compositor path on the same
-    // HWND (no conflict, since GL swap is suppressed in =vulkan mode). One window,
-    // already visible, already owning focus + all input.
+    // Create the Vulkan surface on the visible SDL_WINDOW_VULKAN game window.
+    // Reuse its HWND so presentation and input belong to the same window.
     SDL_SysWMinfo wm; SDL_VERSION(&wm.version);
     if (SDL_GetWindowWMInfo(window_, &wm) != SDL_TRUE) {
         return fail(std::string("P13b SDL_GetWindowWMInfo: ") + SDL_GetError());
     }
     if (wm.subsystem != SDL_SYSWM_WINDOWS) {
-        return fail("P13b: GL window subsystem is not SDL_SYSWM_WINDOWS");
+        return fail("P13b: game window subsystem is not SDL_SYSWM_WINDOWS");
     }
     HWND      hwnd  = wm.info.win.window;
     HINSTANCE hinst = wm.info.win.hinstance;
@@ -1906,7 +1900,7 @@ bool EnginePresentVk::init(VulkanContext& ctx, SDL_Window* window, uint32_t w, u
     const VkResult sr = pfnCreateWin32Surface(s.inst, &wsci, nullptr, &rawSurface);
     if (sr == VK_SUCCESS) s.surface = mc2vk::OwnedSurface(s.inst, rawSurface);
     if (sr != VK_SUCCESS) {
-        return fail("P13b: vkCreateWin32SurfaceKHR on the GL window's HWND failed ("
+        return fail("P13b: vkCreateWin32SurfaceKHR on the game window's HWND failed ("
                     + std::to_string(static_cast<int>(sr)) + ")");
     }
     plog("P13b: VK surface created on the VISIBLE GL game window HWND=%p (no hidden "

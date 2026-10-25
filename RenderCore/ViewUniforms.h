@@ -1,7 +1,6 @@
 #pragma once
 // CPU view/projection record published by the view registry and frame packets.
-// The layout is also exercised by the offline shader-schema fixture; native
-// renderers consume frame-feed matrices rather than a shared driver view UBO.
+// Native renderers consume frame-feed matrices rather than a shared driver view UBO.
 // Row-major storage; the GL suffix identifies the existing clip-space convention.
 
 #include <cstddef>   // offsetof
@@ -22,9 +21,5 @@ static_assert(sizeof(ViewUniforms) == 144,
 static_assert(offsetof(ViewUniforms, worldToClipGL) ==   0, "worldToClipGL offset");
 static_assert(offsetof(ViewUniforms, worldToViewGL) ==  64, "worldToViewGL offset");
 static_assert(offsetof(ViewUniforms, cameraWorldPos) == 128, "cameraWorldPos offset");
-
-// Reserved binding for the offline view_uniforms_contract shader fixture only.
-// There is no production view UBO or driver binding.
-constexpr uint32_t kViewUniformsBinding = 3;
 
 } // namespace RenderCore

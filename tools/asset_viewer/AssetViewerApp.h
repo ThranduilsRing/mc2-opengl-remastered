@@ -10,7 +10,6 @@
 #include "MaterialPreviewPBR.h"
 #include "MaterialSlots.h"
 #include "MeshPreview3D.h"
-#include "ModelPreviewEngineShader.h"
 #include "ModelBrowser.h"
 #include "ModWorkbench.h"
 #include "ModWorkbenchPanel.h"
@@ -42,7 +41,6 @@ public:
     static int runSmokeTextureMissingWarn(const char* fixtureDir);  // S5
     static int runSmokeLodEditValidate();  // S5
     static int runSmokeCentralMergePreserve(const char* fixtureDir, const char* tmpDir);  // S5
-    static int runSmokeShaderInclude(const char* fixtureDir);  // Backend-A v2
 private:
     FileBrowser browser_;
     AssetTypeSidebar sidebar_;
@@ -51,8 +49,6 @@ private:
     MaterialPreviewPBR materialSurface_;
     MaterialSlots      materialSlots_;
     MeshPreview3D             meshSurface_;
-    ModelPreviewEngineShader  engineShaderPreview_;
-    int                       backend_ = 0;   // 0=Backend-B (default), 1=Backend-A
     ModelBrowser       modelBrowser_;
     ModWorkbench       workbench_;
     ModWorkbenchPanel  workbenchPanel_;

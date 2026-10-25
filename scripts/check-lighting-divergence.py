@@ -346,8 +346,6 @@ def main():
 
     failures = []
     for key in sorted(BASELINE):
-        if not BASELINE[key] and key != "ambient_fill_vec3":
-            continue   # category pinned as "observe only"
         want, got = norm(BASELINE[key]), norm(live.get(key, ()))
         if want != got:
             added = [x for x in got if x not in want]
