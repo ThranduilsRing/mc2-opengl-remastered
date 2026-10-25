@@ -103,3 +103,16 @@ def test_committed_baseline_is_a_schema2_chain(mission):
     assert base.get("chain_schema") == 2
     assert base["frames"] >= sim.MIN_FRAMES and len(base["chain"]) == 16
     assert base["data_fingerprint"]["digest"] and base["seed"]
+
+
+def test_merge_gate_refuses_red_smoke_even_with_a_sim_stream(tmp_path, monkeypatch):
+    from types import SimpleNamespace
+    source = tmp_path / "artifacts"
+    source.mkdir()
+    (source / "mc2_03.log").write_text("\n".join(observations()))
+    monkeypatch.setenv("MC2_IN_GATE", "1")
+    monkeypatch.setattr(sim.subprocess, "run", lambda *a, **k: SimpleNamespace(
+        returncode=1, stdout=f"[runner] artifacts: {source}\nFAILED vk_validation_error\n"))
+    with pytest.raises(SystemExit, match="gate smoke a failed"):
+        sim.run_mission("mc2_03", "20", str(tmp_path / "out"))
+    assert not (tmp_path / "out/a").exists()

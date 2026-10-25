@@ -30,10 +30,10 @@
 # All four are named here now, so scripts/check-test-tier-coverage.py can prove
 # no test target is reachable by CMake-reading alone.
 #
-# Standalone build dir (build64-tests/) -- never touches the engine build64/
+# Standalone cached build dir (build-cc-tests/) -- never touches the engine build64/
 # cache. The two CTest targets are the exception: they are defined by the MAIN
-# CMakeLists, so they build into build64/ and are SKIPPED (loudly, never
-# silently) when that cache does not exist.
+# CMakeLists. Prefer the verified Ninja tree, then the legacy build64 cache.
+# An explicitly requested engine tree must exist; a partial merge proof fails.
 #
 # Exit 0 iff configure, build, and every test in every tier pass.
 set -euo pipefail
@@ -41,7 +41,8 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 CMAKE="${MC2_CMAKE:-C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/bin/cmake.exe}"
 CFG="${MC2_TEST_CONFIG:-RelWithDebInfo}"
-BUILD_DIR="${MC2_UNIT_BUILD_DIR:-$ROOT/build64-tests}"   # lane_merge verify sets its own, so it never collides with a lane's doctest run
+JOBS="${MC2_BUILD_JOBS:-$(cat A:/Games/mc2-ops/JOBS 2>/dev/null || echo 2)}"
+BUILD_DIR="${MC2_UNIT_BUILD_DIR:-$ROOT/build-cc-tests}"   # lane_merge verify sets its own, so it never collides with a lane's doctest run
 
 DOCTEST_ONLY=0
 DOCTEST_ARGS=()
@@ -58,17 +59,27 @@ note() { echo "[run-unit-tests] $*"; }
 # ---------------------------------------------------------------------------
 # Tier 1 -- standalone, GL-free (build64-tests/)
 # ---------------------------------------------------------------------------
-note "configure ($BUILD_DIR)"
-"$CMAKE" -S "$ROOT/tests/unit" -B "$BUILD_DIR" -G "Visual Studio 17 2022" -A x64 >/dev/null
-
-note "build mc2_tests ($CFG)"
-"$CMAKE" --build "$BUILD_DIR" --config "$CFG" --target mc2_tests
+UNIT_CFG="$CFG/"
+UNIT_CACHED=0
+UNIT_PATH="${BUILD_DIR//\\//}"
+if [[ "$UNIT_PATH" == */build-cc-tests ]]; then
+    UNIT_CACHED=1
+    BUILD_DIR="$ROOT/build-cc-tests"
+    UNIT_CFG=""
+    note "build cached standalone unit tier ($BUILD_DIR)"
+    py -3 "$ROOT/tools/build_contract_harnesses.py" --compile-cache --unit-only -j "$JOBS"
+else
+    note "configure ($BUILD_DIR)"
+    "$CMAKE" -S "$ROOT/tests/unit" -B "$BUILD_DIR" -G "Visual Studio 17 2022" -A x64 >/dev/null
+    note "build mc2_tests ($CFG)"
+    "$CMAKE" --build "$BUILD_DIR" --config "$CFG" --target mc2_tests --parallel "$JOBS"
+fi
 
 note "run mc2_tests"
 if [ "${#DOCTEST_ARGS[@]}" -gt 0 ]; then
-    "$BUILD_DIR/$CFG/mc2_tests.exe" "${DOCTEST_ARGS[@]}" || FAILED=1
+    "$BUILD_DIR/${UNIT_CFG}mc2_tests.exe" "${DOCTEST_ARGS[@]}" || FAILED=1
 else
-    "$BUILD_DIR/$CFG/mc2_tests.exe" || FAILED=1
+    "$BUILD_DIR/${UNIT_CFG}mc2_tests.exe" || FAILED=1
 fi
 
 if [ "$DOCTEST_ONLY" -eq 1 ]; then
@@ -82,9 +93,13 @@ if [ "${#DOCTEST_ARGS[@]}" -gt 0 ]; then
     note "suite filter given: skipping test_render_contract_3 (no --ts support)"
 else
     note "build test_render_contract_3 ($CFG)"
-    "$CMAKE" --build "$BUILD_DIR" --config "$CFG" --target test_render_contract_3
+    if [ "$UNIT_CACHED" -eq 1 ]; then
+        MC2_NINJA_TREE=build-cc-tests py -3 "$ROOT/scripts/ninja_build.py" -j"$JOBS" test_render_contract_3
+    else
+        "$CMAKE" --build "$BUILD_DIR" --config "$CFG" --target test_render_contract_3 --parallel "$JOBS"
+    fi
     note "run test_render_contract_3"
-    "$BUILD_DIR/$CFG/test_render_contract_3.exe" || FAILED=1
+    "$BUILD_DIR/${UNIT_CFG}test_render_contract_3.exe" || FAILED=1
 fi
 
 # ---------------------------------------------------------------------------
@@ -94,20 +109,33 @@ fi
 # they are invoked directly here. They need the engine cache; when it is absent
 # say so out loud -- a silently skipped tier is the failure this script exists
 # to stop.
-ENGINE_BUILD="$ROOT/build64"
+ENGINE_BUILD="$ROOT/${MC2_NINJA_TREE:-build64-ninja}"
+if [ ! -f "$ENGINE_BUILD/CMakeCache.txt" ]; then
+    if [ -n "${MC2_NINJA_TREE:-}" ]; then
+        note "FAIL: requested engine cache is missing: $ENGINE_BUILD"
+        exit 1
+    fi
+    ENGINE_BUILD="$ROOT/build64"
+fi
+ENGINE_CFG="$CFG/"
+if [ -f "$ENGINE_BUILD/CMakeCache.txt" ] && grep -q '^CMAKE_GENERATOR:INTERNAL=Ninja[[:space:]]*$' "$ENGINE_BUILD/CMakeCache.txt"; then
+    ENGINE_CFG=""
+fi
 if [ ! -f "$ENGINE_BUILD/CMakeCache.txt" ]; then
     note "SKIP (no engine cache at $ENGINE_BUILD): model_override_tests, static_natural_skip_policy_tests"
-    note "     configure build64 to include them; they are NOT covered by this run."
+    note "     configure an engine tree to include them; they are NOT covered by this run."
 else
-    for t in model_override_tests static_natural_skip_policy_tests; do
-        note "build $t ($CFG)"
-        "$CMAKE" --build "$ENGINE_BUILD" --config "$CFG" --target "$t"
-    done
+    note "build engine test tier ($CFG; $ENGINE_BUILD)"
+    if [ -z "$ENGINE_CFG" ]; then
+        py -3 "$ROOT/scripts/ninja_build.py" -j"$JOBS" model_override_tests static_natural_skip_policy_tests
+    else
+        "$CMAKE" --build "$ENGINE_BUILD" --config "$CFG" --target model_override_tests static_natural_skip_policy_tests --parallel "$JOBS"
+    fi
     note "run model_override_tests"
-    "$ENGINE_BUILD/tests/model_override/$CFG/model_override_tests.exe" \
+    "$ENGINE_BUILD/tests/model_override/${ENGINE_CFG}model_override_tests.exe" \
         "$ROOT/tests/model_override/fixtures" || FAILED=1
     note "run static_natural_skip_policy_tests"
-    "$ENGINE_BUILD/tests/static_natural_skip/$CFG/static_natural_skip_policy_tests.exe" || FAILED=1
+    "$ENGINE_BUILD/tests/static_natural_skip/${ENGINE_CFG}static_natural_skip_policy_tests.exe" || FAILED=1
 fi
 
 if [ "$FAILED" -ne 0 ]; then

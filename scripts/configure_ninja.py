@@ -35,7 +35,7 @@ DEFAULT_TARGETS = ["mc2", "mc2_launcher"]
 
 
 SCCACHE_EXE = os.environ.get("MC2_SCCACHE", "A:/Games/tools/sccache/sccache.exe")
-SCCACHE_DIR = os.environ.get("SCCACHE_DIR", "E:/mc2-compile-cache")
+SCCACHE_DIR = os.environ.get("SCCACHE_DIR", "G:/mc2-build/compile-cache")
 # Every cached compile goes through this wrapper, not sccache directly: see its docstring (replayed /showIncludes paths).
 LAUNCHER_SCRIPT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "cc_launcher.py").replace("\\", "/")
 
@@ -51,7 +51,9 @@ def compile_cache_env(root):
         roots |= {ln[9:].strip().replace("\\", "/") for ln in out.splitlines() if ln.startswith("worktree ")}
     except OSError:
         pass
-    return {"SCCACHE_DIR": SCCACHE_DIR, "SCCACHE_CACHE_SIZE": os.environ.get("SCCACHE_CACHE_SIZE", "30G"),
+    legacy = SCCACHE_DIR.replace("\\", "/").rstrip("/").lower() == "e:/mc2-compile-cache"
+    return {"SCCACHE_DIR": "G:/mc2-build/compile-cache" if legacy else SCCACHE_DIR,
+            "SCCACHE_CACHE_SIZE": "50G" if legacy else os.environ.get("SCCACHE_CACHE_SIZE", "50G"),
             "SCCACHE_BASEDIRS": ";".join(sorted(roots))}
 
 
@@ -62,7 +64,15 @@ def ensure_cache_server(root, env_extra):
     want = root.replace("\\", "/").lower().rstrip("/") + "/"
     shown = subprocess.run([SCCACHE_EXE, "-s"], env=env, capture_output=True, text=True,
                            **console_child.child_kwargs(redirected=True)).stdout.lower()
-    if want not in shown:
+    wanted_dir = env_extra["SCCACHE_DIR"].replace("\\", "/").lower()
+    if want not in shown or wanted_dir not in shown.replace("\\", "/"):
+        if os.name == "nt":
+            inventory = subprocess.run(["tasklist", "/FO", "CSV", "/NH"], capture_output=True, text=True,
+                                       **console_child.child_kwargs(redirected=True))
+            active = inventory.stdout.lower()
+            if inventory.returncode or any('"' + name + '"' in active for name in ("ninja.exe", "cl.exe", "link.exe")):
+                print("[sccache] restart deferred: a ninja/cl/link process is running", flush=True)
+                return
         subprocess.run([SCCACHE_EXE, "--stop-server"], env=env, capture_output=True, **console_child.child_kwargs(redirected=True))
         subprocess.run([SCCACHE_EXE, "--start-server"], env=env, capture_output=True, **console_child.child_kwargs(redirected=True))
 
@@ -142,7 +152,7 @@ def main():
     ap.add_argument("--build", action="store_true",
                     help="also build mc2 + mc2_launcher after configuring")
     ap.add_argument("--no-compile-cache", action="store_true",
-                    help="opt out of the default: build through sccache (shared E:/mc2-compile-cache, Defender-excluded; SCCACHE_DIR overrides), /Zi -> /Z7, PCH off")
+                    help="opt out of the default: build through sccache (shared G:/mc2-build/compile-cache; SCCACHE_DIR overrides), /Zi -> /Z7, PCH off")
     ap.add_argument("--cache-pch", action="store_true", help="keep the precompiled header on (the cached tree defaults to PCH off)")
     a = ap.parse_args()
     root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

@@ -14,7 +14,7 @@ Usage:
   --message   merge commit subject (default: "merge lane: <subject of the lane tip>"); with --batch a template with {subject} and {n}
   --trailer   commit trailer line (default $MC2_COMMIT_TRAILER (or $MC2_MERGE_TRAILER), else none)
   --dry-run   print the plan (base, file counts, overlap, predicted conflicts); change nothing
-  --resolution PATH=FILE  apply a reviewed conflict result (FILE - means deletion; repeatable)
+  --resolution PATH=FILE  reviewed conflict result; in --batch use TIP:PATH=FILE (FILE - deletes; repeatable)
   --root DIR  repo to operate on (default: this checkout)
   --tools-dir DIR  where the ratchet scripts live (default: <root>/tools); same relative layout
 
@@ -220,6 +220,30 @@ def virtual_merge(root: str, sha: str, head_ref: str = "HEAD") -> tuple[str | No
         out = lines(r.stdout)
         return (out[0] if out else None), ([] if r.returncode == 0 else out[1:])  # first line is the result tree
     return None, None
+
+
+def resolved_tree(root, tree, resolutions):
+    """Give later batch tips the reviewed tree, including deletions, during planning."""
+    if not tree or not resolutions:
+        return tree
+    with tempfile.TemporaryDirectory(prefix="lane-merge-index-") as temp:
+        env = dict(os.environ, GIT_INDEX_FILE=os.path.join(temp, "index"))
+        def indexed(*args, data=None):
+            r = subprocess.run(["git", "-C", root, *args], input=data, env=env,
+                               capture_output=True, **console_child.child_kwargs(redirected=True))
+            if r.returncode:
+                raise Stop(5, "cannot plan reviewed conflict tree: " + r.stderr.decode("utf-8", "replace"))
+            return r.stdout.decode("utf-8").strip()
+        indexed("read-tree", tree)
+        for path, data in resolutions.items():
+            if data is None:
+                indexed("update-index", "--force-remove", "--", path)
+            else:
+                row = git_out(root, "ls-tree", tree, "--", path)
+                mode = row.split()[0] if row else "100644"
+                blob = indexed("hash-object", "-w", "--stdin", data=data)
+                indexed("update-index", "--add", "--cacheinfo", mode, blob, path)
+        return indexed("write-tree")
 
 
 def virtual_head(root: str, head_ref: str, sha: str, tree: str | None) -> str | None:
@@ -497,12 +521,19 @@ def quick_rows(root: str, runner=run) -> list[tuple[str, int, str]]:
     return failed
 
 
+def host_jobs():
+    try:
+        return str(max(1, int(Path("A:/Games/mc2-ops/JOBS").read_text().strip())))
+    except (OSError, ValueError):
+        return str(min(6, os.cpu_count() or 2))
+
+
 def verify_env(root: str) -> dict:
     """Leave the canonical Ninja tree ready for deploy_payload.py --ninja.
 
     The orchestrator owns this worktree exclusively during a merge window.
     """
-    return dict(os.environ, MC2_NINJA_TREE="build64-ninja", MC2_UNIT_BUILD_DIR=os.path.join(root, "build64-tests"))
+    return dict(os.environ, MC2_BUILD_JOBS=host_jobs(), CONTRACTS_JOBS=host_jobs(), MC2_NINJA_TREE="build64-ninja", MC2_UNIT_BUILD_DIR=os.path.join(root, "build-cc-tests"))
 
 
 def verify_merged(root: str, mode: str, runner=None) -> tuple[str, list[tuple[str, int, str]]]:
@@ -630,7 +661,7 @@ def build_parser() -> argparse.ArgumentParser:
     ap.add_argument("--root", default=os.path.abspath(os.path.join(HERE, "..")))
     ap.add_argument("--tools-dir")
     ap.add_argument("--resolution", action="append", default=[], metavar="PATH=FILE",
-                    help="explicit reviewed conflict result; FILE '-' preserves a deletion (repeatable)")
+                    help="PATH=FILE, or TIP:PATH=FILE in --batch; reviewed conflict result; FILE '-' preserves a deletion (repeatable)")
     ap.add_argument("--verify", choices=["build", "full", "none"], default="build",
                     help="what to run on the merged tree: build + doctest (default), full = also the contracts board, none")
     ap.add_argument("--no-verify", action="store_true", help="same as --verify none")
@@ -658,6 +689,7 @@ def print_plan(root: str, p: dict, args, message: str, resolutions: dict, head_r
               + ("" if not other else " (merge would abort): " + ", ".join(other)))
         would_abort = bool(other)
     print(f'PLAN merge --no-ff -m "{message}"')
+    tree = resolved_tree(root, tree, resolutions)
     vh = virtual_head(root, head_ref, p["sha"], tree)
     return would_abort, vh or (head_ref if conf is None else None)
 
@@ -712,19 +744,31 @@ def main(argv: list[str] | None = None) -> int:
         ap.error("--regenerate-all does not take lane tips")
     refs = args.batch or [args.ref]
     batch = bool(args.batch)
-    if batch and args.resolution:
-        ap.error("--resolution is per tip; merge that tip alone with --resolution PATH=FILE, then run --batch for the remaining tips")
     global TRAILER
     if args.trailer is not None:
         TRAILER = args.trailer
+    window_started = time.time()
     root = args.root
+    window_base = git_out(root, "rev-parse", "HEAD")
     tools_dir = args.tools_dir or os.path.join(root, "tools")
     try:
         if args.regenerate_all:
             regenerate_all(root, dry_run=args.dry_run)
             return 0
-        def resolutions_for(p, head_ref="HEAD"):
-            resolutions = load_resolutions(args.resolution)
+        resolution_specs = {}
+        for spec in args.resolution:
+            tip, sep, value = spec.partition(":")
+            if batch:
+                if not sep or tip not in refs:
+                    ap.error("batch --resolution needs TIP:PATH=FILE (TIP must be in --batch)")
+                key = git_out(root, "rev-parse", tip + "^{commit}")
+            else:
+                key, value = "single", spec
+            resolution_specs.setdefault(key, []).append(value)
+
+        def resolutions_for(p, head_ref=None):
+            resolutions = load_resolutions(resolution_specs.get(p["sha"] if batch else "single", []))
+            head_ref = head_ref or p["head"]
             if resolutions:
                 predicted = predicted_conflicts(root, p["sha"], head_ref)
                 if predicted is None or set(resolutions) - set(predicted):
@@ -772,6 +816,8 @@ def main(argv: list[str] | None = None) -> int:
         if not merged and not batch:
             return 0
         mode = "none" if args.no_verify else args.verify
+        record = dict(base=window_base, head=git_out(root, "rev-parse", "HEAD"), started=window_started)
+        record_path = Path(root) / "build64-ninja/merge-window.json"
         if batch and merged and not stopped:
             qfailed = quick_rows(root)
             if qfailed:
@@ -784,6 +830,11 @@ def main(argv: list[str] | None = None) -> int:
         else:
             verdict, vresults = verify_merged(root, mode)
         merge_sha, follow, _ = merged[-1] if merged else (git_out(root, "rev-parse", "--short=9", "HEAD"), None, 0)
+        record.update(verify=verdict, merge_seconds=time.time() - window_started)
+        if Path(root, "scripts/ninja_build.py").is_file():
+            record_path.parent.mkdir(parents=True, exist_ok=True)
+            record_path.write_text(json.dumps(record), encoding="utf-8")
+            print(f"lane_merge: elapsed={record['merge_seconds']:.1f}s base={window_base}; gate continues this window clock")
         print(f"MERGED {merge_sha}" + (f" (+{follow})" if follow else "") + f" files={sum(m[2] for m in merged)} "
               f"ratchets={'FAIL' if stopped else 'OK'} verify={verdict} overlap=0" + (f" batch={len(merged)}" if batch else ""))
         if verdict == "FAIL":
