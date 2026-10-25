@@ -445,6 +445,13 @@ and cheap; run it in its own worktree so it never touches a baseline capture.)
 
 ---
 
+### Procedural content
+
+- **After the engine optimisation phase: city/base layout generator.** Arnis- and mapgen-style layout data
+  drives placement of our kit in our maps and visual style; feeds the mission generator.
+- **Later: MIT kit generator library for modders.** Per-category Blender generator modules with a seed,
+  documented parameters, preview sheet and checks; modelled on SpaceshipGenerator's idea and Nova3D's structure.
+
 ## 7. Dangerous Mega-Branches to Avoid
 
 - **8z terrain deletion + S2 dynamic actor rendering** — Two different subsystems, two baselines.

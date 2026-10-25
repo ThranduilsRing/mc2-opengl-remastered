@@ -412,6 +412,7 @@ if(MC2_VULKAN)
     file(GLOB MC2_VK_SHADER_INCLUDES CONFIGURE_DEPENDS
         "${MC2_VK_SHADER_SRC_DIR}/include/*.glsl"
         "${CMAKE_SOURCE_DIR}/3rdparty/smaa/SMAA.hlsl"
+        "${CMAKE_SOURCE_DIR}/3rdparty/fastnoiselite/FastNoiseLite.glsl"
         "${CMAKE_SOURCE_DIR}/shaders/include/*.hglsl")
     if(MC2_GLSLANG_VALIDATOR OR MC2_GLSLC)
         foreach(_base ${MC2_VK_SHADER_BASENAMES})
