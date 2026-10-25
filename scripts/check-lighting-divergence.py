@@ -248,16 +248,8 @@ def scan(verbose_sink=None):
 # ---------------------------------------------------------------------------
 BASELINE = {'ambient_floor_scalar': [('shaders/vulkan/water_geom.frag', 'SKY_AMBIENT', '0.18')],
  'ambient_fill_vec3': [],
- 'inline_light_floor': [('shaders/include/shadow.hglsl', 'mix:shadow', '0.4->1.0'),
-                        ('shaders/include/shadow.hglsl', 'mix:shadow', '0.4->1.0')],
- 'light_type_dispatch': (('shaders/include/lighting.hglsl',
-                          ('AMBIENT',
-                           'INFINITE',
-                           'INFINITEWITHFALLOFF',
-                           'POINT',
-                           'SPOT',
-                           'TERRAIN')),
-                         ('shaders/vulkan/color_prop_tier1.vert',
+ 'inline_light_floor': [],
+ 'light_type_dispatch': (('shaders/vulkan/color_prop_tier1.vert',
                           ('AMBIENT', 'INFINITE', 'INFINITEWITHFALLOFF')),
                          ('shaders/vulkan/mech_tier1.vert',
                           ('AMBIENT',
@@ -266,8 +258,8 @@ BASELINE = {'ambient_floor_scalar': [('shaders/vulkan/water_geom.frag', 'SKY_AMB
                            'POINT',
                            'SPOT',
                            'TERRAIN'))),
- 'calc_light_definition': ['shaders/include/lighting.hglsl', 'shaders/vulkan/mech_tier1.vert'],
- 'calc_light_callers': ['shaders/include/lighting.hglsl', 'shaders/vulkan/mech_tier1.vert'],
+ 'calc_light_definition': ['shaders/vulkan/mech_tier1.vert'],
+ 'calc_light_callers': ['shaders/vulkan/mech_tier1.vert'],
  'native_zero_light_returns_base': ['shaders/vulkan/mech_tier1.vert'],
  'cpp_floor_gate_readers': [('mclib/camera.cpp', 'MC2_NIGHT_AMBIENT_FLOOR', 'present')]}
 
@@ -278,7 +270,7 @@ BASELINE = {'ambient_floor_scalar': [('shaders/vulkan/water_geom.frag', 'SKY_AMB
 # ---------------------------------------------------------------------------
 WITNESS_DECOY_FILE = "shaders/vulkan/water_geom.frag"
 WITNESS_DECOY_EXPECT = 1   # One actual native ambient-floor declaration.
-MIN_NONEMPTY = ("ambient_floor_scalar", "inline_light_floor",
+MIN_NONEMPTY = ("ambient_floor_scalar",
                 "calc_light_definition", "calc_light_callers",
                 "native_zero_light_returns_base", "cpp_floor_gate_readers")
 

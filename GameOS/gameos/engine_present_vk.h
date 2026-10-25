@@ -1,32 +1,5 @@
-// engine_present_vk.h
-//
-// VK-P13-SELECTOR-PLAN / T3 -- the whole-frame GL->VK present intercept.
-//
-// When MC2_RENDER_BACKEND=vulkan AND the shared engine VulkanContext (T2) is up,
-// this object presents the FINISHED GL frame (FBO-0, after HUD + composite +
-// FORCE-43 pillarbox) through a Vulkan swapchain on a HIDDEN SDL_WINDOW_VULKAN.
-//
-// MECHANISM (plan v2 §3, NOT zero-copy -- 2 copies/frame):
-//   copy-1 (GL):  glBlitFramebuffer FBO-0 -> an exportable RGBA8 VkImageResource's
-//                 GL texture (GlInteropView), sized to the GL drawable (incl.
-//                 pillarbox). Then glInteropSignalToVk hands it to VK.
-//   copy-2 (VK):  vkCmdBlitImage shared image -> acquired swapchain image, waiting
-//                 the GL->VK semaphore; then vkQueuePresentKHR.
-//
-// OWNERSHIP: this object DOES NOT create a VkInstance/VkDevice. It borrows the
-// shared engine device/instance/queue from the T2 VulkanContext (the T2
-// acceptance criterion: one engine device, one volkLoadDevice, no R2 collision).
-// It owns ONLY the window-specific surface + swapchain + per-frame sync + the
-// shared interop image. That keeps the present path on the SAME global volk
-// dispatch table the engine context loaded.
-//
-// FAIL-SOFT: any init/runtime failure logs a reason and returns false; the caller
-// (gameosmain) then forces the session back to GL (SDL_GL_SwapWindow). Never
-// crashes, never breaks the GL path.
-//
-// Whole header is inert unless MC2_VULKAN is defined (matches the TU). The
-// interop primitives it uses are further #ifdef MC2_VULKAN_ISLAND; the .cpp
-// hard-requires both (build64_island defines both).
+// Native Vulkan presentation on the game window.
+// Borrows the engine device and owns the swapchain and frame synchronization.
 
 #ifndef MC2_ENGINE_PRESENT_VK_H
 #define MC2_ENGINE_PRESENT_VK_H
@@ -148,7 +121,7 @@ public:
     // Stand up the present surface + swapchain + interop image on the EXISTING
     // visible GL game window (P13b: same-HWND raw vkCreateWin32SurfaceKHR, no
     // second window), sized to (w,h) == the GL drawable extent. `window` is the
-    // game's SDL_WINDOW_OPENGL window (g_sdl_window) whose HWND we present to; it
+    // game's SDL_WINDOW_VULKAN window (g_sdl_window) whose HWND we present to; it
     // stays visible and owns all input. `ctx` MUST be a valid, present-capable
     // (init(wantPresent=true)) engine context. Returns false + sets
     // health.fallback_reason on any error (fail-soft: partial state torn down).

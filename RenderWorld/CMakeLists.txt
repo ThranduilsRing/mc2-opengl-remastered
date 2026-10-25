@@ -16,8 +16,7 @@ target_include_directories(renderworld PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
 # Reach the registry + batcher headers from the legacy backend TU.
 # The firewall script allowlists RenderWorld/legacy/ as the only place
-# this reach-through is permitted. GLEW + mclib/stuff are transitive
-# requirements of gos_static_prop_batcher.h (GL/glew.h + msl.h/tgl.h/Stuff).
+# this reach-through is permitted. The batcher also requires mclib/stuff.
 target_include_directories(renderworld PRIVATE
     ${CMAKE_SOURCE_DIR}/GameOS/gameos
     ${CMAKE_SOURCE_DIR}/GameOS/include

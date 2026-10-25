@@ -28,7 +28,6 @@ namespace graphics {
 static bool VERBOSE_VIDEO = true;   // unchanged (keep current behavior)
 static bool VERBOSE_RENDER = false; // mode/driver/extensions dump silenced; GPU identity prints unconditionally
 static bool VERBOSE_MODES = false;  // display-mode enumeration silenced
-static bool ENABLE_VSYNC = false;  // default off; overridden by MC2_VSYNC env var in init_render_context
 
 struct RenderWindow {
     SDL_Window* window_;
