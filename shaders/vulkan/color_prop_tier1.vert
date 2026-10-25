@@ -155,7 +155,7 @@ void main() {
     vec3 origin = vec3(inst.modelMatrix[0][3], inst.modelMatrix[1][3], inst.modelMatrix[2][3]);
     vWindow = uvec2(windowCell ? a_aRGBLight & 0xffffffu : 0u,
                     floatBitsToUint(origin.x) ^ (floatBitsToUint(origin.y) * 1664525u)
-                    ^ (floatBitsToUint(origin.z) * 1013904223u) ^ inst.typeID);
+                    ^ (floatBitsToUint(origin.z) * 1013904223u));
     // Row-vector * M — identical to the GL VS (Stuff std430 column-major convention).
     vec4 world_stuff = vec4(a_position, 1.0) * inst.modelMatrix;
     // POSITION: Stuff -> MC2 frame swizzle — identical to the GL VS.
