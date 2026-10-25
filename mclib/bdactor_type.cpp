@@ -27,7 +27,7 @@ static bool userBuildingShape(std::string_view name)
 	{
 		FullPathFileName path;
 		path.init(tglPath, storage.c_str(), ext);
-		if (userBuildingAsset(path)) return true;
+		if (userBuildingAsset(static_cast<const char*>(path))) return true;
 	}
 	return false;
 }
@@ -107,7 +107,7 @@ void BldgAppearanceType::init (const char * fileName)
 	long result = iniFile.open(iniName);
 	if (result != NO_ERR)
 		STOP(("Could not find building appearance INI file %s",iniName));
-	bool userArt = userBuildingAsset(iniName);
+	bool userArt = userBuildingAsset(static_cast<const char*>(iniName));
 	std::string lampDefinition(iniFile.fileSize(), '\0');
 	iniFile.read(0, reinterpret_cast<MemoryPtr>(lampDefinition.data()), static_cast<long>(lampDefinition.size()));
 	stockTerrainLamp = mc2_stock_lamp::definition(fileName, lampDefinition,
@@ -371,7 +371,7 @@ void BldgAppearanceType::init (const char * fileName)
 			for (const char* ext : {".ase", ".agl"}) {
 				FullPathFileName path;
 				path.init(tglPath, animName, ext);
-				userArt |= userBuildingAsset(path);
+				userArt |= userBuildingAsset(static_cast<const char*>(path));
 			}
 			FullPathFileName animPath;
 			animPath.init(tglPath,animName,".ase");
