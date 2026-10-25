@@ -1,4 +1,5 @@
 #include <memory>
+#include <print>
 #include "gameos.hpp"
 #include "../../RenderCore/TextureService.h"
 #include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
@@ -1126,7 +1127,7 @@ int main(int argc, char** argv)
 			frameRate = dt ? (1000.0f / static_cast<float>(dt)) : 0.0f;
         mc2_hitch::EndFrame(s_hitchFrame, static_cast<double>(dt));
         if (g_mc2HitchEnabled && g_missionReadyTrace) {
-            fprintf(stderr, "[MISSION_FRAME] ready_tail_ms=%.3f frame=%u\n",
+            std::println(stderr, "[MISSION_FRAME] ready_tail_ms={:.3f} frame={}",
                 1000.0 * static_cast<double>(SDL_GetPerformanceCounter() - g_missionReadyTrace) /
                     static_cast<double>(SDL_GetPerformanceFrequency()), s_hitchFrame);
             g_missionReadyTrace = 0;
@@ -1135,7 +1136,7 @@ int main(int argc, char** argv)
             const double frameMs = 1000.0 * static_cast<double>(SDL_GetPerformanceCounter() - missionFrameStart) /
                 static_cast<double>(SDL_GetPerformanceFrequency());
             const auto& a = g_mc2HitchAccum;
-            fprintf(stderr, "[MISSION_FRAME] index=%u frame=%u ms=%.3f logic=%.3f render=%.3f present=%.3f cap=%.3f fence=%.3f\n",
+            std::println(stderr, "[MISSION_FRAME] index={} frame={} ms={:.3f} logic={:.3f} render={:.3f} present={:.3f} cap={:.3f} fence={:.3f}",
                 ++g_missionTraceFrames, s_hitchFrame, frameMs, a.phaseLogicMs, a.phaseRenderMs,
                 a.phasePresentMs, a.phaseCapMs, a.vkFence.totalMs);
         }
