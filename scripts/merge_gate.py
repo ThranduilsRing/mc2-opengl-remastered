@@ -46,6 +46,8 @@ def plan(jobs, proof_dir=None, capture_before_runs=1, before_dir=None):
         ("pytest", [py, "-B", "-m", "pytest", "scripts/tests", "-q", "-p", "no:cacheprovider"], {}),
         ("tier1", [py, "scripts/run_smoke.py", "--tier", "tier1", "--keep-logs", "--deploy", "0.4"],
          {"MC2_DEBUG_STATE_DUMP": "1", "MC2_DIAG_TAGS": "CONFIG,BUILD,DEVICE"}),
+        ("kit-visibility", [py, "scripts/check-kit-visibility.py", "--install", install,
+                            "--out", str(proof / "kit-visibility")], {}),
         ("mods", [py, "tools/mod_smoke.py", "--battery", "--exe", install + "/mc2.exe", "--build-dir", "build64-ninja"], {}),
         # The ordinary contracts row is offline; fresh default-build quiet grading launches the game, so it lives here with the gate's exe.
         ("quiet", [py, "scripts/check-default-build-quiet.py", "--fresh-smoke", "--exe", install + "/mc2.exe"], {}),
@@ -443,7 +445,7 @@ def execute(steps, head, dry_run=False, runner=run_child):
                     if overrides.get("MC2_GATE_COVERAGE"):
                         print("[merge_gate] " + overrides["MC2_GATE_COVERAGE"], flush=True)
                     log_lease_holders()
-                    runtime = name.startswith(("capture-", "determinism-", "saveload-")) or name in ("deploy", "tier1", "mods", "quiet", "validation")
+                    runtime = name.startswith(("capture-", "determinism-", "saveload-")) or name in ("deploy", "tier1", "mods", "quiet", "validation", "kit-visibility")
                     if runtime and runner is run_child and batch_context is None:
                         if lease_error:
                             raise RuntimeError("game batch unavailable: " + lease_error)
@@ -601,7 +603,8 @@ def main(argv=None):
             result = execute_parallel(steps, head, args.dry_run)
             elapsed = time.time() - started
             measured_window = bool(window)
-            verdict = "PASS" if result == 0 and elapsed <= 1200 and measured_window and not omitted else "NEEDS_REVIEW"
+            verdict = ("FAIL" if result else
+                       "PASS" if elapsed <= 1200 and measured_window and not omitted else "NEEDS_REVIEW")
             print(f"[merge_gate] total={elapsed:.1f}s budget=1200s scope={'lane_merge through gate' if measured_window else 'gate only; no verified lane_merge clock'} verdict={verdict}")
             if args.full and result == 0 and not args.dry_run:
                 (ROOT / "build64-ninja/last-full-gate.json").write_text(json.dumps(dict(head=head, finished=time.time())))

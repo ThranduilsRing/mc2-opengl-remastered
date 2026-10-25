@@ -209,7 +209,7 @@ def test_deploy_stale_refusal_precedes_payload_copy(tmp_path, monkeypatch):
 def test_gate_plan_uses_verified_ninja_and_required_checks():
     import merge_gate as gate
     steps = gate.plan(6)
-    assert len(steps) == 19
+    assert len(steps) == 20
     quiet = next(cmd for name, cmd, _ in steps if name == "quiet")
     assert quiet[-3:-1] == ["--fresh-smoke", "--exe"] and quiet[-1].endswith("mc2-win64-v0.4/mc2.exe")
     by_name = {name: (cmd, env) for name, cmd, env in steps}

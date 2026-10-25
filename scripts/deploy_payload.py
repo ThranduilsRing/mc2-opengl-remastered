@@ -1863,6 +1863,8 @@ def run_deploy(args, src_root, build_dir, target, exe_name, pdb_name):
                     cache=cache, full_verify=args.full_verify)
     if kit_manifest:
         try:
+            kit_payload.reconcile_stock_textures(target, GOLDEN_MATERIAL_ROOT,
+                jobs=int(Path("A:/Games/mc2-ops/JOBS").read_text().strip()))
             kit_payload.finish(target, kit_manifest, kit_tool)
         except (OSError, ValueError, KeyError, subprocess.SubprocessError) as exc:
             fail(f"pinned industrial kit deploy failed: {exc}")
