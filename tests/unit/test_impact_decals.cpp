@@ -10,6 +10,19 @@
 
 using namespace impact;
 
+TEST_CASE("impact: reused value noise preserves signed lattice samples and alternating seeds") {
+    for (uint32_t salt : {17u, 994u, 17u, 0xffffffffu}) {
+        FastNoiseLite reference(std::bit_cast<int32_t>(salt));
+        reference.SetNoiseType(FastNoiseLite::NoiseType_Value);
+        reference.SetFrequency(1.0f);
+        for (float x : {-2.0001f, -2.0f, -1.9999f, -1.0f, 0.0f, 0.37f}) {
+            CHECK(atlas::detail::vnoise(x, -1.0f, salt) == reference.GetNoise(x, -1.0f) * 0.5f + 0.5f);
+            CHECK(std::fabs(atlas::detail::vnoise(x - 0.0001f, -1.0f, salt)
+                          - atlas::detail::vnoise(x + 0.0001f, -1.0f, salt)) < 0.001f);
+        }
+    }
+}
+
 namespace {
 Event ev(WeaponClass w, float x, float y, float t = 0.0f, uint32_t anchor = 0, AnchorKind k = AnchorKind::World) {
     Event e;

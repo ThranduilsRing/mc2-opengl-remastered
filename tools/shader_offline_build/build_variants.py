@@ -84,7 +84,7 @@ def sidecar_name(base, stage, variant):
 
 
 def occupancy_slots(path=BINDING_OCC):
-    """Return native buffer descriptors from the Vulkan binding census."""
+    """Return all native descriptors from the Vulkan binding census."""
     if not path.exists():
         return None
     occ = json.load(open(path, encoding="utf-8")).get("occupancy", {})
@@ -94,10 +94,18 @@ def occupancy_slots(path=BINDING_OCC):
         if match:
             descriptor_set, binding = map(int, match.groups())
             for site in sites:
-                ns = {"uniform": "UBO", "buffer": "SSBO"}.get(site["type"])
+                typ = site['type']
+                ns = ({"uniform": "UBO", "buffer": "SSBO"}.get(typ)
+                      or ('IMAGE' if 'image' in typ else 'SAMPLER' if 'sampler' in typ else None))
                 if ns:
                     out.add((ns, descriptor_set, binding, site["role"], site["file"]))
     return out
+
+
+def descriptors(bindings):
+    for group, ns in (('ubos', 'UBO'), ('ssbos', 'SSBO'), ('samplers', 'SAMPLER'), ('images', 'IMAGE')):
+        for descriptor in bindings.get(group, []):
+            yield ns, descriptor
 
 
 def reflect(spv: Path, spirv_cross: str, slang_source=None, root=ROOT):
@@ -110,10 +118,9 @@ def reflect(spv: Path, spirv_cross: str, slang_source=None, root=ROOT):
         if errors:
             raise ValueError('; '.join(errors))
     def blocks(key):
-        return [{"name": b.get("name"), "binding": b.get("binding"),
-                 "set": b.get("set")} for b in raw.get(key, [])]
+        return raw.get(key, [])
     samplers = [{"name": t.get("name"), "type": t.get("type"),
-                 "location": t.get("location"), "binding": t.get("binding")}
+                 "location": t.get("location"), "binding": t.get("binding"), "set": t.get("set")}
                 for t in raw.get("textures", [])]
     # Slang/HLSL-style separate image + sampler objects (absent from GLSL output,
     # so existing sidecars are unchanged).
@@ -122,7 +129,7 @@ def reflect(spv: Path, spirv_cross: str, slang_source=None, root=ROOT):
                       "location": t.get("location"), "binding": t.get("binding"),
                       "set": t.get("set")} for t in raw.get(key, [])]
     return {"ubos": blocks("ubos"), "ssbos": blocks("ssbos"),
-            "samplers": samplers,
+            "samplers": samplers, "images": blocks("images"), "types": raw.get("types", {}),
             "inputs": [{"name": i.get("name"), "location": i.get("location")}
                        for i in raw.get("inputs", [])],
             "outputs": [{"name": o.get("name"), "location": o.get("location")}
@@ -229,7 +236,8 @@ def _emit_record(args, fails, built, index, cfg, spv_dir, base, stage, vname,
         "artifact": art, "spv_dir": cfg.get("spv_dir", "shaders/spv"),
         "source_sha256": src_hash, "spirv_sha256": spirv_hash,
         "bindings": {"ubos": refl["ubos"], "ssbos": refl["ssbos"],
-                     "samplers": refl["samplers"]},
+                     "samplers": refl["samplers"], "images": refl["images"]},
+        "types": refl["types"],
         "interface": {"inputs": refl["inputs"], "outputs": refl["outputs"]},
         "shaderVariantId": vid,
     }
@@ -345,11 +353,10 @@ def main():
                     refl = reflect(out, spirv_cross)
 
                 # Match native buffers by source, role, descriptor set and binding.
-                for blk in refl["ubos"] + refl["ssbos"]:
+                for ns, blk in descriptors(refl):
                     b = blk.get("binding")
                     if b is None:
                         continue
-                    ns = "UBO" if blk in refl["ubos"] else "SSBO"
                     if occ is not None and (ns, blk.get("set", 0), b, blk["name"], rel) not in occ:
                         fails.append(
                             f"{art}: reflected {ns} '{blk['name']}' binding={b} "

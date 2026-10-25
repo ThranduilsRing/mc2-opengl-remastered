@@ -968,7 +968,7 @@ run_check "render_resource_ids"    "py -3 scripts/check-render-resource-ids.py"
 run_check "vulkan_bindings"        "py -3 scripts/check-vulkan-bindings.py --strict --quiet && py -3 -B -m pytest scripts/tests/test_native_binding_contracts.py -q -p no:cacheprovider"
 # Reject reintroduced GL runtime, SDK and link dependencies.
 run_check "no_gl_compiler"         "py -3 scripts/check-no-gl-compiler.py --quiet && py -3 -B -m pytest scripts/tests/test_no_gl_compiler.py -q -p no:cacheprovider"
-run_check "spirv_artifacts"        "py -3 scripts/check-spirv-artifacts.py --quiet"
+run_check "spirv_artifacts"        "py -3 scripts/check-spirv-artifacts.py --quiet && py -3 -B -m pytest scripts/tests/test_spirv_fixups.py -q -p no:cacheprovider"
 # SLANG-TOOLCHAIN-1: .slang -> SPIR-V through build_variants.py (fixtures only; no shipped Slang yet).
 run_check "slang_build"            "py -3 -B -m pytest scripts/tests/test_slang_build.py -q -p no:cacheprovider"
 run_check "gpu_abi"                "py -3 tools/gpu_abi_gen.py --check && py -3 -B -m pytest scripts/tests/test_gpu_abi_gen.py -q -p no:cacheprovider"
@@ -977,7 +977,7 @@ run_check "vk_pipeline_layout"    "py -3 scripts/check-vk-pipeline-layout.py --q
 run_check "shader_package"         "py -3 scripts/check-shader-package.py --quiet"
 # Vulkan UBO layout and offline shader compilation remain required.
 run_check "vk_ubo_layout"          "py -3 tools/check_ubo_layout.py"
-run_check "vk_shaders_compile"     "py -3 tools/check_vk_shaders.py"
+run_check "vk_shaders_compile"     "py -3 tools/check_vk_shaders.py && py -3 -B -m pytest scripts/tests/test_window_emission.py -q -p no:cacheprovider"
 # CONTRACT-TRUTH-2: the census above enforces that shaders ROUTE THROUGH the
 # rc_* helpers. It says nothing about whether the helpers' own documentation is
 # true, and it wasn't: shaders/include/render_contract.hglsl:77 stated the

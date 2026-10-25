@@ -114,7 +114,7 @@ def resource_bindings(text):
     for m in RESOURCE_RE.finditer(uncomment(text)):
         binding, desc_set, kind, typ, name = m.groups()
         ns = ('ubo' if kind == 'ConstantBuffer' else 'ssbo' if 'Buffer' in kind
-              else 'image' if kind.startswith('RWTexture') else 'texture')
+              else 'image' if kind.startswith('RWTexture') else 'sampler' if kind.startswith('Sampler') else 'texture')
         yield {'binding': int(binding) if binding is not None else None,
                'set': int(desc_set) if desc_set is not None else None,
                'namespace': ns, 'name': name, 'type': typ,
@@ -135,14 +135,34 @@ def validate_reflection(raw, src, root=ROOT):
             if slot not in {(d['set'], d['binding']) for d in declarations}:
                 errors.append(f"{r.get('name')}: descriptor {slot} has no explicit source binding")
             seen.add(slot)
-            if group in ('ubos', 'ssbos'):
-                ns = 'ubo' if group == 'ubos' else 'ssbo'
-                if (slot[0], slot[1], ns) not in {
-                        (d['set'], d['binding'], d['namespace']) for d in declarations}:
-                    errors.append(f'{r.get("name")}: descriptor {slot} source buffer type mismatch')
+            ns = {'ubos': 'ubo', 'ssbos': 'ssbo', 'images': 'image',
+                  'textures': 'texture', 'separate_images': 'texture',
+                  'separate_samplers': 'sampler'}.get(group)
+            if group == 'samplers':
+                ns = 'sampler' if r.get('type') == 'sampler' else 'texture'
+            if (slot[0], slot[1], ns) not in {
+                    (d['set'], d['binding'], d['namespace']) for d in declarations}:
+                errors.append(f'{r.get("name")}: descriptor {slot} source buffer type mismatch ({ns})')
+    return errors + validate_abi(raw, root, check_bindings=True)
+
+
+def validate_abi(raw, root=ROOT, check_bindings=False):
+    errors = []
     sys.path.insert(0, str(ROOT / 'tools'))
     import gpu_abi_gen as abi
     types = raw.get('types', {})
+    pending = [b['type'] for group in ('ubos', 'ssbos') for b in raw.get(group, []) if 'type' in b]
+    physical = set()
+    while pending:
+        type_id = pending.pop()
+        if type_id in physical:
+            continue
+        physical.add(type_id)
+        if type_id not in types:
+            errors.append(f'gpu_abi: missing reflected buffer type {type_id}')
+            continue
+        pending.extend(m['type'] for m in types[type_id].get('members', [])
+                       if m['type'].startswith('_'))
     for header, _, _ in abi.STRUCTS:
         path = Path(root) / header
         if not path.exists():
@@ -151,7 +171,11 @@ def validate_reflection(raw, src, root=ROOT):
         for type_id, reflected in types.items():
             if reflected.get('name') not in (info['glsl'], info['cpp']):
                 continue
-            if info['block']:
+            # SPIR-V also contains undecorated function-local copies of structs.
+            if (physical and type_id not in physical) or (not physical and
+                    not any('offset' in m for m in reflected.get('members', []))):
+                continue
+            if info['block'] and check_bindings:
                 for block in raw.get('ubos', []):
                     if block.get('type') == type_id and (
                             block.get('set'), block.get('binding')) != (

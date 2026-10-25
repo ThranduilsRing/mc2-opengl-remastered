@@ -18,8 +18,8 @@ expected-interface lists), so it stays correct as variants are added:
     - INTER-STAGE VARYINGS (vert outputs <-> frag inputs): auto-mapped per linked
       program; cross-variant location drift is HARMLESS, but within EACH variant
       the vert-output location MUST equal the frag-input location (link compat).
-    - SAMPLERS: resolved by NAME at runtime (glGetUniformLocation) -> location
-      drift is harmless; only cross-check the name against sampler-unit-occupancy.
+    - SAMPLERS / IMAGES: fixed Vulkan set/binding; cross-check against the
+      descriptor census just like buffers. Validate decorated GPU ABI layouts.
 
   Plus, for every class: MONOTONIC GATING (up-set) — if an element is present for
   define-set V it must be present in every baked variant whose defines are a
@@ -41,36 +41,14 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'tools/shader_offline_build'))
 from build_variants import occupancy_slots  # noqa: E402
+import slang_compile  # noqa: E402
 
 PILOTS = "tools/shader_offline_build/pilots.json"
 BINDING_OCC = "docs/render-backend-seams/binding-slot-occupancy.json"
-SAMPLER_OCC = "docs/render-backend-seams/sampler-unit-occupancy.json"
 
 
 def occ_slots(p):
     return occupancy_slots(p)
-
-
-def sampler_names(p):
-    if not p.exists():
-        return None
-    try:
-        doc = json.load(open(p, encoding="utf-8"))
-    except Exception:
-        return None
-    names = set()
-    # tolerate a few shapes: {"occupancy": {...}} / {"samplers":[...]} / list
-    def walk(o):
-        if isinstance(o, dict):
-            for k, v in o.items():
-                if k in ("name", "uniform", "sampler") and isinstance(v, str):
-                    names.add(v)
-                walk(v)
-        elif isinstance(o, list):
-            for x in o:
-                walk(x)
-    walk(doc)
-    return names
 
 
 def main():
@@ -86,7 +64,6 @@ def main():
                for stage, rel in p['stages'].items()}
     spv_dir = root / cfg.get("spv_dir", "shaders/spv")
     occ = occ_slots(root / BINDING_OCC)
-    smp = sampler_names(root / SAMPLER_OCC)
 
     # Collect baked sidecars grouped by (base, stage) and by (base, variant).
     groups = {}                 # (base, stage) -> [(defs, meta)]
@@ -110,22 +87,28 @@ def main():
         b = meta.get("bindings", {}); i = meta.get("interface", {})
         if kind == "outputs":  return {x["name"]: x.get("location") for x in i.get("outputs", [])}
         if kind == "inputs":   return {x["name"]: x.get("location") for x in i.get("inputs", [])}
-        if kind in ("ubos", "ssbos"):
+        if kind in ("ubos", "ssbos", "samplers", "images"):
             return {x["name"]: (x.get("set", 0), x.get("binding")) for x in b.get(kind, [])}
-        if kind == "samplers": return {x["name"]: x.get("location") for x in b.get("samplers", [])}
         return {}
 
     # Which (stage, kind) require cross-variant CONSISTENCY (fixed external layout)
-    # vs are variation-tolerant (varyings, by-name samplers).
+    # vs are variation-tolerant (inter-stage varyings).
     def consistency_required(stage, kind):
-        if kind in ("ubos", "ssbos"):              return True   # C++ literal slots
+        if kind in ("ubos", "ssbos", "samplers", "images"): return True
         if stage == "vert" and kind == "inputs":   return True   # vertex attributes (VAO)
         if stage == "frag" and kind == "outputs":  return True   # FBO draw buffers
-        return False  # varyings (vert outputs / frag inputs) + samplers: tolerant
+        return False  # inter-stage varyings
 
     for (base, stage), variants in sorted(groups.items()):
         checked.append(f"{base}.{stage} ({len(variants)} variant(s))")
-        for kind in ("outputs", "inputs", "ubos", "ssbos", "samplers"):
+        for _, meta in variants:
+            raw = dict(meta.get('bindings', {}), types=meta.get('types', {}))
+            if (raw.get('ubos') or raw.get('ssbos')) and not raw['types']:
+                fails.append(f'{base}.{stage}: gpu_abi: buffer reflection is missing types')
+            errors = (slang_compile.validate_reflection(raw, root / sources[base, stage], root)
+                      if sources[base, stage].endswith('.slang') else slang_compile.validate_abi(raw, root))
+            fails.extend(f'{base}.{stage}: {e}' for e in errors)
+        for kind in ("outputs", "inputs", "ubos", "ssbos", "samplers", "images"):
             present = {}
             for defs, meta in variants:
                 for name, val in elems(meta, kind).items():
@@ -147,15 +130,14 @@ def main():
                                 f"{sorted(d_present)} but MISSING in superset variant "
                                 f"{sorted(d_all)} (non-monotonic gating / define removed it)")
                 # MANIFEST AGREEMENT
-                if kind in ("ubos", "ssbos") and occ is not None:
-                    ns = "UBO" if kind == "ubos" else "SSBO"
+                if kind in ("ubos", "ssbos", "samplers", "images"):
+                    if sources[base, stage].endswith('.slang'):
+                        continue
+                    ns = {'ubos': 'UBO', 'ssbos': 'SSBO', 'samplers': 'SAMPLER', 'images': 'IMAGE'}[kind]
                     b = next(iter(vals)) if len(vals) == 1 else None
-                    if b is not None and (ns, *b, name, sources[base, stage]) not in occ:
+                    if b is not None and (occ is None or (ns, *b, name, sources[base, stage]) not in occ):
                         fails.append(f"{base}.{stage} {ns} '{name}' binding={b} "
                                      f"absent from binding-slot-occupancy.json")
-                if kind == "samplers" and smp is not None and name not in smp:
-                    warns.append(f"{base}.{stage} sampler '{name}' not named in "
-                                 f"sampler-unit-occupancy.json (C++ binder side)")
 
     # INTER-STAGE VARYING LINK COMPAT: within each variant, a varying read by the
     # frag (input) must sit at the same location the vert wrote it (output).
