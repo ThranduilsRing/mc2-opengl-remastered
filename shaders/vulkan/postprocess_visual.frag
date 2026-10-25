@@ -9,7 +9,7 @@ layout(set = 0, binding = 0) uniform sampler2D sceneTex;
 layout(set = 0, binding = 1) uniform usampler2D objectIdTex;
 
 layout(push_constant) uniform Params {
-    vec4 p0; // exposure, invW, invH, reserved
+    vec4 p0; // exposure, inverse source extent, cubic upscale
     vec4 p1; // reserved.xyz, casEnabled
     vec4 p2; // viewMode, lowLightGain, lowLightTint.r, lowLightTint.g
     vec4 p3; // lowLightTint.b, engineIdxBase, casSharpness, tonemapMode
@@ -20,8 +20,8 @@ layout(push_constant) uniform Params {
 } u;
 
 // Profile output is neutral by default. CAS grades each tap consistently.
-vec3 gradeColor(vec2 uv) {
-    vec3 color = texture(sceneTex, uv).rgb * u.p0.x;
+vec3 gradeSample(vec3 sampleColor, vec2 uv) {
+    vec3 color = sampleColor * u.p0.x;
 
     color *= u.p4.rgb;
     float lum = dot(color, vec3(0.299, 0.587, 0.114));
@@ -37,6 +37,34 @@ vec3 gradeColor(vec2 uv) {
 
     float sunBias = pow(smoothstep(0.0, 1.0, 1.0 - uv.y), 1.5);
     return mix(color, color * u.p7.rgb, sunBias * u.p5.w);
+}
+
+vec3 gradeColor(vec2 uv) { return gradeSample(texture(sceneTex, uv).rgb, uv); }
+
+// Separable Catmull-Rom reconstruction: merge the two positive middle weights
+// with bilinear filtering, reducing sixteen source texels to nine fetches.
+vec3 upscaleColor(vec2 uv) {
+    vec2 size = vec2(textureSize(sceneTex, 0));
+    vec2 p = uv * size - 0.5;
+    vec2 base = floor(p), f = p - base;
+    vec2 w0 = f * (-0.5 + f * (1.0 - 0.5 * f));
+    vec2 w1 = 1.0 + f * f * (-2.5 + 1.5 * f);
+    vec2 w2 = f * (0.5 + f * (2.0 - 1.5 * f));
+    vec2 w3 = f * f * (-0.5 + 0.5 * f);
+    vec2 w12 = w1 + w2;
+    vec2 a = (base - 0.5) / size;
+    vec2 b = (base + 0.5 + w2 / w12) / size;
+    vec2 c = (base + 2.5) / size;
+    vec3 color = texture(sceneTex, vec2(a.x,a.y)).rgb * w0.x * w0.y
+               + texture(sceneTex, vec2(b.x,a.y)).rgb * w12.x * w0.y
+               + texture(sceneTex, vec2(c.x,a.y)).rgb * w3.x * w0.y
+               + texture(sceneTex, vec2(a.x,b.y)).rgb * w0.x * w12.y
+               + texture(sceneTex, vec2(b.x,b.y)).rgb * w12.x * w12.y
+               + texture(sceneTex, vec2(c.x,b.y)).rgb * w3.x * w12.y
+               + texture(sceneTex, vec2(a.x,c.y)).rgb * w0.x * w3.y
+               + texture(sceneTex, vec2(b.x,c.y)).rgb * w12.x * w3.y
+               + texture(sceneTex, vec2(c.x,c.y)).rgb * w3.x * w3.y;
+    return gradeSample(max(color, vec3(0.0)), uv);
 }
 
 // Options.cfg PostCAS: contrast adaptive sharpening (AMD FidelityFX CAS) on the graded colour. Adaptive weight from the local min/max of the
@@ -118,7 +146,9 @@ float ignTriangle(vec2 p) {
 }
 
 void main() {
-    vec3 color = (u.p1.w != 0.0) ? casFilter(TexCoord) : gradeColor(TexCoord);
+    // CAS already reconstructs from the source neighbourhood when selected.
+    vec3 color = (u.p1.w != 0.0) ? casFilter(TexCoord)
+               : u.p0.w != 0.0 ? upscaleColor(TexCoord) : gradeColor(TexCoord);
     color = applyTonemap(color);
     color = clamp(color + ignTriangle(floor(gl_FragCoord.xy)) / 255.0, 0.0, 1.0);
 

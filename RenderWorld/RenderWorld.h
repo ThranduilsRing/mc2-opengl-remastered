@@ -297,7 +297,8 @@ struct ObjectRecordView {
 bool getObjectRecordView(RenderCore::RenderObjectHandle handle, ObjectRecordView* out);
 
 // M1.5: synchronous pixel -> handle lookup. screenX/Y in GL convention
-// (origin bottom-left). Returns LookupResult{isValid=false} when env-OFF,
+// (origin bottom-left) at output resolution, before scene scaling.
+// Returns LookupResult{isValid=false} when env-OFF,
 // FBO not initialized, pixel==0, or generation mismatch. Stalls the GPU
 // to read the prior frame's attachment-2 -- intended for click-time
 // (max ~10/sec) debug; not per-frame.

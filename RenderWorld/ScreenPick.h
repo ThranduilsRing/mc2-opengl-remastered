@@ -15,6 +15,16 @@
 
 namespace RenderWorld {
 
+// Keep output-pixel clicks aligned with a spatially upscaled scene. Reject
+// outside clicks before integer division can truncate a negative pixel to zero.
+inline bool screenPickScenePixel(int& x, int& y, int outputW, int outputH, int sceneW, int sceneH) {
+    if (outputW <= 0 || outputH <= 0 || sceneW <= 0 || sceneH <= 0 ||
+        x < 0 || y < 0 || x >= outputW || y >= outputH) return false;
+    x = static_cast<int>(static_cast<int64_t>(x) * sceneW / outputW);
+    y = static_cast<int>(static_cast<int64_t>(y) * sceneH / outputH);
+    return true;
+}
+
 // All fields. Populated by the caller's local screenToFboPixel wrapper,
 // or set manually for unit testing (no GL context required).
 struct ScreenPickContext {

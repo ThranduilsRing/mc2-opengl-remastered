@@ -53,6 +53,7 @@
 #endif
 #define UNICODE 0
 #include <windows.h>
+#include "quality_presets.h"
 #include <shellapi.h>
 #include <shlobj.h>
 #include <commctrl.h>
@@ -102,7 +103,7 @@ inline constexpr int IDC_GFX_AA = 1590;
 #define IDC_GFX_FRAMECAP_EDIT  1531  // FPS edit control
 #define IDC_GFX_VSYNC_CHK      1532  // "Enable VSync" checkbox
 #define IDC_GFX_VRAM_TEXT      1540  // multi-line STATIC for VRAM estimate
-#define IDC_GFX_PRESET_BASE    1560  // preset buttons: +0=Low +1=Medium +2=High +3=Ultra
+#define IDC_GFX_PRESET_BASE    1560  // preset buttons: +0=Low +1=Medium +2=High
 
 #define WM_APP_IMPORT_DONE (WM_APP + 1)
 
@@ -191,13 +192,14 @@ static const EnvVarDef k_envVars[] = {
     // options.cfg key and the engine reads it once at startup through CPrefs. The dialog starts such a row from the engine's own default for
     // that key (RowDefault), so a fresh dialog shows what the game does with no key in options.cfg and Launch never writes a value the engine
     // did not choose; its defaultVal column is ignored. offVal "0" on a default-ON row records that unchecking means FALSE.
-    // An environment gate whose engine default is OFF; the launcher offers it pre-checked, so a launcher launch has cloud shadows on and a
-    // shell launch does not. Unchecked == unset == off (no offVal).
-    { "MC2_CLOUD_SHADOW",            "Cloud shadows (engine OFF; launcher ON)", true, "1",  "Rendering" },
+    // The engine defaults off and the launcher starts on. Persist an explicit zero so an unchecked row survives the next launcher load.
+    { "MC2_CLOUD_SHADOW",            "Cloud shadows (engine OFF; launcher ON)", true, "1",  "Rendering", "0" },
     { "StaticPropPbr",               "Static prop PBR specular (OFF)",        true,  NULL,   "Rendering", NULL, true },
     { "StaticPropAmbient",           "Static prop hemisphere ambient (ON)",   true,  NULL,   "Rendering", "0", true },
     // The TREE/PROP A/B knob (see READ-ME-FIRST-AB-TESTS.md); default ON.
     { "StaticPropIblSh",             "Static prop SH-L2 IBL ambient (ON)",    true,  NULL,   "Rendering", "0", true },
+    { "MC2_SHADOW_ENABLE",           "Object shadows (ON)",                  true,  "1",    "Rendering", "0" },
+    { "MC2_VK_POST_SCREENFX_SHADOW",  "Object shadow resolve (ON)",           true,  "1",    "Rendering", "0" },
     // --- Display ---
     { "MC2_FORCE_43",                "Force 4:3 aspect (pillarbox widescreen)", true, "",    "Display"   },
     { "MC2_WINDOWED",                "Windowed mode",                          true,  "",    "Display"   },
@@ -215,6 +217,9 @@ static const EnvVarDef k_envVars[] = {
     // (leading-'0' test, so the exact token "0" this row emits disables it). Sole
     // reader. offVal="0" mandatory: unsetting alone left the atlas on its ON default.
     { "MC2_COLORMAP_KTX2",           "BC7 KTX2 colormap atlas (ON)",          true,  "1",    "Terrain", "0" },
+    { "MC2_VEGETATION_MAX",           "Vegetation population cap",            false, "5000000", "Terrain" },
+    { "MC2_SHADOW_MOVER_SAMPLES",     "Mover shadow filter samples (4-32)",   false, "32", "Terrain" },
+    { "MC2_RENDER_SCALE",            "Scene resolution scale (0.5-1)",       false, "1", "Terrain" },
     // --- Water / VFX ---
     // NO offVal, and adding one would be ACTIVELY WRONG. Primary reader
     // gameos_graphics.cpp:2867 `(v && v[0] && v[0] != '0') ? 0.15f : 0.0f` --
@@ -325,14 +330,7 @@ static char s_savedDataDriven[4]    = ""; // "1" or "0" or "" (generated defs to
 static const char* k_shadQualLabels[]   = { "Potato", "Medium", "High" };
 static const int   k_shadVramMB[]       = { 27, 107, 164 };       // resident mask, static-object and mover images
 
-struct GfxPreset { int shadQual; bool frameCap; int fps; };
-static const GfxPreset k_gfxPresets[] = {
-    { 0, true,  60  },   // Low
-    { 1, true,  60  },   // Medium
-    { 2, true,  165 },   // High
-    { 2, false, 165 },   // Ultra (uncapped)
-};
-static const char* k_gfxPresetLabels[] = { "Low", "Medium", "High", "Ultra" };
+static int s_pendingPreset = -1; // committed with OK; Cancel leaves the engine-option rows untouched
 
 // Graphics Options dialog window handle.
 static HWND s_hGraphicsDlg = NULL;
@@ -1254,19 +1252,20 @@ static LRESULT CALLBACK GraphicsDlgProc(HWND hwnd, UINT msg, WPARAM wParam, LPAR
 
         int y = GFX_MARGIN;
 
+        s_pendingPreset = -1;
         // --- Presets ---
         {
-            HWND hPrLbl = CreateWindowA("STATIC", "Presets",
+            HWND hPrLbl = CreateWindowA("STATIC", "Presets (shadows, AA, vegetation and clouds)",
                 WS_CHILD | WS_VISIBLE | SS_LEFT,
                 GFX_MARGIN, y, GFX_DLG_W - 2*GFX_MARGIN, GFX_SEC_H,
                 hwnd, (HMENU)(INT_PTR)-1, s_hInst, NULL);
             SendMessageA(hPrLbl, WM_SETFONT, (WPARAM)hFontBold, TRUE);
             y += GFX_SEC_STEP;
 
-            int nPr = 4;
+            int nPr = 3;
             int prW = (GFX_DLG_W - 2*GFX_MARGIN - (nPr-1)*8) / nPr;
             for (int i = 0; i < nPr; i++) {
-                HWND hPr = CreateWindowA("BUTTON", k_gfxPresetLabels[i],
+                HWND hPr = CreateWindowA("BUTTON", k_gfxPresets[i].label,
                     WS_CHILD | WS_VISIBLE,
                     GFX_MARGIN + i * (prW + 8), y, prW, GFX_BTN_H,
                     hwnd, (HMENU)(INT_PTR)(IDC_GFX_PRESET_BASE + i), s_hInst, NULL);
@@ -1450,19 +1449,13 @@ static LRESULT CALLBACK GraphicsDlgProc(HWND hwnd, UINT msg, WPARAM wParam, LPAR
 
         // Preset button clicked: apply preset values to all controls.
         int pidx = (int)id - IDC_GFX_PRESET_BASE;
-        if (pidx >= 0 && pidx < 4 && notif == BN_CLICKED) {
+        if (pidx >= 0 && pidx < 3 && notif == BN_CLICKED) {
             const GfxPreset& p = k_gfxPresets[pidx];
-            SendDlgItemMessageA(hwnd, IDC_GFX_AA, CB_SETCURSEL, pidx == 0 ? 2 : 1, 0);
+            s_pendingPreset = pidx;
+            SendDlgItemMessageA(hwnd, IDC_GFX_AA, CB_SETCURSEL, p.aa, 0);
             for (int i = 0; i < 3; i++) {
                 HWND h = GetDlgItem(hwnd, IDC_GFX_SHADQUAL_BASE + i);
                 if (h) SendMessageA(h, BM_SETCHECK, (i == p.shadQual) ? BST_CHECKED : BST_UNCHECKED, 0);
-            }
-            HWND hCk = GetDlgItem(hwnd, IDC_GFX_FRAMECAP_CHK);
-            HWND hEd = GetDlgItem(hwnd, IDC_GFX_FRAMECAP_EDIT);
-            if (hCk) SendMessageA(hCk, BM_SETCHECK, p.frameCap ? BST_CHECKED : BST_UNCHECKED, 0);
-            if (hEd) {
-                char fpsBuf[16]; _snprintf(fpsBuf, sizeof(fpsBuf), "%d", p.fps);
-                SetWindowTextA(hEd, fpsBuf);
             }
             // Update VRAM display for the preset.
             int savedSq = s_gfxShadQual;
@@ -1475,6 +1468,19 @@ static LRESULT CALLBACK GraphicsDlgProc(HWND hwnd, UINT msg, WPARAM wParam, LPAR
 
         if (id == IDC_GFX_OK) {
             GfxDialogReadControls(hwnd);
+            if (s_pendingPreset >= 0) {
+                const auto& p = k_gfxPresets[s_pendingPreset];
+                for (int k = 0; k < int(sizeof(k_presetKeys) / sizeof(k_presetKeys[0])); ++k)
+                    for (int row = 0; row < k_envVarCount; ++row)
+                        if (strcmp(k_presetKeys[k], k_envVars[row].key) == 0) {
+                            _snprintf(s_envVarValues[row], sizeof(s_envVarValues[row]), "%s", p.values[k]);
+                            if (s_hOptionsDlg) {
+                                HWND control = GetDlgItem(s_hOptionsDlg, IDC_OPT_CTRL_BASE + row);
+                                if (k_envVars[row].isBool) SendMessageA(control, BM_SETCHECK, strcmp(p.values[k], "1") == 0 ? BST_CHECKED : BST_UNCHECKED, 0);
+                                else SetWindowTextA(control, p.values[k]);
+                            }
+                        }
+            }
             SaveGfxJson();
             SaveCfgRows();
             DestroyWindow(hwnd);

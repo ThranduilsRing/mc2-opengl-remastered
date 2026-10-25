@@ -5,6 +5,32 @@
 #include "doctest.h"
 #include "../../RenderWorld/ScreenPick.h"
 #include "cursor_world_pick.h"
+#include <utility>
+
+TEST_CASE("screen pick scene scaling keeps center and edge clicks aligned") {
+    for (const auto scene : {std::pair{3840,2160}, std::pair{2560,1440}, std::pair{1920,1080}}) {
+        int x=1920, y=1080;
+        REQUIRE(RenderWorld::screenPickScenePixel(x,y,3840,2160,scene.first,scene.second));
+        CHECK(x == scene.first/2); CHECK(y == scene.second/2);
+        x=3839; y=2159;
+        REQUIRE(RenderWorld::screenPickScenePixel(x,y,3840,2160,scene.first,scene.second));
+        CHECK(x == scene.first-1); CHECK(y == scene.second-1);
+        x=0; y=0;
+        REQUIRE(RenderWorld::screenPickScenePixel(x,y,3840,2160,scene.first,scene.second));
+        CHECK(x == 0); CHECK(y == 0);
+    }
+}
+
+TEST_CASE("screen pick scene scaling never clamps outside clicks onto an object") {
+    for (const auto point : {std::pair{-1,0}, std::pair{0,-1}, std::pair{3840,0}, std::pair{0,2160}}) {
+        int x=point.first, y=point.second;
+        CHECK_FALSE(RenderWorld::screenPickScenePixel(x,y,3840,2160,1920,1080));
+        CHECK(x == point.first); CHECK(y == point.second);
+    }
+    int x=0, y=0;
+    CHECK_FALSE(RenderWorld::screenPickScenePixel(x,y,0,2160,1920,1080));
+    CHECK_FALSE(RenderWorld::screenPickScenePixel(x,y,3840,2160,0,1080));
+}
 
 TEST_CASE("cursor pick miss keeps previous position without a fallback projection") {
     struct Camera {

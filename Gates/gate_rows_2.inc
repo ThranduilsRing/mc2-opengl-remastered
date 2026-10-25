@@ -175,6 +175,7 @@ L(Lead1, "MC2_RENDER_PASS_TELEMETRY", Bool, false, "code", "", "", passthrough |
 L(Exact1, "MC2_RENDER_PASS_TIME", Bool, false, "gameos", "", "", passthrough | verified),
 P("MC2_RENDER_PASS_TIME_EVERY", Int, 0, "gameos", "", "", passthrough | verified),
 L(Presence, "MC2_RENDER_PATH", Bool, false, "props", "", "G5 RENDER-PATH OBSERVABILITY (descriptive; env-gated; ZERO behavior change): one line per registered static-prop type recording which render path it takes.", verified),
+P("MC2_RENDER_SCALE", Float, 1.0, "post", "", "Scene resolution relative to output; spatial cubic upscale, native HUD. Restart to apply.", clampRange(0.5, 1.0) | passthrough | verified),
 L(Lead1, "MC2_RENDER_SNAPSHOT_LOG", Bool, false, "gameos", "", "", passthrough | verified),
 L(Presence, "MC2_RENDER_WATER_FASTPATH", Bool, false, "terrain", "", "", passthrough | verified),
 P("MC2_RENDER_WATER_FASTPATH_DEBUG", Int, 0, "gameos", "", ""),

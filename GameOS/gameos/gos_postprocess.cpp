@@ -345,9 +345,9 @@ void gosPostProcess::endScene()
     }
     runVkPostFogNative();
 #endif
-    int x=0,y=0,w=width_,h=height_;
+    int x=0,y=0,w=outputWidth_,h=outputHeight_;
     int bx=0,by=0,bw=0,bh=0;
-    if (gos_Compute43Box(width_,height_,&bx,&by,&bw,&bh)) { x=bx; y=by; w=bw; h=bh; }
+    if (gos_Compute43Box(outputWidth_,outputHeight_,&bx,&by,&bw,&bh)) { x=bx; y=by; w=bw; h=bh; }
     int mode=gos_GetSelectedViewMode();
     if (mode==1 && !sceneObjectIdReady()) mode=0;
 #ifdef MC2_VULKAN

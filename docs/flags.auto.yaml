@@ -3,9 +3,9 @@
 # Where each gate is read, what the smoke runner forwards and what tier1_env_vars.md says are not here: ask
 # tools/repo_intel (env_var, gate_status), which scan the sources.
 generator_version: "3.0.0"
-gate_count: 799
+gate_count: 801
 registry_entry_count: 159
-verified_count: 761
+verified_count: 763
 flags:
   - name: MC2_ABL_ARG_GUARD
     kind: Bool
@@ -3680,6 +3680,15 @@ flags:
     owner: props
     doc: "G5 RENDER-PATH OBSERVABILITY (descriptive; env-gated; ZERO behavior change): one line per registered static-prop type recording which render path it takes."
     verified: true
+  - name: MC2_RENDER_SCALE
+    kind: Float
+    default: 1
+    rule: Prefix
+    owner: post
+    doc: "Scene resolution relative to output; spatial cubic upscale, native HUD. Restart to apply."
+    range: {lo: 0.5, hi: 1, style: clamp}
+    smoke_passthrough: true
+    verified: true
   - name: MC2_RENDER_SNAPSHOT_LOG
     kind: Bool
     default: false
@@ -3892,6 +3901,15 @@ flags:
     smoke_passthrough: true
     verified: true
     registry: {feature_id: MC2_TUNE_SHADOW_MIN_SUN_ALT, kind: Trace, order: -1, default_on: false}
+  - name: MC2_SHADOW_MOVER_SAMPLES
+    kind: Int
+    default: 32
+    rule: Prefix
+    owner: post
+    doc: "Spatial mover-shadow filter samples; independent of texture residency and static shadow quality."
+    range: {lo: 4, hi: 32, style: clamp}
+    smoke_passthrough: true
+    verified: true
   - name: MC2_SHADOW_PROP_ALPHA
     kind: Bool
     default: true

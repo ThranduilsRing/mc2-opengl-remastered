@@ -10,7 +10,7 @@
 
 namespace mc2::gate::detail {
 
-inline constexpr std::size_t kGateCount = 799;
+inline constexpr std::size_t kGateCount = 801;
 
 inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_ABL_ARG_GUARD", Kind::Bool, Rule::Lead1, {}},
@@ -490,6 +490,7 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_RENDER_PASS_TIME", Kind::Bool, Rule::Exact1, {}},
     {"MC2_RENDER_PASS_TIME_EVERY", Kind::Int, Rule::Prefix, {}},
     {"MC2_RENDER_PATH", Kind::Bool, Rule::Presence, {}},
+    {"MC2_RENDER_SCALE", Kind::Float, Rule::Prefix, {}},
     {"MC2_RENDER_SNAPSHOT_LOG", Kind::Bool, Rule::Lead1, {}},
     {"MC2_RENDER_WATER_FASTPATH", Kind::Bool, Rule::Presence, {}},
     {"MC2_RENDER_WATER_FASTPATH_DEBUG", Kind::Int, Rule::Prefix, {}},
@@ -517,6 +518,7 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_SHADOW_ENABLE", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_SHADOW_MECH_SOFT", Kind::Float, Rule::Prefix, {}},
     {"MC2_SHADOW_MIN_SUN_ALT", Kind::Float, Rule::Prefix, {}},
+    {"MC2_SHADOW_MOVER_SAMPLES", Kind::Int, Rule::Prefix, {}},
     {"MC2_SHADOW_PROP_ALPHA", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_SHADOW_PROP_ALPHA_ATLAS", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_SHADOW_ROBUST_BASIS", Kind::Bool, Rule::Lead0Kill, {}},

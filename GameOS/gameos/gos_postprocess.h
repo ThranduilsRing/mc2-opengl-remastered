@@ -255,6 +255,8 @@ public:
     const float* getViewProj() const { return viewProj_; }
     int getWidth()  const { return width_; }
     int getHeight() const { return height_; }
+    int getOutputWidth() const { return outputWidth_; }
+    int getOutputHeight() const { return outputHeight_; }
 #ifdef MC2_VULKAN_ISLAND
     void prewarmVkFog();
     void prewarmVkScreenFx();
@@ -287,6 +289,8 @@ private:
     // Dimensions
     int width_;
     int height_;
+    int outputWidth_ = 0;
+    int outputHeight_ = 0;
 
     bool initialized_;
 
