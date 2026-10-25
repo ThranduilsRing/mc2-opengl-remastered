@@ -17,12 +17,7 @@ static bool userBuildingAsset(std::string_view name)
 	if (const auto* owner = LookupModOwner(path); owner && strcmp(owner, "mc2-industrial-kit") != 0)
 		return true;
 	if (!std::filesystem::is_regular_file(path)) return false;
-	auto source = std::filesystem::path(storage);
-	if (source.extension() == ".ktx2") {
-		source.replace_extension(".tga");
-		if (verifiedLooseTextureCook(std::filesystem::path(storage),
-			!ReadArchiveBytes(source.string().c_str(), 64u * 1024u * 1024u).empty())) return false;
-	}
+	if (verifiedLooseTextureCook(std::filesystem::path(storage))) return false;
 	return looseAssetDiffers(path, ReadArchiveBytes(path, 64u * 1024u * 1024u));
 }
 

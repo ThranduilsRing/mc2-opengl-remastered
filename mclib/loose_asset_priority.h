@@ -5,14 +5,14 @@
 #include <string_view>
 #include <cstdint>
 
-// Receipts detect user edits; legacy cooks without receipts use a paired stock source.
-inline bool verifiedLooseTextureCook(const std::filesystem::path& path, bool pairedStockSource = false)
+// Only a matching receipt proves cook provenance; a stock source alone does not.
+inline bool verifiedLooseTextureCook(const std::filesystem::path& path)
 {
     if (path.extension() != ".ktx2") return false;
     std::error_code error;
     const bool hasStamp = std::filesystem::exists(path.string() + ".cookstamp", error);
     if (error) return false;
-    if (!hasStamp) return pairedStockSource && std::filesystem::is_regular_file(path, error);
+    if (!hasStamp) return false;
     std::ifstream stamp(path.string() + ".cookstamp"); // path-audit: loose-only cook provenance
     uint64_t expected = 0;
     if (!(stamp >> std::hex >> expected)) return false;

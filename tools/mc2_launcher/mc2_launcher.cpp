@@ -3099,6 +3099,7 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE, LPSTR lpCmd, int) {
         _snprintf(s_envJsonPath, sizeof(s_envJsonPath), "%slauncher_env.json", s_launcherDir);
         s_envJsonPath[sizeof(s_envJsonPath)-1] = '\0';
         LoadEnvJson();
+        LoadCfgRows();
         MigrateLegacyEnvKeys();
         SaveCfgRows();
         return 0;

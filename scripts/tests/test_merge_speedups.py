@@ -569,19 +569,23 @@ def test_gate_save_matrix_tracks_art_path(paths, count):
         assert {n for n, _ in cases} == {"saveload-mc2_01", "saveload-mc2_10"}
 
 
-def test_shared_stock_evidence_is_ordered_and_validation_retained(tmp_path):
+def test_captures_keep_symmetric_env_and_do_not_mutate_gameplay(tmp_path):
     import merge_gate as gate
-    steps = gate.reuse_stock_runs(gate.install_plan(
-        gate.affected_plan(gate.plan(6, tmp_path), ["scripts/kit_payload.py"]), tmp_path / "install"), tmp_path)
-    names = [n for n, _, _ in steps]
-    assert names.index("deploy") < names.index("tier1") < names.index("capture-after") < names.index("compare-captures")
+    steps = gate.install_plan(gate.affected_plan(gate.plan(6, tmp_path),
+        ["scripts/kit_payload.py"]), tmp_path / "install")
     by_name = {n: (c, e) for n, c, e in steps}
+    for suffix in ("", "-classic"):
+        before, before_env = by_name["capture-before" + suffix]
+        after, after_env = by_name["capture-after" + suffix]
+        before = list(before)
+        before[before.index("--out") + 1] = after[after.index("--out") + 1]
+        assert before == after and before_env == after_env
+        assert not after_env.get("MC2_GATE_SKIP_REASON")
     command, env = by_name["tier1"]
-    assert command.count("--capture-bookmark") == 2 and "mc2_10" in command
-    assert not {"MC2_VULKAN_VALIDATION", "MC2_DIAG_TAGS", "MC2_DEBUG_STATE_DUMP"} & env.keys()
-    assert by_name["determinism-mc2_10"][1]["MC2_VULKAN_VALIDATION"] == "1"
-    assert by_name["validation"][1]["MC2_GATE_REUSE_STAGE"] == "determinism-mc2_10"
-    assert "--fresh-smoke" not in by_name["quiet"][0]
+    assert "--capture-bookmark" not in command and "--quiet-sample" not in command
+    assert command[command.index("--mission"):] == ["--mission", "mc2_01", "--mission", "mc2_17"]
+    assert env["MC2_VULKAN_VALIDATION"] == "1"
+    assert "--fresh-smoke" in by_name["quiet"][0]
 
 
 @pytest.mark.parametrize("failure", [False, True])
@@ -708,11 +712,16 @@ def test_auxiliary_determinism_uses_copy_while_saves_stay_serial(tmp_path, monke
     @contextmanager
     def copy(source):
         assert source == install.resolve()
+        # Keep the snapshot open long enough to expose premature runtime launch.
+        assert not saves.wait(0.05)
+        calls.append("copy-complete")
         copying.set()
         yield clone
         calls.append("cleaned")
     def runner(command, **kw):
         calls.append(command[0])
+        if command[0] != "deploy":
+            assert "copy-complete" in calls
         if command[0] == "mods":
             assert copying.wait(2)
         if command[0] == "det":
@@ -890,8 +899,7 @@ def test_gate_without_window_receipt_keeps_full_both_mode_coverage(tmp_path, mon
     assert len([n for n, _, _ in seen if n.startswith("saveload-")]) == 10
     assert "capture-before-classic" in {n for n, _, _ in seen}
     assert all("MC2_GATE_SKIP_REASON" not in env for name, _, env in seen
-               if name.startswith(("capture-", "saveload-", "determinism-")) and name != "capture-after")
-    assert next(e for n, _, e in seen if n == "capture-after")["MC2_GATE_REUSE_STAGE"] == "tier1"
+               if name.startswith(("capture-", "saveload-", "determinism-")))
     assert all(e["MC2_SMOKE_ARTIFACT_ROOT"] == str(tmp_path / "proof/smokes" / n)
                for n, _, e in seen if n == "mods" or n.startswith(("determinism-", "saveload-")))
 
