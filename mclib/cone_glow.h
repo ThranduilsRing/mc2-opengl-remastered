@@ -101,6 +101,9 @@ struct NodeBeam {
     float cosHalf;
 };
 int GetNodeBeams(TG_MultiShape* shape, long nodeId, NodeBeam* out, int maxBeams);
+// Field lamp drum: no stock cone leaf; +Z is the lens axis in MAX space.
+bool GetSearchlightBeam(TG_MultiShape* shape, long nodeId, NodeBeam& out);
+void QueueSearchlightGlow(TG_MultiShape* shape, long nodeId, unsigned long argb, float nightFactor);
 
 // LOCAL-LIGHTS-3: turn `light` into the spot light of `beam` (position at the lamp,
 // aim, outer cone widened past the drawn shaft, range past its ground footprint).

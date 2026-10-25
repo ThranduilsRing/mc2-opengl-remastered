@@ -135,6 +135,7 @@ set(SOURCES ${SOURCES}
     bdactor_tree_static.cpp
     bdactor_type.cpp
     bdactor_update.cpp
+    bdactor_spotlight.cpp
     cliff_decal_tuning.cpp
     genactor.cpp
     genactor_frame.cpp

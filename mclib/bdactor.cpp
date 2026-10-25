@@ -224,6 +224,7 @@ void BldgAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 	hazeFactor = 0.0f;
 
 	rotationalNodeId = -1;
+	searchlightYaw_ = searchlightPitch_ = searchlightTime_ = 0.0f;
 	hitNodeId = activityNodeId = activityNode1Id = -1;
 
 	currentFlash = duration = flashDuration = 0.0f;

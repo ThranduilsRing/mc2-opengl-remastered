@@ -73,6 +73,7 @@ class BldgAppearanceType : public AppearanceType
 		long						bdStartF[MAX_BD_ANIMATIONS];
 		
 		char						rotationalNodeId[TG_NODE_ID];
+		char elevationNodeId[TG_NODE_ID] = "NONE";
 		char						destructEffect[60];
 		
 		bool						spinMe;
@@ -326,6 +327,9 @@ class BldgAppearance : public ObjectAppearance
 		std::vector<int>							spotlightNodeIds_;  // bldgShape NodeNameId
 		bool										spotlightsRegistered_;
 		void clearSpotlights();
+		// Presentation only: never serialized or copied to unitAnim/simulationShape_.
+		float searchlightYaw_ = 0.0f, searchlightPitch_ = 0.0f, searchlightTime_ = 0.0f;
+		void updateSearchlight();
 		void releaseBldgShape();
 		
 		bool										fogLightSet;

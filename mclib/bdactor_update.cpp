@@ -78,6 +78,7 @@ long BldgAppearance::update (bool animate)
         if (simulationOwned()) { updateSimPose(); return TRUE; }
     }
 	updateRenderLOD();
+	updateSearchlight();
    	if (appearType->terrainLightRGB != 0xffffffff && (eye->nightFactor > 0.0f) && !forceLightsOut)
    	{
    		if (!pointLight)
@@ -167,7 +168,9 @@ long BldgAppearance::update (bool animate)
 				// gos_static_prop_batcher.cpp (C-r3 M1).
 				if (!child || !recp->processMe) continue;
 				++diagChildrenWalked;
-				if (!child->GetIsSpotlight()) continue;  // tgl.h
+				const bool fieldLamp = S_stricmp(appearType->elevationNodeId, "NONE") != 0 &&
+					S_stricmp(child->getNodeName(), appearType->elevationNodeId) == 0;
+				if (!child->GetIsSpotlight() && !fieldLamp) continue;
 				++diagSpotlightsFound;
 
 				// Resolve node-NAME id (NOT listOfShapes index) per the anubis
@@ -252,6 +255,9 @@ long BldgAppearance::update (bool animate)
 				beamIdx = 0;
 				// Animated nodes and shape transforms can change while the building is stationary.
 				nBeams = mc2_cone_glow::GetNodeBeams(bldgShape, beamNode, beams, kMaxBeamsPerNode);
+				if (S_stricmp(appearType->elevationNodeId, "NONE") != 0 &&
+					beamNode == bldgShape->GetNodeNameId(appearType->elevationNodeId))
+					nBeams = mc2_cone_glow::GetSearchlightBeam(bldgShape, beamNode, beams[0]) ? 1 : -1;
 			}
 			else
 				++beamIdx;
@@ -480,7 +486,11 @@ long BldgAppearance::update (bool animate)
 			// MC2_LIGHT_CONE_GLOW=0 kills it.
 			// Gated on ownerLit, NOT on ->active: a beam whose pool was
 			// suppressed for missing the ground is still a visible volume.
-			if (ownerLit && beamIdx == 0)   // the glow draws the whole leaf once
+			if (ownerLit && beamIdx == 0 && S_stricmp(appearType->elevationNodeId, "NONE") != 0 &&
+				beamNode == bldgShape->GetNodeNameId(appearType->elevationNodeId))
+				mc2_cone_glow::QueueSearchlightGlow(bldgShape, beamNode,
+					spotlightLights_[k]->GetaRGB(), eye->getNightFactor());
+			else if (ownerLit && beamIdx == 0)   // the glow draws the whole leaf once
 				mc2_cone_glow::QueueConeGlow(bldgShape, spotlightNodeIds_[k],
 					spotlightLights_[k]->GetaRGB(), eye->getNightFactor());
 		}
@@ -603,12 +613,14 @@ long BldgAppearance::update (bool animate)
 		else
 			bldgShape->SetFogRGB(0xffffffff);
 	
+		if (S_stricmp(appearType->elevationNodeId, "NONE") == 0) {
 		glm::quat turretRot;
 		turretRot = mc2::math::quatFromEuler(mc2::math::Euler((unitAnim().pitch * DEGREES_TO_RADS),(unitAnim().turretRotation * DEGREES_TO_RADS),0.0f));
 		if (rotationalNodeId == -1)
 	   		rotationalNodeId = bldgShape->SetNodeRotation(appearType->rotationalNodeId,&turretRot);
    
 	   	bldgShape->SetNodeRotation(rotationalNodeId,&turretRot);
+		}
 	}
 
 	float oldFrame = unitAnim().currentFrame;

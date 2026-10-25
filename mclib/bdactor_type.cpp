@@ -440,6 +440,9 @@ void BldgAppearanceType::init (const char * fileName)
 	{
 		strcpy(rotationalNodeId,"NONE");
 	}
+	strcpy(elevationNodeId, "NONE");
+	if (iniFile.seekBlock("AnimationNode") == NO_ERR)
+		iniFile.readIdString("ElevationNodeId", elevationNodeId, TG_NODE_ID);
 	
 	if (nFrameRate != 0.0f)
 	{
