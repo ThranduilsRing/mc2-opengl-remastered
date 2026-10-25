@@ -359,7 +359,22 @@
           "text": "run_check \"binding_slots\"          \"py -3 scripts/check-binding-slots.py --quiet\""
         }
       ],
-      "callers_by_stem": []
+      "callers_by_stem": [
+        {
+          "path": "scripts/check-vulkan-bindings.py",
+          "line": 242,
+          "evidence": "import_module",
+          "reference": "check-binding-slots",
+          "text": "_, blocks = import_module(\"check-binding-slots\").scan_glsl(args.root)"
+        },
+        {
+          "path": "scripts/tests/test_native_binding_contracts.py",
+          "line": 103,
+          "evidence": "import_module",
+          "reference": "check-binding-slots",
+          "text": "checker = importlib.import_module('check-binding-slots')"
+        }
+      ]
     },
     {
       "path": "scripts/check-brain-fit-schema.py",
@@ -1116,7 +1131,15 @@
           "text": "spec = importlib.util.spec_from_file_location('lighting_divergence', ROOT / 'scripts/check-lighting-divergence.py')"
         }
       ],
-      "callers_by_stem": []
+      "callers_by_stem": [
+        {
+          "path": "scripts/check-binding-slots.py",
+          "line": 17,
+          "evidence": "import_module",
+          "reference": "check-lighting-divergence",
+          "text": "strip_comments = import_module(\"check-lighting-divergence\").strip_comments"
+        }
+      ]
     },
     {
       "path": "scripts/check-manifest-schema.py",
@@ -2010,7 +2033,7 @@
           "line": 968,
           "evidence": "command",
           "reference": "scripts/check-vulkan-bindings.py",
-          "text": "run_check \"vulkan_bindings\"        \"py -3 scripts/check-vulkan-bindings.py --quiet\""
+          "text": "run_check \"vulkan_bindings\"        \"py -3 scripts/check-vulkan-bindings.py --strict --quiet && py -3 -B -m pytest scripts/tests/test_native_binding_contracts.py -q -p no:cacheprovider\""
         },
         {
           "path": "scripts/tests/test_board_selftests.py",
@@ -7144,6 +7167,13 @@
       "path": "scripts/tests/test_module_test_cache.py",
       "basename": "test_module_test_cache.py",
       "stem": "test_module_test_cache",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
+      "path": "scripts/tests/test_native_binding_contracts.py",
+      "basename": "test_native_binding_contracts.py",
+      "stem": "test_native_binding_contracts",
       "callers_by_basename": [],
       "callers_by_stem": []
     },
@@ -15038,6 +15068,13 @@
           "evidence": "import",
           "reference": "build_variants",
           "text": "import build_variants as bv  # noqa: E402"
+        },
+        {
+          "path": "scripts/check-spirv-artifacts.py",
+          "line": 35,
+          "evidence": "import",
+          "reference": "build_variants",
+          "text": "from build_variants import occupancy_slots as native_occupancy_slots  # noqa: E402"
         }
       ]
     },
