@@ -42,10 +42,13 @@ inline bool looseAssetDiffers(std::string_view name, std::span<const unsigned ch
     return false;
 }
 
+template<class StockReader>
 inline bool userLooseBuildingAsset(std::string_view name, std::string_view owner,
-                                   std::span<const unsigned char> stock)
+                                   StockReader&& readStock)
 {
     if (!owner.empty() && owner != "mc2-industrial-kit") return true;
+    std::error_code error;
+    if (!std::filesystem::is_regular_file(std::filesystem::path(name), error)) return false;
     if (verifiedLooseTextureCook(std::filesystem::path(name))) return false;
-    return looseAssetDiffers(name, stock);
+    return looseAssetDiffers(name, readStock());
 }

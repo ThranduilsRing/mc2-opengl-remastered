@@ -23,15 +23,21 @@ def priority_probe(tmp_path_factory):
     source = folder / "probe.cpp"
     source.write_text('''#include "loose_asset_priority.h"
 int main(int argc, char** argv) {
-    return userLooseBuildingAsset(argv[1], argv[2], {}) ? 1 : 0;
+    bool read = false;
+    bool user = userLooseBuildingAsset(argv[1], argv[2], [&] {
+        read = true;
+        return std::span<const unsigned char>{};
+    });
+    if (argc > 3 && read) return 42;
+    return user ? 1 : 0;
 }
 ''')
     exe = folder / ("probe.exe" if os.name == "nt" else "probe")
     subprocess.run(["clang++", "-std=c++20", "-O2", "-I", str(ROOT / "mclib"),
                     str(source), "-o", str(exe)], check=True, capture_output=True,
                    **console_child.child_kwargs(redirected=True))
-    def user(path, owner=""):
-        result = subprocess.run([str(exe), str(path), owner],
+    def user(path, owner="", no_stock_read=False):
+        result = subprocess.run([str(exe), str(path), owner] + (["no-read"] if no_stock_read else []),
                                 **console_child.child_kwargs())
         assert result.returncode in (0, 1)
         return result.returncode == 1
@@ -77,6 +83,11 @@ def test_four_way_kit_priority(tmp_path, priority_probe, case):
     owner = "CVE-G" if case == "mod" else ""
     wins = priority_probe(output, owner) or priority_probe(installed, owner)
     assert wins == (case in ("user-ktx", "user-tga", "mod", "edited-reference"))
+    if not wins:
+        assert not priority_probe(output, no_stock_read=True)
+        assert not priority_probe(installed, no_stock_read=True)
+    if case == "mod":
+        assert priority_probe(output, owner, no_stock_read=True)
     if case in ("legacy", "legacy-no-source", "legacy-bc7"):
         assert stamp.is_file() and output.read_bytes() == original
     # Repeated deploy must preserve edits, including edits after receipt creation.

@@ -16,7 +16,7 @@ static bool userBuildingAsset(std::string_view name)
 	const auto* path = storage.c_str();
 	const auto* owner = LookupModOwner(path);
 	return userLooseBuildingAsset(name, owner ? owner : "",
-		ReadArchiveBytes(path, 64u * 1024u * 1024u));
+		[&] { return ReadArchiveBytes(path, 64u * 1024u * 1024u); });
 }
 
 static bool userBuildingShape(std::string_view name)
