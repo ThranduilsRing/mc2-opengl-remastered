@@ -1,5 +1,6 @@
 """Disposable mod staging keeps runtime fonts, stock gaps and mod overrides."""
 from pathlib import Path
+import pytest
 import struct
 import sys
 
@@ -74,3 +75,70 @@ def test_carver_campaign_layers_on_omnitech_without_mutating_sources(tmp_path):
     assert (staged / "camera.fst").read_bytes() == (parent / "camera.fst").read_bytes()
     assert (staged / "data/cameras/cameras.fit").read_bytes() == b"stock-camera"
     assert {root: mod_smoke.tree_identity(root) for root in (base, mods)} == before
+
+
+def test_cached_immutable_overlay_preserves_links_and_private_configs(tmp_path):
+    import os
+    layer, staged = tmp_path / "layer", tmp_path / "stage"
+    (layer / "data").mkdir(parents=True)
+    (layer / "data/objects.pak").write_bytes(b"immutable")
+    (layer / "data/types.fit").write_bytes(b"private")
+    mod_smoke.overlay_mod(layer, staged)
+    assert os.path.samefile(layer / "data/objects.pak", staged / "data/objects.pak")
+    assert not os.path.samefile(layer / "data/types.fit", staged / "data/types.fit")
+    inode = (staged / "data/objects.pak").stat().st_ino
+    (staged / "data/types.fit").write_bytes(b"runtime edits")
+    mod_smoke.overlay_mod(layer, staged)
+    assert (staged / "data/objects.pak").stat().st_ino == inode
+    assert (staged / "data/types.fit").read_bytes() == b"private"
+    assert (layer / "data/types.fit").read_bytes() == b"private"
+
+
+@pytest.mark.parametrize("crash", [False, True])
+def test_battery_reuses_one_stage_and_cleans_even_on_exception(tmp_path, monkeypatch, crash):
+    import os
+    from types import SimpleNamespace
+    mods, base, build = tmp_path / "mods", tmp_path / "base", tmp_path / "build64-ninja"
+    for root in (base, build):
+        root.mkdir()
+    (build / "mc2.exe").write_bytes(b"exe")
+    for name in ("parent", "one", "two"):
+        folder = mods / name / "data/missions"
+        folder.mkdir(parents=True)
+        (folder / "first.fit").write_bytes(b"mission")
+    (mods / "parent/data/shared.pak").write_bytes(b"packed")
+    (mods / "one/data/one-only.fit").write_bytes(b"one")
+    monkeypatch.setattr(mod_smoke, "BATTERY", (("one", "one", "parent"), ("two", "two", "parent")))
+    monkeypatch.setattr(mod_smoke, "pick_mission", lambda *a: ("first", "fixture"))
+    monkeypatch.setattr(mod_smoke.stages, "preflight", lambda *a: None)
+    def engine(cache, *a):
+        cache.mkdir()
+        (cache / "mc2.exe").write_bytes(b"exe")
+        return {}
+    monkeypatch.setattr(mod_smoke, "build_engine_cache", engine)
+    monkeypatch.setattr(mod_smoke, "_load_deploy_payload", lambda: SimpleNamespace(ensure_terrain_materials=lambda *a: None))
+    runs = []
+    def run(stage, *a):
+        runs.append((stage, (stage / "data/shared.pak").stat().st_ino))
+        if len(runs) == 2:
+            assert not (stage / "data/one-only.fit").exists()
+            assert not (stage / "data/runtime-leak.fit").exists()
+            if crash:
+                raise OSError("fixture launch failure")
+        (stage / "data/runtime-leak.fit").write_bytes(b"runtime")
+        (stage / "smoke.log").write_text("fixture")
+        return {"exit": 0, "health": {"mech_ok": True, "ai_ok": True,
+                 "mech_instances_max": 1, "mlr_mech_draws": 0, "first_brain_s": 0.2, "first_order_s": None}}
+    monkeypatch.setattr(mod_smoke, "run_mod", run)
+    args = SimpleNamespace(install_root=str(mods), stage_root=str(tmp_path / "stages"), base_install=str(base),
+                           exe=str(build / "mc2.exe"), build_dir="build64-ninja", mod="", mission="",
+                           keep_stages=False, duration=10, timeout=60, fail_fast=False)
+    if crash:
+        with pytest.raises(OSError, match="fixture launch failure"):
+            mod_smoke.battery(args)
+    else:
+        assert mod_smoke.battery(args) == 0
+    assert len(runs) == 2 and runs[0] == runs[1]
+    assert not list((tmp_path / "stages").rglob("*.pak"))
+    assert not list((tmp_path / "stages").rglob("mc2.exe"))
+    assert (mods / "parent/data/shared.pak").read_bytes() == b"packed"

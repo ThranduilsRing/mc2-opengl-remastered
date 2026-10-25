@@ -370,3 +370,29 @@ def test_warm_detaches_the_build_and_refuses_a_dirty_base_switch(monkeypatch, tm
     cmd = popen.call_args[0][0]
     assert cmd[-2:] == ["-j3", "--warm-run"] and "--base" not in cmd
     assert "warm: pid 42" in capsys.readouterr().out
+
+
+@pytest.mark.parametrize("active", ["ninja.exe", "cl.exe", "link.exe"])
+def test_compile_cache_never_restarts_during_another_build(monkeypatch, active):
+    cn = bat.cn
+    if cn.os.name != "nt":
+        pytest.skip("Windows process inventory")
+    calls = []
+    def child(cmd, **kw):
+        calls.append(cmd)
+        return SimpleNamespace(stdout='"' + active + '"' if cmd[0] == "tasklist" else "old cache", returncode=0)
+    monkeypatch.setattr(cn.subprocess, "run", child)
+    cn.ensure_cache_server("A:/Games/test", {"SCCACHE_DIR": "G:/mc2-build/compile-cache"})
+    assert len(calls) == 2
+    assert not any("--stop-server" in c for c in calls)
+
+
+def test_compile_cache_restarts_when_idle_and_location_changed(monkeypatch):
+    cn = bat.cn
+    calls = []
+    def child(cmd, **kw):
+        calls.append(cmd)
+        return SimpleNamespace(stdout="no build processes", returncode=0)
+    monkeypatch.setattr(cn.subprocess, "run", child)
+    cn.ensure_cache_server("A:/Games/test", {"SCCACHE_DIR": "G:/mc2-build/compile-cache"})
+    assert calls[-2:] == [[cn.SCCACHE_EXE, "--stop-server"], [cn.SCCACHE_EXE, "--start-server"]]

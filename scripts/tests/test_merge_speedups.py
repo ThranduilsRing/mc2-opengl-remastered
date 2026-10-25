@@ -406,4 +406,92 @@ def test_batch_resolution_error_explains_next_step(monkeypatch, capsys):
     with pytest.raises(SystemExit) as exc:
         lm.main(["--batch", "one", "two", "--resolution", "path=file"])
     assert exc.value.code == 2
-    assert "merge that tip alone with --resolution PATH=FILE, then run --batch" in capsys.readouterr().err
+    assert "batch --resolution needs TIP:PATH=FILE" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("paths,sim,game", [
+    (["docs/intro.md", "tools/lane_merge.py"], False, False),
+    (["tools/scifi_kit/art/validate.py"], False, True),
+    (["shaders/vulkan/mech.frag"], False, True),
+    (["RenderCore/Renderer.h"], True, True),
+    (["code/mission.cpp"], True, True),
+    (["data/objects/foo.fit"], True, True),
+    (["CMakeLists.txt"], True, True),
+    (["scripts/generate_gates.py"], True, True),
+    (["unknown/file.xyz"], True, True),
+    (["tools/foo.py", "code/mission.cpp"], True, True),
+])
+def test_gate_diff_coverage(paths, sim, game):
+    import merge_gate as gate
+    steps = gate.affected_plan(gate.plan(6), paths)
+    reasons = {name: env.get("MC2_GATE_SKIP_REASON") for name, _, env in steps}
+    assert bool(reasons["determinism-mc2_03"]) != sim
+    assert bool(reasons["saveload-mc2_01"]) != (sim or "art" in gate.change_domains(paths))
+    assert bool(reasons["deploy"]) != game
+    assert bool(reasons["mods"]) != game
+    assert bool(reasons["capture-after"]) != game
+    assert not reasons["contracts"]
+
+
+def test_full_restores_all_domains_and_reuses_covered_checks():
+    import merge_gate as gate
+    steps = gate.affected_plan(gate.plan(6), ["docs/intro.md"], full=True)
+    skipped = {n for n, _, e in steps if e.get("MC2_GATE_SKIP_REASON")}
+    assert skipped == {"pytest", "validation"}
+    assert all(e.get("MC2_GATE_REUSE_STAGE") for n, _, e in steps if n in skipped)
+    # Selecting a stand-alone stage cannot reuse a check that was never run.
+    assert not gate.affected_plan([gate.plan(6)[6]], [], True)[0][2].get("MC2_GATE_SKIP_REASON")
+
+
+def test_gate_reuse_fails_when_producing_check_failed(monkeypatch, capsys):
+    import merge_gate as gate
+    monkeypatch.setattr(gate, "git", lambda *a: "head")
+    steps = gate.affected_plan([("contracts", ["fake"], {}), ("pytest", ["duplicate"], {})], ["tools/a.py"])
+    calls = []
+    assert gate.execute(steps, "head", runner=lambda cmd, **kw: calls.append(cmd) or _r(1)) == 1
+    assert calls == [["fake"]]
+    assert "FAIL reuse" in capsys.readouterr().out
+
+
+def test_gate_lane_install_routes_every_runtime_command(tmp_path):
+    import merge_gate as gate
+    steps = gate.install_plan(gate.plan(6), tmp_path)
+    for name, cmd, _ in steps:
+        assert not any("mc2-win64-v0.4" in arg for arg in cmd), name
+    deploy = next(c for n, c, _ in steps if n == "deploy")
+    assert str(tmp_path) in deploy and "--allow-new-target" in deploy
+
+
+def test_tools_and_art_suites_partition_discovery():
+    import run_tools_tests as tt
+    all_tests = set(tt.discover("all"))
+    tools, art = set(tt.discover("tools")), set(tt.discover("art"))
+    assert tools and art and not tools & art
+    assert tools | art == all_tests
+
+
+def test_tier1_reuses_only_strict_validated_determinism_smokes():
+    import merge_gate as gate
+    steps = gate.affected_plan(gate.plan(6), ["code/game.cpp"])
+    by_name = {n: (c, e) for n, c, e in steps}
+    cmd, _ = by_name["tier1"]
+    assert cmd[-4:] == ["--mission", "mc2_01", "--mission", "mc2_17"]
+    for mission in ("mc2_03", "mc2_10", "mc2_24"):
+        _, env = by_name["determinism-" + mission]
+        assert env["MC2_VULKAN_VALIDATION"] == env["MC2_MOVER_COHERENCE_AUDIT"] == "1"
+    assert by_name["validation"][1]["MC2_GATE_REUSE_STAGE"] == "tier1,determinism-mc2_10"
+    art = gate.affected_plan(gate.plan(6), ["release_assets_src/model.glb"])
+    assert "--mission" not in next(c for n, c, _ in art if n == "tier1")
+
+
+def test_gate_retains_both_art_modes_for_affected_saves_and_captures():
+    import merge_gate as gate
+    steps = gate.affected_plan(gate.plan(6), ["code/game.cpp"])
+    names = [n for n, _, _ in steps]
+    assert names.index("capture-before-classic") < names.index("deploy")
+    assert names.index("capture-after-classic") > names.index("deploy")
+    assert "compare-captures-classic" in names
+    for mission in ("mc2_01", "mc2_03", "mc2_10", "mc2_16", "mc2_24"):
+        modes = [(c, e) for n, c, e in steps if n.startswith("saveload-" + mission)]
+        assert len(modes) == 2 and modes[0][0] != modes[1][0]
+        assert {e["MC2_OPTIONS_OVERRIDE"] for _, e in modes} == {"StaticPropPbr=TRUE", "StaticPropPbr=FALSE"}

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 'Smoke every supported mod against the current mc2.exe: py -3 tools/mod_smoke.py --battery'
 #
-# Stages disposable installs under E:/mc2-installs/mod_smoke-stage/<stamp>/ (never writes
+# Reuses one disposable install under E:/mc2-installs/mod_smoke-stage/<stamp>/current (never writes
 # into a game install) and hands each one to scripts/run_smoke.py.
 #
 #     py -3 tools/mod_smoke.py --battery [--mod NAME[,NAME]] [--mission STEM]
@@ -75,6 +75,7 @@ HDR_TREE = 'data/hdr'
 HDR_MAX_BYTES = 20 * 1024 * 1024   # skip the 128 MB 16k sky cubes
 STOCK_FSTS = ('mission.fst', 'tgl.fst', 'art.fst', 'textures.fst', 'misc.fst',
               'camera.fst', 'effect.fst', 'insignia.fst')
+IMMUTABLE_SUFFIXES = {'.fst', '.pak', '.exe', '.dll', '.spv', '.glsl', '.hglsl', '.frag', '.vert', '.comp', '.png', '.tga', '.bmp', '.dds', '.ktx2', '.glb', '.wav', '.ogg', '.ttf', '.otf'}
 CONFIG_FILES = ('prefs.cfg', 'options.cfg', 'minprefs.cfg')
 # Root data files that override the mod pack and must not be copied over it.
 STOCK_ROOT_FILES = ('prefs.cfg', 'options.cfg', 'system.cfg')
@@ -122,6 +123,10 @@ def place_file(source: Path, target: Path, link_ok: bool = True) -> str:
     share a volume, else copy. The target is unlinked first so an existing
     hardlink is replaced rather than written through. Returns 'link' or 'copy'."""
     target.parent.mkdir(parents=True, exist_ok=True)
+    # Runtime immutable files may share a cached layer's inode. Keep a shared layer's existing link.
+    if link_ok and source.suffix.lower() in IMMUTABLE_SUFFIXES and target.is_file():
+        if os.path.samefile(source, target):
+            return 'link'
     if target.exists() or target.is_symlink():
         target.unlink()
     if link_ok:
@@ -134,7 +139,7 @@ def place_file(source: Path, target: Path, link_ok: bool = True) -> str:
     return 'copy'
 
 
-def place_tree(source: Path, target: Path, link_ok: bool = True, keep=None) -> dict:
+def place_tree(source: Path, target: Path, link_ok: bool = True, keep=None, private_loose=False) -> dict:
     stats = {'files': 0, 'bytes': 0, 'linked': 0}
     for dirpath, dirnames, filenames in os.walk(source):
         dirnames.sort()
@@ -146,7 +151,7 @@ def place_tree(source: Path, target: Path, link_ok: bool = True, keep=None) -> d
                 continue
             if keep is not None and not keep(src):
                 continue
-            how = place_file(src, target / rel_dir / name, link_ok)
+            how = place_file(src, target / rel_dir / name, link_ok and (not private_loose or src.suffix.lower() in IMMUTABLE_SUFFIXES))
             stats['files'] += 1
             stats['bytes'] += src.stat().st_size
             stats['linked'] += how == 'link'
@@ -178,7 +183,7 @@ def engine_payload_items(build: Path, build64: Path) -> list[tuple[Path, str]]:
     for src, rel, _kind in items:
         rel = rel.replace('\\', '/')
         low = rel.lower()
-        if low.startswith(MANIFEST_SKIP_PREFIXES) or low in MANIFEST_SKIP_NAMES:
+        if low.startswith(MANIFEST_SKIP_PREFIXES) or low in MANIFEST_SKIP_NAMES or low.endswith('.pdb'):
             continue
         if not Path(src).is_file():
             continue
@@ -199,7 +204,7 @@ def manifest_extra_rels(base_install: Path, have: set[str]) -> list[str]:
                 continue
             rel = row[0].replace('\\', '/')
             low = rel.lower()
-            if low in have or low.startswith(MANIFEST_SKIP_PREFIXES) or low in MANIFEST_SKIP_NAMES:
+            if low in have or low.startswith(MANIFEST_SKIP_PREFIXES) or low in MANIFEST_SKIP_NAMES or low.endswith('.pdb'):
                 continue
             if (base_install / rel).is_file():
                 rels.append(rel)
@@ -294,10 +299,10 @@ def overlay_mod(layer: Path, target: Path, link_ok: bool = True) -> dict:
     data = layer / 'data'
     if not data.is_dir():
         raise FileNotFoundError(f'mod has no data dir: {data}')
-    stats = place_tree(data, target / 'data', link_ok=False)
+    stats = place_tree(data, target / 'data', link_ok=link_ok, private_loose=True)
     assets = layer / 'assets'
     if assets.is_dir():
-        extra = place_tree(assets, target / 'assets', link_ok=False)
+        extra = place_tree(assets, target / 'assets', link_ok=link_ok, private_loose=True)
         stats['files'] += extra['files']
         stats['bytes'] += extra['bytes']
     stock = {s.lower() for s in STOCK_ROOT_FILES}
@@ -306,7 +311,7 @@ def overlay_mod(layer: Path, target: Path, link_ok: bool = True) -> dict:
             continue
         if entry.suffix.lower() not in ('.fst', '.pak'):
             continue
-        place_file(entry, target / entry.name, link_ok=False)
+        place_file(entry, target / entry.name, link_ok=link_ok)
         stats['files'] += 1
         stats['bytes'] += entry.stat().st_size
     for name in CONFIG_FILES:
@@ -318,7 +323,7 @@ def overlay_mod(layer: Path, target: Path, link_ok: bool = True) -> dict:
 
 def link_engine(cache: Path, target: Path) -> dict:
     link_ok = same_volume(cache, target)
-    return place_tree(cache, target, link_ok=link_ok)
+    return place_tree(cache, target, link_ok=link_ok, private_loose=True)
 
 
 def _campaign_stems(layer: Path) -> list[str]:
@@ -698,26 +703,46 @@ def battery(args) -> int:
     summary = build_engine_cache(cache, build, build64, base_install)
     print('[mod_smoke] engine payload:', json.dumps(summary), flush=True)
     rows = []
-    for display, folder, layers, stem, how in plan:   # strictly one game at a time
-        staged = run_root / folder
-        staged.mkdir()
-        stats = stage_mod(cache, layers, staged, stem, base_install)
-        stage_bookmarks(base_install, staged, args.keep_stages)
-        _load_deploy_payload().ensure_terrain_materials(str(staged))
-        print(f'[mod_smoke] {display}: mission {stem} ({how}); staged {stats}', flush=True)
-        result = run_mod(staged, stem, args.duration, args.timeout)
-        result.update({'mod': display, 'mission': stem, 'mission_source': how,
-                       'staged': str(staged), 'stage_stats': stats,
-                       'identity': tree_identity(staged)})
-        rows.append(result)
-        print('[mod_smoke]', display, result_word(result), health_cell(result['health']), flush=True)
-        if result_word(result) == 'PASS' and not args.keep_stages:
-            shutil.rmtree(staged, ignore_errors=True)
-            result['staged'] = 'deleted (PASS)'
-        if result_word(result) != 'PASS' and args.fail_fast:
-            break
-    if not args.keep_stages:
-        shutil.rmtree(cache, ignore_errors=True)
+    layer_cache = {}
+    staged = run_root / 'current'
+    staged.mkdir()
+    try:
+        for display, folder, layers, stem, how in plan:   # strictly one game at a time
+            cached = []
+            for layer in layers:
+                if layer not in layer_cache:
+                    dest = run_root / '_layers' / layer.name
+                    overlay_mod(layer, dest, link_ok=False)
+                    layer_cache[layer] = dest
+                cached.append(layer_cache[layer])
+            # Erase stale overlays and runtime output before switching mods. Files belonging
+            # to a common immutable layer retain their inode; no cross-mod loose overrides.
+            wanted = {f.relative_to(root) for root in [cache, *cached]
+                      for f in root.rglob('*') if f.is_file()}
+            for old in staged.rglob('*'):
+                if old.is_file() and old.relative_to(staged) not in wanted:
+                    old.unlink()
+            stats = stage_mod(cache, cached, staged, stem, base_install)
+            stage_bookmarks(base_install, staged, args.keep_stages)
+            _load_deploy_payload().ensure_terrain_materials(str(staged))
+            print(f'[mod_smoke] {display}: mission {stem} ({how}); staged {stats}', flush=True)
+            result = run_mod(staged, stem, args.duration, args.timeout)
+            log = run_root / (folder + '.log')
+            shutil.copy2(staged / 'smoke.log', log)
+            result.update({'mod': display, 'mission': stem, 'mission_source': how,
+                           'staged': str(staged), 'stage_stats': stats, 'log': str(log),
+                           'identity': tree_identity(staged)})
+            rows.append(result)
+            print('[mod_smoke]', display, result_word(result), health_cell(result['health']), flush=True)
+            if result_word(result) != 'PASS' and args.fail_fast:
+                break
+    finally:
+        if not args.keep_stages:
+            for disposable in (staged, cache, run_root / '_layers'):
+                if disposable.exists():
+                    shutil.rmtree(disposable)
+            for result in rows:
+                result['staged'] = 'deleted (logs retained)'
     report = run_root / 'battery.json'
     report.write_text(json.dumps(rows, indent=2), encoding='utf-8')
     print(format_table(rows))
@@ -736,7 +761,7 @@ def main() -> int:
     ap.add_argument('--stage-root', default=str(DEFAULT_BATTERY_ROOT))
     ap.add_argument('--base-install', default=str(DEFAULT_BASE_INSTALL),
                     help='read-only install supplying assets, stock FSTs and configs')
-    ap.add_argument('--duration', type=int, default=30)
+    ap.add_argument('--duration', type=int, default=10)
     ap.add_argument('--timeout', type=int, default=300)
     ap.add_argument('--fail-fast', action='store_true')
     ap.add_argument('--keep-stages', action='store_true',

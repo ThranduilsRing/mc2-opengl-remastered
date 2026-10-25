@@ -722,3 +722,32 @@ def test_merge_commits_regenerated_artifacts_before_verification(env, monkeypatc
     assert git(repo, "log", "-1", "--format=%s") == "merge follow-up: regenerated artifacts"
     assert git(repo, "diff-tree", "--no-commit-id", "--name-only", "-r", "HEAD") == "artifact.json"
     assert git(repo, "status", "--porcelain") == "?? decoy"
+
+
+def test_batch_resolutions_belong_to_individual_tips(env, tmp_path):
+    repo, tools = env
+    base = git(repo, "rev-parse", "HEAD")
+    git(repo, "switch", "-c", "one")
+    write(repo, "a.txt", "one\n")
+    commit_all(repo, "one")
+    git(repo, "switch", "-c", "two", base)
+    write(repo, "b.txt", "two\n")
+    commit_all(repo, "two")
+    git(repo, "switch", "main")
+    write(repo, "a.txt", "main-a\n")
+    write(repo, "b.txt", "main-b\n")
+    commit_all(repo, "main conflicts")
+    ra, rb = tmp_path / "resolved-a", tmp_path / "resolved-b"
+    ra.write_text("reviewed-a\n")
+    rb.write_text("reviewed-b\n")
+    command = [sys.executable, "-B", TOOL, "--batch", "one", "two", "--root", str(repo),
+               "--tools-dir", str(tools), "--no-verify", "--resolution", f"one:a.txt={ra}",
+               "--resolution", f"two:b.txt={rb}"]
+    dry = subprocess.run(command + ["--dry-run"], capture_output=True, text=True,
+                         **console_child.child_kwargs(redirected=True))
+    assert dry.returncode == 0, dry.stdout + dry.stderr
+    result = subprocess.run(command, capture_output=True, text=True,
+                            **console_child.child_kwargs(redirected=True))
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert (repo / "a.txt").read_text() == "reviewed-a\n"
+    assert (repo / "b.txt").read_text() == "reviewed-b\n"
