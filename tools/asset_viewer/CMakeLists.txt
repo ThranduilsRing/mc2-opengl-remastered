@@ -187,12 +187,7 @@ set(ASSET_VIEWER_SOURCES
     BundleExport.cpp
     # S5: safe reversible central models.json merge
     CentralManifestMerge.cpp
-    # Backend-A v2: GLSL #include inliner for engine shader compilation
-    ShaderIncludeResolver.cpp
-    # Backend-A v2 Task 3: shader contract report model + ImGui view
-    ShaderContractReport.cpp
-    # Backend-A v2 Task 5: engine-shader preview surface (stub: not ported to Vulkan)
-    ModelPreviewEngineShader.cpp
+
 )
 
 add_executable(mc2_asset_viewer ${ASSET_VIEWER_SOURCES})
