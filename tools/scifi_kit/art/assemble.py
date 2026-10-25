@@ -479,6 +479,9 @@ def _draft_info(k, name):
 
 
 def build(name, condition, seed=17):
+    import intent
+    if name in intent.ASSETS:       # intent pass (2026-10-24) supersedes earlier drafts of the same stock
+        return intent.build(name, condition, seed)
     if name in DRAFTS:
         import drafts
         return drafts.build(name, condition, seed)

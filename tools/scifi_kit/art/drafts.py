@@ -241,14 +241,16 @@ def wall_hw(name, t):
 
 
 # ------------------------------------------------------------ s_lightwall
-def light_wall(k):
-    """Footing -> precast units -> steel battens at span joints -> coping -> hardware."""
+def light_wall(k, y_start=-17.0, py=15.45, units=8, diag=False):
+    """Footing -> precast units -> steel battens at span joints -> coping -> hardware.
+    The defaults are the approved s_lightwall; s_lightwalldiag passes a longer run (the 45-degree map placement) and
+    turns the terminal pier 45 degrees so it stays square to the world like the straight walls' piers."""
     W, H = 1.75, 4.65
-    y_start, y_end = -17.0, 13.45
-    u = (y_end - y_start) / 8
+    y_end = py - 2.0
+    u = (y_end - y_start) / units
     k.box((0, (y_start + y_end) / 2, .18), (2 * wall_hw('s_lightwall', 0) + .1, y_end - y_start + .3, .36), 'ferro', 'mass', ch=C(.1), top=C(.08), part='footing')
     zt = H - .30
-    for j in range(8):
+    for j in range(units):
         y0 = y_start + j * u
         yc = y0 + u / 2
         k.box((0, yc, (.36 + zt) / 2), (W - .08, u - .10, zt - .36), 'ferro', 'mass', ch=C(.08), top=C(.06), rebar=True, unit=j)
@@ -260,13 +262,13 @@ def light_wall(k):
         for yy in (yc - u * .28, yc + u * .28):
             k.cyl((0, yy, zt + .02), .07, .05, 'metal', 'detail', sides=10, unit=j)
         k.moss_sites.append(((-W / 2 - .3, y0, .36), (-W / 2 - .3, y0 + u, .36)))
-    for j in range(5):
+    for j in range(units // 2 + 1):
         # Steel shear battens at the span joints: flush strips, not extra posts.
         y = y_start + j * 2 * u
         k.box((0, y, (.36 + zt) / 2), (W + .05, .18, zt - .36), 'paint.second', 'frame', ch=C(.025), joint=j)
         for s in (-1, 1):
             bolts(k, (s * (W / 2 + .03), y, .8), (s * (W / 2 + .03), y, zt - .3), pitch=.6)
-    for j in range(4):
+    for j in range(units // 2):
         yc = y_start + (j + .5) * 2 * u
         # The broad 45-degree coping profile belongs to both silhouettes.
         loft(k, (-W / 2 - .06, yc - u + .07, W / 2 + .06, yc + u - .07), zt,
@@ -279,12 +281,19 @@ def light_wall(k):
         if p.get('part') not in ('footing', 'pier'):
             p['v'] = [(x * wall_hw('s_lightwall', .906 * min(max(z - .36, 0), zt - .36) / (zt - .36)) / (W / 2), y, z)
                       for x, y, z in p['v']]
-    py = 15.45
+    first_pier = len(k.pieces)
     # Stock pier: dark battered block with a pale chamfered cap.
     loft(k, (-2.5, py - 2.0, 2.5, py + 2.0), 0, (-1.85, py - 1.5, 1.85, py + 1.5), 4.6, 'paint.second', 'mass', ch0=.30, ch1=.22, rebar=True, part='pier')
     k.box((0, py, 5.0), (3.5, 2.75, .8), 'paint.main', 'frame', ch=C(.25), top=C(.18), part='pier')
     with k.at((-2.19, py, 2.65), yaw=-math.pi / 2):
         k.service_panel(w=.72, h=.44)
+    if diag:
+        # the stock diagonal pier is square (5.04 m, 7.13 m across the diamond): square the pier, then turn it 45 degrees
+        for p in k.pieces[first_pier:]:
+            p['v'] = [(x, py + (y - py) * 1.26, z) for x, y, z in p['v']]
+        ca, sa = math.cos(math.pi / 4), math.sin(math.pi / 4)
+        for p in k.pieces[first_pier:]:
+            p['v'] = [(x * ca - (y - py) * sa, py + x * sa + (y - py) * ca, z) for x, y, z in p['v']]
     k.moss_sites.append(((-2.6, py - 2.1, 0), (-2.6, py + 2.1, 0)))
     k.hits.append(dict(p=(0, y_start + 2.5 * u, 2.2), d=(1, 0, 0), r=2.6, depth=0, sag=0))
     k.meta['wall_units'] = (y_start, u)
@@ -337,9 +346,10 @@ def wall_damage(k, condition):
 
 
 # ------------------------------------------------------------ razorwirefence
-def fence(k):
-    L, h = 10.6, 5.7
-    for y in (-L / 2, L / 2):
+def fence(k, L=10.6, h=5.7, sections=1):
+    """Approved razorwirefence; razorwirefencediag passes a longer run in two sections (a middle post)."""
+    posts = [-L / 2 + L * i / sections for i in range(sections + 1)]
+    for y in posts:
         k.box((0, y, .15), (.72, .72, .30), 'ferro', 'mass', ch=C(.08), top=C(.06), part='footing')
         k.box((0, y, .32), (.44, .44, .04), 'metal', 'frame', part='footing')
         for sx in (-1, 1):
@@ -363,8 +373,9 @@ def fence(k):
             for i in range(1, 30):
                 y = -L / 2 + L * i / 30
                 k.beam((-.06, y - .04, z - .04), (.06, y + .04, z + .04), .012, 'metal', 'detail')
-    for a, b in (((0, -L / 2, .5), (0, L / 2, h - .2)), ((0, L / 2, .5), (0, -L / 2, h - .2))):
-        wire(k, [a, b], .024, 'metal', 'frame', sides=6)
+    for ya, yb in zip(posts, posts[1:]):
+        for a, b in (((0, ya, .5), (0, yb, h - .2)), ((0, yb, .5), (0, ya, h - .2))):
+            wire(k, [a, b], .024, 'metal', 'frame', sides=6)
     for x in (-.98, .98):
         wire(k, [(x, -L / 2, h + .7), (x, L / 2, h + .7)], .026, 'metal', 'frame', sides=6)
     # Concertina razor coil on the crown: the strongest RTS read of a wire fence.

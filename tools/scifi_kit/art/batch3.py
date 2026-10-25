@@ -262,17 +262,18 @@ def wall_damage(k, condition):
     k.meta['collapse']='short-standing-wall-remnant'
 
 
-def wirefence(k):
-    """Two stock chain-link panels, three posts, one top rail; no razor crown."""
-    w,d,h = SIZES['wirefence']
-    for y in (-d/2,0,d/2):
+def wirefence(k, d=None, panels=2):
+    """Two stock chain-link panels, three posts, one top rail; no razor crown (wirefencediag: a longer run, three panels)."""
+    w,d0,h = SIZES['wirefence']
+    d = d or d0
+    for y in [-d/2+d*i/panels for i in range(panels+1)]:
         k.box((0,y,h/2),(w,.12,h),'metal','frame',ch=kit.C(.008))
     k.box((0,0,h-.045),(w,d,.09),'metal','frame')
     # Nine diamond pitches per stock texture tile, two tiles over the full span.
-    pitch = d/18
+    pitch = d/(9*panels)
     slope = h/(pitch*8)
     for sign in (-1,1):
-        for i in range(-9,28):
+        for i in range(-9,9*panels+10):
             y0=-d/2+i*pitch
             lo=max(0,(-d/2-y0)*slope*sign)
             hi=min(h,(d/2-y0)*slope*sign)

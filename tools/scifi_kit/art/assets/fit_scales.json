@@ -1,0 +1,153 @@
+{
+ "civstoragea": {
+  "applied": true,
+  "scale": 0.946,
+  "scale_z": 0.946,
+  "pivot": [
+   -0.0,
+   4.9531
+  ],
+  "protrusion_before": 0.7,
+  "height_remake": 5.5,
+  "height_stock": 5.25,
+  "reason": "owner 2026-10-25: scaled only where the map-conflict audit shows it visibly clipping a neighbour (object_overhang >= 0.5 m2); blocking comes from the stock shape"
+ },
+ "largefueltank": {
+  "applied": true,
+  "scale": 0.864,
+  "scale_z": 1.0,
+  "pivot": [
+   2.6118,
+   -0.0949
+  ],
+  "protrusion_before": 2.14,
+  "height_remake": 23.38,
+  "height_stock": 22.87,
+  "note": "Z kept at 1.0: scaling Z would put the height more than 10 % under the stock",
+  "reason": "owner 2026-10-25: scaled only where the map-conflict audit shows it visibly clipping a neighbour (object_overhang >= 0.5 m2); blocking comes from the stock shape"
+ },
+ "industrialcomplex": {
+  "applied": true,
+  "scale": 0.879,
+  "scale_z": 0.879,
+  "pivot": [
+   0.5078,
+   -0.1586
+  ],
+  "protrusion_before": 2.5,
+  "height_remake": 18.32,
+  "height_stock": 16.99,
+  "reason": "owner 2026-10-25: scaled only where the map-conflict audit shows it visibly clipping a neighbour (object_overhang >= 0.5 m2); blocking comes from the stock shape"
+ },
+ "factorylg": {
+  "applied": true,
+  "scale": 0.909,
+  "scale_z": 0.909,
+  "pivot": [
+   -0.0,
+   0.1163
+  ],
+  "protrusion_before": 1.6,
+  "height_remake": 17.72,
+  "height_stock": 17.64,
+  "reason": "owner 2026-10-25: scaled only where the map-conflict audit shows it visibly clipping a neighbour (object_overhang >= 0.5 m2); blocking comes from the stock shape"
+ },
+ "grainstorage": {
+  "applied": true,
+  "scale": 0.942,
+  "scale_z": 0.942,
+  "pivot": [
+   5.3182,
+   -0.0041
+  ],
+  "protrusion_before": 0.9,
+  "height_remake": 19.14,
+  "height_stock": 18.95,
+  "reason": "owner 2026-10-25: scaled only where the map-conflict audit shows it visibly clipping a neighbour (object_overhang >= 0.5 m2); blocking comes from the stock shape"
+ },
+ "heavyindustrial": {
+  "applied": true,
+  "scale": 0.867,
+  "scale_z": 1.0,
+  "pivot": [
+   -0.0,
+   0.0
+  ],
+  "protrusion_before": 2.4,
+  "height_remake": 19.27,
+  "height_stock": 19.17,
+  "note": "Z kept at 1.0: scaling Z would put the height more than 10 % under the stock",
+  "reason": "owner 2026-10-25: scaled only where the map-conflict audit shows it visibly clipping a neighbour (object_overhang >= 0.5 m2); blocking comes from the stock shape"
+ },
+ "vehiclehangar": {
+  "applied": true,
+  "scale": 0.919,
+  "scale_z": 0.919,
+  "pivot": [
+   -1.0032,
+   1.1226
+  ],
+  "protrusion_before": 1.61,
+  "height_remake": 15.8,
+  "height_stock": 14.87,
+  "reason": "owner 2026-10-25: scaled only where the map-conflict audit shows it visibly clipping a neighbour (object_overhang >= 0.5 m2); blocking comes from the stock shape"
+ },
+ "greenhouse": {
+  "applied": true,
+  "scale": 0.927,
+  "scale_z": 0.927,
+  "pivot": [
+   -5.4184,
+   0.0
+  ],
+  "protrusion_before": 1.5,
+  "height_remake": 5.19,
+  "height_stock": 4.85,
+  "doors_below_2m": [
+   1.91
+  ],
+  "reason": "owner 2026-10-25: scaled only where the map-conflict audit shows it visibly clipping a neighbour (object_overhang >= 0.5 m2); blocking comes from the stock shape"
+ },
+ "barracks": {
+  "applied": true,
+  "scale": 0.909,
+  "scale_z": 0.909,
+  "pivot": [
+   0.013,
+   5.3422
+  ],
+  "protrusion_before": 1.2,
+  "height_remake": 4.46,
+  "height_stock": 4.38,
+  "reason": "owner 2026-10-25: scaled only where the map-conflict audit shows it visibly clipping a neighbour (object_overhang >= 0.5 m2); blocking comes from the stock shape"
+ },
+ "singlecivlivinga": {
+  "applied": true,
+  "scale": 0.925,
+  "scale_z": 0.925,
+  "pivot": [
+   0.0192,
+   0.0316
+  ],
+  "protrusion_before": 1.0,
+  "height_remake": 9.5,
+  "height_stock": 9.23,
+  "doors_below_2m": [
+   1.95
+  ],
+  "reason": "owner 2026-10-25: scaled only where the map-conflict audit shows it visibly clipping a neighbour (object_overhang >= 0.5 m2); blocking comes from the stock shape"
+ },
+ "smallfueltank": {
+  "applied": true,
+  "scale": 0.921,
+  "scale_z": 0.921,
+  "pivot": [
+   0.2268,
+   -0.0086
+  ],
+  "protrusion_before": 1.1,
+  "height_remake": 11.42,
+  "height_stock": 10.72,
+  "reason": "owner 2026-10-25: scaled only where the map-conflict audit shows it visibly clipping a neighbour (object_overhang >= 0.5 m2); blocking comes from the stock shape"
+ }
+}
