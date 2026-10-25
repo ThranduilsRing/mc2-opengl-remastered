@@ -319,18 +319,6 @@ float cCutLt(float x, float fw) {
 }
 
 void main() {
-    // Only the pool result stays live through material shading, rather than
-    // keeping the material and shoreline inputs live across the light walk.
-    vec3 localLight = vec3(0.0);
-    float moverContact = 0.0;
-    if (uT.lightingEnabled != 0 && uT.numPoolLights > 0) {
-        localLight = tlp_terrainPoolLight(v_worldPos, uT.numPoolLights,
-            uT.lightGridDim, vec2(uT.lightGridMinX, uT.lightGridMinY),
-            vec2(uT.lightGridInvCellX, uT.lightGridInvCellY),
-            uT.lightPoolSoft, uT.lightPoolMoverDim, uT.lightPoolMoverScale,
-            uT.lightPoolMoverMax, uT.lightPoolCompress,
-            uT.moverContactShadow, moverContact);
-    }
     float cdRoad = 0.0;   // CONCRETE-ROAD-PBR-DETAIL: the cement atlas texel is asphalt (roads, runway)
     vec3 base;
     float cookedBreakup = 0.5;
@@ -619,12 +607,7 @@ void main() {
         else if (uT.csmDebugMode == 9) { fragColor = vec4(dbgBaseN * 0.5 + 0.5, 1.0); GBuffer1 = vec4(0.5,0.5,1.0,1.0); return; }
         else if (uT.csmDebugMode == 10) { fragColor = vec4(dbgDN * 0.5 + 0.5, 1.0); GBuffer1 = vec4(0.5,0.5,1.0,1.0); return; }
 
-        // shadeGround's composition order, with the unchanged pool evaluated above.
-        lit = composeGroundLighting(baseColor, vec3(0), vec3(normalLight), shadow, vec3(0));
-        lit *= uT.sceneLightScale;
-        lit += localLight;
-        if (moverContact > 0.0)
-            lit *= (1.0 - 0.55 * moverContact);
+        lit = shadeGround(baseColor, N, normalLight, shadow, pureConcrete ? 1.0 : 0.0, v_worldPos);
         lit = max(lit + cdSpec * shadow, vec3(0.0));
 
         // TERRAIN-EDGE-FEATHER-1 (GL terrain_lod_chunk.frag, after the mover contact): the last tile band of the map fades to the sky haze
