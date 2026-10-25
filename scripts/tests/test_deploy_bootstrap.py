@@ -41,6 +41,14 @@ def test_bootstrap_rejects_non_install_and_self(tmp_path):
         dp.bootstrap_install(str(src), str(src), "mc2.exe", "mc2.pdb")
 
 
+def test_native_bootstrap_omits_windows_binaries_and_owner_record(tmp_path):
+    src, target = fake_install(tmp_path / "src"), tmp_path / "lane"
+    (src / ".mc2_deploy_lane.json").write_text("{}")
+    dp.bootstrap_install(str(src), str(target), "mc2", "mc2.pdb")
+    got = {p.relative_to(target).as_posix() for p in target.rglob("*") if p.is_file()}
+    assert got == {"data/missions/a.pak", "assets/x.png", "textures.fst", "options.cfg"}
+
+
 def test_concrete_detail_is_cooked_on_demand_only_when_absent(tmp_path, monkeypatch):
     monkeypatch.setattr(dp, "CONCRETE_DETAIL_SRC", str(tmp_path))
     calls = []

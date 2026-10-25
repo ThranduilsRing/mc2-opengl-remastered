@@ -889,7 +889,7 @@ def check_exe_fresh(exe_src, build_dir, allow_stale_exe, build64_root=None):
     newest_m, newest_p = 0.0, None
     for root, _dirs, files in os.walk(objdir):
         for f in files:
-            if f.endswith(".obj"):
+            if f.endswith((".obj", ".o")):
                 m = os.path.getmtime(os.path.join(root, f))
                 if m > newest_m:
                     newest_m, newest_p = m, os.path.join(root, f)
@@ -914,15 +914,17 @@ def enumerate_payload(src_root, build_dir, exe_name, pdb_name,
     deployed copy can be recorded).
     """
     items = []
+    native = exe_name == "mc2"
     exe_src = os.path.join(build_dir, exe_name)
     if require_build and not os.path.isfile(exe_src):
         fail(f"source exe not found: {exe_src}")
     items.append((exe_src, exe_name, "exe"))
 
     pdb_src = os.path.join(build_dir, pdb_name)
-    items.append((pdb_src, pdb_name, "pdb"))  # presence checked later
+    if not native:
+        items.append((pdb_src, pdb_name, "pdb"))  # presence checked later
 
-    for dll in FFMPEG_DLLS:
+    for dll in (() if native else FFMPEG_DLLS):
         p = os.path.join(build_dir, dll)
         if os.path.isfile(p):
             items.append((p, dll, "dll"))
@@ -934,7 +936,9 @@ def enumerate_payload(src_root, build_dir, exe_name, pdb_name,
     b64 = find_build_root(build_dir, build64_root)
     launcher_src = (launcher_path(b64, cfg, is_single_config(build_dir, b64))
                     if b64 else "")
-    if launcher_src and os.path.isfile(launcher_src):
+    if native:
+        pass  # The options launcher is a Windows target.
+    elif launcher_src and os.path.isfile(launcher_src):
         items.append((launcher_src, LAUNCHER_NAME, "exe"))
     elif require_build:
         fail(f"mc2-launcher.exe not found (looked: {launcher_src or '<no build64 root>'})\n"
@@ -1080,7 +1084,7 @@ def enumerate_payload(src_root, build_dir, exe_name, pdb_name,
     # missing SOURCE support file is a real error (loud copy failure), while
     # manifest-only tolerates a missing TARGET copy downstream as usual.
     is_editor = exe_name.lower() == EDITOR_EXE
-    for script in SUPPORT_SCRIPTS["editor" if is_editor else "game"]:
+    for script in (() if native else SUPPORT_SCRIPTS["editor" if is_editor else "game"]):
         sp = os.path.join(src_root, script)
         items.append((sp, script, "support"))
     if is_editor:
@@ -1265,6 +1269,8 @@ def deploy(items, target_dir, allow_stale_pdb, preserve=(), cache=None,
                 s_hash = hashlib.sha256(content).hexdigest()
             else:
                 shutil.copyfile(src, dst)
+                if kind == "exe" and os.name != "nt":
+                    shutil.copymode(src, dst)
                 s_hash = sha256_file(src)
         except PermissionError:
             fail(f"copy refused (file locked?): {dst}\n"
@@ -1488,6 +1494,20 @@ def _pe_imports(path):
 def check_install_complete(target, exe_name, build_dir, fix=True):
     """Every non-system DLL the exe (transitively) imports must sit next to it, and assets/ data/ shaders/ must exist and be non-empty.
     Missing DLLs are copied from build_dir (fix=True); returns a sorted list of what is still missing (DLL names and 'dir/')."""
+    if exe_name == "mc2":
+        exe = os.path.join(target, exe_name)
+        if not os.path.isfile(exe):
+            return [f"{exe_name} (not found in target)"]
+        result = subprocess.run(["ldd", exe], capture_output=True, text=True,
+                                **console_child.child_kwargs(redirected=True))
+        if result.returncode:
+            return [f"cannot read ELF dependencies: {result.stderr.strip() or result.stdout.strip()}"]
+        missing = [line.split()[0] for line in result.stdout.splitlines() if "=> not found" in line]
+        for name in REQUIRED_DIRS:
+            directory = os.path.join(target, name)
+            if not (os.path.isdir(directory) and any(os.scandir(directory))):
+                missing.append(name + "/")
+        return sorted(missing)
     sysdirs = [os.path.join(os.environ.get("SystemRoot", "C:/Windows"), d) for d in ("System32", "SysWOW64")]
 
     def is_system(n):
@@ -1560,7 +1580,7 @@ def verify_only(target_dir, strict):
 TARGET_PRESETS = {
     "game": {
         "target_dir": "A:/Games/mc2-opengl/mc2-win64-v0.4",
-        "exe_name": "mc2.exe",
+        "exe_name": "mc2.exe" if sys.platform == "win32" else "mc2",
         "build_subdir": os.path.join("build64", "RelWithDebInfo"),
         "ninja_subdir": "build64-ninja",
     },
@@ -1615,6 +1635,9 @@ def bootstrap_install(src, target, exe_name, pdb_name):
         return
     skip = BOOTSTRAP_SKIP | {exe_name, pdb_name}
     names = [n for n in sorted(os.listdir(src)) if n not in skip and not n.lower().endswith((".log", ".pdb"))]
+    if exe_name == "mc2":
+        names = [n for n in names if n != ".mc2_deploy_lane.json"
+                 and not n.lower().endswith((".exe", ".dll", ".bat"))]
     need = sum(os.path.getsize(p) for n in names for p in
                ([os.path.join(src, n)] if os.path.isfile(os.path.join(src, n)) else
                 (os.path.join(d, f) for d, _, fs in os.walk(os.path.join(src, n)) for f in fs)))

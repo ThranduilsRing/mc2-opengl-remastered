@@ -14,6 +14,19 @@ from scripts import deploy_payload as dp  # noqa: E402
 EXE = "mc2.exe"
 
 
+def test_native_dependencies_and_data_are_required(tmp_path, monkeypatch):
+    from types import SimpleNamespace
+    (tmp_path / "mc2").write_bytes(b"\x7fELF")
+    monkeypatch.setattr(dp.subprocess, "run", lambda *a, **k: SimpleNamespace(
+        returncode=0, stdout="libmissing.so => not found\nlibc.so => /lib/libc.so\n", stderr=""))
+    assert dp.check_install_complete(str(tmp_path), "mc2", str(tmp_path)) == [
+        "assets/", "data/", "libmissing.so", "shaders/"]
+    monkeypatch.setattr(dp.subprocess, "run", lambda *a, **k: SimpleNamespace(
+        returncode=1, stdout="", stderr="invalid ELF"))
+    assert dp.check_install_complete(str(tmp_path), "mc2", str(tmp_path)) == [
+        "cannot read ELF dependencies: invalid ELF"]
+
+
 def test_completeness(tmp_path, monkeypatch):
     monkeypatch.setattr(dp, "_pe_imports", lambda path: set())  # the fake MZ exe is not a PE
     build, target = tmp_path / "build", tmp_path / "target"

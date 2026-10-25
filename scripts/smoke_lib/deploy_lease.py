@@ -47,6 +47,8 @@ import lane_model  # noqa: E402
 # Shared registry path — MUST be an absolute path outside any worktree so every
 # concurrent smoke session (in any worktree) sees the same file.
 LEASE_REGISTRY_PATH = Path("A:/Games/mc2-opengl/.smoke_leases.json")
+if _sys.platform == "linux":
+    LEASE_REGISTRY_PATH = Path.home() / ".cache/mc2/smoke_leases.json"
 
 # Default lease TTL in seconds (1 hour). Override via MC2_SMOKE_LEASE_TTL_SECS.
 _DEFAULT_TTL_SECS = 3600

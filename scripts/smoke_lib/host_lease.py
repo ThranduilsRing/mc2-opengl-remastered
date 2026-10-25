@@ -27,6 +27,8 @@ except ImportError:                       # imported as a top-level module from 
 
 # Slot zero retains the host-global path; the queue and other slots live beside it.
 LEASE_PATH = Path("A:/Games/mc2-opengl/.host_game_lease.json")
+if sys.platform == "linux":
+    LEASE_PATH = Path.home() / ".cache/mc2/host_game_lease.json"
 PATH_ENV = "MC2_HOST_LEASE_PATH"          # tests only: a private lease file (the conftests set one per pytest process)
 OFF_ENV = "MC2_HOST_LEASE"                # "off" switches leasing off, owner only (see OWNER_ENV)
 OWNER_ENV = "MC2_OWNER_NO_LEASE"          # "1" authorises OFF_ENV; the same owner switch run_smoke --no-lease needs

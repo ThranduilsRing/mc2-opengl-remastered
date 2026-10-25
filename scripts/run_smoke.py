@@ -226,6 +226,16 @@ def _enum_mc2_processes() -> list[tuple[int, str, str]]:
 
     This is the impure half (shells PowerShell). The pure path-discrimination
     logic lives in _same_path_mc2 below, which is what the unit test exercises."""
+    if sys.platform == "linux":
+        from scripts.smoke_lib import child_registry
+        rows = []
+        for pid, _name in child_registry.engine_processes(images={"mc2"}):
+            try:
+                command = Path(f"/proc/{pid}/cmdline").read_bytes().replace(b"\0", b" ").decode(errors="replace")
+                rows.append((pid, child_registry.image_path(pid) or "", command))
+            except OSError:
+                continue
+        return rows
     ps = (
         "Get-CimInstance Win32_Process -Filter \"Name='mc2.exe'\" | "
         "ForEach-Object { "
