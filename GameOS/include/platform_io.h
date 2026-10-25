@@ -9,6 +9,8 @@
     #include <io.h> 
 #else
     #include <unistd.h>
+    #include <fcntl.h>
+    #define _access access
 #endif
 
 #include <stdio.h> // fseek ftell etc...

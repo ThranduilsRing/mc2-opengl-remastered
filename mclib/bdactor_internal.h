@@ -14,7 +14,7 @@
 // [TOBJSPLIT v1] RDTSC includes for the BldgAppearance/TreeAppearance probe
 // points. __rdtsc() overhead ~5-10ns (cost_split_instrumentation_is_observer_
 // effect_dominated.md). Accumulators defined in code/terrobj.cpp.
-#include <intrin.h>
+#include "platform_intrinsics.h"
 #include <stdlib.h>
 #include <atomic>  // std::atomic — FRAME-JOBS-2 precondition (s_animTypeIdleNowStatic)
 

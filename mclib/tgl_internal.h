@@ -49,7 +49,7 @@
 
 #define USE_ASSEMBLY
 
-#include <intrin.h>
+#include "platform_intrinsics.h"
 #include "../GameOS/gameos/gos_terrain_indirect.h"  // LightCostSplit_* ([LIGHT_COST_SPLIT v1])
 #include "cone_glow.h"  // GHOST-CONE-VERIFY-4: cone_geom_hidden_by_alpha
 

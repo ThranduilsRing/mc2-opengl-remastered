@@ -21,8 +21,101 @@
 #include"platform_windows.h"
 #include"platform_str.h"
 #include "mc2fmt.h"
+#include <filesystem>
+#include <cstring>
+#include <sys/syscall.h>
 
 static int gGetLastError = 0;
+
+BOOL QueryPerformanceCounter(LARGE_INTEGER* value)
+{
+    timespec ts{};
+    if (clock_gettime(CLOCK_MONOTONIC, &ts)) return FALSE;
+    value->QuadPart = int64_t(ts.tv_sec) * 1000000000 + ts.tv_nsec;
+    return TRUE;
+}
+BOOL QueryPerformanceFrequency(LARGE_INTEGER* value) { value->QuadPart = 1000000000; return TRUE; }
+DWORD GetCurrentThreadId() { return static_cast<DWORD>(syscall(SYS_gettid)); }
+DWORD GetCurrentProcessId() { return static_cast<DWORD>(getpid()); }
+void Sleep(DWORD ms) { timespec ts{ms / 1000, long(ms % 1000) * 1000000}; while (nanosleep(&ts, &ts) && errno == EINTR) {} }
+
+HANDLE CreateFileA(LPCSTR path, DWORD access, DWORD, LPSECURITY_ATTRIBUTES, DWORD disposition, DWORD, HANDLE)
+{
+    int flags = (access & GENERIC_WRITE) ? ((access & GENERIC_READ) ? O_RDWR : O_WRONLY) : O_RDONLY;
+    if (disposition == CREATE_ALWAYS) flags |= O_CREAT | O_TRUNC;
+    const int fd = open(path, flags, 0666);
+    if (fd < 0) { gGetLastError = errno; return INVALID_HANDLE_VALUE; }
+    return reinterpret_cast<HANDLE>(intptr_t(fd) + 1);
+}
+BOOL ReadFile(HANDLE file, LPVOID data, DWORD size, DWORD* count, LPVOID)
+{
+    ssize_t result;
+    do { result = read(int(intptr_t(file) - 1), data, size); } while (result < 0 && errno == EINTR);
+    if (count) *count = result < 0 ? 0 : static_cast<DWORD>(result);
+    return result >= 0;
+}
+BOOL WriteFile(HANDLE file, LPCVOID data, DWORD size, DWORD* count, LPVOID)
+{
+    const char* bytes = static_cast<const char*>(data);
+    DWORD written = 0;
+    while (written < size) {
+        const auto n = write(int(intptr_t(file) - 1), bytes + written, size - written);
+        if (n < 0 && errno == EINTR) continue;
+        if (n <= 0) { if (count) *count = written; return FALSE; }
+        written += static_cast<DWORD>(n);
+    }
+    if (count) *count = written;
+    return TRUE;
+}
+BOOL CloseHandle(HANDLE file) { return close(int(intptr_t(file) - 1)) == 0; }
+DWORD GetFileAttributesA(LPCSTR path)
+{
+    struct stat st{};
+    if (stat(path, &st)) return INVALID_FILE_ATTRIBUTES;
+    return S_ISDIR(st.st_mode) ? FILE_ATTRIBUTE_DIRECTORY : FILE_ATTRIBUTE_NORMAL;
+}
+BOOL GetFileAttributesExA(LPCSTR path, GET_FILEEX_INFO_LEVELS, LPVOID output)
+{
+    struct stat st{};
+    if (stat(path, &st)) return FALSE;
+    auto& out = *static_cast<WIN32_FILE_ATTRIBUTE_DATA*>(output);
+    out = {};
+    out.dwFileAttributes = S_ISDIR(st.st_mode) ? FILE_ATTRIBUTE_DIRECTORY : FILE_ATTRIBUTE_NORMAL;
+    auto time = [](timespec ts) { const uint64_t t = (uint64_t(ts.tv_sec) + 11644473600ull) * 10000000 + ts.tv_nsec / 100; return FILETIME{DWORD(t), DWORD(t >> 32)}; };
+    out.ftCreationTime = time(st.st_ctim);
+    out.ftLastAccessTime = time(st.st_atim);
+    out.ftLastWriteTime = time(st.st_mtim);
+    out.nFileSizeLow = DWORD(st.st_size);
+    out.nFileSizeHigh = DWORD(uint64_t(st.st_size) >> 32);
+    return TRUE;
+}
+DWORD GetFullPathNameA(LPCSTR path, DWORD capacity, LPSTR out, LPSTR* filePart)
+{
+    std::error_code error;
+    const auto absolute = std::filesystem::absolute(path, error).lexically_normal().string();
+    if (error) return 0;
+    if (capacity <= absolute.size()) return DWORD(absolute.size() + 1);
+    std::memcpy(out, absolute.c_str(), absolute.size() + 1);
+    if (filePart) { auto* slash = std::strrchr(out, '/'); *filePart = slash ? slash + 1 : out; }
+    return DWORD(absolute.size());
+}
+DWORD GetModuleFileNameA(HANDLE, LPSTR out, DWORD capacity)
+{
+    if (!capacity) return 0;
+    const auto count = readlink("/proc/self/exe", out, capacity - 1);
+    if (count < 0) return 0;
+    out[count] = 0;
+    return DWORD(count);
+}
+DWORD GetModuleFileNameW(HANDLE module, LPWSTR out, DWORD capacity)
+{
+    char path[4096];
+    if (!capacity || !GetModuleFileNameA(module, path, sizeof(path))) return 0;
+    const auto count = mbstowcs(out, path, capacity - 1);
+    if (count == size_t(-1)) return 0;
+    out[count] = 0;
+    return DWORD(count);
+}
 
 DWORD GetTimeZoneInformation(LPTIME_ZONE_INFORMATION tzi)
 {

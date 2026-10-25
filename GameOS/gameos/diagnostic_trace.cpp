@@ -4,7 +4,7 @@
 #include "Gates/gate_cold.h"   // str<>()
 
 #define WIN32_LEAN_AND_MEAN
-#include <windows.h>  // GetCurrentThreadId, MoveFileExW
+#include "platform_windows.h"  // GetCurrentThreadId
 
 #include <chrono>
 #include <cstdio>

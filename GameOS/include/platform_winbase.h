@@ -7,6 +7,30 @@ extern "C" {
 
 #define WINBASEAPI    
 
+union LARGE_INTEGER { struct { DWORD LowPart; LONG HighPart; }; int64_t QuadPart; };
+union ULARGE_INTEGER { struct { DWORD LowPart; DWORD HighPart; }; uint64_t QuadPart; };
+#define GENERIC_READ 0x80000000u
+#define GENERIC_WRITE 0x40000000u
+#define FILE_SHARE_READ 1
+#define FILE_SHARE_WRITE 2
+#define FILE_SHARE_DELETE 4
+#define CREATE_ALWAYS 2
+#define OPEN_EXISTING 3
+#define INVALID_FILE_ATTRIBUTES 0xffffffffu
+BOOL QueryPerformanceCounter(LARGE_INTEGER*);
+BOOL QueryPerformanceFrequency(LARGE_INTEGER*);
+DWORD GetCurrentThreadId();
+DWORD GetCurrentProcessId();
+void Sleep(DWORD);
+HANDLE CreateFileA(LPCSTR, DWORD, DWORD, LPSECURITY_ATTRIBUTES, DWORD, DWORD, HANDLE);
+BOOL ReadFile(HANDLE, LPVOID, DWORD, DWORD*, LPVOID);
+BOOL WriteFile(HANDLE, LPCVOID, DWORD, DWORD*, LPVOID);
+BOOL CloseHandle(HANDLE);
+DWORD GetFileAttributesA(LPCSTR);
+DWORD GetFullPathNameA(LPCSTR, DWORD, LPSTR, LPSTR*);
+DWORD GetModuleFileNameA(HANDLE, LPSTR, DWORD);
+DWORD GetModuleFileNameW(HANDLE, LPWSTR, DWORD);
+
 #define TIME_ZONE_ID_STANDARD 1
 #define TIME_ZONE_ID_DAYLIGHT 2
 
@@ -44,6 +68,14 @@ struct _FILETIME {
 using FILETIME = _FILETIME;
 using PFILETIME = _FILETIME*;
 using LPFILETIME = _FILETIME*;
+
+struct WIN32_FILE_ATTRIBUTE_DATA {
+    DWORD dwFileAttributes;
+    FILETIME ftCreationTime, ftLastAccessTime, ftLastWriteTime;
+    DWORD nFileSizeHigh, nFileSizeLow;
+};
+enum GET_FILEEX_INFO_LEVELS { GetFileExInfoStandard };
+BOOL GetFileAttributesExA(LPCSTR, GET_FILEEX_INFO_LEVELS, LPVOID);
 
 struct _WIN32_FIND_DATAA {
 	DWORD dwFileAttributes;

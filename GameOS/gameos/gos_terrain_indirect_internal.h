@@ -45,7 +45,7 @@ extern long g_viewContentEpoch;   // VIEW-EPOCH-DEDUPE-1 semantic view-content e
 #include <chrono>   // MC2_RING_TRACE wait-time measurement (probe-only)
 #include <ctime>    // RING_SINK timestamp on probe-sink open
 
-#include <intrin.h>   // __rdtsc -- [LIGHT_COST_SPLIT v1]
+#include "platform_intrinsics.h"   // __rdtsc -- [LIGHT_COST_SPLIT v1]
 
 
 // MC2 types — resolve relative path from GameOS/gameos/

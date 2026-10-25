@@ -12,7 +12,7 @@
 #include "Gates/gate_cold.h"
 #include "gos_postprocess.h"
 #include "RenderCore/GpuResidencyPolicy.h"
-#include <windows.h>
+#include "platform_windows.h"
 #undef min
 #undef max
 #include <algorithm>

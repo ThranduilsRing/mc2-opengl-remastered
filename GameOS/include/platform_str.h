@@ -4,6 +4,12 @@
 #define PLATFORM_STR_H
 
 #include<stdio.h> // va_list
+#ifndef _WIN32
+#include <strings.h>
+#define _stricmp strcasecmp
+#define _strnicmp strncasecmp
+#define _snprintf snprintf
+#endif
 
 
 // string functions to use in cross-platform environment

@@ -12,9 +12,9 @@
 
 #include "fst_hash.h"
 
-extern "C" unsigned long elfHash(const char* name)
+extern "C" uint32_t elfHash(const char* name)
 {
-    unsigned long h = 0, g;
+    uint32_t h = 0, g;
     while (*name)
     {
         h = (h << 4) + static_cast<unsigned char>((*name++));

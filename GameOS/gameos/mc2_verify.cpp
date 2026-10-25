@@ -3,6 +3,7 @@
 // for the adoption protocol.
 
 #include "mc2_verify.h"
+#include "platform_intrinsics.h"
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"   // str<>()
 

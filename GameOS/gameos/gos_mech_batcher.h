@@ -5,7 +5,7 @@
 #include <cstddef>    // offsetof
 #include <vector>
 #include <unordered_map>
-#include "Stuff/Stuff.hpp"
+#include "stuff/stuff.hpp"
 #include "tgl.h"
 #include "msl.h"
 #include "mech3d.h"

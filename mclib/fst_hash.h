@@ -22,13 +22,15 @@
 #ifndef MCLIB_FST_HASH_H
 #define MCLIB_FST_HASH_H
 
+#include <stdint.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 // ELF dictionary hash. Byte-stream-deterministic; case-sensitive.
 // Matches the historical definition in mclib/fastfile.cpp 1:1.
-unsigned long elfHash(const char* name);
+uint32_t elfHash(const char* name);
 
 // Write a slash-normalized copy of src into dst (null-terminated).
 // Every '\\' byte becomes '/'; all other bytes pass through.

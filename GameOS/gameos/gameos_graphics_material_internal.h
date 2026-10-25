@@ -66,7 +66,7 @@
 #include "RenderCore/top_level_pass_executor.h" // APPLY-STATE-TERRAINDECAL-1: findTopLevelStateDesc
 #include "RenderCore/ResolutionContract.h"     // META-FIX design D: MC2_RES_ASSERT audit
 #include "../../RenderCore/frame_executor.h"     // PER-PASS-APPLY-COUNTERS-1: ApplyPassId
-#include "Stuff/Stuff.hpp"                     // Stuff::Matrix4D for gos_SetWorldToClipGL (full chain required; matrix.hpp alone creates circular include ordering)
+#include "stuff/stuff.hpp"                     // Stuff::Matrix4D for gos_SetWorldToClipGL (full chain required; matrix.hpp alone creates circular include ordering)
 
 // [B1 C16] (diagnostic) gosFX heap + child accumulation counters; env-gated on
 // MC2_GPU_PARTICLES=1. Forward-decl to avoid Stuff/gosfx header chain here.

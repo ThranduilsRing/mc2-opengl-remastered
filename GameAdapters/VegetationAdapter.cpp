@@ -23,7 +23,7 @@
 
 // Stuff::Matrix4D (entries[16], column-major) + Stuff::Vector3D.
 // Full chain required (matrix.hpp alone creates circular include ordering).
-#include "Stuff/Stuff.hpp"
+#include "stuff/stuff.hpp"
 
 #include "../../GameOS/gameos/diagnostic_trace.h"
 

@@ -1,5 +1,6 @@
 #ifndef _BASETSD_H
 #define _BASETSD_H
+#include <stdint.h>
 
 #ifndef __int64
 #define __int64 long long
@@ -23,19 +24,19 @@ using PDWORD32 = unsigned int*;
 using UINT32 = unsigned int;
 using PUINT32 = unsigned int*;
 
-using INT_PTR = int;
+using INT_PTR = intptr_t;
 using PINT_PTR = int*;
-using UINT_PTR = unsigned int;
+using UINT_PTR = uintptr_t;
 using PUINT_PTR = unsigned int*;
-using LONG_PTR = long;
+using LONG_PTR = intptr_t;
 using PLONG_PTR = long*;
-using ULONG_PTR = unsigned long;
+using ULONG_PTR = uintptr_t;
 using PULONG_PTR = unsigned long*;
 using UHALF_PTR = unsigned short;
 using PUHALF_PTR = unsigned short*;
 using HALF_PTR = short;
 using PHALF_PTR = short*;
-using HANDLE_PTR = unsigned long;
+using HANDLE_PTR = uintptr_t;
 
 using SIZE_T = ULONG_PTR;
 using PSIZE_T = ULONG_PTR*;
