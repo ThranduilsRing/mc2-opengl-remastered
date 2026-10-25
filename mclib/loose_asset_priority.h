@@ -4,6 +4,19 @@
 #include <span>
 #include <string_view>
 
+// The texture cooker writes KTX2 beside its TGA/TXM input, without a receipt.
+// Source textures are classified separately so edited loose bitmaps still win.
+template <class SourceExists>
+inline bool looseTextureCookHasSource(std::filesystem::path path, SourceExists sourceExists)
+{
+    if (path.extension() != ".ktx2") return false;
+    for (const char* ext : {".tga", ".txm"}) {
+        path.replace_extension(ext);
+        if (sourceExists(path)) return true;
+    }
+    return false;
+}
+
 // Extracted stock files are common in legacy installs. Only different loose
 // bytes (or a new loose asset) claim priority over bundled replacement art.
 inline bool looseAssetDiffers(std::string_view name, std::span<const unsigned char> stock)

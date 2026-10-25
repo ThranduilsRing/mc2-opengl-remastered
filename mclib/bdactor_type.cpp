@@ -17,6 +17,10 @@ static bool userBuildingAsset(std::string_view name)
 	if (const auto* owner = LookupModOwner(path); owner && strcmp(owner, "mc2-industrial-kit") != 0)
 		return true;
 	if (!std::filesystem::is_regular_file(path)) return false;
+	if (looseTextureCookHasSource(std::filesystem::path(storage), [](const auto& source) {
+		return std::filesystem::is_regular_file(source) ||
+			!ReadArchiveBytes(source.string().c_str(), 64u * 1024u * 1024u).empty();
+	})) return false;
 	return looseAssetDiffers(path, ReadArchiveBytes(path, 64u * 1024u * 1024u));
 }
 
@@ -39,12 +43,14 @@ static bool userBuildingTextures(TG_TypeMultiShape* shape)
 	{
 		char name[1024];
 		shape->GetTextureName(i, name, sizeof(name));
-		// Both legacy bitmaps and cooked sidecars can customize a stock material.
+		// Standalone KTX2s and edited source bitmaps can customize a stock material.
 		for (int size : {32, 64, 128, 256, 512, 1024, static_cast<int>(ObjectTextureSize)})
 		{
 			const auto path = std::filesystem::path(tglPath) / std::to_string(size) / name;
 			if (userBuildingAsset(path.string().c_str())) return true;
 			auto sidecar = path;
+			sidecar.replace_extension(".txm");
+			if (userBuildingAsset(sidecar.string().c_str())) return true;
 			sidecar.replace_extension(".ktx2");
 			if (userBuildingAsset(sidecar.string().c_str())) return true;
 		}
@@ -400,7 +406,6 @@ void BldgAppearanceType::init (const char * fileName)
 	if (importSourceBase[0]) userArt |= userBuildingShape(importSourceBase);
 	for (auto* shape : bldgShape) userArt |= userBuildingTextures(shape);
 	userArt |= userBuildingTextures(bldgDmgShape);
-	if (userArt) mc2::fmt::print_err("[MODOVERRIDE] building '{}': user assets take priority over bundled kit\n", fileName);
 
 	// MODEL-OVERRIDE dual-shape: render-only overrides for static props. The stock
 	// bldgShape[] / bldgDmgShape loads stay UNCHANGED (collision, passability and LOS
@@ -412,8 +417,11 @@ void BldgAppearanceType::init (const char * fileName)
 	{
 		if (mc2::gate::get<"MC2_MODOVERRIDE_TRACE">())
 			mc2::fmt::print_err("[MODOVERRIDE_TRACE] staticProp '{}'\n", mc2::fmt::safe(bldgBaseName));
-		if (const ModelOverrideRecord* ov = ModelOverrideRegistry::instance().resolve("staticProp", bldgBaseName);
-			ov && !(userArt && ov->manifestDir == "mods/mc2-industrial-kit/data/model_overrides"))
+		const ModelOverrideRecord* ov = ModelOverrideRegistry::instance().resolve("staticProp", bldgBaseName);
+		const bool userOverridesKit = ov && userArt && ov->manifestDir == "mods/mc2-industrial-kit/data/model_overrides";
+		if (userOverridesKit)
+			mc2::fmt::print_err("[MODOVERRIDE] building '{}': user assets take priority over bundled kit\n", fileName);
+		if (ov && !userOverridesKit)
 		{
 			const std::string condName = ModelOverrideRegistry::instance().selectedCondition(missionName, bldgBaseName);
 			const ModelOverrideCondition* cond = ov->condition(condName);
@@ -483,6 +491,26 @@ void BldgAppearanceType::init (const char * fileName)
 	else
 	{
 		strcpy(rotationalNodeId,"NONE");
+	}
+	strcpy(elevationNodeId, "NONE");
+	if (iniFile.seekBlock("AnimationNode") == NO_ERR)
+		iniFile.readIdString("ElevationNodeId", elevationNodeId, TG_NODE_ID);
+	if (bldgRenderShape && S_stricmp(elevationNodeId, "NONE") != 0) {
+		bool complete = true;
+		for (long lod = 0; lod < MAX_LODS && complete; ++lod) {
+			auto* shape = getBldgRenderShape(lod);
+			for (const char* joint : {rotationalNodeId, elevationNodeId}) {
+				bool found = false;
+				for (long node = 0; node < shape->GetNumShapes(); ++node)
+					found |= S_stricmp(shape->GetNodeId(node), joint) == 0;
+				complete &= found;
+			}
+		}
+		if (!complete) {
+			mc2::fmt::print_err("[MODOVERRIDE] staticProp '{}': missing searchlight joint; keeping stock moving parts\n",
+				mc2::fmt::safe(bldgBaseName));
+			discardBldgRenderOverrides(*this);
+		}
 	}
 	
 	if (nFrameRate != 0.0f)

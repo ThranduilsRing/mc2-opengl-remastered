@@ -509,6 +509,12 @@ def write_runtime_glb(scene: Scene, materials: list[Material], texture_names: di
         doc["scenes"][0]["nodes"].remove(index)
     if not doc["meshes"]:
         raise ValueError("scene has no geometry to write")
+    roots = doc["scenes"][0]["nodes"]
+    if len(roots) == 1 and doc["nodes"][roots[0]].get("extras", {}).get("mc2_anim_node"):
+        # Assimp promotes a single root to scene->mRootNode. Keep an identity
+        # scene wrapper so the TG importer retains the first joint's child links.
+        doc["nodes"].append({"name": "MC2Scene", "children": list(roots)})
+        doc["scenes"][0]["nodes"] = [len(doc["nodes"]) - 1]
     if images:
         doc["images"], doc["textures"] = images, textures
     while len(b.bin) % 4:

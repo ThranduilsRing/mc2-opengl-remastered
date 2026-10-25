@@ -21,8 +21,11 @@ from tools.content_pipeline.frontends import gltf_file
 ROUND1 = "smallfueltank pipetank largefueltank liquidstorage watertower straightpipe1 straightpipe2 straightpipe3 cornerpipe threewaypipe fourwaypipe endpipe fuelpipe industrialplant heavyindustrial factorymd".split()
 ROUND2 = "factorysm factorylg industrialcomplex processingplant purificationplant chemicalplant valvestation wasteprocessor weaponsfacility grainstorage civstoragea civstorageb civstoragec gantry crane".split()
 BAKES = {**dict.fromkeys(ROUND1, "t1"), **dict.fromkeys(ROUND2, "r2"),
-         "transformerstation": "e1", "powergenerator": "b7", "l_turretgenerator": "b7"}
-REVISIONS = {"t1": "round 1", "r2": "round 2", "e1": "7809b383d", "b7": "1e3d3bca3"}
+         "transformerstation": "e1", "powergenerator": "b7", "l_turretgenerator": "b7",
+         **dict.fromkeys("civstoragea largefueltank industrialcomplex factorylg grainstorage heavyindustrial".split(), "fit1a"),
+         "smallfueltank": "fit1b"}
+REVISIONS = {"t1": "round 1", "r2": "round 2", "e1": "7809b383d", "b7": "1e3d3bca3",
+             "fit1a": "556288c2d", "fit1b": "556288c2d"}
 
 
 def assets(root, work):

@@ -726,7 +726,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/deploy_payload.py",
-          "line": 1885,
+          "line": 1886,
           "evidence": "command",
           "reference": "scripts/check-deploy-hygiene.py",
           "text": "r = subprocess.run([sys.executable, hygiene, target],"
@@ -3830,7 +3830,7 @@
         },
         {
           "path": "scripts/deploy_payload.py",
-          "line": 1789,
+          "line": 1790,
           "evidence": "import",
           "reference": "exe_fingerprint",
           "text": "from exe_fingerprint import extract, sha_agrees"
@@ -3981,7 +3981,7 @@
       "callers_by_stem": [
         {
           "path": "scripts/deploy_payload.py",
-          "line": 1822,
+          "line": 1823,
           "evidence": "import",
           "reference": "kit_payload",
           "text": "import kit_payload"
@@ -5051,14 +5051,14 @@
         },
         {
           "path": "scripts/deploy_payload.py",
-          "line": 746,
+          "line": 747,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from scripts.smoke_lib import deploy_lease"
         },
         {
           "path": "scripts/deploy_payload.py",
-          "line": 786,
+          "line": 787,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from scripts.smoke_lib import bounded_wait"
@@ -5466,7 +5466,7 @@
       "callers_by_stem": [
         {
           "path": "scripts/deploy_payload.py",
-          "line": 786,
+          "line": 787,
           "evidence": "import",
           "reference": "scripts.smoke_lib.bounded_wait",
           "text": "from scripts.smoke_lib import bounded_wait"
@@ -5632,7 +5632,7 @@
       "callers_by_stem": [
         {
           "path": "scripts/deploy_payload.py",
-          "line": 746,
+          "line": 747,
           "evidence": "import",
           "reference": "scripts.smoke_lib.deploy_lease",
           "text": "from scripts.smoke_lib import deploy_lease"
@@ -7423,7 +7423,7 @@
         },
         {
           "path": "tools/content_pipeline/tests/test_content_pipeline.py",
-          "line": 153,
+          "line": 157,
           "evidence": "import",
           "reference": "tools.anim_parity.audit",
           "text": "from tools.anim_parity.audit import document_model, pose_matrices, rotation"
@@ -8059,7 +8059,7 @@
       "callers_by_stem": [
         {
           "path": "tools/content_pipeline/tests/test_content_pipeline.py",
-          "line": 534,
+          "line": 540,
           "evidence": "import",
           "reference": "test_ase_submaterial",
           "text": "from test_ase_submaterial import SINGLE_MAT_ASE"
@@ -8730,21 +8730,21 @@
         },
         {
           "path": "tools/content_pipeline/tests/test_content_pipeline.py",
-          "line": 241,
+          "line": 247,
           "evidence": "import",
           "reference": "tools.content_pipeline.cook",
           "text": "from tools.content_pipeline.cook import build_asset"
         },
         {
           "path": "tools/content_pipeline/tests/test_content_pipeline.py",
-          "line": 309,
+          "line": 315,
           "evidence": "import",
           "reference": "tools.content_pipeline.cook",
           "text": "from tools.content_pipeline.cook import cook"
         },
         {
           "path": "tools/content_pipeline/tests/test_content_pipeline.py",
-          "line": 322,
+          "line": 328,
           "evidence": "import",
           "reference": "tools.content_pipeline.cook",
           "text": "from tools.content_pipeline.cook import cook"
@@ -8794,7 +8794,7 @@
         },
         {
           "path": "tools/content_pipeline/tests/test_content_pipeline.py",
-          "line": 294,
+          "line": 300,
           "evidence": "import",
           "reference": "tools.content_pipeline.frontends",
           "text": "from tools.content_pipeline.frontends import stock_meshdump"
@@ -8924,7 +8924,7 @@
         },
         {
           "path": "tools/content_pipeline/tests/test_content_pipeline.py",
-          "line": 294,
+          "line": 300,
           "evidence": "import",
           "reference": "tools.content_pipeline.frontends.stock_meshdump",
           "text": "from tools.content_pipeline.frontends import stock_meshdump"
@@ -9500,7 +9500,7 @@
       "callers_by_stem": [
         {
           "path": "tools/content_pipeline/tests/test_content_pipeline.py",
-          "line": 308,
+          "line": 314,
           "evidence": "import",
           "reference": "tools.examples.build_modern_tree_pack",
           "text": "from tools.examples.build_modern_tree_pack import recipe"

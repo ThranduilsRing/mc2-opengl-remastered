@@ -39,6 +39,22 @@ def test_heartbeat_freeze_play():
     v = evaluate(s, CFG, exit_code=0, walltime_s=31)
     assert "heartbeat_freeze_play" in v.buckets
 
+def test_clean_shutdown_is_not_a_play_heartbeat_freeze():
+    s = _base()
+    s.mission_quit_wall_s = 31.0
+    assert evaluate(s, CFG, exit_code=0, walltime_s=70).passed
+    s.mission_quit_wall_s = 40.0
+    assert "heartbeat_freeze_play" in evaluate(s, CFG, exit_code=0, walltime_s=70).buckets
+
+def test_quit_marker_does_not_waive_missing_heartbeats_or_timeouts():
+    s = _base()
+    s.mission_quit_wall_s = 31.0
+    s.last_heartbeat_wall_s_play = None
+    assert "heartbeat_freeze_play" in evaluate(s, CFG, exit_code=0, walltime_s=70).buckets
+    assert "timeout" in evaluate(s, CFG, exit_code=0, walltime_s=70, killed_by_timeout=True).buckets
+    s.last_heartbeat_wall_s_play = 30.5
+    assert not evaluate(s, CFG, exit_code=1, walltime_s=70).passed
+
 def test_timeout_bucket_when_walltime_cap_hit():
     s = _base()
     v = evaluate(s, CFG, exit_code=-9, walltime_s=90, killed_by_timeout=True)

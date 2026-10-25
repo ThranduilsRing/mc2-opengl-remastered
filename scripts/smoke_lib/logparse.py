@@ -202,6 +202,7 @@ class LogSummary:
     # runner walltime during load pauses.
     last_heartbeat_wall_s_load: Optional[float] = None
     last_heartbeat_wall_s_play: Optional[float] = None
+    mission_quit_wall_s: Optional[float] = None
     pool_nulls: int = 0
     asset_oob: int = 0
     shader_errors: int = 0
@@ -275,7 +276,9 @@ def parse_log(text: str,
             elif ev == "mission_ready":
                 s.mission_ready_ms = ms
                 in_play_phase = True
-            elif ev == "mission_quit":     s.mission_quit_ms = ms
+            elif ev == "mission_quit":
+                s.mission_quit_ms = ms
+                s.mission_quit_wall_s = line_wall
 
         m = HEARTBEAT_RE.search(line)
         if m:

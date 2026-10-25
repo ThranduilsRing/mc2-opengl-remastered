@@ -100,6 +100,7 @@ GAME_COOK_TOOLS = ["tools/cook_bc6h_hdri.py", "tools/examples"]
 # file-by-file, not copied wholesale, so these reach an install only through this list.
 # Building/prop replacements ship as mounted content packages (tools/content_pipeline), not here.
 IMPORTED_STRUCTURE_PAYLOAD = [
+    "data/tgl/spotlight.ini",
     "data/tgl/marblecliff.ini",
     "data/tgl/MarbleCliffGLB.glb",
 ]
