@@ -185,6 +185,9 @@ def test_cross_volume_asset_links_survive_cached_overlay_and_leave_sources_uncha
         raise OSError("fixture: cross-volume hardlink")
     monkeypatch.setattr(os, "link", different_volume)
     mod_smoke.overlay_mod(source, cache)
+    engine_stage = tmp_path / 'engine-stage'
+    mod_smoke.link_engine(cache, engine_stage)
+    assert (engine_stage / 'data/packed.pak').read_bytes() == b'packed'
     assert (cache / "data/packed.pak").is_symlink()
     mod_smoke.overlay_mod(cache, staged, cached_links=True)
     assert (staged / "data/packed.pak").read_bytes() == b"packed"

@@ -338,7 +338,7 @@ def overlay_mod(layer: Path, target: Path, link_ok: bool = True, cached_links=Fa
 
 def link_engine(cache: Path, target: Path) -> dict:
     link_ok = same_volume(cache, target)
-    return place_tree(cache, target, link_ok=link_ok, private_loose=True)
+    return place_tree(cache, target, link_ok=link_ok, private_loose=True, cached_links=True)
 
 
 def _campaign_stems(layer: Path) -> list[str]:
