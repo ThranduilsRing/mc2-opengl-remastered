@@ -73,7 +73,7 @@ records the arc's steady-state shape after the CXX17 stabilization pass.
 
 **DECISION: Discipline enforced by script, not memory.**
 
-- `scripts/check-no-raw-gl-from-game.sh` — `code/` and `mclib/` MUST NOT call raw `gl*()` functions (allowlist: `mclib/render_contract.cpp` for diagnostic state queries gated by `MC2_RENDER_CONTRACT_ASSERT=1`).
+- `36544d925:scripts/check-no-raw-gl-from-game.sh` — `code/` and `mclib/` MUST NOT call raw `gl*()` functions (allowlist: `mclib/render_contract.cpp` for diagnostic state queries gated by `MC2_RENDER_CONTRACT_ASSERT=1`).
 - Recon proved the hypothesis was already empirically true at HEAD; M6 codifies the clean state into CI.
 - Includes a small known false-positive (trailing-comment scan bug — chip filed for fix).
 
@@ -113,7 +113,7 @@ Three scripts enforce the contract mechanically:
 | Script | What it enforces | Allowlist |
 |---|---|---|
 | `scripts/check-include-firewall.sh` | SCOPE_DIRS layering (engine TUs don't pull game-side headers) | `scripts/check-include-firewall.allowlist` (one entry: `GameAdapters/MechRenderAdapter.cpp`) |
-| `scripts/check-no-raw-gl-from-game.sh` | Game-side TUs (`code/`, `mclib/`) don't call raw `gl*()` | `scripts/check-no-raw-gl-from-game.allowlist` (one entry: `mclib/render_contract.cpp`) |
+| `36544d925:scripts/check-no-raw-gl-from-game.sh` | Game-side TUs (`code/`, `mclib/`) don't call raw `gl*()` | `scripts/check-no-raw-gl-from-game.allowlist` (one entry: `mclib/render_contract.cpp`) |
 | `scripts/check-vfx-no-objectid.sh` | VFX shaders don't write attachment-2 | `scripts/check-vfx-no-objectid.allowlist` (expected EMPTY forever) |
 
 Runtime tripwires (defense-in-depth):

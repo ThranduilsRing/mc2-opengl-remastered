@@ -179,7 +179,7 @@ GL state queries (`glGetIntegerv`, `glGetBooleanv`) inside the
 `assertPassContract` machinery gated by `MC2_RENDER_CONTRACT_ASSERT=1`.
 This is the ONLY exception, enforced by allowlist.
 
-**Enforced by:** `scripts/check-no-raw-gl-from-game.sh` (CI / pre-commit).
+**Enforced by:** `36544d925:scripts/check-no-raw-gl-from-game.sh` (CI / pre-commit).
 
 **Why this matters:** Engine routing is what makes future Vulkan/Metal
 migration feasible. Direct GL calls from game-side code couple game

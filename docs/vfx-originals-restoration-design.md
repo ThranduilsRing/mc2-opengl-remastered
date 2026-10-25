@@ -88,7 +88,7 @@ particle's age, color/position are correct-over-life with zero GPU age logic.
 - **Known ABI extensions (deferred to the class that needs them, not Phase 1):**
   per-particle `rotation` (CardCloud/ShardCloud spin), `aspect`/`size_y` (Card
   rectangle), `uvRect[4]` (per-particle frame), per-particle blend. A bump to
-  ~80 B with a lockstep `shaders/include/particles.hglsl` mirror. Tube needs a
+  ~80 B with a lockstep `36544d925:shaders/include/particles.hglsl` mirror. Tube needs a
   separate swept-mesh primitive regardless — out of the billboard ABL.
 - **Shader fix (Phase 1):** remove/relax the `effSize = max(p.size, 8.0)`
   floor at `particle_billboard.vert:83` so harvested sizes are honored

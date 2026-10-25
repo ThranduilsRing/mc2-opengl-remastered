@@ -36,7 +36,7 @@ The conversion is `(x, y, z) -> (-x, z, y)`; it is its own inverse, so the same 
 
 ## GL/VK shader twins
 
-Shaders that carry sites, with their counterpart in the other backend. Twins must migrate in the same slice so `tools/glsl_port_diff.py` (verbatim-port prover) stays green. Pairing is by identical name, `_tier1` suffix, or the glsl_port_diff registry; a row with no counterpart may still have a VK/GL twin under a different name, so check by hand before migrating. A site inside a `//PORT-BEGIN`..`//PORT-END` block is marked `port` under Sites: edit both sides of that block together, then re-run `py -3 tools/glsl_port_diff.py --all`.
+Shaders that carry sites, with their counterpart in the other backend. Twins must migrate in the same slice so `36544d925:tools/glsl_port_diff.py` (verbatim-port prover) stays green. Pairing is by identical name, `_tier1` suffix, or the glsl_port_diff registry; a row with no counterpart may still have a VK/GL twin under a different name, so check by hand before migrating. A site inside a `//PORT-BEGIN`..`//PORT-END` block is marked `port` under Sites: edit both sides of that block together, then re-run `py -3 tools/glsl_port_diff.py --all`.
 
 | Shader | Sites | Counterpart | Why paired | Counterpart sites |
 |---|---:|---|---|---:|
@@ -97,7 +97,7 @@ Shaders that carry sites, with their counterpart in the other backend. Twins mus
 - `mclib/mech3d_type.cpp`: 4
 - `mclib/mech3d_update.cpp`: 10
 - `mclib/msl_shape.cpp`: 1
-- `shaders/include/lighting.hglsl`: 2
+- `36544d925:shaders/include/lighting.hglsl`: 2
 - `shaders/vulkan/color_prop_tier1.frag`: 2
 - `shaders/vulkan/color_prop_tier1.vert`: 2
 - `shaders/vulkan/mech_tier1.vert`: 6

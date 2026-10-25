@@ -43,7 +43,7 @@ Concretely, the live tree carries:
 Abbreviations: **SSE** = `rc_gbuffer1_screenShadowEligible` (deferred
 screen-space shadow pass applies it later); **SH** = `rc_gbuffer1_shadowHandled*`
 (opts OUT of the deferred pass); **in-shader** = calls `calcShadow()` from
-`shaders/include/shadow.hglsl` directly.
+`36544d925:shaders/include/shadow.hglsl` directly.
 
 ### 2a. Object classes
 

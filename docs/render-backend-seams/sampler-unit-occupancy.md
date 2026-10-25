@@ -1,7 +1,7 @@
 # Sampler / texture-unit occupancy — SHADER-SAMPLER-BINDING-MANIFEST-1
 
 **Arc:** VULKAN-CONTRACT-MANIFEST-ARC · **Slice:** SHADER-SAMPLER-BINDING-MANIFEST-1
-**Generated/checked by:** `scripts/check-sampler-bindings.py` (registered in `scripts/check-contracts.sh` as `sampler_bindings`)
+**Generated/checked by:** `36544d925:scripts/check-sampler-bindings.py` (registered in `scripts/check-contracts.sh` as `sampler_bindings`)
 **Machine-readable companion:** `sampler-unit-occupancy.json` (regenerate: `py -3 scripts/check-sampler-bindings.py --json docs/render-backend-seams/sampler-unit-occupancy.json`)
 **Built against:** nifty-mendeleev HEAD (re-grep line numbers before trusting — cheap to drift)
 
@@ -56,7 +56,7 @@ checkable `(program, name, unit, target)`.
 
 ## Checker contract
 
-`scripts/check-sampler-bindings.py` — exit 0 unless a FAIL. WARN never fails the build.
+`36544d925:scripts/check-sampler-bindings.py` — exit 0 unless a FAIL. WARN never fails the build.
 
 **FAIL conditions:**
 - **comment-vs-code drift** — a *non-multiplexed* sampler (one GLSL file, one C++

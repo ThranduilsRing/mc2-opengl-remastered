@@ -47,10 +47,10 @@ GLSL is a bare literal (WARN, not lockstep-checked by name):
 
 | Slot | Symbol | C++ | GLSL |
 |---|---|---|---|
-| 20 (SSBO) | `LIGHT_DATA_SSBO_BINDING` | `GameOS/include/gameos.hpp` | `shaders/include/lighting.hglsl` |
-| 1 (UBO) | `SCENE_DATA_ATTACHMENT_SLOT` | `gameos.hpp` | `shaders/include/scene.hglsl` |
+| 20 (SSBO) | `LIGHT_DATA_SSBO_BINDING` | `GameOS/include/gameos.hpp` | `36544d925:shaders/include/lighting.hglsl` |
+| 1 (UBO) | `SCENE_DATA_ATTACHMENT_SLOT` | `gameos.hpp` | `36544d925:shaders/include/scene.hglsl` |
 | 0 (UBO) | `LIGHT_DATA_ATTACHMENT_SLOT` | `gameos.hpp` | `lighting.hglsl` |
-| 3 (UBO) | `kViewUniformsBinding` (C++ const ↔ GLSL **literal** 3) | `RenderCore/ViewUniforms.h` | `shaders/include/view_uniforms.hglsl` (checked via known-pair) |
+| 3 (UBO) | `kViewUniformsBinding` (C++ const ↔ GLSL **literal** 3) | `RenderCore/ViewUniforms.h` | `36544d925:shaders/include/view_uniforms.hglsl` (checked via known-pair) |
 
 `READBACK_SSBO_BINDING` (14) is injected into `gpu_cull.comp` via the shader
 build prefix rather than a duplicated GLSL `#define`, so it is checked on the C++

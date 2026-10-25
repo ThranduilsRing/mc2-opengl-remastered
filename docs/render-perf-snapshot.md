@@ -32,7 +32,7 @@ own section rather than merged into the GL bucket table. Branch
 - **Terrain haze SSBO field cleanup (2026-07-16, `f268db51`, `mc2-haze-ubo-cleanup`):**
   removed a dead field from the terrain lighting compute SSBO
   (`GameOS/gameos/gos_terrain_lighting.{cpp,h}`, `8064c6930:shaders/gos_terrain_lighting.comp`,
-  `shaders/include/terrain_lighting_shared.hglsl`), keeping the 32-byte std430
+  `36544d925:shaders/include/terrain_lighting_shared.hglsl`), keeping the 32-byte std430
   ABI with explicit C++ alignment and lock flags at offset 28. Not a measured
   perf win (dead-field removal, not a hot-path retirement) — housekeeping
   entry so the ABI note doesn't drift from the shader/C++ struct pair.

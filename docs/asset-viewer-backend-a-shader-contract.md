@@ -23,12 +23,12 @@ Note: `#define MC2_STATIC_PROP_LIGHTING` is defined INSIDE `static_prop.vert` at
 ## Full include list (in resolution order)
 
 Vert (`static_prop.vert`):
-- `shaders/include/scene.hglsl` (resolved via include/ fallback from `<scene.hglsl>`)
-- `shaders/include/lighting.hglsl`
+- `36544d925:shaders/include/scene.hglsl` (resolved via include/ fallback from `<scene.hglsl>`)
+- `36544d925:shaders/include/lighting.hglsl`
 
 Frag (`static_prop.frag`):
 - `shaders/include/render_contract.hglsl`
-- `shaders/include/view_uniforms.hglsl`
+- `36544d925:shaders/include/view_uniforms.hglsl`
 - `shaders/include/material_gpu.hglsl`
 
 ## Active uniforms (from `[contract] uniform ...` output)
@@ -75,7 +75,7 @@ layout(location = 1) out vec4 GBuffer1;    — normal-encoded + shadow-mask
 ## Resolver fixes applied in this spike (tool bugs, not shader edits)
 
 1. `ShaderIncludeResolver.cpp`: `includePath()` now ignores `#include` tokens that appear after `//` on the same line (comment detection). The line `//   #include <include/material_gpu.hglsl>` in `material_gpu.hglsl` was falsely triggering a self-include cycle.
-2. `ShaderIncludeResolver.cpp`: added `include/` fallback search when the primary `root/inc` path does not exist. `lighting.hglsl` uses `#include <scene.hglsl>` (bare name) while the engine's GL_ARB_shading_language_include mounts `shaders/include/` as a secondary root. The fallback resolves `scene.hglsl` → `shaders/include/scene.hglsl`.
+2. `ShaderIncludeResolver.cpp`: added `include/` fallback search when the primary `root/inc` path does not exist. `lighting.hglsl` uses `#include <scene.hglsl>` (bare name) while the engine's GL_ARB_shading_language_include mounts `shaders/include/` as a secondary root. The fallback resolves `scene.hglsl` → `36544d925:shaders/include/scene.hglsl`.
 
 No shader files were edited.
 
