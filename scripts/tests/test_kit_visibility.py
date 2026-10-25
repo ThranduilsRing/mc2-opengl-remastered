@@ -38,7 +38,7 @@ int main(int argc, char** argv) {
     return user
 
 
-@pytest.mark.parametrize("case", ["fresh", "fresh-no-sidecar", "legacy", "legacy-bc7", "user-ktx", "user-tga", "mod", "edited-reference"])
+@pytest.mark.parametrize("case", ["fresh", "fresh-no-sidecar", "legacy", "legacy-no-source", "legacy-bc7", "user-ktx", "user-tga", "mod", "edited-reference"])
 def test_four_way_kit_priority(tmp_path, priority_probe, case):
     from PIL import Image
     stock = tmp_path / "stock"
@@ -55,13 +55,17 @@ def test_four_way_kit_priority(tmp_path, priority_probe, case):
     if case == "legacy-bc7":
         batch_cook._cook_one_bc7(source, output, batch_cook._DEFAULT_KTX_TOOL, 0)
     stamp = Path(str(output) + ".cookstamp")
-    if case in ("legacy", "legacy-bc7", "user-ktx"):
+    if case in ("legacy", "legacy-no-source", "legacy-bc7", "user-ktx"):
         stamp.unlink()
     original = output.read_bytes()
     stock_hashes = {rel.as_posix(): hashlib.sha256(source.read_bytes()).hexdigest()}
+    inventory = dict(sha256=stock_hashes, cooked_sha256={
+        rel.with_suffix(".ktx2").as_posix(): hashlib.sha256(original).hexdigest()})
     if case == "fresh-no-sidecar":
         output.unlink()
         stamp.unlink()
+    if case == "legacy-no-source":
+        installed.unlink()
     if case == "user-ktx":
         output.write_bytes(original[:-1] + bytes([original[-1] ^ 1]))
     if case == "user-tga":
@@ -69,16 +73,16 @@ def test_four_way_kit_priority(tmp_path, priority_probe, case):
     if case == "edited-reference":
         Image.new("RGBA", (4, 4), (1, 2, 3, 255)).save(source)
         installed.write_bytes(source.read_bytes())
-    kit.reconcile_stock_textures(target, stock, stock_hashes=stock_hashes)
+    kit.reconcile_stock_textures(target, inventory)
     owner = "CVE-G" if case == "mod" else ""
     wins = priority_probe(output, owner) or priority_probe(installed, owner)
     assert wins == (case in ("user-ktx", "user-tga", "mod", "edited-reference"))
-    if case in ("legacy", "legacy-bc7"):
+    if case in ("legacy", "legacy-no-source", "legacy-bc7"):
         assert stamp.is_file() and output.read_bytes() == original
     # Repeated deploy must preserve edits, including edits after receipt creation.
     if case == "fresh":
         output.write_bytes(original[:-1] + bytes([original[-1] ^ 1]))
-        kit.reconcile_stock_textures(target, stock, stock_hashes=stock_hashes)
+        kit.reconcile_stock_textures(target, inventory)
         assert priority_probe(output)
         Image.new("RGBA", (4, 4), (1, 2, 3, 255)).save(installed)
         assert priority_probe(installed)

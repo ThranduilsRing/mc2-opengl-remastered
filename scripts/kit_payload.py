@@ -6,7 +6,6 @@ import re
 from pathlib import Path, PureWindowsPath
 import subprocess
 import sys
-import tempfile
 from concurrent.futures import ThreadPoolExecutor
 
 import console_child
@@ -16,65 +15,37 @@ MANIFEST = Path("data/kit/industrial-kit.json")
 IMPORT_ARGS = ["--no-ground", "--static-prop"]
 
 
-def reconcile_stock_textures(target_dir, stock_dir, jobs=1, stock_hashes=None):
+def reconcile_stock_textures(target_dir, inventory=None, jobs=1):
     """Receipt only byte-proven stock sources and deterministic stock sidecars.
 
-    The read-only stock reference is the same golden install used for deploy
-    materials, never the target's possibly edited sources or MOD overlays.
-    Unknown recipes and mismatched bytes are left untouched.
+    The pinned hashes were generated from stock art with batch_cook. Deployment
+    never trusts paired source existence, target art, or MOD overlay contents.
+    Unknown recipes and mismatched bytes retain user priority.
     """
     tools = Path(__file__).resolve().parents[1] / "tools/mc2texcook"
     sys.path.insert(0, str(tools))
-    import batch_cook
     import mc2texcook
-    target, stock = Path(target_dir), Path(stock_dir)
-    if stock_hashes is None:
-        stock_hashes = json.loads((Path(__file__).resolve().parents[1] /
-            "data/kit/stock-textures.json").read_text())["sha256"]
-    if not (stock / "data/tgl").is_dir():
-        raise ValueError(f"stock texture reference missing: {stock}")
+    target = Path(target_dir)
+    if inventory is None:
+        inventory = json.loads((Path(__file__).resolve().parents[1] /
+            "data/kit/stock-textures.json").read_text())
+    sources = inventory["sha256"]
+    cooks = inventory["cooked_sha256"]
 
-    def reconcile(source):
-        rel = source.relative_to(stock)
-        installed = target / rel
-        stock_bytes = source.read_bytes()
-        if hashlib.sha256(stock_bytes).hexdigest() != stock_hashes.get(rel.as_posix()):
+    def reconcile(item):
+        rel, expected = item
+        path = contained_path(target, rel)
+        if not path.is_file():
             return 0
-        if not installed.is_file() or installed.read_bytes() != stock_bytes:
+        data = path.read_bytes()
+        if hashlib.sha256(data).hexdigest() != expected:
             return 0
-        # Stock TGAs can be loose-only (not present in an FST). Record their
-        # identity too, so later TGA edits still invalidate priority exemptions.
-        mc2texcook.record_cook(installed, verified_bytes=stock_bytes)
-        output = installed.with_suffix(".ktx2")
-        if not output.is_file():
-            return 0
-        data = output.read_bytes()
-        stamp = Path(str(output) + ".cookstamp")
-        if stamp.is_file():
-            # Never bless a modified cooked file, including on repeat deploys.
-            return 0
-        import struct
-        if len(data) < 80 or data[:12] != mc2texcook.KTX2_MAGIC:
-            return 0
-        fmt, = struct.unpack_from("<I", data, 12)
-        levels, = struct.unpack_from("<I", data, 40)
-        with tempfile.TemporaryDirectory(prefix="stock-cook-", dir=target) as td:
-            expected = Path(td) / "expected.ktx2"
-            if fmt == 146:  # legacy albedo BC7 sRGB
-                batch_cook._cook_one_bc7(source, expected, batch_cook._DEFAULT_KTX_TOOL,
-                                         0, gen_mips=levels > 1)
-            elif fmt == 43:  # RGBA8 sRGB, full mip chain
-                batch_cook._cook_one(source, expected, "albedo", 0)
-            else:
-                return 0
-            if data != expected.read_bytes() or output.read_bytes() != data:
-                return 0
-            mc2texcook.record_cook(output, verified_bytes=data)
-            return 1
+        mc2texcook.record_cook(path, verified_bytes=data)
+        return int(path.suffix == ".ktx2")
 
     with ThreadPoolExecutor(max_workers=jobs) as pool:
-        count = sum(pool.map(reconcile, sorted((stock / "data/tgl").rglob("*.tga"))))
-    print(f"[deploy_payload] stock texture receipts backfilled: {count}", flush=True)
+        count = sum(pool.map(reconcile, sorted({**sources, **cooks}.items())))
+    print(f"[deploy_payload] stock texture receipts verified/backfilled: {count}", flush=True)
     return count
 
 
