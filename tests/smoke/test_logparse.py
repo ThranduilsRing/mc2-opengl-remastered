@@ -4,6 +4,11 @@ from scripts.smoke_lib.logparse import parse_log, LogSummary
 
 FIX = Path(__file__).parent / "fixtures"
 
+def test_mission_quit_records_runner_wallclock():
+    s = parse_log("[TIMING v1] event=mission_quit elapsed_ms=53846.1\n", line_wallclocks=[54.2])
+    assert s.mission_quit_ms == 53846.1
+    assert s.mission_quit_wall_s == 54.2
+
 def test_pass_log_counts_zero_faults():
     text = (FIX / "fake_engine_pass.log").read_text()
     # Synthesize per-line wallclocks at 0.1s intervals for this test.

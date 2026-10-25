@@ -115,11 +115,16 @@ def evaluate(s: LogSummary, cfg: GateConfig, *,
             details.append(f"last load heartbeat at {last:.1f}s wallclock")
     elif s.mission_ready_ms is not None:
         last = s.last_heartbeat_wall_s_play
+        # A clean mission stops emitting play heartbeats during renderer teardown.
+        # Keep timeout/crash checks and any gap BEFORE mission_quit fully enforced.
+        play_end = walltime_s
+        if exit_code == 0 and s.smoke_summary_result == "pass" and s.mission_quit_wall_s is not None:
+            play_end = min(play_end, s.mission_quit_wall_s)
         if last is None:
             # No play-phase heartbeat at all -- definite freeze.
             buckets.append("heartbeat_freeze_play")
             details.append("no play-phase heartbeat observed")
-        elif walltime_s - last > cfg.heartbeat_timeout_play_s:
+        elif play_end - last > cfg.heartbeat_timeout_play_s:
             buckets.append("heartbeat_freeze_play")
             details.append(f"last play heartbeat at {last:.1f}s wallclock")
 
