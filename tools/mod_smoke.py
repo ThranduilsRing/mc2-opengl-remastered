@@ -790,6 +790,9 @@ def battery(args) -> int:
     try:
         engine_started = time.monotonic()
         summary = build_engine_cache(cache, build, build64, base_install)
+        cooked = persistent / 'cooked'
+        if cooked.is_dir():
+            place_tree(cooked, cache / 'cache/content-model', private_loose=True)
         print('[mod_smoke] engine payload:', json.dumps(summary),
               f'elapsed={time.monotonic() - engine_started:.1f}s', flush=True)
         layer_cache = {}
@@ -818,6 +821,13 @@ def battery(args) -> int:
                 if args.fail_fast and result_word(future.result()) != 'PASS':
                     break
             rows = [future.result() for future in futures]
+        # Recipe names hash source contents, cooker version and parameters. Preserve
+        # successful mission cooks for the next window instead of importing ASE again.
+        for result in rows:
+            if result_word(result) == 'PASS':
+                source = Path(result['staged']) / 'cache/content-model'
+                for recipe in source.glob('*.mci'):
+                    place_file(recipe, cooked / recipe.name)
     finally:
         if not args.keep_stages:
             for disposable in [cache, *(run_root / entry[1] for entry in plan)]:

@@ -122,6 +122,7 @@ def test_battery_isolates_workers_and_cleans_even_on_exception(tmp_path, monkeyp
     monkeypatch.setattr(mod_smoke, "_load_deploy_payload", lambda: SimpleNamespace(ensure_terrain_materials=lambda *a: None))
     runs = []
     rendezvous = threading.Barrier(2)
+    warmed = False
     def run(stage, *a):
         runs.append((stage, (stage / "data/shared.pak").stat().st_ino))
         rendezvous.wait(timeout=5)  # both game workers must enter before either finishes
@@ -131,6 +132,12 @@ def test_battery_isolates_workers_and_cleans_even_on_exception(tmp_path, monkeyp
             if crash:
                 raise OSError("fixture launch failure")
         (stage / "data/runtime-leak.fit").write_bytes(b"runtime")
+        if warmed:
+            assert (stage / 'cache/content-model/model-one.mci').read_bytes() == b'cooked'
+            assert (stage / 'cache/content-model/model-two.mci').read_bytes() == b'cooked'
+        recipes = stage / 'cache/content-model'
+        recipes.mkdir(parents=True, exist_ok=True)
+        (recipes / f'model-{stage.name}.mci').write_bytes(b'cooked')
         (stage / "smoke.log").write_text("fixture")
         return {"exit": 0, "health": {"mech_ok": True, "ai_ok": True,
                  "mech_instances_max": 1, "mlr_mech_draws": 0, "first_brain_s": 0.2, "first_order_s": None}}
@@ -152,6 +159,10 @@ def test_battery_isolates_workers_and_cleans_even_on_exception(tmp_path, monkeyp
     assert all('_cache' in p.parts for p in (tmp_path / "stages").rglob("*.pak"))
     assert not list((tmp_path / "stages").rglob("mc2.exe"))
     assert (mods / "parent/data/shared.pak").read_bytes() == b"packed"
+    if not crash:
+        warmed = True
+        assert mod_smoke.battery(args) == 0
+        assert len(runs) == 4
 
 
 def test_cross_volume_asset_links_survive_cached_overlay_and_leave_sources_unchanged(tmp_path, monkeypatch):
