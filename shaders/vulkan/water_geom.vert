@@ -220,15 +220,17 @@ void main() {
     vec4 clip = U.worldToClipGL * vec4(worldPos, 1.0);
     clip.z   += fudge * clip.w;
     // Mode 3 depth-only lift so coarse terrain poking just above the flat plane where the smooth
-    // shore field says water does not cut notches into it. SHORE-FIELD-1: the lift is a bounded
-    // WORLD distance toward the camera (U.p3.z wu), not the GL proportional clip.z *= 1+K: in
-    // reverse-Z that moved the plane ~K of the camera distance (140 wu at a 4.7 km top-down view),
-    // so the water won over every low plateau and beach near the waterline.
+    // shore field says water does not cut notches into it. Cover the tile's highest corner:
+    // a fixed ray distance left tall corners above water, exposing the terrain triangulation.
+    // The field still owns coverage; cap the depth-only lift at one terrain cell.
     if (shoreFlat && U.p3.z > 0.0) {
         vec3 toCam   = F.f0.yzw - worldPos;
         float camRun = length(toCam);
         if (camRun > 1.0 && abs(worldPos.z - F.f0.w) < camRun) {
-            vec3 lifted  = worldPos + toCam * (U.p3.z / camRun);
+            float tileTop = max(max(rec.elev.x, rec.elev.y), max(rec.elev.z, rec.elev.w));
+            float cover = max(tileTop - worldPos.z + 1.0, 0.0) * camRun / max(toCam.z, 1.0);
+            float lift = min(max(U.p3.z, cover), 128.0);
+            vec3 lifted  = worldPos + toCam * (lift / camRun);
             vec4 clipL   = U.worldToClipGL * vec4(lifted, 1.0);
             if (abs(clipL.w) > 1e-5)
                 clip.z = (clipL.z / clipL.w + fudge) * clip.w;
