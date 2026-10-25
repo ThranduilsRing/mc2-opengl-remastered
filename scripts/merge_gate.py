@@ -43,6 +43,8 @@ def plan(jobs, proof_dir=None, capture_before_runs=1, before_dir=None):
         ("tier1", [py, "scripts/run_smoke.py", "--tier", "tier1", "--keep-logs", "--deploy", "0.4"],
          {"MC2_DEBUG_STATE_DUMP": "1", "MC2_DIAG_TAGS": "CONFIG,BUILD,DEVICE"}),
         ("mods", [py, "tools/mod_smoke.py", "--battery", "--exe", install + "/mc2.exe", "--build-dir", "build64-ninja"], {}),
+        # The ordinary contracts row is offline; fresh default-build quiet grading launches the game, so it lives here with the gate's exe.
+        ("quiet", [py, "scripts/check-default-build-quiet.py", "--fresh-smoke", "--exe", install + "/mc2.exe"], {}),
     ]
     # Preserve the original stage names and paths for existing --stages callers.
     noise = []

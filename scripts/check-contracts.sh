@@ -1044,7 +1044,8 @@ run_check "bookmark_honesty"       "py -3 scripts/check-visual-bookmark-honesty.
 # diagnostic output -- that log is what a real user sees on a normal launch.
 # Runtime check, not a grep: "is this printf gated?" is not answerable
 # lexically (getenv-seeded statics, MC2_*_DIAG bitmasks, default-ON IsEnabled(),
-# #ifdefs, gated enclosing functions). It launches and grades a fresh default smoke.
+# #ifdefs, gated enclosing functions). This row is OFFLINE: it grades default-env smoke
+# logs already on disk or SKIPs; the fresh launch is the merge_gate "quiet" stage.
 run_check "default_build_quiet"    "py -3 scripts/check-default-build-quiet.py"
 # VK-OWNERSHIP-1: the ledger of hand-written Vulkan create/release code is the tool's rendering of the source; a converted island that grows manual code again, or a
 # ledger nobody regenerated, is stale.

@@ -36,12 +36,15 @@ The baseline is DEBT, not an approved list. Every entry without an explicit
 
 USAGE
   py -3 scripts/check-default-build-quiet.py --log <path> [--log <path> ...]
-  py -3 scripts/check-default-build-quiet.py --smoke-artifacts   # newest tier1 run
+  py -3 scripts/check-default-build-quiet.py --smoke-artifacts   # newest default-env smoke run on disk
+  py -3 scripts/check-default-build-quiet.py --fresh-smoke --exe <mc2.exe>   # merge-gate stage: launches the game
   py -3 scripts/check-default-build-quiet.py --update-baseline   # re-seed (review the diff!)
 
 Exit 0 = no new tags, 1 = new unconditional diagnostic output found.
-With no explicit logs, launches a fresh default smoke and fails if it cannot be graded.
---smoke-artifacts explicitly opts into historical logs for offline analysis.
+OFFLINE BY DEFAULT: with no flags this grades existing default-env smoke logs, or
+SKIPs ("no fresh smoke log; graded at merge gate"). It never launches the game, so
+the ordinary check-contracts row stays offline. Only --fresh-smoke launches one, and
+it requires the explicit --exe (scripts/merge_gate.py passes the gate's install).
 """
 from __future__ import annotations
 
@@ -147,8 +150,12 @@ def load_baseline() -> dict:
     return json.loads(BASELINE.read_text(encoding="utf-8"))
 
 
-def fresh_smoke_logs(exe=None):
-    """Grade only the smoke launched by this invocation, never historical artifacts."""
+def fresh_smoke_logs(exe):
+    """Grade only the smoke launched by this invocation, never historical artifacts.
+
+    The only game-launch path in this tool; reached only through --fresh-smoke with an explicit exe."""
+    if not exe:
+        raise RuntimeError("--fresh-smoke requires an explicit --exe")
     proof = Path("E:/mc2-archive-2026-10/proofs/default-build-quiet")
     proof.mkdir(parents=True, exist_ok=True)
     run_root = Path(tempfile.mkdtemp(prefix="run-", dir=proof))
@@ -156,7 +163,7 @@ def fresh_smoke_logs(exe=None):
     env["MC2_SMOKE_ARTIFACT_ROOT"] = str(run_root)
     command = [sys.executable, str(ROOT / "scripts/run_smoke.py"), "--mission", "mc2_10",
                "--duration", "15", "--keep-logs"]
-    command += ["--exe", str(exe)] if exe else ["--deploy", "0.4"]
+    command += ["--exe", str(exe)]
     result = subprocess.run(command, cwd=ROOT, env=env, **console_child.child_kwargs())
     if result.returncode:
         raise RuntimeError(f"fresh default smoke failed ({result.returncode}); logs: {run_root}")
@@ -176,23 +183,27 @@ def main() -> int:
     ap.add_argument("--update-baseline", action="store_true",
                     help="re-seed the baseline from the graded logs")
     ap.add_argument("--quiet", action="store_true")
-    ap.add_argument("--exe", type=Path, help="install executable for the fresh default smoke")
+    ap.add_argument("--fresh-smoke", action="store_true",
+                    help="launch a fresh default smoke of --exe and grade it (merge-gate stage only)")
+    ap.add_argument("--exe", type=Path, help="install executable for --fresh-smoke")
     args = ap.parse_args()
 
     logs = [Path(p) for p in args.log]
     if args.smoke_artifacts:
         logs.extend(newest_smoke_logs())
-    elif not logs:
+    if args.fresh_smoke:
         try:
-            logs = fresh_smoke_logs(args.exe)
+            logs.extend(fresh_smoke_logs(args.exe))
         except (OSError, RuntimeError) as exc:
             print(f"[quiet-ratchet] FAIL: {exc}")
             return 1
+    elif not logs and not args.smoke_artifacts:
+        logs.extend(newest_smoke_logs())
     logs = [p for p in logs if p.is_file()]
 
     if not logs:
-        print("[quiet-ratchet] SKIP: no log available "
-              "(run scripts/run_smoke.py --tier tier1 --keep-logs first)")
+        print("[quiet-ratchet] SKIP: no fresh smoke log; graded at merge gate "
+              "(merge_gate stage 'quiet' runs --fresh-smoke --exe <install>/mc2.exe)")
         return 0
 
     seen: set[str] = set()
