@@ -55,6 +55,7 @@ void BldgAppearance::updateSearchlight()
     auto root = mc2::math::quatFromEuler(mc2::math::Euler(0, rotation * DEGREES_TO_RADS, 0));
     glm::vec3 translation; mc2ToRender(translation, position);
     // Lights and glow below must sample THIS frame's lamp hierarchy.
+    bldgShape->InvalidateHierarchy();
     bldgShape->TransformMultiShape_HierarchyOnly(&translation, &root);
     if (mc2::gate::get<"MC2_LIGHT_CONE_DIAG">()) {
         static unsigned count = 0;
