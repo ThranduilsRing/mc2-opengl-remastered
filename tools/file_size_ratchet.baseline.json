@@ -14,7 +14,7 @@
   "tools"
  ],
  "files_over_1500": {
-  "GameOS/gameos/engine_present_vk.cpp": 2902,
+  "GameOS/gameos/engine_present_vk.cpp": 2904,
   "GameOS/gameos/vulkan_color_prop_island.cpp": 1954,
   "GameOS/include/gameos.hpp": 3661,
   "code/artlry.cpp": 1701,
@@ -55,11 +55,11 @@
   "mclib/tgl.h": 1821,
   "tools/cite_guard.py": 1553,
   "tools/comment_guard.py": 1790,
-  "tools/mc2_launcher/mc2_launcher.cpp": 3195,
+  "tools/mc2_launcher/mc2_launcher.cpp": 3201,
   "tools/scifi_kit/art/intent_military.py": 3363,
   "tools/terrain_beautify/visual_heightfield.py": 1510
  },
- "head": "2c5761ade",
+ "head": "95168240d",
  "per_dir": {
   "GameAdapters": {
    "files": 13,
@@ -89,7 +89,7 @@
    "files": 8,
    "files_over_1500": 0,
    "files_over_3000": 0,
-   "max_lines": 1027
+   "max_lines": 1026
   },
   "code": {
    "files": 435,
@@ -122,7 +122,7 @@
    "max_lines": 675
   },
   "tools": {
-   "files": 618,
+   "files": 619,
    "files_over_1500": 5,
    "files_over_3000": 2,
    "max_lines": 3363
@@ -143,11 +143,11 @@
   },
   {
    "file": "tools/mc2_launcher/mc2_launcher.cpp",
-   "lines": 3195
+   "lines": 3201
   },
   {
    "file": "GameOS/gameos/engine_present_vk.cpp",
-   "lines": 2902
+   "lines": 2904
   },
   {
    "file": "code/brain_special_dispatch.cpp",
@@ -255,7 +255,7 @@
   }
  ],
  "total": {
-  "files": 2552,
+  "files": 2553,
   "files_over_1500": 44,
   "files_over_3000": 3,
   "max_lines": 3661
