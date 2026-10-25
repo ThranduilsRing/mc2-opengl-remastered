@@ -1,4 +1,7 @@
 {
+  "scripts/tests/test_kit_visibility.py": "Executed by the kit_visibility contract row through pytest; receipt and runtime override regression coverage.",
+  "scripts/tests/test_spirv_fixups.py": "Executed by the spirv_artifacts contract row through pytest; shader package regression coverage.",
+  "scripts/tests/test_window_emission.py": "Executed by the vk_shaders_compile contract row through pytest; compiled linear-light window emission coverage.",
   "scripts/tests/test_native_binding_contracts.py": "Pytest-discovered by scripts/run_scripts_tests.py through scripts/test_ownership.json; native Vulkan descriptor and lighting contract regression coverage.",
   "scripts/tests/test_postprocess_cas_upscale.py": "Pytest-discovered by scripts/run_scripts_tests.py through scripts/test_ownership.json; compiled CAS and Catmull-Rom shader regression coverage.",
   "tools/scifi_kit/art/building_cells.py": "Operator-run stock/remake blocking-cell comparison; invocation documented in its module header.",
