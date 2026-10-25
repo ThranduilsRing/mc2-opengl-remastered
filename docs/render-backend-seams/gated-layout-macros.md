@@ -6,7 +6,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN`)
 
-- Header: `GameOS/gameos/engine_present_vk.h:51`
+- Header: `GameOS/gameos/engine_present_vk.h:24`
 - Class: `EnginePresentHealth`  (data-member)
 - Member: `bool        attempted         = false;`
 - Consuming targets: gameos, gameos_main, gui_runtime
@@ -14,7 +14,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN`)
 
-- Header: `GameOS/gameos/engine_present_vk.h:53`
+- Header: `GameOS/gameos/engine_present_vk.h:26`
 - Class: `EnginePresentHealth`  (data-member)
 - Member: `uint32_t    resize_count      = 0;`
 - Consuming targets: gameos, gameos_main, gui_runtime
@@ -22,7 +22,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN`)
 
-- Header: `GameOS/gameos/engine_present_vk.h:62`
+- Header: `GameOS/gameos/engine_present_vk.h:35`
 - Class: `EnginePresentHealth`  (data-member)
 - Member: `uint32_t    resize_recreate_ok       = 0;`
 - Consuming targets: gameos, gameos_main, gui_runtime
@@ -30,7 +30,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN`)
 
-- Header: `GameOS/gameos/engine_present_vk.h:63`
+- Header: `GameOS/gameos/engine_present_vk.h:36`
 - Class: `EnginePresentHealth`  (data-member)
 - Member: `uint32_t    resize_recreate_retries  = 0;`
 - Consuming targets: gameos, gameos_main, gui_runtime
@@ -38,7 +38,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN`)
 
-- Header: `GameOS/gameos/engine_present_vk.h:64`
+- Header: `GameOS/gameos/engine_present_vk.h:37`
 - Class: `EnginePresentHealth`  (data-member)
 - Member: `uint32_t    resize_recreate_failsoft = 0;`
 - Consuming targets: gameos, gameos_main, gui_runtime
@@ -46,7 +46,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN`)
 
-- Header: `GameOS/gameos/engine_present_vk.h:66`
+- Header: `GameOS/gameos/engine_present_vk.h:39`
 - Class: `EnginePresentHealth`  (data-member)
 - Member: `uint32_t    extent_w          = 0;`
 - Consuming targets: gameos, gameos_main, gui_runtime
@@ -54,7 +54,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN`)
 
-- Header: `GameOS/gameos/engine_present_vk.h:67`
+- Header: `GameOS/gameos/engine_present_vk.h:40`
 - Class: `EnginePresentHealth`  (data-member)
 - Member: `uint32_t    extent_h          = 0;`
 - Consuming targets: gameos, gameos_main, gui_runtime
@@ -62,7 +62,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN`)
 
-- Header: `GameOS/gameos/engine_present_vk.h:72`
+- Header: `GameOS/gameos/engine_present_vk.h:45`
 - Class: `EnginePresentHealth`  (data-member)
 - Member: `unsigned long long last_readback_checksum = 0;`
 - Consuming targets: gameos, gameos_main, gui_runtime
@@ -70,7 +70,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN`)
 
-- Header: `GameOS/gameos/engine_present_vk.h:73`
+- Header: `GameOS/gameos/engine_present_vk.h:46`
 - Class: `EnginePresentHealth`  (data-member)
 - Member: `unsigned long long prev_readback_checksum = 0;`
 - Consuming targets: gameos, gameos_main, gui_runtime
@@ -78,7 +78,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN`)
 
-- Header: `GameOS/gameos/engine_present_vk.h:90`
+- Header: `GameOS/gameos/engine_present_vk.h:63`
 - Class: `EnginePresentHealth`  (data-member)
 - Member: `uint32_t    hud_vk_color_draws_last = 0;`
 - Consuming targets: gameos, gameos_main, gui_runtime
@@ -86,7 +86,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN`)
 
-- Header: `GameOS/gameos/engine_present_vk.h:91`
+- Header: `GameOS/gameos/engine_present_vk.h:64`
 - Class: `EnginePresentHealth`  (data-member)
 - Member: `uint32_t    hud_vk_textured_frames = 0;`
 - Consuming targets: gameos, gameos_main, gui_runtime
@@ -94,7 +94,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN`)
 
-- Header: `GameOS/gameos/engine_present_vk.h:92`
+- Header: `GameOS/gameos/engine_present_vk.h:65`
 - Class: `EnginePresentHealth`  (data-member)
 - Member: `uint32_t    hud_vk_textured_draws_last = 0;`
 - Consuming targets: gameos, gameos_main, gui_runtime
@@ -102,7 +102,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN`)
 
-- Header: `GameOS/gameos/engine_present_vk.h:93`
+- Header: `GameOS/gameos/engine_present_vk.h:66`
 - Class: `EnginePresentHealth`  (data-member)
 - Member: `uint32_t    hud_vk_texture_uploads = 0;`
 - Consuming targets: gameos, gameos_main, gui_runtime
@@ -110,7 +110,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN`)
 
-- Header: `GameOS/gameos/engine_present_vk.h:94`
+- Header: `GameOS/gameos/engine_present_vk.h:67`
 - Class: `EnginePresentHealth`  (data-member)
 - Member: `bool        imgui_vk_ready      = false;`
 - Consuming targets: gameos, gameos_main, gui_runtime
@@ -118,7 +118,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN`)
 
-- Header: `GameOS/gameos/engine_present_vk.h:102`
+- Header: `GameOS/gameos/engine_present_vk.h:75`
 - Class: `EnginePresentHealth`  (data-member)
 - Member: `double      composite_wait_us_last = 0.0;`
 - Consuming targets: gameos, gameos_main, gui_runtime
@@ -126,7 +126,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN`)
 
-- Header: `GameOS/gameos/engine_present_vk.h:103`
+- Header: `GameOS/gameos/engine_present_vk.h:76`
 - Class: `EnginePresentHealth`  (data-member)
 - Member: `double      composite_wait_us_accum = 0.0;`
 - Consuming targets: gameos, gameos_main, gui_runtime
@@ -134,7 +134,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN`)
 
-- Header: `GameOS/gameos/engine_present_vk.h:104`
+- Header: `GameOS/gameos/engine_present_vk.h:77`
 - Class: `EnginePresentHealth`  (data-member)
 - Member: `uint32_t    composite_wait_samples = 0;`
 - Consuming targets: gameos, gameos_main, gui_runtime
@@ -142,7 +142,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN`)
 
-- Header: `GameOS/gameos/engine_present_vk.h:109`
+- Header: `GameOS/gameos/engine_present_vk.h:82`
 - Class: `VkHudVertex`  (data-member)
 - Member: `float x = 0.0f, y = 0.0f, z = 0.0f, rhw = 1.0f;`
 - Consuming targets: gameos, gameos_main, gui_runtime
@@ -150,7 +150,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN`)
 
-- Header: `GameOS/gameos/engine_present_vk.h:110`
+- Header: `GameOS/gameos/engine_present_vk.h:83`
 - Class: `VkHudVertex`  (data-member)
 - Member: `uint32_t argb = 0xffffffffu;`
 - Consuming targets: gameos, gameos_main, gui_runtime
@@ -158,7 +158,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN`)
 
-- Header: `GameOS/gameos/engine_present_vk.h:111`
+- Header: `GameOS/gameos/engine_present_vk.h:84`
 - Class: `VkHudVertex`  (data-member)
 - Member: `uint32_t frgb = 0xffffffffu;`
 - Consuming targets: gameos, gameos_main, gui_runtime
@@ -166,7 +166,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN`)
 
-- Header: `GameOS/gameos/engine_present_vk.h:112`
+- Header: `GameOS/gameos/engine_present_vk.h:85`
 - Class: `VkHudVertex`  (data-member)
 - Member: `float u = 0.0f, v = 0.0f;`
 - Consuming targets: gameos, gameos_main, gui_runtime
@@ -174,7 +174,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN`)
 
-- Header: `GameOS/gameos/engine_present_vk.h:116`
+- Header: `GameOS/gameos/engine_present_vk.h:89`
 - Class: `VkHudDraw`  (data-member)
 - Member: `uint32_t kind = 0;`
 - Consuming targets: gameos, gameos_main, gui_runtime
@@ -182,7 +182,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN`)
 
-- Header: `GameOS/gameos/engine_present_vk.h:117`
+- Header: `GameOS/gameos/engine_present_vk.h:90`
 - Class: `VkHudDraw`  (data-member)
 - Member: `uint32_t textureHandle = 0;`
 - Consuming targets: gameos, gameos_main, gui_runtime
@@ -190,7 +190,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN`)
 
-- Header: `GameOS/gameos/engine_present_vk.h:118`
+- Header: `GameOS/gameos/engine_present_vk.h:91`
 - Class: `VkHudDraw`  (data-member)
 - Member: `uint32_t textureWidth = 0;`
 - Consuming targets: gameos, gameos_main, gui_runtime
@@ -198,7 +198,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN`)
 
-- Header: `GameOS/gameos/engine_present_vk.h:119`
+- Header: `GameOS/gameos/engine_present_vk.h:92`
 - Class: `VkHudDraw`  (data-member)
 - Member: `uint32_t textureHeight = 0;`
 - Consuming targets: gameos, gameos_main, gui_runtime
@@ -206,7 +206,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN`)
 
-- Header: `GameOS/gameos/engine_present_vk.h:120`
+- Header: `GameOS/gameos/engine_present_vk.h:93`
 - Class: `VkHudDraw`  (data-member)
 - Member: `uint32_t textureFormat = 0;`
 - Consuming targets: gameos, gameos_main, gui_runtime
@@ -214,7 +214,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN`)
 
-- Header: `GameOS/gameos/engine_present_vk.h:121`
+- Header: `GameOS/gameos/engine_present_vk.h:94`
 - Class: `VkHudDraw`  (data-member)
 - Member: `uint32_t textureSerial = 0;`
 - Consuming targets: gameos, gameos_main, gui_runtime
@@ -222,7 +222,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN`)
 
-- Header: `GameOS/gameos/engine_present_vk.h:122`
+- Header: `GameOS/gameos/engine_present_vk.h:95`
 - Class: `VkHudDraw`  (data-member)
 - Member: `uint32_t alphaMode = 0;`
 - Consuming targets: gameos, gameos_main, gui_runtime
@@ -230,7 +230,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN`)
 
-- Header: `GameOS/gameos/engine_present_vk.h:123`
+- Header: `GameOS/gameos/engine_present_vk.h:96`
 - Class: `VkHudDraw`  (data-member)
 - Member: `uint32_t textureAddress = 0;`
 - Consuming targets: gameos, gameos_main, gui_runtime
@@ -238,7 +238,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN`)
 
-- Header: `GameOS/gameos/engine_present_vk.h:124`
+- Header: `GameOS/gameos/engine_present_vk.h:97`
 - Class: `VkHudDraw`  (data-member)
 - Member: `uint32_t filter = 0;`
 - Consuming targets: gameos, gameos_main, gui_runtime
@@ -246,7 +246,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN`)
 
-- Header: `GameOS/gameos/engine_present_vk.h:125`
+- Header: `GameOS/gameos/engine_present_vk.h:98`
 - Class: `VkHudDraw`  (data-member)
 - Member: `uint32_t foregroundColor = 0;`
 - Consuming targets: gameos, gameos_main, gui_runtime
@@ -254,7 +254,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN`)
 
-- Header: `GameOS/gameos/engine_present_vk.h:134`
+- Header: `GameOS/gameos/engine_present_vk.h:107`
 - Class: `VkHudDraw`  (data-member)
 - Member: `std::shared_ptr<const std::vector<uint8_t>> textureRgba;`
 - Consuming targets: gameos, gameos_main, gui_runtime
@@ -262,7 +262,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN`)
 
-- Header: `GameOS/gameos/engine_present_vk.h:135`
+- Header: `GameOS/gameos/engine_present_vk.h:108`
 - Class: `VkHudDraw`  (data-member)
 - Member: `std::vector<VkHudVertex> vertices;`
 - Consuming targets: gameos, gameos_main, gui_runtime
@@ -270,7 +270,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN`)
 
-- Header: `GameOS/gameos/engine_present_vk.h:146`
+- Header: `GameOS/gameos/engine_present_vk.h:119`
 - Class: `EnginePresentVk`  (data-member)
 - Member: `EnginePresentVk& operator=(const EnginePresentVk&) = delete;`
 - Consuming targets: gameos, gameos_main, gui_runtime
@@ -278,7 +278,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN`)
 
-- Header: `GameOS/gameos/engine_present_vk.h:196`
+- Header: `GameOS/gameos/engine_present_vk.h:169`
 - Class: `EnginePresentVk`  (data-member)
 - Member: `uint32_t canvasW = 0, uint32_t canvasH = 0);`
 - Consuming targets: gameos, gameos_main, gui_runtime
@@ -286,7 +286,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN`)
 
-- Header: `GameOS/gameos/engine_present_vk.h:232`
+- Header: `GameOS/gameos/engine_present_vk.h:205`
 - Class: `EnginePresentVk`  (data-member)
 - Member: `Impl* impl_ = nullptr;`
 - Consuming targets: gameos, gameos_main, gui_runtime
@@ -294,7 +294,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN`)
 
-- Header: `GameOS/gameos/engine_present_vk.h:238`
+- Header: `GameOS/gameos/engine_present_vk.h:211`
 - Class: `EnginePresentVk`  (data-member)
 - Member: `bool created_ = false;`
 - Consuming targets: gameos, gameos_main, gui_runtime
@@ -302,7 +302,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN`)
 
-- Header: `GameOS/gameos/engine_present_vk.h:239`
+- Header: `GameOS/gameos/engine_present_vk.h:212`
 - Class: `EnginePresentVk`  (data-member)
 - Member: `bool nativeCompositeArmed_ = false;`
 - Consuming targets: gameos, gameos_main, gui_runtime
@@ -310,7 +310,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN`)
 
-- Header: `GameOS/gameos/engine_present_vk.h:241`
+- Header: `GameOS/gameos/engine_present_vk.h:214`
 - Class: `EnginePresentVk`  (data-member)
 - Member: `bool presentImageVkOwned_ = false;`
 - Consuming targets: gameos, gameos_main, gui_runtime
@@ -318,7 +318,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN`)
 
-- Header: `GameOS/gameos/engine_present_vk.h:247`
+- Header: `GameOS/gameos/engine_present_vk.h:220`
 - Class: `EnginePresentVk`  (data-member)
 - Member: `unsigned int notOwnedStreak_ = 0;`
 - Consuming targets: gameos, gameos_main, gui_runtime
@@ -326,7 +326,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN`)
 
-- Header: `GameOS/gameos/engine_present_vk.h:250`
+- Header: `GameOS/gameos/engine_present_vk.h:223`
 - Class: `EnginePresentVk`  (data-member)
 - Member: `SDL_Window* window_ = nullptr;`
 - Consuming targets: gameos, gameos_main, gui_runtime
@@ -334,7 +334,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN`)
 
-- Header: `GameOS/gameos/engine_present_vk.h:251`
+- Header: `GameOS/gameos/engine_present_vk.h:224`
 - Class: `EnginePresentVk`  (data-member)
 - Member: `EnginePresentHealth health_;`
 - Consuming targets: gameos, gameos_main, gui_runtime
