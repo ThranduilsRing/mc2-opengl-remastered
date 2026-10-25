@@ -272,6 +272,9 @@ def execute_parallel(steps, head, dry_run=False):
     if dry_run:
         print("Coverage plan: mods overlap stock proofs after deploy; two host slots, separate installs")
         return execute(steps, head, True)
+    if os.environ.get("MC2_HOST_LEASE_BATCH"):
+        print("Coverage plan: inherited batch reservation requires serial execution")
+        return execute(steps, head)
     pending = []
     with ThreadPoolExecutor(max_workers=1) as pool:
         def runner(command, cwd, env):

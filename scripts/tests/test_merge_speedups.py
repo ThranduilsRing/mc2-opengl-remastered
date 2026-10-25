@@ -610,6 +610,8 @@ def test_smoke_bookmark_capture_rejects_missing_or_wrong_evidence(tmp_path):
     assert env["MC2_SMOKE_FIXED_TIMESTEP"] == "1"
     with pytest.raises(RuntimeError, match="missing"):
         capture.smoke_capture([bookmark], "mc2_01", out, True)
+
+
     for name in ("one", "two"):
         png = out / "day" / f"mc2_01_{name}.png"
         png.write_bytes(b"png")
@@ -619,6 +621,18 @@ def test_smoke_bookmark_capture_rejects_missing_or_wrong_evidence(tmp_path):
     png.with_suffix(".json").write_text('{}')
     with pytest.raises(RuntimeError, match="invalid"):
         capture.smoke_capture([bookmark], "mc2_01", out, True)
+
+
+def test_parallel_gate_respects_inherited_batch_and_failed_deploy(monkeypatch):
+    import merge_gate as gate
+    seen = []
+    monkeypatch.setenv("MC2_HOST_LEASE_BATCH", "parent")
+    monkeypatch.setattr(gate, "execute", lambda steps, *a, **kw: seen.extend(steps) or 1)
+    steps = [("deploy", ["deploy"], {}), ("mods", ["mods"], {})]
+    assert gate.execute_parallel(steps, "head") == 1 and seen == steps
+    seen.clear()
+    monkeypatch.delenv("MC2_HOST_LEASE_BATCH")
+    assert gate.execute_parallel(steps, "head") == 1 and seen == steps[:1]
 
 
 @pytest.mark.parametrize("generator,failure", [("Ninja", ""), ("Visual Studio", ""), ("missing", ""),
