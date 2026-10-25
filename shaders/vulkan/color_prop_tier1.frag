@@ -81,6 +81,7 @@ flat layout(location = 11) in vec3 vMaterialAmbient;
 flat layout(location = 12) in vec3 vMaterialSun;
 flat layout(location = 13) in uint vMaterialFlags;
 layout(location = 14) in vec2 vTree;
+flat layout(location = 15) in uvec2 vWindow;
 
 // The vertex stage's push block; the FS reads only packetAlphaTest.
 #include "include/prop_packet_vk.glsl"
@@ -252,6 +253,15 @@ void main() {
         // SH already contains linear irradiance. Preserve the stock albedo exposure ceiling.
         rgb = propEncodeColor(min(albedo,composeGroundLighting(albedo,max(ambient,vec3(0))*vTree.x*materialAO,direct,treeVisibility(N),vec3(0))));
         rgb += propEncodeColor(albedo) * poolLight + vHighlight.rgb*vHighlight.a;
+    }
+    if (vWindow.x != 0u && uFrame.nightDarkness > 0.0 && (vMaterialFlags & 1u) == 0u) {
+        uint h = vWindow.x ^ vWindow.y;
+        h ^= h >> 16; h *= 0x7feb352du;
+        h ^= h >> 15; h *= 0x846ca68bu; h ^= h >> 16;
+        if (float(h & 0xffffu) < 0.35 * 65536.0) {
+            float warmth = float(h >> 16) / 65535.0;
+            rgb += uFrame.nightDarkness * mix(vec3(0.72, 0.36, 0.12), vec3(1.0, 0.70, 0.34), warmth);
+        }
     }
     oColor = vec4(rgb, cover);
 

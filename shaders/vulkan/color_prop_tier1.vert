@@ -94,6 +94,7 @@ flat layout(location = 11) out vec3 vMaterialAmbient;
 flat layout(location = 12) out vec3 vMaterialSun;
 flat layout(location = 13) out uint vMaterialFlags;
 layout(location = 14) out vec2 vTree; // ambient AO, tree material active
+flat layout(location = 15) out uvec2 vWindow; // glass cell ID, stable building seed
 
 // Per-type hot-colour magic: the emission colours of the three night tags (windows, outside building lights, building base lights), taken from the type's ini.
 // Three vec4 per type in the order pink, yellow, green; indexed by inst.typeID. Same table the GL prop shader reads.
@@ -146,6 +147,15 @@ void main() {
         return;
     }
     GpuStaticPropInstance inst = uInstances.i[uFrame.instBase + gl_InstanceIndex];
+    // Importer reserves alpha 0x7d/0x7e for UV1 glass IDs with white/black seeds.
+    uint lightTag = a_aRGBLight >> 24;
+    bool windowCell = (inst.flags & 64u) != 0u && (lightTag == 0x7du || lightTag == 0x7eu);
+    uint vertexLight = windowCell ? (lightTag == 0x7du ? 0xffffffffu : 0xff000000u) : a_aRGBLight;
+    // Translation is the last row (row-vector transform).
+    vec3 origin = vec3(inst.modelMatrix[0][3], inst.modelMatrix[1][3], inst.modelMatrix[2][3]);
+    vWindow = uvec2(windowCell ? a_aRGBLight & 0xffffffu : 0u,
+                    floatBitsToUint(origin.x) ^ (floatBitsToUint(origin.y) * 1664525u)
+                    ^ (floatBitsToUint(origin.z) * 1013904223u));
     // Row-vector * M — identical to the GL VS (Stuff std430 column-major convention).
     vec4 world_stuff = vec4(a_position, 1.0) * inst.modelMatrix;
     // POSITION: Stuff -> MC2 frame swizzle — identical to the GL VS.
@@ -203,10 +213,10 @@ void main() {
     // windows, building base lights and runway / beacon fixtures light up at night exactly as authored and stay dark by day.
     const uint kFlagIsLightsOut = 1u << 0;
     const uint kFlagIsWindow    = 1u << 1;
-    const uint b8 = (a_aRGBLight >>  0) & 0xFFu;
-    const uint g8 = (a_aRGBLight >>  8) & 0xFFu;
-    const uint r8 = (a_aRGBLight >> 16) & 0xFFu;
-    const uint a8 = (a_aRGBLight >> 24) & 0xFFu;
+    uint b8 = (vertexLight >>  0) & 0xFFu;
+    uint g8 = (vertexLight >>  8) & 0xFFu;
+    uint r8 = (vertexLight >> 16) & 0xFFu;
+    uint a8 = (vertexLight >> 24) & 0xFFu;
     const uint startV = b8 | (g8 << 8) | (r8 << 16) | (a8 << 24);   // start_v_light packing (lighting.hglsl)
     // Until the real table is bound (placeholder: one entry) or for a type past its end, the emission colours are black.
     const uint hotBase = inst.typeID * 3u;
