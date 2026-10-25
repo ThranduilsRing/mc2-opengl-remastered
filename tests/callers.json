@@ -4331,35 +4331,35 @@
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 608,
+          "line": 609,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 629,
+          "line": 630,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 656,
+          "line": 657,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 685,
+          "line": 686,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 700,
+          "line": 701,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
@@ -4412,7 +4412,7 @@
           "line": 130,
           "evidence": "command",
           "reference": "$ROOT/scripts/ninja_build.py",
-          "text": "MC2_NINJA_TREE=\"$ENGINE_BUILD\" py -3 \"$ROOT/scripts/ninja_build.py\" -j\"$JOBS\" model_override_tests static_natural_skip_policy_tests"
+          "text": "MC2_NINJA_TREE=\"${ENGINE_BUILD#\"$ROOT/\"}\" py -3 \"$ROOT/scripts/ninja_build.py\" -j\"$JOBS\" model_override_tests static_natural_skip_policy_tests"
         },
         {
           "path": "tests/mapgen/test_mission_codec.py",
@@ -4942,7 +4942,7 @@
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 670,
+          "line": 671,
           "evidence": "import",
           "reference": "run_tools_tests",
           "text": "import run_tools_tests as tt"
