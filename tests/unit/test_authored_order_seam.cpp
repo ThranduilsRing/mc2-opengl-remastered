@@ -8,6 +8,8 @@
 #include "movemgr.h"
 #include "team.h"
 #include "Stuff/stuffheaders.hpp"
+#include "bdactor.h"
+#include "content_ir.h"
 
 #include <cstdlib>
 #include <algorithm>
@@ -129,6 +131,43 @@ struct CompileLog {
         return result;
     }
 };
+}
+
+TEST_CASE("BuildingSimPose/missing collision shape marks no cells") {
+    BldgAppearance appearance;
+    short cells[] = {8, -1, -1};
+    long rect[] = {-1, -1, -1, -1};
+    CHECK(appearance.markMoveMap(false, rect, false, cells) == 0);
+    CHECK(rect[0] > rect[2]);
+    CHECK(rect[1] > rect[3]);
+    CHECK(cells[0] == 8);
+    CHECK_FALSE(appearance.simPose->ready);
+    BldgAppearanceType type;
+    appearance.appearType = &type;
+    CHECK(appearance.markMoveMap(false, nullptr) == 0);
+    appearance.appearType = nullptr; // borrowed type
+}
+
+TEST_CASE("ContentCook/cache publication failure is reported as failure") {
+    namespace fs = std::filesystem;
+    const auto previous = fs::current_path();
+    const auto sandbox = fs::temp_directory_path() / ("mc2-cook-write-failure-" + std::to_string(GetCurrentProcessId()));
+    fs::create_directories(sandbox);
+    struct Restore {
+        fs::path previous, sandbox;
+        ~Restore() { fs::current_path(previous); fs::remove_all(sandbox); }
+    } restore{previous, sandbox};
+    fs::current_path(sandbox);
+    std::ofstream("cache") << "blocks cache directory creation";
+    mc2::content::Asset asset;
+    CompileLog log;
+    CHECK_FALSE(mc2::content::cook(asset, ""));
+    const auto text = log.text();
+    CHECK(text.find("[CONTENT_COOK_ERROR]") != std::string::npos);
+    CHECK(text.find("[CONTENT_COOK]") == std::string::npos);
+    fs::remove("cache");
+    CHECK(mc2::content::cook(asset, ""));
+    CHECK(mc2::content::cook(asset, ""));
 }
 
 TEST_CASE("ABLCompile/syntax rejection rolls back before the next compile") {
