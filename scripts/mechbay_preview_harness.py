@@ -38,15 +38,16 @@ def acquire_label(args) -> str:
 
 
 def main():
+    os.environ.update(MC2_HOST_GAME_SLOTS="2", MC2_HOST_CORES_PER_SLOT="2")
     ap = argparse.ArgumentParser()
-    ap.add_argument("screen", choices=["purchase", "bay", "loadout", "launch", "briefing", "encyclopedia", "encyclopedia_vehicles", "encyclopedia_pilots"])
+    ap.add_argument("screen", choices=["mainmenu", "purchase", "bay", "loadout", "launch", "briefing", "encyclopedia", "encyclopedia_vehicles", "encyclopedia_pilots"])
     ap.add_argument("--campaign", default="campaign",
                     help="stock campaign .fit basename passed to MC2_BOOT_TO_BAY (default: 'campaign')")
     ap.add_argument("--deploy", default=DEFAULT_DEPLOY)
     ap.add_argument("--preview-log", action="store_true",
                     help="set MC2_LOG_PREVIEW=1 (diagnostics go to the run log)")
     ap.add_argument("--frame", type=int, default=200,
-                    help="capture frame number (frames since boot settle)")
+                    help="boot frame number, or -5 for each screen's first five frames")
     ap.add_argument("--timeout", type=int, default=25,
                     help="hard kill after this many seconds regardless of screenshot state")
     ap.add_argument("--win-after-sec", type=int, default=2,
@@ -85,6 +86,7 @@ def main():
         env.pop(k, None)
 
     encyclopedia = args.screen.startswith("encyclopedia")
+    front_end = encyclopedia or args.screen == "mainmenu"
     env.update({
         "MC2_BOOT_TO_BAY": args.campaign,
         "MC2_BOOT_TO_SCREEN": args.screen,
@@ -126,7 +128,7 @@ def main():
     else:
         env.pop("MC2_LOG_PREVIEW", None)
 
-    if encyclopedia:
+    if front_end:
         # The Mechlopedia boots from the main menu: no campaign mission, no auto-win.
         for k in ("MC2_BOOT_TO_BAY", "MC2_SOAK_AUTOWIN", "MC2_SOAK_WIN_AFTER_SEC", "MC2_SOAK_STOP_AT_BAY"):
             env.pop(k, None)
@@ -150,7 +152,7 @@ def main():
             if args.tracy:
                 # The campaign first loads a mission. Profile the return to
                 # logistics rather than spending the trace on that mission load.
-                if not encyclopedia:
+                if not front_end:
                     while p.poll() is None and time.monotonic() - started < args.timeout - 21:
                         fo.flush()
                         if "[SOAK] autowin mission=" in out_stdout.read_text(errors="replace"):
@@ -164,7 +166,7 @@ def main():
                                              "-s", "20", "-f", "-o", str(args.tracy)], stdout=fo, stderr=fe,
                                             **nofocus.hidden_kwargs(creationflags=0x00004000))
             targets = ([21, 20, 22, 31] if args.walk else
-                       [-2] if encyclopedia else
+                       [-2] if encyclopedia else [-1] if args.screen == "mainmenu" else
                        [{"purchase":20,"bay":21,"loadout":22,"launch":31,"briefing":11}[args.screen]])
             while p.poll() is None and time.monotonic() - started < args.timeout:
                 if recorder is not None and recorder.poll() is not None:
