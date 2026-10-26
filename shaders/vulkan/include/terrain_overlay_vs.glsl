@@ -48,6 +48,6 @@ void main() {
     else
         clip4.z += OVERLAY_DEPTH_BIAS_REL * clip4.z;
     gl_Position = clip4;
-    if (!(clip4.w > 0.0 && clip4.z >= 0.0 && clip4.z <= clip4.w))
-        gl_Position = vec4(0.0, 0.0, -2.0, 1.0);
+    // Hardware clips whole triangles. Replacing one outside vertex with the
+    // screen centre stretches distant overlay triangles across visible pads.
 }

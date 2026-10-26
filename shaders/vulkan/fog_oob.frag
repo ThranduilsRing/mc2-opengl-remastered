@@ -46,33 +46,6 @@ layout(set = 0, binding = 1, std140) uniform FogOobParams {
     float u_horizonFadeEndSin;
 };
 
-// ---- 3D value noise (IDENTICAL to the GL fog_oob.frag) ----
-float hash31(vec3 p) {
-    p = fract(p * vec3(127.1, 311.7, 74.7));
-    return fract(sin(dot(p, vec3(269.5, 183.3, 246.1))) * 43758.5453);
-}
-
-float vnoise3(vec3 p) {
-    vec3 i = floor(p); vec3 f = fract(p);
-    f = f * f * (3.0 - 2.0 * f);
-    return mix(
-        mix(mix(hash31(i),              hash31(i+vec3(1,0,0)), f.x),
-            mix(hash31(i+vec3(0,1,0)),  hash31(i+vec3(1,1,0)), f.x), f.y),
-        mix(mix(hash31(i+vec3(0,0,1)),  hash31(i+vec3(1,0,1)), f.x),
-            mix(hash31(i+vec3(0,1,1)),  hash31(i+vec3(1,1,1)), f.x), f.y),
-        f.z);
-}
-
-float fbm3D(vec3 p) {
-    float v = 0.0, a = 0.5;
-    for (int i = 0; i < 5; i++) {
-        v += vnoise3(p) * a;
-        p  = p * 2.1 + vec3(1.7, 0.9, 1.4);
-        a *= 0.5;
-    }
-    return v;
-}
-
 void main()
 {
     float rawDepth = texture(depthTex, TexCoord).r;
@@ -86,30 +59,16 @@ void main()
     // VK-PARITY-F3: FOG-HORIZON-CLAMP-1 (verbatim from shaders/fog_oob.frag).
     float skyFade;
     if (u_horizonClampEnabled != 0) {
-        // inverseViewProj reconstructs terrain's MC2 world: +Z is up.
-        float elevSin = worldDir.z;
+        float elevSin = -worldDir.z;
         if (elevSin >= u_horizonFadeEndSin) { outFog = vec4(0.0); return; }
         skyFade = 1.0 - smoothstep(u_horizonFadeStartSin, u_horizonFadeEndSin, elevSin);
     } else {
         // Legacy: worldDir.z < 0 = sky. Fade in from just-above-horizon.
-        if (worldDir.z > 0.22) { outFog = vec4(0.0); return; }
-        skyFade = 1.0 - smoothstep(0.01, 0.22, worldDir.z);
+        if (worldDir.z < -0.22) { outFog = vec4(0.0); return; }
+        skyFade = smoothstep(-0.22, -0.01, worldDir.z);
     }
 
-    // Slow horizontal drift for cloud animation. Shift worldDir in XY plane.
-    vec3 p3 = worldDir * 4.5 + vec3(u_time * 0.008, u_time * 0.002, 0.0);
-
-    // 3D FBM on the sphere — naturally isotropic, no UV artifacts.
-    float n = fbm3D(p3);
-
-    // Solid cloud base + gentle surface variation from noise.
-    float base   = 0.86;
-    float ripple = (n - 0.50) * 0.28;
-    float alpha  = clamp((base + ripple) * skyFade * u_fogOpacity, 0.0, 1.0);
-
-    // Sunlit tops bright, shadowed hollows slightly grey.
-    float lit = smoothstep(0.38, 0.68, n);
-    vec3  col = mix(u_fogColor * 0.78, u_fogColor * 1.05, lit);
-
-    outFog = vec4(clamp(col, 0.0, 1.0), alpha);
+    // Smooth atmosphere at the map horizon. Procedural cloud cells here were
+    // magnified into rectangular patches by ground-level camera rays.
+    outFog = vec4(clamp(u_fogColor, 0.0, 1.0), clamp(skyFade * u_fogOpacity, 0.0, 1.0));
 }

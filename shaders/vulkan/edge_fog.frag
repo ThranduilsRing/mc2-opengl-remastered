@@ -70,9 +70,6 @@ void main()
 
     vec4 wp = invViewProj * vec4(ndc, rawDepth, 1.0);
     vec3 worldPos = wp.xyz / wp.w;
-    float geoZ = worldPos.z;
-
-    if (geoZ <= u_waterElevation + 2.0) { outFog = vec4(0.0); return; }
 
     // Use the visible surface, so a camera below the cloud top still sees haze
     // on boundary cliffs and skirts rather than failing a plane intersection.
@@ -86,7 +83,7 @@ void main()
     // never bleeds into the sky. clamp==0 -> factor 1.0 (previous behaviour).
     float horizonFactor = 1.0;
     if (u_horizonClampEnabled != 0) {
-        float elevSin = normalize(wFar - wNear).z;
+        float elevSin = -normalize(wFar - wNear).z;
         horizonFactor = 1.0 - smoothstep(u_horizonFadeStartSin, u_horizonFadeEndSin, elevSin);
     }
 
