@@ -186,15 +186,15 @@ void mv_cliffMaterial(vec3 macroN, vec3 planeLod, inout vec3 N, inout vec3 baseC
                  + vec3(nY.x, 0.0, nY.y) * wn.y
                  + vec3(nZ.x, nZ.y, 0.0) * wn.z;
 
-    // Height-derived shading normal: forward differences of the displacement per plane (one texel of the 2048 map as the step).
-    float hEps = exp2(max(planeLod.x, max(planeLod.y, planeLod.z))) / float(textureSize(u_matNormalArray, 0).x);
-    float hX0 = mv_cliffHeight(uvX, planeLod.x), hXu = mv_cliffHeight(uvX + vec2(hEps, 0.0), planeLod.x), hXv = mv_cliffHeight(uvX + vec2(0.0, hEps), planeLod.x);
-    float hY0 = mv_cliffHeight(uvY, planeLod.y), hYu = mv_cliffHeight(uvY + vec2(hEps, 0.0), planeLod.y), hYv = mv_cliffHeight(uvY + vec2(0.0, hEps), planeLod.y);
-    float hZ0 = mv_cliffHeight(uvZ, planeLod.z), hZu = mv_cliffHeight(uvZ + vec2(hEps, 0.0), planeLod.z), hZv = mv_cliffHeight(uvZ + vec2(0.0, hEps), planeLod.z);
-    float g = MATV_CLIFF_HEIGHT_NORMAL_STRENGTH / hEps;
-    vec3 hnX = normalize(vec3(-(hXu - hX0) * g, -(hXv - hX0) * g, 1.0));
-    vec3 hnY = normalize(vec3(-(hYu - hY0) * g, -(hYv - hY0) * g, 1.0));
-    vec3 hnZ = normalize(vec3(-(hZu - hZ0) * g, -(hZv - hZ0) * g, 1.0));
+    // Difference one texel at each plane's filtered mip, including non-2048 maps.
+    vec3 hEps = exp2(planeLod) / float(textureSize(u_matNormalArray, 0).x);
+    float hX0 = mv_cliffHeight(uvX, planeLod.x), hXu = mv_cliffHeight(uvX + vec2(hEps.x, 0.0), planeLod.x), hXv = mv_cliffHeight(uvX + vec2(0.0, hEps.x), planeLod.x);
+    float hY0 = mv_cliffHeight(uvY, planeLod.y), hYu = mv_cliffHeight(uvY + vec2(hEps.y, 0.0), planeLod.y), hYv = mv_cliffHeight(uvY + vec2(0.0, hEps.y), planeLod.y);
+    float hZ0 = mv_cliffHeight(uvZ, planeLod.z), hZu = mv_cliffHeight(uvZ + vec2(hEps.z, 0.0), planeLod.z), hZv = mv_cliffHeight(uvZ + vec2(0.0, hEps.z), planeLod.z);
+    vec3 g = MATV_CLIFF_HEIGHT_NORMAL_STRENGTH / hEps;
+    vec3 hnX = normalize(vec3(-(hXu - hX0) * g.x, -(hXv - hX0) * g.x, 1.0));
+    vec3 hnY = normalize(vec3(-(hYu - hY0) * g.y, -(hYv - hY0) * g.y, 1.0));
+    vec3 hnZ = normalize(vec3(-(hZu - hZ0) * g.z, -(hZv - hZ0) * g.z, 1.0));
     vec3 htTilt = vec3(0.0, hnX.x, hnX.y) * wn.x
                 + vec3(hnY.x, 0.0, hnY.y) * wn.y
                 + vec3(hnZ.x, hnZ.y, 0.0) * wn.z;

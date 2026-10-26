@@ -28,7 +28,8 @@ vec3 mv_detailNormal(vec4 w, float snowWeight, vec2 worldXY, float macroNz, vec2
         float slopeFade = smoothstep(0.55, 0.85, abs(macroNz));
         // Scatter roots use the terrain mesh. Keep grass, dirt and snow on that
         // surface rather than sliding their relief underneath the plants.
-        float pomStrength = distFade * slopeFade * w.x * (1.0 - snowWeight);
+        float scatterSurface = smoothstep(0.01, 0.05, w.y + w.z + snowWeight);
+        float pomStrength = distFade * slopeFade * w.x * (1.0 - scatterSurface);
         if (pomStrength > 0.001) {
             vec3 Vw = normalize(camW - v_worldPos);                 // fragment -> eye, MC2 world
             // The detail UVs are top-down planar with no y flip: tangent u = east, bitangent v = north, normal = up.
