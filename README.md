@@ -68,7 +68,7 @@ The code was C++98-era when the project started. Since 9 October 2026 a ratchet 
 
 That is 24,017 sites retired across all 20 idioms, or 21,103 without the two gate idioms. A site counts as retired when it was rewritten, or when it was deleted along with dead code (never-compiled MLR files, unused Stuff I/O and containers, dead heap branches and similar).
 
-It is practically a new code base. The tree holds about 644,000 lines of C++, and about 7 in 10 of its substantive lines did not exist in the port this project started from. The renderer, the content pipeline, the gate system and the test suites are all new.
+The tree has grown far beyond the code it started from. Counting substantive lines of C and C++ (30 or more characters, matched against Microsoft's 2006 shared-source release and alariq's port), about 67% of today's lines are new in this project, about 31% are Microsoft's original game code still present verbatim, and about 2% are lines from alariq's port that are not in Microsoft's release. The Microsoft share is concentrated in the game logic (`code/` and `mclib/`, each about half original). The renderer, the content pipeline, the gate system, the platform layer (`GameOS/`, 92% new) and the test suites are almost entirely new. Line matching understates edits to existing lines, so these figures measure what was written fresh, not what was touched.
 
 ## Building
 
@@ -206,7 +206,7 @@ The tree combines code from several origins. [LICENSES.md](LICENSES.md) has the 
 ## Credits
 
 - **Original game:** Microsoft and FASA Interactive (2001), and Microsoft for the shared-source release that makes all of this possible.
-- **alariq** ([alariq/mc2](https://github.com/alariq/mc2)): rebuilt the closed GameOS layer from its public headers, ported the game to 64-bit Windows and Linux on SDL and OpenGL, and fixed many bugs from the original game (2016 to 2021). This project began from that port; without it there would be nothing to remaster. That platform-layer code remains GPLv3.
+- **alariq** ([alariq/mc2](https://github.com/alariq/mc2)): wrote the SDL and OpenGL platform layer (GameOS) that Microsoft did not release source for, and ported Microsoft's game code to run on 64-bit Windows and Linux (2016 to 2021). Their port is where this project's history starts: a Microsoft-derived game on a working platform layer. Most of that platform layer has since been rewritten (about 43% of its lines survive), but the port made the rest possible. Code inherited from it remains GPLv3.
 - **Community creators:** [MechCommander Omnitech by magic](https://www.moddb.com/mods/mechcommander-omnitech) and [MC2X by Wolfman](https://mc2x.net/), who have kept this game alive for more than 20 years.
 - **[Alexbeav](https://github.com/Alexbeav)** ([MechCommander2-Restoration-Project](https://github.com/Alexbeav/MechCommander2-Restoration-Project)): D3F font loader, multi-monitor mouse grab, SDL window-event dispatch fix, FMV reference.
 - **[Methuselas](https://github.com/Methuselas):** Mission Editor and UI Editor.
