@@ -117,6 +117,7 @@
   "scripts/tests/test_native_render_hosts.py": "Pytest module discovered by scripts/run_scripts_tests.py through the scripts_tests contract row; discovery supplies the filenames at run time.",
   "scripts/tests/test_native_scene_targets.py": "Pytest module discovered by scripts/run_scripts_tests.py through the scripts_tests contract row; discovery supplies the filenames at run time.",
   "scripts/tests/test_no_gl_compiler.py": "Pytest module discovered by scripts/run_scripts_tests.py through the scripts_tests contract row; discovery supplies the filenames at run time.",
+  "scripts/tests/test_native_harness.py": "Pytest-discovered module through scripts/run_scripts_tests.py (scripts_tests); native process ownership and provenance.",
   "scripts/tests/test_nofocus_env.py": "Pytest-discovered module through scripts/check-contracts.sh:1516 (scripts_tests); the executable command names the directory.",
   "scripts/tests/test_omnitech_abl_stack_balance.py": "Pytest-discovered module through the scripts_tests board row; merge window 34.",
   "scripts/tests/test_parent_watchdog.py": "Pytest-discovered module through scripts/check-contracts.sh:1516 (scripts_tests); the executable command names the directory.",

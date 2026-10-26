@@ -215,7 +215,8 @@ def test_bindings_reject_implicit_duplicate_and_unknown_slots(tmp_path):
     assert any('no explicit source binding' in e for e in slang_compile.validate_reflection(raw, src, tmp_path))
     raw['separate_samplers'] = raw['ubos']
     assert any('duplicate descriptor' in e for e in slang_compile.validate_reflection(raw, src, tmp_path))
-    raw = {'ubos': [{'name': 'P', 'binding': 9, 'set': 1}]}
+    raw = {'ubos': [{'name': 'P', 'binding': 9, 'set': 1, 'type': '_P'}],
+           'types': {'_P': {'name': 'P', 'members': []}}}
     src.write_text('[[vk::binding(9, 1)]] ConstantBuffer<P> params;\n')
     assert slang_compile.validate_reflection(raw, src, tmp_path) == []
     raw = {'ssbos': raw['ubos']}
