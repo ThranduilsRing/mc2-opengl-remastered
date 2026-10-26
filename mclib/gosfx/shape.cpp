@@ -95,14 +95,15 @@ bool gosFX::DrawNativeShape(const MidLevelRenderer::DrawScalableShapeInformation
         inst.rgba[3] = blend == 3 ? 1.0f : color.alpha;
         inst.mlrTexHandle = state.GetTextureHandle();
         inst.blendMode = blend;
-        std::vector<float> uvs;
+        std::vector<float> positions, uvs;
         if (upload) {
             for (int v = 0; v < count; ++v) {
+                positions.insert(positions.end(), {coords[v].x, coords[v].y, coords[v].z});
                 uvs.push_back(texcoords && v < texCount ? texcoords[v][0] : 0.0f);
                 uvs.push_back(texcoords && v < texCount ? texcoords[v][1] : 0.0f);
             }
         }
-        GosVfxMeshUpload up{id, reinterpret_cast<const float*>(coords), uvs.data(),
+        GosVfxMeshUpload up{id, positions.data(), uvs.data(),
             triangles.data(), static_cast<uint32_t>(count), static_cast<uint32_t>(triangles.size())};
         gos_vfx_mesh_flush(upload ? &up : nullptr, upload ? 1u : 0u, &inst, 1u);
         if (upload) {

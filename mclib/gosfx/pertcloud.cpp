@@ -621,11 +621,13 @@ void gosFX::PertCloud::Draw(DrawInfo *info)
                 alpha == State::OneInvAlphaMode ? 5 : 0;
             auto& batcher = mc2::particles::Batcher::Instance();
             batcher.BeginGroup(0, 0, 0, 1, 1, blend == 3 ? 0 : blend, 0xffffffffu);
+            const std::mdspan<glm::vec3, std::dextents<size_t, 2>> vertices(
+                m_P_vertices, m_activeParticleCount, spec->m_vertices);
             for (unsigned i = 0; i < m_activeParticleCount; ++i) {
                 if (GetParticle(i)->m_age >= 1.0f) continue;
                 for (unsigned v = 1; v + 1 < spec->m_vertices; ++v) {
                     for (unsigned corner : {0u, v + 1, v}) {
-                        const auto world = mc2::math::transformPoint(m_P_vertices[i*spec->m_vertices+corner], local_to_world);
+                        const auto world = mc2::math::transformPoint(vertices[i, corner], local_to_world);
                         const auto& color = m_P_color[i*2 + (corner ? 1 : 0)];
                         mc2::particles::GpuParticle vertex{};
                         vertex.position[0] = world.x; vertex.position[1] = world.y; vertex.position[2] = world.z;
