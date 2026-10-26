@@ -49,6 +49,10 @@ def test_fresh_install_covers_deploy_payload(tmp_path, monkeypatch):
     assert os.stat(src / "data/terrain/stock.pak").st_ino == os.stat(dst / "data/terrain/stock.pak").st_ino
     assert os.stat(src / "data/tgl/128/stock.tga").st_ino == os.stat(dst / "data/tgl/128/stock.tga").st_ino
     assert os.stat(src / "mods/custom/data/model.glb").st_ino == os.stat(dst / "mods/custom/data/model.glb").st_ino
+    items = [(str(src / rel), rel, "support") for rel in sorted(rels)]
+    dp.check_hardlink_isolation(items, str(dst))
+    hashes = dp.deploy(items, str(dst), allow_stale_pdb=False, full_verify=True)
+    assert set(hashes) == rels
     victim = next(iter(sorted(rels)))
     (dst / victim).write_bytes(b"new payload")
     assert (src / victim).read_bytes() == b"stock"
