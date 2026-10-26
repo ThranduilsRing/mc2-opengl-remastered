@@ -295,3 +295,21 @@ MLR removal across editor/tools, then GPU simulation only after authoritative
 lifetimes and camera-dependent effect ordering are separated. The fired OFF/ON
 pair's 5,089 shared strict sim frames match, but its stored data baseline rejects
 the copied kit install; that baseline was not changed.
+
+### Packet 4 pass-contract finding (2026-10-26)
+
+The repeatable PPC rejection is not just authored corner extraction. The CPU
+reference goes through the postprocessed Vulkan HUD tail: no depth attachment,
+Z/RHW dropped, affine UVs, clamped nearest RGBA8 texels and packed tint. Native
+Cards draw before post-processing with scene depth, world clip W and sampled
+texture. See the inventory's Packet 4 section and `owner-montage-p4.png`.
+No class is accepted or CPU route retired; the requested Packet 4 implementation
+remains incomplete. A depth-disable patch alone cannot establish equivalence.
+
+Next implementation must put GPU-projected Card/CardCloud geometry in the
+equivalent composition phase and preserve mixed alpha ordering/material
+semantics, then prove the populated day/night captures before deletion/default
+promotion. PointCloud needs its original 2.4-pixel right triangles; ShardCloud
+needs its authored aligned triangles/per-vertex tint. Keep those references
+until populated captures pass. The old day timeout did not reproduce in the
+unchanged smoke budget (both maps pass); its loading-stage cause is unproven.

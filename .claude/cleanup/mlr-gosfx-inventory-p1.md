@@ -275,3 +275,52 @@ binary identity forces another 693-GLB cook despite unchanged model inputs.
 Separate the cook recipe identity from unrelated gate/header binary changes.
 Only `E:/mc2-installs/claude-mlr-retire-p1` remains from this lane; auxiliary
 installs created zero, disk freed zero. No game/build child remains at handoff.
+
+## Packet 4 investigation (2026-10-26): composition mismatch, not accepted
+
+Resumed `1fcfc2113` without repeating the earlier deletions. Diagnostic engine
+`dab6e900587e`; proofs `p4-summary.json`, `owner-montage-p4.png`,
+`p4-probe-oracle/`, `p4-cpu-oracle/` and `p4-smoke-lite-artifacts/` in the
+existing P1 proof directory. Both PPC bookmarks repeat byte-for-byte in both
+arms. Native Cards still lose the head flares. **No new class accepted, no
+gate flipped, no CPU route deleted, zero retirement lines deleted. Packet 4
+implementation is incomplete.**
+
+The two arms do not share a composition contract:
+- `GameCamera::render` wraps the deferred `theClipper->RenderNow()` in IsHUD
+  and scale exemption. `gosRenderer::drawTris` records these triangles into
+  `hudBatch_`, replayed through the Vulkan present tail after post-processing.
+- `engine_present_vk.cpp` converts textured HUD vertices into
+  `HudTexGpuVertex {x,y,argb,u,v}`. It discards Z and RHW. `hud_tex.vert`
+  emits W=1 and Z=0; the HUD pass has only a color attachment. The fragment
+  shader fetches clamped nearest RGBA8 texels and multiplies packed RGBA8 tint.
+  UV interpolation is therefore affine. This is the actual CPU reference,
+  irrespective of the MLR specification's depth/filter/address settings.
+- Native Card/CardCloud triangles instead enter `vulkan_vfx_island` before
+  post-processing, use the shared scene depth with GEQUAL, preserve world
+  projection/W, interpolate float tint and UVs, and sample the texture through
+  a sampler. Native routing also collapses material modes into alpha/ONE-ONE.
+  Moving authored world corners did not migrate any of these pass semantics.
+
+This is a concrete source-level mismatch and a mechanism for occluded/lost
+flares; it is not an isolated raster/depth causality measurement. Disabling
+depth alone would leave composition, sampling and ordering differences.
+The temporary Card log is removed. Its world/color/state values were useful;
+its `clip` column is **not valid projection evidence**: the public clipper
+getter reads a member that StartDraw never populates (the live product uses
+the parameter). Do not use that column to infer a projection defect.
+
+PointCloud's CPU primitive is a screen-aligned right triangle, 2.4 pixels per
+type unit (type zero also means 2.4), not a square or world-sized billboard.
+ShardCloud uses the three authored aligned vertices and per-vertex color.
+Neither has a native replacement in this packet. Their prior proxy deletions
+remain intact; zero new Point/Shard parity is claimed.
+
+Seven targeted shader/VFX/MLR rows and the RelWithDebInfo game build pass.
+Smoke-lite now passes both maps: day 1,144 frames / 24,406 ms load, night 434
+frames / 20,562 ms load; each reports zero validation errors and warnings.
+The old day timeout did not reproduce. Its last marker was mission loading,
+`texture_prewarm_ready` at 55.42 seconds, before the first FX draw. Timing/load
+contention is a hypothesis, not an established root cause. No timeout changed.
+No simulation code changed; the previous strict-chain proof is retained,
+not counted as a newly executed pair. Runtime captures here cover PPC only.
