@@ -5,9 +5,6 @@
 #include"mlrheaders.hpp"
 #include <memory>
 
-#if defined(TRACE_ENABLED) && defined(MLR_TRACE)
-	BitTrace *MLR_I_L_DeT_TMesh;
-#endif
 
 //#############################################################################
 //###### MLRIndexedTriMesh with color but no lighting one texture layer  ######
@@ -32,10 +29,6 @@ void
 		);
 	Register_Object(DefaultData);
 
-	#if defined(TRACE_ENABLED) && defined(MLR_TRACE)
-		MLR_I_L_DeT_TMesh = new BitTrace("MLR_I_L_DeT_TMesh");
-		Register_Object(MLR_I_L_DeT_TMesh);
-	#endif
 }
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -47,10 +40,6 @@ void
 	delete DefaultData;
 	DefaultData = nullptr;
 
-	#if defined(TRACE_ENABLED) && defined(MLR_TRACE)
-		Unregister_Object(MLR_I_L_DeT_TMesh);
-		delete MLR_I_L_DeT_TMesh;
-	#endif
 }
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -281,40 +270,7 @@ void
 
 extern DWORD gEnableTextureSort, gEnableAlphaSort;
 
-#define I_SAY_YES_TO_DETAIL_TEXTURES
-#undef I_SAY_YES_TO_DUAL_TEXTURES
-#define I_SAY_YES_TO_COLOR
-#define I_SAY_YES_TO_LIGHTING
 
-#define CLASSNAME MLR_I_L_DeT_TMesh
-
-#if defined(TRACE_ENABLED) && defined(MLR_TRACE)
-	#define SET_MLR_TMESH_CLIP() MLR_I_L_DeT_TMesh->Set()
-	#define CLEAR_MLR_TMESH_CLIP() MLR_I_L_DeT_TMesh->Clear()
-#else
-	#define SET_MLR_TMESH_CLIP()
-	#define CLEAR_MLR_TMESH_CLIP()
-#endif
-
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-//	This include contains follwing functions:
-//	void MLR_I_L_DeT_TMesh::TransformNoClip(Matrix4D*, GOSVertexPool*);
-//	int MLR_I_L_DeT_TMesh::Clip(MLRClippingState, GOSVertexPool*);
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-#include<mlr/mlrtriangleclipping.hpp>
-
-#undef I_SAY_YES_TO_DETAIL_TEXTURES
-#undef I_SAY_YES_TO_COLOR
-#undef I_SAY_YES_TO_LIGHTING
-
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-//	This include contains follwing functions:
-//	void	Lighting (MLRLight**, int nrLights);
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-#include<mlr/mlrtrianglelighting.hpp>
-#undef CLASSNAME
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //

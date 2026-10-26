@@ -5,9 +5,6 @@
 #include "mlr_i_tmesh_internal.h"
 
 
-#if defined(TRACE_ENABLED) && defined(MLR_TRACE)
-	BitTrace *MLR_I_TMesh_Clip;
-#endif
 
 #define UV_TEST 0
 //#define TOP_DOWN_ONLY
@@ -35,10 +32,6 @@ void
 		);
 	Register_Object(DefaultData);
 
-	#if defined(TRACE_ENABLED) && defined(MLR_TRACE)
-		MLR_I_TMesh_Clip = new BitTrace("MLR_I_TMesh_Clip");
-		Register_Object(MLR_I_TMesh_Clip);
-	#endif
 }
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -50,10 +43,6 @@ void
 	delete DefaultData;
 	DefaultData = nullptr;
 
-	#if defined(TRACE_ENABLED) && defined(MLR_TRACE)
-		Unregister_Object(MLR_I_TMesh_Clip);
-		delete MLR_I_TMesh_Clip;
-	#endif
 }
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -380,48 +369,7 @@ void
 }
 */
 
-#undef I_SAY_YES_TO_DUAL_TEXTURES
-#undef I_SAY_YES_TO_COLOR
-#undef I_SAY_YES_TO_LIGHTING
 
-#define CLASSNAME MLR_I_TMesh
-
-#if defined(TRACE_ENABLED) && defined(MLR_TRACE)
-	#define SET_MLR_TMESH_CLIP() MLR_I_TMesh_Clip->Set()
-	#define CLEAR_MLR_TMESH_CLIP() MLR_I_TMesh_Clip->Clear()
-#else
-	#define SET_MLR_TMESH_CLIP()
-	#define CLEAR_MLR_TMESH_CLIP()
-#endif
-
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-//	This include contains follwing functions:
-//	void MLR_I_TMesh::TransformNoClip(Matrix4D*, GOSVertexPool*);
-//	int MLR_I_TMesh::Clip(MLRClippingState, GOSVertexPool*);
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-#include<mlr/mlrtriangleclipping.hpp>
-
-#undef CLASSNAME
 
 //---------------------------------------------------------------------------
 //
-void
-	MLR_I_TMesh::Lighting(MLRLight* const* lights, int nrLights)
-{
-	int i;
-	MLRLightMap *lightMap;
-
-	for(i=0;i<nrLights;i++)
-	{
-		lightMap = lights[i]->GetLightMap();
-
-		if(lightMap!=nullptr)
-		{
-			Start_Timer(LightMap_Light_Time);
-			LightMapLighting(lights[i]);
-			Stop_Timer(LightMap_Light_Time);
-		}
-	}
-
-}
