@@ -19,7 +19,9 @@ TEST_CASE("building_gameplay_observation/probe collision shape lifecycle")
     CHECK(probe.find("getBldgRenderShape") == std::string::npos);
     CHECK(probe.find("bldgDmgRenderShape") == std::string::npos);
     CHECK(probe.find("getBldgCollisionShape(0)") != std::string::npos);
-    CHECK(probe.find("if (probe.bldgShape) probe.releaseBldgShape();\n}") != std::string::npos);
+    const auto release = probe.rfind("if (probe.bldgShape) probe.releaseBldgShape();");
+    REQUIRE(release != std::string::npos);
+    CHECK(probe.find("probe.appearType = nullptr;", release) != std::string::npos);
 }
 
 TEST_CASE("building_gameplay_observation/gate wall rubble and wrong map write")
