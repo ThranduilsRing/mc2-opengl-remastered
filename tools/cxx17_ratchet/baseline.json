@@ -57,7 +57,7 @@
    "LG08": 155,
    "LG09": 4,
    "LG10": 11,
-   "LG11": 63,
+   "LG11": 59,
    "LG12a": 60,
    "LG12b": 24,
    "LG13": 299,
@@ -80,7 +80,7 @@
    "LG08": 1,
    "LG09": 26,
    "LG10": 2,
-   "LG11": 1,
+   "LG11": 3,
    "LG12a": 0,
    "LG12b": 0,
    "LG13": 0,
@@ -250,8 +250,8 @@
    "LG16": 0,
    "LG17": 0,
    "LG18": 0,
-   "LG19": 1,
-   "LG20": 45
+   "LG19": 0,
+   "LG20": 9
   }
  },
  "dirs": [
@@ -443,7 +443,6 @@
   },
   "GameOS/gameos/gameosmain_init.cpp": {
    "LG06": 1,
-   "LG11": 4,
    "LG12a": 2
   },
   "GameOS/gameos/gos_crashbundle.cpp": {
@@ -1070,6 +1069,9 @@
    "LG06": 1,
    "LG07": 2,
    "LG08": 1
+  },
+  "GuiRuntime/PlayerFrontEnd.cpp": {
+   "LG11": 2
   },
   "RenderCore/FrameArena.h": {
    "LG06": 1
@@ -3480,10 +3482,6 @@
   "tools/common/tool_vk_shell.cpp": {
    "LG20": 4
   },
-  "tools/mc2_launcher/mc2_launcher.cpp": {
-   "LG19": 1,
-   "LG20": 36
-  },
   "tools/mc2fx_preview/main.cpp": {
    "LG20": 1
   },
@@ -3491,7 +3489,7 @@
    "LG20": 3
   }
  },
- "head": "09301635b",
+ "head": "33a49e97b",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
