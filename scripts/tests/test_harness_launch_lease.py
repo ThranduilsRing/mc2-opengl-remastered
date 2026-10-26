@@ -79,6 +79,15 @@ def test_mechbay_preview_log_only_on_flag(seen, tmp_path, monkeypatch):
     assert seen["env"]["MC2_LOG_PREVIEW"] == "1"
 
 
+def test_mainmenu_capture_stays_in_front_end(seen, tmp_path, monkeypatch):
+    d = _deploy(tmp_path)
+    monkeypatch.setattr(sys, "argv", ["mechbay_preview_harness.py", "mainmenu", "--deploy", str(d)])
+    with pytest.raises(SystemExit):
+        mbh.main()
+    assert "MC2_BOOT_TO_BAY" not in seen["env"]
+    assert "MC2_SOAK_AUTOWIN" not in seen["env"]
+
+
 def test_mechbay_busy_lease_fails_without_spawning(seen, tmp_path, monkeypatch):
     d = _deploy(tmp_path)
     monkeypatch.setattr(sys, "argv", ["mechbay_preview_harness.py", "bay", "--deploy", str(d)])
