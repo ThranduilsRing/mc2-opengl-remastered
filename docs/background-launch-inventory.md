@@ -28,10 +28,10 @@ FAILS the checker unless it carries `# background-launch: allow <why>`.
 | `scripts/run_vk_field_check.py` | 266 | `nofocus.spawn` | offscreen |
 | `scripts/smoke_lib/runner.py` | 276 | `nofocus.spawn` | offscreen |
 | `scripts/sweep_campaign.py` | 63 | `nofocus.spawn` | offscreen |
-| `scripts/tests/test_harness_desktop_safety.py` | 165 | `nofocus.spawn` | offscreen |
-| `scripts/tests/test_harness_desktop_safety.py` | 424 | `nofocus.spawn` | offscreen |
-| `scripts/tests/test_harness_desktop_safety.py` | 428 | `nofocus.spawn` | offscreen |
-| `scripts/tests/test_harness_desktop_safety.py` | 479 | `nofocus.run` | offscreen |
+| `scripts/tests/test_harness_desktop_safety.py` | 172 | `nofocus.spawn` | offscreen |
+| `scripts/tests/test_harness_desktop_safety.py` | 432 | `nofocus.spawn` | offscreen |
+| `scripts/tests/test_harness_desktop_safety.py` | 436 | `nofocus.spawn` | offscreen |
+| `scripts/tests/test_harness_desktop_safety.py` | 487 | `nofocus.run` | offscreen |
 | `scripts/tests/test_kit_visibility.py` | 41 | `nofocus.run` | offscreen |
 | `tests/smoke/object_visual_diff.py` | 123 | `nofocus.run` | offscreen |
 | `tests/smoke/scene_resize.py` | 37 | `nofocus.spawn` | offscreen |
