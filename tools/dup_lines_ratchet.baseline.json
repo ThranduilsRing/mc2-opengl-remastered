@@ -6,7 +6,7 @@
   "HostServices": 0,
   "RenderCore": 402,
   "RenderWorld": 0,
-  "code": 13893,
+  "code": 13863,
   "mclib": 23310,
   "shaders": 416
  },
@@ -166,7 +166,7 @@
   "code/mission2.cpp": 45,
   "code/mission_init.cpp": 56,
   "code/mission_init_load.cpp": 88,
-  "code/mission_movers.cpp": 63,
+  "code/mission_movers.cpp": 33,
   "code/mission_update.cpp": 54,
   "code/missionbegin.cpp": 192,
   "code/missionbriefingscreen.cpp": 19,
@@ -487,8 +487,8 @@
   "shaders/vulkan/terrain_tier1.vert": 71,
   "shaders/vulkan/terrain_tier1_skirt.vert": 71
  },
- "head": "3c8da9d1a",
+ "head": "6985a4b56",
  "n": 8,
- "total": 40254,
+ "total": 40224,
  "version": 1
 }
