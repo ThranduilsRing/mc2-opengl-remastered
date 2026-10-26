@@ -59,12 +59,12 @@ bool valid(const Transform& transform)
     const auto scalar = [](double n) { return std::isfinite(n) && std::abs(n) <= std::numeric_limits<float>::max(); };
     return scalar(transform.rotation) && std::ranges::all_of(transform.position, scalar);
 }
-bool validText(const std::string& text)
+bool validText(std::string_view text)
 {
     return text.size() <= textByteLimit && text.find_first_of("\"\r\n") == std::string::npos && text.find('\0') == std::string::npos;
 }
 std::string real(double value) { return std::format("{:.9g}", static_cast<float>(value)); }
-std::string newline(const std::string& bytes) { return bytes.find("\r\n") == std::string::npos ? "\n" : "\r\n"; }
+std::string newline(std::string_view bytes) { return bytes.find("\r\n") == std::string::npos ? "\n" : "\r\n"; }
 std::unexpected<LoadError> reject(std::string reason) { return std::unexpected(LoadError{"entity", std::move(reason), 0}); }
 std::vector<EntityId> identities(const MissionDocument& document)
 {
@@ -132,7 +132,7 @@ std::expected<EntityId, LoadError> CommandHistory::insertUnit(const UnitPlacemen
         if (log_) log_("[EDITOR_PLACEMENT_REJECT v1] reason=" + reason);
         return std::unexpected(LoadError{"placement", std::move(reason), 0});
     };
-    const auto name = [](const std::string& value) {
+    const auto name = [](std::string_view value) {
         return validText(value) && value.size() <= 255 && value.find('\\') == value.npos;
     };
     if (!valid(unit.transform) || unit.team < -1 || unit.team >= 8 || unit.commander < -1 || unit.commander >= 8 ||

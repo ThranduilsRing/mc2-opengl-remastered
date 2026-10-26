@@ -13,7 +13,7 @@ namespace {
 enum class TokenKind { word, text, openSquare, closeSquare, openBrace, closeBrace, equal, comma, semi, newline, end };
 struct Token { TokenKind kind; Span span; std::string value; };
 
-std::expected<std::vector<Token>, LoadError> tokenize(const std::string& bytes)
+std::expected<std::vector<Token>, LoadError> tokenize(std::string_view bytes)
 {
     if (const auto nul = bytes.find('\0'); nul != std::string::npos) return std::unexpected(LoadError{"syntax", "embedded_nul", nul});
     std::vector<Token> tokens;
@@ -45,7 +45,7 @@ std::expected<std::vector<Token>, LoadError> tokenize(const std::string& bytes)
                 if (++p - begin > textByteLimit) return std::unexpected(LoadError{"literal", "text_limit", start});
             }
             if (p == bytes.size()) return std::unexpected(LoadError{"literal", "unterminated_literal", start});
-            auto value = bytes.substr(begin, p - begin);
+            std::string value(bytes.substr(begin, p - begin));
             std::erase(value, '\r');
             tokens.push_back({kind, {start, ++p}, std::move(value)});
             const auto lineStart = bytes.rfind('\n', start);
@@ -64,7 +64,7 @@ std::expected<std::vector<Token>, LoadError> tokenize(const std::string& bytes)
             break;
         }
         if (tokens.size() >= nodeLimit * 12) return std::unexpected(LoadError{"syntax", "token_limit", start});
-        tokens.push_back({kind, {start, p}, bytes.substr(start, p - start)});
+        tokens.push_back({kind, {start, p}, std::string(bytes.substr(start, p - start))});
     }
     tokens.push_back({TokenKind::end, {bytes.size(), bytes.size()}, {}});
     return tokens;

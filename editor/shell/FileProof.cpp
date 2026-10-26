@@ -10,7 +10,7 @@ std::vector<std::byte> pak(const MissionDocument& doc) { return {doc.pakBytes().
 }
 void FileProof::click(std::string key, std::function<void()> verify) { steps_.push_back({std::move(key), {}, std::move(verify)}); }
 void FileProof::input(std::string key, std::string value) { steps_.push_back({std::move(key), std::move(value), {}}); }
-void FileProof::disk(const std::filesystem::path& stem, const std::string& fit)
+void FileProof::disk(const std::filesystem::path& stem, std::string_view fit)
 {
     auto fitPath = stem; fitPath.replace_extension(".fit");
     auto pakPath = stem; pakPath.replace_extension(".pak");
