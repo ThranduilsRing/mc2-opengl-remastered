@@ -1440,8 +1440,10 @@ long Mission::update (void)
 				s_extraTickInFrame = false;
 				if (ended)
 					return earlyResult;
+				if (saveFixture)
+					updatePresentationOnly(false, 1.0f);
 			}
-			if (ticks > 0)
+			if (ticks > 0 && !saveFixture)
 				updatePresentationOnly(false, static_cast<float>(s_tickClock.alpha()));
 		}
 		s_turnAfterLastPass = turn;
