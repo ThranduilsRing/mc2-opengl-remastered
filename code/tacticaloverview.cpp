@@ -61,8 +61,8 @@ void TacticalOverview::onHotkey() {
     flOnCancel();
 }
 
-void TacticalOverview::setCardHits(const CardHit* hits, int n) {
-    n = std::clamp(n, 0, kMaxCardHits);
+void TacticalOverview::setCardHits(std::span<const CardHit> hits) {
+    const int n = static_cast<int>(std::min(hits.size(), static_cast<size_t>(kMaxCardHits)));
     for (int i = 0; i < n; ++i) cardHit_[i] = hits[i];
     cardHitCount_ = n;
 }

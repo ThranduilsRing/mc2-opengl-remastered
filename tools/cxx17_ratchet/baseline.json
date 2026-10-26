@@ -41,7 +41,7 @@
    "LG14": 0,
    "LG15": 0,
    "LG16": 0,
-   "LG17": 2,
+   "LG17": 0,
    "LG18": 0,
    "LG19": 0,
    "LG20": 0
@@ -87,7 +87,7 @@
    "LG14": 0,
    "LG15": 0,
    "LG16": 0,
-   "LG17": 2,
+   "LG17": 1,
    "LG18": 0,
    "LG19": 0,
    "LG20": 20
@@ -156,7 +156,7 @@
    "LG14": 93,
    "LG15": 0,
    "LG16": 2,
-   "LG17": 44,
+   "LG17": 37,
    "LG18": 11,
    "LG19": 0,
    "LG20": 1
@@ -280,13 +280,11 @@
   },
   "GameAdapters/StaticPropRenderAdapter.cpp": {
    "LG05": 5,
-   "LG06": 1,
-   "LG17": 1
+   "LG06": 1
   },
   "GameAdapters/StaticPropRenderAdapter.h": {
    "LG05": 5,
-   "LG06": 1,
-   "LG17": 1
+   "LG06": 1
   },
   "GameAdapters/vegetation_budget.h": {
    "LG10": 1
@@ -1032,7 +1030,6 @@
   "GuiRuntime/EditorInspector_sections.cpp": {
    "LG06": 1,
    "LG09": 1,
-   "LG17": 1,
    "LG20": 6
   },
   "GuiRuntime/GraphicsOptionsWindow_internal.h": {
@@ -1496,9 +1493,6 @@
    "LG05": 1,
    "LG06": 1
   },
-  "code/infowindowmodel.h": {
-   "LG17": 1
-  },
   "code/job_system.cpp": {
    "LG03": 4
   },
@@ -1581,12 +1575,10 @@
    "LG03": 1,
    "LG06": 7,
    "LG11": 13,
-   "LG12b": 10,
-   "LG17": 1
+   "LG12b": 10
   },
   "code/logisticsdialog.h": {
-   "LG06": 6,
-   "LG17": 1
+   "LG06": 6
   },
   "code/logisticsmech.cpp": {
    "LG17": 1
@@ -1899,12 +1891,10 @@
    "LG05": 1,
    "LG06": 3,
    "LG11": 4,
-   "LG12b": 3,
-   "LG17": 1
+   "LG12b": 3
   },
   "code/mploadmap.h": {
-   "LG06": 3,
-   "LG17": 1
+   "LG06": 3
   },
   "code/mpparameterscreen.cpp": {
    "LG03": 10,
@@ -2084,10 +2074,10 @@
    "LG05": 2
   },
   "code/tacticaloverview.cpp": {
-   "LG17": 2
+   "LG17": 1
   },
   "code/tacticaloverview.h": {
-   "LG17": 2
+   "LG17": 1
   },
   "code/team.cpp": {
    "LG03": 1
@@ -3466,7 +3456,7 @@
    "LG20": 3
   }
  },
- "head": "96152d6a4",
+ "head": "2261ba52c",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",

@@ -221,7 +221,7 @@ void MPLoadMap::addFile( const char* pFileName, bool bSeedSingle )
 				pEntry->setHiddenText( pFileName );
 				char missionDisplayName[256];
 				strcpy(missionDisplayName, "");
-				getMapNameFromFile(pFileName, missionDisplayName, 255 );
+				getMapNameFromFile(pFileName, std::span(missionDisplayName).first(255) );
 				if (0 == strcmp("", missionDisplayName))
 				{
 					strcpy(missionDisplayName, pFileName);
@@ -402,7 +402,7 @@ void MPLoadMap::seedFromCampaign()
 									pEntry->resize( mapList.width() - mapList.getScrollBarWidth() - 20, pEntry->height());
 									pEntry->setHiddenText( tmpFileName );
 									char displayName[256];
-									getMapNameFromFile( tmpFileName, displayName, 255 );
+									getMapNameFromFile( tmpFileName, std::span(displayName).first(255) );
 									pEntry->setText( displayName );
 									pEntry->sizeToText();
 									mapList.AddItem( pEntry );
@@ -698,7 +698,7 @@ void MPLoadMap::syncMapListPage()
 	mapListPage->setListSelection( "game.mcl_mp_loadmap_list0.list.map", static_cast<int>(mapList.GetSelectedItem()) );
 }
 
-void MPLoadMap::getMapNameFromFile( const char* pFileName, char* missionName, long bufferLength )
+void MPLoadMap::getMapNameFromFile( const char* pFileName, std::span<char> missionName )
 {
 	FullPathFileName path;
 	path.init( missionPath, pFileName, ".fit" );
@@ -726,11 +726,11 @@ void MPLoadMap::getMapNameFromFile( const char* pFileName, char* missionName, lo
 		unsigned long lRes;
 		result = file.readIdULong( "MissionNameResourceStringID", lRes );
 		Assert( result == NO_ERR, 0, "couldn't find the MissionNameResourceStringID" );
-		cLoadString( lRes, missionName, bufferLength );
+		cLoadString( lRes, missionName.data(), static_cast<long>(missionName.size()) );
 	}
 	else
 	{
-		result = file.readIdString( "MissionName", missionName, bufferLength );
+		result = file.readIdString( "MissionName", missionName.data(), static_cast<long>(missionName.size()) );
 		Assert( result == NO_ERR, 0, "couldn't find the missionName" );
 	}
 }

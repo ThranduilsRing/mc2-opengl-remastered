@@ -637,7 +637,7 @@ void ControlGui::render( bool bPaused )
 				hits[hI].l = raw[hI].l; hits[hI].t = raw[hI].t;
 				hits[hI].r = raw[hI].r; hits[hI].b = raw[hI].b;
 			}
-			g_tacticalOverview.setCardHits( hits, nh );
+			g_tacticalOverview.setCardHits( std::span(hits).first(nh) );
 			if ( markerA > 0.01f && Team::home )
 				for ( CObjective* pObjective : Team::home->objectives )
 					pObjective->RenderOverviewMarker( eye, markerA );

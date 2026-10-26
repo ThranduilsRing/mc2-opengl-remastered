@@ -615,7 +615,7 @@ void LogisticsSaveDialog::initDialog( const char* path, bool bCampaign )
 				if (bCampaign)
 				{
 					char campaignName[1024];
-					readCampaignNameFromFile( findResult.cFileName, campaignName, 1023 );
+					readCampaignNameFromFile( findResult.cFileName, std::span(campaignName).first(1023) );
 					pEntry->setText( campaignName );
 					addItem = true;
 				}
@@ -692,7 +692,7 @@ void LogisticsSaveDialog::initDialog( const char* path, bool bCampaign )
 			auto pEntry = std::make_unique<aLocalizedListItem>();
 			*pEntry = s_instance->templateItem;
 			char campaignName[1024];
-			readCampaignNameFromFile( "campaign", campaignName, 1023 );
+			readCampaignNameFromFile( "campaign", std::span(campaignName).first(1023) );
 			pEntry->setText( campaignName );
 
 			pEntry->setHiddenText( "campaign" );
@@ -708,7 +708,7 @@ void LogisticsSaveDialog::initDialog( const char* path, bool bCampaign )
 			auto pEntry = std::make_unique<aLocalizedListItem>();
 			*pEntry = s_instance->templateItem;
 			char campaignName[1024];
-			readCampaignNameFromFile( "tutorial", campaignName, 1023 );
+			readCampaignNameFromFile( "tutorial", std::span(campaignName).first(1023) );
 			pEntry->setText( campaignName );
 
 			pEntry->setHiddenText( "tutorial" );
@@ -747,7 +747,7 @@ bool LogisticsSaveDialog::isCorrectVersionSaveGame( char* fileName )
 	return false;
 }
 
-void LogisticsSaveDialog::readCampaignNameFromFile( const char* fileName, char* resultName, long len )
+void LogisticsSaveDialog::readCampaignNameFromFile( const char* fileName, std::span<char> resultName )
 {
 	FullPathFileName path;
 	path.init( campaignPath, fileName, ".fit" );
@@ -771,11 +771,11 @@ void LogisticsSaveDialog::readCampaignNameFromFile( const char* fileName, char* 
 	result = file.readIdLong( "NameID", lName );
 	if ( result == NO_ERR )
 	{
-		cLoadString( lName, resultName, len );
+		cLoadString( lName, resultName.data(), static_cast<long>(resultName.size()) );
 	}
 	else
 	{
-		result = file.readIdString( "CampaignName", resultName, len );
+		result = file.readIdString( "CampaignName", resultName.data(), static_cast<long>(resultName.size()) );
 		Assert( result == NO_ERR, 0, "couldn't find the missionName" );
 	}
 }

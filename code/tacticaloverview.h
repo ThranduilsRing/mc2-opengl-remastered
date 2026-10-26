@@ -3,6 +3,7 @@
 // Engine glue for the Tactical Overview camera. Owns the pure blend-state,
 // reads env flags, drives the Camera via its public API, draws the 2D overlay.
 #include "tacticaloverview_state.h"
+#include <span>
 #include <stuff/stuff.hpp>
 
 class Camera;
@@ -41,7 +42,7 @@ public:
     // group. forceGroupAtScreen returns the group, or kNoForceGroup if none.
     static const int kNoForceGroup = -9999;
     struct CardHit { int forceGroup; void* unit; float l, t, r, b; };
-    void setCardHits( const CardHit* hits, int n );
+    void setCardHits( std::span<const CardHit> hits );
     // Returns the card under (x,y) in screen space, or null if none.
     const CardHit* cardHitAt( float x, float y ) const;
 

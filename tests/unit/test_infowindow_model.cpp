@@ -21,11 +21,11 @@ TEST_SUITE( "InfoWindowModel" )
 	TEST_CASE( "empty / null inputs" )
 	{
 		ComponentRow out[4];
-		CHECK( aggregateWeapons( 0, 0, out, 4 ) == 0 );
+		CHECK( aggregateWeapons( {}, out ) == 0 );
 		WeaponRec r = rec( 1, true, 5, 0 );
-		CHECK( aggregateWeapons( &r, 1, 0, 4 ) == 0 );
-		CHECK( aggregateWeapons( &r, 1, out, 0 ) == 0 );
-		CHECK( aggregateWeapons( &r, 0, out, 4 ) == 0 );
+		CHECK( aggregateWeapons( {&r, 1}, {} ) == 0 );
+		CHECK( aggregateWeapons( {&r, 1}, std::span(out).first(0) ) == 0 );
+		CHECK( aggregateWeapons( {&r, 0}, out ) == 0 );
 	}
 
 	TEST_CASE( "dedupe keeps first-seen order and counts occurrences" )
@@ -38,7 +38,7 @@ TEST_SUITE( "InfoWindowModel" )
 			rec( 20, true, -1, 2 ),
 		};
 		ComponentRow out[8];
-		const int n = aggregateWeapons( recs, 5, out, 8 );
+		const int n = aggregateWeapons( recs, out );
 		REQUIRE( n == 2 );
 		CHECK( out[0].masterID == 10 );
 		CHECK( out[0].totalCount == 3 );
@@ -57,7 +57,7 @@ TEST_SUITE( "InfoWindowModel" )
 			rec( 7, true, 99, 0 ),   // duplicate ammo must NOT accumulate
 		};
 		ComponentRow out[2];
-		REQUIRE( aggregateWeapons( recs, 2, out, 2 ) == 1 );
+		REQUIRE( aggregateWeapons( recs, out ) == 1 );
 		CHECK( out[0].ammo == 12 );
 	}
 
@@ -65,7 +65,7 @@ TEST_SUITE( "InfoWindowModel" )
 	{
 		WeaponRec r = rec( 3, true, -1, 2 );
 		ComponentRow out[1];
-		REQUIRE( aggregateWeapons( &r, 1, out, 1 ) == 1 );
+		REQUIRE( aggregateWeapons( {&r, 1}, out ) == 1 );
 		CHECK( out[0].ammo == -1 );
 	}
 
@@ -77,7 +77,7 @@ TEST_SUITE( "InfoWindowModel" )
 			rec( 1, false, -1, 0 ),  // still counted onto row 0
 		};
 		ComponentRow out[1];
-		const int n = aggregateWeapons( recs, 3, out, 1 );
+		const int n = aggregateWeapons( recs, out );
 		REQUIRE( n == 1 );
 		CHECK( out[0].masterID == 1 );
 		CHECK( out[0].totalCount == 2 );
@@ -88,7 +88,7 @@ TEST_SUITE( "InfoWindowModel" )
 	{
 		WeaponRec r = rec( (unsigned char)200, true, 4, 1 );
 		ComponentRow out[1];
-		REQUIRE( aggregateWeapons( &r, 1, out, 1 ) == 1 );
+		REQUIRE( aggregateWeapons( {&r, 1}, out ) == 1 );
 		CHECK( (int)out[0].masterID == 200 );
 	}
 
