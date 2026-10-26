@@ -1922,8 +1922,8 @@ void MissionBegin::render()
 			static int tracedScreen = -1;
 			if (tracedScreen != curScreenX * 10 + curScreenY) {
 				tracedScreen = curScreenX * 10 + curScreenY;
-				mc2::fmt::print_err("[LOGISTICS_CURSOR_PROBE] screen={},{} button=NEXT pos={:.0f},{:.0f}\n",
-					curScreenX, curScreenY, io.MousePos.x, io.MousePos.y);
+				mc2::fmt::print_err("[LOGISTICS_CURSOR_PROBE] screen={},{} button=NEXT pos={:.0f},{:.0f} display={:.0f},{:.0f} drawable={:.0f},{:.0f} software={}\n",
+					curScreenX, curScreenY, io.MousePos.x, io.MousePos.y, io.DisplaySize.x, io.DisplaySize.y, width, height, io.MouseDrawCursor);
 			}
 		}
 	}
