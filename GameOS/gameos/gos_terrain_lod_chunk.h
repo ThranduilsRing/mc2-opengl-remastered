@@ -59,23 +59,11 @@ constexpr int TERRAIN_SHORELINE_TEXUNIT = 2;
 //   neighbour's vertex stride per edge (N=bits0-7, S=8-15, W=16-23, E=24-31; 0 =
 //   no stitch). Passed to the vert as u_edgeStitch; the fine edge's intermediate
 //   verts snap onto the coarse edge line -> crack-free LOD seam. nullptr -> off.
-// shadowTiers: parallel int array [count] (Slice B). Per-chunk shadow tier
-//   (0=high-res dynamic near, 1=low-res dynamic mid, 2=static-only far, 3=none).
-//   Set as u_shadowTier; used ONLY by the MC2_TERRAIN_LOD_CHUNK_DIAG=40 tier-tint
-//   debug view. Does NOT change shadow sampling (Slice C). nullptr -> 0.
-// morphFactors: parallel float array [count] (TERRAIN-LOD-GEOMORPH-1). Per-block
-//   geomorph factor m in [0,1]: 0 = pure own-band surface, 1 = parent-band
-//   surface (block interior slides onto the next-coarser band before the LOD
-//   switch, killing the one-frame silhouette snap). Set as u_morphFactor; only
-//   consumed by the vert when the bake shipped max mips (u_geomorphMips).
-//   nullptr -> 0 (no morph).
 void gos_TerrainLodChunk_SubmitDrawCommands(
     const TerrainDrawCommand* cmds,
     const float*              skirtDepths,
     const unsigned char*      skirtEdgeMasks,
     const unsigned int*       edgeStitch,
-    const int*                shadowTiers,
-    const float*              morphFactors,
     int                       count);
 
 // The end of the terrain flush: guarantees the shared scene was cleared this frame (a frame with no terrain draw, or one the terrain pass declined, would

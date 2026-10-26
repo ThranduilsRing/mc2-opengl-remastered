@@ -123,18 +123,6 @@ std::vector<uint8_t> s_skirtEdgeMaskVec;
 // shared edge -> no T-junction crack (neighbour-min technique, cf c2d7eb46).
 std::vector<uint32_t> s_stitchStepVec;
 
-// Slice B: per-draw-command SHADOW TIER. Parallel to s_drawCmds; written in Pass
-// 3 in lockstep with s_cmdCount. 0=high-res dynamic (near), 1=low-res dynamic
-// (mid), 2=static-only (far), 3=none/culled. Classify+visualize only — feeds the
-// MC2_TERRAIN_LOD_CHUNK_DIAG=40 tier-tint; does NOT change shadow sampling.
-std::vector<int> s_shadowTierVec;
-
-// TERRAIN-LOD-GEOMORPH-1: per-draw-command geomorph factor m in [0,1]. Parallel
-// to s_drawCmds; written in Pass 3 in lockstep with s_cmdCount from the block's
-// FINAL lodLevel (post cement/neighbor clamps) + its center distance. Fed to the
-// vert as u_morphFactor; only consumed when the bake shipped max mips.
-std::vector<float> s_morphFactorVec;
-
 bool 						drawTerrainGrid = false;		//Override locally in editor so game don't come with these please!  Love -fs
 bool						drawEditorPassability = false;	// Editor passability overlay — MOVE-free path for large maps
 uint8_t*					gEditorNavFlags    = nullptr;	// Set by EditorNavLayer::BuildFromTerrain()
@@ -493,25 +481,11 @@ void Terrain::primeMissionTerrainCache (volatile float& progress, float progress
 	// cache is ready when buildRecipeSlot reads UV data from it.
 	// Gated on IsEnabled() OR IsParityCheckEnabled() — no allocation when both
 	// are unset.
-	// PR-1 (terrain continuous-surface producer): the surface generator
-	// de-duplicates the dense recipe corners as its stock-derivable source
-	// (gos_terrain_surface.cpp, design M-4), so the recipe MUST be built when
-	// the surface kill-switch is on even if MC2_TERRAIN_INDIRECT is off. This
-	// is the M-4 stock-only contract: the surface generation source is the
-	// mission-load recipe, with no arming precondition.
 	if (gos_terrain_indirect::IsEnabled() ||
-	    gos_terrain_indirect::IsParityCheckEnabled() ||
-	    gos_terrain_surface::IsEnabled()) {
+	    gos_terrain_indirect::IsParityCheckEnabled()) {
 		gos_terrain_indirect::ResetDenseRecipe();
 		gos_terrain_indirect::BuildDenseRecipe();
 	}
-
-	// PR-1: mission-load continuous-surface generation (Wave 1, ADDITIVE,
-	// default-OFF). No-op unless MC2_TERRAIN_SURFACE is set. Runs AFTER
-	// BuildDenseRecipe (its stock-derivable generation source) and emits the
-	// [TERRAIN_SURFACE v1] mission-load lifecycle + stock-only-fence prints.
-	// PR-1 generates only -- the surface is NOT drawn/consumed yet (PR-2..4).
-	gos_terrain_surface::GenerateForMission();
 
 	// PR2c Stage 1c — mine static-bake lifecycle.
 	// CPU-clear only; do NOT build here. Build is deferred to first
@@ -585,10 +559,6 @@ void Terrain::destroy (void)
 	    gos_terrain_indirect::IsParityCheckEnabled()) {
 		gos_terrain_indirect::ResetDenseRecipe();
 	}
-	// PR-1: continuous-surface per-mission teardown. Unconditional and
-	// idempotent (no-op when nothing was generated / kill-switch OFF); emits
-	// the [TERRAIN_SURFACE v1] teardown lifecycle print when it had state.
-	gos_terrain_surface::ResetForMission();
 	// Phase 1: terrain lighting GPU compute shutdown (per-mission teardown).
 	gos_terrain_lighting::mission_shutdown();
 

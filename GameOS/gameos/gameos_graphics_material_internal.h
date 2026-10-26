@@ -92,9 +92,6 @@ namespace gosFX { void DiagFrameTick(); }
 #include "gos_terrain_lighting.h"                // NIGHT-LIGHT-POOLS-2b: pool SSBO accessors
 #include "gos_terrain_patch_stream.h"
 #include "gos_terrain_indirect.h"
-#include "gos_terrain_surface.h"                 // [TERRAIN_SURFACE] PR-2 producer
-#include "../../mclib/terrain_surface_trace.h"   // [TERRAIN_SURFACE v1] channel
-#include "../../mclib/terrain_surface_bands.h"   // [TERRAIN_SURFACE] PR-3 band config (single source)
 #include "gos_terrain_water_stream.h"
 #include "gpu_driven_common.h"
 #include "mc2_hitch_trace.h"  // GPU-UPDATE-BUFFER-COUNTER-1: MC2_GL_BufferData_Owner (include LAST, after all GL headers)
