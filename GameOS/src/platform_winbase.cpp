@@ -48,7 +48,17 @@ void Sleep(DWORD ms) { timespec ts{ms / 1000, long(ms % 1000) * 1000000}; while 
 HANDLE CreateFileA(LPCSTR path, DWORD access, DWORD, LPSECURITY_ATTRIBUTES, DWORD disposition, DWORD, HANDLE)
 {
     int flags = (access & GENERIC_WRITE) ? ((access & GENERIC_READ) ? O_RDWR : O_WRONLY) : O_RDONLY;
-    if (disposition == CREATE_ALWAYS) flags |= O_CREAT | O_TRUNC;
+    switch (disposition) {
+    case CREATE_NEW: flags |= O_CREAT | O_EXCL; break;
+    case CREATE_ALWAYS: flags |= O_CREAT | O_TRUNC; break;
+    case OPEN_EXISTING: break;
+    case OPEN_ALWAYS: flags |= O_CREAT; break;
+    case TRUNCATE_EXISTING:
+        if (!(access & GENERIC_WRITE)) { gGetLastError = EACCES; return INVALID_HANDLE_VALUE; }
+        flags |= O_TRUNC;
+        break;
+    default: gGetLastError = EINVAL; return INVALID_HANDLE_VALUE;
+    }
     const int fd = mc2_open(path, flags, 0666);
     if (fd < 0) { gGetLastError = errno; return INVALID_HANDLE_VALUE; }
     return reinterpret_cast<HANDLE>(intptr_t(fd) + 1);
@@ -58,6 +68,7 @@ BOOL ReadFile(HANDLE file, LPVOID data, DWORD size, DWORD* count, LPVOID)
     ssize_t result;
     do { result = read(int(intptr_t(file) - 1), data, size); } while (result < 0 && errno == EINTR);
     if (count) *count = result < 0 ? 0 : static_cast<DWORD>(result);
+    if (result < 0) gGetLastError = errno;
     return result >= 0;
 }
 BOOL WriteFile(HANDLE file, LPCVOID data, DWORD size, DWORD* count, LPVOID)
@@ -67,7 +78,7 @@ BOOL WriteFile(HANDLE file, LPCVOID data, DWORD size, DWORD* count, LPVOID)
     while (written < size) {
         const auto n = write(int(intptr_t(file) - 1), bytes + written, size - written);
         if (n < 0 && errno == EINTR) continue;
-        if (n <= 0) { if (count) *count = written; return FALSE; }
+        if (n <= 0) { gGetLastError = n < 0 ? errno : EIO; if (count) *count = written; return FALSE; }
         written += static_cast<DWORD>(n);
     }
     if (count) *count = written;
@@ -78,13 +89,17 @@ BOOL MoveFileExW(LPCWSTR from, LPCWSTR to, DWORD flags)
 {
     std::error_code error;
     const std::filesystem::path destination(to);
-    if (!(flags & MOVEFILE_REPLACE_EXISTING) && std::filesystem::exists(destination, error)) return FALSE;
+    if (!(flags & MOVEFILE_REPLACE_EXISTING) && std::filesystem::exists(destination, error)) {
+        gGetLastError = EEXIST; return FALSE;
+    }
+    if (error) { gGetLastError = error.value(); return FALSE; }
     std::filesystem::rename(std::filesystem::path(from), destination, error);
-    if (error) return FALSE;
+    if (error) { gGetLastError = error.value(); return FALSE; }
     if (flags & MOVEFILE_WRITE_THROUGH) {
         const int fd = open(destination.c_str(), O_RDONLY);
-        if (fd < 0) return FALSE;
+        if (fd < 0) { gGetLastError = errno; return FALSE; }
         const bool flushed = fsync(fd) == 0;
+        if (!flushed) gGetLastError = errno;
         close(fd);
         if (!flushed) return FALSE;
     }

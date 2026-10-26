@@ -823,7 +823,9 @@ def battery(args) -> int:
                 print(f'[mod_smoke] {display}: mission {stem} ({how}); staged {stats}', flush=True)
                 future = pool.submit(smoke, entry, staged, stats, stage_s)
                 futures.append(future)
-                if args.fail_fast and result_word(future.result()) != 'PASS':
+                if workers == 1:
+                    result = future.result()
+                if args.fail_fast and result_word(result) != 'PASS':
                     break
             rows = [future.result() for future in futures]
     finally:

@@ -2,6 +2,7 @@
 #include <cstdio>
 #include <cstdint>
 #include <string>
+#include <string_view>
 #include <type_traits>
 
 // The conversion corpus preserves MSVC's diagnostic text on every host.
@@ -24,7 +25,19 @@ int corpusSnprintf(char* output, size_t capacity, const char* format, Args... ar
     for (size_t pos = 0; pos + 1 < reference.size(); ++pos) {
         if (reference[pos] != '%') continue;
         if (reference[pos + 1] == '%') { ++pos; continue; }
-        if (reference[pos + 1] == 'p') { reference.replace(pos, 2, "%016llX"); pos += 6; }
+        size_t end = pos + 1;
+        while (end < reference.size() && std::string_view("-+ #0").find(reference[end]) != std::string_view::npos) ++end;
+        while (end < reference.size() && ((reference[end] >= '0' && reference[end] <= '9') || reference[end] == '*')) ++end;
+        const bool precision = end < reference.size() && reference[end] == '.';
+        if (precision) {
+            ++end;
+            while (end < reference.size() && ((reference[end] >= '0' && reference[end] <= '9') || reference[end] == '*')) ++end;
+        }
+        if (end < reference.size() && reference[end] == 'p') {
+            const std::string conversion = precision ? "llX" : ".16llX";
+            reference.replace(end, 1, conversion);
+            pos = end + conversion.size() - 1;
+        }
     }
     return std::snprintf(output, capacity, reference.c_str(), printf_reference::argument(args)...);
 #endif

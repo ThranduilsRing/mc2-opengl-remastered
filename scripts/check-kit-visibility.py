@@ -26,16 +26,17 @@ def main():
     ap.add_argument("--out", type=Path, required=True)
     args = ap.parse_args()
     args.out.mkdir(parents=True, exist_ok=True)
-    run_out = Path(tempfile.mkdtemp(prefix="run-", dir=args.out))
-    env = dict(os.environ, MC2_DEBUG_STATE_DUMP="1",
-               MC2_OPTIONS_OVERRIDE="RemasteredBuildings=TRUE",
-               MC2_SMOKE_ARTIFACT_ROOT=str(run_out.resolve()))
-    result = subprocess.run([sys.executable, str(Path(__file__).with_name("run_smoke.py")),
-                             "--mission", "mc2_10", "--duration", "10", "--keep-logs",
-                             "--exe", str(args.install / "mc2.exe")], env=env,
-                            **console_child.child_kwargs())
-    logs = sorted(run_out.glob("*/mc2_10.log"), key=lambda p: p.stat().st_mtime)
-    row = grade(logs[-1].read_text(encoding="utf-8", errors="replace") if logs else "")
+    with tempfile.TemporaryDirectory(prefix="run-", dir=args.out) as scratch:
+        run_out = Path(scratch)
+        env = dict(os.environ, MC2_DEBUG_STATE_DUMP="1",
+                   MC2_OPTIONS_OVERRIDE="RemasteredBuildings=TRUE",
+                   MC2_SMOKE_ARTIFACT_ROOT=str(run_out.resolve()))
+        result = subprocess.run([sys.executable, str(Path(__file__).with_name("run_smoke.py")),
+                                 "--mission", "mc2_10", "--duration", "10", "--keep-logs",
+                                 "--exe", str(args.install / ("mc2.exe" if sys.platform == "win32" else "mc2"))], env=env,
+                                **console_child.child_kwargs())
+        logs = sorted(run_out.glob("*/mc2_10.log"), key=lambda p: p.stat().st_mtime)
+        row = grade(logs[-1].read_text(encoding="utf-8", errors="replace") if logs else "")
     row["smoke_returncode"] = result.returncode
     row["must_check_pass"] &= result.returncode == 0
     (args.out / "kit-visibility.json").write_text(json.dumps(row, indent=2) + "\n")

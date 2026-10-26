@@ -4,6 +4,7 @@
 
 #include "texture_decode.h"
 #include "gos_prop_material_cpu.h"
+#include "utils/Image.h"
 #include <fstream>
 #include <filesystem>
 
@@ -404,4 +405,47 @@ TEST_CASE("authored prop detail: GPU blocks share layers and mixed mods remain v
     std::filesystem::remove(root/"mc2-detail-blocks-normal.ktx2");
     std::filesystem::remove(root/"mc2-detail-blocks-orm.ktx2");
     std::filesystem::remove(rgbaFile);
+}
+
+TEST_CASE("texture decode: PNG memory and file preserve every RGBA byte") {
+    const unsigned char png[] = {
+        0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d, 0x49, 0x48, 0x44, 0x52,
+        0x00, 0x00, 0x00, 0x20, 0x00, 0x00, 0x00, 0x20, 0x08, 0x06, 0x00, 0x00, 0x00, 0x73, 0x7a, 0x7a,
+        0xf4, 0x00, 0x00, 0x00, 0x31, 0x49, 0x44, 0x41, 0x54, 0x78, 0x9c, 0xed, 0xce, 0x21, 0x01, 0x00,
+        0x00, 0x08, 0x03, 0x30, 0x2a, 0xbc, 0x02, 0x15, 0x28, 0x48, 0x74, 0x62, 0x60, 0x26, 0xe6, 0x57,
+        0xe9, 0xd9, 0x4f, 0x25, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20,
+        0x20, 0x20, 0x90, 0xe7, 0xc0, 0x01, 0x86, 0xa8, 0x98, 0x2e, 0x36, 0x46, 0x88, 0x56, 0x00, 0x00,
+        0x00, 0x00, 0x49, 0x45, 0x4e, 0x44, 0xae, 0x42, 0x60, 0x82
+    };
+    const std::vector<uint8_t> expected = [] {
+        std::vector<uint8_t> bytes;
+        for (int i = 0; i < 32 * 32; ++i)
+            bytes.insert(bytes.end(), {17, 34, 51, 128});
+        return bytes;
+    }();
+    const auto memory = mc2tex::decodeMemory(png, sizeof(png), "unit.png", gos_Texture_Detect, 0);
+    REQUIRE(memory);
+    CHECK(memory->width == 32);
+    CHECK(memory->height == 32);
+    CHECK(memory->pixels == expected);
+    const auto path = std::filesystem::temp_directory_path() / "mc2-texture-decode.png";
+    struct Cleanup { std::filesystem::path p; ~Cleanup() { std::filesystem::remove(p); } } cleanup{path};
+    { std::ofstream out(path, std::ios::binary); out.write(reinterpret_cast<const char*>(png), sizeof(png)); }
+    const auto file = mc2tex::decodeFile(path.string().c_str(), gos_Texture_Detect, 0);
+    REQUIRE(file);
+    CHECK(file->pixels == expected);
+    Image image;
+#ifndef _WIN32
+    auto alias = path.string();
+    alias.replace(alias.size() - 3, 3, "PNG");
+    REQUIRE(image.loadPNG(alias.c_str()));
+#else
+    REQUIRE(image.loadPNG(path.string().c_str()));
+#endif
+    CHECK_FALSE(image.loadPNG(static_cast<const unsigned char*>(nullptr), 0));
+    CHECK(image.getPixels() == nullptr);
+    CHECK(image.getWidth() == 0);
+    REQUIRE(image.loadPNG(png, sizeof(png)));
+    CHECK_FALSE(image.loadPNG(static_cast<const char*>(nullptr)));
+    CHECK(image.getPixels() == nullptr);
 }

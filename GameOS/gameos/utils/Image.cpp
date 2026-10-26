@@ -10,6 +10,7 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "../../../3rdparty/stb/stb_image.h"
 #include <climits>
+#include "platform_io.h"
 #endif
 
 #ifdef _WIN32
@@ -136,7 +137,7 @@ unsigned char *Image::create(const FORMAT fmt, const int w, const int h){
 	width  = w;
 	height = h;
 
-	int size = w*h;
+	const size_t size = size_t(w) * h * getBytesPerPixel(fmt);
 	pixels = std::make_unique_for_overwrite<unsigned char[]>(size);
 
 	return pixels.get();
@@ -283,7 +284,8 @@ bool Image::loadWICFromMemory(const unsigned char* mem, size_t len)
 
 	return ok;
 #else
-    if (len > INT_MAX) return false;
+    clear();
+    if (!mem || len == 0 || len > INT_MAX) return false;
     int w = 0, h = 0, channels = 0;
     auto* decoded = stbi_load_from_memory(mem, int(len), &w, &h, &channels, 4);
     if (!decoded) return false;
@@ -406,8 +408,10 @@ bool Image::loadWIC(const char *fileName)
 	wideFileNameOwner.reset();
 	return ok;
 #else
+    clear();
+    if (!fileName || !fileName[0]) return false;
     int w = 0, h = 0, channels = 0;
-    auto* decoded = stbi_load(fileName, &w, &h, &channels, 4);
+    auto* decoded = stbi_load(mc2_native_path(fileName).c_str(), &w, &h, &channels, 4);
     if (!decoded) return false;
     auto* destination = create(FORMAT_RGBA8, w, h);
     std::memcpy(destination, decoded, size_t(w) * h * 4);

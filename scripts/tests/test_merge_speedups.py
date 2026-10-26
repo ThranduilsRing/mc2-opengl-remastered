@@ -209,6 +209,9 @@ def test_deploy_stale_refusal_precedes_payload_copy(tmp_path, monkeypatch):
 def test_gate_plan_uses_verified_ninja_and_required_checks():
     import merge_gate as gate
     steps = gate.plan(6)
+    mods = next(cmd for name, cmd, _ in steps if name == "mods")
+    assert "--fail-fast" not in mods
+    assert mods[mods.index("--workers") + 1] == "1"
     assert len(steps) == 20
     quiet = next(cmd for name, cmd, _ in steps if name == "quiet")
     assert quiet[-3:-1] == ["--fresh-smoke", "--exe"] and quiet[-1].endswith("mc2-win64-v0.4/mc2.exe")
@@ -589,7 +592,7 @@ def test_captures_keep_symmetric_env_and_do_not_mutate_gameplay(tmp_path):
 
 
 @pytest.mark.parametrize("failure", [False, True])
-def test_parallel_gate_joins_mods_and_keeps_deploy_barrier(monkeypatch, failure):
+def test_parallel_gate_finishes_mods_before_stock_and_keeps_deploy_barrier(monkeypatch, failure):
     import threading
     import merge_gate as gate
     started, stock_done = threading.Event(), threading.Event()
@@ -601,10 +604,10 @@ def test_parallel_gate_joins_mods_and_keeps_deploy_barrier(monkeypatch, failure)
         if command == ["mods"]:
             assert "deploy" in calls
             started.set()
-            assert stock_done.wait(2)
+            assert not stock_done.wait(0.05), "stock I/O overlaps cold mod load"
             return _r(1 if failure else 0)
         if command == ["stock"]:
-            assert started.wait(2)
+            assert started.is_set()
             stock_done.set()
         return _r(0)
     monkeypatch.setattr(gate, "run_child", runner)

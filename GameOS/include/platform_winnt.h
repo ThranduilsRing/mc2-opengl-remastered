@@ -45,7 +45,7 @@ using PUCHAR = unsigned char*;
 using USHORT = unsigned short;
 using PUSHORT = unsigned short*;
 using ULONG = uint32_t;
-using PULONG = unsigned long*;
+using PULONG = ULONG*;
 using PSZ = char*;
 
 using PVOID = void*;
