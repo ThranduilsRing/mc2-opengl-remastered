@@ -41,7 +41,13 @@ uint32_t captureForcedBuildingHighlight()
 
 long BldgAppearance::render (long depthFixup)
 {
-	if (gos_IsModernShadowPathActive() &&
+	// World markers keep world depth and colour, but never enter a caster feed.
+	const bool marker = appearType && mc2WorldMarkerAppearance(appearType->name);
+	if (marker && bldgShape) {
+		for (long i = 0; i < bldgShape->numTG_Shapes; ++i)
+			if (bldgShape->listOfShapes[i].node) bldgShape->listOfShapes[i].node->noShadow = true;
+	}
+	if (!marker && gos_IsModernShadowPathActive() &&
 		(mc2shadow::staticCasterSet().isMoverOwner(static_cast<const Appearance*>(this)) || !isStaticEligible()))
 		GpuStaticPropBatcher::instance().captureMoverShadowShape(static_cast<const Appearance*>(this),bldgShape);
 	// GPU-batcher path bypasses inView here — the whole point of C2 is

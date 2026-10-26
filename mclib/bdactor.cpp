@@ -93,6 +93,16 @@ bool reloadBounds = false;
 MidLevelRenderer::MLRClipper * theClipper = nullptr;
 
 // class BldgAppearance
+bool mc2WorldMarkerAppearance(const char* name)
+{
+    if (!name) return false;
+    if (S_strnicmp(name, "nav", 3) == 0 && name[3] >= '1' && name[3] <= '6' && name[4] == '\0') return true;
+    for (const char* marker : {"walkwaypoint", "runwaypoint", "jumpwaypoint", "markermarker",
+                              "meetingmarker", "extractionmarker", "sensormarker", "airstrikemarker", "bombstrikemarker"})
+        if (S_stricmp(name, marker) == 0) return true;
+    return false;
+}
+
 void BldgAppearance::setWeaponNodeUsed (long weaponNode)
 {
 	weaponNode -= appearType->numWeaponNodes;

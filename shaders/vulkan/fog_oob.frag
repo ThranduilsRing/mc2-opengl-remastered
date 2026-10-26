@@ -76,7 +76,7 @@ float fbm3D(vec3 p) {
 void main()
 {
     float rawDepth = texture(depthTex, TexCoord).r;
-    if (rawDepth > 0.0001) { outFog = vec4(0.0); return; }
+    if (rawDepth > 0.0) { outFog = vec4(0.0); return; }
 
     vec2 ndc = TexCoord * 2.0 - 1.0;
     vec4 pNear = invViewProj * vec4(ndc, 1.0, 1.0);
@@ -86,13 +86,14 @@ void main()
     // VK-PARITY-F3: FOG-HORIZON-CLAMP-1 (verbatim from shaders/fog_oob.frag).
     float skyFade;
     if (u_horizonClampEnabled != 0) {
-        float elevSin = -worldDir.z;
+        // inverseViewProj reconstructs terrain's MC2 world: +Z is up.
+        float elevSin = worldDir.z;
         if (elevSin >= u_horizonFadeEndSin) { outFog = vec4(0.0); return; }
         skyFade = 1.0 - smoothstep(u_horizonFadeStartSin, u_horizonFadeEndSin, elevSin);
     } else {
         // Legacy: worldDir.z < 0 = sky. Fade in from just-above-horizon.
-        if (worldDir.z < -0.22) { outFog = vec4(0.0); return; }
-        skyFade = smoothstep(-0.22, -0.01, worldDir.z);
+        if (worldDir.z > 0.22) { outFog = vec4(0.0); return; }
+        skyFade = 1.0 - smoothstep(0.01, 0.22, worldDir.z);
     }
 
     // Slow horizontal drift for cloud animation. Shift worldDir in XY plane.

@@ -53,6 +53,7 @@ bool BldgAppearance::isStaticEligible() const
 {
 	// Type-level disqualifiers.
 	if (!appearType)        return false;
+	if (mc2WorldMarkerAppearance(appearType->name)) return false;
 	if (appearType->spinMe) return false;
 	// BLDG-TYPE-ANIM-GATE-FIX-1 (nifty): legacy type-level animation-capacity
 	// check. Kill-switch MC2_BLDG_TYPE_ANIM_STATIC_ELIGIBLE=0 restores old

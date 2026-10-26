@@ -17,7 +17,7 @@ void GpuStaticPropBatcher::captureMoverShadowShape(const void* owner, TG_MultiSh
     for (int i=0;i<multi->numTG_Shapes;++i) {
         const auto& rec=multi->listOfShapes[i];
         TG_Shape* shape=rec.node.get();
-        if (!rec.processMe || !shape || !shape->myType || shape->myType->GetNodeType()!=SHAPE_NODE || shape->GetIsSpotlight()) continue;
+        if (!rec.processMe || !shape || shape->noShadow || !shape->myType || shape->myType->GetNodeType()!=SHAPE_NODE || shape->GetIsSpotlight()) continue;
         GpuStaticPropInstance leaf{};
         const uint32_t flags=shape->GetIsAlphaTest()?(1u<<2):0;
         if (GpuStaticPropBatcher::instance().buildRecipeFromShape(shape,glm::mat4(rec.shapeToWorld),0,0,flags,&leaf)) leaves.push_back(leaf);
