@@ -9,7 +9,8 @@ Copy `runner.py` and `install-task.cmd` to `C:\mc2farm`, then run
 /sc ONLOGON /ru DESKTOP-Q11RABS\Kaitlyn /it /rl LIMITED /tr
 "C:\Users\Kaitlyn\AppData\Local\Python\bin\python.exe C:\mc2farm\runner.py --root C:\mc2farm"`.
 The task uses an interactive token and starts immediately and at logon. The runner
-sets its own priority to BELOW_NORMAL before polling; children inherit it.
+requires the seeded `C:/mc2farm/harness/scripts/console_child.py` helper.
+It sets its own priority to BELOW_NORMAL before polling; children inherit it.
 No PowerShell script or execution-policy change is needed. An installed Python
 executable can be supplied as the command file's first argument.
 

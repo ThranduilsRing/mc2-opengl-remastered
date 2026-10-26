@@ -8,15 +8,19 @@ import os
 from pathlib import Path
 import re
 import subprocess
+import sys
 import time
 import uuid
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'scripts'))
+import console_child
 
 
 def remote(args, script):
     encoded = base64.b64encode(script.encode('utf-16le')).decode('ascii')
     return subprocess.check_output(['ssh', '-i', str(args.key), '-o', 'BatchMode=yes',
                                     args.host, 'powershell -NoProfile -EncodedCommand ' + encoded],
-                                   text=True)
+                                   text=True, **console_child.child_kwargs(redirected=True))
 
 
 def main():
@@ -38,7 +42,8 @@ def main():
         json.loads(args.job.read_text(encoding='utf-8'))
         job_id = uuid.uuid4().hex
         subprocess.run(['scp', '-i', str(args.key), '-o', 'BatchMode=yes', str(args.job),
-                        f'{args.host}:C:/mc2farm/jobs/{job_id}.upload'], check=True)
+                        f'{args.host}:C:/mc2farm/jobs/{job_id}.upload'], check=True,
+                       **console_child.child_kwargs())
         remote(args, f"Move-Item -LiteralPath C:/mc2farm/jobs/{job_id}.upload "
                      f"-Destination C:/mc2farm/jobs/{job_id}.json -ErrorAction Stop")
         print(job_id)
@@ -48,7 +53,8 @@ def main():
     if args.action == 'fetch':
         args.destination.mkdir(parents=True, exist_ok=True)
         subprocess.run(['scp', '-r', '-i', str(args.key), '-o', 'BatchMode=yes',
-                        f'{args.host}:C:/mc2farm/results/{args.id}', str(args.destination)], check=True)
+                        f'{args.host}:C:/mc2farm/results/{args.id}', str(args.destination)], check=True,
+                       **console_child.child_kwargs())
         return
     deadline = time.monotonic() + args.timeout
     while time.monotonic() < deadline:

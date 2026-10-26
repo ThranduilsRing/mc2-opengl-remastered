@@ -6,7 +6,12 @@ import json
 import os
 from pathlib import Path
 import subprocess
+import sys
 import time
+
+sys.path[:0] = [str(Path(__file__).resolve().parents[2] / 'scripts'),
+                str(Path(__file__).resolve().parent / 'harness/scripts')]
+import console_child
 
 
 def atomic_json(path, value):
@@ -29,10 +34,10 @@ def run_job(path, root):
             raise ValueError('timeout must be in (0, 7200] seconds')
         env = dict(os.environ, **job.get('env', {}), MC2_FARM_RESULT_DIR=str(output))
         env.setdefault('MC2_SMOKE_ARTIFACT_ROOT', str(output / 'smoke'))
-        flags = subprocess.BELOW_NORMAL_PRIORITY_CLASS if os.name == 'nt' else 0
         with (output / 'job.log').open('wb') as log:
             child = subprocess.Popen(argv, cwd=job.get('cwd', str(root)), env=env,
-                                     stdout=log, stderr=subprocess.STDOUT, creationflags=flags)
+                                     stdout=log, stderr=subprocess.STDOUT,
+                                     **console_child.child_kwargs(redirected=True))
             result['pid'] = child.pid
             try:
                 result['returncode'] = child.wait(timeout=timeout)
@@ -42,7 +47,8 @@ def run_job(path, root):
                     # Only this job's PID and descendants; never kill by image name.
                     if os.name == 'nt':
                         subprocess.run(['taskkill', '/PID', str(child.pid), '/T', '/F'],
-                                       stdout=log, stderr=subprocess.STDOUT, check=False)
+                                       stdout=log, stderr=subprocess.STDOUT, check=False,
+                                       **console_child.child_kwargs(redirected=True))
                     else:
                         child.kill()
                     child.wait()

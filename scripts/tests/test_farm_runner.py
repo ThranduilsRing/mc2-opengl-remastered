@@ -9,6 +9,7 @@ from types import SimpleNamespace
 import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from scripts import console_child
 from tools.farm.runner import atomic_json, poll_once
 from tools.farm import host
 
@@ -97,7 +98,8 @@ def test_farm_deploy_lease_stays_on_farm_disk(tmp_path):
               'd._write_registry({})')
     subprocess.run([sys.executable, '-c', script],
                    cwd=Path(__file__).resolve().parents[2],
-                   env=dict(os.environ, MC2_DEPLOY_LEASE_PATH=str(registry)), check=True)
+                   env=dict(os.environ, MC2_DEPLOY_LEASE_PATH=str(registry)), check=True,
+                   **console_child.child_kwargs())
     assert json.loads(registry.read_text()) == {}
 
 
@@ -111,4 +113,5 @@ def test_runner_lowers_own_priority(tmp_path):
               'k.GetPriorityClass.argtypes = [ctypes.c_void_p]; '
               'assert k.GetPriorityClass(k.GetCurrentProcess()) == 0x4000')
     subprocess.run([sys.executable, '-c', script, str(tmp_path)],
-                   cwd=Path(__file__).resolve().parents[2], check=True)
+                   cwd=Path(__file__).resolve().parents[2], check=True,
+                   **console_child.child_kwargs())

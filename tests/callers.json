@@ -2818,6 +2818,13 @@
           "text": "import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)"
         },
         {
+          "path": "scripts/tests/test_farm_runner.py",
+          "line": 12,
+          "evidence": "import",
+          "reference": "scripts.console_child",
+          "text": "from scripts import console_child"
+        },
+        {
           "path": "scripts/tests/test_file_size_ratchet.py",
           "line": 16,
           "evidence": "import",
@@ -3208,6 +3215,20 @@
           "evidence": "import",
           "reference": "console_child",
           "text": "import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)"
+        },
+        {
+          "path": "tools/farm/host.py",
+          "line": 16,
+          "evidence": "import",
+          "reference": "console_child",
+          "text": "import console_child"
+        },
+        {
+          "path": "tools/farm/runner.py",
+          "line": 14,
+          "evidence": "import",
+          "reference": "console_child",
+          "text": "import console_child"
         },
         {
           "path": "tools/file_size_ratchet.py",
@@ -9824,7 +9845,7 @@
       "callers_by_stem": [
         {
           "path": "scripts/tests/test_farm_runner.py",
-          "line": 13,
+          "line": 14,
           "evidence": "import",
           "reference": "tools.farm.host",
           "text": "from tools.farm import host"
@@ -9846,7 +9867,7 @@
       "callers_by_stem": [
         {
           "path": "scripts/tests/test_farm_runner.py",
-          "line": 12,
+          "line": 13,
           "evidence": "import",
           "reference": "tools.farm.runner",
           "text": "from tools.farm.runner import atomic_json, poll_once"
