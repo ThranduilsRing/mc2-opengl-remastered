@@ -5289,6 +5289,16 @@
    "count": 1
   },
   {
+   "tag": "MENU_CURSOR_PROBE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "software",
+    "pos"
+   ],
+   "count": 1
+  },
+  {
    "tag": "MIF_SPLIT",
    "ver": 1,
    "stream": "stdout",
@@ -8668,6 +8678,23 @@
     "aliveProps",
     "zeroLightSlots",
     "eager"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "STATIC_PICK_PROBE",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "name",
+    "handle",
+    "rect",
+    "hits",
+    "stamp",
+    "turn",
+    "readback",
+    "disabled",
+    "damage"
    ],
    "count": 1
   },
