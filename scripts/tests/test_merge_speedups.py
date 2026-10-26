@@ -623,7 +623,9 @@ def test_gate_retains_both_art_modes_for_affected_saves_and_captures():
         modes = [(c, e) for n, c, e in steps if n.startswith("saveload-" + mission)]
         assert len(modes) == 2 and modes[0][0] != modes[1][0]
         assert {e["MC2_OPTIONS_OVERRIDE"] for _, e in modes} == {"RemasteredBuildings=TRUE", "RemasteredBuildings=FALSE"}
-        assert all(c[-4:] == ["--sim-speed", "4", "--duration", "15"] for c, _ in modes)
+        assert all("--sim-speed" not in c for c, _ in modes)
+        assert modes[1][0][-2:] == ["--duration", "20"]
+        assert ("--duration" in modes[0][0]) == (mission not in ("mc2_10", "mc2_24"))
     full = gate.affected_plan(gate.plan(6), ["scripts/merge_gate.py"], full=True)
     assert all("--sim-speed" not in c and "--duration" not in c
                for n, c, _ in full if n.startswith("saveload-"))
@@ -862,6 +864,10 @@ def test_auxiliary_determinism_uses_copy_while_saves_stay_serial(tmp_path, monke
         if command[0] == "save":
             saves.set()
             assert det.wait(2)
+        if command[0] == "kit":
+            assert command[-1] == str(clone)
+        if command[0] == "quiet":
+            assert command[-1] == str(clone / "mc2.exe")
         return _r(0)
     monkeypatch.delenv("MC2_HOST_LEASE_BATCH", raising=False)
     monkeypatch.setattr(gate, "git", lambda *a: "head")
@@ -870,8 +876,10 @@ def test_auxiliary_determinism_uses_copy_while_saves_stay_serial(tmp_path, monke
     assert gate.execute_parallel([("deploy", ["deploy"], {}),
         ("mods", ["mods", "--base-install", str(install), "--exe", str(install / "mc2.exe")], {}),
         ("determinism-mc2_10", ["det", "--install", str(install)], {}),
-        ("saveload-mc2_01", ["save"], {})], "head") == 0
-    assert calls.index("mods") < calls.index("det") < calls.index("cleaned")
+        ("saveload-mc2_01", ["save"], {}),
+        ("kit-visibility", ["kit", "--install", str(install)], {}),
+        ("quiet", ["quiet", "--exe", str(install / "mc2.exe")], {})], "head") == 0
+    assert calls.index("mods") < calls.index("det") < calls.index("kit") < calls.index("quiet") < calls.index("cleaned")
 
 
 @pytest.mark.parametrize("tier,env,expected", [

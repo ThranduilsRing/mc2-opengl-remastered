@@ -159,10 +159,9 @@ def affected_plan(steps, paths, full=False):
         if name.startswith("saveload-") and not art and not full:
             if name not in ("saveload-mc2_01", "saveload-mc2_10"):
                 reason = "no kit/art inputs: day/night save/load pair covers shared serialization"
-        if name.startswith("saveload-") and not full:
-            # Fixtures fire at fixed simulation ticks, not drawn frames. Keep
-            # their baseline ticks and require the same save/load evidence.
-            cmd += ["--sim-speed", "4", "--duration", "15"]
+        if name.startswith("saveload-") and not full and name not in ("saveload-mc2_10", "saveload-mc2_24"):
+            # Keep 1x save ticks; night's slower remastered arms retain 28s.
+            cmd += ["--duration", "20"]
         if name in shared_smokes and batch_tier:
             env.update(MC2_VULKAN_VALIDATION="1", MC2_MOVER_COHERENCE_AUDIT="1",
                        MC2_DEBUG_STATE_DUMP="1", MC2_DIAG_TAGS="CONFIG,BUILD,DEVICE")
@@ -178,6 +177,8 @@ def affected_plan(steps, paths, full=False):
             if "--out" in classic:
                 classic[classic.index("--out") + 1] += "-classic"
             if art:
+                if not full and "--duration" not in classic:
+                    classic += ["--duration", "20"]
                 selected.append((name + "-classic", classic,
                                  dict(env, MC2_OPTIONS_OVERRIDE="RemasteredBuildings=FALSE")))
     if game or full:
@@ -311,6 +312,9 @@ def execute_parallel(steps, head, dry_run=False):
         if any(not s[2].get("MC2_GATE_SKIP_REASON") for s in mods):
             determinism = [s for s in stock if s[0].startswith("determinism-") and not s[2].get("MC2_GATE_SKIP_REASON")]
         if determinism:
+            # These checks have no user-save writes and can use the same clone.
+            determinism += [s for s in stock if s[0] in ("kit-visibility", "quiet")
+                            and not s[2].get("MC2_GATE_SKIP_REASON")]
             stock = [s for s in stock if s not in determinism]
         offline = [s for s in stock if s[0] in ("contracts", "harnesses", "pytest")]
         if offline and execute(offline, head, runner=runner, completed=completed):
