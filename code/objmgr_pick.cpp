@@ -2,6 +2,7 @@
 // Declared in the class headers; shared names in objmgr_internal.h.
 #include "objmgr_internal.h"
 #include "mc2fmt.h"
+#include "mech3d.h"
 
 std::vector<mc2::world::SpatialGrid::Candidate> GameObjectManager::nearbyMovers(const glm::vec3& position, float radius) {
 	if (moverGridDirty) {
@@ -404,6 +405,27 @@ GameObjectPtr GameObjectManager::findObjectByMouse (long mouseX,
 
 //---------------------------------------------------------------------------
 
+// A fallen mech's animated root can move the display box below ground.
+// Keep the stock type box at ground level as well, with a small screen margin.
+static void wreckPickRect(GameObjectPtr obj, float& left, float& top, float& right, float& bottom)
+{
+	auto* app = dynamic_cast<Mech3DAppearance*>(obj->getAppearance());
+	if (!app || !app->getAppearanceType() || !eye) return;
+	const auto* type = app->getAppearanceType();
+	for (int i = 0; i < 8; ++i) {
+		glm::vec3 corner = obj->getPosition() + glm::vec3(
+			(i & 1) ? type->typeUpperLeft.x : type->typeLowerRight.x,
+			(i & 2) ? type->typeUpperLeft.y : type->typeLowerRight.y,
+			(i & 4) ? type->typeUpperLeft.z : type->typeLowerRight.z);
+		Stuff::Vector4D screen;
+		eye->projectForScreenXY(corner, screen);
+		if (screen.w <= 1e-4f) return;
+		left = std::min(left, screen.x); top = std::min(top, screen.y);
+		right = std::max(right, screen.x); bottom = std::max(bottom, screen.y);
+	}
+	left -= 4; top -= 4; right += 4; bottom += 4;
+}
+
 GameObjectPtr GameObjectManager::findMoverByMouse (long mouseX,
 												   long mouseY,
 												   long commanderId,
@@ -417,6 +439,26 @@ GameObjectPtr GameObjectManager::findMoverByMouse (long mouseX,
 	if (!searchList)
 		return(nullptr);
 
+	static bool wreckProbed = false;
+	if (!wreckProbed && turn > 90 && mc2::gate::get<"MC2_VK_PICK_PROBE">()) {
+		wreckProbed = true;
+		for (long i = 0; i < numMovers; ++i) {
+			auto* obj = searchList[i];
+			if (!obj || !obj->getExists() || obj->getObjectClass() != BATTLEMECH
+				|| !obj->isDisabled() || obj->isDestroyed() || !obj->getAppearance()) continue;
+			auto* app = obj->getAppearance();
+			float left = app->upperLeft.x, top = app->upperLeft.y;
+			float right = app->lowerRight.x, bottom = app->lowerRight.y;
+			wreckPickRect(obj, left, top, right, bottom);
+			int hits = 0;
+			for (int y = 0; y < 7; ++y) for (int x = 0; x < 7; ++x)
+				hits += findMoverByMouse(long(left + (right-left)*(x+.5f)/7),
+					long(top + (bottom-top)*(y+.5f)/7), -1, false) == obj;
+			mc2::fmt::print_out("[WRECK_PICK_PROBE] id={} rect={:.0f},{:.0f},{:.0f},{:.0f} hits={}/49 stamp={} turn={} visible={}\n",
+				obj->getPartId(), left, top, right, bottom, hits, obj->getWindowsVisible(), turn, app->canBeSeen());
+		}
+	}
+
 	if (commanderId == -1)
 		for (long objIndex = 0; objIndex < numMovers; objIndex++) 
 		{
@@ -427,13 +469,15 @@ GameObjectPtr GameObjectManager::findMoverByMouse (long mouseX,
 				AppearancePtr objAppearance = obj->getAppearance();
 				if (objAppearance && objAppearance->canBeSeen()) 
 				{
-					if (obj->getWindowsVisible() == (turn - VISIBLE_THRESHOLD)) 
+					if (obj->getWindowsVisible() >= (turn - VISIBLE_THRESHOLD))
 					{
 						//-----------------------------------------------------
 						float tlx = objAppearance->upperLeft.x;
 						float tly = objAppearance->upperLeft.y;
 						float brx = objAppearance->lowerRight.x;
 						float bry = objAppearance->lowerRight.y;
+						if (obj->getObjectClass() == BATTLEMECH && obj->isDisabled() && !obj->isDestroyed())
+							wreckPickRect(obj, tlx, tly, brx, bry);
 							
 						if ((mouseX >= tlx) && 
 							(mouseX <= brx) &&
@@ -470,13 +514,15 @@ GameObjectPtr GameObjectManager::findMoverByMouse (long mouseX,
 				AppearancePtr objAppearance = obj->getAppearance();
 				if (objAppearance && objAppearance->canBeSeen()) 
 				{
-					if (obj->getWindowsVisible() == (turn - VISIBLE_THRESHOLD)) 
+					if (obj->getWindowsVisible() >= (turn - VISIBLE_THRESHOLD))
 					{
 						//-----------------------------------------------------
 						float tlx = objAppearance->upperLeft.x;
 						float tly = objAppearance->upperLeft.y;
 						float brx = objAppearance->lowerRight.x;
 						float bry = objAppearance->lowerRight.y;
+						if (obj->getObjectClass() == BATTLEMECH && obj->isDisabled() && !obj->isDestroyed())
+							wreckPickRect(obj, tlx, tly, brx, bry);
 							
 						if ((mouseX >= tlx) && 
 							(mouseX <= brx) &&

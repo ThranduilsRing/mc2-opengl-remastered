@@ -56,13 +56,13 @@ def _deploy(tmp_path):
     return d
 
 
-def test_mechbay_harness_holds_exclusive_named_lease(seen, tmp_path, monkeypatch):
+def test_mechbay_harness_holds_named_slot(seen, tmp_path, monkeypatch):
     d = _deploy(tmp_path)
     monkeypatch.setattr(sys, "argv", ["mechbay_preview_harness.py", "bay", "--deploy", str(d)])
     with pytest.raises(SystemExit):
         mbh.main()
     assert seen["holds"] and seen["labels"] and all(l == "mechbay_preview_harness bay capture" for l in seen["labels"])
-    assert all(seen["exclusive"])
+    assert not any(seen["exclusive"])
     assert "MC2_LOG_PREVIEW" not in seen["env"]
 
 

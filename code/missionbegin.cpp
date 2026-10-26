@@ -37,6 +37,7 @@ MissionBegin.cpp			: Implementation of the MissionBegin component.
 #include"../GameOS/gameos/gos_profiler.h"
 #include"../GuiRuntime/GuiRuntime.h"   // MENU-STALE-CLEAR-2: ImGui-layer dim rect
 #include "imgui.h"
+#include "gos_render.h"
 #include"../GameOS/gameos/gos_dev_shell.h"   // DEV-SHELL-1: ui_reload command registration
 #include <cstdlib>
 #include <string>
@@ -1906,6 +1907,21 @@ void MissionBegin::render()
 	}
 
 	animJustBegun = false;
+	if (pCurScreen && ImGui::GetCurrentContext() && gos_NoUserPresentRequested()
+		&& mc2::gate::get<"MC2_VK_PICK_PROBE">()) {
+		// Sample an actual logistics button without touching the OS pointer.
+		if (auto* button = pCurScreen->getButton(MB_MSG_NEXT)) {
+			auto& io = ImGui::GetIO();
+			io.MousePos = ImVec2((button->left() + button->right()) * .5f,
+				(button->top() + button->bottom()) * .5f);
+			static int tracedScreen = -1;
+			if (tracedScreen != curScreenX * 10 + curScreenY) {
+				tracedScreen = curScreenX * 10 + curScreenY;
+				mc2::fmt::print_err("[LOGISTICS_CURSOR_PROBE] screen={},{} button=NEXT pos={:.0f},{:.0f}\n",
+					curScreenX, curScreenY, io.MousePos.x, io.MousePos.y);
+			}
+		}
+	}
 }
 
 void MissionBegin::beginSplash( const char* playerName)

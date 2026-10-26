@@ -648,7 +648,8 @@ void GuiRuntime::Render() {
     ImGui::GetIO().MouseDrawCursor = (ImGui::GetIO().MouseDrawCursor || ImGui::GetIO().WantCaptureMouse)
         && !mc2::gate::get<"MC2_OS_CURSOR">();
     if (ImGui::GetIO().MouseDrawCursor && gos_NoUserPresentRequested()
-        && mc2::gate::get<"MC2_VK_PICK_PROBE">()) {
+        && mc2::gate::get<"MC2_VK_PICK_PROBE">()
+        && !mc2::gate::isNonEmpty<"MC2_BOOT_TO_BAY">()) {
         // Synthetic in-process cursor for unattended menu captures; no OS input.
         auto& io = ImGui::GetIO();
         io.MousePos = ImVec2(io.DisplaySize.x * 0.5f, io.DisplaySize.y * 0.5f);

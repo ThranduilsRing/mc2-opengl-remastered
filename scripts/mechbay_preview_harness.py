@@ -124,10 +124,9 @@ def main():
             env.pop(k, None)
 
     print(f"[harness] launching {exe} (screen={args.screen} campaign='{args.campaign}' frame={args.frame})")
-    # Host game lease for the whole launch-to-kill window (held until this process exits). Exclusive: this harness takes screenshots,
-    # so no other lane's engine may share the host (same as run_visual_capture). A named holder replaces "unknown holder" in other lanes' waits.
+    # Functional screenshots use one two-core slot, like run_visual_capture.
     try:
-        host_lease.acquire(acquire_label(args), exclusive=True)
+        host_lease.acquire(acquire_label(args), exclusive=False)
     except host_lease.HostLeaseBusy as busy:
         print(f"[harness] FAILED: {busy}")
         sys.exit(2)
