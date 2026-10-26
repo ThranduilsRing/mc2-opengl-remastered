@@ -514,9 +514,8 @@ Split commit: `27cd40e3b`.
 
 | Piece | What it holds |
 |---|---|
-| `mlr_i_tmesh.cpp` | keeps the class data, construction, copy, visibility tests, the clip include and per-vertex lighting |
+| `mlr_i_tmesh.cpp` | keeps what the pieces below did not take |
 | `mlr_i_tmesh_cast.cpp` | MLR_I_TMesh: the CreateIndexedTri* test shapes (CastRay, which had no caller, went at step 5 S5.11). |
-| `mlr_i_tmesh_light.cpp` | MLR_I_TMesh: LightMapLighting (the light-map vertex lighting pass). |
 | `mlr_i_tmesh_internal.h` | shared include bundle, extern globals and declarations of the pieces |
 
 ## `mclib/msl.cpp`
