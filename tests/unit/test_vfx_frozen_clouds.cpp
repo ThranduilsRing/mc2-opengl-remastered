@@ -269,7 +269,8 @@ public:
                 record.color[0] = tint.red;
                 record.color[1] = tint.green;
                 record.color[2] = tint.blue;
-                record.color[3] = tint.alpha;
+                record.color[3] = this->GetSpecification()->m_state.GetAlphaMode() ==
+                    MidLevelRenderer::MLRState::OneZeroMode ? 1.0f : tint.alpha;
                 record.kind_flags = 8u | 32u;
                 if constexpr (std::is_same_v<Cloud, gosFX::PointCloud>) {
                     record.velocity[0] = corner == 1 ? 2.4f : 0.0f;

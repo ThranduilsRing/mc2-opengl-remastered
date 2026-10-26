@@ -470,7 +470,7 @@ void gosFX::PointCloud::Draw(DrawInfo *info)
                     vertex.color[0] = color.red;
                     vertex.color[1] = color.green;
                     vertex.color[2] = color.blue;
-                    vertex.color[3] = color.alpha;
+                    vertex.color[3] = am == MidLevelRenderer::MLRState::OneZeroMode ? 1.0f : color.alpha;
                     vertex.velocity[0] = corner == 1 ? 2.4f : 0.0f;
                     vertex.velocity[1] = corner == 2 ? 2.4f : 0.0f;
                     vertex.kind_flags = 8u | 32u | 128u | (additive ? 2u : 0u);
