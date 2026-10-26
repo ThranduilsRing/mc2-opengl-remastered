@@ -196,7 +196,7 @@
    "LG09": 2,
    "LG10": 16,
    "LG11": 47,
-   "LG12a": 116,
+   "LG12a": 115,
    "LG12b": 177,
    "LG13": 123,
    "LG14": 52,
@@ -3293,9 +3293,6 @@
   "mclib/terrain_internal.h": {
    "LG17": 1
   },
-  "mclib/terrain_surface_trace.h": {
-   "LG12a": 1
-  },
   "mclib/terrtxm.cpp": {
    "LG06": 4,
    "LG11": 1,
@@ -3483,7 +3480,7 @@
    "LG20": 3
   }
  },
- "head": "762c08986",
+ "head": "23d0f5839",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",

@@ -20,8 +20,8 @@
   "code/artlry.cpp": 1701,
   "code/bldng.cpp": 1692,
   "code/brain_special_dispatch.cpp": 2771,
-  "code/gamecam.cpp": 1586,
-  "code/gameobj.cpp": 2242,
+  "code/gamecam.cpp": 1588,
+  "code/gameobj.cpp": 2250,
   "code/infowindow.cpp": 1730,
   "code/logisticsdialog.cpp": 2149,
   "code/mechlabscreen.cpp": 1952,
@@ -42,23 +42,23 @@
   "gui/alistbox.cpp": 1513,
   "mclib/ablenv.cpp": 1585,
   "mclib/ablrtn.cpp": 1799,
-  "mclib/assimp_importer.cpp": 1921,
+  "mclib/assimp_importer.cpp": 1935,
   "mclib/camera.h": 1850,
   "mclib/file.cpp": 1739,
   "mclib/gosfx/fcurve.cpp": 1923,
-  "mclib/mapdata.cpp": 2518,
+  "mclib/mapdata.cpp": 2508,
   "mclib/mlr/mlrlightmap.cpp": 1648,
   "mclib/mlr/mlrprimitiveclipping.hpp": 1722,
   "mclib/mlr/mlrtriangleclipping.hpp": 2112,
   "mclib/move.h": 1895,
-  "mclib/terrtxm.cpp": 1815,
+  "mclib/terrtxm.cpp": 1819,
   "mclib/tgl.h": 1821,
   "tools/cite_guard.py": 1553,
   "tools/comment_guard.py": 1790,
   "tools/scifi_kit/art/intent_military.py": 3363,
   "tools/terrain_beautify/visual_heightfield.py": 1510
  },
- "head": "69d2737b7",
+ "head": "23d0f5839",
  "per_dir": {
   "GameAdapters": {
    "files": 13,
@@ -67,7 +67,7 @@
    "max_lines": 458
   },
   "GameOS": {
-   "files": 382,
+   "files": 379,
    "files_over_1500": 3,
    "files_over_3000": 1,
    "max_lines": 3650
@@ -91,7 +91,7 @@
    "max_lines": 1026
   },
   "code": {
-   "files": 435,
+   "files": 437,
    "files_over_1500": 21,
    "files_over_3000": 0,
    "max_lines": 2771
@@ -109,10 +109,10 @@
    "max_lines": 1513
   },
   "mclib": {
-   "files": 575,
+   "files": 571,
    "files_over_1500": 13,
    "files_over_3000": 0,
-   "max_lines": 2518
+   "max_lines": 2508
   },
   "shaders": {
    "files": 107,
@@ -154,7 +154,7 @@
   },
   {
    "file": "mclib/mapdata.cpp",
-   "lines": 2518
+   "lines": 2508
   },
   {
    "file": "code/objective.cpp",
@@ -170,7 +170,7 @@
   },
   {
    "file": "code/gameobj.cpp",
-   "lines": 2242
+   "lines": 2250
   },
   {
    "file": "code/warrior.h",
@@ -205,12 +205,12 @@
    "lines": 1952
   },
   {
-   "file": "mclib/gosfx/fcurve.cpp",
-   "lines": 1923
+   "file": "mclib/assimp_importer.cpp",
+   "lines": 1935
   },
   {
-   "file": "mclib/assimp_importer.cpp",
-   "lines": 1921
+   "file": "mclib/gosfx/fcurve.cpp",
+   "lines": 1923
   },
   {
    "file": "code/mover.h",
@@ -242,7 +242,7 @@
   },
   {
    "file": "mclib/terrtxm.cpp",
-   "lines": 1815
+   "lines": 1819
   },
   {
    "file": "mclib/ablrtn.cpp",
@@ -254,7 +254,7 @@
   }
  ],
  "total": {
-  "files": 2527,
+  "files": 2522,
   "files_over_1500": 43,
   "files_over_3000": 2,
   "max_lines": 3650
