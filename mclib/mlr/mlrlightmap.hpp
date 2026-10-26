@@ -34,20 +34,11 @@ namespace MidLevelRenderer {
 			PolygonWithColor
 		};
 
-		static void
-			DrawLightMaps(MLRSorter*);
 
-		static void
-			 SetDrawData 
-				(
-					GOSVertexPool*,
-					glm::mat4*,
-					MLRClippingState&,
-					MLRState&
-				);
 
-		static MLRShape*
-			CreateLightMapShape();
+
+
+
 
 		void
 			SetState(MLRState new_state)
@@ -113,16 +104,6 @@ namespace MidLevelRenderer {
 			TestInstance();
 
 	protected:
-		// DrawLightMaps phases (mlrlightmap.cpp).
-		static void flushForLightMapState(MLRSorter* sorter, GOSVertex*& gos_vertices, int& numGOSVertices, MLRState& currentState, MLRState& masterState);
-		static void polygonFastPath(int& i, unsigned short& stride, DWORD& argb, Vector2DScalar*& texCoords, GOSVertex*& gos_vertices, int& numGOSVertices);
-		static void polygonClipOnePlane(unsigned short& stride, Vector2DScalar*& texCoords, int& k, int& k0, int& k1, int& l, int& mask, int& ct, Stuff::Scalar& a, int& numberVerticesPerPolygon, bool& firstIsIn, MLRClippingState& theTest);
-		static void polygonClipManyPlanes(unsigned short& stride, glm::vec3*& coords, Vector2DScalar*& texCoords, MLRClippingState& theOr, int& k, int& k1, int& l, int& mask, Stuff::Scalar& a, int& numberVerticesPerPolygon, bool& firstIsIn, MLRClippingState& theTest);
-		static void polygonTriangulateClipped(int& i, DWORD& argb, GOSVertex*& gos_vertices, int& numGOSVertices, int& numberVerticesPerPolygon);
-		static void colorPolygonFastPath(int& i, unsigned short& stride, Stuff::RGBAColor*& colors, Vector2DScalar*& texCoords, GOSVertex*& gos_vertices, int& numGOSVertices);
-		static void colorPolygonClipOnePlane(unsigned short& stride, Stuff::RGBAColor*& colors, Vector2DScalar*& texCoords, int& k, int& k0, int& k1, int& l, int& mask, int& ct, Stuff::Scalar& a, int& numberVerticesPerPolygon, bool& firstIsIn, MLRClippingState& theTest);
-		static void colorPolygonClipManyPlanes(unsigned short& stride, glm::vec3*& coords, Stuff::RGBAColor*& colors, Vector2DScalar*& texCoords, MLRClippingState& theOr, int& k, int& k1, int& l, int& mask, Stuff::Scalar& a, int& numberVerticesPerPolygon, bool& firstIsIn, MLRClippingState& theTest);
-		static void colorPolygonTriangulateClipped(int& i, GOSVertex*& gos_vertices, int& numGOSVertices, int& numberVerticesPerPolygon);
 		static ClipPolygon2
 			*clipBuffer;
 

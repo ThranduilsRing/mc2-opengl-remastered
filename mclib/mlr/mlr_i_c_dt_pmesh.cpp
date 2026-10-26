@@ -5,9 +5,6 @@
 #include"mlrheaders.hpp"
 #include <memory>
 
-#if defined(TRACE_ENABLED) && defined(MLR_TRACE)
-	BitTrace *MLR_I_C_DT_PMesh_Clip;
-#endif
 
 //#############################################################################
 //###### MLRIndexedPolyMesh with color but no lighting two texture layers ####$
@@ -32,10 +29,6 @@ void
 		);
 	Register_Object(DefaultData);
 
-	#if defined(TRACE_ENABLED) && defined(MLR_TRACE)
-		MLR_I_C_DT_PMesh_Clip = new BitTrace("MLR_I_C_DT_PMesh_Clip");
-		Register_Object(MLR_I_C_DT_PMesh_Clip);
-	#endif
 }
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -47,10 +40,6 @@ void
 	delete DefaultData;
 	DefaultData = nullptr;
 
-	#if defined(TRACE_ENABLED) && defined(MLR_TRACE)
-		Unregister_Object(MLR_I_C_DT_PMesh_Clip);
-		delete MLR_I_C_DT_PMesh_Clip;
-	#endif
 }
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -253,31 +242,7 @@ void
 #endif
 }
 
-#define I_SAY_YES_TO_DUAL_TEXTURES
-#define I_SAY_YES_TO_COLOR
-#undef I_SAY_YES_TO_LIGHTING
 
-#define CLASSNAME MLR_I_C_DT_PMesh
-
-#if defined(TRACE_ENABLED) && defined(MLR_TRACE)
-	#define SET_MLR_PMESH_CLIP() MLR_I_C_DT_PMesh_Clip->Set()
-	#define CLEAR_MLR_PMESH_CLIP() MLR_I_C_DT_PMesh_Clip->Clear()
-#else
-	#define SET_MLR_PMESH_CLIP()
-	#define CLEAR_MLR_PMESH_CLIP()
-#endif
-
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-//	This include contains follwing functions:
-//	void MLR_I_C_DT_PMesh::TransformNoClip(Matrix4D*, GOSVertexPool*);
-//	int MLR_I_C_DT_PMesh::Clip(MLRClippingState, GOSVertexPool*);
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-#include<mlr/mlrprimitiveclipping.hpp>
-
-#undef I_SAY_YES_TO_DUAL_TEXTURES
-#undef I_SAY_YES_TO_COLOR
-#undef CLASSNAME
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //

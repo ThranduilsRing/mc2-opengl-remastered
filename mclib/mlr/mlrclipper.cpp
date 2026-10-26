@@ -316,9 +316,6 @@ void
 
 	allVerticesToDraw.Reset();
 
-#ifdef CalDraw
-	ToBeDrawnPrimitive::allVerticesToDraw = &allVerticesToDraw;
-#endif
 
 	MLRPrimitiveBase::InitializeDraw();
 

@@ -54,7 +54,6 @@ namespace MidLevelRenderer {
 
 		virtual	void	InitializeDrawPrimitive(unsigned char, int=0);
 
-		virtual void	Lighting(MLRLight* const*, int nrLights) = 0;
 
 		virtual void
 			SetCoordData(
@@ -85,8 +84,6 @@ namespace MidLevelRenderer {
 		virtual void
 			Transform(glm::mat4*);
 
-		virtual void
-			TransformNoClip(glm::mat4*, GOSVertexPool*,bool=false) = 0;
 
 		void
 			TheIndexer(int num)

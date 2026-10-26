@@ -83,7 +83,6 @@ namespace MidLevelRenderer {
 
 //		void Copy(MLRIndexedPolyMesh*);
 
-		virtual void	Lighting(MLRLight* const*, int nrLights);
 
 		virtual void
 #if COLOR_AS_DWORD
@@ -92,11 +91,7 @@ namespace MidLevelRenderer {
 			PaintMe(const Stuff::RGBAColor *paintMe);
 #endif
 
-		virtual int	
-			TransformAndClip(glm::mat4 *, MLRClippingState, GOSVertexPool*,bool=false);
 
-		virtual void
-			TransformNoClip(glm::mat4*, GOSVertexPool*,bool=false);
 
 	//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	// Class Data Support

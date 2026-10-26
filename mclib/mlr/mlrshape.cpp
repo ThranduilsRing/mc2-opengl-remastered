@@ -641,32 +641,3 @@ int
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
-void
-	MLRShape::Lighting (
-		const glm::mat4& WorldToShape, 
-		MLRLight* const* lights,
-		int nrLights
-	)
-{
-	Check_Object(this);
-	Check_Object(&WorldToShape);
-
-	if(nrLights == 0)
-	{
-		return;
-	}
-
-	int i;
-
-	for(i=0;i<nrLights;i++)
-	{
-		lights[i]->SetLightToShapeMatrix(WorldToShape);
-	}
-
-	for(i=0;i<numPrimitives;i++)
-	{
-		Check_Object(allPrimitives[i]);
-
-		allPrimitives[i]->Lighting(lights, nrLights);
-	}
-}

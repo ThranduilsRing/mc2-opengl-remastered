@@ -97,10 +97,7 @@ namespace MidLevelRenderer {
 					dEnd = fadeDetailEnd;
 				}
 
-		virtual int	TransformAndClip(glm::mat4 *, MLRClippingState, GOSVertexPool*,bool=false);
 
-		virtual void
-			TransformNoClip(glm::mat4*, GOSVertexPool*,bool=false);
 
 		virtual void
 			SetReferenceState(const MLRState& _state, int pass=0)

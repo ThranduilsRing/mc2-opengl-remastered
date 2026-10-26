@@ -77,6 +77,7 @@ endfunction()
 
 mc2_narrowing_errors(
     mlr
+    mlr_codecs
     fx_trace
     rendercore
     renderworld

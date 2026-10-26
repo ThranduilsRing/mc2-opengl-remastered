@@ -54,28 +54,9 @@ namespace MidLevelRenderer {
 	class MLRPrimitiveBase;
 
 
-#define CalDraw	
 
 
-#ifdef CalDraw
-	struct ToBeDrawnPrimitive {
-		ToBeDrawnPrimitive();
 
-		MLRPrimitiveBase *primitive;
-
-		MLRState state;
-		glm::vec3 cameraPosition;
-		MLRClippingState clippingFlags;
-		glm::mat4 shapeToClipMatrix;
-		glm::mat4 worldToShape;
-
-		static GOSVertexPool *allVerticesToDraw;
-
-		MLRLight* activeLights[Limits::Max_Number_Of_Lights_Per_Primitive];
-
-		int	nrOfActiveLights;
-	};
-#endif
 
 	//##########################################################################
 	//#########################    MLRSorter    ################################
@@ -102,13 +83,10 @@ namespace MidLevelRenderer {
 		MLRSorter(ClassData *class_data, MLRTexturePool*);
 		~MLRSorter();
 
-		virtual void AddPrimitive(MLRPrimitiveBase*, int=0) = 0;
 		virtual void AddEffect(MLREffect*, const MLRState&) = 0;
 
 		virtual void AddSortRawData(SortData*) = 0;
 
-		virtual void
-			DrawPrimitive(MLRPrimitiveBase*, int=0);
 
 		void
 			SetTexturePool(MLRTexturePool *tp)
@@ -147,24 +125,12 @@ namespace MidLevelRenderer {
 					int tex2 = 0
 				);
 
-		SortData*
-			SetRawData(MLRPrimitiveBase*, int=0 );
 
 //	Just scaling down a bit to keep z under 1.0f	
 		void
 			SetFarClipReciprocal(Stuff::Scalar fcr)
 				{ Check_Object(this); farClipReciprocal = fcr*(1.0f-Stuff::SMALL); }
 
-#ifdef CalDraw
-		ToBeDrawnPrimitive*
-			GetCurrentTBDP()
-				{ Check_Object(this); return &drawData[lastUsedDraw]; }
-		ToBeDrawnPrimitive*
-			GetCurrentTBDP(int index)
-				{ Check_Object(this); Verify(index<lastUsedDraw); return &drawData[index]; }
-		void
-			IncreaseTBDPCounter();
-#endif
 
 	//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	// Testing
@@ -180,15 +146,7 @@ namespace MidLevelRenderer {
 		int lastUsedRaw;
 		Stuff::DynamicArrayOf<SortData> rawDrawData; // Max_Number_Primitives_Per_Frame
 
-		int
-			lastUsedInBucketNotDrawn[MLRState::PriorityCount];
 
-#ifdef CalDraw
-		int lastUsedDraw;
-		Stuff::DynamicArrayOf<ToBeDrawnPrimitive> drawData; // Max_Number_Primitives_Per_Frame
-		Stuff::DynamicArrayOf<ToBeDrawnPrimitive*>  //, Max_Number_Primitives_Per_Frame + Max_Number_ScreenQuads_Per_Frame
-			priorityBucketsNotDrawn[MLRState::PriorityCount];
-#endif
 
 		Stuff::Scalar
 			farClipReciprocal;

@@ -7,9 +7,6 @@
 
 extern DWORD gEnableDetailTexture;
 
-#if defined(TRACE_ENABLED) && defined(MLR_TRACE)
-	BitTrace *MLR_I_DeT_TMesh_Clip;
-#endif
 
 //#############################################################################
 //###### MLRIndexedPolyMesh with no color no lighting two texture layer  ######
@@ -34,10 +31,6 @@ void
 		);
 	Register_Object(DefaultData);
 	
-	#if defined(TRACE_ENABLED) && defined(MLR_TRACE)
-		MLR_I_DeT_TMesh_Clip = new BitTrace("MLR_I_DeT_TMesh_Clip");
-		Register_Object(MLR_I_DeT_TMesh_Clip);
-	#endif
 }
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -49,10 +42,6 @@ void
 	delete DefaultData;
 	DefaultData = nullptr;
 
-	#if defined(TRACE_ENABLED) && defined(MLR_TRACE)
-		Unregister_Object(MLR_I_DeT_TMesh_Clip);
-		delete MLR_I_DeT_TMesh_Clip;
-	#endif
 }
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -257,31 +246,7 @@ void
 	Verify(IsDerivedFrom(DefaultData));
 }
 
-#define I_SAY_YES_TO_DETAIL_TEXTURES
-#undef I_SAY_YES_TO_DUAL_TEXTURES
-#undef I_SAY_YES_TO_COLOR
-#undef I_SAY_YES_TO_LIGHTING
 
-#define CLASSNAME MLR_I_DeT_TMesh
-
-#if defined(TRACE_ENABLED) && defined(MLR_TRACE)
-	#define SET_MLR_TMESH_CLIP() MLR_I_DeT_TMesh_Clip->Set()
-	#define CLEAR_MLR_TMESH_CLIP() MLR_I_DeT_TMesh_Clip->Clear()
-#else
-	#define SET_MLR_TMESH_CLIP()
-	#define CLEAR_MLR_TMESH_CLIP()
-#endif
-
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-//	This include contains follwing functions:
-//	void MLR_I_DeT_TMesh::TransformNoClip(Matrix4D*, GOSVertexPool*);
-//	int MLR_I_DeT_TMesh::Clip(MLRClippingState, GOSVertexPool*);
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-#include<mlr/mlrtriangleclipping.hpp>
-
-#undef I_SAY_YES_TO_DETAIL_TEXTURES
-#undef CLASSNAME
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
