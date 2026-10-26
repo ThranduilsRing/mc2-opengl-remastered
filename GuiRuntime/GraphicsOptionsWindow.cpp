@@ -1,4 +1,5 @@
 #include "GraphicsOptionsWindow_internal.h"
+#include "PlayerFrontEnd.h"
 #include "Gates/render_options.h"
 #include "../GameOS/gameos/vk_render_infra.h"
 
@@ -22,6 +23,7 @@ void draw() {
     }
 
     // ── Post-Process ──────────────────────────────────────────────────────────
+    PlayerFrontEnd::drawOptions();
     if (ImGui::CollapsingHeader("Post-Process")) {
         gosPostProcess* pp = getGosPostProcess();
         if (pp) {

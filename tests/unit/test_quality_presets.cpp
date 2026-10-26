@@ -1,5 +1,5 @@
 #include "doctest.h"
-#include "../../tools/mc2_launcher/quality_presets.h"
+#include "../../GuiRuntime/QualityPresets.h"
 #include "Gates/render_options.h"
 #include <cstring>
 

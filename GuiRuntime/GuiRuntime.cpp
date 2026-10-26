@@ -421,7 +421,7 @@ void GuiRuntime::NewFrame() {
     // Solution: poll Win32 state here, directly before ImGui::NewFrame(), so
     // that when NewFrame runs it has accurate mouse position and can set
     // WantCaptureMouse correctly for this frame's message dispatch.
-    {
+    if (s_editorMode) {
         ImGuiIO& io = ImGui::GetIO();
 
         // Mouse position: convert cursor screen coords to GL child HWND client coords.

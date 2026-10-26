@@ -33,7 +33,7 @@ py -3 scripts/ninja_build.py --warm --base <ref> -j3
 # deploy, mc2-main / merge gate ONLY (default v0.4); a lane passes its own E:/mc2-installs/<branch> + --allow-new-target. sha256-verified; COMMIT FIRST
 py -3 scripts/deploy_payload.py --target game --ninja
 # release / fallback = VS tree (fresh tree: py -3 scripts/bootstrap_worktree_build.py --build)
-"$CMAKE" --build build64 --config RelWithDebInfo --target mc2 mc2_launcher   # deploy without --ninja
+"$CMAKE" --build build64 --config RelWithDebInfo --target mc2   # deploy without --ninja
 ```
 
 Offline checks (no game launch) — run these first, all should be green:

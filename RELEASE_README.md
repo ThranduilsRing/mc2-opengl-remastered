@@ -23,7 +23,7 @@ into that folder. Folder contents merge — do not extract into subfolders.
 
 | Zip | Contents | Required? |
 |-----|----------|-----------|
-| `mc2-remastered-engine.zip` | `mc2.exe`, `mc2-launcher.exe`, shaders, DLLs, Mission Editor, tools | yes |
+| `mc2-remastered-engine.zip` | `mc2.exe`, shaders, DLLs, Mission Editor, tools | yes |
 | `mc2-gamedata.zip` | Game archives, maps, sounds, configs | yes |
 | `mc2-movies.zip` | BIK cinematics | optional (gameplay works without intros) |
 | `mc2-burnins-4x-pt1.zip` | 4× upscaled mission lightmaps (part 1) | optional but recommended |
@@ -47,11 +47,24 @@ jump to any mission.
 
 ## Run
 
-Run **`mc2-launcher.exe`** — the launcher is the front door. It has the
-campaign/mod picker, **Import…** (bring in a community campaign from an
-existing MC2 / MC2X / MCO install), **Engine Options…**, **Graphics…**
-(resolution, VSync, frame-rate cap), and **Cheats**. Running `mc2.exe`
-directly brings the launcher up first anyway.
+Run **`mc2.exe`**. The main menu's **Campaigns & mods** picker starts stock
+or installed community campaigns; **Graphics** contains saved engine/display
+options, presets, Remastered/Classic art and cheats. Content changes restart the
+game and resume the selected campaign.
+
+Import uses the portable Python 3 CLI shipped under `tools/` (standard library only).
+From the installed game folder, probe then import your MC2, MC2X or MCO source:
+
+```
+py -3 tools/mc2_import/import_tool.py probe "SOURCE"
+py -3 tools/mc2_import/import_tool.py auto "SOURCE" --deploy .
+```
+
+On Linux use `python3` instead of `py -3`. Add `--dry-run` to preview or `--force`
+to replace an existing import. Ctrl+C cancels; check warnings/missing-file counts,
+then press **Refresh** in the picker. Extract legacy installer EXEs into a separate
+source folder first. The game migrates legacy launcher options into `options.cfg`
+on startup and logs invalid/unknown entries with `MC2_LOG=1`.
 
 If you hit a problem, `run-with-log.bat` captures a `stderr.log` next to the
 executable.

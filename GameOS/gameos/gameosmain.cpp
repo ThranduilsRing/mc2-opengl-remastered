@@ -1,3 +1,4 @@
+#include "../../GuiRuntime/PlayerFrontEnd.h"
 #include <memory>
 #include <print>
 #include "gameos.hpp"
@@ -816,7 +817,6 @@ int main(int argc, char** argv)
     // Gate reads resolved before this line are "pre-main" (static initialisers).
     mc2::gate::markMainEntered();
     initDpiAwareness();
-    if (initLauncherBootstrap()) return 0;
 
     initLauncherEnv();
 
@@ -1201,6 +1201,6 @@ int main(int argc, char** argv)
     if (getValidateConfig().enabled)
         return getValidateTelemetry().exitCode;
 
-    return 0;
+    return PlayerFrontEnd::restartIfRequested(argc, argv);
 }
 #endif // DISABLE_GAMEOS_MAIN

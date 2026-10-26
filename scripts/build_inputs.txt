@@ -16,7 +16,6 @@ gui/
 shaders/
 cmake/
 3rdparty/
-tools/mc2_launcher/
 tools/gpu_abi_gen.py
 CMakeLists.txt
 vcpkg.json

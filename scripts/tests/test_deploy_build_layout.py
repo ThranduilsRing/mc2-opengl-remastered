@@ -67,7 +67,6 @@ def _touch(p: Path, mtime=None):
 def _vs_tree(tmp_path):
     b = tmp_path / "build64"
     _touch(b / "RelWithDebInfo" / "mc2.exe")
-    _touch(b / "out" / "mc2_launcher" / "RelWithDebInfo" / "mc2-launcher.exe")
     _touch(b / "mc2.dir" / "RelWithDebInfo" / "a.obj")
     return b
 
@@ -76,7 +75,6 @@ def _ninja_tree(tmp_path):
     b = tmp_path / "build64-ninja"
     _touch(b / "build.ninja")
     _touch(b / "mc2.exe")
-    _touch(b / "out" / "mc2_launcher" / "mc2-launcher.exe")
     _touch(b / "CMakeFiles" / "mc2.dir" / "code" / "a.cpp.obj")
     return b
 
@@ -87,8 +85,6 @@ def test_vs_layout_not_single_config(tmp_path):
     root = dp.find_build_root(bd)
     assert root == str(b)
     assert not dp.is_single_config(bd, root)
-    assert dp.launcher_path(root, "RelWithDebInfo", False) == str(
-        b / "out" / "mc2_launcher" / "RelWithDebInfo" / "mc2-launcher.exe")
     assert dp.mc2_obj_dir(root, "RelWithDebInfo", False) == str(b / "mc2.dir" / "RelWithDebInfo")
 
 
@@ -97,17 +93,17 @@ def test_ninja_layout_detected(tmp_path):
     root = dp.find_build_root(str(b))
     assert root == str(b)
     assert dp.is_single_config(str(b), root)
-    assert Path(dp.launcher_path(root, "build64-ninja", True)).is_file()
     assert Path(dp.mc2_obj_dir(root, "build64-ninja", True)).is_dir()
 
 
-def test_enumerate_payload_finds_ninja_launcher(tmp_path):
+def test_enumerate_payload_needs_only_game(tmp_path):
     b = _ninja_tree(tmp_path)
     items = dp.enumerate_payload(str(ROOT), str(b), "mc2.exe", "mc2.pdb")
     rel = {r for _s, r, _k in items}
-    assert "mc2.exe" in rel and "mc2-launcher.exe" in rel
-    launcher = [s for s, r, _k in items if r == "mc2-launcher.exe"][0]
-    assert Path(launcher) == b / "out" / "mc2_launcher" / "mc2-launcher.exe"
+    assert "mc2.exe" in rel
+    assert "mc2-launcher.exe" not in rel
+    assert {"tools/mc2_import/import_tool.py", "tools/mc2x_import/manifest.py",
+            "tools/mco_import/build_object2.py", "scripts/console_child.py"} <= rel
 
 
 def test_native_payload_has_no_windows_runtime(tmp_path):

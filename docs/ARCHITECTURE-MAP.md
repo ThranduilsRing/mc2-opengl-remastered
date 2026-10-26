@@ -27,7 +27,7 @@ answers "where am I and where do I look".
 | `build64/`, `build64-h-*`, `build*`, `out/`, `_harness_out/`, `artifacts/`, `scratch/`, `staging/`, `screenshots/`, `graphify-out/` | Generated output | huge | never (not source) |
 | `3rdparty.zip`, `brain_task_queue_test.obj` | Stray artifacts | - | never |
 
-CMake targets: `mc2` (the game), `mc2_launcher`, libs `mclib`, `gui`, `rendercore`, `renderworld`, `gameadapters`,
+CMake targets: `mc2` (the game), libs `mclib`, `gui`, `rendercore`, `renderworld`, `gameadapters`,
 `gui_runtime`, `editorbridge`, `mc2res_*`; tools `viewer`, `EditRel`, `ui_editor`, `text_tool`, `makefst`, `pak`,
 `aseconv`, `makersp`. Build RelWithDebInfo only: `build64/RelWithDebInfo/mc2.exe`.
 

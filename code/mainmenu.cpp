@@ -31,6 +31,7 @@ struct DDSURFACEDESC2 {
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"   // str<>()
 #include "mc2fmt.h"
+#include "../GuiRuntime/PlayerFrontEnd.h"
 extern CPrefs prefs;
 
 
@@ -433,6 +434,13 @@ void MainMenu::skipIntro()
 
 void MainMenu::update()
 {
+    const auto pickedCampaign = PlayerFrontEnd::takeCampaignStart();
+    if (!pickedCampaign.empty() && LogisticsData::instance) {
+        skipIntro();
+        LogisticsData::instance->startNewCampaign(pickedCampaign.c_str());
+        status = RESTART;
+        return;
+    }
 	// MC2_BOOT_TO_BAY=<campaign .fit basename> (e.g. "pictures of a rebellion"):
 	// headless boot for screen capture. One-shot: auto-start the campaign (mirrors
 	// the New-Campaign menu action) and request RESTART, which enters MissionBegin;
@@ -796,6 +804,8 @@ bool MainMenu::occludesLogisticsScreens() const
 
 void MainMenu::render()
 {
+    if (!introMovie && !bOptions && !bDrawMechlopedia)
+        PlayerFrontEnd::drawMainMenu();
 	// UI-ASPECT-ANCHOR-1: front-end frame — draw the UI on the 16:9 canvas
 	// (re-asserted every frame; auto-cleared at flushHUDBatch).
 	gos_SetUiCanvasActive( true );

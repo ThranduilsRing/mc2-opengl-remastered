@@ -13,7 +13,7 @@ Attacks the operational "deployed tree is broken / wrong target" class:
     inside another release tree).
 
 Source of truth: imports scripts/deploy_payload.py constants (FFMPEG_DLLS,
-SUPPORT_SCRIPTS, LAUNCHER_NAME, SHADER_EXTS) — no duplicated lists.
+SUPPORT_SCRIPTS, SHADER_EXTS) — no duplicated lists.
 
 The release tree is EXPLICIT and NON-BLOCKING by default:
   --release-root <path>   (preferred)   or   env MC2_RELEASE_ROOT
@@ -134,15 +134,6 @@ def test_required_dlls_present_or_reported(t: Ctx) -> bool:
     return True
 
 
-def test_launcher_present_or_reported(t: Ctx) -> bool:
-    if not _configured():
-        return True
-    if not os.path.isfile(_p(dp.LAUNCHER_NAME)):
-        print(f"    NOTE: {dp.LAUNCHER_NAME} missing (launcher front-door absent)",
-              file=sys.stderr)
-    return True
-
-
 def test_no_obvious_wrong_target_name_confusion(t: Ctx) -> bool:
     # A release tree must not contain a NESTED release tree (a deploy landed in
     # the wrong/layered target). Flag an immediate child dir that looks like
@@ -178,15 +169,13 @@ def test_release_tree_has_expected_data_shape(t: Ctx) -> bool:
 
 
 # Strict (inDefault gated by MC2_RELEASE_TREE_STRICT; or --test): the FULL
-# runtime payload must be present — every FFmpeg DLL, the launcher.
+# runtime payload must be present — every FFmpeg DLL.
 def test_strict_full_runtime_payload(t: Ctx) -> bool:
     if not _configured():
         t.fail("strict requires --release-root / MC2_RELEASE_ROOT")
         return False
     for d in _missing_dlls():
         t.fail(f"strict: FFmpeg DLL missing: {d}")
-    if not os.path.isfile(_p(dp.LAUNCHER_NAME)):
-        t.fail(f"strict: launcher missing: {dp.LAUNCHER_NAME}")
     return t.failures == 0
 
 
@@ -213,7 +202,6 @@ def main():
     h.add("shaders_dir_nonempty",                   test_shaders_dir_nonempty)
     h.add("core_shader_files_present",              test_core_shader_files_present)
     h.add("required_dlls_present_or_reported",      test_required_dlls_present_or_reported)
-    h.add("launcher_present_or_reported",           test_launcher_present_or_reported)
     h.add("no_obvious_wrong_target_name_confusion", test_no_obvious_wrong_target_name_confusion)
     h.add("release_tree_has_expected_data_shape",   test_release_tree_has_expected_data_shape)
     h.add("strict_full_runtime_payload",            test_strict_full_runtime_payload,

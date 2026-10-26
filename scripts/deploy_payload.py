@@ -76,13 +76,8 @@ SUPPORT_SCRIPTS = {
     "editor": ["run-editor.bat", "run-with-log.bat"],
 }
 
-# mc2-launcher.exe -- the install front-door (campaign mod-picker GUI that
-# launches mc2.exe with MC2_ACTIVE_MOD). A separate build target
-# (tools/mc2_launcher -> build64/out/mc2_launcher/<cfg>/mc2-launcher.exe), so
-# it lives outside build_dir; we locate it from the build64 root. Ships with
-# both game and editor installs.
-LAUNCHER_NAME = "mc2-launcher.exe"
-LAUNCHER_FROM_BUILD64 = os.path.join("out", "mc2_launcher")  # + <cfg> + exe
+# Obsolete payload excluded from runtime bootstraps.
+RETIRED_LAUNCHER = "mc2-launcher.exe"
 
 # Editor authoring support trees (src_root-relative dirs copied recursively,
 # structure preserved). The editor's -gen-map / Generate Mission path shells
@@ -820,7 +815,7 @@ def check_locks(target_dir, exe_name, wait_s=0.0):
 # ---------------------------------------------------------------------------
 
 def find_build_root(build_dir, explicit_root=None):
-    """Locate the build64-family root (holds out/mc2_launcher and mc2.dir).
+    """Locate the build64-family root (holds mc2.dir).
 
     Historically this walked up for an ancestor named literally 'build64', which
     fails for sibling build dirs like build64_island / build64_editor. Now:
@@ -846,19 +841,13 @@ def is_single_config(build_dir, b64):
     (no <config> subdir), because there is exactly one config per tree.
 
     WHY: the VS tree nests everything under a config name (RelWithDebInfo/,
-    mc2.dir/RelWithDebInfo/, out/mc2_launcher/RelWithDebInfo/); Ninja trees
+    mc2.dir/RelWithDebInfo/); Ninja trees
     (build64-ninja) do not. Detecting the layout from the tree itself keeps
     both usable without forcing either into the other's directory shape.
     """
     if not b64:
         return False
     return os.path.isfile(os.path.join(b64, "build.ninja"))
-
-
-def launcher_path(b64, cfg, single_config):
-    base = os.path.join(b64, LAUNCHER_FROM_BUILD64)
-    return os.path.join(base, LAUNCHER_NAME if single_config
-                        else os.path.join(cfg, LAUNCHER_NAME))
 
 
 def mc2_obj_dir(b64, cfg, single_config):
@@ -930,31 +919,11 @@ def enumerate_payload(src_root, build_dir, exe_name, pdb_name,
         if os.path.isfile(p):
             items.append((p, dll, "dll"))
 
-    # mc2-launcher.exe: separate build target outside build_dir. Locate via the
-    # build64 root (walk up from build_dir) using this deploy's config name.
-    bd = os.path.abspath(build_dir).rstrip(os.sep)
-    cfg = os.path.basename(bd)  # e.g. RelWithDebInfo
     b64 = find_build_root(build_dir, build64_root)
-    launcher_src = (launcher_path(b64, cfg, is_single_config(build_dir, b64))
-                    if b64 else "")
-    if native:
-        pass  # The options launcher is a Windows target.
-    elif launcher_src and os.path.isfile(launcher_src):
-        items.append((launcher_src, LAUNCHER_NAME, "exe"))
-    elif require_build:
-        fail(f"mc2-launcher.exe not found (looked: {launcher_src or '<no build64 root>'})\n"
-             "  Build it as part of the release: cmake --build build64 "
-             "--config RelWithDebInfo --target mc2_launcher "
-             "(Ninja tree: ninja -C build64-ninja mc2_launcher)")
-    else:
-        # manifest-only: source build output may be gone; still record the
-        # relpath so an existing target copy gets hashed.
-        items.append((launcher_src or LAUNCHER_NAME, LAUNCHER_NAME, "exe"))
-
     # Baked Vulkan SPIR-V (VULKAN-SHADER-TOOLCHAIN-1): glslangValidator/glslc
     # compiles shaders/vulkan/*.{vert,frag} to <build64-root>/shaders/vulkan/*.spv
     # (CMAKE_BINARY_DIR, i.e. the build64 root, NOT the per-config build_dir --
-    # same non-standard location as mc2-launcher.exe above). The Vulkan island
+    # the CMake build root). The Vulkan island
     # loaders (vulkan_*_island.cpp) read
     # MC2_VULKAN_SPV_DIR if set, else default to "shaders/vulkan" relative to
     # the exe's CWD -- so deployed .spv must land at <target>/shaders/vulkan/.
@@ -1018,6 +987,17 @@ def enumerate_payload(src_root, build_dir, exe_name, pdb_name,
                 rel = os.path.relpath(path, src_root).replace(os.sep, "/")
                 items.append((path, rel, "support"))
 
+    # Portable community importer and its recipes/shims; no Win32 launcher needed.
+    for tree in ("tools/mc2_import", "tools/mc2x_import", "tools/mco_import"):
+        for directory, dirs, files in os.walk(os.path.join(src_root, tree)):
+            dirs[:] = [d for d in dirs if d != "__pycache__"]
+            for fn in sorted(files):
+                if fn.endswith((".pyc", ".pyo")):
+                    continue
+                path = os.path.join(directory, fn)
+                items.append((path, os.path.relpath(path, src_root).replace(os.sep, "/"), "support"))
+
+    items.append((os.path.join(src_root, "scripts", "console_child.py"), "scripts/console_child.py", "support"))
     for rel in IMPORTED_STRUCTURE_PAYLOAD:
         p = os.path.join(src_root, rel)
         if require_build and not os.path.isfile(p):
@@ -1621,7 +1601,7 @@ def implicit_target_refusal(src_root, explicit_target):
     return None
 
 
-BOOTSTRAP_SKIP = {"cache", "crashes", "shaders", "debug_state", "_pngcap", "_rdoc", MANIFEST_NAME, LAUNCHER_NAME}
+BOOTSTRAP_SKIP = {"cache", "crashes", "shaders", "debug_state", "_pngcap", "_rdoc", MANIFEST_NAME, RETIRED_LAUNCHER}
 
 
 def bootstrap_install(src, target, exe_name, pdb_name):
@@ -1698,7 +1678,7 @@ def main():
                     "tree. Equivalent to --build-dir <src>/build64-ninja for "
                     "--target game. An explicit --build-dir wins.")
     ap.add_argument("--build64-root", default=None,
-                    help="explicit build64-family root that holds out/mc2_launcher "
+                    help="explicit build64-family root that holds engine outputs "
                     "and mc2.dir (e.g. an absolute path to build64_island). Default: "
                     "walk up from --build-dir for an ancestor whose name starts with "
                     "'build64' (so build64_island/build64_editor are auto-found).")

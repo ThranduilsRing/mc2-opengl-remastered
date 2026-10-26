@@ -10,21 +10,20 @@ playing, and is honest about what works and what isn't fully verified yet.
 ## 1. Get the build
 
 - Obtain the release build folder (e.g. `mc2-win64-v0.4d-rc1/`) from the project's release
-  location. It contains `mc2.exe`, `mc2-launcher.exe`, `data/`, `mods/`, and `shaders/`.
+  location. It contains `mc2.exe`, `data/`, `mods/`, and `shaders/`.
 - Windows 64-bit. A GPU supporting **OpenGL 4.3+** is required (most cards since ~2013).
 - Unzip somewhere with a real path (avoid OneDrive/temp). The folder is self-contained.
 
 > You only need the base build to play **stock** MC2. Community campaigns are added with the
-> in-launcher **Import** (section 4).
+> portable **Import CLI** (section 4).
 
 ---
 
 ## 2. Launch
 
-- Run **`mc2-launcher.exe`** (the launcher is the front door). Running `mc2.exe` directly
-  will bring the launcher up first anyway.
-- The launcher window has: **Import…**, **Engine Options…**, **Graphics…**, **Cheats**, a
-  campaign/mod picker, and **Launch**.
+- Run **`mc2.exe`**. Open **Campaigns & mods** on the main menu, select a campaign,
+  then **Start campaign**. Changing content restarts and resumes the game.
+- Open **Graphics** for player settings, engine/display options and cheats.
 
 ---
 
@@ -46,11 +45,12 @@ playing, and is honest about what works and what isn't fully verified yet.
 
 1. Have the original campaign installed somewhere (a normal MC2 / MC2X / MCO install — the
    folder that contains `data/` and/or the `.fst` archives).
-2. In the launcher click **Import…** and select that install folder.
-3. The launcher auto-detects the campaign type (stock / MC2X / MCO), pulls its missions,
-   colormaps, mech rosters and pilots, and writes a campaign mod under `mods/`. Wait for
-   **"Import complete."**
-4. The new campaign appears in the picker.
+2. Install Python 3. From the game folder run `py -3 tools/mc2_import/import_tool.py probe "SOURCE"`.
+3. Run `py -3 tools/mc2_import/import_tool.py auto "SOURCE" --deploy .`.
+   Linux: use `python3` in place of `py -3`. `--dry-run` previews, `--force` reimports,
+   Ctrl+C cancels. Read warnings and missing-file counts before playing.
+4. Press **Refresh** in the in-game picker and select the new campaign.
+   Legacy installer EXEs must first be extracted/installed into a separate source folder.
 
 After importing, you can sanity-check assets without launching:
 

@@ -14,7 +14,7 @@ from scripts import deploy_payload as dp  # noqa: E402
 
 def fake_install(root: Path) -> Path:
     for rel in ("data/missions/a.pak", "assets/x.png", "shaders/old.glsl", "cache/c.bin", "textures.fst", "SDL2.dll", "mc2.exe",
-                "mc2.pdb", dp.LAUNCHER_NAME, dp.MANIFEST_NAME, "run.log", "options.cfg"):
+                "mc2.pdb", dp.RETIRED_LAUNCHER, dp.MANIFEST_NAME, "run.log", "options.cfg"):
         p = root / rel
         p.parent.mkdir(parents=True, exist_ok=True)
         p.write_bytes(b"x")

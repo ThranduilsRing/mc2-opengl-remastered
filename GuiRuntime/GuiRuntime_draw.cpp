@@ -2,6 +2,8 @@
 // Declared in the class headers; shared names in GuiRuntime_internal.h.
 #include "GuiRuntime_internal.h"
 
+// Game pages sit below floating player windows. Editor canvas overlays retain
+// their foreground layer so docked editor panels keep their existing ordering.
 
 bool GuiRuntime::IsReadyForUiText()
 {
@@ -19,7 +21,7 @@ bool GuiRuntime::DrawUiRect(float x,
     if (!IsReadyForUiText() || w <= 0.0f || h <= 0.0f)
         return false;
 
-    ImDrawList* drawList = ImGui::GetForegroundDrawList();
+    ImDrawList* drawList = (GuiRuntime::IsEditorMode() ? ImGui::GetForegroundDrawList() : ImGui::GetBackgroundDrawList());
     if (!drawList)
         return false;
 
@@ -37,7 +39,7 @@ bool GuiRuntime::DrawUiTriangle(float x, float y, float w, float h, std::uint32_
     if (!IsReadyForUiText() || w <= 0.0f || h <= 0.0f)
         return false;
 
-    ImDrawList* drawList = ImGui::GetForegroundDrawList();
+    ImDrawList* drawList = (GuiRuntime::IsEditorMode() ? ImGui::GetForegroundDrawList() : ImGui::GetBackgroundDrawList());
     if (!drawList)
         return false;
 
@@ -60,7 +62,7 @@ bool GuiRuntime::DrawUiCircle(float cx, float cy, float radius, std::uint32_t ar
     if (!IsReadyForUiText() || radius <= 0.0f)
         return false;
 
-    ImDrawList* drawList = ImGui::GetForegroundDrawList();
+    ImDrawList* drawList = (GuiRuntime::IsEditorMode() ? ImGui::GetForegroundDrawList() : ImGui::GetBackgroundDrawList());
     if (!drawList)
         return false;
 
@@ -78,7 +80,7 @@ bool GuiRuntime::DrawUiTriangleVerts(float x0, float y0, float x1, float y1,
     if (!IsReadyForUiText())
         return false;
 
-    ImDrawList* drawList = ImGui::GetForegroundDrawList();
+    ImDrawList* drawList = (GuiRuntime::IsEditorMode() ? ImGui::GetForegroundDrawList() : ImGui::GetBackgroundDrawList());
     if (!drawList)
         return false;
 
@@ -92,7 +94,7 @@ bool GuiRuntime::PushUiClipRect(float x, float y, float w, float h)
     if (!IsReadyForUiText() || w <= 0.0f || h <= 0.0f)
         return false;
 
-    ImDrawList* drawList = ImGui::GetForegroundDrawList();
+    ImDrawList* drawList = (GuiRuntime::IsEditorMode() ? ImGui::GetForegroundDrawList() : ImGui::GetBackgroundDrawList());
     if (!drawList)
         return false;
 
@@ -105,7 +107,7 @@ void GuiRuntime::PopUiClipRect()
     if (!IsReadyForUiText())
         return;
 
-    ImDrawList* drawList = ImGui::GetForegroundDrawList();
+    ImDrawList* drawList = (GuiRuntime::IsEditorMode() ? ImGui::GetForegroundDrawList() : ImGui::GetBackgroundDrawList());
     if (drawList)
         drawList->PopClipRect();
 }
@@ -126,7 +128,7 @@ bool GuiRuntime::DrawUiImage(std::uint64_t glTextureName,
     if (!IsReadyForUiText() || glTextureName == 0 || w <= 0.0f || h <= 0.0f)
         return false;
 
-    ImDrawList* drawList = ImGui::GetForegroundDrawList();
+    ImDrawList* drawList = (GuiRuntime::IsEditorMode() ? ImGui::GetForegroundDrawList() : ImGui::GetBackgroundDrawList());
     if (!drawList)
         return false;
 
@@ -184,7 +186,7 @@ bool GuiRuntime::DrawUiText(float x,
             pos.y = y + std::max(0.0f, (h - textSize.y) * 0.5f);
     }
 
-    ImDrawList* drawList = ImGui::GetForegroundDrawList();
+    ImDrawList* drawList = (GuiRuntime::IsEditorMode() ? ImGui::GetForegroundDrawList() : ImGui::GetBackgroundDrawList());
     if (!drawList)
         return false;
 
