@@ -216,6 +216,33 @@ public:
         for (unsigned slot = 0; slot < active(); ++slot) {
             const auto* p = this->GetParticle(slot);
             if (p->m_age >= 1.0f) continue;
+            if constexpr (std::is_same_v<Cloud, gosFX::PertCloud>) {
+                glm::mat4 model;
+                mc2::math::buildRotation(model, p->m_localRotation);
+                const auto* spec = this->GetSpecification();
+                const auto direction = mc2::math::transformPoint(camera, glm::inverse(localToWorld)) - p->m_localTranslation;
+                if (spec->m_alignZUsingX)
+                    mc2::math::alignLocalAxisToWorldVector(model, direction, Stuff::Z_Axis,
+                        spec->m_alignZUsingY ? Stuff::Y_Axis : Stuff::X_Axis,
+                        spec->m_alignZUsingY ? Stuff::X_Axis : -1);
+                else if (spec->m_alignZUsingY)
+                    mc2::math::alignLocalAxisToWorldVector(model, direction, Stuff::Z_Axis, Stuff::Y_Axis, -1);
+                mc2::math::buildTranslation(model, p->m_localTranslation);
+                for (unsigned v = 1; v + 1 < spec->m_vertices; ++v) {
+                    for (unsigned corner : {0u, v+1, v}) {
+                        const auto world = mc2::math::transformPoint(
+                            mc2::math::transformPoint(p->m_vertices[corner] * p->m_scale, model), localToWorld);
+                        const auto& tint = this->m_P_color[slot*2 + (corner ? 1 : 0)];
+                        GpuParticle vertex{};
+                        vertex.position[0] = world.x; vertex.position[1] = world.y; vertex.position[2] = world.z;
+                        vertex.color[0] = tint.red; vertex.color[1] = tint.green; vertex.color[2] = tint.blue;
+                        vertex.color[3] = 1.0f; // opaque fixture
+                        vertex.kind_flags = 8u | 32u;
+                        result.push_back(vertex);
+                    }
+                }
+                continue;
+            }
             glm::vec3 world;
             if constexpr (std::is_same_v<Cloud, gosFX::PointCloud>)
                 world = mc2::math::transformPoint(this->m_P_localTranslation[slot], localToWorld);
@@ -371,7 +398,8 @@ void checkFrozenCloud(bool alignX = false, bool alignY = false, unsigned sides =
     gosFX::Effect::DrawInfo draw{};
     draw.m_parentToWorld = &transform;
     draw.m_clipper = &clipper;
-    const bool gpu = mc2::particles::Batcher::is_enabled() && !std::is_same_v<Cloud, gosFX::PertCloud>;
+    const bool gpu = std::is_same_v<Cloud, gosFX::PertCloud>
+        ? mc2::particles::Batcher::is_oracle_shape_enabled() : mc2::particles::Batcher::is_enabled();
     auto& batcher = mc2::particles::Batcher::Instance();
     batcher.Flush();
 
@@ -379,11 +407,11 @@ void checkFrozenCloud(bool alignX = false, bool alignY = false, unsigned sides =
         const auto frozen = Stuff::Random::GetState();
         const auto particles = cloud.frozenState();
         auto expected = [&] {
-            if constexpr (!std::is_same_v<Cloud, gosFX::PertCloud>)
-                if (gpu) return cloud.expectedPayload(transform);
+            if (gpu) return cloud.expectedPayload(transform);
             return std::vector<GpuParticle>{};
         }();
-        constexpr unsigned stride = std::is_same_v<Cloud, gosFX::CardCloud> ? 6 : 3;
+        const unsigned stride = std::is_same_v<Cloud, gosFX::PertCloud> ? sides * 3 :
+            std::is_same_v<Cloud, gosFX::CardCloud> ? 6 : 3;
         REQUIRE(expected.size() == (gpu ? live * stride : 0));
         std::vector<GpuParticle> firstPayload;
         std::array<std::vector<char>, 2> firstMlrPayload;
@@ -395,8 +423,7 @@ void checkFrozenCloud(bool alignX = false, bool alignY = false, unsigned sides =
             CAPTURE(outside);
             CAPTURE(gpu);
             clipper.StartDraw(camera, projection, fog, nullptr, state, nullptr);
-            if constexpr (!std::is_same_v<Cloud, gosFX::PertCloud>)
-                if (gpu) expected = cloud.expectedPayload(transform, mc2::math::getTranslation(camera));
+            if (gpu) expected = cloud.expectedPayload(transform, mc2::math::getTranslation(camera));
             sorter->payload.clear();
             draw.m_clippingFlags = repeat % 2 ? 0x3f : 0;
             glm::mat4 worldToClip;

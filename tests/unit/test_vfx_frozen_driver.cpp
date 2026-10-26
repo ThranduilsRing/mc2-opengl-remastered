@@ -27,6 +27,11 @@ TEST_CASE("vfx_frozen/fresh processes cover MLR and the GPU harvest gate vectors
         CHECK(runContractChild(executable, {"--no-breaks", "--test-case=vfx_frozen/*"}) == 0);
     }
     CHECK(runContractChild(executable, {"--no-breaks", "--test-case=vfx_mesh/*"}) == 0);
+    {
+        ContractEnvironment nativePert{"MC2_VFX_ORACLE_SHAPE", "1"};
+        ContractEnvironment gpu{"MC2_GPU_PARTICLES", "1"};
+        CHECK(runContractChild(executable, {"--no-breaks", "--test-case=vfx_frozen/PertCloud*"}) == 0);
+    }
 }
 
 
