@@ -5,6 +5,7 @@
 #include"gosfxheaders.hpp"
 
 #include"particles/batcher.h"
+#include <algorithm>
 #include<cmath>    // VFX-ORIGINAL-RENDER-ANIM-FIELDS-1: std::atan2
 #include<cstdio>   // VFX-ORACLE diagnostics
 #include<vector>
@@ -810,7 +811,9 @@ void gosFX::CardCloud::DrawState(DrawInfo *info)
 					vertex.color[3] = color.alpha;
 					vertex.velocity[0] = m_P_uvs[index].x;
 					vertex.velocity[1] = m_P_uvs[index].y;
-					vertex.kind_flags = 8u | (additive ? 2u : 0u) |
+					const auto* particle = GetParticle(i);
+					vertex.size = particle->m_scale * std::max(particle->m_halfX, particle->m_halfY);
+					vertex.kind_flags = 8u | 64u | (additive ? 2u : 0u) |
 						(state.GetTextureWrapMode() == MidLevelRenderer::MLRState::TextureClamp ? 16u : 0u) |
 						(state.GetTextureHandle() == 0 ? 32u : 0u);
 					batcher.Emit(vertex);

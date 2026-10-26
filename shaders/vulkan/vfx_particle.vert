@@ -68,8 +68,15 @@ void main() {
         Particle p = particles[gl_VertexIndex];
         // The terrain MVP includes the MC2-to-render conversion. Native
         // gosFX geometry is already in render space, so convert it back first.
-        gl_Position = U.worldToClipGL * vec4(mc2ToRender(p.position), 1.0);
-        gl_Position.z += 0.0002 * gl_Position.w;
+        vec3 world = mc2ToRender(p.position);
+        // Authored flares lie on the struck surface. Keep the whole card
+        // clear of that intersection while retaining scene occlusion.
+        if ((p.kind_flags & 64u) != 0u && G.oneOne == ADDITIVE_ONE_ONE) {
+            float viewW = (U.worldToClipGL * vec4(world, 1.0)).w;
+            world -= normalize(cross(U.camRight.xyz, U.camUp.xyz))
+                   * min(4.0 * p.size, 0.25 * max(viewW, 0.0));
+        }
+        gl_Position = U.worldToClipGL * vec4(world, 1.0);
         v_uv = p.velocity.xy;
         v_color = p.color;
         v_flags = p.kind_flags;

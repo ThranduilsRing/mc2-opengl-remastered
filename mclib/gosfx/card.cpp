@@ -8,6 +8,7 @@
 // (replaces C7 EffectAdapter-at-MakeEffect, which only caught top-level
 // MakeEffect returns and missed composite-children spawned by EffectCloud).
 #include"particles/batcher.h"
+#include <algorithm>
 #include<cstdio>   // VFX-ORACLE diagnostics (VFX-CARD-ORACLE-HARVEST-1)
 #include "mc2fmt.h"
 
@@ -535,7 +536,8 @@ void gosFX::Card::Draw(DrawInfo *info)
 			vertex.color[3] = m_color.alpha;
 			vertex.velocity[0] = m_uvs[corner].x;
 			vertex.velocity[1] = m_uvs[corner].y;
-			vertex.kind_flags = 8u | (additive ? 2u : 0u) |
+			vertex.size = m_scale * std::max(m_halfX, m_halfY);
+			vertex.kind_flags = 8u | 64u | (additive ? 2u : 0u) |
 				(state.GetTextureWrapMode() == MidLevelRenderer::MLRState::TextureClamp ? 16u : 0u) |
 				(state.GetTextureHandle() == 0 ? 32u : 0u);
 			batcher.Emit(vertex);

@@ -236,7 +236,8 @@ public:
                     state.Combine(MidLevelRenderer::MLRState{}, spec->m_state);
                     const bool additive = state.GetAlphaMode() == MidLevelRenderer::MLRState::OneOneMode ||
                                           state.GetAlphaMode() == MidLevelRenderer::MLRState::AlphaOneMode;
-                    vertex.kind_flags = 8u | (additive ? 2u : 0u) |
+                    vertex.size = p->m_scale * std::max(p->m_halfX, p->m_halfY);
+                    vertex.kind_flags = 8u | 64u | (additive ? 2u : 0u) |
                         (state.GetTextureWrapMode() == MidLevelRenderer::MLRState::TextureClamp ? 16u : 0u) |
                         (state.GetTextureHandle() == 0 ? 32u : 0u);
                     result.push_back(vertex);
