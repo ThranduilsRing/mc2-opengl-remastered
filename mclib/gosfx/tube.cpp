@@ -1369,7 +1369,7 @@ void gosFX::Tube::Draw(DrawInfo *info)
 				 spec->m_profileType == Specification::e_AlignedRibbon ||
 				 spec->m_profileType == Specification::e_VerticalRibbon);
 			const MidLevelRenderer::MLRState::AlphaMode am =
-				spec->m_state.GetAlphaMode();
+				dInfo.state.GetAlphaMode();
 			// Alpha-blend (smoke ribbons) vs additive (PPC bolts). Same
 			// classification convention as the billboard bridge / spawn_*.cpp:
 			// OneOneMode / AlphaOneMode = additive; everything else = alpha.
@@ -1388,14 +1388,20 @@ void gosFX::Tube::Draw(DrawInfo *info)
 			//    ring (BuildMesh, incl. the vc==5 cross special-case) with the
 			//    spec's insideOut winding — submit exactly what BuildMesh built.
 			const bool isPolygonKind = (vc >= 3 && vc <= 7);
-			const bool isSupportedBlend = isAlphaBlend || isAdditive;
+			const bool isSupportedBlend = isAlphaBlend || isAdditive ||
+				am == MidLevelRenderer::MLRState::OneZeroMode;
 			// Both ribbon and polygon tubes route through the same indexed mesh
 			// submit. (Ribbon == vc 2 swept quad; polygon == vc>=3 ring panels.)
 			const bool supported =
 				isSupportedBlend && (vc >= 2) && (isRibbonKind || isPolygonKind);
 			// Preserve the existing additive recipe and the authored texture-address mode.
-			const int blendMode = (isAdditive ? 1 : 0) |
-				(dInfo.state.GetTextureWrapMode() == MidLevelRenderer::MLRState::TextureClamp ? 4 : 0);
+			const int blendMode =
+				(am == MidLevelRenderer::MLRState::OneOneMode ? 2 :
+				 am == MidLevelRenderer::MLRState::AlphaOneMode ? 1 :
+				 am == MidLevelRenderer::MLRState::OneZeroMode ? 3 :
+				 am == MidLevelRenderer::MLRState::OneAlphaMode ? 4 :
+				 am == MidLevelRenderer::MLRState::OneInvAlphaMode ? 5 : 0) |
+				(dInfo.state.GetTextureWrapMode() == MidLevelRenderer::MLRState::TextureClamp ? 256 : 0);
 
 			if (supported && m_P_indices)
 			{
@@ -1408,7 +1414,7 @@ void gosFX::Tube::Draw(DrawInfo *info)
 				const unsigned numIndices = static_cast<unsigned>(m_triangleCount) * 3u;
 
 				const uint32_t gosHandle =
-					static_cast<uint32_t>(spec->m_state.GetTextureHandle());
+					static_cast<uint32_t>(dInfo.state.GetTextureHandle());
 
 				// Q2-S2: build the world-space vertex copy ONLY when it will
 				// actually be enqueued (gosHandle != 0). For untextured tubes
@@ -1421,7 +1427,7 @@ void gosFX::Tube::Draw(DrawInfo *info)
 				// TUBE-DEFERRED-FLUSH-1: with a real texture handle, enqueue into
 				// the deferred ribbon queue (drawn post-renderLists via
 				// gos_tube_ribbon_flush_deferred in gamecam.cpp).
-				if (gosHandle != 0) {
+				{
 					// Transform local-space verts to MC2/Stuff world space.
 					// (m_P_vertices are effect-local; the ribbon VS applies the GL
 					// axis swap, so we hand it MC2 world unswapped.)

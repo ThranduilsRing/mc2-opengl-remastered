@@ -31,6 +31,8 @@ void main() {
     vec4 tex = (v_flags & 32u) != 0u ? vec4(1.0) : textureLod(uAtlas, uv, 0.0);
     if ((v_flags & 12u) != 0u) {
         vec4 c = tex * v_color;
+        // Opaque tubes ignore texture and vertex alpha, including alpha zero.
+        if ((v_flags & 256u) != 0u) c.a = 1.0;
         if ((v_flags & 8u) != 0u) {
             if ((v_flags & 2u) != 0u) {
                 if (max(max(c.r, c.g), c.b) <= 0.0001) discard;

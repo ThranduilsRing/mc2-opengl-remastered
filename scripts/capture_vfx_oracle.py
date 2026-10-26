@@ -55,7 +55,9 @@ def gate_vector(arm: str, experiment: str) -> dict[str, str]:
         raise ValueError("unknown arm or experiment")
     enabled = "1" if arm == "gpu" else "0"
     harvest = enabled if experiment == "harvested" else "0"
-    return {"MC2_GPU_PARTICLES": enabled,
+    # Accepted Card/Point/Shard CPU routes are gone. Keep them present in both
+    # harvested controls; only the still-owned Tube/Shape selectors vary.
+    return {"MC2_GPU_PARTICLES": "1" if experiment == "harvested" else enabled,
             "MC2_VFX_ORACLE_TUBE": harvest, "MC2_VFX_ORACLE_SHAPE": harvest}
 
 

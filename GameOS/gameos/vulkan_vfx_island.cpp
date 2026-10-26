@@ -170,6 +170,7 @@ struct VfxIsland : mc2vk::IslandState {
     mc2vk::OwnedShaderModule vegVert;        // vfx_vegetation.vert: reads the GPU cull's survivor list
     mc2vk::OwnedPipelineLayout vegLayout;    // set 0 ring, set 1 atlas page, set 2 the vegetation state's draw set
     mc2vk::OwnedPipeline oneOnePipe;  // GL OneOne: (ONE, ONE), alpha ignored
+    mc2vk::OwnedPipeline opaquePipe, oneAlphaPipe, oneInvAlphaPipe;
     mc2vk::OwnedCommandPool cpool;
     VkCommandBuffer  cbuf[2] = {VK_NULL_HANDLE, VK_NULL_HANDLE};   // one per parity slot
     uint64_t         ticket[2] = {0, 0};                           // timeline value of the slot's last submit (0 = never submitted)
@@ -264,7 +265,7 @@ std::optional<VkDescriptorSet> get_page(VfxIsland* s,uint32_t handle,uint32_t pa
 // VfxDrawGroup::additive values (LOCKSTEP with ADDITIVE_* in shaders/vulkan/vfx_particle.vert).
 enum : uint32_t { VFX_ADD_ALPHA = 0, VFX_ADD_SRC_ALPHA = 1, VFX_ADD_ONE_ONE = 2 };
 
-mc2vk::OwnedPipeline make_pipeline(VfxIsland* s, int w, int h, bool additive, bool oneOne = false, bool vegetation = false) {
+mc2vk::OwnedPipeline make_pipeline(VfxIsland* s, int w, int h, bool additive, bool oneOne = false, bool vegetation = false, unsigned tubeMode = 0) {
     VkPipelineVertexInputStateCreateInfo vin{};
     vin.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;  // procedural
     VkPipelineInputAssemblyStateCreateInfo ia{};
@@ -293,6 +294,12 @@ mc2vk::OwnedPipeline make_pipeline(VfxIsland* s, int w, int h, bool additive, bo
     cba[0].colorBlendOp = VK_BLEND_OP_ADD;
     cba[0].srcAlphaBlendFactor = oneOne ? VK_BLEND_FACTOR_ONE : VK_BLEND_FACTOR_SRC_ALPHA;
     cba[0].dstAlphaBlendFactor = additive ? VK_BLEND_FACTOR_ONE : VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+    if (tubeMode == 3) cba[0].blendEnable = VK_FALSE;
+    if (tubeMode == 4 || tubeMode == 5) {
+        cba[0].srcColorBlendFactor = cba[0].srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+        cba[0].dstColorBlendFactor = cba[0].dstAlphaBlendFactor =
+            tubeMode == 4 ? VK_BLEND_FACTOR_SRC_ALPHA : VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+    }
     cba[0].alphaBlendOp = VK_BLEND_OP_ADD;
     cba[0].colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
                             VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
@@ -509,7 +516,11 @@ bool init_island(VfxIsland* s, int w, int h) {
         s->alphaPipe = make_pipeline(s, w, h, /*additive=*/false);
         s->addPipe   = make_pipeline(s, w, h, /*additive=*/true);
         s->oneOnePipe = make_pipeline(s, w, h, /*additive=*/true, /*oneOne=*/true);
-        if (!s->alphaPipe || !s->addPipe || !s->oneOnePipe || (GosVegetation::isEnabled() && !s->vegetationPipe)) { setFallback("pipeline_create_failed"); return false; }
+        s->opaquePipe = make_pipeline(s, w, h, false, false, false, 3);
+        s->oneAlphaPipe = make_pipeline(s, w, h, false, false, false, 4);
+        s->oneInvAlphaPipe = make_pipeline(s, w, h, false, false, false, 5);
+        if (!s->alphaPipe || !s->addPipe || !s->oneOnePipe || !s->opaquePipe ||
+            !s->oneAlphaPipe || !s->oneInvAlphaPipe || (GosVegetation::isEnabled() && !s->vegetationPipe)) { setFallback("pipeline_create_failed"); return false; }
     }
 
     // Command pool + two command buffers (one per parity slot; the slot is reused once its last submit completed, a timeline ticket, no island fence).
@@ -679,6 +690,9 @@ extern "C" int mc2_vk_vfx_island_run(
         if (!groupPage[gi]) continue;   // no resident texture: skipped, as the GL path does
         if (d.atlasColumns == kVfxVegetationAtlas) continue;   // vegetation draws through mc2_vk_vfx_vegetation_run
         VkPipeline want = d.additive == VFX_ADD_ONE_ONE ? s->oneOnePipe.get() : d.additive == VFX_ADD_SRC_ALPHA ? s->addPipe.get() : s->alphaPipe.get();
+        if (d.additive == 3) want = s->opaquePipe.get();
+        else if (d.additive == 4) want = s->oneAlphaPipe.get();
+        else if (d.additive == 5) want = s->oneInvAlphaPipe.get();
         if (want != bound) { mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, want); bound = want; }
         vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 1, 1, &*groupPage[gi], 0, nullptr);
         const VfxGroupPush push{ {d.u0, d.v0}, {d.us, d.vs}, d.atlasColumns, d.additive == VFX_ADD_ONE_ONE ? 1u : 0u };
