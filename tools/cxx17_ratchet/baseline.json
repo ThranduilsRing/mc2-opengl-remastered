@@ -187,7 +187,7 @@
   "mclib": {
    "LG01": 3,
    "LG02": 0,
-   "LG03": 551,
+   "LG03": 567,
    "LG04": 15,
    "LG05": 111,
    "LG06": 528,
@@ -198,7 +198,7 @@
    "LG11": 47,
    "LG12a": 115,
    "LG12b": 177,
-   "LG13": 123,
+   "LG13": 120,
    "LG14": 52,
    "LG15": 0,
    "LG16": 123,
@@ -2294,7 +2294,7 @@
   "mclib/appear.h": {
    "LG05": 4,
    "LG06": 2,
-   "LG13": 3
+   "LG13": 2
   },
   "mclib/apprtype.cpp": {
    "LG03": 3,
@@ -2822,7 +2822,7 @@
    "LG03": 6
   },
   "mclib/mlr/mlrindexedtrianglecloud.cpp": {
-   "LG03": 4
+   "LG03": 8
   },
   "mclib/mlr/mlrinfinitelight.cpp": {
    "LG03": 2
@@ -2852,7 +2852,7 @@
    "LG06": 1
   },
   "mclib/mlr/mlrngoncloud.cpp": {
-   "LG03": 4
+   "LG03": 10
   },
   "mclib/mlr/mlrpointlight.cpp": {
    "LG03": 6
@@ -2908,7 +2908,7 @@
    "LG16": 10
   },
   "mclib/mlr/mlrtrianglecloud.cpp": {
-   "LG03": 4
+   "LG03": 10
   },
   "mclib/mlr/owntrace.hpp": {
    "LG06": 1,
@@ -3059,9 +3059,6 @@
    "LG06": 3,
    "LG12a": 10
   },
-  "mclib/quad.cpp": {
-   "LG13": 1
-  },
   "mclib/quad_lines.cpp": {
    "LG16": 1
   },
@@ -3080,8 +3077,7 @@
   },
   "mclib/render_submissions.h": {
    "LG08": 1,
-   "LG12a": 4,
-   "LG13": 1
+   "LG12a": 4
   },
   "mclib/resource_strings.cpp": {
    "LG06": 1
@@ -3456,7 +3452,7 @@
    "LG20": 3
   }
  },
- "head": "6d65270e2",
+ "head": "be4436e5a",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",

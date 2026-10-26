@@ -450,7 +450,6 @@ public:
 			}
 		}
 
-		#define MAX_SHADOW_PITCH_CHANGE	(5.0f)
 		//Always recalc here or shadows never change in editor!!
 		forceShadowRecalc = true;
 

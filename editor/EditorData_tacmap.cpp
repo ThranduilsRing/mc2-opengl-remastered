@@ -53,7 +53,7 @@ struct TGARecs
 	long width;
 };
 
-#define CONTRAST		128.0f
+inline constexpr float CONTRAST = 128.0f;
 constexpr float BRIGHTNESS = 0.5f;
 constexpr float LIGHT_YAW = -250.0f;
 constexpr float LIGHT_PITCH = 32.0f;

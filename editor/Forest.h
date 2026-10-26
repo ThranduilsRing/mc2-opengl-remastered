@@ -10,7 +10,7 @@ forest.h			: Interface for the forest component.
 #include "stdafx.h"
 
 class FitIniFile;
-#define FOREST_TYPES 15
+inline constexpr int FOREST_TYPES = 15;
 //*************************************************************************************************
 
 /**************************************************************************************************

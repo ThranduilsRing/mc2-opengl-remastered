@@ -39,7 +39,7 @@ extern std::atomic<unsigned long long> g_txmmgr_add_shape_overflow_prevented;
 //----------------------------------------------------------------------
 
 // Per-frame submission budgets; source assets have no fixed slot pool.
-#define MC_MAX_RENDER_NODES 4096
+inline constexpr int MC_MAX_RENDER_NODES = 4096;
 inline constexpr int MC_MAXFACES = 16000000;
 
 inline constexpr int MC2_ISTERRAIN = 1;
