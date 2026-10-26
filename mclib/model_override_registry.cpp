@@ -360,8 +360,10 @@ ModelOverrideRegistry& ModelOverrideRegistry::instance() {
     static ModelOverrideRegistry g;
     static std::once_flag once;
     std::call_once(once, [] {
-        // Bundled art is below install-local manifests and all mounted mods.
-        if (mc2::options::current().remasteredBuildings)
+        // Dense bundled geometry stalls 24-EU/shared-DDR4 presets; retain stock buildings.
+        // Install-local manifests and mounted mods still take priority.
+        const bool bundledArt = mc2::options::current().remasteredBuildings && !mc2::options::lowCost();
+        if (bundledArt)
             g.loadFromFile("mods/mc2-industrial-kit/data/model_overrides/models.json",
                            "mods/mc2-industrial-kit/data/model_overrides");
         const int base = g.mergeFromFile("data/model_overrides/models.json", "data/model_overrides");
@@ -372,7 +374,7 @@ ModelOverrideRegistry& ModelOverrideRegistry::instance() {
         // relative to that mod's model_overrides directory: Assimp opens files directly, so the
         // per-record manifestDir is what routes a GLB to its provider.
         std::string active = mc2::gate::str<"MC2_ACTIVE_MOD">();
-        if (!mc2::options::current().remasteredBuildings && active == "mc2-industrial-kit") active.clear();
+        if (!bundledArt && active == "mc2-industrial-kit") active.clear();
         for (const auto& root : modelOverrideMountOrder(active, mc2::gate::str<"MC2_MOD_DEPS">(), activeModJsonDeps(active))) {
             if (root == "mods/mc2-industrial-kit") continue; // Already merged at lowest priority.
             const std::string dir = (std::filesystem::path(root) / "data/model_overrides").generic_string();

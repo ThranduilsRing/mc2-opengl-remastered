@@ -56,7 +56,7 @@ vec3 olp_objectPoolLight(vec3 worldPosMC2, int numPoolLights, int poolSoft,
 #ifdef MC2_OBJECT_SHORT_POOL
     // The stock runway scene packs fewer than 100 lights. Grid lookup and
     // dependent record loads cost more than this uniform, contiguous short walk.
-    if (numPoolLights <= 128) {
+    if (numPoolLights <= 128 && MC2_OBJECT_SHORT_POOL) {
         for (int i = 0; i < numPoolLights; ++i)
             olp_addPoolLight(i, worldPosMC2, poolSoft, moverDim, moverScale, moverMax, pool, poolMover);
     } else
@@ -89,6 +89,10 @@ vec3 olp_objectPoolLight(vec3 worldPosMC2, int numPoolLights, int poolSoft,
         uvec2 range = lightGridCells[cell.y * uT.lightGridDim + cell.x];
         lo = int(range.x); hi = int(range.x + range.y); indexed = true;
     }
+#endif
+#ifdef MC2_OBJECT_POOL_BUDGET
+    // Spatial lists retain nearby pools; bound fragment work on 24-EU/shared-DDR4 presets.
+    if (MC2_OBJECT_POOL_BUDGET > 0) hi = min(hi, lo + MC2_OBJECT_POOL_BUDGET);
 #endif
     for (int k = lo; k < hi; ++k) {
         int i = k;

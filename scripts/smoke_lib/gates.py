@@ -23,6 +23,7 @@ class GateConfig:
     validation_requested: bool = False
     # The smoke mission under test: selects the PRESENCE_RULES rows that apply.
     stem: str = ""
+    vegetation_expected: bool = True  # Low/Potato retain only stock objects.
 
 
 @dataclass
@@ -95,6 +96,8 @@ def evaluate(s: LogSummary, cfg: GateConfig, *,
 
     # Regression floors: a line the mission must print (logparse.PRESENCE_RULES). Only a run that reached play can be judged; a load failure has its own bucket.
     for rule in PRESENCE_RULES:
+        if rule.bucket.startswith("vegetation_") and not cfg.vegetation_expected:
+            continue
         if rule.stem == cfg.stem and s.mission_ready_ms is not None and s.presence_counts.get(rule.bucket, 0) == 0:
             buckets.append(rule.bucket)
             details.append(rule.why)

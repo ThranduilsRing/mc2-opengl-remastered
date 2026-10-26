@@ -56,6 +56,7 @@
 // =============================================================================
 #version 450
 #extension GL_GOOGLE_include_directive : require
+layout(constant_id = 0) const int kBaseQuality = 2; // Potato / Low / Medium+High
 
 // Per-frame UBO: generated from RenderCore/gpu_abi/GpuColorFrameUBO.h.
 #include "include/color_frame_ubo_vk.glsl"
@@ -125,7 +126,8 @@ float propCoverage(float a, float lod) {
 #include "include/ground_lighting.glsl"
 layout(set = 0, binding = 14) uniform sampler2DShadow uTreeObjectMap;
 #define MC2_OBJECT_TERRAIN_GRID 1
-#define MC2_OBJECT_SHORT_POOL 1
+#define MC2_OBJECT_SHORT_POOL (kBaseQuality == 2)
+#define MC2_OBJECT_POOL_BUDGET (kBaseQuality == 0 ? 4 : kBaseQuality == 1 ? 8 : 0)
 #include "../include/object_light_pool.hglsl"
 
 // GL static_prop.frag's pool term: albedo-modulated additive pool light at the MC2-frame world position.
@@ -227,7 +229,9 @@ void main() {
     // PROP-COVERAGE-1: an opaque (non-alpha-tested) fragment belongs to the core pass only.
     if (uPacket.coverageFringePass != 0 && !alphaTestClass) discard;
     bool treeMaterial = haveAlbedo && vTree.y > 0.5;
-    if (haveAlbedo && uPacket.materialId >= 0 && uPacket.materialId < uPropMaterials.materials.length()) {
+    // Low/Potato reuse the VS's existing SH + sun + authored-light result.
+    // Re-evaluating diffuse material lighting per fragment wastes the 24-EU budget.
+    if (kBaseQuality == 2 && haveAlbedo && uPacket.materialId >= 0 && uPacket.materialId < uPropMaterials.materials.length()) {
         SurfaceMaterial surface = propSurface(uPacket.materialId, materialAlbedo);
         float materialCoverage = propMaterialCoverage(uPacket.materialId);
         if (materialCoverage > 0.0) {
@@ -240,7 +244,7 @@ void main() {
         if (surface.materialClass == SURF_CLASS_EMISSIVE && (vMaterialFlags & 2u) == 0u)
             rgb = propAddWindowEmission(rgb, surface.emission);
     }
-    if (treeMaterial) {
+    if (kBaseQuality == 2 && treeMaterial) {
         vec3 N = normalize(mc2ToRender(outputNormalStuff));
         vec3 L = uT.terrainLightDir.xyz / max(length(uT.terrainLightDir.xyz),1e-6);
         vec2 uv = vec2((vWorldPos.x-uT.atlasTopLeftX)*uT.atlasOneOverWorldUnits,

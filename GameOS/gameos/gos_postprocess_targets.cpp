@@ -1,10 +1,13 @@
 // Native scene-target ownership. Islands, presentation and explicit readbacks
 // share these images; no parallel texture or framebuffer allocations exist.
+#define MC2_VULKAN_SHARED_SCENE_COLOR_IMPL_ISLAND
 #include "gos_postprocess_internal.h"
+#include "Gates/render_options.h"
 #include "mc2fmt.h"
 #include "vulkan_impact_decals.h"
 #ifdef MC2_VULKAN_ISLAND
 #include "vulkan_context.h"
+#include "vk_image_resource.h"
 #endif
 #include <cstdlib>
 
@@ -66,9 +69,12 @@ void gosPostProcess::createSceneTargets(int w, int h) {
         d.sizeBytes=ready ? uint64_t(width_)*uint64_t(height_)*bytes : 0; d.valid=ready;
         registerOrUpdateRenderResource(d);
     };
-    describe(RenderResourceId::MainColor,RenderResourceFormat::RGBA16F,"MainColor",8,sceneColorReady());
+    const bool packedColor = mc2SharedSceneColorGetResource(MC2_SHARED_SCENE_COLOR0)->format == VK_FORMAT_B10G11R11_UFLOAT_PACK32;
+    describe(RenderResourceId::MainColor,packedColor ? RenderResourceFormat::R11G11B10F : RenderResourceFormat::RGBA16F,
+             "MainColor",packedColor ? 4 : 8,sceneColorReady());
     describe(RenderResourceId::MainDepth,RenderResourceFormat::Depth32F,"MainDepth",8,sharedSceneDepth_ != nullptr);
-    describe(RenderResourceId::MainNormal,RenderResourceFormat::RGBA16F,"MainNormal",8,sceneNormalReady());
+    describe(RenderResourceId::MainNormal,mc2::options::lowCost() ? RenderResourceFormat::RGBA8 : RenderResourceFormat::RGBA16F,
+             "MainNormal",mc2::options::lowCost() ? 4 : 8,sceneNormalReady());
     describe(RenderResourceId::SceneObjectId,RenderResourceFormat::Unknown,"SceneObjectId",4,sceneObjectIdReady());
     mc2::fmt::print_err("[SCENE_TARGETS] backend=Vulkan extent={:d}x{:d} object_id={:d} output={:d}x{:d}\n",
         mc2::fmt::as_i32(width_),mc2::fmt::as_i32(height_),mc2::fmt::as_i32(sceneObjectIdReady() ? 1 : 0),

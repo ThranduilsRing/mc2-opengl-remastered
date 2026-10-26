@@ -296,7 +296,7 @@ def acquire(label: str, *, wait: bool = True, timeout_s: Optional[float] = None,
     exclusive = _exclusive(exclusive) or any(word in (label + " " + sys.argv[0]).lower()
                                             for word in ("perf", "fps", "frame-time", "frametime", "tracy"))
     if holds():
-        if exclusive and not all(_ours(_read(slot_path(i))) for i in range(6)):
+        if exclusive and not all(_ours(_read(slot_path(i))) for i in range(slot_count())):
             raise HostLeaseBusy("cannot upgrade a held normal slot; release it before requesting exclusive")
         return
     scan = scan or foreign_engines
@@ -333,7 +333,7 @@ def acquire(label: str, *, wait: bool = True, timeout_s: Optional[float] = None,
                 eligible = queue[0] == ticket and not foreign and not legacy and (not live if exclusive else bool(free) and compatible)
                 if eligible:
                     allocated = []
-                    for i in (range(6) if exclusive else free[:1]):
+                    for i in (range(slot_count()) if exclusive else free[:1]):
                         guard = i == 0 and (_read(slot_path(i)) or {}).get("legacy_guard")
                         taken, _ = (True, None) if guard else _try_take(slot_path(i), label)
                         if not taken:
@@ -344,7 +344,7 @@ def acquire(label: str, *, wait: bool = True, timeout_s: Optional[float] = None,
                                "cwd": os.getcwd(), "argv": sys.argv[:3], "since": time.time()} if guard else _read(slot_path(i))
                         _write_record(slot_path(i), dict(rec, slot=i, exclusive=exclusive,
                                                        cores_per_slot=cores_per_slot(),
-                                                       affinity_mask=0xFFF0 if exclusive else affinity_mask(i)))
+                                                       affinity_mask=affinity_mask(0) if exclusive else affinity_mask(i)))
                         allocated.append((slot_path(i), _read(slot_path(i))))
                     if eligible:
                         queue.pop(0)

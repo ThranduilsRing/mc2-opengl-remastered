@@ -29,6 +29,7 @@ struct RenderOptions {
 
     // Shadows and terrain lighting.
     int shadowQuality = 2; // 0 Potato, 1 Medium, 2 High
+    int baseQuality = 2;   // 0 Potato, 1 Low, 2 Medium/High; bandwidth/ALU budget
     bool shorelineLegacySuppress = true;    // suppress the legacy shoreline post pass
     bool cpuPhongRetire          = true;    // gameplay elevation follows the drawn terrain surface
 
@@ -78,6 +79,7 @@ inline constexpr Option kOptions[] = {
     detail::longOpt ("TonemapMode",                   &RenderOptions::tonemapMode, 0, 3),
     detail::longOpt ("SpatialAA",                     &RenderOptions::spatialAA, 0, 3),
     detail::longOpt ("ShadowQuality", &RenderOptions::shadowQuality, 0, 2),
+    detail::longOpt ("BaseQuality", &RenderOptions::baseQuality, 0, 2),
     detail::boolOpt ("ShorelineLegacySuppress",       &RenderOptions::shorelineLegacySuppress),
     detail::boolOpt ("CpuPhongRetire",                &RenderOptions::cpuPhongRetire),
     detail::boolOpt ("StaticPropAmbient",             &RenderOptions::staticPropAmbient),
@@ -237,6 +239,8 @@ inline const RenderOptions& current(std::source_location where = std::source_loc
     }
     return g_current;
 }
+// Legacy launcher Low used ShadowQuality=0. Keep that preset on the lean path too.
+inline bool lowCost() { return current().baseQuality < 2 || current().shadowQuality == 0; }
 inline bool          g_publishChanged = false;
 inline int g_buildingArtCommandLine = -1;
 

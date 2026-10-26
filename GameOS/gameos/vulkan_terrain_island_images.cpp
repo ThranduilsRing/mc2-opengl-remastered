@@ -445,7 +445,7 @@ bool ensure_dummy_matnormal(TerrainIsland* s) {
 // at upload), again whenever the slot set is rebuilt. Absent optional slots get the flat normal, as in GL's array.
 // Fail-soft: a slot that is not RGBA8 at slot 0's size is rejected with a log line and the dummy stays bound.
 void import_matnormal(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
-    if(mc2::options::current().shadowQuality==0) return; // Potato keeps the flat-normal placeholder.
+    if(mc2::options::lowCost()) return; // Low/Potato keep the flat-normal placeholder.
     const auto* fields = gos_TerrainFieldStore();
     if (fields && fields->materialNormals().image) {
         const auto& cooked = fields->materialNormals();
@@ -675,6 +675,7 @@ bool ensure_dummy_concrete_detail(TerrainIsland* s) {
 }
 
 void import_concrete_detail(TerrainIsland* s) {
+    if (mc2::options::lowCost()) return; // No unused 2K detail residency on shared DDR4.
     if (s->concreteDetailPending) {                      // the upload is asynchronous: until it lands the residency service hands out a placeholder view
         auto& tx = mc2vk::getOrCreateEngineVulkanContext().textures();
         if (!tx.ready(s->concreteDetailPending.get())) return;

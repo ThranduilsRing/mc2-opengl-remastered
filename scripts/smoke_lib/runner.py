@@ -330,6 +330,9 @@ def run_one(cfg: RunConfig) -> RunResult:
     stdout = "\n".join(lines)
 
     summary = parse_log(stdout, line_wallclocks=line_wallclocks)
+    from . import render_options_pin
+    options = render_options_pin.record(Path(exe_dir), env)["values"]
+    vegetation_expected = options["ShadowQuality"] != 0 and options.get("BaseQuality", 2) == 2
     gcfg = GateConfig(
         heartbeat_timeout_load_s=cfg.heartbeat_timeout_load_s,
         heartbeat_timeout_play_s=cfg.heartbeat_timeout_play_s,
@@ -338,6 +341,7 @@ def run_one(cfg: RunConfig) -> RunResult:
         marker_overrides=cfg.marker_overrides,
         validation_requested=vk_validation.requested(env),
         stem=cfg.stem,
+        vegetation_expected=vegetation_expected,
     )
     verdict = evaluate(summary, gcfg, exit_code=proc.returncode,
                        walltime_s=walltime, killed_by_timeout=killed)

@@ -17,7 +17,9 @@
 
 // HDRI-BC6H-1: BC6H sidecar upload via KtxLoader (GL-free loader, BC6H blocks).
 #include "../../RenderCore/KtxLoader.h"
+#include "../../RenderCore/bcdec.h"
 #include "Gates/gate.h"
+#include "Gates/render_options.h"
 #include "mc2fmt.h"
 
 // HDRI-SKY Item 2: scan a decoded equirect RGBA-float buffer for the dominant
@@ -204,9 +206,33 @@ bool decodeHdriSource(const char* path, float* outSunAzGL, bool* outSunValid, Hd
             (img.vkFormat == 143 || img.vkFormat == 144)) {
             const size_t count = img.mipCount > 1 && img.mipByteOffsets.size() > 1
                 ? static_cast<size_t>(img.mipByteOffsets[1]) : img.pixels.size();
-            outCpu->format = img.vkFormat == 144 ? HdriCpuImage::Format::Bc6hSfloat : HdriCpuImage::Format::Bc6hUfloat;
-            outCpu->levels.emplace_back(img.pixels.begin(), img.pixels.begin() + static_cast<std::ptrdiff_t>(count));
-            outCpu->dims.emplace_back(img.width, img.height);
+            const int cap = mc2::options::current().baseQuality == 0 ? 512 : 1024;
+            if (mc2::options::lowCost() && img.width > cap) {
+                // Single-level 16K BC6H skies otherwise consume 128 MiB EACH in sky and water.
+                // Average one representative 4x4 block per output pixel: bounded load-time work,
+                // no full-size float decode, no extra per-frame sampling or shared-DDR4 residency.
+                const int nw = cap, nh = std::max(1, img.height * cap / img.width);
+                const int blocksX = (img.width + 3) / 4;
+                std::vector<float> rgba(static_cast<size_t>(nw) * nh * 4, 1.0f);
+                for (int y = 0; y < nh; ++y) for (int x = 0; x < nw; ++x) {
+                    const int bx = (x * img.width / nw + img.width / nw / 2) / 4;
+                    const int by = (y * img.height / nh + img.height / nh / 2) / 4;
+                    float block[48];
+                    bcdec_bc6h_float(img.pixels.data() + (static_cast<size_t>(by) * blocksX + bx) * 16,
+                                     block, 12, img.vkFormat == 144);
+                    for (int c = 0; c < 3; ++c) {
+                        float sum = 0;
+                        for (int k = 0; k < 16; ++k) sum += block[k * 3 + c];
+                        rgba[(static_cast<size_t>(y) * nw + x) * 4 + c] = sum / 16.0f;
+                    }
+                }
+                buildRgba16fChain(*outCpu, rgba.data(), nw, nh);
+                MC2_DIAGFE(stderr, "[HDRI_SKY v1] preset_cap=%d source=%dx%d uploaded=%dx%d\n", cap, img.width, img.height, nw, nh);
+            } else {
+                outCpu->format = img.vkFormat == 144 ? HdriCpuImage::Format::Bc6hSfloat : HdriCpuImage::Format::Bc6hUfloat;
+                outCpu->levels.emplace_back(img.pixels.begin(), img.pixels.begin() + static_cast<std::ptrdiff_t>(count));
+                outCpu->dims.emplace_back(img.width, img.height);
+            }
             if (outSunAzGL) {
                 float* pixels = nullptr; int w = 0, h = 0; const char* error = nullptr;
                 if (LoadEXR(&pixels, &w, &h, path, &error) == TINYEXR_SUCCESS) scanSun(pixels, w, h);

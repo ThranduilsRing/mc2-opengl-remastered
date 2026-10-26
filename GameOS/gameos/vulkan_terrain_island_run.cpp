@@ -6,6 +6,7 @@
 #include "vk_render_pass_timer.h"
 #include "vk_gpu_profile.h"   // VK-GPU-ZONES: MC2_VK_GPU_SCOPE
 #include "mc2fmt.h"
+#include "Gates/render_options.h"
 #include <algorithm>
 #include <numeric>
 
@@ -210,11 +211,13 @@ void fill_frame_ubo(TerrainIsland* s, const Mc2TerrainTier1Feed& feed,
     // VK-TERRAIN-DETAIL: normal perturbation. detailReady is only 1 once the GL
     // matNormalArray actually imported (else the FS uses the macro-slope-only
     // normal — still a big win over flat-up, and never a hole).
-    u.detailEnabled  = (feed.lightingEnabled && feed.detailEnabled) ? 1 : 0;
+    // 24 EUs: skip POM, triplanar and detail samples rather than sampling dummy normals.
+    const bool detail = !mc2::options::lowCost();
+    u.detailEnabled  = (detail && feed.lightingEnabled && feed.detailEnabled) ? 1 : 0;
     // 0: not imported, 1: imported, 2: imported and carrying the cliff layer (layer 5), which the cliff material samples.
     u.detailReady    = !s->matNormalReady ? 0 : (s->matNormalLayers > 5u ? 2 : 1);
     u.nfhStrength    = feed.nfhStrength;
-    u.concreteDetail = (s->concreteDetailReady && feed.lightingEnabled && feed.detailEnabled) ? 1 : 0;   // detail toggle off = base game look
+    u.concreteDetail = (detail && s->concreteDetailReady && feed.lightingEnabled && feed.detailEnabled) ? 1 : 0;
     u.concreteDetailStrength = 0.15f;   // normal gain over the cooked 2K sets; tuned in a viewed RTS-zoom montage
     u.detailTiling   = feed.detailTiling;
     u.detailStrength = feed.detailStrength;

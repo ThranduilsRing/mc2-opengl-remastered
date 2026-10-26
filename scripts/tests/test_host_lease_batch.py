@@ -78,7 +78,7 @@ def test_hold_chain_enters_others_wait_release_ends(lease, exclusive):
         rec = json.loads(lease.read_text())
         assert rec["pid"] == pid and rec["batch"] == "proof-a" and pid != os.getpid()
         deadline = time.monotonic() + 60
-        while sum(bool(r and r.get("batch") == "proof-a") for _, r in host_lease._records()) != (6 if exclusive else 1):
+        while sum(bool(r and r.get("batch") == "proof-a") for _, r in host_lease._records()) != (host_lease.slot_count() if exclusive else 1):
             assert child_registry.pid_alive(pid) and time.monotonic() < deadline, (
                 f"batch publication timed out; child stderr: {lease.with_name('holder.stderr').read_text(encoding='utf-8')}")
             time.sleep(0.05)

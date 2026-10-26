@@ -127,6 +127,7 @@ enum class RenderResourceFormat : uint8_t {
     Depth24   = 5,
     Depth32F  = 6,
     BufferRaw = 7,
+    R11G11B10F = 8,
 };
 
 // Per-resource descriptor. Native owners retain driver handles separately.

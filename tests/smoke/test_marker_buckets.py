@@ -2,6 +2,7 @@
 # META-FIX INFRA-3: table-driven marker buckets — proves the mechanism can
 # fail a run (the "self-test leg" for the smoke-side marker table).
 
+from pathlib import Path
 from scripts.smoke_lib.logparse import LogSummary, MARKER_BUCKETS, PerfRow, parse_log
 from scripts.smoke_lib.gates import GateConfig, evaluate
 
@@ -175,3 +176,18 @@ def test_the_vegetation_floor_is_an_absence_rule_for_the_large_tier1_maps():
         for samples in ((94,), (0, 94, 99)):
             text = pop + "".join("[VEG_GPU] visible survivors=%d cap=524288\n" % n for n in samples)
             assert "vegetation_visible_missing" in run(stem, text).buckets, samples
+
+
+def test_stock_only_presets_skip_vegetation_floors_but_keep_other_floors():
+    from scripts.smoke_lib.gates import GateConfig, evaluate
+    from scripts.smoke_lib import render_options_pin
+
+    for preset, shadow, base in (("Potato", 0, 0), ("Low", 0, 1), ("Medium", 1, 2), ("High", 2, 2)):
+        options = render_options_pin.record(Path("."), {"MC2_OPTIONS_OVERRIDE": f"ShadowQuality={shadow},BaseQuality={base}"})["values"]
+        s = parse_log("")
+        s.mission_ready_ms = 5000.0
+        cfg = GateConfig(stem="mc2_10", vegetation_expected=options["ShadowQuality"] != 0 and options["BaseQuality"] == 2)
+        result = evaluate(s, cfg, exit_code=0, walltime_s=31)
+        assert ("vegetation_floor_missing" in result.buckets) == (preset in ("Medium", "High"))
+        assert ("vegetation_visible_missing" in result.buckets) == (preset in ("Medium", "High"))
+        assert "video_floor_missing" in result.buckets

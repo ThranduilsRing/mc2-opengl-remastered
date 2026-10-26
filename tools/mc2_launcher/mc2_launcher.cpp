@@ -309,6 +309,7 @@ static void UpdateForSelection();
 
 static int  s_gfxAA           = 1;   // SMAA 1x
 static int  s_gfxShadQual     = 2;   // default High (8192)
+static int  s_gfxBaseQuality  = 2;
 static bool s_gfxFrameCapOn   = false;
 static int  s_gfxFrameCapFps  = 60;
 static bool s_gfxVsync        = false;
@@ -338,6 +339,7 @@ static HWND s_hGraphicsDlg = NULL;
 static void GfxSetDefaults() {
     s_gfxAA           = 1;
     s_gfxShadQual     = 2;
+    s_gfxBaseQuality  = 2;
     s_gfxFrameCapOn   = true;
     s_gfxFrameCapFps  = 165;
     s_gfxVsync        = false;
@@ -817,6 +819,7 @@ static void LoadCfgRows() {
     mc2::options::RenderOptions options;
     mc2::options::cfg::loadFromText(options,text);
     s_gfxShadQual=options.shadowQuality;
+    s_gfxBaseQuality=options.baseQuality;
     s_gfxAA=options.spatialAA;
     for (int i = 0; i < k_envVarCount; i++) {
         if (!k_envVars[i].cfg) continue;
@@ -845,6 +848,7 @@ static void SaveCfgRows() {
     if (before.empty()) return;
     std::string text = before;
     text=mc2::options::cfg::set(text,*mc2::options::find("ShadowQuality"),std::to_string(s_gfxShadQual));
+    text=mc2::options::cfg::set(text,*mc2::options::find("BaseQuality"),std::to_string(s_gfxBaseQuality));
     text=mc2::options::cfg::set(text,*mc2::options::find("SpatialAA"),std::to_string(s_gfxAA));
 
     for (int i = 0; i < k_envVarCount; i++) {
@@ -1262,7 +1266,7 @@ static LRESULT CALLBACK GraphicsDlgProc(HWND hwnd, UINT msg, WPARAM wParam, LPAR
             SendMessageA(hPrLbl, WM_SETFONT, (WPARAM)hFontBold, TRUE);
             y += GFX_SEC_STEP;
 
-            int nPr = 3;
+            int nPr = int(std::size(k_gfxPresets));
             int prW = (GFX_DLG_W - 2*GFX_MARGIN - (nPr-1)*8) / nPr;
             for (int i = 0; i < nPr; i++) {
                 HWND hPr = CreateWindowA("BUTTON", k_gfxPresets[i].label,
@@ -1449,7 +1453,7 @@ static LRESULT CALLBACK GraphicsDlgProc(HWND hwnd, UINT msg, WPARAM wParam, LPAR
 
         // Preset button clicked: apply preset values to all controls.
         int pidx = (int)id - IDC_GFX_PRESET_BASE;
-        if (pidx >= 0 && pidx < 3 && notif == BN_CLICKED) {
+        if (pidx >= 0 && pidx < int(std::size(k_gfxPresets)) && notif == BN_CLICKED) {
             const GfxPreset& p = k_gfxPresets[pidx];
             s_pendingPreset = pidx;
             SendDlgItemMessageA(hwnd, IDC_GFX_AA, CB_SETCURSEL, p.aa, 0);
@@ -1470,6 +1474,7 @@ static LRESULT CALLBACK GraphicsDlgProc(HWND hwnd, UINT msg, WPARAM wParam, LPAR
             GfxDialogReadControls(hwnd);
             if (s_pendingPreset >= 0) {
                 const auto& p = k_gfxPresets[s_pendingPreset];
+                s_gfxBaseQuality = p.baseQuality;
                 for (int k = 0; k < int(sizeof(k_presetKeys) / sizeof(k_presetKeys[0])); ++k)
                     for (int row = 0; row < k_envVarCount; ++row)
                         if (strcmp(k_presetKeys[k], k_envVars[row].key) == 0) {
