@@ -248,9 +248,7 @@ void MissionInterfaceManager::update (void)
 
 	// Scripted picks do not need to wait for the mission's intro movie. The
 	// objects and their presentation bounds are live after the first turns.
-	static bool staticPickProbed = false;
-	if (!staticPickProbed && turn > 90 && ObjectManager && mc2::gate::get<"MC2_VK_PICK_PROBE">()) {
-		staticPickProbed = true;
+	if (turn > 90 && ObjectManager && mc2::gate::get<"MC2_VK_PICK_PROBE">()) {
 		ObjectManager->findObjectByMouse(-999998, -999998);
 	}
 	if (eye && eye->inMovieMode)
