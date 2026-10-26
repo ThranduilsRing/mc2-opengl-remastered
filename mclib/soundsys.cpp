@@ -71,6 +71,7 @@ namespace {
 
     void videoMixHook(void* /*udata*/, Uint8* stream, int len)
     {
+        if (Mix_PausedMusic()) return; // Custom music hooks still run while music is paused.
         int16_t* out = reinterpret_cast<int16_t*>(stream);
         int outSamples = len / static_cast<int>(sizeof(int16_t));
         SDL_AtomicLock(&g_va.lock);
