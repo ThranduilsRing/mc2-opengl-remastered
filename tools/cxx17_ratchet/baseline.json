@@ -187,7 +187,7 @@
   "mclib": {
    "LG01": 3,
    "LG02": 0,
-   "LG03": 551,
+   "LG03": 546,
    "LG04": 15,
    "LG05": 111,
    "LG06": 528,
@@ -2810,7 +2810,7 @@
    "LG03": 2
   },
   "mclib/mlr/mlrclipper.cpp": {
-   "LG03": 4
+   "LG03": 3
   },
   "mclib/mlr/mlrclippingstate.hpp": {
    "LG14": 2
@@ -2850,9 +2850,6 @@
   },
   "mclib/mlr/mlrlookuplight.hpp": {
    "LG06": 1
-  },
-  "mclib/mlr/mlrngoncloud.cpp": {
-   "LG03": 4
   },
   "mclib/mlr/mlrpointlight.cpp": {
    "LG03": 6
@@ -3452,7 +3449,7 @@
    "LG20": 3
   }
  },
- "head": "15e7f97b4",
+ "head": "9a50fd095",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
