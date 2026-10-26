@@ -1,6 +1,6 @@
 {
   "summary": {
-    "glsl_blocks_with_binding": 245,
+    "glsl_blocks_with_binding": 247,
     "native_pairs": 7,
     "fails": 0,
     "warns": 0
@@ -126,7 +126,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/hzb_cull.comp",
-        "line": 5,
+        "line": 8,
         "role": "levelDepth",
         "std": null,
         "type": "sampler2D",
@@ -559,7 +559,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/hzb_cull.comp",
-        "line": 6,
+        "line": 9,
         "role": "ProjectedBounds",
         "std": "std430",
         "type": "buffer",
@@ -1161,7 +1161,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/hzb_cull.comp",
-        "line": 7,
+        "line": 10,
         "role": "Visibility",
         "std": "std430",
         "type": "buffer",
@@ -1584,6 +1584,16 @@
       },
       {
         "side": "glsl",
+        "file": "shaders/vulkan/hzb_cull.comp",
+        "line": 11,
+        "role": "Instances",
+        "std": "std430",
+        "type": "buffer",
+        "source": "shaders/vulkan/hzb_cull.comp",
+        "branch": {}
+      },
+      {
+        "side": "glsl",
         "file": "shaders/vulkan/impact_decal.frag",
         "line": 14,
         "role": "normalAtlas",
@@ -1744,6 +1754,16 @@
         "std": "std430",
         "type": "buffer",
         "source": "shaders/vulkan/color_prop_tier1.vert",
+        "branch": {}
+      },
+      {
+        "side": "glsl",
+        "file": "shaders/vulkan/hzb_cull.comp",
+        "line": 13,
+        "role": "TypeBounds",
+        "std": "std430",
+        "type": "buffer",
+        "source": "shaders/vulkan/hzb_cull.comp",
         "branch": {}
       },
       {

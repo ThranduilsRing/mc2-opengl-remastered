@@ -7241,6 +7241,15 @@
    "count": 2
   },
   {
+   "tag": "RENDER_SNAPSHOT",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "static_prop_details"
+   ],
+   "count": 1
+  },
+  {
    "tag": "RENDER_STATES",
    "ver": 1,
    "stream": "stdout",
@@ -10068,18 +10077,18 @@
    "ver": 1,
    "stream": "stderr",
    "keys": [
-    "MC2_VK_LIGHTFEED_DEDUP"
+    "sharedHits",
+    "fallbacks",
+    "frame"
    ],
    "count": 1
   },
   {
    "tag": "VK_LIGHTFEED_DEDUP",
-   "ver": 1,
+   "ver": 2,
    "stream": "stderr",
    "keys": [
-    "sharedHits",
-    "fallbacks",
-    "frame"
+    "MC2_VK_LIGHTFEED_DEDUP"
    ],
    "count": 1
   },

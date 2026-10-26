@@ -1070,7 +1070,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_shared_light_feed.h:32`
+- Header: `GameOS/gameos/vk_shared_light_feed.h:33`
 - Class: `SharedLightFeed`  (data-member)
 - Member: `SharedLightFeed& operator=(const SharedLightFeed&) = delete;`
 - Consuming targets: gameos
@@ -1078,7 +1078,55 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_shared_light_feed.h:41`
+- Header: `GameOS/gameos/vk_shared_light_feed.h:46`
+- Class: `Slot`  (data-member)
+- Member: `OwnedBuffer buffer;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vk_shared_light_feed.h:47`
+- Class: `Slot`  (data-member)
+- Member: `void* mapped = nullptr;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vk_shared_light_feed.h:48`
+- Class: `Slot`  (data-member)
+- Member: `VkDeviceSize capacity = 0;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vk_shared_light_feed.h:49`
+- Class: `Slot`  (data-member)
+- Member: `std::vector<uint64_t> generations;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vk_shared_light_feed.h:51`
+- Class: `SharedLightFeed`  (data-member)
+- Member: `Slot slots_[2];`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vk_shared_light_feed.h:52`
+- Class: `SharedLightFeed`  (data-member)
+- Member: `uint64_t revision_ = 0;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vk_shared_light_feed.h:53`
 - Class: `SharedLightFeed`  (data-member)
 - Member: `FrameAlloc    span_;`
 - Consuming targets: gameos
@@ -1086,7 +1134,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_shared_light_feed.h:44`
+- Header: `GameOS/gameos/vk_shared_light_feed.h:56`
 - Class: `SharedLightFeed`  (data-member)
 - Member: `unsigned long copies_ = 0, hits_ = 0, fallbacks_ = 0;`
 - Consuming targets: gameos
@@ -3110,4 +3158,4 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ---
 
-Result: 388 guard(s) analyzed, 0 violation(s).
+Result: 394 guard(s) analyzed, 0 violation(s).
