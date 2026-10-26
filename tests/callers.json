@@ -5590,6 +5590,13 @@
           "text": "from scripts.smoke_lib import report"
         },
         {
+          "path": "tests/smoke/test_runner.py",
+          "line": 44,
+          "evidence": "import",
+          "reference": "scripts.smoke_lib",
+          "text": "from scripts.smoke_lib import runner"
+        },
+        {
           "path": "tests/smoke/test_vk_profile.py",
           "line": 5,
           "evidence": "import",
@@ -6610,6 +6617,13 @@
           "evidence": "import",
           "reference": "scripts.smoke_lib.runner",
           "text": "from scripts.smoke_lib.runner import run_one, RunConfig"
+        },
+        {
+          "path": "tests/smoke/test_runner.py",
+          "line": 44,
+          "evidence": "import",
+          "reference": "scripts.smoke_lib.runner",
+          "text": "from scripts.smoke_lib import runner"
         },
         {
           "path": "tests/smoke/test_vk_profile.py",
