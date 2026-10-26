@@ -65,6 +65,13 @@ the running game writes:
     shaders/**                    every deploy rewrites the whole tree
     tools/**                      terrain_gen authoring tree (support payload)
     data/defs/**                  UI defs payload (kind="defs")
+    mods/{mc2-industrial-kit,core_unlocks,sample_*}/**  shipped mod payload
+    data/tgl/*.cookstamp           stock cook receipts (all subdirectories)
+    data/textures/**              generated terrain material sidecars
+    data/{kit,model_overrides,vegetation,terrain_layers}/**  renderer assets
+    3rdparty/{smaa,cmaa2}/**       shipped notices
+    cache/content-model/**        native model recipes and kit receipt
+    data/{terrain_materials,visual_tuning}.json             renderer config
 
 It is a list of ROOTS rather than a list of extensions on purpose. An extension
 allowlist drifts silently the moment somebody adds a payload class; a root list
@@ -142,7 +149,19 @@ VERDICT_EXIT = {
 
 # The deploy-written + runtime-written surface. "" means the target root,
 # non-recursively. See the module docstring for why this is a root list.
-MUTATED_ROOTS = ("", "shaders", "tools", "data/defs")
+MUTATED_ROOTS = (
+    "", "shaders", "tools", "3rdparty/smaa", "3rdparty/cmaa2",
+    "mods/mc2-industrial-kit", "mods/core_unlocks", "mods/sample_equipment",
+    "mods/sample_new_variant", "mods/sample_variant",
+    "data/defs", "data/kit", "data/model_overrides",
+    "data/vegetation", "data/terrain_layers", "data/textures",
+    "cache/content-model",
+)
+MUTATED_FILES = (
+    "data/terrain_materials.json", "data/visual_tuning.json",
+    "data/tgl/spotlight.ini", "data/tgl/marblecliff.ini", "data/tgl/MarbleCliffGLB.glb",
+)
+_MUTATED_FILES_FOLDED = frozenset(rel.casefold() for rel in MUTATED_FILES)
 
 # The one carve-out from "everything in the target root is written": the stock
 # FST/PAK asset archives happen to live at the root, and they are the single
@@ -199,6 +218,15 @@ def iter_mutated_relpaths(target: Path, deep: bool = False):
                     yield rel
         return
 
+    # TGL sources remain shared; deploy only changes the three shipped sources
+    # above and cooker stamps. Scan this tree through the same classifier.
+    for path in (target / "data/tgl").rglob("*"):
+        rel = path.relative_to(target).as_posix()
+        if path.is_file() and rel.casefold() not in _MUTATED_FILES_FOLDED and classify(rel) == "mutated":
+            yield rel
+    for rel in MUTATED_FILES:
+        if (target / rel).is_file():
+            yield rel
     for root in MUTATED_ROOTS:
         base = target / root if root else target
         if not base.is_dir():
@@ -222,7 +250,11 @@ def iter_mutated_relpaths(target: Path, deep: bool = False):
 
 def classify(rel: str) -> str:
     """'mutated' (must be a private inode) or 'data' (safe to share)."""
-    rel = rel.replace("\\", "/").lstrip("/")
+    rel = rel.replace("\\", "/").lstrip("/").casefold()
+    if rel in _MUTATED_FILES_FOLDED:
+        return "mutated"
+    if rel.startswith("data/tgl/") and rel.endswith(".cookstamp"):
+        return "mutated"
     if "/" not in rel:
         # Anything sitting in the target root, except the stock read-only
         # asset archives that happen to live there (see DATA_EXTS_AT_ROOT).

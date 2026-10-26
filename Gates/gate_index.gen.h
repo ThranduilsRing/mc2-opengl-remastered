@@ -10,7 +10,7 @@
 
 namespace mc2::gate::detail {
 
-inline constexpr std::size_t kGateCount = 791;
+inline constexpr std::size_t kGateCount = 786;
 
 inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_ABL_ARG_GUARD", Kind::Bool, Rule::Lead1, {}},
@@ -518,7 +518,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_SHADOW_PROP_ALPHA", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_SHADOW_PROP_ALPHA_ATLAS", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_SHADOW_ROBUST_BASIS", Kind::Bool, Rule::Lead0Kill, {}},
-    {"MC2_SHADOW_TIER_STATS", Kind::Bool, Rule::Presence, {}},
     {"MC2_SHAPE_C_PARITY_CHECK", Kind::Bool, Rule::Presence, {}},
     {"MC2_SHOT_RESULTS", Kind::Bool, Rule::Presence, {}},
     {"MC2_SIM_CLOCK_TRACE", Kind::Bool, Rule::Presence, {}},
@@ -622,8 +621,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_TERRAIN_LOD_CHUNK_NO_SKIRTS", Kind::Bool, Rule::Presence, {}},
     {"MC2_TERRAIN_LOD_CHUNK_NO_STITCH", Kind::Bool, Rule::Presence, {}},
     {"MC2_TERRAIN_LOD_CHUNK_SKIRT_MAX", Kind::Float, Rule::Prefix, {}},
-    {"MC2_TERRAIN_LOD_GEOMORPH", Kind::Bool, Rule::Lead0Kill, {}},
-    {"MC2_TERRAIN_LOD_MORPH_START", Kind::Float, Rule::Prefix, {}},
     {"MC2_TERRAIN_MACRO_VARIATION", Kind::Bool, Rule::Lead0, {}},
     {"MC2_TERRAIN_MACRO_VARIATION_STRENGTH", Kind::Float, Rule::Prefix, {}},
     {"MC2_TERRAIN_MASK_DISPATCH_SOLID", Kind::Bool, Rule::Lead0Kill, {}},
@@ -655,8 +652,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_TERRAIN_SNOW_BRIGHTNESS_DAMPEN", Kind::Float, Rule::Prefix, {}},
     {"MC2_TERRAIN_SOLID_NARROW", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_TERRAIN_SOLID_WINDOW_PARITY", Kind::Bool, Rule::Exact1, {}},
-    {"MC2_TERRAIN_SURFACE", Kind::Bool, Rule::Lead0, {}},
-    {"MC2_TERRAIN_SURFACE_TRACE", Kind::Bool, Rule::Presence, {}},
     {"MC2_TERRAIN_TESS", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_TERRAIN_TILE_CENSUS", Kind::Bool, Rule::Lead0, {}},
     {"MC2_TERRAIN_VISUAL_DISPLACE", Kind::Bool, Rule::Lead0, {}},

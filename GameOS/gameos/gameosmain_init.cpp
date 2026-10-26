@@ -71,9 +71,6 @@ void initInstrBanner() {
         bool gpuCullParity    = mc2::gate::get<"MC2_GPU_CULL_AABB_PARITY">();
         const bool shrHR      = mc2::gate::get<"MC2_SHADER_HOT_RELOAD">();
         const bool revZ       = mc2::gate::get<"MC2_REVERSE_Z_TRACE">();
-        // PR-0: dormant [TERRAIN_SURFACE v1] lifecycle channel gate. Trace-only,
-        // default-OFF, separate from the MC2_TERRAIN_SURFACE path-select switch.
-        const bool tSurfTrc   = mc2_terrain_surface_trace::enabled();
         // T3.1: (E) SpotLight_ -> real illumination. The
         // new TG_Light registration path is the unconditional production
         // behavior. MC2_SPOTLIGHT_REAL_TRACE counters remain (Debug
@@ -85,7 +82,6 @@ void initInstrBanner() {
         // Grew 720 -> 768 to absorb terrain_indirect_mine (PR2c Stage 0c).
         // Grew 768 -> 832 to absorb terrain_indirect_overlay{,_parity} (PR2b).
         // Grew 832 -> 896 to absorb reverse_z_trace (reverse-Z float depth).
-        // Grew 896 -> 960 to absorb terrain_surface_trace (PR-0 Wave 0).
         // Grew 960 -> 1024 to absorb spotlight_real (T1.2, (E) SpotLight_ -> real).
         // Shrank back to 960 effective use post-T3.1 (spotlight_real field
         // removed); buffer kept at 1024 for future absorbers.
@@ -93,7 +89,7 @@ void initInstrBanner() {
         // water-projection-skip slice attempt; removed when the slice
         // closed — premise invalidated by Stage 0 M3 audit.)
         char _cbbuf[1024];
-        mc2::fmt::to_buf(_cbbuf, "[INSTR v1] enabled: tgl_pool={:d} destroy={:d} smoke={:d} water_fp={:d} water_parity={:d} vp_fast={:d} vp_parity={:d} terrain_indirect={:d} terrain_indirect_parity={:d} terrain_indirect_mine={:d} terrain_indirect_overlay={:d} terrain_indirect_overlay_parity={:d} gpu_objects={:d} obj_recon_tracy={:d} static_update_trace={:d} static_prop_registry={:d} gpu_cull_substrate={:d} gpu_cull_aabb_parity={:d} shader_hot_reload={:d} reverse_z_trace={:d} terrain_surface_trace={:d} camera_motion=1 build={}", mc2::fmt::as_i32(tgl ? 1 : 0), mc2::fmt::as_i32(destr ? 1 : 0), mc2::fmt::as_i32(smoke ? 1 : 0), mc2::fmt::as_i32(waterFp ? 1 : 0), mc2::fmt::as_i32(waterPc ? 1 : 0), mc2::fmt::as_i32(vpFast ? 1 : 0), mc2::fmt::as_i32(vpPar ? 1 : 0), mc2::fmt::as_i32(tInd ? 1 : 0), mc2::fmt::as_i32(tIndP ? 1 : 0), mc2::fmt::as_i32(tIndM ? 1 : 0), mc2::fmt::as_i32(tIndO ? 1 : 0), mc2::fmt::as_i32(tIndOP ? 1 : 0), mc2::fmt::as_i32(gpuObj ? 1 : 0), mc2::fmt::as_i32(objRecon ? 1 : 0), mc2::fmt::as_i32(suTrace ? 1 : 0), mc2::fmt::as_i32(1), mc2::fmt::as_i32(gpuCullSubstrate ? 1 : 0), mc2::fmt::as_i32(gpuCullParity ? 1 : 0), mc2::fmt::as_i32(shrHR ? 1 : 0), mc2::fmt::as_i32(revZ ? 1 : 0), mc2::fmt::as_i32(tSurfTrc ? 1 : 0), mc2::fmt::safe(build));
+        mc2::fmt::to_buf(_cbbuf, "[INSTR v1] enabled: tgl_pool={:d} destroy={:d} smoke={:d} water_fp={:d} water_parity={:d} vp_fast={:d} vp_parity={:d} terrain_indirect={:d} terrain_indirect_parity={:d} terrain_indirect_mine={:d} terrain_indirect_overlay={:d} terrain_indirect_overlay_parity={:d} gpu_objects={:d} obj_recon_tracy={:d} static_update_trace={:d} static_prop_registry={:d} gpu_cull_substrate={:d} gpu_cull_aabb_parity={:d} shader_hot_reload={:d} reverse_z_trace={:d} camera_motion=1 build={}", mc2::fmt::as_i32(tgl ? 1 : 0), mc2::fmt::as_i32(destr ? 1 : 0), mc2::fmt::as_i32(smoke ? 1 : 0), mc2::fmt::as_i32(waterFp ? 1 : 0), mc2::fmt::as_i32(waterPc ? 1 : 0), mc2::fmt::as_i32(vpFast ? 1 : 0), mc2::fmt::as_i32(vpPar ? 1 : 0), mc2::fmt::as_i32(tInd ? 1 : 0), mc2::fmt::as_i32(tIndP ? 1 : 0), mc2::fmt::as_i32(tIndM ? 1 : 0), mc2::fmt::as_i32(tIndO ? 1 : 0), mc2::fmt::as_i32(tIndOP ? 1 : 0), mc2::fmt::as_i32(gpuObj ? 1 : 0), mc2::fmt::as_i32(objRecon ? 1 : 0), mc2::fmt::as_i32(suTrace ? 1 : 0), mc2::fmt::as_i32(1), mc2::fmt::as_i32(gpuCullSubstrate ? 1 : 0), mc2::fmt::as_i32(gpuCullParity ? 1 : 0), mc2::fmt::as_i32(shrHR ? 1 : 0), mc2::fmt::as_i32(revZ ? 1 : 0), mc2::fmt::safe(build));
         puts(_cbbuf);
         crashbundle_append(_cbbuf);
 

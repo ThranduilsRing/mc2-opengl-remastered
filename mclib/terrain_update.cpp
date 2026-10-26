@@ -1,4 +1,4 @@
-// Terrain: Terrain::update with the LOD chunk selection and morph factor helpers.
+// Terrain: Terrain::update with the LOD chunk selection helpers.
 // Declared in the class headers; shared names in terrain_internal.h.
 #include <algorithm>
 #include "terrain_internal.h"
@@ -35,8 +35,6 @@ static const float LOD_DIST_THRESH[5] = {
 // block to LOD k (0=finest). With FORCE_LOD=0 + NO_CULL + NO_SKIRTS, rotation
 // in place MUST be stable — if it still breaks, the defect is in the
 // shader/worldToClip/camera convention, NOT LOD/cull/skirt policy.
-// (Shared by chooseLodLevel and computeMorphFactor — a forced LOD also forces
-// morphFactor=0 so FORCE_LOD A/B captures show the PURE band surface.)
 static int lodForceLevel()
 {
     static const int s_forceLod = mc2::gate::get<"MC2_TERRAIN_LOD_CHUNK_FORCE_LOD">();
@@ -44,8 +42,6 @@ static int lodForceLevel()
 }
 
 // Runtime distance scale (default 1.0). >1 pushes LOD transitions farther.
-// MC2_TERRAIN_LOD_CHUNK_DIST_SCALE — shared by band selection and geomorph
-// factor so the morph window tracks the scaled thresholds exactly.
 static float lodDistScale()
 {
     static const float s_distScale = mc2::gate::get<"MC2_TERRAIN_LOD_CHUNK_DIST_SCALE">();
@@ -145,32 +141,6 @@ static uint8_t chooseProjectedLod(const TerrainBlockMeta& bm, float halfMap, Cam
             return static_cast<uint8_t>(level);
     }
     return 0;
-}
-
-// TERRAIN-LOD-GEOMORPH-1 rung a: per-block geomorph factor m in [0,1].
-// m=0 at band entry (pure own-band max-mip surface), ramping to 1 over the
-// OUTER (1 - MORPH_START) fraction of the band so the block's interior verts
-// slide onto the parent band's surface BEFORE the demotion threshold — the
-// band switch then lands on geometry that already matches (no one-frame snap).
-// Promotion mirrors it: a freshly promoted block enters at m~1 (== the surface
-// it just left) and slides down as the camera approaches. Levels 0 (mode-1
-// fine path) and 5 (no coarser parent) never morph. Under FORCE_LOD the factor
-// is pinned to 0 so A/B captures isolate the pure band surface. Consumed by
-// the vert only when mips are resident (u_geomorphMips) — no mips, no morph.
-static float computeMorphFactor(float distSq, uint8_t level)
-{
-    if (level == 0 || level >= 5) return 0.0f;
-    if (lodForceLevel() >= 0)     return 0.0f;
-    static const float s_morphStart = mc2::gate::get<"MC2_TERRAIN_LOD_MORPH_START">();
-    const float sc = lodDistScale();
-    const float lo = LOD_DIST_THRESH[level - 1] * sc;
-    const float hi = LOD_DIST_THRESH[level] * sc;
-    if (hi <= lo) return 0.0f;
-    const float d = sqrtf(distSq);
-    float r = (d - lo) / (hi - lo);            // 0..1 across the band (may exceed under hysteresis/clamps)
-    float m = (r - s_morphStart) / (1.0f - s_morphStart);
-    m = std::clamp(m, 0.0f, 1.0f);
-    return m;
 }
 
 extern float textureOffset;
@@ -279,10 +249,6 @@ long Terrain::update (void)
 				s_skirtEdgeMaskVec.resize(need, 0);
 			if (s_stitchStepVec.size() < need)
 				s_stitchStepVec.resize(need, 0);
-			if (s_shadowTierVec.size() < need)  // Slice B
-				s_shadowTierVec.resize(need, 0);
-			if (s_morphFactorVec.size() < need) // TERRAIN-LOD-GEOMORPH-1
-				s_morphFactorVec.resize(need, 0.0f);
 		}
 
 		// Cache frustum planes once for this frame (eye->cacheFrustumPlanes()
@@ -557,13 +523,6 @@ long Terrain::update (void)
 			}
 		}
 
-		// --- Slice B: per-chunk SHADOW TIER classification accumulators ---
-		// Counts + world-area per tier over the chunks emitted this frame. Cheap
-		// (a few ints + one tier compute per visible block). Logged only when
-		// MC2_SHADOW_TIER_STATS is set; classification+vector-fill always runs.
-		int    tierChunks[4] = {0, 0, 0, 0};      // tier 0/1/2/3 chunk counts
-		double tierArea[4]   = {0.0, 0.0, 0.0, 0.0};
-
 		// --- Phase 5 Pass 3: emit draw commands using lodLevel -> lodStep ---
 		// --- Phase 6: also compute per-block skirt depth (parallel array) ---
 		for (int by = 0; by < s_terrainChunkSide; ++by)
@@ -573,30 +532,6 @@ long Terrain::update (void)
 				const TerrainBlockMeta& bm = s_blockMeta[bx + by * s_terrainChunkSide];
 				if (!bm.inFrustum) continue;
 
-				// World centers also drive terrain geomorph below.
-				const float chunkCenterX =
-					float(bm.originX) * 128.0f + float(bm.quadCountX) * 0.5f * 128.0f - halfMap;
-				const float chunkCenterY =
-					halfMap - (float(bm.originY) * 128.0f + float(bm.quadCountY) * 0.5f * 128.0f);
-				// Every visible chunk uses the same mask and mover receiver.
-				constexpr int shadowTier = 0;
-				s_shadowTierVec[s_cmdCount] = shadowTier;
-				// TERRAIN-LOD-GEOMORPH-1: geomorph factor from the block's FINAL
-				// lodLevel (post cement/neighbor clamps) + center distance to the
-				// SAME eye the band selection used (eyeX/eyeY, camera origin).
-				// A block clamped finer than distance suggests simply rides at
-				// m=1 (already on its parent surface) — still seam-safe because
-				// perimeter verts never morph.
-				{
-					const float mfDx = chunkCenterX - eyeX;
-					const float mfDy = chunkCenterY - eyeY;
-					s_morphFactorVec[s_cmdCount] =
-						computeMorphFactor(mfDx * mfDx + mfDy * mfDy, bm.lodLevel);
-				}
-				tierChunks[shadowTier]++;
-				// World-area of this chunk = quads * (128*128) world-units^2.
-				tierArea[shadowTier] +=
-					static_cast<double>(bm.quadCountX) * static_cast<double>(bm.quadCountY) * (128.0 * 128.0);
 				s_drawCmds[s_cmdCount].blockOriginX     = bm.originX;
 				s_drawCmds[s_cmdCount].blockOriginY     = bm.originY;
 				s_drawCmds[s_cmdCount].lodStep          = LOD_STEPS[bm.lodLevel];
@@ -671,21 +606,6 @@ long Terrain::update (void)
 					}
 				}
 				++s_cmdCount;
-			}
-		}
-
-		// --- Slice B: SHADOW TIER stats (env-gated, ~once per 600 frames). ---
-		// Cheap: a handful of ints/doubles accumulated in Pass 3 above, printed
-		// only when MC2_SHADOW_TIER_STATS is set. Resets implicitly each frame
-		// (tier* are frame-local). area%% is of total emitted visible terrain area.
-		{
-			static const bool s_shadowTierStats = mc2::gate::get<"MC2_SHADOW_TIER_STATS">();
-			if (s_shadowTierStats && (gCurrentFrame % 600) == 0)
-			{
-				double totalArea = tierArea[0] + tierArea[1] + tierArea[2] + tierArea[3];
-				double inv = (totalArea > 0.0) ? (100.0 / totalArea) : 0.0;
-				mc2::fmt::print_out("[ShadowTier] high={:d} low={:d} static={:d} none={:d} | area% h={:.0f} l={:.0f} s={:.0f} (of visible terrain area)\n", mc2::fmt::as_i32(tierChunks[0]), mc2::fmt::as_i32(tierChunks[1]), mc2::fmt::as_i32(tierChunks[2]), mc2::fmt::as_i32(tierChunks[3]), tierArea[0] * inv, tierArea[1] * inv, tierArea[2] * inv);
-				fflush(stdout);
 			}
 		}
 

@@ -64,7 +64,6 @@
 #include "gos_visual_diff.h"  // Stage 2.E pre-HUD capture + Ctrl+Shift+P record
 #include "gos_rdoc_capture.h"  // Tier 5: env-gated in-process RenderDoc capture
 #include "gos_terrain_indirect.h"  // [INSTR v1] banner: terrain_indirect{,_parity} fields
-#include "terrain_surface_trace.h" // [INSTR v1] banner: terrain_surface_trace field (PR-0)
 #include "gpu_cull_record.h"       // C0-1: GpuActorRecord schema selftest
 #include "gpu_cull_readback.h"    // C2: async readback ring buffer selftest
 #include "object_admission_predicate.h"  // Track A1: init probe + selftest gate

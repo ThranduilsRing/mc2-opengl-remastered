@@ -18,8 +18,7 @@ void gos_TerrainLodChunk_EnsureSceneClear() {
 
 void gos_TerrainLodChunk_SubmitDrawCommands(
     const TerrainDrawCommand* cmds, const float* skirtDepths,
-    const unsigned char* skirtEdgeMasks, const unsigned int* edgeStitch,
-    const int* shadowTiers, const float* morphFactors, int count)
+    const unsigned char* skirtEdgeMasks, const unsigned int* edgeStitch, int count)
 {
 #ifdef MC2_VULKAN_ISLAND
     if (!cmds || count <= 0 || s_mapSide <= 0) return;
