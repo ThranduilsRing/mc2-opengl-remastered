@@ -757,7 +757,8 @@ def test_stock_copy_is_private_and_always_removed(tmp_path, fail):
         (install / "mod_smoke-stage").mkdir()
         (install / "mod_smoke-stage/large").write_text("disposable")
         try:
-            with gate.stock_copy(install, tmp_path) as clone:
+            with gate.stock_copy(install) as clone:
+                assert clone.parent == install.parent
                 assert not (clone / "mod_smoke-stage").exists()
                 assert (clone / "cache/model.mci").read_text() == "warm cache"
                 assert not list(clone.glob(".gate-stock-*"))

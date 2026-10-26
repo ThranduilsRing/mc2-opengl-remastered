@@ -238,8 +238,8 @@ def run_child(command, cwd, env):
 def stock_copy(install, parent=None):
     """Share read-only data and copy mutable outputs with the isolation guard."""
     install = Path(install).resolve()
-    # Hardlinks require the install's volume; mc2-main/scratch is on A: too.
-    parent = Path(parent or (ROOT / "scratch" if os.name == "nt" else install.parent)).resolve()
+    # Lane rehearsals live on E:; hardlinks require the install's volume.
+    parent = Path(parent or install.parent).resolve()
     parent.mkdir(parents=True, exist_ok=True)
     prefix = install.name + "-stock-"
     target = Path(tempfile.mkdtemp(prefix=prefix, dir=parent)).resolve()
