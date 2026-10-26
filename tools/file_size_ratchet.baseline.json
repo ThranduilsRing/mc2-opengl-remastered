@@ -26,7 +26,7 @@
   "code/logisticsdialog.cpp": 2150,
   "code/mechlabscreen.cpp": 1952,
   "code/mechlopedia.cpp": 1624,
-  "code/missionbegin.cpp": 2184,
+  "code/missionbegin.cpp": 2205,
   "code/mover.h": 1906,
   "code/mpparameterscreen.cpp": 2406,
   "code/multplyr.h": 1845,
@@ -49,13 +49,13 @@
   "mclib/mapdata.cpp": 2508,
   "mclib/move.h": 1895,
   "mclib/terrtxm.cpp": 1819,
-  "mclib/tgl.h": 1816,
+  "mclib/tgl.h": 1818,
   "tools/cite_guard.py": 1553,
   "tools/comment_guard.py": 1790,
   "tools/scifi_kit/art/intent_military.py": 3363,
   "tools/terrain_beautify/visual_heightfield.py": 1510
  },
- "head": "08744f34d",
+ "head": "e9a723543",
  "per_dir": {
   "GameAdapters": {
    "files": 13,
@@ -115,7 +115,7 @@
    "files": 107,
    "files_over_1500": 0,
    "files_over_3000": 0,
-   "max_lines": 618
+   "max_lines": 608
   },
   "tools": {
    "files": 612,
@@ -170,12 +170,12 @@
    "lines": 2250
   },
   {
-   "file": "code/warrior.h",
-   "lines": 2192
+   "file": "code/missionbegin.cpp",
+   "lines": 2205
   },
   {
-   "file": "code/missionbegin.cpp",
-   "lines": 2184
+   "file": "code/warrior.h",
+   "lines": 2192
   },
   {
    "file": "code/logisticsdialog.cpp",
@@ -235,7 +235,7 @@
   },
   {
    "file": "mclib/tgl.h",
-   "lines": 1816
+   "lines": 1818
   },
   {
    "file": "mclib/ablrtn.cpp",
