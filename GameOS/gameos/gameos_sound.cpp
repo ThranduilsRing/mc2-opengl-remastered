@@ -72,6 +72,7 @@ class SoundEngine {
         static constexpr size_t MUSIC_CACHE_LIMIT = 256u * 1024u * 1024u;
         std::unordered_map<std::string, CachedMusic> musicCache;
         size_t musicCacheBytes = 0;
+        bool musicCacheFull = false;
         SoundEngine():frequency_(0), format_(0), channels_(0), chunksize_(0), is_initialized_(false) {} 
         bool init(int frequency, bool b_fmt_16_bit, bool b_fmt_signed, bool b_stereo);
         void destroy();
@@ -190,6 +191,7 @@ void SoundEngine::destroy() {
     audioList_.clear();
     musicCache.clear();
     musicCacheBytes = 0;
+    musicCacheFull = false;
 
     Mix_CloseAudio();
     Mix_Quit();
@@ -406,7 +408,7 @@ bool gosAudio_PreloadMusic(std::string_view path) {
     if (!g_sound_engine || path.empty()) return false;
     const std::string file_name(path);
     if (g_sound_engine->musicCache.contains(file_name)) return true;
-    if (g_sound_engine->musicCacheBytes >= SoundEngine::MUSIC_CACHE_LIMIT) return false;
+    if (g_sound_engine->musicCacheFull) return false;
     HGOSAUDIO handle = nullptr;
     gosAudio_CreateResource(&handle, gosAudio_StreamedFile, file_name.c_str());
     if (!handle) return false;
@@ -415,6 +417,12 @@ bool gosAudio_PreloadMusic(std::string_view path) {
     if (fits) {
         g_sound_engine->musicCache.emplace(file_name, SoundEngine::CachedMusic{handle->data(), size});
         g_sound_engine->musicCacheBytes += size;
+    } else {
+        // Large mod catalogs exceed the bounded PCM cache. Stop predecoding at
+        // capacity instead of decoding and discarding the rest of the catalog.
+        // Uncached tracks retain the normal streamed-file playback path.
+        g_sound_engine->musicCacheFull = true;
+        MC2_LOG(Audio, Info, "music predecode cache full: {} tracks, {} bytes", g_sound_engine->musicCache.size(), g_sound_engine->musicCacheBytes);
     }
     gosAudio_DestroyResource(&handle);
     return fits;
@@ -424,6 +432,7 @@ void gosAudio_ClearMusicCache() {
     if (!g_sound_engine) return;
     g_sound_engine->musicCache.clear();
     g_sound_engine->musicCacheBytes = 0;
+    g_sound_engine->musicCacheFull = false;
 }
 
 //////////////////////////////////////////////////////////////////////////////////
