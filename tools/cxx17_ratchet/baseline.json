@@ -192,9 +192,9 @@
    "LG05": 111,
    "LG06": 528,
    "LG07": 0,
-   "LG08": 45,
+   "LG08": 44,
    "LG09": 2,
-   "LG10": 19,
+   "LG10": 16,
    "LG11": 47,
    "LG12a": 117,
    "LG12b": 177,
@@ -3066,16 +3066,6 @@
   "mclib/particles/light_manager.h": {
    "LG06": 1
   },
-  "mclib/particles/spawn_cardcloud.cpp": {
-   "LG08": 1,
-   "LG10": 1
-  },
-  "mclib/particles/spawn_point.cpp": {
-   "LG10": 1
-  },
-  "mclib/particles/spawn_shard.cpp": {
-   "LG10": 1
-  },
   "mclib/particles/spec_library.cpp": {
    "LG03": 3,
    "LG05": 1,
@@ -3501,7 +3491,7 @@
    "LG20": 3
   }
  },
- "head": "469470b64",
+ "head": "e03231f25",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
