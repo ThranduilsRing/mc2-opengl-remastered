@@ -982,6 +982,7 @@ void AssetViewerApp::scriptedView(const char* kind, const char* arg) {
         if (arg) { meshSurface_.setSource(arg); }
     } else if (k == "workbench") {
         sidebar_.setActive(AssetType::ModWorkbench);
+        if (arg) onFileDropped(arg);
     }
 }
 

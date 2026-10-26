@@ -1499,6 +1499,10 @@ def check_install_complete(target, exe_name, build_dir, fix=True):
         return [f"{exe_name} (not found in target or build dir)"]
     try:
         todo = (_pe_imports(exe) if exe else set()) | {d.lower() for d in FFMPEG_DLLS}
+        for name in ("mc2_asset_viewer.exe", "ui_editor.exe", "mc2fx_preview.exe", "mc2weapon_gui.exe"):
+            tool = os.path.join(target, name)
+            if os.path.isfile(tool):
+                todo |= _pe_imports(tool)
     except RuntimeError as e:
         return [str(e)]
     seen, missing = set(), []
@@ -1807,6 +1811,46 @@ def require_head_exe(exe, head):
     return fp
 
 
+def viewer_payload(build_dir, build64_root, head):
+    """Ship the rebuilt viewer and its complete runtime closure, never an install's old exe."""
+    b64 = find_build_root(build_dir, build64_root)
+    cfg = "" if is_single_config(build_dir, b64) else os.path.basename(build_dir)
+    directory = os.path.join(b64, "out", "tools", "asset_viewer", cfg)
+    exe = os.path.join(directory, "mc2_asset_viewer.exe")
+    if require_head_exe(exe, head)["dirty"]:
+        fail(f"REFUSING dirty viewer build: {exe}; commit first and rebuild")
+    # Include loader-library objects too: a partial build must not ship an old link.
+    for root, _dirs, files in os.walk(os.path.join(b64, "out", "tools", "asset_viewer")):
+        for name in files:
+            obj = os.path.join(root, name)
+            if name.endswith((".obj", ".o")) and os.path.getmtime(obj) > os.path.getmtime(exe) + 1:
+                fail(f"STALE viewer: {exe} is older than {obj}; rebuild mc2_asset_viewer")
+    items = [(exe, "mc2_asset_viewer.exe", "exe")]
+    todo, seen = [exe], set()
+    while todo:
+        for name in _pe_imports(todo.pop()):
+            if name in seen:
+                continue
+            seen.add(name)
+            system = os.path.join(os.environ.get("SystemRoot", "C:/Windows"), "System32", name)
+            crt = name.startswith(("msvcp140", "vcruntime140", "concrt140"))
+            if name.startswith(("api-ms-", "ext-ms-")) or (os.path.isfile(system) and not crt):
+                continue
+            search = (directory, build_dir, os.path.dirname(system)) if crt else (directory, build_dir)
+            src = next((os.path.join(d, name) for d in search
+                        if os.path.isfile(os.path.join(d, name))), None)
+            if not src:
+                fail(f"viewer runtime DLL missing from build: {name}")
+            items.append((src, name, "dll"))
+            todo.append(src)
+    for name in ("mesh_lit.vert.spv", "mesh_lit.frag.spv", "pbr_sphere.vert.spv", "pbr_sphere.frag.spv"):
+        src = os.path.join(directory, "shaders_vk", name)
+        if not os.path.isfile(src):
+            fail(f"viewer shader missing from build: {src}")
+        items.append((src, "shaders_vk/" + name, "shader"))
+    return items
+
+
 def run_deploy(args, src_root, build_dir, target, exe_name, pdb_name):
     check_exe_fresh(os.path.join(build_dir, exe_name), build_dir, args.allow_stale_exe,
                     build64_root=args.build64_root)
@@ -1828,6 +1872,8 @@ def run_deploy(args, src_root, build_dir, target, exe_name, pdb_name):
 
     items = enumerate_payload(src_root, build_dir, exe_name, pdb_name,
                               build64_root=args.build64_root)
+    if exe_name != "mc2":
+        items.extend(viewer_payload(build_dir, args.build64_root, source_head))
     import kit_payload
     from smoke_lib import render_options_pin
     kit_manifest = None

@@ -664,6 +664,7 @@ add_library(mc2_build_identity STATIC "${MC2_BUILD_FINGERPRINT_CPP}")
 target_include_directories(mc2_build_identity PRIVATE "${CMAKE_SOURCE_DIR}/GameOS/include")
 add_dependencies(mc2_build_identity build_fingerprint)
 
+
 add_executable(mc2 ${SOURCES} ${MAIN_SRC})
 if(MC2_ALLOC_STATS)
     set_source_files_properties("code/mechcmd2_frame.cpp" "code/artlry.cpp" PROPERTIES COMPILE_DEFINITIONS MC2_ALLOC_STATS=1)

@@ -264,7 +264,7 @@ target_include_directories(mc2_asset_viewer PRIVATE
     ${MC2R_AV_SDL_INCLUDE_DIRS}
 )
 
-target_link_libraries(mc2_asset_viewer PRIVATE imgui mc2_gate)
+target_link_libraries(mc2_asset_viewer PRIVATE imgui mc2_gate mc2_build_identity)
 
 # Assimp (glTF importer only, per root CMake ASSIMP_BUILD_GLTF_IMPORTER=ON).
 target_link_libraries(mc2_asset_viewer PRIVATE assimp::assimp)

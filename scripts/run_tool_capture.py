@@ -90,7 +90,9 @@ def main() -> int:
     out.unlink(missing_ok=True)
     log = out.with_suffix(".log")
 
-    env = {"MC2_TOOL_CAPTURE": str(out), "MC2_TOOL_CAPTURE_FRAME": str(a.frame)}
+    # nofocus treats an explicit env as complete. Keep SystemRoot, TEMP and
+    # driver/SDK settings: stripping them makes NVIDIA instance creation fail.
+    env = dict(os.environ, MC2_TOOL_CAPTURE=str(out), MC2_TOOL_CAPTURE_FRAME=str(a.frame))
     if a.validation:
         env["MC2_VULKAN_VALIDATION"] = "1"
     for kv in a.env:

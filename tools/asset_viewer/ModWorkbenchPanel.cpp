@@ -54,7 +54,10 @@ void ModWorkbenchPanel::draw(ModWorkbench& wb, const ImVec2& avail) {
     ImGui::Text("Override: %s", wb.overridePath().c_str());
 
     ImGui::TextUnformatted("Stock prop (click to bind):");
+    // The browser fills its parent; bound it so the loaded GLB stays visible.
+    ImGui::BeginChild("stockPicker", ImVec2(0, 140), true);
     stockBrowser_.draw();   // filter box + scrollable .tgl list; tooltip shows full path
+    ImGui::EndChild();
     if (stockBrowser_.hasSelection()) {
         std::string pick = stockBrowser_.takeSelection();
         wb.bindStock(pick);
@@ -68,10 +71,12 @@ void ModWorkbenchPanel::draw(ModWorkbench& wb, const ImVec2& avail) {
         appe_[0] = '\0';   // reprime appearance buffer from the (reset/suggested) record
     }
 
-    // Sync orbit controls: override follows stock camera.
-    overridePreview_.orbitYaw()   = stockPreview_.orbitYaw();
-    overridePreview_.orbitPitch() = stockPreview_.orbitPitch();
-    overridePreview_.zoom()       = stockPreview_.zoom();
+    // A lone GLB keeps its fitted camera until there is stock to compare.
+    if (wb.hasStock()) {
+        overridePreview_.orbitYaw()   = stockPreview_.orbitYaw();
+        overridePreview_.orbitPitch() = stockPreview_.orbitPitch();
+        overridePreview_.zoom()       = stockPreview_.zoom();
+    }
 
     float half = (avail.x - 8.0f) * 0.5f;
     float h    = avail.y * 0.55f;

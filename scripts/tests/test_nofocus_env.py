@@ -11,6 +11,8 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
+import pytest
+
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
 
@@ -35,3 +37,29 @@ def test_user_present_session_also_carries_both(monkeypatch):
     env = nofocus.apply_env({})
     assert env["MC2_NO_LAUNCHER"] == "1"
     assert env["MC2_LAUNCHER_ENV_JSON"] == "0"
+
+
+def test_tool_capture_preserves_parent_environment(monkeypatch, tmp_path):
+    import run_tool_capture
+
+    exe = tmp_path / "mc2_asset_viewer.exe"
+    exe.touch()
+    monkeypatch.setenv("SystemRoot", "C:/Windows")
+    monkeypatch.setenv("TEMP", "parent-temp")
+    monkeypatch.setenv("MC2_TOOL_CAPTURE_FRAME", "99")
+    monkeypatch.setattr(sys, "argv", ["run_tool_capture", "asset_viewer", "--exe", str(exe),
+                                     "--out", str(tmp_path / "capture.png"), "--env", "TEMP=override-temp"])
+    monkeypatch.setattr(run_tool_capture.host_lease, "ensure_held", lambda *_: None)
+
+    class SpawnChecked(Exception):
+        pass
+
+    def check_spawn(argv, *, env, **kwargs):
+        assert {k.upper(): v for k, v in env.items()}["SYSTEMROOT"] == "C:/Windows"
+        assert env["TEMP"] == "override-temp"
+        assert env["MC2_TOOL_CAPTURE_FRAME"] == "12"
+        raise SpawnChecked
+
+    monkeypatch.setattr(run_tool_capture.nofocus, "spawn", check_spawn)
+    with pytest.raises(SpawnChecked):
+        run_tool_capture.main()

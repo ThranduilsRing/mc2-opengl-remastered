@@ -2,6 +2,7 @@
  * FILENAME: main.cpp
  * DESCRIPTION: Entry point for mc2_asset_viewer (stage 1).
  ***************************************************************/
+#include "build_identity.h"
 #include <cstdio>
 #include <cstring>
 #include <SDL.h>
@@ -13,6 +14,8 @@
 
 int main(int argc, char* argv[])
 {
+    std::printf("%s\n", MC2_BUILD_FP_LITERAL);
+    mc2PrintBuildFingerprint();
     // --smoke <fixtureDir> dispatch (Task 8 smoke test hook)
     if (argc >= 2 && strcmp(argv[1], "--smoke-decoder") == 0)
         return AssetViewerApp::runSmokeDecoder();
