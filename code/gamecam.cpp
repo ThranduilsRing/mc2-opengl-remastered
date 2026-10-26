@@ -906,7 +906,7 @@ void GameCamera::render (void)
 				// Stock mesh classes, separated spatially; no asset bytes are changed.
 				auto* library = mc2::particles::SpecLibrary::Instance();
 				gos_PushCurrentHeap(gosFX::Heap);
-				oraclePert = std::make_unique<gosFX::PertCloud::Specification>(8);
+				oraclePert = std::make_unique<gosFX::PertCloud::Specification>(6);
 				oraclePert->BuildDefaults();
 				gos_PopCurrentHeap();
 				oraclePert->m_maxParticleCount = 4;
