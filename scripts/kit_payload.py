@@ -16,7 +16,7 @@ IMPORT_ARGS = ["--no-ground", "--static-prop"]
 
 
 def reconcile_stock_textures(target_dir, inventory=None, jobs=1):
-    """Receipt only byte-proven stock sources and pinned stock sidecars.
+    """Receipt byte-proven stock sources, appearance definitions and sidecars.
 
     The pins include current batch_cook output and verified golden legacy cooks. Deployment
     never trusts paired source existence, target art, or MOD overlay contents.
