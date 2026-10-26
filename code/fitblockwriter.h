@@ -36,7 +36,7 @@
 class FitBlockWriter {
 public:
     // Open a multi-line block:  <indent>name {
-    void beginBlock(const std::string& name);
+    void beginBlock(std::string_view name);
 
     // Close the innermost open block:  <indent>}
     // No-op (with a "; FITBLOCK-WRITER underflow" comment line) if nothing is open.
@@ -60,7 +60,7 @@ public:
     void writeComment(std::string_view text);
 
     // Verbatim line at the current indent (Body DO-verbs, WAIT/STOP, FITini header).
-    void writeRaw(const std::string& lineText);
+    void writeRaw(std::string_view lineText);
 
     void blankLine();
 
@@ -78,7 +78,8 @@ public:
 
 private:
     void appendIndent();
-    void appendLine(const std::string& s);
+    // Own the line before indentation can invalidate a view into m_out.
+    void appendLine(std::string s);
 
     std::string              m_out;
     std::vector<std::string> m_stack;   // open block names (for diagnostics)

@@ -144,7 +144,7 @@
    "LG03": 387,
    "LG04": 16,
    "LG05": 200,
-   "LG06": 444,
+   "LG06": 437,
    "LG07": 2,
    "LG08": 13,
    "LG09": 0,
@@ -1368,7 +1368,7 @@
   },
   "code/equipment_registry.h": {
    "LG05": 1,
-   "LG06": 10,
+   "LG06": 9,
    "LG08": 3,
    "LG11": 1
   },
@@ -1387,10 +1387,10 @@
    "LG08": 1
   },
   "code/fitblockwriter.cpp": {
-   "LG06": 4
+   "LG06": 1
   },
   "code/fitblockwriter.h": {
-   "LG06": 4
+   "LG06": 1
   },
   "code/forcegroupbar.cpp": {
    "LG03": 5,
@@ -3432,7 +3432,7 @@
    "LG20": 3
   }
  },
- "head": "8255dd06d",
+ "head": "0d02d189a",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
