@@ -1,6 +1,7 @@
 
 
 #include "GuiRuntime_internal.h"
+#include <optional>
 #include "mc2fmt.h"
 #include "../GameOS/gameos/debug_renderer.h"
 
@@ -85,7 +86,7 @@ static bool regularFile(const std::filesystem::path& p)
     return std::filesystem::exists(p, ec) && std::filesystem::is_regular_file(p, ec);
 }
 
-static std::filesystem::path resolveFontFile(const char* filename)
+static std::optional<std::filesystem::path> resolveFontFile(std::string_view filename)
 {
     const std::filesystem::path exe = executableDirectory();
     const std::filesystem::path cwd = std::filesystem::current_path();
@@ -113,27 +114,27 @@ static std::filesystem::path resolveFontFile(const char* filename)
             return p;
     }
 
-    return std::filesystem::path();
+    return std::nullopt;
 }
 
-static void loadFontFamily(ImGuiIO& io, const char* familyName, const char* filename)
+static void loadFontFamily(ImGuiIO& io, std::string_view familyName, std::string_view filename)
 {
-    const std::filesystem::path fontPath = resolveFontFile(filename);
-    if (fontPath.empty()) {
+    const auto fontPath = resolveFontFile(filename);
+    if (!fontPath) {
         if (traceEnabled())
-            mc2::fmt::print_err("[IMGUI_FONT] missing {} for family={}; using ImGui default\n", mc2::fmt::safe(filename), mc2::fmt::safe(familyName));
+            mc2::fmt::print_err("[IMGUI_FONT] missing {} for family={}; using ImGui default\n", filename, familyName);
         return;
     }
 
     const int sizes[] = {8, 10, 12, 14, 16, 17, 18, 20, 22, 24, 28, 32, 36, 48};
     for (int size : sizes) {
-        ImFont* font = io.Fonts->AddFontFromFileTTF(fontPath.string().c_str(), static_cast<float>(size));
+        ImFont* font = io.Fonts->AddFontFromFileTTF(fontPath->string().c_str(), static_cast<float>(size));
         if (font)
             s_uiFonts[fontKey(familyName, size)] = font;
     }
 
     if (traceEnabled())
-        mc2::fmt::print_err("[IMGUI_FONT] loaded family={} file={}\n", mc2::fmt::safe(familyName), fontPath.string().c_str());
+        mc2::fmt::print_err("[IMGUI_FONT] loaded family={} file={}\n", familyName, fontPath->string().c_str());
 }
 
 static void loadUiFonts(ImGuiIO& io)
