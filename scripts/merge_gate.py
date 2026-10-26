@@ -582,6 +582,17 @@ def main(argv=None):
         steps = [(n, c, dict(e, MC2_GATE_BASE="" if args.full else base)) for n, c, e in steps]
     else:
         steps = [(n, c, dict(e, MC2_GATE_BASE="")) for n, c, e in affected_plan(steps, [], True)]
+    if args.before_dir and any(n == "capture-before-classic" for n, _, _ in steps):
+        # Reusing pre-fix evidence must not launch that unsafe executable for the classic arm.
+        classic_before = args.before_dir.with_name(args.before_dir.name + "-classic")
+        try:
+            validate_before(classic_before, args.expect_pre_exe_sha)
+        except ValueError as exc:
+            ap.error(str(exc))
+        steps = [(n, c, e) for n, c, e in steps if n != "capture-before-classic"]
+        for n, c, _ in steps:
+            if n == "compare-captures-classic":
+                c[c.index("--compare-only") + 1] = str(classic_before)
     if window and time.time() - window.get("started", 0) <= 1200:
         reused = []
         for name, command, overrides in steps:

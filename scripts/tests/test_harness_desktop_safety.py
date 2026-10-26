@@ -70,6 +70,13 @@ def test_read_src_commit_from_manifest(tmp_path):
     assert exe_guard.read_src_commit(tmp_path) is None
 
 
+def test_pre_imgui_pointer_fix_exe_is_refused(tmp_path):
+    old = "b4fe64851"
+    exe = _install(tmp_path, "pre-fix", old)
+    verdict = exe_guard.check_exe(exe, env={}, commit_of=_fresh(old))
+    assert not verdict.ok and exe_guard.MIN_COMMIT in verdict.refusal()
+
+
 def test_current_exe_with_descendant_embedded_commit_passes(tmp_path):
     exe = _install(tmp_path, "mc2-win64-x", FRESH_SHA)
     v = exe_guard.check_exe(exe, env={}, is_ancestor=_ancestor_of({FRESH_SHA}), commit_of=_fresh())

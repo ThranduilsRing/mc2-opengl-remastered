@@ -44,8 +44,8 @@ try:    # package context (scripts.smoke_lib)
 except ImportError:    # top-level smoke_lib with scripts/ on sys.path
     from console_child import child_kwargs
 
-#: First commit whose exe keeps the cursor and window off the user's desktop.
-MIN_COMMIT = "ffebf5e87"
+#: Includes the ImGui backend guard; older GameOS-only suppression is insufficient.
+MIN_COMMIT = "f0ea013bd"
 
 #: Gate name an exe must carry to be launchable offscreen.
 OFFSCREEN_MARK = b"MC2_WINDOW_OFFSCREEN"

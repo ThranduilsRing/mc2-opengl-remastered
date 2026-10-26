@@ -422,6 +422,35 @@ def test_gate_proofs_dir_routes_log_and_commands(tmp_path, monkeypatch):
     assert str(tmp_path / "before") in next(c for n, c, _ in seen if n == "capture-before")
 
 
+def test_reused_before_evidence_never_launches_old_classic_exe(tmp_path, monkeypatch):
+    import json
+    import merge_gate as gate
+    before, classic = tmp_path / "before", tmp_path / "before-classic"
+    png = tmp_path / "capture.png"
+    png.write_bytes(b"png")
+    manifest = {"identity": {"exe": {"sha256": "a" * 64}}, "poses": [
+        {"bookmark": name, "primary_png": str(png), "all_present": True}
+        for name in ("mc2_01_saved_205644", "mc2_10_saved_204523")]}
+    for directory in (before, classic):
+        directory.mkdir()
+        (directory / "capture_run.json").write_text(json.dumps(manifest))
+    monkeypatch.delenv("MC2_IN_GATE", raising=False)
+    monkeypatch.setattr(gate, "ROOT", tmp_path)
+    monkeypatch.setattr(gate, "git", lambda *a: "head")
+    seen = []
+    monkeypatch.setattr(gate, "execute", lambda steps, *a: seen.extend(steps) or 0)
+    args = ["--dry-run", "--before-dir", str(before), "--expect-pre-exe-sha", "a" * 64,
+            "--proofs-dir", str(tmp_path / "proof")]
+    assert gate.main(args) == 0
+    assert not any(n.startswith("capture-before") for n, _, _ in seen)
+    compare = next(c for n, c, _ in seen if n == "compare-captures-classic")
+    assert compare[compare.index("--compare-only") + 1] == str(classic)
+    manifest["identity"]["exe"]["sha256"] = "b" * 64
+    (classic / "capture_run.json").write_text(json.dumps(manifest))
+    with pytest.raises(SystemExit):
+        gate.main(args)
+
+
 def test_gate_logs_lease_holder_and_age(monkeypatch, capsys):
     import merge_gate as gate
     from smoke_lib import host_lease
