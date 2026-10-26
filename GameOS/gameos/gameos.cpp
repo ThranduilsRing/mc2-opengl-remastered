@@ -83,7 +83,11 @@ static void mc2_log_exit_caller(const char* fn)
 {
     static const bool s_trace = mc2::gate::get<"MC2_TRACE_EXIT">();
     static bool s_once = false;
-    if (!s_trace && s_once) return;   // always log first; repeats only if env set
+    if (!s_trace) {
+        if (!s_once) mc2::fmt::print_err("[EXIT] {} called\n", mc2::fmt::safe(fn));
+        s_once = true;
+        return;
+    }
     s_once = true;
 
     ZoneScopedN("Shutdown.ExitStack");
@@ -120,8 +124,8 @@ static void mc2_log_exit_caller(const char*) {}
 
 void __stdcall ExitGameOS()
 {
-    mc2_log_exit_caller("ExitGameOS");
     g_gos_exit_game_os = true;
+    mc2_log_exit_caller("ExitGameOS");
 }
 
 bool gosExitGameOS() {
@@ -474,8 +478,8 @@ char* __stdcall gos_GetFormattedTime( WORD Hour/*=-1*/, WORD Minute/*=-1*/, WORD
 
 void __stdcall gos_TerminateApplication()
 {
-    mc2_log_exit_caller("gos_TerminateApplication");
     g_gos_exit_game_os = true;
+    mc2_log_exit_caller("gos_TerminateApplication");
 }
 
 void __stdcall gos_AbortTermination()
