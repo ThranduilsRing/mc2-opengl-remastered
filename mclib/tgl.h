@@ -917,15 +917,6 @@ class TG_Shape
 	friend class TG_TypeNode;
 	friend class TG_TypeMultiShape;
 	friend class GpuStaticPropBatcher;
-	// Slice 2 (object-offload) — Stage 2.A introduced this free function as
-	// the per-leaf eligibility check called from the addRenderShape gate at
-	// tgl.cpp:2522 (legacy bShadersDrawPathEnabled path). It needs to read
-	// `myType` and `myType->GetNodeType()`. Caught by Stage 2.B's clean
-	// rebuild of gos_static_prop_batcher.cpp (msl.h header touch invalidated
-	// the .obj cache that previously masked the access; cdcdb7d shipped this
-	// declaration but the existing mc2.exe binary predated the commit).
-	friend bool eligibleForGpuObjects(class TG_Shape* shape);
-
 	//-------------
 	//Data Members
 	protected:

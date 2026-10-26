@@ -486,13 +486,6 @@ long TG_Shape::MultiTransformShape_PositionsOnly (glm::mat4 *shapeToClip, glm::v
 	}
 	} // [OBJECT_RECON v1] end flight scope
 
-	// addRenderShape block (the bShadersDrawPathEnabled emit branch in
-	// MultiTransformShape) entirely STRIPPED. GPU-eligible populations are
-	// submitted by the slice 1 batcher; this path must not double-draw them.
-	// Note: the addRenderShape gate in MultiTransformShape is also defended
-	// by the !eligibleForGpuObjects(this) term added above; this strip is
-	// belt-and-suspenders for the _PositionsOnly variant.
-
 	gosASSERT(oneOff || oneOn);
 
 	if (oneOff && !oneOn)

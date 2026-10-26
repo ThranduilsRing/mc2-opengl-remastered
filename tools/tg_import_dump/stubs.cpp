@@ -225,7 +225,6 @@ void addShadowShape(HGOSBUFFER, HGOSBUFFER, HGOSVERTEXDECLARATION, const float*)
 // GPU static-prop eligibility predicate (defined in gos_static_prop_batcher.cpp,
 // a render TU we deliberately exclude). Referenced only from the per-leaf
 // transform kernel; the loader never reaches it. Stub -> always ineligible.
-bool eligibleForGpuObjects(class TG_Shape*) { return false; }
 
 // Crash-bundle instrumentation sink (GameOS gos_crashbundle.cpp). extern "C"
 // per gos_crashbundle.h. No-op.
