@@ -16,19 +16,10 @@ extern uint32_t g_mc2FrameCounter;
 // The presentation mesh follows the stock pose without entering simulation or picking.
 void GVAppearance::updateRenderShape()
 {
-	if (g_mc2FrameCounter == 60 && mc2::gate::get<"MC2_VK_PICK_PROBE">()) {
-		uint64_t mask = 14695981039346656037ull;
-		unsigned hits = 0;
-		for (int y = 0; y < 32; ++y) for (int x = 0; x < 32; ++x) {
-			const long px = static_cast<long>(upperLeft.x + (lowerRight.x - upperLeft.x) * (x + 0.5f) / 32.0f);
-			const long py = static_cast<long>(upperLeft.y + (lowerRight.y - upperLeft.y) * (y + 0.5f) / 32.0f);
-			const bool hit = gvShape->PerPolySelect(px, py);
-			hits += hit;
-			mask = (mask ^ static_cast<uint64_t>(hit)) * 1099511628211ull;
-		}
-		mc2::fmt::print_out("[VEHICLE_PICK] appearance={} pos=({:.2f},{:.2f}) hits={}/1024 mask={:016x} bounds=({:.2f},{:.2f},{:.2f},{:.2f})\n",
-			appearType->name, position.x, position.y, hits, mask, upperLeft.x, upperLeft.y, lowerRight.x, lowerRight.y);
-	}
+	// findMoverByMouse selects vehicles by the stock screen rectangle, not triangles.
+	if (g_mc2FrameCounter == 60 && mc2::gate::get<"MC2_VK_PICK_PROBE">())
+		mc2::fmt::print_out("[VEHICLE_PICK] appearance={} pos=({:.2f},{:.2f}) bounds=({:.6f},{:.6f},{:.6f},{:.6f})\n",
+			appearType->name, position.x, position.y, upperLeft.x, upperLeft.y, lowerRight.x, lowerRight.y);
 	if (!appearType->renderLods[0] || status == OBJECT_STATUS_DESTROYED || status == OBJECT_STATUS_DISABLED) {
 		renderShape.reset();
 		renderLOD = -1;
