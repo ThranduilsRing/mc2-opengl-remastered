@@ -1415,11 +1415,6 @@
       "bytes": 15683511
     },
     {
-      "path": "content/batch2-approved-candidates.json",
-      "sha256": "3eee5cfadd3dc17d7fb69eac85f57a4ee17aaa3a14b19f8563a2c41db7bd4ffd",
-      "bytes": 16442
-    },
-    {
       "path": "content/billpost.mc2ir.json",
       "sha256": "ef120d94a6e8d789f7b25805d9b5c00ab8bdf8c312deea049f5491e14083ceac",
       "bytes": 1219875
@@ -1518,11 +1513,6 @@
       "path": "content/city8storyc.mc2ir.json",
       "sha256": "40690380eb8e0c7fabf52cf3a8155f27f27e80d5b822305674bf1085b4f78dc1",
       "bytes": 15624498
-    },
-    {
-      "path": "content/civ-approved.json",
-      "sha256": "158e5b85c29acdcd477e8d75209acc73aaf24c99973fbdb28c5202d6f9e82efb",
-      "bytes": 29652
     },
     {
       "path": "content/civstoragea.mc2ir.json",
@@ -2065,51 +2055,6 @@
       "bytes": 2596713
     },
     {
-      "path": "content/pack2-footprint-evidence.json",
-      "sha256": "4e9f52bea04c2c3319f3d270886d6801dfaac9e1828a368e3a7b4a6272fc8a92",
-      "bytes": 30525
-    },
-    {
-      "path": "content/pack2-generic-footprints.json",
-      "sha256": "c968c56da3de39eae583c0bc49c418e70a2d72fe2663f1b09175850624379b4e",
-      "bytes": 11839
-    },
-    {
-      "path": "content/pack2-packaged-gate-parity.json",
-      "sha256": "21e0f0f19a3640003eb377a55328bf836036dfc020f5908db17751134d77cc25",
-      "bytes": 1302
-    },
-    {
-      "path": "content/pack2-packaged-generic-gate-parity.json",
-      "sha256": "3fa5de0ccb486857abe763602057e5c942db7c8e4b0dce3135416cc461c29a28",
-      "bytes": 1305
-    },
-    {
-      "path": "content/pack2-selection.json",
-      "sha256": "541adcc97bea758dc22bf5264828e33521b859ad0723192fb5446b97528906b2",
-      "bytes": 118478
-    },
-    {
-      "path": "content/pack2-source-gate-parity.json",
-      "sha256": "6d8f3f167915fbc1a5dcd53d9b93e8ca8392033c06b57bd945771fb55ec02fda",
-      "bytes": 1570
-    },
-    {
-      "path": "content/pack3-selection.json",
-      "sha256": "53b5a976da75bcabf8e0cf8039cd7d84a406b873a0c4e4100a809d98a06a7134",
-      "bytes": 36538
-    },
-    {
-      "path": "content/packaging-r5.json",
-      "sha256": "90946e588e87b8ad4d6453bf8fa1b5b372e9935ae1ef80ab84ef7602eb1de59a",
-      "bytes": 43490
-    },
-    {
-      "path": "content/packaging-sp2.json",
-      "sha256": "4f77dea82620a1403b9dcdf6e646ff296fe15337958c94feed92311216ff8b6f",
-      "bytes": 8696
-    },
-    {
       "path": "content/perimeteralarm.mc2ir.json",
       "sha256": "2dca9099ad5ff3e6cb892546290d9177ff22463d45b9a101de15f32776837e81",
       "bytes": 10017250
@@ -2175,16 +2120,6 @@
       "bytes": 3816722
     },
     {
-      "path": "content/rebake-ft1.json",
-      "sha256": "5ffbb1549bb32378f6db375fda24d878771a4e2118a5fb319c26122128860339",
-      "bytes": 65967
-    },
-    {
-      "path": "content/rebake-n1.json",
-      "sha256": "f409ee5345be3381a0238c64d11777e965569a4482e849584083b6fff2535972",
-      "bytes": 57272
-    },
-    {
       "path": "content/relaystation.mc2ir.json",
       "sha256": "fe6aa5275e97c9aa262b891b42cad734bf341dc05c5d3832a36f5dbd6958f7ce",
       "bytes": 13332110
@@ -2193,11 +2128,6 @@
       "path": "content/repairbay.mc2ir.json",
       "sha256": "67e938215032c9d41b3c1921c6ced6def6275dff162e5e90ae93e1654fd1ca31",
       "bytes": 8915088
-    },
-    {
-      "path": "content/report.json",
-      "sha256": "4680239c458fb54dea6e609f7296bc0a20c86e86b65b77df174886adcd47ff8f",
-      "bytes": 21219147
     },
     {
       "path": "content/rpbuilding.mc2ir.json",

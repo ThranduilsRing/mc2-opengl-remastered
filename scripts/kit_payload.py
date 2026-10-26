@@ -136,7 +136,9 @@ def finish(target_dir, manifest, tool, cooker=subprocess.run, *, kit_rel=KIT_REL
     extra = {p.relative_to(kit).as_posix() for p in kit.rglob("*") if p.is_file()}
     extra -= paths | {".modindex-cache"}
     if extra:
-        raise ValueError(f"unpinned kit files in install: {sorted(extra)}")
+        files = ", ".join(str(kit / rel) for rel in sorted(extra))
+        raise ValueError(f"unpinned kit files in install: {files}; "
+                         "safe to delete if not in the kit manifest")
     models = sorted(p for p in paths if p.endswith(".glb"))
     # Identical small-prop LODs share a content-addressed native recipe.
     unique_models = len({r["sha256"] for r in manifest["files"] if r["path"].endswith(".glb")})
