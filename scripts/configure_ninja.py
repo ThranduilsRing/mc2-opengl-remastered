@@ -107,7 +107,8 @@ def tree_uses_cache(root, tree):
 def under_vcvars(cmdline, env_extra=None):
     """Run a command line inside the MSVC x64 environment (cl/link on PATH)."""
     env = dict(os.environ, **env_extra) if env_extra else None
-    return subprocess.run(f'call "{VCVARS}" >nul 2>&1 && {cmdline}', shell=True, env=env).returncode
+    return subprocess.run(f'call "{VCVARS}" >nul 2>&1 && {cmdline}', shell=True, env=env,
+                          **console_child.child_kwargs()).returncode
 
 
 def configure(root, tree=DEFAULT_TREE, compile_cache=True, cache_pch=False):

@@ -64,6 +64,9 @@ def test_cooks_then_validates_receipt_and_repairs_corrupt_cache(tmp_path, monkey
     tool.write_bytes(b"tool")
     calls = []
     def cook(command, **kwargs):
+        assert kwargs["env"]["OMP_NUM_THREADS"] == "1"
+        if sys.platform == "win32":
+            assert kwargs["creationflags"] & kit.subprocess.BELOW_NORMAL_PRIORITY_CLASS
         calls.append(command)
         key = hashlib.sha256(b"shared LOD" if shared_lods else command[1].encode()).hexdigest()[:16]
         cache = target / "cache/content-model"

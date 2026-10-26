@@ -101,7 +101,8 @@ def run_texconv_bc6h(hdr_path, out_dir, texconv_exe):
         '-m', '1',    # single mip level
         hdr_path,
     ]
-    result = subprocess.run(cmd, capture_output=True, text=True, **console_child.child_kwargs(redirected=True))
+    result = subprocess.run(cmd, capture_output=True, text=True, env=dict(os.environ, OMP_NUM_THREADS="1"),
+                            **console_child.child_kwargs(redirected=True))
     if result.returncode != 0:
         print(f"texconv failed (rc={result.returncode}):", file=sys.stderr)
         print(result.stdout, file=sys.stderr)
