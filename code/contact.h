@@ -55,7 +55,7 @@ class ContactInfo {
 		unsigned char				contactStatus[MAX_TEAMS];
 		//unsigned char				allContactStatus[MAX_TEAMS];
 		unsigned short				contactCount[MAX_TEAMS];	//How many mechs/vehicles have me on sensors?
-		unsigned char				sensors[MAX_SENSORS];		//index into sensor's contact list
+		unsigned short				sensors[MAX_SENSORS];		//index into sensor's contact list
 		unsigned short				teams[MAX_TEAMS];			//index into team's contact list
 		uint32_t				teamSpotter[MAX_TEAMS];
 
@@ -75,7 +75,7 @@ class ContactInfo {
 				teamSpotter[i] = 0;
 			}
 			for (int i = 0; i < MAX_SENSORS; i++)
-				sensors[i] = 255;
+				sensors[i] = NO_SENSOR_CONTACT;
 		}
 
 		ContactInfo (void) {
