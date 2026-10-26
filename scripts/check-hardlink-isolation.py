@@ -70,7 +70,8 @@ the running game writes:
     data/textures/**              generated terrain material sidecars
     data/{kit,model_overrides,vegetation,terrain_layers}/**  renderer assets
     3rdparty/{smaa,cmaa2}/**       shipped notices
-    cache/content-model/**        native model recipes and kit receipt
+    cache/content-model/**        kit receipt / temporary writes; model-*.mci
+                                  recipes publish by atomic replacement
     data/{terrain_materials,visual_tuning}.json             renderer config
 
 It is a list of ROOTS rather than a list of extensions on purpose. An extension
