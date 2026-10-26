@@ -95,6 +95,9 @@ static void dumpGameplay(BldgAppearance& a, glm::vec3 pos, std::span<const short
         }
     }
     if (probe.bldgShape) probe.releaseBldgShape();
+    probe.appearType = nullptr;
+    const auto noShapeCells = probe.markMoveMap(false, nullptr);
+    mc2::fmt::print_err("[BLDG_MOVE_NULL] cells={} ready={}\n", noShapeCells, probe.simPose->ready);
 }
 
 inline constexpr float HEIGHT_THRESHOLD = 10.0f;

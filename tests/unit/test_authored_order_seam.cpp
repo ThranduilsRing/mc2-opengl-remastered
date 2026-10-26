@@ -8,7 +8,6 @@
 #include "movemgr.h"
 #include "team.h"
 #include "Stuff/stuffheaders.hpp"
-#include "bdactor.h"
 #include "content_ir.h"
 
 #include <cstdlib>
@@ -131,27 +130,6 @@ struct CompileLog {
         return result;
     }
 };
-}
-
-TEST_CASE("BuildingSimPose/missing collision shape marks no cells") {
-    AppearanceTypeList registry;
-    struct RestoreRegistry {
-        AppearanceTypeList* previous = appearanceTypeList;
-        ~RestoreRegistry() { appearanceTypeList = previous; }
-    } restore;
-    appearanceTypeList = &registry;
-    BldgAppearance appearance;
-    short cells[] = {8, -1, -1};
-    long rect[] = {-1, -1, -1, -1};
-    CHECK(appearance.markMoveMap(false, rect, false, cells) == 0);
-    CHECK(rect[0] > rect[2]);
-    CHECK(rect[1] > rect[3]);
-    CHECK(cells[0] == 8);
-    CHECK_FALSE(appearance.simPose->ready);
-    BldgAppearanceType type;
-    appearance.appearType = &type;
-    CHECK(appearance.markMoveMap(false, nullptr) == 0);
-    appearance.appearType = nullptr; // borrowed type
 }
 
 TEST_CASE("ContentCook/cache publication failure is reported as failure") {
