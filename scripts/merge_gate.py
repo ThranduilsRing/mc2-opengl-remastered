@@ -236,19 +236,22 @@ def run_child(command, cwd, env):
 
 @contextmanager
 def stock_copy(install, parent=None):
-    """A real copy isolates mutable engine outputs; never hardlink game installs."""
+    """Share read-only data and copy mutable outputs with the isolation guard."""
     install = Path(install).resolve()
-    parent = Path(parent or ("E:/mc2-installs" if os.name == "nt" else install.parent)).resolve()
+    # Hardlinks require the install's volume; mc2-main/scratch is on A: too.
+    parent = Path(parent or (ROOT / "scratch" if os.name == "nt" else install.parent)).resolve()
+    parent.mkdir(parents=True, exist_ok=True)
     prefix = install.name + "-stock-"
     target = Path(tempfile.mkdtemp(prefix=prefix, dir=parent)).resolve()
     started = time.monotonic()
     try:
-        def ignore(directory, names):
-            if Path(directory).resolve() != install:
-                return []
-            return [n for n in names if n.startswith(".gate-stock-") or n in
-                    ("mod_smoke-stage", "debug_state", "dev_shell_out")]
-        shutil.copytree(install, target, dirs_exist_ok=True, ignore=ignore)
+        subprocess.run([sys.executable, str(ROOT / "scripts/make-isolated-deploy.py"),
+                        "--from", str(install), "--to", str(target)], check=True,
+                       **console_child.child_kwargs())
+        for child in target.iterdir():
+            if child.is_dir() and (child.name.startswith(".gate-stock-") or child.name in
+                                  ("mod_smoke-stage", "debug_state", "dev_shell_out")):
+                shutil.rmtree(child)
         print(f"| stock-copy | PASS | {time.monotonic() - started:.1f} |", flush=True)
         yield target
     finally:

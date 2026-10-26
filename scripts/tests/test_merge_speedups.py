@@ -700,25 +700,30 @@ def test_parallel_gate_respects_inherited_batch_and_failed_deploy(monkeypatch):
 @pytest.mark.parametrize("fail", [False, True])
 def test_stock_copy_is_private_and_always_removed(tmp_path, fail):
     import merge_gate as gate
-    install = tmp_path / "install"
-    (install / "data").mkdir(parents=True)
-    (install / "data/asset").write_text("source")
-    (install / "cache").mkdir()
-    (install / "cache/model.mci").write_text("warm cache")
-    (install / "mod_smoke-stage").mkdir()
-    (install / "mod_smoke-stage/large").write_text("disposable")
-    try:
-        with gate.stock_copy(install, tmp_path) as clone:
-            assert not (clone / "mod_smoke-stage").exists()
-            assert (clone / "cache/model.mci").read_text() == "warm cache"
-            assert not list(clone.glob(".gate-stock-*"))
-            (clone / "data/asset").write_text("changed")
-            assert (install / "data/asset").read_text() == "source"
-            if fail:
-                raise RuntimeError("fixture")
-    except RuntimeError:
-        assert fail
-    assert not clone.exists()
+    import tempfile
+    with tempfile.TemporaryDirectory(prefix="stock-copy-test-", dir=gate.ROOT / "scratch") as work:
+        tmp_path = gate.Path(work)
+        install = tmp_path / "install"
+        (install / "data").mkdir(parents=True)
+        (install / "data/asset").write_text("source")
+        (install / "mc2.exe").write_text("engine")
+        (install / "cache").mkdir()
+        (install / "cache/model.mci").write_text("warm cache")
+        (install / "mod_smoke-stage").mkdir()
+        (install / "mod_smoke-stage/large").write_text("disposable")
+        try:
+            with gate.stock_copy(install, tmp_path) as clone:
+                assert not (clone / "mod_smoke-stage").exists()
+                assert (clone / "cache/model.mci").read_text() == "warm cache"
+                assert not list(clone.glob(".gate-stock-*"))
+                assert (clone / "data/asset").samefile(install / "data/asset")
+                (clone / "mc2.exe").write_text("changed")
+                assert (install / "mc2.exe").read_text() == "engine"
+                if fail:
+                    raise RuntimeError("fixture")
+        except RuntimeError:
+            assert fail
+        assert not clone.exists()
 
 
 def test_offline_stages_overlap_before_deploy(monkeypatch):
