@@ -28,7 +28,7 @@ inline bool hdriFromCpu(VkPhysicalDevice phys, VkFormat& fmt, std::vector<std::v
     const HdriCpuImage* img = gos_GetHdriCpuImage();
     if (!img || img->levels.empty()) { reason = "no CPU HDRI"; return false; }
     if (img->levels.size() != img->dims.size()) { reason = "level / size count mismatch"; return false; }
-    const int w0 = img->dims[0].first, h0 = img->dims[0].second;
+    const auto& [w0, h0] = img->dims[0];
     if (w0 <= 0 || h0 <= 0 || w0 > 16384 || h0 > 16384) { reason = "bad base size"; return false; }
     if (img->format == HdriCpuImage::Format::Rgba16f) {
         for (size_t i = 0; i < img->levels.size(); ++i) {
