@@ -5,7 +5,6 @@
 #include "particles/batcher.h"
 #include "mlr/mlrsortbyorder.hpp"
 #include "mlr/gosimagepool.hpp"
-#include "mlr/mlrngoncloud.hpp"
 #include <cstdint>
 #include <algorithm>
 #include <cmath>
@@ -134,10 +133,6 @@ public:
     bool execute(gosFX::Effect::ExecuteInfo* info) { return this->Execute(info); }
     unsigned active() const { return this->m_activeParticleCount; }
     void expire(unsigned slot) { this->DestroyParticle(slot); }
-    int clippedVertices() const {
-        if constexpr (!std::is_same_v<Cloud, gosFX::PertCloud>) return 0;
-        else return this->m_cloudImplementation->GetNumGOSVertices();
-    }
     void distinguishParticles()
     {
         // Distinct channels and slots expose zero-fill, swapped fields and dead-slot packing.
@@ -194,9 +189,7 @@ public:
             appendBytes(bytes, p->m_age);
             appendBytes(bytes, p->m_seed);
             appendBytes(bytes, p->m_ageRate);
-            if constexpr (!std::is_same_v<Cloud, gosFX::PertCloud>)
-                appendBytes(bytes, p->m_age < 1.0f);
-            else appendBytes(bytes, this->m_cloudImplementation->IsOn(slot));
+            appendBytes(bytes, p->m_age < 1.0f);
             for (unsigned c = 0; c < colorStride(); ++c) {
                 const auto& color = this->m_P_color[slot * colorStride() + c];
                 for (float v : {color.red, color.green, color.blue, color.alpha}) appendBytes(bytes, v);
@@ -399,7 +392,8 @@ void checkFrozenCloud(bool alignX = false, bool alignY = false, unsigned sides =
     draw.m_parentToWorld = &transform;
     draw.m_clipper = &clipper;
     const bool gpu = std::is_same_v<Cloud, gosFX::PertCloud>
-        ? mc2::particles::Batcher::is_oracle_shape_enabled() : mc2::particles::Batcher::is_enabled();
+        ? mc2::particles::Batcher::is_enabled() && mc2::particles::Batcher::is_oracle_shape_enabled()
+        : mc2::particles::Batcher::is_enabled();
     auto& batcher = mc2::particles::Batcher::Instance();
     batcher.Flush();
 
@@ -440,13 +434,7 @@ void checkFrozenCloud(bool alignX = false, bool alignY = false, unsigned sides =
             CHECK(Stuff::Random::GetState() == frozen);
             CHECK(Stuff::Random::GetDrawCount() == frozen.draws);
             CHECK(cloud.frozenState() == particles);
-            if (std::is_same_v<Cloud, gosFX::PertCloud> && !gpu && live == 4) {
-                // MC2's legacy clouds bypass clip rejection, even with clipping flags set.
-                CHECK(cloud.clippedVertices() > 0);
-                REQUIRE_FALSE(sorter->payload.empty());
-            }
-            if constexpr (!std::is_same_v<Cloud, gosFX::PertCloud>)
-                CHECK(sorter->payload.empty()); // accepted cards never enter MLR, including with the kill-switch off
+            CHECK(sorter->payload.empty()); // retired renderers stay absent with either gate vector
             if (repeat < 2) firstMlrPayload[repeat] = sorter->payload;
             CHECK(sorter->payload == firstMlrPayload[repeat % 2]);
             if (borrowedCapture->snapshot.is_open()) {
@@ -594,7 +582,7 @@ TEST_CASE_FIXTURE(FrozenPlatform, "vfx_frozen/ShardCloud draw flush and clip lea
     for (const auto alignment : {std::pair{true, false}, std::pair{false, true}, std::pair{true, true}})
         checkFrozenCloud<gosFX::ShardCloud>(alignment.first, alignment.second);
 }
-TEST_CASE_FIXTURE(FrozenPlatform, "vfx_frozen/PertCloud variable polygons preserve MLR payload and RNG")
+TEST_CASE_FIXTURE(FrozenPlatform, "vfx_frozen/PertCloud variable polygons preserve live payload and RNG")
 {
     for (unsigned sides : {3u, 7u}) {
         CAPTURE(sides);

@@ -118,7 +118,6 @@ namespace MidLevelRenderer {
 		);
 
 //	add another shape
-		void DrawShape (DrawShapeInformation*);
 
 //	add another shape
 

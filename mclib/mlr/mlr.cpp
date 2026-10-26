@@ -141,7 +141,6 @@ void
 	MLRShape::InitializeClass();
 	MLREffect::InitializeClass();
 	MLRTriangleCloud::InitializeClass();
-	MLRNGonCloud::InitializeClass();
 	MLRAmbientLight::InitializeClass();
 	MLRInfiniteLight::InitializeClass();
 	MLRInfiniteLightWithFalloff::InitializeClass();
@@ -297,7 +296,6 @@ void
 	MLRInfiniteLightWithFalloff::TerminateClass();
 	MLRInfiniteLight::TerminateClass();
 	MLRAmbientLight::TerminateClass();
-	MLRNGonCloud::TerminateClass();
 	MLRTriangleCloud::TerminateClass();
 	MLREffect::TerminateClass();
 	MLRShape::TerminateClass();

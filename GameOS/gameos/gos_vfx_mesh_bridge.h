@@ -11,7 +11,7 @@ extern "C" {
 // contiguously); uvs are 2 floats per vertex; indices are 16-bit, triangle
 // list. vertexCount == number of (x,y,z) triples == number of (u,v) pairs.
 struct GosVfxMeshUpload {
-    uint64_t       meshId;        // stable key (MLRShape* cast to uint64)
+    uint64_t       meshId;        // stable key (MLR primitive pointer cast to uint64)
     const float*   positions;     // vertexCount * 3 floats (model space)
     const float*   uvs;           // vertexCount * 2 floats (may be null -> 0,0)
     const uint16_t* indices;      // indexCount * uint16 (triangle list)
@@ -33,8 +33,8 @@ struct GosVfxMeshInstance {
 };
 
 // Per-frame flush. uploads[] supplies geometry for any meshId not yet cached;
-// instances[] are drawn in submission order (effect-phase order — no global
-// translucency re-sort). No-op when count==0. Vulkan owns the upload ring,
+// instances[] are queued in submission order and drained after scene depth and
+// texture loading. No-op when count==0. Vulkan owns the upload ring,
 // descriptors and pipelines. Safe to call every frame; uploads are skipped
 // on cache hits.
 void gos_vfx_mesh_flush(const GosVfxMeshUpload*   uploads,

@@ -55,7 +55,7 @@ namespace MidLevelRenderer
 		MLR_I_DT_PMeshClassID,
 		MLR_I_C_DT_PMeshClassID,
 		MLR_I_L_DT_PMeshClassID,
-		MLRNGonCloudClassID,
+		MLRNGonCloudClassID, // retired renderer; preserve serialized class ordinals
 		MLRCardCloudClassID,
 
 		MLR_I_MT_PMeshClassID,
