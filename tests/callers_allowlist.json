@@ -369,5 +369,8 @@
   "scripts/tests/test_cc_launcher_negative_control.py": "Pytest-discovered module through scripts/run_scripts_tests.py (scripts_tests); compile-cache header-edit negative control.",
   "scripts/tests/test_stage_root.py": "Pytest-discovered module through scripts/run_scripts_tests.py (scripts_tests); stage root defaults and free-space preflight.",
   "scripts/tests/test_deploy_completeness.py": "Pytest-discovered module through scripts/run_scripts_tests.py (scripts_tests); deploy completeness check.",
-  "scripts/tests/test_rule_defaults.py": "Pytest-discovered module through scripts/run_scripts_tests.py (scripts_tests); lane-rule tool defaults."
+  "scripts/tests/test_rule_defaults.py": "Pytest-discovered module through scripts/run_scripts_tests.py (scripts_tests); lane-rule tool defaults.",
+  "scripts/tests/test_cook_priority.py": "Pytest-discovered module through scripts/run_scripts_tests.py (scripts_tests); cook process priority and thread caps.",
+  "scripts/tests/test_farm_runner.py": "Pytest module executed by the farm_runner contract row.",
+  "tools/farm/install-task.cmd": "Operator-run scheduled-task installer documented in tools/farm/README.md; run on the farm laptop as Kaitlyn."
 }

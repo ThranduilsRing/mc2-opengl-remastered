@@ -88,6 +88,8 @@
     {"module": "scripts/tests/test_terrain_perf_report.py", "owners": ["scripts_tests"]},
     {"module": "scripts/tests/test_tracy_capture_compare.py", "owners": ["scripts_tests"]},
     {"module": "scripts/tests/test_vk_offline_proofs.py", "owners": ["scripts_tests"]},
-    {"module": "scripts/tests/test_world_order_diff.py", "owners": ["sim_determinism"]}
+    {"module": "scripts/tests/test_world_order_diff.py", "owners": ["sim_determinism"]},
+    {"module": "scripts/tests/test_cook_priority.py", "owners": ["scripts_tests"]},
+    {"module": "scripts/tests/test_farm_runner.py", "owners": ["farm_runner"]}
   ]
 }
