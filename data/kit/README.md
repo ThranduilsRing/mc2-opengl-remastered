@@ -51,12 +51,12 @@ behavior and animation bindings continue through the existing engine path.
 
 Pack6 restores Spotlight with the sp2 bake from `claude/kit-intent` commit
 `2a534b1a4`, preserving stock searchlight hierarchy and pivots. Its selection is
-recorded in `E:/mc2-ref/packaging-sp2-kit-pack6.json` (Spotlight only). It also
-replaces the eight r4c entries in `E:/mc2-ref/packaging-r4c-kit-pack6.json`
-from commit `3816a8b4f`:
-the gauss circular drum, medium autocannon heads without dishes (including
-popup and camo1-4), and pulse laser head without its sensor. Other bakes retain
-their Pack5 payload bytes and tags; stock gameplay geometry remains authoritative.
+recorded in `content/packaging-sp2.json` (Spotlight only). It also replaces all
+17 turret entries with r5b from `claude/kit-intent` commit `b41218691`, selected
+by `content/packaging-r5.json`: rear service doors, wrapped corner brackets,
+and the gauss r4e head with wired pockets. The complete r5b recook replaces the
+autocannoncamo1 detail normal texture and its mismatched earlier pin. Other bakes
+retain their Pack5 payload bytes and tags; stock gameplay geometry remains authoritative.
 
 The three approved r2 fence bakes predate the stock count-contract repair
 7ca5e7b44. That contract is art-review metadata: the GLB frontend, package
