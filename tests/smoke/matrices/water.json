@@ -5,6 +5,19 @@
   "default_duration": 30,
   "entries": [
     {
+      "id": "mission_reload",
+      "description": "mc2_16 save/reload: refresh the borrowed shadow mask before rebinding native water descriptors (previously crashed at frame 1104).",
+      "missions": ["mc2_16"],
+      "duration": 28,
+      "env": {
+        "MC2_BOOT_QUICKSAVE_AT": "1000",
+        "MC2_BOOT_QUICKLOAD_AT": "1100",
+        "MC2_SMOKE_FIXED_TIMESTEP": "1",
+        "MC2_SMOKE_FREEZE_ANIM": "1",
+        "MC2_VULKAN_VALIDATION": "1"
+      }
+    },
+    {
       "id": "default",
       "description": "Default water settings (all gates at their shipped defaults).",
       "env": {}
