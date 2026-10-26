@@ -51,6 +51,9 @@ void cdShade(MaterialDetail d, vec3 L, float dayGate, out float diff, out vec3 s
     float lz = max(L.z, 0.35);
     float rel = 1.0 + (dot(d.n, L) - L.z) / lz;
     diff = clamp(mix(1.0, rel, 0.8), 0.85, 1.2);
+    spec = vec3(0.0);
+    // At midnight L can be exactly -up: its half-vector is undefined.
+    if (dayGate <= 0.0) return;
     // top-down view: half vector between the sun and straight up; GGX lobe, dielectric F0 0.04
     vec3 H = normalize(L + vec3(0.0, 0.0, 1.0));
     float nh = max(dot(d.n, H), 0.0);
@@ -64,12 +67,13 @@ void cdShade(MaterialDetail d, vec3 L, float dayGate, out float diff, out vec3 s
 }
 
 // One call for a surface: evaluates the detail and applies it to the caller's colour (AO), sun-shading term and sheen, weighted by w.
-void cdApply(int layer, vec2 wp, vec2 dx, vec2 dy, vec3 L, float w, inout vec3 color, inout float nl, inout vec3 spec) {
+void cdApply(int layer, vec2 wp, vec2 dx, vec2 dy, vec3 L, float w, inout vec3 color, inout float nl, inout vec3 spec, inout vec3 N) {
     MaterialDetail d = cdEval(layer, wp, dx, dy);
     float diff; vec3 sp;
     cdShade(d, normalize(L), uT.ambientDayGate, diff, sp);
     color *= mix(1.0, d.ao, 0.5 * w) * mix(1.0, d.lum, w);
     nl *= mix(1.0, diff, w);
     spec += sp * w;
+    N = normalize(mix(N, d.n, w));
 }
 #endif

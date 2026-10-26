@@ -279,7 +279,7 @@ void main(void)
         col += tlp_terrainPoolLight(WorldPos, uT.numPoolLights, uT.lightGridDim,
             vec2(uT.lightGridMinX, uT.lightGridMinY), vec2(uT.lightGridInvCellX, uT.lightGridInvCellY),
             uT.lightPoolSoft, uT.lightPoolMoverDim, uT.lightPoolMoverScale,
-            uT.lightPoolMoverMax, uT.lightPoolCompress, 0.0, contact);
+            uT.lightPoolMoverMax, uT.lightPoolCompress, 0.0, contact, vec3(0,0,1), vec3(0,0,1), false, 0.0);
     }
     if (F.fog_color.x > 0.0 || F.fog_color.y > 0.0 || F.fog_color.z > 0.0 || F.fog_color.w > 0.0)
         col = mix(F.fog_color.rgb, col, FogValue);

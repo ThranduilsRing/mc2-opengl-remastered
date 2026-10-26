@@ -60,7 +60,7 @@ void main() {
     float normalLight = computeNdotLBand(N, uT.terrainLightDir.xyz);
     // Thin-leaf transmission, bounded and shadowed with direct light once.
     normalLight += 0.08 * max(dot(-cardN, uT.terrainLightDir.xyz), 0.0) * (1.0-v_vegData.y);
-    vec3 lit = uT.lightingEnabled != 0 ? shadeGround(albedo, N, normalLight, shadow, 0.0, v_worldPos) : albedo;
+    vec3 lit = uT.lightingEnabled != 0 ? shadeGround(albedo, rootN, normalLight, shadow, 0.0, v_worldPos, rootN, false, 0.0) : albedo;
     o_color = vec4(lit, 1.0);
     o_normal = rc_gbuffer1_shadowHandled(N);
 }

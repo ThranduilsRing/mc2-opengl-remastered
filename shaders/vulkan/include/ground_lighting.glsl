@@ -6,11 +6,13 @@ vec3 composeGroundLighting(vec3 baseColor, vec3 ambient, vec3 direct, float shad
     return baseColor * ambient + baseColor * direct * shadow + localLight;
 }
 vec3 shadeGround(vec3 baseColor, vec3 N, float normalLight, float shadow,
-                 float flatLitShare, vec3 worldPos) {
+                 float flatLitShare, vec3 worldPos, vec3 macroNormal, bool resolveNormal, float normalLod) {
         vec3 lit = composeGroundLighting(baseColor, vec3(0), vec3(normalLight), shadow, vec3(0));
         // LOCAL-LIGHTS-4: the mission's night scale of the prelit ground (1.0 by day);
         // the local light pools below are added at full strength.
-        lit *= uT.sceneLightScale;
+        // Cached burnins need the mission profile; live-lit cement already
+        // received it through missionFlatLight. Applying it twice blacks pads.
+        lit *= mix(uT.sceneLightScale, 1.0, flatLitShare);
 
         // VK-PARITY-TERRAIN-2: NIGHT-LIGHT-POOLS-1..4 / LIGHT-CLUSTER-PERF-1 /
         // MOVER-CONTACT-SHADOW-1 — the SAME shared body GL runs (terrain_lod_chunk.frag
@@ -23,7 +25,7 @@ vec3 shadeGround(vec3 baseColor, vec3 N, float normalLight, float shadow,
                                         vec2(uT.lightGridInvCellX, uT.lightGridInvCellY),
                                         uT.lightPoolSoft, uT.lightPoolMoverDim, uT.lightPoolMoverScale,
                                         uT.lightPoolMoverMax, uT.lightPoolCompress,
-                                        uT.moverContactShadow, moverContact);
+                                        uT.moverContactShadow, moverContact, N, macroNormal, resolveNormal, normalLod);
         }
         // The burnin already contains mission ambient; no second ambient floor.
 

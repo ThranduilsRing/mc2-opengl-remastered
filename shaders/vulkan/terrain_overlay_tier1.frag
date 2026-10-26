@@ -102,15 +102,17 @@ void main() {
     // CONCRETE-ROAD-PBR-DETAIL: MC2's own overlay colour stays; asphalt (roads, runway) or concrete (adopted cement tiles) detail
     // adds occlusion, relative sun shading and a roughness sheen.
     vec3 cdSpec = vec3(0.0);
+    vec3 surfaceN = shadowN;
     if (uT.concreteDetail != 0) {
         MaterialDetail cd = cdEval(ovAdoptAlbedo ? CD_LAYER_PAD : CD_LAYER_ROAD, WorldPos.xy, cdWpDx, cdWpDy);
         float cdDiff; vec3 cdSp;
         cdShade(cd, lightDir3, uT.ambientDayGate, cdDiff, cdSp);
         c.rgb *= mix(1.0, cd.ao, 0.5) * cd.lum * cdDiff;
         cdSpec = cdSp;
+        surfaceN = cd.n;
     }
     c.rgb = max(c.rgb * shadow + cdSpec * shadow, vec3(0.0));
-    c.rgb *= uT.sceneLightScale;   // LOCAL-LIGHTS-4: same night scale as the ground under it (shadeGround)
+    c.rgb *= mix(1.0, uT.sceneLightScale, pc.artFlatExempt); // Live mission light already carries the night profile.
 
     // In-shader distance fog (skipped on cement tiles: the shared screen-space fog does it once).
     float camDist2D = distance(WorldPos.xy, uT.cameraPosMC2.xy);
@@ -128,7 +130,7 @@ void main() {
                                       vec2(uT.lightGridInvCellX, uT.lightGridInvCellY),
                                       uT.lightPoolSoft, uT.lightPoolMoverDim, uT.lightPoolMoverScale,
                                       uT.lightPoolMoverMax, uT.lightPoolCompress,
-                                      0.0, moverContactUnused);
+                                      0.0, moverContactUnused, surfaceN, shadowN, false, 0.0);
     }
     // Map-edge haze (same ramp as gos_terrain.frag).
     if (pc.mapHalfExtent > 0.0) {

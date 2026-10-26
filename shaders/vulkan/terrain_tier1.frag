@@ -8,7 +8,10 @@
 #define PREC highp
 #endif
 #include "../include/noise.hglsl"   // VK-PARITY-F3: fbm() for the GL colour break-up (terrain_lod_chunk.frag:1839)
+vec3 mv_lampPoolNormal(vec3 wp, vec3 macroN, float lod);
+#define TLP_LAMP_NORMAL mv_lampPoolNormal
 #include "include/terrain_frame_vk.glsl"   // TerrainFrameUBO + set-0 resources + CSM shadow helpers
+#undef TLP_LAMP_NORMAL
 #include "include/ground_lighting.glsl"
 #include "include/concrete_detail_vk.glsl"
 #include "../include/axis.hglsl"   // mc2ToRender: the POM view vector is built in the MC2 world frame
@@ -312,6 +315,36 @@ vec3 mv_detailNormal(vec4 w, float snowWeight, vec2 worldXY, float lodNear, floa
     return dN * lodNear;
 }
 
+// Lamp-only detail uses an isotropic footprint computed in uniform main flow.
+// The normal is sampled once at the first unoccluded, nonzero lamp.
+vec3 mv_lampPoolNormal(vec3 wp, vec3 macroN, float lod) {
+    float nearDetail = mv_computeLodNear(wp.xy, wp.z);
+    float footprint = exp2(lod) / float(textureSize(u_matNormalArray, 0).x);
+    if (nearDetail <= 0.0 || footprint >= 0.707107) return macroN;
+    vec2 uv = vec2((wp.x - uT.atlasTopLeftX) * uT.atlasOneOverWorldUnits,
+                   (uT.atlasTopLeftY - wp.y) * uT.atlasOneOverWorldUnits);
+    vec4 m = uT.colormapReady != 0 ? textureLod(u_materialWeights, uv, 0.0) : vec4(0);
+    vec4 w = vec4(max(1.0 - m.x - m.y - m.w, 0.0), m.x, m.y, m.w);
+    // Keep the lamp consumer small: one XY-only tap with explicit isotropic
+    // LOD, no sun/POM/anti-tile call graph inside the light loop.
+    const vec4 tiling = vec4(MATV_TILING.x / 3.0, MATV_TILING.yzw);
+    vec4 fade = clamp(vec4(2.0) - 2.828427 * footprint * tiling, 0.0, 1.0);
+    vec4 strength = w * MATV_NORMAL_BOOST * vec4(1.0 / 3.0, 1, 1, 1) * fade;
+    // A lamp needs micro-relief, not a second full material evaluation. Use
+    // the strongest visible layer; sun/shore/debug retain the weighted blend.
+    int layer = strength.y > strength.x ? 1 : 0;
+    if (strength.z > strength[layer]) layer = 2;
+    if (strength.w > strength[layer]) layer = 3;
+    float scale = tiling[layer];
+    float amount = strength[layer];
+    float snow = m.z * 0.9 * clamp(2.0 - 2.828427 * footprint * MATV_TILING_SNOW, 0.0, 1.0);
+    if (snow > amount) { layer = MAT_LAYER_SNOW; scale = MATV_TILING_SNOW; amount = snow; }
+    if (amount <= 0.0) return macroN;
+    vec2 detailUV = wp.xy * (uT.detailTiling / MATV_WU_PER_TILE) * scale;
+    vec2 dN = amount * (textureLod(u_matNormalArray, vec3(detailUV, float(layer)), lod + log2(scale)).xy * 2.0 - 1.0);
+    return normalize(vec3(macroN.xy / max(macroN.z, 0.2) + dN * nearDetail * uT.detailStrength, 1.0));
+}
+
 // CEMENT-MIP-EDGE-1: antialiased "x < 0.5" for the cement transition cut; fw = the cut form's
 // per-pixel footprint, so the edge is one pixel of coverage at any distance instead of a hard stair.
 float cCutLt(float x, float fw) {
@@ -330,6 +363,7 @@ void main() {
     // solid-cement hit -> flat-lit with ordinary static and dynamic shadows. (The GL dynamic building shadow on
     // concrete is a SEPARATE dynamic map, still deferred here.)
     bool pureConcrete = false;
+    float padEdgeAO = 1.0;
     bool cementHit = false;   // a solid cement atlas texel won (the shoreline wet band skips it, as GL)
     if (uT.colormapReady != 0) {
         // The shared cook already applied the original nine-tap blur and coast-color repair.
@@ -395,6 +429,10 @@ void main() {
             bool cementOwnAlpha = (cw & 0x00800000u) != 0u;
             if (isTransition && cementOwnAlpha) {
                 float cOwnA = cementTexel.a;
+                // Reuse filtered coverage for a narrow contact edge. The
+                // authored pad alpha supplies the bevel without neighbor taps.
+                if ((cw & 0x01000000u) == 0u)
+                    padEdgeAO = 1.0 - 0.72 * cOwnA * (1.0 - cOwnA);
                 base = mix(base, cementColor, cOwnA);
                 if (cOwnA > 0.5) { cementHit = true; pureConcrete = true; }
             } else if (isTransition) {
@@ -508,6 +546,7 @@ void main() {
     float materialSnow = materials.z;
     vec4 materialW = vec4(max(1.0 - materials.x - materials.y - materials.w, 0.0), materials.x, materials.y, materials.w);
     vec3 baseNormal = mv_smoothTerrainNormal(v_worldPos.xy);
+    base *= padEdgeAO;
     vec3 baseColor = base;
     float F3pc = pureConcrete ? 1.0 : 0.0;
     {
@@ -555,6 +594,7 @@ void main() {
         // Only detail relative to the macro normal may modulate that illumination.
         // Cement retains its authored slab normal and receives the same visibility.
         vec3 N = vec3(0.0, 0.0, 1.0);                            // flat-up terrain normal (default)
+        bool resolveLampNormal = false;
         vec3 dbgBaseN = vec3(0.0, 0.0, 1.0); vec3 dbgDN = vec3(0.0);  // CSM-BLACKOUT-RECON-1 taps
         if (uT.detailEnabled != 0 && !pureConcrete) {
             vec3 baseN = baseNormal;
@@ -563,6 +603,8 @@ void main() {
                 if (mv_needDetail(baseN, lightDir, materialW, materialSnow, v_worldPos, normalLightFloor)) {
                     float lodNear = mv_computeLodNear(v_worldPos.xy, v_worldPos.z);
                     dN = mv_detailNormal(materialW, materialSnow, v_worldPos.xy, lodNear, baseN.z, detailUvDx, detailUvDy);
+                } else {
+                    resolveLampNormal = true;
                 }
             }
             vec3 macroPert = vec3(baseN.xy / max(baseN.z, 0.2) * uT.nfhStrength, 1.0);
@@ -584,7 +626,7 @@ void main() {
         // fragments skip the material detail-normal fetches, so the two concrete fetches replace them (no net fetch increase).
         vec3 cdSpec = vec3(0.0);
         vec2 cdWpDx = dFdx(v_worldPos.xy), cdWpDy = dFdy(v_worldPos.xy);   // uniform flow, late: nothing extra stays live through the detail-normal block
-        if (uT.concreteDetail != 0 && pureConcrete) cdApply(cdRoad > 0.5 ? CD_LAYER_ROAD : CD_LAYER_PAD, v_worldPos.xy, cdWpDx, cdWpDy, lightDir, 1.0, baseColor, normalLight, cdSpec);
+        if (uT.concreteDetail != 0 && pureConcrete) cdApply(cdRoad > 0.5 ? CD_LAYER_ROAD : CD_LAYER_PAD, v_worldPos.xy, cdWpDx, cdWpDy, lightDir, 1.0, baseColor, normalLight, cdSpec, N);
 
         // Static ground mask and current-frame movers share the same visibility
         // floor. Cement receives both, exactly like the surrounding terrain.
@@ -607,7 +649,10 @@ void main() {
         else if (uT.csmDebugMode == 9) { fragColor = vec4(dbgBaseN * 0.5 + 0.5, 1.0); GBuffer1 = vec4(0.5,0.5,1.0,1.0); return; }
         else if (uT.csmDebugMode == 10) { fragColor = vec4(dbgDN * 0.5 + 0.5, 1.0); GBuffer1 = vec4(0.5,0.5,1.0,1.0); return; }
 
-        lit = shadeGround(baseColor, N, normalLight, shadow, pureConcrete ? 1.0 : 0.0, v_worldPos);
+        float normalSize = float(textureSize(u_matNormalArray, 0).x);
+        float lampLod = resolveLampNormal ? 0.5 * log2(max(max(dot(detailUvDx, detailUvDx), dot(detailUvDy, detailUvDy))
+                                                       * normalSize * normalSize, 1e-12)) : 0.0;
+        lit = shadeGround(baseColor, N, normalLight, shadow, pureConcrete ? 1.0 : 0.0, v_worldPos, macroN, resolveLampNormal, lampLod);
         lit = max(lit + cdSpec * shadow, vec3(0.0));
 
         // TERRAIN-EDGE-FEATHER-1 (GL terrain_lod_chunk.frag, after the mover contact): the last tile band of the map fades to the sky haze
