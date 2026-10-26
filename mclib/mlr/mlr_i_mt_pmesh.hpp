@@ -58,11 +58,7 @@ namespace MidLevelRenderer {
 	public:
 		void Copy(MLR_I_PMesh*);
 
-		virtual int	
-			TransformAndClip(glm::mat4 *, MLRClippingState, GOSVertexPool*,bool=false);
 
-		virtual void
-			TransformNoClip(glm::mat4*, GOSVertexPool*,bool=false);
 
 		void
 			SetTexCoordData(const Vector2DScalar*,	int, int pass=0);

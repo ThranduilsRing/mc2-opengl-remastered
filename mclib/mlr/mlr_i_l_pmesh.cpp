@@ -5,9 +5,6 @@
 #include"mlrheaders.hpp"
 #include <memory>
 
-#if defined(TRACE_ENABLED) && defined(MLR_TRACE)
-	BitTrace *MLR_I_L_PMesh_Clip;
-#endif
 
 //#############################################################################
 //######## MLRIndexedPolyMesh with color and lighting one texture layer  ######
@@ -32,10 +29,6 @@ void
 		);
 	Register_Object(DefaultData);
 
-	#if defined(TRACE_ENABLED) && defined(MLR_TRACE)
-		MLR_I_L_PMesh_Clip = new BitTrace("MLR_I_L_PMesh_Clip");
-		Register_Object(MLR_I_L_PMesh_Clip);
-	#endif
 }
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -47,10 +40,6 @@ void
 	delete DefaultData;
 	DefaultData = nullptr;
 
-	#if defined(TRACE_ENABLED) && defined(MLR_TRACE)
-		Unregister_Object(MLR_I_L_PMesh_Clip);
-		delete MLR_I_L_PMesh_Clip;
-	#endif
 }
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -257,38 +246,7 @@ void
 	actualColors = &litColors;
 }
 
-#undef I_SAY_YES_TO_DUAL_TEXTURES
-#define I_SAY_YES_TO_COLOR
-#define I_SAY_YES_TO_LIGHTING
 
-#define CLASSNAME MLR_I_L_PMesh
-
-#if defined(TRACE_ENABLED) && defined(MLR_TRACE)
-	#define SET_MLR_PMESH_CLIP() MLR_I_L_PMesh_Clip->Set()
-	#define CLEAR_MLR_PMESH_CLIP() MLR_I_L_PMesh_Clip->Clear()
-#else
-	#define SET_MLR_PMESH_CLIP()
-	#define CLEAR_MLR_PMESH_CLIP()
-#endif
-
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-//	This include contains follwing functions:
-//	void MLR_I_L_PMesh::TransformNoClip(Matrix4D*, GOSVertexPool*);
-//	int MLR_I_L_PMesh::Clip(MLRClippingState, GOSVertexPool*);
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-#include<mlr/mlrprimitiveclipping.hpp>
-
-#undef I_SAY_YES_TO_COLOR
-#undef I_SAY_YES_TO_LIGHTING
-
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-//	This include contains follwing functions:
-//	void	Lighting (MLRLight**, int nrLights);
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-#include<mlr/mlrprimitivelighting.hpp>
-#undef CLASSNAME
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
