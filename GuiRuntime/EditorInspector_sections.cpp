@@ -7,7 +7,6 @@
 
 namespace EditorInspector {
 
-
 // Draw the Renderer Features window.
 void drawFeaturesWindow() {
     if (s_featuresOpen) {
