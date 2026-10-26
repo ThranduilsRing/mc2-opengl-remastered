@@ -168,7 +168,11 @@ bool cook(Asset& asset, std::string_view sourcePath) {
     append(blob, hash(recipe)); blob.insert(blob.end(), recipe.begin(), recipe.end());
     const auto cached = mc2cache::readEntry(directory, kind, key);
     const bool hit = cached && *cached == blob;
-    if (!hit) mc2cache::writeEntry(directory, kind, key, blob);
+    if (!hit && !mc2cache::writeEntry(directory, kind, key, blob)) {
+        mc2::fmt::print_err("[CONTENT_COOK_ERROR] source={} key={:016x} cache write failed\n",
+            source ? source : "", key);
+        return false;
+    }
     mc2::fmt::print_err("[CONTENT_COOK] source={} key={:016x} cache={} nodes={} materials={} sockets={} version={}\n",
         source ? source : "", key, hit ? "hit" : "miss", asset.nodes.size(), asset.materials.size(), asset.sockets.size(), cookerVersion);
     return true;

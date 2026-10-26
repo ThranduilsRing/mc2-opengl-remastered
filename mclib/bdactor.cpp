@@ -861,12 +861,15 @@ uint32_t g_bldgAnimGate_animStateToState()     { return s_animStateToStateGestur
 
 void BldgAppearance::updateSimPose()
 {
-    if (!appearType) return;
+    if (!appearType) { simulationShape_.reset(); simPose->ready = false; return; }
     auto* source = status == OBJECT_STATUS_DESTROYED && appearType->bldgDmgShape ?
         appearType->bldgDmgShape : appearType->getBldgCollisionShape(0);
-    if (!source) return;
+    if (!source) { simulationShape_.reset(); simPose->ready = false; return; }
     if (simPose->ready && simulationType_ == source && appearType->numWeaponNodes == 0 &&
-        unitAnim().bdFrameRate == 0.0f && simPose->root == position && simPose->heading == rotation) return;
+        (appearType->rotationalNodeId[0] == '\0' || S_stricmp(appearType->rotationalNodeId, "NONE") == 0) &&
+        unitAnim().bdFrameRate == 0.0f &&
+        simulationAnimationState_ == unitAnim().bdAnimationState && simulationFrame_ == unitAnim().currentFrame &&
+        simPose->root == position && simPose->heading == rotation) return;
     if (simulationType_ != source || !simulationShape_) {
         simulationShape_.reset(source->CreateFrom());
         simulationType_ = source;
@@ -879,7 +882,11 @@ void BldgAppearance::updateSimPose()
     shape->SetNodeRotation(appearType->rotationalNodeId, &aim);
     auto root = mc2::math::quatFromEuler(mc2::math::Euler(0.0f, rotation * DEGREES_TO_RADS, 0.0f));
     glm::vec3 translation; mc2ToRender(translation, position);
+    // Marking and animation advancement can both request a pose in one turn.
+    shape->InvalidateHierarchy();
     shape->TransformMultiShape_BuildRecipe(&translation, &root);
+    simulationAnimationState_ = unitAnim().bdAnimationState;
+    simulationFrame_ = unitAnim().currentFrame;
     simPose->root = position; simPose->heading = rotation;
     simPose->nodes.resize(appearType->numWeaponNodes);
     for (long i = 0; i < appearType->numWeaponNodes; ++i) {

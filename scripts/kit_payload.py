@@ -16,7 +16,7 @@ IMPORT_ARGS = ["--no-ground", "--static-prop"]
 
 
 def reconcile_stock_textures(target_dir, inventory=None, jobs=1):
-    """Receipt only byte-proven stock sources and pinned stock sidecars.
+    """Receipt byte-proven stock sources, appearance definitions and sidecars.
 
     The pins include current batch_cook output and verified golden legacy cooks. Deployment
     never trusts paired source existence, target art, or MOD overlay contents.
@@ -158,8 +158,14 @@ def finish(target_dir, manifest, tool, cooker=subprocess.run):
         pass
     # Record the importer's source-to-recipe mapping with the verified inventory.
     recipes = {}
+    recipes_by_sha = {}
+    model_shas = {r["path"]: r["sha256"] for r in manifest["files"] if r["path"].endswith(".glb")}
     outputs = set()
     for rel in models:
+        digest = model_shas[rel]
+        if digest in recipes_by_sha:
+            recipes[rel] = recipes_by_sha[digest]
+            continue
         result = cooker([str(tool), (KIT_REL / rel).as_posix(), *IMPORT_ARGS],
                         cwd=target, capture_output=True, text=True, timeout=120,
                         **console_child.child_kwargs(redirected=True))
@@ -170,6 +176,7 @@ def finish(target_dir, manifest, tool, cooker=subprocess.run):
             raise ValueError(f"industrial importer did not report one native recipe: {rel}")
         outputs.add(cache / f"model-{keys[0]}.mci")
         recipes[rel] = f"model-{keys[0]}.mci"
+        recipes_by_sha[digest] = recipes[rel]
     outputs = sorted(outputs)
     if len(outputs) != unique_models or any(not p.is_file() or p.stat().st_size == 0 for p in outputs):
         raise ValueError(f"industrial cook incomplete: {len(outputs)} recipes for {unique_models} distinct GLBs")

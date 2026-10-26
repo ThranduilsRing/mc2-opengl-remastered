@@ -223,6 +223,8 @@ class BldgAppearance : public ObjectAppearance
 		TG_MultiShapePtr							bldgShape;
 		std::unique_ptr<TG_MultiShape> simulationShape_;
 		TG_TypeMultiShape* simulationType_ = nullptr;
+		long simulationAnimationState_ = -1;
+		float simulationFrame_ = 0.0f;
 		void updateSimPose();
 		long desiredRenderLOD() const;
 		void updateRenderLOD();

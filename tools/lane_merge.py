@@ -364,6 +364,7 @@ def do_merge(root: str, sha: str, message: str, lane_files=(), lock_path: str | 
             if data is None:
                 result = git(root, "rm", "--", path)
             else:
+                os.makedirs(os.path.dirname(os.path.join(root, path)), exist_ok=True)
                 with open(os.path.join(root, path), "wb") as f:
                     f.write(data)
                 result = git(root, "add", "-u", "--", path)
@@ -388,7 +389,7 @@ def do_merge(root: str, sha: str, message: str, lane_files=(), lock_path: str | 
                    + ("" if foreign else "\n" + r.stdout.strip()))
     for p in conflicted:
         c = git(root, "checkout", "--theirs", "--", p)
-        a = git(root, "add", "--", p) if c.returncode == 0 else c
+        a = git(root, "add", "-u", "--", p) if c.returncode == 0 else c
         if c.returncode != 0 or a.returncode != 0:
             abort_and_clean(root, lane_files)
             raise Stop(5, f"could not take the lane's {p}; merge aborted: {(c.stdout + a.stdout).strip()}")
@@ -456,7 +457,7 @@ def resolve_row_table(root: str, path: str) -> bool:
         return False
     with open(os.path.join(root, path), "w", encoding="utf-8", newline="") as f:
         f.write(text)
-    return git(root, "add", "--", path).returncode == 0
+    return git(root, "add", "-u", "--", path).returncode == 0
 
 
 def run_ratchets(root: str, tools_dir: str) -> list[tuple[str, int, str]]:

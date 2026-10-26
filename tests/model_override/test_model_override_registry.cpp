@@ -20,21 +20,21 @@ int main(int argc, char** argv) {
         const auto stamp = sidecar.string() + ".cookstamp";
         { std::ofstream out(source); out << "stock"; }
         { std::ofstream out(sidecar); out << "hello"; }
-        CHECK(!verifiedLooseTextureCook(sidecar));
+        CHECK(!verifiedLooseStockAsset(sidecar));
         CHECK(looseAssetDiffers(sidecar.string(), {}));
         // FNV-1a-64 standard vector in a deploy-only stock receipt.
         { std::ofstream out(stamp); out << "mc2-stock-v1 a430d84680aabd0b\n"; }
-        CHECK(verifiedLooseTextureCook(sidecar));
-        CHECK(!verifiedLooseTextureCook(source));
+        CHECK(verifiedLooseStockAsset(sidecar));
+        CHECK(!verifiedLooseStockAsset(source));
         { std::ofstream out(sidecar); out << "jello"; } // same-size user edit
-        CHECK(!verifiedLooseTextureCook(sidecar));
+        CHECK(!verifiedLooseStockAsset(sidecar));
         CHECK(looseAssetDiffers(sidecar.string(), {}));
         std::filesystem::remove(source); // archived-only sources do not change the verdict
-        CHECK(!verifiedLooseTextureCook(sidecar));
+        CHECK(!verifiedLooseStockAsset(sidecar));
         { std::ofstream out(stamp); out << "invalid"; }
-        CHECK(!verifiedLooseTextureCook(sidecar));
+        CHECK(!verifiedLooseStockAsset(sidecar));
         std::filesystem::remove(sidecar);
-        CHECK(!verifiedLooseTextureCook(sidecar));
+        CHECK(!verifiedLooseStockAsset(sidecar));
         std::filesystem::remove(stamp);
         std::filesystem::remove(fixture);
     }

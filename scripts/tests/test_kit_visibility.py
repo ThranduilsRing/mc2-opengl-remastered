@@ -120,6 +120,25 @@ def test_four_way_kit_priority(tmp_path, priority_probe, case):
         assert priority_probe(installed)
 
 
+def test_bundled_definition_receipt_preserves_user_and_mod_edits(tmp_path, priority_probe):
+    target = tmp_path / "install"
+    rel = "data/tgl/spotlight.ini"
+    path = target / rel
+    path.parent.mkdir(parents=True)
+    bundled = b"FITini\n[AnimationNode]\nst ElevationNodeId=\"battery\"\n"
+    path.write_bytes(bundled)
+    assert priority_probe(path)  # Different from packed stock, but shipped by the engine.
+    inventory = dict(sha256={rel: hashlib.sha256(bundled).hexdigest()}, cooked_sha256={})
+    kit.reconcile_stock_textures(target, inventory)
+    assert not priority_probe(path, no_stock_read=True)
+    assert priority_probe(path, "user-mod", no_stock_read=True)
+    path.write_bytes(bundled.replace(b"battery", b"modnode"))
+    assert priority_probe(path)
+    kit.reconcile_stock_textures(target, inventory)
+    assert priority_probe(path)
+    assert not Path(str(path) + ".cookstamp").exists()
+
+
 def test_gate_rejects_zero_overrides_and_missing_evidence(monkeypatch):
     spec = importlib.util.spec_from_file_location("kit_check", ROOT / "scripts/check-kit-visibility.py")
     check = importlib.util.module_from_spec(spec)

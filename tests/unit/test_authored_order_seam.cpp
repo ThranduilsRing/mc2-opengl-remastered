@@ -8,6 +8,7 @@
 #include "movemgr.h"
 #include "team.h"
 #include "Stuff/stuffheaders.hpp"
+#include "content_ir.h"
 
 #include <cstdlib>
 #include <algorithm>
@@ -129,6 +130,31 @@ struct CompileLog {
         return result;
     }
 };
+}
+
+TEST_CASE("ContentCook/cache publication failure is reported as failure") {
+    namespace fs = std::filesystem;
+    const auto previous = fs::current_path();
+    const auto sandbox = fs::temp_directory_path() / ("mc2-cook-write-failure-" + std::to_string(GetCurrentProcessId()));
+    fs::create_directories(sandbox);
+    struct Restore {
+        fs::path previous, sandbox;
+        ~Restore() { fs::current_path(previous); fs::remove_all(sandbox); }
+    } restore{previous, sandbox};
+    fs::current_path(sandbox);
+    std::ofstream("cache") << "blocks cache directory creation";
+    mc2::content::Asset asset;
+    asset.nodes.emplace_back();
+    asset.nodes.back().name = "helper";
+    asset.nodes.back().helper = true;
+    CompileLog log;
+    CHECK_FALSE(mc2::content::cook(asset, ""));
+    const auto text = log.text();
+    CHECK(text.find("[CONTENT_COOK_ERROR]") != std::string::npos);
+    CHECK(text.find("[CONTENT_COOK]") == std::string::npos);
+    fs::remove("cache");
+    CHECK(mc2::content::cook(asset, ""));
+    CHECK(mc2::content::cook(asset, ""));
 }
 
 TEST_CASE("ABLCompile/syntax rejection rolls back before the next compile") {

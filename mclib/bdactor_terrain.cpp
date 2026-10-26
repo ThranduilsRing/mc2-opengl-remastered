@@ -59,7 +59,45 @@ static void dumpGameplay(BldgAppearance& a, glm::vec3 pos, std::span<const short
         }
         mc2::fmt::print_err("[BLDG_GAMEPLAY] {}\n", out.str());
     }
+    // Targeted runtime regression: all requests share one simulation turn.
+    // Compare the reused hierarchy with a fresh stock instance, including frozen
+    // animation endpoints, and record the actual cells changed by marking.
+    if (S_stricmp(a.appearType->name, "RPBuilding") == 0 ||
+        (a.appearType->bdAnimData[1] && a.appearType->bdAnimData[3])) {
+        probe.status = OBJECT_STATUS_NORMAL;
+        auto blocked = [&] {
+            std::ostringstream cells;
+            for (int r = 0; r < side; ++r)
+                for (int c = 0; c < side; ++c)
+                    if (!GameMap->getCell(r, c)->getPassable()) cells << r << "," << c << ";";
+            return cells.str();
+        };
+        for (int gesture : {0, 1, 2, 3, 0}) {
+            const long frames = a.appearType->getNumFrames(gesture);
+            for (float frame : {0.0f, static_cast<float>(std::max(0L, frames - 1))}) {
+                probe.unitAnim().bdAnimationState = gesture;
+                probe.unitAnim().currentFrame = frame;
+                probe.unitAnim().bdFrameRate = 0.0f;
+                GameMap->map.assign(live.size(), MapCell{});
+                for (auto& cell : GameMap->map) cell.setPassable(true);
+                probe.markMoveMap(false, nullptr);
+                const auto before = blocked();
+                const auto nodes = probe.simPose->shapeNodes;
+                probe.markMoveMap(true, nullptr);
+                const auto after = blocked();
+                probe.simulationShape_.reset();
+                probe.simPose->ready = false;
+                probe.updateSimPose();
+                const bool matches = nodes == probe.simPose->shapeNodes;
+                mc2::fmt::print_err("[BLDG_MOVE] {}|{}|gesture={}|frame={}|cached_matches_fresh={}|blocked={}|released={}\n",
+                    a.appearType->name, prefix, gesture, frame, matches, before, after);
+            }
+        }
+    }
     if (probe.bldgShape) probe.releaseBldgShape();
+    probe.appearType = nullptr;
+    const auto noShapeCells = probe.markMoveMap(false, nullptr);
+    mc2::fmt::print_err("[BLDG_MOVE_NULL] cells={} ready={}\n", noShapeCells, probe.simPose->ready);
 }
 
 inline constexpr float HEIGHT_THRESHOLD = 10.0f;
@@ -371,6 +409,13 @@ long BldgAppearance::markMoveMap (bool passable, long* lineOfSightRect, bool use
 	// render transforms or an untransformed clone selected by a visual override.
 	updateSimPose();
 	TG_MultiShapePtr tempBldgShape = simulationShape_.get();
+	if (!tempBldgShape) {
+		if (lineOfSightRect) {
+			lineOfSightRect[0] = lineOfSightRect[1] = 9999;
+			lineOfSightRect[2] = lineOfSightRect[3] = 0;
+		}
+		return 0;
+	}
 
 	int numCoords = 0;
 	if (cellList) {
@@ -385,8 +430,8 @@ long BldgAppearance::markMoveMap (bool passable, long* lineOfSightRect, bool use
 				for (int j=0;j<tempBldgShape->GetNumVerticesInShape(i);j++) 
 				{
 					glm::vec3 vertexPos, worldPos;
-					vertexPos = tempBldgShape->GetShapeVertexInWorld(i,j,-rotation);
-					worldPos = position + vertexPos;
+					worldPos = tempBldgShape->GetShapeVertexInWorld(i,j,0.0f);
+					vertexPos = worldPos - position;
 	
 					int cellR, cellC;
 					land->worldToCell(worldPos,cellR,cellC);
@@ -423,8 +468,8 @@ long BldgAppearance::markMoveMap (bool passable, long* lineOfSightRect, bool use
 				for (int j=0;j<tempBldgShape->GetNumVerticesInShape(i);j++)
 				{
 					glm::vec3 vertexPos, worldPos;
-					vertexPos = tempBldgShape->GetShapeVertexInWorld(i,j,-rotation);
-					worldPos = position + vertexPos;
+					worldPos = tempBldgShape->GetShapeVertexInWorld(i,j,0.0f);
+					vertexPos = worldPos - position;
 	
 					int cellR, cellC;
 					land->worldToCell(worldPos,cellR,cellC);
