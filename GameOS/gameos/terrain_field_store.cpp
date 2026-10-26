@@ -57,7 +57,7 @@ bool TerrainFieldStore::patchHeight(const float* rows, int originX, int originY,
 }
 
 bool TerrainFieldStore::setCementWords(const uint32_t* words, int count) {
-    if (!words || count <= 0 || count > kMaxSide * kMaxSide) {
+    if (!words || count <= 0 || count > 2 * kMaxSide * kMaxSide) {
         MC2_LOG(Core, Warn, "[TERRAIN_FIELDS v1] rejected {:d} cement words", mc2::fmt::as_i32(count));
         return false;
     }

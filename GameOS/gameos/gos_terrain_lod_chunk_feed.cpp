@@ -209,9 +209,10 @@ extern "C" int mc2_terrain_tier1_get_load_feed(Mc2TerrainTier1Feed* out)
         out->cementDiagConnect = mc2::gate::get<"MC2_TERRAIN_CEMENT_DIAG_CONNECT">() ? 1 : 0;
     }
     // Null until the words of this map were uploaded: the island then keeps an all-zero (no cement) field of the same size.
-    const bool cementMatchesMap = fields->cementWords().size() == static_cast<size_t>(s_mapSide) * static_cast<size_t>(s_mapSide);
+    const size_t cementPlane = static_cast<size_t>(s_mapSide) * static_cast<size_t>(s_mapSide);
+    const bool cementMatchesMap = fields->cementWords().size() == cementPlane || fields->cementWords().size() == 2 * cementPlane;
     out->cementCpu          = cementMatchesMap ? fields->cementWords().data() : nullptr;
-    out->cementBytes        = static_cast<uint64_t>(s_mapSide) * static_cast<uint64_t>(s_mapSide) * sizeof(unsigned int);
+    out->cementBytes        = (cementMatchesMap ? fields->cementWords().size() : cementPlane) * sizeof(unsigned int);
     out->cementVersion      = fields->cementVersion();
 
     // VK-TERRAIN-VISUALDISPLACE-FAR-1 (rung 5): hand the 4x visual-height bake SSBO +
