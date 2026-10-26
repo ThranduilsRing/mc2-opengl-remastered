@@ -6,7 +6,7 @@ L(Presence, "MC2_FRAMEGRAPH_AMBIENT_FATAL", Bool, false, "code", "", "", verifie
 L(Lead0Kill, "MC2_FRAMEGRAPH_AMBIENT_GUARD", Bool, true, "code", "", "", verified),
 L(Lead1, "MC2_FRAMEGRAPH_DRYRUN", Bool, false, "code", "", "", passthrough | verified),
 // history: docs/gate-history.md#MC2_FRAMEGRAPH_EXECUTOR
-L(Lead1, "MC2_FRAMEGRAPH_EXECUTOR", Bool, false, "post", "", "RENDER-FRAME-GRAPH arc: top-level frame-graph executor ownership of pass begin/end (mclib/render_contract.cpp, GameOS/gameos/gos_postprocess.cpp).", passthrough | registry(Feature, "MC2_FEATURE_FRAMEGRAPH_EXECUTOR", -1, false) | verified),
+L(Lead0Kill, "MC2_FRAMEGRAPH_EXECUTOR", Bool, true, "post", "", "RENDER-FRAME-GRAPH arc: top-level frame-graph executor ownership of pass begin/end (mclib/render_contract.cpp, GameOS/gameos/gos_postprocess.cpp).", passthrough | registry(Feature, "MC2_FEATURE_FRAMEGRAPH_EXECUTOR", -1, true) | verified),
 L(Presence, "MC2_FRAMEGRAPH_REORDER_SPMECH", Bool, false, "code", "", "MEASURED-REORDER-SPMECH-1 (tier-C reorder EXPERIMENT, default-OFF): The two opaque flush UNITS below - StaticProp BatcherFlush (+Pass_SpColor timer) and the...", passthrough | verified),
 L(AtoiNZ, "MC2_FRAME_JOBS", Bool, false, "code", "", "", passthrough | verified),
 P("MC2_FRAME_JOBS_BATCH", Int, 64, "code", "", "", passthrough | verified),
@@ -19,7 +19,6 @@ P("MC2_FRAME_PASS_STATS_EVERY", Int, 0, "gameos", "", "", passthrough | verified
 // history: docs/gate-history.md#MC2_FREEZE_MOVERS_AT
 P("MC2_FREEZE_MOVERS_AT", Int, -1, "code", "", "FREEZE-MOVERS-1: =<frame> freezes every mover the first frame g_mc2FrameCounter >= <frame>, WITHOUT needing the command channel (the 'freeze_movers on...", passthrough | registry(Trace, "MC2_TRACE_FREEZE_MOVERS_AT", -1, false) | verified),
 // history: docs/gate-history.md#MC2_FX_COST_SPLIT
-L(Exact1, "MC2_FX_COST_SPLIT", Bool, false, "code", "", "FX cost-split instrumentation (default-off).", passthrough | registry(Feature, "MC2_FX_COST_SPLIT", -1, false) | verified),
 L(Presence, "MC2_FX_COUNT_LOG", Bool, false, "mech", "", "MC2_FX_COUNT_LOG=1: env-gated per-effect-site GOSFX draw counter for the Mech3DAppearance::render() effect sites.", passthrough | verified),
 // FX-DEFS-SIDECAR-1: EffectDef JSON overlay (VFX-MODERNIZATION-PROPOSAL-1 slice 1)
 // history: docs/gate-history.md#MC2_FX_DEFS
@@ -107,7 +106,6 @@ L(Lead0, "MC2_HUD_READABILITY_V1", Bool, false, "unclassified", "", "IN-MISSION-
 P("MC2_HUD_SCALE", Float, 0.0, "gameos", "", "", verified),  // default not derivable from the tree
 L(Lead0, "MC2_HUD_SIM_SPEED", Bool, false, "code", "", "SIM-SPEED-BUTTON-1: double-gated sim-speed tab (MC2_HUD_SIM_SPEED; needs MC2_HUD_IMGUI_TABS like every registry consumer).", verified),  // default not derivable from the tree
 // history: docs/gate-history.md#MC2_HUD_TABS_TEST
-L(Lead0, "MC2_HUD_TABS_TEST", Bool, false, "code", "", "IN-MISSION-HUD-IMGUI-SCOPE-1 slice C witness: register a 4th 'test' tab (no legacy button; ImGui chrome via HudImGui::hudShrinkPoint + hudToDisplay, trivial...", registry(Feature, "MC2_FEATURE_HUD_TABS_TEST", -1, false) | verified),
 // history: docs/gate-history.md#MC2_HZB_BUILD
 G("MC2_HZB_BUILD", Bool, true, "post", "", "Render-only static-prop culling from same-frame Vulkan depth; exact ceil-ladder MIN footprints and per-object LOD. MC2_HZB_BUILD=0 keeps every instance.", passthrough | registry(Feature, "MC2_FEATURE_HZB_BUILD", 17, true) | verified),
 L(Presence, "MC2_HZB_FORCE_HORIZON", Bool, false, "code", "", "", verified),

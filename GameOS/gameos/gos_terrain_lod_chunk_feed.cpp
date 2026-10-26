@@ -360,41 +360,14 @@ extern "C" int mc2_terrain_tier1_get_load_feed(Mc2TerrainTier1Feed* out)
 
     }
 
-    // VK-TERRAIN-LODFADE sub-slice: camera-distance fade for detail-normal/POM, closing
-    // the VK LOD0-vs-GL-band color seam (GL gos_terrain.frag lodNear, :322-328,616-736).
-    // Gate MC2_VK_TERRAIN_LODFADE requires detailEnabled (fading a feature that's already
-    // off is a no-op, so keep the precondition chain: LIGHTING -> DETAIL -> LODFADE).
-    {
-        int lodFadeOn = 0;
-        if (out->detailEnabled)
-            // VK-PARITY-F3: DEFAULT OFF even under the umbrella (explicit =1 still arms it).
-            // The GL chunk terrain (the shipped renderer, terrain_lod_chunk.frag) has NO
-            // camera-distance detail fade -- only the legacy gos_terrain.frag did -- so the
-            // umbrella-armed fade removed ALL detail-normal relief beyond ~4000wu (every
-            // high/RTS camera), leaving VK terrain flat-lit: measured N.x mean +0.07 vs GL
-            // +0.53 (parF3 mc2_10 night), ~15% darker bare ground. All LOD bands are VK-drawn
-            // by the same shader, so there is no LOD0-vs-band seam to close.
-            lodFadeOn = mc2::gate::get<"MC2_VK_TERRAIN_LODFADE">() ? 1 : 0;
-        out->lodFadeEnabled = lodFadeOn;
-        // VK-FLIP oracle-visible gate-state proof: one-shot diagnostic line so a smoke
-        // capture can confirm lodFadeEnabled's resolved value without a debugger attach.
-        // Gated on presence of MC2_VK_TERRAIN_COPY_STATS (same opt-in convention as the
-        // interop-copies stats line above) to stay silent by default.
-        {
-            static const bool s_diagOn = mc2::gate::get<"MC2_VK_TERRAIN_COPY_STATS">();
-            static bool s_logged = false;
-            if (s_diagOn && !s_logged) {
-                s_logged = true;
-                mc2::fmt::print_err("[VK_TERRAIN_LODFADE_DIAG] lodFadeEnabled={:d} detailEnabled={:d} lightingEnabled={:d}\n", mc2::fmt::as_i32(lodFadeOn), mc2::fmt::as_i32(out->detailEnabled), mc2::fmt::as_i32(out->lightingEnabled));
-                fflush(stderr);
-            }
-        }
-        float cx = 0.0f, cy = 0.0f, cz = 0.0f;
-        gos_GetTerrainCameraPos(&cx, &cy, &cz);
-        out->cameraPosMC2[0] = cx;
-        out->cameraPosMC2[1] = cy;
-        out->cameraPosMC2[2] = cz;
-    }
+    // Reserved fade switch; all terrain bands retain full detail.
+    out->lodFadeEnabled = 0;
+    // POM still needs the camera position after the legacy band fade is retired.
+    float cx = 0.0f, cy = 0.0f, cz = 0.0f;
+    gos_GetTerrainCameraPos(&cx, &cy, &cz);
+    out->cameraPosMC2[0] = cx;
+    out->cameraPosMC2[1] = cy;
+    out->cameraPosMC2[2] = cz;
 
     return 1;
 }

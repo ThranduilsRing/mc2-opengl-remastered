@@ -54,7 +54,7 @@ long tileCacheMiss = 0;
 int TERRAIN_TXM_SIZE = 64;
 
 //---------------------------------------------------------------------------
-// OVERLAY-TILE-HIRES-1 (gate MC2_OVERLAY_TILE_HIRES, default OFF).
+// OVERLAY-TILE-HIRES-1 (gate MC2_OVERLAY_TILE_HIRES, default ON).
 // Historically initOverlay() hard-assumed 64x64 (TERRAIN_TXM_SIZE) and never
 // resynced to the TGA header the way initTexture() does, so upscaled overlay
 // tiles could not be read (wrong stride + loadTGATexture header assert). This
@@ -800,8 +800,7 @@ long TerrainTextures::initOverlay (long overlayNum, long txmNum, char *txmName)
 		FullPathFileName fileName;
 		fileName.init(mipPath,tmpy,".tga");
 
-		// OVERLAY-TILE-HIRES-1 (gate MC2_OVERLAY_TILE_HIRES, default OFF -> this
-		// block is dead and the legacy path below is byte-identical).
+		// OVERLAY-TILE-HIRES-1: probe hires overlays by default, with per-file fallback.
 		// (1) Folder-by-size selection: the "%dOverlays" convention above IS the
 		//     engine's intended res-folder mechanism (same TerrainTextureRes pref
 		//     scheme as the base "%d"/"%dmask" folders) but TERRAIN_TXM_SIZE is

@@ -26,7 +26,6 @@
 #include <unordered_set>
 #include <vector>    // MC2_VFX_ORACLE_TUBE: pos3->vec4 staging
 #include <tracy/Tracy.hpp>               // Q2-S0 coarse CPU zones (flush paths)
-#include "../../mclib/fx_trace/fx_cost_split.h"  // Q2-S0 FX cost-split + per-frame roll
 #include "Gates/gate.h"
 
 // Globals defined in gos_particle_bridge.cpp (or elsewhere in the engine) that the split pieces share.

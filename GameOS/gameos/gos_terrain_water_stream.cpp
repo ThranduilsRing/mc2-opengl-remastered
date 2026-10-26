@@ -71,73 +71,10 @@ float EffAlphaDepth(float baseAlphaDepth) {
     return floorWu > 0.0f ? fmaxf(baseAlphaDepth, floorWu) : baseAlphaDepth;
 }
 
-// SHORELINE-GEOMETRY-1 — see the header block for the rationale.
-// WATER-MEANDER-CLAMP-1 (2026-07-26): default REVERTED 75 -> 0 (OFF).
-//
-// AUDIT-TRUTH-1 baked in 75 as "the amplitude the user graded and APPROVED".
-// That approval does not survive wide, normal-altitude captures on poses that
-// actually frame water:
-//
-//   * mc2_17 (flat shelf) at A=75 DELETES water. Wide pose shelf_east_wide loses
-//     11.2 percentage points of frame water (42.95% -> 31.78%), and the loss is
-//     ONE-WAY -- 11.23% lost against 0.05% gained. The perturbation is zero-mean,
-//     but `if (shore <= 0.0) discard;` is not: a seaward excursion adds nothing,
-//     while a landward one destroys the fragment. The result is a smeared brown
-//     blob eating the bay with detached islands floating in open water -- the
-//     user's "the mc2_17 water is atrocious / the smoothing line looks terrible".
-//   * mc2_10 -- the map the approval was granted on -- ALSO loses water at 75.
-//     Nobody had seen it because no mc2_10 bookmark framed water until this slice
-//     authored one. On shore_south_wide an entire inlet that is water at A=0 is a
-//     brown wedge at A=75. On shore_west_wide, meanwhile, A=75 is BYTE-IDENTICAL
-//     to A=0 -- so where the approved look is good, the meander contributed
-//     exactly nothing to it.
-//
-// Root cause: the amplitude is a THICKNESS carrying fBm gain 2.40, so A=75 is a
-// +/-180 wu excursion -- larger than the entire water depth range of either map
-// (mc2_17 tops out at 120 wu, mc2_10 at 80). It cannot act as an edge treatment
-// when it exceeds the field it perturbs everywhere; it punches holes in open water.
-//
-// Two rescues were implemented and MEASURED, and both rejected:
-//   1. Clamp horizontal reach (deferred; no gate).
-//      Reduces water loss monotonically (-11.2 -> -2.5 at D=24, -1.3 at D=12) but
-//      is SELF-DEFEATING: it scales the perturbation by |grad(thickness)|, and the
-//      staircase it must cure lives precisely where |grad| is small, so it
-//      suppresses the cure exactly where it is needed -- the sawtooth survived
-//      every clamped arm. It also facets, since the gradient of a linearly
-//      interpolated varying is piecewise-constant per primitive. Code reverted.
-//   2. Lower the amplitude (A=25 / A=15). Fixes mc2_17 handsomely, but at A=15
-//      mc2_10's shore_west_wide grows a hard blocky staircase that neither A=0 nor
-//      A=75 has -- EffShoreExt widens tile admission BY A, so a small A clips
-//      landward excursions back to tile edges and re-creates the risers. The knob
-//      is not monotonic and no single global amplitude is safe.
-//
-// So the default parks at 0 = OFF, provably the stock, long-shipped waterline.
-// What is lost is the staircase refinement, not correctness; what is gained is a
-// shipping default that stops deleting water on two maps. MC2_WATER_SHORE_MEANDER=75
-// restores the previous behaviour exactly for anyone re-grading it. Re-enabling by
-// default needs a fix that separates the cure from the defect -- the |grad|-keyed
-// clamp provably cannot, because both have the same cause.
-float ShoreMeanderWu() {
-    static const float s_amp = mc2::gate::get<"MC2_WATER_SHORE_MEANDER">();
-    return s_amp;
-}
-
-float ShoreMeanderFreq() {
-    // Default 1/384 wu = one dominant fBm cycle per ~3 tiles (tile = 128 wu).
-    // Long enough to bend a whole riser rather than serrate it, short enough
-    // that a single tile edge never stays straight across its full length.
-    static const float s_freq = mc2::gate::get<"MC2_WATER_SHORE_MEANDER_FREQ">();
-    return s_freq;
-}
-
 float EffShoreExt(float baseAlphaDepth) {
     const float effAD = EffAlphaDepth(baseAlphaDepth);
     const float base  = (effAD * 0.5f > 0.0f) ? effAD * 0.5f : 15.0f;
-    // Admit tiles the meander can reach. The perturbation is zero-mean with
-    // amplitude ShoreMeanderWu(), so the waterline can rise by at most that
-    // much locally; without this widening the landward excursions would be
-    // clipped to the stock tile boundary and re-expose the step.
-    float ext = base + ShoreMeanderWu();
+    float ext = base;
     // MC2_WATER_SHORE_MODE=3 (GL prototype): widen admission so geometry exists
     // beyond the true sidecar contour for the per-pixel discard to carve.
     if (gos_WaterShoreMode() == 3)

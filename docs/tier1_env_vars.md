@@ -166,7 +166,13 @@ Present-level transient failures (zero surface extent while minimized, `NATIVE_W
 
 ## Frame-graph executor + backend-iface seam (RENDER-FRAME-GRAPH ARC)
 
-- `MC2_FRAMEGRAPH_EXECUTOR=1` — top-level frame-graph pass executor (`gos_postprocess.cpp` `executorEnabled()`, `mclib/render_contract.cpp`). Default **OFF**. Value must be `'1'`. Substrate — the reorderer below is NOT shipped; executor stays default-OFF.
+- `MC2_FRAMEGRAPH_EXECUTOR` ? default ON native pass validation; `=0` disables it. Pass ordering remains unchanged.
+- `MC2_RENDER_PASS_ORDER` ? default ON resource-order audit; `=0` disables it.
+- `MC2_SNAPSHOT_MECH_EXTRACT` ? default ON observe-only mech snapshot; `=0` disables it.
+- `MC2_VIEWMODE_FRAMEWORK` ? default ON presentation controls, initially Visual; `=0` disables them.
+- `MC2_TACTICAL_ARC_OVERLAY` ? default ON selected-unit range/facing overlay; `=0` disables it. Requires `MC2_DEBUG_RENDERER` (also default ON).
+- `MC2_OVERLAY_TILE_HIRES` ? defaults to 256px overlay probes, falling back per file to stock tiles; `=0` selects the stock path.
+
 - `MC2_FRAMEGRAPH_REORDER_SPMECH` — **REJECTED experiment, default OFF, presence-gated** (`mclib/vk_scene_renderer_passes.cpp`). Would swap the StaticProp-flush ↔ Mech-flush order (the one legal adjacent swap the reorder oracle proved). PARITY-FAILED on depth-EQUAL ties (mc2_24 overlapping opaque fragments resolve order-dependently); candidate rejected, kept only as an A/B lever. Never set in production. `=0`/unset = today's order verbatim (byte-identical).
 - `MC2_FRAMEGRAPH_DRYRUN=1` — frame-graph dry-run mode (`render_contract.cpp` `dryrunEnabled()`). Default **OFF**. Value must be `'1'`.
 - `MC2_FRAMEGRAPH_AMBIENT_GUARD` — ambient-handoff contract guard (colorMask / depthFunc / depthWrite axes; `render_contract.cpp`). **DEFAULT ON**; only `=0` disables. The dump counter is read by `get_render_health` / `validate_state` (mc2-render-state MCP); the standalone check-ambient-guard.py was retired 2026-10-12, cull wave 1.

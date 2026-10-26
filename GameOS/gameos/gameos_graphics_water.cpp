@@ -116,45 +116,6 @@ int  gos_GetWaterReflectionRtGate()
     return mc2::gate::get<"MC2_WATER_REFLECTION_RT">();
 }
 
-// WATER-SUN-SPEC-2 (repairs WATER-SUN-SPEC-1, c50e99a6). Blinn-Phong sun
-// specular intensity on the MDI water FS. Default 0.0 = exact no-op.
-//
-// WHAT WAS WRONG FOR THE WHOLE LIFE OF WATER-SUN-SPEC-1, and why this comment
-// block is long: the value below was uploaded to "u_waterSpecIntensity" every
-// frame (see the MDI bind block), and that uniform WAS NEVER DECLARED IN ANY
-// SHADER IN THIS REPO'S HISTORY -- `git log -S"u_waterSpecIntensity" --all --
-// 'shaders/*'` returns zero commits. Same for the "terrainLightDir" upload two
-// lines above it. glGetUniformLocation returned -1 for both and the upload
-// helper skips loc < 0 silently, so this gate was arithmetically incapable of
-// changing a pixel at any value on any mission. WATER-SUN-SPEC-2 declares and
-// consumes both in shaders/gos_terrain_water_mdi.frag; do not delete either
-// upload without deleting the shader term with it.
-//
-// The previous comment here also claimed "the ImGui slider is authoritative
-// once touched". There is no slider: gos_SetWaterSpecIntensity() had ZERO
-// callers anywhere in the tree and has been deleted, and grepping the whole
-// repo case-insensitively for "shine" finds no UI control. If a Graphics
-// Options control is wanted later, add the setter back WITH its caller.
-//
-// The value is the additive peak of the specular lobe in linear light, before
-// fog. Recommended 0.2-0.5; 1.0 is an exaggerated value that makes the
-// mechanism unmistakable when confirming it works. Sentinel -1 = uninit.
-float g_waterSpecIntensity = -1.0f;
-float gos_GetWaterSpecIntensity()
-{
-    if (g_waterSpecIntensity < 0.0f) {
-        const std::string v = mc2::gate::str<"MC2_WATER_SHINE">();   // "" when unset or empty
-        const bool on = (!v.empty() && v[0] != '0');   // canonical default-OFF opt-in
-        float s = 0.0f;
-        if (on) {
-            const float f = static_cast<float>(atof(v.c_str()));
-            s = (f > 0.0f) ? f : 0.25f;               // non-numeric truthy ("on", "yes") -> 0.25
-        }
-        g_waterSpecIntensity = s;
-    }
-    return g_waterSpecIntensity;
-}
-
 void gos_terrain_bridge_renderWaterFast(
     unsigned int recordCount,
     unsigned int waterGosHandle,

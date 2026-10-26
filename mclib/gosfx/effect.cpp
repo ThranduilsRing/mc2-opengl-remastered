@@ -1,6 +1,5 @@
 #include"gosfxheaders.hpp"
 #include"fx_trace/fx_trace.h"
-#include"fx_trace/fx_cost_split.h"  // Q2-S0 FX cost-split (env MC2_FX_COST_SPLIT)
 #include <tracy/Tracy.hpp>          // Q2-S0 coarse CPU zones
 
 // [B1 C16] (diagnostic) GOSFX_HEAP + GOSFX_CHILD counters
@@ -608,7 +607,6 @@ bool gosFX::Effect::Execute(ExecuteInfo *info)
 	// Q2-S0 instrumentation only (no behavior change). Coarse Tracy zone +
 	// inclusive-cycle bucket for the per-effect base Execute.
 	ZoneScopedN("gosFX.Effect.Execute");
-	mc2::fx_cost_split::Scope _fxcs(mc2::fx_cost_split::B_FX_EXECUTE);
 
 	//
 	//-----------------------------------------------------

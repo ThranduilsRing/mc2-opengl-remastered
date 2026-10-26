@@ -340,7 +340,7 @@ TEST_CASE("table is sorted, unique and every name round-trips through lookupName
     const std::size_t n = gate::tableSize();
     REQUIRE(n == gate::detail::kGateCount);
     // Population floor after the gate amnesty (retired names live in Gates/retired_names.json).
-    REQUIRE(n == 800);   // Snapshot age sampling retired; render-scale and mover-shadow controls remain.
+    REQUIRE(n == 792);   // Batch 1 retires eight names, including the shoreline frequency knob.
     for (std::size_t i = 0; i < n; ++i) {
         if (i > 0) CHECK((rows[i - 1].name < rows[i].name));
         const auto info = gate::lookupName(rows[i].name);
@@ -827,7 +827,6 @@ TEST_CASE("G3 float rows carry the bounds of the readers they replace") {
         {"MC2_TERRAIN_SHORELINE_STRENGTH", true, 0.0, 2.0},
         {"MC2_TERRAIN_VISUAL_DISPLACE_FAR", true, 0.0, 1.0},
         {"MC2_WATER_SHORE_FEATHER", false, 0.0, kFltMax},
-        {"MC2_WATER_SHORE_MEANDER_FREQ", false, 0.0, kFltMax},
     };
     for (const Want& w : want) {
         INFO(w.name);
@@ -838,7 +837,6 @@ TEST_CASE("G3 float rows carry the bounds of the readers they replace") {
         CHECK(r.range.lo == w.lo);
         CHECK(r.range.hi == w.hi);
     }
-    CHECK(g1b::rowNamed("MC2_WATER_SHORE_MEANDER_FREQ").defFloat == 1.0f / 384.0f);
     // The old reader tested `s > 0.05f` in float: exactly 0.05 is rejected, the next float up is accepted.
     const gate::Row& dist = g1b::rowNamed("MC2_TERRAIN_LOD_CHUNK_DIST_SCALE");
     CHECK(asFloat(gate::detail::parseRow(dist, "0.05")) == 1.0f);
@@ -916,8 +914,7 @@ TEST_CASE("the VK opt-in and kill-switch rows read like the envTriState expressi
         return v[0] == '1' ? 1 : v[0] == '0' ? 0 : -1;
     };
     constexpr const char* kProbe[] = {nullptr, "", "0", "false", "1", "yes", "10", "2.5", "00", "0x", "01"};
-    const char* exact1[] = {"MC2_VK_TERRAIN_LODFADE",
-                            "MC2_VK_TERRAIN_VISUALDISPLACE_FAR"};
+    const char* exact1[] = {"MC2_VK_TERRAIN_VISUALDISPLACE_FAR"};
     const char* killSwitch[] = {"MC2_VK_LIGHTFEED_DEDUP", "MC2_VK_MECH_FENCE_DEFER", "MC2_VK_POST_SCREENFX", "MC2_VK_POST_SCREENFX_CLOUD",
                                 "MC2_VK_POST_SCREENFX_SHADOW", "MC2_VK_POST_SCREENFX_SHORELINE",
                                 "MC2_VK_PROP_FENCE_DEFER", "MC2_VK_TERRAIN_FENCE_DEFER", "MC2_VK_WATER_FENCE_DEFER"};
@@ -1032,13 +1029,14 @@ TEST_CASE("G6 clamped float knobs reproduce the old lambda readers (defaults and
 }
 
 TEST_CASE("G6 String rows keep path and text values verbatim") {
-    for (const char* name : {"MC2_ABL_COMPILE_FATAL_REPRO", "MC2_OVERLAY_TILE_HIRES", "MC2_MECH_IMPORT_FORCE_CLIP",
+    for (const char* name : {"MC2_ABL_COMPILE_FATAL_REPRO", "MC2_MECH_IMPORT_FORCE_CLIP",
                              "MC2_MECH_SKEL_BONE_DUMP", "MC2_LOG_FILE_RESOLVE", "MC2_RESOLVE_TRACE_FILE"}) {
         INFO(name);
         const gate::Row& row = g1b::rowNamed(name);
         CHECK(row.kind == Kind::String);
         CHECK(std::string(row.defStr).empty());
     }
+    CHECK(std::string(g1b::rowNamed("MC2_OVERLAY_TILE_HIRES").defStr) == "256");
     CHECK(std::string(g1b::rowNamed("MC2_MECH_IMPORT_FORCE_BONE").defStr) == "j_LThigh");
 }
 
@@ -1086,11 +1084,11 @@ TEST_CASE("G6 string and presence rows") {
     const gate::Row& color = g1b::rowNamed("MC2_LIGHT_POOL_MOVER_COLOR");
     CHECK(color.kind == Kind::String);
     CHECK(std::string(color.defStr).empty());
-    const gate::Row& burnin = g1b::rowNamed("MC2_BURNIN_NO_JPG");
-    CHECK(burnin.rule == Rule::Presence);
-    CHECK_FALSE(rowValue(burnin, nullptr));
-    CHECK(rowValue(burnin, "0"));
-    CHECK(rowValue(burnin, ""));
+    const gate::Row& presence = g1b::rowNamed("MC2_ABL_REG_TRACE");
+    CHECK(presence.rule == Rule::Presence);
+    CHECK_FALSE(rowValue(presence, nullptr));
+    CHECK(rowValue(presence, "0"));
+    CHECK(rowValue(presence, ""));
 }
 
 TEST_CASE("raw<> echoes the environment text, nullptr when unset, without caching") {
@@ -1157,7 +1155,6 @@ TEST_CASE("G5 graphics rows reproduce the lambdas and helpers they replaced") {
     // out of range -> default (the old `f >= 0 && f <= 1 ? f : 0.25f`)
     CHECK(fl("MC2_LIGHT_POOL_MOVER_DIM", "2") == 0.25f);
     CHECK(fl("MC2_LIGHT_POOL_MOVER_DIM", "0.5") == 0.5f);
-    CHECK(g1b::rowNamed("MC2_WATER_SHINE").kind == Kind::String);
 }
 
 // ---------------------------------------------------------------------------

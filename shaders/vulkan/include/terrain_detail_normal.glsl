@@ -1,5 +1,4 @@
-vec3 mv_detailNormal(vec4 w, float snowWeight, vec2 worldXY, float lodNear, float macroNz, vec2 uvDx, vec2 uvDy) {
-    if (lodNear == 0.0) return vec3(0.0);
+vec3 mv_detailNormal(vec4 w, float snowWeight, vec2 worldXY, float macroNz, vec2 uvDx, vec2 uvDy) {
     vec2 uv = worldXY * (uT.detailTiling / MATV_WU_PER_TILE);
     vec2 uvRock     = uv * (MATV_TILING.x / 3.0);
     vec2 uvGrass    = uv * MATV_TILING.y;
@@ -17,11 +16,9 @@ vec3 mv_detailNormal(vec4 w, float snowWeight, vec2 worldXY, float lodNear, floa
 
     // POM: parallax-offset the material UVs, fwidth-gated (near only). The march uses the real view vector, faded out over the world
     // distance MATV_POM_FADE_NEAR..FAR (the cost governor), over the slope band where the cliff blend takes over, and over cement
-    // (a slab must not tear). lodNear fades the offset across the LOD0 band boundary (1.0 when the gate is off).
-    // GL also requires u_lodStep <= 2 before it marches; the VK island has no lod step, and the lodNear fade is its accepted stand-in for that limit.
-    if (fwRock > 0.4 && lodNear > 0.01) {
+    if (fwRock > 0.4) {
         const vec4 pomScaleMat = vec4(1.0, 1.0, 2.5, 1.0);
-        float pomScale = MATV_POM_SCALE * dot(pomScaleMat, w) * fwRock * lodNear;
+        float pomScale = MATV_POM_SCALE * dot(pomScaleMat, w) * fwRock;
         vec2  pomUV    = uv * dot(MATV_TILING, w);
         vec2  pomOff   = vec2(0.0);
         vec3  camW     = mc2ToRender(uT.cameraPosMC2.xyz);   // the eye in the MC2 world frame (the feed is the Stuff frame)
@@ -34,7 +31,7 @@ vec3 mv_detailNormal(vec4 w, float snowWeight, vec2 worldXY, float lodNear, floa
             vec3 Vw = normalize(camW - v_worldPos);                 // fragment -> eye, MC2 world
             // The detail UVs are top-down planar with no y flip: tangent u = east, bitangent v = north, normal = up.
             vec3 viewDirTS = vec3(Vw.x, Vw.z, Vw.y);
-            pomOff = (mv_parallax(pomUV, pomScale, w, viewDirTS) - pomUV) * fwRock * lodNear * pomStrength;
+            pomOff = (mv_parallax(pomUV, pomScale, w, viewDirTS) - pomUV) * fwRock * pomStrength;
         }
         uvRock += pomOff; uvGrass += pomOff; uvDirt += pomOff; uvConcrete += pomOff;
     }
@@ -76,9 +73,5 @@ vec3 mv_detailNormal(vec4 w, float snowWeight, vec2 worldXY, float lodNear, floa
               (textureGrad(u_matNormalArray, vec3(uvSnow, float(MAT_LAYER_SNOW)),
                            uvDx * MATV_TILING_SNOW, uvDy * MATV_TILING_SNOW).rgb * 2.0 - 1.0);
     }
-    // VK-TERRAIN-LODFADE: GL gos_terrain.frag :727-736 ties the WHOLE detail-normal
-    // contribution to lodNear (detailMul), not just the POM offset -- stops the
-    // detail-normal "carpet" from popping in/out at the LOD0/band boundary. lodNear
-    // is 1.0 when the gate is off (byte-identical).
-    return dN * lodNear;
+    return dN;
 }

@@ -306,10 +306,7 @@ void TerrainQuad::setupTextures (void)
 	// prior failed attempt (9964d5a) gated on !IsFrameSolidArmed() alone, which
 	// broke when IsFrameSolidArmed=true but IsFrameOverlayArmed=false (draw() still
 	// ran and needed overlayHandle). Correct guard requires BOTH armed.
-	// Kill-switch: MC2_SETUPTEXTURES_LEGACY_FORCE=1 restores full legacy execution.
-	static const bool s_legacyForce = mc2::gate::get<"MC2_SETUPTEXTURES_LEGACY_FORCE">();
 	const bool legacyTerrainNeeded =
-	    s_legacyForce ||
 	    !(gos_terrain_indirect::IsFrameSolidArmed() &&
 	      gos_terrain_indirect::IsFrameOverlayArmed());
 

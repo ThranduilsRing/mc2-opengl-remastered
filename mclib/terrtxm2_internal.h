@@ -66,10 +66,6 @@ inline std::vector<unsigned char> tryLoadBurninJpg(const char* texturePath, cons
 {
 	if (outWidth) *outWidth = 0;
 
-	// Kill-switch: prefer the .tga path entirely.
-	if (mc2::gate::get<"MC2_BURNIN_NO_JPG">())
-		return {};
-
 	char jName[1024];
 	sprintf(jName, "%s.burnin", fileName);
 	FullPathFileName burnInJpg;
@@ -147,8 +143,7 @@ inline std::vector<unsigned char> tryLoadBurninJpg(const char* texturePath, cons
 }
 
 inline bool skipColormapTiles() {
-    static const bool s = !mc2::gate::get<"MC2_SETUPTEXTURES_LEGACY_FORCE">()
-        && mc2::gate::get<"MC2_TERRAIN_INDIRECT">()
+    static const bool s = mc2::gate::get<"MC2_TERRAIN_INDIRECT">()
         && mc2::gate::get<"MC2_TERRAIN_INDIRECT_OVERLAY">();
     return s;
 }
