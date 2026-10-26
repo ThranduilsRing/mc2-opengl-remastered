@@ -8,6 +8,7 @@
 #include "mc2fmt.h"
 #include "model_override_registry.h"
 #include "../RenderCore/SurfaceMaterial.h"
+#include "assimp_importer.h"
 
 // The presentation mesh follows the stock pose without entering simulation or picking.
 void GVAppearance::updateRenderShape()
@@ -23,10 +24,33 @@ void GVAppearance::updateRenderShape()
 	const float eyeDistance = eye->usePerspective ? glm::length(translation - glm::vec3(eye->getCameraOrigin())) : 0.0f;
 	for (int i = 1; i < 3; ++i)
 		if (appearType->renderLods[i] && eyeDistance > appearType->renderLodDistance[i]) lod = i;
-	if (renderLOD != lod) {
+	const auto* override = ModelOverrideRegistry::instance().resolve("vehicle", appearType->name);
+	TG_TypeMultiShape* variantType = nullptr;
+	bool newVariant = false;
+	if (renderLOD != lod || renderRed != psRed || renderGreen != psGreen || renderBlue != psBlue) {
+		for (auto& variant : appearType->renderVariants)
+			if (variant.lod == lod && variant.red == psRed && variant.green == psGreen && variant.blue == psBlue)
+				variantType = variant.shape.get();
+		if (!variantType) {
+#ifdef ENABLE_ASSIMP_IMPORTER
+			auto type = std::make_unique<TG_TypeMultiShape>();
+			const auto rel = lod == 0 ? override->sourceRelPath : override->lods[lod-1].sourceRelPath;
+			const auto path = override->manifestDir + "/" + rel;
+			try {
+				if (ImportGeometryFromFile(path.c_str(), type.get(), false, true, true) != 0) {
+					renderShape.reset(); renderLOD = -1; return;
+				}
+			} catch (...) { renderShape.reset(); renderLOD = -1; return; }
+			variantType = type.get();
+			appearType->renderVariants.push_back({lod, psRed, psGreen, psBlue, std::move(type)});
+			newVariant = true;
+#else
+			return;
+#endif
+		}
 		for (auto handle : renderTextures) if (handle != 0xffffffff) mc2::textures::release(handle);
 		renderTextures.clear();
-		renderShape.reset(appearType->renderLods[lod]->CreateFrom());
+		renderShape.reset(variantType->CreateFrom());
 		renderLOD = lod;
 	}
 	if (renderTextures.empty() || renderRed != psRed || renderGreen != psGreen || renderBlue != psBlue) {
@@ -34,10 +58,13 @@ void GVAppearance::updateRenderShape()
 		renderTextures.clear();
 		auto colourKey = [](DWORD c) { return ((c >> 5) & 7) | (((c >> 13) & 7) << 3) | (((c >> 21) & 7) << 6); };
 		const DWORD paintKey = 0x80000000u | (colourKey(psRed) << 18) | (colourKey(psGreen) << 9) | colourKey(psBlue);
-		const auto* override = ModelOverrideRegistry::instance().resolve("vehicle", appearType->name);
 		for (long i = 0; i < renderShape->GetNumTextures(); ++i) {
 			char name[1024];
 			renderShape->GetTextureName(i, name, sizeof(name));
+			if (!name[0] || S_stricmp(name, "NULLTXM") == 0) {
+				renderTextures.push_back(0xffffffff);
+				continue;
+			}
 			char path[1024];
 			mc2::fmt::to_buf(path, "{}{:d}/{}", mc2::fmt::safe(tglPath), mc2::fmt::as_i32(ObjectTextureSize), name);
 			const bool alpha = S_strnicmp(name, "a_", 2) == 0;
@@ -53,7 +80,7 @@ void GVAppearance::updateRenderShape()
 			const bool painted = handle != 0;
 			if (!painted) handle = mc2::textures::load(path, format, hints, variant);
 			renderTextures.push_back(handle);
-			// Reuse the stock key-colour classifier on every authored material slot.
+			// Reuse the stock key-colour classifier on paintable material slots.
 			if (tint && !painted && handle != 0xffffffff) {
 				auto* stock = gvShape;
 				gvShape = renderShape.get();
@@ -66,6 +93,19 @@ void GVAppearance::updateRenderShape()
 	}
 	for (long i = 0; i < renderShape->GetNumTextures(); ++i)
 		renderShape->SetTextureHandle(i, renderTextures[i]);
+	// Batcher packets bind type materials. Cache painted types so both teams retain
+	// independent albedo while sharing geometry within the same palette and LOD.
+	if (newVariant) {
+		for (long i = 0; i < variantType->GetNumTextures(); ++i) {
+			const auto handle = renderTextures[i];
+			variantType->SetTextureHandle(i, handle == 0xffffffff ? handle : mc2::textures::retain(handle));
+			char name[256]; variantType->GetTextureName(i, name, sizeof(name));
+			variantType->SetTextureAlpha(i, S_strnicmp(name, "a_", 2) == 0);
+		}
+		GpuStaticPropBatcher::instance().registerMultiShape(variantType, true, override);
+		mc2::fmt::print_err("[VEHICLE_RENDER] {} lod={} paint={:08x}/{:08x}/{:08x} type_materials={}\n",
+			appearType->name, lod, psRed, psGreen, psBlue, renderShape->usesTypeMaterials());
+	}
 	if (unitAnim().gvAnimationState >= 0) appearType->setAnimation(renderShape.get(), unitAnim().gvAnimationState);
 	renderShape->SetFrameNum(unitAnim().currentFrame);
 	auto turret = mc2::math::quatFromEuler(mc2::math::Euler(0.0f, unitAnim().turretRotation * DEGREES_TO_RADS, 0.0f));

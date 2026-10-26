@@ -184,8 +184,6 @@ void GVAppearanceType::init (const char * fileName)
 			}
 		}
 		if (!complete) for (auto& shape : renderLods) shape.reset();
-		if (complete) for (auto& shape : renderLods)
-			if (shape) GpuStaticPropBatcher::instance().registerMultiShape(shape.get(), true, ov);
 		mc2::fmt::print_err("[VEHICLE_OVERRIDE] {}: {} (stock simulation/pick)\n", fileName, complete ? "3 LODs" : "stock fallback");
 #endif
 	}
@@ -379,6 +377,12 @@ void GVAppearanceType::init (const char * fileName)
 //----------------------------------------------------------------------------
 void GVAppearanceType::destroy (void)
 {
+	for (auto& variant : renderVariants)
+		for (long i = 0; i < variant.shape->GetNumTextures(); ++i) {
+			const auto handle = variant.shape->GetTextureHandle(i);
+			if (handle != 0xffffffff) mc2::textures::release(handle);
+		}
+	renderVariants.clear();
 	for (auto& shape : renderLods) shape.reset();
 	AppearanceType::destroy();
 

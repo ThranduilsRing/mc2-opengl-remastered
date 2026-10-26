@@ -753,6 +753,11 @@ bool MissionInterfaceManager::uiCmdReadback(UiCmdCtx& c)
 				}
 
 				// --- draw-path readback -------------------------------------
+				if (obj->getObjectClass() == GROUNDVEHICLE) {
+					const auto* vehicle = static_cast<GroundVehicle*>(obj);
+					mc2::fmt::to_buf(b, "  vehicle: speed_mps={:.3f} turret_deg={:.3f}\n", vehicle->velocityMag, vehicle->turretRotation);
+					extra += b;
+				}
 				// Which renderer lane did this object actually take this
 				// frame? inView is the cull verdict, staticRecipe >= 0 means
 				// it went through the StaticSceneProxy / GPU-direct static
