@@ -19,6 +19,9 @@ import campaign_save_roundtrip as csr  # noqa: E402
 class _Proc:
     returncode = 0
 
+    def poll(self):
+        return self.returncode
+
     def wait(self, timeout=None):
         return 0
 
