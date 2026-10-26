@@ -821,7 +821,6 @@ TEST_CASE("G3 float rows carry the bounds of the readers they replace") {
     const Want want[] = {
         {"MC2_MOVER_CONTACT_SHADOW", false, 0.0, 1.0},
         {"MC2_TERRAIN_LOD_CHUNK_DIST_SCALE", false, static_cast<double>(0.05f), kFltMax},
-        {"MC2_TERRAIN_LOD_MORPH_START", true, 0.0, 0.95},
         {"MC2_TERRAIN_MATERIAL_TEXTURES_STRENGTH", true, 0.0, 1.0},
         {"MC2_TERRAIN_SHORELINE_EDGE_JITTER", true, 0.0, 32.0},
         {"MC2_TERRAIN_SHORELINE_STRENGTH", true, 0.0, 2.0},

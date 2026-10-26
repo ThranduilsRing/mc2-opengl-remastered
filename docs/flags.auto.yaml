@@ -3,9 +3,9 @@
 # Where each gate is read, what the smoke runner forwards and what tier1_env_vars.md says are not here: ask
 # tools/repo_intel (env_var, gate_status), which scan the sources.
 generator_version: "3.0.0"
-gate_count: 800
+gate_count: 795
 registry_entry_count: 159
-verified_count: 762
+verified_count: 758
 flags:
   - name: MC2_ABL_ARG_GUARD
     kind: Bool
@@ -3930,13 +3930,6 @@ flags:
     rule: Lead0Kill
     owner: post
     doc: ""
-  - name: MC2_SHADOW_TIER_STATS
-    kind: Bool
-    default: false
-    rule: Presence
-    owner: terrain
-    doc: ""
-    verified: true
   - name: MC2_SHAPE_C_PARITY_CHECK
     kind: Bool
     default: false
@@ -4712,20 +4705,6 @@ flags:
     owner: terrain
     doc: ""
     verified: true
-  - name: MC2_TERRAIN_LOD_GEOMORPH
-    kind: Bool
-    default: true
-    rule: Lead0Kill
-    owner: terrain
-    doc: ""
-  - name: MC2_TERRAIN_LOD_MORPH_START
-    kind: Float
-    default: 0.600000024
-    rule: Prefix
-    owner: terrain
-    doc: ""
-    range: {lo: 0, hi: 0.95, style: clamp}
-    verified: true
   - name: MC2_TERRAIN_MACRO_VARIATION
     kind: Bool
     default: false
@@ -4961,22 +4940,6 @@ flags:
     rule: Exact1
     owner: terrain
     doc: ""
-    verified: true
-  - name: MC2_TERRAIN_SURFACE
-    kind: Bool
-    default: false
-    rule: Lead0
-    owner: terrain
-    doc: ""
-    smoke_passthrough: true
-    verified: true
-  - name: MC2_TERRAIN_SURFACE_TRACE
-    kind: Bool
-    default: false
-    rule: Presence
-    owner: terrain
-    doc: ""
-    smoke_passthrough: true
     verified: true
   - name: MC2_TERRAIN_TESS
     kind: Bool

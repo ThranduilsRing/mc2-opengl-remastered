@@ -72,7 +72,6 @@ These control the GPU-direct fast paths added in the 0.4 arc.
 | Flag | Default | What it does |
 |------|---------|-------------|
 | `MC2_TERRAIN_INDIRECT` | off | Terrain indirect rendering path |
-| `MC2_TERRAIN_SURFACE` | off | Modern terrain surface producer |
 | `MC2_TERRAIN_LIGHTING_GPU` | off | GPU terrain lighting path |
 | `MC2_TERRAIN_CULL_WIDE` | off | Wider frustum for terrain cull (debug: force more quads visible) |
 
