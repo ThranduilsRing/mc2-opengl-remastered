@@ -698,25 +698,6 @@ void MissionInterfaceManager::update (void)
 		if (!s_pickProbeDone && (turn > 20) && mc2::gate::get<"MC2_VK_PICK_PROBE">())
 		{
 			s_pickProbeDone = true;
-			// Compare stock vehicle pick coverage between Classic and Remastered runs.
-			if (Team::home) for (long i = 0; i < Team::home->getRosterSize(); ++i) {
-				Mover* mover = static_cast<Mover*>(Team::home->getMover(i));
-				if (!mover || mover->getObjectClass() != GROUNDVEHICLE || !mover->getExists()) continue;
-				auto* ap = mover->getAppearance();
-				if (!ap || !ap->canBeSeen()) continue;
-				uint64_t mask = 14695981039346656037ull;
-				unsigned hits = 0;
-				for (int y = 0; y < 32; ++y) for (int x = 0; x < 32; ++x) {
-					const long px = static_cast<long>(ap->upperLeft.x + (ap->lowerRight.x - ap->upperLeft.x) * (x + 0.5f) / 32.0f);
-					const long py = static_cast<long>(ap->upperLeft.y + (ap->lowerRight.y - ap->upperLeft.y) * (y + 0.5f) / 32.0f);
-					const bool hit = ap->PerPolySelect(px, py);
-					hits += hit;
-					mask = (mask ^ static_cast<uint64_t>(hit)) * 1099511628211ull;
-				}
-				mc2::fmt::print_out("[VEHICLE_PICK] part={} appearance={} hits={}/1024 mask={:016x} bounds=({:.2f},{:.2f},{:.2f},{:.2f})\n",
-					mover->getPartId(), ap->getAppearanceType()->name, hits, mask,
-					ap->upperLeft.x, ap->upperLeft.y, ap->lowerRight.x, ap->lowerRight.y);
-			}
 			const char* be = mc2::gate::raw<"MC2_RENDER_BACKEND">();   // echoed as typed
 			const float logW = static_cast<float>(Environment.screenWidth);
 			const float logH = static_cast<float>(Environment.screenHeight);

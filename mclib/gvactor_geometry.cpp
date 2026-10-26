@@ -9,10 +9,26 @@
 #include "model_override_registry.h"
 #include "../RenderCore/SurfaceMaterial.h"
 #include "assimp_importer.h"
+#include "Gates/gate.h"
+
+extern uint32_t g_mc2FrameCounter;
 
 // The presentation mesh follows the stock pose without entering simulation or picking.
 void GVAppearance::updateRenderShape()
 {
+	if (g_mc2FrameCounter == 60 && mc2::gate::get<"MC2_VK_PICK_PROBE">()) {
+		uint64_t mask = 14695981039346656037ull;
+		unsigned hits = 0;
+		for (int y = 0; y < 32; ++y) for (int x = 0; x < 32; ++x) {
+			const long px = static_cast<long>(upperLeft.x + (lowerRight.x - upperLeft.x) * (x + 0.5f) / 32.0f);
+			const long py = static_cast<long>(upperLeft.y + (lowerRight.y - upperLeft.y) * (y + 0.5f) / 32.0f);
+			const bool hit = gvShape->PerPolySelect(px, py);
+			hits += hit;
+			mask = (mask ^ static_cast<uint64_t>(hit)) * 1099511628211ull;
+		}
+		mc2::fmt::print_out("[VEHICLE_PICK] appearance={} pos=({:.2f},{:.2f}) hits={}/1024 mask={:016x} bounds=({:.2f},{:.2f},{:.2f},{:.2f})\n",
+			appearType->name, position.x, position.y, hits, mask, upperLeft.x, upperLeft.y, lowerRight.x, lowerRight.y);
+	}
 	if (!appearType->renderLods[0] || status == OBJECT_STATUS_DESTROYED || status == OBJECT_STATUS_DISABLED) {
 		renderShape.reset();
 		renderLOD = -1;
@@ -58,7 +74,13 @@ void GVAppearance::updateRenderShape()
 		renderTextures.clear();
 		auto colourKey = [](DWORD c) { return ((c >> 5) & 7) | (((c >> 13) & 7) << 3) | (((c >> 21) & 7) << 6); };
 		const DWORD paintKey = 0x80000000u | (colourKey(psRed) << 18) | (colourKey(psGreen) << 9) | colourKey(psBlue);
+		std::vector<std::pair<std::string, DWORD>> published;
 		for (long i = 0; i < renderShape->GetNumTextures(); ++i) {
+			if (variantType && !newVariant) {
+				const auto handle = variantType->GetTextureHandle(i);
+				renderTextures.push_back(handle == 0xffffffff ? handle : mc2::textures::retain(handle));
+				continue;
+			}
 			char name[1024];
 			renderShape->GetTextureName(i, name, sizeof(name));
 			if (!name[0] || S_stricmp(name, "NULLTXM") == 0) {
@@ -75,11 +97,17 @@ void GVAppearance::updateRenderShape()
 				if (material.slot == static_cast<uint32_t>(i))
 					tint = material.materialClass != static_cast<uint32_t>(RenderCore::SurfaceClass::Emissive)
 						&& material.materialClass != static_cast<uint32_t>(RenderCore::SurfaceClass::Glass);
+			DWORD sharedPaint = 0xffffffff;
+			if (tint) for (const auto& entry : published)
+				if (entry.first == name) sharedPaint = entry.second;
+			if (sharedPaint != 0xffffffff) {
+				renderTextures.push_back(mc2::textures::retain(sharedPaint));
+				continue;
+			}
 			const auto variant = tint ? paintKey : 0;
 			auto handle = mc2::textures::findAndRetain(path, format, hints, variant);
 			const bool painted = handle != 0;
 			if (!painted) handle = mc2::textures::load(path, format, hints, variant);
-			renderTextures.push_back(handle);
 			// Reuse the stock key-colour classifier on paintable material slots.
 			if (tint && !painted && handle != 0xffffffff) {
 				auto* stock = gvShape;
@@ -88,6 +116,21 @@ void GVAppearance::updateRenderShape()
 				setPaintScheme();
 				gvShape = stock;
 			}
+			if (tint && handle != 0xffffffff) {
+				const auto cpu = mc2::textures::sourceId(handle);
+				TEXTUREPTR pixels{};
+				gos_LockTexture(cpu, 0, 1, &pixels);
+				// The batcher reads immutable source bytes, rather than the legacy CPU texture.
+				const auto coloured = pixels.pTexture && pixels.Width == pixels.Height
+					? mc2::textures::fromPixels(pixels.pTexture, format, hints, pixels.Width) : 0xffffffff;
+				gos_UnLockTexture(cpu);
+				if (coloured != 0xffffffff) {
+					mc2::textures::release(handle);
+					handle = coloured;
+					published.emplace_back(name, handle);
+				}
+			}
+			renderTextures.push_back(handle);
 		}
 		renderRed = psRed; renderGreen = psGreen; renderBlue = psBlue;
 	}
@@ -125,6 +168,7 @@ void GVAppearance::updateRenderShape()
 void GVAppearance::setPaintScheme (void)
 {
 	DWORD gosHandle = mc2::textures::sourceId(gvShape->GetTextureHandle(0));
+	const bool authoredPaint = renderShape && gvShape == renderShape.get();
 
 	if (gosHandle && gosHandle != 0xffffffff)
 	{
@@ -154,8 +198,9 @@ void GVAppearance::setPaintScheme (void)
 				float shade      = 0.0f;
 				float mixFactor  = 0.0f;
 				const int   kMinDom      = 16;
-				const float kRatio       = 3.0f;
-				const float kRatioMargin = 1.5f;
+				// Authored baked paint is less saturated than the stock channel masks.
+				const float kRatio       = authoredPaint ? 1.5f : 3.0f;
+				const float kRatioMargin = authoredPaint ? 1.1f : 1.5f;
 
 				int domChan = 0, maxOther = 0;
 				if (srcR >= kMinDom && static_cast<float>(srcR) >= kRatio * static_cast<float>(srcG) && static_cast<float>(srcR) >= kRatio * static_cast<float>(srcB))
