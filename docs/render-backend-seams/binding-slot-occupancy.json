@@ -983,7 +983,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/terrain_tier1.frag",
-        "line": 30,
+        "line": 33,
         "role": "u_shorelineMask",
         "std": null,
         "type": "sampler2D",
@@ -995,7 +995,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/terrain_tier1.frag",
-        "line": 23,
+        "line": 26,
         "role": "u_materialWeights",
         "std": null,
         "type": "sampler2D",
@@ -1007,7 +1007,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/terrain_tier1.frag",
-        "line": 22,
+        "line": 25,
         "role": "u_macroGradient",
         "std": null,
         "type": "sampler2D",
@@ -1026,8 +1026,8 @@
         "source": "shaders/vulkan/include/ground_shadow.glsl",
         "branch": {
           "2": 0,
-          "10": 0,
-          "11": 0
+          "11": 0,
+          "12": 0
         }
       },
       {
@@ -1040,8 +1040,8 @@
         "source": "shaders/vulkan/include/ground_shadow.glsl",
         "branch": {
           "2": 0,
-          "10": 0,
-          "11": 0
+          "11": 0,
+          "12": 0
         }
       },
       {
@@ -1054,8 +1054,8 @@
         "source": "shaders/vulkan/include/ground_shadow.glsl",
         "branch": {
           "3": 0,
-          "11": 0,
-          "12": 0
+          "12": 0,
+          "13": 0
         }
       },
       {
@@ -1068,8 +1068,8 @@
         "source": "shaders/vulkan/include/ground_shadow.glsl",
         "branch": {
           "2": 0,
-          "10": 0,
-          "11": 0
+          "11": 0,
+          "12": 0
         }
       }
     ],
@@ -1083,7 +1083,7 @@
         "type": "sampler2DArray",
         "source": "shaders/vulkan/include/concrete_detail_vk.glsl",
         "branch": {
-          "12": 0
+          "13": 0
         }
       },
       {
@@ -1095,7 +1095,7 @@
         "type": "sampler2DArray",
         "source": "shaders/vulkan/include/concrete_detail_vk.glsl",
         "branch": {
-          "14": 0
+          "15": 0
         }
       }
     ],
@@ -2027,7 +2027,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/terrain_tier1.frag",
-        "line": 28,
+        "line": 31,
         "role": "u_matNormalArray",
         "std": null,
         "type": "sampler2DArray",
