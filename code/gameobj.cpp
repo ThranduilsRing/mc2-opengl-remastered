@@ -1497,6 +1497,7 @@ void GameObject::operator delete (void* us) {
 //---------------------------------------------------------------------------
 
 void GameObject::init (bool create) {
+	if (ObjectManager) ObjectManager->invalidateEntity(handle, this);
 
 	objectClass = GAMEOBJECT;
 	if (initialize) {
@@ -1757,6 +1758,7 @@ glm::vec3 GameObject::relativePosition (float angle, float distance, unsigned lo
 //---------------------------------------------------------------------------
 
 void GameObject::setPosition (const glm::vec3& newPosition, bool calcPositions) {
+	if (ObjectManager) ObjectManager->invalidateSpatialGrid(!isMover());
 
 	position = newPosition;
 
@@ -1793,6 +1795,16 @@ void GameObject::setPosition (const glm::vec3& newPosition, bool calcPositions) 
 }
 
 //---------------------------------------------------------------------------
+
+void GameObject::setExists(bool set) {
+	if (getExists() != set) {
+		if (mc2::world_trace::enabled())
+			mc2::world_trace::event(set ? "spawn" : "remove", this);
+		if (ObjectManager) ObjectManager->invalidateEntity(handle, this);
+	}
+	if (set) flags |= OBJECT_FLAG_EXISTS;
+	else flags &= (OBJECT_FLAG_EXISTS ^ 0xFFFFFFFF);
+}
 
 float GameObject::distanceFrom (glm::vec3 goal) {
 
@@ -1868,21 +1880,7 @@ bool GameObject::lineOfSight (glm::vec3 point) {
 
 // B7o.2: was `inline` here. The virtual's only emitter was the vtable instance gameobj.cpp used to produce through the by-value
 // GameObject::set; with that gone the inline body was never instantiated (LNK2001). A virtual defined in a .cpp is an ordinary external function.
-bool GameObject::lineOfSight (GameObjectPtr target, float startExtRad)
-{
-	ZoneScopedN("GameLogic.LOS.Update"); 
-
-	//If we call this without a target, we have no LOS!!
-	// Keeps it from crashing, too.
-	// Not sure where all of the calls Glenn makes to this are, but I'm looking!
-	if (!target) {
-		return false;
-	}
-
-	glm::vec3 distance;
-	distance = target->getPosition() - getPosition();
-	float dist = glm::length(distance);
-
+float GameObject::lineOfSightRange() {
 	//Figure out altitude above minimum terrain altitude and look up in table.
 	float baseElevation = MapData::waterDepth;
 	if (MapData::waterDepth < Terrain::userMin)
@@ -1912,7 +1910,16 @@ bool GameObject::lineOfSight (GameObjectPtr target, float startExtRad)
 		radius *= mover->getLOSFactor();
 	}
 
-	if (dist > (radius * 25.0f * worldUnitsPerMeter))
+	return radius * 25.0f * worldUnitsPerMeter;
+}
+
+bool GameObject::lineOfSight (GameObjectPtr target, float startExtRad)
+{
+	ZoneScopedN("GameLogic.LOS.Update");
+	if (!target) return false;
+	glm::vec3 distance = target->getPosition() - getPosition();
+	float dist = glm::length(distance);
+	if (dist > lineOfSightRange())
 	{
 		return false;
 	}
@@ -1991,6 +1998,7 @@ bool GameObject::lineOfSight (GameObjectPtr target, float startExtRad)
 //---------------------------------------------------------------------------
 
 void GameObject::destroy (void) {
+	if (ObjectManager) ObjectManager->invalidateEntity(handle, this);
 
 	//Never need to call this.  Heap destruct will get this!!
 //	ObjectManager->removeObjectType(typeHandle);

@@ -8,6 +8,7 @@
 //---------------------------------------------------------------------------
 
 long GameObjectManager::buildMoverLists (void) {
+	invalidateSpatialGrid(false);
 
 	numMovers = 0;
 	numGoodMovers = 0;
@@ -41,6 +42,7 @@ long GameObjectManager::buildMoverLists (void) {
 //---------------------------------------------------------------------------
 
 bool GameObjectManager::modifyMoverLists (MoverPtr mover, long action) {
+	invalidateSpatialGrid(false);
 	MC2_WORLD_EVENT("mover_list", mover, action);
 
 	switch (action) {

@@ -18,6 +18,8 @@
 #endif
 #include <optional>
 #include <string_view>
+#include "world/entity_registry.h"
+#include "world/spatial_grid.h"
 #include "objmgr_watch_policy.h"  // OBJMGR-WATCH-POLICY-EXTRACT-1: shared watch bounds/index policy
 // Forward declaration for prewarmStaticPropLightBakes parameter.
 class Camera;
@@ -260,10 +262,12 @@ class GameObjectManager {
 		// to base at Load by design. Inert unless MC2_WATCHID_GENERATION is set.
 		uint16_t				*watchGeneration;
 
-		// B7o.8b (G13 d): the pointer arrays above (objList, watchList, watchGeneration, collidableList and the typed arrays) are VIEWS of
-		// these owners. bindPoolArray() is the one (re)allocation point (setNumObjects, Load, buildCollidableList: zeroed storage, view
+		// The pointer arrays above are views of the registry's legacy slots and these vector owners.
+		// bindPoolArray() allocates the other arrays (setNumObjects, Load, buildCollidableList: zeroed storage, view
 		// refreshed); releasePoolArrays() swaps every owner empty and nulls every view, after destroy()'s last actor deletion.
-		std::vector<GameObjectPtr>		objListStore;
+		mc2::world::EntityRegistry<GameObject> entities;
+		mc2::world::SpatialGrid moverGrid, buildingGrid;
+		bool moverGridDirty = true, buildingGridDirty = true;
 		std::vector<GameObjectPtr>		watchListStore;
 		std::vector<uint16_t>			watchGenerationStore;
 		std::vector<GameObjectPtr>		collidableStore;
@@ -551,6 +555,18 @@ class GameObjectManager {
 		void setPresentationAlpha( float alpha );
 
 		GameObjectPtr get (GameObjectHandle handle);
+		mc2::world::EntityId entityId(GameObjectHandle handle) const { return entities.id(handle); }
+		template<class T> T* getEntity(mc2::world::EntityId id) const { return entities.resolve<T>(id); }
+		void invalidateEntity(GameObjectHandle handle, GameObjectPtr object) {
+			entities.invalidate(handle, object);
+			invalidateSpatialGrid();
+		}
+		void invalidateSpatialGrid(bool includeBuildings = true) {
+			moverGridDirty = true;
+			if (includeBuildings) buildingGridDirty = true;
+		}
+		std::vector<mc2::world::SpatialGrid::Candidate> nearbyMovers(const glm::vec3& position, float radius);
+		std::vector<mc2::world::SpatialGrid::Candidate> nearbyBuildings(const glm::vec3& position, float radius);
 
 		GameObjectPtr getByWatchID (unsigned long watchID) {
 			// OBJMGR-WATCH-POLICY-EXTRACT-1: shared resolve predicate (behavior-identical).

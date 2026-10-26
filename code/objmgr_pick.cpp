@@ -3,6 +3,34 @@
 #include "objmgr_internal.h"
 #include "mc2fmt.h"
 
+std::vector<mc2::world::SpatialGrid::Candidate> GameObjectManager::nearbyMovers(const glm::vec3& position, float radius) {
+	if (moverGridDirty) {
+		moverGrid.clear();
+		for (long i = 0; i < numMovers; ++i) {
+			auto* mover = moverList[i];
+			const auto p = mover->getPosition();
+			moverGrid.add(p.x, p.y, i, entityId(mover->getHandle()));
+		}
+		moverGrid.finish();
+		moverGridDirty = false;
+	}
+	return moverGrid.query(position.x, position.y, radius);
+}
+
+std::vector<mc2::world::SpatialGrid::Candidate> GameObjectManager::nearbyBuildings(const glm::vec3& position, float radius) {
+	if (buildingGridDirty) {
+		buildingGrid.clear();
+		for (long i = 0; i < numBuildings; ++i) {
+			auto* building = buildings[i];
+			const auto p = building->getPosition();
+			buildingGrid.add(p.x, p.y, i, entityId(building->getHandle()));
+		}
+		buildingGrid.finish();
+		buildingGridDirty = false;
+	}
+	return buildingGrid.query(position.x, position.y, radius);
+}
+
 
 //---------------------------------------------------------------------------
 

@@ -24,3 +24,10 @@ legacy fields. Save copies now preserve the active/last order ID, last move goal
 and status, which ordinary tactical-order assignment resets. Target identities no longer depend on network roster unpacking or
 the terrain registry. This is not a conversion of the entire legacy mission save
 to a portable schema. Legacy packets without the suffix still load.
+
+Sim architecture packet 1 adds runtime entity IDs (legacy slot plus session and
+generation) and ordered spatial candidates. Neither changes the serialized slot
+table or the mover ceiling. D4's 1024 movers remain blocked by byte sensor-contact
+indices (`ContactInfo::sensors`, with 255 absent), the mover identity audit pinned
+in `dmovemgr.h`, and the remaining legacy packed identities. Widening those fields
+needs a separate format/consumer migration; raising `MAX_MOVERS` alone is unsafe.

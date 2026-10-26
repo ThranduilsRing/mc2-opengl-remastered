@@ -713,6 +713,7 @@ void GameObjectManager::updateTerrainObjects(int& frameJobsPrePassCount) {
 }
 
 void GameObjectManager::updateMoverWalk(MoverPtr (&removeList)[MAX_MOVERS], long& numRemoved) {
+	invalidateSpatialGrid(false);
 	if (mechs)
 	{
 		ZoneScopedN("GameLogic.Units.Mechs");
@@ -723,6 +724,7 @@ void GameObjectManager::updateMoverWalk(MoverPtr (&removeList)[MAX_MOVERS], long
 			{
 				MC2_WORLD_UPDATE("mechs", mover);
 				long updateRet_instr = mover->update();
+				invalidateSpatialGrid(false);
 				mover->lastUpdateRet = static_cast<int32_t>(updateRet_instr);
 				if (!updateRet_instr)
 					MC2_DESTROY(mover, "update_false");
@@ -742,6 +744,7 @@ void GameObjectManager::updateMoverWalk(MoverPtr (&removeList)[MAX_MOVERS], long
 			{
 				MC2_WORLD_UPDATE("vehicles", mover);
 				long updateRet_instr = mover->update();
+				invalidateSpatialGrid(false);
 				mover->lastUpdateRet = static_cast<int32_t>(updateRet_instr);
 				if (!updateRet_instr)
 					MC2_DESTROY(mover, "update_false");
@@ -957,7 +960,7 @@ GameObjectPtr GameObjectManager::get (GameObjectHandle handle) {
 	if ((handle < 1) || (handle > getMaxObjects()))
 		return(nullptr);
 
-	return(objList[handle]);
+	return entities.get(handle);
 }
 
 void GameObjectManager::updatePresentationCull() {

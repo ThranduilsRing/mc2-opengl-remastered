@@ -306,7 +306,7 @@ class GameObject {
 	public:
 
 		ObjectClass					objectClass;		//What kind of object is this.
-		GameObjectHandle			handle;				//Used to reference into master obj table
+		GameObjectHandle			handle = 0;			//Used to reference into master obj table
 		int32_t                     partId;				//What is my unique part number.
 		uint32_t                    watchID;			//Used to reference in the game engine
 
@@ -540,6 +540,7 @@ class GameObject {
 		}
 		
 		virtual void setPosition (const glm::vec3& newPosition, bool calcPositions = true);
+		float lineOfSightRange(); // World units, using the legacy altitude/scout/LOS factors.
 		
 		virtual void setTerrainPosition (const glm::vec3& position, 
 			const Stuff::Vector2DOf<long>& numbers){}
@@ -920,14 +921,7 @@ class GameObject {
 			return(getTargeted());
 		}
 
-		virtual void setExists (bool set) {
-			if (mc2::world_trace::enabled() && getExists() != set)
-				mc2::world_trace::event(set ? "spawn" : "remove", this);
-			if (set)
-				flags |= OBJECT_FLAG_EXISTS;
-			else
-				flags &= (OBJECT_FLAG_EXISTS ^ 0xFFFFFFFF);
-		}
+		virtual void setExists (bool set);
 
 		// -- Tier-1 instrumentation accessors (stability spec §3.3-3.4) --
 		// Three composite-active-decision getters. Safe defaults: appearance-based

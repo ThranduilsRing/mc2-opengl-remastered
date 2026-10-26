@@ -743,7 +743,8 @@ long GameObjectManager::Load (PacketFilePtr file, long packetNum)
 
 	//-----------------------------------------------------------
 	// First element in list is NULL (handle of 0 is always NULL)
-	objList = bindPoolArray(objListStore, (getMaxObjects() + 1));
+	objList = entities.reset(getMaxObjects() + 1);
+	invalidateSpatialGrid();
 	memset(objList,0,sizeof(GameObjectPtr) * (getMaxObjects() + 1));
 
 	watchList = bindPoolArray(watchListStore, (getMaxObjects() + 1));
