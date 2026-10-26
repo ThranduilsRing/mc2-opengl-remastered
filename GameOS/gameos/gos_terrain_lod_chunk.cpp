@@ -43,8 +43,6 @@ const float* gos_TerrainLodChunk_ShorelineMaskBounds()  { return s_shorelineBoun
 // per-fragment shore crossing. Same single-owner pattern as the mask above.
 float  s_waterShoreHeightBounds[4] = {0.0f, 0.0f, 0.0f, 0.0f};
 
-unsigned s_waterShoreDataGen = 0;
-unsigned int gos_TerrainLodChunk_WaterShoreDataGeneration() { return s_waterShoreDataGen; }
 const float* gos_TerrainLodChunk_WaterShoreHeightBounds() { return s_waterShoreHeightBounds; }
 
 const float* mc2_chunkDetailAntiTileYZW()
@@ -81,5 +79,4 @@ void gos_TerrainLodChunk_Destroy()
     std::fill_n(s_overlayBounds, 4, 0.0f);
     std::fill_n(s_shorelineBounds, 4, 0.0f);
     std::fill_n(s_waterShoreHeightBounds, 4, 0.0f);
-    ++s_waterShoreDataGen;
 }

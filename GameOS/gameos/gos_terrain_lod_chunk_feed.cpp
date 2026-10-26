@@ -297,7 +297,7 @@ extern "C" int mc2_terrain_tier1_get_load_feed(Mc2TerrainTier1Feed* out)
         out->shorelineMaskRgba    = have ? mask.texels.data() : nullptr;
         out->shorelineMaskW       = have ? mask.width : 0;
         out->shorelineMaskH       = have ? mask.height : 0;
-        out->shorelineMaskVersion = have ? mask.version : 0;
+        out->shorelineMaskVersion = mask.version; // clearing a field is a versioned replacement too
         const float* b = gos_TerrainLodChunk_ShorelineMaskBounds();
         for (int i = 0; i < 4; ++i) out->shorelineBounds[i] = b ? b[i] : 0.0f;
         // SHORE-FIELD-1: the water's smooth shore field, so the coastal colormap follows the drawn coast.

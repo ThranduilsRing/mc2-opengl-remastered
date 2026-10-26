@@ -79,6 +79,28 @@ TEST_CASE("terrain fields: the shore sidecars keep their bytes and reject a bad 
     CHECK_FALSE(store.setWaterShoreHeight(heights, 1, 70000));
 }
 
+TEST_CASE("terrain fields: shore edits and mission clear invalidate both consumers") {
+    mc2terrain::TerrainFieldStore store;
+    const uint8_t mask[4] = {1, 2, 3, 255};
+    const float heights[1] = {-7.0f};
+    REQUIRE(store.setShorelineMask(mask, 1, 1));
+    const auto maskVersion = store.shorelineMask().version;
+    REQUIRE(store.setWaterShoreHeight(heights, 1, 1, mc2terrain::WaterShoreHeightKind::ShoreSdf));
+    const auto heightVersion = store.waterShoreHeight().version;
+    CHECK(store.shorelineMask().version == maskVersion);
+    store.clearShoreFields();
+    CHECK(store.shorelineMask().version > maskVersion);
+    CHECK(store.waterShoreHeight().version > heightVersion);
+    CHECK(store.shorelineMask().texels.empty());
+    CHECK(store.waterShoreHeight().texels.empty());
+    CHECK(store.shorelineMask().width == 0);
+    CHECK(store.waterShoreHeightKind() == mc2terrain::WaterShoreHeightKind::RawHeight);
+    const auto clearedVersion = store.shorelineMask().version;
+    REQUIRE(store.setShorelineMask(mask, 1, 1));
+    CHECK(store.shorelineMask().version > clearedVersion);
+    CHECK(store.waterShoreHeight().texels.empty());
+}
+
 TEST_CASE("terrain fields: a recreated store never repeats a version an earlier store handed out") {
     std::vector<float> map(2 * 2, 0.0f);
     uint64_t first = 0;

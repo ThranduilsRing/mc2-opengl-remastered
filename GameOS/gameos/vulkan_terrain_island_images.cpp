@@ -385,20 +385,27 @@ void import_materials(TerrainIsland* s) {
 // Copy-once import of the mission's shoreline mask sidecar from the terrain field store, again whenever its version changes.
 // A mission without a sidecar keeps the dummy (pure elevation bands, as GL without one).
 void import_shore_mask(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
-    if (!feed.shorelineMaskRgba || feed.shorelineMaskW <= 0 || feed.shorelineMaskH <= 0 || feed.shorelineMaskVersion == 0) return;
-    if (feed.shorelineMaskVersion == s->shoreMaskVersionImported) return;
-    s->shoreMaskVersionImported = feed.shorelineMaskVersion;   // a failed upload is not retried every frame
-    const auto w = static_cast<uint32_t>(feed.shorelineMaskW), h = static_cast<uint32_t>(feed.shorelineMaskH);
-    if (upload_sampled_image(s, s->shoreMaskTexture, VK_FORMAT_R8G8B8A8_UNORM, w, h,
-                             feed.shorelineMaskRgba, static_cast<VkDeviceSize>(w) * h * 4u)) {
-        s->shoreMaskReady = true;
-        vlog("SHORELINE: imported the shoreline mask %ux%u from the terrain field store (version %llu).", w, h,
-             static_cast<unsigned long long>(feed.shorelineMaskVersion));
-    } else {
+    const bool have = feed.shorelineMaskRgba && feed.shorelineMaskW > 0 && feed.shorelineMaskH > 0 && feed.shorelineMaskVersion != 0;
+    auto& textures = mc2vk::getOrCreateEngineVulkanContext().textures();
+    if (feed.shorelineMaskVersion == s->shoreMaskVersionImported && s->shoreMaskTexture) {
+        s->shoreMaskReady = have && textures.ready(s->shoreMaskTexture.get());
+        return;
+    }
+    const uint32_t zero = 0; // same absent-field representation as water
+    const auto w = have ? static_cast<uint32_t>(feed.shorelineMaskW) : 1u;
+    const auto h = have ? static_cast<uint32_t>(feed.shorelineMaskH) : 1u;
+    s->shoreMaskReady = false;
+    // Same bytes, format and key as water's mask: one service-owned GPU image.
+    if (!upload_sampled_image(s, s->shoreMaskTexture, VK_FORMAT_R8G8B8A8_UNORM, w, h,
+                              have ? static_cast<const void*>(feed.shorelineMaskRgba) : &zero, static_cast<VkDeviceSize>(w) * h * 4u)) {
         s->shoreMaskReady = false;
         vlog("SHORELINE: shoreline mask %ux%u upload failed; bands draw unmodulated.", w, h);
-        ensure_dummy_shore_mask(s);
+        return; // retain old descriptor, disable its use, retry next frame
     }
+    s->shoreMaskVersionImported = feed.shorelineMaskVersion;
+    s->shoreMaskReady = have && textures.ready(s->shoreMaskTexture.get());
+    vlog("SHORELINE: mask %ux%u version=%llu mask_handle=%u.", w, h,
+         static_cast<unsigned long long>(feed.shorelineMaskVersion), s->shoreMaskTexture.get().raw());
     write_descriptors(s);
 }
 

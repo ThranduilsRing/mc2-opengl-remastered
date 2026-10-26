@@ -182,7 +182,6 @@ extern float  s_halfMap;
 extern float  s_overlayBounds[4];
 extern float  s_shorelineBounds[4];
 extern float  s_waterShoreHeightBounds[4];
-extern unsigned s_waterShoreDataGen;
 extern float s_matAlbedoStrengthJson;
 const float* mc2_chunkDetailAntiTileYZW();
 #ifdef MC2_VULKAN_ISLAND

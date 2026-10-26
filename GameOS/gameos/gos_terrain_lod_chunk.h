@@ -209,10 +209,6 @@ void gos_TerrainLodChunk_UploadWaterShoreSdf(const float* heights, int w, int h,
                                               float boundsTopLeftX, float boundsTopLeftY,
                                               float boundsSizeX, float boundsSizeY);
 const float* gos_TerrainLodChunk_WaterShoreHeightBounds();
-// VK-PARITY-WATER-SHORE-1: monotonic counter bumped by every shoreline-mask /
-// water-shore-height upload. The VK water island copies both GL textures once
-// per generation (same data, single load); GL ignores it.
-unsigned int gos_TerrainLodChunk_WaterShoreDataGeneration();
 
 // TERRAIN-SHORELINE-V3: true whenever the elevation-based shoreline band is
 // active (MC2_TERRAIN_SHORELINE gate ON) -- a mask sidecar is NO LONGER

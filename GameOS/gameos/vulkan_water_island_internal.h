@@ -58,9 +58,6 @@
 // ---------------------------------------------------------------------------
 // Health snapshot (mirrors the SSAO island's) — read by debug_state_dump.cpp.
 // ---------------------------------------------------------------------------
-// VK-PARITY-WATER-SHORE-1: the shore sidecars' CPU copies live in the terrain field store; the generation (gos_terrain_lod_chunk.cpp)
-// changes whenever either is rewritten.
-unsigned int gos_TerrainLodChunk_WaterShoreDataGeneration();
 
 namespace vk_water_detail {
 
@@ -176,13 +173,14 @@ struct WaterIsland : mc2vk::IslandState {
 
     // VK-PARITY-WATER-SHORE-1: copy-once imports of the GL water-shore textures
     // (binding 3 = R32F hi-res visual height, binding 4 = RGBA8 shoreline mask).
-    // Re-imported only when gos_TerrainLodChunk_WaterShoreDataGeneration() changes
-    // (new mission). A 1x1 dummy keeps the statically-used binding valid when the
+    // Re-imported when either field-store version changes (edits or new mission).
+    // The texture service shares the mask allocation with terrain. A dummy keeps
+    // the statically-used binding valid when the
     // GL texture is absent; has*=false makes the FS degrade 2 -> 1 -> 0 like GL.
     bool          shHReal = false, shMReal = false;   // real data imported (not dummy)
     bool          shHSdf = false;                     // the real height field is a cooked shore SDF
     bool          shoreAttempted = false;
-    unsigned int  shoreGen = 0;
+    uint64_t      shoreHeightVersion = 0, shoreMaskVersion = 0;
 
     VkDescriptorSet   set[2] = {VK_NULL_HANDLE, VK_NULL_HANDLE};   // per parity slot (VK-WATER-FENCE-DEFER-1); allocated from `pool`, freed with it
     VkCommandBuffer   cbuf[2] = {VK_NULL_HANDLE, VK_NULL_HANDLE};  // allocated from `cpool`, freed with it
