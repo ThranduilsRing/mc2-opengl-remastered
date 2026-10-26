@@ -74,9 +74,11 @@ vec3 tlp_terrainPoolLight(vec3 wp, int numPoolLights,
         vec3 plCol = poolLights[i].color * poolLights[i].intensity;
         // Pools already encode flat-ground illumination. Apply only detail
         // relative to that receiver; night lamps must see material normals too.
-        vec3 toLight = -vtl * inversesqrt(max(dot(vtl, vtl), 1e-6));
-        float macroLight = max(dot(macroNormal, toLight), 0.2);
-        plCol *= clamp(max(dot(surfaceNormal, toLight), 0.2) / macroLight, 0.5, 1.5);
+        // Attenuation already computed the distance. Scale the floor by it
+        // instead of normalizing the same light vector a second time.
+        float lightFloor = max(0.2 * len, 1e-6);
+        float macroLight = max(-dot(macroNormal, vtl), lightFloor);
+        plCol *= clamp(max(-dot(surfaceNormal, vtl), lightFloor) / macroLight, 0.5, 1.5);
         if (mover) {
             // Mover-attached light (producer pad flag): dim vs buildings.
             plCol *= moverDim;
