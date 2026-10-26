@@ -78,6 +78,7 @@ def test_a_live_holder_blocks_with_no_wait(lease, monkeypatch, exclusive):
 
 
 def test_exclusive_retries_legacy_release_and_partial_allocation(lease, monkeypatch):
+    monkeypatch.setenv("MC2_HOST_GAME_SLOTS", "3")
     _foreign_holder(lease, os.getppid())
     original = host_lease._try_take
     attempts, sleeps = [], []
@@ -100,7 +101,7 @@ def test_exclusive_retries_legacy_release_and_partial_allocation(lease, monkeypa
     monkeypatch.setattr(host_lease, "_try_take", take)
     host_lease.acquire("exclusive", exclusive=True, sleep=release_holder, timeout_s=10, log=lambda m: None)
     assert len(sleeps) == 3
-    assert len([r for _, r in host_lease._records() if r and r.get("pid") == os.getpid()]) == 6
+    assert len([r for _, r in host_lease._records() if r and r.get("pid") == os.getpid()]) == 3
 
 
 def test_lease_publication_never_exposes_empty_record(lease, monkeypatch):
@@ -372,7 +373,7 @@ h.release()
                 finished(proc)
             _wait_for(tmp_path / "first.held", proc=first)
             records = json.loads((tmp_path / "first.held").read_text())
-            assert len(records) == 6
+            assert len(records) == host_lease.slot_count()
             assert not (tmp_path / "later.held").exists()
             (tmp_path / "first.go").touch()
             finished(first)
@@ -451,7 +452,8 @@ def test_affinity_reserves_only_physical_game_cores(monkeypatch):
     monkeypatch.delenv("MC2_HOST_GAME_SLOTS", raising=False)
     monkeypatch.delenv("MC2_HOST_CORES_PER_SLOT", raising=False)
     assert host_lease.slot_count() == 2
-    assert host_lease.cores_per_slot() == 2
+    assert host_lease.cores_per_slot() == 1
+    monkeypatch.setenv("MC2_HOST_CORES_PER_SLOT", "2")
     assert [host_lease.affinity_mask(i) for i in range(3)] == [0xF0, 0xF00, 0xF000]
     with pytest.raises(ValueError):
         host_lease.affinity_mask(3)
@@ -466,7 +468,7 @@ def test_affinity_reserves_only_physical_game_cores(monkeypatch):
             host_lease.slot_count()
 
 
-@pytest.mark.parametrize("width,exclusive,expected", [(1, False, 0x30), (2, False, 0xF0), (2, True, 0xFFF0)])
+@pytest.mark.parametrize("width,exclusive,expected", [(1, False, 0x30), (1, True, 0x30), (2, False, 0xF0), (2, True, 0xF0)])
 def test_slot_affinity_reaches_child_process(lease, monkeypatch, width, exclusive, expected):
     import ctypes
     from ctypes import wintypes
@@ -494,5 +496,5 @@ def test_slot_affinity_reaches_child_process(lease, monkeypatch, width, exclusiv
 def test_exclusive_window_holds_all_slots_only_inside(lease):
     host_lease.acquire("load", scan=lambda: [], log=lambda m: None)
     with host_lease.exclusive_window("measured", scan=lambda: [], log=lambda m: None):
-        assert all(host_lease._ours(host_lease._read(host_lease.slot_path(i))) for i in range(6))
+        assert all(host_lease._ours(host_lease._read(host_lease.slot_path(i))) for i in range(host_lease.slot_count()))
     assert not any(host_lease.slot_path(i).exists() for i in range(6)) and not host_lease.holds()

@@ -1,7 +1,7 @@
 # scripts/smoke_lib/host_lease.py
 """FIFO engine slots shared across worktrees, with exclusive reservations for timing proofs.
 
-MC2_HOST_CORES_PER_SLOT selects physical cores per slot (default 2).
+MC2_HOST_CORES_PER_SLOT selects physical cores per slot (default 1).
 MC2_HOST_GAME_SLOTS selects 1..6/width slots (default 2); cores 0..1 stay reserved.
 MC2_HOST_LEASE_EXCLUSIVE=1 reserves every slot. Batch hold/release keeps a reservation
 across a serial chain. Dead holders and tickets recover automatically. Private paths
@@ -41,7 +41,7 @@ POLL_S = 2.0
 REPORT_EVERY_S = 30.0
 
 def cores_per_slot() -> int:
-    width = int(os.environ.get("MC2_HOST_CORES_PER_SLOT", "2"))
+    width = int(os.environ.get("MC2_HOST_CORES_PER_SLOT", "1"))
     if not 1 <= width <= 6:
         raise ValueError("MC2_HOST_CORES_PER_SLOT must be between 1 and 6")
     return width
@@ -296,7 +296,7 @@ def acquire(label: str, *, wait: bool = True, timeout_s: Optional[float] = None,
     exclusive = _exclusive(exclusive) or any(word in (label + " " + sys.argv[0]).lower()
                                             for word in ("perf", "fps", "frame-time", "frametime", "tracy", "capture", "replay"))
     if holds():
-        if exclusive and not all(_ours(_read(slot_path(i))) for i in range(6)):
+        if exclusive and not all(_ours(_read(slot_path(i))) for i in range(slot_count())):
             raise HostLeaseBusy("cannot upgrade a held normal slot; release it before requesting exclusive")
         return
     scan = scan or foreign_engines
@@ -333,7 +333,7 @@ def acquire(label: str, *, wait: bool = True, timeout_s: Optional[float] = None,
                 eligible = queue[0] == ticket and not foreign and not legacy and (not live if exclusive else bool(free) and compatible)
                 if eligible:
                     allocated = []
-                    for i in (range(6) if exclusive else free[:1]):
+                    for i in (range(slot_count()) if exclusive else free[:1]):
                         guard = i == 0 and (_read(slot_path(i)) or {}).get("legacy_guard")
                         taken, _ = (True, None) if guard else _try_take(slot_path(i), label)
                         if not taken:
@@ -344,7 +344,7 @@ def acquire(label: str, *, wait: bool = True, timeout_s: Optional[float] = None,
                                "cwd": os.getcwd(), "argv": sys.argv[:3], "since": time.time()} if guard else _read(slot_path(i))
                         _write_record(slot_path(i), dict(rec, slot=i, exclusive=exclusive,
                                                        cores_per_slot=cores_per_slot(),
-                                                       affinity_mask=0xFFF0 if exclusive else affinity_mask(i)))
+                                                       affinity_mask=affinity_mask(0) if exclusive else affinity_mask(i)))
                         allocated.append((slot_path(i), _read(slot_path(i))))
                     if eligible:
                         queue.pop(0)
