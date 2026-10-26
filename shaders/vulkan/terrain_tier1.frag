@@ -319,29 +319,29 @@ vec3 mv_detailNormal(vec4 w, float snowWeight, vec2 worldXY, float lodNear, floa
 // The normal is sampled once at the first unoccluded, nonzero lamp.
 vec3 mv_lampPoolNormal(vec3 wp, vec3 macroN, float lod) {
     float nearDetail = mv_computeLodNear(wp.xy, wp.z);
-    if (nearDetail <= 0.0) return macroN;
+    float footprint = exp2(lod) / float(textureSize(u_matNormalArray, 0).x);
+    if (nearDetail <= 0.0 || footprint >= 0.707107) return macroN;
     vec2 uv = vec2((wp.x - uT.atlasTopLeftX) * uT.atlasOneOverWorldUnits,
                    (uT.atlasTopLeftY - wp.y) * uT.atlasOneOverWorldUnits);
     vec4 m = uT.colormapReady != 0 ? textureLod(u_materialWeights, uv, 0.0) : vec4(0);
     vec4 w = vec4(max(1.0 - m.x - m.y - m.w, 0.0), m.x, m.y, m.w);
-    // Keep the lamp consumer small: XY-only weighted taps, explicit isotropic
+    // Keep the lamp consumer small: one XY-only tap with explicit isotropic
     // LOD, no sun/POM/anti-tile call graph inside the light loop.
     const vec4 tiling = vec4(MATV_TILING.x / 3.0, MATV_TILING.yzw);
-    vec4 fade = clamp(vec4(2.0) - 2.828427 * exp2(lod)
-                    / float(textureSize(u_matNormalArray, 0).x) * tiling, 0.0, 1.0);
+    vec4 fade = clamp(vec4(2.0) - 2.828427 * footprint * tiling, 0.0, 1.0);
     vec4 strength = w * MATV_NORMAL_BOOST * vec4(1.0 / 3.0, 1, 1, 1) * fade;
-    vec2 detailUV = wp.xy * (uT.detailTiling / MATV_WU_PER_TILE);
-    vec2 dN = vec2(0);
-    for (int layer = 0; layer < 4; ++layer) {
-        if (w[layer] > 0.01 && fade[layer] > 0.0)
-            dN += strength[layer] * (textureLod(u_matNormalArray,
-                vec3(detailUV * tiling[layer], float(layer)), lod + log2(tiling[layer])).xy * 2.0 - 1.0);
-    }
-    float snowFade = clamp(2.0 - 2.828427 * exp2(lod)
-                          / float(textureSize(u_matNormalArray, 0).x) * MATV_TILING_SNOW, 0.0, 1.0);
-    if (m.z > 0.01 && snowFade > 0.0)
-        dN += m.z * 0.9 * snowFade * (textureLod(u_matNormalArray,
-            vec3(detailUV * MATV_TILING_SNOW, float(MAT_LAYER_SNOW)), lod + log2(MATV_TILING_SNOW)).xy * 2.0 - 1.0);
+    // A lamp needs micro-relief, not a second full material evaluation. Use
+    // the strongest visible layer; sun/shore/debug retain the weighted blend.
+    int layer = strength.y > strength.x ? 1 : 0;
+    if (strength.z > strength[layer]) layer = 2;
+    if (strength.w > strength[layer]) layer = 3;
+    float scale = tiling[layer];
+    float amount = strength[layer];
+    float snow = m.z * 0.9 * clamp(2.0 - 2.828427 * footprint * MATV_TILING_SNOW, 0.0, 1.0);
+    if (snow > amount) { layer = MAT_LAYER_SNOW; scale = MATV_TILING_SNOW; amount = snow; }
+    if (amount <= 0.0) return macroN;
+    vec2 detailUV = wp.xy * (uT.detailTiling / MATV_WU_PER_TILE) * scale;
+    vec2 dN = amount * (textureLod(u_matNormalArray, vec3(detailUV, float(layer)), lod + log2(scale)).xy * 2.0 - 1.0);
     return normalize(vec3(macroN.xy / max(macroN.z, 0.2) + dN * nearDetail * uT.detailStrength, 1.0));
 }
 
