@@ -5,8 +5,9 @@
 #include "mc2fmt.h"
 #include "mech3d.h"
 #include <utility>
+#include <string_view>
 
-extern void preloadSupportRadioArchive(const char* name);
+extern void preloadSupportRadioArchive(std::string_view name);
 extern void preloadSupportSample(unsigned id);
 namespace {
 // These actors are never submitted or simulated. Their sources and types stay
