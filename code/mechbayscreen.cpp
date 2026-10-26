@@ -6,6 +6,7 @@ MechBayScreen.cpp			: Implementation of the MechBayScreen component.
 \*************************************************************************************************/
 
 #include "mechbayscreen_internal.h"
+#include <tracy/Tracy.hpp>
 
 
 MechBayScreen* MechBayScreen::s_instance = nullptr;
@@ -142,6 +143,7 @@ void MechBayScreen::init(FitIniFile* file)
 
 void MechBayScreen::begin()
 {
+	ZoneScopedN("MechBayScreen::begin");
 	status = RUNNING;
 
 	pDragMech = nullptr;

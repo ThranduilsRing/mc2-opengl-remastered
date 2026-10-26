@@ -250,6 +250,7 @@ bool uiPackageVersionCheckPassed();
 std::filesystem::path resolveAssetPath(const std::string& value);
 void traceMissingTextureOnce(const std::string& texturePath, const std::filesystem::path& resolved);
 bool readUiTextureSize(const std::filesystem::path& path, int& width, int& height);
+void ensureTexture(UiElement& e);
 std::string baseNameNoExt(const char* path);
 int alignmentFromString(const std::string& value);
 int parseLegacyButtonIndex(const std::unordered_map<std::string, std::string>& f);

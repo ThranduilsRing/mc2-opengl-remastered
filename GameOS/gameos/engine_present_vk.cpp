@@ -2697,6 +2697,9 @@ bool EnginePresentVk::presentFrameBody(uint32_t drawableW, uint32_t drawableH,
 void EnginePresentVk::verifyReadbackContent() {
     Impl& s = *impl_;
     mc2vk::VulkanContext& ctx = *s.ctx;
+    // First-five-frame proofs need consecutive images. Normal readbacks stay
+    // asynchronous; this explicit capture mode retires each copy in its frame.
+    const bool consecutive = mc2::gate::get<"MC2_SCREENSHOT_AT_FRAME">() == -5 && gos::screenshot::pending();
 
     // ---- consume the outstanding request, if its copy has finished ----
     auto consume = [&](const unsigned char* px, uint32_t rw, uint32_t rh, uint64_t readbackTag) {
@@ -2776,7 +2779,9 @@ void EnginePresentVk::verifyReadbackContent() {
     };
     if (s.readbackToken) {
         bool stale = false;
-        const void* bytes = ctx.readbacks().poll(ctx, s.readbackToken, s.readbackTag, &stale);
+        const void* bytes = consecutive
+            ? ctx.readbacks().wait(ctx, s.readbackToken, s.readbackTag, 5000000000ull)
+            : ctx.readbacks().poll(ctx, s.readbackToken, s.readbackTag, &stale);
         if (bytes) {
             consume(static_cast<const unsigned char*>(bytes), s.readbackW, s.readbackH, s.readbackTag);
             ctx.readbacks().release(ctx, s.readbackToken);
@@ -2830,6 +2835,13 @@ void EnginePresentVk::verifyReadbackContent() {
     s.readbackTag = tag;
     s.readbackW = rw;
     s.readbackH = rh;
+    if (consecutive) {
+        if (const void* bytes = ctx.readbacks().wait(ctx, tok, tag, 5000000000ull)) {
+            consume(static_cast<const unsigned char*>(bytes), rw, rh, tag);
+            ctx.readbacks().release(ctx, tok);
+            s.readbackToken = {};
+        }
+    }
 }
 
 void EnginePresentVk::drainReadbackBeforeImageDestroy() {

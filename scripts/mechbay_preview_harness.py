@@ -38,6 +38,7 @@ def acquire_label(args) -> str:
 
 
 def main():
+    os.environ.update(MC2_HOST_GAME_SLOTS="2", MC2_HOST_CORES_PER_SLOT="2")
     ap = argparse.ArgumentParser()
     ap.add_argument("screen", choices=["mainmenu", "purchase", "bay", "loadout", "launch", "briefing", "encyclopedia", "encyclopedia_vehicles", "encyclopedia_pilots"])
     ap.add_argument("--campaign", default="campaign",
@@ -46,13 +47,15 @@ def main():
     ap.add_argument("--preview-log", action="store_true",
                     help="set MC2_LOG_PREVIEW=1 (diagnostics go to the run log)")
     ap.add_argument("--frame", type=int, default=200,
-                    help="capture frame number (frames since boot settle)")
+                    help="boot frame number, or -5 for each screen's first five frames")
     ap.add_argument("--timeout", type=int, default=25,
                     help="hard kill after this many seconds regardless of screenshot state")
     ap.add_argument("--win-after-sec", type=int, default=2,
                     help="MC2_SOAK_WIN_AFTER_SEC -- auto-win the first mission this fast so the bay is reached quickly")
     ap.add_argument("--out", default="",
                     help="output TGA path (default <deploy>/harness_<screen>.tga)")
+    ap.add_argument("--tracy", type=Path, help="record a 20-second Tracy trace of the front-end path")
+    ap.add_argument("--walk", action="store_true", help="exercise purchase, loadout and launch through the existing soak screen walk")
     ap.add_argument("--mod-deps", default="",
                     help="mount these add-on mods over the stock campaign (MC2_MOD_DEPS), e.g. bt2018_mechs")
     ap.add_argument("--buy-and-modify", action="store_true",
@@ -66,8 +69,11 @@ def main():
         sys.exit(f"exe not found: {exe}")
 
     out_tga = Path(args.out).resolve() if args.out else (deploy / f"harness_{args.screen}.tga")
+    out_tga.parent.mkdir(parents=True, exist_ok=True)
     if out_tga.exists():
         out_tga.unlink()
+    for previous in out_tga.parent.glob(out_tga.name + ".screen*.frame*.tga"):
+        previous.unlink()
     out_stdout = deploy / f"harness_{args.screen}_stdout.txt"
     out_stderr = deploy / f"harness_{args.screen}_stderr.txt"
 
@@ -79,7 +85,8 @@ def main():
               "MC2_SOAK_PILOT_PROMOTE"):
         env.pop(k, None)
 
-    front_end = args.screen.startswith("encyclopedia") or args.screen == "mainmenu"
+    encyclopedia = args.screen.startswith("encyclopedia")
+    front_end = encyclopedia or args.screen == "mainmenu"
     env.update({
         "MC2_BOOT_TO_BAY": args.campaign,
         "MC2_BOOT_TO_SCREEN": args.screen,
@@ -112,6 +119,9 @@ def main():
     if args.buy_and_modify:
         env["MC2_SOAK_AUTO_PURCHASE"] = "1"
         env["MC2_BOOT_TO_MECHLAB"] = "1"
+    if args.walk:
+        env.update(MC2_SOAK_AUTO_PURCHASE="1", MC2_SOAK_CHECK_SCREENS="1")
+        env.pop("MC2_SOAK_STOP_AT_BAY", None)
 
     if args.preview_log:
         env["MC2_LOG_PREVIEW"] = "1"
@@ -124,23 +134,70 @@ def main():
             env.pop(k, None)
 
     print(f"[harness] launching {exe} (screen={args.screen} campaign='{args.campaign}' frame={args.frame})")
-    # Functional screenshots use one two-core slot, like run_visual_capture.
+    # Readbacks belong to this process's swapchain; no desktop capture or input.
+    # Use a normal game slot. Timings under concurrent lane load are provisional.
     try:
-        host_lease.acquire(acquire_label(args), exclusive=False)
+        host_lease.acquire(acquire_label(args))
     except host_lease.HostLeaseBusy as busy:
         print(f"[harness] FAILED: {busy}")
         sys.exit(2)
     with open(out_stdout, "w") as fo, open(out_stderr, "w") as fe:
-        p = nofocus.spawn([str(exe)], cwd=str(deploy), stdout=fo, stderr=fe, env=env)
+        recorder = None
+        p = None
+        started = time.monotonic()
+        if args.tracy:
+            env.setdefault("TRACY_PORT", "8087")
         try:
-            p.wait(timeout=args.timeout)
-            print(f"[harness] process exited on its own (code {p.returncode})")
+            p = nofocus.spawn([str(exe)], show_window=True, cwd=str(deploy), stdout=fo, stderr=fe, env=env)
+            if args.tracy:
+                # The campaign first loads a mission. Profile the return to
+                # logistics rather than spending the trace on that mission load.
+                if not front_end:
+                    while p.poll() is None and time.monotonic() - started < args.timeout - 21:
+                        fo.flush()
+                        if "[SOAK] autowin mission=" in out_stdout.read_text(errors="replace"):
+                            break
+                        time.sleep(0.1)
+                sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
+                from tracy_capture_compare import tracy_exe
+                args.tracy.parent.mkdir(parents=True, exist_ok=True)
+                port = env["TRACY_PORT"]
+                recorder = nofocus.spawn([str(tracy_exe("tracy-capture.exe")), "-a", "127.0.0.1", "-p", port,
+                                             "-s", "20", "-f", "-o", str(args.tracy)], stdout=fo, stderr=fe,
+                                            **nofocus.hidden_kwargs(creationflags=0x00004000))
+            targets = ([21, 20, 22, 31] if args.walk else
+                       [-2] if encyclopedia else [-1] if args.screen == "mainmenu" else
+                       [{"purchase":20,"bay":21,"loadout":22,"launch":31,"briefing":11}[args.screen]])
+            while p.poll() is None and time.monotonic() - started < args.timeout:
+                if recorder is not None and recorder.poll() is not None:
+                    break
+                if args.frame == -5 and all(Path(str(out_tga) + f".screen{s}.frame{f}.tga").is_file()
+                                            for s in targets for f in range(1,6)):
+                    break
+                time.sleep(0.1)
+            if p.poll() is None:
+                p.kill()
+            p.wait()
+            print(f"[harness] run ended (code {p.returncode})")
         except subprocess.TimeoutExpired:
             p.kill()
+            p.wait()
             print(f"[harness] killed after {args.timeout}s (expected — screenshot hook doesn't self-exit)")
+        finally:
+            if p is not None and p.poll() is None:
+                p.kill()
+                p.wait()
+            if recorder is not None:
+                try:
+                    recorder.wait(timeout=5)
+                except subprocess.TimeoutExpired:
+                    recorder.kill()
+                    recorder.wait()
 
-    if out_tga.exists():
-        print(f"[harness] screenshot captured: {out_tga} ({out_tga.stat().st_size} bytes)")
+    if (out_tga.exists() or (args.tracy and args.tracy.is_file()) or
+            (args.frame == -5 and all(Path(str(out_tga) + f".screen{s}.frame{f}.tga").is_file()
+                                     for s in targets for f in range(1,6)))):
+        print(f"[harness] capture complete: {args.tracy or out_tga}")
         sys.exit(0)
     else:
         print(f"[harness] FAILED: no screenshot at {out_tga}")

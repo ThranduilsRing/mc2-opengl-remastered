@@ -12,7 +12,8 @@ FAILS the checker unless it carries `# background-launch: allow <why>`.
 | `scripts/camera_sweep_smoke.py` | 101 | `nofocus.spawn` | desktop-composite |
 | `scripts/game_auto.py` | 133 | `nofocus.spawn` | desktop-composite |
 | `scripts/mech_shot.py` | 87 | `nofocus.spawn` | offscreen |
-| `scripts/mechbay_preview_harness.py` | 134 | `nofocus.spawn` | offscreen |
+| `scripts/mechbay_preview_harness.py` | 151 | `nofocus.spawn` | offscreen |
+| `scripts/mechbay_preview_harness.py` | 165 | `nofocus.spawn` | offscreen |
 | `scripts/renderdoc_capture.py` | 237 | `nofocus.run` | offscreen |
 | `scripts/renderdoc_capture.py` | 265 | `subprocess.run` **raw, allowed:** renderdoccmd convert is a console file converter, not the game; windowless via hidden_kwargs | offscreen |
 | `scripts/run_editor_capture.py` | 47 | `nofocus.spawn` | offscreen |
@@ -46,7 +47,7 @@ FAILS the checker unless it carries `# background-launch: allow <why>`.
 | `tools/tracy_capture_compare.py` | 410 | `subprocess.run` **raw, allowed:** Tracy csvexport console tool, not the game; windowless via hidden_kwargs | offscreen |
 | `tools/tracy_capture_compare.py` | 463 | `subprocess.run` **raw, allowed:** Tracy csvexport console tool, not the game; windowless via hidden_kwargs | offscreen |
 
-Total engine launch sites: 36
+Total engine launch sites: 37
 
 ## Shell launchers (RULE 9)
 

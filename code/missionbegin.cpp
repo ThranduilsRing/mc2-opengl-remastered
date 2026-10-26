@@ -39,6 +39,7 @@ MissionBegin.cpp			: Implementation of the MissionBegin component.
 #include "imgui.h"
 #include "gos_render.h"
 #include"../GameOS/gameos/gos_dev_shell.h"   // DEV-SHELL-1: ui_reload command registration
+#include"../GameOS/gameos/gos_screenshot.h"
 #include <cstdlib>
 #include <string>
 #include"platform_str.h"   // S_stricmp (MC2_BOOT_TO_SCREEN parse, LINUX_BUILD-safe)
@@ -1419,6 +1420,11 @@ void MissionBegin::updateSoakScreenWalk(LogisticsScreen* pCurScreen, bool& soakF
 			}
 			case SoakCheckState::ENTER_LOADOUT:
 			{
+				if (!LogisticsData::instance->getMechToModify())
+				{
+					auto forceGroup = LogisticsData::instance->getForceGroup();
+					if (!forceGroup.empty()) LogisticsData::instance->setMechToModify(forceGroup.front());
+				}
 				// MechLabScreen::begin() dereferences getMechToModify() at
 				// mechlabscreen.cpp:237 — crash if null.  Guard here so we never call
 				// begin() when no mech is selected (e.g. PoaR / campaign missions where
@@ -1748,6 +1754,22 @@ const char* MissionBegin::update()
 void MissionBegin::render()
 {
 	if (ImGui::GetCurrentContext()) ImGui::GetIO().MouseDrawCursor = true;
+	// The logistics capture harness uses -5 to record the first five renders
+	// of each screen, including transition frames, without desktop interaction.
+	if (mc2::gate::get<"MC2_SCREENSHOT_AT_FRAME">() == -5)
+	{
+		static int lastScreen = -999, frame = 0;
+		const int screen = bSplash ? (MainMenu::bDrawMechlopedia ? -2 : -1) : 10 * curScreenX + curScreenY;
+		if (screen != lastScreen) { lastScreen = screen; frame = 0; }
+		if (frame < 5)
+		{
+			const auto path = mc2::gate::str<"MC2_SCREENSHOT_PATH">() +
+				".screen" + std::to_string(screen) + ".frame" + std::to_string(++frame) + ".tga";
+			gos::screenshot::request(path.c_str());
+		}
+	}
+	ZoneScopedN("MissionBegin::render");
+	ZoneValue(bSplash ? 0xffff : 10 * curScreenX + curScreenY);
 	// UI-ASPECT-ANCHOR-1: front-end frame — draw the UI on the 16:9 canvas
 	// (re-asserted every frame; auto-cleared at flushHUDBatch).
 	gos_SetUiCanvasActive( true );
