@@ -1,5 +1,5 @@
 #pragma once
-#include "../tools/mc2_launcher/quality_presets.h"
+#include "QualityPresets.h"
 
 struct EnvVarDef {
     const char* key;         // env var name (e.g. mc2::gate::name<"MC2_CLOUD_SHADOW">()), or the options.cfg key when `cfg` is set (e.g. "ShadowCSM")

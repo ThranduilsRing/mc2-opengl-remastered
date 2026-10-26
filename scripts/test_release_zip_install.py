@@ -78,9 +78,6 @@ REQUIRED_FILES = [
     "minprefs.cfg",   # sniffer self-heal CopyFile source
     "orgprefs.cfg",
     "system.cfg",
-    # MERGE-WAVE-2 (2026-07-22): the launcher is the documented front door
-    # (RELEASE_README / STARTER-GUIDE) — a zip set without it is not releasable.
-    "mc2-launcher.exe",
 ]
 REQUIRED_DIRS = [
     "shaders",  # shaders/ must be non-empty; engine loads them by relative path

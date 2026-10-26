@@ -6,7 +6,7 @@ that so the dev build is one short command. Extra args are passed to ninja
 (e.g. -n for a dry run, -j8); non-flag args are targets.
 
 USAGE:
-  py -3 scripts/ninja_build.py                       # mc2 + mc2_launcher
+  py -3 scripts/ninja_build.py                       # mc2
   py -3 scripts/ninja_build.py mc2                   # one target
   py -3 scripts/ninja_build.py -n mc2                # dry run: what would rebuild
   py -3 scripts/ninja_build.py --warm --base <ref> -j3   # lane prep: detach HEAD at <ref>, then build this tree in the background

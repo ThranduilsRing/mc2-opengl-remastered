@@ -6,6 +6,7 @@
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"
 #include "Gates/render_options_cfg.h"
+#include "Gates/render_options_legacy_env.h"
 #include "../3rdparty/include/nlohmann/json.hpp"
 #include <SDL.h>
 #include <algorithm>
@@ -171,12 +172,65 @@ void applyPackEnv(const Pack& pack) {
     for (const auto& [key, value] : pack.env.items())
         if (key.starts_with("MC2_") && value.is_string()) setEnv(key, value.get<std::string>());
 }
+void migrateSettings() {
+    auto cfg = mc2::options::cfg::readTextFile("options.cfg");
+    const auto original = cfg;
+    auto migrated = settings;
+    if (original.empty()) return;
+    for (const auto& key : mc2::options::legacy::kLegacyKeys) {
+        if (!settings.contains(key.envName)) continue;
+        const auto* option = mc2::options::find(key.option);
+        const auto value = mc2::options::legacy::translate(*option, text(settings, key.option, text(settings, key.envName)));
+        if (!value) {
+            std::printf("[PLAYER_SETTINGS] invalid legacy option %s\n", key.envName);
+            continue;
+        }
+        cfg = mc2::options::cfg::set(std::move(cfg), *option, *value);
+        migrated.erase(key.envName);
+        migrated.erase(key.option);
+        std::printf("[PLAYER_SETTINGS] migrate %s=%s\n", key.option, value->c_str());
+    }
+    for (const auto& option : mc2::options::kOptions) {
+        if (!migrated.contains(option.key)) continue;
+        auto value = text(migrated, option.key);
+        if (value.empty() && option.kind == mc2::options::Kind::Bool) value = "FALSE";
+        const auto translated = mc2::options::legacy::translate(option, value);
+        if (!translated) continue;
+        cfg = mc2::options::cfg::set(std::move(cfg), option, *translated);
+        migrated.erase(option.key);
+    }
+    // Preserve unknown entries for forward compatibility, but name them for support.
+    for (const auto& [key, value] : migrated.items()) {
+        if (!key.starts_with("MC2_")) continue;
+        bool known = key == "MC2_FPS_CAP" || key == "MC2_VSYNC";
+        for (const auto& row : k_envVars) known |= key == row.key;
+        if (!known) std::printf("[PLAYER_SETTINGS] unrecognised key %s (retained)\n", key.c_str());
+    }
+    if (migrated == settings || original.empty()) return;
+    if (cfg != original) {
+        std::ofstream stream("options.cfg.tmp", std::ios::binary | std::ios::trunc);
+        stream << cfg;
+        stream.close();
+        if (!stream) { error = "Could not migrate options.cfg."; return; }
+#ifdef _WIN32
+        if (!MoveFileExA("options.cfg.tmp", "options.cfg", MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)) return;
+#else
+        std::error_code ec;
+        fs::rename("options.cfg.tmp", "options.cfg", ec);
+        if (ec) return;
+#endif
+    }
+    const auto previous = settings;
+    settings = std::move(migrated);
+    if (!saveSettings()) settings = previous;
+}
 }
 
 void loadSettings() {
     // Keep shell/harness overrides. Existing installs retain the launcher's file.
     settings = readJson("launcher_env.json");
     if (!mc2::gate::get<"MC2_LAUNCHER_ENV_JSON">() || mc2::gate::isSet<"MC2_LAUNCHED">()) return;
+    migrateSettings();
     const bool explicitMod = mc2::gate::envText(mc2::gate::name<"MC2_ACTIVE_MOD">()) != nullptr;
     for (const auto& [key, value] : settings.items())
         if (key.starts_with("MC2_") && value.is_string() && !mc2::gate::envText(key.c_str())) setEnv(key, value.get<std::string>());
@@ -307,7 +361,12 @@ void drawMainMenu() {
         }
     }
     ImGui::EndDisabled();
-    ImGui::TextWrapped("Import new campaigns with mc2-launcher.exe Import for now, then Refresh here.");
+    if (ImGui::TreeNode("Import community campaigns")) {
+        ImGui::TextWrapped("Use the bundled importer CLI from this install folder. Probe first, then import an MC2, MC2X or MCO install or unpacked campaign folder:");
+        ImGui::TextUnformatted("py -3 tools/mc2_import/import_tool.py probe \"SOURCE\"\npy -3 tools/mc2_import/import_tool.py auto \"SOURCE\" --deploy .");
+        ImGui::TextWrapped("Requires Python 3 (standard library only). On Linux replace py -3 with python3. --dry-run previews; --force replaces an existing import. Ctrl+C cancels. Read warnings and missing-file counts, then Refresh here. For legacy installer EXEs, extract/install into a separate source folder first.");
+        ImGui::TreePop();
+    }
     if (!error.empty()) ImGui::TextWrapped("%s", error.c_str());
     ImGui::End();
 }
@@ -328,6 +387,9 @@ void drawOptions() {
         ImGui::SameLine();
     }
     ImGui::NewLine();
+    static constexpr int shadowMB[] = {27, 107, 164};
+    ImGui::Text("Approximate fixed VRAM: %d MB (excludes mission textures/geometry)",
+        256 + 96 + 8 + shadowMB[std::clamp(draft.shadowQuality, 0, 2)]);
     for (const auto& option : mc2::options::kOptions) {
         const char* label = std::string_view(option.key) == "RemasteredBuildings" ? "Remastered buildings (off: Classic)" : option.key;
         if (option.kind == mc2::options::Kind::Bool) ImGui::Checkbox(label, &(draft.*option.b));

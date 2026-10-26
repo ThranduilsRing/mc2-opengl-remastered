@@ -13,7 +13,7 @@ from bootstrap_worktree_build.cache_args so both trees configure identically.
 
 USAGE:
   py -3 scripts/configure_ninja.py                 # configure build64-ninja/
-  py -3 scripts/configure_ninja.py --build         # ... then build mc2 + mc2_launcher
+  py -3 scripts/configure_ninja.py --build         # ... then build mc2
   py -3 scripts/configure_ninja.py --build-dir build-analysis   # configure-only variant
   py -3 scripts/configure_ninja.py             # shared sccache is the DEFAULT; --no-compile-cache (or MC2_COMPILE_CACHE=0) opts out; see compile_cache_env()
 Then build with: py -3 scripts/ninja_build.py
@@ -31,7 +31,7 @@ VS = "C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools"
 VCVARS = VS + "/VC/Auxiliary/Build/vcvars64.bat"
 NINJA = VS + "/Common7/IDE/CommonExtensions/Microsoft/CMake/Ninja/ninja.exe"
 DEFAULT_TREE = "build64-ninja"
-DEFAULT_TARGETS = ["mc2", "mc2_launcher"]
+DEFAULT_TARGETS = ["mc2"]
 
 
 SCCACHE_EXE = os.environ.get("MC2_SCCACHE", "A:/Games/tools/sccache/sccache.exe")
@@ -150,7 +150,7 @@ def main():
     ap.add_argument("--build-dir", default=DEFAULT_TREE,
                     help="tree dir name under the repo root (default: %(default)s)")
     ap.add_argument("--build", action="store_true",
-                    help="also build mc2 + mc2_launcher after configuring")
+                    help="also build mc2 after configuring")
     ap.add_argument("--no-compile-cache", action="store_true",
                     help="opt out of the default: build through sccache (shared G:/mc2-build/compile-cache; SCCACHE_DIR overrides), /Zi -> /Z7, PCH off")
     ap.add_argument("--cache-pch", action="store_true", help="keep the precompiled header on (the cached tree defaults to PCH off)")

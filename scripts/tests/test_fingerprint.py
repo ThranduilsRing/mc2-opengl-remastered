@@ -153,7 +153,7 @@ def test_no_repo_root_keeps_exact_match_only():
 
 def test_build_input_classification():
     for p in ("CMakeLists.txt", "cmake/Mc2NarrowingErrors.cmake", "shaders/mech.vert",
-              "code/objmgr.cpp", "tools/gpu_abi_gen.py", "tools/mc2_launcher/mc2_launcher.cpp",
+              "code/objmgr.cpp", "tools/gpu_abi_gen.py", "GuiRuntime/PlayerFrontEnd.cpp",
               "RenderCore/KtxLoader.cpp", "3rdparty/vma/x.h", "editor/EditorObjects.cpp"):
         assert is_build_input(p), p
     for p in ("docs/x.md", ".claude/cleanup/a.md", "scripts/run_smoke.py", "tools/repo_intel/x.py",

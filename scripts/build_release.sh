@@ -249,6 +249,10 @@ echo "[engine] staging"
 mkdir -p "$STAGE/engine"
 cp "$DEPLOY/mc2.exe" "$STAGE/engine/"
 cp -r "$DEPLOY/shaders" "$STAGE/engine/"
+for importer in mc2_import mc2x_import mco_import; do
+    mkdir -p "$STAGE/engine/tools"
+    cp -r "$REPO/tools/$importer" "$STAGE/engine/tools/"
+done
 if [ -d "$DEPLOY/assets" ]; then
     cp -r "$DEPLOY/assets" "$STAGE/engine/"
 fi
@@ -261,16 +265,6 @@ fi
 # Editor launcher bat -- runs editor from the install root via %~dp0.
 if [ -f "$DEPLOY/run-editor.bat" ]; then
     cp "$DEPLOY/run-editor.bat" "$STAGE/engine/"
-fi
-# mc2-launcher.exe — the install front door (campaign/mod picker GUI that
-# launches mc2.exe). RELEASE_README + STARTER-GUIDE present it as the primary
-# entry point, so it is REQUIRED (2026-07-22, MERGE-WAVE-2): a deploy without
-# it is not releasable. deploy_payload.py places it at the deploy root from
-# build64/out/mc2_launcher.
-if [ -f "$DEPLOY/mc2-launcher.exe" ]; then
-    cp "$DEPLOY/mc2-launcher.exe" "$STAGE/engine/"
-else
-    echo "[engine] FAIL — mc2-launcher.exe missing from DEPLOY (launcher is the documented front door)"; exit 1
 fi
 # Example mods (documented in the modding guide + STARTER-GUIDE): shipped from
 # the REPO tree (canonical, reviewed content) — NOT from the deploy's mods/
@@ -310,9 +304,9 @@ rm -f "$OUTDIR/mc2-remastered-engine.zip"
 # branch. options.cfg's presence is what makes mc2.exe skip the sniffer
 # dialog on first launch; minprefs.cfg is the fallback source the engine
 # would copy from if options.cfg ever went missing.
-for required_cfg in options.cfg minprefs.cfg orgprefs.cfg system.cfg mc2-launcher.exe; do
+for required_cfg in options.cfg minprefs.cfg orgprefs.cfg system.cfg; do
     if ! "$SEVENZIP" l "$OUTDIR/mc2-remastered-engine.zip" | grep -q " $required_cfg\$"; then
-        echo "[engine] FAIL — $required_cfg missing from engine.zip (sniffer-loop regression / launcher front-door)"; exit 1
+        echo "[engine] FAIL — $required_cfg missing from engine.zip (sniffer-loop regression)"; exit 1
     fi
 done
 # Sanity: editor binary + launcher must ship in the engine zip (2026-05-25

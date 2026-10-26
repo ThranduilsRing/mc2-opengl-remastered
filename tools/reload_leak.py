@@ -169,7 +169,7 @@ def analyze(lines, cycles=DEFAULT_CYCLES, tolerance=0):
 # ---------------------------------------------------------------------------
 
 def build_proof(tree, log_dir, jobs):
-    """Configure + build an MC2_ALLOC_STATS=ON mc2 and mc2_launcher in `tree`. -> exit code."""
+    """Configure + build an MC2_ALLOC_STATS=ON mc2 in `tree`. -> exit code."""
     cmake = find_cmake()
     args = [cmake, "-S", ROOT.as_posix(), "-B", Path(tree).as_posix(), "-G", "Ninja",
             f"-DCMAKE_MAKE_PROGRAM={NINJA}", "-DCMAKE_BUILD_TYPE=RelWithDebInfo",
@@ -177,7 +177,7 @@ def build_proof(tree, log_dir, jobs):
     Path(log_dir).mkdir(parents=True, exist_ok=True)
     cfg_log, build_log = Path(log_dir) / "configure.log", Path(log_dir) / "build.log"
     for path, cmd in ((cfg_log, args), (build_log, [NINJA, "-C", Path(tree).as_posix(), f"-j{jobs}",
-                                                    "mc2", "mc2_launcher"])):
+                                                    "mc2"])):
         log(f"run: {subprocess.list2cmdline([str(c) for c in cmd])} > {path}")
         rc = under_vcvars(subprocess.list2cmdline([str(c) for c in cmd]) + f' > "{path}" 2>&1')
         log(f"exit={rc} log={path}")

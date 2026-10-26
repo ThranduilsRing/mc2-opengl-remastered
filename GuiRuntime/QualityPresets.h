@@ -1,6 +1,6 @@
-// Renderer controls grouped for the launcher's explicit quality buttons.
+// Renderer controls grouped for the player UI's explicit quality buttons.
 #pragma once
-#include "../../Gates/gate_name.h"
+#include "../Gates/gate_name.h"
 
 inline constexpr const char* k_presetKeys[] = {
     mc2::gate::name<"MC2_VEGETATION_MAX">(), mc2::gate::name<"MC2_SHADOW_ENABLE">(),
