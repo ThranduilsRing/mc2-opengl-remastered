@@ -339,6 +339,16 @@ void MissionInterfaceManager::updateOldStyle( bool shiftDn, bool altDn, bool ctr
 	if ( update( leftClicked, rightClicked, mouseX, mouseY, target,  lineOfSight ) )
 		return;
 
+    // Selection resolves own units first through the same bounds service.
+    if (selectClicked && !bGui && !ctrlDn && !bForcedShot && !bAimedShot
+        && !controlGui.getGuard() && !controlGui.getRepair() && !controlGui.getSalvage()
+        && !controlGui.getGuardTower() && !controlGui.isAddingSalvage()
+        && !controlGui.isAddingVehicle() && !controlGui.isAddingAirstrike()) {
+        if (auto* selected = pickGameplaySelection(mouseX, mouseY))
+            target = selected;
+    }
+
+
 	if ( bGui ) // don't target or anything if we are int the control panel
 	{
 		if ( !canJump() && controlGui.getJump() )
@@ -703,6 +713,16 @@ void MissionInterfaceManager::updateAOEStyle(bool shiftDn, bool altDn, bool ctrl
 
 	if ( update( leftClicked, rightClicked, mouseX, mouseY, target,  lineOfSight ) )
 		return;
+
+    // Selection resolves own units first through the same bounds service.
+    if (selectClicked && !bGui && !ctrlDn && !bForcedShot && !bAimedShot
+        && !controlGui.getGuard() && !controlGui.getRepair() && !controlGui.getSalvage()
+        && !controlGui.getGuardTower() && !controlGui.isAddingSalvage()
+        && !controlGui.isAddingVehicle() && !controlGui.isAddingAirstrike()) {
+        if (auto* selected = pickGameplaySelection(mouseX, mouseY))
+            target = selected;
+    }
+
 
 	if ( bGui ) // don't target or anything if we are int the control panel
 	{
