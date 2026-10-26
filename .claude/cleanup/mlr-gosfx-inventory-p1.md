@@ -129,3 +129,54 @@ Raw sidecars, commands, logs, repeat hashes and crop differences are retained al
 
 P1 stops here. Keep only `E:/mc2-installs/claude-mlr-retire-p1`; source kit install and mods
 are untouched. No auxiliary install/staging was created; disk freed: 0 GiB.
+
+
+## Follow-up: authored cards (2026-10-26)
+
+Engine `38f5d620e696`; harness `03415190f`. `p2-checks-summary.json` and
+`p2-oracle.log` in the same proof directory are the new evidence. P1 captures
+remain diagnostic controls; no new images were produced and no class is promoted.
+
+Card/CardCloud now reuse the original draw's world corners, camera-axis alignment,
+live UVs and combined material state through the existing 64-byte native geometry
+ABI. The approximate billboard branches (radius/floors/spin/depth pull) are removed
+for these classes. Weapon muzzle/hit/miss/water-hit submission no longer depends
+on the render-oracle gate. This removes 257 engine lines, adds 107 (net -150).
+CPU MLR Draw calls remain as reference arms pending visual acceptance. CPU Execute,
+emission, random streams and combat completion are unchanged.
+
+Build passes. Eight shader/VFX rows pass (70 shaders; no shader edits). Frozen
+CPU and both GPU gate-vector tests pass: 10,931 CPU assertions and 11,066 per GPU
+vector, including all four CardCloud alignment modes. Host-lease tests: 31 pass.
+The native harness selected the cold VS tree and took 435 s; use the existing
+cached tree rather than accidentally creating a cold compile checkpoint.
+
+The earlier mc2_10 timeout log ends during cache-miss model imports before its
+first frame. The copied kit also contained one unpinned quonset ORM; that file
+was archived under this proof directory from THIS install only. The owning kit
+install is untouched. Normal deployment now passes the original pin checks,
+cooks all 693 pinned GLBs and writes its 3,751-row manifest for the engine commit.
+Whether that resolves smoke timeout remains unverified because no game launched.
+
+The foreign lease blocker recurred and is root-caused: older worktrees default
+`MC2_HOST_CORES_PER_SLOT` to 2. A width-two reservation has affinity 0xF0 and
+occupies both physical cores allowed by the owner's two width-one slots; allocating
+this lane's second slot (0xC0) would overlap it. This checkout now defaults to one
+core, with tests. It cannot change a running foreign holder's width. Oracle waited
+180 s behind live batch `w65-pin-checkpoint` (PID 33648, mc2-ds4), then refused.
+No foreign holder, record or process was changed; no game or child remains from
+this attempt. Smoke/determinism/new validation were skipped under the same blocker.
+
+Old repeat analysis: flight CPU repeats differ at 115 full-image pixels, impact
+at 113; complete birth transcripts and common CardCloud draw-probe prefixes match.
+Even duplicate frozen poses within the old impact controls differ (19 / 4 pixels),
+including background samples. This narrows the old drift but does NOT establish
+its rendering root cause or justify a tolerance. Do not mark repeatability fixed.
+
+Next: obtain a permitted width-one game slot, run the existing p2 oracle plan
+against the deployed engine, inspect heads and impact flashes, isolate the sparse
+repeat differences with controls, and provide populated fixtures for the six
+remaining unpictured leaf types. Only then promote supported classes and remove
+their CPU Draw paths. Point/Shard proxies cannot ride a blanket master flip.
+No gate flips, no new accepted class parity, no live CPU path removal in this follow-up.
+One lane install remains; auxiliary installs created: zero; disk freed: zero.

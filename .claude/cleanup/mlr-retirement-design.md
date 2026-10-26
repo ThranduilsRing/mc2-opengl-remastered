@@ -258,3 +258,15 @@ runtime closure and per-class promotion blockers. Proofs live under
   moving it to GPU must not consume or reorder authoritative RNG. Do not count CPU render
   deletion as GPU simulation migration. Final proof includes unchanged sim chains, named
   mod corpus, reload/teardown, validation and smoke, with gross deleted/net added counts.
+
+
+### Follow-up checkpoint (2026-10-26)
+
+`38f5d620e696` replaces Card/CardCloud billboard approximations with native
+triangles from the authored corners/alignment/UVs and restores impact submission.
+Frozen geometry/RNG checks and normal pinned deployment pass; see the inventory's
+follow-up section and `p2-checks-summary.json`. Visual promotion remains blocked
+by a live foreign width-two batch lease; the local harness default is fixed to
+one core (`03415190f`). Do not erase the CPU reference or enable the master until
+new populated captures pass. Keep Point/Shard on their CPU primitives when the
+master eventually promotes cards; their current GPU proxies are not parity.
