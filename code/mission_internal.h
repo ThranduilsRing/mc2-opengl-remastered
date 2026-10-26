@@ -6,7 +6,7 @@
 #ifndef MISSION_INTERNAL_H
 #define MISSION_INTERNAL_H
 
-// Implemented by saveload.cpp; called by the mission update fixture path.
+// Implemented by missiongui_update.cpp; called by the mission update fixture path.
 void updateSaveFixtures();
 
 #ifndef MCLIB_H
