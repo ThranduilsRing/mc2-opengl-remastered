@@ -23,20 +23,20 @@
   "code/gamecam.cpp": 1588,
   "code/gameobj.cpp": 2250,
   "code/infowindow.cpp": 1730,
-  "code/logisticsdialog.cpp": 2149,
+  "code/logisticsdialog.cpp": 2150,
   "code/mechlabscreen.cpp": 1952,
-  "code/mechlopedia.cpp": 1623,
+  "code/mechlopedia.cpp": 1624,
   "code/missionbegin.cpp": 2182,
   "code/mover.h": 1906,
-  "code/mpparameterscreen.cpp": 2408,
+  "code/mpparameterscreen.cpp": 2406,
   "code/multplyr.h": 1845,
   "code/objective.cpp": 2437,
-  "code/optionsarea.cpp": 1837,
+  "code/optionsarea.cpp": 1838,
   "code/pilotreviewarea.cpp": 1843,
   "code/tacordr.cpp": 2106,
   "code/terrobj.cpp": 1728,
   "code/turret.cpp": 2346,
-  "code/warrior.cpp": 2699,
+  "code/warrior.cpp": 2704,
   "code/warrior.h": 2192,
   "editor/tests/test_objectives.cpp": 1996,
   "gui/alistbox.cpp": 1513,
@@ -58,7 +58,7 @@
   "tools/scifi_kit/art/intent_military.py": 3363,
   "tools/terrain_beautify/visual_heightfield.py": 1510
  },
- "head": "23d0f5839",
+ "head": "1d84b807b",
  "per_dir": {
   "GameAdapters": {
    "files": 13,
@@ -73,7 +73,7 @@
    "max_lines": 3650
   },
   "GuiRuntime": {
-   "files": 18,
+   "files": 19,
    "files_over_1500": 0,
    "files_over_3000": 0,
    "max_lines": 1133
@@ -109,7 +109,7 @@
    "max_lines": 1513
   },
   "mclib": {
-   "files": 571,
+   "files": 567,
    "files_over_1500": 13,
    "files_over_3000": 0,
    "max_lines": 2508
@@ -150,7 +150,7 @@
   },
   {
    "file": "code/warrior.cpp",
-   "lines": 2699
+   "lines": 2704
   },
   {
    "file": "mclib/mapdata.cpp",
@@ -162,7 +162,7 @@
   },
   {
    "file": "code/mpparameterscreen.cpp",
-   "lines": 2408
+   "lines": 2406
   },
   {
    "file": "code/turret.cpp",
@@ -182,7 +182,7 @@
   },
   {
    "file": "code/logisticsdialog.cpp",
-   "lines": 2149
+   "lines": 2150
   },
   {
    "file": "mclib/mlr/mlrtriangleclipping.hpp",
@@ -234,7 +234,7 @@
   },
   {
    "file": "code/optionsarea.cpp",
-   "lines": 1837
+   "lines": 1838
   },
   {
    "file": "mclib/tgl.h",
@@ -254,7 +254,7 @@
   }
  ],
  "total": {
-  "files": 2522,
+  "files": 2519,
   "files_over_1500": 43,
   "files_over_3000": 2,
   "max_lines": 3650
