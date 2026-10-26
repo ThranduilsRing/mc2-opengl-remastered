@@ -478,7 +478,7 @@ def test_affinity_reserves_only_physical_game_cores(monkeypatch):
             host_lease.slot_count()
 
 
-@pytest.mark.parametrize("width,exclusive,expected", [(1, False, 0x30), (2, False, 0xF0), (2, True, 0xFFF0)])
+@pytest.mark.parametrize("width,exclusive,expected", [(1, False, 0x30), (1, True, 0x30), (2, False, 0xF0), (2, True, 0xF0)])
 def test_slot_affinity_reaches_child_process(lease, monkeypatch, width, exclusive, expected):
     import ctypes
     from ctypes import wintypes
