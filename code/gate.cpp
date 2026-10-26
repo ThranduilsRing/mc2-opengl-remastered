@@ -259,6 +259,7 @@ long Gate::update (void)
 	if (!passabilityProbed && mc2::gate::get<"MC2_DEBUG_STATE_DUMP">() && GameMap && numCellsCovered > 0) {
 		passabilityProbed = true;
 		auto saved = GameMap->map;
+		GameMap->map.swap(saved);
 		for (bool passable : {false, true, false}) {
 			markMoveMap(passable);
 			std::fprintf(stderr, "[GATE_MOVE] passable=%d|cells=", passable);
