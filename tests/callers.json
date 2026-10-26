@@ -5534,6 +5534,13 @@
           "text": "from . import nofocus, vk_validation"
         },
         {
+          "path": "scripts/smoke_lib/runner.py",
+          "line": 333,
+          "evidence": "import",
+          "reference": "scripts.smoke_lib",
+          "text": "from . import render_options_pin"
+        },
+        {
           "path": "scripts/smoke_lib/win_input.py",
           "line": 134,
           "evidence": "import",
@@ -5616,6 +5623,13 @@
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from scripts.smoke_lib import capture_backend as cb"
+        },
+        {
+          "path": "tests/smoke/test_marker_buckets.py",
+          "line": 183,
+          "evidence": "import",
+          "reference": "scripts.smoke_lib",
+          "text": "from scripts.smoke_lib import render_options_pin"
         },
         {
           "path": "tests/smoke/test_preflight_cache.py",
@@ -6078,28 +6092,35 @@
         },
         {
           "path": "tests/smoke/test_marker_buckets.py",
-          "line": 6,
+          "line": 7,
           "evidence": "import",
           "reference": "scripts.smoke_lib.gates",
           "text": "from scripts.smoke_lib.gates import GateConfig, evaluate"
         },
         {
           "path": "tests/smoke/test_marker_buckets.py",
-          "line": 126,
+          "line": 127,
           "evidence": "import",
           "reference": "scripts.smoke_lib.gates",
           "text": "from scripts.smoke_lib.gates import GateConfig, evaluate"
         },
         {
           "path": "tests/smoke/test_marker_buckets.py",
-          "line": 145,
+          "line": 146,
+          "evidence": "import",
+          "reference": "scripts.smoke_lib.gates",
+          "text": "from scripts.smoke_lib.gates import GateConfig, evaluate"
+        },
+        {
+          "path": "tests/smoke/test_marker_buckets.py",
+          "line": 182,
           "evidence": "import",
           "reference": "scripts.smoke_lib.gates",
           "text": "from scripts.smoke_lib.gates import GateConfig, evaluate"
         },
         {
           "path": "tests/smoke/test_render_options_pin.py",
-          "line": 166,
+          "line": 167,
           "evidence": "import",
           "reference": "scripts.smoke_lib.gates",
           "text": "from scripts.smoke_lib.gates import Verdict"
@@ -6191,7 +6212,7 @@
         },
         {
           "path": "scripts/tests/test_host_lease.py",
-          "line": 288,
+          "line": 289,
           "evidence": "command",
           "reference": "scripts.smoke_lib.host_lease",
           "text": "status = subprocess.run([sys.executable, \"-m\", \"scripts.smoke_lib.host_lease\", \"status\"], cwd=str(lane_b), env=env,"
@@ -6298,14 +6319,14 @@
         },
         {
           "path": "tests/smoke/test_marker_buckets.py",
-          "line": 5,
+          "line": 6,
           "evidence": "import",
           "reference": "scripts.smoke_lib.logparse",
           "text": "from scripts.smoke_lib.logparse import LogSummary, MARKER_BUCKETS, PerfRow, parse_log"
         },
         {
           "path": "tests/smoke/test_render_options_pin.py",
-          "line": 167,
+          "line": 168,
           "evidence": "import",
           "reference": "scripts.smoke_lib.logparse",
           "text": "from scripts.smoke_lib.logparse import LogSummary"
@@ -6537,6 +6558,20 @@
           "evidence": "import",
           "reference": "scripts.smoke_lib.render_options_pin",
           "text": "from . import render_options_pin"
+        },
+        {
+          "path": "scripts/smoke_lib/runner.py",
+          "line": 333,
+          "evidence": "import",
+          "reference": "scripts.smoke_lib.render_options_pin",
+          "text": "from . import render_options_pin"
+        },
+        {
+          "path": "tests/smoke/test_marker_buckets.py",
+          "line": 183,
+          "evidence": "import",
+          "reference": "scripts.smoke_lib.render_options_pin",
+          "text": "from scripts.smoke_lib import render_options_pin"
         },
         {
           "path": "tests/smoke/test_render_options_pin.py",
@@ -17503,7 +17538,7 @@
       "callers_by_basename": [
         {
           "path": "tests/smoke/test_render_options_pin.py",
-          "line": 143,
+          "line": 144,
           "evidence": "load module",
           "reference": "tools/tracy_capture_compare.py",
           "text": "spec = importlib.util.spec_from_file_location(\"tracy_capture_compare_under_test\", ROOT / \"tools\" / \"tracy_capture_compare.py\")"
@@ -18255,7 +18290,7 @@
       "callers_by_stem": [
         {
           "path": "tests/smoke/test_render_options_pin.py",
-          "line": 123,
+          "line": 124,
           "evidence": "import",
           "reference": "capture_ab",
           "text": "import capture_ab"
