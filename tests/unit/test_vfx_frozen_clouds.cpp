@@ -16,6 +16,21 @@
 #include <array>
 #include <cstdlib>
 #include <fstream>
+#include "GameOS/gameos/gos_vfx_mesh_bridge.h"
+#include "mlr/mlr_i_pmesh.hpp"
+#include "mlr/mlrshape.hpp"
+
+namespace {
+std::vector<GosVfxMeshInstance> meshInstances;
+std::vector<std::vector<uint16_t>> meshIndices;
+}
+extern "C" void gos_vfx_mesh_flush(const GosVfxMeshUpload* uploads, unsigned count,
+    const GosVfxMeshInstance* instances, unsigned instanceCount)
+{
+    for (unsigned i = 0; i < count; ++i)
+        meshIndices.emplace_back(uploads[i].indices, uploads[i].indices + uploads[i].indexCount);
+    meshInstances.insert(meshInstances.end(), instances, instances + instanceCount);
+}
 
 void vfx_test_bind_rng(std::uint32_t* state);
 extern "C" unsigned long long mc2_vfx_getEmitTotal();
@@ -479,6 +494,61 @@ extern "C" void gos_particle_bridge_flush(const GpuParticle* records, unsigned c
     ++borrowedCapture->calls;
     borrowedCapture->records.insert(borrowedCapture->records.end(), records, records + count);
     borrowedCapture->groups.insert(borrowedCapture->groups.end(), groups, groups + groupCount);
+}
+
+TEST_CASE_FIXTURE(FrozenPlatform, "vfx_frozen/mesh submaterials and polygon fans preserve RNG")
+{
+    mc2::gate::ScopedOverride<"MC2_VFX_ORACLE_SHAPE"> native{"1"};
+    using namespace MidLevelRenderer;
+    auto* shape = new MLRShape(2);
+    gos_PushCurrentHeap(MidLevelRenderer::Heap);
+    for (unsigned i = 0; i < 2; ++i) {
+        auto* prim = new MLR_I_PMesh;
+        const glm::vec3 positions[] = {{0,0,0}, {1,0,0}, {1,1,0}, {0,1,0}};
+        unsigned short indices[] = {0,1,2,3};
+        unsigned char lengths[] = {4};
+        prim->SetCoordData(positions, 4);
+        prim->SetSubprimitiveLengths(lengths, 1);
+        prim->SetIndexData(indices, 4);
+        MLRState state;
+        state.SetTextureHandle(11 + i);
+        state.SetAlphaMode(i == 0 ? MLRState::OneOneMode : MLRState::AlphaInvAlphaMode);
+        prim->SetReferenceState(state);
+        shape->Add(prim);
+        prim->DetachReference();
+    }
+    gos_PopCurrentHeap();
+    DrawScalableShapeInformation draw;
+    draw.shape = shape;
+    glm::mat4 transform(1.0f);
+    mc2::math::buildTranslation(transform, glm::vec3(17,23,31));
+    draw.shapeToWorld = &transform;
+    glm::vec3 scale(2.0f);
+    draw.scaling = &scale;
+    Stuff::RGBAColor color(0.2f,0.4f,0.6f,0.8f);
+    draw.paintMe = &color;
+    const auto frozen = Stuff::Random::GetState();
+    meshIndices.clear(); meshInstances.clear();
+    REQUIRE(gosFX::DrawNativeShape(draw));
+    REQUIRE(meshIndices.size() == 2);
+    REQUIRE(meshInstances.size() == 2);
+    for (const auto& indices : meshIndices)
+        CHECK(indices == std::vector<uint16_t>{0,1,2,0,2,3});
+    CHECK(meshInstances[0].mlrTexHandle == 11);
+    CHECK(meshInstances[1].mlrTexHandle == 12);
+    CHECK(meshInstances[0].blendMode == 2);
+    CHECK(meshInstances[1].blendMode == 0);
+    CHECK(meshInstances[0].modelToWorld[12] == 17);
+    CHECK(meshInstances[0].modelToWorld[13] == 23);
+    CHECK(meshInstances[0].modelToWorld[14] == 31);
+    CHECK(meshInstances[0].scale == 2.0f);
+    CHECK(meshInstances[1].rgba[3] == 0.8f);
+    meshIndices.clear(); meshInstances.clear();
+    REQUIRE(gosFX::DrawNativeShape(draw));
+    CHECK(meshIndices.empty());
+    CHECK(meshInstances.size() == 2);
+    CHECK(Stuff::Random::GetState() == frozen);
+    shape->DetachReference();
 }
 
 TEST_CASE_FIXTURE(FrozenPlatform, "vfx_frozen/CardCloud draw flush and clip leave RNG unchanged")
