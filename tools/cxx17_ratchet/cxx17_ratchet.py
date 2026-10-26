@@ -64,6 +64,14 @@ LG19_EXEMPT_PREFIXES = ("Gates/",)
 STRICT_FILE_IDIOMS = ("LG19", "LG20")
 # LG20: the gate module, its unit test and the generated registry header name gates as rows and fixtures, not as raw reads.
 LG20_EXEMPT = ("Gates/", "tests/unit/test_gate.cpp", "RenderCore/RendererFeatureRegistry.h")
+# Platform C API adapters preserve null-terminated parameters, sentinel results and OS entry points.
+PLATFORM_API_EXEMPT = {
+    "GameOS/include/platform_io.h": ("LG06", "LG11"),
+    "GameOS/src/platform_io.cpp": ("LG05", "LG06", "LG11"),
+    "GameOS/include/platform_winbase.h": ("LG11",),
+    "GameOS/src/platform_winbase.cpp": ("LG05", "LG06", "LG11"),
+    "GameOS/include/platform_stdlib.h": ("LG06",),
+}
 EXTS = (".cpp", ".cc", ".cxx", ".h", ".hpp", ".hxx", ".inl")
 EXCLUDE_PARTS = {"3rdparty", "graphify-out", "__pycache__", ".git", "out", "Tracy"}
 
@@ -345,7 +353,7 @@ def scan_text(text: str, path: str = "") -> dict:
                 hits["LG10"].append(l1)
                 used.update((j, k))
                 break
-    return {k: sorted(set(v)) for k, v in hits.items()}
+    return {k: sorted(set(v)) for k, v in hits.items() if k not in PLATFORM_API_EXEMPT.get(path, ())}
 
 
 # ---------------------------------------------------------------- driver

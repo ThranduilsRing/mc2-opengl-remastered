@@ -10,13 +10,13 @@
 #include <cctype>
 #include <cerrno>
 
-std::string mc2_native_path(const char* input)
+std::string mc2_native_path(std::string_view input)
 {
     std::string normalized(input);
     std::replace(normalized.begin(), normalized.end(), '\\', '/');
     const std::filesystem::path path(normalized);
     std::filesystem::path result = path.root_path();
-    auto equal = [](const std::string& a, const std::string& b) {
+    auto equal = [](std::string_view a, std::string_view b) {
         return a.size() == b.size() && std::equal(a.begin(), a.end(), b.begin(), [](unsigned char x, unsigned char y) {
             return std::tolower(x) == std::tolower(y);
         });

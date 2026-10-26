@@ -22,6 +22,14 @@ def n(src, idiom, path="x.cpp"):
 
 
 class Idioms(unittest.TestCase):
+    def test_platform_c_api_exemptions_are_narrow(self):
+        src = "int mc2_stat(const char* path) { return -1; }\nGetFileAttributesA(path);\nnew Foo;\n"
+        for idiom in ("LG05", "LG06", "LG11"):
+            self.assertGreater(n(src, idiom, "GameOS/src/ordinary.cpp"), 0)
+            self.assertEqual(n(src, idiom, "GameOS/src/platform_io.cpp"), 0)
+        self.assertEqual(n(src, "LG03", "GameOS/src/platform_io.cpp"), 1)
+        self.assertGreater(n(src, "LG05", "GameOS/include/platform_stdlib.h"), 0)
+
     def test_lg01(self):
         self.assertEqual(n("T* p = NULL;\n// NULL in comment\nconst char* s = \"NULL\";\n", "LG01"), 1)
         self.assertEqual(n("#define NULL 0\nnullptr;\n", "LG01"), 0)

@@ -19,7 +19,8 @@
     #define _fileno fileno
     inline int _dup2(int source, int destination) { return dup2(source, destination) < 0 ? -1 : 0; }
     #include <string>
-    std::string mc2_native_path(const char* path);
+    #include <string_view>
+    std::string mc2_native_path(std::string_view path);
     int mc2_open(const char* path, int flags, mode_t mode = 0666);
     int mc2_stat(const char* path, struct stat* info);
 #endif
