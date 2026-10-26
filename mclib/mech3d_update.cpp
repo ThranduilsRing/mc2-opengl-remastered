@@ -369,7 +369,7 @@ long Mech3DAppearance::update (bool animate)
 	{
 		mc2::fmt::print_out("[ANIM_STATE] tick={} actor={} type={} gesture={}->{} frame={:.3f}->{:.3f} frames={:.0f} rate={:.1f} idle={:.3f} ready={} reverse={} goal={} oldGoal={} combat={}\n",
 			turn, actorHandle_, mechType->name, previousGesture, unitAnim().currentGestureId,
-			previousFrame, unitAnim().currentFrame, mechType->getNumFrames(unitAnim().currentGestureId),
+			previousFrame, unitAnim().currentFrame, static_cast<float>(mechType->getNumFrames(unitAnim().currentGestureId)),
 			unitAnim().mechFrameRate, unitAnim().idleTime, unitAnim().atTransitionToNextGesture,
 			unitAnim().inReverse, unitAnim().currentStateGoal, unitAnim().oldStateGoal, unitAnim().inCombatMode);
 	}
