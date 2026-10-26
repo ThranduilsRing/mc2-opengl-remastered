@@ -96,7 +96,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/fog_oob.frag",
-        "line": 26,
+        "line": 23,
         "role": "depthTex",
         "std": null,
         "type": "sampler2D",
@@ -549,7 +549,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/fog_oob.frag",
-        "line": 38,
+        "line": 35,
         "role": "FogOobParams",
         "std": "std140",
         "type": "uniform",

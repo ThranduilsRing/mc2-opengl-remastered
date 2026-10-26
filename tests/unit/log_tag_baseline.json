@@ -7861,7 +7861,11 @@
     "center",
     "ground",
     "projected",
-    "sun"
+    "sun",
+    "texel_wu",
+    "extent",
+    "spheres",
+    "mech_radius"
    ],
    "count": 1
   },
