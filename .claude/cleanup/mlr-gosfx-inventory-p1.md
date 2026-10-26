@@ -180,3 +180,98 @@ remaining unpictured leaf types. Only then promote supported classes and remove
 their CPU Draw paths. Point/Shard proxies cannot ride a blanket master flip.
 No gate flips, no new accepted class parity, no live CPU path removal in this follow-up.
 One lane install remains; auxiliary installs created: zero; disk freed: zero.
+
+
+## P2 relaunch: repeatable rejection and dead-route retirement (2026-10-26)
+
+Rebased onto merged nifty `b91d03ebc` after window 67 brought the original
+`bd8597a66` checkpoint in. New engine/proof base `254f9f5493db`; final selector
+retirement `d2447791c`. Evidence: `p2-resume-summary.json`,
+`owner-montage-p2.png`, `p2-accepted-base-oracle/`, `p2-all-targets.log`, and
+`p2-determinism-final.log` under the existing P1 proof directory.
+
+**No native class accepted; master remains OFF; no live CPU class renderer deleted.**
+All six CPU/GPU arms are now byte-repeatable across launches, with clean matching
+fingerprints and Vulkan present readbacks. The authored Card route still drops
+PPC/laser head flares; flight/impact also differ visibly. Exact world-corner/UV
+submission is insufficient. Native projection/depth/material behavior needs a
+pass-level comparison against MLR before these CPU references can be removed.
+No depth-disable workaround, size floor, tolerance or replacement look was adopted.
+The master experiment deliberately held Tube/Shape selectors at zero to isolate
+Cards: it does not establish new native Tube/Shape parity.
+
+The repeat root cause found here is vegetation wind: `GameCamera::render` passed
+wall-clock `gos_GetElapsedTime()` through `GosVegetation::flush` to the vegetation
+vertex shader, even while the oracle froze simulation/gait. Wind now uses zero
+under the existing `MC2_SMOKE_FREEZE_ANIM` switch; play retains its normal clock.
+All 24 images (three scenes, two arms, two launches, two bookmarks) repeat exactly
+at their corresponding bookmark. Within a sweep, the two frozen poses still
+have deterministic beam differences (PPC CPU 13,505 pixels; flight 7,283;
+impact 3). Their separate cause is not established; do not claim every render
+input is frozen or grade a duplicate as an independent same-frame control.
+
+Deletions in this relaunch:
+- The uncalled `DrawScreenQuadsInformation` / `MLRClipper::DrawScreenQuads` /
+  sorter `AddScreenQuads` closure and its quad draw/unimplemented alpha-sort
+  dispatch: 174 engine lines deleted, 2 added. Internal SortData dispatch is
+  compacted; serialized effect class IDs and MLR state formats are retained.
+- Incorrect PointCloud square and ShardCloud billboard candidate branches:
+  180 engine lines deleted, 2 added. Both selectors now retain their authored
+  CPU primitives in every master setting, including all Shard alignment modes.
+- The now-uncalled render-selector getter: 27 engine lines deleted. Removed
+  `MC2_VFX_ORACLE_RENDER` from the typed gate table/readers/commands and retained
+  feature ordinal 15 as Retired. Historical oracle records still validate their
+  original selector value. This is a retired default-OFF gate, not a promotion.
+
+The freshly built mc2fx tool inventories **904 stock specifications**: Card 136,
+CardCloud 388, PointCloud 2, ShardCloud 24, Tube 31, Shape 10, ShapeCloud 9,
+DebrisCloud 34, EffectCloud 39 and Effect 231; PertCloud 0. Point/Shard are not
+rare: earlier force-fire traces instantiate Missile_Flare and Shards0008.
+Shape/ShapeCloud/DebrisCloud have content but no populated fixture in this
+force-fire plan. PertCloud remains loadable by mods and is not dead from its
+zero stock count. No shutdown class totals were available in the new early-exit
+capture logs; specification counts are not visible-coverage evidence.
+
+Proof at `254f9f5493db`: RelWithDebInfo game build; nine covering shader/VFX/MLR
+rows; frozen CPU 10,931 assertions and GPU 12,339 per vector; 128 oracle Python
+tests. All-targets checkpoint passes game/editor/viewer/mc2fx/preview/GUI,
+standalone projects and test builds. CPU/MLR deletion control: all 680 snapshots,
+1,439,488 bytes, byte-identical before/after; SHA256
+`d2312095ae3016048a372397ffde2a84ae3e588eb0c0e906c7ff679a6d8c36fa`.
+All 12 oracle logs have validation enabled and zero errors/warnings/VUIDs.
+
+The fired master OFF/ON pair matches **5,089 shared sim frames**, including strict
+chain `5070196a9b861a6e` and RNG counts `8543/1168/154237`, animation RNG 27.
+The tool's overall baseline verdict is FAIL: copied/pinned install data fingerprint
+`174547931cb5fc53` differs from recorded `0dfcd001ffde73d0`; its stock component
+also differs. Baselines were not changed. Camera-dependent legacy effect ordering
+remains relevant to later simulation migration; no Execute/emission/RNG ordering
+or weapon/Carnage completion logic changed here.
+
+Next packet: isolate native Card projection/depth/material loss using the now
+repeatable flare captures, then remove each accepted CPU Draw route and promote
+only its supported routing. Implement original Point/Shard primitives next; retain
+mesh/cloud/Pert fallbacks until their populated class fixtures exist. Keep the
+P3-P5 codec, MLR/editor/tools and authoritative-lifetime plan above.
+
+Final selector-retirement checks: engine `d2447791cb39` builds and deploys cleanly,
+693 pinned GLBs verified/cooked, 3,764-row manifest. Five final gate/VFX/MLR rows
+pass; 128 Python tests pass; corrected final frozen tests pass CPU 10,931 and
+GPU 12,339 assertions. A stale typed override in the separate lifecycle test
+driver was removed after the compiler caught it. The final CPU snapshot still
+matches all 680 pre-deletion records exactly. This follow-up removes 382 engine
+lines, adds 7 (net -375); no live CPU class renderer is retired.
+
+**Smoke-lite FAIL:** mc2_01 reaches the 70.4 s wall cap before its first frame;
+mc2_10 passes with 489 frames. Both validation logs have zero errors/warnings.
+The advisory deploy-coherence scan also exceeds 30 s; the actual deploy's full
+isolation/hash/kit/manifest checks and smoke's 3,764-file staleness check pass.
+Raw smoke artifacts are copied into `p2-smoke-lite-artifacts/` in the proof
+folder. No timeout, threshold or stored baseline was relaxed.
+
+Tool slowness: the shared-header checkpoint rebuilds 1,502 root steps (472 s).
+Removing one gate index then recompiles 484 engine steps; the importer's changed
+binary identity forces another 693-GLB cook despite unchanged model inputs.
+Separate the cook recipe identity from unrelated gate/header binary changes.
+Only `E:/mc2-installs/claude-mlr-retire-p1` remains from this lane; auxiliary
+installs created zero, disk freed zero. No game/build child remains at handoff.

@@ -270,3 +270,28 @@ by a live foreign width-two batch lease; the local harness default is fixed to
 one core (`03415190f`). Do not erase the CPU reference or enable the master until
 new populated captures pass. Keep Point/Shard on their CPU primitives when the
 master eventually promotes cards; their current GPU proxies are not parity.
+
+
+### P2 relaunch checkpoint and next packet (2026-10-26)
+
+Window 67 base `b91d03ebc`; authored-card proof engine `254f9f5493db`.
+See the inventory's relaunch section and `owner-montage-p2.png` in the existing
+proof directory. Vegetation wind used wall time during frozen captures; honoring
+the existing animation-freeze switch makes all six arms repeat byte-for-byte.
+Within-sweep beam differences remain deterministic and unexplained. Native Cards
+still lose head/impact flares, so no class is promoted and the CPU Draw references
+remain. Point/Shard's inaccurate GPU proxies and the dead screen-quad API are
+removed. The unused `MC2_VFX_ORACLE_RENDER` selector is retired, ordinal retained.
+
+P2 next: resolve the first native Card color/depth/projection divergence in these
+repeatable captures; accept silhouettes/materials before deleting their CPU Draw
+routes and promoting the master. Then implement exact Point/Shard primitives.
+Stock Shape (10), ShapeCloud (9), DebrisCloud (34) and mod-loadable PertCloud
+(zero stock specs) need populated fixtures; their serialization/runtime closure
+stays until that evidence exists. Tube's 31 stock specs need supported-profile,
+material and fallback coverage; the current master-only A/B held Tube/Shape OFF.
+Continue P3-P5 above for mesh/cloud draw retirement, independent asset decoding,
+MLR removal across editor/tools, then GPU simulation only after authoritative
+lifetimes and camera-dependent effect ordering are separated. The fired OFF/ON
+pair's 5,089 shared strict sim frames match, but its stored data baseline rejects
+the copied kit install; that baseline was not changed.
