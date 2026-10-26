@@ -790,11 +790,11 @@ void gosFX::CardCloud::DrawState(DrawInfo *info)
 			MidLevelRenderer::MLRState state;
 			state.Combine(info->m_state, spec->m_state);
 			const auto alpha = state.GetAlphaMode();
-			const bool additive = alpha == MidLevelRenderer::MLRState::OneOneMode ||
-			                      alpha == MidLevelRenderer::MLRState::AlphaOneMode;
+			const bool additive = alpha == MidLevelRenderer::MLRState::OneOneMode;
+			const int blend = additive ? 2 : alpha == MidLevelRenderer::MLRState::AlphaOneMode ? 1 : 0;
 			auto& batcher = mc2::particles::Batcher::Instance();
 			batcher.BeginGroup(state.GetTextureHandle(), 0, 0, 1, 1,
-			                   additive ? 2 : 0, 0xffffffffu);
+			                   blend, 0xffffffffu);
 			for (unsigned i = 0; i < m_activeParticleCount; ++i) {
 				if (GetParticle(i)->m_age >= 1.0f) continue;
 				for (unsigned corner : {0u, 1u, 2u, 0u, 2u, 3u}) {

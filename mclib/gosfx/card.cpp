@@ -520,10 +520,10 @@ void gosFX::Card::Draw(DrawInfo *info)
 		// geometry ABI shares GpuParticle's stride and bypasses billboard tuning.
 		auto& batcher = mc2::particles::Batcher::Instance();
 		const auto alpha = state.GetAlphaMode();
-		const bool additive = alpha == MidLevelRenderer::MLRState::OneOneMode ||
-		                      alpha == MidLevelRenderer::MLRState::AlphaOneMode;
+		const bool additive = alpha == MidLevelRenderer::MLRState::OneOneMode;
+		const int blend = additive ? 2 : alpha == MidLevelRenderer::MLRState::AlphaOneMode ? 1 : 0;
 		batcher.BeginGroup(state.GetTextureHandle(), 0, 0, 1, 1,
-		                   additive ? 2 : 0, 0xffffffffu);
+		                   blend, 0xffffffffu);
 		for (unsigned corner : {0u, 1u, 2u, 0u, 2u, 3u}) {
 			mc2::particles::GpuParticle vertex{};
 			const auto world = mc2::math::transformPoint(m_vertices[corner], local_to_world);
