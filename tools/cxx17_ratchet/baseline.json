@@ -187,7 +187,7 @@
   "mclib": {
    "LG01": 3,
    "LG02": 0,
-   "LG03": 546,
+   "LG03": 500,
    "LG04": 15,
    "LG05": 111,
    "LG06": 528,
@@ -196,12 +196,12 @@
    "LG09": 2,
    "LG10": 16,
    "LG11": 47,
-   "LG12a": 115,
+   "LG12a": 95,
    "LG12b": 177,
-   "LG13": 120,
+   "LG13": 117,
    "LG14": 52,
    "LG15": 0,
-   "LG16": 123,
+   "LG16": 103,
    "LG17": 86,
    "LG18": 36,
    "LG19": 0,
@@ -2731,58 +2731,58 @@
    "LG14": 3
   },
   "mclib/mlr/mlr_i_c_det_pmesh.cpp": {
-   "LG03": 8
+   "LG03": 6
   },
   "mclib/mlr/mlr_i_c_det_tmesh.cpp": {
-   "LG03": 7
+   "LG03": 5
   },
   "mclib/mlr/mlr_i_c_dt_pmesh.cpp": {
-   "LG03": 8
+   "LG03": 6
   },
   "mclib/mlr/mlr_i_c_dt_tmesh.cpp": {
-   "LG03": 7
+   "LG03": 5
   },
   "mclib/mlr/mlr_i_c_pmesh.cpp": {
-   "LG03": 9
+   "LG03": 7
   },
   "mclib/mlr/mlr_i_c_tmesh.cpp": {
-   "LG03": 7
+   "LG03": 5
   },
   "mclib/mlr/mlr_i_det_pmesh.cpp": {
-   "LG03": 8
+   "LG03": 6
   },
   "mclib/mlr/mlr_i_det_tmesh.cpp": {
-   "LG03": 7
+   "LG03": 5
   },
   "mclib/mlr/mlr_i_dt_pmesh.cpp": {
-   "LG03": 12
+   "LG03": 10
   },
   "mclib/mlr/mlr_i_dt_tmesh.cpp": {
-   "LG03": 11
+   "LG03": 9
   },
   "mclib/mlr/mlr_i_l_det_pmesh.cpp": {
-   "LG03": 7
+   "LG03": 5
   },
   "mclib/mlr/mlr_i_l_det_tmesh.cpp": {
-   "LG03": 7
+   "LG03": 5
   },
   "mclib/mlr/mlr_i_l_dt_pmesh.cpp": {
-   "LG03": 7
+   "LG03": 5
   },
   "mclib/mlr/mlr_i_l_dt_tmesh.cpp": {
-   "LG03": 7
+   "LG03": 5
   },
   "mclib/mlr/mlr_i_l_pmesh.cpp": {
-   "LG03": 7
+   "LG03": 5
   },
   "mclib/mlr/mlr_i_l_tmesh.cpp": {
-   "LG03": 7
+   "LG03": 5
   },
   "mclib/mlr/mlr_i_mt_pmesh.cpp": {
-   "LG03": 14
+   "LG03": 12
   },
   "mclib/mlr/mlr_i_pmesh.cpp": {
-   "LG03": 12,
+   "LG03": 6,
    "LG13": 1,
    "LG17": 1
   },
@@ -2790,7 +2790,7 @@
    "LG13": 2
   },
   "mclib/mlr/mlr_i_tmesh.cpp": {
-   "LG03": 5,
+   "LG03": 3,
    "LG13": 1,
    "LG18": 1
   },
@@ -2799,12 +2799,6 @@
   },
   "mclib/mlr/mlr_i_tmesh_cast.cpp": {
    "LG03": 2
-  },
-  "mclib/mlr/mlr_i_tmesh_internal.h": {
-   "LG13": 1
-  },
-  "mclib/mlr/mlr_i_tmesh_light.cpp": {
-   "LG12a": 19
   },
   "mclib/mlr/mlrambientlight.cpp": {
    "LG03": 2
@@ -2838,7 +2832,7 @@
    "LG14": 1
   },
   "mclib/mlr/mlrlightmap.cpp": {
-   "LG03": 21
+   "LG03": 18
   },
   "mclib/mlr/mlrlightmap.hpp": {
    "LG14": 1
@@ -2860,12 +2854,6 @@
   },
   "mclib/mlr/mlrprimitivebase.hpp": {
    "LG03": 1
-  },
-  "mclib/mlr/mlrprimitiveclipping.hpp": {
-   "LG03": 1,
-   "LG12a": 1,
-   "LG13": 1,
-   "LG16": 10
   },
   "mclib/mlr/mlrshape.cpp": {
    "LG03": 12,
@@ -2899,10 +2887,6 @@
   },
   "mclib/mlr/mlrtexturepool.hpp": {
    "LG06": 4
-  },
-  "mclib/mlr/mlrtriangleclipping.hpp": {
-   "LG13": 1,
-   "LG16": 10
   },
   "mclib/mlr/mlrtrianglecloud.cpp": {
    "LG03": 4
@@ -3449,7 +3433,7 @@
    "LG20": 3
   }
  },
- "head": "f7ccd854e",
+ "head": "08744f34d",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
