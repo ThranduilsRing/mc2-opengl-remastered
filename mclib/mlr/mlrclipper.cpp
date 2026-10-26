@@ -44,16 +44,6 @@ DrawEffectInformation::DrawEffectInformation()
 	clippingFlags.SetClippingState(0);
 };
 
-DrawScreenQuadsInformation::DrawScreenQuadsInformation()
-{
-	coords = nullptr;
-	colors = nullptr;
-	texCoords = nullptr;
-	onOrOff = nullptr;
-
-	nrOfQuads = 0;
-};
-
 //#############################################################################
 //###########################    MLRClipper    ################################
 //#############################################################################
@@ -703,67 +693,6 @@ void
 //
 }
 
-
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-//
-void
-	MLRClipper::DrawScreenQuads (DrawScreenQuadsInformation *dInfo)
-{
-//
-// Statistic timing function
-//
-
-	Check_Object(this);
-	Check_Object(dInfo);
-	// fx_trace v1 (plan v6 §1 CRITICAL-2): pre-gate enqueue counter.
-	FX_TRACE_MLR_ENQUEUE("DrawScreenQuads");
-	MC2_GOSFX_GATE_EARLY_RETURN();
-
-	gos_GetViewport( &ViewportScalars::MulX, &ViewportScalars::MulY, &ViewportScalars::AddX, &ViewportScalars::AddY );
-
-	GOSVertex *vertices	= allVerticesToDraw.GetActualVertexPool();
-
-	int i, j;
-
-	dInfo->currentNrOfQuads = 0;
-
-	for(i=0,j=0;i<dInfo->nrOfQuads;i++)
-	{
-		if(dInfo->onOrOff[i] == true)
-		{
-			dInfo->currentNrOfQuads += 4;
-			for(;j<dInfo->currentNrOfQuads;j++)
-			{
-				int offset = (i<<2) + (j&3);
-
-				Verify(dInfo->coords[offset].x >= 0.0f && dInfo->coords[offset].x <= dInfo->coords[offset].w );
-				Verify(dInfo->coords[offset].y >= 0.0f && dInfo->coords[offset].y <= dInfo->coords[offset].w );
-				Verify(dInfo->coords[offset].z >= 0.0f && dInfo->coords[offset].z <= dInfo->coords[offset].w );
-
-				vertices[j].x = (1.0f-dInfo->coords[offset].x)*ViewportScalars::MulX + ViewportScalars::AddX;
-				vertices[j].y = (1.0f-dInfo->coords[offset].y)*ViewportScalars::MulY + ViewportScalars::AddY;
-				vertices[j].z = dInfo->coords[offset].z;
-				vertices[j].rhw = dInfo->coords[offset].w;
-
-				vertices[j].argb = GOSCopyColor(dInfo->colors + offset);
-
-				vertices[j].u = dInfo->texCoords[offset][0];
-				vertices[j].v = dInfo->texCoords[offset][1];
-
-			}
-		}
-	}
-
-	if(j>0)
-	{
-		allVerticesToDraw.Increase(j);
-
-		sorter->AddScreenQuads(vertices, dInfo);
-	}
-//
-// End timing function
-//
-}
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
