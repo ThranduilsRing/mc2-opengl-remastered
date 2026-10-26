@@ -2,6 +2,7 @@
 // Static rows survive frame resets; dynamic rows and dedup caches reset together.
 #pragma once
 #include <cstdint>
+#include <span>
 struct TG_HWLightsData;
 namespace mc2::vkLights {
 void start();
@@ -37,6 +38,8 @@ bool active();
         // (needs complete TG_HWLightsData for sizeof).
         const void* getLightDataPtr();
         uint64_t    getLightDataBytes();
+        std::span<const uint64_t> getLightRowGenerations();
+        uint64_t getLightDataRevision();
 uint32_t addLightDataStructure(TG_HWLightsData* lightData);
 uint32_t addLightDataStructureWithPerActorColor(TG_HWLightsData* lightData);
 }
