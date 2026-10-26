@@ -1,6 +1,7 @@
 #include "doctest.h"
 #include "contract_test_support.h"
 #include "contract_process.h"
+#include "Gates/gate_name.h"
 #include <fstream>
 
 TEST_CASE("vfx_trace/combat trace assertions pass in an isolated diagnostic sink")

@@ -1,5 +1,6 @@
 #include"gosfxheaders.hpp"
 #include "particles/batcher.h"
+#include <mdspan>
 //==========================================================================//
 // File:	 gosFX_gosFX::PertCloud.cpp										//
 // Contents: Base gosFX::PertCloud Component								//
