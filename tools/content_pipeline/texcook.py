@@ -168,7 +168,8 @@ def _texconv_level(level: np.ndarray, fmt: str, workdir: Path) -> bytes:
     out.unlink(missing_ok=True)
     r = subprocess.run([str(TEXCONV), "-nologo", "-nogpu", "-y", "-dx10", "--ignore-srgb", "-m", "1",
                         "-f", fmt, "-ft", "dds", "-o", str(workdir), str(src)],
-                       capture_output=True, text=True, **console_child.child_kwargs(redirected=True))
+                       capture_output=True, text=True, env=dict(os.environ, OMP_NUM_THREADS="1"),
+                       **console_child.child_kwargs(redirected=True))
     if r.returncode or not out.is_file():
         raise RuntimeError(f"texconv {fmt} failed: {r.stdout[-400:]} {r.stderr[-400:]}")
     data = out.read_bytes()

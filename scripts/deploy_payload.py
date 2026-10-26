@@ -172,7 +172,7 @@ def ensure_concrete_detail(src_root, cooker=subprocess.run):
     log("concrete detail KTX2s absent: cooking them (about 15 s)")
     try:
         r = cooker([sys.executable, os.path.join(src_root, CONCRETE_DETAIL_COOK), "--src", CONCRETE_DETAIL_SRC, "--out", out],
-                   capture_output=True, text=True, timeout=300, **console_child.child_kwargs(redirected=True))
+                   capture_output=True, text=True, timeout=300, env=dict(os.environ, OMP_NUM_THREADS="1"), **console_child.child_kwargs(redirected=True))
     except subprocess.TimeoutExpired:
         log("[DEPLOY] WARN: concrete detail cook timed out after 300 s (skipped)")
         return
@@ -1152,7 +1152,7 @@ def ensure_engine_normal_cooks(target_dir, cooker=subprocess.run):
     log(f"detail-normal sidecars absent or stale for layers {stale}: cooking them (about 40 s)")
     try:
         r = cooker([sys.executable, str(ENGINE_NORMAL_COOK), "--engine-normals", tex] + ([] if current else ["--force"]),
-                   capture_output=True, text=True, timeout=900, **console_child.child_kwargs(redirected=True))
+                   capture_output=True, text=True, timeout=900, env=dict(os.environ, OMP_NUM_THREADS="1"), **console_child.child_kwargs(redirected=True))
     except subprocess.TimeoutExpired:
         log("[DEPLOY] WARN: detail-normal cook timed out after 900 s (skipped; the engine imports the TGAs)")
         return

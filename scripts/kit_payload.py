@@ -50,7 +50,7 @@ def reconcile_stock_textures(target_dir, inventory=None, jobs=1):
             f"mc2-stock-v1 {value:016x}\n", encoding="ascii")
         return int(path.suffix.casefold() == ".ktx2")
 
-    with ThreadPoolExecutor(max_workers=jobs) as pool:
+    with ThreadPoolExecutor(max_workers=max(1, min(jobs, int(Path("A:/Games/mc2-ops/JOBS").read_text())))) as pool:
         count = sum(pool.map(reconcile, sorted({**sources, **cooks}.items())))
     print(f"[deploy_payload] stock texture receipts verified/backfilled: {count}", flush=True)
     return count
@@ -161,7 +161,7 @@ def finish(target_dir, manifest, tool, cooker=subprocess.run):
     outputs = set()
     for rel in models:
         result = cooker([str(tool), (KIT_REL / rel).as_posix(), *IMPORT_ARGS],
-                        cwd=target, capture_output=True, text=True, timeout=120,
+                        cwd=target, capture_output=True, text=True, timeout=120, env=dict(os.environ, OMP_NUM_THREADS="1"),
                         **console_child.child_kwargs(redirected=True))
         if result.returncode:
             raise ValueError(f"industrial native cook failed: {rel}: {result.stderr[-300:]}")

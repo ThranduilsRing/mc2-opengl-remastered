@@ -68,6 +68,7 @@ def main():
     # Engine: tg_import_dump runs the real import bake; MC2_MECH_SKEL_BONE_DUMP writes
     # bones. MC2_MECH_IMPORT_FORCE_CLIP/_FRAME pose the bake to the same clip frame.
     env = os.environ.copy()
+    env["OMP_NUM_THREADS"] = "1"
     env["MC2_MECH_SKEL_BONE_DUMP"] = str(engine_json)
     if posed:
         env["MC2_MECH_IMPORT_FORCE_CLIP"] = args.clip

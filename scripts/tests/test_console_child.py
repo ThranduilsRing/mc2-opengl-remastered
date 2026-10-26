@@ -95,7 +95,7 @@ def test_parent_with_console_behaves_like_before():
 
 def test_kwargs_passthrough_when_console_present(monkeypatch):
     monkeypatch.setattr(console_child, "has_console", lambda: True)
-    assert console_child.child_kwargs(cwd="x", env={"a": "b"}) == {"cwd": "x", "env": {"a": "b"}}
+    assert console_child.child_kwargs(cwd="x", env={"a": "b"}) == dict(cwd="x", env={"a": "b"}, **({"creationflags": subprocess.BELOW_NORMAL_PRIORITY_CLASS} if sys.platform == "win32" else {}))
 
 
 @win32
@@ -103,7 +103,7 @@ def test_kwargs_forward_std_handles_when_headless(monkeypatch):
     monkeypatch.setattr(console_child, "has_console", lambda: False)
     monkeypatch.setattr(console_child, "_adopt_shared_console", lambda: False)
     kw = console_child.child_kwargs(creationflags=0x200, stderr=subprocess.STDOUT)
-    assert kw["creationflags"] == 0x200 | console_child.CREATE_NO_WINDOW
+    assert kw["creationflags"] == 0x200 | console_child.CREATE_NO_WINDOW | subprocess.BELOW_NORMAL_PRIORITY_CLASS
     assert kw["stderr"] == subprocess.STDOUT, "caller's explicit stream wins"
     assert "stdout" in kw and "stdin" in kw
 
@@ -115,7 +115,7 @@ def test_redirected_headless_adds_only_the_flag(monkeypatch):
     monkeypatch.setattr(console_child, "has_console", lambda: False)
     monkeypatch.setattr(console_child, "_adopt_shared_console", lambda: False)
     kw = console_child.child_kwargs(redirected=True)
-    assert kw == {"creationflags": console_child.CREATE_NO_WINDOW}
+    assert kw == {"creationflags": console_child.CREATE_NO_WINDOW | subprocess.BELOW_NORMAL_PRIORITY_CLASS}
     # background-launch: allow kw is console_child.child_kwargs(redirected=True) output under a patched has_console
     r = subprocess.run([sys.executable, "-c", "print('x')"], capture_output=True,
                        text=True, **kw)
@@ -123,9 +123,9 @@ def test_redirected_headless_adds_only_the_flag(monkeypatch):
 
 
 def test_redirected_with_console_adds_nothing(monkeypatch):
-    """The conhost-per-child incident: a consoled parent must add no flag at all."""
+    """The conhost-per-child incident: a consoled parent must add no window flag."""
     monkeypatch.setattr(console_child, "has_console", lambda: True)
-    assert console_child.child_kwargs(redirected=True) == {}
+    assert console_child.child_kwargs(redirected=True) == ({"creationflags": subprocess.BELOW_NORMAL_PRIORITY_CLASS} if sys.platform == "win32" else {})
 
 
 def test_nofocus_hidden_kwargs_follows_the_console_rule(monkeypatch):
@@ -148,7 +148,7 @@ SHARED = textwrap.dedent("""
     kw1 = console_child.child_kwargs()
     kw2 = console_child.child_kwargs()
     print('AFTER=%s' % console_child.has_console(), flush=True)
-    print('FLAG=%s' % (('creationflags' in kw1) or ('creationflags' in kw2)), flush=True)
+    print('FLAG=%s' % bool((kw1.get('creationflags', 0) | kw2.get('creationflags', 0)) & console_child.CREATE_NO_WINDOW), flush=True)
     print('RC=%d' % subprocess.run([sys.executable, '-c', {child!r}], **kw2).returncode, flush=True)
     print('RED=%s' % sorted(console_child.child_kwargs(redirected=True)), flush=True)
 """).format(scripts=str(ROOT / "scripts"), child=CHILD)
@@ -162,7 +162,7 @@ def test_consoleless_parent_adopts_one_shared_console_no_flag():
     assert "AFTER=True" in r.stdout
     assert "FLAG=False" in r.stdout, "no CREATE_NO_WINDOW once the console is shared"
     assert "RC=7" in r.stdout and "CHILD-OUT" in r.stdout and "CHILD-ERR" in r.stderr
-    assert "RED=[]" in r.stdout
+    assert "RED=['creationflags']" in r.stdout
 
 
 @win32

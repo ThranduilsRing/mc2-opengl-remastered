@@ -151,7 +151,7 @@ def child_kwargs(*, redirected: bool = False, **extra) -> dict:
     """Kwargs to splat into a console-child subprocess call.
 
     `subprocess.run(cmd, **console_child.child_kwargs())`. Returns `extra`
-    unchanged when a console is present (or off Windows); otherwise adds
+    unchanged off Windows; on Windows adds BELOW_NORMAL priority and, if needed,
     CREATE_NO_WINDOW plus explicit stdin/stdout/stderr forwarding so the child's
     output and exit code reach the caller. Keys already in `extra` win.
 
@@ -171,6 +171,7 @@ def child_kwargs(*, redirected: bool = False, **extra) -> dict:
             pass
     if sys.platform != "win32":
         return kw
+    kw["creationflags"] = kw.get("creationflags", 0) | subprocess.BELOW_NORMAL_PRIORITY_CLASS
     if not _SHARED_CONSOLE:
         if has_console():
             return kw
