@@ -115,6 +115,7 @@ def macro_states(lines):
         pp = re.match(r'^\s*#\s*(\w+)\s*(.*)', line)
         if pp:
             op, arg = pp.groups()
+            arg = strip_comments(arg).strip()
             if op in ('if', 'ifdef', 'ifndef'):
                 # Unknown feature conditions retain both branches for the census.
                 known = (arg not in defs if op == 'ifndef' else True if op == 'ifdef' and arg in defs
@@ -126,8 +127,12 @@ def macro_states(lines):
                 if active:
                     ends.append(dict(defs))
                 defs = dict(base)
-                stack[-1][4] = True
-                active = parent and (known is not True)
+                condition = (True if op == 'else' else
+                             bool(int(arg)) if arg in ('0', '1') else None)
+                stack[-1][4] = op == 'else'
+                active = parent and known is not True and condition is not False
+                stack[-1][3] = (True if known is True or condition is True else
+                                False if known is False and condition is False else None)
             elif op == 'endif' and stack:
                 base, ends, parent, known, has_else = stack.pop()
                 if active:

@@ -75,3 +75,13 @@ void main() { imageStore(destination, ivec2(0), texture(source, vec2(0)) * paylo
     for group in ('textures', 'separate_images', 'separate_samplers', 'samplers'):
         assert any('type mismatch' in e for e in slang_compile.validate_reflection(
             {group: [{'name': 'destination', 'binding': 1, 'set': 1, 'type': 'sampler'}]}, slang, tmp_path))
+
+
+@pytest.mark.parametrize('group', ['ubos', 'ssbos'])
+@pytest.mark.parametrize('type_id', [None, '', '_missing'])
+def test_abi_rejects_missing_buffer_type(group, type_id):
+    block = dict(name='BrokenBuffer', binding=0, set=0)
+    if type_id is not None:
+        block['type'] = type_id
+    assert slang_compile.validate_abi({group: [block], 'types': {
+        '_unrelated': {'name': 'gl_PerVertex', 'members': []}}})

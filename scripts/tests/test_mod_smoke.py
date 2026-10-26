@@ -330,3 +330,12 @@ def test_run_mod_preserves_head_default_and_forwards_explicit_reference(tmp_path
     assert seen[0][1]['MC2_SMOKE_ARTIFACT_ROOT'] == str(tmp_path / 'artifacts/mod')
 
 
+
+
+def test_old_cooked_cache_is_discarded_and_not_reused(tmp_path):
+    old = _w(tmp_path / 'cooked/model-old-version.mci', 'stale')
+    keep = _w(tmp_path / 'layers/mod/source.ase', 'source')
+    ms.discard_legacy_cooked_cache(tmp_path)
+    assert not old.parent.exists()
+    assert keep.read_text() == 'source'
+    ms.discard_legacy_cooked_cache(tmp_path)

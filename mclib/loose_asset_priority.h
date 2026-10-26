@@ -4,19 +4,37 @@
 #include <span>
 #include <string_view>
 #include <cstdint>
+#include <algorithm>
+#include <cctype>
 
-// Only a matching receipt proves cook provenance; a stock source alone does not.
+inline std::string assetLower(std::string_view text)
+{
+    std::string result(text);
+    std::transform(result.begin(), result.end(), result.begin(),
+        [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+    return result;
+}
+
+inline bool looseTexture(const std::filesystem::path& path)
+{
+    const auto ext = assetLower(path.extension().string());
+    return ext == ".ktx2" || ext == ".tga";
+}
+
+// Kit beats a loose texture only when it matches stock bytes receipted by deploy
+// from data/kit/stock-textures.json. Legacy general-cooker stamps are invalid.
 inline bool verifiedLooseTextureCook(const std::filesystem::path& path)
 {
     // Deploy also receipts byte-verified stock TGA sources (some are loose-only).
-    if (path.extension() != ".ktx2" && path.extension() != ".tga") return false;
+    if (!looseTexture(path)) return false;
     std::error_code error;
     const bool hasStamp = std::filesystem::exists(path.string() + ".cookstamp", error);
     if (error) return false;
     if (!hasStamp) return false;
     std::ifstream stamp(path.string() + ".cookstamp"); // path-audit: loose-only cook provenance
     uint64_t expected = 0;
-    if (!(stamp >> std::hex >> expected)) return false;
+    std::string version;
+    if (!(stamp >> version >> std::hex >> expected) || version != "mc2-stock-v1") return false;
     std::ifstream input(path, std::ios::binary); // path-audit: loose-only cook verification
     if (!input) return false;
     uint64_t hash = 14695981039346656037ull;
@@ -46,9 +64,10 @@ template<class StockReader>
 inline bool userLooseBuildingAsset(std::string_view name, std::string_view owner,
                                    StockReader&& readStock)
 {
-    if (!owner.empty() && owner != "mc2-industrial-kit") return true;
+    if (!owner.empty() && assetLower(owner) != "mc2-industrial-kit") return true;
     std::error_code error;
     if (!std::filesystem::is_regular_file(std::filesystem::path(name), error)) return false;
-    if (verifiedLooseTextureCook(std::filesystem::path(name))) return false;
+    if (looseTexture(std::filesystem::path(name)))
+        return !verifiedLooseTextureCook(std::filesystem::path(name));
     return looseAssetDiffers(name, readStock());
 }

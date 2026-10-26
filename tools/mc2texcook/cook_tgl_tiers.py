@@ -16,7 +16,6 @@ Usage:
 import argparse, io, subprocess, sys, tempfile, time, zipfile
 from pathlib import Path
 from PIL import Image
-from mc2texcook import record_cook
 
 KTX = r"A:/Games/mc2-tools/ktx/ktx.exe"
 
@@ -40,7 +39,6 @@ def _ktx_cook(img: Image.Image, dst: Path, srgb: bool):
                                    f"{(r.stderr or r.stdout).strip()[:200]}")
 
 
-    record_cook(dst)
 
 
 def _resized(img: Image.Image, cap: int) -> Image.Image:

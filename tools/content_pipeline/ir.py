@@ -133,6 +133,7 @@ class Primitive:
     tangents: np.ndarray | None = None     # (n,4) xyz unit, w = +-1 bitangent sign
     uv0: np.ndarray | None = None          # (n,2) TG texture space
     color0: np.ndarray | None = None       # (n,4) float 0..1 (stock lighting tags)
+    uv1: np.ndarray | None = None          # (n,2) authored glass cell IDs
 
 
 @dataclass
@@ -342,7 +343,7 @@ def check_primitive(asset_id, mesh_name, prim, material_count):
     if not 0 <= prim.material < material_count:
         raise ValueError(f"{where}: material slot {prim.material} missing")
     for name, arr, width in (("normals", prim.normals, 3), ("tangents", prim.tangents, 4),
-                             ("uv0", prim.uv0, 2), ("color0", prim.color0, 4)):
+                             ("uv0", prim.uv0, 2), ("uv1", prim.uv1, 2), ("color0", prim.color0, 4)):
         if arr is not None and (arr.shape != (n, width) or not np.isfinite(arr).all()):
             raise ValueError(f"{where}: {name} must be finite ({n},{width})")
     if not np.isfinite(prim.positions).all():
@@ -369,7 +370,8 @@ def transform_primitive(prim: Primitive, matrix) -> Primitive:
     indices = prim.indices if det > 0 else prim.indices[:, [0, 2, 1]]   # a mirror keeps faces front-facing
     return Primitive(positions, indices.copy(), prim.material, normals, tangents,
                      None if prim.uv0 is None else prim.uv0.copy(),
-                     None if prim.color0 is None else prim.color0.copy())
+                     None if prim.color0 is None else prim.color0.copy(),
+                     None if prim.uv1 is None else prim.uv1.copy())
 
 
 def _ray_hits(origins, dirs, tris, chunk=256):
@@ -479,7 +481,7 @@ def to_json(asset: Asset) -> dict:
                 "meshes": [{"name": m.name, "primitives": [
                     {"material": p.material, "positions": _arr(p.positions), "indices": _arr(p.indices),
                      "normals": _arr(p.normals), "tangents": _arr(p.tangents), "uv0": _arr(p.uv0),
-                     "color0": _arr(p.color0)} for p in m.primitives]} for m in s.meshes]}
+                     "color0": _arr(p.color0), "uv1": _arr(p.uv1)} for p in m.primitives]} for m in s.meshes]}
     mats = []
     for m in asset.materials:
         d = dict(m.__dict__)
@@ -513,7 +515,7 @@ def from_json(d: dict) -> Asset:
                         n.get("extras", {})) for n in s["nodes"]],
             meshes=[Mesh(m["name"], [Primitive(_unarr(p["positions"]), _unarr(p["indices"]), p["material"],
                                                _unarr(p["normals"]), _unarr(p["tangents"]), _unarr(p["uv0"]),
-                                               _unarr(p["color0"])) for p in m["primitives"]]) for m in s["meshes"]])
+                                               _unarr(p["color0"]), _unarr(p.get("uv1"))) for p in m["primitives"]]) for m in s["meshes"]])
     mats = []
     for m in d["materials"]:
         m = dict(m)

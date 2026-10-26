@@ -302,7 +302,7 @@ def read_gltf(path, *, frame="gltf", wu_per_unit=1.0, yaw_degrees=0.0, extract_d
                 positions=pos.astype(np.float64), indices=idx.reshape(-1, 3).astype(np.int64), material=mat,
                 normals=normals, tangents=opt("TANGENT", 4),
                 uv0=None if uv is None else np.stack([uv[:, 0], 1.0 - uv[:, 1]], axis=1),
-                color0=opt("COLOR_0", 4)))
+                uv1=opt("TEXCOORD_1", 2), color0=opt("COLOR_0", 4)))
         mesh_cache[mi] = len(scene.meshes)
         scene.meshes.append(mesh)
         return mesh_cache[mi]
@@ -483,7 +483,7 @@ def write_runtime_glb(scene: Scene, materials: list[Material], texture_names: di
         # glTF material splits may share full-mesh accessors. Emit only vertices
         # referenced by this primitive, preserving every corner attribute exactly.
         referenced, remap = np.unique(prim.indices, return_inverse=True)
-        for field in ("positions", "normals", "tangents", "uv0", "color0"):
+        for field in ("positions", "normals", "tangents", "uv0", "uv1", "color0"):
             value = getattr(prim, field)
             if value is not None:
                 setattr(prim, field, value[referenced])
@@ -499,6 +499,8 @@ def write_runtime_glb(scene: Scene, materials: list[Material], texture_names: di
         elif prim.material in texture_names and materials[prim.material].base_color is None:
             # A uniform material factor is cooked as a 1x1 image; it needs no authored UVs.
             attrs["TEXCOORD_0"] = b.add(np.zeros((len(prim.positions), 2), "<f4"), "VEC2", 5126, 34962)
+        if prim.uv1 is not None:
+            attrs["TEXCOORD_1"] = b.add(prim.uv1.astype("<f4"), "VEC2", 5126, 34962)
         if prim.tangents is not None:
             attrs["TANGENT"] = b.add(prim.tangents.astype("<f4"), "VEC4", 5126, 34962)
         if prim.color0 is not None:

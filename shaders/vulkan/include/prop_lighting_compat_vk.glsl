@@ -2,7 +2,7 @@
 // and local pools. Specular requires a valid authored ORM sidecar.
 #include "prop_night_vk.glsl"
 vec3 propAddWindowEmission(vec3 encodedColor, vec3 emission) {
-    return propEncodeColor(min(propDecodeColor(encodedColor) + emission, vec3(1.0)));
+    return propEncodeColor(propDecodeColor(encodedColor) + emission);
 }
 // Reuse the legacy path's pool walk when blending authored coverage.
 vec3 propAuthoredColor(SurfaceMaterial s, bool alphaTest, bool authoredOrm, vec3 poolLight) {

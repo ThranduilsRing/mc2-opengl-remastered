@@ -151,7 +151,14 @@ def validate_abi(raw, root=ROOT, check_bindings=False):
     sys.path.insert(0, str(ROOT / 'tools'))
     import gpu_abi_gen as abi
     types = raw.get('types', {})
-    pending = [b['type'] for group in ('ubos', 'ssbos') for b in raw.get(group, []) if 'type' in b]
+    pending = []
+    for group in ('ubos', 'ssbos'):
+        for block in raw.get(group, []):
+            type_id = block.get('type')
+            if not isinstance(type_id, str) or not type_id:
+                errors.append(f"gpu_abi: {group} {block.get('name')} missing buffer type")
+            else:
+                pending.append(type_id)
     physical = set()
     while pending:
         type_id = pending.pop()

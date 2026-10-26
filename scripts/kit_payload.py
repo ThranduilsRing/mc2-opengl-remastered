@@ -22,15 +22,17 @@ def reconcile_stock_textures(target_dir, inventory=None, jobs=1):
     never trusts paired source existence, target art, or MOD overlay contents.
     Unknown recipes and mismatched bytes retain user priority.
     """
-    tools = Path(__file__).resolve().parents[1] / "tools/mc2texcook"
-    sys.path.insert(0, str(tools))
-    import mc2texcook
     target = Path(target_dir)
     if inventory is None:
         inventory = json.loads((Path(__file__).resolve().parents[1] /
             "data/kit/stock-textures.json").read_text())
     sources = inventory["sha256"]
     cooks = inventory["cooked_sha256"]
+
+    # Invalidate legacy cooker stamps and receipts for removed/unpinned files.
+    for stamp in (target / "data/tgl").rglob("*"):
+        if stamp.is_file() and stamp.name.casefold().endswith(".cookstamp"):
+            stamp.unlink()
 
     def reconcile(item):
         rel, expected = item
@@ -41,8 +43,12 @@ def reconcile_stock_textures(target_dir, inventory=None, jobs=1):
         accepted = [expected] if isinstance(expected, str) else expected
         if hashlib.sha256(data).hexdigest() not in accepted:
             return 0
-        mc2texcook.record_cook(path, verified_bytes=data)
-        return int(path.suffix == ".ktx2")
+        value = 14695981039346656037
+        for byte in data:
+            value = ((value ^ byte) * 1099511628211) & 0xffffffffffffffff
+        Path(str(path) + ".cookstamp").write_text(
+            f"mc2-stock-v1 {value:016x}\n", encoding="ascii")
+        return int(path.suffix.casefold() == ".ktx2")
 
     with ThreadPoolExecutor(max_workers=jobs) as pool:
         count = sum(pool.map(reconcile, sorted({**sources, **cooks}.items())))

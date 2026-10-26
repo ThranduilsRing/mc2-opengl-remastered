@@ -22,8 +22,8 @@ int main(int argc, char** argv) {
         { std::ofstream out(sidecar); out << "hello"; }
         CHECK(!verifiedLooseTextureCook(sidecar));
         CHECK(looseAssetDiffers(sidecar.string(), {}));
-        // FNV-1a-64 standard vector, also emitted by mc2texcook.record_cook.
-        { std::ofstream out(stamp); out << "a430d84680aabd0b\n"; }
+        // FNV-1a-64 standard vector in a deploy-only stock receipt.
+        { std::ofstream out(stamp); out << "mc2-stock-v1 a430d84680aabd0b\n"; }
         CHECK(verifiedLooseTextureCook(sidecar));
         CHECK(!verifiedLooseTextureCook(source));
         { std::ofstream out(sidecar); out << "jello"; } // same-size user edit

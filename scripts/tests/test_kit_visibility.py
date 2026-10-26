@@ -1,4 +1,4 @@
-"""Four-way deploy/engine priority contract using real cook bytes and fixture trees."""
+"""Six-way deploy/engine priority contract using real cook bytes and fixture trees."""
 import os
 import hashlib
 from pathlib import Path
@@ -44,7 +44,7 @@ int main(int argc, char** argv) {
     return user
 
 
-@pytest.mark.parametrize("case", ["fresh", "fresh-no-sidecar", "legacy", "legacy-no-source", "legacy-bc7", "legacy-alternate-cook", "user-ktx", "user-tga", "mod", "edited-reference"])
+@pytest.mark.parametrize("case", ["fresh", "fresh-no-sidecar", "legacy", "legacy-no-source", "legacy-bc7", "legacy-alternate-cook", "user-ktx", "user-tga", "mod", "edited-reference", "modder-cook", "uppercase-stock"])
 def test_four_way_kit_priority(tmp_path, priority_probe, case):
     from PIL import Image
     stock = tmp_path / "stock"
@@ -63,7 +63,7 @@ def test_four_way_kit_priority(tmp_path, priority_probe, case):
         batch_cook._cook_one_bc7(source, output, batch_cook._DEFAULT_KTX_TOOL, 0)
     stamp = Path(str(output) + ".cookstamp")
     if case in ("legacy", "legacy-no-source", "legacy-bc7", "legacy-alternate-cook", "user-ktx"):
-        stamp.unlink()
+        stamp.unlink(missing_ok=True)
     original = output.read_bytes()
     stock_hashes = {rel.as_posix(): hashlib.sha256(source.read_bytes()).hexdigest()}
     inventory = dict(sha256=stock_hashes, cooked_sha256={
@@ -73,7 +73,7 @@ def test_four_way_kit_priority(tmp_path, priority_probe, case):
             current_hash, hashlib.sha256(original).hexdigest()]
     if case == "fresh-no-sidecar":
         output.unlink()
-        stamp.unlink()
+        stamp.unlink(missing_ok=True)
     if case == "legacy-no-source":
         installed.unlink()
     if case == "user-ktx":
@@ -83,10 +83,27 @@ def test_four_way_kit_priority(tmp_path, priority_probe, case):
     if case == "edited-reference":
         Image.new("RGBA", (4, 4), (1, 2, 3, 255)).save(source)
         installed.write_bytes(source.read_bytes())
+    if case == "modder-cook":
+        Image.new("RGBA", (4, 4), (1, 2, 3, 255)).save(source)
+        batch_cook._cook_one(source, output, "albedo", 0)
+        assert not stamp.exists()  # The general cooker cannot certify stock.
+        # Old cooker self-hash stamps must also be rejected, even before deploy.
+        value = 14695981039346656037
+        for byte in output.read_bytes():
+            value = ((value ^ byte) * 1099511628211) & 0xffffffffffffffff
+        stamp.write_text(f"{value:016x}\n")
+        assert priority_probe(output)
     kit.reconcile_stock_textures(target, inventory)
+    if case == "modder-cook":
+        assert not stamp.exists()
+    if case == "uppercase-stock":
+        source_stamp = Path(str(installed) + ".cookstamp")
+        installed = installed.rename(installed.with_suffix(".TGA"))
+        source_stamp.rename(Path(str(installed) + ".cookstamp"))
+        assert installed.is_file()
     owner = "CVE-G" if case == "mod" else ""
     wins = priority_probe(output, owner) or priority_probe(installed, owner)
-    assert wins == (case in ("user-ktx", "user-tga", "mod", "edited-reference"))
+    assert wins == (case in ("user-ktx", "user-tga", "mod", "edited-reference", "modder-cook"))
     if not wins:
         assert not priority_probe(output, no_stock_read=True)
         assert not priority_probe(installed, no_stock_read=True)
@@ -118,3 +135,17 @@ def test_gate_rejects_zero_overrides_and_missing_evidence(monkeypatch):
     stages = merge_gate.plan(6)
     stage = next(s for s in stages if s[0] == "kit-visibility")
     assert merge_gate.execute([stage], "head", runner=lambda *a, **kw: type("Result", (), {"returncode": 1})()) == 1
+
+
+def test_visibility_does_not_grade_previous_run(tmp_path, monkeypatch):
+    spec = importlib.util.spec_from_file_location("kit_check_stale", ROOT / "scripts/check-kit-visibility.py")
+    check = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(check)
+    old = tmp_path / 'old/mc2_10.log'
+    old.parent.mkdir()
+    old.write_text('[BLDG_ART] foo|applied=watertower\n')
+    monkeypatch.setattr(sys, 'argv', ['check', '--install', str(tmp_path), '--out', str(tmp_path)])
+    monkeypatch.setattr(check.subprocess, 'run', lambda *a, **kw: type('Result', (), {'returncode': 1})())
+    assert check.main() == 1
+    import json
+    assert json.loads((tmp_path / 'kit-visibility.json').read_text())['render_override_instances'] == 0

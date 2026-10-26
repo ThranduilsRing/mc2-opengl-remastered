@@ -153,3 +153,28 @@ def test_strict_rejects_descriptor_free_stage_in_live_and_saved_census(source, m
     assert importlib.import_module('check-binding-slots').main() == 0
     monkeypatch.setattr(sys, 'argv', ['check-vulkan-bindings', '--json', str(census), '--strict', '--quiet'])
     assert importlib.import_module('check-vulkan-bindings').main() == 1
+
+
+def test_macro_states_reject_dead_elif_and_commented_guards():
+    scanner = importlib.import_module('check-binding-slots')
+    text = """#define GUARD 1
+#ifdef GUARD // comment
+#define LIVE 4
+#endif
+#ifndef GUARD /* comment */
+#define DEAD 8
+#endif
+#if 0
+#define DEAD 9
+#elif 0
+#define DEAD 10
+#elif 1
+#define GOOD 11
+#else
+#define DEAD 12
+#endif
+"""
+    states = scanner.macro_states([(s, Path('probe'), n) for n, s in enumerate(text.splitlines(), 1)])
+    assert states[10] is None
+    assert states[14] is None
+    assert states[16] == {'GUARD': '1', 'LIVE': '4', 'GOOD': '11'}
