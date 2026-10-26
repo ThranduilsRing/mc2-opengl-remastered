@@ -25,10 +25,11 @@ const float PI = 3.14159265358979323846;
 void main()
 {
     vec4 clip = vec4(vNdc, 1.0, 1.0);
-    // GL glUniformMatrix*(..., GL_TRUE) treats the arrays as row-major; Vulkan push
-    // constants are column-major, so transpose to get the identical matrix.
-    vec3 viewDir = (transpose(pc.invProj) * clip).xyz;
-    mat3 invViewRot = transpose(mat3(pc.rotC0.xyz, pc.rotC1.xyz, pc.rotC2.xyz));
+    // The native producer copies column-major inverse projection bytes. Its
+    // three rotation columns already contain the inverse view rotation.
+    // Transposing again magnifies a tiny HDRI patch into rectangular sky texels.
+    vec3 viewDir = (pc.invProj * clip).xyz;
+    mat3 invViewRot = mat3(pc.rotC0.xyz, pc.rotC1.xyz, pc.rotC2.xyz);
     vec3 worldDir = normalize(invViewRot * viewDir);
 
     if (pc.skyYaw != 0.0) {

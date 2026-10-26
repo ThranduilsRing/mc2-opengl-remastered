@@ -265,7 +265,7 @@ void main() {
         vec3 irradiance = max(ambient,vec3(0))*vTree.x*materialAO + direct*treeVisibility(N);
         // Match Classic's alpha foliage floor; fade it with the mission's night
         // profile so the fix does not turn night forests into emissive cards.
-        if (alphaTestClass) irradiance = max(irradiance, vec3(0.21404114 * (1.0 - 0.8*uFrame.nightDarkness)));
+        if (alphaTestClass) irradiance = max(irradiance, vec3(0.5 * (1.0 - 0.8*uFrame.nightDarkness)));
         rgb = propEncodeColor(min(albedo, albedo*irradiance));
         rgb += propEncodeColor(albedo) * poolLight + vHighlight.rgb*vHighlight.a;
     }
