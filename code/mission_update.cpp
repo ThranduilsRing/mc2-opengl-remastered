@@ -1441,7 +1441,7 @@ long Mission::update (void)
 				if (ended)
 					return earlyResult;
 				if (saveFixture)
-					updatePresentationOnly(false, 1.0f);
+					updatePresentationOnly(false, static_cast<float>(s_tickClock.alpha()));
 			}
 			if (ticks > 0 && !saveFixture)
 				updatePresentationOnly(false, static_cast<float>(s_tickClock.alpha()));
