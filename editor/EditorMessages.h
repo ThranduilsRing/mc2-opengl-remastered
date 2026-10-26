@@ -37,8 +37,8 @@ inline constexpr int DRAG_SMOOTH = 29;
 inline constexpr int DRAG_NORMAL = 30;
 inline constexpr int DRAG_HAND = 31;
 inline constexpr int MOVE_BUILDING = 32;
-#define DAMAGE				33
-#define REPAIR				34
+inline constexpr int DAMAGE = 33;
+inline constexpr int REPAIR = 34;
 
 
 //*************************************************************************************************

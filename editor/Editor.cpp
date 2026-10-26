@@ -78,7 +78,6 @@ extern bool justResaveAllMaps;	// NS3: def in mclib/terrain.cpp
 extern bool forceShadowBurnIn;
 // these globals are necessary for fast files for some reason
 
-#define MAX_SHAPES	0
 
 										//Heidi, turn this FALSE to turn Fog of War ON!
 extern unsigned char godMode;			//Can I simply see everything, enemy and friendly?
