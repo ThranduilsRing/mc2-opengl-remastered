@@ -6,7 +6,7 @@
   "HostServices": 0,
   "RenderCore": 402,
   "RenderWorld": 0,
-  "code": 13990,
+  "code": 13968,
   "mclib": 27946,
   "shaders": 416
  },
@@ -102,7 +102,6 @@
   "code/componentlistbox.cpp": 24,
   "code/contact.cpp": 19,
   "code/controlgui.cpp": 9,
-  "code/controlgui_hudtabs.cpp": 22,
   "code/controlgui_objectives.cpp": 152,
   "code/controlgui_render.cpp": 16,
   "code/controlgui_update.cpp": 9,
@@ -505,8 +504,8 @@
   "shaders/vulkan/terrain_tier1.vert": 71,
   "shaders/vulkan/terrain_tier1_skirt.vert": 71
  },
- "head": "aec6e62f5",
+ "head": "69d2737b7",
  "n": 8,
- "total": 45055,
+ "total": 45033,
  "version": 1
 }

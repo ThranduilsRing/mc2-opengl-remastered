@@ -51,14 +51,14 @@
   "mclib/mlr/mlrprimitiveclipping.hpp": 1722,
   "mclib/mlr/mlrtriangleclipping.hpp": 2112,
   "mclib/move.h": 1895,
-  "mclib/terrtxm.cpp": 1816,
+  "mclib/terrtxm.cpp": 1815,
   "mclib/tgl.h": 1821,
   "tools/cite_guard.py": 1553,
   "tools/comment_guard.py": 1790,
   "tools/scifi_kit/art/intent_military.py": 3363,
   "tools/terrain_beautify/visual_heightfield.py": 1510
  },
- "head": "33a49e97b",
+ "head": "69d2737b7",
  "per_dir": {
   "GameAdapters": {
    "files": 13,
@@ -109,7 +109,7 @@
    "max_lines": 1513
   },
   "mclib": {
-   "files": 577,
+   "files": 575,
    "files_over_1500": 13,
    "files_over_3000": 0,
    "max_lines": 2518
@@ -118,7 +118,7 @@
    "files": 107,
    "files_over_1500": 0,
    "files_over_3000": 0,
-   "max_lines": 637
+   "max_lines": 618
   },
   "tools": {
    "files": 612,
@@ -242,7 +242,7 @@
   },
   {
    "file": "mclib/terrtxm.cpp",
-   "lines": 1816
+   "lines": 1815
   },
   {
    "file": "mclib/ablrtn.cpp",
@@ -254,7 +254,7 @@
   }
  ],
  "total": {
-  "files": 2529,
+  "files": 2527,
   "files_over_1500": 43,
   "files_over_3000": 2,
   "max_lines": 3650
