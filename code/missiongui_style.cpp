@@ -1128,6 +1128,11 @@ int MissionInterfaceManager::update( bool leftClickedClick, bool rightClickedCli
 
 	for ( ; i < last; i++ )
 	{
+		// Reserved command slots have no action. Polling their zero key emits
+		// synchronous PAUSE diagnostics three times per frame.
+		if (!commands[i].function && !commands[i].releaseFunction)
+			continue;
+
 		int key = commands[i].key;
 		if ( userInput->getKeyDown( gosEnum_KeyIndex(key & 0x0000000ff) ) )
 		{
