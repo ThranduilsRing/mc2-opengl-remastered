@@ -36,6 +36,7 @@
 #include "Gates/gate.h"
 #include "mc2fmt.h"
 #include "utils/mc2log.h"
+#include <tracy/Tracy.hpp>
 
 ////////////////////////////////////////////////////////////////////////////////
 void __stdcall AddDebuggerMenuItem(char const*, bool (__stdcall *)(), void (__stdcall *)(), bool (__stdcall *)(), DWORD (__stdcall *)(char const*, DWORD))
@@ -85,6 +86,7 @@ static void mc2_log_exit_caller(const char* fn)
     if (!s_trace && s_once) return;   // always log first; repeats only if env set
     s_once = true;
 
+    ZoneScopedN("Shutdown.ExitStack");
     mc2::fmt::print_err("[EXIT] {} called. Stack:\n", mc2::fmt::safe(fn));
     HANDLE proc = GetCurrentProcess();
     SymSetOptions(SYMOPT_LOAD_LINES | SYMOPT_DEFERRED_LOADS | SYMOPT_UNDNAME);
