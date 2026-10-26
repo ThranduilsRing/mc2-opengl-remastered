@@ -313,3 +313,41 @@ promotion. PointCloud needs its original 2.4-pixel right triangles; ShardCloud
 needs its authored aligned triangles/per-vertex tint. Keep those references
 until populated captures pass. The old day timeout did not reproduce in the
 unchanged smoke budget (both maps pass); its loading-stage cause is unproven.
+
+### Packet 5: native visual acceptance and first live renderer retirement (2026-10-26)
+
+The owner's revised bar supersedes Packet 4's pass-equivalence requirement:
+correct scene-depth composition, live authored textures/animation and sensible
+blending are sufficient; pixel identity with the depthless HUD reference is not.
+Engine `435a6394d9bc` accepts **Card and CardCloud**, enables `MC2_GPU_PARTICLES`
+by default, and deletes their CPU submission/ownership plus `MLRCardCloud`
+(implementation, header, registration and build entry). The kill-switch now
+suppresses accepted cards; it cannot restore the retired renderer. Engine diff
+from `f0ec4f452`: **1,010 lines deleted, 33 added, net -977**.
+
+The missing flares intersected scene depth. A tiny constant bias only exposed
+small fragments; the accepted route carries live card extent and applies the
+existing billboard's size-based camera lift to additive cards, retaining GEQUAL
+scene-depth testing and no depth writes. Alpha cards keep authored world depth.
+The terrain MVP already includes its axis conversion: the initial attempt to
+remove the native shader's inverse conversion was rejected and corrected.
+Earlier P1 work already removed snapshot resimulation, preserved live atlas UVs
+and fixed repeating Tube UV addressing; those finished steps were not repeated.
+
+Proofs: `E:/mc2-archive-2026-10/proofs/mlr-retire-p1/owner-montage-p5.png`,
+`p5-final-oracle/`, `p5-final-native.log`, `p5-final-rows.log`, `p5-all-targets.log`
+and `p5-summary.json`. The montage preserves the CPU reference at `625597db4ab7`
+and shows native day PPC plus night missile flight/impact at the accepted engine.
+Two pale trail strips also occur in the CPU reference; full Tube acceptance and
+retirement are explicitly withheld. No CPU Execute/emission/curve/RNG migration
+is claimed; legacy camera-dependent effect ordering remains relevant later.
+
+Next packet: implement PointCloud's screen-sized right triangles and ShardCloud's
+authored aligned triangles, accept populated day/night scenes using this same
+visual bar, then delete their MLR leaves. Finish Tube's untextured/unsupported
+blend paths and investigate the inherited pale strips before deleting its CPU
+fallback. Migrate Shape submaterials and ShapeCloud/DebrisCloud/PertCloud next.
+Then separate legacy asset/state decoding from MLR, remove clipper/sorter/lights
+across game/editor/tools, and finally migrate cosmetic simulation with independent
+authoritative lifetimes and unchanged sim chains. Weapon visual redesign stays
+in the later modernization arc.

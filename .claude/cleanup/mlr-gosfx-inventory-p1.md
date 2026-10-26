@@ -324,3 +324,55 @@ The old day timeout did not reproduce. Its last marker was mission loading,
 contention is a hypothesis, not an established root cause. No timeout changed.
 No simulation code changed; the previous strict-chain proof is retained,
 not counted as a newly executed pair. Runtime captures here cover PPC only.
+
+## Packet 5: accepted Card/CardCloud, CPU renderer deleted (2026-10-26)
+
+Acceptance now follows the owner's visibly-correct, scene-depth bar, superseding
+the Packet 4 requirement for equivalent HUD composition. Engine `435a6394d9bc`
+restores beam-head/impact flares with the existing billboard's size-based camera
+lift applied to native additive card vertices. Geometry still uses scene GEQUAL
+depth testing and no depth writes; alpha cards retain their actual world depth.
+The actual GPU-matrix probe (`p5-depth-probe/`) replaces the invalid prior clipper
+getter evidence. A tiny constant bias exposed only flare fragments. The attempted
+axis-conversion removal in `625597db4ab7` was incorrect and is absent from the
+accepted engine: the terrain MVP already bakes the MC2-to-render conversion.
+
+- **Accepted:** Card and CardCloud. `MC2_GPU_PARTICLES` defaults ON; =0 suppresses
+  their draws. Both CPU Draw routes, cloud ownership, four duplicated Card colors
+  and the complete 925-line `MLRCardCloud` implementation/header are gone, together
+  with its initialization, termination, include and CMake entry. The numeric class
+  ID slot remains, preserving the other IDs. Engine diff from `f0ec4f452`: 1,010
+  lines deleted / 33 added (net -977); generated gate views and tests are separate.
+- **Already finished before P5:** snapshot spawners, inaccurate Point/Shard proxies,
+  unused screen quad, `MC2_VFX_AGE_SAMPLE` and `MC2_VFX_ORACLE_RENDER` removal.
+  Tube/Shape oracle gates were already default ON. Do not count those as new flips.
+- **Not retired:** PointCloud has no native screen-sized triangle renderer;
+  ShardCloud has no native authored triangle/per-vertex-color renderer. Tube still
+  falls back for untextured/unsupported content; two pale strips in the missile
+  scene appear in both CPU and native arms and are not claimed fixed. Shape's
+  fallback/submaterials and ShapeCloud/DebrisCloud/PertCloud MLR routes remain.
+  These are explicit remaining implementation/coverage gaps, not pixel-diff rejects.
+
+The owner montage is `owner-montage-p5.png` in the existing proof directory. Left:
+CPU reference `p5-card-oracle/` at `625597db4ab7` (master/Tube/Shape OFF). Right:
+`p5-final-oracle/` at `435a6394d9bc` (native defaults including Tube/Shape ON).
+Day PPC flares and night missile flight/impact visibly render; all six native logs
+enable Vulkan validation with zero VUID/nonzero-error reports, and each bookmark
+repeats byte-for-byte across processes. Alpha/additive appearance may differ from
+the legacy HUD tail; texture UV/lifetime state still comes from live gosFX.
+
+The final 11 covering gate/shader/VFX/MLR rows and game build pass. The all-target
+checkpoint builds game/editor/viewer/FX tools, standalone tools and doctest corpus;
+final targeted VFX tests pass, including 12,635 assertions in the GPU lifecycle
+child. Temporary projection logging is removed. No Execute, emission, curve,
+lifetime, authoritative completion or RNG ordering changes were made. See the
+design doc's new next-packet section and `p5-summary.json` for final runtime checks.
+
+Final runtime checks: smoke-lite passes mc2_01 and mc2_10 with zero validation
+VUID/error/warning reports. A fresh default-duration forced-fire particles OFF/ON
+pair matches 2,664 shared sim frames, graded/strict chain `cafa7791aad937ed`, full
+chain `0d9fefb7dceb7e8c` and RNG counts `47/285/0`, animation RNG 6. No baseline
+was modified. `p5-determinism/` and `p5-smoke-lite-artifacts/` retain the raw logs.
+The deployed engine remains `435a6394d9bc`; the final commit only records these
+notes. One lane install remains, `E:/mc2-installs/claude-mlr-retire-p1`; auxiliary
+installs created zero, disk freed zero. The kit-parity install was left alone.
