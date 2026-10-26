@@ -36,6 +36,7 @@ MissionBegin.cpp			: Implementation of the MissionBegin component.
 #include"logisticsmechicon.h"
 #include"../GameOS/gameos/gos_profiler.h"
 #include"../GuiRuntime/GuiRuntime.h"   // MENU-STALE-CLEAR-2: ImGui-layer dim rect
+#include "imgui.h"
 #include"../GameOS/gameos/gos_dev_shell.h"   // DEV-SHELL-1: ui_reload command registration
 #include <cstdlib>
 #include <string>
@@ -1745,6 +1746,7 @@ const char* MissionBegin::update()
 
 void MissionBegin::render()
 {
+	if (ImGui::GetCurrentContext()) ImGui::GetIO().MouseDrawCursor = true;
 	// UI-ASPECT-ANCHOR-1: front-end frame — draw the UI on the 16:9 canvas
 	// (re-asserted every frame; auto-cleared at flushHUDBatch).
 	gos_SetUiCanvasActive( true );

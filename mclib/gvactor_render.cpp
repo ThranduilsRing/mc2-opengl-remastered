@@ -39,7 +39,12 @@ static const bool s_vehicleLitPath = mc2::gate::get<"MC2_VEHICLE_LIT_PATH">();
 
 long GVAppearance::render (long depthFixup)
 {
-	if (visible && gos_IsModernShadowPathActive()) GpuStaticPropBatcher::instance().captureMoverShadowShape(static_cast<const Appearance*>(this),gvShape);
+	const auto visibility = buildVisState();
+	mc2_vis::trace("vehicle-shadow", static_cast<const void*>(this), visibility);
+	// Sensor contacts keep visible=true while the body fades to alpha zero.
+	// Retain offscreen casters, but never reveal a fog-hidden body through its shadow.
+	if (visible && mc2_vis::meshDrawn(visibility) && gos_IsModernShadowPathActive())
+		GpuStaticPropBatcher::instance().captureMoverShadowShape(static_cast<const Appearance*>(this), gvShape);
 	gvShape->SetTextureHandle(0,localTextureHandle);
 
 	// C3: render gate — GPU-lagged visibility when killswitch is enabled.

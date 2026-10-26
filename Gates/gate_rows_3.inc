@@ -68,7 +68,7 @@ L(Presence, "MC2_SMOKE_MODE", Bool, false, "gameos", "", "", passthrough | verif
 P("MC2_SMOKE_PERF_SAMPLES", Int, 0, "gameos", "", "", verified),  // default not derivable from the tree
 G("MC2_SMOKE_SEED", String, "", "gameos", "", "", passthrough | verified),  // default not derivable from the tree
 // history: docs/gate-history.md#MC2_SNAPSHOT_MECH_EXTRACT
-L(Lead0Kill, "MC2_SNAPSHOT_MECH_EXTRACT", Bool, true, "mech", "", "MECH-EXTRACTION-0: mech snapshot extraction (observe-only, no GL mutation).", passthrough | registry(Feature, "MC2_FEATURE_SNAPSHOT_MECH_EXTRACT", 13, true) | verified),
+L(Lead0, "MC2_SNAPSHOT_MECH_EXTRACT", Bool, false, "mech", "", "MECH-EXTRACTION-0: mech snapshot extraction (observe-only, no GL mutation).", passthrough | registry(Feature, "MC2_FEATURE_SNAPSHOT_MECH_EXTRACT", 13, false) | verified),
 L(Presence, "MC2_SOAK_AUTOWIN", Bool, false, "code", "", "", verified),
 L(Presence, "MC2_SOAK_AUTO_PURCHASE", Bool, false, "code", "", "SOAK-AUTO-PURCHASE-1 (MC2_SOAK_AUTO_PURCHASE).", verified),
 L(Presence, "MC2_SOAK_CHECK_SCREENS", Bool, false, "code", "", "SOAK-SCREEN-CHECK-1 (MC2_SOAK_CHECK_SCREENS).", verified),
@@ -136,7 +136,7 @@ L(Presence, "MC2_SUBSTRATE_COALESCE_TRACE", Bool, false, "props", "", "Step 12.1
 // its enum value (60).
 L(Lead1, "MC2_TACMAP_FORMATION_LINE", Bool, false, "code", "", "", verified),
 // history: docs/gate-history.md#MC2_TACTICAL_ARC_OVERLAY
-L(Lead0Kill, "MC2_TACTICAL_ARC_OVERLAY", Bool, true, "code", "", "TACTICAL-ARC-OVERLAY-MVP-1: world-space range ring + facing line on each SELECTED mover, drawn in-scene by the debug renderer just before its flush...", registry(Feature, "MC2_FEATURE_TACTICAL_ARC_OVERLAY", -1, true) | verified),
+L(Lead0, "MC2_TACTICAL_ARC_OVERLAY", Bool, false, "code", "", "TACTICAL-ARC-OVERLAY-MVP-1: world-space range ring + facing line on each SELECTED mover, drawn in-scene by the debug renderer just before its flush...", registry(Trace, "MC2_FEATURE_TACTICAL_ARC_OVERLAY", -1, false) | verified),
 L(Lead0Kill, "MC2_TACTICAL_OVERVIEW", Bool, true, "code", "", "", verified),
 L(Presence, "MC2_TACTICAL_OVERVIEW_DEBUG", Bool, false, "code", "", "Tactical Overview diagnostic HUD - only under MC2_TACTICAL_OVERVIEW_DEBUG.", verified),
 L(Lead0Kill, "MC2_TACTICAL_OVERVIEW_TINT", Bool, true, "code", "", "", verified),
