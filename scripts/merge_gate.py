@@ -272,6 +272,9 @@ def execute_parallel(steps, head, dry_run=False):
         print("Coverage plan: inherited batch reservation requires serial execution")
         return execute(steps, head)
     pending = []
+    completed = {}
+    reused = [s for s in steps if s[2].get("MC2_GATE_REUSE_STAGE")]
+    steps = [s for s in steps if s not in reused]
     with ThreadPoolExecutor(max_workers=2) as pool:
         harness = next((s for s in steps if s[0] == "harnesses" and not s[2].get("MC2_GATE_SKIP_REASON")), None)
         contracts = next((s for s in steps if s[0] == "contracts" and not s[2].get("MC2_GATE_SKIP_REASON")), None)
@@ -300,14 +303,10 @@ def execute_parallel(steps, head, dry_run=False):
         if any(not s[2].get("MC2_GATE_SKIP_REASON") for s in mods):
             determinism = [s for s in stock if s[0].startswith("determinism-") and not s[2].get("MC2_GATE_SKIP_REASON")]
         if determinism:
-            source_names = {s[0] for s in determinism}
-            validation = [s for s in stock if s[0] == "validation" and
-                          set(s[2].get("MC2_GATE_REUSE_STAGE", "").split(",")) <= source_names]
-            determinism += validation
             stock = [s for s in stock if s not in determinism]
         boundary = next((i + 1 for i, s in enumerate(stock) if s[0] == "deploy"), 0)
         prefix = stock[:boundary]
-        result = execute(prefix, head, runner=runner) if prefix else 0
+        result = execute(prefix, head, runner=runner, completed=completed) if prefix else 0
         if result:
             return result  # do not launch runtime proofs after a failed deploy/offline check
         if mods:
@@ -325,12 +324,12 @@ def execute_parallel(steps, head, dry_run=False):
                     return 1
             def auxiliary():
                 try:
-                    result = execute(mods, head, runner=runner)
+                    result = execute(mods, head, runner=runner, completed=completed)
                     if copy_future:
                         clone = copy_future.result()
                         remapped = [(n, [a.replace(str(install), str(clone)).replace(install.as_posix(), clone.as_posix())
                                          for a in c], e) for n, c, e in determinism]
-                        result |= execute(remapped, head, runner=runner)
+                        result |= execute(remapped, head, runner=runner, completed=completed)
                     return result
                 except (OSError, RuntimeError) as exc:
                     print(f"[merge_gate] stock-copy/determinism FAIL (not waived): {exc}", flush=True)
@@ -344,9 +343,12 @@ def execute_parallel(steps, head, dry_run=False):
                         else:
                             copy_context.__exit__(None, None, None)
             pending.append(pool.submit(auxiliary))
-        result |= execute(stock[boundary:], head, runner=runner) if stock[boundary:] else 0
+        result |= execute(stock[boundary:], head, runner=runner, completed=completed) if stock[boundary:] else 0
         for future in pending:
             result |= future.result()
+        # Reuse can depend on both workers. Join them before reading their verdicts.
+        if reused:
+            result |= execute(reused, head, runner=runner, completed=completed)
     return result
 
 
@@ -411,11 +413,12 @@ def game_batch():
             pass
 
 
-def execute(steps, head, dry_run=False, runner=run_child):
+def execute(steps, head, dry_run=False, runner=run_child, completed=None):
     """Run every stage and return nonzero if any stage failed."""
     if not steps:
         raise ValueError("no stages selected; gate requires at least one stage")
     results = []
+    completed = {} if completed is None else completed
     failed = False
     batch_context, batch_env, lease_error = None, {}, None
     try:
@@ -425,11 +428,12 @@ def execute(steps, head, dry_run=False, runner=run_child):
                 reused = overrides.get("MC2_GATE_REUSE_STAGE")
                 status = "SKIP: " + reason
                 if reused:
-                    passed = all(next((r[1] == "PASS" for r in results if r[0] == source), False) for source in reused.split(","))
+                    passed = all(completed.get(source) == "PASS" for source in reused.split(","))
                     status = ("REUSED: " if passed or dry_run else "FAIL reuse: source checks failed; ") + reason
                     failed |= not (passed or dry_run)
                 print(f"[merge_gate] {name}: {status}", flush=True)
                 results.append((name, status, 0.0))
+                completed[name] = status
                 continue
             status, elapsed = "SKIPPED", 0.0
             if dry_run:
@@ -468,6 +472,7 @@ def execute(steps, head, dry_run=False, runner=run_child):
                 elapsed = time.monotonic() - started if measured is None else measured
                 failed |= status != "PASS"
             results.append((name, status, elapsed))
+            completed[name] = status
     finally:
         if batch_context is not None:
             batch_context.__exit__(*sys.exc_info())

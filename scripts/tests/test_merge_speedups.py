@@ -614,6 +614,43 @@ def test_parallel_gate_joins_mods_and_keeps_deploy_barrier(monkeypatch, failure)
     assert started.is_set() and stock_done.is_set()
 
 
+@pytest.mark.parametrize("failed_source", [None, "tier1", "det", "missing"])
+def test_parallel_validation_reuse_joins_both_workers(tmp_path, monkeypatch, capsys, failed_source):
+    import threading
+    from contextlib import contextmanager
+    import merge_gate as gate
+    tier_done = threading.Event()
+    det_done = threading.Event()
+    @contextmanager
+    def copy(source):
+        yield tmp_path / "clone"
+    def runner(command, **kw):
+        name = command[0]
+        if name == "tier1":
+            assert det_done.wait(2)
+            tier_done.set()
+        elif name == "det":
+            det_done.set()
+            assert tier_done.wait(2)
+        else:
+            assert name == "mods", "validation must reuse evidence, not launch again"
+        return _r(int(name == failed_source))
+    monkeypatch.delenv("MC2_HOST_LEASE_BATCH", raising=False)
+    monkeypatch.setattr(gate, "git", lambda *a: "head")
+    monkeypatch.setattr(gate, "log_lease_holders", lambda: None)
+    monkeypatch.setattr(gate, "stock_copy", copy)
+    monkeypatch.setattr(gate, "run_child", runner)
+    sources = "tier1,determinism-mc2_10" + (",missing" if failed_source == "missing" else "")
+    steps = [("mods", ["mods"], {}),
+             ("tier1", ["tier1"], {}),
+             ("validation", ["validation"], {"MC2_GATE_SKIP_REASON": "covered", "MC2_GATE_REUSE_STAGE": sources}),
+             ("determinism-mc2_10", ["det", "--install", str(tmp_path / "install")], {})]
+    assert gate.execute_parallel(steps, "head") == int(failed_source is not None)
+    output = capsys.readouterr().out
+    assert ("FAIL reuse" in output) == (failed_source is not None)
+    assert ("validation: REUSED" in output) == (failed_source is None)
+
+
 def test_smoke_bookmark_capture_rejects_missing_or_wrong_evidence(tmp_path, monkeypatch):
     import json
     import run_visual_capture as capture
