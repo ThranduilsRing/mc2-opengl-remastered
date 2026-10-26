@@ -4353,7 +4353,6 @@
     "gpu_cull_aabb_parity",
     "shader_hot_reload",
     "reverse_z_trace",
-    "terrain_surface_trace",
     "camera_motion",
     "build"
    ],

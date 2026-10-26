@@ -3836,6 +3836,13 @@
           "text": "from scripts import deploy_payload as dp"
         },
         {
+          "path": "scripts/tests/test_isolated_deploy.py",
+          "line": 10,
+          "evidence": "import",
+          "reference": "deploy_payload",
+          "text": "import deploy_payload as dp"
+        },
+        {
           "path": "scripts/tests/test_kit_payload.py",
           "line": 120,
           "evidence": "import",
@@ -4093,6 +4100,13 @@
           "text": "import kit_payload"
         },
         {
+          "path": "scripts/tests/test_isolated_deploy.py",
+          "line": 11,
+          "evidence": "import",
+          "reference": "kit_payload",
+          "text": "import kit_payload"
+        },
+        {
           "path": "scripts/tests/test_kit_payload.py",
           "line": 11,
           "evidence": "import",
@@ -4126,6 +4140,13 @@
           "evidence": "command",
           "reference": "scripts/make-isolated-deploy.py",
           "text": "_assert_pass(subprocess.run([sys.executable, \"scripts/make-isolated-deploy.py\", \"--selftest\"], **OPTS, **console_child.child_kwargs(redirected=True)))"
+        },
+        {
+          "path": "scripts/tests/test_isolated_deploy.py",
+          "line": 15,
+          "evidence": "load module",
+          "reference": "scripts/make-isolated-deploy.py",
+          "text": "spec = importlib.util.spec_from_file_location("
         }
       ],
       "callers_by_stem": []
@@ -7365,6 +7386,13 @@
       "path": "scripts/tests/test_install_hygiene.py",
       "basename": "test_install_hygiene.py",
       "stem": "test_install_hygiene",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
+      "path": "scripts/tests/test_isolated_deploy.py",
+      "basename": "test_isolated_deploy.py",
+      "stem": "test_isolated_deploy",
       "callers_by_basename": [],
       "callers_by_stem": []
     },
@@ -15460,7 +15488,7 @@
       "callers_by_basename": [
         {
           "path": "GameOS/gameos/CMakeLists.txt",
-          "line": 488,
+          "line": 487,
           "evidence": "cmake command",
           "reference": "${CMAKE_SOURCE_DIR}/tools/shader_offline_build/slang_compile.py",
           "text": "COMMAND \"${Python3_EXECUTABLE}\""
