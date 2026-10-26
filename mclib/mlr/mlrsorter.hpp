@@ -16,7 +16,6 @@ namespace MidLevelRenderer {
 	class MLRPrimitive;
 	class MLREffect;
 	class GOSVertex;
-	class DrawScreenQuadsInformation;
 
 	struct SortAlpha;
 
@@ -30,20 +29,17 @@ namespace MidLevelRenderer {
 		void DrawTriIndexedList();
 		void DrawPointCloud();
 		void DrawLineCloud();
-		void DrawQuads();
 
 		int LoadAlphaFromTriList(SortAlpha**);
 		int LoadAlphaFromTriIndexedList(SortAlpha**);
 		int LoadAlphaFromPointCloud(SortAlpha**);
 		int LoadAlphaFromLineCloud(SortAlpha**);
-		int LoadAlphaFromQuads(SortAlpha**);
 
 		static constexpr int TriList = 0;
 		static constexpr int TriIndexedList = 1;
 		static constexpr int PointCloud = 2;
-		static constexpr int Quads = 3;
-		static constexpr int LineCloud = 4;
-		static constexpr int LastMode = 5;
+		static constexpr int LineCloud = 3;
+		static constexpr int LastMode = 4;
 
 		using DrawFunc = void (SortData::*)();
 		using LoadSortAlphaFunc = int (SortData::*)(SortAlpha**);
@@ -114,7 +110,6 @@ namespace MidLevelRenderer {
 
 		virtual void AddPrimitive(MLRPrimitiveBase*, int=0) = 0;
 		virtual void AddEffect(MLREffect*, const MLRState&) = 0;
-		virtual void AddScreenQuads(GOSVertex*, const DrawScreenQuadsInformation*) = 0;
 
 		virtual void AddSortRawData(SortData*) = 0;
 

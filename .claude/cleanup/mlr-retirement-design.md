@@ -270,3 +270,84 @@ by a live foreign width-two batch lease; the local harness default is fixed to
 one core (`03415190f`). Do not erase the CPU reference or enable the master until
 new populated captures pass. Keep Point/Shard on their CPU primitives when the
 master eventually promotes cards; their current GPU proxies are not parity.
+
+
+### P2 relaunch checkpoint and next packet (2026-10-26)
+
+Window 67 base `b91d03ebc`; authored-card proof engine `254f9f5493db`.
+See the inventory's relaunch section and `owner-montage-p2.png` in the existing
+proof directory. Vegetation wind used wall time during frozen captures; honoring
+the existing animation-freeze switch makes all six arms repeat byte-for-byte.
+Within-sweep beam differences remain deterministic and unexplained. Native Cards
+still lose head/impact flares, so no class is promoted and the CPU Draw references
+remain. Point/Shard's inaccurate GPU proxies and the dead screen-quad API are
+removed. The unused `MC2_VFX_ORACLE_RENDER` selector is retired, ordinal retained.
+
+P2 next: resolve the first native Card color/depth/projection divergence in these
+repeatable captures; accept silhouettes/materials before deleting their CPU Draw
+routes and promoting the master. Then implement exact Point/Shard primitives.
+Stock Shape (10), ShapeCloud (9), DebrisCloud (34) and mod-loadable PertCloud
+(zero stock specs) need populated fixtures; their serialization/runtime closure
+stays until that evidence exists. Tube's 31 stock specs need supported-profile,
+material and fallback coverage; the current master-only A/B held Tube/Shape OFF.
+Continue P3-P5 above for mesh/cloud draw retirement, independent asset decoding,
+MLR removal across editor/tools, then GPU simulation only after authoritative
+lifetimes and camera-dependent effect ordering are separated. The fired OFF/ON
+pair's 5,089 shared strict sim frames match, but its stored data baseline rejects
+the copied kit install; that baseline was not changed.
+
+### Packet 4 pass-contract finding (2026-10-26)
+
+The repeatable PPC rejection is not just authored corner extraction. The CPU
+reference goes through the postprocessed Vulkan HUD tail: no depth attachment,
+Z/RHW dropped, affine UVs, clamped nearest RGBA8 texels and packed tint. Native
+Cards draw before post-processing with scene depth, world clip W and sampled
+texture. See the inventory's Packet 4 section and `owner-montage-p4.png`.
+No class is accepted or CPU route retired; the requested Packet 4 implementation
+remains incomplete. A depth-disable patch alone cannot establish equivalence.
+
+Next implementation must put GPU-projected Card/CardCloud geometry in the
+equivalent composition phase and preserve mixed alpha ordering/material
+semantics, then prove the populated day/night captures before deletion/default
+promotion. PointCloud needs its original 2.4-pixel right triangles; ShardCloud
+needs its authored aligned triangles/per-vertex tint. Keep those references
+until populated captures pass. The old day timeout did not reproduce in the
+unchanged smoke budget (both maps pass); its loading-stage cause is unproven.
+
+### Packet 5: native visual acceptance and first live renderer retirement (2026-10-26)
+
+The owner's revised bar supersedes Packet 4's pass-equivalence requirement:
+correct scene-depth composition, live authored textures/animation and sensible
+blending are sufficient; pixel identity with the depthless HUD reference is not.
+Engine `435a6394d9bc` accepts **Card and CardCloud**, enables `MC2_GPU_PARTICLES`
+by default, and deletes their CPU submission/ownership plus `MLRCardCloud`
+(implementation, header, registration and build entry). The kill-switch now
+suppresses accepted cards; it cannot restore the retired renderer. Engine diff
+from `f0ec4f452`: **1,010 lines deleted, 33 added, net -977**.
+
+The missing flares intersected scene depth. A tiny constant bias only exposed
+small fragments; the accepted route carries live card extent and applies the
+existing billboard's size-based camera lift to additive cards, retaining GEQUAL
+scene-depth testing and no depth writes. Alpha cards keep authored world depth.
+The terrain MVP already includes its axis conversion: the initial attempt to
+remove the native shader's inverse conversion was rejected and corrected.
+Earlier P1 work already removed snapshot resimulation, preserved live atlas UVs
+and fixed repeating Tube UV addressing; those finished steps were not repeated.
+
+Proofs: `E:/mc2-archive-2026-10/proofs/mlr-retire-p1/owner-montage-p5.png`,
+`p5-final-oracle/`, `p5-final-native.log`, `p5-final-rows.log`, `p5-all-targets.log`
+and `p5-summary.json`. The montage preserves the CPU reference at `625597db4ab7`
+and shows native day PPC plus night missile flight/impact at the accepted engine.
+Two pale trail strips also occur in the CPU reference; full Tube acceptance and
+retirement are explicitly withheld. No CPU Execute/emission/curve/RNG migration
+is claimed; legacy camera-dependent effect ordering remains relevant later.
+
+Next packet: implement PointCloud's screen-sized right triangles and ShardCloud's
+authored aligned triangles, accept populated day/night scenes using this same
+visual bar, then delete their MLR leaves. Finish Tube's untextured/unsupported
+blend paths and investigate the inherited pale strips before deleting its CPU
+fallback. Migrate Shape submaterials and ShapeCloud/DebrisCloud/PertCloud next.
+Then separate legacy asset/state decoding from MLR, remove clipper/sorter/lights
+across game/editor/tools, and finally migrate cosmetic simulation with independent
+authoritative lifetimes and unchanged sim chains. Weapon visual redesign stays
+in the later modernization arc.

@@ -1767,13 +1767,13 @@ flags:
     registry: {feature_id: MC2_FEATURE_STATIC_PROP_INDIRECT, kind: Retired, order: 1, default_on: true}
   - name: MC2_GPU_PARTICLES
     kind: Bool
-    default: false
-    rule: Lead1
+    default: true
+    rule: DefOnLead0
     owner: code
-    doc: "Master gate for GPU billboard particles (mclib/particles/batcher.cpp initialize_env)."
+    doc: "Native Card/CardCloud rendering; =0 suppresses these draws (CPU routes retired)."
     smoke_passthrough: true
     verified: true
-    registry: {feature_id: MC2_GPU_PARTICLES, kind: Feature, order: -1, default_on: false}
+    registry: {feature_id: MC2_GPU_PARTICLES, kind: Feature, order: -1, default_on: true}
   - name: MC2_GPU_PARTICLES_LOG
     kind: Bool
     default: false
@@ -5359,15 +5359,6 @@ flags:
     smoke_passthrough: true
     verified: true
     registry: {feature_id: MC2_DIAG_VFX_DEBUG_MODE, kind: Trace, order: -1, default_on: false}
-  - name: MC2_VFX_ORACLE_RENDER
-    kind: Bool
-    default: false
-    rule: Lead1
-    owner: code
-    doc: "VFX-ORIGINAL-RECORD-ABI-1 (Phase 1 of the originals-restoration arc; see docs/vfx-originals-restoration-design.md)."
-    smoke_passthrough: true
-    verified: true
-    registry: {feature_id: MC2_FEATURE_VFX_ORACLE_RENDER, kind: Feature, order: 15, default_on: false}
   - name: MC2_VFX_ORACLE_SHAPE
     kind: Bool
     default: true

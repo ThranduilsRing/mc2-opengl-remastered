@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # check-mlr-leaves-gated.sh — invariant CI script per plan v6 §2.3.
 #
-# Verifies that all 4 MLR work-leaves in mclib/mlr/mlrclipper.cpp have
+# Verifies that all 3 MLR work-leaves in mclib/mlr/mlrclipper.cpp have
 # MC2_GOSFX_GATE_EARLY_RETURN() near the top of their bodies. A1 wired
 # these as the first env-gate that converts gosFX rendering into a no-op
 # under MC2_DISABLE_GOSFX=1. Removing any of these gates silently brings
@@ -21,7 +21,7 @@ if [ ! -f "$TARGET" ]; then
     exit 0
 fi
 
-LEAVES=("DrawShape" "DrawScalableShape" "DrawEffect" "DrawScreenQuads")
+LEAVES=("DrawShape" "DrawScalableShape" "DrawEffect")
 FAIL=0
 
 for leaf in "${LEAVES[@]}"; do
@@ -45,5 +45,5 @@ if [ $FAIL -ne 0 ]; then
     exit 1
 fi
 
-echo "[mlr-leaves-gated] OK — all 4 leaves gated under MC2_DISABLE_GOSFX"
+echo "[mlr-leaves-gated] OK — all 3 leaves gated under MC2_DISABLE_GOSFX"
 exit 0

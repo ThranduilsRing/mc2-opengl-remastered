@@ -73,9 +73,9 @@ void dump_summary() {
 void initialize_env() {
     if (g_enabled_initialized) return;
     g_log_value = mc2::gate::get<"MC2_GPU_PARTICLES_LOG">();
-    // REVERTED TO CPU/MLR DEFAULT (user request: GPU FX looked broken). Absent
-    // env var → DISABLED (legacy CPU billboards). Opt back into GPU with "1".
-    g_enabled_value = mc2::gate::get<"MC2_GPU_PARTICLES">();   // default OFF -> legacy CPU/MLR FX
+    // Accepted Card/CardCloud geometry is native by default. The kill-switch
+    // suppresses submission; their CPU/MLR renderer has been retired.
+    g_enabled_value = mc2::gate::get<"MC2_GPU_PARTICLES">();
     g_enabled_initialized = true;
     if (g_enabled_value) {
         mc2::fmt::print_err("[INSTR v1] enabled: gpu_particles log={:d}\n",
@@ -97,28 +97,6 @@ bool Batcher::is_enabled() {
 bool Batcher::is_log_enabled() {
     if (!g_enabled_initialized) initialize_env();
     return g_log_value;
-}
-
-// VFX-ORIGINAL-RECORD-ABI-1 (Phase 1): CPU-oracle render gate.
-// Default OFF (reverted to CPU/MLR; the VFX-WEAPON-FX-RESTORE-OPUS-1 default-ON was reverted).
-// When ON, a migrated class's Draw harvests the CPU sim's live per-particle
-// arrays and renders them via the GPU billboard path.
-// Opt-in: MC2_VFX_ORACLE_RENDER=1  (only '1' enables; unset or 0 = OFF)
-// Read once, process-lifetime.
-bool Batcher::is_oracle_render_enabled() {
-    static bool s_init = false;
-    static bool s_val  = false;
-    if (!s_init) {
-        // REVERTED TO CPU/MLR DEFAULT (user request). Absent = OFF (legacy MLR
-        // cards); opt into GPU with "1".
-        s_val = mc2::gate::get<"MC2_VFX_ORACLE_RENDER">();
-        s_init = true;
-        MC2_DIAGFE(stderr, "[VFX_ROUTE v1] oracle_render=%s reason=%s\n",
-            s_val ? "on" : "off",
-            s_val ? "opt_in" : "default_off");
-        std::fflush(stderr);
-    }
-    return s_val;
 }
 
 // MC2_VFX_ORACLE_TUBE slice 1: Tube swept-quad ribbon oracle gate.

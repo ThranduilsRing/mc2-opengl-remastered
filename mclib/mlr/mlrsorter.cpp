@@ -18,7 +18,6 @@ SortData::DrawFunc SortData::Draw[LastMode]	=
 	&SortData::DrawTriList,
 	&SortData::DrawTriIndexedList,
 	&SortData::DrawPointCloud,
-	&SortData::DrawQuads,
 	&SortData::DrawLineCloud
 };
 
@@ -27,7 +26,6 @@ SortData::LoadSortAlphaFunc SortData::LoadSortAlpha[LastMode]	=
 	&SortData::LoadAlphaFromTriList,
 	&SortData::LoadAlphaFromTriIndexedList,
 	&SortData::LoadAlphaFromPointCloud,
-	&SortData::LoadAlphaFromQuads,
 	&SortData::LoadAlphaFromLineCloud
 };
 
@@ -171,32 +169,6 @@ void
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
 void
-	SortData::DrawQuads()
-{
-	Start_Timer(GOS_Draw_Time);
-
-#ifdef LAB_ONLY
-	if(dontSeeMe == true)
-#endif
-	{
-		if(texture2==0)
-		{
-//			gos_DrawTriangles( (GOSVertex *)vertices, numVertices);
-			gos_DrawQuads( static_cast<GOSVertex *>(vertices), numVertices);
-		}
-		else
-		{
-			STOP(("GOS doesnt suppert gos_DrawQuads for gos_VERTEX_2UV yet."));
-//			gos_DrawQuads( (GOSVertex2UV *)vertices, numVertices);
-		}
-
-	}
-	Stop_Timer(GOS_Draw_Time);
-}
-
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-//
-void
 	SortData::DrawLineCloud()
 {
 	Verify(texture2==0);
@@ -279,18 +251,6 @@ int
 //
 int
 	SortData::LoadAlphaFromPointCloud(SortAlpha**)
-{
-	Start_Timer(Alpha_Sorting_Time);
-	STOP(("Not implemented"));
-	Stop_Timer(Alpha_Sorting_Time);
-
-	return 0;
-}
-
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-//
-int
-	SortData::LoadAlphaFromQuads(SortAlpha**)
 {
 	Start_Timer(Alpha_Sorting_Time);
 	STOP(("Not implemented"));

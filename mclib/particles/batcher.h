@@ -10,9 +10,8 @@
 // SSBO upload, VAO, sampler save/restore, depth-state, blend-state, and the //
 // glDrawArrays expansion to billboard quads.                                //
 //                                                                           //
-// Env-gated: MC2_GPU_PARTICLES=1 opt-in. When OFF, Flush() is a no-op and   //
-// the bridge is never called — zero behavior change to the default render   //
-// path. Default OFF until Stage 5'.                                         //
+// Default ON. MC2_GPU_PARTICLES=0 suppresses Card/CardCloud submission;    //
+// their CPU/MLR renderer is retired.                                       //
 //                                                                           //
 // One-way dependency: this header has NO GameOS / GL dependency; the .cpp   //
 // calls a single C-style bridge function. Producers (later: per-primitive   //
@@ -70,11 +69,6 @@ class Batcher {
     // Normal runs (is_enabled=1, is_log_enabled=0) produce only first-flush
     // banners and error/overflow one-shots.
     static bool is_log_enabled();
-
-    // VFX-ORIGINAL-RECORD-ABI-1: CPU-oracle render gate (MC2_VFX_ORACLE_RENDER,
-    // default OFF). When ON, migrated classes harvest the CPU sim's live
-    // per-particle arrays into GPU records instead of the placeholder Spawn().
-    static bool is_oracle_render_enabled();
 
     // MC2_VFX_ORACLE_TUBE slice 1: gosFX Tube swept-quad ribbon oracle gate
     // (default OFF). When ON, supported Tube kinds (MissileSmoke / alpha

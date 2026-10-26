@@ -13,7 +13,7 @@ import capture_vfx_oracle as runner
 def test_capture_command_pins_lane_freeze_seed_and_two_repeats(arm):
     cmd = command(Path("poses.json"), Path("captures"), 164, arm, install="lane3")
     assert cmd[cmd.index("--exe") + 1].replace(chr(92), "/") == "A:/Games/mc2-opengl/mc2-win64-lane3/mc2.exe"
-    assert cmd[cmd.index("--duration") + 1] == "30"
+    assert cmd[cmd.index("--duration") + 1] == "90"
     assert cmd[cmd.index("--runs") + 1] == "2"
     assert cmd[cmd.index("--trigger-frame") + 1] == "164"
     assert "MC2_SMOKE_FREEZE_ANIM=1" in cmd
@@ -29,7 +29,7 @@ def test_capture_command_pins_lane_freeze_seed_and_two_repeats(arm):
     assert ("MC2_GPU_PARTICLES=1" in cmd) == (arm == "gpu")
     assert ("MC2_GPU_PARTICLES=0" in cmd) == (arm == "mlr")
     assert all(f"{name}=0" in cmd for name in
-               ("MC2_VFX_ORACLE_RENDER", "MC2_VFX_ORACLE_TUBE", "MC2_VFX_ORACLE_SHAPE"))
+               ("MC2_VFX_ORACLE_TUBE", "MC2_VFX_ORACLE_SHAPE"))
     assert "--no-lease" not in cmd and "--show-window" not in cmd
     assert "--no-kill" in cmd
 

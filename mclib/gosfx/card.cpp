@@ -3,12 +3,12 @@
 //===========================================================================//
 
 #include"gosfxheaders.hpp"
-#include<mlr/mlrcardcloud.hpp>
 
 // B1 Stage 2' C8: subclass-Start routing into the GPU particle pipeline
 // (replaces C7 EffectAdapter-at-MakeEffect, which only caught top-level
 // MakeEffect returns and missed composite-children spawned by EffectCloud).
 #include"particles/batcher.h"
+#include <algorithm>
 #include<cstdio>   // VFX-ORACLE diagnostics (VFX-CARD-ORACLE-HARVEST-1)
 #include "mc2fmt.h"
 
@@ -298,30 +298,17 @@ gosFX::Card::Card(
 	Specification *spec,
 	unsigned flags
 ):
-	Singleton(DefaultData, spec, flags),
-	m_cardCount(1)
+	Singleton(DefaultData, spec, flags)
 {
 	Check_Object(spec);
 	Verify(gos_GetCurrentHeap() == Heap);
 
-	gos_PushCurrentHeap(MidLevelRenderer::Heap);
-	m_cardCloud = std::make_unique<MidLevelRenderer::MLRCardCloud>(1);
-	Register_Object(m_cardCloud.get());
-	gos_PopCurrentHeap();
-
-	m_cardCloud->SetData(
-		&m_cardCount,
-		m_vertices,
-		m_colors,
-		m_uvs
-	);
 }
 
 //------------------------------------------------------------------------------
 //
 gosFX::Card::~Card()
 {
-	Unregister_Object(m_cardCloud.get());
 }
 
 //------------------------------------------------------------------------------
@@ -350,21 +337,11 @@ void
 	Check_Object(info);
 	Singleton::Start(info);
 
-	// C17 fix 2026-05-21: ALWAYS run legacy per-instance init (m_halfX/Y,
-	// m_radius, m_cardCloud->TurnOn). C8 skipped this under env-on by
-	// returning right after Spawn — but legacy Card::Execute / Draw still
-	// touched m_cardCloud and the un-armed state caused wild writes that
-	// corrupted heap adjacent to gosFX child allocations (CardCloud /
-	// Tube ctors crashed walking the freelist ~25-30s into mc2_10).
-	// Same shape as the C9 fix for Point/Shard: legacy init runs always,
-	// Spawn emit happens ADDITIONALLY under env-on. Legacy ::Draw is
-	// A2-gated at the MLR work-leaves so it no-ops.
 	Specification *spec = GetSpecification();
 	Check_Object(spec);
 	m_halfY = spec->m_halfHeight.ComputeValue(m_age, m_seed);
 	m_halfX = m_halfY * spec->m_aspectRatio.ComputeValue(m_age, m_seed);
 	m_radius = Stuff::Sqrt(m_halfX * m_halfX + m_halfY * m_halfY);
-	m_cardCloud->TurnOn(0);
 
 	// GPU spawn moved to Draw() so it fires every frame (not just once at Start).
 }
@@ -446,10 +423,6 @@ bool
 	// Fill in the color
 	//------------------
 	//
-	m_colors[0] = m_color;
-	m_colors[1] = m_color;
-	m_colors[2] = m_color;
-	m_colors[3] = m_color;
 
 	//
 	//---------------------
@@ -482,7 +455,6 @@ void
 {
 	Check_Object(this);
 
-	m_cardCloud->TurnOff(0);
 	Singleton::Kill();
 }
 
@@ -498,15 +470,12 @@ void gosFX::Card::Draw(DrawInfo *info)
 	// Set up the common draw info
 	//----------------------------
 	//
-	MidLevelRenderer::DrawEffectInformation dInfo;
-	dInfo.effect = m_cardCloud.get();
+	MidLevelRenderer::MLRState state;
 	Specification *spec = GetSpecification();
 	Check_Object(spec);
-	dInfo.state.Combine(info->m_state, spec->m_state);
-	dInfo.clippingFlags = info->m_clippingFlags;
+	state.Combine(info->m_state, spec->m_state);
 	glm::mat4 local_to_world;
 	local_to_world = m_localToParent * *info->m_parentToWorld;
-	dInfo.effectToWorld = &local_to_world;
 
 	//
 	//--------------------------------------------------------------
@@ -550,10 +519,10 @@ void gosFX::Card::Draw(DrawInfo *info)
 		// Use the authored world corners, not a camera-facing proxy. The native
 		// geometry ABI shares GpuParticle's stride and bypasses billboard tuning.
 		auto& batcher = mc2::particles::Batcher::Instance();
-		const auto alpha = dInfo.state.GetAlphaMode();
+		const auto alpha = state.GetAlphaMode();
 		const bool additive = alpha == MidLevelRenderer::MLRState::OneOneMode ||
 		                      alpha == MidLevelRenderer::MLRState::AlphaOneMode;
-		batcher.BeginGroup(dInfo.state.GetTextureHandle(), 0, 0, 1, 1,
+		batcher.BeginGroup(state.GetTextureHandle(), 0, 0, 1, 1,
 		                   additive ? 2 : 0, 0xffffffffu);
 		for (unsigned corner : {0u, 1u, 2u, 0u, 2u, 3u}) {
 			mc2::particles::GpuParticle vertex{};
@@ -567,13 +536,13 @@ void gosFX::Card::Draw(DrawInfo *info)
 			vertex.color[3] = m_color.alpha;
 			vertex.velocity[0] = m_uvs[corner].x;
 			vertex.velocity[1] = m_uvs[corner].y;
-			vertex.kind_flags = 8u | (additive ? 2u : 0u) |
-				(dInfo.state.GetTextureWrapMode() == MidLevelRenderer::MLRState::TextureClamp ? 16u : 0u) |
-				(dInfo.state.GetTextureHandle() == 0 ? 32u : 0u);
+			vertex.size = m_scale * std::max(m_halfX, m_halfY);
+			vertex.kind_flags = 8u | 64u | (additive ? 2u : 0u) |
+				(state.GetTextureWrapMode() == MidLevelRenderer::MLRState::TextureClamp ? 16u : 0u) |
+				(state.GetTextureHandle() == 0 ? 32u : 0u);
 			batcher.Emit(vertex);
 		}
-	} else
-	info->m_clipper->DrawEffect(&dInfo);
+	}
 	Singleton::Draw(info);
 }
 

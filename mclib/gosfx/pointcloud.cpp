@@ -3,10 +3,8 @@
 #include<mlr/mlrpointcloud.hpp>
 
 // B1 Stage 2' C8: subclass-Start routing into the GPU particle pipeline.
-#include"particles/batcher.h"
 
 #include<cstdio>   // VFX-POINTCLOUD-ORACLE diagnostics
-#include<cmath>    // std::min / std::max fallback (also in gosfxheaders)
 #include "mc2fmt.h"
 //==========================================================================//
 // File:	 gosFX_PointCloud.cpp											//
@@ -461,89 +459,7 @@ void gosFX::PointCloud::Draw(DrawInfo *info)
 	Check_Object(this);
 	Check_Object(info);
 
-	// Live particles retain birth randomness; rendering must not resample it.
-	// An empty cloud emits nothing but still draws its child effects.
-	if (mc2::particles::Batcher::is_enabled()) {
-		if (m_activeParticleCount > 0) {
-			Specification *spec = GetSpecification();
-			Check_Object(spec);
-			const uint32_t mlrTex =
-				static_cast<uint32_t>(spec->m_state.GetTextureHandle());
-			int blendMode = 0;
-			{
-				const MidLevelRenderer::MLRState::AlphaMode am =
-					spec->m_state.GetAlphaMode();
-				// MLR draws both as pure additive (ONE,ONE), alpha ignored: AlphaOneMode leaves the
-				// renderer state it inherits, and the card data (alpha 0 halo cards) relies on that.
-				if (am == MidLevelRenderer::MLRState::OneOneMode ||
-				    am == MidLevelRenderer::MLRState::AlphaOneMode)
-					blendMode = 2;
-			}
-			glm::mat4 local_to_world;
-			local_to_world = m_localToParent * *info->m_parentToWorld;
-
-			mc2::particles::Batcher &batcher = mc2::particles::Batcher::Instance();
-			batcher.BeginGroup(mlrTex, 0.0f, 0.0f, 1.0f, 1.0f, blendMode, 0u);
-
-			int harvested = 0;
-			float minAlpha =  3.0e38f, maxAlpha = -3.0e38f;
-			float minAge = 1.0f, maxAge = 0.0f;
-
-			for (int i = 0; i < m_activeParticleCount; ++i) {
-				Particle *p = GetParticle(i);
-				Check_Object(p);
-				if (p->m_age >= 1.0f) continue;   // skip dead slots
-
-				glm::vec3 wc;
-				wc = mc2::math::transformPoint(m_P_localTranslation[i], local_to_world);
-
-				const Stuff::RGBAColor &c = m_P_color[i];
-
-				mc2::particles::GpuParticle gp = {};
-				gp.position[0] = wc.x;
-				gp.position[1] = wc.y;
-				gp.position[2] = wc.z;
-				gp.color[0]    = c.red;
-				gp.color[1]    = c.green;
-				gp.color[2]    = c.blue;
-				gp.color[3]    = c.alpha;
-				// Preserve the harvest's existing billboard radius.
-				gp.size        = 4.0f;
-				gp.age         = static_cast<float>(p->m_age);  // normalized [0,1]
-				gp.lifetime    = 1.0f;                           // normalized sentinel (real seconds = 1.0f/p->m_ageRate)
-
-				batcher.Emit(gp);
-				++harvested;
-				if (c.alpha < minAlpha) minAlpha = c.alpha;
-				if (c.alpha > maxAlpha) maxAlpha = c.alpha;
-				if (gp.age < minAge) minAge = gp.age;
-				if (gp.age > maxAge) maxAge = gp.age;
-			}
-
-			if (mc2::particles::Batcher::is_log_enabled()) {
-				static bool s_first = false;
-				if (!s_first && harvested > 0) {
-					s_first = true;
-					const double ageLo = static_cast<double>(minAge);
-					const double ageHi = static_cast<double>(maxAge);
-					mc2::fmt::print_err("[VFX_ORACLE v1] class=PointCloud FIRST_HARVEST spec=\"{}\" active={:d} harvested={:d} alpha=[{:.3f},{:.3f}] size=4.0 spin=none atlas=none ageRange=[{:.3f},{:.3f}]\n", mc2::fmt::safe(static_cast<const char*>(spec->m_name)), mc2::fmt::as_i32(m_activeParticleCount), mc2::fmt::as_i32(harvested), static_cast<double>(minAlpha), static_cast<double>(maxAlpha), ageLo, ageHi);
-					std::fflush(stderr);
-				}
-				static unsigned long long s_calls = 0, s_harvTotal = 0;
-				s_harvTotal += static_cast<unsigned>(harvested);
-				if ((++s_calls % 240ull) == 0ull) {
-					const double aLo = (harvested > 0) ? static_cast<double>(minAlpha) : 0.0;
-					const double aHi = (harvested > 0) ? static_cast<double>(maxAlpha) : 0.0;
-					mc2::fmt::print_err("[VFX_ORACLE v1] class=PointCloud calls={:d} active_this_call={:d} harvested_this_call={:d} emitted_this_call={:d} harvestedTotal={:d} fallback=0 alpha_this_call=[{:.3f},{:.3f}]\n", mc2::fmt::as_u64(s_calls), mc2::fmt::as_i32(m_activeParticleCount), mc2::fmt::as_i32(harvested), mc2::fmt::as_i32(harvested), mc2::fmt::as_u64(s_harvTotal), aLo, aHi);
-					std::fflush(stderr);
-				}
-			}
-
-		}
-
-		Effect::Draw(info);
-		return;
-	}
+	// Keep the authored primitive until its native route has visual parity.
 
 	if (m_activeParticleCount)
 	{

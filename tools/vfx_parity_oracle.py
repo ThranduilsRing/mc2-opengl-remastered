@@ -128,8 +128,11 @@ def runtime_provenance(record: dict, arm: str, experiment: str, base: Path, prim
         raise ValueError("name master or harvested experiment")
     enabled = "1" if arm == "gpu" else "0"
     harvest = enabled if experiment == "harvested" else "0"
-    expected = {"MC2_GPU_PARTICLES": enabled, "MC2_VFX_ORACLE_RENDER": harvest,
+    expected = {"MC2_GPU_PARTICLES": enabled,
                 "MC2_VFX_ORACLE_TUBE": harvest, "MC2_VFX_ORACLE_SHAPE": harvest}
+    # Archived captures include the retired selector; it never selected harvesting.
+    if "MC2_VFX_ORACLE_RENDER" in gates:
+        expected["MC2_VFX_ORACLE_RENDER"] = harvest
     if gates != expected:
         raise ValueError("gate vector differs from the named experiment")
     process = runtime["process"]

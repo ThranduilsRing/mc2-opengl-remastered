@@ -44,6 +44,7 @@
 #endif
 
 #include "ground_contact_blob.h"  // GROUND-CONTACT-BLOB-1
+#include "anim_freeze.h"
 #include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
 #include "../GameOS/gameos/gos_visual_capture.h"  // VISUAL-CAPTURE-CLEAN-1
 
@@ -884,7 +885,8 @@ void GameCamera::render (void)
 				float lx = 0.0f, ly = 0.0f, lz = 1.0f;
 				gos_GetTerrainLightDir(&lx, &ly, &lz);
 				const float terrainLightDir_4f[4] = { lx, ly, lz, 0.0f };
-				const float missionTime = static_cast<float>(gos_GetElapsedTime());
+				// Wall-clock wind otherwise moves between frozen oracle samples.
+				const float missionTime = mc2::animationsFrozen() ? 0.0f : static_cast<float>(gos_GetElapsedTime());
 				// The physical eye is Stuff (west,elevation,north), not the orbit target.
 				const glm::vec3 vegEye = getCameraOrigin();
 				const float vegHalfMap = Terrain::worldUnitsMapSide * 0.5f;

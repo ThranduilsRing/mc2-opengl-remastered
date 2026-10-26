@@ -182,32 +182,6 @@ void
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
 void
-	MLRSortByOrder::AddScreenQuads
-		(
-			GOSVertex *vertices, 
-			const DrawScreenQuadsInformation *dInfo
-		)
-{
-	Verify(dInfo->currentNrOfQuads != 0 && (dInfo->currentNrOfQuads&3) == 0);
-
-	SortData *sd = SetRawData
-		(
-			vertices,
-			dInfo->currentNrOfQuads,
-			dInfo->state,
-			SortData::Quads
-		);
-
-	unsigned priority = dInfo->state.GetPriority();
-	if(sd != nullptr)
-	{
-		priorityBuckets[priority][lastUsedInBucket[priority]++] = sd;
-	}
-}
-
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-//
-void
 	MLRSortByOrder::AddSortRawData(SortData *sd)
 {
 	Check_Object(this); 

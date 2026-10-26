@@ -90,32 +90,6 @@ namespace MidLevelRenderer {
 				{}
 	};
 
-	class DrawScreenQuadsInformation
-		#if defined(_ARMOR)
-			: public Stuff::Signature
-		#endif
-	{
-	public:
-		DrawScreenQuadsInformation();
-
-		const Stuff::Vector4D *coords;
-		const Stuff::RGBAColor *colors;
-		const Vector2DScalar *texCoords;
-
-		const bool *onOrOff;
-
-		int
-			nrOfQuads,
-			currentNrOfQuads;
-
-
-		MLRState state;
-
-		void
-			TestInstance() const
-				{}
-	};
-
 	//##########################################################################
 	//#########################    MLRClipper   #################################
 	//##########################################################################
@@ -148,9 +122,6 @@ namespace MidLevelRenderer {
 
 //	add another shape
 		void DrawScalableShape (DrawScalableShapeInformation*);
-
-//	add screen quads
-		void DrawScreenQuads (DrawScreenQuadsInformation*);
 
 //	add another effect
 		void DrawEffect (DrawEffectInformation*);

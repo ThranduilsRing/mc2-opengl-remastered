@@ -81,7 +81,7 @@ L(Lead0Kill, "MC2_GPU_MECHS", Bool, true, "mech", "", "[RETIRED] GPU mech batche
 L(Lead0Kill, "MC2_GPU_OBJECTS", Bool, true, "unclassified", "", "[RETIRED] Indirect-draw static-prop batcher (gos_static_prop_batcher).", passthrough | registry(Retired, "MC2_FEATURE_STATIC_PROP_INDIRECT", 1, true) | verified),
 // MC2_GPU_PARTICLES (master GPU-particle path; lives in kAuxEnvVars: kFeatureTable is indexed by RendererFeature; read in mclib/particles/batcher.cpp initialize_env)
 // history: docs/gate-history.md#MC2_GPU_PARTICLES
-L(Lead1, "MC2_GPU_PARTICLES", Bool, false, "code", "", "Master gate for GPU billboard particles (mclib/particles/batcher.cpp initialize_env).", passthrough | registry(Feature, "MC2_GPU_PARTICLES", -1, false) | verified),
+L(DefOnLead0, "MC2_GPU_PARTICLES", Bool, true, "code", "", "Native Card/CardCloud rendering; =0 suppresses these draws (CPU routes retired).", passthrough | registry(Feature, "MC2_GPU_PARTICLES", -1, true) | verified),
 L(Lead1, "MC2_GPU_PARTICLES_LOG", Bool, false, "code", "", "", passthrough | verified),
 L(Lead0, "MC2_GPU_PICK_HOVER", Bool, false, "code", "", "", verified),
 L(Lead0, "MC2_GPU_PICK_HOVER_TRACE", Bool, false, "code", "", "", verified),

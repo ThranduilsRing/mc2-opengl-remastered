@@ -48,7 +48,6 @@ namespace MidLevelRenderer {
 
 		void AddPrimitive(MLRPrimitiveBase*, int=0);
 		void AddEffect(MLREffect*, const MLRState&);
-		void AddScreenQuads(GOSVertex*, const DrawScreenQuadsInformation*);
 
 		virtual void AddSortRawData(SortData*);
 
