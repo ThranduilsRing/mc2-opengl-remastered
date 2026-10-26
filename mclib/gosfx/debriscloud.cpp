@@ -846,7 +846,8 @@ void gosFX::DebrisCloud::Draw(DrawInfo *info)
 			dinfo.scaling = nullptr;
 			Stuff::RGBAColor color(1.0f, 1.0f, 1.0f, particle->m_alpha);
 			dinfo.paintMe = &color;
-		 	info->m_clipper->DrawScalableShape(&dinfo);
+			if (!DrawNativeShape(dinfo))
+                        info->m_clipper->DrawScalableShape(&dinfo);
 		}
 	}
 

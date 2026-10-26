@@ -7,6 +7,8 @@
 #include <unordered_map>
 #include <vector>
 #include <span>
+#include "mlr/mlrtexturepool.hpp"
+#include "mlr/mlrtexture.hpp"
 extern const float* gos_GetTerrainMVPMat4();
 
 namespace {
@@ -16,6 +18,7 @@ struct Mesh {
     std::vector<uint16_t> indices;
 };
 std::unordered_map<uint64_t, Mesh> meshes;
+std::vector<GosVfxMeshInstance> pending;
 }
 
 namespace {
@@ -33,6 +36,13 @@ void flush(std::span<const GosVfxMeshUpload> uploads, std::span<const GosVfxMesh
         if (std::any_of(mesh.indices.begin(), mesh.indices.end(), [&](auto i) { return i >= up.vertexCount; })) continue;
         meshes.emplace(up.meshId, std::move(mesh));
     }
+    pending.insert(pending.end(), instances.begin(), instances.end());
+}
+}
+
+extern "C" void gos_vfx_mesh_flush_deferred() {
+    const auto instances = std::move(pending);
+    pending.clear();
     if (instances.empty()) return;
 #ifdef MC2_VULKAN_ISLAND
     if (!mc2_vk_vfx_island_enabled()) return;
@@ -48,8 +58,12 @@ void flush(std::span<const GosVfxMeshUpload> uploads, std::span<const GosVfxMesh
         VfxParticleDraw draw{};
         draw.start = static_cast<uint32_t>(vertices.size());
         draw.count = static_cast<uint32_t>(mesh.indices.size());
-        draw.texture = inst.gosTexHandle;
-        draw.additive = inst.blendMode == 1 ? 1u : 0u;
+        if (inst.mlrTexHandle && MidLevelRenderer::MLRTexturePool::Instance) {
+            auto* entry = (*MidLevelRenderer::MLRTexturePool::Instance)[inst.mlrTexHandle];
+            if (entry && entry->GetImage()) draw.texture = entry->GetImage()->GetHandle();
+        }
+        const unsigned blend = static_cast<unsigned>(inst.blendMode);
+        draw.additive = blend == 3 ? 0u : blend;
         draw.atlasColumns = kVfxGeometryAtlas;
         for (auto i : mesh.indices) {
             VfxGeometryVertex v{};
@@ -59,8 +73,9 @@ void flush(std::span<const GosVfxMeshUpload> uploads, std::span<const GosVfxMesh
                 v.position[a] = inst.scale * (inst.modelToWorld[a] * p[0] + inst.modelToWorld[4+a] * p[1] +
                                                inst.modelToWorld[8+a] * p[2]) + inst.modelToWorld[12+a];
             std::copy_n(inst.rgba, 4, v.color);
+            if (blend == 2 || blend == 3) v.color[3] = 1.0f;
             std::copy_n(mesh.uvs[i].data(), 2, v.uv);
-            v.flags = VfxGeometryMesh | (inst.gosTexHandle == 0 ? VfxGeometryUntextured : 0u);
+            v.flags = VfxGeometryMesh | (inst.mlrTexHandle == 0 ? VfxGeometryUntextured : 0u);
             vertices.push_back(v);
         }
         draws.push_back(draw);
@@ -68,7 +83,6 @@ void flush(std::span<const GosVfxMeshUpload> uploads, std::span<const GosVfxMesh
     if (!vertices.empty()) mc2_vk_vfx_island_run(vertices.data(), static_cast<uint32_t>(vertices.size()),
         draws.data(), static_cast<uint32_t>(draws.size()), mvp, nullptr, nullptr, pp->getWidth(), pp->getHeight());
 #endif
-}
 }
 
 extern "C" void gos_vfx_mesh_fixture(const float origin[3]) {

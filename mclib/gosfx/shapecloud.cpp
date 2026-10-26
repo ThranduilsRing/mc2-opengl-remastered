@@ -376,7 +376,8 @@ void gosFX::ShapeCloud::Draw(DrawInfo *info)
 							);
 						dinfo.scaling = &scale;
 						dinfo.paintMe = &particle->m_color;
-		 				info->m_clipper->DrawScalableShape(&dinfo);
+						if (!DrawNativeShape(dinfo))
+                        info->m_clipper->DrawScalableShape(&dinfo);
 					}
 				}
 			}
@@ -427,7 +428,8 @@ void gosFX::ShapeCloud::Draw(DrawInfo *info)
 							);
 						dinfo.scaling = &scale;
 						dinfo.paintMe = &particle->m_color;
-		 				info->m_clipper->DrawScalableShape(&dinfo);
+						if (!DrawNativeShape(dinfo))
+                        info->m_clipper->DrawScalableShape(&dinfo);
 					}
 				}
 			}
@@ -479,7 +481,8 @@ void gosFX::ShapeCloud::Draw(DrawInfo *info)
 						);
 					dinfo.scaling = &scale;
 					dinfo.paintMe = &particle->m_color;
-		 			info->m_clipper->DrawScalableShape(&dinfo);
+					if (!DrawNativeShape(dinfo))
+                        info->m_clipper->DrawScalableShape(&dinfo);
 				}
 			}
 		}
@@ -519,7 +522,8 @@ void gosFX::ShapeCloud::Draw(DrawInfo *info)
 						);
 					dinfo.scaling = &scale;
 					dinfo.paintMe = &particle->m_color;
-		 			info->m_clipper->DrawScalableShape(&dinfo);
+					if (!DrawNativeShape(dinfo))
+                        info->m_clipper->DrawScalableShape(&dinfo);
 				}
 			}
 		}

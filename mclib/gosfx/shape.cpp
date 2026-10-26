@@ -1,75 +1,119 @@
 #include"gosfxheaders.hpp"
 
-// MC2_VFX_ORACLE_SHAPE slice (default OFF). GPU mesh-effect substrate for the
-// gosFX::Shape class only. Harvest the rigid model-space MLRShape + per-instance
-// transform/scale/color/texture/alpha and submit through the persistent-mesh
-// VFX bridge instead of MLRClipper::DrawScalableShape.
 #include "particles/batcher.h"
 #include <mlr/mlrindexedprimitivebase.hpp>
-#include <mlr/mlrtexturepool.hpp>
-#include <mlr/mlrtexture.hpp>
 #include <vector>
 #include <unordered_set>
 #include <cstdint>
-#include <cstdio>
+#include <algorithm>
 #include "mc2fmt.h"
 
-// VFX mesh bridge ABI (implemented in GameOS/gameos/gos_vfx_mesh_bridge.cpp).
-// Mirrors the struct layout in gos_vfx_mesh_bridge.h; redeclared here so this
-// TU never #includes a GameOS/GL header (one-way dependency, same rule the
-// particle batcher follows).
+// One-way bridge ABI; keep in sync with gos_vfx_mesh_bridge.h.
 struct GosVfxMeshUpload {
-    uint64_t        meshId;
-    const float*    positions;
-    const float*    uvs;
+    uint64_t meshId;
+    const float* positions;
+    const float* uvs;
     const uint16_t* indices;
-    uint32_t        vertexCount;
-    uint32_t        indexCount;
+    uint32_t vertexCount, indexCount;
 };
 struct GosVfxMeshInstance {
     uint64_t meshId;
-    float    modelToWorld[16];
-    float    scale;
-    float    rgba[4];
-    uint32_t gosTexHandle;
-    int      blendMode;
+    float modelToWorld[16];
+    float scale, rgba[4];
+    uint32_t mlrTexHandle;
+    int blendMode;
 };
-extern "C" void gos_vfx_mesh_flush(const GosVfxMeshUpload*   uploads,
-                                   unsigned int              numUploads,
-                                   const GosVfxMeshInstance* instances,
-                                   unsigned int              numInstances);
+extern "C" void gos_vfx_mesh_flush(const GosVfxMeshUpload*, unsigned,
+                                   const GosVfxMeshInstance*, unsigned);
 
-namespace {
-
-// Set of MLRShape ids already uploaded to the GPU this process. Mirrors the
-// bridge cache so we only attach the heavy geometry payload on first sighting
-// (the bridge ignores the payload on a cache hit, but skipping it here avoids
-// the per-frame harvest of static model verts/indices too).
-std::unordered_set<uint64_t> g_uploadedShapeIds;
-
-// Harvest counters (process lifetime; dumped under MC2_VFX_ORACLE_SHAPE_LOG).
-unsigned long long g_shp_submitted    = 0;  // shapes routed to the bridge
-unsigned long long g_shp_fallback     = 0;  // shapes that fell back to legacy
-unsigned long long g_shp_unsupported  = 0;  // fallback: non-indexed primitive
-unsigned long long g_shp_missingMesh  = 0;  // fallback: no shape / empty geometry
-unsigned long long g_shp_missingMat   = 0;  // primitive had no resolvable texture
-unsigned long long g_shp_drawCalls    = 0;  // bridge flush calls issued
-bool g_shp_firstHarvest = false;
-
-// Resolve an MLR pool index to a GOS texture handle (same path as
-// Batcher::ResolveTextures). Returns 0 if unresolvable (-> untextured white).
-uint32_t resolveMlrToGos(unsigned mlrIndex) {
-    if (mlrIndex == 0) return 0u;
-    if (!MidLevelRenderer::MLRTexturePool::Instance) return 0u;
-    MidLevelRenderer::MLRTexture* tex =
-        (*MidLevelRenderer::MLRTexturePool::Instance)[static_cast<int>(mlrIndex)];
-    if (!tex) return 0u;
-    MidLevelRenderer::GOSImage* img = tex->GetImage();
-    if (!img) return 0u;
-    return static_cast<uint32_t>(img->GetHandle());
+bool gosFX::DrawNativeShape(const MidLevelRenderer::DrawScalableShapeInformation& draw)
+{
+    if (!mc2::particles::Batcher::is_oracle_shape_enabled() || !draw.shape) return false;
+    static std::unordered_set<uint64_t> uploaded;
+    // Validate before submitting any primitive: fallback must never double draw.
+    for (int p = 0; p < draw.shape->GetNum(); ++p) {
+        auto* prim = draw.shape->Find(p);
+        if (!prim || !prim->IsDerivedFrom(MidLevelRenderer::MLRIndexedPrimitiveBase::DefaultData)) return false;
+        auto* mesh = static_cast<MidLevelRenderer::MLRIndexedPrimitiveBase*>(prim);
+        unsigned short* indices = nullptr; int count = 0;
+        mesh->GetIndexData(&indices, &count);
+        if (!indices || count <= 0 || std::any_of(indices, indices + count,
+            [&](auto i) { return i >= mesh->GetNumVertices(); })) return false;
+        unsigned char* lengths = nullptr; int polygons = 0;
+        mesh->GetSubprimitiveLengths(&lengths, &polygons);
+        int total = 0;
+        for (int f = 0; f < polygons; ++f) {
+            if (lengths[f] < 3) return false;
+            total += lengths[f];
+        }
+        if (polygons ? total != count : count % 3 != 0) return false;
+    }
+    for (int p = 0; p < draw.shape->GetNum(); ++p) {
+        auto* prim = static_cast<MidLevelRenderer::MLRIndexedPrimitiveBase*>(draw.shape->Find(p));
+        const uint64_t id = reinterpret_cast<uintptr_t>(prim);
+        std::vector<uint16_t> triangles;
+        glm::vec3* coords = nullptr; int count = 0;
+        unsigned short* indices = nullptr; int indexCount = 0;
+        MidLevelRenderer::Vector2DScalar* texcoords = nullptr; int texCount = 0;
+        prim->GetCoordData(&coords, &count);
+        prim->GetIndexData(&indices, &indexCount);
+        prim->GetTexCoordData(&texcoords, &texCount);
+        if (!coords || !indices || count <= 0 || indexCount <= 0) continue;
+        const bool upload = !uploaded.contains(id);
+        if (upload) {
+            unsigned char* lengths = nullptr; int polygons = 0;
+            prim->GetSubprimitiveLengths(&lengths, &polygons);
+            if (polygons) {
+                int offset = 0;
+                for (int f = 0; f < polygons; ++f) {
+                    const int n = lengths[f];
+                    for (int v = 1; v + 1 < n; ++v)
+                        triangles.insert(triangles.end(), {indices[offset], indices[offset+v], indices[offset+v+1]});
+                    offset += n;
+                }
+            } else triangles.assign(indices, indices + indexCount);
+        }
+        // Combine each authored submaterial with this instance's master state.
+        MidLevelRenderer::MLRState state;
+        state.Combine(draw.state, prim->GetReferenceState());
+        using State = MidLevelRenderer::MLRState;
+        const auto alpha = state.GetAlphaMode();
+        const int blend = alpha == State::OneOneMode ? 2 : alpha == State::AlphaOneMode ? 1 :
+            alpha == State::OneZeroMode ? 3 : alpha == State::OneAlphaMode ? 4 :
+            alpha == State::OneInvAlphaMode ? 5 : 0;
+        GosVfxMeshInstance inst{};
+        inst.meshId = id;
+        // Legacy matrices store affine translation in [axis][3].
+        for (int axis = 0; axis < 3; ++axis)
+            for (int k = 0; k < 4; ++k)
+                inst.modelToWorld[k*4+axis] = (*draw.shapeToWorld)[axis][k];
+        inst.modelToWorld[15] = 1.0f;
+        inst.scale = draw.scaling ? draw.scaling->x : 1.0f;
+        const Stuff::RGBAColor white(1,1,1,1);
+        const auto& color = draw.paintMe ? *draw.paintMe : white;
+        inst.rgba[0] = color.red; inst.rgba[1] = color.green; inst.rgba[2] = color.blue;
+        inst.rgba[3] = blend == 3 ? 1.0f : color.alpha;
+        inst.mlrTexHandle = state.GetTextureHandle();
+        inst.blendMode = blend;
+        std::vector<float> uvs;
+        if (upload) {
+            for (int v = 0; v < count; ++v) {
+                uvs.push_back(texcoords && v < texCount ? texcoords[v][0] : 0.0f);
+                uvs.push_back(texcoords && v < texCount ? texcoords[v][1] : 0.0f);
+            }
+        }
+        GosVfxMeshUpload up{id, reinterpret_cast<const float*>(coords), uvs.data(),
+            triangles.data(), static_cast<uint32_t>(count), static_cast<uint32_t>(triangles.size())};
+        gos_vfx_mesh_flush(upload ? &up : nullptr, upload ? 1u : 0u, &inst, 1u);
+        if (upload) {
+            uploaded.insert(id);
+            if (mc2::particles::Batcher::is_oracle_shape_log_enabled())
+                mc2::fmt::print_err("[VFX_MESH] prim={} vertices={} indices={} tex={} blend={}\n",
+                    p, count, up.indexCount, inst.mlrTexHandle, blend);
+        }
+    }
+    return true;
 }
-
-}  // namespace
 
 //==========================================================================//
 // File:	 gosFX_Shape.cpp											    //
@@ -365,188 +409,9 @@ void gosFX::Shape::Draw(DrawInfo *info)
 		mc2::math::alignLocalAxisToWorldVector(local_to_world, look_at, Stuff::Z_Axis, Stuff::Y_Axis, -1);
 	}
 
-	//
-	//------------------------------------------------------------------
-	// MC2_VFX_ORACLE_SHAPE slice (default OFF): route this Shape through
-	// the persistent-mesh GPU bridge instead of DrawScalableShape. The
-	// final local_to_world (with any camera-alignment already baked above),
-	// m_scale, and m_color are reused. On any unsupported case we fall
-	// through to the legacy DrawScalableShape below (routed=false).
-	//------------------------------------------------------------------
-	//
-	bool routed = false;
-	if (mc2::particles::Batcher::is_oracle_shape_enabled() && shape)
-	{
-		const bool logOn = mc2::particles::Batcher::is_oracle_shape_log_enabled();
-
-		// Classifier: support only shapes whose primitives are ALL indexed
-		// (clean triangle lists). A non-indexed primitive (e.g. raw strip /
-		// non-mesh) -> unsupported -> legacy fallback for the whole shape so
-		// MLR sort/clip semantics are preserved for that case.
-		int numPrim = shape->GetNum();
-		bool supported = (numPrim > 0);
-		for (int p = 0; p < numPrim && supported; ++p)
-		{
-			MidLevelRenderer::MLRPrimitiveBase *prim = shape->Find(p);
-			if (!prim ||
-				!prim->IsDerivedFrom(MidLevelRenderer::MLRIndexedPrimitiveBase::DefaultData))
-			{
-				supported = false;
-			}
-		}
-
-		if (!supported)
-		{
-			++g_shp_unsupported;
-		}
-		else
-		{
-			// Build the GL column-vector model->world matrix from the Stuff
-			// row-vector LinearMatrix4D (world_c = Σ_r local_r*M(r,c)+M(3,c)).
-			// Column-major m[col*4+row]: m[k*4+c]=M(k,c). Row 3 = (0,0,0,1).
-			float m2w[16];
-			for (int c = 0; c < 4; ++c)
-				for (int k = 0; k < 4; ++k)
-					m2w[k*4 + c] = 0.0f;
-			for (int c = 0; c < 3; ++c)
-			{
-				for (int k = 0; k < 3; ++k)
-					m2w[k*4 + c] = static_cast<float>(local_to_world[c][k]);
-				m2w[3*4 + c] = static_cast<float>(local_to_world[c][3]);  // translation
-			}
-			m2w[3*4 + 3] = 1.0f;
-
-			const uint64_t meshId = static_cast<uint64_t>(reinterpret_cast<uintptr_t>(shape));
-			const bool needUpload = (g_uploadedShapeIds.find(meshId) ==
-									 g_uploadedShapeIds.end());
-
-			// Harvest geometry only on first sighting (upload-once cache).
-			std::vector<float>    pos;     // x,y,z per vertex
-			std::vector<float>    uv;      // u,v per vertex
-			std::vector<uint16_t> idx;     // triangle-list indices (re-based)
-			uint32_t firstTexHandle = 0;   // GOS handle of first textured prim
-			int      blendMode       = 0;  // 0=alpha, 1=additive (first prim)
-			bool     gotMaterial     = false;
-			bool     harvestOk       = true;
-
-			// Even on a cache hit we must derive the per-instance material
-			// (texture handle + blend mode) from the primitive state, so walk
-			// the primitives regardless; geometry vectors fill only on upload.
-			for (int p = 0; p < numPrim && harvestOk; ++p)
-			{
-				MidLevelRenderer::MLRIndexedPrimitiveBase *prim =
-					static_cast<MidLevelRenderer::MLRIndexedPrimitiveBase*>(shape->Find(p));
-
-				// Material from the per-primitive current state.
-				const MidLevelRenderer::MLRState &st = prim->GetCurrentState();
-				unsigned mlrTex = st.GetTextureHandle();
-				MidLevelRenderer::MLRState::AlphaMode am = st.GetAlphaMode();
-				int thisBlend = (am == MidLevelRenderer::MLRState::OneOneMode) ? 1 : 0;
-				if (!gotMaterial)
-				{
-					uint32_t gosH = resolveMlrToGos(mlrTex);
-					firstTexHandle = gosH;
-					blendMode      = thisBlend;
-					gotMaterial    = true;
-					if (mlrTex != 0 && gosH == 0) ++g_shp_missingMat;
-				}
-
-				if (needUpload)
-				{
-					glm::vec3   *coords = nullptr; int nCoords = 0;
-					MidLevelRenderer::Vector2DScalar *texc = nullptr; int nTex = 0;
-					unsigned short   *indices = nullptr; int nIdx   = 0;
-					prim->GetCoordData(&coords, &nCoords);
-					prim->GetTexCoordData(&texc, &nTex);
-					prim->GetIndexData(&indices, &nIdx);
-					if (!coords || nCoords <= 0 || !indices || nIdx <= 0)
-					{
-						harvestOk = false;
-						break;
-					}
-					const uint16_t base = static_cast<uint16_t>((pos.size() / 3));
-					for (int v = 0; v < nCoords; ++v)
-					{
-						pos.push_back(static_cast<float>(coords[v].x));
-						pos.push_back(static_cast<float>(coords[v].y));
-						pos.push_back(static_cast<float>(coords[v].z));
-						if (texc && v < nTex)
-						{
-							uv.push_back(static_cast<float>(texc[v][0]));
-							uv.push_back(static_cast<float>(texc[v][1]));
-						}
-						else { uv.push_back(0.0f); uv.push_back(0.0f); }
-					}
-					for (int e = 0; e < nIdx; ++e)
-						idx.push_back(static_cast<uint16_t>((base + indices[e])));
-				}
-			}
-
-			if (harvestOk && (!needUpload || (!pos.empty() && !idx.empty())))
-			{
-				GosVfxMeshUpload up;
-				up.meshId      = meshId;
-				up.positions   = needUpload ? pos.data() : nullptr;
-				up.uvs         = needUpload ? uv.data()  : nullptr;
-				up.indices     = needUpload ? idx.data() : nullptr;
-				up.vertexCount = needUpload ? static_cast<uint32_t>((pos.size()/3)) : 0u;
-				up.indexCount  = needUpload ? static_cast<uint32_t>(idx.size())     : 0u;
-
-				GosVfxMeshInstance inst;
-				inst.meshId = meshId;
-				for (int e = 0; e < 16; ++e) inst.modelToWorld[e] = m2w[e];
-				inst.scale        = static_cast<float>(m_scale);
-				inst.rgba[0]      = static_cast<float>(m_color.red);
-				inst.rgba[1]      = static_cast<float>(m_color.green);
-				inst.rgba[2]      = static_cast<float>(m_color.blue);
-				inst.rgba[3]      = static_cast<float>(m_color.alpha);
-				inst.gosTexHandle = firstTexHandle;
-				inst.blendMode    = blendMode;
-
-				gos_vfx_mesh_flush(needUpload ? &up : nullptr, needUpload ? 1u : 0u,
-								   &inst, 1u);
-				if (needUpload) g_uploadedShapeIds.insert(meshId);
-				++g_shp_submitted;
-				++g_shp_drawCalls;
-				routed = true;
-
-				if (logOn && !g_shp_firstHarvest)
-				{
-					g_shp_firstHarvest = true;
-					mc2::fmt::print_err("[VFX_MESH v1] event=FIRST_HARVEST(shape) meshId={:d} prims={:d} verts={:d} indices={:d} tex={:d} blend={} scale={:.3f}\n", mc2::fmt::as_u64(static_cast<unsigned long long>(meshId)), mc2::fmt::as_i32(numPrim), mc2::fmt::as_u32(up.vertexCount), mc2::fmt::as_u32(up.indexCount), mc2::fmt::as_u32(firstTexHandle), mc2::fmt::safe(blendMode == 1 ? "additive" : "alpha"), static_cast<double>(m_scale));
-					std::fflush(stderr);
-				}
-			}
-			else
-			{
-				++g_shp_missingMesh;
-			}
-		}
-	}
-
-	//
-	//----------------------------
-	// Let our parent do its thing
-	//----------------------------
-	//
-	if (!routed)
-	{
-		if (mc2::particles::Batcher::is_oracle_shape_enabled())
-			++g_shp_fallback;
-		info->m_clipper->DrawScalableShape(&dinfo);
-	}
-	Singleton::Draw(info);
-
-	// MC2_VFX_ORACLE_SHAPE_LOG: 240-call summary (mirror the tube/batcher idiom).
-	if (mc2::particles::Batcher::is_oracle_shape_log_enabled())
-	{
-		static unsigned long long s_calls = 0;
-		if ((++s_calls % 240ull) == 0ull)
-		{
-			mc2::fmt::print_err("[VFX_MESH v1] event=summary(shape) calls={:d} submitted={:d} fallback={:d} unsupported={:d} missingMesh={:d} missingMat={:d} drawCalls={:d} meshesCached={:d}\n", mc2::fmt::as_u64(s_calls), mc2::fmt::as_u64(g_shp_submitted), mc2::fmt::as_u64(g_shp_fallback), mc2::fmt::as_u64(g_shp_unsupported), mc2::fmt::as_u64(g_shp_missingMesh), mc2::fmt::as_u64(g_shp_missingMat), mc2::fmt::as_u64(g_shp_drawCalls), mc2::fmt::as_u32(static_cast<unsigned>(g_uploadedShapeIds.size())));
-			std::fflush(stderr);
-		}
-	}
+	if (!DrawNativeShape(dinfo))
+        info->m_clipper->DrawScalableShape(&dinfo);
+    Singleton::Draw(info);
 }
 
 //------------------------------------------------------------------------------

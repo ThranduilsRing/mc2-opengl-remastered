@@ -28,8 +28,8 @@ struct GosVfxMeshInstance {
     float    modelToWorld[16];    // column-major 4x4 (GL native, column-vector)
     float    scale;               // uniform model scale
     float    rgba[4];             // per-instance paint color (0..1)
-    uint32_t gosTexHandle;        // GOS texture handle (already resolved by mclib), 0 = untextured white
-    int      blendMode;           // 0 = alpha (SRC_ALPHA,ONE_MINUS_SRC_ALPHA), 1 = additive (SRC_ALPHA,ONE)
+    uint32_t mlrTexHandle;        // MLR pool index, resolved after ForceLoadImages; 0 = untextured
+    int      blendMode;           // Same 0..5 blend recipes as the native Tube bridge
 };
 
 // Per-frame flush. uploads[] supplies geometry for any meshId not yet cached;
@@ -45,5 +45,6 @@ void gos_vfx_mesh_flush(const GosVfxMeshUpload*   uploads,
 // Runtime witness, called only by MC2_FX_FORCE_SPAWN=9. Draws alpha and additive
 // untextured triangles through the same mesh cache and transform as gosFX shapes.
 void gos_vfx_mesh_fixture(const float origin[3]);
+void gos_vfx_mesh_flush_deferred();
 
 }  // extern "C"

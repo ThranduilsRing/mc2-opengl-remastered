@@ -999,6 +999,7 @@ void GameCamera::render (void)
                     const float origin[3] = {center.x, center.y + 45.0f, center.z};
                     gos_vfx_mesh_fixture(origin);
                 }
+                gos_vfx_mesh_flush_deferred();
 				gos_ClearActiveCamera();
 			}
 		}
