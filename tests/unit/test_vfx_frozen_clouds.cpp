@@ -191,7 +191,7 @@ public:
         appendBytes(bytes, rng.draws);
         return bytes;
     }
-    std::vector<GpuParticle> expectedPayload(const glm::mat4& parent)
+    std::vector<GpuParticle> expectedPayload(const glm::mat4& parent, const glm::vec3& camera = glm::vec3(0))
     {
         std::vector<GpuParticle> result;
         glm::mat4 localToWorld;
@@ -206,6 +206,39 @@ public:
                 world = mc2::math::transformPoint(p->m_localTranslation, localToWorld);
             constexpr unsigned colorsPerParticle = std::is_same_v<Cloud, gosFX::ShardCloud> ? 3 : 1;
             const auto& color = this->m_P_color[slot * colorsPerParticle];
+            if constexpr (std::is_same_v<Cloud, gosFX::CardCloud>) {
+                glm::mat4 cardToCloud;
+                mc2::math::buildRotation(cardToCloud, p->m_localRotation);
+                const auto* spec = this->GetSpecification();
+                const auto direction = mc2::math::transformPoint(camera, glm::inverse(localToWorld)) - p->m_localTranslation;
+                if (spec->m_alignZUsingX)
+                    mc2::math::alignLocalAxisToWorldVector(cardToCloud, direction, Stuff::Z_Axis,
+                        spec->m_alignZUsingY ? Stuff::Y_Axis : Stuff::X_Axis,
+                        spec->m_alignZUsingY ? Stuff::X_Axis : -1);
+                else if (spec->m_alignZUsingY)
+                    mc2::math::alignLocalAxisToWorldVector(cardToCloud, direction, Stuff::Z_Axis, Stuff::Y_Axis, -1);
+                mc2::math::buildTranslation(cardToCloud, p->m_localTranslation);
+                const float x = p->m_scale * p->m_halfX, y = p->m_scale * p->m_halfY;
+                const glm::vec3 corners[] = {{x,-y,0}, {-x,-y,0}, {-x,y,0}, {x,y,0}};
+                for (unsigned corner : {0u, 1u, 2u, 0u, 2u, 3u}) {
+                    GpuParticle vertex{};
+                    const auto wp = mc2::math::transformPoint(mc2::math::transformPoint(corners[corner], cardToCloud), localToWorld);
+                    vertex.position[0] = wp.x; vertex.position[1] = wp.y; vertex.position[2] = wp.z;
+                    vertex.color[0] = color.red; vertex.color[1] = color.green;
+                    vertex.color[2] = color.blue; vertex.color[3] = color.alpha;
+                    vertex.velocity[0] = this->m_P_uvs[slot*4+corner].x;
+                    vertex.velocity[1] = this->m_P_uvs[slot*4+corner].y;
+                    MidLevelRenderer::MLRState state;
+                    state.Combine(MidLevelRenderer::MLRState{}, spec->m_state);
+                    const bool additive = state.GetAlphaMode() == MidLevelRenderer::MLRState::OneOneMode ||
+                                          state.GetAlphaMode() == MidLevelRenderer::MLRState::AlphaOneMode;
+                    vertex.kind_flags = 8u | (additive ? 2u : 0u) |
+                        (state.GetTextureWrapMode() == MidLevelRenderer::MLRState::TextureClamp ? 16u : 0u) |
+                        (state.GetTextureHandle() == 0 ? 32u : 0u);
+                    result.push_back(vertex);
+                }
+                continue;
+            }
             GpuParticle record{};
             record.position[0] = world.x;
             record.position[1] = world.y;
@@ -240,22 +273,10 @@ public:
     void checkLiveUvs(const BridgeCapture& capture)
     {
         if constexpr (std::is_same_v<Cloud, gosFX::CardCloud>) {
-            unsigned record = 0;
-            for (unsigned slot = 0; slot < active(); ++slot) {
-                if (this->GetParticle(slot)->m_age >= 1.0f) continue;
-                const auto group = std::find_if(capture.groups.begin(), capture.groups.end(),
-                    [record](const auto& g) { return record >= g.start && record < g.start + g.count; });
-                REQUIRE(group != capture.groups.end());
-                const auto* uv = this->m_P_uvs + slot * 4;
-                CHECK(group->u0 == uv[0].x);
-                CHECK(group->v0 == uv[3].y);
-                CHECK(group->u0 + group->us == uv[1].x);
-                CHECK(group->v0 + group->vs == uv[0].y);
-                CHECK(group->atlasColumns == 0);
-                ++record;
-            }
+            for (const auto& group : capture.groups) CHECK(group.atlasColumns == 0xffffffffu);
         }
     }
+
     std::vector<char> frozenState()
     {
         std::vector<char> result;
@@ -330,12 +351,13 @@ void checkFrozenCloud(bool alignX = false, bool alignY = false, unsigned sides =
     auto repeatDraw = [&](unsigned live, bool outside) {
         const auto frozen = Stuff::Random::GetState();
         const auto particles = cloud.frozenState();
-        const auto expected = [&] {
+        auto expected = [&] {
             if constexpr (!std::is_same_v<Cloud, gosFX::PertCloud>)
                 if (gpu) return cloud.expectedPayload(transform);
             return std::vector<GpuParticle>{};
         }();
-        REQUIRE(expected.size() == (gpu ? live : 0));
+        constexpr unsigned stride = std::is_same_v<Cloud, gosFX::CardCloud> ? 6 : 1;
+        REQUIRE(expected.size() == (gpu ? live * stride : 0));
         std::vector<GpuParticle> firstPayload;
         std::array<std::vector<char>, 2> firstMlrPayload;
         glm::mat4 camera = glm::mat4(1.0f);
@@ -346,6 +368,8 @@ void checkFrozenCloud(bool alignX = false, bool alignY = false, unsigned sides =
             CAPTURE(outside);
             CAPTURE(gpu);
             clipper.StartDraw(camera, projection, fog, nullptr, state, nullptr);
+            if constexpr (std::is_same_v<Cloud, gosFX::CardCloud>)
+                if (gpu) expected = cloud.expectedPayload(transform, mc2::math::getTranslation(camera));
             sorter->payload.clear();
             draw.m_clippingFlags = repeat % 2 ? 0x3f : 0;
             glm::mat4 worldToClip;
@@ -358,7 +382,7 @@ void checkFrozenCloud(bool alignX = false, bool alignY = false, unsigned sides =
             CHECK(Stuff::Random::GetState() == frozen);
             const auto emitted = mc2_vfx_getEmitTotal();
             cloud.Draw(&draw);
-            CHECK(mc2_vfx_getEmitTotal() - emitted == (gpu ? live : 0));
+            CHECK(mc2_vfx_getEmitTotal() - emitted == (gpu ? live * stride : 0));
             CHECK(Stuff::Random::GetState() == frozen);
             CHECK(Stuff::Random::GetDrawCount() == frozen.draws);
             CHECK(cloud.frozenState() == particles);
@@ -385,7 +409,7 @@ void checkFrozenCloud(bool alignX = false, bool alignY = false, unsigned sides =
             borrowedCapture->groups.clear();
             borrowedCapture->calls = 0;
             batcher.Flush();
-            CHECK(mc2_vfx_getRecordsFlushedTotal() - flushed == (gpu ? live : 0));
+            CHECK(mc2_vfx_getRecordsFlushedTotal() - flushed == (gpu ? live * stride : 0));
             const auto& actual = borrowedCapture->records;
             CHECK(borrowedCapture->calls == (gpu && live ? 1 : 0));
             CHECK(payloadMatches(actual, expected));
@@ -446,8 +470,7 @@ extern "C" void gos_particle_bridge_flush(const GpuParticle* records, unsigned c
 TEST_CASE_FIXTURE(FrozenPlatform, "vfx_frozen/CardCloud draw flush and clip leave RNG unchanged")
 {
     checkFrozenCloud<gosFX::CardCloud>();
-    if (!mc2::particles::Batcher::is_enabled())
-        for (const auto alignment : {std::pair{true, false}, std::pair{false, true}, std::pair{true, true}})
+    for (const auto alignment : {std::pair{true, false}, std::pair{false, true}, std::pair{true, true}})
             checkFrozenCloud<gosFX::CardCloud>(alignment.first, alignment.second);
 }
 TEST_CASE_FIXTURE(FrozenPlatform, "vfx_frozen/PointCloud draw flush and clip leave RNG unchanged")

@@ -493,73 +493,6 @@ void gosFX::Card::Draw(DrawInfo *info)
 	Check_Object(this);
 	Check_Object(info);
 
-	// CPU updates retain the authored card state for GPU rendering each frame.
-	if (mc2::particles::Batcher::is_enabled()) {
-		{
-			Specification *spec = GetSpecification();
-			Check_Object(spec);
-			const uint32_t mlrTex =
-				static_cast<uint32_t>(spec->m_state.GetTextureHandle());
-			int blendMode = 0;
-			{
-				const MidLevelRenderer::MLRState::AlphaMode am =
-					spec->m_state.GetAlphaMode();
-				// MLR draws both as pure additive (ONE,ONE), alpha ignored: AlphaOneMode leaves the
-				// renderer state it inherits, and the card data (alpha 0 halo cards) relies on that.
-				if (am == MidLevelRenderer::MLRState::OneOneMode ||
-				    am == MidLevelRenderer::MLRState::AlphaOneMode)
-					blendMode = 2;
-			}
-
-			// Execute has already evaluated the authored UV curves and flipbook.
-			// Harvest the same rectangle, including one-column atlases and scrolling.
-			const float tileU0 = m_uvs[0].x;
-			const float tileV0 = m_uvs[3].y;
-			const float tileUs = m_uvs[1].x - tileU0;
-			const float tileVs = m_uvs[0].y - tileV0;
-			const uint32_t atlasColumns = 0;
-			const uint32_t atlasFrame = 0;
-			mc2::particles::Batcher &batcher = mc2::particles::Batcher::Instance();
-			batcher.BeginGroup(mlrTex, tileU0, tileV0, tileUs, tileVs, blendMode);
-			const glm::vec3 wc = mc2::math::getTranslation(m_localToWorld);
-
-			mc2::particles::GpuParticle gp = {};
-			gp.position[0] = wc.x;
-			gp.position[1] = wc.y;
-			gp.position[2] = wc.z;
-			gp.color[0]    = m_color.red;
-			gp.color[1]    = m_color.green;
-			gp.color[2]    = m_color.blue;
-			gp.color[3]    = m_color.alpha;
-			// Billboard radius from bounding half-diagonal of the card.
-			const Stuff::Scalar radius =
-				Stuff::Sqrt(m_halfX * m_halfX + m_halfY * m_halfY);
-			gp.size        = static_cast<float>(m_scale * radius);
-			gp.atlasIndex  = atlasFrame;
-			// Cards have authored half-extents and no spin.
-			gp.velocity[0] = static_cast<float>(m_scale * m_halfX);
-			gp.velocity[1] = static_cast<float>(m_scale * m_halfY);
-			gp.velocity[2] = 0.0f;
-			// Singleton age is normalized to [0,1].
-			gp.age         = static_cast<float>(m_age);   // normalized [0,1]
-			gp.lifetime    = 1.0f;                         // normalized sentinel (real seconds = 1.0f/m_ageRate)
-			batcher.Emit(gp);
-
-			// [VFX_ORACLE v1] diagnostics — one card per effect, so log on first emit.
-			if (mc2::particles::Batcher::is_log_enabled()) {
-				static bool s_first = false;
-				if (!s_first) {
-					s_first = true;
-					mc2::fmt::print_err("[VFX_ORACLE v1] class=Card FIRST_HARVEST spec=\"{}\" animated={:d} atlasColumns={:d} sizeRange=[{:.2f},{:.2f}] uvRect=[{:.3f},{:.3f},{:.3f},{:.3f}] alpha={:.3f} ageRange=[{:.3f},{:.3f}]\n", mc2::fmt::safe(static_cast<const char*>(spec->m_name)), mc2::fmt::as_i32(static_cast<int>(spec->m_animated)), mc2::fmt::as_u32(atlasColumns), static_cast<double>(gp.velocity[0]), static_cast<double>(gp.velocity[1]), static_cast<double>(tileU0), static_cast<double>(tileV0), static_cast<double>(tileUs), static_cast<double>(tileVs), static_cast<double>(m_color.alpha), static_cast<double>(gp.age), static_cast<double>(gp.age));
-					std::fflush(stderr);
-				}
-			}
-		}
-		// Children still draw; this card's geometry belongs to the GPU batcher.
-		Effect::Draw(info);
-		return;
-	}
-
 	//
 	//----------------------------
 	// Set up the common draw info
@@ -613,6 +546,33 @@ void gosFX::Card::Draw(DrawInfo *info)
 	// Now just do the draw
 	//---------------------
 	//
+	if (mc2::particles::Batcher::is_enabled()) {
+		// Use the authored world corners, not a camera-facing proxy. The native
+		// geometry ABI shares GpuParticle's stride and bypasses billboard tuning.
+		auto& batcher = mc2::particles::Batcher::Instance();
+		const auto alpha = dInfo.state.GetAlphaMode();
+		const bool additive = alpha == MidLevelRenderer::MLRState::OneOneMode ||
+		                      alpha == MidLevelRenderer::MLRState::AlphaOneMode;
+		batcher.BeginGroup(dInfo.state.GetTextureHandle(), 0, 0, 1, 1,
+		                   additive ? 2 : 0, 0xffffffffu);
+		for (unsigned corner : {0u, 1u, 2u, 0u, 2u, 3u}) {
+			mc2::particles::GpuParticle vertex{};
+			const auto world = mc2::math::transformPoint(m_vertices[corner], local_to_world);
+			vertex.position[0] = world.x;
+			vertex.position[1] = world.y;
+			vertex.position[2] = world.z;
+			vertex.color[0] = m_color.red;
+			vertex.color[1] = m_color.green;
+			vertex.color[2] = m_color.blue;
+			vertex.color[3] = m_color.alpha;
+			vertex.velocity[0] = m_uvs[corner].x;
+			vertex.velocity[1] = m_uvs[corner].y;
+			vertex.kind_flags = 8u | (additive ? 2u : 0u) |
+				(dInfo.state.GetTextureWrapMode() == MidLevelRenderer::MLRState::TextureClamp ? 16u : 0u) |
+				(dInfo.state.GetTextureHandle() == 0 ? 32u : 0u);
+			batcher.Emit(vertex);
+		}
+	} else
 	info->m_clipper->DrawEffect(&dInfo);
 	Singleton::Draw(info);
 }
