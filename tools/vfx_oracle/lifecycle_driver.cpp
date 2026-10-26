@@ -7,7 +7,6 @@ TEST_CASE("vfx_oracle/CardCloud lifecycle in an isolated platform")
 {
     const auto executable = contractExecutable("vfx_lifecycle_tests");
     REQUIRE(std::filesystem::is_regular_file(executable));
-    mc2::gate::ScopedOverride<"MC2_VFX_ORACLE_RENDER"> oracle{"0"};
     mc2::gate::ScopedOverride<"MC2_VFX_ORACLE_TUBE"> tube{"0"};
     mc2::gate::ScopedOverride<"MC2_VFX_ORACLE_SHAPE"> shape{"0"};
     mc2::gate::ScopedOverride<"MC2_GPU_PARTICLES_LOG"> log{"0"};
