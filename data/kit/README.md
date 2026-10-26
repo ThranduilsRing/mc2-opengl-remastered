@@ -15,9 +15,8 @@ bytes are retained, with all groups sharing the registry and native cook receipt
 
 Pack2 also pins the earlier approved military walls and barriers whose available
 bakes pass the current LOD checks. Its `content/pack2-selection.json` records every
-added asset, bake tag and LOD check. The earlier razorwirefence, tripodbarricade
-and wirefence have no passing LOD bake and remain stock; their failed checks are
-included in that receipt. The owner's later instruction includes the 15 baked
+added asset, bake tag and LOD check. Its earlier fence exclusions are superseded
+by Pack3 below. The owner's later instruction includes the 15 baked
 generic wall/gate/post variants despite the military inventory's earlier
 exclusion; the other 113 mod-only CVE-G pieces are excluded. Available animated
 rebakes use the mirror-corrected `-n1` tags from `rebake-n1.json`.
@@ -29,6 +28,27 @@ threshold; these explicit owner selections retain their approved geometry.
 continues to come from stock, independently of the visible mesh.
 Earlier approved wall/barrier visual-area differences are recorded separately
 in `content/pack2-footprint-evidence.json`; these approved meshes are retained.
+
+Pack3 pins all 32 entries of `batch2-approved-candidates.json` at exactly their
+listed tags (including r2), as authorized by the owner despite the snapshot's
+older candidate-only note. These replace ten earlier pins and add 22 assets:
+18 turrets/popups/camo variants, eight structures, three CrashShanties and three
+fences. `content/pack3-selection.json` records that selection and source hashes.
+The existing common IR cooker and deploy path are unchanged.
+
+The three approved r2 fence bakes predate the stock count-contract repair
+7ca5e7b44. That contract is art-review metadata: the GLB frontend, package
+validator and runtime override registry do not require or consume it. The exact
+approved bakes are retained without a metadata-only rebake. Razorwire's crown
+overhang and 45-degree blocking-cell lint are visual-area limits; the engine
+uses stock collision, covered cells, passability and LOS for these render-only
+overrides. Neither lint controls loading or binding.
+
+Animation proof evaluates the selected packaged GLBs at every LOD against stock
+name-bound clips and turret yaw/pitch, including popup rise and gate sinking.
+The stock `srmcamo4.ini` closing state names absent `SRMCamoOpen.agl`; its other
+states use the available `SRMCamoOpen4.agl`. This existing stock declaration
+limits closing-clip coverage; the package does not change stock animation data.
 
 `l_palacegate` is included because building overrides use the stock gameplay
 shapes for collision, covered cells, passability and LOS, just like every other
@@ -45,7 +65,7 @@ prohibit generated files over about 1 MB. The native cache is derived, and is
 never a release source.
 
 Normal game/editor deploys install and verify the package, rebuild the standalone
-importer through Ninja's dependency checks, and cook all 627 GLBs into 592 distinct
+importer through Ninja's dependency checks, and cook all 693 GLBs into 655 distinct
 native recipes (identical small-prop LODs share a recipe). A
 receipt pins recipes to package and importer hashes and verifies their output
 hashes on subsequent deploys. Missing or altered source bytes fail the deploy;
