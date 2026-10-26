@@ -135,7 +135,7 @@ enum class RendererFeature : int {
     ColormapKtx2             = 20,  // MC2_COLORMAP_KTX2
     // TRACKV-CI-GATE-RESTORE-1: setupTextures legacy path kill-switch.
     // Default-OFF = new/optimized setupTextures path active; ON = legacy path forced.
-    SetupTexturesLegacyForce = 21,  // MC2_SETUPTEXTURES_LEGACY_FORCE
+    SetupTexturesLegacyForce = 21,  // retired; preserve the numeric identifier
     // VEHICLE-NIGHT-LIT-1: coordinate-frame fix for the legacy lit shader path
     // (gos_tex_vertex_lighted.vert) — the program that draws ground vehicles.
     // It fed calc_light Stuff-frame position + normal while the ObjectLights
@@ -216,7 +216,7 @@ static constexpr EnvVarDesc kFeatureTable[] = {
     },
     // [8] DebugRenderer
     {
-        "MC2_FEATURE_DEBUG_RENDERER", "MC2_DEBUG_RENDERER", EnvVarKind::Feature, false,
+        "MC2_FEATURE_DEBUG_RENDERER", "MC2_DEBUG_RENDERER", EnvVarKind::Feature, true,
         "Debug overlay renderer (GuiRuntime/EditorInspector.cpp)."
     },
     // [9] MaterialGpu
@@ -241,7 +241,7 @@ static constexpr EnvVarDesc kFeatureTable[] = {
     },
     // [13] SnapshotMechExtract
     {
-        "MC2_FEATURE_SNAPSHOT_MECH_EXTRACT", "MC2_SNAPSHOT_MECH_EXTRACT", EnvVarKind::Feature, false,
+        "MC2_FEATURE_SNAPSHOT_MECH_EXTRACT", "MC2_SNAPSHOT_MECH_EXTRACT", EnvVarKind::Feature, true,
         "MECH-EXTRACTION-0: mech snapshot extraction (observe-only, no GL mutation)."
     },
     // [14] VfxAgeSample
@@ -256,7 +256,7 @@ static constexpr EnvVarDesc kFeatureTable[] = {
     },
     // [16] ViewmodeFramework
     {
-        "MC2_FEATURE_VIEWMODE_FRAMEWORK", "MC2_VIEWMODE_FRAMEWORK", EnvVarKind::Feature, false,
+        "MC2_FEATURE_VIEWMODE_FRAMEWORK", "MC2_VIEWMODE_FRAMEWORK", EnvVarKind::Feature, true,
         "VIEWMODE-POSTPROCESS-PRESENTATION-1: enables the view-mode presentation framework that wires ViewMode::ObjectIdDebug (and future sensor modes) through the..."
     },
     // [17] HzbBuild
@@ -281,8 +281,8 @@ static constexpr EnvVarDesc kFeatureTable[] = {
     },
     // [21] SetupTexturesLegacyForce
     {
-        "MC2_FEATURE_SETUPTEXTURES_LEGACY_FORCE", "MC2_SETUPTEXTURES_LEGACY_FORCE", EnvVarKind::Feature, false,
-        "TRACKV-CI-GATE-RESTORE-1: setupTextures legacy path kill-switch."
+        "MC2_FEATURE_SETUPTEXTURES_LEGACY_FORCE", nullptr, EnvVarKind::Retired, false,
+        "Retired: legacy terrain texture force path removed."
     },
     // [22] LegacyLitMc2Frame
     {
@@ -341,7 +341,7 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "META-FIX design B PART 4 (code/mission.cpp Mission::start beside mission_phase_mark('mission_ready')): default OFF, OBSERVATIONAL-FIRST.",
     },
     {
-        "MC2_FEATURE_ASSIMP_MECH_IMPORT", "MC2_ASSIMP_MECH_IMPORT", EnvVarKind::Feature, false,
+        "MC2_FEATURE_ASSIMP_MECH_IMPORT", "MC2_ASSIMP_MECH_IMPORT", EnvVarKind::Feature, true,
         "BT2018 mech import 1A: route mech geometry through the Assimp GLTF/FBX importer instead of the legacy MSL loader.",
     },
     {
@@ -395,10 +395,6 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
     {
         "MC2_FEATURE_BRAIN_RUNTIME_APPLY", "MC2_BRAIN_RUNTIME_APPLY", EnvVarKind::Feature, false,
         "TechBrain runtime apply gate (warrior.cpp).",
-    },
-    {
-        "MC2_FEATURE_BURNIN_NO_JPG", "MC2_BURNIN_NO_JPG", EnvVarKind::Feature, false,
-        "BURNIN-DISK-JPEG kill-switch: when set, skip the <name>.burnin.jpg sidecar probe in TerrainColorMap::init and load the full <name>.burnin.tga (or .tga) instead.",
     },
     {
         "MC2_FEATURE_CALLED_SHOT_FIX", "MC2_CALLED_SHOT_FIX", EnvVarKind::Feature, false,
@@ -485,16 +481,12 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "FORCE-ALL-VISIBLE-1: mark every unit (mechs, ground vehicles, elementals, all teams) fully visible and sensed, bypassing sensor / contact gating so nothing...",
     },
     {
-        "MC2_FEATURE_FRAMEGRAPH_EXECUTOR", "MC2_FRAMEGRAPH_EXECUTOR", EnvVarKind::Feature, false,
+        "MC2_FEATURE_FRAMEGRAPH_EXECUTOR", "MC2_FRAMEGRAPH_EXECUTOR", EnvVarKind::Feature, true,
         "RENDER-FRAME-GRAPH arc: top-level frame-graph executor ownership of pass begin/end (mclib/render_contract.cpp, GameOS/gameos/gos_postprocess.cpp).",
     },
     {
         "MC2_TRACE_FREEZE_MOVERS_AT", "MC2_FREEZE_MOVERS_AT", EnvVarKind::Trace, false,
         "FREEZE-MOVERS-1: =<frame> freezes every mover the first frame g_mc2FrameCounter >= <frame>, WITHOUT needing the command channel (the 'freeze_movers on...",
-    },
-    {
-        "MC2_FX_COST_SPLIT", "MC2_FX_COST_SPLIT", EnvVarKind::Feature, false,
-        "FX cost-split instrumentation (default-off).",
     },
     {
         "MC2_FX_DEFS", nullptr, EnvVarKind::Feature, true,
@@ -523,10 +515,6 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
     {
         "MC2_FEATURE_HUD_READABILITY_V1", "MC2_HUD_READABILITY_V1", EnvVarKind::Feature, false,
         "IN-MISSION-HUD-IMGUI-SCOPE-1 slice A: data-first HUD readability.",
-    },
-    {
-        "MC2_FEATURE_HUD_TABS_TEST", "MC2_HUD_TABS_TEST", EnvVarKind::Feature, false,
-        "IN-MISSION-HUD-IMGUI-SCOPE-1 slice C witness: register a 4th 'test' tab (no legacy button; ImGui chrome via HudImGui::hudShrinkPoint + hudToDisplay, trivial...",
     },
     {
         "MC2_TRACE_IFACE_COST_SPLIT", "MC2_IFACE_COST_SPLIT", EnvVarKind::Trace, false,
@@ -589,7 +577,7 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "META-FIX design A runtime tier (code/mission.cpp auditMoverCoherence, ~1 Hz): read-only audit that the five per-mover registries (isOnGUI render gate...",
     },
     {
-        "MC2_FEATURE_MOVE_RECON", "MC2_MOVE_RECON", EnvVarKind::Feature, false,
+        "MC2_FEATURE_MOVE_RECON", "MC2_MOVE_RECON", EnvVarKind::Feature, true,
         "Pathfinding cost instrumentation (mclib/move_recon.cpp).",
     },
     {
@@ -605,7 +593,7 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "SMOKE-NO-CURSOR-STEAL-1: suppress ALL OS-cursor manipulation -- window mouse-grab, Win32 ClipCursor clamp, and gos_SetMousePosition warps -- plus window...",
     },
     {
-        "MC2_OVERLAY_TILE_HIRES", "MC2_OVERLAY_TILE_HIRES", EnvVarKind::Feature, false,
+        "MC2_OVERLAY_TILE_HIRES", "MC2_OVERLAY_TILE_HIRES", EnvVarKind::Feature, true,
         "OVERLAY-TILE-HIRES-1: honor the overlay tile TGA's actual dimensions instead of the legacy hard-assumed 64px (initOverlay header resync mirrors...",
     },
     {
@@ -621,7 +609,7 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "Legacy selector, read only to report an ignored value: the engine renders on Vulkan only (the gl opt-out was removed).",
     },
     {
-        "MC2_FEATURE_RENDER_PASS_ORDER", "MC2_RENDER_PASS_ORDER", EnvVarKind::Feature, false,
+        "MC2_FEATURE_RENDER_PASS_ORDER", "MC2_RENDER_PASS_ORDER", EnvVarKind::Feature, true,
         "CONTRACT-3: per-frame resource-ordering audit (mclib/render_contract.cpp) - checks each pass's reads[] are satisfied by a prior write before beginPass.",
     },
     {
@@ -677,7 +665,7 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "STATIC-BLDG-SHADOW-REBAKE-1: deterministic repro hook (test-only, no production callers).",
     },
     {
-        "MC2_FEATURE_TACTICAL_ARC_OVERLAY", "MC2_TACTICAL_ARC_OVERLAY", EnvVarKind::Feature, false,
+        "MC2_FEATURE_TACTICAL_ARC_OVERLAY", "MC2_TACTICAL_ARC_OVERLAY", EnvVarKind::Feature, true,
         "TACTICAL-ARC-OVERLAY-MVP-1: world-space range ring + facing line on each SELECTED mover, drawn in-scene by the debug renderer just before its flush...",
     },
     {
@@ -817,28 +805,12 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "Retired: the Vulkan scene path is unconditional; =0 is ignored with a [RENDER_BACKEND] line (render_backend_select.cpp).",
     },
     {
-        "MC2_FEATURE_VK_TERRAIN_LODFADE", "MC2_VK_TERRAIN_LODFADE", EnvVarKind::Feature, false,
-        "VK-TERRAIN-LODFADE: presence-gated =1, default OFF (requires MC2_VK_TERRAIN_DETAIL).",
-    },
-    {
         "MC2_TRACE_VK_VFX_TRACE", "MC2_VK_VFX_TRACE", EnvVarKind::Trace, false,
         "VK-FIELD-VFX-2: per-bolt weapon-fire pipeline trace.",
     },
     {
-        "MC2_FEATURE_WATER_SHINE", "MC2_WATER_SHINE", EnvVarKind::Feature, false,
-        "[DEFAULT-OFF OPT-IN.",
-    },
-    {
         "MC2_FEATURE_WATER_SHORE_MASK", "MC2_WATER_SHORE_MASK", EnvVarKind::Feature, true,
         "WATER-SHORE-MASK-1: per-mission shoreline mask sidecar (data/missions/<m>.beauty/shoreline_mask.png) drives the water shore edge.",
-    },
-    {
-        "MC2_FEATURE_WATER_SHORE_MEANDER", "MC2_WATER_SHORE_MEANDER", EnvVarKind::Feature, false,
-        "SHORELINE-GEOMETRY-1: fBm meander amplitude in world units applied to the shore contour in gos_terrain_water_stream.cpp ShoreMeanderWu(); breaks the...",
-    },
-    {
-        "MC2_TUNE_WATER_SHORE_MEANDER_FREQ", "MC2_WATER_SHORE_MEANDER_FREQ", EnvVarKind::Feature, false,
-        "SHORELINE-GEOMETRY-1 companion tuning knob for MC2_WATER_SHORE_MEANDER: spatial frequency of the shore-contour fBm, in cycles per world unit...",
     },
     {
         "MC2_TRACE_WINDOW_OFFSCREEN", "MC2_WINDOW_OFFSCREEN", EnvVarKind::Trace, false,

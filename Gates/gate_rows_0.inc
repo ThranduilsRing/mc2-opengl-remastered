@@ -26,7 +26,7 @@ L(Lead1, "MC2_ASSET_SCALE_SELFTEST", Bool, false, "gameos", "", "", verified),
 L(Lead1, "MC2_ASSET_SCALE_TRACE", Bool, false, "gameos", "", "", verified),
 L(Lead0Kill, "MC2_ASSIMP_IMPORT", Bool, true, "code", "", "", verified),
 // history: docs/gate-history.md#MC2_ASSIMP_MECH_IMPORT
-L(Presence, "MC2_ASSIMP_MECH_IMPORT", Bool, false, "mech", "", "BT2018 mech import 1A: route mech geometry through the Assimp GLTF/FBX importer instead of the legacy MSL loader.", registry(Feature, "MC2_FEATURE_ASSIMP_MECH_IMPORT", -1, false) | verified),
+L(Lead0Kill, "MC2_ASSIMP_MECH_IMPORT", Bool, true, "mech", "", "BT2018 mech import 1A: route mech geometry through the Assimp GLTF/FBX importer instead of the legacy MSL loader.", registry(Feature, "MC2_FEATURE_ASSIMP_MECH_IMPORT", -1, true) | verified),
 // TRACKV-CI-GATE-RESTORE-1 diagnostic trace vars
 L(Presence, "MC2_BLDG_DIAG_TRACE", Bool, false, "props", "", "", verified),
 L(Presence, "MC2_BLDG_REG_TRACE", Bool, false, "props", "", "", verified),
@@ -98,7 +98,6 @@ P("MC2_BRIDGE_MOVER_PERIOD_SEC", Float, 2.0, "code", "", "Seconds between bridge
 L(Presence, "MC2_BRIDGE_MOVER_STATE", Bool, false, "unclassified", "", "", passthrough | verified),
 L(Presence, "MC2_BUCKET_CENSUS", Bool, false, "terrain", "", ""),
 // history: docs/gate-history.md#MC2_BURNIN_NO_JPG
-L(Presence, "MC2_BURNIN_NO_JPG", Bool, false, "terrain", "", "BURNIN-DISK-JPEG kill-switch: when set, skip the <name>.burnin.jpg sidecar probe in TerrainColorMap::init and load the full <name>.burnin.tga (or .tga) instead.", registry(Feature, "MC2_FEATURE_BURNIN_NO_JPG", -1, false) | verified),
 // GitHub-issue fix batch 2026-07-16, part 2 (issues #9, #17)
 L(Lead0P, "MC2_CALLED_SHOT_FIX", Bool, false, "mech", "", "ISSUE-9 called-shot effectiveness (gameplay gate, default OFF = stock): (S1) Mover::calcAttackChance floors the aimed-shot modifiers at Head 0.30 / Arm 0.45...", passthrough | registry(Feature, "MC2_FEATURE_CALLED_SHOT_FIX", -1, false) | verified),
 L(Lead0Kill, "MC2_CAMERA_ASPECT_NATIVE", Bool, true, "code", "", "", passthrough | verified),
@@ -153,7 +152,7 @@ L(Presence, "MC2_CRASH_FAST_EXIT", Bool, false, "gameos", "", "Headless crash fa
 L(Presence, "MC2_CURSOR_TARGET_TRACE", Bool, false, "code", "", "", verified),
 G("MC2_DEBUG_OVERLAY_PREDICATE_MODE", Enum, "", "code", "", "", tokens("|Legacy|Modern") | verified),
 // history: docs/gate-history.md#MC2_DEBUG_RENDERER
-L(Lead0, "MC2_DEBUG_RENDERER", Bool, false, "code", "", "Debug overlay renderer (GuiRuntime/EditorInspector.cpp).", registry(Feature, "MC2_FEATURE_DEBUG_RENDERER", 8, false) | verified),
+L(Lead0Kill, "MC2_DEBUG_RENDERER", Bool, true, "code", "", "Debug overlay renderer (GuiRuntime/EditorInspector.cpp).", registry(Feature, "MC2_FEATURE_DEBUG_RENDERER", 8, true) | verified),
 L(Lead0, "MC2_DEBUG_RENDERER_TEST", Bool, false, "gameos", "", "", verified),
 // history: docs/gate-history.md#MC2_DEBUG_STATE_DUMP
 L(Lead0, "MC2_DEBUG_STATE_DUMP", Bool, false, "gameos", "", "DEBUG-STATE-DUMP-1: write a JSON render-state snapshot to debug_state/latest_render_state.json every 300 frames (and at frame 1).", passthrough | registry(Trace, "MC2_DIAG_DEBUG_STATE_DUMP", -1, false) | verified),

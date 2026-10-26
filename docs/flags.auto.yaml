@@ -3,9 +3,9 @@
 # Where each gate is read, what the smoke runner forwards and what tier1_env_vars.md says are not here: ask
 # tools/repo_intel (env_var, gate_status), which scan the sources.
 generator_version: "3.0.0"
-gate_count: 800
-registry_entry_count: 159
-verified_count: 762
+gate_count: 792
+registry_entry_count: 152
+verified_count: 753
 flags:
   - name: MC2_ABL_ARG_GUARD
     kind: Bool
@@ -149,12 +149,12 @@ flags:
     verified: true
   - name: MC2_ASSIMP_MECH_IMPORT
     kind: Bool
-    default: false
-    rule: Presence
+    default: true
+    rule: Lead0Kill
     owner: mech
     doc: "BT2018 mech import 1A: route mech geometry through the Assimp GLTF/FBX importer instead of the legacy MSL loader."
     verified: true
-    registry: {feature_id: MC2_FEATURE_ASSIMP_MECH_IMPORT, kind: Feature, order: -1, default_on: false}
+    registry: {feature_id: MC2_FEATURE_ASSIMP_MECH_IMPORT, kind: Feature, order: -1, default_on: true}
   - name: MC2_BLDG_DIAG_TRACE
     kind: Bool
     default: false
@@ -580,14 +580,6 @@ flags:
     rule: Presence
     owner: terrain
     doc: ""
-  - name: MC2_BURNIN_NO_JPG
-    kind: Bool
-    default: false
-    rule: Presence
-    owner: terrain
-    doc: "BURNIN-DISK-JPEG kill-switch: when set, skip the <name>.burnin.jpg sidecar probe in TerrainColorMap::init and load the full <name>.burnin.tga (or .tga) instead."
-    verified: true
-    registry: {feature_id: MC2_FEATURE_BURNIN_NO_JPG, kind: Feature, order: -1, default_on: false}
   - name: MC2_CALLED_SHOT_FIX
     kind: Bool
     default: false
@@ -844,12 +836,12 @@ flags:
     verified: true
   - name: MC2_DEBUG_RENDERER
     kind: Bool
-    default: false
-    rule: Lead0
+    default: true
+    rule: Lead0Kill
     owner: code
     doc: "Debug overlay renderer (GuiRuntime/EditorInspector.cpp)."
     verified: true
-    registry: {feature_id: MC2_FEATURE_DEBUG_RENDERER, kind: Feature, order: 8, default_on: false}
+    registry: {feature_id: MC2_FEATURE_DEBUG_RENDERER, kind: Feature, order: 8, default_on: true}
   - name: MC2_DEBUG_RENDERER_TEST
     kind: Bool
     default: false
@@ -1341,13 +1333,13 @@ flags:
     verified: true
   - name: MC2_FRAMEGRAPH_EXECUTOR
     kind: Bool
-    default: false
-    rule: Lead1
+    default: true
+    rule: Lead0Kill
     owner: post
     doc: "RENDER-FRAME-GRAPH arc: top-level frame-graph executor ownership of pass begin/end (mclib/render_contract.cpp, GameOS/gameos/gos_postprocess.cpp)."
     smoke_passthrough: true
     verified: true
-    registry: {feature_id: MC2_FEATURE_FRAMEGRAPH_EXECUTOR, kind: Feature, order: -1, default_on: false}
+    registry: {feature_id: MC2_FEATURE_FRAMEGRAPH_EXECUTOR, kind: Feature, order: -1, default_on: true}
   - name: MC2_FRAMEGRAPH_REORDER_SPMECH
     kind: Bool
     default: false
@@ -1429,15 +1421,6 @@ flags:
     smoke_passthrough: true
     verified: true
     registry: {feature_id: MC2_TRACE_FREEZE_MOVERS_AT, kind: Trace, order: -1, default_on: false}
-  - name: MC2_FX_COST_SPLIT
-    kind: Bool
-    default: false
-    rule: Exact1
-    owner: code
-    doc: "FX cost-split instrumentation (default-off)."
-    smoke_passthrough: true
-    verified: true
-    registry: {feature_id: MC2_FX_COST_SPLIT, kind: Feature, order: -1, default_on: false}
   - name: MC2_FX_COUNT_LOG
     kind: Bool
     default: false
@@ -1938,14 +1921,6 @@ flags:
     owner: code
     doc: "SIM-SPEED-BUTTON-1: double-gated sim-speed tab (MC2_HUD_SIM_SPEED; needs MC2_HUD_IMGUI_TABS like every registry consumer)."
     verified: true
-  - name: MC2_HUD_TABS_TEST
-    kind: Bool
-    default: false
-    rule: Lead0
-    owner: code
-    doc: "IN-MISSION-HUD-IMGUI-SCOPE-1 slice C witness: register a 4th 'test' tab (no legacy button; ImGui chrome via HudImGui::hudShrinkPoint + hudToDisplay, trivial..."
-    verified: true
-    registry: {feature_id: MC2_FEATURE_HUD_TABS_TEST, kind: Feature, order: -1, default_on: false}
   - name: MC2_HZB_BUILD
     kind: Bool
     default: true
@@ -3087,13 +3062,13 @@ flags:
     verified: true
   - name: MC2_MOVE_RECON
     kind: Bool
-    default: false
-    rule: Lead0
+    default: true
+    rule: Lead0Kill
     owner: code
     doc: "Pathfinding cost instrumentation (mclib/move_recon.cpp)."
     smoke_passthrough: true
     verified: true
-    registry: {feature_id: MC2_FEATURE_MOVE_RECON, kind: Feature, order: -1, default_on: false}
+    registry: {feature_id: MC2_FEATURE_MOVE_RECON, kind: Feature, order: -1, default_on: true}
   - name: MC2_MVP_PUBLISH_EARLY
     kind: Bool
     default: true
@@ -3276,13 +3251,13 @@ flags:
     verified: true
   - name: MC2_OVERLAY_TILE_HIRES
     kind: String
-    default: ""
+    default: "256"
     rule: Std
     owner: terrain
     doc: "OVERLAY-TILE-HIRES-1: honor the overlay tile TGA's actual dimensions instead of the legacy hard-assumed 64px (initOverlay header resync mirrors..."
     smoke_passthrough: true
     verified: true
-    registry: {feature_id: MC2_OVERLAY_TILE_HIRES, kind: Feature, order: -1, default_on: false}
+    registry: {feature_id: MC2_OVERLAY_TILE_HIRES, kind: Feature, order: -1, default_on: true}
   - name: MC2_PAD_AREA_GLOW_SPILL
     kind: Float
     default: 48
@@ -3643,12 +3618,12 @@ flags:
     verified: true
   - name: MC2_RENDER_PASS_ORDER
     kind: Bool
-    default: false
-    rule: Lead1
+    default: true
+    rule: Lead0Kill
     owner: code
     doc: "CONTRACT-3: per-frame resource-ordering audit (mclib/render_contract.cpp) - checks each pass's reads[] are satisfied by a prior write before beginPass."
     verified: true
-    registry: {feature_id: MC2_FEATURE_RENDER_PASS_ORDER, kind: Feature, order: -1, default_on: false}
+    registry: {feature_id: MC2_FEATURE_RENDER_PASS_ORDER, kind: Feature, order: -1, default_on: true}
   - name: MC2_RENDER_PASS_TELEMETRY
     kind: Bool
     default: false
@@ -3837,14 +3812,6 @@ flags:
     owner: code
     doc: ""
     verified: true
-  - name: MC2_SETUPTEXTURES_LEGACY_FORCE
-    kind: Bool
-    default: false
-    rule: Presence
-    owner: terrain
-    doc: "TRACKV-CI-GATE-RESTORE-1: setupTextures legacy path kill-switch."
-    verified: true
-    registry: {feature_id: MC2_FEATURE_SETUPTEXTURES_LEGACY_FORCE, kind: Feature, order: 21, default_on: false}
   - name: MC2_SHADER_HOT_RELOAD
     kind: Bool
     default: false
@@ -4081,13 +4048,13 @@ flags:
     verified: true
   - name: MC2_SNAPSHOT_MECH_EXTRACT
     kind: Bool
-    default: false
-    rule: Lead0
+    default: true
+    rule: Lead0Kill
     owner: mech
     doc: "MECH-EXTRACTION-0: mech snapshot extraction (observe-only, no GL mutation)."
     smoke_passthrough: true
     verified: true
-    registry: {feature_id: MC2_FEATURE_SNAPSHOT_MECH_EXTRACT, kind: Feature, order: 13, default_on: false}
+    registry: {feature_id: MC2_FEATURE_SNAPSHOT_MECH_EXTRACT, kind: Feature, order: 13, default_on: true}
   - name: MC2_SOAK_AUTOWIN
     kind: Bool
     default: false
@@ -4395,12 +4362,12 @@ flags:
     verified: true
   - name: MC2_TACTICAL_ARC_OVERLAY
     kind: Bool
-    default: false
-    rule: Lead0
+    default: true
+    rule: Lead0Kill
     owner: code
     doc: "TACTICAL-ARC-OVERLAY-MVP-1: world-space range ring + facing line on each SELECTED mover, drawn in-scene by the debug renderer just before its flush..."
     verified: true
-    registry: {feature_id: MC2_FEATURE_TACTICAL_ARC_OVERLAY, kind: Feature, order: -1, default_on: false}
+    registry: {feature_id: MC2_FEATURE_TACTICAL_ARC_OVERLAY, kind: Feature, order: -1, default_on: true}
   - name: MC2_TACTICAL_OVERVIEW
     kind: Bool
     default: true
@@ -5432,13 +5399,13 @@ flags:
     registry: {feature_id: MC2_VFX_ORACLE_TUBE_COVERAGE, kind: Trace, order: -1, default_on: false}
   - name: MC2_VIEWMODE_FRAMEWORK
     kind: Bool
-    default: false
-    rule: Lead0
+    default: true
+    rule: Lead0Kill
     owner: post
     doc: "VIEWMODE-POSTPROCESS-PRESENTATION-1: enables the view-mode presentation framework that wires ViewMode::ObjectIdDebug (and future sensor modes) through the..."
     smoke_passthrough: true
     verified: true
-    registry: {feature_id: MC2_FEATURE_VIEWMODE_FRAMEWORK, kind: Feature, order: 16, default_on: false}
+    registry: {feature_id: MC2_FEATURE_VIEWMODE_FRAMEWORK, kind: Feature, order: 16, default_on: true}
   - name: MC2_VIEW_MODE
     kind: String
     default: ""
@@ -5815,7 +5782,6 @@ flags:
     owner: vk
     doc: ""
     smoke_passthrough: true
-    verified: true
   - name: MC2_VK_TERRAIN_FENCE_DEFER
     kind: Bool
     default: true
@@ -5824,15 +5790,6 @@ flags:
     doc: ""
     smoke_passthrough: true
     verified: true
-  - name: MC2_VK_TERRAIN_LODFADE
-    kind: Bool
-    default: false
-    rule: Exact1
-    owner: terrain
-    doc: "VK-TERRAIN-LODFADE: presence-gated =1, default OFF (requires MC2_VK_TERRAIN_DETAIL)."
-    smoke_passthrough: true
-    verified: true
-    registry: {feature_id: MC2_FEATURE_VK_TERRAIN_LODFADE, kind: Feature, order: -1, default_on: false}
   - name: MC2_VK_TERRAIN_PERF
     kind: Bool
     default: false
@@ -6038,15 +5995,6 @@ flags:
     owner: terrain
     doc: ""
     verified: true
-  - name: MC2_WATER_SHINE
-    kind: String
-    default: ""
-    rule: Std
-    owner: gameos
-    doc: "[DEFAULT-OFF OPT-IN."
-    smoke_passthrough: true
-    verified: true
-    registry: {feature_id: MC2_FEATURE_WATER_SHINE, kind: Feature, order: -1, default_on: false}
   - name: MC2_WATER_SHORE_FEATHER
     kind: Float
     default: 0
@@ -6073,26 +6021,6 @@ flags:
     smoke_passthrough: true
     verified: true
     registry: {feature_id: MC2_FEATURE_WATER_SHORE_MASK, kind: Feature, order: -1, default_on: true}
-  - name: MC2_WATER_SHORE_MEANDER
-    kind: Float
-    default: 0
-    rule: Prefix
-    owner: terrain
-    doc: "SHORELINE-GEOMETRY-1: fBm meander amplitude in world units applied to the shore contour in gos_terrain_water_stream.cpp ShoreMeanderWu(); breaks the..."
-    range: {lo: 0, hi: 3.4028234663852886e+38, style: reject}
-    smoke_passthrough: true
-    verified: true
-    registry: {feature_id: MC2_FEATURE_WATER_SHORE_MEANDER, kind: Feature, order: -1, default_on: false}
-  - name: MC2_WATER_SHORE_MEANDER_FREQ
-    kind: Float
-    default: 0.00260416674
-    rule: Prefix
-    owner: terrain
-    doc: "SHORELINE-GEOMETRY-1 companion tuning knob for MC2_WATER_SHORE_MEANDER: spatial frequency of the shore-contour fBm, in cycles per world unit..."
-    range: {lo: 0, hi: 3.4028234663852886e+38, style: reject, lo_exclusive: true}
-    smoke_passthrough: true
-    verified: true
-    registry: {feature_id: MC2_TUNE_WATER_SHORE_MEANDER_FREQ, kind: Feature, order: -1, default_on: false}
   - name: MC2_WATER_SHORE_MODE
     kind: Enum
     default: ""
@@ -6178,3 +6106,4 @@ feature_only_rows:   # registry entries with no environment variable
   - {feature_id: MC2_FEATURE_STATICPROP_BC7, kind: Retired, order: 18, default_on: false}
   - {feature_id: MC2_FEATURE_STATICPROP_MATERIAL_PBR_SLOTS, kind: Feature, order: -1, default_on: true}
   - {feature_id: MC2_FEATURE_VFX_AGE_SAMPLE, kind: Retired, order: 14, default_on: false}
+  - {feature_id: MC2_FEATURE_SETUPTEXTURES_LEGACY_FORCE, kind: Retired, order: 21, default_on: false}
