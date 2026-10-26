@@ -41,6 +41,7 @@
 #include<cstdio>
 #include "Gates/gate.h"
 #include "mc2fmt.h"
+#include <tracy/Tracy.hpp>
 
 //---------------------------------------------------------------------------
 // static Globals
