@@ -3531,34 +3531,6 @@
    "count": 4
   },
   {
-   "tag": "FX_COST",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "event",
-    "frames",
-    "fx_execute_cyc",
-    "fx_execute_calls",
-    "particlecloud_execute_cyc",
-    "particlecloud_execute_calls",
-    "spinningcloud_animate_particle_cyc",
-    "spinningcloud_animate_particle_calls",
-    "tube_animate_profile_cyc",
-    "tube_animate_profile_calls",
-    "tube_bridge_flush_cyc",
-    "tube_bridge_flush_calls",
-    "particle_bridge_flush_cyc",
-    "particle_bridge_flush_calls",
-    "fx_forces_cyc",
-    "fx_forces_calls",
-    "fx_integrate_cyc",
-    "fx_integrate_calls",
-    "fx_birth_death_cyc",
-    "fx_birth_death_calls"
-   ],
-   "count": 1
-  },
-  {
    "tag": "FX_FORCE_SPAWN",
    "ver": 1,
    "stream": "stdout",
@@ -10768,17 +10740,6 @@
    "stream": "stderr",
    "keys": [
     "failed_attempts"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "VK_TERRAIN_LODFADE_DIAG",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "lodFadeEnabled",
-    "detailEnabled",
-    "lightingEnabled"
    ],
    "count": 1
   },

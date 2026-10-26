@@ -4114,6 +4114,13 @@
       "stem": "make-isolated-deploy",
       "callers_by_basename": [
         {
+          "path": "scripts/merge_gate.py",
+          "line": 248,
+          "evidence": "command",
+          "reference": "scripts/make-isolated-deploy.py",
+          "text": "subprocess.run([sys.executable, str(ROOT / \"scripts/make-isolated-deploy.py\"),"
+        },
+        {
           "path": "scripts/tests/test_board_selftests.py",
           "line": 141,
           "evidence": "command",
@@ -4472,49 +4479,49 @@
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 726,
+          "line": 728,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 747,
+          "line": 749,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 855,
+          "line": 857,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 876,
+          "line": 878,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 903,
+          "line": 905,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 932,
+          "line": 934,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 949,
+          "line": 951,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
@@ -5097,7 +5104,7 @@
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 917,
+          "line": 919,
           "evidence": "import",
           "reference": "run_tools_tests",
           "text": "import run_tools_tests as tt"
