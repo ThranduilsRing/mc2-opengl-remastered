@@ -605,9 +605,8 @@ GameObjectPtr GameObjectManager::findTerrainObjectByMouse (long mouseX,
 					// props can have no readback sample even while their mesh is drawn.
 					if (objAppearance)
 					{
-						// Presentation may have stamped this turn already; both current
-						// and previous-turn objects are eligible for a stock bounds pick.
-						if (obj->getWindowsVisible() >= (turn - VISIBLE_THRESHOLD))
+						// Static props no longer run the per-frame update that stamps
+						// windowsVisible. Current projected stock bounds decide the hit.
 						{
 							//-----------------------------------------------------
 							// CRIT-1: lazy per-candidate screen rect.
@@ -732,9 +731,9 @@ GameObjectPtr GameObjectManager::findTerrainObjectByMouse (long mouseX,
 			for (int y = 0; y < 7; ++y) for (int x = 0; x < 7; ++x)
 				hits += findTerrainObjectByMouse(x0 + (x1-x0)*(2*x+1)/14,
 					y0 + (y1-y0)*(2*y+1)/14, true) == candidate;
-			mc2::fmt::print_out("[STATIC_PICK_PROBE] name={} handle={} rect={},{},{},{} hits={}/49 stamp={} turn={} readback={}\n",
+			mc2::fmt::print_out("[STATIC_PICK_PROBE] name={} handle={} rect={},{},{},{} hits={}/49 stamp={} turn={} readback={} disabled={} damage={}\n",
 				ba->appearType->name, h, x0, y0, x1, y1, hits, candidate->getWindowsVisible(), turn,
-				gpu_cull::readback_isActorVisibleLagged(static_cast<uint32_t>(h)));
+				gpu_cull::readback_isActorVisibleLagged(static_cast<uint32_t>(h)), candidate->isDisabled(), candidate->getDamageLevel());
 		}
 		// Probe calls changed the cache; restore the caller's result.
 		s_pmX = mouseX; s_pmY = mouseY; s_pmWatchID = pickBest ? pickBest->getWatchID() : 0;
