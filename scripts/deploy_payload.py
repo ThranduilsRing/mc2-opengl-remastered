@@ -1499,7 +1499,7 @@ def check_install_complete(target, exe_name, build_dir, fix=True):
         return [f"{exe_name} (not found in target or build dir)"]
     try:
         todo = (_pe_imports(exe) if exe else set()) | {d.lower() for d in FFMPEG_DLLS}
-        for name in ("mc2_asset_viewer.exe", "viewer.exe", "ui_editor.exe", "mc2fx_preview.exe", "mc2weapon_gui.exe"):
+        for name in ("mc2_asset_viewer.exe", "ui_editor.exe", "mc2fx_preview.exe", "mc2weapon_gui.exe"):
             tool = os.path.join(target, name)
             if os.path.isfile(tool):
                 todo |= _pe_imports(tool)
@@ -1817,7 +1817,8 @@ def viewer_payload(build_dir, build64_root, head):
     cfg = "" if is_single_config(build_dir, b64) else os.path.basename(build_dir)
     directory = os.path.join(b64, "out", "tools", "asset_viewer", cfg)
     exe = os.path.join(directory, "mc2_asset_viewer.exe")
-    require_head_exe(exe, head)
+    if require_head_exe(exe, head)["dirty"]:
+        fail(f"REFUSING dirty viewer build: {exe}; commit first and rebuild")
     # Include loader-library objects too: a partial build must not ship an old link.
     for root, _dirs, files in os.walk(os.path.join(b64, "out", "tools", "asset_viewer")):
         for name in files:
@@ -1832,9 +1833,11 @@ def viewer_payload(build_dir, build64_root, head):
                 continue
             seen.add(name)
             system = os.path.join(os.environ.get("SystemRoot", "C:/Windows"), "System32", name)
-            if name.startswith(("api-ms-", "ext-ms-")) or os.path.isfile(system):
+            crt = name.startswith(("msvcp140", "vcruntime140", "concrt140"))
+            if name.startswith(("api-ms-", "ext-ms-")) or (os.path.isfile(system) and not crt):
                 continue
-            src = next((os.path.join(d, name) for d in (directory, build_dir)
+            search = (directory, build_dir, os.path.dirname(system)) if crt else (directory, build_dir)
+            src = next((os.path.join(d, name) for d in search
                         if os.path.isfile(os.path.join(d, name))), None)
             if not src:
                 fail(f"viewer runtime DLL missing from build: {name}")
