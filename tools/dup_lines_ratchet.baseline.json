@@ -1,7 +1,7 @@
 {
  "counts": {
   "GameAdapters": 0,
-  "GameOS": 2255,
+  "GameOS": 2253,
   "GuiRuntime": 48,
   "HostServices": 0,
   "RenderCore": 402,
@@ -51,8 +51,8 @@
   "GameOS/gameos/vulkan_color_prop_island.h": 8,
   "GameOS/gameos/vulkan_legacy_shape_island.cpp": 76,
   "GameOS/gameos/vulkan_mech_island.cpp": 154,
-  "GameOS/gameos/vulkan_post_fog_native.cpp": 139,
-  "GameOS/gameos/vulkan_post_hzb_native.cpp": 44,
+  "GameOS/gameos/vulkan_post_fog_native.cpp": 138,
+  "GameOS/gameos/vulkan_post_hzb_native.cpp": 43,
   "GameOS/gameos/vulkan_post_screenfx_native.cpp": 170,
   "GameOS/gameos/vulkan_shadow_island_live.cpp": 107,
   "GameOS/gameos/vulkan_shadow_island_live.h": 8,
@@ -505,8 +505,8 @@
   "shaders/vulkan/terrain_tier1.vert": 71,
   "shaders/vulkan/terrain_tier1_skirt.vert": 71
  },
- "head": "e03231f25",
+ "head": "aec6e62f5",
  "n": 8,
- "total": 45057,
+ "total": 45055,
  "version": 1
 }
