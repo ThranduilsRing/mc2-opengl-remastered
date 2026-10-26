@@ -26,6 +26,21 @@ constexpr bool recordSizesDistinct() {
 	return true;
 }
 static_assert(recordSizesDistinct(), "two saved object record types share a size: Load could not tell them apart");
+
+void assignNearestPowerSupply(GameObjectPtr object, std::span<BuildingPtr> generators) {
+    glm::vec3 delta = object->getPosition() - generators[0]->getPosition();
+    long nearest = 0;
+    float distance = glm::length(delta);
+    for (long j = 1; j < static_cast<long>(generators.size()); ++j) {
+        delta = object->getPosition() - generators[j]->getPosition();
+        const float candidate = glm::length(delta);
+        if (candidate < distance) {
+            nearest = j;
+            distance = candidate;
+        }
+    }
+    object->setPowerSupply(generators[nearest]);
+}
 } // namespace
 
 
@@ -293,46 +308,12 @@ void GameObjectManager::loadTerrainObjects (PacketFile* terrainFile,
 	{
 		for (int i=0;i<numBuildings;i++)
 		{
-			glm::vec3 maxDist;
-			long generatorIndex = 0;
-			maxDist = buildings[i]->getPosition() - powerGenerators[0]->getPosition();
-			float minDistance = glm::length(maxDist);
-			
-			for (long j=1;j<numPowerGenerators;j++)
-			{
-				maxDist = buildings[i]->getPosition() - powerGenerators[j]->getPosition(); 
-				float newDistance = glm::length(maxDist); 
-				
-				if (newDistance < minDistance)
-				{
-					generatorIndex = j;
-					minDistance = newDistance;
-				}
-			}	
-			
-			buildings[i]->setPowerSupply(powerGenerators[generatorIndex]);
+			assignNearestPowerSupply(buildings[i], std::span(powerGenerators, numPowerGenerators));
 		}
 		
 		for (int i=0;i<numTerrainObjects;i++)
 		{
-			glm::vec3 maxDist;
-			long generatorIndex = 0;
-			maxDist = terrainObjects[i]->getPosition() - powerGenerators[0]->getPosition();
-			float minDistance = glm::length(maxDist);
-			
-			for (long j=1;j<numPowerGenerators;j++)
-			{
-				maxDist = terrainObjects[i]->getPosition() - powerGenerators[j]->getPosition(); 
-				float newDistance = glm::length(maxDist); 
-				
-				if (newDistance < minDistance)
-				{
-					generatorIndex = j;
-					minDistance = newDistance;
-				}
-			}	
-			
-			terrainObjects[i]->setPowerSupply(powerGenerators[generatorIndex]);
+			assignNearestPowerSupply(terrainObjects[i], std::span(powerGenerators, numPowerGenerators));
 		}
 	}
 }
@@ -1264,46 +1245,12 @@ long GameObjectManager::Load (PacketFilePtr file, long packetNum)
 	{
 		for (i=0;i<numBuildings;i++)
 		{
-			glm::vec3 maxDist;
-			long generatorIndex = 0;
-			maxDist = buildings[i]->getPosition() - powerGenerators[0]->getPosition();
-			float minDistance = glm::length(maxDist);
-			
-			for (long j=1;j<numPowerGenerators;j++)
-			{
-				maxDist = buildings[i]->getPosition() - powerGenerators[j]->getPosition(); 
-				float newDistance = glm::length(maxDist); 
-				
-				if (newDistance < minDistance)
-				{
-					generatorIndex = j;
-					minDistance = newDistance;
-				}
-			}	
-			
-			buildings[i]->setPowerSupply(powerGenerators[generatorIndex]);
+			assignNearestPowerSupply(buildings[i], std::span(powerGenerators, numPowerGenerators));
 		}
 		
 		for (i=0;i<numTerrainObjects;i++)
 		{
-			glm::vec3 maxDist;
-			long generatorIndex = 0;
-			maxDist = terrainObjects[i]->getPosition() - powerGenerators[0]->getPosition();
-			float minDistance = glm::length(maxDist);
-			
-			for (long j=1;j<numPowerGenerators;j++)
-			{
-				maxDist = terrainObjects[i]->getPosition() - powerGenerators[j]->getPosition(); 
-				float newDistance = glm::length(maxDist); 
-				
-				if (newDistance < minDistance)
-				{
-					generatorIndex = j;
-					minDistance = newDistance;
-				}
-			}	
-			
-			terrainObjects[i]->setPowerSupply(powerGenerators[generatorIndex]);
+			assignNearestPowerSupply(terrainObjects[i], std::span(powerGenerators, numPowerGenerators));
 		}
 	}
 
