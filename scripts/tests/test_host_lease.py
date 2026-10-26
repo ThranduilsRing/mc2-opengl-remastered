@@ -482,7 +482,7 @@ def test_affinity_reserves_only_physical_game_cores(monkeypatch):
             host_lease.slot_count()
 
 
-@pytest.mark.parametrize("width,exclusive,expected", [(1, False, 0x30), (1, True, 0x30), (2, False, 0xF0), (2, True, 0xF0)])
+@pytest.mark.parametrize("width,exclusive,expected", [(1, False, 0x30), (1, True, 0xFFF0), (2, False, 0xF0), (2, True, 0xFFF0)])
 def test_slot_affinity_reaches_child_process(lease, monkeypatch, width, exclusive, expected):
     import ctypes
     from ctypes import wintypes
@@ -528,3 +528,16 @@ def test_mixed_width_slots_do_not_overlap(lease, monkeypatch, old_mask, slot, wi
         ours = next(r for _, r in host_lease._records() if host_lease._ours(r))
         assert ours["affinity_mask"] == expected
         assert not ours["affinity_mask"] & old_mask
+
+
+def test_exclusive_holder_blocks_a_wider_slot_configuration(lease, monkeypatch):
+    # Reproduce an exclusive owner launched with two slots; caller has three.
+    monkeypatch.setenv("MC2_HOST_CORES_PER_SLOT", "2")
+    monkeypatch.setenv("MC2_HOST_GAME_SLOTS", "3")
+    for slot in range(2):
+        host_lease.slot_path(slot).write_text(json.dumps({
+            "pid": os.getppid(), "slot": slot, "exclusive": True,
+            "affinity_mask": 0xF0, "cores_per_slot": 2}))
+    with pytest.raises(host_lease.HostLeaseBusy):
+        host_lease.acquire("third slot", wait=False, scan=lambda: [])
+    assert not host_lease.slot_path(2).exists()

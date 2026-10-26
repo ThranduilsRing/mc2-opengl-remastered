@@ -231,18 +231,20 @@ void main() {
     bool treeMaterial = haveAlbedo && vTree.y > 0.5;
     // Low/Potato reuse the VS's existing SH + sun + authored-light result.
     // Re-evaluating diffuse material lighting per fragment wastes the 24-EU budget.
-    if (kBaseQuality == 2 && haveAlbedo && uPacket.materialId >= 0 && uPacket.materialId < uPropMaterials.materials.length()) {
-        SurfaceMaterial surface = propSurface(uPacket.materialId, materialAlbedo);
-        float materialCoverage = propMaterialCoverage(uPacket.materialId);
-        if (materialCoverage > 0.0) {
-            materialAO = mix(1.0, surface.ao, materialCoverage);
-            if (!treeMaterial) rgb = mix(rgb, propAuthoredColor(surface, alphaTestClass,
-                          propHasAuthoredOrm(uPacket.materialId), poolLight), materialCoverage);
-            outputNormalStuff = mix(vNormalStuff, renderToMc2(surface.normal), materialCoverage);
+    if (haveAlbedo && uPacket.materialId >= 0 && uPacket.materialId < uPropMaterials.materials.length()) {
+        if (kBaseQuality == 2) {
+            SurfaceMaterial surface = propSurface(uPacket.materialId, materialAlbedo);
+            float materialCoverage = propMaterialCoverage(uPacket.materialId);
+            if (materialCoverage > 0.0) {
+                materialAO = mix(1.0, surface.ao, materialCoverage);
+                if (!treeMaterial) rgb = mix(rgb, propAuthoredColor(surface, alphaTestClass,
+                              propHasAuthoredOrm(uPacket.materialId), poolLight), materialCoverage);
+                outputNormalStuff = mix(vNormalStuff, renderToMc2(surface.normal), materialCoverage);
+            }
         }
         // Detail-map coverage cannot turn off an authored lamp surface.
-        if (surface.materialClass == SURF_CLASS_EMISSIVE && (vMaterialFlags & 2u) == 0u)
-            rgb = propAddWindowEmission(rgb, surface.emission);
+        if (uPropMaterials.materials[uPacket.materialId].metadata.x == SURF_CLASS_EMISSIVE && (vMaterialFlags & 3u) == 0u)
+            rgb = propAddWindowEmission(rgb, propDecodeColor(materialAlbedo) * uFrame.nightDarkness);
     }
     if (kBaseQuality == 2 && treeMaterial) {
         vec3 N = normalize(mc2ToRender(outputNormalStuff));

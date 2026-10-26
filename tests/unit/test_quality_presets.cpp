@@ -1,6 +1,7 @@
 #include "doctest.h"
 #include "../../GuiRuntime/QualityPresets.h"
 #include "Gates/render_options.h"
+#include "../../GuiRuntime/PlayerSettings.h"
 #include <cstring>
 
 TEST_CASE("launcher presets scale shadow quality with overall quality") {
@@ -32,4 +33,63 @@ TEST_CASE("base presets retain stock vegetation and reserve detail for Medium an
     mc2::options::g_current.baseQuality = 0;
     CHECK(mc2::options::lowCost());
     mc2::options::g_current = saved;
+}
+
+TEST_CASE("player settings/preset application replaces every quality field") {
+    mc2::options::RenderOptions draft;
+    for (const auto& from : k_gfxPresets) for (const auto& to : k_gfxPresets) {
+        from.apply(draft);
+        to.apply(draft);
+        CHECK(draft.baseQuality == to.baseQuality);
+        CHECK(draft.shadowQuality == to.shadQual);
+        CHECK(draft.spatialAA == to.aa);
+    }
+}
+
+TEST_CASE("player settings/legacy migration consumes invalid and unknown entries") {
+    for (const auto& key : mc2::options::legacy::kLegacyKeys) {
+        for (const auto& old : {"1", "0", "banana", ""}) {
+            nlohmann::json settings = {{key.envName, old}, {"last_campaign", "community"},
+                {"MC2_VK_TERRAIN_HEIGHT_STRENGTH", "banana"},
+                {mc2::gate::name<"MC2_RENDER_SCALE">(), "0.5"}};
+            std::string cfg = "[MechCommander2]\n";
+            PlayerFrontEnd::migrateLegacySettings(settings, cfg);
+            CHECK_FALSE(settings.contains(key.envName));
+            CHECK_FALSE(settings.contains("MC2_VK_TERRAIN_HEIGHT_STRENGTH"));
+            CHECK(settings["last_campaign"] == "community");
+            CHECK(settings[mc2::gate::name<"MC2_RENDER_SCALE">()] == "0.5");
+            mc2::options::RenderOptions expected, actual;
+            const auto* option = mc2::options::find(key.option);
+            mc2::options::setFromText(expected, *option, old);
+            mc2::options::cfg::loadFromText(actual, cfg);
+            if (option->kind == mc2::options::Kind::Bool) CHECK(actual.*option->b == expected.*option->b);
+            else if (option->kind == mc2::options::Kind::Long) CHECK(actual.*option->l == expected.*option->l);
+            else CHECK(actual.*option->f == expected.*option->f);
+            auto migrated = settings;
+            const auto once = cfg;
+            PlayerFrontEnd::migrateLegacySettings(settings, cfg);
+            CHECK(settings == migrated);
+            CHECK(cfg == once);
+        }
+    }
+}
+
+TEST_CASE("player settings/named legacy values win and malformed types disappear") {
+    nlohmann::json settings = {{"MC2_STATIC_PROP_PBR_V1", "1"}, {"StaticPropPbr", "0"},
+                              {"MC2_VFX_LIT_PARTICLES", 42}};
+    std::string cfg = "[MechCommander2]\n";
+    PlayerFrontEnd::migrateLegacySettings(settings, cfg);
+    mc2::options::RenderOptions options;
+    mc2::options::cfg::loadFromText(options, cfg);
+    CHECK_FALSE(options.staticPropPbr);
+    CHECK(settings.empty());
+}
+
+TEST_CASE("player settings/object numbers stay signed and on their assignment line") {
+    CHECK(PlayerFrontEnd::hasHighObjectNumber("ul objectnumber = 2000\n"));
+    CHECK_FALSE(PlayerFrontEnd::hasHighObjectNumber("objectnumber = -2000\n"));
+    CHECK_FALSE(PlayerFrontEnd::hasHighObjectNumber("objectnumber = -1\nother = 2000\n"));
+    CHECK_FALSE(PlayerFrontEnd::hasHighObjectNumber("// objectnumber = 2000\n"));
+    CHECK_FALSE(PlayerFrontEnd::hasHighObjectNumber("objectnumber\nother = 2000\n"));
+    CHECK_FALSE(PlayerFrontEnd::hasHighObjectNumber("myobjectnumber = 2000\n"));
 }

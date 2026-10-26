@@ -510,7 +510,16 @@ TEST_CASE_FIXTURE(FrozenPlatform, "vfx_frozen/PertCloud variable polygons preser
 
 TEST_CASE("vfx_frozen/card budget counts quads and resets after flush")
 {
-    if (!mc2::particles::Batcher::is_enabled()) return;
+    if (!mc2::particles::Batcher::is_enabled()) {
+        mc2::particles::Batcher batcher(2);
+        BridgeCapture capture;
+        borrowedCapture = &capture;
+        batcher.Emit(GpuParticle{});
+        batcher.Flush();
+        borrowedCapture = nullptr;
+        CHECK(capture.records.empty());
+        return;
+    }
     mc2::particles::Batcher batcher(2);
     BridgeCapture capture;
     borrowedCapture = &capture;

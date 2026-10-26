@@ -1,5 +1,7 @@
 #include "PlayerFrontEnd.h"
 #include "PlayerOptionRows.h"
+#include "PlayerSettings.h"
+#include <map>
 #include "GraphicsOptionsWindow.h"
 #include "imgui.h"
 #include "gameos.hpp"
@@ -38,13 +40,15 @@ struct Pack {
 Json settings = Json::object();
 std::vector<Pack> packs;
 std::string campaign, base, texture, campaignFit, pendingStart, error;
-bool pickerOpen = false, scanned = false, restart = false;
+bool pickerOpen = false, scanned = false, restart = false, settingsChanged = false;
+std::map<std::string, std::optional<std::string>> inheritedEnv;
 
 std::optional<std::string> env(std::string_view key) {
     const char* value = mc2::gate::envText(std::string(key).c_str());
     return value ? std::optional<std::string>(value) : std::nullopt;
 }
 void setEnv(std::string_view key, std::string_view value) {
+    inheritedEnv.try_emplace(std::string(key), env(key));
 #ifdef _WIN32
     _putenv_s(std::string(key).c_str(), std::string(value).c_str());
 #else
@@ -140,6 +144,7 @@ void scan() {
     scanned = true;
 }
 void autoBase() {
+    if (campaign.empty()) { base.clear(); return; }
     bool high = false, magic = false;
     const auto missions = fs::path("mods") / campaign / "data" / "missions";
     for (const auto& dir : {missions, missions / "warriors"}) {
@@ -152,10 +157,7 @@ void autoBase() {
             source.resize(static_cast<std::size_t>(input.gcount()));
             std::transform(source.begin(), source.end(), source.begin(), [](unsigned char c) { return char(std::tolower(c)); });
             magic |= source.find("magicattack") != std::string::npos;
-            for (std::size_t at = source.find("objectnumber"); at != std::string::npos; at = source.find("objectnumber", at + 12)) {
-                const auto number = source.find_first_of("0123456789", at + 12);
-                if (number != std::string::npos) high |= std::atoi(source.c_str() + number) > 1188;
-            }
+            high |= hasHighObjectNumber(source);
         }
     }
     base = magic ? "mco-compat" : high ? "mc2x-compat" : "";
@@ -169,44 +171,12 @@ std::string dependencies() {
     append(base);
     return deps;
 }
-void applyPackEnv(const Pack& pack) {
-    for (const auto& [key, value] : pack.env.items())
-        if (key.starts_with("MC2_") && value.is_string()) setEnv(key, value.get<std::string>());
-}
 void migrateSettings() {
     auto cfg = mc2::options::cfg::readTextFile("options.cfg");
     const auto original = cfg;
     auto migrated = settings;
     if (original.empty()) return;
-    for (const auto& key : mc2::options::legacy::kLegacyKeys) {
-        if (!settings.contains(key.envName)) continue;
-        const auto* option = mc2::options::find(key.option);
-        const auto value = mc2::options::legacy::translate(*option, text(settings, key.option, text(settings, key.envName)));
-        if (!value) {
-            std::printf("[PLAYER_SETTINGS] invalid legacy option %s\n", key.envName);
-            continue;
-        }
-        cfg = mc2::options::cfg::set(std::move(cfg), *option, *value);
-        migrated.erase(key.envName);
-        migrated.erase(key.option);
-        std::printf("[PLAYER_SETTINGS] migrate %s=%s\n", key.option, value->c_str());
-    }
-    for (const auto& option : mc2::options::kOptions) {
-        if (!migrated.contains(option.key)) continue;
-        auto value = text(migrated, option.key);
-        if (value.empty() && option.kind == mc2::options::Kind::Bool) value = "FALSE";
-        const auto translated = mc2::options::legacy::translate(option, value);
-        if (!translated) continue;
-        cfg = mc2::options::cfg::set(std::move(cfg), option, *translated);
-        migrated.erase(option.key);
-    }
-    // Preserve unknown entries for forward compatibility, but name them for support.
-    for (const auto& [key, value] : migrated.items()) {
-        if (!key.starts_with("MC2_")) continue;
-        bool known = key == mc2::gate::name<"MC2_FPS_CAP">() || key == mc2::gate::name<"MC2_VSYNC">();
-        for (const auto& row : k_envVars) known |= key == row.key;
-        if (!known) std::printf("[PLAYER_SETTINGS] unrecognised key %s (retained)\n", key.c_str());
-    }
+    migrateLegacySettings(migrated, cfg);
     if (migrated == settings || original.empty()) return;
     if (cfg != original) {
         std::ofstream stream("options.cfg.tmp", std::ios::binary | std::ios::trunc);
@@ -224,6 +194,7 @@ void migrateSettings() {
     const auto previous = settings;
     settings = std::move(migrated);
     if (!saveSettings()) settings = previous;
+    else if (env(mc2::gate::name<"MC2_LOG">())) std::printf("[PLAYER_SETTINGS] migrated legacy player settings\n");
 }
 }
 
@@ -234,7 +205,7 @@ void loadSettings() {
     migrateSettings();
     const bool explicitMod = env(mc2::gate::name<"MC2_ACTIVE_MOD">()).has_value();
     for (const auto& [key, value] : settings.items())
-        if (key.starts_with("MC2_") && value.is_string() && !env(key)) setEnv(key, value.get<std::string>());
+        if (key.starts_with("MC2_") && mc2::gate::lookupName(key) && value.is_string() && !env(key)) setEnv(key, value.get<std::string>());
     if (!explicitMod) {
         setEnv(mc2::gate::name<"MC2_ACTIVE_MOD">(), text(settings, "last_campaign"));
         std::string deps = text(settings, "last_addons");
@@ -244,20 +215,33 @@ void loadSettings() {
             deps += id;
         }
         if (!env(mc2::gate::name<"MC2_MOD_DEPS">())) setEnv(mc2::gate::name<"MC2_MOD_DEPS">(), deps);
-        const bool faster = text(settings, "last_faster_weapons") == "1";
-        const bool generated = text(settings, "last_data_driven") == "1";
-        for (const auto& [key, value] : {std::pair{mc2::gate::name<"MC2_DIRECT_FIRE_STRAIGHT">(), faster ? "1" : ""},
-             {mc2::gate::name<"MC2_PROJECTILE_SPEED_MULT">(), faster ? "2" : ""}, {mc2::gate::name<"MC2_UNIT_PROFILE_DATA">(), generated ? "1" : ""},
-             {mc2::gate::name<"MC2_UNIT_DEFINITION_SOURCE">(), generated ? "generated" : ""}, {mc2::gate::name<"MC2_EQUIPMENT_DEFINITION_SOURCE">(), generated ? "generated" : ""}})
-            if (!env(key)) setEnv(key, value);
     }
-    for (const auto& dir : files("mods")) {
-        const auto id = dir.filename().string();
-        if (id != env(mc2::gate::name<"MC2_ACTIVE_MOD">()).value_or("") && !contains(env(mc2::gate::name<"MC2_MOD_DEPS">()).value_or(""), id)) continue;
-        const auto json = readJson(dir / "mod.json");
+    const bool faster = text(settings, "last_faster_weapons") == "1";
+    const bool generated = text(settings, "last_data_driven") == "1";
+    for (const auto& [key, value] : {std::pair{mc2::gate::name<"MC2_DIRECT_FIRE_STRAIGHT">(), faster ? "1" : ""},
+         {mc2::gate::name<"MC2_PROJECTILE_SPEED_MULT">(), faster ? "2" : ""}, {mc2::gate::name<"MC2_UNIT_PROFILE_DATA">(), generated ? "1" : ""},
+         {mc2::gate::name<"MC2_UNIT_DEFINITION_SOURCE">(), generated ? "generated" : ""}, {mc2::gate::name<"MC2_EQUIPMENT_DEFINITION_SOURCE">(), generated ? "generated" : ""}})
+        if (!env(key)) setEnv(key, value);
+    // Apply packs in VFS precedence order; only original shell overrides survive.
+    std::vector<std::string> activePacks{text(settings, "last_base"), text(settings, "tex_pack_mod")};
+    const auto deps = env(mc2::gate::name<"MC2_MOD_DEPS">()).value_or("");
+    for (std::size_t start = 0; start < deps.size();) {
+        const auto end = deps.find_first_of(",;", start);
+        const auto id = deps.substr(start, end - start);
+        if (std::find(activePacks.begin(), activePacks.end(), id) == activePacks.end()) activePacks.push_back(id);
+        if (end == std::string::npos) break;
+        start = end + 1;
+    }
+    activePacks.push_back(env(mc2::gate::name<"MC2_ACTIVE_MOD">()).value_or(""));
+    for (const auto& id : activePacks) {
+        if (id.empty() || (id != activePacks.back() && !contains(deps, id))) continue;
+        const auto json = readJson(fs::path("mods") / id / "mod.json");
         if (!json.contains("env") || !json["env"].is_object()) continue;
-        for (const auto& [key, value] : json["env"].items())
-            if (key.starts_with("MC2_") && value.is_string() && !env(key)) setEnv(key, value.get<std::string>());
+        for (const auto& [key, value] : json["env"].items()) {
+            const auto original = inheritedEnv.find(key);
+            const bool shellOverride = original != inheritedEnv.end() ? original->second.has_value() : env(key).has_value();
+            if (key.starts_with("MC2_") && value.is_string() && !shellOverride) setEnv(key, value.get<std::string>());
+        }
     }
     pendingStart = text(settings, "start_campaign");
     if (!pendingStart.empty()) { settings.erase("start_campaign"); saveSettings(); }
@@ -328,7 +312,7 @@ void drawMainMenu() {
         ImGui::TreePop();
     }
     const auto deps = dependencies();
-    const bool contentChanged = campaign != env(mc2::gate::name<"MC2_ACTIVE_MOD">()).value_or("") || deps != env(mc2::gate::name<"MC2_MOD_DEPS">()).value_or("");
+    const bool contentChanged = settingsChanged || campaign != env(mc2::gate::name<"MC2_ACTIVE_MOD">()).value_or("") || deps != env(mc2::gate::name<"MC2_MOD_DEPS">()).value_or("");
     const bool missingBase = !base.empty() && std::none_of(packs.begin(), packs.end(), [](const Pack& p) { return p.id == base; });
     if (missingBase) ImGui::TextWrapped("Required base %s is missing. Import the compatibility pack first.", base.c_str());
     if (campaignFit.empty()) ImGui::TextUnformatted("No loose campaign FIT found in this pack.");
@@ -346,14 +330,9 @@ void drawMainMenu() {
         if (contentChanged) settings["start_campaign"] = campaignFit;
         if (saveSettings()) {
             if (contentChanged) {
-                for (const auto& pack : packs) for (const auto& [key, value] : pack.env.items())
-                    if (key.starts_with("MC2_")) setEnv(key, "");
-                setEnv(mc2::gate::name<"MC2_ACTIVE_MOD">(), campaign);
-                setEnv(mc2::gate::name<"MC2_MOD_DEPS">(), deps);
-                // Base first, then texture/add-ons, campaign last: same content precedence as the VFS.
-                for (const auto& id : {base, texture}) for (const auto& pack : packs) if (pack.id == id) applyPackEnv(pack);
-                for (const auto& pack : packs) if (pack.enabled && pack.kind != "dependency" && pack.group != "texture-quality") applyPackEnv(pack);
-                for (const auto& pack : packs) if (pack.id == campaign) applyPackEnv(pack);
+                // Selecting content in the picker supersedes a startup mod override.
+                inheritedEnv[mc2::gate::name<"MC2_ACTIVE_MOD">()] = std::nullopt;
+                inheritedEnv[mc2::gate::name<"MC2_MOD_DEPS">()] = std::nullopt;
                 restart = true;
                 gos_TerminateApplication();
             } else pendingStart = campaignFit;
@@ -373,16 +352,20 @@ void drawMainMenu() {
 }
 
 void drawOptions() {
+    static mc2::options::RenderOptions draft;
+    static std::string loadedCfg;
+    static int lastFrame = -2;
     if (!ImGui::CollapsingHeader("Player settings (saved; restart required)", ImGuiTreeNodeFlags_DefaultOpen)) return;
-    static auto draft = [] {
-        mc2::options::RenderOptions options;
-        mc2::options::cfg::loadFromText(options, mc2::options::cfg::readTextFile("options.cfg"));
-        return options;
-    }();
+    const auto cfg = mc2::options::cfg::readTextFile("options.cfg");
+    if (lastFrame != ImGui::GetFrameCount() - 1 || ImGui::IsWindowAppearing() || cfg != loadedCfg) {
+        draft = {};
+        mc2::options::cfg::loadFromText(draft, cfg);
+        loadedCfg = cfg;
+    }
+    lastFrame = ImGui::GetFrameCount();
     for (const auto& preset : k_gfxPresets) {
         if (ImGui::Button(preset.label)) {
-            draft.shadowQuality = preset.shadQual;
-            draft.spatialAA = preset.aa;
+            preset.apply(draft);
             for (int i = 0; i < 6; ++i) settings[k_presetKeys[i]] = preset.values[i];
         }
         ImGui::SameLine();
@@ -410,7 +393,7 @@ void drawOptions() {
                 if (ImGui::Checkbox(row.label, &on)) settings[row.key] = on ? "1" : row.offVal ? row.offVal : "";
             } else {
                 std::array<char, 256> buffer{};
-                std::snprintf(buffer.data(), buffer.size(), "%s", value.empty() && row.defaultVal ? row.defaultVal : value.c_str());
+                std::snprintf(buffer.data(), buffer.size(), "%s", !settings.contains(row.key) && value.empty() && row.defaultVal ? row.defaultVal : value.c_str());
                 if (ImGui::InputText(row.label, buffer.data(), buffer.size())) settings[row.key] = buffer.data();
             }
         }
@@ -428,7 +411,7 @@ void drawOptions() {
     }
     if (ImGui::Button("Save player settings")) {
         if (!saveRenderOptions || !saveRenderOptions(draft)) error = "Could not save options.cfg.";
-        else if (saveSettings()) error = "Saved. Restart the game to apply player settings.";
+        else if (saveSettings()) { settingsChanged = true; error = "Saved. Restart the game to apply player settings."; }
     }
     ImGui::TextWrapped("FSR and MSAA are not implemented. Available AA modes are spatial; no temporal history.");
     if (!error.empty()) ImGui::TextWrapped("%s", error.c_str());
@@ -436,6 +419,9 @@ void drawOptions() {
 
 int restartIfRequested(int argc, char** argv) {
     if (!restart) return 0;
+    // A child must reload saved choices, not mistake our injected values for shell overrides.
+    const auto original = std::move(inheritedEnv);
+    for (const auto& [key, value] : original) setEnv(key, value.value_or(""));
 #ifdef _WIN32
     STARTUPINFOA si{}; si.cb = sizeof(si);
     PROCESS_INFORMATION pi{};

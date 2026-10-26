@@ -207,11 +207,15 @@ bool decodeHdriSource(const char* path, float* outSunAzGL, bool* outSunValid, Hd
             const size_t count = img.mipCount > 1 && img.mipByteOffsets.size() > 1
                 ? static_cast<size_t>(img.mipByteOffsets[1]) : img.pixels.size();
             const int cap = mc2::options::current().baseQuality == 0 ? 512 : 1024;
-            if (mc2::options::lowCost() && img.width > cap) {
+            const int nw = cap, nh = std::max(1, img.height * cap / img.width);
+            size_t cappedBytes = 8;
+            for (int mw = nw, mh = nh; mw > 1 || mh > 1; mw = std::max(1, mw / 2), mh = std::max(1, mh / 2))
+                cappedBytes += static_cast<size_t>(mw) * mh * 8;
+            // Keep native BC6H when the half-float mip chain would cost more memory.
+            if (mc2::options::lowCost() && img.width > cap && cappedBytes < count) {
                 // Single-level 16K BC6H skies otherwise consume 128 MiB EACH in sky and water.
                 // Average one representative 4x4 block per output pixel: bounded load-time work,
                 // no full-size float decode, no extra per-frame sampling or shared-DDR4 residency.
-                const int nw = cap, nh = std::max(1, img.height * cap / img.width);
                 const int blocksX = (img.width + 3) / 4;
                 std::vector<float> rgba(static_cast<size_t>(nw) * nh * 4, 1.0f);
                 for (int y = 0; y < nh; ++y) for (int x = 0; x < nw; ++x) {
