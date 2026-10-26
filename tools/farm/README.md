@@ -4,11 +4,14 @@ The laptop is a separate, serial game slot. SSH is session 0; GPU jobs must run
 through `MC2FarmRunner` in Kaitlyn's logged-in desktop session. All laptop files
 belong under `C:\mc2farm`. No service or firewall changes are needed.
 
-Copy `runner.py` and `install-task.ps1` to `C:\mc2farm`, then run
-`powershell -NoProfile -File C:\mc2farm\install-task.ps1` as Kaitlyn. The task uses
-an interactive logon token, starts at her logon, and is also started immediately.
-If script execution is blocked, report the policy refusal; do not bypass it.
-An installed Python 3 executable can be specified with `-Python`.
+Copy `runner.py` and `install-task.cmd` to `C:\mc2farm`, then run
+`C:\mc2farm\install-task.cmd` as Kaitlyn. It uses `schtasks /create /tn MC2FarmRunner
+/sc ONLOGON /ru DESKTOP-Q11RABS\Kaitlyn /it /rl LIMITED /tr
+"C:\Users\Kaitlyn\AppData\Local\Python\bin\python.exe C:\mc2farm\runner.py --root C:\mc2farm"`.
+The task uses an interactive token and starts immediately and at logon. The runner
+sets its own priority to BELOW_NORMAL before polling; children inherit it.
+No PowerShell script or execution-policy change is needed. An installed Python
+executable can be supplied as the command file's first argument.
 
 The host helper defaults to `Kaitlyn@192.168.68.107` and the key under the SSH
 `HOME` directory (on the main host, `C:\SPB_Data`, distinct from USERPROFILE).

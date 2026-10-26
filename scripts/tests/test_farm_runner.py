@@ -99,3 +99,16 @@ def test_farm_deploy_lease_stays_on_farm_disk(tmp_path):
                    cwd=Path(__file__).resolve().parents[2],
                    env=dict(os.environ, MC2_DEPLOY_LEASE_PATH=str(registry)), check=True)
     assert json.loads(registry.read_text()) == {}
+
+
+@pytest.mark.skipif(os.name != 'nt', reason='Windows scheduler priority')
+def test_runner_lowers_own_priority(tmp_path):
+    (tmp_path / 'stop').touch()
+    script = ('import ctypes, sys; from tools.farm.runner import main; '
+              'sys.argv = ["runner", "--root", sys.argv[1]]; main(); '
+              'k = ctypes.WinDLL("kernel32"); '
+              'k.GetCurrentProcess.restype = ctypes.c_void_p; '
+              'k.GetPriorityClass.argtypes = [ctypes.c_void_p]; '
+              'assert k.GetPriorityClass(k.GetCurrentProcess()) == 0x4000')
+    subprocess.run([sys.executable, '-c', script, str(tmp_path)],
+                   cwd=Path(__file__).resolve().parents[2], check=True)

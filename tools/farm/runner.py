@@ -62,6 +62,14 @@ def poll_once(root):
 
 
 def main():
+    if os.name == 'nt':
+        import ctypes
+        kernel32 = ctypes.WinDLL('kernel32', use_last_error=True)
+        kernel32.GetCurrentProcess.restype = ctypes.c_void_p
+        kernel32.SetPriorityClass.argtypes = [ctypes.c_void_p, ctypes.c_ulong]
+        if not kernel32.SetPriorityClass(kernel32.GetCurrentProcess(),
+                                        subprocess.BELOW_NORMAL_PRIORITY_CLASS):
+            raise ctypes.WinError(ctypes.get_last_error())
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--root', type=Path, default=Path('C:/mc2farm'))
     args = parser.parse_args()
