@@ -6,6 +6,7 @@
 #include "mc2fmt.h"
 #include "anim_freeze.h"
 #include "../GameOS/gameos/visual_tuning_profile.h"
+#include "Gates/render_options.h"
 
 // LOCAL-LIGHTS-1: authored lamps per SpotLight_ leaf (the stock leaves carry up to 3).
 static constexpr int kMaxBeamsPerNode = 8;
@@ -26,7 +27,9 @@ long BldgAppearance::desiredRenderLOD() const
 	const float distance = glm::length(position - renderToMc2(origin));
 	long lod = 0;
 	for (long i = 1; i < MAX_LODS; ++i)
-		if (appearType->bldgRenderLods[i] && appearType->lodDistance[i] > 0 && distance >= appearType->lodDistance[i]) lod = i;
+		if (appearType->bldgRenderLods[i] && appearType->lodDistance[i] > 0 &&
+			(distance >= appearType->lodDistance[i] ||
+			 (mc2::options::lowCost() && i <= (mc2::options::current().baseQuality == 0 ? 2 : 1)))) lod = i;
 	return lod;
 }
 
