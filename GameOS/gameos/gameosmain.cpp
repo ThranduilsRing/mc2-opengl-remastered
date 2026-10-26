@@ -778,7 +778,6 @@ extern "C" void mission_phase_mark(const char* name)
 extern "C" void mission_phase_report()
 {
     g_missionTraceFrames = 0;
-    g_missionReadyTrace = SDL_GetPerformanceCounter();
     char buf[1024];
     int off = 0;
     double prev_ms = 0.0;
@@ -798,6 +797,7 @@ extern "C" void mission_phase_report()
     fflush(stdout);
     // Mission load is over: the GPU memory every later frame starts from (the smoke report's load-end VRAM line).
     mc2::gpumem::log("load_end");
+    g_missionReadyTrace = SDL_GetPerformanceCounter();
 }
 
 #ifndef DISABLE_GAMEOS_MAIN
@@ -1051,6 +1051,8 @@ int main(int argc, char** argv)
         const auto missionFrameStart = traceMissionFrame ? SDL_GetPerformanceCounter() : 0;
 
     frameThrottleLogicEvents();
+        // Logic may have loaded another mission since the frame began.
+        const bool completeMissionFrame = traceMissionFrame && g_missionTraceFrames < 5 && !g_missionReadyTrace;
 
         // DEV-SHELL-1: dev command socket poll. Single static-bool check when
         // MC2_DEV_SHELL unset. Commands run here, on the GL-owning main thread.
@@ -1137,7 +1139,7 @@ int main(int argc, char** argv)
                     static_cast<double>(SDL_GetPerformanceFrequency()), s_hitchFrame);
             g_missionReadyTrace = 0;
         }
-        if (traceMissionFrame) {
+        if (completeMissionFrame) {
             const double frameMs = 1000.0 * static_cast<double>(SDL_GetPerformanceCounter() - missionFrameStart) /
                 static_cast<double>(SDL_GetPerformanceFrequency());
             const auto& a = g_mc2HitchAccum;

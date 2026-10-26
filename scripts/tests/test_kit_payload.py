@@ -71,26 +71,29 @@ def test_cooks_then_validates_receipt_and_repairs_corrupt_cache(tmp_path, monkey
         (cache / f"model-{key}.mci").write_bytes(b"recipe")
         return SimpleNamespace(returncode=0, stdout="", stderr=f"[CONTENT_COOK] key={key} cache=miss")
     kit.finish(target, manifest, tool, cook)
-    assert len(calls) == 3
+    cooks = 1 if shared_lods else 3
+    assert len(calls) == cooks
+    receipt_data = json.loads((target / "cache/content-model/industrial-cook.json").read_text())
+    assert set(receipt_data["recipes"]) == {r["path"] for r in manifest["files"]}
     assert len(list((target / "cache/content-model").glob("*.mci"))) == (1 if shared_lods else 3)
     kit.finish(target, manifest, tool, cook)
-    assert len(calls) == 3
+    assert len(calls) == cooks
     next((target / "cache/content-model").glob("*.mci")).write_bytes(b"broken") # same-size hash mismatch
     kit.finish(target, manifest, tool, cook)
-    assert len(calls) == 6
+    assert len(calls) == 2 * cooks
     tool.write_bytes(b"rebuilt importer")
     kit.finish(target, manifest, tool, cook)
-    assert len(calls) == 9
+    assert len(calls) == 3 * cooks
     # A retained receipt cannot hide a pruned recipe or an incomplete inventory.
     next((target / "cache/content-model").glob("*.mci")).unlink()
     kit.finish(target, manifest, tool, cook)
-    assert len(calls) == 12
+    assert len(calls) == 4 * cooks
     receipt = target / "cache/content-model/industrial-cook.json"
     partial = json.loads(receipt.read_text())
     partial["files"].pop()
     receipt.write_text(json.dumps(partial))
     kit.finish(target, manifest, tool, cook)
-    assert len(calls) == 15
+    assert len(calls) == 5 * cooks
     (target / kit.KIT_REL / "extra.glb").write_bytes(b"unversioned")
     with pytest.raises(ValueError, match="unpinned"):
         kit.finish(target, manifest, tool, cook)

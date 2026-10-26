@@ -493,6 +493,25 @@ def test_invalid_resolution_does_not_start_merge(env, spec):
     assert git(repo, "rev-parse", "HEAD") == head
 
 
+def test_resolution_restores_deleted_directory_matching_gitignore(env, tmp_path):
+    repo, _ = env
+    path = "generated/only.txt"
+    write(repo, path, "base\n")
+    commit_all(repo, "nested base")
+    lane_branch(repo, {path: "lane edit\n"})
+    git(repo, "rm", path)
+    write(repo, ".gitignore", "generated/\n")
+    commit_all(repo, "delete directory and ignore it")
+    assert not (repo / "generated").exists()
+    result = tmp_path / "resolved.txt"
+    result.write_bytes(b"resolved\r\n")
+    rc, _, err = merge(env, "--resolution", f"{path}={result}")
+    assert rc == 0, err
+    assert (repo / path).read_bytes() == b"resolved\r\n"
+    assert git(repo, "show", f"HEAD:{path}") == "resolved"
+    assert len(parents(repo)) == 2
+
+
 def _branch(repo, name, rel, content, subject):
     git(repo, "checkout", "-q", "-b", name, "main")
     write(repo, rel, content)
