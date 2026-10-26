@@ -1,6 +1,7 @@
 // Native ribbon submission; the queue preserves the post-renderLists drain order.
 #include "gos_particle_bridge_internal.h"
 #include "vulkan_vfx_geometry.h"
+#include "mc2fmt.h"
 #include "mlr/mlrtexturepool.hpp"
 #include "mlr/mlrtexture.hpp"
 #include <algorithm>
