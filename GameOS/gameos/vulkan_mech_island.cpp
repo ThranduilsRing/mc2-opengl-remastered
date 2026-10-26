@@ -221,6 +221,7 @@ struct MechIsland : mc2vk::IslandState {
     static constexpr uint32_t kMaxSchemes=4096; // descriptor cache only; image admission belongs to TextureResidency
 
     VkCommandBuffer cbuf[2] = {VK_NULL_HANDLE, VK_NULL_HANDLE};   // allocated from `cpool`, freed with it
+    mc2vk::GpuTicket submitted[2];
 
     // VK-DRAW-PERF-1: per-pass GPU timestamp timer (3 stamps: pass-start / draws-start /
     // pass-end). Gated + fail-soft inside init(); no-op unless MC2_VK_GPU_TIMESTAMPS set.
@@ -871,15 +872,16 @@ extern "C" int mc2_vk_mech_island_run(int w, int h) {
     if (!mainSpan) { setFallback("frame_ring_alloc_failed"); s->disabled = true; return 0; }
     uint8_t* const mainPtr = static_cast<uint8_t*>(mainSpan.ptr);
 
-    // VK-MECH-FENCE-DEFER-1: retire the parity slot before ANY per-frame CPU
-    // staging that the slot's prior submit may still read.
-    VkImageResource* colorRes = reinterpret_cast<VkImageResource*>(s->colorRes);
+    // Private recording resources follow the engine frame slot. Shared image
+    // fences may already name terrain from this frame; only this slot's prior
+    // mech submission must retire before its commands/descriptors change.
     const clk::time_point tFence0 = clk::now();
-    VkFrameSync fsC{};
-    { ZoneScopedN("VKIsl.Mech.FenceWait");   // VK-ISLAND-TRACY-1: deferred retire of the parity slot
-      fsC = vkImageResourceBeginFrame(colorRes); }
+    const uint32_t par = rctx.frameContext().slot;
+    { ZoneScopedN("VKIsl.Mech.FenceWait");
+      if (!rctx.wait(s->submitted[par], 5000000000ull, "mech submission slot")) {
+          setFallback("submission_slot_timeout"); s->disabled = true; return 0;
+      } }
     us_fence_wait = usSince(tFence0);
-    const uint32_t par = fsC.parity & 1u;
     const auto ground = mc2_vk_ground_lighting_frame();
     if (!ground) return 0;
     s->groundLighting.copy(s->device, par, *ground);
@@ -1049,20 +1051,20 @@ extern "C" int mc2_vk_mech_island_run(int w, int h) {
     vk_render_pass_timer::End(cb, gos_render_pass_timer::Pass_Mechs);
     if (vkEndCommandBuffer(cb) != VK_SUCCESS) { setFallback("record_failed"); s->disabled = true; return 0; }
 
-    // VK-RUNG8 item-4: direct-chain only — the submit waits/signals no GL<->VK
-    // semaphores; the fence below orders CPU access before the next island records
-    // against these shared images.
+    // Render-pass dependencies order shared attachments; the ticket protects
+    // only this island's command buffer and descriptors.
     VkSubmitInfo si{};
     si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
     si.commandBufferCount = 1; si.pCommandBuffers = &cb;
     { ZoneScopedN("VKIsl.Mech.Submit");   // VK-ISLAND-TRACY-1: vkQueueSubmit
-      if (mc2vk::submitGraphics(si, fsC.fence) != VK_SUCCESS) { setFallback("submit_failed"); s->disabled = true; return 0; } }
+      if (mc2vk::submitGraphics(si, VK_NULL_HANDLE) != VK_SUCCESS) { setFallback("submit_failed"); s->disabled = true; return 0; } }
+    s->submitted[par] = rctx.tracker().now();
     timerGuard.submitted();
 
     if (!mechFenceDeferEnabled()) {
         ZoneScopedN("VKIsl.Mech.InlineFenceWait");   // VK-ISLAND-TRACY-1: killswitch-only inline retire
         const clk::time_point tInline0 = clk::now();
-        if (vkWaitForFences(s->device, 1, &fsC.fence, VK_TRUE, 5ull*1000*1000*1000) != VK_SUCCESS) {
+        if (!rctx.wait(s->submitted[par], 5000000000ull, "mech inline retire")) {
             setFallback("fence_timeout"); s->disabled = true; return 0;
         }
         us_fence_wait = usSince(tInline0);
