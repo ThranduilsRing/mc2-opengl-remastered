@@ -71,6 +71,8 @@ def main():
     out_tga.parent.mkdir(parents=True, exist_ok=True)
     if out_tga.exists():
         out_tga.unlink()
+    for previous in out_tga.parent.glob(out_tga.name + ".screen*.frame*.tga"):
+        previous.unlink()
     out_stdout = deploy / f"harness_{args.screen}_stdout.txt"
     out_stderr = deploy / f"harness_{args.screen}_stderr.txt"
 
@@ -148,7 +150,12 @@ def main():
             if args.tracy:
                 # The campaign first loads a mission. Profile the return to
                 # logistics rather than spending the trace on that mission load.
-                time.sleep(10)
+                if not encyclopedia:
+                    while p.poll() is None and time.monotonic() - started < args.timeout - 21:
+                        fo.flush()
+                        if "[SOAK] autowin mission=" in out_stdout.read_text(errors="replace"):
+                            break
+                        time.sleep(0.1)
                 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
                 from tracy_capture_compare import tracy_exe
                 args.tracy.parent.mkdir(parents=True, exist_ok=True)
@@ -156,8 +163,20 @@ def main():
                 recorder = nofocus.spawn([str(tracy_exe("tracy-capture.exe")), "-a", "127.0.0.1", "-p", port,
                                              "-s", "20", "-f", "-o", str(args.tracy)], stdout=fo, stderr=fe,
                                             **nofocus.hidden_kwargs(creationflags=0x00004000))
-            p.wait(timeout=max(1, args.timeout - (time.monotonic() - started)))
-            print(f"[harness] process exited on its own (code {p.returncode})")
+            targets = ([21, 20, 22, 31] if args.walk else
+                       [-2] if encyclopedia else
+                       [{"purchase":20,"bay":21,"loadout":22,"launch":31,"briefing":11}[args.screen]])
+            while p.poll() is None and time.monotonic() - started < args.timeout:
+                if recorder is not None and recorder.poll() is not None:
+                    break
+                if args.frame == -5 and all(Path(str(out_tga) + f".screen{s}.frame{f}.tga").is_file()
+                                            for s in targets for f in range(1,6)):
+                    break
+                time.sleep(0.1)
+            if p.poll() is None:
+                p.kill()
+            p.wait()
+            print(f"[harness] run ended (code {p.returncode})")
         except subprocess.TimeoutExpired:
             p.kill()
             p.wait()
@@ -174,7 +193,8 @@ def main():
                     recorder.wait()
 
     if (out_tga.exists() or (args.tracy and args.tracy.is_file()) or
-            (args.frame == -5 and list(out_tga.parent.glob(out_tga.name + ".screen*.frame*.tga")))):
+            (args.frame == -5 and all(Path(str(out_tga) + f".screen{s}.frame{f}.tga").is_file()
+                                     for s in targets for f in range(1,6)))):
         print(f"[harness] capture complete: {args.tracy or out_tga}")
         sys.exit(0)
     else:
