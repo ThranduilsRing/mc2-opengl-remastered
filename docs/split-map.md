@@ -556,7 +556,7 @@ Split commit: `b9cc28a1f`.
 | `terrain_init.cpp` | Terrain: Terrain::init (mission terrain load), the block / mover list helpers it uses. |
 | `terrain_raycast.cpp` | Terrain: terrain ray-triangle test and Terrain::raycastTerrain. |
 | `terrain_render.cpp` | Terrain: Terrain::render, draw-command flush and the water render paths. |
-| `terrain_update.cpp` | Terrain: Terrain::update with the LOD chunk selection and morph factor helpers. |
+| `terrain_update.cpp` | Terrain: Terrain::update with the LOD chunk selection helpers. |
 | `terrain_internal.h` | shared include bundle, extern globals and declarations of the pieces |
 
 ## `mclib/terrtxm2.cpp`
