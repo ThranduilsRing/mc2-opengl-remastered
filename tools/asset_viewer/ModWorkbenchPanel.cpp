@@ -71,10 +71,12 @@ void ModWorkbenchPanel::draw(ModWorkbench& wb, const ImVec2& avail) {
         appe_[0] = '\0';   // reprime appearance buffer from the (reset/suggested) record
     }
 
-    // Sync orbit controls: override follows stock camera.
-    overridePreview_.orbitYaw()   = stockPreview_.orbitYaw();
-    overridePreview_.orbitPitch() = stockPreview_.orbitPitch();
-    overridePreview_.zoom()       = stockPreview_.zoom();
+    // A lone GLB keeps its fitted camera until there is stock to compare.
+    if (wb.hasStock()) {
+        overridePreview_.orbitYaw()   = stockPreview_.orbitYaw();
+        overridePreview_.orbitPitch() = stockPreview_.orbitPitch();
+        overridePreview_.zoom()       = stockPreview_.zoom();
+    }
 
     float half = (avail.x - 8.0f) * 0.5f;
     float h    = avail.y * 0.55f;
