@@ -206,7 +206,7 @@ The tree combines code from several origins. [LICENSES.md](LICENSES.md) has the 
 ## Credits
 
 - **Original game:** Microsoft and FASA Interactive (2001), and Microsoft for the shared-source release that makes all of this possible.
-- **alariq** ([alariq/mc2](https://github.com/alariq/mc2)): rebuilt the closed GameOS layer from its public headers, ported the game to 64-bit Windows and Linux on SDL and OpenGL, and fixed many bugs from the original game (2016 to 2021). This project began from that port; without it there would be nothing to remaster. His platform-layer code remains GPLv3.
+- **alariq** ([alariq/mc2](https://github.com/alariq/mc2)): rebuilt the closed GameOS layer from its public headers, ported the game to 64-bit Windows and Linux on SDL and OpenGL, and fixed many bugs from the original game (2016 to 2021). This project began from that port; without it there would be nothing to remaster. That platform-layer code remains GPLv3.
 - **Community creators:** [MechCommander Omnitech by magic](https://www.moddb.com/mods/mechcommander-omnitech) and [MC2X by Wolfman](https://mc2x.net/), who have kept this game alive for more than 20 years.
 - **[Alexbeav](https://github.com/Alexbeav)** ([MechCommander2-Restoration-Project](https://github.com/Alexbeav/MechCommander2-Restoration-Project)): D3F font loader, multi-monitor mouse grab, SDL window-event dispatch fix, FMV reference.
 - **[Methuselas](https://github.com/Methuselas):** Mission Editor and UI Editor.
