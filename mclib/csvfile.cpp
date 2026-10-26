@@ -695,7 +695,7 @@ long CSVFile::seekRowCol (DWORD row, DWORD col)
 	
 	seek(0);		//Start at the top.
 	char tmp[2048]{};
-	
+
 	if (inRAM && fileImage && row > 0) {
 		// Loadouts repeatedly revisit hundreds of cells. Skip preceding rows
 		// without copying each one or calling fileSize() for every byte.

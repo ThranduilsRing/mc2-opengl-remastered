@@ -17,6 +17,7 @@
 #include "model_override_registry.h"
 #include "assimp_importer.h"
 #include "loose_asset_priority.h"
+#include <filesystem>
 
 void LoadOverrideRenderShapeTextures(TG_TypeMultiShape* shape);
 
@@ -173,7 +174,7 @@ void GVAppearanceType::init (const char * fileName)
 			const auto rel = i == 0 ? ov->sourceRelPath : ov->lods[i-1].sourceRelPath;
 			auto shape = std::make_unique<TG_TypeMultiShape>();
 			try {
-				const auto path = ov->manifestDir + "/" + rel;
+				const auto path = (std::filesystem::path(ov->manifestDir) / rel).generic_string();
 				complete = ImportGeometryFromFile(path.c_str(), shape.get(), false, true, true) == 0
 					&& shape->GetNumShapes() > 0;
 			} catch (...) { complete = false; }

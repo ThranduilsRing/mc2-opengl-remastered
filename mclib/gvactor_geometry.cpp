@@ -10,6 +10,7 @@
 #include "../RenderCore/SurfaceMaterial.h"
 #include "assimp_importer.h"
 #include "Gates/gate.h"
+#include <filesystem>
 
 extern uint32_t g_mc2FrameCounter;
 
@@ -42,7 +43,7 @@ void GVAppearance::updateRenderShape()
 #ifdef ENABLE_ASSIMP_IMPORTER
 			auto type = std::make_unique<TG_TypeMultiShape>();
 			const auto rel = lod == 0 ? override->sourceRelPath : override->lods[lod-1].sourceRelPath;
-			const auto path = override->manifestDir + "/" + rel;
+			const auto path = (std::filesystem::path(override->manifestDir) / rel).generic_string();
 			try {
 				if (ImportGeometryFromFile(path.c_str(), type.get(), false, true, true) != 0) {
 					renderShape.reset(); renderLOD = -1; return;
@@ -89,8 +90,8 @@ void GVAppearance::updateRenderShape()
 					tint = material.materialClass != static_cast<uint32_t>(RenderCore::SurfaceClass::Emissive)
 						&& material.materialClass != static_cast<uint32_t>(RenderCore::SurfaceClass::Glass);
 			DWORD sharedPaint = 0xffffffff;
-			if (tint) for (const auto& entry : published)
-				if (entry.first == name) sharedPaint = entry.second;
+			if (tint) for (const auto& [textureName, textureHandle] : published)
+				if (textureName == name) sharedPaint = textureHandle;
 			if (sharedPaint != 0xffffffff) {
 				renderTextures.push_back(mc2::textures::retain(sharedPaint));
 				continue;
