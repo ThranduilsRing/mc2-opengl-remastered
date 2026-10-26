@@ -49,7 +49,7 @@ def plan(jobs, proof_dir=None, capture_before_runs=1, before_dir=None):
         ("kit-visibility", [py, "scripts/check-kit-visibility.py", "--install", install,
                             "--out", str(proof / "kit-visibility")], {}),
         # Stage/run each mod serially: overlapping cold loads and staging I/O hit the wall cap.
-        ("mods", [py, "tools/mod_smoke.py", "--battery", "--fail-fast", "--exe", install + "/mc2.exe", "--build-dir", "build64-ninja"], {}),
+        ("mods", [py, "tools/mod_smoke.py", "--battery", "--workers", "1", "--exe", install + "/mc2.exe", "--build-dir", "build64-ninja"], {}),
         # The ordinary contracts row is offline; fresh default-build quiet grading launches the game, so it lives here with the gate's exe.
         ("quiet", [py, "scripts/check-default-build-quiet.py", "--fresh-smoke", "--exe", install + "/mc2.exe"], {}),
     ]
@@ -323,9 +323,11 @@ def execute_parallel(steps, head, dry_run=False):
                 except (OSError, RuntimeError) as exc:
                     print(f"[merge_gate] stock-copy FAIL (not waived): {exc}", flush=True)
                     return 1
+            # Cold mod loads must finish before stock runtime I/O starts.
+            result |= execute(mods, head, runner=runner, completed=completed)
             def auxiliary():
                 try:
-                    result = execute(mods, head, runner=runner, completed=completed)
+                    result = 0
                     if copy_future:
                         clone = copy_future.result()
                         remapped = [(n, [a.replace(str(install), str(clone)).replace(install.as_posix(), clone.as_posix())

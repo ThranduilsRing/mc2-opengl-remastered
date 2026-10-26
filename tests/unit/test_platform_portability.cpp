@@ -2,6 +2,14 @@
 #include "platform_windows.h"
 #include <filesystem>
 #include <fstream>
+#include <type_traits>
+
+static_assert(std::is_same_v<PINT_PTR, INT_PTR*>);
+static_assert(std::is_same_v<PUINT_PTR, UINT_PTR*>);
+static_assert(std::is_same_v<PLONG_PTR, LONG_PTR*>);
+static_assert(std::is_same_v<PULONG_PTR, ULONG_PTR*>);
+static_assert(std::is_same_v<PULONG, ULONG*>);
+static_assert(std::is_same_v<LPLONG, LONG*>);
 
 TEST_CASE("platform/Win32 data widths and monotonic counter")
 {
@@ -18,6 +26,68 @@ TEST_CASE("platform/Win32 data widths and monotonic counter")
     CHECK(after.QuadPart > before.QuadPart);
     CHECK(GetTickCount64() >= milliseconds);
 }
+
+#ifndef _WIN32
+TEST_CASE("platform/native path preserves parents for new and ambiguous children")
+{
+    namespace fs = std::filesystem;
+    const auto dir = fs::temp_directory_path() / ("mc2-case-" + std::to_string(GetCurrentProcessId()));
+    fs::create_directories(dir / "Data/Saves");
+    struct Cleanup { fs::path p; ~Cleanup() { fs::remove_all(p); } } cleanup{dir};
+    std::ofstream(dir / "Data/Saves/Slot1.fit") << "upper";
+    std::ofstream(dir / "Data/Saves/slot1.fit") << "lower";
+    CHECK(mc2_native_path((dir / "data/saves/Slot1.fit").string()) == (dir / "Data/Saves/Slot1.fit").string());
+    CHECK(mc2_native_path((dir / "data/saves/SLOT1.FIT").string()) == (dir / "Data/Saves/SLOT1.FIT").string());
+    CHECK(mc2_native_path((dir / "data/saves/New.fit").string()) == (dir / "Data/Saves/New.fit").string());
+    fs::create_directories(dir / "Data/Saves/Alias");
+    fs::create_directories(dir / "Data/Saves/alias");
+    CHECK(mc2_native_path((dir / "data/saves/ALIAS/New.fit").string()) == (dir / "Data/Saves/ALIAS/New.fit").string());
+}
+
+TEST_CASE("platform/file dispositions and failures report native errors")
+{
+    namespace fs = std::filesystem;
+    const auto dir = fs::temp_directory_path() / ("mc2-disposition-" + std::to_string(GetCurrentProcessId()));
+    fs::create_directories(dir);
+    struct Cleanup { fs::path p; ~Cleanup() { fs::remove_all(p); } } cleanup{dir};
+    const auto path = (dir / "save.fit").string();
+    auto open = [&](DWORD disposition) {
+        return CreateFileA(path.c_str(), GENERIC_READ | GENERIC_WRITE, 0, nullptr, disposition, FILE_ATTRIBUTE_NORMAL, nullptr);
+    };
+    auto file = open(OPEN_ALWAYS);
+    REQUIRE(file != INVALID_HANDLE_VALUE);
+    DWORD count = 0;
+    REQUIRE(WriteFile(file, "hello", 5, &count, nullptr));
+    REQUIRE(CloseHandle(file));
+    CHECK(open(CREATE_NEW) == INVALID_HANDLE_VALUE);
+    CHECK(GetLastError() == EEXIST);
+    file = open(OPEN_ALWAYS);
+    REQUIRE(file != INVALID_HANDLE_VALUE);
+    CHECK(fs::file_size(path) == 5);
+    REQUIRE(CloseHandle(file));
+    file = open(TRUNCATE_EXISTING);
+    REQUIRE(file != INVALID_HANDLE_VALUE);
+    CHECK(fs::file_size(path) == 0);
+    REQUIRE(CloseHandle(file));
+    fs::remove(path);
+    CHECK(open(TRUNCATE_EXISTING) == INVALID_HANDLE_VALUE);
+    CHECK(GetLastError() == ENOENT);
+    file = open(CREATE_NEW);
+    REQUIRE(file != INVALID_HANDLE_VALUE);
+    REQUIRE(CloseHandle(file));
+    char byte{};
+    CHECK_FALSE(ReadFile(INVALID_HANDLE_VALUE, &byte, 1, &count, nullptr));
+    CHECK(count == 0);
+    CHECK(GetLastError() == EBADF);
+    CHECK_FALSE(WriteFile(INVALID_HANDLE_VALUE, "x", 1, &count, nullptr));
+    CHECK(count == 0);
+    CHECK(GetLastError() == EBADF);
+    CHECK_FALSE(MoveFileExW((dir / "missing").wstring().c_str(), (dir / "renamed").wstring().c_str(), 0));
+    CHECK(GetLastError() == ENOENT);
+    CHECK_FALSE(MoveFileExW((dir / "missing").wstring().c_str(), fs::path(path).wstring().c_str(), 0));
+    CHECK(GetLastError() == EEXIST);
+}
+#endif
 
 TEST_CASE("platform/file handles and atomic replacement preserve bytes")
 {

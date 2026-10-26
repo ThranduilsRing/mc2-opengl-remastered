@@ -71,3 +71,13 @@ TEST_CASE("the corpus comparison detects a wrong conversion" * doctest::should_f
 #endif
 
 }  // TEST_SUITE
+
+TEST_CASE("printf reference: escaped percents and pointer widths")
+{
+    char output[128];
+    void* pointer = reinterpret_cast<void*>(uintptr_t(0x1234));
+    corpusSnprintf(output, sizeof(output), "%%p|%p|%20p|%-20p", pointer, pointer, pointer);
+    CHECK(std::string(output) == "%p|0000000000001234|    0000000000001234|0000000000001234    ");
+    corpusSnprintf(output, sizeof(output), "%*p", 20, pointer);
+    CHECK(std::string(output) == "    0000000000001234");
+}

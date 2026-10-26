@@ -168,3 +168,22 @@ def test_visibility_does_not_grade_previous_run(tmp_path, monkeypatch):
     assert check.main() == 1
     import json
     assert json.loads((tmp_path / 'kit-visibility.json').read_text())['render_override_instances'] == 0
+
+
+@pytest.mark.parametrize("platform,exe", [("linux", "mc2"), ("win32", "mc2.exe")])
+def test_visibility_native_executable_and_scratch_cleanup(tmp_path, monkeypatch, platform, exe):
+    spec = importlib.util.spec_from_file_location("kit_check_native", ROOT / "scripts/check-kit-visibility.py")
+    check = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(check)
+    monkeypatch.setattr(sys, 'argv', ['check', '--install', str(tmp_path), '--out', str(tmp_path)])
+    monkeypatch.setattr(check.sys, 'platform', platform)
+    def run(cmd, **kw):
+        assert cmd[cmd.index('--exe') + 1] == str(tmp_path / exe)
+        root = Path(kw['env']['MC2_SMOKE_ARTIFACT_ROOT'])
+        log = root / 'stamp/mc2_10.log'
+        log.parent.mkdir()
+        log.write_text('[BLDG_ART] foo|applied=watertower\n')
+        return type('Result', (), {'returncode': 0})()
+    monkeypatch.setattr(check.subprocess, 'run', run)
+    assert check.main() == 0
+    assert not list(tmp_path.glob('run-*'))

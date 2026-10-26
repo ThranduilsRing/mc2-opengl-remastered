@@ -1,6 +1,7 @@
 #include "doctest.h"
 #include "contract_test_support.h"
 #include "contract_process.h"
+#include <fstream>
 
 TEST_CASE("vfx_trace/combat trace assertions pass in an isolated diagnostic sink")
 {
@@ -27,4 +28,23 @@ TEST_CASE("vfx_frozen/fresh processes cover MLR and the GPU harvest gate vectors
         ContractEnvironment log{"MC2_GPU_PARTICLES_LOG", arm.log};
         CHECK(runContractChild(executable, {"--no-breaks", "--test-case=vfx_frozen/*"}) == 0);
     }
+}
+
+
+TEST_CASE("contract process/quoted \"arguments\" and long argv")
+{
+    const auto path = std::filesystem::temp_directory_path() /
+        ("mc2 child " + std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()) + ".log");
+    struct Cleanup { std::filesystem::path p; ~Cleanup() { std::filesystem::remove(p); } } cleanup{path};
+    const auto output = "--out=" + path.string();
+    CHECK(runContractChild(contractExecutable("mc2_tests"), {"--count", "--no-colors",
+        "--test-case=contract process/quoted \"arguments\" and long argv", output.c_str(),
+        "--no-breaks", "--no-breaks", "--no-breaks", "--no-breaks", "--no-breaks", "--no-breaks",
+        "--no-breaks", "--no-breaks", "--no-breaks", "--no-breaks", "--no-breaks", "--no-breaks", "--no-breaks"}) == 0);
+    std::ifstream in(path);
+    const std::string text{std::istreambuf_iterator<char>(in), {}};
+    CHECK(text.find("test cases passing the current filters: 1") != std::string::npos);
+#ifndef _WIN32
+    CHECK(runContractChild("/bin/sh", {"-c", "kill -TERM $$"}) == 128 + SIGTERM);
+#endif
 }

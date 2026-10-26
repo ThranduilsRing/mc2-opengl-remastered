@@ -25,13 +25,13 @@ using UINT32 = unsigned int;
 using PUINT32 = unsigned int*;
 
 using INT_PTR = intptr_t;
-using PINT_PTR = int*;
+using PINT_PTR = INT_PTR*;
 using UINT_PTR = uintptr_t;
-using PUINT_PTR = unsigned int*;
+using PUINT_PTR = UINT_PTR*;
 using LONG_PTR = intptr_t;
-using PLONG_PTR = long*;
+using PLONG_PTR = LONG_PTR*;
 using ULONG_PTR = uintptr_t;
-using PULONG_PTR = unsigned long*;
+using PULONG_PTR = ULONG_PTR*;
 using UHALF_PTR = unsigned short;
 using PUHALF_PTR = unsigned short*;
 using HALF_PTR = short;

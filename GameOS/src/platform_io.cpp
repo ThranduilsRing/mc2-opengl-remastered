@@ -27,8 +27,8 @@ std::string mc2_native_path(std::string_view input)
         std::filesystem::path found;
         for (const auto& entry : std::filesystem::directory_iterator(result.empty() ? "." : result, error)) {
             if (!equal(entry.path().filename().string(), part.string())) continue;
-            // A Windows-derived install cannot contain ambiguous case aliases.
-            if (!found.empty()) return normalized;
+            // Keep resolved parents, but do not guess between case aliases.
+            if (!found.empty()) { found.clear(); break; }
             found = entry.path().filename();
         }
         result /= found.empty() ? part : found;

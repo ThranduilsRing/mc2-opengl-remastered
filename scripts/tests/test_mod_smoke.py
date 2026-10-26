@@ -339,3 +339,52 @@ def test_old_cooked_cache_is_discarded_and_not_reused(tmp_path):
     assert not old.parent.exists()
     assert keep.read_text() == 'source'
     ms.discard_legacy_cooked_cache(tmp_path)
+
+
+def test_single_worker_waits_for_cold_run_and_collects_later_failures(tmp_path, monkeypatch):
+    from types import SimpleNamespace
+    import threading
+    source, base, stages = tmp_path / 'source', tmp_path / 'base', tmp_path / 'stages'
+    for folder in ('one', 'two'):
+        (source / folder).mkdir(parents=True)
+    base.mkdir()
+    monkeypatch.delenv('MC2_HOST_LEASE_BATCH', raising=False)
+    monkeypatch.setattr(ms, 'select_mods', lambda _: [('One', 'one', ''), ('Two', 'two', '')])
+    monkeypatch.setattr(ms, 'mod_layers', lambda root, folder, _: [root / folder])
+    monkeypatch.setattr(ms, 'pick_mission', lambda *a: ('mc2_01', 'fixture'))
+    monkeypatch.setattr(ms, 'resolve_build', lambda *a: (base / 'mc2.exe', base))
+    monkeypatch.setattr(ms.stages, 'preflight', lambda *a: None)
+    monkeypatch.setattr(ms.stages, 'prune_old', lambda *a, **kw: None)
+    monkeypatch.setattr(ms, 'build_engine_cache', lambda *a: {})
+    monkeypatch.setattr(ms, 'refresh_layer', lambda *a: None)
+    monkeypatch.setattr(ms, 'stage_bookmarks', lambda *a: None)
+    monkeypatch.setattr(ms, '_load_deploy_payload', lambda: SimpleNamespace(ensure_terrain_materials=lambda *a: None))
+    monkeypatch.setattr(ms, 'tree_identity', lambda *a: {})
+    monkeypatch.setattr(ms, 'format_table', lambda rows: '')
+    monkeypatch.setattr(ms, 'result_word', lambda row: 'PASS' if row['exit'] == 0 else 'FAIL')
+    monkeypatch.setattr(ms, 'health_cell', lambda *a: '')
+    finished = threading.Event()
+    calls = []
+    def stage(cache, layers, target, *a, **kw):
+        if target.name == 'two':
+            assert finished.is_set(), 'second staging overlaps first cold load'
+        target.mkdir()
+        (target / 'smoke.log').write_text('fixture')
+        calls.append('stage-' + target.name)
+        return {}
+    def run(target, *a):
+        if target.name == 'one':
+            threading.Event().wait(0.1)
+            finished.set()
+        calls.append('run-' + target.name)
+        return {'exit': int(target.name == 'one'), 'health': {}}
+    monkeypatch.setattr(ms, 'stage_mod', stage)
+    monkeypatch.setattr(ms, 'run_mod', run)
+    args = SimpleNamespace(install_root=source, stage_root=stages, base_install=base,
+                           exe=None, build_dir=None, mod='', mission=None, keep_stages=False,
+                           workers=1, fail_fast=False, duration=5, timeout=30)
+    assert ms.battery(args) == 1
+    assert calls == ['stage-one', 'run-one', 'stage-two', 'run-two']
+    import json
+    report = next(stages.glob('*/battery.json'))
+    assert len(json.loads(report.read_text())) == 2
