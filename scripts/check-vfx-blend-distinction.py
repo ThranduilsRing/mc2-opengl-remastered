@@ -67,6 +67,9 @@ def native_blend_issues(text: str) -> list[str]:
         "s->alphaPipe=make_pipeline(s,w,h,false);",
         "s->addPipe=make_pipeline(s,w,h,true);",
         "s->oneOnePipe=make_pipeline(s,w,h,true,true);",
+        "s->oneAlphaPipe=make_pipeline(s,w,h,false,false,false,4);",
+        "s->oneInvAlphaPipe=make_pipeline(s,w,h,false,false,false,5);",
+        "tubeMode==4?VK_BLEND_FACTOR_SRC_ALPHA:VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;",
     ]
     return ["Vulkan VFX blend contract missing: " + clause for clause in required if clause not in compact]
 
