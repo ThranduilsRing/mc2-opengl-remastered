@@ -122,6 +122,33 @@ extern "C" long mc2FreezeMoversEngagedAt() { return s_freezeMoversEngaged; }
 // Test-only fixtures and determinism verbs (spawn, teleport, freeze_movers, set_light, animate). Returns true when a verb of this group matched.
 bool MissionInterfaceManager::uiCmdFixture(UiCmdCtx& c)
 {
+	if (c.line.starts_with("support ")) {
+		int id = 0; float x = 0, y = 0;
+		if (!mc2::gate::get<"MC2_TEST_SPAWN">()) {
+			c.result = "blocked"; c.note = "needs MC2_TEST_SPAWN=1";
+		} else if (sscanf(c.line.c_str() + 8, "%d %f %f", &id, &x, &y) != 3 ||
+			!Commander::home || !controlGui.getVehicleNameFromID(id)) {
+			c.note = "support <vehicleID> <x> <y>";
+		} else {
+			glm::vec3 pos(x, y, 0.0f);
+			if (land) pos.z = land->getTerrainElevation(pos);
+			// Recovery needs a disabled target; use the selected mover for the fixture.
+			MoverPtr salvage = nullptr;
+			if (id == 147 && Team::home) {
+				for (long i = 0; i < Team::home->getRosterSize(); ++i) {
+					auto* mover = Team::home->getMover(i);
+					if (mover && mover->isSelected()) { salvage = mover; break; }
+				}
+			}
+			if (id == 147 && !salvage) {
+				c.result = "blocked"; c.note = "select recovery target";
+			} else {
+				beginVtol(id, Commander::home->getId(), &pos, salvage);
+				c.result = "ok";
+			}
+		}
+		return true;
+	}
 	const std::string& line = c.line;
 	const char*& result = c.result;
 	std::string& note = c.note;

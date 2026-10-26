@@ -22,6 +22,7 @@ void MissionInterfaceManager::addAirstrike()
 
 
 MoverPtr BringInReinforcement (long vehicleID, long rosterIndex, long commanderID, glm::vec3 pos, bool exists) {
+	ZoneScopedN("Support.Reinforcement");
 
 	MoverInitData data;
 	memset( &data, 0, sizeof( data ) );
@@ -107,6 +108,7 @@ void MissionInterfaceManager::addVehicle( const glm::vec3& pos )
 
 void MissionInterfaceManager::beginVtol (long supportID, long commanderID, glm::vec3* reinforcePos, MoverPtr salvageTarget)
 {
+	ZoneScopedN("Support.CallIn");
 	glm::vec3 vtolPos = wPos;
 	if (reinforcePos)
 		vtolPos = *reinforcePos;

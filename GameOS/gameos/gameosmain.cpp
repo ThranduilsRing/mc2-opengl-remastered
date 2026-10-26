@@ -1181,20 +1181,25 @@ int main(int argc, char** argv)
     drainTglPoolStatsOnShutdown();
     mc2_object_recon::drainOnShutdown();
     projectz_shutdown();
+    std::fprintf(stderr, "[SHUTDOWN] engine begin\n"); std::fflush(stderr);
     Environment.TerminateGameEngine();
+    std::fprintf(stderr, "[SHUTDOWN] engine end\n"); std::fflush(stderr);
     AssetScale::shutdown();
 
 #ifdef MC2_IMGUI
     GuiRuntime::Shutdown();
 #endif
     gos_DestroyRenderer();
+    std::fprintf(stderr, "[SHUTDOWN] renderer end\n"); std::fflush(stderr);
 
     // Islands, then the present path, then the shared VulkanContext: one order, shared with the editor (gos_host_vk.cpp).
     gos::host::shutdownVulkanBackend();
+    std::fprintf(stderr, "[SHUTDOWN] vulkan end\n"); std::fflush(stderr);
 
     graphics::destroy_window(win);
 
     gos_DestroyAudio();
+    std::fprintf(stderr, "[SHUTDOWN] audio end\n"); std::fflush(stderr);
 
     // Return validation exit code if in validate mode
     if (getValidateConfig().enabled)

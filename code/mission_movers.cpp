@@ -170,6 +170,7 @@ void Mission::createPartObject (long partIndex, MoverPtr mover) {
 }
 
 long Mission::addMover (MoverInitData* moverSpec) {
+	ZoneScopedN("Mission.AddMover");
 	
 	MechWarriorPtr pilot = MechWarrior::newWarrior();
 	if (!pilot)
@@ -226,8 +227,11 @@ long Mission::addMover (MoverInitData* moverSpec) {
 		brainFullFileName.init(warriorPath, moverSpec->brainFileName, ".abl");
 	}
 		
-	long moduleHandle = ABLi_preProcess(brainFullFileName, &numErrors, &numLinesProcessed);
-	pilot->setBrain(moduleHandle);
+	{
+		ZoneScopedN("Mission.AddMover.Brain");
+		long moduleHandle = ABLi_preProcess(brainFullFileName, &numErrors, &numLinesProcessed);
+		pilot->setBrain(moduleHandle);
+	}
 
 /*
 typedef struct _MoverInitData {
@@ -266,7 +270,7 @@ typedef struct _MoverInitData {
 
 		if (mover) 
 		{
-			mover->init(true, objType);
+			{ ZoneScopedN("Mission.AddMover.Init"); mover->init(true, objType); }
 			mover->setAwake(moverSpec->active);
 			mover->setHandle(ObjectManager->getHandle(mover));
 
@@ -290,7 +294,7 @@ typedef struct _MoverInitData {
 	
 						if (result == NO_ERR) 
 						{
-							result = mover->init(&profileFile);
+							{ ZoneScopedN("Mission.AddMover.Profile"); result = mover->init(&profileFile); }
 							if (result != NO_ERR)
 								STOP((" Mission.createPartObject: bad Profile File "));
 						}

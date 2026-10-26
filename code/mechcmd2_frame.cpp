@@ -166,6 +166,7 @@ void __stdcall UpdateRenderers()
 
 void __stdcall TerminateGameEngine()
 {
+	ZoneScopedN("Shutdown.Engine");
 	if (!gameStarted)
 		return;
 
@@ -192,6 +193,7 @@ void __stdcall TerminateGameEngine()
 
 		if (mission)
 		{
+			ZoneScopedN("Shutdown.Mission");
 			mission->destroy(false);
 			ownedMission.reset();
 			mission = nullptr;
@@ -199,6 +201,7 @@ void __stdcall TerminateGameEngine()
 
 		if (logistics)
 		{
+			ZoneScopedN("Shutdown.Logistics");
 			logistics->destroy();
 			ownedLogistics.reset();
 			logistics = nullptr;
@@ -234,6 +237,7 @@ void __stdcall TerminateGameEngine()
 
 		if (soundSystem)
 		{
+			ZoneScopedN("Shutdown.Sound");
 			soundSystem->destroy();
 
 			ownedSoundSystem.reset();
