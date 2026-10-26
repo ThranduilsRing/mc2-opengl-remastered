@@ -10,7 +10,7 @@ std::vector<std::string> LegacyImageDecoder::extensions() const
     return {"png","jpg","jpeg","bmp","tga"};
 }
 
-bool LegacyImageDecoder::handles(const std::string& extLower) const
+bool LegacyImageDecoder::handles(std::string_view extLower) const
 {
     return extLower == "png" || extLower == "jpg" || extLower == "jpeg"
         || extLower == "bmp" || extLower == "tga";

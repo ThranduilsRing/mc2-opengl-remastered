@@ -17,6 +17,16 @@
 #include <string>
 #include <vector>
 
+TEST_CASE("modlint event tokens respect view bounds and report unknown values") {
+    const std::string text = "OnFireTrailing";
+    const auto event = weaponEventFromToken(std::string_view(text).substr(0, 6));
+    REQUIRE(event);
+    CHECK(*event == WeaponEvent::OnFire);
+    CHECK_FALSE(weaponEventFromToken(text));
+    CHECK_FALSE(weaponEventFromToken({}));
+    CHECK(weaponEventFromToken("OnImpact") == WeaponEvent::OnImpact);
+}
+
 // -------------------------------------------------------------------------
 // Reason-code -> message table: every LIVE EQV_ code has a distinct token + message.
 // -------------------------------------------------------------------------

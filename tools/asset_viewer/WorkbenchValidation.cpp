@@ -1,7 +1,8 @@
 #include "WorkbenchValidation.h"
 #include <cmath>
+#include <string_view>
 std::vector<Warning> ValidateSemantics(const WorkbenchOverride& rec, const SemanticInputs& in){
-    std::vector<Warning> w; auto warn=[&](const char* c,const std::string& m){ w.push_back({WarnSeverity::Warn,c,m}); };
+    std::vector<Warning> w; auto warn=[&](std::string_view c,std::string_view m){ w.push_back({WarnSeverity::Warn,std::string(c),std::string(m)}); };
     if (in.stockMesh && in.stockMesh->ok){
         if (in.maxFootprintRatio>1.5f || in.maxFootprintRatio<0.67f)
             warn("bounds-delta","override footprint "+std::to_string(in.maxFootprintRatio)+"x stock — verify scale (runtime forces 1.0)");

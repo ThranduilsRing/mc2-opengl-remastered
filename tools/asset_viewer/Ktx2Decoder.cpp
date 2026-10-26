@@ -59,7 +59,7 @@ Ktx2DecodedImage loadKtx2Image(const std::string& path)
     return r;
 }
 
-bool Ktx2Decoder::handles(const std::string& extLower) const
+bool Ktx2Decoder::handles(std::string_view extLower) const
 {
     return extLower == "ktx2";
 }

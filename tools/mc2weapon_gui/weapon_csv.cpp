@@ -19,15 +19,15 @@ static std::string lower(std::string s) {
     for (char& c : s) c = (char)std::tolower((unsigned char)c);
     return s;
 }
-static std::string trim(const std::string& s) {
+static std::string trim(std::string_view s) {
     size_t b = 0, e = s.size();
     while (b < e && std::isspace((unsigned char)s[b])) ++b;
     while (e > b && std::isspace((unsigned char)s[e - 1])) --e;
-    return s.substr(b, e - b);
+    return std::string(s.substr(b, e - b));
 }
 
 // RFC-ish CSV line parse (handles "quoted, fields" and "" escapes).
-static std::vector<std::string> parseCsvLine(const std::string& line) {
+static std::vector<std::string> parseCsvLine(std::string_view line) {
     std::vector<std::string> out;
     std::string cur;
     bool inq = false;
@@ -49,9 +49,9 @@ static std::vector<std::string> parseCsvLine(const std::string& line) {
     return out;
 }
 
-static std::string emitCsvField(const std::string& f) {
+static std::string emitCsvField(std::string_view f) {
     bool need = f.find_first_of(",\"\n") != std::string::npos;
-    if (!need) return f;
+    if (!need) return std::string(f);
     std::string out = "\"";
     for (char c : f) { if (c == '"') out += "\"\""; else out += c; }
     out += "\"";
@@ -66,8 +66,8 @@ static std::string emitCsvLine(const std::vector<std::string>& cells) {
     return out;
 }
 
-static int colIndex(const std::vector<std::string>& header, const std::string& needle) {
-    std::string nl = lower(needle);
+static int colIndex(const std::vector<std::string>& header, std::string_view needle) {
+    std::string nl = lower(std::string(needle));
     for (size_t i = 0; i < header.size(); ++i) {
         std::string hl = lower(trim(header[i]));
         if (hl.rfind(nl, 0) == 0 || hl.find(nl) != std::string::npos) return (int)i;
@@ -75,7 +75,7 @@ static int colIndex(const std::vector<std::string>& header, const std::string& n
     return -1;
 }
 
-bool isWeaponType(const std::string& type) {
+bool isWeaponType(std::string_view type) {
     std::string t = lower(trim(type));
     return t == "energyweapon" || t == "ballisticweapon" || t == "missileweapon";
 }
@@ -138,7 +138,7 @@ bool Compbas::write(const std::string& path, std::string& err) const {
     return true;
 }
 
-int Compbas::findByMasterId(const std::string& mid) const {
+int Compbas::findByMasterId(std::string_view mid) const {
     for (size_t i = 0; i < rows.size(); ++i)
         if (!rows[i].empty() && trim(rows[i][0]) == trim(mid)) return (int)i;
     return -1;
@@ -149,7 +149,7 @@ std::string Compbas::cell(int row, int colIdx) const {
         return "";
     return rows[row][colIdx];
 }
-void Compbas::setCell(int row, int colIdx, const std::string& v) {
+void Compbas::setCell(int row, int colIdx, std::string_view v) {
     if (row < 0 || row >= (int)rows.size() || colIdx < 0) return;
     auto& r = rows[row];
     while ((int)r.size() <= colIdx) r.push_back("");
@@ -177,20 +177,20 @@ bool loadEffects(const std::string& path, std::vector<FxEntry>& out, std::string
     return true;
 }
 
-std::string validateCell(const std::string& kind, const std::string& value,
+std::string validateCell(std::string_view kind, std::string_view value,
                          const std::vector<FxEntry>& fx) {
     std::string v = trim(value);
     if (kind == "ufloat" || kind == "uint") {
         char* end = nullptr;
         double n = std::strtod(v.c_str(), &end);
-        if (end == v.c_str() || *end != '\0') return value + " is not numeric";
+        if (end == v.c_str() || *end != '\0') return std::string(value) + " is not numeric";
         if (n < 0) return "must be >= 0";
         if (kind == "uint" && (n != (double)(long)n || (long)n <= 0))
             return "must be a positive integer";
     } else if (kind == "int") {
         char* end = nullptr;
         std::strtol(v.c_str(), &end, 10);
-        if (end == v.c_str() || *end != '\0') return value + " is not an integer";
+        if (end == v.c_str() || *end != '\0') return std::string(value) + " is not an integer";
     } else if (kind == "range") {
         std::string lv = lower(v);
         if (lv != "short" && lv != "medium" && lv != "long" && lv != "0")
@@ -217,7 +217,7 @@ std::string validateCell(const std::string& kind, const std::string& value,
 std::vector<std::string> validateRow(const Compbas& cb, int row,
                                      const std::vector<FxEntry>& fx) {
     std::vector<std::string> probs;
-    auto chk = [&](int ci, const char* kind, const char* label) {
+    auto chk = [&](int ci, std::string_view kind, std::string_view label) {
         if (ci < 0) return;
         std::string m = validateCell(kind, cb.cell(row, ci), fx);
         if (!m.empty()) probs.push_back(std::string(label) + ": " + m);

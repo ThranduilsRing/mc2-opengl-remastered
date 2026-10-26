@@ -31,6 +31,7 @@
 #include <cctype>
 #include <set>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include "modder_finding.h"
@@ -52,11 +53,11 @@ struct VariantCsvTable {
     size_t rowCount() const { return rows.size(); }
 };
 
-inline std::string variantCsvTrim(const std::string& s) {
+inline std::string variantCsvTrim(std::string_view s) {
     size_t b = 0, e = s.size();
     while (b < e && (s[b] == ' ' || s[b] == '\t' || s[b] == '\r')) ++b;
     while (e > b && (s[e - 1] == ' ' || s[e - 1] == '\t' || s[e - 1] == '\r')) --e;
-    return s.substr(b, e - b);
+    return std::string(s.substr(b, e - b));
 }
 
 inline std::string variantCsvLower(std::string s) {
@@ -65,7 +66,7 @@ inline std::string variantCsvLower(std::string s) {
 }
 
 // Naive comma split (engine-faithful: quotes are NOT column-quoting).
-inline VariantCsvTable parseVariantCsv(const std::string& text) {
+inline VariantCsvTable parseVariantCsv(std::string_view text) {
     VariantCsvTable t;
     std::vector<std::string> row;
     std::string cur;
@@ -103,7 +104,7 @@ inline bool looksLikeChassisCsv(const VariantCsvTable& t) {
 
 // compbas.csv -> set of POPULATED ordinals (col 1 = id, col 2 = type; a row is
 // free/undefined when type == "undefined", cmponent.cpp initEXCEL semantics).
-inline std::set<int> parseCompbasPopulatedIds(const std::string& text) {
+inline std::set<int> parseCompbasPopulatedIds(std::string_view text) {
     std::set<int> ids;
     VariantCsvTable t = parseVariantCsv(text);
     for (const auto& r : t.rows) {
@@ -143,11 +144,11 @@ inline int variantArmorRow(int block) { return 115 + 97 * block; }  // CurrentAr
 // `fileLabel`/`modId` flow into the shared ModderFinding context.
 inline std::vector<ModderFinding> validateVariantCsvAdd(
         const VariantCsvTable& t,
-        const std::string& fileLabel,
-        const std::string& modId,
+        std::string_view fileLabel,
+        std::string_view modId,
         const std::set<int>* validComponentIds) {
     std::vector<ModderFinding> out;
-    auto mk = [&](const char* reason, const std::string& msg) {
+    auto mk = [&](std::string_view reason, std::string_view msg) {
         ModderFinding f;
         f.reason = reason;
         f.message = msg;
@@ -295,11 +296,11 @@ inline std::vector<ModderFinding> validateVariantCsvAdd(
 }
 
 // Formatter (matches formatUnitFindings/formatEquipmentFindings shape).
-inline std::string formatVariantCsvFindings(const std::string& label,
+inline std::string formatVariantCsvFindings(std::string_view label,
                                             const std::vector<ModderFinding>& findings,
-                                            const std::string& source = "") {
-    std::string out = "chassis-csv " + (label.empty() ? std::string("<unnamed>") : label);
-    if (!source.empty()) out += " [" + source + "]";
+                                            std::string_view source = "") {
+    std::string out = "chassis-csv " + (label.empty() ? std::string("<unnamed>") : std::string(label));
+    if (!source.empty()) out += std::string(" [").append(source).append("]");
     if (findings.empty()) {
         out += ": OK (0 findings)\n";
         return out;

@@ -5,15 +5,16 @@
 // Read-only, cached, refreshable.
 #pragma once
 #include <string>
+#include <string_view>
 #include <vector>
 
 class AppearanceRoster {
 public:
-    void load(const std::string& deployDir);
-    void refresh(const std::string& deployDir);     // = clear + load
+    void load(std::string_view deployDir);
+    void refresh(std::string_view deployDir);     // = clear + load
     const std::vector<std::string>& names() const { return names_; }
     int scannedFileCount() const { return scannedFiles_; }
-    bool contains(const std::string& name) const;   // case-insensitive
+    bool contains(std::string_view name) const;   // case-insensitive
 
 private:
     std::vector<std::string> names_;

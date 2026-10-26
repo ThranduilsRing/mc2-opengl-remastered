@@ -1,16 +1,17 @@
 #include "OverrideManifest.h"
 #include <cctype>
 #include <string>
+#include <string_view>
 static std::string lower(std::string s){ for(char& c:s) c=(char)std::tolower((unsigned char)c); return s; }
-static bool isSafeSource(const std::string& s){
+static bool isSafeSource(std::string_view s){
     if (s.empty()||s[0]=='/'||s[0]=='\\') return false;
     if (s.size()>=2 && s[1]==':') return false;
     if (s.find("..")!=std::string::npos) return false;
-    std::string l=lower(s);
+    std::string l=lower(std::string(s));
     return (l.size()>=4 && l.compare(l.size()-4,4,".glb")==0) || (l.size()>=5 && l.compare(l.size()-5,5,".gltf")==0);
 }
 std::vector<Warning> ValidateRecordRules(const WorkbenchOverride& r){
-    std::vector<Warning> w; auto block=[&](const char* c,const char* m){ w.push_back({WarnSeverity::Block,c,m}); };
+    std::vector<Warning> w; auto block=[&](std::string_view c,std::string_view m){ w.push_back({WarnSeverity::Block,std::string(c),std::string(m)}); };
     if (!r.renderOnly)                       block("renderOnly","renderOnly must be true (MVP)");
     if (r.fallback!="stock")                 block("fallback","fallback must be \"stock\" (MVP)");
     if (r.scale!=1.0f)                       block("scale","runtime scale must be exactly 1.0 — bake scale into the GLB");
@@ -25,7 +26,7 @@ std::vector<Warning> ValidateRecordRules(const WorkbenchOverride& r){
     return w;
 }
 
-static std::string esc(const std::string& s){
+static std::string esc(std::string_view s){
     std::string o; o.reserve(s.size()+8);
     for(char c:s){ switch(c){
         case '"': o+="\\\""; break; case '\\': o+="\\\\"; break;

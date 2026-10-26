@@ -8,6 +8,7 @@
 // is doctest-covered without a process. The validator itself is the single
 // source of the RULES; this only formats what it emitted.
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include "unit_profile_validator.h"
@@ -30,11 +31,11 @@ inline std::string formatFinding(const UnitProfileFinding& f) {
 // `source` (optional) is the file the facts came from; when non-empty it is
 // appended so a modder reads WHICH file the finding is about (modder-first error
 // surface: which mod/file/id). Empty `source` keeps the legacy header verbatim.
-inline std::string formatUnitFindings(const std::string& label,
+inline std::string formatUnitFindings(std::string_view label,
                                       const std::vector<UnitProfileFinding>& findings,
-                                      const std::string& source = "") {
-    std::string out = "unit " + (label.empty() ? std::string("<unnamed>") : label);
-    if (!source.empty()) out += " [" + source + "]";
+                                      std::string_view source = "") {
+    std::string out = "unit " + (label.empty() ? std::string("<unnamed>") : std::string(label));
+    if (!source.empty()) out += std::string(" [").append(source).append("]");
     if (findings.empty()) {
         out += ": OK (0 findings)\n";
         return out;

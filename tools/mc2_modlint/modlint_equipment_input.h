@@ -35,13 +35,14 @@
 #include <vector>
 
 #include "modlint_input.h"            // MlJson + parseModlintJson + weaponTagFromToken
+#include <optional>
 #include "equipment_validator.h"      // EquipmentValidationInputs and the validator
 #include "equipment_definition.h"     // EquipmentDefinition, EquipmentKind, setWeaponFacet
 #include "weapon_definition.h"        // WeaponFacet, WeaponEvent, makeWeaponId/Executor
 
 // --- token -> enum helpers (spellings match the converter + engine schema) ----
 
-inline EquipmentKind equipmentKindFromToken(const std::string& t) {
+inline EquipmentKind equipmentKindFromToken(std::string_view t) {
     if (t == "Weapon")    return EQ_WEAPON;
     if (t == "Ammo")      return EQ_AMMO;
     if (t == "Sensor")    return EQ_SENSOR;
@@ -58,13 +59,12 @@ inline EquipmentKind equipmentKindFromToken(const std::string& t) {
 // Converter emits WeaponTag as "Energy"/"Ballistic"/"Missile"/"Any"; map "Any"
 // (a converter-neutral tag with no single hardpoint class) onto WTAG_ENERGY, the
 // schema default. All others go through weaponTagFromToken (modlint_input.h).
-inline WeaponTag weaponCategoryFromToken(const std::string& t) {
+inline WeaponTag weaponCategoryFromToken(std::string_view t) {
     if (t == "Any" || t.empty()) return WTAG_ENERGY;
     return weaponTagFromToken(t);
 }
 
-inline WeaponEvent weaponEventFromToken(const std::string& t, bool* known = nullptr) {
-    if (known) *known = true;
+inline std::optional<WeaponEvent> weaponEventFromToken(std::string_view t) {
     if (t == "OnFire")            return WeaponEvent::OnFire;
     if (t == "OnProjectileSpawn") return WeaponEvent::OnProjectileSpawn;
     if (t == "OnMuzzleFlash")     return WeaponEvent::OnMuzzleFlash;
@@ -75,8 +75,7 @@ inline WeaponEvent weaponEventFromToken(const std::string& t, bool* known = null
     if (t == "OnJam")             return WeaponEvent::OnJam;
     if (t == "OnAmmoDepleted")    return WeaponEvent::OnAmmoDepleted;
     if (t == "OnOverheat")        return WeaponEvent::OnOverheat;
-    if (known) *known = false;
-    return WeaponEvent::OnFire;
+    return std::nullopt;
 }
 
 // --- facts JSON -> EquipmentValidationInputs -------------------------------
@@ -136,10 +135,8 @@ equipmentFactsFromJson(const MlJson& root, std::string* label = nullptr) {
         // claimed-but-not-presented events stay empty -> presentation finding.
         if (const MlJson* pe = root.find("presented_events"))
             for (const MlJson& ev : pe->arr) {
-                bool known = true;
-                WeaponEvent we = weaponEventFromToken(ev.asStr(), &known);
-                if (known)
-                    w.presentation.setEventAsset(we, WeaponAssetKind::Vfx, "core:present");
+                if (const auto we = weaponEventFromToken(ev.asStr()))
+                    w.presentation.setEventAsset(*we, WeaponAssetKind::Vfx, "core:present");
             }
 
         setWeaponFacet(e, w);   // sets hasWeapon + kind = EQ_WEAPON
@@ -162,9 +159,8 @@ equipmentFactsFromJson(const MlJson& root, std::string* label = nullptr) {
     // Claimed presentation events (declared-but-empty check).
     if (const MlJson* ce = root.find("claimed_events"))
         for (const MlJson& ev : ce->arr) {
-            bool known = true;
-            WeaponEvent we = weaponEventFromToken(ev.asStr(), &known);
-            if (known) in.claimedEvents.push_back(ClaimedWeaponEvent(we));
+            if (const auto we = weaponEventFromToken(ev.asStr()))
+                in.claimedEvents.push_back(ClaimedWeaponEvent(*we));
         }
 
     // Optional hardpoint context.

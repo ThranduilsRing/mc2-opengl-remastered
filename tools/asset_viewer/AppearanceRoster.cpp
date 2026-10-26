@@ -20,7 +20,7 @@ static std::string lower(std::string s) {
     return s;
 }
 
-void AppearanceRoster::load(const std::string& deployDir) {
+void AppearanceRoster::load(std::string_view deployDir) {
     if (loaded_ && loadedDir_ == deployDir) return;
     names_.clear();
     scannedFiles_ = 0;
@@ -67,14 +67,14 @@ void AppearanceRoster::load(const std::string& deployDir) {
               [](const std::string& a, const std::string& b){ return lower(a) < lower(b); });
 }
 
-void AppearanceRoster::refresh(const std::string& deployDir) {
+void AppearanceRoster::refresh(std::string_view deployDir) {
     loaded_ = false;
     loadedDir_.clear();
     load(deployDir);
 }
 
-bool AppearanceRoster::contains(const std::string& name) const {
-    std::string ln = lower(name);
+bool AppearanceRoster::contains(std::string_view name) const {
+    std::string ln = lower(std::string(name));
     for (const auto& n : names_) if (lower(n) == ln) return true;
     return false;
 }

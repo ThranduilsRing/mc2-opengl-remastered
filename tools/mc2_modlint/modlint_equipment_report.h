@@ -9,6 +9,7 @@
 // is the single source of the RULES; this only formats what it emitted. Direct
 // mirror of the unit arc's modlint_report.h.
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include "equipment_validator.h"
@@ -31,11 +32,11 @@ inline std::string formatEquipmentFinding(const EquipmentFinding& f) {
 // `source` (optional) is the file the facts came from; when non-empty it is
 // appended so a modder reads WHICH file the finding is about (modder-first error
 // surface: which mod/file/id). Empty `source` keeps the legacy header verbatim.
-inline std::string formatEquipmentFindings(const std::string& label,
+inline std::string formatEquipmentFindings(std::string_view label,
                                            const std::vector<EquipmentFinding>& findings,
-                                           const std::string& source = "") {
-    std::string out = "component " + (label.empty() ? std::string("<unnamed>") : label);
-    if (!source.empty()) out += " [" + source + "]";
+                                           std::string_view source = "") {
+    std::string out = "component " + (label.empty() ? std::string("<unnamed>") : std::string(label));
+    if (!source.empty()) out += std::string(" [").append(source).append("]");
     if (findings.empty()) {
         out += ": OK (0 findings)\n";
         return out;
