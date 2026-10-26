@@ -2693,14 +2693,14 @@
         },
         {
           "path": "scripts/smoke_lib/host_lease.py",
-          "line": 469,
+          "line": 473,
           "evidence": "import",
           "reference": "scripts.console_child",
           "text": "from scripts import console_child         # type: ignore"
         },
         {
           "path": "scripts/smoke_lib/host_lease.py",
-          "line": 472,
+          "line": 476,
           "evidence": "import",
           "reference": "console_child",
           "text": "import console_child                       # type: ignore"
@@ -2819,7 +2819,7 @@
         },
         {
           "path": "scripts/tests/test_farm_runner.py",
-          "line": 12,
+          "line": 13,
           "evidence": "import",
           "reference": "scripts.console_child",
           "text": "from scripts import console_child"
@@ -3218,7 +3218,7 @@
         },
         {
           "path": "tools/farm/runner.py",
-          "line": 14,
+          "line": 16,
           "evidence": "import",
           "reference": "console_child",
           "text": "import console_child"
@@ -9880,7 +9880,7 @@
       "callers_by_stem": [
         {
           "path": "scripts/tests/test_farm_runner.py",
-          "line": 14,
+          "line": 15,
           "evidence": "import",
           "reference": "tools.farm.host",
           "text": "from tools.farm import host"
@@ -9902,10 +9902,17 @@
       "callers_by_stem": [
         {
           "path": "scripts/tests/test_farm_runner.py",
-          "line": 13,
+          "line": 14,
           "evidence": "import",
           "reference": "tools.farm.runner",
           "text": "from tools.farm.runner import atomic_json, poll_once"
+        },
+        {
+          "path": "scripts/tests/test_farm_runner.py",
+          "line": 123,
+          "evidence": "import",
+          "reference": "tools.farm.runner",
+          "text": "from tools.farm import runner"
         }
       ]
     },
