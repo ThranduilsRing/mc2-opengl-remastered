@@ -2,104 +2,7 @@
 // Declared in the class headers; shared names in bdactor_internal.h.
 #include "bdactor_internal.h"
 #include <memory>
-#include <map>
-#include <set>
-#include <sstream>
-#include <span>
 #include "mc2fmt.h"
-#include "building_gameplay_observation.h"
-
-// Exercise production marking on isolated maps; never modify the live placement or map.
-static void dumpGameplay(BldgAppearance& a, glm::vec3 pos, std::span<const short> cells)
-{
-    if (!mc2::gate::get<"MC2_DEBUG_STATE_DUMP">()) return;
-    std::ostringstream out;
-    out << a.appearType->name << "|" << pos.x << "," << pos.y << "," << pos.z
-        << "|" << a.rotation << "|" << a.status << "|" << a.getRadius() << "," << a.getTopZ();
-    std::set<std::pair<int, int>> covered;
-    for (long i = 0; i < static_cast<long>(cells.size()); i += 2) covered.emplace(cells[i], cells[i + 1]);
-    out << "|covered=";
-    for (auto [r, c] : covered) out << r << "," << c << ";";
-    const auto prefix = out.str();
-    const auto* art = a.appearType->propMaterialSource;
-    mc2::fmt::print_err("[BLDG_ART] {}|applied={}\n", prefix,
-                        art && a.appearType->bldgRenderShape ? art->appearanceName : "-");
-    std::vector<MapCell> live;
-    live.swap(GameMap->map);
-    struct RestoreMap {
-        std::vector<MapCell>& live;
-        ~RestoreMap() { live.swap(GameMap->map); }
-    } restore{live};
-    BldgAppearance probe;
-    probe.bldgShape = nullptr;
-    probe.appearType = a.appearType;
-    // The probe borrows the type without acquiring a registry reference.
-    struct ClearType { BldgAppearance& probe; ~ClearType() { probe.appearType = nullptr; } } clearType{probe};
-    probe.position = pos;
-    probe.rotation = a.rotation;
-    const int side = Terrain::realVerticesMapSide * MAPCELL_DIM;
-    std::vector<MissionMapCellInfo> terrain(side * side);
-    for (int type : {SPECIAL_NONE, SPECIAL_GATE, SPECIAL_WALL}) {
-        out.str("");
-        out << prefix << "|kind=" << type;
-        for (bool destroyed : {false, true}) {
-            out << "|state=";
-            if (destroyed && !a.appearType->bldgDmgShape) { out << "absent"; continue; }
-            probe.status = destroyed ? OBJECT_STATUS_DESTROYED : OBJECT_STATUS_NORMAL;
-            if (probe.bldgShape) probe.releaseBldgShape();
-            auto* source = destroyed ? a.appearType->bldgDmgShape :
-                a.appearType->getBldgCollisionShape(0);
-            probe.bldgShape = source->CreateFrom();
-            std::fill(terrain.begin(), terrain.end(), MissionMapCellInfo{});
-            for (auto& cell : terrain) cell.passable = true;
-            GameMap->map.assign(live.size(), MapCell{});
-            probe.markTerrain(terrain.data(), type, 1);
-            probe.markLOS();
-            writeBuildingGameplayState(out, terrain, GameMap->map, side);
-        }
-        mc2::fmt::print_err("[BLDG_GAMEPLAY] {}\n", out.str());
-    }
-    // Targeted runtime regression: all requests share one simulation turn.
-    // Compare the reused hierarchy with a fresh stock instance, including frozen
-    // animation endpoints, and record the actual cells changed by marking.
-    if (S_stricmp(a.appearType->name, "RPBuilding") == 0 ||
-        (a.appearType->bdAnimData[1] && a.appearType->bdAnimData[3])) {
-        probe.status = OBJECT_STATUS_NORMAL;
-        auto blocked = [&] {
-            std::ostringstream cells;
-            for (int r = 0; r < side; ++r)
-                for (int c = 0; c < side; ++c)
-                    if (!GameMap->getCell(r, c)->getPassable()) cells << r << "," << c << ";";
-            return cells.str();
-        };
-        for (int gesture : {0, 1, 2, 3, 0}) {
-            const long frames = a.appearType->getNumFrames(gesture);
-            for (float frame : {0.0f, static_cast<float>(std::max(0L, frames - 1))}) {
-                probe.unitAnim().bdAnimationState = gesture;
-                probe.unitAnim().currentFrame = frame;
-                probe.unitAnim().bdFrameRate = 0.0f;
-                GameMap->map.assign(live.size(), MapCell{});
-                for (auto& cell : GameMap->map) cell.setPassable(true);
-                probe.markMoveMap(false, nullptr);
-                const auto before = blocked();
-                const auto nodes = probe.simPose->shapeNodes;
-                probe.markMoveMap(true, nullptr);
-                const auto after = blocked();
-                probe.simulationShape_.reset();
-                probe.simPose->ready = false;
-                probe.updateSimPose();
-                const bool matches = nodes == probe.simPose->shapeNodes;
-                mc2::fmt::print_err("[BLDG_MOVE] {}|{}|gesture={}|frame={}|cached_matches_fresh={}|blocked={}|released={}\n",
-                    a.appearType->name, prefix, gesture, frame, matches, before, after);
-            }
-        }
-    }
-    if (probe.bldgShape) probe.releaseBldgShape();
-    probe.appearType = nullptr;
-    const auto noShapeCells = probe.markMoveMap(false, nullptr);
-    mc2::fmt::print_err("[BLDG_MOVE_NULL] cells={} ready={}\n", noShapeCells, probe.simPose->ready);
-}
-
 inline constexpr float HEIGHT_THRESHOLD = 10.0f;
 
 long BldgAppearance::calcCellsCovered (glm::vec3& pos, short* cellList) {
@@ -172,7 +75,12 @@ long BldgAppearance::calcCellsCovered (glm::vec3& pos, short* cellList) {
 		}
 	}
 	
-	dumpGameplay(*this, pos, std::span<const short>(cellList, numCoords));
+    if (mc2::gate::get<"MC2_DEBUG_STATE_DUMP">()) {
+        const auto* art = appearType->propMaterialSource;
+        mc2::fmt::print_err("[BLDG_ART] {}|{},{},{}|{}|{}|{},{}|applied={}\n",
+            appearType->name, pos.x, pos.y, pos.z, rotation, status, getRadius(), getTopZ(),
+            art && appearType->bldgRenderShape ? art->appearanceName : "-");
+    }
 	return(numCoords);
 }
 

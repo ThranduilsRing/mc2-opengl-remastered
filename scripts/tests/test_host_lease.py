@@ -120,7 +120,7 @@ def test_lease_publication_never_exposes_empty_record(lease, monkeypatch):
 def test_legacy_acquirer_waits_after_slot_zero_releases(lease, monkeypatch):
     monkeypatch.setenv("MC2_HOST_GAME_SLOTS", "2")
     host_lease.acquire("slot zero")
-    neighbor = dict(host_lease._read(lease), pid=os.getppid(), created=None, slot=1)
+    neighbor = dict(host_lease._read(lease), pid=os.getppid(), created=None, slot=1, affinity_mask=host_lease.affinity_mask(1))
     host_lease._write_record(host_lease.slot_path(1), neighbor)
     host_lease.release()
     assert host_lease._read(lease)["legacy_guard"]
@@ -316,7 +316,7 @@ def test_two_lanes_from_two_worktree_copies_share_one_lease(tmp_path, monkeypatc
 
 @pytest.mark.parametrize("exclusive", [False, True])
 def test_fifo_exclusive_barrier_and_disjoint_slots(lease, monkeypatch, tmp_path, exclusive):
-    monkeypatch.setenv("MC2_HOST_GAME_SLOTS", "4")
+    monkeypatch.setenv("MC2_HOST_GAME_SLOTS", "2")
     host_lease.acquire("initial")
     script = """
 import json, sys, time
@@ -353,11 +353,11 @@ h.release()
         assert proc.returncode == 0, stderr
 
     try:
-        occupants = [start(str(i)) for i in range(3)]
-        for i in range(3):
+        occupants = [start(str(i)) for i in range(1)]
+        for i in range(1):
             _wait_for(tmp_path / f"{i}.held", proc=occupants[i])
         records = [r for _, r in host_lease._records() if r]
-        assert len(records) == 4 and len({r["slot"] for r in records}) == 4
+        assert len(records) == 2 and len({r["slot"] for r in records}) == 2
         if exclusive:
             first = start("first", True)
             queued(first)
@@ -438,8 +438,9 @@ def test_registered_batch_engine_allows_another_slot_but_reused_pid_blocks(lease
     assert host_lease._read(host_lease.slot_path(1))["pid"] == os.getpid()
     host_lease.release()
     monkeypatch.setenv("MC2_HOST_CORES_PER_SLOT", "2")
-    with pytest.raises(host_lease.HostLeaseBusy):
-        host_lease.acquire("incompatible core layout", wait=False, scan=lambda: [])
+    host_lease.acquire("mixed core layout", wait=False, scan=lambda: [])
+    assert host_lease._read(host_lease.slot_path(1))["affinity_mask"] == 0xF00
+    host_lease.release()
     monkeypatch.setenv("MC2_HOST_CORES_PER_SLOT", "1")
     record["create_time"] = 456
     with pytest.raises(host_lease.HostLeaseBusy, match="mc2.exe pid 4242"):
@@ -460,12 +461,12 @@ def test_visual_proofs_use_one_core_slot(lease, monkeypatch, label):
 
 def test_affinity_reserves_only_physical_game_cores(monkeypatch):
     monkeypatch.setenv("MC2_HOST_CORES_PER_SLOT", "1")
-    assert [host_lease.affinity_mask(i) for i in range(6)] == [0x30, 0xC0, 0x300, 0xC00, 0x3000, 0xC000]
+    assert [host_lease.affinity_mask(i) for i in range(3)] == [0x30, 0x300, 0x3000]
     monkeypatch.delenv("MC2_HOST_GAME_SLOTS", raising=False)
     monkeypatch.delenv("MC2_HOST_CORES_PER_SLOT", raising=False)
     assert host_lease.slot_count() == 2
-    assert host_lease.cores_per_slot() == 1
-    assert [host_lease.affinity_mask(i) for i in range(2)] == [0x30, 0xC0]
+    assert host_lease.cores_per_slot() == 2
+    assert [host_lease.affinity_mask(i) for i in range(2)] == [0xF0, 0xF00]
     monkeypatch.setenv("MC2_HOST_CORES_PER_SLOT", "2")
     assert [host_lease.affinity_mask(i) for i in range(3)] == [0xF0, 0xF00, 0xF000]
     with pytest.raises(ValueError):
@@ -511,3 +512,19 @@ def test_exclusive_window_holds_all_slots_only_inside(lease):
     with host_lease.exclusive_window("measured", scan=lambda: [], log=lambda m: None):
         assert all(host_lease._ours(host_lease._read(host_lease.slot_path(i))) for i in range(host_lease.slot_count()))
     assert not any(host_lease.slot_path(i).exists() for i in range(6)) and not host_lease.holds()
+
+
+@pytest.mark.parametrize("old_mask,slot,width,expected", [(0xF0, 0, 1, 0x300), (0xC0, 1, 2, None), (0x30, 0, 2, 0xF00)])
+def test_mixed_width_slots_do_not_overlap(lease, monkeypatch, old_mask, slot, width, expected):
+    monkeypatch.setenv("MC2_HOST_GAME_SLOTS", "2")
+    monkeypatch.setenv("MC2_HOST_CORES_PER_SLOT", str(width))
+    host_lease.slot_path(slot).write_text(json.dumps({"pid": os.getppid(), "slot": slot,
+                                                    "affinity_mask": old_mask, "cores_per_slot": 1}))
+    if expected is None:
+        with pytest.raises(host_lease.HostLeaseBusy):
+            host_lease.acquire("old conflicting mask", wait=False, scan=lambda: [])
+    else:
+        host_lease.acquire("mixed width", wait=False, scan=lambda: [])
+        ours = next(r for _, r in host_lease._records() if host_lease._ours(r))
+        assert ours["affinity_mask"] == expected
+        assert not ours["affinity_mask"] & old_mask

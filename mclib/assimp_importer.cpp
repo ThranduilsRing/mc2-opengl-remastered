@@ -39,6 +39,7 @@
 #include <array>
 #include <cstring>
 #include <cmath>
+#include <limits>
 #include <cstdio>
 #include <algorithm>
 
@@ -428,7 +429,14 @@ void BuildTextureList(const aiScene* scene, mc2::content::Asset& out) {
 std::vector<DWORD> windowCellIds(const aiMesh& mesh) {
     std::vector<DWORD> ids(mesh.mNumVertices, 0);
     std::unordered_map<DWORD, DWORD> parent;
-    std::map<std::array<float,3>, DWORD> positions;
+    std::multimap<float, std::pair<aiVector3D, DWORD>> positions;
+    float scale = 1.0f;
+    for (unsigned v = 0; v < mesh.mNumVertices; ++v) {
+        const auto& p = mesh.mVertices[v];
+        if (std::isfinite(p.x) && std::isfinite(p.y) && std::isfinite(p.z))
+            scale = std::max({scale, std::abs(p.x), std::abs(p.y), std::abs(p.z)});
+    }
+    const float tolerance = 4.0f * std::numeric_limits<float>::epsilon() * scale;
     auto root = [&](DWORD id) {
         while (parent[id] != id) { parent[id] = parent[parent[id]]; id = parent[id]; }
         return id;
@@ -441,14 +449,15 @@ std::vector<DWORD> windowCellIds(const aiMesh& mesh) {
         parent.try_emplace(id, id);
         const auto& p = mesh.mVertices[v];
         if (!std::isfinite(p.x) || !std::isfinite(p.y) || !std::isfinite(p.z)) continue;
-        const auto [at, added] = positions.try_emplace(std::array<float,3>{p.x,p.y,p.z}, id);
-        if (!added) {
-            const auto& [position, canonicalId] = *at;
-            const DWORD a = root(id);
-            const DWORD b = root(canonicalId);
+        for (auto at = positions.lower_bound(p.x - tolerance);
+             at != positions.end() && at->first <= p.x + tolerance; ++at) {
+            const auto& [position, canonicalId] = at->second;
+            if (std::abs(p.y - position.y) > tolerance || std::abs(p.z - position.z) > tolerance) continue;
+            const DWORD a = root(id), b = root(canonicalId);
             const auto [low, high] = std::minmax(a, b);
             parent[high] = low;
         }
+        positions.emplace(p.x, std::pair{p, id});
     }
     for (auto& id : ids) if (id) id = root(id);
     return ids;

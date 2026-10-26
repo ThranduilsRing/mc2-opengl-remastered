@@ -499,3 +499,32 @@ TEST_CASE_FIXTURE(FrozenPlatform, "vfx_frozen/PertCloud variable polygons preser
             checkFrozenCloud<gosFX::PertCloud>(alignment.first, alignment.second, sides);
     }
 }
+
+
+TEST_CASE("vfx_frozen/card budget counts quads and resets after flush")
+{
+    if (!mc2::particles::Batcher::is_enabled()) return;
+    mc2::particles::Batcher batcher(2);
+    BridgeCapture capture;
+    borrowedCapture = &capture;
+    struct Reset { ~Reset() { borrowedCapture = nullptr; } } reset;
+    GpuParticle card{};
+    card.kind_flags = 64u;
+    for (int frame = 0; frame < 2; ++frame) {
+        batcher.BeginGroup(0, 0, 0, 1, 1, 0, 0xffffffffu);
+        for (int vertex = 0; vertex < 12; ++vertex) batcher.Emit(card);
+        CHECK_FALSE(batcher.inspect_overflowReported());
+        batcher.Emit(card);
+        CHECK(batcher.inspect_overflowReported());
+        batcher.Flush();
+        CHECK(capture.records.size() == 12u * (frame + 1));
+    }
+    batcher.BeginGroup(0, 0, 0, 1, 1);
+    batcher.Emit(GpuParticle{});
+    for (int vertex = 0; vertex < 6; ++vertex) batcher.Emit(card);
+    CHECK_FALSE(batcher.inspect_overflowReported());
+    batcher.Emit(GpuParticle{});
+    CHECK(batcher.inspect_overflowReported());
+    batcher.Flush();
+    CHECK(capture.records.size() == 31);
+}

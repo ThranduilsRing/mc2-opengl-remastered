@@ -1,8 +1,8 @@
 # scripts/smoke_lib/host_lease.py
 """FIFO engine slots shared across worktrees, with exclusive reservations for timing proofs.
 
-MC2_HOST_CORES_PER_SLOT selects physical cores per slot (default 1).
-MC2_HOST_GAME_SLOTS selects 1..6/width slots (default 2); cores 0..1 stay reserved.
+MC2_HOST_CORES_PER_SLOT selects physical cores per slot (default 2).
+MC2_HOST_GAME_SLOTS selects 1..6/max(2,width) slots (default 2); cores 0..1 stay reserved.
 MC2_HOST_LEASE_EXCLUSIVE=1 reserves every slot. Batch hold/release keeps a reservation
 across a serial chain. Dead holders and tickets recover automatically. Private paths
 isolate tests; disabling leases requires MC2_OWNER_NO_LEASE=1.
@@ -41,14 +41,14 @@ POLL_S = 2.0
 REPORT_EVERY_S = 30.0
 
 def cores_per_slot() -> int:
-    width = int(os.environ.get("MC2_HOST_CORES_PER_SLOT", "1"))
+    width = int(os.environ.get("MC2_HOST_CORES_PER_SLOT", "2"))
     if not 1 <= width <= 6:
         raise ValueError("MC2_HOST_CORES_PER_SLOT must be between 1 and 6")
     return width
 
 
 def slot_count() -> int:
-    maximum = 6 // cores_per_slot()
+    maximum = 6 // max(2, cores_per_slot())
     # Two slots limit host load because three can trip the heartbeat_freeze_play smoke gate.
     # Three remains an env override for sim-only or strict runs that grade no smoke gates.
     count = int(os.environ.get("MC2_HOST_GAME_SLOTS", "2"))
@@ -64,9 +64,9 @@ def slot_path(slot: int) -> Path:
 
 def affinity_mask(slot: int) -> int:
     width = cores_per_slot()
-    if not 0 <= slot < 6 // width:
+    if not 0 <= slot < 6 // max(2, width):
         raise ValueError("slot exceeds the physical game core budget")
-    return ((1 << (width * 2)) - 1) << (4 + slot * width * 2)
+    return ((1 << (width * 2)) - 1) << (4 + slot * max(2, width) * 2)
 
 
 @contextmanager
@@ -326,11 +326,15 @@ def acquire(label: str, *, wait: bool = True, timeout_s: Optional[float] = None,
                     foreign = scan()
                 managed = [r for _, r in live]
                 foreign = [(pid, img) for pid, img in foreign if not _managed_engine(pid, managed)]
-                free = [i for i in range(slot_count()) if not slot_path(i).exists()
-                        or (_read(slot_path(i)) or {}).get("legacy_guard")]
+                # Slot IDs keep two-core spacing even for a narrower caller. Check
+                # recorded masks as well, including leases from the old layout.
+                occupied = [r.get("affinity_mask", ((1 << (2 * r.get("cores_per_slot", 1))) - 1)
+                                  << (4 + r.get("slot", 0) * 2 * r.get("cores_per_slot", 1))) for _, r in live]
+                free = [i for i in range(slot_count())
+                        if (not slot_path(i).exists() or (_read(slot_path(i)) or {}).get("legacy_guard"))
+                        and not any(affinity_mask(i) & mask for mask in occupied)]
                 legacy = any("slot" not in rec for _, rec in live) or (lease_path().exists() and _read(lease_path()) is None)
-                compatible = all(rec.get("cores_per_slot", 1) == cores_per_slot() for _, rec in live)
-                eligible = queue[0] == ticket and not foreign and not legacy and (not live if exclusive else bool(free) and compatible)
+                eligible = queue[0] == ticket and not foreign and not legacy and (not live if exclusive else bool(free))
                 if eligible:
                     allocated = []
                     for i in (range(slot_count()) if exclusive else free[:1]):

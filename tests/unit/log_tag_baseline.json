@@ -470,41 +470,11 @@
    "count": 1
   },
   {
-   "tag": "BLDG_GAMEPLAY",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [],
-   "count": 1
-  },
-  {
    "tag": "BLDG_IDENTITY",
    "ver": -1,
    "stream": "stderr",
    "keys": [
     "key"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "BLDG_MOVE",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "gesture",
-    "frame",
-    "cached_matches_fresh",
-    "blocked",
-    "released"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "BLDG_MOVE_NULL",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "cells",
-    "ready"
    ],
    "count": 1
   },
@@ -3613,16 +3583,6 @@
     "actual"
    ],
    "count": 8
-  },
-  {
-   "tag": "GATE_MOVE",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "passable",
-    "cells"
-   ],
-   "count": 1
   },
   {
    "tag": "GEOM_PHASE_SPIKE",

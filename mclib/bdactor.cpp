@@ -865,10 +865,11 @@ void BldgAppearance::updateSimPose()
     auto* source = status == OBJECT_STATUS_DESTROYED && appearType->bldgDmgShape ?
         appearType->bldgDmgShape : appearType->getBldgCollisionShape(0);
     if (!source) { simulationShape_.reset(); simPose->ready = false; return; }
+    const long animationState = status == OBJECT_STATUS_DESTROYED ? -2 : unitAnim().bdAnimationState;
     if (simPose->ready && simulationType_ == source && appearType->numWeaponNodes == 0 &&
         (appearType->rotationalNodeId[0] == '\0' || S_stricmp(appearType->rotationalNodeId, "NONE") == 0) &&
         unitAnim().bdFrameRate == 0.0f &&
-        simulationAnimationState_ == unitAnim().bdAnimationState && simulationFrame_ == unitAnim().currentFrame &&
+        simulationAnimationState_ == animationState && simulationFrame_ == unitAnim().currentFrame &&
         simPose->root == position && simPose->heading == rotation) return;
     if (simulationType_ != source || !simulationShape_) {
         simulationShape_.reset(source->CreateFrom());
@@ -877,6 +878,8 @@ void BldgAppearance::updateSimPose()
     auto* shape = simulationShape_.get();
     if (status != OBJECT_STATUS_DESTROYED && unitAnim().bdAnimationState >= 0 && unitAnim().bdAnimationState < MAX_BD_ANIMATIONS)
         appearType->setAnimation(shape, unitAnim().bdAnimationState);
+    else
+        shape->ClearAnimation();
     shape->SetFrameNum(unitAnim().currentFrame);
     auto aim = mc2::math::quatFromEuler(mc2::math::Euler(unitAnim().pitch * DEGREES_TO_RADS, unitAnim().turretRotation * DEGREES_TO_RADS, 0.0f));
     shape->SetNodeRotation(appearType->rotationalNodeId, &aim);
@@ -885,7 +888,7 @@ void BldgAppearance::updateSimPose()
     // Marking and animation advancement can both request a pose in one turn.
     shape->InvalidateHierarchy();
     shape->TransformMultiShape_BuildRecipe(&translation, &root);
-    simulationAnimationState_ = unitAnim().bdAnimationState;
+    simulationAnimationState_ = animationState;
     simulationFrame_ = unitAnim().currentFrame;
     simPose->root = position; simPose->heading = rotation;
     simPose->nodes.resize(appearType->numWeaponNodes);
