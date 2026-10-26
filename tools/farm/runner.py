@@ -28,6 +28,7 @@ def run_job(path, root):
         if not 0 < timeout <= 7200:
             raise ValueError('timeout must be in (0, 7200] seconds')
         env = dict(os.environ, **job.get('env', {}), MC2_FARM_RESULT_DIR=str(output))
+        env.setdefault('MC2_SMOKE_ARTIFACT_ROOT', str(output / 'smoke'))
         flags = subprocess.BELOW_NORMAL_PRIORITY_CLASS if os.name == 'nt' else 0
         with (output / 'job.log').open('wb') as log:
             child = subprocess.Popen(argv, cwd=job.get('cwd', str(root)), env=env,

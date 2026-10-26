@@ -29,7 +29,6 @@ already have been seeded from the verified merge-gate output):
   "cwd": "C:/mc2farm/harness",
   "timeout": 600,
   "env": {
-    "MC2_SMOKE_ARTIFACT_ROOT": "C:/mc2farm/results/smoke",
     "MC2_HOST_LEASE_PATH": "C:/mc2farm/host_game_lease.json",
     "MC2_DEPLOY_LEASE_PATH": "C:/mc2farm/deploy_leases.json",
     "MC2_CHILD_REGISTRY_DIR": "C:/mc2farm/children",
@@ -64,6 +63,7 @@ copies `.upload`, then atomically renames to `.json`. The runner claims
 `.running`, executes serially at below-normal priority, and writes
 `results/<id>/job.log` and `result.json`. Jobs can write artifacts into the
 `MC2_FARM_RESULT_DIR` environment path; fetch copies that whole directory.
+Smoke artifacts default to its `smoke` subdirectory, so fetch includes them.
 `wait` exits nonzero for failed, interrupted, or timed-out jobs; its own timeout
 does not cancel the remote job. Runner timeouts terminate only their own PID
 and descendants. After a reboot, claimed jobs are marked interrupted, never

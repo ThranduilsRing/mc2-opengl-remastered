@@ -22,11 +22,12 @@ def job(tmp_path, value):
 
 def test_output_environment_and_exit(tmp_path):
     result = job(tmp_path, {'argv': [sys.executable, '-c',
-        'import os; print(os.environ["TEST_FARM"]); print(os.environ["MC2_FARM_RESULT_DIR"]); exit(7)'],
+        'import os; print(os.environ["TEST_FARM"]); print(os.environ["MC2_FARM_RESULT_DIR"]); print(os.environ["MC2_SMOKE_ARTIFACT_ROOT"]); exit(7)'],
         'env': {'TEST_FARM': 'visible'}, 'cwd': str(tmp_path)})
     assert result['status'] == 'completed' and result['returncode'] == 7
     log = (tmp_path / 'results/sample/job.log').read_text()
     assert 'visible' in log and str(tmp_path / 'results/sample') in log
+    assert str(tmp_path / 'results/sample/smoke') in log
     assert (tmp_path / 'jobs/sample.done').exists()
     poll_once(tmp_path)  # Completed jobs are not executed twice.
     assert json.loads((tmp_path / 'results/sample/result.json').read_text()) == result
