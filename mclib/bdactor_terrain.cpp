@@ -367,22 +367,10 @@ long BldgAppearance::markMoveMap (bool passable, long* lineOfSightRect, bool use
 	int minCol = 9999;
 	int maxCol = 0;
 
-	//MUST force building to HIGHEST LOD!!!  IMpassability data is only valid at this LOD!!
-	// Building will reset its LOD on next draw!!
-	// The per-instance bldgShape is the RENDER shape; a model override replaces it, so passability
-	// then comes from the stock collision shape of the current state (never the override mesh).
-	TG_MultiShapePtr tempBldgShape = bldgShape;
-	const bool renderOverridden = appearType->bldgRenderShape || appearType->bldgDmgRenderShape;
-
-	if (currentLOD || renderOverridden)
-	{
-		TG_TypeMultiShape* source = appearType->getBldgCollisionShape(0);
-		if (renderOverridden && status == OBJECT_STATUS_DESTROYED && appearType->bldgDmgShape)
-			source = appearType->bldgDmgShape;
-		tempBldgShape = source->CreateFrom();
-		if (unitAnim().bdAnimationState != -1)
-			appearType->setAnimation(tempBldgShape,unitAnim().bdAnimationState);
-	}
+	// Passability is saved gameplay state. Use the posed stock hierarchy, never
+	// render transforms or an untransformed clone selected by a visual override.
+	updateSimPose();
+	TG_MultiShapePtr tempBldgShape = simulationShape_.get();
 
 	int numCoords = 0;
 	if (cellList) {
@@ -474,13 +462,6 @@ long BldgAppearance::markMoveMap (bool passable, long* lineOfSightRect, bool use
 		lineOfSightRect[1] = minCol;
 		lineOfSightRect[2] = maxRow;
 		lineOfSightRect[3] = maxCol;
-	}
-
-	if (tempBldgShape != bldgShape)
-	{
-		tempBldgShape->ClearAnimation();
-		delete tempBldgShape;
-		tempBldgShape = nullptr;
 	}
 
 	return(numCoords/2);
