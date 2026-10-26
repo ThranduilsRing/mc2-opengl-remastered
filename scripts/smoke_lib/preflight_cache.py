@@ -1,13 +1,12 @@
 # scripts/smoke_lib/preflight_cache.py
 """SMOKE-LATENCY-WINS-1 win #4: amortize per-run harness preflights.
 
-run_smoke.py shells out to three advisory child processes before every
+run_smoke.py shells out to two child processes before every
 mission batch: check-deploy-coherence.py (re-hashes every manifest file),
-check_shader_bom.py (re-reads every shader source), and
-deploy_payload.staleness_report (re-hashes every manifest file again). None
+and check_shader_bom.py (re-reads every shader source). Neither
 of these can change results between two `run_smoke` invocations unless the
 deployed tree or the worktree HEAD changed, so a cheap fingerprint lets a
-second back-to-back invocation skip all three (~2-4s/run).
+second back-to-back invocation reuse both checks.
 
 FINGERPRINT (deliberately cheap -- no hashing):
   - HEAD sha of the worktree running run_smoke.py (git rev-parse HEAD)
@@ -19,14 +18,12 @@ FINGERPRINT (deliberately cheap -- no hashing):
 If any of these differ from the cached entry, the cache misses and the
 caller re-runs the real checks. This is intentionally coarse: it trades a
 small false-negative window (e.g. a shader edited with its mtime clock
-skewed backward) for zero reimplemented hashing. All three checks are
-advisory-only in run_smoke.py already (never change the smoke verdict), so
-a stale cache entry has no correctness impact on gates -- worst case is a
-missed WARN line, which is why this is opt-in via a flag rather than
-silently always-on for a first pass.
+skewed backward) for zero reimplemented hashing.
+Coherence remains advisory and the cached BOM result retains its hard fail.
+deploy_payload.staleness_report is always live, including its strict failure.
 
-Cache file: <ARTIFACT_ROOT>/.preflight_cache.json (sits next to smoke.lock,
-not inside a per-timestamp run dir, so it persists across runs).
+Cache file: <INSTALL>/.preflight_cache.json. The deploy-folder lease serializes
+writers, so separate proof directories reuse the same fingerprinted checks.
 """
 from __future__ import annotations
 

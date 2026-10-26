@@ -5522,7 +5522,7 @@
         },
         {
           "path": "scripts/smoke_lib/preflight_cache.py",
-          "line": 38,
+          "line": 35,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from . import nofocus  # noqa: E402  (OWNER RULE: no window for any child process)"
@@ -6532,7 +6532,7 @@
         },
         {
           "path": "scripts/smoke_lib/preflight_cache.py",
-          "line": 38,
+          "line": 35,
           "evidence": "import",
           "reference": "scripts.smoke_lib.nofocus",
           "text": "from . import nofocus  # noqa: E402  (OWNER RULE: no window for any child process)"

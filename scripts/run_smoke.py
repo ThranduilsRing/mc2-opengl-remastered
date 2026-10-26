@@ -1008,7 +1008,7 @@ def main():
     # advisory-tier latency win -- BOM-check's hard sys.exit(2) on FAIL still
     # fires identically whether the result came from cache or a fresh run.
     from scripts.smoke_lib import preflight_cache as _pfcache
-    _pfcache_path = ARTIFACT_ROOT / ".preflight_cache.json"
+    _pfcache_path = Path(args.exe).resolve().parent / ".preflight_cache.json"
     _pfcache_fp = None
     _pfcache_hit = None
     if not args.skip_preflight_cache:
