@@ -419,3 +419,39 @@ with zero validation errors/warnings. Tube OFF/ON matches 1,788 shared sim frame
 has no committed mc2_01 baseline. No baseline was created or changed. Candidate
 captures also match strict identities over 196 shared frames and consume no Draw
 RNG. No new complete class acceptance or CPU renderer retirement is claimed.
+
+### Packet 8: unreachable effect clipping retired (2026-10-26)
+
+Engine `6a7832762052`: 1,915 lines deleted, 6 added, net -1,909. Remove
+MLRTriangleCloud's undispatched nonindexed Draw/Clip and the indexed Tube/Pert
+clip branches made unreachable by their unconditional zero clip masks. Remove
+the unused clipped-output allocations. Keep the live indexed Tube submission,
+Pert polygon fan, asset codecs and class registrations. No instance fields or
+simulation code changed. MLR remains 50 compiled TUs / 21,472 C++ lines
+(107 source/header files / 34,408 physical lines).
+
+This packet is partial: no gate flips or new class acceptance. Fixture 9 forces
+all Tube materials, including fading smoke, to untextured OneZero. That exposes
+solid panels in the rejected native candidate, but the precise difference from
+the CPU reference remains unresolved; no texture-default/projection root cause
+is claimed. The opaque CPU fallback stays. Shape still aggregates submaterials
+under the first primitive's state and needs polygon triangulation; ShapeCloud,
+DebrisCloud and mod-loadable PertCloud retain live MLR routes. No native class
+migration is claimed for those routes.
+
+Proof: `E:/mc2-archive-2026-10/proofs/mlr-retire-p1/p8-summary.json` and
+`owner-montage-p8.png`. RelWithDebInfo game build, seven shader/VFX rows and
+frozen cloud tests pass (25,342 child assertions plus three driver assertions,
+including populated Pert polygons). The opaque fallback capture repeats stably
+and its first PNG is byte-identical to the retained P7 CPU reference. Their 253
+shared sim frames match, chain `ba1075d60c4aa833`, with unchanged RNG counts.
+Day/night smoke-lite and oracle validation report zero errors/warnings. The
+missing committed mc2_01 baseline from P7 remains untouched; this packet uses
+retained pre/post oracle identities, not a new baseline. Camera-dependent FX
+ordering and CPU Execute/emission/lifetimes remain.
+
+Next packet: bound the opaque Tube investigation, then retire its CPU/indexed
+closure only after visual acceptance. If it remains costly, move immediately to
+Shape per-primitive material spans and triangulation, followed by populated
+ShapeCloud/DebrisCloud/Pert native draws. Delete each proven unused MLR closure
+as its consumers disappear; retain decoding until editor/tools consumers move.
