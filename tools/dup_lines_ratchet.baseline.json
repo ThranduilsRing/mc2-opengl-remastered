@@ -7,7 +7,7 @@
   "RenderCore": 402,
   "RenderWorld": 0,
   "code": 13912,
-  "mclib": 26395,
+  "mclib": 26366,
   "shaders": 416
  },
  "dirs": [
@@ -473,9 +473,9 @@
   "mclib/tgainfo.cpp": 88,
   "mclib/tgl.h": 166,
   "mclib/tgl_parse.cpp": 103,
-  "mclib/tgl_render.cpp": 57,
+  "mclib/tgl_render.cpp": 55,
   "mclib/tgl_shadows.cpp": 101,
-  "mclib/tgl_transform.cpp": 252,
+  "mclib/tgl_transform.cpp": 225,
   "mclib/tgl_transform_light.cpp": 114,
   "mclib/tgl_types.cpp": 132,
   "mclib/userinput.cpp": 24,
@@ -498,8 +498,8 @@
   "shaders/vulkan/terrain_tier1.vert": 71,
   "shaders/vulkan/terrain_tier1_skirt.vert": 71
  },
- "head": "1d84b807b",
+ "head": "6d65270e2",
  "n": 8,
- "total": 43374,
+ "total": 43345,
  "version": 1
 }
