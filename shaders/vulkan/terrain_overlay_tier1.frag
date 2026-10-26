@@ -130,7 +130,7 @@ void main() {
                                       vec2(uT.lightGridInvCellX, uT.lightGridInvCellY),
                                       uT.lightPoolSoft, uT.lightPoolMoverDim, uT.lightPoolMoverScale,
                                       uT.lightPoolMoverMax, uT.lightPoolCompress,
-                                      0.0, moverContactUnused, surfaceN, shadowN);
+                                      0.0, moverContactUnused, surfaceN, shadowN, false, 0.0);
     }
     // Map-edge haze (same ramp as gos_terrain.frag).
     if (pc.mapHalfExtent > 0.0) {

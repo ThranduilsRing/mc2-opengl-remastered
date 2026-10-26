@@ -8,7 +8,10 @@
 #define PREC highp
 #endif
 #include "../include/noise.hglsl"   // VK-PARITY-F3: fbm() for the GL colour break-up (terrain_lod_chunk.frag:1839)
+vec3 mv_lampPoolNormal(vec3 wp, vec3 macroN, float lod);
+#define TLP_LAMP_NORMAL mv_lampPoolNormal
 #include "include/terrain_frame_vk.glsl"   // TerrainFrameUBO + set-0 resources + CSM shadow helpers
+#undef TLP_LAMP_NORMAL
 #include "include/ground_lighting.glsl"
 #include "include/concrete_detail_vk.glsl"
 #include "../include/axis.hglsl"   // mc2ToRender: the POM view vector is built in the MC2 world frame
@@ -315,6 +318,21 @@ vec3 mv_detailNormal(vec4 w, float snowWeight, vec2 worldXY, float lodNear, floa
     return dN * lodNear;
 }
 
+// Lamp-only detail uses an isotropic footprint computed in uniform main flow.
+// The normal is sampled once at the first unoccluded, nonzero lamp.
+vec3 mv_lampPoolNormal(vec3 wp, vec3 macroN, float lod) {
+    float nearDetail = mv_computeLodNear(wp.xy, wp.z);
+    if (nearDetail <= 0.0) return macroN;
+    vec2 uv = vec2((wp.x - uT.atlasTopLeftX) * uT.atlasOneOverWorldUnits,
+                   (uT.atlasTopLeftY - wp.y) * uT.atlasOneOverWorldUnits);
+    vec4 m = uT.colormapReady != 0 ? textureLod(u_materialWeights, uv, 0.0) : vec4(0);
+    vec4 w = vec4(max(1.0 - m.x - m.y - m.w, 0.0), m.x, m.y, m.w);
+    float f = exp2(lod) / float(textureSize(u_matNormalArray, 0).x);
+    vec3 dN = mv_detailNormal(w, m.z, wp.xy, nearDetail, macroN.z,
+                             vec2(f, 0), vec2(0, f), false);
+    return normalize(vec3(macroN.xy / max(macroN.z, 0.2) + dN.xy * uT.detailStrength, 1.0));
+}
+
 // CEMENT-MIP-EDGE-1: antialiased "x < 0.5" for the cement transition cut; fw = the cut form's
 // per-pixel footprint, so the edge is one pixel of coverage at any distance instead of a hard stair.
 float cCutLt(float x, float fw) {
@@ -575,15 +593,17 @@ void main() {
         // Only detail relative to the macro normal may modulate that illumination.
         // Cement retains its authored slab normal and receives the same visibility.
         vec3 N = vec3(0.0, 0.0, 1.0);                            // flat-up terrain normal (default)
+        bool resolveLampNormal = false;
         vec3 dbgBaseN = vec3(0.0, 0.0, 1.0); vec3 dbgDN = vec3(0.0);  // CSM-BLACKOUT-RECON-1 taps
         if (uT.detailEnabled != 0 && !pureConcrete) {
             vec3 baseN = baseNormal;
             vec3 dN    = vec3(0.0);
             if (uT.detailReady != 0 && uT.detailStrength != 0.0) {
-                bool needParallax;
-                if (mv_needDetail(baseN, lightDir, materialW, materialSnow, v_worldPos, normalLightFloor, needParallax)) {
+                if (mv_needDetail(baseN, lightDir, materialW, materialSnow, v_worldPos, normalLightFloor)) {
                     float lodNear = mv_computeLodNear(v_worldPos.xy, v_worldPos.z);
-                    dN = mv_detailNormal(materialW, materialSnow, v_worldPos.xy, lodNear, baseN.z, detailUvDx, detailUvDy, needParallax);
+                    dN = mv_detailNormal(materialW, materialSnow, v_worldPos.xy, lodNear, baseN.z, detailUvDx, detailUvDy, true);
+                } else {
+                    resolveLampNormal = true;
                 }
             }
             vec3 macroPert = vec3(baseN.xy / max(baseN.z, 0.2) * uT.nfhStrength, 1.0);
@@ -628,7 +648,10 @@ void main() {
         else if (uT.csmDebugMode == 9) { fragColor = vec4(dbgBaseN * 0.5 + 0.5, 1.0); GBuffer1 = vec4(0.5,0.5,1.0,1.0); return; }
         else if (uT.csmDebugMode == 10) { fragColor = vec4(dbgDN * 0.5 + 0.5, 1.0); GBuffer1 = vec4(0.5,0.5,1.0,1.0); return; }
 
-        lit = shadeGround(baseColor, N, normalLight, shadow, pureConcrete ? 1.0 : 0.0, v_worldPos, macroN);
+        float normalSize = float(textureSize(u_matNormalArray, 0).x);
+        float lampLod = resolveLampNormal ? 0.5 * log2(max(max(dot(detailUvDx, detailUvDx), dot(detailUvDy, detailUvDy))
+                                                       * normalSize * normalSize, 1e-12)) : 0.0;
+        lit = shadeGround(baseColor, N, normalLight, shadow, pureConcrete ? 1.0 : 0.0, v_worldPos, macroN, resolveLampNormal, lampLod);
         lit = max(lit + cdSpec * shadow, vec3(0.0));
 
         // TERRAIN-EDGE-FEATHER-1 (GL terrain_lod_chunk.frag, after the mover contact): the last tile band of the map fades to the sky haze

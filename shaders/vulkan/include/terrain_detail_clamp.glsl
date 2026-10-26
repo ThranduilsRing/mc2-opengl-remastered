@@ -2,31 +2,20 @@
 // Detail sampling retains mv_computeLodNear's LOD0/band fade (one when disabled).
 const float normalLightFloor = 0.2;
 bool mv_needDetail(vec3 baseN, vec3 lightDir, vec4 materialW, float materialSnow,
-                   vec3 worldPos, float normalLightFloor, out bool needParallax) {
-    needParallax = true;
+                   vec3 worldPos, float normalLightFloor) {
     if (uT.csmDebugMode != 0 || lightDir.z >= 0.0 || abs(baseN.z) < 0.85) return true;
-    // Preserve the original sun/shoreline consumers, including their POM UVs.
+    // UNORM detail taps and anti-tile blends stay in [-1,1].
+    // Bound every possible perturbed normal before its texture walk.
     float amplitude = dot(max(materialW, vec4(0)), MATV_NORMAL_BOOST * vec4(1.0 / 3.0, 1, 1, 1))
                     + max(materialSnow, 0.0) * 0.9;
     vec2 macroTilt = baseN.xy / max(baseN.z, 0.2) * uT.nfhStrength;
     float tilt = length(abs(macroTilt) + vec2(amplitude * abs(uT.detailStrength)));
     float upperLight = (length(lightDir.xy) * tilt + lightDir.z) * inversesqrt(1.0 + tilt * tilt);
+    // Shoreline shading still consumes N.z inside its wet/foam band.
     float nz = clamp(abs(baseN.z), 0.0, 0.9995);
     float run = max(worldPos.z - uT.shorelineWaterElev, 0.0)
               * (nz / max(sqrt(max(1.0 - nz * nz, 1e-6)), 0.03));
     float reach = max(uT.shorelineWetRun, uT.shorelineFoamRun) + abs(uT.shorelineEdgeJitter);
     bool nearShore = uT.shorelineOn != 0 && run > 0.0 && run < reach;
-    needParallax = nearShore || !(upperLight < normalLightFloor - 1e-4);
-    if (needParallax) return true;
-    // Local lamps consume detail even when the sun response is fully clamped.
-    // Primary normal taps are cheaper than walking the light list twice.
-    // The shading loop owns exact range/cone rejection; empty cells skip reads.
-    if (uT.numPoolLights > 0) {
-        if (uT.lightGridDim <= 0) return true;
-        ivec2 cell = ivec2(floor((worldPos.xy - vec2(uT.lightGridMinX, uT.lightGridMinY))
-                               * vec2(uT.lightGridInvCellX, uT.lightGridInvCellY)));
-        if (all(greaterThanEqual(cell, ivec2(0))) && all(lessThan(cell, ivec2(uT.lightGridDim)))
-            && lightGridCells[cell.y * uT.lightGridDim + cell.x].y != 0u) return true;
-    }
-    return false;
+    return nearShore || !(upperLight < normalLightFloor - 1e-4);
 }
