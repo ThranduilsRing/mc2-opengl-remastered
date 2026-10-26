@@ -96,6 +96,7 @@ def test_cached_immutable_overlay_preserves_links_and_private_configs(tmp_path):
 
 @pytest.mark.parametrize("crash", [False, True, "engine"])
 def test_battery_isolates_workers_and_cleans_even_on_exception(tmp_path, monkeypatch, crash):
+    monkeypatch.delenv("MC2_HOST_LEASE_BATCH", raising=False)
     import os
     import threading
     from types import SimpleNamespace
