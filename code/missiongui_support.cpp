@@ -3,6 +3,7 @@
 // Declared in the class headers; shared names in missiongui_shared_internal.h.
 #include "missiongui_shared_internal.h"
 #include "mc2fmt.h"
+#include "mech3d.h"
 #include <utility>
 
 namespace {
@@ -25,20 +26,33 @@ void preloadMissionSupportVehicles()
 	// ground vehicles, including currently disabled buttons, through the same VFS.
 	for (const long id : {182L, 393L, 120L, 415L}) {
 		auto* type = ObjectManager->getObjectType(id);
-		if (!type || type->getObjectTypeClass() != VEHICLE_TYPE || !type->getAppearanceTypeName()) continue;
-		auto* appearanceType = appearanceTypeList->getAppearance(GV_TYPE << 24, type->getAppearanceTypeName());
+		if (!type || !type->getAppearanceTypeName()) continue;
+		const auto cls = type->getObjectTypeClass();
+		if (cls != VEHICLE_TYPE && cls != BATTLEMECH_TYPE) continue;
+		auto* appearanceType = appearanceTypeList->getAppearance(
+			(cls == VEHICLE_TYPE ? GV_TYPE : MECH_TYPE) << 24, type->getAppearanceTypeName());
 		if (!appearanceType) continue;
-		auto appearance = std::make_unique<GVAppearance>();
+		std::unique_ptr<Appearance> appearance;
+		if (cls == VEHICLE_TYPE) appearance = std::make_unique<GVAppearance>();
+		else appearance = std::make_unique<Mech3DAppearance>();
 		appearance->init(appearanceType);
 		appearance->resetPaintScheme(prefs.highlightColor, prefs.highlightColor, prefs.baseColor);
 		supportPreloads.push_back(std::move(appearance));
 	}
-	for (const char* name : {"vtol", "karnov"}) {
+	for (const char* name : {"vtol", "karnov", "airstrikemarker", "sensormarker"}) {
 		auto* type = appearanceTypeList->getAppearance(BLDG_TYPE << 24, name);
 		if (!type) continue;
 		auto appearance = std::make_unique<BldgAppearance>();
 		appearance->init(type);
 		supportPreloads.push_back(std::move(appearance));
+	}
+	{
+		auto* type = appearanceTypeList->getAppearance(GV_TYPE << 24, "Shilone");
+		if (type) {
+			auto appearance = std::make_unique<GVAppearance>();
+			appearance->init(type);
+			supportPreloads.push_back(std::move(appearance));
+		}
 	}
 	mc2::fmt::print_out("[SUPPORT_PRELOAD] appearances={} ms={:.3f}\n", supportPreloads.size(),
 		std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start).count());
@@ -171,6 +185,7 @@ void MissionInterfaceManager::beginVtol (long supportID, long commanderID, glm::
 
 	if ( !vTol[commanderID] )
 	{
+		ZoneScopedN("Support.TransportInit");
 		if (vehicleID[commanderID] != 147)		//NOT a recovery vehicle.  Standard VTOL
 		{
 			if (supportID == -1) 
@@ -276,6 +291,7 @@ void MissionInterfaceManager::beginVtol (long supportID, long commanderID, glm::
 
 	if (commanderID == Commander::home->getId())
 	{
+		ZoneScopedN("Support.Voice");
 		switch (vehicleID[commanderID])
 		{
 			case 120:	//Minelayer
@@ -310,10 +326,13 @@ void MissionInterfaceManager::beginVtol (long supportID, long commanderID, glm::
 			newPos = mechToRecover[commanderID]->appearance->getNodeNamePosition("cockpit");
 	}
 	
-	if (vehicleID[commanderID] != 147)
-		soundSystem->playDigitalSample(VTOL_ANIMATE,newPos);
-	else
-		soundSystem->playDigitalSample(SALVAGE_CRAFT,newPos);
+	{
+		ZoneScopedN("Support.FlightAudio");
+		if (vehicleID[commanderID] != 147)
+			soundSystem->playDigitalSample(VTOL_ANIMATE,newPos);
+		else
+			soundSystem->playDigitalSample(SALVAGE_CRAFT,newPos);
+	}
 	
 	vTol[commanderID]->setObjectParameters( newPos, 0, false, Team::home->id, 0);
 	eye->update();

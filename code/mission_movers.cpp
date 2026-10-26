@@ -193,7 +193,7 @@ long Mission::addMover (MoverInitData* moverSpec) {
 		MechWarrior::freeWarrior(pilot);
 		return 0;
 	}
-	result = pilot->init(&pilotFile);
+	{ ZoneScopedN("Mission.AddMover.Pilot"); result = pilot->init(&pilotFile); }
 	// MC2_VERIFY reclassified from gosASSERT (slice MISSION-DATA-DEREF-HARDEN-1)
 	MC2_VERIFY(result == NO_ERR, "Mission::addMover: pilot init failed (%ld)", result);
 
