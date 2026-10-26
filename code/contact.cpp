@@ -48,6 +48,7 @@
 #include "score_sort.h"
 #include <cstdint>
 #include <span>
+#include <array>
 #include "../GameOS/gameos/utils/mc2log.h"
 #include "mc2fmt.h"
 
@@ -584,6 +585,9 @@ long SensorSystem::scanBattlefield (void)
 	long numNewContacts = 0;
 
 	long numMovers = ObjectManager->getNumMovers();
+	const float radius = std::max(owner->lineOfSightRange(), getEffectiveRange() / metersPerWorldUnit);
+	std::array<bool, MAX_MOVERS> candidates{};
+	for (auto candidate : ObjectManager->nearbyMovers(owner->getPosition(), radius)) candidates[candidate.ordinal] = true;
 	// SENSOR-SCAN-FACTS-1: cache the gate once outside the hot loop (OFF = one bool).
 	const bool _sfacts = mc2_sensor_trace::g_counters.active;
 	for (long i = 0; i < numMovers; i++)
@@ -592,6 +596,8 @@ long SensorSystem::scanBattlefield (void)
 		MoverPtr mover = ObjectManager->getMover(i);
 		if (mover->getExists() && (mover->getTeamId() != owner->getTeamId()))
 		{
+			// Existing contacts still pass through in mover-list order, including removals.
+			if (!candidates[i] && !isContact(mover)) continue;
 			long contactStatus = calcContactStatus(mover);
 			if (isContact(mover))
 			{

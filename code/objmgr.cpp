@@ -227,7 +227,8 @@ void GameObjectManager::setNumObjects (long nMechs,
 
 	//-----------------------------------------------------------
 	// First element in list is NULL (handle of 0 is always NULL)
-	objList = bindPoolArray(objListStore, (getMaxObjects() + 1));
+	objList = entities.reset(getMaxObjects() + 1);
+	invalidateSpatialGrid();
 	memset(objList,0,sizeof(GameObjectPtr) * (getMaxObjects() + 1));
 
 	watchList = bindPoolArray(watchListStore, (getMaxObjects() + 1));
@@ -926,7 +927,10 @@ void GameObjectManager::addObject (ObjDataLoader *objData, long& curTerrainObjec
 
 void GameObjectManager::releasePoolArrays (void)
 {
-	std::vector<GameObjectPtr>().swap(objListStore);
+	entities.clear();
+	moverGrid.clear();
+	buildingGrid.clear();
+	invalidateSpatialGrid();
 	std::vector<GameObjectPtr>().swap(watchListStore);
 	std::vector<uint16_t>().swap(watchGenerationStore);
 	std::vector<GameObjectPtr>().swap(collidableStore);

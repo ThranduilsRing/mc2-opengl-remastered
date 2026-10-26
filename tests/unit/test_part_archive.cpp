@@ -43,6 +43,7 @@ ObjectTypePtr GameObject::getObjectType() { return nullptr; }
 void GameObject::init(bool, ObjectTypePtr) {}
 glm::vec3 GameObject::relativePosition(float, float, unsigned long) { return {}; }
 void GameObject::setPosition(const glm::vec3&, bool) {}
+void GameObject::setExists(bool set) { setFlag(OBJECT_FLAG_EXISTS, set); }
 float GameObject::distanceFrom(glm::vec3) { return 0; }
 long GameObject::cellDistanceFrom(glm::vec3) { return 0; }
 long GameObject::cellDistanceFrom(GameObjectPtr) { return 0; }
