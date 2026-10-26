@@ -547,6 +547,12 @@ void gosFX::Card::Draw(DrawInfo *info)
 	//---------------------
 	//
 	if (mc2::particles::Batcher::is_enabled()) {
+		static unsigned probes = 0;
+		if (mc2::particles::Batcher::is_log_enabled() && probes++ < 160) {
+			const auto world = mc2::math::transformPoint(m_vertices[0], local_to_world);
+			const auto clip = glm::vec4(world, 1.0f) * info->m_clipper->GetWorldToCameraMatrix() * info->m_clipper->GetCameraToClipMatrix();
+			std::fprintf(stderr, "[CARD_PROBE] spec=%s age=%g color=%g,%g,%g,%g state=%u world=%g,%g,%g clip=%g,%g,%g,%g uv=%g,%g\n", static_cast<char*>(spec->m_name), m_age, m_color.red, m_color.green, m_color.blue, m_color.alpha, spec->m_state.GetRenderStateFlags(), world.x, world.y, world.z, clip.x, clip.y, clip.z, clip.w, m_uvs[0].x, m_uvs[0].y);
+		}
 		// Use the authored world corners, not a camera-facing proxy. The native
 		// geometry ABI shares GpuParticle's stride and bypasses billboard tuning.
 		auto& batcher = mc2::particles::Batcher::Instance();
