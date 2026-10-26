@@ -17,7 +17,7 @@ bool IsCoalesceEnabled() {
 }
 
 // Layer B fallback: types we failed to register (logged once, fall back to CPU path).
-std::unordered_map<const TG_TypeShape*, bool> s_failedTypes;
+std::unordered_map<TG_TypeNodeId, bool> s_failedTypes;
 
 ObjBatcherCounters s_counters;
 
@@ -107,10 +107,8 @@ void emitSubmitTypeHistDump(std::string_view trigger) {
         if (s_submitTypeHist[t] > 0) {
             const char* name = "<unknown>";
             for (const auto& [shape, idx] : s_typeIndex) {
-                if (idx == t && shape) {
-                    // const_cast: getNodeId is non-const in tgl.h but returns
-                    // a pointer to a char[TG_NODE_ID] field — we only read it.
-                    name = const_cast<TG_TypeShape*>(shape)->getNodeId();
+                if (auto* node = TglNodeRegistry::get().resolve({shape.value}); idx == t && node) {
+                    name = node->getNodeId();
                     break;
                 }
             }

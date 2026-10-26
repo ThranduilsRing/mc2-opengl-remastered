@@ -27,12 +27,12 @@ bool flushRangeTombstoneGuard(uint64_t& s_diag_ranges_total, uint64_t& s_diag_ra
                 ++s_tdN;
                 const int tid = (rng.count > 0 && rng.first < s_recipes.size())
                                   ? static_cast<int>(s_recipes[rng.first].typeID) : -1;
-                mc2::fmt::print_err("[TOMBDIAG] sample=first90_per_frame frame={:d} regIdx={:d} count={:d} multi={:d} typeID={:d}{}\n", mc2::fmt::as_u32(fr), mc2::fmt::as_u32(regIdx), mc2::fmt::as_u32(rng.count), mc2::fmt::as_i32(static_cast<int>((rng.multi != nullptr))), mc2::fmt::as_i32(tid), mc2::fmt::safe((rng.count == 0) ? "  <<TOMBSTONED-BUT-VISIBLE" : ""));
+                mc2::fmt::print_err("[TOMBDIAG] sample=first90_per_frame frame={:d} regIdx={:d} count={:d} multi={:d} typeID={:d}{}\n", mc2::fmt::as_u32(fr), mc2::fmt::as_u32(regIdx), mc2::fmt::as_u32(rng.count), mc2::fmt::as_i32(static_cast<int>((rng.multi() != nullptr))), mc2::fmt::as_i32(tid), mc2::fmt::safe((rng.count == 0) ? "  <<TOMBSTONED-BUT-VISIBLE" : ""));
                 fflush(stderr);
             }
         }
     }
-    if (rng.count == 0 || !rng.multi) { ++s_diag_ranges_tombstone; return true; } // tombstone guard
+    if (rng.count == 0 || !rng.multi()) { ++s_diag_ranges_tombstone; return true; } // tombstone guard
     return false;
 }
 
@@ -47,7 +47,7 @@ bool flushRangeCurrentness(uint32_t currentFrame, uint64_t& s_diag_ranges_stale_
     // frame; the next frame after it returns to view will refresh the
     // cache and the static path resumes correctly.
     const bool isFirstFlush = !rng.firstFlushSeen;
-    if (rng.multi->getCachedFrame() != currentFrame) {
+    if (rng.multi()->getCachedFrame() != currentFrame) {
         if (isFirstFlush) {
             ++s_firstFrameSkipCount;
             static int s_warnPrinted = 0;
@@ -62,7 +62,7 @@ bool flushRangeCurrentness(uint32_t currentFrame, uint64_t& s_diag_ranges_stale_
                     "registeredOnFrame=%u currentFrame=%u cachedFrame=%u\n",
                     static_cast<unsigned long long>(s_firstFrameSkipCount),
                     regIdx, rng.registeredOnFrame, currentFrame,
-                    rng.multi->getCachedFrame());
+                    rng.multi()->getCachedFrame());
                 fflush(stderr);
             }
         }
@@ -82,7 +82,7 @@ bool flushRangeCurrentness(uint32_t currentFrame, uint64_t& s_diag_ranges_stale_
                               ? static_cast<int>(s_recipes[rng.first].typeID) : -1;
             static std::set<int> s_loggedStaleTypes;
             if (s_loggedStaleTypes.insert(tid).second) {
-                mc2::fmt::print_err("[STATIC_PROP_REGISTRY] event=stale_frame_drop_after_drawn typeID={:d} regIdx={:d} currentFrame={:d} cachedFrame={:d} (update/touch skip suspected — see R2B-STATIC-NATURAL-TOUCH-PRESERVE-1)\n", mc2::fmt::as_i32(tid), mc2::fmt::as_u32(regIdx), mc2::fmt::as_u32(currentFrame), mc2::fmt::as_u32(rng.multi->getCachedFrame()));
+                mc2::fmt::print_err("[STATIC_PROP_REGISTRY] event=stale_frame_drop_after_drawn typeID={:d} regIdx={:d} currentFrame={:d} cachedFrame={:d} (update/touch skip suspected — see R2B-STATIC-NATURAL-TOUCH-PRESERVE-1)\n", mc2::fmt::as_i32(tid), mc2::fmt::as_u32(regIdx), mc2::fmt::as_u32(currentFrame), mc2::fmt::as_u32(rng.multi()->getCachedFrame()));
                 fflush(stderr);
             }
             // STATIC-REGISTRY-CURRENTNESS-GUARD-2: discriminate transient off-screen
@@ -95,7 +95,7 @@ bool flushRangeCurrentness(uint32_t currentFrame, uint64_t& s_diag_ranges_stale_
                 if (++streak == kVanishFrames) {
                     ++s_diag_persistent_vanish;
                     persistentVanish = true;
-                    mc2::fmt::print_err("[REGFLUSH_GUARD2] event=persistent_vanish typeID={:d} regIdx={:d} streak={:d} currentFrame={:d} cachedFrame={:d} staleTotalForType={:d} (registered+drawn prop dropped every frame — producer stamp frozen)\n", mc2::fmt::as_i32(tid), mc2::fmt::as_u32(regIdx), mc2::fmt::as_u32(streak), mc2::fmt::as_u32(currentFrame), mc2::fmt::as_u32(rng.multi->getCachedFrame()), mc2::fmt::as_u64(static_cast<unsigned long long>(s_staleByType[tid])));
+                    mc2::fmt::print_err("[REGFLUSH_GUARD2] event=persistent_vanish typeID={:d} regIdx={:d} streak={:d} currentFrame={:d} cachedFrame={:d} staleTotalForType={:d} (registered+drawn prop dropped every frame — producer stamp frozen)\n", mc2::fmt::as_i32(tid), mc2::fmt::as_u32(regIdx), mc2::fmt::as_u32(streak), mc2::fmt::as_u32(currentFrame), mc2::fmt::as_u32(rng.multi()->getCachedFrame()), mc2::fmt::as_u64(static_cast<unsigned long long>(s_staleByType[tid])));
                     fflush(stderr);
                 }
             }
@@ -126,7 +126,7 @@ bool flushRangeCurrentness(uint32_t currentFrame, uint64_t& s_diag_ranges_stale_
             s_seenMulti.find(regIdx) == s_seenMulti.end()) {
             s_seenMulti.insert(regIdx);
             uint32_t firstTid = s_recipes[rng.first].typeID;
-            mc2::fmt::print_err("[REGFLUSH_MULTI v1] sample=first100_distinct_regidx regIdx={:d} count={:d} firstTypeID={:d} multi={:016X}\n", mc2::fmt::as_u32(regIdx), mc2::fmt::as_u32(rng.count), mc2::fmt::as_u32(firstTid), mc2::fmt::as_ptr(static_cast<void*>(rng.multi)));
+            mc2::fmt::print_err("[REGFLUSH_MULTI v1] sample=first100_distinct_regidx regIdx={:d} count={:d} firstTypeID={:d} multi={:016X}\n", mc2::fmt::as_u32(regIdx), mc2::fmt::as_u32(rng.count), mc2::fmt::as_u32(firstTid), mc2::fmt::as_u64(rng.multiId.value));
             fflush(stderr);
         }
     }
@@ -196,7 +196,7 @@ void flushLightRowDiag(uint64_t s_diag_flush_calls, uint32_t regIdx, RecipeRange
             s_zlr_instances += rng.count;
             if (!s_zlr_firstShown) {
                 s_zlr_firstShown = true;
-                mc2::fmt::print_err("[STATIC_LIGHT_ROW v1] event=zero_row_reached_gpu class={} regIdx={:d} typeID={:d} leaves={:d} lightIdx={:d} numLights={:d} tableCount={:d} rngLightIdx={:d} multiCache={:d}\n", mc2::fmt::safe(static_light_row::className(zlrClass)), mc2::fmt::as_u32(regIdx), mc2::fmt::as_u32(s_recipes[rng.first].typeID), mc2::fmt::as_u32(rng.count), mc2::fmt::as_u32(freshLightIdx), mc2::fmt::as_i32(zlrNumLights), mc2::fmt::as_u32(mc2::vkLights::active() ? mc2::vkLights::getLightStructCount() : 0u), mc2::fmt::as_u32(rng.lightDataIndex), mc2::fmt::as_u32(rng.multi->getCachedGpuLightIndex()));
+                mc2::fmt::print_err("[STATIC_LIGHT_ROW v1] event=zero_row_reached_gpu class={} regIdx={:d} typeID={:d} leaves={:d} lightIdx={:d} numLights={:d} tableCount={:d} rngLightIdx={:d} multiCache={:d}\n", mc2::fmt::safe(static_light_row::className(zlrClass)), mc2::fmt::as_u32(regIdx), mc2::fmt::as_u32(s_recipes[rng.first].typeID), mc2::fmt::as_u32(rng.count), mc2::fmt::as_u32(freshLightIdx), mc2::fmt::as_i32(zlrNumLights), mc2::fmt::as_u32(mc2::vkLights::active() ? mc2::vkLights::getLightStructCount() : 0u), mc2::fmt::as_u32(rng.lightDataIndex), mc2::fmt::as_u32(rng.multi()->getCachedGpuLightIndex()));
                 fflush(stderr);
             }
         }

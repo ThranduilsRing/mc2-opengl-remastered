@@ -59,8 +59,8 @@ namespace GpuStaticPropRegistry {
 struct RecipeRange {
     uint32_t       first;   // index into s_recipes
     uint32_t       count;   // 0 = invalidated (tombstone)
-    TG_MultiShape* multi;   // for per-frame lightDataIndex patch via
-                            // getCachedGpuLightIndex(); NULL when count==0
+    TG_InstanceId  multiId; // generation-checked borrow of the actor-owned instance
+    TG_MultiShape* multi() const { return TglInstanceRegistry::get().resolve(multiId); }
     // Texture pin sibling (texture-pin-fix spec):
     std::vector<DWORD> pinnedTextureNodes;  // mcTextureNodeIndex values pinned for this range
     bool               pinsReleased;        // double-release guard for invalidate→destroy ordering

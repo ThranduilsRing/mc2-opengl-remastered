@@ -129,10 +129,14 @@ TEST_CASE("TG_TypeShape: the real destroy() releases stores and GPU handles once
 		TypeShapeProbe* probe = TypeShapeProbe::last;
 		REQUIRE(probe != nullptr);
 		CHECK_FALSE(probe->released());
+        const auto staleId = probe->stableId();
+        CHECK(TglNodeRegistry::get().resolve({staleId.value}) == probe);
 
 		// A second destroy() is a no-op: the stores are already empty and the handles null.
 		owner->destroy();
 		CHECK(probe->released());
+        CHECK(TglNodeRegistry::get().resolve({staleId.value}) == nullptr);
+        CHECK(probe->stableId() != staleId);
 		CHECK(g_bufferReleases == 2);
 		CHECK(g_declReleases == 1);
 		owner->destroy();

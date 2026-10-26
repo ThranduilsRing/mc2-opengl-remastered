@@ -162,12 +162,12 @@ void GpuStaticPropBatcher::registerType(TG_TypeShape* typeShape, TG_TypeMultiSha
     (void)multiShape;
     if (!typeShape) return;
     if (s_gpuPropsTrace) ++g_regCall[g_lightProbeSetupPath & 3];   // [GPUPROPS v1]
-    if (s_typeIndex.count(typeShape)) return;  // idempotent
+    if (s_typeIndex.count(typeShape->stableId())) return;  // idempotent
     if (s_geometryFinalized) {
         // Layer B: register-after-finalize is a bug in the map-load walk.
-        if (!s_failedTypes[typeShape]) {
-            mc2::fmt::print_err("[GPUPROPS] late registerType for {:016X} -- CPU-fallback for this type\n", mc2::fmt::as_ptr(static_cast<void*>(typeShape)));
-            s_failedTypes[typeShape] = true;
+        if (!s_failedTypes[typeShape->stableId()]) {
+            mc2::fmt::print_err("[GPUPROPS] late registerType for {:016X} -- CPU-fallback for this type\n", mc2::fmt::as_u64(typeShape ? typeShape->stableId().value : 0));
+            s_failedTypes[typeShape->stableId()] = true;
         }
         if (s_gpuPropsTrace) ++g_regLateDrop[g_lightProbeSetupPath & 3];
         return;
@@ -194,7 +194,7 @@ void GpuStaticPropBatcher::registerType(TG_TypeShape* typeShape, TG_TypeMultiSha
             emptyType.packetCount = 0;
             emptyType.vertexCount = 0;
             emptyType.source      = typeShape;
-            s_typeIndex[typeShape] = static_cast<uint32_t>(s_types.size());
+            s_typeIndex[typeShape->stableId()] = static_cast<uint32_t>(s_types.size());
             s_types.push_back(emptyType);
             return;
         }
@@ -210,7 +210,7 @@ void GpuStaticPropBatcher::registerType(TG_TypeShape* typeShape, TG_TypeMultiSha
         emptyType.packetCount = 0;
         emptyType.vertexCount = 0;
         emptyType.source      = typeShape;
-        s_typeIndex[typeShape] = static_cast<uint32_t>(s_types.size());
+        s_typeIndex[typeShape->stableId()] = static_cast<uint32_t>(s_types.size());
         s_types.push_back(emptyType);
         return;
     }
@@ -320,7 +320,7 @@ void GpuStaticPropBatcher::registerType(TG_TypeShape* typeShape, TG_TypeMultiSha
     type.vertexCount = numVerts;
     type.source      = typeShape;
 
-    s_typeIndex[typeShape] = newTypeID;
+    s_typeIndex[typeShape->stableId()] = newTypeID;
     s_types.push_back(type);
 
     // [SEAMPROBE] stage 4: record geometry of each freshly-registered type
@@ -329,7 +329,7 @@ void GpuStaticPropBatcher::registerType(TG_TypeShape* typeShape, TG_TypeMultiSha
         static int s_seamRegLogged = 0;
         if (mc2::gate::get<"MC2_MODOVERRIDE_TRACE">() && s_seamRegLogged < 400) {
             ++s_seamRegLogged;
-            mc2::fmt::print_err("[SEAMPROBE] sample=first400 registerType src={:016X} typeID={:d} numTris={:d} numVerts={:d} finalized={:d}\n", mc2::fmt::as_ptr(static_cast<void*>(typeShape)), mc2::fmt::as_u32(newTypeID), mc2::fmt::as_u32(numTris), mc2::fmt::as_u32(numVerts), mc2::fmt::as_i32(static_cast<int>(s_geometryFinalized)));
+            mc2::fmt::print_err("[SEAMPROBE] sample=first400 registerType srcId={:016X} typeID={:d} numTris={:d} numVerts={:d} finalized={:d}\n", mc2::fmt::as_u64(typeShape ? typeShape->stableId().value : 0), mc2::fmt::as_u32(newTypeID), mc2::fmt::as_u32(numTris), mc2::fmt::as_u32(numVerts), mc2::fmt::as_i32(static_cast<int>(s_geometryFinalized)));
             fflush(stderr);
         }
     }
@@ -345,7 +345,7 @@ void GpuStaticPropBatcher::registerMultiShape(TG_TypeMultiShape* multiShape, boo
         if (node && node->GetNodeType() == SHAPE_NODE) {
             TG_TypeShape* typeShape = static_cast<TG_TypeShape*>(node);
             registerType(typeShape, multiShape);
-            if (auto tit = s_typeIndex.find(typeShape); tree && tit != s_typeIndex.end()) {
+            if (auto tit = s_typeIndex.find(typeShape->stableId()); tree && tit != s_typeIndex.end()) {
                 const auto lo = multiShape->minBox, hi = multiShape->maxBox;
                 const auto& [registeredType, typeIndex] = *tit;
                 auto& type = s_types[typeIndex];
@@ -359,7 +359,7 @@ void GpuStaticPropBatcher::registerMultiShape(TG_TypeMultiShape* multiShape, boo
             // layer-build routes its untextured packets to a valid default
             // layer instead of culling them. Look up by source ptr.
             if (isOverride) {
-                auto tit = s_typeIndex.find(typeShape);
+                auto tit = s_typeIndex.find(typeShape->stableId());
                 if (tit != s_typeIndex.end()) {
                     const auto& [registeredShape, typeId] = *tit;
                     if (typeId < s_types.size()) {

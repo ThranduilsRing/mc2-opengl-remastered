@@ -48,26 +48,9 @@ bool GpuStaticPropBatcher::isMultiShapeEligibleForGpuObjects(
         if (!child->myType) continue;
         if (child->myType->GetNodeType() != SHAPE_NODE) continue;  // skip helpers/bones
         const TG_TypeShape* ts = static_cast<const TG_TypeShape*>(child->myType);
-        if (s_typeIndex.find(ts) == s_typeIndex.end()) return false;
+        if (s_typeIndex.find(ts->stableId()) == s_typeIndex.end()) return false;
     }
     return true;
-}
-
-// eligibleForGpuObjects — free function (declared in gos_static_prop_batcher.h)
-// Per-leaf analog of isMultiShapeEligibleForGpuObjects. Called from the
-// addRenderShape gate in tgl.cpp:2522 inside the bShadersDrawPathEnabled block.
-// Returns true iff g_useGpuObjects is enabled AND `shape->myType` is a
-// registered TG_TypeShape in s_typeIndex.
-// Under default g_useGpuObjects=false this returns false unconditionally —
-// the addRenderShape gate stays byte-for-byte equivalent in stock builds.
-// MUST NOT mutate any batcher state.
-bool eligibleForGpuObjects(TG_Shape* shape) {
-    if (!g_useGpuObjects) return false;
-    if (!shape || !shape->matchesTypeMaterials()) return false;
-    if (!shape->myType) return false;
-    if (shape->myType->GetNodeType() != SHAPE_NODE) return false;
-    const TG_TypeShape* ts = static_cast<const TG_TypeShape*>(shape->myType);
-    return s_typeIndex.find(ts) != s_typeIndex.end();
 }
 
 void gos_GpuPropsCycleDebugMode() {
@@ -209,7 +192,7 @@ bool GpuStaticPropBatcher::buildRecipeFromShape(
     TG_TypeShape* typeShape = static_cast<TG_TypeShape*>(shape->myType);
     if (!typeShape) return false;
 
-    auto it = s_typeIndex.find(typeShape);
+    auto it = s_typeIndex.find(typeShape->stableId());
     if (it == s_typeIndex.end()) return false;
 
     GpuStaticPropInstance inst{};
@@ -251,7 +234,7 @@ uint32_t batcher_getTypeCount() {
 bool batcher_typeIdForTypeShape(const void* typeShape, uint32_t* outTypeId) {
     const TG_TypeShape* ts = static_cast<const TG_TypeShape*>(typeShape);
     if (!ts) return false;
-    auto it = s_typeIndex.find(ts);
+    auto it = s_typeIndex.find(ts->stableId());
     if (it == s_typeIndex.end()) return false;
     if (outTypeId) *outTypeId = it->second;
     return true;
@@ -259,9 +242,9 @@ bool batcher_typeIdForTypeShape(const void* typeShape, uint32_t* outTypeId) {
 
 void batcher_queryTypeShape(const void* typeShape, int* outRegistered, int* outFailed) {
     const TG_TypeShape* ts = static_cast<const TG_TypeShape*>(typeShape);
-    if (outRegistered) *outRegistered = (ts && s_typeIndex.count(ts)) ? 1 : 0;
+    if (outRegistered) *outRegistered = (ts && s_typeIndex.count(ts->stableId())) ? 1 : 0;
     if (outFailed) {
-        auto it = ts ? s_failedTypes.find(ts) : s_failedTypes.end();
+        auto it = ts ? s_failedTypes.find(ts->stableId()) : s_failedTypes.end();
         *outFailed = (it != s_failedTypes.end() && it->second) ? 1 : 0;
     }
 }

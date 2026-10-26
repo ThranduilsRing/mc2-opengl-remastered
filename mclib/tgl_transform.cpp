@@ -110,46 +110,6 @@ void TG_TypeShape::movePosRelativeCenterNode (void)
 // NOTE:  THIS IS NOT A RIGOROUS CLIP!!!!!!!!!
 
 
-// Claim the hardware vertex slot of a GPU-only shape that has no software vertices.
-void TG_Shape::xformGpuOnlyShape(glm::mat4* shapeToClip, bool isHudElement, BYTE alphaValue, bool isClamped) {
-		// [UI-PHASE1] carried from mc2r_ui_phase1 (base->theirs hunk @tgl.cpp:1722+).
-		// GPU-only shape: Assimp-imported mesh with ib_/vb_ but no SW vertex pipeline.
-		// Claim the hardware vertex node slot now so TG_Shape::Render can fill it via
-		// the 3-arg path.  Also set lastTurnTransformed so Render's staleness guard passes.
-		// Guard: only TG_TypeShape (SHAPE_NODE) carries ib_/vb_/listOfTextures — casting
-		// a bare TG_TypeNode (root/helper) reads garbage at those offsets and crashes.
-		TG_TypeShapePtr hwShape = (myType && myType->GetNodeType() == SHAPE_NODE)
-			? static_cast<TG_TypeShapePtr>(myType) : nullptr;
-		if (bShadersDrawPathEnabled && hwShape && hwShape->ib_ && hwShape->vb_
-			&& hwShape->listOfTypeTriangles && materialTextures()
-			&& shapeToClip
-			&& !eligibleForGpuObjects(this) && !isSpotlight && !isWindow
-			&& !materialTextures()[hwShape->listOfTypeTriangles[0].localTextureHandle].textureAlpha
-			&& (alphaValue == 0xff))
-		{
-			DWORD addFlags = 0;
-			if (isHudElement) addFlags |= MC2_ISCOMPASS;
-			if (isClamped)    addFlags |= MC2_ISTERRAIN;
-			if (hwShape->alphaTestOn) addFlags |= MC2_ALPHATEST;
-
-			size_t numLights = MAX_HW_LIGHTS_IN_WORLD;
-			GatherLightsParameters(&lightData_);
-			gosASSERT(numLights > 0);
-
-			cur_viewport[0] = viewMulX;
-			cur_viewport[1] = viewMulY;
-			cur_viewport[2] = viewAddX;
-			cur_viewport[3] = viewAddY;
-			cur_shape2clip = *shapeToClip;
-
-			mc2::renderSubmissions().addRenderShape(
-				materialTextures()[hwShape->listOfTypeTriangles[0].localTextureHandle].mcTextureNodeIndex,
-				MC2_DRAWSOLID | addFlags);
-
-			lastTurnTransformed = turn;
-		}
-}
-
 // Project one vertex to screen space and track the on-screen flags and preview bounds.
 void TG_Shape::xformVertexProject(glm::mat4* shapeToClip, bool& oneOff, bool& oneOn, TG_TypeShapePtr theShape, long j) {
 	glm::vec3 pos = theShape->listOfTypeVertices[j].position;
@@ -204,44 +164,6 @@ void TG_Shape::xformVertexProject(glm::mat4* shapeToClip, bool& oneOff, bool& on
 	}
 }
 
-// Queue the whole shape for the modern shader path.
-void TG_Shape::xformEmitShape(glm::mat4* shapeToClip, bool isHudElement, BYTE alphaValue, bool isClamped, TG_TypeShapePtr theShape) {
-	if (bShadersDrawPathEnabled && !eligibleForGpuObjects(this) && !isSpotlight && !isWindow && !materialTextures()[theShape->listOfTypeTriangles[0].localTextureHandle].textureAlpha && (alphaValue == 0xff))
-	{
-		DWORD addFlags = 0;
-		if (isHudElement)
-		{
-			addFlags |= MC2_ISCOMPASS;
-		}
-
-		if (isClamped)
-		{
-			addFlags |= MC2_ISTERRAIN;
-		}
-
-		if(theShape->alphaTestOn)
-		{
-			addFlags |= MC2_ALPHATEST;
-		}
-
-		if (theShape->ib_ && theShape->vb_) {
-
-            size_t numLights = MAX_HW_LIGHTS_IN_WORLD;
-            GatherLightsParameters(&lightData_);
-            gosASSERT(numLights > 0); // ensure at least one light was filled
-
-			cur_viewport[0] = viewMulX;
-			cur_viewport[1] = viewMulY;
-			cur_viewport[2] = viewAddX;
-			cur_viewport[3] = viewAddY;
-			cur_shape2clip = *shapeToClip;
-
-			// FIXME: this (listOfTypeTriangles[0]) is not correct if model has more than 1 texture! 
-			mc2::renderSubmissions().addRenderShape(materialTextures()[theShape->listOfTypeTriangles[0].localTextureHandle].mcTextureNodeIndex, MC2_DRAWSOLID | addFlags);
-		}
-	}
-}
-
 // Transforms, lights and queues one shape. The timing scopes, the pool allocation, the per-vertex and per-face loop
 // headers with their colour frame, the face cull test and the result stay here; each phase body is a member
 // helper declared in tgl.h.
@@ -254,7 +176,6 @@ long TG_Shape::MultiTransformShape (glm::mat4 *shapeToClip, glm::vec3 *backFaceP
 
 	if (!numVertices)		//WE are the root Shape which may have no shape or a helper shape which defintely has no shape!
 	{
-		xformGpuOnlyShape(shapeToClip, isHudElement, alphaValue, isClamped);
 		return(1);
 	}
 
@@ -365,12 +286,6 @@ long TG_Shape::MultiTransformShape (glm::mat4 *shapeToClip, glm::vec3 *backFaceP
 	}
 	} // [OBJECT_RECON v1] end flight scope
 
-	// FIXME: this (listOfTypeTriangles[0]) is not correct if model has more than 1 texture!
-	// [OBJECT_RECON v1] emit scope: GatherLightsParameters + addLightDataStructure
-	// + addRenderShape — the modern shader path queue cost.
-	::mc2_object_recon::Scope _recon_emit_(
-		&::mc2_object_recon::g_per_frame.shape_emit_ns);
-	xformEmitShape(shapeToClip, isHudElement, alphaValue, isClamped, theShape);
 	gosASSERT(oneOff || oneOn);
 
 	if (oneOff && !oneOn)
@@ -570,13 +485,6 @@ long TG_Shape::MultiTransformShape_PositionsOnly (glm::mat4 *shapeToClip, glm::v
 		}
 	}
 	} // [OBJECT_RECON v1] end flight scope
-
-	// addRenderShape block (the bShadersDrawPathEnabled emit branch in
-	// MultiTransformShape) entirely STRIPPED. GPU-eligible populations are
-	// submitted by the slice 1 batcher; this path must not double-draw them.
-	// Note: the addRenderShape gate in MultiTransformShape is also defended
-	// by the !eligibleForGpuObjects(this) term added above; this strip is
-	// belt-and-suspenders for the _PositionsOnly variant.
 
 	gosASSERT(oneOff || oneOn);
 

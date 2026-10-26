@@ -68,35 +68,6 @@ bool renderTGLShapes = true;
 
 bool silentMode = false;		//Used for automated builds to keep errors from popping up.
 
-//sebi: uncomment this to also enable path of rendering shapes using lighting in shaders
-// instead of calculating everything on the CPU
-// (will render them offset a bit to check that they are rendered exactly same as old way)
-// for now everything seems to be correct thoug, so could enable it by default
-// look into gos_tex_vertex_lighted.vert for where offset is defined
-// MERGE-CONFLICT-UI-PHASE1: theirs (mc2r_ui_phase1) flips this default false->true,
-// apparently so the Mechlopedia/Mechbay preview's hardware-vertex shapes take the
-// shader-lighting path. NOT applied: this flag also gates the live
-// `eligibleForGpuObjects(this)`-interlocked addRenderShape branch in
-// TG_Shape::MultiTransformShape (tgl.cpp, ~line 2698+17) used by the slice-2
-// GPU-object-offload work — flipping the *global* default changes normal
-// in-mission rendering behavior, not just the preview panel. Needs a scoped
-// per-preview override (e.g. save/restore around the encyclopedia render call)
-// instead of a global default flip. Left at ours' value; resolve before ship.
-// RESOLVED 2026-07-05: the motivation for theirs' flip is GONE — the
-// Mechlopedia/Mech Bay previews render correctly through the drawOldWay +
-// fixed-800x600-FBO composite path (ENCYCLO-3D-2 / PREVIEW-FBO-FIXED),
-// which never needed the shader-lighting path. Default stays false; the
-// GPU-object-offload interlock is unaffected. No per-preview override needed.
-bool bShadersDrawPathEnabled = false;
-
-// Slice 2 (object-offload) — forward declaration from gos_static_prop_batcher.h.
-// Cheap, side-effect-free check used by the addRenderShape gate at the
-// `bShadersDrawPathEnabled` block to prevent double-draw when slice 2's
-// GPU-object path picks up an actor. Under default `MC2_GPU_OBJECTS=0`
-// (g_useGpuObjects==false) returns false unconditionally, so the legacy gate
-// is byte-for-byte unchanged.
-bool eligibleForGpuObjects(class TG_Shape* shape);
-
 //-------------------------------------------------------------------------------
 // Tier-1 instrumentation (stability spec §2.3-§2.5)
 //

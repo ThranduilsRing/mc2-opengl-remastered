@@ -100,7 +100,9 @@ class TG_TypeMultiShape
 		// Slot i takes ownership of node; returns the raw view now stored in listOfTypeShapes[i].
 		TG_TypeNodePtr adoptTypeNode (long i, std::unique_ptr<TG_TypeNode> node)
 		{
-			typeNodeStore[i] = std::move(node);
+			node->stableOwnerType_ = stableId();
+            node->stableOwnerIndex_ = static_cast<uint32_t>(i);
+            typeNodeStore[i] = std::move(node);
 			typeNodeView[i] = typeNodeStore[i].get();
 			return typeNodeView[i];
 		}
@@ -143,7 +145,10 @@ class TG_TypeMultiShape
 			extentRadius = 0.0f;
 		}
 		
-		TG_TypeMultiShape (void)
+		TglIdentity<TG_TypeMultiShape> stableIdentity_{this};
+        TG_TypeId stableId() const { return stableIdentity_.id(); }
+
+        TG_TypeMultiShape (void)
 		{
 			init();
 		}
@@ -380,7 +385,10 @@ class TG_MultiShape
 			cachedFrame_         = 0xFFFFFFFFu;  // sentinel: never refreshed
 		}
 		
-		TG_MultiShape (void)
+		TglIdentity<TG_MultiShape> stableIdentity_{this};
+        TG_InstanceId stableId() const { return stableIdentity_.id(); }
+
+        TG_MultiShape (void)
 		{
 			init();
 		}

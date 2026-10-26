@@ -24,7 +24,7 @@ void flushFrozenStoreRebuild(GpuStaticPropBatcher& batcher_pb, bool s_storeDirty
         s_goldenDirty = true;
         for (uint32_t aregIdx = 0u; aregIdx < s_recipeRanges.size(); ++aregIdx) {
             RecipeRange& arng = s_recipeRanges[aregIdx];
-            if (arng.count == 0u || !arng.multi) continue;   // tombstone guard
+            if (arng.count == 0u || !arng.multi()) continue;   // tombstone guard
             for (uint32_t i = 0u; i < arng.count; ++i) {
                 const uint32_t ri = arng.first + i;
                 if (ri >= s_recipes.size()) break;

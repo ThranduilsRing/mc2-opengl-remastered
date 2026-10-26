@@ -430,7 +430,7 @@ int32_t registerRecipe(TG_MultiShape* multi,
     RecipeRange rng;
     rng.first = static_cast<uint32_t>(s_recipes.size());
     rng.count = static_cast<uint32_t>(batch.size());
-    rng.multi = multi;
+    rng.multiId = multi->stableId();
     rng.pinsReleased      = false;
     rng.registeredOnFrame = g_mc2FrameCounter;
     rng.firstFlushSeen    = false;
@@ -490,10 +490,10 @@ int32_t registerRecipe(TG_MultiShape* multi,
                 mc2::textures::pin(nodeIdx);
                 storedRng.pinnedTextureNodes.push_back(nodeIdx);
                 ++s_totalPinCalls;
-                TEX_LC_PIN("event=pin nodeIdx=%lu refcount=%lu regIdx=%d multi=%p",
+                TEX_LC_PIN("event=pin nodeIdx=%lu refcount=%lu regIdx=%d multi=%llu",
                            static_cast<unsigned long>(nodeIdx),
                            static_cast<unsigned long>(mc2::textures::pinCount(nodeIdx)),
-                           regIdx, static_cast<void*>(multi));
+                           regIdx, static_cast<unsigned long long>(multi->stableId().value));
             }
         }
     }
@@ -539,7 +539,7 @@ void markVisible(int32_t regIdx, uint32_t lightDataIndex, float extentRadius) {
 // STATIC-PROP REGISTRATION CONTRACT (v1). Validate the registration BEFORE accepting
 // visibility, and report the outcome so the caller can fall back instead of suppressing
 // the legacy draw on a dead handle. Checks mirror the flush tombstone guard
-// (gos_static_prop_registry.cpp: "if (rng.count == 0 || !rng.multi) ... continue") so a
+// (gos_static_prop_registry.cpp: "if (rng.count == 0 || !rng.multi()) ... continue") so a
 // "Submitted" result GUARANTEES flush will not skip the range for those reasons.
 StaticSubmitResult markVisibleChecked(int32_t regIdx, uint32_t lightDataIndex,
                                       float extentRadius) {
@@ -547,8 +547,8 @@ StaticSubmitResult markVisibleChecked(int32_t regIdx, uint32_t lightDataIndex,
         return StaticSubmitResult::MissingRange;
     const RecipeRange& rng = s_recipeRanges[static_cast<uint32_t>(regIdx)];
     if (rng.count == 0)  return StaticSubmitResult::Tombstoned;   // dead handle
-    if (!rng.multi)      return StaticSubmitResult::InvalidRecipe; // flush would skip it
-    if (!rng.multi->usesTypeMaterials()) return StaticSubmitResult::InvalidRecipe;
+    if (!rng.multi())      return StaticSubmitResult::InvalidRecipe; // flush would skip it
+    if (!rng.multi()->usesTypeMaterials()) return StaticSubmitResult::InvalidRecipe;
     markVisible(regIdx, lightDataIndex, extentRadius);            // accept (queues for flush)
     return StaticSubmitResult::Submitted;
 }
@@ -585,7 +585,7 @@ void invalidate(int32_t regIdx) {
     // v2: zero-out substrate tracking (don't erase — keeps index stable).
     if (static_cast<size_t>(regIdx) < s_recipeHasSubstrateRecord.size())
         s_recipeHasSubstrateRecord[static_cast<size_t>(regIdx)] = 0u;
-    rng.multi  = nullptr;
+    rng.multiId = {};
     rng.lightDataIndex = 0xFFFFFFFFu;  // 2026-05-11 reset capture on invalidate
     rng.extentRadius   = 0.0f;         // 2026-05-22 F4 T3 reset extent radius
     // [LIGHTBAKE v1] drop the baked static-light entry so destruction/LOD
@@ -789,7 +789,7 @@ void flush() {
         const uint32_t freshLightIdx =
             static_light_row::resolve(s_perInstanceLight,
                                       rng.lightDataIndex,
-                                      rng.multi->getCachedGpuLightIndex());
+                                      rng.multi()->getCachedGpuLightIndex());
         flushLightRowDiag(s_diag_flush_calls, regIdx, rng, freshLightIdx);
 
         // 2026-05-10 actor-center fix: every leaf of one multishape must share

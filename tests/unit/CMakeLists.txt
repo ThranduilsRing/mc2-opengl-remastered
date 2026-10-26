@@ -604,3 +604,5 @@ if(TARGET glm::glm)
         INCLUDE_DIRECTORIES "${CMAKE_CURRENT_BINARY_DIR}"
         COMPILE_OPTIONS "$<$<BOOL:${MSVC}>:/fp:precise>")
 endif()
+
+target_sources(mc2_tests PRIVATE test_tgl_registry.cpp)

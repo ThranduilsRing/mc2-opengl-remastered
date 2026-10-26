@@ -74,7 +74,7 @@ long TG_TypeMultiShape::SetTextureHandle (DWORD textureNum, DWORD gosTextureHand
 		const bool firstWindow = (s_eventCount < 32);
 		const bool sample = ((s_eventCount & 0xFF) == 0);  // 1/256
 		if (s_verbose || firstWindow || sample) {
-			mc2::fmt::print_out("[TEX_LIFECYCLE v1] event=recache_multi multiType={:016X} texNum={:d} nodeIdx=0x{:08x} numTex={:d} total={:d}\n", mc2::fmt::as_ptr(static_cast<void*>(this)), mc2::fmt::as_u32(static_cast<unsigned long>(textureNum)), mc2::fmt::as_u32(static_cast<unsigned long>(gosTextureHandle)), mc2::fmt::as_i32(static_cast<long>(numTextures)), mc2::fmt::as_u32(s_eventCount));
+			mc2::fmt::print_out("[TEX_LIFECYCLE v1] event=recache_multi multiType={:016X} texNum={:d} nodeIdx=0x{:08x} numTex={:d} total={:d}\n", mc2::fmt::as_u64(stableId().value), mc2::fmt::as_u32(static_cast<unsigned long>(textureNum)), mc2::fmt::as_u32(static_cast<unsigned long>(gosTextureHandle)), mc2::fmt::as_i32(static_cast<long>(numTextures)), mc2::fmt::as_u32(s_eventCount));
 			fflush(stdout);
 		}
 		++s_eventCount;

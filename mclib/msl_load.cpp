@@ -476,6 +476,7 @@ void TG_TypeMultiShape::SaveBinaryCopy (const char *fileName)
 //-------------------------------------------------------------------------------
 void TG_TypeMultiShape::destroy (void)
 {
+    stableIdentity_.renew(this);
     contentSockets_.clear();
 	// The owners release the nodes (~TG_TypeNode is virtual, B7o.1: the derived destructor runs destroy() once); the view goes with them.
 	std::vector<std::unique_ptr<TG_TypeNode>>().swap(typeNodeStore);
@@ -500,6 +501,7 @@ void TG_TypeMultiShape::destroy (void)
 //-------------------------------------------------------------------------------
 void TG_MultiShape::destroy (void)
 {
+    stableIdentity_.renew(this);
 	// Each record owns its node (B7o.6b): releasing the records releases the nodes.
 	std::vector<TG_ShapeRec>().swap(shapeRecStore);
 	listOfShapes = nullptr;
