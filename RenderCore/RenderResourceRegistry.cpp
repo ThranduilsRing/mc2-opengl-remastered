@@ -129,6 +129,7 @@ const char* toString(RenderResourceFormat fmt) {
         case RenderResourceFormat::R32F:      return "R32F";
         case RenderResourceFormat::RGBA16F:   return "RGBA16F";
         case RenderResourceFormat::RGBA8:     return "RGBA8";
+        case RenderResourceFormat::R11G11B10F: return "R11G11B10F";
         case RenderResourceFormat::Depth16:   return "Depth16";
         case RenderResourceFormat::Depth24:   return "Depth24";
         case RenderResourceFormat::Depth32F:  return "Depth32F";

@@ -22,7 +22,6 @@ namespace mc2vk {
 namespace {
 using Images = std::array<VkImageResource*, 3>;
 constexpr uint32_t bits[3] = {SceneColor, SceneDepth, SceneObjectId};
-constexpr uint32_t strides[3] = {8, 4, 4};
 constexpr VkFormat formats[3] = {VK_FORMAT_R16G16B16A16_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_R32_UINT};
 VkImageLayout attachment(unsigned i) {
     return i == 1 ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
@@ -48,7 +47,7 @@ bool extent(const Images& images, uint32_t channels, int& width, int& height) {
     for (unsigned i = 0; i < 3; ++i) {
         if (!(channels & bits[i])) continue;
         const auto* image = images[i];
-        if (!image || !image->image || image->format != formats[i] || !image->w || !image->h ||
+        if (!image || !image->image || (image->format != formats[i] && !(i == 0 && image->format == VK_FORMAT_B10G11R11_UFLOAT_PACK32)) || !image->w || !image->h ||
             !(image->usage & VK_IMAGE_USAGE_TRANSFER_SRC_BIT) || image->w > INT32_MAX || image->h > INT32_MAX) return false;
         if (width && (unsigned(width) != image->w || unsigned(height) != image->h)) return false;
         width = int(image->w); height = int(image->h);
@@ -77,6 +76,8 @@ bool readImages(const Images& images, int x, int y, int w, int h, uint32_t chann
             if (points[p].x<0 || points[p].y<0 || points[p].x>=sourceW || points[p].y>=sourceH) return false;
     }
     const size_t pixels = points ? sampleCount : size_t(w)*size_t(h);
+    const bool packedColor = images[0] && images[0]->format == VK_FORMAT_B10G11R11_UFLOAT_PACK32;
+    const uint32_t strides[3] = {packedColor ? 4u : 8u, 4, 4};
     if (pixels > count || pixels > 1024*1024) return false;
     auto& ctx = getOrCreateEngineVulkanContext();
     if (!ctx.valid()) return false;
@@ -116,8 +117,14 @@ bool readImages(const Images& images, int x, int y, int w, int h, uint32_t chann
     if (valid) for (size_t p = 0; p < pixels; ++p) {
         out[p] = {};
         if (channels & SceneColor) {
-            uint64_t packed; std::memcpy(&packed, data+offsets[0]+8*p, 8);
-            const glm::vec4 color = glm::unpackHalf4x16(packed);
+            glm::vec4 color;
+            if (packedColor) {
+                uint32_t packed; std::memcpy(&packed, data+offsets[0]+4*p, 4);
+                color = glm::vec4(glm::unpackF2x11_1x10(packed), 1.0f);
+            } else {
+                uint64_t packed; std::memcpy(&packed, data+offsets[0]+8*p, 8);
+                color = glm::unpackHalf4x16(packed);
+            }
             for (unsigned c = 0; c < 4; ++c)
                 out[p].rgba[c] = std::isnan(color[c]) ? 0 : uint8_t(std::lround(std::clamp(color[c], 0.0f, 1.0f)*255.0f));
         }

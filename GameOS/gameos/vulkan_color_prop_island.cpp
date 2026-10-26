@@ -552,6 +552,8 @@ bool cp_make_albedo_sampler(ColorPropIsland* s, mc2vk::OwnedSampler* samp, uint3
     sci.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;           // LINEAR_MIPMAP_LINEAR
     sci.addressModeU = sci.addressModeV = sci.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
     sci.maxLod = VK_LOD_CLAMP_NONE; // image view bounds the immutable sampler to its supplied mip chain
+    // Potato never samples the top mip; anisotropy is already disabled.
+    if (mc2::options::current().baseQuality == 0) { sci.minLod = 1.0f; sci.mipLodBias = 1.0f; }
     return mc2vk::create(*samp, s->device, [&](VkSampler* h) { return vkCreateSampler(s->device, &sci, nullptr, h); });
 }
 
@@ -1124,6 +1126,11 @@ bool init_island(ColorPropIsland* s, int w, int h) {
         stages[0].stage = VK_SHADER_STAGE_VERTEX_BIT; stages[0].module = s->t1_vert.get(); stages[0].pName = "main";
         stages[1].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
         stages[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT; stages[1].module = s->t1_frag.get(); stages[1].pName = "main";
+        // Compile the small-EU preset without material detail/specular and long light walks.
+        const int baseQuality = mc2::options::lowCost() ? (mc2::options::current().baseQuality == 0 ? 0 : 1) : 2;
+        const VkSpecializationMapEntry qualityEntry{0, 0, sizeof(baseQuality)};
+        const VkSpecializationInfo qualityInfo{1, &qualityEntry, sizeof(baseQuality), &baseQuality};
+        stages[1].pSpecializationInfo = &qualityInfo;
         VkGraphicsPipelineCreateInfo gp{};
         gp.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
         gp.stageCount = 2; gp.pStages = stages;

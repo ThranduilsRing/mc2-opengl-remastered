@@ -132,7 +132,7 @@ mc2tex::TextureArrayCpu cardsFromAtlas(const mc2tex::DecodedTexture& decoded) {
 }
 
 }
-bool GosVegetation::isEnabled() { return mc2::options::current().shadowQuality != 0 && mc2::gate::get<"MC2_VEGETATION_CARDS">(); }
+bool GosVegetation::isEnabled() { return !mc2::options::lowCost() && mc2::gate::get<"MC2_VEGETATION_CARDS">(); }
 uint32_t GosVegetation::instanceCount() { return populationCount; }
 void GosVegetation::setAtlasPath(const char* path) { atlasOverride = path; }
 void GosVegetation::init() {

@@ -56,6 +56,7 @@
 // =============================================================================
 #version 450
 #extension GL_GOOGLE_include_directive : require
+layout(constant_id = 0) const int kBaseQuality = 2; // Potato / Low / Medium+High
 
 // Per-frame UBO: generated from RenderCore/gpu_abi/GpuColorFrameUBO.h.
 #include "include/color_frame_ubo_vk.glsl"
@@ -125,7 +126,8 @@ float propCoverage(float a, float lod) {
 #include "include/ground_lighting.glsl"
 layout(set = 0, binding = 14) uniform sampler2DShadow uTreeObjectMap;
 #define MC2_OBJECT_TERRAIN_GRID 1
-#define MC2_OBJECT_SHORT_POOL 1
+#define MC2_OBJECT_SHORT_POOL (kBaseQuality == 2)
+#define MC2_OBJECT_POOL_BUDGET (kBaseQuality == 0 ? 4 : kBaseQuality == 1 ? 8 : 0)
 #include "../include/object_light_pool.hglsl"
 
 // GL static_prop.frag's pool term: albedo-modulated additive pool light at the MC2-frame world position.
@@ -233,7 +235,7 @@ void main() {
         if (materialCoverage > 0.0) {
             materialAO = mix(1.0, surface.ao, materialCoverage);
             if (!treeMaterial) rgb = mix(rgb, propAuthoredColor(surface, alphaTestClass,
-                          propHasAuthoredOrm(uPacket.materialId), poolLight), materialCoverage);
+                          kBaseQuality == 2 && propHasAuthoredOrm(uPacket.materialId), poolLight), materialCoverage);
             outputNormalStuff = mix(vNormalStuff, renderToMc2(surface.normal), materialCoverage);
         }
     }

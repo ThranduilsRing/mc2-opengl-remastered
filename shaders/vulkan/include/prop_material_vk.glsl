@@ -46,7 +46,7 @@ SurfaceMaterial propSurface(int id, vec3 albedo) {
     SurfaceMaterial s;
     s.baseColor = propDecodeColor(albedo);
     s.normal = normalize(mc2ToRender(vNormalStuff));
-    if (row.material.normalTex != 0xffffffffu) {
+    if (kBaseQuality == 2 && row.material.normalTex != 0xffffffffu) {
         vec3 sampleN = texture(uPropNormal, vec3(uv, float(row.material.normalTex))).rgb;
         if (row.metadata.z != 0u) {
             vec2 xy = sampleN.xy * 2.0 - 1.0;
@@ -56,7 +56,7 @@ SurfaceMaterial propSurface(int id, vec3 albedo) {
     }
     // No ORM map: the class scalars (row factors) with neutral AO and full coverage.
     vec3 orm = vec3(1);
-    if (row.material.metallicRoughnessTex != 0xffffffffu)
+    if (kBaseQuality == 2 && row.material.metallicRoughnessTex != 0xffffffffu)
         orm = texture(uPropOrm, vec3(uv, float(row.material.metallicRoughnessTex))).rgb;
     s.ao = mix(1.0, orm.r, row.aoStrength);
     s.roughness = clamp(orm.g * row.material.roughnessFactor, 0.3, 1.0);
@@ -80,6 +80,7 @@ bool propHasAuthoredOrm(int id) {
 // ORM alpha is authored coverage, separate from the stock albedo's cutout alpha.
 // Zero coverage keeps the legacy material response, including zero new specular.
 float propMaterialCoverage(int id) {
+    if (kBaseQuality < 2) return 1.0; // no second ORM fetch on bandwidth-limited presets
     PropMaterialGpu row = uPropMaterials.materials[id];
     if (row.material.metallicRoughnessTex == 0xffffffffu) return 1.0;
     return texture(uPropOrm, vec3(vUv * row.uvScale, float(row.material.metallicRoughnessTex))).a;

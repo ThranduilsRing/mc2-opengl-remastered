@@ -35,6 +35,7 @@
 #include "vk_render_pass_timer.h"
 #include "vk_gpu_profile.h"   // VK-GPU-ZONES: MC2_VK_GPU_SCOPE
 #include "Gates/gate.h"
+#include "Gates/render_options.h"
 #include "Gates/gate_cold.h"   // str<>()
 
 #ifdef MC2_VULKAN_ISLAND
@@ -496,6 +497,7 @@ void gosPostProcess::VkPostFogNativeDeleter::operator()(VkPostFogNative* s) cons
 // Render the requested fog passes in canonical order, in one native render pass.
 // ---------------------------------------------------------------------------
 void gosPostProcess::prewarmVkFog() {
+    if (mc2::options::lowCost()) return; // No two full-screen depth/noise walks on shared DDR4.
     if(width_<=0 || height_<=0 || (!edgeFogEnabled_ && !fogOobEnabled_)) return;
     if(!vkPostFogNative_) vkPostFogNative_.reset(std::make_unique<VkPostFogNative>().release());
     auto* s=vkPostFogNative_.get();
@@ -504,6 +506,7 @@ void gosPostProcess::prewarmVkFog() {
 
 bool gosPostProcess::runVkPostFogNative()
 {
+    if (mc2::options::lowCost()) return true;
     const auto fog=RenderCore::vulkan::selectFogPasses(sceneHasTerrain_,edgeFogEnabled_,fogOobEnabled_,mapHalfExtent_);
     if (!fog.edge && !fog.oob) return false;
     // The GL fog passes' stencil sky-exclusion (SKYBOX-FOG-EXCLUDE-1) has no VK port, but

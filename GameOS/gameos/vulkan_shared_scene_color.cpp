@@ -35,6 +35,7 @@
 #include "vk_first_layout.h"
 #include "vk_image_resource.h"
 #include "vulkan_context.h"
+#include "Gates/render_options.h"
 
 #include <cstdio>
 #include <cstdarg>
@@ -72,6 +73,16 @@ const char* slotName(Mc2SharedSceneColorSlot slot) {
 }
 
 VkFormat vkFormatForSlot(Mc2SharedSceneColorSlot slot) {
+    // Scene consumers read RGB only; keep HDR range while halving color traffic.
+    if (slot == MC2_SHARED_SCENE_COLOR0 && mc2::options::lowCost()) {
+        VkFormatProperties props{};
+        vkGetPhysicalDeviceFormatProperties(mc2vk::getOrCreateEngineVulkanContext().physicalDevice(), VK_FORMAT_B10G11R11_UFLOAT_PACK32, &props);
+        constexpr auto required = VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT | VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BLEND_BIT |
+                                  VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT | VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT;
+        if ((props.optimalTilingFeatures & required) == required) return VK_FORMAT_B10G11R11_UFLOAT_PACK32;
+    }
+    // Normals/classes are bounded [0,1]: halve MRT1 traffic on shared DDR4.
+    if (slot == MC2_SHARED_SCENE_NORMAL && mc2::options::lowCost()) return VK_FORMAT_R8G8B8A8_UNORM;
     return slot == MC2_SHARED_SCENE_OBJECT_ID
         ? VK_FORMAT_R32_UINT
         : VK_FORMAT_R16G16B16A16_SFLOAT;
@@ -84,6 +95,8 @@ const char* debugNameForSlot(Mc2SharedSceneColorSlot slot) {
 }
 
 const char* formatNameForSlot(Mc2SharedSceneColorSlot slot) {
+    if (vkFormatForSlot(slot) == VK_FORMAT_B10G11R11_UFLOAT_PACK32) return "R11G11B10F";
+    if (slot == MC2_SHARED_SCENE_NORMAL && mc2::options::lowCost()) return "RGBA8";
     return slot == MC2_SHARED_SCENE_OBJECT_ID ? "R32UI" : "RGBA16F";
 }
 

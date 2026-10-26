@@ -89,6 +89,8 @@ impact::AnchorPose resolveAnchor(impact::AnchorKind kind, uint32_t id) {
 }
 
 int quality() {
+    // Avoid added decal overdraw and its normal/depth reads on the shared-memory presets.
+    if (mc2::options::lowCost()) return 0;
     return mc2::options::current().impactDecals;
 }
 
