@@ -5,6 +5,45 @@
 #include "mc2fmt.h"
 #include <utility>
 
+namespace {
+// These actors are never submitted or simulated. Their sources and types stay
+// live until the mission interface releases them, before the appearance registry.
+std::vector<std::unique_ptr<Appearance>> supportPreloads;
+}
+
+void releaseMissionSupportPreloads()
+{
+	supportPreloads.clear();
+}
+
+void preloadMissionSupportVehicles()
+{
+	ZoneScopedN("Mission.SupportPreload");
+	const auto start = std::chrono::steady_clock::now();
+	releaseMissionSupportPreloads();
+	// The palette can be enabled by mission scripts after load. Warm all of its
+	// ground vehicles, including currently disabled buttons, through the same VFS.
+	for (const long id : {182L, 393L, 120L, 415L}) {
+		auto* type = ObjectManager->getObjectType(id);
+		if (!type || type->getObjectTypeClass() != VEHICLE_TYPE || !type->getAppearanceTypeName()) continue;
+		auto* appearanceType = appearanceTypeList->getAppearance(GV_TYPE << 24, type->getAppearanceTypeName());
+		if (!appearanceType) continue;
+		auto appearance = std::make_unique<GVAppearance>();
+		appearance->init(appearanceType);
+		appearance->resetPaintScheme(prefs.highlightColor, prefs.highlightColor, prefs.baseColor);
+		supportPreloads.push_back(std::move(appearance));
+	}
+	for (const char* name : {"vtol", "karnov"}) {
+		auto* type = appearanceTypeList->getAppearance(BLDG_TYPE << 24, name);
+		if (!type) continue;
+		auto appearance = std::make_unique<BldgAppearance>();
+		appearance->init(type);
+		supportPreloads.push_back(std::move(appearance));
+	}
+	mc2::fmt::print_out("[SUPPORT_PRELOAD] appearances={} ms={:.3f}\n", supportPreloads.size(),
+		std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start).count());
+}
+
 
 void MissionInterfaceManager::addAirstrike()
 {
