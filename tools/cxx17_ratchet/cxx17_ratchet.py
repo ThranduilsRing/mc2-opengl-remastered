@@ -52,8 +52,8 @@ DEFAULT_DIRS = ["GameOS", "mclib", "code", "RenderCore", "GuiRuntime",
                 "RenderWorld", "GameAdapters", "HostServices", "EditorBridge", "tools", "tests",
                 "editor", "gui", "Viewer"]
 GATE_ONLY_DIRS = ("editor", "gui", "Viewer")
-# The standalone launcher lacks Gates; its raw importer read stays counted to prevent growth.
-LG19_TOOL_PREFIXES = ("tools/mc2_launcher/",)
+# Raw gate reads in engine/player UI code are counted.
+LG19_TOOL_PREFIXES = ()
 # Scanned for LG20 only (the other idioms are not tracked in the harnesses and tools).
 LG20_ONLY_DIRS = ("tools", "tests")
 # Unowned directories warn on LG19 increases rather than fail.
