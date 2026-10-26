@@ -327,6 +327,27 @@
    "count": 5
   },
   {
+   "tag": "ANIM_STATE",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "tick",
+    "actor",
+    "type",
+    "gesture",
+    "frame",
+    "frames",
+    "rate",
+    "idle",
+    "ready",
+    "reverse",
+    "goal",
+    "oldGoal",
+    "combat"
+   ],
+   "count": 1
+  },
+  {
    "tag": "ANIM_TRACK_BAD",
    "ver": -1,
    "stream": "log",
