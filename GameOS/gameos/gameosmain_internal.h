@@ -167,7 +167,6 @@ void process_events( void );
 
 // Helpers of main() (gameosmain_init.cpp / gameosmain_frame.cpp).
 void initDpiAwareness();
-bool initLauncherBootstrap();
 void initLauncherEnv();
 void initInstrBanner();
 void initRenderOptionsFromConfig();

@@ -16,6 +16,7 @@
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"
 #include "Gates/render_options_publish.h"
+#include "../GuiRuntime/PlayerFrontEnd.h"
 
 extern void gos_SetPostFxOptions(int casEnabled, float casSharpness, int tonemapMode);   // GameOS/gameos/gos_postprocess.cpp
 
@@ -55,6 +56,12 @@ int CPrefs::applyPrefs(bool applyRes) {
 			}
 		}
 		mc2::options::publish(effective);
+        PlayerFrontEnd::saveRenderOptions = [](const mc2::options::RenderOptions& options) {
+            const auto previous = prefs.render;
+            prefs.render = options;
+            if (prefs.save() != 0) { prefs.render = previous; return false; }
+            return true;
+        };
 		mc2::options::saveSpatialAA = [](int mode) {
 			const int previous = prefs.render.spatialAA;
 			prefs.render.spatialAA = mode;

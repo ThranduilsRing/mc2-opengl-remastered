@@ -2,6 +2,7 @@
 // the pre-window resolution and the Vulkan backend bring-up. The orchestrator is in gameosmain.cpp.
 #include "gameosmain_internal.h"
 #include "mc2fmt.h"
+#include "../../GuiRuntime/PlayerFrontEnd.h"
 #include "Gates/gate_cold.h"   // str<>()
 #include "Gates/render_options_publish.h"
 
@@ -30,128 +31,9 @@ void initDpiAwareness() {
 #endif
 }
 
-// Hand a direct start off to mc2-launcher.exe; true when the launcher was started and this process must exit.
-bool initLauncherBootstrap() {
-#ifdef _WIN32
-    // [LAUNCHER-BOOTSTRAP v1] If mc2.exe was started directly (double-click /
-    // shortcut) and NOT by mc2-launcher.exe, hand off to the launcher so the
-    // player gets the options front-end first. The launcher sets MC2_LAUNCHED=1
-    // then re-launches this exe, which falls through and runs the game normally.
-    // Automation (smoke/diagnostic/visual) is detected via env signals + the
-    // explicit MC2_NO_LAUNCHER escape, so headless runs never pop the GUI. If the
-    // launcher is missing or fails to start, fall through and run the game.
-    {
-        const bool fromLauncher = mc2::gate::isSet<"MC2_LAUNCHED">();
-        const bool automation =
-            mc2::gate::isSet<"MC2_NO_LAUNCHER">()  || mc2::gate::isSet<"MC2_SMOKE_SEED">() ||
-            mc2::gate::isSet<"MC2_SMOKE_MODE">()   || mc2::gate::isSet<"MC2_HEARTBEAT">()  ||
-            mc2::gate::get<"MC2_DEBUG_STATE_DUMP">() ||
-            mc2::gate::isSet<"MC2_LOG">() ||
-            gos_WindowOffscreenRequested() || gos_CursorControlSuppressed();
-        if (!fromLauncher && !automation) {
-            char exePath[MAX_PATH] = {0};
-            DWORD n = GetModuleFileNameA(nullptr, exePath, MAX_PATH);
-            if (n > 0 && n < MAX_PATH) {
-                char dir[MAX_PATH];
-                strncpy(dir, exePath, MAX_PATH); dir[MAX_PATH-1] = '\0';
-                char* slash = strrchr(dir, '\\');
-                if (!slash) slash = strrchr(dir, '/');
-                if (slash) *(slash + 1) = '\0'; else dir[0] = '\0';
-                char launcher[MAX_PATH];
-                mc2::fmt::to_buf(launcher, "{}mc2-launcher.exe", mc2::fmt::safe(dir));
-                launcher[sizeof(launcher)-1] = '\0';
-                STARTUPINFOA si = {}; si.cb = sizeof(si);
-                PROCESS_INFORMATION pi = {};
-                if (CreateProcessA(launcher, nullptr, nullptr, nullptr, FALSE, 0, nullptr,
-                                   dir[0] ? dir : nullptr, &si, &pi)) {
-                    CloseHandle(pi.hThread);
-                    CloseHandle(pi.hProcess);
-                    return true;  // launcher will relaunch us with MC2_LAUNCHED=1
-                }
-            }
-        }
-    }
-#endif
-    return false;
-}
+// Load the player settings before any renderer or campaign data.
+void initLauncherEnv() { PlayerFrontEnd::loadSettings(); }
 
-// Apply launcher_env.json to the process environment on the MC2_NO_LAUNCHER path.
-void initLauncherEnv() {
-    // [LAUNCHER_ENV v1] MC2_NO_LAUNCHER launches skip the launcher GUI — and
-    // with it the launcher's env injection built from launcher_env.json next
-    // to the exe (CSM radius, cloud shadows, prop PBR/ambient, tex tier,
-    // shadow map size, fps cap, ...). Users following the CMD launch recipe
-    // therefore silently lost every launcher-curated gate. Fix: on the
-    // explicit MC2_NO_LAUNCHER path, read the same launcher_env.json directly
-    // and apply its MC2_* string keys to this process's environment.
-    // Precedence: a var already set in the shell ALWAYS wins (never
-    // overridden); empty values are skipped (launcher semantics: "" = unset);
-    // non-MC2_ keys (tex_pack_mod / last_*) are ignored. Scope guards: runs
-    // ONLY when MC2_NO_LAUNCHER is set and MC2_LAUNCHED is not — launcher
-    // launches (which already injected + stripped) and smoke/diagnostic
-    // launches (MC2_SMOKE_MODE / MC2_DEBUG_STATE_DUMP / MC2_LOG without
-    // MC2_NO_LAUNCHER) are untouched, so smoke baselines cannot drift.
-    // Kill-switch: MC2_LAUNCHER_ENV_JSON=0 restores the pure-shell-env launch.
-    {
-        const bool  noLauncher = mc2::gate::isSet<"MC2_NO_LAUNCHER">();
-        const bool  fromLauncher = mc2::gate::isSet<"MC2_LAUNCHED">();
-        const bool jsOff = !mc2::gate::get<"MC2_LAUNCHER_ENV_JSON">();
-        if (noLauncher && !fromLauncher && !jsOff) {
-            char exePath[MAX_PATH] = {0};
-            char jsonPath[MAX_PATH] = {0};
-            DWORD n = GetModuleFileNameA(nullptr, exePath, MAX_PATH);
-            if (n > 0 && n < MAX_PATH) {
-                strncpy(jsonPath, exePath, MAX_PATH); jsonPath[MAX_PATH-1] = '\0';
-                char* slash = strrchr(jsonPath, '\\');
-                if (!slash) slash = strrchr(jsonPath, '/');
-                if (slash) *(slash + 1) = '\0'; else jsonPath[0] = '\0';
-                strncat(jsonPath, "launcher_env.json", MAX_PATH - strlen(jsonPath) - 1);
-            }
-            FILE* jf = jsonPath[0] ? fopen(jsonPath, "rb") : nullptr;
-            if (jf) {
-                // launcher_env.json is a small flat string map (<1 KB today);
-                // 64 KB bound keeps a corrupt/hostile file from ballooning.
-                static char jbuf[65536];
-                size_t got = fread(jbuf, 1, sizeof(jbuf) - 1, jf);
-                fclose(jf);
-                jbuf[got] = '\0';
-                int applied = 0, shellWins = 0;
-                const char* p = jbuf;
-                while ((p = strstr(p, "\"MC2_")) != nullptr) {
-                    const char* keyStart = p + 1;
-                    const char* keyEnd = strchr(keyStart, '"');
-                    if (!keyEnd) break;
-                    p = keyEnd + 1;
-                    char key[128];
-                    size_t klen = static_cast<size_t>((keyEnd - keyStart));
-                    if (klen == 0 || klen >= sizeof(key)) continue;
-                    memcpy(key, keyStart, klen); key[klen] = '\0';
-                    const char* c = p;
-                    while (*c == ' ' || *c == '\t' || *c == ':') c++;
-                    if (*c != '"') continue;      // non-string value: skip
-                    const char* valStart = c + 1;
-                    const char* valEnd = strchr(valStart, '"');
-                    if (!valEnd) break;
-                    p = valEnd + 1;
-                    char val[256];
-                    size_t vlen = static_cast<size_t>((valEnd - valStart));
-                    if (vlen >= sizeof(val)) continue;
-                    memcpy(val, valStart, vlen); val[vlen] = '\0';
-                    if (!val[0]) continue;        // "" = unset (launcher semantics)
-                    if (mc2::gate::envText(key)) { shellWins++; continue; }  // shell wins
-                    if (_putenv_s(key, val) == 0) applied++;
-                }
-                // stderr is still live here (the MC2_LOG NUL-redirect below has
-                // not run yet) — gate on MC2_LOG so a plain double-click-style
-                // console stays quiet.
-                mc2::gate::invalidateAll();   // the loop above putenv'd: re-read before asking about MC2_LOG
-                if (mc2::gate::isSet<"MC2_LOG">()) {
-                    mc2::fmt::print_err("[LAUNCHER_ENV v1] applied={:d} shell_override={:d} src={}\n", mc2::fmt::as_i32(applied), mc2::fmt::as_i32(shellWins), mc2::fmt::safe(jsonPath));
-                }
-            }
-        }
-    }
-}
 
 // Read the instrumentation gates, initialise the object recon and emit the [INSTR v1] banner.
 void initInstrBanner() {

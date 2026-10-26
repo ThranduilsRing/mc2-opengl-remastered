@@ -66,15 +66,15 @@ Source: "{#SourceDir}\*"; DestDir: "{app}"; Flags: recursesubdirs createallsubdi
   Excludes: "debug_state\*,tests\*,*.log,.deployed_manifest.csv,imgui.ini,boot_std*.log"
 
 [Icons]
-Name: "{group}\MC2 OpenGL Remastered"; Filename: "{app}\mc2-launcher.exe"; WorkingDir: "{app}"
-Name: "{group}\MC2 (game direct)"; Filename: "{app}\mc2.exe"; WorkingDir: "{app}"
-Name: "{autodesktop}\MC2 OpenGL Remastered"; Filename: "{app}\mc2-launcher.exe"; WorkingDir: "{app}"; Tasks: desktopicon
+Name: "{group}\MC2 OpenGL Remastered"; Filename: "{app}\mc2.exe"; WorkingDir: "{app}"
+Name: "{group}\MC2 Import campaigns"; Filename: "{app}\mc2-launcher.exe"; WorkingDir: "{app}"
+Name: "{autodesktop}\MC2 OpenGL Remastered"; Filename: "{app}\mc2.exe"; WorkingDir: "{app}"; Tasks: desktopicon
 
 [Tasks]
 Name: "desktopicon"; Description: "Create a &desktop shortcut"; GroupDescription: "Additional icons:"
 
 [Run]
-Filename: "{app}\mc2-launcher.exe"; Description: "Launch MC2 OpenGL Remastered"; \
+Filename: "{app}\mc2.exe"; Description: "Launch MC2 OpenGL Remastered"; \
   Flags: nowait postinstall skipifsilent; WorkingDir: "{app}"
 
 [UninstallDelete]

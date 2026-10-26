@@ -1,6 +1,7 @@
 add_library(gui_runtime STATIC
     GuiRuntime.cpp
     GuiRuntime_draw.cpp
+    PlayerFrontEnd.cpp
     EditorInspector.cpp
     EditorInspector_sections.cpp
     GraphicsOptionsWindow.cpp
