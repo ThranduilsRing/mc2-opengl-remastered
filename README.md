@@ -40,6 +40,28 @@ mc2.exe                     # normal gameplay
 mc2.exe -mission mc2_01     # skip menus, load directly into a mission
 ```
 
+## Test configurations
+
+Configurations we have run. This table is updated periodically, not on every build. Numbers come from fixed benchmark views (one day mission, one night mission, no battle) with VSync off, so busy battles will be slower. Fps is 1000 divided by frame time. Ranges run from median (p50) to 95th percentile (p95).
+
+| Hardware | OS / backend | Resolution | Settings | Day | Night | Measured |
+|---|---|---|---|---|---|---|
+| Ryzen 7 5800X3D, GeForce RTX 2070 SUPER (driver 560.94), 64 GB | Windows 10, Vulkan | 1080p | High: Remastered kit, SMAA, dynamic shadows, vegetation, night local lights | CPU frame 3.5 to 4.7 ms (about 210 to 285 fps); GPU frame 2.0 to 2.3 ms | CPU frame 5.8 to 15.7 ms (about 64 to 172 fps); GPU frame 3.3 to 6.6 ms | 2026-10-24 |
+| same | same | 4K | High | CPU 5.5 to 6.6 ms (about 150 to 180 fps); GPU 4.8 to 5.3 ms | CPU 8.3 to 20.2 ms (about 50 to 120 fps); GPU 7.1 to 12.2 ms | 2026-10-24 |
+| same | same | 1080p | Medium: half-resolution scene, 8 shadow samples | GPU 1.3 to 1.8 ms; CPU pending | GPU 2.4 to 4.4 ms; CPU pending | 2026-10-25 |
+| same | same | 4K | Medium | GPU 2.1 to 3.0 ms; CPU pending | GPU 3.2 to 5.4 ms; CPU pending | 2026-10-25 |
+| same | same | 1080p | Low: half-resolution scene, shadows off | GPU 1.2 to 2.7 ms; CPU pending | GPU 2.2 to 4.4 ms; CPU pending | 2026-10-25 |
+| same | same | 4K | Low | GPU 1.9 to 2.7 ms; CPU pending | GPU 2.8 to 4.8 ms; CPU pending | 2026-10-25 |
+| Ryzen 7 5800X3D, Radeon RX 7900 XTX (driver 26.9.2), earlier host | Windows 10, Vulkan | 1080p | Classic art, default settings | CPU 3.1 ms, GPU 1.1 ms (medians) | CPU 7.4 ms, GPU 2.5 ms (medians) | 2026-10-24 |
+| same | same | 4K | Classic art, default settings | CPU 3.6 ms, GPU 1.5 ms (medians) | CPU 8.3 ms, GPU 3.1 ms (medians) | 2026-10-24 |
+| WSL Ubuntu 24.04, Mesa lavapipe (software Vulkan) under Xvfb | Linux, Vulkan | 320x180 | Potato | not a performance configuration | simulation determinism check only (passes) | 2026-10-25 |
+| Laptop: i7-7700HQ, GeForce GTX 1050 Ti 4 GB (driver 582.78) | Windows, Vulkan | 720p, 1080p | Low / Potato | pending | pending | pending |
+| Same laptop, Intel HD 630 (driver 31.0.101.2145) | Windows, Vulkan | 720p, 1080p | Low / Potato | pending | pending | pending |
+
+Notes: the RTX 2070 SUPER High rows use the Remastered kit; Classic art measured the same in median cost, but Remastered has a heavier night tail (CPU p95 about 20 ms at 4K), so 60 fps is not guaranteed in large night battles. The Medium and Low rows are provisional (host was not fully idle) and show GPU time only. The RX 7900 XTX row is from an older build, kept for comparison.
+
+To measure your own machine: `py -3 scripts/run_battle_bench.py` for frame times, or `py -3 scripts/run_smoke.py --lite --keep-logs` for a quick pass/fail run.
+
 ## Modding
 
 - [docs/modding-guide.md](docs/modding-guide.md) — start here for modding
