@@ -1,3 +1,4 @@
+#include <memory>
 // tools/mc2fx/mc2fx_core.cpp
 //
 // Implementation of the mc2fx reusable load/dump/save core. The heavy engine
@@ -186,9 +187,10 @@ unsigned trySaveSpec(gosFX::Effect::Specification* spec, size_t* outBytes, void*
     // Stream allocated/freed OUTSIDE the SEH frame so trySaveSpecInner has no
     // destructible automatics (MSVC C2712). Leak on fault (diagnostic-only).
     // Born-large per-spec: see saveBlob note — base WriteBytes never grows.
-    Stuff::DynamicMemoryStream* s = new Stuff::DynamicMemoryStream(static_cast<DWORD>(4u * 1024u * 1024u));
-    unsigned code = trySaveSpecInner(spec, s, outBytes, faultAddr);
-    if (code == 0) delete s;
+    auto s = std::make_unique<Stuff::DynamicMemoryStream>(static_cast<DWORD>(4u * 1024u * 1024u));
+    unsigned code = trySaveSpecInner(spec, s.get(), outBytes, faultAddr);
+    if (code == 0) s.reset();
+    else (void)s.release(); // Preserve diagnostic-only leak on SEH fault.
     return code;
 }
 
