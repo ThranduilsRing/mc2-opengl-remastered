@@ -9513,34 +9513,14 @@
   },
   {
    "tag": "VFX_MESH",
-   "ver": 1,
+   "ver": -1,
    "stream": "stderr",
    "keys": [
-    "event",
-    "calls",
-    "submitted",
-    "fallback",
-    "unsupported",
-    "missingMesh",
-    "missingMat",
-    "drawCalls",
-    "meshesCached"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "VFX_MESH",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "event",
-    "meshId",
-    "prims",
-    "verts",
+    "prim",
+    "vertices",
     "indices",
     "tex",
-    "blend",
-    "scale"
+    "blend"
    ],
    "count": 1
   },

@@ -1053,9 +1053,6 @@
     "mclib/mlr/mlrlookuplight.cpp": {
      "new": 1
     },
-    "mclib/mlr/mlrngoncloud.cpp": {
-     "new": 1
-    },
     "mclib/mlr/mlrpointlight.cpp": {
      "new": 1
     },
@@ -1096,7 +1093,7 @@
      "new": 1
     }
    },
-   "new": 58,
+   "new": 57,
    "new_array": 0,
    "owners": []
   },
@@ -1383,14 +1380,10 @@
    ]
   },
   "DynamicArrayOf<MLRClippingState>": {
-   "delete": 4,
+   "delete": 3,
    "delete_array": 0,
    "files": {
     "mclib/mlr/mlrlightmap.cpp": {
-     "delete": 1,
-     "new": 1
-    },
-    "mclib/mlr/mlrngoncloud.cpp": {
      "delete": 1,
      "new": 1
     },
@@ -1403,7 +1396,7 @@
      "new": 1
     }
    },
-   "new": 4,
+   "new": 3,
    "new_array": 0,
    "owners": [
     "",
@@ -2393,9 +2386,6 @@
     "mclib/mlr/mlr_i_tmesh_cast.cpp": {
      "new": 1
     },
-    "mclib/mlr/mlrclipper.cpp": {
-     "new": 1
-    },
     "mclib/mlr/mlrlightmap.cpp": {
      "new": 1
     },
@@ -2403,7 +2393,7 @@
      "new": 1
     }
    },
-   "new": 22,
+   "new": 21,
    "new_array": 0,
    "owners": []
   },
@@ -5359,7 +5349,6 @@
   "mclib/mlr/mlrlight.cpp": 1,
   "mclib/mlr/mlrlightmap.cpp": 2,
   "mclib/mlr/mlrlookuplight.cpp": 5,
-  "mclib/mlr/mlrngoncloud.cpp": 1,
   "mclib/mlr/mlrpointlight.cpp": 1,
   "mclib/mlr/mlrprimitivebase.cpp": 1,
   "mclib/mlr/mlrprimitivebase.hpp": 1,
