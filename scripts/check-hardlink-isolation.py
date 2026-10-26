@@ -256,6 +256,9 @@ def classify(rel: str) -> str:
         return "mutated"
     if rel.startswith("data/tgl/") and rel.endswith(".cookstamp"):
         return "mutated"
+    # Native recipes publish by temp+rename (cook_cache.cpp), never through an existing inode.
+    if rel.startswith("cache/content-model/model-") and rel.endswith(".mci"):
+        return "data"
     if "/" not in rel:
         # Anything sitting in the target root, except the stock read-only
         # asset archives that happen to live there (see DATA_EXTS_AT_ROOT).
@@ -577,6 +580,11 @@ def selftest() -> int:
               classify("shaders/x/y.frag") == "mutated")
         check("classify(): deployed Vulkan shaders are mutated",
               classify("shaders_vk/mesh_lit.vert.spv") == "mutated")
+        check("classify(): atomic native recipes are shareable",
+              classify("cache/content-model/model-0000000000000001.mci") == "data")
+        check("classify(): native receipts and unfinished writes stay private",
+              classify("cache/content-model/industrial-cook.json") == "mutated" and
+              classify("cache/content-model/model-0000000000000001.mci.tmp1") == "mutated")
         check("classify(): data/defs is mutated",
               classify("data/defs/ui/PACKAGE.fit") == "mutated")
         check("classify(): data/ payload is data",

@@ -220,7 +220,7 @@ def install_plan(steps, install):
             idx = command.index("--deploy")
             command[idx:idx + 2] = ["--exe", str(install / "mc2.exe")]
         if name == "mods":
-            command += ["--base-install", str(install), "--stage-root", str(install / "mod_smoke-stage"), "--duration", "5"]
+            command += ["--base-install", str(install), "--stage-root", str(install.parent / (install.name + "-mods-stage")), "--duration", "5"]
         result.append((name, command, env))
     return result
 
@@ -617,7 +617,9 @@ def main(argv=None):
         steps = install_plan(steps, install)
     for name, _, env in steps:
         if name == "mods" or name.startswith(("determinism-", "saveload-")):
-            env["MC2_SMOKE_ARTIFACT_ROOT"] = str(proof / "smokes" / name)
+            # Serial missions/modes share the existing advisory preflight cache;
+            # the two workers keep separate roots. Live freshness hashing is unchanged.
+            env["MC2_SMOKE_ARTIFACT_ROOT"] = str(proof / "smokes" / name.split("-", 1)[0])
     if args.expect_head and git("rev-parse", args.expect_head + "^{commit}") != head:
         ap.error("HEAD does not match --expect-head")
     if not args.dry_run:

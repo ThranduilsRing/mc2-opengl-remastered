@@ -754,6 +754,11 @@ def test_stock_copy_is_private_and_always_removed(tmp_path, fail):
         (install / "mc2.exe").write_text("engine")
         (install / "cache").mkdir()
         (install / "cache/model.mci").write_text("warm cache")
+        native = install / "cache/content-model/model-0000000000000001.mci"
+        native.parent.mkdir()
+        native.write_bytes(b"native")
+        receipt = native.parent / "industrial-cook.json"
+        receipt.write_text("{}")
         (install / "mod_smoke-stage").mkdir()
         (install / "mod_smoke-stage/large").write_text("disposable")
         try:
@@ -761,6 +766,13 @@ def test_stock_copy_is_private_and_always_removed(tmp_path, fail):
                 assert clone.parent == install.parent
                 assert not (clone / "mod_smoke-stage").exists()
                 assert (clone / "cache/model.mci").read_text() == "warm cache"
+                recipe = clone / native.relative_to(install)
+                assert recipe.samefile(native)
+                assert not (clone / receipt.relative_to(install)).samefile(receipt)
+                replacement = recipe.with_suffix(".mci.tmp")
+                replacement.write_bytes(b"updated")
+                replacement.replace(recipe)
+                assert native.read_bytes() == b"native"
                 assert not list(clone.glob(".gate-stock-*"))
                 assert (clone / "data/asset").samefile(install / "data/asset")
                 (clone / "mc2.exe").write_text("changed")
@@ -996,7 +1008,7 @@ def test_gate_without_window_receipt_keeps_full_both_mode_coverage(tmp_path, mon
     assert "capture-before-classic" in {n for n, _, _ in seen}
     assert all("MC2_GATE_SKIP_REASON" not in env for name, _, env in seen
                if name.startswith(("capture-", "saveload-", "determinism-")))
-    assert all(e["MC2_SMOKE_ARTIFACT_ROOT"] == str(tmp_path / "proof/smokes" / n)
+    assert all(e["MC2_SMOKE_ARTIFACT_ROOT"] == str(tmp_path / "proof/smokes" / n.split("-", 1)[0])
                for n, _, e in seen if n == "mods" or n.startswith(("determinism-", "saveload-")))
 
 
