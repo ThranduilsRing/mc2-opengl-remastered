@@ -443,9 +443,11 @@ std::vector<DWORD> windowCellIds(const aiMesh& mesh) {
         if (!std::isfinite(p.x) || !std::isfinite(p.y) || !std::isfinite(p.z)) continue;
         const auto [at, added] = positions.try_emplace(std::array<float,3>{p.x,p.y,p.z}, id);
         if (!added) {
+            const auto& [position, canonicalId] = *at;
             const DWORD a = root(id);
-            const DWORD b = root(at->second);
-            parent[std::max(a,b)] = std::min(a,b);
+            const DWORD b = root(canonicalId);
+            const auto [low, high] = std::minmax(a, b);
+            parent[high] = low;
         }
     }
     for (auto& id : ids) if (id) id = root(id);
