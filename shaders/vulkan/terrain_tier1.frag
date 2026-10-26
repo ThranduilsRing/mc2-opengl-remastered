@@ -230,7 +230,7 @@ float mv_computeLodNear(vec2 worldXY, float worldZ) {
 }
 //PORT-END:lodNear
 
-vec3 mv_detailNormal(vec4 w, float snowWeight, vec2 worldXY, float lodNear, float macroNz, vec2 uvDx, vec2 uvDy, bool needParallax) {
+vec3 mv_detailNormal(vec4 w, float snowWeight, vec2 worldXY, float lodNear, float macroNz, vec2 uvDx, vec2 uvDy) {
     if (lodNear == 0.0) return vec3(0.0);
     vec2 uv = worldXY * (uT.detailTiling / MATV_WU_PER_TILE);
     vec2 uvRock     = uv * (MATV_TILING.x / 3.0);
@@ -251,8 +251,7 @@ vec3 mv_detailNormal(vec4 w, float snowWeight, vec2 worldXY, float lodNear, floa
     // distance MATV_POM_FADE_NEAR..FAR (the cost governor), over the slope band where the cliff blend takes over, and over cement
     // (a slab must not tear). lodNear fades the offset across the LOD0 band boundary (1.0 when the gate is off).
     // GL also requires u_lodStep <= 2 before it marches; the VK island has no lod step, and the lodNear fade is its accepted stand-in for that limit.
-    // Lamp-only detail keeps the night POM skip; sun/shore/debug keep their UVs.
-    if (fwRock > 0.4 && lodNear > 0.01 && needParallax) {
+    if (fwRock > 0.4 && lodNear > 0.01) {
         const vec4 pomScaleMat = vec4(1.0, 1.0, 2.5, 1.0);
         float pomScale = MATV_POM_SCALE * dot(pomScaleMat, w) * fwRock * lodNear;
         vec2  pomUV    = uv * dot(MATV_TILING, w);
@@ -279,29 +278,27 @@ vec3 mv_detailNormal(vec4 w, float snowWeight, vec2 worldXY, float lodNear, floa
     float atsConc  = mix(0.0, 3.0, clamp((MATV_TILING.w - 1.0) / 3.0, 0.0, 1.0));
 
     vec3 dN = vec3(0.0);
-    // Lamp-only detail uses primary weighted taps; existing consumers retain
-    // the anti-tile resampling and parallax treatment.
     // rock: boost/3 (GL parity — rock detail was too dense/strong). GL :392-397.
     if (w.x > 0.01 && fwRock != 0.0) {
-        vec4 s = (needParallax && atsRock > 0.01 && fwRock > 0.5)
+        vec4 s = (atsRock > 0.01 && fwRock > 0.5)
                ? mv_sampleAntiTileArr(MAT_LAYER_ROCK, uvRock, atsRock, uvDx * (MATV_TILING.x / 3.0), uvDy * (MATV_TILING.x / 3.0))
                : textureGrad(u_matNormalArray, vec3(uvRock, float(MAT_LAYER_ROCK)), uvDx * (MATV_TILING.x / 3.0), uvDy * (MATV_TILING.x / 3.0));
         dN += w.x * (MATV_NORMAL_BOOST.x / 3.0) * fwRock * (s.rgb * 2.0 - 1.0);
     }
     if (w.y > 0.01 && fwGrass != 0.0) {
-        vec4 s = (needParallax && atsGrass > 0.01 && fwGrass > 0.5)
+        vec4 s = (atsGrass > 0.01 && fwGrass > 0.5)
                ? mv_sampleAntiTileArr(MAT_LAYER_GRASS, uvGrass, atsGrass, uvDx * MATV_TILING.y, uvDy * MATV_TILING.y)
                : textureGrad(u_matNormalArray, vec3(uvGrass, float(MAT_LAYER_GRASS)), uvDx * MATV_TILING.y, uvDy * MATV_TILING.y);
         dN += w.y * MATV_NORMAL_BOOST.y * fwGrass * (s.rgb * 2.0 - 1.0);
     }
     if (w.z > 0.01 && fwDirt != 0.0) {
-        vec4 s = (needParallax && atsDirt > 0.01 && fwDirt > 0.5)
+        vec4 s = (atsDirt > 0.01 && fwDirt > 0.5)
                ? mv_sampleAntiTileArr(MAT_LAYER_DIRT, uvDirt, atsDirt, uvDx * MATV_TILING.z, uvDy * MATV_TILING.z)
                : textureGrad(u_matNormalArray, vec3(uvDirt, float(MAT_LAYER_DIRT)), uvDx * MATV_TILING.z, uvDy * MATV_TILING.z);
         dN += w.z * MATV_NORMAL_BOOST.z * fwDirt * (s.rgb * 2.0 - 1.0);
     }
     if (w.w > 0.01 && fwConcrete != 0.0) {
-        vec4 s = (needParallax && atsConc > 0.01 && fwConcrete > 0.5)
+        vec4 s = (atsConc > 0.01 && fwConcrete > 0.5)
                ? mv_sampleAntiTileArr(MAT_LAYER_CONCRETE, uvConcrete, atsConc, uvDx * MATV_TILING.w, uvDy * MATV_TILING.w)
                : textureGrad(u_matNormalArray, vec3(uvConcrete, float(MAT_LAYER_CONCRETE)), uvDx * MATV_TILING.w, uvDy * MATV_TILING.w);
         dN += w.w * MATV_NORMAL_BOOST.w * fwConcrete * (s.rgb * 2.0 - 1.0);
@@ -327,10 +324,25 @@ vec3 mv_lampPoolNormal(vec3 wp, vec3 macroN, float lod) {
                    (uT.atlasTopLeftY - wp.y) * uT.atlasOneOverWorldUnits);
     vec4 m = uT.colormapReady != 0 ? textureLod(u_materialWeights, uv, 0.0) : vec4(0);
     vec4 w = vec4(max(1.0 - m.x - m.y - m.w, 0.0), m.x, m.y, m.w);
-    float f = exp2(lod) / float(textureSize(u_matNormalArray, 0).x);
-    vec3 dN = mv_detailNormal(w, m.z, wp.xy, nearDetail, macroN.z,
-                             vec2(f, 0), vec2(0, f), false);
-    return normalize(vec3(macroN.xy / max(macroN.z, 0.2) + dN.xy * uT.detailStrength, 1.0));
+    // Keep the lamp consumer small: XY-only weighted taps, explicit isotropic
+    // LOD, no sun/POM/anti-tile call graph inside the light loop.
+    const vec4 tiling = vec4(MATV_TILING.x / 3.0, MATV_TILING.yzw);
+    vec4 fade = clamp(vec4(2.0) - 2.828427 * exp2(lod)
+                    / float(textureSize(u_matNormalArray, 0).x) * tiling, 0.0, 1.0);
+    vec4 strength = w * MATV_NORMAL_BOOST * vec4(1.0 / 3.0, 1, 1, 1) * fade;
+    vec2 detailUV = wp.xy * (uT.detailTiling / MATV_WU_PER_TILE);
+    vec2 dN = vec2(0);
+    for (int layer = 0; layer < 4; ++layer) {
+        if (w[layer] > 0.01 && fade[layer] > 0.0)
+            dN += strength[layer] * (textureLod(u_matNormalArray,
+                vec3(detailUV * tiling[layer], float(layer)), lod + log2(tiling[layer])).xy * 2.0 - 1.0);
+    }
+    float snowFade = clamp(2.0 - 2.828427 * exp2(lod)
+                          / float(textureSize(u_matNormalArray, 0).x) * MATV_TILING_SNOW, 0.0, 1.0);
+    if (m.z > 0.01 && snowFade > 0.0)
+        dN += m.z * 0.9 * snowFade * (textureLod(u_matNormalArray,
+            vec3(detailUV * MATV_TILING_SNOW, float(MAT_LAYER_SNOW)), lod + log2(MATV_TILING_SNOW)).xy * 2.0 - 1.0);
+    return normalize(vec3(macroN.xy / max(macroN.z, 0.2) + dN * nearDetail * uT.detailStrength, 1.0));
 }
 
 // CEMENT-MIP-EDGE-1: antialiased "x < 0.5" for the cement transition cut; fw = the cut form's
@@ -417,21 +429,10 @@ void main() {
             bool cementOwnAlpha = (cw & 0x00800000u) != 0u;
             if (isTransition && cementOwnAlpha) {
                 float cOwnA = cementTexel.a;
-                // A two-world-unit contact bevel follows authored coverage,
-                // including wall corners; no displaced mesh or extra layer.
-                // Authored road/runway cells keep their own edge treatment.
-                if ((cw & 0x01000000u) == 0u && cOwnA > 0.0) {
-                vec2 edgeStep = vec2(2.0 / uT.cementWUPT);
-                vec2 edgeLo = max(cSampleUV - edgeStep, vec2(cInsetLod));
-                vec2 edgeHi = min(cSampleUV + edgeStep, vec2(1.0 - cInsetLod));
-                vec2 cellOrigin = vec2(cCol, cRow);
-                float edgeA = min(
-                    min(textureLod(u_cementAtlas, (cellOrigin + vec2(edgeLo.x, cSampleUV.y)) / float(cGridSide), cLod).a,
-                        textureLod(u_cementAtlas, (cellOrigin + vec2(edgeHi.x, cSampleUV.y)) / float(cGridSide), cLod).a),
-                    min(textureLod(u_cementAtlas, (cellOrigin + vec2(cSampleUV.x, edgeLo.y)) / float(cGridSide), cLod).a,
-                        textureLod(u_cementAtlas, (cellOrigin + vec2(cSampleUV.x, edgeHi.y)) / float(cGridSide), cLod).a));
-                padEdgeAO = 1.0 - 0.18 * max(cOwnA - edgeA, 0.0);
-                }
+                // Reuse filtered coverage for a narrow contact edge. The
+                // authored pad alpha supplies the bevel without neighbor taps.
+                if ((cw & 0x01000000u) == 0u)
+                    padEdgeAO = 1.0 - 0.72 * cOwnA * (1.0 - cOwnA);
                 base = mix(base, cementColor, cOwnA);
                 if (cOwnA > 0.5) { cementHit = true; pureConcrete = true; }
             } else if (isTransition) {
@@ -601,7 +602,7 @@ void main() {
             if (uT.detailReady != 0 && uT.detailStrength != 0.0) {
                 if (mv_needDetail(baseN, lightDir, materialW, materialSnow, v_worldPos, normalLightFloor)) {
                     float lodNear = mv_computeLodNear(v_worldPos.xy, v_worldPos.z);
-                    dN = mv_detailNormal(materialW, materialSnow, v_worldPos.xy, lodNear, baseN.z, detailUvDx, detailUvDy, true);
+                    dN = mv_detailNormal(materialW, materialSnow, v_worldPos.xy, lodNear, baseN.z, detailUvDx, detailUvDy);
                 } else {
                     resolveLampNormal = true;
                 }

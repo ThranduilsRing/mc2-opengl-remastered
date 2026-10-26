@@ -584,19 +584,14 @@ void PopulateRecipeCementWords() {
                     const bool c3 = (l3 != 0xFFFFu);
                     const int maskId = deriveMaskIdFromCorners(c0, c1, c2, c3);
                     const uint16_t cementLayerIdx = c0 ? l0 : (c1 ? l1 : (c2 ? l2 : l3));
-                    // PAD-EDGE-ROAD-2 (regression fix on PAD-EDGE-ROAD-1, user
-                    // field report 2026-07-21b): the -1 form baked NO cement
-                    // word on road-adjacent tiles, so the pad OUTLINE switched
-                    // styles mid-perimeter (legacy decal edge on the 8-adjacent
-                    // revert tiles vs analytic cement edge on their neighbors —
-                    // angular mismatched seams). -2 keeps the analytic cement
-                    // word on those tiles (outline stays continuous) and lets
-                    // BuildDecalStaticVBO ALSO bake the road-transition decal on
-                    // top (road art renders over the analytic wedge — stock
-                    // layering, decal depth-biased). MC2_PAD_EDGE_ROAD_FIX=2
-                    // restores the -1 decal-only revert for A/B; =0 restores the
-                    // pre-fix analytic-only (road notch) behavior.
-                    if (maskId >= 0 && cementLayerIdx != 0xFFFFu
+                    // The authored transition contains both its footprint and road/runway
+                    // art. A borrowed slab plus a corner cut loses both at pad junctions.
+                    if (g_cementAlphaLayerMapReady && g_cementAlphaLayerIndexBySlot[slot] != 0xFFFFu) {
+                        cementWord = kCementLayerValidBit | kCementTransitionBit | kCementOwnAlphaBit
+                                   | (static_cast<uint32_t>(g_cementAlphaLayerIndexBySlot[slot]) & 0xFFFFu);
+                        ++transitionQuadCount;
+                        if (cementLayerIdx == 0xFFFFu || maskId < 0) ++transitionAlphaRescued;
+                    } else if (maskId >= 0 && cementLayerIdx != 0xFFFFu
                         && PadEdgeRoadFixMode() == 2
                         && TileRoadAdjacent8(my, mx, mapSide, blocks)) {
                         // leave cementWord = 0 (legacy -1 behavior)
@@ -606,27 +601,6 @@ void PopulateRecipeCementWords() {
                                    | (static_cast<uint32_t>((maskId & static_cast<int>(kCementMaskIdMask))) << kCementMaskIdShift)
                                    | (static_cast<uint32_t>(cementLayerIdx) & 0xFFFFu);
                         ++transitionQuadCount;
-                    } else if (g_cementAlphaLayerMapReady
-                               && g_cementAlphaLayerIndexBySlot[slot] != 0xFFFFu) {
-                        // CEMENT-ALPHA-LAND-1 rescue. This tile is a transition
-                        // tile the legacy logic DROPS -- it has no solid-cement
-                        // corner to borrow a layer from, or no derivable mask.
-                        // Its own alpha slot now has an atlas cell, so bake a
-                        // word pointing at that cell with OWN_ALPHA set; the
-                        // frag uses the cell's texel alpha as coverage and
-                        // composites over the terrain. maskId is left at the
-                        // all-corners value: the OWN_ALPHA branch in the shader
-                        // never consults it, and any future reader that does
-                        // sees "fully covered", which is the honest answer for
-                        // a tile whose coverage lives in its alpha channel.
-                        cementWord = kCementLayerValidBit
-                                   | kCementTransitionBit
-                                   | kCementOwnAlphaBit
-                                   | (static_cast<uint32_t>((static_cast<int>(kCementMaskIdMask))) << kCementMaskIdShift)
-                                   | (static_cast<uint32_t>(g_cementAlphaLayerIndexBySlot[slot]) & 0xFFFFu);
-                        ++transitionAlphaRescued;
-                        if (cementLayerIdx == 0xFFFFu) ++transitionDroppedNoLayer;
-                        else                           ++transitionDroppedNoMask;
                     } else if (cementLayerIdx == 0xFFFFu) {
                         ++transitionDroppedNoLayer;   // no solid-cement corner
                     } else {
