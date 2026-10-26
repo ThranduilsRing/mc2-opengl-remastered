@@ -649,6 +649,10 @@ void GuiRuntime::Render() {
     // Render can reset it (SDL window event processing, etc.).
     ImGui::GetIO().DisplayFramebufferScale = ImVec2(1.0f, 1.0f);
 
+    // Vulkan cannot composite the legacy post-ImGui GL cursor callback.
+    // Draw above opaque menu windows through the same renderer as the UI.
+    ImGui::GetIO().MouseDrawCursor = ImGui::GetIO().WantCaptureMouse
+        && !mc2::gate::get<"MC2_OS_CURSOR">();
     ImGui::Render();
     s_frameActive = false;
 

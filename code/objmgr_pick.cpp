@@ -548,13 +548,8 @@ GameObjectPtr GameObjectManager::findTerrainObjectByMouse (long mouseX,
 	{
 		return s_pmWatchID ? getByWatchID(s_pmWatchID) : nullptr;
 	}
-	// Camera moved this frame — return stale (watch-ID-validated) result without scanning.
-	// Hover highlight is cosmetic; player is panning, not selecting.
-	// camRev is updated so that once camera settles the next frame triggers a fresh scan.
-	if (camRev != 0 && camRev != s_pmCamRev) {
-		s_pmCamRev = camRev;
-		return s_pmWatchID ? getByWatchID(s_pmWatchID) : nullptr;
-	}
+	// A camera change invalidates the result, including at an unchanged mouse
+	// position. Updating its revision without scanning caches a stale hit forever.
 
 	PkTimer _pk;  // MC2_PICK_RECON per-call wall-time
 	int32_t pickCandidates = 0;
@@ -606,10 +601,9 @@ GameObjectPtr GameObjectManager::findTerrainObjectByMouse (long mouseX,
 					// disabled, so a stock install with GPU cull off keeps
 					// the legacy "always considered" behavior). Same idiom
 					// as objmgr.cpp:1930 / mech.cpp / gvehicl.cpp.
-					bool readbackVisible = gpu_cull::readback_isEnabled()
-						? gpu_cull::readback_isActorVisibleLagged(static_cast<uint32_t>(obj->getHandle()))
-						: true;
-					if (objAppearance && readbackVisible)
+					// Lagged render occlusion is not gameplay pick authority. Small
+					// props can have no readback sample even while their mesh is drawn.
+					if (objAppearance)
 					{
 						// windowsVisible equality UNCHANGED. The stamp
 						// (code/terrobj.cpp TerrainObject::update(),
@@ -623,7 +617,7 @@ GameObjectPtr GameObjectManager::findTerrainObjectByMouse (long mouseX,
 						// geometry-space PerPolySelect below. Do NOT
 						// "fix" this equality -- it is correct by the
 						// coarse-superset argument (review-verified fact).
-						if (obj->getWindowsVisible() == (turn - VISIBLE_THRESHOLD))
+						if (obj->getWindowsVisible() >= (turn - VISIBLE_THRESHOLD))
 						{
 							//-----------------------------------------------------
 							// CRIT-1: lazy per-candidate screen rect.
@@ -730,6 +724,31 @@ GameObjectPtr GameObjectManager::findTerrainObjectByMouse (long mouseX,
 	// v0+: update top-level cache before returning.
 	s_pmX = mouseX; s_pmY = mouseY; s_pmCamRev = camRev;
 	s_pmWatchID = pickBest ? pickBest->getWatchID() : 0;   // UAF FIX: cache watch-ID, not raw ptr
+	// Extend the existing scripted pick probe to the static-object path. It
+	// exercises real picks across each visible stock silhouette's bounding box.
+	static bool probed = false;
+	if (!probed && turn > 40 && mc2::gate::get<"MC2_VK_PICK_PROBE">()) {
+		probed = true;
+		for (long h = 1; h <= getMaxObjects(); ++h) {
+			auto* candidate = objList[h];
+			if (!candidate || !candidate->getExists()) continue;
+			const long cls = candidate->getObjectClass();
+			if (cls != BUILDING && cls != TREEBUILDING && cls != TERRAINOBJECT) continue;
+			auto* ba = static_cast<BldgAppearance*>(candidate->getAppearance());
+			long x0, y0, x1, y1;
+			if (!projectPickCandidateRect(ba, x0, y0, x1, y1) || x0 < 0 || y0 < 0
+				|| x1 >= Environment.screenWidth || y1 >= Environment.screenHeight) continue;
+			int hits = 0;
+			for (int y = 0; y < 7; ++y) for (int x = 0; x < 7; ++x)
+				hits += findTerrainObjectByMouse(x0 + (x1-x0)*(2*x+1)/14,
+					y0 + (y1-y0)*(2*y+1)/14, true) == candidate;
+			mc2::fmt::print_out("[STATIC_PICK_PROBE] name={} handle={} rect={},{},{},{} hits={}/49 stamp={} turn={} readback={}\n",
+				ba->appearType->name, h, x0, y0, x1, y1, hits, candidate->getWindowsVisible(), turn,
+				gpu_cull::readback_isActorVisibleLagged(static_cast<uint32_t>(h)));
+		}
+		// Probe calls changed the cache; restore the caller's result.
+		s_pmX = mouseX; s_pmY = mouseY; s_pmWatchID = pickBest ? pickBest->getWatchID() : 0;
+	}
 	return(pickBest);   // BUILDING-PICK FIX: nearest world-OBB hit (NULL if none)
 }
 

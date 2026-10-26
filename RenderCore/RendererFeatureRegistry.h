@@ -214,7 +214,7 @@ static constexpr EnvVarDesc kFeatureTable[] = {
     },
     // [8] DebugRenderer
     {
-        "MC2_FEATURE_DEBUG_RENDERER", "MC2_DEBUG_RENDERER", EnvVarKind::Feature, true,
+        "MC2_FEATURE_DEBUG_RENDERER", "MC2_DEBUG_RENDERER", EnvVarKind::Feature, false,
         "Debug overlay renderer (GuiRuntime/EditorInspector.cpp)."
     },
     // [9] MaterialGpu
@@ -239,7 +239,7 @@ static constexpr EnvVarDesc kFeatureTable[] = {
     },
     // [13] SnapshotMechExtract
     {
-        "MC2_FEATURE_SNAPSHOT_MECH_EXTRACT", "MC2_SNAPSHOT_MECH_EXTRACT", EnvVarKind::Feature, true,
+        "MC2_FEATURE_SNAPSHOT_MECH_EXTRACT", "MC2_SNAPSHOT_MECH_EXTRACT", EnvVarKind::Feature, false,
         "MECH-EXTRACTION-0: mech snapshot extraction (observe-only, no GL mutation)."
     },
     // [14] VfxAgeSample
@@ -254,7 +254,7 @@ static constexpr EnvVarDesc kFeatureTable[] = {
     },
     // [16] ViewmodeFramework
     {
-        "MC2_FEATURE_VIEWMODE_FRAMEWORK", "MC2_VIEWMODE_FRAMEWORK", EnvVarKind::Feature, true,
+        "MC2_FEATURE_VIEWMODE_FRAMEWORK", "MC2_VIEWMODE_FRAMEWORK", EnvVarKind::Feature, false,
         "VIEWMODE-POSTPROCESS-PRESENTATION-1: enables the view-mode presentation framework that wires ViewMode::ObjectIdDebug (and future sensor modes) through the..."
     },
     // [17] HzbBuild
@@ -575,7 +575,7 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "META-FIX design A runtime tier (code/mission.cpp auditMoverCoherence, ~1 Hz): read-only audit that the five per-mover registries (isOnGUI render gate...",
     },
     {
-        "MC2_FEATURE_MOVE_RECON", "MC2_MOVE_RECON", EnvVarKind::Feature, true,
+        "MC2_FEATURE_MOVE_RECON", "MC2_MOVE_RECON", EnvVarKind::Trace, false,
         "Pathfinding cost instrumentation (mclib/move_recon.cpp).",
     },
     {
@@ -607,7 +607,7 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "Legacy selector, read only to report an ignored value: the engine renders on Vulkan only (the gl opt-out was removed).",
     },
     {
-        "MC2_FEATURE_RENDER_PASS_ORDER", "MC2_RENDER_PASS_ORDER", EnvVarKind::Feature, true,
+        "MC2_FEATURE_RENDER_PASS_ORDER", "MC2_RENDER_PASS_ORDER", EnvVarKind::Trace, false,
         "CONTRACT-3: per-frame resource-ordering audit (mclib/render_contract.cpp) - checks each pass's reads[] are satisfied by a prior write before beginPass.",
     },
     {
@@ -663,7 +663,7 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "STATIC-BLDG-SHADOW-REBAKE-1: deterministic repro hook (test-only, no production callers).",
     },
     {
-        "MC2_FEATURE_TACTICAL_ARC_OVERLAY", "MC2_TACTICAL_ARC_OVERLAY", EnvVarKind::Feature, true,
+        "MC2_FEATURE_TACTICAL_ARC_OVERLAY", "MC2_TACTICAL_ARC_OVERLAY", EnvVarKind::Trace, false,
         "TACTICAL-ARC-OVERLAY-MVP-1: world-space range ring + facing line on each SELECTED mover, drawn in-scene by the debug renderer just before its flush...",
     },
     {
