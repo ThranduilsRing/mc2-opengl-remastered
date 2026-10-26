@@ -1,7 +1,9 @@
 """Farm queue tests use child Python processes, never the engine or SSH."""
 import json
+import os
 from pathlib import Path
 import sys
+import subprocess
 from types import SimpleNamespace
 
 import pytest
@@ -84,3 +86,15 @@ def test_host_rejects_remote_path_injection(monkeypatch):
     with pytest.raises(SystemExit) as result:
         host.main()
     assert result.value.code == 2
+
+
+def test_farm_deploy_lease_stays_on_farm_disk(tmp_path):
+    registry = tmp_path / 'leases.json'
+    script = ('from scripts.smoke_lib import deploy_lease as d; '
+              'assert str(d.LEASE_REGISTRY_PATH) == __import__("os").environ["MC2_DEPLOY_LEASE_PATH"]; '
+              'assert d.LEASE_REGISTRY_PATH.with_suffix(".lock") == d._lock_path(); '
+              'd._write_registry({})')
+    subprocess.run([sys.executable, '-c', script],
+                   cwd=Path(__file__).resolve().parents[2],
+                   env=dict(os.environ, MC2_DEPLOY_LEASE_PATH=str(registry)), check=True)
+    assert json.loads(registry.read_text()) == {}

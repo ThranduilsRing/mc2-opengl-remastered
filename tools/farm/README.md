@@ -31,6 +31,8 @@ already have been seeded from the verified merge-gate output):
   "env": {
     "MC2_SMOKE_ARTIFACT_ROOT": "C:/mc2farm/results/smoke",
     "MC2_HOST_LEASE_PATH": "C:/mc2farm/host_game_lease.json",
+    "MC2_DEPLOY_LEASE_PATH": "C:/mc2farm/deploy_leases.json",
+    "MC2_CHILD_REGISTRY_DIR": "C:/mc2farm/children",
     "MC2_HOST_GAME_SLOTS": "1",
     "MC2_DEBUG_STATE_DUMP": "1",
     "MC2_WIDTH": "1920",
