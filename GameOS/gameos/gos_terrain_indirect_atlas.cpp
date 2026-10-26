@@ -334,6 +334,7 @@ void BuildCementCatalogAtlas() {
     }
     auto* tt = Terrain::terrainTextures;
 
+    static_assert(MC_MAX_MIP_LEVELS == 1); // Base slots equal type IDs, including after metadata purge.
     // A cement variant used only in mixed quads never visits setTexture's
     // uniform-quad arm, so its base slot otherwise has no CEMENT flag.
     for (DWORD type = BASE_CEMENT_TYPE; type <= END_CEMENT_TYPE; ++type) {

@@ -471,10 +471,8 @@ static bool TileIsRoadArt(long r, long c, long mapSide, PostcompVertexPtr blocks
     if (!(tt->isCement(slot) && tt->isAlpha(slot))) return false;
     auto cemCorner = [&](long rr, long cc) -> bool {
         const DWORD vt = blocks[static_cast<size_t>(rr) * static_cast<size_t>(mapSide) + static_cast<size_t>(cc)].terrainType;
-        if (vt >= static_cast<DWORD>(tt->getNumTypes())) return false;
-        const DWORD baseSlot = tt->setTexture(vt * 0x01010101u, 0xffffu);
-        return baseSlot < static_cast<DWORD>(MC_MAX_TERRAIN_TXMS)
-               && g_cementLayerIndexBySlot[baseSlot] != 0xFFFFu;
+        return vt < static_cast<DWORD>(MC_MAX_TERRAIN_TXMS)
+               && g_cementLayerIndexBySlot[vt] != 0xFFFFu;
     };
     return !(cemCorner(r, c) || cemCorner(r, c + 1)
              || cemCorner(r + 1, c + 1) || cemCorner(r + 1, c));
@@ -573,10 +571,8 @@ void PopulateRecipeCementWords() {
                     auto cemLayerForVertex = [&](long row, long col) -> uint16_t {
                         const size_t vi = static_cast<size_t>(row) * static_cast<size_t>(mapSide) + static_cast<size_t>(col);
                         const DWORD  vt = blocks[vi].terrainType;
-                        if (vt >= static_cast<DWORD>(tt->getNumTypes())) return 0xFFFFu;
-                        const DWORD baseSlot = tt->setTexture(vt * 0x01010101u, 0xffffu);
-                        return (baseSlot < static_cast<DWORD>(MC_MAX_TERRAIN_TXMS))
-                               ? g_cementLayerIndexBySlot[baseSlot] : 0xFFFFu;
+                        return (vt < static_cast<DWORD>(MC_MAX_TERRAIN_TXMS))
+                               ? g_cementLayerIndexBySlot[vt] : 0xFFFFu;
                     };
                     const uint16_t l0 = cemLayerForVertex(my,     mx);
                     const uint16_t l1 = cemLayerForVertex(my,     mx + 1);
@@ -588,21 +584,27 @@ void PopulateRecipeCementWords() {
                     const bool c3 = (l3 != 0xFFFFu);
                     const int maskId = deriveMaskIdFromCorners(c0, c1, c2, c3);
                     const uint16_t cementLayerIdx = c0 ? l0 : (c1 ? l1 : (c2 ? l2 : l3));
-                    if (maskId >= 0 && cementLayerIdx != 0xFFFFu
+                    if (c0 && c1 && c2 && c3) {
+                        // Mixed cement variants are still one opaque pad. Their
+                        // cached alpha must not expose the prelit colormap.
+                        cementWord = kCementLayerValidBit | static_cast<uint32_t>(cementLayerIdx);
+                        ++cementQuadCount;
+                    } else if (maskId >= 0 && cementLayerIdx != 0xFFFFu
                         && PadEdgeRoadFixMode() == 2
                         && TileRoadAdjacent8(my, mx, mapSide, blocks)) {
                         // Explicit road suppression precedes authored alpha coverage.
-                    } else if (g_cementAlphaLayerMapReady && g_cementAlphaLayerIndexBySlot[slot] != 0xFFFFu) {
-                        cementWord = kCementLayerValidBit | kCementTransitionBit | kCementOwnAlphaBit
-                                   | (static_cast<uint32_t>(g_cementAlphaLayerIndexBySlot[slot]) & 0xFFFFu);
-                        ++transitionQuadCount;
-                        if (cementLayerIdx == 0xFFFFu || maskId < 0) ++transitionAlphaRescued;
                     } else if (maskId >= 0 && cementLayerIdx != 0xFFFFu) {
                         cementWord = kCementLayerValidBit
                                    | kCementTransitionBit
                                    | (static_cast<uint32_t>((maskId & static_cast<int>(kCementMaskIdMask))) << kCementMaskIdShift)
                                    | (static_cast<uint32_t>(cementLayerIdx) & 0xFFFFu);
                         ++transitionQuadCount;
+                    } else if (g_cementAlphaLayerMapReady && g_cementAlphaLayerIndexBySlot[slot] != 0xFFFFu) {
+                        // Cornerless road/runway art keeps its authored alpha.
+                        cementWord = kCementLayerValidBit | kCementTransitionBit | kCementOwnAlphaBit
+                                   | (static_cast<uint32_t>(g_cementAlphaLayerIndexBySlot[slot]) & 0xFFFFu);
+                        ++transitionQuadCount;
+                        ++transitionAlphaRescued;
                     } else if (cementLayerIdx == 0xFFFFu) {
                         ++transitionDroppedNoLayer;   // no solid-cement corner
                     } else {
