@@ -1,7 +1,9 @@
 // Reuse the asset inspector's platform sinks, never its placeholder RNG or silent STOP.
 #define gos_rand unused_mc2fx_rand
 #define InternalFunctionStop unused_mc2fx_stop
+#define gos_vfx_mesh_flush vfx_test_unused_mesh_flush
 #include "tools/mc2fx/mc2fx_stubs.cpp"
+#undef gos_vfx_mesh_flush
 #undef gos_rand
 #undef InternalFunctionStop
 #include "mclib/det_rng.h"

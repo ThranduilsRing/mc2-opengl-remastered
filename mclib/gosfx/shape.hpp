@@ -11,10 +11,11 @@
 #include"singleton.hpp"
 #include<mlr/mlr.hpp>
 
-namespace MidLevelRenderer {class MLRShape;}
+namespace MidLevelRenderer {class MLRShape; class DrawScalableShapeInformation;}
 
 namespace gosFX
 {
+	bool DrawNativeShape(const MidLevelRenderer::DrawScalableShapeInformation& draw);
 	//############################################################################
 	//########################  Shape__Specification  #############################
 	//############################################################################

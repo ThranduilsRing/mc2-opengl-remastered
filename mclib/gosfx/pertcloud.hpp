@@ -11,7 +11,6 @@
 #include"spinningcloud.hpp"
 #include<mlr/mlr.hpp>
 
-namespace MidLevelRenderer {class MLRNGonCloud;}
 
 namespace gosFX
 {
@@ -100,7 +99,6 @@ namespace gosFX
 		using Particle = PertCloud__Particle;
 
 	protected:
-		std::unique_ptr<MidLevelRenderer::MLRNGonCloud> m_cloudImplementation;						// Pert to an MLR Pert cloud by Jim
 		glm::vec3		*m_P_vertices;
 		Stuff::RGBAColor	*m_P_color;
 
@@ -165,8 +163,6 @@ namespace gosFX
 				unsigned index,
 				glm::vec3 *translation
 			);
-		void
-			DestroyParticle(unsigned index);
 
 	public:
 		void

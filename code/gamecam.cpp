@@ -56,6 +56,8 @@
 #include "../GameAdapters/StaticPropRenderAdapter.h"  // M1 CI-gate: firewall bridge for frameBegin()
 #include "../GameAdapters/VegetationAdapter.h"         // vegetation card flush (post-renderLists)
 #include "particles/batcher.h"  // GPU particle batcher flush (Stage 2' and beyond)
+#include "particles/spec_library.h"
+#include "gosfx/gosfxheaders.hpp"
 // DRYRUN-OBSERVE-COVERAGE-1: observe-only VFX pass note. render_contract.h pulls
 // RenderCore/RenderPassContract.h, which the mc2/code TU's include path can't resolve
 // (root not on its -I list). Use the thin extern "C" shim defined in render_contract.cpp
@@ -754,6 +756,9 @@ void GameCamera::render (void)
 		theClipper->StartDraw(cameraOrigin, cameraToClip, fColor, &fColor, default_state, &z);
 	}
 	MidLevelRenderer::GOSVertex::farClipReciprocal = (1.0f-cameraToClip[2][2])/cameraToClip[2][3];
+	// Keep oracle effects alive through RenderNow: clouds own queued MLR geometry.
+	std::unique_ptr<gosFX::PertCloud::Specification> oraclePert;
+	std::vector<gosFX::EffectPtr> oracleMeshes;
 
 	if (active && turn > 1)
 	{
@@ -897,6 +902,59 @@ void GameCamera::render (void)
 				                                vegCamCX, vegCamCY, vegCamCZ);
 			}
 			GameAdapters::StaticProp::flushLateCoverage();
+			if (mc2::gate::is<"MC2_FX_FORCE_SPAWN", "9">()) {
+				// Stock mesh classes, separated spatially; no asset bytes are changed.
+				auto* library = mc2::particles::SpecLibrary::Instance();
+				gos_PushCurrentHeap(gosFX::Heap);
+				oraclePert = std::make_unique<gosFX::PertCloud::Specification>(6);
+				oraclePert->BuildDefaults();
+				gos_PopCurrentHeap();
+				oraclePert->m_maxParticleCount = 4;
+				oraclePert->m_startingPopulation.SetCurve(4.0f);
+				oraclePert->m_particlesPerSecond.SetCurve(0.0f);
+				oraclePert->m_size.m_ageCurve.SetCurve(40.0f);
+				oraclePert->m_pCenterRed.m_ageCurve.SetCurve(1.0f);
+				oraclePert->m_pCenterGreen.m_ageCurve.SetCurve(0.2f);
+				oraclePert->m_pCenterBlue.m_ageCurve.SetCurve(0.0f);
+				oraclePert->m_pAlpha.m_ageCurve.SetCurve(0.25f);
+				oraclePert->m_alignZUsingX = oraclePert->m_alignZUsingY = true;
+				unsigned drawn = 0;
+				for (unsigned i = 0; i <= library->Count(); ++i) {
+					auto* spec = i == library->Count() ? oraclePert.get() : library->At(i);
+					const auto cls = spec->GetClassID();
+					if (cls != gosFX::ShapeClassID && cls != gosFX::ShapeCloudClassID &&
+						cls != gosFX::DebrisCloudClassID && cls != gosFX::PertCloudClassID) continue;
+					glm::vec3 location = getPosition();
+					location.x += (static_cast<int>(drawn % 8) - 4) * 75.0f;
+					location.y += (static_cast<int>(drawn / 8) - 3) * 75.0f;
+					if (cls == gosFX::PertCloudClassID) {
+						location.x = getPosition().x - 450.0f;
+						location.y = getPosition().y - 50.0f;
+					}
+					location.z += 75.0f;
+					mc2ToRender(location, location);
+					glm::mat4 origin(1.0f);
+					mc2::math::buildTranslation(origin, location);
+					mc2::math::Obb bounds{};
+					gosFX::Effect::ExecuteInfo execute(0.0, &origin, &bounds, 0.5f);
+					execute.m_age = 0.5f;
+					execute.m_ageRate = 0.0f;
+					auto effect = i == library->Count()
+						? gosFX::EffectPtr(gosFX::PertCloud::Make(oraclePert.get(), gosFX::Effect::ExecuteFlag))
+						: gosFX::EffectLibrary::Instance->MakeEffect(i, gosFX::Effect::ExecuteFlag);
+					effect->Start(&execute);
+					execute.m_time = 0.25;
+					execute.m_age = 0.5f;
+					effect->Execute(&execute);
+					gosFX::Effect::DrawInfo draw{};
+					draw.m_parentToWorld = &origin;
+					draw.m_clipper = theClipper;
+					draw.m_state = default_state;
+					effect->Draw(&draw);
+					oracleMeshes.push_back(std::move(effect));
+					++drawn;
+				}
+			}
 
 			// GPU particle batcher flush — Stage 2' and beyond.
 			// MUST run after renderLists() so the scene depth buffer is
@@ -963,6 +1021,7 @@ void GameCamera::render (void)
                     const float origin[3] = {center.x, center.y + 45.0f, center.z};
                     gos_vfx_mesh_fixture(origin);
                 }
+                gos_vfx_mesh_flush_deferred();
 				gos_ClearActiveCamera();
 			}
 		}

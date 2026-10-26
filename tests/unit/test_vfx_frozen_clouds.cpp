@@ -5,7 +5,6 @@
 #include "particles/batcher.h"
 #include "mlr/mlrsortbyorder.hpp"
 #include "mlr/gosimagepool.hpp"
-#include "mlr/mlrngoncloud.hpp"
 #include <cstdint>
 #include <algorithm>
 #include <cmath>
@@ -16,6 +15,21 @@
 #include <array>
 #include <cstdlib>
 #include <fstream>
+#include "GameOS/gameos/gos_vfx_mesh_bridge.h"
+#include "mlr/mlr_i_pmesh.hpp"
+#include "mlr/mlrshape.hpp"
+
+namespace {
+std::vector<GosVfxMeshInstance> meshInstances;
+std::vector<std::vector<uint16_t>> meshIndices;
+}
+extern "C" void gos_vfx_mesh_flush(const GosVfxMeshUpload* uploads, unsigned count,
+    const GosVfxMeshInstance* instances, unsigned instanceCount)
+{
+    for (unsigned i = 0; i < count; ++i)
+        meshIndices.emplace_back(uploads[i].indices, uploads[i].indices + uploads[i].indexCount);
+    meshInstances.insert(meshInstances.end(), instances, instances + instanceCount);
+}
 
 void vfx_test_bind_rng(std::uint32_t* state);
 extern "C" unsigned long long mc2_vfx_getEmitTotal();
@@ -119,10 +133,6 @@ public:
     bool execute(gosFX::Effect::ExecuteInfo* info) { return this->Execute(info); }
     unsigned active() const { return this->m_activeParticleCount; }
     void expire(unsigned slot) { this->DestroyParticle(slot); }
-    int clippedVertices() const {
-        if constexpr (!std::is_same_v<Cloud, gosFX::PertCloud>) return 0;
-        else return this->m_cloudImplementation->GetNumGOSVertices();
-    }
     void distinguishParticles()
     {
         // Distinct channels and slots expose zero-fill, swapped fields and dead-slot packing.
@@ -179,9 +189,7 @@ public:
             appendBytes(bytes, p->m_age);
             appendBytes(bytes, p->m_seed);
             appendBytes(bytes, p->m_ageRate);
-            if constexpr (!std::is_same_v<Cloud, gosFX::PertCloud>)
-                appendBytes(bytes, p->m_age < 1.0f);
-            else appendBytes(bytes, this->m_cloudImplementation->IsOn(slot));
+            appendBytes(bytes, p->m_age < 1.0f);
             for (unsigned c = 0; c < colorStride(); ++c) {
                 const auto& color = this->m_P_color[slot * colorStride() + c];
                 for (float v : {color.red, color.green, color.blue, color.alpha}) appendBytes(bytes, v);
@@ -201,6 +209,33 @@ public:
         for (unsigned slot = 0; slot < active(); ++slot) {
             const auto* p = this->GetParticle(slot);
             if (p->m_age >= 1.0f) continue;
+            if constexpr (std::is_same_v<Cloud, gosFX::PertCloud>) {
+                glm::mat4 model;
+                mc2::math::buildRotation(model, p->m_localRotation);
+                const auto* spec = this->GetSpecification();
+                const auto direction = mc2::math::transformPoint(camera, glm::inverse(localToWorld)) - p->m_localTranslation;
+                if (spec->m_alignZUsingX)
+                    mc2::math::alignLocalAxisToWorldVector(model, direction, Stuff::Z_Axis,
+                        spec->m_alignZUsingY ? Stuff::Y_Axis : Stuff::X_Axis,
+                        spec->m_alignZUsingY ? Stuff::X_Axis : -1);
+                else if (spec->m_alignZUsingY)
+                    mc2::math::alignLocalAxisToWorldVector(model, direction, Stuff::Z_Axis, Stuff::Y_Axis, -1);
+                mc2::math::buildTranslation(model, p->m_localTranslation);
+                for (unsigned v = 1; v + 1 < spec->m_vertices; ++v) {
+                    for (unsigned corner : {0u, v+1, v}) {
+                        const auto world = mc2::math::transformPoint(
+                            mc2::math::transformPoint(p->m_vertices[corner] * p->m_scale, model), localToWorld);
+                        const auto& tint = this->m_P_color[slot*2 + (corner ? 1 : 0)];
+                        GpuParticle vertex{};
+                        vertex.position[0] = world.x; vertex.position[1] = world.y; vertex.position[2] = world.z;
+                        vertex.color[0] = tint.red; vertex.color[1] = tint.green; vertex.color[2] = tint.blue;
+                        vertex.color[3] = 1.0f; // opaque fixture
+                        vertex.kind_flags = 8u | 32u;
+                        result.push_back(vertex);
+                    }
+                }
+                continue;
+            }
             glm::vec3 world;
             if constexpr (std::is_same_v<Cloud, gosFX::PointCloud>)
                 world = mc2::math::transformPoint(this->m_P_localTranslation[slot], localToWorld);
@@ -356,7 +391,9 @@ void checkFrozenCloud(bool alignX = false, bool alignY = false, unsigned sides =
     gosFX::Effect::DrawInfo draw{};
     draw.m_parentToWorld = &transform;
     draw.m_clipper = &clipper;
-    const bool gpu = mc2::particles::Batcher::is_enabled() && !std::is_same_v<Cloud, gosFX::PertCloud>;
+    const bool gpu = std::is_same_v<Cloud, gosFX::PertCloud>
+        ? mc2::particles::Batcher::is_enabled() && mc2::particles::Batcher::is_oracle_shape_enabled()
+        : mc2::particles::Batcher::is_enabled();
     auto& batcher = mc2::particles::Batcher::Instance();
     batcher.Flush();
 
@@ -364,11 +401,11 @@ void checkFrozenCloud(bool alignX = false, bool alignY = false, unsigned sides =
         const auto frozen = Stuff::Random::GetState();
         const auto particles = cloud.frozenState();
         auto expected = [&] {
-            if constexpr (!std::is_same_v<Cloud, gosFX::PertCloud>)
-                if (gpu) return cloud.expectedPayload(transform);
+            if (gpu) return cloud.expectedPayload(transform);
             return std::vector<GpuParticle>{};
         }();
-        constexpr unsigned stride = std::is_same_v<Cloud, gosFX::CardCloud> ? 6 : 3;
+        const unsigned stride = std::is_same_v<Cloud, gosFX::PertCloud> ? sides * 3 :
+            std::is_same_v<Cloud, gosFX::CardCloud> ? 6 : 3;
         REQUIRE(expected.size() == (gpu ? live * stride : 0));
         std::vector<GpuParticle> firstPayload;
         std::array<std::vector<char>, 2> firstMlrPayload;
@@ -380,8 +417,7 @@ void checkFrozenCloud(bool alignX = false, bool alignY = false, unsigned sides =
             CAPTURE(outside);
             CAPTURE(gpu);
             clipper.StartDraw(camera, projection, fog, nullptr, state, nullptr);
-            if constexpr (!std::is_same_v<Cloud, gosFX::PertCloud>)
-                if (gpu) expected = cloud.expectedPayload(transform, mc2::math::getTranslation(camera));
+            if (gpu) expected = cloud.expectedPayload(transform, mc2::math::getTranslation(camera));
             sorter->payload.clear();
             draw.m_clippingFlags = repeat % 2 ? 0x3f : 0;
             glm::mat4 worldToClip;
@@ -398,13 +434,7 @@ void checkFrozenCloud(bool alignX = false, bool alignY = false, unsigned sides =
             CHECK(Stuff::Random::GetState() == frozen);
             CHECK(Stuff::Random::GetDrawCount() == frozen.draws);
             CHECK(cloud.frozenState() == particles);
-            if (std::is_same_v<Cloud, gosFX::PertCloud> && !gpu && live == 4) {
-                // MC2's legacy clouds bypass clip rejection, even with clipping flags set.
-                CHECK(cloud.clippedVertices() > 0);
-                REQUIRE_FALSE(sorter->payload.empty());
-            }
-            if constexpr (!std::is_same_v<Cloud, gosFX::PertCloud>)
-                CHECK(sorter->payload.empty()); // accepted cards never enter MLR, including with the kill-switch off
+            CHECK(sorter->payload.empty()); // retired renderers stay absent with either gate vector
             if (repeat < 2) firstMlrPayload[repeat] = sorter->payload;
             CHECK(sorter->payload == firstMlrPayload[repeat % 2]);
             if (borrowedCapture->snapshot.is_open()) {
@@ -481,6 +511,61 @@ extern "C" void gos_particle_bridge_flush(const GpuParticle* records, unsigned c
     borrowedCapture->groups.insert(borrowedCapture->groups.end(), groups, groups + groupCount);
 }
 
+TEST_CASE_FIXTURE(FrozenPlatform, "vfx_mesh/submaterials and polygon fans preserve RNG")
+{
+    mc2::gate::ScopedOverride<"MC2_VFX_ORACLE_SHAPE"> native{"1"};
+    using namespace MidLevelRenderer;
+    gos_PushCurrentHeap(MidLevelRenderer::Heap);
+    auto* shape = new MLRShape(2);
+    for (unsigned i = 0; i < 2; ++i) {
+        auto* prim = new MLR_I_PMesh;
+        const glm::vec3 positions[] = {{0,0,0}, {1,0,0}, {1,1,0}, {0,1,0}};
+        unsigned short indices[] = {0,1,2,3};
+        unsigned char lengths[] = {4};
+        prim->SetCoordData(positions, 4);
+        prim->SetSubprimitiveLengths(lengths, 1);
+        prim->SetIndexData(indices, 4);
+        MLRState state;
+        state.SetTextureHandle(11 + i);
+        state.SetAlphaMode(i == 0 ? MLRState::OneOneMode : MLRState::AlphaInvAlphaMode);
+        prim->SetReferenceState(state);
+        shape->Add(prim);
+        prim->DetachReference();
+    }
+    gos_PopCurrentHeap();
+    DrawScalableShapeInformation draw;
+    draw.shape = shape;
+    glm::mat4 transform(1.0f);
+    mc2::math::buildTranslation(transform, glm::vec3(17,23,31));
+    draw.shapeToWorld = &transform;
+    glm::vec3 scale(2.0f);
+    draw.scaling = &scale;
+    Stuff::RGBAColor color(0.2f,0.4f,0.6f,0.8f);
+    draw.paintMe = &color;
+    const auto frozen = Stuff::Random::GetState();
+    meshIndices.clear(); meshInstances.clear();
+    REQUIRE(gosFX::DrawNativeShape(draw));
+    REQUIRE(meshIndices.size() == 2);
+    REQUIRE(meshInstances.size() == 2);
+    for (const auto& indices : meshIndices)
+        CHECK(indices == std::vector<uint16_t>{0,1,2,0,2,3});
+    CHECK(meshInstances[0].mlrTexHandle == 11);
+    CHECK(meshInstances[1].mlrTexHandle == 12);
+    CHECK(meshInstances[0].blendMode == 2);
+    CHECK(meshInstances[1].blendMode == 0);
+    CHECK(meshInstances[0].modelToWorld[12] == 17);
+    CHECK(meshInstances[0].modelToWorld[13] == 23);
+    CHECK(meshInstances[0].modelToWorld[14] == 31);
+    CHECK(meshInstances[0].scale == 2.0f);
+    CHECK(meshInstances[1].rgba[3] == 0.8f);
+    meshIndices.clear(); meshInstances.clear();
+    REQUIRE(gosFX::DrawNativeShape(draw));
+    CHECK(meshIndices.empty());
+    CHECK(meshInstances.size() == 2);
+    CHECK(Stuff::Random::GetState() == frozen);
+    shape->DetachReference();
+}
+
 TEST_CASE_FIXTURE(FrozenPlatform, "vfx_frozen/CardCloud draw flush and clip leave RNG unchanged")
 {
     checkFrozenCloud<gosFX::CardCloud>();
@@ -497,7 +582,7 @@ TEST_CASE_FIXTURE(FrozenPlatform, "vfx_frozen/ShardCloud draw flush and clip lea
     for (const auto alignment : {std::pair{true, false}, std::pair{false, true}, std::pair{true, true}})
         checkFrozenCloud<gosFX::ShardCloud>(alignment.first, alignment.second);
 }
-TEST_CASE_FIXTURE(FrozenPlatform, "vfx_frozen/PertCloud variable polygons preserve MLR payload and RNG")
+TEST_CASE_FIXTURE(FrozenPlatform, "vfx_frozen/PertCloud variable polygons preserve live payload and RNG")
 {
     for (unsigned sides : {3u, 7u}) {
         CAPTURE(sides);

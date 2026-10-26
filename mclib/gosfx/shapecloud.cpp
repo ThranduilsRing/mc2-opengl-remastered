@@ -303,235 +303,38 @@ bool
 //
 void gosFX::ShapeCloud::Draw(DrawInfo *info)
 {
-	Check_Object(this);
-	Check_Object(info);
-	Check_Object(info->m_parentToWorld);
-
-	//
-	//----------------------------
-	// Set up the common draw info
-	//----------------------------
-	//
-	if (m_activeParticleCount)
-	{
-		MidLevelRenderer::DrawScalableShapeInformation dinfo;
-		MidLevelRenderer::MLRShape *shape = GetSpecification()->m_shape;
-		dinfo.clippingFlags.SetClippingState(0x3f);
-		dinfo.worldToShape = nullptr;
-		Specification *spec = GetSpecification();
-		Check_Object(spec);
-		dinfo.state.Combine(info->m_state, spec->m_state);
-		dinfo.activeLights = nullptr;
-		dinfo.nrOfActiveLights = 0;
-		dinfo.shape = shape;
-		glm::mat4 local_to_world;
-		local_to_world = m_localToParent * *info->m_parentToWorld;
-
-		//
-		//--------------------------------------------------------------
-		// Check the orientation mode.  The first case is XY orientation
-		//--------------------------------------------------------------
-		//
-		unsigned i;
-		if (spec->m_alignZUsingX)
-		{
-			if (spec->m_alignZUsingY)
-			{
-				//
-				//-----------------------------------------
-				// Get the camera location into local space
-				//-----------------------------------------
-				//
-				glm::vec3
-					camera_in_world = mc2::math::getTranslation(info->m_clipper->GetCameraToWorldMatrix());
-				glm::vec3 camera_in_cloud;
-				camera_in_cloud = (mc2::math::transformPoint(camera_in_world, glm::inverse(local_to_world)));
-				for (unsigned i = 0; i < m_activeParticleCount; i++)
-				{
-					Particle *particle = GetParticle(i);
-					Check_Object(particle);
-
-					//
-					//-----------------------------------------------------------------
-					// If the particle is still alive, concatenate into world space and
-					// issue the draw command
-					//-----------------------------------------------------------------
-					//
-					if (particle->m_age < 1.0f)
-					{
-						glm::vec3 direction_in_cloud;
-						direction_in_cloud = camera_in_cloud - particle->m_localTranslation;
-						glm::mat4 shape_to_cloud;
-						mc2::math::buildRotation(shape_to_cloud, particle->m_localRotation);
-						mc2::math::alignLocalAxisToWorldVector(shape_to_cloud, direction_in_cloud, Stuff::Z_Axis, Stuff::Y_Axis, Stuff::X_Axis);
-						mc2::math::buildTranslation(shape_to_cloud, particle->m_localTranslation);
-						glm::mat4 shape_to_world;
-						shape_to_world = shape_to_cloud * local_to_world;
-						dinfo.shapeToWorld = &shape_to_world;
-						glm::vec3
-							scale(
-								particle->m_scale,
-								particle->m_scale,
-								particle->m_scale
-							);
-						dinfo.scaling = &scale;
-						dinfo.paintMe = &particle->m_color;
-		 				info->m_clipper->DrawScalableShape(&dinfo);
-					}
-				}
-			}
-
-			//
-			//-----------------------
-			// Handle X-only rotation
-			//-----------------------
-			//
-			else
-			{
-				//
-				//-----------------------------------------
-				// Get the camera location into local space
-				//-----------------------------------------
-				//
-				glm::vec3
-					camera_in_world = mc2::math::getTranslation(info->m_clipper->GetCameraToWorldMatrix());
-				glm::vec3 camera_in_cloud;
-				camera_in_cloud = (mc2::math::transformPoint(camera_in_world, glm::inverse(local_to_world)));
-				for (unsigned i = 0; i < m_activeParticleCount; i++)
-				{
-					Particle *particle = GetParticle(i);
-					Check_Object(particle);
-
-					//
-					//-----------------------------------------------------------------
-					// If the particle is still alive, concatenate into world space and
-					// issue the draw command
-					//-----------------------------------------------------------------
-					//
-					if (particle->m_age < 1.0f)
-					{
-						glm::vec3 direction_in_cloud;
-						direction_in_cloud = camera_in_cloud - particle->m_localTranslation;
-						glm::mat4 shape_to_cloud;
-						mc2::math::buildRotation(shape_to_cloud, particle->m_localRotation);
-						mc2::math::alignLocalAxisToWorldVector(shape_to_cloud, direction_in_cloud, Stuff::Z_Axis, Stuff::X_Axis, -1);
-						mc2::math::buildTranslation(shape_to_cloud, particle->m_localTranslation);
-						glm::mat4 shape_to_world;
-						shape_to_world = shape_to_cloud * local_to_world;
-						dinfo.shapeToWorld = &shape_to_world;
-						glm::vec3
-							scale(
-								particle->m_scale,
-								particle->m_scale,
-								particle->m_scale
-							);
-						dinfo.scaling = &scale;
-						dinfo.paintMe = &particle->m_color;
-		 				info->m_clipper->DrawScalableShape(&dinfo);
-					}
-				}
-			}
-		}
-
-		//
-		//-------------------------------------------------------
-		// Each matrix needs to be aligned to the camera around Y
-		//-------------------------------------------------------
-		//
-		else if (spec->m_alignZUsingY)
-		{
-			//
-			//-----------------------------------------
-			// Get the camera location into local space
-			//-----------------------------------------
-			//
-			glm::vec3
-				camera_in_world = mc2::math::getTranslation(info->m_clipper->GetCameraToWorldMatrix());
-			glm::vec3 camera_in_cloud;
-			camera_in_cloud = (mc2::math::transformPoint(camera_in_world, glm::inverse(local_to_world)));
-			for (unsigned i = 0; i < m_activeParticleCount; i++)
-			{
-				Particle *particle = GetParticle(i);
-				Check_Object(particle);
-
-				//
-				//-----------------------------------------------------------------
-				// If the particle is still alive, concatenate into world space and
-				// issue the draw command
-				//-----------------------------------------------------------------
-				//
-				if (particle->m_age < 1.0f)
-				{
-					glm::vec3 direction_in_cloud;
-					direction_in_cloud = camera_in_cloud - particle->m_localTranslation;
-					glm::mat4 shape_to_cloud;
-					mc2::math::buildRotation(shape_to_cloud, particle->m_localRotation);
-					mc2::math::alignLocalAxisToWorldVector(shape_to_cloud, direction_in_cloud, Stuff::Z_Axis, Stuff::Y_Axis, -1);
-					mc2::math::buildTranslation(shape_to_cloud, particle->m_localTranslation);
-					glm::mat4 shape_to_world;
-					shape_to_world = shape_to_cloud * local_to_world;
-					dinfo.shapeToWorld = &shape_to_world;
-					glm::vec3
-						scale(
-							particle->m_scale,
-							particle->m_scale,
-							particle->m_scale
-						);
-					dinfo.scaling = &scale;
-					dinfo.paintMe = &particle->m_color;
-		 			info->m_clipper->DrawScalableShape(&dinfo);
-				}
-			}
-		}
-
-		//
-		//---------------------------------------------------------------
-		// No alignment is necessary, so just multiply out all the active
-		// particles
-		//---------------------------------------------------------------
-		//
-		else
-		{
-			for (i=0; i < m_activeParticleCount; i++)
-			{
-				Particle *particle = GetParticle(i);
-				Check_Object(particle);
-
-				//
-				//-----------------------------------------------------------------
-				// If the particle is still alive, concatenate into world space and
-				// issue the draw command
-				//-----------------------------------------------------------------
-				//
-				if (particle->m_age < 1.0f)
-				{
-					glm::mat4 shape_to_cloud;
-					mc2::math::buildTranslation(shape_to_cloud, particle->m_localTranslation);
-					mc2::math::buildRotation(shape_to_cloud, particle->m_localRotation);
-					glm::mat4 shape_to_world;
-					shape_to_world = shape_to_cloud * local_to_world;
-					dinfo.shapeToWorld = &shape_to_world;
-					glm::vec3
-						scale(
-							particle->m_scale,
-							particle->m_scale,
-							particle->m_scale
-						);
-					dinfo.scaling = &scale;
-					dinfo.paintMe = &particle->m_color;
-		 			info->m_clipper->DrawScalableShape(&dinfo);
-				}
-			}
-		}
-	}
-
-	//
-	//----------------------------
-	// Let our parent do its thing
-	//----------------------------
-	//
-	SpinningCloud::Draw(info);
+    Check_Object(this);
+    Check_Object(info);
+    auto* spec = GetSpecification();
+    const auto localToWorld = m_localToParent * *info->m_parentToWorld;
+    const auto camera = mc2::math::transformPoint(
+        mc2::math::getTranslation(info->m_clipper->GetCameraToWorldMatrix()), glm::inverse(localToWorld));
+    MidLevelRenderer::DrawScalableShapeInformation draw;
+    draw.shape = spec->m_shape;
+    draw.state.Combine(info->m_state, spec->m_state);
+    for (unsigned i = 0; i < m_activeParticleCount; ++i) {
+        auto* particle = GetParticle(i);
+        if (particle->m_age >= 1.0f) continue;
+        glm::mat4 model;
+        mc2::math::buildRotation(model, particle->m_localRotation);
+        const auto direction = camera - particle->m_localTranslation;
+        if (spec->m_alignZUsingX)
+            mc2::math::alignLocalAxisToWorldVector(model, direction, Stuff::Z_Axis,
+                spec->m_alignZUsingY ? Stuff::Y_Axis : Stuff::X_Axis,
+                spec->m_alignZUsingY ? Stuff::X_Axis : -1);
+        else if (spec->m_alignZUsingY)
+            mc2::math::alignLocalAxisToWorldVector(model, direction, Stuff::Z_Axis, Stuff::Y_Axis, -1);
+        mc2::math::buildTranslation(model, particle->m_localTranslation);
+        const auto world = model * localToWorld;
+        const glm::vec3 scale(particle->m_scale);
+        draw.shapeToWorld = &world;
+        draw.scaling = &scale;
+        draw.paintMe = &particle->m_color;
+        DrawNativeShape(draw);
+    }
+    SpinningCloud::Draw(info);
 }
+
 
 //------------------------------------------------------------------------------
 //

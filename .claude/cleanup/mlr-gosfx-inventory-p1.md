@@ -426,3 +426,22 @@ Final build/7 covering rows/21 Python tests/native frozen tests/smoke-lite pass;
 Vulkan validation is clean. Final OFF/ON pair matches 1,788 sim frames, but the
 committed-baseline stage fails because mc2_01 has no baseline in this checkout.
 Do not present this as a passing committed-baseline check. Baselines unchanged.
+
+
+### Packet 9 runtime update (2026-10-26; supersedes the opening runtime table)
+
+Shape, ShapeCloud and DebrisCloud now submit per-primitive native meshes; their
+CPU scaled submission and MLRClipper::DrawScalableShape are deleted. Primitive
+materials combine the instance and authored state, polygon indices become fans,
+and the deferred mesh queue resolves MLR texture indices after ForceLoadImages.
+Pert emits live center/edge-colored fans and has no MLR owner; MLRNGonCloud is
+removed. The LAB-only frustum caller and MLRClipper::DrawShape are also removed.
+No gate flips. Stock mesh and synthetic Pert witnesses are in the P9 proof dir;
+see the design's P9 section for the exact reference commits and scope.
+
+The remaining live default MLR geometry route is opaque/untextured Tube ->
+DrawEffect -> MLRIndexedTriangleCloud. Camera/state/texture setup and asset codecs
+remain. Primitive clipping/lighting/sorter mesh queues are now deletion candidates,
+not asset-codec deletion permission. MLR is 49 compiled C++ files / 20,821 lines,
+105 source/header files / 33,677 physical lines. CPU effect simulation and its
+camera-dependent cosmetic ordering remain unchanged.

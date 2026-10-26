@@ -455,3 +455,32 @@ closure only after visual acceptance. If it remains costly, move immediately to
 Shape per-primitive material spans and triangulation, followed by populated
 ShapeCloud/DebrisCloud/Pert native draws. Delete each proven unused MLR closure
 as its consumers disappear; retain decoding until editor/tools consumers move.
+
+
+### Packet 9: scaled mesh and Pert CPU retirement (2026-10-26)
+
+Engine `90166c8f7`: **1,277 engine lines deleted, 253 added, net -1,024**
+against P8 `3fa3aa039`. Accept the covered stock Shape (10 specs), ShapeCloud
+(9) and DebrisCloud (34) at the visible-correctness bar, plus the populated
+six-sided Pert fixture. Preserve each primitive's combined material, triangulate
+polygon fans, and resolve textures/draw after scene depth. Remove their scaled
+MLR submissions, DrawScalableShape, the LAB-only DrawShape caller/implementation,
+Pert's MLR owner, MLRNGonCloud and the unused cloud submission header. Serialized
+class ordinals and gosFX asset decoding remain. Gates were already ON; none flip.
+
+CPU references are pinned to `b841bd7f9` (stock meshes) and `18dadd773`
+(Pert). The latter CPU control is invisible at the chosen pose; the native fan
+has the intended topology and center/edge gradient, independently checked by the
+frozen live-payload tests. This is visible acceptance, not pixel parity or a
+claim that the CPU projection bug is solved. Final receipts and the owner montage
+live under `E:/mc2-archive-2026-10/proofs/mlr-retire-p1/p9-*` and
+`owner-montage-p9.png`. MLR: 49 compiled C++ files / 20,821 lines; 105 source/header
+files / 33,677 physical lines. Opaque/untextured Tube keeps its CPU fallback.
+
+Next packet: prune the now-undispatched primitive transform/clip/light and sorter
+mesh queues, retaining Tube's indexed effect dispatch and the codecs still used
+by game/editor/FX tools. Then separate shape/state/texture decoding from MLR and
+remove its remaining initialization/build closure. Leave opaque Tube alone until
+its authored material/projection contract is resolved. CPU Execute/emission/curves,
+authoritative lifetimes and sim RNG are unchanged; camera-dependent legacy effect
+ordering must still be separated before GPU simulation replaces Execute.

@@ -48,7 +48,6 @@ set(SOURCES ${SOURCES}
     mlrclippingstate.cpp
     mlreffect.cpp
     mlrindexedtrianglecloud.cpp
-    mlrngoncloud.cpp
     mlrtrianglecloud.cpp
     mlr.cpp
     mlrheaders.cpp

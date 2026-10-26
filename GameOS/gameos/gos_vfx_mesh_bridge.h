@@ -11,7 +11,7 @@ extern "C" {
 // contiguously); uvs are 2 floats per vertex; indices are 16-bit, triangle
 // list. vertexCount == number of (x,y,z) triples == number of (u,v) pairs.
 struct GosVfxMeshUpload {
-    uint64_t       meshId;        // stable key (MLRShape* cast to uint64)
+    uint64_t       meshId;        // stable key (MLR primitive pointer cast to uint64)
     const float*   positions;     // vertexCount * 3 floats (model space)
     const float*   uvs;           // vertexCount * 2 floats (may be null -> 0,0)
     const uint16_t* indices;      // indexCount * uint16 (triangle list)
@@ -28,13 +28,13 @@ struct GosVfxMeshInstance {
     float    modelToWorld[16];    // column-major 4x4 (GL native, column-vector)
     float    scale;               // uniform model scale
     float    rgba[4];             // per-instance paint color (0..1)
-    uint32_t gosTexHandle;        // GOS texture handle (already resolved by mclib), 0 = untextured white
-    int      blendMode;           // 0 = alpha (SRC_ALPHA,ONE_MINUS_SRC_ALPHA), 1 = additive (SRC_ALPHA,ONE)
+    uint32_t mlrTexHandle;        // MLR pool index, resolved after ForceLoadImages; 0 = untextured
+    int      blendMode;           // Same 0..5 blend recipes as the native Tube bridge
 };
 
 // Per-frame flush. uploads[] supplies geometry for any meshId not yet cached;
-// instances[] are drawn in submission order (effect-phase order — no global
-// translucency re-sort). No-op when count==0. Vulkan owns the upload ring,
+// instances[] are queued in submission order and drained after scene depth and
+// texture loading. No-op when count==0. Vulkan owns the upload ring,
 // descriptors and pipelines. Safe to call every frame; uploads are skipped
 // on cache hits.
 void gos_vfx_mesh_flush(const GosVfxMeshUpload*   uploads,
@@ -45,5 +45,6 @@ void gos_vfx_mesh_flush(const GosVfxMeshUpload*   uploads,
 // Runtime witness, called only by MC2_FX_FORCE_SPAWN=9. Draws alpha and additive
 // untextured triangles through the same mesh cache and transform as gosFX shapes.
 void gos_vfx_mesh_fixture(const float origin[3]);
+void gos_vfx_mesh_flush_deferred();
 
 }  // extern "C"
