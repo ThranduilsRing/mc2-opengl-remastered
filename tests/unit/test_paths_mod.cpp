@@ -32,11 +32,15 @@
 #include <cstring>
 #include <string>
 
+#ifdef _WIN32
 #include <direct.h>   // _mkdir / _rmdir
+#else
+#include "platform_io.h"
+#endif
 #ifdef _WIN32
 #include <io.h>       // _dup / _dup2 / _close for captureStdout
 #endif
-#include <windows.h>  // (paths.cpp uses PATH_SEPARATOR; nothing needed at runtime here)
+#include "platform_windows.h"
 
 namespace
 {

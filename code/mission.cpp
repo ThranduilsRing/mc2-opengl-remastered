@@ -394,7 +394,7 @@ long Mission::submitPlayerOrder(Mover* mover, const ::TacticalOrder& legacy, boo
     }
     const auto binding = std::ranges::find(orderRecipients, mover, &OrderRecipientBinding::mover);
     const auto recipient = binding != orderRecipients.end() && resolveOrderRecipient(binding->ref)
-        ? binding->ref : ObjectRef{0x80000000u | static_cast<std::uint32_t>(mover->getHandle()), mover->getWatchID(false)};
+        ? binding->ref : ObjectRef{0x80000000u | static_cast<std::uint32_t>(mover->getHandle()), static_cast<std::uint32_t>(mover->getWatchID(false))};
     OrderEnvelope e;
     e.sourceId = 2; e.sequence = source->nextSequence;
     e.issuer = CommanderId{static_cast<std::uint32_t>(mover->getCommanderId())};
@@ -431,7 +431,7 @@ long Mission::submitPlayerOrder(Mover* mover, const ::TacticalOrder& legacy, boo
     if (legacy.targetWID) {
         auto* target = ObjectManager->getByWatchID(legacy.targetWID);
         if (!target || target->getPartId() <= 0) return 1;
-        p.target = ObjectRef{static_cast<std::uint32_t>(target->getPartId()), target->getWatchID(false)};
+        p.target = ObjectRef{static_cast<std::uint32_t>(target->getPartId()), static_cast<std::uint32_t>(target->getWatchID(false))};
     }
     const auto admitted = submitMissionOrder(orderSession(), std::move(e));
     if (!admitted) mc2::fmt::print_err("[ORDER_INGRESS v1] player_rejected part={} reason={}\n",

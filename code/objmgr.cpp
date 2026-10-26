@@ -12,6 +12,9 @@
 #include "objmgr_internal.h"
 #include "mc2fmt.h"
 
+GameObjectManager::GameObjectManager() { init(); }
+GameObjectManager::~GameObjectManager() { destroy(); }
+
 
 // ---------------------------------------------------------------------------
 // MF3-GENERATIONAL-HANDLE-1: generational watch-id validation killswitch.

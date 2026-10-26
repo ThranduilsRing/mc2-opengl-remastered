@@ -15,7 +15,7 @@
 
 namespace {
 struct Strip {
-	std::vector<unsigned long> pixels;   // top-to-bottom rows, BGRA
+	std::vector<DWORD> pixels;   // top-to-bottom rows, BGRA (32 bits on every host)
 	long width = 0, height = 0;
 	AssetScale::AssetKey key;
 	bool valid = false;
@@ -73,7 +73,7 @@ const Strip* load(std::string_view base, float iconX, float iconY)
 }
 }
 
-bool mechicon_package_hud::blit(Mover* unit, float iconX, float iconY, bool back, unsigned long* dest, int stride, int width, int height)
+bool mechicon_package_hud::blit(Mover* unit, float iconX, float iconY, bool back, DWORD* dest, int stride, int width, int height)
 {
 	const mc2pkg::PackageChassis* pc = unit ? packageChassisByTypeNum(unit->getTypeHandle()) : nullptr;
 	if (!pc || pc->hudIcon.empty()) return false;

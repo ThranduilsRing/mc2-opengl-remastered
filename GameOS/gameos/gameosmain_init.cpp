@@ -32,6 +32,7 @@ void initDpiAwareness() {
 
 // Hand a direct start off to mc2-launcher.exe; true when the launcher was started and this process must exit.
 bool initLauncherBootstrap() {
+#ifdef _WIN32
     // [LAUNCHER-BOOTSTRAP v1] If mc2.exe was started directly (double-click /
     // shortcut) and NOT by mc2-launcher.exe, hand off to the launcher so the
     // player gets the options front-end first. The launcher sets MC2_LAUNCHED=1
@@ -70,6 +71,7 @@ bool initLauncherBootstrap() {
             }
         }
     }
+#endif
     return false;
 }
 

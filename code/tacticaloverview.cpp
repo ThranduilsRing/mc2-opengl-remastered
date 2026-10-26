@@ -5,7 +5,6 @@
 #include <cmath>
 // DEBUGWINS_print is defined in code/ablmc2.cpp (not exported via a header).
 // Use OutputDebugStringA as the debug log sink for this TU.
-#include <windows.h>
 #include "../mclib/camera.h"
 #include "../mclib/appear.h"   // DRAW_BARS (maskWorldBars)
 #include "Gates/gate.h"
@@ -81,7 +80,7 @@ void TacticalOverview::advance(float dt) {
     state_.update(dt);
     if (before != state_.t() && mc2::gate::get<"MC2_TACTICAL_OVERVIEW_DEBUG">()) {
         char buf[96];
-        sprintf_s(buf, sizeof(buf), "[TacOverview] t=%.3f iconA=%.3f", state_.t(), state_.iconAlpha());
+        mc2::fmt::to_buf(buf, "[TacOverview] t={:.3f} iconA={:.3f}", state_.t(), state_.iconAlpha());
         mc2::fmt::debug_out(buf);
     }
 }

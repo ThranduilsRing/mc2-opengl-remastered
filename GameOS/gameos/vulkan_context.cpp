@@ -19,11 +19,15 @@
 // VK_USE_PLATFORM_WIN32_KHR in volk/vulkan_core.h, enabled below when wantPresent.
 // On a macOS/Metal port this whole define + the surface pair become a platform branch
 // (VK_EXT_metal_surface via SDL_Vulkan_GetInstanceExtensions).
-#ifndef VK_USE_PLATFORM_WIN32_KHR
+#if defined(_WIN32) && !defined(VK_USE_PLATFORM_WIN32_KHR)
 #define VK_USE_PLATFORM_WIN32_KHR
 #endif
 
 #include "vulkan_context.h"
+#ifndef _WIN32
+#define NO_SDL_VULKAN_TYPEDEFS
+#include <SDL2/SDL_vulkan.h>
+#endif
 #include <tracy/Tracy.hpp>
 #include "mc2_diag_verbose.h"
 #include "diagnostic_trace.h"
@@ -222,8 +226,15 @@ bool VulkanContext::init(bool wantPresent) {
     // (SDL requires exactly these), so we do not need an SDL window before
     // instance creation.
     if (wantPresent) {
+#ifdef _WIN32
         instExts.push_back(VK_KHR_SURFACE_EXTENSION_NAME);
         instExts.push_back(VK_KHR_WIN32_SURFACE_EXTENSION_NAME);
+#else
+        unsigned count = 0;
+        if (!SDL_Vulkan_GetInstanceExtensions(nullptr, &count, nullptr)) return false;
+        instExts.resize(count);
+        if (!SDL_Vulkan_GetInstanceExtensions(nullptr, &count, instExts.data())) return false;
+#endif
     }
 
     if (wantValidation) {

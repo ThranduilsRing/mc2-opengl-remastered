@@ -60,12 +60,17 @@ def check_entry(command, is_clang=None):
         if FORBIDDEN_RE.search(t):
             problems.append(f"forbidden flag {t}")
     fps = [m.group(1).lower() for m in (FP_RE.match(t) for t in tokens) if m]
-    if not fps or fps[-1] != "precise":
+    compiler = os.path.basename(tokens[0].strip('"')).lower() if tokens else ""
+    native = bool(re.fullmatch(r"(?:c\+\+|g\+\+|gcc|cc|clang(?:\+\+)?)(?:-\d+(?:\.\d+)*)?", compiler))
+    if native:
+        if "-fno-fast-math" not in tokens:
+            problems.append("native compiler needs -fno-fast-math")
+    elif not fps or fps[-1] != "precise":
         problems.append(f"last /fp: switch is {fps[-1] if fps else 'missing'}, needs /fp:precise")
-    if is_clang:
+    if is_clang or native:
         cs = [m.group(1).lower() for m in (CONTRACT_RE.match(t) for t in tokens) if m]
         if not cs or cs[-1] != "off":
-            problems.append(f"clang-cl last -ffp-contract= is {cs[-1] if cs else 'missing'}, needs off")
+            problems.append(f"compiler last -ffp-contract= is {cs[-1] if cs else 'missing'}, needs off")
     return problems
 
 

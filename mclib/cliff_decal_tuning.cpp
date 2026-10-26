@@ -4,7 +4,7 @@
 
 #include "cliff_decal_tuning.h"
 
-#include "Stuff/Stuff.hpp"
+#include "stuff/stuff.hpp"
 #include "gos_static_prop_registry.h"
 
 #include <cmath>

@@ -12,7 +12,7 @@
 #include "Gates/gate_cold.h"
 #include "gos_postprocess.h"
 #include "RenderCore/GpuResidencyPolicy.h"
-#include <windows.h>
+#include "platform_windows.h"
 #undef min
 #undef max
 #include <algorithm>
@@ -104,7 +104,8 @@ void saveLocked(State& s) {
     std::vector<unsigned char> data(bytes);
     if (vkGetPipelineCacheData(s.dev,s.cache,&bytes,data.data())!=VK_SUCCESS) return;
     CacheHeader h=s.identity; h.bytes=bytes; h.hash=hashBytes(data.data(),bytes);
-    const auto tmp=s.cachePath.wstring()+L".tmp";
+    auto tmp=s.cachePath;
+    tmp += ".tmp";
     { std::ofstream out(tmp,std::ios::binary|std::ios::trunc); out.write(reinterpret_cast<const char*>(&h),sizeof(h)); out.write(reinterpret_cast<const char*>(data.data()),bytes); out.flush(); if (!out) return; }
     std::error_code ec; std::filesystem::rename(tmp,s.cachePath,ec);
     if (!ec) {

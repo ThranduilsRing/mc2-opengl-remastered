@@ -301,7 +301,6 @@ extern "C" int mc2_terrain_tier1_get_load_feed(Mc2TerrainTier1Feed* out)
         const float* b = gos_TerrainLodChunk_ShorelineMaskBounds();
         for (int i = 0; i < 4; ++i) out->shorelineBounds[i] = b ? b[i] : 0.0f;
         // SHORE-FIELD-1: the water's smooth shore field, so the coastal colormap follows the drawn coast.
-        extern int gos_WaterShoreMode();
         const auto& sf = fields->waterShoreHeight();
         const bool haveSf = gos_WaterShoreMode() == 3 && !sf.texels.empty() && sf.width > 1 && sf.height > 1;
         out->shoreFieldTexels  = haveSf ? sf.texels.data() : nullptr;
@@ -390,7 +389,6 @@ extern "C" int mc2_terrain_tier1_get_load_feed(Mc2TerrainTier1Feed* out)
                 fflush(stderr);
             }
         }
-        extern void gos_GetTerrainCameraPos(float*, float*, float*);
         float cx = 0.0f, cy = 0.0f, cz = 0.0f;
         gos_GetTerrainCameraPos(&cx, &cy, &cz);
         out->cameraPosMC2[0] = cx;

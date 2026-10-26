@@ -37,14 +37,14 @@ extern "C" {
 
 using CHAR = char;
 using SHORT = short;
-using LONG = long;
+using LONG = int32_t;
 using CCHAR = char;
 using PCCHAR = char*;
 using UCHAR = unsigned char;
 using PUCHAR = unsigned char*;
 using USHORT = unsigned short;
 using PUSHORT = unsigned short*;
-using ULONG = unsigned long;
+using ULONG = uint32_t;
 using PULONG = unsigned long*;
 using PSZ = char*;
 

@@ -26,6 +26,7 @@
 
 namespace vk_terrain_detail {
 
+
 bool g_ovlDeclined = false;
 std::vector<OvlPending> g_ovlPending;
 

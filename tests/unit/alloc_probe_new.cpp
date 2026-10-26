@@ -10,6 +10,11 @@
 // Nonzero: every new block is filled with this byte (test_object_zero_new.cpp proves a zero-fill against it).
 unsigned char g_unitNewPoison = 0;
 
+void observeProbeAllocation(const void* pointer) noexcept {
+    static const void* volatile observed;
+    observed = pointer;
+}
+
 namespace {
 
 void* probeNew(size_t bytes)

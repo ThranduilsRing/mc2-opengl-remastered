@@ -25,6 +25,8 @@ from pathlib import Path
 from typing import Callable, List, Optional
 
 _DEFAULT_DIR = Path("A:/Games/mc2-opengl/.smoke_children")
+if sys.platform == "linux":
+    _DEFAULT_DIR = Path.home() / ".cache/mc2/smoke_children"
 REGISTRY_DIR = Path(os.environ.get("MC2_CHILD_REGISTRY_DIR") or _DEFAULT_DIR)
 
 _PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
@@ -53,6 +55,12 @@ def pid_alive(pid: int) -> bool:
             return code.value == _STILL_ACTIVE
         finally:
             k32.CloseHandle(h)
+    if sys.platform == "linux":
+        try:
+            if Path(f"/proc/{pid}/stat").read_text().rsplit(")", 1)[1].split()[0] == "Z":
+                return False  # Exited children remain in /proc until their parent reaps them.
+        except (OSError, IndexError):
+            pass
     try:
         os.kill(int(pid), 0)    # POSIX only: signal 0 sends nothing
     except ProcessLookupError:
@@ -63,7 +71,13 @@ def pid_alive(pid: int) -> bool:
 
 
 def process_create_time(pid: int) -> Optional[int]:
-    """FILETIME (100 ns ticks) at which the process was created; None if unknown."""
+    """Stable start token (Windows FILETIME or Linux boot ticks); None if unknown."""
+    if sys.platform == "linux" and pid > 0:
+        try:
+            # /proc stat field 22: boot-relative start ticks, stable across PID reuse.
+            return int(Path(f"/proc/{pid}/stat").read_text().rsplit(")", 1)[1].split()[19])
+        except (OSError, ValueError, IndexError):
+            return None
     if os.name != "nt" or pid <= 0:
         return None
     import ctypes
@@ -82,7 +96,7 @@ def process_create_time(pid: int) -> Optional[int]:
 
 
 #: Image names of the engines the host lease serialises (the game, its ASan twin, the mission editor); lower case.
-ENGINE_IMAGES = frozenset({"mc2.exe", "mc2-asan.exe", "editrel.exe", "mission editor.exe"})
+ENGINE_IMAGES = frozenset({"mc2.exe", "mc2-asan.exe", "mc2", "editrel.exe", "mission editor.exe"})
 
 
 class _PROCESSENTRY32W:
@@ -107,6 +121,17 @@ def engine_processes(images=ENGINE_IMAGES, exclude: Optional[set] = None) -> Lis
     """Running engine processes as (pid, image name), read from a Toolhelp snapshot: no subprocess, no desktop call, never kills.
     WHY here and not behind the cursor-guard switch: whether another lane's engine is running is a fact the lease needs in every
     environment, including one that has the test switch set."""
+    if sys.platform == "linux":
+        out = []
+        for entry in Path("/proc").glob("[0-9]*"):
+            try:
+                pid = int(entry.name)
+                name = (entry / "comm").read_text().strip()
+                if name in images and pid not in (exclude or set()):
+                    out.append((pid, name))
+            except (OSError, ValueError):
+                continue
+        return out
     if os.name != "nt":
         return []
     import ctypes
@@ -135,6 +160,11 @@ def engine_processes(images=ENGINE_IMAGES, exclude: Optional[set] = None) -> Lis
 
 def image_path(pid: int) -> Optional[str]:
     """Full path of the process image, lower-cased with forward slashes; None if unknown."""
+    if sys.platform == "linux" and pid > 0:
+        try:
+            return _norm(os.readlink(f"/proc/{pid}/exe"))
+        except OSError:
+            return None
     if os.name != "nt" or pid <= 0:
         return None
     import ctypes
@@ -154,7 +184,8 @@ def image_path(pid: int) -> Optional[str]:
 
 
 def _norm(p: str) -> str:
-    return str(p).replace("\\", "/").casefold()
+    path = str(p).replace("\\", "/")
+    return path.casefold() if os.name == "nt" else path
 
 
 def _record_path(pid: int) -> Path:
@@ -220,8 +251,15 @@ def kill_if_orphan(pid: int, **kw) -> "tuple[bool, str]":
         from . import nofocus
     except ImportError:
         from smoke_lib import nofocus
-    subprocess.run(["taskkill", "/F", "/PID", str(pid)], stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
-                   **nofocus.hidden_kwargs())
+    if os.name == "nt":
+        subprocess.run(["taskkill", "/F", "/PID", str(pid)], stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+                       **nofocus.hidden_kwargs())
+    else:
+        import signal
+        try:
+            os.kill(pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
     forget(pid)
     return True, why
 

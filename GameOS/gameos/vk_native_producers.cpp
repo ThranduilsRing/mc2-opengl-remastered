@@ -15,6 +15,7 @@
 #include <vk_mem_alloc.h>
 
 #include <algorithm>
+#include <cmath>
 #include <cstdarg>
 #include <cstdio>
 #include <cstdlib>

@@ -1,5 +1,6 @@
 #ifndef _WINDEF_H
 #define _WINDEF_H
+#include <stdint.h>
 
 // Keep the platform macros usable from C while naming C++ conversions.
 #ifdef __cplusplus

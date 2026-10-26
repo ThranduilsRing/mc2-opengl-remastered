@@ -246,7 +246,6 @@ extern "C" int mc2_color_prop_island_get_material_feed(Mc2ColorPropMaterialFeed*
 
     // Terrain sun (MC2 world, surface->sun) — same vector the GL prop VS uses for the
     // directional term (STATIC-PROP-TERRAIN-SUN-DIFFUSE). Provides computePBR's L.
-    extern void gos_GetTerrainLightDir(float*, float*, float*);
     float tsx = 0.0f, tsy = 0.0f, tsz = 1.0f;
     gos_GetTerrainLightDir(&tsx, &tsy, &tsz);
     out->terrainSunMC2[0] = tsx;

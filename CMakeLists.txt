@@ -70,7 +70,10 @@ if(NOT MSVC)
     # CXX17-1 2026-05-24: removed dead -std=c++0x (project standard now set via
     # CMAKE_CXX_STANDARD 17 above; this branch is never reached on Windows builds).
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ggdb")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unused-local-typedefs -Werror=array-bounds -Wno-switch -Wwrite-strings -Wno-unknown-warning-option -Wunused-variable -fpermissive") # -fsanitize=address -fno-omit-frame-pointer")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unused-local-typedefs -Werror=array-bounds -Wno-switch -Wwrite-strings -Wno-unknown-warning-option -Wunused-variable")
+    if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+        add_compile_options("$<$<COMPILE_LANGUAGE:CXX>:-fpermissive>")
+    endif()
 endif()
 # -Wno-unused-local-typedefs - to disable "typedef was ignored on this declaration"
 
@@ -231,10 +234,16 @@ if(NOT MC2_ASAN)
     add_definitions(-DTRACY_ON_DEMAND)
     # Disable ETW kernel sampling (requires elevated privileges, not needed for zone profiling)
     add_definitions(-DTRACY_NO_SYSTEM_TRACING)
+    if(NOT WIN32)
+        # Linux guests may hide invariant TSC; Tracy uses CLOCK_MONOTONIC_RAW.
+        add_compile_definitions(TRACY_TIMER_FALLBACK)
+    endif()
 endif()
 
 find_package(SDL2 REQUIRED CONFIG REQUIRED COMPONENTS SDL2)
-find_package(SDL2 REQUIRED CONFIG REQUIRED COMPONENTS SDL2main)
+if(WIN32)
+    find_package(SDL2 REQUIRED CONFIG REQUIRED COMPONENTS SDL2main)
+endif()
 find_package(SDL2_mixer REQUIRED)
 #required by text_tool
 find_package(SDL2_ttf REQUIRED)
@@ -263,6 +272,9 @@ foreach(MC2_PREFIX_PATH_ENTRY IN LISTS CMAKE_PREFIX_PATH)
     endif()
 endforeach()
 list(APPEND THIRDPARTY_INCLUDE_DIRS "${MC2_SOURCE_DIR_CMAKE}/3rdparty/include")
+if(NOT WIN32)
+    list(APPEND THIRDPARTY_INCLUDE_DIRS "${MC2_SOURCE_DIR_CMAKE}/3rdparty/glm")
+endif()
 # Tracy headers resolve as <tracy/Tracy.hpp>
 list(APPEND THIRDPARTY_INCLUDE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/3rdparty/tracy")
 
@@ -384,10 +396,10 @@ add_subdirectory("GuiRuntime")
 include(cmake/Mc2NarrowingErrors.cmake)  # per-target /we for narrowing codes; after all lib targets exist
 # Standalone ImGui UI Editor: configured always, built only on request (`ninja ui_editor`).
 add_subdirectory("./ui_editor" "./out/ui_editor" EXCLUDE_FROM_ALL)
-if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/tools/asset_viewer/CMakeLists.txt")
+if(WIN32 AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/tools/asset_viewer/CMakeLists.txt")
     add_subdirectory("./tools/asset_viewer" "./out/tools/asset_viewer")
 endif()
-if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/tools/mc2_launcher/CMakeLists.txt")
+if(WIN32 AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/tools/mc2_launcher/CMakeLists.txt")
     add_subdirectory("./tools/mc2_launcher" "./out/tools/mc2_launcher")
 endif()
 # mc2fx — standalone gosFX .fx blob inspector (opt-in; curated game-free target).
@@ -784,27 +796,30 @@ install(FILES ${FFmpegLGPL_RUNTIME_DLLS} DESTINATION ".")
 # mc2res) and explicit filenames for ZLIB (their IMPORTED_LOCATION
 # points at the .lib import library). vcpkg colocates all DLLs next to
 # SDL2.dll, so anchor on $<TARGET_FILE_DIR:SDL2::SDL2>.
-set(_mc2_runtime_dll_targets
-    SDL2::SDL2
-    SDL2_mixer::SDL2_mixer
-    mc2res_64
-)
-foreach(_t IN LISTS _mc2_runtime_dll_targets)
-    add_custom_command(TARGET mc2 POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different
-                "$<TARGET_FILE:${_t}>" "$<TARGET_FILE_DIR:mc2>"
-        VERBATIM
+set(_mc2_runtime_dll_targets "")
+if(WIN32)
+    set(_mc2_runtime_dll_targets
+        SDL2::SDL2
+        SDL2_mixer::SDL2_mixer
+        mc2res_64
     )
-endforeach()
+    foreach(_t IN LISTS _mc2_runtime_dll_targets)
+        add_custom_command(TARGET mc2 POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                    "$<TARGET_FILE:${_t}>" "$<TARGET_FILE_DIR:mc2>"
+            VERBATIM
+        )
+    endforeach()
 
-foreach(_dll_name zlib1.dll)
-    add_custom_command(TARGET mc2 POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different
-                "$<TARGET_FILE_DIR:SDL2::SDL2>/${_dll_name}"
-                "$<TARGET_FILE_DIR:mc2>"
-        VERBATIM
-    )
-endforeach()
+    foreach(_dll_name zlib1.dll)
+        add_custom_command(TARGET mc2 POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                    "$<TARGET_FILE_DIR:SDL2::SDL2>/${_dll_name}"
+                    "$<TARGET_FILE_DIR:mc2>"
+            VERBATIM
+        )
+    endforeach()
+endif()
 
 # ASan runtime DLL must sit next to mc2.exe. Without it the exe fails to
 # launch with status 0xC0000139 (entry point not found). The DLL ships with
@@ -882,7 +897,7 @@ add_subdirectory("./text_tool" "./out/text_tool")
 # terrain-shader/.fit/resource rework deliberately NOT merged.
 # MC2_EDITOR gate: editor is ImGui-coupled and forces MC2_IMGUI=ON. Skipping it
 # lets mc2 build MC2_IMGUI=OFF (Vulkan parity island). Default ON = no change.
-if(MC2_EDITOR)
+if(MC2_EDITOR AND MSVC)
     add_subdirectory("./editor" "./out/editor")
     # gameos_editor recompiles every gameos source with a different define set (MC2_IMGUI/MC2_RNG_TRACE are
     # only set on gameos), so the objects cannot be shared. Build the editor on request instead of doubling
@@ -982,8 +997,10 @@ if(MC2_BUILD_TESTS)
         add_custom_command(TARGET mc2_authored_order_seam POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E copy_if_different "$<TARGET_FILE:${_t}>" "$<TARGET_FILE_DIR:mc2_authored_order_seam>")
     endforeach()
-    foreach(_dll zlib1.dll)
-        add_custom_command(TARGET mc2_authored_order_seam POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E copy_if_different "$<TARGET_FILE_DIR:SDL2::SDL2>/${_dll}" "$<TARGET_FILE_DIR:mc2_authored_order_seam>")
-    endforeach()
+    if(WIN32)
+        foreach(_dll zlib1.dll)
+            add_custom_command(TARGET mc2_authored_order_seam POST_BUILD
+                COMMAND ${CMAKE_COMMAND} -E copy_if_different "$<TARGET_FILE_DIR:SDL2::SDL2>/${_dll}" "$<TARGET_FILE_DIR:mc2_authored_order_seam>")
+        endforeach()
+    endif()
 endif()

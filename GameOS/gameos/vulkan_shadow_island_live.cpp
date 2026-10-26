@@ -1,7 +1,7 @@
 // One D16 mover map and the readiness-gated static bake, on the shared Vulkan device.
 #ifdef MC2_VULKAN_ISLAND
 
-#ifndef VK_USE_PLATFORM_WIN32_KHR
+#if defined(_WIN32) && !defined(VK_USE_PLATFORM_WIN32_KHR)
 #define VK_USE_PLATFORM_WIN32_KHR
 #endif
 

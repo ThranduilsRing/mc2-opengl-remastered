@@ -110,6 +110,15 @@ def test_enumerate_payload_finds_ninja_launcher(tmp_path):
     assert Path(launcher) == b / "out" / "mc2_launcher" / "mc2-launcher.exe"
 
 
+def test_native_payload_has_no_windows_runtime(tmp_path):
+    b = _ninja_tree(tmp_path)
+    _touch(b / "mc2")
+    items = dp.enumerate_payload(str(ROOT), str(b), "mc2", "mc2.pdb")
+    rel = {r for _s, r, _k in items}
+    assert "mc2" in rel
+    assert not any(r.endswith((".exe", ".dll", ".pdb", ".bat")) for r in rel)
+
+
 def test_stale_exe_detected_in_ninja_tree(tmp_path):
     """An .obj newer than the exe means the link did not happen."""
     b = _ninja_tree(tmp_path)
@@ -129,6 +138,28 @@ def test_fresh_exe_passes_in_ninja_tree(tmp_path):
     os.utime(b / "CMakeFiles" / "mc2.dir" / "code" / "a.cpp.obj", (now - 100, now - 100))
     os.utime(b / "mc2.exe", (now, now))
     dp.check_exe_fresh(str(b / "mc2.exe"), str(b), False)
+
+
+def test_stale_native_object_refuses_deploy(tmp_path):
+    import pytest
+    b = tmp_path / "build64-ninja"
+    _touch(b / "build.ninja")
+    _touch(b / "mc2", time.time() - 100)
+    _touch(b / "CMakeFiles/mc2.dir/code/main.cpp.o", time.time())
+    with pytest.raises(SystemExit):
+        dp.check_exe_fresh(str(b / "mc2"), str(b), False)
+
+
+def test_native_deploy_preserves_execute_permission(tmp_path, monkeypatch):
+    import pytest
+    if os.name == "nt":
+        pytest.skip("POSIX execute permission")
+    monkeypatch.setattr(dp, "ensure_terrain_materials", lambda target: {})
+    source = _touch(tmp_path / "build" / "mc2")
+    source.chmod(0o755)
+    target = tmp_path / "install"
+    dp.deploy([(str(source), "mc2", "exe")], str(target), False)
+    assert os.access(target / "mc2", os.X_OK)
 
 
 def test_missing_vegetation_card_refuses_deploy(tmp_path, monkeypatch, capsys):

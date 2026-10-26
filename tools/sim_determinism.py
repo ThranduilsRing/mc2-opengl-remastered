@@ -84,7 +84,8 @@ OVERLAY_MANIFEST = os.path.join(BASELINE_DIR, "data_overlay.json")
 
 
 def baseline_path(mission: str) -> str:
-    return os.path.join(BASELINE_DIR, mission + ".json")
+    directory = os.path.join(BASELINE_DIR, "linux") if sys.platform == "linux" else BASELINE_DIR
+    return os.path.join(directory, mission + ".json")
 
 
 def _sha256(path: str) -> str:
@@ -294,7 +295,7 @@ def smoke_target(install: str, ref_exe: str | None = None, ref_commit: str | Non
     commit (an A/B across a refactor) is judged against that commit or those bytes instead of HEAD; without it run_smoke compares with HEAD."""
     install = resolve_install(install)
     lane = lane_model.lane_for(install)
-    target = ["--deploy", lane[0]] if lane else ["--exe", os.path.join(install, "mc2.exe")]
+    target = ["--deploy", lane[0]] if lane else ["--exe", os.path.join(install, "mc2.exe" if os.name == "nt" else "mc2")]
     if ref_exe and ref_commit:
         raise ValueError("--ref-exe and --ref-commit are exclusive (run_smoke.py accepts one fingerprint reference)")
     if ref_exe:
@@ -511,9 +512,9 @@ def selftest() -> int:
             seen.append(cmd)
             raise _Stop
 
-        with patch(__name__ + ".subprocess.run", side_effect=fake):
+        with tempfile.TemporaryDirectory() as out, patch(__name__ + ".subprocess.run", side_effect=fake):
             try:
-                run_mission("m", "10", tempfile.gettempdir(), sim_speed=speed)
+                run_mission("m", "10", out, sim_speed=speed)
             except _Stop:
                 pass
         return seen[0] if seen else []

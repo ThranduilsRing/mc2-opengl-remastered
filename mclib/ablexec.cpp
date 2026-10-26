@@ -12,6 +12,7 @@
 #include<string.h>
 #include<utility>
 #include "mc2fmt.h"
+#include "platform_intrinsics.h"
 
 #ifndef ABLGEN_H
 #include"ablgen.h"
@@ -558,9 +559,9 @@ void freeLocal (SymTableNodePtr idPtr) {
 				// Belt-and-suspenders: even a "plausible" pointer from a foreign .abx
 				// stack-layout mismatch may not actually belong to our heap; an SEH
 				// frame guarantees a bad free can never crash the mission (leak at worst).
-				__try {
+				MC2_SEH_TRY {
 					ABL_free(ABLPool::Stack, itemPtr->address);
-				} __except (1 /*EXCEPTION_EXECUTE_HANDLER*/) {
+				} MC2_SEH_EXCEPT (1 /*EXCEPTION_EXECUTE_HANDLER*/) {
 				}
 			}
 		}

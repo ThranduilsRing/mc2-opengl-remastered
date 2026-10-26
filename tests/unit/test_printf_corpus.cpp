@@ -6,6 +6,7 @@
 #include "doctest.h"
 
 #include "mc2fmt.h"
+#include "msvc_printf_reference.h"
 
 #include <climits>
 #include <cstdint>
@@ -17,7 +18,7 @@
 
 namespace {
 constexpr long long kEdgeI32[] = {0, 1, -1, 7, 42, -42, 255, 65535, 1000000, INT_MAX, INT_MIN};
-constexpr long long kEdgeU32[] = {0, 1, 255, 4096, 0xDEADBEEFll, 0xFFFFFFFFll, -1ll};
+constexpr uint32_t kEdgeU32[] = {0, 1, 255, 4096, 0xDEADBEEFu, 0xFFFFFFFFu, static_cast<uint32_t>(-1)};
 constexpr long long kEdgeI64[] = {0, 1, -1, 123456789012345ll, LLONG_MAX, LLONG_MIN};
 constexpr unsigned long long kEdgeU64[] = {0, 1, 0xFFFFFFFFull, 0x100000000ull, ULLONG_MAX};
 constexpr long long kEdgeCHR[] = {65, 97, 122, 32, 48, 126};
@@ -46,7 +47,11 @@ TEST_CASE("known divergence: the sign-bit-set (indefinite) NaN prints -nan(ind) 
 	char a[32], b[32];
 	std::snprintf(a, sizeof a, "%f", v);
 	mc2::fmt::to_buf(b, "{:f}", v);
+#ifdef _WIN32
 	CHECK(std::string(a) == "-nan(ind)");
+#else
+    CHECK(std::string(a) == "-nan");
+#endif
 	CHECK(std::string(b) == "-nan");
 }
 
@@ -59,6 +64,10 @@ TEST_CASE("the corpus comparison detects a wrong conversion" * doctest::should_f
 	CHECK(std::strcmp(a, b) == 0);
 }
 
+#ifdef _WIN32
 #include "printf_corpus_gen.inc"
+#else
+#include "printf_corpus_native.inc"
+#endif
 
 }  // TEST_SUITE

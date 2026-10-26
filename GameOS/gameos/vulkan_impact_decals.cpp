@@ -45,7 +45,7 @@ extern "C" void mc2_vk_impact_decals_health(Mc2ImpactDecalHealth* out) {
 
 #ifdef MC2_VULKAN_ISLAND
 
-#ifndef VK_USE_PLATFORM_WIN32_KHR
+#if defined(_WIN32) && !defined(VK_USE_PLATFORM_WIN32_KHR)
 #define VK_USE_PLATFORM_WIN32_KHR
 #endif
 #include <volk.h>

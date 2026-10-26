@@ -30,6 +30,7 @@ get_filename_component(MC2_WORKTREE_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../.." ABS
 add_executable(mc2_tests
     test_building_gameplay_observation.cpp
     test_main.cpp           # owns DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
+    test_abl_callback_address.cpp
     test_crash_bundle.cpp
     test_mission_environment.cpp
     ${MC2_WORKTREE_ROOT}/GameOS/gameos/visual_tuning_profile.cpp
@@ -242,7 +243,9 @@ set_source_files_properties(test_abl_position.cpp test_cast_census.cpp test_gui_
 set_target_properties(mc2_tests PROPERTIES CXX_STANDARD 20 CXX_STANDARD_REQUIRED ON)
 
 # The generated printf corpus (one TEST_CASE per converted format pair, thousands of them) exceeds the 65279-section limit of a normal object.
-set_source_files_properties(test_printf_corpus.cpp PROPERTIES COMPILE_FLAGS "/bigobj")
+if(MSVC)
+    set_source_files_properties(test_printf_corpus.cpp PROPERTIES COMPILE_FLAGS "/bigobj")
+endif()
 
 target_include_directories(mc2_tests PRIVATE
     ${MC2_WORKTREE_ROOT}           # for "RenderCore/RenderPassContract.h" style includes
@@ -259,10 +262,21 @@ target_include_directories(mc2_tests PRIVATE
 
 # MINIMAL-VIABLE-HARNESS-1: ffile.cpp/packet.cpp call zlib (compress2/uncompress).
 # 3rdparty/lib/x64/zlib.lib is the static build -- no zlib1.dll needed at run time.
-target_link_libraries(mc2_tests PRIVATE
-    ${MC2_WORKTREE_ROOT}/3rdparty/lib/x64/zlib.lib
-    ole32 windowscodecs   # utils/Image.cpp decodes PNG through WIC
-)
+if(WIN32)
+    target_link_libraries(mc2_tests PRIVATE
+        ${MC2_WORKTREE_ROOT}/3rdparty/lib/x64/zlib.lib
+        ole32 windowscodecs   # utils/Image.cpp decodes PNG through WIC
+    )
+else()
+    find_package(ZLIB REQUIRED)
+    target_link_libraries(mc2_tests PRIVATE ZLIB::ZLIB)
+    target_sources(mc2_tests PRIVATE
+        ${MC2_WORKTREE_ROOT}/GameOS/src/platform_winbase.cpp
+        ${MC2_WORKTREE_ROOT}/GameOS/src/platform_winuser.cpp
+        ${MC2_WORKTREE_ROOT}/GameOS/src/platform_stdlib.cpp
+        ${MC2_WORKTREE_ROOT}/GameOS/src/platform_io.cpp)
+endif()
+target_sources(mc2_tests PRIVATE test_platform_portability.cpp)
 
 # Match main build's preprocessor environment so engine headers parse the
 # same way they do in production. LINUX_BUILD is the load-bearing one
@@ -276,7 +290,7 @@ target_compile_definitions(mc2_tests PRIVATE
     # platform branch on PLATFORM_WINDOWS and disables the x86 inline-asm matrix
     # path on USE_ASSEMBLER_CODE=0 -- both match the main build's global defines
     # (CMakeLists.txt:62,136). Header-include only; no GL context is created.
-    PLATFORM_WINDOWS
+    $<$<PLATFORM_ID:Windows>:PLATFORM_WINDOWS>
     USE_ASSEMBLER_CODE=0
     # MINIMAL-VIABLE-HARNESS-1: on-disk fixtures for the file-stack tests.
     MC2_TEST_FIXTURE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/fixtures"
@@ -286,6 +300,13 @@ if(MSVC)
     target_compile_options(mc2_tests PRIVATE /W4 /WX-)
 endif()
 mc2_asan_runtime(mc2_tests)
+
+if(NOT WIN32)
+    file(READ "${CMAKE_CURRENT_SOURCE_DIR}/printf_corpus_gen.inc" _native_corpus)
+    string(REPLACE "std::snprintf(" "corpusSnprintf(" _native_corpus "${_native_corpus}")
+    file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/printf_corpus_native.inc" CONTENT "${_native_corpus}")
+    set_source_files_properties(test_printf_corpus.cpp PROPERTIES INCLUDE_DIRECTORIES "${CMAKE_CURRENT_BINARY_DIR}")
+endif()
 
 # Make `cmake --build ... --target check` run the tests after build.
 add_custom_target(check
@@ -392,8 +413,8 @@ target_include_directories(mc2_tests PRIVATE
     ${MC2_WORKTREE_ROOT}/3rdparty/include/SDL2
 )
 find_package(Threads REQUIRED)
-list(PREPEND CMAKE_PREFIX_PATH "${MC2_WORKTREE_ROOT}/3rdparty" "${MC2_WORKTREE_ROOT}/3rdparty/cmake")
 if(WIN32)
+    list(PREPEND CMAKE_PREFIX_PATH "${MC2_WORKTREE_ROOT}/3rdparty" "${MC2_WORKTREE_ROOT}/3rdparty/cmake")
     list(PREPEND CMAKE_LIBRARY_PATH "${MC2_WORKTREE_ROOT}/3rdparty/lib/x64")
 endif()
 find_package(SDL2 CONFIG REQUIRED COMPONENTS SDL2)
@@ -580,5 +601,5 @@ if(TARGET glm::glm)
     target_sources(mc2_tests PRIVATE test_terrain_height_compat.cpp)
     set_source_files_properties(test_terrain_height_compat.cpp PROPERTIES
         INCLUDE_DIRECTORIES "${CMAKE_CURRENT_BINARY_DIR}"
-        COMPILE_OPTIONS "/fp:precise")
+        COMPILE_OPTIONS "$<$<BOOL:${MSVC}>:/fp:precise>")
 endif()

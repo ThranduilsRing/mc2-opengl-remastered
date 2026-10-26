@@ -104,7 +104,7 @@ long fileExists (const char* fName, long destination_mask)
 	}
 
 	struct _stat st;
-	if (_stat(normName,&st) != -1)
+	if (mc2_stat(normName,&st) != -1)
 	{
 		return 1 & destination_mask;
 	}
@@ -133,7 +133,7 @@ long fileExistsOnCD (const char* fName)
 	strcat(bigPath,fName);
 
 	struct _stat st;
-	if (_stat(bigPath,&st) != -1)
+	if (mc2_stat(bigPath,&st) != -1)
 	{
 		return 1;
 	}
@@ -147,8 +147,8 @@ bool file1OlderThan2 (const char* file1, const char* file2)
 	if ((fileExists(file1) == 1) && (fileExists(file2) == 1))
 	{
 		struct _stat st1, st2;
-		_stat(file1,&st1);
-		_stat(file2,&st2);
+		mc2_stat(file1,&st1);
+		mc2_stat(file2,&st2);
 		
 		if (st1.st_mtime < st2.st_mtime)
 			return true;

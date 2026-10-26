@@ -7,6 +7,7 @@
 
 #include<stdio.h>
 #include<stdlib.h> // itoa
+#include <errno.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -14,6 +15,10 @@ extern "C" {
 
 void _splitpath (const char*, char*, char*, char*, char*);
 void _itoa(int value, char* str, int radix);
+inline int _putenv_s(const char* key, const char* value)
+{
+    return (*value ? setenv(key, value, 1) : unsetenv(key)) == 0 ? 0 : errno;
+}
 
 #define _alloca alloca
 

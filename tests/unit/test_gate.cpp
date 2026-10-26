@@ -27,6 +27,7 @@
 #include <cstdio>
 #include <limits>
 #include <cstdlib>
+#include "platform_stdlib.h"
 #include <string>
 #include <string_view>
 #include <thread>

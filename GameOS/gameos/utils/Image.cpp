@@ -5,6 +5,12 @@
 #include <cstring>
 #include <stdlib.h>
 #include <cassert>
+#ifndef _WIN32
+#define STB_IMAGE_STATIC
+#define STB_IMAGE_IMPLEMENTATION
+#include "../../../3rdparty/stb/stb_image.h"
+#include <climits>
+#endif
 
 #ifdef _WIN32
 #ifndef NOMINMAX
@@ -277,9 +283,14 @@ bool Image::loadWICFromMemory(const unsigned char* mem, size_t len)
 
 	return ok;
 #else
-	(void)mem;
-	(void)len;
-	return false;
+    if (len > INT_MAX) return false;
+    int w = 0, h = 0, channels = 0;
+    auto* decoded = stbi_load_from_memory(mem, int(len), &w, &h, &channels, 4);
+    if (!decoded) return false;
+    auto* destination = create(FORMAT_RGBA8, w, h);
+    std::memcpy(destination, decoded, size_t(w) * h * 4);
+    stbi_image_free(decoded);
+    return true;
 #endif
 }
 
@@ -395,8 +406,13 @@ bool Image::loadWIC(const char *fileName)
 	wideFileNameOwner.reset();
 	return ok;
 #else
-	(void)fileName;
-	return false;
+    int w = 0, h = 0, channels = 0;
+    auto* decoded = stbi_load(fileName, &w, &h, &channels, 4);
+    if (!decoded) return false;
+    auto* destination = create(FORMAT_RGBA8, w, h);
+    std::memcpy(destination, decoded, size_t(w) * h * 4);
+    stbi_image_free(decoded);
+    return true;
 #endif
 }
 

@@ -11,6 +11,7 @@
 #include <utility>
 #include "mc2fmt.h"
 #include "sim_trace.h"
+#include "abl_callback_address.h"
 
 
 inline signed int double2long(double _in)
@@ -198,13 +199,12 @@ TypePtr execStandardRoutineCall (SymTableNodePtr routineIdPtr, bool skipOrder) {
 			// return so ABL stack stays balanced and FSM execution continues.
 			{
 				void (*cb)(void) = FunctionCallbackTable[key];
-				uintptr_t cbVal = reinterpret_cast<uintptr_t>(cb);
 				// Belt-and-suspenders: root cause was MAX_STANDARD_FUNCTIONS=256
 				// overflow (fixed in 2cfad76). This guard stays in place to catch
 				// any future bogus-pointer case rather than dispatching into
 				// garbage. Log is unconditional because it fires rarely; when it
 				// does, we want the data in o.log automatically.
-				if (cbVal != 0 && cbVal < static_cast<uintptr_t>(0x00007F0000000000ULL)) {
+				if (ablCallbackIsBogus(cb)) {
 					char err[255];
 					mc2::fmt::to_buf(err, "[ABL_BAD_CB] key={:d} val={:016X} module={} line={:d}", mc2::fmt::as_i32(key), mc2::fmt::as_ptr(cb), mc2::fmt::safe(CurModule->getName()), mc2::fmt::as_i32(execLineNumber));
 					mc2::fmt::print_out("{}\n", mc2::fmt::safe(err)); fflush(stdout);

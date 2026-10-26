@@ -4,7 +4,7 @@
 #include "Gates/gate_cold.h"   // str<>()
 
 #define WIN32_LEAN_AND_MEAN
-#include <windows.h>  // GetCurrentThreadId, MoveFileExW
+#include "platform_windows.h"  // GetCurrentThreadId
 
 #include <chrono>
 #include <cstdio>
@@ -193,7 +193,9 @@ void init(const char* sessionId, int pid) {
     // NOT L"a,ccs=UTF-8": that opens a wide-char stream (writes UTF-8 BOM,
     //   expects fputws/fwprintf) and triggers MSVC _invalid_parameter abort
     //   on the subsequent narrow fwrite() call.
+#ifdef _WIN32
     s.file = _wfopen(path.wstring().c_str(), L"ab");
+#endif
     if (!s.file) {
         s.file = fopen(path.string().c_str(), "ab");
     }

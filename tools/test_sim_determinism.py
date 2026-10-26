@@ -19,6 +19,14 @@ def test_selftest_passes():
     assert sd.selftest() == 0
 
 
+def test_native_baseline_is_separate(monkeypatch):
+    monkeypatch.setattr(sd.sys, "platform", "win32")
+    windows = sd.baseline_path("mc2_10")
+    monkeypatch.setattr(sd.sys, "platform", "linux")
+    assert sd.baseline_path("mc2_10") == os.path.join(sd.BASELINE_DIR, "linux", "mc2_10.json")
+    assert windows == os.path.join(sd.BASELINE_DIR, "mc2_10.json")
+
+
 def test_logparse_and_the_tool_agree_on_the_chain():
     sys.path.insert(0, os.path.join(HERE, ".."))
     from scripts.smoke_lib.logparse import parse_log
@@ -84,7 +92,7 @@ def test_cli_selects_install_for_runner_and_fingerprint(monkeypatch, command, in
     (sd.INSTALL_DIR, ["--deploy", "0.4"]),
     ("lane3", ["--deploy", "lane3"]),
     ("A:/Games/mc2-opengl/mc2-win64-lane3", ["--deploy", "lane3"]),
-    ("custom-install", ["--exe", os.path.join(sd.resolve_install("custom-install"), "mc2.exe")]),
+    ("custom-install", ["--exe", os.path.join(sd.resolve_install("custom-install"), "mc2.exe" if os.name == "nt" else "mc2")]),
 ])
 def test_runner_passes_selected_install_to_both_mocked_launches(monkeypatch, install, target):
     commands = []

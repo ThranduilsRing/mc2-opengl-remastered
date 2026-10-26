@@ -7,6 +7,20 @@
 #   FFmpegLGPL::swresample
 # Plus FFmpegLGPL_RUNTIME_DLLS (list of absolute DLL paths) for install().
 
+if(NOT WIN32)
+    find_package(PkgConfig REQUIRED)
+    foreach(_lib avcodec avformat avutil swscale swresample)
+        pkg_check_modules(FFmpegLGPL_${_lib} REQUIRED IMPORTED_TARGET lib${_lib})
+        add_library(FFmpegLGPL::${_lib} ALIAS PkgConfig::FFmpegLGPL_${_lib})
+    endforeach()
+    set(FFmpegLGPL_RUNTIME_DLLS "")
+    set(FFMPEG_DLL_NAMES_CLIST "")
+    configure_file("${CMAKE_SOURCE_DIR}/cmake/mc2video_dlls.h.in"
+        "${CMAKE_BINARY_DIR}/generated/mc2video_dlls.h" @ONLY)
+    set(FFmpegLGPL_FOUND TRUE)
+    return()
+endif()
+
 set(FFMPEG_VENDOR_DIR "${CMAKE_SOURCE_DIR}/3rdparty/ffmpeg-lgpl-win64")
 
 if(NOT EXISTS "${FFMPEG_VENDOR_DIR}/include/libavcodec/avcodec.h")

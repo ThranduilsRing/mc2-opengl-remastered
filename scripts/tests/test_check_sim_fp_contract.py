@@ -31,6 +31,16 @@ def test_clean_databases_pass(tmp_path):
     assert n == 2 and bad == []
 
 
+def test_native_compilers_require_precise_math(tmp_path):
+    for compiler in ("/usr/bin/c++", "/usr/bin/g++", "/usr/bin/clang++", "/usr/bin/clang++-20"):
+        command = compiler + " -std=c++23 -fno-fast-math -ffp-contract=off -c " + SIM_SRC
+        assert fp.check_db(_db(tmp_path, [command])) == (1, [])
+        for flag in (" -fno-fast-math", " -ffp-contract=off"):
+            assert fp.check_db(_db(tmp_path, [command.replace(flag, "")]))[1]
+        for flag in (" -ffast-math", " -ffp-contract=on", " -ffp-contract=fast"):
+            assert fp.check_db(_db(tmp_path, [command + flag]))[1]
+
+
 def test_each_forbidden_flag_on_a_sim_tu_is_rejected(tmp_path):
     for extra in ("/fp:fast", "/fp:contract", "/fp:strict", "/clang:-ffp-contract=fast", "-ffp-contract=on",
                   "/clang:-ffast-math", "/clang:-ffp-model=fast"):

@@ -46,6 +46,7 @@ void registerCommand(const char* name, CommandHandler fn)
 // Non-Windows builds: inert stubs (winsock-only v0; revisit at the
 // mac/linux port together with the rest of the platform layer).
 bool pollCommands(uint32_t) { return false; }
+void scheduleScreenshot(const char*) {}
 void capturePendingScreenshot(uint32_t) {}
 #else
 
