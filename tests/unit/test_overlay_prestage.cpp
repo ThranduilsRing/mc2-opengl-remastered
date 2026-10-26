@@ -123,15 +123,19 @@ struct Vertex { DWORD terrainType = 0; };
 using PostcompVertexPtr = Vertex*;
 std::array<uint16_t, MC_MAX_TERRAIN_TXMS> g_cementLayerIndexBySlot;
 struct TextureMetadata {
-    bool isCement(DWORD slot) const { return slot == 1; }
-    bool isAlpha(DWORD) const { return false; }
+    bool alpha = false;
+    long getNumTypes() const { return 3; }
+    DWORD setTexture(DWORD types, DWORD) const { return (types & 255u) == 2u ? 1u : 0u; }
+    bool isCement(DWORD slot) const { return slot == 1 || slot == 2; }
+    bool isAlpha(DWORD) const { return alpha; }
 };
 struct Map {
     bool metadata = true;
+    DWORD slot = 1;
     void getOverlay(long r, long c, Overlays& overlay, DWORD&) {
         overlay = metadata && r == 2 && c == 2 ? Road : INVALID_OVERLAY;
     }
-    DWORD getTexture(long r, long c) { return r == 2 && c == 2 ? 1 : 0; }
+    DWORD getTexture(long r, long c) { return r == 2 && c == 2 ? slot : 0; }
 };
 struct Terrain {
     static inline Map* mapData;
@@ -155,6 +159,12 @@ TEST_CASE("OverlayPrestage/load selection matches the first-update metadata purg
     // TerrainTextures::update discards authored overlay metadata before drawing.
     map.metadata = false;
     CHECK(TileRoadAdjacent8(1, 1, 4, blocks, true) == staged);
+    // Type 2 owns texture slot 1: type IDs must not index the slot map.
+    textures.alpha = true;
+    map.slot = 2;
+    CHECK(TileIsRoadArt(2, 2, 4, blocks, false));
+    blocks[10].terrainType = 2;
+    CHECK_FALSE(TileIsRoadArt(2, 2, 4, blocks, false));
     Terrain::mapData = nullptr;
     Terrain::terrainTextures = nullptr;
 }

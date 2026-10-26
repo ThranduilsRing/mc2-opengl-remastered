@@ -308,8 +308,11 @@ bool CementWordSuppressesDecal(const MapData::WorldQuadTerrainCacheEntry* e,
                     auto cemCorner = [&](long r, long c2) -> bool {
                         const size_t vi = static_cast<size_t>(r) * static_cast<size_t>(mapSide) + static_cast<size_t>(c2);
                         const DWORD  vt = blocks[vi].terrainType;
-                        return vt < static_cast<DWORD>(MC_MAX_TERRAIN_TXMS)
-                               && g_cementLayerIndexBySlot[vt] != 0xFFFFu;
+                        auto* tt = Terrain::terrainTextures;
+                        if (!tt || vt >= static_cast<DWORD>(tt->getNumTypes())) return false;
+                        const DWORD baseSlot = tt->setTexture(vt * 0x01010101u, 0xffffu);
+                        return baseSlot < static_cast<DWORD>(MC_MAX_TERRAIN_TXMS)
+                               && g_cementLayerIndexBySlot[baseSlot] != 0xFFFFu;
                     };
                     const bool c0 = cemCorner(tileR,     tileC);
                     const bool c1 = cemCorner(tileR,     tileC + 1);

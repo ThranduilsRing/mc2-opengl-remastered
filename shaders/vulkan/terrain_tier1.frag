@@ -265,7 +265,6 @@ void main() {
     // solid-cement hit -> flat-lit with ordinary static and dynamic shadows. (The GL dynamic building shadow on
     // concrete is a SEPARATE dynamic map, still deferred here.)
     bool pureConcrete = false;
-    float padEdgeAO = 1.0;
     bool cementHit = false;   // a solid cement atlas texel won (the shoreline wet band skips it, as GL)
     if (uT.colormapReady != 0) {
         // The shared cook already applied the original nine-tap blur and coast-color repair.
@@ -331,10 +330,6 @@ void main() {
             bool cementOwnAlpha = (cw & 0x00800000u) != 0u;
             if (isTransition && cementOwnAlpha) {
                 float cOwnA = cementTexel.a;
-                // Reuse filtered coverage for a narrow contact edge. The
-                // authored pad alpha supplies the bevel without neighbor taps.
-                if ((cw & 0x01000000u) == 0u)
-                    padEdgeAO = 1.0 - 0.72 * cOwnA * (1.0 - cOwnA);
                 base = mix(base, cementColor, cOwnA);
                 if (cOwnA > 0.5) { cementHit = true; pureConcrete = true; }
             } else if (isTransition) {
@@ -433,7 +428,6 @@ void main() {
     float materialSnow = materials.z;
     vec4 materialW = vec4(max(1.0 - materials.x - materials.y - materials.w, 0.0), materials.x, materials.y, materials.w);
     vec3 baseNormal = mv_smoothTerrainNormal(v_worldPos.xy);
-    base *= padEdgeAO;
     vec3 baseColor = base;
     float F3pc = pureConcrete ? 1.0 : 0.0;
     {

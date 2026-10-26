@@ -82,7 +82,7 @@ void main() {
 
     uint ovCw          = overlayCementWord(WorldPos.xy);
     bool ovCementTile  = (ovCw & 0x80000000u) != 0u;          // bit 31 valid
-    bool ovAuthoredArt = (ovCw & 0x01000000u) != 0u;          // bit 24: authored art on this tile
+    bool ovAuthoredArt = (ovCw & 0x00200000u) != 0u;          // bit 21: authored art on this tile
     bool ovAdoptAlbedo = ovCementTile && !ovAuthoredArt && uT.cementGridSide > 0;
 
     vec4 c;

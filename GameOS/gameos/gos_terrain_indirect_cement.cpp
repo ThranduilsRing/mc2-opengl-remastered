@@ -173,7 +173,7 @@ static constexpr uint32_t kCementOwnAlphaBit = 0x00800000u;
 // terrain_lod_chunk.frag consults it.
 static constexpr uint32_t kCementPavedFlatBit = 0x00400000u;
 
-// cementWord bit 24 = AUTHORED-ART-ON-CEMENT (OVERLAY-CEMENT-ADOPT-1, widened by
+// cementWord bit 21 = AUTHORED-ART-ON-CEMENT (OVERLAY-CEMENT-ADOPT-1, widened by
 // OVERLAY-CEMENT-ARTGUARD-1 / CONCRETE-DELIVER-2). This tile has a VALID cement
 // word (bit 31) AND carries an authored &Overlays id, i.e. hand-placed art
 // painted on top of a genuine cement base slot. It marks the case where "this
@@ -209,13 +209,13 @@ static constexpr uint32_t kCementPavedFlatBit = 0x00400000u;
 // repainted, and when the oracle's inputs are not ready the tile is protected.
 //
 // Inert to every pre-existing reader by construction: bits 30/23/22/15:0
-// are untouched, and no existing code path masks or compares bit 24.
-static constexpr uint32_t kCementAuthoredArtBit = 0x01000000u;
+// are untouched, and no existing code path masks or compares bit 21.
+static constexpr uint32_t kCementAuthoredArtBit = 0x00200000u; // bit 21, outside maskId 29:24
 
 // MC2_OVERLAY_CEMENT_ADOPT — 1 = ON (default). See RendererFeatureRegistry.h and
 // terrain_overlay.frag for the full mechanism. Host side, this gate only decides
-// whether the bit-24 marking pass below runs; the frag reads its own uniform.
-// 0 = OFF => no bit 24 written AND the frag uniform uploads 0 => byte-identical.
+// whether the bit-21 marking pass below runs; the frag reads its own uniform.
+// 0 = OFF => no bit 21 written AND the frag uniform uploads 0 => byte-identical.
 static bool OverlayCementAdoptEnabled() {
     static const bool s = mc2::gate::get<"MC2_OVERLAY_CEMENT_ADOPT">();
     return s;
@@ -471,8 +471,10 @@ static bool TileIsRoadArt(long r, long c, long mapSide, PostcompVertexPtr blocks
     if (!(tt->isCement(slot) && tt->isAlpha(slot))) return false;
     auto cemCorner = [&](long rr, long cc) -> bool {
         const DWORD vt = blocks[static_cast<size_t>(rr) * static_cast<size_t>(mapSide) + static_cast<size_t>(cc)].terrainType;
-        return vt < static_cast<DWORD>(MC_MAX_TERRAIN_TXMS)
-               && g_cementLayerIndexBySlot[vt] != 0xFFFFu;
+        if (vt >= static_cast<DWORD>(tt->getNumTypes())) return false;
+        const DWORD baseSlot = tt->setTexture(vt * 0x01010101u, 0xffffu);
+        return baseSlot < static_cast<DWORD>(MC_MAX_TERRAIN_TXMS)
+               && g_cementLayerIndexBySlot[baseSlot] != 0xFFFFu;
     };
     return !(cemCorner(r, c) || cemCorner(r, c + 1)
              || cemCorner(r + 1, c + 1) || cemCorner(r + 1, c));
@@ -571,8 +573,10 @@ void PopulateRecipeCementWords() {
                     auto cemLayerForVertex = [&](long row, long col) -> uint16_t {
                         const size_t vi = static_cast<size_t>(row) * static_cast<size_t>(mapSide) + static_cast<size_t>(col);
                         const DWORD  vt = blocks[vi].terrainType;
-                        return (vt < static_cast<DWORD>(MC_MAX_TERRAIN_TXMS))
-                               ? g_cementLayerIndexBySlot[vt] : 0xFFFFu;
+                        if (vt >= static_cast<DWORD>(tt->getNumTypes())) return 0xFFFFu;
+                        const DWORD baseSlot = tt->setTexture(vt * 0x01010101u, 0xffffu);
+                        return (baseSlot < static_cast<DWORD>(MC_MAX_TERRAIN_TXMS))
+                               ? g_cementLayerIndexBySlot[baseSlot] : 0xFFFFu;
                     };
                     const uint16_t l0 = cemLayerForVertex(my,     mx);
                     const uint16_t l1 = cemLayerForVertex(my,     mx + 1);
@@ -688,7 +692,7 @@ void PopulateRecipeCementWords() {
             const long my = static_cast<long>(vn) / mapSide;
             if (mx >= mapSide - 1 || my >= mapSide - 1) continue;
             if (vn >= chunkCementWords.size()) continue;
-            // Only genuine cement tiles are candidates -- bit 24 is meaningless
+            // Only genuine cement tiles are candidates -- bit 21 is meaningless
             // without bit 31 and must never be the sole content of a word.
             if ((chunkCementWords[vn] & kCementLayerValidBit) == 0u) continue;
 

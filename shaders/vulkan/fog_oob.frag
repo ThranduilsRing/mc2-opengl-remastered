@@ -1,11 +1,8 @@
 // VULKAN-OOB-FOG-ISLAND-1 -- Vulkan port of shaders/fog_oob.frag (OOB-FOG-7
 // sea-of-clouds at the map horizon).
 //
-// MATH is bit-for-bit identical to the GL fog_oob.frag: 3D FBM sampled on the
-// unit sphere (worldDir), solid cloud base + gentle surface variation, filling
-// the out-of-bounds void below the horizon. ONLY the uniform/sampler plumbing
-// changed: the GL default-block uniforms became explicit Vulkan set/binding
-// layouts:
+// Smooth haze fills the out-of-bounds void below the horizon. The uniform and
+// sampler layout retains the existing fog controls:
 //   set=0,binding=0  depthTex        -> sampler2D (the scene depth, uploaded to a
 //                                       D32_SFLOAT image; sampling returns depth in
 //                                       .r, same as sampling a GL depth texture's .r)
