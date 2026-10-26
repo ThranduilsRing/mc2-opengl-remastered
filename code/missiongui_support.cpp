@@ -6,6 +6,7 @@
 #include "mech3d.h"
 #include <utility>
 
+extern void preloadSupportRadioArchive(const char* name);
 namespace {
 // These actors are never submitted or simulated. Their sources and types stay
 // live until the mission interface releases them, before the appearance registry.
@@ -25,6 +26,16 @@ void preloadMissionSupportVehicles()
 	// The palette can be enabled by mission scripts after load. Warm all of its
 	// ground vehicles, including currently disabled buttons, through the same VFS.
 	for (const long id : {182L, 393L, 120L, 415L}) {
+		const char* pilot = MissionInterfaceManager::instance()->getSupportVehicleNameFromID(id);
+		if (pilot) {
+			FullPathFileName path;
+			path.init(warriorPath, pilot, ".fit");
+			FitIniFile profile;
+			char audio[256]{};
+			if (profile.open(path) == NO_ERR && profile.seekBlock("General") == NO_ERR &&
+				profile.readIdString("pilotAudio", audio, sizeof(audio) - 1) == NO_ERR && audio[0])
+				preloadSupportRadioArchive(audio);
+		}
 		auto* type = ObjectManager->getObjectType(id);
 		if (!type || !type->getAppearanceTypeName()) continue;
 		const auto cls = type->getObjectTypeClass();
