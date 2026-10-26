@@ -32,7 +32,8 @@ vec3 tlp_terrainPoolLight(vec3 wp, int numPoolLights,
                           int gridDim, vec2 gridMin, vec2 gridInvCell,
                           int poolSoft, float moverDim, float moverScale,
                           int moverMaxBlend, int poolCompress,
-                          float moverContactShadow, inout float moverContact)
+                          float moverContactShadow, inout float moverContact,
+                          vec3 surfaceNormal, vec3 macroNormal)
 {
     vec3 pool      = vec3(0.0);
     vec3 poolMover = vec3(0.0);   // NIGHT-LIGHT-POOLS-4: max-combined mover glows
@@ -71,6 +72,11 @@ vec3 tlp_terrainPoolLight(vec3 wp, int numPoolLights,
         if (falloff <= 0.0) continue;
         falloff *= lpa_localShadow(wp, poolLights[i].position, poolLights[i].lightType, poolLights[i].farDistance);   // LOCAL-LIGHTS-2
         vec3 plCol = poolLights[i].color * poolLights[i].intensity;
+        // Pools already encode flat-ground illumination. Apply only detail
+        // relative to that receiver; night lamps must see material normals too.
+        vec3 toLight = -vtl * inversesqrt(max(dot(vtl, vtl), 1e-6));
+        float macroLight = max(dot(macroNormal, toLight), 0.2);
+        plCol *= clamp(max(dot(surfaceNormal, toLight), 0.2) / macroLight, 0.5, 1.5);
         if (mover) {
             // Mover-attached light (producer pad flag): dim vs buildings.
             plCol *= moverDim;

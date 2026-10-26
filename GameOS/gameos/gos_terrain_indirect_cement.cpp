@@ -596,7 +596,13 @@ void PopulateRecipeCementWords() {
                     // layering, decal depth-biased). MC2_PAD_EDGE_ROAD_FIX=2
                     // restores the -1 decal-only revert for A/B; =0 restores the
                     // pre-fix analytic-only (road notch) behavior.
-                    if (maskId >= 0 && cementLayerIdx != 0xFFFFu
+                    // The authored transition contains both its footprint and road/runway
+                    // art. A borrowed slab plus a corner cut loses both at pad junctions.
+                    if (g_cementAlphaLayerMapReady && g_cementAlphaLayerIndexBySlot[slot] != 0xFFFFu) {
+                        cementWord = kCementLayerValidBit | kCementTransitionBit | kCementOwnAlphaBit
+                                   | (static_cast<uint32_t>(g_cementAlphaLayerIndexBySlot[slot]) & 0xFFFFu);
+                        ++transitionQuadCount;
+                    } else if (maskId >= 0 && cementLayerIdx != 0xFFFFu
                         && PadEdgeRoadFixMode() == 2
                         && TileRoadAdjacent8(my, mx, mapSide, blocks)) {
                         // leave cementWord = 0 (legacy -1 behavior)

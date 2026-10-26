@@ -330,6 +330,7 @@ void main() {
     // solid-cement hit -> flat-lit with ordinary static and dynamic shadows. (The GL dynamic building shadow on
     // concrete is a SEPARATE dynamic map, still deferred here.)
     bool pureConcrete = false;
+    float padEdgeAO = 1.0;
     bool cementHit = false;   // a solid cement atlas texel won (the shoreline wet band skips it, as GL)
     if (uT.colormapReady != 0) {
         // The shared cook already applied the original nine-tap blur and coast-color repair.
@@ -395,6 +396,18 @@ void main() {
             bool cementOwnAlpha = (cw & 0x00800000u) != 0u;
             if (isTransition && cementOwnAlpha) {
                 float cOwnA = cementTexel.a;
+                // A two-world-unit contact bevel follows authored coverage,
+                // including wall corners; no displaced mesh or extra layer.
+                vec2 edgeStep = vec2(2.0 / uT.cementWUPT);
+                vec2 edgeLo = max(cSampleUV - edgeStep, vec2(cInsetLod));
+                vec2 edgeHi = min(cSampleUV + edgeStep, vec2(1.0 - cInsetLod));
+                vec2 cellOrigin = vec2(cCol, cRow);
+                float edgeA = min(
+                    min(textureLod(u_cementAtlas, (cellOrigin + vec2(edgeLo.x, cSampleUV.y)) / float(cGridSide), cLod).a,
+                        textureLod(u_cementAtlas, (cellOrigin + vec2(edgeHi.x, cSampleUV.y)) / float(cGridSide), cLod).a),
+                    min(textureLod(u_cementAtlas, (cellOrigin + vec2(cSampleUV.x, edgeLo.y)) / float(cGridSide), cLod).a,
+                        textureLod(u_cementAtlas, (cellOrigin + vec2(cSampleUV.x, edgeHi.y)) / float(cGridSide), cLod).a));
+                padEdgeAO = 1.0 - 0.18 * max(cOwnA - edgeA, 0.0);
                 base = mix(base, cementColor, cOwnA);
                 if (cOwnA > 0.5) { cementHit = true; pureConcrete = true; }
             } else if (isTransition) {
@@ -508,6 +521,7 @@ void main() {
     float materialSnow = materials.z;
     vec4 materialW = vec4(max(1.0 - materials.x - materials.y - materials.w, 0.0), materials.x, materials.y, materials.w);
     vec3 baseNormal = mv_smoothTerrainNormal(v_worldPos.xy);
+    base *= padEdgeAO;
     vec3 baseColor = base;
     float F3pc = pureConcrete ? 1.0 : 0.0;
     {
@@ -584,7 +598,7 @@ void main() {
         // fragments skip the material detail-normal fetches, so the two concrete fetches replace them (no net fetch increase).
         vec3 cdSpec = vec3(0.0);
         vec2 cdWpDx = dFdx(v_worldPos.xy), cdWpDy = dFdy(v_worldPos.xy);   // uniform flow, late: nothing extra stays live through the detail-normal block
-        if (uT.concreteDetail != 0 && pureConcrete) cdApply(cdRoad > 0.5 ? CD_LAYER_ROAD : CD_LAYER_PAD, v_worldPos.xy, cdWpDx, cdWpDy, lightDir, 1.0, baseColor, normalLight, cdSpec);
+        if (uT.concreteDetail != 0 && pureConcrete) cdApply(cdRoad > 0.5 ? CD_LAYER_ROAD : CD_LAYER_PAD, v_worldPos.xy, cdWpDx, cdWpDy, lightDir, 1.0, baseColor, normalLight, cdSpec, N);
 
         // Static ground mask and current-frame movers share the same visibility
         // floor. Cement receives both, exactly like the surrounding terrain.
@@ -607,7 +621,7 @@ void main() {
         else if (uT.csmDebugMode == 9) { fragColor = vec4(dbgBaseN * 0.5 + 0.5, 1.0); GBuffer1 = vec4(0.5,0.5,1.0,1.0); return; }
         else if (uT.csmDebugMode == 10) { fragColor = vec4(dbgDN * 0.5 + 0.5, 1.0); GBuffer1 = vec4(0.5,0.5,1.0,1.0); return; }
 
-        lit = shadeGround(baseColor, N, normalLight, shadow, pureConcrete ? 1.0 : 0.0, v_worldPos);
+        lit = shadeGround(baseColor, N, normalLight, shadow, pureConcrete ? 1.0 : 0.0, v_worldPos, macroN);
         lit = max(lit + cdSpec * shadow, vec3(0.0));
 
         // TERRAIN-EDGE-FEATHER-1 (GL terrain_lod_chunk.frag, after the mover contact): the last tile band of the map fades to the sky haze
