@@ -34,7 +34,7 @@ def command(bookmarks: Path, out: Path, frame: int, arm: str, fixture: str = "lo
     cmd = [sys.executable, str(ROOT / "scripts/run_visual_capture.py"),
            "--no-kill", "--exe", str(install_dir / "mc2.exe"), "--bookmarks", str(bookmarks),
            "--out-dir", str(out), "--trigger-frame", str(frame),
-           "--settle", "8", "--duration", "30", "--runs", "2"]
+           "--settle", "8", "--duration", "90", "--runs", "2"]
     # The selector alone makes the engine force GL; the umbrella is what makes the capture a Vulkan one.
     env = {"MC2_RENDER_BACKEND": "vulkan", "MC2_VK_SHARED_GBUFFER": "1", "MC2_SMOKE_FREEZE_ANIM": "1",
            "MC2_DETERMINISTIC_RNG": "1", "MC2_RNG_SEED": "0xC0FFEE",
