@@ -409,8 +409,7 @@ void gosFX::Shape::Draw(DrawInfo *info)
 		mc2::math::alignLocalAxisToWorldVector(local_to_world, look_at, Stuff::Z_Axis, Stuff::Y_Axis, -1);
 	}
 
-	if (!DrawNativeShape(dinfo))
-        info->m_clipper->DrawScalableShape(&dinfo);
+	DrawNativeShape(dinfo);
     Singleton::Draw(info);
 }
 

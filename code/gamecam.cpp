@@ -927,6 +927,10 @@ void GameCamera::render (void)
 					glm::vec3 location = getPosition();
 					location.x += (static_cast<int>(drawn % 8) - 4) * 75.0f;
 					location.y += (static_cast<int>(drawn / 8) - 3) * 75.0f;
+					if (cls == gosFX::PertCloudClassID) {
+						location.x = getPosition().x - 450.0f;
+						location.y = getPosition().y - 50.0f;
+					}
 					location.z += 75.0f;
 					mc2ToRender(location, location);
 					glm::mat4 origin(1.0f);

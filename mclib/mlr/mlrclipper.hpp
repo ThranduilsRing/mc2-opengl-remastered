@@ -121,7 +121,6 @@ namespace MidLevelRenderer {
 		void DrawShape (DrawShapeInformation*);
 
 //	add another shape
-		void DrawScalableShape (DrawScalableShapeInformation*);
 
 //	add another effect
 		void DrawEffect (DrawEffectInformation*);
