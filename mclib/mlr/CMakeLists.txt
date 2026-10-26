@@ -46,7 +46,6 @@ set(SOURCES ${SOURCES}
     mlrclipper.cpp
     mlr_gate.cpp
     mlrclippingstate.cpp
-    mlrcardcloud.cpp
     mlreffect.cpp
     mlrindexedtrianglecloud.cpp
     mlrlinecloud.cpp

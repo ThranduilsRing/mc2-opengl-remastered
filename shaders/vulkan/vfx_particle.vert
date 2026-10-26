@@ -66,10 +66,10 @@ void main() {
     // Native mesh/ribbon vertices share the 64-byte frame-ring stride.
     if (G.atlasColumns == 0xffffffffu) {
         Particle p = particles[gl_VertexIndex];
-        // gosFX parent matrices already contain render-space translations
-        // (WeaponBolt converts MC2 positions before Draw). Swapping again
-        // moves authored cards/tubes away from the scene and loses flares.
-        gl_Position = U.worldToClipGL * vec4(p.position, 1.0);
+        // The terrain MVP includes the MC2-to-render conversion. Native
+        // gosFX geometry is already in render space, so convert it back first.
+        gl_Position = U.worldToClipGL * vec4(mc2ToRender(p.position), 1.0);
+        gl_Position.z += 0.0002 * gl_Position.w;
         v_uv = p.velocity.xy;
         v_color = p.color;
         v_flags = p.kind_flags;

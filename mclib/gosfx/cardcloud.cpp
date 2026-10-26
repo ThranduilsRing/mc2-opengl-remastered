@@ -3,8 +3,6 @@
 //===========================================================================//
 
 #include"gosfxheaders.hpp"
-#include "mlr_cloud_draw.hpp"
-#include<mlr/mlrcardcloud.hpp>
 
 #include"particles/batcher.h"
 #include<cmath>    // VFX-ORIGINAL-RENDER-ANIM-FIELDS-1: std::atan2
@@ -304,11 +302,6 @@ gosFX::CardCloud::CardCloud(
 	Check_Object(spec);
 	Verify(gos_GetCurrentHeap() == Heap);
 
-	gos_PushCurrentHeap(MidLevelRenderer::Heap);
-	m_cloudImplementation =
-		std::make_unique<MidLevelRenderer::MLRCardCloud>(spec->m_maxParticleCount);
-	Register_Object(m_cloudImplementation.get());
-	gos_PopCurrentHeap();
 
 	unsigned index = spec->m_maxParticleCount*sizeof(Particle);
 	m_P_vertices = Cast_Pointer(glm::vec3*, &m_data[index]);
@@ -317,19 +310,12 @@ gosFX::CardCloud::CardCloud(
 	index += spec->m_maxParticleCount * sizeof(Stuff::RGBAColor);
 	m_P_uvs = Cast_Pointer(Stuff::Vector2DOf<Stuff::Scalar>*, &m_data[index]);
 
-	m_cloudImplementation->SetData(
-		Cast_Pointer(const int *, &m_activeParticleCount),
-		m_P_vertices,
-		m_P_color,
-		m_P_uvs
-	);
 }
 
 //------------------------------------------------------------------------------
 //
 gosFX::CardCloud::~CardCloud()
 {
-	Unregister_Object(m_cloudImplementation.get());
 }
 
 //------------------------------------------------------------------------------
@@ -365,8 +351,6 @@ void
 	//-------------------------------------------------------------------
 	//
 	SpinningCloud::CreateNewParticle(index, translation);
-	m_cloudImplementation->TurnOn(index);
-	Verify(m_cloudImplementation->IsOn(index));
 
 	//
 	//-----------------------------
@@ -478,8 +462,6 @@ void gosFX::CardCloud::DestroyParticle(unsigned index)
 {
 	Check_Object(this);
 
-	m_cloudImplementation->TurnOff(index);
-	Verify(!m_cloudImplementation->IsOn(index));
 	SpinningCloud::DestroyParticle(index);
 }
 
@@ -516,8 +498,7 @@ void gosFX::CardCloud::DrawState(DrawInfo *info)
 	{
 		Specification *spec = GetSpecification();
 		Check_Object(spec);
-		MlrCloudDraw submission(info, spec->m_state, m_cloudImplementation.get(), m_localToParent);
-		const auto& local_to_world = submission.localToWorld;
+		const auto local_to_world = m_localToParent * *info->m_parentToWorld;
 
 		//
 		//--------------------------------------------------------------
@@ -835,8 +816,7 @@ void gosFX::CardCloud::DrawState(DrawInfo *info)
 					batcher.Emit(vertex);
 				}
 			}
-		} else
-		submission.submit(info);
+		}
 	}
 
 	SpinningCloud::Draw(info);

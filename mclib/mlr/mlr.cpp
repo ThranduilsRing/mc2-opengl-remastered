@@ -143,7 +143,6 @@ void
 	MLRPointCloud::InitializeClass();
 	MLRTriangleCloud::InitializeClass();
 	MLRNGonCloud::InitializeClass();
-	MLRCardCloud::InitializeClass();
 	MLRAmbientLight::InitializeClass();
 	MLRInfiniteLight::InitializeClass();
 	MLRInfiniteLightWithFalloff::InitializeClass();
@@ -301,7 +300,6 @@ void
 	MLRInfiniteLightWithFalloff::TerminateClass();
 	MLRInfiniteLight::TerminateClass();
 	MLRAmbientLight::TerminateClass();
-	MLRCardCloud::TerminateClass();
 	MLRNGonCloud::TerminateClass();
 	MLRTriangleCloud::TerminateClass();
 	MLRPointCloud::TerminateClass();

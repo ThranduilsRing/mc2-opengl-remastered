@@ -73,9 +73,9 @@ void dump_summary() {
 void initialize_env() {
     if (g_enabled_initialized) return;
     g_log_value = mc2::gate::get<"MC2_GPU_PARTICLES_LOG">();
-    // REVERTED TO CPU/MLR DEFAULT (user request: GPU FX looked broken). Absent
-    // env var → DISABLED (legacy CPU billboards). Opt back into GPU with "1".
-    g_enabled_value = mc2::gate::get<"MC2_GPU_PARTICLES">();   // default OFF -> legacy CPU/MLR FX
+    // Accepted Card/CardCloud geometry is native by default. The kill-switch
+    // suppresses submission; their CPU/MLR renderer has been retired.
+    g_enabled_value = mc2::gate::get<"MC2_GPU_PARTICLES">();
     g_enabled_initialized = true;
     if (g_enabled_value) {
         mc2::fmt::print_err("[INSTR v1] enabled: gpu_particles log={:d}\n",

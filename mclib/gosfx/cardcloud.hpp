@@ -8,7 +8,6 @@
 #include"spinningcloud.hpp"
 #include<mlr/mlr.hpp>
 
-namespace MidLevelRenderer {class MLRCardCloud;}
 
 namespace gosFX
 {
@@ -110,7 +109,6 @@ namespace gosFX
 				 + 4*sizeof(Stuff::Vector2DOf<Stuff::Scalar>);
 
 	protected:
-		std::unique_ptr<MidLevelRenderer::MLRCardCloud> m_cloudImplementation;						// point to an MLR triangle cloud by Michael
 		glm::vec3							*m_P_vertices;
 		Stuff::RGBAColor						*m_P_color;
 		Stuff::Vector2DOf<Stuff::Scalar>	*m_P_uvs;

@@ -511,8 +511,8 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "Static-prop light-bake observation gate, default OFF.",
     },
     {
-        "MC2_GPU_PARTICLES", "MC2_GPU_PARTICLES", EnvVarKind::Feature, false,
-        "Master gate for GPU billboard particles (mclib/particles/batcher.cpp initialize_env).",
+        "MC2_GPU_PARTICLES", "MC2_GPU_PARTICLES", EnvVarKind::Feature, true,
+        "Native Card/CardCloud rendering; =0 suppresses these draws (CPU routes retired).",
     },
     {
         "MC2_FEATURE_HUD_IMGUI_TABS", "MC2_HUD_IMGUI_TABS", EnvVarKind::Feature, false,

@@ -10,9 +10,8 @@
 // SSBO upload, VAO, sampler save/restore, depth-state, blend-state, and the //
 // glDrawArrays expansion to billboard quads.                                //
 //                                                                           //
-// Env-gated: MC2_GPU_PARTICLES=1 opt-in. When OFF, Flush() is a no-op and   //
-// the bridge is never called — zero behavior change to the default render   //
-// path. Default OFF until Stage 5'.                                         //
+// Default ON. MC2_GPU_PARTICLES=0 suppresses Card/CardCloud submission;    //
+// their CPU/MLR renderer is retired.                                       //
 //                                                                           //
 // One-way dependency: this header has NO GameOS / GL dependency; the .cpp   //
 // calls a single C-style bridge function. Producers (later: per-primitive   //

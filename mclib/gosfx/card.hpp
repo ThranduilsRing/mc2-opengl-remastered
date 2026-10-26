@@ -8,7 +8,6 @@
 #include"singleton.hpp"
 #include<mlr/mlr.hpp>
 
-namespace MidLevelRenderer {class MLRCardCloud;}
 
 namespace gosFX
 {
@@ -107,16 +106,10 @@ namespace gosFX
 		Stuff::Scalar
 			m_halfX,
 			m_halfY;
-		std::unique_ptr<MidLevelRenderer::MLRCardCloud>
-			m_cardCloud;
 		glm::vec3
 			m_vertices[4];
-		Stuff::RGBAColor
-			m_colors[4];
 		Stuff::Vector2DOf<Stuff::Scalar>
 			m_uvs[4];
-		const int
-			m_cardCount;
 
 	public:
 		static Card*

@@ -7,7 +7,6 @@
 #include "mlr/gosimagepool.hpp"
 #include "mlr/mlrpointcloud.hpp"
 #include "mlr/mlrtrianglecloud.hpp"
-#include "mlr/mlrcardcloud.hpp"
 #include "mlr/mlrngoncloud.hpp"
 #include <cstdint>
 #include <algorithm>
@@ -122,7 +121,10 @@ public:
     bool execute(gosFX::Effect::ExecuteInfo* info) { return this->Execute(info); }
     unsigned active() const { return this->m_activeParticleCount; }
     void expire(unsigned slot) { this->DestroyParticle(slot); }
-    int clippedVertices() const { return this->m_cloudImplementation->GetNumGOSVertices(); }
+    int clippedVertices() const {
+        if constexpr (std::is_same_v<Cloud, gosFX::CardCloud>) return 0;
+        else return this->m_cloudImplementation->GetNumGOSVertices();
+    }
     void distinguishParticles()
     {
         // Distinct channels and slots expose zero-fill, swapped fields and dead-slot packing.
@@ -179,7 +181,9 @@ public:
             appendBytes(bytes, p->m_age);
             appendBytes(bytes, p->m_seed);
             appendBytes(bytes, p->m_ageRate);
-            appendBytes(bytes, this->m_cloudImplementation->IsOn(slot));
+            if constexpr (std::is_same_v<Cloud, gosFX::CardCloud>)
+                appendBytes(bytes, p->m_age < 1.0f);
+            else appendBytes(bytes, this->m_cloudImplementation->IsOn(slot));
             for (unsigned c = 0; c < colorStride(); ++c) {
                 const auto& color = this->m_P_color[slot * colorStride() + c];
                 for (float v : {color.red, color.green, color.blue, color.alpha}) appendBytes(bytes, v);
@@ -386,11 +390,13 @@ void checkFrozenCloud(bool alignX = false, bool alignY = false, unsigned sides =
             CHECK(Stuff::Random::GetState() == frozen);
             CHECK(Stuff::Random::GetDrawCount() == frozen.draws);
             CHECK(cloud.frozenState() == particles);
-            if (!gpu && live == 4) {
+            if (!std::is_same_v<Cloud, gosFX::CardCloud> && !gpu && live == 4) {
                 // MC2's legacy clouds bypass clip rejection, even with clipping flags set.
                 CHECK(cloud.clippedVertices() > 0);
                 REQUIRE_FALSE(sorter->payload.empty());
             }
+            if constexpr (std::is_same_v<Cloud, gosFX::CardCloud>)
+                CHECK(sorter->payload.empty()); // accepted cards never enter MLR, including with the kill-switch off
             if (repeat < 2) firstMlrPayload[repeat] = sorter->payload;
             CHECK(sorter->payload == firstMlrPayload[repeat % 2]);
             if (borrowedCapture->snapshot.is_open()) {

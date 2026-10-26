@@ -57,7 +57,7 @@ public:
 };
 }
 
-TEST_CASE_FIXTURE(Platform, "CardCloud retains the pre-G2 runtime ABI")
+TEST_CASE_FIXTURE(Platform, "CardCloud layout after retiring its MLR owner")
 {
     // The pre-G2 ParticleCloud object wrote its array at 0xd8. Enlarging Effect
     // silently linked incompatible constructors and destructors in the failing VS build.
@@ -66,7 +66,7 @@ TEST_CASE_FIXTURE(Platform, "CardCloud retains the pre-G2 runtime ABI")
     CHECK(sizeof(gosFX::Effect) == EFFECT_SIZE);
     CHECK(sizeof(gosFX::Effect::ExecuteInfo) == 40);
     CHECK(sizeof(gosFX::ParticleCloud) == EFFECT_SIZE + 24);
-    CHECK(sizeof(gosFX::CardCloud) == EFFECT_SIZE + 56);
+    CHECK(sizeof(gosFX::CardCloud) == EFFECT_SIZE + 48);
 }
 
 TEST_CASE_FIXTURE(Platform, "CardCloud births and retirement through Effect Execute")

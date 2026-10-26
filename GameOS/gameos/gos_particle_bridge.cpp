@@ -130,6 +130,19 @@ extern "C" void gos_particle_bridge_flush(const mc2::particles::GpuParticle* rec
         const int vkW = ppVk ? static_cast<int>(ppVk->getWidth())  : 0;
         const int vkH = ppVk ? static_cast<int>(ppVk->getHeight()) : 0;
         const float* mvp = gos_GetTerrainMVPMat4();
+        static unsigned probeFrames = 0;
+        if (mvp && mc2::particles::Batcher::is_log_enabled() && probeFrames++ < 16) {
+            for (unsigned gi = 0; gi < numGroups; ++gi) {
+                const auto& p = records[groups[gi].start];
+                const float world[4] = {-p.position[0], p.position[2], p.position[1], 1.0f};
+                float clip[4]{};
+                for (unsigned r = 0; r < 4; ++r)
+                    for (unsigned c = 0; c < 4; ++c) clip[r] += mvp[c*4+r] * world[c];
+                mc2::fmt::print_err("[NATIVE_PROBE] world={},{},{} clip={},{},{},{} uv={},{} color={},{},{},{} flags={}\n",
+                    world[0], world[1], world[2], clip[0], clip[1], clip[2], clip[3],
+                    p.velocity[0], p.velocity[1], p.color[0], p.color[1], p.color[2], p.color[3], p.kind_flags);
+            }
+        }
         if (vkW > 0 && vkH > 0 && mvp) {
             std::vector<VfxParticleDraw> vkDraws;
             vkDraws.reserve(numGroups);

@@ -1784,13 +1784,13 @@ flags:
     registry: {feature_id: MC2_FEATURE_STATIC_PROP_INDIRECT, kind: Retired, order: 1, default_on: true}
   - name: MC2_GPU_PARTICLES
     kind: Bool
-    default: false
-    rule: Lead1
+    default: true
+    rule: DefOnLead0
     owner: code
-    doc: "Master gate for GPU billboard particles (mclib/particles/batcher.cpp initialize_env)."
+    doc: "Native Card/CardCloud rendering; =0 suppresses these draws (CPU routes retired)."
     smoke_passthrough: true
     verified: true
-    registry: {feature_id: MC2_GPU_PARTICLES, kind: Feature, order: -1, default_on: false}
+    registry: {feature_id: MC2_GPU_PARTICLES, kind: Feature, order: -1, default_on: true}
   - name: MC2_GPU_PARTICLES_LOG
     kind: Bool
     default: false

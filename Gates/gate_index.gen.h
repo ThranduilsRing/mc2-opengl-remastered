@@ -242,7 +242,7 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_GPU_GV_SHADOW_SKIP", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_GPU_MECHS", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_GPU_OBJECTS", Kind::Bool, Rule::Lead0Kill, {}},
-    {"MC2_GPU_PARTICLES", Kind::Bool, Rule::Lead1, {}},
+    {"MC2_GPU_PARTICLES", Kind::Bool, Rule::DefOnLead0, {}},
     {"MC2_GPU_PARTICLES_LOG", Kind::Bool, Rule::Lead1, {}},
     {"MC2_GPU_PICK_HOVER", Kind::Bool, Rule::Lead0, {}},
     {"MC2_GPU_PICK_HOVER_TRACE", Kind::Bool, Rule::Lead0, {}},
