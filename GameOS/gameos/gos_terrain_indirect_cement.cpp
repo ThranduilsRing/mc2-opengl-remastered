@@ -612,27 +612,6 @@ void PopulateRecipeCementWords() {
                                    | (static_cast<uint32_t>((maskId & static_cast<int>(kCementMaskIdMask))) << kCementMaskIdShift)
                                    | (static_cast<uint32_t>(cementLayerIdx) & 0xFFFFu);
                         ++transitionQuadCount;
-                    } else if (g_cementAlphaLayerMapReady
-                               && g_cementAlphaLayerIndexBySlot[slot] != 0xFFFFu) {
-                        // CEMENT-ALPHA-LAND-1 rescue. This tile is a transition
-                        // tile the legacy logic DROPS -- it has no solid-cement
-                        // corner to borrow a layer from, or no derivable mask.
-                        // Its own alpha slot now has an atlas cell, so bake a
-                        // word pointing at that cell with OWN_ALPHA set; the
-                        // frag uses the cell's texel alpha as coverage and
-                        // composites over the terrain. maskId is left at the
-                        // all-corners value: the OWN_ALPHA branch in the shader
-                        // never consults it, and any future reader that does
-                        // sees "fully covered", which is the honest answer for
-                        // a tile whose coverage lives in its alpha channel.
-                        cementWord = kCementLayerValidBit
-                                   | kCementTransitionBit
-                                   | kCementOwnAlphaBit
-                                   | (static_cast<uint32_t>((static_cast<int>(kCementMaskIdMask))) << kCementMaskIdShift)
-                                   | (static_cast<uint32_t>(g_cementAlphaLayerIndexBySlot[slot]) & 0xFFFFu);
-                        ++transitionAlphaRescued;
-                        if (cementLayerIdx == 0xFFFFu) ++transitionDroppedNoLayer;
-                        else                           ++transitionDroppedNoMask;
                     } else if (cementLayerIdx == 0xFFFFu) {
                         ++transitionDroppedNoLayer;   // no solid-cement corner
                     } else {
