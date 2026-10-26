@@ -29,6 +29,7 @@
 #include <algorithm>
 #include <string>
 #include <vector>
+#include <array>
 #include <format>
 #include "../GameOS/gameos/utils/mc2log.h"
 
@@ -40,6 +41,20 @@ void objectiveObservationWav(const char*, const char*, int, const char*, bool);
 bool useSound = TRUE;
 bool useMusic = TRUE;
 
+namespace {
+// The seven palette announcements have session lifetime. Playback borrows a
+// resource; the sound system releases the cache when the device shuts down.
+std::array<HGOSAUDIO, MAX_SUPPORT_SAMPLES> supportResources{};
+// Borrowed only while SoundSystem owns the archive; warming runs on its thread.
+PacketFile* supportPreloadFile = nullptr;
+void releaseSupportPlayback(HGOSAUDIO& handle)
+{
+    if (handle && std::find(supportResources.begin(), supportResources.end(), handle) != supportResources.end())
+        handle = nullptr;
+    else
+        gosAudio_DestroyResource(&handle);
+}
+}
 
 constexpr float MAX_SENSOR_UPDATE_TIME = 5.0f;	//Seconds
 
@@ -98,6 +113,18 @@ constexpr unsigned long MAX_SOUND_BITES = 4096;
 constexpr long MAX_DIGITAL_MUSIC = 1024;
 constexpr long MAX_SOUND_PACKET_BYTES = 64l * 1024l * 1024l;
 
+void preloadSupportSample(unsigned id)
+{
+    if (!supportPreloadFile || id >= supportResources.size() || supportResources[id] ||
+        id >= supportPreloadFile->getNumPackets()) return;
+    if (supportPreloadFile->seekPacket(id) != NO_ERR) return;
+    const long size = supportPreloadFile->getPacketSize();
+    if (size <= 0 || size > MAX_SOUND_PACKET_BYTES) return;
+    std::vector<uint8_t> wave(size);
+    if (supportPreloadFile->readPacket(id, wave.data()))
+        SoundSystem::createWaveResource(&supportResources[id], wave);
+}
+
 // The channel a music crossfade slot plays on: slot 0 is STREAM1CHANNEL, slot 1 is STREAM2CHANNEL.
 static int musicSlotChannel (int slot)
 {
@@ -109,6 +136,9 @@ static int musicSlotChannel (int slot)
 //---------------------------------------------------------------------------
 void SoundSystem::destroy (void)
 {
+    supportPreloadFile = nullptr;
+    releaseSupportPlayback(supportHandle);
+    for (auto& resource : supportResources) gosAudio_DestroyResource(&resource);
     for (auto& sound : sounds) gosAudio_DestroyResource(&sound.resourceHandle);
     for (MusicSlot& slot : musicSlots) gosAudio_DestroyResource(&slot.handle);
     for (HGOSAUDIO* handle : {&stream3Handle, &bettyHandle, &supportHandle})
@@ -177,6 +207,7 @@ long SoundSystem::init (const char *soundFileName)
 		gosASSERT(result == NO_ERR);
 
 		numSupportSamples = supportDataFile->getNumPackets();
+		supportPreloadFile = supportDataFile.get();
  		//-----------------------------------------------------------------------
 		// Load all of the sound Bite data.  Do not load actual packet unless
 		// preload field is TRUE.
@@ -560,14 +591,14 @@ void SoundSystem::update (void)
 		}
 	}
 
-	if (useSound && !supportSoundBite.empty())
+	if (useSound && supportHandle)
 	{
 		//---------------------------------------------------
 		// Check if betty is done.  If so, whack the memory
 		gosAudio_PlayMode sampleStatus = gosAudio_GetChannelPlayMode(SUPPORT_CHANNEL);
 		if (sampleStatus != gosAudio_PlayOnce)
 		{
-			gosAudio_DestroyResource(&supportHandle);
+			releaseSupportPlayback(supportHandle);
 			supportSoundBite.clear();
 		}
 	}
@@ -833,7 +864,7 @@ long SoundSystem::playBettySample (unsigned long bettySampleId)
 //---------------------------------------------------------------------------
 long SoundSystem::playSupportSample (unsigned long supportSampleId, const char* fileName)
 {
-	if (useSound && supportSoundBite.empty())		//Playing Support takes precedence
+	if (useSound && !supportHandle)		//Playing Support takes precedence
 	{
 		if (!fileName)
 		{
@@ -857,6 +888,12 @@ long SoundSystem::playSupportSample (unsigned long supportSampleId, const char* 
 			lastSupportId = supportSampleId;
 			channelInUse[ourChannel] = TRUE;
 
+			if (supportSampleId < supportResources.size() && supportResources[supportSampleId]) {
+				supportHandle = supportResources[supportSampleId];
+				gosAudio_AssignResourceToChannel(ourChannel, supportHandle);
+				gosAudio_SetChannelPlayMode(ourChannel, gosAudio_PlayOnce);
+				return SUPPORT_CHANNEL;
+			}
 			long result = supportDataFile->seekPacket(supportSampleId);
 			if (result != NO_ERR)
 				return(-1);

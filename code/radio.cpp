@@ -19,6 +19,7 @@
 #endif
 
 #include"../GameOS/gameos/utils/mc2log.h"
+#include <vector>
 
 #ifndef GAMESOUND_H
 #include"gamesound.h"
@@ -41,6 +42,32 @@ long				Radio::currentRadio = 0;
 PacketFilePtr		Radio::messagesFile[MAX_RADIOS];
 
 RadioMessageInfo	messageInfo[RADIO_MESSAGE_COUNT];
+
+namespace {
+// Only the support palette is retained here. Packet reads run on the main
+// thread and always seek the requested packet, so radios can share the archive.
+std::vector<std::unique_ptr<PacketFile>> supportRadioPreloads;
+PacketFile* supportRadioArchive(const char* path)
+{
+	for (const auto& file : supportRadioPreloads)
+		if (S_stricmp(file->getFilename(), path) == 0) return file.get();
+	return nullptr;
+}
+}
+
+void preloadSupportRadioArchive(const char* name)
+{
+	FullPathFileName path;
+	path.init(CDsoundPath, name, ".pak");
+	if (supportRadioArchive(path)) return;
+	auto file = std::make_unique<PacketFile>();
+	if (file->open(path) == NO_ERR) supportRadioPreloads.push_back(std::move(file));
+}
+
+void releaseSupportRadioPreloads()
+{
+	supportRadioPreloads.clear();
+}
 
 //------------------------------------------------------------------------------------------
 // Class Radio
@@ -79,10 +106,13 @@ long Radio::init (char *fileName, unsigned long heapSize, char *movie)
 	// Startup the packet file.
 	radioID = currentRadio;
 	// The sound system owns the files (it outlives every radio and frees them at purge); the statics are views for the radios.
-	soundSystem->radioMessageFiles[radioID] = std::make_unique<PacketFile>();
-	messagesFile[radioID] = soundSystem->radioMessageFiles[radioID].get();
-		
-	long result = messagesFile[radioID]->open(pilotAudioPath);
+	messagesFile[radioID] = supportRadioArchive(pilotAudioPath);
+	long result = NO_ERR;
+	if (!messagesFile[radioID]) {
+		soundSystem->radioMessageFiles[radioID] = std::make_unique<PacketFile>();
+		messagesFile[radioID] = soundSystem->radioMessageFiles[radioID].get();
+		result = messagesFile[radioID]->open(pilotAudioPath);
+	}
 	gosASSERT(result == NO_ERR);
 	
 	if (!noiseFile)

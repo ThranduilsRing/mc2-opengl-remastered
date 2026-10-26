@@ -74,6 +74,9 @@ void GameSoundSystem::purgeSoundSystem (void)
 		
 	radioNoiseFile.reset();
 	Radio::noiseFile = nullptr;
+	// Support archive views die with the radios, before their preloaded owners.
+	extern void releaseSupportRadioPreloads();
+	releaseSupportRadioPreloads();
 
 	Radio::currentRadio = 0;
 	Radio::radioListGo = FALSE;

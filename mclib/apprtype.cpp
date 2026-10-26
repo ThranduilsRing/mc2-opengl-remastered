@@ -41,6 +41,7 @@
 #include<cstdio>
 #include "Gates/gate.h"
 #include "mc2fmt.h"
+#include <tracy/Tracy.hpp>
 
 //---------------------------------------------------------------------------
 // static Globals
@@ -219,6 +220,8 @@ void AppearanceType::destroy (void)
 // class AppearanceTypeList
 AppearanceTypePtr AppearanceTypeList::getAppearance (unsigned long apprNum, const char *appearFile)
 {
+	ZoneScopedN("Appearance.GetType");
+	if (appearFile) ZoneText(appearFile, strlen(appearFile));
 	//----------------------------------------------------------------
 	// The type of appearance is stored in the upper 8 bits of the
 	// apprNum.  To get the correct packet we mask off the top 8 bits

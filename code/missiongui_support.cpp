@@ -3,7 +3,121 @@
 // Declared in the class headers; shared names in missiongui_shared_internal.h.
 #include "missiongui_shared_internal.h"
 #include "mc2fmt.h"
+#include "mech3d.h"
 #include <utility>
+
+extern void preloadSupportRadioArchive(const char* name);
+extern void preloadSupportSample(unsigned id);
+namespace {
+// These actors are never submitted or simulated. Their sources and types stay
+// live until the mission interface releases them, before the appearance registry.
+std::vector<std::unique_ptr<Appearance>> supportPreloads;
+int supportPreloadStep = -1;
+std::chrono::steady_clock::time_point supportPreloadStart;
+double supportPreloadMs = 0;
+double supportPreloadWorstMs = 0;
+}
+
+void releaseMissionSupportPreloads()
+{
+	supportPreloads.clear();
+	supportPreloadStep = -1;
+	supportPreloadMs = supportPreloadWorstMs = 0;
+}
+
+void updateMissionSupportPreloads()
+{
+	// Keep the first playable frame free of warming. File/appearance registries
+	// are main-thread owned: do one archive, sample or actor on each later frame.
+	if (supportPreloadStep < 0) {
+		supportPreloadStep = 0;
+		supportPreloadStart = std::chrono::steady_clock::now();
+		return;
+	}
+	if (supportPreloadStep >= 20) return;
+	ZoneScopedN("Mission.SupportPreloadStep");
+	const auto start = std::chrono::steady_clock::now();
+	auto* logistics = LogisticsData::instance;
+	// Match the mission permissions used by ControlGui, not temporary RP/unit
+	// limits. A missing logistics mission permits the whole palette there too.
+	const bool allowed[MAX_SUPPORT_SAMPLES] = {
+		!logistics || logistics->canHaveAirStrike(),
+		!logistics || logistics->canHaveMineLayer(),
+		!logistics || logistics->canHaveSensorStrike(),
+		!logistics || logistics->canHaveSalavageCraft(),
+		!logistics || logistics->canHaveRepairTruck(),
+		!logistics || logistics->canHaveScoutCopter(),
+		!logistics || logistics->canHaveArtilleryPiece()
+	};
+	const int step = supportPreloadStep++;
+	const auto preloadStep = [&] {
+		if (step < MAX_SUPPORT_SAMPLES) {
+			if (allowed[step]) preloadSupportSample(step);
+		}
+		else if (step < 15) {
+			const int vehicle = (step - 7) / 2;
+			const long ids[] = {182L, 393L, 120L, 415L};
+			const int samples[] = {SUPPORT_REPAIR, SUPPORT_SCOUT, SUPPORT_MINELAYER, SUPPORT_ARTILLERY};
+			const long id = ids[vehicle];
+			if (!allowed[samples[vehicle]]) return;
+			if ((step - 7) % 2 == 0) {
+				const char* pilot = MissionInterfaceManager::instance()->getSupportVehicleNameFromID(id);
+				if (!pilot) return;
+				FullPathFileName path;
+				path.init(warriorPath, pilot, ".fit");
+				FitIniFile profile;
+				char audio[256]{};
+				if (profile.open(path) == NO_ERR && profile.seekBlock("General") == NO_ERR &&
+					profile.readIdString("pilotAudio", audio, sizeof(audio) - 1) == NO_ERR && audio[0])
+					preloadSupportRadioArchive(audio);
+				return;
+			}
+			auto* type = ObjectManager->getObjectType(id);
+			if (!type || !type->getAppearanceTypeName()) return;
+			const auto cls = type->getObjectTypeClass();
+			if (cls != VEHICLE_TYPE && cls != BATTLEMECH_TYPE) return;
+			auto* appearanceType = appearanceTypeList->getAppearance(
+				(cls == VEHICLE_TYPE ? GV_TYPE : MECH_TYPE) << 24, type->getAppearanceTypeName());
+			if (!appearanceType) return;
+			std::unique_ptr<Appearance> appearance;
+			if (cls == VEHICLE_TYPE) appearance = std::make_unique<GVAppearance>();
+			else appearance = std::make_unique<Mech3DAppearance>();
+			appearance->init(appearanceType);
+			appearance->resetPaintScheme(prefs.highlightColor, prefs.highlightColor, prefs.baseColor);
+			supportPreloads.push_back(std::move(appearance));
+		}
+		else if (step < 19) {
+			const bool needed[] = {
+				allowed[SUPPORT_REPAIR] || allowed[SUPPORT_SCOUT] || allowed[SUPPORT_MINELAYER] || allowed[SUPPORT_ARTILLERY],
+				allowed[SUPPORT_RECOVER], allowed[SUPPORT_AIRSTRIKE], allowed[SUPPORT_PROBE]
+			};
+			const char* names[] = {"vtol", "karnov", "airstrikemarker", "sensormarker"};
+			const char* name = names[step - 15];
+			if (!needed[step - 15]) return;
+			auto* type = appearanceTypeList->getAppearance(BLDG_TYPE << 24, name);
+			if (!type) return;
+			auto appearance = std::make_unique<BldgAppearance>();
+			appearance->init(type);
+			supportPreloads.push_back(std::move(appearance));
+		}
+		else if (allowed[SUPPORT_AIRSTRIKE]) {
+			auto* type = appearanceTypeList->getAppearance(GV_TYPE << 24, "Shilone");
+			if (type) {
+				auto appearance = std::make_unique<GVAppearance>();
+				appearance->init(type);
+				supportPreloads.push_back(std::move(appearance));
+			}
+		}
+	};
+	preloadStep();
+	const double ms = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start).count();
+	supportPreloadMs += ms;
+	supportPreloadWorstMs = std::max(supportPreloadWorstMs, ms);
+	if (supportPreloadStep == 20)
+		mc2::fmt::print_out("[SUPPORT_PRELOAD] appearances={} ms={:.3f} worst_step_ms={:.3f} playable_ms={:.3f}\n",
+			supportPreloads.size(), supportPreloadMs, supportPreloadWorstMs,
+			std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - supportPreloadStart).count());
+}
 
 
 void MissionInterfaceManager::addAirstrike()
@@ -22,6 +136,7 @@ void MissionInterfaceManager::addAirstrike()
 
 
 MoverPtr BringInReinforcement (long vehicleID, long rosterIndex, long commanderID, glm::vec3 pos, bool exists) {
+	ZoneScopedN("Support.Reinforcement");
 
 	MoverInitData data;
 	memset( &data, 0, sizeof( data ) );
@@ -107,6 +222,7 @@ void MissionInterfaceManager::addVehicle( const glm::vec3& pos )
 
 void MissionInterfaceManager::beginVtol (long supportID, long commanderID, glm::vec3* reinforcePos, MoverPtr salvageTarget)
 {
+	ZoneScopedN("Support.CallIn");
 	glm::vec3 vtolPos = wPos;
 	if (reinforcePos)
 		vtolPos = *reinforcePos;
@@ -130,6 +246,7 @@ void MissionInterfaceManager::beginVtol (long supportID, long commanderID, glm::
 
 	if ( !vTol[commanderID] )
 	{
+		ZoneScopedN("Support.TransportInit");
 		if (vehicleID[commanderID] != 147)		//NOT a recovery vehicle.  Standard VTOL
 		{
 			if (supportID == -1) 
@@ -235,6 +352,7 @@ void MissionInterfaceManager::beginVtol (long supportID, long commanderID, glm::
 
 	if (commanderID == Commander::home->getId())
 	{
+		ZoneScopedN("Support.Voice");
 		switch (vehicleID[commanderID])
 		{
 			case 120:	//Minelayer
@@ -269,10 +387,13 @@ void MissionInterfaceManager::beginVtol (long supportID, long commanderID, glm::
 			newPos = mechToRecover[commanderID]->appearance->getNodeNamePosition("cockpit");
 	}
 	
-	if (vehicleID[commanderID] != 147)
-		soundSystem->playDigitalSample(VTOL_ANIMATE,newPos);
-	else
-		soundSystem->playDigitalSample(SALVAGE_CRAFT,newPos);
+	{
+		ZoneScopedN("Support.FlightAudio");
+		if (vehicleID[commanderID] != 147)
+			soundSystem->playDigitalSample(VTOL_ANIMATE,newPos);
+		else
+			soundSystem->playDigitalSample(SALVAGE_CRAFT,newPos);
+	}
 	
 	vTol[commanderID]->setObjectParameters( newPos, 0, false, Team::home->id, 0);
 	eye->update();

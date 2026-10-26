@@ -30,6 +30,7 @@
 //#ifndef _MBCS
 #include<gameos.hpp>
 #include "mc2fmt.h"
+#include <algorithm>
 //#else
 //#include<assert.h>
 //#define gosASSERT assert
@@ -695,11 +696,32 @@ long CSVFile::seekRowCol (DWORD row, DWORD col)
 	seek(0);		//Start at the top.
 	char tmp[2048];
 	
-	do
-	{
-		rowCount++;
-		readLine(reinterpret_cast<MemoryPtr>(tmp),2047);
-	} while (rowCount != row);  
+	if (inRAM && fileImage && row > 0) {
+		// Loadouts repeatedly revisit hundreds of cells. Skip preceding rows
+		// without copying each one or calling fileSize() for every byte.
+		const auto size = fileSize();
+		unsigned long at = 0;
+		for (DWORD r = 1; r < row; ++r) {
+			if (at >= size) return -1;
+			const auto count = std::min<unsigned long>(2047, size - at);
+			const auto* begin = fileImage + at;
+			const auto* cr = static_cast<const unsigned char*>(memchr(begin, '\r', count));
+			const auto* lf = static_cast<const unsigned char*>(memchr(begin, '\n', count));
+			auto skip = count;
+			if (cr) skip = static_cast<unsigned long>(cr - begin);
+			if (lf) skip = std::min(skip, static_cast<unsigned long>(lf - begin));
+			at += skip + 1;
+			// Match readLine's CR/LF and 2047-byte chunk boundaries exactly.
+			if (at < size && fileImage[at] == '\n') ++at;
+		}
+		seek(at);
+		readLine(reinterpret_cast<MemoryPtr>(tmp), 2047);
+	} else {
+		do {
+			rowCount++;
+			readLine(reinterpret_cast<MemoryPtr>(tmp),2047);
+		} while (rowCount != row);
+	}
 	
 	char *currentChk = tmp;
 	if (col)

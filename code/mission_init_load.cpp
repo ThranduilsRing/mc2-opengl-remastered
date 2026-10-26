@@ -7,7 +7,6 @@
 #include "render_resource_owners.h"
 #include "mc2fmt.h"
 
-
 // Read the warrior count and set up the brain-load counters.
 void Mission::initWarriorsHeader(MissionInitFrame& f) {
 	auto& missionName = f.missionName; auto& result = f.result; auto& numWarriors = f.numWarriors;

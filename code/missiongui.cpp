@@ -29,6 +29,7 @@
 #include "missiongui_shared_internal.h"
 #include "mc2fmt.h"
 
+extern void releaseMissionSupportPreloads();
 
 	const char* terrainStr[NUM_TERRAIN_TYPES] = {
 			"Blue Water",	//MC_BLUEWATER_TYPE
@@ -410,6 +411,7 @@ void MissionInterfaceManager::init (FitIniFilePtr loader)
 //--------------------------------------------------------------------------------------
 void MissionInterfaceManager::destroy (void)
 {
+	releaseMissionSupportPreloads();
 	// [IFACE_PERF v1] flush the partial cost-split window at mission teardown
 	// so runs shorter than 900 frames still emit numbers. No-op when gate OFF.
 	mfEmitWindow("mission_end");
