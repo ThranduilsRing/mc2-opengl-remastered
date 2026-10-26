@@ -239,7 +239,11 @@ void loadSettings() {
         if (!json.contains("env") || !json["env"].is_object()) continue;
         for (const auto& [key, value] : json["env"].items()) {
             const auto original = inheritedEnv.find(key);
-            const bool shellOverride = original != inheritedEnv.end() ? original->second.has_value() : env(key).has_value();
+            bool shellOverride;
+            if (original != inheritedEnv.end()) {
+                const auto& [name, inherited] = *original;
+                shellOverride = inherited.has_value();
+            } else shellOverride = env(key).has_value();
             if (key.starts_with("MC2_") && value.is_string() && !shellOverride) setEnv(key, value.get<std::string>());
         }
     }

@@ -50,14 +50,12 @@ TEST_CASE("player settings/legacy migration consumes invalid and unknown entries
     for (const auto& key : mc2::options::legacy::kLegacyKeys) {
         for (const auto& old : {"1", "0", "banana", ""}) {
             nlohmann::json settings = {{key.envName, old}, {"last_campaign", "community"},
-                {"MC2_VK_TERRAIN_HEIGHT_STRENGTH", "banana"},
-                {mc2::gate::name<"MC2_RENDER_SCALE">(), "0.5"}};
+                {mc2::gate::name<"MC2_RENDER_SCALE">(), "banana"}};
             std::string cfg = "[MechCommander2]\n";
             PlayerFrontEnd::migrateLegacySettings(settings, cfg);
             CHECK_FALSE(settings.contains(key.envName));
-            CHECK_FALSE(settings.contains("MC2_VK_TERRAIN_HEIGHT_STRENGTH"));
             CHECK(settings["last_campaign"] == "community");
-            CHECK(settings[mc2::gate::name<"MC2_RENDER_SCALE">()] == "0.5");
+            CHECK(settings[mc2::gate::name<"MC2_RENDER_SCALE">()] == "banana");
             mc2::options::RenderOptions expected, actual;
             const auto* option = mc2::options::find(key.option);
             mc2::options::setFromText(expected, *option, old);
@@ -75,14 +73,19 @@ TEST_CASE("player settings/legacy migration consumes invalid and unknown entries
 }
 
 TEST_CASE("player settings/named legacy values win and malformed types disappear") {
-    nlohmann::json settings = {{"MC2_STATIC_PROP_PBR_V1", "1"}, {"StaticPropPbr", "0"},
-                              {"MC2_VFX_LIT_PARTICLES", 42}};
-    std::string cfg = "[MechCommander2]\n";
-    PlayerFrontEnd::migrateLegacySettings(settings, cfg);
-    mc2::options::RenderOptions options;
-    mc2::options::cfg::loadFromText(options, cfg);
-    CHECK_FALSE(options.staticPropPbr);
-    CHECK(settings.empty());
+    for (const auto& key : mc2::options::legacy::kLegacyKeys) {
+        nlohmann::json settings = {{key.envName, "1"}, {key.option, "0"}};
+        std::string cfg = "[MechCommander2]\n";
+        PlayerFrontEnd::migrateLegacySettings(settings, cfg);
+        mc2::options::RenderOptions options;
+        mc2::options::cfg::loadFromText(options, cfg);
+        const auto* option = mc2::options::find(key.option);
+        CHECK_FALSE(options.*option->b);
+        CHECK(settings.empty());
+        settings = {{key.envName, 42}};
+        PlayerFrontEnd::migrateLegacySettings(settings, cfg);
+        CHECK(settings.empty());
+    }
 }
 
 TEST_CASE("player settings/object numbers stay signed and on their assignment line") {

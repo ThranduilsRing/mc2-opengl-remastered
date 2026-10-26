@@ -209,7 +209,9 @@ bool decodeHdriSource(const char* path, float* outSunAzGL, bool* outSunValid, Hd
             const int cap = mc2::options::current().baseQuality == 0 ? 512 : 1024;
             const int nw = cap, nh = std::max(1, img.height * cap / img.width);
             size_t cappedBytes = 8;
-            for (int mw = nw, mh = nh; mw > 1 || mh > 1; mw = std::max(1, mw / 2), mh = std::max(1, mh / 2))
+            for (int mw = nw, mh = nh; mw > 1 || mh > 1;
+                 mw = std::max(1, mw / 2),
+                 mh = std::max(1, mh / 2))
                 cappedBytes += static_cast<size_t>(mw) * mh * 8;
             // Keep native BC6H when the half-float mip chain would cost more memory.
             if (mc2::options::lowCost() && img.width > cap && cappedBytes < count) {
