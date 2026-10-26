@@ -9529,6 +9529,35 @@
    "count": 1
   },
   {
+   "tag": "VEHICLE_OVERRIDE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [],
+   "count": 1
+  },
+  {
+   "tag": "VEHICLE_PICK",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "appearance",
+    "pos",
+    "bounds"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VEHICLE_RENDER",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "lod",
+    "paint",
+    "type_materials"
+   ],
+   "count": 1
+  },
+  {
    "tag": "VERIFY",
    "ver": -1,
    "stream": "buffer",

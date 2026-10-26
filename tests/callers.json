@@ -45,7 +45,7 @@
         },
         {
           "path": "scripts/tests/test_kit_payload.py",
-          "line": 139,
+          "line": 150,
           "evidence": "import",
           "reference": "bootstrap_worktree_build",
           "text": "import bootstrap_worktree_build as bootstrap"
@@ -769,7 +769,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/deploy_payload.py",
-          "line": 1942,
+          "line": 1948,
           "evidence": "command",
           "reference": "scripts/check-deploy-hygiene.py",
           "text": "r = subprocess.run([sys.executable, hygiene, target],"
@@ -2314,7 +2314,7 @@
         },
         {
           "path": "scripts/tests/test_kit_payload.py",
-          "line": 138,
+          "line": 149,
           "evidence": "import",
           "reference": "configure_ninja",
           "text": "import configure_ninja as cn"
@@ -3844,14 +3844,14 @@
         },
         {
           "path": "scripts/tests/test_kit_payload.py",
-          "line": 120,
+          "line": 131,
           "evidence": "import",
           "reference": "deploy_payload",
           "text": "import deploy_payload as dp"
         },
         {
           "path": "scripts/tests/test_kit_payload.py",
-          "line": 193,
+          "line": 204,
           "evidence": "import",
           "reference": "deploy_payload",
           "text": "import deploy_payload as dp"
