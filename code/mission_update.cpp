@@ -1426,6 +1426,9 @@ long Mission::update (void)
 					return earlyResult;
 				updatePresentationOnly(false, static_cast<float>(s_tickClock.alpha()));
 			}
+			// Save fixtures need the same GUI trigger, camera and weather state on every virtual frame as at 1x.
+			static const bool saveFixture = SmokeMode::fixedTimestepEnabled() &&
+				(mc2::gate::get<"MC2_BOOT_QUICKSAVE_AT">() > 0 || mc2::gate::get<"MC2_BOOT_QUICKLOAD_AT">() > 0);
 			for (int tick = 0; tick < ticks; ++tick)
 			{
 				// One logic pass per frame-counter value: per-frame-keyed sim paths (animation advance, the brain tick
@@ -1433,7 +1436,7 @@ long Mission::update (void)
 				s_extraTickInFrame = tick > 0;
 				if (tick > 0)
 					++g_mc2FrameCounter;
-				const bool ended = updatePass(true, tick == 0, true, !firstFrame, earlyResult);
+				const bool ended = updatePass(true, tick == 0 || saveFixture, true, !firstFrame, earlyResult);
 				s_extraTickInFrame = false;
 				if (ended)
 					return earlyResult;
