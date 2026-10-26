@@ -6,7 +6,7 @@
   "HostServices": 0,
   "RenderCore": 402,
   "RenderWorld": 0,
-  "code": 14010,
+  "code": 13990,
   "mclib": 28499,
   "shaders": 416
  },
@@ -176,7 +176,7 @@
   "code/missiongui_cursor.cpp": 96,
   "code/missiongui_input.cpp": 87,
   "code/missiongui_orders.cpp": 35,
-  "code/missiongui_style.cpp": 479,
+  "code/missiongui_style.cpp": 459,
   "code/missiongui_support.cpp": 92,
   "code/missiongui_uicmd.cpp": 16,
   "code/missiongui_uicmd_probe.cpp": 16,
@@ -510,8 +510,8 @@
   "shaders/vulkan/terrain_tier1.vert": 71,
   "shaders/vulkan/terrain_tier1_skirt.vert": 71
  },
- "head": "3e38360a3",
+ "head": "1dd2f90a5",
  "n": 8,
- "total": 45630,
+ "total": 45610,
  "version": 1
 }
