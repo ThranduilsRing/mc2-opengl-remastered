@@ -769,7 +769,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/deploy_payload.py",
-          "line": 1916,
+          "line": 1896,
           "evidence": "command",
           "reference": "scripts/check-deploy-hygiene.py",
           "text": "r = subprocess.run([sys.executable, hygiene, target],"
@@ -1672,7 +1672,7 @@
       "callers_by_basename": [
         {
           "path": "CMakeLists.txt",
-          "line": 951,
+          "line": 948,
           "evidence": "cmake command",
           "reference": "${CMAKE_SOURCE_DIR}/scripts/check-shader-schema.sh",
           "text": "COMMAND ${BASH_EXECUTABLE} ${CMAKE_SOURCE_DIR}/scripts/check-shader-schema.sh"
@@ -2332,13 +2332,6 @@
           "evidence": "import",
           "reference": "configure_ninja",
           "text": "import configure_ninja as cn  # noqa: E402"
-        },
-        {
-          "path": "tests/smoke/test_launcher_legacy_env.py",
-          "line": 36,
-          "evidence": "import",
-          "reference": "configure_ninja",
-          "text": "from configure_ninja import NINJA"
         },
         {
           "path": "tools/build_all_targets.py",
@@ -3012,13 +3005,6 @@
           "evidence": "import",
           "reference": "scripts.console_child",
           "text": "from scripts.console_child import child_kwargs"
-        },
-        {
-          "path": "tests/smoke/test_launcher_legacy_env.py",
-          "line": 19,
-          "evidence": "import",
-          "reference": "console_child",
-          "text": "import console_child  # noqa: E402  (windowless console children, scripts/console_child.py)"
         },
         {
           "path": "tests/smoke/test_preflight_cache.py",
@@ -3936,7 +3922,7 @@
         },
         {
           "path": "scripts/deploy_payload.py",
-          "line": 1818,
+          "line": 1798,
           "evidence": "import",
           "reference": "exe_fingerprint",
           "text": "from exe_fingerprint import extract, sha_agrees"
@@ -4087,14 +4073,14 @@
       "callers_by_stem": [
         {
           "path": "scripts/deploy_payload.py",
-          "line": 1237,
+          "line": 1217,
           "evidence": "import",
           "reference": "kit_payload",
           "text": "from kit_payload import contained_path"
         },
         {
           "path": "scripts/deploy_payload.py",
-          "line": 1851,
+          "line": 1831,
           "evidence": "import",
           "reference": "kit_payload",
           "text": "import kit_payload"
@@ -4932,7 +4918,7 @@
         },
         {
           "path": "scripts/test_release_zip_install.py",
-          "line": 238,
+          "line": 235,
           "evidence": "command",
           "reference": "scripts/run_smoke.py",
           "text": "result = subprocess.run(cmd, **console_child.child_kwargs())"
@@ -5269,14 +5255,14 @@
         },
         {
           "path": "scripts/deploy_payload.py",
-          "line": 748,
+          "line": 743,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from scripts.smoke_lib import deploy_lease"
         },
         {
           "path": "scripts/deploy_payload.py",
-          "line": 788,
+          "line": 783,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from scripts.smoke_lib import bounded_wait"
@@ -5719,7 +5705,7 @@
       "callers_by_stem": [
         {
           "path": "scripts/deploy_payload.py",
-          "line": 788,
+          "line": 783,
           "evidence": "import",
           "reference": "scripts.smoke_lib.bounded_wait",
           "text": "from scripts.smoke_lib import bounded_wait"
@@ -5899,7 +5885,7 @@
       "callers_by_stem": [
         {
           "path": "scripts/deploy_payload.py",
-          "line": 748,
+          "line": 743,
           "evidence": "import",
           "reference": "scripts.smoke_lib.deploy_lease",
           "text": "from scripts.smoke_lib import deploy_lease"
@@ -7519,13 +7505,6 @@
       "path": "scripts/tests/test_ref_passthrough.py",
       "basename": "test_ref_passthrough.py",
       "stem": "test_ref_passthrough",
-      "callers_by_basename": [],
-      "callers_by_stem": []
-    },
-    {
-      "path": "scripts/tests/test_review_launcher_sizing.py",
-      "basename": "test_review_launcher_sizing.py",
-      "stem": "test_review_launcher_sizing",
       "callers_by_basename": [],
       "callers_by_stem": []
     },
@@ -15532,7 +15511,7 @@
       "callers_by_basename": [
         {
           "path": "CMakeLists.txt",
-          "line": 929,
+          "line": 926,
           "evidence": "cmake command",
           "reference": "${CMAKE_SOURCE_DIR}/tools/shader_reflect/reflect.py",
           "text": "COMMAND ${Python3_EXECUTABLE}"

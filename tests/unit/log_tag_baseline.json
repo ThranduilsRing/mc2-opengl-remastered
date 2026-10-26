@@ -1954,6 +1954,18 @@
    "count": 1
   },
   {
+   "tag": "CAMPAIGN_PICKER",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "mod",
+    "campaign",
+    "deps",
+    "restart"
+   ],
+   "count": 1
+  },
+  {
    "tag": "CAPTURE_HIGHLIGHT",
    "ver": 1,
    "stream": "stderr",
@@ -4507,17 +4519,6 @@
    "count": 1
   },
   {
-   "tag": "LAUNCHER_ENV",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "applied",
-    "shell_override",
-    "src"
-   ],
-   "count": 1
-  },
-  {
    "tag": "LEAFDIAG",
    "ver": -1,
    "stream": "stderr",
@@ -6622,6 +6623,13 @@
     "roster"
    ],
    "count": 1
+  },
+  {
+   "tag": "PLAYER_SETTINGS",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [],
+   "count": 3
   },
   {
    "tag": "PREVIEW",
