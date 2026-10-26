@@ -133,10 +133,12 @@ def test_oversize_pdb_deleted_small_kept(tmp_path, capsys):
     tree = tmp_path / "t"
     tree.mkdir()
     pdb = tree / "mc2.pdb"
+    exe = tree / "mc2.exe"
+    exe.write_bytes(b"engine")
     pdb.write_bytes(b"x" * 100)
-    assert not ninja_build.drop_oversize_pdb(str(tmp_path), "t", limit=1000) and pdb.exists()
+    assert not ninja_build.drop_oversize_pdb(str(tmp_path), "t", limit=1000) and pdb.exists() and exe.exists()
     assert ninja_build.drop_oversize_pdb(str(tmp_path), "t", limit=50)
-    assert not pdb.exists() and "deleted t/mc2.pdb" in capsys.readouterr().out
+    assert not pdb.exists() and not exe.exists() and "deleted t/mc2.pdb" in capsys.readouterr().out
     assert not ninja_build.drop_oversize_pdb(str(tmp_path), "t", limit=50)  # missing pdb: no error
 
 
