@@ -49,8 +49,14 @@ The existing IR frontend metadata retains each asset's authored `muzzles[]`;
 the runtime override registry does not consume muzzle metadata. Stock weapon
 behavior and animation bindings continue through the existing engine path.
 
-Spotlight uses stock art until its kit bake includes the required searchlight
-joint. The Spotlight override and its payload are excluded from Pack5.
+Pack6 restores Spotlight with the sp2 bake from `claude/kit-intent` commit
+`2a534b1a4`, preserving stock searchlight hierarchy and pivots. Its selection is
+recorded in `E:/mc2-ref/packaging-sp2-kit-pack6.json` (Spotlight only). It also
+replaces the eight r4c entries in `E:/mc2-ref/packaging-r4c-kit-pack6.json`
+from commit `3816a8b4f`:
+the gauss circular drum, medium autocannon heads without dishes (including
+popup and camo1-4), and pulse laser head without its sensor. Other bakes retain
+their Pack5 payload bytes and tags; stock gameplay geometry remains authoritative.
 
 The three approved r2 fence bakes predate the stock count-contract repair
 7ca5e7b44. That contract is art-review metadata: the GLB frontend, package
