@@ -59,6 +59,7 @@ long GVAppearance::render (long depthFixup)
 
 		if (visible)
 		{
+			mc2_vis::trace("vehicle-shadow", static_cast<const void*>(this), buildVisState());
 			// Sensor contacts keep visible=true while the body fades to alpha zero.
 			// Shadow maps must not reveal a body that the main pass cannot draw.
 			if (mc2_vis::meshDrawn(buildVisState()) && gos_IsModernShadowPathActive())

@@ -231,15 +231,8 @@ void GuiRuntime::Init() {
     io.ConfigFlags |= ImGuiConfigFlags_NoMouseCursorChange;
     // The SDL backend has its own capture/warp path, separate from GameOS.
     if (gos_NoUserPresentRequested()) io.ConfigFlags |= ImGuiConfigFlags_NoMouse;
-    // The MC2R cursor sprite is drawn in the HUD batch that flushes BEFORE
-    // GuiRuntime::Render(), so it was hidden behind the new defs/ImGui UI
-    // pages. io.MouseDrawCursor = true here would draw ImGui's own generic
-    // software-arrow cursor on top, not MC2's custom cursor sprite. The fix is
-    // in mechcmd2.cpp: the actual MC2 cursor draw
-    // (userInput->render()) is re-issued as a GuiRuntime::RegisterPostImGuiRender
-    // callback right after its normal HUD-batch draw, so the SAME custom
-    // sprite composites again on top of the ImGui frame instead of being
-    // replaced by a different cursor here.
+    // Menus request an ImGui software pointer each frame so it composites
+    // above their opaque UI through Vulkan. Gameplay retains the MC2 sprite.
     //
     // Docking (vendored ImGui v1.91.8-docking): floating editor panels ->
     // real dockable layout, default-docked into a right-side column on first run (see
@@ -654,6 +647,17 @@ void GuiRuntime::Render() {
     // Draw above opaque menu windows through the same renderer as the UI.
     ImGui::GetIO().MouseDrawCursor = (ImGui::GetIO().MouseDrawCursor || ImGui::GetIO().WantCaptureMouse)
         && !mc2::gate::get<"MC2_OS_CURSOR">();
+    if (ImGui::GetIO().MouseDrawCursor && gos_NoUserPresentRequested()
+        && mc2::gate::get<"MC2_VK_PICK_PROBE">()) {
+        // Synthetic in-process cursor for unattended menu captures; no OS input.
+        auto& io = ImGui::GetIO();
+        io.MousePos = ImVec2(io.DisplaySize.x * 0.5f, io.DisplaySize.y * 0.5f);
+        static bool traced = false;
+        if (!traced) {
+            traced = true;
+            mc2::fmt::print_err("[MENU_CURSOR_PROBE] software=1 pos={:.0f},{:.0f}\n", io.MousePos.x, io.MousePos.y);
+        }
+    }
     ImGui::Render();
     s_frameActive = false;
 
