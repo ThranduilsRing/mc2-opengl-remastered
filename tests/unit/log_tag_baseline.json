@@ -3380,7 +3380,7 @@
    "ver": -1,
    "stream": "stderr",
    "keys": [],
-   "count": 1
+   "count": 2
   },
   {
    "tag": "FASTPATH_DROP",
@@ -8180,6 +8180,13 @@
    "count": 1
   },
   {
+   "tag": "SHUTDOWN",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [],
+   "count": 5
+  },
+  {
    "tag": "SIMID",
    "ver": 1,
    "stream": "stdout",
@@ -8806,6 +8813,18 @@
     "packets",
     "verts",
     "indices"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SUPPORT_PRELOAD",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "appearances",
+    "ms",
+    "worst_step_ms",
+    "playable_ms"
    ],
    "count": 1
   },
