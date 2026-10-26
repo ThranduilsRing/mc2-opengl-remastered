@@ -133,6 +133,7 @@ extern "C" void gos_particle_bridge_flush(const mc2::particles::GpuParticle* rec
         static unsigned probeFrames = 0;
         if (mvp && mc2::particles::Batcher::is_log_enabled() && probeFrames++ < 16) {
             for (unsigned gi = 0; gi < numGroups; ++gi) {
+                if (groups[gi].count == 0 || groups[gi].start >= count) continue;
                 const auto& p = records[groups[gi].start];
                 const float world[4] = {-p.position[0], p.position[2], p.position[1], 1.0f};
                 float clip[4]{};
