@@ -10,6 +10,7 @@ constexpr float ATTILA_THRESHOLD = 0.01f;
 bool MissionInterfaceManager::moveCameraAround( bool lineOfSight, bool passable, bool ctrl, bool bGui, 
 											   long moverCount, long nonMoverCount )
 {
+	ZoneScopedN("MIF.CameraControls");
 	bool bRetVal = 0;
 	bool middleClicked = (!userInput->isLeftDrag() && !userInput->isRightDrag() && userInput->isMiddleClick());
 
@@ -675,6 +676,7 @@ long MissionInterfaceManager::makeRangeCursor( bool lineOfSight)
 long MissionInterfaceManager::makeNoTargetCursor( bool passable, bool lineOfSight, bool bCtrl, bool bGui,
 												 long moverCount, long nonMoverCount )
 {
+	ZoneScopedN("MIF.NoTargetCursor");
 	//-------------------------------------------------------------------------
 	// We are not over enything.  Switch to move cursor based on input.
 	// If we are on passable terrain, move.

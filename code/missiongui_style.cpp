@@ -310,6 +310,7 @@ void MissionInterfaceManager::updateOldStyle( bool shiftDn, bool altDn, bool ctr
 											 bool bGui, bool lineOfSight, bool passable, 
 											 long moverCount, long nonMoverCount )
 {
+	ZoneScopedN("MIF.OldStyle");
 
 	printDebugInfo();
 
@@ -675,6 +676,7 @@ void MissionInterfaceManager::updateAOEStyle(bool shiftDn, bool altDn, bool ctrl
 											  bool bGui, bool lineOfSight, bool passable, 
 											  long moverCount, long nonMoverCount )
 {
+	ZoneScopedN("MIF.AOEStyle");
 	printDebugInfo();
 
 	long commanderID = Commander::home->getId();
@@ -1060,6 +1062,7 @@ void MissionInterfaceManager::updateWaypoints (void)
 
 int MissionInterfaceManager::update( bool leftClickedClick, bool rightClickedClick, int MouseX, int MouseY, GameObject* pTarget, bool bLOS )
 {
+	ZoneScopedN("MIF.Commands");
 	bool shiftDn = userInput->shift();
 	bool ctrlDn = userInput->ctrl();
 	bool altDn = userInput->alt();
