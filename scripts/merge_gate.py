@@ -48,7 +48,8 @@ def plan(jobs, proof_dir=None, capture_before_runs=1, before_dir=None):
          {"MC2_DEBUG_STATE_DUMP": "1", "MC2_DIAG_TAGS": "CONFIG,BUILD,DEVICE"}),
         ("kit-visibility", [py, "scripts/check-kit-visibility.py", "--install", install,
                             "--out", str(proof / "kit-visibility")], {}),
-        ("mods", [py, "tools/mod_smoke.py", "--battery", "--exe", install + "/mc2.exe", "--build-dir", "build64-ninja"], {}),
+        # Stage/run each mod serially: overlapping cold loads and staging I/O hit the wall cap.
+        ("mods", [py, "tools/mod_smoke.py", "--battery", "--fail-fast", "--exe", install + "/mc2.exe", "--build-dir", "build64-ninja"], {}),
         # The ordinary contracts row is offline; fresh default-build quiet grading launches the game, so it lives here with the gate's exe.
         ("quiet", [py, "scripts/check-default-build-quiet.py", "--fresh-smoke", "--exe", install + "/mc2.exe"], {}),
     ]
