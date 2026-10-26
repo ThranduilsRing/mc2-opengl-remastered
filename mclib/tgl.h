@@ -1219,6 +1219,8 @@ class TG_Shape
 		
 		bool PerPolySelect (float mouseX, float mouseY);
 		
+		void SetNoShadow(bool flag) { noShadow = flag; }
+
 		void SetRecalcShadows (bool flag)
 		{
 			recalcShadows = flag;

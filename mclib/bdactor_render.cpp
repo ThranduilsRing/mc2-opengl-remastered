@@ -44,8 +44,10 @@ long BldgAppearance::render (long depthFixup)
 	// World markers keep world depth and colour, but never enter a caster feed.
 	const bool marker = appearType && mc2WorldMarkerAppearance(appearType->name);
 	if (marker && bldgShape) {
-		for (long i = 0; i < bldgShape->numTG_Shapes; ++i)
-			if (bldgShape->listOfShapes[i].node) bldgShape->listOfShapes[i].node->noShadow = true;
+		for (int i = 0; i < bldgShape->GetNumShapes(); ++i) {
+			const auto* rec = bldgShape->GetShapeRec(i);
+			if (rec && rec->node) rec->node->SetNoShadow(true);
+		}
 	}
 	if (!marker && gos_IsModernShadowPathActive() &&
 		(mc2shadow::staticCasterSet().isMoverOwner(static_cast<const Appearance*>(this)) || !isStaticEligible()))
