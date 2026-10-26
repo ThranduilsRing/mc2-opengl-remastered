@@ -596,27 +596,12 @@ GameObjectPtr GameObjectManager::findTerrainObjectByMouse (long mouseX,
 					GameObjectPtr obj = searchList[li];
 					Assert(obj != nullptr, li, " GameObjectManager.findTerrainObjectByMouse: NULL obj ");
 					AppearancePtr objAppearance = obj->getAppearance();
-					// CRIT-1: canBeSeen() guard repointed to the GPU cull
-					// readback-visible set (fail-open when readback is
-					// disabled, so a stock install with GPU cull off keeps
-					// the legacy "always considered" behavior). Same idiom
-					// as objmgr.cpp:1930 / mech.cpp / gvehicl.cpp.
 					// Lagged render occlusion is not gameplay pick authority. Small
 					// props can have no readback sample even while their mesh is drawn.
 					if (objAppearance)
 					{
-						// windowsVisible equality UNCHANGED. The stamp
-						// (code/terrobj.cpp TerrainObject::update(),
-						// `if (inView) windowsVisible = turn;`) survives
-						// via the coarse-angular recalcBounds return path:
-						// the projection-body delete made `inView` a
-						// strict SUPERSET (coarse-only), so the stamp
-						// still fires for every pick-eligible object and
-						// this equality still holds. Newly-admitted
-						// objects are filtered by the lazy rect +
-						// geometry-space PerPolySelect below. Do NOT
-						// "fix" this equality -- it is correct by the
-						// coarse-superset argument (review-verified fact).
+						// Presentation may have stamped this turn already; both current
+						// and previous-turn objects are eligible for a stock bounds pick.
 						if (obj->getWindowsVisible() >= (turn - VISIBLE_THRESHOLD))
 						{
 							//-----------------------------------------------------
@@ -727,7 +712,7 @@ GameObjectPtr GameObjectManager::findTerrainObjectByMouse (long mouseX,
 	// Extend the existing scripted pick probe to the static-object path. It
 	// exercises real picks across each visible stock silhouette's bounding box.
 	static bool probed = false;
-	if (!probed && turn > 40 && mc2::gate::get<"MC2_VK_PICK_PROBE">()) {
+	if (!probed && turn > 20 && mc2::gate::get<"MC2_VK_PICK_PROBE">()) {
 		probed = true;
 		for (long h = 1; h <= getMaxObjects(); ++h) {
 			auto* candidate = objList[h];
