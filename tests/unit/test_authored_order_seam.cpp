@@ -134,6 +134,12 @@ struct CompileLog {
 }
 
 TEST_CASE("BuildingSimPose/missing collision shape marks no cells") {
+    AppearanceTypeList registry;
+    struct RestoreRegistry {
+        AppearanceTypeList* previous = appearanceTypeList;
+        ~RestoreRegistry() { appearanceTypeList = previous; }
+    } restore;
+    appearanceTypeList = &registry;
     BldgAppearance appearance;
     short cells[] = {8, -1, -1};
     long rect[] = {-1, -1, -1, -1};
@@ -160,6 +166,9 @@ TEST_CASE("ContentCook/cache publication failure is reported as failure") {
     fs::current_path(sandbox);
     std::ofstream("cache") << "blocks cache directory creation";
     mc2::content::Asset asset;
+    asset.nodes.emplace_back();
+    asset.nodes.back().name = "helper";
+    asset.nodes.back().helper = true;
     CompileLog log;
     CHECK_FALSE(mc2::content::cook(asset, ""));
     const auto text = log.text();
