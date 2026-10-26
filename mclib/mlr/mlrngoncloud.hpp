@@ -68,13 +68,10 @@ namespace MidLevelRenderer {
 		int numOfVertices;
 		const int *usedNrOfNGons;
 
-		static Stuff::DynamicArrayOf<Stuff::RGBAColor> *clipExtraColors;
 		Stuff::DynamicArrayOf<Stuff::RGBAColor> specialClipColors;
 
 		static Stuff::DynamicArrayOf<MLRClippingState> *clipPerVertex;
 
-		static Stuff::DynamicArrayOf<Stuff::Vector4D> *clipExtraCoords;
 
-		static Stuff::DynamicArrayOf<int> *clipExtraLength;
 	};
 }

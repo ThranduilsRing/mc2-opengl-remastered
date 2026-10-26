@@ -46,9 +46,9 @@ namespace MidLevelRenderer {
 				const Stuff::RGBAColor *color_data
 			);
 
-		void Draw (DrawEffectInformation*, GOSVertexPool*, MLRSorter*);
+		void Draw (DrawEffectInformation*, GOSVertexPool*, MLRSorter*) = 0;
 
-		int	Clip(MLRClippingState, GOSVertexPool*);		
+		int	Clip(MLRClippingState, GOSVertexPool*) = 0;
 
 	//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	// Class Data Support
@@ -67,12 +67,9 @@ namespace MidLevelRenderer {
 	protected:
 		const int *usedNrOfTriangles;
 
-		static Stuff::DynamicArrayOf<Stuff::RGBAColor> *clipExtraColors; // , Max_Number_Vertices_Per_Mesh
 
 		static Stuff::DynamicArrayOf<MLRClippingState> *clipPerVertex; // , Max_Number_Vertices_Per_Mesh
 
-		static Stuff::DynamicArrayOf<Stuff::Vector4D> *clipExtraCoords; // , Max_Number_Vertices_Per_Mesh
 
-		static Stuff::DynamicArrayOf<int> *clipExtraLength; // , Max_Number_Primitives_Per_Frame
 	};
 }

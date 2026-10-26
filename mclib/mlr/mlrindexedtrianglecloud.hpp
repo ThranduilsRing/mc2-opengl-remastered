@@ -81,9 +81,7 @@ namespace MidLevelRenderer {
 		const unsigned short *index;
 		const Vector2DScalar *texCoords;
 
-		static Stuff::DynamicArrayOf<Vector2DScalar> *clipExtraTexCoords; // , Max_Number_Vertices_Per_Mesh
 
-		static Stuff::DynamicArrayOf<unsigned short> *clipExtraIndex; // , Max_Number_Vertices_Per_Mesh
 
 		static Stuff::DynamicArrayOf<unsigned char>	*visibleIndexedVertices;
 
