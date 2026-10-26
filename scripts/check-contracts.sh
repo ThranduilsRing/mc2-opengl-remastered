@@ -1503,6 +1503,7 @@ run_check "manifest_schema"            "py -3 scripts/check-manifest-schema.py -
 # One pytest process per module, 2 at a time, through the per-module result cache (scripts/module_test_cache.py):
 # a module that fully passed with unchanged recorded inputs is not re-run. --no-cache / CONTRACTS_NO_CACHE=1 turns it off.
 run_check "mission_codec_golden"       "MC2_CODEC_REQUIRED=1 py -3 -B -m pytest tests/mapgen/test_mission_codec.py -q -p no:cacheprovider"
+run_check "farm_runner"                "py -3 -B -m pytest scripts/tests/test_farm_runner.py -q -p no:cacheprovider"
 run_check "scripts_tests"              "py -3 scripts/run_scripts_tests.py"
 run_check "mod_smoke"                  "py -3 -B -m pytest scripts/tests/test_mod_smoke.py scripts/tests/test_stage_root.py tests/smoke/test_mod_smoke_staging.py -q -p no:cacheprovider"
 run_check "network_startup"            "py -3 -B -m pytest scripts/tests/test_network_startup.py scripts/tests/test_firewall_dialog.py -q -p no:cacheprovider"

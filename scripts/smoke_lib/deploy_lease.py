@@ -49,6 +49,8 @@ import lane_model  # noqa: E402
 LEASE_REGISTRY_PATH = Path("A:/Games/mc2-opengl/.smoke_leases.json")
 if _sys.platform == "linux":
     LEASE_REGISTRY_PATH = Path.home() / ".cache/mc2/smoke_leases.json"
+# A second Windows host has no A: drive. Keep leasing enabled on its own disk.
+LEASE_REGISTRY_PATH = Path(os.environ.get("MC2_DEPLOY_LEASE_PATH") or LEASE_REGISTRY_PATH)
 
 # Default lease TTL in seconds (1 hour). Override via MC2_SMOKE_LEASE_TTL_SECS.
 _DEFAULT_TTL_SECS = 3600
