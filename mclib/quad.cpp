@@ -121,7 +121,6 @@ long TerrainQuad::init (VertexPtr v0, VertexPtr v1, VertexPtr v2, VertexPtr v3)
 }
 
 float twoFiveFive = 255.0;
-#define HUD_DEPTH		0.9999f			//HUD Objects draw over everything else (reverse-Z: near=1, far=0).
 // NS3 boundary: BaseVertexColor canonical def (was code/ leak; consumers extern it).
 DWORD BaseVertexColor = 0x00000000;
 bool useOverlayTexture = true;
