@@ -1,8 +1,8 @@
 {
   "schema": 1,
   "id": "mc2-industrial-kit",
-  "package": "kit-pack5-20261026",
-  "store": "E:/mc2-ref/packages/mc2-industrial-kit/kit-pack5-20261026",
+  "package": "kit-pack5-20261026-stock-spotlight",
+  "store": "E:/mc2-ref/packages/mc2-industrial-kit/kit-pack5-20261026-stock-spotlight",
   "source_bake_commit": "556288c2d42ae4630ba1e088ca6a30dcd784f440",
   "packaging_commit": "e261647ecc329850fb26a5216a8711591be4fc72",
   "source_root": "E:/mc2-ref/scifi-kit/art",
@@ -1173,12 +1173,6 @@
       "id": "smallfueltank",
       "source_bake_tag": "fit1b",
       "source_bake": "intent-pass/_work/fit1b/pbr/smallfueltank_pristine-bake.json"
-    },
-    {
-      "id": "spotlight",
-      "source_bake_tag": "ft1",
-      "source_bake": "intent-pass/_work/ft1/pbr/spotlight_pristine-bake.json",
-      "source_bake_sha256": "e61f2d067a2eb49ad5cc29d30e1957fcbe56b441d458731bc877ce7fa3372c11"
     },
     {
       "id": "srmcamo1",
@@ -2423,11 +2417,6 @@
       "path": "content/smallfueltank.mc2ir.json",
       "sha256": "67e32148381fd7b25fc9a9247ce84fc67600aa4be2ff3a0a27aaa09c81ddba00",
       "bytes": 6908737
-    },
-    {
-      "path": "content/spotlight.mc2ir.json",
-      "sha256": "4235ad6564fc19e9f199128e785662d271fa2c92648a27a82c16ecec750056e7",
-      "bytes": 2263351
     },
     {
       "path": "content/srmcamo1.mc2ir.json",
@@ -6416,8 +6405,8 @@
     },
     {
       "path": "data/model_overrides/models.json",
-      "sha256": "11db55afe664557f702594a03658e0ff1cadad03a56c58e6494a9e37bd1159c8",
-      "bytes": 891000
+      "sha256": "9588f8c5738680dbbafc270c9b8e5bef936938d826a5706e82714df171a26373",
+      "bytes": 889000
     },
     {
       "path": "data/model_overrides/munitionscrates/detail/0_normal.ktx2",
@@ -8143,31 +8132,6 @@
       "path": "data/model_overrides/smallfueltank/pristine_intact_lod2.glb",
       "sha256": "f3ae1f7dc3e6a5c364ccd1d651baa7dd12380e85627987f1ca002d30ebbfc7fc",
       "bytes": 872364
-    },
-    {
-      "path": "data/model_overrides/spotlight/detail/0_normal.ktx2",
-      "sha256": "01a85a15b93afc6c1850e374c1ea65aca021d3610029e99310475e15bb66f1c9",
-      "bytes": 349936
-    },
-    {
-      "path": "data/model_overrides/spotlight/detail/0_orm.ktx2",
-      "sha256": "cfa033b6d51dda8ea11e5a50f37d08579d9af082a4aecd4d1bb9ac940e885934",
-      "bytes": 349920
-    },
-    {
-      "path": "data/model_overrides/spotlight/pristine_intact_lod0.glb",
-      "sha256": "b300c49dc86968a3052fbb78ae9d99949839ecb7ebdf90ab82622616ab9ebda6",
-      "bytes": 553596
-    },
-    {
-      "path": "data/model_overrides/spotlight/pristine_intact_lod1.glb",
-      "sha256": "e45724b41892a1d7aabd955674795291f518bf0ce77e9a3a1ae03afee2948ad2",
-      "bytes": 260956
-    },
-    {
-      "path": "data/model_overrides/spotlight/pristine_intact_lod2.glb",
-      "sha256": "9e6a525aedeaa9b0816dab2f8c8d9feab01e5bf36bbbfe8fb6b53da73441847a",
-      "bytes": 111948
     },
     {
       "path": "data/model_overrides/srmcamo1/detail/0_normal.ktx2",
@@ -10070,11 +10034,6 @@
       "bytes": 1398528
     },
     {
-      "path": "data/tgl/1024/cp_spotlight_0.ktx2",
-      "sha256": "1b2839f63c0822fc016da6e2abd7e44449261cf7a1c260ea68514e7a535da229",
-      "bytes": 1398528
-    },
-    {
       "path": "data/tgl/1024/cp_srmcamo1_0.ktx2",
       "sha256": "aa3f15637129cd99984489ebafa5ba0be6914ab487032aeecee4104e5e8450a8",
       "bytes": 1398528
@@ -11222,11 +11181,6 @@
     {
       "path": "data/tgl/128/cp_smallfueltank_0.ktx2",
       "sha256": "7c6cdd764b13d2b233e0adbd3a2790ede6540a030210c415d914a48668855e3c",
-      "bytes": 22192
-    },
-    {
-      "path": "data/tgl/128/cp_spotlight_0.ktx2",
-      "sha256": "622ce26e032ad9475358fdfc4424aff560fc6e54e8761b39e2b3cfbd67b3f3f3",
       "bytes": 22192
     },
     {
@@ -12380,11 +12334,6 @@
       "bytes": 87760
     },
     {
-      "path": "data/tgl/256/cp_spotlight_0.ktx2",
-      "sha256": "d5666376d1ec2db930397e8dfa65353bc3efd448308df00443f1ceae4fa19683",
-      "bytes": 87760
-    },
-    {
       "path": "data/tgl/256/cp_srmcamo1_0.ktx2",
       "sha256": "3d0135f4dfc2e52fac103b3c3079e8ec5920d62b51d3a4c4a61fd759eb304017",
       "bytes": 87760
@@ -13532,11 +13481,6 @@
     {
       "path": "data/tgl/32/cp_smallfueltank_0.ktx2",
       "sha256": "8644db3891a261eff12f77c366424d1d6e94b7111be895477cb27b53ff280e7d",
-      "bytes": 1664
-    },
-    {
-      "path": "data/tgl/32/cp_spotlight_0.ktx2",
-      "sha256": "a50938955104fc2da454378492c66c55041c189f4a10f87efdacad4716681d9e",
       "bytes": 1664
     },
     {
@@ -14690,11 +14634,6 @@
       "bytes": 349920
     },
     {
-      "path": "data/tgl/512/cp_spotlight_0.ktx2",
-      "sha256": "e7709d1981e39a5da28b8cf6e6a95b002875221eabfb52336e1678c148789df6",
-      "bytes": 349920
-    },
-    {
       "path": "data/tgl/512/cp_srmcamo1_0.ktx2",
       "sha256": "61de886d42009eace59bde0efd611fa17e1e9c10b115e4b898e081aec1e8e76b",
       "bytes": 349920
@@ -15842,11 +15781,6 @@
     {
       "path": "data/tgl/64/cp_smallfueltank_0.ktx2",
       "sha256": "5dff32a9dbbe300d97602d8ae1ea6b6fb584090148cb734e4b42daf9295b6516",
-      "bytes": 5792
-    },
-    {
-      "path": "data/tgl/64/cp_spotlight_0.ktx2",
-      "sha256": "50c8ff2d0fc3634f0911337fe8568b604bbcc3e0f6fd132e6f3b839e5498586f",
       "bytes": 5792
     },
     {
