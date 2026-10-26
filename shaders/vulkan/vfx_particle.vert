@@ -69,8 +69,15 @@ void main() {
         // The terrain MVP includes the MC2-to-render conversion. Native
         // gosFX geometry is already in render space, so convert it back first.
         vec3 world = mc2ToRender(p.position);
-        // Authored geometry keeps stock depth and perspective size.
         gl_Position = U.worldToClipGL * vec4(world, 1.0);
+        // Surface flares need depth clearance, but moving their world corners
+        // toward the camera enlarges explosions. Preserve authored screen size.
+        if ((p.kind_flags & 64u) != 0u && G.oneOne == ADDITIVE_ONE_ONE) {
+            vec3 liftedWorld = world - normalize(cross(U.camRight.xyz, U.camUp.xyz))
+                             * min(4.0 * p.size, 0.25 * max(gl_Position.w, 0.0));
+            vec4 lifted = U.worldToClipGL * vec4(liftedWorld, 1.0);
+            gl_Position.z = lifted.z / lifted.w * gl_Position.w;
+        }
         // PointCloud retains the original screen-sized right triangle.
         if ((p.kind_flags & 128u) != 0u)
             gl_Position.xy += vec2(p.velocity.x * U.camRight.w, p.velocity.y * U.camUp.w) * gl_Position.w;
