@@ -170,6 +170,7 @@ struct VfxIsland : mc2vk::IslandState {
     mc2vk::OwnedShaderModule vegVert;        // vfx_vegetation.vert: reads the GPU cull's survivor list
     mc2vk::OwnedPipelineLayout vegLayout;    // set 0 ring, set 1 atlas page, set 2 the vegetation state's draw set
     mc2vk::OwnedPipeline oneOnePipe;  // GL OneOne: (ONE, ONE), alpha ignored
+    mc2vk::OwnedPipeline oneAlphaPipe, oneInvAlphaPipe;
     mc2vk::OwnedCommandPool cpool;
     VkCommandBuffer  cbuf[2] = {VK_NULL_HANDLE, VK_NULL_HANDLE};   // one per parity slot
     uint64_t         ticket[2] = {0, 0};                           // timeline value of the slot's last submit (0 = never submitted)
@@ -264,7 +265,7 @@ std::optional<VkDescriptorSet> get_page(VfxIsland* s,uint32_t handle,uint32_t pa
 // VfxDrawGroup::additive values (LOCKSTEP with ADDITIVE_* in shaders/vulkan/vfx_particle.vert).
 enum : uint32_t { VFX_ADD_ALPHA = 0, VFX_ADD_SRC_ALPHA = 1, VFX_ADD_ONE_ONE = 2 };
 
-mc2vk::OwnedPipeline make_pipeline(VfxIsland* s, int w, int h, bool additive, bool oneOne = false, bool vegetation = false) {
+mc2vk::OwnedPipeline make_pipeline(VfxIsland* s, int w, int h, bool additive, bool oneOne = false, bool vegetation = false, unsigned tubeMode = 0) {
     VkPipelineVertexInputStateCreateInfo vin{};
     vin.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;  // procedural
     VkPipelineInputAssemblyStateCreateInfo ia{};
@@ -293,6 +294,11 @@ mc2vk::OwnedPipeline make_pipeline(VfxIsland* s, int w, int h, bool additive, bo
     cba[0].colorBlendOp = VK_BLEND_OP_ADD;
     cba[0].srcAlphaBlendFactor = oneOne ? VK_BLEND_FACTOR_ONE : VK_BLEND_FACTOR_SRC_ALPHA;
     cba[0].dstAlphaBlendFactor = additive ? VK_BLEND_FACTOR_ONE : VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+    if (tubeMode == 4 || tubeMode == 5) {
+        cba[0].srcColorBlendFactor = cba[0].srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+        cba[0].dstColorBlendFactor = cba[0].dstAlphaBlendFactor =
+            tubeMode == 4 ? VK_BLEND_FACTOR_SRC_ALPHA : VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+    }
     cba[0].alphaBlendOp = VK_BLEND_OP_ADD;
     cba[0].colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
                             VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
@@ -509,7 +515,10 @@ bool init_island(VfxIsland* s, int w, int h) {
         s->alphaPipe = make_pipeline(s, w, h, /*additive=*/false);
         s->addPipe   = make_pipeline(s, w, h, /*additive=*/true);
         s->oneOnePipe = make_pipeline(s, w, h, /*additive=*/true, /*oneOne=*/true);
-        if (!s->alphaPipe || !s->addPipe || !s->oneOnePipe || (GosVegetation::isEnabled() && !s->vegetationPipe)) { setFallback("pipeline_create_failed"); return false; }
+        s->oneAlphaPipe = make_pipeline(s, w, h, false, false, false, 4);
+        s->oneInvAlphaPipe = make_pipeline(s, w, h, false, false, false, 5);
+        if (!s->alphaPipe || !s->addPipe || !s->oneOnePipe ||
+            !s->oneAlphaPipe || !s->oneInvAlphaPipe || (GosVegetation::isEnabled() && !s->vegetationPipe)) { setFallback("pipeline_create_failed"); return false; }
     }
 
     // Command pool + two command buffers (one per parity slot; the slot is reused once its last submit completed, a timeline ticket, no island fence).
@@ -555,13 +564,15 @@ VfxIsland* acquire_island(int w, int h) {
 }
 
 // The frame constants every VFX draw reads (set 0 binding 0). A missing camera basis defaults to the identity axes.
-void fill_frame_params(void* dst, const float* worldToClipGL, const float* camRight, const float* camUp) {
+void fill_frame_params(void* dst, const float* worldToClipGL, const float* camRight, const float* camUp, int w, int h) {
     VfxVsParams up{};
     std::memcpy(up.worldToClipGL, worldToClipGL, sizeof(up.worldToClipGL));
     if (camRight) { up.camRight[0]=camRight[0]; up.camRight[1]=camRight[1]; up.camRight[2]=camRight[2]; }
     if (camUp)    { up.camUp[0]=camUp[0];       up.camUp[1]=camUp[1];       up.camUp[2]=camUp[2]; }
     else          { up.camUp[1]=1.0f; }
     if (!camRight) up.camRight[0]=1.0f;
+    up.camRight[3] = 2.0f / float(w);
+    up.camUp[3] = 2.0f / float(h);
     std::memcpy(dst, &up, sizeof(up));
 }
 
@@ -633,7 +644,7 @@ extern "C" int mc2_vk_vfx_island_run(
         ZoneScopedN("VKIsl.Vfx.Feed");   // VK-ISLAND-TRACY-1: particle staging
         std::memcpy(static_cast<uint8_t*>(span.ptr) + partOff, particles, static_cast<size_t>(needBytes));
     }
-    fill_frame_params(span.ptr, worldToClipGL, camRight, camUp);
+    fill_frame_params(span.ptr, worldToClipGL, camRight, camUp, w, h);
     if (!prepare_shadow_descriptors(s, par)) return 0;
     write_ring_bindings(s, par, span.buffer, span.range);
     const uint32_t dynOffsets[2] = {static_cast<uint32_t>(span.offset), static_cast<uint32_t>(span.offset + partOff)};
@@ -677,6 +688,8 @@ extern "C" int mc2_vk_vfx_island_run(
         if (!groupPage[gi]) continue;   // no resident texture: skipped, as the GL path does
         if (d.atlasColumns == kVfxVegetationAtlas) continue;   // vegetation draws through mc2_vk_vfx_vegetation_run
         VkPipeline want = d.additive == VFX_ADD_ONE_ONE ? s->oneOnePipe.get() : d.additive == VFX_ADD_SRC_ALPHA ? s->addPipe.get() : s->alphaPipe.get();
+        if (d.additive == 4) want = s->oneAlphaPipe.get();
+        else if (d.additive == 5) want = s->oneInvAlphaPipe.get();
         if (want != bound) { mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, want); bound = want; }
         vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 1, 1, &*groupPage[gi], 0, nullptr);
         const VfxGroupPush push{ {d.u0, d.v0}, {d.us, d.vs}, d.atlasColumns, d.additive == VFX_ADD_ONE_ONE ? 1u : 0u };
@@ -753,7 +766,7 @@ bool mc2_vk_vfx_vegetation_run(const mc2veg::CullParams& params, const float* wo
     const VkDeviceSize visOff = mc2vk::alignUp(cullOff + sizeof(mc2veg::CullParams), align);
     const mc2vk::FrameAlloc span = slotCtx.frameAlloc(visOff + std::max<VkDeviceSize>(visibility.size_bytes(), 16));
     if (!span) { setFallback("frame_ring_alloc_failed"); s->disabled = true; return false; }
-    fill_frame_params(span.ptr, worldToClipGL, nullptr, nullptr);
+    fill_frame_params(span.ptr, worldToClipGL, nullptr, nullptr, w, h);
     write_ring_bindings(s, par, span.buffer, span.range);
     const uint32_t dynOffsets[2] = {static_cast<uint32_t>(span.offset), static_cast<uint32_t>(span.offset + cullOff)};
     const auto page = get_page(s, kVfxVegetationAtlas, par);

@@ -11,7 +11,6 @@
 #include"spinningcloud.hpp"
 #include<mlr/mlr.hpp>
 
-namespace MidLevelRenderer {class MLRTriangleCloud;}
 
 namespace gosFX
 {
@@ -96,7 +95,6 @@ namespace gosFX
 				 + 3*sizeof(Stuff::RGBAColor);
 
 	protected:
-		std::unique_ptr<MidLevelRenderer::MLRTriangleCloud> m_cloudImplementation;						// point to an MLR triangle cloud by Michael
 		glm::vec3			*m_P_vertices;
 		Stuff::RGBAColor		*m_P_color;
 
@@ -161,13 +159,8 @@ namespace gosFX
 				unsigned index,
 				glm::vec3 *translation
 			);
-		void
-			DestroyParticle(unsigned index);
 
 	public:
-		// Both render arms use the same CPU particle births and lifetimes.
-		void
-			Start(ExecuteInfo *info);
 		void
 			Draw(DrawInfo *info);
 	};

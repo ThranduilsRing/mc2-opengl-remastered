@@ -15,24 +15,15 @@
 #include "mc2fmt.h"
 // MC2_VFX_ORACLE_TUBE slice 1: ribbon mesh submit bridge (GameOS-side GL).
 // Declared extern "C" here to avoid pulling GameOS headers into mclib.
-// Immediate flush (kept intact; used only if a caller bypasses the deferred path).
-extern "C" void gos_tube_ribbon_flush(const float*          positions,
-                                      const float*          colors,
-                                      const float*          uvs,
-                                      unsigned int          numVerts,
-                                      const unsigned short* indices,
-                                      unsigned int          numIndices,
-                                      unsigned int          gosHandle,
-                                      int                   blendMode);
 // TUBE-DEFERRED-FLUSH-1: enqueue for post-renderLists composite.
-// gosHandle==0 must NOT be enqueued (caller must leave ribbonSubmitted=false).
+// mlrHandle==0 must NOT be enqueued (caller must leave ribbonSubmitted=false).
 extern "C" void gos_tube_ribbon_enqueue(const float*          positions,
                                         const float*          colors,
                                         const float*          uvs,
                                         unsigned int          numVerts,
                                         const unsigned short* indices,
                                         unsigned int          numIndices,
-                                        unsigned int          gosHandle,
+                                        unsigned int          mlrHandle,
                                         int                   blendMode);
 
 //==========================================================================//
@@ -765,7 +756,7 @@ void
 
 	// C17 fix 2026-05-21: ALWAYS run legacy per-instance init
 	// (m_birthAccumulator = 1.0f). C8 skipped this under env-on by returning
-	// right after Spawn — but legacy Tube::Execute still walked the
+	// right after Spawn â€” but legacy Tube::Execute still walked the
 	// un-initialized birthAccumulator and tube profile state, producing wild
 	// writes that corrupted heap adjacent to child gosFX allocations. Same
 	// shape as the C9 fix for Point/Shard: legacy init runs always; Spawn
@@ -1191,12 +1182,8 @@ void gosFX::Tube::Draw(DrawInfo *info)
 	Check_Object(this);
 	Check_Object(info);
 
-	// The GPU particle path is deliberately not used for tubes: a billboard-per-profile oracle
-	// produced a "ladder/fence" artifact (one square card per spine profile instead of a continuous
-	// ribbon) on missile smoke and PPC trails, so the CPU MLR swept-mesh stays the tube owner.
-	// Re-enabling needs a ribbon oracle (one oriented quad per consecutive profile pair), combat
-	// validation (mc2_10 missiles, mc2_24 PPC) and a gpuTrailKindProven() promotion for PpcBolt
-	// and MissileSmoke. See docs/vfx-originals-lockdown.md.
+	// Textured profiles use the native swept mesh. Untextured and opaque
+	// tubes retain MLR until the populated opaque control is visually correct.
 
 	//
 	//---------------------------------------------------------
@@ -1210,7 +1197,7 @@ void gosFX::Tube::Draw(DrawInfo *info)
 		Specification *spec = GetSpecification();
 
 		// MC2_TUBE_PROFILE_LOG=1: log each tube spec's PEAK m_activeProfileCount.
-		// Placed BEFORE the oracle/legacy split so the count is path-independent —
+		// Placed BEFORE the oracle/legacy split so the count is path-independent â€”
 		// run oracle ON vs OFF and compare to test whether enabling the oracle
 		// changes profile growth (execution interaction) vs pure rendering diff.
 		{
@@ -1229,6 +1216,12 @@ void gosFX::Tube::Draw(DrawInfo *info)
 		}
 		Check_Object(spec);
 		dInfo.state.Combine(info->m_state, spec->m_state);
+		// Populate the missing untextured/opaque oracle arm without changing assets
+		// or execution. Fixture 9 already supplies the diagnostic weapon volley.
+		if (mc2::gate::is<"MC2_FX_FORCE_SPAWN", "9">()) {
+			dInfo.state.SetTextureHandle(0);
+			dInfo.state.SetAlphaMode(MidLevelRenderer::MLRState::OneZeroMode);
+		}
 		dInfo.clippingFlags = info->m_clippingFlags;
 		glm::mat4 local_to_world;
 		local_to_world = m_localToParent * *info->m_parentToWorld;
@@ -1346,7 +1339,7 @@ void gosFX::Tube::Draw(DrawInfo *info)
 		//      blend (GL_SRC_ALPHA, GL_ONE), same indexed ribbon mesh, NO card-
 		//      per-profile billboards (the old "white squares" came from the
 		//      billboard topology, not the ribbon swept-quad).
-		//   B. Polygon profile tubes (vertex_count 3..7 — triangle/square/
+		//   B. Polygon profile tubes (vertex_count 3..7 â€” triangle/square/
 		//      pentagon/hexagon/cross). BuildMesh already emits the full ring's
 		//      panel quads (incl. the cross special-case) into m_P_indices with
 		//      the correct insideOut winding; we just submit the full
@@ -1363,7 +1356,7 @@ void gosFX::Tube::Draw(DrawInfo *info)
 				 spec->m_profileType == Specification::e_AlignedRibbon ||
 				 spec->m_profileType == Specification::e_VerticalRibbon);
 			const MidLevelRenderer::MLRState::AlphaMode am =
-				spec->m_state.GetAlphaMode();
+				dInfo.state.GetAlphaMode();
 			// Alpha-blend (smoke ribbons) vs additive (PPC bolts). Same
 			// classification convention as the billboard bridge / spawn_*.cpp:
 			// OneOneMode / AlphaOneMode = additive; everything else = alpha.
@@ -1380,7 +1373,7 @@ void gosFX::Tube::Draw(DrawInfo *info)
 			//  - polygon profiles (vc 3..7): triangle/square/pentagon/hexagon/
 			//    cross. m_triangleCount and m_P_indices already encode the full
 			//    ring (BuildMesh, incl. the vc==5 cross special-case) with the
-			//    spec's insideOut winding — submit exactly what BuildMesh built.
+			//    spec's insideOut winding â€” submit exactly what BuildMesh built.
 			const bool isPolygonKind = (vc >= 3 && vc <= 7);
 			const bool isSupportedBlend = isAlphaBlend || isAdditive;
 			// Both ribbon and polygon tubes route through the same indexed mesh
@@ -1388,34 +1381,29 @@ void gosFX::Tube::Draw(DrawInfo *info)
 			const bool supported =
 				isSupportedBlend && (vc >= 2) && (isRibbonKind || isPolygonKind);
 			// Preserve the existing additive recipe and the authored texture-address mode.
-			const int blendMode = (isAdditive ? 1 : 0) |
-				(dInfo.state.GetTextureWrapMode() == MidLevelRenderer::MLRState::TextureClamp ? 4 : 0);
+			const int blendMode =
+				(am == MidLevelRenderer::MLRState::OneOneMode ? 2 :
+				 am == MidLevelRenderer::MLRState::AlphaOneMode ? 1 :
+				 am == MidLevelRenderer::MLRState::OneAlphaMode ? 4 :
+				 am == MidLevelRenderer::MLRState::OneInvAlphaMode ? 5 : 0) |
+				(dInfo.state.GetTextureWrapMode() == MidLevelRenderer::MLRState::TextureClamp ? 256 : 0);
 
 			if (supported && m_P_indices)
 			{
 				// Live, compacted mesh: profiles 0..m_activeProfileCount are
 				// contiguous in m_P_vertices/colors/uvs (AnimateProfile writes
 				// vertex_index = profile_count*vc). Index range = the first
-				// m_triangleCount triangles of the BuildMesh stencil — for both
+				// m_triangleCount triangles of the BuildMesh stencil â€” for both
 				// the vc==2 ribbon and the vc>=3 polygon ring (cross included).
 				const unsigned numVerts   = m_activeProfileCount * vc;
 				const unsigned numIndices = static_cast<unsigned>(m_triangleCount) * 3u;
 
-				const uint32_t gosHandle =
-					static_cast<uint32_t>(spec->m_state.GetTextureHandle());
+				const uint32_t mlrHandle =
+					static_cast<uint32_t>(dInfo.state.GetTextureHandle());
 
-				// Q2-S2: build the world-space vertex copy ONLY when it will
-				// actually be enqueued (gosHandle != 0). For untextured tubes
-				// (gosHandle==0, e.g. gauss) ribbonSubmitted stays false and the
-				// legacy MLR DrawEffect renders from the local-space m_P_vertices
-				// instead — so transforming every vert to world here was pure
-				// waste (an O(numVerts) matrix-vec pass built then discarded).
-				// Behaviour-identical: s_worldPos was never read when gosHandle==0.
-				//
-				// TUBE-DEFERRED-FLUSH-1: with a real texture handle, enqueue into
-				// the deferred ribbon queue (drawn post-renderLists via
-				// gos_tube_ribbon_flush_deferred in gamecam.cpp).
-				if (gosHandle != 0) {
+				// Enqueue an MLR pool index; the deferred bridge resolves it after
+				// ForceLoadImages. Untextured tubes keep the CPU route.
+				if (mlrHandle != 0) {
 					// Transform local-space verts to MC2/Stuff world space.
 					// (m_P_vertices are effect-local; the ribbon VS applies the GL
 					// axis swap, so we hand it MC2 world unswapped.)
@@ -1438,17 +1426,17 @@ void gosFX::Tube::Draw(DrawInfo *info)
 						numVerts,
 						m_P_indices,
 						numIndices,
-						gosHandle,
-						blendMode);  // low bits: blend recipe; bit 2: clamp UVs
+						mlrHandle,
+						blendMode);  // low bits: blend recipe; bit 8: clamp UVs
 					ribbonSubmitted = true;
 				}
-				// gosHandle==0: ribbonSubmitted stays false → DrawEffect below.
+				// mlrHandle==0: ribbonSubmitted stays false â†’ DrawEffect below.
 			}
 		}
 
 		//
 		//--------------------
-		// Now draw the effect (legacy MLR) — skipped when the ribbon oracle
+		// Now draw the effect (legacy MLR) â€” skipped when the ribbon oracle
 		// submitted this Tube above.
 		//--------------------
 		//

@@ -34,7 +34,8 @@ void main() {
         if ((v_flags & 8u) != 0u) {
             if ((v_flags & 2u) != 0u) {
                 if (max(max(c.r, c.g), c.b) <= 0.0001) discard;
-            } else if (c.a <= 0.0039) discard;
+            // ONE/srcA and ONE/1-srcA retain RGB even at alpha zero.
+            } else if ((v_flags & 512u) == 0u && c.a <= 0.0039) discard;
         }
         // Mesh SRC_ALPHA/ONE keeps its authored alpha. Tube ONE/ONE uses RGB.
         o_color = c;

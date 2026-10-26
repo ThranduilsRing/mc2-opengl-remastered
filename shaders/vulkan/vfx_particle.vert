@@ -77,6 +77,9 @@ void main() {
                    * min(4.0 * p.size, 0.25 * max(viewW, 0.0));
         }
         gl_Position = U.worldToClipGL * vec4(world, 1.0);
+        // PointCloud retains the original screen-sized right triangle.
+        if ((p.kind_flags & 128u) != 0u)
+            gl_Position.xy += vec2(p.velocity.x * U.camRight.w, p.velocity.y * U.camUp.w) * gl_Position.w;
         v_uv = p.velocity.xy;
         v_color = p.color;
         v_flags = p.kind_flags;

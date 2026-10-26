@@ -1,6 +1,6 @@
 #include"gosfxheaders.hpp"
-#include "mlr_cloud_draw.hpp"
-#include<mlr/mlrpointcloud.hpp>
+#include "particles/batcher.h"
+#include "Gates/gate.h"
 
 // B1 Stage 2' C8: subclass-Start routing into the GPU particle pipeline.
 
@@ -107,30 +107,17 @@ gosFX::PointCloud::PointCloud(
 	Check_Object(spec);
 	Verify(gos_GetCurrentHeap() == Heap);
 
-	gos_PushCurrentHeap(MidLevelRenderer::Heap);
-	m_cloudImplementation =
-		std::make_unique<MidLevelRenderer::MLRPointCloud>(spec->m_maxParticleCount);
-	Register_Object(m_cloudImplementation.get());
-	gos_PopCurrentHeap();
 
 	unsigned index = spec->m_maxParticleCount*sizeof(Particle);
 	m_P_localTranslation = Cast_Pointer(glm::vec3*, &m_data[index]);
 	index += spec->m_maxParticleCount*sizeof(glm::vec3);
 	m_P_color = Cast_Pointer(Stuff::RGBAColor*, &m_data[index]);
 
-	m_cloudImplementation->SetData(
-		Cast_Pointer(const int *, &m_activeParticleCount),
-		m_P_localTranslation,
-		m_P_color
-	);
 }
 
 //------------------------------------------------------------------------------
 //
-gosFX::PointCloud::~PointCloud()
-{
-	Unregister_Object(m_cloudImplementation.get());
-}
+gosFX::PointCloud::~PointCloud() = default;
 
 //------------------------------------------------------------------------------
 //
@@ -292,8 +279,6 @@ void
 	//-----------------------------------------------------------------------
 	//
 	ParticleCloud::CreateNewParticle(index, translation);
-	m_cloudImplementation->TurnOn(index);
-	Verify(m_cloudImplementation->IsOn(index));
 	m_P_localTranslation[index] = *translation;
 }
 
@@ -443,31 +428,56 @@ bool
 
 //------------------------------------------------------------------------------
 //
-void gosFX::PointCloud::DestroyParticle(unsigned index)
-{
-	Check_Object(this);
-
-	m_cloudImplementation->TurnOff(index);
-	Verify(!m_cloudImplementation->IsOn(index));
-	ParticleCloud::DestroyParticle(index);
-}
-
-//------------------------------------------------------------------------------
-//
 void gosFX::PointCloud::Draw(DrawInfo *info)
 {
 	Check_Object(this);
 	Check_Object(info);
 
-	// Keep the authored primitive until its native route has visual parity.
+	// Accepted primitives use the native stream; the kill-switch suppresses them.
 
 	if (m_activeParticleCount)
 	{
 		Specification *spec = GetSpecification();
 		Check_Object(spec);
-		MlrCloudDraw submission(info, spec->m_state, m_cloudImplementation.get(), m_localToParent);
+        if (mc2::gate::get<"MC2_GPU_PARTICLES_LOG">()) {
+            static bool reported = false;
+            if (!reported) {
+                reported = true;
+                mc2::fmt::print_err("[VFX_PRIMITIVE] class=PointCloud live={:d} route={}\n",
+                    mc2::fmt::as_u32(m_activeParticleCount),
+                    mc2::particles::Batcher::is_enabled() ? "native" : "off");
+            }
+        }
+		const auto local_to_world = m_localToParent * *info->m_parentToWorld;
 	
-		submission.submit(info);
+        if (mc2::particles::Batcher::is_enabled()) {
+            MidLevelRenderer::MLRState state;
+            state.Combine(info->m_state, spec->m_state);
+            const auto am = state.GetAlphaMode();
+            const bool additive = am == MidLevelRenderer::MLRState::OneOneMode ||
+                                  am == MidLevelRenderer::MLRState::AlphaOneMode;
+            auto& batcher = mc2::particles::Batcher::Instance();
+            batcher.BeginGroup(0, 0, 0, 1, 1, am == MidLevelRenderer::MLRState::OneOneMode ? 2 : (additive ? 1 : 0), 0xffffffffu);
+            for (unsigned i = 0; i < m_activeParticleCount; ++i) {
+                if (GetParticle(i)->m_age >= 1.0f) continue;
+                const auto world = mc2::math::transformPoint(m_P_localTranslation[i], local_to_world);
+                for (unsigned corner = 0; corner < 3; ++corner) {
+                    mc2::particles::GpuParticle vertex{};
+                    vertex.position[0] = world.x;
+                    vertex.position[1] = world.y;
+                    vertex.position[2] = world.z;
+                    const auto& color = m_P_color[i];
+                    vertex.color[0] = color.red;
+                    vertex.color[1] = color.green;
+                    vertex.color[2] = color.blue;
+                    vertex.color[3] = am == MidLevelRenderer::MLRState::OneZeroMode ? 1.0f : color.alpha;
+                    vertex.velocity[0] = corner == 1 ? 2.4f : 0.0f;
+                    vertex.velocity[1] = corner == 2 ? 2.4f : 0.0f;
+                    vertex.kind_flags = 8u | 32u | 128u | (additive ? 2u : 0u);
+                    batcher.Emit(vertex);
+                }
+            }
+        }
 	}
 	ParticleCloud::Draw(info);
 }
@@ -478,15 +488,4 @@ void
 	gosFX::PointCloud::TestInstance() const
 {
 	Verify(IsDerivedFrom(DefaultData));
-}
-
-//------------------------------------------------------------------------------
-// Both render arms retain the same particle birth and lifetime state.
-void
-	gosFX::PointCloud::Start(ExecuteInfo *info)
-{
-	Check_Object(this);
-	Check_Pointer(info);
-
-	ParticleCloud::Start(info);
 }

@@ -55,7 +55,9 @@ def test_capture_rejects_invalid_arm_and_frame():
 def test_harvested_experiment_pins_the_complete_candidate_and_no_gpu_sim(arm):
     gates = runner.gate_vector(arm, "harvested")
     enabled = "1" if arm == "gpu" else "0"
-    assert set(gates.values()) == {enabled}
+    assert gates["MC2_GPU_PARTICLES"] == "1"
+    assert gates["MC2_VFX_ORACLE_TUBE"] == enabled
+    assert gates["MC2_VFX_ORACLE_SHAPE"] == enabled
     cmd = command(Path("a"), Path("b"), 152, arm, experiment="harvested")
     assert all(f"{key}={value}" in cmd for key, value in gates.items())
 

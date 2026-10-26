@@ -292,9 +292,10 @@ void Batcher::Flush() {
 
 Batcher& Batcher::Instance() {
     // Intentionally leaked; same static-dtor-ordering reasoning as the
-    // fx_trace tables (see mclib/fx_trace/fx_trace.cpp). Default budget
-    // 4096 is a Stage 1' placeholder; Stage 2' sizes from coverage data.
-    static Batcher* s_instance = new Batcher(4096);
+    // fx_trace tables (see mclib/fx_trace/fx_trace.cpp). Native geometry
+    // stores up to six vertex records per original particle. Keep the
+    // original 4096-particle capacity after that expansion.
+    static Batcher* s_instance = new Batcher(4096 * 6);
     return *s_instance;
 }
 

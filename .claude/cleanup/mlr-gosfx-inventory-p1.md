@@ -376,3 +376,53 @@ was modified. `p5-determinism/` and `p5-smoke-lite-artifacts/` retain the raw lo
 The deployed engine remains `435a6394d9bc`; the final commit only records these
 notes. One lane install remains, `E:/mc2-installs/claude-mlr-retire-p1`; auxiliary
 installs created zero, disk freed zero. The kit-parity install was left alone.
+
+## Packet 6 runtime closure (2026-10-26)
+
+Engine `6a39e5262e35`, window-68 base `b6a87c27b`. PointCloud and ShardCloud
+join the accepted native Card/CardCloud stream. Their CPU draw submissions,
+MLR owner allocation/registration and redundant Start/Destroy forwarding are
+removed. MLRPointCloud is deleted; MLRTriangleCloud remains as Tube's parent.
+MLRLineCloud had no constructor or serialization-factory callers and is deleted
+with its build/registration/header/dispatch closure. Numeric class IDs remain
+reserved. Serialized FX and particle layouts are unchanged.
+
+Remaining live render callers:
+- Tube::Draw -> MLRClipper::DrawEffect for zero textures and unsupported
+  OneZero/opaque state; its indexed triangle owner keeps MLRTriangleCloud alive.
+- Shape::Draw -> DrawScalableShape fallback for unsupported/missing geometry;
+  its native upload still collapses primitive materials to the first material.
+- ShapeCloud::Draw and DebrisCloud::Draw -> DrawScalableShape per instance.
+- PertCloud::Draw -> MlrCloudDraw/MLRNGonCloud. Zero stock specs does not make
+  this mod-loadable class dead.
+- Native Card/Shard alignment and texture resolution still consume MLR camera,
+  state and texture types; embedded shapes/state serialization and editor/FX
+  tools retain the shared library closure. CPU effect simulation is unchanged.
+
+Final native Point/Shard captures are repeated, fingerprinted Vulkan present
+readbacks with validation enabled and zero VUID/error/overflow reports. The
+existing frozen-cloud tests cover all alignments, clipping, expiry, per-vertex
+geometry/tint and draw/flush RNG preservation. The fired master OFF/ON pair
+matched 2,555 shared frames, chain `a64f58991586fb87`, full hash
+`a60b5e5c0ff2a613`, RNG `1914/769/0`, anim RNG `66`; no baseline was rewritten.
+See `p6-summary.json` and `owner-montage-p6.png` in the existing proof directory.
+
+
+### Packet 7 partial checkpoint (2026-10-26)
+
+Engine `9bd7b3c28`: deferred Tube texture pool index -> GOS image resolution;
+authored blend factors retained; uncalled immediate ribbon API removed. Gross
+engine diff: 95 lines deleted / 80 added. Gates unchanged, no new class accepted.
+Untextured/OneZero fixture 9 was populated on CPU and candidate `6a0388903`;
+native broad black/white panels fail acceptance. Its extension was withdrawn.
+See `owner-montage-p7.png` and `p7-oracle-checks.json` in the existing proof dir.
+Tube's CPU mesh owner and both triangle-cloud TUs remain; Shape submaterials,
+ShapeCloud, DebrisCloud and mod-loadable PertCloud are still pending in that order.
+MLR remains 50 compiled TUs / 23,373 cpp lines; its source/header inventory is
+unchanged at 107 files / 36,317 physical lines. Camera/state/texture and legacy
+asset decoding still serve native harvesting, game/editor and FX tools.
+
+Final build/7 covering rows/21 Python tests/native frozen tests/smoke-lite pass;
+Vulkan validation is clean. Final OFF/ON pair matches 1,788 sim frames, but the
+committed-baseline stage fails because mc2_01 has no baseline in this checkout.
+Do not present this as a passing committed-baseline check. Baselines unchanged.

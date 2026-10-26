@@ -1,13 +1,16 @@
 // Native ribbon submission; the queue preserves the post-renderLists drain order.
 #include "gos_particle_bridge_internal.h"
 #include "vulkan_vfx_geometry.h"
+#include "mc2fmt.h"
+#include "mlr/mlrtexturepool.hpp"
+#include "mlr/mlrtexture.hpp"
 #include <algorithm>
 
 namespace {
 struct RibbonRecord {
     std::vector<float> positions, colors, uvs;
     std::vector<unsigned short> indices;
-    unsigned gosHandle;
+    unsigned mlrHandle;
     int blendMode;
 };
 std::vector<RibbonRecord> ribbons;
@@ -21,9 +24,18 @@ void appendRibbon(std::vector<VfxGeometryVertex>& vertices, std::vector<VfxParti
     draw.start = static_cast<uint32_t>(vertices.size());
     draw.count = numIndices;
     draw.texture = texture;
-    // Bit 0: ONE,ONE; bit 2: authored UV clamp (passed through the legacy int ABI).
-    const bool additive = (blend & 1) != 0;
-    draw.additive = additive ? 2u : 0u;
+    // Low byte: Vulkan blend recipe; bit 8: authored UV clamp.
+    const unsigned mode = static_cast<unsigned>(blend) & 255u;
+    if (mode > 5 || mode == 3) return; // opaque Tube remains with MLR
+    if (groupLogEnabled()) {
+        static bool seen[6]{};
+        if (!seen[mode]) {
+            seen[mode] = true;
+            mc2::fmt::print_err("[VFX_TUBE] blend={} vertices={}\n", mode, numIndices);
+        }
+    }
+    const bool additive = mode == 2;
+    draw.additive = mode;
     draw.atlasColumns = kVfxGeometryAtlas;
     for (unsigned n = 0; n < numIndices; ++n) {
         const auto i = indices[n];
@@ -33,7 +45,8 @@ void appendRibbon(std::vector<VfxGeometryVertex>& vertices, std::vector<VfxParti
         std::copy_n(uvs + i * 2, 2, v.uv);
         constexpr uint32_t clampUv = 16u; // vfx_particle.frag geometry UV policy
         v.flags = VfxGeometryTube | (additive ? VfxGeometryOneOne : 0u) |
-                  ((blend & 4) != 0 ? clampUv : 0u);
+                  ((blend & 256) != 0 ? clampUv : 0u) |
+                  (mode == 4 || mode == 5 ? 512u : 0u);
         vertices.push_back(v);
     }
     draws.push_back(draw);
@@ -48,19 +61,11 @@ void submit(const std::vector<VfxGeometryVertex>& vertices, const std::vector<Vf
 #endif
 }
 }
-extern "C" void gos_tube_ribbon_flush(const float* positions, const float* colors, const float* uvs,
-    unsigned numVerts, const unsigned short* indices, unsigned numIndices, unsigned gosHandle, int blendMode) {
-    mc2::ScopedFlushTimer timer(1, "tube");
-    std::vector<VfxGeometryVertex> vertices;
-    std::vector<VfxParticleDraw> draws;
-    appendRibbon(vertices, draws, positions, colors, uvs, numVerts, indices, numIndices, gosHandle, blendMode);
-    submit(vertices, draws);
-}
 extern "C" void gos_tube_ribbon_enqueue(const float* positions, const float* colors, const float* uvs,
-    unsigned numVerts, const unsigned short* indices, unsigned numIndices, unsigned gosHandle, int blendMode) {
-    if (!positions || !colors || !uvs || !indices || !numVerts || !numIndices || !gosHandle) return;
+    unsigned numVerts, const unsigned short* indices, unsigned numIndices, unsigned mlrHandle, int blendMode) {
+    if (!positions || !colors || !uvs || !indices || !numVerts || !numIndices || !mlrHandle) return;
     ribbons.push_back({{positions, positions + size_t(numVerts)*3}, {colors, colors + size_t(numVerts)*4},
-                       {uvs, uvs + size_t(numVerts)*2}, {indices, indices + numIndices}, gosHandle, blendMode});
+                       {uvs, uvs + size_t(numVerts)*2}, {indices, indices + numIndices}, mlrHandle, blendMode});
 }
 extern "C" void gos_tube_ribbon_flush_deferred() {
     if (ribbons.empty()) return;
@@ -68,8 +73,17 @@ extern "C" void gos_tube_ribbon_flush_deferred() {
     ZoneScopedN("gos.TubeRibbon.FlushDeferred");
     std::vector<VfxGeometryVertex> vertices;
     std::vector<VfxParticleDraw> draws;
-    for (const auto& r : ribbons) appendRibbon(vertices, draws, r.positions.data(), r.colors.data(), r.uvs.data(),
-        static_cast<unsigned>(r.positions.size()/3), r.indices.data(), static_cast<unsigned>(r.indices.size()), r.gosHandle, r.blendMode);
+    // Enqueue carries MLR pool indices, not GOS handles. Resolve after the
+    // camera's ResolveTextures/ForceLoadImages, just like card groups.
+    for (const auto& r : ribbons) {
+        unsigned texture = 0;
+        if (r.mlrHandle && MidLevelRenderer::MLRTexturePool::Instance) {
+            auto* entry = (*MidLevelRenderer::MLRTexturePool::Instance)[r.mlrHandle];
+            if (entry && entry->GetImage()) texture = entry->GetImage()->GetHandle();
+        }
+        appendRibbon(vertices, draws, r.positions.data(), r.colors.data(), r.uvs.data(),
+            static_cast<unsigned>(r.positions.size()/3), r.indices.data(), static_cast<unsigned>(r.indices.size()), texture, r.blendMode);
+    }
     submit(vertices, draws);
     ribbons.clear();
 }

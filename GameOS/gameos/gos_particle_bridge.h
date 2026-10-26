@@ -27,42 +27,13 @@ extern "C" void gos_particle_bridge_flush(const mc2::particles::GpuParticle* rec
                                           const mc2::particles::GroupInfo*   groups,
                                           unsigned int                       numGroups);
 
-/* MC2_VFX_ORACLE_TUBE slice 1: gosFX Tube swept-quad ribbon submit.
- *
- * Renders the CPU Tube sim's already-built swept-quad ribbon mesh (one oriented
- * quad per consecutive profile pair) as an indexed triangle list. This is NOT a
- * billboard/card path — it shares no state with gos_particle_bridge_flush.
- *
- *   positions : numVerts * 3 floats, MC2/Stuff WORLD space (axis swap applied
- *               in-shader, matching the billboard VS convention).
- *   colors    : numVerts * 4 floats RGBA (per-vertex animated color).
- *   uvs       : numVerts * 2 floats (U along spine, V around cross-section).
- *   indices   : numIndices unsigned shorts (subset of the BuildMesh stencil for
- *               the live profile range).
- *   gosHandle : gos texture handle for this Tube's MLR texture (0 = untextured;
- *               draw is skipped if it cannot be resolved).
- *   blendMode : 0 = alpha (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA). Slice 1 only
- *               ever passes alpha; additive Tubes fall through to legacy MLR.
- *
- * Depth-test ON, depth-write OFF (matches legacy MissileSmoke). No object-ID
- * writes (pure FX geometry).
- */
-extern "C" void gos_tube_ribbon_flush(const float*          positions,
-                                      const float*          colors,
-                                      const float*          uvs,
-                                      unsigned int          numVerts,
-                                      const unsigned short* indices,
-                                      unsigned int          numIndices,
-                                      unsigned int          gosHandle,
-                                      int                   blendMode);
-
 /* TUBE-DEFERRED-FLUSH-1: deferred ribbon draw path.
  *
  * gos_tube_ribbon_enqueue — called from gosFX::Tube::Draw DURING the
  *   effect-render phase (before renderLists).  Deep-copies the mesh data
  *   (positions already in MC2 WORLD space; caller pre-multiplies by
  *   local_to_world before enqueuing) into an internal per-frame queue.
- *   No GL work.  Returns void.
+ *   No GPU work. Returns void. Texture argument is an MLR pool index, resolved at drain.
  *   gosHandle==0 must NOT be enqueued (untextured → legacy MLR path is
  *   correct-phase via the MLR sorter; the caller must skip enqueue and
  *   leave ribbonSubmitted=false so DrawEffect runs).

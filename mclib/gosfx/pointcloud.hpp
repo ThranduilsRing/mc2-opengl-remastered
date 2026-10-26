@@ -11,7 +11,6 @@
 #include"particlecloud.hpp"
 #include<mlr/mlr.hpp>
 
-namespace MidLevelRenderer {class MLRPointCloud;}
 
 namespace gosFX
 {
@@ -76,8 +75,6 @@ namespace gosFX
 			= sizeof(Particle) + sizeof(glm::vec3) + sizeof(Stuff::RGBAColor);
 
 	protected:
-		std::unique_ptr<MidLevelRenderer::MLRPointCloud>
-			m_cloudImplementation;
 		glm::vec3
 			*m_P_localTranslation;
 		Stuff::RGBAColor
@@ -141,13 +138,8 @@ namespace gosFX
 				unsigned index,
 				glm::vec3 *translation
 			);
-		void
-			DestroyParticle(unsigned index);
 
 	public:
-		// Both render arms use the same CPU particle births and lifetimes.
-		void
-			Start(ExecuteInfo *info);
 		bool
 			Execute(ExecuteInfo *info);
 		void

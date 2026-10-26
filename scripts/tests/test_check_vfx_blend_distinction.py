@@ -18,3 +18,9 @@ def test_native_blend_contract_and_one_one_collapse():
 def test_a_comment_cannot_certify_missing_native_blend_state():
     source = (ROOT / "GameOS/gameos/vulkan_vfx_island.cpp").read_text(encoding="utf-8")
     assert checker.native_blend_issues("/*" + source + "*/")
+
+
+def test_tube_source_one_cannot_inherit_source_alpha():
+    source = (ROOT / "GameOS/gameos/vulkan_vfx_island.cpp").read_text(encoding="utf-8")
+    assert checker.native_blend_issues(source.replace(
+        "tubeMode == 4 ? VK_BLEND_FACTOR_SRC_ALPHA : VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;", ""))
