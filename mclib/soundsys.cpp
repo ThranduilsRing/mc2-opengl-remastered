@@ -74,19 +74,21 @@ namespace {
         int16_t* out = reinterpret_cast<int16_t*>(stream);
         int outSamples = len / static_cast<int>(sizeof(int16_t));
         SDL_AtomicLock(&g_va.lock);
+        int consumedSamples = 0;
         for (int i = 0; i < outSamples; ++i) {
             if (g_va.tail == g_va.head) {
                 out[i] = 0;   // underrun = silence
             } else {
                 out[i] = g_va.ring[g_va.tail];
+                ++consumedSamples;
                 g_va.tail = (g_va.tail + 1) % g_va.cap;
             }
         }
-        SDL_AtomicUnlock(&g_va.lock);
         int framesWritten = (g_va.channels > 0)
-                             ? (outSamples / g_va.channels)
-                             : outSamples;
+                             ? (consumedSamples / g_va.channels)
+                             : consumedSamples;
         SDL_AtomicAdd(&g_va.consumedFrames, framesWritten);
+        SDL_AtomicUnlock(&g_va.lock);
     }
 } // namespace
 
@@ -1249,11 +1251,12 @@ bool SoundSystem::beginVideoPCMStream(int rate, int channels)
     if (rate != mixRate || channels != mixCh) return false;
 
     g_va.rate = rate; g_va.channels = channels;
-    g_va.cap  = static_cast<size_t>(rate) * channels * 2;  // 2 s ring buffer
+    g_va.cap  = (static_cast<size_t>(rate) * 2 + 1) * channels;  // 2 s ring buffer
     g_va.ring.assign(g_va.cap, 0);
     g_va.head = g_va.tail = 0;
     SDL_AtomicSet(&g_va.consumedFrames, 0);
     Mix_HookMusic(videoMixHook, nullptr);
+    Mix_ResumeMusic();
     g_va.active = true;
     return true;
 }
@@ -1261,11 +1264,11 @@ bool SoundSystem::beginVideoPCMStream(int rate, int channels)
 void SoundSystem::pushVideoPCMSamples(const int16_t* samples, int frameCount)
 {
     if (!g_va.active || !samples || frameCount <= 0) return;
-    int interleaved = frameCount * g_va.channels;
     SDL_AtomicLock(&g_va.lock);
+    const size_t freeSamples = (g_va.tail + g_va.cap - g_va.head - 1) % g_va.cap;
+    int interleaved = static_cast<int>(std::min<size_t>(frameCount, freeSamples / g_va.channels)) * g_va.channels;
     for (int i = 0; i < interleaved; ++i) {
         size_t next = (g_va.head + 1) % g_va.cap;
-        if (next == g_va.tail) break;   // full — drop
         g_va.ring[g_va.head] = samples[i];
         g_va.head = next;
     }
