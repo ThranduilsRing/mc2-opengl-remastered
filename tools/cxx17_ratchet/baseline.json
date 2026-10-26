@@ -187,7 +187,7 @@
   "mclib": {
    "LG01": 3,
    "LG02": 0,
-   "LG03": 584,
+   "LG03": 583,
    "LG04": 15,
    "LG05": 111,
    "LG06": 528,
@@ -2359,7 +2359,7 @@
    "LG03": 2
   },
   "mclib/bdactor_terrain.cpp": {
-   "LG03": 2
+   "LG03": 1
   },
   "mclib/bdactor_tree.cpp": {
    "LG03": 5
@@ -3506,7 +3506,7 @@
    "LG20": 3
   }
  },
- "head": "98d99b110",
+ "head": "6b889d53d",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
