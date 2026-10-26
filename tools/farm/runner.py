@@ -1,0 +1,91 @@
+"""Serial desktop-session runner. Jobs are atomically published JSON argv lists."""
+from __future__ import annotations
+
+import argparse
+import json
+import os
+from pathlib import Path
+import subprocess
+import time
+
+
+def atomic_json(path, value):
+    temporary = path.with_suffix('.tmp')
+    temporary.write_text(json.dumps(value, indent=2), encoding='utf-8')
+    temporary.replace(path)
+
+
+def run_job(path, root):
+    output = root / 'results' / path.stem
+    output.mkdir(parents=True, exist_ok=True)
+    result = {'started': time.time(), 'status': 'error', 'returncode': None}
+    try:
+        job = json.loads(path.read_text(encoding='utf-8'))
+        argv = job['argv']
+        if not isinstance(argv, list) or not argv or not all(isinstance(x, str) for x in argv):
+            raise ValueError('argv must be a nonempty list of strings')
+        timeout = float(job.get('timeout', 600))
+        if not 0 < timeout <= 7200:
+            raise ValueError('timeout must be in (0, 7200] seconds')
+        env = dict(os.environ, **job.get('env', {}), MC2_FARM_RESULT_DIR=str(output))
+        flags = subprocess.BELOW_NORMAL_PRIORITY_CLASS if os.name == 'nt' else 0
+        with (output / 'job.log').open('wb') as log:
+            child = subprocess.Popen(argv, cwd=job.get('cwd', str(root)), env=env,
+                                     stdout=log, stderr=subprocess.STDOUT, creationflags=flags)
+            result['pid'] = child.pid
+            try:
+                result['returncode'] = child.wait(timeout=timeout)
+                result['status'] = 'completed'
+            finally:
+                if child.poll() is None:
+                    # Only this job's PID and descendants; never kill by image name.
+                    if os.name == 'nt':
+                        subprocess.run(['taskkill', '/PID', str(child.pid), '/T', '/F'],
+                                       stdout=log, stderr=subprocess.STDOUT, check=False)
+                    else:
+                        child.kill()
+                    child.wait()
+    except Exception as exc:
+        result['error'] = f'{type(exc).__name__}: {exc}'
+    result['finished'] = time.time()
+    atomic_json(output / 'result.json', result)
+    path.rename(path.with_suffix('.done'))
+    return result
+
+
+def poll_once(root):
+    for path in sorted((root / 'jobs').glob('*.json')):
+        claimed = path.with_suffix('.running')
+        path.rename(claimed)
+        run_job(claimed, root)
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--root', type=Path, default=Path('C:/mc2farm'))
+    args = parser.parse_args()
+    root = args.root.resolve()
+    for name in ('jobs', 'results'):
+        (root / name).mkdir(parents=True, exist_ok=True)
+    # Scheduled task also forbids overlapping instances; lock protects manual launches.
+    with (root / 'runner.lock').open('a+b') as lock:
+        lock.seek(0)
+        if os.name == 'nt':
+            import msvcrt
+            msvcrt.locking(lock.fileno(), msvcrt.LK_NBLCK, 1)
+        else:
+            import fcntl
+            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        # Never replay a job interrupted by reboot: it may have side effects.
+        for path in (root / 'jobs').glob('*.running'):
+            output = root / 'results' / path.stem
+            output.mkdir(parents=True, exist_ok=True)
+            atomic_json(output / 'result.json', {'status': 'interrupted', 'returncode': None})
+            path.rename(path.with_suffix('.done'))
+        while not (root / 'stop').exists():
+            poll_once(root)
+            time.sleep(1)
+
+
+if __name__ == '__main__':
+    main()
