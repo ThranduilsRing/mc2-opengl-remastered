@@ -6,6 +6,7 @@
 //
 
 #include "stdafx.h"
+#include <memory>
 #include "resource.h"
 #include "UnitSettingsDlg.h"
 #include "EditorObjects.h"
@@ -502,19 +503,18 @@ void UnitSettingsDlg::OnSelchangeMech()
 	int indexInGroup = m_Mech.GetCurSel();
 
 	int varCount =  EditorObjectMgr::instance()->getNumberOfVariants( group, indexInGroup );
-	const char** VariantNames = 0;
+	std::unique_ptr<const char*[]> VariantNames;
 	if (0 < varCount)
 	{
-		VariantNames = new const char*[varCount];
-		EditorObjectMgr::instance()->getVariantNames( group, indexInGroup, VariantNames, varCount );
+		VariantNames = std::make_unique_for_overwrite<const char*[]>(varCount);
+		EditorObjectMgr::instance()->getVariantNames( group, indexInGroup, VariantNames.get(), varCount );
 
 		for ( int v = 0; v < varCount; ++v )
 		{
 			m_Variant.AddString( VariantNames[v] );
 		}
 
-		delete[] VariantNames;
-		VariantNames = 0;
+		VariantNames.reset();
 
 		m_Variant.SetCurSel( 0 );
 	}
@@ -632,13 +632,13 @@ void UnitSettingsDlg::updateMemberVariables()
 
 	int groupCount = pMgr->getUnitGroupCount();
 
-	const char** pGroups = new const char*[groupCount];
-	int*		 groupIDs = new int[groupCount];
+	auto pGroups = std::make_unique_for_overwrite<const char*[]>(groupCount);
+	auto groupIDs = std::make_unique_for_overwrite<int[]>(groupCount);
 
 	
 	m_Group.ResetContent();
 	
-	pMgr->getUnitGroupNames(pGroups, groupIDs, groupCount);
+	pMgr->getUnitGroupNames(pGroups.get(), groupIDs.get(), groupCount);
 
 	for ( int i = 0; i < groupCount; ++i )
 	{
@@ -646,8 +646,8 @@ void UnitSettingsDlg::updateMemberVariables()
 		m_Group.SetItemData( i, groupIDs[i] );
 	}
 
-	delete [] pGroups;
-	delete [] groupIDs;
+	pGroups.reset();
+	groupIDs.reset();
 
 	int group = units.front()->getGroup();
 	for ( auto iter = units.begin(); iter != units.end(); iter++ )
@@ -701,19 +701,18 @@ void UnitSettingsDlg::updateMemberVariables()
 				m_Variant.ResetContent();
 				
 				int varCount =  EditorObjectMgr::instance()->getNumberOfVariants( group, indexInGroup );
-				const char** VariantNames = 0;
+				std::unique_ptr<const char*[]> VariantNames;
 				if (0 < varCount)
 				{
-					VariantNames = new const char*[varCount];
-					EditorObjectMgr::instance()->getVariantNames( group, indexInGroup, VariantNames, varCount );
+					VariantNames = std::make_unique_for_overwrite<const char*[]>(varCount);
+					EditorObjectMgr::instance()->getVariantNames( group, indexInGroup, VariantNames.get(), varCount );
 
 					for ( int v = 0; v < varCount; ++v )
 					{
 						m_Variant.AddString( VariantNames[v] );
 					}
 
-					delete[] VariantNames;
-					VariantNames = 0;
+					VariantNames.reset();
 
 					int variant = units.front()->getVariant();
 					for ( auto iter = units.begin(); iter != units.end(); iter++ )

@@ -1,4 +1,5 @@
 #include "stdafx.h"
+#include <memory>
 #include "vk_scene_renderer.h"
 #include "render_submissions.h"
 #include "Gates/preferences_legacy.h"
@@ -357,7 +358,7 @@ void InitializeGameEngine()
 		userInput->setMouseDragThreshold((float)dragThreshold);
 	}
 
-	FitIniFilePtr systemFile = new FitIniFile;
+	auto systemFile = std::make_unique<FitIniFile>();
 
 #ifdef _DEBUG
 	long systemOpenResult = 
@@ -534,10 +535,9 @@ void InitializeGameEngine()
 	}
 
 	systemFile->close();
-	delete systemFile;
-	systemFile = nullptr;
+	systemFile.reset();
 
-	FitIniFilePtr prefs = new FitIniFile;
+	auto prefs = std::make_unique<FitIniFile>();
 
 	Environment.Key_Exit= (unsigned long)-1;
 
@@ -653,8 +653,7 @@ void InitializeGameEngine()
 	
 	prefs->close();
 	
-	delete prefs;
-	prefs = nullptr;
+	prefs.reset();
 
 
 		colorPool 		= new TG_VertexPool;

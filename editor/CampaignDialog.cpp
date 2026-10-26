@@ -12,6 +12,7 @@
 //
 
 #include "stdafx.h"
+#include <memory>
 #include "CampaignDialog.h"
 #include "CampaignData.h"
 #include "GroupDialog.h"
@@ -220,11 +221,11 @@ int CCampaignDialog::SaveAs()
 	{
 		/* if the mission directory doesn't exist, we attempt to create it */
 		int curDirStrSize = GetCurrentDirectory(0, nullptr);
-		TCHAR *curDirStr = new TCHAR[curDirStrSize];
-		GetCurrentDirectory(curDirStrSize, curDirStr);
+		auto curDirStr = std::make_unique_for_overwrite<TCHAR[]>(curDirStrSize);
+		GetCurrentDirectory(curDirStrSize, curDirStr.get());
 		BOOL result = SetCurrentDirectory(campaignPath);
-		SetCurrentDirectory(curDirStr);
-		delete[] curDirStr; curDirStr = 0;
+		SetCurrentDirectory(curDirStr.get());
+		curDirStr.reset();
 
 		if (0 == result) {
 			CreateDirectory(campaignPath, nullptr);

@@ -12,6 +12,7 @@
 //
 
 #include "stdafx.h"
+#include <memory>
 #include "resource.h"
 #include "ObjectiveDlg.h"
 #include "mc2str.h"
@@ -427,9 +428,9 @@ BOOL ObjectiveDlg::OnInitDialog()
 	
 	int groupCount = pMgr->getBuildingGroupCount();
 
-	const char** pGroups = new const char*[groupCount];
+	auto pGroups = std::make_unique_for_overwrite<const char*[]>(groupCount);
 		
-	pMgr->getBuildingGroupNames(pGroups, groupCount);
+	pMgr->getBuildingGroupNames(pGroups.get(), groupCount);
 
 
 	for ( int i = 0; i < groupCount; ++i )
@@ -438,7 +439,7 @@ BOOL ObjectiveDlg::OnInitDialog()
 		m_modelGroup.SetItemData( i, (DWORD)i );
 	}
 
-	delete [] pGroups;
+	pGroups.reset();
 
 	{
 
