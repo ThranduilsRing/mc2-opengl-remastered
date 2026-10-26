@@ -1,3 +1,4 @@
+#include <memory>
 #include "mc2fmt.h"
 #include "utils/mc2log.h"
 #define MECHLOPEDIA_CPP
@@ -672,19 +673,19 @@ void Mechlopedia::MechScreen::setVehicle( LogisticsVehicle* pVehicle )
 	char text[256];
 	cLoadString( pVehicle->getNameID(), text, 255 );
 	const std::string tmpStr = mc2::str::ascii_upper( text );
-	aTextListItem* pItem = nullptr;
+	std::unique_ptr<aTextListItem> pItem;
 	if ( !hasDefsUiPage() )
 	{
 		descriptionListBox.removeAllItems( true );
 
-		pItem = new aTextListItem( IDS_EN_LISTBOX_FONT );
+		pItem = std::make_unique<aTextListItem>( IDS_EN_LISTBOX_FONT );
 		pItem->forceToTop( true );
 		pItem->resize( descriptionListBox.width() - descriptionListBox.getScrollBarWidth() - 16, pItem->height() );
 		pItem->setText( loadResourceString( descID ) );
 		pItem->sizeToText( );
 		pItem->setColor( 0xff005392 );
 
-		descriptionListBox.AddItem( pItem );
+		descriptionListBox.AddItem( pItem.release() );
 
 		compListBox.setVehicle( pVehicle );
 		textObjects[0].setText( tmpStr );
@@ -710,27 +711,27 @@ void Mechlopedia::MechScreen::setVehicle( LogisticsVehicle* pVehicle )
 //	pItem->setColor( color );
 //	statsListBox.AddItem( pItem );
 
-	pItem = new aTextListItem( IDS_EN_LISTBOX_FONT );
+	pItem = std::make_unique<aTextListItem>( IDS_EN_LISTBOX_FONT );
 	// add weight stats
 	cLoadString( IDS_EN_WEIGHT, text, 255 );
 	sprintf( formatText, text, pVehicle->getMaxWeight() );	
 	
 	pItem->setText( formatText );
 	pItem->setColor( color );
-	statsListBox.AddItem( pItem );
+	statsListBox.AddItem( pItem.release() );
 
 	// add weight class stats
-	pItem = new aTextListItem( IDS_EN_LISTBOX_FONT );
+	pItem = std::make_unique<aTextListItem>( IDS_EN_LISTBOX_FONT );
 
 	cLoadString( IDS_EN_CLASS, text, 255 );
 	sprintf( formatText, text, pVehicle->getMechClass().c_str() );	
 	
 	pItem->setText( formatText );
 	pItem->setColor( color );
-	statsListBox.AddItem( pItem );
+	statsListBox.AddItem( pItem.release() );
 
 	// now armor
-	pItem = new aTextListItem( IDS_EN_LISTBOX_FONT );
+	pItem = std::make_unique<aTextListItem>( IDS_EN_LISTBOX_FONT );
 
 	cLoadString( IDS_EN_ARMOR, text, 255 );
 	cLoadString( pVehicle->getArmorClass(), tmp, 255 );
@@ -738,18 +739,18 @@ void Mechlopedia::MechScreen::setVehicle( LogisticsVehicle* pVehicle )
 	
 	pItem->setText( formatText );
 	pItem->setColor( color );
-	statsListBox.AddItem( pItem );
+	statsListBox.AddItem( pItem.release() );
 
 
 	// now speed
-	pItem = new aTextListItem( IDS_EN_LISTBOX_FONT );
+	pItem = std::make_unique<aTextListItem>( IDS_EN_LISTBOX_FONT );
 
 	cLoadString( IDS_EN_SPEED, text, 255 );
 	sprintf( formatText, text, static_cast<long>(pVehicle->getDisplaySpeed()));
 
 	pItem->setText( formatText );
 	pItem->setColor( color );
-	statsListBox.AddItem( pItem );
+	statsListBox.AddItem( pItem.release() );
 
 	if ( hasDefsUiPage() )
 	{
@@ -1028,12 +1029,12 @@ void Mechlopedia::WeaponScreen::begin()
 	for ( int i = 0; i < count; i++ )
 	{
 		if ( mc2IsUndefinedName( comps[i]->getName() ) ) continue;
-		MechlopediaListItem* pItem = new MechlopediaListItem();
+		auto pItem = std::make_unique<MechlopediaListItem>();
 		pItem->setText( mc2::str::ascii_upper( mc2::str::from_c( comps[i]->getName() ) ) );
 		pItem->setID( comps[i]->getID() );
 		pItem->resize( groupListBox->width() - groupListBox->getScrollBarWidth() - 18, pItem->height() );
 
-		groupListBox->AddItem( pItem );
+		groupListBox->AddItem( pItem.release() );
 	}
 
 	aTextListItem* pEntry = static_cast<aTextListItem*>(groupListBox->GetItem( 0 ));
@@ -1057,13 +1058,13 @@ void Mechlopedia::WeaponScreen::setWeapon ( LogisticsComponent* pComponent )
 	const std::string name = mc2::str::ascii_upper( mc2::str::from_c( pComponent->getName() ) );
 
 	// set description
-	aTextListItem* pEntry = nullptr;
+	std::unique_ptr<aTextListItem> pEntry;
 	if ( !hasDefsUiPage() )
 	{
 		descriptionListBox.removeAllItems( true );
 		textObjects[0].setText( name );
 
-		pEntry = new aTextListItem( IDS_EN_WEAPON_FONT );
+		pEntry = std::make_unique<aTextListItem>( IDS_EN_WEAPON_FONT );
 		pEntry->setColor( 0xff005392 );
 		// EQUIP-ADD-UI-NAME-1 (S3): ADD-filled component descriptions come
 		// from the def, not the string table. Miss -> stock path.
@@ -1075,7 +1076,7 @@ void Mechlopedia::WeaponScreen::setWeapon ( LogisticsComponent* pComponent )
 		pEntry->resize( descriptionListBox.width() - descriptionListBox.getScrollBarWidth() - 16, pEntry->height() );
 		pEntry->sizeToText();
 		pEntry->forceToTop( true );
-		descriptionListBox.AddItem( pEntry );
+		descriptionListBox.AddItem( pEntry.release() );
 	}
 
 	char buffer[256];
@@ -1101,35 +1102,35 @@ void Mechlopedia::WeaponScreen::setWeapon ( LogisticsComponent* pComponent )
 	// RANGE
 	if ( pComponent->isWeapon() )
 	{
-		pEntry = new aTextListItem( IDS_EN_WEAPON_FONT );
+		pEntry = std::make_unique<aTextListItem>( IDS_EN_WEAPON_FONT );
 
 		cLoadString( IDS_EN_WEAPON_RANGE, buffer, 255 );
 		cLoadString( IDS_HOTKEY1 + pComponent->getRangeType(), tmp, 255 );
 		sprintf( final, buffer, tmp );
 		pEntry->setText( final );
 		pEntry->setColor( color );
-		statsListBox.AddItem( pEntry );
+		statsListBox.AddItem( pEntry.release() );
 
 		//	DAMAGE
-		pEntry = new aTextListItem( IDS_EN_WEAPON_FONT );
+		pEntry = std::make_unique<aTextListItem>( IDS_EN_WEAPON_FONT );
 
 		cLoadString( IDS_EN_WEAPON_DAMAGE, buffer, 255 );
 		sprintf( final, buffer, static_cast<long>(pComponent->getDamage()) );
 		pEntry->setText( final );
 		pEntry->setColor( color );
-		statsListBox.AddItem( pEntry );
+		statsListBox.AddItem( pEntry.release() );
 
 	}
 	else if ( pComponent->getType() == COMPONENT_FORM_BULK )
 	{
-		pEntry = new aTextListItem( IDS_EN_WEAPON_FONT );
+		pEntry = std::make_unique<aTextListItem>( IDS_EN_WEAPON_FONT );
 
 		cLoadString( IDS_EN_WEAPON_ARMOR, buffer, 255 );
 		sprintf( final, buffer, 32 );
 		pEntry->setText( final );
 		pEntry->setColor( color );
 //		pEntry->setHelpID( IDS_EN_WEAPON_ARMOR_HELP );
-		statsListBox.AddItem( pEntry );
+		statsListBox.AddItem( pEntry.release() );
 
 
 	}
@@ -1138,45 +1139,45 @@ void Mechlopedia::WeaponScreen::setWeapon ( LogisticsComponent* pComponent )
 	// RATE OF FIRE
 	if ( pComponent->getRecycleTime() )
 	{
-		pEntry = new aTextListItem( IDS_EN_WEAPON_FONT );
+		pEntry = std::make_unique<aTextListItem>( IDS_EN_WEAPON_FONT );
 
 		cLoadString( IDS_EN_WEAPON_RATEOFFIRE, buffer, 255 );
 		sprintf( final, buffer, (10.f/pComponent->getRecycleTime()) );
 		pEntry->setText( final );
 		pEntry->setColor( color );
-		statsListBox.AddItem( pEntry );
+		statsListBox.AddItem( pEntry.release() );
 	}
 
 
 	// heat
-	pEntry = new aTextListItem( IDS_EN_WEAPON_FONT );
+	pEntry = std::make_unique<aTextListItem>( IDS_EN_WEAPON_FONT );
 
 	cLoadString( IDS_EN_WEAPON_HEAT, buffer, 255 );
 	sprintf( final, buffer, static_cast<long>(pComponent->getHeat()) );
 	pEntry->setText( final );
 	pEntry->setColor( color );
-	statsListBox.AddItem( pEntry );
+	statsListBox.AddItem( pEntry.release() );
 
 	// AMMO
 	if ( !prefs.useUnlimitedAmmo && pComponent->getAmmo() )
 	{
-		pEntry = new aTextListItem( IDS_EN_WEAPON_FONT );
+		pEntry = std::make_unique<aTextListItem>( IDS_EN_WEAPON_FONT );
 
 		cLoadString( IDS_EN_WEAPON_AMMO, buffer, 255 );
 		sprintf( final, buffer, static_cast<long>(pComponent->getAmmo()) );
 		pEntry->setText( final );
 		pEntry->setColor( color );
-		statsListBox.AddItem( pEntry );
+		statsListBox.AddItem( pEntry.release() );
 	}
 
 	// COST
-	pEntry = new aTextListItem( IDS_EN_WEAPON_FONT );
+	pEntry = std::make_unique<aTextListItem>( IDS_EN_WEAPON_FONT );
 
 	cLoadString( IDS_EN_WEAPON_COST, buffer, 255 );
 	sprintf( final, buffer, static_cast<long>(pComponent->getCost()) );
 	pEntry->setText( final );
 	pEntry->setColor( color );
-	statsListBox.AddItem( pEntry );
+	statsListBox.AddItem( pEntry.release() );
 
 
 
@@ -1280,7 +1281,7 @@ void Mechlopedia::PersonalityScreen::begin()
 
 	for ( int i = 0; i < count; i++ )
 	{
-		MechlopediaListItem* pItem = new MechlopediaListItem();
+		auto pItem = std::make_unique<MechlopediaListItem>();
 		char text[256];
 		cLoadString( FirstID + i, text, 255 );
 		const std::string upper = mc2::str::ascii_upper( text );
@@ -1298,17 +1299,17 @@ void Mechlopedia::PersonalityScreen::begin()
 				// The list is ordered by name, ignoring ASCII case; the stock personality names keep the order of the former locale collation.
 				if ( mc2::str::icompare( upper, mc2::str::from_c( pTmpItem->getText() ) ) < 0 )
 				{
-					groupListBox->InsertItem( pItem, j );
+					groupListBox->InsertItem( pItem.release(), j );
 					bAdded = 1;
 					break;
 				}
 			}
 
 			if ( !bAdded )
-				groupListBox->AddItem( pItem );
+				groupListBox->AddItem( pItem.release() );
 		}
 		else
-			groupListBox->AddItem( pItem );
+			groupListBox->AddItem( pItem.release() );
 
 	}
 
@@ -1333,13 +1334,13 @@ void Mechlopedia::PersonalityScreen::select( aTextListItem* pEntry )
 	{
 		descriptionListBox.removeAllItems( true );
 
-		aTextListItem* pItem = new aTextListItem( IDS_EN_WEAPON_FONT );
+		auto pItem = std::make_unique<aTextListItem>( IDS_EN_WEAPON_FONT );
 		pItem->setColor( 0xff005392);
 		pItem->resize( descriptionListBox.width() - descriptionListBox.getScrollBarWidth() - 16, pEntry->height() );
 		pItem->setText( loadResourceString( DescriptionID + ID ) );
 		pItem->sizeToText();
 		pItem->forceToTop( true );
-		descriptionListBox.AddItem( pItem );
+		descriptionListBox.AddItem( pItem.release() );
 
 		textObjects[0].setText( pEntry->getText() );
 	}
@@ -1564,13 +1565,13 @@ void Mechlopedia::BuildingScreen::select( aTextListItem* pEntry )
 
 			descriptionListBox.removeAllItems( true );
 
-			aTextListItem* pItem = new aTextListItem( IDS_EN_LISTBOX_FONT );
+			auto pItem = std::make_unique<aTextListItem>( IDS_EN_LISTBOX_FONT );
 			pItem->resize( descriptionListBox.width() - descriptionListBox.getScrollBarWidth() - 16, pItem->height() );
 			pItem->setText( loadResourceString( pBldg->encycloID ) );
 			pItem->sizeToText( );
 			pItem->setColor( 0xff005392 );
 			pItem->forceToTop( true );
-			descriptionListBox.AddItem( pItem );
+			descriptionListBox.AddItem( pItem.release() );
 		}
 
 		LogisticsComponent* pComps[4];

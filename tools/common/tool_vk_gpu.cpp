@@ -1,3 +1,4 @@
+#include <memory>
 // tool_vk_gpu -- see tool_vk_gpu.h.
 #include "tool_vk_gpu.h"
 
@@ -372,22 +373,22 @@ unsigned long long imguiTex(uint32_t id) {
 bool createTarget(Target& t, int w, int h) {
     destroyTarget(t);
     if (!g.s || w < 1 || h < 1) return false;
-    auto* impl = new TargetImpl;
+    auto impl = std::make_unique<TargetImpl>();
     Tex ct;
     ct.w = w; ct.h = h; ct.repeat = false;
     if (!makeImage(w, h, 1, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, ct.image, ct.mem) ||
         !makeImage(w, h, 1, VK_FORMAT_D32_SFLOAT, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, impl->depth, impl->depthMem)) {
-        delete impl; return false;
+        impl.reset(); return false;
     }
     ct.view = makeView(ct.image, VK_FORMAT_R8G8B8A8_UNORM, 1, VK_IMAGE_ASPECT_COLOR_BIT);
     impl->depthView = makeView(impl->depth, VK_FORMAT_D32_SFLOAT, 1, VK_IMAGE_ASPECT_DEPTH_BIT);
     VkImageView views[2] = {ct.view, impl->depthView};
     VkFramebufferCreateInfo fi{VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO};
     fi.renderPass = g.pass; fi.attachmentCount = 2; fi.pAttachments = views; fi.width = (uint32_t)w; fi.height = (uint32_t)h; fi.layers = 1;
-    if (vkCreateFramebuffer(g.s->dev, &fi, nullptr, &impl->fb) != VK_SUCCESS) { delete impl; return false; }
+    if (vkCreateFramebuffer(g.s->dev, &fi, nullptr, &impl->fb) != VK_SUCCESS) { impl.reset(); return false; }
     const uint32_t id = g.nextId++;
     g.texs[id] = ct;
-    t.colorTex = id; t.w = w; t.h = h; t.impl = impl;
+    t.colorTex = id; t.w = w; t.h = h; t.impl = impl.release();
     // First use: the render pass declares initialLayout UNDEFINED, so the layout ImGui is told about is only valid after the first pass.
     return true;
 }
@@ -395,12 +396,12 @@ bool createTarget(Target& t, int w, int h) {
 void destroyTarget(Target& t) {
     if (!t.impl) { t = Target{}; return; }
     vkDeviceWaitIdle(g.s->dev);
-    auto* impl = static_cast<TargetImpl*>(t.impl);
+    auto impl = std::unique_ptr<TargetImpl>(static_cast<TargetImpl*>(t.impl));
     if (impl->fb) vkDestroyFramebuffer(g.s->dev, impl->fb, nullptr);
     if (impl->depthView) vkDestroyImageView(g.s->dev, impl->depthView, nullptr);
     if (impl->depth) vkDestroyImage(g.s->dev, impl->depth, nullptr);
     if (impl->depthMem) vkFreeMemory(g.s->dev, impl->depthMem, nullptr);
-    delete impl;
+    impl.reset();
     destroyTexture(t.colorTex);
     t = Target{};
 }
@@ -439,7 +440,7 @@ bool createPipeline(Pipeline& p, const PipelineDesc& d) {
         if (fs) vkDestroyShaderModule(g.s->dev, fs, nullptr);
         return false;
     }
-    auto* impl = new PipelineImpl;
+    auto impl = std::make_unique<PipelineImpl>();
     impl->samplers = d.samplers;
 
     std::vector<VkDescriptorSetLayoutBinding> bind;
@@ -501,22 +502,22 @@ bool createPipeline(Pipeline& p, const PipelineDesc& d) {
     vkDestroyShaderModule(g.s->dev, fs, nullptr);
     if (r != VK_SUCCESS) {
         std::fprintf(stderr, "[TOOLVK] pipeline %s failed (%d)\n", d.fragSpv.c_str(), (int)r);
-        p.impl = impl; destroyPipeline(p); return false;
+        p.impl = impl.release(); destroyPipeline(p); return false;
     }
-    p.impl = impl;
+    p.impl = impl.release();
     return true;
 }
 
 void destroyPipeline(Pipeline& p) {
     if (!p.impl) return;
-    auto* impl = static_cast<PipelineImpl*>(p.impl);
+    auto impl = std::unique_ptr<PipelineImpl>(static_cast<PipelineImpl*>(p.impl));
     if (g.s) {
         vkDeviceWaitIdle(g.s->dev);
         if (impl->pipe) vkDestroyPipeline(g.s->dev, impl->pipe, nullptr);
         if (impl->layout) vkDestroyPipelineLayout(g.s->dev, impl->layout, nullptr);
         if (impl->dsl) vkDestroyDescriptorSetLayout(g.s->dev, impl->dsl, nullptr);
     }
-    delete impl;
+    impl.reset();
     p.impl = nullptr;
 }
 

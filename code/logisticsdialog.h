@@ -1,6 +1,7 @@
 #ifndef LOGISTICSDIALOG_H
 #define LOGISTICSDIALOG_H
 #include <memory>
+#include <span>
 /*************************************************************************************************\
 LogisticsDialog.h			: Interface for the LogisticsDialog component.
 //---------------------------------------------------------------------------//
@@ -193,7 +194,7 @@ class LogisticsSaveDialog : public LogisticsDialog
 		void	initDialog(const char* path, bool bCampaign);
 		void	updateCampaignMissionInfo();
 		void	setMission( const char* path );
-		void	readCampaignNameFromFile(const char* fileName, char* resultName, long len );
+		void	readCampaignNameFromFile(const char* fileName, std::span<char> resultName );
 		bool	isCorrectVersionSaveGame( char *fileName );
 
 

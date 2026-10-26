@@ -1,3 +1,4 @@
+#include <memory>
 #include "Gates/preferences_legacy.h"
 #define OPTIONSAREA_CPP
 /*************************************************************************************************\
@@ -1540,12 +1541,12 @@ void OptionsHotKeys::reset( bool useOld )
 			long key = useOld ? oldKeys[i] : commands[i].key;
 			makeKeyString( key, keysString );
 
-			HotKeyListItem* item = new HotKeyListItem();
+			auto item = std::make_unique<HotKeyListItem>();
 			item->setDescription( descText );
 			item->setKey( keysString );		
 			item->setHotKey( key );
 			item->setCommand( i );
-			hotKeyList.AddItem( item );
+			hotKeyList.AddItem( item.release() );
 			
 
 

@@ -3,6 +3,7 @@
 #include "EditorInspector_internal.h"
 #include "mc2fmt.h"
 #include "Gates/render_options.h"
+#include <span>
 
 namespace EditorInspector {
 
@@ -1064,18 +1065,18 @@ void drawMaterialRwLookup(const RenderWorld::LookupResult& lk) {
                 ImGui::Text("matIdx:        %u / gen %u",
                     s_staticPropData.materialIdx, s_staticPropData.materialGen);
                 ImGui::Separator();
-                auto texLabel = [](uint32_t t, char* b, size_t n) {
-                    if (t == 0xFFFFFFFFu) mc2::fmt::to_buf_n(b, n, "(absent)");
-                    else mc2::fmt::to_buf_n(b, n, "{:d}", mc2::fmt::as_u32(t));
+                auto texLabel = [](uint32_t t, std::span<char> b) {
+                    if (t == 0xFFFFFFFFu) mc2::fmt::to_buf_n(b.data(), b.size(), "(absent)");
+                    else mc2::fmt::to_buf_n(b.data(), b.size(), "{:d}", mc2::fmt::as_u32(t));
                 };
                 char tb[24];
-                texLabel(mg.albedoTex, tb, sizeof(tb));
+                texLabel(mg.albedoTex, tb);
                 ImGui::Text("albedoTex:     %s", tb);
-                texLabel(mg.normalTex, tb, sizeof(tb));
+                texLabel(mg.normalTex, tb);
                 ImGui::Text("normalTex:     %s", tb);
-                texLabel(mg.metallicRoughnessTex, tb, sizeof(tb));
+                texLabel(mg.metallicRoughnessTex, tb);
                 ImGui::Text("mrTex:         %s", tb);
-                texLabel(mg.emissiveTex, tb, sizeof(tb));
+                texLabel(mg.emissiveTex, tb);
                 ImGui::Text("emissiveTex:   %s", tb);
                 ImGui::Separator();
                 ImGui::Text("flags:         0x%08X%s%s%s%s%s%s",

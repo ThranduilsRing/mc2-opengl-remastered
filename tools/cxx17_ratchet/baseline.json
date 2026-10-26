@@ -41,7 +41,7 @@
    "LG14": 0,
    "LG15": 0,
    "LG16": 0,
-   "LG17": 2,
+   "LG17": 0,
    "LG18": 0,
    "LG19": 0,
    "LG20": 0
@@ -87,7 +87,7 @@
    "LG14": 0,
    "LG15": 0,
    "LG16": 0,
-   "LG17": 2,
+   "LG17": 1,
    "LG18": 0,
    "LG19": 0,
    "LG20": 20
@@ -141,7 +141,7 @@
   "code": {
    "LG01": 24,
    "LG02": 2,
-   "LG03": 426,
+   "LG03": 387,
    "LG04": 16,
    "LG05": 200,
    "LG06": 444,
@@ -156,7 +156,7 @@
    "LG14": 93,
    "LG15": 0,
    "LG16": 2,
-   "LG17": 44,
+   "LG17": 37,
    "LG18": 11,
    "LG19": 0,
    "LG20": 1
@@ -280,13 +280,11 @@
   },
   "GameAdapters/StaticPropRenderAdapter.cpp": {
    "LG05": 5,
-   "LG06": 1,
-   "LG17": 1
+   "LG06": 1
   },
   "GameAdapters/StaticPropRenderAdapter.h": {
    "LG05": 5,
-   "LG06": 1,
-   "LG17": 1
+   "LG06": 1
   },
   "GameAdapters/vegetation_budget.h": {
    "LG10": 1
@@ -1032,7 +1030,6 @@
   "GuiRuntime/EditorInspector_sections.cpp": {
    "LG06": 1,
    "LG09": 1,
-   "LG17": 1,
    "LG20": 6
   },
   "GuiRuntime/GraphicsOptionsWindow_internal.h": {
@@ -1496,9 +1493,6 @@
    "LG05": 1,
    "LG06": 1
   },
-  "code/infowindowmodel.h": {
-   "LG17": 1
-  },
   "code/job_system.cpp": {
    "LG03": 4
   },
@@ -1578,15 +1572,13 @@
    "LG11": 3
   },
   "code/logisticsdialog.cpp": {
-   "LG03": 7,
+   "LG03": 1,
    "LG06": 7,
    "LG11": 13,
-   "LG12b": 10,
-   "LG17": 1
+   "LG12b": 10
   },
   "code/logisticsdialog.h": {
-   "LG06": 6,
-   "LG17": 1
+   "LG06": 6
   },
   "code/logisticsmech.cpp": {
    "LG17": 1
@@ -1752,7 +1744,7 @@
    "LG17": 1
   },
   "code/mechlopedia.cpp": {
-   "LG03": 36,
+   "LG03": 19,
    "LG06": 2,
    "LG11": 1,
    "LG12a": 1,
@@ -1899,15 +1891,13 @@
    "LG05": 1,
    "LG06": 3,
    "LG11": 4,
-   "LG12b": 3,
-   "LG17": 1
+   "LG12b": 3
   },
   "code/mploadmap.h": {
-   "LG06": 3,
-   "LG17": 1
+   "LG06": 3
   },
   "code/mpparameterscreen.cpp": {
-   "LG03": 14,
+   "LG03": 10,
    "LG05": 3,
    "LG06": 8,
    "LG12b": 25
@@ -1916,7 +1906,6 @@
    "LG06": 8
   },
   "code/mpprefs.cpp": {
-   "LG03": 2,
    "LG05": 1,
    "LG06": 1,
    "LG11": 2
@@ -1925,7 +1914,6 @@
    "LG06": 1
   },
   "code/mpsetuparea.cpp": {
-   "LG03": 3,
    "LG05": 1,
    "LG06": 3,
    "LG10": 3
@@ -2010,7 +1998,7 @@
    "LG06": 2
   },
   "code/optionsarea.cpp": {
-   "LG03": 2,
+   "LG03": 1,
    "LG05": 2,
    "LG06": 2,
    "LG12a": 1,
@@ -2027,9 +2015,6 @@
   },
   "code/pausewindow.h": {
    "LG14": 1
-  },
-  "code/pilotreadyscreen.cpp": {
-   "LG03": 3
   },
   "code/pilotreviewarea.cpp": {
    "LG03": 83,
@@ -2076,9 +2061,6 @@
   "code/simplecamera.h": {
    "LG06": 5
   },
-  "code/simplecomponentlistbox.cpp": {
-   "LG03": 3
-  },
   "code/tacordr.cpp": {
    "LG12b": 10
   },
@@ -2092,10 +2074,10 @@
    "LG05": 2
   },
   "code/tacticaloverview.cpp": {
-   "LG17": 2
+   "LG17": 1
   },
   "code/tacticaloverview.h": {
-   "LG17": 2
+   "LG17": 1
   },
   "code/team.cpp": {
    "LG03": 1
@@ -3474,7 +3456,7 @@
    "LG20": 3
   }
  },
- "head": "f62b5f3f3",
+ "head": "2261ba52c",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",

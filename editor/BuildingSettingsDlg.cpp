@@ -6,6 +6,7 @@
 //
 
 #include "stdafx.h"
+#include <memory>
 #include "resource.h"
 #include "BuildingSettingsDlg.h"
 #include "EditorObjects.h"
@@ -293,11 +294,11 @@ void BuildingSettingsDlg::updateMemberVariables()
 
 	int groupCount = pMgr->getBuildingGroupCount();
 
-	const char** pGroups = new const char*[groupCount];
+	auto pGroups = std::make_unique_for_overwrite<const char*[]>(groupCount);
 	
 	m_Group.ResetContent();
 	
-	pMgr->getBuildingGroupNames(pGroups, groupCount);
+	pMgr->getBuildingGroupNames(pGroups.get(), groupCount);
 
 	int count = 0;
 	for ( int i = 0; i < groupCount; ++i )
@@ -311,7 +312,7 @@ void BuildingSettingsDlg::updateMemberVariables()
 		count += 1;
 	}
 
-	delete [] pGroups;
+	pGroups.reset();
 
 	// make sure all the units we are editing are in the same group
 	int group = units.front()->getGroup();

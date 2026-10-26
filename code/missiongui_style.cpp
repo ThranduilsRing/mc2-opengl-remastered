@@ -571,7 +571,7 @@ void MissionInterfaceManager::updateOldStyle( bool shiftDn, bool altDn, bool ctr
 				sd.populated   = true;
 				sd.recipeIndex = static_cast<int32_t>(inspResult.lookup.gameObjectId);
 				GameAdapters::StaticProp::getRecipeShapeName(
-				    sd.recipeIndex, sd.shapeName, sizeof(sd.shapeName));
+				    sd.recipeIndex, sd.shapeName);
 				sd.materialGpuActive = GameAdapters::StaticProp::isMaterialGpuActive();
 				{
 					RenderCore::MaterialHandle mh;
@@ -942,7 +942,7 @@ void MissionInterfaceManager::updateAOEStyle(bool shiftDn, bool altDn, bool ctrl
 				sd.populated   = true;
 				sd.recipeIndex = static_cast<int32_t>(inspResult.lookup.gameObjectId);
 				GameAdapters::StaticProp::getRecipeShapeName(
-				    sd.recipeIndex, sd.shapeName, sizeof(sd.shapeName));
+				    sd.recipeIndex, sd.shapeName);
 				sd.materialGpuActive = GameAdapters::StaticProp::isMaterialGpuActive();
 				{
 					RenderCore::MaterialHandle mh;

@@ -1,3 +1,4 @@
+#include <memory>
 #include "mc2str.h"
 #include <format>
 #define MPSETUP_CPP
@@ -91,13 +92,13 @@ void MPSetupXScreen::init(FitIniFile* file)
 		}
 		playerNameComboBox.init(&PNfile, "PlayerNameComboBox");
 
-		aStyle1TextListItem *pTmp2 = new aStyle1TextListItem;
+		auto pTmp2 = std::make_unique<aStyle1TextListItem>();
 		pTmp2->init(&PNfile, "Text0");
-		playerNameComboBox.AddItem(pTmp2);
+		playerNameComboBox.AddItem(pTmp2.release());
 
-		pTmp2 = new aStyle1TextListItem;
+		pTmp2 = std::make_unique<aStyle1TextListItem>();
 		pTmp2->init(&PNfile, "Text1");
-		playerNameComboBox.AddItem(pTmp2);
+		playerNameComboBox.AddItem(pTmp2.release());
 	}
 
 	{
@@ -135,15 +136,15 @@ void MPSetupXScreen::init(FitIniFile* file)
 		long listItemCount = 0;
 		PNfile.readIdLong( "ListItemCount", listItemCount );
 
-		aInsigniaListItem *pTmp2;
+		std::unique_ptr<aInsigniaListItem> pTmp2;
 		int i;
 		for (i = 0; i < listItemCount; i += 1)
 		{
-			pTmp2 = new aInsigniaListItem;
+			pTmp2 = std::make_unique<aInsigniaListItem>();
 			std::string tmpStr;
 			tmpStr = std::format("ListItem{}", i);
 			pTmp2->init(&PNfile, tmpStr.c_str());
-			insigniaDropList.AddItem(pTmp2);
+			insigniaDropList.AddItem(pTmp2.release());
 		}
 		insigniaDropList.SelectItem(0);
 	}

@@ -1,5 +1,6 @@
 #include <string>
 #include <memory>
+#include <span>
 #ifndef MPLOADMAP_H
 #define MPLOADMAP_H
 /*************************************************************************************************\
@@ -49,7 +50,7 @@ public:
 
 	const char* getMapFileName(){ return selMapName.empty() ? nullptr : selMapName.c_str(); }
 
-	static void			getMapNameFromFile( const char* pFileName, char* pBuffer, long bufferLength );
+	static void			getMapNameFromFile( const char* pFileName, std::span<char> buffer );
 
 
 

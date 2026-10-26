@@ -7,6 +7,7 @@ DlgFileOpen.cpp			: Implementation of the DlgFileOpen component.
 //===========================================================================//
 \*************************************************************************************************/
 #include "stdafx.h"
+#include <memory>
 
 #include "DlgFileOpen.h"
 
@@ -126,10 +127,10 @@ void DlgFileOpen::OnSelchangeFileopenFilelist()
 	int nStringLength = m_pList->GetTextLen(nSelectionIndex);
 	if (0 < nStringLength)
 	{
-		char *pszSelectionString = new char[nStringLength + 1];
-		m_pList->GetText(nSelectionIndex, pszSelectionString);
+		auto pszSelectionString = std::make_unique_for_overwrite<char[]>(nStringLength + 1);
+		m_pList->GetText(nSelectionIndex, pszSelectionString.get());
 		CEdit* m_pEntry = (CEdit*)GetDlgItem(IDC_FILEOPEN_EDITBOX);
-		m_pEntry->SetWindowText(pszSelectionString);
-		delete[] pszSelectionString;	
+		m_pEntry->SetWindowText(pszSelectionString.get());
+		pszSelectionString.reset();
 	}
 }

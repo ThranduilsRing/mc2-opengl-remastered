@@ -18,6 +18,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <span>
 
 #include "../RenderCore/Handle.h"
 #include "../RenderCore/MaterialGpu.h"
@@ -143,7 +144,7 @@ void destroyStaticPropByIndex(int32_t recipeIndex);
 // out is null-terminated on return. Writes an empty string when recipeIndex
 // is invalid, tombstoned, or the registry is disabled.
 // recipeIndex comes from LookupResult::gameObjectId (M1.6 sentinel: -1 == invalid).
-void getRecipeShapeName(int32_t recipeIndex, char* out, size_t outLen);
+void getRecipeShapeName(int32_t recipeIndex, std::span<char> out);
 
 // five narrow read-only recipe accessors for the
 // `draw_path` / `shadow_feed` / `ground` / `light_row` command-channel verbs.

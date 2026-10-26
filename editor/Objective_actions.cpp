@@ -1,6 +1,7 @@
 // Objective: objective action classes (BIK/WAV/text/flag/technology): compare, read/save, edit dialogs and descriptions.
 // Declared in the class headers; shared names in Objective_internal.h.
 #include "stdafx.h"
+#include <memory>
 #include "Objective_internal.h"
 #include "resource.h"
 #include "paths.h"
@@ -53,14 +54,14 @@ bool CPlayBIK::EditDialog() {
 			CString pathname = selectAVIFileDialog.GetPathName();
 			int CurrentDirectoryBufferLength = GetCurrentDirectory(0, 0);
 			assert(1 <= CurrentDirectoryBufferLength);
-			TCHAR *CurrentDirectoryBuffer = new TCHAR[CurrentDirectoryBufferLength];
-			int ret = GetCurrentDirectory(CurrentDirectoryBufferLength, CurrentDirectoryBuffer);
+			auto CurrentDirectoryBuffer = std::make_unique_for_overwrite<TCHAR[]>(CurrentDirectoryBufferLength);
+			int ret = GetCurrentDirectory(CurrentDirectoryBufferLength, CurrentDirectoryBuffer.get());
 			assert(CurrentDirectoryBufferLength - 1 == ret);
 			ret = -1;
 			if (pathname.GetLength() > (CurrentDirectoryBufferLength - 1)) {
-				ret = _tcsnicmp(CurrentDirectoryBuffer, pathname.GetBuffer(0), CurrentDirectoryBufferLength - 1);
+				ret = _tcsnicmp(CurrentDirectoryBuffer.get(), pathname.GetBuffer(0), CurrentDirectoryBufferLength - 1);
 			}
-			delete [] CurrentDirectoryBuffer; CurrentDirectoryBuffer = 0;
+			CurrentDirectoryBuffer.reset();
 			if (0 == ret) {
 				m_pathname = mc2::str::from_c(pathname.GetBuffer(0) + (CurrentDirectoryBufferLength - 1) + 1);
 				return true;
@@ -115,14 +116,14 @@ bool CPlayWAV::EditDialog() {
 			CString pathname = selectWAVFileDialog.GetPathName();
 			int CurrentDirectoryBufferLength = GetCurrentDirectory(0, 0);
 			assert(1 <= CurrentDirectoryBufferLength);
-			TCHAR *CurrentDirectoryBuffer = new TCHAR[CurrentDirectoryBufferLength];
-			int ret = GetCurrentDirectory(CurrentDirectoryBufferLength, CurrentDirectoryBuffer);
+			auto CurrentDirectoryBuffer = std::make_unique_for_overwrite<TCHAR[]>(CurrentDirectoryBufferLength);
+			int ret = GetCurrentDirectory(CurrentDirectoryBufferLength, CurrentDirectoryBuffer.get());
 			assert(CurrentDirectoryBufferLength - 1 == ret);
 			ret = -1;
 			if (pathname.GetLength() > (CurrentDirectoryBufferLength - 1)) {
-				ret = _tcsnicmp(CurrentDirectoryBuffer, pathname.GetBuffer(0), CurrentDirectoryBufferLength - 1);
+				ret = _tcsnicmp(CurrentDirectoryBuffer.get(), pathname.GetBuffer(0), CurrentDirectoryBufferLength - 1);
 			}
-			delete[] CurrentDirectoryBuffer; CurrentDirectoryBuffer = 0;
+			CurrentDirectoryBuffer.reset();
 			if (0 == ret) {
 				m_pathname = mc2::str::from_c(pathname.GetBuffer(0) + (CurrentDirectoryBufferLength - 1) + 1);
 				return true;
@@ -324,14 +325,14 @@ bool CMakeNewTechnologyAvailable::EditDialog() {
 			CString pathname = selectPurchaseFileDialog.GetPathName();
 			int CurrentDirectoryBufferLength = GetCurrentDirectory(0, 0);
 			assert(1 <= CurrentDirectoryBufferLength);
-			TCHAR *CurrentDirectoryBuffer = new TCHAR[CurrentDirectoryBufferLength];
-			int ret = GetCurrentDirectory(CurrentDirectoryBufferLength, CurrentDirectoryBuffer);
+			auto CurrentDirectoryBuffer = std::make_unique_for_overwrite<TCHAR[]>(CurrentDirectoryBufferLength);
+			int ret = GetCurrentDirectory(CurrentDirectoryBufferLength, CurrentDirectoryBuffer.get());
 			assert(CurrentDirectoryBufferLength - 1 == ret);
 			ret = -1;
 			if (pathname.GetLength() > (CurrentDirectoryBufferLength - 1)) {
-				ret = _tcsnicmp(CurrentDirectoryBuffer, pathname.GetBuffer(0), CurrentDirectoryBufferLength - 1);
+				ret = _tcsnicmp(CurrentDirectoryBuffer.get(), pathname.GetBuffer(0), CurrentDirectoryBufferLength - 1);
 			}
-			delete[] CurrentDirectoryBuffer; CurrentDirectoryBuffer = 0;
+			CurrentDirectoryBuffer.reset();
 			if (0 == ret) {
 				m_purchaseFilePathname = mc2::str::from_c(pathname.GetBuffer(0) + (CurrentDirectoryBufferLength - 1) + 1);
 				return true;

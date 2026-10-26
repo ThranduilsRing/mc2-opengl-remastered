@@ -1,5 +1,6 @@
 #ifndef INFOWINDOWMODEL_H
 #define INFOWINDOWMODEL_H
+#include <span>
 /*************************************************************************************************\
 infowindowmodel.h : pure component-list aggregation for the in-mission info window
                     (IN-MISSION-HUD-IMGUI-SCOPE-1 slice D, no such gate).
@@ -37,13 +38,13 @@ namespace InfoWindowModel
 		int  range;
 	};
 
-	inline int aggregateWeapons( const WeaponRec* recs, int n,
-								 ComponentRow* out, int maxOut )
+	inline int aggregateWeapons( std::span<const WeaponRec> recs,
+								 std::span<ComponentRow> out )
 	{
-		if ( !recs || !out || maxOut <= 0 )
+		if ( recs.empty() || out.empty() )
 			return 0;
 		int count = 0;
-		for ( int w = 0; w < n; ++w )
+		for ( size_t w = 0; w < recs.size(); ++w )
 		{
 			int found = -1;
 			for ( int j = 0; j < count; ++j )
@@ -61,7 +62,7 @@ namespace InfoWindowModel
 					out[found].workingCount++;
 				continue;   // legacy: duplicates do NOT add ammo
 			}
-			if ( count >= maxOut )
+			if ( static_cast<size_t>(count) >= out.size() )
 				continue;
 			ComponentRow& row = out[count++];
 			row.masterID = recs[w].masterID;
