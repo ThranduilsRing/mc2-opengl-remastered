@@ -31,7 +31,7 @@ VS = "C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools"
 VCVARS = VS + "/VC/Auxiliary/Build/vcvars64.bat"
 NINJA = VS + "/Common7/IDE/CommonExtensions/Microsoft/CMake/Ninja/ninja.exe"
 DEFAULT_TREE = "build64-ninja"
-DEFAULT_TARGETS = ["mc2"]
+DEFAULT_TARGETS = ["mc2", "mc2_asset_viewer"] if os.name == "nt" else ["mc2"]
 
 
 SCCACHE_EXE = os.environ.get("MC2_SCCACHE", "A:/Games/tools/sccache/sccache.exe")
