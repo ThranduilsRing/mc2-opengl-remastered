@@ -919,7 +919,9 @@ void GameCamera::render (void)
 					mc2::math::buildTranslation(origin, location);
 					mc2::math::Obb bounds{};
 					gosFX::Effect::ExecuteInfo execute(0.0, &origin, &bounds, 0.5f);
-					gosFX::EffectPtr effect(gosFX::Effect::Make(spec, gosFX::Effect::ExecuteFlag));
+					execute.m_age = 0.5f;
+					execute.m_ageRate = 0.0f;
+					auto effect = gosFX::EffectLibrary::Instance->MakeEffect(i, gosFX::Effect::ExecuteFlag);
 					effect->Start(&execute);
 					execute.m_time = 0.25;
 					execute.m_age = 0.5f;
