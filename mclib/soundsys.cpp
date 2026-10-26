@@ -29,6 +29,7 @@
 #include <algorithm>
 #include <string>
 #include <vector>
+#include <array>
 #include <format>
 #include "../GameOS/gameos/utils/mc2log.h"
 
@@ -40,6 +41,18 @@ void objectiveObservationWav(const char*, const char*, int, const char*, bool);
 bool useSound = TRUE;
 bool useMusic = TRUE;
 
+namespace {
+// The seven palette announcements have session lifetime. Playback borrows a
+// resource; the sound system releases the cache when the device shuts down.
+std::array<HGOSAUDIO, MAX_SUPPORT_SAMPLES> supportResources{};
+void releaseSupportPlayback(HGOSAUDIO& handle)
+{
+    if (handle && std::find(supportResources.begin(), supportResources.end(), handle) != supportResources.end())
+        handle = nullptr;
+    else
+        gosAudio_DestroyResource(&handle);
+}
+}
 
 constexpr float MAX_SENSOR_UPDATE_TIME = 5.0f;	//Seconds
 
@@ -106,6 +119,8 @@ static int musicSlotChannel (int slot)
 //---------------------------------------------------------------------------
 void SoundSystem::destroy (void)
 {
+    releaseSupportPlayback(supportHandle);
+    for (auto& resource : supportResources) gosAudio_DestroyResource(&resource);
     for (auto& sound : sounds) gosAudio_DestroyResource(&sound.resourceHandle);
     for (MusicSlot& slot : musicSlots) gosAudio_DestroyResource(&slot.handle);
     for (HGOSAUDIO* handle : {&stream3Handle, &bettyHandle, &supportHandle})
@@ -174,6 +189,14 @@ long SoundSystem::init (const char *soundFileName)
 		gosASSERT(result == NO_ERR);
 
 		numSupportSamples = supportDataFile->getNumPackets();
+		for (unsigned id = 0; id < supportResources.size() && id < numSupportSamples; ++id) {
+			if (supportDataFile->seekPacket(id) != NO_ERR) continue;
+			const long size = supportDataFile->getPacketSize();
+			if (size <= 0 || size > MAX_SOUND_PACKET_BYTES) continue;
+			std::vector<uint8_t> wave(size);
+			if (supportDataFile->readPacket(id, wave.data()))
+				createWaveResource(&supportResources[id], wave);
+		}
  		//-----------------------------------------------------------------------
 		// Load all of the sound Bite data.  Do not load actual packet unless
 		// preload field is TRUE.
@@ -557,14 +580,14 @@ void SoundSystem::update (void)
 		}
 	}
 
-	if (useSound && !supportSoundBite.empty())
+	if (useSound && supportHandle)
 	{
 		//---------------------------------------------------
 		// Check if betty is done.  If so, whack the memory
 		gosAudio_PlayMode sampleStatus = gosAudio_GetChannelPlayMode(SUPPORT_CHANNEL);
 		if (sampleStatus != gosAudio_PlayOnce)
 		{
-			gosAudio_DestroyResource(&supportHandle);
+			releaseSupportPlayback(supportHandle);
 			supportSoundBite.clear();
 		}
 	}
@@ -830,7 +853,7 @@ long SoundSystem::playBettySample (unsigned long bettySampleId)
 //---------------------------------------------------------------------------
 long SoundSystem::playSupportSample (unsigned long supportSampleId, const char* fileName)
 {
-	if (useSound && supportSoundBite.empty())		//Playing Support takes precedence
+	if (useSound && !supportHandle)		//Playing Support takes precedence
 	{
 		if (!fileName)
 		{
@@ -854,6 +877,12 @@ long SoundSystem::playSupportSample (unsigned long supportSampleId, const char* 
 			lastSupportId = supportSampleId;
 			channelInUse[ourChannel] = TRUE;
 
+			if (supportSampleId < supportResources.size() && supportResources[supportSampleId]) {
+				supportHandle = supportResources[supportSampleId];
+				gosAudio_AssignResourceToChannel(ourChannel, supportHandle);
+				gosAudio_SetChannelPlayMode(ourChannel, gosAudio_PlayOnce);
+				return SUPPORT_CHANNEL;
+			}
 			long result = supportDataFile->seekPacket(supportSampleId);
 			if (result != NO_ERR)
 				return(-1);
