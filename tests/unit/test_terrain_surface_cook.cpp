@@ -7,6 +7,37 @@
 #include <cmath>
 #include <limits>
 
+TEST_CASE("surface cement coverage: every neighborhood and edit preserves art bits") {
+    // Independent reference: the former shader's eight neighbor reads.
+    constexpr int dr[] = {-1,-1,-1,0,0,1,1,1};
+    constexpr int dc[] = {-1,0,1,-1,1,-1,0,1};
+    for (unsigned neighbors = 0; neighbors < 256; ++neighbors) {
+        std::vector<uint32_t> words(9, 0);
+        words[4] = 0xc180beefu; // authored own-alpha transition, mod catalog slot
+        for (int i = 0; i < 8; ++i)
+            if (neighbors & (1u << i)) words[(dr[i]+1)*3+dc[i]+1] = 0x80000001u;
+        const auto original = words;
+        mc2terrain::cookSurfaceCementCoverage(words, 3);
+        const auto n = [&](int i) { return (neighbors & (1u << i)) != 0; };
+        const unsigned expected = (n(3) && n(1) && n(0) ? 8u : 0u)
+            | (n(4) && n(1) && n(2) ? 4u : 0u)
+            | (n(4) && n(6) && n(7) ? 2u : 0u)
+            | (n(3) && n(6) && n(5) ? 1u : 0u);
+        CHECK(((words[4] >> 16) & 15u) == expected);
+        for (size_t i = 0; i < words.size(); ++i)
+            if (original[i] == 0) CHECK(words[i] == 0);
+        for (size_t i = 0; i < words.size(); ++i)
+            CHECK((words[i] & ~0x000f0000u) == (original[i] & ~0x000f0000u));
+        CHECK((words[0] & 0x00090000u) == 0); // out-of-map neighbors stay empty
+        std::fill(words.begin(), words.end(), 0x80000001u);
+        mc2terrain::cookSurfaceCementCoverage(words, 3);
+        CHECK(((words[4] >> 16) & 15u) == 15u);
+        words[0] = 0;
+        mc2terrain::cookSurfaceCementCoverage(words, 3);
+        CHECK(((words[4] >> 16) & 15u) == 7u);
+    }
+}
+
 TEST_CASE("terrain projected error: plane, interior ridge and partial edge") {
     std::vector<float> heights(21 * 21);
     for (int y = 0; y < 21; ++y) for (int x = 0; x < 21; ++x) heights[x + y * 21] = float(x + 2 * y);

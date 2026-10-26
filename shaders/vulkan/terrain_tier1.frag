@@ -336,26 +336,9 @@ void main() {
                 if (cOwnA > 0.5) { cementHit = true; pureConcrete = true; }
             } else if (isTransition) {
                 if (uT.useTransitionMask != 0) {
-                    bool nXm = false, nXp = false, nYm = false, nYp = false;
-                    bool nXmYm = false, nXpYm = false, nXpYp = false, nXmYp = false;
-                    int xm = ctX - 1, xp = ctX + 1, ym = ctY - 1, yp = ctY + 1;
-                    if (xm >= 0)                           nXm   = (uC.cementWordsF[xm + ctY * uT.mapSide] & 0x80000000u) != 0u;
-                    if (xp <  uT.mapSide)                  nXp   = (uC.cementWordsF[xp + ctY * uT.mapSide] & 0x80000000u) != 0u;
-                    if (ym >= 0)                           nYm   = (uC.cementWordsF[ctX + ym * uT.mapSide] & 0x80000000u) != 0u;
-                    if (yp <  uT.mapSide)                  nYp   = (uC.cementWordsF[ctX + yp * uT.mapSide] & 0x80000000u) != 0u;
-                    if (xm >= 0 && ym >= 0)                nXmYm = (uC.cementWordsF[xm + ym * uT.mapSide] & 0x80000000u) != 0u;
-                    if (xp <  uT.mapSide && ym >= 0)       nXpYm = (uC.cementWordsF[xp + ym * uT.mapSide] & 0x80000000u) != 0u;
-                    if (xp <  uT.mapSide && yp < uT.mapSide) nXpYp = (uC.cementWordsF[xp + yp * uT.mapSide] & 0x80000000u) != 0u;
-                    if (xm >= 0 && yp < uT.mapSide)        nXmYp = (uC.cementWordsF[xm + yp * uT.mapSide] & 0x80000000u) != 0u;
-                    float cTL = (nXm   && nYm   && nXmYm) ? 1.0 : 0.0;  // UV (0,0)
-                    float cTR = (nXp   && nYm   && nXpYm) ? 1.0 : 0.0;  // UV (1,0)
-                    float cBR = (nXp   && nYp   && nXpYp) ? 1.0 : 0.0;  // UV (1,1)
-                    float cBL = (nXm   && nYp   && nXmYp) ? 1.0 : 0.0;  // UV (0,1)
+                    // Static neighbor ownership was resolved when the cement words were cooked.
+                    int cfg = int((cw >> 16) & 15u);
                     float u = cTileUV.x, v = cTileUV.y;
-                    int cfg = (cTL > 0.5 ? 8 : 0)
-                            | (cTR > 0.5 ? 4 : 0)
-                            | (cBR > 0.5 ? 2 : 0)
-                            | (cBL > 0.5 ? 1 : 0);
                     float alpha = 0.0;
                     if (cfg == 0) {
                         alpha = 0.0;

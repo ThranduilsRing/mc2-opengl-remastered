@@ -1,6 +1,7 @@
 // gos_terrain_indirect: cement and concrete classification, transition masks and PopulateRecipeCementWords.
 // Declared in the class headers; shared names in gos_terrain_indirect_internal.h.
 #include "gos_terrain_indirect_internal.h"
+#include "terrain_surface_cook.h"
 #include <unordered_set>
 #include "mc2fmt.h"
 
@@ -141,7 +142,7 @@ bool     g_cementAlphaLayerMapReady = false;
 
 // cementWord bit 23 = OWN-ALPHA transition: layerIdx addresses an alpha cell
 // whose own texel alpha is the coverage. Bits 31,30 and 29:24 (maskId) are
-// spoken for; 21:16 are free (19:16 held the deleted runway edge-blend mask).
+// spoken for; 19:16 hold cooked neighbor coverage, 21:20 remain free.
 static constexpr uint32_t kCementOwnAlphaBit = 0x00800000u;
 
 // ---------------------------------------------------------------------------
@@ -744,6 +745,7 @@ void PopulateRecipeCementWords() {
         }
     }
 
+    mc2terrain::cookSurfaceCementCoverage(chunkCementWords, static_cast<uint32_t>(mapSide));
     // Push to the chunk renderer (no-op if its SSBO/Init has not run yet).
     gos_TerrainLodChunk_UploadCementWordsFull(
         chunkCementWords.data(), static_cast<int>(chunkCementWords.size()), static_cast<int>(mapSide));
