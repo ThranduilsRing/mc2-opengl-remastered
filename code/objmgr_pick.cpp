@@ -350,6 +350,11 @@ GameObjectPtr GameObjectManager::findObjectByMouse (long mouseX,
 		{
 			GameObjectPtr obj = searchList[objIndex];
 			Assert(obj != nullptr, objIndex, " GameObjectManager.findObjectByMouse: NULL obj ");
+			// These classes use the stock bounds path below. Their CPU render
+			// mesh may be replaced, or have no transformed faces on the GPU path.
+			const long cls = obj->getObjectClass();
+			if (cls == BUILDING || cls == TREEBUILDING || cls == TERRAINOBJECT
+				|| cls == BRIDGE || cls == TURRET || cls == GATE) continue;
 			AppearancePtr objAppearance = obj->getAppearance();
 			if (objAppearance && objAppearance->canBeSeen()) 
 			{
