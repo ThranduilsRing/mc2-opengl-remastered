@@ -769,7 +769,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/deploy_payload.py",
-          "line": 1896,
+          "line": 1942,
           "evidence": "command",
           "reference": "scripts/check-deploy-hygiene.py",
           "text": "r = subprocess.run([sys.executable, hygiene, target],"
@@ -1672,7 +1672,7 @@
       "callers_by_basename": [
         {
           "path": "CMakeLists.txt",
-          "line": 948,
+          "line": 949,
           "evidence": "cmake command",
           "reference": "${CMAKE_SOURCE_DIR}/scripts/check-shader-schema.sh",
           "text": "COMMAND ${BASH_EXECUTABLE} ${CMAKE_SOURCE_DIR}/scripts/check-shader-schema.sh"
@@ -3929,7 +3929,7 @@
         },
         {
           "path": "scripts/deploy_payload.py",
-          "line": 1798,
+          "line": 1802,
           "evidence": "import",
           "reference": "exe_fingerprint",
           "text": "from exe_fingerprint import extract, sha_agrees"
@@ -4087,7 +4087,7 @@
         },
         {
           "path": "scripts/deploy_payload.py",
-          "line": 1831,
+          "line": 1877,
           "evidence": "import",
           "reference": "kit_payload",
           "text": "import kit_payload"
@@ -5093,7 +5093,15 @@
       "basename": "run_tool_capture.py",
       "stem": "run_tool_capture",
       "callers_by_basename": [],
-      "callers_by_stem": []
+      "callers_by_stem": [
+        {
+          "path": "scripts/tests/test_nofocus_env.py",
+          "line": 43,
+          "evidence": "import",
+          "reference": "run_tool_capture",
+          "text": "import run_tool_capture"
+        }
+      ]
     },
     {
       "path": "scripts/run_tools_tests.py",
@@ -15560,7 +15568,7 @@
       "callers_by_basename": [
         {
           "path": "CMakeLists.txt",
-          "line": 926,
+          "line": 927,
           "evidence": "cmake command",
           "reference": "${CMAKE_SOURCE_DIR}/tools/shader_reflect/reflect.py",
           "text": "COMMAND ${Python3_EXECUTABLE}"
