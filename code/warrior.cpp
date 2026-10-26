@@ -2110,7 +2110,7 @@ void MechWarrior::updateActions (void) {
     // Its stock emission is zero, so an ordinary volley cannot validate points.
     if (mc2::gate::is<"MC2_FX_FORCE_SPAWN", "9">()) {
         auto* base = mc2::particles::SpecLibrary::Instance()->Find("Missile_Flare");
-        if (base && base->m_class == gosFX::PointCloudClassID) {
+        if (base && base->GetClassID() == gosFX::PointCloudClassID) {
             auto* point = static_cast<gosFX::PointCloud::Specification*>(base);
             point->m_maxParticleCount = 32;
             point->m_startingPopulation.SetCurve(8.0f);
