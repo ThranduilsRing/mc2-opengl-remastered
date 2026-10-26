@@ -36,6 +36,13 @@ older candidate-only note. These replace ten earlier pins and add 22 assets:
 fences. `content/pack3-selection.json` records that selection and source hashes.
 The existing common IR cooker and deploy path are unchanged.
 
+Pack4 replaces 84 building bakes with the 0.25 m visual footing course from
+`claude/kit-intent` commit `24d18be6c`: 35 civilian, seven batch-2 structures,
+and 42 industrial/military assets. `content/rebake-ft1.json` records the bake
+mapping. Turrets retain their Pack3 tags and payload bytes; the rejected r3
+turret bakes are excluded. Gameplay geometry and saved passability continue
+to use the stock simulation pose.
+
 The three approved r2 fence bakes predate the stock count-contract repair
 7ca5e7b44. That contract is art-review metadata: the GLB frontend, package
 validator and runtime override registry do not require or consume it. The exact
