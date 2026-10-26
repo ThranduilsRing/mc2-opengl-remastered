@@ -344,7 +344,7 @@ void checkFrozenCloud(bool alignX = false, bool alignY = false, unsigned sides =
     gosFX::Effect::DrawInfo draw{};
     draw.m_parentToWorld = &transform;
     draw.m_clipper = &clipper;
-    const bool gpu = mc2::particles::Batcher::is_enabled() && !std::is_same_v<Cloud, gosFX::PertCloud>;
+    const bool gpu = mc2::particles::Batcher::is_enabled() && std::is_same_v<Cloud, gosFX::CardCloud>;
     auto& batcher = mc2::particles::Batcher::Instance();
     batcher.Flush();
 
@@ -480,9 +480,8 @@ TEST_CASE_FIXTURE(FrozenPlatform, "vfx_frozen/PointCloud draw flush and clip lea
 TEST_CASE_FIXTURE(FrozenPlatform, "vfx_frozen/ShardCloud draw flush and clip leave RNG unchanged")
 {
     checkFrozenCloud<gosFX::ShardCloud>();
-    if (!mc2::particles::Batcher::is_enabled())
-        for (const auto alignment : {std::pair{true, false}, std::pair{false, true}, std::pair{true, true}})
-            checkFrozenCloud<gosFX::ShardCloud>(alignment.first, alignment.second);
+    for (const auto alignment : {std::pair{true, false}, std::pair{false, true}, std::pair{true, true}})
+        checkFrozenCloud<gosFX::ShardCloud>(alignment.first, alignment.second);
 }
 TEST_CASE_FIXTURE(FrozenPlatform, "vfx_frozen/PertCloud variable polygons preserve MLR payload and RNG")
 {

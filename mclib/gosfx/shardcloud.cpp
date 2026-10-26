@@ -3,9 +3,7 @@
 #include<mlr/mlrtrianglecloud.hpp>
 
 // B1 Stage 2' C8: subclass-Start routing into the GPU particle pipeline.
-#include"particles/batcher.h"
 #include<cstdio>   // VFX-ORACLE diagnostics
-#include<cmath>    // std::atan2 for spin extraction (VFX-SHARDCLOUD-SPIN-ASPECT-1)
 #include "mc2fmt.h"
 //==========================================================================//
 // File:	 gosFX_ShardCloud.cpp											//
@@ -310,99 +308,7 @@ void gosFX::ShardCloud::Draw(DrawInfo *info)
 	Check_Object(this);
 	Check_Object(info);
 
-	// Live particles retain birth randomness; rendering must not resample it.
-	// An empty cloud emits nothing but still draws its child effects.
-	if (mc2::particles::Batcher::is_enabled()) {
-		if (m_activeParticleCount > 0 && m_P_color) {
-			Specification *spec = GetSpecification();
-			Check_Object(spec);
-			const uint32_t mlrTex =
-				static_cast<uint32_t>(spec->m_state.GetTextureHandle());
-			int blendMode = 0;
-			{
-				const MidLevelRenderer::MLRState::AlphaMode am =
-					spec->m_state.GetAlphaMode();
-				if (am == MidLevelRenderer::MLRState::OneOneMode ||
-				    am == MidLevelRenderer::MLRState::AlphaOneMode)
-					blendMode = 1;
-			}
-			glm::mat4 local_to_world;
-			local_to_world = m_localToParent * *info->m_parentToWorld;
-
-			mc2::particles::Batcher &batcher = mc2::particles::Batcher::Instance();
-			batcher.BeginGroup(mlrTex, 0.0f, 0.0f, 1.0f, 1.0f, blendMode, 0u);
-
-			int harvested = 0;
-			float minA    =  3.0e38f, maxA    = -3.0e38f;
-			float minSize =  3.0e38f, maxSize = -3.0e38f;
-			float minSpin =  3.0e38f, maxSpin = -3.0e38f;
-			float minAge = 1.0f, maxAge = 0.0f;
-			for (int i = 0; i < m_activeParticleCount; ++i) {
-				Particle *p = GetParticle(i);
-				Check_Object(p);
-				if (p->m_age >= 1.0f) continue;   // skip dead slots (legacy filter)
-				glm::vec3 wc;
-				wc = mc2::math::transformPoint(p->m_localTranslation, local_to_world);
-				// Shards remain billboards; triangle-shape parity is a separate migration.
-				const Stuff::Scalar radius = p->m_scale * p->m_radius;
-				const Stuff::RGBAColor &c = m_P_color[i * 3];
-				mc2::particles::GpuParticle gp = {};
-				gp.position[0] = wc.x;
-				gp.position[1] = wc.y;
-				gp.position[2] = wc.z;
-				gp.color[0]    = c.red;
-				gp.color[1]    = c.green;
-				gp.color[2]    = c.blue;
-				gp.color[3]    = c.alpha;
-				gp.size        = static_cast<float>(radius);
-				gp.age         = static_cast<float>(p->m_age);  // normalized [0,1]
-				gp.lifetime    = 1.0f;                           // normalized sentinel (real seconds = 1.0f/p->m_ageRate)
-				gp.atlasIndex  = 0u;
-				gp.velocity[0] = static_cast<float>(radius);
-				gp.velocity[1] = static_cast<float>(radius);
-				gp.velocity[2] = 2.0f * std::atan2(
-				    static_cast<float>(p->m_localRotation.z),
-				    static_cast<float>(p->m_localRotation.w));
-				batcher.Emit(gp);
-				++harvested;
-				if (c.alpha < minA)           minA     = c.alpha;
-				if (c.alpha > maxA)           maxA     = c.alpha;
-				if (gp.velocity[0] < minSize) minSize  = gp.velocity[0];
-				if (gp.velocity[0] > maxSize) maxSize  = gp.velocity[0];
-				if (gp.velocity[2] < minSpin) minSpin  = gp.velocity[2];
-				if (gp.velocity[2] > maxSpin) maxSpin  = gp.velocity[2];
-				if (gp.age < minAge) minAge = gp.age;
-				if (gp.age > maxAge) maxAge = gp.age;
-			}
-
-			if (mc2::particles::Batcher::is_log_enabled()) {
-				static bool s_first = false;
-				if (!s_first && harvested > 0) {
-					s_first = true;
-					const double szLo = (harvested > 0) ? static_cast<double>(minSize) : 0.0;
-					const double szHi = (harvested > 0) ? static_cast<double>(maxSize) : 0.0;
-					const double spLo = (harvested > 0) ? static_cast<double>(minSpin)  : 0.0;
-					const double spHi = (harvested > 0) ? static_cast<double>(maxSpin)  : 0.0;
-					const double ageLo = static_cast<double>(minAge);
-					const double ageHi = static_cast<double>(maxAge);
-					mc2::fmt::print_err("[VFX_ORACLE v1] class=ShardCloud FIRST_HARVEST spec=\"{}\" active={:d} harvested={:d} alpha=[{:.3f},{:.3f}] uvRect=[0.000,0.000,1.000,1.000] atlasColumns=0 sizeRange=[{:.3f},{:.3f}] spinRange=[{:.3f},{:.3f}] ageRange=[{:.3f},{:.3f}]\n", mc2::fmt::safe(static_cast<const char*>(spec->m_name)), mc2::fmt::as_i32(m_activeParticleCount), mc2::fmt::as_i32(harvested), static_cast<double>(minA), static_cast<double>(maxA), szLo, szHi, spLo, spHi, ageLo, ageHi);
-					std::fflush(stderr);
-				}
-				static unsigned long long s_calls = 0, s_harvTotal = 0;
-				s_harvTotal += static_cast<unsigned>(harvested);
-				if ((++s_calls % 240ull) == 0ull) {
-					const double aLo   = (harvested > 0) ? static_cast<double>(minA)   : 0.0;
-					const double aHi   = (harvested > 0) ? static_cast<double>(maxA)   : 0.0;
-					const double ageLo = (harvested > 0) ? static_cast<double>(minAge) : 0.0;
-					const double ageHi = (harvested > 0) ? static_cast<double>(maxAge) : 0.0;
-					mc2::fmt::print_err("[VFX_ORACLE v1] class=ShardCloud calls={:d} active_this_call={:d} harvested_this_call={:d} emitted_this_call={:d} harvestedTotal={:d} fallback=0 alpha_this_call=[{:.3f},{:.3f}] age_this_call=[{:.3f},{:.3f}]\n", mc2::fmt::as_u64(s_calls), mc2::fmt::as_i32(m_activeParticleCount), mc2::fmt::as_i32(harvested), mc2::fmt::as_i32(harvested), mc2::fmt::as_u64(s_harvTotal), aLo, aHi, ageLo, ageHi);
-					std::fflush(stderr);
-				}
-			}
-		}
-		Effect::Draw(info);
-		return;
-	}
+	// Keep the authored primitive until its native route has visual parity.
 
 	//
 	//---------------------------------------------------------
