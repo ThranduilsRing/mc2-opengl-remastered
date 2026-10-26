@@ -2184,7 +2184,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1534,
+          "line": 1535,
           "evidence": "command",
           "reference": "scripts/check_sim_include_firewall.py",
           "text": "run_check \"sim_include_firewall\"        \"py -3 -B scripts/tests/test_sim_include_firewall.py && py -3 scripts/check_sim_include_firewall.py\""
@@ -4875,7 +4875,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1506,
+          "line": 1507,
           "evidence": "command",
           "reference": "scripts/run_scripts_tests.py",
           "text": "run_check \"scripts_tests\"              \"py -3 scripts/run_scripts_tests.py\""
@@ -5053,14 +5053,14 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1530,
+          "line": 1531,
           "evidence": "command",
           "reference": "scripts/run_tools_tests.py",
           "text": "run_check_tri \"tools_tests\"             \"py -3 scripts/run_tools_tests.py\""
         },
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1531,
+          "line": 1532,
           "evidence": "command",
           "reference": "scripts/run_tools_tests.py",
           "text": "run_check_tri \"kit_art\"                 \"py -3 scripts/run_tools_tests.py --suite art\""
@@ -5367,14 +5367,14 @@
         },
         {
           "path": "scripts/smoke_lib/deploy_lease.py",
-          "line": 337,
+          "line": 339,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from . import bounded_wait"
         },
         {
           "path": "scripts/smoke_lib/deploy_lease.py",
-          "line": 445,
+          "line": 447,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from . import child_registry"
@@ -5684,7 +5684,7 @@
         },
         {
           "path": "scripts/smoke_lib/deploy_lease.py",
-          "line": 337,
+          "line": 339,
           "evidence": "import",
           "reference": "scripts.smoke_lib.bounded_wait",
           "text": "from . import bounded_wait"
@@ -5749,7 +5749,7 @@
         },
         {
           "path": "scripts/smoke_lib/deploy_lease.py",
-          "line": 445,
+          "line": 447,
           "evidence": "import",
           "reference": "scripts.smoke_lib.child_registry",
           "text": "from . import child_registry"
@@ -7208,6 +7208,13 @@
       "callers_by_stem": []
     },
     {
+      "path": "scripts/tests/test_farm_runner.py",
+      "basename": "test_farm_runner.py",
+      "stem": "test_farm_runner",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
       "path": "scripts/tests/test_file_size_ratchet.py",
       "basename": "test_file_size_ratchet.py",
       "stem": "test_file_size_ratchet",
@@ -7487,7 +7494,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1534,
+          "line": 1535,
           "evidence": "command",
           "reference": "scripts/tests/test_sim_include_firewall.py",
           "text": "run_check \"sim_include_firewall\"        \"py -3 -B scripts/tests/test_sim_include_firewall.py && py -3 scripts/check_sim_include_firewall.py\""
@@ -9808,6 +9815,43 @@
       "stem": "list_mission_assets",
       "callers_by_basename": [],
       "callers_by_stem": []
+    },
+    {
+      "path": "tools/farm/host.py",
+      "basename": "host.py",
+      "stem": "host",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "scripts/tests/test_farm_runner.py",
+          "line": 13,
+          "evidence": "import",
+          "reference": "tools.farm.host",
+          "text": "from tools.farm import host"
+        }
+      ]
+    },
+    {
+      "path": "tools/farm/install-task.cmd",
+      "basename": "install-task.cmd",
+      "stem": "install-task",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
+      "path": "tools/farm/runner.py",
+      "basename": "runner.py",
+      "stem": "runner",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "scripts/tests/test_farm_runner.py",
+          "line": 12,
+          "evidence": "import",
+          "reference": "tools.farm.runner",
+          "text": "from tools.farm.runner import atomic_json, poll_once"
+        }
+      ]
     },
     {
       "path": "tools/file_size_ratchet.py",
