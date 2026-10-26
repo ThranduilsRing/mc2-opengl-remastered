@@ -63,6 +63,7 @@ namespace gosFX
 	//
 	public:
 		static void InitializeClass();
+		static void PrepareOracle();
 		static void	TerminateClass();
 
 		static ClassData

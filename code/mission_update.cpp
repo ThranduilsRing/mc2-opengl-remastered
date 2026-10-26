@@ -401,8 +401,6 @@ void Mission::updateTickClock(bool advanceTime) {
 	actualTime = scenarioTime;
 }
 
-extern void updateSaveFixtures();
-
 // Update the interface, camera, terrain, weather, waypoints and the path manager.
 void Mission::updateFrontEnd() {
 	{ ZoneScopedN("Mission.clearArrays"); MisScope _ms(MS_CLEARARRAYS); mc2::VkSceneRenderer::beginFrame(); }

@@ -6,6 +6,9 @@
 #ifndef MISSION_INTERNAL_H
 #define MISSION_INTERNAL_H
 
+// Implemented by saveload.cpp; called by the mission update fixture path.
+void updateSaveFixtures();
+
 #ifndef MCLIB_H
 #include"mclib.h"
 #include "Gates/gate.h"

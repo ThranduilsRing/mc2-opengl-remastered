@@ -158,6 +158,7 @@ MUTATED_ROOTS = (
     "cache/content-model",
 )
 MUTATED_FILES = (
+    "scripts/console_child.py",
     "data/terrain_materials.json", "data/visual_tuning.json",
     "data/tgl/spotlight.ini", "data/tgl/marblecliff.ini", "data/tgl/MarbleCliffGLB.glb",
 )

@@ -1,5 +1,6 @@
 #include"gosfxheaders.hpp"
 #include "particles/batcher.h"
+#include "particles/spec_library.h"
 #include "Gates/gate.h"
 
 // B1 Stage 2' C8: subclass-Start routing into the GPU particle pipeline.
@@ -488,4 +489,21 @@ void
 	gosFX::PointCloud::TestInstance() const
 {
 	Verify(IsDerivedFrom(DefaultData));
+}
+
+void gosFX::PointCloud::PrepareOracle() {
+        auto* base = mc2::particles::SpecLibrary::Instance()->Find("Missile_Flare");
+        if (base && base->GetClassID() == gosFX::PointCloudClassID) {
+            auto* point = static_cast<gosFX::PointCloud::Specification*>(base);
+            point->m_maxParticleCount = 32;
+            point->m_startingPopulation.SetCurve(8.0f);
+            point->m_particlesPerSecond.SetCurve(30.0f);
+            point->m_emitterSizeX.SetCurve(20.0f);
+            point->m_emitterSizeY.SetCurve(20.0f);
+            point->m_emitterSizeZ.SetCurve(20.0f);
+            point->m_pRed.m_ageCurve.SetCurve(0.0f);
+            point->m_pGreen.m_ageCurve.SetCurve(1.0f);
+            point->m_pBlue.m_ageCurve.SetCurve(1.0f);
+            point->m_pAlpha.m_ageCurve.SetCurve(1.0f);
+        }
 }

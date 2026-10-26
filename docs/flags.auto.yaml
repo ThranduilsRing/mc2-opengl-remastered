@@ -4,7 +4,7 @@
 # tools/repo_intel (env_var, gate_status), which scan the sources.
 generator_version: "3.0.0"
 gate_count: 786
-registry_entry_count: 144
+registry_entry_count: 152
 verified_count: 748
 flags:
   - name: MC2_ABL_ARG_GUARD
