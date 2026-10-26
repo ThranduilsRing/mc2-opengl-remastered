@@ -43,6 +43,7 @@ const vec4  MATV_NORMAL_BOOST = vec4(0.9, 0.5, 1.1, 2.5);  // rock,grass,dirt,co
 const vec4  MATV_TILING       = vec4(3.0, 2.0, 1.0, 6.0);  // rock,grass,dirt,conc
 const float MATV_TILING_SNOW  = 1.0;
 const float MATV_WU_PER_TILE  = 768.0;  // MAT_WORLD_UNITS_PER_TILE (terrain_lod_chunk.frag:240)
+#include "include/terrain_detail_clamp.glsl"
 
 // Central difference commutes with bilinear interpolation; normalize after filtering.
 // Call at the point of use: hoisting the result to the top of main() kept it live across the whole shader and cost ~15% at 4K.
@@ -550,7 +551,6 @@ void main() {
     vec3 lit = base;
     if (uT.lightingEnabled != 0) {
         vec3 lightDir = uT.terrainLightDir.xyz;
-        const float normalLightFloor = 0.2;
         // Colormaps are prelit: authored burnins, or sources baked by the loader.
         // Only detail relative to the macro normal may modulate that illumination.
         // Cement retains its authored slab normal and receives the same visibility.
@@ -560,29 +560,9 @@ void main() {
             vec3 baseN = baseNormal;
             vec3 dN    = vec3(0.0);
             if (uT.detailReady != 0 && uT.detailStrength != 0.0) {
-                bool needDetail = true;
-                if (uT.csmDebugMode == 0 && lightDir.z < 0.0 && abs(baseN.z) >= 0.85) {
-                    // UNORM detail taps and anti-tile blends stay in [-1,1].
-                    // Bound every possible perturbed normal before its texture walk.
-                    float amplitude = dot(max(materialW, vec4(0)), MATV_NORMAL_BOOST * vec4(1.0 / 3.0, 1, 1, 1))
-                                    + max(materialSnow, 0.0) * 0.9;
-                    vec2 macroTilt = baseN.xy / max(baseN.z, 0.2) * uT.nfhStrength;
-                    float tilt = length(abs(macroTilt) + vec2(amplitude * abs(uT.detailStrength)));
-                    float upperLight = (length(lightDir.xy) * tilt + lightDir.z) * inversesqrt(1.0 + tilt * tilt);
-                    // Shoreline shading still consumes N.z inside its wet/foam band.
-                    float nz = clamp(abs(baseN.z), 0.0, 0.9995);
-                    float run = max(v_worldPos.z - uT.shorelineWaterElev, 0.0)
-                              * (nz / max(sqrt(max(1.0 - nz * nz, 1e-6)), 0.03));
-                    float reach = max(uT.shorelineWetRun, uT.shorelineFoamRun) + abs(uT.shorelineEdgeJitter);
-                    bool nearShore = uT.shorelineOn != 0 && run > 0.0 && run < reach;
-                    needDetail = nearShore || !(upperLight < normalLightFloor - 1e-4);
-                }
-                if (needDetail) {
-                    vec4 matW = materialW; float snowW = materialSnow;
-                    // VK-TERRAIN-LODFADE: fades detail-normal/POM to 0 across the LOD0/band
-                    // boundary (GL gos_terrain.frag :326-328). Gate off -> lodNear==1.0.
+                if (mv_needDetail(baseN, lightDir, materialW, materialSnow, v_worldPos, normalLightFloor)) {
                     float lodNear = mv_computeLodNear(v_worldPos.xy, v_worldPos.z);
-                    dN = mv_detailNormal(matW, snowW, v_worldPos.xy, lodNear, baseN.z, detailUvDx, detailUvDy);
+                    dN = mv_detailNormal(materialW, materialSnow, v_worldPos.xy, lodNear, baseN.z, detailUvDx, detailUvDy);
                 }
             }
             vec3 macroPert = vec3(baseN.xy / max(baseN.z, 0.2) * uT.nfhStrength, 1.0);
