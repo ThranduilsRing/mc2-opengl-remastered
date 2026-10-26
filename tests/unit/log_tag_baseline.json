@@ -3743,7 +3743,7 @@
    "stream": "stderr",
    "keys": [
     "typeID",
-    "ptr",
+    "stableId",
     "nodeId",
     "vertexCount"
    ],
@@ -7781,7 +7781,7 @@
    "stream": "stderr",
    "keys": [
     "sample",
-    "src",
+    "srcId",
     "typeID",
     "numTris",
     "numVerts",
