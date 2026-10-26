@@ -781,7 +781,7 @@ void MissionInterfaceManager::update (void)
 			Environment.drawableWidth  = savedDW;
 			Environment.drawableHeight = savedDH;
 			gos_TestSetRawMouse(rawSaveX, rawSaveY);
-			ObjectManager->findTerrainObjectByMouse(-999998, -999998, true);
+			ObjectManager->findObjectByMouse(-999998, -999998);
 			mc2::fmt::print_out("[VK_PICK_PROBE] VERDICT={}\n", mc2::fmt::safe(allOK ? "PASS" : "FAIL"));
 			fflush(stdout);
 		}
