@@ -36,7 +36,8 @@ def test_fresh_install_covers_deploy_payload(tmp_path, monkeypatch):
     assert not [rel for rel in rels if guard.classify(rel) != "mutated"]
     assert guard.classify("DATA\\TGL\\128\\A.TGA.COOKSTAMP") == "mutated"
     src, dst = tmp_path / "source", tmp_path / "install"
-    for rel in rels | {"data/terrain/stock.pak", "textures.fst", "data/tgl/128/stock.tga"}:
+    for rel in rels | {"data/terrain/stock.pak", "textures.fst", "data/tgl/128/stock.tga",
+                       "mods/custom/data/model.glb"}:
         path = src / rel
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(b"stock")
@@ -47,6 +48,7 @@ def test_fresh_install_covers_deploy_payload(tmp_path, monkeypatch):
     assert set(guard.iter_mutated_relpaths(dst)) == set(guard.iter_mutated_relpaths(dst, deep=True))
     assert os.stat(src / "data/terrain/stock.pak").st_ino == os.stat(dst / "data/terrain/stock.pak").st_ino
     assert os.stat(src / "data/tgl/128/stock.tga").st_ino == os.stat(dst / "data/tgl/128/stock.tga").st_ino
+    assert os.stat(src / "mods/custom/data/model.glb").st_ino == os.stat(dst / "mods/custom/data/model.glb").st_ino
     victim = next(iter(sorted(rels)))
     (dst / victim).write_bytes(b"new payload")
     assert (src / victim).read_bytes() == b"stock"
