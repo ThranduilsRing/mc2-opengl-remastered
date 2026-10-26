@@ -23,6 +23,8 @@ long Mech3DAppearance::update (bool animate)
 	// timer, the dice and the weapon recycle clocks are SIM state and advance only on a tick (R1).
 	if (!simPresentationPass)
 	{
+	const auto previousGesture = unitAnim().currentGestureId;
+	const auto previousFrame = unitAnim().currentFrame;
 	if (!unitAnim().nodeRecycle.empty())
 	{
 		for (long i=0;i<mechType->numWeaponNodes;i++)
@@ -64,15 +66,18 @@ long Mech3DAppearance::update (bool animate)
 		}
 	}
 	
-	//If mech is in 2 and does NOT have a target.
-	//Fix please
-	// Gameplay idle transitions advance with the owning simulation tick.
-	if (!unitAnim().inCombatMode && (unitAnim().currentGestureId == 2))
+	// Idle is a fresh one-shot, not a continuation of the previous gait.
+	if (!unitAnim().inCombatMode && (unitAnim().currentGestureId == GestureStand))
 	{
 		unitAnim().idleTime += frameLength;
 		if (unitAnim().idleTime > idleMAX)
 		{
-			unitAnim().currentGestureId = 13;
+			unitAnim().currentGestureId = GestureIdle;
+			unitAnim().currentFrame = 0.0f;
+			unitAnim().inReverse = false;
+			unitAnim().atTransitionToNextGesture = false;
+			unitAnim().idleTime = 0.0f;
+			setFirstFrame = true;
 		}
 	}
 	else
@@ -80,11 +85,13 @@ long Mech3DAppearance::update (bool animate)
 		unitAnim().idleTime = 0.0f;
 	}
 	
-	if ((unitAnim().currentGestureId == 13) && unitAnim().atTransitionToNextGesture)
+	if ((unitAnim().currentGestureId == GestureIdle) && unitAnim().atTransitionToNextGesture)
 	{
 		unitAnim().currentGestureId = 2;
 		
 		unitAnim().currentFrame = 0;
+		unitAnim().atTransitionToNextGesture = false;
+		setFirstFrame = true;
 	}
 	
 	if (checkStop() && !inDebugMoveMode && !unitAnim().jumpSetup && (getVelocityMagnitude() != 0.0f) && (unitAnim().currentGestureId != GestureJump))
@@ -94,6 +101,8 @@ long Mech3DAppearance::update (bool animate)
 		unitAnim().currentStateGoal = -1;		//Not going anywhere
 		unitAnim().transitionState = 0;		//No Transition necessary.  So be ready at beginning if we need one!
 		unitAnim().currentFrame = 0;			//In the "how did this ever work file"  Duh, need to reset the frame!
+		// Braking a reverse walk must not leave the following idle playing backwards.
+		unitAnim().inReverse = false;
 	}
 	
 	long newGestureId = -1;			//Assume we do not need to transition.
@@ -362,6 +371,15 @@ long Mech3DAppearance::update (bool animate)
 		
 	if ((unitAnim().currentFrame > 0.0f) && (unitAnim().currentFrame >= mechType->getNumFrames(unitAnim().currentGestureId)))
 		unitAnim().currentFrame = 0.0f;
+	if (mc2_diag::tagEnabled("ANIM_CADENCE") &&
+		(previousGesture != unitAnim().currentGestureId || unitAnim().currentGestureId == GestureIdle || turn % 30 == 0))
+	{
+		mc2::fmt::print_out("[ANIM_STATE] tick={} actor={} type={} gesture={}->{} frame={:.3f}->{:.3f} frames={:.0f} rate={:.1f} idle={:.3f} ready={} reverse={} goal={} oldGoal={} combat={}\n",
+			turn, actorHandle_, mechType->name, previousGesture, unitAnim().currentGestureId,
+			previousFrame, unitAnim().currentFrame, static_cast<float>(mechType->getNumFrames(unitAnim().currentGestureId)),
+			unitAnim().mechFrameRate, unitAnim().idleTime, unitAnim().atTransitionToNextGesture,
+			unitAnim().inReverse, unitAnim().currentStateGoal, unitAnim().oldStateGoal, unitAnim().inCombatMode);
+	}
 	} // end !simPresentationPass
 		
 	if (!simPresentationPass && actorHandle_ >= 0) { updateSimPose(); return TRUE; }
