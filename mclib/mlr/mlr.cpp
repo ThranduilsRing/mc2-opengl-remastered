@@ -171,7 +171,6 @@ void
 	MLR_I_L_TMesh::InitializeClass();
 
 
-	MLRLineCloud::InitializeClass();
 	MLRIndexedTriangleCloud::InitializeClass();
 
 	MLR_I_DT_TMesh::InitializeClass();
@@ -271,7 +270,6 @@ void
 	MLR_I_DT_TMesh::TerminateClass();
 
 	MLRIndexedTriangleCloud::TerminateClass();
-	MLRLineCloud::TerminateClass();
 
 
 	MLR_I_L_TMesh::TerminateClass();

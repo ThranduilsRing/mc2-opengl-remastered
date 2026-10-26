@@ -28,18 +28,15 @@ namespace MidLevelRenderer {
 		void DrawTriList();
 		void DrawTriIndexedList();
 		void DrawPointCloud();
-		void DrawLineCloud();
 
 		int LoadAlphaFromTriList(SortAlpha**);
 		int LoadAlphaFromTriIndexedList(SortAlpha**);
 		int LoadAlphaFromPointCloud(SortAlpha**);
-		int LoadAlphaFromLineCloud(SortAlpha**);
 
 		static constexpr int TriList = 0;
 		static constexpr int TriIndexedList = 1;
 		static constexpr int PointCloud = 2;
-		static constexpr int LineCloud = 3;
-		static constexpr int LastMode = 4;
+		static constexpr int LastMode = 3;
 
 		using DrawFunc = void (SortData::*)();
 		using LoadSortAlphaFunc = int (SortData::*)(SortAlpha**);

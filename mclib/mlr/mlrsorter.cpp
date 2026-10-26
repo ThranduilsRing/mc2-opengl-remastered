@@ -17,16 +17,14 @@ SortData::DrawFunc SortData::Draw[LastMode]	=
 {
 	&SortData::DrawTriList,
 	&SortData::DrawTriIndexedList,
-	&SortData::DrawPointCloud,
-	&SortData::DrawLineCloud
+	&SortData::DrawPointCloud
 };
 
 SortData::LoadSortAlphaFunc SortData::LoadSortAlpha[LastMode]	= 
 {
 	&SortData::LoadAlphaFromTriList,
 	&SortData::LoadAlphaFromTriIndexedList,
-	&SortData::LoadAlphaFromPointCloud,
-	&SortData::LoadAlphaFromLineCloud
+	&SortData::LoadAlphaFromPointCloud
 };
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -168,35 +166,6 @@ void
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
-void
-	SortData::DrawLineCloud()
-{
-	Verify(texture2==0);
-	Start_Timer(GOS_Draw_Time);
-
-	for(int i=0;i<numVertices;i++)
-	{
-		if((static_cast<GOSVertex *>(vertices))[i].x > Environment.screenWidth-1)
-		{
-			(static_cast<GOSVertex *>(vertices))[i].x = static_cast<Scalar>(Environment.screenWidth-1);
-		}
-		if((static_cast<GOSVertex *>(vertices))[i].y > Environment.screenHeight-1)
-		{
-			(static_cast<GOSVertex *>(vertices))[i].y = static_cast<Scalar>(Environment.screenHeight-1);
-		}
-	}
-
-#ifdef LAB_ONLY
-	if(dontSeeMe == true)
-#endif
-	{
-		gos_DrawLines( static_cast<GOSVertex *>(vertices), numVertices);
-	}
-	Stop_Timer(GOS_Draw_Time);
-}
-
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-//
 int
 	SortData::LoadAlphaFromTriList(SortAlpha **alpha)
 {
@@ -258,19 +227,6 @@ int
 
 	return 0;
 }
-
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-//
-int
-	SortData::LoadAlphaFromLineCloud(SortAlpha**)
-{
-	Start_Timer(Alpha_Sorting_Time);
-	STOP(("Not implemented"));
-	Stop_Timer(Alpha_Sorting_Time);
-
-	return 0;
-}
-
 
 #ifdef CalDraw
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
