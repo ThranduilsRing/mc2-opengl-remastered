@@ -159,7 +159,6 @@ namespace MidLevelRenderer {
 	//	is to call befor clipping, parameter: camera point
 		virtual int	FindBackFace(const glm::vec3&) = 0;
 
-		virtual void	Lighting(MLRLight* const*, int nrLights) = 0;
 
 		static	void	InitializeDraw();
 
@@ -187,11 +186,7 @@ namespace MidLevelRenderer {
 		virtual void
 			PaintMe(const Stuff::RGBAColor *paintMe) = 0;
 
-		virtual int
-			TransformAndClip(glm::mat4*, MLRClippingState, GOSVertexPool*,bool=false) = 0;
 
-		virtual void
-			TransformNoClip(glm::mat4*, GOSVertexPool*,bool=false) = 0;
 
 		virtual int
 			GetNumPasses()

@@ -1,7 +1,7 @@
 cmake_minimum_required (VERSION 3.10)
 project(mlr)
 
-set(SOURCES ${SOURCES}
+set(CODEC_SOURCES
     mlrindexedprimitivebase.cpp
     mlrprimitivebase.cpp
     mlrshape.cpp
@@ -24,8 +24,10 @@ set(SOURCES ${SOURCES}
     mlr_i_l_dt_tmesh.cpp
     mlr_i_l_tmesh.cpp
     mlr_i_tmesh.cpp
-    mlr_i_tmesh_light.cpp
     mlr_i_tmesh_cast.cpp
+    )
+
+set(SOURCES
     mlrambientlight.cpp
     mlrinfinitelight.cpp
     mlrinfinitelightwithfalloff.cpp
@@ -55,7 +57,11 @@ set(SOURCES ${SOURCES}
 
 include_directories(${COMMON_INCLUDE_DIRS} "../../GameOS/include" "../../mclib")
 
-add_library(mlr ${SOURCES})
+# Retained shape factories, serialized geometry and material accessors.
+# Keep the objects in the existing archive while runtime support is retired.
+add_library(mlr_codecs OBJECT ${CODEC_SOURCES})
+target_link_libraries(mlr_codecs PUBLIC mc2_gate)
+add_library(mlr ${SOURCES} $<TARGET_OBJECTS:mlr_codecs>)
 
 # cat MCLib.vcproj | grep ".cpp" | perl -pe 's/.+\"(\w+\.cpp)\".+/\1/g' >> CMakeLists.txt
 

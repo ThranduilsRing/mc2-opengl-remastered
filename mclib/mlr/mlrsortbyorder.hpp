@@ -46,7 +46,6 @@ namespace MidLevelRenderer {
 		MLRSortByOrder(MLRTexturePool*);
 		~MLRSortByOrder();
 
-		void AddPrimitive(MLRPrimitiveBase*, int=0);
 		void AddEffect(MLREffect*, const MLRState&);
 
 		virtual void AddSortRawData(SortData*);

@@ -484,3 +484,32 @@ remove its remaining initialization/build closure. Leave opaque Tube alone until
 its authored material/projection contract is resolved. CPU Execute/emission/curves,
 authoritative lifetimes and sim RNG are unchanged; camera-dependent legacy effect
 ordering must still be separated before GPU simulation replaces Execute.
+
+
+### Packet 10: undispatched primitive rendering and codec build boundary (2026-10-26)
+
+Remove the mesh sorter entry points and deferred primitive queue: after P9,
+no caller obtains/increments its deferred records or submits a primitive.
+Keep the independently populated indexed-effect queue for opaque Tube.
+Remove primitive TransformNoClip/TransformAndClip and Lighting virtuals from
+all serialized mesh classes, their macro-generated polygon/triangle clippers
+and lighting implementations, the light-map draw/clip/triangulation closure,
+its mesh lighting producers and scratch arrays, and clip trace allocations.
+Shape Lighting has no surviving caller and is removed as well. Class IDs,
+factory registration, stream readers/writers and native material accessors stay.
+
+Separate the retained shape/primitive implementation sources into mlr_codecs,
+an object target packaged in the existing mlr archive. It keeps the existing
+warning policy and consumer link contract. This is a compilation boundary,
+not a claim of standalone decoding: base-class render scratch, shared headers,
+state/texture image binding and registration still couple assets to MLR.
+No render gate, effect Execute/emission/curve/lifetime or sim RNG change.
+Legacy effect ordering remains camera-dependent. Opaque Tube stays on CPU.
+
+Next packet: remove residual mesh visibility/transform/scratch APIs after
+checking factories, editor and FX-tool consumers; strip now-orphaned nonindexed
+sorter helpers and light-map construction support. Move shape/state/texture
+read/write and class registration behind the retained asset boundary, then
+remove runtime initialization only as its last consumers disappear. Preserve
+serialized ordinals and mod decoding. Tube's indexed effect projection and
+sorting remain until its opaque authored material contract is accepted.

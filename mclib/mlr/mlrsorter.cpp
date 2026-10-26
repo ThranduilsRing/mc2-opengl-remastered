@@ -4,9 +4,6 @@
 
 #include"mlrheaders.hpp"
 
-#ifdef CalDraw
-	GOSVertexPool *ToBeDrawnPrimitive::allVerticesToDraw;
-#endif
 
 MLRSorter::ClassData*
 	MLRSorter::DefaultData = nullptr;
@@ -153,23 +150,6 @@ int
 	return i;
 }
 
-#ifdef CalDraw
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-//
-ToBeDrawnPrimitive::ToBeDrawnPrimitive()
-{
-	primitive = nullptr;
-
-	cameraPosition = mc2::math::getTranslation(glm::mat4(1.0f));
-	shapeToClipMatrix = glm::mat4(1.0f);
-
-	for(int i=0;i<Limits::Max_Number_Of_Lights_Per_Primitive;i++)
-	{
-		activeLights[i] = nullptr;
-	}
-	nrOfActiveLights = 0;
-}
-#endif
 
 //#############################################################################
 //############################    MLRSorter    ################################
@@ -212,15 +192,6 @@ MLRSorter::MLRSorter(ClassData *class_data, MLRTexturePool *tp):
 	gos_PushCurrentHeap(StaticHeap);
 	rawDrawData.SetLength(Limits::Max_Number_Primitives_Per_Frame);
 
-#ifdef CalDraw
-	for(int i=0;i<MLRState::PriorityCount;i++)
-	{
-		lastUsedInBucketNotDrawn[i] = 0;
-		priorityBucketsNotDrawn[i].SetLength(Limits::Max_Number_Primitives_Per_Frame + Limits::Max_Number_ScreenQuads_Per_Frame);
-	}
-
-	drawData.SetLength(Limits::Max_Number_Primitives_Per_Frame);
-#endif
 	gos_PopCurrentHeap();
 }
 
@@ -246,75 +217,11 @@ void
 {
 	lastUsedRaw = 0;
 
-#ifdef CalDraw
-	for(int i=0;i<MLRState::PriorityCount;i++)
-	{
-		lastUsedInBucketNotDrawn[i] = 0;
-	}
-
-	lastUsedDraw = 0;
-#endif
 }
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
-void
-	MLRSorter::DrawPrimitive(MLRPrimitiveBase *pt, int pass)
-{
-	Check_Object(this); 
-	Check_Object(pt);
 
-	SortData *sd = nullptr;
-
-	switch(pt->GetSortDataMode())
-	{
-		case SortData::TriList:
-		case SortData::TriIndexedList:
-		{
-			sd = SetRawData(pt, pass);
-
-			if(theCurrentState != sd->state)
-			{
-				SetDifferences(theCurrentState, sd->state);
-				theCurrentState = sd->state;
-			}
-
-			if(sd->texture2>0)
-			{
-				gos_SetRenderState( 
-					gos_State_Texture2, 
-					(*texturePool)[sd->texture2]->GetImage(nullptr)->GetHandle());
-
-				switch(sd->state.GetMultiTextureMode())
-				{
-					case MLRState::MultiTextureLightmapMode:
-						gos_SetRenderState( gos_State_Multitexture, gos_Multitexture_LightMap );
-					break;
-					case MLRState::MultiTextureSpecularMode:
-						gos_SetRenderState( gos_State_Multitexture, gos_Multitexture_SpecularMap );
-                        //sebi: handle no multitexture mode
-                    case MLRState::MultiTextureOffMode:
-						gos_SetRenderState( gos_State_Multitexture, gos_Multitexture_None);
-					break;
-				}
-			}
-			else
-			{
-			}
-
-			SortData::DrawFunc drawFunc = sd->Draw[sd->type];
-
-			(sd->*drawFunc)();
-
-			if(sd->texture2>0)
-			{
-				gos_SetRenderState( gos_State_Multitexture, gos_Multitexture_None );
-			}
-		}
-		break;
-	}
-
-}
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
@@ -392,65 +299,8 @@ SortData *
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
-SortData *
-	MLRSorter::SetRawData ( MLRPrimitiveBase *pt, int pass)
-{
-	Check_Object(this);
-	Check_Object(pt);
-	
-	int drawMode = pt->GetSortDataMode();
-	
-	switch(drawMode)
-	{
-		case SortData::TriIndexedList:
-		{
-			MLRIndexedPrimitiveBase *ipt = static_cast<MLRIndexedPrimitiveBase *>(pt);
 
-			int tex2 = 0;
-			void *vertices = ipt->GetGOSVertices(pass);
-			int vertexCount = ipt->GetNumGOSVertices();
 
-			if(pt->GetCurrentState(pass).GetMultiTextureMode()!=MLRState::MultiTextureOffMode && MLRState::GetMultitextureLightMap())
-			{
-				Verify(pass==0);
-				tex2 = pt->GetCurrentState(1).GetTextureHandle();
-				vertices = pt->GetGOSVertices2UV();
-			}
-
-			return SetRawIndexedData (
-				vertices,
-				vertexCount, 
-				ipt->GetGOSIndices(pass),
-				ipt->GetNumGOSIndices(), 
-				ipt->GetCurrentState(pass),
-				drawMode,
-				tex2
-			);
-		}
-		case SortData::TriList:
-			return SetRawData (
-				pt->GetGOSVertices(pass),
-				pt->GetNumGOSVertices(), 
-				pt->GetCurrentState(pass),
-				drawMode
-			);
-	}
-
-	return nullptr;
-}
-
-#ifdef CalDraw
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-//
-void
-	MLRSorter::IncreaseTBDPCounter()
-{
-	Check_Object(this);
-	int priority = drawData[lastUsedDraw].primitive->GetReferenceState().GetPriority();
-	priorityBucketsNotDrawn[priority][lastUsedInBucketNotDrawn[priority]++] = &drawData[lastUsedDraw];
-	lastUsedDraw++;
-}
-#endif
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
@@ -617,4 +467,3 @@ void
 {
 	Verify(IsDerivedFrom(DefaultData));
 }
-

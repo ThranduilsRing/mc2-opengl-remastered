@@ -103,7 +103,6 @@ namespace MidLevelRenderer {
 
 	// lights the geometry, uses the worldToShape matrix and an array of lights which
 	// affect the shape in this frame and the number of lights in this array
-		void	Lighting(const glm::mat4&, MLRLight* const*, int nrLights);
 
 		void
 			HurtMe(const glm::mat4&, Stuff::Scalar radius);
