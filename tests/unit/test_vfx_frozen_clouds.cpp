@@ -5,8 +5,6 @@
 #include "particles/batcher.h"
 #include "mlr/mlrsortbyorder.hpp"
 #include "mlr/gosimagepool.hpp"
-#include "mlr/mlrpointcloud.hpp"
-#include "mlr/mlrtrianglecloud.hpp"
 #include "mlr/mlrngoncloud.hpp"
 #include <cstdint>
 #include <algorithm>
@@ -122,7 +120,7 @@ public:
     unsigned active() const { return this->m_activeParticleCount; }
     void expire(unsigned slot) { this->DestroyParticle(slot); }
     int clippedVertices() const {
-        if constexpr (std::is_same_v<Cloud, gosFX::CardCloud>) return 0;
+        if constexpr (!std::is_same_v<Cloud, gosFX::PertCloud>) return 0;
         else return this->m_cloudImplementation->GetNumGOSVertices();
     }
     void distinguishParticles()
@@ -181,7 +179,7 @@ public:
             appendBytes(bytes, p->m_age);
             appendBytes(bytes, p->m_seed);
             appendBytes(bytes, p->m_ageRate);
-            if constexpr (std::is_same_v<Cloud, gosFX::CardCloud>)
+            if constexpr (!std::is_same_v<Cloud, gosFX::PertCloud>)
                 appendBytes(bytes, p->m_age < 1.0f);
             else appendBytes(bytes, this->m_cloudImplementation->IsOn(slot));
             for (unsigned c = 0; c < colorStride(); ++c) {
@@ -399,12 +397,12 @@ void checkFrozenCloud(bool alignX = false, bool alignY = false, unsigned sides =
             CHECK(Stuff::Random::GetState() == frozen);
             CHECK(Stuff::Random::GetDrawCount() == frozen.draws);
             CHECK(cloud.frozenState() == particles);
-            if (!std::is_same_v<Cloud, gosFX::CardCloud> && !gpu && live == 4) {
+            if (std::is_same_v<Cloud, gosFX::PertCloud> && !gpu && live == 4) {
                 // MC2's legacy clouds bypass clip rejection, even with clipping flags set.
                 CHECK(cloud.clippedVertices() > 0);
                 REQUIRE_FALSE(sorter->payload.empty());
             }
-            if constexpr (std::is_same_v<Cloud, gosFX::CardCloud>)
+            if constexpr (!std::is_same_v<Cloud, gosFX::PertCloud>)
                 CHECK(sorter->payload.empty()); // accepted cards never enter MLR, including with the kill-switch off
             if (repeat < 2) firstMlrPayload[repeat] = sorter->payload;
             CHECK(sorter->payload == firstMlrPayload[repeat % 2]);

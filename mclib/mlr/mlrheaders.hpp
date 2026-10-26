@@ -12,7 +12,6 @@
 using namespace MidLevelRenderer;
 using namespace Stuff;
 
-#include<mlr/mlrpointcloud.hpp>
 #include<mlr/mlrtrianglecloud.hpp>
 #include<mlr/mlrambientlight.hpp>
 #include<mlr/mlrinfinitelight.hpp>

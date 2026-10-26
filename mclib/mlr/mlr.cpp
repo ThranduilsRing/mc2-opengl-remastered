@@ -140,7 +140,6 @@ void
 	MLRSortByOrder::InitializeClass();
 	MLRShape::InitializeClass();
 	MLREffect::InitializeClass();
-	MLRPointCloud::InitializeClass();
 	MLRTriangleCloud::InitializeClass();
 	MLRNGonCloud::InitializeClass();
 	MLRAmbientLight::InitializeClass();
@@ -300,7 +299,6 @@ void
 	MLRAmbientLight::TerminateClass();
 	MLRNGonCloud::TerminateClass();
 	MLRTriangleCloud::TerminateClass();
-	MLRPointCloud::TerminateClass();
 	MLREffect::TerminateClass();
 	MLRShape::TerminateClass();
 	MLRSortByOrder::TerminateClass();

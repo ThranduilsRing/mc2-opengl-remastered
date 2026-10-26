@@ -16,15 +16,13 @@ bool dontSeeMe = true;
 SortData::DrawFunc SortData::Draw[LastMode]	= 
 {
 	&SortData::DrawTriList,
-	&SortData::DrawTriIndexedList,
-	&SortData::DrawPointCloud
+	&SortData::DrawTriIndexedList
 };
 
 SortData::LoadSortAlphaFunc SortData::LoadSortAlpha[LastMode]	= 
 {
 	&SortData::LoadAlphaFromTriList,
-	&SortData::LoadAlphaFromTriIndexedList,
-	&SortData::LoadAlphaFromPointCloud
+	&SortData::LoadAlphaFromTriIndexedList
 };
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -105,67 +103,6 @@ void
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
-void
-	SortData::DrawPointCloud()
-{
-	Verify(texture2==0);
-	Start_Timer(GOS_Draw_Time);
-
-#ifdef LAB_ONLY
-	if(dontSeeMe == true)
-#endif
-	{
-
-		GOSVertex pArray[32*3];
-
-		float size = static_cast<float>(numIndices);
-		
-		if( size == 0 )
-		{
-			size = 2.4f;
-		}
-		else
-		{
-			size *= 2.4f;
-		}
-
-		int Triangle = 0, Vertex = 0;
-	//
-	// Warning! - These points need clipping!
-	//
-		for( int i=numVertices; i; i-- )
-		{
-			pArray[Triangle+0] = *(static_cast<GOSVertex *>(vertices) + Vertex);
-			pArray[Triangle+1] = *(static_cast<GOSVertex *>(vertices) + Vertex);
-			pArray[Triangle+2] = *(static_cast<GOSVertex *>(vertices) + Vertex);
-
-			pArray[Triangle+1].x += size;
-			pArray[Triangle+2].y += size;
-
-			Triangle +=3;
-			Vertex++;
-
-			if( Triangle==32*3 || i==1)
-			{
-				if ((pArray[0].z >= 0.0f) &&
-					(pArray[0].z < 1.0f) &&
-					(pArray[1].z >= 0.0f) &&  
-					(pArray[1].z < 1.0f) && 
-					(pArray[2].z >= 0.0f) &&  
-					(pArray[2].z < 1.0f))
-				{
-					gos_DrawTriangles( pArray, Triangle );
-				}
-
-				Triangle=0;
-			}
-		}
-	}
-	Stop_Timer(GOS_Draw_Time);
-}
-
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-//
 int
 	SortData::LoadAlphaFromTriList(SortAlpha **alpha)
 {
@@ -214,18 +151,6 @@ int
 	Stop_Timer(Alpha_Sorting_Time);
 
 	return i;
-}
-
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-//
-int
-	SortData::LoadAlphaFromPointCloud(SortAlpha**)
-{
-	Start_Timer(Alpha_Sorting_Time);
-	STOP(("Not implemented"));
-	Stop_Timer(Alpha_Sorting_Time);
-
-	return 0;
 }
 
 #ifdef CalDraw

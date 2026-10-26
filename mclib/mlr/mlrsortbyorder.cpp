@@ -131,15 +131,6 @@ void
 
 	switch(ef->GetSortDataMode())
 	{
-		case SortData::PointCloud:
-			sd = SetRawData(
-					ef->GetGOSVertices(),
-					ef->GetNumGOSVertices(), 
-					state,
-					SortData::PointCloud
-					);
-			sd->numIndices = ef->GetType(0);
-		break;
 		case SortData::TriList:
 			sd = SetRawData(
 					ef->GetGOSVertices(),

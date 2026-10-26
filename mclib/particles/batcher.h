@@ -10,7 +10,7 @@
 // SSBO upload, VAO, sampler save/restore, depth-state, blend-state, and the //
 // glDrawArrays expansion to billboard quads.                                //
 //                                                                           //
-// Default ON. MC2_GPU_PARTICLES=0 suppresses Card/CardCloud submission;    //
+// Default ON. =0 suppresses Card/CardCloud/PointCloud/ShardCloud submission;    //
 // their CPU/MLR renderer is retired.                                       //
 //                                                                           //
 // One-way dependency: this header has NO GameOS / GL dependency; the .cpp   //

@@ -49,7 +49,6 @@ set(SOURCES ${SOURCES}
     mlreffect.cpp
     mlrindexedtrianglecloud.cpp
     mlrngoncloud.cpp
-    mlrpointcloud.cpp
     mlrtrianglecloud.cpp
     mlr.cpp
     mlrheaders.cpp
