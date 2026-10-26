@@ -351,3 +351,35 @@ Then separate legacy asset/state decoding from MLR, remove clipper/sorter/lights
 across game/editor/tools, and finally migrate cosmetic simulation with independent
 authoritative lifetimes and unchanged sim chains. Weapon visual redesign stays
 in the later modernization arc.
+
+### Packet 6: Point/Shard retirement checkpoint (2026-10-26)
+
+Rebased onto window 68 `b6a87c27b`; engine `6a39e5262e35` accepts PointCloud
+and ShardCloud at the owner's visible-correctness bar. Point uses its 2.4-pixel
+right triangle; Shard preserves authored aligned corners and per-vertex tint.
+Opaque primitives ignore vertex alpha. Both harvest live CPU particle state.
+Their CPU submission/MLR owners, MLRPointCloud and point sorter dispatch are
+deleted. The unconstructed, unserialized MLRLineCloud and line dispatch are
+also deleted. Engine diff: 1,092 deleted, 101 added, net -991. No gate flip;
+the already-ON master now suppresses these accepted classes when set to zero.
+
+Proofs: `E:/mc2-archive-2026-10/proofs/mlr-retire-p1/p6-final-oracle/`,
+`p6-primitives-oracle/`, `p6-opaque-native.log`, `p6-determinism.log` and
+`owner-montage-p6.png`. CPU references are pinned to `cc19193edd25`; do not
+use the retired classes' current master=0 arm as a CPU reference. Ordinary
+stock volleys did not populate Point: existing force-FX fixture 9 now enables
+cyan Point emission in memory, without changing asset bytes. Frame 200 covers
+stock Shards. Native vertex expansion retains the original 4,096-particle
+capacity with 24,576 records; the final captures have no overflow.
+
+Packet 6 remains partial. Next: finish Tube's untextured and opaque/OneZero
+fallbacks; equal-or-better pale strips shared with the reference are acceptable.
+Use master=1 in both Tube controls so accepted cards/points/shards stay enabled.
+Then preserve Shape submaterials and triangulation, implement ShapeCloud and
+DebrisCloud, and populate a mod PertCloud fixture (zero stock specs) before
+removing their CPU routes. MLR still has 50 compiled TUs / 23,373 source lines
+(107 source/header files / 36,317 physical lines), including camera/state/texture
+support used by native harvesting and legacy asset decoding in game/editor/tools.
+After those consumers migrate, remove clipper/sorter/geometry/lights and the
+codec/build closure. CPU Execute/emission/lifetimes remain; later GPU simulation
+must preserve authoritative lifetimes and separate camera-dependent FX ordering.
