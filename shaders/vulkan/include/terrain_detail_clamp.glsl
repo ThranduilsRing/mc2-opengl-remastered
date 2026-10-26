@@ -19,28 +19,14 @@ bool mv_needDetail(vec3 baseN, vec3 lightDir, vec4 materialW, float materialSnow
     needParallax = nearShore || !(upperLight < normalLightFloor - 1e-4);
     if (needParallax) return true;
     // Local lamps consume detail even when the sun response is fully clamped.
-    // A grid cell is only a broad phase: retain the skip outside lamp spheres.
+    // Primary normal taps are cheaper than walking the light list twice.
+    // The shading loop owns exact range/cone rejection; empty cells skip reads.
     if (uT.numPoolLights > 0) {
-        int lo = 0, hi = uT.numPoolLights;
-        bool indexed = uT.lightGridDim > 0;
-        if (indexed) {
-            ivec2 cell = ivec2(floor((worldPos.xy - vec2(uT.lightGridMinX, uT.lightGridMinY))
-                                   * vec2(uT.lightGridInvCellX, uT.lightGridInvCellY)));
-            hi = 0;
-            if (all(greaterThanEqual(cell, ivec2(0))) && all(lessThan(cell, ivec2(uT.lightGridDim)))) {
-                uvec2 span = lightGridCells[cell.y * uT.lightGridDim + cell.x];
-                lo = int(span.x); hi = int(span.x + span.y);
-            }
-        }
-        for (int k = lo; k < hi; ++k) {
-            int i = indexed ? int(lightGridIndices[k]) : k;
-            if (i >= uT.numPoolLights || poolLights[i].lightType == 0u) continue;
-            float radius = poolLights[i].farDistance;
-            if (poolLights[i]._plPad1 > 0.5 && uT.lightPoolMoverScale < 0.999)
-                radius *= max(uT.lightPoolMoverScale, 0.05);
-            vec3 delta = worldPos - poolLights[i].position;
-            if (radius > 0.0 && dot(delta, delta) < radius * radius) return true;
-        }
+        if (uT.lightGridDim <= 0) return true;
+        ivec2 cell = ivec2(floor((worldPos.xy - vec2(uT.lightGridMinX, uT.lightGridMinY))
+                               * vec2(uT.lightGridInvCellX, uT.lightGridInvCellY)));
+        if (all(greaterThanEqual(cell, ivec2(0))) && all(lessThan(cell, ivec2(uT.lightGridDim)))
+            && lightGridCells[cell.y * uT.lightGridDim + cell.x].y != 0u) return true;
     }
     return false;
 }
