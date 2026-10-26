@@ -789,7 +789,105 @@ GameObjectPtr GameObjectManager::findTerrainObjectByMouse (long mouseX,
 
 //---------------------------------------------------------------------------
 
+
+namespace {
+struct PickRect {
+    float left = 3.4e38f, top = 3.4e38f, right = -3.4e38f, bottom = -3.4e38f;
+    bool contains(long x, long y) const {
+        return x >= left && x <= right && y >= top && y <= bottom;
+    }
+};
+
+// Grounded stock bounds survive GPU-only geometry and fallen animation roots.
+// Display bounds are retained for animated limbs; no render-frame stamp is authority.
+bool gameplayPickRect(GameObjectPtr obj, PickRect& rect, bool margin = true) {
+    if (!obj || !obj->getExists() || obj->inTransport() || !eye) return false;
+    auto* app = obj->getAppearance();
+    if (!app || !app->getAppearanceType()) return false;
+    const auto* type = app->getAppearanceType();
+    glm::vec3 lo, hi;
+    mc2ToRender(lo, type->typeUpperLeft);
+    mc2ToRender(hi, type->typeLowerRight);
+    for (int i = 0; i < 8; ++i) {
+        glm::vec3 offset((i & 1) ? lo.x : hi.x,
+                         (i & 2) ? lo.y : hi.y,
+                         (i & 4) ? lo.z : hi.z);
+        Rotate(offset, -obj->getRotation());
+        Stuff::Vector4D screen;
+        auto corner = obj->getPosition() + offset;
+        eye->projectForScreenXY(corner, screen);
+        if (screen.w <= 1e-4f || !std::isfinite(screen.x) || !std::isfinite(screen.y)) return false;
+        rect.left = std::min(rect.left, screen.x); rect.top = std::min(rect.top, screen.y);
+        rect.right = std::max(rect.right, screen.x); rect.bottom = std::max(rect.bottom, screen.y);
+    }
+    if (obj->isMover() && app->canBeSeen()) {
+        rect.left = std::min(rect.left, app->upperLeft.x); rect.top = std::min(rect.top, app->upperLeft.y);
+        rect.right = std::max(rect.right, app->lowerRight.x); rect.bottom = std::max(rect.bottom, app->lowerRight.y);
+        if (obj->getObjectClass() == BATTLEMECH && obj->isDisabled() && !obj->isDestroyed()) {
+            // Preserve the salvage fix's grounded envelope exactly.
+            wreckPickRect(obj, rect.left, rect.top, rect.right, rect.bottom);
+            // wreckPickRect already added its four-pixel margin.
+            rect.left += 4; rect.top += 4; rect.right -= 4; rect.bottom -= 4;
+        }
+    }
+    if (margin) {
+        const float pad = 4.f * std::max(1.f, std::min(Environment.screenWidth / 800.f, Environment.screenHeight / 600.f));
+        rect.left -= pad; rect.top -= pad; rect.right += pad; rect.bottom += pad;
+    }
+    return rect.right >= 0 && rect.bottom >= 0 && rect.left < Environment.screenWidth && rect.top < Environment.screenHeight;
+}
+
+bool gameplayPickEligible(GameObjectPtr obj, bool skipDisabled) {
+    if (!obj || !obj->getExists() || obj->inTransport() || obj->isDestroyed()) return false;
+    const long cls = obj->getObjectClass();
+    if (cls == TREE || cls == ARTILLERY || obj->getDamageLevel() == 36000000
+        || (skipDisabled && obj->isDisabled())) return false;
+    return !obj->isMover() || (obj->isOnGUI() && Terrain::IsGameSelectTerrainPosition(obj->getPosition()));
+}
+
+// Probe unambiguous bounds separately: a box is not a visible-mesh oracle.
+void gameplayPickBattery(GameObjectManager& manager) {
+    static bool busy = false;
+    static uint32_t previous = 0, tested = 0;
+    static int stable = 0;
+    if (busy || turn <= 90 || !eye || !mc2::gate::get<"MC2_VK_PICK_PROBE">()) return;
+    const auto revision = eye->getViewProjectionRevision();
+    if (revision != previous) { previous = revision; stable = 0; }
+    if (++stable < 4 || tested == revision) return;
+    tested = revision;
+    busy = true;
+    struct Candidate { GameObjectPtr obj; PickRect rect; };
+    std::vector<Candidate> candidates;
+    for (long h = 1; h <= manager.getMaxObjects(); ++h) {
+        auto* obj = manager.get(h);
+        PickRect rect;
+        if (gameplayPickEligible(obj, false) && gameplayPickRect(obj, rect, false)
+            && rect.left >= 0 && rect.top >= 0 && rect.right < Environment.screenWidth && rect.bottom < Environment.screenHeight)
+            candidates.push_back({obj, rect});
+    }
+    for (const auto& c : candidates) {
+        int hits = 0, misses = 0, wrong = 0, overlap = 0;
+        for (int y = 0; y < 7; ++y) for (int x = 0; x < 7; ++x) {
+            const long px = std::lround(c.rect.left + (c.rect.right-c.rect.left)*x/6.f);
+            const long py = std::lround(c.rect.top + (c.rect.bottom-c.rect.top)*y/6.f);
+            bool ambiguous = false;
+            for (const auto& other : candidates)
+                if (other.obj != c.obj && other.rect.contains(px, py)) { ambiguous = true; break; }
+            if (ambiguous) { ++overlap; continue; }
+            auto* picked = manager.findObjectByMouse(px, py);
+            if (picked == c.obj) ++hits;
+            else if (picked) ++wrong;
+            else ++misses;
+        }
+        mc2::fmt::print_out("[PICK_BATTERY] revision={} class={} id={} hits={} miss={} wrong={} overlap={}\n",
+            revision, int(c.obj->getObjectClass()), c.obj->getPartId(), hits, misses, wrong, overlap);
+    }
+    busy = false;
+}
+} // namespace
+
 GameObjectPtr GameObjectManager::findObjectByMouse (long mouseX, long mouseY) {
+	gameplayPickBattery(*this);
 
 	GameObjectPtr obj = nullptr;
 
