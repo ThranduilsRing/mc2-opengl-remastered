@@ -113,7 +113,9 @@ vec2 mv_parallax(vec2 uv, float scale, vec4 w, vec3 viewDirTS) {
     vec2 prevUV = curUV + dUV;
     float after  = curD - curLayer;
     float before = prevD - curLayer + layerDepth;
-    return mix(curUV, prevUV, after / max(abs(after - before), 1.0e-6));
+    float denominator = after - before;
+    float blend = abs(denominator) > 1.0e-6 ? clamp(after / denominator, 0.0, 1.0) : 0.0;
+    return mix(curUV, prevUV, blend);
 }
 
 // Cliff faces: triplanar parallax-occlusion march of ONE world plane (GL terrain_lod_chunk.frag cliffParallaxPlane). viewPlane is the view
@@ -123,10 +125,10 @@ const float MATV_CLIFF_TS          = 256.0;   // world units per cliff repeat
 const float MATV_CLIFF_POM_DEPTH   = 12.0;
 const float MATV_CLIFF_POM_STEPS   = 24.0;
 const float MATV_CLIFF_HEIGHT_NORMAL_STRENGTH = 2.0;
-float mv_cliffHeight(vec2 uv) {
-    return textureLod(u_matNormalArray, vec3(uv, float(MAT_LAYER_MARBLE_CLIFF)), 0.0).a;
+float mv_cliffHeight(vec2 uv, float lod) {
+    return textureLod(u_matNormalArray, vec3(uv, float(MAT_LAYER_MARBLE_CLIFF)), lod).a;
 }
-vec2 mv_cliffParallaxPlane(vec2 uv, vec2 viewPlane, float depth, float steps) {
+vec2 mv_cliffParallaxPlane(vec2 uv, vec2 viewPlane, float depth, float steps, float lod) {
     if (depth <= 0.0) return uv;
     float nSteps = clamp(steps, 8.0, 32.0);
     float layerDepth = 1.0 / nSteps;
@@ -134,14 +136,14 @@ vec2 mv_cliffParallaxPlane(vec2 uv, vec2 viewPlane, float depth, float steps) {
     vec2 deltaUV = P * layerDepth;
     float curDepth = 0.0;
     vec2  curUV    = uv;
-    float curH = 1.0 - mv_cliffHeight(curUV);
+    float curH = 1.0 - mv_cliffHeight(curUV, lod);
     float prevH = curH;
     for (int i = 0; i < 32; ++i) {
         if (float(i) >= nSteps || curDepth >= curH) break;
         prevH = curH;
         curUV   += deltaUV;
         curDepth += layerDepth;
-        curH = 1.0 - mv_cliffHeight(curUV);
+        curH = 1.0 - mv_cliffHeight(curUV, lod);
     }
     vec2  prevUV = curUV - deltaUV;
     float afterH = curH - curDepth;
@@ -155,7 +157,7 @@ vec2 mv_cliffParallaxPlane(vec2 uv, vec2 viewPlane, float depth, float steps) {
 // smooth to catch light), and the albedo is darkened by the displacement (groove relief). `N` is the detail-perturbed normal on entry and
 // the cliff-blended one on return; `baseColor` takes the groove darkening. macroN is the un-perturbed macro slope normal. The cliff albedo
 // re-projection of GL is NOT here: the island carries no material albedo array.
-void mv_cliffMaterial(vec3 macroN, inout vec3 N, inout vec3 baseColor) {
+void mv_cliffMaterial(vec3 macroN, vec3 planeLod, inout vec3 N, inout vec3 baseColor) {
     float cb = smoothstep(0.85, 0.55, abs(macroN.z));
     if (cb <= 0.01) return;
     const float ts = MATV_CLIFF_TS;
@@ -167,38 +169,39 @@ void mv_cliffMaterial(vec3 macroN, inout vec3 N, inout vec3 baseColor) {
 
     vec3  camW = mc2ToRender(uT.cameraPosMC2.xyz);
     vec3  Vw   = normalize(camW - wp);   // fragment -> eye, MC2 world
-    float depth = MATV_CLIFF_POM_DEPTH / ts;
+    float relief = 1.0 - smoothstep(0.0, 4.0, dot(planeLod, wn));
+    float depth = MATV_CLIFF_POM_DEPTH / ts * relief;
     float steps = MATV_CLIFF_POM_STEPS;
     vec2 vpX = Vw.yz / max(abs(Vw.x), 0.30);
     vec2 vpY = Vw.xz / max(abs(Vw.y), 0.30);
     vec2 vpZ = Vw.xy / max(abs(Vw.z), 0.30);
-    uvX = mix(uvX, mv_cliffParallaxPlane(uvX, vpX, depth, steps), clamp(wn.x * 1.5, 0.0, 1.0));
-    uvY = mix(uvY, mv_cliffParallaxPlane(uvY, vpY, depth, steps), clamp(wn.y * 1.5, 0.0, 1.0));
-    uvZ = mix(uvZ, mv_cliffParallaxPlane(uvZ, vpZ, depth, steps), clamp(wn.z * 1.5, 0.0, 1.0));
+    uvX = mix(uvX, mv_cliffParallaxPlane(uvX, vpX, depth, steps, planeLod.x), clamp(wn.x * 1.5, 0.0, 1.0));
+    uvY = mix(uvY, mv_cliffParallaxPlane(uvY, vpY, depth, steps, planeLod.y), clamp(wn.y * 1.5, 0.0, 1.0));
+    uvZ = mix(uvZ, mv_cliffParallaxPlane(uvZ, vpZ, depth, steps, planeLod.z), clamp(wn.z * 1.5, 0.0, 1.0));
 
-    vec3 nX = textureLod(u_matNormalArray, vec3(uvX, float(MAT_LAYER_MARBLE_CLIFF)), 0.0).rgb * 2.0 - 1.0;
-    vec3 nY = textureLod(u_matNormalArray, vec3(uvY, float(MAT_LAYER_MARBLE_CLIFF)), 0.0).rgb * 2.0 - 1.0;
-    vec3 nZ = textureLod(u_matNormalArray, vec3(uvZ, float(MAT_LAYER_MARBLE_CLIFF)), 0.0).rgb * 2.0 - 1.0;
+    vec3 nX = textureLod(u_matNormalArray, vec3(uvX, float(MAT_LAYER_MARBLE_CLIFF)), planeLod.x).rgb * 2.0 - 1.0;
+    vec3 nY = textureLod(u_matNormalArray, vec3(uvY, float(MAT_LAYER_MARBLE_CLIFF)), planeLod.y).rgb * 2.0 - 1.0;
+    vec3 nZ = textureLod(u_matNormalArray, vec3(uvZ, float(MAT_LAYER_MARBLE_CLIFF)), planeLod.z).rgb * 2.0 - 1.0;
     vec3 triTilt = vec3(0.0, nX.x, nX.y) * wn.x
                  + vec3(nY.x, 0.0, nY.y) * wn.y
                  + vec3(nZ.x, nZ.y, 0.0) * wn.z;
 
-    // Height-derived shading normal: forward differences of the displacement per plane (one texel of the 2048 map as the step).
-    const float hEps = 1.0 / 2048.0;
-    float hX0 = mv_cliffHeight(uvX), hXu = mv_cliffHeight(uvX + vec2(hEps, 0.0)), hXv = mv_cliffHeight(uvX + vec2(0.0, hEps));
-    float hY0 = mv_cliffHeight(uvY), hYu = mv_cliffHeight(uvY + vec2(hEps, 0.0)), hYv = mv_cliffHeight(uvY + vec2(0.0, hEps));
-    float hZ0 = mv_cliffHeight(uvZ), hZu = mv_cliffHeight(uvZ + vec2(hEps, 0.0)), hZv = mv_cliffHeight(uvZ + vec2(0.0, hEps));
-    float g = MATV_CLIFF_HEIGHT_NORMAL_STRENGTH / hEps;
-    vec3 hnX = normalize(vec3(-(hXu - hX0) * g, -(hXv - hX0) * g, 1.0));
-    vec3 hnY = normalize(vec3(-(hYu - hY0) * g, -(hYv - hY0) * g, 1.0));
-    vec3 hnZ = normalize(vec3(-(hZu - hZ0) * g, -(hZv - hZ0) * g, 1.0));
+    // Difference one texel at each plane's filtered mip, including non-2048 maps.
+    vec3 hEps = exp2(planeLod) / float(textureSize(u_matNormalArray, 0).x);
+    float hX0 = mv_cliffHeight(uvX, planeLod.x), hXu = mv_cliffHeight(uvX + vec2(hEps.x, 0.0), planeLod.x), hXv = mv_cliffHeight(uvX + vec2(0.0, hEps.x), planeLod.x);
+    float hY0 = mv_cliffHeight(uvY, planeLod.y), hYu = mv_cliffHeight(uvY + vec2(hEps.y, 0.0), planeLod.y), hYv = mv_cliffHeight(uvY + vec2(0.0, hEps.y), planeLod.y);
+    float hZ0 = mv_cliffHeight(uvZ, planeLod.z), hZu = mv_cliffHeight(uvZ + vec2(hEps.z, 0.0), planeLod.z), hZv = mv_cliffHeight(uvZ + vec2(0.0, hEps.z), planeLod.z);
+    vec3 g = MATV_CLIFF_HEIGHT_NORMAL_STRENGTH / hEps;
+    vec3 hnX = normalize(vec3(-(hXu - hX0) * g.x, -(hXv - hX0) * g.x, 1.0));
+    vec3 hnY = normalize(vec3(-(hYu - hY0) * g.y, -(hYv - hY0) * g.y, 1.0));
+    vec3 hnZ = normalize(vec3(-(hZu - hZ0) * g.z, -(hZv - hZ0) * g.z, 1.0));
     vec3 htTilt = vec3(0.0, hnX.x, hnX.y) * wn.x
                 + vec3(hnY.x, 0.0, hnY.y) * wn.y
                 + vec3(hnZ.x, hnZ.y, 0.0) * wn.z;
     float hMix = clamp(MATV_CLIFF_HEIGHT_NORMAL_STRENGTH * 0.5, 0.0, 1.0);
     triTilt = mix(triTilt, htTilt, hMix);
 
-    vec3 triN = normalize(macroN + triTilt);
+    vec3 triN = normalize(macroN + triTilt * relief);
     N = normalize(mix(N, triN, cb));
 
     float disp = hX0 * wn.x + hY0 * wn.y + hZ0 * wn.z;
@@ -262,7 +265,6 @@ void main() {
     // solid-cement hit -> flat-lit with ordinary static and dynamic shadows. (The GL dynamic building shadow on
     // concrete is a SEPARATE dynamic map, still deferred here.)
     bool pureConcrete = false;
-    float padEdgeAO = 1.0;
     bool cementHit = false;   // a solid cement atlas texel won (the shoreline wet band skips it, as GL)
     if (uT.colormapReady != 0) {
         // The shared cook already applied the original nine-tap blur and coast-color repair.
@@ -328,34 +330,15 @@ void main() {
             bool cementOwnAlpha = (cw & 0x00800000u) != 0u;
             if (isTransition && cementOwnAlpha) {
                 float cOwnA = cementTexel.a;
-                // Reuse filtered coverage for a narrow contact edge. The
-                // authored pad alpha supplies the bevel without neighbor taps.
-                if ((cw & 0x01000000u) == 0u)
-                    padEdgeAO = 1.0 - 0.72 * cOwnA * (1.0 - cOwnA);
                 base = mix(base, cementColor, cOwnA);
                 if (cOwnA > 0.5) { cementHit = true; pureConcrete = true; }
             } else if (isTransition) {
                 if (uT.useTransitionMask != 0) {
-                    bool nXm = false, nXp = false, nYm = false, nYp = false;
-                    bool nXmYm = false, nXpYm = false, nXpYp = false, nXmYp = false;
-                    int xm = ctX - 1, xp = ctX + 1, ym = ctY - 1, yp = ctY + 1;
-                    if (xm >= 0)                           nXm   = (uC.cementWordsF[xm + ctY * uT.mapSide] & 0x80000000u) != 0u;
-                    if (xp <  uT.mapSide)                  nXp   = (uC.cementWordsF[xp + ctY * uT.mapSide] & 0x80000000u) != 0u;
-                    if (ym >= 0)                           nYm   = (uC.cementWordsF[ctX + ym * uT.mapSide] & 0x80000000u) != 0u;
-                    if (yp <  uT.mapSide)                  nYp   = (uC.cementWordsF[ctX + yp * uT.mapSide] & 0x80000000u) != 0u;
-                    if (xm >= 0 && ym >= 0)                nXmYm = (uC.cementWordsF[xm + ym * uT.mapSide] & 0x80000000u) != 0u;
-                    if (xp <  uT.mapSide && ym >= 0)       nXpYm = (uC.cementWordsF[xp + ym * uT.mapSide] & 0x80000000u) != 0u;
-                    if (xp <  uT.mapSide && yp < uT.mapSide) nXpYp = (uC.cementWordsF[xp + yp * uT.mapSide] & 0x80000000u) != 0u;
-                    if (xm >= 0 && yp < uT.mapSide)        nXmYp = (uC.cementWordsF[xm + yp * uT.mapSide] & 0x80000000u) != 0u;
-                    float cTL = (nXm   && nYm   && nXmYm) ? 1.0 : 0.0;  // UV (0,0)
-                    float cTR = (nXp   && nYm   && nXpYm) ? 1.0 : 0.0;  // UV (1,0)
-                    float cBR = (nXp   && nYp   && nXpYp) ? 1.0 : 0.0;  // UV (1,1)
-                    float cBL = (nXm   && nYp   && nXmYp) ? 1.0 : 0.0;  // UV (0,1)
                     float u = cTileUV.x, v = cTileUV.y;
-                    int cfg = (cTL > 0.5 ? 8 : 0)
-                            | (cTR > 0.5 ? 4 : 0)
-                            | (cBR > 0.5 ? 2 : 0)
-                            | (cBL > 0.5 ? 1 : 0);
+                    // The cook stores vertex-corner coverage as maskId = cfg-1.
+                    // Neighbour WORD validity includes transition tiles; treating
+                    // those as solid corners invents wedges at fence/pad corners.
+                    int cfg = int((cw >> 24u) & 63u) + 1;
                     float alpha = 0.0;
                     if (cfg == 0) {
                         alpha = 0.0;
@@ -445,7 +428,6 @@ void main() {
     float materialSnow = materials.z;
     vec4 materialW = vec4(max(1.0 - materials.x - materials.y - materials.w, 0.0), materials.x, materials.y, materials.w);
     vec3 baseNormal = mv_smoothTerrainNormal(v_worldPos.xy);
-    base *= padEdgeAO;
     vec3 baseColor = base;
     float F3pc = pureConcrete ? 1.0 : 0.0;
     {
@@ -486,6 +468,14 @@ void main() {
     // Uniform flow, close to use: avoid keeping the footprint live through cement/tint work.
     vec2 detailUv = v_worldPos.xy * (uT.detailTiling / MATV_WU_PER_TILE);
     vec2 detailUvDx = dFdx(detailUv), detailUvDy = dFdy(detailUv);
+    // Continuous world derivatives, before any divergent material branch or POM.
+    vec3 cliffDx = dFdx(v_worldPos) / MATV_CLIFF_TS;
+    vec3 cliffDy = dFdy(v_worldPos) / MATV_CLIFF_TS;
+    float cliffSize = float(textureSize(u_matNormalArray, 0).x);
+    vec3 cliffLod = max(vec3(0.0), 0.5 * log2(max(vec3(1e-12), cliffSize * cliffSize * vec3(
+        max(dot(cliffDx.yz, cliffDx.yz), dot(cliffDy.yz, cliffDy.yz)),
+        max(dot(cliffDx.xz, cliffDx.xz), dot(cliffDy.xz, cliffDy.xz)),
+        max(dot(cliffDx.xy, cliffDx.xy), dot(cliffDy.xy, cliffDy.xy))))));
     vec3 lit = base;
     if (uT.lightingEnabled != 0) {
         vec3 lightDir = uT.terrainLightDir.xyz;
@@ -508,7 +498,7 @@ void main() {
             vec3 macroPert = vec3(baseN.xy / max(baseN.z, 0.2) * uT.nfhStrength, 1.0);
             vec3 pert = macroPert + vec3(dN.xy * uT.detailStrength, 0.0);
             N = normalize(pert);
-            if (uT.detailReady >= 2) mv_cliffMaterial(baseN, N, baseColor);   // steep cells: triplanar normal + cliff POM + groove relief
+            if (uT.detailReady >= 2) mv_cliffMaterial(baseN, cliffLod, N, baseColor);
             dbgBaseN = baseN; dbgDN = dN;                        // CSM-BLACKOUT-RECON-1 taps
         }
         // Evaluate the ratio after material sampling so its inputs do not stay

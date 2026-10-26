@@ -33,6 +33,7 @@ std::unique_ptr<BldgAppearance> MechWarrior::getWayPointMarker( const glm::vec3&
 	int32_t lateRecipe = -1;
 	(void)GameAdapters::StaticProp::syncStaticPropLateSpawn(
 		appearance.get(), &lateRecipe);
+	if (lateRecipe >= 0) GpuStaticPropRegistry::setRecipeNoShadow(lateRecipe, true);
 
 	return appearance;
 }

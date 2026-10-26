@@ -272,7 +272,7 @@ void TG_Shape::Render (float forceZ, bool isHudElement, BYTE alphaValue, bool is
 		// gates with perforated lattice textures. Reverted; alpha-cutout caster shader is the
 		// proper long-term fix.
 		const bool eligibleForDynamicShadow =
-			!isSpotlight && !isWindow && !isHudElement && !isClamped &&
+			!noShadow && !isSpotlight && !isWindow && !isHudElement && !isClamped &&
 			!theShape->alphaTestOn && (alphaValue == 0xff) && shapeToWorld;
 		if (eligibleForDynamicShadow) {
 			addShadowShape(theShape->vb_, theShape->ib_, theShape->vdecl_, glm::value_ptr(*shapeToWorld));

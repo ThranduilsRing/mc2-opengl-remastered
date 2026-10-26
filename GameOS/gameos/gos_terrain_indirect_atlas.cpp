@@ -334,6 +334,15 @@ void BuildCementCatalogAtlas() {
     }
     auto* tt = Terrain::terrainTextures;
 
+    static_assert(MC_MAX_MIP_LEVELS == 1); // Base slots equal type IDs, including after metadata purge.
+    // A cement variant used only in mixed quads never visits setTexture's
+    // uniform-quad arm, so its base slot otherwise has no CEMENT flag.
+    for (DWORD type = BASE_CEMENT_TYPE; type <= END_CEMENT_TYPE; ++type) {
+        if (type != BASE_CEMENT_TYPE && type < START_CEMENT_TYPE) continue;
+        if (type < static_cast<DWORD>(tt->getNumTypes()))
+            tt->setTexture(type * 0x01010101u, 0xffffu);
+    }
+
     const int txmSize = TERRAIN_TXM_SIZE;  // extern int, typically 64 (terrtxm.cpp:51)
     const long lastSlot = tt->getNextAvailableSlot();
     if (lastSlot <= 0) {
@@ -387,7 +396,7 @@ void BuildCementCatalogAtlas() {
         }
         auto image = mc2::textures::image(nodeIdx);
         if (!image || image->width != txmSize || image->height != txmSize ||
-            image->vkFormat != 37 || image->pixels.size() != size_t(txmSize) * txmSize * 4) continue;
+            image->vkFormat != 37 || image->pixels.size() < size_t(txmSize) * txmSize * 4) continue;
         // Record-but-don't-break past atlas budget cap: we still want the
         // diag totals to reflect TRUE counts for tier1.  Atlas allocation
         // gated on size below to avoid memory blowup.
@@ -421,7 +430,7 @@ void BuildCementCatalogAtlas() {
             if (nodeIdx == 0xffffffffu || nodeIdx >= static_cast<DWORD>(mc2::textures::kTextureAssetLimit)) { ++alphaSkipped; continue; }
             auto image = mc2::textures::image(nodeIdx);
             if (!image || image->width != txmSize || image->height != txmSize ||
-                image->vkFormat != 37 || image->pixels.size() != size_t(txmSize) * txmSize * 4) { ++alphaSkipped; continue; }
+                image->vkFormat != 37 || image->pixels.size() < size_t(txmSize) * txmSize * 4) { ++alphaSkipped; continue; }
             if (cementNodeIndices.size() >= 1024) { truncated = true; ++alphaSkipped; continue; }
             if (slot >= 0 && slot < MC_MAX_TERRAIN_TXMS) {
                 g_cementAlphaLayerIndexBySlot[slot] = static_cast<uint16_t>(cementNodeIndices.size());

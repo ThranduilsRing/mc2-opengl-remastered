@@ -169,5 +169,6 @@ bool mc2FrameJobsTouchDiagEnabled();
 void touchEntryDiagRollFrame(uint32_t frame);
 void mc2CacheOrBakeStaticGpuLight(TG_MultiShape* shape, bool registered, int32_t recipeIndex);
 bool mc2ConeGroundHit (const glm::vec3& apex, const glm::vec3& aim, float beamLen, glm::vec3& hitOut);
+bool mc2WorldMarkerAppearance(const char* name);
 
 #endif // BDACTOR_INTERNAL_H

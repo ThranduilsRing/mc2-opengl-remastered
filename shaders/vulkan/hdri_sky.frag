@@ -13,8 +13,8 @@ layout(set = 0, binding = 0) uniform sampler2D u_hdri;
 // 116 bytes (<= 128 guaranteed push-constant budget). LOCKSTEP with
 // vulkan_sky_island.cpp SkyPC.
 layout(push_constant) uniform SkyPC {
-    mat4  invProj;     // ROW-major bytes (GL uploads these with transpose=GL_TRUE)
-    vec4  rotC0;       // invViewRot ROW 0 (xyz) -- see transpose below
+    mat4  invProj;     // native row-vector matrix, column-major bytes
+    vec4  rotC0;       // inverse view rotation row 0 (xyz)
     vec4  rotC1;
     vec4  rotC2;
     float skyYaw;
@@ -25,8 +25,7 @@ const float PI = 3.14159265358979323846;
 void main()
 {
     vec4 clip = vec4(vNdc, 1.0, 1.0);
-    // GL glUniformMatrix*(..., GL_TRUE) treats the arrays as row-major; Vulkan push
-    // constants are column-major, so transpose to get the identical matrix.
+    // Native camera matrices compose row vectors; GLSL multiplies columns.
     vec3 viewDir = (transpose(pc.invProj) * clip).xyz;
     mat3 invViewRot = transpose(mat3(pc.rotC0.xyz, pc.rotC1.xyz, pc.rotC2.xyz));
     vec3 worldDir = normalize(invViewRot * viewDir);

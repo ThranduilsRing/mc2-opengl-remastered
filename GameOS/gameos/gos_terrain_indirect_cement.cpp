@@ -173,7 +173,7 @@ static constexpr uint32_t kCementOwnAlphaBit = 0x00800000u;
 // terrain_lod_chunk.frag consults it.
 static constexpr uint32_t kCementPavedFlatBit = 0x00400000u;
 
-// cementWord bit 24 = AUTHORED-ART-ON-CEMENT (OVERLAY-CEMENT-ADOPT-1, widened by
+// cementWord bit 21 = AUTHORED-ART-ON-CEMENT (OVERLAY-CEMENT-ADOPT-1, widened by
 // OVERLAY-CEMENT-ARTGUARD-1 / CONCRETE-DELIVER-2). This tile has a VALID cement
 // word (bit 31) AND carries an authored &Overlays id, i.e. hand-placed art
 // painted on top of a genuine cement base slot. It marks the case where "this
@@ -209,13 +209,13 @@ static constexpr uint32_t kCementPavedFlatBit = 0x00400000u;
 // repainted, and when the oracle's inputs are not ready the tile is protected.
 //
 // Inert to every pre-existing reader by construction: bits 30/23/22/15:0
-// are untouched, and no existing code path masks or compares bit 24.
-static constexpr uint32_t kCementAuthoredArtBit = 0x01000000u;
+// are untouched, and no existing code path masks or compares bit 21.
+static constexpr uint32_t kCementAuthoredArtBit = 0x00200000u; // bit 21, outside maskId 29:24
 
 // MC2_OVERLAY_CEMENT_ADOPT — 1 = ON (default). See RendererFeatureRegistry.h and
 // terrain_overlay.frag for the full mechanism. Host side, this gate only decides
-// whether the bit-24 marking pass below runs; the frag reads its own uniform.
-// 0 = OFF => no bit 24 written AND the frag uniform uploads 0 => byte-identical.
+// whether the bit-21 marking pass below runs; the frag reads its own uniform.
+// 0 = OFF => no bit 21 written AND the frag uniform uploads 0 => byte-identical.
 static bool OverlayCementAdoptEnabled() {
     static const bool s = mc2::gate::get<"MC2_OVERLAY_CEMENT_ADOPT">();
     return s;
@@ -584,21 +584,27 @@ void PopulateRecipeCementWords() {
                     const bool c3 = (l3 != 0xFFFFu);
                     const int maskId = deriveMaskIdFromCorners(c0, c1, c2, c3);
                     const uint16_t cementLayerIdx = c0 ? l0 : (c1 ? l1 : (c2 ? l2 : l3));
-                    if (maskId >= 0 && cementLayerIdx != 0xFFFFu
+                    if (c0 && c1 && c2 && c3) {
+                        // Mixed cement variants are still one opaque pad. Their
+                        // cached alpha must not expose the prelit colormap.
+                        cementWord = kCementLayerValidBit | static_cast<uint32_t>(cementLayerIdx);
+                        ++cementQuadCount;
+                    } else if (maskId >= 0 && cementLayerIdx != 0xFFFFu
                         && PadEdgeRoadFixMode() == 2
                         && TileRoadAdjacent8(my, mx, mapSide, blocks)) {
                         // Explicit road suppression precedes authored alpha coverage.
-                    } else if (g_cementAlphaLayerMapReady && g_cementAlphaLayerIndexBySlot[slot] != 0xFFFFu) {
-                        cementWord = kCementLayerValidBit | kCementTransitionBit | kCementOwnAlphaBit
-                                   | (static_cast<uint32_t>(g_cementAlphaLayerIndexBySlot[slot]) & 0xFFFFu);
-                        ++transitionQuadCount;
-                        if (cementLayerIdx == 0xFFFFu || maskId < 0) ++transitionAlphaRescued;
                     } else if (maskId >= 0 && cementLayerIdx != 0xFFFFu) {
                         cementWord = kCementLayerValidBit
                                    | kCementTransitionBit
                                    | (static_cast<uint32_t>((maskId & static_cast<int>(kCementMaskIdMask))) << kCementMaskIdShift)
                                    | (static_cast<uint32_t>(cementLayerIdx) & 0xFFFFu);
                         ++transitionQuadCount;
+                    } else if (g_cementAlphaLayerMapReady && g_cementAlphaLayerIndexBySlot[slot] != 0xFFFFu) {
+                        // Cornerless road/runway art keeps its authored alpha.
+                        cementWord = kCementLayerValidBit | kCementTransitionBit | kCementOwnAlphaBit
+                                   | (static_cast<uint32_t>(g_cementAlphaLayerIndexBySlot[slot]) & 0xFFFFu);
+                        ++transitionQuadCount;
+                        ++transitionAlphaRescued;
                     } else if (cementLayerIdx == 0xFFFFu) {
                         ++transitionDroppedNoLayer;   // no solid-cement corner
                     } else {
@@ -688,7 +694,7 @@ void PopulateRecipeCementWords() {
             const long my = static_cast<long>(vn) / mapSide;
             if (mx >= mapSide - 1 || my >= mapSide - 1) continue;
             if (vn >= chunkCementWords.size()) continue;
-            // Only genuine cement tiles are candidates -- bit 24 is meaningless
+            // Only genuine cement tiles are candidates -- bit 21 is meaningless
             // without bit 31 and must never be the sole content of a word.
             if ((chunkCementWords[vn] & kCementLayerValidBit) == 0u) continue;
 

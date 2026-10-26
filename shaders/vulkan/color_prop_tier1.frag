@@ -256,11 +256,17 @@ void main() {
         vec3 albedo = propDecodeColor(materialAlbedo * mix(vec3(1),tint,0.25));
         vec3 sh[9]; for (int k=0;k<9;++k) sh[k]=uFrame.iblSh[k].xyz;
         vec3 ambient = uFrame.iblShStrength > 0.0 ? evalShL2(normalize(outputNormalStuff),sh)*uFrame.iblShStrength : vec3(0);
-        float wrap = max((dot(N,L)+0.5)/1.5,0.0);
+        // Leaf cards scatter light through both sides; crown normals must not
+        // make the reverse side of a canopy black.
+        float wrap = max(((alphaTestClass ? abs(dot(N,L)) : dot(N,L))+0.5)/1.5,0.0);
         float transmission = alphaTestClass ? 0.08*max(dot(-N,L),0.0) : 0.0;
         vec3 direct = propDecodeColor(vMaterialSun) * (propNightSunWeight(wrap, N) + transmission * propNightDirectShare());
         // SH already contains linear irradiance. Preserve the stock albedo exposure ceiling.
-        rgb = propEncodeColor(min(albedo,composeGroundLighting(albedo,max(ambient,vec3(0))*vTree.x*materialAO,direct,treeVisibility(N),vec3(0))));
+        vec3 irradiance = max(ambient,vec3(0))*vTree.x*materialAO + direct*treeVisibility(N);
+        // Thin leaves retain sky fill through canopy self-occlusion. Fade it
+        // with the night profile rather than making dark forests emissive.
+        if (alphaTestClass) irradiance = max(irradiance, vec3(0.35 * (1.0 - 0.8*uFrame.nightDarkness)));
+        rgb = propEncodeColor(min(albedo, albedo*irradiance));
         rgb += propEncodeColor(albedo) * poolLight + vHighlight.rgb*vHighlight.a;
     }
     if (vWindow.x != 0u && uFrame.nightDarkness > 0.0 && (vMaterialFlags & 1u) == 0u) {

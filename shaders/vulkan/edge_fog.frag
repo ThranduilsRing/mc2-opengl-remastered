@@ -58,6 +58,9 @@ layout(set = 0, binding = 1, std140) uniform EdgeFogParams {
 void main()
 {
     float rawDepth = texture(depthTex, TexCoord).r;
+    // Empty sky belongs to the horizon pass. Projecting it onto a fixed-height
+    // plane produces rectangular map-boundary patches above the horizon.
+    if (rawDepth <= 0.0) { outFog = vec4(0.0); return; }
     vec2 ndc = TexCoord * 2.0 - 1.0;
 
     vec4 pNear = invViewProj * vec4(ndc, 1.0, 1.0);
@@ -65,26 +68,14 @@ void main()
     vec3 wNear = pNear.xyz / pNear.w;
     vec3 wFar  = pFar.xyz / pFar.w;
 
-    float geoZ = u_fogHeight;
-    if (rawDepth >= 0.0001) {
-        vec4 wp = invViewProj * vec4(ndc, rawDepth, 1.0);
-        geoZ = wp.z / wp.w;
-    }
+    vec4 wp = invViewProj * vec4(ndc, rawDepth, 1.0);
+    vec3 worldPos = wp.xyz / wp.w;
 
-    if (geoZ <= u_waterElevation + 2.0) { outFog = vec4(0.0); return; }
+    // Use the visible surface, so a camera below the cloud top still sees haze
+    // on boundary cliffs and skirts rather than failing a plane intersection.
+    float distFromEdge = u_halfExtent - max(abs(worldPos.x), abs(worldPos.y));
 
-    float heightFade = smoothstep(u_fogHeight + 20.0, u_fogHeight, geoZ);
-    if (heightFade <= 0.0) { outFog = vec4(0.0); return; }
-
-    float dz = wFar.z - wNear.z;
-    if (dz >= -0.001) { outFog = vec4(0.0); return; }
-    float t = (u_fogHeight - wNear.z) / dz;
-    if (t < 0.0 || t > 1.0) { outFog = vec4(0.0); return; }
-    vec2 planeXY = wNear.xy + t * (wFar.xy - wNear.xy);
-
-    float distFromEdge = u_halfExtent - max(abs(planeXY.x), abs(planeXY.y));
-
-    float innerRamp   = smoothstep(u_fogStart, 0.0, distFromEdge);
+    float innerRamp   = 1.0 - smoothstep(0.0, max(u_fogStart, 768.0), distFromEdge);
     float outsideFill = step(0.0, -distFromEdge);
 
     // VK-PARITY-F3: FOG-HORIZON-CLAMP-1 (verbatim from shaders/edge_fog.frag). Full fog
@@ -96,7 +87,8 @@ void main()
         horizonFactor = 1.0 - smoothstep(u_horizonFadeStartSin, u_horizonFadeEndSin, elevSin);
     }
 
-    float fogFactor = clamp(max(innerRamp, outsideFill) * heightFade * u_fogMax, 0.0, 1.0)
+    float rangeHaze = smoothstep(6000.0, 12000.0, length(worldPos - wNear));
+    float fogFactor = clamp(max(max(innerRamp, rangeHaze) * u_fogMax, outsideFill), 0.0, 1.0)
                       * horizonFactor;
     outFog = vec4(u_fogColor, fogFactor);
 }
