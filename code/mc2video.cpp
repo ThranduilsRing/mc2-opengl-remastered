@@ -9,6 +9,8 @@
 #include <cstring>
 #include <cstdlib>
 #include <algorithm>   // std::min
+#include <bit>
+#include <SDL2/SDL_mixer.h>
 
 #include "file.h"   // fileExists
 #include "gameos.hpp"  // gos_NewEmptyTexture, gos_DestroyTexture, gos_Texture_Alpha, RECT_TEX, gosHint_DisableMipmap, DWORD
@@ -38,6 +40,7 @@ extern "C" {
 #include "mc2fmt.h"
 #include <format>
 #include <string>
+#include <string_view>
 #include <utility>
 
 //-----------------------------------------------------------------------------
@@ -199,6 +202,9 @@ struct VideoSession {
     double           sar = 1.0;
     double           fps = 30.0;
     double           timeBase = 0.0;   // seconds per PTS unit
+    double           videoOrigin = 0.0;
+    double           decodedPTS = -1.0;
+    double           nextSyncTrace = 0.0;
 
     // gos texture (Path GL-A)
     DWORD            texHandle = 0;   // 0 == INVALID_TEXTURE_ID (caller must treat as invalid)
@@ -208,7 +214,7 @@ struct VideoSession {
     int              rectX = 0, rectY = 0, rectW = 0, rectH = 0;
     bool             frameReady = false;
 
-    // Playback clock (audio-master replaces wall clock in Task 13)
+    // Playback clock (audio-master, monotonic wall time for silent clips)
     double           clockStart   = 0.0;
     double           presentedPTS = -1.0;
 
@@ -219,10 +225,19 @@ struct VideoSession {
     // Audio — Task 12
     int              aStream   = -1;
     AVCodecContext*  aCodec    = nullptr;
+    AVFormatContext* aFmt      = nullptr;
+    AVFrame*         aFrame    = nullptr;
+    AVPacket*        aPkt      = nullptr;
     SwrContext*      swr       = nullptr;
     int              aOutRate     = 0;
     int              aOutChannels = 0;
     bool             audioStreamStarted = false;
+    bool             audioEOF = false;
+    bool             audioFlushing = false;
+    bool             audioSidecar = false;
+    int64_t          audioFramesQueued = 0;
+    double           audioOrigin = 0.0;
+    double           audioTailWall = -1.0;
 
     // Audio-master clock — Task 13
     bool             audioStallLogged = false;
@@ -241,37 +256,41 @@ struct VideoSession {
 // Audio-source helpers (Task 14)
 //-----------------------------------------------------------------------------
 
-// Returns true iff a WAV sidecar was successfully started. We must
-// check the file exists on disk first: SoundSystem::playDigitalStream
-// returns NO_ERR (0) even when the sidecar .wav is absent (the file
-// check inside playDigitalStream silently succeeds on file-missing).
-// Without this explicit fileExists gate, the precedence ladder would
-// never fall back to embedded audio for videos whose sidecar WAV is
-// not shipped (e.g. cinema*.bik have embedded audio, no sidecar).
+// Sidecars use the same decoder/resampler and consumed-sample clock as
+// embedded audio. Missing or unsupported WAVs fall back to embedded audio.
 extern char soundPath[80];   // mclib/paths.cpp
-static bool tryStartSidecarWAV(const char* waveShortName)
+static bool tryOpenAudio(VideoSession* s, std::string_view path);
+static bool tryStartSidecarWAV(VideoSession* s, const char* waveShortName)
 {
     if (!soundSystem || !waveShortName || !waveShortName[0]) return false;
     char wavPath[1024];
     mc2::fmt::to_buf(wavPath, "{}{}.wav", mc2::fmt::safe(soundPath), mc2::fmt::safe(waveShortName));
     if (!fileExists(wavPath)) return false;
-    long r = reinterpret_cast<SoundSystem*>(soundSystem)->playDigitalStream(waveShortName);
-    return (r == 0L);  // 0 == NO_ERR (project-wide constant)
+    if (!tryOpenAudio(s, wavPath)) return false;
+    s->audioSidecar = true;
+    return true;
 }
 
-// Returns true iff: an embedded audio stream was found, its decoder
+// Returns true iff an audio stream was found, its decoder
 // opened, SwrContext was initialised, and beginVideoPCMStream succeeded.
 // On any failure, partial state (aCodec/swr) is torn down cleanly and
 // s->aStream is reset to -1.
-static bool tryOpenEmbeddedAudio(VideoSession* s)
+static bool tryOpenAudio(VideoSession* s, std::string_view path)
 {
-    if (!s->fmt) return false;
-    s->aStream = av_find_best_stream(s->fmt, AVMEDIA_TYPE_AUDIO, -1, -1, nullptr, 0);
-    if (s->aStream < 0) return false;
+    // Audio must decode ahead even while a future video frame is held. A separate
+    // demux cursor also puts WAV sidecars on the same consumed-sample clock.
+    const std::string inputPath(path); // FFmpeg requires a NUL-terminated path.
+    if (avformat_open_input(&s->aFmt, inputPath.c_str(), nullptr, nullptr) < 0) return false;
+    if (avformat_find_stream_info(s->aFmt, nullptr) < 0) {
+        avformat_close_input(&s->aFmt);
+        return false;
+    }
+    s->aStream = av_find_best_stream(s->aFmt, AVMEDIA_TYPE_AUDIO, -1, -1, nullptr, 0);
+    if (s->aStream < 0) { avformat_close_input(&s->aFmt); return false; }
 
-    AVStream* ast = s->fmt->streams[s->aStream];
+    AVStream* ast = s->aFmt->streams[s->aStream];
     const AVCodec* ac = avcodec_find_decoder(ast->codecpar->codec_id);
-    if (!ac) { s->aStream = -1; return false; }
+    if (!ac) { avformat_close_input(&s->aFmt); s->aStream = -1; return false; }
 
     s->aCodec = avcodec_alloc_context3(ac);
     avcodec_parameters_to_context(s->aCodec, ast->codecpar);
@@ -282,6 +301,7 @@ static bool tryOpenEmbeddedAudio(VideoSession* s)
         !snd->queryNativeFormat(&s->aOutRate, &s->aOutChannels))
     {
         if (s->aCodec) { avcodec_free_context(&s->aCodec); s->aCodec = nullptr; }
+        avformat_close_input(&s->aFmt);
         s->aStream = -1;
         return false;
     }
@@ -303,6 +323,7 @@ static bool tryOpenEmbeddedAudio(VideoSession* s)
     if (swrRet < 0 || !s->swr || swr_init(s->swr) < 0) {
         if (s->swr)    { swr_free(&s->swr); }
         if (s->aCodec) { avcodec_free_context(&s->aCodec); s->aCodec = nullptr; }
+        avformat_close_input(&s->aFmt);
         s->aStream = -1;
         return false;
     }
@@ -311,12 +332,15 @@ static bool tryOpenEmbeddedAudio(VideoSession* s)
         swr_free(&s->swr);
         avcodec_free_context(&s->aCodec);
         s->aCodec = nullptr;
+        avformat_close_input(&s->aFmt);
         s->aStream = -1;
         return false;
     }
 
     s->audioStreamStarted = true;
-    VIDEO_TRACE("audio: embedded stream opened, rate={:d} ch={:d}",
+    s->aFrame = av_frame_alloc();
+    s->aPkt = av_packet_alloc();
+    VIDEO_TRACE("audio: stream opened, rate={:d} ch={:d}",
                 mc2::fmt::as_i32(s->aOutRate), mc2::fmt::as_i32(s->aOutChannels));
     return true;
 }
@@ -380,9 +404,10 @@ VideoSession* video_open(const VideoOpenParams& p, VideoOpenResult* out)
     s->srcH = s->vCodec->height;
     s->sar  = (vst->sample_aspect_ratio.num && vst->sample_aspect_ratio.den)
               ? av_q2d(vst->sample_aspect_ratio) : 1.0;
-    s->fps  = (vst->avg_frame_rate.num && vst->avg_frame_rate.den)
-              ? av_q2d(vst->avg_frame_rate) : 30.0;
+    const AVRational frameRate = av_guess_frame_rate(s->fmt, vst, nullptr);
+    s->fps = frameRate.num > 0 && frameRate.den > 0 ? av_q2d(frameRate) : 30.0;
     s->timeBase = av_q2d(vst->time_base);
+    s->videoOrigin = vst->start_time == AV_NOPTS_VALUE ? 0.0 : vst->start_time * s->timeBase;
 
     // BGRA matches the destination texture format.
     s->sws = sws_getContext(s->srcW, s->srcH, s->vCodec->pix_fmt,
@@ -416,17 +441,17 @@ VideoSession* video_open(const VideoOpenParams& p, VideoOpenResult* out)
         bool sidecarOK  = false;
         bool embeddedOK = false;
         if (p.useWaveFile) {
-            sidecarOK = tryStartSidecarWAV(p.waveFileShortName);
+            sidecarOK = tryStartSidecarWAV(s, p.waveFileShortName);
             if (!sidecarOK) {
-                embeddedOK = tryOpenEmbeddedAudio(s);
+                embeddedOK = tryOpenAudio(s, p.resolvedPath);
                 if (!embeddedOK) {
                     VIDEO_LOG("audio: sidecar and embedded both unavailable; silent video");
                 }
             }
         } else {
-            embeddedOK = tryOpenEmbeddedAudio(s);
+            embeddedOK = tryOpenAudio(s, p.resolvedPath);
             if (!embeddedOK) {
-                sidecarOK = tryStartSidecarWAV(p.waveFileShortName);
+                sidecarOK = tryStartSidecarWAV(s, p.waveFileShortName);
                 if (!sidecarOK) {
                     VIDEO_LOG("audio: embedded and sidecar both unavailable; silent video");
                 }
@@ -450,7 +475,7 @@ VideoSession* video_open(const VideoOpenParams& p, VideoOpenResult* out)
     VIDEO_LOG("init: opened '{}' ({}x{}, sar={:.3f}, fps={:.2f}, audio={:d})",
               mc2::fmt::safe(p.resolvedPath), mc2::fmt::as_i32(s->srcW), mc2::fmt::as_i32(s->srcH), s->sar, s->fps, mc2::fmt::as_i32(static_cast<int>((s->aStream >= 0))));
 
-    s->clockStart   = static_cast<double>(av_gettime()) / 1000000.0;
+    s->clockStart   = static_cast<double>(av_gettime_relative()) / 1000000.0;
     s->presentedPTS = -1.0;
 
     return sessionOwner.release();
@@ -473,6 +498,9 @@ void video_close(VideoSession* s)
     if (s->sws)     { sws_freeContext(s->sws); s->sws = nullptr; }
     if (s->vCodec)  { avcodec_free_context(&s->vCodec); }
     if (s->aCodec)  { avcodec_free_context(&s->aCodec); }
+    if (s->aFrame)  { av_frame_free(&s->aFrame); }
+    if (s->aPkt)    { av_packet_free(&s->aPkt); }
+    if (s->aFmt)   { avformat_close_input(&s->aFmt); }
     if (s->swr)     { swr_free(&s->swr); }
     if (s->fmt)     { avformat_close_input(&s->fmt); }
     sessionOwner.reset();
@@ -483,7 +511,7 @@ void video_close(VideoSession* s)
 //-----------------------------------------------------------------------------
 static double nowSeconds()
 {
-    return static_cast<double>(av_gettime()) / 1000000.0;
+    return static_cast<double>(av_gettime_relative()) / 1000000.0;
 }
 
 // Path B: consumed-frame counter is a monotonic sample-count in
@@ -493,7 +521,7 @@ static double audioMasterClock(const VideoSession* s)
     if (!soundSystem) return 0.0;
     int frames = reinterpret_cast<SoundSystem*>(soundSystem)->videoPCMSamplesConsumed();
     int rate   = s->aOutRate > 0 ? s->aOutRate : 44100;
-    return static_cast<double>(frames) / static_cast<double>(rate);
+    return s->audioOrigin + static_cast<double>(frames) / static_cast<double>(rate);
 }
 
 // Anchor the wall-clock baseline at the current audio PTS so
@@ -511,10 +539,17 @@ static void markAudioStalled(VideoSession* s, const char* reason)
 // Prefer audio-master clock when available and not stalled.
 // On audio stall: re-anchor wall-clock to the last good audio position
 // (one-shot, no recovery, no backward correction).
-static double videoMasterClock(const VideoSession* s)
+static double videoMasterClock(VideoSession* s)
 {
     if (s->aCodec && s->aStream >= 0 && s->audioStreamStarted && !s->audioStallLogged) {
-        return audioMasterClock(s);
+        double audio = audioMasterClock(s);
+        // A video tail can outlast its audio. Only run it on wall time after
+        // the decoder AND the PCM queue have drained, never on an underrun.
+        if (s->audioEOF && reinterpret_cast<SoundSystem*>(soundSystem)->videoPCMSamplesConsumed() >= s->audioFramesQueued) {
+            if (s->audioTailWall < 0.0) s->audioTailWall = nowSeconds();
+            return audio + nowSeconds() - s->audioTailWall;
+        }
+        return audio;
     }
     return nowSeconds() - s->clockStart;
 }
@@ -537,7 +572,7 @@ static int logOnceDecodeError(VideoSession* s, const char* where, int ret)
 // Decode-one-frame helper
 // Pulls packets and decodes until one video frame is produced in
 // s->vFrame, or EOF. Returns: 1 = frame produced, -1 = EOF/error.
-// Audio packets are discarded until Task 12 adds handling.
+// Audio has its own demux cursor, so holding video cannot starve the mixer.
 //-----------------------------------------------------------------------------
 static int decodeNextVideoFrame(VideoSession* s)
 {
@@ -560,40 +595,61 @@ static int decodeNextVideoFrame(VideoSession* s)
 
         if (s->pkt->stream_index == s->vStream) {
             avcodec_send_packet(s->vCodec, s->pkt);
-        } else if (s->pkt->stream_index == s->aStream && s->aCodec && s->swr) {
-            int sendRet = avcodec_send_packet(s->aCodec, s->pkt);
-            if (sendRet < 0 && sendRet != AVERROR_INVALIDDATA) {
-                // Unrecoverable send failure — stall the audio clock.
-                markAudioStalled(s, "avcodec_send_packet error");
-            }
-            AVFrame* af = av_frame_alloc();
-            int recvRet;
-            while ((recvRet = avcodec_receive_frame(s->aCodec, af)) == 0) {
-                int outSamplesMax = static_cast<int>(av_rescale_rnd(
-                    swr_get_delay(s->swr, s->aCodec->sample_rate) + af->nb_samples,
-                    s->aOutRate, s->aCodec->sample_rate, AV_ROUND_UP));
-                int outBytes = av_samples_get_buffer_size(
-                    nullptr, s->aOutChannels, outSamplesMax, AV_SAMPLE_FMT_S16, 1);
-                uint8_t* outBuf = static_cast<uint8_t*>(av_malloc(outBytes));
-                uint8_t* outPtr = outBuf;
-                int outSamples = swr_convert(s->swr, &outPtr, outSamplesMax,
-                                             const_cast<const uint8_t**>(af->data), af->nb_samples);
-                if (outSamples < 0) {
-                    // swr_convert failure — stall the audio clock.
-                    av_free(outBuf);
-                    markAudioStalled(s, "swr_convert error");
-                    break;
-                }
-                if (outSamples > 0 && soundSystem) {
-                    reinterpret_cast<SoundSystem*>(soundSystem)->pushVideoPCMSamples(
-                        reinterpret_cast<const int16_t*>(outBuf), outSamples);
-                }
-                av_free(outBuf);
-            }
-            // EAGAIN is normal backpressure; EOF is end-of-stream — neither is a stall.
-            av_frame_free(&af);
         }
         av_packet_unref(s->pkt);
+    }
+}
+
+// Keep half a second queued, independently of video presentation or the sim tick.
+static void bufferAudio(VideoSession* s)
+{
+    if (!s->audioStreamStarted || s->audioEOF || s->audioStallLogged) return;
+    auto* snd = reinterpret_cast<SoundSystem*>(soundSystem);
+    while (s->audioFramesQueued - snd->videoPCMSamplesConsumed() < s->aOutRate / 2) {
+        int ret = avcodec_receive_frame(s->aCodec, s->aFrame);
+        bool draining = ret == AVERROR_EOF;
+        if (ret == 0 || draining) {
+            auto* af = s->aFrame;
+            if (ret == 0 && s->audioFramesQueued == 0 && af->best_effort_timestamp != AV_NOPTS_VALUE) {
+                s->audioOrigin = af->best_effort_timestamp * av_q2d(s->aFmt->streams[s->aStream]->time_base);
+                if (!s->audioSidecar) s->audioOrigin -= s->videoOrigin;
+            }
+            int count = draining ? 0 : af->nb_samples;
+            int capacity = static_cast<int>(av_rescale_rnd(
+                swr_get_delay(s->swr, s->aCodec->sample_rate) + count,
+                s->aOutRate, s->aCodec->sample_rate, AV_ROUND_UP));
+            if (capacity <= 0) { s->audioEOF = draining; if (draining) return; continue; }
+            uint8_t* pcm = static_cast<uint8_t*>(av_malloc(capacity * s->aOutChannels * sizeof(int16_t)));
+            int frames = swr_convert(s->swr, &pcm, capacity,
+                draining ? nullptr : const_cast<const uint8_t**>(af->extended_data), count);
+            if (frames < 0) { av_free(pcm); markAudioStalled(s, "swr_convert error"); return; }
+            if (s->audioSidecar) {
+                const float gain = (snd->getDigitalMasterVolume() / 256.0f) * (snd->getBettyVolume() / 256.0f);
+                auto* samples = std::bit_cast<int16_t*>(pcm);
+                for (int i = 0; i < frames * s->aOutChannels; ++i)
+                    samples[i] = static_cast<int16_t>(samples[i] * gain);
+            }
+            snd->pushVideoPCMSamples(reinterpret_cast<int16_t*>(pcm), frames);
+            s->audioFramesQueued += frames;
+            av_free(pcm);
+            if (draining && frames == 0) { s->audioEOF = true; return; }
+            continue;
+        }
+        if (ret != AVERROR(EAGAIN)) { markAudioStalled(s, "audio decode error"); return; }
+        do {
+            av_packet_unref(s->aPkt);
+            ret = av_read_frame(s->aFmt, s->aPkt);
+        } while (ret >= 0 && s->aPkt->stream_index != s->aStream);
+        if (ret == AVERROR_EOF && !s->audioFlushing) {
+            avcodec_send_packet(s->aCodec, nullptr);
+            s->audioFlushing = true;
+        } else if (ret < 0) {
+            markAudioStalled(s, "audio demux error"); return;
+        } else {
+            ret = avcodec_send_packet(s->aCodec, s->aPkt);
+            av_packet_unref(s->aPkt);
+            if (ret < 0) { markAudioStalled(s, "audio packet error"); return; }
+        }
     }
 }
 
@@ -625,6 +681,12 @@ static void uploadFrameToTexture(VideoSession* s)
 
     gos_UnLockTexture(s->texHandle);
     s->frameReady = true;
+    if (s_videoTrace && s->decodedPTS >= s->nextSyncTrace) {
+        double audioPTS = videoMasterClock(s);
+        VIDEO_TRACE("sync: video_pts={:.6f} audio_pts={:.6f} offset_ms={:.3f}",
+                    s->decodedPTS, audioPTS, (s->decodedPTS - audioPTS) * 1000.0);
+        s->nextSyncTrace = s->decodedPTS + 1.0;
+    }
 }
 
 //-----------------------------------------------------------------------------
@@ -635,27 +697,40 @@ bool video_update(VideoSession* s)
     if (!s || s->eof) return true;
     if (s->paused) return false;
 
-    const double masterNow = videoMasterClock(s);
+    bufferAudio(s);
+    double masterNow = videoMasterClock(s);
 
     // Future frames remain pending until their presentation time.
     if (s->pendingFrameValid) {
         if (s->pendingFramePTS > masterNow) {
             return false;
         }
-        uploadFrameToTexture(s);
-        s->presentedPTS = s->pendingFramePTS;
+        if (masterNow - s->pendingFramePTS <= 2.0 / s->fps) {
+            uploadFrameToTexture(s);
+            s->presentedPTS = s->pendingFramePTS;
+        }
         s->pendingFrameValid = false;
     }
 
     // Decode ahead for presentation; severely late frames need no upload.
     for (;;) {
         int r = decodeNextVideoFrame(s);
-        if (r < 0) { s->eof = true; return true; }
+        if (r < 0) {
+            // Keep the final picture until its duration and the audio tail finish.
+            if (masterNow < s->decodedPTS + 1.0 / s->fps ||
+                (s->audioStreamStarted && !s->audioStallLogged &&
+                 (!s->audioEOF || reinterpret_cast<SoundSystem*>(soundSystem)->videoPCMSamplesConsumed() < s->audioFramesQueued)))
+                return false;
+            s->eof = true;
+            return true;
+        }
         s->objectiveReceipt.decoded();
 
-        double pts = (s->vFrame->pts == AV_NOPTS_VALUE)
-                     ? (s->presentedPTS + 1.0 / s->fps)
-                     : s->vFrame->pts * s->timeBase;
+        double pts = (s->vFrame->best_effort_timestamp == AV_NOPTS_VALUE)
+                     ? (s->decodedPTS < 0.0 ? 0.0 : s->decodedPTS + 1.0 / s->fps)
+                     : s->vFrame->best_effort_timestamp * s->timeBase - s->videoOrigin;
+        s->decodedPTS = pts;
+        masterNow = videoMasterClock(s);
 
         if (pts > masterNow) {
             s->pendingFrameValid = true;
@@ -756,13 +831,10 @@ void video_pause(VideoSession* s, bool paused)
     s->paused = paused;
     if (paused) {
         s->pausedAt = nowSeconds();
-        // Pause the audio stream (Path B: end/begin is not symmetric; there
-        // is no "pause" on Mix_HookMusic — we leave the callback installed
-        // but stop pushing new frames, which drains the ring to silence
-        // after ~2 seconds. That's acceptable for pause/resume UX. If a
-        // cleaner pause is ever needed, we'd add a paused flag inside
-        // the SoundSystem adapter.)
+        if (s->audioStreamStarted) Mix_PauseMusic();
     } else {
+        if (s->audioStreamStarted) Mix_ResumeMusic();
+        if (s->audioTailWall >= 0.0) s->audioTailWall += nowSeconds() - s->pausedAt;
         // Resume: shift clock origin forward by pause duration so the
         // wall-clock fallback path doesn't think we lost time during pause.
         double delta = nowSeconds() - s->pausedAt;
@@ -792,7 +864,15 @@ void video_restart(VideoSession* s)
         av_seek_frame(s->fmt, -1, 0, AVSEEK_FLAG_BACKWARD);
     }
     if (s->vCodec) avcodec_flush_buffers(s->vCodec);
+    if (s->aFmt) av_seek_frame(s->aFmt, -1, 0, AVSEEK_FLAG_BACKWARD);
     if (s->aCodec) avcodec_flush_buffers(s->aCodec);
+    if (s->swr) { swr_close(s->swr); swr_init(s->swr); }
+    s->decodedPTS = -1.0;
+    s->nextSyncTrace = 0.0;
+    s->audioFramesQueued = 0;
+    s->audioOrigin = 0.0;
+    s->audioTailWall = -1.0;
+    s->audioEOF = s->audioFlushing = false;
     s->eof = false;
     s->paused = false;
     s->frameReady = false;
