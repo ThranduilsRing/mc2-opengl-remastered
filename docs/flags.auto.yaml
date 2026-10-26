@@ -3,9 +3,9 @@
 # Where each gate is read, what the smoke runner forwards and what tier1_env_vars.md says are not here: ask
 # tools/repo_intel (env_var, gate_status), which scan the sources.
 generator_version: "3.0.0"
-gate_count: 792
+gate_count: 791
 registry_entry_count: 152
-verified_count: 753
+verified_count: 752
 flags:
   - name: MC2_ABL_ARG_GUARD
     kind: Bool
@@ -6098,3 +6098,4 @@ feature_only_rows:   # registry entries with no environment variable
   - {feature_id: MC2_FEATURE_STATICPROP_MATERIAL_PBR_SLOTS, kind: Feature, order: -1, default_on: true}
   - {feature_id: MC2_FEATURE_VFX_AGE_SAMPLE, kind: Retired, order: 14, default_on: false}
   - {feature_id: MC2_FEATURE_SETUPTEXTURES_LEGACY_FORCE, kind: Retired, order: 21, default_on: false}
+  - {feature_id: MC2_FEATURE_VFX_ORACLE_RENDER, kind: Retired, order: 15, default_on: false}
