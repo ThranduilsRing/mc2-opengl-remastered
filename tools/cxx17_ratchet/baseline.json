@@ -56,7 +56,7 @@
    "LG07": 0,
    "LG08": 155,
    "LG09": 4,
-   "LG10": 11,
+   "LG10": 9,
    "LG11": 59,
    "LG12a": 60,
    "LG12b": 24,
@@ -655,7 +655,6 @@
   "GameOS/gameos/gos_vegetation.cpp": {
    "LG06": 1,
    "LG08": 1,
-   "LG10": 1,
    "LG17": 2
   },
   "GameOS/gameos/gos_vegetation.h": {
@@ -843,7 +842,7 @@
   },
   "GameOS/gameos/vk_texture_residency.cpp": {
    "LG08": 11,
-   "LG10": 2,
+   "LG10": 1,
    "LG13": 2
   },
   "GameOS/gameos/vma_impl.cpp": {
@@ -3433,7 +3432,7 @@
    "LG20": 3
   }
  },
- "head": "f68060c2a",
+ "head": "2b28387b9",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",

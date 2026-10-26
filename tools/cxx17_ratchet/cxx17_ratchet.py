@@ -288,7 +288,7 @@ def scan_text(text: str, path: str = "") -> dict:
                     continue
                 hits["LG09"].append(ln)
         # LG10
-        if len(R_MINMAX.findall(b)) >= 2 and not pp:
+        if not pp and any(len(R_MINMAX.findall(statement)) >= 2 for statement in b.split(";")):
             hits["LG10"].append(ln)
         m = R_CLAMP_IF.search(b)
         if m:

@@ -73,6 +73,8 @@ class Idioms(unittest.TestCase):
                            "if (a) b();\nint c = foo(int) + 1;\n", "LG09"), 0)
 
     def test_lg10(self):
+        self.assertEqual(n("left = std::min(left, x); top = std::min(top, y);\n", "LG10"), 0)
+        self.assertEqual(n("right = std::max(right, x); bottom = std::max(bottom, y);\n", "LG10"), 0)
         self.assertEqual(n("x = max(lo, min(hi, x));\n", "LG10"), 1)
         self.assertEqual(n("if (v < lo) v = lo;\nif (v > hi) v = hi;\n", "LG10"), 1)
         self.assertEqual(n("x = std::clamp(x, lo, hi);\ny = max(a, b);\n", "LG10"), 0)
