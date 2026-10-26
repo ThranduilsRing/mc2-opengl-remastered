@@ -93,13 +93,12 @@ bool reloadBounds = false;
 MidLevelRenderer::MLRClipper * theClipper = nullptr;
 
 // class BldgAppearance
-bool mc2WorldMarkerAppearance(const char* name)
+bool mc2WorldMarkerAppearance(std::string_view name)
 {
-    if (!name) return false;
-    if (S_strnicmp(name, "nav", 3) == 0 && name[3] >= '1' && name[3] <= '6' && name[4] == '\0') return true;
-    for (const char* marker : {"walkwaypoint", "runwaypoint", "jumpwaypoint", "markermarker",
+    if (name.size() == 4 && S_strnicmp(name.data(), "nav", 3) == 0 && name[3] >= '1' && name[3] <= '6') return true;
+    for (std::string_view marker : {"walkwaypoint", "runwaypoint", "jumpwaypoint", "markermarker",
                               "meetingmarker", "extractionmarker", "sensormarker", "airstrikemarker", "bombstrikemarker"})
-        if (S_stricmp(name, marker) == 0) return true;
+        if (name.size() == marker.size() && S_strnicmp(name.data(), marker.data(), name.size()) == 0) return true;
     return false;
 }
 
