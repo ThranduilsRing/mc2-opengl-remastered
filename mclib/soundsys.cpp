@@ -45,6 +45,8 @@ namespace {
 // The seven palette announcements have session lifetime. Playback borrows a
 // resource; the sound system releases the cache when the device shuts down.
 std::array<HGOSAUDIO, MAX_SUPPORT_SAMPLES> supportResources{};
+// Borrowed only while SoundSystem owns the archive; warming runs on its thread.
+PacketFile* supportPreloadFile = nullptr;
 void releaseSupportPlayback(HGOSAUDIO& handle)
 {
     if (handle && std::find(supportResources.begin(), supportResources.end(), handle) != supportResources.end())
@@ -108,6 +110,18 @@ constexpr unsigned long MAX_SOUND_BITES = 4096;
 constexpr long MAX_DIGITAL_MUSIC = 1024;
 constexpr long MAX_SOUND_PACKET_BYTES = 64l * 1024l * 1024l;
 
+void preloadSupportSample(unsigned id)
+{
+    if (!supportPreloadFile || id >= supportResources.size() || supportResources[id] ||
+        id >= supportPreloadFile->getNumPackets()) return;
+    if (supportPreloadFile->seekPacket(id) != NO_ERR) return;
+    const long size = supportPreloadFile->getPacketSize();
+    if (size <= 0 || size > MAX_SOUND_PACKET_BYTES) return;
+    std::vector<uint8_t> wave(size);
+    if (supportPreloadFile->readPacket(id, wave.data()))
+        SoundSystem::createWaveResource(&supportResources[id], wave);
+}
+
 // The channel a music crossfade slot plays on: slot 0 is STREAM1CHANNEL, slot 1 is STREAM2CHANNEL.
 static int musicSlotChannel (int slot)
 {
@@ -119,6 +133,7 @@ static int musicSlotChannel (int slot)
 //---------------------------------------------------------------------------
 void SoundSystem::destroy (void)
 {
+    supportPreloadFile = nullptr;
     releaseSupportPlayback(supportHandle);
     for (auto& resource : supportResources) gosAudio_DestroyResource(&resource);
     for (auto& sound : sounds) gosAudio_DestroyResource(&sound.resourceHandle);
@@ -189,14 +204,7 @@ long SoundSystem::init (const char *soundFileName)
 		gosASSERT(result == NO_ERR);
 
 		numSupportSamples = supportDataFile->getNumPackets();
-		for (unsigned id = 0; id < supportResources.size() && id < numSupportSamples; ++id) {
-			if (supportDataFile->seekPacket(id) != NO_ERR) continue;
-			const long size = supportDataFile->getPacketSize();
-			if (size <= 0 || size > MAX_SOUND_PACKET_BYTES) continue;
-			std::vector<uint8_t> wave(size);
-			if (supportDataFile->readPacket(id, wave.data()))
-				createWaveResource(&supportResources[id], wave);
-		}
+		supportPreloadFile = supportDataFile.get();
  		//-----------------------------------------------------------------------
 		// Load all of the sound Bite data.  Do not load actual packet unless
 		// preload field is TRUE.

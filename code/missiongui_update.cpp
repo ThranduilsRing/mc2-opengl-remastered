@@ -114,8 +114,13 @@ void updateSaveFixtures()
 
 }
 
+extern void updateMissionSupportPreloads();
+
 void MissionInterfaceManager::update (void)
 {
+	if (mission && mission->isActive())
+		updateMissionSupportPreloads();
+
 	// IMGUI-PAUSE-INPUT-FIX-1: tell the input layer when the pause menu is up so its
 	// clicks win over any open ImGui window (Graphics Options etc.). Set every frame,
 	// before any early return below, so it clears the moment the menu closes.

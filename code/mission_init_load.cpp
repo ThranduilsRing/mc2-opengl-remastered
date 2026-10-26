@@ -7,8 +7,6 @@
 #include "render_resource_owners.h"
 #include "mc2fmt.h"
 
-extern void preloadMissionSupportVehicles();
-
 // Read the warrior count and set up the brain-load counters.
 void Mission::initWarriorsHeader(MissionInitFrame& f) {
 	auto& missionName = f.missionName; auto& result = f.result; auto& numWarriors = f.numWarriors;
@@ -925,7 +923,6 @@ void Mission::initInterface(MissionInitFrame& f) {
 	
 	missionInterface->init(&missionLoader);
 	missionInterface->initMechs();
-	preloadMissionSupportVehicles();
 	missionLoader.close();
 
 	// MISSION-START-HOVER-TARGET-LIFETIME-1: this MissionInterfaceManager is freshly
