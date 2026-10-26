@@ -149,6 +149,24 @@ def test_tooling_only_regex_covers_build_inputs():
         assert not lm.COMPILED_INPUTS.search(p), p
 
 
+@pytest.mark.parametrize("guards,flags,returncode,count", [
+    ([False, True], [], 0, 2), ([False, False], [], 0, 1),
+    ([], ["-n"], 0, 1), ([False], [], 7, 1),
+])
+def test_build_compacts_new_growth_without_compiling_twice(monkeypatch, guards, flags, returncode, count):
+    monkeypatch.delenv("MC2_NINJA_TREE", raising=False)
+    monkeypatch.setattr(sys, "argv", [ninja_build.__file__, "mc2", "-j1", *flags])
+    pending = iter(guards)
+    monkeypatch.setattr(ninja_build, "drop_oversize_pdb", lambda *a: next(pending))
+    monkeypatch.setattr(ninja_build, "tree_uses_cache", lambda *a: False)
+    commands = []
+    monkeypatch.setattr(ninja_build, "under_vcvars", lambda command, env: commands.append(command) or returncode)
+    with pytest.raises(SystemExit) as stopped:
+        ninja_build.main()
+    assert stopped.value.code == returncode
+    assert len(commands) == count and len(set(commands)) == 1
+
+
 def test_trailer_defaults_from_commit_trailer_env():
     import subprocess
     code = "import sys; sys.path.insert(0, %r); from tools import lane_merge as lm; print(repr(lm.TRAILER))" % ROOT

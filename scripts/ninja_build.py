@@ -36,10 +36,10 @@ def drop_oversize_pdb(root, tree, limit=PDB_MAX_BYTES):
     try:
         size = os.path.getsize(pdb)
         if size > limit:
+            os.remove(pdb)
             exe = os.path.join(root, tree, "mc2.exe")
             if os.path.isfile(exe):
                 os.remove(exe)  # PDB is a linker side effect; force Ninja to regenerate both.
-            os.remove(pdb)
             print(f"[ninja_build] deleted {tree}/mc2.pdb ({size / 1024 ** 3:.1f} GB > {limit / 1024 ** 3:.0f} GB; growth guard)", flush=True)
             return True
     except FileNotFoundError:
@@ -99,11 +99,16 @@ def main():
     # build); it is configured on first use.
     if tree != DEFAULT_TREE and not os.path.exists(f"{root}/{tree}/build.ninja"):
         configure(root, tree)
-    drop_oversize_pdb(root, tree)
+    dry_run = "-n" in argv
+    if not dry_run:
+        drop_oversize_pdb(root, tree)
     env = compile_cache_env(root) if tree_uses_cache(root, tree) else None  # sccache tree (the default; configure_ninja.py --no-compile-cache opts out)
     if env:
         ensure_cache_server(root, env)
-    rc = under_vcvars(subprocess.list2cmdline([NINJA, "-C", f"{root}/{tree}"] + argv), env)
+    command = subprocess.list2cmdline([NINJA, "-C", f"{root}/{tree}"] + argv)
+    rc = under_vcvars(command, env)
+    if rc == 0 and not dry_run and drop_oversize_pdb(root, tree):
+        rc = under_vcvars(command, env)  # Fresh full symbols from the same objects; no second compile.
     if started is not None:
         print(f"[warm] done rc={rc} elapsed={time.monotonic() - started:.0f}s", flush=True)
     sys.exit(rc)
