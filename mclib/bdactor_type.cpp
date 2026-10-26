@@ -826,9 +826,9 @@ void TreeAppearanceType::registerRenderShapes()
     const bool overridden = treeRenderShapeLodCount > 0;
     const long count = overridden ? treeRenderShapeLodCount : MAX_LODS;
     for (long lod = 0; lod < count; ++lod)
-        GpuStaticPropBatcher::instance().registerMultiShape(getTreeRenderShape(lod), overridden, overridden ? propMaterialSource : nullptr);
+        GpuStaticPropBatcher::instance().registerMultiShape(getTreeRenderShape(lod), overridden, overridden ? propMaterialSource : nullptr, true);
     GpuStaticPropBatcher::instance().registerMultiShape(getTreeDamageRenderShape(), treeDmgRenderShape != nullptr,
-        treeDmgRenderShape ? propMaterialSource : nullptr);
+        treeDmgRenderShape ? propMaterialSource : nullptr, true);
 }
 
 void TreeAppearanceType::destroy (void)

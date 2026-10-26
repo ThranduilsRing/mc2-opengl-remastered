@@ -90,7 +90,8 @@ void main()
         horizonFactor = 1.0 - smoothstep(u_horizonFadeStartSin, u_horizonFadeEndSin, elevSin);
     }
 
-    float fogFactor = clamp(max(innerRamp, outsideFill) * u_fogMax, 0.0, 1.0)
+    float rangeHaze = smoothstep(6000.0, 12000.0, length(worldPos - wNear));
+    float fogFactor = clamp(max(max(innerRamp, rangeHaze) * u_fogMax, outsideFill), 0.0, 1.0)
                       * horizonFactor;
     outFog = vec4(u_fogColor, fogFactor);
 }

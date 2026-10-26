@@ -13,8 +13,8 @@ layout(set = 0, binding = 0) uniform sampler2D u_hdri;
 // 116 bytes (<= 128 guaranteed push-constant budget). LOCKSTEP with
 // vulkan_sky_island.cpp SkyPC.
 layout(push_constant) uniform SkyPC {
-    mat4  invProj;     // ROW-major bytes (GL uploads these with transpose=GL_TRUE)
-    vec4  rotC0;       // invViewRot ROW 0 (xyz) -- see transpose below
+    mat4  invProj;     // column-major inverse projection from the native producer
+    vec4  rotC0;       // inverse view rotation column 0 (xyz)
     vec4  rotC1;
     vec4  rotC2;
     float skyYaw;
@@ -44,5 +44,8 @@ void main()
         atan(worldDir.z, worldDir.x) / (2.0 * PI) + 0.5,
         1.0 - (asin(clamp(worldDir.y, -1.0, 1.0)) / PI + 0.5)
     );
+    // Pure-sky panoramas replace the photographed lower hemisphere with fill.
+    // At ground-level cameras that fill/stitching must never become the sky.
+    uv.y = min(uv.y, 0.47);
     FragColor = vec4(texture(u_hdri, uv).rgb, 1.0);
 }

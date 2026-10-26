@@ -43,7 +43,9 @@ float moverVisibility(vec3 worldPos, vec3 N) {
     // fade. Raw depth shares the existing image view and descriptor slot.
     float tanT = moverFrame.sun.w;
     float worldToUV = moverFrame.params.w / moverFrame.params.x;
-    float search = max(480.0 * tanT, 1.5 * moverFrame.params.x);
+    // Movers need a dense local blocker search. Spacing the taps for a 480-wu
+    // building missed short mech penumbras and returned lit before PCF ran.
+    float search = max(64.0 * tanT, 1.5 * moverFrame.params.x);
     float sumD = 0.0, found = 0.0;
     for (int y = -1; y <= 1; ++y) {
         for (int x = -1; x <= 1; ++x) {
@@ -65,7 +67,7 @@ float moverVisibility(vec3 worldPos, vec3 N) {
     if (found == 0.0) return 1.0;
     float meanD = sumD / found;
     float lift = 1.0 + 2.0 * (1.0 - clamp(meanD / 200.0, 0.0, 1.0));
-    float radius = max(meanD * tanT * lift, 1.5 * moverFrame.params.x);
+    float radius = max(meanD * tanT * lift, max(1.5 * moverFrame.params.x, 1.0));
     int count = min(moverFrame.flags.z == 0 ? 12 : 32, int(moverFrame.light.y));
     // World-anchored rotation breaks up repeated edge bands without a temporal
     // sequence or a camera-dependent pattern.
