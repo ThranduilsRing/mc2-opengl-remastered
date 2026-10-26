@@ -1229,6 +1229,12 @@ void gosFX::Tube::Draw(DrawInfo *info)
 		}
 		Check_Object(spec);
 		dInfo.state.Combine(info->m_state, spec->m_state);
+		// Populate the missing untextured/opaque oracle arm without changing assets
+		// or execution. Fixture 9 already supplies the diagnostic weapon volley.
+		if (mc2::gate::is<"MC2_FX_FORCE_SPAWN", "9">()) {
+			dInfo.state.SetTextureHandle(0);
+			dInfo.state.SetAlphaMode(MidLevelRenderer::MLRState::OneZeroMode);
+		}
 		dInfo.clippingFlags = info->m_clippingFlags;
 		glm::mat4 local_to_world;
 		local_to_world = m_localToParent * *info->m_parentToWorld;
