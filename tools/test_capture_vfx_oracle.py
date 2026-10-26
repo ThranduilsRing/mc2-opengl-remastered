@@ -29,7 +29,7 @@ def test_capture_command_pins_lane_freeze_seed_and_two_repeats(arm):
     assert ("MC2_GPU_PARTICLES=1" in cmd) == (arm == "gpu")
     assert ("MC2_GPU_PARTICLES=0" in cmd) == (arm == "mlr")
     assert all(f"{name}=0" in cmd for name in
-               ("MC2_VFX_ORACLE_RENDER", "MC2_VFX_ORACLE_TUBE", "MC2_VFX_ORACLE_SHAPE"))
+               ("MC2_VFX_ORACLE_TUBE", "MC2_VFX_ORACLE_SHAPE"))
     assert "--no-lease" not in cmd and "--show-window" not in cmd
     assert "--no-kill" in cmd
 

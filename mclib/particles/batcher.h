@@ -71,11 +71,6 @@ class Batcher {
     // banners and error/overflow one-shots.
     static bool is_log_enabled();
 
-    // VFX-ORIGINAL-RECORD-ABI-1: CPU-oracle render gate (MC2_VFX_ORACLE_RENDER,
-    // default OFF). When ON, migrated classes harvest the CPU sim's live
-    // per-particle arrays into GPU records instead of the placeholder Spawn().
-    static bool is_oracle_render_enabled();
-
     // MC2_VFX_ORACLE_TUBE slice 1: gosFX Tube swept-quad ribbon oracle gate
     // (default OFF). When ON, supported Tube kinds (MissileSmoke / alpha
     // ribbon, vertex_count==2) submit their already-built swept-quad mesh via

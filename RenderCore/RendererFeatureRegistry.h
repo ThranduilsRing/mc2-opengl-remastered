@@ -111,10 +111,8 @@ enum class RendererFeature : int {
     SnapshotMechExtract      = 13,  // MC2_SNAPSHOT_MECH_EXTRACT
     // Retired snapshot-spawn gate; preserve the numeric identifier.
     VfxAgeSample             = 14,  // retired
-    // VFX-ORIGINAL-RECORD-ABI-1 (Phase 1): CPU-oracle render — GPU renders the
-    // CPU sim's live per-particle records (CardCloud first; PointCloud births 0
-    // in tier1). Default-OFF parity bridge; placeholder byte-identical when off.
-    VfxOracleRender          = 15,  // MC2_VFX_ORACLE_RENDER
+    // Retired harvest selector; preserve the numeric identifier.
+    VfxOracleRender          = 15,  // retired
     // TRACKV-POST-GROUNDING-MVP: experimental visual post-process + grounding
     // gates. ALL default-OFF (enforced by the Track-V guardrail unit test).
     // Promotion to default-ON is a deliberate edit here AND in that test.
@@ -251,8 +249,8 @@ static constexpr EnvVarDesc kFeatureTable[] = {
     },
     // [15] VfxOracleRender
     {
-        "MC2_FEATURE_VFX_ORACLE_RENDER", "MC2_VFX_ORACLE_RENDER", EnvVarKind::Feature, false,
-        "VFX-ORIGINAL-RECORD-ABI-1 (Phase 1 of the originals-restoration arc; see docs/vfx-originals-restoration-design.md)."
+        "MC2_FEATURE_VFX_ORACLE_RENDER", nullptr, EnvVarKind::Retired, false,
+        "Retired: live-state harvesting is unconditional within each migrated draw route."
     },
     // [16] ViewmodeFramework
     {

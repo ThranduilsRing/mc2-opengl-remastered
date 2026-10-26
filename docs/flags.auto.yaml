@@ -3,9 +3,9 @@
 # Where each gate is read, what the smoke runner forwards and what tier1_env_vars.md says are not here: ask
 # tools/repo_intel (env_var, gate_status), which scan the sources.
 generator_version: "3.0.0"
-gate_count: 800
+gate_count: 799
 registry_entry_count: 159
-verified_count: 762
+verified_count: 761
 flags:
   - name: MC2_ABL_ARG_GUARD
     kind: Bool
@@ -5392,15 +5392,6 @@ flags:
     smoke_passthrough: true
     verified: true
     registry: {feature_id: MC2_DIAG_VFX_DEBUG_MODE, kind: Trace, order: -1, default_on: false}
-  - name: MC2_VFX_ORACLE_RENDER
-    kind: Bool
-    default: false
-    rule: Lead1
-    owner: code
-    doc: "VFX-ORIGINAL-RECORD-ABI-1 (Phase 1 of the originals-restoration arc; see docs/vfx-originals-restoration-design.md)."
-    smoke_passthrough: true
-    verified: true
-    registry: {feature_id: MC2_FEATURE_VFX_ORACLE_RENDER, kind: Feature, order: 15, default_on: false}
   - name: MC2_VFX_ORACLE_SHAPE
     kind: Bool
     default: true
@@ -6178,3 +6169,4 @@ feature_only_rows:   # registry entries with no environment variable
   - {feature_id: MC2_FEATURE_STATICPROP_BC7, kind: Retired, order: 18, default_on: false}
   - {feature_id: MC2_FEATURE_STATICPROP_MATERIAL_PBR_SLOTS, kind: Feature, order: -1, default_on: true}
   - {feature_id: MC2_FEATURE_VFX_AGE_SAMPLE, kind: Retired, order: 14, default_on: false}
+  - {feature_id: MC2_FEATURE_VFX_ORACLE_RENDER, kind: Retired, order: 15, default_on: false}

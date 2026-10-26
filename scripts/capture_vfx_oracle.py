@@ -55,7 +55,7 @@ def gate_vector(arm: str, experiment: str) -> dict[str, str]:
         raise ValueError("unknown arm or experiment")
     enabled = "1" if arm == "gpu" else "0"
     harvest = enabled if experiment == "harvested" else "0"
-    return {"MC2_GPU_PARTICLES": enabled, "MC2_VFX_ORACLE_RENDER": harvest,
+    return {"MC2_GPU_PARTICLES": enabled,
             "MC2_VFX_ORACLE_TUBE": harvest, "MC2_VFX_ORACLE_SHAPE": harvest}
 
 

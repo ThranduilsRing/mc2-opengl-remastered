@@ -17,13 +17,11 @@ TEST_CASE("vfx_frozen/fresh processes cover MLR and the GPU harvest gate vectors
     ContractEnvironment tube{"MC2_VFX_ORACLE_TUBE", "0"};
     ContractEnvironment shape{"MC2_VFX_ORACLE_SHAPE", "0"};
     ContractEnvironment sanitizer{"ASAN_OPTIONS", "detect_leaks=0:halt_on_error=1:print_stacktrace=1"};
-    struct Arm { const char* gpu; const char* oracle; const char* log; };
-    for (const auto arm : {Arm{"0", "0", "0"}, Arm{"1", "0", "0"},
-                           Arm{"1", "1", "1"}}) {
-        INFO("gpu=" << std::string(arm.gpu) << " oracle=" << std::string(arm.oracle)
+    struct Arm { const char* gpu; const char* log; };
+    for (const auto arm : {Arm{"0", "0"}, Arm{"1", "1"}}) {
+        INFO("gpu=" << std::string(arm.gpu)
             << " log=" << std::string(arm.log));
         ContractEnvironment gpu{"MC2_GPU_PARTICLES", arm.gpu};
-        ContractEnvironment oracle{"MC2_VFX_ORACLE_RENDER", arm.oracle};
         ContractEnvironment log{"MC2_GPU_PARTICLES_LOG", arm.log};
         CHECK(runContractChild(executable, {"--no-breaks", "--test-case=vfx_frozen/*"}) == 0);
     }

@@ -99,28 +99,6 @@ bool Batcher::is_log_enabled() {
     return g_log_value;
 }
 
-// VFX-ORIGINAL-RECORD-ABI-1 (Phase 1): CPU-oracle render gate.
-// Default OFF (reverted to CPU/MLR; the VFX-WEAPON-FX-RESTORE-OPUS-1 default-ON was reverted).
-// When ON, a migrated class's Draw harvests the CPU sim's live per-particle
-// arrays and renders them via the GPU billboard path.
-// Opt-in: MC2_VFX_ORACLE_RENDER=1  (only '1' enables; unset or 0 = OFF)
-// Read once, process-lifetime.
-bool Batcher::is_oracle_render_enabled() {
-    static bool s_init = false;
-    static bool s_val  = false;
-    if (!s_init) {
-        // REVERTED TO CPU/MLR DEFAULT (user request). Absent = OFF (legacy MLR
-        // cards); opt into GPU with "1".
-        s_val = mc2::gate::get<"MC2_VFX_ORACLE_RENDER">();
-        s_init = true;
-        MC2_DIAGFE(stderr, "[VFX_ROUTE v1] oracle_render=%s reason=%s\n",
-            s_val ? "on" : "off",
-            s_val ? "opt_in" : "default_off");
-        std::fflush(stderr);
-    }
-    return s_val;
-}
-
 // MC2_VFX_ORACLE_TUBE slice 1: Tube swept-quad ribbon oracle gate.
 // DEFAULT-ON 2026-06-15. The 2026-06-11 stopgap ("oracle submits but pixels
 // never reach the composited frame") was STALE — the deferred-flush +

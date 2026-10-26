@@ -40,5 +40,12 @@
   "order": 14,
   "defaultOn": false,
   "doc": "Retired: unused snapshot spawners removed; live gosFX state supplies particle ages."
+ },
+ {
+  "featureId": "MC2_FEATURE_VFX_ORACLE_RENDER",
+  "kind": "Retired",
+  "order": 15,
+  "defaultOn": false,
+  "doc": "Retired: live-state harvesting is unconditional within each migrated draw route."
  }
 ]

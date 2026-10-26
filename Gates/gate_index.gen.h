@@ -10,7 +10,7 @@
 
 namespace mc2::gate::detail {
 
-inline constexpr std::size_t kGateCount = 800;
+inline constexpr std::size_t kGateCount = 799;
 
 inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_ABL_ARG_GUARD", Kind::Bool, Rule::Lead1, {}},
@@ -714,7 +714,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_VERTEX_PROJECT_FAST", Kind::Bool, Rule::Presence, {}},
     {"MC2_VERTEX_PROJECT_PARITY", Kind::Bool, Rule::Presence, {}},
     {"MC2_VFX_DEBUG_MODE", Kind::Int, Rule::Prefix, {}},
-    {"MC2_VFX_ORACLE_RENDER", Kind::Bool, Rule::Lead1, {}},
     {"MC2_VFX_ORACLE_SHAPE", Kind::Bool, Rule::DefOnLead0, {}},
     {"MC2_VFX_ORACLE_SHAPE_LOG", Kind::Bool, Rule::Lead1, {}},
     {"MC2_VFX_ORACLE_TUBE", Kind::Bool, Rule::DefOnLead0, {}},
