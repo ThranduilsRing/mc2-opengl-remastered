@@ -39,6 +39,32 @@ def test_run_fake_timeout(tmp_path):
     assert "timeout" in result.verdict.buckets
 
 
+def test_host_lease_wait_does_not_consume_child_timeout(monkeypatch):
+    from types import SimpleNamespace
+    from scripts.smoke_lib import runner
+
+    clock = runner.time.monotonic
+    spawn = runner.nofocus.spawn
+    offset = 0.0
+
+    def queued_spawn(*args, **kwargs):
+        nonlocal offset
+        offset += 300.0
+        return spawn(*args, **kwargs)
+
+    monkeypatch.setattr(runner, "time", SimpleNamespace(monotonic=lambda: clock() + offset))
+    monkeypatch.setattr(runner.nofocus, "spawn", queued_spawn)
+    result = run_one(RunConfig(
+        exe=[sys.executable, str(FIX / "fake_mc2_pass.py")],
+        profile="stock", stem="mc2_05", duration=1,
+        heartbeat_timeout_load_s=180, heartbeat_timeout_play_s=180,
+        grace_s=180, env_extra={},
+    ))
+    assert result.verdict.passed
+    assert not result.killed_by_timeout
+    assert result.walltime_s < 181
+
+
 # ---------------------------------------------------------------------------
 # SMOKE-SYNTHETIC-FIXTURES-ALL-BUCKETS — end-to-end bucket coverage.
 #

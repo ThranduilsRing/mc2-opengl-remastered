@@ -72,10 +72,15 @@ float moverVisibility(vec3 worldPos, vec3 N) {
     vec2 cell = floor(worldPos.xy / max(0.5 * moverFrame.params.x, 1.0));
     float rotation = fract(sin(dot(cell, vec2(12.9898, 78.233))) * 43758.5453) * 6.2831853;
     float visibility = 0.0;
+    // Rotate the same Vogel direction by its constant step; evaluate the
+    // pixel's sine/cosine once instead of once for every filter sample.
+    vec2 direction = vec2(cos(rotation), sin(rotation));
+    const vec2 turn = vec2(cos(2.39996323), sin(2.39996323));
     for (int i = 0; i < count; ++i) {
         float r = sqrt((float(i) + 0.5) / float(count)) * radius;
-        float angle = float(i) * 2.39996323 + rotation;
-        visibility += moverCompare(pc.xy + r * vec2(cos(angle), sin(angle)) * worldToUV, pc.z - bias);
+        visibility += moverCompare(pc.xy + r * direction * worldToUV, pc.z - bias);
+        direction = vec2(direction.x * turn.x - direction.y * turn.y,
+                         direction.x * turn.y + direction.y * turn.x);
     }
     float soft = 1.0 - smoothstep(0.21, 0.57, moverFrame.sun.z);
     float fadeMax = 0.65 * (0.25 + 0.75 * soft);
