@@ -53,23 +53,6 @@ bool GpuStaticPropBatcher::isMultiShapeEligibleForGpuObjects(
     return true;
 }
 
-// eligibleForGpuObjects — free function (declared in gos_static_prop_batcher.h)
-// Per-leaf analog of isMultiShapeEligibleForGpuObjects. Called from the
-// addRenderShape gate in tgl.cpp:2522 inside the bShadersDrawPathEnabled block.
-// Returns true iff g_useGpuObjects is enabled AND `shape->myType` is a
-// registered TG_TypeShape in s_typeIndex.
-// Under default g_useGpuObjects=false this returns false unconditionally —
-// the addRenderShape gate stays byte-for-byte equivalent in stock builds.
-// MUST NOT mutate any batcher state.
-bool eligibleForGpuObjects(TG_Shape* shape) {
-    if (!g_useGpuObjects) return false;
-    if (!shape || !shape->matchesTypeMaterials()) return false;
-    if (!shape->myType) return false;
-    if (shape->myType->GetNodeType() != SHAPE_NODE) return false;
-    const TG_TypeShape* ts = static_cast<const TG_TypeShape*>(shape->myType);
-    return s_typeIndex.find(ts->stableId()) != s_typeIndex.end();
-}
-
 void gos_GpuPropsCycleDebugMode() {
     auto& b = GpuStaticPropBatcher::instance();
     // 0..7 are the legacy bisection modes; 8 is the LODBUG probe (solid
