@@ -54,7 +54,10 @@ void ModWorkbenchPanel::draw(ModWorkbench& wb, const ImVec2& avail) {
     ImGui::Text("Override: %s", wb.overridePath().c_str());
 
     ImGui::TextUnformatted("Stock prop (click to bind):");
+    // The browser fills its parent; bound it so the loaded GLB stays visible.
+    ImGui::BeginChild("stockPicker", ImVec2(0, 140), true);
     stockBrowser_.draw();   // filter box + scrollable .tgl list; tooltip shows full path
+    ImGui::EndChild();
     if (stockBrowser_.hasSelection()) {
         std::string pick = stockBrowser_.takeSelection();
         wb.bindStock(pick);
