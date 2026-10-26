@@ -4855,6 +4855,20 @@
    "count": 2
   },
   {
+   "tag": "LOGISTICS_CURSOR_PROBE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "screen",
+    "button",
+    "pos",
+    "display",
+    "drawable",
+    "software"
+   ],
+   "count": 1
+  },
+  {
    "tag": "M2D_PZ_PARITY",
    "ver": 1,
    "stream": "stderr",
@@ -11112,6 +11126,20 @@
     "mapSide",
     "halfSide",
     "wupv"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "WRECK_PICK_PROBE",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "id",
+    "rect",
+    "hits",
+    "stamp",
+    "turn",
+    "visible"
    ],
    "count": 1
   },
