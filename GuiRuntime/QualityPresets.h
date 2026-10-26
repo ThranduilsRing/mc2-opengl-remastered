@@ -1,6 +1,7 @@
 // Renderer controls grouped for the player UI's explicit quality buttons.
 #pragma once
 #include "../Gates/gate_name.h"
+#include "../Gates/render_options.h"
 
 inline constexpr const char* k_presetKeys[] = {
     mc2::gate::name<"MC2_VEGETATION_MAX">(), mc2::gate::name<"MC2_SHADOW_ENABLE">(),
@@ -11,6 +12,11 @@ struct GfxPreset {
     const char* label;
     int shadQual, aa, baseQuality;
     const char* values[6];
+    void apply(mc2::options::RenderOptions& draft) const {
+        draft.baseQuality = baseQuality;
+        draft.shadowQuality = shadQual;
+        draft.spatialAA = aa;
+    }
 };
 inline constexpr GfxPreset k_gfxPresets[] = {
     {"Low",    0, 0, 1, {"5000000", "0", "0", "0", "4",  "0.5"}},

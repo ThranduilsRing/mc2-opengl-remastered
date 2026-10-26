@@ -334,7 +334,8 @@ def acquire(label: str, *, wait: bool = True, timeout_s: Optional[float] = None,
                         if (not slot_path(i).exists() or (_read(slot_path(i)) or {}).get("legacy_guard"))
                         and not any(affinity_mask(i) & mask for mask in occupied)]
                 legacy = any("slot" not in rec for _, rec in live) or (lease_path().exists() and _read(lease_path()) is None)
-                eligible = queue[0] == ticket and not foreign and not legacy and (not live if exclusive else bool(free))
+                eligible = queue[0] == ticket and not foreign and not legacy and (not live if exclusive else
+                            bool(free) and not any(r.get("exclusive") for _, r in live))
                 if eligible:
                     allocated = []
                     for i in (range(slot_count()) if exclusive else free[:1]):
@@ -348,7 +349,7 @@ def acquire(label: str, *, wait: bool = True, timeout_s: Optional[float] = None,
                                "cwd": os.getcwd(), "argv": sys.argv[:3], "since": time.time()} if guard else _read(slot_path(i))
                         _write_record(slot_path(i), dict(rec, slot=i, exclusive=exclusive,
                                                        cores_per_slot=cores_per_slot(),
-                                                       affinity_mask=affinity_mask(0) if exclusive else affinity_mask(i)))
+                                                       affinity_mask=0xFFF0 if exclusive else affinity_mask(i)))
                         allocated.append((slot_path(i), _read(slot_path(i))))
                     if eligible:
                         queue.pop(0)
