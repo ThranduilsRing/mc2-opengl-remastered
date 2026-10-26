@@ -1050,16 +1050,10 @@
     "mclib/mlr/mlrlightmap.cpp": {
      "new": 1
     },
-    "mclib/mlr/mlrlinecloud.cpp": {
-     "new": 1
-    },
     "mclib/mlr/mlrlookuplight.cpp": {
      "new": 1
     },
     "mclib/mlr/mlrngoncloud.cpp": {
-     "new": 1
-    },
-    "mclib/mlr/mlrpointcloud.cpp": {
      "new": 1
     },
     "mclib/mlr/mlrpointlight.cpp": {
@@ -1102,7 +1096,7 @@
      "new": 1
     }
    },
-   "new": 60,
+   "new": 58,
    "new_array": 0,
    "owners": []
   },
@@ -5514,10 +5508,8 @@
   "mclib/mlr/mlrinfinitelightwithfalloff.cpp": 1,
   "mclib/mlr/mlrlight.cpp": 1,
   "mclib/mlr/mlrlightmap.cpp": 2,
-  "mclib/mlr/mlrlinecloud.cpp": 1,
   "mclib/mlr/mlrlookuplight.cpp": 5,
   "mclib/mlr/mlrngoncloud.cpp": 1,
-  "mclib/mlr/mlrpointcloud.cpp": 1,
   "mclib/mlr/mlrpointlight.cpp": 1,
   "mclib/mlr/mlrprimitivebase.cpp": 1,
   "mclib/mlr/mlrprimitivebase.hpp": 1,

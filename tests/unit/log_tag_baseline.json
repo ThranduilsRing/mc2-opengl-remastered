@@ -9545,6 +9545,27 @@
    "count": 1
   },
   {
+   "tag": "VFX_PRIMITIVE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "class",
+    "live",
+    "route"
+   ],
+   "count": 2
+  },
+  {
+   "tag": "VFX_TUBE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "blend",
+    "vertices"
+   ],
+   "count": 1
+  },
+  {
    "tag": "VIDEO",
    "ver": -1,
    "stream": "stdout",
