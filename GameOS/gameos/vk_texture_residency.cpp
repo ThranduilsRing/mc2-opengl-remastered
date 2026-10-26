@@ -260,6 +260,8 @@ ResidentTextureRef TextureResidency::requestKtx(const RenderCore::TextureKey& ke
     return ResidentTextureRef(*this,handle);
 }
 void TextureResidency::pump() {
+    ZoneScopedN("TextureResidency.Pump");
+    const auto started=std::chrono::steady_clock::now();
     { ZoneScopedN("TextureResidency.CollectSources"); service_.collectSourceRetirements(); }
     std::vector<RenderCore::TextureHandle> retired;
     { std::lock_guard lock(retiredMutex_); retired.swap(retired_); }
@@ -284,7 +286,13 @@ void TextureResidency::pump() {
     pumpPendingTextureUploads(pending_,uploading_,batch,budget_,[this](const Pending& p) {
         auto it=residents_.find(p.handle.raw());
         return it!=residents_.end() && service_.isLive(p.handle) && it->second.contentVersion==p.contentVersion;
-    },[this] { return table_->full(uploading_.size()); },[this](const Pending& p, Upload& next) {
+    },[this,firstNew,started] {
+        // A screen can request many images at once. Spread staging across
+        // frames instead of draining the decoded queue on its first render.
+        // Always allow one image so large textures still make progress.
+        return table_->full(uploading_.size()) ||
+            (uploading_.size()>firstNew && std::chrono::steady_clock::now()-started>std::chrono::milliseconds(2));
+    },[this](const Pending& p, Upload& next) {
         const auto& r=residents_.at(p.handle.raw());
         return bool(upload(*p.image,r.useMips,&next,r.layers,r.arrayView,r.vegetation));
     },[this](const Pending& p) {

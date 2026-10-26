@@ -1418,6 +1418,11 @@ void MissionBegin::updateSoakScreenWalk(LogisticsScreen* pCurScreen, bool& soakF
 			}
 			case SoakCheckState::ENTER_LOADOUT:
 			{
+				if (!LogisticsData::instance->getMechToModify())
+				{
+					auto forceGroup = LogisticsData::instance->getForceGroup();
+					if (!forceGroup.empty()) LogisticsData::instance->setMechToModify(forceGroup.front());
+				}
 				// MechLabScreen::begin() dereferences getMechToModify() at
 				// mechlabscreen.cpp:237 — crash if null.  Guard here so we never call
 				// begin() when no mech is selected (e.g. PoaR / campaign missions where
@@ -1751,7 +1756,7 @@ void MissionBegin::render()
 	if (mc2::gate::get<"MC2_SCREENSHOT_AT_FRAME">() == -5)
 	{
 		static int lastScreen = -999, frame = 0;
-		const int screen = bSplash ? -1 : 10 * curScreenX + curScreenY;
+		const int screen = bSplash ? (MainMenu::bDrawMechlopedia ? -2 : -1) : 10 * curScreenX + curScreenY;
 		if (screen != lastScreen) { lastScreen = screen; frame = 0; }
 		if (frame < 5)
 		{

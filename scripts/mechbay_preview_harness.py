@@ -54,6 +54,7 @@ def main():
     ap.add_argument("--out", default="",
                     help="output TGA path (default <deploy>/harness_<screen>.tga)")
     ap.add_argument("--tracy", type=Path, help="record a 20-second Tracy trace of the front-end path")
+    ap.add_argument("--walk", action="store_true", help="exercise purchase, loadout and launch through the existing soak screen walk")
     ap.add_argument("--mod-deps", default="",
                     help="mount these add-on mods over the stock campaign (MC2_MOD_DEPS), e.g. bt2018_mechs")
     ap.add_argument("--buy-and-modify", action="store_true",
@@ -114,6 +115,9 @@ def main():
     if args.buy_and_modify:
         env["MC2_SOAK_AUTO_PURCHASE"] = "1"
         env["MC2_BOOT_TO_MECHLAB"] = "1"
+    if args.walk:
+        env.update(MC2_SOAK_AUTO_PURCHASE="1", MC2_SOAK_CHECK_SCREENS="1")
+        env.pop("MC2_SOAK_STOP_AT_BAY", None)
 
     if args.preview_log:
         env["MC2_LOG_PREVIEW"] = "1"
@@ -169,8 +173,9 @@ def main():
                     recorder.kill()
                     recorder.wait()
 
-    if out_tga.exists() or (args.frame == -5 and list(out_tga.parent.glob(out_tga.name + ".screen*.frame*.tga"))):
-        print(f"[harness] screenshot captured: {out_tga} ({out_tga.stat().st_size} bytes)")
+    if (out_tga.exists() or (args.tracy and args.tracy.is_file()) or
+            (args.frame == -5 and list(out_tga.parent.glob(out_tga.name + ".screen*.frame*.tga")))):
+        print(f"[harness] capture complete: {args.tracy or out_tga}")
         sys.exit(0)
     else:
         print(f"[harness] FAILED: no screenshot at {out_tga}")
