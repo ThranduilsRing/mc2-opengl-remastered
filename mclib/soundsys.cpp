@@ -437,6 +437,10 @@ bool SoundSystem::createWaveResource (HGOSAUDIO *handle, const std::vector<uint8
 //---------------------------------------------------------------------------
 void SoundSystem::preloadSoundBite (long soundId)
 {
+	// Mod sound setups can name optional bites absent from their older pack.
+	if (soundId < 0 || static_cast<unsigned long>(soundId) >= numSoundBites ||
+		soundId >= soundDataFile->getNumPackets())
+		return;
 	long result = soundDataFile->seekPacket(soundId);
 	if (result != NO_ERR)
 		return;

@@ -40,7 +40,7 @@ namespace {
     void diag_init_if_needed() {
         if (g_diagEnabledChecked) return;
         g_diagEnabledChecked = true;
-        g_diagEnabled = mc2::gate::get<"MC2_GPU_PARTICLES">();
+        g_diagEnabled = mc2::gate::get<"MC2_GPU_PARTICLES_LOG">();
         if (g_diagEnabled && !g_diagAtexitRegistered) {
             g_diagAtexitRegistered = true;
             std::atexit([](){ emit_diag_summary("atexit"); });

@@ -78,7 +78,7 @@ static void executorOwnBegin(gosPostProcess* pp)
 
     // 3. Terrain latch: WARN (non-fatal) if absent — sub-stages bail gracefully
     //    in menus / frontend where terrain never drew.
-    if (c->warnIfNoTerrainLatch && !pp->executorSceneHasTerrain()) {
+    if (c->warnIfNoTerrainLatch && !pp->executorSceneHasTerrain() && mc2::gate::get<"MC2_DIAG_VERBOSE">()) {
         // One-shot warn to avoid per-frame log spam on menu screens.
         static unsigned s_warnCount = 0;
         if (s_warnCount < 4) {

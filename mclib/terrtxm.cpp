@@ -41,6 +41,8 @@
 
 #include"platform_windows.h"
 #include "Gates/gate.h"
+#include "mc2_diag_verbose.h"
+#include "mc2fmt.h"
 #include "Gates/gate_cold.h"
 
 //---------------------------------------------------------------------------
@@ -77,8 +79,10 @@ int MC2_OverlayTileHiresSize (void)
 			if (pow2 && req >= 128 && req <= 1024)
 			{
 				s_size = static_cast<int>(req);
-				printf("[OVERLAY_TILE_HIRES v1] enabled tileEdge=%d dir=%dOverlays (per-file fallback to %dOverlays)\n",
-					s_size, s_size, TERRAIN_TXM_SIZE);
+				if (mc2DiagVerbose()) {
+					mc2::fmt::print_out("[OVERLAY_TILE_HIRES v1] enabled tileEdge={} dir={}Overlays (per-file fallback to {}Overlays)\n",
+						s_size, s_size, TERRAIN_TXM_SIZE);
+				}
 			}
 			else
 			{
@@ -831,8 +835,8 @@ long TerrainTextures::initOverlay (long overlayNum, long txmNum, char *txmName)
 		// OVERLAY-TILE-HIRES-1 DIAG: settle "is 256 actually loading or falling
 		// back to 64?" -- when the hires gate is armed, count hires-hits vs
 		// legacy-fallbacks and print a running tally + the first few chosen paths
-		// to stderr. Gated on hiresEdge>0 so default (gate off) is byte-identical.
-		if (hiresEdge > 0)
+		// Only emit diagnostics when verbose logging is explicitly requested.
+		if (hiresEdge > 0 && mc2DiagVerbose())
 		{
 			static int s_hiresHit = 0, s_hiresMiss = 0, s_hiresLogged = 0;
 			if (useHires) ++s_hiresHit; else ++s_hiresMiss;

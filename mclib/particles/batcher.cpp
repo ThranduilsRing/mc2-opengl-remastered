@@ -78,7 +78,7 @@ void initialize_env() {
     // suppresses submission; their CPU/MLR renderer has been retired.
     g_enabled_value = mc2::gate::get<"MC2_GPU_PARTICLES">();
     g_enabled_initialized = true;
-    if (g_enabled_value) {
+    if (g_enabled_value && g_log_value) {
         mc2::fmt::print_err("[INSTR v1] enabled: gpu_particles log={:d}\n",
                      mc2::fmt::as_i32(static_cast<int>(g_log_value)));
         std::fflush(stderr);
@@ -275,7 +275,7 @@ void Batcher::Flush() {
     ++g_nonempty_flush_total;
     g_records_flushed_total += n;
     if (n > g_records_per_flush_max) g_records_per_flush_max = n;
-    if (!g_first_flush_reported) {
+    if (g_log_value && !g_first_flush_reported) {
         g_first_flush_reported = true;
         mc2::fmt::print_err("[GPU_PARTICLES v1] event=first_flush records={:d} groups={:d}\n", mc2::fmt::as_u32(n), mc2::fmt::as_u32(static_cast<unsigned>(impl_->groups.size())));
         std::fflush(stderr);

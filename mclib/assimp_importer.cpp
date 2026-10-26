@@ -488,9 +488,9 @@ long ImportShapeFromMesh(const aiScene* scene, unsigned meshIdx,
 		if (mesh->mNumBones >= 1) {
 			if (mesh->mNumBones == 1) ++bake->partsSingleBone;
 			const aiBone* bone = mesh->mBones[0];
-			auto it = bake->nameIdx.find(bone->mName.C_Str());
-			if (it != bake->nameIdx.end()) {
-				restM = bake->rest[it->second].m;
+			if (auto it = bake->nameIdx.find(bone->mName.C_Str()); it != bake->nameIdx.end()) {
+				const auto& [name, index] = *it;
+				restM = bake->rest[index].m;
 				partOffset = bone->mOffsetMatrix;
 				doMeshBake = true;
 				++bake->partsOffsetBaked;
@@ -706,8 +706,11 @@ long PopulateMergedSkinnedShape(const aiScene* scene, mc2::content::Asset& out, 
 		++bake.importedParts;
 		if (me->mNumBones == 1) ++bake.partsSingleBone;
 		const aiBone* bone = me->mBones[0];
-		auto it = bake.nameIdx.find(bone->mName.C_Str());
-		const float* rm = (it != bake.nameIdx.end()) ? bake.rest[it->second].m : nullptr;
+		const float* rm = nullptr;
+		if (auto it = bake.nameIdx.find(bone->mName.C_Str()); it != bake.nameIdx.end()) {
+			const auto& [name, index] = *it;
+			rm = bake.rest[index].m;
+		}
 		aiMatrix4x4 off = bone->mOffsetMatrix;
 		if (rm) ++bake.partsOffsetBaked;
 		// 1B-RUNTIME: record this part's layout for the per-frame re-bake. The

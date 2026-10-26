@@ -246,13 +246,13 @@ void drawFrozenPrimsToOverlay() {
         const ImU32 col = IM_COL32((c >> 24) & 0xFF, (c >> 16) & 0xFF, (c >> 8) & 0xFF, c & 0xFF);
         dl->AddLine(ImVec2(seg.x0, seg.y0), ImVec2(seg.x1, seg.y1), col, 1.0f);
         ++drawn;
-        if (!s_firstDrawLogged) {
+        if (!s_firstDrawLogged && mc2::gate::get<"MC2_DIAG_VERBOSE">()) {
             s_firstDrawLogged = true;
             mc2::fmt::print_err("[DEBUGDRAW v1] event=first_draw queued={:d} display={:.0f}x{:.0f} seg0=({:.1f},{:.1f})-({:.1f},{:.1f})\n", mc2::fmt::as_i32(static_cast<int>((q->frozen.size() / 2))), size.x, size.y, seg.x0, seg.y0, seg.x1, seg.y1);
         }
     }
     static bool s_cullLogged = false;
-    if (drawn == 0 && !s_cullLogged) {
+    if (drawn == 0 && !s_cullLogged && mc2::gate::get<"MC2_DIAG_VERBOSE">()) {
         s_cullLogged = true;
         mc2::fmt::print_err("[DEBUGDRAW v1] event=all_culled queued={:d}\n", mc2::fmt::as_i32(static_cast<int>((q->frozen.size() / 2))));
     }
