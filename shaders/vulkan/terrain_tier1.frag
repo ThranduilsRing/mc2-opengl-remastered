@@ -227,7 +227,7 @@ float mv_computeLodNear(vec2 worldXY, float worldZ) {
 }
 //PORT-END:lodNear
 
-vec3 mv_detailNormal(vec4 w, float snowWeight, vec2 worldXY, float lodNear, float macroNz, vec2 uvDx, vec2 uvDy) {
+vec3 mv_detailNormal(vec4 w, float snowWeight, vec2 worldXY, float lodNear, float macroNz, vec2 uvDx, vec2 uvDy, bool needParallax) {
     if (lodNear == 0.0) return vec3(0.0);
     vec2 uv = worldXY * (uT.detailTiling / MATV_WU_PER_TILE);
     vec2 uvRock     = uv * (MATV_TILING.x / 3.0);
@@ -248,8 +248,8 @@ vec3 mv_detailNormal(vec4 w, float snowWeight, vec2 worldXY, float lodNear, floa
     // distance MATV_POM_FADE_NEAR..FAR (the cost governor), over the slope band where the cliff blend takes over, and over cement
     // (a slab must not tear). lodNear fades the offset across the LOD0 band boundary (1.0 when the gate is off).
     // GL also requires u_lodStep <= 2 before it marches; the VK island has no lod step, and the lodNear fade is its accepted stand-in for that limit.
-    // Night lamps use the material normal without the parallax UV march.
-    if (fwRock > 0.4 && lodNear > 0.01 && uT.terrainLightDir.z >= 0.0) {
+    // Lamp-only detail keeps the night POM skip; sun/shore/debug keep their UVs.
+    if (fwRock > 0.4 && lodNear > 0.01 && needParallax) {
         const vec4 pomScaleMat = vec4(1.0, 1.0, 2.5, 1.0);
         float pomScale = MATV_POM_SCALE * dot(pomScaleMat, w) * fwRock * lodNear;
         vec2  pomUV    = uv * dot(MATV_TILING, w);
@@ -575,9 +575,10 @@ void main() {
             vec3 baseN = baseNormal;
             vec3 dN    = vec3(0.0);
             if (uT.detailReady != 0 && uT.detailStrength != 0.0) {
-                if (mv_needDetail(baseN, lightDir, materialW, materialSnow, v_worldPos, normalLightFloor)) {
+                bool needParallax;
+                if (mv_needDetail(baseN, lightDir, materialW, materialSnow, v_worldPos, normalLightFloor, needParallax)) {
                     float lodNear = mv_computeLodNear(v_worldPos.xy, v_worldPos.z);
-                    dN = mv_detailNormal(materialW, materialSnow, v_worldPos.xy, lodNear, baseN.z, detailUvDx, detailUvDy);
+                    dN = mv_detailNormal(materialW, materialSnow, v_worldPos.xy, lodNear, baseN.z, detailUvDx, detailUvDy, needParallax);
                 }
             }
             vec3 macroPert = vec3(baseN.xy / max(baseN.z, 0.2) * uT.nfhStrength, 1.0);
