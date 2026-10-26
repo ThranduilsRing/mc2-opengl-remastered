@@ -500,8 +500,8 @@ TEST_CASE_FIXTURE(FrozenPlatform, "vfx_frozen/mesh submaterials and polygon fans
 {
     mc2::gate::ScopedOverride<"MC2_VFX_ORACLE_SHAPE"> native{"1"};
     using namespace MidLevelRenderer;
-    auto* shape = new MLRShape(2);
     gos_PushCurrentHeap(MidLevelRenderer::Heap);
+    auto* shape = new MLRShape(2);
     for (unsigned i = 0; i < 2; ++i) {
         auto* prim = new MLR_I_PMesh;
         const glm::vec3 positions[] = {{0,0,0}, {1,0,0}, {1,1,0}, {0,1,0}};
