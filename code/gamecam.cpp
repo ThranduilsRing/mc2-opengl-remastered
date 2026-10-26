@@ -757,6 +757,7 @@ void GameCamera::render (void)
 	}
 	MidLevelRenderer::GOSVertex::farClipReciprocal = (1.0f-cameraToClip[2][2])/cameraToClip[2][3];
 	// Keep oracle effects alive through RenderNow: clouds own queued MLR geometry.
+	std::unique_ptr<gosFX::PertCloud::Specification> oraclePert;
 	std::vector<gosFX::EffectPtr> oracleMeshes;
 
 	if (active && turn > 1)
@@ -904,12 +905,25 @@ void GameCamera::render (void)
 			if (mc2::gate::is<"MC2_FX_FORCE_SPAWN", "9">()) {
 				// Stock mesh classes, separated spatially; no asset bytes are changed.
 				auto* library = mc2::particles::SpecLibrary::Instance();
+				gos_PushCurrentHeap(gosFX::Heap);
+				oraclePert = std::make_unique<gosFX::PertCloud::Specification>(8);
+				oraclePert->BuildDefaults();
+				gos_PopCurrentHeap();
+				oraclePert->m_maxParticleCount = 4;
+				oraclePert->m_startingPopulation.SetCurve(4.0f);
+				oraclePert->m_particlesPerSecond.SetCurve(0.0f);
+				oraclePert->m_size.m_ageCurve.SetCurve(40.0f);
+				oraclePert->m_pCenterRed.m_ageCurve.SetCurve(1.0f);
+				oraclePert->m_pCenterGreen.m_ageCurve.SetCurve(0.2f);
+				oraclePert->m_pCenterBlue.m_ageCurve.SetCurve(0.0f);
+				oraclePert->m_pAlpha.m_ageCurve.SetCurve(0.25f);
+				oraclePert->m_alignZUsingX = oraclePert->m_alignZUsingY = true;
 				unsigned drawn = 0;
-				for (unsigned i = 0; i < library->Count(); ++i) {
-					auto* spec = library->At(i);
+				for (unsigned i = 0; i <= library->Count(); ++i) {
+					auto* spec = i == library->Count() ? oraclePert.get() : library->At(i);
 					const auto cls = spec->GetClassID();
 					if (cls != gosFX::ShapeClassID && cls != gosFX::ShapeCloudClassID &&
-						cls != gosFX::DebrisCloudClassID) continue;
+						cls != gosFX::DebrisCloudClassID && cls != gosFX::PertCloudClassID) continue;
 					glm::vec3 location = getPosition();
 					location.x += (static_cast<int>(drawn % 8) - 4) * 75.0f;
 					location.y += (static_cast<int>(drawn / 8) - 3) * 75.0f;
@@ -921,7 +935,9 @@ void GameCamera::render (void)
 					gosFX::Effect::ExecuteInfo execute(0.0, &origin, &bounds, 0.5f);
 					execute.m_age = 0.5f;
 					execute.m_ageRate = 0.0f;
-					auto effect = gosFX::EffectLibrary::Instance->MakeEffect(i, gosFX::Effect::ExecuteFlag);
+					auto effect = i == library->Count()
+						? gosFX::EffectPtr(gosFX::PertCloud::Make(oraclePert.get(), gosFX::Effect::ExecuteFlag))
+						: gosFX::EffectLibrary::Instance->MakeEffect(i, gosFX::Effect::ExecuteFlag);
 					effect->Start(&execute);
 					execute.m_time = 0.25;
 					execute.m_age = 0.5f;
