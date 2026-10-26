@@ -43,9 +43,6 @@
   "mclib/mech3d_update.cpp": {
    "pointer_key": 1
   },
-  "mclib/mlr/mlrlightmap.cpp": {
-   "pointer_to_int": 1
-  },
   "mclib/spotlight_diag.cpp": {
    "pointer_key": 1
   }

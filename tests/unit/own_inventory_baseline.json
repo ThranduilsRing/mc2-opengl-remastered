@@ -261,93 +261,6 @@
    "new_array": 0,
    "owners": []
   },
-  "BitTrace": {
-   "delete": 19,
-   "delete_array": 0,
-   "files": {
-    "mclib/mlr/mlr_i_c_det_pmesh.cpp": {
-     "delete": 1,
-     "new": 1
-    },
-    "mclib/mlr/mlr_i_c_det_tmesh.cpp": {
-     "delete": 1,
-     "new": 1
-    },
-    "mclib/mlr/mlr_i_c_dt_pmesh.cpp": {
-     "delete": 1,
-     "new": 1
-    },
-    "mclib/mlr/mlr_i_c_dt_tmesh.cpp": {
-     "delete": 1,
-     "new": 1
-    },
-    "mclib/mlr/mlr_i_c_pmesh.cpp": {
-     "delete": 1,
-     "new": 1
-    },
-    "mclib/mlr/mlr_i_c_tmesh.cpp": {
-     "delete": 1,
-     "new": 1
-    },
-    "mclib/mlr/mlr_i_det_pmesh.cpp": {
-     "delete": 1,
-     "new": 1
-    },
-    "mclib/mlr/mlr_i_det_tmesh.cpp": {
-     "delete": 1,
-     "new": 1
-    },
-    "mclib/mlr/mlr_i_dt_pmesh.cpp": {
-     "delete": 1,
-     "new": 1
-    },
-    "mclib/mlr/mlr_i_dt_tmesh.cpp": {
-     "delete": 1,
-     "new": 1
-    },
-    "mclib/mlr/mlr_i_l_det_pmesh.cpp": {
-     "delete": 1,
-     "new": 1
-    },
-    "mclib/mlr/mlr_i_l_det_tmesh.cpp": {
-     "delete": 1,
-     "new": 1
-    },
-    "mclib/mlr/mlr_i_l_dt_pmesh.cpp": {
-     "delete": 1,
-     "new": 1
-    },
-    "mclib/mlr/mlr_i_l_dt_tmesh.cpp": {
-     "delete": 1,
-     "new": 1
-    },
-    "mclib/mlr/mlr_i_l_pmesh.cpp": {
-     "delete": 1,
-     "new": 1
-    },
-    "mclib/mlr/mlr_i_l_tmesh.cpp": {
-     "delete": 1,
-     "new": 1
-    },
-    "mclib/mlr/mlr_i_mt_pmesh.cpp": {
-     "delete": 1,
-     "new": 1
-    },
-    "mclib/mlr/mlr_i_pmesh.cpp": {
-     "delete": 1,
-     "new": 1
-    },
-    "mclib/mlr/mlr_i_tmesh.cpp": {
-     "delete": 1,
-     "new": 1
-    }
-   },
-   "new": 19,
-   "new_array": 0,
-   "owners": [
-    ""
-   ]
-  },
   "BldgAppearance": {
    "delete": 1,
    "delete_array": 0,
@@ -1418,21 +1331,6 @@
     ""
    ]
   },
-  "DynamicArrayOf<Scalar>": {
-   "delete": 1,
-   "delete_array": 0,
-   "files": {
-    "mclib/mlr/mlr_i_pmesh.cpp": {
-     "delete": 1,
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": [
-    ""
-   ]
-  },
   "DynamicArrayOf<Stuff::Vector4D>": {
    "delete": 2,
    "delete_array": 0,
@@ -1449,7 +1347,7 @@
    ]
   },
   "DynamicArrayOf<Vector2DScalar>": {
-   "delete": 8,
+   "delete": 7,
    "delete_array": 0,
    "files": {
     "mclib/mlr/mlr_i_dt_pmesh.cpp": {
@@ -1464,10 +1362,6 @@
      "delete": 1,
      "new": 2
     },
-    "mclib/mlr/mlr_i_pmesh.cpp": {
-     "delete": 1,
-     "new": 1
-    },
     "mclib/mlr/mlrlightmap.cpp": {
      "delete": 1,
      "new": 1
@@ -1477,7 +1371,7 @@
      "new": 1
     }
    },
-   "new": 9,
+   "new": 8,
    "new_array": 0,
    "owners": [
     "",
@@ -1504,18 +1398,6 @@
     "ClipPolygon2",
     "EffectClipPolygon"
    ]
-  },
-  "DynamicArrayOf<int>": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "mclib/mlr/mlrprimitiveclipping.hpp": {
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": []
   },
   "DynamicArrayOf<unsignedchar>": {
    "delete": 1,
@@ -2386,14 +2268,11 @@
     "mclib/mlr/mlr_i_tmesh_cast.cpp": {
      "new": 1
     },
-    "mclib/mlr/mlrlightmap.cpp": {
-     "new": 1
-    },
     "mclib/mlr/mlrshape.cpp": {
      "new": 1
     }
    },
-   "new": 21,
+   "new": 20,
    "new_array": 0,
    "owners": []
   },
@@ -2521,14 +2400,11 @@
     "mclib/mlr/mlr_i_c_tmesh.cpp": {
      "new": 2
     },
-    "mclib/mlr/mlrlightmap.cpp": {
-     "new": 2
-    },
     "mclib/mlr/mlrshape.cpp": {
      "new": 1
     }
    },
-   "new": 5,
+   "new": 3,
    "new_array": 0,
    "owners": []
   },
