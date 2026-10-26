@@ -496,6 +496,7 @@ void GuiRuntime::NewFrame() {
     }
 #endif
 
+    ImGui::GetIO().MouseDrawCursor = false;
     ImGui::NewFrame();
     s_frameActive = true;
     DebugRenderer::drawFrozenPrimsToOverlay();
@@ -651,7 +652,7 @@ void GuiRuntime::Render() {
 
     // Vulkan cannot composite the legacy post-ImGui GL cursor callback.
     // Draw above opaque menu windows through the same renderer as the UI.
-    ImGui::GetIO().MouseDrawCursor = ImGui::GetIO().WantCaptureMouse
+    ImGui::GetIO().MouseDrawCursor = (ImGui::GetIO().MouseDrawCursor || ImGui::GetIO().WantCaptureMouse)
         && !mc2::gate::get<"MC2_OS_CURSOR">();
     ImGui::Render();
     s_frameActive = false;

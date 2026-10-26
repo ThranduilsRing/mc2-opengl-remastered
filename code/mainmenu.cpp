@@ -32,6 +32,7 @@ struct DDSURFACEDESC2 {
 #include "Gates/gate_cold.h"   // str<>()
 #include "mc2fmt.h"
 #include "../GuiRuntime/PlayerFrontEnd.h"
+#include "imgui.h"
 extern CPrefs prefs;
 
 
@@ -804,6 +805,7 @@ bool MainMenu::occludesLogisticsScreens() const
 
 void MainMenu::render()
 {
+    if (ImGui::GetCurrentContext()) ImGui::GetIO().MouseDrawCursor = true;
     if (!introMovie && !bOptions && !bDrawMechlopedia)
         PlayerFrontEnd::drawMainMenu();
 	// UI-ASPECT-ANCHOR-1: front-end frame — draw the UI on the 16:9 canvas
