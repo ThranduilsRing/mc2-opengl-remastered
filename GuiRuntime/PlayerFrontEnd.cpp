@@ -314,7 +314,11 @@ void drawMainMenu() {
 
 void drawOptions() {
     if (!ImGui::CollapsingHeader("Player settings (saved; restart required)", ImGuiTreeNodeFlags_DefaultOpen)) return;
-    static auto draft = mc2::options::current();
+    static auto draft = [] {
+        mc2::options::RenderOptions options;
+        mc2::options::cfg::loadFromText(options, mc2::options::cfg::readTextFile("options.cfg"));
+        return options;
+    }();
     for (const auto& preset : k_gfxPresets) {
         if (ImGui::Button(preset.label)) {
             draft.shadowQuality = preset.shadQual;
