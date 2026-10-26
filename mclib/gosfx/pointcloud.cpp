@@ -1,6 +1,7 @@
 #include"gosfxheaders.hpp"
 #include "mlr_cloud_draw.hpp"
 #include "particles/batcher.h"
+#include "Gates/gate.h"
 #include<mlr/mlrpointcloud.hpp>
 
 // B1 Stage 2' C8: subclass-Start routing into the GPU particle pipeline.
