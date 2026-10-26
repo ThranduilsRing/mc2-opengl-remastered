@@ -866,7 +866,8 @@ void BldgAppearance::updateSimPose()
         appearType->bldgDmgShape : appearType->getBldgCollisionShape(0);
     if (!source) { simulationShape_.reset(); simPose->ready = false; return; }
     if (simPose->ready && simulationType_ == source && appearType->numWeaponNodes == 0 &&
-        appearType->rotationalNodeId < 0 && unitAnim().bdFrameRate == 0.0f &&
+        (appearType->rotationalNodeId[0] == '\0' || S_stricmp(appearType->rotationalNodeId, "NONE") == 0) &&
+        unitAnim().bdFrameRate == 0.0f &&
         simulationAnimationState_ == unitAnim().bdAnimationState && simulationFrame_ == unitAnim().currentFrame &&
         simPose->root == position && simPose->heading == rotation) return;
     if (simulationType_ != source || !simulationShape_) {
