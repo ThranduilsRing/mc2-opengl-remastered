@@ -122,6 +122,7 @@ def test_deploy_classic_needs_no_package_but_remastered_fails(tmp_path, monkeypa
     monkeypatch.setattr(dp, "git_head", lambda *a: "head")
     monkeypatch.setattr(dp, "require_head_exe", lambda *a: dict(dirty=False))
     monkeypatch.setattr(dp, "enumerate_payload", lambda *a, **kw: [])
+    monkeypatch.setattr(dp, "viewer_payload", lambda *a, **kw: [])
     monkeypatch.delenv("MC2_OPTIONS_OVERRIDE", raising=False)
     (tmp_path / "options.cfg").write_text(f"[MechCommander2]\nb RemasteredBuildings = {'TRUE' if option else 'FALSE'}\n")
     class ReachedCopyPreflight(Exception):
