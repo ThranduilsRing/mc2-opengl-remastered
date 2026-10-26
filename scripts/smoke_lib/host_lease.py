@@ -1,7 +1,7 @@
 # scripts/smoke_lib/host_lease.py
 """FIFO engine slots shared across worktrees, with exclusive reservations for timing proofs.
 
-MC2_HOST_CORES_PER_SLOT selects physical cores per slot (default 2).
+MC2_HOST_CORES_PER_SLOT selects physical cores per slot (default 1).
 MC2_HOST_GAME_SLOTS selects 1..6/width slots (default 2); cores 0..1 stay reserved.
 MC2_HOST_LEASE_EXCLUSIVE=1 reserves every slot. Batch hold/release keeps a reservation
 across a serial chain. Dead holders and tickets recover automatically. Private paths
@@ -41,7 +41,7 @@ POLL_S = 2.0
 REPORT_EVERY_S = 30.0
 
 def cores_per_slot() -> int:
-    width = int(os.environ.get("MC2_HOST_CORES_PER_SLOT", "2"))
+    width = int(os.environ.get("MC2_HOST_CORES_PER_SLOT", "1"))
     if not 1 <= width <= 6:
         raise ValueError("MC2_HOST_CORES_PER_SLOT must be between 1 and 6")
     return width
