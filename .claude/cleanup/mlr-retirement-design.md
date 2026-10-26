@@ -383,3 +383,39 @@ support used by native harvesting and legacy asset decoding in game/editor/tools
 After those consumers migrate, remove clipper/sorter/geometry/lights and the
 codec/build closure. CPU Execute/emission/lifetimes remain; later GPU simulation
 must preserve authoritative lifetimes and separate camera-dependent FX ordering.
+
+
+### Packet 7: Tube material correction; opaque retirement withheld (2026-10-26)
+
+Rebased P6 over W68 follow-ups at `80edefa7d`. Engine `9bd7b3c28` fixes a
+concrete Tube texture bug: the deferred queue carried an MLR texture-pool index
+as though it were a GOS image handle. Resolve after ForceLoadImages, as Cards do.
+Keep authored blend recipes distinct instead of collapsing AlphaOne into OneOne
+and OneInvAlpha into straight alpha. Remove the unused immediate ribbon API.
+Engine diff from rebased P6: 95 deleted, 80 added, net -15; no MLR TU deleted.
+
+Packet 7 is **incomplete**. Existing fixture 9 now supplies an in-memory
+untextured/OneZero draw-state control. Candidate `6a0388903` renders broad
+black/white panels absent from its CPU reference `b289e2b0f`; this fails the
+owner's visible-correctness bar. The candidate's untextured/opaque extension was
+withdrawn, preserving the CPU fallback and already-ON gates. Textured night
+controls are populated and repeatable, with recognizable native trail textures.
+See `owner-montage-p7.png`, `p7-oracle-checks.json` and the p7 proof logs under
+`E:/mc2-archive-2026-10/proofs/mlr-retire-p1/`. Do not reuse the rejected opaque
+candidate as an accepted renderer. The exact opaque projection/material boundary
+is unresolved; the texture-handle bug alone did not establish opaque parity.
+
+Next packet: resolve that populated opaque control before retiring Tube and its
+MLRIndexedTriangleCloud/MLRTriangleCloud closure. Then preserve Shape submaterials
+and polygon triangulation; populate and migrate ShapeCloud/DebrisCloud/PertCloud.
+Only then prune their MLR clipper/sorter/geometry closure. MLR remains 50 compiled
+TUs because those routes plus camera/state/texture/asset decoding are still live.
+CPU Execute/emission/lifetimes and camera-dependent effect ordering remain.
+
+Final proof at `9bd7b3c28`: RelWithDebInfo game build; 7 shader/VFX rows;
+21 Python oracle/blend tests; native frozen driver/children; smoke-lite day/night
+with zero validation errors/warnings. Tube OFF/ON matches 1,788 shared sim frames
+(chain `1ebaadfc0b502a10`); the check command still exits 1 because this checkout
+has no committed mc2_01 baseline. No baseline was created or changed. Candidate
+captures also match strict identities over 196 shared frames and consume no Draw
+RNG. No new complete class acceptance or CPU renderer retirement is claimed.

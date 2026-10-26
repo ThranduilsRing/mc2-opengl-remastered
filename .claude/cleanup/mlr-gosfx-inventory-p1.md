@@ -406,3 +406,23 @@ geometry/tint and draw/flush RNG preservation. The fired master OFF/ON pair
 matched 2,555 shared frames, chain `a64f58991586fb87`, full hash
 `a60b5e5c0ff2a613`, RNG `1914/769/0`, anim RNG `66`; no baseline was rewritten.
 See `p6-summary.json` and `owner-montage-p6.png` in the existing proof directory.
+
+
+### Packet 7 partial checkpoint (2026-10-26)
+
+Engine `9bd7b3c28`: deferred Tube texture pool index -> GOS image resolution;
+authored blend factors retained; uncalled immediate ribbon API removed. Gross
+engine diff: 95 lines deleted / 80 added. Gates unchanged, no new class accepted.
+Untextured/OneZero fixture 9 was populated on CPU and candidate `6a0388903`;
+native broad black/white panels fail acceptance. Its extension was withdrawn.
+See `owner-montage-p7.png` and `p7-oracle-checks.json` in the existing proof dir.
+Tube's CPU mesh owner and both triangle-cloud TUs remain; Shape submaterials,
+ShapeCloud, DebrisCloud and mod-loadable PertCloud are still pending in that order.
+MLR remains 50 compiled TUs / 23,373 cpp lines; its source/header inventory is
+unchanged at 107 files / 36,317 physical lines. Camera/state/texture and legacy
+asset decoding still serve native harvesting, game/editor and FX tools.
+
+Final build/7 covering rows/21 Python tests/native frozen tests/smoke-lite pass;
+Vulkan validation is clean. Final OFF/ON pair matches 1,788 sim frames, but the
+committed-baseline stage fails because mc2_01 has no baseline in this checkout.
+Do not present this as a passing committed-baseline check. Baselines unchanged.
