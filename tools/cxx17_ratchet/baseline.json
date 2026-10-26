@@ -187,7 +187,7 @@
   "mclib": {
    "LG01": 3,
    "LG02": 0,
-   "LG03": 583,
+   "LG03": 571,
    "LG04": 15,
    "LG05": 111,
    "LG06": 528,
@@ -228,7 +228,7 @@
    "LG17": 0,
    "LG18": 0,
    "LG19": 0,
-   "LG20": 31
+   "LG20": 30
   },
   "tools": {
    "LG01": 0,
@@ -2827,9 +2827,6 @@
   "mclib/mlr/mlrambientlight.cpp": {
    "LG03": 2
   },
-  "mclib/mlr/mlrcardcloud.cpp": {
-   "LG03": 12
-  },
   "mclib/mlr/mlrclipper.cpp": {
    "LG03": 4
   },
@@ -3471,7 +3468,7 @@
    "LG20": 2
   },
   "tests/unit/test_vfx_frozen_driver.cpp": {
-   "LG20": 5
+   "LG20": 4
   },
   "tools/common/tool_vk_gpu.cpp": {
    "LG20": 1
@@ -3486,7 +3483,7 @@
    "LG20": 3
   }
  },
- "head": "69d2737b7",
+ "head": "09877a468",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
