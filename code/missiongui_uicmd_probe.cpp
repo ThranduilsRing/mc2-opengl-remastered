@@ -186,7 +186,7 @@ bool MissionInterfaceManager::uiCmdProbe(UiCmdCtx& c)
 					float mm[16];
 					char shapeName[128] = {0};
 					GameAdapters::StaticProp::getRecipeShapeName(
-						recipe, shapeName, sizeof(shapeName));
+						recipe, shapeName);
 					if (GameAdapters::StaticProp::recipeModelMatrix(recipe, mm)) {
 						// Registry translation indices are [3]/[7]/[11]
 						// (gos_static_prop_registry.h), in the same

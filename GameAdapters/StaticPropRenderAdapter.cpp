@@ -196,14 +196,14 @@ void destroyStaticPropByIndex(int32_t recipeIndex) {
             static_cast<uint32_t>(recipeIndex), 1u));
 }
 
-void getRecipeShapeName(int32_t recipeIndex, char* out, size_t outLen) {
-    if (!out || outLen == 0) return;
+void getRecipeShapeName(int32_t recipeIndex, std::span<char> out) {
+    if (out.empty()) return;
     out[0] = '\0';
     if (recipeIndex < 0) return;
     const char* name = GpuStaticPropRegistry::getRecipeShapeName(recipeIndex);
     if (!name) return;
-    std::strncpy(out, name, outLen - 1);
-    out[outLen - 1] = '\0';
+    std::strncpy(out.data(), name, out.size() - 1);
+    out.back() = '\0';
 }
 
 // pass-through recipe readback. See the contract
