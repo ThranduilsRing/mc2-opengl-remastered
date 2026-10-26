@@ -1,5 +1,7 @@
 #include "UiDefs_internal.h"
 #include "Gates/gate.h"
+#include "../mclib/texture_assets.h"
+#include <tracy/Tracy.hpp>
 
 
 struct UiDefs::GameOSPage::Impl {
@@ -192,6 +194,15 @@ bool UiDefs::GameOSPage::load(const char* path)
         return false;
     }
 
+    // Pages are initialized while the previous screen/loading screen is active.
+    // Resolve authored art and queue decode here, not on the first visible draw.
+    if (mc2::textures::ready()) {
+        ZoneScopedN("UiDefs.PreloadTextures");
+        for (auto& element : impl->elements) {
+            ensureTexture(element);
+            if (element.textureNode) (void)mc2::textures::uiId(element.textureNode);
+        }
+    }
     impl->loaded = true;
     uiDefsTrace("loaded page key=%s file=%s elements=%zu local=%dx%d",
         impl->key.c_str(), path, impl->elements.size(), impl->localWidth, impl->localHeight);

@@ -104,7 +104,7 @@ bool isButtonEnabled(LogisticsScreen* screen, const UiElement& e)
     return !button || button->isEnabled();
 }
 
-static void ensureTexture(UiElement& e)
+void ensureTexture(UiElement& e)
 {
     if (e.texturePath.empty() || e.textureNodeAssigned)
         return;
