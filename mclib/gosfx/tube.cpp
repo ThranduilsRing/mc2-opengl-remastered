@@ -1389,7 +1389,9 @@ void gosFX::Tube::Draw(DrawInfo *info)
 			// submit. (Ribbon == vc 2 swept quad; polygon == vc>=3 ring panels.)
 			const bool supported =
 				isSupportedBlend && (vc >= 2) && (isRibbonKind || isPolygonKind);
-			const int blendMode = isAdditive ? 1 : 0;
+			// Preserve the existing additive recipe and the authored texture-address mode.
+			const int blendMode = (isAdditive ? 1 : 0) |
+				(dInfo.state.GetTextureWrapMode() == MidLevelRenderer::MLRState::TextureClamp ? 4 : 0);
 
 			if (supported && m_P_indices)
 			{
@@ -1439,7 +1441,7 @@ void gosFX::Tube::Draw(DrawInfo *info)
 						m_P_indices,
 						numIndices,
 						gosHandle,
-						blendMode);  // 0=alpha, 1=additive (PPC bolts)
+						blendMode);  // low bits: blend recipe; bit 2: clamp UVs
 					ribbonSubmitted = true;
 				}
 				// gosHandle==0: ribbonSubmitted stays false → DrawEffect below.

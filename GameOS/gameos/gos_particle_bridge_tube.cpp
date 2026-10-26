@@ -21,7 +21,9 @@ void appendRibbon(std::vector<VfxGeometryVertex>& vertices, std::vector<VfxParti
     draw.start = static_cast<uint32_t>(vertices.size());
     draw.count = numIndices;
     draw.texture = texture;
-    draw.additive = blend == 1 ? 2u : 0u; // authored OneOne tubes ignore vertex alpha
+    // Bit 0: ONE,ONE; bit 2: authored UV clamp (passed through the legacy int ABI).
+    const bool additive = (blend & 1) != 0;
+    draw.additive = additive ? 2u : 0u;
     draw.atlasColumns = kVfxGeometryAtlas;
     for (unsigned n = 0; n < numIndices; ++n) {
         const auto i = indices[n];
@@ -29,7 +31,9 @@ void appendRibbon(std::vector<VfxGeometryVertex>& vertices, std::vector<VfxParti
         std::copy_n(positions + i * 3, 3, v.position);
         std::copy_n(colors + i * 4, 4, v.color);
         std::copy_n(uvs + i * 2, 2, v.uv);
-        v.flags = VfxGeometryTube | (blend == 1 ? VfxGeometryOneOne : 0u);
+        constexpr uint32_t clampUv = 16u; // vfx_particle.frag geometry UV policy
+        v.flags = VfxGeometryTube | (additive ? VfxGeometryOneOne : 0u) |
+                  ((blend & 4) != 0 ? clampUv : 0u);
         vertices.push_back(v);
     }
     draws.push_back(draw);

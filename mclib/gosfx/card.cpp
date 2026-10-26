@@ -511,38 +511,17 @@ void gosFX::Card::Draw(DrawInfo *info)
 					blendMode = 2;
 			}
 
-			// Authored atlas tile bounds are constant over the card's lifetime.
-			const float tileU0 = static_cast<float>(
-				spec->m_UOffset.ComputeValue(0.0f, 0.0f));
-			const float tileV0 = static_cast<float>(
-				spec->m_VOffset.ComputeValue(0.0f, 0.0f));
-			float tileUs = static_cast<float>(
-				spec->m_USize.ComputeValue(0.0f, 0.0f));
-			float tileVs = static_cast<float>(
-				spec->m_VSize.ComputeValue(0.0f, 0.0f));
-			if (tileUs <= 0.0f) tileUs = 1.0f;
-			if (tileVs <= 0.0f) tileVs = 1.0f;
-			const uint32_t atlasColumns =
-				(spec->m_animated && spec->m_width > 1u)
-				? static_cast<uint32_t>(spec->m_width) : 0u;
-
+			// Execute has already evaluated the authored UV curves and flipbook.
+			// Harvest the same rectangle, including one-column atlases and scrolling.
+			const float tileU0 = m_uvs[0].x;
+			const float tileV0 = m_uvs[3].y;
+			const float tileUs = m_uvs[1].x - tileU0;
+			const float tileVs = m_uvs[0].y - tileV0;
+			const uint32_t atlasColumns = 0;
+			const uint32_t atlasFrame = 0;
 			mc2::particles::Batcher &batcher = mc2::particles::Batcher::Instance();
-			batcher.BeginGroup(mlrTex, tileU0, tileV0, tileUs, tileVs,
-			                   blendMode, atlasColumns);
-
-			// Card world position: translation column of m_localToWorld.
+			batcher.BeginGroup(mlrTex, tileU0, tileV0, tileUs, tileVs, blendMode);
 			const glm::vec3 wc = mc2::math::getTranslation(m_localToWorld);
-
-			// The live atlas frame matches Card::Execute.
-			uint32_t atlasFrame = 0u;
-			if (atlasColumns > 1u) {
-				const float fIdx = static_cast<float>(
-					spec->m_index.ComputeValue(
-						static_cast<Stuff::Scalar>(m_age),
-						static_cast<Stuff::Scalar>(m_seed)));
-				const int fi = static_cast<int>(fIdx);
-				atlasFrame = (fi > 0) ? static_cast<uint32_t>(fi) : 0u;
-			}
 
 			mc2::particles::GpuParticle gp = {};
 			gp.position[0] = wc.x;

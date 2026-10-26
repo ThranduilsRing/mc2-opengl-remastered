@@ -221,3 +221,40 @@ The rebuild command already distinguishes identical from changed output (`tools/
 Read-only inspection and physical-line census only. No builds, contract suite, doctest, pytest, tier1, capture, RenderDoc, tool rebuild or runtime parity were run.
 These are future batch proofs, not necessary for this Markdown output; Bash/index actions are also forbidden in this task's sandbox.
 No owner approval is inferred from writing this design; only the numbered gameplay policy question changes the proposed architecture.
+
+
+## Retirement packet P1 (2026-10-25) and P2+
+
+P1 base: `b66ad0b0983e`, branch `claude/mlr-retire-p1`. The historical design above is a
+snapshot, not the present gate inventory. See `mlr-gosfx-inventory-p1.md` for the current
+runtime closure and per-class promotion blockers. Proofs live under
+`E:/mc2-archive-2026-10/proofs/mlr-retire-p1/`; only observed coverage counts as parity.
+
+- P1 deletes the uncalled snapshot spawners and retires `MC2_VFX_AGE_SAMPLE`.
+  All surviving GPU billboard draws harvest live CPU gosFX state. Card/CardCloud now
+  reuse the CPU's animated UV rectangles; swept tubes preserve authored texture addressing.
+  Tube and Shape already default ON at this base; the master remains OFF until every
+  routed class has populated, repeatable A/B evidence. The render-oracle gate currently
+  suppresses weapon impact/miss/muzzle draws; it is not a harmless harvesting selector.
+- P2: finish Card/CardCloud exact world corners, orientation, size and atlas parity;
+  replace PointCloud square proxies and ShardCloud billboard proxies with their original
+  primitives. Remove floors, head brightening/depth pull and impact suppression after
+  populated day/night birth/flight/impact/expiry, alpha/additive and clip-crossing proofs.
+  Compare sim chains across camera/effect settings; render/flush must consume zero RNG.
+  Then enable the master and retire the redundant render selector; retain CPU reference
+  rendering only for classes still awaiting their own proof. Do not delete CPU Execute.
+- P3: finish Tube profiles/material blends/texture failures and Shape submesh materials;
+  migrate ShapeCloud, DebrisCloud and PertCloud to native indexed packets. Cover nested
+  effects and named mod catalogs, not just stock fixtures. Remove each CPU draw/clip path
+  only after its A/B regions and lifecycle snapshots pass; zero unexplained fallback.
+- P4: separate bounded legacy FX/state/shape decoding and texture lookup from MLR;
+  retain mc2fx dump/rebuild/preview and exact supported-content bytes. Replace no-op FX
+  PointLight plumbing only with an explicit lighting contract; retain independent TG lights.
+  Then delete clipper/sorter/cloud geometry/lights and MLR initialization/link closure
+  across game, editor and tools. Check all targets at that API checkpoint.
+- P5: retire CPU gosFX only after emission, curves, child ordering and cosmetic retirement
+  have equivalent owned GPU recipes. Weapon/Carnage authoritative timelines must remain
+  independent. Effect scheduling/legacy randomness is camera-dependent in existing code;
+  moving it to GPU must not consume or reorder authoritative RNG. Do not count CPU render
+  deletion as GPU simulation migration. Final proof includes unchanged sim chains, named
+  mod corpus, reload/teardown, validation and smoke, with gross deleted/net added counts.

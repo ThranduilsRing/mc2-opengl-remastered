@@ -20,9 +20,11 @@ layout(location = 0) out vec4 o_color;   // shared scene color0
 layout(location = 1) out vec4 o_normal;  // shared scene normal (writemask 0 -> inert)
 
 void main() {
-    // The billboard sampler repeats; mesh/ribbon UVs retain their CLAMP_TO_EDGE policy.
+    // Swept tubes advance U per profile beyond 1.0. Clamp only when authored:
+    // clamping a repeating trail stretches its edge texel into a flat sheet.
+    // Bit 4 carries the tube's MLR texture-address policy; meshes keep clamp.
     vec2 uv = v_uv;
-    if ((v_flags & 12u) != 0u) {
+    if ((v_flags & 20u) != 0u) {
         vec2 edge = 0.5 / vec2(textureSize(uAtlas, 0));
         uv = clamp(uv, edge, 1.0 - edge);
     }

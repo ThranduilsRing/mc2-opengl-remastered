@@ -28,6 +28,7 @@ namespace {
 using mc2::particles::GpuParticle;
 struct BridgeCapture {
     std::vector<GpuParticle> records;
+    std::vector<mc2::particles::GroupInfo> groups;
     unsigned calls = 0;
     std::ofstream snapshot;
 };
@@ -144,6 +145,12 @@ public:
                     p->m_halfX = 0.5f + n * 0.25f;
                     p->m_halfY = 1.0f + n * 0.125f;
                     p->m_radius = Stuff::Sqrt(p->m_halfX * p->m_halfX + p->m_halfY * p->m_halfY);
+                    // Distinct live atlas rectangles expose resampling at age/seed zero.
+                    const float u = n * 0.125f, v = n * 0.25f;
+                    this->m_P_uvs[slot * 4] = {u, v + 0.125f};
+                    this->m_P_uvs[slot * 4 + 1] = {u + 0.25f, v + 0.125f};
+                    this->m_P_uvs[slot * 4 + 2] = {u + 0.25f, v};
+                    this->m_P_uvs[slot * 4 + 3] = {u, v};
                 }
             }
             const unsigned colorsPerParticle = colorStride();
@@ -229,6 +236,25 @@ public:
             result.push_back(record);
         }
         return result;
+    }
+    void checkLiveUvs(const BridgeCapture& capture)
+    {
+        if constexpr (std::is_same_v<Cloud, gosFX::CardCloud>) {
+            unsigned record = 0;
+            for (unsigned slot = 0; slot < active(); ++slot) {
+                if (this->GetParticle(slot)->m_age >= 1.0f) continue;
+                const auto group = std::find_if(capture.groups.begin(), capture.groups.end(),
+                    [record](const auto& g) { return record >= g.start && record < g.start + g.count; });
+                REQUIRE(group != capture.groups.end());
+                const auto* uv = this->m_P_uvs + slot * 4;
+                CHECK(group->u0 == uv[0].x);
+                CHECK(group->v0 == uv[3].y);
+                CHECK(group->u0 + group->us == uv[1].x);
+                CHECK(group->v0 + group->vs == uv[0].y);
+                CHECK(group->atlasColumns == 0);
+                ++record;
+            }
+        }
     }
     std::vector<char> frozenState()
     {
@@ -356,12 +382,14 @@ void checkFrozenCloud(bool alignX = false, bool alignY = false, unsigned sides =
             batcher.ResolveTextures();
             const auto flushed = mc2_vfx_getRecordsFlushedTotal();
             borrowedCapture->records.clear();
+            borrowedCapture->groups.clear();
             borrowedCapture->calls = 0;
             batcher.Flush();
             CHECK(mc2_vfx_getRecordsFlushedTotal() - flushed == (gpu ? live : 0));
             const auto& actual = borrowedCapture->records;
             CHECK(borrowedCapture->calls == (gpu && live ? 1 : 0));
             CHECK(payloadMatches(actual, expected));
+            if (gpu) cloud.checkLiveUvs(*borrowedCapture);
             if (repeat == 0) firstPayload = actual;
             REQUIRE(actual.size() == firstPayload.size());
             if (!actual.empty()) {
@@ -407,11 +435,12 @@ void checkFrozenCloud(bool alignX = false, bool alignY = false, unsigned sides =
 }
 
 extern "C" void gos_particle_bridge_flush(const GpuParticle* records, unsigned count,
-    const mc2::particles::GroupInfo*, unsigned)
+    const mc2::particles::GroupInfo* groups, unsigned groupCount)
 {
     if (!borrowedCapture) return;
     ++borrowedCapture->calls;
     borrowedCapture->records.insert(borrowedCapture->records.end(), records, records + count);
+    borrowedCapture->groups.insert(borrowedCapture->groups.end(), groups, groups + groupCount);
 }
 
 TEST_CASE_FIXTURE(FrozenPlatform, "vfx_frozen/CardCloud draw flush and clip leave RNG unchanged")

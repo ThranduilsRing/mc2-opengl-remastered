@@ -534,32 +534,7 @@ void gosFX::CardCloud::DrawState(DrawInfo *info)
 
 				mc2::particles::Batcher &batcher = mc2::particles::Batcher::Instance();
 
-				// VFX-FLIPBOOK-ASSET-TABLE-1: pass real per-tile UV rect from spec
-				// instead of the old placeholder (0,0,1,1). For animated atlases,
-				// pass atlasColumns=m_width so the shader can apply per-particle
-				// frame offsets (col=frame%columns, row=frame/columns).
-				// m_UOffset/m_VOffset are the tile origin within the atlas page;
-				// m_USize/m_VSize are the per-tile dimensions (both [0,1] normalized).
-				const float tileU0 = static_cast<float>(
-					spec->m_UOffset.ComputeValue(0.0f, 0.0f));
-				const float tileV0 = static_cast<float>(
-					spec->m_VOffset.ComputeValue(0.0f, 0.0f));
-				float tileUs = static_cast<float>(
-					spec->m_USize.ComputeValue(0.0f, 0.0f));
-				float tileVs = static_cast<float>(
-					spec->m_VSize.ComputeValue(0.0f, 0.0f));
-				// Safety: degenerate tile size falls back to full page.
-				if (tileUs <= 0.0f) tileUs = 1.0f;
-				if (tileVs <= 0.0f) tileVs = 1.0f;
-				// atlasColumns: >1 enables per-particle frame offset in shader.
-				// Non-animated effects (m_animated=false or m_width<=1) get 0 —
-				// shader reads u_atlasColumns==0 and skips the frame-offset path.
-				const uint32_t atlasColumns =
-					(spec->m_animated && spec->m_width > 1u)
-					? static_cast<uint32_t>(spec->m_width) : 0u;
-
-				batcher.BeginGroup(mlrTex, tileU0, tileV0, tileUs, tileVs,
-				                   blendMode, atlasColumns);
+				const uint32_t atlasColumns = 0; // UVs already contain the live atlas frame.
 
 				int harvested = 0;
 				uint32_t minFrame = 0xFFFFFFFFu, maxFrame = 0u;
@@ -583,22 +558,12 @@ void gosFX::CardCloud::DrawState(DrawInfo *info)
 						Stuff::Sqrt(p->m_halfX * p->m_halfX + p->m_halfY * p->m_halfY);
 					const Stuff::RGBAColor &c = m_P_color[i];
 
-					// VFX-FLIPBOOK-ASSET-TABLE-1: per-particle animated atlas frame.
-					// m_pIndex is a SeededCurve returning float frame index [0, N).
-					// Match CPU truncation: Truncate_Float_To_Byte (floor toward zero).
-					// Seed (m_seed) and age (m_age) are both in ParticleCloud__Particle.
-					// Non-animated or degenerate: atlasFrame=0 (first tile, no offset).
-					uint32_t atlasFrame = 0u;
-					if (atlasColumns > 1u) {
-						const float fIdx = static_cast<float>(
-							spec->m_pIndex.ComputeValue(
-								static_cast<Stuff::Scalar>(p->m_age),
-								static_cast<Stuff::Scalar>(p->m_seed)));
-						const int fi = static_cast<int>(fIdx);  // truncate (matches CPU)
-						atlasFrame = (fi > 0) ? static_cast<uint32_t>(fi) : 0u;
-						if (atlasFrame < minFrame) minFrame = atlasFrame;
-						if (atlasFrame > maxFrame) maxFrame = atlasFrame;
-					}
+					// AnimateParticle evaluated these four UVs using this particle's age/seed.
+					// Reusing them avoids frozen curves, byte-truncation drift and width==1 loss.
+					const auto* uv = m_P_uvs + i * 4;
+					batcher.BeginGroup(mlrTex, uv[0].x, uv[3].y,
+					                   uv[1].x - uv[0].x, uv[0].y - uv[3].y, blendMode);
+					const uint32_t atlasFrame = 0;
 
 					mc2::particles::GpuParticle gp = {};
 					gp.position[0] = wc.x;

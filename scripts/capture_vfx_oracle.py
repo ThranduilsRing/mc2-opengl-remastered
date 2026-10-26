@@ -39,6 +39,8 @@ def command(bookmarks: Path, out: Path, frame: int, arm: str, fixture: str = "lo
     env = {"MC2_RENDER_BACKEND": "vulkan", "MC2_VK_SHARED_GBUFFER": "1", "MC2_SMOKE_FREEZE_ANIM": "1",
            "MC2_DETERMINISTIC_RNG": "1", "MC2_RNG_SEED": "0xC0FFEE",
            "MC2_FX_FORCE_SPAWN": fixture, "MC2_GPU_PARTICLES_LOG": "1",
+           "MC2_FX_TRACE": "1", "MC2_SIM_IDENTITY_TRACE": "1",
+           "MC2_VULKAN_VALIDATION": "1", "MC2_DEBUG_STATE_DUMP": "1",
            "MC2_GPU_PARTICLES": "1" if arm == "gpu" else "0"}
     env.update(gate_vector(arm, experiment))
     if camera_park is not None:
