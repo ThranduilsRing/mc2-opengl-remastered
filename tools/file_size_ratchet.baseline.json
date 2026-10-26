@@ -14,7 +14,7 @@
   "tools"
  ],
  "files_over_1500": {
-  "GameOS/gameos/engine_present_vk.cpp": 2898,
+  "GameOS/gameos/engine_present_vk.cpp": 2907,
   "GameOS/gameos/vulkan_color_prop_island.cpp": 1954,
   "GameOS/include/gameos.hpp": 3650,
   "code/artlry.cpp": 1701,
@@ -42,7 +42,7 @@
   "gui/alistbox.cpp": 1513,
   "mclib/ablenv.cpp": 1585,
   "mclib/ablrtn.cpp": 1799,
-  "mclib/assimp_importer.cpp": 1878,
+  "mclib/assimp_importer.cpp": 1921,
   "mclib/camera.h": 1850,
   "mclib/file.cpp": 1739,
   "mclib/gosfx/fcurve.cpp": 1923,
@@ -59,7 +59,7 @@
   "tools/scifi_kit/art/intent_military.py": 3363,
   "tools/terrain_beautify/visual_heightfield.py": 1510
  },
- "head": "536841a9e",
+ "head": "469470b64",
  "per_dir": {
   "GameAdapters": {
    "files": 13,
@@ -68,7 +68,7 @@
    "max_lines": 458
   },
   "GameOS": {
-   "files": 381,
+   "files": 382,
    "files_over_1500": 3,
    "files_over_3000": 1,
    "max_lines": 3650
@@ -110,19 +110,19 @@
    "max_lines": 1513
   },
   "mclib": {
-   "files": 587,
+   "files": 589,
    "files_over_1500": 13,
    "files_over_3000": 0,
    "max_lines": 2518
   },
   "shaders": {
-   "files": 104,
+   "files": 107,
    "files_over_1500": 0,
    "files_over_3000": 0,
-   "max_lines": 675
+   "max_lines": 637
   },
   "tools": {
-   "files": 612,
+   "files": 614,
    "files_over_1500": 5,
    "files_over_3000": 2,
    "max_lines": 3363
@@ -147,7 +147,7 @@
   },
   {
    "file": "GameOS/gameos/engine_present_vk.cpp",
-   "lines": 2898
+   "lines": 2907
   },
   {
    "file": "code/brain_special_dispatch.cpp",
@@ -214,16 +214,16 @@
    "lines": 1923
   },
   {
+   "file": "mclib/assimp_importer.cpp",
+   "lines": 1921
+  },
+  {
    "file": "code/mover.h",
    "lines": 1906
   },
   {
    "file": "mclib/move.h",
    "lines": 1895
-  },
-  {
-   "file": "mclib/assimp_importer.cpp",
-   "lines": 1878
   },
   {
    "file": "mclib/camera.h",
@@ -255,7 +255,7 @@
   }
  ],
  "total": {
-  "files": 2531,
+  "files": 2539,
   "files_over_1500": 44,
   "files_over_3000": 3,
   "max_lines": 3650
