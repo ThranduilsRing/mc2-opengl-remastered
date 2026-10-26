@@ -9,6 +9,7 @@
 #include <cstring>
 #include <cstdlib>
 #include <algorithm>   // std::min
+#include <bit>
 #include <SDL2/SDL_mixer.h>
 
 #include "file.h"   // fileExists
@@ -39,6 +40,7 @@ extern "C" {
 #include "mc2fmt.h"
 #include <format>
 #include <string>
+#include <string_view>
 #include <utility>
 
 //-----------------------------------------------------------------------------
@@ -257,7 +259,7 @@ struct VideoSession {
 // Sidecars use the same decoder/resampler and consumed-sample clock as
 // embedded audio. Missing or unsupported WAVs fall back to embedded audio.
 extern char soundPath[80];   // mclib/paths.cpp
-static bool tryOpenAudio(VideoSession* s, const char* path);
+static bool tryOpenAudio(VideoSession* s, std::string_view path);
 static bool tryStartSidecarWAV(VideoSession* s, const char* waveShortName)
 {
     if (!soundSystem || !waveShortName || !waveShortName[0]) return false;
@@ -273,11 +275,12 @@ static bool tryStartSidecarWAV(VideoSession* s, const char* waveShortName)
 // opened, SwrContext was initialised, and beginVideoPCMStream succeeded.
 // On any failure, partial state (aCodec/swr) is torn down cleanly and
 // s->aStream is reset to -1.
-static bool tryOpenAudio(VideoSession* s, const char* path)
+static bool tryOpenAudio(VideoSession* s, std::string_view path)
 {
     // Audio must decode ahead even while a future video frame is held. A separate
     // demux cursor also puts WAV sidecars on the same consumed-sample clock.
-    if (avformat_open_input(&s->aFmt, path, nullptr, nullptr) < 0) return false;
+    const std::string inputPath(path); // FFmpeg requires a NUL-terminated path.
+    if (avformat_open_input(&s->aFmt, inputPath.c_str(), nullptr, nullptr) < 0) return false;
     if (avformat_find_stream_info(s->aFmt, nullptr) < 0) {
         avformat_close_input(&s->aFmt);
         return false;
@@ -622,7 +625,7 @@ static void bufferAudio(VideoSession* s)
             if (frames < 0) { av_free(pcm); markAudioStalled(s, "swr_convert error"); return; }
             if (s->audioSidecar) {
                 const float gain = (snd->getDigitalMasterVolume() / 256.0f) * (snd->getBettyVolume() / 256.0f);
-                auto* samples = reinterpret_cast<int16_t*>(pcm);
+                auto* samples = std::bit_cast<int16_t*>(pcm);
                 for (int i = 0; i < frames * s->aOutChannels; ++i)
                     samples[i] = static_cast<int16_t>(samples[i] * gain);
             }
