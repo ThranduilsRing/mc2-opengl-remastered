@@ -206,7 +206,7 @@ static std::vector<ModelOverrideRecord> parseManifest(std::string_view manifestP
             std::string cls  = normalizeKey(replaces.substr(0, colon));
             std::string name = normalizeKey(replaces.substr(colon + 1));
             if (cls.empty() || name.empty()) { logDrop("empty class or name in replaces", key); continue; }
-            if (cls != "staticprop" && cls != "tree") { logDrop("class not staticProp|tree", key); continue; }
+            if (cls != "staticprop" && cls != "tree" && cls != "vehicle") { logDrop("class not staticProp|tree|vehicle", key); continue; }
             if (e.contains("class") && normalizeKey(e.value("class", std::string())) != cls) {
                 logDrop("class field disagrees with replaces", key); continue;
             }
@@ -366,6 +366,9 @@ ModelOverrideRegistry& ModelOverrideRegistry::instance() {
         if (bundledArt)
             g.loadFromFile("mods/mc2-industrial-kit/data/model_overrides/models.json",
                            "mods/mc2-industrial-kit/data/model_overrides");
+        if (bundledArt)
+            g.mergeFromFile("mods/mc2-vehicle-kit/data/model_overrides/models.json",
+                            "mods/mc2-vehicle-kit/data/model_overrides");
         const int base = g.mergeFromFile("data/model_overrides/models.json", "data/model_overrides");
         g.mergeConditionsFromFile("data/model_overrides/conditions.json");
         mc2::fmt::print_err("[MODOVERRIDE] install registry: {:d} override(s)\n", mc2::fmt::as_i32(base));
@@ -374,9 +377,10 @@ ModelOverrideRegistry& ModelOverrideRegistry::instance() {
         // relative to that mod's model_overrides directory: Assimp opens files directly, so the
         // per-record manifestDir is what routes a GLB to its provider.
         std::string active = mc2::gate::str<"MC2_ACTIVE_MOD">();
-        if (!bundledArt && active == "mc2-industrial-kit") active.clear();
+        if (!bundledArt && (active == "mc2-industrial-kit" || active == "mc2-vehicle-kit")) active.clear();
         for (const auto& root : modelOverrideMountOrder(active, mc2::gate::str<"MC2_MOD_DEPS">(), activeModJsonDeps(active))) {
             if (root == "mods/mc2-industrial-kit") continue; // Already merged at lowest priority.
+            if (root == "mods/mc2-vehicle-kit") continue;
             const std::string dir = (std::filesystem::path(root) / "data/model_overrides").generic_string();
             const int n = g.mergeFromFile(dir + "/models.json", dir);
             const int c = g.mergeConditionsFromFile(dir + "/conditions.json");

@@ -51,7 +51,7 @@ struct ModelOverrideRecord {
     // Explicit opt-in for thin fence coverage composited after vegetation.
     bool lateCoverageFringe = false;
     std::vector<ModelOverrideMaterial> materials;
-    std::string overrideClass;    // "staticprop" | "tree" -- NORMALIZED lowercase
+    std::string overrideClass;    // "staticprop" | "tree" | "vehicle" -- NORMALIZED lowercase
     std::string appearanceName;   // from "replaces" after ':' -- NORMALIZED lowercase
     std::string sourceRelPath;    // pristine intact LOD0 (.glb/.gltf, manifest-relative)
     std::string manifestDir;      // directory from which this record's paths resolve

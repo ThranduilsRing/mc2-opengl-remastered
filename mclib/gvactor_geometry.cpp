@@ -6,11 +6,160 @@
 #include "appearance_rng.h"
 #include "../RenderCore/axis_convert.h"
 #include "mc2fmt.h"
+#include "model_override_registry.h"
+#include "../RenderCore/SurfaceMaterial.h"
+#include "assimp_importer.h"
+#include "Gates/gate.h"
+
+extern uint32_t g_mc2FrameCounter;
+
+// The presentation mesh follows the stock pose without entering simulation or picking.
+void GVAppearance::updateRenderShape()
+{
+	// findMoverByMouse selects vehicles by the stock screen rectangle, not triangles.
+	if (g_mc2FrameCounter == 60 && mc2::gate::get<"MC2_VK_PICK_PROBE">())
+		mc2::fmt::print_out("[VEHICLE_PICK] appearance={} pos=({:.2f},{:.2f}) bounds=({:.6f},{:.6f},{:.6f},{:.6f})\n",
+			appearType->name, position.x, position.y, upperLeft.x, upperLeft.y, lowerRight.x, lowerRight.y);
+	if (!appearType->renderLods[0] || status == OBJECT_STATUS_DESTROYED || status == OBJECT_STATUS_DISABLED) {
+		renderShape.reset();
+		renderLOD = -1;
+		return;
+	}
+	int lod = 0;
+	glm::vec3 translation;
+	mc2ToRender(translation, position);
+	const float eyeDistance = eye->usePerspective ? glm::length(translation - glm::vec3(eye->getCameraOrigin())) : 0.0f;
+	for (int i = 1; i < 3; ++i)
+		if (appearType->renderLods[i] && eyeDistance > appearType->renderLodDistance[i]) lod = i;
+	const auto* override = ModelOverrideRegistry::instance().resolve("vehicle", appearType->name);
+	TG_TypeMultiShape* variantType = nullptr;
+	bool newVariant = false;
+	if (renderLOD != lod || renderRed != psRed || renderGreen != psGreen || renderBlue != psBlue) {
+		for (auto& variant : appearType->renderVariants)
+			if (variant.lod == lod && variant.red == psRed && variant.green == psGreen && variant.blue == psBlue)
+				variantType = variant.shape.get();
+		if (!variantType) {
+#ifdef ENABLE_ASSIMP_IMPORTER
+			auto type = std::make_unique<TG_TypeMultiShape>();
+			const auto rel = lod == 0 ? override->sourceRelPath : override->lods[lod-1].sourceRelPath;
+			const auto path = override->manifestDir + "/" + rel;
+			try {
+				if (ImportGeometryFromFile(path.c_str(), type.get(), false, true, true) != 0) {
+					renderShape.reset(); renderLOD = -1; return;
+				}
+			} catch (...) { renderShape.reset(); renderLOD = -1; return; }
+			variantType = type.get();
+			appearType->renderVariants.push_back({lod, psRed, psGreen, psBlue, std::move(type)});
+			newVariant = true;
+#else
+			return;
+#endif
+		}
+		for (auto handle : renderTextures) if (handle != 0xffffffff) mc2::textures::release(handle);
+		renderTextures.clear();
+		renderShape.reset(variantType->CreateFrom());
+		renderLOD = lod;
+	}
+	if (renderTextures.empty() || renderRed != psRed || renderGreen != psGreen || renderBlue != psBlue) {
+		for (auto handle : renderTextures) if (handle != 0xffffffff) mc2::textures::release(handle);
+		renderTextures.clear();
+		auto colourKey = [](DWORD c) { return ((c >> 5) & 7) | (((c >> 13) & 7) << 3) | (((c >> 21) & 7) << 6); };
+		const DWORD paintKey = 0x80000000u | (colourKey(psRed) << 18) | (colourKey(psGreen) << 9) | colourKey(psBlue);
+		std::vector<std::pair<std::string, DWORD>> published;
+		for (long i = 0; i < renderShape->GetNumTextures(); ++i) {
+			if (variantType && !newVariant) {
+				const auto handle = variantType->GetTextureHandle(i);
+				renderTextures.push_back(handle == 0xffffffff ? handle : mc2::textures::retain(handle));
+				continue;
+			}
+			char name[1024];
+			renderShape->GetTextureName(i, name, sizeof(name));
+			if (!name[0] || S_stricmp(name, "NULLTXM") == 0) {
+				renderTextures.push_back(0xffffffff);
+				continue;
+			}
+			char path[1024];
+			mc2::fmt::to_buf(path, "{}{:d}/{}", mc2::fmt::safe(tglPath), mc2::fmt::as_i32(ObjectTextureSize), name);
+			const bool alpha = S_strnicmp(name, "a_", 2) == 0;
+			const auto format = alpha ? gos_Texture_Alpha : gos_Texture_Solid;
+			const auto hints = gosHint_MipmapFilter0 | gosHint_DontShrink;
+			bool tint = true;
+			if (override) for (const auto& material : override->materials)
+				if (material.slot == static_cast<uint32_t>(i))
+					tint = material.materialClass != static_cast<uint32_t>(RenderCore::SurfaceClass::Emissive)
+						&& material.materialClass != static_cast<uint32_t>(RenderCore::SurfaceClass::Glass);
+			DWORD sharedPaint = 0xffffffff;
+			if (tint) for (const auto& entry : published)
+				if (entry.first == name) sharedPaint = entry.second;
+			if (sharedPaint != 0xffffffff) {
+				renderTextures.push_back(mc2::textures::retain(sharedPaint));
+				continue;
+			}
+			const auto variant = tint ? paintKey : 0;
+			auto handle = mc2::textures::findAndRetain(path, format, hints, variant);
+			const bool painted = handle != 0;
+			if (!painted) handle = mc2::textures::load(path, format, hints, variant);
+			// Reuse the stock key-colour classifier on paintable material slots.
+			if (tint && !painted && handle != 0xffffffff) {
+				auto* stock = gvShape;
+				gvShape = renderShape.get();
+				gvShape->SetTextureHandle(0, handle);
+				setPaintScheme();
+				gvShape = stock;
+			}
+			if (tint && handle != 0xffffffff) {
+				const auto cpu = mc2::textures::sourceId(handle);
+				TEXTUREPTR pixels{};
+				gos_LockTexture(cpu, 0, 1, &pixels);
+				// The batcher reads immutable source bytes, rather than the legacy CPU texture.
+				const auto coloured = pixels.pTexture && pixels.Width == pixels.Height
+					? mc2::textures::fromPixels(pixels.pTexture, format, hints, pixels.Width) : 0xffffffff;
+				gos_UnLockTexture(cpu);
+				if (coloured != 0xffffffff) {
+					mc2::textures::release(handle);
+					handle = coloured;
+					published.emplace_back(name, handle);
+				}
+			}
+			renderTextures.push_back(handle);
+		}
+		renderRed = psRed; renderGreen = psGreen; renderBlue = psBlue;
+	}
+	for (long i = 0; i < renderShape->GetNumTextures(); ++i)
+		renderShape->SetTextureHandle(i, renderTextures[i]);
+	// Batcher packets bind type materials. Cache painted types so both teams retain
+	// independent albedo while sharing geometry within the same palette and LOD.
+	if (newVariant) {
+		for (long i = 0; i < variantType->GetNumTextures(); ++i) {
+			const auto handle = renderTextures[i];
+			variantType->SetTextureHandle(i, handle == 0xffffffff ? handle : mc2::textures::retain(handle));
+			char name[256]; variantType->GetTextureName(i, name, sizeof(name));
+			variantType->SetTextureAlpha(i, S_strnicmp(name, "a_", 2) == 0);
+		}
+		GpuStaticPropBatcher::instance().registerMultiShape(variantType, true, override);
+		mc2::fmt::print_err("[VEHICLE_RENDER] {} lod={} paint={:08x}/{:08x}/{:08x} type_materials={}\n",
+			appearType->name, lod, psRed, psGreen, psBlue, renderShape->usesTypeMaterials());
+	}
+	if (unitAnim().gvAnimationState >= 0) appearType->setAnimation(renderShape.get(), unitAnim().gvAnimationState);
+	renderShape->SetFrameNum(unitAnim().currentFrame);
+	auto turret = mc2::math::quatFromEuler(mc2::math::Euler(0.0f, unitAnim().turretRotation * DEGREES_TO_RADS, 0.0f));
+	const char* turretNode = appearType->rotationalNodeId;
+	// Stock Centipede's INI says sc_turret; the actual stock/exported mesh names this node.
+	if (S_stricmp(turretNode, "sc_turret") == 0) turretNode = "Centipede_turret";
+	renderShape->SetNodeRotation(turretNode, &turret);
+	renderShape->SetAlphaValue(gvShape->GetAlphaValue());
+	renderShape->SetFogRGB(0xffffffff);
+	renderShape->SetLightsOut(!eye->isNight);
+	renderShape->SetLightList(eye->getWorldLights(), eye->getNumLights());
+	auto rotation = poseRotation();
+	renderShape->TransformMultiShape(&translation, &rotation);
+}
 
 
 void GVAppearance::setPaintScheme (void)
 {
 	DWORD gosHandle = mc2::textures::sourceId(gvShape->GetTextureHandle(0));
+	const bool authoredPaint = renderShape && gvShape == renderShape.get();
 
 	if (gosHandle && gosHandle != 0xffffffff)
 	{
@@ -40,8 +189,9 @@ void GVAppearance::setPaintScheme (void)
 				float shade      = 0.0f;
 				float mixFactor  = 0.0f;
 				const int   kMinDom      = 16;
-				const float kRatio       = 3.0f;
-				const float kRatioMargin = 1.5f;
+				// Authored baked paint is less saturated than the stock channel masks.
+				const float kRatio       = authoredPaint ? 1.5f : 3.0f;
+				const float kRatioMargin = authoredPaint ? 1.1f : 1.5f;
 
 				int domChan = 0, maxOther = 0;
 				if (srcR >= kMinDom && static_cast<float>(srcR) >= kRatio * static_cast<float>(srcG) && static_cast<float>(srcR) >= kRatio * static_cast<float>(srcB))
