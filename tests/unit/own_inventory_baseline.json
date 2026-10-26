@@ -1411,23 +1411,15 @@
    ]
   },
   "DynamicArrayOf<RGBAColor>": {
-   "delete": 3,
+   "delete": 1,
    "delete_array": 0,
    "files": {
     "mclib/mlr/mlrlightmap.cpp": {
      "delete": 1,
      "new": 1
-    },
-    "mclib/mlr/mlrngoncloud.cpp": {
-     "delete": 1,
-     "new": 1
-    },
-    "mclib/mlr/mlrtrianglecloud.cpp": {
-     "delete": 1,
-     "new": 1
     }
    },
-   "new": 3,
+   "new": 1,
    "new_array": 0,
    "owners": [
     ""
@@ -1449,11 +1441,11 @@
    ]
   },
   "DynamicArrayOf<Stuff::Vector4D>": {
-   "delete": 1,
+   "delete": 2,
    "delete_array": 0,
    "files": {
     "mclib/mlr/mlrlightmap.cpp": {
-     "delete": 1,
+     "delete": 2,
      "new": 2
     }
    },
@@ -1464,7 +1456,7 @@
    ]
   },
   "DynamicArrayOf<Vector2DScalar>": {
-   "delete": 9,
+   "delete": 8,
    "delete_array": 0,
    "files": {
     "mclib/mlr/mlr_i_dt_pmesh.cpp": {
@@ -1483,10 +1475,6 @@
      "delete": 1,
      "new": 1
     },
-    "mclib/mlr/mlrindexedtrianglecloud.cpp": {
-     "delete": 1,
-     "new": 1
-    },
     "mclib/mlr/mlrlightmap.cpp": {
      "delete": 1,
      "new": 1
@@ -1496,7 +1484,7 @@
      "new": 1
     }
    },
-   "new": 10,
+   "new": 9,
    "new_array": 0,
    "owners": [
     "",
@@ -1505,58 +1493,36 @@
    ]
   },
   "DynamicArrayOf<Vector4D>": {
-   "delete": 6,
+   "delete": 3,
    "delete_array": 0,
    "files": {
     "mclib/mlr/mlreffect.cpp": {
      "delete": 1,
      "new": 1
     },
-    "mclib/mlr/mlrlightmap.cpp": {
-     "delete": 1
-    },
-    "mclib/mlr/mlrngoncloud.cpp": {
-     "delete": 1,
-     "new": 1
-    },
     "mclib/mlr/mlrprimitivebase.cpp": {
      "delete": 2,
      "new": 2
-    },
-    "mclib/mlr/mlrtrianglecloud.cpp": {
-     "delete": 1,
-     "new": 1
-    }
-   },
-   "new": 5,
-   "new_array": 0,
-   "owners": [
-    "",
-    "ClipPolygon2",
-    "EffectClipPolygon"
-   ]
-  },
-  "DynamicArrayOf<int>": {
-   "delete": 2,
-   "delete_array": 0,
-   "files": {
-    "mclib/mlr/mlrngoncloud.cpp": {
-     "delete": 1,
-     "new": 1
-    },
-    "mclib/mlr/mlrprimitiveclipping.hpp": {
-     "new": 1
-    },
-    "mclib/mlr/mlrtrianglecloud.cpp": {
-     "delete": 1,
-     "new": 1
     }
    },
    "new": 3,
    "new_array": 0,
    "owners": [
-    ""
+    "ClipPolygon2",
+    "EffectClipPolygon"
    ]
+  },
+  "DynamicArrayOf<int>": {
+   "delete": 0,
+   "delete_array": 0,
+   "files": {
+    "mclib/mlr/mlrprimitiveclipping.hpp": {
+     "new": 1
+    }
+   },
+   "new": 1,
+   "new_array": 0,
+   "owners": []
   },
   "DynamicArrayOf<unsignedchar>": {
    "delete": 1,
@@ -1574,14 +1540,10 @@
    ]
   },
   "DynamicArrayOf<unsignedshort>": {
-   "delete": 3,
+   "delete": 2,
    "delete_array": 0,
    "files": {
     "mclib/mlr/mlrindexedprimitivebase.cpp": {
-     "delete": 1,
-     "new": 1
-    },
-    "mclib/mlr/mlrindexedtrianglecloud.cpp": {
      "delete": 1,
      "new": 1
     },
@@ -1590,7 +1552,7 @@
      "new": 1
     }
    },
-   "new": 3,
+   "new": 2,
    "new_array": 0,
    "owners": [
     "",
