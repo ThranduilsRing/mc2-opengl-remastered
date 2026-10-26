@@ -294,7 +294,7 @@ def acquire(label: str, *, wait: bool = True, timeout_s: Optional[float] = None,
         log(f"[host-lease] OFF ({OFF_ENV}=off, owner): {label} launches without the host lease")
         return
     exclusive = _exclusive(exclusive) or any(word in (label + " " + sys.argv[0]).lower()
-                                            for word in ("perf", "fps", "frame-time", "frametime", "tracy", "capture", "replay"))
+                                            for word in ("perf", "fps", "frame-time", "frametime", "tracy"))
     if holds():
         if exclusive and not all(_ours(_read(slot_path(i))) for i in range(6)):
             raise HostLeaseBusy("cannot upgrade a held normal slot; release it before requesting exclusive")

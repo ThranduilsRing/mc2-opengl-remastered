@@ -2,9 +2,9 @@
 
 Base `b66ad0b0983e` (current nifty when branched), Vulkan default. This is a source closure
 plus the runtime evidence listed below, not a claim that all registered classes spawn in
-stock missions. The requested older `mlr-gosfx-inventory` was not present in main's
-`.claude`/`docs` or the supplied memory tree (including ignored files); this inventory
-updates the retirement design against the actual base.
+stock missions. Prior inventory: `E:/mc2-archive-2026-10/plans/mlr-gosfx-inventory-2026-10-19.md`
+(read in full). This update confirms its live routes against the actual base; archived
+zero-caller claims are deletion candidates, not serialized/mod-corpus proofs.
 
 ## Default routes and class-specific blockers
 
@@ -47,7 +47,8 @@ also remain serialization dependencies of gosFX, editor, mc2fx and preview.
   geometry/lighting classes are not deleted merely because stock effects omit them.
 - `gpuTrailKindProven` returns false: the alternate GpuTrailEmitter ownership path is
   dormant for proven weapon classes. Do not enable it during master promotion; the gosFX
-  Tube path owns the real swept profiles. It remains a separate retirement candidate.
+  Tube path owns the real swept profiles. Update can still invoke GpuTrailEmitter when a
+  gosFX spec is missing, so the emitter is not globally dead.
 
 `MC2_VFX_ORACLE_RENDER` still suppresses hit/miss/water-hit and post-hit muzzle Draw calls
 in `code/weaponbolt_render.cpp`; it is not the live-harvest selector described in old docs.
@@ -78,3 +79,53 @@ and after dead-spawner removal; SHA256 `1bc5ee1321df5395e17c8169abc64745223fe7b5
 No authoritative simulation, gosFX Execute/emission/RNG ordering or completion logic is
 changed. Existing effects can be camera-dependent; frozen draw/flush/clip tests check
 that rendering consumes zero additional legacy RNG. Runtime sim proof is recorded below.
+
+
+## P1 runtime verdict and handoff
+
+Engine/proof commit `0b1ab506bab0`; subsequent harness/document edits do not change game
+sources. Owner montage: `E:/mc2-archive-2026-10/proofs/mlr-retire-p1/owner-montage.png`.
+Raw sidecars, commands, logs, repeat hashes and crop differences are retained alongside it.
+
+- **No class accepted at parity. No master/render gate flip.** The fired PPC/flight/impact
+  fixtures exercise Card, CardCloud and native Tube. PPC trails are blue and continuous,
+  but head sprites differ. Candidate impact flashes are substantially reduced/missing,
+  consistent with the render gate's explicit hit/miss/muzzle suppression. White panels
+  in the flight scene also occur in the CPU control: they are not a GPU-only regression.
+  Do not claim the UV clamp fix resolves every historical sheet symptom.
+- All three scenes drift between repeats; PPC CPU repeat 1 timed out during cold load.
+  Shape/ShapeCloud/DebrisCloud/PertCloud/PointCloud/ShardCloud have no accepted populated
+  image fixture in this packet. Unit harvest coverage is not visual parity. P2 must pin
+  per-effect age/state, identify the shared panel-producing spec/geometry, and fix sprite
+  orientation/material/impact routing before promotion. Camera-dependent gosFX ordering
+  and the legacy random stream remain relevant to repeatability.
+- Default day smoke observed 23 Effect roots (`Vehicle_Dust_Cloud`) and 23 CardCloud
+  starts (`Dust`), but zero MLR enqueue calls; starts do not establish visible draws.
+  The source reachability table therefore remains broader than the observed fixture set.
+- Build PASS; eight selected shader/VFX/gate rows PASS (70 Vulkan shaders); frozen VFX
+  native tests PASS; oracle Python tests 137 PASS; lease/capture tests 53 PASS; scripts
+  covering row 63 modules green. The lease edit's covering row took 185.84 s: add a
+  targeted harness row rather than paying the aggregate for a one-line change.
+- Vulkan validation was enabled in all 14 retained budgeted-capture/smoke game logs:
+  zero errors and zero warnings. Smoke-lite: mc2_01 PASS (1,317 frames), mc2_10 timeout
+  at 70.5 s before a frame. Do not call the combined smoke green.
+- Deployment copied the requested 12 GiB base and payload, then **refused** the copied
+  kit's extra `mods/mc2-industrial-kit/data/model_overrides/quonset/detail/2_orm.ktx2`.
+  Per lane rule 2, no check was bypassed and deployment was not retried. Completeness
+  check passes, but there is no deploy manifest: all captures are diagnostic evidence.
+  Reconcile this pin drift through the owning lane before P2's release proofs.
+- Determinism is **unproven**: captured logs have only 192 common frames (tool requires
+  300; threshold unchanged). The requested 20 s fired CPU/GPU pair queued behind batch
+  `w65-fixups-final`, whose two-core-per-slot lease is incompatible with this lane's
+  required one-core slots. Only this lane's queued processes were stopped. Native
+  deletion snapshots/RNG checks remain green; they are not a full mission chain proof.
+- The old capture lease heuristic reserved twelve threads. Its first attempt was stopped;
+  visual capture/replay now uses normal leases, with tests. Subsequent game affinity logs
+  show two logical CPUs at idle priority with host slots=2, cores per slot=1.
+- DrawShape retains a LAB_ONLY internal caller. DrawScreenQuads/sorter support is a
+  zero-game-caller candidate; registered geometry/light IDs and vtable/codec closure need
+  the all-target/corpus checkpoint before broad MLR deletion. No such class is declared
+  globally dead merely from a stock-content observation.
+
+P1 stops here. Keep only `E:/mc2-installs/claude-mlr-retire-p1`; source kit install and mods
+are untouched. No auxiliary install/staging was created; disk freed: 0 GiB.
