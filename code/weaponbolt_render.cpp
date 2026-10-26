@@ -43,6 +43,8 @@ void WeaponBolt::render (void)
 		// umbrella route so the bolt lands in the composited HUD tail (see file-top note).
 		const bool useImmediate = true;
 		const bool vfxTrace = vkVfxTraceOn();
+		// Draw with the same flight heading as Execute, not GameObject's base facing.
+		const float effectHeading = targetPosition ? -world_angle_between(laserPosition, *targetPosition) : rotation;
 
 		if (!gosEffect && !hitTarget && !(static_cast<WeaponBoltTypePtr>(getObjectType()))->isBeam)
 		{
@@ -601,7 +603,7 @@ void WeaponBolt::render (void)
 				mc2::math::buildTranslation(shapeOrigin, actualPosition);
 				
 				glm::quat effectRot;
-				effectRot = mc2::math::quatFromEuler(mc2::math::Euler(0.0f,rotation * DEGREES_TO_RADS,0.0f));
+				effectRot = mc2::math::quatFromEuler(mc2::math::Euler(0.0f,effectHeading * DEGREES_TO_RADS,0.0f));
 				localToWorld = mc2::math::multiply(gosFX::Effect_Against_Motion, effectRot);
 				localResult = localToWorld * shapeOrigin;
 				
@@ -624,7 +626,7 @@ void WeaponBolt::render (void)
 			mc2::math::buildTranslation(shapeOrigin, actualPosition);
 			
 			glm::quat effectRot;
-			effectRot = mc2::math::quatFromEuler(mc2::math::Euler(0.0f,rotation * DEGREES_TO_RADS,0.0f));
+			effectRot = mc2::math::quatFromEuler(mc2::math::Euler(0.0f,effectHeading * DEGREES_TO_RADS,0.0f));
 			localToWorld = mc2::math::multiply(gosFX::Effect_Against_Motion, effectRot);
 			localResult = localToWorld * shapeOrigin;
 			

@@ -267,8 +267,7 @@ public:
                     vertex.velocity[1] = this->m_P_uvs[slot*4+corner].y;
                     MidLevelRenderer::MLRState state;
                     state.Combine(MidLevelRenderer::MLRState{}, spec->m_state);
-                    const bool additive = state.GetAlphaMode() == MidLevelRenderer::MLRState::OneOneMode ||
-                                          state.GetAlphaMode() == MidLevelRenderer::MLRState::AlphaOneMode;
+                    const bool additive = state.GetAlphaMode() == MidLevelRenderer::MLRState::OneOneMode;
                     vertex.size = p->m_scale * std::max(p->m_halfX, p->m_halfY);
                     vertex.kind_flags = 8u | 64u | (additive ? 2u : 0u) |
                         (state.GetTextureWrapMode() == MidLevelRenderer::MLRState::TextureClamp ? 16u : 0u) |
@@ -345,7 +344,8 @@ public:
 };
 
 template<class Cloud>
-void checkFrozenCloud(bool alignX = false, bool alignY = false, unsigned sides = 3)
+void checkFrozenCloud(bool alignX = false, bool alignY = false, unsigned sides = 3,
+    MidLevelRenderer::MLRState::AlphaMode alphaMode = MidLevelRenderer::MLRState::OneZeroMode)
 {
     auto spec = [sides] {
         if constexpr (std::is_same_v<Cloud, gosFX::PertCloud>) return typename Cloud::Specification(sides);
@@ -362,7 +362,7 @@ void checkFrozenCloud(bool alignX = false, bool alignY = false, unsigned sides =
     spec.m_emitterSizeZ.SetCurve(0.0f);
     spec.m_startingSpeed.m_ageCurve.SetCurve(0.0f);
     spec.m_state.SetTextureHandle(0);
-    spec.m_state.SetAlphaMode(MidLevelRenderer::MLRState::OneZeroMode);
+    spec.m_state.SetAlphaMode(alphaMode);
     if constexpr (!std::is_same_v<Cloud, gosFX::PointCloud>) {
         spec.m_alignZUsingX = alignX;
         spec.m_alignZUsingY = alignY;
@@ -457,6 +457,14 @@ void checkFrozenCloud(bool alignX = false, bool alignY = false, unsigned sides =
             const auto& actual = borrowedCapture->records;
             CHECK(borrowedCapture->calls == (gpu && live ? 1 : 0));
             CHECK(payloadMatches(actual, expected));
+            if constexpr (std::is_same_v<Cloud, gosFX::CardCloud>) {
+                if (!actual.empty()) {
+                    REQUIRE(borrowedCapture->groups.size() == 1);
+                    CHECK(borrowedCapture->groups[0].blendMode ==
+                        (alphaMode == MidLevelRenderer::MLRState::OneOneMode ? 2 :
+                         alphaMode == MidLevelRenderer::MLRState::AlphaOneMode ? 1 : 0));
+                }
+            }
             if (gpu) cloud.checkLiveUvs(*borrowedCapture);
             if (repeat == 0) firstPayload = actual;
             REQUIRE(actual.size() == firstPayload.size());
@@ -569,6 +577,8 @@ TEST_CASE_FIXTURE(FrozenPlatform, "vfx_mesh/submaterials and polygon fans preser
 TEST_CASE_FIXTURE(FrozenPlatform, "vfx_frozen/CardCloud draw flush and clip leave RNG unchanged")
 {
     checkFrozenCloud<gosFX::CardCloud>();
+    for (auto blend : {MidLevelRenderer::MLRState::OneOneMode, MidLevelRenderer::MLRState::AlphaOneMode})
+        checkFrozenCloud<gosFX::CardCloud>(false, false, 3, blend);
     for (const auto alignment : {std::pair{true, false}, std::pair{false, true}, std::pair{true, true}})
             checkFrozenCloud<gosFX::CardCloud>(alignment.first, alignment.second);
 }
