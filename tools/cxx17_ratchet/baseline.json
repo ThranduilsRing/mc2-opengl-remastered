@@ -187,7 +187,7 @@
   "mclib": {
    "LG01": 3,
    "LG02": 0,
-   "LG03": 571,
+   "LG03": 567,
    "LG04": 15,
    "LG05": 111,
    "LG06": 528,
@@ -2861,9 +2861,6 @@
   "mclib/mlr/mlrlightmap.hpp": {
    "LG14": 1
   },
-  "mclib/mlr/mlrlinecloud.cpp": {
-   "LG03": 2
-  },
   "mclib/mlr/mlrlookuplight.cpp": {
    "LG03": 10,
    "LG06": 1,
@@ -2874,9 +2871,6 @@
   },
   "mclib/mlr/mlrngoncloud.cpp": {
    "LG03": 10
-  },
-  "mclib/mlr/mlrpointcloud.cpp": {
-   "LG03": 2
   },
   "mclib/mlr/mlrpointlight.cpp": {
    "LG03": 6
@@ -3480,7 +3474,7 @@
    "LG20": 3
   }
  },
- "head": "6042490cd",
+ "head": "8df6be034",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
