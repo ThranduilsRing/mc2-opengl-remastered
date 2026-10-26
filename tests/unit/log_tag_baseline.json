@@ -8561,19 +8561,6 @@
    "count": 1
   },
   {
-   "tag": "SPAWN_PROBE",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "spec",
-    "mlrHandle",
-    "renderState",
-    "permMask",
-    "deltaMask"
-   ],
-   "count": 1
-  },
-  {
    "tag": "SPLATTING",
    "ver": -1,
    "stream": "stdout",
@@ -9537,18 +9524,6 @@
    "count": 1
   },
   {
-   "tag": "VFX_AGE_SAMPLE",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "resolved",
-    "min",
-    "max",
-    "fallback"
-   ],
-   "count": 1
-  },
-  {
    "tag": "VFX_BIRTH",
    "ver": 1,
    "stream": "stderr",
@@ -9652,7 +9627,7 @@
     "alpha_this_call",
     "age_this_call"
    ],
-   "count": 2
+   "count": 1
   },
   {
    "tag": "VFX_ORACLE",
@@ -9685,41 +9660,6 @@
     "atlasColumns",
     "sizeRange",
     "spinRange",
-    "ageRange"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "VFX_ORACLE",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "class",
-    "spec",
-    "animated",
-    "active",
-    "harvested",
-    "alpha",
-    "atlasColumns",
-    "frameRange",
-    "sizeRange",
-    "spinRange",
-    "ageRange"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "VFX_ORACLE",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "class",
-    "spec",
-    "animated",
-    "atlasColumns",
-    "sizeRange",
-    "uvRect",
-    "alpha",
     "ageRange"
    ],
    "count": 1
