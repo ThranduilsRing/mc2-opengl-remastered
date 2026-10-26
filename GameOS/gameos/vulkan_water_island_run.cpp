@@ -199,6 +199,11 @@ extern "C" int mc2_vk_water_island_run(
         return 0;
     }
 
+    // Mission reload can destroy the previous bake's view. Refresh the borrowed
+    // mask before ANY descriptor rewrite, including the first native thin bind.
+    s->maskView = (mc2_vk_shadow_island_bake_ready() && s->hdriSampler)
+                      ? reinterpret_cast<VkImageView>(mc2_vk_shadow_island_get_bake_mask_view()) : VK_NULL_HANDLE;
+
     // Binding 6 of slot `par` must name the GPU-produced thin buffer (the island starts on the placeholder thinBuf until the native producers exist).
     if (!s->thinNative[par]) {
         s->thinNative[par] = true;
@@ -206,8 +211,6 @@ extern "C" int mc2_vk_water_island_run(
     }
     g_health.thinRecords = 0;   // GPU-produced: the count lives in the draw args
 
-    s->maskView = (mc2_vk_shadow_island_bake_ready() && s->hdriSampler)
-                      ? reinterpret_cast<VkImageView>(mc2_vk_shadow_island_get_bake_mask_view()) : VK_NULL_HANDLE;
     const std::array<VkImageView,4> views{s->hdriTexture.view(),s->shHTexture.view(),s->shMTexture.view(),s->maskView};
     if (s->imageDescriptorsDirty[par] || s->boundTextures[par]!=views) {
         write_descriptors(s,int(par)); s->boundTextures[par]=views;
