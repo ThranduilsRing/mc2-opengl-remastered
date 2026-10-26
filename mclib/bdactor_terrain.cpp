@@ -62,7 +62,7 @@ static void dumpGameplay(BldgAppearance& a, glm::vec3 pos, std::span<const short
     // Targeted runtime regression: all requests share one simulation turn.
     // Compare the reused hierarchy with a fresh stock instance, including frozen
     // animation endpoints, and record the actual cells changed by marking.
-    if (S_stricmp(a.appearType->name, "generic_rpbuilding") == 0 ||
+    if (S_stricmp(a.appearType->name, "RPBuilding") == 0 ||
         (a.appearType->bdAnimData[1] && a.appearType->bdAnimData[3])) {
         probe.status = OBJECT_STATUS_NORMAL;
         auto blocked = [&] {
