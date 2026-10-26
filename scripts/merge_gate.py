@@ -159,6 +159,10 @@ def affected_plan(steps, paths, full=False):
         if name.startswith("saveload-") and not art and not full:
             if name not in ("saveload-mc2_01", "saveload-mc2_10"):
                 reason = "no kit/art inputs: day/night save/load pair covers shared serialization"
+        if name.startswith("saveload-") and not full:
+            # Fixtures fire at fixed simulation ticks, not drawn frames. Keep
+            # their baseline ticks and require the same save/load evidence.
+            cmd += ["--sim-speed", "4", "--duration", "15"]
         if name in shared_smokes and batch_tier:
             env.update(MC2_VULKAN_VALIDATION="1", MC2_MOVER_COHERENCE_AUDIT="1",
                        MC2_DEBUG_STATE_DUMP="1", MC2_DIAG_TAGS="CONFIG,BUILD,DEVICE")

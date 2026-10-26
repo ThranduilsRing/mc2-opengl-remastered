@@ -623,6 +623,10 @@ def test_gate_retains_both_art_modes_for_affected_saves_and_captures():
         modes = [(c, e) for n, c, e in steps if n.startswith("saveload-" + mission)]
         assert len(modes) == 2 and modes[0][0] != modes[1][0]
         assert {e["MC2_OPTIONS_OVERRIDE"] for _, e in modes} == {"RemasteredBuildings=TRUE", "RemasteredBuildings=FALSE"}
+        assert all(c[-4:] == ["--sim-speed", "4", "--duration", "15"] for c, _ in modes)
+    full = gate.affected_plan(gate.plan(6), ["scripts/merge_gate.py"], full=True)
+    assert all("--sim-speed" not in c and "--duration" not in c
+               for n, c, _ in full if n.startswith("saveload-"))
 
 
 @pytest.mark.parametrize("paths,count", [(["code/mission.cpp"], 2), (["scripts/kit_payload.py"], 10),
