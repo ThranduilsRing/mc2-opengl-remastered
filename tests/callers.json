@@ -38,7 +38,7 @@
         },
         {
           "path": "scripts/kit_payload.py",
-          "line": 103,
+          "line": 109,
           "evidence": "import",
           "reference": "bootstrap_worktree_build",
           "text": "from bootstrap_worktree_build import find_cmake"
@@ -394,6 +394,13 @@
           "evidence": "import_module",
           "reference": "check-binding-slots",
           "text": "assert importlib.import_module('check-binding-slots').main() == 0"
+        },
+        {
+          "path": "scripts/tests/test_native_binding_contracts.py",
+          "line": 159,
+          "evidence": "import_module",
+          "reference": "check-binding-slots",
+          "text": "scanner = importlib.import_module('check-binding-slots')"
         }
       ]
     },
@@ -1080,10 +1087,17 @@
       "callers_by_basename": [
         {
           "path": "scripts/tests/test_kit_visibility.py",
-          "line": 107,
+          "line": 124,
           "evidence": "load module",
           "reference": "scripts/check-kit-visibility.py",
           "text": "spec = importlib.util.spec_from_file_location(\"kit_check\", ROOT / \"scripts/check-kit-visibility.py\")"
+        },
+        {
+          "path": "scripts/tests/test_kit_visibility.py",
+          "line": 141,
+          "evidence": "load module",
+          "reference": "scripts/check-kit-visibility.py",
+          "text": "spec = importlib.util.spec_from_file_location(\"kit_check_stale\", ROOT / \"scripts/check-kit-visibility.py\")"
         }
       ],
       "callers_by_stem": []
@@ -2272,7 +2286,7 @@
         },
         {
           "path": "scripts/kit_payload.py",
-          "line": 102,
+          "line": 108,
           "evidence": "import",
           "reference": "configure_ninja",
           "text": "import configure_ninja as cn"
@@ -2511,7 +2525,7 @@
         },
         {
           "path": "scripts/check-kit-visibility.py",
-          "line": 10,
+          "line": 11,
           "evidence": "import",
           "reference": "console_child",
           "text": "import console_child"
@@ -4255,7 +4269,7 @@
       "callers_by_stem": [
         {
           "path": "scripts/tests/test_kit_visibility.py",
-          "line": 115,
+          "line": 132,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate"
@@ -11304,7 +11318,7 @@
         },
         {
           "path": "tools/mc2texcook/tests/test_mc2texcook.py",
-          "line": 261,
+          "line": 251,
           "evidence": "import",
           "reference": "batch_cook",
           "text": "import batch_cook, tempfile, subprocess"
@@ -11390,13 +11404,6 @@
       "callers_by_basename": [],
       "callers_by_stem": [
         {
-          "path": "scripts/kit_payload.py",
-          "line": 27,
-          "evidence": "import",
-          "reference": "mc2texcook",
-          "text": "import mc2texcook"
-        },
-        {
           "path": "scripts/tests/test_kit_visibility.py",
           "line": 15,
           "evidence": "import",
@@ -11409,13 +11416,6 @@
           "evidence": "import",
           "reference": "mc2texcook",
           "text": "import mc2texcook  # noqa: E402"
-        },
-        {
-          "path": "tools/mc2texcook/cook_tgl_tiers.py",
-          "line": 19,
-          "evidence": "import",
-          "reference": "mc2texcook",
-          "text": "from mc2texcook import record_cook"
         },
         {
           "path": "tools/mc2texcook/tests/test_mc2texcook.py",

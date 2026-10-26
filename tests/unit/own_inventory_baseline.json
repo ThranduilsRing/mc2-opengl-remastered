@@ -5480,7 +5480,7 @@
   "mclib/ablenv.cpp": 1,
   "mclib/apprtype.cpp": 3,
   "mclib/bdactor_static.cpp": 2,
-  "mclib/bdactor_terrain.cpp": 2,
+  "mclib/bdactor_terrain.cpp": 1,
   "mclib/bdactor_tree.cpp": 5,
   "mclib/bdactor_tree_static.cpp": 1,
   "mclib/bdactor_type.cpp": 2,
