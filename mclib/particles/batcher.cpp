@@ -38,6 +38,7 @@ struct Batcher::Impl {
     std::vector<GpuParticle> staging;
     std::vector<GroupInfo>   groups;
     unsigned int             budget;
+    unsigned int             budgetSixths = 0;
     bool                     overflowReported;
     bool                     hasOpenGroup;   // true iff BeginGroup was called this frame
     Impl(unsigned int b)
@@ -189,7 +190,9 @@ void Batcher::BeginGroup(uint32_t handle, float u0, float v0, float us, float vs
 
 void Batcher::Emit(const GpuParticle& p) {
     if (!is_enabled()) return;
-    if (impl_->staging.size() >= impl_->budget) {
+    // Cards carry six authored vertices; charge one particle for the whole quad.
+    const unsigned sixths = (p.kind_flags & 64u) ? 1u : 6u;
+    if (impl_->budgetSixths + sixths > impl_->budget * 6u) {
         if (!impl_->overflowReported) {
             impl_->overflowReported = true;
             mc2::fmt::print_err("[GPU_PARTICLES v1] event=overflow budget={:d} — record dropped\n", mc2::fmt::as_u32(impl_->budget));
@@ -197,6 +200,7 @@ void Batcher::Emit(const GpuParticle& p) {
         }
         return;
     }
+    impl_->budgetSixths += sixths;
     impl_->staging.push_back(p);
     ++g_emit_total;
 }
@@ -280,6 +284,7 @@ void Batcher::Flush() {
                               impl_->groups.empty() ? nullptr : impl_->groups.data(),
                               static_cast<unsigned>(impl_->groups.size()));
     impl_->staging.clear();
+    impl_->budgetSixths = 0;
     impl_->groups.clear();
     impl_->overflowReported = false;
     impl_->hasOpenGroup = false;

@@ -4,6 +4,7 @@ import os
 from pathlib import Path
 import sys
 import subprocess
+import shutil
 from types import SimpleNamespace
 
 import pytest
@@ -115,3 +116,32 @@ def test_runner_lowers_own_priority(tmp_path):
     subprocess.run([sys.executable, '-c', script, str(tmp_path)],
                    cwd=Path(__file__).resolve().parents[2], check=True,
                    **console_child.child_kwargs())
+
+
+def test_deployed_runner_replaces_interrupted_and_requeued_jobs(tmp_path):
+    # Exercise the actual standalone entry point and seeded helper, outside repo depth.
+    from tools.farm import runner
+    deployed = tmp_path / 'runner.py'
+    shutil.copy2(runner.__file__, deployed)
+    helper = tmp_path / 'harness/scripts'
+    helper.mkdir(parents=True)
+    shutil.copy2(console_child.__file__, helper / 'console_child.py')
+    jobs = tmp_path / 'jobs'
+    jobs.mkdir()
+    (jobs / 'old.running').write_text('{}')
+    (jobs / 'old.done').write_text('stale')
+    (jobs / 'sample.done').write_text('stale')
+    atomic_json(jobs / 'sample.json', {'argv': [sys.executable, '-c',
+        'from pathlib import Path; Path("stop").touch(); print("deployed job ran")'], 'cwd': str(tmp_path)})
+    proc = subprocess.Popen([sys.executable, str(deployed), '--root', str(tmp_path)],
+                            **console_child.child_kwargs(redirected=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
+    try:
+        stdout, stderr = proc.communicate(timeout=15)
+        assert proc.returncode == 0, (stdout, stderr)
+    finally:
+        if proc.poll() is None:
+            proc.kill()
+            proc.communicate(timeout=10)
+    assert json.loads((tmp_path / 'results/old/result.json').read_text())['status'] == 'interrupted'
+    assert json.loads((tmp_path / 'results/sample/result.json').read_text())['returncode'] == 0
+    assert 'deployed job ran' in (tmp_path / 'results/sample/job.log').read_text()

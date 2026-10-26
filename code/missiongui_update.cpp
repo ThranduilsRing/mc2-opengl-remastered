@@ -68,6 +68,52 @@ namespace {
 	}
 }
 
+void updateSaveFixtures()
+{
+	// Tick-boundary quicksave fixtures: MC2_BOOT_QUICKSAVE_AT=N / MC2_BOOT_QUICKLOAD_AT=M
+	// (default unset). One-shot at the first non-movie frame >= N/M, setting the
+	// SAME saveInMissionSave/loadInMissionSave flags the pause-menu QUICK
+	// SAVE/LOAD buttons set (pausewindow.cpp handleMessage SAVE/LOAD; consumed
+	// mission.cpp / mechcmd2.cpp -> savePath/testgame.ims). Lets agents drive a
+	// deterministic quicksave->quickload cycle headlessly (field bug 2026-07-18:
+	// airport cement overlay vanishes after quickload). Set M > N for a
+	// save-then-load in one run. Same fixture pattern as MC2_BOOT_PAUSED above.
+	{
+		extern bool saveInMissionSave;
+		extern bool loadInMissionSave;
+		extern bool g_resaveAfterQuickload;
+		extern uint32_t g_mc2FrameCounter;
+		static const long s_qsAt = static_cast<long>(mc2::gate::get<"MC2_BOOT_QUICKSAVE_AT">());
+		static const long s_qlAt = static_cast<long>(mc2::gate::get<"MC2_BOOT_QUICKLOAD_AT">());
+		static long s_qsIssuedAt = -1;
+		if (s_qsAt > 0) {
+			static bool s_qsDone = false;
+			if (!s_qsDone && static_cast<long>(g_mc2FrameCounter) >= s_qsAt &&
+				eye && !eye->inMovieMode) {
+				s_qsDone = true;
+				s_qsIssuedAt = static_cast<long>(g_mc2FrameCounter);
+				saveInMissionSave = true;
+			}
+		}
+		if (s_qlAt > 0) {
+			static bool s_qlDone = false;
+			// An intro camera can delay both thresholds. Keep the requested gap
+			// after the actual save, so load never races it or reads an older file.
+			const long requestedGap = std::max(1L, s_qlAt - s_qsAt);
+			const long loadAt = s_qsAt > 0 && s_qsIssuedAt >= 0
+				? std::max(s_qlAt, s_qsIssuedAt + requestedGap) : s_qlAt;
+			if (!s_qlDone && (s_qsAt <= 0 || s_qsIssuedAt >= 0) &&
+				static_cast<long>(g_mc2FrameCounter) >= loadAt &&
+				eye && !eye->inMovieMode) {
+				s_qlDone = true;
+				loadInMissionSave = true;
+				g_resaveAfterQuickload = (s_qsAt > 0);
+			}
+		}
+	}
+
+}
+
 void MissionInterfaceManager::update (void)
 {
 	// IMGUI-PAUSE-INPUT-FIX-1: tell the input layer when the pause menu is up so its
@@ -112,48 +158,6 @@ void MissionInterfaceManager::update (void)
 			if (!s_dvDone) {
 				s_dvDone = true;
 				gos_SetGlobalDebugView(static_cast<int>(s_bootView));
-			}
-		}
-	}
-
-	// QUICKSAVE-FIXTURE-1: MC2_BOOT_QUICKSAVE_AT=N / MC2_BOOT_QUICKLOAD_AT=M
-	// (default unset). One-shot at the first non-movie frame >= N/M, setting the
-	// SAME saveInMissionSave/loadInMissionSave flags the pause-menu QUICK
-	// SAVE/LOAD buttons set (pausewindow.cpp handleMessage SAVE/LOAD; consumed
-	// mission.cpp / mechcmd2.cpp -> savePath/testgame.ims). Lets agents drive a
-	// deterministic quicksave->quickload cycle headlessly (field bug 2026-07-18:
-	// airport cement overlay vanishes after quickload). Set M > N for a
-	// save-then-load in one run. Same fixture pattern as MC2_BOOT_PAUSED above.
-	{
-		extern bool saveInMissionSave;
-		extern bool loadInMissionSave;
-		extern bool g_resaveAfterQuickload;
-		extern uint32_t g_mc2FrameCounter;
-		static const long s_qsAt = static_cast<long>(mc2::gate::get<"MC2_BOOT_QUICKSAVE_AT">());
-		static const long s_qlAt = static_cast<long>(mc2::gate::get<"MC2_BOOT_QUICKLOAD_AT">());
-		static long s_qsIssuedAt = -1;
-		if (s_qsAt > 0) {
-			static bool s_qsDone = false;
-			if (!s_qsDone && static_cast<long>(g_mc2FrameCounter) >= s_qsAt &&
-				eye && !eye->inMovieMode) {
-				s_qsDone = true;
-				s_qsIssuedAt = static_cast<long>(g_mc2FrameCounter);
-				saveInMissionSave = true;
-			}
-		}
-		if (s_qlAt > 0) {
-			static bool s_qlDone = false;
-			// An intro camera can delay both thresholds. Keep the requested gap
-			// after the actual save, so load never races it or reads an older file.
-			const long requestedGap = std::max(1L, s_qlAt - s_qsAt);
-			const long loadAt = s_qsAt > 0 && s_qsIssuedAt >= 0
-				? std::max(s_qlAt, s_qsIssuedAt + requestedGap) : s_qlAt;
-			if (!s_qlDone && (s_qsAt <= 0 || s_qsIssuedAt >= 0) &&
-				static_cast<long>(g_mc2FrameCounter) >= loadAt &&
-				eye && !eye->inMovieMode) {
-				s_qlDone = true;
-				loadInMissionSave = true;
-				g_resaveAfterQuickload = (s_qsAt > 0);
 			}
 		}
 	}

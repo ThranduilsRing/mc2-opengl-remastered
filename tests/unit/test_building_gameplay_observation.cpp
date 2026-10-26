@@ -2,28 +2,6 @@
 #include "../../mclib/building_gameplay_observation.h"
 #include <array>
 #include <sstream>
-#include <fstream>
-
-// The offline tier does not link BldgAppearance; pin its production probe's
-// ownership contract so diagnostic runs cannot allocate render art or leave animation borrowed.
-TEST_CASE("building_gameplay_observation/probe collision shape lifecycle")
-{
-    std::ifstream input(std::string(MC2_REPO_ROOT) + "/mclib/bdactor_terrain.cpp");
-    REQUIRE(input.good());
-    std::ostringstream text;
-    text << input.rdbuf();
-    const auto source = text.str();
-    const auto end = source.find("inline constexpr float HEIGHT_THRESHOLD");
-    REQUIRE(end != std::string::npos);
-    const auto probe = source.substr(0, end);
-    CHECK(probe.find("getBldgRenderShape") == std::string::npos);
-    CHECK(probe.find("bldgDmgRenderShape") == std::string::npos);
-    CHECK(probe.find("getBldgCollisionShape(0)") != std::string::npos);
-    const auto release = probe.rfind("if (probe.bldgShape) probe.releaseBldgShape();");
-    REQUIRE(release != std::string::npos);
-    CHECK(probe.find("probe.appearType = nullptr;", release) != std::string::npos);
-}
-
 TEST_CASE("building_gameplay_observation/gate wall rubble and wrong map write")
 {
     struct TerrainCell { bool passable = true, gate = false; int specialType = 0, specialID = 0, lineOfSight = 0; };

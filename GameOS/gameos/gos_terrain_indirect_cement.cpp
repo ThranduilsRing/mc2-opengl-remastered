@@ -584,17 +584,15 @@ void PopulateRecipeCementWords() {
                     const bool c3 = (l3 != 0xFFFFu);
                     const int maskId = deriveMaskIdFromCorners(c0, c1, c2, c3);
                     const uint16_t cementLayerIdx = c0 ? l0 : (c1 ? l1 : (c2 ? l2 : l3));
-                    // The authored transition contains both its footprint and road/runway
-                    // art. A borrowed slab plus a corner cut loses both at pad junctions.
-                    if (g_cementAlphaLayerMapReady && g_cementAlphaLayerIndexBySlot[slot] != 0xFFFFu) {
+                    if (maskId >= 0 && cementLayerIdx != 0xFFFFu
+                        && PadEdgeRoadFixMode() == 2
+                        && TileRoadAdjacent8(my, mx, mapSide, blocks)) {
+                        // Explicit road suppression precedes authored alpha coverage.
+                    } else if (g_cementAlphaLayerMapReady && g_cementAlphaLayerIndexBySlot[slot] != 0xFFFFu) {
                         cementWord = kCementLayerValidBit | kCementTransitionBit | kCementOwnAlphaBit
                                    | (static_cast<uint32_t>(g_cementAlphaLayerIndexBySlot[slot]) & 0xFFFFu);
                         ++transitionQuadCount;
                         if (cementLayerIdx == 0xFFFFu || maskId < 0) ++transitionAlphaRescued;
-                    } else if (maskId >= 0 && cementLayerIdx != 0xFFFFu
-                        && PadEdgeRoadFixMode() == 2
-                        && TileRoadAdjacent8(my, mx, mapSide, blocks)) {
-                        // leave cementWord = 0 (legacy -1 behavior)
                     } else if (maskId >= 0 && cementLayerIdx != 0xFFFFu) {
                         cementWord = kCementLayerValidBit
                                    | kCementTransitionBit

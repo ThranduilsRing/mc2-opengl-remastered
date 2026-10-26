@@ -9,8 +9,10 @@ import subprocess
 import sys
 import time
 
-sys.path[:0] = [str(Path(__file__).resolve().parents[2] / 'scripts'),
-                str(Path(__file__).resolve().parent / 'harness/scripts')]
+runner_dir = Path(__file__).resolve().parent
+sys.path.insert(0, str(runner_dir / 'harness/scripts'))
+if len(runner_dir.parents) > 1:
+    sys.path.append(str(runner_dir.parents[1] / 'scripts'))
 import console_child
 
 
@@ -56,14 +58,14 @@ def run_job(path, root):
         result['error'] = f'{type(exc).__name__}: {exc}'
     result['finished'] = time.time()
     atomic_json(output / 'result.json', result)
-    path.rename(path.with_suffix('.done'))
+    path.replace(path.with_suffix('.done'))
     return result
 
 
 def poll_once(root):
     for path in sorted((root / 'jobs').glob('*.json')):
         claimed = path.with_suffix('.running')
-        path.rename(claimed)
+        path.replace(claimed)
         run_job(claimed, root)
 
 
@@ -96,7 +98,7 @@ def main():
             output = root / 'results' / path.stem
             output.mkdir(parents=True, exist_ok=True)
             atomic_json(output / 'result.json', {'status': 'interrupted', 'returncode': None})
-            path.rename(path.with_suffix('.done'))
+            path.replace(path.with_suffix('.done'))
         while not (root / 'stop').exists():
             poll_once(root)
             time.sleep(1)

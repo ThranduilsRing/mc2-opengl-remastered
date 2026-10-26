@@ -253,24 +253,6 @@ bool Gate::isVisible (CameraPtr camera)
 //---------------------------------------------------------------------------
 long Gate::update (void)
 {
-	// Exercise the footprint marking used by openSubAreas/closeSubAreas on
-	// an isolated map, once per diagnostic run; leave the live map untouched.
-	static bool passabilityProbed = false;
-	if (!passabilityProbed && mc2::gate::get<"MC2_DEBUG_STATE_DUMP">() && GameMap && numCellsCovered > 0) {
-		passabilityProbed = true;
-		auto saved = GameMap->map;
-		GameMap->map.swap(saved);
-		for (bool passable : {false, true, false}) {
-			markMoveMap(passable);
-			std::fprintf(stderr, "[GATE_MOVE] passable=%d|cells=", passable);
-			for (long i = 0; i < numCellsCovered; ++i) {
-				const int r = cellsCovered[2 * i], c = cellsCovered[2 * i + 1];
-				std::fprintf(stderr, "%d,%d,%d;", r, c, GameMap->getPassable(r, c));
-			}
-			std::fprintf(stderr, "\n");
-		}
-		GameMap->map.swap(saved);
-	}
 	if (getFlag(OBJECT_FLAG_JUSTCREATED)) 
 	{
 		setFlag(OBJECT_FLAG_JUSTCREATED, false);
