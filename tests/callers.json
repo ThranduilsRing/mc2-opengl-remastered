@@ -2693,14 +2693,14 @@
         },
         {
           "path": "scripts/smoke_lib/host_lease.py",
-          "line": 473,
+          "line": 474,
           "evidence": "import",
           "reference": "scripts.console_child",
           "text": "from scripts import console_child         # type: ignore"
         },
         {
           "path": "scripts/smoke_lib/host_lease.py",
-          "line": 476,
+          "line": 477,
           "evidence": "import",
           "reference": "console_child",
           "text": "import console_child                       # type: ignore"
@@ -2910,7 +2910,7 @@
         },
         {
           "path": "scripts/tests/test_window_emission.py",
-          "line": 9,
+          "line": 10,
           "evidence": "import",
           "reference": "console_child",
           "text": "import console_child"
@@ -5240,7 +5240,7 @@
         },
         {
           "path": "scripts/tests/test_window_emission.py",
-          "line": 10,
+          "line": 11,
           "evidence": "import",
           "reference": "shader_common",
           "text": "import shader_common"
