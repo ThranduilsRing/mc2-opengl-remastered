@@ -31,12 +31,22 @@ void mc2::VkSceneRenderer::renderListsDynamicShadowPass (RenderSubmissions& subm
 			float sun[3]; gos_GetTerrainLightDir(&sun[0],&sun[1],&sun[2]);
 			static std::vector<GpuStaticPropInstance> movers;
 			static std::vector<GpuStaticPropInstance> registryMovers;
+			static std::vector<GpuStaticPropInstance> coldCasters;
 			static uint64_t registryGeneration=~0ull, casterVersion=~0ull, casterDelta=~0ull;
+			static bool registryMaskReady=false;
 			const auto& set=mc2shadow::staticCasterSet();
 			const uint64_t generation=GpuStaticPropRegistry::getRegistryGeneration();
-			if (generation!=registryGeneration || set.version()!=casterVersion || set.deltaVersion()!=casterDelta) {
+			const bool maskReady=mc2_vk_shadow_island_bake_ready()!=0;
+			if (generation!=registryGeneration || set.version()!=casterVersion || set.deltaVersion()!=casterDelta || maskReady!=registryMaskReady) {
 				GpuStaticPropRegistry::getDynamicPropShadowInstancesExcluding(registryMovers,set.recipeMask());
+				// A cold bake takes hundreds of frames. Keep static casters in the
+				// live map until its replacement mask is available to receivers.
+				if (!maskReady) {
+					set.resolve(coldCasters);
+					registryMovers.insert(registryMovers.end(),coldCasters.begin(),coldCasters.end());
+				}
 				registryGeneration=generation; casterVersion=set.version(); casterDelta=set.deltaVersion();
+				registryMaskReady=maskReady;
 			}
 			movers=registryMovers;
 			set.appendMoverLeaves(movers,g_mc2FrameCounter);
