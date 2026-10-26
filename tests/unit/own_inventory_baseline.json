@@ -1026,9 +1026,6 @@
     "mclib/mlr/mlrambientlight.cpp": {
      "new": 1
     },
-    "mclib/mlr/mlrcardcloud.cpp": {
-     "new": 1
-    },
     "mclib/mlr/mlrclipper.cpp": {
      "new": 1
     },
@@ -1105,7 +1102,7 @@
      "new": 1
     }
    },
-   "new": 61,
+   "new": 60,
    "new_array": 0,
    "owners": []
   },
@@ -1392,13 +1389,9 @@
    ]
   },
   "DynamicArrayOf<MLRClippingState>": {
-   "delete": 5,
+   "delete": 4,
    "delete_array": 0,
    "files": {
-    "mclib/mlr/mlrcardcloud.cpp": {
-     "delete": 1,
-     "new": 1
-    },
     "mclib/mlr/mlrlightmap.cpp": {
      "delete": 1,
      "new": 1
@@ -1416,7 +1409,7 @@
      "new": 1
     }
    },
-   "new": 5,
+   "new": 4,
    "new_array": 0,
    "owners": [
     "",
@@ -1424,13 +1417,9 @@
    ]
   },
   "DynamicArrayOf<RGBAColor>": {
-   "delete": 4,
+   "delete": 3,
    "delete_array": 0,
    "files": {
-    "mclib/mlr/mlrcardcloud.cpp": {
-     "delete": 1,
-     "new": 1
-    },
     "mclib/mlr/mlrlightmap.cpp": {
      "delete": 1,
      "new": 1
@@ -1444,7 +1433,7 @@
      "new": 1
     }
    },
-   "new": 4,
+   "new": 3,
    "new_array": 0,
    "owners": [
     ""
@@ -1481,7 +1470,7 @@
    ]
   },
   "DynamicArrayOf<Vector2DScalar>": {
-   "delete": 10,
+   "delete": 9,
    "delete_array": 0,
    "files": {
     "mclib/mlr/mlr_i_dt_pmesh.cpp": {
@@ -1500,10 +1489,6 @@
      "delete": 1,
      "new": 1
     },
-    "mclib/mlr/mlrcardcloud.cpp": {
-     "delete": 1,
-     "new": 1
-    },
     "mclib/mlr/mlrindexedtrianglecloud.cpp": {
      "delete": 1,
      "new": 1
@@ -1517,7 +1502,7 @@
      "new": 1
     }
    },
-   "new": 11,
+   "new": 10,
    "new_array": 0,
    "owners": [
     "",
@@ -1526,13 +1511,9 @@
    ]
   },
   "DynamicArrayOf<Vector4D>": {
-   "delete": 7,
+   "delete": 6,
    "delete_array": 0,
    "files": {
-    "mclib/mlr/mlrcardcloud.cpp": {
-     "delete": 1,
-     "new": 1
-    },
     "mclib/mlr/mlreffect.cpp": {
      "delete": 1,
      "new": 1
@@ -1553,7 +1534,7 @@
      "new": 1
     }
    },
-   "new": 6,
+   "new": 5,
    "new_array": 0,
    "owners": [
     "",
@@ -1562,13 +1543,9 @@
    ]
   },
   "DynamicArrayOf<int>": {
-   "delete": 3,
+   "delete": 2,
    "delete_array": 0,
    "files": {
-    "mclib/mlr/mlrcardcloud.cpp": {
-     "delete": 1,
-     "new": 1
-    },
     "mclib/mlr/mlrngoncloud.cpp": {
      "delete": 1,
      "new": 1
@@ -1581,7 +1558,7 @@
      "new": 1
     }
    },
-   "new": 4,
+   "new": 3,
    "new_array": 0,
    "owners": [
     ""
@@ -5529,7 +5506,6 @@
   "mclib/mlr/mlr_i_pmesh.cpp": 1,
   "mclib/mlr/mlr_i_tmesh.cpp": 1,
   "mclib/mlr/mlrambientlight.cpp": 1,
-  "mclib/mlr/mlrcardcloud.cpp": 1,
   "mclib/mlr/mlrclipper.cpp": 2,
   "mclib/mlr/mlreffect.cpp": 1,
   "mclib/mlr/mlrindexedprimitivebase.cpp": 2,
