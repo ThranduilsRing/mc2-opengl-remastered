@@ -443,7 +443,8 @@ std::vector<DWORD> windowCellIds(const aiMesh& mesh) {
         if (!std::isfinite(p.x) || !std::isfinite(p.y) || !std::isfinite(p.z)) continue;
         const auto [at, added] = positions.try_emplace(std::array<float,3>{p.x,p.y,p.z}, id);
         if (!added) {
-            const DWORD a = root(id), b = root(at->second);
+            const DWORD a = root(id);
+            const DWORD b = root(at->second);
             parent[std::max(a,b)] = std::min(a,b);
         }
     }
