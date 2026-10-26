@@ -9,7 +9,6 @@
 // (replaces C7 EffectAdapter-at-MakeEffect, which only caught top-level
 // MakeEffect returns and missed composite-children spawned by EffectCloud).
 #include"particles/batcher.h"
-#include"particles/spawn.h"
 #include<cstdio>   // VFX-ORACLE diagnostics (VFX-CARD-ORACLE-HARVEST-1)
 #include "mc2fmt.h"
 

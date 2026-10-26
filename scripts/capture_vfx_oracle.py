@@ -30,8 +30,9 @@ def command(bookmarks: Path, out: Path, frame: int, arm: str, fixture: str = "lo
             install: str = "lane3") -> list[str]:
     if arm not in {"mlr", "gpu"} or frame < 0 or fixture not in {"loop", "1"}:
         raise ValueError("unknown arm/fixture or negative frame")
+    install_dir = Path(install) if Path(install).is_absolute() else INSTALL_ROOT / f"mc2-win64-{install}"
     cmd = [sys.executable, str(ROOT / "scripts/run_visual_capture.py"),
-           "--exe", str(INSTALL_ROOT / f"mc2-win64-{install}" / "mc2.exe"), "--bookmarks", str(bookmarks),
+           "--no-kill", "--exe", str(install_dir / "mc2.exe"), "--bookmarks", str(bookmarks),
            "--out-dir", str(out), "--trigger-frame", str(frame),
            "--settle", "8", "--duration", "30", "--runs", "2"]
     # The selector alone makes the engine force GL; the umbrella is what makes the capture a Vulkan one.
@@ -73,7 +74,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--experiment", choices=("master", "harvested"), default="master")
     parser.add_argument("--install", default="lane3")
     args = parser.parse_args(argv)
-    if args.install not in INSTALLS:
+    if args.install not in INSTALLS and not Path(args.install).is_absolute():
         print(f"[capture_vfx_oracle] unknown --install {args.install!r}; known installs: {', '.join(INSTALLS)}",
               file=sys.stderr)
         return 2

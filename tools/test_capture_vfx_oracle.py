@@ -20,7 +20,8 @@ def test_capture_command_pins_lane_freeze_seed_and_two_repeats(arm):
     assert "MC2_DETERMINISTIC_RNG=1" in cmd and "MC2_RNG_SEED=0xC0FFEE" in cmd
     assert "MC2_RENDER_BACKEND=vulkan" in cmd and "MC2_VK_SHARED_GBUFFER=1" in cmd
     assert "--backend" not in command(Path("poses.json"), Path("captures"), 164, arm, install="lane2")
-    assert command(Path("poses.json"), Path("captures"), 164, arm, install="lane2")[3].replace(chr(92), "/").endswith("mc2-win64-lane2/mc2.exe")
+    lane2 = command(Path("poses.json"), Path("captures"), 164, arm, install="lane2")
+    assert lane2[lane2.index("--exe") + 1].replace(chr(92), "/").endswith("mc2-win64-lane2/mc2.exe")
     env = dict(cmd[i + 1].split("=", 1) for i, arg in enumerate(cmd) if arg == "--env-declare")
     effective, _ = runner.run_visual_capture.build_capture_env(Path("poses.json"), Path("captures"), 164, 8, True, env)
     assert effective["MC2_SMOKE_FIXED_TIMESTEP"] == "1"
@@ -30,6 +31,13 @@ def test_capture_command_pins_lane_freeze_seed_and_two_repeats(arm):
     assert all(f"{name}=0" in cmd for name in
                ("MC2_VFX_ORACLE_RENDER", "MC2_VFX_ORACLE_TUBE", "MC2_VFX_ORACLE_SHAPE"))
     assert "--no-lease" not in cmd and "--show-window" not in cmd
+    assert "--no-kill" in cmd
+
+
+def test_explicit_lane_install_keeps_absolute_path():
+    install = str(Path("E:/mc2-installs/claude-mlr-retire-p1").resolve())
+    cmd = command(Path("a"), Path("b"), 152, "gpu", install=install)
+    assert Path(cmd[cmd.index("--exe") + 1]) == Path(install) / "mc2.exe"
 
 
 def test_capture_rejects_invalid_arm_and_frame():

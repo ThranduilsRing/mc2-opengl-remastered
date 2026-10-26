@@ -7,7 +7,6 @@
 
 // B1 Stage 2' C8: subclass-Start routing into the GPU particle pipeline.
 #include"particles/batcher.h"
-#include"particles/spawn.h"
 
 #include<cstdio>   // VFX-TUBE-PROFILE-ORACLE-1 diagnostics
 #include<cstdlib>

@@ -3,9 +3,9 @@
 # Where each gate is read, what the smoke runner forwards and what tier1_env_vars.md says are not here: ask
 # tools/repo_intel (env_var, gate_status), which scan the sources.
 generator_version: "3.0.0"
-gate_count: 801
+gate_count: 800
 registry_entry_count: 159
-verified_count: 763
+verified_count: 762
 flags:
   - name: MC2_ABL_ARG_GUARD
     kind: Bool
@@ -5382,14 +5382,6 @@ flags:
     doc: ""
     smoke_passthrough: true
     verified: true
-  - name: MC2_VFX_AGE_SAMPLE
-    kind: Bool
-    default: false
-    rule: Lead1
-    owner: code
-    doc: "VFX-AGE-SAMPLE-1: sample GPU-particle spec curves (color/alpha/size/UV) at the routed effect's real CPU-advanced normalized age (gosFX Effect::m_age..."
-    verified: true
-    registry: {feature_id: MC2_FEATURE_VFX_AGE_SAMPLE, kind: Feature, order: 14, default_on: false}
   - name: MC2_VFX_DEBUG_MODE
     kind: Int
     default: 0
@@ -6185,3 +6177,4 @@ feature_only_rows:   # registry entries with no environment variable
   - {feature_id: MC2_FEATURE_MATERIAL_KTX, kind: Feature, order: 11, default_on: true}
   - {feature_id: MC2_FEATURE_STATICPROP_BC7, kind: Retired, order: 18, default_on: false}
   - {feature_id: MC2_FEATURE_STATICPROP_MATERIAL_PBR_SLOTS, kind: Feature, order: -1, default_on: true}
+  - {feature_id: MC2_FEATURE_VFX_AGE_SAMPLE, kind: Retired, order: 14, default_on: false}

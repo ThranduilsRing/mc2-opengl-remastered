@@ -109,9 +109,8 @@ enum class RendererFeature : int {
     ViewUniforms             = 12,  // MC2_VIEW_UNIFORMS
     // MECH-EXTRACTION-0: mech snapshot extraction (observe-only).
     SnapshotMechExtract      = 13,  // MC2_SNAPSHOT_MECH_EXTRACT
-    // VFX-AGE-SAMPLE-1: sample GPU-particle spec curves at the effect's real
-    // CPU-advanced m_age instead of the fixed 0.5 snapshot. Default-OFF.
-    VfxAgeSample             = 14,  // MC2_VFX_AGE_SAMPLE
+    // Retired snapshot-spawn gate; preserve the numeric identifier.
+    VfxAgeSample             = 14,  // retired
     // VFX-ORIGINAL-RECORD-ABI-1 (Phase 1): CPU-oracle render — GPU renders the
     // CPU sim's live per-particle records (CardCloud first; PointCloud births 0
     // in tier1). Default-OFF parity bridge; placeholder byte-identical when off.
@@ -247,8 +246,8 @@ static constexpr EnvVarDesc kFeatureTable[] = {
     },
     // [14] VfxAgeSample
     {
-        "MC2_FEATURE_VFX_AGE_SAMPLE", "MC2_VFX_AGE_SAMPLE", EnvVarKind::Feature, false,
-        "VFX-AGE-SAMPLE-1: sample GPU-particle spec curves (color/alpha/size/UV) at the routed effect's real CPU-advanced normalized age (gosFX Effect::m_age..."
+        "MC2_FEATURE_VFX_AGE_SAMPLE", nullptr, EnvVarKind::Retired, false,
+        "Retired: unused snapshot spawners removed; live gosFX state supplies particle ages."
     },
     // [15] VfxOracleRender
     {
