@@ -39,7 +39,7 @@ def acquire_label(args) -> str:
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("screen", choices=["purchase", "bay", "loadout", "launch", "briefing", "encyclopedia", "encyclopedia_vehicles", "encyclopedia_pilots"])
+    ap.add_argument("screen", choices=["mainmenu", "purchase", "bay", "loadout", "launch", "briefing", "encyclopedia", "encyclopedia_vehicles", "encyclopedia_pilots"])
     ap.add_argument("--campaign", default="campaign",
                     help="stock campaign .fit basename passed to MC2_BOOT_TO_BAY (default: 'campaign')")
     ap.add_argument("--deploy", default=DEFAULT_DEPLOY)
@@ -79,7 +79,7 @@ def main():
               "MC2_SOAK_PILOT_PROMOTE"):
         env.pop(k, None)
 
-    encyclopedia = args.screen.startswith("encyclopedia")
+    front_end = args.screen.startswith("encyclopedia") or args.screen == "mainmenu"
     env.update({
         "MC2_BOOT_TO_BAY": args.campaign,
         "MC2_BOOT_TO_SCREEN": args.screen,
@@ -118,16 +118,15 @@ def main():
     else:
         env.pop("MC2_LOG_PREVIEW", None)
 
-    if encyclopedia:
+    if front_end:
         # The Mechlopedia boots from the main menu: no campaign mission, no auto-win.
         for k in ("MC2_BOOT_TO_BAY", "MC2_SOAK_AUTOWIN", "MC2_SOAK_WIN_AFTER_SEC", "MC2_SOAK_STOP_AT_BAY"):
             env.pop(k, None)
 
     print(f"[harness] launching {exe} (screen={args.screen} campaign='{args.campaign}' frame={args.frame})")
-    # Host game lease for the whole launch-to-kill window (held until this process exits). Exclusive: this harness takes screenshots,
-    # so no other lane's engine may share the host (same as run_visual_capture). A named holder replaces "unknown holder" in other lanes' waits.
+    # Functional screenshots use one two-core slot, like run_visual_capture.
     try:
-        host_lease.acquire(acquire_label(args), exclusive=True)
+        host_lease.acquire(acquire_label(args), exclusive=False)
     except host_lease.HostLeaseBusy as busy:
         print(f"[harness] FAILED: {busy}")
         sys.exit(2)

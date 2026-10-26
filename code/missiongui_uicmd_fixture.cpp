@@ -511,6 +511,12 @@ bool MissionInterfaceManager::uiCmdFixture(UiCmdCtx& c)
 			result = "blocked"; note = "no object manager";
 		} else {
 			GameObjectPtr obj = ObjectManager->findByPartId(pid);
+			if (obj && obj->getObjectClass() == BATTLEMECH && !strcmp(what, "damaged")) {
+				static_cast<Mover*>(obj)->disable(DEBUGGER_DEATH);
+				result = obj->isDisabled() && !obj->isDestroyed() ? "ok" : "blocked";
+				note = "salvageable disabled mech";
+				return true;
+			}
 			BldgAppearance* ba = obj
 				? dynamic_cast<BldgAppearance*>(obj->getAppearance()) : nullptr;
 			const uint32_t invBefore = g_bldgAnimGate_animStartInvalidated();
