@@ -1,5 +1,6 @@
 #include"gosfxheaders.hpp"
 #include "mlr_cloud_draw.hpp"
+#include "particles/batcher.h"
 #include<mlr/mlrtrianglecloud.hpp>
 
 // B1 Stage 2' C8: subclass-Start routing into the GPU particle pipeline.
@@ -319,6 +320,15 @@ void gosFX::ShardCloud::Draw(DrawInfo *info)
 	{
 		Specification *spec = GetSpecification();
 		Check_Object(spec);
+        if (mc2::gate::get<"MC2_GPU_PARTICLES_LOG">()) {
+            static bool reported = false;
+            if (!reported) {
+                reported = true;
+                mc2::fmt::print_err("[VFX_PRIMITIVE] class=ShardCloud live={:d} route={}\n",
+                    mc2::fmt::as_u32(m_activeParticleCount),
+                    mc2::particles::Batcher::is_enabled() ? "native" : "MLR");
+            }
+        }
 		MlrCloudDraw submission(info, spec->m_state, m_cloudImplementation.get(), m_localToParent);
 		const auto& local_to_world = submission.localToWorld;
 
@@ -587,7 +597,33 @@ void gosFX::ShardCloud::Draw(DrawInfo *info)
 		// Now just do the draw
 		//---------------------
 		//
-		submission.submit(info);
+        if (mc2::particles::Batcher::is_enabled()) {
+            MidLevelRenderer::MLRState state;
+            state.Combine(info->m_state, spec->m_state);
+            const auto am = state.GetAlphaMode();
+            const bool additive = am == MidLevelRenderer::MLRState::OneOneMode ||
+                                  am == MidLevelRenderer::MLRState::AlphaOneMode;
+            auto& batcher = mc2::particles::Batcher::Instance();
+            batcher.BeginGroup(0, 0, 0, 1, 1, am == MidLevelRenderer::MLRState::OneOneMode ? 2 : (additive ? 1 : 0), 0xffffffffu);
+            for (unsigned i = 0; i < m_activeParticleCount; ++i) {
+                if (GetParticle(i)->m_age >= 1.0f) continue;
+                for (unsigned corner = 0; corner < 3; ++corner) {
+                    const unsigned index = i * 3 + corner;
+                    const auto world = mc2::math::transformPoint(m_P_vertices[index], local_to_world);
+                    mc2::particles::GpuParticle vertex{};
+                    vertex.position[0] = world.x;
+                    vertex.position[1] = world.y;
+                    vertex.position[2] = world.z;
+                    const auto& color = m_P_color[index];
+                    vertex.color[0] = color.red;
+                    vertex.color[1] = color.green;
+                    vertex.color[2] = color.blue;
+                    vertex.color[3] = color.alpha;
+                    vertex.kind_flags = 8u | 32u | (additive ? 2u : 0u);
+                    batcher.Emit(vertex);
+                }
+            }
+        } else submission.submit(info);
 	}
 
 	SpinningCloud::Draw(info);

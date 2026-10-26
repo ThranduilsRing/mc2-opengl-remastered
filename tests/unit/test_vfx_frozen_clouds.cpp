@@ -244,34 +244,42 @@ public:
                 }
                 continue;
             }
-            GpuParticle record{};
-            record.position[0] = world.x;
-            record.position[1] = world.y;
-            record.position[2] = world.z;
-            record.color[0] = color.red;
-            record.color[1] = color.green;
-            record.color[2] = color.blue;
-            record.color[3] = color.alpha;
-            record.age = static_cast<float>(p->m_age);
-            record.lifetime = 1.0f;
-            if constexpr (std::is_same_v<Cloud, gosFX::PointCloud>) {
-                record.size = 4.0f;
-            } else {
-                if constexpr (std::is_same_v<Cloud, gosFX::CardCloud>) {
-                    record.velocity[0] = p->m_scale * p->m_halfX;
-                    record.velocity[1] = p->m_scale * p->m_halfY;
-                    record.size = p->m_scale * Stuff::Sqrt(p->m_halfX * p->m_halfX + p->m_halfY * p->m_halfY);
-                    glm::quat parentRotation, rotation;
-                    parentRotation = parent;
-                    rotation = mc2::math::composeQuat(p->m_localRotation, parentRotation);
-                    record.velocity[2] = 2.0f * std::atan2(rotation.z, rotation.w);
-                } else {
-                    record.size = p->m_scale * p->m_radius;
-                    record.velocity[0] = record.velocity[1] = record.size;
-                    record.velocity[2] = 2.0f * std::atan2(p->m_localRotation.z, p->m_localRotation.w);
+            for (unsigned corner = 0; corner < 3; ++corner) {
+                GpuParticle record{};
+                if constexpr (std::is_same_v<Cloud, gosFX::ShardCloud>) {
+                    glm::mat4 shard;
+                    mc2::math::buildRotation(shard, p->m_localRotation);
+                    const auto* spec = this->GetSpecification();
+                    const auto direction = mc2::math::transformPoint(camera, glm::inverse(localToWorld)) - p->m_localTranslation;
+                    if (spec->m_alignZUsingX)
+                        mc2::math::alignLocalAxisToWorldVector(shard, direction, Stuff::Z_Axis,
+                            spec->m_alignZUsingY ? Stuff::Y_Axis : Stuff::X_Axis,
+                            spec->m_alignZUsingY ? Stuff::X_Axis : -1);
+                    else if (spec->m_alignZUsingY)
+                        mc2::math::alignLocalAxisToWorldVector(shard, direction, Stuff::Z_Axis, Stuff::Y_Axis, -1);
+                    mc2::math::buildTranslation(shard, p->m_localTranslation);
+                    const float radius = p->m_scale * p->m_radius;
+                    const glm::vec3 corners[] = {{0, -0.5f * radius, 0},
+                        {radius * p->m_angle, 0.5f * radius, 0},
+                        {-radius * p->m_angle, 0.5f * radius, 0}};
+                    world = mc2::math::transformPoint(mc2::math::transformPoint(corners[corner], shard), localToWorld);
                 }
+                record.position[0] = world.x;
+                record.position[1] = world.y;
+                record.position[2] = world.z;
+                const auto& tint = this->m_P_color[slot * colorsPerParticle + (colorsPerParticle == 3 ? corner : 0)];
+                record.color[0] = tint.red;
+                record.color[1] = tint.green;
+                record.color[2] = tint.blue;
+                record.color[3] = tint.alpha;
+                record.kind_flags = 8u | 32u;
+                if constexpr (std::is_same_v<Cloud, gosFX::PointCloud>) {
+                    record.velocity[0] = corner == 1 ? 2.4f : 0.0f;
+                    record.velocity[1] = corner == 2 ? 2.4f : 0.0f;
+                    record.kind_flags |= 128u;
+                }
+                result.push_back(record);
             }
-            result.push_back(record);
         }
         return result;
     }
@@ -349,7 +357,7 @@ void checkFrozenCloud(bool alignX = false, bool alignY = false, unsigned sides =
     gosFX::Effect::DrawInfo draw{};
     draw.m_parentToWorld = &transform;
     draw.m_clipper = &clipper;
-    const bool gpu = mc2::particles::Batcher::is_enabled() && std::is_same_v<Cloud, gosFX::CardCloud>;
+    const bool gpu = mc2::particles::Batcher::is_enabled() && !std::is_same_v<Cloud, gosFX::PertCloud>;
     auto& batcher = mc2::particles::Batcher::Instance();
     batcher.Flush();
 
@@ -361,7 +369,7 @@ void checkFrozenCloud(bool alignX = false, bool alignY = false, unsigned sides =
                 if (gpu) return cloud.expectedPayload(transform);
             return std::vector<GpuParticle>{};
         }();
-        constexpr unsigned stride = std::is_same_v<Cloud, gosFX::CardCloud> ? 6 : 1;
+        constexpr unsigned stride = std::is_same_v<Cloud, gosFX::CardCloud> ? 6 : 3;
         REQUIRE(expected.size() == (gpu ? live * stride : 0));
         std::vector<GpuParticle> firstPayload;
         std::array<std::vector<char>, 2> firstMlrPayload;
@@ -373,7 +381,7 @@ void checkFrozenCloud(bool alignX = false, bool alignY = false, unsigned sides =
             CAPTURE(outside);
             CAPTURE(gpu);
             clipper.StartDraw(camera, projection, fog, nullptr, state, nullptr);
-            if constexpr (std::is_same_v<Cloud, gosFX::CardCloud>)
+            if constexpr (!std::is_same_v<Cloud, gosFX::PertCloud>)
                 if (gpu) expected = cloud.expectedPayload(transform, mc2::math::getTranslation(camera));
             sorter->payload.clear();
             draw.m_clippingFlags = repeat % 2 ? 0x3f : 0;

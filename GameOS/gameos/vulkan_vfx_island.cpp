@@ -555,13 +555,15 @@ VfxIsland* acquire_island(int w, int h) {
 }
 
 // The frame constants every VFX draw reads (set 0 binding 0). A missing camera basis defaults to the identity axes.
-void fill_frame_params(void* dst, const float* worldToClipGL, const float* camRight, const float* camUp) {
+void fill_frame_params(void* dst, const float* worldToClipGL, const float* camRight, const float* camUp, int w, int h) {
     VfxVsParams up{};
     std::memcpy(up.worldToClipGL, worldToClipGL, sizeof(up.worldToClipGL));
     if (camRight) { up.camRight[0]=camRight[0]; up.camRight[1]=camRight[1]; up.camRight[2]=camRight[2]; }
     if (camUp)    { up.camUp[0]=camUp[0];       up.camUp[1]=camUp[1];       up.camUp[2]=camUp[2]; }
     else          { up.camUp[1]=1.0f; }
     if (!camRight) up.camRight[0]=1.0f;
+    up.camRight[3] = 2.0f / float(w);
+    up.camUp[3] = 2.0f / float(h);
     std::memcpy(dst, &up, sizeof(up));
 }
 
@@ -633,7 +635,7 @@ extern "C" int mc2_vk_vfx_island_run(
         ZoneScopedN("VKIsl.Vfx.Feed");   // VK-ISLAND-TRACY-1: particle staging
         std::memcpy(static_cast<uint8_t*>(span.ptr) + partOff, particles, static_cast<size_t>(needBytes));
     }
-    fill_frame_params(span.ptr, worldToClipGL, camRight, camUp);
+    fill_frame_params(span.ptr, worldToClipGL, camRight, camUp, w, h);
     if (!prepare_shadow_descriptors(s, par)) return 0;
     write_ring_bindings(s, par, span.buffer, span.range);
     const uint32_t dynOffsets[2] = {static_cast<uint32_t>(span.offset), static_cast<uint32_t>(span.offset + partOff)};
@@ -753,7 +755,7 @@ bool mc2_vk_vfx_vegetation_run(const mc2veg::CullParams& params, const float* wo
     const VkDeviceSize visOff = mc2vk::alignUp(cullOff + sizeof(mc2veg::CullParams), align);
     const mc2vk::FrameAlloc span = slotCtx.frameAlloc(visOff + std::max<VkDeviceSize>(visibility.size_bytes(), 16));
     if (!span) { setFallback("frame_ring_alloc_failed"); s->disabled = true; return false; }
-    fill_frame_params(span.ptr, worldToClipGL, nullptr, nullptr);
+    fill_frame_params(span.ptr, worldToClipGL, nullptr, nullptr, w, h);
     write_ring_bindings(s, par, span.buffer, span.range);
     const uint32_t dynOffsets[2] = {static_cast<uint32_t>(span.offset), static_cast<uint32_t>(span.offset + cullOff)};
     const auto page = get_page(s, kVfxVegetationAtlas, par);
