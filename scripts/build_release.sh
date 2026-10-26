@@ -253,6 +253,8 @@ for importer in mc2_import mc2x_import mco_import; do
     mkdir -p "$STAGE/engine/tools"
     cp -r "$REPO/tools/$importer" "$STAGE/engine/tools/"
 done
+mkdir -p "$STAGE/engine/scripts"
+cp "$REPO/scripts/console_child.py" "$STAGE/engine/scripts/"
 if [ -d "$DEPLOY/assets" ]; then
     cp -r "$DEPLOY/assets" "$STAGE/engine/"
 fi

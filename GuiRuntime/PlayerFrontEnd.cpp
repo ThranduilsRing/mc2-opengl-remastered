@@ -202,7 +202,7 @@ void migrateSettings() {
     // Preserve unknown entries for forward compatibility, but name them for support.
     for (const auto& [key, value] : migrated.items()) {
         if (!key.starts_with("MC2_")) continue;
-        bool known = key == "MC2_FPS_CAP" || key == "MC2_VSYNC";
+        bool known = key == mc2::gate::name<"MC2_FPS_CAP">() || key == mc2::gate::name<"MC2_VSYNC">();
         for (const auto& row : k_envVars) known |= key == row.key;
         if (!known) std::printf("[PLAYER_SETTINGS] unrecognised key %s (retained)\n", key.c_str());
     }

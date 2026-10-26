@@ -483,7 +483,7 @@ void SoundSystem::updateMusicSlot (int slot)
 
 	if ((step == MusicFadeStep::FadingDown) || (step == MusicFadeStep::FadingUp))
 	{
-		gosAudio_SetChannelSlider(channel, gosAudio_Volume, digitalMasterVolume * volLevel * musicVolume * digitalMusic[currentMusicId].volume);
+		gosAudio_SetChannelSlider(channel, gosAudio_Volume, digitalMasterVolume * volLevel * musicVolume * digitalMusic[s.id].volume);
 	}
 	else if (step == MusicFadeStep::Ended)
 	{
@@ -596,7 +596,7 @@ void SoundSystem::update (void)
 		if (musicSlots[slot].handle && !musicSlots[slot].fade.active)
 		{
 			musicSlots[slot].fade.active = true;
-			gosAudio_SetChannelPlayMode( musicSlotChannel(slot), digitalMusic[currentMusicId].loop ? gosAudio_Loop : gosAudio_PlayOnce);
+			gosAudio_SetChannelPlayMode( musicSlotChannel(slot), digitalMusic[musicSlots[slot].id].loop ? gosAudio_Loop : gosAudio_PlayOnce);
 		}
 	}
 
@@ -1018,7 +1018,8 @@ void SoundSystem::stopDigitalMusic (void)
 	{
 		for (MusicSlot& slot : musicSlots)
 		{
-			if (slot.fade.active && slot.handle)
+			// Cancel music queued before this frame activated its fade (campaign intro).
+			if (slot.handle)
 			{
 				gosAudio_DestroyResource(&slot.handle);
 

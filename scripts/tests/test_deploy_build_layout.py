@@ -102,6 +102,8 @@ def test_enumerate_payload_needs_only_game(tmp_path):
     rel = {r for _s, r, _k in items}
     assert "mc2.exe" in rel
     assert "mc2-launcher.exe" not in rel
+    assert {"tools/mc2_import/import_tool.py", "tools/mc2x_import/manifest.py",
+            "tools/mco_import/build_object2.py", "scripts/console_child.py"} <= rel
 
 
 def test_native_payload_has_no_windows_runtime(tmp_path):
