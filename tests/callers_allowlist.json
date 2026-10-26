@@ -1,4 +1,5 @@
 {
+  "scripts/tests/test_isolated_deploy.py": "Pytest-discovered by scripts/run_scripts_tests.py through scripts/test_ownership.json; isolated deploy classification regression coverage.",
   "scripts/tests/test_kit_visibility.py": "Executed by the kit_visibility contract row through pytest; receipt and runtime override regression coverage.",
   "scripts/tests/test_spirv_fixups.py": "Executed by the spirv_artifacts contract row through pytest; shader package regression coverage.",
   "scripts/tests/test_window_emission.py": "Executed by the vk_shaders_compile contract row through pytest; compiled linear-light window emission coverage.",

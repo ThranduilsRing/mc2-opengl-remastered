@@ -2094,11 +2094,6 @@
       "bytes": 36538
     },
     {
-      "path": "content/packaging-r4.json",
-      "sha256": "baf03bb6ce9ca02841ae1a9a0791d5c325e8f632e521118d276e67e6df56f342",
-      "bytes": 37022
-    },
-    {
       "path": "content/perimeteralarm.mc2ir.json",
       "sha256": "2dca9099ad5ff3e6cb892546290d9177ff22463d45b9a101de15f32776837e81",
       "bytes": 10017250
@@ -15961,5 +15956,5 @@
   "footing_source_bake_commit": "24d18be6c21c9002ecb42392b6cbd3cd0caabf81",
   "footing_rebakes": "content/rebake-ft1.json",
   "turret_source_bake_commit": "d5e496a9af715bafff42e5b7415b2fbc1b499be0",
-  "turret_selection": "content/packaging-r4.json"
+  "turret_selection": "E:/mc2-ref/packaging-r4.json"
 }
