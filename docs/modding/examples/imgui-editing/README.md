@@ -65,7 +65,7 @@ This example's payload (`mod/data/visual_tuning.json` in this folder) is a **han
 
 Several Graphics Options checkboxes (Track V's **HDR Post**, **Bloom**, **Tonemap ACES**, **SSAO**, and others) read an `MC2_*` env var *once at startup* to seed a runtime bool, then let the checkbox override it live for the rest of the session — but the checkbox never writes back to anything. If you want the same choice on your next launch, you have to set the env var yourself: `MC2_HDR_POST=1`, `MC2_BLOOM=1`, `MC2_SSAO=1`, etc. (Check the **Renderer Features** window, `Ctrl+Shift+F`, for the exact var name and default for any given feature — that's exactly what it's for.)
 
-**There is no `launcher_env.json` or equivalent in this checkout** — I looked for one (searched `tools/mc2_launcher/mc2_launcher.cpp` end to end) and it only ever sets/clears `MC2_ACTIVE_MOD`; it has no facility for arbitrary env vars. If your mod depends on a Tier-B env var being set, your only shippable option is a companion launch script the player runs instead of the raw launcher/exe:
+The in-game picker persists settings in `launcher_env.json`; see `GuiRuntime/PlayerFrontEnd.cpp`. Shell overrides take precedence. A companion launch script can also seed a session:
 
 ```powershell
 # mods/<your-id>/launch-with-tuning.ps1 -- ships NEXT TO the mod folder, not inside

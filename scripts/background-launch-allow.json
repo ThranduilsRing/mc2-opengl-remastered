@@ -1,6 +1,7 @@
 {
   "_about": "Hand-maintained. check-background-launch.py RULE 14/15 fail on a launcher, injector or blanket kill that is not listed here, and on a listed entry that no longer does it. --write never edits this file.",
   "nofocus_callers": {
+    "scripts/tests/test_kit_visibility.py": "Runs the compiled stock-priority fixture through nofocus.run; compiler launches remain hidden console tools.",
     "scripts/camera_sweep_smoke.py": "engine launcher through nofocus.spawn/run (vetted by exe_guard); launch-site audit 2026-10-10",
     "scripts/game_auto.py": "engine launcher through nofocus.spawn/run (vetted by exe_guard); launch-site audit 2026-10-10",
     "scripts/mech_shot.py": "engine launcher through nofocus.spawn/run (vetted by exe_guard); launch-site audit 2026-10-10",
@@ -27,7 +28,6 @@
   },
   "direct_spawn": {
     "tools/farm/runner.py": "Remote serial dispatcher for owner-submitted Python harness jobs; game launches remain inside the seeded harness through nofocus.spawn. Console children share the hidden console through console_child.child_kwargs.",
-    "scripts/tests/test_kit_visibility.py": "Compiles and runs the temporary stock-priority fixture with compiler and fixture paths; console tools only, launched hidden through console_child.child_kwargs.",
     "scripts/tests/test_window_emission.py": "Runs glslangValidator and spirv-dis from shader_common.find_tool to verify compiled emission composition; hidden console tools through console_child.child_kwargs(redirected=True).",
     ".claude/hooks/check_game_running.py": "program is a variable (git, ninja, glslang, ktx, blender, cook tools, python); launch-site audit 2026-10-10: console tool, not the game",
     "scripts/bake_colormap_ktx2.py": "program is a variable (git, ninja, glslang, ktx, blender, cook tools, python); launch-site audit 2026-10-10: console tool, not the game",

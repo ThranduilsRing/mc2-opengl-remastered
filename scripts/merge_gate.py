@@ -308,6 +308,10 @@ def execute_parallel(steps, head, dry_run=False):
             determinism = [s for s in stock if s[0].startswith("determinism-") and not s[2].get("MC2_GATE_SKIP_REASON")]
         if determinism:
             stock = [s for s in stock if s not in determinism]
+        offline = [s for s in stock if s[0] in ("contracts", "harnesses", "pytest")]
+        if offline and execute(offline, head, runner=runner, completed=completed):
+            return 1
+        stock = [s for s in stock if s not in offline]
         boundary = next((i + 1 for i, s in enumerate(stock) if s[0] == "deploy"), 0)
         prefix = stock[:boundary]
         result = execute(prefix, head, runner=runner, completed=completed) if prefix else 0

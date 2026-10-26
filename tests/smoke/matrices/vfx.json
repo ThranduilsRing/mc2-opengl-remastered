@@ -11,7 +11,7 @@
     },
     {
       "id": "gpu_particles_off",
-      "description": "GPU particle batcher disabled (MC2_GPU_PARTICLES=0). Pure legacy gosFX CPU path.",
+      "description": "GPU particle kill switch (MC2_GPU_PARTICLES=0): accepted Card/CardCloud draws are suppressed; no CPU fallback.",
       "env": {
         "MC2_GPU_PARTICLES": "0"
       }
@@ -53,19 +53,10 @@
     },
     {
       "id": "oracle_originals",
-      "description": "VFX-ORIGINALS-LOCKDOWN-1: oracle render ON (default) + log. Verifies CardCloud/ShardCloud/Card oracle fires and Tube/Shape classes fall through to CPU MLR. mc2_10=missile smoke via Tube MLR, mc2_24=PPC trail via Tube MLR + oracle dust/sparks. Regression guard: [VFX_ORACLE v1] lines should appear for CardCloud/ShardCloud/Card but NOT for Tube (Tube has no oracle log output — it goes to MLR directly).",
+      "description": "Default Card/CardCloud GPU draws with particle logging; Tube/Shape classes retain CPU MLR rendering.",
       "missions": ["mc2_10", "mc2_24"],
       "env": {
-        "MC2_VFX_ORACLE_RENDER": "1",
         "MC2_GPU_PARTICLES_LOG": "1"
-      }
-    },
-    {
-      "id": "mlr_originals",
-      "description": "VFX-ORIGINALS-LOCKDOWN-1: oracle disabled. CardCloud/ShardCloud/Card/PointCloud fall to Spawn placeholders (near-invisible). Tube/Shape/ShapeCloud/DebrisCloud render via CPU MLR swept-mesh only. Regression guard: missile smoke and PPC trail must still be visible (Tube MLR active), oracle dust/sparks will be dim/missing. MC2_DISABLE_GOSFX must NOT be set — that would suppress Tube/Shape too.",
-      "missions": ["mc2_10", "mc2_24"],
-      "env": {
-        "MC2_VFX_ORACLE_RENDER": "0"
       }
     }
   ]

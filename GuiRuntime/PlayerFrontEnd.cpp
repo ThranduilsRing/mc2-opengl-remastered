@@ -16,6 +16,7 @@
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
+#include <optional>
 #include <utility>
 #ifdef _WIN32
 #define NOMINMAX
@@ -39,9 +40,9 @@ std::vector<Pack> packs;
 std::string campaign, base, texture, campaignFit, pendingStart, error;
 bool pickerOpen = false, scanned = false, restart = false;
 
-std::string env(std::string_view key) {
+std::optional<std::string> env(std::string_view key) {
     const char* value = mc2::gate::envText(std::string(key).c_str());
-    return value ? value : "";
+    return value ? std::optional<std::string>(value) : std::nullopt;
 }
 void setEnv(std::string_view key, std::string_view value) {
 #ifdef _WIN32
@@ -105,10 +106,10 @@ std::vector<std::string> campaigns(std::string_view id) {
 }
 void scan() {
     packs.clear();
-    campaign = env(mc2::gate::name<"MC2_ACTIVE_MOD">());
+    campaign = env(mc2::gate::name<"MC2_ACTIVE_MOD">()).value_or("");
     base = text(settings, "last_base");
     texture = text(settings, "tex_pack_mod");
-    const auto deps = env(mc2::gate::name<"MC2_MOD_DEPS">());
+    const auto deps = env(mc2::gate::name<"MC2_MOD_DEPS">()).value_or("");
     for (const auto& dir : files("mods")) {
         std::error_code ec;
         if (!fs::is_directory(dir / "data", ec)) continue;
@@ -231,9 +232,9 @@ void loadSettings() {
     settings = readJson("launcher_env.json");
     if (!mc2::gate::get<"MC2_LAUNCHER_ENV_JSON">() || mc2::gate::isSet<"MC2_LAUNCHED">()) return;
     migrateSettings();
-    const bool explicitMod = mc2::gate::envText(mc2::gate::name<"MC2_ACTIVE_MOD">()) != nullptr;
+    const bool explicitMod = env(mc2::gate::name<"MC2_ACTIVE_MOD">()).has_value();
     for (const auto& [key, value] : settings.items())
-        if (key.starts_with("MC2_") && value.is_string() && !mc2::gate::envText(key.c_str())) setEnv(key, value.get<std::string>());
+        if (key.starts_with("MC2_") && value.is_string() && !env(key)) setEnv(key, value.get<std::string>());
     if (!explicitMod) {
         setEnv(mc2::gate::name<"MC2_ACTIVE_MOD">(), text(settings, "last_campaign"));
         std::string deps = text(settings, "last_addons");
@@ -242,21 +243,21 @@ void loadSettings() {
             if (!deps.empty()) deps += ',';
             deps += id;
         }
-        if (!mc2::gate::envText(mc2::gate::name<"MC2_MOD_DEPS">())) setEnv(mc2::gate::name<"MC2_MOD_DEPS">(), deps);
+        if (!env(mc2::gate::name<"MC2_MOD_DEPS">())) setEnv(mc2::gate::name<"MC2_MOD_DEPS">(), deps);
         const bool faster = text(settings, "last_faster_weapons") == "1";
         const bool generated = text(settings, "last_data_driven") == "1";
         for (const auto& [key, value] : {std::pair{mc2::gate::name<"MC2_DIRECT_FIRE_STRAIGHT">(), faster ? "1" : ""},
              {mc2::gate::name<"MC2_PROJECTILE_SPEED_MULT">(), faster ? "2" : ""}, {mc2::gate::name<"MC2_UNIT_PROFILE_DATA">(), generated ? "1" : ""},
              {mc2::gate::name<"MC2_UNIT_DEFINITION_SOURCE">(), generated ? "generated" : ""}, {mc2::gate::name<"MC2_EQUIPMENT_DEFINITION_SOURCE">(), generated ? "generated" : ""}})
-            if (!mc2::gate::envText(key)) setEnv(key, value);
+            if (!env(key)) setEnv(key, value);
     }
     for (const auto& dir : files("mods")) {
         const auto id = dir.filename().string();
-        if (id != env(mc2::gate::name<"MC2_ACTIVE_MOD">()) && !contains(env(mc2::gate::name<"MC2_MOD_DEPS">()), id)) continue;
+        if (id != env(mc2::gate::name<"MC2_ACTIVE_MOD">()).value_or("") && !contains(env(mc2::gate::name<"MC2_MOD_DEPS">()).value_or(""), id)) continue;
         const auto json = readJson(dir / "mod.json");
         if (!json.contains("env") || !json["env"].is_object()) continue;
         for (const auto& [key, value] : json["env"].items())
-            if (key.starts_with("MC2_") && value.is_string() && !mc2::gate::envText(key.c_str())) setEnv(key, value.get<std::string>());
+            if (key.starts_with("MC2_") && value.is_string() && !env(key)) setEnv(key, value.get<std::string>());
     }
     pendingStart = text(settings, "start_campaign");
     if (!pendingStart.empty()) { settings.erase("start_campaign"); saveSettings(); }
@@ -327,7 +328,7 @@ void drawMainMenu() {
         ImGui::TreePop();
     }
     const auto deps = dependencies();
-    const bool contentChanged = campaign != env(mc2::gate::name<"MC2_ACTIVE_MOD">()) || deps != env(mc2::gate::name<"MC2_MOD_DEPS">());
+    const bool contentChanged = campaign != env(mc2::gate::name<"MC2_ACTIVE_MOD">()).value_or("") || deps != env(mc2::gate::name<"MC2_MOD_DEPS">()).value_or("");
     const bool missingBase = !base.empty() && std::none_of(packs.begin(), packs.end(), [](const Pack& p) { return p.id == base; });
     if (missingBase) ImGui::TextWrapped("Required base %s is missing. Import the compatibility pack first.", base.c_str());
     if (campaignFit.empty()) ImGui::TextUnformatted("No loose campaign FIT found in this pack.");
@@ -403,7 +404,7 @@ void drawOptions() {
     if (ImGui::TreeNode("Engine and display options")) {
         for (const auto& row : k_envVars) {
             if (row.cfg) continue;
-            std::string value = text(settings, row.key, env(row.key));
+            std::string value = text(settings, row.key, env(row.key).value_or(""));
             if (row.isBool) {
                 bool on = value.empty() ? row.defaultVal && row.defaultVal[0] == '1' : value != "0";
                 if (ImGui::Checkbox(row.label, &on)) settings[row.key] = on ? "1" : row.offVal ? row.offVal : "";
@@ -416,7 +417,7 @@ void drawOptions() {
         static constexpr const char* frameKeys[] = {mc2::gate::name<"MC2_FPS_CAP">(), mc2::gate::name<"MC2_VSYNC">()};
         for (const auto* key : frameKeys) {
             std::array<char, 32> value{};
-            std::snprintf(value.data(), value.size(), "%s", text(settings, key, env(key)).c_str());
+            std::snprintf(value.data(), value.size(), "%s", text(settings, key, env(key).value_or("")).c_str());
             if (ImGui::InputText(key, value.data(), value.size())) settings[key] = value.data();
         }
         for (const auto& key : {"last_faster_weapons", "last_data_driven"}) {

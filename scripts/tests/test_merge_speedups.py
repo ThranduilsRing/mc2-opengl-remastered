@@ -307,6 +307,22 @@ def test_gate_reports_all_failed_stages(monkeypatch, capsys):
     assert "deploy | FAIL (2)" in capsys.readouterr().out
 
 
+@pytest.mark.parametrize("failed", ["contracts", "harnesses"])
+def test_gate_offline_failure_prevents_captures_and_deploy(monkeypatch, failed):
+    import merge_gate as gate
+    calls = []
+    def runner(command, **kw):
+        calls.append(command[0])
+        return _r(int(command[0] == failed))
+    monkeypatch.delenv("MC2_HOST_LEASE_BATCH", raising=False)
+    monkeypatch.setattr(gate, "git", lambda *a: "head")
+    monkeypatch.setattr(gate, "log_lease_holders", lambda: None)
+    monkeypatch.setattr(gate, "run_child", runner)
+    steps = [(name, [name], {}) for name in ("contracts", "harnesses", "capture-before", "deploy")]
+    assert gate.execute_parallel(steps, "head") == 1
+    assert sorted(calls) == ["contracts", "harnesses"]
+
+
 def test_gate_refuses_changed_head(monkeypatch):
     import merge_gate as gate
     monkeypatch.setattr(gate, "git", lambda *a: "different")

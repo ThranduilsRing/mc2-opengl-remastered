@@ -33,7 +33,7 @@ SCAN_DIRS = ("code", "mclib", "GameOS", "RenderCore", "GuiRuntime", "RenderWorld
 EXTS = (".cpp", ".h", ".hpp", ".cc", ".inl")
 # file -> max lines calling envText( ; why the name is truly dynamic there
 ENVTEXT_ALLOWED = {
-    "GameOS/gameos/gameosmain_init.cpp": 1,   # the launcher_env.json apply asks "did the shell already set this key?"
+    "GuiRuntime/PlayerFrontEnd.cpp": 1,   # moved launcher_env.json apply: preserve shell values for dynamic setting names
     "GameOS/gameos/gos_dev_shell.cpp": 1,  # the dev shell's get_gate answers for a variable NAME the client sends
 }
 # file -> max lines calling boolState( ; every one is a status display driven by a table of gate names

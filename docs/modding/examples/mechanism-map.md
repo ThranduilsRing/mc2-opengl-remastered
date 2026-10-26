@@ -22,7 +22,7 @@ Start with [`getting-started.md`](getting-started.md) if you haven't set up a mo
 
 | Mechanism | Entry point | Gate / env | Drop path | Status |
 |---|---|---|---|---|
-| Launcher mod picker | `tools/mc2_launcher/mc2_launcher.cpp` — `ScanMods` `:62-113`, `DoLaunch` `:117-140` | Sets `MC2_ACTIVE_MOD` in the child `mc2.exe` process env | scans `<launcher-dir>/mods/*/mod.json` | Shipped. Only `type:"campaign"` entries are listed; zero mods found = skip UI, launch base game |
+| In-game mod picker | `GuiRuntime/PlayerFrontEnd.cpp` | Applies `MC2_ACTIVE_MOD` and dependencies before campaign start | scans `<install>/mods/*/mod.json` | Shipped; the native launcher is retired |
 | Mod packager (`pack`) | `tools/mc2mod/mc2mod.py`, `cmd_pack` `:156-205` | — | writes `<id>-<version>.mc2mod` | Shipped |
 | Package integrity check (`verify-lite`) | `tools/mc2mod/mc2mod.py`, `cmd_verify_lite` `:224-294` | — | re-hashes every archive member vs `package.json` | Shipped |
 | Installer (`install`) | `tools/mc2mod/mc2mod.py`, `cmd_install` `:363-453` | Canonical-root guard `:55-58, 372-385` (refuses `a:/games/mc2-opengl/mc2-win64-v0.4` and `-0.4c`, no override flag in v1) | `<deploy>/mods/<id>/` + `.install-receipt.json` | Shipped. Use your own deploy dir, not a project canonical root |

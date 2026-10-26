@@ -14,6 +14,7 @@ import kit_payload as kit
 import batch_cook
 import mc2texcook
 import console_child
+from smoke_lib import nofocus
 import importlib.util
 
 
@@ -37,8 +38,7 @@ int main(int argc, char** argv) {
                     str(source), "-o", str(exe)], check=True, capture_output=True,
                    **console_child.child_kwargs(redirected=True))
     def user(path, owner="", no_stock_read=False):
-        result = subprocess.run([str(exe), str(path), owner] + (["no-read"] if no_stock_read else []),
-                                **console_child.child_kwargs())
+        result = nofocus.run([str(exe), str(path), owner] + (["no-read"] if no_stock_read else []))
         assert result.returncode in (0, 1)
         return result.returncode == 1
     return user
