@@ -707,9 +707,11 @@ long PopulateMergedSkinnedShape(const aiScene* scene, mc2::content::Asset& out, 
 		if (me->mNumBones == 1) ++bake.partsSingleBone;
 		const aiBone* bone = me->mBones[0];
 		const float* rm = nullptr;
+		int boneIndex = -1;
 		if (auto it = bake.nameIdx.find(bone->mName.C_Str()); it != bake.nameIdx.end()) {
 			const auto& [name, index] = *it;
 			rm = bake.rest[index].m;
+			boneIndex = index;
 		}
 		aiMatrix4x4 off = bone->mOffsetMatrix;
 		if (rm) ++bake.partsOffsetBaked;
@@ -720,7 +722,7 @@ long PopulateMergedSkinnedShape(const aiScene* scene, mc2::content::Asset& out, 
 		if (bake.recParts) {
 			ImportPartRec pr;
 			pr.meshIndex = m;
-			pr.boneIndex = (it != bake.nameIdx.end()) ? it->second : -1;
+			pr.boneIndex = boneIndex;
 			pr.off       = off;
 			pr.vOff      = vOff;
 			pr.vCount    = me->mNumVertices;
