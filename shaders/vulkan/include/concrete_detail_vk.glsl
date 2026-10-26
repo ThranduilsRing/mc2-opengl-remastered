@@ -23,25 +23,21 @@ struct MaterialDetail {
     float lum;        // macro tonal variation, mean 1 (stains, wear zones, slab-to-slab)
 };
 
-float cdHash(vec2 p) { p = fract(p * vec2(0.1031, 0.1030)); p += dot(p, p.yx + 33.33); return fract((p.x + p.y) * p.x); }
-vec2 cdHash2(vec2 p) { return vec2(cdHash(p), cdHash(p + 17.0)); }
-
-// Micro detail: ONE fetch of a fine tiling (48 wu, so a pebble or crack is pebble-sized next to a mech) with a hashed per-cell UV
-// offset so the repeat does not read at RTS zoom. Macro variation is ALU-only: a per-slab (128 wu) hash: small luminance / roughness shifts, never colour.
+// Continuous fine tiling (48 wu, so a pebble or crack is pebble-sized next to a mech).
+// Cell-wise UV, luminance and roughness jumps made flat pads read as large polygons.
 // `dx`/`dy` are the screen derivatives of the world XY, taken in uniform control flow by the caller (this runs in divergent branches).
 MaterialDetail cdEval(int layer, vec2 wp, vec2 dx, vec2 dy) {
     const float kScale = 1.0 / 48.0;
-    vec2 uv = wp * kScale + cdHash2(floor(wp / 600.0));
+    vec2 uv = wp * kScale;
     float lod = log2(max(max(dot(dx, dx), dot(dy, dy)), 1e-8)) * 0.5 + log2(kScale * 0.5 * float(textureSize(u_concreteDetail, 0).x));
     vec4 a = textureLod(u_concreteDetail, vec3(uv, float(layer)), max(lod, 0.0));
     // Image rows run top-down while world v runs north, so the GL-convention green channel is negated.
     vec2 nxy = vec2(a.x * 2.0 - 1.0, -(a.y * 2.0 - 1.0)) * uT.concreteDetailStrength;
-    float slab = cdHash(floor(wp / 128.0)) * 2.0 - 1.0;                                          // per-slab shift
     MaterialDetail d;
     d.n = normalize(vec3(nxy, 1.0));
-    d.roughness = clamp(a.z + 0.06 * slab, 0.05, 1.0);
+    d.roughness = clamp(a.z, 0.05, 1.0);
     d.ao = a.w;
-    d.lum = 1.0 + 0.04 * slab;                                                                   // mean 1, at most +-4 %
+    d.lum = 1.0;
     return d;
 }
 
