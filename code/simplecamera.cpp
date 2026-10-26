@@ -1,4 +1,5 @@
 #include "vk_scene_renderer.h"
+#include <tracy/Tracy.hpp>
 #include "utils/mc2log.h"
 #include "Gates/preferences_legacy.h"
 #include "../GameOS/gameos/ui_texture.h"
@@ -502,6 +503,7 @@ long SimpleCamera::update()
 
 void SimpleCamera::setMech(const char* fileName, long baseColor, long highlight1, long highlight2 )
 {
+	ZoneScopedN("SimpleCamera::setMech");
 	this->pushContext();
 
 	shapeScale = 0.0f;

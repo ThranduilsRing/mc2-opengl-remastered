@@ -116,7 +116,12 @@ bool TextureResidency::init() {
     if (vkAllocateDescriptorSets(ctx_.device(),&ai,sets)!=VK_SUCCESS) return false;
     for (int i=0;i<2;++i) flights_[i].set=sets[i];
     RenderCore::KtxImage image; image.width=image.height=2; image.mipCount=1; image.vkFormat=37; image.mipByteOffsets={0};
-    image.pixels={255,0,255,255, 0,0,0,255, 0,0,0,255, 255,0,255,255};
+    // Async residency is normal during screen changes. Keep the checkerboard
+    // diagnostic opt-in; players see a blank image until the upload publishes.
+    if (mc2::gate::get<"MC2_OVERLAY_MAGENTA_TRACE">())
+        image.pixels={255,0,255,255, 0,0,0,255, 0,0,0,255, 255,0,255,255};
+    else
+        image.pixels.assign(16,0);
     placeholder_=upload(image); if (!placeholder_) return false;
     RenderCore::KtxImage flat; flat.width=flat.height=1; flat.vkFormat=37; flat.mipCount=1; flat.mipByteOffsets={0};
     flat.pixels={128,128,255,255}; arrayPlaceholder_=upload(flat,false,nullptr,1,true);

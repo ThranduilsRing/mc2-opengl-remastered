@@ -3,6 +3,7 @@
 #include "mechbayscreen_internal.h"
 #include "mc2fmt.h"
 #include "mc2str.h"
+#include <tracy/Tracy.hpp>
 
 
 // Mirror a populated weapon/component ComponentListBox into a defs-page GuiList,
@@ -131,6 +132,7 @@ void MechBayScreen::end()
 
 void MechBayScreen::setMech( LogisticsMech* pMech,  bool bCommandFromLB )
 {
+	ZoneScopedN("MechBayScreen::setMech");
 
 	if ( pMech == pCurMech || status != RUNNING)
 		return;

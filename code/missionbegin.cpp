@@ -37,6 +37,7 @@ MissionBegin.cpp			: Implementation of the MissionBegin component.
 #include"../GameOS/gameos/gos_profiler.h"
 #include"../GuiRuntime/GuiRuntime.h"   // MENU-STALE-CLEAR-2: ImGui-layer dim rect
 #include"../GameOS/gameos/gos_dev_shell.h"   // DEV-SHELL-1: ui_reload command registration
+#include"../GameOS/gameos/gos_screenshot.h"
 #include <cstdlib>
 #include <string>
 #include"platform_str.h"   // S_stricmp (MC2_BOOT_TO_SCREEN parse, LINUX_BUILD-safe)
@@ -1745,6 +1746,21 @@ const char* MissionBegin::update()
 
 void MissionBegin::render()
 {
+	// The logistics capture harness uses -5 to record the first five renders
+	// of each screen, including transition frames, without desktop interaction.
+	if (mc2::gate::get<"MC2_SCREENSHOT_AT_FRAME">() == -5)
+	{
+		static int lastScreen = -999, frame = 0;
+		const int screen = bSplash ? -1 : 10 * curScreenX + curScreenY;
+		if (screen != lastScreen) { lastScreen = screen; frame = 0; }
+		if (frame < 5)
+		{
+			const auto path = mc2::gate::str<"MC2_SCREENSHOT_PATH">() +
+				".screen" + std::to_string(screen) + ".frame" + std::to_string(++frame) + ".tga";
+			gos::screenshot::request(path.c_str());
+		}
+	}
+	ZoneScopedN("MissionBegin::render");
 	// UI-ASPECT-ANCHOR-1: front-end frame — draw the UI on the 16:9 canvas
 	// (re-asserted every frame; auto-cleared at flushHUDBatch).
 	gos_SetUiCanvasActive( true );
