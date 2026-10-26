@@ -496,7 +496,7 @@ extern "C" void gos_particle_bridge_flush(const GpuParticle* records, unsigned c
     borrowedCapture->groups.insert(borrowedCapture->groups.end(), groups, groups + groupCount);
 }
 
-TEST_CASE_FIXTURE(FrozenPlatform, "vfx_frozen/mesh submaterials and polygon fans preserve RNG")
+TEST_CASE_FIXTURE(FrozenPlatform, "vfx_mesh/submaterials and polygon fans preserve RNG")
 {
     mc2::gate::ScopedOverride<"MC2_VFX_ORACLE_SHAPE"> native{"1"};
     using namespace MidLevelRenderer;

@@ -26,6 +26,7 @@ TEST_CASE("vfx_frozen/fresh processes cover MLR and the GPU harvest gate vectors
         ContractEnvironment log{"MC2_GPU_PARTICLES_LOG", arm.log};
         CHECK(runContractChild(executable, {"--no-breaks", "--test-case=vfx_frozen/*"}) == 0);
     }
+    CHECK(runContractChild(executable, {"--no-breaks", "--test-case=vfx_mesh/*"}) == 0);
 }
 
 

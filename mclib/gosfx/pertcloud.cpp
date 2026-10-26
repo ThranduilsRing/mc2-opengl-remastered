@@ -1,5 +1,6 @@
 #include"gosfxheaders.hpp"
 #include "mlr_cloud_draw.hpp"
+#include "particles/batcher.h"
 #include<mlr/mlrngoncloud.hpp>
 //==========================================================================//
 // File:	 gosFX_gosFX::PertCloud.cpp										//
@@ -636,7 +637,33 @@ void gosFX::PertCloud::Draw(DrawInfo *info)
 		// Now just do the draw
 		//---------------------
 		//
-		submission.submit(info);
+        if (mc2::particles::Batcher::is_oracle_shape_enabled()) {
+            MidLevelRenderer::MLRState state;
+            state.Combine(info->m_state, spec->m_state);
+            using State = MidLevelRenderer::MLRState;
+            const auto alpha = state.GetAlphaMode();
+            const int blend = alpha == State::OneOneMode ? 2 : alpha == State::AlphaOneMode ? 1 :
+                alpha == State::OneZeroMode ? 3 : alpha == State::OneAlphaMode ? 4 :
+                alpha == State::OneInvAlphaMode ? 5 : 0;
+            auto& batcher = mc2::particles::Batcher::Instance();
+            batcher.BeginGroup(0, 0, 0, 1, 1, blend == 3 ? 0 : blend, 0xffffffffu);
+            for (unsigned i = 0; i < m_activeParticleCount; ++i) {
+                if (GetParticle(i)->m_age >= 1.0f) continue;
+                for (unsigned v = 1; v + 1 < spec->m_vertices; ++v) {
+                    for (unsigned corner : {0u, v + 1, v}) {
+                        const auto world = mc2::math::transformPoint(m_P_vertices[i*spec->m_vertices+corner], local_to_world);
+                        const auto& color = m_P_color[i*2 + (corner ? 1 : 0)];
+                        mc2::particles::GpuParticle vertex{};
+                        vertex.position[0] = world.x; vertex.position[1] = world.y; vertex.position[2] = world.z;
+                        vertex.color[0] = color.red; vertex.color[1] = color.green; vertex.color[2] = color.blue;
+                        vertex.color[3] = blend == 3 ? 1.0f : color.alpha;
+                        vertex.kind_flags = 8u | 32u | (blend == 2 ? 2u : 0u) |
+                            (blend == 4 || blend == 5 ? 512u : 0u);
+                        batcher.Emit(vertex);
+                    }
+                }
+            }
+        } else submission.submit(info);
 	}
 
 	SpinningCloud::Draw(info);

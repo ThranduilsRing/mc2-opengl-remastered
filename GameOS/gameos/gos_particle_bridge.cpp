@@ -6,7 +6,7 @@
 
 namespace {
 
-// B2 P1: active camera basis — set by GameCamera::render() before flush.
+// B2 P1: active camera basis â€” set by GameCamera::render() before flush.
 // Defaults to identity (right=+X, up=+Y) so particles still appear if the
 // caller forgets to call gos_SetActiveCamera (produces east-up orientation,
 // same as the pre-B2 fixed-axis behaviour).
@@ -49,7 +49,7 @@ int  vfxDebugMode() {
 // VFX-TUNING-UI-1: user intensity scales. All default 1.0 (= byte-identical
 // no-op); the per-mission visual tuning profile and the Graphics Options
 // "VFX Tuning" sliders set them at runtime through the setters below. These
-// tune LOOK only — no emission/lifetime/sorting/timing change.
+// tune LOOK only â€” no emission/lifetime/sorting/timing change.
 // VFX-SHADER-AGE-FADE-PARITY-1: s_vfxAgeFade (default 0.0 = off, byte-identical;
 // 1.0 = full soft-death fade for oracle particles in the final 30% of life).
 float s_vfxBrightness         = 1.0f;
@@ -137,7 +137,7 @@ extern "C" void gos_particle_bridge_flush(const mc2::particles::GpuParticle* rec
                 VfxParticleDraw d;
                 d.start    = groups[gi].start;
                 d.count    = groups[gi].count;
-                d.additive = (groups[gi].blendMode == 2) ? 2u : (groups[gi].blendMode == 1) ? 1u : 0u;
+                d.additive = static_cast<uint32_t>(groups[gi].blendMode);
                 d.texture  = groups[gi].handle;
                 d.u0 = groups[gi].u0;  d.v0 = groups[gi].v0;
                 d.us = groups[gi].us;  d.vs = groups[gi].vs;
