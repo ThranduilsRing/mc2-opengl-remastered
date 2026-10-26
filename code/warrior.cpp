@@ -1,3 +1,5 @@
+#include "gosfx/pointcloud.hpp"
+#include "particles/spec_library.h"
 //===========================================================================//
 // Copyright (C) Microsoft Corporation. All rights reserved.                 //
 //===========================================================================//
@@ -2104,6 +2106,24 @@ void MechWarrior::updateActions (void) {
 		mc2::gate::is<"MC2_FX_FORCE_SPAWN", "5">()    || mc2::gate::is<"MC2_FX_FORCE_SPAWN", "6">() ||
 		mc2::gate::is<"MC2_FX_FORCE_SPAWN", "7">()    || mc2::gate::is<"MC2_FX_FORCE_SPAWN", "8">() ||
 		mc2::gate::is<"MC2_FX_FORCE_SPAWN", "9">();
+    // Existing mesh-oracle fixture also populates the stock Point container.
+    // Its stock emission is zero, so an ordinary volley cannot validate points.
+    if (mc2::gate::is<"MC2_FX_FORCE_SPAWN", "9">()) {
+        auto* base = mc2::particles::SpecLibrary::Instance()->Find("Missile_Flare");
+        if (base && base->m_class == gosFX::PointCloudClassID) {
+            auto* point = static_cast<gosFX::PointCloud::Specification*>(base);
+            point->m_maxParticleCount = 32;
+            point->m_startingPopulation.SetCurve(8.0f);
+            point->m_particlesPerSecond.SetCurve(30.0f);
+            point->m_emitterSizeX.SetCurve(20.0f);
+            point->m_emitterSizeY.SetCurve(20.0f);
+            point->m_emitterSizeZ.SetCurve(20.0f);
+            point->m_pRed.m_ageCurve.SetCurve(0.0f);
+            point->m_pGreen.m_ageCurve.SetCurve(1.0f);
+            point->m_pBlue.m_ageCurve.SetCurve(1.0f);
+            point->m_pAlpha.m_ageCurve.SetCurve(1.0f);
+        }
+    }
 	if (s_fxLoop) {
 		static float s_nextFire = 0.0f;
 		if (myVehicle && scenarioTime > 5.0f && scenarioTime >= s_nextFire && myVehicle->canFireWeapons()) {

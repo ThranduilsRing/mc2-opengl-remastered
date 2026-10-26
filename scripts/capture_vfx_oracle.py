@@ -28,7 +28,7 @@ def park_value(pose: dict) -> str:
 def command(bookmarks: Path, out: Path, frame: int, arm: str, fixture: str = "loop",
             camera_park: str | None = None, experiment: str = "master",
             install: str = "lane3") -> list[str]:
-    if arm not in {"mlr", "gpu"} or frame < 0 or fixture not in {"loop", "1"}:
+    if arm not in {"mlr", "gpu"} or frame < 0 or fixture not in {"loop", "1", "9"}:
         raise ValueError("unknown arm/fixture or negative frame")
     install_dir = Path(install) if Path(install).is_absolute() else INSTALL_ROOT / f"mc2-win64-{install}"
     cmd = [sys.executable, str(ROOT / "scripts/run_visual_capture.py"),
@@ -72,7 +72,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--frame", type=int)
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--arm", choices=("mlr", "gpu", "both"), default="both")
-    parser.add_argument("--fixture", choices=("loop", "1"), default="loop")
+    parser.add_argument("--fixture", choices=("loop", "1", "9"), default="loop")
     parser.add_argument("--experiment", choices=("master", "harvested"), default="master")
     parser.add_argument("--install", default="lane3")
     args = parser.parse_args(argv)
