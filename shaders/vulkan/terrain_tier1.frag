@@ -276,27 +276,29 @@ vec3 mv_detailNormal(vec4 w, float snowWeight, vec2 worldXY, float lodNear, floa
     float atsConc  = mix(0.0, 3.0, clamp((MATV_TILING.w - 1.0) / 3.0, 0.0, 1.0));
 
     vec3 dN = vec3(0.0);
+    // Lamp-only detail uses primary weighted taps; existing consumers retain
+    // the anti-tile resampling and parallax treatment.
     // rock: boost/3 (GL parity — rock detail was too dense/strong). GL :392-397.
     if (w.x > 0.01 && fwRock != 0.0) {
-        vec4 s = (atsRock > 0.01 && fwRock > 0.5)
+        vec4 s = (needParallax && atsRock > 0.01 && fwRock > 0.5)
                ? mv_sampleAntiTileArr(MAT_LAYER_ROCK, uvRock, atsRock, uvDx * (MATV_TILING.x / 3.0), uvDy * (MATV_TILING.x / 3.0))
                : textureGrad(u_matNormalArray, vec3(uvRock, float(MAT_LAYER_ROCK)), uvDx * (MATV_TILING.x / 3.0), uvDy * (MATV_TILING.x / 3.0));
         dN += w.x * (MATV_NORMAL_BOOST.x / 3.0) * fwRock * (s.rgb * 2.0 - 1.0);
     }
     if (w.y > 0.01 && fwGrass != 0.0) {
-        vec4 s = (atsGrass > 0.01 && fwGrass > 0.5)
+        vec4 s = (needParallax && atsGrass > 0.01 && fwGrass > 0.5)
                ? mv_sampleAntiTileArr(MAT_LAYER_GRASS, uvGrass, atsGrass, uvDx * MATV_TILING.y, uvDy * MATV_TILING.y)
                : textureGrad(u_matNormalArray, vec3(uvGrass, float(MAT_LAYER_GRASS)), uvDx * MATV_TILING.y, uvDy * MATV_TILING.y);
         dN += w.y * MATV_NORMAL_BOOST.y * fwGrass * (s.rgb * 2.0 - 1.0);
     }
     if (w.z > 0.01 && fwDirt != 0.0) {
-        vec4 s = (atsDirt > 0.01 && fwDirt > 0.5)
+        vec4 s = (needParallax && atsDirt > 0.01 && fwDirt > 0.5)
                ? mv_sampleAntiTileArr(MAT_LAYER_DIRT, uvDirt, atsDirt, uvDx * MATV_TILING.z, uvDy * MATV_TILING.z)
                : textureGrad(u_matNormalArray, vec3(uvDirt, float(MAT_LAYER_DIRT)), uvDx * MATV_TILING.z, uvDy * MATV_TILING.z);
         dN += w.z * MATV_NORMAL_BOOST.z * fwDirt * (s.rgb * 2.0 - 1.0);
     }
     if (w.w > 0.01 && fwConcrete != 0.0) {
-        vec4 s = (atsConc > 0.01 && fwConcrete > 0.5)
+        vec4 s = (needParallax && atsConc > 0.01 && fwConcrete > 0.5)
                ? mv_sampleAntiTileArr(MAT_LAYER_CONCRETE, uvConcrete, atsConc, uvDx * MATV_TILING.w, uvDy * MATV_TILING.w)
                : textureGrad(u_matNormalArray, vec3(uvConcrete, float(MAT_LAYER_CONCRETE)), uvDx * MATV_TILING.w, uvDy * MATV_TILING.w);
         dN += w.w * MATV_NORMAL_BOOST.w * fwConcrete * (s.rgb * 2.0 - 1.0);
@@ -399,6 +401,8 @@ void main() {
                 float cOwnA = cementTexel.a;
                 // A two-world-unit contact bevel follows authored coverage,
                 // including wall corners; no displaced mesh or extra layer.
+                // Authored road/runway cells keep their own edge treatment.
+                if ((cw & 0x01000000u) == 0u && cOwnA > 0.0) {
                 vec2 edgeStep = vec2(2.0 / uT.cementWUPT);
                 vec2 edgeLo = max(cSampleUV - edgeStep, vec2(cInsetLod));
                 vec2 edgeHi = min(cSampleUV + edgeStep, vec2(1.0 - cInsetLod));
@@ -409,6 +413,7 @@ void main() {
                     min(textureLod(u_cementAtlas, (cellOrigin + vec2(cSampleUV.x, edgeLo.y)) / float(cGridSide), cLod).a,
                         textureLod(u_cementAtlas, (cellOrigin + vec2(cSampleUV.x, edgeHi.y)) / float(cGridSide), cLod).a));
                 padEdgeAO = 1.0 - 0.18 * max(cOwnA - edgeA, 0.0);
+                }
                 base = mix(base, cementColor, cOwnA);
                 if (cOwnA > 0.5) { cementHit = true; pureConcrete = true; }
             } else if (isTransition) {
