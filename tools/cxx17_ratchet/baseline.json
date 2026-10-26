@@ -52,12 +52,12 @@
    "LG03": 104,
    "LG04": 5,
    "LG05": 97,
-   "LG06": 362,
+   "LG06": 361,
    "LG07": 0,
    "LG08": 155,
    "LG09": 4,
    "LG10": 11,
-   "LG11": 73,
+   "LG11": 63,
    "LG12a": 60,
    "LG12b": 24,
    "LG13": 299,
@@ -151,7 +151,7 @@
    "LG10": 4,
    "LG11": 102,
    "LG12a": 84,
-   "LG12b": 154,
+   "LG12b": 153,
    "LG13": 22,
    "LG14": 93,
    "LG15": 0,
@@ -195,7 +195,7 @@
    "LG08": 45,
    "LG09": 2,
    "LG10": 19,
-   "LG11": 51,
+   "LG11": 47,
    "LG12a": 117,
    "LG12b": 177,
    "LG13": 123,
@@ -979,7 +979,6 @@
    "LG06": 1
   },
   "GameOS/include/platform_winbase.h": {
-   "LG11": 5,
    "LG13": 3
   },
   "GameOS/include/platform_windef.h": {
@@ -1023,9 +1022,7 @@
    "LG06": 1
   },
   "GameOS/src/platform_winbase.cpp": {
-   "LG03": 4,
-   "LG06": 1,
-   "LG11": 5
+   "LG03": 4
   },
   "GameOS/src/platform_winuser.cpp": {
    "LG12a": 2
@@ -2093,7 +2090,6 @@
    "LG05": 2
   },
   "code/tacticaloverview.cpp": {
-   "LG12b": 1,
    "LG17": 2
   },
   "code/tacticaloverview.h": {
@@ -2496,7 +2492,6 @@
   "mclib/file.cpp": {
    "LG05": 1,
    "LG06": 9,
-   "LG11": 4,
    "LG12a": 3,
    "LG12b": 1,
    "LG13": 1,
@@ -3506,7 +3501,7 @@
    "LG20": 3
   }
  },
- "head": "16173abef",
+ "head": "75afee9ba",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
