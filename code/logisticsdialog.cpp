@@ -1,3 +1,4 @@
+#include <memory>
 #define LOGISTICSDIALOG_CPP
 /*************************************************************************************************\
 LogisticsDialog.cpp			: Implementation of the LogisticsDialog component.
@@ -600,7 +601,7 @@ void LogisticsSaveDialog::initDialog( const char* path, bool bCampaign )
 		{
 			if ((findResult.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) == 0)
 			{
-				aLocalizedListItem* pEntry = new aLocalizedListItem();
+				auto pEntry = std::make_unique<aLocalizedListItem>();
 				*pEntry = s_instance->templateItem;
 				char* pExt = strstr( findResult.cFileName, ".fit" );
 				if ( !pExt  )
@@ -629,11 +630,11 @@ void LogisticsSaveDialog::initDialog( const char* path, bool bCampaign )
 				{
 					pEntry->setHiddenText( findResult.cFileName );
 					pEntry->setColor( edits[0].getColor() );
-					gameListBox.AddItem( pEntry );
+					gameListBox.AddItem( pEntry.release() );
 				}
 				else
 				{
-					delete pEntry;
+					pEntry.reset();
 				}
 			}
 		} while (FindNextFile(searchHandle,&findResult) != 0);
@@ -669,12 +670,12 @@ void LogisticsSaveDialog::initDialog( const char* path, bool bCampaign )
 			if (campaignName[0] == '\0')
 				strncpy(campaignName, fitFileName, 1023);
 
-			aLocalizedListItem* pEntry = new aLocalizedListItem();
+			auto pEntry = std::make_unique<aLocalizedListItem>();
 			*pEntry = s_instance->templateItem;
 			pEntry->setText(campaignName);
 			pEntry->setHiddenText(fitFileName);
 			pEntry->setColor(c->itemColor);
-			c->self->gameListBox.AddItem(pEntry);
+			c->self->gameListBox.AddItem(pEntry.release());
 		}, &ctx);
 	}
 
@@ -688,7 +689,7 @@ void LogisticsSaveDialog::initDialog( const char* path, bool bCampaign )
 		//All of this will work in the fastfiles.
 		if (fileExists(path))
 		{
-			aLocalizedListItem* pEntry = new aLocalizedListItem();
+			auto pEntry = std::make_unique<aLocalizedListItem>();
 			*pEntry = s_instance->templateItem;
 			char campaignName[1024];
 			readCampaignNameFromFile( "campaign", campaignName, 1023 );
@@ -696,7 +697,7 @@ void LogisticsSaveDialog::initDialog( const char* path, bool bCampaign )
 
 			pEntry->setHiddenText( "campaign" );
 			pEntry->setColor( edits[0].getColor() );
-			gameListBox.AddItem( pEntry );
+			gameListBox.AddItem( pEntry.release() );
 		}
 
 		path.init(campaignPath, "tutorial", ".fit" );
@@ -704,7 +705,7 @@ void LogisticsSaveDialog::initDialog( const char* path, bool bCampaign )
 		//All of this will work in the fastfiles.
 		if (fileExists(path))
 		{
-			aLocalizedListItem* pEntry = new aLocalizedListItem();
+			auto pEntry = std::make_unique<aLocalizedListItem>();
 			*pEntry = s_instance->templateItem;
 			char campaignName[1024];
 			readCampaignNameFromFile( "tutorial", campaignName, 1023 );
@@ -712,7 +713,7 @@ void LogisticsSaveDialog::initDialog( const char* path, bool bCampaign )
 
 			pEntry->setHiddenText( "tutorial" );
 			pEntry->setColor( edits[0].getColor() );
-			gameListBox.AddItem( pEntry );
+			gameListBox.AddItem( pEntry.release() );
 		}
 	}
 }
@@ -1501,11 +1502,11 @@ void LogisticsVariantDialog::initTranscript()
 		{
 			if ((findResult.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) == 0 && S_stricmp( findResult.cFileName, "transcript.txt" ) != 0 )
 			{
-				aAnimTextListItem* pEntry = new aAnimTextListItem(IDS_DIALOG_LIST_FONT);
+				auto pEntry = std::make_unique<aAnimTextListItem>(IDS_DIALOG_LIST_FONT);
 				*pEntry = s_instance->templateItem;
 				pEntry->setText( findResult.cFileName );
 				pEntry->setColor( edits[0].getColor() );
-				gameListBox.AddItem( pEntry );				
+				gameListBox.AddItem( pEntry.release() );
 			}				
 			
 		} while (FindNextFile(searchHandle,&findResult) != 0);

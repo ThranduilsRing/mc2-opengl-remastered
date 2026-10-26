@@ -1,3 +1,4 @@
+#include <memory>
 /*************************************************************************************************\
 PilotReadyScreen.cpp			: Implementation of the PilotReadyScreen component.
 //---------------------------------------------------------------------------//
@@ -256,7 +257,7 @@ void PilotReadyScreen::begin()
 		{
 			if ( !pilots[i]->isUsed() && pilots[i]->isAvailable() )
 			{
-				pilotListBox.AddItem( new LogisticsPilotListBoxItem( pilots[i] ) );				
+				pilotListBox.AddItem( std::make_unique<LogisticsPilotListBoxItem>( pilots[i] ).release() );
 			}
 		}
 
@@ -684,8 +685,8 @@ void PilotReadyScreen::removeSelectedPilot()
 			{
 				// add the pilot back into the list
 				int oldSel = pilotListBox.GetSelectedItem();
-				LogisticsPilotListBoxItem* pNewItem = new LogisticsPilotListBoxItem( pIcons[i].getPilot() );
-				int newIndex = pilotListBox.AddItem( pNewItem );
+				auto pNewItem = std::make_unique<LogisticsPilotListBoxItem>( pIcons[i].getPilot() );
+				int newIndex = pilotListBox.AddItem( pNewItem.release() );
 				pIcons[i].setPilot( nullptr );
 				pIcons[i].select( 0 );
 				i++;
@@ -774,8 +775,8 @@ void PilotReadyScreen::putBackPilot( LogisticsPilot* pPilot )
 			pIcons[i].dimPilot( false );
 		}
 	}
-	LogisticsPilotListBoxItem* pItem = new LogisticsPilotListBoxItem( pPilot );
-	pilotListBox.AddItem( pItem );
+	auto pItem = std::make_unique<LogisticsPilotListBoxItem>( pPilot );
+	pilotListBox.AddItem( pItem.release() );
 
 }
 

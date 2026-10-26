@@ -173,15 +173,15 @@ void MPPrefs::begin()
 		// 24 or 32 bit files
 		if ((findResult.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) == 0 )
 		{
-			aBmpListItem* pItem = new aBmpListItem;
+			auto pItem = std::make_unique<aBmpListItem>();
 			(*std::format_to_n(path, sizeof(path) - 1, "{}{}", mc2::fmt::safe(path2insignia), mc2::fmt::safe(findResult.cFileName)  ).out = '\0');
 			if ( !pItem->setBmp( findResult.cFileName ) )
 			{
-				delete pItem;
+				pItem.reset();
 			}
 			else
 			{
-				long index = comboBox[2].AddItem( pItem );
+				long index = comboBox[2].AddItem( pItem.release() );
 				if ( strstr( findResult.cFileName, prefs.insigniaFile ) )
 				{
 					comboBox[2].SelectItem( index );

@@ -1,3 +1,4 @@
+#include <memory>
 #include "mc2str.h"
 
 #define MPPARAMETERSCREEN_CPP
@@ -1766,15 +1767,14 @@ void aPlayerParams::init( FitIniFile* pFile, const char* blockNameParam )
 		int i;
 		for (i = 0; i < 4; i += 1)
 		{
-			aStyle2TextListItem *pTmp2;
-			pTmp2 = new aStyle2TextListItem;
+			auto pTmp2 = std::make_unique<aStyle2TextListItem>();
 			*pTmp2 = templateItem;
 			pTmp2->setText( IDS_FACTION0 + i );
 			pTmp2->resize( factionDropList.width() - 
 				factionDropList.ListBox().getScrollBarWidth() - 8,
 				pTmp2->height() );
 			pTmp2->sizeToText();
-			factionDropList.AddItem(pTmp2);
+			factionDropList.AddItem(pTmp2.release());
 		}
 		factionDropList.SelectItem(0);
 	}
@@ -1877,15 +1877,14 @@ void aPlayerParams::update()
 		{
 			factionDropList.SelectItem( -1 );
 			factionDropList.ListBox().removeAllItems( true );
-			aStyle2TextListItem *pTmp2;
-			pTmp2 = new aStyle2TextListItem;
+			auto pTmp2 = std::make_unique<aStyle2TextListItem>();
 			*pTmp2 = templateItem;
 			pTmp2->setText( IDS_FACTION0 + 5 );
 			pTmp2->resize( factionDropList.width() - 
 				factionDropList.ListBox().getScrollBarWidth() - 8,
 				pTmp2->height() );
 			pTmp2->sizeToText();
-			factionDropList.AddItem(pTmp2);
+			factionDropList.AddItem(pTmp2.release());
 			factionDropList.SelectItem( 0 );
 		}
 	}
@@ -1896,15 +1895,14 @@ void aPlayerParams::update()
 
 		for ( int i = 0; i < 4; i += 1)
 		{
-			aStyle2TextListItem *pTmp2;
-			pTmp2 = new aStyle2TextListItem;
+			auto pTmp2 = std::make_unique<aStyle2TextListItem>();
 			*pTmp2 = templateItem;
 			pTmp2->setText( IDS_FACTION0 + i );
 			pTmp2->resize( factionDropList.width() - 
 				factionDropList.ListBox().getScrollBarWidth() - 8,
 				pTmp2->height() );
 			pTmp2->sizeToText();
-			factionDropList.AddItem(pTmp2);
+			factionDropList.AddItem(pTmp2.release());
 			factionDropList.SelectItem( 0 );
 
 		}
@@ -2152,7 +2150,7 @@ void	aPlayerParams::setData( const _MC2Player* data)
 			teamNumberDropList.ListBox().removeAllItems( true );
 			for ( int i = 0; i <  MPlayer->missionSettings.maxTeams; i ++ )
 			{
-				aStyle2TextListItem* pTmp2 = new aStyle2TextListItem;
+				auto pTmp2 = std::make_unique<aStyle2TextListItem>();
 				char tmpStr[32];
 				sprintf(tmpStr, "%ld", i+1);
 				*pTmp2 = templateItem;
@@ -2160,7 +2158,7 @@ void	aPlayerParams::setData( const _MC2Player* data)
 				pTmp2->resize( teamNumberDropList.width() - 
 					teamNumberDropList.ListBox().getScrollBarWidth() - 8, pTmp2->height() );
 				pTmp2->sizeToText();
-				teamNumberDropList.AddItem(pTmp2);
+				teamNumberDropList.AddItem(pTmp2.release());
 			}
 			if ( oldSel < teamNumberDropList.ListBox().GetItemCount() )
 				teamNumberDropList.SelectItem(oldSel);

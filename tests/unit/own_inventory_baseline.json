@@ -1798,21 +1798,6 @@
    "new_array": 0,
    "owners": []
   },
-  "FitIniFile": {
-   "delete": 2,
-   "delete_array": 0,
-   "files": {
-    "editor/Editor.cpp": {
-     "delete": 2,
-     "new": 2
-    }
-   },
-   "new": 2,
-   "new_array": 0,
-   "owners": [
-    ""
-   ]
-  },
   "FlattenBrush": {
    "delete": 0,
    "delete_array": 0,
@@ -2090,10 +2075,10 @@
    "delete_array": 0,
    "files": {
     "code/optionsarea.cpp": {
-     "new": 2
+     "new": 1
     }
    },
-   "new": 2,
+   "new": 1,
    "new_array": 0,
    "owners": []
   },
@@ -2257,18 +2242,6 @@
    "owners": [
     "LogisticsData"
    ]
-  },
-  "LogisticsPilotListBoxItem": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/pilotreadyscreen.cpp": {
-     "new": 3
-    }
-   },
-   "new": 3,
-   "new_array": 0,
-   "owners": []
   },
   "LogisticsVariant": {
    "delete": 2,
@@ -3088,10 +3061,10 @@
    "delete_array": 0,
    "files": {
     "code/mechlopedia.cpp": {
-     "new": 8
+     "new": 6
     }
    },
-   "new": 8,
+   "new": 6,
    "new_array": 0,
    "owners": []
   },
@@ -3852,28 +3825,6 @@
     ""
    ]
   },
-  "TCHAR": {
-   "delete": 0,
-   "delete_array": 4,
-   "files": {
-    "editor/CampaignDialog.cpp": {
-     "delete_array": 1,
-     "new_array": 1
-    },
-    "editor/Objective_actions.cpp": {
-     "delete_array": 3,
-     "new_array": 3
-    }
-   },
-   "new": 0,
-   "new_array": 4,
-   "owners": [
-    "CCampaignDialog",
-    "CMakeNewTechnologyAvailable",
-    "CPlayBIK",
-    "CPlayWAV"
-   ]
-  },
   "TG_AnimateShape": {
    "delete": 3,
    "delete_array": 0,
@@ -4552,13 +4503,13 @@
    "delete_array": 0,
    "files": {
     "code/logisticsdialog.cpp": {
-     "new": 2
+     "new": 1
     },
     "gui/alistbox.cpp": {
      "new": 4
     }
    },
-   "new": 6,
+   "new": 5,
    "new_array": 0,
    "owners": []
   },
@@ -4576,21 +4527,6 @@
    "owners": [
     "ActivePilotListItem",
     "SpecialtyListItem"
-   ]
-  },
-  "aBmpListItem": {
-   "delete": 1,
-   "delete_array": 0,
-   "files": {
-    "code/mpprefs.cpp": {
-     "delete": 1,
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": [
-    "MPPrefs"
    ]
   },
   "aButton": {
@@ -4623,35 +4559,17 @@
     "LogisticsScreen"
    ]
   },
-  "aInsigniaListItem": {
+  "aLocalizedListItem": {
    "delete": 0,
    "delete_array": 0,
    "files": {
-    "code/mpsetuparea.cpp": {
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": []
-  },
-  "aLocalizedListItem": {
-   "delete": 1,
-   "delete_array": 0,
-   "files": {
-    "code/logisticsdialog.cpp": {
-     "delete": 1,
-     "new": 4
-    },
     "code/mploadmap.cpp": {
      "new": 3
     }
    },
-   "new": 7,
+   "new": 3,
    "new_array": 0,
-   "owners": [
-    "LogisticsSaveDialog"
-   ]
+   "owners": []
   },
   "aObject": {
    "delete": 3,
@@ -4718,30 +4636,6 @@
     "aPlayerParams"
    ]
   },
-  "aStyle1TextListItem": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/mpsetuparea.cpp": {
-     "new": 2
-    }
-   },
-   "new": 2,
-   "new_array": 0,
-   "owners": []
-  },
-  "aStyle2TextListItem": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/mpparameterscreen.cpp": {
-     "new": 4
-    }
-   },
-   "new": 4,
-   "new_array": 0,
-   "owners": []
-  },
   "aText": {
    "delete": 14,
    "delete_array": 2,
@@ -4780,19 +4674,16 @@
      "new": 2
     },
     "code/mechlopedia.cpp": {
-     "new": 22
+     "new": 7
     },
     "code/missionbriefingscreen.cpp": {
      "new": 2
     },
     "code/pilotreviewarea.cpp": {
      "new": 7
-    },
-    "code/simplecomponentlistbox.cpp": {
-     "new": 3
     }
    },
-   "new": 36,
+   "new": 18,
    "new_array": 0,
    "owners": []
   },
@@ -5430,8 +5321,6 @@
   "code/objmgr.cpp": 1,
   "editor/Action.cpp": 5,
   "editor/BuildingBrush.cpp": 2,
-  "editor/BuildingSettingsDlg.cpp": 1,
-  "editor/DlgFileOpen.cpp": 1,
   "editor/Editor.cpp": 4,
   "editor/EditorData_tacmap.cpp": 1,
   "editor/EditorInterface_editor.cpp": 1,
@@ -5440,10 +5329,9 @@
   "editor/EditorObjects.cpp": 1,
   "editor/ObjectSelectionBrush.cpp": 1,
   "editor/Objective.cpp": 7,
-  "editor/ObjectiveDlg.cpp": 13,
+  "editor/ObjectiveDlg.cpp": 12,
   "editor/ObjectivesDlg.cpp": 1,
   "editor/ScatterBrush.cpp": 1,
-  "editor/UnitSettingsDlg.cpp": 4,
   "editor/tgawnd.cpp": 1,
   "gui/UiDefs.cpp": 1,
   "gui/alistbox.cpp": 2,

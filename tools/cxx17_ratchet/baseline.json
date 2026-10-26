@@ -141,7 +141,7 @@
   "code": {
    "LG01": 24,
    "LG02": 2,
-   "LG03": 426,
+   "LG03": 387,
    "LG04": 16,
    "LG05": 200,
    "LG06": 444,
@@ -1578,7 +1578,7 @@
    "LG11": 3
   },
   "code/logisticsdialog.cpp": {
-   "LG03": 7,
+   "LG03": 1,
    "LG06": 7,
    "LG11": 13,
    "LG12b": 10,
@@ -1752,7 +1752,7 @@
    "LG17": 1
   },
   "code/mechlopedia.cpp": {
-   "LG03": 36,
+   "LG03": 19,
    "LG06": 2,
    "LG11": 1,
    "LG12a": 1,
@@ -1907,7 +1907,7 @@
    "LG17": 1
   },
   "code/mpparameterscreen.cpp": {
-   "LG03": 14,
+   "LG03": 10,
    "LG05": 3,
    "LG06": 8,
    "LG12b": 25
@@ -1916,7 +1916,6 @@
    "LG06": 8
   },
   "code/mpprefs.cpp": {
-   "LG03": 2,
    "LG05": 1,
    "LG06": 1,
    "LG11": 2
@@ -1925,7 +1924,6 @@
    "LG06": 1
   },
   "code/mpsetuparea.cpp": {
-   "LG03": 3,
    "LG05": 1,
    "LG06": 3,
    "LG10": 3
@@ -2010,7 +2008,7 @@
    "LG06": 2
   },
   "code/optionsarea.cpp": {
-   "LG03": 2,
+   "LG03": 1,
    "LG05": 2,
    "LG06": 2,
    "LG12a": 1,
@@ -2027,9 +2025,6 @@
   },
   "code/pausewindow.h": {
    "LG14": 1
-  },
-  "code/pilotreadyscreen.cpp": {
-   "LG03": 3
   },
   "code/pilotreviewarea.cpp": {
    "LG03": 83,
@@ -2075,9 +2070,6 @@
   },
   "code/simplecamera.h": {
    "LG06": 5
-  },
-  "code/simplecomponentlistbox.cpp": {
-   "LG03": 3
   },
   "code/tacordr.cpp": {
    "LG12b": 10
@@ -3474,7 +3466,7 @@
    "LG20": 3
   }
  },
- "head": "8df6be034",
+ "head": "96152d6a4",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",

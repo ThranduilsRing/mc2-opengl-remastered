@@ -1,3 +1,4 @@
+#include <memory>
 #define SIMPLECOMPONENTLISTBOX_CPP
 /*************************************************************************************************\
 SimpleComponentListBox.cpp			: Implementation of the SimpleComponentListBox component.
@@ -47,7 +48,7 @@ void ComponentListBox::setMech( LogisticsVariant* pMech )
 
 		if ( sensor > 0 )
 		{
-			aTextListItem* textItem = new aTextListItem( IDS_SALVAGE_AREA_COMPONENTS );
+			auto textItem = std::make_unique<aTextListItem>( IDS_SALVAGE_AREA_COMPONENTS );
 			// EQUIP-ADD-UI-NAME-1 (S3): ADD-filled ids have no 32000-block
 			// string; use the def DisplayName. Miss -> stock string id path.
 			const char* addName = equipmentAddUiTextForStringId( 32000 + sensor );
@@ -57,12 +58,12 @@ void ComponentListBox::setMech( LogisticsVariant* pMech )
 				textItem->setText( 32000 + sensor );
 			textItem->setColor( 0xffc29b00 );
 			textItem->setHelpID( IDS_HELP_COMP0 + sensor );
-			AddItem( textItem );			
+			AddItem( textItem.release() );
 		}
 
 		if ( ECM > 0 )
 		{
-			aTextListItem* textItem = new aTextListItem( IDS_SALVAGE_AREA_COMPONENTS );
+			auto textItem = std::make_unique<aTextListItem>( IDS_SALVAGE_AREA_COMPONENTS );
 			// EQUIP-ADD-UI-NAME-1 (S3): same DisplayName fallback as above.
 			const char* addNameEcm = equipmentAddUiTextForStringId( 32000 + ECM );
 			if ( addNameEcm )
@@ -71,7 +72,7 @@ void ComponentListBox::setMech( LogisticsVariant* pMech )
 				textItem->setText( 32000 + ECM );
 			textItem->setColor( 0xffc29b00 );
 			textItem->setHelpID( IDS_HELP_COMP0 + ECM );
-			AddItem( textItem );
+			AddItem( textItem.release() );
 		}
 
 	}
@@ -149,7 +150,7 @@ void ComponentListBox::setComponents( long componentCount, LogisticsComponent** 
 					if ( !finalList[j] )
 						break;
 
-					aTextListItem* textItem = new aTextListItem( IDS_SALVAGE_AREA_COMPONENTS );
+					auto textItem = std::make_unique<aTextListItem>( IDS_SALVAGE_AREA_COMPONENTS );
 					if ( finalList[j]->getType() != COMPONENT_FORM_JUMPJET )
 					{
 						textItem->setText( std::format( "{:d}/{:d} {}", mc2::fmt::as_i32( finalListCount[j] ), mc2::fmt::as_i32( finalListCount[j] ), mc2::fmt::safe( finalList[j]->getName() ) ) );
@@ -158,7 +159,7 @@ void ComponentListBox::setComponents( long componentCount, LogisticsComponent** 
 						textItem->setText( finalList[j]->getName()  );
 					textItem->setColor( colors[i] );
 					textItem->setHelpID( IDS_HELP_COMP0 + finalList[j]->getID() );
-					AddItem( textItem );
+					AddItem( textItem.release() );
 				
 				}
 
