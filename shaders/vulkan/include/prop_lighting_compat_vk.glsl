@@ -22,7 +22,9 @@ vec3 propAuthoredColor(SurfaceMaterial s, bool alphaTest, bool authoredOrm, vec3
     // AO affects ambient fill only; emission, direct sun and local pools survive.
     // SH is irradiance; legacy sun/seed/highlight inputs are authored sRGB.
     // Sum in linear light and apply Lambert once, never decode the sum.
-    vec3 lit = s.emission * wrap
+    // The material path replaces the legacy response, including its resolved
+    // vertex-light seed. Ordinary seeds are baked fill; only window nodes emit.
+    vec3 lit = propDecodeColor(vMaterialSeed) * wrap
         + (max(ibl,vec3(0))*s.ao + propDecodeColor(vMaterialSun)*propNightSunWeight(ndl, s.normal)) / 3.14159265
         + propDecodeColor(vHighlight.rgb);
     // A solid remake may replace stock alpha cards. Preserve their light floor
@@ -47,5 +49,5 @@ vec3 propAuthoredColor(SurfaceMaterial s, bool alphaTest, bool authoredOrm, vec3
             color += propDecodeColor(vSunColor)*D*G*F*ndl/max(4.0*nv*ndl,1e-4);
         }
     }
-    return propEncodeColor(color) + vHighlight.rgb*vHighlight.a + propEncodeColor(s.baseColor) * poolLight;
+    return propEncodeColor(color + s.emission) + vHighlight.rgb*vHighlight.a + propEncodeColor(s.baseColor) * poolLight;
 }

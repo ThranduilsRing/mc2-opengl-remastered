@@ -543,16 +543,16 @@ long ImportShapeFromMesh(const aiScene* scene, unsigned meshIdx,
 		// shows (unlit, matching the "draw foliage UNLIT" prior art). When a bake
 		// DOES run it overwrites this, so stock-lit shapes are unaffected.
 		verts[v].aRGBLight = 0xffffffff;
-        if (authoredColors) {
+        // No COLOR_0 means the same neutral baked fill as an untagged imported
+        // prop. Explicit authored black and hot-colour tags still win.
+        if (authoredColors && mesh->HasVertexColors(0)) {
             verts[v].aRGBLight = 0xff000000;
-            if (mesh->HasVertexColors(0)) {
-                const auto& color = mesh->mColors[0][v];
-                auto channel = [](float value) -> uint32_t {
-                    if (!std::isfinite(value)) return 0;
-                    return static_cast<uint32_t>(std::lround(std::clamp(value, 0.0f, 1.0f) * 255.0f));
-                };
-                verts[v].aRGBLight |= (channel(color.r) << 16) | (channel(color.g) << 8) | channel(color.b);
-            }
+            const auto& color = mesh->mColors[0][v];
+            auto channel = [](float value) -> uint32_t {
+                if (!std::isfinite(value)) return 0;
+                return static_cast<uint32_t>(std::lround(std::clamp(value, 0.0f, 1.0f) * 255.0f));
+            };
+            verts[v].aRGBLight |= (channel(color.r) << 16) | (channel(color.g) << 8) | channel(color.b);
         }
 		// Kit TEXCOORD_1 marks glass cells (zero elsewhere). Reuse the light word
 		// for black/white seeds so stock geometry and the GPU vertex stride stay unchanged.
@@ -1629,7 +1629,7 @@ long ImportGeometryFromFile(const char* path, TG_TypeMultiShape* out, bool autoG
 	const bool staticGlb = bakeNodeTransforms && std::string_view(path).ends_with(".glb") &&
 		std::string_view(path).starts_with("mods/mc2-industrial-kit/data/model_overrides/");
 	const std::string staticParameters = std::to_string(s_gltfAxis()) + ":" + ContentFloatKey(s_gltfYoff()) + ":" +
-		ContentFloatKey(s_gltfYawDeg()) + ":" + std::to_string(authoredColors) + ":static-glb/3-windows";
+		ContentFloatKey(s_gltfYawDeg()) + ":" + std::to_string(authoredColors) + ":static-glb/4-neutral-fill";
 	if (staticGlb) {
 		mc2::content::Asset cached;
 		cached.ground = autoGround ? mc2::gate::get<"MC2_GLTF_GROUND">() : 0;
@@ -1768,7 +1768,7 @@ long ImportGeometryFromFile(const char* path, TG_TypeMultiShape* out, bool autoG
     asset.parameters = std::to_string(s_gltfAxis()) + ":" + ContentFloatKey(s_gltfYoff()) + ":" +
         ContentFloatKey(s_gltfYawDeg()) + ":" + std::to_string(authoredColors) + ":" + std::to_string(bakeNodeTransforms) +
         ":" + bake.forcedClip + ":" + std::to_string(bake.forcedFrame) + ":" + ContentFloatKey(bake.scale);
-    if (bakeNodeTransforms) asset.parameters += ":nested-pivots/1:windows/1";
+    if (bakeNodeTransforms) asset.parameters += ":nested-pivots/1:windows/2-neutral-fill";
     std::sort(sources->dependencies.begin(), sources->dependencies.end());
     for (const auto& [dependencyPath, digest] : sources->dependencies)
         asset.parameters += ":" + std::to_string(digest);
