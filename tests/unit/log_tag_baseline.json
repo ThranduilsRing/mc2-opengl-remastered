@@ -486,6 +486,29 @@
    "count": 1
   },
   {
+   "tag": "BLDG_MOVE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "gesture",
+    "frame",
+    "cached_matches_fresh",
+    "blocked",
+    "released"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "BLDG_MOVE_NULL",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "cells",
+    "ready"
+   ],
+   "count": 1
+  },
+  {
    "tag": "BLDG_REG_DIAG",
    "ver": 1,
    "stream": "stderr",
@@ -2169,6 +2192,16 @@
    "count": 1
   },
   {
+   "tag": "CONTENT_COOK_ERROR",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "source",
+    "key"
+   ],
+   "count": 1
+  },
+  {
    "tag": "CPU_PROJ",
    "ver": 1,
    "stream": "stderr",
@@ -3596,6 +3629,16 @@
     "actual"
    ],
    "count": 8
+  },
+  {
+   "tag": "GATE_MOVE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "passable",
+    "cells"
+   ],
+   "count": 1
   },
   {
    "tag": "GEOM_PHASE_SPIKE",
