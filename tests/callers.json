@@ -17589,6 +17589,13 @@
       ],
       "callers_by_stem": [
         {
+          "path": "scripts/mechbay_preview_harness.py",
+          "line": 162,
+          "evidence": "import",
+          "reference": "tracy_capture_compare",
+          "text": "from tracy_capture_compare import tracy_exe"
+        },
+        {
           "path": "scripts/tests/test_rule_defaults.py",
           "line": 68,
           "evidence": "import",
