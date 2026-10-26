@@ -663,9 +663,7 @@ add_custom_target(build_fingerprint
 add_library(mc2_build_identity STATIC "${MC2_BUILD_FINGERPRINT_CPP}")
 target_include_directories(mc2_build_identity PRIVATE "${CMAKE_SOURCE_DIR}/GameOS/include")
 add_dependencies(mc2_build_identity build_fingerprint)
-if(TARGET mc2_asset_viewer)
-    target_link_libraries(mc2_asset_viewer PRIVATE mc2_build_identity)
-endif()
+
 
 add_executable(mc2 ${SOURCES} ${MAIN_SRC})
 if(MC2_ALLOC_STATS)
