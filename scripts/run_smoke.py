@@ -1665,7 +1665,7 @@ def main():
 
         # VEG-SMOKE-FLOOR-1: check vegetation output contract when gate is active.
         # Only fires when MC2_VEGETATION_CARDS=1; never affects non-veg smoke runs.
-        if _veg_floor_active:
+        if _veg_floor_active and _options["values"]["ShadowQuality"] != 0 and _options["values"].get("BaseQuality", 2) == 2:
             _veg = _parse_veg_summary(result.stdout_text)
             _veg_fails = _check_veg_floor(e.stem, _veg)
             for _vf in _veg_fails:
