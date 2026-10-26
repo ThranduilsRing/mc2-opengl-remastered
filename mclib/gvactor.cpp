@@ -14,6 +14,11 @@
 #include "Gates/gate.h"
 #include "../RenderCore/axis_convert.h"
 #include "mc2fmt.h"
+#include "model_override_registry.h"
+#include "assimp_importer.h"
+#include "loose_asset_priority.h"
+
+void LoadOverrideRenderShapeTextures(TG_TypeMultiShape* shape);
 
 
 // C3: env-gated lifecycle routing killswitch (same env var as objmgr.cpp).
@@ -152,6 +157,37 @@ void GVAppearanceType::init (const char * fileName)
 			tglLoadShapeChecked(gvShape[0], gvName,
 				"gvactor.base", &baseShapeLoadFailed);
 		}
+	}
+
+	// Keep every stock shape: simulation nodes, picking and bounds never use the kit.
+	const auto* iniOwner = LookupModOwner(iniName);
+	const bool userIni = userLooseBuildingAsset(static_cast<const char*>(iniName), iniOwner ? iniOwner : "",
+		[&] { return ReadArchiveBytes(iniName, 1024u * 1024u); });
+	if (!importSourceBase[0] && !userIni)
+	if (const auto* ov = ModelOverrideRegistry::instance().resolve("vehicle", fileName))
+	{
+#ifdef ENABLE_ASSIMP_IMPORTER
+		bool complete = ov->lods.size() == 2 && ov->lods[0].lod == 1 && ov->lods[1].lod == 2;
+		for (int i = 0; complete && i < 3; ++i)
+		{
+			const auto rel = i == 0 ? ov->sourceRelPath : ov->lods[i-1].sourceRelPath;
+			auto shape = std::make_unique<TG_TypeMultiShape>();
+			try {
+				const auto path = ov->manifestDir + "/" + rel;
+				complete = ImportGeometryFromFile(path.c_str(), shape.get(), false, true, true) == 0
+					&& shape->GetNumShapes() > 0;
+			} catch (...) { complete = false; }
+			if (complete) {
+				LoadOverrideRenderShapeTextures(shape.get());
+				renderLods[i] = std::move(shape);
+				renderLodDistance[i] = i == 0 ? 0 : ov->lods[i-1].distance;
+			}
+		}
+		if (!complete) for (auto& shape : renderLods) shape.reset();
+		if (complete) for (auto& shape : renderLods)
+			if (shape) GpuStaticPropBatcher::instance().registerMultiShape(shape.get(), true, ov);
+		mc2::fmt::print_err("[VEHICLE_OVERRIDE] {}: {} (stock simulation/pick)\n", fileName, complete ? "3 LODs" : "stock fallback");
+#endif
 	}
 
 	result = iniFile.readIdString("ShadowName",aseFileName,511);
@@ -343,6 +379,7 @@ void GVAppearanceType::init (const char * fileName)
 //----------------------------------------------------------------------------
 void GVAppearanceType::destroy (void)
 {
+	for (auto& shape : renderLods) shape.reset();
 	AppearanceType::destroy();
 
 	for (long i=0;i<MAX_LODS;i++)
@@ -990,7 +1027,7 @@ void GVAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 		// These registerMultiShape calls put GV types into the batcher's
 		// s_typeIndex, which is the sole membership test of
 		// eligibleForGpuObjects() (gos_static_prop_batcher.cpp).
-		// But gvactor NEVER calls submitMultiShape() -- vehicles are movers and
+		// Stock gvactor never calls submitMultiShape() -- stock vehicles are movers and
 		// are deliberately kept off the static-prop path (static_prop.vert:713
 		// omits point/spot by design, so it would match buildings but still not
 		// mechs). So GV shapes report "GPU-eligible" while actually drawing

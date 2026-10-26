@@ -12,6 +12,18 @@ int main(int argc, char** argv) {
     const std::string dir = (argc > 1) ? argv[1] : "fixtures";
     auto fx = [&](const char* f){ return dir + "/" + f; };
 
+    {
+        ModelOverrideRegistry r;
+        CHECK(r.loadFromFile(fx("vehicle.json"), "mods/vehicles") == 1);
+        const auto* vehicle = r.resolve("vehicle", "lrmc");
+        CHECK(vehicle && vehicle->lods.size() == 2);
+        CHECK(!r.resolve("staticProp", "lrmc"));
+        if (vehicle && vehicle->lods.size() == 2) {
+            CHECK(vehicle->lods[1].distance == 700);
+            CHECK(vehicle->manifestDir == "mods/vehicles");
+        }
+    }
+
     {   // An unstamped user KTX2 wins even when a stock TGA has the same stem.
         const auto fixture = std::filesystem::temp_directory_path() / "mc2-sidecar-priority-fixture";
         std::filesystem::create_directories(fixture);

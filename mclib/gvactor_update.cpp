@@ -190,6 +190,8 @@ void GVAppearance::updateGeometry (void)
 		
 		gvShape->SetLightList(eye->getWorldLights(),eye->getNumLights());
 		gvShape->TransformMultiShape (&xlatPosition,&totalRotation);
+		updateRenderShape();
+		if (renderShape) renderShape->SetFogRGB(useFog ? fogRGB : 0xffffffff);
 
 		// (E) T1.11: generalised SpotLight_-child illumination on ground
 		// vehicles. Mirrors the Mech3DAppearance T1.6/T1.7 block in
@@ -672,6 +674,10 @@ void GVAppearance::destroy (void)
 	spotlightSlotIds_.clear();
 	spotlightNodeIds_.clear();
 	spotlightsRegistered_ = false;
+	renderShape.reset();
+	renderLOD = -1;
+	for (auto handle : renderTextures) if (handle != 0xffffffff) mc2::textures::release(handle);
+	renderTextures.clear();
 
 	if (gvShape)
 	{

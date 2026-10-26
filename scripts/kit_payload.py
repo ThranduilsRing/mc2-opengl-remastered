@@ -88,18 +88,18 @@ def checked_files(root, rows):
     return seen
 
 
-def payload(src_root):
-    manifest = json.loads((Path(src_root) / MANIFEST).read_text(encoding="utf-8"))
+def payload(src_root, manifest_path=MANIFEST, kit_rel=KIT_REL):
+    manifest = json.loads((Path(src_root) / manifest_path).read_text(encoding="utf-8"))
     if manifest["schema"] != 1 or not manifest["assets"] or not manifest["files"]:
         raise ValueError("invalid pinned kit manifest")
-    store = Path(os.environ.get("MC2_KIT_STORE", manifest["store"]))
+    store = Path(os.environ.get("MC2_KIT_STORE", manifest["store"]) if manifest_path == MANIFEST else manifest["store"])
     checked_files(store, manifest["files"])
     models = {p["path"] for p in manifest["files"] if p["path"].endswith(".glb")}
     expected = {f"data/model_overrides/{a['id']}/pristine_intact_lod{i}.glb"
                 for a in manifest["assets"] for i in range(3)}
     if models != expected:
         raise ValueError("pinned kit asset list differs from its GLB payload")
-    return manifest, [(str(store / r["path"]), (KIT_REL / r["path"]).as_posix(), "kit")
+    return manifest, [(str(store / r["path"]), (kit_rel / r["path"]).as_posix(), "kit")
                       for r in manifest["files"]]
 
 
@@ -128,10 +128,10 @@ def build_importer(src_root):
     return tool
 
 
-def finish(target_dir, manifest, tool, cooker=subprocess.run):
+def finish(target_dir, manifest, tool, cooker=subprocess.run, *, kit_rel=KIT_REL):
     """Verify installed source, cook native recipes and verify the cache receipt."""
     target = Path(target_dir)
-    kit = target / KIT_REL
+    kit = target / kit_rel
     paths = checked_files(kit, manifest["files"])
     extra = {p.relative_to(kit).as_posix() for p in kit.rglob("*") if p.is_file()}
     extra -= paths | {".modindex-cache"}
@@ -143,7 +143,7 @@ def finish(target_dir, manifest, tool, cooker=subprocess.run):
     identity = hashlib.sha256((sha(tool) + json.dumps(manifest, sort_keys=True)
                                + json.dumps(IMPORT_ARGS)).encode()).hexdigest()
     cache = target / "cache/content-model"
-    receipt = cache / "industrial-cook.json"
+    receipt = cache / ("industrial-cook.json" if kit_rel == KIT_REL else "vehicle-cook.json")
     try:
         previous = json.loads(receipt.read_text())
         recipes = previous["recipes"]
@@ -166,7 +166,7 @@ def finish(target_dir, manifest, tool, cooker=subprocess.run):
         if digest in recipes_by_sha:
             recipes[rel] = recipes_by_sha[digest]
             continue
-        result = cooker([str(tool), (KIT_REL / rel).as_posix(), *IMPORT_ARGS],
+        result = cooker([str(tool), (kit_rel / rel).as_posix(), *IMPORT_ARGS],
                         cwd=target, capture_output=True, text=True, timeout=120, env=dict(os.environ, OMP_NUM_THREADS="1"),
                         **console_child.child_kwargs(redirected=True))
         if result.returncode:

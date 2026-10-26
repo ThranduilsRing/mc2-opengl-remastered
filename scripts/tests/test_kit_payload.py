@@ -29,6 +29,17 @@ def package(tmp_path, monkeypatch):
     return manifest, store
 
 
+def test_vehicle_payload_has_separate_pin_and_mount(tmp_path, monkeypatch):
+    manifest, store = package(tmp_path, monkeypatch)
+    vehicle_pin = Path("data/kit/vehicle-kit.json")
+    (tmp_path / vehicle_pin).write_text(json.dumps(manifest))
+    monkeypatch.setenv("MC2_KIT_STORE", str(tmp_path / "wrong-building-store"))
+    actual, items = kit.payload(tmp_path, vehicle_pin, Path("mods/mc2-vehicle-kit"))
+    assert actual == manifest
+    assert len(items) == 3
+    assert all(dst.startswith("mods/mc2-vehicle-kit/") for _, dst, _ in items)
+
+
 @pytest.mark.parametrize("problem", ["missing", "hash", "asset-list", "unsafe"])
 def test_bad_package_fails_before_copy(tmp_path, monkeypatch, problem):
     manifest, store = package(tmp_path, monkeypatch)

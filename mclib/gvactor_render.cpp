@@ -39,8 +39,9 @@ static const bool s_vehicleLitPath = mc2::gate::get<"MC2_VEHICLE_LIT_PATH">();
 
 long GVAppearance::render (long depthFixup)
 {
-	if (visible && gos_IsModernShadowPathActive()) GpuStaticPropBatcher::instance().captureMoverShadowShape(static_cast<const Appearance*>(this),gvShape);
-	gvShape->SetTextureHandle(0,localTextureHandle);
+	TG_MultiShape* drawShape = renderShape ? renderShape.get() : gvShape;
+	if (visible && gos_IsModernShadowPathActive()) GpuStaticPropBatcher::instance().captureMoverShadowShape(static_cast<const Appearance*>(this),drawShape);
+	if (!renderShape) drawShape->SetTextureHandle(0,localTextureHandle);
 
 	// C3: render gate — GPU-lagged visibility when killswitch is enabled.
 	// Preserve g_useGpuStaticProps fallback for static-prop path.
@@ -62,18 +63,18 @@ long GVAppearance::render (long depthFixup)
 		{
 			if (selected & DRAW_COLORED && duration <= 0 )
 			{
-				gvShape->SetARGBHighLight(highLight);
+				drawShape->SetARGBHighLight(highLight);
 			}
 			else
 			{
-				gvShape->SetARGBHighLight(highlightColor);
+				drawShape->SetARGBHighLight(highlightColor);
 			}
 
 			Camera::HazeFactor = hazeFactor;
 
 			if (drawFlash)
 			{
-				gvShape->SetARGBHighLight(flashColor);
+				drawShape->SetARGBHighLight(flashColor);
 			}
 
 			//---------------------------------------------
@@ -127,17 +128,19 @@ long GVAppearance::render (long depthFixup)
 			// A/B poses even though the CPU gather was demonstrably running
 			// (MC2_LIGHT_ROW_CENSUS fired ON, silent OFF).
 			if (s_vehicleLitPath)
-				gvShape->CacheGpuLightDataAllLeaves();
+				drawShape->CacheGpuLightDataAllLeaves();
 
-			gvShape->Render(true);
+			const bool submitted = renderShape && GpuStaticPropBatcher::instance().submitMultiShape(
+				drawShape, GpuStaticPropPopulation::Generic, appearType->name);
+			if (!submitted) drawShape->Render(true);
 
 			if (selected & DRAW_TEXT)
 			{
-				gvShape->SetARGBHighLight(highLight);
+				drawShape->SetARGBHighLight(highLight);
 			}
 			else
 			{
-				gvShape->SetARGBHighLight(0x0);
+				drawShape->SetARGBHighLight(0x0);
 			}
 
 				

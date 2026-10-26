@@ -603,7 +603,7 @@ int LookupModPriority(const char* dataPath) {
     const char* owner = LookupModOwner(dataPath);
     // Source and cooked-sidecar keys can differ. A legacy loose TGA must also
     // outrank the kit's KTX, while the kit still outranks packed stock assets.
-    if (owner && std::string_view(owner) == "mc2-industrial-kit") return 999999;
+    if (owner && (std::string_view(owner) == "mc2-industrial-kit" || std::string_view(owner) == "mc2-vehicle-kit")) return 999999;
     auto it = owner ? g_modPriority.find(owner) : g_modPriority.end();
     if (it != g_modPriority.end()) return it->second;
     return _access(dataPath, 4) == 0 ? 999998 : 1000000;
@@ -770,15 +770,17 @@ void InitModSearchPaths(const char* modsRoot) {
     // MC2_ACTIVE_MOD is re-read here on every mount: the editor's mod picker changes it
     // with _putenv_s at run time, so no reader may cache it in a static.
     std::string envModStr = mc2::gate::str<"MC2_ACTIVE_MOD">();
-    if (envModStr == "mc2-industrial-kit") envModStr.clear(); // Bundled art is never an active user layer.
+    if (envModStr == "mc2-industrial-kit" || envModStr == "mc2-vehicle-kit") envModStr.clear(); // Bundled art is never an active user layer.
     const char* envMod = envModStr.c_str();
     const bool stockMode = !envMod[0];
     const bool industrialKit = mc2::options::current().remasteredBuildings &&
         GetFileAttributesA("mods/mc2-industrial-kit/mod.json") != INVALID_FILE_ATTRIBUTES;
+    const bool vehicleKit = mc2::options::current().remasteredBuildings &&
+        !mc2::options::lowCost() && GetFileAttributesA("mods/mc2-vehicle-kit/mod.json") != INVALID_FILE_ATTRIBUTES;
     if (stockMode) {
         // Stock campaign: no active mod. Add-on layers (MC2_MOD_DEPS) may still mount
         // (e.g. "stock + Omnitech mechs"). With NO deps either, this is pure base game.
-        if (!industrialKit && mc2::gate::str<"MC2_MOD_DEPS">().empty()) {
+        if (!industrialKit && !vehicleKit && mc2::gate::str<"MC2_MOD_DEPS">().empty()) {
             printf("[mod] base game mode (MC2_ACTIVE_MOD not set, MC2_MOD_DEPS not set)\n");
             fflush(stdout);
             return;
@@ -852,6 +854,8 @@ void InitModSearchPaths(const char* modsRoot) {
     std::erase(deps, "mc2-industrial-kit");
     if (industrialKit)
         deps.push_back("mc2-industrial-kit");
+    std::erase(deps, "mc2-vehicle-kit");
+    if (vehicleKit) deps.push_back("mc2-vehicle-kit");
     // Priority order: base data < dep[N-1] < ... < dep[0] < active mod.
     // Index is first-wins, so scan highest priority first.
     // Duplicates: winner keeps its slot; loser is logged when MC2_LOG_FILE_RESOLVE=1.
@@ -927,7 +931,7 @@ void InitModSearchPaths(const char* modsRoot) {
     // bundled kit for every reader (File, texture probes and importer adapters),
     // including when the index came from cache. Other mounted mods still win.
     for (auto it = g_modIndex.begin(); it != g_modIndex.end(); ) {
-        if (it->second.modId == "mc2-industrial-kit" && _access(it->first.c_str(), 4) == 0)
+        if ((it->second.modId == "mc2-industrial-kit" || it->second.modId == "mc2-vehicle-kit") && _access(it->first.c_str(), 4) == 0)
             it = g_modIndex.erase(it);
         else ++it;
     }

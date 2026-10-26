@@ -53,6 +53,8 @@ class GVAppearanceType : public AppearanceType
 	public:
 	
 		TG_TypeMultiShapePtr		gvShape[MAX_LODS];
+		std::unique_ptr<TG_TypeMultiShape> renderLods[MAX_LODS];
+		float renderLodDistance[MAX_LODS]{};
 		float						lodDistance[MAX_LODS];
 		
 		TG_TypeMultiShapePtr		gvShadowShape;
@@ -180,6 +182,11 @@ class GVAppearance : public ObjectAppearance
 		GVAppearanceType*							appearType;
 		
 		TG_MultiShapePtr							gvShape;
+		std::unique_ptr<TG_MultiShape> renderShape;
+		std::vector<DWORD> renderTextures;
+		int renderLOD = -1;
+		DWORD renderRed = 0, renderGreen = 0, renderBlue = 0;
+		void updateRenderShape();
 		TG_MultiShapePtr							gvShadowShape;
 		
 		TG_MultiShapePtr							sensorCircleShape;

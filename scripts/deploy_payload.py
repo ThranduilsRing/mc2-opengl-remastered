@@ -1877,12 +1877,16 @@ def run_deploy(args, src_root, build_dir, target, exe_name, pdb_name):
     import kit_payload
     from smoke_lib import render_options_pin
     kit_manifest = None
+    vehicle_manifest = None
     kit_tool = None
     remastered = render_options_pin.record(Path(target), os.environ)["values"]["RemasteredBuildings"]
     if not args.classic_assets and remastered:
         try:
             kit_manifest, kit_items = kit_payload.payload(src_root)
             items.extend(kit_items)
+            vehicle_manifest, vehicle_items = kit_payload.payload(src_root,
+                Path("data/kit/vehicle-kit.json"), Path("mods/mc2-vehicle-kit"))
+            items.extend(vehicle_items)
             kit_tool = kit_payload.build_importer(src_root)
         except (OSError, ValueError, KeyError) as exc:
             fail(f"RemasteredBuildings requires the pinned kit: {exc}; use --classic-assets for Classic")
@@ -1917,6 +1921,8 @@ def run_deploy(args, src_root, build_dir, target, exe_name, pdb_name):
             kit_payload.reconcile_stock_textures(target,
                 jobs=int(Path("A:/Games/mc2-ops/JOBS").read_text().strip()))
             kit_payload.finish(target, kit_manifest, kit_tool)
+            if vehicle_manifest:
+                kit_payload.finish(target, vehicle_manifest, kit_tool, kit_rel=Path("mods/mc2-vehicle-kit"))
         except (OSError, ValueError, KeyError, subprocess.SubprocessError) as exc:
             fail(f"pinned industrial kit deploy failed: {exc}")
     installed = os.path.join(target, exe_name)

@@ -1,0 +1,1 @@
+{"overrides":[{"type":"model","class":"vehicle","replaces":"vehicle:LRMC","source":"lrmc/lod0.glb","renderOnly":true,"scale":1.0,"fallback":"stock","lods":[{"lod":1,"source":"lrmc/lod1.glb","distance":350},{"lod":2,"source":"lrmc/lod2.glb","distance":700}]}]}

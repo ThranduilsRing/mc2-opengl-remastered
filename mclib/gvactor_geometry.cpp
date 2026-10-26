@@ -6,6 +6,80 @@
 #include "appearance_rng.h"
 #include "../RenderCore/axis_convert.h"
 #include "mc2fmt.h"
+#include "model_override_registry.h"
+#include "../RenderCore/SurfaceMaterial.h"
+
+// The presentation mesh follows the stock pose without entering simulation or picking.
+void GVAppearance::updateRenderShape()
+{
+	if (!appearType->renderLods[0] || status == OBJECT_STATUS_DESTROYED || status == OBJECT_STATUS_DISABLED) {
+		renderShape.reset();
+		renderLOD = -1;
+		return;
+	}
+	int lod = 0;
+	glm::vec3 translation;
+	mc2ToRender(translation, position);
+	const float eyeDistance = eye->usePerspective ? glm::length(translation - glm::vec3(eye->getCameraOrigin())) : 0.0f;
+	for (int i = 1; i < 3; ++i)
+		if (appearType->renderLods[i] && eyeDistance > appearType->renderLodDistance[i]) lod = i;
+	if (renderLOD != lod) {
+		for (auto handle : renderTextures) if (handle != 0xffffffff) mc2::textures::release(handle);
+		renderTextures.clear();
+		renderShape.reset(appearType->renderLods[lod]->CreateFrom());
+		renderLOD = lod;
+	}
+	if (renderTextures.empty() || renderRed != psRed || renderGreen != psGreen || renderBlue != psBlue) {
+		for (auto handle : renderTextures) if (handle != 0xffffffff) mc2::textures::release(handle);
+		renderTextures.clear();
+		auto colourKey = [](DWORD c) { return ((c >> 5) & 7) | (((c >> 13) & 7) << 3) | (((c >> 21) & 7) << 6); };
+		const DWORD paintKey = 0x80000000u | (colourKey(psRed) << 18) | (colourKey(psGreen) << 9) | colourKey(psBlue);
+		const auto* override = ModelOverrideRegistry::instance().resolve("vehicle", appearType->name);
+		for (long i = 0; i < renderShape->GetNumTextures(); ++i) {
+			char name[1024];
+			renderShape->GetTextureName(i, name, sizeof(name));
+			char path[1024];
+			mc2::fmt::to_buf(path, "{}{:d}/{}", mc2::fmt::safe(tglPath), mc2::fmt::as_i32(ObjectTextureSize), name);
+			const bool alpha = S_strnicmp(name, "a_", 2) == 0;
+			const auto format = alpha ? gos_Texture_Alpha : gos_Texture_Solid;
+			const auto hints = gosHint_MipmapFilter0 | gosHint_DontShrink;
+			bool tint = true;
+			if (override) for (const auto& material : override->materials)
+				if (material.slot == static_cast<uint32_t>(i))
+					tint = material.materialClass != static_cast<uint32_t>(RenderCore::SurfaceClass::Emissive)
+						&& material.materialClass != static_cast<uint32_t>(RenderCore::SurfaceClass::Glass);
+			const auto variant = tint ? paintKey : 0;
+			auto handle = mc2::textures::findAndRetain(path, format, hints, variant);
+			const bool painted = handle != 0;
+			if (!painted) handle = mc2::textures::load(path, format, hints, variant);
+			renderTextures.push_back(handle);
+			// Reuse the stock key-colour classifier on every authored material slot.
+			if (tint && !painted && handle != 0xffffffff) {
+				auto* stock = gvShape;
+				gvShape = renderShape.get();
+				gvShape->SetTextureHandle(0, handle);
+				setPaintScheme();
+				gvShape = stock;
+			}
+		}
+		renderRed = psRed; renderGreen = psGreen; renderBlue = psBlue;
+	}
+	for (long i = 0; i < renderShape->GetNumTextures(); ++i)
+		renderShape->SetTextureHandle(i, renderTextures[i]);
+	if (unitAnim().gvAnimationState >= 0) appearType->setAnimation(renderShape.get(), unitAnim().gvAnimationState);
+	renderShape->SetFrameNum(unitAnim().currentFrame);
+	auto turret = mc2::math::quatFromEuler(mc2::math::Euler(0.0f, unitAnim().turretRotation * DEGREES_TO_RADS, 0.0f));
+	const char* turretNode = appearType->rotationalNodeId;
+	// Stock Centipede's INI says sc_turret; the actual stock/exported mesh names this node.
+	if (S_stricmp(turretNode, "sc_turret") == 0) turretNode = "Centipede_turret";
+	renderShape->SetNodeRotation(turretNode, &turret);
+	renderShape->SetAlphaValue(gvShape->GetAlphaValue());
+	renderShape->SetFogRGB(0xffffffff);
+	renderShape->SetLightsOut(!eye->isNight);
+	renderShape->SetLightList(eye->getWorldLights(), eye->getNumLights());
+	auto rotation = poseRotation();
+	renderShape->TransformMultiShape(&translation, &rotation);
+}
 
 
 void GVAppearance::setPaintScheme (void)
