@@ -49,5 +49,5 @@ vec3 propAuthoredColor(SurfaceMaterial s, bool alphaTest, bool authoredOrm, vec3
             color += propDecodeColor(vSunColor)*D*G*F*ndl/max(4.0*nv*ndl,1e-4);
         }
     }
-    return propEncodeColor(color + s.emission) + vHighlight.rgb*vHighlight.a + propEncodeColor(s.baseColor) * poolLight;
+    return propEncodeColor(color) + vHighlight.rgb*vHighlight.a + propEncodeColor(s.baseColor) * poolLight;
 }

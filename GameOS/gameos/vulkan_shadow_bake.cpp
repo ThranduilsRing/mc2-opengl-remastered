@@ -451,7 +451,10 @@ bool ShadowBake::update(VkCommandBuffer cb, uint64_t epoch, const ShadowBakeInpu
     // Continue next frame without waiting two epochs; only the final submit must retire before release.
     if (recorded_ && !(coldPending_ && submitted_ && epoch > submittedEpoch_)) return false;
     if (coldPending_) {
-        if (!recordColdTile(cb, in)) return false;
+        // Bound warm-up to about 100 frames on a 400-tile map, so the live
+        // caster fallback gives way to the cheaper mask promptly.
+        for (uint32_t tile = 0; tile < 4 && coldPending_; ++tile)
+            if (!recordColdTile(cb, in)) return false;
         recorded_ = true; submitted_ = false; recordedEpoch_ = epoch;
         return true;
     }

@@ -236,6 +236,9 @@ void main() {
                           propHasAuthoredOrm(uPacket.materialId), poolLight), materialCoverage);
             outputNormalStuff = mix(vNormalStuff, renderToMc2(surface.normal), materialCoverage);
         }
+        // Detail-map coverage cannot turn off an authored lamp surface.
+        if (surface.materialClass == SURF_CLASS_EMISSIVE && (vMaterialFlags & 2u) == 0u)
+            rgb = propAddWindowEmission(rgb, surface.emission);
     }
     if (treeMaterial) {
         vec3 N = normalize(mc2ToRender(outputNormalStuff));
