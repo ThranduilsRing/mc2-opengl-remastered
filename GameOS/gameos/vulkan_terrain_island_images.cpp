@@ -554,8 +554,10 @@ bool snapshot_cement(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
     mc2vk::getOrCreateEngineVulkanContext().waitIdle("terrain_cement_snapshot");
     void* p = nullptr;
     if (vmaMapMemory(s->allocator, s->cementBuf.allocation(), &p) != VK_SUCCESS) return false;
+    // The descriptor spans the grow-only allocation. Clear the unused road plane
+    // too when an edit/load publishes only cement, so old art cannot survive it.
+    std::memset(p, 0, static_cast<size_t>(s->cementCapBytes));
     if (feed.cementCpu) std::memcpy(p, feed.cementCpu, static_cast<size_t>(feed.cementBytes));
-    else std::memset(p, 0, static_cast<size_t>(feed.cementBytes));
     vmaUnmapMemory(s->allocator, s->cementBuf.allocation());
     s->cementVersionCopied = feed.cementVersion;
     s->cementWordsReady = true;
