@@ -35,6 +35,7 @@
 #include <string_view>
 #include <set>
 #include <map>
+#include <unordered_map>
 #include <array>
 #include <cstring>
 #include <cmath>
@@ -421,6 +422,35 @@ void BuildTextureList(const aiScene* scene, mc2::content::Asset& out) {
 // then transfers ownership via the narrow construction API on TG_TypeShape.
 //
 // Returns 0 on success, -1 on failure.
+// Older kit cooks split a physical pane at hard-normal/UV seams, giving its
+// bevels independent on/off hashes. Join only coincident tagged glass vertices;
+// retain the lowest authored ID and leave the render vertices untouched.
+std::vector<DWORD> windowCellIds(const aiMesh& mesh) {
+    std::vector<DWORD> ids(mesh.mNumVertices, 0);
+    std::unordered_map<DWORD, DWORD> parent;
+    std::map<std::array<float,3>, DWORD> positions;
+    auto root = [&](DWORD id) {
+        while (parent[id] != id) { parent[id] = parent[parent[id]]; id = parent[id]; }
+        return id;
+    };
+    for (unsigned v = 0; v < mesh.mNumVertices; ++v) {
+        const float value = mesh.mTextureCoords[1][v].x;
+        if (!std::isfinite(value) || value < 1.0f || value > 16777215.0f || value != std::floor(value)) continue;
+        const DWORD id = static_cast<DWORD>(value);
+        ids[v] = id;
+        parent.try_emplace(id, id);
+        const auto& p = mesh.mVertices[v];
+        if (!std::isfinite(p.x) || !std::isfinite(p.y) || !std::isfinite(p.z)) continue;
+        const auto [at, added] = positions.try_emplace(std::array<float,3>{p.x,p.y,p.z}, id);
+        if (!added) {
+            const DWORD a = root(id), b = root(at->second);
+            parent[std::max(a,b)] = std::min(a,b);
+        }
+    }
+    for (auto& id : ids) if (id) id = root(id);
+    return ids;
+}
+
 long ImportShapeFromMesh(const aiScene* scene, unsigned meshIdx,
                          mc2::content::Node& outShape, TG_TypeMultiShape* outMulti,
                          SkelBake* bake = nullptr, bool authoredColors = false,
@@ -509,6 +539,7 @@ long ImportShapeFromMesh(const aiScene* scene, unsigned meshIdx,
 	// Zeroed vertex + triangle vectors, moved into the shape once filled.
 	std::vector<TG_TypeVertex> verts(mesh->mNumVertices);
 	std::vector<TG_TypeTriangle> tris(mesh->mNumFaces);
+	const auto windowCells = instanceWorld && mesh->HasTextureCoords(1) ? windowCellIds(*mesh) : std::vector<DWORD>{};
 
 	// Per-vertex: position + normal in MC2 space; aRGBLight init to opaque
 	// black (matches ParseASEFile's default — engine's lighting kernel
@@ -556,13 +587,13 @@ long ImportShapeFromMesh(const aiScene* scene, unsigned meshIdx,
         }
 		// Kit TEXCOORD_1 marks glass cells (zero elsewhere). Reuse the light word
 		// for black/white seeds so stock geometry and the GPU vertex stride stay unchanged.
-		if (instanceWorld && mesh->HasTextureCoords(1)) {
-			const float id = mesh->mTextureCoords[1][v].x;
+		if (!windowCells.empty()) {
+			const DWORD id = windowCells[v];
 			const DWORD seed = verts[v].aRGBLight;
-			if (std::isfinite(id) && id >= 1.0f && id <= 16777215.0f && id == std::floor(id)
+			if (id != 0
 			    && (seed == 0xff000000 || seed == 0xffffffff))
 				verts[v].aRGBLight = (seed == 0xff000000 ? 0x7e000000u : 0x7d000000u)
-				    | static_cast<DWORD>(id);
+				    | id;
 		}
 
 	}
@@ -1629,7 +1660,7 @@ long ImportGeometryFromFile(const char* path, TG_TypeMultiShape* out, bool autoG
 	const bool staticGlb = bakeNodeTransforms && std::string_view(path).ends_with(".glb") &&
 		std::string_view(path).starts_with("mods/mc2-industrial-kit/data/model_overrides/");
 	const std::string staticParameters = std::to_string(s_gltfAxis()) + ":" + ContentFloatKey(s_gltfYoff()) + ":" +
-		ContentFloatKey(s_gltfYawDeg()) + ":" + std::to_string(authoredColors) + ":static-glb/4-neutral-fill";
+		ContentFloatKey(s_gltfYawDeg()) + ":" + std::to_string(authoredColors) + ":static-glb/5-pane-cells";
 	if (staticGlb) {
 		mc2::content::Asset cached;
 		cached.ground = autoGround ? mc2::gate::get<"MC2_GLTF_GROUND">() : 0;
@@ -1768,7 +1799,7 @@ long ImportGeometryFromFile(const char* path, TG_TypeMultiShape* out, bool autoG
     asset.parameters = std::to_string(s_gltfAxis()) + ":" + ContentFloatKey(s_gltfYoff()) + ":" +
         ContentFloatKey(s_gltfYawDeg()) + ":" + std::to_string(authoredColors) + ":" + std::to_string(bakeNodeTransforms) +
         ":" + bake.forcedClip + ":" + std::to_string(bake.forcedFrame) + ":" + ContentFloatKey(bake.scale);
-    if (bakeNodeTransforms) asset.parameters += ":nested-pivots/1:windows/2-neutral-fill";
+    if (bakeNodeTransforms) asset.parameters += ":nested-pivots/1:windows/3-pane-cells";
     std::sort(sources->dependencies.begin(), sources->dependencies.end());
     for (const auto& [dependencyPath, digest] : sources->dependencies)
         asset.parameters += ":" + std::to_string(digest);

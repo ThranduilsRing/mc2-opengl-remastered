@@ -263,6 +263,26 @@ def test_glass_panes_export_distinct_flat_cell_ids():
                                       gltf_io.read_accessor(doc, [binary], wall["attributes"][field]))
 
 
+def test_glass_cell_ids_join_position_seams_without_merging_panes():
+    # Each triangle has separate vertices/UVs, as hard-edged bevelled glass does.
+    pane = np.array([[0,0,0], [1,0,0], [1,1,0], [0,0,0], [1,1,0], [0,1,0]], float)
+    points = np.concatenate([pane, pane + [2,0,0]])
+    faces = np.arange(12).reshape(-1,3)
+    uv = np.arange(24,dtype=float).reshape(-1,2)
+    scene = ir.Scene(nodes=[ir.Node('glass',mesh=0)], meshes=[ir.Mesh('glass',[
+        ir.Primitive(points,faces,0,uv0=uv)])])
+    doc,binary = gltf_io.split_glb(gltf_io.write_runtime_glb(
+        scene,[ir.Material.for_class('glass','glass')],{}))
+    attrs = doc['meshes'][0]['primitives'][0]['attributes']
+    ids = gltf_io.read_accessor(doc,[binary],attrs['TEXCOORD_1'])[:,0]
+    assert np.all(ids[:6] == ids[0])
+    assert np.all(ids[6:] == ids[6])
+    assert ids[0] != ids[6]
+    assert doc['accessors'][attrs['POSITION']]['count'] == 12  # preserve render seams
+    np.testing.assert_allclose(gltf_io.read_accessor(doc,[binary],attrs['TEXCOORD_0']),
+                               np.stack([uv[:,0],1-uv[:,1]],axis=1))
+
+
 def test_authored_image_rows_match_native_tg_uvs(tmp_path):
     # Assimp glTF2Importer flips V, then toMC2V flips it back. Preserve the
     # original glTF/PIL row order; a uniform-colour fixture cannot test this.

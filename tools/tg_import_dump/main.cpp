@@ -16,6 +16,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <string>
+#include <set>
 
 #include "heap.h"
 #include "tgl.h"
@@ -92,7 +93,13 @@ int main(int argc, char** argv) {
 
         float lo[3] = {1e30f, 1e30f, 1e30f}, hi[3] = {-1e30f, -1e30f, -1e30f};
         const TG_TypeVertex* verts = s->GetTypeVertices();
+        std::set<DWORD> windowCells;
+        unsigned whiteSeeds = 0, blackSeeds = 0;
         for (int v = 0; v < nv && verts; ++v) {
+            const DWORD light = verts[v].aRGBLight;
+            if ((light >> 24) == 0x7d || (light >> 24) == 0x7e) windowCells.insert(light & 0xffffff);
+            whiteSeeds += light == 0xffffffff;
+            blackSeeds += light == 0xff000000;
             float c[3] = {verts[v].position.x, verts[v].position.y, verts[v].position.z};
             for (int k = 0; k < 3; ++k) {
                 if (c[k] < lo[k]) lo[k] = c[k];
@@ -111,6 +118,8 @@ int main(int argc, char** argv) {
         const auto pivot = s->GetNodeCenter(), relative = s->GetRelativeNodeCenter();
         std::printf(", \"parent\": \"%s\", \"pivot\": [%.4f, %.4f, %.4f], \"relativePivot\": [%.4f, %.4f, %.4f]",
                     s->getParentId(), pivot.x, pivot.y, pivot.z, relative.x, relative.y, relative.z);
+        std::printf(", \"windowCellCount\": %zu, \"whiteLightSeeds\": %u, \"blackLightSeeds\": %u",
+                    windowCells.size(), whiteSeeds, blackSeeds);
         if (nv > 0)
             std::printf(", \"bbox\": {\"min\": [%.4f, %.4f, %.4f], \"max\": [%.4f, %.4f, %.4f]}",
                         lo[0], lo[1], lo[2], hi[0], hi[1], hi[2]);
