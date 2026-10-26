@@ -190,17 +190,17 @@ TEST_CASE("shadow bake dirty tiles: the queue keeps each sub-tile once, in order
 TEST_CASE("Shadow preset dimensions bound potato resident memory") {
     using namespace mc2shadow;
     const auto p=qualityForLevel(0), m=qualityForLevel(1), h=qualityForLevel(2);
-    CHECK(p.mapSide==1024); CHECK(p.windowSide==1024); CHECK(p.maskCap==2048);
+    CHECK(p.mapSide==2048); CHECK(p.windowSide==2048); CHECK(p.maskCap==4096);
     CHECK(m.maskTarget==2.0f); CHECK(m.maskCap==8192); CHECK(h.maskTarget==1.5f);
     CHECK(qualityForLimit(2,8192).level==1);
     CHECK(qualityForLimit(2,8192).maskCap==8192);
     CHECK(qualityForLimit(2,2048).maskCap==2048);
-    CHECK(qualityForLimit(2,2048).mapSide==1024);
+    CHECK(qualityForLimit(2,2048).mapSide==2048);
     const uint64_t resident=uint64_t(p.maskCap)*p.maskCap*2/3+uint64_t(p.mapSide)*p.mapSide*4;
     CHECK(resident<=32*1024*1024);
     const auto basis=lightBasis({1,0,1});
     const auto window=casterWindow(basis,{-256,-256,256,256},0,100,200,0.03f,p.windowSide);
-    CHECK(window.texels==1024); CHECK(window.texelWorld>0);
+    CHECK(window.texels==2048); CHECK(window.texelWorld>0);
 }
 
 TEST_CASE("shadow bake dirty tiles: aborted batches requeue until uploads commit") {

@@ -13,7 +13,7 @@ struct ShadowQuality {
     float maskTarget;
 };
 constexpr ShadowQuality qualityForLevel(int level) {
-    if (level==0) return {0,2048,1024,1024,1.0f}; // Quarter the static-shadow texels on shared DDR4.
+    if (level==0) return {0,4096,2048,2048,1.0f};
     if (level==1) return {1,8192,4096,4096,2.0f};
     return {2,12288,4096,4096,1.5f};
 }

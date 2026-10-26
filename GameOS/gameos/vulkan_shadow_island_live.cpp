@@ -886,7 +886,7 @@ static void refresh_alpha_casters(ShadowIsland* s) {
 static bool mover_shadows_enabled() {
     static const bool enabled=mc2::gate::get<"MC2_SHADOW_ENABLE">();
     const auto* pp=getGosPostProcess();
-    return enabled && pp && pp->shadowsEnabled_;
+    return !mc2::options::lowCost() && enabled && pp && pp->shadowsEnabled_;
 }
 
 // The static shadow bake: retires a finished bake and records the next one when its inputs are ready and differ from the last. Like the static map it
@@ -1279,6 +1279,9 @@ static bool ensure_island(int size) {
 }
 
 extern "C" int mc2_vk_shadow_island_prewarm(int,int) {
+    // No object shadows on Low/Potato: do not duplicate the entire prop VBO/IBO
+    // (214 MiB on mc2_10) or prewarm unused bake products in the 512 MiB budget.
+    if (mc2::options::lowCost()) return 1;
     if (!ensure_island(mc2shadow::shadowQuality().mapSide)) return 0;
     auto* s=parkedIsland();
     upload_geometry_once(s);
