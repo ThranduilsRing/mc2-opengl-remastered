@@ -280,7 +280,7 @@ typedef struct _MoverInitData {
 			// Must also load Ground Vehicles the OLDen WAY until further notice.
 			switch (mover->getObjectClass()) {
 				case BATTLEMECH: 
-					mover->init(moverSpec->variant);		
+					{ ZoneScopedN("Mission.AddMover.Variant"); mover->init(moverSpec->variant); }
 					break;
 				case GROUNDVEHICLE:
 				case ELEMENTAL:	

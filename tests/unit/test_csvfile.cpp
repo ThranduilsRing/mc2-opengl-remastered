@@ -216,3 +216,21 @@ TEST_CASE("CSV dialect edge cases: quotes and embedded commas are NOT RFC-4180")
 }
 
 } // TEST_SUITE("CsvFile")
+
+TEST_CASE("CSVFile RAM row scans match the disk parser")
+{
+	const auto path = fixturePath("buildings_smoke.csv");
+	File source;
+	REQUIRE(source.open(path.c_str()) == NO_ERR);
+	CSVFile memory, disk;
+	REQUIRE(memory.open(&source, source.fileSize(), -1) == NO_ERR);
+	REQUIRE(disk.open(path.c_str()) == NO_ERR);
+	for (unsigned row = 1; row <= 8; ++row) {
+		for (unsigned col = 0; col <= 14; ++col) {
+			char a[256]{}, b[256]{};
+			const auto expected = disk.readString(row, col, a, sizeof(a) - 1);
+			CHECK(memory.readString(row, col, b, sizeof(b) - 1) == expected);
+			if (expected == NO_ERR) CHECK(strcmp(a, b) == 0);
+		}
+	}
+}
