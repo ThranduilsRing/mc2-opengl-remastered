@@ -189,8 +189,8 @@
    "LG02": 0,
    "LG03": 500,
    "LG04": 15,
-   "LG05": 111,
-   "LG06": 528,
+   "LG05": 109,
+   "LG06": 527,
    "LG07": 0,
    "LG08": 43,
    "LG09": 2,
@@ -2330,7 +2330,6 @@
    "LG20": 2
   },
   "mclib/bdactor_sidecar.cpp": {
-   "LG05": 1,
    "LG06": 5,
    "LG20": 8
   },
@@ -2895,12 +2894,11 @@
    "LG13": 1
   },
   "mclib/mod_cache_sig.h": {
-   "LG05": 1,
    "LG06": 1
   },
   "mclib/model_override_registry.cpp": {
    "LG05": 2,
-   "LG06": 2,
+   "LG06": 1,
    "LG11": 3
   },
   "mclib/model_override_registry.h": {
@@ -3432,7 +3430,7 @@
    "LG20": 3
   }
  },
- "head": "0d02d189a",
+ "head": "a7a0981d5",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",

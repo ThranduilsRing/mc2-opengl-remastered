@@ -17,34 +17,33 @@ TEST_CASE("mod-cache-sig: parse/format round-trip") {
     formatModCacheSigLine(sig, line, sizeof(line));
     CHECK(std::string(line) == "sig 42 133456789012345678");
 
-    ModCacheSignature back;
-    CHECK(parseModCacheSigLine(line, &back));
-    CHECK(back.fileCount == sig.fileCount);
-    CHECK(back.maxMtime == sig.maxMtime);
-    CHECK(modCacheSignatureMatches(sig, back));
+    auto back = parseModCacheSigLine(line);
+    REQUIRE(back);
+    CHECK(back->fileCount == sig.fileCount);
+    CHECK(back->maxMtime == sig.maxMtime);
+    CHECK(modCacheSignatureMatches(sig, *back));
 
     // zero signature (empty mod tree) round-trips too
     ModCacheSignature zero;
     formatModCacheSigLine(zero, line, sizeof(line));
     CHECK(std::string(line) == "sig 0 0");
-    CHECK(parseModCacheSigLine(line, &back));
-    CHECK(modCacheSignatureMatches(zero, back));
+    back = parseModCacheSigLine(line);
+    REQUIRE(back);
+    CHECK(modCacheSignatureMatches(zero, *back));
 }
 
 TEST_CASE("mod-cache-sig: malformed lines are rejected (stale -> rebuild)") {
-    ModCacheSignature out;
-    CHECK(!parseModCacheSigLine(nullptr, &out));
-    CHECK(!parseModCacheSigLine("", &out));
-    CHECK(!parseModCacheSigLine("sig", &out));            // no payload
-    CHECK(!parseModCacheSigLine("sig ", &out));           // empty payload
-    CHECK(!parseModCacheSigLine("sig 42", &out));         // missing mtime
-    CHECK(!parseModCacheSigLine("sig 42 ", &out));        // empty mtime
-    CHECK(!parseModCacheSigLine("sig x 5", &out));        // garbage count
-    CHECK(!parseModCacheSigLine("sig 42 x", &out));       // garbage mtime
-    CHECK(!parseModCacheSigLine("sig 42 5 extra", &out)); // trailing junk
-    CHECK(!parseModCacheSigLine("SIG 42 5", &out));       // wrong tag case
-    CHECK(!parseModCacheSigLine("count 42", &out));       // v1 line shape
-    CHECK(!parseModCacheSigLine("sig 42 5", nullptr));    // null out
+    CHECK(!parseModCacheSigLine(nullptr));
+    CHECK(!parseModCacheSigLine(""));
+    CHECK(!parseModCacheSigLine("sig"));            // no payload
+    CHECK(!parseModCacheSigLine("sig "));           // empty payload
+    CHECK(!parseModCacheSigLine("sig 42"));         // missing mtime
+    CHECK(!parseModCacheSigLine("sig 42 "));        // empty mtime
+    CHECK(!parseModCacheSigLine("sig x 5"));        // garbage count
+    CHECK(!parseModCacheSigLine("sig 42 x"));       // garbage mtime
+    CHECK(!parseModCacheSigLine("sig 42 5 extra")); // trailing junk
+    CHECK(!parseModCacheSigLine("SIG 42 5"));       // wrong tag case
+    CHECK(!parseModCacheSigLine("count 42"));       // v1 line shape
 }
 
 TEST_CASE("mod-cache-sig: match rule -- any component change invalidates") {

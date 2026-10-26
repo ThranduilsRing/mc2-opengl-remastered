@@ -24,6 +24,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <optional>
 
 struct ModCacheSignature {
     unsigned long long fileCount = 0;
@@ -36,21 +37,19 @@ inline bool modCacheSignatureMatches(const ModCacheSignature& a,
 }
 
 // Cache line: "sig <fileCount> <maxMtime>" (both unsigned decimal).
-// Returns false on any malformation (wrong tag, missing/garbage numbers,
+// Returns no value on any malformation (wrong tag, missing/garbage numbers,
 // trailing junk) -- caller treats that as a stale cache and rebuilds.
-inline bool parseModCacheSigLine(const char* line, ModCacheSignature* out) {
-    if (!line || !out) return false;
-    if (std::strncmp(line, "sig ", 4) != 0) return false;
+inline std::optional<ModCacheSignature> parseModCacheSigLine(const char* line) {
+    if (!line) return std::nullopt;
+    if (std::strncmp(line, "sig ", 4) != 0) return std::nullopt;
     const char* p = line + 4;
     char* end = nullptr;
     unsigned long long files = std::strtoull(p, &end, 10);
-    if (end == p || *end != ' ') return false;
+    if (end == p || *end != ' ') return std::nullopt;
     p = end + 1;
     unsigned long long mtime = std::strtoull(p, &end, 10);
-    if (end == p || *end != '\0') return false;
-    out->fileCount = files;
-    out->maxMtime  = mtime;
-    return true;
+    if (end == p || *end != '\0') return std::nullopt;
+    return ModCacheSignature{files, mtime};
 }
 
 inline void formatModCacheSigLine(const ModCacheSignature& sig,

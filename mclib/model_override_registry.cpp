@@ -341,7 +341,7 @@ std::vector<std::string> modelOverrideMountOrder(std::string_view activeMod, std
     return out;
 }
 
-static std::vector<std::string> activeModJsonDeps(const std::string& activeMod) {
+static std::vector<std::string> activeModJsonDeps(std::string_view activeMod) {
     std::vector<std::string> deps;
     if (activeMod.empty()) return deps;
     std::ifstream in(std::filesystem::path("mods") / activeMod / "mod.json");   // path-audit: loose-only (mod root metadata)
