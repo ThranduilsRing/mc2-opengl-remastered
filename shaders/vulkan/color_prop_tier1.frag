@@ -229,17 +229,19 @@ void main() {
     // PROP-COVERAGE-1: an opaque (non-alpha-tested) fragment belongs to the core pass only.
     if (uPacket.coverageFringePass != 0 && !alphaTestClass) discard;
     bool treeMaterial = haveAlbedo && vTree.y > 0.5;
-    if (haveAlbedo && uPacket.materialId >= 0 && uPacket.materialId < uPropMaterials.materials.length()) {
+    // Low/Potato reuse the VS's existing SH + sun + authored-light result.
+    // Re-evaluating diffuse material lighting per fragment wastes the 24-EU budget.
+    if (kBaseQuality == 2 && haveAlbedo && uPacket.materialId >= 0 && uPacket.materialId < uPropMaterials.materials.length()) {
         SurfaceMaterial surface = propSurface(uPacket.materialId, materialAlbedo);
         float materialCoverage = propMaterialCoverage(uPacket.materialId);
         if (materialCoverage > 0.0) {
             materialAO = mix(1.0, surface.ao, materialCoverage);
             if (!treeMaterial) rgb = mix(rgb, propAuthoredColor(surface, alphaTestClass,
-                          kBaseQuality == 2 && propHasAuthoredOrm(uPacket.materialId), poolLight), materialCoverage);
+                          propHasAuthoredOrm(uPacket.materialId), poolLight), materialCoverage);
             outputNormalStuff = mix(vNormalStuff, renderToMc2(surface.normal), materialCoverage);
         }
     }
-    if (treeMaterial) {
+    if (kBaseQuality == 2 && treeMaterial) {
         vec3 N = normalize(mc2ToRender(outputNormalStuff));
         vec3 L = uT.terrainLightDir.xyz / max(length(uT.terrainLightDir.xyz),1e-6);
         vec2 uv = vec2((vWorldPos.x-uT.atlasTopLeftX)*uT.atlasOneOverWorldUnits,
