@@ -584,24 +584,13 @@ void PopulateRecipeCementWords() {
                     const bool c3 = (l3 != 0xFFFFu);
                     const int maskId = deriveMaskIdFromCorners(c0, c1, c2, c3);
                     const uint16_t cementLayerIdx = c0 ? l0 : (c1 ? l1 : (c2 ? l2 : l3));
-                    // PAD-EDGE-ROAD-2 (regression fix on PAD-EDGE-ROAD-1, user
-                    // field report 2026-07-21b): the -1 form baked NO cement
-                    // word on road-adjacent tiles, so the pad OUTLINE switched
-                    // styles mid-perimeter (legacy decal edge on the 8-adjacent
-                    // revert tiles vs analytic cement edge on their neighbors —
-                    // angular mismatched seams). -2 keeps the analytic cement
-                    // word on those tiles (outline stays continuous) and lets
-                    // BuildDecalStaticVBO ALSO bake the road-transition decal on
-                    // top (road art renders over the analytic wedge — stock
-                    // layering, decal depth-biased). MC2_PAD_EDGE_ROAD_FIX=2
-                    // restores the -1 decal-only revert for A/B; =0 restores the
-                    // pre-fix analytic-only (road notch) behavior.
                     // The authored transition contains both its footprint and road/runway
                     // art. A borrowed slab plus a corner cut loses both at pad junctions.
                     if (g_cementAlphaLayerMapReady && g_cementAlphaLayerIndexBySlot[slot] != 0xFFFFu) {
                         cementWord = kCementLayerValidBit | kCementTransitionBit | kCementOwnAlphaBit
                                    | (static_cast<uint32_t>(g_cementAlphaLayerIndexBySlot[slot]) & 0xFFFFu);
                         ++transitionQuadCount;
+                        if (cementLayerIdx == 0xFFFFu || maskId < 0) ++transitionAlphaRescued;
                     } else if (maskId >= 0 && cementLayerIdx != 0xFFFFu
                         && PadEdgeRoadFixMode() == 2
                         && TileRoadAdjacent8(my, mx, mapSide, blocks)) {
