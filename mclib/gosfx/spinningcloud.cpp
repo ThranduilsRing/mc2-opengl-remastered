@@ -1,5 +1,4 @@
 #include"gosfxheaders.hpp"
-#include"fx_trace/fx_cost_split.h"  // Q2-S0 FX cost-split (env MC2_FX_COST_SPLIT)
 //==========================================================================//
 // File:	 gosFX_SpinningCloud.cpp										//
 // Contents: Base gosFX::SpinningCloud Component							//
@@ -421,7 +420,6 @@ bool
 	// Q2-S0 instrumentation only. Per-particle rdtsc bucket (NO Tracy zone —
 	// per-particle Tracy scopes are forbidden by the 100ns floor). Placed after
 	// the dead-particle early-return so only live particles are timed.
-	mc2::fx_cost_split::Scope _fxcs(mc2::fx_cost_split::B_SPINNINGCLOUD_ANIMATE);
 
 	glm::vec3 *translation = &particle->m_localTranslation;
 	glm::quat *rotation = &particle->m_localRotation;
@@ -456,7 +454,6 @@ bool
 	{
 	// Q2-S0b: curve-heavy force calc (7 of 8 ComputeValue calls in this
 	// function) — the region the curve-cache / GPU-offload decision hinges on.
-	mc2::fx_cost_split::Scope _fxf(mc2::fx_cost_split::B_FX_FORCES);
 	Stuff::Scalar drag = -spec->m_pDrag.ComputeValue(age, seed);
 	Max_Clamp(drag, 0.0f);
 	glm::vec3 ether;
@@ -524,7 +521,6 @@ bool
 	//
 	{
 	// Q2-S0b: velocity/position/rotation integration (no curve eval).
-	mc2::fx_cost_split::Scope _fxi(mc2::fx_cost_split::B_FX_INTEGRATE);
 	Stuff::Scalar time_slice =
 		static_cast<Stuff::Scalar>(till - m_lastRan);
 	(*velocity) = *velocity + accel * time_slice;

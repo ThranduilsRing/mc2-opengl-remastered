@@ -7,7 +7,6 @@ project(fx_trace)
 
 set(SOURCES
     fx_trace.cpp
-    fx_cost_split.cpp
 )
 
 include_directories(${COMMON_INCLUDE_DIRS} "../../" "./")

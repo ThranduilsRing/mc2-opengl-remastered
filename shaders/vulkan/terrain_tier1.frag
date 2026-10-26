@@ -213,31 +213,13 @@ void mv_cliffMaterial(vec3 macroN, inout vec3 N, inout vec3 baseColor) {
 // previously omitted — now included to match GL. POM is the real-view march
 // (see mv_parallax below). DEFERRED vs GL: LOD-tier fade, painted-concrete normal, cliff
 // albedo re-projection (VK-PARITY-GAPS row 14).
-// VK-TERRAIN-LODFADE: LOD_NEAR/LOD_NEAR_FADE constants verbatim from gos_terrain.frag
-// :163-164. camDist matches gos_terrain.frag :322-326 EXACTLY: ground-plane distance
-// from the camera (Stuff/MLR .x=left/right,.y=elevation,.z=forward) to WorldPos (MC2
-// .x=east,.y=north,.z=elevation), plus a zoom-out altitude boost.
-const float LODFADE_NEAR      = 4000.0;
-const float LODFADE_NEAR_FADE = 4500.0;
-//PORT-BEGIN:lodNear
-float mv_computeLodNear(vec2 worldXY, float worldZ) {
-    if (uT.lodFadeEnabled == 0) return 1.0;   // gate off -> byte-identical (no fade)
-    vec2  camGround = vec2(-uT.cameraPosMC2.x, uT.cameraPosMC2.z);
-    float hDist      = distance(worldXY, camGround);
-    float altBoost   = max(uT.cameraPosMC2.y - worldZ, 0.0) * 0.7;
-    float camDist    = hDist + altBoost;
-    return 1.0 - smoothstep(LODFADE_NEAR, LODFADE_NEAR_FADE, camDist);
-}
-//PORT-END:lodNear
-
 #include "include/terrain_detail_normal.glsl"
 
 // Lamp-only detail uses an isotropic footprint computed in uniform main flow.
 // The normal is sampled once at the first unoccluded, nonzero lamp.
 vec3 mv_lampPoolNormal(vec3 wp, vec3 macroN, float lod) {
-    float nearDetail = mv_computeLodNear(wp.xy, wp.z);
     float footprint = exp2(lod) / float(textureSize(u_matNormalArray, 0).x);
-    if (nearDetail <= 0.0 || footprint >= 0.707107) return macroN;
+    if (footprint >= 0.707107) return macroN;
     vec2 uv = vec2((wp.x - uT.atlasTopLeftX) * uT.atlasOneOverWorldUnits,
                    (uT.atlasTopLeftY - wp.y) * uT.atlasOneOverWorldUnits);
     vec4 m = uT.colormapReady != 0 ? textureLod(u_materialWeights, uv, 0.0) : vec4(0);
@@ -259,7 +241,7 @@ vec3 mv_lampPoolNormal(vec3 wp, vec3 macroN, float lod) {
     if (amount <= 0.0) return macroN;
     vec2 detailUV = wp.xy * (uT.detailTiling / MATV_WU_PER_TILE) * scale;
     vec2 dN = amount * (textureLod(u_matNormalArray, vec3(detailUV, float(layer)), lod + log2(scale)).xy * 2.0 - 1.0);
-    return normalize(vec3(macroN.xy / max(macroN.z, 0.2) + dN * nearDetail * uT.detailStrength, 1.0));
+    return normalize(vec3(macroN.xy / max(macroN.z, 0.2) + dN * uT.detailStrength, 1.0));
 }
 
 // CEMENT-MIP-EDGE-1: antialiased "x < 0.5" for the cement transition cut; fw = the cut form's
@@ -518,8 +500,7 @@ void main() {
             vec3 dN    = vec3(0.0);
             if (uT.detailReady != 0 && uT.detailStrength != 0.0) {
                 if (mv_needDetail(baseN, lightDir, materialW, materialSnow, v_worldPos, normalLightFloor)) {
-                    float lodNear = mv_computeLodNear(v_worldPos.xy, v_worldPos.z);
-                    dN = mv_detailNormal(materialW, materialSnow, v_worldPos.xy, lodNear, baseN.z, detailUvDx, detailUvDy);
+                    dN = mv_detailNormal(materialW, materialSnow, v_worldPos.xy, baseN.z, detailUvDx, detailUvDy);
                 } else {
                     resolveLampNormal = true;
                 }

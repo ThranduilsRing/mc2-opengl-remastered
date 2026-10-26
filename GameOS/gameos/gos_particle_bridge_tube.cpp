@@ -63,11 +63,9 @@ extern "C" void gos_tube_ribbon_enqueue(const float* positions, const float* col
                        {uvs, uvs + size_t(numVerts)*2}, {indices, indices + numIndices}, gosHandle, blendMode});
 }
 extern "C" void gos_tube_ribbon_flush_deferred() {
-    mc2::fx_cost_split::roll_frame_and_maybe_emit();
     if (ribbons.empty()) return;
     mc2::ScopedFlushTimer timer(2, "tube_deferred");
     ZoneScopedN("gos.TubeRibbon.FlushDeferred");
-    mc2::fx_cost_split::Scope cost(mc2::fx_cost_split::B_TUBE_BRIDGE_FLUSH);
     std::vector<VfxGeometryVertex> vertices;
     std::vector<VfxParticleDraw> draws;
     for (const auto& r : ribbons) appendRibbon(vertices, draws, r.positions.data(), r.colors.data(), r.uvs.data(),

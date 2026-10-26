@@ -58,20 +58,6 @@ void ControlGui::initHudTabRegistry()
 	t.countsAsTacMap = false;
 	hudTabRegistry.add( t );
 
-	// Double-gated throwaway witness tab — the modder's worked example: no
-	// enum widening, no button-array surgery, chrome + body both ImGui.
-	if ( mc2::gate::get<"MC2_HUD_TABS_TEST">() )
-	{
-		t.id = "test";
-		t.buttonCommand = -1;   // no legacy ControlButton; chrome is ImGui-drawn
-		t.render = &ControlGui::hudTabRenderTest;
-		t.update = 0;
-		t.helpTextHeaderID = 0;
-		t.helpTextID = 0;
-		t.countsAsTacMap = false;
-		hudTabRegistry.add( t );
-	}
-
 	// SIM-SPEED-BUTTON-1: double-gated sim-speed tab (MC2_HUD_SIM_SPEED;
 	// needs MC2_HUD_IMGUI_TABS like every registry consumer). 1x/2x/4x
 	// buttons drive the runtime multiplier behind MC2_SIM_SPEED
@@ -107,34 +93,6 @@ void ControlGui::setActiveHudTab( int index, const char* via )
 		getButton( t->buttonCommand )->press( true );
 	hudTabRegistry.setActive( index );
 	mc2::fmt::print_err("[HUD-TABS v1] dispatch tab '{}' (index {:d}, via {})\n", mc2::fmt::safe(t->id), mc2::fmt::as_i32(index), mc2::fmt::safe(via));
-}
-
-// Witness-tab body: trivial panel over the tac area rect (rectInfos[0]),
-// positioned through the slice-B helper INCLUDING the bottom-band shrink
-// (the tac area is drawn shrunk by s_hud_scale — see the hit-test comment in
-// ControlGui::update).
-void ControlGui::hudTabRenderTest( void* user )
-{
-	ControlGui* self = static_cast<ControlGui*>(user);
-	if ( !self->rectInfos )
-		return;
-	const GUI_RECT& r = self->rectInfos[0].rect;
-	float l = static_cast<float>(r.left),  tY = static_cast<float>(r.top);
-	float rt = static_cast<float>(r.right), b = static_cast<float>(r.bottom);
-	const float cy = 0.5f * ( tY + b );
-	HudImGui::hudShrinkPoint( l, tY, cy );
-	HudImGui::hudShrinkPoint( rt, b, cy );
-
-	float fontScale = 1.f;
-	if ( !HudImGui::beginPanel( "##hud_tab_test", l, tY, rt, b, &fontScale ) )
-		return;
-	ImGui::SetWindowFontScale( fontScale );
-	static unsigned long s_frame = 0;
-	++s_frame;
-	ImGui::TextUnformatted( "TEST tab (MC2_HUD_TABS_TEST)" );
-	ImGui::Text( "build: %s %s", __DATE__, __TIME__ );
-	ImGui::Text( "frame: %lu", s_frame );
-	HudImGui::endPanel();
 }
 
 // SIM-SPEED-BUTTON-1 tab body: 1x/2x/4x sim-speed buttons over the tac area

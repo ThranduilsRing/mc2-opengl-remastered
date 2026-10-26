@@ -1,6 +1,5 @@
 #include"gosfxheaders.hpp"
 #include<mlr/mlrindexedtrianglecloud.hpp>
-#include"fx_trace/fx_cost_split.h"  // Q2-S0 FX cost-split (env MC2_FX_COST_SPLIT)
 #include <tracy/Tracy.hpp>          // Q2-S0 coarse CPU zone
 #include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
 #include "math/glm_config.h"
@@ -1091,7 +1090,6 @@ bool
 	// per-profile Tracy zone is coarse (not per-particle). Placed after the
 	// dead-profile early-return so only real rebuilds are timed.
 	ZoneScopedN("gosFX.Tube.AnimateProfile");
-	mc2::fx_cost_split::Scope _fxcs(mc2::fx_cost_split::B_TUBE_ANIMATE_PROFILE);
 
 	//
 	//--------------------------------------------------------------------
