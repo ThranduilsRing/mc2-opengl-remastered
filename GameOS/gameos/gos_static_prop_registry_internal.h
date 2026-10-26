@@ -40,7 +40,7 @@ extern uint32_t g_mc2FrameCounter;
 extern bool mc2IsStaticLightSlotBaked(int32_t recipeIndex);
 
 // PROP-RECIPE-BAKE-1 per-recipe row summary (defined in mclib/txmmgr.cpp).
-// File-scope for the SAME reason as the declaration above â€” declaring it inside
+// File-scope for the SAME reason as the declaration above — declaring it inside
 // flush() namespaces it into GpuStaticPropRegistry:: and fails to link (LNK2019).
 extern bool mc2PeekStaticLightSlotSummary(int32_t recipeIndex, int* outNumLights,
                                           float amb[3], float sun[3]);
@@ -59,12 +59,11 @@ namespace GpuStaticPropRegistry {
 struct RecipeRange {
     uint32_t       first;   // index into s_recipes
     uint32_t       count;   // 0 = invalidated (tombstone)
-    TG_InstanceId multiId;   // for per-frame lightDataIndex patch via
-                            // getCachedGpuLightIndex(); NULL when count==0
+    TG_InstanceId  multiId; // generation-checked borrow of the actor-owned instance
     TG_MultiShape* multi() const { return TglInstanceRegistry::get().resolve(multiId); }
     // Texture pin sibling (texture-pin-fix spec):
     std::vector<DWORD> pinnedTextureNodes;  // mcTextureNodeIndex values pinned for this range
-    bool               pinsReleased;        // double-release guard for invalidateâ†’destroy ordering
+    bool               pinsReleased;        // double-release guard for invalidate→destroy ordering
     // [STATIC_FIRST_FRAME v1] proof-of-fix fields (Track B Task 4):
     uint32_t           registeredOnFrame;   // g_mc2FrameCounter at registerRecipe()
     bool               firstFlushSeen;      // cleared at registerRecipe; set on first successful flush
@@ -84,7 +83,7 @@ struct RecipeRange {
     char               shapeName[128];
     // SHADOW-STATIC-BUILDINGS-2: population tag set at registration via
     // setRecipePopulation() (caller knows Building vs Tree). 0xFF = unset
-    // (excluded from the static building shadow). Visibility-independent â€” the
+    // (excluded from the static building shadow). Visibility-independent — the
     // static building shadow pass replays from here, NOT per-frame buckets.
     uint8_t            population;
     // SHADOW-FOLIAGE-ALPHA-DISCARD: impostor / far-LOD recipes skip dynamic
