@@ -263,14 +263,14 @@ def stock_copy(install, parent=None):
 
 
 def execute_parallel(steps, head, dry_run=False):
-    """Overlap mods, then isolated determinism, with the stock install chain.
+    """Overlap isolated mods/determinism with the stock install chain.
 
     Each harness takes its own FIFO host slot. Never share a batch token between
     workers: that would assign both engines the same affinity and reservation.
     Before/deploy/after remain ordered, and every child is joined before return.
     """
     if dry_run:
-        print("Coverage plan: two host slots; mods then isolated determinism overlap stock captures/save-load; contracts/harnesses overlap")
+        print("Coverage plan: two host slots; isolated mods then determinism overlap stock captures/save-load; contracts/harnesses overlap")
         return execute(steps, head, True)
     if os.environ.get("MC2_HOST_LEASE_BATCH"):
         print("Coverage plan: inherited batch reservation requires serial execution")
@@ -330,15 +330,23 @@ def execute_parallel(steps, head, dry_run=False):
                 except (OSError, RuntimeError) as exc:
                     print(f"[merge_gate] stock-copy FAIL (not waived): {exc}", flush=True)
                     return 1
-            # Cold mod loads must finish before stock runtime I/O starts.
-            result |= execute(mods, head, runner=runner, completed=completed)
+            # Without a private stock snapshot, keep mod staging away from
+            # stock harness writes to the live install's configs.
+            if not copy_future:
+                result |= execute(mods, head, runner=runner, completed=completed)
             def auxiliary():
                 try:
                     result = 0
                     if copy_future:
                         clone = copy_future.result()
-                        remapped = [(n, [a.replace(str(install), str(clone)).replace(install.as_posix(), clone.as_posix())
-                                         for a in c], e) for n, c, e in determinism]
+                        remapped = []
+                        for n, c, e in mods + determinism:
+                            command = list(c)
+                            for option in ("--install", "--base-install", "--exe"):
+                                if option in command:
+                                    i = command.index(option) + 1
+                                    command[i] = command[i].replace(str(install), str(clone)).replace(install.as_posix(), clone.as_posix())
+                            remapped.append((n, command, e))
                         result |= execute(remapped, head, runner=runner, completed=completed)
                     return result
                 except (OSError, RuntimeError) as exc:

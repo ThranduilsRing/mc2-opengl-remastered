@@ -815,6 +815,10 @@ def test_auxiliary_determinism_uses_copy_while_saves_stay_serial(tmp_path, monke
             assert "copy-complete" in calls
         if command[0] == "mods":
             assert copying.wait(2)
+            assert command[command.index("--base-install") + 1] == str(clone)
+            assert command[command.index("--exe") + 1] == str(clone / "mc2.exe")
+            # The old schedule waited for every mod before launching saves.
+            assert saves.wait(2), "mods must overlap the stock proof chain"
         if command[0] == "det":
             assert command[-1] == str(clone)
             det.set()
@@ -827,7 +831,8 @@ def test_auxiliary_determinism_uses_copy_while_saves_stay_serial(tmp_path, monke
     monkeypatch.setattr(gate, "git", lambda *a: "head")
     monkeypatch.setattr(gate, "stock_copy", copy)
     monkeypatch.setattr(gate, "run_child", runner)
-    assert gate.execute_parallel([("deploy", ["deploy"], {}), ("mods", ["mods"], {}),
+    assert gate.execute_parallel([("deploy", ["deploy"], {}),
+        ("mods", ["mods", "--base-install", str(install), "--exe", str(install / "mc2.exe")], {}),
         ("determinism-mc2_10", ["det", "--install", str(install)], {}),
         ("saveload-mc2_01", ["save"], {})], "head") == 0
     assert calls.index("mods") < calls.index("det") < calls.index("cleaned")
