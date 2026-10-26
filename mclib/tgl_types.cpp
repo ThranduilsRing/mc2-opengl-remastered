@@ -99,6 +99,7 @@ void GetNameData (char *rawData, char *result)
 
 void TG_TypeNode::destroy (void)
 {
+    stableIdentity_.renew(this);
 	init();
 }
 

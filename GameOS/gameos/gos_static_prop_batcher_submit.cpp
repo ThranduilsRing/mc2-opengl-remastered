@@ -16,11 +16,11 @@ bool GpuStaticPropBatcher::submit(TG_Shape* shape,
     TG_TypeShape* typeShape = static_cast<TG_TypeShape*>(shape->myType);
     if (!typeShape) return false;
 
-    auto it = s_typeIndex.find(typeShape);
+    auto it = s_typeIndex.find(typeShape->stableId());
     if (it == s_typeIndex.end()) {
-        if (!s_failedTypes[typeShape]) {
-            mc2::fmt::print_err("[GPUPROPS] unregistered type {:016X} for shape {:016X} -- caller must CPU-fallback\n", mc2::fmt::as_ptr(static_cast<void*>(typeShape)), mc2::fmt::as_ptr(static_cast<void*>(shape)));
-            s_failedTypes[typeShape] = true;
+        if (!s_failedTypes[typeShape->stableId()]) {
+            mc2::fmt::print_err("[GPUPROPS] unregistered type {:016X} for shapeType {:016X} -- caller must CPU-fallback\n", mc2::fmt::as_u64(typeShape ? typeShape->stableId().value : 0), mc2::fmt::as_u64(typeShape ? typeShape->stableId().value : 0));
+            s_failedTypes[typeShape->stableId()] = true;
         }
         return false;  // Layer B: caller calls shape->Render() on false.
     }
@@ -296,7 +296,7 @@ bool GpuStaticPropBatcher::submitMultiShape(TG_MultiShape* multi,
         if (child->myType->GetNodeType() != SHAPE_NODE) continue;  // skip helpers
         const TG_TypeShape* ts = static_cast<const TG_TypeShape*>(child->myType);
         if (firstShapeNodeLeaf == nullptr) firstShapeNodeLeaf = rec.node.get();
-        if (s_typeIndex.find(ts) == s_typeIndex.end()) {
+        if (s_typeIndex.find(ts->stableId()) == s_typeIndex.end()) {
             loadLateRegisterAllowlistOnce();
             // Stage 2.C+ instrumentation: build a richer identifier for the
             // unregistered type. The dedup key still uses the pointer so the
@@ -310,7 +310,7 @@ bool GpuStaticPropBatcher::submitMultiShape(TG_MultiShape* multi,
             //   - the bare pointer (still useful for cross-referencing
             //     across log files / ts identity over a process lifetime)
             char addrBuf[32];
-            mc2::fmt::to_buf(addrBuf, "{:016X}", mc2::fmt::as_ptr(static_cast<const void*>(ts)));
+            mc2::fmt::to_buf(addrBuf, "{:016X}", mc2::fmt::as_u64(ts ? ts->stableId().value : 0));
             const std::string typeKey = addrBuf;  // dedup key — pointer-stable within one run
             auto& count = s_lateRegisterCounts[typeKey];
             // Stage 2.D.3: compute `allowed` for EVERY event so the per-event
@@ -372,7 +372,7 @@ bool GpuStaticPropBatcher::submitMultiShape(TG_MultiShape* multi,
                         const TG_TypeShape* rt = s_types[k].source;
                         const char* rnode = nullptr;
                         if (rt) rnode = const_cast<TG_TypeShape*>(rt)->getNodeId();
-                        mc2::fmt::print_err("[GPUPROPS_REG] entry typeID={:d} ptr={:016X} nodeId={} vertexCount={:d}\n", mc2::fmt::as_size(k), mc2::fmt::as_ptr(static_cast<const void*>(rt)), mc2::fmt::safe((rnode && rnode[0]) ? rnode : "<unnamed>"), mc2::fmt::as_u32(s_types[k].vertexCount));
+                        mc2::fmt::print_err("[GPUPROPS_REG] entry typeID={:d} stableId={:016X} nodeId={} vertexCount={:d}\n", mc2::fmt::as_size(k), mc2::fmt::as_u64(rt ? rt->stableId().value : 0), mc2::fmt::safe((rnode && rnode[0]) ? rnode : "<unnamed>"), mc2::fmt::as_u32(s_types[k].vertexCount));
                     }
                     std::fflush(stderr);
                 }
@@ -586,7 +586,7 @@ bool GpuStaticPropBatcher::submitMultiShape(TG_MultiShape* multi,
             if (!s_legacyInstancePools && child->myType) {
                 const TG_TypeShape* ts =
                     static_cast<const TG_TypeShape*>(child->myType);
-                admitAsGpuOnly = (s_typeIndex.find(ts) != s_typeIndex.end());
+                admitAsGpuOnly = (s_typeIndex.find(ts->stableId()) != s_typeIndex.end());
             }
             if (!admitAsGpuOnly) {
                 s_counters.skipped_children++;

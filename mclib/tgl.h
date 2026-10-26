@@ -10,6 +10,7 @@
 
 #ifndef TGL_H
 #define TGL_H
+#include "tgl_registry.h"
 //-------------------------------------------------------------------------------
 // Include Files
 #ifndef HEAP_H
@@ -520,7 +521,11 @@ class TG_TypeNode
 	public:
 		// Virtual so a TG_TypeShape deleted through a TG_TypeNode* runs ~TG_TypeShape. Deliberately does NOT call destroy(): a base
 		// destructor never dispatches virtually; the derived destructor releases its own stores through destroy() (idempotent).
-		virtual ~TG_TypeNode (void) = default;
+		TglIdentity<TG_TypeNode> stableIdentity_{this};
+        TG_TypeId stableOwnerType_{};
+        uint32_t stableOwnerIndex_ = 0;
+        TG_TypeNodeId stableId() const { return {stableOwnerType_, stableOwnerIndex_, stableIdentity_.id().value}; }
+        virtual ~TG_TypeNode (void) = default;
 
  		virtual void init (void)
 		{
@@ -739,6 +744,7 @@ class TG_TypeShape : public TG_TypeNode
 		// unit tier exercises this exact body.
 		virtual void destroy (void)
 		{
+            stableIdentity_.renew(this);
 			std::vector<TG_TypeVertex>().swap(typeVertexStore);
 			listOfTypeVertices = nullptr;
 
@@ -1000,7 +1006,6 @@ class TG_Shape
 	//Member Functions
 	protected:
 		// MultiTransformShape phases (tgl_transform.cpp, tgl_transform_light.cpp).
-		void xformGpuOnlyShape(glm::mat4* shapeToClip, bool isHudElement, BYTE alphaValue, bool isClamped);
 		void xformVertexProject(glm::mat4* shapeToClip, bool& oneOff, bool& oneOn, TG_TypeShapePtr theShape, long j);
 		void xformVertexBaseColor(bool isHudElement, bool isNight, float nightFactor, TG_TypeShapePtr theShape, long j, TgXformFrame& f);
 		void xformVertexLights(TG_TypeShapePtr theShape, long j, TgXformFrame& f);
@@ -1008,7 +1013,6 @@ class TG_Shape
 		void xformFaceLight(TG_TypeShapePtr theShape, long j, TgXformFrame& f);
 		void xformFaceCorners(BYTE alphaValue, TG_TypeShapePtr theShape, long j, TgXformFrame& f);
 		void xformFaceQueue(bool isHudElement, BYTE alphaValue, bool isClamped, TG_TypeShapePtr theShape, long j);
-		void xformEmitShape(glm::mat4* shapeToClip, bool isHudElement, BYTE alphaValue, bool isClamped, TG_TypeShapePtr theShape);
 
 	public:
 		void init (void)

@@ -299,7 +299,7 @@ extern std::vector<GpuStaticPropInstance> s_lastBuiltBatch;
 extern std::vector<GpuStaticPropPacket>                   s_packets;
 extern std::vector<uint8_t>                                s_packetAlphaBaked;   // per-packet alpha-test answer baked at finalize; cleared with s_packets
 extern std::vector<GpuStaticPropType>                     s_types;
-extern std::unordered_map<const TG_TypeShape*, uint32_t>  s_typeIndex;
+extern std::unordered_map<TG_TypeNodeId, uint32_t>  s_typeIndex;
 extern std::vector<RenderCore::StaticPropTypeDesc>        s_typeDescTable;
 extern bool s_gpuPropsTrace;
 extern unsigned g_regCall[4];
@@ -361,7 +361,7 @@ extern size_t   s_offGroupBytesThisFrame;
 extern size_t   s_onGroupBytesThisFrame;
 extern size_t   s_totalUsedBytesThisFrame;
 void coalesceRollbackTexBuild(std::vector<DWORD>& tempPins);
-extern std::unordered_map<const TG_TypeShape*, bool> s_failedTypes;
+extern std::unordered_map<TG_TypeNodeId, bool> s_failedTypes;
 extern ObjBatcherCounters s_counters;
 extern bool s_objbatcherTrace;
 extern bool s_objbatcherTraceInit;

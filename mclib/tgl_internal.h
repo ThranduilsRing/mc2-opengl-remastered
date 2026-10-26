@@ -74,7 +74,6 @@ extern bool drawOldWay;
 extern int g_mechPreviewRenderDepth;
 extern bool renderTGLShapes;
 extern bool silentMode;
-extern bool bShadersDrawPathEnabled;
 extern bool eligibleForGpuObjects(class TG_Shape* shape);
 namespace {
 // [LIGHT_COST_SPLIT v1] RAII cycle bracket. Cached-bool early-out; no Tracy
