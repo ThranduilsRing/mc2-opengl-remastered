@@ -45,7 +45,7 @@
         },
         {
           "path": "scripts/tests/test_kit_payload.py",
-          "line": 135,
+          "line": 138,
           "evidence": "import",
           "reference": "bootstrap_worktree_build",
           "text": "import bootstrap_worktree_build as bootstrap"
@@ -2307,7 +2307,7 @@
         },
         {
           "path": "scripts/tests/test_kit_payload.py",
-          "line": 134,
+          "line": 137,
           "evidence": "import",
           "reference": "configure_ninja",
           "text": "import configure_ninja as cn"
@@ -3823,14 +3823,14 @@
         },
         {
           "path": "scripts/tests/test_kit_payload.py",
-          "line": 117,
+          "line": 120,
           "evidence": "import",
           "reference": "deploy_payload",
           "text": "import deploy_payload as dp"
         },
         {
           "path": "scripts/tests/test_kit_payload.py",
-          "line": 189,
+          "line": 192,
           "evidence": "import",
           "reference": "deploy_payload",
           "text": "import deploy_payload as dp"
@@ -4067,6 +4067,13 @@
         {
           "path": "scripts/deploy_payload.py",
           "line": 1851,
+          "evidence": "import",
+          "reference": "kit_payload",
+          "text": "import kit_payload"
+        },
+        {
+          "path": "scripts/tests/test_cook_priority.py",
+          "line": 12,
           "evidence": "import",
           "reference": "kit_payload",
           "text": "import kit_payload"
@@ -7096,6 +7103,13 @@
       "callers_by_stem": []
     },
     {
+      "path": "scripts/tests/test_cook_priority.py",
+      "basename": "test_cook_priority.py",
+      "stem": "test_cook_priority",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
       "path": "scripts/tests/test_default_build_quiet.py",
       "basename": "test_default_build_quiet.py",
       "stem": "test_default_build_quiet",
@@ -8812,6 +8826,13 @@
       "callers_by_basename": [],
       "callers_by_stem": [
         {
+          "path": "scripts/tests/test_cook_priority.py",
+          "line": 11,
+          "evidence": "import",
+          "reference": "tools.content_pipeline",
+          "text": "from tools.content_pipeline import texcook"
+        },
+        {
           "path": "tests/assets/test_replace.py",
           "line": 225,
           "evidence": "import",
@@ -9445,6 +9466,13 @@
       "stem": "texcook",
       "callers_by_basename": [],
       "callers_by_stem": [
+        {
+          "path": "scripts/tests/test_cook_priority.py",
+          "line": 11,
+          "evidence": "import",
+          "reference": "tools.content_pipeline.texcook",
+          "text": "from tools.content_pipeline import texcook"
+        },
         {
           "path": "tools/content_pipeline/package.py",
           "line": 26,
