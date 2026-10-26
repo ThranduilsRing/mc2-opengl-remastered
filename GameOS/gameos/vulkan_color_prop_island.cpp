@@ -1740,7 +1740,8 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
         // PROP-COVERAGE-1: pass 0 draws every packet (alpha-tested ones cut at the coverage
         // threshold); pass 1 re-draws only the alpha-tested packets with the fringe pipeline,
         // after every core is in the depth buffer.
-        for (int32_t fringePass = 0; fringePass < 2; ++fringePass) {
+        const int32_t coveragePasses = mc2::options::lowCost() ? 1 : 2;
+        for (int32_t fringePass = 0; fringePass < coveragePasses; ++fringePass) {
         if (fringePass == 1)
             mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->t1_fringePipe.get());
         uint32_t i = 0;
