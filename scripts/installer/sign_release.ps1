@@ -10,7 +10,7 @@
 # account values, then:
 #   powershell -File scripts\installer\sign_release.ps1 -Files <exe1>,<exe2>
 #
-# Typical release: sign mc2.exe + mc2-launcher.exe + "Mission Editor.exe"
+# Typical release: sign mc2.exe + "Mission Editor.exe"
 # BEFORE compiling the installer, then sign mc2-setup.exe after ISCC.
 
 param(

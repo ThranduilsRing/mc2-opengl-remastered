@@ -13,7 +13,7 @@ Attacks the operational "deployed tree is broken / wrong target" class:
     inside another release tree).
 
 Source of truth: imports scripts/deploy_payload.py constants (FFMPEG_DLLS,
-SUPPORT_SCRIPTS, LAUNCHER_NAME, SHADER_EXTS) — no duplicated lists.
+SUPPORT_SCRIPTS, SHADER_EXTS) — no duplicated lists.
 
 The release tree is EXPLICIT and NON-BLOCKING by default:
   --release-root <path>   (preferred)   or   env MC2_RELEASE_ROOT

@@ -47,6 +47,7 @@ extern "C" void crashbundle_trigger_test_crash(void) {
 #include <stdint.h>
 #include <string.h>
 #include <stdlib.h>
+#include <signal.h>
 
 #pragma comment(lib, "dbghelp.lib")
 #pragma comment(lib, "user32.lib")
@@ -721,10 +722,19 @@ static void __cdecl crashbundle_invalid_parameter(const wchar_t*, const wchar_t*
     RtlCaptureContext(&context);
     EXCEPTION_RECORD record{};
     record.ExceptionCode = 0xC000000D; // STATUS_INVALID_PARAMETER
+#ifdef _M_X64
     record.ExceptionAddress = reinterpret_cast<void*>(context.Rip);
+#else
+    record.ExceptionAddress = reinterpret_cast<void*>(context.Eip);
+#endif
     EXCEPTION_POINTERS pointers{&record, &context};
     crashbundle_filter(&pointers);
     TerminateProcess(GetCurrentProcess(), record.ExceptionCode);
+}
+
+static void crashbundle_abort(int)
+{
+    crashbundle_invalid_parameter(nullptr, nullptr, nullptr, 0, 0);
 }
 
 extern "C" void crashbundle_init(void)
@@ -732,6 +742,7 @@ extern "C" void crashbundle_init(void)
     if (g_cfg.initialized) return;
     g_cfg.initialized = 1;
     _set_invalid_parameter_handler(crashbundle_invalid_parameter);
+    signal(SIGABRT, crashbundle_abort);
 
     g_cfg.tgl_pool_trace = mc2::gate::get<"MC2_TGL_POOL_TRACE">() ? 1 : 0;
     g_cfg.destroy_trace = mc2::gate::get<"MC2_DESTROY_TRACE">() ? 1 : 0;
