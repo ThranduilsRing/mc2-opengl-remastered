@@ -8740,7 +8740,7 @@
       "callers_by_stem": [
         {
           "path": "scripts/tests/test_slang_build.py",
-          "line": 259,
+          "line": 260,
           "evidence": "import",
           "reference": "check_vk_shaders",
           "text": "import check_vk_shaders as gate"
@@ -9630,7 +9630,7 @@
       "callers_by_stem": [
         {
           "path": "tools/cxx17_ratchet/cxx17_ratchet.py",
-          "line": 588,
+          "line": 596,
           "evidence": "import",
           "reference": "test_cxx17_ratchet",
           "text": "import test_cxx17_ratchet as t"
@@ -9916,7 +9916,7 @@
       "callers_by_stem": [
         {
           "path": "scripts/tests/test_slang_build.py",
-          "line": 227,
+          "line": 228,
           "evidence": "import",
           "reference": "gpu_abi_gen",
           "text": "import gpu_abi_gen as abi"
@@ -12488,7 +12488,7 @@
         },
         {
           "path": "scripts/tests/test_slang_build.py",
-          "line": 244,
+          "line": 245,
           "evidence": "import",
           "reference": "binding_index",
           "text": "import binding_index"
