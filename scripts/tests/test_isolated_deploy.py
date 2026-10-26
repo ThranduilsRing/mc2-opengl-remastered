@@ -19,6 +19,9 @@ def test_fresh_install_covers_deploy_payload(tmp_path, monkeypatch):
     guard = iso._load_guard()
     # Enumerate real game AND editor destinations, without building/cooking.
     monkeypatch.setattr(dp, "ensure_concrete_detail", lambda root: None)
+    monkeypatch.setattr(dp, "ensure_terrain_materials", lambda target: {})
+    monkeypatch.setattr(dp, "ensure_engine_normal_cooks", lambda target: None)
+    monkeypatch.setattr(dp, "log", lambda message: None)
     rels = set()
     for exe in ("mc2.exe", dp.EDITOR_EXE):
         rels.update(rel for _, rel, _ in dp.enumerate_payload(
