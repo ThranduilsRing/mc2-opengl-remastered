@@ -714,10 +714,24 @@ extern "C" void crashbundle_device_lost(void)
 // ---------------------------------------------------------------------------
 // Public init + test trigger
 // ---------------------------------------------------------------------------
+// The CRT's fail-fast path bypasses SEH. Preserve the caller's stack before it exits.
+static void __cdecl crashbundle_invalid_parameter(const wchar_t*, const wchar_t*, const wchar_t*, unsigned, uintptr_t)
+{
+    CONTEXT context{};
+    RtlCaptureContext(&context);
+    EXCEPTION_RECORD record{};
+    record.ExceptionCode = 0xC000000D; // STATUS_INVALID_PARAMETER
+    record.ExceptionAddress = reinterpret_cast<void*>(context.Rip);
+    EXCEPTION_POINTERS pointers{&record, &context};
+    crashbundle_filter(&pointers);
+    TerminateProcess(GetCurrentProcess(), record.ExceptionCode);
+}
+
 extern "C" void crashbundle_init(void)
 {
     if (g_cfg.initialized) return;
     g_cfg.initialized = 1;
+    _set_invalid_parameter_handler(crashbundle_invalid_parameter);
 
     g_cfg.tgl_pool_trace = mc2::gate::get<"MC2_TGL_POOL_TRACE">() ? 1 : 0;
     g_cfg.destroy_trace = mc2::gate::get<"MC2_DESTROY_TRACE">() ? 1 : 0;
