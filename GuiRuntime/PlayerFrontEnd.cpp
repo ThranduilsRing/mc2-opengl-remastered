@@ -38,16 +38,16 @@ std::vector<Pack> packs;
 std::string campaign, base, texture, campaignFit, pendingStart, error;
 bool pickerOpen = false, scanned = false, restart = false;
 
-std::string env(const char* key) {
-    const char* value = std::getenv(key);
+std::string env(std::string_view key) {
+    const char* value = mc2::gate::envText(std::string(key).c_str());
     return value ? value : "";
 }
-void setEnv(const std::string& key, const std::string& value) {
+void setEnv(std::string_view key, std::string_view value) {
 #ifdef _WIN32
-    _putenv_s(key.c_str(), value.c_str());
+    _putenv_s(std::string(key).c_str(), std::string(value).c_str());
 #else
-    if (value.empty()) unsetenv(key.c_str());
-    else setenv(key.c_str(), value.c_str(), 1);
+    if (value.empty()) unsetenv(std::string(key).c_str());
+    else setenv(std::string(key).c_str(), std::string(value).c_str(), 1);
 #endif
 }
 Json readJson(const fs::path& path) {
@@ -56,9 +56,9 @@ Json readJson(const fs::path& path) {
     auto result = Json::parse(stream, nullptr, false);
     return result.is_object() ? result : Json::object();
 }
-std::string text(const Json& json, const char* key, const std::string& fallback = {}) {
+std::string text(const Json& json, std::string_view key, std::string_view fallback = {}) {
     const auto it = json.find(key);
-    return it != json.end() && it->is_string() ? it->get<std::string>() : fallback;
+    return it != json.end() && it->is_string() ? it->get<std::string>() : std::string(fallback);
 }
 bool saveSettings() {
     std::ofstream stream("launcher_env.json.tmp", std::ios::binary | std::ios::trunc);
@@ -75,7 +75,7 @@ bool saveSettings() {
     if (!ok) error = "Could not replace launcher_env.json.";
     return ok;
 }
-bool contains(const std::string& list, const std::string& id) {
+bool contains(std::string_view list, std::string_view id) {
     std::size_t start = 0;
     while (start < list.size()) {
         const auto end = list.find_first_of(",;", start);
@@ -93,7 +93,7 @@ std::vector<fs::path> files(const fs::path& path) {
     std::sort(result.begin(), result.end());
     return result;
 }
-std::vector<std::string> campaigns(const std::string& id) {
+std::vector<std::string> campaigns(std::string_view id) {
     std::vector<std::string> result;
     const fs::path root = id.empty() ? fs::path("data") : fs::path("mods") / id / "data";
     for (const auto& file : files(root / "campaign"))
@@ -104,10 +104,10 @@ std::vector<std::string> campaigns(const std::string& id) {
 }
 void scan() {
     packs.clear();
-    campaign = env("MC2_ACTIVE_MOD");
+    campaign = env(mc2::gate::name<"MC2_ACTIVE_MOD">());
     base = text(settings, "last_base");
     texture = text(settings, "tex_pack_mod");
-    const auto deps = env("MC2_MOD_DEPS");
+    const auto deps = env(mc2::gate::name<"MC2_MOD_DEPS">());
     for (const auto& dir : files("mods")) {
         std::error_code ec;
         if (!fs::is_directory(dir / "data", ec)) continue;
@@ -160,7 +160,7 @@ void autoBase() {
 }
 std::string dependencies() {
     std::string deps;
-    auto append = [&](const std::string& id) { if (id.empty()) return; if (!deps.empty()) deps += ','; deps += id; };
+    auto append = [&](std::string_view id) { if (id.empty()) return; if (!deps.empty()) deps += ','; deps += id; };
     for (const auto& pack : packs)
         if (pack.enabled && pack.kind != "campaign" && pack.kind != "dependency" && pack.group != "texture-quality") append(pack.id);
     append(texture);
@@ -177,32 +177,32 @@ void loadSettings() {
     // Keep shell/harness overrides. Existing installs retain the launcher's file.
     settings = readJson("launcher_env.json");
     if (!mc2::gate::get<"MC2_LAUNCHER_ENV_JSON">() || mc2::gate::isSet<"MC2_LAUNCHED">()) return;
-    const bool explicitMod = std::getenv("MC2_ACTIVE_MOD") != nullptr;
+    const bool explicitMod = mc2::gate::envText(mc2::gate::name<"MC2_ACTIVE_MOD">()) != nullptr;
     for (const auto& [key, value] : settings.items())
-        if (key.starts_with("MC2_") && value.is_string() && !std::getenv(key.c_str())) setEnv(key, value.get<std::string>());
+        if (key.starts_with("MC2_") && value.is_string() && !mc2::gate::envText(key.c_str())) setEnv(key, value.get<std::string>());
     if (!explicitMod) {
-        setEnv("MC2_ACTIVE_MOD", text(settings, "last_campaign"));
+        setEnv(mc2::gate::name<"MC2_ACTIVE_MOD">(), text(settings, "last_campaign"));
         std::string deps = text(settings, "last_addons");
         for (const auto& id : {text(settings, "tex_pack_mod"), text(settings, "last_base")}) {
             if (id.empty()) continue;
             if (!deps.empty()) deps += ',';
             deps += id;
         }
-        if (!std::getenv("MC2_MOD_DEPS")) setEnv("MC2_MOD_DEPS", deps);
+        if (!mc2::gate::envText(mc2::gate::name<"MC2_MOD_DEPS">())) setEnv(mc2::gate::name<"MC2_MOD_DEPS">(), deps);
         const bool faster = text(settings, "last_faster_weapons") == "1";
         const bool generated = text(settings, "last_data_driven") == "1";
-        for (const auto& pair : {std::pair{"MC2_DIRECT_FIRE_STRAIGHT", faster ? "1" : ""},
-             {"MC2_PROJECTILE_SPEED_MULT", faster ? "2" : ""}, {"MC2_UNIT_PROFILE_DATA", generated ? "1" : ""},
-             {"MC2_UNIT_DEFINITION_SOURCE", generated ? "generated" : ""}, {"MC2_EQUIPMENT_DEFINITION_SOURCE", generated ? "generated" : ""}})
-            if (!std::getenv(pair.first)) setEnv(pair.first, pair.second);
+        for (const auto& [key, value] : {std::pair{mc2::gate::name<"MC2_DIRECT_FIRE_STRAIGHT">(), faster ? "1" : ""},
+             {mc2::gate::name<"MC2_PROJECTILE_SPEED_MULT">(), faster ? "2" : ""}, {mc2::gate::name<"MC2_UNIT_PROFILE_DATA">(), generated ? "1" : ""},
+             {mc2::gate::name<"MC2_UNIT_DEFINITION_SOURCE">(), generated ? "generated" : ""}, {mc2::gate::name<"MC2_EQUIPMENT_DEFINITION_SOURCE">(), generated ? "generated" : ""}})
+            if (!mc2::gate::envText(key)) setEnv(key, value);
     }
     for (const auto& dir : files("mods")) {
         const auto id = dir.filename().string();
-        if (id != env("MC2_ACTIVE_MOD") && !contains(env("MC2_MOD_DEPS"), id)) continue;
+        if (id != env(mc2::gate::name<"MC2_ACTIVE_MOD">()) && !contains(env(mc2::gate::name<"MC2_MOD_DEPS">()), id)) continue;
         const auto json = readJson(dir / "mod.json");
         if (!json.contains("env") || !json["env"].is_object()) continue;
         for (const auto& [key, value] : json["env"].items())
-            if (key.starts_with("MC2_") && value.is_string() && !std::getenv(key.c_str())) setEnv(key, value.get<std::string>());
+            if (key.starts_with("MC2_") && value.is_string() && !mc2::gate::envText(key.c_str())) setEnv(key, value.get<std::string>());
     }
     pendingStart = text(settings, "start_campaign");
     if (!pendingStart.empty()) { settings.erase("start_campaign"); saveSettings(); }
@@ -234,7 +234,7 @@ void drawMainMenu() {
     if (ImGui::Button("Refresh")) scan();
     ImGui::SameLine();
     ImGui::TextUnformatted("Installed community campaigns");
-    auto select = [&](const std::string& id) {
+    auto select = [&](std::string_view id) {
         campaign = id;
         autoBase();
         const auto fits = campaigns(id);
@@ -273,7 +273,7 @@ void drawMainMenu() {
         ImGui::TreePop();
     }
     const auto deps = dependencies();
-    const bool contentChanged = campaign != env("MC2_ACTIVE_MOD") || deps != env("MC2_MOD_DEPS");
+    const bool contentChanged = campaign != env(mc2::gate::name<"MC2_ACTIVE_MOD">()) || deps != env(mc2::gate::name<"MC2_MOD_DEPS">());
     const bool missingBase = !base.empty() && std::none_of(packs.begin(), packs.end(), [](const Pack& p) { return p.id == base; });
     if (missingBase) ImGui::TextWrapped("Required base %s is missing. Import the compatibility pack first.", base.c_str());
     if (campaignFit.empty()) ImGui::TextUnformatted("No loose campaign FIT found in this pack.");
@@ -293,8 +293,8 @@ void drawMainMenu() {
             if (contentChanged) {
                 for (const auto& pack : packs) for (const auto& [key, value] : pack.env.items())
                     if (key.starts_with("MC2_")) setEnv(key, "");
-                setEnv("MC2_ACTIVE_MOD", campaign);
-                setEnv("MC2_MOD_DEPS", deps);
+                setEnv(mc2::gate::name<"MC2_ACTIVE_MOD">(), campaign);
+                setEnv(mc2::gate::name<"MC2_MOD_DEPS">(), deps);
                 // Base first, then texture/add-ons, campaign last: same content precedence as the VFS.
                 for (const auto& id : {base, texture}) for (const auto& pack : packs) if (pack.id == id) applyPackEnv(pack);
                 for (const auto& pack : packs) if (pack.enabled && pack.kind != "dependency" && pack.group != "texture-quality") applyPackEnv(pack);
@@ -351,7 +351,8 @@ void drawOptions() {
                 if (ImGui::InputText(row.label, buffer.data(), buffer.size())) settings[row.key] = buffer.data();
             }
         }
-        for (const auto& key : {"MC2_FPS_CAP", "MC2_VSYNC"}) {
+        static constexpr const char* frameKeys[] = {mc2::gate::name<"MC2_FPS_CAP">(), mc2::gate::name<"MC2_VSYNC">()};
+        for (const auto* key : frameKeys) {
             std::array<char, 32> value{};
             std::snprintf(value.data(), value.size(), "%s", text(settings, key, env(key)).c_str());
             if (ImGui::InputText(key, value.data(), value.size())) settings[key] = value.data();
