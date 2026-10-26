@@ -360,8 +360,14 @@ extern "C" int mc2_terrain_tier1_get_load_feed(Mc2TerrainTier1Feed* out)
 
     }
 
-    // Reserved ABI slots; all terrain bands retain full detail.
+    // Reserved fade switch; all terrain bands retain full detail.
     out->lodFadeEnabled = 0;
+    // POM still needs the camera position after the legacy band fade is retired.
+    float cx = 0.0f, cy = 0.0f, cz = 0.0f;
+    gos_GetTerrainCameraPos(&cx, &cy, &cz);
+    out->cameraPosMC2[0] = cx;
+    out->cameraPosMC2[1] = cy;
+    out->cameraPosMC2[2] = cz;
 
     return 1;
 }
