@@ -3,10 +3,10 @@
 // VK-LIGHTFEED-DEDUP-1 -- ONE shared per-frame LightsData span for every VK island that consumes the game's CPU ObjectLights array (mc2::textures::ready()
 // lightData_, the byte source of the GL SSBO upload at renderLists).
 //
-// The mech and the color-prop island both read the SAME ~3.5 MB array. The first island to acquire in a frame copies it once into the engine frame ring
-// (Tracy zone VKIsl.Shared.LightFeed); later acquirers in the same frame get the same span for free. The span is frame-ring memory, so it is valid
-// until the frame that asked for it has completed and needs no ring of its own, no per-slot growth and no device idle. Consumers bind it as the
-// dynamic-offset binding-4 LightsData descriptor.
+// Mech and prop consumers share persistent mapped storage per retired engine frame slot.
+// Row generations avoid recopying unchanged static rows. Later same-frame consumers reuse
+// the first version; a CPU edit makes them fall back to a private frame-ring copy.
+// Consumers keep the dynamic-offset binding-4 LightsData ABI.
 //
 // Killswitch MC2_VK_LIGHTFEED_DEDUP=0 (default ON): acquire() always returns an empty span and each island copies the array into its own frame-ring span.
 
@@ -17,6 +17,7 @@
 
 #include <volk.h>
 #include <cstdint>
+#include <vector>
 
 #include "vk_frame_ring.h"
 
@@ -31,13 +32,24 @@ public:
     SharedLightFeed(const SharedLightFeed&) = delete;
     SharedLightFeed& operator=(const SharedLightFeed&) = delete;
 
-    // Copy-once-per-frame acquire (see the file header). An empty span is fail-soft: the caller runs its own copy path.
+    // Dirty rows update once per frame slot. Empty means the caller copies privately.
     FrameAlloc acquire(VulkanContext& ctx, const void* cpuData, uint64_t cpuBytes);
 
-    // Forgets the cached span (the ring it points into is being released).
-    void release() { frame_ = ~0ull; span_ = FrameAlloc{}; bytes_ = 0; }
+    // Called after device idle, before the allocator is released.
+    void release() {
+        frame_ = ~0ull; span_ = FrameAlloc{}; bytes_ = 0;
+        for (auto& slot : slots_) slot = Slot{};
+    }
 
 private:
+    struct Slot {
+        OwnedBuffer buffer;
+        void* mapped = nullptr;
+        VkDeviceSize capacity = 0;
+        std::vector<uint64_t> generations;
+    };
+    Slot slots_[2];
+    uint64_t revision_ = 0;
     FrameAlloc    span_;
     uint64_t      frame_ = ~0ull;     // CompletionTracker frame of the last copy attempt
     VkDeviceSize  bytes_ = 0;         // bytes copied for frame_
@@ -49,9 +61,7 @@ private:
 // Killswitch resolver: MC2_VK_LIGHTFEED_DEDUP explicit "0" disables (per-island copies restored); anything else = ON. Latched on first call.
 bool mc2vkSharedLightFeedEnabled();
 
-// Copy-once-per-frame acquire on the engine context. Returns the frame-ring span holding cpuBytes of this frame's LightsData (copied by the first caller
-// this frame), or an empty span fail-soft: killswitch off, the ring is out of memory, or the CPU array grew between two same-frame callers. The caller
-// then copies into its own frame-ring span.
+// Acquire this frame's immutable light version, or fall back to a private copy.
 mc2vk::FrameAlloc mc2vkSharedLightFeedAcquire(const void* cpuData, uint64_t cpuBytes);
 
 #endif  // MC2_VULKAN_ISLAND

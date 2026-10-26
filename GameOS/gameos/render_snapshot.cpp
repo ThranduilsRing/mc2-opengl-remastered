@@ -18,6 +18,10 @@
 #include "gos_static_prop_batcher.h"
 #include "gos_mech_batcher.h"  // MECH-EXTRACTION-0: batcher_getMechPendingCount/Entry/compareMechSnapshot
 #include "gos_profiler.h"      // EXTRACT-SNAPSHOT-INSTRUMENT-1: ZoneScopedN (Tracy shim)
+#ifdef MC2_IMGUI
+#include "../../GuiRuntime/GraphicsOptionsWindow.h"
+#include "draw_packet_emitter.h"
+#endif
 
 #include <cstdio>
 #include <cstdint>
@@ -149,7 +153,23 @@ RenderSnapshot ExtractRenderSnapshot()
     // -----------------------------------------------------------------------
     // Extraction v1: static-prop snapshot
     // -----------------------------------------------------------------------
-    {
+    // Native color/shadow dispatch consumes its own feeds. Exhaustive prop rows
+    // serve diagnostics only; keep the small packet/summary records below live.
+    static const bool propDiagnostics = mc2::gate::get<"MC2_DEBUG_STATE_DUMP">() ||
+        mc2::gate::get<"MC2_RENDER_SNAPSHOT_LOG">() ||
+        mc2::gate::get<"MC2_DRAW_PACKET_COMPARE">() ||
+        mc2::gate::get<"MC2_DRAW_PACKET_V3">() ||
+        mc2::gate::get<"MC2_DRAW_PACKET_WARN">();
+    bool materializeProps = propDiagnostics;
+#ifdef MC2_IMGUI
+    materializeProps = materializeProps || GraphicsOptionsWindow::isOpen() || g_dpSelectedRecipeIndex >= 0;
+#endif
+    static bool reportedOmittedProps = false;
+    if (!materializeProps && !reportedOmittedProps) {
+        std::fprintf(stderr, "[RENDER_SNAPSHOT] static_prop_details=not_materialized (diagnostics/inspector only)\n");
+        reportedOmittedProps = true;
+    }
+    if (materializeProps) {
         // DIRTYONLY-1: read generation signals up front to choose clean vs dirty path.
         const uint64_t curRegGen  = GpuStaticPropRegistry::getRegistryGeneration();
         const uint64_t curCullGen = GpuStaticPropRegistry::getCullRecordVersion();
@@ -454,7 +474,7 @@ RenderSnapshot ExtractRenderSnapshot()
     // Always call — fills spCompareLiveCount even when snapshot data is null (e.g. arena
     // overflow), so the log always shows live_count and a count_mismatch=1 rather than
     // silently leaving both zero. batcher_compareSnapshotPackets handles null data internally.
-    batcher_compareSnapshotPackets(&snap);
+    if (materializeProps) batcher_compareSnapshotPackets(&snap);
 
     // v3: read snapshot build stats from the most recent flush().
     {

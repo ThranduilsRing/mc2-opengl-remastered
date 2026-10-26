@@ -20,6 +20,8 @@
 // UBO slot. Acceptable.
 namespace {
     std::vector<TG_HWLightsData> lightData_;
+    std::vector<uint64_t> s_lightRowGenerations;
+    uint64_t s_lightDataRevision = 0;
     uint32_t lightDataStructuresCapacity = 0;
     uint32_t lightDataStructuresCount = 0;
     bool s_active = false;
@@ -507,6 +509,8 @@ uint32_t mc2::vkLights::addLightDataStructure(TG_HWLightsData* light_data)
     }
 
     lightData_[lightDataStructuresCount] = *light_data;
+    s_lightRowGenerations.resize(lightData_.size());
+    s_lightRowGenerations[lightDataStructuresCount] = ++s_lightDataRevision;
     uint32_t rv = lightDataStructuresCount;
     lightDataStructuresCount++;
     s_lightDataDedupMap.emplace(hash, rv);  // O(1) avg insert
@@ -637,6 +641,8 @@ void mc2::vkLights::bakeStaticLightSlot(int32_t recipeIndex, const TG_HWLightsDa
         lightDataStructuresCapacity = newCap;
     }
     lightData_[ri] = baked;                                 // CPU mirror (persists)
+    s_lightRowGenerations.resize(lightData_.size());
+    s_lightRowGenerations[ri] = ++s_lightDataRevision;
     // 2A: the per-leaf permanent light index is NOT recipeIndex — it is the
     // owning RANGE's lightDataIndex (all leaves of a multi-leaf range share one
     // light slot, matching legacy flush). That propagation now lives in the
@@ -693,18 +699,28 @@ uint64_t mc2::vkLights::getLightDataBytes()
     return static_cast<uint64_t>(lightDataStructuresCount) * sizeof(TG_HWLightsData);
 }
 
+std::span<const uint64_t> mc2::vkLights::getLightRowGenerations()
+{
+    return {s_lightRowGenerations.data(), lightDataStructuresCount};
+}
+
+uint64_t mc2::vkLights::getLightDataRevision() { return s_lightDataRevision; }
+
 
 void mc2::vkLights::start()
 {
     lightDataStructuresCapacity = 128;
     lightDataStructuresCount = 0;
     lightData_.assign(lightDataStructuresCapacity, TG_HWLightsData());
+    s_lightRowGenerations.assign(lightDataStructuresCapacity, ++s_lightDataRevision);
     s_active = true;
 }
 
 void mc2::vkLights::shutdown()
 {
     std::vector<TG_HWLightsData>().swap(lightData_);
+    std::vector<uint64_t>().swap(s_lightRowGenerations);
+    ++s_lightDataRevision;
     lightDataStructuresCapacity = lightDataStructuresCount = 0;
     s_active = false;
 }
