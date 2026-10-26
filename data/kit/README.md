@@ -43,6 +43,12 @@ mapping. Turrets retain their Pack3 tags and payload bytes; the rejected r3
 turret bakes are excluded. Gameplay geometry and saved passability continue
 to use the stock simulation pose.
 
+Pack5 replaces the 17 turret bakes selected by `content/packaging-r4.json`
+with their exact r4/r4b canon tags from `claude/kit-intent` commit `d5e496a9a`.
+The existing IR frontend metadata retains each asset's authored `muzzles[]`;
+the runtime override registry does not consume muzzle metadata. Stock weapon
+behavior and animation bindings continue through the existing engine path.
+
 The three approved r2 fence bakes predate the stock count-contract repair
 7ca5e7b44. That contract is art-review metadata: the GLB frontend, package
 validator and runtime override registry do not require or consume it. The exact
