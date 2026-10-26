@@ -282,10 +282,11 @@ def _mock_desktop(monkeypatch, idle_s):
 
 
 def test_pointer_write_is_skipped_while_user_is_active(monkeypatch):
-    fake = _mock_desktop(monkeypatch, idle_s=1.0)
-    assert win_input.user_is_active()
-    assert win_input.set_cursor_pos((10, 20)) is False
-    assert fake.writes == []
+    for idle_s in (0.0, 1.0, 4.999):
+        fake = _mock_desktop(monkeypatch, idle_s=idle_s)
+        assert win_input.user_is_active()
+        assert win_input.set_cursor_pos((10, 20)) is False
+        assert fake.writes == []
 
 
 def test_many_attempts_while_the_user_is_active_write_nothing(monkeypatch):
@@ -302,10 +303,27 @@ def test_pointer_write_proceeds_when_user_is_idle(monkeypatch):
     assert fake.writes == [(10, 20)]
 
 
-def test_unknown_idle_time_does_not_block_a_headless_restore(monkeypatch):
+def test_unknown_idle_time_blocks_pointer_writes(monkeypatch):
     monkeypatch.setattr(win_input, "_user32", lambda: None)
     assert win_input.user_idle_seconds() is None
-    assert not win_input.user_is_active()
+    assert win_input.user_is_active()
+
+
+def test_failed_idle_query_never_writes_pointer(monkeypatch):
+    fake = _mock_desktop(monkeypatch, idle_s=60.0)
+    monkeypatch.setattr(fake, "GetLastInputInfo", lambda ref: 0)
+    assert not win_input.set_cursor_pos((10, 20))
+    assert fake.writes == []
+
+
+def test_agent_launch_cannot_override_pointer_safety(monkeypatch):
+    monkeypatch.delenv("MC2_HARNESS_ALLOW_FOREGROUND", raising=False)
+    env = nofocus.apply_env({"MC2_NO_CURSOR_GRAB": "0", "MC2_WINDOW_OFFSCREEN": "0",
+                             "MC2_WINDOWED": "0", "MC2_WIDTH": "1600"})
+    assert env["MC2_NO_CURSOR_GRAB"] == "1"
+    assert env["MC2_WINDOW_OFFSCREEN"] == "1"
+    assert env["MC2_WINDOWED"] == "1"
+    assert env["MC2_WIDTH"] == "1600"
 
 
 def test_nofocus_pointer_write_goes_through_the_guarded_write(monkeypatch):

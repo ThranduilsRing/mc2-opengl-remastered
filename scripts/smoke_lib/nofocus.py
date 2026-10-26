@@ -202,9 +202,9 @@ def apply_env(env: "Optional[dict]" = None, *, small_window: bool = True,
               offscreen: bool = True) -> dict:
     """Return `env` (or a copy of os.environ) with the no-focus vars applied.
 
-    `setdefault` semantics: an explicit caller value always wins, so a test
-    that specifically wants cursor grabbing can pass MC2_NO_CURSOR_GRAB=0, and
-    a capture harness that grades at 1600x900 can pass MC2_WIDTH/MC2_HEIGHT.
+    Safety settings are mandatory; an explicit caller value cannot enable
+    cursor grabbing, fullscreen or on-screen agent windows. Capture dimensions
+    still preserve an explicit MC2_WIDTH/MC2_HEIGHT.
 
     `offscreen=False` DECLARES that this harness needs the window on the
     visible desktop. It exists for the harnesses that screenshot the DESKTOP
@@ -232,8 +232,7 @@ def apply_env(env: "Optional[dict]" = None, *, small_window: bool = True,
         # ALWAYS background. So the focus/cursor/fullscreen vars still apply;
         # they are what makes SDL create the window with
         # SDL_HINT_WINDOW_NO_ACTIVATION_WHEN_SHOWN and skip ClipCursor/warp.
-        for k, v in NOFOCUS_ENV.items():
-            out.setdefault(k, v)
+        out.update(NOFOCUS_ENV)
         return out
     if not offscreen:
         # Refuse BEFORE anything is spawned or established: there is no partial
@@ -249,14 +248,12 @@ def apply_env(env: "Optional[dict]" = None, *, small_window: bool = True,
             "MC2_SCREENSHOT_PATH, see scripts/run_visual_capture.py "
             "and scripts/mech_shot.py), which reads the Vulkan present image and is "
             "unaffected by where the window sits.")
-    for k, v in NOFOCUS_ENV.items():
-        out.setdefault(k, v)
+    out.update(NOFOCUS_ENV)
     if small_window:
         for k, v in SMALL_WINDOW_ENV.items():
             out.setdefault(k, v)
     if offscreen:
-        for k, v in OFFSCREEN_ENV.items():
-            out.setdefault(k, v)
+        out.update(OFFSCREEN_ENV)
     return out
 
 

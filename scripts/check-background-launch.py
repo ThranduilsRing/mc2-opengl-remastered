@@ -275,7 +275,7 @@ CURSOR_WRITE_GUARD = "user_is_active"
 
 FOCUS_APIS = ("SetForegroundWindow", "BringWindowToTop", "SetActiveWindow",
               "SwitchToThisWindow")
-CURSOR_APIS = ("SetCursorPos", "ClipCursor", "mouse_event")
+CURSOR_APIS = ("SetCursorPos", "ClipCursor", "mouse_event", "SetCapture", "ShowCursor", "BlockInput")
 PYAUTOGUI_WARPS = ("pyautogui.moveTo", "pyautogui.dragTo", "pyautogui.click",
                    "pydirectinput.moveTo")
 
@@ -1493,7 +1493,7 @@ def launch_vet_problems(rel: str, tree: ast.AST, scan: FileScan | None = None) -
     return out
 
 
-TEST_CURSOR_APIS = ("CursorGuard", "park_cursor_if_edge", "ClipCursor")
+TEST_CURSOR_APIS = ("CursorGuard", "park_cursor_if_edge", "set_cursor_pos", *CURSOR_APIS)
 TEST_CURSOR_OFF_ENV = "MC2_CURSOR_GUARD_OFF"
 
 

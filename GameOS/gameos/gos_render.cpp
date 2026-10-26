@@ -549,10 +549,12 @@ RenderWindow* create_window(const char* pwinname, int width, int height, bool wi
         // software cursor doesn't render (e.g. old-era MC2X/MCO campaigns at the
         // 800-logical GUI tier, where the cursorsa sprite draws invisibly). Paired
         // with a software-cursor-draw skip in UserInput::render so there's no double.
-        if (mc2::gate::get<"MC2_OS_CURSOR">())
-            SDL_ShowCursor(SDL_ENABLE);
-        else
-            SDL_ShowCursor(SDL_DISABLE);
+        if (!gos_UnattendedRunRequested()) {
+            if (mc2::gate::get<"MC2_OS_CURSOR">())
+                SDL_ShowCursor(SDL_ENABLE);
+            else
+                SDL_ShowCursor(SDL_DISABLE);
+        }
     }
 
     RenderWindow* rw = new RenderWindow();

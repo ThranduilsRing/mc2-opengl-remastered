@@ -663,6 +663,12 @@ static void ImGui_ImplSDL2_UpdateMouseData()
     ImGui_ImplSDL2_Data* bd = ImGui_ImplSDL2_GetBackendData();
     ImGuiIO& io = ImGui::GetIO();
 
+    // MC2: background/automated windows must never capture or warp the desktop pointer.
+    if ((io.ConfigFlags & ImGuiConfigFlags_NoMouse) ||
+        (SDL_GetWindowFlags(bd->Window) & (SDL_WINDOW_HIDDEN | SDL_WINDOW_MINIMIZED)) ||
+        SDL_GetKeyboardFocus() != bd->Window)
+        return;
+
     // We forward mouse input when hovered or captured (via SDL_MOUSEMOTION) or when focused (below)
 #if SDL_HAS_CAPTURE_AND_GLOBAL_MOUSE
     // SDL_CaptureMouse() let the OS know e.g. that our imgui drag outside the SDL window boundaries shouldn't e.g. trigger other operations outside
@@ -723,9 +729,11 @@ static void ImGui_ImplSDL2_UpdateMouseData()
 static void ImGui_ImplSDL2_UpdateMouseCursor()
 {
     ImGuiIO& io = ImGui::GetIO();
-    if (io.ConfigFlags & ImGuiConfigFlags_NoMouseCursorChange)
-        return;
     ImGui_ImplSDL2_Data* bd = ImGui_ImplSDL2_GetBackendData();
+    if ((io.ConfigFlags & (ImGuiConfigFlags_NoMouse | ImGuiConfigFlags_NoMouseCursorChange)) ||
+        (SDL_GetWindowFlags(bd->Window) & (SDL_WINDOW_HIDDEN | SDL_WINDOW_MINIMIZED)) ||
+        SDL_GetKeyboardFocus() != bd->Window)
+        return;
 
     ImGuiMouseCursor imgui_cursor = ImGui::GetMouseCursor();
     if (io.MouseDrawCursor || imgui_cursor == ImGuiMouseCursor_None)

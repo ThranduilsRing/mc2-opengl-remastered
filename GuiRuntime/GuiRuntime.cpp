@@ -229,6 +229,8 @@ void GuiRuntime::Init() {
     // its own in-game cursor sprite; without this flag the ImGui menu re-shows
     // the Windows arrow on top of the in-game cursor.
     io.ConfigFlags |= ImGuiConfigFlags_NoMouseCursorChange;
+    // The SDL backend has its own capture/warp path, separate from GameOS.
+    if (gos_NoUserPresentRequested()) io.ConfigFlags |= ImGuiConfigFlags_NoMouse;
     // The MC2R cursor sprite is drawn in the HUD batch that flushes BEFORE
     // GuiRuntime::Render(), so it was hidden behind the new defs/ImGui UI
     // pages. io.MouseDrawCursor = true here would draw ImGui's own generic

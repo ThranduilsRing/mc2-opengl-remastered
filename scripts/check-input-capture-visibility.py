@@ -484,6 +484,26 @@ def check(read=None):
             f"parses is how 'the window is offscreen' and 'we may not take the "
             f"cursor' became separate answers to the same question.")
 
+    # ImGui's vendored SDL backend controls the pointer independently of GameOS.
+    backend = "3rdparty/imgui/backends/imgui_impl_sdl2.cpp"
+    code = get(backend) or ""
+    for fn in ("ImGui_ImplSDL2_UpdateMouseData", "ImGui_ImplSDL2_UpdateMouseCursor"):
+        span = function_body(code, fn)
+        body = code[span[0]:span[1]] if span else ""
+        calls = capture_hits(body) + [(m.start(), "SDL_ShowCursor")
+                                    for m in re.finditer(r"\bSDL_ShowCursor\s*\(", body)]
+        prefix = body[:min((pos for pos, _ in calls), default=0)]
+        if not all(re.search(r"\b" + re.escape(token) + r"(?!\w)", prefix) for token in
+                   ("ImGuiConfigFlags_NoMouse", "SDL_WINDOW_HIDDEN", "SDL_WINDOW_MINIMIZED",
+                    "SDL_GetKeyboardFocus", "return;")):
+            problems.append(f"{backend}: {fn} must reject NoMouse and background windows before pointer control.")
+    gui = get("GuiRuntime/GuiRuntime.cpp") or ""
+    if not re.search(r"if\s*\(gos_NoUserPresentRequested\(\)\)\s*io\.ConfigFlags\s*\|=\s*ImGuiConfigFlags_NoMouse\s*;", gui):
+        problems.append("GuiRuntime/GuiRuntime.cpp: unattended ImGui must set NoMouse before backend frames.")
+    render = get("GameOS/gameos/gos_render.cpp") or ""
+    if not re.search(r"if\s*\(!gos_UnattendedRunRequested\(\)\)\s*\{\s*if\s*\([^{}]*\)\s*SDL_ShowCursor\(SDL_ENABLE\);\s*else\s*SDL_ShowCursor\(SDL_DISABLE\);", render):
+        problems.append("GameOS/gameos/gos_render.cpp: unattended startup must not hide the OS cursor.")
+
     return problems
 
 
@@ -535,6 +555,19 @@ def selftest() -> int:
         failures.append("baseline")
     else:
         print("  PASS  baseline clean")
+
+    backend = "3rdparty/imgui/backends/imgui_impl_sdl2.cpp"
+    source = reader({})(backend)
+    grade("ImGui capture/warp guard removed",
+          {backend: source.replace("io.ConfigFlags & ImGuiConfigFlags_NoMouse", "false")},
+          "must reject NoMouse")
+    grade("ImGui cursor guard removed",
+          {backend: source.replace("ImGuiConfigFlags_NoMouse | ImGuiConfigFlags_NoMouseCursorChange", "ImGuiConfigFlags_NoMouseCursorChange")},
+          "must reject NoMouse")
+    gui = "GuiRuntime/GuiRuntime.cpp"
+    grade("Unattended ImGui mouse input enabled",
+          {gui: reader({})(gui).replace("io.ConfigFlags |= ImGuiConfigFlags_NoMouse;", ";")},
+          "unattended ImGui must set NoMouse")
 
     # RULE 1, the real regression: restore the unguarded grab.
     gr = "GameOS/gameos/gos_render.cpp"

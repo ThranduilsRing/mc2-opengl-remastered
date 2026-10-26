@@ -108,11 +108,11 @@ def user_idle_seconds() -> Optional[float]:
 def user_is_active() -> bool:
     """True when the user touched the keyboard or mouse within USER_ACTIVE_WINDOW_S.
 
-    Unknown idle time counts as inactive: a headless runner has no user to
-    protect, and a failed query must not turn every restore into a no-op.
+    Unknown idle time counts as active: a failed query cannot authorize a
+    pointer write on a desktop someone may be using.
     """
     idle = user_idle_seconds()
-    return idle is not None and idle < USER_ACTIVE_WINDOW_S
+    return idle is None or idle < USER_ACTIVE_WINDOW_S
 
 
 _GAME_IMAGES = ("mc2.exe", "editrel.exe")
