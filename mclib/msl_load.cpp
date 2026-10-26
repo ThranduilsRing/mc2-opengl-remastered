@@ -183,6 +183,8 @@ static bool preferStockBinary(const char* ase, const char* binary, bool forceASE
 
 long TG_TypeMultiShape::LoadTGMultiShapeFromASE(const char* fileName, bool forceMakeBinary, IProviderEngine* armProvider)
 {
+    ZoneScopedN("Shape.Load");
+    ZoneText(fileName, strlen(fileName));
     const auto name = std::filesystem::path(fileName).stem().string();
     FullPathFileName binary;
     binary.init(tglPath, name.c_str(), ".tgl");

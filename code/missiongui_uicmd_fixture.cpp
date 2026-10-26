@@ -122,6 +122,17 @@ extern "C" long mc2FreezeMoversEngagedAt() { return s_freezeMoversEngaged; }
 // Test-only fixtures and determinism verbs (spawn, teleport, freeze_movers, set_light, animate). Returns true when a verb of this group matched.
 bool MissionInterfaceManager::uiCmdFixture(UiCmdCtx& c)
 {
+	if (c.line.starts_with("airstrike ")) {
+		float x = 0, y = 0;
+		if (!mc2::gate::get<"MC2_TEST_SPAWN">() || sscanf(c.line.c_str() + 10, "%f %f", &x, &y) != 2) {
+			c.result = "blocked"; c.note = "airstrike <x> <y> needs MC2_TEST_SPAWN=1";
+		} else {
+			glm::vec3 pos(x, y, land ? land->getTerrainElevation(glm::vec3(x, y, 0)) : 0);
+			IfaceCallStrike(ARTILLERY_LARGE, &pos, nullptr, true, false, 3.0f);
+			c.result = "ok";
+		}
+		return true;
+	}
 	if (c.line.starts_with("support ")) {
 		int id = 0; float x = 0, y = 0;
 		if (!mc2::gate::get<"MC2_TEST_SPAWN">()) {
