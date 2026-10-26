@@ -7,7 +7,7 @@
   "RenderCore": 402,
   "RenderWorld": 0,
   "code": 13863,
-  "mclib": 23310,
+  "mclib": 23304,
   "shaders": 416
  },
  "dirs": [
@@ -318,7 +318,7 @@
   "mclib/gosfx/tube.hpp": 31,
   "mclib/gvactor.cpp": 290,
   "mclib/gvactor.h": 17,
-  "mclib/gvactor_geometry.cpp": 260,
+  "mclib/gvactor_geometry.cpp": 257,
   "mclib/gvactor_render.cpp": 100,
   "mclib/gvactor_update.cpp": 258,
   "mclib/inifile.cpp": 298,
@@ -330,7 +330,7 @@
   "mclib/mech3d.cpp": 66,
   "mclib/mech3d.h": 8,
   "mclib/mech3d_geometry.cpp": 287,
-  "mclib/mech3d_init.cpp": 219,
+  "mclib/mech3d_init.cpp": 216,
   "mclib/mech3d_render.cpp": 272,
   "mclib/mech3d_type.cpp": 98,
   "mclib/mech3d_update.cpp": 166,
@@ -487,8 +487,8 @@
   "shaders/vulkan/terrain_tier1.vert": 71,
   "shaders/vulkan/terrain_tier1_skirt.vert": 71
  },
- "head": "6985a4b56",
+ "head": "37bd94b66",
  "n": 8,
- "total": 40224,
+ "total": 40218,
  "version": 1
 }
