@@ -552,8 +552,6 @@ bool cp_make_albedo_sampler(ColorPropIsland* s, mc2vk::OwnedSampler* samp, uint3
     sci.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;           // LINEAR_MIPMAP_LINEAR
     sci.addressModeU = sci.addressModeV = sci.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
     sci.maxLod = VK_LOD_CLAMP_NONE; // image view bounds the immutable sampler to its supplied mip chain
-    // Potato never samples the top mip; anisotropy is already disabled.
-    if (mc2::options::current().baseQuality == 0) { sci.minLod = 1.0f; sci.mipLodBias = 1.0f; }
     return mc2vk::create(*samp, s->device, [&](VkSampler* h) { return vkCreateSampler(s->device, &sci, nullptr, h); });
 }
 
@@ -613,36 +611,40 @@ bool cp_import_albedo_array(ColorPropIsland* s, const AlbedoTarget& tgt, uint32_
         vlog("%s albedo array rejected: %ux%u layers=%u levels=%zu format=%u.", tgt.tag, a->width, a->height, a->layers, a->levels.size(), a->vkFormat);
         return false;
     }
-    const uint32_t mips = static_cast<uint32_t>(a->levels.size());
+    // Potato omits the top mip from residency and staging, not just sampling.
+    const uint32_t firstMip = mc2::options::current().baseQuality == 0 && a->levels.size() > 1 ? 1u : 0u;
+    const uint32_t mips = static_cast<uint32_t>(a->levels.size()) - firstMip;
+    const uint32_t width = mc2tex::mipExtent(a->width, firstMip), height = mc2tex::mipExtent(a->height, firstMip);
     std::vector<uint8_t> blob;
     std::vector<VkBufferImageCopy> regions;
     regions.reserve(mips);
     for (uint32_t m = 0; m < mips; ++m) {
-        const size_t want = mc2tex::textureArrayLevelBytes(*a, m);
-        if (want == 0 || a->levels[m].size() != want) {
-            vlog("%s albedo array rejected: level %u holds %zu bytes, %zu expected.", tgt.tag, m, a->levels[m].size(), want);
+        const uint32_t sourceMip = m + firstMip;
+        const size_t want = mc2tex::textureArrayLevelBytes(*a, sourceMip);
+        if (want == 0 || a->levels[sourceMip].size() != want) {
+            vlog("%s albedo array rejected: level %u holds %zu bytes, %zu expected.", tgt.tag, sourceMip, a->levels[sourceMip].size(), want);
             return false;
         }
         VkBufferImageCopy r{};
         r.bufferOffset = blob.size();
         r.imageSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, m, 0, a->layers};
-        r.imageExtent = {mc2tex::mipExtent(a->width, m), mc2tex::mipExtent(a->height, m), 1};
+        r.imageExtent = {mc2tex::mipExtent(width, m), mc2tex::mipExtent(height, m), 1};
         regions.push_back(r);
-        blob.insert(blob.end(), a->levels[m].begin(), a->levels[m].end());
+        blob.insert(blob.end(), a->levels[sourceMip].begin(), a->levels[sourceMip].end());
     }
     const VkFormat vkFmt = static_cast<VkFormat>(a->vkFormat);
 
     // (Re)create sampler with the real mip count.
     if (!cp_make_albedo_sampler(s, tgt.samp, mips)) return false;
 
-    if (!cp_upload_albedo_array(s, tgt, vkFmt, a->width, a->height, a->layers,
+    if (!cp_upload_albedo_array(s, tgt, vkFmt, width, height, a->layers,
                                 mips, compressed, blob.data(), static_cast<VkDeviceSize>(blob.size()), regions)) {
         return false;
     }
     *tgt.importedGlName = changeKey;
     *tgt.ready = true;
     vlog("%s albedo 2D_ARRAY imported: %ux%u layers=%u mips=%u fmt=%s (%zu B).",
-         tgt.tag, a->width, a->height, a->layers, mips, a->vkFormat == 141u ? "BC5" : compressed ? "BC7" : "RGBA8", blob.size());
+         tgt.tag, width, height, a->layers, mips, a->vkFormat == 141u ? "BC5" : compressed ? "BC7" : "RGBA8", blob.size());
     return true;
 }
 
@@ -654,7 +656,7 @@ bool cp_import_authored(ColorPropIsland* s, const Mc2ColorPropMaterialFeed* feed
                       const uint8_t neutral[4]) {
         uint32_t layers = 0, key = 0; bool ready = false;
         AlbedoTarget target{&texture, &s->detailSampler, &layers, &key, &ready, "authored-detail"};
-        if (array && array->layers) return cp_import_albedo_array(s, target, s->mapGeneration + 1, array);
+        if (!mc2::options::lowCost() && array && array->layers) return cp_import_albedo_array(s, target, s->mapGeneration + 1, array);
         std::vector<VkBufferImageCopy> regions(1);
         regions[0].imageSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
         regions[0].imageExtent = {1,1,1};
