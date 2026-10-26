@@ -30,14 +30,17 @@ def command(bookmarks: Path, out: Path, frame: int, arm: str, fixture: str = "lo
             install: str = "lane3") -> list[str]:
     if arm not in {"mlr", "gpu"} or frame < 0 or fixture not in {"loop", "1"}:
         raise ValueError("unknown arm/fixture or negative frame")
+    install_dir = Path(install) if Path(install).is_absolute() else INSTALL_ROOT / f"mc2-win64-{install}"
     cmd = [sys.executable, str(ROOT / "scripts/run_visual_capture.py"),
-           "--exe", str(INSTALL_ROOT / f"mc2-win64-{install}" / "mc2.exe"), "--bookmarks", str(bookmarks),
+           "--no-kill", "--exe", str(install_dir / "mc2.exe"), "--bookmarks", str(bookmarks),
            "--out-dir", str(out), "--trigger-frame", str(frame),
            "--settle", "8", "--duration", "30", "--runs", "2"]
     # The selector alone makes the engine force GL; the umbrella is what makes the capture a Vulkan one.
     env = {"MC2_RENDER_BACKEND": "vulkan", "MC2_VK_SHARED_GBUFFER": "1", "MC2_SMOKE_FREEZE_ANIM": "1",
            "MC2_DETERMINISTIC_RNG": "1", "MC2_RNG_SEED": "0xC0FFEE",
            "MC2_FX_FORCE_SPAWN": fixture, "MC2_GPU_PARTICLES_LOG": "1",
+           "MC2_FX_TRACE": "1", "MC2_SIM_IDENTITY_TRACE": "1",
+           "MC2_VULKAN_VALIDATION": "1", "MC2_DEBUG_STATE_DUMP": "1",
            "MC2_GPU_PARTICLES": "1" if arm == "gpu" else "0"}
     env.update(gate_vector(arm, experiment))
     if camera_park is not None:
@@ -73,7 +76,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--experiment", choices=("master", "harvested"), default="master")
     parser.add_argument("--install", default="lane3")
     args = parser.parse_args(argv)
-    if args.install not in INSTALLS:
+    if args.install not in INSTALLS and not Path(args.install).is_absolute():
         print(f"[capture_vfx_oracle] unknown --install {args.install!r}; known installs: {', '.join(INSTALLS)}",
               file=sys.stderr)
         return 2

@@ -189,6 +189,10 @@ void Batcher::BeginGroup(uint32_t handle, float u0, float v0, float us, float vs
     // Close the previous open group by recording its count.
     if (impl_->hasOpenGroup && !impl_->groups.empty()) {
         GroupInfo& prev = impl_->groups.back();
+        // Adjacent particles may share the same live UV rectangle. Preserve draw order.
+        if (prev.handle == handle && prev.u0 == u0 && prev.v0 == v0 &&
+            prev.us == us && prev.vs == vs && prev.blendMode == blendMode &&
+            prev.atlasColumns == atlasColumns) return;
         prev.count = static_cast<unsigned>(impl_->staging.size()) - prev.start;
     }
     GroupInfo gi;

@@ -507,195 +507,6 @@ void gosFX::CardCloud::DrawState(DrawInfo *info)
 	Check_Object(this);
 	Check_Object(info);
 
-	// Live particles retain their birth randomness across repeated frozen draws.
-	// Placeholder resimulation consumed RNG and changed geometry on every render.
-	if (mc2::particles::Batcher::is_enabled()) {
-		{
-			// CPU updates retain the authored particle state in both render arms.
-			if (m_activeParticleCount > 0 && m_P_color) {
-				Specification *spec = GetSpecification();
-				Check_Object(spec);
-				const uint32_t mlrTex =
-					static_cast<uint32_t>(spec->m_state.GetTextureHandle());
-				int blendMode = 0;
-				{
-					const MidLevelRenderer::MLRState::AlphaMode am =
-						spec->m_state.GetAlphaMode();
-					// MLR draws both as pure additive (ONE,ONE), alpha ignored: AlphaOneMode leaves the
-					// renderer state it inherits, and the card data (alpha 0 halo cards) relies on that.
-					if (am == MidLevelRenderer::MLRState::OneOneMode ||
-					    am == MidLevelRenderer::MLRState::AlphaOneMode)
-						blendMode = 2;
-				}
-				// Same effect->world transform the legacy CardCloud::Draw feeds
-				// to MLR as effectToWorld.
-				glm::mat4 local_to_world;
-				local_to_world = m_localToParent * *info->m_parentToWorld;
-
-				mc2::particles::Batcher &batcher = mc2::particles::Batcher::Instance();
-
-				// VFX-FLIPBOOK-ASSET-TABLE-1: pass real per-tile UV rect from spec
-				// instead of the old placeholder (0,0,1,1). For animated atlases,
-				// pass atlasColumns=m_width so the shader can apply per-particle
-				// frame offsets (col=frame%columns, row=frame/columns).
-				// m_UOffset/m_VOffset are the tile origin within the atlas page;
-				// m_USize/m_VSize are the per-tile dimensions (both [0,1] normalized).
-				const float tileU0 = static_cast<float>(
-					spec->m_UOffset.ComputeValue(0.0f, 0.0f));
-				const float tileV0 = static_cast<float>(
-					spec->m_VOffset.ComputeValue(0.0f, 0.0f));
-				float tileUs = static_cast<float>(
-					spec->m_USize.ComputeValue(0.0f, 0.0f));
-				float tileVs = static_cast<float>(
-					spec->m_VSize.ComputeValue(0.0f, 0.0f));
-				// Safety: degenerate tile size falls back to full page.
-				if (tileUs <= 0.0f) tileUs = 1.0f;
-				if (tileVs <= 0.0f) tileVs = 1.0f;
-				// atlasColumns: >1 enables per-particle frame offset in shader.
-				// Non-animated effects (m_animated=false or m_width<=1) get 0 —
-				// shader reads u_atlasColumns==0 and skips the frame-offset path.
-				const uint32_t atlasColumns =
-					(spec->m_animated && spec->m_width > 1u)
-					? static_cast<uint32_t>(spec->m_width) : 0u;
-
-				batcher.BeginGroup(mlrTex, tileU0, tileV0, tileUs, tileVs,
-				                   blendMode, atlasColumns);
-
-				int harvested = 0;
-				uint32_t minFrame = 0xFFFFFFFFu, maxFrame = 0u;
-				float minA =  3.0e38f, maxA = -3.0e38f;
-				// VFX-ORIGINAL-RENDER-ANIM-FIELDS-1: sizeX and spin range trackers.
-				float minSizeX = 3.0e38f, maxSizeX = -3.0e38f;
-				float minSpin  = 3.0e38f, maxSpin  = -3.0e38f;
-				// VFX-AGE-LIFETIME-UPLOAD-1: age range tracker for FIRST_HARVEST log.
-				float minAge = 1.0f, maxAge = 0.0f;
-				for (int i = 0; i < m_activeParticleCount; ++i) {
-					Particle *p = GetParticle(i);
-					Check_Object(p);
-					if (p->m_age >= 1.0f) continue;   // skip dead slots (legacy filter)
-					glm::vec3 wc;
-					wc = mc2::math::transformPoint(p->m_localTranslation, local_to_world);
-					// Billboard radius from per-particle scaled half-extents.
-					// Aspect (halfX vs halfY) collapsed to a bounding radius —
-					// same idiom as the placeholder; per-particle aspect deferred.
-					const Stuff::Scalar radius =
-						p->m_scale *
-						Stuff::Sqrt(p->m_halfX * p->m_halfX + p->m_halfY * p->m_halfY);
-					const Stuff::RGBAColor &c = m_P_color[i];
-
-					// VFX-FLIPBOOK-ASSET-TABLE-1: per-particle animated atlas frame.
-					// m_pIndex is a SeededCurve returning float frame index [0, N).
-					// Match CPU truncation: Truncate_Float_To_Byte (floor toward zero).
-					// Seed (m_seed) and age (m_age) are both in ParticleCloud__Particle.
-					// Non-animated or degenerate: atlasFrame=0 (first tile, no offset).
-					uint32_t atlasFrame = 0u;
-					if (atlasColumns > 1u) {
-						const float fIdx = static_cast<float>(
-							spec->m_pIndex.ComputeValue(
-								static_cast<Stuff::Scalar>(p->m_age),
-								static_cast<Stuff::Scalar>(p->m_seed)));
-						const int fi = static_cast<int>(fIdx);  // truncate (matches CPU)
-						atlasFrame = (fi > 0) ? static_cast<uint32_t>(fi) : 0u;
-						if (atlasFrame < minFrame) minFrame = atlasFrame;
-						if (atlasFrame > maxFrame) maxFrame = atlasFrame;
-					}
-
-					mc2::particles::GpuParticle gp = {};
-					gp.position[0] = wc.x;
-					gp.position[1] = wc.y;
-					gp.position[2] = wc.z;
-					gp.color[0]    = c.red;
-					gp.color[1]    = c.green;
-					gp.color[2]    = c.blue;
-					gp.color[3]    = c.alpha;
-					gp.size        = static_cast<float>(radius);
-					// VFX-AGE-LIFETIME-UPLOAD-1: upload normalized age and lifetime sentinel.
-					gp.age         = static_cast<float>(p->m_age);  // normalized [0,1]
-					gp.lifetime    = 1.0f;                           // normalized sentinel (real seconds = 1.0f/p->m_ageRate)
-					// atlasIndex carries per-particle frame index (not texture handle).
-					// Texture binding happens via GroupInfo.handle (set in BeginGroup above).
-					gp.atlasIndex  = atlasFrame;
-					// VFX-ORIGINAL-RENDER-ANIM-FIELDS-1: pack (sizeX, sizeY, spinAngle)
-					// into velocity. velocity is zero-initialized by gp={} above; the
-					// oracle path fills it here. The placeholder path (Spawn) never sets
-					// velocity, so the shader fallback (velocity.x==0) applies there.
-					// velocity[0] = scale * halfX  (half-width in world units)
-					// velocity[1] = scale * halfY  (half-height in world units)
-					// velocity[2] = world-space spin angle for the view-aligned billboard.
-					// m_localRotation is in the effect's local frame; when the effect has a
-					// rotation applied (e.g. Effect_Against_Motion for missiles), we must
-					// compose with the parent's world rotation to get the correct screen-space
-					// spin. Use UnitQuaternion::operator=(LinearMatrix4D) + Multiply(q1,q2).
-					gp.velocity[0] = static_cast<float>(p->m_scale * p->m_halfX);
-					gp.velocity[1] = static_cast<float>(p->m_scale * p->m_halfY);
-					{
-						glm::quat parentRot, worldRot;
-						parentRot = mc2::math::quatFromRotation(*info->m_parentToWorld);
-						worldRot = mc2::math::composeQuat(p->m_localRotation, parentRot);
-						gp.velocity[2] = 2.0f * std::atan2(
-						    static_cast<float>(worldRot.z),
-						    static_cast<float>(worldRot.w));
-					}
-					batcher.Emit(gp);
-					++harvested;
-					if (c.alpha < minA) minA = c.alpha;
-					if (c.alpha > maxA) maxA = c.alpha;
-					// VFX-AGE-LIFETIME-UPLOAD-1: track age range
-					if (gp.age < minAge) minAge = gp.age;
-					if (gp.age > maxAge) maxAge = gp.age;
-					// VFX-ORIGINAL-RENDER-ANIM-FIELDS-1: track sizeX and spin ranges
-					if (gp.velocity[0] < minSizeX) minSizeX = gp.velocity[0];
-					if (gp.velocity[0] > maxSizeX) maxSizeX = gp.velocity[0];
-					if (gp.velocity[2] < minSpin)  minSpin  = gp.velocity[2];
-					if (gp.velocity[2] > maxSpin)  maxSpin  = gp.velocity[2];
-				}
-
-				// [VFX_ORACLE v1] diagnostics. harvested = LIVE particle count
-				// (active minus already-dead m_age>=1 slots) == emitted; no
-				// fabrication, no fallback. One-shot on first harvest so sparse
-				// clouds are provable; 240-call summary thereafter.
-				if (mc2::particles::Batcher::is_log_enabled()) {
-					static bool s_first = false;
-					if (!s_first && harvested > 0) {
-						s_first = true;
-						// VFX-FLIPBOOK-ASSET-TABLE-1: log atlasColumns + frame range
-						// on first harvest to confirm animated flipbook is active.
-						// VFX-ORIGINAL-RENDER-ANIM-FIELDS-1: also log spec name,
-						// m_animated, sizeRange, and spinRange.
-						const uint32_t frameHi =
-							(atlasColumns > 1u && minFrame <= maxFrame) ? maxFrame : 0u;
-						const double sizeXLo = (harvested > 0) ? static_cast<double>(minSizeX) : 0.0;
-						const double sizeXHi = (harvested > 0) ? static_cast<double>(maxSizeX) : 0.0;
-						const double spinLo  = (harvested > 0) ? static_cast<double>(minSpin)  : 0.0;
-						const double spinHi  = (harvested > 0) ? static_cast<double>(maxSpin)  : 0.0;
-						// VFX-AGE-LIFETIME-UPLOAD-1: age range (min/max after dead-slot skip)
-						const double ageLo = static_cast<double>(minAge);
-						const double ageHi = static_cast<double>(maxAge);
-						mc2::fmt::print_err("[VFX_ORACLE v1] class=CardCloud FIRST_HARVEST spec=\"{}\" animated={:d} active={:d} harvested={:d} alpha=[{:.3f},{:.3f}] atlasColumns={:d} frameRange=[{:d},{:d}] sizeRange=[{:.2f},{:.2f}] spinRange=[{:.3f},{:.3f}] ageRange=[{:.3f},{:.3f}]\n", mc2::fmt::safe(static_cast<const char*>(spec->m_name)), mc2::fmt::as_i32(static_cast<int>(spec->m_animated)), mc2::fmt::as_i32(m_activeParticleCount), mc2::fmt::as_i32(harvested), static_cast<double>(minA), static_cast<double>(maxA), mc2::fmt::as_u32(atlasColumns), mc2::fmt::as_u32((atlasColumns > 1u && minFrame <= maxFrame) ? minFrame : 0u), mc2::fmt::as_u32(frameHi), sizeXLo, sizeXHi, spinLo, spinHi, ageLo, ageHi);
-						std::fflush(stderr);
-					}
-					static unsigned long long s_calls = 0, s_harvTotal = 0;
-					s_harvTotal += static_cast<unsigned>(harvested);
-					if ((++s_calls % 240ull) == 0ull) {
-						// minA/maxA are sentinels if this call harvested 0 live
-						// particles; report 0 in that case (avoid 3e38 in the log).
-						const double aLo   = (harvested > 0) ? static_cast<double>(minA)   : 0.0;
-						const double aHi   = (harvested > 0) ? static_cast<double>(maxA)   : 0.0;
-						const double ageLo = (harvested > 0) ? static_cast<double>(minAge) : 0.0;
-						const double ageHi = (harvested > 0) ? static_cast<double>(maxAge) : 0.0;
-						mc2::fmt::print_err("[VFX_ORACLE v1] class=CardCloud calls={:d} active_this_call={:d} harvested_this_call={:d} emitted_this_call={:d} harvestedTotal={:d} fallback=0 alpha_this_call=[{:.3f},{:.3f}] age_this_call=[{:.3f},{:.3f}]\n", mc2::fmt::as_u64(s_calls), mc2::fmt::as_i32(m_activeParticleCount), mc2::fmt::as_i32(harvested), mc2::fmt::as_i32(harvested), mc2::fmt::as_u64(s_harvTotal), aLo, aHi, ageLo, ageHi);
-						std::fflush(stderr);
-					}
-				}
-			}
-		}
-		// VFX-WEAPON-FX-RESTORE-OPUS-1: call Effect::Draw (not SpinningCloud::Draw) to
-		// propagate to EffectCloud children without re-submitting this cloud to MLR.
-		// SpinningCloud::Draw → MLR submission would double-draw now that MLR is re-enabled.
-		Effect::Draw(info);
-		return;
-	}
-
 	//
 	//---------------------------------------------------------
 	// If we have active particles, set up the draw information
@@ -993,6 +804,38 @@ void gosFX::CardCloud::DrawState(DrawInfo *info)
 		// Now just do the draw
 		//---------------------
 		//
+		if (mc2::particles::Batcher::is_enabled()) {
+			MidLevelRenderer::MLRState state;
+			state.Combine(info->m_state, spec->m_state);
+			const auto alpha = state.GetAlphaMode();
+			const bool additive = alpha == MidLevelRenderer::MLRState::OneOneMode ||
+			                      alpha == MidLevelRenderer::MLRState::AlphaOneMode;
+			auto& batcher = mc2::particles::Batcher::Instance();
+			batcher.BeginGroup(state.GetTextureHandle(), 0, 0, 1, 1,
+			                   additive ? 2 : 0, 0xffffffffu);
+			for (unsigned i = 0; i < m_activeParticleCount; ++i) {
+				if (GetParticle(i)->m_age >= 1.0f) continue;
+				for (unsigned corner : {0u, 1u, 2u, 0u, 2u, 3u}) {
+					const unsigned index = i * 4 + corner;
+					const auto world = mc2::math::transformPoint(m_P_vertices[index], local_to_world);
+					mc2::particles::GpuParticle vertex{};
+					vertex.position[0] = world.x;
+					vertex.position[1] = world.y;
+					vertex.position[2] = world.z;
+					const auto& color = m_P_color[i];
+					vertex.color[0] = color.red;
+					vertex.color[1] = color.green;
+					vertex.color[2] = color.blue;
+					vertex.color[3] = color.alpha;
+					vertex.velocity[0] = m_P_uvs[index].x;
+					vertex.velocity[1] = m_P_uvs[index].y;
+					vertex.kind_flags = 8u | (additive ? 2u : 0u) |
+						(state.GetTextureWrapMode() == MidLevelRenderer::MLRState::TextureClamp ? 16u : 0u) |
+						(state.GetTextureHandle() == 0 ? 32u : 0u);
+					batcher.Emit(vertex);
+				}
+			}
+		} else
 		submission.submit(info);
 	}
 

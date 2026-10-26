@@ -659,10 +659,7 @@ void WeaponBolt::render (void)
 		
  			drawInfo.m_parentToWorld = &localResult;
 	 
-			// VFX-WEAPON-FX-RESTORE-OPUS-1: suppress muzzleEffect Draw when oracle ON + hitTarget.
-			// muzzleEffect renders at bolt position (= target after impact); with oracle ON
-			// it creates persistent bright cards at the impact site for the full afterHitTime.
-			if (!MLRVertexLimitReached && !(hitTarget && mc2::particles::Batcher::is_oracle_render_enabled()))
+			if (!MLRVertexLimitReached)
 				muzzleEffect->Draw(&drawInfo);
 		}
 
@@ -696,11 +693,7 @@ void WeaponBolt::render (void)
 			
 			drawInfo.m_parentToWorld = &shapeOrigin;
 	 
-			// VFX-WEAPON-FX-RESTORE-OPUS-1: suppress hitEffect Draw when oracle is ON.
-			// hitEffect was always invisible in original MC2 (MLR-gated). Oracle renders
-			// it as oversized bright cards. The game's createExplosion() provides impact
-			// visual. Re-enable when hitEffect visuals are tuned for GPU billboard path.
-			if (!MLRVertexLimitReached && !mc2::particles::Batcher::is_oracle_render_enabled())
+			if (!MLRVertexLimitReached)
 				hitEffect->Draw(&drawInfo);
 		}
 
@@ -719,10 +712,7 @@ void WeaponBolt::render (void)
 			
 			drawInfo.m_parentToWorld = &shapeOrigin;
 	 
-			// VFX-WEAPON-FX-RESTORE-OPUS-1: suppress missEffect Draw when oracle ON.
-			// Was invisible pre-MLR-restore (gated); now renders as persistent card.
-			// Re-enable when tuned for GPU billboard path.
-			if (!MLRVertexLimitReached && !mc2::particles::Batcher::is_oracle_render_enabled())
+			if (!MLRVertexLimitReached)
 				missEffect->Draw(&drawInfo);
 		}
 
@@ -743,8 +733,7 @@ void WeaponBolt::render (void)
 			
 			drawInfo.m_parentToWorld = &shapeOrigin;
 	 
-			// VFX-WEAPON-FX-RESTORE-OPUS-1: suppress waterMissEffect Draw when oracle ON.
-			if (!MLRVertexLimitReached && !mc2::particles::Batcher::is_oracle_render_enabled())
+			if (!MLRVertexLimitReached)
 				waterMissEffect->Draw(&drawInfo);
 		}
 	}

@@ -1,12 +1,6 @@
 #include"gosfxheaders.hpp"
 #include"particles/spec_library.h"
-// B1 Stage 2' C8: EffectAdapter retired. Subclass-Start routing (in
-// card.cpp / pointcloud.cpp / shardcloud.cpp / tube.cpp) now dispatches
-// into mc2::particles::Spawn directly, which catches both top-level
-// MakeEffect returns AND composite-children (EffectCloud iterating
-// child Start). MakeEffect goes back to the unconditional legacy
-// construction path; the env gate is checked at the leaf subclass.
-
+// Effect creation retains CPU state; GPU rendering harvests it in Draw().
 //==========================================================================//
 // File:	 gosFX_Effect.cpp												//
 // Contents: Base gosFX::Effect Component									//

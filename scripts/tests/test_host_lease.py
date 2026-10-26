@@ -445,17 +445,29 @@ def test_registered_batch_engine_allows_another_slot_but_reused_pid_blocks(lease
         host_lease.acquire("reused engine pid", wait=False, scan=lambda: [(4242, "mc2.exe")])
 
 
+@pytest.mark.parametrize("label", ["VFX capture", "visual replay"])
+def test_visual_proofs_use_one_core_slot(lease, monkeypatch, label):
+    monkeypatch.setenv("MC2_HOST_GAME_SLOTS", "2")
+    monkeypatch.setenv("MC2_HOST_CORES_PER_SLOT", "1")
+    monkeypatch.setattr(sys, "argv", ["capture_vfx_oracle.py"])
+    host_lease.acquire(label, wait=False, scan=lambda: [], log=lambda m: None)
+    records = [r for _, r in host_lease._records() if host_lease._ours(r)]
+    assert len(records) == 1
+    assert not records[0]["exclusive"]
+    assert records[0]["affinity_mask"].bit_count() == 2
+
+
 def test_affinity_reserves_only_physical_game_cores(monkeypatch):
     monkeypatch.setenv("MC2_HOST_CORES_PER_SLOT", "1")
     assert [host_lease.affinity_mask(i) for i in range(6)] == [0x30, 0xC0, 0x300, 0xC00, 0x3000, 0xC000]
     monkeypatch.delenv("MC2_HOST_GAME_SLOTS", raising=False)
     monkeypatch.delenv("MC2_HOST_CORES_PER_SLOT", raising=False)
     assert host_lease.slot_count() == 2
-    assert host_lease.cores_per_slot() == 2
-    assert [host_lease.affinity_mask(i) for i in range(3)] == [0xF0, 0xF00, 0xF000]
+    assert host_lease.cores_per_slot() == 1
+    assert [host_lease.affinity_mask(i) for i in range(2)] == [0x30, 0xC0]
     with pytest.raises(ValueError):
-        host_lease.affinity_mask(3)
-    for invalid in ("0", "4"):
+        host_lease.affinity_mask(6)
+    for invalid in ("0", "7"):
         monkeypatch.setenv("MC2_HOST_GAME_SLOTS", invalid)
         with pytest.raises(ValueError):
             host_lease.slot_count()
