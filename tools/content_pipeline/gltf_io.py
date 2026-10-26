@@ -385,6 +385,11 @@ def _tag_glass_cells(doc, builder):
                 return i
 
             triangles = read_accessor(doc, [builder.bin], prim["indices"]).reshape(-1, 3)
+            # Hard normals and UV seams duplicate vertices without separating panes.
+            positions = read_accessor(doc, [builder.bin], attrs["POSITION"])
+            _, first, groups = np.unique(positions, axis=0, return_index=True, return_inverse=True)
+            for i, representative in enumerate(first[groups]):
+                parent[root(i)] = root(int(representative))
             for a, b, c in triangles:
                 parent[root(int(b))] = parent[root(int(c))] = root(int(a))
             _, ids = np.unique([root(i) for i in range(count)], return_inverse=True)
