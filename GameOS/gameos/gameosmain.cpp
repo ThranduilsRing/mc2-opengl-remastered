@@ -961,7 +961,7 @@ int main(int argc, char** argv)
     if (!headless) initVulkanBackend(win, w, h);
 
     startup_phase("native_device_ready");
-    if (!headless) gos_CreateRenderer(win, w, h);
+    if (headless) gos_CreateRendererHeadless(w, h); else gos_CreateRenderer(win, w, h);
     startup_phase("renderer_created");
 #ifdef MC2_IMGUI
     if (!headless) {
@@ -1178,7 +1178,7 @@ int main(int argc, char** argv)
 #ifdef MC2_IMGUI
     GuiRuntime::Shutdown();
 #endif
-    gos_DestroyRenderer();
+    if (!headless) gos_DestroyRenderer();   // headless: process exit frees the state-only renderer
     std::fprintf(stderr, "[SHUTDOWN] renderer end\n"); std::fflush(stderr);
 
     // Islands, then the present path, then the shared VulkanContext: one order, shared with the editor (gos_host_vk.cpp).

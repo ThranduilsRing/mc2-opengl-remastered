@@ -179,6 +179,18 @@ void gosRenderer::init() {
     gos_TerrainLodChunk_Init();
 }
 
+void gosRenderer::initHeadless() {
+    pendingRequest = false;
+    num_draw_calls_ = 0;
+    num_draw_calls_to_draw_ = 0;
+    break_on_draw_call_ = false;
+    break_draw_call_num_ = 0;
+    DWORD tex_id = gos_NewEmptyTexture( gos_Texture_Solid, "DEBUG_this_is_not_a_real_texture_debug_it!", 1);
+    (void)tex_id;
+    gosASSERT(tex_id == INVALID_TEXTURE_ID);
+    fog_color_ = vec4(1.0f, 1.0f, 1.0f, 1.0f);
+}
+
 void gosRenderer::destroy() {
     gos_TerrainLodChunk_Destroy();
 
@@ -269,6 +281,15 @@ void gos_CreateRenderer(graphics::RenderWindowHandle win_h, int w, int h) {
         mc2_diag::writeEvent("DEVICE", 2, 0, buf);
     }
 
+}
+
+// --headless (docs/sim/headless-load.md): a renderer object with no window, no meshes and no device, so the texture list, font list and
+// screen-mode state that mission load fills exist. Mirrors gosRenderer::init minus every device call.
+void gos_CreateRendererHeadless(int w, int h) {
+    g_gos_renderer = new gosRenderer(nullptr, w, h);
+    Environment.drawableWidth = w;
+    Environment.drawableHeight = h;
+    g_gos_renderer->initHeadless();
 }
 
 void gos_DestroyRenderer() {
