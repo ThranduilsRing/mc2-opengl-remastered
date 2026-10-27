@@ -220,7 +220,6 @@ void GameObjectManager::setNumObjects (long nMechs,
 	// First element in list is NULL (handle of 0 is always NULL)
 	objList = entities.reset(getMaxObjects() + 1);
 	resetPartIdIndex();
-	gomResetTerrainActivity();
 	invalidateSpatialGrid();
 	memset(objList,0,sizeof(GameObjectPtr) * (getMaxObjects() + 1));
 
@@ -836,7 +835,6 @@ void GameObjectManager::releasePoolArrays (void)
 {
 	entities.clear();
 	resetPartIdIndex();
-	gomResetTerrainActivity();
 	moverGrid.clear();
 	buildingGrid.clear();
 	invalidateSpatialGrid();

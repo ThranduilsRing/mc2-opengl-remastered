@@ -170,6 +170,4 @@ struct GameObjectManager::PartIdIndex {
 	bool dirty = true;
 };
 
-void gomResetTerrainActivity();  // objmgr_update.cpp: S1 activity-class cache
-
 #endif // OBJMGR_INTERNAL_H
