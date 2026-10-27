@@ -1,5 +1,6 @@
 // GameObjectManager: object / mover lookup by id, cell and mouse, and the terrain-object pick.
 // Declared in the class headers; shared names in objmgr_internal.h.
+#include <span>
 #include "objmgr_internal.h"
 #include "mc2fmt.h"
 #include "mech3d.h"
@@ -419,7 +420,7 @@ bool gameplayPickEligible(GameObjectPtr obj, bool skipDisabled) {
     return !obj->isMover() || (obj->isOnGUI() && Terrain::IsGameSelectTerrainPosition(obj->getPosition()));
 }
 
-GameObjectPtr pickGameplayObjects(long x, long y, GameObjectPtr* list, long count,
+GameObjectPtr pickGameplayObjects(long x, long y, std::span<GameObjectPtr> list,
                                  bool skipDisabled, long excludeCommander = -1, bool terrainOnly = false);
 
 // Probe unambiguous bounds separately: a box is not a visible-mesh oracle.
@@ -458,7 +459,7 @@ void gameplayPickBattery(GameObjectManager& manager) {
                 && x1<Environment.screenWidth && y1<Environment.screenHeight) {
                 int hits=0;
                 for (int y=0;y<7;++y) for (int x=0;x<7;++x)
-                    hits += pickGameplayObjects(x0+(x1-x0)*(2*x+1)/14,y0+(y1-y0)*(2*y+1)/14,all.data(),long(all.size()),true,-1,true)==obj;
+                    hits += pickGameplayObjects(x0+(x1-x0)*(2*x+1)/14,y0+(y1-y0)*(2*y+1)/14,all,true,-1,true)==obj;
                 mc2::fmt::print_out("[STATIC_PICK_PROBE] name={} handle={} rect={},{},{},{} hits={}/49\n",
                     ba->appearType->name,obj->getHandle(),x0,y0,x1,y1,hits);
             }
@@ -469,7 +470,7 @@ void gameplayPickBattery(GameObjectManager& manager) {
             wreckPickRect(obj,l,t,r,b);
             int hits=0;
             for(int y=0;y<7;++y) for(int x=0;x<7;++x)
-                hits += pickGameplayObjects(long(l+(r-l)*(x+.5f)/7),long(t+(b-t)*(y+.5f)/7),movers.data(),long(movers.size()),false)==obj;
+                hits += pickGameplayObjects(long(l+(r-l)*(x+.5f)/7),long(t+(b-t)*(y+.5f)/7),movers,false)==obj;
             mc2::fmt::print_out("[WRECK_PICK_PROBE] id={} rect={:.0f},{:.0f},{:.0f},{:.0f} hits={}/49\n",obj->getPartId(),l,t,r,b,hits);
         }
     }
@@ -538,12 +539,11 @@ int pickPriority(GameObjectPtr obj) {
 
 // All gameplay point picks share filtering, bounds and a depth-ordered stack.
 // Policy ranks live enemies, friendlies, wrecks, then neutral props.
-GameObjectPtr pickGameplayObjects(long x, long y, GameObjectPtr* list, long count,
+GameObjectPtr pickGameplayObjects(long x, long y, std::span<GameObjectPtr> list,
                                  bool skipDisabled, long excludeCommander, bool terrainOnly) {
-    if (!eye || !list || x < 0 || y < 0 || x >= Environment.screenWidth || y >= Environment.screenHeight) return nullptr;
+    if (!eye || list.empty() || x < 0 || y < 0 || x >= Environment.screenWidth || y >= Environment.screenHeight) return GameObjectPtr{};
     std::vector<PickCandidate> stack;
-    for (long i = 0; i < count; ++i) {
-        auto* obj = list[i];
+    for (auto* obj : list) {
         if (!gameplayPickEligible(obj, skipDisabled)
             || (excludeCommander != -1 && obj->getCommanderId() == excludeCommander)
             || (terrainOnly && obj->isMover())) continue;
@@ -571,20 +571,20 @@ GameObjectPtr pickGameplayObjects(long x, long y, GameObjectPtr* list, long coun
 
 
 GameObjectPtr GameObjectManager::findObjectByMouse(long x, long y, GameObjectPtr* list, long size, bool skipDisabled) {
-    return pickGameplayObjects(x, y, list, size, skipDisabled);
+    return pickGameplayObjects(x, y, list ? std::span(list, size) : std::span<GameObjectPtr>{}, skipDisabled);
 }
 
 GameObjectPtr GameObjectManager::findMoverByMouse(long x, long y, long commanderId, bool skipDisabled) {
-    return pickGameplayObjects(x, y, objList ? &objList[1] : nullptr, getMaxMovers(), skipDisabled, commanderId);
+    return pickGameplayObjects(x, y, objList ? std::span(&objList[1], getMaxMovers()) : std::span<GameObjectPtr>{}, skipDisabled, commanderId);
 }
 
 GameObjectPtr GameObjectManager::findTerrainObjectByMouse(long x, long y, bool skipDisabled) {
-    return pickGameplayObjects(x, y, objList ? &objList[1] : nullptr, getMaxObjects(), skipDisabled, -1, true);
+    return pickGameplayObjects(x, y, objList ? std::span(&objList[1], getMaxObjects()) : std::span<GameObjectPtr>{}, skipDisabled, -1, true);
 }
 
 GameObjectPtr GameObjectManager::findObjectByMouse(long x, long y) {
     gameplayPickBattery(*this);
-    return pickGameplayObjects(x, y, objList ? &objList[1] : nullptr, getMaxObjects(), false);
+    return pickGameplayObjects(x, y, objList ? std::span(&objList[1], getMaxObjects()) : std::span<GameObjectPtr>{}, false);
 }
 
 bool GameObjectManager::moverInRect(long index, glm::vec3& start, glm::vec3& end) {
@@ -605,5 +605,5 @@ GameObjectPtr pickGameplaySelection(long x, long y) {
         auto* mover=Team::home->getMover(i);
         if (mover && mover->getCommanderId()==Commander::home->getId()) own.push_back(mover);
     }
-    return pickGameplayObjects(x,y,own.data(),long(own.size()),true);
+    return pickGameplayObjects(x,y,own,true);
 }
