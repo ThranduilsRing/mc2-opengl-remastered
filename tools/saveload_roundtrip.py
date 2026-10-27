@@ -234,8 +234,8 @@ def speed_args(sim_speed: int) -> list[str]:
 
 
 def add_speed_arg(p) -> None:
-    p.add_argument("--sim-speed", type=int, choices=(1, 2, 3, 4), default=1, metavar="N",
-                   help="N fixed sim steps per drawn frame (run_smoke --sim-speed); same saves, about 1/N of the host time past loading")
+    p.add_argument("--sim-speed", type=int, choices=(1, 2, 3, 4), default=None, metavar="N",
+                   help="N fixed sim steps per drawn frame (run_smoke --sim-speed); same saves, about 1/N of the host time past loading. Unset: check uses the speed the baseline was recorded at (the intro hold is render-frame paced, so ActualTime in the camera/world text packet depends on it), else 1")
 
 
 def runner_failed(returncode: int, output: str) -> bool:
@@ -544,8 +544,9 @@ def cmd_fixture(args) -> int:
     if refusal:
         print("saveload_roundtrip check: FAIL\n" + refusal)
         return 1
+    speed = args.sim_speed or (base or {}).get("sim_speed", 1)
     dest, first, second, fp, rc = run_fixture(args.mission, args.save_at, args.load_at, args.deploy, args.out, args.duration, args.plant,
-                                             args.install, args.save_dir, args.ref_exe, args.ref_commit, sim_speed=args.sim_speed)
+                                             args.install, args.save_dir, args.ref_exe, args.ref_commit, sim_speed=speed)
     ok, lines = fixture_verdict(first, second, args.mask, rc)
     print(f"files kept in {dest}")
     if args.cmd == "resave":
@@ -561,6 +562,7 @@ def cmd_fixture(args) -> int:
     if args.mask and not ok:
         print("the re-save leaves the mask (information only, --first-save-only):\n" + "\n".join(lines[:3]))
     rec = baseline_record(args.mission, args.save_at, args.load_at, first, second, fp, args.mask, args.first_save_only, rc)
+    rec["sim_speed"] = speed
     # WHY: a baseline pins the declared stock-plus-overlay data (tools/sim_determinism.py), not whatever a lane's install carries.
     rec["data_fingerprint"] = sd.data_fingerprint(args.install)
     if args.cmd == "baseline":
@@ -633,7 +635,7 @@ def main(argv=None) -> int:
         with open(args.log, encoding="utf-8", errors="replace") as fh:
             ok, rep = analyze(fh.read().splitlines(), args.frames)
     else:
-        ok, rep = run(args.mission, args.frames, args.deploy, args.out, args.install, args.save_dir, args.ref_exe, args.ref_commit, args.sim_speed,
+        ok, rep = run(args.mission, args.frames, args.deploy, args.out, args.install, args.save_dir, args.ref_exe, args.ref_commit, args.sim_speed or 1,
                       args.save_at, args.load_at)
     print(("saveload_roundtrip: PASS" if ok else "saveload_roundtrip: FAIL") + "\n" + "\n".join(rep))
     return 0 if ok else 1

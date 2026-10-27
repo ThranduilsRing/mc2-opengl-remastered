@@ -10,7 +10,7 @@
   "MC2_BOOT_QUICKLOAD_AT": "1400"
  },
  "exe": {
-  "sha": "fb629c5240fd",
+  "sha": "317cfd06bd82",
   "dirty": 0
  },
  "comparison": {
@@ -646,6 +646,7 @@
   ]
  ],
  "about": "digest of the quicksave a round-trip fixture writes; tools/saveload_roundtrip.py --baseline / --check",
+ "sim_speed": 2,
  "data_fingerprint": {
   "digest": "0dfcd001ffde73d0",
   "inputs": [
