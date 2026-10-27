@@ -144,7 +144,6 @@ bool 						useOldProject = FALSE;
 bool 						projectAll = FALSE;
 bool 						useFog = true;
 bool 						useVertexLighting = true;
-bool 						useFaceLighting = false;
 
 unsigned char 				godMode = 0;			//Can I simply see everything, enemy and friendly?
 

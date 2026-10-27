@@ -117,7 +117,6 @@ extern bool useOldProject;
 extern bool projectAll;
 extern bool useFog;
 extern bool useVertexLighting;
-extern bool useFaceLighting;
 extern bool					useRealLOS;
 extern unsigned char godMode;
 extern long 				DrawDebugCells;

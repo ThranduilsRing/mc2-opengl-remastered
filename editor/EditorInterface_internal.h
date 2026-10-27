@@ -235,7 +235,6 @@ extern bool drawLOSGrid;
 extern bool useClouds;
 extern bool	useFog;
 extern long lightState;
-extern bool useFaceLighting;
 extern bool useVertexLighting;
 extern bool reloadBounds;
 extern bool s_bSensorMapEnabled;
