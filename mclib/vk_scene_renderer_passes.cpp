@@ -23,7 +23,7 @@ void mc2::VkSceneRenderer::renderListsDynamicShadowPass (RenderSubmissions& subm
 
 		// Publish this frame's poses before fitting or drawing the mover map.
 		// The colour island consumes this same snapshot after terrain.
-		GpuMechBatcher::instance().flush();
+		{ ZoneScopedN("DSP.MechBatcherFlush"); GpuMechBatcher::instance().flush(); }
 		if (gos_IsModernShadowPathActive() && (g_useGpuObjects || g_useGpuMechs)) {
 			const glm::mat4 camera=eye->worldToClipGL();
 			float rows[16];
@@ -48,14 +48,15 @@ void mc2::VkSceneRenderer::renderListsDynamicShadowPass (RenderSubmissions& subm
 				registryGeneration=generation; casterVersion=set.version(); casterDelta=set.deltaVersion();
 				registryMaskReady=maskReady;
 			}
+			{ ZoneScopedN("DSP.MoverFeed");
 			movers=registryMovers;
 			set.appendMoverLeaves(movers,g_mc2FrameCounter);
-			mc2shadow::moverPropFeed().append(movers,g_mc2FrameCounter);
+			mc2shadow::moverPropFeed().append(movers,g_mc2FrameCounter); }
 			render_contract::executorOwnBeginTopLevel(render_contract::PassIdentity::ShadowCaster,"renderLists_unionMovers");
-			mc2_vk_shadow_island_run_movers(rows,sun,movers.data(),static_cast<unsigned int>(movers.size()));
+			{ ZoneScopedN("DSP.RunMovers"); mc2_vk_shadow_island_run_movers(rows,sun,movers.data(),static_cast<unsigned int>(movers.size())); }
 			render_contract::executorOwnEndTopLevel(render_contract::PassIdentity::ShadowCaster,"renderLists_unionMovers");
 		}
-		mc2_vk_shadow_island_submit_frame();
+		{ ZoneScopedN("DSP.SubmitFrame"); mc2_vk_shadow_island_submit_frame(); }
 		g_numShadowShapes.store(0,std::memory_order_relaxed);
 		return;
 
