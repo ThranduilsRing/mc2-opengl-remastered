@@ -1040,7 +1040,10 @@ public:
 		virtual void updateDynamics (void) {
 		}
 
+	protected:
+		friend class GameObjectManager;
 		virtual void setPartId (long newPartId);
+	public:
 
 		virtual void setPosition (glm::vec3& newPosition);
 		

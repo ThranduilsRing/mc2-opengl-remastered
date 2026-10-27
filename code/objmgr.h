@@ -577,6 +577,10 @@ class GameObjectManager {
 		long calcPartId (long objectClass, long param1 = 0, long param2 = 0, long param3 = 0);
 
 		void setPartId (GameObjectPtr obj, long param1 = 0, long param2 = 0, long param3 = 0);
+		void forcePartId (GameObjectPtr obj, long newPartId) {		// an explicit id (the marine hack), fed to the index
+			obj->setPartId(newPartId);
+			notePartId(obj, newPartId);
+		}
 
 		long buildCollidableList (void);
 
