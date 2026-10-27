@@ -7,6 +7,7 @@
 
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include "gvehicl_internal.h"
+#include "world/visibility_input.h"
 
 
 constexpr double TURN_THRESHOLD = 20.0;
@@ -302,7 +303,7 @@ bool GroundVehicleType::handleCollision (GameObjectPtr collidee, GameObjectPtr c
 				(static_cast<GroundVehiclePtr>(collidee))->deadByCrushed = true;
 
 				//---------------------------------------------
-				if (!sameTeam && (collidee->getWindowsVisible() == turn))
+				if (!sameTeam && (mc2::world::visibleThisTurn(collidee)))
 					soundSystem->playDigitalSample(MECH_COLLIDE,collider->getPosition());
 
 				return(false);
@@ -337,7 +338,7 @@ bool GroundVehicleType::handleCollision (GameObjectPtr collidee, GameObjectPtr c
 					collidee->rotate(turnAround);
 
 				//---------------------------------------------
-				if (collidee->getWindowsVisible() == turn)
+				if (mc2::world::visibleThisTurn(collidee))
 					soundSystem->playDigitalSample(MECH_COLLIDE,collidee->getPosition());
 				return(false);
 			}

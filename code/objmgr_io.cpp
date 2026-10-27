@@ -726,6 +726,7 @@ long GameObjectManager::Load (PacketFilePtr file, long packetNum)
 	// First element in list is NULL (handle of 0 is always NULL)
 	objList = entities.reset(getMaxObjects() + 1);
 	resetPartIdIndex();
+	gomResetTerrainActivity();
 	invalidateSpatialGrid();
 	memset(objList,0,sizeof(GameObjectPtr) * (getMaxObjects() + 1));
 

@@ -678,8 +678,33 @@ void GameObjectManager::updateFrameJobsPrepass(int& frameJobsPrePassCount) {
 	// ── end FRAME-JOBS-1 pre-pass ────────────────────────────────────────────────
 }
 
+namespace {
+struct TerrainActivity {
+    std::vector<GameObjectPtr> ptr;
+    std::vector<uint8_t> staticNatural;
+    std::vector<uint32_t> advancedEpoch;
+    uint32_t epoch = 0;
+} s_terrainActivity;
+}
+// Called whenever objList is reset (mission init/load/teardown) so cached classes never outlive their objects.
+void gomResetTerrainActivity() { s_terrainActivity = TerrainActivity{}; }
+
 // Update special buildings, gates and the terrain object blocks, then report the counters.
 void GameObjectManager::updateTerrainObjects(int& frameJobsPrePassCount) {
+    // S1 activity classes: a per-handle class byte (static natural = TREE/TERRAINOBJECT) cached against the object pointer,
+    // so the per-tick walk makes no virtual getObjectClass call; a handle epoch stamp replaces the linear "already advanced" scan.
+    auto& s_actPtr = s_terrainActivity.ptr;
+    auto& s_actStaticNatural = s_terrainActivity.staticNatural;
+    auto& s_advancedEpoch = s_terrainActivity.advancedEpoch;
+    auto& s_epoch = s_terrainActivity.epoch;
+    const size_t slots = static_cast<size_t>(getMaxObjects()) + 1;
+    if (s_actPtr.size() < slots) {
+        s_actPtr.resize(slots, nullptr);
+        s_actStaticNatural.resize(slots, 0);
+        s_advancedEpoch.resize(slots, 0);
+    }
+    if (++s_epoch == 0) { std::fill(s_advancedEpoch.begin(), s_advancedEpoch.end(), 0u); s_epoch = 1; }
+
     auto advance = [](GameObjectPtr object) {
         if (!object || !object->getExists()) return;
         MC2_WORLD_UPDATE("terrain", object);
@@ -689,11 +714,13 @@ void GameObjectManager::updateTerrainObjects(int& frameJobsPrePassCount) {
     };
     // These lists overlap the terrain blocks. Preserve their early update order
     // while advancing each object only once per tick.
-    std::vector<GameObjectPtr> advanced;
-    advanced.reserve(numSpecialBuildings + numGates);
     auto once = [&](GameObjectPtr object) {
-        if (std::find(advanced.begin(), advanced.end(), object) != advanced.end()) return;
-        advanced.push_back(object);
+        if (!object) return;
+        const size_t h = static_cast<size_t>(object->getHandle());
+        if (h < slots) {
+            if (s_advancedEpoch[h] == s_epoch) return;
+            s_advancedEpoch[h] = s_epoch;
+        }
         advance(object);
     };
     for (long i = 0; i < numSpecialBuildings; ++i) once(specialBuildings[i]);
@@ -701,11 +728,16 @@ void GameObjectManager::updateTerrainObjects(int& frameJobsPrePassCount) {
     for (long block = 0; block < Terrain::numObjBlocks; ++block) {
         const auto& info = Terrain::objBlockInfo[block];
         for (long i = 0; i < info.numObjects; ++i) {
-            auto* object = objList[info.firstHandle + i];
+            const size_t h = static_cast<size_t>(info.firstHandle + i);
+            auto* object = objList[h];
             if (!object || !object->getExists()) continue;
-            if (std::find(advanced.begin(), advanced.end(), object) != advanced.end()) continue;
-            const auto kind = object->getObjectClass();
-            if ((kind == TREE || kind == TERRAINOBJECT) &&
+            if (s_actPtr[h] != object) {
+                const auto kind = object->getObjectClass();
+                s_actPtr[h] = object;
+                s_actStaticNatural[h] = (kind == TREE || kind == TERRAINOBJECT) ? 1 : 0;
+            }
+            if (s_advancedEpoch[h] == s_epoch) continue;
+            if (s_actStaticNatural[h] &&
                 !object->getFlag(OBJECT_FLAG_FALLING) && !object->getFlag(OBJECT_FLAG_JUSTCREATED)) continue;
             advance(object);
         }
