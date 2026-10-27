@@ -74,7 +74,7 @@ bool GetFalloff(float len, vec3 fd, out float falloff) {
 // numLights==0 early-return preserves base_light (not vec3(1)). Match that.
 #define MC2_ENVIRONMENT_AMBIENT
 //PORT-BEGIN:calc_light
-vec3 calc_light(int idx, vec3 normal, vec3 wpos, vec3 base_light, int sunAxisMc2Fix, bool localLights) {
+vec3 calc_light(int idx, vec3 normal, vec3 wpos, vec3 base_light, int sunAxisMc2Fix, bool legacyVehicle) {
     // Keep only the count local: copying the matrix arrays creates private indexed storage.
     ObjectLights ld;
     ld.numLights = uLights.light[idx].numLights;
@@ -86,9 +86,7 @@ vec3 calc_light(int idx, vec3 normal, vec3 wpos, vec3 base_light, int sunAxisMc2
         int lt = int(uLights.light[idx].light_dir[i].w);
         vec3 lc = uLights.light[idx].light_color[i].xyz;
         if (lt == TG_LIGHT_AMBIENT) {
-#ifndef MC2_ENVIRONMENT_AMBIENT
-            ambient += lc;
-#endif
+            if (legacyVehicle) ambient += lc;   // the light row's own ambient, not the environment's
         } else if (lt == TG_LIGHT_INFINITE) {
             vec3 sd = (sunAxisMc2Fix != 0) ? mc2ToRender(uLights.light[idx].light_dir[i].xyz) : uLights.light[idx].light_dir[i].xyz;
             float ndl = clamp(dot(normal, -sd), 0.0, 1.0);
@@ -101,14 +99,14 @@ vec3 calc_light(int idx, vec3 normal, vec3 wpos, vec3 base_light, int sunAxisMc2
                 float ndl = clamp(dot(normal, -sd), 0.0, 1.0);
                 final += ndl * lc * f;
             }
-        } else if (lt == TG_LIGHT_POINT && localLights) {
+        } else if (lt == TG_LIGHT_POINT && !legacyVehicle) {
             vec3 lp = uLights.light[idx].light_to_world[i][3].xyz;
             vec3 tl = lp - wpos; float d = length(tl); float f;
             if (GetFalloff(d, uLights.light[idx].light_falloff[i].xyz, f) && d > Stuff_SMALL) {
                 float ndl = clamp(dot(normal, tl / d), 0.0, 1.0);
                 final += ndl * lc * f;
             }
-        } else if (lt == TG_LIGHT_SPOT && localLights) {
+        } else if (lt == TG_LIGHT_SPOT && !legacyVehicle) {
             vec3 lp = uLights.light[idx].light_to_world[i][3].xyz;
             vec3 tl = lp - wpos; float d = length(tl); float f;
             if (GetFalloff(d, uLights.light[idx].light_falloff[i].xyz, f) && d > Stuff_SMALL) {
@@ -162,15 +160,15 @@ void main() {
         * mix(0.5, 1.0, clamp(worldNormal.z * 0.5 + 0.5, 0.0, 1.0));
     const uint  kRenderFlagLightsOut = 0x2u;
     bool lightsOut = (inst.renderFlags & kRenderFlagLightsOut) != 0u;
-    // Ground vehicles keep their legacy lighting: sun and ambient only, no point or spot lights.
-    const uint  kRenderFlagNoLocalLights = 0x40u;
-    bool localLights = (inst.renderFlags & kRenderFlagNoLocalLights) == 0u;
+    // Ground vehicles keep their legacy lighting: the row's ambient and sun, no environment ambient, no point or spot.
+    const uint  kRenderFlagLegacyVehicle = 0x40u;
+    bool legacyVehicle = (inst.renderFlags & kRenderFlagLegacyVehicle) != 0u;
     vec3 baseLight;
     if (lightsOut) {
         baseLight = environmentAmbient;
     } else if (uFrame.lightingReady != 0) {
-        vec3 base = environmentAmbient;
-        vec3 litRGB = calc_light(int(inst.lightDataIndex), worldNormal, worldMC2, base, uFrame.sunAxisMc2Fix, localLights);
+        vec3 base = legacyVehicle ? vec3(0.0) : environmentAmbient;
+        vec3 litRGB = calc_light(int(inst.lightDataIndex), worldNormal, worldMC2, base, uFrame.sunAxisMc2Fix, legacyVehicle);
         baseLight = clamp(litRGB + inst.aRGBHighlight.rgb * inst.aRGBHighlight.a, 0.0, 1.0);
     } else {
         // LightsData not yet copied — mirror mech.vert's Slice-A passthrough (flat white).

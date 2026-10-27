@@ -4,6 +4,8 @@
 #include "Gates/gate.h"
 #include "../RenderCore/axis_convert.h"
 
+extern uint32_t g_mc2FrameCounter;
+
 
 // Vehicle shadows are cast by the shadow cascades from the same per-node matrices the body draws from; the old
 // projected blob shadow (gvShadowShape) is gone.
@@ -129,8 +131,6 @@ long GVAppearance::render (long depthFixup)
 			}
 			else if (gpuPose_) {
 				// Stock body: node matrices, the light row, paint texture and haze go to the mech batcher.
-				if (s_vehicleLitPath)
-					drawShape->CacheGpuLightData();
 				uint32_t gpuHighlight = (selected & DRAW_COLORED && duration <= 0) ? highLight : static_cast<uint32_t>(highlightColor);
 				if (drawFlash)
 					gpuHighlight = static_cast<uint32_t>(flashColor);
@@ -138,7 +138,12 @@ long GVAppearance::render (long depthFixup)
 			}
 			if (!submitted) {
 				// Declined (or never on the GPU path): the legacy draw needs the CPU-transformed vertices.
-				if (gpuPose_) drawShape->TransformMultiShape(&poseXlat_, &poseRot_);
+				if (gpuPose_) {
+					eye->setLightColor(0, poseLightRGB_);
+					eye->setLightIntensity(0, 1.0);
+					drawShape->SetLightList(eye->getWorldLights(), eye->getNumLights());
+					drawShape->TransformMultiShape(&poseXlat_, &poseRot_);
+				}
 				if (s_vehicleLitPath)
 					drawShape->CacheGpuLightDataAllLeaves();
 				drawShape->Render(true);
@@ -368,7 +373,7 @@ bool GVAppearance::submitToMechBatcher(uint32_t highlightARGB)
 	desc.renderFlags = 0x40u;	// legacy vehicle lighting: sun and ambient, no point or spot lights
 	desc.slot0TexHandle = static_cast<uint32_t>(localTextureHandle);
 	const uint32_t lightRow = gvShape->getCachedGpuLightIndex();
-	if (lightRow == 0xFFFFFFFFu || (mc2::textures::ready() && lightRow >= mc2::vkLights::getLightStructCount())) return false;
+	if (lightRow == 0xFFFFFFFFu || gvShape->getCachedFrame() != g_mc2FrameCounter || (mc2::textures::ready() && lightRow >= mc2::vkLights::getLightStructCount())) return false;
 	desc.lightDataIndex = lightRow;
 	desc.highlightARGB = highlightARGB;
 	const float haze = std::clamp(std::max(hazeFactor, poseFog_), 0.0f, 1.0f);

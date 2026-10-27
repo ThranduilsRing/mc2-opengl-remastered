@@ -199,6 +199,7 @@ class GVAppearance : public ObjectAppearance
 		glm::vec3 poseXlat_{};
 		glm::quat poseRot_{1.0f, 0.0f, 0.0f, 0.0f};
 		float poseFog_ = 0.0f;
+		DWORD poseLightRGB_ = 0xffffffff;
 		int spotlightLeaves_ = -1;	// SpotLight_ leaves of the body shape (cones draw through the legacy path at night)
 		void transformSensorShapes();
 		bool submitToMechBatcher(uint32_t highlightARGB);
