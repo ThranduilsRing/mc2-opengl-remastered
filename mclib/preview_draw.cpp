@@ -12,6 +12,56 @@
 #include <algorithm>
 #include <vector>
 
+namespace {
+// The submissions node and flags a world-mode triangle uses; the reservation and the fill must agree.
+void cpuDrawKey(const TG_TinyTexture* textures, const TG_TypeTriangle& tri, bool isWindow, BYTE alphaValue, DWORD addFlags, DWORD& node, DWORD& flags)
+{
+	if (isWindow)
+	{
+		node = 0xffffffff;
+		flags = MC2_DRAWALPHA;
+		return;
+	}
+	node = textures[tri.localTextureHandle].mcTextureNodeIndex;
+	flags = ((textures[tri.localTextureHandle].textureAlpha || alphaValue != 0xff) ? MC2_DRAWALPHA : MC2_DRAWSOLID) | addFlags;
+}
+DWORD cpuDrawFlags(const TG_TypeShape* theShape, bool hud, bool clamped)
+{
+	DWORD addFlags = 0;
+	if (hud) addFlags |= MC2_ISCOMPASS;
+	if (clamped) addFlags |= MC2_ISTERRAIN;
+	if (theShape->alphaTestOn) addFlags |= MC2_ALPHATEST;
+	return addFlags;
+}
+}
+
+void TG_MultiShape::ReserveCpuDraw (void)
+{
+	BindMaterials();
+	for (long i = 0; i < numTG_Shapes; i++)
+	{
+		if (listOfShapes[i].processMe && listOfShapes[i].node)
+			listOfShapes[i].node->ReserveCpuDraw(alphaValue, isHudElement, isClamped);
+	}
+}
+
+void TG_Shape::ReserveCpuDraw (BYTE alphaValue, bool hud, bool clamped)
+{
+	if (!renderTGLShapes || !numVertices || isSpotlight || !eye)
+		return;
+	TG_TypeShapePtr theShape = static_cast<TG_TypeShapePtr>(myType);
+	const TG_TinyTexture* textures = materialTextures();
+	if (!textures && !isWindow)
+		return;
+	const DWORD addFlags = cpuDrawFlags(theShape, hud, clamped);
+	for (DWORD j = 0; j < numTriangles; j++)
+	{
+		DWORD node, flags;
+		cpuDrawKey(textures, theShape->listOfTypeTriangles[j], isWindow, alphaValue, addFlags, node, flags);
+		mc2::renderSubmissions().addTriangle(node, flags);
+	}
+}
+
 void TG_MultiShape::PreviewDraw (void)
 {
 	if (!eye)
@@ -190,10 +240,7 @@ void TG_Shape::CpuDraw (const glm::mat4& shapeToWorld, const glm::mat4& worldToS
 		gos_SetRenderState(gos_State_Filter, theShape->filterOn ? gos_FilterBiLinear : gos_FilterNone);
 		gos_SetRenderState(gos_State_ZWrite, 1);
 	}
-	DWORD addFlags = 0;
-	if (hud) addFlags |= MC2_ISCOMPASS;
-	if (clamped) addFlags |= MC2_ISTERRAIN;
-	if (theShape->alphaTestOn) addFlags |= MC2_ALPHATEST;
+	const DWORD addFlags = cpuDrawFlags(theShape, hud, clamped);
 	const float forcedZ = (forceZ >= 0.0f && forceZ < 1.0f) ? mc2_tgl::forceZClipDepth(forceZ) : -1.0f;
 
 	const glm::vec3 camPosition = s_cameraOrigin ? mc2::math::getTranslation(*s_cameraOrigin) : glm::vec3(0.0f);
@@ -220,18 +267,9 @@ void TG_Shape::CpuDraw (const glm::mat4& shapeToWorld, const glm::mat4& worldToS
 				gv[0].z = gv[1].z = gv[2].z = forcedZ;
 			if (!isWindow && !textures)
 				continue;
-			if (isWindow)
-			{
-				mc2::renderSubmissions().addTriangle(0xffffffff, MC2_DRAWALPHA);
-				mc2::renderSubmissions().addVertices(0xffffffff, gv, MC2_DRAWALPHA);
-			}
-			else
-			{
-				const DWORD node = textures[tri.localTextureHandle].mcTextureNodeIndex;
-				const DWORD kind = (textures[tri.localTextureHandle].textureAlpha || alphaValue != 0xff) ? MC2_DRAWALPHA : MC2_DRAWSOLID;
-				mc2::renderSubmissions().addTriangle(node, kind | addFlags);
-				mc2::renderSubmissions().addVertices(node, gv, kind | addFlags);
-			}
+			DWORD node, flags;
+			cpuDrawKey(textures, tri, isWindow, alphaValue, addFlags, node, flags);
+			mc2::renderSubmissions().addVertices(node, gv, flags);
 			continue;
 		}
 

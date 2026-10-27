@@ -442,6 +442,8 @@ long GenericAppearance::update (bool animate)
 		else
 		{
 			genShape->TransformMultiShape_HierarchyOnly (&xlatPosition,&rot);
+			if (!GpuStaticPropBatcher::instance().isMultiShapeEligibleForGpuObjects(genShape))
+				genShape->ReserveCpuDraw();	// no batcher takes it: the CPU fallback draws it
 			needsFullBakeNextFrame = false;
 		}
 	}

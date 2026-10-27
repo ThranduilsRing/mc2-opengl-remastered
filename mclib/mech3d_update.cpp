@@ -540,6 +540,7 @@ long Mech3DAppearance::update (bool animate)
 		leftArm->SetFogRGB(0xffffffff);
 		leftArm->SetLightList(eye->getWorldLights(),eye->getNumLights());
 		leftArm->TransformMultiShape_HierarchyOnly(&xlatPosition,&qRotation);
+		leftArm->ReserveCpuDraw();
 			
 		if (leftArmSmoke)
 		{
@@ -617,6 +618,7 @@ long Mech3DAppearance::update (bool animate)
 		rightArm->SetFogRGB(0xffffffff);
 		rightArm->SetLightList(eye->getWorldLights(),eye->getNumLights());
 		rightArm->TransformMultiShape_HierarchyOnly(&xlatPosition,&qRotation);
+		rightArm->ReserveCpuDraw();
 		
 		if (rightArmSmoke)
 		{

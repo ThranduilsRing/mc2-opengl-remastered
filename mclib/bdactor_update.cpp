@@ -696,6 +696,8 @@ long BldgAppearance::update (bool animate)
 			// run the zero-pool hierarchy walk. mc2CacheOrBakeStaticGpuLight still
 			// runs to seed the light index.
 			bldgShape->TransformMultiShape_HierarchyOnly (&xlatPosition,&rot);
+			if (!GpuStaticPropBatcher::instance().isMultiShapeEligibleForGpuObjects(bldgShape))
+				bldgShape->ReserveCpuDraw();	// no batcher takes it (compass, unregistered type): the CPU fallback draws it
 			// 2026-05-10: also seed cachedGpuLightIndex_ in the full-bake
 			// branch. Without this, the first-frame transition out of the
 			// H4 latch (set by registerStatic) leaves the index

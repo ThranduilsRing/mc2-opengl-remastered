@@ -501,6 +501,8 @@ class TG_MultiShape
 		// CPU fallback draw of every leaf the batchers declined (CpuDraw: ambient + infinite lights, queued through the
 		// render submissions); call after a TransformMultiShape_* walk.
 		void Render (bool refreshTextures = false, float forceZ = -1.0f);
+		// Call in the update phase, after the hierarchy walk, for any shape Render may draw: reserves its triangles.
+		void ReserveCpuDraw (void);
 		// UI preview (SimpleCamera, preview_draw.cpp): draws every leaf from the hierarchy matrices; call after a TransformMultiShape*.
 		void PreviewDraw (void);
 

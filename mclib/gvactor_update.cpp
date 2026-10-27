@@ -168,6 +168,8 @@ void GVAppearance::updateGeometry (void)
 		if (gpuPose_ && !renderShape)
 			gvShape->CacheGpuLightData();
 		gvShape->TransformMultiShape_HierarchyOnly (&xlatPosition,&totalRotation);
+		if (!gpuPose_ && !renderShape)
+			gvShape->ReserveCpuDraw();	// fading or unregistered: the CPU fallback draws it
 		updateRenderShape();
 		if (renderShape) renderShape->SetFogRGB(useFog ? fogRGB : 0xffffffff);
 
@@ -501,6 +503,7 @@ void GVAppearance::transformSensorShapes()
 	marker->SetFogRGB(0xffffffff);
 	marker->SetLightList(eye->getWorldLights(),eye->getNumLights());
 	marker->TransformMultiShape_HierarchyOnly (&poseXlat_,&spin);
+	marker->ReserveCpuDraw();
 }
 
 long GVAppearance::update (bool animate) 

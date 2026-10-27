@@ -734,10 +734,12 @@ void Mech3DAppearance::updateGeometry (void)
 	sensorTriangleShape->SetFogRGB(0xffffffff);
 	sensorTriangleShape->SetLightList(eye->getWorldLights(),eye->getNumLights());
 	sensorTriangleShape->TransformMultiShape_HierarchyOnly(&xlatPosition,&totalRotation);
+	sensorTriangleShape->ReserveCpuDraw();
 
 	sensorSquareShape->SetFogRGB(0xffffffff);
 	sensorSquareShape->SetLightList(eye->getWorldLights(),eye->getNumLights());
 	sensorSquareShape->TransformMultiShape_HierarchyOnly(&xlatPosition,&totalRotation);
+	sensorSquareShape->ReserveCpuDraw();
 	} // end !skipSensors
 	} // end Sensors zone
 	
