@@ -75,6 +75,7 @@ extern "C" void gos_tube_ribbon_flush_deferred() {
     std::vector<VfxParticleDraw> draws;
     // Enqueue carries MLR pool indices, not GOS handles. Resolve after the
     // camera's ResolveTextures/ForceLoadImages, just like card groups.
+    { ZoneScopedN("Tube.Expand");
     for (const auto& r : ribbons) {
         unsigned texture = 0;
         if (r.mlrHandle && MidLevelRenderer::MLRTexturePool::Instance) {
@@ -83,7 +84,7 @@ extern "C" void gos_tube_ribbon_flush_deferred() {
         }
         appendRibbon(vertices, draws, r.positions.data(), r.colors.data(), r.uvs.data(),
             static_cast<unsigned>(r.positions.size()/3), r.indices.data(), static_cast<unsigned>(r.indices.size()), texture, r.blendMode);
-    }
+    } }
     submit(vertices, draws);
     ribbons.clear();
 }

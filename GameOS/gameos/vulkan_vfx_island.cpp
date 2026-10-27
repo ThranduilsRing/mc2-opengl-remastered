@@ -635,7 +635,8 @@ extern "C" int mc2_vk_vfx_island_run(
     // submit must have completed before its command buffer and set are reused: a timeline ticket, not an island fence.
     const uint32_t par = s->nextSlot;
     s->nextSlot ^= 1u;
-    if (!slotCtx.wait(mc2vk::GpuTicket{s->ticket[par], 0}, 5ull * 1000 * 1000 * 1000, "vfx_slot")) { setFallback("slot_timeout"); s->disabled = true; return 0; }
+    { ZoneScopedN("VKIsl.Vfx.SlotWait");
+    if (!slotCtx.wait(mc2vk::GpuTicket{s->ticket[par], 0}, 5ull * 1000 * 1000 * 1000, "vfx_slot")) { setFallback("slot_timeout"); s->disabled = true; return 0; } }
     const VkDeviceSize needBytes = static_cast<VkDeviceSize>(particleCount) * 64u;
     const VkDeviceSize partOff = mc2vk::alignUp(sizeof(VfxVsParams), slotCtx.frameAlignment());
     const mc2vk::FrameAlloc span = slotCtx.frameAlloc(partOff + needBytes);
@@ -645,12 +646,14 @@ extern "C" int mc2_vk_vfx_island_run(
         std::memcpy(static_cast<uint8_t*>(span.ptr) + partOff, particles, static_cast<size_t>(needBytes));
     }
     fill_frame_params(span.ptr, worldToClipGL, camRight, camUp, w, h);
+    { ZoneScopedN("VKIsl.Vfx.Descriptors");
     if (!prepare_shadow_descriptors(s, par)) return 0;
-    write_ring_bindings(s, par, span.buffer, span.range);
+    write_ring_bindings(s, par, span.buffer, span.range); }
     const uint32_t dynOffsets[2] = {static_cast<uint32_t>(span.offset), static_cast<uint32_t>(span.offset + partOff)};
 
     // Resolve service pages after parity retirement; uploads stay asynchronous.
     std::vector<std::optional<VkDescriptorSet>> groupPage(drawCount);
+    { ZoneScopedN("VKIsl.Vfx.Pages");
     for (uint32_t gi = 0; gi < drawCount; ++gi) {
         if (draws[gi].count != 0 && (draws[gi].texture != 0 || draws[gi].atlasColumns == kVfxGeometryAtlas))
             groupPage[gi] = get_page(s, draws[gi].texture, par);
@@ -658,7 +661,7 @@ extern "C" int mc2_vk_vfx_island_run(
         if (!groupPage[gi] && draws[gi].atlasColumns == kVfxGeometryAtlas && draws[gi].start < particleCount &&
             (static_cast<const VfxGeometryVertex*>(particles)[draws[gi].start].flags & VfxGeometryMesh) != 0u)
             groupPage[gi] = get_page(s, 0, par);
-    }
+    } }
     if (s->disabled) return 0;
 
     // Record: one renderpass, per-group pipeline + sub-range draw.
