@@ -77,8 +77,7 @@ struct GameObjectManager::PartIdIndex {
 	bool dirty = true;
 #ifdef OBJMGR_PARTID_XCHECK
 	unsigned long lookups = 0, mismatches = 0;
-	long long hashNs = 0, linearNs = 0, rebuilds = 0;
-	~PartIdIndex() { fprintf(stderr, "[PARTID_XCHECK] lookups=%lu mismatches=%lu rebuilds=%lld hash_ns=%lld linear_ns=%lld\n", lookups, mismatches, rebuilds, hashNs, linearNs); }
+	~PartIdIndex() { fprintf(stderr, "[PARTID_XCHECK] lookups=%lu mismatches=%lu\n", lookups, mismatches); }
 #endif
 };
 
@@ -109,10 +108,6 @@ GameObjectPtr GameObjectManager::findByPartId (long partId) {
 
 	if (!partIdIndex)
 		partIdIndex = new PartIdIndex;
-#ifdef OBJMGR_PARTID_XCHECK
-	const auto t0 = std::chrono::steady_clock::now();
-	if (partIdIndex->dirty) ++partIdIndex->rebuilds;
-#endif
 	if (partIdIndex->dirty) {
 		partIdIndex->slots.clear();
 		const long numObjects = getMaxObjects();
@@ -138,16 +133,12 @@ GameObjectPtr GameObjectManager::findByPartId (long partId) {
 
 #ifdef OBJMGR_PARTID_XCHECK
 	{
-		const auto t1 = std::chrono::steady_clock::now();
 		GameObjectPtr linear = nullptr;
 		const long numObjects = getMaxObjects();
 		for (long objIndex = 1; objIndex <= numObjects; objIndex++) {
 			GameObjectPtr obj = objList[objIndex];
 			if (obj && obj->getExists() && (obj->getPartId() == partId)) { linear = obj; break; }
 		}
-		const auto t2 = std::chrono::steady_clock::now();
-		partIdIndex->hashNs += std::chrono::duration_cast<std::chrono::nanoseconds>(t1 - t0).count();
-		partIdIndex->linearNs += std::chrono::duration_cast<std::chrono::nanoseconds>(t2 - t1).count();
 		++partIdIndex->lookups;
 		if (linear != found) {
 			if (++partIdIndex->mismatches <= 8)
