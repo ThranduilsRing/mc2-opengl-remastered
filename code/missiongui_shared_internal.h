@@ -72,7 +72,6 @@ extern bool renderObjects;
 extern bool drawTerrainGrid;
 extern bool drawLOSGrid;
 extern bool useFog;
-extern bool useVertexLighting;
 extern bool renderTGLShapes;
 extern bool drawGUIOn;
 extern bool toggledGUI;

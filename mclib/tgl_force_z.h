@@ -5,7 +5,6 @@
 
 namespace mc2_tgl {
 
-inline bool forceZActive(float forceZ) { return forceZ >= 0.0f && forceZ < 1.0f; }
 
 // Post-divide clip depth for an authored forceZ.
 inline float forceZClipDepth(float forceZ) { return 1.0f - forceZ; }

@@ -9332,9 +9332,7 @@
    "stream": "stderr",
    "keys": [
     "vertex_block_exhausted",
-    "block_exhausted",
-    "add_vertices_overflow_prevented",
-    "add_shape_overflow_prevented"
+    "add_vertices_overflow_prevented"
    ],
    "count": 1
   },

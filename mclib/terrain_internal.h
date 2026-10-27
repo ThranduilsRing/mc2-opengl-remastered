@@ -116,7 +116,6 @@ extern unsigned long blockMemSize;
 extern bool useOldProject;
 extern bool projectAll;
 extern bool useFog;
-extern bool useVertexLighting;
 extern bool					useRealLOS;
 extern unsigned char godMode;
 extern long 				DrawDebugCells;

@@ -143,7 +143,6 @@ unsigned long 				blockMemSize = 0;				//Misc Flags.
 bool 						useOldProject = FALSE;
 bool 						projectAll = FALSE;
 bool 						useFog = true;
-bool 						useVertexLighting = true;
 
 unsigned char 				godMode = 0;			//Can I simply see everything, enemy and friendly?
 
