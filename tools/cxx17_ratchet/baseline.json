@@ -188,7 +188,7 @@
    "LG01": 3,
    "LG02": 0,
    "LG03": 500,
-   "LG04": 15,
+   "LG04": 14,
    "LG05": 109,
    "LG06": 527,
    "LG07": 0,
@@ -196,7 +196,7 @@
    "LG09": 2,
    "LG10": 16,
    "LG11": 47,
-   "LG12a": 95,
+   "LG12a": 92,
    "LG12b": 177,
    "LG13": 117,
    "LG14": 52,
@@ -3049,12 +3049,9 @@
   "mclib/render_contract.h": {
    "LG06": 5
   },
-  "mclib/render_submissions.cpp": {
-   "LG12a": 2
-  },
   "mclib/render_submissions.h": {
    "LG08": 1,
-   "LG12a": 4
+   "LG12a": 3
   },
   "mclib/resource_strings.cpp": {
    "LG06": 1
@@ -3338,7 +3335,7 @@
    "LG17": 1
   },
   "mclib/tgl_transform_light.cpp": {
-   "LG04": 2
+   "LG04": 1
   },
   "mclib/tgl_types.cpp": {
    "LG05": 2,
@@ -3429,7 +3426,7 @@
    "LG20": 3
   }
  },
- "head": "55cd33e60",
+ "head": "d3953ad33",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
