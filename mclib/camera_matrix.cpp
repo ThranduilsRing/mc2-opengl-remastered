@@ -598,6 +598,12 @@ void Camera::calculateProjectionConstants (void)
 		           ^ snapI(cameraRotation,  0.05f) * 374761393u
 		           ^ snapI(projectionAngle, 0.05f) * 668265263u
 		           ^ snapI(camera_fov,      0.1f)  * 2166136261u
+		           // The camera origin is built from the altitude (zoom) and the eased look-at shift, not only the goal
+		           // position: a zoom or an eased pan that left these out kept stale pick rects (hits on objects that
+		           // are not under the cursor, misses on ones that are).
+		           ^ snapI(cameraAltitude,  0.25f) * 2869860233u
+		           ^ snapI(cameraShift.x,   0.25f) * 1597334677u
+		           ^ snapI(cameraShift.y,   0.25f) * 3812015801u
 		           ^ static_cast<uint32_t>(static_cast<int32_t>(screenResolution.x))
 		           ^ static_cast<uint32_t>(static_cast<int32_t>(screenResolution.y)) * 40503u;
 		if (h != lastCameraInputHash_) {
