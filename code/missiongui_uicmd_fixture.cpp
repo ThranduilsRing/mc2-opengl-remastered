@@ -122,6 +122,25 @@ extern "C" long mc2FreezeMoversEngagedAt() { return s_freezeMoversEngaged; }
 // Test-only fixtures and determinism verbs (spawn, teleport, freeze_movers, set_light, animate). Returns true when a verb of this group matched.
 bool MissionInterfaceManager::uiCmdFixture(UiCmdCtx& c)
 {
+	if (c.line.starts_with("force_state ")) {
+		// force_state <partId> sensor <0..4> | armoff left|right  (needs MC2_TEST_SPAWN=1; pair with freeze_movers so the sim does not rewrite it)
+		long pid = 0; char what[16] = {0}, arg[16] = {0};
+		GameObjectPtr obj;
+		if (!mc2::gate::get<"MC2_TEST_SPAWN">()) {
+			c.result = "blocked"; c.note = "needs MC2_TEST_SPAWN=1";
+		} else if (sscanf(c.line.c_str() + 12, "%ld %15s %15s", &pid, what, arg) != 3 || !(obj = ObjectManager->findByPartId(pid)) || !obj->getAppearance()) {
+			c.result = "blocked"; c.note = "force_state <partId> sensor <n> | armoff left|right";
+		} else if (!strcmp(what, "sensor")) {
+			obj->getAppearance()->setSensorLevel(atol(arg));
+			c.result = "ok";
+		} else if (!strcmp(what, "armoff")) {
+			if (!strcmp(arg, "left")) obj->getAppearance()->blowLeftArm(); else obj->getAppearance()->blowRightArm();
+			c.result = "ok";
+		} else {
+			c.result = "blocked"; c.note = "force_state <partId> sensor <n> | armoff left|right";
+		}
+		return true;
+	}
 	if (c.line.starts_with("airstrike ")) {
 		float x = 0, y = 0;
 		if (!mc2::gate::get<"MC2_TEST_SPAWN">() || sscanf(c.line.c_str() + 10, "%f %f", &x, &y) != 2) {
