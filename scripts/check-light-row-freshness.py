@@ -90,7 +90,7 @@ EXEMPT: dict[str, str] = {
     #
     # Declining the submit on a stale stamp is wrong. The stated ground was that
     # the mech would still be drawn by the CPU MLR fallback, but inside the
-    # submit block's own enclosing gate (g_useGpuMechs && !previewContext)
+    # submit block's own enclosing gate (!previewContext)
     # mechShape has been transformed by _HierarchyOnly, so TG_Shape::Render
     # returns at the lastTurnTransformed guard (mclib/tgl.cpp:3190) without
     # drawing, and the decline made the mech VANISH. The site RECORDS the stale

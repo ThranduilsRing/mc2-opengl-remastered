@@ -157,9 +157,7 @@ void Mech3DAppearance::updateGeometry (void)
 	// (default-ON, strict no-op on tessellated GPU-mech path) retired to constant.
 	// ISSUE-34: modern-shadow-path predicate (was tess-keyed), matching the
 	// renderShadows early-return so the stripped state has no consumer.
-	const bool stripShadowState =
-		g_useGpuMechs &&
-		gos_IsModernShadowPathActive();
+	const bool stripShadowState = gos_IsModernShadowPathActive();
 
 	if ((status == OBJECT_STATUS_DESTROYED) ||
 		(status == OBJECT_STATUS_DISABLED) || 
@@ -546,12 +544,8 @@ void Mech3DAppearance::updateGeometry (void)
 			// MECH-KILLSWITCH-SHADOW-PAIR-RETIRE-1: former MC2_GPU_MECH_SHADOW_SKIP retired.
 			// ISSUE-34: modern-shadow-path predicate (was tess-keyed), matching
 			// the renderShadows early-return that makes the consumer unreachable.
-			if (g_useGpuMechs && gos_IsModernShadowPathActive()) {
-				// Skip — modern engine has no consumer.
-			} else if (g_useGpuMechs) {
+			if (!gos_IsModernShadowPathActive()) {
 				mechShadowShape->TransformMultiShape_PositionsOnly(&xlatPosition, &qRotation);
-			} else {
-				mechShadowShape->TransformMultiShape(&xlatPosition, &qRotation);
 			}
 		}
 		} // end AnimPose zone
@@ -588,12 +582,10 @@ void Mech3DAppearance::updateGeometry (void)
 		// ISSUE-34: leaf-skip keyed on the modern shadow path (was tess) —
 		// its unreachability proof (RenderShadows early-return, Slice A
 		// Render(true) bypass, rect-only selection) holds on that predicate.
-		} else if (g_useGpuMechs && gos_IsModernShadowPathActive()) {
+		} else if (gos_IsModernShadowPathActive()) {
 			mechShape->TransformMultiShape_HierarchyOnly(&xlatPosition, &qRotation);
-		} else if (g_useGpuMechs) {
-			mechShape->TransformMultiShape_PositionsOnly(&xlatPosition, &qRotation);
 		} else {
-			mechShape->TransformMultiShape(&xlatPosition, &qRotation);
+			mechShape->TransformMultiShape_PositionsOnly(&xlatPosition, &qRotation);
 		}
 		} // end BodyXform zone
 	}
@@ -771,8 +763,7 @@ void Mech3DAppearance::updateGeometry (void)
 	// MC2_GPU_MECH_SENSOR_SKIP killswitch (now retired to this constant); still
 	// requires g_useGpuMechs (the CPU path transforms sensors regardless).
 	{ ZoneScopedN("Mech3D.UpdateGeometry.Sensors");
-	const bool skipSensors = g_useGpuMechs &&
-		(sensorLevel == 0 || sensorLevel >= 5);
+	const bool skipSensors = (sensorLevel == 0 || sensorLevel >= 5);
 	if (!skipSensors) {
 	glm::quat totalRotation;
 	// VK-MECH-CAPTURE-DETERMINISM-1: the sensor marker spins off the wall-clock
@@ -1107,14 +1098,13 @@ void Mech3DAppearance::updateSimPose (bool advanceClock)
 		// gate is OFF (the stock per-node branch then draws the immutable rest VBO).
 		// So warn ONLY in that genuinely-frozen case (was firing unconditionally and
 		// LYING whenever the import-GPU path was armed). Both workarounds given.
-		if (g_useGpuMechs && mc2mechanim::AnyImportedAnim() &&
+		if (mc2mechanim::AnyImportedAnim() &&
 		    !mc2mechanim::ImportedGpuEnabled()) {
 			static bool s_warnedImportGpu = false;
 			if (!s_warnedImportGpu) {
 				s_warnedImportGpu = true;
 				fprintf(stderr, "[MECH_IMPORT] animated imported mech with the import-GPU "
-				                "palette OFF shows a FROZEN pose; set MC2_MECH_IMPORT_GPU=1 "
-				                "(or run MC2_GPU_MECHS=0)\n");
+				                "palette OFF shows a FROZEN pose; set MC2_MECH_IMPORT_GPU=1\n");
 			}
 		}
 	}

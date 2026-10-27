@@ -9,7 +9,6 @@
 #include <cstring>
 
 extern bool g_useGpuObjects;
-extern bool g_useGpuMechs;
 extern bool     g_loadRaceTrace;
 extern long     g_loadRaceTerrainFirstResidentFrame;
 extern bool     g_loadRaceTerrainResidentNow;
@@ -24,7 +23,7 @@ void mc2::VkSceneRenderer::renderListsDynamicShadowPass (RenderSubmissions& subm
 		// Publish this frame's poses before fitting or drawing the mover map.
 		// The colour island consumes this same snapshot after terrain.
 		GpuMechBatcher::instance().flush();
-		if (gos_IsModernShadowPathActive() && (g_useGpuObjects || g_useGpuMechs)) {
+		if (gos_IsModernShadowPathActive()) {
 			const glm::mat4 camera=eye->worldToClipGL();
 			float rows[16];
 			std::memcpy(rows,&camera,sizeof(rows)); // Camera::projectModernClipGL uses these four explicit rows

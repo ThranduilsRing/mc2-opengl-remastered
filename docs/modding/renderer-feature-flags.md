@@ -34,7 +34,6 @@ These control the GPU-direct fast paths added in the 0.4 arc.
 | Flag | Default | What it does |
 |------|---------|-------------|
 | `MC2_GPU_OBJECTS` | **on** | GPU instance batcher for static props (trees, buildings) |
-| `MC2_GPU_MECHS` | **on** | GPU instance batcher for mechs and vehicles |
 | `MC2_GPU_CULL_SUBSTRATE` | **on** | Per-frame GPU-side frustum cull substrate |
 | `MC2_GPU_CULL` | off | Full GPU-driven cull (extends substrate; experimental) |
 | `MC2_GPU_DRIVEN` | off | Master gate for GPU-driven terrain/water fast paths |

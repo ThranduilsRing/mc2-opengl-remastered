@@ -514,7 +514,7 @@ long Mech3DAppearance::render (long depthFixup)
 			// uncertainty. One frame of stale "invisible" → one frame of
 			// missing render, recovered next frame at 60Hz.
 			bool mechGpuCullSkip = false;
-			if (g_useGpuMechs) {
+			{
 				// CONSERVATIVE-OR (mirrors terrobj.cpp / static-prop fix):
 				// the lagged GPU readback may CONFIRM invisibility but must
 				// NOT DENY visibility. Only skip the GPU submit when BOTH the
@@ -542,7 +542,7 @@ long Mech3DAppearance::render (long depthFixup)
 			// draw below runs. The GPU batcher flushes with the world snapshot /
 			// terrain MVP and would draw the preview mech off the UI viewport.
 			const bool previewContext = (g_mechPreviewRenderDepth > 0);
-			if (g_useGpuMechs && !mechGpuCullSkip && g_drawMechs && !previewContext) {
+			if (!mechGpuCullSkip && g_drawMechs && !previewContext) {
 				// Replicate the highlight selection from the CPU SetARGBHighLight
 				// branches above so the GPU path sees the same color choice.
 				uint32_t gpuHighlightARGB = highLight;
@@ -592,12 +592,11 @@ long Mech3DAppearance::render (long depthFixup)
 				// draws the mech at mechShape->Render(true)". THAT IS FALSE IN
 				// THE CONFIGURATION WHERE THE DECLINE CAN FIRE, and the proof is
 				// the enclosing gate of this very block:
-				//     if (g_useGpuMechs && !mechGpuCullSkip && g_drawMechs
+				//     if (!mechGpuCullSkip && g_drawMechs
 				//         && !previewContext)                     <--
 				// Both surviving terms are exactly the conditions under which
 				// updateGeometry picks a FAST-TRANSFORM variant for mechShape
 				//: previewContext forces the full TransformMultiShape,
-				// and !g_useGpuMechs falls to the full transform in the else arm.
 				// So whenever we are inside this block, mechShape was transformed
 				// by _HierarchyOnly (the default: MC2_GPU_MECHS is on and
 				// the modern shadow path is active) or by _PositionsOnly.
@@ -753,7 +752,7 @@ long Mech3DAppearance::render (long depthFixup)
 					// this gate, every actor in MC2_GPU_MECHS=0 mode is logged
 					// as ShaderInitFailure, making the [MECHBATCHER v1]
 					// event=summary fallback counters useless.
-					if (!gpuMechSubmitted && g_useGpuMechs) {
+					if (!gpuMechSubmitted) {
 						GpuMechBatcher::instance().recordCpuFallback(
 							GpuMechBatcher::instance().wasLastFailureLateRegistration()
 								? GpuMechFallbackReason::UnregisteredType

@@ -2,37 +2,14 @@
 #pragma once
 #include <cstdint>
 
-// =============================================================================
-// DEFAULT-ON FLIP (2026-05-09)
-// =============================================================================
-// All GPU mech killswitches in this header now default to ON. The historical
-// `(getenv("X") != nullptr)` opt-in pattern was replaced by `default-on, "0"
-// opts out` after the slice campaign accumulated empirical soak (tier1 5/5,
-// 90s mc2_10 Tracy clean, mouse-pick + sensor canaries verified, combined
-// Mech3D.UpdateGeometry stack -80%).
-//
-// To OPT OUT of any individual flag: set the env var to literal "0".
-//   e.g.  MC2_GPU_MECHS=0  →  legacy CPU mech path
-//
-// Any other value (including unset) keeps the new default-on behavior.
-// See `envFlagDefaultOn` in gos_mech_batcher.cpp for the canonical pattern.
-//
-// Inter-flag dependencies still apply — most downstream flags only take
-// effect when MC2_GPU_MECHS=1 (now default). Opting out of MC2_GPU_MECHS
-// effectively opts out of the entire GPU mech path.
-// =============================================================================
+// MC2_GPU_MECHS / g_useGpuMechs RETIRED (tgl-p2): the GPU mech batcher is the only
+// world-mech path. The CPU mech draw (mechShape->Render(true) with the full
+// TransformMultiShape) survives only for the SimpleCamera UI preview, below.
 
 // ImGui "Draw Mechs" visibility kill-switch. DEFAULT-ON.
 // When false, both the GPU batcher submit AND the CPU Render(true) fallback
-// are suppressed, so mechs are invisible.  Independent of g_useGpuMechs —
-// set this to false to hide mechs entirely; set g_useGpuMechs to false to
-// force the CPU rendering path while still drawing mechs.
+// are suppressed, so mechs are invisible.
 extern bool g_drawMechs;
-
-// Runtime toggle for the GPU mech renderer. DEFAULT-ON.
-// Opt-out: MC2_GPU_MECHS=0 → legacy CPU mech path.
-// Can also be toggled at runtime via RAlt+M (wire in gameosmain.cpp hotkey handler).
-extern bool g_useGpuMechs;
 
 // Preview-render context depth. >0 while a SimpleCamera UI preview render is
 // in flight (Mech Bay / Mech Purchase rotating mech). The GPU mech batcher

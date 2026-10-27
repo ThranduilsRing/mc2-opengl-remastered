@@ -517,12 +517,6 @@ void TG_MultiShape::CacheGpuLightData()
 {
     // PERF 2026-05-07: stripped hot Tracy zones CacheGpuLightData,
     // CacheGpuLightData findLeaf, and CacheGpuLightData GatherGpuObjectLightDataOnly.
-    //
-    // Slice B1 (2026-05-09): also honor g_useGpuMechs so an operator
-    // running MC2_GPU_OBJECTS=0 MC2_GPU_MECHS=1 still gets the cache
-    // refresh for mechs. Adversarial review MAJOR-1.
-    if (!g_useGpuObjects && !g_useGpuMechs)
-        return;
 
     // Find first SHAPE_NODE leaf — same logic as submitMultiShape.
     TG_Shape* firstShapeNodeLeaf = nullptr;
@@ -553,9 +547,6 @@ void TG_MultiShape::CacheGpuLightData()
 // leaf so any batcher-side reader keeps identical semantics.
 void TG_MultiShape::CacheGpuLightDataAllLeaves()
 {
-    if (!g_useGpuObjects && !g_useGpuMechs)
-        return;
-
     bool first = true;
     for (int i = 0; i < numTG_Shapes; ++i) {
         TG_ShapeRec& rec = listOfShapes[i];
@@ -624,10 +615,6 @@ void TG_MultiShape::ResubmitCachedGpuLightData()
     // called into the light-data path instead of touchSerialCommit.
     if (isFrameJobsWorkerThread())
         g_workerResubmitCalls.fetch_add(1, std::memory_order_relaxed);
-
-    // Slice B1 (2026-05-09): see CacheGpuLightData rationale.
-    if (!g_useGpuObjects && !g_useGpuMechs)
-        return;
 
     // [LIGHTBRIDGE v1] C6 repoint: if this multi already populated a VALID
     // slot THIS frame, that slot is still live (per-frame reset by
