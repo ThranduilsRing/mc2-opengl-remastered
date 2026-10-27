@@ -82,6 +82,7 @@
     {"module": "scripts/tests/test_ref_passthrough.py", "owners": ["scripts_tests"]},
     {"module": "scripts/tests/test_isolated_deploy_shaders_vk.py", "owners": ["scripts_tests"]},
     {"module": "scripts/tests/test_gpu_routing.py", "owners": ["scripts_tests"]},
+    {"module": "scripts/tests/test_deploy_fail_last.py", "owners": ["scripts_tests"]},
     {"module": "scripts/tests/test_run_smoke_early_validation.py", "owners": ["scripts_tests"]},
     {"module": "scripts/tests/test_runner_env_drop.py", "owners": ["scripts_tests"]},
     {"module": "scripts/tests/test_sim_determinism_strict.py", "owners": ["sim_determinism"]},

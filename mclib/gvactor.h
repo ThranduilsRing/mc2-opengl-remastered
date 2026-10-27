@@ -26,6 +26,7 @@
 #endif
 
 #include"vis_semantics.h"   // VISIBILITY-SEMANTICS-1
+#include "math/mc2_xform.h"  // mc2::math::quatXYZW
 
 #ifndef OBJECTAPPEARANCE_H
 #include"objectappearance.h"
@@ -197,7 +198,7 @@ class GVAppearance : public ObjectAppearance
 		// hierarchy. poseXlat_/poseRot_ let a declined submit transform the whole shape at render time.
 		bool gpuPose_ = false;
 		glm::vec3 poseXlat_{};
-		glm::quat poseRot_{1.0f, 0.0f, 0.0f, 0.0f};
+		glm::quat poseRot_ = mc2::math::quatXYZW(0.0f, 0.0f, 0.0f, 1.0f);
 		float poseFog_ = 0.0f;
 		DWORD poseLightRGB_ = 0xffffffff;
 		int spotlightLeaves_ = 0;	// SpotLight_ leaves of the body shape (cones draw through the legacy path at night)

@@ -24,11 +24,12 @@ FAILS the checker unless it carries `# background-launch: allow <why>`.
 | `scripts/run_smoke.py` | 390 | `nofocus.spawn` | offscreen |
 | `scripts/run_smoke_asan.py` | 203 | `nofocus.spawn` | offscreen |
 | `scripts/run_tool_capture.py` | 108 | `nofocus.spawn` | offscreen |
-| `scripts/run_visual_capture.py` | 404 | `nofocus.spawn` | offscreen |
+| `scripts/run_visual_capture.py` | 412 | `nofocus.spawn` | offscreen |
 | `scripts/run_vk_field_check.py` | 224 | `nofocus.spawn` | offscreen |
 | `scripts/run_vk_field_check.py` | 266 | `nofocus.spawn` | offscreen |
 | `scripts/smoke_lib/runner.py` | 276 | `nofocus.spawn` | offscreen |
 | `scripts/sweep_campaign.py` | 63 | `nofocus.spawn` | offscreen |
+| `scripts/tests/test_gpu_routing.py` | 45 | `nofocus.spawn` | offscreen |
 | `scripts/tests/test_harness_desktop_safety.py` | 172 | `nofocus.spawn` | offscreen |
 | `scripts/tests/test_harness_desktop_safety.py` | 432 | `nofocus.spawn` | offscreen |
 | `scripts/tests/test_harness_desktop_safety.py` | 436 | `nofocus.spawn` | offscreen |
@@ -47,7 +48,7 @@ FAILS the checker unless it carries `# background-launch: allow <why>`.
 | `tools/tracy_capture_compare.py` | 412 | `subprocess.run` **raw, allowed:** Tracy csvexport console tool, not the game; windowless via hidden_kwargs | offscreen |
 | `tools/tracy_capture_compare.py` | 465 | `subprocess.run` **raw, allowed:** Tracy csvexport console tool, not the game; windowless via hidden_kwargs | offscreen |
 
-Total engine launch sites: 37
+Total engine launch sites: 38
 
 ## Shell launchers (RULE 9)
 
