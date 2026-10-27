@@ -291,7 +291,7 @@ void CollisionGrid::createGrid (void)
 			ordered[cursor[placed[k].cell]++] = placed[k].object;
 	}
 	std::reverse(giants.begin(), giants.end());	// now in legacy list order
-	if (getenv("MC2_T3_CHECK")) {
+	if (true) {
 		std::vector<GameObjectPtr> ins, gi(giants.rbegin(), giants.rend());
 		std::vector<unsigned long> cellOf;
 		for (auto& p : placed) { ins.push_back(p.object); cellOf.push_back(p.cell); }

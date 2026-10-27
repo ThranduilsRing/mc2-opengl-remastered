@@ -609,7 +609,7 @@ long SensorSystem::scanBattlefield (void)
 		for (; ci < contactOrdinals.size(); ci++) visit.push_back({contactOrdinals[ci], false});
 	}
 	// T4-TEMP: one-off superset proof against the full legacy scan. Deleted once proven.
-	if (getenv("MC2_T4_CHECK")) {
+	if (true) {
 		static long checked = 0, bad = 0, scans = 0;
 		size_t vi = 0;
 		for (long i = 0; i < numMovers; i++) {
