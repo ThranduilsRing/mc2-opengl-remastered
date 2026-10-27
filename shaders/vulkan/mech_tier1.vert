@@ -132,6 +132,7 @@ layout(location = 6) flat out vec3 vMechSunDirGL;   // light_dir.xyz Stuff->GL s
 layout(location = 7) flat out int  vMechSunFound;
 layout(location = 8) out vec3 vTangentGL;           // NORMALS-1 world tangent
 layout(location = 9) flat out uint vImportedMech;   // renderFlags >> 3 & 7
+layout(location = 10) flat out uint vLegacyVehicle; // renderFlags bit 6: ground vehicle, legacy shading
 
 void main() {
     GpuMechInstance inst = uInst.instances[gl_InstanceIndex];
@@ -185,6 +186,7 @@ void main() {
     // tangent decode (MC2_IMPORTED_MECH_MATERIAL) and the specular sun finder
     // (MC2_USE_VIEW_UNIFORMS) -- verbatim, same SSBO bytes.
     vImportedMech = (inst.renderFlags >> 3) & 7u;
+    vLegacyVehicle = legacyVehicle ? 1u : 0u;
     {
         vec2 te = a_tangentOct;                                  // s16-normalized [-1,1]
         vec3 tLocal = vec3(te.xy, 1.0 - abs(te.x) - abs(te.y));
