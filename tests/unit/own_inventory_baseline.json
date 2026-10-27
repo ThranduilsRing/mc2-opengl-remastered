@@ -1949,18 +1949,6 @@
    "new_array": 0,
    "owners": []
   },
-  "LineElement": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/team_los.cpp": {
-     "new": 2
-    }
-   },
-   "new": 2,
-   "new_array": 0,
-   "owners": []
-  },
   "LinkAction": {
    "delete": 1,
    "delete_array": 0,
