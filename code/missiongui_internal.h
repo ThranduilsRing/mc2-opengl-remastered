@@ -15,8 +15,7 @@
 
 // M1.6 + M2.6: IsStaticPropPickEnabled, lookupAtPixel, setLastGameplayPick,
 // clearLastGameplayPick, getLastGameplayPick, IsObjectIdBufferEnabled,
-// IsMechPickEnabled, IsMechPickDebugEnabled, IsMechPickPierceFogEnabled,
-// IsGpuPickHoverEnabled, IsGpuPickHoverTraceEnabled.
+// IsMechPickEnabled, IsMechPickDebugEnabled, IsMechPickPierceFogEnabled.
 #include "../RenderWorld/RenderWorld.h"
 #include "../RenderWorld/ScreenPick.h"  // GPU_PICK_HOVER_DYNAMIC-1: screenPickCompute
 #include "gameplay_pick.h"  // M2-pre: tryGameplayPick spine + GameplayPickRequest

@@ -123,6 +123,7 @@ G("MC2_VISUAL_TUNING_FILE", String, "", "gameos", "", "", passthrough | verified
 L(Lead0Kill, "MC2_VIS_SEMANTICS", Bool, true, "code", "", "ONE gate.", verified | passthrough),
 L(Lead0, "MC2_VIS_SEMANTICS_TRACE", Bool, false, "code", "", "", verified | passthrough),
 P("MC2_VIS_SEMANTICS_TRACE_EVERY", Int, 120, "code", "", "", passthrough | verified),
+G("MC2_VK_DEVICE", String, "", "vk", "", "Harness GPU routing: Vulkan device whose name contains this text; empty = first discrete.", passthrough | verified),
 G("MC2_VK_FEED_DUMP", String, "", "vk", "", "", verified),
 // VK-P13-SELECTOR-1 / T4: fail-soft proof knob for the engine VK context.
 // history: docs/gate-history.md#MC2_VK_FORCE_FAIL

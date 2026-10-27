@@ -83,8 +83,6 @@ L(Lead0Kill, "MC2_GPU_OBJECTS", Bool, true, "unclassified", "", "[RETIRED] Indir
 // history: docs/gate-history.md#MC2_GPU_PARTICLES
 L(DefOnLead0, "MC2_GPU_PARTICLES", Bool, true, "code", "", "Native Card/CardCloud rendering; =0 suppresses these draws (CPU routes retired).", passthrough | registry(Feature, "MC2_GPU_PARTICLES", -1, true) | verified),
 L(Lead1, "MC2_GPU_PARTICLES_LOG", Bool, false, "code", "", "", passthrough | verified),
-L(Lead0, "MC2_GPU_PICK_HOVER", Bool, false, "code", "", "", verified),
-L(Lead0, "MC2_GPU_PICK_HOVER_TRACE", Bool, false, "code", "", "", verified),
 P("MC2_GPU_PROPS_DEBUG_MODE", Int, 0, "props", "", ""),  // default not derivable from the tree
 L(Lead1, "MC2_GPU_TRAIL_DISABLE", Bool, false, "code", "", "", verified),
 L(Lead0P, "MC2_GROUND_CONTACT_BLOB", Bool, false, "code", "", "", passthrough | verified),

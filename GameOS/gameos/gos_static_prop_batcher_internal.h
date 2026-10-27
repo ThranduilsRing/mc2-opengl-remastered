@@ -121,7 +121,6 @@ namespace gos_static_prop_batcher_detail {
 
 struct PerTypeBucket {
     std::vector<GpuStaticPropInstance> instances;
-    std::vector<uint32_t>              colors;  // concatenated per-instance color blocks
     // VK color feed: range of `instances` that reinjectPersistentStatic() bulk-copied
     // from the persistent store this frame. The VK feed already flattens the store,
     // so it skips this range and appends only the per-frame dynamic remainder.

@@ -10,7 +10,7 @@ float cCutLt(float x, float fw) {
 vec3 shadeRoadArt(vec4 art, uint road, uint cw, vec2 dx, vec2 dy) {
     bool adopt = (road & 0x00010000u) != 0u;
     bool cementTile = (cw & 0x80000000u) != 0u;
-    bool adoptAlbedo = adopt && cementTile && (cw & 0x01000000u) == 0u;
+    bool adoptAlbedo = adopt && cementTile && (cw & 0x40000000u) == 0u;
     vec3 color = art.rgb;
     if (adoptAlbedo) {
         int grid = max(uT.cementGridSide, 1);

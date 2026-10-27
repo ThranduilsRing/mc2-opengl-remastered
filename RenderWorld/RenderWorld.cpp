@@ -713,16 +713,6 @@ bool IsMechPickPierceFogEnabled() {
     return s_enabled;
 }
 
-bool IsGpuPickHoverEnabled() {
-    static const bool s_enabled = mc2::gate::get<"MC2_GPU_PICK_HOVER">();
-    return s_enabled;
-}
-
-bool IsGpuPickHoverTraceEnabled() {
-    static const bool s_enabled = mc2::gate::get<"MC2_GPU_PICK_HOVER_TRACE">();
-    return s_enabled;
-}
-
 bool IsGpuGroundPickParityEnabled() {
     static const bool s_enabled = mc2::gate::get<"MC2_GPU_GROUND_PICK_PARITY">();
     return s_enabled;

@@ -23,7 +23,7 @@ std::unordered_map<uint32_t, PerTypeBucket> s_bucketsByType;
 // flush BULK-injects these blocks into s_bucketsByType (one memcpy per type)
 // instead of re-walking the registry per leaf — killing the per-leaf walk/push/
 // map overhead. Downstream (uploadAllBucketsIfNeeded + coalesce pool build) read
-// s_bucketsByType unchanged. Static blocks carry 0 colors (Stage 1).
+// s_bucketsByType unchanged.
 std::unordered_map<uint32_t, std::vector<GpuStaticPropInstance>> s_persistentStaticStore;
 uint64_t s_persistentStaticGen = 0xFFFFFFFFFFFFFFFFull;  // sentinel = never built
 

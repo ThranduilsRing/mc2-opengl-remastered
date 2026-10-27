@@ -10,7 +10,7 @@
 
 namespace mc2::gate::detail {
 
-inline constexpr std::size_t kGateCount = 785;
+inline constexpr std::size_t kGateCount = 783;
 
 inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_ABL_ARG_GUARD", Kind::Bool, Rule::Lead1, {}},
@@ -242,8 +242,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_GPU_OBJECTS", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_GPU_PARTICLES", Kind::Bool, Rule::DefOnLead0, {}},
     {"MC2_GPU_PARTICLES_LOG", Kind::Bool, Rule::Lead1, {}},
-    {"MC2_GPU_PICK_HOVER", Kind::Bool, Rule::Lead0, {}},
-    {"MC2_GPU_PICK_HOVER_TRACE", Kind::Bool, Rule::Lead0, {}},
     {"MC2_GPU_PROPS_DEBUG_MODE", Kind::Int, Rule::Prefix, {}},
     {"MC2_GPU_TRAIL_DISABLE", Kind::Bool, Rule::Lead1, {}},
     {"MC2_GROUND_CONTACT_BLOB", Kind::Bool, Rule::Lead0P, {}},
@@ -444,7 +442,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_PATH_SOLVE_ISOLATED", Kind::Bool, Rule::Lead1, {}},
     {"MC2_PICK_BEHIND_LEGACY", Kind::Bool, Rule::Presence, {}},
     {"MC2_PICK_CAP_TRACE", Kind::Bool, Rule::Presence, {}},
-    {"MC2_PICK_RECON", Kind::Bool, Rule::Presence, {}},
     {"MC2_PLAYTEST_EXE", Kind::String, Rule::Std, {}},
     {"MC2_PNG_MAGENTA_KEY", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_POSTPROCESS_COMPUTE_BLUR", Kind::Bool, Rule::Lead0P, {}},
@@ -727,6 +724,7 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_VIS_SEMANTICS", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_VIS_SEMANTICS_TRACE", Kind::Bool, Rule::Lead0, {}},
     {"MC2_VIS_SEMANTICS_TRACE_EVERY", Kind::Int, Rule::Prefix, {}},
+    {"MC2_VK_DEVICE", Kind::String, Rule::Std, {}},
     {"MC2_VK_FEED_DUMP", Kind::String, Rule::Std, {}},
     {"MC2_VK_FORCE_FAIL", Kind::Bool, Rule::Lead0, {}},
     {"MC2_VK_FRAMES_IN_FLIGHT", Kind::Int, Rule::Prefix, {}},

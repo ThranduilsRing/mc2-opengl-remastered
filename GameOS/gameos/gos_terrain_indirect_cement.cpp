@@ -142,7 +142,7 @@ bool     g_cementAlphaLayerMapReady = false;
 
 // cementWord bit 23 = OWN-ALPHA transition: layerIdx addresses an alpha cell
 // whose own texel alpha is the coverage. Bits 31,30 and 29:24 (maskId) are
-// spoken for; 19:16 hold cooked neighbor coverage, 21:20 remain free.
+// spoken for; 21:20 remain free.
 static constexpr uint32_t kCementOwnAlphaBit = 0x00800000u;
 
 // ---------------------------------------------------------------------------
@@ -751,7 +751,6 @@ void PopulateRecipeCementWords() {
         }
     }
 
-    mc2terrain::cookSurfaceCementCoverage(chunkCementWords, static_cast<uint32_t>(mapSide));
     // Push to the chunk renderer (no-op if its SSBO/Init has not run yet).
     gos_TerrainLodChunk_UploadCementWordsFull(
         chunkCementWords.data(), static_cast<int>(chunkCementWords.size()), static_cast<int>(mapSide));

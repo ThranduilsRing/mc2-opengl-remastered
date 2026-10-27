@@ -32,9 +32,6 @@ float evaluateSurfaceBreakup(float worldX, float worldY);
 std::array<float, 6> terrainPatchHeightErrors(std::span<const float> heights, uint32_t side,
     uint32_t originX, uint32_t originY, uint32_t quadsX, uint32_t quadsY);
 std::optional<SurfaceGradients> cookSurfaceGradients(std::span<const float> heights, uint32_t side);
-// Bits 19:16 cache the transition's marching-square case; all authored art and
-// ownership bits survive. Re-cook the whole word grid after a material edit.
-void cookSurfaceCementCoverage(std::span<uint32_t> words, uint32_t side);
 std::optional<SurfaceAsset> cookSurface(const SurfaceCookInput& input);
 // RGBA8 = grass, dirt, snow, concrete; rock is the remaining weight. Terrain
 // material indices and authored control weights override the legacy color import.
