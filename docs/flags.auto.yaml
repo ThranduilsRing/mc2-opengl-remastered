@@ -5,7 +5,7 @@
 generator_version: "3.0.0"
 gate_count: 774
 registry_entry_count: 152
-verified_count: 735
+verified_count: 734
 flags:
   - name: MC2_ABL_ARG_GUARD
     kind: Bool
@@ -2096,7 +2096,6 @@ flags:
     owner: code
     doc: ""
     smoke_passthrough: true
-    verified: true
   - name: MC2_LIGHT_CLAMP_FIXTURE
     kind: Bool
     default: false
