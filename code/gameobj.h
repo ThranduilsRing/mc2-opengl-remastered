@@ -404,7 +404,9 @@ class GameObject {
 			return(-1);
 		}
 
-		virtual void setPartId (long newPartId);
+		virtual void setPartId (long newPartId) {
+			partId = newPartId;
+		}
 		
 		long getPartId (void) {
 			return(partId);

@@ -557,7 +557,7 @@ class GameObjectManager {
 		GameObjectPtr findObject (glm::vec3 position);
 
 		GameObjectPtr findByPartId (long partId);
-		void notePartId (GameObjectPtr obj, long newPartId);	// GameObject::setPartId/Load hook
+		void notePartId (GameObjectPtr obj, long newPartId);	// feed after every partId write (GameObjectManager::setPartId, GameObject::Load, marines)
 
 		GameObjectPtr findByCellPosition (long row, long col);
 

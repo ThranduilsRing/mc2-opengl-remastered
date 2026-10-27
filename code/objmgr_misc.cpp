@@ -222,6 +222,7 @@ void GameObjectManager::setPartId (GameObjectPtr obj, long param1, long param2, 
 	// should we have any reason to modify or test 'em as missions are loaded.
 	long partId = calcPartId(obj->getObjectClass(), param1, param2, param3);
 	obj->setPartId(partId);
+	notePartId(obj, partId);
 }
 
 //---------------------------------------------------------------------------

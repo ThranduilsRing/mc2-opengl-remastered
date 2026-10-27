@@ -2209,14 +2209,6 @@ void GameObject::Save (PacketFilePtr file, long packetNum)
 }
 
 //---------------------------------------------------------------------------
-void GameObject::setPartId (long newPartId)
-{
-	partId = newPartId;
-	if (ObjectManager)
-		ObjectManager->notePartId(this, newPartId);
-}
-
-//---------------------------------------------------------------------------
 void GameObject::Load (GameObjectData *data)
 {
 	objectClass = data->objectClass;
