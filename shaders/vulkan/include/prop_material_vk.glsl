@@ -14,10 +14,11 @@ layout(set = 0, binding = 10) uniform sampler2DArray uPropNormal;
 layout(set = 0, binding = 11) uniform sampler2DArray uPropOrm;
 // Per-object maps (kMatFlagPerTexture rows): every file is its own image with its own extent and mip chain.
 // Slots are written only for textures a material names (partially bound); a row indexes this table.
-layout(set = 0, binding = 13) uniform sampler2D uPropTex[1024];
-// Per-object maps are resident only when lowCost() is false (kBaseQuality == 2); folding the path away keeps the 1024-entry
-// nonuniform sampler array out of the Potato/Low pipelines.
-const bool kPerTexMaps = (kBaseQuality == 2);
+layout(constant_id = 1) const int kPropTexSlots = 1024;
+layout(set = 0, binding = 13) uniform sampler2D uPropTex[kPropTexSlots];
+// kPropTexSlots == 1 means no per-object maps (Low/Potato, or a GPU with tight sampler limits such as the HD 630's 64):
+// the array shrinks to one entry and the path folds away.
+const bool kPerTexMaps = kPropTexSlots > 1;
 layout(set = 0, binding = 12, std430) readonly buffer PropMaterials {
     PropMaterialGpu materials[];
 } uPropMaterials;
