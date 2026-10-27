@@ -586,18 +586,37 @@ long SensorSystem::scanBattlefield (void)
 
 	long numMovers = ObjectManager->getNumMovers();
 	const float radius = std::max(owner->lineOfSightRange(), getEffectiveRange() / metersPerWorldUnit);
-	std::array<bool, MAX_MOVERS> candidates{};
-	for (auto candidate : ObjectManager->nearbyMovers(owner->getPosition(), radius)) candidates[candidate.ordinal] = true;
+	// Visit set, ascending mover-list order: grid candidates plus movers that are already contacts
+	// (so their removals still happen in list order). Every other mover cannot change state.
+	struct Visit { int ordinal; bool candidate; };
+	static thread_local std::vector<Visit> visit;
+	static thread_local std::vector<int> contactOrdinals;
+	visit.clear();
+	contactOrdinals.clear();
+	for (long c = 0; c < numContacts; c++) {
+		const int o = ObjectManager->moverOrdinal(static_cast<GameObjectHandle>(contacts[c] & 0x7FFFFFFF));
+		if (o >= 0) contactOrdinals.push_back(o);
+	}
+	std::sort(contactOrdinals.begin(), contactOrdinals.end());
+	{
+		const auto candidates = ObjectManager->nearbyMovers(owner->getPosition(), radius);
+		size_t ci = 0;
+		for (const auto& cand : candidates) {
+			while (ci < contactOrdinals.size() && contactOrdinals[ci] < int(cand.ordinal)) visit.push_back({contactOrdinals[ci++], false});
+			while (ci < contactOrdinals.size() && contactOrdinals[ci] == int(cand.ordinal)) ci++;
+			visit.push_back({int(cand.ordinal), true});
+		}
+		for (; ci < contactOrdinals.size(); ci++) visit.push_back({contactOrdinals[ci], false});
+	}
 	// SENSOR-SCAN-FACTS-1: cache the gate once outside the hot loop (OFF = one bool).
 	const bool _sfacts = mc2_sensor_trace::g_counters.active;
-	for (long i = 0; i < numMovers; i++)
+	for (const Visit& v : visit)
 	{
-		if (_sfacts) mc2_sensor_trace::g_counters.pairsTested++;	// true O(n.m) count
-		MoverPtr mover = ObjectManager->getMover(i);
+		if (_sfacts) mc2_sensor_trace::g_counters.pairsTested++;
+		MoverPtr mover = ObjectManager->getMover(v.ordinal);
 		if (mover->getExists() && (mover->getTeamId() != owner->getTeamId()))
 		{
-			// Existing contacts still pass through in mover-list order, including removals.
-			if (!candidates[i] && !isContact(mover)) continue;
+			if (!v.candidate && !isContact(mover)) continue;
 			long contactStatus = calcContactStatus(mover);
 			if (isContact(mover))
 			{

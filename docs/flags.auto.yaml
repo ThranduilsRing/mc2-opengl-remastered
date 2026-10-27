@@ -3,9 +3,9 @@
 # Where each gate is read, what the smoke runner forwards and what tier1_env_vars.md says are not here: ask
 # tools/repo_intel (env_var, gate_status), which scan the sources.
 generator_version: "3.0.0"
-gate_count: 774
+gate_count: 773
 registry_entry_count: 152
-verified_count: 735
+verified_count: 734
 flags:
   - name: MC2_ABL_ARG_GUARD
     kind: Bool
@@ -3243,14 +3243,6 @@ flags:
     doc: "PATHFINDING-JUMP-FAIL-1: backoff gate + constants."
     smoke_passthrough: true
     verified: true
-  - name: MC2_PATH_SOLVE_ISOLATED
-    kind: Bool
-    default: false
-    rule: Lead1
-    owner: code
-    doc: ""
-    smoke_passthrough: true
-    verified: true
   - name: MC2_PICK_BEHIND_LEGACY
     kind: Bool
     default: false
@@ -5620,6 +5612,13 @@ flags:
     doc: ""
     smoke_passthrough: true
     verified: true
+  - name: MC2_VK_PROP_TEX_SLOTS
+    kind: Int
+    default: 0
+    rule: Std
+    owner: vk
+    doc: "Test knob: cap the per-object prop texture slot count (0 = device derived); exercises the more-maps-than-slots path."
+    verified: true
   - name: MC2_VK_SELECT_TEST
     kind: Bool
     default: false
@@ -5742,14 +5741,6 @@ flags:
     rule: Std
     owner: vk
     doc: ""
-    smoke_passthrough: true
-    verified: true
-  - name: MC2_WATCHID_GENERATION
-    kind: Bool
-    default: false
-    rule: Presence
-    owner: code
-    doc: "MF3-GENERATIONAL-HANDLE-1: generational watch-id validation killswitch."
     smoke_passthrough: true
     verified: true
   - name: MC2_WATER_ASPECT_DIAG

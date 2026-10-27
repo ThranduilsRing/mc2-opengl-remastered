@@ -3941,6 +3941,20 @@
    "count": 2
   },
   {
+   "tag": "GV_SUBMIT",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "frame",
+    "ok",
+    "decline_paint",
+    "decline_row",
+    "decline_range",
+    "decline_batcher"
+   ],
+   "count": 1
+  },
+  {
    "tag": "HAZE_PARITY",
    "ver": 1,
    "stream": "stdout",

@@ -32,9 +32,6 @@ struct State {
 // when false the caller MUST behave byte-identically to retail.
 bool fixedTimestepEnabled();
 
-// Fixed step in milliseconds (1000/30). Constant; only meaningful when enabled.
-float fixedTimestepMs();
-
 // Length in seconds of one virtual render frame under the harness clock: 1/30 unless MC2_FPS_CAP names another rate.
 float fixedFrameSeconds();
 

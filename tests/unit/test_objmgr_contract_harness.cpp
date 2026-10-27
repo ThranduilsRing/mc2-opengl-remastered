@@ -122,37 +122,6 @@ TEST_CASE("objmgr_contract_harness/load_restore_never_derefs_oob") {
     return;
 }
 
-TEST_CASE("objmgr_contract_harness/generation_assign_sets_one") {
-
-    CHECK((wp::nextGenerationOnAssign(0) == (uint16_t)1));
-
-    CHECK((wp::nextGenerationOnAssign(1) == (uint16_t)1));
-    CHECK((wp::nextGenerationOnAssign(42) == (uint16_t)42));
-    return;
-}
-
-TEST_CASE("objmgr_contract_harness/generation_bump_on_free") {
-    CHECK((wp::bumpGenerationOnFree(1) == (uint16_t)2));
-    CHECK((wp::bumpGenerationOnFree(0) == (uint16_t)1));
-
-    CHECK((wp::bumpGenerationOnFree((uint16_t)65535) == (uint16_t)0));
-    return;
-}
-
-TEST_CASE("objmgr_contract_harness/generation_stale_vs_fresh") {
-
-    uint16_t gen = wp::nextGenerationOnAssign(0);
-    const uint16_t oldHandleGen = gen;
-    gen = wp::bumpGenerationOnFree(gen);
-    const uint16_t newHandleGen = wp::nextGenerationOnAssign(gen);
-    CHECK((newHandleGen == (uint16_t)2));
-
-    CHECK((wp::generationMatches(gen, oldHandleGen) == false));
-
-    CHECK((wp::generationMatches(gen, newHandleGen) == true));
-    return;
-}
-
 TEST_CASE("objmgr_contract_harness/demo_intentional_fail" * doctest::should_fail()) {
     CHECK((wp::isValidWatchSaveIndex((int32_t)(MAXOBJ + 1), MAXOBJ) == true));
     return;

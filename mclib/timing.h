@@ -20,10 +20,6 @@ extern float	frameLength;		//Duration of last frame in seconds.
 extern float	scenarioTime;		//Time scenario has been running.
 extern DWORD	LastTimeGetTime;	//Stores Interval since timeGetTime last called.
 extern bool		simPresentationPass;	//True while a render frame without a sim tick re-poses appearances: update() must not advance sim state (FSM, dice, timers).
-extern bool		dynamicFrameTiming;	//This flag determines if we are using frameLength
-									//To time a frame.  This is FALSE when something
-									//puches a frame length dramatically over 4fps.
-									//Like a cache hit.  It insures all frames get played.
 
 //----------------------------------------------------------------------------------
 // Macro Definitions

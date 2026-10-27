@@ -1400,6 +1400,7 @@ void Building::createBuildingMarines (void) {
 					// Following is a HACK!! at last minute--marines need to be handled
 					// properly in next game (partId-wise)...
 					vehiclePilot->setPartId(MAX_MOVER_PART_ID - NumMarines++);
+					ObjectManager->notePartId(vehiclePilot, vehiclePilot->getPartId());
 
 					//----------------------------------------------------------------
 					// Multiplayer stuff for vehicle Pilot.  What should I do Glenn?

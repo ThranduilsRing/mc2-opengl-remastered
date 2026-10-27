@@ -43,6 +43,7 @@ const std::unordered_set<std::string>& knownTags() {
         "OVERLAY_MAGENTA",
         "ANIM_CADENCE",
         "TARGETING",
+        "PATH",     // PATHFINDING-FACTS-1: one ordered "solve" event per A* solve (nodes, open peak, length, path hash). Opt-in.
 
         "OBJECTIVES",
         "COMBAT",   // COMBAT-TRACE-1: weapon-fire events (attacker/target wid+team). Opt-in.

@@ -695,7 +695,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/shadow_mech.vert",
-        "line": 25,
+        "line": 26,
         "role": "InstanceBuffer",
         "std": "std430",
         "type": "buffer",
@@ -1277,7 +1277,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/shadow_mech.vert",
-        "line": 26,
+        "line": 27,
         "role": "BoneBuffer",
         "std": "std430",
         "type": "buffer",
@@ -1799,7 +1799,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/mech_tier1.vert",
-        "line": 62,
+        "line": 63,
         "role": "LightsData",
         "std": "std430",
         "type": "buffer",

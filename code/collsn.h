@@ -98,21 +98,15 @@ class CollisionGrid
 		
 		unsigned long			maxGridRadius;		//Max radius in (m) of each grid node.
 		
-		unsigned long			maxObjects;			//Max number of objects in world.
+		struct Placed { unsigned long cell; GameObjectPtr object; };
+		std::vector<Placed>			placed;			//Grid objects, insertion order.
+		std::vector<GameObjectPtr>	giants;			//Objects larger than maxGridRadius, insertion order.
+		std::vector<unsigned long>	cellStart;		//CSR offsets into 'ordered', one per cell plus one.
+		std::vector<GameObjectPtr>	ordered;		//Cell-major; within a cell, newest first (the legacy list order).
 		
-		CollisionGridNodePtr	giantObjects;		//Collection of objects larger than maxGridRadius
-		std::vector<CollisionGridNodePtr>	gridStore;	//Owns the cells grid views.
-		std::vector<CollisionGridNode>		nodeStore;	//Owns the nodes the nodes pointer views.
-		CollisionGridNodePtr	*grid;				//Pointer to array of gridNodes layed out in space
-		CollisionGridNodePtr	nodes;				//Actual grid nodes available to layout in space.
-		
-		unsigned long			nextAvailableNode;	//next node in nodes which can be used.
 		glm::vec3			gridOrigin;			//Center point of the grid.
 		
 		bool					gridIsGo;			//Have we already allocated everything?
-		
-		unsigned long			gridSize;
-		unsigned long			nodeSize;
 		
 		float					gridXOffset;
 		float 					gridYOffset;
@@ -127,15 +121,9 @@ class CollisionGrid
 		
 		void init (void)
 		{
-			giantObjects = nullptr;
-			grid = nullptr;
-			nodes = nullptr;
-			
 			xGridWidth = yGridWidth = 0;
 			
 			maxGridRadius = 0;
-			
-			nextAvailableNode = 0;
 			
 			gridOrigin = glm::vec3(0.0f);
 			
@@ -159,9 +147,10 @@ class CollisionGrid
 		long add (unsigned long gridIndex, GameObjectPtr object);
 		long add (GameObjectPtr object);
 		
+		void traverse (void);
 		void createGrid (void);		//Put all objects in world into grids
 		
-		void checkGrid (GameObjectPtr object, CollisionGridNodePtr area);	//Check each object against grid
+		void checkGrid (GameObjectPtr object, const GameObjectPtr* first, const GameObjectPtr* last);	//Check each object against grid
 };
 
 //------------------------------------------------------------------------------

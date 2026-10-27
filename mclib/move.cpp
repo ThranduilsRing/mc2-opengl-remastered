@@ -263,10 +263,6 @@ char TeamRelations[MAX_TEAMS][MAX_TEAMS] = {
 	{2, 2, 2, 2, 2, 2, 2, 0}
 };
 
-bool GoalIsDoor = false;
-long numNodesVisited = 0;
-long topOpenNodes = 0;
-long MaxHPrime = 1000;
 bool PreserveMapTiles = false;
 
 MoveMapPtr PathFindMap[2] = {nullptr, nullptr};
@@ -976,6 +972,7 @@ void MissionMap::destroy (void) {
 
 	map = {};
 	tileMineCount = {};
+	rev.statics++;
 }
 
 // MOVE PATH class

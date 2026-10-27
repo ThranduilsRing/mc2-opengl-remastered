@@ -725,17 +725,12 @@ long GameObjectManager::Load (PacketFilePtr file, long packetNum)
 	//-----------------------------------------------------------
 	// First element in list is NULL (handle of 0 is always NULL)
 	objList = entities.reset(getMaxObjects() + 1);
+	resetPartIdIndex();
 	invalidateSpatialGrid();
 	memset(objList,0,sizeof(GameObjectPtr) * (getMaxObjects() + 1));
 
 	watchList = bindPoolArray(watchListStore, (getMaxObjects() + 1));
 	memset(watchList,0,sizeof(GameObjectPtr) * (getMaxObjects() + 1));
-
-	// MF3-GENERATIONAL-HANDLE-1: Load re-alloc of the generation side array, in
-	// LOCKSTEP with watchList above. Load = fresh generations by design (reset
-	// to 0); generation is runtime-only and never deserialized.
-	watchGeneration = bindPoolArray(watchGenerationStore, (getMaxObjects() + 1));
-	memset(watchGeneration,0,sizeof(uint16_t) * (getMaxObjects() + 1));
 
 	long i = 0;
 	long curHandle = 1;

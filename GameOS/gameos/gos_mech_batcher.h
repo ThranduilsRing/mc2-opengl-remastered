@@ -74,6 +74,11 @@ struct GpuMechPacket {
 };
 
 // All per-actor context needed at submit / flush time.
+// Instance renderFlags bit 6. ONE bit, two meanings: (1) mech_tier1 uses the ground-vehicle lighting (row ambient and sun)
+// and (2) shadow_mech collapses the instance, because the vehicle's shadow comes from the mover feed. Keep the value in
+// step with shaders/include/mech_render_flags.hglsl.
+constexpr uint32_t kMechRenderFlagLegacyVehicle = 0x40u;
+
 struct GpuMechSubmitDesc {
     TG_MultiShape*              mechShape;      // live per-instance shape (shapeToWorld only)
     const Mech3DAppearanceType* mechType;       // stable type pointer
@@ -95,7 +100,7 @@ struct GpuMechSubmitDesc {
                                                // SLOT INDEX (0 = no normal). Resolved at
                                                // flush + bound to unit 7 when HAS_NORMAL.
     uint32_t                    lightDataIndex; // Slice B1; 0 in Slice A
-    uint32_t                    renderFlags;
+    uint32_t                    renderFlags;    // bit 6 = kMechRenderFlagLegacyVehicle (shaders/include/mech_render_flags.hglsl is the shader copy)
     uint32_t                    highlightARGB;
     uint32_t                    fogARGB;
     // M2.5: RenderObjectHandle.raw() for this actor's mech handle

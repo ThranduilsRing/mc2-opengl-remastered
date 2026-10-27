@@ -1110,28 +1110,6 @@
     },
     {
       "tu": "code/mission_update.cpp",
-      "file": "code/mission_update.cpp",
-      "chain": [
-        "code/mission_update.cpp"
-      ],
-      "rule": "wall-clock",
-      "subject": "timeGetTime",
-      "evidence": "DWORD currentTimeGetTime = timeGetTime();",
-      "occurrence": 1
-    },
-    {
-      "tu": "code/mission_update.cpp",
-      "file": "code/mission_update.cpp",
-      "chain": [
-        "code/mission_update.cpp"
-      ],
-      "rule": "wall-clock",
-      "subject": "timeGetTime",
-      "evidence": "DWORD currentTimeGetTime = timeGetTime();",
-      "occurrence": 2
-    },
-    {
-      "tu": "code/mission_update.cpp",
       "file": "GameAdapters/MechRenderAdapter.h",
       "chain": [
         "code/mission_update.cpp",
@@ -1686,17 +1664,6 @@
       "rule": "extern-shim",
       "subject": "extern callable",
       "evidence": "extern void visualTuning_applyProfile(const char*);",
-      "occurrence": 1
-    },
-    {
-      "tu": "code/mission_update.cpp",
-      "file": "code/mission_update.cpp",
-      "chain": [
-        "code/mission_update.cpp"
-      ],
-      "rule": "wall-clock",
-      "subject": "timeGetTime",
-      "evidence": "firstFrame ? timeGetTime()",
       "occurrence": 1
     },
     {
@@ -2268,50 +2235,6 @@
       ],
       "rule": "input",
       "subject": "userInput",
-      "evidence": "if (userInput->getKeyDown(KEY_R) && userInput->ctrl() && userInput->alt() && userInput->shift())",
-      "occurrence": 1
-    },
-    {
-      "tu": "code/mission_update.cpp",
-      "file": "code/mission_update.cpp",
-      "chain": [
-        "code/mission_update.cpp"
-      ],
-      "rule": "input",
-      "subject": "userInput",
-      "evidence": "if (userInput->getKeyDown(KEY_R) && userInput->ctrl() && userInput->alt() && userInput->shift())",
-      "occurrence": 2
-    },
-    {
-      "tu": "code/mission_update.cpp",
-      "file": "code/mission_update.cpp",
-      "chain": [
-        "code/mission_update.cpp"
-      ],
-      "rule": "input",
-      "subject": "userInput",
-      "evidence": "if (userInput->getKeyDown(KEY_R) && userInput->ctrl() && userInput->alt() && userInput->shift())",
-      "occurrence": 3
-    },
-    {
-      "tu": "code/mission_update.cpp",
-      "file": "code/mission_update.cpp",
-      "chain": [
-        "code/mission_update.cpp"
-      ],
-      "rule": "input",
-      "subject": "userInput",
-      "evidence": "if (userInput->getKeyDown(KEY_R) && userInput->ctrl() && userInput->alt() && userInput->shift())",
-      "occurrence": 4
-    },
-    {
-      "tu": "code/mission_update.cpp",
-      "file": "code/mission_update.cpp",
-      "chain": [
-        "code/mission_update.cpp"
-      ],
-      "rule": "input",
-      "subject": "userInput",
       "evidence": "if (userInput->getKeyDown(KEY_X) && userInput->ctrl() && !userInput->alt() && !userInput->shift())",
       "occurrence": 1
     },
@@ -2586,17 +2509,6 @@
       ],
       "rule": "audio",
       "subject": "soundSystem",
-      "evidence": "soundSystem->clearIsPaused();",
-      "occurrence": 1
-    },
-    {
-      "tu": "code/mission_update.cpp",
-      "file": "code/mission_update.cpp",
-      "chain": [
-        "code/mission_update.cpp"
-      ],
-      "rule": "audio",
-      "subject": "soundSystem",
       "evidence": "soundSystem->playDigitalMusic(LOSE_TUNE_0);",
       "occurrence": 1
     },
@@ -2620,17 +2532,6 @@
       "rule": "audio",
       "subject": "soundSystem",
       "evidence": "soundSystem->playDigitalSample( REPAIRBAY_FX, target->getPosition() );",
-      "occurrence": 1
-    },
-    {
-      "tu": "code/mission_update.cpp",
-      "file": "code/mission_update.cpp",
-      "chain": [
-        "code/mission_update.cpp"
-      ],
-      "rule": "audio",
-      "subject": "soundSystem",
-      "evidence": "soundSystem->setIsPaused();",
       "occurrence": 1
     },
     {

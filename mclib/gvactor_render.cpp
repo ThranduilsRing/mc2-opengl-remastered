@@ -357,17 +357,32 @@ long GVAppearance::render (long depthFixup)
 // draws on the CPU.
 bool GVAppearance::submitToMechBatcher(uint32_t highlightARGB)
 {
-	if (localTextureHandle == 0xffffffff) return false;
+	// Decline counters by reason; one summary line per mission (the frame counter restarts per mission).
+	static uint32_t s_ok = 0, s_paint = 0, s_row = 0, s_range = 0, s_batcher = 0, s_lastFrame = 0;
+	static bool s_logged = false;
+	if (g_mc2FrameCounter < s_lastFrame) { s_ok = s_paint = s_row = s_range = s_batcher = 0; s_logged = false; }
+	s_lastFrame = g_mc2FrameCounter;
+	if (!s_logged && g_mc2FrameCounter >= 600)
+	{
+		s_logged = true;
+		mc2::fmt::print_err("[GV_SUBMIT] frame={:d} ok={:d} decline_paint={:d} decline_row={:d} decline_range={:d} decline_batcher={:d}\n", mc2::fmt::as_u32(g_mc2FrameCounter), mc2::fmt::as_u32(s_ok), mc2::fmt::as_u32(s_paint), mc2::fmt::as_u32(s_row), mc2::fmt::as_u32(s_range), mc2::fmt::as_u32(s_batcher));
+	}
+	if (localTextureHandle == 0xffffffff) { ++s_paint; return false; }
 	GpuMechSubmitDesc desc{};
 	desc.mechShape = gvShape;
 	desc.mechType = nullptr;
-	desc.renderFlags = 0x40u;	// legacy vehicle lighting: sun and ambient, no point or spot lights
+	desc.renderFlags = kMechRenderFlagLegacyVehicle;	// legacy vehicle lighting: sun and ambient, no point or spot lights
 	desc.slot0TexHandle = static_cast<uint32_t>(localTextureHandle);
 	const uint32_t lightRow = gvShape->getCachedGpuLightIndex();
-	if (lightRow == 0xFFFFFFFFu || gvShape->getCachedFrame() != g_mc2FrameCounter || (mc2::textures::ready() && lightRow >= mc2::vkLights::getLightStructCount())) return false;
+	if (lightRow == 0xFFFFFFFFu) { ++s_row; return false; }
+	if (mc2::textures::ready() && lightRow >= mc2::vkLights::getLightStructCount()) { ++s_range; return false; }
+	// The row was gathered at update time; update and render can land on different frames, so stamp it fresh here.
+	gvShape->setCachedFrame(g_mc2FrameCounter);
 	desc.lightDataIndex = lightRow;
 	desc.highlightARGB = highlightARGB;
 	const float haze = std::clamp(std::max(hazeFactor, poseFog_), 0.0f, 1.0f);
 	desc.fogARGB = static_cast<uint32_t>(haze * 255.0f + 0.5f) << 24;
-	return GpuMechBatcher::instance().submitActor(desc);
+	const bool ok = GpuMechBatcher::instance().submitActor(desc);
+	++(ok ? s_ok : s_batcher);
+	return ok;
 }

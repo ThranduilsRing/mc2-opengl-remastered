@@ -292,11 +292,6 @@ ObjectTypePtr ObjectTypeManager::load (ObjectTypeNumber objTypeNum, bool noCache
 	// if the object type had to be loaded or not. However, it will fatal
 	// if it's unable to load the object type from the packet file.
 
-	//--------------------------------------------------------
-	// If we are going to disk to get the object, be sure the
-	// frame length knows to force itself into load mode.
-	dynamicFrameTiming = false;
-
 	if ((objTypeNum < 0) || (objTypeNum >= numObjectTypes)) {
 		PAUSE((" ObjectTypeManager.load: bad objTypeNum %d (max %d) — mod content; returning NULL ", static_cast<int>(objTypeNum), static_cast<int>(numObjectTypes)));
 		return nullptr;

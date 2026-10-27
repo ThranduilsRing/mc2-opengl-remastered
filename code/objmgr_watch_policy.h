@@ -68,30 +68,6 @@ inline bool isValidWatchSaveIndex(int32_t saveIdx, long maxObjects)
     return (saveIdx >= 0) && (static_cast<long>(saveIdx) <= maxObjects);
 }
 
-// --- MF3-GENERATIONAL-HANDLE-1: generation parallel-array policy ------------
-// Runtime-only watch-id generation counters live in a uint16_t side array that
-// mirrors watchList[] exactly (same heap alloc, same size, same memset-0). The
-// integer-only transition rules live here so the offline harness owns them with
-// zero engine link. Production owns the array storage + the gate + diagnostics.
-//
-// Convention: 0 = never-assigned slot. First assign -> 1. Each free bumps by 1
-// (wraps at 65535; reuse is staleness-only this slice, so wrap is acceptable and
-// documented). A stored generation matches an expected one iff bit-equal.
-inline uint16_t nextGenerationOnAssign(uint16_t cur)
-{
-    return cur ? cur : static_cast<uint16_t>(1);   // 0 -> 1; an already-assigned slot keeps its gen
-}
-
-inline uint16_t bumpGenerationOnFree(uint16_t cur)
-{
-    return static_cast<uint16_t>((cur + 1u));      // wraps at 65535; staleness-only, acceptable
-}
-
-inline bool generationMatches(uint16_t stored, uint16_t expected)
-{
-    return stored == expected;
-}
-
 } // namespace mc2watch
 
 #endif // OBJMGR_WATCH_POLICY_H

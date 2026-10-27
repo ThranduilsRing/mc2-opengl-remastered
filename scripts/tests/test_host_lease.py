@@ -551,6 +551,9 @@ def test_slot_count_comes_from_the_shared_waiver_file_not_the_environment(monkey
     assert host_lease.waiver_active()
     waiver.write_text(str(time.time() - 60))
     assert not host_lease.waiver_active()
+    for junk in ("", "garbage", "12 34"):
+        waiver.write_text(junk)
+        assert not host_lease.waiver_active()
     monkeypatch.setattr(host_lease, "redirected", lambda: False)
     monkeypatch.setenv("MC2_HOST_GAME_SLOTS", "1")                      # ignored on the real lease file
     assert host_lease.slot_count() == 2

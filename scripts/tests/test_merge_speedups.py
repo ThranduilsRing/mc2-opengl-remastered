@@ -610,7 +610,7 @@ def test_tier1_reuses_only_strict_validated_determinism_smokes():
     art = gate.affected_plan(gate.plan(6), ["release_assets_src/model.glb"])
     assert "--mission" not in next(c for n, c, _ in art if n == "tier1")
     full = gate.affected_plan(gate.plan(6), ["code/game.cpp"], full=True)
-    assert all("--sim-speed" not in c for n, c, _ in full if n.startswith("determinism-"))
+    assert all("--sim-speed" not in c for n, c, _ in full if n.startswith("determinism-") and n != "determinism-mc2_10")   # mc2_10 always runs at 2x (9104ff298)
 
 
 def test_gate_retains_both_art_modes_for_affected_saves_and_captures():

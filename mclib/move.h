@@ -531,6 +531,19 @@ extern float MetersMapSideDivTwo;
 
 inline constexpr int MAX_DEBUG_CELLS = 1000;
 
+// MOVE layer revisions. Static = terrain/overlay/passable/local height (changes at load or editing only). The overlays change
+// during play: gate, mine, pathlock, mover occupancy, preserved. Every MissionMap setter bumps its layer's counter, so a path
+// solve (M3 speculative solve) records the counters it read and is valid at commit only while they match.
+struct MoveLayerRevisions {
+	uint32_t statics = 0;
+	uint32_t gate = 0;
+	uint32_t mine = 0;
+	uint32_t pathlock = 0;
+	uint32_t mover = 0;
+	uint32_t preserved = 0;
+	bool operator== (const MoveLayerRevisions&) const = default;
+};
+
 class MissionMap {
 
 	public:
@@ -548,6 +561,8 @@ class MissionMap {
 		long				debugCells[MAX_DEBUG_CELLS][3];
 
 		void				(*placeMoversCallback) (void);
+
+		MoveLayerRevisions	rev;
 
 		// Per-tile count of cells (within the MAPCELL_DIM x MAPCELL_DIM tile) whose
 		// mine field is non-zero. Maintained incrementally by setMine() and rebuilt
@@ -608,6 +623,7 @@ class MissionMap {
 		void setTerrain (long row, long col, unsigned long terrain) {
 			if (!inBounds(row, col)) return;
 			map[row * width + col].setTerrain(terrain);
+			rev.statics++;
 		}
 
 		unsigned long getOverlay (long row, long col) {
@@ -618,6 +634,7 @@ class MissionMap {
 		void setOverlay (long row, long col, unsigned long overlay) {
 			if (!inBounds(row, col)) return;
 			map[row * width + col].setOverlay(overlay);
+			rev.statics++;
 		}
 
 		bool getMover (long row, long col) {
@@ -628,6 +645,7 @@ class MissionMap {
 		void setMover (long row, long col, bool moverHere) {
 			if (!inBounds(row, col)) return;
 			map[row * width + col].setMover(moverHere);
+			rev.mover++;
 		}
 
 		unsigned long getGate (long row, long col) {
@@ -638,6 +656,7 @@ class MissionMap {
 		void setGate (long row, long col, unsigned long gate) {
 			if (!inBounds(row, col)) return;
 			map[row * width + col].setGate(gate);
+			rev.gate++;
 		}
 
 		bool getPassable (long row, long col) {
@@ -650,6 +669,7 @@ class MissionMap {
 		void setPassable (long row, long col, bool passable) {
 			if (!inBounds(row, col)) return;
 			map[row * width + col].setPassable(passable);
+			rev.statics++;
 		}
 
 		bool getPassable (glm::vec3 cellPosition);
@@ -673,6 +693,7 @@ class MissionMap {
 			}
 			if (g_moveReconEnabled) g_moveRecon_setPathlock_calls++;
 			map[row * width + col].setPathlock(level, pathlock);
+			rev.pathlock++;
 		}
 
 		unsigned long getMine (long row, long col) {
@@ -685,6 +706,7 @@ class MissionMap {
 			MapCellPtr cell = &map[row * width + col];
 			const unsigned long oldMine = cell->getMine();
 			cell->setMine(mine);
+			rev.mine++;
 			// Maintain per-tile mine count: only cells transitioning between zero
 			// and non-zero affect the count. Updates between two non-zero values
 			// (1 <-> 2 = mine <-> blown) leave the count unchanged.
@@ -724,11 +746,13 @@ class MissionMap {
 		void setPreserved (long row, long col, bool preserved) {
 			if (!inBounds(row, col)) return;
 			map[row * width + col].setPreserved(preserved);
+			rev.preserved++;
 		}
 
 		void setLocalHeight (long row, long col, DWORD localElevation) {
 			if (!inBounds(row, col)) return;
 			map[row * width + col].setLocalHeight(localElevation);
+			rev.statics++;
 		}
 
 		DWORD getLocalHeight (long row, long col) {
@@ -1665,6 +1689,9 @@ class MoveMap {
 		// and its cost helpers read instead of the file-static global.
 		bool				solveJumpOnBlocked;
 
+		// Per-solve hPrime ceiling, set at the top of each solve (was the file-static MaxHPrime).
+		long				maxHPrime;
+
 		// The OPEN list of every solve this map runs. WHY a member: the list used to be one global shared by all solvers, so a solve could meet nodes another
 		// solve had left in it; each map now owns its list and a solve starts it empty.
 		mc2::OpenHeap		openHeap;
@@ -1728,6 +1755,7 @@ class MoveMap {
 			blockedDoorCallback = nullptr;
 			placeStationaryMoversCallback = nullptr;
 			solveJumpOnBlocked = false;
+			maxHPrime = 1000;
 		}
 		
 		MoveMap (void) {

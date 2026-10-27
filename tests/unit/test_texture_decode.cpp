@@ -1,9 +1,11 @@
 // The backend-neutral texture decode (GameOS/gameos/texture_decode.cpp): the bytes and policy every backend uploads.
 
+#include <span>
 #include "doctest.h"
 
 #include "texture_decode.h"
 #include "gos_prop_material_cpu.h"
+#include "../../RenderCore/PropMaterialRows.h"
 #include "utils/Image.h"
 #include <fstream>
 #include <filesystem>
@@ -408,6 +410,29 @@ TEST_CASE("authored prop detail: GPU blocks share layers and mixed mods remain v
     std::filesystem::remove(root/"mc2-detail-blocks-normal.ktx2");
     std::filesystem::remove(root/"mc2-detail-blocks-orm.ktx2");
     std::filesystem::remove(rgbaFile);
+}
+
+TEST_CASE("prop material rows: per-object rows without resident textures lose the flag and indices") {
+    using namespace RenderCore;
+    PropMaterialGpu rows[3]{};
+    rows[0].material.flags = MaterialFlags::kPerTexture | MaterialFlags::kNormalMap | MaterialFlags::kMetallicRoughness;
+    rows[0].material.normalTex = 4; rows[0].material.metallicRoughnessTex = 5; rows[0].material.albedoTex = 6;
+    rows[0].reserved[1] = 1;
+    rows[1].material.flags = MaterialFlags::kNormalMap;   // legacy detail-array row: untouched
+    rows[1].material.normalTex = 2; rows[1].reserved[1] = 1;
+    rows[2].material.flags = MaterialFlags::kPerTexture;
+    rows[2].material.normalTex = 0;
+    CHECK(dropPerTextureRows(std::span<PropMaterialGpu>(rows, 3)) == 2);
+    CHECK((rows[0].material.flags & MaterialFlags::kPerTexture) == 0);
+    CHECK((rows[0].material.flags & (MaterialFlags::kNormalMap | MaterialFlags::kMetallicRoughness)) == 0);
+    CHECK(rows[0].material.normalTex == kMaterialTexAbsent);
+    CHECK(rows[0].material.metallicRoughnessTex == kMaterialTexAbsent);
+    CHECK(rows[0].material.albedoTex == kMaterialTexAbsent);
+    CHECK(rows[0].reserved[1] == 0);
+    CHECK(rows[1].material.normalTex == 2); CHECK(rows[1].reserved[1] == 1);
+    CHECK((rows[1].material.flags & MaterialFlags::kNormalMap) != 0);
+    CHECK(rows[2].material.normalTex == kMaterialTexAbsent);
+    CHECK(dropPerTextureRows(std::span<PropMaterialGpu>(rows, 3)) == 0);   // idempotent
 }
 
 TEST_CASE("texture decode: PNG memory and file preserve every RGBA byte") {
