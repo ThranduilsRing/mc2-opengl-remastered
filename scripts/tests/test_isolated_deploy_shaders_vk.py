@@ -27,3 +27,17 @@ def test_shaders_vk_is_copied_not_linked(tmp_path):
     to_link, to_copy, _, _ = iso.plan(src, guard)
     assert [r for r, _ in to_copy] == ["shaders_vk/mesh_lit.vert.spv"]
     assert [r for r, _ in to_link] == ["data/x.bin"]
+
+
+def test_deploy_written_mods_are_copied_not_linked(tmp_path):
+    guard = _load("chi_guard", "check-hardlink-isolation.py")
+    iso = _load("iso_deploy", "make-isolated-deploy.py")
+    src = tmp_path / "src"
+    for rel in ("mods/mc2-vehicle-kit/mod.json", "mods/mc2-industrial-kit/mod.json",
+                "mods/sample_bad_mod/mod.json", "mods/ThirdParty/mod.json"):
+        (src / rel).parent.mkdir(parents=True, exist_ok=True)
+        (src / rel).write_bytes(b"x")
+    to_link, to_copy, _, _ = iso.plan(src, guard)
+    assert sorted(r for r, _ in to_copy) == ["mods/mc2-industrial-kit/mod.json",
+        "mods/mc2-vehicle-kit/mod.json", "mods/sample_bad_mod/mod.json"]
+    assert [r for r, _ in to_link] == ["mods/ThirdParty/mod.json"]
