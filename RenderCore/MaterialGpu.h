@@ -112,7 +112,9 @@ namespace MaterialFlags {
     // Bit 6 - per-object textures (static-prop table only): normalTex / metallicRoughnessTex / albedoTex are
     //         indices into the shader's per-texture table (own extent + mips), not detail-array layers.
     constexpr uint32_t kPerTexture         = 1u << 6;
-    // Bits 7-31 reserved; must be 0 in cooked manifests.
+    // Bit 7 - team mask (per-object rows): emissiveTex is the index of the mask in the per-texture table.
+    constexpr uint32_t kTeamMask           = 1u << 7;
+    // Bits 8-31 reserved; must be 0 in cooked manifests.
 } // namespace MaterialFlags
 
 // Sentinel: texture slot is absent (no map provided for this material).

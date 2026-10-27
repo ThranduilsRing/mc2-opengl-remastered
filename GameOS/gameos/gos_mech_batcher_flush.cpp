@@ -13,9 +13,12 @@ bool GpuMechBatcher::submitActor(const GpuMechSubmitDesc& desc) {
     s_lastFailWasLateReg = false;
 
     if (!s_geometryFinalized) return false;
-    if (!desc.mechShape || !desc.mechType) return false;
+    if (!desc.mechShape) return false;
+    // A vehicle submits with no mechType: its record is keyed by the live shape's type shape, at lod 0.
+    const void* typeKey = desc.mechType ? static_cast<const void*>(desc.mechType) : static_cast<const void*>(desc.mechShape->myMultiType);
+    if (!typeKey) return false;
 
-    const TypeLodKey key{desc.mechType, desc.currentLOD};
+    const TypeLodKey key{typeKey, desc.mechType ? desc.currentLOD : 0};
     auto it = s_typeLodIndex.find(key);
     if (it == s_typeLodIndex.end()) {
         s_lastFailWasLateReg = true;
@@ -109,7 +112,7 @@ bool GpuMechBatcher::submitActor(const GpuMechSubmitDesc& desc) {
     // per submitActor when the actor's mechType has at least one SpotLight_
     // TypeNode (recorded at registerTypeLod time). Per-frame increment is
     // unconditional; 600-frame summary is env-gated in flush() below.
-    if (s_spotlightRealTypeNodeCount.find(desc.mechType)
+    if (s_spotlightRealTypeNodeCount.find(typeKey)
             != s_spotlightRealTypeNodeCount.end()) {
         ++s_spotlightReal_drawWindow;
         ++s_spotlightReal_drawMono;

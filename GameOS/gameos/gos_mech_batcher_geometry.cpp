@@ -108,6 +108,19 @@ void recomputeMechNodeNormals(std::vector<uint8_t>& vbo,
 
 void GpuMechBatcher::registerTypeLod(const Mech3DAppearanceType* mechType, int lod) {
     if (!mechType) return;
+    registerTypeLodImpl(mechType, mechType->mechShape[lod], lod);
+}
+
+// A ground vehicle body: the type is keyed by its TG_TypeMultiShape (one record per LOD shape, lod 0).
+void GpuMechBatcher::registerVehicleType(TG_TypeMultiShape* typeMulti) {
+    if (typeMulti) registerTypeLodImpl(typeMulti, typeMulti, 0);
+}
+
+bool GpuMechBatcher::isVehicleTypeRegistered(const TG_TypeMultiShape* typeMulti) const {
+    return s_geometryFinalized && s_typeLodIndex.count(TypeLodKey{typeMulti, 0}) != 0;
+}
+
+void GpuMechBatcher::registerTypeLodImpl(const void* mechType, TG_TypeMultiShape* typeMulti, int lod) {
     const TypeLodKey key{mechType, lod};
     if (s_typeLodIndex.count(key)) return;  // idempotent
     static const bool s_mechRestoreTrace = mc2::gate::get<"MC2_MECH_RESTORE_TRACE">();
@@ -123,15 +136,14 @@ void GpuMechBatcher::registerTypeLod(const Mech3DAppearanceType* mechType, int l
         // late registers and the finalizePending() call on that path.
         MC2_DIAGFE(stderr,
             "[MECHBATCHER v1] event=late_register type=%p lod=%d (staged_pending)\n",
-            const_cast<void*>(static_cast<const void*>(mechType)), lod);
+            const_cast<void*>(mechType), lod);
         if (s_mechRestoreTrace)
-            mc2::fmt::print_err("[MECHRESTORE v1] event=register type={:016X} lod={:d} result=staged_pending finalized=1\n", mc2::fmt::as_ptr(const_cast<void*>(static_cast<const void*>(mechType))), mc2::fmt::as_i32(lod));
+            mc2::fmt::print_err("[MECHRESTORE v1] event=register type={:016X} lod={:d} result=staged_pending finalized=1\n", mc2::fmt::as_ptr(const_cast<void*>(mechType)), mc2::fmt::as_i32(lod));
         s_pendingLateTypes = true;
         ++s_lateStagedCount;
         // fall through -- stage like a normal pre-finalize registration
     }
 
-    TG_TypeMultiShape* typeMulti = mechType->mechShape[lod];
     if (!typeMulti) return;
 
     const int numNodes = typeMulti->GetNumShapes();
@@ -139,7 +151,7 @@ void GpuMechBatcher::registerTypeLod(const Mech3DAppearanceType* mechType, int l
         if (numNodes > 255) {
             MC2_DIAGFE(stderr,
                 "[MECHBATCHER v1] event=u8_bone_overflow type=%p lod=%d numNodes=%d\n",
-                const_cast<void*>(static_cast<const void*>(mechType)), lod, numNodes);
+                const_cast<void*>(mechType), lod, numNodes);
         }
         return;
     }
@@ -156,13 +168,13 @@ void GpuMechBatcher::registerTypeLod(const Mech3DAppearanceType* mechType, int l
 
     static const bool s_nodeTrace = mc2::gate::get<"MC2_MECH_NODE_TRACE">();
     if (s_nodeTrace) {
-        mc2::fmt::print_err("[MECHREG v1] event=register type={:016X} lod={:d} numBones={:d}\n", mc2::fmt::as_ptr(const_cast<void*>(static_cast<const void*>(mechType))), mc2::fmt::as_i32(lod), mc2::fmt::as_i32(numNodes));
+        mc2::fmt::print_err("[MECHREG v1] event=register type={:016X} lod={:d} numBones={:d}\n", mc2::fmt::as_ptr(const_cast<void*>(mechType)), mc2::fmt::as_i32(lod), mc2::fmt::as_i32(numNodes));
     }
 
     const uint32_t typeLodIdx = static_cast<uint32_t>(s_typeLodRecords.size());
     s_typeLodIndex[key] = typeLodIdx;
     if (s_mechRestoreTrace)
-        mc2::fmt::print_err("[MECHRESTORE v1] event=register type={:016X} lod={:d} result=registered finalized=0 numBones={:d}\n", mc2::fmt::as_ptr(const_cast<void*>(static_cast<const void*>(mechType))), mc2::fmt::as_i32(lod), mc2::fmt::as_i32(numNodes));
+        mc2::fmt::print_err("[MECHRESTORE v1] event=register type={:016X} lod={:d} result=registered finalized=0 numBones={:d}\n", mc2::fmt::as_ptr(const_cast<void*>(mechType)), mc2::fmt::as_i32(lod), mc2::fmt::as_i32(numNodes));
 
     GpuMechTypeLodRecord rec{};
     rec.firstBoneIndex = 0;
@@ -192,7 +204,7 @@ void GpuMechBatcher::registerTypeLod(const Mech3DAppearanceType* mechType, int l
         const char* nodeName = tnode->getNodeId();
         if (nodeName && S_strnicmp(nodeName, "SpotLight_", 10) == 0) {
             if (s_nodeTrace) {
-                mc2::fmt::print_err("[MECHREG v1] event=skip_spotlight type={:016X} lod={:d} nodeIdx={:d} name={}\n", mc2::fmt::as_ptr(const_cast<void*>(static_cast<const void*>(mechType))), mc2::fmt::as_i32(lod), mc2::fmt::as_i32(nodeIdx), mc2::fmt::safe(nodeName));
+                mc2::fmt::print_err("[MECHREG v1] event=skip_spotlight type={:016X} lod={:d} nodeIdx={:d} name={}\n", mc2::fmt::as_ptr(const_cast<void*>(mechType)), mc2::fmt::as_i32(lod), mc2::fmt::as_i32(nodeIdx), mc2::fmt::safe(nodeName));
             }
             // [SPOTLIGHT_REAL_TRACE v1] T0.2 (a) — record SpotLight_ TypeNode
             // observed at recipe build. Tracks max across LODs since each
@@ -208,14 +220,14 @@ void GpuMechBatcher::registerTypeLod(const Mech3DAppearanceType* mechType, int l
                 MC2_DIAGFE(stderr,
                     "[SPOTLIGHT_REAL_TRACE v1] event=first_hit site=mech_recipe_build "
                     "type=%p lod=%d nodeIdx=%d name=%s\n",
-                    static_cast<const void*>(mechType), lod, nodeIdx, nodeName);
+                    mechType, lod, nodeIdx, nodeName);
                 std::fflush(stderr);
             }
             if (s_mechSpotlightRealTrace) {
                 MC2_DIAGFE(stderr,
                     "[SPOTLIGHT_REAL_TRACE v1] event=type_spotlight_node "
                     "type=%p lod=%d nodeIdx=%d name=%s type_node_count=%u\n",
-                    static_cast<const void*>(mechType), lod, nodeIdx, nodeName, newCount);
+                    mechType, lod, nodeIdx, nodeName, newCount);
             }
             continue;
         }

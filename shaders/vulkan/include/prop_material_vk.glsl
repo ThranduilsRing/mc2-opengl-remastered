@@ -105,6 +105,26 @@ bool propHasObjectAlbedo(int id) {
     return kPerTexMaps && (row.material.flags & kMatFlagPerTexture) != 0u && row.material.albedoTex != 0xffffffffu;
 }
 
+// Team colour: the mask's R/G/B weights select the paint's blue/red/green slot (the stock channel dominance);
+// under the mask the albedo keeps its own relative luminance, stripes and dirt and only its chroma follows the team.
+vec3 propTeamTint(int id, vec3 albedo, uvec3 team) {
+    if (id < 0 || id >= uPropMaterials.materials.length()) return albedo;
+    PropMaterialGpu row = uPropMaterials.materials[id];
+    if ((row.material.flags & kMatFlagTeamMask) == 0u || row.material.emissiveTex == 0xffffffffu || team == uvec3(0u)) return albedo;
+    vec3 w = texture(uPropTex[nonuniformEXT(row.material.emissiveTex)], vUv * row.uvScale).rgb;
+    float cover = clamp(w.r + w.g + w.b, 0.0, 1.0);
+    if (cover <= 0.0) return albedo;
+    vec3 red   = vec3((team.x >> 16) & 255u, (team.x >> 8) & 255u, team.x & 255u) / 255.0;
+    vec3 green = vec3((team.y >> 16) & 255u, (team.y >> 8) & 255u, team.y & 255u) / 255.0;
+    vec3 blue  = vec3((team.z >> 16) & 255u, (team.z >> 8) & 255u, team.z & 255u) / 255.0;
+    vec3 paint = (w.r * blue + w.g * red + w.b * green) / max(w.r + w.g + w.b, 1e-4);
+    const vec3 kLum = vec3(0.299, 0.587, 0.114);
+    // The albedo's luminance relative to a typical painted panel (0.3 encoded) scales the paint, so panel shading,
+    // stripes and dirt survive and an average panel lands on the paint colour itself.
+    vec3 tinted = clamp(paint * (dot(albedo, kLum) / 0.3), 0.0, 1.0);
+    return mix(albedo, tinted, cover);
+}
+
 // A per-object albedo replaces the tiered tgl texture of its packet (full resolution, own mips, not chosen by
 // ObjectTextureRes). Returns false when the material names none.
 bool propAlbedoOverride(int id, out vec3 albedo) {

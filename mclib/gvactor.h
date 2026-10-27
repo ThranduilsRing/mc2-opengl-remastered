@@ -193,6 +193,18 @@ class GVAppearance : public ObjectAppearance
 		int renderLOD = -1;
 		DWORD renderRed = 0, renderGreen = 0, renderBlue = 0;
 		void updateRenderShape();
+		// The body draws from per-node matrices (GpuMechBatcher / static-prop batcher): update walks only the
+		// hierarchy. poseXlat_/poseRot_ let a declined submit transform the whole shape at render time.
+		bool gpuPose_ = false;
+		glm::vec3 poseXlat_{};
+		glm::quat poseRot_{1.0f, 0.0f, 0.0f, 0.0f};
+		float poseFog_ = 0.0f;
+		DWORD poseLightRGB_ = 0xffffffff;
+		int spotlightLeaves_ = 0;	// SpotLight_ leaves of the body shape (cones draw through the legacy path at night)
+		const void* spotlightLeavesShape_ = nullptr;
+		bool spotlightLeavesDrawn_ = false;
+		void transformSensorShapes();
+		bool submitToMechBatcher(uint32_t highlightARGB);
 		TG_MultiShapePtr							gvShadowShape;
 		
 		TG_MultiShapePtr							sensorCircleShape;

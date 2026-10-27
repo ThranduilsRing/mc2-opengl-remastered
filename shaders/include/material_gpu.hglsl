@@ -41,6 +41,7 @@ const uint kMatFlagEmissive          = 1u << 3;
 const uint kMatFlagDoubleSided       = 1u << 4;
 const uint kMatFlagWindow            = 1u << 5;
 const uint kMatFlagPerTexture        = 1u << 6;
+const uint kMatFlagTeamMask          = 1u << 7;
 
 // std430 struct — 32 bytes, stride 32.
 // Field order and byte offsets MUST match RenderCore::MaterialGpu exactly.

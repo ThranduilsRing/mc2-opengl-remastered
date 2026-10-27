@@ -298,7 +298,7 @@ bool     s_lastFailWasLateReg      = false;
 // Value is the number of SpotLight_-prefixed TypeNodes seen during ANY LOD's
 // recipe build (max across LODs, since each instance only renders at one LOD).
 const bool s_mechSpotlightRealTrace = mc2::gate::get<"MC2_SPOTLIGHT_REAL_TRACE">();
-std::unordered_map<const Mech3DAppearanceType*, uint32_t>
+std::unordered_map<const void*, uint32_t>
     s_spotlightRealTypeNodeCount;
 uint64_t s_spotlightReal_typeNodeEvents = 0;  // monotonic (a)
 uint64_t s_spotlightReal_drawWindow     = 0;  // 600-frame window (b)

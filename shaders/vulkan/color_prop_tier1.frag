@@ -84,6 +84,7 @@ flat layout(location = 12) in vec3 vMaterialSun;
 flat layout(location = 13) in uint vMaterialFlags;
 layout(location = 14) in vec2 vTree;
 flat layout(location = 15) in uvec2 vWindow;
+flat layout(location = 16) in uvec3 vTeam;
 
 // The vertex stage's push block; the FS reads only packetAlphaTest.
 #include "include/prop_packet_vk.glsl"
@@ -210,6 +211,7 @@ void main() {
         vec3 albedo = texOff.rgb;
         vec3 objectAlbedo;
         if (propAlbedoOverride(uPacket.materialId, objectAlbedo)) albedo = objectAlbedo;
+        albedo = propTeamTint(uPacket.materialId, albedo, vTeam);
         materialAlbedo = albedo; haveAlbedo = true;
 
         // GL DEFAULT PROP MODEL (static_prop.frag:346): tex_color * v_argb, where v_argb

@@ -4,28 +4,13 @@
 #include "Gates/gate.h"
 #include "../RenderCore/axis_convert.h"
 
+extern uint32_t g_mc2FrameCounter;
 
+
+// Vehicle shadows are cast by the shadow cascades from the same per-node matrices the body draws from; the old
+// projected blob shadow (gvShadowShape) is gone.
 long GVAppearance::renderShadows (void)
 {
-	// Skip legacy blob shadows when shadow maps are active
-	// ISSUE-34: keyed on the modern shadow path, not tessellation (see
-	// mech3d.cpp renderShadows).
-	if (gos_IsModernShadowPathActive())
-		return NO_ERR;
-
-	gvShape->SetTextureHandle(0,localTextureHandle);
-	
-	// C3: route renderShadows gate to GPU-lagged visibility when killswitch is enabled.
-	const bool gvShadowVisible = s_gpuCullLifecycle
-		? (gpu_cull::readback_isActorVisibleLagged(static_cast<uint32_t>(actorHandle_)) && visible)
-		: (inView && visible);
-	if (gvShadowVisible)
-	{
-		if (gvShadowShape)
-			gvShadowShape->RenderShadows(true);
-		else
-			gvShape->RenderShadows(true);
-	}
 	return NO_ERR;
 }
 
@@ -52,10 +37,9 @@ long GVAppearance::render (long depthFixup)
 	if (!renderShape) drawShape->SetTextureHandle(0,localTextureHandle);
 
 	// C3: render gate — GPU-lagged visibility when killswitch is enabled.
-	// Preserve g_useGpuStaticProps fallback for static-prop path.
 	const bool gvShouldRender = s_gpuCullLifecycle
-		? (gpu_cull::readback_isActorVisibleLagged(static_cast<uint32_t>(actorHandle_)) || g_useGpuStaticProps)
-		: (inView || g_useGpuStaticProps);
+		? gpu_cull::readback_isActorVisibleLagged(static_cast<uint32_t>(actorHandle_))
+		: inView;
 	if (gvShouldRender)
 	{
 		uint32_t color = SD_BLUE;
@@ -135,12 +119,41 @@ long GVAppearance::render (long depthFixup)
 			// first-leaf-only form produced ZERO pixel change at deterministic
 			// A/B poses even though the CPU gather was demonstrably running
 			// (MC2_LIGHT_ROW_CENSUS fired ON, silent OFF).
-			if (s_vehicleLitPath)
+			bool submitted = false;
+			if (renderShape) {
+				if (s_vehicleLitPath)
+					drawShape->CacheGpuLightDataAllLeaves();
+				renderShape->SetTeamPaint(psRed, psGreen, psBlue);
+				static int s_paintLogs = 0;
+				if (s_paintLogs < 6 && ++s_paintLogs) mc2::fmt::print_err("[VEHICLE_PAINT] {} lod={} team={} paint={:08x}/{:08x}/{:08x}\n", appearType->name, renderLOD, teamId, psRed, psGreen, psBlue);
+				submitted = GpuStaticPropBatcher::instance().submitMultiShape(
+					drawShape, GpuStaticPropPopulation::Generic, appearType->name);
+			}
+			else if (gpuPose_) {
+				// Stock body: node matrices, the light row, paint texture and haze go to the mech batcher.
+				uint32_t gpuHighlight = (selected & DRAW_COLORED && duration <= 0) ? highLight : static_cast<uint32_t>(highlightColor);
+				if (drawFlash)
+					gpuHighlight = static_cast<uint32_t>(flashColor);
+				submitted = submitToMechBatcher(gpuHighlight);
+			}
+			if (!submitted) {
+				// Declined (or never on the GPU path): the legacy draw needs the CPU-transformed vertices.
+				if (gpuPose_) {
+					eye->setLightColor(0, poseLightRGB_);
+					eye->setLightIntensity(0, 1.0);
+					drawShape->SetLightList(eye->getWorldLights(), eye->getNumLights());
+					drawShape->TransformMultiShape(&poseXlat_, &poseRot_);
+				}
+				if (s_vehicleLitPath)
+					drawShape->CacheGpuLightDataAllLeaves();
+				drawShape->Render(true);
+			}
+			else if (gpuPose_ && spotlightLeavesDrawn_) {
+				// No batcher draws a searchlight cone: update transformed just those leaves; draw them the legacy
+				// way (Render skips every leaf the hierarchy-only pass left untransformed).
 				drawShape->CacheGpuLightDataAllLeaves();
-
-			const bool submitted = renderShape && GpuStaticPropBatcher::instance().submitMultiShape(
-				drawShape, GpuStaticPropPopulation::Generic, appearType->name);
-			if (!submitted) drawShape->Render(true);
+				drawShape->Render(true);
+			}
 
 			if (selected & DRAW_TEXT)
 			{
@@ -325,6 +338,7 @@ long GVAppearance::render (long depthFixup)
 		
 		if ((sensorLevel > 0) && (sensorLevel < 5))
 		{
+			transformSensorShapes();
 			if (sensorLevel > 1)
 			{
 				sensorCircleShape->Render();
@@ -336,4 +350,24 @@ long GVAppearance::render (long depthFixup)
 		}
 	}
 	return NO_ERR;
+}
+
+// Hand the stock body to the mech batcher: it reads the node matrices only; the paint texture, light row and
+// haze ride the instance. False declines (no paint texture, light row missing or out of range): the caller
+// draws on the CPU.
+bool GVAppearance::submitToMechBatcher(uint32_t highlightARGB)
+{
+	if (localTextureHandle == 0xffffffff) return false;
+	GpuMechSubmitDesc desc{};
+	desc.mechShape = gvShape;
+	desc.mechType = nullptr;
+	desc.renderFlags = 0x40u;	// legacy vehicle lighting: sun and ambient, no point or spot lights
+	desc.slot0TexHandle = static_cast<uint32_t>(localTextureHandle);
+	const uint32_t lightRow = gvShape->getCachedGpuLightIndex();
+	if (lightRow == 0xFFFFFFFFu || gvShape->getCachedFrame() != g_mc2FrameCounter || (mc2::textures::ready() && lightRow >= mc2::vkLights::getLightStructCount())) return false;
+	desc.lightDataIndex = lightRow;
+	desc.highlightARGB = highlightARGB;
+	const float haze = std::clamp(std::max(hazeFactor, poseFog_), 0.0f, 1.0f);
+	desc.fogARGB = static_cast<uint32_t>(haze * 255.0f + 0.5f) << 24;
+	return GpuMechBatcher::instance().submitActor(desc);
 }

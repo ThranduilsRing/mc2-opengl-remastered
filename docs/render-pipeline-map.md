@@ -253,7 +253,7 @@ RENDERED BY: gos_tex_vertex_lighted.vert  +  gos_tex_vertex_lighted.frag
   batcher / Track-D path.
 - **Same path also serves:** `GenericAppearance` (gun emplacements, spotlights — though these *can*
   enter the static-prop-Generic batcher) and CPU-fallback mechs.
-- **Gates:** `MC2_GPU_GV_SHADOW_SKIP` (ON), `MC2_GPU_CULL_LIFECYCLE`.
+- **Gates:** `MC2_GPU_CULL_LIFECYCLE`.
 - Vehicle assets are **not deployed in v0.4** (source exists; `docs/asset-pipeline.md`).
 
 ## 6. VFX / particles (gosFX) — `mc2.fx → CardCloud oracle → GPU billboards`

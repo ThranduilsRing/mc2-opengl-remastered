@@ -503,6 +503,8 @@ class TG_MultiShape
 		// Aliased rather than reusing _BuildRecipe directly for self-documenting
 		// use at the mech runtime callsite vs the static-prop registry init use.
 		long TransformMultiShape_HierarchyOnly (glm::vec3 *pos, glm::quat *rot);
+		// HierarchyOnly plus the full CPU transform of the SpotLight_ leaves (cone geometry drawn by the legacy path).
+		long TransformMultiShape_SpotlightLeaves (glm::vec3 *pos, glm::quat *rot);
 		// Presentation joints can move while the simulation turn is frozen.
 		void InvalidateHierarchy()
 		{
@@ -670,6 +672,12 @@ class TG_MultiShape
 			for (int i=0;i<numTG_Shapes;i++)
 				listOfShapes[i].node->SetARGBHighLight(argb);
 		}
+
+		// Team paint (0x??RRGGBB x3: red, green, blue slots of the stock paint scheme). The static-prop batcher
+		// forwards it per instance; a material's team mask tints with it in the fragment shader.
+		void SetTeamPaint (DWORD r, DWORD g, DWORD b) { teamPaint[0] = r; teamPaint[1] = g; teamPaint[2] = b; teamPaintValid = true; }
+		DWORD teamPaint[3] = {0, 0, 0};
+		bool  teamPaintValid = false;
 		
 		void SetLightsOut (bool lightFlag)
 		{

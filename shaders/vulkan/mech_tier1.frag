@@ -60,6 +60,7 @@ layout(location = 6) flat in vec3 vMechSunDirGL;
 layout(location = 7) flat in int  vMechSunFound;
 layout(location = 8) in vec3 vTangentGL;
 layout(location = 9) flat in uint vImportedMech;
+layout(location = 10) flat in uint vLegacyVehicle;
 
 #include "include/mech_material_vk.glsl"
 
@@ -85,7 +86,8 @@ void main() {
         Nshade = surface.normal;
 
 
-        if (uFrame.shadeA.y > 0.0 && vMechSunFound != 0) {
+        // A ground vehicle keeps its legacy look: no specular sheen, no light pools.
+        if (uFrame.shadeA.y > 0.0 && vMechSunFound != 0 && vLegacyVehicle == 0u) {
             bool isGlass = msh_isGlass(tex_color.rgb, uFrame.shadeB.x, uFrame.shadeB.y);
             if (uFrame.miscI.x != 0) {
                 rgb = isGlass ? vec3(0.0, 1.0, 0.0) : vec3(0.15);
@@ -96,7 +98,7 @@ void main() {
             }
         }
 
-        if (uFrame.poolI.x > 0)
+        if (uFrame.poolI.x > 0 && vLegacyVehicle == 0u)
             rgb += tex_color.rgb * olp_objectPoolLight(vWorldPos, uFrame.poolI.x, uFrame.poolI.y,
                                                        uFrame.poolF.x, uFrame.poolF.y,
                                                        uFrame.poolI.z, uFrame.poolI.w,

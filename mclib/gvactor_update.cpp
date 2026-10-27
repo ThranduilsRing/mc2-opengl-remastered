@@ -9,22 +9,6 @@
 #include "mover_lamps.h"
 
 
-// Slice GV-shadow-skip (2026-05-09): skip gvShadowShape->TransformMultiShape
-// when modern engine has terrain tessellation active. Mirrors mech D-shadow-skip
-// (mech3d.cpp). Recon: every byte produced by that call has zero
-// consumer in modern + tessellation path:
-//   - GVAppearance::renderShadows early-returns on tessellation (gvactor.cpp),
-//     making gvShadowShape->RenderShadows(true) at gvactor.cpp unreachable.
-//   - GpuStaticPropBatcher::registerMultiShape(appearType->gvShadowShape) at
-//     gvactor.cpp is TYPE-level template registration only; per-actor
-//     instance state mutated by TransformMultiShape is NOT fed into the batcher
-//     (verified at gos_static_prop_batcher.cpp — registers leaf
-//     TG_TypeShape templates and primes texture handles, no per-frame state).
-// Default-on per the post-mech-flip convention. Opt out: MC2_GPU_GV_SHADOW_SKIP=0.
-// Tessellation gate is belt-and-suspenders: if a user disables tessellation,
-// the legacy RenderShadows path becomes reachable and would need
-// TransformMultiShape outputs.
-static const bool g_useGpuGVShadowSkip = mc2::gate::get<"MC2_GPU_GV_SHADOW_SKIP">();
 // T1.15 SpotLight_ illumination diagnostic — registration probe (gv class).
 // First-hit always-on; per-summary every 600 updateGeometry calls when env=1.
 static const bool s_spotDiagGvEnabled = mc2::gate::get<"MC2_SPOT_DIAG">();
@@ -171,25 +155,38 @@ void GVAppearance::updateGeometry (void)
 		if (gvShadowShape)
 			gvShape->SetUseShadow(false);
 			
-		if (gvShadowShape && useShadows)
-		{
-			gvShadowShape->SetLightList(eye->getWorldLights(),eye->getNumLights());
-			// Slice GV-shadow-skip: when modern engine has tessellation active,
-			// downstream gvShadowShape->RenderShadows(true) (gvactor.cpp) is
-			// unreachable so the transform's outputs go unused. See block comment
-			// at top of file for full consumer enumeration.
-			// ISSUE-34: modern-shadow-path predicate (was tess-keyed), matching
-			// the renderShadows early-return above.
-			const bool skipShadowXform = g_useGpuGVShadowSkip && gos_IsModernShadowPathActive();
-			if (!skipShadowXform)
-			{
-				auto rot = mc2::math::quatFromEuler(mc2::math::Euler(0.0f, rotation * DEGREES_TO_RADS, 0.0f));
-				gvShadowShape->TransformMultiShape (&xlatPosition,&rot);
-			}
-		}
-		
+		// Pose on the GPU: update walks the node hierarchy only (shapeToWorld per node); the vertex transform,
+		// lighting and fog run in the vertex shader. A shape that cannot go to a batcher (fading alpha, a type
+		// not registered yet, a preview) keeps the full CPU transform, done at draw time if a submit declines.
+		poseXlat_ = xlatPosition;
+		poseRot_ = totalRotation;
+		poseLightRGB_ = lightRGB;
+		poseFog_ = useFog ? 1.0f - static_cast<float>(fogRGB >> 24) / 255.0f : 0.0f;
 		gvShape->SetLightList(eye->getWorldLights(),eye->getNumLights());
-		gvShape->TransformMultiShape (&xlatPosition,&totalRotation);
+		gpuPose_ = g_useGpuMechs && g_mechPreviewRenderDepth == 0 && gvShape->GetAlphaValue() == 0xff
+			&& GpuMechBatcher::instance().isVehicleTypeRegistered(gvShape->GetMultiType());
+		// The light row carries this actor's own terrain light colour; gather it now, while light 0 holds it.
+		if (gpuPose_ && !renderShape)
+			gvShape->CacheGpuLightData();
+		spotlightLeavesDrawn_ = false;
+		if (gpuPose_ && !renderShape && eye->isNight)
+		{
+			if (spotlightLeavesShape_ != gvShape)
+			{
+				spotlightLeavesShape_ = gvShape;
+				spotlightLeaves_ = 0;
+				for (int i = 0; i < gvShape->GetNumShapes(); ++i)
+					if (const TG_ShapeRec* rec = gvShape->GetShapeRec(i))
+						if (rec->node && rec->processMe && rec->node->GetIsSpotlight()) ++spotlightLeaves_;
+			}
+			spotlightLeavesDrawn_ = spotlightLeaves_ > 0;
+		}
+		if (spotlightLeavesDrawn_)
+			gvShape->TransformMultiShape_SpotlightLeaves (&xlatPosition,&totalRotation);
+		else if (gpuPose_ || renderShape)
+			gvShape->TransformMultiShape_HierarchyOnly (&xlatPosition,&totalRotation);
+		else
+			gvShape->TransformMultiShape (&xlatPosition,&totalRotation);
 		updateRenderShape();
 		if (renderShape) renderShape->SetFogRGB(useFog ? fogRGB : 0xffffffff);
 
@@ -513,14 +510,16 @@ void GVAppearance::updateGeometry (void)
 	if (sensorSpin < -180)
 		sensorSpin += 360;
 
-	totalRotation = mc2::math::quatFromEuler(mc2::math::Euler(0.0f,sensorSpin * DEGREES_TO_RADS,0.0f));
-	sensorTriangleShape->SetFogRGB(0xffffffff);
-	sensorTriangleShape->SetLightList(eye->getWorldLights(),eye->getNumLights());
-	sensorTriangleShape->TransformMultiShape (&xlatPosition,&totalRotation);
-		
-	sensorCircleShape->SetFogRGB(0xffffffff);
-	sensorCircleShape->SetLightList(eye->getWorldLights(),eye->getNumLights());
-	sensorCircleShape->TransformMultiShape (&xlatPosition,&totalRotation);
+}
+
+// The contact markers are drawn only at sensor levels 1..4, so they are transformed at draw time, not every update.
+void GVAppearance::transformSensorShapes()
+{
+	TG_MultiShape* marker = sensorLevel > 1 ? sensorCircleShape : sensorTriangleShape;
+	auto spin = mc2::math::quatFromEuler(mc2::math::Euler(0.0f,sensorSpin * DEGREES_TO_RADS,0.0f));
+	marker->SetFogRGB(0xffffffff);
+	marker->SetLightList(eye->getWorldLights(),eye->getNumLights());
+	marker->TransformMultiShape (&poseXlat_,&spin);
 }
 
 long GVAppearance::update (bool animate) 
