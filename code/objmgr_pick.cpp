@@ -347,6 +347,12 @@ struct PickRect {
 
 // Grounded stock bounds survive GPU-only geometry and fallen animation roots.
 // Display bounds are retained for animated limbs; no render-frame stamp is authority.
+float gameplayPickPad() {
+    const float scale = Environment.screenWidth / 800.f < Environment.screenHeight / 600.f
+        ? Environment.screenWidth / 800.f : Environment.screenHeight / 600.f;
+    return 4.f * (scale > 1.f ? scale : 1.f);
+}
+
 bool gameplayPickRect(GameObjectPtr obj, PickRect& rect, bool margin = true) {
     if (!obj || !obj->getExists() || obj->inTransport() || !eye) return false;
     auto* app = obj->getAppearance();
@@ -396,12 +402,6 @@ bool gameplayPickRect(GameObjectPtr obj, PickRect& rect, bool margin = true) {
         rect.left -= pad; rect.top -= pad; rect.right += pad; rect.bottom += pad;
     }
     return rect.right >= 0 && rect.bottom >= 0 && rect.left < Environment.screenWidth && rect.top < Environment.screenHeight;
-}
-
-float gameplayPickPad() {
-    const float scale = Environment.screenWidth / 800.f < Environment.screenHeight / 600.f
-        ? Environment.screenWidth / 800.f : Environment.screenHeight / 600.f;
-    return 4.f * (scale > 1.f ? scale : 1.f);
 }
 
 bool gameplayPickEligible(GameObjectPtr obj, bool skipDisabled) {
