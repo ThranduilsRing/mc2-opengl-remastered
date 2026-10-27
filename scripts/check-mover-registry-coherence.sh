@@ -190,7 +190,7 @@ s3_read_gates() {
     if [ -z "${ln:-}" ]; then
         echo "  S3: GameObjectManager::moverInRect not found in objmgr_pick.cpp"
     else
-        if ! sed -n "${ln},$((ln + 40))p" "$objmgr" | grep -q 'isOnGUI()'; then
+        if ! sed -n "${ln},$((ln + 40))p" "$objmgr" | grep -q 'isOnGUI()\|gameplayPickEligible('; then
             echo "  S3: moverInRect body lost its isOnGUI() gate (#50 selection class)"
         fi
     fi

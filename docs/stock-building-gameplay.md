@@ -38,7 +38,7 @@ The survey and audit are external evidence at
 
 ## Reproducing the proof
 
-The `[BLDG_GAMEPLAY]` dump and `tools/stock_blocking.py` comparison harness were
+The `[BLDG_GAMEPLAY]` dump and stock-blocking comparison harness were
 removed (W67 review: the dump swapped the live GameMap and allocated shapes under
 a diagnostic gate). The evidence below was gathered with them before removal.
 
