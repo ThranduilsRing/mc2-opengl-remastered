@@ -391,10 +391,16 @@ bool gameplayPickRect(GameObjectPtr obj, PickRect& rect, bool margin = true) {
         }
     }
     if (margin) {
-        const float pad = 4.f * std::max(1.f, std::min(Environment.screenWidth / 800.f, Environment.screenHeight / 600.f));
+        const float pad = gameplayPickPad();
         rect.left -= pad; rect.top -= pad; rect.right += pad; rect.bottom += pad;
     }
     return rect.right >= 0 && rect.bottom >= 0 && rect.left < Environment.screenWidth && rect.top < Environment.screenHeight;
+}
+
+float gameplayPickPad() {
+    const float scale = Environment.screenWidth / 800.f < Environment.screenHeight / 600.f
+        ? Environment.screenWidth / 800.f : Environment.screenHeight / 600.f;
+    return 4.f * (scale > 1.f ? scale : 1.f);
 }
 
 bool gameplayPickEligible(GameObjectPtr obj, bool skipDisabled) {
@@ -543,7 +549,7 @@ GameObjectPtr pickGameplayObjects(long x, long y, GameObjectPtr* list, long coun
             || (terrainOnly && obj->isMover())) continue;
         PickRect rect;
         if (!gameplayPickRect(obj, rect) || !rect.contains(x, y)) continue;
-        const float pad = 4.f * std::max(1.f, std::min(Environment.screenWidth / 800.f, Environment.screenHeight / 600.f));
+        const float pad = gameplayPickPad();
         const bool coreHit = x >= rect.left+pad && x <= rect.right-pad
             && y >= rect.top+pad && y <= rect.bottom-pad;
         const auto delta = obj->getPosition() - eye->getCameraOrigin();
@@ -587,8 +593,9 @@ bool GameObjectManager::moverInRect(long index, glm::vec3& start, glm::vec3& end
     if (!gameplayPickEligible(obj, false) || obj->getTeam() != Team::home) return false;
     PickRect rect;
     if (!gameplayPickRect(obj, rect)) return false;
-    return std::min(start.x,end.x) <= rect.right && std::max(start.x,end.x) >= rect.left
-        && std::min(start.y,end.y) <= rect.bottom && std::max(start.y,end.y) >= rect.top;
+    const auto [x0, x1] = std::minmax(start.x, end.x);
+    const auto [y0, y1] = std::minmax(start.y, end.y);
+    return x0 <= rect.right && x1 >= rect.left && y0 <= rect.bottom && y1 >= rect.top;
 }
 
 // Click selection uses the same service with an own-unit candidate list.

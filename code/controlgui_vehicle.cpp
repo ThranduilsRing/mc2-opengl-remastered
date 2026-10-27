@@ -450,11 +450,12 @@ void ControlGui::renderHoverTip()
 	const long pad = 3;
 	long left = g_hoverTipX + 16;
 	long top = g_hoverTipY + 20;
-	if ( left + (long)width + 2 * pad > Environment.screenWidth )
-		left = Environment.screenWidth - (long)width - 2 * pad;
-	if ( top + (long)height + 2 * pad > Environment.screenHeight )
-		top = g_hoverTipY - (long)height - 2 * pad - 4;
-	GUI_RECT box = { left, top, left + (long)width + 2 * pad, top + (long)height + 2 * pad };
+	const long w = static_cast<long>(width), h = static_cast<long>(height);
+	if ( left + w + 2 * pad > Environment.screenWidth )
+		left = Environment.screenWidth - w - 2 * pad;
+	if ( top + h + 2 * pad > Environment.screenHeight )
+		top = g_hoverTipY - h - 2 * pad - 4;
+	GUI_RECT box = { left, top, left + w + 2 * pad, top + h + 2 * pad };
 	drawRect( box, 0xc0000000 );
 	drawEmptyRect( box, 0xffa0a0a0, 0xffa0a0a0 );
 	gos_TextSetRegion( box.left, box.top, box.right, box.bottom );
