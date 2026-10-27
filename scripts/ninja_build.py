@@ -26,7 +26,9 @@ from configure_ninja import (DEFAULT_TARGETS, DEFAULT_TREE, NINJA, compile_cache
                              under_vcvars)  # noqa: E402
 
 
-PDB_MAX_BYTES = 4 * 1024 ** 3  # MSVC hit LNK1318 on a 6.3 GB mc2.pdb; the pdb is generated, so drop it before it can break the link
+# PDBs retain obsolete type records across links. Compact before gate copies
+# and per-run freshness hashes dominate; the fresh link retains full symbols.
+PDB_MAX_BYTES = 1024 ** 3
 
 
 def drop_oversize_pdb(root, tree, limit=PDB_MAX_BYTES):
@@ -35,12 +37,15 @@ def drop_oversize_pdb(root, tree, limit=PDB_MAX_BYTES):
         size = os.path.getsize(pdb)
         if size > limit:
             os.remove(pdb)
-            print(f"[ninja_build] deleted {tree}/mc2.pdb ({size / 1024 ** 3:.1f} GB > {limit / 1024 ** 3:.0f} GB; LNK1318 guard)", flush=True)
+            exe = os.path.join(root, tree, "mc2.exe")
+            if os.path.isfile(exe):
+                os.remove(exe)  # PDB is a linker side effect; force Ninja to regenerate both.
+            print(f"[ninja_build] deleted {tree}/mc2.pdb ({size / 1024 ** 3:.1f} GB > {limit / 1024 ** 3:.0f} GB; growth guard)", flush=True)
             return True
     except FileNotFoundError:
         pass
     except OSError as exc:   # an open pdb (a link or the debugger is using it) cannot be deleted: say so, the LNK1318 guard did nothing
-        print(f"[ninja_build] WARNING: could not delete oversize {tree}/mc2.pdb ({exc}); LNK1318 will recur until it is removed.",
+        print(f"[ninja_build] WARNING: could not delete oversize {tree}/mc2.pdb ({exc}); the next link/copy retains its excess debug records.",
               file=sys.stderr, flush=True)
     return False
 
@@ -94,11 +99,16 @@ def main():
     # build); it is configured on first use.
     if tree != DEFAULT_TREE and not os.path.exists(f"{root}/{tree}/build.ninja"):
         configure(root, tree)
-    drop_oversize_pdb(root, tree)
+    dry_run = "-n" in argv
+    if not dry_run:
+        drop_oversize_pdb(root, tree)
     env = compile_cache_env(root) if tree_uses_cache(root, tree) else None  # sccache tree (the default; configure_ninja.py --no-compile-cache opts out)
     if env:
         ensure_cache_server(root, env)
-    rc = under_vcvars(subprocess.list2cmdline([NINJA, "-C", f"{root}/{tree}"] + argv), env)
+    command = subprocess.list2cmdline([NINJA, "-C", f"{root}/{tree}"] + argv)
+    rc = under_vcvars(command, env)
+    if rc == 0 and not dry_run and drop_oversize_pdb(root, tree):
+        rc = under_vcvars(command, env)  # Fresh full symbols from the same objects; no second compile.
     if started is not None:
         print(f"[warm] done rc={rc} elapsed={time.monotonic() - started:.0f}s", flush=True)
     sys.exit(rc)

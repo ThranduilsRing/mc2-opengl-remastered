@@ -133,10 +133,12 @@ def test_oversize_pdb_deleted_small_kept(tmp_path, capsys):
     tree = tmp_path / "t"
     tree.mkdir()
     pdb = tree / "mc2.pdb"
+    exe = tree / "mc2.exe"
+    exe.write_bytes(b"engine")
     pdb.write_bytes(b"x" * 100)
-    assert not ninja_build.drop_oversize_pdb(str(tmp_path), "t", limit=1000) and pdb.exists()
+    assert not ninja_build.drop_oversize_pdb(str(tmp_path), "t", limit=1000) and pdb.exists() and exe.exists()
     assert ninja_build.drop_oversize_pdb(str(tmp_path), "t", limit=50)
-    assert not pdb.exists() and "deleted t/mc2.pdb" in capsys.readouterr().out
+    assert not pdb.exists() and not exe.exists() and "deleted t/mc2.pdb" in capsys.readouterr().out
     assert not ninja_build.drop_oversize_pdb(str(tmp_path), "t", limit=50)  # missing pdb: no error
 
 
@@ -145,6 +147,24 @@ def test_tooling_only_regex_covers_build_inputs():
         assert lm.COMPILED_INPUTS.search(p), p
     for p in ("tools/lane_merge.py", "docs/a.md", "scripts/tests/test_x.py"):
         assert not lm.COMPILED_INPUTS.search(p), p
+
+
+@pytest.mark.parametrize("guards,flags,returncode,count", [
+    ([False, True], [], 0, 2), ([False, False], [], 0, 1),
+    ([], ["-n"], 0, 1), ([False], [], 7, 1),
+])
+def test_build_compacts_new_growth_without_compiling_twice(monkeypatch, guards, flags, returncode, count):
+    monkeypatch.delenv("MC2_NINJA_TREE", raising=False)
+    monkeypatch.setattr(sys, "argv", [ninja_build.__file__, "mc2", "-j1", *flags])
+    pending = iter(guards)
+    monkeypatch.setattr(ninja_build, "drop_oversize_pdb", lambda *a: next(pending))
+    monkeypatch.setattr(ninja_build, "tree_uses_cache", lambda *a: False)
+    commands = []
+    monkeypatch.setattr(ninja_build, "under_vcvars", lambda command, env: commands.append(command) or returncode)
+    with pytest.raises(SystemExit) as stopped:
+        ninja_build.main()
+    assert stopped.value.code == returncode
+    assert len(commands) == count and len(set(commands)) == 1
 
 
 def test_trailer_defaults_from_commit_trailer_env():
@@ -603,6 +623,12 @@ def test_gate_retains_both_art_modes_for_affected_saves_and_captures():
         modes = [(c, e) for n, c, e in steps if n.startswith("saveload-" + mission)]
         assert len(modes) == 2 and modes[0][0] != modes[1][0]
         assert {e["MC2_OPTIONS_OVERRIDE"] for _, e in modes} == {"RemasteredBuildings=TRUE", "RemasteredBuildings=FALSE"}
+        assert all("--sim-speed" not in c for c, _ in modes)
+        assert modes[1][0][-2:] == ["--duration", "20"]
+        assert ("--duration" in modes[0][0]) == (mission not in ("mc2_10", "mc2_24"))
+    full = gate.affected_plan(gate.plan(6), ["scripts/merge_gate.py"], full=True)
+    assert all("--sim-speed" not in c and "--duration" not in c
+               for n, c, _ in full if n.startswith("saveload-"))
 
 
 @pytest.mark.parametrize("paths,count", [(["code/mission.cpp"], 2), (["scripts/kit_payload.py"], 10),
@@ -754,12 +780,25 @@ def test_stock_copy_is_private_and_always_removed(tmp_path, fail):
         (install / "mc2.exe").write_text("engine")
         (install / "cache").mkdir()
         (install / "cache/model.mci").write_text("warm cache")
+        native = install / "cache/content-model/model-0000000000000001.mci"
+        native.parent.mkdir()
+        native.write_bytes(b"native")
+        receipt = native.parent / "industrial-cook.json"
+        receipt.write_text("{}")
         (install / "mod_smoke-stage").mkdir()
         (install / "mod_smoke-stage/large").write_text("disposable")
         try:
-            with gate.stock_copy(install, tmp_path) as clone:
+            with gate.stock_copy(install) as clone:
+                assert clone.parent == install.parent
                 assert not (clone / "mod_smoke-stage").exists()
                 assert (clone / "cache/model.mci").read_text() == "warm cache"
+                recipe = clone / native.relative_to(install)
+                assert recipe.samefile(native)
+                assert not (clone / receipt.relative_to(install)).samefile(receipt)
+                replacement = recipe.with_suffix(".mci.tmp")
+                replacement.write_bytes(b"updated")
+                replacement.replace(recipe)
+                assert native.read_bytes() == b"native"
                 assert not list(clone.glob(".gate-stock-*"))
                 assert (clone / "data/asset").samefile(install / "data/asset")
                 (clone / "mc2.exe").write_text("changed")
@@ -814,6 +853,10 @@ def test_auxiliary_determinism_uses_copy_while_saves_stay_serial(tmp_path, monke
             assert "copy-complete" in calls
         if command[0] == "mods":
             assert copying.wait(2)
+            assert command[command.index("--base-install") + 1] == str(clone)
+            assert command[command.index("--exe") + 1] == str(clone / "mc2.exe")
+            # The old schedule waited for every mod before launching saves.
+            assert saves.wait(2), "mods must overlap the stock proof chain"
         if command[0] == "det":
             assert command[-1] == str(clone)
             det.set()
@@ -821,15 +864,22 @@ def test_auxiliary_determinism_uses_copy_while_saves_stay_serial(tmp_path, monke
         if command[0] == "save":
             saves.set()
             assert det.wait(2)
+        if command[0] == "kit":
+            assert command[-1] == str(clone)
+        if command[0] == "quiet":
+            assert command[-1] == str(clone / "mc2.exe")
         return _r(0)
     monkeypatch.delenv("MC2_HOST_LEASE_BATCH", raising=False)
     monkeypatch.setattr(gate, "git", lambda *a: "head")
     monkeypatch.setattr(gate, "stock_copy", copy)
     monkeypatch.setattr(gate, "run_child", runner)
-    assert gate.execute_parallel([("deploy", ["deploy"], {}), ("mods", ["mods"], {}),
+    assert gate.execute_parallel([("deploy", ["deploy"], {}),
+        ("mods", ["mods", "--base-install", str(install), "--exe", str(install / "mc2.exe")], {}),
         ("determinism-mc2_10", ["det", "--install", str(install)], {}),
-        ("saveload-mc2_01", ["save"], {})], "head") == 0
-    assert calls.index("mods") < calls.index("det") < calls.index("cleaned")
+        ("saveload-mc2_01", ["save"], {}),
+        ("kit-visibility", ["kit", "--install", str(install)], {}),
+        ("quiet", ["quiet", "--exe", str(install / "mc2.exe")], {})], "head") == 0
+    assert calls.index("mods") < calls.index("det") < calls.index("kit") < calls.index("quiet") < calls.index("cleaned")
 
 
 @pytest.mark.parametrize("tier,env,expected", [
@@ -921,7 +971,7 @@ def test_game_batch_releases_and_reaps_its_holder(monkeypatch, fail):
     assert [c[0] for c in calls] == ["hold", "release", "wait"]
 
 
-def test_runtime_chain_acquires_once_after_offline_checks(monkeypatch):
+def test_only_capture_stages_take_the_exclusive_hold_one_at_a_time(monkeypatch):
     from contextlib import contextmanager
     import merge_gate as gate
     calls = []
@@ -934,15 +984,14 @@ def test_runtime_chain_acquires_once_after_offline_checks(monkeypatch):
             calls.append("release")
     def runner(cmd, **kw):
         calls.append(cmd[0])
-        if cmd[0] != "offline":
-            assert kw["env"]["MC2_HOST_LEASE_BATCH"] == "fixture"
+        assert ("MC2_HOST_LEASE_BATCH" in kw["env"]) == (cmd[0] == "before")
         return _r(0)
     monkeypatch.setattr(gate, "run_child", runner)
     monkeypatch.setattr(gate, "game_batch", batch)
     monkeypatch.setattr(gate, "git", lambda *a: "head")
     steps = [("contracts", ["offline"], {}), ("capture-before", ["before"], {}), ("deploy", ["deploy"], {}), ("tier1", ["smoke"], {})]
     assert gate.execute(steps, "head", runner=runner) == 0
-    assert calls == ["offline", "hold", "before", "deploy", "smoke", "release"]
+    assert calls == ["offline", "hold", "before", "release", "deploy", "smoke"]
 
 
 @pytest.mark.parametrize("fresh", [True, False])
@@ -994,21 +1043,22 @@ def test_gate_without_window_receipt_keeps_full_both_mode_coverage(tmp_path, mon
                for n, _, e in seen if n == "mods" or n.startswith(("determinism-", "saveload-")))
 
 
-def test_blocked_game_stages_report_missing_proof_without_launching(monkeypatch, capsys):
+def test_blocked_capture_reports_missing_proof_without_launching(monkeypatch, capsys):
     from contextlib import contextmanager
     import merge_gate as gate
     @contextmanager
     def unavailable():
         raise RuntimeError("fixture: FIFO queue busy")
         yield {}
-    def runner(*a, **k):
-        pytest.fail("blocked stage must not launch")
+    def runner(cmd, **k):
+        if cmd[0] == "capture":
+            pytest.fail("blocked stage must not launch")
+        return _r(0)
     monkeypatch.setattr(gate, "game_batch", unavailable)
-    monkeypatch.setattr(gate, "run_child", runner)
     monkeypatch.setattr(gate, "git", lambda *a: "head")
     steps=[("capture-before", ["capture"], {}), ("tier1", ["smoke"], {"MC2_GATE_COVERAGE": "missions assigned to shared proofs"})]
     assert gate.execute(steps, "head", runner=runner) == 1
     output=capsys.readouterr().out
-    assert output.count("FAIL: host game lease unavailable (not run)") == 2
+    assert "| capture-before | FAIL: fixture: FIFO queue busy" in output
+    assert "| tier1 | PASS" in output
     assert "Coverage plan tier1:" in output
-    assert "Coverage tier1:" not in output
