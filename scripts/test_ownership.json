@@ -80,6 +80,7 @@
     {"module": "scripts/tests/test_parent_watchdog.py", "owners": ["scripts_tests"]},
     {"module": "scripts/tests/test_phase_tools.py", "owners": ["scripts_tests"]},
     {"module": "scripts/tests/test_ref_passthrough.py", "owners": ["scripts_tests"]},
+    {"module": "scripts/tests/test_isolated_deploy_shaders_vk.py", "owners": ["scripts_tests"]},
     {"module": "scripts/tests/test_gpu_routing.py", "owners": ["scripts_tests"]},
     {"module": "scripts/tests/test_run_smoke_early_validation.py", "owners": ["scripts_tests"]},
     {"module": "scripts/tests/test_runner_env_drop.py", "owners": ["scripts_tests"]},
