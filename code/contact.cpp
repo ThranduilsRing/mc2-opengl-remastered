@@ -608,23 +608,6 @@ long SensorSystem::scanBattlefield (void)
 		}
 		for (; ci < contactOrdinals.size(); ci++) visit.push_back({contactOrdinals[ci], false});
 	}
-	// T4-TEMP: one-off superset proof against the full legacy scan. Deleted once proven.
-	if (true) {
-		static long checked = 0, bad = 0, scans = 0;
-		size_t vi = 0;
-		for (long i = 0; i < numMovers; i++) {
-			while (vi < visit.size() && visit[vi].ordinal < i) vi++;
-			if (vi < visit.size() && visit[vi].ordinal == i) continue;
-			MoverPtr mover = ObjectManager->getMover(i);
-			if (!mover->getExists() || mover->getTeamId() == owner->getTeamId()) continue;
-			checked++;
-			if (isContact(mover) || calcContactStatus(mover) != CONTACT_NONE) {
-				bad++;
-				fprintf(stdout, "[T4_ORDER] VIOLATION ordinal=%ld contact=%d\n", i, int(isContact(mover)));
-			}
-		}
-		if (++scans % 500 == 0) fprintf(stdout, "[T4_ORDER] scans=%ld skipped_checked=%ld violations=%ld\n", scans, checked, bad);
-	}
 	// SENSOR-SCAN-FACTS-1: cache the gate once outside the hot loop (OFF = one bool).
 	const bool _sfacts = mc2_sensor_trace::g_counters.active;
 	for (const Visit& v : visit)

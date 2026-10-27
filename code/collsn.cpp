@@ -241,39 +241,6 @@ long CollisionGrid::add (GameObjectPtr object)
 }
 
 //------------------------------------------------------------------------------
-static std::vector<std::pair<GameObjectPtr, GameObjectPtr>>* s_t3Sink;
-// T3-TEMP: legacy linked-list traversal, verbatim, for the one-off order proof. Deleted once proven.
-static void t3LegacyOrder(const std::vector<GameObjectPtr>& cellsInsertion, const std::vector<unsigned long>& cellOf,
-	const std::vector<GameObjectPtr>& giantInsertionOrder, unsigned long xw, unsigned long yw,
-	std::vector<std::pair<GameObjectPtr, GameObjectPtr>>& out)
-{
-	struct N { GameObjectPtr object; N* next; };
-	std::vector<N> nodes(cellsInsertion.size() + giantInsertionOrder.size() + 1);
-	std::vector<N*> grid(size_t(xw) * yw, nullptr);
-	N* giantObjects = nullptr;
-	size_t next = 0;
-	for (auto* o : giantInsertionOrder) { N* n = &nodes[next++]; n->object = o; n->next = giantObjects; giantObjects = n; }
-	for (size_t i = 0; i < cellsInsertion.size(); i++) {
-		N* prev = grid[cellOf[i]]; N* n = &nodes[next++]; grid[cellOf[i]] = n; n->object = cellsInsertion[i]; n->next = prev;
-	}
-	auto check = [&](GameObjectPtr o1, N* area) { while (area) { out.push_back({o1, area->object}); area = area->next; } };
-	for (N* g = giantObjects; g; g = g->next) if (g->next) check(g->object, g->next);
-	for (long y = 0; y < long(yw); y++) for (long x = 0; x < long(xw); x++) {
-		unsigned long gi = x + y * xw;
-		for (N* g = grid[gi]; g; g = g->next) {
-			GameObjectPtr obj = g->object;
-			if (giantObjects) check(obj, giantObjects);
-			if (g->next) check(obj, g->next);
-			if (x < long(xw - 1)) {
-				if (grid[gi + 1]) check(obj, grid[gi + 1]);
-				if (y < long(yw - 1)) if (grid[gi + 1 + xw]) check(obj, grid[gi + 1 + xw]);
-			}
-			if (y < long(yw - 1)) if (grid[gi + xw]) check(obj, grid[gi + xw]);
-		}
-	}
-}
-static long s_t3Frames = 0, s_t3Pairs = 0, s_t3Bad = 0;
-
 void CollisionGrid::createGrid (void)
 {
 	// Flat cell ranges. The legacy bucket lists were LIFO, so within a cell the newest object
@@ -291,18 +258,6 @@ void CollisionGrid::createGrid (void)
 			ordered[cursor[placed[k].cell]++] = placed[k].object;
 	}
 	std::reverse(giants.begin(), giants.end());	// now in legacy list order
-	if (true) {
-		std::vector<GameObjectPtr> ins, gi(giants.rbegin(), giants.rend());
-		std::vector<unsigned long> cellOf;
-		for (auto& p : placed) { ins.push_back(p.object); cellOf.push_back(p.cell); }
-		std::vector<std::pair<GameObjectPtr, GameObjectPtr>> a, b;
-		t3LegacyOrder(ins, cellOf, gi, xGridWidth, yGridWidth, a);
-		s_t3Sink = &b; traverse(); s_t3Sink = nullptr;
-		s_t3Frames++; s_t3Pairs += (long)a.size();
-		if (a != b) { s_t3Bad++; }
-		if (s_t3Frames % 100 == 0 || a != b)
-			fprintf(stdout, "[T3_ORDER] frames=%ld pairs=%ld mismatches=%ld\n", s_t3Frames, s_t3Pairs, s_t3Bad);
-	}
 	traverse();
 }
 
@@ -374,7 +329,6 @@ void CollisionGrid::checkGrid (GameObjectPtr obj1, const GameObjectPtr* first, c
 	for (; first != last; ++first)
 	{
 		GameObjectPtr obj2 = *first;
-		if (s_t3Sink) { s_t3Sink->push_back({obj1, obj2}); continue; }
 
 		if (mc2_collision_trace::g_counters.active)
 			mc2_collision_trace::g_counters.pairsTested++;  // headline broadphase pair count
