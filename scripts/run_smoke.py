@@ -1979,6 +1979,7 @@ def main():
                             elif _te.get("tag") == "DEVICE":
                                 _dev = _te.get("data", {})
                                 _dev = _dev.get("device") if isinstance(_dev, dict) else str(_dev)
+                                _diag_checks[:] = [c for c in _diag_checks if not c.startswith("INFO gpu=")]  # trace may span runs: keep the last
                                 _diag_checks.append(f"INFO gpu={_dev}")
                         except Exception:
                             continue

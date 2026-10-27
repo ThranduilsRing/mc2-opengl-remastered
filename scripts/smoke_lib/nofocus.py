@@ -204,7 +204,7 @@ def route_gpu(out: dict, perf: bool = False) -> None:
     MC2_HARNESS_GPU = auto (default) | xtx | 2070 overrides. Perf = MC2_VK_GPU_TIMESTAMPS, Tracy,
     uncapped FPS, or a visible-window (show_window) run. An explicit VK_LOADER_DRIVERS_SELECT wins.
     """
-    mode = out.get("MC2_HARNESS_GPU", "auto").lower()
+    mode = (out.get("MC2_HARNESS_GPU") or os.environ.get("MC2_HARNESS_GPU") or "auto").lower()  # runners scrub the child env; read the shell too
     perf = perf or out.get("MC2_VK_GPU_TIMESTAMPS", "0") not in ("", "0") or out.get("MC2_FPS_CAP") == "0" \
         or any(k.startswith("MC2_TRACY") for k in out)
     if mode == "2070" or (mode == "auto" and not perf):
