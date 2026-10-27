@@ -51,6 +51,8 @@ inline bool cellForest(const Snapshot& s, long row, long col)
 	return (s.cells[row, col] & kCellForestMask) ? true : false;
 }
 
+}  // namespace
+
 bool walk(const Snapshot& s, float startLocal, long mCellRow, long mCellCol, float endLocal, long tCellRow, long tCellCol,
           long teamId, float extRad, float startExtRad)
 {
@@ -146,10 +148,12 @@ bool walk(const Snapshot& s, float startLocal, long mCellRow, long mCellCol, flo
 
 	return true;
 }
-}  // namespace
 
 float terrainElevation(const Snapshot& s, const glm::vec3& position)
 {
+	if (s.elevationOverride)
+		return s.elevationOverride(position);
+
 	glm::vec3 triVert[3];
 	glm::vec2 upperLeft;
 	glm::vec3 triPos;
@@ -303,6 +307,12 @@ bool query(const Snapshot& s, const Query& q)
 
 void batch(const Snapshot& s, std::span<const Query> q, std::span<uint8_t> out)
 {
+	if (s.elevationOverride)  // reads engine globals: main thread only
+	{
+		for (size_t i = 0; i < q.size(); ++i)
+			out[i] = query(s, q[i]) ? 1 : 0;
+		return;
+	}
 	mc2::jobs::parallel_for(mc2::jobs::Domain::Sim, static_cast<int>(q.size()), kBlockQueries, kCostNsPerQuery,
 		[&s, q, out](int begin, int end) {
 			for (int i = begin; i < end; ++i)

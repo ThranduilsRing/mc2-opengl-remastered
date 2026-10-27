@@ -21,7 +21,10 @@ inline constexpr int      kCellHeightShift = 18;
 inline constexpr uint32_t kCellForestMask  = 0x10000000u;
 
 struct Snapshot {
-	bool valid = false;  // false: this terrain configuration needs the legacy elevation path (Phong / dirt displacement)
+	bool valid = false;  // false: no terrain / mission map is loaded
+	// Non-null when MapData::terrainElevation adds terms the pure path does not carry (CPU Phong, dirt displacement):
+	// elevation then comes from this hook. It reads engine globals, so such a snapshot is main-thread only.
+	float (*elevationOverride)(const glm::vec3&) = nullptr;
 
 	// Terrain height mesh: elevation of the vertex at column x, row y is vertices[y, x].
 	using VertexGrid = std::mdspan<const float, std::dextents<long, 2>, std::layout_stride>;
@@ -55,6 +58,10 @@ struct Query {
 };
 
 float terrainElevation(const Snapshot& s, const glm::vec3& position);
+
+// The cell walk between two cells with the endpoints' heights above ground (Team::lineOfSight's legacy entry).
+bool walk(const Snapshot& s, float startLocal, long mCellRow, long mCellCol, float endLocal, long tCellRow, long tCellCol,
+          long teamId, float extRad, float startExtRad);
 
 // One query. Requires s.valid.
 bool query(const Snapshot& s, const Query& q);

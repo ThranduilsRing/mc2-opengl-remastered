@@ -14,9 +14,13 @@ static_assert(mc2::los::kCellHeightMask == static_cast<uint32_t>(MAPCELL_HEIGHT_
               mc2::los::kCellForestMask == static_cast<uint32_t>(MAPCELL_FOREST_MASK),
               "los_kernel.h cell bits must match MapCell");
 
+static float legacyTerrainElevation(const glm::vec3& position)
+{
+	return land->getTerrainElevation(position);
+}
+
 // Immutable view of the terrain mesh, the cell grid and the legacy globals the LOS walk reads (see los_kernel.h).
-// valid=false when MapData::terrainElevation would add its Phong or dirt-displacement terms (non-default options): those
-// callers keep the legacy walk below.
+// Non-default terrain options (CPU Phong, dirt displacement) route elevation through the legacy MapData call.
 static mc2::los::Snapshot captureLosSnapshot()
 {
 	mc2::los::Snapshot s;
@@ -28,10 +32,8 @@ static mc2::los::Snapshot captureLosSnapshot()
 	if (Terrain::terrainTextures2)
 	{
 		TerrainColorMap* tcm = Terrain::terrainTextures2;
-		if (!s_retireCpuPhong)
-			return s;
-		if (gos_GetTerrainDisplaceScale() > 0.0f && tcm->cpuColorMap && tcm->cpuDispAlpha)
-			return s;
+		if (!s_retireCpuPhong || (gos_GetTerrainDisplaceScale() > 0.0f && tcm->cpuColorMap && tcm->cpuDispAlpha))
+			s.elevationOverride = &legacyTerrainElevation;
 	}
 
 	PostcompVertex* blocks = md->getBlocks();
@@ -151,12 +153,7 @@ bool Team::teamLineOfSight (glm::vec3 tPos, float extRad)
 
 	const mc2::los::Snapshot snap = captureLosSnapshot();
 	if (!snap.valid)
-	{
-		for (const mc2::los::Query& q : pending)
-			if (lineOfSight(q.position, q.target, q.teamId, q.extRad, q.startExtRad))
-				return true;
 		return false;
-	}
 
 	constexpr size_t kBatchMin = 8;
 	if (pending.size() >= kBatchMin && mc2::jobs::enabled())
@@ -175,178 +172,26 @@ bool Team::teamLineOfSight (glm::vec3 tPos, float extRad)
 	return false;
 }
 
-constexpr float ACCURACY_ADJUST = 1.5f;
-const float HALF_CELL_DIST	= (128.0f / 6.0f);
 //---------------------------------------------------------------------------
 bool Team::lineOfSight (float startLocal, long mCellRow, long mCellCol, float endLocal, long tCellRow, long tCellCol, long teamId, float extRad, float startExtRad)
 {
-	#ifdef LAB_ONLY
-	__int64 x=GetCycles();
-	#endif
-	
-	//-----------------------------------------------------
-	// Once we allow teams to have alliances (for contacts,
-	// etc.), simply set all nec. team bits in this mask...
-
-	if ((teamId < 0) || (teamId >= MAX_TEAMS))	//Not on any team.  It can see everything!
-		return true;
-
-
-	if (useRealLOS)
-	{
-		//------------------------------------------------------------------------------------------
-		// Within magic radius.  Check REAL LOS now.
-		// Check is really simple.
-		// Find deltaCellRow and deltaCellCol and iterate over them from source to dest.
-		// If the magic line ever goes BELOW the terrainElevation PLUS localElevation return false.
-		glm::vec3 startPos, endPos;
-		startPos = glm::vec3(0.0f);
-		endPos = glm::vec3(0.0f);
-		
-		land->getCellPos(tCellRow,tCellCol,endPos);
-		land->getCellPos(mCellRow,mCellCol,startPos);
-		startPos.z += startLocal;
-		endPos.z += endLocal;
-
-		glm::vec3 deltaCellVec;
-		deltaCellVec.y = tCellRow - mCellRow;
-		deltaCellVec.x = tCellCol - mCellCol;
-		deltaCellVec.z = 0.0f;
-		float startHeight = startPos.z;
-		
-		float length = glm::length(deltaCellVec);
-		length *= ACCURACY_ADJUST;
-		
-		if (length > Stuff::SMALL)
-		{
-			float colLength = (endPos.x - startPos.x) / length;
-			float rowLength = (endPos.y - startPos.y) / length;
-			float heightLen = (endPos.z - startPos.z) / (length + ACCURACY_ADJUST);
-			
-			glm::vec3 currentPos = startPos;
-			currentPos.z = land->getTerrainElevation(currentPos);
-			long maxDistIter = (length - 0.5f);
-			long maxTrees = 0;
-
-			glm::vec3 dist;
-			dist = endPos - currentPos;
-			
-			float remainingDist = glm::length(dist);
-			bool checkExtent = (extRad > Stuff::SMALL);
-			bool checkStart = (startExtRad > Stuff::SMALL);
-			extRad += HALF_CELL_DIST;
-			for (long distIter = 0;distIter < maxDistIter;distIter++)
-			{
-				bool outsideStartRadius = true;
-				if (checkStart)
-				{
-					glm::vec3 distance;
-					distance = currentPos - startPos;
-					distance.z = 0.0f;
-					float dist = glm::length(distance);
-					if (dist <= startExtRad)
-						outsideStartRadius = false;
-				}
-
-				startHeight += heightLen;
-
-				int curCellRow, curCellCol;
-				land->worldToCell(currentPos,curCellRow, curCellCol);
-
-				float localElev = (worldUnitsPerMeter * 4.0f * static_cast<float>(GameMap->getLocalHeight(curCellRow,curCellCol)));
-				float thisHeight = currentPos.z + localElev;
-
-				//First, check if we are now inside the extent radius of the thing we are calcing LOS to.
-				// If we are and we haven't returned false since we're here, we can see it!!!!
-				if (checkExtent)
-				{
-					dist = endPos - currentPos;
-					remainingDist = glm::length(dist);
-					if (remainingDist <= extRad)
-						break;
-				}
-
-				if (outsideStartRadius && (startHeight < thisHeight))
-				{
-					bool isTree = false;
-					if (GameMap->getForest(curCellRow,curCellCol))
-					{
-						maxTrees++;
-						isTree = true;
-					}
-
-					if (!isTree || (maxTrees >= MaxTreeLOSCellBlock))
-					{
-		
-#ifdef LAB_ONLY
-						if (drawTerrainGrid)
-						{
-							glm::vec3 realStart = startPos;
-							Stuff::Vector4D lineStart, lineEnd;
-							// [PROJECTZ:DebugOnly id=debug_los_line_c0]
-							eye->projectForDebugOverlay(realStart,lineStart);
-							// [PROJECTZ:DebugOnly id=debug_los_line_c1]
-							eye->projectForDebugOverlay(endPos,lineEnd);
-
-							debugLines[currentLineElement++] = new LineElement(lineStart,lineEnd,SD_RED,nullptr,-1);
-						}
-#endif
-						return false;
-					}
-				}
-
-				currentPos.x += colLength;
-				currentPos.y += rowLength;
-				currentPos.z = land->getTerrainElevation(currentPos);
-			}
-		}
-
-#ifdef LAB_ONLY
-		if (drawTerrainGrid)
-		{
-			glm::vec3 realStart = startPos;
-			Stuff::Vector4D lineStart, lineEnd;
-			// [PROJECTZ:DebugOnly id=debug_los_line_d0]
-			eye->projectForDebugOverlay(realStart,lineStart);
-			// [PROJECTZ:DebugOnly id=debug_los_line_d1]
-			eye->projectForDebugOverlay(endPos,lineEnd);
-
-			debugLines[currentLineElement++] = new LineElement(lineStart,lineEnd,SD_GREEN,nullptr,-1);
-		}
-#endif
-	}
-
-
-	return true;
+	const mc2::los::Snapshot snap = captureLosSnapshot();
+	if (!snap.valid)
+		return false;
+	return mc2::los::walk(snap, startLocal, mCellRow, mCellCol, endLocal, tCellRow, tCellCol, teamId, extRad, startExtRad);
 }
 
 //---------------------------------------------------------------------------
 bool Team::lineOfSight (glm::vec3 position, glm::vec3 targetPosition, long teamId, float extRad, float startExtRad)
 {
-	{
-		const mc2::los::Snapshot snap = captureLosSnapshot();
-		if (snap.valid)
-		{
-			mc2::los::Query q;
-			q.position = position;
-			q.target = targetPosition;
-			q.teamId = teamId;
-			q.extRad = extRad;
-			q.startExtRad = startExtRad;
-			return mc2::los::query(snap, q);
-		}
-	}
-
-	int posCellR, posCellC;
-	int tarCellR, tarCellC;
-	land->worldToCell(position, posCellR, posCellC);
-	land->worldToCell(targetPosition, tarCellR, tarCellC);
-	
-	float elev = land->getTerrainElevation(position);
-	float localStart = position.z - elev;
-
-	elev = land->getTerrainElevation(targetPosition);
-	float localEnd = targetPosition.z - elev;
-	
-	return(lineOfSight(localStart,posCellR, posCellC, localEnd, tarCellR, tarCellC,teamId,extRad, startExtRad));
+	const mc2::los::Snapshot snap = captureLosSnapshot();
+	if (!snap.valid)
+		return false;
+	mc2::los::Query q;
+	q.position = position;
+	q.target = targetPosition;
+	q.teamId = teamId;
+	q.extRad = extRad;
+	q.startExtRad = startExtRad;
+	return mc2::los::query(snap, q);
 }
