@@ -472,13 +472,13 @@ long ArtilleryType::init (FilePtr objFile, unsigned long fileSize) {
 			return(result);
 			
 		explosionOffsetX = static_cast<float *>(std::malloc(sizeof(float)*numExplosions));
-		gosASSERT(explosionOffsetX != NULL);
+		gosASSERT(explosionOffsetX != nullptr);
 
 		explosionOffsetY = static_cast<float *>(std::malloc(sizeof(float)*numExplosions));
-		gosASSERT(explosionOffsetY != NULL);
+		gosASSERT(explosionOffsetY != nullptr);
 
 		explosionDelay   = static_cast<float *>(std::malloc(sizeof(float)*numExplosions));
-		gosASSERT(explosionDelay != NULL);
+		gosASSERT(explosionDelay != nullptr);
 
 		for (long i=0;i<numExplosions;i++)
 		{
@@ -886,7 +886,7 @@ void Artillery::updatePresentation()
 			if (gosEffectSpec)
 			{
 				hitEffect = gosFX::EffectLibrary::Instance->MakeEffect(gosEffectSpec->m_effectID, flags);
-				gosASSERT(hitEffect != NULL);
+				gosASSERT(hitEffect != nullptr);
 			
 				MidLevelRenderer::MLRTexturePool::Instance->LoadImages();
 			}
@@ -907,7 +907,7 @@ void Artillery::updatePresentation()
 				//gosASSERT(leftContrail != NULL);
 			
 				rightContrail = gosFX::EffectLibrary::Instance->MakeEffect(gosEffectSpec->m_effectID, flags);
-				gosASSERT(rightContrail != NULL);
+				gosASSERT(rightContrail != nullptr);
 				
 				MidLevelRenderer::MLRTexturePool::Instance->LoadImages();
 			}
@@ -1432,7 +1432,7 @@ void Artillery::init (bool create, ObjectTypePtr _type)
 			}
 			  
 			adoptAppearance(std::make_unique_for_overwrite<BldgAppearance>());
-			gosASSERT(appearance != NULL);
+			gosASSERT(appearance != nullptr);
 		
 			//--------------------------------------------------------------
 			// The only appearance type for buildings is MLR_APPEARANCE.
@@ -1501,7 +1501,7 @@ void Artillery::init (bool create, ObjectTypePtr _type)
 			}
 			  
 			adoptAppearance(std::make_unique_for_overwrite<BldgAppearance>());
-			gosASSERT(appearance != NULL);
+			gosASSERT(appearance != nullptr);
 		
 			//--------------------------------------------------------------
 			// The only appearance type for buildings is MLR_APPEARANCE.
@@ -1570,7 +1570,7 @@ void Artillery::init (bool create, ObjectTypePtr _type)
 			}
 			  
 			adoptAppearance(std::make_unique_for_overwrite<BldgAppearance>());
-			gosASSERT(appearance != NULL);
+			gosASSERT(appearance != nullptr);
 		
 			//--------------------------------------------------------------
 			// The only appearance type for buildings is MLR_APPEARANCE.
@@ -1647,7 +1647,7 @@ void Artillery::Load (ArtilleryData *data)
 			if (gosEffectSpec)
 			{
 				hitEffect = gosFX::EffectLibrary::Instance->MakeEffect(gosEffectSpec->m_effectID, flags);
-				gosASSERT(hitEffect != NULL);
+				gosASSERT(hitEffect != nullptr);
 			
 				MidLevelRenderer::MLRTexturePool::Instance->LoadImages();
 			}
@@ -1683,7 +1683,7 @@ void Artillery::Load (ArtilleryData *data)
 			if (gosEffectSpec)
 			{
 				hitEffect = gosFX::EffectLibrary::Instance->MakeEffect(gosEffectSpec->m_effectID, flags);
-				gosASSERT(hitEffect != NULL);
+				gosASSERT(hitEffect != nullptr);
 			
 				MidLevelRenderer::MLRTexturePool::Instance->LoadImages();
 			}
