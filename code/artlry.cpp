@@ -18,7 +18,6 @@
 #include"artlry.h"
 #endif
 
-#include "gos_static_prop_killswitch.h"  // g_useGpuStaticProps
 
 #ifndef TEAM_H
 #include"team.h"
@@ -1192,7 +1191,7 @@ void Artillery::render (void)
 	// (aerial bombers, etc.) can be spawned mid-mission and their
 	// inView flag has the same wolfman-zoom false-negative problem as
 	// every other actor class.
-	if (inView || g_useGpuStaticProps)
+	if (inView)
 	{
 		if (hitEffect )
 		{

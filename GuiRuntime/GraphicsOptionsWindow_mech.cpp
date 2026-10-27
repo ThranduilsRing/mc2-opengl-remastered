@@ -19,7 +19,6 @@ struct EnvGate {
 
 static const EnvGate kEnvGates[] = {
     { "MC2_GPU_DRIVEN",             "GPU-driven rendering master gate",          false, false },
-    { "MC2_GPU_OBJECTS",            "GPU static prop batcher",                   true,  false },
     { "MC2_GPU_CULL",               "GPU frustum cull",                          false, false },
     { "MC2_GPU_CULL_SUBSTRATE",     "GPU substrate (default-on)",                true,  false },
     { "MC2_GPU_PARTICLES",          "GPU particle system",                       false, false },

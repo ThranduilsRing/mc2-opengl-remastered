@@ -75,5 +75,12 @@
   "order": 13,
   "defaultOn": false,
   "doc": "Retired: reclassified as the MC2_SNAPSHOT_MECH_EXTRACT trace gate (observe-only diagnostic)."
+ },
+ {
+ "featureId": "MC2_FEATURE_STATIC_PROP_INDIRECT",
+  "kind": "Retired",
+  "order": 1,
+  "defaultOn": true,
+  "doc": "Retired: the static-prop batcher is the only world-prop path."
  }
 ]

@@ -555,6 +555,8 @@ class Mech3DAppearance: public ObjectAppearance
 
 		virtual long update (bool animate = true);
 		virtual long render (long depthFixup = 0);
+		// UI preview (SimpleCamera): sets the paint scheme and highlight, returns the shape for TG_MultiShape::PreviewDraw.
+		TG_MultiShape* previewShape (void);
 		virtual long renderShadows (void);
 
 		virtual void updateFootprints (void);

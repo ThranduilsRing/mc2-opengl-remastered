@@ -2,15 +2,9 @@
 
 #include <cstdint>
 
-// Global runtime toggle for the GPU static-prop renderer.
-// Default false — old CPU path is active until validated.
-// Toggled at runtime via RAlt+0 (see gameosmain.cpp).
-extern bool g_useGpuStaticProps;
-
-// Slice 1 (object-offload arc) flag, env-gated via MC2_GPU_OBJECTS=1.
-// Mutually exclusive with g_useGpuStaticProps at runtime — see spec
-// docs/superpowers/specs/2026-05-02-object-offload-slice1-design.md R1.
-extern bool g_useGpuObjects;
+// Retired legacy RAlt+0 static-prop toggle: always off. Kept only for the gvactor_* render gates
+// (retire with the vehicle batcher move, claude/object-material-v2).
+inline constexpr bool g_useGpuStaticProps = false;
 
 // Resolve a gosTextureHandle (MC2 opaque ID) to the underlying raw GL
 // texture name. Returns 0 if the handle is INVALID_TEXTURE_ID or the

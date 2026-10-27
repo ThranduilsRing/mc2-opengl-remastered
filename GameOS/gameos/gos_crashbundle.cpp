@@ -260,13 +260,6 @@ static void write_profile_json(void)
     __try { frame = g_mc2FrameCounter; }
     __except(EXCEPTION_EXECUTE_HANDLER) { frame = 0; }
 
-    // feature flag: g_useGpuStaticProps — declared extern elsewhere; guarded
-    // by __try in case of corrupted .data
-    extern bool g_useGpuStaticProps;
-    int gpu_static = 0;
-    __try { gpu_static = g_useGpuStaticProps ? 1 : 0; }
-    __except(EXCEPTION_EXECUTE_HANDLER) { gpu_static = -1; }
-
     char buf[2048];
     size_t pos = 0;
     sbuff(buf, sizeof(buf), &pos, "{\n");
@@ -280,13 +273,6 @@ static void write_profile_json(void)
     sbuff(buf, sizeof(buf), &pos, "    \"MC2_ABL_TRACE\": %s,\n",            g_cfg.abl_trace      ? "true":"false");
     sbuff(buf, sizeof(buf), &pos, "    \"MC2_ABL_REG_TRACE\": %s,\n",        g_cfg.abl_reg_trace  ? "true":"false");
     sbuff(buf, sizeof(buf), &pos, "    \"MC2_FF_TRACE\": %s\n",              g_cfg.ff_trace       ? "true":"false");
-    sbuff(buf, sizeof(buf), &pos, "  },\n");
-    sbuff(buf, sizeof(buf), &pos, "  \"flags\": {\n");
-    if (gpu_static < 0) {
-        sbuff(buf, sizeof(buf), &pos, "    \"g_useGpuStaticProps\": \"unavailable\"\n");
-    } else {
-        sbuff(buf, sizeof(buf), &pos, "    \"g_useGpuStaticProps\": %s\n", gpu_static ? "true":"false");
-    }
     sbuff(buf, sizeof(buf), &pos, "  },\n");
     sbuff(buf, sizeof(buf), &pos, "  \"graphics\": \"unavailable\",\n");
     sbuff(buf, sizeof(buf), &pos, "  \"fps_recent\": \"unavailable\"\n");

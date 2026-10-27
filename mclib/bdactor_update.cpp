@@ -534,9 +534,9 @@ long BldgAppearance::update (bool animate)
 	}
 
 	// Under the GPU static-prop path, compute xlatPosition/rot + fog/light
-	// for every building so the later TransformMultiShape (also gated on
-	// g_useGpuStaticProps) has valid inputs.
-	if (inView || g_useGpuStaticProps)
+	// for every building so the later TransformMultiShape (also gated on inView)
+	// has valid inputs.
+	if (inView)
 	{
 		if (appearType->spinMe)
 			rotation += SPINRATE * frameLength;
@@ -634,17 +634,16 @@ long BldgAppearance::update (bool animate)
 	// Under the GPU static-prop path we need listOfColors / shapeToWorld
 	// fresh every frame regardless of inView so the batcher can safely
 	// memcpy from shape->listOfColors during submit().
-	if (inView || g_useGpuStaticProps)
+	if (inView)
 	{
 		bldgShape->SetUseShadow(false);
 
 
 		bldgShape->SetLightList(eye->getWorldLights(),eye->getNumLights());
 		// Slice 2 (object-offload) — Stage 2.B: eligibility hoist.
-		// Branch lives INSIDE the existing inView||g_useGpuStaticProps cull
+		// Branch lives INSIDE the existing inView cull
 		// gate to preserve slice 1's R1 invariant (no cull bypass).
 		// Run positions-only when:
-		//   - g_useGpuObjects is on, AND
 		//   - this actor did not hit a late-registration recovery last frame
 		//     (needsFullBakeNextFrame is a NEW bool from Stage 2.A; set by
 		//     BldgAppearance::render when submitMultiShape returns false with
@@ -661,15 +660,7 @@ long BldgAppearance::update (bool animate)
 		// (or remove) once the regression is identified.
 		bool gpuEligible;
 		{
-			// PREVIEW-FIX: never take the GPU positions-only/hierarchy-only fast
-			// path in the SimpleCamera preview — the CPU MLR draw needs the full
-			// listOfVertices (positions + argb) that only TransformMultiShape bakes.
-			// BUILDING-PBR: the gated PBR path currently renders through the same
-			// CPU MLR queue, so it needs that full bake too. Keep this in lockstep
-			// with the render-side GPU submit bypass.
-			gpuEligible = g_useGpuObjects &&
-			              (g_mechPreviewRenderDepth == 0) &&
-			              !needsFullBakeNextFrame &&
+			gpuEligible = !needsFullBakeNextFrame &&
 			              GpuStaticPropBatcher::instance().isMultiShapeEligibleForGpuObjects(bldgShape);
 		}
 
@@ -704,10 +695,7 @@ long BldgAppearance::update (bool animate)
 			// VBO + rec.shapeToWorld; light cache below is pool-independent), so
 			// run the zero-pool hierarchy walk. mc2CacheOrBakeStaticGpuLight still
 			// runs to seed the light index.
-			// PREVIEW-FIX: force the full bake in the SimpleCamera preview so the
-			// CPU MLR draw has complete listOfVertices (hierarchy-only leaves it stale).
-			if ((g_mechPreviewRenderDepth == 0) &&
-			    GpuStaticPropBatcher::instance().isMultiShapeEligibleForGpuObjects(bldgShape))
+			if (GpuStaticPropBatcher::instance().isMultiShapeEligibleForGpuObjects(bldgShape))
 			{
 				bldgShape->TransformMultiShape_HierarchyOnly (&xlatPosition,&rot);
 			}

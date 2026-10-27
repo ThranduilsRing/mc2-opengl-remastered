@@ -159,7 +159,6 @@ extern bool gosExitGameOS();
 extern bool gos_CreateAudio();
 extern void gos_DestroyAudio();
 extern SDL_Window* g_sdl_window;
-extern bool g_useGpuStaticProps;
 
 void startup_phase(std::string_view name);
 void process_events( void );

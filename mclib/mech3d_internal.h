@@ -5,7 +5,7 @@
 #ifndef MECH3D_INTERNAL_H
 #define MECH3D_INTERNAL_H
 
-#include "gos_static_prop_killswitch.h"  // g_useGpuStaticProps
+#include "gos_static_prop_killswitch.h"
 #include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
 #include "../GameOS/gameos/gpu_cull_readback.h"  // C3: GPU visibility queries
 #include "../code/gameobj.h"  // C3: full GameObject definition for obj->getHandle() in init()

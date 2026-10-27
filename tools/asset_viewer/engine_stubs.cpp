@@ -186,7 +186,6 @@ char* MissingTitleString = (char*)"";
 // (9) GPU-object / mech feature flags + object-recon counters (render-side
 //     toggles read by transform/submit methods, never by the loader).
 // ===========================================================================
-bool g_useGpuObjects = false;
 bool mc2LightBridgeRepointEnabled() { return false; }
 
 namespace mc2_object_recon {

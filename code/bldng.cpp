@@ -84,7 +84,6 @@
 #endif
 
 #include "../resource.h"
-#include "gos_static_prop_killswitch.h"  // g_useGpuStaticProps
 
 constexpr auto BLIP_FRAME_RATE = 0.067;
 //extern unsigned long NextIdNumber;
@@ -1086,7 +1085,7 @@ void Building::render (void) {
 	// Under the killswitch, let the GPU clipper + per-actor submit logic
 	// decide visibility. See docs/superpowers/plans/progress/
 	// 2026-04-19-static-prop-handoff.md.
-	if (appearance->canBeSeen() || g_useGpuStaticProps)
+	if (appearance->canBeSeen())
 	{
 		//--------------------------------------
 		if (getDrawBars())

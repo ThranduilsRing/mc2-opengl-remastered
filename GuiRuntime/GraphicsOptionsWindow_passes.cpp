@@ -396,15 +396,6 @@ void drawRenderPassesSection() {
     // Draw Mechs: hides mechs entirely (gates both GPU submit and CPU fallback).
     ImGui::Checkbox("Draw Mechs##rp", &g_drawMechs);
 
-    if (g_useGpuObjects) {
-        ImGui::Checkbox("GPU Objects##rp",  &g_useGpuObjects);
-    } else {
-        ImGui::Checkbox("GPU Objects##rp",  &g_useGpuObjects);
-        ImGui::SameLine();
-        // Legacy static props only active when GPU Objects batcher is off
-        ImGui::Checkbox("GPU Static Props##rp", &g_useGpuStaticProps);
-    }
-
     ImGui::Separator();
     ImGui::TextUnformatted("FX / Particles");
 

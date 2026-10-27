@@ -14,7 +14,6 @@
 #include"gate.h"
 #endif
 
-#include "gos_static_prop_killswitch.h"  // g_useGpuStaticProps
 #include "../GameOS/gameos/utils/mc2log.h"
 #include"terrain_runtime.h"
 #include "Gates/gate.h"
@@ -601,7 +600,7 @@ void Gate::render (void)
 	// Mirror Building::render: bypass canBeSeen() cull when the GPU
 	// static-prop path is on — the legacy angular cull has a huge
 	// false-negative rate at wolfman zoom.
-	if (appearance->canBeSeen() || g_useGpuStaticProps)
+	if (appearance->canBeSeen())
 	{
 		//--------------------------------------
 		if (getDrawBars())

@@ -93,7 +93,7 @@ enum class RendererFeature : int {
     // [Retired] superseded by RenderWorld::registerMech; no new getenv consumers
     GpuMechs            = 0,   // (retired; env var MC2_GPU_MECHS removed)
     // [Retired] superseded by RenderWorld::upsertStaticProp; no new getenv consumers
-    StaticPropIndirect  = 1,   // MC2_GPU_OBJECTS
+    StaticPropIndirect  = 1,   // (retired; env var MC2_GPU_OBJECTS removed)
     // Feature gates
     ObjectIdBuffer      = 2,   // MC2_OBJECT_ID_BUFFER
     TerrainTessellation = 3,   // MC2_TERRAIN_TESS (default-ON kill-switch, ISSUE-34)
@@ -179,8 +179,8 @@ static constexpr EnvVarDesc kFeatureTable[] = {
     },
     // [1] StaticPropIndirect
     {
-        "MC2_FEATURE_STATIC_PROP_INDIRECT", "MC2_GPU_OBJECTS", EnvVarKind::Retired, true,
-        "[RETIRED] Indirect-draw static-prop batcher (gos_static_prop_batcher)."
+        "MC2_FEATURE_STATIC_PROP_INDIRECT", nullptr, EnvVarKind::Retired, true,
+        "Retired: the static-prop batcher is the only world-prop path."
     },
     // [2] ObjectIdBuffer
     {

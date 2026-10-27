@@ -30,12 +30,10 @@ uint64_t GpuStaticPropBatcher::getDisallowedLateRegEventCount() {
 // GpuStaticPropBatcher::isMultiShapeEligibleForGpuObjects
 // Cheap, side-effect-free eligibility check used by the addRenderShape gate
 // (tgl.cpp:2522 Stage 2.B) and by *Appearance::update (Stage 2.B) before
-// calling submitMultiShape. Returns true iff g_useGpuObjects is enabled AND
-// every SHAPE_NODE leaf under `multi` is registered in s_typeIndex.
+// calling submitMultiShape. Returns true iff every SHAPE_NODE leaf under `multi` is registered in s_typeIndex.
 // MUST NOT mutate any batcher state, log, or increment counters.
 bool GpuStaticPropBatcher::isMultiShapeEligibleForGpuObjects(
         const TG_MultiShape* multi) const {
-    if (!g_useGpuObjects) return false;
     if (!multi || !multi->usesTypeMaterials()) return false;
 
     const int n = multi->numTG_Shapes;

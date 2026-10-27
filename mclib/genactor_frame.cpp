@@ -6,7 +6,7 @@
 //-----------------------------------------------------------------------------
 long GenericAppearance::render (long depthFixup)
 {
-	if (inView || g_useGpuStaticProps)
+	if (inView)
 	{
 		uint32_t color = SD_BLUE;
 		unsigned long highLight = 0x007f7f7f;
@@ -31,7 +31,6 @@ long GenericAppearance::render (long depthFixup)
 		{
 			// Slice 1 path (g_useGpuObjects). Same shape as BldgAppearance::render.
 			bool submittedToGpu = false;
-			if (g_useGpuObjects)
 			{
 				GpuStaticPropBatcher::instance().recordEligibleActor(
 					GpuStaticPropPopulation::Generic);
@@ -54,17 +53,6 @@ long GenericAppearance::render (long depthFixup)
 					GpuStaticPropBatcher::instance().recordCpuFallback(
 						GpuStaticPropPopulation::Generic);
 				}
-			}
-			// Legacy bypass-cull path. Mutually exclusive with slice 1 — gated on
-			// !g_useGpuObjects. Tagged Legacy so Gate F's fallback-rate is computed
-			// only over slice-1 populations. See spec R1.
-			// GPU path: skip depthFixup (sky/background push-back). Those
-			// cases use a non-standard z override that doesn't fit the
-			// per-packet instanced draw. Fall back to CPU for depthFixup.
-			if (!submittedToGpu && !g_useGpuObjects && g_useGpuStaticProps && genShape && !depthFixup)
-			{
-				submittedToGpu = GpuStaticPropBatcher::instance().submitMultiShape(
-					genShape, GpuStaticPropPopulation::Legacy);
 			}
 			if (!submittedToGpu)
 			{
@@ -434,16 +422,15 @@ long GenericAppearance::update (bool animate)
 
 	// Under the GPU static-prop path we transform regardless of inView so
 	// listOfVertices is fresh when submitMultiShape runs.
-	if (inView || g_useGpuStaticProps)
+	if (inView)
 	{
 		genShape->SetIsClamped(true);
 		genShape->SetLightList(nullptr,0);
 		// Slice 2 (object-offload) — Stage 2.B: eligibility hoist.
 		// See BldgAppearance::update for the full rationale; same shape.
-		// Branch lives INSIDE the existing inView||g_useGpuStaticProps cull
+		// Branch lives INSIDE the existing inView cull
 		// gate to preserve slice 1's R1 invariant.
-		if (g_useGpuObjects &&
-		    !needsFullBakeNextFrame &&
+		if (!needsFullBakeNextFrame &&
 		    GpuStaticPropBatcher::instance().isMultiShapeEligibleForGpuObjects(genShape))
 		{
 			// Stage 2.D.2.1 (M1): cache GPU light data now, while

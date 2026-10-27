@@ -242,7 +242,6 @@ extern "C" void mc2_framegraph_executor_bump_apply_state(unsigned id);
 namespace gos_static_prop_batcher_detail {}
 using namespace gos_static_prop_batcher_detail;
 
-extern bool g_useGpuObjects;
 extern const bool s_alphaTrace;
 const float* gos_GetObjectFixBMVPMat4();
 extern const bool s_treeDiagTrace;

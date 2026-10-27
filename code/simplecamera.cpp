@@ -308,7 +308,22 @@ void SimpleCamera::render(long xOffset, long yOffset)
 			const bool savedDrawOldWay = drawOldWay;
 			if ( isPanelPreview )
 				drawOldWay = true;
-			pObject->render();
+			// Mechs and components draw through TG_MultiShape::PreviewDraw (preview_draw.cpp); vehicles still use their own CPU render.
+			TG_MultiShape* previewShape = nullptr;
+			if ( auto* mech = dynamic_cast<Mech3DAppearance*>(pObject.get()) )
+				previewShape = mech->previewShape();
+			else if ( auto* bldg = dynamic_cast<BldgAppearance*>(pObject.get()) )
+				previewShape = bldg->previewShape();
+			if ( previewShape )
+			{
+				// Project with the same panel offset update() centres the shape with.
+				const float offsetX = (bounds[2] + bounds[0] - viewMulX) / 2.f + fudgeX;
+				const float offsetY = (bounds[1] + bounds[3] - viewMulY) / 2.f + fudgeY;
+				TG_Shape::SetViewport(viewMulX,viewMulY,offsetX,offsetY);
+				previewShape->PreviewDraw();
+			}
+			else
+				pObject->render();
 			if ( isPanelPreview )
 				drawOldWay = savedDrawOldWay;
 
@@ -419,11 +434,7 @@ long SimpleCamera::update()
 		// fit-to-panel AltitudeTight convergence loop (g_previewCaptureBounds/fitFrames_)
 		// after pObject->update(). Not reapplied; kept ours (MechPreviewRenderScope full-
 		// transform scope) to stay compiling. Needs re-derivation, not blind reapply.
-		// PREVIEW-FIX: the geometry consumed by the CPU MLR preview draw is built
-		// here (pObject->update() -> updateGeometry -> TransformMultiShape). Mark
-		// the preview context for this whole update so updateGeometry runs the
-		// FULL transform (populating listOfVertices) instead of the GPU
-		// _PositionsOnly fast path, which would leave the preview blank.
+		// The scope keeps calculateProjectionConstants off the native-aspect path (camera_matrix.cpp).
 		MechPreviewRenderScope _previewScope;
 
 		turn++;			//Must increment this now or matrices NEVER change!!

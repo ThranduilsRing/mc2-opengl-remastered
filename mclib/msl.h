@@ -425,7 +425,6 @@ class TG_MultiShape
 		// Must be called AFTER SetLightList and BEFORE other actors overwrite
 		// worldLights[0]->aRGB. submitMultiShape() reads cachedGpuLightIndex_
 		// instead of calling GatherGpuObjectLightDataOnly() at render time.
-		// Only call when g_useGpuObjects is true (no-op guard inside).
 		void CacheGpuLightData();
 
 		// VEHICLE-LIGHTING-PATH-1: gather a light row into EVERY SHAPE_NODE
@@ -483,8 +482,7 @@ class TG_MultiShape
 		// batcher draws the actor with GPU vertex lighting (Stage 2.C wires
 		// calc_light() in lighting.hglsl). Called from
 		// BldgAppearance/TreeAppearance/GenericAppearance::update inside the
-		// existing inView||g_useGpuStaticProps cull gate, gated on
-		// g_useGpuObjects && !needsFullBakeNextFrame &&
+		// existing inView cull gate, gated on !needsFullBakeNextFrame &&
 		// GpuStaticPropBatcher::isMultiShapeEligibleForGpuObjects(this).
 		long TransformMultiShape_PositionsOnly (glm::vec3 *pos, glm::quat *rot);
 
@@ -526,6 +524,8 @@ class TG_MultiShape
 		//This function takes the current listOfVisibleFaces and draws them using
 		//gos_DrawTriangle.
 		void Render (bool refreshTextures = false, float forceZ = -1.0f);
+		// UI preview (SimpleCamera, preview_draw.cpp): draws every leaf from the hierarchy matrices; call after a TransformMultiShape*.
+		void PreviewDraw (void);
 
 		//This function takes the current listOfShadowTriangles and draws them using
 		//gos_DrawTriangle.

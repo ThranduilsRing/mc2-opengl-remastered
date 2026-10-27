@@ -521,9 +521,6 @@ long TG_MultiShape::TransformMultiShape_HierarchyOnly (glm::vec3 *pos, glm::quat
 // GatherGpuObjectLightDataOnly() to cache the dedup-cache index in
 // cachedGpuLightIndex_. submitMultiShape then reads cachedGpuLightIndex_
 // instead of calling GatherGpuObjectLightDataOnly() itself.
-//
-// Only active when g_useGpuObjects is true; no-op otherwise so non-GPU
-// paths have zero overhead.
 //-------------------------------------------------------------------------------
 void TG_MultiShape::CacheGpuLightData()
 {

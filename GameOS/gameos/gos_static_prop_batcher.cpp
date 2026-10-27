@@ -7,16 +7,6 @@
 
 
 
-// Global runtime toggle for the GPU static-prop renderer. Defined here
-// (in the gameos lib) so every consumer — mc2.exe, aseconv, other data
-// tools that link mclib — resolves the symbol.
-bool g_useGpuStaticProps = false;
-// Default-on as of 2026-05-04. Flipped without Stage 2.E visual-diff gate
-// passing — Stage 2.D parity check (29 missions, 0 mismatches, +0 destroys)
-// establishes numerical correctness; visual confirmation is via prior
-// power-user testing with MC2_GPU_OBJECTS=1. Set MC2_GPU_OBJECTS=0 in
-// env to opt out.
-bool g_useGpuObjects = true;
 
 extern const bool s_alphaTrace = mc2::gate::get<"MC2_ALPHA_TEST_TRACE">();
 // NOTE: raw gos_terrain_indirect_getDispatchMvp16() is phase-private to terrain/

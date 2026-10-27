@@ -892,9 +892,7 @@ long TerrainObject::update (void) {
 				// enabled. This does not prove this individual appearance was submitted
 				// successfully; TreeAppearance::IsStaticNow() also checks
 				// needsFullBakeNextFrame so late registration/recovery frames continue
-				// to run update(). Note: g_useGpuObjects defaults ON since commit
-				// 61f6a66; g_useGpuStaticProps (RAlt+0 killswitch) remains default-off.
-				const bool gpuPath = g_useGpuObjects || g_useGpuStaticProps;
+				// to run update().
 
 				// Stage 3.C: clear static registration on dynamic transition so the
 				// first post-fall frame gets a full bake and re-registers the final pose.
@@ -909,7 +907,7 @@ long TerrainObject::update (void) {
 					if (_aType) _apprClass = _aType->getAppearanceClass() & 0xFF;
 				}
 
-				if (gpuPath && appearanceClaimsStatic && !ownerForcesDynamic) {
+				if (appearanceClaimsStatic && !ownerForcesDynamic) {
 					++g_staticUpdateCounters.updates_skipped;
 					++g_routeTouchByClass[_apprClass];
 					if (s_staticUpdateTrace) {
@@ -1003,7 +1001,7 @@ void TerrainObject::render (void) {
 		// Conservative-OR: render if readback OR CPU test says visible.
 		renderGate = lagVis || appearance->canBeSeen();
 	}
-	if (renderGate || g_useGpuStaticProps)
+	if (renderGate)
 	{
 		if (getSelected())
 		{

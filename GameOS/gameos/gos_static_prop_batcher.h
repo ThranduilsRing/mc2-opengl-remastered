@@ -65,21 +65,16 @@ constexpr uint32_t STATIC_PROP_FLAG_ALPHA_TEST = 1u << 0;
 // Slice 2 (object-offload): free-function form of the eligibility check used
 // by the addRenderShape gate in tgl.cpp:2522 (the bShadersDrawPathEnabled
 // block). Cheap, side-effect-free. Returns true iff `shape` belongs to a
-// registered TG_TypeShape AND g_useGpuObjects is enabled. tgl.cpp gets this
-// via a forward declaration (see tgl.cpp near the gate site) to avoid
-// pulling the rest of batcher.h into the legacy translation unit.
-//
-// Stage 2.A: declared and defined. Under default `MC2_GPU_OBJECTS=0` (i.e.
-// g_useGpuObjects==false) this returns false, so the addRenderShape gate
-// becomes false-equivalent and the legacy path is byte-for-byte unchanged.
+// registered TG_TypeShape. tgl.cpp gets this via a forward declaration (see
+// tgl.cpp near the gate site) to avoid pulling the rest of batcher.h into the
+// legacy translation unit.
 bool eligibleForGpuObjects(class TG_Shape* shape);
 
 // Population tag — passed by caller so the batcher can split per-population
 // counts in the [OBJBATCHER v1] summary. Not stored; consumed inside submit
 // only.
 //
-// Legacy is the slice-1 fallback branch (g_useGpuStaticProps && !g_useGpuObjects)
-// in *Appearance::render. Counted separately so Gate F's fallback-rate
+// Legacy is the CPU fallback branch in *Appearance::render. Counted separately so Gate F's fallback-rate
 // computation uses only slice-1 populations (Building/Tree/Generic).
 enum class GpuStaticPropPopulation : uint8_t {
     Building = 0,
@@ -226,7 +221,7 @@ public:
 
     // Slice 2 (object-offload): cheap, side-effect-free eligibility query.
     // Returns true iff every leaf SHAPE_NODE under `multi` is currently
-    // registered in the batcher AND g_useGpuObjects is enabled. Mirrors slice
+    // registered in the batcher. Mirrors slice
     // 1's render-time per-child gates EXCEPT the late-registration case
     // (Recon Section 9 Item 4). Stage 2.A: declared and defined; Stage 2.B
     // wires it into BldgAppearance/TreeAppearance/GenericAppearance::update
