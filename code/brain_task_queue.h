@@ -1,9 +1,6 @@
 #pragma once
 
-// BrainTaskQueue is mission-runtime ephemeral state. MC2 campaign/checkpoint saves do not
-// resume arbitrary mid-mission brain queues, so the queue is intentionally not serialized.
-// If true mid-mission save/load support is confirmed later, persistence must be designed
-// as a separate compatibility-aware slice.
+// BrainTaskQueue is mission-runtime state. It is persisted by the save v2 BRN1 section (code/save_brain_section.cpp).
 
 #include <cstdint>
 #include <algorithm>
@@ -92,6 +89,15 @@ public:
             entries_[i - 1] = entries_[i];
         --count_;
         return true;
+    }
+
+    // Save v2 BRN1 (B2): raw image access; restore() replaces the queue and keeps the monotone seq.
+    const BrainTaskEntry* data() const { return entries_; }
+    uint32_t seq() const { return seq_; }
+    void restore(const BrainTaskEntry* src, int n, uint32_t seq) {
+        count_ = std::min(n, MAX_BRAIN_TASKS);
+        for (int i = 0; i < count_; ++i) entries_[i] = src[i];
+        seq_ = seq;
     }
 
     bool isEmpty() const    { return count_ == 0; }

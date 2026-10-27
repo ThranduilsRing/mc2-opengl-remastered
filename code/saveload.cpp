@@ -2,6 +2,7 @@
 #include "../GameOS/gameos/crash_content.h"
 #include "save_exactness.h"
 #include "save_sections.h"
+#include "save_brain_section.h"
 #include "utils/mc2log.h"
 //******************************************************************************************
 //	saveload.cpp - This file contains the mission Save Load class code
@@ -292,6 +293,8 @@ void Mission::save (const char *saveFileName)
         if (!orders.good()) Fatal(0, "ORDQ save section failed");
         sections.add(mc2::save::tagOrders, 1, true, orders.bytes());
     }
+    if (auto brain = mc2::save::saveBrainSection(); !brain.empty())
+        sections.add(mc2::save::tagBrain, mc2::save::brainSectionVersion, false, std::move(brain));
     mc2::save::Bytes container;
     std::string why;
     if (!mc2::save::encodeSections(sections, container, &why)) Fatal(0, "Save section container failed");

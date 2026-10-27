@@ -883,8 +883,8 @@ class MechWarrior {
 		// ABL Brain and Memory
 		MemoryCell				memory[NUM_MEMORY_CELLS];
 		ABLModulePtr			brain;
-		BrainTaskQueue*         brainTaskQueue = nullptr;   // MC2_BRAIN_TASKQ: mission-ephemeral, not serialized
-		MechBrainRuntime*       brainRuntime = nullptr;    // MC2_BRAIN_RUNTIME: mission-ephemeral, not serialized
+		BrainTaskQueue*         brainTaskQueue = nullptr;   // MC2_BRAIN_TASKQ: saved by the BRN1 section
+		MechBrainRuntime*       brainRuntime = nullptr;    // MC2_BRAIN_RUNTIME: saved by the BRN1 section
 		int32_t                 warriorBrainHandle;
 		SymTableNodePtr			brainAlarmCallback[NUM_PILOT_ALARMS];
 		char					debugStrings[NUM_PILOT_DEBUG_STRINGS][MAXLEN_PILOT_DEBUG_STRING];
@@ -1462,6 +1462,9 @@ class MechWarrior {
 
 		// BRAIN-RUNTIME-1B: direct access for mission loader (public accessor).
 		MechBrainRuntime* getBrainRuntime () { return brainRuntime; }
+		// Save v2 BRN1 (B2): the task queue, and its lazily created twin used when a restore needs it before the first brain tick.
+		BrainTaskQueue* getBrainTaskQueue () { return brainTaskQueue; }
+		BrainTaskQueue* ensureBrainTaskQueue () { if (!brainTaskQueue) brainTaskQueue = new BrainTaskQueue(); return brainTaskQueue; }
 
 		bool injure (float numWounds, bool checkEject = true);
 
