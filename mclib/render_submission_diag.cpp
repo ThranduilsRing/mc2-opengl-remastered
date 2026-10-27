@@ -10,18 +10,14 @@
 // silent pool exhaustion can no longer pass unnoticed.
 bool g_txmmgrBoundsTrace = mc2::gate::get<"MC2_TXMMGR_BOUNDS_TRACE">();
 std::atomic<unsigned long long> g_txmmgr_vertex_block_exhausted{0};
-std::atomic<unsigned long long> g_txmmgr_block_exhausted{0};
 std::atomic<unsigned long long> g_txmmgr_add_vertices_overflow_prevented{0};
-std::atomic<unsigned long long> g_txmmgr_add_shape_overflow_prevented{0};
 namespace {
 struct TxmmgrBoundsDump {
     ~TxmmgrBoundsDump() {
         const unsigned long long a = g_txmmgr_vertex_block_exhausted.load();
-        const unsigned long long b = g_txmmgr_block_exhausted.load();
         const unsigned long long c = g_txmmgr_add_vertices_overflow_prevented.load();
-        const unsigned long long d = g_txmmgr_add_shape_overflow_prevented.load();
-        if (a | b | c | d)
-            mc2::fmt::print_err("[TXMMGR_BOUNDS v1] SUMMARY vertex_block_exhausted={:d} block_exhausted={:d} add_vertices_overflow_prevented={:d} add_shape_overflow_prevented={:d}\n", mc2::fmt::as_u64(a), mc2::fmt::as_u64(b), mc2::fmt::as_u64(c), mc2::fmt::as_u64(d));
+        if (a | c)
+            mc2::fmt::print_err("[TXMMGR_BOUNDS v1] SUMMARY vertex_block_exhausted={:d} add_vertices_overflow_prevented={:d}\n", mc2::fmt::as_u64(a), mc2::fmt::as_u64(c));
     }
 };
 TxmmgrBoundsDump s_txmmgrBoundsDump;

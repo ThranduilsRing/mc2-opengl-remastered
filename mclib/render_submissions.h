@@ -33,9 +33,7 @@ namespace mc2 { class VkSceneRenderer; }
 // ---------------------------------------------------------------------------
 extern bool g_txmmgrBoundsTrace;
 extern std::atomic<unsigned long long> g_txmmgr_vertex_block_exhausted;
-extern std::atomic<unsigned long long> g_txmmgr_block_exhausted;
 extern std::atomic<unsigned long long> g_txmmgr_add_vertices_overflow_prevented;
-extern std::atomic<unsigned long long> g_txmmgr_add_shape_overflow_prevented;
 //----------------------------------------------------------------------
 
 // Per-frame submission budgets; source assets have no fixed slot pool.

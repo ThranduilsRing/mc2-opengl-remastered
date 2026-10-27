@@ -148,7 +148,6 @@ void TG_Shape::xformVertexLights(TG_TypeShapePtr theShape, long j, TgXformFrame&
 	auto& redAmb = f.redAmb; auto& greenAmb = f.greenAmb; auto& blueAmb = f.blueAmb;
 	auto& redSpec = f.redSpec; auto& greenSpec = f.greenSpec; auto& blueSpec = f.blueSpec;
 	auto& doHotGreenTrace = f.doHotGreenTrace;
-	if (useVertexLighting && (Environment.Renderer != 3))
 	{
 		if (!isSpotlight && !isWindow)
 		{
@@ -450,17 +449,12 @@ void TG_Shape::xformVertexLights(TG_TypeShapePtr theShape, long j, TgXformFrame&
 		if (blueSpec > 255)
 			blueSpec = 255;
 	}
-	else
-	{
-		listOfVertices[j].argb = (0xff << 24) + (redAmb << 16) + (greenAmb << 8) + (blueAmb);
-	}
 }
 
 // Write one vertex fog colour and apply the highlight.
 void TG_Shape::xformVertexFog(TG_ShapeRecPtr parentNode, TG_TypeShapePtr theShape, long j, TgXformFrame& f) {
 	auto& redSpec = f.redSpec; auto& greenSpec = f.greenSpec; auto& blueSpec = f.blueSpec;
 	DWORD fogValue = (listOfVertices[j].frgb >> 24) & 0x000000ff;
-	if (Environment.Renderer != 3)
 	{
 		if (useFog)
 		{
@@ -504,10 +498,6 @@ void TG_Shape::xformVertexFog(TG_ShapeRecPtr parentNode, TG_TypeShapePtr theShap
 		{
 			listOfVertices[j].frgb = (0xff << 24) + (redSpec << 16) + (greenSpec << 8) + (blueSpec);
 		}
-	}
-	else
-	{
-		listOfVertices[j].frgb = (0xff << 24) + (redSpec << 16) + (greenSpec << 8) + (blueSpec);
 	}
 
 	if (useFog && Camera::HazeFactor != 0.0f)

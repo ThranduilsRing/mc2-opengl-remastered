@@ -258,11 +258,9 @@ long TG_MultiShape::TransformMultiShape (glm::vec3 *pos, glm::quat *rot)
         if (s_buildRecipeOnly)
             continue;
 
-        if (useVertexLighting)
         {
             //----------------------------------------------------
             // Setup Lighting here.
-            if (Environment.Renderer != 3)
             {
                 for (long iLight=0;iLight<TG_Shape::s_numLights;iLight++)
                 {
