@@ -607,22 +607,27 @@ bool ShadowBake::recordBake(VkCommandBuffer cb, const ShadowBakeInputs& in) {
         layout_ = mc2shadow::maskLayout(mapSide_, halfMap_, maskTarget(), maskCap());
         if (layout_.texels == 0) { blog("map too small for a mask: no bake."); return false; }
     }
-    if (!readHeightGrid()) { blog("height field malformed: no bake."); return false; }
+    bool heightsOk;
+    { ZoneScopedN("ShadowBake.Heights"); heightsOk = readHeightGrid(); }
+    if (!heightsOk) { blog("height field malformed: no bake."); return false; }
     terrainTop_ = -1e30f;
     terrainMin_ = 1e30f;
     for (float h : heights_) { terrainTop_ = (std::max)(terrainTop_, h); terrainMin_ = (std::min)(terrainMin_, h); }
     terrainMin_ = (std::max)(terrainMin_, waterZ_);
     if (recordedMask_) bakedHeightVersion_ = store->heightVersion();
 
-    if (!ensureProducts(layout_.texels > 0 ? layout_.texels : maskTexels_)) return false;
+    bool productsOk;
+    { ZoneScopedN("ShadowBake.Products"); productsOk = ensureProducts(layout_.texels > 0 ? layout_.texels : maskTexels_); }
+    if (!productsOk) return false;
     if (typeBounds_.empty() && in.vbo != VK_NULL_HANDLE && !computeTypeBounds(in)) { blog("static-prop geometry not readable: no bake."); return false; }
 
     // Casters: the gameplay set resolved to registry leaves, each with its world box and light-space box.
     const clk::time_point tResolve = clk::now();
     // Snapshot only on the first mask of this set; subsequent rebakes key and render the live state.
     const auto& casters=mc2shadow::staticCasterSet();
-    const uint64_t casterHash=recordedMask_?casters.resolveForBake(bakedSetVersion_, leaves_):casters.resolve(leaves_);
-    if (recordedMask_) casters.logDriftSinceLoad(6);
+    uint64_t casterHash;
+    { ZoneScopedN("ShadowBake.Resolve"); casterHash=recordedMask_?casters.resolveForBake(bakedSetVersion_, leaves_):casters.resolve(leaves_); }
+    if (recordedMask_) { ZoneScopedN("ShadowBake.Drift"); casters.logDriftSinceLoad(6); }
     cpuStage_[0] = std::chrono::duration<double, std::milli>(clk::now() - tResolve).count();
     std::vector<mc2shadow::LightBox> boxes;
     std::vector<float> tops;
@@ -643,6 +648,7 @@ bool ShadowBake::recordBake(VkCommandBuffer cb, const ShadowBakeInputs& in) {
     casterTop_ = casterTop;
 
     // Object receivers always use current gameplay leaves.
+    ZoneNamedN(zObj, "ShadowBake.ObjRuns", true);
     std::vector<GpuStaticPropInstance> objInst;
     casters.resolve(objInst);
     std::erase_if(objInst, [this](const auto& leaf) {
@@ -667,6 +673,7 @@ bool ShadowBake::recordBake(VkCommandBuffer cb, const ShadowBakeInputs& in) {
     if (recordedMask_) {
         const clk::time_point k0 = clk::now();
         // The retry after the async cache read was launched sees the same inputs: reuse the key (about 77 ms of hashing) instead of redoing it.
+        ZoneScopedN("ShadowBake.Key");
         if (!(cacheLoad_.valid() && cacheLoadInputKey_ == recordedKey_)) contentKey_ = contentKey(in, casterHash);
         cpuStage_[1] = std::chrono::duration<double, std::milli>(clk::now() - k0).count();
         if (cacheLoad_.valid() && cacheLoadKey_ != contentKey_) {
@@ -732,6 +739,7 @@ bool ShadowBake::recordBake(VkCommandBuffer cb, const ShadowBakeInputs& in) {
     const auto objectWindow=mc2shadow::casterWindow(basis_,full,terrainMin_,terrainTop_,casterTop_,tanT,objectMapSize());
     mc2shadow::windowMatrix(basis_,objectWindow,recordedObjectMatrix_.data());
     // Uploads.
+    ZoneNamedN(zUp, "ShadowBake.Uploads", true);
     if (recordedMask_ && !(warm ? ensureEncoder() : ensureTransients())) return false;
     const uint32_t tileCount = static_cast<uint32_t>(tiles_.size());
     if (!makeHostBuffer(casterUbo_, allocator_, device_, (tileCount + 1) * kSlice, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, "shadow.bake.casterUbo") ||
@@ -802,6 +810,7 @@ bool ShadowBake::recordBake(VkCommandBuffer cb, const ShadowBakeInputs& in) {
         vkUpdateDescriptorSets(device_, 10, w, 0, nullptr);
     }
 
+    ZoneNamedN(zQ, "ShadowBake.Tail", true);
     // Timestamps: five per tile, then mips (2) and the object map (2).
     queryCount_ = 0;
     if (timed_) {
