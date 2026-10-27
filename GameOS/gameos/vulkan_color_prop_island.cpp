@@ -261,6 +261,7 @@ struct ColorPropIsland : mc2vk::IslandState {
     VkCommandBuffer   cbuf[2] = {VK_NULL_HANDLE, VK_NULL_HANDLE};   // allocated from `cpool`, freed with it
     VkCommandBuffer lateCbuf[2] = {VK_NULL_HANDLE, VK_NULL_HANDLE};
     mc2vk::OwnedFence lateFence[2];
+    mc2vk::GpuTicket submitted[2];   // per engine frame slot: the last core submit that used cbuf[slot], set[slot] and the slot's inputs
     struct LateDraw {
         int32_t pc[8];
         uint32_t indexCount, instanceCount, firstIndex, firstInstance;
@@ -1474,13 +1475,12 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
     if (!mainSpan) { setFallback("frame_ring_alloc_failed"); s->disabled = true; return 0; }
     uint8_t* const mainPtr = static_cast<uint8_t*>(mainSpan.ptr);
 
-    VkImageResource* colorRes = reinterpret_cast<VkImageResource*>(s->t1_colorRes);
     const clk::time_point tFence0 = clk::now();
-    VkFrameSync fsC{};
-    { ZoneScopedN("VKIsl.Props.FenceWait");   // VK-ISLAND-TRACY-1: deferred retire of the parity slot
-      fsC = vkImageResourceBeginFrame(colorRes); }
+    // GPU-FRONTIER-1: engine frame slot + this island's own previous submit (see the sky island); no shared scene-color fence ring.
+    const uint32_t par = rctx.frameContext().slot;
+    { ZoneScopedN("VKIsl.Props.FenceWait");   // VK-ISLAND-TRACY-1: deferred retire of the slot
+      if (!rctx.wait(s->submitted[par], 5000000000ull, "props submission slot")) { setFallback("submission_slot_timeout"); s->disabled = true; return 0; } }
     us_fence_wait = usSince(tFence0);
-    const uint32_t par = fsC.parity & 1u;
     // The core fence precedes late coverage. Retire that submission too before
     // reusing its descriptor slot, frame inputs or command buffer.
     const VkFence lateFence = s->lateFence[par].get();
@@ -1819,7 +1819,8 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
         si.commandBufferCount = 1; si.pCommandBuffers = &cb;
         si.signalSemaphoreCount = 0; si.pSignalSemaphores = nullptr;
         { ZoneScopedN("VKIsl.Props.Submit");   // VK-ISLAND-TRACY-1: vkQueueSubmit
-          if (mc2vk::submitGraphics(si, fsC.fence) != VK_SUCCESS) { setFallback("submit_failed"); s->disabled = true; return 0; } }
+          if (mc2vk::submitGraphics(si, VK_NULL_HANDLE) != VK_SUCCESS) { setFallback("submit_failed"); s->disabled = true; return 0; } }
+        s->submitted[par] = rctx.tracker().now();
         timerGuard.submitted();
 
         // VK-PROP-FENCE-DEFER-1: the inline retire wait is GONE — the submit's fence
@@ -1834,7 +1835,7 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
         if (!propFenceDeferEnabled()) {
             ZoneScopedN("VKIsl.Props.InlineFenceWait");   // VK-ISLAND-TRACY-1: killswitch-only inline retire
             const clk::time_point tInline0 = clk::now();
-            if (vkWaitForFences(s->device, 1, &fsC.fence, VK_TRUE, 5ull*1000*1000*1000) != VK_SUCCESS) {
+            if (!rctx.wait(s->submitted[par], 5000000000ull, "props inline retire")) {
                 setFallback("fence_timeout"); s->disabled = true; return 0;
             }
             us_fence_wait = usSince(tInline0);

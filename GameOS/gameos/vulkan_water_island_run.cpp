@@ -162,11 +162,11 @@ extern "C" int mc2_vk_water_island_run(
     if (!uboSpan) { setFallback("frame_ring_alloc_failed"); s->disabled = true; return 0; }
 
     const clk::time_point tFence0 = clk::now();
-    VkFrameSync fsC{};
-    { ZoneScopedN("VKIsl.Water.FenceWait");   // VK-ISLAND-TRACY-1: deferred retire of the parity slot
-      fsC = vkImageResourceBeginFrame(s->sColorRes); }
+    // GPU-FRONTIER-1: engine frame slot + this island's own previous submit (see the sky island); no shared scene-color fence ring.
+    const uint32_t par = slotCtx.frameContext().slot;
+    { ZoneScopedN("VKIsl.Water.FenceWait");   // VK-ISLAND-TRACY-1: deferred retire of the slot
+      if (!slotCtx.wait(s->submitted[par], 5000000000ull, "water submission slot")) { setFallback("submission_slot_timeout"); s->disabled = true; return 0; } }
     us_fence_wait = usSince(tFence0);
-    const uint32_t par = fsC.parity & 1u;
     const auto ground = mc2_vk_ground_lighting_frame();
     if (!ground) return 0;
     s->groundLighting.copy(s->device, par, *ground);
@@ -194,10 +194,7 @@ extern "C" int mc2_vk_water_island_run(
         gos_terrain_lighting::VkProducerSnapshot first{};
         if (!gos_terrain_lighting::GetVkProducerSnapshot(first) || !first.numVertices) nat = nullptr;
     }
-    if (!nat) {   // nothing will submit: give the slot's fence back
-        if (!vkImageResourceCancelFrame(s->sColorRes, fsC)) { setFallback("cancel_frame_fence_failed"); s->disabled = true; }
-        return 0;
-    }
+    if (!nat) return 0;   // nothing will submit
 
     // Mission reload can destroy the previous bake's view. Refresh the borrowed
     // mask before ANY descriptor rewrite, including the first native thin bind.
@@ -326,7 +323,8 @@ extern "C" int mc2_vk_water_island_run(
         si.signalSemaphoreCount = 0; si.pSignalSemaphores = nullptr;
         const clk::time_point tSubmit0 = clk::now();
         { ZoneScopedN("VKIsl.Water.Submit");   // VK-ISLAND-TRACY-1: vkQueueSubmit
-          if (mc2vk::submitGraphics(si, fsC.fence) != VK_SUCCESS) { setFallback("submit_failed"); s->disabled = true; return 0; } }
+          if (mc2vk::submitGraphics(si, VK_NULL_HANDLE) != VK_SUCCESS) { setFallback("submit_failed"); s->disabled = true; return 0; } }
+        s->submitted[par] = slotCtx.tracker().now();
         timerGuard.submitted();
         us_submit = usSince(tSubmit0);
 
@@ -346,7 +344,7 @@ extern "C" int mc2_vk_water_island_run(
         if (!waterFenceDeferEnabled()) {
             ZoneScopedN("VKIsl.Water.InlineFenceWait");   // VK-ISLAND-TRACY-1: killswitch-only inline retire
             const clk::time_point tInline0 = clk::now();
-            if (vkWaitForFences(s->device, 1, &fsC.fence, VK_TRUE, 5ull*1000*1000*1000) != VK_SUCCESS) {
+            if (!slotCtx.wait(s->submitted[par], 5000000000ull, "water inline retire")) {
                 setFallback("fence_timeout"); s->disabled = true; return 0;
             }
             us_fence_wait = usSince(tInline0);
