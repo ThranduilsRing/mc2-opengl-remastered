@@ -13,8 +13,10 @@
 
 //***************************************************************************
 
-inline constexpr int MAX_MOVERS = 255; // Should probably equal that in Collision System
-static_assert(MAX_MOVERS <= 255, "Mover identities and contact sentinels reserve byte value 255");
+inline constexpr int MAX_MOVERS = 1024; // D4 ruling; contact indices are 16-bit (65535 absent)
+// Frozen legacy save geometry: warrior kill history stays 85 entries (255 / 3) whatever MAX_MOVERS is.
+inline constexpr int MAX_WARRIOR_KILLED = 255 / 3;
+static_assert(MAX_MOVERS < 65535, "contact and team indices are 16-bit");
 
 using PathQueueRecPtr = struct _PathQueueRec*;
 

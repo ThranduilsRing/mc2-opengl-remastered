@@ -415,7 +415,7 @@ void MechWarrior::init (bool create) {
 	vehicleWID = 0;
 
 	numKilled = 0;
-	memset( killed, 0, sizeof( GameObject* ) * MAX_MOVERS / 3 );
+	memset( killed, 0, sizeof( GameObject* ) * MAX_WARRIOR_KILLED );
 
 	for (int i = 0; i < NUM_VEHICLE_CLASSES; i++)
 		for (int j = 0; j < NUM_COMBAT_STATS; j++)
@@ -910,7 +910,7 @@ void MechWarrior::clear (void) {
 	vehicleWID = 0;
 
 	numKilled = 0;
-	memset( killed, 0, sizeof( GameObject* ) * MAX_MOVERS / 3 );
+	memset( killed, 0, sizeof( GameObject* ) * MAX_WARRIOR_KILLED );
 
 	for (int i = 0; i < NUM_VEHICLE_CLASSES; i++)
 		for (int j = 0; j < NUM_COMBAT_STATS; j++)

@@ -733,7 +733,7 @@ struct _MechWarriorData
 	char					originalSkills[NUM_SKILLS];
 	char					startingSkills[NUM_SKILLS];
 	bool					specialtySkills[NUM_SPECIALTY_SKILLS];
-	GameObjectWatchID		killed[MAX_MOVERS / 3];
+	GameObjectWatchID		killed[MAX_WARRIOR_KILLED];
 	int32_t					numKilled;
 
 	int32_t					descID;							//Used by Logistics to Desc.
@@ -866,7 +866,7 @@ class MechWarrior {
 		char					originalSkills[NUM_SKILLS];		//How I arrived in MechCommander
 		char					startingSkills[NUM_SKILLS];		//How I arrived in the mission
 		bool					specialtySkills[NUM_SPECIALTY_SKILLS];
-		GameObjectWatchID		killed[MAX_MOVERS / 3];
+		GameObjectWatchID		killed[MAX_WARRIOR_KILLED];
 		int32_t					numKilled;
 
 		int32_t					descID;							//Used by Logistics to Desc.

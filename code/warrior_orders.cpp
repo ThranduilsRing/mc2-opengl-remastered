@@ -922,7 +922,7 @@ long MechWarrior::handleKilledTarget (void) {
 					skillIncrement = KillSkill[vehicleClass];
 					numMechKills[vehicleClass][COMBAT_STAT_MISSION]++;
 					message = RADIO_MECH_DEAD;
-					if (numKilled < MAX_MOVERS/3)
+					if (numKilled < MAX_WARRIOR_KILLED)
 						killed[numKilled++] = target->getWatchID();
 				}
 				else
@@ -931,7 +931,7 @@ long MechWarrior::handleKilledTarget (void) {
 					skillIncrement = KillSkill[4];
 					numMechKills[VEHICLE_CLASS_GROUND][COMBAT_STAT_MISSION]++;
 					message = RADIO_VEHICLE_DEAD;
-					if (numKilled < MAX_MOVERS/3)
+					if (numKilled < MAX_WARRIOR_KILLED)
 						killed[numKilled++] = target->getWatchID();
 				}
 				break;
@@ -945,7 +945,7 @@ long MechWarrior::handleKilledTarget (void) {
 					skillIncrement = KillSkill[4];
 					numMechKills[VEHICLE_CLASS_GROUND][COMBAT_STAT_MISSION]++;
 					message = RADIO_VEHICLE_DEAD;
-					if (numKilled < MAX_MOVERS/3)
+					if (numKilled < MAX_WARRIOR_KILLED)
 						killed[numKilled++] = target->getWatchID();
 				}
 			}

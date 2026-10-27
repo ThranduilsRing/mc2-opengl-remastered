@@ -1,6 +1,7 @@
 #include "doctest.h"
 #include "../../code/world/entity_registry.h"
 #include "../../code/world/spatial_grid.h"
+#include "../../mclib/dmovemgr.h"
 #include <limits>
 
 namespace {
@@ -82,4 +83,34 @@ TEST_CASE("WorldGrid/boundaries, invalid coordinates and stable tie order") {
     for (unsigned i = 0; i < hits.size(); ++i) CHECK(hits[i].ordinal == i);
     CHECK(grid.query(1e30f, 0, 1).size() == 31);
     CHECK(grid.query(0, 0, -1).size() == 31);
+}
+
+TEST_CASE("WorldGrid/1024 movers, 300 ticks, deterministic twice") {
+    static_assert(MAX_MOVERS == 1024);
+    auto run = [] {
+        struct M { float x, y; };
+        std::vector<M> movers;
+        uint32_t rng = 12345;
+        auto next = [&] { rng = rng * 1664525u + 1013904223u; return rng >> 8; };
+        for (int i = 0; i < MAX_MOVERS; ++i) movers.push_back({float(next() % 6000), float(next() % 6000)});
+        uint64_t hash = 1469598103934665603ull;
+        mc2::world::SpatialGrid grid;
+        for (int tick = 0; tick < 300; ++tick) {
+            grid.clear();
+            for (unsigned i = 0; i < movers.size(); ++i) {
+                movers[i].x += float(int(next() % 9) - 4);
+                movers[i].y += float(int(next() % 9) - 4);
+                grid.add(movers[i].x, movers[i].y, i, {1, i + 1, 1});
+            }
+            grid.finish();
+            for (unsigned i = 0; i < movers.size(); i += 8)
+                for (auto& c : grid.query(movers[i].x, movers[i].y, 300.0f)) {
+                    CHECK(c.ordinal < unsigned(MAX_MOVERS));
+                    hash = (hash ^ c.ordinal) * 1099511628211ull;
+                }
+        }
+        return hash;
+    };
+    const uint64_t a = run(), b = run();
+    CHECK(a == b);
 }
