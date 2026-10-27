@@ -76,7 +76,6 @@ extern uint32_t g_mc2FrameCounter; // mclib/tgl.cpp
 
 // Captured env flags (set once in crashbundle_init)
 static struct {
-    int tgl_pool_trace;
     int destroy_trace;
     int heartbeat;
     int abl_trace;
@@ -267,7 +266,6 @@ static void write_profile_json(void)
     sbuff(buf, sizeof(buf), &pos, "  \"frame\": %u,\n", frame);
     sbuff(buf, sizeof(buf), &pos, "  \"mission_name\": \"%s\",\n", mn);
     sbuff(buf, sizeof(buf), &pos, "  \"env\": {\n");
-    sbuff(buf, sizeof(buf), &pos, "    \"MC2_TGL_POOL_TRACE\": %s,\n",       g_cfg.tgl_pool_trace ? "true":"false");
     sbuff(buf, sizeof(buf), &pos, "    \"MC2_DESTROY_TRACE\": %s,\n",        g_cfg.destroy_trace  ? "true":"false");
     sbuff(buf, sizeof(buf), &pos, "    \"MC2_HEARTBEAT\": %s,\n",            g_cfg.heartbeat      ? "true":"false");
     sbuff(buf, sizeof(buf), &pos, "    \"MC2_ABL_TRACE\": %s,\n",            g_cfg.abl_trace      ? "true":"false");
@@ -705,7 +703,6 @@ extern "C" void crashbundle_init(void)
     if (g_cfg.initialized) return;
     g_cfg.initialized = 1;
 
-    g_cfg.tgl_pool_trace = mc2::gate::get<"MC2_TGL_POOL_TRACE">() ? 1 : 0;
     g_cfg.destroy_trace = mc2::gate::get<"MC2_DESTROY_TRACE">() ? 1 : 0;
     g_cfg.heartbeat = mc2::gate::get<"MC2_HEARTBEAT">() ? 1 : 0;
     g_cfg.abl_trace = mc2::gate::get<"MC2_ABL_TRACE">() ? 1 : 0;

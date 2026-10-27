@@ -9,6 +9,8 @@ from pathlib import Path
 MIN_FREE_GB = 15
 STAGE_MARKER = ".stage-root"  # drop this file in a custom root to opt in to pruning
 STAGE_BASE = Path(os.environ.get("MC2_STAGE_BASE", "E:/mc2-installs"))
+#: G: is refused for staging except the lane-rules temp subtree.
+G_TEMP_ROOT = Path("G:/mc2-tmp")
 
 
 def default_root(tool):
@@ -18,6 +20,8 @@ def default_root(tool):
 def preflight(root, min_gb=MIN_FREE_GB):
     """Raise OSError when the drive holding root has less than min_gb free (the stage need not exist yet)."""
     probe = Path(root).resolve()
+    if probe.drive.upper() == G_TEMP_ROOT.drive.upper() and not probe.is_relative_to(G_TEMP_ROOT):
+        raise OSError(f"refusing to stage under {root}: G: staging is allowed only under {G_TEMP_ROOT.as_posix()}")
     while not probe.exists() and probe.parent != probe:
         probe = probe.parent
     free = shutil.disk_usage(probe).free / 2**30

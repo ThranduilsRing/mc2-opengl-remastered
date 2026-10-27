@@ -122,6 +122,11 @@ void parseArgs(int argc, char** argv) {
         std::fflush(stdout);
         std::exit(2);
     }
+    if (g_state.headless && !(g_state.active && g_state.tickBudget > 0 && g_state.fixedTimestep)) {
+        mc2::fmt::print_out("[SMOKE v1] event=summary result=fail reason=argv_error stage=parseArgs detail=\"--headless requires --smoke-active, --ticks and MC2_SMOKE_FIXED_TIMESTEP\"\n");
+        std::fflush(stdout);
+        std::exit(2);
+    }
     if (g_state.enabled) {
         mc2::fmt::print_out("[SMOKE v1] event=banner mode={} mission={} profile={} duration={:d} seed=0x{:x}\n",
             mc2::fmt::safe(g_state.active ? "active" : "passive"),

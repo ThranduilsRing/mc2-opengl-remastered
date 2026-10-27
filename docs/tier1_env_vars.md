@@ -235,7 +235,6 @@ Present-level transient failures (zero surface extent while minimized, `NATIVE_W
 
 ## Always-on / safety
 
-- `MC2_TGL_POOL_TRACE=1` — TGL pool NULL trace
 - `MC2_DESTROY_TRACE=1` — per-destruction lifecycle snapshot
 - `MC2_HEARTBEAT=1` — stderr heartbeat per second
 - `MC2_REVERSE_Z_TRACE=1` — reverse-Z lifecycle prints

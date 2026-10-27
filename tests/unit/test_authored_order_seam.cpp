@@ -572,14 +572,13 @@ TEST_CASE("AuthoredOrderProduction/BattleMech patrol reverses at endpoints (warr
 TEST_CASE("CommandReplay/runtime player movers use the queue and reject reused identities") {
     SeamWorldResources resources;
     struct RuntimeObjects : GameObjectManager {
-        GameObject* entries[2]{};
-        RuntimeObjects() { objList = entries; maxMechs = 1; collisionSystem = nullptr; moverLineOfSightTable = nullptr; }
+        RuntimeObjects() { objList = entities.reset(2); maxMechs = 1; collisionSystem = nullptr; moverLineOfSightTable = nullptr; }
         ~RuntimeObjects() { objList = nullptr; maxMechs = 0; }
     } objects;
     Pilot pilot;
     struct RuntimeActor : Actor { void replaceWatch() { watchID = 2; } } actor;
     actor.attach(pilot); actor.setHandle(1);
-    objects.entries[1] = &actor;
+    objects.objList[1] = &actor;
     ObjectManager = &objects;
     struct RuntimeMission : Mission { using Mission::orderRecipients; using Mission::orderIngress; } owner;
     auto* previousMission = mission;
