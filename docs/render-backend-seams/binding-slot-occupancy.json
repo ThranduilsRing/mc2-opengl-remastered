@@ -1,6 +1,6 @@
 {
   "summary": {
-    "glsl_blocks_with_binding": 247,
+    "glsl_blocks_with_binding": 248,
     "native_pairs": 7,
     "fails": 0,
     "warns": 0
@@ -887,7 +887,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/color_prop_tier1.frag",
-        "line": 15,
+        "line": 18,
         "role": "PropMaterials",
         "std": "std430",
         "type": "buffer",
@@ -934,6 +934,16 @@
     "set0:binding13": [
       {
         "side": "glsl",
+        "file": "shaders/vulkan/color_prop_tier1.frag",
+        "line": 17,
+        "role": "uPropTex",
+        "std": null,
+        "type": "sampler2D",
+        "source": "shaders/vulkan/include/prop_material_vk.glsl",
+        "branch": {}
+      },
+      {
+        "side": "glsl",
         "file": "shaders/vulkan/terrain_decal_tier1.frag",
         "line": 45,
         "role": "TerrainLightGridIndicesVK",
@@ -973,7 +983,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/color_prop_tier1.frag",
-        "line": 127,
+        "line": 128,
         "role": "uTreeObjectMap",
         "std": null,
         "type": "sampler2DShadow",
@@ -1575,7 +1585,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/color_prop_tier1.frag",
-        "line": 65,
+        "line": 66,
         "role": "uAlbedo",
         "std": null,
         "type": "sampler2DArray",
@@ -1991,7 +2001,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/color_prop_tier1.frag",
-        "line": 68,
+        "line": 69,
         "role": "uAlbedoOn",
         "std": null,
         "type": "sampler2DArray",

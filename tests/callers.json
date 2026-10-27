@@ -769,7 +769,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/deploy_payload.py",
-          "line": 1948,
+          "line": 1950,
           "evidence": "command",
           "reference": "scripts/check-deploy-hygiene.py",
           "text": "r = subprocess.run([sys.executable, hygiene, target],"
@@ -3936,7 +3936,7 @@
         },
         {
           "path": "scripts/deploy_payload.py",
-          "line": 1802,
+          "line": 1804,
           "evidence": "import",
           "reference": "exe_fingerprint",
           "text": "from exe_fingerprint import extract, sha_agrees"
@@ -4094,7 +4094,7 @@
         },
         {
           "path": "scripts/deploy_payload.py",
-          "line": 1877,
+          "line": 1879,
           "evidence": "import",
           "reference": "kit_payload",
           "text": "import kit_payload"
@@ -9031,7 +9031,7 @@
         },
         {
           "path": "tools/content_pipeline/package.py",
-          "line": 26,
+          "line": 27,
           "evidence": "import",
           "reference": "tools.content_pipeline",
           "text": "from . import cache, gltf_io, ir, texcook, validate"
@@ -9116,7 +9116,7 @@
         },
         {
           "path": "tools/content_pipeline/package.py",
-          "line": 26,
+          "line": 27,
           "evidence": "import",
           "reference": "tools.content_pipeline.cache",
           "text": "from . import cache, gltf_io, ir, texcook, validate"
@@ -9396,7 +9396,7 @@
         },
         {
           "path": "tools/content_pipeline/package.py",
-          "line": 26,
+          "line": 27,
           "evidence": "import",
           "reference": "tools.content_pipeline.gltf_io",
           "text": "from . import cache, gltf_io, ir, texcook, validate"
@@ -9502,7 +9502,7 @@
         },
         {
           "path": "tools/content_pipeline/package.py",
-          "line": 26,
+          "line": 27,
           "evidence": "import",
           "reference": "tools.content_pipeline.ir",
           "text": "from . import cache, gltf_io, ir, texcook, validate"
@@ -9609,7 +9609,7 @@
         },
         {
           "path": "tools/content_pipeline/package.py",
-          "line": 26,
+          "line": 27,
           "evidence": "import",
           "reference": "tools.content_pipeline.texcook",
           "text": "from . import cache, gltf_io, ir, texcook, validate"
@@ -9638,7 +9638,7 @@
         },
         {
           "path": "tools/content_pipeline/package.py",
-          "line": 26,
+          "line": 27,
           "evidence": "import",
           "reference": "tools.content_pipeline.validate",
           "text": "from . import cache, gltf_io, ir, texcook, validate"
