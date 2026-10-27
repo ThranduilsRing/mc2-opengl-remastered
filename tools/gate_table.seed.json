@@ -7499,32 +7499,6 @@
    "retireVerdict": ""
   },
   {
-   "name": "MC2_GPU_GV_SHADOW_SKIP",
-   "kind": "Bool",
-   "default": true,
-   "rule": "Lead0Kill",
-   "owner": "mech",
-   "retireBy": "",
-   "doc": "",
-   "readers": [
-    {
-     "at": "mclib/gvactor.cpp:117",
-     "idiom": "Lead0Kill"
-    }
-   ],
-   "conflict": false,
-   "registered": false,
-   "registryDefault": null,
-   "seedDefaultSource": "reader-idiom",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": true,
-   "defaultDisagreement": "",
-   "registryKind": "",
-   "featureId": "",
-   "retireVerdict": ""
-  },
-  {
    "name": "MC2_GPU_MECHS",
    "kind": "Bool",
    "default": true,

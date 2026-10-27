@@ -3,9 +3,9 @@
 # Where each gate is read, what the smoke runner forwards and what tier1_env_vars.md says are not here: ask
 # tools/repo_intel (env_var, gate_status), which scan the sources.
 generator_version: "3.0.0"
-gate_count: 786
+gate_count: 785
 registry_entry_count: 152
-verified_count: 748
+verified_count: 747
 flags:
   - name: MC2_ABL_ARG_GUARD
     kind: Bool
@@ -1740,13 +1740,6 @@ flags:
     owner: code
     doc: ""
     smoke_passthrough: true
-    verified: true
-  - name: MC2_GPU_GV_SHADOW_SKIP
-    kind: Bool
-    default: true
-    rule: Lead0Kill
-    owner: mech
-    doc: ""
     verified: true
   - name: MC2_GPU_MECHS
     kind: Bool

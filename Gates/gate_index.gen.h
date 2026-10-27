@@ -10,7 +10,7 @@
 
 namespace mc2::gate::detail {
 
-inline constexpr std::size_t kGateCount = 786;
+inline constexpr std::size_t kGateCount = 785;
 
 inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_ABL_ARG_GUARD", Kind::Bool, Rule::Lead1, {}},
@@ -237,7 +237,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_GPU_GROUND_PICK_PARITY_CENTER", Kind::Bool, Rule::Presence, {}},
     {"MC2_GPU_GROUND_PICK_PARITY_SAMPLE", Kind::Int, Rule::Prefix, {}},
     {"MC2_GPU_GROUND_PICK_PARITY_TAG", Kind::String, Rule::Std, {}},
-    {"MC2_GPU_GV_SHADOW_SKIP", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_GPU_MECHS", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_GPU_OBJECTS", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_GPU_PARTICLES", Kind::Bool, Rule::DefOnLead0, {}},
