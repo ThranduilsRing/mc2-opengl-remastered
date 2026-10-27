@@ -75,6 +75,8 @@ struct DeviceCaps {
     // state each (blended colour, untouched normal / object-id target), which is invalid without it.
     bool independentBlend = false;
     bool samplerAnisotropy = false;
+    // A core 1.0 feature: the prop island indexes its uPropTex[] sampler array with a per-material value (SampledImageArrayDynamicIndexing).
+    bool shaderSampledImageArrayDynamicIndexing = false;
     // Limits.
     uint32_t maxImageDimension2D = 0;
     uint32_t maxBoundDescriptorSets = 0;
@@ -166,6 +168,7 @@ inline Evaluation evaluate(const DeviceCaps& c, bool wantPresent) {
         e.enabledFeatures.push_back("runtimeDescriptorArray");
         e.enabledFeatures.push_back("shaderSampledImageArrayNonUniformIndexing");
         e.enabledFeatures.push_back("descriptorBindingPartiallyBound");
+        if (c.shaderSampledImageArrayDynamicIndexing) e.enabledFeatures.push_back("shaderSampledImageArrayDynamicIndexing");
     }
 
     const Route dr = detail::routeFor(c, kUseApi13, kExtDynamicRendering, c.dynamicRendering);

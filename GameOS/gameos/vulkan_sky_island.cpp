@@ -433,7 +433,7 @@ extern "C" int mc2_vk_sky_island_run(int w, int h) {
     mc2vk::VulkanContext& rctx = mc2vk::getOrCreateEngineVulkanContext();
     const uint32_t par = rctx.frameContext().slot;
     { ZoneScopedN("VKIsl.Sky.FenceWait");
-      if (!rctx.wait(s->submitted[par], 5000000000ull, "sky submission slot")) { setFallback("submission_slot_timeout"); s->disabled = true; return 0; } }
+      if (!rctx.wait(s->submitted[par], 5000000000ull, "sky submission slot")) { setFallback("submission_slot_timeout"); vlog("LOUD: submission slot wait timed out (5 s); skipping this frame, will retry next frame."); return 0; } }
 
     VkCommandBuffer cb = s->cbuf[par];
     vkResetCommandBuffer(cb, 0);
