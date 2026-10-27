@@ -49,13 +49,13 @@
   "mclib/mapdata.cpp": 2508,
   "mclib/move.h": 1895,
   "mclib/terrtxm.cpp": 1819,
-  "mclib/tgl.h": 1800,
+  "mclib/tgl.h": 1799,
   "tools/cite_guard.py": 1553,
   "tools/comment_guard.py": 1790,
   "tools/scifi_kit/art/intent_military.py": 3363,
   "tools/terrain_beautify/visual_heightfield.py": 1510
  },
- "head": "d3953ad33",
+ "head": "e6c81c69a",
  "per_dir": {
   "GameAdapters": {
    "files": 13,
@@ -234,11 +234,11 @@
    "lines": 1819
   },
   {
-   "file": "mclib/tgl.h",
-   "lines": 1800
+   "file": "mclib/ablrtn.cpp",
+   "lines": 1799
   },
   {
-   "file": "mclib/ablrtn.cpp",
+   "file": "mclib/tgl.h",
    "lines": 1799
   },
   {

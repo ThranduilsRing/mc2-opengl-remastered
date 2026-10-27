@@ -90,7 +90,7 @@
    "LG17": 1,
    "LG18": 0,
    "LG19": 0,
-   "LG20": 20
+   "LG20": 19
   },
   "RenderCore": {
    "LG01": 0,
@@ -1037,7 +1037,7 @@
   },
   "GuiRuntime/GraphicsOptionsWindow_mech.cpp": {
    "LG09": 1,
-   "LG20": 14
+   "LG20": 13
   },
   "GuiRuntime/GraphicsOptionsWindow_passes.cpp": {
    "LG09": 8
@@ -3426,7 +3426,7 @@
    "LG20": 3
   }
  },
- "head": "043a1f4c1",
+ "head": "e6c81c69a",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
