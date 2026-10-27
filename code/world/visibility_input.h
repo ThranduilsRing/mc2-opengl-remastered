@@ -7,5 +7,5 @@
 extern long turn;
 
 namespace mc2::world {
-inline bool visibleThisTurn(GameObject* object) { return object->getWindowsVisible() == turn; }
+inline bool visibleThisTurn(GameObject* obj) { return obj->getWindowsVisible() == turn; }
 }
