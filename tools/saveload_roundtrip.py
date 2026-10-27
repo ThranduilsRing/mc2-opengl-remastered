@@ -328,8 +328,14 @@ def run_fixture(mission: str, save_at: int, load_at: int, deploy: bool, out: str
             second = os.path.join(dest, "save2.ims")
             shutil.move(second_src, second)
     with open(os.path.join(dest, "run", mission + ".log"), encoding="utf-8", errors="replace") as fh:
-        m = _FINGERPRINT.search(fh.read())
-    return dest, first, second, ({"sha": m.group(1), "dirty": int(m.group(2))} if m else None), r.returncode
+        text = fh.read()
+    m = _FINGERPRINT.search(text)
+    rc = r.returncode
+    # A headless run has no frames, so the runner's render gates (vegetation, heartbeat) fail it by design; it is clean when the engine hit the
+    # tick budget and exited through its summary without a crash.
+    if headless and rc == 1 and "[SMOKE v1] event=tick_budget" in text and "[SMOKE v1] event=summary result=pass" in text and "Crash Report" not in text:
+        rc = 0
+    return dest, first, second, ({"sha": m.group(1), "dirty": int(m.group(2))} if m else None), rc
 
 
 def save_evidence(path: str | None, what: str) -> str | None:
