@@ -9538,6 +9538,16 @@
    "count": 1
   },
   {
+   "tag": "VEHICLE_RENDER",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "type",
+    "lod"
+   ],
+   "count": 1
+  },
+  {
    "tag": "VERIFY",
    "ver": -1,
    "stream": "buffer",
