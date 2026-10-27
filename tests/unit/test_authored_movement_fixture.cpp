@@ -976,6 +976,23 @@ TEST_CASE("AuthoredOrderProduction/MOVE layer revisions move only with their own
     CHECK(GameMap->rev.mover == r0.mover + 1);
 }
 
+TEST_CASE("AuthoredOrderProduction/MOVE revisions see runtime footprint and spread writes") {
+    MovementWorld world;
+    MOVE_init(21);
+    MOVE_buildData(180, 180, nullptr, 0, nullptr);
+    REQUIRE(GameMap != nullptr);
+    MoveLayerRevisions r = GameMap->rev;
+    char footPrint[] = {0, 0, 2, -1, -1, -1};   // one run of two cells (terrain-object destroy)
+    GameMap->setPassable(90, 90, footPrint, true);
+    CHECK(GameMap->rev.statics == r.statics + 1);
+    r = GameMap->rev;
+    GameMap->spreadState(100, 100, 1);          // per-frame mover placement
+    const uint32_t first = GameMap->rev.preserved;
+    CHECK(first > r.preserved);
+    GameMap->spreadState(100, 100, 1);          // tile already preserved: the passable write must still count
+    CHECK(GameMap->rev.preserved > first);
+}
+
 TEST_CASE("AuthoredOrderProduction/classification uses the requested buffer and retries a ready zero-step path") {
     using namespace mc2::sim;
     for (bool zeroSteps : {false, true}) {

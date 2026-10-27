@@ -399,11 +399,11 @@ long BldgAppearance::markMoveMap (bool passable, long* lineOfSightRect, bool use
 					MapCellPtr curCell = GameMap->getCell(cellR, cellC);
 					if (appearType->isForestClump) {
 						if (vertexPos.z <= 1.0f)
-							curCell->setPassable(passable);
+							GameMap->setPassable(cellR, cellC, passable);
 						}
 					else {
 						if (vertexPos.z >= 1.0f)
-							curCell->setPassable(passable);
+							GameMap->setPassable(cellR, cellC, passable);
 					}
 				}
 			}
@@ -470,11 +470,11 @@ void BldgAppearance::markLOS (bool clearIt)
 						cellLocalHeight = 15.0f;
 
 					if (cellLocalHeight > currentCellHeight)
-						curCell->setLocalHeight(cellLocalHeight+0.5f);
+						GameMap->setLocalHeight(cellR, cellC, cellLocalHeight+0.5f);
 				}
 				else	//We want to clear all LOS height INFO.  We're about to change shape!!
 				{
-					curCell->setLocalHeight(0.0f);
+					GameMap->setLocalHeight(cellR, cellC, 0.0f);
 				}
 			}
 		}
