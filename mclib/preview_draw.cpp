@@ -56,6 +56,8 @@ void TG_Shape::ReserveCpuDraw (BYTE alphaValue, bool hud, bool clamped)
 	const DWORD addFlags = cpuDrawFlags(theShape->alphaTestOn, hud, clamped);
 	for (DWORD j = 0; j < numTriangles; j++)
 	{
+		if (textures && theShape->listOfTypeTriangles[j].localTextureHandle >= theShape->numTextures)
+			continue;
 		DWORD node, flags;
 		cpuDrawKey(textures, theShape->listOfTypeTriangles[j], isWindow, alphaValue, addFlags, node, flags);
 		mc2::renderSubmissions().addTriangle(node, flags);
@@ -251,6 +253,8 @@ void TG_Shape::CpuDraw (const glm::mat4& shapeToWorld, const glm::mat4& worldToS
 	for (DWORD j = 0; j < numTriangles; j++)
 	{
 		const TG_TypeTriangle& tri = theShape->listOfTypeTriangles[j];
+		if (textures && tri.localTextureHandle >= theShape->numTextures)
+			continue;
 		if (!(glm::dot(backFacePoint, tri.faceNormal) > 0.0f))
 			continue;
 
@@ -294,5 +298,11 @@ void TG_Shape::CpuDraw (const glm::mat4& shapeToWorld, const glm::mat4& worldToS
 			gos_DrawTriangles(gv, 3);
 	}
 	if (!world)
+	{
+		// Leave no state behind for the next panel: the loop sets the texture, alpha mode and alpha test.
 		gos_SetRenderState(gos_State_Fog, 0);
+		gos_SetRenderState(gos_State_Texture, 0);
+		gos_SetRenderState(gos_State_AlphaMode, gos_Alpha_OneZero);
+		gos_SetRenderState(gos_State_AlphaTest, false);
+	}
 }

@@ -84,7 +84,7 @@ long BldgAppearance::render (long depthFixup)
 			bldgShape->SetARGBHighLight(forced);
 
 		// Call Multi-shape render stuff here.
-		// Slice 1 path (g_useGpuObjects). No cull bypass; submitMultiShape
+		// Static-prop batcher path. No cull bypass; submitMultiShape
 		// is per-child Layer-B by construction. Returns false only when
 		// EVERY child is ineligible.
 		// Caller-side accounting: recordEligibleActor() fires unconditionally
