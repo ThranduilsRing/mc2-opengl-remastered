@@ -2693,14 +2693,14 @@
         },
         {
           "path": "scripts/smoke_lib/host_lease.py",
-          "line": 474,
+          "line": 494,
           "evidence": "import",
           "reference": "scripts.console_child",
           "text": "from scripts import console_child         # type: ignore"
         },
         {
           "path": "scripts/smoke_lib/host_lease.py",
-          "line": 477,
+          "line": 497,
           "evidence": "import",
           "reference": "console_child",
           "text": "import console_child                       # type: ignore"
@@ -5431,14 +5431,14 @@
         },
         {
           "path": "scripts/smoke_lib/deploy_lease.py",
-          "line": 339,
+          "line": 348,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from . import bounded_wait"
         },
         {
           "path": "scripts/smoke_lib/deploy_lease.py",
-          "line": 447,
+          "line": 456,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from . import child_registry"
@@ -5459,7 +5459,7 @@
         },
         {
           "path": "scripts/smoke_lib/host_lease.py",
-          "line": 23,
+          "line": 25,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from . import bounded_wait, child_registry"
@@ -5762,21 +5762,21 @@
         },
         {
           "path": "scripts/smoke_lib/deploy_lease.py",
-          "line": 339,
+          "line": 348,
           "evidence": "import",
           "reference": "scripts.smoke_lib.bounded_wait",
           "text": "from . import bounded_wait"
         },
         {
           "path": "scripts/smoke_lib/host_lease.py",
-          "line": 23,
+          "line": 25,
           "evidence": "import",
           "reference": "scripts.smoke_lib.bounded_wait",
           "text": "from . import bounded_wait, child_registry"
         },
         {
           "path": "scripts/smoke_lib/host_lease.py",
-          "line": 25,
+          "line": 27,
           "evidence": "import",
           "reference": "bounded_wait",
           "text": "import bounded_wait                   # type: ignore"
@@ -5827,21 +5827,21 @@
         },
         {
           "path": "scripts/smoke_lib/deploy_lease.py",
-          "line": 447,
+          "line": 456,
           "evidence": "import",
           "reference": "scripts.smoke_lib.child_registry",
           "text": "from . import child_registry"
         },
         {
           "path": "scripts/smoke_lib/host_lease.py",
-          "line": 23,
+          "line": 25,
           "evidence": "import",
           "reference": "scripts.smoke_lib.child_registry",
           "text": "from . import bounded_wait, child_registry"
         },
         {
           "path": "scripts/smoke_lib/host_lease.py",
-          "line": 26,
+          "line": 28,
           "evidence": "import",
           "reference": "child_registry",
           "text": "import child_registry                 # type: ignore"
