@@ -34,8 +34,8 @@ static bool EditorObjectMgr_PointInsideAppearance(ObjectAppearance* pAppearance,
 	if (screenX < left || screenX > right || screenY < top || screenY > bottom)
 		return false;
 
-	if (allowPerPoly && pAppearance->canBeSeen())
-		return pAppearance->PerPolySelect(screenX, screenY) ? true : false;
+	// Selection is by the projected bounds: the TG layer keeps no per-face screen geometry (allowPerPoly is unused).
+	(void)allowPerPoly;
 
 	return true;
 }
