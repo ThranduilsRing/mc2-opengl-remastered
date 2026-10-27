@@ -983,7 +983,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/color_prop_tier1.frag",
-        "line": 128,
+        "line": 129,
         "role": "uTreeObjectMap",
         "std": null,
         "type": "sampler2DShadow",
@@ -2109,7 +2109,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/color_prop_tier1.vert",
-        "line": 101,
+        "line": 102,
         "role": "TypeHotColors",
         "std": "std430",
         "type": "buffer",
@@ -2275,7 +2275,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/color_prop_tier1.vert",
-        "line": 138,
+        "line": 139,
         "role": "HzbVisibility",
         "std": "std430",
         "type": "buffer",

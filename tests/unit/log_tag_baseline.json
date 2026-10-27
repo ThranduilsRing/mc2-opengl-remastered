@@ -5259,18 +5259,6 @@
    "count": 1
   },
   {
-   "tag": "MECH_PREVIEW",
-   "ver": 1,
-   "stream": "stdout",
-   "keys": [
-    "event",
-    "gpu_submit",
-    "cpu_draw",
-    "depth"
-   ],
-   "count": 1
-  },
-  {
    "tag": "MECH_SKEL",
    "ver": -1,
    "stream": "stdout",
@@ -6635,15 +6623,6 @@
    "ver": -1,
    "stream": "log",
    "keys": [
-    "mechShape"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "PREVIEW",
-   "ver": -1,
-   "stream": "log",
-   "keys": [
     "pObject",
     "bIsComponent"
    ],
@@ -6659,18 +6638,6 @@
     "sx",
     "sy",
     "bounds"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "PREVIEW",
-   "ver": -1,
-   "stream": "log",
-   "keys": [
-    "shouldRender",
-    "visible",
-    "mechShape",
-    "currentLOD"
    ],
    "count": 1
   },
@@ -9510,6 +9477,17 @@
    "ver": -1,
    "stream": "stderr",
    "keys": [],
+   "count": 1
+  },
+  {
+   "tag": "VEHICLE_PAINT",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "lod",
+    "team",
+    "paint"
+   ],
    "count": 1
   },
   {

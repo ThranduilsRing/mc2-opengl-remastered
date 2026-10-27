@@ -37,7 +37,7 @@
           "matrix_stride": null,
           "name": "light",
           "offset": 0,
-          "type": "_971"
+          "type": "_978"
         }
       ],
       "name": "LightsData"

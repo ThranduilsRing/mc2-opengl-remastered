@@ -769,7 +769,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/deploy_payload.py",
-          "line": 1950,
+          "line": 1964,
           "evidence": "command",
           "reference": "scripts/check-deploy-hygiene.py",
           "text": "r = subprocess.run([sys.executable, hygiene, target],"
@@ -2574,7 +2574,7 @@
         },
         {
           "path": "scripts/deploy_payload.py",
-          "line": 56,
+          "line": 57,
           "evidence": "import",
           "reference": "console_child",
           "text": "import console_child  # noqa: E402  (stdio-inheriting children keep their output; scripts/console_child.py)"
@@ -3936,7 +3936,7 @@
         },
         {
           "path": "scripts/deploy_payload.py",
-          "line": 1804,
+          "line": 1818,
           "evidence": "import",
           "reference": "exe_fingerprint",
           "text": "from exe_fingerprint import extract, sha_agrees"
@@ -4087,14 +4087,14 @@
       "callers_by_stem": [
         {
           "path": "scripts/deploy_payload.py",
-          "line": 1217,
+          "line": 1231,
           "evidence": "import",
           "reference": "kit_payload",
           "text": "from kit_payload import contained_path"
         },
         {
           "path": "scripts/deploy_payload.py",
-          "line": 1879,
+          "line": 1893,
           "evidence": "import",
           "reference": "kit_payload",
           "text": "import kit_payload"
@@ -5198,7 +5198,7 @@
         },
         {
           "path": "scripts/run_smoke.py",
-          "line": 1502,
+          "line": 1503,
           "evidence": "import",
           "reference": "run_visual_capture",
           "text": "from run_visual_capture import smoke_capture"
@@ -5312,14 +5312,14 @@
         },
         {
           "path": "scripts/deploy_payload.py",
-          "line": 743,
+          "line": 757,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from scripts.smoke_lib import deploy_lease"
         },
         {
           "path": "scripts/deploy_payload.py",
-          "line": 783,
+          "line": 797,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from scripts.smoke_lib import bounded_wait"
@@ -5480,49 +5480,49 @@
         },
         {
           "path": "scripts/smoke_lib/nofocus.py",
-          "line": 348,
+          "line": 367,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from . import win_input"
         },
         {
           "path": "scripts/smoke_lib/nofocus.py",
-          "line": 360,
+          "line": 379,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from . import exe_guard, child_registry, host_lease"
         },
         {
           "path": "scripts/smoke_lib/nofocus.py",
-          "line": 376,
+          "line": 395,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from . import exe_guard, host_lease"
         },
         {
           "path": "scripts/smoke_lib/nofocus.py",
-          "line": 391,
+          "line": 410,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from . import exe_guard"
         },
         {
           "path": "scripts/smoke_lib/nofocus.py",
-          "line": 443,
+          "line": 462,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from . import exe_guard, host_lease"
         },
         {
           "path": "scripts/smoke_lib/nofocus.py",
-          "line": 464,
+          "line": 483,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from . import exe_guard"
         },
         {
           "path": "scripts/smoke_lib/nofocus.py",
-          "line": 562,
+          "line": 581,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from . import win_input"
@@ -5762,7 +5762,7 @@
       "callers_by_stem": [
         {
           "path": "scripts/deploy_payload.py",
-          "line": 783,
+          "line": 797,
           "evidence": "import",
           "reference": "scripts.smoke_lib.bounded_wait",
           "text": "from scripts.smoke_lib import bounded_wait"
@@ -5855,7 +5855,7 @@
         },
         {
           "path": "scripts/smoke_lib/nofocus.py",
-          "line": 360,
+          "line": 379,
           "evidence": "import",
           "reference": "scripts.smoke_lib.child_registry",
           "text": "from . import exe_guard, child_registry, host_lease"
@@ -5942,7 +5942,7 @@
       "callers_by_stem": [
         {
           "path": "scripts/deploy_payload.py",
-          "line": 743,
+          "line": 757,
           "evidence": "import",
           "reference": "scripts.smoke_lib.deploy_lease",
           "text": "from scripts.smoke_lib import deploy_lease"
@@ -5985,35 +5985,35 @@
         },
         {
           "path": "scripts/smoke_lib/nofocus.py",
-          "line": 360,
+          "line": 379,
           "evidence": "import",
           "reference": "scripts.smoke_lib.exe_guard",
           "text": "from . import exe_guard, child_registry, host_lease"
         },
         {
           "path": "scripts/smoke_lib/nofocus.py",
-          "line": 376,
+          "line": 395,
           "evidence": "import",
           "reference": "scripts.smoke_lib.exe_guard",
           "text": "from . import exe_guard, host_lease"
         },
         {
           "path": "scripts/smoke_lib/nofocus.py",
-          "line": 391,
+          "line": 410,
           "evidence": "import",
           "reference": "scripts.smoke_lib.exe_guard",
           "text": "from . import exe_guard"
         },
         {
           "path": "scripts/smoke_lib/nofocus.py",
-          "line": 443,
+          "line": 462,
           "evidence": "import",
           "reference": "scripts.smoke_lib.exe_guard",
           "text": "from . import exe_guard, host_lease"
         },
         {
           "path": "scripts/smoke_lib/nofocus.py",
-          "line": 464,
+          "line": 483,
           "evidence": "import",
           "reference": "scripts.smoke_lib.exe_guard",
           "text": "from . import exe_guard"
@@ -6213,21 +6213,21 @@
         },
         {
           "path": "scripts/smoke_lib/nofocus.py",
-          "line": 360,
+          "line": 379,
           "evidence": "import",
           "reference": "scripts.smoke_lib.host_lease",
           "text": "from . import exe_guard, child_registry, host_lease"
         },
         {
           "path": "scripts/smoke_lib/nofocus.py",
-          "line": 376,
+          "line": 395,
           "evidence": "import",
           "reference": "scripts.smoke_lib.host_lease",
           "text": "from . import exe_guard, host_lease"
         },
         {
           "path": "scripts/smoke_lib/nofocus.py",
-          "line": 443,
+          "line": 462,
           "evidence": "import",
           "reference": "scripts.smoke_lib.host_lease",
           "text": "from . import exe_guard, host_lease"
@@ -6912,14 +6912,14 @@
       "callers_by_stem": [
         {
           "path": "scripts/smoke_lib/nofocus.py",
-          "line": 348,
+          "line": 367,
           "evidence": "import",
           "reference": "scripts.smoke_lib.win_input",
           "text": "from . import win_input"
         },
         {
           "path": "scripts/smoke_lib/nofocus.py",
-          "line": 562,
+          "line": 581,
           "evidence": "import",
           "reference": "scripts.smoke_lib.win_input",
           "text": "from . import win_input"
@@ -7268,6 +7268,13 @@
       "path": "scripts/tests/test_deploy_disk_space.py",
       "basename": "test_deploy_disk_space.py",
       "stem": "test_deploy_disk_space",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
+      "path": "scripts/tests/test_deploy_fail_last.py",
+      "basename": "test_deploy_fail_last.py",
+      "stem": "test_deploy_fail_last",
       "callers_by_basename": [],
       "callers_by_stem": []
     },

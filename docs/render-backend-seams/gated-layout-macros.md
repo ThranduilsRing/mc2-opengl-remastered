@@ -2566,14 +2566,6 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vulkan_shadow_bake.h:215`
-- Class: `ShadowBake`  (data-member)
-- Member: `uint64_t cacheLoadKey_ = 0;`
-- Consuming targets: gameos
-- Reached by define: gameos[gameos(PUBLIC)]
-
-## PASS  (`MC2_VULKAN_ISLAND`)
-
 - Header: `GameOS/gameos/vulkan_shadow_bake.h:216`
 - Class: `ShadowBake`  (data-member)
 - Member: `uint64_t contentKey_ = 0, shaderContentHash_ = 0;`
@@ -3158,4 +3150,4 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ---
 
-Result: 394 guard(s) analyzed, 0 violation(s).
+Result: 393 guard(s) analyzed, 0 violation(s).

@@ -6,8 +6,8 @@
   "specializationParams": [],
   "artifact": "mech.frag.default.dbbae7d3.spv",
   "spv_dir": "shaders/spv",
-  "source_sha256": "424913cb8db0e7cedf6809597d08c5f44a765b63c63d1886de7a465e0378c16c",
-  "spirv_sha256": "3a72038762c9ee2e0c9cdcd217ada91499fd863b59ccd7f0dff56bf62fea1b4f",
+  "source_sha256": "318859b5b66fa82d61b0d6220e96d3c5cd7116c5aebb9392d8a7844f17bede76",
+  "spirv_sha256": "bafeb3a2f9cae74a44825ec70212513f1f6b67596ecac4587ac51fe382f96ffd",
   "bindings": {
     "ubos": [
       {
@@ -25,7 +25,7 @@
         "binding": 0
       },
       {
-        "type": "_1389",
+        "type": "_1400",
         "name": "MoverShadowFrame",
         "block_size": 8336,
         "set": 0,
@@ -58,7 +58,7 @@
         "binding": 13
       },
       {
-        "type": "_1395",
+        "type": "_1406",
         "name": "TerrainCementBuf",
         "readonly": true,
         "block_size": 0,
@@ -940,7 +940,7 @@
         }
       ]
     },
-    "_1389": {
+    "_1400": {
       "name": "MoverShadowFrame",
       "members": [
         {
@@ -988,7 +988,7 @@
         }
       ]
     },
-    "_1395": {
+    "_1406": {
       "name": "TerrainCementBuf",
       "members": [
         {
@@ -1035,6 +1035,10 @@
       {
         "name": "vMechSunFound",
         "location": 7
+      },
+      {
+        "name": "vLegacyVehicle",
+        "location": 10
       },
       {
         "name": "vWorldPos",
