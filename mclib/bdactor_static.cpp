@@ -134,7 +134,7 @@ void BldgAppearance::registerStatic() {
 	// Full MeshCapability bits come once the engine reads the cooked manifest.json (later
 	// integration); for now we log what the seam knows. Schema-grep: \[RENDER_PATH v[0-9]+\].
 	if (mc2::gate::get<"MC2_RENDER_PATH">()) {
-		mc2::fmt::print_err("[RENDER_PATH v1] key=staticprop:{} isOverride={:d} path={} pools={}\n", mc2::fmt::safe(appearType->name), mc2::fmt::as_i32(_regIsOverride ? 1 : 0), mc2::fmt::safe(_regIsOverride ? "override_multidraw" : "legacy_static"), mc2::fmt::safe(gos_StaticPropLegacyInstancePools() ? "legacy" : "skipped"));
+		mc2::fmt::print_err("[RENDER_PATH v1] key=staticprop:{} isOverride={:d} path={} pools={}\n", mc2::fmt::safe(appearType->name), mc2::fmt::as_i32(_regIsOverride ? 1 : 0), mc2::fmt::safe(_regIsOverride ? "override_multidraw" : "legacy_static"), mc2::fmt::safe("skipped"));
 		fflush(stderr);
 	}
 

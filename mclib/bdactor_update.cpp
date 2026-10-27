@@ -692,11 +692,8 @@ long BldgAppearance::update (bool animate)
 				// leaf is registered; run the ZERO-POOL hierarchy walk so no TGL
 				// frame pool is allocated per visible instance. submit reads
 				// rec.shapeToWorld (populated by the walk) + the debug-only
-				// zero-padded Colors SSBO. MC2_LEGACY_INSTANCE_POOLS=1 reverts.
-				if (gos_StaticPropLegacyInstancePools())
-					bldgShape->TransformMultiShape_PositionsOnly (&xlatPosition,&rot);
-				else
-					bldgShape->TransformMultiShape_HierarchyOnly (&xlatPosition,&rot);
+				// zero-padded Colors SSBO.
+				bldgShape->TransformMultiShape_HierarchyOnly (&xlatPosition,&rot);
 			}
 		}
 		else
@@ -706,11 +703,10 @@ long BldgAppearance::update (bool animate)
 			// full-bake pool content is vestigial (GPU draws from the per-type
 			// VBO + rec.shapeToWorld; light cache below is pool-independent), so
 			// run the zero-pool hierarchy walk. mc2CacheOrBakeStaticGpuLight still
-			// runs to seed the light index. MC2_LEGACY_INSTANCE_POOLS=1 reverts.
+			// runs to seed the light index.
 			// PREVIEW-FIX: force the full bake in the SimpleCamera preview so the
 			// CPU MLR draw has complete listOfVertices (hierarchy-only leaves it stale).
-			if (!gos_StaticPropLegacyInstancePools() &&
-			    (g_mechPreviewRenderDepth == 0) &&
+			if ((g_mechPreviewRenderDepth == 0) &&
 			    GpuStaticPropBatcher::instance().isMultiShapeEligibleForGpuObjects(bldgShape))
 			{
 				bldgShape->TransformMultiShape_HierarchyOnly (&xlatPosition,&rot);
