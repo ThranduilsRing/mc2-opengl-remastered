@@ -13,6 +13,7 @@ difference between two exes means anything. The runs end at different frames (th
 prefix is compared.
 
   py -3 tools/sim_determinism.py run mc2_03 --duration 20 [--baseline [path]]      # --baseline alone = tests/smoke/sim_determinism/mc2_03.json
+  py -3 tools/sim_determinism.py run mc2_03 --duration 60 --ticks 900 --headless   # run a windowed, run b headless: the chains must be equal
   py -3 tools/sim_determinism.py check mc2_16 --env MC2_FIXTURE_ORDER_LIVENESS=1   # two runs + the committed baseline (env comes from the file too)
   py -3 tools/sim_determinism.py run mc2_10 --env-a MC2_CAMERA_PARK=-1500,2500,0,60,800@300 --env-b MC2_CAMERA_PARK=-2000,2900,90,50,600@300
   py -3 tools/sim_determinism.py pairs-until-fail --mission mc2_24 --max 8 --duration 30 --out <dir>   # stops at the first diverging pair
@@ -345,7 +346,7 @@ def add_ref_args(p) -> None:
 
 
 def run_mission(mission: str, duration: str, out: str, extra_env: dict | None = None, install: str = INSTALL_DIR,
-                ref_exe: str | None = None, ref_commit: str | None = None, sim_speed: int = 1) -> list:
+                ref_exe: str | None = None, ref_commit: str | None = None, sim_speed: int = 1, headless: bool = False, ticks: int = 0) -> list:
     """Launch two fresh determinism runs under host slots and retain their own logs.
 
     `extra_env` maps a/b to per-run variables and both to a shared fixture.
@@ -360,7 +361,8 @@ def run_mission(mission: str, duration: str, out: str, extra_env: dict | None = 
             sys.exit(f"sim_determinism: output already exists: {dest}; use a fresh --out")
         env = dict(os.environ, **GATES, **(extra_env or {}).get("both", {}), **(extra_env or {}).get(tag, {}))
         r = subprocess.run([sys.executable, os.path.join(ROOT, "scripts", "run_smoke.py"), "--mission", mission, "--duration", duration,
-                            *target, "--keep-logs", "--sim-determinism", *(["--sim-speed", str(sim_speed)] if sim_speed > 1 else [])], env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
+                            *target, "--keep-logs", "--sim-determinism", *(["--sim-speed", str(sim_speed)] if sim_speed > 1 else []),
+                            *(["--ticks", str(ticks)] if ticks > 0 else []), *(["--headless"] if headless and tag == "b" else [])], env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
                            errors="replace", **console_child.child_kwargs(redirected=True))
         arts = [line.removeprefix("[runner] artifacts: ").strip() for line in r.stdout.splitlines()
                 if line.startswith("[runner] artifacts: ")]
@@ -615,6 +617,9 @@ def main(argv=None) -> int:
     env_args(u)
     install_arg(u)
     add_ref_args(u)
+    for hp in (r, k):
+        hp.add_argument("--headless", action="store_true", help="run b headless (no window, GPU or audio): a windowed-vs-headless equality check; needs --ticks")
+        hp.add_argument("--ticks", type=int, default=0, metavar="N", help="both runs quit after N sim ticks (run_smoke --ticks) instead of at the wall-clock end")
     w = sub.add_parser("write-baseline")
     w.add_argument("log")
     w.add_argument("--frames", type=int, required=True)
@@ -626,6 +631,8 @@ def main(argv=None) -> int:
     install_arg(o)
     sub.add_parser("selftest")
     args = ap.parse_args(argv)
+    if getattr(args, "headless", False) and getattr(args, "ticks", 0) <= 0:
+        sys.exit("sim_determinism: --headless needs --ticks N (a headless run has no wall-clock end)")
     if args.cmd == "selftest":
         return selftest()
     if args.cmd == "detail-diff":
@@ -685,7 +692,7 @@ def main(argv=None) -> int:
     if args.deploy:
         build_and_deploy(args.install)
     la, lb = run_mission(args.mission, args.duration, out, extra, install=args.install, ref_exe=args.ref_exe, ref_commit=args.ref_commit,
-                         sim_speed=args.sim_speed)
+                         sim_speed=args.sim_speed, headless=args.headless, ticks=args.ticks)
     a, b = load_simid(la), load_simid(lb)
     ok, msg = compare(a, b, args.min_frames)
     print(("sim_determinism: PASS " if ok else "sim_determinism: FAIL ") + msg)
