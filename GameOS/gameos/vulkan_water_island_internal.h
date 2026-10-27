@@ -126,6 +126,7 @@ static_assert(offsetof(WaterFsParams, f0) == 16 && offsetof(WaterFsParams, f3) =
 struct WaterIsland : mc2vk::IslandState {
     mc2veg::GroundLighting groundLighting;
     bool disabled = false;
+    int  waitStrikes = 0;
     bool inited   = false;
     bool useInterop = false;
     bool tier1    = false;   // rung 6: in-place shared scene GBuffer co-write

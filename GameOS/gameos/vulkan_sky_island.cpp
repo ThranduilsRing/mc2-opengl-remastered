@@ -71,6 +71,7 @@ static_assert(sizeof(SkyPC) == 116, "SkyPC lockstep");
 // parked island ahead of the device).
 struct Island : mc2vk::IslandState {
     bool inited = false, disabled = false;
+    int  waitStrikes = 0;
     int  w = 0, h = 0;
     VkPhysicalDevice phys = VK_NULL_HANDLE;
     VkDevice device = VK_NULL_HANDLE; uint32_t gfxFamily = UINT32_MAX;
@@ -433,7 +434,7 @@ extern "C" int mc2_vk_sky_island_run(int w, int h) {
     mc2vk::VulkanContext& rctx = mc2vk::getOrCreateEngineVulkanContext();
     const uint32_t par = rctx.frameContext().slot;
     { ZoneScopedN("VKIsl.Sky.FenceWait");
-      if (!rctx.wait(s->submitted[par], 5000000000ull, "sky submission slot")) { setFallback("submission_slot_timeout"); vlog("LOUD: submission slot wait timed out (5 s); skipping this frame, will retry next frame."); return 0; } }
+      if (!vk_island_util::waitStrike(s->waitStrikes, s->disabled, rctx.wait(s->submitted[par], 5000000000ull, "sky submission slot"), "VK_SKY")) { setFallback("submission_slot_timeout"); vlog("LOUD: submission slot wait timed out (5 s); skipping this frame, will retry next frame."); return 0; } }
 
     VkCommandBuffer cb = s->cbuf[par];
     vkResetCommandBuffer(cb, 0);
