@@ -227,10 +227,9 @@ void mc2CacheOrBakeStaticGpuLight(TG_MultiShape* shape,
 		shape->EmitBakedGpuLightData(recipeIndex, baked);    // HIT: recompute retired
 	} else {
 		shape->CacheGpuLightData();                          // MISS: real gather (frame 1 / post-invalidate)
-		// C1 (adversarial review): CacheGpuLightData early-returns when
-		// !g_useGpuObjects && !g_useGpuMechs (supported MC2_GPU_OBJECTS=0
-		// operator config), leaving cachedGpuLightIndex_ at the
-		// 0xFFFFFFFF sentinel and leaf->lightData_ stale. Only persist
+		// C1 (adversarial review): CacheGpuLightData leaves
+		// cachedGpuLightIndex_ at the 0xFFFFFFFF sentinel when the multi has
+		// no SHAPE_NODE leaf (leaf->lightData_ stale). Only persist
 		// the bake if the gather actually ran (valid index) -- else leave
 		// uncached so it retries next frame; never persist a no-op
 		// snapshot (would poison s_bakedStaticLight until invalidate).

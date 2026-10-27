@@ -316,9 +316,8 @@ long TG_Shape::MultiTransformShape (glm::mat4 *shapeToClip, glm::vec3 *backFaceP
 // per-face lighting (useFaceLighting=false in stock), listOfTriangles aRGBLight
 // /fRGBLight writes, addTriangle queue calls (dead on Renderer==3), addRenderShape
 // emit block (slice 2's batcher draws the actor instead).
-// Stage 2.A: declared and defined; NO call sites wired (dead code under flag-off).
-// Stage 2.B wires the call sites in BldgAppearance/TreeAppearance/GenericAppearance
-// ::update inside their existing cull gates, behind g_useGpuObjects.
+// Called from BldgAppearance/TreeAppearance/GenericAppearance::update inside
+// their existing cull gates, for GPU-eligible multishapes.
 long TG_Shape::MultiTransformShape_PositionsOnly (glm::mat4 *shapeToClip, glm::vec3 *backFacePoint, TG_ShapeRecPtr parentNode, bool isHudElement, BYTE alphaValue, bool isClamped)
 {
 	// [OBJECT_RECON v1] outer scope. No-op when MC2_OBJECT_RECON_TRACY unset.
