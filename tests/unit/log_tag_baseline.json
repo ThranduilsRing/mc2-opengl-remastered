@@ -3821,42 +3821,6 @@
    "count": 1
   },
   {
-   "tag": "GPU_PICK_HOVER",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "attempts",
-    "mech_hits",
-    "non_mech_fallback",
-    "cpu_fallback"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "GPU_PICK_HOVER",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "kind",
-    "handle",
-    "idx",
-    "mech",
-    "screen",
-    "gl"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "GPU_PICK_HOVER",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "kind",
-    "screen"
-   ],
-   "count": 1
-  },
-  {
    "tag": "GPU_PICK_PARITY",
    "ver": -1,
    "stream": "stderr",
@@ -6489,6 +6453,33 @@
    "count": 1
   },
   {
+   "tag": "PICK_BATTERY",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "revision",
+    "class",
+    "id",
+    "hits",
+    "miss",
+    "wrong",
+    "overlap"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "PICK_BATTERY_WRONG",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "expected",
+    "actual",
+    "x",
+    "y"
+   ],
+   "count": 1
+  },
+  {
    "tag": "PICK_CAP",
    "ver": -1,
    "stream": "stderr",
@@ -6570,23 +6561,6 @@
     "ray",
     "legacy",
     "dist"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "PICK_RECON",
-   "ver": 1,
-   "stream": "stdout",
-   "keys": [
-    "event",
-    "calls",
-    "candidates",
-    "inRect",
-    "rectProj",
-    "total_ms",
-    "avg_us",
-    "max_us",
-    "max_candidates_call"
    ],
    "count": 1
   },
@@ -7849,6 +7823,17 @@
    "count": 1
   },
   {
+   "tag": "SELECTION_PICK_PROBE",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "id",
+    "click",
+    "box"
+   ],
+   "count": 1
+  },
+  {
    "tag": "SHADOW_BAKE",
    "ver": -1,
    "stream": "stderr",
@@ -8735,12 +8720,7 @@
     "name",
     "handle",
     "rect",
-    "hits",
-    "stamp",
-    "turn",
-    "readback",
-    "disabled",
-    "damage"
+    "hits"
    ],
    "count": 1
   },
@@ -11209,10 +11189,7 @@
    "keys": [
     "id",
     "rect",
-    "hits",
-    "stamp",
-    "turn",
-    "visible"
+    "hits"
    ],
    "count": 1
   },
