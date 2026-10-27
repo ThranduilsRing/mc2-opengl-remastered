@@ -23,6 +23,15 @@
 #include <vector>
 #include "Gates/gate.h"
 #include "mc2fmt.h"
+#ifdef TRACY_ENABLE
+#include <string>
+#include <tracy/Tracy.hpp>
+#define MC2_JOBS_THREAD_NAME(prefix, id) tracy::SetThreadName((std::string(prefix) + std::to_string(id)).c_str())
+#define MC2_JOBS_ZONE(name) ZoneScopedN(name)
+#else
+#define MC2_JOBS_THREAD_NAME(prefix, id) ((void)0)
+#define MC2_JOBS_ZONE(name) ((void)0)
+#endif
 
 // ===========================================================================
 //  LEGACY FRAME-JOBS-1 API  (verbatim behavior — do not change the OFF path)
@@ -64,6 +73,7 @@ std::atomic<int> g_workersCount{0};
 bool             g_serialFallback = false;
 
 void workerFn(Pool* pool, int workerId) {
+    MC2_JOBS_THREAD_NAME("FrameJobs ", workerId);
     while (true) {
         {
             std::unique_lock<std::mutex> lk(pool->mu);
@@ -74,11 +84,14 @@ void workerFn(Pool* pool, int workerId) {
             pool->workerEpoch[workerId] = pool->epoch;
         }
 
-        while (true) {
-            int idx = pool->nextChunk.fetch_add(1, std::memory_order_relaxed);
-            if (idx >= pool->totalChunks) break;
-            pool->fn(pool->chunks[idx].begin, pool->chunks[idx].end);
-            g_chunksThisFrame.fetch_add(1, std::memory_order_relaxed);
+        {
+            MC2_JOBS_ZONE("FrameJobs.Worker");
+            while (true) {
+                int idx = pool->nextChunk.fetch_add(1, std::memory_order_relaxed);
+                if (idx >= pool->totalChunks) break;
+                pool->fn(pool->chunks[idx].begin, pool->chunks[idx].end);
+                g_chunksThisFrame.fetch_add(1, std::memory_order_relaxed);
+            }
         }
 
         int done = pool->workersDone.fetch_add(1, std::memory_order_acq_rel) + 1;
@@ -249,6 +262,7 @@ inline void runBlock(NewPool* p, int idx) {
 }
 
 void npWorker(NewPool* p, int workerId) {
+    MC2_JOBS_THREAD_NAME("Jobs ", workerId);
     t_isWorker     = true;
     t_isPoolThread = true;
     while (true) {
@@ -260,10 +274,13 @@ void npWorker(NewPool* p, int workerId) {
             if (p->quit) return;
             p->workerEpoch[workerId] = p->epoch;
         }
-        for (;;) {
-            int idx = p->nextBlock.fetch_add(1, std::memory_order_relaxed);
-            if (idx >= p->numBlocks) break;
-            runBlock(p, idx);
+        {
+            MC2_JOBS_ZONE("Jobs.Worker");
+            for (;;) {
+                int idx = p->nextBlock.fetch_add(1, std::memory_order_relaxed);
+                if (idx >= p->numBlocks) break;
+                runBlock(p, idx);
+            }
         }
         int done = p->workersDone.fetch_add(1, std::memory_order_acq_rel) + 1;
         if (done == p->numWorkers) {

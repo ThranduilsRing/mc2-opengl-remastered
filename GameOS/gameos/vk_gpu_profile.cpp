@@ -53,6 +53,11 @@ struct State {
     const char*     names[kRing][kMaxScopes] = {};
     uint64_t        benchFrames[kRing] = {};
     std::atomic<uint64_t> frame{0};
+    // frameEnd's query-reset / Tracy-collect submit: one persistent pool, a command buffer per ring slot, each reused once its last submit completed
+    // (a pool created and destroyed per frame cost ~3 ms while Tracy was connected).
+    OwnedCommandPool endPool;
+    VkCommandBuffer endCb[kRing] = {};
+    GpuTicket       endTicket[kRing] = {};
     // window aggregation
     Row             rows[kMaxNames];
     uint32_t        rowCount = 0;
@@ -248,6 +253,8 @@ void shutdown(VulkanContext& ctx) {
     if (g.tracy) { tracy::DestroyVkContext(g.tracy); g.tracy = nullptr; }
 #endif
     if (g.pool) { vkDestroyQueryPool(g.device, g.pool, nullptr); g.pool = VK_NULL_HANDLE; }
+    g.endPool.reset();
+    for (uint32_t i = 0; i < kRing; ++i) { g.endCb[i] = VK_NULL_HANDLE; g.endTicket[i] = {}; }
     g.timers = false;
     g.labels = false;
     g.device = VK_NULL_HANDLE;
@@ -270,18 +277,38 @@ void frameEnd() {
         if (g.windowFrames >= kLogEvery) flushWindow(f);
     }
     if (used || tracyLive) {
-        OwnedCommandPool pool;
-        VkCommandBuffer cb = VK_NULL_HANDLE;
-        if (beginTransientCommandBuffer(*g.ctx, pool, cb)) {
-            if (used) vkCmdResetQueryPool(cb, g.pool, rslot * kQueriesPerSlot, used * 2);
+        const uint32_t cslot = static_cast<uint32_t>(f % kRing);
+        if (!g.endPool) {
+            VkCommandPoolCreateInfo pci{VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO};
+            pci.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+            pci.queueFamilyIndex = g.ctx->graphicsFamily();
+            const VkDevice dev = g.device;
+            if (create(g.endPool, dev, [&](VkCommandPool* h) { return vkCreateCommandPool(dev, &pci, nullptr, h); })) {
+                VkCommandBufferAllocateInfo ai{VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO};
+                ai.commandPool = g.endPool.get();
+                ai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+                ai.commandBufferCount = kRing;
+                if (vkAllocateCommandBuffers(dev, &ai, g.endCb) != VK_SUCCESS) { g.endPool.reset(); for (VkCommandBuffer& c : g.endCb) c = VK_NULL_HANDLE; }
+            }
+        }
+        VkCommandBuffer cb = g.endCb[cslot];
+        // The slot's previous submit is kRing frames old (at most 2 frames are in flight), so this wait returns at once; a slot that never completes
+        // skips this frame's submit.
+        if (cb != VK_NULL_HANDLE && g.ctx->wait(g.endTicket[cslot], 100'000'000ull, "gpuprof_end_cb")) {
+            VkCommandBufferBeginInfo bi{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
+            bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+            if (vkResetCommandBuffer(cb, 0) == VK_SUCCESS && vkBeginCommandBuffer(cb, &bi) == VK_SUCCESS) {
+                if (used) vkCmdResetQueryPool(cb, g.pool, rslot * kQueriesPerSlot, used * 2);
 #ifdef TRACY_ENABLE
-            if (tracyLive) TracyVkCollect(g.tracy, cb);
+                if (tracyLive) TracyVkCollect(g.tracy, cb);
 #endif
-            if (vkEndCommandBuffer(cb) == VK_SUCCESS) {
-                VkSubmitInfo si{VK_STRUCTURE_TYPE_SUBMIT_INFO};
-                si.commandBufferCount = 1;
-                si.pCommandBuffers = &cb;
-                if (g.ctx->submit(si, VK_NULL_HANDLE) == VK_SUCCESS) g.ctx->retire(std::move(pool));
+                if (vkEndCommandBuffer(cb) == VK_SUCCESS) {
+                    VkSubmitInfo si{VK_STRUCTURE_TYPE_SUBMIT_INFO};
+                    si.commandBufferCount = 1;
+                    si.pCommandBuffers = &cb;
+                    uint64_t value = 0;
+                    if (g.ctx->submit(si, VK_NULL_HANDLE, &value) == VK_SUCCESS) g.endTicket[cslot] = GpuTicket{value, 0};
+                }
             }
         }
     }
