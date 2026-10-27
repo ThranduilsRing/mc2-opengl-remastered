@@ -66,16 +66,6 @@ extern const bool s_spotlightRealTrace = mc2::gate::get<"MC2_SPOTLIGHT_REAL_TRAC
 // Env-read once at process start; survives until soak completes.
 extern const bool s_globalPoolLegacy = mc2::gate::get<"MC2_STATIC_PROP_GLOBAL_POOL_LEGACY">();
 
-// GPU-INSTANCE-SKIP-POOLS-1 (2026-06-03) — when set, forces the LEGACY
-// per-instance frame-pool path (_PositionsOnly + non-null listOfVertices gate)
-// for GPU-registered static-prop types. Default (unset) is the new GPU-only
-// path: registered instances run the zero-pool hierarchy walk in *Appearance::
-// update and submit straight from rec.shapeToWorld, so the TGL frame pools stay
-// flat regardless of override mesh size × instance count. This flag is the A/B
-// escape hatch. Env-read once at process start.
-extern const bool s_legacyInstancePools = mc2::gate::get<"MC2_LEGACY_INSTANCE_POOLS">();
-bool gos_StaticPropLegacyInstancePools() { return s_legacyInstancePools; }
-
 // DrawPacket v5: per-draw-call substitutive dispatch.
 // Always on (gate retired).
 // Extension: ARB_base_instance (GL 4.2 core, available on all tier1 GPUs).

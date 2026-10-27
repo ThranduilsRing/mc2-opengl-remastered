@@ -10,7 +10,7 @@
 
 namespace mc2::gate::detail {
 
-inline constexpr std::size_t kGateCount = 786;
+inline constexpr std::size_t kGateCount = 785;
 
 inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_ABL_ARG_GUARD", Kind::Bool, Rule::Lead1, {}},
@@ -280,7 +280,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_JUMPJETS_ALL", Kind::Bool, Rule::Presence, {}},
     {"MC2_LAUNCHED", Kind::Bool, Rule::Presence, {}},
     {"MC2_LAUNCHER_ENV_JSON", Kind::Bool, Rule::Lead0Kill, {}},
-    {"MC2_LEGACY_INSTANCE_POOLS", Kind::Bool, Rule::Lead0P, {}},
     {"MC2_LEGACY_LIT_MC2_FRAME", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_LEGACY_LOAD_BANNER", Kind::Bool, Rule::Presence, {}},
     {"MC2_LETTERBOX_OPAQUE", Kind::Bool, Rule::Lead0Kill, {}},

@@ -74,11 +74,6 @@ constexpr uint32_t STATIC_PROP_FLAG_ALPHA_TEST = 1u << 0;
 // becomes false-equivalent and the legacy path is byte-for-byte unchanged.
 bool eligibleForGpuObjects(class TG_Shape* shape);
 
-// GPU-INSTANCE-SKIP-POOLS-1: true iff MC2_LEGACY_INSTANCE_POOLS is set (escape
-// hatch forcing the legacy per-instance frame-pool path). Default false → the
-// GPU-only zero-pool path. Read once at process start.
-bool gos_StaticPropLegacyInstancePools();
-
 // Population tag — passed by caller so the batcher can split per-population
 // counts in the [OBJBATCHER v1] summary. Not stored; consumed inside submit
 // only.
