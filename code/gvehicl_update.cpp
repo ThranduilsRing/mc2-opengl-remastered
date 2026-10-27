@@ -180,7 +180,6 @@ long GroundVehicle::update (void)
 				if (inView)
 				{
 					appearance->update();
-					windowsVisible = turn;
 				}
 				
 				if ( attackRange == FIRERANGE_CURRENT && !isDisabled() )

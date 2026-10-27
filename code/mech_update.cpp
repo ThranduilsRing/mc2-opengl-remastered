@@ -304,9 +304,6 @@ long BattleMech::update (void)
 		QueryPerformanceCounter(startCk);
 		#endif
 
-		bool inView = false;
-		if (inView)
-			windowsVisible = turn;
 			
 		if (withdrawing) unitAnimation->withdrawSeconds += frameLength;
         else unitAnimation->withdrawSeconds = 0;
@@ -367,8 +364,6 @@ long BattleMech::update (void)
 		setPosition(newPosition);
 
 		bool inView = false;
-		if (inView)
-			windowsVisible = turn;
 	
 		if (appearance)
 		{
@@ -431,8 +426,6 @@ long BattleMech::update (void)
 		}
 
 		bool inView = false;
-		if (inView)
-			windowsVisible = turn;
 	
 		if (appearance)
 		{

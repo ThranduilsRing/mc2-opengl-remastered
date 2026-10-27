@@ -2,6 +2,7 @@
 // Declared in the class headers; shared names in mech_internal.h.
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include "mech_internal.h"
+#include "world/visibility_input.h"
 #include "mc2fmt.h"
 
 
@@ -469,7 +470,7 @@ bool BattleMechType::handleCollision (GameObjectPtr collidee, GameObjectPtr coll
 				if (jumpCollision && (bounceDir == -1)) {
 				}
 
-				if (!sameTeam && (collidee->getWindowsVisible() == turn))
+				if (!sameTeam && (mc2::world::visibleThisTurn(collidee)))
 					soundSystem->playDigitalSample(MECH_COLLIDE,collidee->getPosition());
 
 				return(false);
@@ -500,7 +501,7 @@ bool BattleMechType::handleCollision (GameObjectPtr collidee, GameObjectPtr coll
 				if (turnAround > 0.0)
 					collidee->rotate(turnAround);
 
-				if (collidee->getWindowsVisible() == turn)
+				if (mc2::world::visibleThisTurn(collidee))
 					soundSystem->playDigitalSample(MECH_COLLIDE,collidee->getPosition());
 				return(false);
 			}
