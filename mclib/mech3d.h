@@ -312,6 +312,15 @@ struct _MechAppearanceData
 
 }; using MechAppearanceData = _MechAppearanceData;
 
+// Used at the top of the node-position getters: work on the sim copy of shape, node indices and pose while updateSimPose builds
+// the palette (see Mech3DAppearance::poseView). The locals shadow the draw-path members of the same names on purpose, so the
+// getter bodies stay as they were.
+#define POSE_VIEW_LOCALS \
+	const PoseView pv_ = poseView(); \
+	TG_MultiShapePtr const mechShape = pv_.shape; long& rotationalNodeIndex = pv_.rotNode; \
+	long& hitLeftNodeIndex = pv_.hitLeft; long& hitRightNodeIndex = pv_.hitRight; const long currentLOD = pv_.lod; \
+	const glm::vec3 position = pv_.pos; const float rotation = pv_.rot;
+
 class Mech3DAppearance: public ObjectAppearance
 {
 	//-------------------------------------------------------------------------------------
@@ -479,6 +488,27 @@ class Mech3DAppearance: public ObjectAppearance
 		long						rotationalNodeIndex;
 		long						hitLeftNodeIndex;
 		long						hitRightNodeIndex;
+
+		// Simulation inputs. The tick writes them (setObjectParameters / setMoverParameters / setObjStatus / setDebugMoveMode
+		// while simulationOwned() && !simPresentationPass); only the sim animation step and updateSimPose read them. The draw
+		// path reads position / rotation / status / the node indices above, which presentation writes. The two sets never alias.
+		glm::vec3					simPosition_{};
+		float						simRotation_ = 0.0f;
+		long						simStatus_ = 0;
+		bool						simDebugMove_ = false;
+		long						simRotationalNodeIndex_ = -1;
+		long						simHitLeftNodeIndex_ = -1;
+		long						simHitRightNodeIndex_ = -1;
+		bool						buildingSimPose_ = false;
+		// The shape, node indices and pose inputs the node-position getters work from: the sim copy while updateSimPose builds
+		// the palette, the draw copy otherwise.
+		struct PoseView { TG_MultiShapePtr shape; long& rotNode; long& hitLeft; long& hitRight; long lod; glm::vec3 pos; float rot; };
+		PoseView poseView (void)
+		{
+			if (buildingSimPose_)
+				return { simulationShape_.get(), simRotationalNodeIndex_, simHitLeftNodeIndex_, simHitRightNodeIndex_, 0, simPosition_, simRotation_ };
+			return { mechShape, rotationalNodeIndex, hitLeftNodeIndex, hitRightNodeIndex, currentLOD, position, rotation };
+		}
 		long						rootNodeIndex;
 		long						leftArmNodeIndex;
 		long						rightArmNodeIndex;
@@ -744,6 +774,8 @@ class Mech3DAppearance: public ObjectAppearance
 		}
 
 		virtual void setObjectParameters (const glm::vec3 &pos, float legRot, long selected, long alignment, long homeRelations);
+
+		void setSimInput (const SimInput& in) override;
 
 		virtual void setMoverParameters (float turretRot, float lArmRot = 0.0f, float rArmRot = 0.0f, bool isAirborne = false);
 

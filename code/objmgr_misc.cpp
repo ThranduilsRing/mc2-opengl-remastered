@@ -607,6 +607,7 @@ void GameObjectManager::updateAppearancesOnly( bool terrain, bool movers, bool o
 			for (long i = 0; i < numMechs; i++)
 				if (mechs[i] && mechs[i]->getExists())
 				{
+					mechs[i]->applyAppearancePush();
 					bool inView = mechs[i]->getAppearance()->recalcBounds();
 					if (inView)
 						mechs[i]->windowsVisible = turn;

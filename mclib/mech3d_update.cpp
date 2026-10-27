@@ -19,13 +19,20 @@ long Mech3DAppearance::update (bool animate)
 	// animate; the many mechShape-> derefs below are unsafe. Return as if the
 	// frame advanced successfully so callers (encyclopedia preview, mech bay)
 	// keep running.
-	if (!mechShape)
+	// A battle mech's tick pass never looks at the draw shape (presentation may swap it): it asks the type.
+	if (simulationOwned() && !simPresentationPass ? (!mechType || !mechType->mechShape[0]) : !mechShape)
 		return TRUE;
 
 	// A render frame with no sim tick re-poses the mech from unchanged sim state. The gesture state machine, the idle
 	// timer, the dice and the weapon recycle clocks are SIM state and advance only on a tick (R1).
 	if (!simPresentationPass)
 	{
+	// A battle mech reads the sim inputs the tick fed it (setSimInput); a preview mech (no owner) reads its own draw state.
+	// These locals shadow the members for this block only, so the state machine below is unchanged.
+	const bool simOwned = simulationOwned();
+	const long status = simOwned ? simStatus_ : this->status;
+	const glm::vec3 position = simOwned ? simPosition_ : this->position;
+	const bool inDebugMoveMode = simOwned ? simDebugMove_ : this->inDebugMoveMode;
 	const auto previousGesture = unitAnim().currentGestureId;
 	const auto previousFrame = unitAnim().currentFrame;
 	if (!unitAnim().nodeRecycle.empty())
@@ -217,11 +224,7 @@ long Mech3DAppearance::update (bool animate)
 		{
 			unitAnim().jumpAirborne = false;
 			unitAnim().jumpVelocity = glm::vec3(0.0f);
-			
-			if (jumpJetEffect)
-			{
-				jumpJetEffect->Stop();	//Done drawing it.
-			}
+			// The jet effect stops in presentation (updateGeometry) once it sees the landing; the tick owns no effect objects.
 		}
 	}
  	

@@ -102,6 +102,16 @@ public:
         bool wakeRequested = false, activityLoop = false, leftArmOff = false, rightArmOff = false;
     } appliedEffects_;
     virtual void refreshSimPose() {}
+    // What the tick feeds the sim half of an appearance (animation state machine, SimPose). Only the tick writes it; the draw
+    // state (position, rotation, status, alpha, bars ...) is pushed by presentation from the owner's state.
+    struct SimInput {
+        glm::vec3 position{};
+        float rotation = 0.0f, torsoRotation = 0.0f;
+        long status = 0;
+        bool hasStatus = false;   // the owner pushed a status this tick
+        bool debugMove = false;
+    };
+    virtual void setSimInput(const SimInput&) {}
     std::shared_ptr<mc2::sim::SimPose> simPose = std::make_shared<mc2::sim::SimPose>();
 
 	//Data Members
