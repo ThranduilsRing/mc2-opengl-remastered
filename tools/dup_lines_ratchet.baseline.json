@@ -6,7 +6,7 @@
   "HostServices": 0,
   "RenderCore": 402,
   "RenderWorld": 0,
-  "code": 13863,
+  "code": 13857,
   "mclib": 23304,
   "shaders": 416
  },
@@ -202,7 +202,7 @@
   "code/mpstats.cpp": 34,
   "code/object_walk_trace.h": 8,
   "code/objective.cpp": 470,
-  "code/objmgr.cpp": 104,
+  "code/objmgr.cpp": 98,
   "code/objmgr.h": 29,
   "code/objmgr_io.cpp": 216,
   "code/objmgr_misc.cpp": 45,
@@ -487,8 +487,8 @@
   "shaders/vulkan/terrain_tier1.vert": 71,
   "shaders/vulkan/terrain_tier1_skirt.vert": 71
  },
- "head": "37bd94b66",
+ "head": "47e2ca2fa",
  "n": 8,
- "total": 40218,
+ "total": 40212,
  "version": 1
 }
