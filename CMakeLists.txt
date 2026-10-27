@@ -964,7 +964,7 @@ if(MC2_BUILD_TESTS)
 endif()
 
 target_sources(mc2 PRIVATE code/command_replay.cpp
-    code/combat_sim_hash.cpp code/sim_rng.cpp code/tactical_order_queue.cpp code/save_archive.cpp)
+    code/combat_sim_hash.cpp code/sim_rng.cpp code/tactical_order_queue.cpp code/save_archive.cpp code/save_sections.cpp)
 # The sim API must not inherit wall-clock access from the engine PCH.
 set_source_files_properties(
     "code/sim_rng.cpp"

@@ -1,7 +1,7 @@
 #include "save_archive.h"
 #include "../GameOS/gameos/crash_content.h"
 #include "save_exactness.h"
-#include "simulation_save_section.h"
+#include "save_sections.h"
 #include "utils/mc2log.h"
 //******************************************************************************************
 //	saveload.cpp - This file contains the mission Save Load class code
@@ -21,7 +21,7 @@
 #include "../GameAdapters/MechRenderAdapter.h"
 extern float MaxExtractUnitDistance;
 // Old readers must reject extended warrior packets before reading their native prefix.
-static constexpr char orderSaveVersion[] = "MC2SAVE.WQT2";
+static constexpr char orderSaveVersion[] = "MC2SAVE.WQT2";  // v1 stamp; v2 saves write mc2::save::saveStampV2
 // The mission clocks accumulate float ticks; the legacy "{:f}" text keeps six decimals, which is coarser than one ulp below
 // about 8 s, so an early save loaded back a clock one ulp off and every float timer derived from it drifted. Nine significant
 // digits round-trip a float exactly and atof reads them back as before (legacy saves load unchanged).
@@ -124,7 +124,7 @@ void Mission::save (const char *saveFileName)
 		MAX_WARRIORS + MAX_TEAMS + MAX_COMMANDERS + 32));
 	DWORD currentPacket = 0;
 
-	saveFile.writePacket(currentPacket,reinterpret_cast<MemoryPtr>(const_cast<char*>(orderSaveVersion)),sizeof(orderSaveVersion),STORAGE_TYPE_RAW);
+	saveFile.writePacket(currentPacket,reinterpret_cast<MemoryPtr>(const_cast<char*>(mc2::save::saveStampV2)),sizeof(mc2::save::saveStampV2),STORAGE_TYPE_RAW);
 	currentPacket++;
 
 	saveFile.writePacket(currentPacket,reinterpret_cast<MemoryPtr>(const_cast<char*>(cmpName)),strlen(cmpName)+1, STORAGE_TYPE_RAW);
@@ -283,16 +283,19 @@ void Mission::save (const char *saveFileName)
 	saveFile.writePacket(currentPacket,reinterpret_cast<MemoryPtr>(const_cast<char*>("END")),4,STORAGE_TYPE_RAW);
 	currentPacket++;
 
-    // Optional versioned section follows the unchanged legacy END packet.
-    mc2::save::Archive extension;
-    uint32_t tag = 0x4E413252u, version = 3;
-    auto animation = ObjectManager->saveAnimationState();
-    extension(tag, version);
-    mc2::sim::serializeAnimationBlob(extension, animation);
-    orderIngress.queue().serialize(extension);
-    if (!extension.good()) Fatal(0, "R2 animation save section failed");
-    saveFile.writePacket(currentPacket, const_cast<MemoryPtr>(extension.bytes().data()),
-        static_cast<unsigned int>(extension.bytes().size()), STORAGE_TYPE_ZLIB);
+    // Save v2: the versioned section container follows the unchanged legacy END packet (save_sections.h).
+    mc2::save::SectionContainer sections;
+    sections.add(mc2::save::tagAnimation, 3, true, ObjectManager->saveAnimationState());
+    {
+        mc2::save::Archive orders;
+        orderIngress.queue().serialize(orders);
+        if (!orders.good()) Fatal(0, "ORDQ save section failed");
+        sections.add(mc2::save::tagOrders, 1, true, orders.bytes());
+    }
+    mc2::save::Bytes container;
+    std::string why;
+    if (!mc2::save::encodeSections(sections, container, &why)) Fatal(0, "Save section container failed");
+    saveFile.writePacket(currentPacket, container.data(), static_cast<unsigned int>(container.size()), STORAGE_TYPE_ZLIB);
     ++currentPacket;
 
 	saveFile.close();
@@ -470,10 +473,38 @@ bool Mission::openSaveFile(MissionLoadFrame& f) {
 	if (versionSize <= 0 || versionSize > sizeof(versionCheck) ||
 		loadFile.readPacket(currentPacket, reinterpret_cast<MemoryPtr>(versionCheck)) != versionSize ||
 		!((versionSize == sizeof(orderSaveVersion) && memcmp(versionCheck, orderSaveVersion, versionSize) == 0) ||
+		  (versionSize == sizeof(mc2::save::saveStampV2) && memcmp(versionCheck, mc2::save::saveStampV2, versionSize) == 0) ||
 		  (versionSize == strlen(versionStamp) + 1 && memcmp(versionCheck, versionStamp, versionSize) == 0))) {
 		mc2::fmt::print_err("[SAVE v1] event=reject reason=version file={}\n", mc2::fmt::safe(loadFileName));
 		f.incompatibleSave = true;
 		return true;
+	}
+	f.saveV2 = versionSize == sizeof(mc2::save::saveStampV2) && memcmp(versionCheck, mc2::save::saveStampV2, versionSize) == 0;
+	if (f.saveV2) {
+		// Validate the section container before the running mission is torn down: the last written packet, right after END.
+		int last = loadFile.getNumPackets() - 1;
+		while (last > 0 && (loadFile.seekPacket(last) != NO_ERR || loadFile.getPacketSize() <= 0))
+			--last;
+		char end[4]{};
+		std::string why;
+		if (last < 3 || loadFile.seekPacket(last - 1) != NO_ERR || loadFile.getPacketSize() != 4 ||
+			loadFile.readPacket(last - 1, reinterpret_cast<MemoryPtr>(end)) != 4 || memcmp(end, "END", 4) != 0)
+			why = "section_position";
+		else if (loadFile.seekPacket(last) != NO_ERR || loadFile.getPacketSize() > static_cast<int>(mc2::save::maxFileBytes))
+			why = "section_size";
+		else {
+			mc2::save::Bytes bytes(static_cast<size_t>(loadFile.getPacketSize()));
+			if (loadFile.readPacket(last, bytes.data()) != static_cast<int>(bytes.size()))
+				why = "section_read";
+			else
+				mc2::save::decodeSections(bytes, f.sections, &why);
+		}
+		if (!why.empty()) {
+			mc2::fmt::print_err("[SAVE v2] event=reject reason={} file={}\n", why, mc2::fmt::safe(loadFileName));
+			f.incompatibleSave = true;
+			return true;
+		}
+		f.sectionsPacket = static_cast<DWORD>(last);
 	}
 	currentPacket = 2;
 

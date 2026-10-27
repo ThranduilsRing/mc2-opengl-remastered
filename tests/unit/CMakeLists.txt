@@ -438,6 +438,8 @@ endif()
 target_sources(mc2_tests PRIVATE
     test_save_archive.cpp
     ${MC2_WORKTREE_ROOT}/code/save_archive.cpp
+    test_save_sections.cpp
+    ${MC2_WORKTREE_ROOT}/code/save_sections.cpp
     test_abl_outarrays.cpp
 )
 target_sources(mc2_tests PRIVATE test_editor_mission_reader.cpp)
