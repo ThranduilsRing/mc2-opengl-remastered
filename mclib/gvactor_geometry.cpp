@@ -13,6 +13,7 @@
 #include <filesystem>
 #include <set>
 #include <string>
+#include <string_view>
 
 extern uint32_t g_mc2FrameCounter;
 
@@ -47,7 +48,7 @@ void GVAppearance::updateRenderShape()
 			static std::set<std::pair<std::string, int>> badLods;
 			const auto badKey = std::make_pair(std::string(appearType->name), lod);
 			if (badLods.count(badKey)) { renderShape.reset(); renderLOD = -1; return; }
-			auto failLod = [&](const char* why) {
+			auto failLod = [&](std::string_view why) {
 				badLods.insert(badKey);
 				mc2::fmt::print_err("[VEHICLE_RENDER] lod import failed type={} lod={} ({}); using stock shape\n", appearType->name, lod, why);
 				renderShape.reset(); renderLOD = -1;
