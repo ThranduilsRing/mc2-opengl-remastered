@@ -683,11 +683,6 @@ void InitializeGameEngine()
 
 	mc2::renderSubmissions().startVertices(500000);
 
-	// clearArrays() resets both the vertex and render-shape managers.
-	// The game initializes rsManager through startShapes(); the editor must do the same
-	// before the restored DoGameLogic/update path can safely run.
-	mc2::renderSubmissions().startShapes(10000);
-
 	godMode = true;
 	MOVE_init(30);
 

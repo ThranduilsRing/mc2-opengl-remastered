@@ -73,17 +73,6 @@ void mc2::VkSceneRenderer::renderListsSceneDataUpload (RenderSubmissions& submis
 #endif
 }
 
-void mc2::VkSceneRenderer::renderListsObjects3D (RenderSubmissions& submissions)
-{
-    // The typed Vulkan islands consume geometry independently of this old GL queue.
-    // Drain it so an extra render without a logic tick cannot replay old shapes.
-    for (size_t i = 0; i < submissions.nextAvailableHardwareVertexNode; ++i) {
-        auto& node = submissions.masterHardwareVertexNodes[i];
-        if ((node.flags & MC2_DRAWSOLID) && node.shapes)
-            node.currentShape = node.shapes;
-    }
-}
-
 void mc2::VkSceneRenderer::renderListsPostObjectsStateRestore (RenderSubmissions& submissions)
 {
 	{

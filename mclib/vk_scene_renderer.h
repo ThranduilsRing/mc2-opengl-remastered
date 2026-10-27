@@ -17,7 +17,6 @@ public:
 		// Passes run in the order defined by vk_scene_renderer.cpp.
 		static void renderListsPreamble (RenderSubmissions& submissions);
 		static void renderListsSceneDataUpload (RenderSubmissions& submissions);
-		static void renderListsObjects3D (RenderSubmissions& submissions);
 		static void renderListsPostObjectsStateRestore (RenderSubmissions& submissions);
 		static void renderListsStaticPropRegistryFlush (RenderSubmissions& submissions);
 		static void renderListsDynamicShadowPass (RenderSubmissions& submissions);

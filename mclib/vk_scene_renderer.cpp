@@ -106,7 +106,6 @@ void mc2::VkSceneRenderer::renderLists (RenderSubmissions& submissions)
 	mc2_cone_glow::FlushFrame();
 	renderListsPreamble(submissions);
 	renderListsSceneDataUpload(submissions);
-	renderListsObjects3D(submissions);
 	renderListsPostObjectsStateRestore(submissions);
 	renderListsStaticPropRegistryFlush(submissions);
 	renderListsDynamicShadowPass(submissions);
