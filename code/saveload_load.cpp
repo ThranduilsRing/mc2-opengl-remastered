@@ -409,6 +409,7 @@ void Mission::loadTeamsAndObjects(MissionLoadFrame& f) {
 	}
 	gpu_cull::compute_init();
 	frameJobsInit();
+	simJobsInit();
 	{
 		const uint32_t maxActors = static_cast<uint32_t>(ObjectManager->getMaxObjects());
 		const uint32_t staticPropHeadroom = 8192u;

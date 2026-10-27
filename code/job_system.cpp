@@ -125,7 +125,18 @@ void frameJobsInit() {
     }
 }
 
+void simJobsInit() {
+    // Sim batches (LOS rays) publish in original order, so the result never depends on the width. Default: up to 3
+    // workers (the host budget), never more than hardware allows.
+    const int hw = std::max(1, static_cast<int>(std::thread::hardware_concurrency()));
+    int nw = std::min(3, hw - 1);
+    if (mc2::gate::isSet<"MC2_FRAME_JOBS_WORKERS">())
+        nw = std::clamp(mc2::gate::get<"MC2_FRAME_JOBS_WORKERS">(), 1, hw);
+    mc2::jobs::startPool(nw);
+}
+
 void frameJobsShutdown() {
+    mc2::jobs::stopPool();
     if (!g_pool) return;
     {
         std::lock_guard<std::mutex> lk(g_pool->mu);

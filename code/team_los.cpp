@@ -2,6 +2,61 @@
 // Declared in the class headers; shared names in team_internal.h.
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include "team_internal.h"
+#include "los_kernel.h"
+#include "job_system.h"
+#include "Gates/render_options.h"
+#include <gameos.hpp>
+#include "terrtxm2.h"
+#include <vector>
+
+static_assert(mc2::los::kCellHeightMask == static_cast<uint32_t>(MAPCELL_HEIGHT_MASK) &&
+              mc2::los::kCellHeightShift == MAPCELL_HEIGHT_SHIFT &&
+              mc2::los::kCellForestMask == static_cast<uint32_t>(MAPCELL_FOREST_MASK),
+              "los_kernel.h cell bits must match MapCell");
+
+// Immutable view of the terrain mesh, the cell grid and the legacy globals the LOS walk reads (see los_kernel.h).
+// valid=false when MapData::terrainElevation would add its Phong or dirt-displacement terms (non-default options): those
+// callers keep the legacy walk below.
+static mc2::los::Snapshot captureLosSnapshot()
+{
+	mc2::los::Snapshot s;
+	MapData* md = Terrain::mapData;
+	if (!md || !md->getBlocks() || !GameMap || GameMap->map.empty())
+		return s;
+
+	static const bool s_retireCpuPhong = mc2::options::current().cpuPhongRetire;
+	if (Terrain::terrainTextures2)
+	{
+		TerrainColorMap* tcm = Terrain::terrainTextures2;
+		if (!s_retireCpuPhong)
+			return s;
+		if (gos_GetTerrainDisplaceScale() > 0.0f && tcm->cpuColorMap && tcm->cpuDispAlpha)
+			return s;
+	}
+
+	PostcompVertex* blocks = md->getBlocks();
+	s.vertexBase = reinterpret_cast<const unsigned char*>(&blocks[0].elevation);
+	s.vertexStride = sizeof(PostcompVertex);
+	s.realVerticesMapSide = Terrain::realVerticesMapSide;
+	s.verticesMapSide = Terrain::verticesBlockSide * Terrain::blocksMapSide;
+	s.worldUnitsPerVertex = Terrain::worldUnitsPerVertex;
+	s.oneOverWorldUnitsPerVertex = Terrain::oneOverWorldUnitsPerVertex;
+	s.worldUnitsMapSide = Terrain::worldUnitsMapSide;
+	s.mapTopLeft3d = Terrain::mapTopLeft3d;
+	const Stuff::Vector2DOf<float> tl = md->getTopLeftVertex();
+	s.topLeftVertexX = tl.x;
+	s.topLeftVertexY = tl.y;
+	s.cells = reinterpret_cast<const uint32_t*>(GameMap->map.data());
+	s.cellWidth = GameMap->width;
+	s.cellHeight = GameMap->height;
+	s.useRealLOS = useRealLOS;
+	s.maxTeams = MAX_TEAMS;
+	s.worldUnitsPerMeter = worldUnitsPerMeter;
+	s.small = Stuff::SMALL;
+	s.maxTreeLOSCellBlock = MaxTreeLOSCellBlock;
+	s.valid = true;
+	return s;
+}
 
 #ifdef LAB_ONLY
 extern bool drawTerrainGrid;
@@ -12,6 +67,20 @@ extern LineElement *debugLines[];
 //---------------------------------------------------------------------------
 bool Team::teamLineOfSight (glm::vec3 tPos, float extRad)
 {
+	// The range gates run here in roster order; each in-range member contributes one ray. The rays are pure reads, so
+	// they run as one batch (jobs when the batch is big enough) and the answer is "any hit" - the same bit the legacy
+	// first-hit early return produced.
+	static std::vector<mc2::los::Query> pending;
+	pending.clear();
+	auto addRay = [&](glm::vec3 from, float ext, float startExt) {
+		mc2::los::Query q;
+		q.position = from;
+		q.target = tPos;
+		q.teamId = id;
+		q.extRad = ext;
+		q.startExtRad = startExt;
+		pending.push_back(q);
+	};
 	//-----------------------------------------------------------
 	// For each member of the team, check LOS to point provided.
 	for (long i = 0; i < rosterSize; i++) 
@@ -54,8 +123,7 @@ bool Team::teamLineOfSight (glm::vec3 tPos, float extRad)
 		
 			if (dist <= (radius * 25.0f * worldUnitsPerMeter))
 			{
-				if (lineOfSight(obj->getLOSPosition(),tPos,id,extRad,0.0f))
-					return true;
+				addRay(obj->getLOSPosition(), extRad, 0.0f);
 			}
 		}
 	}
@@ -107,14 +175,39 @@ bool Team::teamLineOfSight (glm::vec3 tPos, float extRad)
 			
 				if (dist <= (radius * 25.0f * worldUnitsPerMeter))
 				{
-					if (lineOfSight(obj->getLOSPosition(),tPos,id,0.0f,obj->getAppearRadius()))
-						return true;
+					addRay(obj->getLOSPosition(), 0.0f, obj->getAppearRadius());
 				}
 			}
 				
 		}
 	}
 
+	if (pending.empty())
+		return false;
+
+	const mc2::los::Snapshot snap = captureLosSnapshot();
+	if (!snap.valid)
+	{
+		for (const mc2::los::Query& q : pending)
+			if (lineOfSight(q.position, q.target, q.teamId, q.extRad, q.startExtRad))
+				return true;
+		return false;
+	}
+
+	constexpr size_t kBatchMin = 8;
+	if (pending.size() >= kBatchMin && mc2::jobs::enabled())
+	{
+		static std::vector<uint8_t> hits;
+		hits.assign(pending.size(), 0);
+		mc2::los::batch(snap, pending.data(), hits.data(), static_cast<int>(pending.size()));
+		for (uint8_t h : hits)
+			if (h)
+				return true;
+		return false;
+	}
+	for (const mc2::los::Query& q : pending)
+		if (mc2::los::query(snap, q))
+			return true;
 	return false;
 }
 
@@ -264,8 +357,22 @@ bool Team::lineOfSight (float startLocal, long mCellRow, long mCellCol, float en
 }
 
 //---------------------------------------------------------------------------
-bool Team::lineOfSight (glm::vec3 position, glm::vec3 targetPosition, long teamId, float extRad, float startExtRad) 
+bool Team::lineOfSight (glm::vec3 position, glm::vec3 targetPosition, long teamId, float extRad, float startExtRad)
 {
+	{
+		const mc2::los::Snapshot snap = captureLosSnapshot();
+		if (snap.valid)
+		{
+			mc2::los::Query q;
+			q.position = position;
+			q.target = targetPosition;
+			q.teamId = teamId;
+			q.extRad = extRad;
+			q.startExtRad = startExtRad;
+			return mc2::los::query(snap, q);
+		}
+	}
+
 	int posCellR, posCellC;
 	int tarCellR, tarCellC;
 	land->worldToCell(position, posCellR, posCellC);

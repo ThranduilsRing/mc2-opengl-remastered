@@ -648,6 +648,7 @@ void Mission::initGpuAndLighting() {
 	// No-op if MC2_GPU_CULL env var is not set (default off).
 	gpu_cull::compute_init();
 	frameJobsInit();  // FRAME-JOBS-1: fixed worker pool for parallel CPU prep
+	simJobsInit();
 	// Phase 1: terrain lighting GPU compute — per-mission init alongside gpu_cull.
 	// CRITICAL: use realVerticesMapSide * realVerticesMapSide, NOT getNumVertices()
 	// (getNumVertices() returns 0 at this point — set per-frame by makeLists).
