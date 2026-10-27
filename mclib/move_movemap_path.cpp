@@ -72,9 +72,9 @@ long MoveMap::calcPath (MovePathPtr path, glm::vec3* goalWorldPos, int* goalCell
 	}
 
 	// Let's use their hPrime as a barrier for cutting off the search...
-	MaxHPrime = calcHPrime(startR, startC) * 2.5;
-	if (MaxHPrime < 500)
-		MaxHPrime = 500;
+	maxHPrime = calcHPrime(startR, startC) * 2.5;
+	if (maxHPrime < 500)
+		maxHPrime = 500;
 	
 	// The open list is this map's own (openHeap), sized to the window and empty at the start of every solve.
 	openHeap.reserve(openHeapReserve());
@@ -102,18 +102,8 @@ long MoveMap::calcPath (MovePathPtr path, glm::vec3* goalWorldPos, int* goalCell
 	int bestRow = -1;
 	int bestCol = -1;
 
-	#ifdef DEBUG_PATH
-		topOpenNodes = 1;
-		numNodesVisited = 1;
-	#endif
-
 	while (!openHeap.isEmpty()) {
 
-
-		#ifdef DEBUG_PATH
-			if (topOpenNodes < openHeap.size())
-				topOpenNodes = openHeap.size();
-		#endif
 
 		if (_pathTrace) {
 			long openN = openHeap.size();
@@ -193,12 +183,8 @@ long MoveMap::calcPath (MovePathPtr path, glm::vec3* goalWorldPos, int* goalCell
 					if (succMapNode->hPrime == HPRIME_NOT_CALCED)
 						succMapNode->hPrime = calcHPrime(mapRowTable[succCellIndex/*bestPQNode.id*/], mapColTable[succCellIndex/*bestPQNode.id*/]);
 
-					if (succMapNode->hPrime < MaxHPrime) {
+					if (succMapNode->hPrime < maxHPrime) {
 
-						#ifdef DEBUG_PATH
-							numNodesVisited++;
-						#endif
-				
 						char dirToParent = reverseShift[dir];
 
 						int cost = succMapNode->cost;
@@ -369,19 +355,7 @@ long MoveMap::calcPath (MovePathPtr path, glm::vec3* goalWorldPos, int* goalCell
 			}
 			
 			// We need to set this table up our first time thru here...
-			// PATHFINDING-SOLVER-ISOLATION-1: ON skips the lazy static guard
-			// (table built at MOVE_init). OFF unchanged.
-			if (!ctx.isolated) {
-				static bool setTable = false;
-				if (!setTable) {
-					float cellLength = Terrain::worldUnitsPerCell * metersPerWorldUnit;
-					for (int i = 0; i < NUM_CELL_OFFSETS; i++) {
-						float distance = agsqrt( cellShift[i * 2], cellShift[i * 2 + 1] ) * cellLength;
-						cellShiftDistance[i] = distance;
-					}
-					setTable = true;
-				}
-			}
+			// cellShiftDistance[] is built once at MOVE_init.
 
 			while ((curRow != startR) || (curCol != startC)) {
 				curCell--;
@@ -500,9 +474,9 @@ long MoveMap::calcPathJUMP (MovePathPtr path, glm::vec3* goalWorldPos, int* goal
 		gosASSERT((goalR >= 0) && (goalR < height) && (goalC >= 0) && (goalC < width));
 	}
 
-	MaxHPrime = calcHPrime(startR, startC) * 2.5;
-	if (MaxHPrime < 500)
-		MaxHPrime = 500;
+	maxHPrime = calcHPrime(startR, startC) * 2.5;
+	if (maxHPrime < 500)
+		maxHPrime = 500;
 	
 	// The open list is this map's own (openHeap), sized to the window and empty at the start of every solve.
 	openHeap.reserve(openHeapReserve());
@@ -530,11 +504,6 @@ long MoveMap::calcPathJUMP (MovePathPtr path, glm::vec3* goalWorldPos, int* goal
 	int bestRow = -1;
 	int bestCol = -1;
 
-	#ifdef DEBUG_PATH
-		topOpenNodes = 1;
-		numNodesVisited = 1;
-	#endif
-
     const int height_loc = height;
     const int width_loc = width;
     const int max_width_loc = maxWidth;
@@ -544,11 +513,6 @@ long MoveMap::calcPathJUMP (MovePathPtr path, glm::vec3* goalWorldPos, int* goal
 
 	while (!openHeap.isEmpty()) {
 
-
-		#ifdef DEBUG_PATH
-			if (topOpenNodes < openHeap.size())
-				topOpenNodes = openHeap.size();
-		#endif
 
 		if (_pathTrace) {
 			long openN = openHeap.size();
@@ -595,12 +559,8 @@ long MoveMap::calcPathJUMP (MovePathPtr path, glm::vec3* goalWorldPos, int* goal
 					if (succMapNode->hPrime == HPRIME_NOT_CALCED)
 						succMapNode->hPrime = calcHPrime(succRow, succCol);
 
-					if (succMapNode->hPrime < MaxHPrime) {
+					if (succMapNode->hPrime < maxHPrime) {
 
-						#ifdef DEBUG_PATH
-							numNodesVisited++;
-						#endif
-				
 						char dirToParent = reverseShift[dir];
 
 						bool jumping = false;
@@ -750,19 +710,7 @@ long MoveMap::calcPathJUMP (MovePathPtr path, glm::vec3* goalWorldPos, int* goal
 			}
 			
 			// We need to set this table up our first time thru here...
-			// PATHFINDING-SOLVER-ISOLATION-1: ON skips the lazy static guard
-			// (table built at MOVE_init). OFF unchanged.
-			if (!ctx.isolated) {
-				static bool setTable = false;
-				if (!setTable) {
-					float cellLength = Terrain::worldUnitsPerCell * metersPerWorldUnit;
-					for (int i = 0; i < NUM_CELL_OFFSETS; i++) {
-						float distance = agsqrt( cellShift[i * 2], cellShift[i * 2 + 1] ) * cellLength;
-						cellShiftDistance[i] = distance;
-					}
-					setTable = true;
-				}
-			}
+			// cellShiftDistance[] is built once at MOVE_init.
 
 			while ((curRow != startR) || (curCol != startC)) {
 				curCell--;

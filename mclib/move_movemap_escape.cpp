@@ -37,9 +37,9 @@ long MoveMap::calcEscapePath (MovePathPtr path, glm::vec3* goalWorldPos, long* g
 */
 
 	// Let's use their hPrime as a barrier for cutting off the search...
-	MaxHPrime = 500; //float2short(calcHPrime(startR, startC) * 2.5);
-	if (MaxHPrime < 500)
-		MaxHPrime = 500;
+	maxHPrime = 500; //float2short(calcHPrime(startR, startC) * 2.5);
+	if (maxHPrime < 500)
+		maxHPrime = 500;
 	
 	// The open list is this map's own (openHeap), sized to the window and empty at the start of every solve.
 	openHeap.reserve(openHeapReserve());
@@ -66,18 +66,8 @@ long MoveMap::calcEscapePath (MovePathPtr path, glm::vec3* goalWorldPos, long* g
 	long bestRow = -1;
 	long bestCol = -1;
 
-	#ifdef DEBUG_PATH
-		topOpenNodes = 1;
-		numNodesVisited = 1;
-	#endif
-
 	while (!openHeap.isEmpty()) {
 
-
-		#ifdef DEBUG_PATH
-			if (topOpenNodes < openHeap.size())
-				topOpenNodes = openHeap.size();
-		#endif
 
 		if (_pathTrace) {
 			long openN = openHeap.size();
@@ -122,12 +112,8 @@ long MoveMap::calcEscapePath (MovePathPtr path, glm::vec3* goalWorldPos, long* g
 					if (succMapNode->hPrime == HPRIME_NOT_CALCED)
 						succMapNode->hPrime = 10; //calcHPrime(succRow, succCol);
 
-					if (succMapNode->hPrime < MaxHPrime) {
+					if (succMapNode->hPrime < maxHPrime) {
 
-						#ifdef DEBUG_PATH
-							numNodesVisited++;
-						#endif
-				
 						char dirToParent = reverseShift[dir];
 
 						bool jumping = false;
@@ -276,19 +262,7 @@ long MoveMap::calcEscapePath (MovePathPtr path, glm::vec3* goalWorldPos, long* g
 			}
 			
 			// We need to set this table up our first time thru here...
-			// PATHFINDING-SOLVER-ISOLATION-1: ON skips the lazy static guard
-			// (table built at MOVE_init). OFF unchanged.
-			if (!ctx.isolated) {
-				static bool setTable = false;
-				if (!setTable) {
-					float cellLength = Terrain::worldUnitsPerCell * metersPerWorldUnit;
-					for (long i = 0; i < NUM_CELL_OFFSETS; i++) {
-						float distance = agsqrt( cellShift[i * 2], cellShift[i * 2 + 1] ) * cellLength;
-						cellShiftDistance[i] = distance;
-					}
-					setTable = true;
-				}
-			}
+			// cellShiftDistance[] is built once at MOVE_init.
 			
 			while ((curRow != startR) || (curCol != startC)) {
 				curCell--;

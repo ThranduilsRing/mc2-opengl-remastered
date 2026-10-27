@@ -111,7 +111,6 @@ void MoveMap::setGoal (glm::vec3 goalPos, long goalRow, long goalCol) {
 		goalC = goalCol;
 	}
 	doorDirection = -1;
-	GoalIsDoor = false;
 }
 
 inline void adjustMoveMapCellCost (MoveMapNodePtr cell, long costAdj) {
@@ -131,7 +130,6 @@ void MoveMap::setGoal (long thruArea, long goalDoor) {
 	goal.y = -999999.0;
 	goal.z = -999999.0;
 
-	GoalIsDoor = true;
 	door = goalDoor;
 	doorSide = (GlobalMoveMap[moveLevel]->doors[goalDoor].area[1] == thruArea);
 	long doorDirTable[4][2] = {
