@@ -235,7 +235,7 @@ void ShadowBake::invalidate() {
     if (cacheStore_.valid()) cacheStore_.get();
     coldPending_ = false; coldNextTile_ = 0;
     cacheLoad_ = {};
-    cacheLoadKey_ = 0;
+    cacheLoadKey_ = 0; cacheLoadInputKey_ = 0;
     releaseTransients();
     objectFb_.reset(); objectView_.reset(); objectImage_.reset();
     maskView_.reset(); maskImage_.reset();
@@ -666,7 +666,8 @@ bool ShadowBake::recordBake(VkCommandBuffer cb, const ShadowBakeInputs& in) {
     double warmReadMs = 0.0;
     if (recordedMask_) {
         const clk::time_point k0 = clk::now();
-        contentKey_ = contentKey(in, casterHash);
+        // The retry after the async cache read was launched sees the same inputs: reuse the key (about 77 ms of hashing) instead of redoing it.
+        if (!(cacheLoad_.valid() && cacheLoadInputKey_ == recordedKey_)) contentKey_ = contentKey(in, casterHash);
         cpuStage_[1] = std::chrono::duration<double, std::milli>(clk::now() - k0).count();
         if (cacheLoad_.valid() && cacheLoadKey_ != contentKey_) {
             // The old request has finished (update polls it); a sun/preset edit needs a new key.
@@ -674,6 +675,7 @@ bool ShadowBake::recordBake(VkCommandBuffer cb, const ShadowBakeInputs& in) {
         }
         if (!diagForceFull_ && !cacheLoad_.valid()) {
             cacheLoadKey_ = contentKey_;
+            cacheLoadInputKey_ = recordedKey_;
             cacheLoad_ = std::async(std::launch::async, [dir = cacheDir_, key = contentKey_] {
                 const auto start = clk::now();
                 CacheLoad result;

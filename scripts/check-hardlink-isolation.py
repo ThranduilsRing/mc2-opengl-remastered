@@ -65,7 +65,7 @@ the running game writes:
     shaders/**                    every deploy rewrites the whole tree
     tools/**                      terrain_gen authoring tree (support payload)
     data/defs/**                  UI defs payload (kind="defs")
-    mods/{mc2-industrial-kit,core_unlocks,sample_*}/**  shipped mod payload
+    mods/{mc2-industrial-kit,mc2-vehicle-kit,core_unlocks,sample_*}/**  shipped mod payload
     data/tgl/*.cookstamp           stock cook receipts (all subdirectories)
     data/textures/**              generated terrain material sidecars
     data/{kit,model_overrides,vegetation,terrain_layers}/**  renderer assets
@@ -152,7 +152,8 @@ VERDICT_EXIT = {
 # non-recursively. See the module docstring for why this is a root list.
 MUTATED_ROOTS = (
     "", "shaders", "shaders_vk", "tools", "3rdparty/smaa", "3rdparty/cmaa2",
-    "mods/mc2-industrial-kit", "mods/core_unlocks", "mods/sample_equipment",
+    "mods/mc2-industrial-kit", "mods/mc2-vehicle-kit", "mods/core_unlocks",
+    "mods/sample_equipment", "mods/sample_bad_mod",
     "mods/sample_new_variant", "mods/sample_variant",
     "data/defs", "data/kit", "data/model_overrides",
     "data/vegetation", "data/terrain_layers", "data/textures",

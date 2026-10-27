@@ -40,6 +40,7 @@ NO engine code. NO run_smoke verdict-path involvement. tier1 not required
 """
 
 import argparse
+import atexit
 import csv
 import ctypes
 import datetime
@@ -293,8 +294,21 @@ def log(msg):
     print(f"[deploy_payload] {msg}")
 
 
+_last_failure = []
+
+
+def _reprint_failure_last():
+    # Cleanup logs (lease release) print after fail(); repeat the refusal as the LAST line so `| tail` shows it.
+    if _last_failure:
+        print(f"[deploy_payload] FAIL (exit {_last_failure[1]}): {_last_failure[0].splitlines()[0]}", file=sys.stderr)
+
+
+atexit.register(_reprint_failure_last)
+
+
 def fail(msg, code=1):
     print(f"[deploy_payload] FAIL: {msg}", file=sys.stderr)
+    _last_failure[:] = [msg, code]
     sys.exit(code)
 
 
