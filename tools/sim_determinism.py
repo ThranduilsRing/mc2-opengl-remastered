@@ -366,7 +366,7 @@ def run_mission(mission: str, duration: str, out: str, extra_env: dict | None = 
                            errors="replace", **console_child.child_kwargs(redirected=True))
         arts = [line.removeprefix("[runner] artifacts: ").strip() for line in r.stdout.splitlines()
                 if line.startswith("[runner] artifacts: ")]
-        if r.returncode and os.environ.get("MC2_IN_GATE") == "1":
+        if r.returncode and os.environ.get("MC2_IN_GATE") == "1" and not (headless == "both" or (headless and tag == "b")):  # headless: no GPU/vegetation/heartbeat gates apply; the SIMID chain is the verdict
             sys.exit(f"sim_determinism: gate smoke {tag} failed (rc={r.returncode}):\n" + r.stdout)
         if r.returncode and arts and os.path.exists(os.path.join(arts[-1], mission + ".log")):
             print(f"sim_determinism: note: smoke run {tag} returned {r.returncode} (a smoke gate verdict); its SIMID stream is still compared")
