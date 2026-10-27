@@ -199,10 +199,6 @@ bool GpuStaticPropBatcher::submit(TG_Shape* shape,
         gpu_cull::substrate_appendStaticPropRecord(rec);
     }
 
-    // The Colors SSBO is debug-only (the lit shader ignores it): pad zeros so the block still matches type.vertexCount.
-    const uint32_t numColors = type.vertexCount;
-    bucket.colors.insert(bucket.colors.end(), numColors, 0u);
-
     return true;
 }
 
