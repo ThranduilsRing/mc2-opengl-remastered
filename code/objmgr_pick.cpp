@@ -63,22 +63,6 @@ GameObjectPtr GameObjectManager::findObject (glm::vec3 position) {
 
 //---------------------------------------------------------------------------
 
-GameObjectPtr GameObjectManager::findObjectByTypeHandle (long typeHandle) {
-
-	//-------------------------------------------------
-	// This function was called findObjectId() in MC...
-
-	long numObjects = getMaxObjects();
-	for (long objIndex = 1; objIndex <= numObjects; objIndex++) {
-		GameObjectPtr obj = objList[objIndex];
-		if (obj->getExists() && (obj->getTypeHandle() == typeHandle))
-			return(obj);
-	}
-	return(nullptr);
-}
-
-//---------------------------------------------------------------------------
-
 // R3: partId -> slots in ascending slot order. Entries are hints: a hit is accepted only if the object still has
 // that partId and exists, so a stale entry (partId changed or object freed) is skipped, never returned. Contract kept:
 // the first existing object in slot order. setPartId/Load feed notePartId; any missed feed is caught by the
@@ -168,16 +152,6 @@ GameObjectPtr GameObjectManager::findByPartId (long partId) {
 
 //---------------------------------------------------------------------------
 
-GameObjectPtr GameObjectManager::findByBlockVertex (long blockNum, long vertex) {
-
-	//----------------------------------------
-	// SLOW compared to using object handle...
-	long partId = calcPartId(TERRAINOBJECT, blockNum, vertex);
-	return(findByPartId(partId));
-}
-
-//---------------------------------------------------------------------------
-
 GameObjectPtr GameObjectManager::findByCellPosition (long row, long col) 
 {
 	//-------------------------------------------------------------------------------------
@@ -199,16 +173,6 @@ GameObjectPtr GameObjectManager::findByCellPosition (long row, long col)
 	}
 
 	return(nullptr);
-}
-
-//---------------------------------------------------------------------------
-
-GameObjectPtr GameObjectManager::findByUnitInfo (long commander, long group, long mate) {
-
-	//----------------------------------------
-	// SLOW compared to using object handle...
-	long partId = calcPartId(MOVER, commander, group, mate);
-	return(findByPartId(partId));
 }
 
 //---------------------------------------------------------------------------

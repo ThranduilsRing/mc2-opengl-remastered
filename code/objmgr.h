@@ -384,17 +384,11 @@ class GameObjectManager {
 		
 		void tradeMover (MoverPtr mover, long newTeamID, long newCommanderID);
 
-#ifdef USE_ELEMENTAL
-		BattleMechPtr addElemental (void);
-#endif
-
 		BattleMechPtr getMech (long mechIndex);
 
 		GroundVehiclePtr getVehicle (long vehicleIndex);
 
 		GroundVehiclePtr getOpenVehicle (void);
-
-		ElementalPtr getElemental (long elementalIndex);
 
 		TerrainObjectPtr getTerrainObject (long terrainObjectIndex);
 
@@ -408,11 +402,7 @@ class GameObjectManager {
 
 		CarnagePtr getCarnage (CarnageEnumType carnageType);
 
-		void releaseCarnage (CarnagePtr obj);
-
 		LightPtr getLight (void);
-
-		void releaseLight (LightPtr obj);
 
 		ArtilleryPtr getArtillery (void);
 
@@ -478,14 +468,6 @@ class GameObjectManager {
 			return(Terrain::objBlockInfo[blockNumber].firstHandle);
 		}
 
-		long getNumMechs (void) {
-			return(numMechs);
-		}
-
-		long getNumVehicles (void) {
-			return(numVehicles);
-		}
-
 		long getNumMovers (void) {
 			return(numMovers);
 		}
@@ -496,10 +478,6 @@ class GameObjectManager {
 
 		long getNumGoodMovers (void) {
 			return(numGoodMovers);
-		}
-
-		long getNumBadMovers (void) {
-			return(numBadMovers);
 		}
 
 		long getNumTerrainObjects (void) {
@@ -576,22 +554,12 @@ class GameObjectManager {
 			return(goodMoverList[index]);
 		}
 
-		MoverPtr getBadMover (long index) {
-			return(badMoverList[index]);
-		}
-
 		GameObjectPtr findObject (glm::vec3 position);
 
 		GameObjectPtr findByPartId (long partId);
 		void notePartId (GameObjectPtr obj, long newPartId);	// GameObject::setPartId/Load hook
 
-		GameObjectPtr findByBlockVertex (long blockNum, long vertex);
-
 		GameObjectPtr findByCellPosition (long row, long col);
-
-		GameObjectPtr findByUnitInfo (long commander, long group, long mate);
-
-		GameObjectPtr findObjectByTypeHandle (long typeHandle);
 
 		GameObjectPtr findObjectByMouse (long mouseX, long mouseY);
 		
@@ -623,29 +591,15 @@ class GameObjectManager {
 
 		bool isTeamCapturing (TeamPtr team, GameObjectWatchID targetWID);
 
-		CarnagePtr createFire (ObjectTypeNumber fireObjTypeHandle,
-							   GameObjectPtr owner,
-							   glm::vec3& position,
-							   float tonnage);
-
 		CarnagePtr createExplosion (long effectId,
 									GameObjectPtr owner,
 									glm::vec3& position,
 									float dmg = 0.0,
 									float radius = 0.0);
 
-		LightPtr createLight (ObjectTypeNumber lightObjTypeHandle);
-
 		WeaponBoltPtr createWeaponBolt (long effectId);
 
 		ArtilleryPtr createArtillery (long artilleryType, glm::vec3& position);
-
-		RemovedMoverRec* getRemovedMovers (long& numRemovedMovers) {
-			numRemovedMovers = numRemoved;
-			return(moversRemoved);
-		}
-
-		bool isRemoved (MoverPtr mover);
 
 		void setWatchID (GameObjectPtr obj);
 

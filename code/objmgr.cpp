@@ -416,16 +416,6 @@ GroundVehiclePtr GameObjectManager::getOpenVehicle (void)
 
 //---------------------------------------------------------------------------
 
-ElementalPtr GameObjectManager::getElemental (long elementalIndex) {
-
-	if (!elementals || (elementalIndex < 0) || (elementalIndex >= numElementals))
-		return(nullptr);
-
-	return(elementals[elementalIndex]);
-}
-
-//---------------------------------------------------------------------------
-
 BattleMechPtr GameObjectManager::newMech (void) {
 
 	if (numMechs < maxMechs) {
@@ -540,22 +530,6 @@ void GameObjectManager::tradeMover (MoverPtr mover, long newTeamID, long newComm
 
 //---------------------------------------------------------------------------
 
-#ifdef USE_ELEMENTALS
-
-ElementalPtr GameObjectManager::addElemental (void) {
-
-	if (numMechs < maxMechs) {
-		elementals[numElementals]->setExists(true);
-		setPartId(elementals[numElementals], -1, -1, -1);
-		return(elementals[numElementals++]);
-	}
-	return(nullptr);
-}
-
-#endif
-
-//---------------------------------------------------------------------------
-
 TerrainObjectPtr GameObjectManager::getTerrainObject (long terrainObjectIndex) {
 
 	if (!terrainObjects || (terrainObjectIndex < 0) || (terrainObjectIndex >= numTerrainObjects))
@@ -630,14 +604,6 @@ CarnagePtr GameObjectManager::getCarnage (CarnageEnumType carnageType) {
 
 //---------------------------------------------------------------------------
 
-void GameObjectManager::releaseCarnage (CarnagePtr obj) {
-
-	obj->setOwner(nullptr);
-	MC2_DESTROY(obj, "pool_released");
-}
-
-//---------------------------------------------------------------------------
-
 LightPtr GameObjectManager::getLight (void) {
 
 	if (!lights || (currentLightIndex < 0) || (currentLightIndex >= numLights))
@@ -650,14 +616,6 @@ LightPtr GameObjectManager::getLight (void) {
 	lights[currentLightIndex]->init(false);
 	lights[currentLightIndex]->setExists(true);
 	return(lights[currentLightIndex++]);
-}
-
-//---------------------------------------------------------------------------
-
-void GameObjectManager::releaseLight (LightPtr obj) {
-
-	MC2_DESTROY(obj, "pool_released");
-//	obj->setOwner(NULL);
 }
 
 //---------------------------------------------------------------------------
