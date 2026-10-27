@@ -34,8 +34,7 @@ static constexpr size_t kVertCapacity = 65536;
 static Queue* s_active = nullptr;
 
 Queue::Queue()
-    : enabled(mc2::gate::get<"MC2_DEBUG_RENDERER">()),
-      testCanary(mc2::gate::get<"MC2_DEBUG_RENDERER_TEST">()) {
+    : testCanary(mc2::gate::get<"MC2_DEBUG_RENDERER_TEST">()) {
     s_active = this;
 }
 
@@ -47,9 +46,9 @@ static DbgVert makeVert(float x, float y, float z, uint32_t rgba) {
     return DbgVert{x, y, z, rgba};
 }
 
-// The queue to append to, or null when the debug renderer is off or no render context exists.
+// The queue to append to, or null when no render context exists.
 static Queue* sink() {
-    return (s_active && s_active->enabled) ? s_active : nullptr;
+    return s_active;
 }
 
 // ---------------------------------------------------------------------------

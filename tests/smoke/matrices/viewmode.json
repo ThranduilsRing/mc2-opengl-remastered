@@ -53,9 +53,8 @@
     },
     {
       "id": "tactical_overlay",
-      "description": "TACTICAL-ARC-OVERLAY-MVP-1: world-space range ring + facing line on selected movers. Drawn IN-SCENE by the debug renderer (needs BOTH MC2_DEBUG_RENDERER=1 and MC2_TACTICAL_ARC_OVERLAY=1); NOT a composite mode. Requires a unit to be selected in-game to show anything.",
+      "description": "TACTICAL-ARC-OVERLAY-MVP-1: world-space range ring + facing line on selected movers. Drawn IN-SCENE by the debug renderer (needs MC2_TACTICAL_ARC_OVERLAY=1); NOT a composite mode. Requires a unit to be selected in-game to show anything.",
       "env": {
-        "MC2_DEBUG_RENDERER": "1",
         "MC2_TACTICAL_ARC_OVERLAY": "1"
       }
     }

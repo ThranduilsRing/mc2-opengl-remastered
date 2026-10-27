@@ -454,7 +454,6 @@ RenderWindow* create_window(const char* pwinname, int width, int height, bool wi
         // canvas box, mouse normalize, camera aspect) re-derives from
         // Environment.drawableWidth/Height each frame, so a live resize just
         // works once the SIZE_CHANGED handler refreshes those values.
-        // MC2_WINDOW_RESIZABLE=0 restores a fixed window.
         Uint32 winFlags = SDL_WINDOW_VULKAN | SDL_WINDOW_ALLOW_HIGHDPI;
         {
             // ISSUE-49 residual: also honor the engine's windowed boot state
@@ -462,11 +461,9 @@ RenderWindow* create_window(const char* pwinname, int width, int height, bool wi
             // options.cfg FullScreen=FALSE) — a user booting windowed via
             // options.cfg without the launcher checkbox previously got a
             // fixed, non-draggable border. No change for fullscreen boots
-            // (SDL ignores the resizable flag under FULLSCREEN_DESKTOP);
-            // MC2_WINDOW_RESIZABLE=0 still opts out.
+            // (SDL ignores the resizable flag under FULLSCREEN_DESKTOP).
             const bool windowed = mc2::gate::get<"MC2_WINDOWED">() || windowed_hint;
-            const bool resizable = mc2::gate::get<"MC2_WINDOW_RESIZABLE">();
-            if (windowed && resizable)
+            if (windowed)
                 winFlags |= SDL_WINDOW_RESIZABLE;
         }
         // SMOKE-NO-CURSOR-STEAL-1: automated runs should not steal FOCUS either

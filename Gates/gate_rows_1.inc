@@ -24,7 +24,7 @@ L(Presence, "MC2_FX_COUNT_LOG", Bool, false, "mech", "", "MC2_FX_COUNT_LOG=1: en
 // history: docs/gate-history.md#MC2_FX_DEFS
 // FX-FORCE-SPAWN fixture (mech-fire tube)
 // history: docs/gate-history.md#MC2_FX_FORCE_SPAWN
-G("MC2_FX_FORCE_SPAWN", Enum, "", "code", "", "FX-FORCE-SPAWN v1 fixture: default-OFF. =impact: impact-decal volley.", passthrough | registry(Feature, "MC2_FX_FORCE_SPAWN", -1, false) | tokens("|0|1|2|3|4|5|6|7|8|9|loop|impact") | verified),
+G("MC2_FX_FORCE_SPAWN", Enum, "", "code", "", "FX-FORCE-SPAWN v1 fixture: default-OFF. =impact: impact-decal volley.", passthrough | registry(Trace, "MC2_FX_FORCE_SPAWN", -1, false) | tokens("|0|1|2|3|4|5|6|7|8|9|loop|impact") | verified),
 L(Lead1, "MC2_FX_TRACE", Bool, false, "code", "", "", passthrough | verified),
 
 G("MC2_GAMEOS_UI_DEFS", Bool, true, "editor", "", "The data/defs GameOS UI path is the replacement path, not an opt-in demo.", verified),
@@ -132,8 +132,6 @@ L(Lead0Kill, "MC2_LAUNCHER_ENV_JSON", Bool, true, "gameos", "", "", verified),
 L(Lead0Kill, "MC2_LEGACY_LIT_MC2_FRAME", Bool, true, "code", "", "[DEFAULT-ON as of VEHICLE-LIGHTING-PATH-1; MC2_LEGACY_LIT_MC2_FRAME=0 reverts.", passthrough | registry(Feature, "MC2_LEGACY_LIT_MC2_FRAME", 22, true)),
 L(Presence, "MC2_LEGACY_LOAD_BANNER", Bool, false, "code", "", "", verified),
 // LetterboxOpaque (DETERMINISM-RATCHET-2)
-// history: docs/gate-history.md#MC2_LETTERBOX_OPAQUE
-L(Lead0Kill, "MC2_LETTERBOX_OPAQUE", Bool, true, "code", "", "Cinematic letterbox bars are drawn OPAQUE black; only their EXTENT animates.", passthrough | registry(Feature, "MC2_FEATURE_LETTERBOX_OPAQUE", -1, true) | verified),
 L(Lead0Kill, "MC2_LIGHTBAKE", Bool, true, "code", "", "", verified),
 // LIGHTBAKE-REBAKE-ON-READY-1: one-shot static-light re-bake after mission ready.
 // history: docs/gate-history.md#MC2_LIGHTBAKE_REBAKE_ON_READY
@@ -162,7 +160,6 @@ L(Lead0Kill, "MC2_LIGHT_CONE_NODES", Bool, true, "code", "", "LIGHT-CONE-MODELS-
 P("MC2_LIGHT_CONE_SPILL", Float, 1.0, "code", "", "", passthrough | clampRange(0.0, 3.0) | verified),
 L(Lead1, "MC2_LIGHT_CONE_VIS_GATE", Bool, false, "code", "", "", passthrough | verified),
 L(Presence, "MC2_LIGHT_COST_SPLIT", Bool, false, "terrain", "", "", passthrough | verified),
-L(Lead0Kill, "MC2_LIGHT_CULL_RADIUS", Bool, true, "code", "", "", passthrough | verified),
 // LIGHT-CLUSTER-PERF-1: recover the frame time LIGHT-POOL-CAP-1 spent when it
 // raised the pool cap 64 -> 256 (the fix was correct -- mc2_10 wants 142
 // fixtures -- but the consumer loop is per-fragment, so cost scaled with the

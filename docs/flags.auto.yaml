@@ -3,9 +3,9 @@
 # Where each gate is read, what the smoke runner forwards and what tier1_env_vars.md says are not here: ask
 # tools/repo_intel (env_var, gate_status), which scan the sources.
 generator_version: "3.0.0"
-gate_count: 784
+gate_count: 778
 registry_entry_count: 152
-verified_count: 746
+verified_count: 739
 flags:
   - name: MC2_ABL_ARG_GUARD
     kind: Bool
@@ -834,14 +834,6 @@ flags:
     doc: ""
     tokens: "|Legacy|Modern"
     verified: true
-  - name: MC2_DEBUG_RENDERER
-    kind: Bool
-    default: false
-    rule: Lead0
-    owner: code
-    doc: "Debug overlay renderer (GuiRuntime/EditorInspector.cpp)."
-    verified: true
-    registry: {feature_id: MC2_FEATURE_DEBUG_RENDERER, kind: Feature, order: 8, default_on: false}
   - name: MC2_DEBUG_RENDERER_TEST
     kind: Bool
     default: false
@@ -1438,7 +1430,7 @@ flags:
     tokens: "|0|1|2|3|4|5|6|7|8|9|loop|impact"
     smoke_passthrough: true
     verified: true
-    registry: {feature_id: MC2_FX_FORCE_SPAWN, kind: Feature, order: -1, default_on: false}
+    registry: {feature_id: MC2_FX_FORCE_SPAWN, kind: Trace, order: -1, default_on: false}
   - name: MC2_FX_TRACE
     kind: Bool
     default: false
@@ -2066,15 +2058,6 @@ flags:
     owner: code
     doc: ""
     verified: true
-  - name: MC2_LETTERBOX_OPAQUE
-    kind: Bool
-    default: true
-    rule: Lead0Kill
-    owner: code
-    doc: "Cinematic letterbox bars are drawn OPAQUE black; only their EXTENT animates."
-    smoke_passthrough: true
-    verified: true
-    registry: {feature_id: MC2_FEATURE_LETTERBOX_OPAQUE, kind: Feature, order: -1, default_on: true}
   - name: MC2_LIGHTBAKE
     kind: Bool
     default: true
@@ -2222,14 +2205,6 @@ flags:
     default: false
     rule: Presence
     owner: terrain
-    doc: ""
-    smoke_passthrough: true
-    verified: true
-  - name: MC2_LIGHT_CULL_RADIUS
-    kind: Bool
-    default: true
-    rule: Lead0Kill
-    owner: code
     doc: ""
     smoke_passthrough: true
     verified: true
@@ -3336,13 +3311,6 @@ flags:
     owner: editor
     doc: ""
     verified: true
-  - name: MC2_PNG_MAGENTA_KEY
-    kind: Bool
-    default: true
-    rule: Lead0Kill
-    owner: gameos
-    doc: ""
-    verified: true
   - name: MC2_POSTPROCESS_COMPUTE_BLUR
     kind: Bool
     default: false
@@ -4031,7 +3999,7 @@ flags:
     doc: "MECH-EXTRACTION-0: mech snapshot extraction (observe-only, no GL mutation)."
     smoke_passthrough: true
     verified: true
-    registry: {feature_id: MC2_FEATURE_SNAPSHOT_MECH_EXTRACT, kind: Feature, order: 13, default_on: false}
+    registry: {feature_id: MC2_DIAG_SNAPSHOT_MECH_EXTRACT, kind: Trace, order: -1, default_on: false}
   - name: MC2_SOAK_AUTOWIN
     kind: Bool
     default: false
@@ -5094,13 +5062,6 @@ flags:
     doc: ""
     smoke_passthrough: true
     verified: true
-  - name: MC2_UI_ASPECT_ANCHOR
-    kind: Bool
-    default: true
-    rule: Lead0Kill
-    owner: gameos
-    doc: ""
-    verified: true
   - name: MC2_UI_COMMAND_FILE
     kind: String
     default: ""
@@ -6013,13 +5974,6 @@ flags:
     smoke_passthrough: true
     verified: true
     registry: {feature_id: MC2_TRACE_WINDOW_OFFSCREEN, kind: Trace, order: -1, default_on: false}
-  - name: MC2_WINDOW_RESIZABLE
-    kind: Bool
-    default: true
-    rule: Lead0Kill
-    owner: gameos
-    doc: ""
-    verified: true
   - name: MC2_WORLD_ORDER_TRACE
     kind: Bool
     default: false
@@ -6047,3 +6001,5 @@ feature_only_rows:   # registry entries with no environment variable
   - {feature_id: MC2_FEATURE_SETUPTEXTURES_LEGACY_FORCE, kind: Retired, order: 21, default_on: false}
   - {feature_id: MC2_FEATURE_VFX_ORACLE_RENDER, kind: Retired, order: 15, default_on: false}
   - {feature_id: MC2_FEATURE_GPU_MECHS, kind: Retired, order: 0, default_on: true}
+  - {feature_id: MC2_FEATURE_DEBUG_RENDERER, kind: Retired, order: 8, default_on: false}
+  - {feature_id: MC2_FEATURE_SNAPSHOT_MECH_EXTRACT, kind: Retired, order: 13, default_on: false}

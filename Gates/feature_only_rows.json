@@ -61,5 +61,19 @@
   "order": 0,
   "defaultOn": true,
   "doc": "Retired: the GPU mech batcher is the only world-mech path."
+ },
+ {
+  "featureId": "MC2_FEATURE_DEBUG_RENDERER",
+  "kind": "Retired",
+  "order": 8,
+  "defaultOn": false,
+  "doc": "Retired: the debug primitive renderer is always on."
+ },
+ {
+  "featureId": "MC2_FEATURE_SNAPSHOT_MECH_EXTRACT",
+  "kind": "Retired",
+  "order": 13,
+  "defaultOn": false,
+  "doc": "Retired: reclassified as the MC2_SNAPSHOT_MECH_EXTRACT trace gate (observe-only diagnostic)."
  }
 ]

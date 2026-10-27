@@ -780,12 +780,6 @@ void drawTerrainData() {
             else
                 ImGui::TextDisabled("Type:   (n/a v1)");
         }
-        static int s_drEnabled = -1;
-        if (s_drEnabled < 0) {
-            s_drEnabled = mc2::gate::get<"MC2_DEBUG_RENDERER">();  // default-OFF (matches debug_renderer.cpp envFlagDefaultOff)
-        }
-        if (!s_drEnabled)
-            ImGui::TextDisabled("Highlight: off (MC2_DEBUG_RENDERER=0)");
     }
 }
 
@@ -1104,7 +1098,6 @@ void drawEnvGates() {
             { "MC2_IMGUI",            true  },
             { "MC2_IMGUI_INSPECTOR",  true  },
             { "MC2_OBJECT_ID_BUFFER", true  },
-            { "MC2_DEBUG_RENDERER",   true  },
         };
         for (const auto& g : kGates) {
             const auto st = mc2::gate::boolState(g.name);

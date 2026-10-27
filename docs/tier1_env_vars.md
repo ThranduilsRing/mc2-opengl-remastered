@@ -71,7 +71,6 @@
 - `MC2_SHADOW_ENABLE=0` — dynamic shadow caster pass. Default **ON** (kill-switch). **Corrected 2026-07-30 (GATE-DEFAULT-TRUTH-1): this line said "Default OFF" and was wrong.** Both GL readers implement default-ON (`gos_static_prop_batcher.cpp:8717`, `gos_mech_batcher.cpp:1112` — `!(v && v[0]=='0')`), so `=1 vs unset` A/Bs were comparing ON against ON. ⚠ **The VK reader disagrees**: `vulkan_post_screenfx_native.cpp:760` is opt-in `== 1`, so a default *Vulkan* session takes no dynamic caster pass. Known parity defect, deliberately not flipped blind.
 - `MC2_IMGUI=0` — ImGui overlay. Default **ON** (kill-switch; reader `GuiRuntime/GuiRuntime.cpp:88`).
 - `MC2_IMGUI_INSPECTOR=1` — inspector panel. Default **OFF**. Requires `MC2_IMGUI`.
-- `MC2_DEBUG_RENDERER=1` — debug overlay. Requires `MC2_IMGUI_INSPECTOR`.
 - `MC2_HDRI_BC6H` — upload HDRI sky as BC6H_UFLOAT (requires `.ktx2` sidecar + `GL_ARB_texture_compression_bptc`). Default **ON** (absent = ON; set `=0` to force RGBA16F fallback). Sidecar cooked via `tools/cook_bc6h_hdri.py`.
 
 ## OpenGL-correctness campaign gates (2026-06-22, RENDER-BACKEND-SEAMS)
@@ -170,7 +169,7 @@ Present-level transient failures (zero surface extent while minimized, `NATIVE_W
 - `MC2_RENDER_PASS_ORDER` ? default ON resource-order audit; `=0` disables it.
 - `MC2_SNAPSHOT_MECH_EXTRACT` ? default ON observe-only mech snapshot; `=0` disables it.
 - `MC2_VIEWMODE_FRAMEWORK` ? default ON presentation controls, initially Visual; `=0` disables them.
-- `MC2_TACTICAL_ARC_OVERLAY` ? default ON selected-unit range/facing overlay; `=0` disables it. Requires `MC2_DEBUG_RENDERER` (also default ON).
+- `MC2_TACTICAL_ARC_OVERLAY` ? default ON selected-unit range/facing overlay; `=0` disables it.
 - `MC2_OVERLAY_TILE_HIRES` ? defaults to 256px overlay probes, falling back per file to stock tiles; `=0` selects the stock path.
 
 - `MC2_FRAMEGRAPH_REORDER_SPMECH` — **REJECTED experiment, default OFF, presence-gated** (`mclib/vk_scene_renderer_passes.cpp`). Would swap the StaticProp-flush ↔ Mech-flush order (the one legal adjacent swap the reorder oracle proved). PARITY-FAILED on depth-EQUAL ties (mc2_24 overlapping opaque fragments resolve order-dependently); candidate rejected, kept only as an A/B lever. Never set in production. `=0`/unset = today's order verbatim (byte-identical).
@@ -382,7 +381,7 @@ Present-level transient failures (zero surface extent while minimized, `NATIVE_W
 - Verified combo for GUI iteration: `MC2_DEV_SHELL=1 MC2_NO_LAUNCHER=1 MC2_BOOT_TO_BAY=campaign MC2_BOOT_TO_MISSION=mc2_03 MC2_BOOT_TO_SCREEN=bay` then `mc2_cmd.py screenshot --source backbuffer`.
 ## UI aspect anchor (UI-ASPECT-ANCHOR-1)
 
-- `MC2_UI_ASPECT_ANCHOR=0` — killswitch for the 16:9 UI canvas. Default **ON**
+- The 16:9 UI canvas (`MC2_UI_ASPECT_ANCHOR` killswitch retired, always ON)
   (ui-phase1 branch): front-end frames (MainMenu/MissionBegin render assert
   `gos_SetUiCanvasActive`, auto-cleared at flushHUDBatch) draw the whole UI —
   legacy HUD-batch layer AND defs/ImGui pages — into a centered 16:9 canvas.
@@ -399,7 +398,7 @@ Present-level transient failures (zero surface extent while minimized, `NATIVE_W
 
 ## Free window resize (FREE-RESIZE-1) + native camera aspect
 
-- `MC2_WINDOW_RESIZABLE=0` — kill the resizable window. Default **ON** for ANY
+- The resizable window (`MC2_WINDOW_RESIZABLE` killswitch retired). ON for ANY
   windowed boot (ISSUE-49 residual fix: `MC2_WINDOWED` env var OR options.cfg
   `FullScreen=FALSE` — `create_window` now receives the engine's windowed boot
   state): the SDL window is user-resizable; SIZE_CHANGED refreshes
@@ -446,7 +445,6 @@ Gates found in source but missing from check-env-registry.sh (retired in G8; the
 - `MC2_HUD_SCALE=<0.2..1.0>` — HUD scale env seed; the ImGui slider wins after startup.
 - `MC2_PREVIEW_FBO_SCALE=<1..8>` — camera-preview FBO supersample factor (default **4** = 3200x2400).
 - `MC2_PREVIEW_NOCULL=1` — panel-preview force-disable `GL_CULL_FACE` (FBO winding-order debug).
-- `MC2_PNG_MAGENTA_KEY=0` — killswitch for PNG magenta→alpha keying at decode. Default **ON**.
 - `MC2_LEGACY_LOAD_BANNER=1` — restore the retired world-floating blue load banner overlay.
 - `MC2_SHOT_RESULTS=1` — RESULTS-CAPTURE-1: deterministic AAR screenshots of results screens after 30 settled frames (pairs with `MC2_DEV_SHELL=1`).
 - `MC2_SOAK_STOP_AT_BAY=1` — soak harness parks at the mech bay instead of auto-advancing (requires `MC2_SOAK_AUTOWIN`).
@@ -725,9 +723,8 @@ lights should remain visible at every angle instead of blinking out.
   128 terrainType, 256 raw-colormap, 512 bypass-tint. (bit 2 dead — depth now in vert.)
 - `MC2_TERRAIN_NORMAL_ARRAY` — material normal sampler2DArray path. Now **default ON**
   (opt-out `=0`); the chunk path needs it built (mip-completeness fixed 2026-06-09).
-- `MC2_LETTERBOX_OPAQUE` — cinematic letterbox bars drawn opaque black; only their
-  EXTENT animates. **DEFAULT ON** killswitch (`MC2_TERRAIN_TESS` shape); `=0` restores
-  the legacy alpha ramp verbatim. Read once at `code/gamecam.cpp:841` (getenv-seeded
+- Cinematic letterbox bars (`MC2_LETTERBOX_OPAQUE` killswitch retired) are drawn opaque black; only their
+  EXTENT animates. Formerly read once at `code/gamecam.cpp:841` (getenv-seeded
   static, cannot drift mid-run). Legacy behaviour ramped `letterBoxAlpha` with the bar
   extent, so during the ~5s swoop-in the bars were translucent: measured on mc2_10 night
   at capture frame 100, extent 0.0986 of 0.15 max => ramp 65.7% => `letterBoxAlpha=168`,
@@ -758,7 +755,7 @@ lights should remain visible at every angle instead of blinking out.
   It is **not** in `run_smoke.py`'s passthrough allowlist, and that is **harmless**:
   `smoke_lib/runner.py` builds the child env with `os.environ.copy()`, so ambient `MC2_*`
   vars reach `mc2.exe` and the allowlist drops nothing (HARNESS-HYGIENE-3). Contrast
-  `MC2_LETTERBOX_OPAQUE` above, whose "allowlisted by DETERMINISM-RATCHET-2" note predates
+  the letterbox note above, whose "allowlisted by DETERMINISM-RATCHET-2" note predates
   that correction.
 - `MC2_BRIDGE_MOVER_STATE` — emit one `[MOVER v2] id=… name=… team=… pos=…` line per live
   mover (`code/mission.cpp:516`), plus `[MOVER v2 begin] t=… count=…`, at a period set by

@@ -49,7 +49,6 @@ L(Presence, "MC2_TUBE_PROFILE_LOG", Bool, false, "code", "", "", verified),
 L(Lead1, "MC2_TXMMGR_BOUNDS_TRACE", Bool, false, "code", "", "[TXMMGR_BOUNDS v1] - TXMMGR-BOUNDS-HARDEN-1 exhaustion counters.", verified),
 L(Presence, "MC2_TYPE_TABLE_CAND_LOG", Bool, false, "props", "", "", passthrough | verified),
 L(Presence, "MC2_TYPE_TABLE_CAND_VERBOSE", Bool, false, "props", "", "", passthrough | verified),
-L(Lead0Kill, "MC2_UI_ASPECT_ANCHOR", Bool, true, "gameos", "", "", verified),
 // history: docs/gate-history.md#MC2_UI_COMMAND_FILE
 G("MC2_UI_COMMAND_FILE", String, "", "code", "", "UI-COMMAND-CHANNEL-1 + GAMEPLAY-DRIVER-1/2: =<path> polls that file once per frame (MissionInterfaceManager::update) and executes its lines as commands.", passthrough | registry(Trace, "MC2_TRACE_UI_COMMAND_FILE", -1, false) | verified),
 G("MC2_UI_DEFS_IGNORE_PACKAGE_VERSION", Bool, false, "editor", "", "", verified),
@@ -237,7 +236,6 @@ L(Lead0, "MC2_WINDOWED", Bool, false, "gameos", "", "", passthrough | verified),
 // exactly-legacy, and the harness turns it on explicitly.
 // history: docs/gate-history.md#MC2_WINDOW_OFFSCREEN
 L(Lead0, "MC2_WINDOW_OFFSCREEN", Bool, false, "unclassified", "", "NOFOCUS-HARDEN-1: create the SDL window HIDDEN at (-32000,-32000) and keep it there, so an agent-launched engine window never occupies visible desktop area...", passthrough | registry(Trace, "MC2_TRACE_WINDOW_OFFSCREEN", -1, false) | verified),
-L(Lead0Kill, "MC2_WINDOW_RESIZABLE", Bool, true, "gameos", "", "", verified),
 G("MC2_WORLD_ORDER_TRACE", Bool, false, "code", "", "W2: emit ordered world views, terrain activity, lifecycle events and update calls per mission tick. Diagnostic only.", passthrough | registry(Trace, "MC2_WORLD_ORDER_TRACE", -1, false) | verified),
 // history: docs/gate-history.md#MC2_XFORM_PARITY_FATAL
 L(Lead1, "MC2_XFORM_PARITY_FATAL", Bool, false, "code", "", "XFORM-CONVENTION-HARNESS-1: promote the F1-3C clip-space parity probe (code/gamecam.cpp) to a HARD invariant.", registry(Trace, "MC2_XFORM_PARITY_FATAL", -1, false) | verified),

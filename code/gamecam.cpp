@@ -503,8 +503,7 @@ void GameCamera::renderLetterbox() {
 		float barTopX = screenResolution.y * letterBoxPos;
 		float barBotX = screenResolution.y - barTopX;
 
-		// LETTERBOX-TOP-RESTORE-1 (gate MC2_LETTERBOX_OPAQUE, default ON; =0
-		// restores stock). Stock ramps BOTH the bar extent (letterBoxPos) and the
+		// LETTERBOX-TOP-RESTORE-1 (bars are always opaque). Stock ramps BOTH the bar extent (letterBoxPos) and the
 		// bar ALPHA (letterBoxAlpha) over MaxLetterBoxTime=5s, so for the whole
 		// 5-second swoop-in the bars are translucent and the scene shows through
 		// them. Measured on mc2_10 night, capture frame 100: bar extent 0.0986 of
@@ -516,9 +515,7 @@ void GameCamera::renderLetterbox() {
 		// meant to be opaque black; only the EXTENT should animate. Keep the
 		// letterBoxPos wipe, drop the alpha ramp. (The separate fadeAlpha
 		// fade-to-black quad below is a real fade and is left untouched.)
-		static const bool s_letterboxOpaque = mc2::gate::get<"MC2_LETTERBOX_OPAQUE">();
-		const DWORD barARGB =
-			(s_letterboxOpaque ? static_cast<DWORD>(0xff) : static_cast<DWORD>(letterBoxAlpha)) << 24;
+		const DWORD barARGB = static_cast<DWORD>(0xff) << 24;
 
 		gos_SetRenderState( gos_State_AlphaMode, gos_Alpha_AlphaInvAlpha);
 		gos_SetRenderState( gos_State_ShadeMode, gos_ShadeGouraud);

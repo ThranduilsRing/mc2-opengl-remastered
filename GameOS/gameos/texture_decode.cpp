@@ -74,7 +74,7 @@ std::optional<DecodedTexture> finishDecode(const Image& img, const char* nameFor
     const size_t bytes = static_cast<size_t>(out.width) * static_cast<size_t>(out.height) * (out.layout == PixelLayout::RGB8 ? 3u : 4u);
     out.pixels.assign(img.getPixels(), img.getPixels() + bytes);
     out.wantMipmaps = wantsMipmaps(hints);
-    applyFormatPolicy(out, requested, isPng && mc2::gate::get<"MC2_PNG_MAGENTA_KEY">());
+    applyFormatPolicy(out, requested, isPng);
     return out;
 }
 

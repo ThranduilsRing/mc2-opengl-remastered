@@ -45,17 +45,10 @@ bool s_hudCanvasActive = false;  // sticky: mission HUD canvas (mission.cpp)
 // auto-latches at flushHUDBatch so early-frame consumers (mouse normalize)
 // use last frame's state, and MISSION frames — which never assert — fall back
 // to the legacy full-surface behavior untouched (world pick unaffected).
-// Killswitch: MC2_UI_ASPECT_ANCHOR=0 restores full-stretch everywhere.
 void __stdcall gos_SetUiCanvasActive(bool on) { s_uiCanvasAssert = on; }
 void __stdcall gos_SetHudCanvasActive(bool on) { s_hudCanvasActive = on; }
 void __stdcall gos_SetHudCanvasExemptMode(int mode) { s_hud_canvas_exempt_mode = mode; }
 int  __stdcall gos_GetHudCanvasExemptMode() { return s_hud_canvas_exempt_mode; }
-
-static bool uiAspectAnchorEnabled()
-{
-    static const bool s_enabled = mc2::gate::get<"MC2_UI_ASPECT_ANCHOR">();
-    return s_enabled;
-}
 
 // Pure rect math: centered 16:9 canvas inside w x h. Returns true when the
 // canvas differs from the full surface.
@@ -77,7 +70,7 @@ static bool computeUiCanvas16x9(int w, int h, int* ox, int* oy, int* obw, int* o
 
 bool __stdcall gos_ComputeUiCanvasBox(int w, int h, int* ox, int* oy, int* obw, int* obh)
 {
-    const bool active = uiAspectAnchorEnabled() && (s_uiCanvasAssert || s_uiCanvasLatch);
+    const bool active = (s_uiCanvasAssert || s_uiCanvasLatch);
     if (!active)
     {
         if (ox)  *ox  = 0;
@@ -96,7 +89,7 @@ bool __stdcall gos_ComputeUiCanvasBox(int w, int h, int* ox, int* oy, int* obw, 
 // hit-tests go through gos_HudInverseMousePoint instead.
 bool __stdcall gos_ComputeHudCanvasBox(int w, int h, int* ox, int* oy, int* obw, int* obh)
 {
-    const bool active = uiAspectAnchorEnabled() && s_hudCanvasActive;
+    const bool active = s_hudCanvasActive;
     if (!active)
     {
         if (ox)  *ox  = 0;

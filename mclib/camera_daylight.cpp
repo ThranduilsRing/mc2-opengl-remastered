@@ -580,11 +580,7 @@ void Camera::updateLights()
 				// +/- farDistance on the ground axes) projects on-screen, and
 				// compose with the owner's FoW/status intent (ownerEnabled,
 				// written by mech3d/gvactor/bdactor) instead of racing it.
-				// Killswitch MC2_LIGHT_CULL_RADIUS=0 -> legacy position-only
-				// overwrite.
-				static const bool s_cullRadius = mc2::gate::get<"MC2_LIGHT_CULL_RADIUS">();
 				bool lightOnScreen = projectForLightingShadow(light->position,dummy);
-				if (s_cullRadius)
 				{
 					const float lightR = light->farDistance;
 					if (!lightOnScreen && lightR > 0.0f)
@@ -614,8 +610,6 @@ void Camera::updateLights()
 					}
 					light->active = ownerOk && lightOnScreen;
 				}
-				else
-					light->active = lightOnScreen;
 				// T1.16 [SPOT_DIAG v1] per-slot transition probe — emit ONLY for
 				// (E)-owned slots, state-change-on-transition. Per-summary
 				// snapshot below at end of updateLights() every 600 frames.

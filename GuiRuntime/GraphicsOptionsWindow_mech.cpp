@@ -30,7 +30,6 @@ static const EnvGate kEnvGates[] = {
     { "MC2_DISABLE_GOSFX",          "FX/particles (var disables)",               false, true  },
     { "MC2_RENDER_CONTRACT_ASSERT", "Render-contract GL state validation",        false, false },
     { "MC2_IMGUI",                  "Dear ImGui overlay (default-on)",           true,  false },
-    { "MC2_DEBUG_RENDERER",         "Debug primitive renderer",                  true,  false },
 };
 static const int kEnvGateCount = (int)(sizeof(kEnvGates) / sizeof(kEnvGates[0]));
 void drawEnvGatesSection() {
