@@ -608,6 +608,7 @@ def main():
     ap.add_argument("--wait-timeout", type=float, default=None, metavar="SECONDS",
                     help="how long to wait for the host game lease (default 3600, or MC2_HOST_LEASE_TIMEOUT)")
     ap.add_argument("--duration", type=int)
+    ap.add_argument("--headless", action="store_true", help="no window, GPU device or audio (needs --ticks and the fixed clock; see docs/sim/headless-load.md)")
     ap.add_argument("--ticks", type=int, default=0,
                     help="tick-budget exit: quit after N sim ticks (needs MC2_SMOKE_FIXED_TIMESTEP=1, as the determinism runs set); --duration stays the timeout")
     ap.add_argument("--sim-determinism", action="store_true",
@@ -1474,6 +1475,7 @@ def main():
             marker_overrides=e.marker_overrides,
             show_window=args.show_window,
             ticks=args.ticks,
+            headless=args.headless,
             env_extra={
                 "MC2_SMOKE_SEED": "0xC0FFEE",
                 # META-FIX design A: force the read-only mover-registry
