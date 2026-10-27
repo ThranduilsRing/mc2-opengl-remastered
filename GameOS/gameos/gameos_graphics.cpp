@@ -286,7 +286,7 @@ void gos_CreateRenderer(graphics::RenderWindowHandle win_h, int w, int h) {
 // --headless (docs/sim/headless-load.md): a renderer object with no window, no meshes and no device, so the texture list, font list and
 // screen-mode state that mission load fills exist. Mirrors gosRenderer::init minus every device call.
 void gos_CreateRendererHeadless(int w, int h) {
-    g_gos_renderer = new gosRenderer(nullptr, w, h);
+    g_gos_renderer = std::make_unique<gosRenderer>(nullptr, w, h).release();
     Environment.drawableWidth = w;
     Environment.drawableHeight = h;
     g_gos_renderer->initHeadless();
