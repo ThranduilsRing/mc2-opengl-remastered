@@ -50,6 +50,7 @@ layout(set = 0, binding = 2, std430) readonly buffer BoneBuffer {
 // ---------------------------------------------------------------------------
 #include "../include/gpu_abi_object_lights.gen.hglsl"
 #include "../include/axis.hglsl"
+#include "../include/mech_render_flags.hglsl"
 #define MAX_LIGHTS_IN_WORLD GPU_ABI_OBJECTLIGHTS_LIGHT_TO_WORLD_LEN
 #define TG_LIGHT_AMBIENT              0
 #define TG_LIGHT_INFINITE            1
@@ -162,8 +163,7 @@ void main() {
     const uint  kRenderFlagLightsOut = 0x2u;
     bool lightsOut = (inst.renderFlags & kRenderFlagLightsOut) != 0u;
     // Ground vehicles keep their legacy lighting: the row's ambient and sun, no environment ambient, no point or spot.
-    const uint  kRenderFlagLegacyVehicle = 0x40u;
-    bool legacyVehicle = (inst.renderFlags & kRenderFlagLegacyVehicle) != 0u;
+    bool legacyVehicle = (inst.renderFlags & MECH_RENDER_FLAG_LEGACY_VEHICLE) != 0u;
     vec3 baseLight;
     if (lightsOut) {
         baseLight = environmentAmbient;
