@@ -15,7 +15,7 @@
 #include "../GameOS/gameos/terrain_material_lib.h"
 #include <new>
 
-static void applySaveSections(const char* fileName, const mc2::save::SectionContainer& sections, mc2::sim::TacticalOrderQueue& orderQueue);
+static void applySaveSections(std::string_view fileName, const mc2::save::SectionContainer& sections, mc2::sim::TacticalOrderQueue& orderQueue);
 
 
 // Create the trigger-area and object managers.
@@ -618,15 +618,15 @@ void Mission::loadLogistics(MissionLoadFrame& f) {
         if (!why.empty())
             mc2::fmt::print_err("[SAVE v1] event=reject reason={} file={}\n", why, mc2::fmt::safe(f.loadFileName));
     }
-    applySaveSections(f.loadFileName, sections, orderIngress.queue());
+    applySaveSections(mc2::fmt::safe(f.loadFileName), sections, orderIngress.queue());
 	loadFile.close();
 }
 
 // Restore each known save section, or apply its default when absent (a v1 save, or a v2 save from before the section
 // existed). Defaults equal what a v1 load always reconstructed. B2 (BRN1), B3 (FIX1), M5 (WRLD) and PATH add one entry each.
-static void applySaveSections(const char* fileName, const mc2::save::SectionContainer& sections, mc2::sim::TacticalOrderQueue& orderQueue) {
+static void applySaveSections(std::string_view fileName, const mc2::save::SectionContainer& sections, mc2::sim::TacticalOrderQueue& orderQueue) {
     auto reject = [&](std::string_view reason) {
-        mc2::fmt::print_err("[SAVE v2] event=reject reason={} file={}\n", reason, mc2::fmt::safe(fileName));
+        mc2::fmt::print_err("[SAVE v2] event=reject reason={} file={}\n", reason, fileName);
     };
     if (const auto* anim = sections.find(mc2::save::tagAnimation)) {
         // restoreAnimationState validates before it mutates, so a rejected section leaves default animation state.
