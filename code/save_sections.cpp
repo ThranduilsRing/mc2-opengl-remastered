@@ -34,9 +34,8 @@ const KnownSection* known(std::uint32_t tag) {
 } // namespace
 
 const SavedSection* SectionContainer::find(std::uint32_t tag) const {
-    for (const auto& s : sections)
-        if (s.tag == tag) return &s;
-    return nullptr;
+    const auto it = std::find_if(sections.begin(), sections.end(), [tag](const SavedSection& s) { return s.tag == tag; });
+    return it != sections.end() ? &*it : nullptr;
 }
 
 void SectionContainer::add(std::uint32_t tag, std::uint32_t version, bool required, Bytes payload) {
