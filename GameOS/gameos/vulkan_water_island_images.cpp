@@ -97,17 +97,18 @@ bool import_shore_tex(WaterIsland* s, const void* texels, int texelsW, int texel
     texture=std::move(ref); *real=have; return true;
 }
 
-// (Re)import both shore textures when the GL-side data generation changes.
+// The field store is the version authority for both terrain and water. acquirePixels
+// gives both consumers references to the same content-addressed mask allocation.
 // Requires hdriSampler (created by ensure_hdri) -- shared linear/clamp sampler.
 bool ensure_shore(WaterIsland* s) {
-    const unsigned int gen = gos_TerrainLodChunk_WaterShoreDataGeneration();
-    if (s->shoreAttempted && s->shoreGen == gen) {
+    const auto* store = gos_TerrainFieldStore();
+    const uint64_t heightVersion = store ? store->waterShoreHeight().version : 0;
+    const uint64_t maskVersion = store ? store->shorelineMask().version : 0;
+    if (s->shoreAttempted && s->shoreHeightVersion == heightVersion && s->shoreMaskVersion == maskVersion) {
         auto& textures=mc2vk::getOrCreateEngineVulkanContext().textures();
         s->shHReal=s->shHSourceReal && textures.ready(s->shHTexture.get());
         s->shMReal=s->shMSourceReal && textures.ready(s->shMTexture.get()); return true;
     }
-    s->shoreAttempted = true;
-    s->shoreGen = gen;
     // R32_SFLOAT linear filtering is an optional format feature; without it the
     // height sidecar is treated as absent (FS degrades 2 -> 1, same as a missing
     // sidecar on GL).
@@ -115,7 +116,6 @@ bool ensure_shore(WaterIsland* s) {
     vkGetPhysicalDeviceFormatProperties(s->phys, VK_FORMAT_R32_SFLOAT, &fp);
     const bool r32Linear = (fp.optimalTilingFeatures & VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT) != 0;
     if (!r32Linear) vlog("shore: R32_SFLOAT lacks linear filtering -- height shore disabled (mode-1 fallback).");
-    const mc2terrain::TerrainFieldStore* store = gos_TerrainFieldStore();
     const mc2terrain::FieldImage<float>* height = store && r32Linear ? &store->waterShoreHeight() : nullptr;
     const mc2terrain::FieldImage<uint8_t>* mask = store ? &store->shorelineMask() : nullptr;
     s->shHSdf = store != nullptr && store->waterShoreHeightKind() == mc2terrain::WaterShoreHeightKind::ShoreSdf;
@@ -126,9 +126,13 @@ bool ensure_shore(WaterIsland* s) {
                           mask ? mask->height : 0, false, s->shMTexture, &s->shMSourceReal))
         return false;
     s->shHReal=s->shMReal=false;
+    s->shoreAttempted = true;
+    s->shoreHeightVersion = heightVersion;
+    s->shoreMaskVersion = maskVersion;
     write_descriptors(s);
-    vlog("shore import: height=%s mask=%s gen=%u (copy-once, zero per-frame cost).",
-         s->shHReal ? "REAL" : "DUMMY", s->shMReal ? "REAL" : "DUMMY", gen);
+    vlog("shore import: height=%s mask=%s versions=%llu/%llu mask_handle=%u.",
+         s->shHSourceReal ? "REAL" : "DUMMY", s->shMSourceReal ? "REAL" : "DUMMY",
+         static_cast<unsigned long long>(heightVersion), static_cast<unsigned long long>(maskVersion), s->shMTexture.get().raw());
     return true;
 }
 

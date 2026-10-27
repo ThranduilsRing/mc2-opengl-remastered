@@ -119,7 +119,6 @@ void gos_TerrainLodChunk_UploadShorelineMask(const unsigned char* rgba, int w, i
     if (!store || !store->setShorelineMask(rgba, w, h)) return;
     s_shorelineBounds[0]=boundsTopLeftX; s_shorelineBounds[1]=boundsTopLeftY;
     s_shorelineBounds[2]=boundsSizeX; s_shorelineBounds[3]=boundsSizeY;
-    ++s_waterShoreDataGen;
 }
 
 void gos_TerrainLodChunk_UploadWaterShoreHeight(const float* heights, int w, int h,
@@ -130,7 +129,6 @@ void gos_TerrainLodChunk_UploadWaterShoreHeight(const float* heights, int w, int
     if (!store || !store->setWaterShoreHeight(heights, w, h)) return;
     s_waterShoreHeightBounds[0]=boundsTopLeftX; s_waterShoreHeightBounds[1]=boundsTopLeftY;
     s_waterShoreHeightBounds[2]=boundsSizeX; s_waterShoreHeightBounds[3]=boundsSizeY;
-    ++s_waterShoreDataGen;
 }
 
 void gos_TerrainLodChunk_UploadWaterShoreSdf(const float* heights, int w, int h,

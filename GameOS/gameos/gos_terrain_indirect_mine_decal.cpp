@@ -345,6 +345,14 @@ void BuildDecalStaticVBOFromInputs(bool overlayMetadata) {
 
     std::vector<DecalVert> verts;
     verts.reserve(64 * 6);
+    // The second plane shares the cement atlas and buffer: valid | adopt | art layer.
+    // Keep the first plane intact so transparent road texels retain their cement base.
+    auto* fields = gos_TerrainFieldStore();
+    const size_t plane = size_t(mapSide) * size_t(mapSide);
+    std::vector<uint32_t> surfaceWords(2 * plane, 0u);
+    if (fields && fields->cementWords().size() >= plane)
+        std::copy_n(fields->cementWords().begin(), plane, surfaceWords.begin());
+    int cookedRoads = 0;
 
     // MISSING-RUNWAY-1 tile census (MC2_TERRAIN_TILE_CENSUS=1, silent by
     // default): one summary line per distinct (terrainType, texTileIdx,
@@ -450,6 +458,17 @@ void BuildDecalStaticVBOFromInputs(bool overlayMetadata) {
 
             const DWORD overlayTexId = tex_resolve(overlayHandle);
             if (overlayTexId == 0) { ++unresolved; continue; }
+
+            const DWORD slot = Terrain::mapData->getTexture(tileR, tileC) & 0xffffu;
+            const uint16_t artLayer = slot < MC_MAX_TERRAIN_TXMS && g_cementAlphaLayerMapReady
+                ? g_cementAlphaLayerIndexBySlot[slot] : 0xffffu;
+            if (artLayer != 0xffffu && !gos_TerrainLodChunk_OverlaySidecarLoaded()) {
+                static const bool adopt = mc2::gate::get<"MC2_OVERLAY_CEMENT_ADOPT">();
+                surfaceWords[plane + size_t(tileR) * mapSide + tileC] =
+                    0x80000000u | (adopt ? 0x00010000u : 0u) | artLayer;
+                ++cookedRoads;
+                continue;
+            }
 
             // OVERLAY-TILE-HIRES-1 (gated, default OFF => kOld* constants used
             // verbatim). Mirror quad.cpp's per-overlay half-texel inset: a
@@ -618,6 +637,10 @@ void BuildDecalStaticVBOFromInputs(bool overlayMetadata) {
     }
 
     g_decalVertCount = static_cast<int>(verts.size());
+    if (fields && fields->cementWords() != surfaceWords)
+        fields->setCementWords(surfaceWords.data(), static_cast<int>(surfaceWords.size()));
+    MC2_DIAGF("[TERRAIN_ROAD_COOK] tiles=%d fallback_vertices=%d unresolved=%d\n",
+        cookedRoads, g_decalVertCount, unresolved);
     g_decalVBODirty = unresolved != 0;
 #ifdef MC2_VULKAN_ISLAND
     if (mc2_vk_overlay_enabled()) {
