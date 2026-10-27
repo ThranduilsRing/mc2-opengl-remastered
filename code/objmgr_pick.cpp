@@ -490,6 +490,49 @@ bool gameplayPickEligible(GameObjectPtr obj, bool skipDisabled) {
 GameObjectPtr pickGameplayObjects(long x, long y, std::span<GameObjectPtr> list,
                                  bool skipDisabled, long excludeCommander = -1, bool terrainOnly = false);
 
+// The screen rect of a projected box is its axis-aligned bound; for a thin object laid diagonally (fences, wires) that bound
+// covers a lot of empty ground. A static prop is picked only when the cursor is within the pad of the projected box's own
+// outline (the convex hull of its eight corners).
+bool cursorOnProjectedBox(BldgAppearance* ba, long x, long y) {
+    glm::vec3 lo, hi;
+    mc2ToRender(lo, ba->appearType->typeUpperLeft);
+    mc2ToRender(hi, ba->appearType->typeLowerRight);
+    std::array<glm::vec2, 8> pts;
+    for (int i = 0; i < 8; ++i) {
+        glm::vec3 offset((i & 1) ? lo.x : hi.x, (i & 2) ? lo.y : hi.y, (i & 4) ? lo.z : hi.z);
+        if (ba->rotation != 0.0f) Rotate(offset, -ba->rotation);
+        glm::vec3 corner = ba->position + offset;
+        Stuff::Vector4D screen;
+        eye->projectForScreenXY(corner, screen);
+        if (screen.w <= 1e-4f || !std::isfinite(screen.x) || !std::isfinite(screen.y)) return true;
+        pts[i] = {screen.x, screen.y};
+    }
+    std::sort(pts.begin(), pts.end(), [](const glm::vec2& a, const glm::vec2& b) { return a.x < b.x || (a.x == b.x && a.y < b.y); });
+    const auto cross = [](const glm::vec2& o, const glm::vec2& a, const glm::vec2& b) { return (a.x-o.x)*(b.y-o.y) - (a.y-o.y)*(b.x-o.x); };
+    std::array<glm::vec2, 16> hull;
+    int n = 0;
+    for (int i = 0; i < 8; ++i) {	// monotone chain
+        while (n >= 2 && cross(hull[n-2], hull[n-1], pts[i]) <= 0.0f) --n;
+        hull[n++] = pts[i];
+    }
+    for (int i = 6, floor = n + 1; i >= 0; --i) {
+        while (n >= floor && cross(hull[n-2], hull[n-1], pts[i]) <= 0.0f) --n;
+        hull[n++] = pts[i];
+    }
+    --n;	// the last point repeats the first
+    const glm::vec2 p{float(x), float(y)};
+    const float pad = gameplayPickPad();
+    bool inside = n >= 3;
+    for (int i = 0; i < n; ++i) {
+        const glm::vec2 a = hull[i], b = hull[(i + 1) % n], e = b - a;
+        if (inside && cross(a, b, p) < 0.0f) inside = false;
+        const float len2 = glm::dot(e, e);
+        const float t = len2 > 0.0f ? std::clamp(glm::dot(p - a, e) / len2, 0.0f, 1.0f) : 0.0f;
+        if (glm::length(p - (a + e * t)) <= pad) return true;
+    }
+    return inside;
+}
+
 // Probe unambiguous bounds separately: a box is not a visible-mesh oracle.
 void gameplayPickBattery(GameObjectManager& manager) {
     static bool busy = false;
@@ -617,6 +660,8 @@ GameObjectPtr pickGameplayObjects(long x, long y, std::span<GameObjectPtr> list,
             || (terrainOnly && obj->isMover())) continue;
         PickRect rect;
         if (!gameplayPickRect(obj, rect) || !rect.contains(x, y)) continue;
+        if (!obj->isMover())
+            if (auto* ba = dynamic_cast<BldgAppearance*>(obj->getAppearance()); ba && ba->appearType && !cursorOnProjectedBox(ba, x, y)) continue;
         const float pad = gameplayPickPad();
         const bool coreHit = x >= rect.left+pad && x <= rect.right-pad
             && y >= rect.top+pad && y <= rect.bottom-pad;
@@ -676,4 +721,26 @@ GameObjectPtr pickGameplaySelection(long x, long y) {
         if (mover && mover->getCommanderId()==Commander::home->getId()) own.push_back(mover);
     }
     return pickGameplayObjects(x,y,own,true);
+}
+
+// UI-command readback (pickgrid): pick every cell of a cols x rows screen grid and describe the winner, so a pick can be
+// proven from logs without a human cursor.
+std::string mc2PickGridReport(int cols, int rows) {
+    std::string out;
+    char line[512];
+    for (int r = 0; r < rows; ++r) for (int c = 0; c < cols; ++c) {
+        const long x = Environment.screenWidth * (2 * c + 1) / (2 * cols);
+        const long y = Environment.screenHeight * (2 * r + 1) / (2 * rows);
+        auto* obj = ObjectManager->findObjectByMouse(x, y);
+        if (!obj) { std::snprintf(line, sizeof line, "  (%ld,%ld) -> none\n", x, y); out += line; continue; }
+        PickRect rect; const bool ok = gameplayPickRect(obj, rect);
+        Stuff::Vector4D sp; glm::vec3 pos = obj->getPosition(); eye->projectForScreenXY(pos, sp);
+        auto* app = obj->getAppearance();
+        std::snprintf(line, sizeof line, "  (%ld,%ld) -> id=%d cls=%d type=%s pos=(%.0f,%.0f) screen=(%.0f,%.0f w=%.2f) rect=%s(%.0f,%.0f,%.0f,%.0f) winVis=%d turn=%d nameId=%ld\n",
+            x, y, int(obj->getPartId()), int(obj->getObjectClass()), (app && app->getAppearanceType()) ? app->getAppearanceType()->name : "?",
+            pos.x, pos.y, sp.x, sp.y, sp.w, ok ? "" : "BAD", rect.left, rect.top, rect.right, rect.bottom,
+            int(obj->getWindowsVisible()), int(::turn), app ? long(app->getObjectNameId()) : -1L);
+        out += line;
+    }
+    return out;
 }

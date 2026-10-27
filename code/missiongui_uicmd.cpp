@@ -390,6 +390,20 @@ bool MissionInterfaceManager::uiCmdWorld(UiCmdCtx& c)
 		if (eye && eye->inMovieMode) eye->forceMovieToEnd();
 		result = "ok";
 	}
+	else if (line.compare(0, 9, "pickgrid ") == 0) {
+		int cols = 0, rows = 0;
+		std::sscanf(line.c_str() + 9, "%d %d", &cols, &rows);
+		extern std::string mc2PickGridReport(int, int);
+		note = std::string(1, char(10)) + mc2PickGridReport(cols > 0 ? cols : 8, rows > 0 ? rows : 5);
+		result = "ok";
+	}
+	else if (line.compare(0, 6, "mouse ") == 0) {
+		// mouse <x> <y>: park the raw cursor on a logical screen point (pick proof on empty ground).
+		float x = 0, y = 0;
+		std::sscanf(line.c_str() + 6, "%f %f", &x, &y);
+		gos_TestSetRawMouse(x * Environment.drawableWidth / Environment.screenWidth, y * Environment.drawableHeight / Environment.screenHeight);
+		result = "ok";
+	}
 	else if (line.compare(0, 6, "hover ") == 0) {
 		// hover <partId>: park the raw cursor on that object (hover tooltip proof).
 		GameObjectPtr obj = ObjectManager->findByPartId(strtol(line.c_str() + 6, nullptr, 10));
@@ -398,7 +412,7 @@ bool MissionInterfaceManager::uiCmdWorld(UiCmdCtx& c)
 		else {
 			glm::vec3 pos = obj->getPosition();
 			eye->projectForScreenXY(pos, sp);
-			gos_TestSetRawMouse(sp.x, sp.y);
+			gos_TestSetRawMouse(sp.x * Environment.drawableWidth / Environment.screenWidth, sp.y * Environment.drawableHeight / Environment.screenHeight);	// sp is logical; the raw mouse is in window points
 			result = "ok";
 		}
 	}
