@@ -35,6 +35,7 @@
 #include "../../RenderCore/gpu_abi/GpuColorFrameUBO.h"  // single-source per-frame UBO
 #include "gos_terrain_lighting.h"
 #include "../../RenderCore/PropMaterialGpu.h"
+#include "../../RenderCore/PropMaterialRows.h"
 #include "vk_image_resource.h"
 #include "vk_island_util.h"
 #include "gos_visual_capture.h"      // mc2CaptureGaitFreezeActive() (extern "C")
@@ -696,9 +697,17 @@ bool cp_import_authored(ColorPropIsland* s, const Mc2ColorPropMaterialFeed* feed
     void* mapped = nextTable.map();
     if (!mapped) return false;
     std::memcpy(mapped, have ? feed->materials : &neutral, static_cast<size_t>(bytes));
-    nextTable.unmap();
     std::vector<mc2vk::ResidentTextureRef> nextTextures;
-    if (have && feed->textureCount && s->propTexSlots > 1 && feed->textureCount <= s->propTexSlots) {
+    const bool texResident = have && feed->textureCount && s->propTexSlots > 1 && feed->textureCount <= s->propTexSlots;
+    if (have && !texResident) {
+        // Per-object rows index a texture table that is not resident here (one slot on Low/Potato, or more maps than the device has slots):
+        // clear the flag and indices so the shader never reads them as detail-array layers or unbound descriptors.
+        const size_t dropped = RenderCore::dropPerTextureRows(static_cast<RenderCore::PropMaterialGpu*>(mapped), feed->materialCount);
+        if (dropped) vlog("per-object textures not resident (%u maps, %u slots): %zu material rows fall back to class scalars.",
+                          feed->textureCount, s->propTexSlots, dropped);
+    }
+    nextTable.unmap();
+    if (texResident) {
         // Each map is its own image with its own mip chain. Potato drops the top mip from residency and staging.
         const uint32_t drop = mc2::options::current().baseQuality == 0 ? 1u : 0u;
         for (uint32_t ti = 0; ti < feed->textureCount; ++ti) {
@@ -977,6 +986,9 @@ bool init_island(ColorPropIsland* s, int w, int h) {
             vkGetPhysicalDeviceProperties(s->phys, &props);
             const uint32_t room = std::min(props.limits.maxPerStageDescriptorSamplers, props.limits.maxPerStageDescriptorSampledImages);
             s->propTexSlots = mc2::options::lowCost() ? 1u : std::clamp(room > 32u ? room - 32u : 1u, 1u, kPropTextureSlots);
+            // Test knob: force a small slot count to exercise the more-maps-than-slots path (0 = off). Never raises the device-derived count.
+            const int forced = static_cast<int>(mc2::gate::get<"MC2_VK_PROP_TEX_SLOTS">());
+            if (forced > 0) s->propTexSlots = std::min(s->propTexSlots, static_cast<uint32_t>(forced));
         }
         VkDescriptorSetLayoutBinding b[20]{};
         uint32_t nb = 0;

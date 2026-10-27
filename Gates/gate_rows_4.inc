@@ -159,6 +159,7 @@ L(Presence, "MC2_VK_PROP_LIGHT_PROBE", Bool, false, "vk", "", "", verified),
 L(Presence, "MC2_VK_PROP_LIGHT_VERTEX_PROBE", Bool, false, "vk", "", "", verified),
 G("MC2_VK_PROP_PACKET_DUMP", String, "", "vk", "", "", verified),
 L(Lead1, "MC2_VK_PROP_PERF", Bool, false, "vk", "", "", passthrough | verified),
+G("MC2_VK_PROP_TEX_SLOTS", Int, 0, "vk", "", "Test knob: cap the per-object prop texture slot count (0 = device derived); exercises the more-maps-than-slots path.", verified),
 L(Lead1, "MC2_VK_SELECT_TEST", Bool, false, "code", "", "", verified),
 // VK-P8a SHADOW-INTEROP: the SECOND VK geometry region + FIRST VK-produces-depth gate.
 // history: docs/gate-history.md#MC2_VK_SHADOW_MATRIX_DIAG
