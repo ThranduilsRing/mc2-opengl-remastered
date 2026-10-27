@@ -971,7 +971,7 @@ def test_game_batch_releases_and_reaps_its_holder(monkeypatch, fail):
     assert [c[0] for c in calls] == ["hold", "release", "wait"]
 
 
-def test_runtime_chain_acquires_once_after_offline_checks(monkeypatch):
+def test_only_capture_stages_take_the_exclusive_hold_one_at_a_time(monkeypatch):
     from contextlib import contextmanager
     import merge_gate as gate
     calls = []
@@ -984,15 +984,14 @@ def test_runtime_chain_acquires_once_after_offline_checks(monkeypatch):
             calls.append("release")
     def runner(cmd, **kw):
         calls.append(cmd[0])
-        if cmd[0] != "offline":
-            assert kw["env"]["MC2_HOST_LEASE_BATCH"] == "fixture"
+        assert ("MC2_HOST_LEASE_BATCH" in kw["env"]) == (cmd[0] == "before")
         return _r(0)
     monkeypatch.setattr(gate, "run_child", runner)
     monkeypatch.setattr(gate, "game_batch", batch)
     monkeypatch.setattr(gate, "git", lambda *a: "head")
     steps = [("contracts", ["offline"], {}), ("capture-before", ["before"], {}), ("deploy", ["deploy"], {}), ("tier1", ["smoke"], {})]
     assert gate.execute(steps, "head", runner=runner) == 0
-    assert calls == ["offline", "hold", "before", "deploy", "smoke", "release"]
+    assert calls == ["offline", "hold", "before", "release", "deploy", "smoke"]
 
 
 @pytest.mark.parametrize("fresh", [True, False])
@@ -1044,21 +1043,22 @@ def test_gate_without_window_receipt_keeps_full_both_mode_coverage(tmp_path, mon
                for n, _, e in seen if n == "mods" or n.startswith(("determinism-", "saveload-")))
 
 
-def test_blocked_game_stages_report_missing_proof_without_launching(monkeypatch, capsys):
+def test_blocked_capture_reports_missing_proof_without_launching(monkeypatch, capsys):
     from contextlib import contextmanager
     import merge_gate as gate
     @contextmanager
     def unavailable():
         raise RuntimeError("fixture: FIFO queue busy")
         yield {}
-    def runner(*a, **k):
-        pytest.fail("blocked stage must not launch")
+    def runner(cmd, **k):
+        if cmd[0] == "capture":
+            pytest.fail("blocked stage must not launch")
+        return _r(0)
     monkeypatch.setattr(gate, "game_batch", unavailable)
-    monkeypatch.setattr(gate, "run_child", runner)
     monkeypatch.setattr(gate, "git", lambda *a: "head")
     steps=[("capture-before", ["capture"], {}), ("tier1", ["smoke"], {"MC2_GATE_COVERAGE": "missions assigned to shared proofs"})]
     assert gate.execute(steps, "head", runner=runner) == 1
     output=capsys.readouterr().out
-    assert output.count("FAIL: host game lease unavailable (not run)") == 2
+    assert "| capture-before | FAIL: fixture: FIFO queue busy" in output
+    assert "| tier1 | PASS" in output
     assert "Coverage plan tier1:" in output
-    assert "Coverage tier1:" not in output

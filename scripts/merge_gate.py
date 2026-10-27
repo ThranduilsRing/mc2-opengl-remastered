@@ -27,6 +27,13 @@ sys.path.insert(0, str(ROOT / "tools"))
 from lane_merge import git_bash, run_logged  # noqa: E402
 
 
+# Only the visual captures need a quiet host; everything else shares the two game slots.
+# The gate takes and drops the exclusive hold per stage, so a window never holds it for more than a stage (TTL 1200 s).
+EXCLUSIVE_PREFIXES = ("capture-before", "capture-after")
+EXCLUSIVE_TTL_S = 1200
+EXCLUSIVE_SECONDS = []
+
+
 def plan(jobs, proof_dir=None, capture_before_runs=1, before_dir=None):
     if capture_before_runs < 1:
         raise ValueError("--capture-before-runs must be positive")
@@ -422,7 +429,7 @@ def game_batch():
         yield {}
         return
     tag = f"merge-gate-{os.getpid()}"
-    pid = host_lease.hold(tag, ttl_s=1800, timeout_s=1200, exclusive=True)
+    pid = host_lease.hold(tag, ttl_s=EXCLUSIVE_TTL_S, timeout_s=1200, exclusive=True)
     try:
         yield {host_lease.BATCH_ENV: tag}
     finally:
@@ -446,62 +453,54 @@ def execute(steps, head, dry_run=False, runner=run_child, completed=None):
     results = []
     completed = {} if completed is None else completed
     failed = False
-    batch_context, batch_env, lease_error = None, {}, None
-    try:
-        for name, command, overrides in steps:
-            reason = overrides.get("MC2_GATE_SKIP_REASON")
-            if reason:
-                reused = overrides.get("MC2_GATE_REUSE_STAGE")
-                status = "SKIP: " + reason
-                if reused:
-                    passed = all(completed.get(source) == "PASS" for source in reused.split(","))
-                    status = ("REUSED: " if passed or dry_run else "FAIL reuse: source checks failed; ") + reason
-                    failed |= not (passed or dry_run)
-                print(f"[merge_gate] {name}: {status}", flush=True)
-                results.append((name, status, 0.0))
-                completed[name] = status
-                continue
-            status, elapsed = "SKIPPED", 0.0
-            if dry_run:
-                print("PLAN " + " ".join(f"{k}={v}" for k, v in overrides.items()) + " " + subprocess.list2cmdline(command))
-                status = "DRY-RUN"
-            else:
-                started = time.monotonic()
-                measured = None
-                try:
-                    if git("rev-parse", "HEAD") != head:
-                        raise RuntimeError("HEAD changed during gate; rerun verification and gate")
-                    print(f"[merge_gate] {name}", flush=True)
-                    if overrides.get("MC2_GATE_COVERAGE"):
-                        print("[merge_gate] " + overrides["MC2_GATE_COVERAGE"], flush=True)
-                    log_lease_holders()
-                    runtime = name.startswith(("capture-", "determinism-", "saveload-")) or name in ("deploy", "tier1", "mods", "quiet", "validation", "kit-visibility")
-                    if runtime and runner is run_child and batch_context is None:
-                        if lease_error:
-                            raise RuntimeError("game batch unavailable: " + lease_error)
-                        candidate = game_batch()
-                        lease_started = time.monotonic()
-                        try:
-                            batch_env = candidate.__enter__()
-                        except (OSError, RuntimeError) as exc:
-                            lease_error = str(exc)
-                            raise
-                        batch_context = candidate
-                        results.append(("game-lease", "PASS", time.monotonic() - lease_started))
-                        started = time.monotonic()
-                    result = runner(command, cwd=ROOT, env=dict(os.environ, **overrides, **batch_env, MC2_IN_GATE="1"))
-                    measured = getattr(result, "gate_elapsed", None)
-                    status = "PASS" if result.returncode == 0 else f"FAIL ({result.returncode})"
-                except (OSError, RuntimeError, subprocess.SubprocessError) as exc:
-                    print(f"[merge_gate] {name}: {exc}", file=sys.stderr)
-                    status = "FAIL: host game lease unavailable (not run)" if lease_error else "FAIL: " + str(exc).replace("|", "/").replace("\n", " ")
-                elapsed = time.monotonic() - started if measured is None else measured
-                failed |= status != "PASS"
-            results.append((name, status, elapsed))
+    for name, command, overrides in steps:
+        reason = overrides.get("MC2_GATE_SKIP_REASON")
+        if reason:
+            reused = overrides.get("MC2_GATE_REUSE_STAGE")
+            status = "SKIP: " + reason
+            if reused:
+                passed = all(completed.get(source) == "PASS" for source in reused.split(","))
+                status = ("REUSED: " if passed or dry_run else "FAIL reuse: source checks failed; ") + reason
+                failed |= not (passed or dry_run)
+            print(f"[merge_gate] {name}: {status}", flush=True)
+            results.append((name, status, 0.0))
             completed[name] = status
-    finally:
-        if batch_context is not None:
-            batch_context.__exit__(*sys.exc_info())
+            continue
+        status, elapsed = "SKIPPED", 0.0
+        if dry_run:
+            print("PLAN " + " ".join(f"{k}={v}" for k, v in overrides.items()) + " " + subprocess.list2cmdline(command))
+            status = "DRY-RUN"
+        else:
+            started = time.monotonic()
+            measured = None
+            try:
+                if git("rev-parse", "HEAD") != head:
+                    raise RuntimeError("HEAD changed during gate; rerun verification and gate")
+                print(f"[merge_gate] {name}", flush=True)
+                if overrides.get("MC2_GATE_COVERAGE"):
+                    print("[merge_gate] " + overrides["MC2_GATE_COVERAGE"], flush=True)
+                log_lease_holders()
+                if name.startswith(EXCLUSIVE_PREFIXES):
+                    # Only stages that need a quiet host hold every slot, and only for that stage.
+                    lease_started = time.monotonic()
+                    with game_batch() as batch_env:
+                        waited = time.monotonic() - lease_started
+                        held_started = time.monotonic()
+                        result = runner(command, cwd=ROOT, env=dict(os.environ, **overrides, **batch_env, MC2_IN_GATE="1"))
+                    held = time.monotonic() - held_started
+                    EXCLUSIVE_SECONDS.append(held)
+                    print(f"[merge_gate] exclusive hold {name}: waited {waited:.0f}s, held {held:.0f}s", flush=True)
+                else:
+                    result = runner(command, cwd=ROOT, env=dict(os.environ, **overrides, MC2_IN_GATE="1"))
+                measured = getattr(result, "gate_elapsed", None)
+                status = "PASS" if result.returncode == 0 else f"FAIL ({result.returncode})"
+            except (OSError, RuntimeError, subprocess.SubprocessError) as exc:
+                print(f"[merge_gate] {name}: {exc}", file=sys.stderr)
+                status = "FAIL: " + str(exc).replace("|", "/").replace("\n", " ")
+            elapsed = time.monotonic() - started if measured is None else measured
+            failed |= status != "PASS"
+        results.append((name, status, elapsed))
+        completed[name] = status
     print(f"Merge gate HEAD {head} (deploy tree: build64-ninja)")
     print("| Step | Result | Seconds |\n|---|---|---:|")
     for name, status, elapsed in results:
@@ -647,6 +646,7 @@ def main(argv=None):
             measured_window = bool(window)
             verdict = ("FAIL" if result else
                        "PASS" if elapsed <= 1200 and measured_window and not omitted else "NEEDS_REVIEW")
+            print(f"[merge_gate] exclusive host hold total={sum(EXCLUSIVE_SECONDS) / 60:.1f} min over {len(EXCLUSIVE_SECONDS)} stages (limit 20 min)")
             print(f"[merge_gate] total={elapsed:.1f}s budget=1200s scope={'lane_merge through gate' if measured_window else 'gate only; no verified lane_merge clock'} verdict={verdict}")
             if args.full and result == 0 and not args.dry_run:
                 (ROOT / "build64-ninja/last-full-gate.json").write_text(json.dumps(dict(head=head, finished=time.time())))
