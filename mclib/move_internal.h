@@ -80,10 +80,6 @@ extern float MetersMapSideDivTwo;
 extern bool IsDiagonalStep[NUM_CELL_OFFSETS];
 extern char mineLayout[4][MAPCELL_DIM * MAPCELL_DIM];
 extern char TeamRelations[MAX_TEAMS][MAX_TEAMS];
-extern bool GoalIsDoor;
-extern long numNodesVisited;
-extern long topOpenNodes;
-extern long MaxHPrime;
 extern bool PreserveMapTiles;
 extern MoveMapPtr PathFindMap[2];
 MoveMapPtr MOVE_acquirePathFindMap (int which);
@@ -208,7 +204,7 @@ inline void MoveMap::propogateCost (long mapCellIndex, long cost, long g) {
 				if (succCellIndex > -1) {
 					MoveMapNodePtr succMapNode = &map[succCellIndex];
 					if (succMapNode->cost < COST_BLOCKED)
-						if ((succMapNode->hPrime != HPRIME_NOT_CALCED) && (succMapNode->hPrime < MaxHPrime)) {
+						if ((succMapNode->hPrime != HPRIME_NOT_CALCED) && (succMapNode->hPrime < maxHPrime)) {
 							char dirToParent = reverseShift[dir];
 							long cost = succMapNode->cost;
 							// Diagonal movement is more costly...
@@ -258,7 +254,7 @@ inline void MoveMap::propogateCostJUMP (long r, long c, long cost, long g) {
 				if (inMapBounds(succRow, succCol, height, width)) {
 					MoveMapNodePtr succMapNode = &map[succRow * maxWidth + succCol];
 					if (succMapNode->cost < COST_BLOCKED)
-						if ((succMapNode->hPrime != HPRIME_NOT_CALCED) && (succMapNode->hPrime < MaxHPrime)) {
+						if ((succMapNode->hPrime != HPRIME_NOT_CALCED) && (succMapNode->hPrime < maxHPrime)) {
 							char dirToParent = reverseShift[dir];
 
 							bool jumping = false;

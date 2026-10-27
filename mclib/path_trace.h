@@ -18,7 +18,13 @@
 #include <chrono>
 #include <format>
 
+class MovePath;
+
 namespace mc2_path_trace {
+
+// FNV-1a over a solved path (steps, cost, goal, target); defined in move_movemap_path.cpp. The ordered "solve" events carry it, so two
+// builds that solve the same requests produce the same transcript (the `us` field is timing and is stripped when diffing).
+unsigned long long hashMovePath(const MovePath* path);
 
 // One-time gate cache per process. tagEnabled() is itself cheap, but the
 // RAII scope caches the result once at solver entry so the hot inner loop
@@ -37,6 +43,7 @@ struct SolveScope {
 	int   len;                 // resulting path length (cells), -1 if none
 	int   trunc;               // 1 if numCells > MAX_STEPS_PER_MOVEPATH
 	int   fail;                // 1 if no goal found
+	const MovePath* out = nullptr;  // the path this solve fills; hashed into the event
 
 	explicit SolveScope(const char* variantName)
 		: active(mc2_diag::tagEnabled("PATH")),
@@ -52,11 +59,11 @@ struct SolveScope {
 			return;
 		auto t1 = std::chrono::steady_clock::now();
 		double us = std::chrono::duration<double, std::micro>(t1 - t0).count();
-		char buf[256];
+		char buf[288];
 		auto bufEnd = std::format_to_n(buf, sizeof(buf) - 1,
 			"{{\"ev\":\"solve\",\"variant\":\"{}\",\"us\":{:.2f},\"nodes\":{},"
-			"\"open_peak\":{},\"len\":{},\"trunc\":{},\"fail\":{}}}",
-			variant, us, nodes, openPeak, len, trunc, fail);
+			"\"open_peak\":{},\"len\":{},\"trunc\":{},\"fail\":{},\"h\":\"{:016x}\"}}",
+			variant, us, nodes, openPeak, len, trunc, fail, (out && !fail) ? hashMovePath(out) : 0ull);
 		*bufEnd.out = '\0';
 		mc2_diag::writeEvent("PATH", 1, 0, buf);
 	}

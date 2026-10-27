@@ -3,9 +3,9 @@
 # Where each gate is read, what the smoke runner forwards and what tier1_env_vars.md says are not here: ask
 # tools/repo_intel (env_var, gate_status), which scan the sources.
 generator_version: "3.0.0"
-gate_count: 775
+gate_count: 774
 registry_entry_count: 152
-verified_count: 736
+verified_count: 735
 flags:
   - name: MC2_ABL_ARG_GUARD
     kind: Bool
@@ -3241,14 +3241,6 @@ flags:
     rule: Presence
     owner: code
     doc: "PATHFINDING-JUMP-FAIL-1: backoff gate + constants."
-    smoke_passthrough: true
-    verified: true
-  - name: MC2_PATH_SOLVE_ISOLATED
-    kind: Bool
-    default: false
-    rule: Lead1
-    owner: code
-    doc: ""
     smoke_passthrough: true
     verified: true
   - name: MC2_PICK_BEHIND_LEGACY

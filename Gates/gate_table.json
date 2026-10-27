@@ -1,6 +1,6 @@
 {
  "version": 1,
- "count": 775,
+ "count": 774,
  "gates": [
   {"name": "MC2_ABL_ARG_GUARD", "kind": "Bool", "rule": "Lead1", "default": false, "owner": "code", "retireBy": "", "doc": "ABL crash-safety gates (ABL-OPCODE-BOUNDS-HARDEN) MC2_ABL_ARG_GUARD=1 - enables dispatch-bounds soft path + out-ptr null guards MC2_ABL_RUNTIME_SOFTFAIL=1 -...", "tokens": "", "range": null, "reread": false, "divergent": false, "smokePassthrough": true, "verified": true, "registry": null, "logTopic": ""},
   {"name": "MC2_ABL_ARG_GUARD_REPRO", "kind": "Bool", "rule": "Lead1", "default": false, "owner": "code", "retireBy": "", "doc": "", "tokens": "", "range": null, "reread": false, "divergent": false, "smokePassthrough": true, "verified": true, "registry": null, "logTopic": ""},
@@ -422,7 +422,6 @@
   {"name": "MC2_PATCHSTREAM_THIN_RECORDS_DRAW", "kind": "Bool", "rule": "Presence", "default": false, "owner": "terrain", "retireBy": "", "doc": "", "tokens": "", "range": null, "reread": false, "divergent": false, "smokePassthrough": true, "verified": true, "registry": null, "logTopic": ""},
   {"name": "MC2_PATCHSTREAM_THIN_RECORD_FASTPATH", "kind": "Bool", "rule": "Presence", "default": false, "owner": "terrain", "retireBy": "", "doc": "", "tokens": "", "range": null, "reread": false, "divergent": false, "smokePassthrough": true, "verified": true, "registry": null, "logTopic": ""},
   {"name": "MC2_PATH_JUMP_FAIL_BACKOFF", "kind": "Bool", "rule": "Presence", "default": false, "owner": "code", "retireBy": "", "doc": "PATHFINDING-JUMP-FAIL-1: backoff gate + constants.", "tokens": "", "range": null, "reread": false, "divergent": false, "smokePassthrough": true, "verified": true, "registry": null, "logTopic": ""},
-  {"name": "MC2_PATH_SOLVE_ISOLATED", "kind": "Bool", "rule": "Lead1", "default": false, "owner": "code", "retireBy": "", "doc": "", "tokens": "", "range": null, "reread": false, "divergent": false, "smokePassthrough": true, "verified": true, "registry": null, "logTopic": ""},
   {"name": "MC2_PICK_BEHIND_LEGACY", "kind": "Bool", "rule": "Presence", "default": false, "owner": "code", "retireBy": "", "doc": "INPUT-CURSOR-OFFSCREEN-TARGET-RECON-1 / -FIX-1: a near-plane-clipped OBB corner projects to (0,0) with w<=1e-4 (camera.h:860-862).", "tokens": "", "range": null, "reread": false, "divergent": false, "smokePassthrough": false, "verified": true, "registry": null, "logTopic": ""},
   {"name": "MC2_PICK_CAP_TRACE", "kind": "Bool", "rule": "Presence", "default": false, "owner": "code", "retireBy": "", "doc": "", "tokens": "", "range": null, "reread": false, "divergent": false, "smokePassthrough": true, "verified": true, "registry": null, "logTopic": ""},
   {"name": "MC2_PLAYTEST_EXE", "kind": "String", "rule": "Std", "default": "", "owner": "editor", "retireBy": "", "doc": "", "tokens": "", "range": null, "reread": false, "divergent": false, "smokePassthrough": false, "verified": true, "registry": null, "logTopic": ""},

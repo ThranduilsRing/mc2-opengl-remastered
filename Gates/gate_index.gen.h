@@ -10,7 +10,7 @@
 
 namespace mc2::gate::detail {
 
-inline constexpr std::size_t kGateCount = 775;
+inline constexpr std::size_t kGateCount = 774;
 
 inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_ABL_ARG_GUARD", Kind::Bool, Rule::Lead1, {}},
@@ -433,7 +433,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_PATCHSTREAM_THIN_RECORDS_DRAW", Kind::Bool, Rule::Presence, {}},
     {"MC2_PATCHSTREAM_THIN_RECORD_FASTPATH", Kind::Bool, Rule::Presence, {}},
     {"MC2_PATH_JUMP_FAIL_BACKOFF", Kind::Bool, Rule::Presence, {}},
-    {"MC2_PATH_SOLVE_ISOLATED", Kind::Bool, Rule::Lead1, {}},
     {"MC2_PICK_BEHIND_LEGACY", Kind::Bool, Rule::Presence, {}},
     {"MC2_PICK_CAP_TRACE", Kind::Bool, Rule::Presence, {}},
     {"MC2_PLAYTEST_EXE", Kind::String, Rule::Std, {}},

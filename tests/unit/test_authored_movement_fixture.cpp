@@ -359,9 +359,8 @@ struct MovementWorld {
         saved.keep(cellShiftDistance); saved.keep(tileMulMAPCELL_DIM);
         saved.keep(VerticesMapSideDivTwo); saved.keep(MetersMapSideDivTwo);
         saved.keep(MapCellDiagonal); saved.keep(HalfMapCell);
-        saved.keep(ClearBridgeTiles); saved.keep(GoalIsDoor); saved.keep(JumpOnBlocked);
+        saved.keep(ClearBridgeTiles); saved.keep(JumpOnBlocked);
         saved.keep(DebugMovePathType); saved.keep(RamObjectWID); saved.keep(LastMoveCalcErr);
-        saved.keep(numNodesVisited); saved.keep(topOpenNodes);
         saved.keep(goalMap); saved.keep(goalMapRowStart); saved.keep(goalMapRowCol);
         GameObject::initialize = true;
         Mover::holdFireIconHandle = 1;
@@ -952,6 +951,29 @@ TEST_CASE("AuthoredOrderProduction/blank MOVE initializes passability before bui
         GlobalPathStep path[MAX_GLOBAL_PATH];
         CHECK(GlobalMoveMap[level]->calcPath(start, goal, path, 90, 40, 90, 140) > 0);
     }
+}
+
+TEST_CASE("AuthoredOrderProduction/MOVE layer revisions move only with their own layer") {
+    MovementWorld world;
+    MOVE_init(21);
+    MOVE_buildData(180, 180, nullptr, 0, nullptr);
+    REQUIRE(GameMap != nullptr);
+    const MoveLayerRevisions r0 = GameMap->rev;
+    GameMap->setMover(90, 90, true);
+    CHECK(GameMap->rev.mover == r0.mover + 1);
+    GameMap->setPathlock(0, 90, 90, true);
+    CHECK(GameMap->rev.pathlock == r0.pathlock + 1);
+    GameMap->setGate(90, 91, 1);
+    CHECK(GameMap->rev.gate == r0.gate + 1);
+    GameMap->setMine(90, 92, 1);
+    CHECK(GameMap->rev.mine == r0.mine + 1);
+    GameMap->setPreserved(90, 93, true);
+    CHECK(GameMap->rev.preserved == r0.preserved + 1);
+    CHECK(GameMap->rev.statics == r0.statics);
+    GameMap->setPassable(90, 94, false);
+    CHECK(GameMap->rev.statics == r0.statics + 1);
+    GameMap->setMover(-5, -5, true);  // off-map is a no-op
+    CHECK(GameMap->rev.mover == r0.mover + 1);
 }
 
 TEST_CASE("AuthoredOrderProduction/classification uses the requested buffer and retries a ready zero-step path") {
