@@ -67,6 +67,7 @@ GameObjectPtr GameObjectManager::findObject (glm::vec3 position) {
 // that partId and exists, so a stale entry (partId changed or object freed) is skipped, never returned. Contract kept:
 // the first existing object in slot order. setPartId/Load feed notePartId; any missed feed is caught by the
 // cross-check below (MC2_OBJMGR_XCHECK, or any non-NDEBUG build).
+#define MC2_OBJMGR_XCHECK 1  // PROOF-ONLY commit, reverted after the tier1/mod proofs
 #if !defined(NDEBUG) || defined(MC2_OBJMGR_XCHECK)
 #define OBJMGR_PARTID_XCHECK 1
 #endif
