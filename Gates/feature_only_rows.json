@@ -61,5 +61,12 @@
   "order": 0,
   "defaultOn": true,
   "doc": "Retired: the GPU mech batcher is the only world-mech path."
+ },
+ {
+  "featureId": "MC2_FEATURE_STATIC_PROP_INDIRECT",
+  "kind": "Retired",
+  "order": 1,
+  "defaultOn": true,
+  "doc": "Retired: the static-prop batcher is the only world-prop path."
  }
 ]

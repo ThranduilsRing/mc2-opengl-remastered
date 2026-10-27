@@ -453,15 +453,14 @@ long Mech3DAppearance::render (long depthFixup)
 		leftArm->SetTextureHandle(0,localTextureHandle);
 
 	// C3: render gate — GPU-lagged visibility when killswitch is enabled.
-	// Preserve the g_useGpuStaticProps fallback for static-prop path.
 	// PREVIEW-FIX: SimpleCamera UI preview (Mech Bay / Purchase) always renders
 	// the mech regardless of world inView/GPU-cull — the preview is the whole
 	// point of the panel and its visibility is owned by the UI, not world cull.
 	const bool mechShouldRender = (g_mechPreviewRenderDepth > 0)
 		? true
 		: s_gpuCullLifecycle
-			? (gpu_cull::readback_isActorVisibleLagged(static_cast<uint32_t>(actorHandle_)) || g_useGpuStaticProps)
-			: (inView || g_useGpuStaticProps);
+			? (gpu_cull::readback_isActorVisibleLagged(static_cast<uint32_t>(actorHandle_)))
+			: inView;
 	if (mechShouldRender)
 	{
 		if (g_mechPreviewRenderDepth > 0 && mc2::gate::get<"MC2_LOG_PREVIEW">())

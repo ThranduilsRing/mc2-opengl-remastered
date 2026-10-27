@@ -8,14 +8,12 @@
 #include "../GameOS/gameos/shadow_mover_feed.h"
 #include <cstring>
 
-extern bool g_useGpuObjects;
 extern bool     g_loadRaceTrace;
 extern long     g_loadRaceTerrainFirstResidentFrame;
 extern bool     g_loadRaceTerrainResidentNow;
 extern uint32_t g_mc2FrameCounter;
 extern long     g_loadRaceAtlasFirstFrame;
 extern long     g_loadRaceArmFirstFrame;
-extern bool g_useGpuStaticProps;
 void mc2::VkSceneRenderer::renderListsDynamicShadowPass (RenderSubmissions& submissions)
 {
 #ifdef MC2_VULKAN_ISLAND
@@ -241,7 +239,7 @@ void mc2::VkSceneRenderer::renderListsGpuStaticProps (RenderSubmissions& submiss
 		ZoneScopedN("Render.GpuStaticProps");
 
 
-		if (g_useGpuStaticProps || g_useGpuObjects) {
+		{
 			// [RENDERLISTS_COST v1] prep+cull-dispatch only; the two flush units
 			// below carry their own spans (no double-count vs total).
 			// Stage 3.C registry flush MOVED earlier (before flushShadow, see
@@ -302,7 +300,7 @@ void mc2::VkSceneRenderer::renderListsGpuStaticProps (RenderSubmissions& submiss
 		auto runSpFlushUnit = []() {
 
 
-			if (g_useGpuStaticProps || g_useGpuObjects) {
+			{
 				ZoneScopedN("GpuSP.BatcherFlush");
 				GpuStaticPropBatcher::instance().flush(getLastRenderSnapshot());
 			}
@@ -310,9 +308,7 @@ void mc2::VkSceneRenderer::renderListsGpuStaticProps (RenderSubmissions& submiss
 
 		// Unit B: GPU mech batcher Slice A flush — runs adjacent to the static-prop
 		// flush, inside renderLists(submissions) so terrain has already been emitted by the
-		// patch stream and the depth state is set up. Independent of
-		// g_useGpuStaticProps; gated on its own MC2_GPU_MECHS env var inside the
-		// flush itself. Pass_Mechs is a disjoint GL_TIME_ELAPSED scope.
+		// patch stream and the depth state is set up. Pass_Mechs is a disjoint GL_TIME_ELAPSED scope.
 		auto runMechFlushUnit = []() {
 			ZoneScopedN("Render.GpuMechs");
 			// [RENDER_PASS v1] advisory telemetry (env-gated, rate-limited).

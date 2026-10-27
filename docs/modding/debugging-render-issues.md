@@ -56,7 +56,6 @@ Checkboxes for every `MC2_*` feature gate that can be toggled at runtime without
 
 Use this panel to:
 - Enable `MC2_SHADOW_ENABLE` for a single session without relaunching
-- Toggle `MC2_GPU_OBJECTS` off to confirm a static-prop bug is in the GPU path, not the legacy path
 - Arm `MC2_RENDER_CONTRACT_ASSERT` to catch GL state violations immediately
 
 ## Object Inspector panel
@@ -111,7 +110,7 @@ Same as the Graphics Options Env Gates — repeated here for convenience when th
 ### Object is invisible
 
 1. Open Object Inspector, click where the object should be.
-2. If Object-ID returns 0: object not rendered at all. Check `MC2_GPU_OBJECTS=1` and draw packet slot count.
+2. If Object-ID returns 0: object not rendered at all. Check the draw packet slot count.
 3. If Object-ID returns a valid ID but object is black: shader issue. Check Render Explain → pipeline ID → find that shader variant.
 4. If Object-ID returns valid ID and Render Explain shows wrong material index: material GPU table mismatch.
 

@@ -454,7 +454,7 @@ long Mech3DAppearance::update (bool animate)
 		const bool gpuVis = s_gpuCullLifecycle
 			? gpu_cull::readback_isActorVisibleLagged(static_cast<uint32_t>(actorHandle_))
 			: inView;
-		if ((turn < 3) || gpuVis || (unitAnim().currentGestureId == GestureJump) || g_useGpuStaticProps)
+		if ((turn < 3) || gpuVis || (unitAnim().currentGestureId == GestureJump))
 			updateGeometry();
 
 		// Slice B1: refresh per-actor LightsData UBO slot index for the

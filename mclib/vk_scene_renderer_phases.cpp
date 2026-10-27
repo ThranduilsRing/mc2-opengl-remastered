@@ -7,8 +7,6 @@
 #include "Gates/render_options.h"
 
 extern void mc2SetSceneFogColorRGB(float, float, float);
-extern bool g_useGpuStaticProps;
-extern bool g_useGpuObjects;
 
 void mc2::VkSceneRenderer::renderListsPreamble (RenderSubmissions& submissions)
 {
@@ -111,7 +109,7 @@ void mc2::VkSceneRenderer::renderListsStaticPropRegistryFlush (RenderSubmissions
 		ZoneScopedN("RenderLists.StaticPropRegistryFlush");
 
 
-		if (g_useGpuStaticProps || g_useGpuObjects) {
+		{
 			GpuStaticPropRegistry::flush();
 		}
 	} // end RenderLists.StaticPropRegistryFlush

@@ -534,9 +534,9 @@ long BldgAppearance::update (bool animate)
 	}
 
 	// Under the GPU static-prop path, compute xlatPosition/rot + fog/light
-	// for every building so the later TransformMultiShape (also gated on
-	// g_useGpuStaticProps) has valid inputs.
-	if (inView || g_useGpuStaticProps)
+	// for every building so the later TransformMultiShape (also gated on inView)
+	// has valid inputs.
+	if (inView)
 	{
 		if (appearType->spinMe)
 			rotation += SPINRATE * frameLength;
@@ -634,17 +634,16 @@ long BldgAppearance::update (bool animate)
 	// Under the GPU static-prop path we need listOfColors / shapeToWorld
 	// fresh every frame regardless of inView so the batcher can safely
 	// memcpy from shape->listOfColors during submit().
-	if (inView || g_useGpuStaticProps)
+	if (inView)
 	{
 		bldgShape->SetUseShadow(false);
 
 
 		bldgShape->SetLightList(eye->getWorldLights(),eye->getNumLights());
 		// Slice 2 (object-offload) — Stage 2.B: eligibility hoist.
-		// Branch lives INSIDE the existing inView||g_useGpuStaticProps cull
+		// Branch lives INSIDE the existing inView cull
 		// gate to preserve slice 1's R1 invariant (no cull bypass).
 		// Run positions-only when:
-		//   - g_useGpuObjects is on, AND
 		//   - this actor did not hit a late-registration recovery last frame
 		//     (needsFullBakeNextFrame is a NEW bool from Stage 2.A; set by
 		//     BldgAppearance::render when submitMultiShape returns false with
@@ -667,8 +666,7 @@ long BldgAppearance::update (bool animate)
 			// BUILDING-PBR: the gated PBR path currently renders through the same
 			// CPU MLR queue, so it needs that full bake too. Keep this in lockstep
 			// with the render-side GPU submit bypass.
-			gpuEligible = g_useGpuObjects &&
-			              (g_mechPreviewRenderDepth == 0) &&
+			gpuEligible = (g_mechPreviewRenderDepth == 0) &&
 			              !needsFullBakeNextFrame &&
 			              GpuStaticPropBatcher::instance().isMultiShapeEligibleForGpuObjects(bldgShape);
 		}

@@ -75,8 +75,6 @@ P("MC2_GPU_GROUND_PICK_PARITY_SAMPLE", Int, 30, "code", "", "Sample every Nth fr
 G("MC2_GPU_GROUND_PICK_PARITY_TAG", String, "", "code", "", "", passthrough | verified),  // default not derivable from the tree
 L(Lead0Kill, "MC2_GPU_GV_SHADOW_SKIP", Bool, true, "mech", "", "", verified),
 // ENV sweep 2026-07-09 (checker regex widen: digit names + envFlagDefaultOn helper)
-// history: docs/gate-history.md#MC2_GPU_OBJECTS
-L(Lead0Kill, "MC2_GPU_OBJECTS", Bool, true, "unclassified", "", "[RETIRED] Indirect-draw static-prop batcher (gos_static_prop_batcher).", passthrough | registry(Retired, "MC2_FEATURE_STATIC_PROP_INDIRECT", 1, true) | verified),
 // MC2_GPU_PARTICLES (master GPU-particle path; lives in kAuxEnvVars: kFeatureTable is indexed by RendererFeature; read in mclib/particles/batcher.cpp initialize_env)
 // history: docs/gate-history.md#MC2_GPU_PARTICLES
 L(DefOnLead0, "MC2_GPU_PARTICLES", Bool, true, "code", "", "Native Card/CardCloud rendering; =0 suppresses these draws (CPU routes retired).", passthrough | registry(Feature, "MC2_GPU_PARTICLES", -1, true) | verified),
