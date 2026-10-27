@@ -385,6 +385,11 @@ bool MissionInterfaceManager::uiCmdWorld(UiCmdCtx& c)
 			}
 		}
 	}
+	else if (line == "skip_intro") {
+		// Same as pressing ESC during a cinematic: ends movie mode so the HUD returns.
+		if (eye && eye->inMovieMode) eye->forceMovieToEnd();
+		result = "ok";
+	}
 	else if (line.compare(0, 6, "hover ") == 0) {
 		// hover <partId>: park the raw cursor on that object (hover tooltip proof).
 		GameObjectPtr obj = ObjectManager->findByPartId(strtol(line.c_str() + 6, nullptr, 10));
