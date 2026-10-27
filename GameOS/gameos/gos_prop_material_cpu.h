@@ -127,7 +127,8 @@ inline bool addMaterial(MaterialSources& dst, const ModelOverrideRecord& owner,
                 gpu.material.emissiveTex = RenderCore::kMaterialTexAbsent;
             uint32_t* slots[3] = {&gpu.material.normalTex, &gpu.material.metallicRoughnessTex, &gpu.material.albedoTex};
             std::vector<std::string> keys;
-            for (int i = 0; i < 3; ++i) {
+            bool accepted = true;
+            for (int i = 0; i < 3 && accepted; ++i) {
                 if (wants[i].source.empty()) continue;
                 const auto path = (std::filesystem::path(owner.manifestDir) / wants[i].source).generic_string();
                 auto it = dst.textureIndex.find(path);
@@ -138,8 +139,8 @@ inline bool addMaterial(MaterialSources& dst, const ModelOverrideRecord& owner,
                         image.width <= 0 || image.height <= 0 || image.width > int(kMaxDetailEdge) || image.height > int(kMaxDetailEdge) ||
                         mc2tex::mipExtent(image.width, image.mipCount-1) != 1 ||
                         mc2tex::mipExtent(image.height, image.mipCount-1) != 1) {
-                        for (const auto& k : keys) { dst.textureIndex.erase(k); dst.textures.pop_back(); }
-                        return false;
+                        accepted = false;   // not a cooked block texture (e.g. RGBA8 from an older mod): legacy route below
+                        break;
                     }
                     image.vkFormat = wants[i].format;      // albedo bytes are shaded as authored (encoded), like the tier arrays
                     image.isSrgb = false;
@@ -149,6 +150,9 @@ inline bool addMaterial(MaterialSources& dst, const ModelOverrideRecord& owner,
                 }
                 *slots[i] = it->second;
             }
+            if (!accepted) {
+                for (const auto& k : keys) { dst.textureIndex.erase(k); dst.textures.pop_back(); }
+            } else {
             gpu.material.flags = RenderCore::MaterialFlags::kPerTexture |
                 (wants[0].source.empty() ? 0u : RenderCore::MaterialFlags::kNormalMap) |
                 (wants[1].source.empty() ? 0u : RenderCore::MaterialFlags::kMetallicRoughness);
@@ -158,6 +162,7 @@ inline bool addMaterial(MaterialSources& dst, const ModelOverrideRecord& owner,
             gpu.materialClass = input.materialClass; gpu.reserved[0] = input.alphaMode; gpu.reserved[1] = 1; // BC5 XY
             dst.table.push_back(gpu);
             return true;
+            }
         }
     }
     auto cooked = [&](std::string_view source, uint32_t format) -> std::optional<RenderCore::KtxImage> {
@@ -242,7 +247,7 @@ inline bool addMaterial(MaterialSources& dst, const ModelOverrideRecord& owner,
     };
     if (!valid(normal) || !valid(orm)) return false;
     decodeDetailArray(dst.normal, true); decodeDetailArray(dst.orm, false);
-    for (auto& row : dst.table) row.reserved[1] = 0;
+    for (auto& row : dst.table) if (!(row.material.flags & RenderCore::MaterialFlags::kPerTexture)) row.reserved[1] = 0;
     auto chain = [](const auto& t) -> const std::vector<std::vector<uint8_t>>* {
         return t && t->mipLevels.size() > 1 ? &t->mipLevels : nullptr;
     };
