@@ -69,3 +69,8 @@ def test_an_unmatched_implicit_hint_is_not_red_but_an_explicit_request_is():
     log = "MC2_VK_DEVICE=NVIDIA matches no accepted device; using the default pick"
     assert nofocus.gpu_mismatch({"PATH": "x"}, False, ["Intel(R) HD Graphics 630"], log) is None
     assert nofocus.gpu_mismatch({"PATH": "x", "MC2_HARNESS_GPU": "2070"}, False, ["Intel(R) HD Graphics 630"], log)
+
+
+def test_an_explicit_mistyped_device_hint_is_red_even_when_it_matched_nothing():
+    log = "MC2_VK_DEVICE=NVDIA matches no accepted device; using the default pick"
+    assert nofocus.gpu_mismatch({"PATH": "x", "MC2_VK_DEVICE": "NVDIA"}, False, ["Intel(R) HD Graphics 630"], log)
