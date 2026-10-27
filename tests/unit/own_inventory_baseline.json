@@ -4995,10 +4995,10 @@
    "files": {
     "GameOS/gameos/gameos_graphics.cpp": {
      "delete": 1,
-     "new": 1
+     "new": 2
     }
    },
-   "new": 1,
+   "new": 2,
    "new_array": 0,
    "owners": [
     ""

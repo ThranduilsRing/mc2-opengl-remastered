@@ -8275,6 +8275,16 @@
    "count": 1
   },
   {
+   "tag": "SMOKE",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "event",
+    "ticks"
+   ],
+   "count": 1
+  },
+  {
    "tag": "SMOKE_CLOCK_PROBE",
    "ver": 1,
    "stream": "stderr",
