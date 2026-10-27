@@ -112,7 +112,7 @@ bool Team::teamLineOfSight (glm::vec3 tPos, float extRad)
 	// The range gates run here in roster order; each in-range member contributes one ray. The rays are pure reads, so
 	// they run as one batch (jobs when the batch is big enough) and the answer is "any hit" - the same bit the legacy
 	// first-hit early return produced.
-	static std::vector<mc2::los::Query> pending;
+	thread_local std::vector<mc2::los::Query> pending;
 	pending.clear();
 	auto addRay = [&](glm::vec3 from, float ext, float startExt) {
 		mc2::los::Query q;
@@ -158,7 +158,7 @@ bool Team::teamLineOfSight (glm::vec3 tPos, float extRad)
 	constexpr size_t kBatchMin = 8;
 	if (pending.size() >= kBatchMin && mc2::jobs::enabled())
 	{
-		static std::vector<uint8_t> hits;
+		thread_local std::vector<uint8_t> hits;
 		hits.assign(pending.size(), 0);
 		mc2::los::batch(snap, pending, hits);
 		for (uint8_t h : hits)
@@ -175,6 +175,8 @@ bool Team::teamLineOfSight (glm::vec3 tPos, float extRad)
 //---------------------------------------------------------------------------
 bool Team::lineOfSight (float startLocal, long mCellRow, long mCellCol, float endLocal, long tCellRow, long tCellCol, long teamId, float extRad, float startExtRad)
 {
+	if ((teamId < 0) || (teamId >= MAX_TEAMS))
+		return true;
 	const mc2::los::Snapshot snap = captureLosSnapshot();
 	if (!snap.valid)
 		return false;
@@ -184,6 +186,8 @@ bool Team::lineOfSight (float startLocal, long mCellRow, long mCellCol, float en
 //---------------------------------------------------------------------------
 bool Team::lineOfSight (glm::vec3 position, glm::vec3 targetPosition, long teamId, float extRad, float startExtRad)
 {
+	if ((teamId < 0) || (teamId >= MAX_TEAMS))
+		return true;
 	const mc2::los::Snapshot snap = captureLosSnapshot();
 	if (!snap.valid)
 		return false;

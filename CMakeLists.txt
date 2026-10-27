@@ -128,9 +128,8 @@ endif()
 # Notes:
 #   * gos_Malloc/gos_Free are already plain malloc/free (see GameOS/gameos/
 #     gameos.cpp:245). So ASan sees every new/delete with zero bypass work.
-#   * The only custom slab remaining is TG_GOSVertexPool (mclib/tgl.cpp).
-#     Left alone for MVP; annotate with __asan_poison_memory_region later
-#     if ASan stays quiet but pool-exhaustion events keep firing.
+#   * No custom slab remains in mclib/tgl.cpp; GOSVertexPool is plain storage.
+#     If a custom slab returns, annotate it with __asan_poison_memory_region.
 # ---------------------------------------------------------------------------
 option(MC2_ASAN "Build with MSVC AddressSanitizer (parallel dev build)" OFF)
 # Precompiled standard-library header (cmake/pch/mc2_std_pch.h) for the three big targets: gameos, mclib, mc2.

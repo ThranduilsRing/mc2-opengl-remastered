@@ -749,8 +749,6 @@ def battery(args) -> int:
     if source_root.name.lower() == GOLDEN_INSTALL:
         raise ValueError(f'refusing golden install: {source_root}')
     stage_root = Path(args.stage_root).resolve()
-    if stage_root.drive.upper() == 'G:':
-        raise ValueError('mod stagings/caches are forbidden on G:')
     if stage_root.is_relative_to(source_root):
         raise ValueError(f'refusing stage root inside install root: {stage_root}')
     base_install = Path(args.base_install).resolve()
