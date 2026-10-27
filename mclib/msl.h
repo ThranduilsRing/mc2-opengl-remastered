@@ -522,6 +522,8 @@ class TG_MultiShape
 		//This function takes the current listOfVisibleFaces and draws them using
 		//gos_DrawTriangle.
 		void Render (bool refreshTextures = false, float forceZ = -1.0f);
+		// UI preview (SimpleCamera, preview_draw.cpp): draws every leaf from the hierarchy matrices; call after a TransformMultiShape*.
+		void PreviewDraw (void);
 
 		//This function takes the current listOfShadowTriangles and draws them using
 		//gos_DrawTriangle.

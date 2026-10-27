@@ -56,9 +56,7 @@ long BldgAppearance::render (long depthFixup)
 	// letting the GPU clipper decide visibility. The legacy angular-cull
 	// recalcBounds has a ~87% false-negative rate at wolfman zoom; under
 	// the GPU path we render every actor and trust the GPU.
-	// PREVIEW-FIX: the SimpleCamera component/weapon preview (MechLab loadout)
-	// owns visibility via the UI; force the render gate on in that context.
-	if (inView || g_mechPreviewRenderDepth > 0)
+	if (inView)
 	{
 		uint32_t color = SD_BLUE;
 		uint32_t highLight = 0x007f7f7f;
@@ -94,11 +92,6 @@ long BldgAppearance::render (long depthFixup)
 		// still counts toward eligible_actors). recordCpuFallback() fires
 		// when no submit succeeded.
 		bool submittedToGpu = false;
-		// PREVIEW-FIX: in the SimpleCamera component/weapon preview, skip the GPU
-		// static-prop submit (the batcher flushes with the world snapshot/terrain
-		// MVP, not the UI camera) so submittedToGpu stays false and the legacy CPU
-		// bldgShape->Render() below runs, honoring this SimpleCamera.
-		if (g_mechPreviewRenderDepth == 0)
 		{
 			GpuStaticPropBatcher::instance().recordEligibleActor(
 				GpuStaticPropPopulation::Building);
@@ -441,6 +434,14 @@ long BldgAppearance::render (long depthFixup)
 
 	}
 	return NO_ERR;
+}
+
+TG_MultiShape* BldgAppearance::previewShape (void)
+{
+	if (!bldgShape)
+		return nullptr;
+	bldgShape->SetARGBHighLight(highlightColor);
+	return bldgShape;
 }
 
 long BldgAppearance::renderShadows (void)

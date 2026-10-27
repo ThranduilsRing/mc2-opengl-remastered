@@ -424,18 +424,13 @@ long Mech3DAppearance::render (long depthFixup)
 	// mechShape NULL (see init()). Render nothing rather than deref NULL.
 	if (!mechShape)
 	{
-		if (g_mechPreviewRenderDepth > 0 && mc2::gate::get<"MC2_LOG_PREVIEW">())
-		{
-			bool f = mc2::log::enabled(mc2::log::Cat::Render, mc2::log::Level::Info);
-			if (f) { MC2_LOG(Render, Info, "[PREVIEW] Mech3D::render EARLY-OUT mechShape=NULL (partial-import guard)");   }
-		}
 		// DIAG (GPU-MECH-EQUIV recon): capture the null-shape invisible cohort
 		// (Cohort B — broken appearance type with mechShape==NULL early-outs here,
 		// before both GPU submit and CPU fallback). Gated by MC2_MECH_RESTORE_TRACE.
 		{
 			static const bool s_mrtNull = mc2::gate::get<"MC2_MECH_RESTORE_TRACE">();
 			static int s_nullEmits = 0;
-			if (s_mrtNull && g_mechPreviewRenderDepth == 0 && s_nullEmits < 20000) {
+			if (s_mrtNull && s_nullEmits < 20000) {
 				++s_nullEmits;
 				mc2::fmt::print_err("[MECHRESTORE v1] event=nullshape frame={:d} actor={:d} type={:016X} status={:d}\n", mc2::fmt::as_u32(static_cast<unsigned>(g_mc2FrameCounter)), mc2::fmt::as_u32(static_cast<unsigned long>(actorHandle_)), mc2::fmt::as_ptr(static_cast<void*>(mechType)), mc2::fmt::as_i32(static_cast<int>(status)));
 			}
@@ -452,22 +447,11 @@ long Mech3DAppearance::render (long depthFixup)
 	if (leftArm)
 		leftArm->SetTextureHandle(0,localTextureHandle);
 
-	// C3: render gate — GPU-lagged visibility when killswitch is enabled.
-	// PREVIEW-FIX: SimpleCamera UI preview (Mech Bay / Purchase) always renders
-	// the mech regardless of world inView/GPU-cull — the preview is the whole
-	// point of the panel and its visibility is owned by the UI, not world cull.
-	const bool mechShouldRender = (g_mechPreviewRenderDepth > 0)
-		? true
-		: s_gpuCullLifecycle
+	const bool mechShouldRender = s_gpuCullLifecycle
 			? (gpu_cull::readback_isActorVisibleLagged(static_cast<uint32_t>(actorHandle_)))
 			: inView;
 	if (mechShouldRender)
 	{
-		if (g_mechPreviewRenderDepth > 0 && mc2::gate::get<"MC2_LOG_PREVIEW">())
-		{
-			bool f = mc2::log::enabled(mc2::log::Cat::Render, mc2::log::Level::Info);
-			if (f) { MC2_LOG(Render, Info, "[PREVIEW] Mech3D::render preview shouldRender=1 visible={:d} mechShape={:016X} currentLOD={:d}", mc2::fmt::as_i32(static_cast<int>(visible)), mc2::fmt::as_ptr(static_cast<void*>(mechShape)), mc2::fmt::as_i32(static_cast<int>(currentLOD)));   }
-		}
 		if (visible)
 		{
 			uint32_t color = SD_BLUE;
@@ -536,12 +520,7 @@ long Mech3DAppearance::render (long depthFixup)
 			}
 
 			bool gpuMechSubmitted = false;
-			// PREVIEW-FIX: in SimpleCamera UI preview context, skip the GPU mech
-			// submit entirely so gpuMechSubmitted stays false and the CPU MLR
-			// draw below runs. The GPU batcher flushes with the world snapshot /
-			// terrain MVP and would draw the preview mech off the UI viewport.
-			const bool previewContext = (g_mechPreviewRenderDepth > 0);
-			if (!mechGpuCullSkip && g_drawMechs && !previewContext) {
+			if (!mechGpuCullSkip && g_drawMechs) {
 				// Replicate the highlight selection from the CPU SetARGBHighLight
 				// branches above so the GPU path sees the same color choice.
 				uint32_t gpuHighlightARGB = highLight;
@@ -774,26 +753,7 @@ long Mech3DAppearance::render (long depthFixup)
 				// the always-on per-mission mlr_mech_summary line reflects
 				// Path-B incidence. M2.6 readiness decision consults this
 				// value (spec §12 Q6 amendment 3).
-				++s_mlrMechDrawsThisMission;
-				mechShape->Render(true);  // CPU path — unchanged
-
-				// PREVIEW-FIX diagnostic: confirm the UI preview path takes the
-				// CPU draw and skips GPU submit. MC2_MECH_PREVIEW_TRACE=1, once
-				// per process (preview renders ~60Hz; one line is enough).
-				if (previewContext) {
-					static bool s_prevTraceInit = false;
-					static bool s_prevTrace = false;
-					if (!s_prevTraceInit) {
-						s_prevTraceInit = true;
-						s_prevTrace = mc2::gate::get<"MC2_MECH_PREVIEW_TRACE">();
-					}
-					static bool s_prevTraceEmitted = false;
-					if (s_prevTrace && !s_prevTraceEmitted) {
-						s_prevTraceEmitted = true;
-						mc2::fmt::print_out("[MECH_PREVIEW v1] event=preview_render gpu_submit=0 cpu_draw=1 depth={:d}\n", mc2::fmt::as_i32(g_mechPreviewRenderDepth));
-						std::fflush(stdout);
-					}
-				}
+				++s_mlrMechDrawsThisMission;  // the GPU batcher is the only mech draw path; this counts submit failures
 			}
 
 			// [MECHRESTORE v1] per-actor submit discriminator. Gated +
@@ -1147,6 +1107,15 @@ long Mech3DAppearance::render (long depthFixup)
 	}
 	
  	return NO_ERR;
+}
+
+TG_MultiShape* Mech3DAppearance::previewShape (void)
+{
+	if (!mechShape)
+		return nullptr;
+	mechShape->SetTextureHandle(0,localTextureHandle);
+	mechShape->SetARGBHighLight(highlightColor);
+	return mechShape;
 }
 
 long Mech3DAppearance::renderShadows (void)

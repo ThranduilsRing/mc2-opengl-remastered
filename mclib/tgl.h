@@ -1000,6 +1000,8 @@ class TG_Shape
 		void xformVertexFog(TG_ShapeRecPtr parentNode, TG_TypeShapePtr theShape, long j, TgXformFrame& f);
 		void xformFaceCorners(BYTE alphaValue, TG_TypeShapePtr theShape, long j);
 		void xformFaceQueue(bool isHudElement, BYTE alphaValue, bool isClamped, TG_TypeShapePtr theShape, long j);
+		// UI preview draw of one leaf (preview_draw.cpp): projects, lights and draws immediately; no pools, no queue.
+		void PreviewDraw(const glm::mat4& shapeToWorld, const glm::mat4& worldToShape, BYTE alphaValue);
 
 	public:
 		void init (void)

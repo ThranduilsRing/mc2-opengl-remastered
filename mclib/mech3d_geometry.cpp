@@ -570,19 +570,10 @@ void Mech3DAppearance::updateGeometry (void)
 		// (mechShape->Render(true) bypassed by Slice A; RenderShadows
 		// unreachable on tessellation; findMoverByMouse rect-only — see
 		// killswitch comment in gos_mech_killswitch.h).
-		// PREVIEW-FIX: the SimpleCamera UI preview (Mech Bay / Purchase) draws
-		// via the CPU MLR mechShape->Render(true) path, which consumes the full
-		// TransformMultiShape output (listOfVertices positions + argb lighting).
-		// The GPU fast-transform variants (_PositionsOnly / _HierarchyOnly) leave
-		// listOfVertices stale, so TG_Shape::Render early-returns and the preview
-		// goes blank. Force the full transform whenever a preview render is in
-		// flight. World/tactical mechs (depth == 0) keep the GPU fast paths.
-		if (g_mechPreviewRenderDepth > 0) {
-			mechShape->TransformMultiShape(&xlatPosition, &qRotation);
 		// ISSUE-34: leaf-skip keyed on the modern shadow path (was tess) —
 		// its unreachability proof (RenderShadows early-return, Slice A
 		// Render(true) bypass, rect-only selection) holds on that predicate.
-		} else if (gos_IsModernShadowPathActive()) {
+		if (gos_IsModernShadowPathActive()) {
 			mechShape->TransformMultiShape_HierarchyOnly(&xlatPosition, &qRotation);
 		} else {
 			mechShape->TransformMultiShape_PositionsOnly(&xlatPosition, &qRotation);
