@@ -7432,18 +7432,6 @@
   {
    "tag": "SAVE",
    "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "event",
-    "reason",
-    "version",
-    "file"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "SAVE",
-   "ver": 1,
    "stream": "stdout",
    "keys": [
     "event",
@@ -7456,6 +7444,17 @@
     "active"
    ],
    "count": 2
+  },
+  {
+   "tag": "SAVE",
+   "ver": 2,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "reason",
+    "file"
+   ],
+   "count": 3
   },
   {
    "tag": "SAVELOAD",

@@ -13071,7 +13071,7 @@
       "callers_by_stem": [
         {
           "path": "tools/save_inspect.py",
-          "line": 33,
+          "line": 36,
           "evidence": "import",
           "reference": "save_craft_stale",
           "text": "import save_craft_stale as scs  # noqa: E402"
