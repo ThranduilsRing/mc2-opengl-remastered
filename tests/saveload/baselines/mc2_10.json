@@ -1,16 +1,16 @@
 {
  "mission": "mc2_10",
- "save_at": 1000,
- "load_at": 1100,
+ "save_at": 800,
+ "load_at": 900,
  "gates": {
   "MC2_SMOKE_FIXED_TIMESTEP": "1",
   "MC2_SIM_IDENTITY_TRACE": "1",
   "MC2_SMOKE_FREEZE_ANIM": "1",
-  "MC2_BOOT_QUICKSAVE_AT": "1000",
-  "MC2_BOOT_QUICKLOAD_AT": "1100"
+  "MC2_BOOT_QUICKSAVE_AT": "800",
+  "MC2_BOOT_QUICKLOAD_AT": "900"
  },
  "exe": {
-  "sha": "db6aec9864a9",
+  "sha": "023f03c58d5d",
   "dirty": 0
  },
  "comparison": {
