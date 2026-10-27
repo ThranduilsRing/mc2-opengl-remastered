@@ -733,6 +733,7 @@ bool cp_import_authored(ColorPropIsland* s, const Mc2ColorPropMaterialFeed* feed
         }
         if (!nextTextures.empty()) vlog("per-object textures resident: %zu.", nextTextures.size());
     }
+    // The old maps release through TextureResidency::release, which retires each image on the open-frame ticket (and waitIdle above already drained).
     s->propTextures = std::move(nextTextures);
     s->normalTexture = std::move(nextNormal);
     s->ormTexture = std::move(nextOrm);
