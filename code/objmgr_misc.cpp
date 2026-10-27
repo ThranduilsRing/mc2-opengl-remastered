@@ -635,6 +635,7 @@ void GameObjectManager::updateAppearancesOnly( bool terrain, bool movers, bool o
 			for (long i = 0; i < numVehicles; i++)
 				if (vehicles[i] && vehicles[i]->getExists())
 				{
+					vehicles[i]->applyAppearancePush();
 					bool inView = vehicles[i]->getAppearance()->recalcBounds();
 					vehicles[i]->windowsVisible = turn;
 

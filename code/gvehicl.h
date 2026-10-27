@@ -303,7 +303,19 @@ class GroundVehicle : public Mover {
 		virtual void updateDynamics (void);
 
 		virtual long update (void);
-		
+
+		// What the last update() leaves for presentation beyond Mover::appearancePush (body pitch/roll, no-pilot name, visibility).
+		struct GVPush {
+			bool				hasParams = false;
+			float				pitch = 0.0f, roll = 0.0f;
+			bool				noPilot = false;
+			bool				visible = false;
+		};
+		GVPush				gvPush;
+
+		// Presentation phase: applies appearancePush / gvPush to the draw side of the appearance.
+		void applyAppearancePush (void);
+
 		virtual void render (void);
 
 		virtual void renderShadows (void);

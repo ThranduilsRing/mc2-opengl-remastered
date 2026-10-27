@@ -420,6 +420,8 @@ void Mech3DAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
  	unitAnim().forceStop = unitAnim().atTransitionToNextGesture = unitAnim().inReverse =	unitAnim().inJump = false;
 
 	inDebugMoveMode = singleStepMode = nextStep = prevStep = false;
+	simDebugMove_ = false;
+	simStatus_ = 0;
 
 	unitAnim().currentStateGoal = -1;		//Always start ready to change gestures
 	unitAnim().currentGestureId = 2;		//Always start in Stand Mode

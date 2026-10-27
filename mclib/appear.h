@@ -110,6 +110,7 @@ public:
         long status = 0;
         bool hasStatus = false;   // the owner pushed a status this tick
         bool debugMove = false;
+        float pitch = 0.0f, roll = 0.0f;   // vehicles: body pitch/roll request while wrecked
     };
     virtual void setSimInput(const SimInput&) {}
     std::shared_ptr<mc2::sim::SimPose> simPose = std::make_shared<mc2::sim::SimPose>();

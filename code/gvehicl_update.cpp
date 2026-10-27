@@ -20,6 +20,12 @@ long GroundVehicle::update (void)
     unitAnimation = appearance->simulationAnimation();
     simulationPose = appearance->simPose;
 
+	// What the draw side of the appearance needs from this tick is collected here and applied by applyAppearancePush in
+	// presentation; the tick feeds only the sim half of the appearance (setSimInput, animation requests, update()).
+	AppearancePush push;
+	GVPush gp;
+	auto commitPush = [&]() { appearancePush = push; gvPush = gp; ++pushSerial; };
+
 	if (withdrawing && (pilot->getStatus() == WARRIOR_STATUS_WITHDRAWN)) 
 	{
 		setTangible(false);
@@ -30,15 +36,6 @@ long GroundVehicle::update (void)
 		refitBuddyWID = 0;
 	if (recoverBuddyWID && !ObjectManager->getByWatchID(recoverBuddyWID))
 		recoverBuddyWID = 0;
-
-	if ( Team::home == getTeam() )
-		(static_cast<ObjectAppearance*>(appearance))->pilotNameID = getPilot()->descID;
-	else if ( MPlayer )
-	{
-		strcpy( (static_cast<ObjectAppearance*>(appearance))->pilotName, (commanderId > -1) ? MPlayer->playerInfo[commanderId].name : " " );
-	}
-	else
-		(static_cast<ObjectAppearance*>(appearance))->pilotNameID = getPilot()->descID;
 
 	positionNormal = land->getTerrainNormal(position);
 
@@ -56,7 +53,7 @@ long GroundVehicle::update (void)
 	if (isDestroyed() && (timeLeft < 0.0))
 	{
 		setTangible(false);
-		appearance->setSensorLevel(0);
+		push.sensorLevel = 0;
 
 		if (!deadByCrushed)
 		{
@@ -125,11 +122,24 @@ long GroundVehicle::update (void)
 				relationship = 2;
 			}
 
-			appearance->setObjectParameters(position, rotation, TacticalOverview::maskWorldBars(drawFlags), teamId,relationship);
-			appearance->setMoverParameters(turretRotation,dRot.x,dRot.z,!pathLocks);
+			{
+				Appearance::SimInput simInput;
+				simInput.position = position;
+				simInput.rotation = rotation;
+				simInput.torsoRotation = turretRotation;
+				simInput.pitch = dRot.x;
+				simInput.roll = dRot.z;
+				simInput.hasStatus = true;
+				simInput.status = getStatus();
+				appearance->setSimInput(simInput);
+			}
+			gp.hasParams = true;
+			gp.pitch = dRot.x;
+			gp.roll = dRot.z;
+			push.hasStatus = true;
+			push.status = getStatus();
 			inView = false;
-			appearance->setObjStatus(getStatus());
-	
+
 			if (appearance)
 			{
 				appearance->update();
@@ -143,12 +153,13 @@ long GroundVehicle::update (void)
 			}
 		}
 			
+		commitPush();
  		return(true);
 	}
 	else if (isDestroyed() && timeLeft >= 0.0)
 	{
 		setTangible(false);
-		appearance->setSensorLevel(0);
+		push.sensorLevel = 0;
 		timeLeft -= frameLength;
 		if (timeLeft < 0.0)
 		{
@@ -172,11 +183,24 @@ long GroundVehicle::update (void)
 					relationship = 2;
 				}
 
-				appearance->setObjectParameters(position, rotation, TacticalOverview::maskWorldBars(drawFlags), teamId,relationship);
-				appearance->setMoverParameters(turretRotation,dRot.x,dRot.z,!pathLocks);
+				{
+					Appearance::SimInput simInput;
+					simInput.position = position;
+					simInput.rotation = rotation;
+					simInput.torsoRotation = turretRotation;
+					simInput.pitch = dRot.x;
+					simInput.roll = dRot.z;
+					simInput.hasStatus = true;
+					simInput.status = getStatus();
+					appearance->setSimInput(simInput);
+				}
+				gp.hasParams = true;
+				gp.pitch = dRot.x;
+				gp.roll = dRot.z;
+				push.hasStatus = true;
+				push.status = getStatus();
 				inView = false;
-				appearance->setObjStatus(getStatus());
-		
+
 				if (inView)
 				{
 					appearance->update();
@@ -246,7 +270,8 @@ long GroundVehicle::update (void)
 			
 			if (!MPlayer && getAwake())
 				createVehiclePilot();
-			
+
+			commitPush();
 			return(1);
 		}
 	}
@@ -261,7 +286,7 @@ long GroundVehicle::update (void)
 		}
 	}
 	
-	(static_cast<ObjectAppearance*>(appearance))->pilotNameID = IDS_NOPILOT;
+	gp.noPilot = true;
 	{
 		ZoneScopedN("GameLogic.Units.Vehicles AI");
 		control.update(this);
@@ -508,11 +533,22 @@ long GroundVehicle::update (void)
 				relationship = 2;
 			}
 
-			appearance->setObjectParameters(position, rotation, TacticalOverview::maskWorldBars(drawFlags), teamId,relationship);
-			appearance->setMoverParameters(turretRotation,0.0f,0.0f,!pathLocks);
+			{
+				Appearance::SimInput simInput;
+				simInput.position = position;
+				simInput.rotation = rotation;
+				simInput.torsoRotation = turretRotation;
+				simInput.hasStatus = true;
+				simInput.status = getStatus();
+				appearance->setSimInput(simInput);
+			}
+			gp.hasParams = true;
+			gp.pitch = 0.0f;
+			gp.roll = 0.0f;
+			push.hasStatus = true;
+			push.status = getStatus();
 			inView = false;
-			appearance->setObjStatus(getStatus());
-	
+
 			int watercellR, watercellC;
 			land->worldToCell(position,watercellR, watercellC);
 			if (GameMap->getDeepWater(watercellR, watercellC) || 
@@ -564,9 +600,9 @@ long GroundVehicle::update (void)
 							}
 						}
 						
-						appearance->setAlphaValue(alphaValue);
-						appearance->setSensorLevel(0);
-					}
+							push.hasAlpha = true;
+							push.sensorLevel = 0;
+						}
 					else	//Pretty much anything else is fading out.
 					{
 						if (alphaValue != 0x0)
@@ -584,24 +620,16 @@ long GroundVehicle::update (void)
 							}
 						}
 						
-						appearance->setAlphaValue(alphaValue);
-						
+						push.hasAlpha = true;
+
 						if (conStat == CONTACT_SENSOR_QUALITY_1)
-						{
-							appearance->setSensorLevel(1);
-						}
+							push.sensorLevel = 1;
 						else if (conStat == CONTACT_SENSOR_QUALITY_2)
-						{
-							appearance->setSensorLevel(2);
-						}
+							push.sensorLevel = 2;
 						else if (conStat == CONTACT_SENSOR_QUALITY_3)
-						{
-							appearance->setSensorLevel(3);
-						}
+							push.sensorLevel = 3;
 						else if (conStat == CONTACT_SENSOR_QUALITY_4)
-						{
-							appearance->setSensorLevel(4);
-						}
+							push.sensorLevel = 4;
 					}
 				}
 				else
@@ -609,16 +637,12 @@ long GroundVehicle::update (void)
 					if (isOnGui)
 					{
 						alphaValue = 0xff;
-						appearance->setAlphaValue(alphaValue);
+						push.hasAlpha = true;
 					}
 				}
-				
-				appearance->setVisibility(true,true);
 
-				// FORCE-ALL-VISIBLE-1: single chokepoint, after every contact
-				// branch above and before the appearance is pushed. No-op
-				// unless MC2_FORCE_ALL_VISIBLE.
-				mc2_vis::forceVisibleOverride(appearance, alphaValue);
+				// setVisibility and the FORCE-ALL-VISIBLE-1 override run in applyAppearancePush.
+				gp.visible = true;
 
 				appearance->update();
 				windowsVisible = turn;
@@ -650,8 +674,67 @@ long GroundVehicle::update (void)
 
 	if (getDebugFlag(OBJECT_DFLAG_DISABLE))
 		disable(DEBUGGER_DEATH);
-		
+
+	commitPush();
 	return(1);		//Vehicle is still around,  false means whack this vehicle from list.
+}
+
+// Presentation phase: apply what the last update() collected to the draw side of the appearance, before the presentation
+// loop's recalcBounds / pose blend / update(false). A frame with no new tick applies nothing.
+void GroundVehicle::applyAppearancePush (void)
+{
+	if (pushSerial == pushPresented)
+		return;
+	pushPresented = pushSerial;
+
+	auto* objectAppearance = static_cast<ObjectAppearance*>(appearance);
+	if ( Team::home == getTeam() )
+		objectAppearance->pilotNameID = getPilot()->descID;
+	else if ( MPlayer )
+	{
+		strcpy( objectAppearance->pilotName, (commanderId > -1) ? MPlayer->playerInfo[commanderId].name : " " );
+	}
+	else
+		objectAppearance->pilotNameID = getPilot()->descID;
+	if (gvPush.noPilot)
+		objectAppearance->pilotNameID = IDS_NOPILOT;
+
+	if (gvPush.hasParams)
+	{
+		long relationship = 0;
+		if (getTeamId() == Team::home->getId())
+		{
+			//Two Possibilities.  Either we have the same commander or we don't.
+			// If we do, we are on the same "team", if not we are ALLIES!!!
+			if (getCommanderId() != Commander::home->getId())
+			{
+				relationship = 1;
+			}
+		}
+		else
+		{
+			relationship = 2;
+		}
+
+		appearance->setObjectParameters(position, rotation, TacticalOverview::maskWorldBars(drawFlags), teamId,relationship);
+		appearance->setMoverParameters(turretRotation,gvPush.pitch,gvPush.roll,!pathLocks);
+	}
+	if (appearancePush.hasStatus)
+		appearance->setObjStatus(appearancePush.status);
+
+	if (appearancePush.hasAlpha)
+		appearance->setAlphaValue(alphaValue);
+	if (appearancePush.sensorLevel >= 0)
+		appearance->setSensorLevel(appearancePush.sensorLevel);
+
+	if (gvPush.visible)
+	{
+		appearance->setVisibility(true,true);
+
+		// FORCE-ALL-VISIBLE-1: single chokepoint, after every contact branch and before the appearance is drawn. No-op
+		// unless MC2_FORCE_ALL_VISIBLE.
+		mc2_vis::forceVisibleOverride(appearance, alphaValue);
+	}
 }
 
 void GroundVehicle::renderShadows (void)
