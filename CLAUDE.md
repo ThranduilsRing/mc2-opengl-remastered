@@ -5,7 +5,7 @@ MechCommander 2 engine port: modern GL renderer transitioning to Vulkan, PBR ter
 ## Operating mode (invariants; every new rule replaces one)
 
 - **Lane rules (every agent, every model):** `A:/Games/mc2-ops/lane-rules.md` — read it first. Parallelism: `A:/Games/mc2-ops/JOBS`.
-- **Parallel lanes** live in separate `A:/Games/mc2-*` worktrees. Merges into `claude/nifty-mendeleev` happen only through merge windows (`tools/lane_merge.py --batch`), each followed by an adversarial review.
+- **Parallel lanes** live in separate `A:/Games/mc2-*` worktrees. Merges into `claude/nifty-mendeleev` happen only through merge windows (`tools/lane_merge.py --batch`), each followed by an adversarial review. **Architecture first:** asks the owner adds mid-session go on the backlog (memory `process/project-architecture-backlog-2026-10-27.md`); never stop or deprioritize running architecture lanes (rewrite phases, registries, retirements) to do them at once unless the owner says it's urgent.
 - **Deploy:** lanes deploy ONLY to their own `E:/mc2-installs/<branch>` with an explicit target. The merge gate's deploy to v0.4 (mc2-main's default target, orchestrator only) is the ONLY exception to the lane rule "NEVER deploy to v0.4".
 - **Model/effort:** Sonnet coding = medium; merges with heavy conflicts, reviews and root-causing = high; Sol = medium; Opus case by case; avoid Haiku for build loops.
 - **Game runs** default to about 15 s; benches use `--acceptance` only in the orchestrator's quiet window.
