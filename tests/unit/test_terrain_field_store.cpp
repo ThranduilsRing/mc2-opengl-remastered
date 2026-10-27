@@ -215,3 +215,15 @@ TEST_CASE("terrain fields: cooked detail-normal layers compose level-major and r
     CHECK_FALSE(store.setMaterialNormals({}));
     CHECK_FALSE(static_cast<bool>(store.materialNormals().image));
 }
+
+TEST_CASE("terrain fields: a one-plane cement write keeps the road-art plane") {
+    mc2terrain::TerrainFieldStore store;
+    const uint32_t two[] = {1, 2, 3, 4, 0x80010007u, 0x80010008u, 0, 0x80010009u};   // 2 x 2 map, 2 planes
+    REQUIRE(store.setCementWords(two, 8));
+    const uint32_t one[] = {9, 9, 9, 9};   // repopulate (lighting recalc)
+    REQUIRE(store.setCementWords(one, 4));
+    REQUIRE(store.cementWords().size() == 8);
+    CHECK(store.cementWords()[0] == 9);
+    CHECK(store.cementWords()[4] == 0x80010007u);
+    CHECK(store.cementWords()[7] == 0x80010009u);
+}
