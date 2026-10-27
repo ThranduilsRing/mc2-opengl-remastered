@@ -284,7 +284,7 @@ class GameObjectManager {
 		void releasePoolArrays (void);
 		// R3: PartId -> slots (ascending) hash, rebuilt lazily from objList; defined in objmgr_pick.cpp.
 		struct PartIdIndex;
-		std::unique_ptr<PartIdIndex>	partIdIndex;
+		std::shared_ptr<PartIdIndex>	partIdIndex;	// shared_ptr: unit tests define the manager's ctor/dtor with PartIdIndex incomplete
 		void resetPartIdIndex (void);
 
 		long					currentWeaponsIndex;			//points to next entry in rotating weapon array.

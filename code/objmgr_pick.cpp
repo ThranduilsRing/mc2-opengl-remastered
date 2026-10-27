@@ -94,7 +94,7 @@ GameObjectPtr GameObjectManager::findByPartId (long partId) {
 		return(nullptr);
 
 	if (!partIdIndex)
-		partIdIndex = std::make_unique<PartIdIndex>();
+		partIdIndex = std::make_shared<PartIdIndex>();
 	if (partIdIndex->dirty) {
 		partIdIndex->slots.clear();
 		const long numObjects = getMaxObjects();
