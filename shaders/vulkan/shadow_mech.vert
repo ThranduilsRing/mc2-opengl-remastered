@@ -38,4 +38,7 @@ void main() {
     vec4 worldStuff = boneT * vec4(a_position, 1.0);
     vec3 worldMC2 = mc2ToRender(worldStuff.xyz);
     gl_Position = uFrame.lightSpaceMatrix * vec4(worldMC2, 1.0);
+    // Ground vehicles (renderFlags bit 6) cast through the mover prop feed (captureMoverShadowShape), as before:
+    // collapse their mech-feed copy outside the clip volume.
+    if ((inst.renderFlags & 0x40u) != 0u) gl_Position = vec4(2.0, 2.0, 2.0, 1.0);
 }
