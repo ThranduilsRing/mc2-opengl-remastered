@@ -668,6 +668,7 @@ void ControlGui::render( bool bPaused )
 
 
 		renderHelpText();
+		renderHoverTip();
 		
 		gos_SetRenderState( gos_State_AlphaMode, gos_Alpha_OneZero );
 		

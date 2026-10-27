@@ -1098,8 +1098,13 @@ void MissionInterfaceManager::update (void)
 // caller), NOT the HUD-inverse order-suppression bGui. It only gates whether a
 // genuinely-picked world object (and its name help-text) is kept. See bRawGui note
 // in update().
+long g_hoverTipNameID = 0;
+long g_hoverTipX = 0;
+long g_hoverTipY = 0;
+
 void MissionInterfaceManager::updateTarget( bool bGui)
 {
+	g_hoverTipNameID = 0;
 	
 	// MISSION-START-HOVER-TARGET-LIFETIME-1 (completed): suppress hover BEFORE any deref.
 	// During mission start / settle frames / teardown the persistent target + oldTargets[]
@@ -1210,6 +1215,12 @@ void MissionInterfaceManager::updateTarget( bool bGui)
 
 				helpTextHeaderID = nameID;
 				helpTextID = descID;
+			}
+			if ( target->getAppearance() && target->getAppearance()->getObjectNameId() > 0 )
+			{
+				g_hoverTipNameID = target->getAppearance()->getObjectNameId();
+				g_hoverTipX = mouseX;
+				g_hoverTipY = mouseY;
 			}
 			if ( target->isDestroyed() )
 			{
