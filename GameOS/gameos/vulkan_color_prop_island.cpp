@@ -262,6 +262,7 @@ struct ColorPropIsland : mc2vk::IslandState {
     mc2vk::GpuTicket submitted[2];
     VkCommandBuffer lateCbuf[2] = {VK_NULL_HANDLE, VK_NULL_HANDLE};
     mc2vk::OwnedFence lateFence[2];
+    mc2vk::GpuTicket submitted[2];   // per engine frame slot: the last core submit that used cbuf[slot], set[slot] and the slot's inputs
     struct LateDraw {
         int32_t pc[8];
         uint32_t indexCount, instanceCount, firstIndex, firstInstance;

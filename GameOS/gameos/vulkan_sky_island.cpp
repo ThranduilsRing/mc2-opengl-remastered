@@ -79,6 +79,7 @@ struct Island : mc2vk::IslandState {
     struct VkImageResource* depthRes = nullptr;
     VkDescriptorSet set = VK_NULL_HANDLE;   // allocated from `pool`, freed with it
     VkCommandBuffer cbuf[2] = {};           // allocated from `cpool`, freed with it
+    mc2vk::GpuTicket submitted[2];          // per engine frame slot: the last submit that used cbuf[slot]
     uint64_t hdriGeneration = 0; bool hdriAttempted = false, hdriReal = false;   // the CPU HDRI generation imported
 
     mc2vk::OwnedCommandPool cpool;
@@ -427,10 +428,12 @@ extern "C" int mc2_vk_sky_island_run(int w, int h) {
     if (s->disabled || !s->inited) return 0;
     if (!ensure_hdri(s, p.hdriGeneration) || !s->hdriView) { setFallback("hdri_import_failed"); return 0; }
 
-    VkImageResource* colorRes = s->colorRes;
-    VkFrameSync fsC{};
-    { ZoneScopedN("VKIsl.Sky.FenceWait"); fsC = vkImageResourceBeginFrame(colorRes); }
-    const uint32_t par = fsC.parity & 1u;
+    // GPU-FRONTIER-1: the slot follows the engine frame and the wait is on this island's own previous submit at that slot. The shared scene-color
+    // fence ring this replaces flipped per island call, so every island waited on a submit made earlier in the SAME frame.
+    mc2vk::VulkanContext& rctx = mc2vk::getOrCreateEngineVulkanContext();
+    const uint32_t par = rctx.frameContext().slot;
+    { ZoneScopedN("VKIsl.Sky.FenceWait");
+      if (!rctx.wait(s->submitted[par], 5000000000ull, "sky submission slot")) { setFallback("submission_slot_timeout"); s->disabled = true; return 0; } }
 
     VkCommandBuffer cb = s->cbuf[par];
     vkResetCommandBuffer(cb, 0);
@@ -460,7 +463,8 @@ extern "C" int mc2_vk_sky_island_run(int w, int h) {
     VkSubmitInfo si{};
     si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO; si.commandBufferCount = 1; si.pCommandBuffers = &cb;
     { ZoneScopedN("VKIsl.Sky.Submit");
-      if (mc2vk::submitGraphics(si, fsC.fence) != VK_SUCCESS) { setFallback("submit_failed"); s->disabled = true; return 0; } }
+      if (mc2vk::submitGraphics(si, VK_NULL_HANDLE) != VK_SUCCESS) { setFallback("submit_failed"); s->disabled = true; return 0; } }
+    s->submitted[par] = rctx.tracker().now();
     ++g_health.usedVulkan;
     static bool s_firstOk = false;
     if (!s_firstOk) { vlog("first HDRI sky co-write (hdriReal=%d).", s->hdriReal ? 1 : 0); s_firstOk = true; }

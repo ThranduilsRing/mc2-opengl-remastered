@@ -184,6 +184,7 @@ struct WaterIsland : mc2vk::IslandState {
 
     VkDescriptorSet   set[2] = {VK_NULL_HANDLE, VK_NULL_HANDLE};   // per parity slot (VK-WATER-FENCE-DEFER-1); allocated from `pool`, freed with it
     VkCommandBuffer   cbuf[2] = {VK_NULL_HANDLE, VK_NULL_HANDLE};  // allocated from `cpool`, freed with it
+    mc2vk::GpuTicket  submitted[2];   // per engine frame slot: the last submit that used cbuf[slot], set[slot] and buffers[slot]
 
     bool descNeedsThinRewrite = true; // thinBuf realloc -> descriptor rewrite
 
