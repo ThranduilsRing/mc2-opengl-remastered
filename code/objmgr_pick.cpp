@@ -79,19 +79,91 @@ GameObjectPtr GameObjectManager::findObjectByTypeHandle (long typeHandle) {
 
 //---------------------------------------------------------------------------
 
+// R3: partId -> slots in ascending slot order. Entries are hints: a hit is accepted only if the object still has
+// that partId and exists, so a stale entry (partId changed or object freed) is skipped, never returned. Contract kept:
+// the first existing object in slot order. setPartId/Load feed notePartId; any missed feed is caught by the
+// cross-check below (MC2_OBJMGR_XCHECK, or any non-NDEBUG build).
+#if !defined(NDEBUG) || defined(MC2_OBJMGR_XCHECK)
+#define OBJMGR_PARTID_XCHECK 1
+#endif
+
+struct GameObjectManager::PartIdIndex {
+	std::unordered_map<long, std::vector<uint32_t>> slots;
+	bool dirty = true;
+#ifdef OBJMGR_PARTID_XCHECK
+	unsigned long lookups = 0, mismatches = 0;
+	~PartIdIndex() { fprintf(stderr, "[PARTID_XCHECK] lookups=%lu mismatches=%lu\n", lookups, mismatches); }
+#endif
+};
+
+void GameObjectManager::resetPartIdIndex (void) {
+	delete partIdIndex;
+	partIdIndex = nullptr;
+}
+
+void GameObjectManager::notePartId (GameObjectPtr obj, long newPartId) {
+
+	if (!partIdIndex || partIdIndex->dirty || newPartId == 0)
+		return;
+	const uint32_t slot = obj->getHandle();
+	if (!slot || slot > static_cast<uint32_t>(getMaxObjects()) || objList[slot] != obj) {
+		partIdIndex->dirty = true;
+		return;
+	}
+	auto& v = partIdIndex->slots[newPartId];
+	auto it = std::lower_bound(v.begin(), v.end(), slot);
+	if (it == v.end() || *it != slot)
+		v.insert(it, slot);
+}
+
 GameObjectPtr GameObjectManager::findByPartId (long partId) {
 
 	if (partId == 0)
 		return(nullptr);
 
-	long numObjects = getMaxObjects();
-	for (long objIndex = 1; objIndex <= numObjects; objIndex++) 
-	{
-		GameObjectPtr obj = objList[objIndex];
-		if (obj && obj->getExists() && (obj->getPartId() == partId))
-			return(obj);
+	if (!partIdIndex)
+		partIdIndex = new PartIdIndex;
+	if (partIdIndex->dirty) {
+		partIdIndex->slots.clear();
+		const long numObjects = getMaxObjects();
+		for (long objIndex = 1; objIndex <= numObjects; objIndex++) {
+			GameObjectPtr obj = objList[objIndex];
+			if (obj && obj->getPartId() != 0)
+				partIdIndex->slots[obj->getPartId()].push_back(static_cast<uint32_t>(objIndex));
+		}
+		partIdIndex->dirty = false;
 	}
-	return(nullptr);
+
+	GameObjectPtr found = nullptr;
+	auto it = partIdIndex->slots.find(partId);
+	if (it != partIdIndex->slots.end()) {
+		for (uint32_t slot : it->second) {
+			GameObjectPtr obj = objList[slot];
+			if (obj && obj->getExists() && obj->getPartId() == partId) {
+				found = obj;
+				break;
+			}
+		}
+	}
+
+#ifdef OBJMGR_PARTID_XCHECK
+	{
+		GameObjectPtr linear = nullptr;
+		const long numObjects = getMaxObjects();
+		for (long objIndex = 1; objIndex <= numObjects; objIndex++) {
+			GameObjectPtr obj = objList[objIndex];
+			if (obj && obj->getExists() && (obj->getPartId() == partId)) { linear = obj; break; }
+		}
+		++partIdIndex->lookups;
+		if (linear != found) {
+			if (++partIdIndex->mismatches <= 8)
+				fprintf(stderr, "[PARTID_XCHECK] MISMATCH partId=%ld hash=%p linear=%p\n", partId, (void*)found, (void*)linear);
+			partIdIndex->dirty = true;
+			found = linear;
+		}
+	}
+#endif
+	return(found);
 }
 
 //---------------------------------------------------------------------------

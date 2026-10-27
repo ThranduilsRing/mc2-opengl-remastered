@@ -10,7 +10,7 @@
 
 namespace mc2::gate::detail {
 
-inline constexpr std::size_t kGateCount = 778;
+inline constexpr std::size_t kGateCount = 777;
 
 inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_ABL_ARG_GUARD", Kind::Bool, Rule::Lead1, {}},
@@ -763,7 +763,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_VSYNC", Kind::Bool, Rule::Lead1, {}},
     {"MC2_VULKAN_SPV_DIR", Kind::String, Rule::Std, {}},
     {"MC2_VULKAN_VALIDATION", Kind::String, Rule::Std, {}},
-    {"MC2_WATCHID_GENERATION", Kind::Bool, Rule::Presence, {}},
     {"MC2_WATER_ASPECT_DIAG", Kind::Bool, Rule::Presence, {}},
     {"MC2_WATER_BIAS_LEGACY", Kind::Bool, Rule::Lead0, {}},
     {"MC2_WATER_DEBUG", Kind::Bool, Rule::Presence, {}},

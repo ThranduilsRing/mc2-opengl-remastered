@@ -257,7 +257,8 @@ void DEBUGWINS_print (char* s, long window);
 void Mover::setPartId (long newPartId) {
 
 	partId = newPartId;
-	//MoverRoster[newPartId - MIN_MOVER_PART_ID] = (BaseObjectPtr)this;
+	if (ObjectManager)
+		ObjectManager->notePartId(this, newPartId);
 }
 
 long Mover::setTeamId (long _teamId, bool setup) {
