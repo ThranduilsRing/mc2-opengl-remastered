@@ -109,7 +109,10 @@ namespace MaterialFlags {
     // Bit 5 — is window: hot-color magic applies; sun/ambient lighting
     //         skipped. Mirrors kFlagIsWindow in static_prop.vert bit 1.
     constexpr uint32_t kWindow             = 1u << 5;
-    // Bits 6-31 reserved; must be 0 in cooked manifests.
+    // Bit 6 - per-object textures (static-prop table only): normalTex / metallicRoughnessTex / albedoTex are
+    //         indices into the shader's per-texture table (own extent + mips), not detail-array layers.
+    constexpr uint32_t kPerTexture         = 1u << 6;
+    // Bits 7-31 reserved; must be 0 in cooked manifests.
 } // namespace MaterialFlags
 
 // Sentinel: texture slot is absent (no map provided for this material).

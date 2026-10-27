@@ -21,6 +21,7 @@ struct ModelOverrideMaterial {
     float alphaCutoff = 0.5f;
     std::string normalPath;       // .tga or .ktx2 (BC5 / RGBA8), manifest-relative; empty = flat
     std::string ormPath;          // .tga or .ktx2 (BC7 / RGBA8); empty = class scalars, full coverage
+    std::string albedoPath;       // .ktx2 only (BC7, own mip chain): per-object albedo that replaces the tiered tgl texture; empty = tiered
     float uvScale[2] = {1.0f, 1.0f};
     float normalStrength = 1.0f;
     float aoStrength = 1.0f;

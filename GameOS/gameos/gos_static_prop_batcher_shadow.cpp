@@ -208,7 +208,7 @@ extern "C" int mc2_color_prop_island_get_material_feed(Mc2ColorPropMaterialFeed*
 
     out->arrayKeyOff     = GpuStaticPropBatcher::instance().albedoKey(0);
     const auto& authored = GpuStaticPropBatcher::instance().materialSources();
-    out->normal = &authored.normal; out->orm = &authored.orm;
+    out->normal = &authored.normal; out->orm = &authored.orm; out->textures = authored.textures.data(); out->textureCount = static_cast<uint32_t>(authored.textures.size());
     out->materials = authored.table.data();
     out->materialCount = static_cast<uint32_t>(authored.table.size());
     out->packetMaterialIds = authored.packetIds.size() == s_packetTexArrayLayer.size()

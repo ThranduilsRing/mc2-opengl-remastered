@@ -56,6 +56,7 @@
 // =============================================================================
 #version 450
 #extension GL_GOOGLE_include_directive : require
+#extension GL_EXT_nonuniform_qualifier : require
 layout(constant_id = 0) const int kBaseQuality = 2; // Potato / Low / Medium+High
 
 // Per-frame UBO: generated from RenderCore/gpu_abi/GpuColorFrameUBO.h.
@@ -207,6 +208,8 @@ void main() {
         vec2 uvContinuous = vUv * vUvScale;
         vec4 texOff = texture(uAlbedo, vec3(fract(uvContinuous), float(vLayer)));
         vec3 albedo = texOff.rgb;
+        vec3 objectAlbedo;
+        if (propAlbedoOverride(uPacket.materialId, objectAlbedo)) albedo = objectAlbedo;
         materialAlbedo = albedo; haveAlbedo = true;
 
         // GL DEFAULT PROP MODEL (static_prop.frag:346): tex_color * v_argb, where v_argb

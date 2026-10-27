@@ -17,7 +17,7 @@
 #include <cstdint>
 
 namespace mc2tex { struct TextureArrayCpu; }
-namespace RenderCore { struct PropMaterialGpu; }
+namespace RenderCore { struct PropMaterialGpu; struct KtxImage; }
 
 #ifdef __cplusplus
 extern "C" {
@@ -97,6 +97,8 @@ uint32_t mc2_static_prop_vertex_stride(void);
 struct Mc2ColorPropMaterialFeed {
     const mc2tex::TextureArrayCpu* normal;
     const mc2tex::TextureArrayCpu* orm;
+    const RenderCore::KtxImage* textures;                // per-object maps (kPerTexture rows index this)
+    uint32_t textureCount;
     const RenderCore::PropMaterialGpu* materials;
     uint32_t materialCount;
     const int32_t* packetMaterialIds; // -1 preserves the legacy shader

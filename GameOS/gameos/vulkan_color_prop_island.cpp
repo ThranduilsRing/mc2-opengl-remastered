@@ -286,6 +286,7 @@ struct ColorPropIsland : mc2vk::IslandState {
     mc2vk::OwnedBuffer  layerOnBuf;       // per-type int layer SSBO (class 1)
     mc2vk::OwnedBuffer  hotBuf;           // per-type hot-colour night emission colours (3 vec4 per type)
     mc2vk::ResidentTextureRef normalTexture, ormTexture;
+    std::vector<mc2vk::ResidentTextureRef> propTextures;   // per-object maps, index = uPropTex[] slot
     mc2vk::OwnedSampler detailSampler, treeShadowSampler;
     mc2veg::GroundLighting groundLighting;
     std::optional<Mc2GroundLightingFrame> lastGround;   // last terrain frame's offsets; see the run path
@@ -326,6 +327,7 @@ bool make_buffer(ColorPropIsland* s, mc2vk::OwnedBuffer& out, VkDeviceSize size,
 }
 
 constexpr VkDeviceSize kFrameUboRange = sizeof(ColorFrameUBO);
+constexpr uint32_t kPropTextureSlots = 1024;   // uPropTex[] in prop_material_vk.glsl
 
 // Binding 4 (LightsData) is declared when tier1 && wantLighting.
 void write_ring_bindings(ColorPropIsland* s, VkDescriptorSet set) {
@@ -424,6 +426,16 @@ void write_descriptors(ColorPropIsland* s, int parity = -1) {
             if (j < 2) writes[j].pImageInfo = &detail[j]; else writes[j].pBufferInfo = &table;
         }
         vkUpdateDescriptorSets(s->device, 3, writes, 0, nullptr);
+    }
+    if (!s->propTextures.empty() && s->detailSampler) {
+        std::vector<VkDescriptorImageInfo> infos(s->propTextures.size());
+        for (size_t k = 0; k < infos.size(); ++k)
+            infos[k] = {s->detailSampler.get(), s->propTextures[k].view(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
+        VkWriteDescriptorSet tw{};
+        tw.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; tw.dstSet = s->set[i]; tw.dstBinding = 13;
+        tw.descriptorCount = static_cast<uint32_t>(infos.size());
+        tw.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; tw.pImageInfo = infos.data();
+        vkUpdateDescriptorSets(s->device, 1, &tw, 0, nullptr);
     }
     }   // per-parity set loop
 }
@@ -683,6 +695,34 @@ bool cp_import_authored(ColorPropIsland* s, const Mc2ColorPropMaterialFeed* feed
     if (!mapped) return false;
     std::memcpy(mapped, have ? feed->materials : &neutral, static_cast<size_t>(bytes));
     nextTable.unmap();
+    std::vector<mc2vk::ResidentTextureRef> nextTextures;
+    if (have && feed->textureCount && !mc2::options::lowCost()) {
+        // Each map is its own image with its own mip chain. Potato drops the top mip from residency and staging.
+        const uint32_t drop = mc2::options::current().baseQuality == 0 ? 1u : 0u;
+        for (uint32_t ti = 0; ti < feed->textureCount; ++ti) {
+            const RenderCore::KtxImage& src = feed->textures[ti];
+            RenderCore::KtxImage image = src;
+            uint32_t w = static_cast<uint32_t>(image.width), h = static_cast<uint32_t>(image.height);
+            if (drop && image.mipCount > 1) {
+                const uint64_t base = image.mipByteOffsets[1];
+                image.pixels.erase(image.pixels.begin(), image.pixels.begin() + static_cast<ptrdiff_t>(base));
+                image.mipByteOffsets.erase(image.mipByteOffsets.begin());
+                for (auto& o : image.mipByteOffsets) o -= base;
+                --image.mipCount; w = mc2tex::mipExtent(w, 1); h = mc2tex::mipExtent(h, 1);
+                image.width = static_cast<int>(w); image.height = static_cast<int>(h);
+            }
+            uint64_t hash = 1469598103934665603ull;
+            for (uint8_t byte : image.pixels) { hash ^= byte; hash *= 1099511628211ull; }
+            RenderCore::TextureKey key;
+            key.source = "prop-tex:" + std::to_string(hash) + ":" + std::to_string(w) + ":" + std::to_string(h) + ":" + std::to_string(image.vkFormat);
+            key.format = image.vkFormat; key.hints = image.mipCount > 1 ? gosHint_MipmapFilter0 : 0;
+            auto texture = mc2vk::getOrCreateEngineVulkanContext().textures().acquire(key, image, {w, h, w, h}, 1, true);
+            if (!texture) { vlog("per-object texture upload failed (%ux%u fmt=%u).", w, h, image.vkFormat); return false; }
+            nextTextures.push_back(std::move(texture));
+        }
+        if (!nextTextures.empty()) vlog("per-object textures resident: %zu.", nextTextures.size());
+    }
+    s->propTextures = std::move(nextTextures);
     s->normalTexture = std::move(nextNormal);
     s->ormTexture = std::move(nextOrm);
     s->materialBuf = std::move(nextTable);
@@ -929,7 +969,7 @@ bool init_island(ColorPropIsland* s, int w, int h) {
         // Base bindings 0(UBO),1(inst SSBO); optional +4(LightsData SSBO, VS). Material
         // (tier1 + MC2_VK_PROP_MATERIAL): +2(alpha-OFF layer SSBO VS), 3(alpha-OFF albedo
         // FS), 5(alpha-ON layer SSBO VS), 6(alpha-ON albedo FS).
-        VkDescriptorSetLayoutBinding b[16]{};
+        VkDescriptorSetLayoutBinding b[20]{};
         uint32_t nb = 0;
         b[nb].binding = 0; b[nb].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
         b[nb].descriptorCount = 1; b[nb].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT; ++nb;
@@ -972,8 +1012,18 @@ bool init_island(ColorPropIsland* s, int w, int h) {
         b[nb].descriptorCount = 1; b[nb].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT; ++nb;
         b[nb].binding = 25; b[nb].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         b[nb].descriptorCount = 1; b[nb].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT; ++nb;
+        // Per-object texture table (binding 13): descriptor-indexing array, only the slots a map uses are written.
+        const uint32_t kTexBinding = 13;
+        b[nb].binding = kTexBinding; b[nb].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        b[nb].descriptorCount = kPropTextureSlots; b[nb].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT; ++nb;
+        VkDescriptorBindingFlags bindFlags[20]{};
+        for (uint32_t k = 0; k < nb; ++k)
+            if (b[k].binding == kTexBinding) bindFlags[k] = VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT;
+        VkDescriptorSetLayoutBindingFlagsCreateInfo bfi{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO};
+        bfi.bindingCount = nb; bfi.pBindingFlags = bindFlags;
         VkDescriptorSetLayoutCreateInfo lci{};
         lci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+        lci.pNext = &bfi;
         lci.bindingCount = nb; lci.pBindings = b;
         if (!mc2vk::create(s->dsl, s->device, [&](VkDescriptorSetLayout* h) { return vkCreateDescriptorSetLayout(s->device, &lci, nullptr, h); })) {
             vlog("vkCreateDescriptorSetLayout failed."); return false;
@@ -985,7 +1035,7 @@ bool init_island(ColorPropIsland* s, int w, int h) {
         sizes[nsz++] = {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 2};
         sizes[nsz++] = {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 2u * (1u + (lightBinding ? 1u : 0u))};
         sizes[nsz++] = {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 2u * ((materialBindings ? 2u : 0u) + (s->tier1 ? 1u : 0u) + 2u)};
-        sizes[nsz++] = {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, (materialBindings ? 4u : 0u) + 8u};
+        sizes[nsz++] = {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, (materialBindings ? 4u : 0u) + 8u + 2u * kPropTextureSlots};
         sizes[nsz++] = {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 2};
         VkDescriptorPoolCreateInfo pci{};
         pci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
