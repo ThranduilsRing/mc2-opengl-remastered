@@ -168,7 +168,7 @@ def test_deploy_classic_needs_no_package_but_remastered_fails(tmp_path, monkeypa
     class ReachedCopyPreflight(Exception):
         pass
     monkeypatch.setattr(dp, "check_free_space_for_payload", lambda *a: (_ for _ in ()).throw(ReachedCopyPreflight()))
-    args = SimpleNamespace(allow_stale_exe=False, build64_root=None, classic_assets=classic)
+    args = SimpleNamespace(allow_stale_exe=False, build64_root=None, classic_assets=classic, skip_kit=False)
     expected = ReachedCopyPreflight if classic or not option else SystemExit
     with pytest.raises(expected):
         dp.run_deploy(args, str(tmp_path), str(tmp_path), str(tmp_path), "mc2.exe", "mc2.pdb")

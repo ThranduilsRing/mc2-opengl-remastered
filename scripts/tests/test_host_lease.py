@@ -560,7 +560,7 @@ def test_slot_count_comes_from_the_shared_waiver_file_not_the_environment(monkey
 
 @pytest.mark.parametrize("in_gate,granted", [(True, True), (False, False)])
 def test_gate_tickets_go_ahead_of_a_queued_pass_fail_run(lease, monkeypatch, in_gate, granted):
-    waiting = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(30)"])
+    waiting = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(30)"], **console_child.child_kwargs(redirected=True))
     try:
         ticket = {"pid": waiting.pid, "created": host_lease.child_registry.process_create_time(waiting.pid),
                   "exclusive": False, "priority": 1}
