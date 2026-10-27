@@ -15,7 +15,8 @@ inline constexpr int MAX_SENSORS = 512;	// # sensor systems allowed per mission 
 inline constexpr int MAX_ECMS = 50;
 #include "dmovemgr.h"
 inline constexpr int MAX_CONTACTS_PER_SENSOR = MAX_MOVERS;
-static_assert(MAX_CONTACTS_PER_SENSOR <= 255); // 255 is the absent-contact sentinel.
+inline constexpr unsigned short NO_SENSOR_CONTACT = 0xFFFF;
+static_assert(MAX_CONTACTS_PER_SENSOR <= NO_SENSOR_CONTACT);
 static_assert(MAX_SENSORS <= 65535);
 
 enum _ContactStatus {

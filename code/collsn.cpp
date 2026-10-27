@@ -398,7 +398,7 @@ long CollisionSystem::init (FitIniFile *scenarioFile)
 	xGridSize =24;
 	yGridSize =24;
 	gridRadius = 200;
-	maxObjects = 300;
+	maxObjects = 300 + (MAX_MOVERS - 255);	// 45 non-mover slots of headroom over the legacy 255 movers
 	maxCollisions = 100;
 	warningDist = 250.0;                       //This is in world Units!!!
 	alertTime = 2.5;                                     //This is in seconds

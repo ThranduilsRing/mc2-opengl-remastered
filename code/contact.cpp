@@ -373,7 +373,7 @@ bool SensorSystem::isContact (MoverPtr mover) {
 	if (mover->getFlag(OBJECT_FLAG_REMOVED))
 		return(false);
 	if (notShutdown)
-		return(mover->getContactInfo()->getSensor(id) < 255);
+		return(mover->getContactInfo()->getSensor(id) != NO_SENSOR_CONTACT);
 	for (long i = 0; i < numContacts; i++)
 		if ((contacts[i] & 0x7FFFFFFF) == mover->getHandle())
 			return(true);
@@ -442,7 +442,7 @@ void SensorSystem::removeContact (long contactIndex) {
 void SensorSystem::removeContact (MoverPtr contact) {
 
 	long contactIndex = contact->getContactInfo()->getSensor(id);
-	if (contactIndex < 255)
+	if (contactIndex != NO_SENSOR_CONTACT)
 		removeContact(contactIndex);
 }
 
@@ -1023,7 +1023,7 @@ SensorSystemPtr TeamSensorSystem::findBestSpotter (MoverPtr contact, long* statu
 	SensorSystemPtr bestSensor = nullptr;
 	long bestStatus = CONTACT_NONE;
 	for (long i = 0; i < MAX_SENSORS; i++)
-		if (contactInfo->sensors[i] != 255) {
+		if (contactInfo->sensors[i] != NO_SENSOR_CONTACT) {
 			SensorSystemPtr sensor = SensorManager->getSensor(i);
 			if (sensor && sensor->owner && (teamId == sensor->owner->getTeamId())) {
 				long status = sensor->calcContactStatus(contact);
@@ -1068,7 +1068,7 @@ void TeamSensorSystem::modifyContact (SensorSystemPtr sensor, MoverPtr contact, 
 void TeamSensorSystem::removeContact (SensorSystemPtr sensor, MoverPtr contact) {
 
 	ContactInfoPtr contactInfo = contact->getContactInfo();
-	contactInfo->sensors[sensor->id] = 255;
+	contactInfo->sensors[sensor->id] = NO_SENSOR_CONTACT;
 	Assert(contactInfo->contactCount[teamId] > 0, 0, "Negative contact count");
 	contactInfo->contactCount[teamId]--;
 

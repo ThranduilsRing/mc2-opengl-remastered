@@ -6,7 +6,7 @@
 | Areas 30000; doors 32766 + 2 scratch; 255 doors/area | `globalmap_limits.h`, global-map reader/builder; signed 16-bit identities, 32-bit counts/products | Fits. Mapgen allowed 32767 areas: writer now refuses at 30000 and rejects sides above 3072. |
 | Movers 255 | `dmovemgr.h`, object-manager mover arrays; byte identities reserve 255 | Retained; assertion prevents an unreviewed increase. This is not 1024-unit support. |
 | Warriors / team roster | `warrior.h`, `dteam.h`, `team.cpp` | 120 was narrower than 255 movers. Runtime storage now derives from mover cap (256 warrior slots, including reserved slot zero). Legacy warrior layout and 120-entry team prefix stay frozen; larger team rosters have bounded portable suffixes. |
-| Sensor pool 512; contacts/sensor | `dcontact.h`, `contact.h`, `contact.cpp` | 200 contacts increased to 255 (indices 0..254; 255 absent). Counts of up to 512 observers were truncated to bytes: widened to 16 bits. Spotter identities now use 32 bits; packed contacts use 31 handle bits plus the visual flag. All are runtime only. |
+| Sensor pool 512; contacts/sensor | `dcontact.h`, `contact.h`, `contact.cpp` | Contacts derive from the mover cap; sensor indices use 16 bits with 65535 absent. Counts use 16 bits, spotter identities use 32 bits, and packed contacts use 31 handle bits plus the visual flag. All are runtime only. |
 | Team contacts / scratch | `contact.h`, `contact.cpp`, `dteam.h` | Team contact arrays and scored scratch derive from `MAX_MOVERS`; per-team sensor storage now covers the full 512-sensor pool; team contact indices use 16 bits, absent 65535. |
 | Player queue 16/warrior | `warrior.h`, `warrior_queue.cpp`, `warrior_state.cpp` | Shared pool 2000 could not cover all warriors; now cap product (4096). Count remains signed byte; cursor is 32-bit and checked on load. Marker pointers remain null in files. |
 | Save packet directory | `saveload.cpp`, `MOVE_saveData(nullptr, 0)` | Fixed 20000 slots could underallocate for large door graphs and object counts. Reservation now uses the existing count-only MOVE writer plus bounded pilot/team/commander overhead and actual object capacity, retaining 20000 as the stock minimum. |
@@ -27,7 +27,6 @@ to a portable schema. Legacy packets without the suffix still load.
 
 Sim architecture packet 1 adds runtime entity IDs (legacy slot plus session and
 generation) and ordered spatial candidates. Neither changes the serialized slot
-table or the mover ceiling. D4's 1024 movers remain blocked by byte sensor-contact
-indices (`ContactInfo::sensors`, with 255 absent), the mover identity audit pinned
-in `dmovemgr.h`, and the remaining legacy packed identities. Widening those fields
-needs a separate format/consumer migration; raising `MAX_MOVERS` alone is unsafe.
+table or the mover ceiling. Sensor-contact indices now accommodate 1024 entries,
+but D4's 1024 movers still need a larger sensor pool and an identity, save and
+consumer audit. Raising `MAX_MOVERS` alone is unsafe.

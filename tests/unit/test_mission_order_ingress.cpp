@@ -226,6 +226,11 @@ static_assert(MAX_SENSORS_PER_TEAM == MAX_SENSORS);
 
 TEST_CASE("contacts retain every observer and wide object identities") {
 	ContactInfo info;
+	CHECK(info.getSensor(0) == NO_SENSOR_CONTACT);
+	info.setSensor(0, 255);
+	CHECK(info.getSensor(0) == 255);
+	info.setSensor(0, 1023);
+	CHECK(info.getSensor(0) == 1023);
 	for (int i = 0; i < MAX_SENSORS; ++i) info.incContactCount(0);
 	CHECK(info.getContactCount(0) == MAX_SENSORS);
 	info.teamSpotter[0] = 1000000;
