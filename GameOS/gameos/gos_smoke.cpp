@@ -94,6 +94,8 @@ void parseArgs(int argc, char** argv) {
                 failMissingValue("--duration (must be integer 1..86400)");
             }
             g_state.durationSec = static_cast<int>(v);
+        } else if (std::strcmp(a, "--headless") == 0) {
+            g_state.headless = true;
         } else if (std::strcmp(a, "--ticks") == 0) {
             if (i + 1 >= argc) failMissingValue("--ticks");
             const char* s = argv[++i];
