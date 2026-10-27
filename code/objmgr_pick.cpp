@@ -9,18 +9,33 @@
 
 extern bool ShowMovers;
 
-std::vector<mc2::world::SpatialGrid::Candidate> GameObjectManager::nearbyMovers(const glm::vec3& position, float radius) {
-	if (moverGridDirty) {
-		moverGrid.clear();
-		for (long i = 0; i < numMovers; ++i) {
-			auto* mover = moverList[i];
-			const auto p = mover->getPosition();
-			moverGrid.add(p.x, p.y, i, entityId(mover->getHandle()));
-		}
-		moverGrid.finish();
-		moverGridDirty = false;
+static std::vector<int> s_moverOrdinalByHandle;	// rebuilt with moverGrid, same lifetime
+
+static void ensureMoverGrid(GameObjectManager& om, mc2::world::SpatialGrid& grid, bool& dirty, MoverPtr* moverList, long numMovers) {
+	if (!dirty) return;
+	grid.clear();
+	GameObjectHandle maxHandle = -1;
+	for (long i = 0; i < numMovers; ++i) {
+		auto* mover = moverList[i];
+		const auto p = mover->getPosition();
+		grid.add(p.x, p.y, i, om.entityId(mover->getHandle()));
+		maxHandle = std::max(maxHandle, mover->getHandle());
 	}
+	grid.finish();
+	s_moverOrdinalByHandle.assign(size_t(maxHandle + 1), -1);
+	for (long i = 0; i < numMovers; ++i)
+		s_moverOrdinalByHandle[moverList[i]->getHandle()] = int(i);
+	dirty = false;
+}
+
+std::vector<mc2::world::SpatialGrid::Candidate> GameObjectManager::nearbyMovers(const glm::vec3& position, float radius) {
+	ensureMoverGrid(*this, moverGrid, moverGridDirty, moverList, numMovers);
 	return moverGrid.query(position.x, position.y, radius);
+}
+
+int GameObjectManager::moverOrdinal(GameObjectHandle handle) {
+	ensureMoverGrid(*this, moverGrid, moverGridDirty, moverList, numMovers);
+	return (handle >= 0 && size_t(handle) < s_moverOrdinalByHandle.size()) ? s_moverOrdinalByHandle[handle] : -1;
 }
 
 std::vector<mc2::world::SpatialGrid::Candidate> GameObjectManager::nearbyBuildings(const glm::vec3& position, float radius) {

@@ -148,73 +148,49 @@ void GlobalCollisionAlert::purgeRecords (void)
 //------------------------------------------------------------------------------
 long CollisionGrid::init (glm::vec3 &newOrigin)
 {
-	//--------------------------------------------------
-	// Check if stuff is allocated.  Once this happens
-	// it is silly to call destroy each time.  We can
-	// simply reinit and check if allocs already go.
 	if (!gridIsGo)
 	{
 		xGridWidth = CollisionSystem::xGridSize;
 		yGridWidth = CollisionSystem::yGridSize;
-		
-		maxGridRadius = CollisionSystem::gridRadius;
-		maxObjects = CollisionSystem::maxObjects;
 
-		gridSize = sizeof(CollisionGridNodePtr) * xGridWidth * yGridWidth;
-		nodeSize = sizeof(CollisionGridNode) * maxObjects;
-		
-		gridStore.assign(static_cast<size_t>(xGridWidth) * yGridWidth, nullptr);
-		grid = gridStore.data();
-		nodeStore.assign(maxObjects ? maxObjects : 1, CollisionGridNode{});
-		nodes = nodeStore.data();
-		
+		maxGridRadius = CollisionSystem::gridRadius;
+
 		gridXOffset = ((xGridWidth + 1) * maxGridRadius) / 2;
 		gridYOffset = ((yGridWidth + 1) * maxGridRadius) / 2;
-		
+
 		gridXCheck = xGridWidth * maxGridRadius;
 		gridYCheck = yGridWidth * maxGridRadius;
-			
+
 		gridIsGo = TRUE;
 	}
 
-	//-----------------------------
-	// Reset all of the grid data.	
-	memset(grid,0,gridSize);
-	memset(nodes,0,nodeSize);
-		
-	nextAvailableNode = 0;
+	placed.clear();
+	giants.clear();
 	gridOrigin = newOrigin;
-	
-	giantObjects = nullptr;
 
 	return(NO_ERR);
 }
-		
+
 //------------------------------------------------------------------------------
 void CollisionGrid::destroy (void)
 {
 	if (gridIsGo)
 	{
-		std::vector<CollisionGridNode>().swap(nodeStore);
-		std::vector<CollisionGridNodePtr>().swap(gridStore);
+		std::vector<Placed>().swap(placed);
+		std::vector<GameObjectPtr>().swap(giants);
+		std::vector<unsigned long>().swap(cellStart);
+		std::vector<GameObjectPtr>().swap(ordered);
 
 		gridIsGo = FALSE;
 		init();
 	}
-}	
-		
+}
+
 //------------------------------------------------------------------------------
 long CollisionGrid::add (unsigned long gridIndex, GameObjectPtr object)
 {
-	gosASSERT(nextAvailableNode < maxObjects);
 	gosASSERT((gridIndex >= 0) && (gridIndex < (xGridWidth * yGridWidth)));
-	
-	CollisionGridNodePtr prev = grid[gridIndex];
-	CollisionGridNodePtr node = &nodes[nextAvailableNode++];
-	grid[gridIndex] = node;
-	node->object = object;
-	node->next = prev;
-	
+	placed.push_back({gridIndex, object});
 	return(NO_ERR);
 }
 
@@ -223,135 +199,136 @@ long CollisionGrid::add (GameObjectPtr object)
 {
 	if (object->getTangible())		//Can anything even hit me?
 	{
-		gosASSERT(nextAvailableNode < maxObjects);
 		float objectRadius = object->getExtentRadius();
-		
+
 		//---------------------------------------------
 		// Check if we are a giant Object
 		if (objectRadius > maxGridRadius)
 		{
-			CollisionGridNodePtr node = &nodes[nextAvailableNode++];
-			node->object = object;
-			node->next = giantObjects;
-			giantObjects = node;
+			giants.push_back(object);
 			return NO_ERR;
 		}
-		
+
 		float gx,gy;
-		
+
 		gx = object->getPosition().x;	// - gridOrigin.x;
 		gx += gridXOffset;
 		if (gx < 0)
 			gx = 0;
-		
+
 		if (gx >= gridXCheck)
 			gx = gridXCheck - 1;
-		
+
 		gx /= maxGridRadius;
-		
+
 		gy = object->getPosition().y;	// - gridOrigin.y;
 		gy += gridYOffset;
 		if (gy < 0)
 			gy = 0;
-		
-		if (gy >= gridYCheck)	
+
+		if (gy >= gridYCheck)
 			gy = gridYCheck - 1;
-		
-		gy /= maxGridRadius;	
+
+		gy /= maxGridRadius;
 
 		unsigned long gridIndex = float2long(gx-0.5f) + float2long(gy-0.5f) * xGridWidth;
-		
+
 		long result = add(gridIndex,object);
 		return result;
 	}
 
 	return NO_ERR;
-}	
+}
 
 //------------------------------------------------------------------------------
 void CollisionGrid::createGrid (void)
 {
+	// Flat cell ranges. The legacy bucket lists were LIFO, so within a cell the newest object
+	// comes first, and giants likewise. The traversal below reproduces that exact order.
+	const size_t cells = static_cast<size_t>(xGridWidth) * yGridWidth;
+	cellStart.assign(cells + 1, 0);
+	for (const auto& p : placed)
+		cellStart[p.cell + 1]++;
+	for (size_t c = 0; c < cells; c++)
+		cellStart[c + 1] += cellStart[c];
+	ordered.resize(placed.size());
+	{
+		std::vector<unsigned long> cursor(cellStart.begin(), cellStart.end() - 1);
+		for (size_t k = placed.size(); k-- > 0;)
+			ordered[cursor[placed[k].cell]++] = placed[k].object;
+	}
+	std::reverse(giants.begin(), giants.end());	// now in legacy list order
+	traverse();
+}
+
+void CollisionGrid::traverse (void)
+{
+	const GameObjectPtr* const giantBegin = giants.data();
+	const GameObjectPtr* const giantEnd = giantBegin + giants.size();
+
 	//------------------------------------------------
 	// This block of code is only necessary if
 	// we collide a giantObject against a giantObject.
-	CollisionGridNodePtr g = giantObjects;
-	unsigned long totalGiantObjects = 0;
-	while (g)
-	{
-		if (g->next)
-		{
-			checkGrid(g->object,g->next);
-			totalGiantObjects++;
-		}
-		g = g->next;
-	}
-	
+	for (const GameObjectPtr* g = giantBegin; g + 1 < giantEnd; ++g)
+		checkGrid(*g, g + 1, giantEnd);
+
+	const GameObjectPtr* const base = ordered.data();
 	for (long y=0;y<static_cast<long>(yGridWidth);y++)
 	{
 		for (long x=0;x<static_cast<long>(xGridWidth);x++)
 		{
 			unsigned long gridIndex = x + y*xGridWidth;
-			CollisionGridNodePtr g = grid[gridIndex];
+			const GameObjectPtr* const cellBegin = base + cellStart[gridIndex];
+			const GameObjectPtr* const cellEnd = base + cellStart[gridIndex + 1];
 
-			if (g && mc2_collision_trace::g_counters.active)
+			if (cellBegin != cellEnd && mc2_collision_trace::g_counters.active)
 				mc2_collision_trace::g_counters.gridCells++;
 
-			while (g)
+			for (const GameObjectPtr* g = cellBegin; g != cellEnd; ++g)
 			{
-				GameObjectPtr obj = g->object;
-				
+				GameObjectPtr obj = *g;
+
 				//--------------------------------------
 				// Check against the big things.
-				if (giantObjects)
-					checkGrid(obj,giantObjects);
-				
-				CollisionGridNodePtr area = g->next;
-				
+				if (giantBegin != giantEnd)
+					checkGrid(obj,giantBegin,giantEnd);
+
 				//---------------------------
 				// Check same grid as object
-				if (area)	
-					checkGrid(obj,area);
-				
+				if (g + 1 != cellEnd)
+					checkGrid(obj,g + 1,cellEnd);
+
 				if (x < long(xGridWidth-1))
 				{
 					//---------------------
 					// Check grid at x+1,y
-					area = grid[gridIndex+1];
-					if (area)
-						checkGrid(obj,area);
-					
+					checkGrid(obj,base + cellStart[gridIndex+1],base + cellStart[gridIndex+2]);
+
 					if (y < long(yGridWidth-1))
 					{
 						//-----------------------
 						// Check grid at x+1,y+1
-						area = grid[gridIndex+1+xGridWidth];
-						if (area)
-							checkGrid(obj,area);
+						checkGrid(obj,base + cellStart[gridIndex+1+xGridWidth],base + cellStart[gridIndex+2+xGridWidth]);
 					}
 				}
-				
+
 				if (y < long(yGridWidth-1))
 				{
 					//---------------------
 					// Check grid at x,y+1
-					area = grid[gridIndex+xGridWidth];
-					if (area)
-						checkGrid(obj,area);
+					checkGrid(obj,base + cellStart[gridIndex+xGridWidth],base + cellStart[gridIndex+1+xGridWidth]);
 				}
-				
-				g = g->next;
 			}
 		}
 	}
-}	
+}
 
 //------------------------------------------------------------------------------
-void CollisionGrid::checkGrid (GameObjectPtr obj1, CollisionGridNodePtr area)
+void CollisionGrid::checkGrid (GameObjectPtr obj1, const GameObjectPtr* first, const GameObjectPtr* last)
 {
-	while (area)
+	for (; first != last; ++first)
 	{
-		GameObjectPtr obj2 = area->object;
-		area = area->next;
+		GameObjectPtr obj2 = *first;
 
 		if (mc2_collision_trace::g_counters.active)
 			mc2_collision_trace::g_counters.pairsTested++;  // headline broadphase pair count
