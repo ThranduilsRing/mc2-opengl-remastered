@@ -40,6 +40,35 @@ def test_vehicle_payload_has_separate_pin_and_mount(tmp_path, monkeypatch):
     assert all(dst.startswith("mods/mc2-vehicle-kit/") for _, dst, _ in items)
 
 
+def test_deploy_copies_only_pinned_files_and_rejects_existing_extras(tmp_path, monkeypatch):
+    import deploy_payload as dp
+    manifest, store = package(tmp_path, monkeypatch)
+    for rel in ("content/packaging-r4.json", "content/packaging-r5.json", "content/review.json"):
+        path = store / rel
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("{}")
+    # The real deploy inventory must not pin art-side bookkeeping either.
+    real = json.loads((Path(__file__).resolve().parents[2] / kit.MANIFEST).read_text())
+    assert not [r['path'] for r in real['files'] if r['path'].startswith('content/')
+                and r['path'].endswith('.json') and not r['path'].endswith('.mc2ir.json')]
+    _, items = kit.payload(tmp_path)
+    target = tmp_path / 'install'
+    monkeypatch.setattr(dp, 'ensure_terrain_materials', lambda *a: {})
+    monkeypatch.setattr(dp, 'ensure_engine_normal_cooks', lambda *a: None)
+    for _ in range(2):
+        dp.deploy(items, target, False)
+    installed = target / kit.KIT_REL
+    assert {p.relative_to(installed).as_posix() for p in installed.rglob('*') if p.is_file()} == {
+        r['path'] for r in manifest['files']}
+    extra = installed / 'content/packaging-r4.json'
+    extra.parent.mkdir(parents=True)
+    extra.write_text('{}')
+    with pytest.raises(ValueError) as exc:
+        kit.finish(target, manifest, tmp_path / 'tool')
+    assert str(extra) in str(exc.value)
+    assert 'safe to delete if not in the kit manifest' in str(exc.value)
+
+
 @pytest.mark.parametrize("problem", ["missing", "hash", "asset-list", "unsafe"])
 def test_bad_package_fails_before_copy(tmp_path, monkeypatch, problem):
     manifest, store = package(tmp_path, monkeypatch)
