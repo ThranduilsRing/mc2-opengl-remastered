@@ -74,7 +74,7 @@ void draw() {
                         "Visual: normal rendered output (default).\n"
                         "Object ID Debug: per-pixel ID colorization (needs MC2_OBJECT_ID_BUFFER=1).\n"
                         "Tactical Overlay: drawn in-scene by the debug renderer\n"
-                        "  (MC2_DEBUG_RENDERER=1 + MC2_TACTICAL_ARC_OVERLAY=1); here it is a passthrough.\n"
+                        "  (MC2_TACTICAL_ARC_OVERLAY=1); here it is a passthrough.\n"
                         "Thermal: luminance->iron-palette PLACEHOLDER (not real IR).\n"
                         "Infrared: no implementer (passthrough).\n"
                         "Low Light: night-vision luminance boost + green tint.");

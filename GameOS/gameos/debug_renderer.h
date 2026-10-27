@@ -18,7 +18,6 @@ public:
     Queue(const Queue&) = delete;
     Queue& operator=(const Queue&) = delete;
 
-    bool enabled;                // MC2_DEBUG_RENDERER, read once when the renderer is created
     bool testCanary;             // MC2_DEBUG_RENDERER_TEST
     bool capWarned = false;
     std::vector<DbgVert> verts;  // collecting during the scene
@@ -26,29 +25,29 @@ public:
     float frozenMvp[16] = {};
 };
 
-// Enqueue a world-space line segment. No-op when MC2_DEBUG_RENDERER is unset.
+// Enqueue a world-space line segment. No-op when no render context exists.
 void drawLineWorld(Vec3 a, Vec3 b, uint32_t rgba);
 
 // Enqueue a world-space AABB as 12 edges (24 verts).
-// No-op when MC2_DEBUG_RENDERER is unset.
+// No-op when no render context exists.
 void drawAabbWorld(Vec3 mn, Vec3 mx, uint32_t rgba);
 
 // Enqueue a world-space horizontal ring (XZ plane at center.y).
-// segments clamped to [3, 256]. No-op when MC2_DEBUG_RENDERER is unset.
+// segments clamped to [3, 256]. No-op when no render context exists.
 void drawRingWorld(Vec3 center, float radius, int segments, uint32_t rgba);
 
 // Oriented ring in the plane perpendicular to 'normal'.
 // Falls back to XZ-plane ring when normal has near-zero length (< 1e-6).
-// segments clamped to [3, 256]. No-op when MC2_DEBUG_RENDERER is unset.
+// segments clamped to [3, 256]. No-op when no render context exists.
 void drawRingWorld(Vec3 center, Vec3 normal, float radius, int segments, uint32_t rgba);
 
 // World-space 3-axis cross: lines along X, Y, Z through center, halfSize each side.
-// No-op when MC2_DEBUG_RENDERER is unset.
+// No-op when no render context exists.
 void drawCrossWorld(Vec3 center, float halfSize, uint32_t rgba);
 
 // Approximate sphere: 3 great-circle rings (XY, YZ, XZ planes) plus (rings-1)
 // latitude rings. rings clamped to [1, 16]; segments passed through ([3, 256]).
-// No-op when MC2_DEBUG_RENDERER is unset.
+// No-op when no render context exists.
 void drawSphereApproxWorld(Vec3 center, float radius, int rings, int segments, uint32_t rgba);
 
 // Reserved: world-space text label. No-op in M1/M2.
@@ -56,7 +55,7 @@ void drawSphereApproxWorld(Vec3 center, float radius, int rings, int segments, u
 void drawTextWorld(Vec3 pos, const char* text, uint32_t rgba);
 
 // Freeze the primitives collected this frame together with the scene view-projection. Call once per frame after the
-// scene has set its matrices. No-op when MC2_DEBUG_RENDERER is unset.
+// scene has set its matrices. No-op when no render context exists.
 void flushWorldPrims();
 
 // Draw the frozen primitives on the UI overlay (the layer the Vulkan present draws over the scene). Call once per

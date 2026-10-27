@@ -101,14 +101,14 @@ enum class RendererFeature : int {
     ShadowMaps          = 5,   // MC2_SHADOW_ENABLE
     ImGui               = 6,   // MC2_IMGUI
     ImGuiInspector      = 7,   // MC2_IMGUI_INSPECTOR
-    DebugRenderer       = 8,   // MC2_DEBUG_RENDERER
+    DebugRenderer       = 8,   // retired; preserve the numeric identifier
     MaterialGpu         = 9,   // MC2_MATERIAL_GPU
     MaterialGpuSample   = 10,  // MC2_MATERIAL_GPU_SAMPLE
     MaterialKtx         = 11,  // authored sidecars, always enabled
     // F1-3A ViewUniforms UBO upload (upload-only; F1-3B adds shader consumption).
     ViewUniforms             = 12,  // MC2_VIEW_UNIFORMS
     // MECH-EXTRACTION-0: mech snapshot extraction (observe-only).
-    SnapshotMechExtract      = 13,  // MC2_SNAPSHOT_MECH_EXTRACT
+    SnapshotMechExtract      = 13,  // retired; now the MC2_SNAPSHOT_MECH_EXTRACT trace gate
     // Retired snapshot-spawn gate; preserve the numeric identifier.
     VfxAgeSample             = 14,  // retired
     // Retired harvest selector; preserve the numeric identifier.
@@ -214,8 +214,8 @@ static constexpr EnvVarDesc kFeatureTable[] = {
     },
     // [8] DebugRenderer
     {
-        "MC2_FEATURE_DEBUG_RENDERER", "MC2_DEBUG_RENDERER", EnvVarKind::Feature, false,
-        "Debug overlay renderer (GuiRuntime/EditorInspector.cpp)."
+        "MC2_FEATURE_DEBUG_RENDERER", nullptr, EnvVarKind::Retired, false,
+        "Retired: the debug primitive renderer is always on."
     },
     // [9] MaterialGpu
     {
@@ -239,8 +239,8 @@ static constexpr EnvVarDesc kFeatureTable[] = {
     },
     // [13] SnapshotMechExtract
     {
-        "MC2_FEATURE_SNAPSHOT_MECH_EXTRACT", "MC2_SNAPSHOT_MECH_EXTRACT", EnvVarKind::Feature, false,
-        "MECH-EXTRACTION-0: mech snapshot extraction (observe-only, no GL mutation)."
+        "MC2_FEATURE_SNAPSHOT_MECH_EXTRACT", nullptr, EnvVarKind::Retired, false,
+        "Retired: reclassified as the MC2_SNAPSHOT_MECH_EXTRACT trace gate (observe-only diagnostic)."
     },
     // [14] VfxAgeSample
     {
@@ -491,7 +491,7 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "Authored effect sidecars overlay the stock catalog; absent definitions are a no-op.",
     },
     {
-        "MC2_FX_FORCE_SPAWN", "MC2_FX_FORCE_SPAWN", EnvVarKind::Feature, false,
+        "MC2_FX_FORCE_SPAWN", "MC2_FX_FORCE_SPAWN", EnvVarKind::Trace, false,
         "FX-FORCE-SPAWN v1 fixture: default-OFF. =impact: impact-decal volley.",
     },
     {
@@ -517,10 +517,6 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
     {
         "MC2_TRACE_IFACE_COST_SPLIT", "MC2_IFACE_COST_SPLIT", EnvVarKind::Trace, false,
         "MISSION-INTERFACE-PERF-1: chrono cost-split of MissionInterfaceManager::update() (the GameLogic.Mission.Interface Tracy zone) incl.",
-    },
-    {
-        "MC2_FEATURE_LETTERBOX_OPAQUE", "MC2_LETTERBOX_OPAQUE", EnvVarKind::Feature, true,
-        "Cinematic letterbox bars are drawn OPAQUE black; only their EXTENT animates.",
     },
     {
         "MC2_FEATURE_LIGHTBAKE_REBAKE_ON_READY", "MC2_LIGHTBAKE_REBAKE_ON_READY", EnvVarKind::Feature, true,
@@ -645,6 +641,10 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
     {
         "MC2_FEATURE_SMART_LOAD", "MC2_SMART_LOAD", EnvVarKind::Feature, true,
         "SMART-LOAD startup/mission-load perf path (logisticsdata.cpp).",
+    },
+    {
+        "MC2_DIAG_SNAPSHOT_MECH_EXTRACT", "MC2_SNAPSHOT_MECH_EXTRACT", EnvVarKind::Trace, false,
+        "MECH-EXTRACTION-0: mech snapshot extraction (observe-only, no GL mutation).",
     },
     {
         "MC2_TRACE_SOAK_SALVAGE_TRADEMOVER", "MC2_SOAK_SALVAGE_TRADEMOVER", EnvVarKind::Trace, false,

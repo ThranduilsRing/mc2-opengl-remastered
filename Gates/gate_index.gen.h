@@ -10,7 +10,7 @@
 
 namespace mc2::gate::detail {
 
-inline constexpr std::size_t kGateCount = 785;
+inline constexpr std::size_t kGateCount = 779;
 
 inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_ABL_ARG_GUARD", Kind::Bool, Rule::Lead1, {}},
@@ -119,7 +119,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_CRASH_FAST_EXIT", Kind::Bool, Rule::Presence, {}},
     {"MC2_CURSOR_TARGET_TRACE", Kind::Bool, Rule::Presence, {}},
     {"MC2_DEBUG_OVERLAY_PREDICATE_MODE", Kind::Enum, Rule::Std, "|Legacy|Modern"},
-    {"MC2_DEBUG_RENDERER", Kind::Bool, Rule::Lead0, {}},
     {"MC2_DEBUG_RENDERER_TEST", Kind::Bool, Rule::Lead0, {}},
     {"MC2_DEBUG_STATE_DUMP", Kind::Bool, Rule::Lead0, {}},
     {"MC2_DEBUG_STATE_DUMP_DIR", Kind::String, Rule::Std, {}},
@@ -282,7 +281,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_LAUNCHER_ENV_JSON", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_LEGACY_LIT_MC2_FRAME", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_LEGACY_LOAD_BANNER", Kind::Bool, Rule::Presence, {}},
-    {"MC2_LETTERBOX_OPAQUE", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_LIGHTBAKE", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_LIGHTBAKE_REBAKE_ON_READY", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_LIGHTBRIDGE", Kind::Bool, Rule::Lead0Kill, {}},
@@ -302,7 +300,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_LIGHT_CONE_SPILL", Kind::Float, Rule::Prefix, {}},
     {"MC2_LIGHT_CONE_VIS_GATE", Kind::Bool, Rule::Lead1, {}},
     {"MC2_LIGHT_COST_SPLIT", Kind::Bool, Rule::Presence, {}},
-    {"MC2_LIGHT_CULL_RADIUS", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_LIGHT_GRID", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_LIGHT_GRID_DIM", Kind::Int, Rule::Prefix, {}},
     {"MC2_LIGHT_MOVER_VIS_GATE", Kind::Bool, Rule::Lead1, {}},
@@ -446,7 +443,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_PICK_CAP_TRACE", Kind::Bool, Rule::Presence, {}},
     {"MC2_PICK_RECON", Kind::Bool, Rule::Presence, {}},
     {"MC2_PLAYTEST_EXE", Kind::String, Rule::Std, {}},
-    {"MC2_PNG_MAGENTA_KEY", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_POSTPROCESS_COMPUTE_BLUR", Kind::Bool, Rule::Lead0P, {}},
     {"MC2_PRESENTATION_DISABLED", Kind::Bool, Rule::Std, {}},
     {"MC2_PREVIEW_FBO_SCALE", Kind::Int, Rule::Prefix, {}},
@@ -677,7 +673,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_TXMMGR_BOUNDS_TRACE", Kind::Bool, Rule::Lead1, {}},
     {"MC2_TYPE_TABLE_CAND_LOG", Kind::Bool, Rule::Presence, {}},
     {"MC2_TYPE_TABLE_CAND_VERBOSE", Kind::Bool, Rule::Presence, {}},
-    {"MC2_UI_ASPECT_ANCHOR", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_UI_COMMAND_FILE", Kind::String, Rule::Std, {}},
     {"MC2_UI_DEFS_IGNORE_PACKAGE_VERSION", Kind::Bool, Rule::Std, {}},
     {"MC2_UI_DEFS_LOADSCREEN", Kind::Bool, Rule::Presence, {}},
@@ -795,7 +790,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_WIDTH", Kind::Int, Rule::Prefix, {}},
     {"MC2_WINDOWED", Kind::Bool, Rule::Lead0, {}},
     {"MC2_WINDOW_OFFSCREEN", Kind::Bool, Rule::Lead0, {}},
-    {"MC2_WINDOW_RESIZABLE", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_WORLD_ORDER_TRACE", Kind::Bool, Rule::Std, {}},
     {"MC2_XFORM_PARITY_FATAL", Kind::Bool, Rule::Lead1, {}},
 };
