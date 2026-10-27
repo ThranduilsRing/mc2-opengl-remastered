@@ -44,6 +44,17 @@ Per-object textures, one image per file with its own extent, format and complete
   so the working set is the 2048 chain; budget below.
 - **Batching:** no change. Draws still group by type; the material index is per packet already.
 
+## Movers (status)
+
+Override vehicles do not reach the static-prop batcher: their paint-variant bodies are imported on first render, after
+`finalizeGeometry`, so `registerType` drops them (`[GPUPROPS] late registerType ... CPU-fallback`) and they draw through the
+legacy shape island (albedo + vertex light). Consequences:
+- **Shadow (fixed):** `captureMoverShadowShape` found no recipe for the override body, so override vehicles cast none. The
+  capture now uses the stock shape, which is registered at load and carries the same pose.
+- **Per-object normal/ORM/team mask for vehicles (not built):** needs the variant bodies in the batcher. Either pre-register
+  each vehicle's (LOD, paint) variants before finalize, or give the batcher an append region after finalize. Team paint then
+  becomes per-packet colours (three RGB8 in the material row) tinted in the shader as above.
+
 ## Stock decision: Option B (manifest-gated fallback)
 
 Option A (cook stock into the new format) is rejected: the six mods and every mod-authored asset ship legacy TGAs in
