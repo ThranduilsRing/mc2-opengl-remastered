@@ -11,11 +11,11 @@ extern bool ShowMovers;
 
 static std::vector<int> s_moverOrdinalByHandle;	// rebuilt with moverGrid, same lifetime
 
-static void ensureMoverGrid(GameObjectManager& om, mc2::world::SpatialGrid& grid, bool& dirty, MoverPtr* moverList, long numMovers) {
+static void ensureMoverGrid(GameObjectManager& om, mc2::world::SpatialGrid& grid, bool& dirty, MoverPtr* moverList, int numMovers) {
 	if (!dirty) return;
 	grid.clear();
 	GameObjectHandle maxHandle = -1;
-	for (long i = 0; i < numMovers; ++i) {
+	for (int i = 0; i < numMovers; ++i) {
 		auto* mover = moverList[i];
 		const auto p = mover->getPosition();
 		grid.add(p.x, p.y, i, om.entityId(mover->getHandle()));
@@ -23,7 +23,7 @@ static void ensureMoverGrid(GameObjectManager& om, mc2::world::SpatialGrid& grid
 	}
 	grid.finish();
 	s_moverOrdinalByHandle.assign(size_t(maxHandle + 1), -1);
-	for (long i = 0; i < numMovers; ++i)
+	for (int i = 0; i < numMovers; ++i)
 		s_moverOrdinalByHandle[moverList[i]->getHandle()] = int(i);
 	dirty = false;
 }
