@@ -11,6 +11,7 @@ long MoveMap::calcEscapePath (MovePathPtr path, glm::vec3* goalWorldPos, long* g
 
 	// PATHFINDING-FACTS-1: gated per-solve telemetry (default-OFF, byte-identical).
 	mc2_path_trace::SolveScope _pt("escape");
+	_pt.out = path;
 	const bool _pathTrace = _pt.active;
 	long _ptNodes = 0;
 	long _ptOpenPeak = 0;

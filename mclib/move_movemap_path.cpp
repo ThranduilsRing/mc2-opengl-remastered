@@ -21,6 +21,27 @@ int MoveMap::openHeapReserve (void) const {
 	return std::min<int>(static_cast<int>(width) * static_cast<int>(height), 20000);
 }
 
+unsigned long long mc2_path_trace::hashMovePath (const MovePath* path) {
+	unsigned long long h = 1469598103934665603ull;
+	auto mix = [&h](const void* p, size_t n) {
+		const unsigned char* b = static_cast<const unsigned char*>(p);
+		for (size_t i = 0; i < n; i++) { h ^= b[i]; h *= 1099511628211ull; }
+	};
+	mix(&path->numSteps, sizeof(path->numSteps));
+	mix(&path->cost, sizeof(path->cost));
+	mix(&path->goal, sizeof(path->goal));
+	mix(&path->target, sizeof(path->target));
+	for (long i = 0; i < path->numSteps; i++) {
+		const PathStep& s = path->stepList[i];
+		mix(s.cell, sizeof(s.cell));
+		mix(&s.distanceToGoal, sizeof(s.distanceToGoal));
+		mix(&s.destination, sizeof(s.destination));
+		mix(&s.direction, sizeof(s.direction));
+		mix(&s.area, sizeof(s.area));
+	}
+	return h;
+}
+
 long MoveMap::calcPath (MovePathPtr path, glm::vec3* goalWorldPos, int* goalCell) {
 
 	// PATHFINDING-SOLVER-ISOLATION-1: per-solve context (default-OFF).
@@ -28,6 +49,7 @@ long MoveMap::calcPath (MovePathPtr path, glm::vec3* goalWorldPos, int* goalCell
 
 	// PATHFINDING-FACTS-1: gated per-solve telemetry (default-OFF, byte-identical).
 	mc2_path_trace::SolveScope _pt("plain");
+	_pt.out = path;
 	const bool _pathTrace = _pt.active;
 	long _ptNodes = 0;
 	long _ptOpenPeak = 0;
@@ -453,6 +475,7 @@ long MoveMap::calcPathJUMP (MovePathPtr path, glm::vec3* goalWorldPos, int* goal
 
 	// PATHFINDING-FACTS-1: gated per-solve telemetry (default-OFF, byte-identical).
 	mc2_path_trace::SolveScope _pt("jump");
+	_pt.out = path;
 	const bool _pathTrace = _pt.active;
 	long _ptNodes = 0;
 	long _ptOpenPeak = 0;
