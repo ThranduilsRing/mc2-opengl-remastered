@@ -25,12 +25,12 @@ void cpuDrawKey(const TG_TinyTexture* textures, const TG_TypeTriangle& tri, bool
 	node = textures[tri.localTextureHandle].mcTextureNodeIndex;
 	flags = ((textures[tri.localTextureHandle].textureAlpha || alphaValue != 0xff) ? MC2_DRAWALPHA : MC2_DRAWSOLID) | addFlags;
 }
-DWORD cpuDrawFlags(const TG_TypeShape* theShape, bool hud, bool clamped)
+DWORD cpuDrawFlags(bool alphaTest, bool hud, bool clamped)
 {
 	DWORD addFlags = 0;
 	if (hud) addFlags |= MC2_ISCOMPASS;
 	if (clamped) addFlags |= MC2_ISTERRAIN;
-	if (theShape->alphaTestOn) addFlags |= MC2_ALPHATEST;
+	if (alphaTest) addFlags |= MC2_ALPHATEST;
 	return addFlags;
 }
 }
@@ -53,7 +53,7 @@ void TG_Shape::ReserveCpuDraw (BYTE alphaValue, bool hud, bool clamped)
 	const TG_TinyTexture* textures = materialTextures();
 	if (!textures && !isWindow)
 		return;
-	const DWORD addFlags = cpuDrawFlags(theShape, hud, clamped);
+	const DWORD addFlags = cpuDrawFlags(theShape->alphaTestOn, hud, clamped);
 	for (DWORD j = 0; j < numTriangles; j++)
 	{
 		DWORD node, flags;
@@ -240,7 +240,7 @@ void TG_Shape::CpuDraw (const glm::mat4& shapeToWorld, const glm::mat4& worldToS
 		gos_SetRenderState(gos_State_Filter, theShape->filterOn ? gos_FilterBiLinear : gos_FilterNone);
 		gos_SetRenderState(gos_State_ZWrite, 1);
 	}
-	const DWORD addFlags = cpuDrawFlags(theShape, hud, clamped);
+	const DWORD addFlags = cpuDrawFlags(theShape->alphaTestOn, hud, clamped);
 	const float forcedZ = (forceZ >= 0.0f && forceZ < 1.0f) ? mc2_tgl::forceZClipDepth(forceZ) : -1.0f;
 
 	const glm::vec3 camPosition = s_cameraOrigin ? mc2::math::getTranslation(*s_cameraOrigin) : glm::vec3(0.0f);

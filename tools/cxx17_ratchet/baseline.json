@@ -3320,15 +3320,6 @@
   "mclib/tgl_parse.cpp": {
    "LG06": 2
   },
-  "mclib/tgl_shadows.cpp": {
-   "LG04": 1
-  },
-  "mclib/tgl_transform.cpp": {
-   "LG17": 1
-  },
-  "mclib/tgl_transform_light.cpp": {
-   "LG04": 1
-  },
   "mclib/tgl_types.cpp": {
    "LG05": 2,
    "LG06": 4

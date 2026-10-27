@@ -109,8 +109,6 @@ mclib/terrtxm.cpp::s_hiresLogged < 8
 mclib/tex_resolve_table.cpp::s_mismatchCount++ < kMaxMismatchPrints
 mclib/tex_resolve_table.cpp::s_oobCount++ < kMaxOobPrints
 mclib/tgl_types.cpp::s_mslBoundsWarnings++ < 8
-mclib/tgl_render.cpp::s_pbrRenderTrace < 64
-mclib/tgl_render.cpp::s_seenCount < 64
 mclib/txmmgr_render_passes.cpp::s_cullProbeFrames < 8
 mclib/txmmgr_render.cpp::s_frames < 60
 mclib/txmmgr_lights.cpp::s_lbFirstSeenIndex.size() <= 32
