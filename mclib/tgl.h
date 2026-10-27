@@ -899,10 +899,10 @@ class TG_Shape
 	protected:
 		// CPU fallback draw of one leaf (preview_draw.cpp): projects from the hierarchy matrices, lights with the ambient and
 		// infinite lights, and either draws immediately (UI preview) or queues through the render submissions (world).
-		void CpuDraw(const glm::mat4& shapeToWorld, const glm::mat4& worldToShape, BYTE alphaValue, bool world, float forceZ, bool hud, bool clamped);
+		void CpuDraw(const glm::mat4& shapeToWorld, const glm::mat4& worldToShape, BYTE alphaValue, bool world, float forceZ, bool hud, bool clamped, bool spotlightsOnly);
 		// Reserves this leaf's triangles in the render submissions. Must run in the update phase, before any draw fills a
 		// vertex block (a block is sized when first filled, so a later reservation would overrun it).
-		void ReserveCpuDraw(BYTE alphaValue, bool hud, bool clamped);
+		void ReserveCpuDraw(BYTE alphaValue, bool hud, bool clamped, bool spotlightsOnly);
 
 	public:
 		void init (void)

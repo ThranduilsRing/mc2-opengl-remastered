@@ -170,6 +170,8 @@ void GVAppearance::updateGeometry (void)
 		gvShape->TransformMultiShape_HierarchyOnly (&xlatPosition,&totalRotation);
 		if (!gpuPose_ && !renderShape)
 			gvShape->ReserveCpuDraw();	// fading or unregistered: the CPU fallback draws it
+		else if (gpuPose_ && !renderShape && eye->isNight)
+			gvShape->ReserveCpuDraw(true);	// the batcher draws the body; no batcher draws the searchlight cones
 		updateRenderShape();
 		if (renderShape) renderShape->SetFogRGB(useFog ? fogRGB : 0xffffffff);
 

@@ -143,6 +143,10 @@ long GVAppearance::render (long depthFixup)
 				eye->setLightIntensity(0, 1.0);
 				drawShape->Render(true);
 			}
+			else if (gpuPose_ && !renderShape && eye->isNight) {
+				// Searchlight cones: no batcher draws them (cone glow adds the beam light, not this geometry).
+				drawShape->Render(true, -1.0f, true);
+			}
 
 			if (selected & DRAW_TEXT)
 			{

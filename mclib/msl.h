@@ -500,9 +500,10 @@ class TG_MultiShape
 
 		// CPU fallback draw of every leaf the batchers declined (CpuDraw: ambient + infinite lights, queued through the
 		// render submissions); call after a TransformMultiShape_* walk.
-		void Render (bool refreshTextures = false, float forceZ = -1.0f);
+		// spotlightsOnly: just the SpotLight_ cone leaves (a body a batcher already drew).
+		void Render (bool refreshTextures = false, float forceZ = -1.0f, bool spotlightsOnly = false);
 		// Call in the update phase, after the hierarchy walk, for any shape Render may draw: reserves its triangles.
-		void ReserveCpuDraw (void);
+		void ReserveCpuDraw (bool spotlightsOnly = false);
 		// UI preview (SimpleCamera, preview_draw.cpp): draws every leaf from the hierarchy matrices; call after a TransformMultiShape*.
 		void PreviewDraw (void);
 
