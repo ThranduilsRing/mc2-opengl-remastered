@@ -102,7 +102,7 @@ bool propHasObjectAlbedo(int id) {
 }
 
 // Team colour: the mask's R/G/B weights select the paint's blue/red/green slot (the stock channel dominance);
-// under the mask the albedo keeps its own luminance, stripes and dirt and only its chroma follows the team.
+// under the mask the albedo keeps its own relative luminance, stripes and dirt and only its chroma follows the team.
 vec3 propTeamTint(int id, vec3 albedo, uvec3 team) {
     if (id < 0 || id >= uPropMaterials.materials.length()) return albedo;
     PropMaterialGpu row = uPropMaterials.materials[id];
@@ -115,7 +115,9 @@ vec3 propTeamTint(int id, vec3 albedo, uvec3 team) {
     vec3 blue  = vec3((team.z >> 16) & 255u, (team.z >> 8) & 255u, team.z & 255u) / 255.0;
     vec3 paint = (w.r * blue + w.g * red + w.b * green) / max(w.r + w.g + w.b, 1e-4);
     const vec3 kLum = vec3(0.299, 0.587, 0.114);
-    vec3 tinted = clamp(paint / max(dot(paint, kLum), 0.02) * dot(albedo, kLum), 0.0, 1.0);
+    // The albedo's luminance relative to a typical painted panel (0.3 encoded) scales the paint, so panel shading,
+    // stripes and dirt survive and an average panel lands on the paint colour itself.
+    vec3 tinted = clamp(paint * (dot(albedo, kLum) / 0.3), 0.0, 1.0);
     return mix(albedo, tinted, cover);
 }
 
