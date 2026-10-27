@@ -49,6 +49,7 @@ layout(set = TERRAIN_RESOURCE_SET, binding = 13, std430) readonly buffer Terrain
 layout(set = TERRAIN_RESOURCE_SET, binding = 19) uniform sampler2D u_localShadowAtlas;
 #define MC2_LOCAL_SHADOW_ATLAS 1
 #define TLP_CEMENT_WORD(i) uC.cementWordsF[i]
+#define TLP_POOL_BUDGET uT._lightPad0   // per-cell pool light cap, 0 = unlimited
 #include "../../include/terrain_light_pool.hglsl"
 #ifndef TERRAIN_OBJECT_RECEIVER
 #include "ground_shadow.glsl"
