@@ -72,7 +72,6 @@ extern "C" uint64_t consumeAndResetMlrMechDraws();
 extern "C" void consumeAndResetMechLightRowCounters(uint64_t* staleOut,
                                                     uint64_t* oobOut);
 extern bool g_drawMechs;
-extern bool g_useGpuMechs;
 extern int g_mechPreviewRenderDepth;
 extern int s_mechNormalsMode;
 extern float s_mechNormalsSmoothDeg;

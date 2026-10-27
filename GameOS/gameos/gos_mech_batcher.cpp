@@ -53,8 +53,6 @@ const float* gos_GetMechFixBMVPMat4() {
 bool g_drawMechs = true;
 
 // Slice A: GPU mech batcher. Foundation for the entire stack.
-// Opt-out: MC2_GPU_MECHS=0
-bool g_useGpuMechs = mc2::gate::get<"MC2_GPU_MECHS">();
 
 // VK-P14 MECH TIER-1: flush() BUILDS the instance, bone and run feeds on the CPU;
 // the caller (txmmgr) runs mc2_vk_mech_island_run() to co-write the mechs IN-PLACE into the shared GBuffer.

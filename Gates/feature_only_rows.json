@@ -47,12 +47,19 @@
   "order": 21,
   "defaultOn": false,
   "doc": "Retired: legacy terrain texture force path removed."
-  },
-  {
+ },
+ {
   "featureId": "MC2_FEATURE_VFX_ORACLE_RENDER",
   "kind": "Retired",
   "order": 15,
   "defaultOn": false,
   "doc": "Retired: live-state harvesting is unconditional within each migrated draw route."
+ },
+ {
+  "featureId": "MC2_FEATURE_GPU_MECHS",
+  "kind": "Retired",
+  "order": 0,
+  "defaultOn": true,
+  "doc": "Retired: the GPU mech batcher is the only world-mech path."
  }
 ]

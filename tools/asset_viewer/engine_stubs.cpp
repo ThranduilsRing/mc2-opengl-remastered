@@ -187,7 +187,6 @@ char* MissingTitleString = (char*)"";
 //     toggles read by transform/submit methods, never by the loader).
 // ===========================================================================
 bool g_useGpuObjects = false;
-bool g_useGpuMechs   = false;
 bool mc2LightBridgeRepointEnabled() { return false; }
 
 namespace mc2_object_recon {

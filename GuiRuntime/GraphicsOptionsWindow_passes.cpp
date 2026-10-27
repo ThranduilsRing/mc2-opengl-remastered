@@ -395,13 +395,6 @@ void drawRenderPassesSection() {
 
     // Draw Mechs: hides mechs entirely (gates both GPU submit and CPU fallback).
     ImGui::Checkbox("Draw Mechs##rp", &g_drawMechs);
-    ImGui::SameLine();
-    // GPU Mechs: switches between GPU batcher and CPU legacy path (mechs still visible).
-    ImGui::Checkbox("GPU path##rp", &g_useGpuMechs);
-    if (ImGui::IsItemHovered())
-        ImGui::SetTooltip("GPU Mechs ON = GPU batcher (PBR lit).\n"
-                          "GPU Mechs OFF = CPU legacy path (older shading, dimmer).\n"
-                          "Use 'Draw Mechs' to hide mechs entirely.");
 
     if (g_useGpuObjects) {
         ImGui::Checkbox("GPU Objects##rp",  &g_useGpuObjects);

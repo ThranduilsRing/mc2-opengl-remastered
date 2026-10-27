@@ -38,7 +38,7 @@ extern "C" int mc2_mech_island_get_shadow_feed(Mc2MechShadowFeed* out) {
     if (!s_vkMechShadowReady) return 0;
     if (!out) return 0;
     if (!mc2::gate::get<"MC2_SHADOW_ENABLE">()) return 0;
-    if (!g_useGpuMechs || !s_geometryFinalized) return 0;
+    if (!s_geometryFinalized) return 0;
     if (s_vkMechInstSnapshot.empty() || s_vkMechRunSnapshot.empty() || s_vkMechBoneSnapshot.empty()) return 0;
     // The snapshot's runs index the geometry of the generation it was built against; after a rebuild they name ranges of a different index set.
     if (s_vkMechSnapshotGeomGen != s_vkMechGeomGen) return 0;
