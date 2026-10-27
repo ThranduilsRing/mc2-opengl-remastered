@@ -284,7 +284,7 @@ class GameObjectManager {
 		void releasePoolArrays (void);
 		// R3: PartId -> slots (ascending) hash, rebuilt lazily from objList; defined in objmgr_pick.cpp.
 		struct PartIdIndex;
-		PartIdIndex*				partIdIndex = nullptr;
+		std::unique_ptr<PartIdIndex>	partIdIndex;
 		void resetPartIdIndex (void);
 
 		long					currentWeaponsIndex;			//points to next entry in rotating weapon array.
