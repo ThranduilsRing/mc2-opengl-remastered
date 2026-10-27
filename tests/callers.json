@@ -4129,7 +4129,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/merge_gate.py",
-          "line": 253,
+          "line": 260,
           "evidence": "command",
           "reference": "scripts/make-isolated-deploy.py",
           "text": "subprocess.run([sys.executable, str(ROOT / \"scripts/make-isolated-deploy.py\"),"
@@ -4542,21 +4542,21 @@
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 1003,
+          "line": 1002,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 1032,
+          "line": 1031,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 1049,
+          "line": 1048,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
@@ -5147,7 +5147,7 @@
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 1017,
+          "line": 1016,
           "evidence": "import",
           "reference": "run_tools_tests",
           "text": "import run_tools_tests as tt"
