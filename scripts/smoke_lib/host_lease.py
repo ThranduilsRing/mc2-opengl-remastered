@@ -62,7 +62,7 @@ def slot_count() -> int:
 
 
 def waiver_active(now: Optional[float] = None) -> bool:
-    """True while the owner cores 0-1 waiver file exists and its expiry epoch (if parseable) is in the future."""
+    """True while the owner cores 0-1 waiver file exists and its expiry epoch is in the future (unparseable = inactive)."""
     try:
         text = WAIVER_PATH.read_text(encoding="utf-8").strip()
     except OSError:
@@ -70,7 +70,7 @@ def waiver_active(now: Optional[float] = None) -> bool:
     try:
         return float(text) > (time.time() if now is None else now)
     except ValueError:
-        return True
+        return False   # an empty or half-written waiver must never raise the slot count
 
 
 def slot_path(slot: int) -> Path:
