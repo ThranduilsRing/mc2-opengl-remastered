@@ -49,7 +49,7 @@ static LONG WINAPI mc2_unhandled_exception_filter(EXCEPTION_POINTERS* ep)
 
     HANDLE proc = GetCurrentProcess();
     SymSetOptions(SYMOPT_LOAD_LINES | SYMOPT_DEFERRED_LOADS | SYMOPT_UNDNAME);
-    SymInitialize(proc, NULL, TRUE);
+    SymInitialize(proc, nullptr, TRUE);
 
     // Walk back from the faulting context rather than capturing current stack —
     // CaptureStackBackTrace would start from this filter function and miss the
@@ -74,7 +74,7 @@ static LONG WINAPI mc2_unhandled_exception_filter(EXCEPTION_POINTERS* ep)
     fprintf(stderr, "[CRASH] stack:\n");
     for (int i = 0; i < 32; ++i) {
         if (!StackWalk64(machine, proc, GetCurrentThread(), &frame, &ctx,
-                          NULL, SymFunctionTableAccess64, SymGetModuleBase64, NULL))
+                          nullptr, SymFunctionTableAccess64, SymGetModuleBase64, nullptr))
             break;
         if (frame.AddrPC.Offset == 0) break;
 
@@ -825,8 +825,8 @@ int main(int argc, char** argv)
     // Make stdout line-buffered (was fully buffered on Windows when redirected, hiding
     // output past the last explicit fflush before a crash). Harmless for interactive
     // runs; invaluable for diagnosing startup crashes when stdout is piped to a file.
-    setvbuf(stdout, NULL, _IONBF, 0);
-    setvbuf(stderr, NULL, _IONBF, 0);
+    setvbuf(stdout, nullptr, _IONBF, 0);
+    setvbuf(stderr, nullptr, _IONBF, 0);
 
     // MC2_LOG master log gate. stdout is UNBUFFERED (above), so every
     // per-mission telemetry printf flushes synchronously -> 400ms+ console
@@ -939,7 +939,7 @@ int main(int argc, char** argv)
     initResolutionFromConfig();
 
     cmdlineOwner.reset();
-    cmdline = NULL;
+    cmdline = nullptr;
 
     // WINDOWED-8006-1: explicit windowed-mode override (launcher "Windowed
     // mode" checkbox). Wins over options.cfg fullscreen.

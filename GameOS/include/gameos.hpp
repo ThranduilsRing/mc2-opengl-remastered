@@ -159,7 +159,7 @@ noexcept
 
 #ifndef GUID_DEFINED
 #define GUID_DEFINED
-typedef struct _GUID
+struct _GUID
 {
     unsigned long Data1;
     unsigned short Data2;
@@ -173,7 +173,8 @@ typedef struct _GUID
     bool operator!=(const _GUID& other) {
         return !(*this == other);
     }
-} GUID;
+};
+using GUID = _GUID;
 #endif /* GUID_DEFINED */
 
 
@@ -181,18 +182,18 @@ typedef struct _GUID
 // Handles to internal structures
 //
 //typedef struct	SoundResource*	HGOSAUDIO;
-typedef class gosAudio*	    HGOSAUDIO; // sebi
-typedef struct	gos_Music*		HGOSMUSIC;
-typedef struct	gos_Video*		HGOSVIDEO;
-typedef struct	gosFileStream*	HGOSFILE;
+using HGOSAUDIO = class gosAudio*; // sebi
+using HGOSMUSIC = struct gos_Music*;
+using HGOSVIDEO = struct gos_Video*;
+using HGOSFILE = struct gosFileStream*;
 //typedef struct	_FontInfo*		HGOSFONT3D;
-typedef class gosFont*		HGOSFONT3D;
-typedef struct  gosForceEffect*	HGOSFORCEEFFECT;
-typedef struct	gos_Heap*		HGOSHEAP;
-typedef struct gos_StringRes*   HSTRRES; //sebi
-typedef class gosBuffer*		HGOSBUFFER; //sebi
-typedef class gosVertexDeclaration*	HGOSVERTEXDECLARATION; //sebi
-typedef class gosRenderMaterial*	HGOSRENDERMATERIAL; //sebi
+using HGOSFONT3D = class gosFont*;
+using HGOSFORCEEFFECT = struct gosForceEffect*;
+using HGOSHEAP = struct gos_Heap*;
+using HSTRRES = struct gos_StringRes*; //sebi
+using HGOSBUFFER = class gosBuffer*; //sebi
+using HGOSVERTEXDECLARATION = class gosVertexDeclaration*; //sebi
+using HGOSRENDERMATERIAL = class gosRenderMaterial*; //sebi
 
 
 
@@ -202,7 +203,7 @@ typedef class gosRenderMaterial*	HGOSRENDERMATERIAL; //sebi
 //////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////
 
-typedef struct
+struct gosEnvironment
 {
 //
 // Application title and version number
@@ -377,7 +378,7 @@ typedef struct
 
 	bool (__stdcall *HookDoesFileExist)( const char* FileName);
 
-} gosEnvironment;
+};
 
 
 
@@ -457,7 +458,7 @@ enum gosVideo_PlayMode
 // resource. Each command (above) requires specific info to be initialized in the
 // structure below in order to properly carry out that command. For this data,
 // consult the comments listed under the appropriate command (listed above).
-typedef struct _gosVideo_Info
+struct _gosVideo_Info
 {
 	char *					lpstrPath;		// string specified path to data
 	gosVideo_PlayMode		ePlayMode;		// the play mode (see above)
@@ -474,7 +475,8 @@ typedef struct _gosVideo_Info
 	DWORD					dwPitch;		// read-only pitch of video surface
 	DWORD					dwWidth;		// read-only width of video
 	DWORD					dwHeight;		// read-only height of vidoe
-} gosVideo_ResourceInfo;
+};
+using gosVideo_ResourceInfo = _gosVideo_Info;
 
 //////////////////////////////////////////////////////////////////////////////////
 // Send a command to an existing video resource or create a new video resource.
@@ -590,7 +592,7 @@ enum gosAudio_ResourceType
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 // The format structure, for describing the format of sound resources
 //
-typedef struct _gosAudio_Format
+struct _gosAudio_Format
 {
 	WORD  wFormatTag;				// Waveform-audio format type. 1=PCM, 2=Microsoft ADPCM.
 	WORD  nChannels; 				// 1=Mono, 2=Stereo.
@@ -599,37 +601,39 @@ typedef struct _gosAudio_Format
 	WORD  nBlockAlign; 				// Normally, wBitsPerSample / 8 * nChannels
     WORD  wBitsPerSample;			// Bits per sample for the wFormatTag format type. If wFormatTag is 1 (PCM), then wBitsPerSample should be equal to 8 or 16.
 	WORD  cbSize;					// Size, in bytes, of extra format information appended to the end of the WAVEFORMATEX structure. For PCM's, this should be set to 0. For ADPCM, this should be set to 32.
-} gosAudio_Format;
+};
+using gosAudio_Format = _gosAudio_Format;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 // For gosAudio_UserMemoryPlayList resources, fill in the structure below and pass it in. The information
 // in the structure itself as well as the pointers within the arrays will be copied, so the structures
 // can be discarded once the resource has been created
 //
-typedef struct gosAudio_PlayList
+struct gosAudio_PlayList
 {
 	DWORD		m_dwListLength;		// Number of sample in the playlist
 	DWORD *		m_lpSoundData;		// A array of pointers pointing to the start of each memory-mapped WAV file.
 	DWORD *		m_lpDataLength;		// The size of each corresponding sample in the playlist
-} gosAudio_PlayList;
+};
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 // This structure is used to return important information about a particular resource.
 //
-typedef struct _gosAudio_ResourceInfo
+struct _gosAudio_ResourceInfo
 {
 	char *					lpstrPath;		// the path or name of the resource queried
 	gosAudio_ResourceType	eType;			// see above
 	gosAudio_Format			sFormat;		// 1 = PCM, 2 = ADPCM
 	DWORD					dwSizeInBytes;	// size of the data portion of the WAV
 	float					fDuration;		// in seconds
-} gosAudio_ResourceInfo;
+};
+using gosAudio_ResourceInfo = _gosAudio_ResourceInfo;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 // GetChannelInfo returns all the following information when inquiring about a channel. Note that
 // the later portion is specific to the Mixer (channel -1)
 //
-typedef struct _gosAudio_ChannelInfo
+struct _gosAudio_ChannelInfo
 {
 	HGOSAUDIO			hAudio;
 	DWORD				dwProperties;				// A bitwise flag field specifying which sliders have been allocated to it.
@@ -655,7 +659,8 @@ typedef struct _gosAudio_ChannelInfo
 	float				fDistance;					// Typically 1.0, this defines meters/unit within the sound system
 	float				fReverb;					// If available, the reverbation factor of all channels
 	float				fDecay;						// If available, the decay factor of all channels
-} gosAudio_ChannelInfo;
+};
+using gosAudio_ChannelInfo = _gosAudio_ChannelInfo;
 
 //////////////////////////////////////////////////////////////////////////////////
 // Creates a resource to be played later
@@ -775,7 +780,7 @@ void __stdcall gosAudio_DeviceOptions( char names[8][128], int* available );
 //								If it's 0, the selected text color at last gos_PositionIME() call is used
 // (* - transparency value is ignored )
 //
-typedef struct _gosIME_Appearance
+struct _gosIME_Appearance
 {
 	// symbol (Henkan-kyu)
 	DWORD			symbolColor;
@@ -797,7 +802,8 @@ typedef struct _gosIME_Appearance
 	DWORD			compColorInputErr;
 	BYTE			compTranslucence;
 	DWORD			compColorText;
-} gosIME_Appearance;
+};
+using gosIME_Appearance = _gosIME_Appearance;
 
 
 //
@@ -1022,7 +1028,7 @@ void __stdcall gos_TextVisualBounds( DWORD* Width, int* Top, int* Bottom, const 
 // (gos_FilterNone + gos_TextureClamp), made explicit here because the
 // ImGui path samples the texture without going through applyRenderStates.
 //
-typedef struct gos_FontAtlasDesc
+struct gos_FontAtlasDesc
 {
     uint64_t textureId;    // generation-tagged service identity of the font atlas
     int      texWidth;     // atlas dimensions in texels
@@ -1030,9 +1036,9 @@ typedef struct gos_FontAtlasDesc
     int      lineSkip;     // line advance (gosFont::getMaxCharHeight)
     int      ascent;       // font ascent  (gosFont::getFontAscent)
     int      maxAdvance;   // fallback advance for out-of-range chars
-} gos_FontAtlasDesc;
+};
 
-typedef struct gos_FontGlyphDesc
+struct gos_FontGlyphDesc
 {
     int      offX;         // pen-relative quad offset  (gm.minx)
     int      offY;         // pen-relative quad offset  (ascent - gm.maxy)
@@ -1041,7 +1047,7 @@ typedef struct gos_FontGlyphDesc
     uint32_t u;            // atlas sample origin in texels
     uint32_t v;
     int      advance;      // pen advance after this glyph
-} gos_FontGlyphDesc;
+};
 
 bool __stdcall gos_FontGetAtlasDesc( HGOSFONT3D FontHandle, gos_FontAtlasDesc* Out );
 bool __stdcall gos_FontGetGlyphDesc( HGOSFONT3D FontHandle, int Char, gos_FontGlyphDesc* Out );
@@ -1500,15 +1506,15 @@ enum gosForce
 
 inline constexpr float gosFOREVER = -1.0f;
 
-typedef struct
+struct gosJoystick_ForceEnvelope
 {
 	float fAttackLevel;
 	float fAttackTime;
 	float fFadeLevel;
 	float fFadeTime;
-} gosJoystick_ForceEnvelope;
+};
 
-typedef struct _gosJoystick_ForceEffect
+struct _gosJoystick_ForceEffect
 {
 	gosForce	eType;
 	bool		bAffectedAxes[12];
@@ -1530,7 +1536,8 @@ typedef struct _gosJoystick_ForceEffect
 	};
 	float	fPeriodSec;
 
-} gosJoystick_ForceEffect;
+};
+using gosJoystick_ForceEffect = _gosJoystick_ForceEffect;
 
 //
 // Return the total number of joysticks detected when the application started.
@@ -1789,7 +1796,7 @@ void __stdcall gos_NetEndGame();
 //
 // Returns networking information
 //
-typedef enum
+enum gosNetInfo
 {
 	gos_Networking,				// (DWORD)  Returns TRUE if in a networked game
 	gos_AmITheServer,			// (DWORD)  Returns TRUE if you created the game (FALSE=Joined)
@@ -1839,7 +1846,7 @@ typedef enum
 	gos_NameOfSerialPort,		// (char*)  Returns the name of the serial port number passed
 
 
-} gosNetInfo;
+};
 
 void* __stdcall gos_NetInformation( gosNetInfo Info, DWORD Parameter=0, char* Name=0 );
 
@@ -1848,12 +1855,12 @@ void* __stdcall gos_NetInformation( gosNetInfo Info, DWORD Parameter=0, char* Na
 //
 // Flags that can be used in NetPacket.Flags
 //
-typedef enum
+enum gosNetFlags
 {
 	gosNetFlag_guaranteed=1,	// Will arrive at destination in order and guaranteed.
 	gosNetFlag_encrypt=2,		// Will encrypt the packet before sending (only valid in a secure game)
 
-} gosNetFlags;
+};
 
 //
 // These are the system messages that may be recieved by the application
@@ -1871,7 +1878,7 @@ const BYTE gosNet_Heartbeat=244;		// Used to send a heartbeat packet to keep the
 //
 #pragma pack(push,1)
 
-typedef struct _NetPacket
+struct _NetPacket
 {
 	DWORD	FromID;					// Filled in by when packets are recieved
 	DWORD	ToID;					// Must be filled in to send a packet
@@ -1886,7 +1893,8 @@ typedef struct _NetPacket
 
 	void	*pData;					// Pointer to message data
 
-} NetPacket;
+};
+using NetPacket = _NetPacket;
 
 #pragma pack(pop)
 
@@ -1909,14 +1917,14 @@ bool __stdcall gos_NetSendMessage( NetPacket* Message );
 //
 // If this computer is the server these commands can be used
 //
-typedef enum
+enum gos_NetCommands
 {
 	gos_Command_KillPlayer,			// Remove the player with PlayerID == Data1 from the game
 	gos_Command_LockGame,			// Datat1=1 to lock the game, 0=to unlock the game - no more players can join when a game is locked
 	gos_Command_UpdateGameData,		// Updates the 'game data' from Environment.NetGameInfo - so players enumerating games can see the changes
 	gos_Commend_UpdateMaxPlayers,	// Updates the number of maximum players allowed in a game from Environment.NetworkMaxPlayers
 
-} gos_NetCommands;
+};
 //
 //
 //
@@ -2182,7 +2190,7 @@ enum gos_RenderState
 // x = x*ViewportMulX + ViewportAddX
 // y = y*ViewportMulY + ViewportAddY
 //
-typedef struct
+struct gos_VERTEX
 {
 	float x,y;					// Screen coords	- must be 0.0 to Environment.screenWidth/Height (no clipping occurs unless gos_State_Clipping is true)
 	float z;					// 0.0 to 0.99999	- Used for visiblity check in ZBuffer (1.0 is not valid)
@@ -2191,19 +2199,19 @@ typedef struct
 	DWORD frgb;					// Specular color and fog
 	float u,v;					// Texture coordinates
 
-} gos_VERTEX;
+};
 
 // Extra per-vertex terrain data for tessellation (world pos + normal)
 // Stored in a separate VBO, bound alongside gos_VERTEX at draw time
-typedef struct {
+struct gos_TERRAIN_EXTRA {
     float wx, wy, wz;    // world-space position (from Vertex::vx, vy, elevation)
     float nx, ny, nz;    // vertex normal (from PostcompVertex::vertexNormal)
-} gos_TERRAIN_EXTRA;
+};
 
 //
 // This vertex type is used for rendering with 2 textures at once, it is identical to the normal vertex structure, but with 2 u,v's
 //
-typedef struct
+struct gos_VERTEX_2UV
 {
 	float x,y;					// Screen coords	- must be 0.0 to Environment.screenWidth/Height (no clipping occurs unless gos_State_Clipping is true)
 	float z;					// 0.0 to 0.99999	- Used for visiblity check in ZBuffer (1.0 is not valid)
@@ -2213,13 +2221,13 @@ typedef struct
 	float u1,v1;				// Texture coordinates
 	float u2,v2;				// Texture coordinates
 
-} gos_VERTEX_2UV;
+};
 
 //
 // This vertex type is used for rendering with 3 textures at once, it is identical to the normal vertex structure, but with 3 u,v's
 // Expected use:  u1,v1 = base texture  u2,v2 = bump map  u3,v3 = environment map
 //
-typedef struct
+struct gos_VERTEX_3UV
 {
 	float x,y;					// Screen coords	- must be 0.0 to Environment.screenWidth/Height (no clipping occurs unless gos_State_Clipping is true)
 	float z;					// 0.0 to 0.99999	- Used for visiblity check in ZBuffer (1.0 is not valid)
@@ -2230,7 +2238,7 @@ typedef struct
 	float u2,v2;				// Texture coordinates
 	float u3,v3;				// Texture coordinates
 
-} gos_VERTEX_3UV;
+};
 
 //
 // Setup a viewport, must be called before drawing
@@ -2530,29 +2538,29 @@ void __stdcall gos_PopRenderStates();
 //
 // Vertex definition for transform and lighting (Identical to D3DVERTEX)
 //
-typedef struct
+struct gosD3DVERTEX
 {
 	float x,y,z;
 	float nx,ny,nz;
 	float u,v;
 
-} gosD3DVERTEX;
+};
 
 //
 // Vertex definition for transform and lighting with two u,v coordinates
 //
-typedef struct
+struct gosD3DVERTEX_2UV
 {
 	float x,y,z;
 	float nx,ny,nz;
 	float u1,v1, u2,v2;
 
-} gosD3DVERTEX_2UV;
+};
 
 //
 // Vertex definition for transform with no lighting
 //
-typedef struct
+struct gosD3DLVERTEX
 {
 	float x,y,z;
 	DWORD unused;			// This DWORD is unused and is here to match the D3DLVETEX type
@@ -2560,43 +2568,43 @@ typedef struct
 	DWORD frgb;
 	float u,v;
 
-} gosD3DLVERTEX;
+};
 
 //
 // Vertex definition for transform with no lighting with two u,v coordinates
 //
-typedef struct
+struct gosD3DLVERTEX_2UV
 {
 	float x,y,z;
 	DWORD argb;
 	DWORD frgb;
 	float u1,v1, u2,v2;
 
-} gosD3DLVERTEX_2UV;
+};
 
 //
 // Vertex definition for transform, blending and lighting with two u,v coordinates
 //
-typedef struct
+struct gosD3DBLENDVERTEX
 {
 	float x,y,z;
 	float blend;
 	float nx,ny,nz;
 	float u,v;
 
-} gosD3DBLENDVERTEX;
+};
 
 //
 // Vertex definition for transform, blending and lighting with two u,v coordinates
 //
-typedef struct
+struct gosD3DBLENDVERTEX_2UV
 {
 	float x,y,z;
 	float blend;
 	float nx,ny,nz;
 	float u1,v1, u2,v2;
 
-} gosD3DBLENDVERTEX_2UV;
+};
 
 
 
@@ -2604,7 +2612,7 @@ typedef struct
 //
 // Used to specify type of vertex when creating vertex buffer or rendering an array of vertices
 //
-typedef enum
+enum gosVERTEXTYPE
 {
 	VERTEX_gos_VERTEX=1,				// Old style untransformed and unlit vertex
 	VERTEX_gos_VERTEX_2UV,				// Old style untransformed and unlit vertex with TWO u,v coords
@@ -2616,7 +2624,7 @@ typedef enum
 	VERTEX_gosD3DBLENDVERTEX_2UV,		// D3D transforms, clips, blends and lights with TWO u,v coords
 	VERTEX_gos_VERTEX_3UV,				// Old style untransformed and unlit vertex with TWO u,v coords
 
-} gosVERTEXTYPE;
+};
 
 
 //
@@ -2629,7 +2637,7 @@ typedef struct
 
 } gosVECTOR;
 */
-typedef vec3 gosVECTOR;
+using gosVECTOR = vec3;
 
 
 //
@@ -2652,23 +2660,23 @@ typedef struct
 
 } gosMATRIX;
 */
-typedef mat4 gosMATRIX;
+using gosMATRIX = mat4;
 
 
 //
 // Color definition (Identical to D3DCOLORVALUE)
 //
-typedef struct
+struct gosCOLOR
 {
 	float r,g,b,a;
 
-} gosCOLOR;
+};
 
 
 //
 // Material definition (Identical to D3DMATERIAL7)
 //
-typedef struct
+struct gosMATERIAL
 {
 	gosCOLOR	diffuse;
 	gosCOLOR	ambient;
@@ -2676,19 +2684,19 @@ typedef struct
 	gosCOLOR	emissive;
 	float		power;
 
-} gosMATERIAL;
+};
 
 
 //
 // Used to specify type of light (Identical to D3DLIGHTTYPE)
 //
-typedef enum
+enum gosLIGHTTYPE
 {
 	LIGHT_POINT=1,
 	LIGHT_SPOT,
 	LIGHT_DIRECTIONAL,
 
-} gosLIGHTTYPE;
+};
 
 
 //
@@ -2699,7 +2707,7 @@ typedef enum
 //
 // Light definition (Identical to D3DLIGHT7)
 //
-typedef struct
+struct gosLIGHT
 {
     gosLIGHTTYPE	dltType;
     gosCOLOR		dcvDiffuse;
@@ -2715,32 +2723,32 @@ typedef struct
     float			dvTheta;
     float			dvPhi;
 
-} gosLIGHT;
+};
 
 
 //
 // Used to specify which matrix (Identical to D3DTRANSFORMSTATETYPE)
 //
-typedef enum
+enum gosTRANSFORMTYPE
 {
 	MATRIX_WORLD=1,
 	MATRIX_VIEW,
 	MATRIX_PROJECTION,
 	MATRIX_WORLD1,				// 2nd world matrix used in vertex blending
 
-} gosTRANSFORMTYPE;
+};
 
 
 //
 // Used to specify type of primitive being rendered in gos_RenderIndexedArray and gos_RenderVertexBuffer
 //
-typedef enum
+enum gosPRIMITIVETYPE
 {
 	PRIMITIVE_POINTLIST=1,
 	PRIMITIVE_LINELIST=2,
 	PRIMITIVE_TRIANGLELIST=3,
 
-} gosPRIMITIVETYPE;
+};
 
 
 
@@ -3051,16 +3059,16 @@ enum gos_TextureHints
 //
 // Used when locking and unlocking a texture
 //
-typedef struct
+struct TEXTUREPTR
 {
 	DWORD*				pTexture;
 	DWORD				Width;				// In pixels
 	DWORD				Height;				// In pixels
 	DWORD				Pitch;				// In DWORDS (so can be added to pTexture to move down a line)
 	gos_TextureFormat	Type;				// Internal format of texture (Solid, Keyed or Alpha) - Useful when you have used DETECT	
-} TEXTUREPTR;
+};
 
-typedef void (__stdcall *gos_RebuildFunction)( DWORD, void *);
+using gos_RebuildFunction = void (__stdcall *)( DWORD, void *);
 
 //
 // Load a texture, returns a texture handle that can be passed as a renderstate
