@@ -259,7 +259,6 @@ struct ColorPropIsland : mc2vk::IslandState {
 
     VkDescriptorSet   set[2] = {VK_NULL_HANDLE, VK_NULL_HANDLE};   // per parity slot (VK-PROP-FENCE-DEFER-1); set[i] binds ubo/inst/light[i]
     VkCommandBuffer   cbuf[2] = {VK_NULL_HANDLE, VK_NULL_HANDLE};   // allocated from `cpool`, freed with it
-    mc2vk::GpuTicket submitted[2];
     VkCommandBuffer lateCbuf[2] = {VK_NULL_HANDLE, VK_NULL_HANDLE};
     mc2vk::OwnedFence lateFence[2];
     mc2vk::GpuTicket submitted[2];   // per engine frame slot: the last core submit that used cbuf[slot], set[slot] and the slot's inputs
