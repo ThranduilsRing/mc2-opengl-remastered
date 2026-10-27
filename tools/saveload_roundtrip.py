@@ -234,8 +234,8 @@ def speed_args(sim_speed: int) -> list[str]:
 
 
 def add_speed_arg(p) -> None:
-    p.add_argument("--sim-speed", type=int, choices=(1, 2, 3, 4), default=1, metavar="N",
-                   help="N fixed sim steps per drawn frame (run_smoke --sim-speed); same saves, about 1/N of the host time past loading")
+    p.add_argument("--sim-speed", type=int, choices=(1, 2, 3, 4), default=None, metavar="N",
+                   help="N fixed sim steps per drawn frame (run_smoke --sim-speed); same saves, about 1/N of the host time past loading. Unset: check uses the speed the baseline was recorded at (the intro hold is render-frame paced, so ActualTime in the camera/world text packet depends on it), else 1")
 
 
 def runner_failed(returncode: int, output: str) -> bool:
@@ -460,6 +460,30 @@ def check_baseline_record(base: dict, cur: dict):
     return True, lines
 
 
+def text_ref_path(mission: str) -> str:
+    return os.path.join(BASELINE_DIR, mission + ".text.txt")
+
+
+def decoded_text(first: str) -> str:
+    """The FIT text packets of a save as one readable text, each under a '=== packet N ===' header (stored next to the pin, diffed on a mismatch)."""
+    out = []
+    for i, (typ, raw) in enumerate(si.load(first)[1]):
+        if si.packet_kind(typ, raw) == "text":
+            out.append(f"=== packet {i} ===\n" + raw.decode("latin-1").replace("\r\n", "\n"))
+    return "\n".join(out)
+
+
+def text_diff(mission: str, first: str) -> list[str]:
+    ref = text_ref_path(mission)
+    if not os.path.exists(ref):
+        return [f"no stored text reference ({os.path.relpath(ref, ROOT)}); re-pin with --baseline to store one"]
+    import difflib
+    with open(ref, encoding="utf-8", newline="") as fh:
+        old = fh.read().splitlines()
+    d = list(difflib.unified_diff(old, decoded_text(first).splitlines(), "pinned", "this run", lineterm="", n=2))
+    return d[:200] or ["decoded FIT text identical to the stored reference (drift is in binary packets)"]
+
+
 def baseline_path(mission: str) -> str:
     return os.path.join(BASELINE_DIR, mission + ".json")
 
@@ -520,8 +544,9 @@ def cmd_fixture(args) -> int:
     if refusal:
         print("saveload_roundtrip check: FAIL\n" + refusal)
         return 1
+    speed = args.sim_speed or (base or {}).get("sim_speed", 1)
     dest, first, second, fp, rc = run_fixture(args.mission, args.save_at, args.load_at, args.deploy, args.out, args.duration, args.plant,
-                                             args.install, args.save_dir, args.ref_exe, args.ref_commit, sim_speed=args.sim_speed)
+                                             args.install, args.save_dir, args.ref_exe, args.ref_commit, sim_speed=speed)
     ok, lines = fixture_verdict(first, second, args.mask, rc)
     print(f"files kept in {dest}")
     if args.cmd == "resave":
@@ -537,6 +562,7 @@ def cmd_fixture(args) -> int:
     if args.mask and not ok:
         print("the re-save leaves the mask (information only, --first-save-only):\n" + "\n".join(lines[:3]))
     rec = baseline_record(args.mission, args.save_at, args.load_at, first, second, fp, args.mask, args.first_save_only, rc)
+    rec["sim_speed"] = speed
     # WHY: a baseline pins the declared stock-plus-overlay data (tools/sim_determinism.py), not whatever a lane's install carries.
     rec["data_fingerprint"] = sd.data_fingerprint(args.install)
     if args.cmd == "baseline":
@@ -548,9 +574,13 @@ def cmd_fixture(args) -> int:
         with open(path, "w", encoding="utf-8", newline="\n") as fh:
             json.dump(rec, fh, indent=1)
             fh.write("\n")
+        with open(text_ref_path(args.mission), "w", encoding="utf-8", newline="\n") as fh:
+            fh.write(decoded_text(first))
         print(f"saveload_roundtrip: wrote {os.path.relpath(path, ROOT)} ({rec['packets']} packets, digest {rec['overall']}, re-save exact: {rec['resave_identical']}, policy match: {rec['resave_matches_policy']})")
         return 0
     ok, lines = check_baseline_record(base, rec)
+    if not ok:
+        lines += ["FIT text diff against the stored reference:"] + text_diff(args.mission, first)
     print(("saveload_roundtrip check: PASS" if ok else "saveload_roundtrip check: FAIL") + "\n" + "\n".join(lines))
     return 0 if ok else 1
 
@@ -605,7 +635,7 @@ def main(argv=None) -> int:
         with open(args.log, encoding="utf-8", errors="replace") as fh:
             ok, rep = analyze(fh.read().splitlines(), args.frames)
     else:
-        ok, rep = run(args.mission, args.frames, args.deploy, args.out, args.install, args.save_dir, args.ref_exe, args.ref_commit, args.sim_speed,
+        ok, rep = run(args.mission, args.frames, args.deploy, args.out, args.install, args.save_dir, args.ref_exe, args.ref_commit, args.sim_speed or 1,
                       args.save_at, args.load_at)
     print(("saveload_roundtrip: PASS" if ok else "saveload_roundtrip: FAIL") + "\n" + "\n".join(rep))
     return 0 if ok else 1
