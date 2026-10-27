@@ -6,7 +6,7 @@
   "HostServices": 0,
   "RenderCore": 402,
   "RenderWorld": 0,
-  "code": 13644,
+  "code": 13626,
   "mclib": 22484,
   "shaders": 416
  },
@@ -119,7 +119,7 @@
   "code/gvehicl.h": 66,
   "code/gvehicl_control.cpp": 59,
   "code/gvehicl_move.cpp": 392,
-  "code/gvehicl_update.cpp": 188,
+  "code/gvehicl_update.cpp": 170,
   "code/gvehicl_weapons.cpp": 492,
   "code/hardpoint.h": 8,
   "code/infowindow.cpp": 16,
@@ -482,8 +482,8 @@
   "shaders/vulkan/terrain_tier1.vert": 71,
   "shaders/vulkan/terrain_tier1_skirt.vert": 71
  },
- "head": "34150ae82",
+ "head": "d50bf2e86",
  "n": 8,
- "total": 39173,
+ "total": 39155,
  "version": 1
 }
