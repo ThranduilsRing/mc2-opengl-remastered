@@ -381,13 +381,15 @@ def zone_stats(trace: Path, zone: str, export_exe: Path):
               f"{p.stderr.strip()}", file=sys.stderr)
         return None
     total = cnt = 0
+    min_ns = None
     for row in csv.DictReader(io.StringIO(p.stdout)):
         if row.get("name") == zone:
+            min_ns = min(int(row["min_ns"]), min_ns) if min_ns is not None and row.get("min_ns") else (int(row["min_ns"]) if row.get("min_ns") else min_ns)
             total += int(row["total_ns"])
             cnt += int(row["counts"])
     if cnt == 0:
         return None
-    return {"total_ns": total, "counts": cnt, "mean_ns": total / cnt}
+    return {"total_ns": total, "counts": cnt, "mean_ns": total / cnt, "min_ns": min_ns}  # min = best uncontended estimate; csv has no median
 
 
 # ------------------------------------------------- Log capture guard --------

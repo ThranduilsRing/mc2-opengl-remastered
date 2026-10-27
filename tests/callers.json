@@ -3469,13 +3469,6 @@
           "text": "import console_child  # noqa: E402"
         },
         {
-          "path": "tools/stock_blocking.py",
-          "line": 16,
-          "evidence": "import",
-          "reference": "console_child",
-          "text": "import console_child"
-        },
-        {
           "path": "tools/terrain_beautify/cook_markings.py",
           "line": 99,
           "evidence": "import",
@@ -5034,13 +5027,6 @@
           "evidence": "command",
           "reference": "scripts/run_smoke.py",
           "text": "proc = subprocess.run(cmd, capture_output=True, text=True, env=env, cwd=str(ROOT),"
-        },
-        {
-          "path": "tools/stock_blocking.py",
-          "line": 77,
-          "evidence": "command",
-          "reference": "scripts/run_smoke.py",
-          "text": "result = subprocess.run("
         }
       ],
       "callers_by_stem": [
@@ -15871,21 +15857,6 @@
       "basename": "verb_chain_equiv.py",
       "stem": "verb_chain_equiv",
       "callers_by_basename": [],
-      "callers_by_stem": []
-    },
-    {
-      "path": "tools/stock_blocking.py",
-      "basename": "stock_blocking.py",
-      "stem": "stock_blocking",
-      "callers_by_basename": [
-        {
-          "path": "tests/smoke/test_stock_blocking.py",
-          "line": 6,
-          "evidence": "load module",
-          "reference": "tools/stock_blocking.py",
-          "text": "spec = importlib.util.spec_from_file_location(\"stock_blocking\", Path(__file__).parents[2] / \"tools/stock_blocking.py\")"
-        }
-      ],
       "callers_by_stem": []
     },
     {

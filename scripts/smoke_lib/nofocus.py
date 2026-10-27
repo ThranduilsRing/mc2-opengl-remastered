@@ -198,8 +198,21 @@ def allow_foreground() -> bool:
     return bool(v) and v != "0"
 
 
+def route_gpu(out: dict, perf: bool = False) -> None:
+    """Pass/fail runs go to the RTX 2070 SUPER so they do not contaminate perf runs on the 7900 XTX.
+
+    MC2_HARNESS_GPU = auto (default) | xtx | 2070 overrides. Perf = MC2_VK_GPU_TIMESTAMPS, Tracy,
+    uncapped FPS, or a visible-window (show_window) run. An explicit VK_LOADER_DRIVERS_SELECT wins.
+    """
+    mode = (out.get("MC2_HARNESS_GPU") or os.environ.get("MC2_HARNESS_GPU") or "auto").lower()  # runners scrub the child env; read the shell too
+    perf = perf or out.get("MC2_VK_GPU_TIMESTAMPS", "0") not in ("", "0") or out.get("MC2_FPS_CAP") == "0" \
+        or any(k.startswith("MC2_TRACY") for k in out)
+    if mode == "2070" or (mode == "auto" and not perf):
+        out.setdefault("VK_LOADER_DRIVERS_SELECT", "*nvoglv64*")
+
+
 def apply_env(env: "Optional[dict]" = None, *, small_window: bool = True,
-              offscreen: bool = True) -> dict:
+              offscreen: bool = True, perf: bool = False) -> dict:
     """Return `env` (or a copy of os.environ) with the no-focus vars applied.
 
     Safety settings are mandatory; an explicit caller value cannot enable
@@ -225,6 +238,7 @@ def apply_env(env: "Optional[dict]" = None, *, small_window: bool = True,
     user-present opt-in that nothing in the tree sets -- is what grants it.
     """
     out = dict(os.environ if env is None else env)
+    route_gpu(out, perf)
     if allow_foreground():
         # User-present session: the human asked for the window to be VISIBLE
         # (so offscreen / small-window do not apply). They did NOT ask for the
@@ -422,7 +436,7 @@ def spawn(argv: Sequence[str], *, show_window: bool = False,
     _hold_host_lease(argv)
     proc = subprocess.Popen(
         list(argv),
-        env=apply_env(env, small_window=small_window, offscreen=offscreen),
+        env=apply_env(env, small_window=small_window, offscreen=offscreen, perf=show_window),
         **popen_kwargs(show_window=show_window, **kw))
     _record_child(proc, argv)
     try:

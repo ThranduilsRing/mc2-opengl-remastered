@@ -36,7 +36,7 @@ def distribution(values):
     values = sorted(values)
     if not values:
         return None
-    return {"n": len(values), "mean_ms": statistics.mean(values), "max_ms": values[-1],
+    return {"n": len(values), "mean_ms": statistics.mean(values), "min_ms": values[0], "median_ms": statistics.median(values), "max_ms": values[-1],
             **{f"p{p}_ms": values[math.ceil(p / 100 * len(values)) - 1] for p in (50, 95, 99)}}
 
 

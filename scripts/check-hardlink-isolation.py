@@ -150,7 +150,7 @@ VERDICT_EXIT = {
 # The deploy-written + runtime-written surface. "" means the target root,
 # non-recursively. See the module docstring for why this is a root list.
 MUTATED_ROOTS = (
-    "", "shaders", "tools", "3rdparty/smaa", "3rdparty/cmaa2",
+    "", "shaders", "shaders_vk", "tools", "3rdparty/smaa", "3rdparty/cmaa2",
     "mods/mc2-industrial-kit", "mods/core_unlocks", "mods/sample_equipment",
     "mods/sample_new_variant", "mods/sample_variant",
     "data/defs", "data/kit", "data/model_overrides",
