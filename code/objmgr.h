@@ -306,12 +306,6 @@ class GameObjectManager {
 
 	private:
 
-		GameObjectPtr findObjectByMouse (long mouseX,
-										 long mouseY,
-										 GameObjectPtr* searchList,
-										 long listSize,
-										 bool skipDisabled = false);
-
 		GameObjectPtr findMoverByMouse (long mouseX,
 										long mouseY,
 										long teamId,

@@ -570,10 +570,6 @@ GameObjectPtr pickGameplayObjects(long x, long y, std::span<GameObjectPtr> list,
 } // namespace
 
 
-GameObjectPtr GameObjectManager::findObjectByMouse(long x, long y, GameObjectPtr* list, long size, bool skipDisabled) {
-    return pickGameplayObjects(x, y, list ? std::span(list, size) : std::span<GameObjectPtr>{}, skipDisabled);
-}
-
 GameObjectPtr GameObjectManager::findMoverByMouse(long x, long y, long commanderId, bool skipDisabled) {
     return pickGameplayObjects(x, y, objList ? std::span(&objList[1], getMaxMovers()) : std::span<GameObjectPtr>{}, skipDisabled, commanderId);
 }
