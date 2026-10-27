@@ -66,47 +66,6 @@ struct _TG_HWTypeVertex
 using TG_HWTypeVertexPtr = TG_HWTypeVertex*;
 
 //-------------------------------------------------------------------------------
-// TG_Vertex
-// This Structure stores information for each vertex of the shape which is instance specific
-// Its used to store UNCHANGING or rarely changing Light/Fog data so I don't have to calc every frame!
-struct _TG_Vertex
-{
-	BYTE			fog;
-	BYTE			redSpec;
-	BYTE			greenSpec;
-	BYTE			blueSpec;
-}; using TG_Vertex = _TG_Vertex;
-
-using TG_VertexPtr = TG_Vertex*;
-
-//-------------------------------------------------------------------------------
-// TG_ShadowVertex
-//This Structure stores information for each vertex of the shadow for this shape.
-// Nothing changes frame to frame here anymore unless light source is moving which is now RARE!
-struct _TG_ShadowVertex
-{
-	//Changes every frame if local light.  Rarely for the sun.  Moves slowly!
-	bool 			bDataIsNotValid;		//Indicates that the struct contains unitialized data
-	glm::vec3	position;				//Position of vertex relative to base position of shape.
-}; using TG_ShadowVertex = _TG_ShadowVertex;
-
-using TG_ShadowVertexPtr = TG_ShadowVertex*;
-
-//-----------------------------------------------------------------------------------
-// TG_ShadowVertexTemp
-// Stores VOLATILE information for the shadow vertices.  These can come from a pool!
-struct _TG_ShadowVertexTemp
-{
-	DWORD    		fRGBFog;				//Vertex Fog and Specular Color.  Needed if shadow is fogged.
-											//Every frame for local light.  Once in a blue moon for infinite light.
-
-	//Changes each call to Transform.
-	Stuff::Vector4D transformedPosition;	//ScreenCoords with Z depth.  Valid after Transform called.
-}; using TG_ShadowVertexTemp = _TG_ShadowVertexTemp;
-
-using TG_ShadowVertexTempPtr = TG_ShadowVertexTemp*;
-
-//-------------------------------------------------------------------------------
 // TG_UVData
 struct _TG_UVData
 {
@@ -137,30 +96,6 @@ struct _TG_TypeTriangle
 // Texture handle can change from frame to frame. Texture Animation!
 
 using TG_TypeTrianglePtr = TG_TypeTriangle*;
-
-//-------------------------------------------------------------------------------
-// TG_Triangle
-// This structure stores the information needed to draw the triangle per instance.
-struct _TG_Triangle
-{
-	DWORD    		aRGBLight[3];			//RGB Light for this triangle's vertices.
-}; using TG_Triangle = _TG_Triangle;
-
-// Texture handle can change from frame to frame. Texture Animation!
-
-using TG_TrianglePtr = TG_Triangle*;
-
-//-------------------------------------------------------------------------------
-// TG_ShadowTriangle
-// This structure stores the information needed to draw the shadow triangle.
-struct _TG_ShadowTriangle
-{
-	DWORD    		Vertices[3];			//Indices into Shadow Vertex List.
-}; using TG_ShadowTriangle = _TG_ShadowTriangle;
-
-// Texture handle can change from frame to frame. Texture Animation!
-
-using TG_ShadowTrianglePtr = TG_ShadowTriangle*;
 
 //-------------------------------------------------------------------------------
 // TG_LightTypes
@@ -197,7 +132,6 @@ inline constexpr int MAX_SCAN_LENGTH = 40;
 
 inline constexpr int MAX_NODES = 256;
 
-inline constexpr int MAX_SHADOWS = 1;
 //-------------------------------------------------------------------------------
 // TG_Light
 // This structure stores the information necessary to light the shape.
@@ -901,8 +835,6 @@ using TG_TypeShapePtr = TG_TypeShape*;
 //-------------------------------------------------------------------------------------
 // The OTHER meat and Potatoes part.  This is the actual instance the game draws with.
 // TG_Shape
-// Phase-helper state of MultiTransformShape (defined in tgl_transform_frame.h).
-struct TgXformFrame;
 
 class TG_Shape
 {
@@ -923,29 +855,7 @@ class TG_Shape
 		TG_TypeNodePtr			myType;						//Pointer to the instance of the shape.
 		DWORD					numVertices;				//Number of vertices in Shape
 		DWORD					numTriangles;				//NUmber of triangles in Shape
-		DWORD					numVisibleFaces;			//Number of non-backfaced non-clipped faces.
-		DWORD					numVisibleShadows;			//Number of visible Shadow Faces.
-
-		TG_Vertex *				listOfColors;				//Memory holding all unchanged or rarely changed color data.
-		gos_VERTEX * 			listOfVertices;				//Memory holding all vertex data
-		TG_TrianglePtr			listOfTriangles;			//Memory holding all triangle data
-		DWORDPtr				listOfVisibleFaces;			//Memory holding indices into listOfTriangles
-															//Draw in this order.  First entry with value 0xffffffff
-															//Means all done, no more to draw.
-
         TG_HWLightsData         lightData_;
-
-		std::vector<TG_ShadowVertex>	shadowVertexStore;	//Owns the shadow vertices (built in CreateFrom, released in destroy(): the instance memory is freed without a destructor).
-		TG_ShadowVertexPtr		listOfShadowVertices;		//Stores shadow vertex information for the shape.  A view of shadowVertexStore.
-															//We just use existing listOfTriangles to draw!
-															
-		TG_ShadowVertexTempPtr	listOfShadowTVertices;		//Stores just the Volatile data.  Comes from a pool!!
-															
-		DWORDPtr				listOfVisibleShadows;		//Memory holding indices into listOfTriangles
-															//Draw in this order.  First entry with value 0xffffffff
-															//Means all done, no more to draw.
-
-		bool					shadowsVisible[MAX_SHADOWS];//Is this shadow worth drawing?
 
 		DWORD					aRGBHighlight;				//Color to add to vertices to make building stand out.
 		DWORD					fogRGB;						//Color to make fog.
@@ -954,7 +864,6 @@ class TG_Shape
 
 		bool					lightsOut;
 		bool					noShadow;
-		bool					recalcShadows;
 		bool					isWindow;
 		bool					isSpotlight;
 		// EDGE-LIGHT-BILLBOARD-CULL-1 (master-FAIL #8): beacon/runway edge-light
@@ -983,33 +892,23 @@ class TG_Shape
 		static float					fogFull;
 		static float					fogStart;
 
-		static glm::mat4 	s_lightToShape[MAX_LIGHTS_IN_WORLD];
-		static glm::vec3			s_lightDir[MAX_LIGHTS_IN_WORLD];
-		static glm::vec3			s_spotDir[MAX_LIGHTS_IN_WORLD];
-		static glm::vec3			s_rootLightDir[MAX_LIGHTS_IN_WORLD];
-
 		static DWORD					lighteningLevel;
 
 	//-----------------
 	//Member Functions
 	protected:
-		// MultiTransformShape phases (tgl_transform.cpp, tgl_transform_light.cpp).
-		void xformVertexProject(glm::mat4* shapeToClip, bool& oneOff, bool& oneOn, TG_TypeShapePtr theShape, long j);
-		void xformVertexBaseColor(bool isHudElement, bool isNight, float nightFactor, TG_TypeShapePtr theShape, long j, TgXformFrame& f);
-		void xformVertexLights(TG_TypeShapePtr theShape, long j, TgXformFrame& f);
-		void xformVertexFog(TG_ShapeRecPtr parentNode, TG_TypeShapePtr theShape, long j, TgXformFrame& f);
-		void xformFaceCorners(BYTE alphaValue, TG_TypeShapePtr theShape, long j);
-		void xformFaceQueue(bool isHudElement, BYTE alphaValue, bool isClamped, TG_TypeShapePtr theShape, long j);
-		// UI preview draw of one leaf (preview_draw.cpp): projects, lights and draws immediately; no pools, no queue.
-		void PreviewDraw(const glm::mat4& shapeToWorld, const glm::mat4& worldToShape, BYTE alphaValue);
+		// CPU fallback draw of one leaf (preview_draw.cpp): projects from the hierarchy matrices, lights with the ambient and
+		// infinite lights, and either draws immediately (UI preview) or queues through the render submissions (world).
+		void CpuDraw(const glm::mat4& shapeToWorld, const glm::mat4& worldToShape, BYTE alphaValue, bool world, float forceZ, bool hud, bool clamped, bool spotlightsOnly);
+		// Reserves this leaf's triangles in the render submissions. Must run in the update phase, before any draw fills a
+		// vertex block (a block is sized when first filled, so a later reservation would overrun it).
+		void ReserveCpuDraw(BYTE alphaValue, bool hud, bool clamped, bool spotlightsOnly);
 
 	public:
 		void init (void)
 		{
-			numVertices = numTriangles = numVisibleFaces = 0;
+			numVertices = numTriangles = 0;
 
-			listOfVertices = nullptr;
-			listOfTriangles = nullptr;
 			// Slice 2 (object-offload) — Stage 2.C: keep s_listOfLights and
 			// s_numLights consistent. Pre-Stage-2.C a latent bug here cleared
 			// s_listOfLights but not s_numLights — never fired in practice
@@ -1022,10 +921,6 @@ class TG_Shape
 			// GatherLightsParameters. Reset both to keep the count truthful.
 			s_listOfLights = nullptr;
 			s_numLights = 0;
-			listOfVisibleFaces = nullptr;
-
-			listOfShadowVertices = nullptr;
-			listOfVisibleShadows = nullptr;
 
 			aRGBHighlight = 0x00000000;
 			
@@ -1035,21 +930,13 @@ class TG_Shape
 			
 			noShadow = false;
 			
-			recalcShadows = true;
-
 			isWindow = isSpotlight = false;
 			isLightBillboard = false;
-
-			for (long i=0;i<MAX_SHADOWS;i++)
-				shadowsVisible[i] = false;
 
             // sebi: init to not contain garbage
             fogRGB = 0xFFFFFFFF;
             instanceTextures_ = nullptr;
             myType = nullptr;
-            numVisibleShadows = 0;
-            listOfColors = nullptr;
-            listOfShadowTVertices = nullptr;
             lastTurnTransformed = 0;
             //
 			
@@ -1097,29 +984,6 @@ class TG_Shape
 		//This function sets the fog values for the shape.  Straight fog right now.
 		void SetFogRGB (DWORD fRGB);
 
-		//This function does exactly what TranformShape does EXCEPT that the shapeToClip,
-		//Lighting and backface matrices have been calculated in the step above this one.
-		//This saves enormous processor cycles when matrices are the same and transforms
-		//Can just be run from the same matrices without recalcing them!
-		//Function returns -1 if all vertex screen positions are off screen.
-		//Function returns 0 if any one vertex screen position is off screen.
-		//Function returns 1 is all vertex screen positions are on screen.
-		// NOTE:  THIS IS NOT A RIGOROUS CLIP!!!!!!!!!
-		long MultiTransformShape (glm::mat4 *shapeToClip, glm::vec3 *backFacePoint, TG_ShapeRecPtr parentNode, bool isHudElement, BYTE alphaValue, bool isClamped);
-
-		// Slice 2 (object-offload): reduced CPU pass — copy-and-strip variant
-		// of MultiTransformShape that keeps transform / screen-space positions /
-		// shadow-vertex projection / backface cull (listOfVisibleFaces) /
-		// lastTurnTransformed AND retains pool allocations for listOfColors,
-		// listOfTriangles, listOfVisibleShadows (PerPolySelect at tglpp.cpp:14-21
-		// requires these pointers non-null). Strips the per-vertex lighting
-		// kernel, aRGBHighlight additive, per-face lighting, listOfTriangles
-		// aRGBLight/fRGBLight writes, addTriangle queue calls, and the
-		// addRenderShape block. Stage 2.A: declared and defined but unused;
-		// Stage 2.B wires call sites in BldgAppearance/TreeAppearance/
-		// GenericAppearance::update inside their existing cull gates.
-		long MultiTransformShape_PositionsOnly (glm::mat4 *shapeToClip, glm::vec3 *backFacePoint, TG_ShapeRecPtr parentNode, bool isHudElement, BYTE alphaValue, bool isClamped);
-
 		// Slice 2 (object-offload): per-actor light-data cache without the
 		// per-vertex bake side-effects of MultiTransformShape. Uses the
 		// texture manager's scene-template path, then broadcasts the returned
@@ -1134,18 +998,6 @@ class TG_Shape
 		// set by GatherLightsParameters during the last update() run and is valid
 		// until shape or registration changes (both trigger invalidation).
 		uint32_t ResubmitCachedLightData();
-
-		//This function creates the list of shadows and transforms them in preparation to drawing.
-		//
-		void MultiTransformShadows (glm::vec3 *pos, glm::mat4 *s2w, float rotation);
-
-		//This function takes the current listOfVisibleFaces and draws them using
-		//gos_DrawTriangle.  Does clipping, too!
-		void Render (float forceZ = -1.0f, bool isHudElement = false, BYTE alphaValue = 0xff, bool isClamped = false, const glm::mat4* shapeToClip = nullptr, const glm::mat4* shapeToWorld = nullptr);
-
-		//This function takes the current listOfShadowTriangles and draws them using
-		//gos_DrawTriangle.  Does clipping, too!
-		long RenderShadows (long startFace);
 
 		void SetARGBHighLight (DWORD argb)
 		{
@@ -1215,15 +1067,8 @@ class TG_Shape
 			return myType->GetRelativeNodeCenter();
 		}
 		
-		bool PerPolySelect (float mouseX, float mouseY);
-		
 		void SetNoShadow(bool flag) { noShadow = flag; }
 
-		void SetRecalcShadows (bool flag)
-		{
-			recalcShadows = flag;
-		}
-		
 		virtual void ScaleShape (float scaleFactor)
 		{
 			shapeScalar = scaleFactor;
@@ -1251,500 +1096,6 @@ inline void _TG_ShapeRec::transferFrom (_TG_ShapeRec &rec, const TG_TinyTexture*
 
 // CPU routing for sidecar override shapes; no GL material is involved.
 
-
-//Pools are defined here.
-
-// -- Tier-1 instrumentation (stability spec §2) -----------------------------
-// First-NULL snapshot captured per pool per frame. Render-thread only; no
-// locks. Defined here so all five independent pool classes can embed it.
-struct TGL_NullSnapshot {
-	const char* caller;                  // __FUNCTION__ of first NULL caller this frame
-	const void* shape;                   // optional shape pointer if passed via shape-aware macro
-	DWORD       numRequested;            // request count at first NULL
-	DWORD       numUsed_at_failure;      // pool high-water at first NULL
-	DWORD       totalCapacity;           // pool capacity
-};
-
-class TG_VertexPool
-{
-	protected:
-		TG_Vertex 	*tgVertexPool;
-		std::unique_ptr<TG_Vertex[]>	tgVertexPoolStore;	// owns the pool; tgVertexPool is a view of it
-		TG_Vertex 	*nextVertex;
-
-		DWORD		totalVertices;
-		DWORD		numVertices;
-
-	public:
-		// Tier-1 instrumentation. All accessed only from the render thread.
-		DWORD            nullCountThisFrame    = 0;
-		uint64_t         nullCountMonotonic    = 0;
-		TGL_NullSnapshot firstNullSnapshot     = {};
-		DWORD            peakUsedThisMission   = 0;
-
-		DWORD capacity (void) const { return totalVertices; }
-
-		void recordNull (const char* caller, DWORD numRequested, const void* shape)
-		{
-			if (nullCountThisFrame == 0)
-			{
-				firstNullSnapshot.caller             = caller;
-				firstNullSnapshot.shape              = shape;
-				firstNullSnapshot.numRequested       = numRequested;
-				firstNullSnapshot.numUsed_at_failure = numVertices;
-				firstNullSnapshot.totalCapacity      = totalVertices;
-			}
-			nullCountThisFrame++;
-			nullCountMonotonic++;
-		}
-		void resetFrameCounters (void)
-		{
-			nullCountThisFrame = 0;
-			firstNullSnapshot  = {};
-			// nullCountMonotonic intentionally NOT reset
-		}
-
-		TG_VertexPool (void)
-		{
-			tgVertexPool = nextVertex = nullptr;
-			totalVertices = numVertices = 0;
-		}
-		
-		~TG_VertexPool (void)
-		{
-			destroy();
-		}
-		
-		void destroy (void)
-		{
-			tgVertexPoolStore.reset();
-			tgVertexPool = nextVertex = nullptr;
-			totalVertices = numVertices = 0;
-		}
-		
-		void init (DWORD maxVertices)
-		{
-			tgVertexPoolStore = std::make_unique_for_overwrite<TG_Vertex[]>(maxVertices);
-			tgVertexPool = tgVertexPoolStore.get();
-			gosASSERT(tgVertexPool != nullptr);
-			
-			nextVertex = tgVertexPool;
-			
-			totalVertices = maxVertices;
-			numVertices = 0;
-		}
-		
-		void reset (void)
-		{
-			nextVertex = tgVertexPool;
-			numVertices = 0;
-		}
-		
-		TG_VertexPtr getColorsFromPool (DWORD numRequested, const char* caller = "?", const void* shape = nullptr)
-		{
-			TG_VertexPtr result = nullptr;
-			numVertices += numRequested;
-			if (numVertices < totalVertices)
-			{
-				result = nextVertex;
-				nextVertex += numRequested;
-			}
-			if (result && numVertices > peakUsedThisMission)
-				peakUsedThisMission = numVertices;
-			if (!result) recordNull(caller, numRequested, shape);
-			return result;
-		}
-};
-
-class TG_GOSVertexPool
-{
-	protected:
-		gos_VERTEX 	*gVertexPool;
-		std::unique_ptr<gos_VERTEX[]>	gVertexPoolStore;	// owns the pool; gVertexPool is a view of it
-		gos_VERTEX 	*nextVertex;
-
-		DWORD		totalVertices;
-		DWORD		numVertices;
-
-	public:
-		// Tier-1 instrumentation (stability spec §2).
-		DWORD            nullCountThisFrame    = 0;
-		uint64_t         nullCountMonotonic    = 0;
-		TGL_NullSnapshot firstNullSnapshot     = {};
-		DWORD            peakUsedThisMission   = 0;
-
-		DWORD capacity (void) const { return totalVertices; }
-
-		void recordNull (const char* caller, DWORD numRequested, const void* shape)
-		{
-			if (nullCountThisFrame == 0)
-			{
-				firstNullSnapshot.caller             = caller;
-				firstNullSnapshot.shape              = shape;
-				firstNullSnapshot.numRequested       = numRequested;
-				firstNullSnapshot.numUsed_at_failure = numVertices;
-				firstNullSnapshot.totalCapacity      = totalVertices;
-			}
-			nullCountThisFrame++;
-			nullCountMonotonic++;
-		}
-		void resetFrameCounters (void)
-		{
-			nullCountThisFrame = 0;
-			firstNullSnapshot  = {};
-			// nullCountMonotonic intentionally NOT reset
-		}
-
-		TG_GOSVertexPool (void)
-		{
-			gVertexPool = nextVertex = nullptr;
-			totalVertices = numVertices = 0;
-		}
-		
-		~TG_GOSVertexPool (void)
-		{
-			destroy();
-		}
-		
-		void destroy (void)
-		{
-			gVertexPoolStore.reset();
-			gVertexPool = nextVertex = nullptr;
-			totalVertices = numVertices = 0;
-		}
-		
-		void init (DWORD maxVertices)
-		{
-			gVertexPoolStore = std::make_unique_for_overwrite<gos_VERTEX[]>(maxVertices);
-			gVertexPool = gVertexPoolStore.get();
-			gosASSERT(gVertexPool != nullptr);
-			
-			nextVertex = gVertexPool;
-			
-			totalVertices = maxVertices;
-			numVertices = 0;
-		}
-		
-		void reset (void)
-		{
-			nextVertex = gVertexPool;
-			numVertices = 0;
-		}
-		
-		gos_VERTEX * getVerticesFromPool (DWORD numRequested, const char* caller = "?", const void* shape = nullptr)
-		{
-			gos_VERTEX* result = nullptr;
-			numVertices += numRequested;
-			if (numVertices < totalVertices)
-			{
-				result = nextVertex;
-				nextVertex += numRequested;
-			}
-			if (result && numVertices > peakUsedThisMission)
-				peakUsedThisMission = numVertices;
-			if (!result) recordNull(caller, numRequested, shape);
-			return result;
-		}
-};
-
-class TG_TrianglePool
-{
-	protected:
-		TG_Triangle *trianglePool;
-		std::unique_ptr<TG_Triangle[]>	trianglePoolStore;	// owns the pool; trianglePool is a view of it
-		TG_Triangle	*nextTriangle;
-
-		DWORD		totalTriangles;
-		DWORD		numTriangles;
-
-	public:
-		// Tier-1 instrumentation (stability spec §2).
-		DWORD            nullCountThisFrame    = 0;
-		uint64_t         nullCountMonotonic    = 0;
-		TGL_NullSnapshot firstNullSnapshot     = {};
-		DWORD            peakUsedThisMission   = 0;
-
-		DWORD capacity (void) const { return totalTriangles; }
-
-		void recordNull (const char* caller, DWORD numRequested, const void* shape)
-		{
-			if (nullCountThisFrame == 0)
-			{
-				firstNullSnapshot.caller             = caller;
-				firstNullSnapshot.shape              = shape;
-				firstNullSnapshot.numRequested       = numRequested;
-				firstNullSnapshot.numUsed_at_failure = numTriangles;
-				firstNullSnapshot.totalCapacity      = totalTriangles;
-			}
-			nullCountThisFrame++;
-			nullCountMonotonic++;
-		}
-		void resetFrameCounters (void)
-		{
-			nullCountThisFrame = 0;
-			firstNullSnapshot  = {};
-			// nullCountMonotonic intentionally NOT reset
-		}
-
-		TG_TrianglePool (void)
-		{
-			trianglePool = nextTriangle = nullptr;
-			totalTriangles = numTriangles = 0;
-		}
-		
-		~TG_TrianglePool (void)
-		{
-			destroy();
-		}
-		
-		void destroy (void)
-		{
-			trianglePoolStore.reset();
-			trianglePool = nextTriangle = nullptr;
-			totalTriangles = numTriangles = 0;
-		}
-		
-		void init (DWORD maxTriangles)
-		{
-			trianglePoolStore = std::make_unique_for_overwrite<TG_Triangle[]>(maxTriangles);
-			trianglePool = trianglePoolStore.get();
-			gosASSERT(trianglePool != nullptr);
-			
-			nextTriangle = trianglePool;
-			
-			totalTriangles = maxTriangles;
-			numTriangles = 0;
-		}
-		
-		void reset (void)
-		{
-			nextTriangle = trianglePool;
-			numTriangles = 0;
-		}
-		
-		TG_Triangle * getTrianglesFromPool (DWORD numRequested, const char* caller = "?", const void* shape = nullptr)
-		{
-			TG_Triangle* result = nullptr;
-			numTriangles += numRequested;
-			if (numTriangles < totalTriangles)
-			{
-				result = nextTriangle;
-				nextTriangle += numRequested;
-			}
-			if (result && numTriangles > peakUsedThisMission)
-				peakUsedThisMission = numTriangles;
-			if (!result) recordNull(caller, numRequested, shape);
-			return result;
-		}
-};
-
-class TG_ShadowPool
-{
-	protected:
-		TG_ShadowVertexTemp 	*tVertexPool;
-		std::unique_ptr<TG_ShadowVertexTemp[]>	tVertexPoolStore;	// owns the pool; tVertexPool is a view of it
-		TG_ShadowVertexTemp 	*nextVertex;
-
-		DWORD					totalVertices;
-		DWORD					numVertices;
-
-	public:
-		// Tier-1 instrumentation (stability spec §2).
-		DWORD            nullCountThisFrame    = 0;
-		uint64_t         nullCountMonotonic    = 0;
-		TGL_NullSnapshot firstNullSnapshot     = {};
-		DWORD            peakUsedThisMission   = 0;
-
-		DWORD capacity (void) const { return totalVertices; }
-
-		void recordNull (const char* caller, DWORD numRequested, const void* shape)
-		{
-			if (nullCountThisFrame == 0)
-			{
-				firstNullSnapshot.caller             = caller;
-				firstNullSnapshot.shape              = shape;
-				firstNullSnapshot.numRequested       = numRequested;
-				firstNullSnapshot.numUsed_at_failure = numVertices;
-				firstNullSnapshot.totalCapacity      = totalVertices;
-			}
-			nullCountThisFrame++;
-			nullCountMonotonic++;
-		}
-		void resetFrameCounters (void)
-		{
-			nullCountThisFrame = 0;
-			firstNullSnapshot  = {};
-			// nullCountMonotonic intentionally NOT reset
-		}
-
-		TG_ShadowPool (void)
-		{
-			tVertexPool = nextVertex = nullptr;
-			totalVertices = numVertices = 0;
-		}
-		
-		~TG_ShadowPool (void)
-		{
-			destroy();
-		}
-		
-		void destroy (void)
-		{
-			tVertexPoolStore.reset();
-			tVertexPool = nextVertex = nullptr;
-			totalVertices = numVertices = 0;
-		}
-		
-		void init (DWORD maxVertices)
-		{
-			tVertexPoolStore = std::make_unique_for_overwrite<TG_ShadowVertexTemp[]>(maxVertices);
-			tVertexPool = tVertexPoolStore.get();
-			gosASSERT(tVertexPool != nullptr);
-			
-			nextVertex = tVertexPool;
-			
-			totalVertices = maxVertices;
-			numVertices = 0;
-		}
-		
-		void reset (void)
-		{
-			nextVertex = tVertexPool;
-			numVertices = 0;
-		}
-		
-		TG_ShadowVertexTempPtr getShadowsFromPool (DWORD numRequested, const char* caller = "?", const void* shape = nullptr)
-		{
-			TG_ShadowVertexTempPtr result = nullptr;
-			numVertices += numRequested;
-			if (numVertices < totalVertices)
-			{
-				result = nextVertex;
-				nextVertex += numRequested;
-			}
-			if (result && numVertices > peakUsedThisMission)
-				peakUsedThisMission = numVertices;
-			if (!result) recordNull(caller, numRequested, shape);
-			return result;
-		}
-};
-
-class TG_DWORDPool
-{
-	protected:
-		DWORD 	*triPool;
-		std::unique_ptr<DWORD[]>	triPoolStore;	// owns the pool; triPool is a view of it
-		DWORD	*nextTri;
-
-		DWORD	totalTriangles;
-		DWORD	numTriangles;
-
-	public:
-		// Tier-1 instrumentation (stability spec §2).
-		DWORD            nullCountThisFrame    = 0;
-		uint64_t         nullCountMonotonic    = 0;
-		TGL_NullSnapshot firstNullSnapshot     = {};
-		DWORD            peakUsedThisMission   = 0;
-
-		DWORD capacity (void) const { return totalTriangles; }
-
-		void recordNull (const char* caller, DWORD numRequested, const void* shape)
-		{
-			if (nullCountThisFrame == 0)
-			{
-				firstNullSnapshot.caller             = caller;
-				firstNullSnapshot.shape              = shape;
-				firstNullSnapshot.numRequested       = numRequested;
-				firstNullSnapshot.numUsed_at_failure = numTriangles;
-				firstNullSnapshot.totalCapacity      = totalTriangles;
-			}
-			nullCountThisFrame++;
-			nullCountMonotonic++;
-		}
-		void resetFrameCounters (void)
-		{
-			nullCountThisFrame = 0;
-			firstNullSnapshot  = {};
-			// nullCountMonotonic intentionally NOT reset
-		}
-
-		TG_DWORDPool (void)
-		{
-			triPool = nextTri = nullptr;
-			totalTriangles = numTriangles = 0;
-		}
-		
-		~TG_DWORDPool (void)
-		{
-			destroy();
-		}
-		
-		void destroy (void)
-		{
-			triPoolStore.reset();
-			triPool = nextTri = nullptr;
-			totalTriangles = numTriangles = 0;
-		}
-		
-		void init (DWORD maxTriangles)
-		{
-			triPoolStore = std::make_unique_for_overwrite<DWORD[]>(maxTriangles);
-			triPool = triPoolStore.get();
-			gosASSERT(triPool != nullptr);
-			
-			nextTri = triPool;
-			
-			totalTriangles = maxTriangles;
-			numTriangles = 0;
-		}
-		
-		void reset (void)
-		{
-			nextTri = triPool;
-			numTriangles = 0;
-		}
-		
-		DWORD * getFacesFromPool (DWORD numRequested, const char* caller = "?", const void* shape = nullptr)
-		{
-			DWORD* result = nullptr;
-			numTriangles += numRequested;
-			if (numTriangles < totalTriangles)
-			{
-				result = nextTri;
-				nextTri += numRequested;
-			}
-			if (result && numTriangles > peakUsedThisMission)
-				peakUsedThisMission = numTriangles;
-			if (!result) recordNull(caller, numRequested, shape);
-			return result;
-		}
-};
-
-//-------------------------------------------------------------------------------
-extern TG_VertexPool 		*colorPool;
-extern TG_GOSVertexPool 	*vertexPool;
-extern TG_DWORDPool			*facePool;
-extern TG_ShadowPool		*shadowPool;
-extern TG_TrianglePool		*trianglePool;
-
-// -- Tier-1 instrumentation macros (stability spec §2.1) --------------------
-// Wrap every TGL pool get-call so __FUNCTION__ is captured automatically.
-// Shape-aware variant additionally records the calling shape pointer.
-#define MC2_TGL_GET_COLORS(pool, n)                 (pool)->getColorsFromPool((n),  __FUNCTION__)
-#define MC2_TGL_GET_FACES(pool, n)                  (pool)->getFacesFromPool((n),   __FUNCTION__)
-#define MC2_TGL_GET_SHADOW(pool, n)                 (pool)->getShadowsFromPool((n), __FUNCTION__)
-#define MC2_TGL_GET_TRIANGLES(pool, n)              (pool)->getTrianglesFromPool((n), __FUNCTION__)
-#define MC2_TGL_GET_VERTS_FOR_SHAPE(pool, n, shape) (pool)->getVerticesFromPool((n), __FUNCTION__, (shape))
-
-// Frame-end drain (env-gated per-frame line + always-on monotonic summary).
-// Called from GameOS/gameos/gameosmain.cpp just before swap_window().
-void drainTglPoolStats (void);
-void drainTglPoolStatsOnShutdown (void);
-
-// Emit unconditional per-mission peak lines for all live pools.
-// Call just BEFORE any pool destroy() block at mission teardown.
-// context is a short label (e.g. "mission_unload" or "next_mission_start").
-void logTglPoolPeaks (const char* context);
 
 //-------------------------------------------------------------------------------
 // ASE File Parse String Macros

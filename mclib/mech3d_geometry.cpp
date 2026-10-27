@@ -523,30 +523,6 @@ void Mech3DAppearance::updateGeometry (void)
 
  			mechShadowShape->SetNodeRotation("joint_torso",&torsoRot);
 			mechShadowShape->SetLightList(eye->getWorldLights(),eye->getNumLights());
-			// Slice D-shadow-skip: when GPU mech path is on AND skip
-			// killswitch is on AND tessellation is active (modern shadow
-			// path engaged), omit the call entirely. Mech3DAppearance::
-			// renderShadows early-returns on tessellation (mech3d.cpp),
-			// so no consumer of TransformMultiShape's outputs exists in
-			// this configuration. Modern dynamic shadows use g_shadowShapes[]
-			// (txmmgr.cpp-1620), a separate data path that does
-			// NOT consume mechShadowShape state. See D-shadow-skip spec
-			// §Recon for full grep-verified consumer enumeration including
-			// opposite-direction grep on addShadowShape.
-			// Tessellation gate is belt-and-suspenders: if a user disables
-			// tessellation, the legacy RenderShadows path becomes reachable
-			// and would need TransformMultiShape outputs.
-			// Slice C3-shadow: on the GPU mech path use _PositionsOnly to skip
-			// the per-vertex CPU lighting kernel only. RenderShadows (tgl.cpp)
-			// hardcodes gVertex.argb to 0x3f000000 and reads
-			// listOfShadowTVertices populated by MultiTransformShadows
-			// (which still dispatches at msl.cpp in that branch).
-			// MECH-KILLSWITCH-SHADOW-PAIR-RETIRE-1: former MC2_GPU_MECH_SHADOW_SKIP retired.
-			// ISSUE-34: modern-shadow-path predicate (was tess-keyed), matching
-			// the renderShadows early-return that makes the consumer unreachable.
-			if (!gos_IsModernShadowPathActive()) {
-				mechShadowShape->TransformMultiShape_PositionsOnly(&xlatPosition, &qRotation);
-			}
 		}
 		} // end AnimPose zone
 
@@ -555,29 +531,8 @@ void Mech3DAppearance::updateGeometry (void)
 		// further broken down by zones inside TransformMultiShape itself.
 		{ ZoneScopedN("Mech3D.UpdateGeometry.BodyXform");
 		mechShape->SetLightList(eye->getWorldLights(),eye->getNumLights());
-		// Slice C3-revised: when the GPU mech path is on, use _PositionsOnly
-		// to skip the per-vertex CPU lighting kernel. Output of that kernel
-		// (listOfVertices[j].argb)
-		// is only consumed by mechShape->Render(true) which Slice A
-		// bypasses; GPU shader does its own lighting via calc_light().
-		// BODY ONLY — arms (4459, 4543) and shadow (3377) explicitly
-		// stay full TransformMultiShape; their Render(true) callers
-		// still depend on the lighting bake.
-		// Slice D-leaf-skip-v2: when the GPU mech path is on AND the modern
-		// shadow path is active, use HierarchyOnly to additionally skip
-		// per-leaf dispatch + MultiTransformShadows.
-		// Recon proved zero practical consumer in this configuration
-		// (mechShape->Render(true) bypassed by Slice A; RenderShadows
-		// unreachable on tessellation; findMoverByMouse rect-only — see
-		// killswitch comment in gos_mech_killswitch.h).
-		// ISSUE-34: leaf-skip keyed on the modern shadow path (was tess) —
-		// its unreachability proof (RenderShadows early-return, Slice A
-		// Render(true) bypass, rect-only selection) holds on that predicate.
-		if (gos_IsModernShadowPathActive()) {
-			mechShape->TransformMultiShape_HierarchyOnly(&xlatPosition, &qRotation);
-		} else {
-			mechShape->TransformMultiShape_PositionsOnly(&xlatPosition, &qRotation);
-		}
+		// The GPU mech batcher reads the node matrices only (vertex transform and lighting run in its shaders).
+		mechShape->TransformMultiShape_HierarchyOnly(&xlatPosition, &qRotation);
 		} // end BodyXform zone
 	}
 
@@ -778,11 +733,13 @@ void Mech3DAppearance::updateGeometry (void)
 	xlatPosition.y += baseRootNodeDifference;
 	sensorTriangleShape->SetFogRGB(0xffffffff);
 	sensorTriangleShape->SetLightList(eye->getWorldLights(),eye->getNumLights());
-	sensorTriangleShape->TransformMultiShape(&xlatPosition,&totalRotation);
+	sensorTriangleShape->TransformMultiShape_HierarchyOnly(&xlatPosition,&totalRotation);
+	sensorTriangleShape->ReserveCpuDraw();
 
 	sensorSquareShape->SetFogRGB(0xffffffff);
 	sensorSquareShape->SetLightList(eye->getWorldLights(),eye->getNumLights());
-	sensorSquareShape->TransformMultiShape(&xlatPosition,&totalRotation);
+	sensorSquareShape->TransformMultiShape_HierarchyOnly(&xlatPosition,&totalRotation);
+	sensorSquareShape->ReserveCpuDraw();
 	} // end !skipSensors
 	} // end Sensors zone
 	

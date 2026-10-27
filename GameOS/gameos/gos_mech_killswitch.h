@@ -35,7 +35,7 @@ struct MechPreviewRenderScope {
 
 // Slice C1: render-side mech cull. Skips submitActor for mechs the
 // GPU frustum/visibility shader marks invisible. RENDER-ONLY — does
-// NOT cascade into update/AI/lifecycle. Unconditional under g_useGpuMechs
+// NOT cascade into update/AI/lifecycle. Unconditional
 // since gate amnesty wave 1 (the MC2_GPU_MECH_CULL=0 arm had no user).
 
 // MECH-KILLSWITCH-SKIN-RETIRE-1 (2026-06-23): MC2_GPU_MECH_SKIN (Slice C2,
@@ -50,7 +50,7 @@ struct MechPreviewRenderScope {
 // for the GPU mech body. Skips the per-vertex CPU lighting kernel that
 // consumes ~65µs/mech and whose output (listOfVertices[j].argb) is only
 // consumed by the legacy CPU Render(true) path that Slice A bypasses.
-// Unconditional under g_useGpuMechs since gate amnesty wave 1 (when the GPU
+// Unconditional since gate amnesty wave 1 (when the GPU
 // mech path is off, the legacy path NEEDS the lighting bake's output).
 // BODY-ONLY: arms and the shadow shape keep their own transform variants;
 // their Render(true) callers still need listOfVertices[*].argb populated.
@@ -61,7 +61,7 @@ struct MechPreviewRenderScope {
 // listOfShadowTVertices populated by MultiTransformShadows (which still
 // dispatches at msl.cpp:1765 in both branches); the per-vertex CPU
 // lighting bake's output is unused by the shadow render path. Unconditional
-// under g_useGpuMechs since gate amnesty wave 1.
+// since gate amnesty wave 1.
 
 // MECH-KILLSWITCH-SHADOW-PAIR-RETIRE-1 (2026-06-23): the former
 // MC2_GPU_MECH_SHADOW_SKIP and MC2_GPU_MECH_SHADOW_STATE_STRIP killswitches
@@ -71,7 +71,7 @@ struct MechPreviewRenderScope {
 // shadows use the separate g_shadowShapes[] path, so the skipped shadow-shape
 // transform + the four stripped state setters had zero consumer. Both were
 // always on by default. Behavior now lives inline, still guarded by
-// g_useGpuMechs && gos_IsTerrainTessellationActive() (the real conditions; the
+// gos_IsTerrainTessellationActive() (the real conditions; the
 // CPU / non-tess paths still do the work). Audit: MECH-KILLSWITCH-AUDIT-1.
 
 // Slice D-leaf-skip-v2 (2026-05-09): strip per-leaf body of mechShape->
@@ -86,7 +86,7 @@ struct MechPreviewRenderScope {
 // submitActor + getNodePosition read only listOfShapes[i].shapeToWorld
 // (hierarchy-level), preserved by leaf-skip.
 //
-// Unconditional under g_useGpuMechs AND the modern shadow path since gate
+// Unconditional AND the modern shadow path since gate
 // amnesty wave 1 (the MC2_GPU_MECH_LEAF_SKIP=0 arm had no user).
 
 // MECH-KILLSWITCH-SENSORSKIP-RETIRE-1 (2026-06-23): the former
@@ -95,7 +95,7 @@ struct MechPreviewRenderScope {
 // sensorLevel ∈ {0,5}, where the marker never renders (render gate is the exact
 // inverse [1,4], mech3d.cpp:2948-2960) — is a strict no-op and was always on by
 // default. The behavior now lives inline in updateGeometry, still guarded by
-// g_useGpuMechs (CPU path transforms sensors regardless). Audit:
+// the GPU mech path (sensors are now hierarchy-only). Audit:
 // MECH-KILLSWITCH-AUDIT-1; MC2_MECH_GPU_PARITY harness never built.
 
 // Resolve a gosTextureHandle to the underlying raw GL texture name.

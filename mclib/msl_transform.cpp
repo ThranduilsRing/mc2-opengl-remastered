@@ -1,86 +1,25 @@
-// Multi shape layer: TG_MultiShape::TransformMultiShape (and its variants) and the GPU light-data cache.
+// Multi shape layer: the node-hierarchy walk (TransformMultiShape_BuildRecipe / _HierarchyOnly) and the GPU light-data cache.
 // Declared in the class headers; shared names in msl_internal.h.
 #include "msl_internal.h"
 //-------------------------------------------------------------------------------
-//This function does the actual transform math, clip checks and lighting math.
-//The matrices passed in are the translation/rotation matrix for the shape and
-//Its inverse.  Also will animate.
-//Function returns -1 if all vertex screen positions are off screen.
-//Function returns 0 if any one vertex screen position is off screen.
-//Function returns 1 is all vertex screen positions are on screen.
-// NOTE:  THIS IS NOT A RIGOROUS CLIP!!!!!!!!!
-
-float yawRotation = 0.0f;
-
-#ifdef LAB_ONLY
-__int64 MCTimeTransformandLight 	= 0;
-__int64 MCTimeAnimationandMatrix	= 0;
-__int64 MCTimePerShapeTransform		= 0;
-#endif
-
-// Slice 2 (object-offload) — Stage 2.B: dispatch flag for the per-leaf
-// MultiTransformShape call inside TransformMultiShape's body. Set true by
-// TransformMultiShape_PositionsOnly, cleared after the inner call returns.
-// File-static so the state is local to the per-frame transform dispatch.
-// Single-threaded by construction (MC2 update is serial; no actor's update
-// runs while another's TransformMultiShape is in flight).
-static bool s_multiShapePositionsOnly = false;
-// Track B: when true, TransformMultiShape populates shapeToWorld but skips the
-// pool-allocating MultiTransformShape_* dispatch and the s_cameraOrigin read.
-static bool s_buildRecipeOnly = false;
-// With s_buildRecipeOnly: still transform the SpotLight_ leaves (night cone geometry, which no batcher draws).
-static bool s_spotlightLeavesToo = false;
-
-long TG_MultiShape::TransformMultiShape (glm::vec3 *pos, glm::quat *rot)
+// Walks the node hierarchy and publishes shapeToWorld / worldToShape per node. No vertex is touched: the GPU batchers
+// transform and light, and the CPU fallback draw (TG_Shape::CpuDraw) projects from these matrices. Each walked leaf is
+// stamped lastTurnTransformed = turn, the "this leaf was updated this frame" predicate the fallback draw and the cone
+// glow test. Needs no camera, so it is safe during Mission::init.
+long TG_MultiShape::TransformMultiShape_BuildRecipe (glm::vec3 *pos, glm::quat *rot)
 {
-	::mc2_object_recon::Scope _recon_mShape_(
-		&::mc2_object_recon::g_per_frame.mShape_total_ns,
-		&::mc2_object_recon::g_per_frame.mShape_calls);
-	// F3 CPU projection cost-baseline: per-multishape scope, aggregated
-	// into the tgl_transform per-frame bucket. No-op when env OFF.
-	::mc2_cpu_proj_cost::Scope _f3_tgl_scope(
-	    ::mc2_cpu_proj_cost::BUCKET_TGL_TRANSFORM);
-	::mc2_cpu_proj_cost::add_workload_tgl_transform(numTG_Shapes);
-    //Profile T&L so I can break out GameLogic from T&L
-#ifdef LAB_ONLY
-    __int64 x;
-    x=GetCycles();
-#endif
-
     glm::mat4 	shapeOrigin;
-    glm::mat4	shadowOrigin;
     glm::mat4 	localShapeOrigin;
 
     mc2::math::buildRotation(shapeOrigin, *rot);
     mc2::math::buildTranslation(shapeOrigin, *pos);
 
-    mc2::math::Euler angles = mc2::math::eulerFromQuat(*rot);
-    yawRotation = angles.yaw;
-
-    mc2::math::buildRotation(shadowOrigin, mc2::math::Euler(-angles.pitch,0.0f,0.0f));
-    mc2::math::buildTranslation(shadowOrigin, *pos);
-
     BindMaterials();
     long i=0;
-    glm::vec3 camPosition;
-    // Guard null — s_cameraOrigin is unset during Mission::init (before first Camera::update).
-    // s_buildRecipeOnly skips per-vertex dispatch so camPosition is never used in that mode.
-    if (TG_Shape::s_cameraOrigin)
-        camPosition = mc2::math::getTranslation(*TG_Shape::s_cameraOrigin);
-    else
-        { camPosition.x = camPosition.y = camPosition.z = 0.0f; }
-
-    glm::mat4  shapeToClip, rootShapeToClip;
-    glm::vec3 backFacePoint;
 
     TG_ShapeRecPtr childChain[MAX_NODES];
 
-    // D-gpu-pose-instrument: PerShapeLoop wraps the per-shape iteration.
-    // Per-mech-per-call (fires once per TransformMultiShape invocation),
-    // not per-leaf-iteration. Captures the WHOLE loop including hierarchy
-    // walk + per-leaf dispatch + MultiTransformShadows. Future GPU-compute
-    // target.
-    { ZoneScopedN("TG.MultiShape.PerShapeLoop");
+    {
     for (i=0;i<numTG_Shapes;i++)
     {
         //----------------------------------------------
@@ -255,258 +194,19 @@ long TG_MultiShape::TransformMultiShape (glm::vec3 *pos, glm::quat *rot)
             }
         }
 
-        // GPU recipes consume the hierarchy matrices, not CPU leaf lighting,
-        // projection or shadow scratch. Avoid the per-node world-light scan.
-        if (s_buildRecipeOnly && !(s_spotlightLeavesToo && listOfShapes[i].node->GetIsSpotlight()))
-            continue;
 
-        {
-            //----------------------------------------------------
-            // Setup Lighting here.
-            {
-                for (long iLight=0;iLight<TG_Shape::s_numLights;iLight++)
-                {
-                    if ((TG_Shape::s_listOfLights[iLight] != nullptr) && (TG_Shape::s_listOfLights[iLight]->active))
-                    {
-                        switch (TG_Shape::s_listOfLights[iLight]->lightType)
-                        {
-                            case TG_LIGHT_AMBIENT:
-                                {
-                                    //No Setup needed for Ambient light
-                                }
-                                break;
-
-                            case TG_LIGHT_INFINITE:
-                                {
-                                    if (TG_Shape::s_listOfLights[iLight] != nullptr)
-                                    {
-                                        TG_Shape::s_lightToShape[iLight] = TG_Shape::s_listOfLights[iLight]->lightToWorld * listOfShapes[i].worldToShape;
-                                        glm::vec3 uVec;
-                                        uVec = mc2::math::localForwardInWorld(TG_Shape::s_lightToShape[iLight]);
-                                        TG_Shape::s_lightDir[iLight] = uVec;
-
-                                        if (listOfShapes[i].parentNode == nullptr)
-                                        {
-                                            TG_Shape::s_rootLightDir[iLight] = TG_Shape::s_lightDir[iLight];
-                                            //if (angles.yaw != 0.0f )
-                                            //	RotateLight(TG_Shape::s_rootLightDir[iLight],-angles.yaw);
-                                        }
-                                    }
-                                }
-                                break;
-
-                            case TG_LIGHT_INFINITEWITHFALLOFF:
-                                {
-                                    if (TG_Shape::s_listOfLights[iLight] != nullptr)
-                                    {
-                                        TG_Shape::s_lightToShape[iLight] = TG_Shape::s_listOfLights[iLight]->lightToWorld * listOfShapes[i].worldToShape;
-                                        glm::vec3 uVec;
-                                        uVec = mc2::math::localForwardInWorld(TG_Shape::s_lightToShape[iLight]);
-                                        TG_Shape::s_lightDir[iLight] = uVec;
-
-                                        if (listOfShapes[i].parentNode == nullptr)
-                                        {
-                                            TG_Shape::s_rootLightDir[iLight] = TG_Shape::s_lightDir[iLight];
-                                        }
-                                    }
-                                }
-                                break;
-
-                            case TG_LIGHT_POINT:
-                                {
-                                    if (TG_Shape::s_listOfLights[iLight] != nullptr)
-                                    {
-                                        glm::vec3 lightPos;
-                                        lightPos = TG_Shape::s_listOfLights[iLight]->direction;
-
-                                        glm::vec3 shapePosition;
-                                        shapePosition = mc2::math::getTranslation(listOfShapes[i].shapeToWorld);
-
-                                        shapePosition -= lightPos;
-                                        shapePosition.y = 0.0f;
-                                        TG_Shape::s_lightDir[iLight] = shapePosition;
-                                        //if (angles.yaw != 0.0f )
-                                        //	RotateLight(TG_Shape::s_lightDir[iLight],-angles.yaw);
-                                    }
-
-                                    if (listOfShapes[i].parentNode == nullptr)
-                                    {
-                                        TG_Shape::s_rootLightDir[iLight] = TG_Shape::s_lightDir[iLight];
-                                    }
-                                }
-                                break;
-
-                            case TG_LIGHT_TERRAIN:
-                                {
-                                    if (TG_Shape::s_listOfLights[iLight] != nullptr)
-                                    {
-                                        glm::vec3 lightPos;
-                                        lightPos = TG_Shape::s_listOfLights[iLight]->direction;
-
-                                        glm::vec3 shapePosition;
-                                        shapePosition = mc2::math::getTranslation(listOfShapes[i].shapeToWorld);
-
-                                        shapePosition -= lightPos;
-                                        shapePosition.y = 0.0f;
-                                        TG_Shape::s_lightDir[iLight] = shapePosition;
-                                    }
-
-                                    if (listOfShapes[i].parentNode == nullptr)
-                                    {
-                                        TG_Shape::s_rootLightDir[iLight] = TG_Shape::s_lightDir[iLight];
-                                    }
-                                }
-                                break;
-
-                            case TG_LIGHT_SPOT:
-                                {
-                                    if (TG_Shape::s_listOfLights[iLight] != nullptr)
-                                    {
-                                        glm::vec3 lightPos;
-                                        lightPos = TG_Shape::s_listOfLights[iLight]->direction;
-
-                                        glm::vec3 shapePosition;
-                                        shapePosition = mc2::math::getTranslation(listOfShapes[i].shapeToWorld);
-
-                                        shapePosition -= lightPos;
-                                        shapePosition.y = 0.0f;
-                                        TG_Shape::s_lightDir[iLight] = shapePosition;
-                                        //if (angles.yaw != 0.0f )
-                                        //	RotateLight(TG_Shape::s_lightDir[iLight],-angles.yaw);
-
-                                        lightPos = TG_Shape::s_listOfLights[iLight]->spotDir;
-                                        shapePosition = mc2::math::getTranslation(listOfShapes[i].shapeToWorld);
-
-                                        shapePosition -= lightPos;
-                                        shapePosition.y = 0.0f;
-                                        TG_Shape::s_spotDir[iLight] = shapePosition;
-                                        //if (angles.yaw != 0.0f )
-                                        //	RotateLight(TG_Shape::s_spotDir[iLight],-angles.yaw);
-
-                                        if (listOfShapes[i].parentNode == nullptr)
-                                        {
-                                            TG_Shape::s_rootLightDir[iLight] = TG_Shape::s_spotDir[iLight];
-                                        }
-                                    }
-                                }
-                                break;
-                        }
-                    }
-                }
-            }
-        }
-
-        shapeToClip = listOfShapes[i].shapeToWorld * TG_Shape::s_worldToClip;
-        backFacePoint = mc2::math::transformPoint(camPosition, listOfShapes[i].worldToShape);
-
-#ifdef LAB_ONLY
-        x=GetCycles()-x;
-        MCTimeAnimationandMatrix += x;
-        x=GetCycles();
-#endif
-
-        // Slice 2 (object-offload) — Stage 2.B: dispatch on the file-static
-        // flag set by TransformMultiShape_PositionsOnly. The positions-only
-        // variant strips the per-vertex / per-face lighting kernels; slice 1
-        // batcher provides GPU vertex lighting via the calc_light() kernel
-        // finished in lighting.hglsl (Stage 2.C). Default branch (flag false)
-        // is the unchanged legacy call.
-        // D-gpu-pose-instrument: PerLeaf zone wraps the per-shape dispatch.
-        // Per-leaf-iteration (fires N times per loop). Per-leaf work is
-        // ~500ns (pool alloc + per-vertex projection + per-face cull),
-        // above the 100ns floor; aggregate Tracy overhead <1% frame budget.
-        { ZoneScopedN("TG.MultiShape.PerLeaf");
-        if (s_multiShapePositionsOnly)
-        {
-            listOfShapes[i].node->MultiTransformShape_PositionsOnly(&shapeToClip,&backFacePoint,listOfShapes[i].parentNode,isHudElement,alphaValue,isClamped);
-        }
-        else
-        {
-            listOfShapes[i].node->MultiTransformShape(&shapeToClip,&backFacePoint,listOfShapes[i].parentNode,isHudElement,alphaValue,isClamped);
-        }
-        } // end PerLeaf zone
-
-        // D-gpu-pose-instrument: ShadowProj wraps the MultiTransformShadows
-        // dispatch (per-light × per-vertex shadow projection). Per-leaf-
-        // iteration; only fires when useShadows && d_useShadows.
-        if (useShadows && d_useShadows)
-        {
-            ZoneScopedN("TG.MultiShape.ShadowProj");
-            listOfShapes[i].node->MultiTransformShadows(pos, &(listOfShapes[i].shapeToWorld),yawRotation);
-        }
-
-#ifdef LAB_ONLY
-        x=GetCycles()-x;
-        MCTimePerShapeTransform += x;
-        x=GetCycles();
-#endif
+        if (listOfShapes[i].node)
+            listOfShapes[i].node->lastTurnTransformed = turn;
     }
-    } // end PerShapeLoop zone
-
-#ifdef LAB_ONLY
-    MCTimeTransformandLight = MCTimeAnimationandMatrix + MCTimePerShapeTransform;
-#endif
+    }
     return(0);
-}
-
-//-------------------------------------------------------------------------------
-// Slice 2 (object-offload) — Stage 2.B
-// TransformMultiShape_PositionsOnly: thin wrapper that flips the file-static
-// per-leaf dispatch flag, calls the existing TransformMultiShape (so the
-// heirarchy animation, shapeToClip computation, and TG_Shape::s_* state setup
-// all run unchanged), then clears the flag. The flag is read at the per-leaf
-// MultiTransformShape call site near the bottom of TransformMultiShape's body.
-//-------------------------------------------------------------------------------
-long TG_MultiShape::TransformMultiShape_PositionsOnly (glm::vec3 *pos, glm::quat *rot)
-{
-    s_multiShapePositionsOnly = true;
-    long result = TransformMultiShape(pos, rot);
-    s_multiShapePositionsOnly = false;
-    return result;
-}
-
-//-------------------------------------------------------------------------------
-// Track B (widen registry): recipe-build-only variant.
-// Runs the hierarchy traversal to populate listOfShapes[i].shapeToWorld per
-// leaf without touching TGL vertex/face/color pools and without requiring
-// TG_Shape::s_cameraOrigin to be non-null. Called from BldgAppearance/
-// TreeAppearance::registerStatic during Mission::init before Camera::update.
-//-------------------------------------------------------------------------------
-long TG_MultiShape::TransformMultiShape_BuildRecipe (glm::vec3 *pos, glm::quat *rot)
-{
-    s_buildRecipeOnly = true;
-    long result = TransformMultiShape(pos, rot);
-    s_buildRecipeOnly = false;
-    return result;
-}
-
-//-------------------------------------------------------------------------------
-// Slice D-leaf-skip-v2 (2026-05-09): thin runtime wrapper that reuses the
-// s_buildRecipeOnly mechanism for the GPU mech body callsite. Skip per-leaf
-// dispatch + MultiTransformShadows; preserve hierarchy walk. Recon proved
-// per-leaf state on mechShape has zero practical consumer in modern + GPU
-// mech mode (Slice A bypasses Render(true); RenderShadows unreachable on
-// tessellation; PerPolySelect-on-mechs theoretical via fallback findObjectByMouse
-// but findMoverByMouse rect-only test catches all real mech selection).
-//-------------------------------------------------------------------------------
-// Hierarchy walk plus the full CPU transform of the SpotLight_ leaves only: a GPU-posed vehicle at night still
-// draws its searchlight cones through the legacy path, the body through a batcher.
-long TG_MultiShape::TransformMultiShape_SpotlightLeaves (glm::vec3 *pos, glm::quat *rot)
-{
-    s_spotlightLeavesToo = true;
-    long result = TransformMultiShape_BuildRecipe(pos, rot);
-    s_spotlightLeavesToo = false;
-    return result;
 }
 
 long TG_MultiShape::TransformMultiShape_HierarchyOnly (glm::vec3 *pos, glm::quat *rot)
 {
-    // ANIM-HIERARCHYONLY-DEDUP-1: this was a byte-identical copy of
-    // TransformMultiShape_BuildRecipe (same s_buildRecipeOnly mechanism). Kept as a
-    // distinct entry point for the GPU-mech-body callsite (semantic name) but now
-    // DELEGATES to the single implementation — no duplicated flag dance. Byte-identical.
     return TransformMultiShape_BuildRecipe(pos, rot);
 }
+
 
 //-------------------------------------------------------------------------------
 // Slice 2 (object-offload) — Stage 2.D.2 fix:

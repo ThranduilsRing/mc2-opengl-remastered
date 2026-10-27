@@ -14,13 +14,6 @@
 # generics that should have been registered must be FIXED at the
 # registration walk site, NOT allowlisted.
 
-# Skybox GenericAppearance — vestigial post terrain CPU→GPU migration.
-# Sky now comes from the terrain shader's post-process pipeline. The
-# actor still goes through *Appearance::render every frame but draws
-# nothing visible. Surfaces in 24/24 campaign missions.
-# See memory/skybox_actor_vestigial_post_terrain_gpu.md.
-Cylinder01
-
 # Compass HUD overlay — GenericAppearance for the in-game compass widget
 # drawn over the play field. HUD element, not world geometry; loaded
 # outside the standard map-load static-prop registration walk by design.

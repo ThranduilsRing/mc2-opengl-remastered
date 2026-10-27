@@ -18,6 +18,7 @@ SimpleCamera.cpp	: Implementation of the SimpleCamera component.
 #include"mission.h"
 #include "../GameOS/gameos/gos_mech_killswitch.h"  // MechPreviewRenderScope (preview-fix)
 #include"bdactor.h"
+#include"gvactor.h"
 #ifdef MC2_IMGUI
 #include "../GuiRuntime/GuiRuntime.h"   // drawPreviewToPanel (PREVIEW-FBO-FIXED-800x600-1)
 #endif
@@ -308,12 +309,14 @@ void SimpleCamera::render(long xOffset, long yOffset)
 			const bool savedDrawOldWay = drawOldWay;
 			if ( isPanelPreview )
 				drawOldWay = true;
-			// Mechs and components draw through TG_MultiShape::PreviewDraw (preview_draw.cpp); vehicles still use their own CPU render.
+			// Mechs, vehicles and components draw through TG_MultiShape::PreviewDraw (preview_draw.cpp).
 			TG_MultiShape* previewShape = nullptr;
 			if ( auto* mech = dynamic_cast<Mech3DAppearance*>(pObject.get()) )
 				previewShape = mech->previewShape();
 			else if ( auto* bldg = dynamic_cast<BldgAppearance*>(pObject.get()) )
 				previewShape = bldg->previewShape();
+			else if ( auto* gv = dynamic_cast<GVAppearance*>(pObject.get()) )
+				previewShape = gv->previewShape();
 			if ( previewShape )
 			{
 				// Project with the same panel offset update() centres the shape with.
@@ -438,22 +441,6 @@ long SimpleCamera::update()
 		MechPreviewRenderScope _previewScope;
 
 		turn++;			//Must increment this now or matrices NEVER change!!
-
-		//reset the TGL RAM pools.
-		colorPool->reset();
-		vertexPool->reset();
-		facePool->reset();
-		shadowPool->reset();
-		trianglePool->reset();
-
-        // sebi: why do it two times???
-        
-		//reset the TGL RAM pools.
-		colorPool->reset();
-		vertexPool->reset();
-		facePool->reset();
-		shadowPool->reset();
-		trianglePool->reset();
 
 		mc2::VkSceneRenderer::beginFrame();
 

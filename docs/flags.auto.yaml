@@ -2096,7 +2096,6 @@ flags:
     owner: code
     doc: ""
     smoke_passthrough: true
-    verified: true
   - name: MC2_LIGHT_CLAMP_FIXTURE
     kind: Bool
     default: false

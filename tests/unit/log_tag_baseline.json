@@ -6280,29 +6280,6 @@
    "ver": 2,
    "stream": "stderr",
    "keys": [
-    "aRGB",
-    "ambR",
-    "ambG",
-    "ambB"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "PARITY_DIAG",
-   "ver": 2,
-   "stream": "stderr",
-   "keys": [
-    "aRGB",
-    "lightDir",
-    "cosine"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "PARITY_DIAG",
-   "ver": 2,
-   "stream": "stderr",
-   "keys": [
     "iLight",
     "type",
     "aRGB",
@@ -6317,28 +6294,6 @@
    "stream": "stderr",
    "keys": [
     "numLights"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "PARITY_DIAG",
-   "ver": 2,
-   "stream": "stderr",
-   "keys": [
-    "redFinal",
-    "greenFinal",
-    "blueFinal"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "PARITY_DIAG",
-   "ver": 2,
-   "stream": "stderr",
-   "keys": [
-    "vertex",
-    "normalShape",
-    "s_numLights"
    ],
    "count": 1
   },
@@ -6594,15 +6549,6 @@
    "ver": -1,
    "stream": "log",
    "keys": [
-    "argb"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "PREVIEW",
-   "ver": -1,
-   "stream": "log",
-   "keys": [
     "bounds",
     "viewMul",
     "off",
@@ -6676,15 +6622,6 @@
     "viewAdd",
     "EnvScreen",
     "bounds"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "PREVIEW",
-   "ver": -1,
-   "stream": "log",
-   "keys": [
-    "z"
    ],
    "count": 1
   },
@@ -9130,44 +9067,6 @@
     "leakedPins"
    ],
    "count": 1
-  },
-  {
-   "tag": "TGL_POOL",
-   "ver": 1,
-   "stream": "buffer",
-   "keys": [
-    "event",
-    "pool",
-    "peak",
-    "pct"
-   ],
-   "count": 2
-  },
-  {
-   "tag": "TGL_POOL",
-   "ver": 1,
-   "stream": "buffer",
-   "keys": [
-    "frame",
-    "pool",
-    "nulls",
-    "first_caller",
-    "shape",
-    "req",
-    "high_water",
-    "mono_total"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "TGL_POOL",
-   "ver": 1,
-   "stream": "buffer",
-   "keys": [
-    "mono_total",
-    "since"
-   ],
-   "count": 2
   },
   {
    "tag": "TILE_CENSUS",

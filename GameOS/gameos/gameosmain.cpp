@@ -132,7 +132,7 @@ static LONG WINAPI mc2_unhandled_exception_filter(EXCEPTION_POINTERS* ep)
 
 #include <signal.h>
 #include "gos_profiler.h"
-#include "tgl.h"   // drainTglPoolStats / drainTglPoolStatsOnShutdown (Tier-1 instr)
+#include "tgl.h"
 #include "gos_object_recon_tracy.h"  // [OBJECT_RECON v1] slice-2 recon zero (env-gated)
 #include "projectz_trace.h"  // projectz_trace_init/frame_tick/shutdown (PROJECTZ v1)
 #include "battle_bench.h"
@@ -1063,12 +1063,9 @@ int main(int argc, char** argv)
         }
 
         {
-            // Tier-1 instrumentation (stability spec §2.3): bump canonical
-            // frame counter, then drain TGL pool null counters. Per-frame
-            // line is env-gated; monotonic summary every 600 frames is not.
-            ZoneScopedN("Frame.DrainTglPoolStats");
+            // Bump the canonical frame counter.
+            ZoneScopedN("Frame.AdvanceFrameCounter");
             gos::host::advanceFrameCounter();
-            drainTglPoolStats();
             // [OBJECT_RECON v1] slice-2 recon-zero accumulator drain.
             // No-op cost (~1 cmp + 1 branch) when env not set.
             mc2_object_recon::drainPerFrame(g_mc2FrameCounter);
@@ -1165,9 +1162,6 @@ int main(int argc, char** argv)
         validateWriteResults();
     }
 
-    // Tier-1 instrumentation (stability spec §2.5): final monotonic summary
-    // before tearing down render/audio. Always emitted regardless of env gate.
-    drainTglPoolStatsOnShutdown();
     mc2_object_recon::drainOnShutdown();
     projectz_shutdown();
     std::fprintf(stderr, "[SHUTDOWN] engine begin\n"); std::fflush(stderr);

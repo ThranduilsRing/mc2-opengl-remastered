@@ -1,13 +1,82 @@
-// UI preview draw (Mech Bay, Purchase, component and weapon panels): draws one TG_MultiShape straight to the
-// preview target with gos_DrawTriangles. It needs only the hierarchy matrices (shapeToWorld / worldToShape) that any
-// TransformMultiShape* variant leaves behind: no TGL pools, no MLR queue, no per-shape scratch.
+// CPU draw of one TG_MultiShape from the hierarchy matrices (shapeToWorld / worldToShape) that TransformMultiShape_*
+// leaves behind: no per-shape scratch. Two modes:
+//   UI preview (Mech Bay, Purchase, component and weapon panels): straight to the preview target with gos_DrawTriangles.
+//   World fallback (compass, sensor markers, detached arms, vehicles and props a batcher declined): queued through the
+//   render submissions like any other legacy triangle.
 // Lighting matches the old per-vertex kernel (hot-colour markers, ambient, infinite lights, highlight, base colour);
-// fog, specular, point/spot/terrain lights and shadows are not used by the SimpleCamera preview.
+// fog, specular, point/spot/terrain lights and shadows are not applied. The GPU batchers do those for everything they take.
 #include "msl_internal.h"
 #include "tgl_internal.h"
 #include "mc2fmt.h"
+#include "tgl_force_z.h"
 #include <algorithm>
 #include <vector>
+
+namespace {
+// The submissions node and flags a world-mode triangle uses; the reservation and the fill must agree.
+void cpuDrawKey(const TG_TinyTexture* textures, const TG_TypeTriangle& tri, bool isWindow, bool isSpotlight, BYTE alphaValue, DWORD addFlags, DWORD& node, DWORD& flags)
+{
+	if (isSpotlight)
+	{
+		node = 0xffffffff;
+		flags = MC2_ISSPOTLGT;
+		return;
+	}
+	if (isWindow)
+	{
+		node = 0xffffffff;
+		flags = MC2_DRAWALPHA;
+		return;
+	}
+	node = textures[tri.localTextureHandle].mcTextureNodeIndex;
+	flags = ((textures[tri.localTextureHandle].textureAlpha || alphaValue != 0xff) ? MC2_DRAWALPHA : MC2_DRAWSOLID) | addFlags;
+}
+DWORD cpuDrawFlags(bool alphaTest, bool hud, bool clamped)
+{
+	DWORD addFlags = 0;
+	if (hud) addFlags |= MC2_ISCOMPASS;
+	if (clamped) addFlags |= MC2_ISTERRAIN;
+	if (alphaTest) addFlags |= MC2_ALPHATEST;
+	return addFlags;
+}
+}
+
+void TG_MultiShape::ReserveCpuDraw (bool spotlightsOnly)
+{
+	BindMaterials();
+	for (long i = 0; i < numTG_Shapes; i++)
+	{
+		if (listOfShapes[i].processMe && listOfShapes[i].node)
+			listOfShapes[i].node->ReserveCpuDraw(alphaValue, isHudElement, isClamped, spotlightsOnly);
+	}
+}
+
+// A searchlight cone is drawn at night only, additively (MC2_ISSPOTLGT), and never for a mover faded to invisible.
+static bool spotlightDrawn(bool lightsOut, BYTE alphaValue)
+{
+	return eye->getIsNight() && !lightsOut && !mc2_cone_glow::cone_geom_hidden_by_alpha(alphaValue);
+}
+
+void TG_Shape::ReserveCpuDraw (BYTE alphaValue, bool hud, bool clamped, bool spotlightsOnly)
+{
+	if (!renderTGLShapes || !numVertices || !eye || (spotlightsOnly && !isSpotlight))
+		return;
+	if (isSpotlight && !spotlightDrawn(lightsOut, alphaValue))
+		return;
+	TG_TypeShapePtr theShape = static_cast<TG_TypeShapePtr>(myType);
+	const TG_TinyTexture* textures = materialTextures();
+	if (!textures && !isWindow && !isSpotlight)
+		return;
+	const DWORD addFlags = cpuDrawFlags(theShape->alphaTestOn, hud, clamped);
+	for (DWORD j = 0; j < numTriangles; j++)
+	{
+		if (!isSpotlight && textures && theShape->listOfTypeTriangles[j].localTextureHandle >= theShape->numTextures)
+			continue;
+		DWORD node, flags;
+		cpuDrawKey(textures, theShape->listOfTypeTriangles[j], isWindow, isSpotlight, alphaValue, addFlags, node, flags);
+		mc2::renderSubmissions().addTriangle(node, flags);
+	}
+}
 
 void TG_MultiShape::PreviewDraw (void)
 {
@@ -18,13 +87,36 @@ void TG_MultiShape::PreviewDraw (void)
 	for (long i = 0; i < numTG_Shapes; i++)
 	{
 		if (listOfShapes[i].processMe && listOfShapes[i].node)
-			listOfShapes[i].node->PreviewDraw(listOfShapes[i].shapeToWorld, listOfShapes[i].worldToShape, alphaValue);
+			listOfShapes[i].node->CpuDraw(listOfShapes[i].shapeToWorld, listOfShapes[i].worldToShape, alphaValue, false, -1.0f, false, false, false);
 	}
 }
 
-void TG_Shape::PreviewDraw (const glm::mat4& shapeToWorld, const glm::mat4& worldToShape, BYTE alphaValue)
+void TG_MultiShape::Render (bool refreshTextures, float forceZ, bool spotlightsOnly)
 {
-	if (!renderTGLShapes || !numVertices || isSpotlight || !eye)
+	if (!eye)
+		return;
+	BindMaterials();
+	// Light with the world's lights whatever the last update left in the statics, then put them back.
+	TG_LightPtr* const savedLights = TG_Shape::s_listOfLights;
+	const DWORD savedNum = TG_Shape::s_numLights;
+	SetLightList(eye->getWorldLights(), eye->getNumLights());
+	for (long i = 0; i < numTG_Shapes; i++)
+	{
+		if (listOfShapes[i].processMe && listOfShapes[i].node)
+			listOfShapes[i].node->CpuDraw(listOfShapes[i].shapeToWorld, listOfShapes[i].worldToShape, alphaValue, true, forceZ, isHudElement, isClamped, spotlightsOnly);
+	}
+	TG_Shape::s_listOfLights = savedLights;
+	TG_Shape::s_numLights = savedNum;
+}
+
+void TG_Shape::CpuDraw (const glm::mat4& shapeToWorld, const glm::mat4& worldToShape, BYTE alphaValue, bool world, float forceZ, bool hud, bool clamped, bool spotlightsOnly)
+{
+	if (!renderTGLShapes || !numVertices || !eye || (isSpotlight && !world) || (spotlightsOnly && !isSpotlight))
+		return;
+	if (isSpotlight && !spotlightDrawn(lightsOut, alphaValue))
+		return;
+	// World mode draws only leaves the hierarchy walk reached this frame (culled actors keep stale matrices).
+	if (world && lastTurnTransformed != static_cast<DWORD>(turn))
 		return;
 
 	TG_TypeShapePtr theShape = static_cast<TG_TypeShapePtr>(myType);
@@ -40,7 +132,9 @@ void TG_Shape::PreviewDraw (const glm::mat4& shapeToWorld, const glm::mat4& worl
 	// Ambient colour and the infinite lights' directions in shape space.
 	DWORD redAmb = 0, greenAmb = 0, blueAmb = 0;
 	glm::vec3 lightDir[MAX_LIGHTS_IN_WORLD];
-	for (DWORD i = 0; i < s_numLights && i < MAX_LIGHTS_IN_WORLD; i++)
+	// Window and searchlight leaves are not lit by the scene lights (as the old per-vertex kernel).
+	const DWORD numLights = (isSpotlight || isWindow) ? 0 : s_numLights;
+	for (DWORD i = 0; i < numLights && i < MAX_LIGHTS_IN_WORLD; i++)
 	{
 		if (!s_listOfLights[i] || !s_listOfLights[i]->active)
 			continue;
@@ -122,6 +216,10 @@ void TG_Shape::PreviewDraw (const glm::mat4& shapeToWorld, const glm::mat4& worl
 		{
 			if (!lightsOut) setRGB(start, 1.0f);
 		}
+		else if (hud)
+		{
+			r = g = b = 0xff;
+		}
 		if (BaseVertexColor)
 		{
 			r = std::min<DWORD>(r + ((BaseVertexColor >> 16) & 0xff), 0xff);
@@ -131,7 +229,7 @@ void TG_Shape::PreviewDraw (const glm::mat4& shapeToWorld, const glm::mat4& worl
 
 		// Infinite lights, then ambient.
 		const glm::vec3& n = theShape->listOfTypeVertices[j].normal;
-		for (DWORD i = 0; i < s_numLights && i < MAX_LIGHTS_IN_WORLD; i++)
+		for (DWORD i = 0; i < numLights && i < MAX_LIGHTS_IN_WORLD; i++)
 		{
 			if (!s_listOfLights[i] || !s_listOfLights[i]->active || s_listOfLights[i]->lightType != TG_LIGHT_INFINITE)
 				continue;
@@ -155,10 +253,15 @@ void TG_Shape::PreviewDraw (const glm::mat4& shapeToWorld, const glm::mat4& worl
 		v.argb = (DWORD(alphaValue) << 24) + (r << 16) + (g << 8) + b;
 	}
 
-	gos_SetRenderState(gos_State_Fog, 0);
-	gos_SetRenderState(gos_State_AlphaTest, theShape->alphaTestOn);
-	gos_SetRenderState(gos_State_Filter, theShape->filterOn ? gos_FilterBiLinear : gos_FilterNone);
-	gos_SetRenderState(gos_State_ZWrite, 1);
+	if (!world)
+	{
+		gos_SetRenderState(gos_State_Fog, 0);
+		gos_SetRenderState(gos_State_AlphaTest, theShape->alphaTestOn);
+		gos_SetRenderState(gos_State_Filter, theShape->filterOn ? gos_FilterBiLinear : gos_FilterNone);
+		gos_SetRenderState(gos_State_ZWrite, 1);
+	}
+	const DWORD addFlags = cpuDrawFlags(theShape->alphaTestOn, hud, clamped);
+	const float forcedZ = (forceZ >= 0.0f && forceZ < 1.0f) ? mc2_tgl::forceZClipDepth(forceZ) : -1.0f;
 
 	const glm::vec3 camPosition = s_cameraOrigin ? mc2::math::getTranslation(*s_cameraOrigin) : glm::vec3(0.0f);
 	const glm::vec3 backFacePoint = mc2::math::transformPoint(camPosition, worldToShape);
@@ -168,13 +271,29 @@ void TG_Shape::PreviewDraw (const glm::mat4& shapeToWorld, const glm::mat4& worl
 	for (DWORD j = 0; j < numTriangles; j++)
 	{
 		const TG_TypeTriangle& tri = theShape->listOfTypeTriangles[j];
-		if (!(glm::dot(backFacePoint, tri.faceNormal) > 0.0f))
+		if (!isSpotlight && textures && tri.localTextureHandle >= theShape->numTextures)
+			continue;
+		if (!isSpotlight && !(glm::dot(backFacePoint, tri.faceNormal) > 0.0f))
 			continue;
 
 		gos_VERTEX gv[3] = { verts[tri.Vertices[0]], verts[tri.Vertices[1]], verts[tri.Vertices[2]] };
 		gv[0].u = tri.uvdata.u0; gv[0].v = tri.uvdata.v0;
 		gv[1].u = tri.uvdata.u1; gv[1].v = tri.uvdata.v1;
 		gv[2].u = tri.uvdata.u2; gv[2].v = tri.uvdata.v2;
+
+		if (world)
+		{
+			if (!(gv[0].z >= 0.0f && gv[0].z < 1.0f && gv[1].z >= 0.0f && gv[1].z < 1.0f && gv[2].z >= 0.0f && gv[2].z < 1.0f))
+				continue;
+			if (forcedZ >= 0.0f)
+				gv[0].z = gv[1].z = gv[2].z = forcedZ;
+			if (!isWindow && !isSpotlight && !textures)
+				continue;
+			DWORD node, flags;
+			cpuDrawKey(textures, tri, isWindow, isSpotlight, alphaValue, addFlags, node, flags);
+			mc2::renderSubmissions().addVertices(node, gv, flags);
+			continue;
+		}
 
 		if (textures && textures[tri.localTextureHandle].gosTextureHandle != 0xffffffff)
 		{
@@ -196,5 +315,12 @@ void TG_Shape::PreviewDraw (const glm::mat4& shapeToWorld, const glm::mat4& worl
 		if (gv[0].z >= 0.0f && gv[0].z < 1.0f && gv[1].z >= 0.0f && gv[1].z < 1.0f && gv[2].z >= 0.0f && gv[2].z < 1.0f)
 			gos_DrawTriangles(gv, 3);
 	}
-	gos_SetRenderState(gos_State_Fog, 0);
+	if (!world)
+	{
+		// Leave no state behind for the next panel: the loop sets the texture, alpha mode and alpha test.
+		gos_SetRenderState(gos_State_Fog, 0);
+		gos_SetRenderState(gos_State_Texture, 0);
+		gos_SetRenderState(gos_State_AlphaMode, gos_Alpha_OneZero);
+		gos_SetRenderState(gos_State_AlphaTest, false);
+	}
 }

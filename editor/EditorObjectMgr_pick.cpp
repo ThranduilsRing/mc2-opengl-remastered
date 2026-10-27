@@ -4,42 +4,6 @@
 #include "Gates/gate.h"
 
 
-static bool EditorObjectMgr_PointInsideAppearance(ObjectAppearance* pAppearance, int screenX, int screenY, bool allowPerPoly)
-{
-	if (!pAppearance)
-		return false;
-
-	int left = pAppearance->upperLeft.x;
-	int top = pAppearance->upperLeft.y;
-	int right = pAppearance->lowerRight.x;
-	int bottom = pAppearance->lowerRight.y;
-
-	if (right < left)
-	{
-		int tmp = left;
-		left = right;
-		right = tmp;
-	}
-
-	if (bottom < top)
-	{
-		int tmp = top;
-		top = bottom;
-		bottom = tmp;
-	}
-
-	if (right == left && bottom == top)
-		return false;
-
-	if (screenX < left || screenX > right || screenY < top || screenY > bottom)
-		return false;
-
-	if (allowPerPoly && pAppearance->canBeSeen())
-		return pAppearance->PerPolySelect(screenX, screenY) ? true : false;
-
-	return true;
-}
-
 static void EditorObjectMgr_ConsiderScreenCenter(EditorObject* pObject, int screenX, int screenY, float& bestDistanceSq, EditorObject*& pBestObject)
 {
 	if (!pObject || !pObject->appearance())

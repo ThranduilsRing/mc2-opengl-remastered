@@ -148,15 +148,5 @@
   "file": "mclib/move_globalmap_doors.cpp",
   "base_line": 167,
   "reason": "commented-out code"
- },
- {
-  "file": "mclib/tgl_shadows.cpp",
-  "base_line": 5,
-  "reason": "function-name narration"
- },
- {
-  "file": "mclib/tgl_shadows.cpp",
-  "base_line": 13,
-  "reason": "filler remark"
  }
 ]

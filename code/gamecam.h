@@ -33,7 +33,6 @@ class GameCamera : public Camera
 	protected:
 		GameObjectPtr			targetObject;
 		std::unique_ptr<Appearance>			compass;	// B7o.5: owned; reset in destroy()
-		std::unique_ptr<GenericAppearance>	theSky;		// B7o.5: was a file-scope global in gamecam.cpp; owned, reset in destroy()
 		bool					drawCompass;
 		
 		float					lastShadowLightPitch;

@@ -1,8 +1,7 @@
 #include "Gates/preferences_legacy.h"
 // Shared surface of the TG shape translation units (tgl*.cpp).
 //
-// tgl.cpp keeps the globals, pools and pool-statistics code; shape types, ASE parsing, transform, render and shadows
-// are split by responsibility. tgl*.cpp are compiled together by the game, asset_viewer and tg_import_dump targets.
+// tgl.cpp keeps the globals; shape types and ASE parsing are split by responsibility. tgl*.cpp are compiled together by the game, asset_viewer and tg_import_dump targets.
 #ifndef TGL_INTERNAL_H
 #define TGL_INTERNAL_H
 
@@ -54,24 +53,7 @@
 #include "cone_glow.h"  // GHOST-CONE-VERIFY-4: cone_geom_hidden_by_alpha
 
 // Globals defined in tgl.cpp (or elsewhere in the engine) that the split pieces share.
-extern TG_VertexPool *colorPool;
-extern TG_GOSVertexPool *vertexPool;
-extern TG_DWORDPool *facePool;
-extern TG_ShadowPool *shadowPool;
-extern TG_TrianglePool *trianglePool;
-extern bool g_previewCaptureBounds;
-extern float g_previewBoundsMinX;
-extern float g_previewBoundsMaxX;
-extern float g_previewBoundsMinY;
-extern float g_previewBoundsMaxY;
-extern int g_previewDrawTris;
-extern bool hasGuardBand;
-extern bool useFog;
-extern DWORD BaseVertexColor;
-extern bool drawOldWay;
-extern int g_mechPreviewRenderDepth;
-extern bool renderTGLShapes;
-extern bool silentMode;
+
 namespace {
 // [LIGHT_COST_SPLIT v1] RAII cycle bracket. Cached-bool early-out; no Tracy
 // zone by design (per-leaf hot loop -- a Tracy zone would bust the 100ns floor).
@@ -89,13 +71,20 @@ template<int K> struct LcsScope {
 };
 } // namespace
 
-extern float yawRotation;
-// Hot-green CPU lighting trace flags (tgl_transform.cpp), read by the per-vertex lighting phase.
-extern bool s_hotGreenLightTraceDone;
-extern bool s_hotGreenLightTraceEnabled;
-inline constexpr float MAX_FOG_ELEVATION = 100.0f;
-inline constexpr float MAX_FOG_ELEVATION_INV = .01f;
-inline constexpr float TGL_WINDOW_THRESHOLD = 0.75f;
+extern bool g_previewCaptureBounds;
+extern float g_previewBoundsMinX;
+extern float g_previewBoundsMaxX;
+extern float g_previewBoundsMinY;
+extern float g_previewBoundsMaxY;
+extern int g_previewDrawTris;
+extern bool hasGuardBand;
+extern bool useFog;
+extern DWORD BaseVertexColor;
+extern bool drawOldWay;
+extern int g_mechPreviewRenderDepth;
+extern bool renderTGLShapes;
+extern bool silentMode;
+
 
 // Free functions defined in the split pieces.
 void GetNumberData (char *rawData, char *result);

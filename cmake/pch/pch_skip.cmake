@@ -68,8 +68,6 @@ set(MC2_PCH_SKIP_mclib
     "mclib/terrtxm2.cpp"
     "mclib/terrtxm2_bake.cpp"
     "mclib/tgl_parse.cpp"
-    "mclib/tgl_shadows.cpp"
-    "mclib/tgl_transform_light.cpp"
     "mclib/userinput.cpp"
     "mclib/vk_object_light_gather.cpp"
 )

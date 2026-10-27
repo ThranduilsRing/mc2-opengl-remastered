@@ -2,7 +2,7 @@
 //
 // Header-only inventory of renderer feature gates and device capabilities.
 // INVENTORY ONLY -- no feature decisions here. Each system's own env-flag
-// accessor (e.g. RenderWorld::IsObjectIdBufferEnabled, g_useGpuMechs) remains
+// accessor (e.g. RenderWorld::IsObjectIdBufferEnabled) remains
 // authoritative for runtime decisions. This header is the single place to
 // look up what env vars exist, what their defaults are, and what GL caps
 // the engine requires per feature.
