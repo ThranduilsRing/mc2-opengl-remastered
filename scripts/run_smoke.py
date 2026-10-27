@@ -621,6 +621,9 @@ def main():
                          "shader_error, deploy fingerprint, ...). "
                          "Reduced soak coverage: run full --tier tier1 before "
                          "milestones/landing.")
+    ap.add_argument("--gpu", choices=("auto", "xtx", "2070"), default=None,
+                    help="GPU routing: pass/fail runs default to the RTX 2070 SUPER (auto); perf/timing runs "
+                         "(MC2_VK_GPU_TIMESTAMPS, --show-window) keep the RX 7900 XTX. Override with xtx or 2070")
     ap.add_argument("--profile", default="stock")
     ap.add_argument("--show-window", action="store_true",
                     help="Start mission windows visible instead of minimized; use for FPS/perf runs.")
@@ -698,6 +701,8 @@ def main():
     ap.add_argument("--capture-out", type=Path)
     ap.add_argument("--quiet-sample", help="mission to run without optional diagnostic/audit gates")
     args = ap.parse_args()
+    if args.gpu:
+        os.environ["MC2_HARNESS_GPU"] = args.gpu
     if args.capture_bookmark and not args.capture_out:
         ap.error("--capture-bookmark requires --capture-out")
     _fp_require = os.environ.get("MC2_SMOKE_REQUIRE_FINGERPRINT", "1") != "0"
@@ -1971,7 +1976,10 @@ def main():
                             _te = json.loads(_tline)
                             if _te.get("tag") == "CONFIG" and "diagnostic_trace_initialized" in str(_te.get("data", {})):
                                 _cfg_found = True
-                                break
+                            elif _te.get("tag") == "DEVICE":
+                                _dev = _te.get("data", {})
+                                _dev = _dev.get("device") if isinstance(_dev, dict) else str(_dev)
+                                _diag_checks.append(f"INFO gpu={_dev}")
                         except Exception:
                             continue
                     if _cfg_found:
