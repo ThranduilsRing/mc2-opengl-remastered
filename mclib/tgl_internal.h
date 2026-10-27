@@ -66,7 +66,6 @@ extern float g_previewBoundsMinY;
 extern float g_previewBoundsMaxY;
 extern int g_previewDrawTris;
 extern bool useVertexLighting;
-extern bool useFaceLighting;
 extern bool hasGuardBand;
 extern bool useFog;
 extern DWORD BaseVertexColor;

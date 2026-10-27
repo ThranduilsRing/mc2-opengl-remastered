@@ -279,61 +279,6 @@ void TG_Shape::Render (float forceZ, bool isHudElement, BYTE alphaValue, bool is
 		}
 	}
 
-	// FIXME: this (listOfTypeTriangles[0]) is not correct if model has more than 1 texture!
-	const TG_TypeTriangle firstTriType = theShape->listOfTypeTriangles[0];
-	const bool firstTextureAlpha = materialTextures()[firstTriType.localTextureHandle].textureAlpha;
-	if (!isSpotlight && !isWindow && !firstTextureAlpha && (alphaValue == 0xff))
-	{
-		DWORD addFlags = 0;
-		if (isHudElement)
-		{
-			addFlags |= MC2_ISCOMPASS;
-		}
-
-		if (isClamped)
-		{
-			addFlags |= MC2_ISTERRAIN;
-		}
-
-        if(theShape->alphaTestOn)
-		{
-			addFlags |= MC2_ALPHATEST;
-		}
-
-		if (theShape->ib_ && theShape->vb_) {
-
-			// FIXME: this is not correct if model has more than 1 texture!
-			// TODO: split on per texture batches basis
-			TG_TypeTriangle triType = firstTriType;
-
-			glm::mat4 mvp;
-			if (mc2_tgl::forceZActive(forceZ))
-			{
-				// (x,y,z,w) -> (x,y,w * reverse-Z depth,w), so after division by w clip depth is just the mirrored forceZ
-				mvp = cur_shape2clip * mc2_tgl::forceZMatrix(forceZ);
-			}
-			else {
-				mvp = cur_shape2clip;
-			}
-
-			TG_RenderShape rs;
-			rs.ib_ = theShape->ib_;
-			rs.vb_ = theShape->vb_;
-			rs.vdecl_ = theShape->vdecl_;
-            rs.mvp_ = mvp;
-			rs.mw_ = *shapeToWorld;
-			memcpy(rs.viewport_, cur_viewport, 4 * sizeof(float));
-			{
-				LcsScope<LcsBucket::C2> _lcs;
-				rs.light_data_buffer_index_ = mc2::vkLights::addLightDataStructure(&lightData_);
-			}
-            rs.isHudElement_ = isHudElement;
-
-			const DWORD texNode = materialTextures()[triType.localTextureHandle].mcTextureNodeIndex;
-			mc2::renderSubmissions().addRenderShape(texNode, &rs, MC2_DRAWSOLID | addFlags);
-		}
-	}
-
 	gos_SetRenderState( gos_State_Fog, 0);
 }	
 

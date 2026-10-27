@@ -1,6 +1,6 @@
 {
  "version": 1,
- "count": 786,
+ "count": 785,
  "gates": [
   {"name": "MC2_ABL_ARG_GUARD", "kind": "Bool", "rule": "Lead1", "default": false, "owner": "code", "retireBy": "", "doc": "ABL crash-safety gates (ABL-OPCODE-BOUNDS-HARDEN) MC2_ABL_ARG_GUARD=1 - enables dispatch-bounds soft path + out-ptr null guards MC2_ABL_RUNTIME_SOFTFAIL=1 -...", "tokens": "", "range": null, "reread": false, "divergent": false, "smokePassthrough": true, "verified": true, "registry": null, "logTopic": ""},
   {"name": "MC2_ABL_ARG_GUARD_REPRO", "kind": "Bool", "rule": "Lead1", "default": false, "owner": "code", "retireBy": "", "doc": "", "tokens": "", "range": null, "reread": false, "divergent": false, "smokePassthrough": true, "verified": true, "registry": null, "logTopic": ""},
@@ -269,7 +269,6 @@
   {"name": "MC2_JUMPJETS_ALL", "kind": "Bool", "rule": "Presence", "default": false, "owner": "code", "retireBy": "", "doc": "", "tokens": "", "range": null, "reread": false, "divergent": false, "smokePassthrough": false, "verified": true, "registry": null, "logTopic": ""},
   {"name": "MC2_LAUNCHED", "kind": "Bool", "rule": "Presence", "default": false, "owner": "gameos", "retireBy": "", "doc": "", "tokens": "", "range": null, "reread": false, "divergent": false, "smokePassthrough": false, "verified": true, "registry": null, "logTopic": ""},
   {"name": "MC2_LAUNCHER_ENV_JSON", "kind": "Bool", "rule": "Lead0Kill", "default": true, "owner": "gameos", "retireBy": "", "doc": "", "tokens": "", "range": null, "reread": false, "divergent": false, "smokePassthrough": false, "verified": true, "registry": null, "logTopic": ""},
-  {"name": "MC2_LEGACY_INSTANCE_POOLS", "kind": "Bool", "rule": "Lead0P", "default": false, "owner": "props", "retireBy": "", "doc": "", "tokens": "", "range": null, "reread": false, "divergent": false, "smokePassthrough": false, "verified": true, "registry": null, "logTopic": ""},
   {"name": "MC2_LEGACY_LIT_MC2_FRAME", "kind": "Bool", "rule": "Lead0Kill", "default": true, "owner": "code", "retireBy": "", "doc": "[DEFAULT-ON as of VEHICLE-LIGHTING-PATH-1; MC2_LEGACY_LIT_MC2_FRAME=0 reverts.", "tokens": "", "range": null, "reread": false, "divergent": false, "smokePassthrough": true, "verified": false, "registry": {"featureId": "MC2_LEGACY_LIT_MC2_FRAME", "kind": "Feature", "order": 22, "defaultOn": true}, "logTopic": ""},
   {"name": "MC2_LEGACY_LOAD_BANNER", "kind": "Bool", "rule": "Presence", "default": false, "owner": "code", "retireBy": "", "doc": "", "tokens": "", "range": null, "reread": false, "divergent": false, "smokePassthrough": false, "verified": true, "registry": null, "logTopic": ""},
   {"name": "MC2_LETTERBOX_OPAQUE", "kind": "Bool", "rule": "Lead0Kill", "default": true, "owner": "code", "retireBy": "", "doc": "Cinematic letterbox bars are drawn OPAQUE black; only their EXTENT animates.", "tokens": "", "range": null, "reread": false, "divergent": false, "smokePassthrough": true, "verified": true, "registry": {"featureId": "MC2_FEATURE_LETTERBOX_OPAQUE", "kind": "Feature", "order": -1, "defaultOn": true}, "logTopic": ""},

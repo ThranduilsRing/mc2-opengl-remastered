@@ -249,7 +249,6 @@ const float* gos_GetObjectFixBMVPMat4();
 extern const bool s_treeDiagTrace;
 extern const bool s_spotlightRealTrace;
 extern const bool s_globalPoolLegacy;
-extern const bool s_legacyInstancePools;
 extern bool s_baseInstanceSupported;
 extern bool s_v5Armed;
 extern bool s_v5Disarmed;

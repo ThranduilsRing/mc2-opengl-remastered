@@ -558,7 +558,7 @@ bool GpuStaticPropBatcher::submitMultiShape(TG_MultiShape* multi,
         // early-out) is still skipped, preserving stock behavior.
         if (!child->listOfVertices || !child->listOfColors) {
             bool admitAsGpuOnly = false;
-            if (!s_legacyInstancePools && child->myType) {
+            if (child->myType) {
                 const TG_TypeShape* ts =
                     static_cast<const TG_TypeShape*>(child->myType);
                 admitAsGpuOnly = (s_typeIndex.find(ts->stableId()) != s_typeIndex.end());

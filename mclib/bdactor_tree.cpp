@@ -512,11 +512,7 @@ long TreeAppearance::update (bool animate)
 				// rec.shapeToWorld + the debug-only zero-padded Colors SSBO). Run
 				// the ZERO-POOL hierarchy walk instead — still populates
 				// rec.shapeToWorld per leaf, no pool alloc.
-				// MC2_LEGACY_INSTANCE_POOLS=1 reverts to the old path.
-				if (gos_StaticPropLegacyInstancePools())
-					treeShape->TransformMultiShape_PositionsOnly (&xlatPosition,&rot);
-				else
-					treeShape->TransformMultiShape_HierarchyOnly (&xlatPosition,&rot);
+				treeShape->TransformMultiShape_HierarchyOnly (&xlatPosition,&rot);
 			}
 		}
 		else
@@ -547,9 +543,7 @@ long TreeAppearance::update (bool animate)
 			// still call mc2CacheOrBakeStaticGpuLight below (pool-independent — it
 			// only walks the hierarchy + GatherGpuObjectLightDataOnly). Result:
 			// pool peak 99%→0% on the heavy forest, no visual change.
-			// MC2_LEGACY_INSTANCE_POOLS=1 reverts to the full bake.
-			if (!gos_StaticPropLegacyInstancePools() &&
-			    GpuStaticPropBatcher::instance().isMultiShapeEligibleForGpuObjects(treeShape))
+			if (GpuStaticPropBatcher::instance().isMultiShapeEligibleForGpuObjects(treeShape))
 				treeShape->TransformMultiShape_HierarchyOnly (&xlatPosition,&rot);
 			else
 				treeShape->TransformMultiShape (&xlatPosition,&rot);

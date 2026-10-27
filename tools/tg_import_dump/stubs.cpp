@@ -173,7 +173,6 @@ size_t LZCompress(unsigned char* /*dst*/, unsigned char* /*src*/, size_t /*len*/
 //     never reads them on LoadBinaryCopy). Defaults match the engine's.
 // ===========================================================================
 bool  useVertexLighting = true;
-bool  useFaceLighting   = false;
 bool  useFog            = true;
 bool  InEditor          = false;
 int   ObjectTextureSize = 128;
@@ -254,7 +253,6 @@ float Terrain::getTerrainElevation(const glm::vec3&) { return 0.0f; }
 
 unsigned int mc2::vkLights::addLightDataStructure(TG_HWLightsData*) { return 0; }
 unsigned int mc2::vkLights::addLightDataStructureWithPerActorColor(TG_HWLightsData*) { return 0; }
-void mc2::RenderSubmissions::addRenderShape(DWORD, TG_RenderShape*, DWORD) {}
 // This loader never acquires texture assets: render-only metadata is unavailable.
 namespace mc2::textures {
 DWORD sourceId(DWORD) { return 0; }
