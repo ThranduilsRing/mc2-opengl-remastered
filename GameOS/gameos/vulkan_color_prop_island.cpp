@@ -1411,6 +1411,143 @@ extern "C" int mc2_vk_color_prop_island_prewarm(int w,int h) {
     return prepare_mission_resources(static_cast<ColorPropIsland*>(slot.get())) ? 1 : 0;
 }
 
+// GPU-FRONTIER-1: pure command recording for the props pass (no staging, no submit, no fences). Everything it reads was prepared on
+// the main thread by mc2_vk_color_prop_island_run; it writes only the command buffer, s->lateDraws and typeRuns.
+struct PropRecordIn {
+    ColorPropIsland* s; VkCommandBuffer cb; int w, h; uint32_t par;
+    uint32_t nDyn; const uint32_t* dynOffsets; const Mc2GroundLightingFrame* ground;
+    bool hzbCulled; uint32_t instanceCount; const GpuStaticPropInstance* insts;
+};
+static bool record_props(const PropRecordIn& in, unsigned long& typeRunsOut) {
+    ColorPropIsland* s = in.s; VkCommandBuffer cb = in.cb; const int w = in.w, h = in.h; const uint32_t par = in.par;
+    const uint32_t nDyn = in.nDyn; const uint32_t* dynOffsets = in.dynOffsets; const Mc2GroundLightingFrame* ground = in.ground;
+    const bool hzbCulled = in.hzbCulled; const uint32_t instanceCount = in.instanceCount; const GpuStaticPropInstance* insts = in.insts;
+        vkResetCommandBuffer(cb, 0);
+        VkCommandBufferBeginInfo bi{};
+        bi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+        bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+        if (vkBeginCommandBuffer(cb, &bi) != VK_SUCCESS) return false;
+        vk_render_pass_timer::Begin(cb, gos_render_pass_timer::Pass_SpColor);
+
+        // Begin the LOAD renderpass — NO clear values (all attachments loadOp=LOAD).
+        VkRenderPassBeginInfo rbi{};
+        rbi.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+        rbi.renderPass = s->t1_rpass.get(); rbi.framebuffer = s->t1_fb.get();
+        rbi.renderArea = {{0, 0}, {static_cast<uint32_t>(w), static_cast<uint32_t>(h)}};
+        rbi.clearValueCount = 0; rbi.pClearValues = nullptr;
+        MC2_VK_GPU_SCOPE(gpuScope, cb, "VKIsl.Props");
+        vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
+
+        VkViewport vp{0.0f, 0.0f, static_cast<float>(w), static_cast<float>(h), 0.0f, 1.0f};
+        VkRect2D scissor{{0, 0}, {static_cast<uint32_t>(w), static_cast<uint32_t>(h)}};
+        vkCmdSetViewport(cb, 0, 1, &vp);
+        vkCmdSetScissor(cb, 0, 1, &scissor);
+
+        mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->t1_pipe.get());
+        vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 0, 1, &s->set[par], nDyn, dynOffsets);
+        const VkDescriptorSet groundSet = s->groundLighting.set(par);
+        vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 1, 1, &groundSet, 4, ground->offsets.data());
+        VkDeviceSize vboOff = 0;
+        const VkBuffer vertexBuffer = s->vbo.get();
+        vkCmdBindVertexBuffers(cb, 0, 1, &vertexBuffer, &vboOff);
+        vkCmdBindIndexBuffer(cb, s->ibo.get(), 0, VK_INDEX_TYPE_UINT32);
+
+        // ADJUDICATION-1 draw-level dump: env-gated one-shot CSV of every packet's
+        // draw parameters + push-constant layers. This is the fence-fix ground truth
+        // (the exact per-packet data RenderDoc would show at a VK vkCmdDrawIndexed,
+        // which a GL-only RenderDoc capture cannot see for this headless-VK island).
+        // Gated on the same sim-freeze predicate the deterministic sweep uses.
+        FILE* s_pktDump = nullptr;
+        {
+            static bool s_dumped = false;
+            const std::string dpText = mc2::gate::str<"MC2_VK_PROP_PACKET_DUMP">();   // "" when unset or empty
+            const char* dp = dpText.empty() ? nullptr : dpText.c_str();
+            const bool frozen = mc2CaptureGaitFreezeActive() != 0 ||
+                                !mc2::gate::isSet<"MC2_VISUAL_BOOKMARK_CAPTURE">();
+            if (dp && dp[0] && !s_dumped && frozen) {
+                s_dumped = true;
+                s_pktDump = std::fopen(dp, "w");
+                if (s_pktDump)
+                    std::fprintf(s_pktDump, "typeID,packet,layerOff,layerOn,uvScaleX,uvScaleY,indexCount,firstIndex,baseVertex,instCount,firstInstance\n");
+            }
+        }
+
+        unsigned long typeRuns = 0;
+        // PROP-COVERAGE-1: pass 0 draws every packet (alpha-tested ones cut at the coverage
+        // threshold); pass 1 re-draws only the alpha-tested packets with the fringe pipeline,
+        // after every core is in the depth buffer.
+        for (int32_t fringePass = 0; fringePass < 2; ++fringePass) {
+        if (fringePass == 1)
+            mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->t1_fringePipe.get());
+        uint32_t i = 0;
+        while (i < instanceCount) {
+            const uint32_t tid = insts[i].typeID;
+            uint32_t j = i;
+            while (j < instanceCount && insts[j].typeID == tid) ++j;
+            const uint32_t instCount = j - i;
+            if (tid < s->typeRuns.size()) {
+                std::optional<mc2vk::gpuprof::Scope> treeTiming;
+                const size_t canopyRadius = static_cast<size_t>(tid) * 12u + 7u;
+                if (mc2vk::gpuprof::active() && canopyRadius < s->hotCpu.size() && s->hotCpu[canopyRadius] > 0.0f)
+                    treeTiming.emplace(cb, "VKIsl.Props.Trees", __FILE__, static_cast<uint32_t>(__LINE__));
+                const TypeRun& tr = s->typeRuns[tid];
+                for (uint32_t p = 0; p < tr.packetCount; ++p) {
+                    const uint32_t pk = tr.firstPacket + p;
+                    if (pk >= s->packets.size()) break;
+                    const Mc2ShadowPacket& pkt = s->packets[pk];
+                    // VK-FLIP-FIELD-REPORT-2 BLACK-FENCE FIX: push THIS packet's own
+                    // group-relative albedo layer (off/on), not the type's shared
+                    // "first-valid-wins" layer — see packetLayerOff/On comment above.
+                    // FENCE-UVSCALE-1: push this packet's own uvScaleX/Y alongside
+                    // its layer -- default 1.0 (no crop) matches pre-fix behavior
+                    // for any packet the feed didn't cover.
+                    struct { int32_t layerOff, layerOn; float uvScaleX, uvScaleY; int32_t alphaTest, fringe, hzb, materialId; } pc = {
+                        (pk < s->packetLayerOff.size())  ? s->packetLayerOff[pk]  : -1,
+                        (pk < s->packetLayerOn.size())   ? s->packetLayerOn[pk]   : -1,
+                        (pk < s->packetUvScaleX.size())  ? s->packetUvScaleX[pk]  : 1.0f,
+                        (pk < s->packetUvScaleY.size())  ? s->packetUvScaleY[pk]  : 1.0f,
+                        mc2_static_prop_packet_alpha_test(pk),
+                        fringePass,
+                        hzbCulled ? 1 : 0,
+                        s->authoredReady && pk < s->packetMaterialIds.size() ? s->packetMaterialIds[pk] : -1,
+                    };
+                    // Only packets the FS can alpha-test have a fringe (the alpha-ON layer or the per-packet bit).
+                    if (fringePass == 1 && pc.layerOn < 0 && pc.alphaTest == 0) continue;
+                    if (fringePass == 1 && pc.alphaTest == 2) {
+                        ColorPropIsland::LateDraw draw{};
+                        static_assert(sizeof(draw.pc) == sizeof(pc));
+                        std::memcpy(draw.pc, &pc, sizeof(pc));
+                        draw.indexCount = pkt.indexCount; draw.instanceCount = instCount;
+                        draw.firstIndex = pkt.firstIndex; draw.baseVertex = static_cast<int32_t>(pkt.baseVertex);
+                        draw.firstInstance = i;
+                        s->lateDraws.push_back(draw);
+                        continue;
+                    }
+                    if (s_pktDump && fringePass == 0)
+                        std::fprintf(s_pktDump, "%u,%u,%d,%d,%.4f,%.4f,%u,%u,%d,%u,%u\n",
+                                     tid, pk, pc.layerOff, pc.layerOn, pc.uvScaleX, pc.uvScaleY,
+                                     pkt.indexCount, pkt.firstIndex,
+                                     static_cast<int32_t>(pkt.baseVertex), instCount, i);
+                    vkCmdPushConstants(cb, s->playout.get(), VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+                                        0, sizeof(pc), &pc);
+                    vkCmdDrawIndexed(cb, pkt.indexCount, instCount,
+                                     pkt.firstIndex, static_cast<int32_t>(pkt.baseVertex), i);
+                }
+                if (fringePass == 0) ++typeRuns;
+            }
+            i = j;
+        }
+        }
+        if (s_pktDump) { std::fclose(s_pktDump); s_pktDump = nullptr; }
+
+        vkCmdEndRenderPass(cb);
+        gpuScope.end();
+        vk_render_pass_timer::End(cb, gos_render_pass_timer::Pass_SpColor);
+        if (vkEndCommandBuffer(cb) != VK_SUCCESS) return false;
+    typeRunsOut = typeRuns;
+    return true;
+}
+
 extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
     if (auto* previous = parkedIsland()) previous->lateDraws.clear();
     ZoneScopedN("VK-props-island");   // VK-FLIP-FIELD-REPORT-1 coarse region zone
@@ -1685,130 +1822,10 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
 
         const clk::time_point tRender0 = clk::now();
         ZoneNamedN(zPropRec, "VK-props-record-submit", true);   // VK-FLIP-FIELD-REPORT-1: CPU record+queue-submit (to tier1-block end)
-        vkResetCommandBuffer(cb, 0);
-        VkCommandBufferBeginInfo bi{};
-        bi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-        bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-        if (vkBeginCommandBuffer(cb, &bi) != VK_SUCCESS) { setFallback("record_failed"); s->disabled = true; return 0; }
-        vk_render_pass_timer::Begin(cb, gos_render_pass_timer::Pass_SpColor);
         vk_render_pass_timer::CancelUnlessSubmitted timerGuard(gos_render_pass_timer::Pass_SpColor);
-
-        // Begin the LOAD renderpass — NO clear values (all attachments loadOp=LOAD).
-        VkRenderPassBeginInfo rbi{};
-        rbi.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-        rbi.renderPass = s->t1_rpass.get(); rbi.framebuffer = s->t1_fb.get();
-        rbi.renderArea = {{0, 0}, {static_cast<uint32_t>(w), static_cast<uint32_t>(h)}};
-        rbi.clearValueCount = 0; rbi.pClearValues = nullptr;
-        MC2_VK_GPU_SCOPE(gpuScope, cb, "VKIsl.Props");
-        vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
-
-        VkViewport vp{0.0f, 0.0f, static_cast<float>(w), static_cast<float>(h), 0.0f, 1.0f};
-        VkRect2D scissor{{0, 0}, {static_cast<uint32_t>(w), static_cast<uint32_t>(h)}};
-        vkCmdSetViewport(cb, 0, 1, &vp);
-        vkCmdSetScissor(cb, 0, 1, &scissor);
-
-        mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->t1_pipe.get());
-        vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 0, 1, &s->set[par], nDyn, dynOffsets);
-        const VkDescriptorSet groundSet = s->groundLighting.set(par);
-        vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 1, 1, &groundSet, 4, ground->offsets.data());
-        VkDeviceSize vboOff = 0;
-        const VkBuffer vertexBuffer = s->vbo.get();
-        vkCmdBindVertexBuffers(cb, 0, 1, &vertexBuffer, &vboOff);
-        vkCmdBindIndexBuffer(cb, s->ibo.get(), 0, VK_INDEX_TYPE_UINT32);
-
-        // ADJUDICATION-1 draw-level dump: env-gated one-shot CSV of every packet's
-        // draw parameters + push-constant layers. This is the fence-fix ground truth
-        // (the exact per-packet data RenderDoc would show at a VK vkCmdDrawIndexed,
-        // which a GL-only RenderDoc capture cannot see for this headless-VK island).
-        // Gated on the same sim-freeze predicate the deterministic sweep uses.
-        FILE* s_pktDump = nullptr;
-        {
-            static bool s_dumped = false;
-            const std::string dpText = mc2::gate::str<"MC2_VK_PROP_PACKET_DUMP">();   // "" when unset or empty
-            const char* dp = dpText.empty() ? nullptr : dpText.c_str();
-            const bool frozen = mc2CaptureGaitFreezeActive() != 0 ||
-                                !mc2::gate::isSet<"MC2_VISUAL_BOOKMARK_CAPTURE">();
-            if (dp && dp[0] && !s_dumped && frozen) {
-                s_dumped = true;
-                s_pktDump = std::fopen(dp, "w");
-                if (s_pktDump)
-                    std::fprintf(s_pktDump, "typeID,packet,layerOff,layerOn,uvScaleX,uvScaleY,indexCount,firstIndex,baseVertex,instCount,firstInstance\n");
-            }
-        }
-
-        unsigned long typeRuns = 0;
-        // PROP-COVERAGE-1: pass 0 draws every packet (alpha-tested ones cut at the coverage
-        // threshold); pass 1 re-draws only the alpha-tested packets with the fringe pipeline,
-        // after every core is in the depth buffer.
-        for (int32_t fringePass = 0; fringePass < 2; ++fringePass) {
-        if (fringePass == 1)
-            mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->t1_fringePipe.get());
-        uint32_t i = 0;
-        while (i < instanceCount) {
-            const uint32_t tid = insts[i].typeID;
-            uint32_t j = i;
-            while (j < instanceCount && insts[j].typeID == tid) ++j;
-            const uint32_t instCount = j - i;
-            if (tid < s->typeRuns.size()) {
-                std::optional<mc2vk::gpuprof::Scope> treeTiming;
-                const size_t canopyRadius = static_cast<size_t>(tid) * 12u + 7u;
-                if (mc2vk::gpuprof::active() && canopyRadius < s->hotCpu.size() && s->hotCpu[canopyRadius] > 0.0f)
-                    treeTiming.emplace(cb, "VKIsl.Props.Trees", __FILE__, static_cast<uint32_t>(__LINE__));
-                const TypeRun& tr = s->typeRuns[tid];
-                for (uint32_t p = 0; p < tr.packetCount; ++p) {
-                    const uint32_t pk = tr.firstPacket + p;
-                    if (pk >= s->packets.size()) break;
-                    const Mc2ShadowPacket& pkt = s->packets[pk];
-                    // VK-FLIP-FIELD-REPORT-2 BLACK-FENCE FIX: push THIS packet's own
-                    // group-relative albedo layer (off/on), not the type's shared
-                    // "first-valid-wins" layer — see packetLayerOff/On comment above.
-                    // FENCE-UVSCALE-1: push this packet's own uvScaleX/Y alongside
-                    // its layer -- default 1.0 (no crop) matches pre-fix behavior
-                    // for any packet the feed didn't cover.
-                    struct { int32_t layerOff, layerOn; float uvScaleX, uvScaleY; int32_t alphaTest, fringe, hzb, materialId; } pc = {
-                        (pk < s->packetLayerOff.size())  ? s->packetLayerOff[pk]  : -1,
-                        (pk < s->packetLayerOn.size())   ? s->packetLayerOn[pk]   : -1,
-                        (pk < s->packetUvScaleX.size())  ? s->packetUvScaleX[pk]  : 1.0f,
-                        (pk < s->packetUvScaleY.size())  ? s->packetUvScaleY[pk]  : 1.0f,
-                        mc2_static_prop_packet_alpha_test(pk),
-                        fringePass,
-                        hzbCulled ? 1 : 0,
-                        s->authoredReady && pk < s->packetMaterialIds.size() ? s->packetMaterialIds[pk] : -1,
-                    };
-                    // Only packets the FS can alpha-test have a fringe (the alpha-ON layer or the per-packet bit).
-                    if (fringePass == 1 && pc.layerOn < 0 && pc.alphaTest == 0) continue;
-                    if (fringePass == 1 && pc.alphaTest == 2) {
-                        ColorPropIsland::LateDraw draw{};
-                        static_assert(sizeof(draw.pc) == sizeof(pc));
-                        std::memcpy(draw.pc, &pc, sizeof(pc));
-                        draw.indexCount = pkt.indexCount; draw.instanceCount = instCount;
-                        draw.firstIndex = pkt.firstIndex; draw.baseVertex = static_cast<int32_t>(pkt.baseVertex);
-                        draw.firstInstance = i;
-                        s->lateDraws.push_back(draw);
-                        continue;
-                    }
-                    if (s_pktDump && fringePass == 0)
-                        std::fprintf(s_pktDump, "%u,%u,%d,%d,%.4f,%.4f,%u,%u,%d,%u,%u\n",
-                                     tid, pk, pc.layerOff, pc.layerOn, pc.uvScaleX, pc.uvScaleY,
-                                     pkt.indexCount, pkt.firstIndex,
-                                     static_cast<int32_t>(pkt.baseVertex), instCount, i);
-                    vkCmdPushConstants(cb, s->playout.get(), VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
-                                        0, sizeof(pc), &pc);
-                    vkCmdDrawIndexed(cb, pkt.indexCount, instCount,
-                                     pkt.firstIndex, static_cast<int32_t>(pkt.baseVertex), i);
-                }
-                if (fringePass == 0) ++typeRuns;
-            }
-            i = j;
-        }
-        }
-        if (s_pktDump) { std::fclose(s_pktDump); s_pktDump = nullptr; }
-        g_health.typeRuns = typeRuns;
-
-        vkCmdEndRenderPass(cb);
-        gpuScope.end();
-        vk_render_pass_timer::End(cb, gos_render_pass_timer::Pass_SpColor);
-        if (vkEndCommandBuffer(cb) != VK_SUCCESS) { setFallback("record_failed"); s->disabled = true; return 0; }
+        unsigned long typeRunsRec = 0;
+        if (!record_props({s, cb, w, h, par, nDyn, dynOffsets, ground, hzbCulled, instanceCount, insts}, typeRunsRec)) { setFallback("record_failed"); s->disabled = true; return 0; }
+        g_health.typeRuns = typeRunsRec;
 
         // VK-RUNG8-ITEM5: direct-chain-native submit — waits/signals NO GL<->VK
         // semaphores (the shared GBuffer stays Vulkan-owned); the color fence below
