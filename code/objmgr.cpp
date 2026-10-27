@@ -1136,6 +1136,7 @@ void GameObjectManager::render (bool terrain, bool movers, bool other) {
 
 	if (terrain && renderObjects)
 	{
+		ZoneScopedN("RenderObjects.Terrain");
 		for (long terrainBlock = 0; terrainBlock < Terrain::numObjBlocks; terrainBlock++)
 		{
 			// Cull-cascade consumer (object render). Post-8c source of truth for
@@ -1168,6 +1169,7 @@ void GameObjectManager::render (bool terrain, bool movers, bool other) {
 	}
 
 	if (movers) {
+		ZoneScopedN("RenderObjects.Movers");
 		if (mechs && (numMechs < maxMechs)) 
 		{
 			for (long i = 0; i < numMechs; i++)
@@ -1193,6 +1195,7 @@ void GameObjectManager::render (bool terrain, bool movers, bool other) {
 	}
 
 	if (other) {
+		ZoneScopedN("RenderObjects.Effects");
 		//----------------------------------------
 		// All other objects should be rendered...
 		// VK-FIELD-VFX-1: the "other" objects are the scene VFX — weapon bolts

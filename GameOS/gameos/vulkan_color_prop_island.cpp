@@ -259,6 +259,7 @@ struct ColorPropIsland : mc2vk::IslandState {
 
     VkDescriptorSet   set[2] = {VK_NULL_HANDLE, VK_NULL_HANDLE};   // per parity slot (VK-PROP-FENCE-DEFER-1); set[i] binds ubo/inst/light[i]
     VkCommandBuffer   cbuf[2] = {VK_NULL_HANDLE, VK_NULL_HANDLE};   // allocated from `cpool`, freed with it
+    mc2vk::GpuTicket submitted[2];
     VkCommandBuffer lateCbuf[2] = {VK_NULL_HANDLE, VK_NULL_HANDLE};
     mc2vk::OwnedFence lateFence[2];
     struct LateDraw {
@@ -1451,16 +1452,9 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
 
     if (!prepare_mission_resources(s)) return 0;
 
-    // VK-PROP-FENCE-DEFER-1 (water-pilot template): begin the shared-slot frame BEFORE
-    // any per-parity staging (the LightsData copy below is per-frame CPU staging). The
-    // slot-fence wait inside beginFrame IS the deferred retire of the submit that last
-    // used this parity slot, and it protects everything indexed [par] below: the light
-    // SSBO, the instance SSBO, the frame UBO, the descriptor set, and the command
-    // buffer. The inline post-submit wait this replaces is kept only under the
-    // MC2_VK_PROP_FENCE_DEFER=0 killswitch. (The copy-once material imports above are
-    // self-synced by their one-shot inline fence waits — safe before OR after this.)
-    // Per-frame data goes into the engine frame ring BEFORE beginFrame (the ring slot belongs to the frame, not to the parity, so staging here races
-    // nothing, and a ring failure cannot strand the shared fence beginFrame acquires).
+    // Frame-ring allocations already belong to the current engine frame slot.
+    // Private commands and descriptors retire against this island's submissions,
+    // independently of the shared image fence that may name current-frame terrain.
     Mc2ColorPropLightFeed lightFeed{};
     const bool haveLightFeed = mc2_color_prop_island_get_light_feed(&lightFeed);
     mc2vk::VulkanContext& rctx = mc2vk::getOrCreateEngineVulkanContext();
@@ -1474,19 +1468,20 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
     if (!mainSpan) { setFallback("frame_ring_alloc_failed"); s->disabled = true; return 0; }
     uint8_t* const mainPtr = static_cast<uint8_t*>(mainSpan.ptr);
 
-    VkImageResource* colorRes = reinterpret_cast<VkImageResource*>(s->t1_colorRes);
     const clk::time_point tFence0 = clk::now();
-    VkFrameSync fsC{};
-    { ZoneScopedN("VKIsl.Props.FenceWait");   // VK-ISLAND-TRACY-1: deferred retire of the parity slot
-      fsC = vkImageResourceBeginFrame(colorRes); }
-    us_fence_wait = usSince(tFence0);
-    const uint32_t par = fsC.parity & 1u;
-    // The core fence precedes late coverage. Retire that submission too before
-    // reusing its descriptor slot, frame inputs or command buffer.
-    const VkFence lateFence = s->lateFence[par].get();
-    if (vkWaitForFences(s->device, 1, &lateFence, VK_TRUE, 5ull*1000*1000*1000) != VK_SUCCESS) {
-        setFallback("late_fringe_fence_timeout"); s->disabled = true; return 0;
+    const uint32_t par = rctx.frameContext().slot;
+    {
+        ZoneScopedN("VKIsl.Props.FenceWait");
+        if (!rctx.wait(s->submitted[par], 5000000000ull, "prop submission slot")) {
+            setFallback("submission_slot_timeout"); s->disabled = true; return 0;
+        }
+        // Late coverage also reads this slot's descriptors and frame inputs.
+        const VkFence lateFence = s->lateFence[par].get();
+        if (vkWaitForFences(s->device, 1, &lateFence, VK_TRUE, 5ull*1000*1000*1000) != VK_SUCCESS) {
+            setFallback("late_fringe_fence_timeout"); s->disabled = true; return 0;
+        }
     }
+    us_fence_wait = usSince(tFence0);
     // Props do not depend on terrain readiness: with no ground-lighting frame this frame (terrain not inited, fell back, or a different frame) reuse
     // the last frame's offsets over the descriptors this island's own set already holds; only a run that never had one skips the draw.
     auto groundNow = mc2_vk_ground_lighting_frame();
@@ -1810,31 +1805,23 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
         vk_render_pass_timer::End(cb, gos_render_pass_timer::Pass_SpColor);
         if (vkEndCommandBuffer(cb) != VK_SUCCESS) { setFallback("record_failed"); s->disabled = true; return 0; }
 
-        // VK-RUNG8-ITEM5: direct-chain-native submit — waits/signals NO GL<->VK
-        // semaphores (the shared GBuffer stays Vulkan-owned); the color fence below
-        // orders CPU before the next Vulkan island records against these images.
+        // Render-pass dependencies order shared attachments; the ticket protects
+        // this island's private recording resources.
         VkSubmitInfo si{};
         si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
         si.waitSemaphoreCount = 0; si.pWaitSemaphores = nullptr; si.pWaitDstStageMask = nullptr;
         si.commandBufferCount = 1; si.pCommandBuffers = &cb;
         si.signalSemaphoreCount = 0; si.pSignalSemaphores = nullptr;
         { ZoneScopedN("VKIsl.Props.Submit");   // VK-ISLAND-TRACY-1: vkQueueSubmit
-          if (mc2vk::submitGraphics(si, fsC.fence) != VK_SUCCESS) { setFallback("submit_failed"); s->disabled = true; return 0; } }
+          if (mc2vk::submitGraphics(si, VK_NULL_HANDLE) != VK_SUCCESS) { setFallback("submit_failed"); s->disabled = true; return 0; } }
+        s->submitted[par] = rctx.tracker().now();
         timerGuard.submitted();
 
-        // VK-PROP-FENCE-DEFER-1: the inline retire wait is GONE — the submit's fence
-        // (the shared parity-slot fence) is waited at the slot's next
-        // vkImageResourceBeginFrame, i.e. the deferred retire the beginFrame hoisted
-        // above the staging already timed into us_fence_wait. Everything this frame's
-        // submit uses is per-parity ([par]), write-once, or synced by its own inline
-        // one-shot fence, so nothing is rewritten before that wait. GPU-side ordering
-        // against downstream islands/post/composite never depended on this CPU wait
-        // (same-queue submission order + their command buffers' entry barriers).
-        // Killswitch MC2_VK_PROP_FENCE_DEFER=0 restores the inline wait.
+        // Killswitch MC2_VK_PROP_FENCE_DEFER=0 restores inline retirement.
         if (!propFenceDeferEnabled()) {
             ZoneScopedN("VKIsl.Props.InlineFenceWait");   // VK-ISLAND-TRACY-1: killswitch-only inline retire
             const clk::time_point tInline0 = clk::now();
-            if (vkWaitForFences(s->device, 1, &fsC.fence, VK_TRUE, 5ull*1000*1000*1000) != VK_SUCCESS) {
+            if (!rctx.wait(s->submitted[par], 5000000000ull, "prop inline retire")) {
                 setFallback("fence_timeout"); s->disabled = true; return 0;
             }
             us_fence_wait = usSince(tInline0);

@@ -54,19 +54,13 @@ bool GpuStaticPropBatcher::submit(TG_Shape* shape,
         }
     }
 
-    // firstColorOffset is the index into the bucket's color array:
-    // instance K's colors start at K * type.vertexCount (= bucket.colors.size()
-    // BEFORE this push). The shader binds the bucket's color range, so this
-    // becomes an index relative to the bound range.
-    const uint32_t firstColorOffset =
-        static_cast<uint32_t>(bucket.colors.size());
-
     GpuStaticPropInstance inst{};
     // Matrix4D is a plain row-major Scalar[16] (see stuff/matrix.hpp). Copy
     // as-is; shader uploads the worldToClip uniform with GL_FALSE.
     std::memcpy(inst.modelMatrix, &shapeToWorld, 16 * sizeof(float));
     inst.typeID           = typeID;
-    inst.firstColorOffset = firstColorOffset;
+    // Vulkan uses object light rows and instance tint, not legacy vertex colors.
+    inst.firstColorOffset = 0u;
     inst.flags            = flags | (type.isOverride ? (1u << 6) : 0u);
     // Slice 2 (object-offload) — Stage 2.C: per-actor dedup-cache index
     // into the LightsData[32] UBO. Same value for every leaf of one
@@ -199,25 +193,6 @@ bool GpuStaticPropBatcher::submit(TG_Shape* shape,
             }
         }
         gpu_cull::substrate_appendStaticPropRecord(rec);
-    }
-
-    // Append this instance's per-vertex ARGB block.
-    // IMPORTANT: listOfColors (TG_Vertex: fog+redSpec+greenSpec+blueSpec) is
-    // specular-only and is zero for most buildings — reading it produces
-    // black. The real per-vertex lit ARGB is computed by TransformShape
-    // into `listOfVertices[j].argb` (mclib/tgl.cpp:2119). gos_VERTEX is
-    // 32 bytes with `argb` at offset 16.
-    const uint32_t numColors = type.vertexCount;
-    if (numColors > 0 && shape->listOfVertices) {
-        bucket.colors.reserve(bucket.colors.size() + numColors);
-        const gos_VERTEX* src = shape->listOfVertices;
-        for (uint32_t v = 0; v < numColors; ++v) {
-            bucket.colors.push_back(src[v].argb);
-        }
-    } else {
-        // No source vertices -- pad with zeros so the color block still
-        // matches type.vertexCount and indexing math stays valid.
-        bucket.colors.insert(bucket.colors.end(), numColors, 0u);
     }
 
     return true;
