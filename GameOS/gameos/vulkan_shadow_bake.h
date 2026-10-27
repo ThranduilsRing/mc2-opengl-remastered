@@ -212,7 +212,7 @@ private:
     };
     // Only owned bytes cross the worker boundary; no renderer or registry state is read there.
     std::future<CacheLoad> cacheLoad_;
-    uint64_t cacheLoadKey_ = 0;
+    uint64_t cacheLoadKey_ = 0, cacheLoadInputKey_ = 0;   // inputKey: the mask key the content key was computed for
     uint64_t contentKey_ = 0, shaderContentHash_ = 0;
     std::array<uint64_t, 6> keyParts_{};   // heights, casters, geometry, alpha cut-outs, scalars, versions
     bool warm_ = false, readbackPending_ = false;
