@@ -253,9 +253,7 @@ void MissionInterfaceManager::update (void)
 
 	// Scripted picks do not need to wait for the mission's intro movie. The
 	// objects and their presentation bounds are live after the first turns.
-	static bool staticPickProbed = false;
-	if (!staticPickProbed && turn > 90 && ObjectManager && mc2::gate::get<"MC2_VK_PICK_PROBE">()) {
-		staticPickProbed = true;
+	if (turn > 90 && ObjectManager && mc2::gate::get<"MC2_VK_PICK_PROBE">()) {
 		ObjectManager->findObjectByMouse(-999998, -999998);
 	}
 	if (eye && eye->inMovieMode)
@@ -1105,8 +1103,13 @@ void MissionInterfaceManager::update (void)
 // caller), NOT the HUD-inverse order-suppression bGui. It only gates whether a
 // genuinely-picked world object (and its name help-text) is kept. See bRawGui note
 // in update().
+long g_hoverTipNameID = 0;
+long g_hoverTipX = 0;
+long g_hoverTipY = 0;
+
 void MissionInterfaceManager::updateTarget( bool bGui)
 {
+	g_hoverTipNameID = 0;
 	
 	// MISSION-START-HOVER-TARGET-LIFETIME-1 (completed): suppress hover BEFORE any deref.
 	// During mission start / settle frames / teardown the persistent target + oldTargets[]
@@ -1158,89 +1161,8 @@ void MissionInterfaceManager::updateTarget( bool bGui)
 		target->setTargeted( 0 );
 
 	//
-	// GPU_PICK_HOVER_DYNAMIC-1: fast mech hover via ObjectId MRT.
-	// Gate: MC2_GPU_PICK_HOVER=1 + MC2_OBJECT_ID_BUFFER=1.
-	// Only Mech kind uses the GPU result; static props fall through to CPU.
-	// Mouse-position cache: no glReadPixels when cursor hasn't moved.
-	{
-		static const bool s_hoverGate = []() {
-			return RenderWorld::IsGpuPickHoverEnabled() &&
-			       RenderWorld::IsObjectIdBufferEnabled();
-		}();
-		static const bool s_hoverTrace = []() {
-			return RenderWorld::IsGpuPickHoverTraceEnabled();
-		}();
-		// MISSION-START-HOVER-TARGET-LIFETIME-1: these caches are now FILE-SCOPE statics
-		// (s_hover*) so invalidateHoverTarget() can clear them at mission boundaries.
-		// Per-frame counters for trace output (reset on first call each frame via atexit).
-		static int s_attempts = 0, s_mechHits = 0, s_nonMech = 0, s_cpuFallback = 0;
-		static bool s_atexitRegistered = false;
-		if (s_hoverGate) {
-			if (!s_atexitRegistered) {
-				s_atexitRegistered = true;
-				std::atexit([]() {
-					if (s_attempts && RenderWorld::IsGpuPickHoverTraceEnabled()) {
-						mc2::fmt::print_err("[GPU_PICK_HOVER v1] session: attempts={:d} mech_hits={:d} non_mech_fallback={:d} cpu_fallback={:d}\n", mc2::fmt::as_i32(s_attempts), mc2::fmt::as_i32(s_mechHits), mc2::fmt::as_i32(s_nonMech), mc2::fmt::as_i32(s_cpuFallback));
-					}
-				});
-			}
-			// Cache hit: mouse hasn't moved, reuse last result — but only if the cached
-			// object is still live. Validate by watch-ID WITHOUT dereferencing the raw
-			// cached pointer (getByWatchID takes the stored WID; '==' is a pointer
-			// compare). A mech that died since the cache was set leaves a stale/poisoned
-			// pointer; reusing it raw let target reach a virtual call (target->isDisabled)
-			// with target = 0xFFFF.. -> READ-violation crash. If it no longer resolves to
-			// the same live registered object, drop the cache and fall through to a fresh pick.
-			if (s_hoverCacheValid && mouseX == s_hoverLastMouseX && mouseY == s_hoverLastMouseY) {
-				if (s_hoverCachedTarget &&
-				    ObjectManager->getByWatchID(s_hoverCachedTargetWID) == s_hoverCachedTarget) {
-					target = s_hoverCachedTarget;
-					goto gpu_hover_done;
-				}
-				s_hoverCacheValid = false;   // cached object died — re-pick fresh below
-			}
-			float vMulX, vMulY, vAddX, vAddY;
-			gos_GetViewport(&vMulX, &vMulY, &vAddX, &vAddY);
-			if (vMulX > 0.0f && vMulY > 0.0f &&
-			    mouseX >= 0 && mouseY >= 0 &&
-			    mouseX < static_cast<int>(vMulX) && mouseY < static_cast<int>(vMulY)) {
-				RenderWorld::ScreenPickContext ctx;
-				ctx.mouseX = mouseX; ctx.mouseY = mouseY;
-				ctx.vMulX  = vMulX;  ctx.vMulY  = vMulY;
-				ctx.vAddX  = vAddX;  ctx.vAddY  = vAddY;
-				ctx.drawableWidth  = Environment.drawableWidth;
-				ctx.drawableHeight = Environment.drawableHeight;
-				RenderWorld::screenPickCompute(&ctx);
-				++s_attempts;
-				RenderWorld::LookupResult res = RenderWorld::lookupAtPixel(ctx.glX, ctx.glY);
-				if (res.isValid && res.kind == RenderWorld::RenderObjectKind::Mech) {
-					BattleMech* bm = GameAdapters::Mech::findMechByHandle(res.handle);
-					if (bm != nullptr) {
-						++s_mechHits;
-						if (s_hoverTrace) {
-							mc2::fmt::print_err("[GPU_PICK_HOVER v1] hit kind=Mech handle={:d} idx={:d} mech={:016X} screen=({:d},{:d}) gl=({:d},{:d})\n", mc2::fmt::as_u32(res.handle.bits), mc2::fmt::as_u32(static_cast<unsigned>(res.handle.index())), mc2::fmt::as_ptr(static_cast<void*>(bm)), mc2::fmt::as_i32(mouseX), mc2::fmt::as_i32(mouseY), mc2::fmt::as_i32(ctx.glX), mc2::fmt::as_i32(ctx.glY));
-						}
-						s_hoverLastMouseX   = mouseX;
-						s_hoverLastMouseY   = mouseY;
-						s_hoverCachedTarget = bm;
-						s_hoverCachedTargetWID = bm->getWatchID();   // bm freshly picked = live; cache its WID for next-frame validation
-						s_hoverCacheValid   = true;
-						target = bm;
-						goto gpu_hover_done;
-					}
-				} else if (res.isValid) {
-					++s_nonMech;
-					if (s_hoverTrace) {
-						mc2::fmt::print_err("[GPU_PICK_HOVER v1] non_mech kind={:d} screen=({:d},{:d}) falling through to CPU\n", mc2::fmt::as_i32(static_cast<int>(res.kind)), mc2::fmt::as_i32(mouseX), mc2::fmt::as_i32(mouseY));
-					}
-				}
-			}
-			s_hoverCacheValid = false;
-			++s_cpuFallback;
-		}
-	}
+	// Hover and orders consume the same grounded-bounds pick.
 	target = ObjectManager->findObjectByMouse(mouseX, mouseY);
-	gpu_hover_done:;
 	if ( target )
 	{
 		// Remember the freshly-picked (live) target's watch-ID so next frame's top-of-function
@@ -1298,6 +1220,12 @@ void MissionInterfaceManager::updateTarget( bool bGui)
 
 				helpTextHeaderID = nameID;
 				helpTextID = descID;
+			}
+			if ( target->getAppearance() && target->getAppearance()->getObjectNameId() > 0 )
+			{
+				g_hoverTipNameID = target->getAppearance()->getObjectNameId();
+				g_hoverTipX = mouseX;
+				g_hoverTipY = mouseY;
 			}
 			if ( target->isDestroyed() )
 			{

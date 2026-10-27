@@ -16,6 +16,10 @@
 #ifndef GAMEPLAY_PICK_H
 #define GAMEPLAY_PICK_H
 
+// Gameplay selection shares grounded bounds with hover and order targets.
+class GameObject;
+GameObject* pickGameplaySelection(long x, long y);
+
 #include "../RenderWorld/RenderWorld.h"  // RenderWorld::LookupResult
 
 // Input gesture + missiongui state. Mirrors the 7 args

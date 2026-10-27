@@ -67,6 +67,10 @@ extern unsigned long long g_ifaceCgFrameNs[8];
 extern bool g_imguiInitialized;
 extern long helpTextHeaderID;
 extern long helpTextID;
+// Hovered world object's name string id (0 = none) and cursor pos, set by updateTarget.
+extern long g_hoverTipNameID;
+extern long g_hoverTipX;
+extern long g_hoverTipY;
 extern bool neverEndingStory;
 extern bool drawGUIOn;
 extern bool paintingMyVtol;

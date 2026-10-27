@@ -462,6 +462,7 @@ class ControlGui
 		void renderResults();
 		void handleVehicleClick( int ID );
 		void renderHelpText();
+		void renderHoverTip();
 		void renderInfoTab();
 		void renderChatText();
 

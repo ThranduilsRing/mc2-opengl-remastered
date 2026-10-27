@@ -436,6 +436,32 @@ void ControlGui::renderHelpText()
 	}
 }
 
+// Stock-style hover name box next to the cursor for the object the click would hit.
+void ControlGui::renderHoverTip()
+{
+	if ( !g_hoverTipNameID )
+		return;
+	char buffer[256];
+	cLoadString( g_hoverTipNameID, buffer, sizeof(buffer) );
+	if ( !buffer[0] )
+		return;
+	DWORD width = helpFont.width( buffer );
+	DWORD height = helpFont.height( buffer, width );
+	const long pad = 3;
+	long left = g_hoverTipX + 16;
+	long top = g_hoverTipY + 20;
+	if ( left + (long)width + 2 * pad > Environment.screenWidth )
+		left = Environment.screenWidth - (long)width - 2 * pad;
+	if ( top + (long)height + 2 * pad > Environment.screenHeight )
+		top = g_hoverTipY - (long)height - 2 * pad - 4;
+	GUI_RECT box = { left, top, left + (long)width + 2 * pad, top + (long)height + 2 * pad };
+	drawRect( box, 0xc0000000 );
+	drawEmptyRect( box, 0xffa0a0a0, 0xffa0a0a0 );
+	gos_TextSetRegion( box.left, box.top, box.right, box.bottom );
+	drawShadowText( 0xffffffff, 0xff000000, helpFont.getTempHandle(),
+		left + pad, top + pad, true, buffer, false, helpFont.getSize() );
+}
+
 void ControlGui::renderInfoTab()
 {
 	if ( getButton( INFO_TAB )->state & ControlButton::PRESSED )
