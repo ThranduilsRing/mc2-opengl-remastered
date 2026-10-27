@@ -7,6 +7,9 @@
 #include "anim_freeze.h"
 #include "appearance_rng.h"
 
+// Tags are fixed at startup; the per-mech-per-tick lookup builds a temp string, so cache it.
+static bool animCadenceTagEnabled() { static const bool on = mc2_diag::tagEnabled("ANIM_CADENCE"); return on; }
+
 long Mech3DAppearance::update (bool animate) 
 {
 	if (simPresentationPass) presentEffects();
@@ -75,6 +78,8 @@ long Mech3DAppearance::update (bool animate)
 			unitAnim().currentGestureId = GestureIdle;
 			unitAnim().currentFrame = 0.0f;
 			unitAnim().inReverse = false;
+			// Root cause of the idle/reverse bug: the flag left over from the previous gesture's
+			// end made idle exit on its first tick. Clear it on ENTRY only.
 			unitAnim().atTransitionToNextGesture = false;
 			unitAnim().idleTime = 0.0f;
 			setFirstFrame = true;
@@ -90,8 +95,7 @@ long Mech3DAppearance::update (bool animate)
 		unitAnim().currentGestureId = 2;
 		
 		unitAnim().currentFrame = 0;
-		unitAnim().atTransitionToNextGesture = false;
-		setFirstFrame = true;
+		// Leave atTransitionToNextGesture set (pre-W73 timing): a pending stand->walk fires at once.
 	}
 	
 	if (checkStop() && !inDebugMoveMode && !unitAnim().jumpSetup && (getVelocityMagnitude() != 0.0f) && (unitAnim().currentGestureId != GestureJump))
@@ -307,7 +311,7 @@ long Mech3DAppearance::update (bool animate)
 							if (_ac_double)
 							{
 								++s_ac_doubles;
-								if (mc2_diag::tagEnabled("ANIM_CADENCE"))
+								if (animCadenceTagEnabled())
 								{
 									char _ac_buf[256];
 									mc2::fmt::to_buf(_ac_buf, "{{\"event\":\"advanced_twice_same_frame\",\"ptr\":\"{:016X}\",\"gesture\":{:d},\"frame\":{:d},\"frameInc\":{:.4f},\"doubles\":{:d},\"advances\":{:d}}}", mc2::fmt::as_ptr(static_cast<void*>(this)), mc2::fmt::as_i32(static_cast<int>(unitAnim().currentGestureId)), mc2::fmt::as_u32(_ac_frame), frameInc, mc2::fmt::as_u64(static_cast<unsigned long long>(s_ac_doubles)), mc2::fmt::as_u64(static_cast<unsigned long long>(s_ac_advances)));
@@ -371,7 +375,7 @@ long Mech3DAppearance::update (bool animate)
 		
 	if ((unitAnim().currentFrame > 0.0f) && (unitAnim().currentFrame >= mechType->getNumFrames(unitAnim().currentGestureId)))
 		unitAnim().currentFrame = 0.0f;
-	if (mc2_diag::tagEnabled("ANIM_CADENCE") &&
+	if (animCadenceTagEnabled() &&
 		(previousGesture != unitAnim().currentGestureId || unitAnim().currentGestureId == GestureIdle || turn % 30 == 0))
 	{
 		mc2::fmt::print_out("[ANIM_STATE] tick={} actor={} type={} gesture={}->{} frame={:.3f}->{:.3f} frames={:.0f} rate={:.1f} idle={:.3f} ready={} reverse={} goal={} oldGoal={} combat={}\n",

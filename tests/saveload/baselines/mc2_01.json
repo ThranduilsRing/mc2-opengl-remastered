@@ -10,7 +10,7 @@
   "MC2_BOOT_QUICKLOAD_AT": "1100"
  },
  "exe": {
-  "sha": "db6aec9864a9",
+  "sha": "fb629c5240fd",
   "dirty": 0
  },
  "comparison": {
@@ -108,7 +108,7 @@
  "judged": "first-save-only",
  "resave_present": true,
  "packets": 20000,
- "overall": "dfe1c08ef9358fec",
+ "overall": "96ae865b39be20ea",
  "resave_identical": false,
  "resave_matches_policy": false,
  "runs": [
@@ -123,15 +123,15 @@
    "text",
    2,
    1,
-   34236,
-   "003af15b7e19d053"
+   34238,
+   "ddb1223def2e578f"
   ],
   [
    "data",
    3,
    256,
    557697,
-   "7bdd052f3747d5a3"
+   "6472a4fe8a31c4db"
   ],
   [
    "data",
@@ -180,7 +180,7 @@
    1795,
    111,
    36767,
-   "afd8121116a928da"
+   "0c52a89cbc955709"
   ],
   [
    "StaticMechWarriorData",
@@ -194,7 +194,7 @@
    1907,
    256,
    5091328,
-   "411d17c2faec83a6"
+   "3adb4319f0f2e1d7"
   ],
   [
    "TeamStaticData",
@@ -229,14 +229,14 @@
    2168,
    134,
    534928,
-   "fc6156535cc77b77"
+   "39f3402e6de1d590"
   ],
   [
    "GroundVehicleData",
    2302,
    151,
    517024,
-   "8aff57b0e3b0ab73"
+   "2577bc2d29f28719"
   ],
   [
    "TerrainObjectData",
@@ -250,7 +250,7 @@
    2532,
    4,
    3024,
-   "2ea72df4c432f4af"
+   "3dcbfc265489fdad"
   ],
   [
    "TerrainObjectData",
@@ -271,7 +271,7 @@
    2855,
    6,
    4536,
-   "02aceea3709d945a"
+   "d85a7dd3b1008d92"
   ],
   [
    "TerrainObjectData",
@@ -285,7 +285,7 @@
    2872,
    2,
    1512,
-   "60efe27045342d82"
+   "e98e213246139441"
   ],
   [
    "TerrainObjectData",
@@ -299,7 +299,7 @@
    2917,
    3,
    2268,
-   "fe6a4c2f70d48ec7"
+   "c18ec1f036d2ba74"
   ],
   [
    "TerrainObjectData",
@@ -313,7 +313,7 @@
    3029,
    2,
    1512,
-   "aaae4ba40c565bc7"
+   "4d8233bc3ed5ffd3"
   ],
   [
    "TerrainObjectData",
@@ -327,7 +327,7 @@
    3125,
    2,
    1512,
-   "fed62d2b2c337116"
+   "d31cd4cf5cf6ec81"
   ],
   [
    "TerrainObjectData",
@@ -341,7 +341,7 @@
    3171,
    24,
    18144,
-   "28c0e4da08c63a44"
+   "899f50527a8575c5"
   ],
   [
    "TerrainObjectData",
@@ -355,7 +355,7 @@
    3360,
    1,
    756,
-   "9c80e615e109e2ae"
+   "7757b2343ebb6e87"
   ],
   [
    "TerrainObjectData",
@@ -418,7 +418,7 @@
    3738,
    3,
    214385,
-   "99c29780503094c5"
+   "ff0c96b19b82377f"
   ],
   [
    "empty",
