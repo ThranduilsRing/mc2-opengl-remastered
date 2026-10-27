@@ -2,6 +2,7 @@
 #pragma once
 #include <cstdint>
 #include <string>
+#include <string_view>
 #include <vector>
 
 // Result of decoding+uploading one texture file. texId (a toolvk texture id, tools/common/tool_vk_gpu.h) == 0 means failure
@@ -22,11 +23,11 @@ struct DecodedTexture {
 struct ITextureDecoder {
     virtual ~ITextureDecoder() = default;
     // extLower is the lowercased extension WITHOUT the dot, e.g. "ktx2".
-    virtual bool          handles(const std::string& extLower) const = 0;
+    virtual bool          handles(std::string_view extLower) const = 0;
     virtual DecodedTexture load(const std::string& path) const = 0;
     // All lowercased extensions (without dot) this decoder handles.
     virtual std::vector<std::string> extensions() const = 0;
 };
 
 // Lowercased extension without the dot ("a/b.KTX2" -> "ktx2"; "noext" -> "").
-std::string TextureExtLower(const std::string& path);
+std::string TextureExtLower(std::string_view path);

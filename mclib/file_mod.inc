@@ -357,9 +357,9 @@ static std::optional<int> LoadModIndexCache(
     // recomputed from disk -- ANY mismatch means files changed since index time.
     if (!fgets(line, sizeof(line), f)) { fclose(f); return std::nullopt; }
     line[strcspn(line, "\r\n")] = '\0';
-    ModCacheSignature storedSig;
-    if (!parseModCacheSigLine(line, &storedSig)) { fclose(f); return std::nullopt; }
-    if (!modCacheSignatureMatches(storedSig, expectedSig)) {
+    const auto storedSig = parseModCacheSigLine(line);
+    if (!storedSig) { fclose(f); return std::nullopt; }
+    if (!modCacheSignatureMatches(*storedSig, expectedSig)) {
         if (sigMismatch) *sigMismatch = true;
         fclose(f);
         return std::nullopt;

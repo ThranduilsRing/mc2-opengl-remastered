@@ -153,18 +153,18 @@ void FileWorkflow::perform(bool saveFirst)
     action_ = Action::None;
     target_.clear();
 }
-void FileWorkflow::record(const std::string& key, bool activated)
+void FileWorkflow::record(std::string_view key, bool activated)
 {
 #ifdef MC2_EDITOR_SMOKE_HOST
     const auto a = ImGui::GetItemRectMin(), b = ImGui::GetItemRectMax();
-    auto& widget = widgets_[key];
+    auto& widget = widgets_[std::string(key)];
     widget.center = {(a.x + b.x) / 2, (a.y + b.y) / 2};
     if (activated) ++widget.activations;
 #else
     (void)key; (void)activated;
 #endif
 }
-bool FileWorkflow::button(const std::string& key, const char* label)
+bool FileWorkflow::button(std::string_view key, const char* label)
 {
     const bool activated = ImGui::Button(label); record(key, activated); return activated;
 }

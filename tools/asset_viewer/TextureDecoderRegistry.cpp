@@ -5,11 +5,11 @@
 #include <algorithm>
 #include <cctype>
 
-std::string TextureExtLower(const std::string& path)
+std::string TextureExtLower(std::string_view path)
 {
     auto dot = path.find_last_of('.');
     if (dot == std::string::npos) return "";
-    std::string ext = path.substr(dot + 1);
+    std::string ext(path.substr(dot + 1));
     std::transform(ext.begin(), ext.end(), ext.begin(),
                    [](unsigned char c){ return (char)std::tolower(c); });
     return ext;
@@ -20,7 +20,7 @@ void TextureDecoderRegistry::add(std::unique_ptr<ITextureDecoder> d)
     decoders_.push_back(std::move(d));
 }
 
-const ITextureDecoder* TextureDecoderRegistry::find(const std::string& path) const
+const ITextureDecoder* TextureDecoderRegistry::find(std::string_view path) const
 {
     std::string ext = TextureExtLower(path);
     if (ext.empty()) return nullptr;
@@ -36,7 +36,7 @@ DecodedTexture TextureDecoderRegistry::load(const std::string& path) const
     return d->load(path);
 }
 
-bool TextureDecoderRegistry::isSupported(const std::string& path) const
+bool TextureDecoderRegistry::isSupported(std::string_view path) const
 {
     return find(path) != nullptr;
 }

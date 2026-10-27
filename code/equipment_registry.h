@@ -273,7 +273,7 @@ public:
     // Add one component row. `enabled=false` for default-off placeholders.
     // First writer per qualifiedId wins (dup ids are a data condition; the
     // ordinal index still maps every ordinal to its own id).
-    void add(const std::string& qualifiedId, long legacyMasterId,
+    void add(std::string_view qualifiedId, long legacyMasterId,
              EquipmentKind kind, bool enabled) {
         EquipmentRegistryEntry e;
         e.qualifiedId    = qualifiedId;
@@ -283,7 +283,7 @@ public:
         size_t idx = entries_.size();
         entries_.push_back(e);
         if (byId_.find(qualifiedId) == byId_.end())
-            byId_[qualifiedId] = idx;
+            byId_[e.qualifiedId] = idx;
         byOrdinal_[legacyMasterId] = qualifiedId;
     }
 

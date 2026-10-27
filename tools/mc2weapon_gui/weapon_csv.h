@@ -3,6 +3,7 @@
 // a loose mods/<id>/data/objects/compbas.csv overlay (the game resolves it first).
 #pragma once
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace mc2w {
@@ -27,18 +28,18 @@ struct Compbas {
 
     bool load(const std::string& path, std::string& err);
     bool write(const std::string& path, std::string& err) const;
-    int findByMasterId(const std::string& mid) const;  // -1 if none
+    int findByMasterId(std::string_view mid) const;  // -1 if none
 
     // cell access by logical field name for the selected row (safe, "" if OOB).
     std::string cell(int row, int colIdx) const;
-    void setCell(int row, int colIdx, const std::string& v);
+    void setCell(int row, int colIdx, std::string_view v);
 };
 
 bool loadEffects(const std::string& path, std::vector<FxEntry>& out, std::string& err);
-bool isWeaponType(const std::string& type);
+bool isWeaponType(std::string_view type);
 
 // "" if valid, else a human message. `kind`: ufloat|uint|int|range|wtype|fxid|str.
-std::string validateCell(const std::string& kind, const std::string& value,
+std::string validateCell(std::string_view kind, std::string_view value,
                          const std::vector<FxEntry>& fx);
 
 // Whole-row validation -> list of problems (empty = valid).

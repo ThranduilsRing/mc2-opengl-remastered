@@ -6,7 +6,7 @@
 // is cache-owned, so DecodedTexture::ownsTexture is false.
 class LegacyImageDecoder : public ITextureDecoder {
 public:
-    bool          handles(const std::string& extLower) const override;
+    bool          handles(std::string_view extLower) const override;
     DecodedTexture load(const std::string& path) const override;
     std::vector<std::string> extensions() const override;
 };

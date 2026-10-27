@@ -92,12 +92,12 @@ private:
     std::vector<std::string> objectiveRows_;
 #endif
     std::function<void()> save_, reopen_;
-    bool button(const char* key, const char* label);
-    bool choice(const std::string& key, const char* label, bool selected);
-    void record(const std::string& key, bool activated = false);
+    bool button(std::string_view key, const char* label);
+    bool choice(std::string_view key, const char* label, bool selected);
+    void record(std::string_view key, bool activated = false);
     void selector(bool building);
-    void team(const char* key, int& value, bool neutral);
-    void transform(const char* key, document::Transform& value);
+    void team(std::string_view key, int& value, bool neutral);
+    void transform(std::string_view key, document::Transform& value);
     void report(std::expected<void, document::LoadError> result);
     std::expected<document::EntityId, document::LoadError> place(bool building);
     std::expected<document::EntityId, document::LoadError> place(const document::CatalogEntry& entry,

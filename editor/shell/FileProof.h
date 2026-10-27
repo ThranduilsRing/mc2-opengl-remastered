@@ -33,7 +33,7 @@ private:
     void input(std::string key, std::string value);
     void edit();
     void path(bool saveAs, const std::filesystem::path& value);
-    void disk(const std::filesystem::path& stem, const std::string& fit);
+    void disk(const std::filesystem::path& stem, std::string_view fit);
     void unchanged();
 };
 }

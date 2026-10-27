@@ -21,7 +21,7 @@ uint32_t uploadKtx2Image(const RenderCore::KtxImage& img, bool srgb, bool repeat
 // The .ktx2 decoder. Uploads through toolvk::createTexture.
 class Ktx2Decoder : public ITextureDecoder {
 public:
-    bool          handles(const std::string& extLower) const override;
+    bool          handles(std::string_view extLower) const override;
     DecodedTexture load(const std::string& path) const override;
     std::vector<std::string> extensions() const override;
 };

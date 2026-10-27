@@ -56,7 +56,7 @@
    "LG07": 0,
    "LG08": 155,
    "LG09": 4,
-   "LG10": 9,
+   "LG10": 11,
    "LG11": 59,
    "LG12a": 60,
    "LG12b": 24,
@@ -75,7 +75,7 @@
    "LG03": 0,
    "LG04": 0,
    "LG05": 4,
-   "LG06": 9,
+   "LG06": 7,
    "LG07": 2,
    "LG08": 1,
    "LG09": 26,
@@ -144,7 +144,7 @@
    "LG03": 387,
    "LG04": 16,
    "LG05": 200,
-   "LG06": 444,
+   "LG06": 437,
    "LG07": 2,
    "LG08": 13,
    "LG09": 0,
@@ -189,8 +189,8 @@
    "LG02": 0,
    "LG03": 500,
    "LG04": 15,
-   "LG05": 111,
-   "LG06": 528,
+   "LG05": 109,
+   "LG06": 527,
    "LG07": 0,
    "LG08": 43,
    "LG09": 2,
@@ -655,6 +655,7 @@
   "GameOS/gameos/gos_vegetation.cpp": {
    "LG06": 1,
    "LG08": 1,
+   "LG10": 1,
    "LG17": 2
   },
   "GameOS/gameos/gos_vegetation.h": {
@@ -842,7 +843,7 @@
   },
   "GameOS/gameos/vk_texture_residency.cpp": {
    "LG08": 11,
-   "LG10": 1,
+   "LG10": 2,
    "LG13": 2
   },
   "GameOS/gameos/vma_impl.cpp": {
@@ -1047,7 +1048,6 @@
   },
   "GuiRuntime/GuiRuntime.cpp": {
    "LG05": 1,
-   "LG06": 2,
    "LG09": 12,
    "LG10": 1,
    "LG11": 1
@@ -1368,7 +1368,7 @@
   },
   "code/equipment_registry.h": {
    "LG05": 1,
-   "LG06": 10,
+   "LG06": 9,
    "LG08": 3,
    "LG11": 1
   },
@@ -1387,10 +1387,10 @@
    "LG08": 1
   },
   "code/fitblockwriter.cpp": {
-   "LG06": 4
+   "LG06": 1
   },
   "code/fitblockwriter.h": {
-   "LG06": 4
+   "LG06": 1
   },
   "code/forcegroupbar.cpp": {
    "LG03": 5,
@@ -2330,7 +2330,6 @@
    "LG20": 2
   },
   "mclib/bdactor_sidecar.cpp": {
-   "LG05": 1,
    "LG06": 5,
    "LG20": 8
   },
@@ -2895,12 +2894,11 @@
    "LG13": 1
   },
   "mclib/mod_cache_sig.h": {
-   "LG05": 1,
    "LG06": 1
   },
   "mclib/model_override_registry.cpp": {
    "LG05": 2,
-   "LG06": 2,
+   "LG06": 1,
    "LG11": 3
   },
   "mclib/model_override_registry.h": {
@@ -3432,7 +3430,7 @@
    "LG20": 3
   }
  },
- "head": "47e2ca2fa",
+ "head": "a7a0981d5",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",

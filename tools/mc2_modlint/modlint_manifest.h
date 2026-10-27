@@ -16,6 +16,7 @@
 // validate() returning findings with stable MODMAN_* reason tokens (grep-able
 // by CI / mod tooling), and a formatter. Header-only, no IO, doctest-covered.
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include "modlint_input.h"   // MlJson / parseModlintJson
@@ -130,7 +131,7 @@ inline ModManifestFacts manifestFactsFromJson(const MlJson& root) {
 
 // --- rules -----------------------------------------------------------------
 // Same token rule the launcher/packer enforce: ^[a-z0-9][a-z0-9._-]*$
-inline bool modIdTokenValid(const std::string& id) {
+inline bool modIdTokenValid(std::string_view id) {
     if (id.empty()) return false;
     auto headOk = [](char c) { return (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9'); };
     if (!headOk(id[0])) return false;
@@ -140,7 +141,7 @@ inline bool modIdTokenValid(const std::string& id) {
 }
 
 // Dotted digits: "1", "1.0", "1.0.0", ... (no empty segments).
-inline bool modVersionValid(const std::string& v) {
+inline bool modVersionValid(std::string_view v) {
     if (v.empty()) return false;
     bool segHasDigit = false;
     for (char c : v) {
@@ -191,11 +192,11 @@ inline std::vector<ModManifestFinding> validateModManifest(const ModManifestFact
 }
 
 // --- formatter (mirrors formatUnitFindings' modder-first shape) -------------
-inline std::string formatManifestFindings(const std::string& label,
+inline std::string formatManifestFindings(std::string_view label,
                                           const std::vector<ModManifestFinding>& findings,
-                                          const std::string& source = "") {
-    std::string out = "manifest " + (label.empty() ? std::string("<unnamed>") : label);
-    if (!source.empty()) out += " [" + source + "]";
+                                          std::string_view source = "") {
+    std::string out = "manifest " + (label.empty() ? std::string("<unnamed>") : std::string(label));
+    if (!source.empty()) out += std::string(" [").append(source).append("]");
     if (findings.empty()) { out += ": OK (0 findings)\n"; return out; }
     out += ": " + std::to_string(findings.size()) + " finding(s)\n";
     for (const ModManifestFinding& f : findings) {

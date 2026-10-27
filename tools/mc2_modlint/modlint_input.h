@@ -32,6 +32,7 @@
 // modlint lints the jump-vs-executor facet across a whole roster. See
 // parseRosterUnits() below.
 #include <string>
+#include <string_view>
 #include <vector>
 #include <cstdlib>
 #include <cctype>
@@ -52,12 +53,12 @@ struct MlJson {
     std::vector<MlJson>                   arr;
     std::vector<std::pair<std::string, MlJson>> obj;
 
-    const MlJson* find(const char* key) const {
+    const MlJson* find(std::string_view key) const {
         for (const auto& kv : obj) if (kv.first == key) return &kv.second;
         return nullptr;
     }
     bool asBool(bool dflt = false) const { return type == Bool ? b : dflt; }
-    std::string asStr(const char* dflt = "") const { return type == Str ? s : std::string(dflt); }
+    std::string asStr(std::string_view dflt = "") const { return type == Str ? s : std::string(dflt); }
 };
 
 // --- minimal recursive parser --------------------------------------------
@@ -171,7 +172,7 @@ inline MlJson parseModlintJson(const std::string& src, bool* ok = nullptr) {
 
 // --- token -> enum helpers (spellings match the converter + engine parsers) ---
 
-inline WeaponTag weaponTagFromToken(const std::string& t, bool* known = nullptr) {
+inline WeaponTag weaponTagFromToken(std::string_view t, bool* known = nullptr) {
     if (known) *known = true;
     if (t == "Energy")        return WTAG_ENERGY;
     if (t == "Ballistic")     return WTAG_BALLISTIC;
@@ -190,7 +191,7 @@ inline DamageSchemaId damageSchemaFromToken(const std::string& t) {
 // mech-part / vehicle-facing names a modder would write. Unknown -> DLOC_BODY
 // (which is NOT a member of the mech/vehicle schemas, so it surfaces as a
 // DAMAGE_LOCATION_MISSING finding rather than silently passing).
-inline DamageLocationId damageLocationFromToken(const std::string& t) {
+inline DamageLocationId damageLocationFromToken(std::string_view t) {
     if (t == "Head")        return DLOC_MECH_HEAD;
     if (t == "CenterTorso") return DLOC_MECH_CTORSO;
     if (t == "LeftTorso")   return DLOC_MECH_LTORSO;

@@ -6,6 +6,7 @@
 
 #include <cstdio>
 #include <fstream>
+#include <utility>
 #include "mc2fmt.h"
 
 void FitBlockWriter::appendIndent() {
@@ -13,15 +14,16 @@ void FitBlockWriter::appendIndent() {
         m_out += '\t';
 }
 
-void FitBlockWriter::appendLine(const std::string& s) {
+void FitBlockWriter::appendLine(std::string s) {
     appendIndent();
     m_out += s;
     m_out += '\n';
 }
 
-void FitBlockWriter::beginBlock(const std::string& name) {
-    appendLine(name + " {");
-    m_stack.push_back(name);
+void FitBlockWriter::beginBlock(std::string_view name) {
+    std::string blockName(name);
+    appendLine(blockName + " {");
+    m_stack.push_back(std::move(blockName));
 }
 
 void FitBlockWriter::endBlock() {
@@ -67,8 +69,8 @@ void FitBlockWriter::writeComment(std::string_view text) {
     appendLine(std::string("; ").append(text));
 }
 
-void FitBlockWriter::writeRaw(const std::string& lineText) {
-    appendLine(lineText);
+void FitBlockWriter::writeRaw(std::string_view lineText) {
+    appendLine(std::string(lineText));
 }
 
 void FitBlockWriter::blankLine() {

@@ -35,11 +35,11 @@ std::string EntityPanels::opordSummary(const MissionDocument& doc, EntityId id)
     }
     return result.empty() ? "No declarative OPORDs" : result;
 }
-void EntityPanels::record(const std::string& key, bool activated)
+void EntityPanels::record(std::string_view key, bool activated)
 {
 #ifdef MC2_EDITOR_SMOKE_HOST
     const auto a = ImGui::GetItemRectMin(), b = ImGui::GetItemRectMax();
-    auto& widget = widgets_[key];
+    auto& widget = widgets_[std::string(key)];
     widget.center = ImVec2((a.x + b.x) / 2, (a.y + b.y) / 2);
     if (activated) ++widget.activations;
 #else
@@ -47,11 +47,11 @@ void EntityPanels::record(const std::string& key, bool activated)
     (void)activated;
 #endif
 }
-bool EntityPanels::button(const char* key, const char* label)
+bool EntityPanels::button(std::string_view key, const char* label)
 {
     const auto activated = ImGui::Button(label); record(key, activated); return activated;
 }
-bool EntityPanels::choice(const std::string& key, const char* label, bool selected)
+bool EntityPanels::choice(std::string_view key, const char* label, bool selected)
 {
     const auto activated = ImGui::Selectable(label, selected); record(key, activated); return activated;
 }
@@ -109,7 +109,7 @@ void EntityPanels::selector(bool building)
         ImGui::EndCombo();
     }
 }
-void EntityPanels::team(const char* key, int& value, bool neutral)
+void EntityPanels::team(std::string_view key, int& value, bool neutral)
 {
     const auto preview = value == -1 ? "Neutral" : std::format("Team {}", value);
     const bool open = ImGui::BeginCombo("Team / alignment", preview.c_str()); record(key);
@@ -121,7 +121,7 @@ void EntityPanels::team(const char* key, int& value, bool neutral)
         ImGui::EndCombo();
     }
 }
-void EntityPanels::transform(const char* key, Transform& value)
+void EntityPanels::transform(std::string_view key, Transform& value)
 {
     const auto changed = ImGui::InputDouble("X", &value.position[0]); record(std::string(key) + ".x", changed || ImGui::IsItemActivated());
     const auto y = ImGui::InputDouble("Y", &value.position[1]); record(std::string(key) + ".y", y || ImGui::IsItemActivated());

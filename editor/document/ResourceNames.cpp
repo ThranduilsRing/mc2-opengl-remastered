@@ -206,7 +206,7 @@ std::vector<ResourceString> ResourceStrings::search(std::string_view query) cons
     const auto needle = fold(std::string(query));
     std::vector<ResourceString> result;
     for (const auto& entry : entries_) {
-        const auto matches = [&](const std::string& value) { return fold(value).find(needle) != std::string::npos; };
+        const auto matches = [&](std::string_view value) { return fold(std::string(value)).find(needle) != std::string::npos; };
         const auto sourceMatches = [&](const CatalogSource& source) {
             return matches(source.key) || matches(source.layer) || matches(source.source.generic_string());
         };

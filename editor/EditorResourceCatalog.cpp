@@ -20,6 +20,7 @@
 #include <fstream>
 #include <map>
 #include <string>
+#include <string_view>
 #include <vector>
 #include "Gates/gate.h"
 
@@ -67,7 +68,7 @@ namespace
     std::map<std::string, NamedEntry> g_overlaysByKey;
     std::map<long, std::string> g_overlayKeyByLegacyId;
 
-    static std::string trim(const std::string& s)
+    static std::string trim(std::string_view s)
     {
         std::string::size_type b = 0;
         while (b < s.size() && std::isspace(static_cast<unsigned char>(s[b])))
@@ -77,10 +78,10 @@ namespace
         while (e > b && std::isspace(static_cast<unsigned char>(s[e - 1])))
             --e;
 
-        return s.substr(b, e - b);
+        return std::string(s.substr(b, e - b));
     }
 
-    static std::string unquote(const std::string& s)
+    static std::string unquote(std::string_view s)
     {
         std::string t = trim(s);
         if (t.size() >= 2)
@@ -199,7 +200,7 @@ namespace
 
 }
 
-    static void storeEntry(const std::string& blockType, const NamedEntry& entry, bool allowOverwriteMappings)
+    static void storeEntry(std::string_view blockType, const NamedEntry& entry, bool allowOverwriteMappings)
     {
         if (entry.key.empty())
         {

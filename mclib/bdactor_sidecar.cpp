@@ -36,22 +36,22 @@ static std::optional<std::string> extractJsonString(std::string_view text, std::
 	return std::string(text.substr(p + 1, e - p - 1));
 }
 
-static bool extractJsonNumber(const std::string& text, std::string_view key, float fallback, float& out)
+static std::optional<float> extractJsonNumber(const std::string& text, std::string_view key, float fallback)
 {
-	out = fallback;
 	std::string needle = "\"";
 	needle += key;
 	needle += "\"";
 	size_t p = text.find(needle);
 	if (p == std::string::npos)
-		return true;
+		return fallback;
 	p = text.find(':', p + needle.size());
 	if (p == std::string::npos)
-		return false;
+		return std::nullopt;
 	char* end = nullptr;
 	const char* start = text.c_str() + p + 1;
-	out = static_cast<float>(strtod(start, &end));
-	return end != start;
+	const float value = static_cast<float>(strtod(start, &end));
+	if (end == start) return std::nullopt;
+	return value;
 }
 
 static std::optional<int> extractBuildingPbrAxis(const char* sidecarPath)
@@ -70,9 +70,8 @@ static std::optional<int> extractBuildingPbrAxis(const char* sidecarPath)
 		}
 	}
 
-	float numericAxis = -1.0f;
-	if (extractJsonNumber(*text, "gltf_axis", -1.0f, numericAxis)) {
-		const int asInt = static_cast<int>(numericAxis);
+	if (const auto numericAxis = extractJsonNumber(*text, "gltf_axis", -1.0f)) {
+		const int asInt = static_cast<int>(*numericAxis);
 		if (asInt >= 0 && asInt <= 3) {
 			return asInt;
 		}
@@ -85,10 +84,7 @@ static std::optional<float> extractBuildingPbrYaw(const char* sidecarPath)
 	const auto text = readTextFile(sidecarPath);
 	if (!text)
 		return std::nullopt;
-	float yawDegrees = 0.0f;
-	if (!extractJsonNumber(*text, "yaw_degrees", 0.0f, yawDegrees))
-		return std::nullopt;
-	return yawDegrees;
+	return extractJsonNumber(*text, "yaw_degrees", 0.0f);
 }
 
 // META-FIX design B PART 1: failFlag threads AppearanceType::

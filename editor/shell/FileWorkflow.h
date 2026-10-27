@@ -39,8 +39,8 @@ private:
 #ifdef MC2_EDITOR_SMOKE_HOST
     std::map<std::string, Widget> widgets_;
 #endif
-    bool button(const std::string& key, const char* label);
-    void record(const std::string& key, bool activated);
+    bool button(std::string_view key, const char* label);
+    void record(std::string_view key, bool activated);
     void perform(bool saveFirst = false);
     void remember();
     void loadRecent();

@@ -26,6 +26,7 @@
 #include <cstdio>
 #include <cstring>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace EditorModProject
@@ -69,16 +70,16 @@ std::string AbsPath(const std::string& in)
 }
 
 // Strip a trailing path separator (so `...\<id>\` -> `...\<id>`).
-std::string TrimTrailingSep(const std::string& in)
+std::string TrimTrailingSep(std::string_view in)
 {
-	std::string s = in;
+	std::string s(in);
 	while (!s.empty() && (s.back() == '\\' || s.back() == '/'))
 		s.pop_back();
 	return s;
 }
 
 // Last path component (the id, given a `...\mods\<id>` root).
-std::string LastComponent(const std::string& path)
+std::string LastComponent(std::string_view path)
 {
 	std::string p = TrimTrailingSep(path);
 	size_t slash = p.find_last_of("/\\");
