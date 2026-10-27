@@ -35,9 +35,12 @@ static mc2::los::Snapshot captureLosSnapshot()
 	}
 
 	PostcompVertex* blocks = md->getBlocks();
-	s.vertexBase = reinterpret_cast<const unsigned char*>(&blocks[0].elevation);
-	s.vertexStride = sizeof(PostcompVertex);
-	s.realVerticesMapSide = Terrain::realVerticesMapSide;
+	static_assert(sizeof(PostcompVertex) % sizeof(float) == 0 && sizeof(MapCell) == sizeof(uint32_t));
+	const long side = Terrain::realVerticesMapSide;
+	const long vertexStride = static_cast<long>(sizeof(PostcompVertex) / sizeof(float));
+	s.vertices = mc2::los::Snapshot::VertexGrid(&blocks[0].elevation,
+		std::layout_stride::mapping<std::dextents<long, 2>>(std::dextents<long, 2>(side, side),
+			std::array<long, 2>{ side * vertexStride, vertexStride }));
 	s.verticesMapSide = Terrain::verticesBlockSide * Terrain::blocksMapSide;
 	s.worldUnitsPerVertex = Terrain::worldUnitsPerVertex;
 	s.oneOverWorldUnitsPerVertex = Terrain::oneOverWorldUnitsPerVertex;
@@ -46,9 +49,7 @@ static mc2::los::Snapshot captureLosSnapshot()
 	const Stuff::Vector2DOf<float> tl = md->getTopLeftVertex();
 	s.topLeftVertexX = tl.x;
 	s.topLeftVertexY = tl.y;
-	s.cells = reinterpret_cast<const uint32_t*>(GameMap->map.data());
-	s.cellWidth = GameMap->width;
-	s.cellHeight = GameMap->height;
+	s.cells = mc2::los::Snapshot::CellGrid(&GameMap->map[0].data, GameMap->height, GameMap->width);
 	s.useRealLOS = useRealLOS;
 	s.maxTeams = MAX_TEAMS;
 	s.worldUnitsPerMeter = worldUnitsPerMeter;
@@ -63,6 +64,45 @@ extern bool drawTerrainGrid;
 extern long currentLineElement;
 extern LineElement *debugLines[];
 #endif
+
+// Is tPos inside this member's visual range (altitude table, scout bonus, LOS factor)?
+static bool inVisualRange(GameObjectPtr obj, const glm::vec3& tPos)
+{
+	glm::vec3 distance;
+	distance = tPos - obj->getPosition();
+	float dist = glm::length(distance);
+
+	//Figure out altitude above minimum terrain altitude and look up in table.
+	float baseElevation = MapData::waterDepth;
+	if (MapData::waterDepth < Terrain::userMin)
+		baseElevation = Terrain::userMin;
+
+	float altitude = obj->getPosition().z - baseElevation;
+	float altitudeIntegerRange = (Terrain::userMax - baseElevation) * 0.00390625f;
+	long altLevel = 0;
+	if (altitudeIntegerRange > Stuff::SMALL)
+		altLevel = altitude / altitudeIntegerRange;
+
+	if (altLevel < 0)
+		altLevel = 0;
+
+	if (altLevel > 255)
+		altLevel = 255;
+
+	float radius = visualRangeTable[altLevel];
+
+	//Scouting specialty skill.
+	if (obj->isMover())
+	{
+		MoverPtr mover = static_cast<MoverPtr>(obj);
+		if (mover->pilot && mover->pilot->isScout())
+			radius += (radius * 0.2f);
+
+		radius *= mover->getLOSFactor();
+	}
+
+	return dist <= (radius * 25.0f * worldUnitsPerMeter);
+}
 
 //---------------------------------------------------------------------------
 bool Team::teamLineOfSight (glm::vec3 tPos, float extRad)
@@ -81,104 +121,28 @@ bool Team::teamLineOfSight (glm::vec3 tPos, float extRad)
 		q.startExtRad = startExt;
 		pending.push_back(q);
 	};
+
 	//-----------------------------------------------------------
 	// For each member of the team, check LOS to point provided.
-	for (long i = 0; i < rosterSize; i++) 
+	for (long i = 0; i < rosterSize; i++)
 	{
 		MoverPtr obj = static_cast<MoverPtr>(ObjectManager->getByWatchID(roster[i]));
-		if (!obj->isDisabled() && !obj->isDestroyed() && (obj->getStatus() != OBJECT_STATUS_SHUTDOWN))
-		{
-			glm::vec3 distance;
-			distance = tPos - obj->getPosition();
-			float dist = glm::length(distance);
-		
-			//Figure out altitude above minimum terrain altitude and look up in table.
-			float baseElevation = MapData::waterDepth;
-			if (MapData::waterDepth < Terrain::userMin)
-				baseElevation = Terrain::userMin;
-		
-			float altitude = obj->getPosition().z - baseElevation;
-			float altitudeIntegerRange = (Terrain::userMax - baseElevation) * 0.00390625f;
-			long altLevel = 0;
-			if (altitudeIntegerRange > Stuff::SMALL)
-				altLevel = altitude / altitudeIntegerRange;
-			
-			if (altLevel < 0)
-				altLevel = 0;
-		
-			if (altLevel > 255)
-				altLevel = 255;
-		
-			float radius = visualRangeTable[altLevel];
-			
-			//Scouting specialty skill.
-			if (obj->isMover())
-			{
-				MoverPtr mover = obj;
-				if (mover->pilot && mover->pilot->isScout())
-					radius += (radius * 0.2f);
-					
-				radius *= mover->getLOSFactor();
-			}
-		
-			if (dist <= (radius * 25.0f * worldUnitsPerMeter))
-			{
-				addRay(obj->getLOSPosition(), extRad, 0.0f);
-			}
-		}
+		if (!obj->isDisabled() && !obj->isDestroyed() && (obj->getStatus() != OBJECT_STATUS_SHUTDOWN) && inVisualRange(obj, tPos))
+			addRay(obj->getLOSPosition(), extRad, 0.0f);
 	}
 
 	//-------------------------------------------------------------------------
 	// Check the lookout towers now.  You can find them in special Buildings!!
 	for (long spBuilding = 0; spBuilding < ObjectManager->numSpecialBuildings; spBuilding++)
 	{
-		if (ObjectManager->specialBuildings[spBuilding] && 
+		if (ObjectManager->specialBuildings[spBuilding] &&
 			ObjectManager->specialBuildings[spBuilding]->getExists() &&
 			ObjectManager->specialBuildings[spBuilding]->isLookoutTower() &&
 			(ObjectManager->specialBuildings[spBuilding]->getTeamId() ==id))
 		{
 			GameObjectPtr obj = ObjectManager->specialBuildings[spBuilding];
-			if (!obj->isDisabled() && !obj->isDestroyed() && (obj->getStatus() != OBJECT_STATUS_SHUTDOWN))
-			{
-				glm::vec3 distance;
-				distance = tPos - obj->getPosition();
-				float dist = glm::length(distance);
-			
-				//Figure out altitude above minimum terrain altitude and look up in table.
-				float baseElevation = MapData::waterDepth;
-				if (MapData::waterDepth < Terrain::userMin)
-					baseElevation = Terrain::userMin;
-			
-				float altitude = obj->getPosition().z - baseElevation;
-				float altitudeIntegerRange = (Terrain::userMax - baseElevation) * 0.00390625f;
-				long altLevel = 0;
-				if (altitudeIntegerRange > Stuff::SMALL)
-					altLevel = altitude / altitudeIntegerRange;
-				
-				if (altLevel < 0)
-					altLevel = 0;
-			
-				if (altLevel > 255)
-					altLevel = 255;
-			
-				float radius = visualRangeTable[altLevel];
-				
-				//Scouting specialty skill.
-				if (obj->isMover())
-				{
-					MoverPtr mover = static_cast<MoverPtr>(obj);
-					if (mover->pilot && mover->pilot->isScout())
-						radius += (radius * 0.2f);
-						
-					radius *= mover->getLOSFactor();
-				}
-			
-				if (dist <= (radius * 25.0f * worldUnitsPerMeter))
-				{
-					addRay(obj->getLOSPosition(), 0.0f, obj->getAppearRadius());
-				}
-			}
-				
+			if (!obj->isDisabled() && !obj->isDestroyed() && (obj->getStatus() != OBJECT_STATUS_SHUTDOWN) && inVisualRange(obj, tPos))
+				addRay(obj->getLOSPosition(), 0.0f, obj->getAppearRadius());
 		}
 	}
 
@@ -199,7 +163,7 @@ bool Team::teamLineOfSight (glm::vec3 tPos, float extRad)
 	{
 		static std::vector<uint8_t> hits;
 		hits.assign(pending.size(), 0);
-		mc2::los::batch(snap, pending.data(), hits.data(), static_cast<int>(pending.size()));
+		mc2::los::batch(snap, pending, hits);
 		for (uint8_t h : hits)
 			if (h)
 				return true;

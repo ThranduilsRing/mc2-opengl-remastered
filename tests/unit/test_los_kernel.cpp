@@ -4,6 +4,7 @@
 #include "los_kernel.h"
 #include "job_system.h"
 #include <algorithm>
+#include <array>
 #include <cstdint>
 #include <cstring>
 #include <vector>
@@ -38,9 +39,10 @@ struct World {
             c = v;
         }
         snap.valid = true;
-        snap.vertexBase = reinterpret_cast<const unsigned char*>(&verts[0].elevation);
-        snap.vertexStride = sizeof(Vtx);
-        snap.realVerticesMapSide = side;
+        const long vs = static_cast<long>(sizeof(Vtx) / sizeof(float));
+        snap.vertices = mc2::los::Snapshot::VertexGrid(&verts[0].elevation,
+            std::layout_stride::mapping<std::dextents<long, 2>>(std::dextents<long, 2>(side, side),
+                std::array<long, 2>{ side * vs, vs }));
         snap.verticesMapSide = side;
         snap.worldUnitsPerVertex = 128.0f;
         snap.oneOverWorldUnitsPerVertex = 1.0f / 128.0f;
@@ -48,9 +50,7 @@ struct World {
         snap.mapTopLeft3d = glm::vec3(-3840.0f, 3840.0f, 0.0f);
         snap.topLeftVertexX = 0.0f;
         snap.topLeftVertexY = 0.0f;
-        snap.cells = cells.data();
-        snap.cellWidth = cw;
-        snap.cellHeight = cw;
+        snap.cells = mc2::los::Snapshot::CellGrid(cells.data(), cw, cw);
         snap.useRealLOS = true;
         snap.maxTeams = 8;
         snap.worldUnitsPerMeter = 5.01f;
@@ -76,6 +76,105 @@ struct World {
         return q;
     }
 };
+
+// Verbatim structure of the legacy MapData::terrainElevation triangle selection (mclib/mapdata.cpp), kept here as the
+// bit reference for the table-driven kernel version.
+float legacyElevation(const World& w, const glm::vec3& position)
+{
+    const mc2::los::Snapshot& s = w.snap;
+    const long side = s.vertices.extent(0);
+    auto elevAt = [&](long x, long y) { return w.verts[static_cast<size_t>(x + y * side)].elevation; };
+    glm::vec3 triVert[3] = {};
+    glm::vec3 triPos, triangleVector[2], perpendicularVec;
+    float result = 0.0f;
+    float metersCheck = (s.worldUnitsMapSide / 2.0f);
+    if (!((position.x > -metersCheck) && (position.x < metersCheck) && (position.y > -metersCheck) && (position.y < metersCheck)))
+        return 0.0f;
+    glm::vec2 upperLeft;
+    upperLeft.x = floor(position.x * s.oneOverWorldUnitsPerVertex);
+    upperLeft.x *= s.worldUnitsPerVertex;
+    upperLeft.y = floor(position.y * s.oneOverWorldUnitsPerVertex);
+    if (float(position.y * s.oneOverWorldUnitsPerVertex) != static_cast<float>(upperLeft.y))
+        upperLeft.y += 1.0;
+    upperLeft.y *= s.worldUnitsPerVertex;
+    glm::vec2 ul2;
+    ul2.x = upperLeft.x * float(s.oneOverWorldUnitsPerVertex);
+    ul2.y = upperLeft.y * float(s.oneOverWorldUnitsPerVertex);
+    long mx = static_cast<long>(floor(ul2.x)), my = static_cast<long>(floor(ul2.y));
+    long vms = s.verticesMapSide;
+    mx += (vms >> 1);
+    my = (vms >> 1) - my;
+    if ((mx < 0) || (mx >= (vms - 1)) || (my < 0) || (my >= (vms - 1)))
+        return 0.0f;
+    float z1 = elevAt(mx, my), z2 = elevAt(mx + 1, my), z3 = elevAt(mx + 1, my + 1), z4 = elevAt(mx, my + 1);
+    triPos.x = s.worldUnitsPerVertex * floor(ul2.x);
+    triPos.y = s.worldUnitsPerVertex * floor(ul2.y);
+    triPos.z = z1;
+    bool tlx = (long(s.topLeftVertexX) & 1), tly = (long(s.topLeftVertexY) & 1);
+    long x = mx - s.topLeftVertexX, y = my - s.topLeftVertexY;
+    bool yby2 = (y & 1) ^ (tly), xby2 = (x & 1) ^ (tlx);
+    long uvMode = 0;  // 1 = bottom right, 2 = bottom left
+    if (yby2) uvMode = xby2 ? 1 : 2; else uvMode = xby2 ? 2 : 1;
+    float deltaX = 0.0f, deltaY = 0.0f;
+    const float W = s.worldUnitsPerVertex;
+    if (uvMode == 1)
+    {
+        deltaX = fabs(position.x - upperLeft.x);
+        deltaY = fabs(upperLeft.y - position.y);
+        if (deltaX > deltaY)
+        {
+            triVert[0] = triPos;
+            triVert[1].x = triVert[0].x + W; triVert[1].y = triVert[0].y; triVert[1].z = z2;
+            triVert[2].x = triVert[1].x; triVert[2].y = triVert[0].y - W; triVert[2].z = z3;
+            triangleVector[0] = triVert[1] - triVert[0];
+            triangleVector[1] = triVert[2] - triVert[0];
+        }
+        else
+        {
+            triVert[0] = triPos;
+            triVert[1].x = triVert[0].x + W; triVert[1].y = triVert[0].y - W; triVert[1].z = z3;
+            triVert[2].x = triVert[0].x; triVert[2].y = triVert[1].y; triVert[2].z = z4;
+            triangleVector[0] = triVert[2] - triVert[0];
+            triangleVector[1] = triVert[1] - triVert[0];
+        }
+    }
+    else
+    {
+        deltaX = fabs((upperLeft.x + W) - position.x);
+        deltaY = fabs(upperLeft.y - position.y);
+        if (deltaX > deltaY)
+        {
+            triVert[1] = triPos;
+            triVert[0].x = triPos.x + W; triVert[0].y = triPos.y; triVert[0].z = z2;
+            triVert[2].x = triVert[1].x; triVert[2].y = triVert[1].y - W; triVert[2].z = z4;
+            triangleVector[0] = triVert[1] - triVert[0];
+            triangleVector[1] = triVert[2] - triVert[0];
+        }
+        else
+        {
+            triVert[0].x = triPos.x + W; triVert[0].y = triPos.y; triVert[0].z = z2;
+            triVert[1].x = triPos.x; triVert[1].y = triVert[0].y - W; triVert[1].z = z4;
+            triVert[2].x = triVert[0].x; triVert[2].y = triVert[1].y; triVert[2].z = z3;
+            triangleVector[0] = triVert[2] - triVert[0];
+            triangleVector[1] = triVert[1] - triVert[0];
+        }
+        deltaX = -deltaX;
+    }
+    triangleVector[0] = glm::normalize(triangleVector[0]);
+    triangleVector[1] = glm::normalize(triangleVector[1]);
+    perpendicularVec = glm::cross(triangleVector[0], triangleVector[1]);
+    if (perpendicularVec.z != 0L)
+    {
+        if (perpendicularVec.z < 0L) perpendicularVec = -perpendicularVec;
+        float px = perpendicularVec.x / perpendicularVec.z;
+        float py = perpendicularVec.y / perpendicularVec.z;
+        result = (deltaX * px);
+        result += ((-deltaY) * py);
+        result = -result;
+        result += triVert[0].z;
+    }
+    return result;
+}
 }  // namespace
 
 TEST_CASE("los_kernel_worker_matrix") {
@@ -96,12 +195,28 @@ TEST_CASE("los_kernel_worker_matrix") {
     for (int workers : {1, 2, 4}) {
         mc2::jobs::startPool(workers);
         std::fill(got.begin(), got.end(), uint8_t(2));
-        mc2::los::batch(w.snap, q.data(), got.data(), n);
+        mc2::los::batch(w.snap, q, got);
         CHECK(std::memcmp(serial.data(), got.data(), static_cast<size_t>(n)) == 0);
         mc2::jobs::stopPool();
     }
     // Pool off: batch runs inline and still matches.
     std::fill(got.begin(), got.end(), uint8_t(2));
-    mc2::los::batch(w.snap, q.data(), got.data(), n);
+    mc2::los::batch(w.snap, q, got);
     CHECK(std::memcmp(serial.data(), got.data(), static_cast<size_t>(n)) == 0);
+}
+
+TEST_CASE("los_kernel_elevation_matches_legacy_structure") {
+    for (float tl : { 0.0f, 1.0f, 2.0f, 3.0f }) {
+        World w;
+        w.snap.topLeftVertexX = tl;
+        w.snap.topLeftVertexY = 3.0f - tl;
+        Rng r{777u};
+        int bad = 0;
+        for (int i = 0; i < 100000; ++i) {
+            glm::vec3 p(-3900.0f + 7800.0f * r.unit(), -3900.0f + 7800.0f * r.unit(), 0.0f);
+            const float a = mc2::los::terrainElevation(w.snap, p), b = legacyElevation(w, p);
+            if (std::memcmp(&a, &b, sizeof(float)) != 0) ++bad;
+        }
+        CHECK(bad == 0);
+    }
 }

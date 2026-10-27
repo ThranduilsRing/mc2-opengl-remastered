@@ -91,7 +91,18 @@ void workerFn(Pool* pool, int workerId) {
 
 } // namespace
 
+static void startSimPool() {
+    // Sim batches (LOS rays) publish in original order, so the result never depends on the width. Default: up to 3
+    // workers (the host budget), never more than hardware allows.
+    const int hw = std::max(1, static_cast<int>(std::thread::hardware_concurrency()));
+    int nw = std::min(3, hw - 1);
+    if (mc2::gate::isSet<"MC2_FRAME_JOBS_WORKERS">())
+        nw = std::clamp(mc2::gate::get<"MC2_FRAME_JOBS_WORKERS">(), 1, hw);
+    mc2::jobs::startPool(nw);
+}
+
 void frameJobsInit() {
+    startSimPool();
     g_enabled = mc2::gate::get<"MC2_FRAME_JOBS">();
 
     if (mc2::gate::isSet<"MC2_FRAME_JOBS_BATCH">())
@@ -123,16 +134,6 @@ void frameJobsInit() {
     if (g_touchEnabled && g_trace) {
         mc2::fmt::print_out("FRAME_JOBS_TOUCH: enabled workers={:d} batch={:d}\n", mc2::fmt::as_i32(nw), mc2::fmt::as_i32(g_batch));
     }
-}
-
-void simJobsInit() {
-    // Sim batches (LOS rays) publish in original order, so the result never depends on the width. Default: up to 3
-    // workers (the host budget), never more than hardware allows.
-    const int hw = std::max(1, static_cast<int>(std::thread::hardware_concurrency()));
-    int nw = std::min(3, hw - 1);
-    if (mc2::gate::isSet<"MC2_FRAME_JOBS_WORKERS">())
-        nw = std::clamp(mc2::gate::get<"MC2_FRAME_JOBS_WORKERS">(), 1, hw);
-    mc2::jobs::startPool(nw);
 }
 
 void frameJobsShutdown() {

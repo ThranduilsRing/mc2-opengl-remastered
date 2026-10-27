@@ -14,8 +14,7 @@ constexpr int kCostNsPerQuery = 4000;
 
 inline float vertexElevation(const Snapshot& s, long x, long y)
 {
-	const unsigned char* p = s.vertexBase + static_cast<size_t>(x + y * s.realVerticesMapSide) * s.vertexStride;
-	return *reinterpret_cast<const float*>(p);
+	return s.vertices[y, x];
 }
 
 inline void worldToCell(const Snapshot& s, const glm::vec3& pos, int& cellR, int& cellC)
@@ -37,19 +36,19 @@ inline void getCellPos(const Snapshot& s, int cellR, int cellC, glm::vec3& cellP
 
 inline bool inBounds(const Snapshot& s, long row, long col)
 {
-	return (row > -1) && (row < s.cellHeight) && (col > -1) && (col < s.cellWidth);
+	return (row > -1) && (row < s.cells.extent(0)) && (col > -1) && (col < s.cells.extent(1));
 }
 
 inline unsigned long cellLocalHeight(const Snapshot& s, long row, long col)
 {
 	if (!inBounds(s, row, col)) return 0;
-	return (s.cells[row * s.cellWidth + col] & kCellHeightMask) >> kCellHeightShift;
+	return (s.cells[row, col] & kCellHeightMask) >> kCellHeightShift;
 }
 
 inline bool cellForest(const Snapshot& s, long row, long col)
 {
 	if (!inBounds(s, row, col)) return false;
-	return (s.cells[row * s.cellWidth + col] & kCellForestMask) ? true : false;
+	return (s.cells[row, col] & kCellForestMask) ? true : false;
 }
 
 bool walk(const Snapshot& s, float startLocal, long mCellRow, long mCellCol, float endLocal, long tCellRow, long tCellCol,
@@ -213,93 +212,56 @@ float terrainElevation(const Snapshot& s, const glm::vec3& position)
 	bool yby2 = (y & 1) ^ (tly);
 	bool xby2 = (x & 1) ^ (tlx);
 
-	enum { BOTTOMRIGHT_ = 1, BOTTOMLEFT_ = 2 };
-	long uvMode = 0;
-	if (yby2)
-		uvMode = xby2 ? BOTTOMRIGHT_ : BOTTOMLEFT_;
-	else
-		uvMode = xby2 ? BOTTOMLEFT_ : BOTTOMRIGHT_;
+	// The quad is split along one of its two diagonals (bottomRight: from the upper left; else from the upper right).
+	const bool bottomRight = yby2 ? xby2 : !xby2;
+	const float wuv = s.worldUnitsPerVertex;
 
 	float deltaX = 0.0f;
 	float deltaY = 0.0f;
-	const float wuv = s.worldUnitsPerVertex;
-
-	if (uvMode == BOTTOMRIGHT_)
-	{
+	if (bottomRight)
 		deltaX = fabs(position.x - upperLeft.x);
-		deltaY = fabs(upperLeft.y - position.y);
-
-		if (deltaX > deltaY)
-		{
-			triVert[0] = triPos;
-
-			triVert[1].x = triVert[0].x + wuv;
-			triVert[1].y = triVert[0].y;
-			triVert[1].z = e2;
-
-			triVert[2].x = triVert[1].x;
-			triVert[2].y = triVert[0].y - wuv;
-			triVert[2].z = e3;
-
-			triangleVector[0] = triVert[1] - triVert[0];
-			triangleVector[1] = triVert[2] - triVert[0];
-		}
-		else
-		{
-			triVert[0] = triPos;
-
-			triVert[1].x = triVert[0].x + wuv;
-			triVert[1].y = triVert[0].y - wuv;
-			triVert[1].z = e3;
-
-			triVert[2].x = triVert[0].x;
-			triVert[2].y = triVert[1].y;
-			triVert[2].z = e4;
-
-			triangleVector[0] = triVert[2] - triVert[0];
-			triangleVector[1] = triVert[1] - triVert[0];
-		}
-	}
-	else if (uvMode == BOTTOMLEFT_)
-	{
+	else
 		deltaX = fabs((upperLeft.x + wuv) - position.x);
-		deltaY = fabs(upperLeft.y - position.y);
+	deltaY = fabs(upperLeft.y - position.y);
+	const bool topTriangle = deltaX > deltaY;
 
-		if (deltaX > deltaY)
-		{
-			triVert[1] = triPos;
-
-			triVert[0].x = triPos.x + wuv;
-			triVert[0].y = triPos.y;
-			triVert[0].z = e2;
-
-			triVert[2].x = triVert[1].x;
-			triVert[2].y = triVert[1].y - wuv;
-			triVert[2].z = e4;
-
-			triangleVector[0] = triVert[1] - triVert[0];
-			triangleVector[1] = triVert[2] - triVert[0];
-		}
+	// Triangle corners as (right, down, vertex) in the legacy order; vertex 0..3 = upper-left, upper-right,
+	// lower-right, lower-left. The bottom triangles swap the two edge vectors.
+	struct Corner { bool right; bool down; int vertex; };
+	const float elev[4] = { e1, e2, e3, e4 };
+	Corner corner[3];
+	if (bottomRight)
+	{
+		if (topTriangle)
+			corner[0] = { false, false, 0 }, corner[1] = { true, false, 1 }, corner[2] = { true, true, 2 };
 		else
-		{
-			triVert[0].x = triPos.x + wuv;
-			triVert[0].y = triPos.y;
-			triVert[0].z = e2;
-
-			triVert[1].x = triPos.x;
-			triVert[1].y = triVert[0].y - wuv;
-			triVert[1].z = e4;
-
-			triVert[2].x = triVert[0].x;
-			triVert[2].y = triVert[1].y;
-			triVert[2].z = e3;
-
-			triangleVector[0] = triVert[2] - triVert[0];
-			triangleVector[1] = triVert[1] - triVert[0];
-		}
-
-		deltaX = -deltaX;
+			corner[0] = { false, false, 0 }, corner[1] = { true, true, 2 }, corner[2] = { false, true, 3 };
 	}
+	else
+	{
+		if (topTriangle)
+			corner[0] = { true, false, 1 }, corner[1] = { false, false, 0 }, corner[2] = { false, true, 3 };
+		else
+			corner[0] = { true, false, 1 }, corner[1] = { false, true, 3 }, corner[2] = { true, true, 2 };
+	}
+	for (int k = 0; k < 3; ++k)
+	{
+		triVert[k].x = corner[k].right ? triPos.x + wuv : triPos.x;
+		triVert[k].y = corner[k].down ? triPos.y - wuv : triPos.y;
+		triVert[k].z = elev[corner[k].vertex];
+	}
+	if (topTriangle)
+	{
+		triangleVector[0] = triVert[1] - triVert[0];
+		triangleVector[1] = triVert[2] - triVert[0];
+	}
+	else
+	{
+		triangleVector[0] = triVert[2] - triVert[0];
+		triangleVector[1] = triVert[1] - triVert[0];
+	}
+	if (!bottomRight)
+		deltaX = -deltaX;
 
 	triangleVector[0] = glm::normalize(triangleVector[0]);
 	triangleVector[1] = glm::normalize(triangleVector[1]);
@@ -339,9 +301,9 @@ bool query(const Snapshot& s, const Query& q)
 	return walk(s, localStart, posCellR, posCellC, localEnd, tarCellR, tarCellC, q.teamId, q.extRad, q.startExtRad);
 }
 
-void batch(const Snapshot& s, const Query* q, uint8_t* out, int n)
+void batch(const Snapshot& s, std::span<const Query> q, std::span<uint8_t> out)
 {
-	mc2::jobs::parallel_for(mc2::jobs::Domain::Sim, n, kBlockQueries, kCostNsPerQuery,
+	mc2::jobs::parallel_for(mc2::jobs::Domain::Sim, static_cast<int>(q.size()), kBlockQueries, kCostNsPerQuery,
 		[&s, q, out](int begin, int end) {
 			for (int i = begin; i < end; ++i)
 				out[i] = query(s, q[i]) ? 1 : 0;

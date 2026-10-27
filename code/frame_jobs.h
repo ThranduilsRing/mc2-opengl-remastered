@@ -20,8 +20,6 @@
 
 // Call once before first frame (e.g., near gpu_cull::substrate_init).
 void frameJobsInit();
-// Starts the mc2::jobs Sim pool (always on; MC2_FRAME_JOBS_WORKERS overrides the width). Stopped by frameJobsShutdown().
-void simJobsInit();
 // Call once at shutdown (near gpu_cull substrate shutdown).
 void frameJobsShutdown();
 

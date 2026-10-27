@@ -8,7 +8,10 @@
 
 #include "math/glm_config.h"
 #include <cstddef>
+#include <array>
 #include <cstdint>
+#include <mdspan>
+#include <span>
 
 namespace mc2::los {
 
@@ -20,10 +23,9 @@ inline constexpr uint32_t kCellForestMask  = 0x10000000u;
 struct Snapshot {
 	bool valid = false;  // false: this terrain configuration needs the legacy elevation path (Phong / dirt displacement)
 
-	// Terrain height mesh: elevation of vertex i is the float at vertexBase + i * vertexStride.
-	const unsigned char* vertexBase = nullptr;
-	size_t               vertexStride = 0;
-	long   realVerticesMapSide = 0;
+	// Terrain height mesh: elevation of the vertex at column x, row y is vertices[y, x].
+	using VertexGrid = std::mdspan<const float, std::dextents<long, 2>, std::layout_stride>;
+	VertexGrid vertices;
 	long   verticesMapSide = 0;           // verticesBlockSide * blocksMapSide
 	float  worldUnitsPerVertex = 0.0f;
 	float  oneOverWorldUnitsPerVertex = 0.0f;
@@ -32,10 +34,9 @@ struct Snapshot {
 	float  topLeftVertexX = 0.0f;
 	float  topLeftVertexY = 0.0f;
 
-	// Mission cell grid (row-major, height x width packed MapCell words).
-	const uint32_t* cells = nullptr;
-	int cellWidth = 0;
-	int cellHeight = 0;
+	// Mission cell grid: packed MapCell word at cells[row, col].
+	using CellGrid = std::mdspan<const uint32_t, std::dextents<int, 2>>;
+	CellGrid cells;
 
 	// Legacy globals, captured by value.
 	bool  useRealLOS = false;
@@ -58,8 +59,8 @@ float terrainElevation(const Snapshot& s, const glm::vec3& position);
 // One query. Requires s.valid.
 bool query(const Snapshot& s, const Query& q);
 
-// n queries on mc2::jobs Sim workers (inline when the pool is off or the batch is small). out[i] = query(s, q[i]).
+// q.size() queries on mc2::jobs Sim workers (inline when the pool is off or the batch is small). out[i] = query(s, q[i]).
 // out is pre-sized by the caller; the caller applies results in its own (original) order.
-void batch(const Snapshot& s, const Query* q, uint8_t* out, int n);
+void batch(const Snapshot& s, std::span<const Query> q, std::span<uint8_t> out);
 
 }  // namespace mc2::los
