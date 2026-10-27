@@ -346,7 +346,7 @@ def add_ref_args(p) -> None:
 
 
 def run_mission(mission: str, duration: str, out: str, extra_env: dict | None = None, install: str = INSTALL_DIR,
-                ref_exe: str | None = None, ref_commit: str | None = None, sim_speed: int = 1, headless: bool = False, ticks: int = 0) -> list:
+                ref_exe: str | None = None, ref_commit: str | None = None, sim_speed: int = 1, headless: bool | str = False, ticks: int = 0) -> list:
     """Launch two fresh determinism runs under host slots and retain their own logs.
 
     `extra_env` maps a/b to per-run variables and both to a shared fixture.
@@ -362,7 +362,7 @@ def run_mission(mission: str, duration: str, out: str, extra_env: dict | None = 
         env = dict(os.environ, **GATES, **(extra_env or {}).get("both", {}), **(extra_env or {}).get(tag, {}))
         r = subprocess.run([sys.executable, os.path.join(ROOT, "scripts", "run_smoke.py"), "--mission", mission, "--duration", duration,
                             *target, "--keep-logs", "--sim-determinism", *(["--sim-speed", str(sim_speed)] if sim_speed > 1 else []),
-                            *(["--ticks", str(ticks)] if ticks > 0 else []), *(["--headless"] if headless and tag == "b" else [])], env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
+                            *(["--ticks", str(ticks)] if ticks > 0 else []), *(["--headless"] if headless == "both" or (headless and tag == "b") else [])], env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
                            errors="replace", **console_child.child_kwargs(redirected=True))
         arts = [line.removeprefix("[runner] artifacts: ").strip() for line in r.stdout.splitlines()
                 if line.startswith("[runner] artifacts: ")]
@@ -619,6 +619,7 @@ def main(argv=None) -> int:
     add_ref_args(u)
     for hp in (r, k):
         hp.add_argument("--headless", action="store_true", help="run b headless (no window, GPU or audio): a windowed-vs-headless equality check; needs --ticks")
+        hp.add_argument("--headless-both", action="store_true", help="run a AND b headless (the merge gate's determinism rows: no GPU, no host slot); ticks default to the baseline's frames")
         hp.add_argument("--ticks", type=int, default=0, metavar="N", help="both runs quit after N sim ticks (run_smoke --ticks) instead of at the wall-clock end")
     w = sub.add_parser("write-baseline")
     w.add_argument("log")
@@ -631,6 +632,10 @@ def main(argv=None) -> int:
     install_arg(o)
     sub.add_parser("selftest")
     args = ap.parse_args(argv)
+    if getattr(args, "headless_both", False):
+        args.headless = "both"
+        if args.ticks <= 0 and getattr(args, "cmd", "") == "check":
+            args.ticks = int(json.load(open(baseline_path(args.mission), encoding="utf-8"))["frames"])
     if getattr(args, "headless", False) and getattr(args, "ticks", 0) <= 0:
         sys.exit("sim_determinism: --headless needs --ticks N (a headless run has no wall-clock end)")
     if args.cmd == "selftest":

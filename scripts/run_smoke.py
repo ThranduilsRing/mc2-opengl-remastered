@@ -850,7 +850,8 @@ def main():
 
     # Host slots precede install leases so queued runs do not reserve an install.
     _host_wait: dict = {"lease_wait_s": 0.0, "host_load": None}
-    if not (args.verify_only or args.resolve_only):
+    # --headless never opens a window or a GPU device, so it needs no host game slot (the install lease below still serialises one install).
+    if not (args.verify_only or args.resolve_only or args.headless):
         from scripts.smoke_lib import host_lease as _host_lease
         _t_lease = time.monotonic()
         try:

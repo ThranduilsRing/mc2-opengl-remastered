@@ -82,15 +82,55 @@ def status(directory: str) -> str:
         return "backup pending: " + str(json.load(fh).get("backup"))
 
 
+LOCK_NAME = SAVE_NAME + ".run-lock"
+#: A run that died holding the lock must not block the host forever: a lock older than this is stolen. Waits are bounded too.
+LOCK_STALE_S = 40 * 60
+LOCK_WAIT_S = 25 * 60
+
+
+@contextlib.contextmanager
+def run_lock(directory: str, wait_s: float = LOCK_WAIT_S, stale_s: float = LOCK_STALE_S):
+    """One save-fixture run at a time per save directory (all saveload runs of every lane and of the merge gate share ~/.mechcommander2/savegame:
+    W77's saveload-mc2_10 quickload crashed on a save another run had just overwritten). Exclusive-create lock file, bounded wait, stale steal."""
+    import time
+    os.makedirs(directory, exist_ok=True)
+    path = os.path.join(directory, LOCK_NAME)
+    deadline = time.monotonic() + wait_s
+    while True:
+        try:
+            fd = os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+            os.write(fd, f"pid={os.getpid()} since={time.time():.0f}".encode())
+            os.close(fd)
+            break
+        except FileExistsError:
+            try:
+                if time.time() - os.path.getmtime(path) > stale_s:
+                    os.remove(path)
+                    continue
+            except OSError:
+                continue
+            if time.monotonic() > deadline:
+                raise TimeoutError(f"savegame_backup: save directory {directory} stayed locked by another save run for {wait_s:.0f} s")
+            time.sleep(2)
+    try:
+        yield
+    finally:
+        try:
+            os.remove(path)
+        except OSError:
+            pass
+
+
 @contextlib.contextmanager
 def guarded(directory: str | None = None):
-    """Back up on entry, restore on exit (also on an exception)."""
+    """Take the save-directory run lock, back up on entry, restore on exit (also on an exception)."""
     d = directory or default_dir()
-    print("savegame_backup: " + backup(d), flush=True)
-    try:
-        yield d
-    finally:
-        print("savegame_backup: " + restore(d), flush=True)
+    with run_lock(d):
+        print("savegame_backup: " + backup(d), flush=True)
+        try:
+            yield d
+        finally:
+            print("savegame_backup: " + restore(d), flush=True)
 
 
 def selftest() -> int:
@@ -137,6 +177,18 @@ def selftest() -> int:
         except RuntimeError:
             pass
         expect(read(d) == b"owner", "guarded() restores when the run raises")
+        with run_lock(d):
+            try:
+                with run_lock(d, wait_s=0.1):
+                    expect(False, "a second run must not enter while the lock is held")
+            except TimeoutError:
+                pass
+        expect(not os.path.exists(os.path.join(d, LOCK_NAME)), "the lock is released on exit")
+        with open(os.path.join(d, LOCK_NAME), "w") as fh:
+            fh.write("dead")
+        os.utime(os.path.join(d, LOCK_NAME), (0, 0))
+        with run_lock(d, wait_s=0.1):
+            pass   # a stale lock is stolen
     for f in fails:
         print("savegame_backup selftest FAIL: " + f)
     print("savegame_backup selftest: " + ("FAIL" if fails else "ok"))
