@@ -28,7 +28,8 @@ from configure_ninja import (DEFAULT_TARGETS, DEFAULT_TREE, NINJA, compile_cache
 
 # PDBs retain obsolete type records across links. Compact before gate copies
 # and per-run freshness hashes dominate; the fresh link retains full symbols.
-PDB_MAX_BYTES = 1024 ** 3
+# A fresh link of mc2.pdb is about 240 MB (2026-10-27, /Z7 objects); 1 GB let incremental links drift to 800 MB+ in the installs.
+PDB_MAX_BYTES = 512 * 1024 ** 2
 
 
 def drop_oversize_pdb(root, tree, limit=PDB_MAX_BYTES):
@@ -40,7 +41,7 @@ def drop_oversize_pdb(root, tree, limit=PDB_MAX_BYTES):
             exe = os.path.join(root, tree, "mc2.exe")
             if os.path.isfile(exe):
                 os.remove(exe)  # PDB is a linker side effect; force Ninja to regenerate both.
-            print(f"[ninja_build] deleted {tree}/mc2.pdb ({size / 1024 ** 3:.1f} GB > {limit / 1024 ** 3:.0f} GB; growth guard)", flush=True)
+            print(f"[ninja_build] deleted {tree}/mc2.pdb ({size / 1024 ** 2:.0f} MB > {limit / 1024 ** 2:.0f} MB; growth guard)", flush=True)
             return True
     except FileNotFoundError:
         pass
