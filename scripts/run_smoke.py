@@ -626,7 +626,9 @@ def main():
                     help="Start mission windows visible instead of minimized; use for FPS/perf runs.")
     ap.add_argument("--exe", default=None,
                     help="explicit path to mc2.exe; skips auto-selection but still "
-                         "leases the folder (use --no-lease to bypass leasing)")
+                         "leases the folder (use --no-lease to bypass leasing). "
+                         "Use this for lane installs (E:/mc2-installs/<branch>/mc2.exe); "
+                         "--deploy accepts only the short names")
     ref = ap.add_mutually_exclusive_group()
     ref.add_argument("--ref-commit", metavar="SHA",
                      help="fingerprint reference: a clean git commit SHA; default is HEAD")
@@ -639,7 +641,8 @@ def main():
     ap.add_argument("--deploy",
                     metavar="NAME",
                     help="request a specific deploy folder by short name "
-                         "(0.4 / 0.4c / 0.4d-rc1 / 0.5.0 / 0.5-testing); "
+                         "(0.4 / 0.4c / 0.4d-rc1 / 0.5.0 / 0.5-testing; NOT a path - "
+                         "lane installs use --exe <path>/mc2.exe); "
                          "waits (see --wait-timeout) while another run holds it")
     ap.add_argument("--no-lease", action="store_true",
                     help="OWNER ONLY (requires MC2_OWNER_NO_LEASE=1): skip the "
@@ -805,6 +808,37 @@ def main():
             if not _exe_verdict.ok:
                 print(_exe_verdict.refusal(), file=sys.stderr, flush=True)
                 sys.exit(7)
+
+    # Validate every argument BEFORE the host-lease wait (a bad --deploy/--exe/--mission used
+    # to fail only after up to an hour in the queue).
+    if not args.verify_only:
+        if args.deploy and _lease_available and args.deploy not in dict(_deploy_lease.DEPLOY_FOLDERS):
+            print(f"[runner] ERROR: --deploy takes only a short name "
+                  f"({', '.join(n for n, _ in _deploy_lease.DEPLOY_FOLDERS)}), got '{args.deploy}'. "
+                  f"For a lane install such as E:/mc2-installs/<branch> pass --exe <path>/mc2.exe.",
+                  file=sys.stderr)
+            sys.exit(2)
+        if args.exe is not None and not Path(args.exe).is_file():
+            print(f"[runner] ERROR: --exe {args.exe} is not a file (expected <install>/mc2.exe).",
+                  file=sys.stderr)
+            sys.exit(2)
+        if args.mission and not args.menu_canary:
+            _early_unknown = select_missions(manifest.parse_manifest(MANIFEST_PATH), args.mission)[1]
+            if _early_unknown and args.allow_any_mission:
+                _early_exe = args.exe
+                if _early_exe is None and _lease_available:
+                    _early_exe = str(Path(dict(_deploy_lease.DEPLOY_FOLDERS).get(
+                        args.deploy or _deploy_lease._WALK_LANES[0], "")) / "mc2.exe")
+                if _early_exe:
+                    _md = Path(_early_exe).resolve().parent / "data" / "missions"
+                    _early_unknown = [s for s in _early_unknown
+                                      if not ((_md / f"{s}.fit").is_file() or (_md / f"{s}.pak").is_file())]
+            if _early_unknown:
+                print(f"[runner] ERROR: unknown mission name(s) {', '.join(_early_unknown)} "
+                      f"not found in {MANIFEST_PATH}"
+                      f"{' or under the install data/missions' if args.allow_any_mission else ''}.",
+                      file=sys.stderr)
+                sys.exit(2)
 
     # Host slots precede install leases so queued runs do not reserve an install.
     _host_wait: dict = {"lease_wait_s": 0.0, "host_load": None}
