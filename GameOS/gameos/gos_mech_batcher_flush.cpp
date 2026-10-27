@@ -12,7 +12,7 @@
 bool GpuMechBatcher::submitActor(const GpuMechSubmitDesc& desc) {
     s_lastFailWasLateReg = false;
 
-    if (!g_useGpuMechs || !s_geometryFinalized) return false;
+    if (!s_geometryFinalized) return false;
     if (!desc.mechShape || !desc.mechType) return false;
 
     const TypeLodKey key{desc.mechType, desc.currentLOD};
@@ -548,7 +548,7 @@ void GpuMechBatcher::flush() {
     finalizePending();
     traceLatch();
 
-    if (!g_useGpuMechs || !s_geometryFinalized || s_pendingSubmits.empty()) {
+    if (!s_geometryFinalized || s_pendingSubmits.empty()) {
         s_pendingSubmits.clear();
         s_eligibleActorsThisFrame = 0;
         std::memset(s_fallbacksThisFrame, 0, sizeof(s_fallbacksThisFrame));

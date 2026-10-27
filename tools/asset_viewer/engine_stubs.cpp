@@ -172,7 +172,6 @@ size_t LZCompress(unsigned char* /*dst*/, unsigned char* /*src*/, size_t /*len*/
 // (8) tgl.cpp render-state globals (declared extern in tgl.cpp; the loader
 //     never reads them on LoadBinaryCopy). Defaults match the engine's.
 // ===========================================================================
-bool  useVertexLighting = true;
 bool  useFog            = true;
 bool  InEditor          = false;
 int   ObjectTextureSize = 128;
@@ -188,7 +187,6 @@ char* MissingTitleString = (char*)"";
 //     toggles read by transform/submit methods, never by the loader).
 // ===========================================================================
 bool g_useGpuObjects = false;
-bool g_useGpuMechs   = false;
 bool mc2LightBridgeRepointEnabled() { return false; }
 
 namespace mc2_object_recon {

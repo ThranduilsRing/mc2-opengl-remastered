@@ -78,7 +78,6 @@ extern void GetNameData (char *rawData, char *result);
 extern void GetWordData (char *rawData, char *result);
 extern int ObjectTextureSize;
 extern bool useSlerping;
-extern bool useVertexLighting;
 extern bool silentMode;
 
 extern std::atomic<int> g_workerResubmitCalls;   // defined in msl.cpp; counts worker-thread resubmits

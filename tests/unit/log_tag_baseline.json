@@ -5138,8 +5138,7 @@
    "ver": -1,
    "stream": "stderr",
    "keys": [
-    "MC2_MECH_IMPORT_GPU",
-    "MC2_GPU_MECHS"
+    "MC2_MECH_IMPORT_GPU"
    ],
    "count": 1
   },
@@ -9332,9 +9331,7 @@
    "stream": "stderr",
    "keys": [
     "vertex_block_exhausted",
-    "block_exhausted",
-    "add_vertices_overflow_prevented",
-    "add_shape_overflow_prevented"
+    "add_vertices_overflow_prevented"
    ],
    "count": 1
   },

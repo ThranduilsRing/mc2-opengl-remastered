@@ -62,9 +62,9 @@ def run_checks() -> "list[str]":
     expect("plain gate passes through",
            {"MC2_TERRAIN_LOD_CHUNK": "0"}, {}, [])
     expect("default-ON gate passes through",
-           {"MC2_GPU_MECHS": "0"}, {}, [])
+           {"MC2_GPU_OBJECTS": "0"}, {}, [])
     expect("both A/B arms driveable",
-           {"MC2_TERRAIN_LOD_CHUNK": "0", "MC2_GPU_MECHS": "0"}, {}, [])
+           {"MC2_TERRAIN_LOD_CHUNK": "0", "MC2_GPU_OBJECTS": "0"}, {}, [])
 
     # 2. Non-MC2 vars are never considered.
     expect("non-MC2 ignored", {"PATH": "x", "TEMP": "y"}, {}, [])
@@ -100,7 +100,7 @@ def run_checks() -> "list[str]":
            {"MC2_SMOKE_SEED": "0xC0FFEE"}, {"MC2_SMOKE_SEED": "0xC0FFEE"}, [])
 
     # 7. The two gates this guard exists for, explicitly.
-    for gate in ("MC2_GPU_MECHS", "MC2_TERRAIN_LOD_CHUNK"):
+    for gate in ("MC2_GPU_OBJECTS", "MC2_TERRAIN_LOD_CHUNK"):
         if gate in ua({gate: "0"}, {}):
             fails.append(f"{gate} reported undriveable; it passes through "
                          f"os.environ.copy() and must be usable for A/B arms")

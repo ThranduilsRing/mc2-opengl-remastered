@@ -1728,7 +1728,6 @@ extern TG_TrianglePool		*trianglePool;
 // -- Tier-1 instrumentation macros (stability spec §2.1) --------------------
 // Wrap every TGL pool get-call so __FUNCTION__ is captured automatically.
 // Shape-aware variant additionally records the calling shape pointer.
-#define MC2_TGL_GET_VERTS(pool, n)                  (pool)->getVerticesFromPool((n), __FUNCTION__)
 #define MC2_TGL_GET_COLORS(pool, n)                 (pool)->getColorsFromPool((n),  __FUNCTION__)
 #define MC2_TGL_GET_FACES(pool, n)                  (pool)->getFacesFromPool((n),   __FUNCTION__)
 #define MC2_TGL_GET_SHADOW(pool, n)                 (pool)->getShadowsFromPool((n), __FUNCTION__)

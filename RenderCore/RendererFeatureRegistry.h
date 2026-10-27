@@ -91,7 +91,7 @@ struct EnvVarDesc {
 
 enum class RendererFeature : int {
     // [Retired] superseded by RenderWorld::registerMech; no new getenv consumers
-    GpuMechs            = 0,   // MC2_GPU_MECHS
+    GpuMechs            = 0,   // (retired; env var MC2_GPU_MECHS removed)
     // [Retired] superseded by RenderWorld::upsertStaticProp; no new getenv consumers
     StaticPropIndirect  = 1,   // MC2_GPU_OBJECTS
     // Feature gates
@@ -174,8 +174,8 @@ static constexpr EnvVarDesc kFeatureTable[] = {
     // edit the table, not this list.
     // [0] GpuMechs
     {
-        "MC2_FEATURE_GPU_MECHS", "MC2_GPU_MECHS", EnvVarKind::Retired, true,
-        "[RETIRED] GPU mech batcher (gos_mech_batcher)."
+        "MC2_FEATURE_GPU_MECHS", nullptr, EnvVarKind::Retired, true,
+        "Retired: the GPU mech batcher is the only world-mech path."
     },
     // [1] StaticPropIndirect
     {

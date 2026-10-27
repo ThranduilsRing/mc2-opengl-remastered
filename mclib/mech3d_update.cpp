@@ -465,7 +465,7 @@ long Mech3DAppearance::update (bool animate)
 		// GPU mech batcher path. Mirrors bdactor.cpp pattern. No-op
 		// when killswitch is off; cheap (one hash lookup + dedup-cache
 		// slot write) when on. Source: msl.cpp.
-		if (g_useGpuMechs && mechShape) {
+		if (mechShape) {
 			mechShape->CacheGpuLightData();
 		}
 	}
