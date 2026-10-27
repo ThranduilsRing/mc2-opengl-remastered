@@ -14,11 +14,11 @@
   "tools"
  ],
  "files_over_1500": {
-  "GameOS/gameos/engine_present_vk.cpp": 2919,
-  "GameOS/gameos/vulkan_color_prop_island.cpp": 2000,
+  "GameOS/gameos/engine_present_vk.cpp": 2921,
+  "GameOS/gameos/vulkan_color_prop_island.cpp": 2026,
   "GameOS/include/gameos.hpp": 3650,
-  "code/artlry.cpp": 1701,
-  "code/bldng.cpp": 1692,
+  "code/artlry.cpp": 1700,
+  "code/bldng.cpp": 1691,
   "code/brain_special_dispatch.cpp": 2771,
   "code/gamecam.cpp": 1644,
   "code/gameobj.cpp": 2250,
@@ -34,7 +34,7 @@
   "code/optionsarea.cpp": 1838,
   "code/pilotreviewarea.cpp": 1843,
   "code/tacordr.cpp": 2106,
-  "code/terrobj.cpp": 1728,
+  "code/terrobj.cpp": 1726,
   "code/turret.cpp": 2346,
   "code/warrior.cpp": 2704,
   "code/warrior.h": 2192,
@@ -49,13 +49,13 @@
   "mclib/mapdata.cpp": 2508,
   "mclib/move.h": 1895,
   "mclib/terrtxm.cpp": 1819,
-  "mclib/tgl.h": 1799,
+  "mclib/tgl.h": 1801,
   "tools/cite_guard.py": 1553,
   "tools/comment_guard.py": 1790,
   "tools/scifi_kit/art/intent_military.py": 3363,
   "tools/terrain_beautify/visual_heightfield.py": 1510
  },
- "head": "fbf1903af",
+ "head": "e956e4a0d",
  "per_dir": {
   "GameAdapters": {
    "files": 13,
@@ -85,7 +85,7 @@
    "files": 8,
    "files_over_1500": 0,
    "files_over_3000": 0,
-   "max_lines": 1026
+   "max_lines": 1016
   },
   "code": {
    "files": 437,
@@ -106,7 +106,7 @@
    "max_lines": 1513
   },
   "mclib": {
-   "files": 560,
+   "files": 561,
    "files_over_1500": 10,
    "files_over_3000": 0,
    "max_lines": 2508
@@ -139,7 +139,7 @@
   },
   {
    "file": "GameOS/gameos/engine_present_vk.cpp",
-   "lines": 2919
+   "lines": 2921
   },
   {
    "file": "code/brain_special_dispatch.cpp",
@@ -187,7 +187,7 @@
   },
   {
    "file": "GameOS/gameos/vulkan_color_prop_island.cpp",
-   "lines": 2000
+   "lines": 2026
   },
   {
    "file": "editor/tests/test_objectives.cpp",
@@ -234,11 +234,11 @@
    "lines": 1819
   },
   {
-   "file": "mclib/ablrtn.cpp",
-   "lines": 1799
+   "file": "mclib/tgl.h",
+   "lines": 1801
   },
   {
-   "file": "mclib/tgl.h",
+   "file": "mclib/ablrtn.cpp",
    "lines": 1799
   },
   {
@@ -251,7 +251,7 @@
   }
  ],
  "total": {
-  "files": 2512,
+  "files": 2513,
   "files_over_1500": 40,
   "files_over_3000": 2,
   "max_lines": 3650

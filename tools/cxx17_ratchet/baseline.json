@@ -58,7 +58,7 @@
    "LG09": 4,
    "LG10": 9,
    "LG11": 59,
-   "LG12a": 60,
+   "LG12a": 59,
    "LG12b": 24,
    "LG13": 299,
    "LG14": 55,
@@ -90,7 +90,7 @@
    "LG17": 1,
    "LG18": 0,
    "LG19": 0,
-   "LG20": 17
+   "LG20": 16
   },
   "RenderCore": {
    "LG01": 0,
@@ -431,7 +431,7 @@
   "GameOS/gameos/gameosmain.cpp": {
    "LG04": 1,
    "LG06": 1,
-   "LG12a": 28,
+   "LG12a": 27,
    "LG12b": 6,
    "LG20": 1
   },
@@ -1035,7 +1035,7 @@
   },
   "GuiRuntime/GraphicsOptionsWindow_mech.cpp": {
    "LG09": 1,
-   "LG20": 12
+   "LG20": 11
   },
   "GuiRuntime/GraphicsOptionsWindow_passes.cpp": {
    "LG09": 8
@@ -3418,7 +3418,7 @@
    "LG20": 3
   }
  },
- "head": "edaf84dd4",
+ "head": "e956e4a0d",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",

@@ -622,9 +622,10 @@ bool GpuStaticPropBatcher::submitMultiShape(TG_MultiShape* multi,
 
         // rec.shapeToWorld is LinearMatrix4D; convert to Matrix4D for submit().
         glm::mat4 xform = glm::mat4(rec.shapeToWorld);
+        const uint32_t teamPaintU32[3] = {static_cast<uint32_t>(multi->teamPaint[0]), static_cast<uint32_t>(multi->teamPaint[1]), static_cast<uint32_t>(multi->teamPaint[2])};
         if (!submit(child, xform,
                     child->aRGBHighlight, child->fogRGB, flags,
-                    lightDataIndex, multi->teamPaintValid ? reinterpret_cast<const uint32_t*>(multi->teamPaint) : nullptr)) {
+                    lightDataIndex, multi->teamPaintValid ? teamPaintU32 : nullptr)) {
             // submit() rejected after we passed the registration gate —
             // typically a buffer-full condition. Fall back for this frame
             // to keep the visual self-consistent.
