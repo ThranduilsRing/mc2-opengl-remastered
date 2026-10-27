@@ -229,6 +229,7 @@ void gos_DestroyAudio() {
 void __stdcall gosAudio_CreateResource( HGOSAUDIO* hgosaudio, enum gosAudio_ResourceType res_type, const char* file_name, gosAudio_Format* ga_wf, void* data, int size, bool only2D)
 {
     gosASSERT(hgosaudio);
+    if(!g_sound_engine) { *hgosaudio = nullptr; return; }   // --headless: no audio engine
     gosASSERT((res_type == gosAudio_UserMemory && data && ga_wf) || (res_type == gosAudio_StreamedFile && file_name));
 
 	//WORD  wFormatTag;				// Waveform-audio format type. 1=PCM, 2=Microsoft ADPCM.
@@ -466,7 +467,7 @@ void __stdcall gosAudio_DestroyResource(HGOSAUDIO* handle)
 //
 void __stdcall gosAudio_AllocateChannelSliders( int Channel, DWORD properties)
 {
-    gosASSERT(g_sound_engine);
+    if(!g_sound_engine) return;   // --headless: no audio engine
     gosASSERT(g_sound_engine->NUM_CHANNELS > Channel);
     gosAudio_ChannelInfo* ci = g_sound_engine->getChannel(Channel);
     if(!ci)
@@ -481,7 +482,7 @@ void __stdcall gosAudio_AllocateChannelSliders( int Channel, DWORD properties)
 //
 void __stdcall gosAudio_AssignResourceToChannel( int Channel, HGOSAUDIO hgosaudio)
 {
-    gosASSERT(g_sound_engine);
+    if(!g_sound_engine) return;   // --headless: no audio engine
     gosASSERT(g_sound_engine->NUM_CHANNELS > Channel);
     gosAudio_ChannelInfo* ci = g_sound_engine->getChannel(Channel);
     if(!ci)
@@ -498,7 +499,7 @@ void __stdcall gosAudio_AssignResourceToChannel( int Channel, HGOSAUDIO hgosaudi
 //  volume and balance
 void __stdcall gosAudio_SetChannelSlider( int Channel, enum gosAudio_Properties prop, float value1, float value2, float value3)
 {
-    gosASSERT(g_sound_engine);
+    if(!g_sound_engine) return;   // --headless: no audio engine
     gosASSERT(g_sound_engine->NUM_CHANNELS > Channel);
     gosAudio_ChannelInfo* ci = g_sound_engine->getChannel(Channel);
     if(!ci)
@@ -536,7 +537,7 @@ void __stdcall gosAudio_SetChannelSlider( int Channel, enum gosAudio_Properties 
 
 void __stdcall gosAudio_GetChannelSlider( int Channel, enum gosAudio_Properties prop, float* value1, float* value2, float* value3)
 {
-    gosASSERT(g_sound_engine);
+    if(!g_sound_engine) return;   // --headless: no audio engine
     gosASSERT(g_sound_engine->NUM_CHANNELS > Channel);
     gosAudio_ChannelInfo* ci = g_sound_engine->getChannel(Channel);
     if(!ci)
@@ -563,7 +564,7 @@ void __stdcall gosAudio_GetChannelSlider( int Channel, enum gosAudio_Properties 
 //
 void __stdcall gosAudio_SetChannelPlayMode( int Channel, enum gosAudio_PlayMode ga_pm )
 {
-    gosASSERT(g_sound_engine);
+    if(!g_sound_engine) return;   // --headless: no audio engine
     gosASSERT(g_sound_engine->NUM_CHANNELS > Channel);
     gosAudio_ChannelInfo* ci = g_sound_engine->getChannel(Channel);
     if(!ci)
@@ -606,7 +607,7 @@ void __stdcall gosAudio_SetChannelPlayMode( int Channel, enum gosAudio_PlayMode 
 //
 gosAudio_PlayMode __stdcall gosAudio_GetChannelPlayMode( int Channel )
 {
-    gosASSERT(g_sound_engine);
+    if(!g_sound_engine) return gosAudio_Stop;   // --headless: no audio engine
     gosASSERT(g_sound_engine->NUM_CHANNELS > Channel);
     gosAudio_ChannelInfo* ci = g_sound_engine->getChannel(Channel);
     if(!ci) {
