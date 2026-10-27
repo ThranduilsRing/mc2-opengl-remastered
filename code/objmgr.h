@@ -560,6 +560,7 @@ class GameObjectManager {
 			if (includeBuildings) buildingGridDirty = true;
 		}
 		std::vector<mc2::world::SpatialGrid::Candidate> nearbyMovers(const glm::vec3& position, float radius);
+		int moverOrdinal(GameObjectHandle handle);	// index in moverList (the nearbyMovers ordinal), -1 if not a mover
 		std::vector<mc2::world::SpatialGrid::Candidate> nearbyBuildings(const glm::vec3& position, float radius);
 
 		GameObjectPtr getByWatchID (unsigned long watchID) {
