@@ -3681,54 +3681,6 @@
     "Mech3DAppearanceType"
    ]
   },
-  "TG_DWORDPool": {
-   "delete": 4,
-   "delete_array": 0,
-   "files": {
-    "code/mission.cpp": {
-     "delete": 2,
-     "new": 1
-    },
-    "code/mission2.cpp": {
-     "delete": 1,
-     "new": 1
-    },
-    "editor/Editor.cpp": {
-     "delete": 1,
-     "new": 1
-    }
-   },
-   "new": 3,
-   "new_array": 0,
-   "owners": [
-    "",
-    "Mission"
-   ]
-  },
-  "TG_GOSVertexPool": {
-   "delete": 4,
-   "delete_array": 0,
-   "files": {
-    "code/mission.cpp": {
-     "delete": 2,
-     "new": 1
-    },
-    "code/mission2.cpp": {
-     "delete": 1,
-     "new": 1
-    },
-    "editor/Editor.cpp": {
-     "delete": 1,
-     "new": 1
-    }
-   },
-   "new": 3,
-   "new_array": 0,
-   "owners": [
-    "",
-    "Mission"
-   ]
-  },
   "TG_MultiShape": {
    "delete": 0,
    "delete_array": 0,
@@ -3743,54 +3695,6 @@
    "new": 2,
    "new_array": 0,
    "owners": []
-  },
-  "TG_ShadowPool": {
-   "delete": 4,
-   "delete_array": 0,
-   "files": {
-    "code/mission.cpp": {
-     "delete": 2,
-     "new": 1
-    },
-    "code/mission2.cpp": {
-     "delete": 1,
-     "new": 1
-    },
-    "editor/Editor.cpp": {
-     "delete": 1,
-     "new": 1
-    }
-   },
-   "new": 3,
-   "new_array": 0,
-   "owners": [
-    "",
-    "Mission"
-   ]
-  },
-  "TG_TrianglePool": {
-   "delete": 4,
-   "delete_array": 0,
-   "files": {
-    "code/mission.cpp": {
-     "delete": 2,
-     "new": 1
-    },
-    "code/mission2.cpp": {
-     "delete": 1,
-     "new": 1
-    },
-    "editor/Editor.cpp": {
-     "delete": 1,
-     "new": 1
-    }
-   },
-   "new": 3,
-   "new_array": 0,
-   "owners": [
-    "",
-    "Mission"
-   ]
   },
   "TG_TypeMultiShape": {
    "delete": 24,
@@ -3821,30 +3725,6 @@
     "GenericAppearanceType",
     "Mech3DAppearanceType",
     "TreeAppearanceType"
-   ]
-  },
-  "TG_VertexPool": {
-   "delete": 4,
-   "delete_array": 0,
-   "files": {
-    "code/mission.cpp": {
-     "delete": 2,
-     "new": 1
-    },
-    "code/mission2.cpp": {
-     "delete": 1,
-     "new": 1
-    },
-    "editor/Editor.cpp": {
-     "delete": 1,
-     "new": 1
-    }
-   },
-   "new": 3,
-   "new_array": 0,
-   "owners": [
-    "",
-    "Mission"
    ]
   },
   "TOMap": {
@@ -4995,10 +4875,10 @@
    "files": {
     "GameOS/gameos/gameos_graphics.cpp": {
      "delete": 1,
-     "new": 2
+     "new": 1
     }
    },
-   "new": 2,
+   "new": 1,
    "new_array": 0,
    "owners": [
     ""
