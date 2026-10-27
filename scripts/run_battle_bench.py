@@ -347,7 +347,7 @@ def main():
     parser.add_argument("--acceptance", action="store_true",
                         help="orchestrator acceptance bench in a quiet window: hold the exclusive host lease around each launch "
                              "(without it launches use a normal slot and the numbers are provisional)")
-    parser.add_argument("--resolution", choices=("all", "1080p"), default="all")
+    parser.add_argument("--resolution", choices=("all", "1080p", "4k"), default="all")
     parser.add_argument("--diff", nargs=2, type=Path, metavar=("BEFORE", "AFTER"))
     args = parser.parse_args()
     if args.diff:
