@@ -233,20 +233,6 @@ void Mission::updateDevHotkeys() {
 			missionLineChanged = turn;
 		}		
 
-		if (userInput->getKeyDown(KEY_R) && userInput->ctrl() && userInput->alt() && userInput->shift())
-		{
-			if (forcedFrameRate == -1.0f)
-				forcedFrameRate = 2.0f;
-			else if (forcedFrameRate == 2.0f)
-				forcedFrameRate = 5.0f;
-			else if (forcedFrameRate == 5.0f)
-				forcedFrameRate = 10.0f;
-			else if (forcedFrameRate == 10.0f)
-				forcedFrameRate = -1.0f;
-
-			missionLineChanged = turn;
-		}
-
 		if (userInput->getKeyDown(KEY_C) && userInput->ctrl() && userInput->alt() && userInput->shift())
 		{
 			neverEndingStory = true;
@@ -292,95 +278,9 @@ void Mission::updateDevHotkeys() {
 	}
 }
 
-// Advance the scenario clock from the fixed timestep or the wall clock and handle the in-mission save.
-void Mission::updateFrameClock() {
-	//---------------------------------------
-	// The game believes we will drop well below par for a frame or two.
-	// put the game into slo-mo so we don't lose any frames of animation.
-	dynamicFrameTiming = true;
-		
-	if (saveInMissionSave)
-	{
-            char savegame_path[1024];
-            S_snprintf(savegame_path, sizeof(savegame_path)/sizeof(savegame_path[0]), "%s" PATH_SEPARATOR "testgame.ims", savePath);
-		save(savegame_path);
-		saveInMissionSave = false;
-	}
-
-	if (!mc2SimTickFrozen(missionInterface) || MPlayer )
-	{
-		//First Frame we just set LastTimeGetTime.
-		// After that, it increments based on System Time.
-		// NOT the crazy GameOS frameRate.
-		// S9D: under MC2_SMOKE_FIXED_TIMESTEP, substitute a fixed step so
-		// frame N reaches an identical sim state every run. Single cached
-		// bool check; OFF path is byte-identical to retail below.
-		if (SmokeMode::fixedTimestepEnabled())
-		{
-			float milliseconds = SmokeMode::fixedTimestepMs();   // 1000/30
-			const bool firstFrame = (LastTimeGetTime == 0xffffffff);
-			// Seed LastTimeGetTime on the first frame so the first fixed
-			// step is clean (no huge initial real-time delta); thereafter
-			// advance it by exactly one fixed step.
-			DWORD currentTimeGetTime =
-				firstFrame ? timeGetTime()
-				           : static_cast<DWORD>((LastTimeGetTime + static_cast<DWORD>(milliseconds)));
-			if (!firstFrame)
-				scenarioTime += (milliseconds / 1000.0f);
-			LastTimeGetTime = currentTimeGetTime;
-			// Deterministic clock probe (frames 60/120/180). Counts only
-			// frames where the fixed step advanced scenarioTime.
-			if (!firstFrame)
-				SmokeMode::fixedTimestepOnSimFrame(static_cast<double>(scenarioTime));
-		}
-		else
-		{
-			DWORD currentTimeGetTime = timeGetTime();
-			if (LastTimeGetTime != 0xffffffff)
-			{
-				float milliseconds = currentTimeGetTime - LastTimeGetTime;
-				// MC2_SIM_SPEED: optional gated sim-speed multiplier (default 1.0,
-				// clamped 0.25-4.0). Applied here (scenarioTime, wall-clock-driven)
-				// so mission timers and frameLength-driven motion (mechcmd2.cpp)
-				// advance in lockstep under the same multiplier. NOT applied on the
-				// MC2_SMOKE_FIXED_TIMESTEP branch above — smoke determinism keeps 1x.
-				scenarioTime += (milliseconds / 1000.0f) * simSpeedGetMultiplier();
-			}
-			LastTimeGetTime = currentTimeGetTime;
-		}
-
-		simClockTraceTick(scenarioTime);
-
-		soundSystem->clearIsPaused();
-	}
-	else
-	{
-		//Keep track of system time.  Just don't add it to scenarioTime!!
-		DWORD currentTimeGetTime = timeGetTime();
-		LastTimeGetTime = currentTimeGetTime;
-
-		soundSystem->setIsPaused();
-	}
-
-	
-	//------------------------------------------------------------------------
-	// There is a TINYYYYYYYYYY chance this will never go if timeGetTime()
-	// happens to return 0 (one millisecond every approx. 49 days). I can live
-	// with that...
-
-//		if (MPlayer && (MPlayer->startTime >= 0.0))
-//			runningTime = (float)(gos_GetElapsedTime()) - MPlayer->startTime;
-//		else if (MPlayer && (scenarioTime > 10.0))
-//			Fatal(MissionStartTime, " runningTime is not working...why? ");
-
-		actualTime = scenarioTime;
-}
-
 // The tick-mode clock: one call per sim tick. A tick is always kTickSeconds of sim time, whatever the frame rate or game
 // speed. The in-mission save runs at the tick boundary, before the clock moves.
 void Mission::updateTickClock(bool advanceTime) {
-	dynamicFrameTiming = true;
-
 	if (saveInMissionSave)
 	{
 		char savegame_path[1024];
@@ -1267,8 +1167,7 @@ bool Mission::updatePass(bool tickMode, bool runFrame, bool runSim, bool advance
 	if (runSim)
 	{
 		simLength();
-		if (tickMode) updateTickClock(advanceTime);
-		else updateFrameClock();
+		updateTickClock(advanceTime);
 	}
 	if (runSim)
 		updateSaveFixtures();
@@ -1408,11 +1307,9 @@ long Mission::update (void)
 		if (MPlayer || mc2SimTickFrozen(missionInterface))
 		{
 			s_tickClock.reset();
-			if (!SmokeMode::fixedTimestepEnabled())
-				frameLength *= simSpeedGetMultiplier();
-			if (forcedFrameRate != -1.0f)
-				frameLength /= forcedFrameRate;
-			if (updatePass(false, true, MPlayer != nullptr, true, earlyResult))
+			pollRealFrameSeconds(renderLength);   // rebase the wall credit so a resume does not burst
+			// Multiplayer runs one tick per frame, paused or frozen runs the frame part alone: no wall time reaches the sim.
+			if (updatePass(true, true, MPlayer != nullptr, true, earlyResult))
 				return earlyResult;
 			updatePresentationOnly(false, 1.0f);
 		}

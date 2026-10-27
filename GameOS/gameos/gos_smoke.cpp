@@ -260,8 +260,6 @@ bool missionHasStarted() {
 
 bool fixedTimestepEnabled() { return g_state.fixedTimestep; }
 
-float fixedTimestepMs() { return 1000.0f / 30.0f; }
-
 float fixedFrameSeconds() {
     // The virtual render frame of the harness clock. Unset (or 0) keeps the legacy 1/30 s, so one frame is exactly one sim
     // tick and the committed SIMID baselines hold. MC2_FPS_CAP=N sets N virtual frames per second instead: the sim then runs
