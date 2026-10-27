@@ -211,6 +211,7 @@ class RunConfig:
     # META-FIX INFRA-3: per-mission marker-bucket downgrades (bucket -> True).
     marker_overrides: dict = field(default_factory=dict)
     show_window: bool = False
+    ticks: int = 0                      # --ticks N: quit after N sim ticks (needs MC2_SMOKE_FIXED_TIMESTEP=1); duration stays the timeout
 
 
 @dataclass
@@ -228,7 +229,7 @@ def _build_argv(base_exe: List[str], cfg: RunConfig) -> List[str]:
         "--profile", cfg.profile,
         "--mission", cfg.stem,
         "--duration", str(cfg.duration),
-    ]
+    ] + (["--ticks", str(cfg.ticks)] if cfg.ticks > 0 else [])
 
 
 def run_one(cfg: RunConfig) -> RunResult:

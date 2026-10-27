@@ -15,6 +15,7 @@ struct State {
     std::string profile = "stock";  // --profile <name>
     std::string mission;            // --mission <stem>, required when enabled
     int durationSec = 120;          // --duration <seconds>
+    int tickBudget = 0;             // --ticks <N>: with the fixed clock, quit after N sim ticks past mission_ready (0 = use --duration)
     uint32_t seed = 0xC0FFEE;       // MC2_SMOKE_SEED env override
     bool fixedTimestep = false;     // MC2_SMOKE_FIXED_TIMESTEP=1 env override.
                                     // Opt-in, SEPARATE from MC2_SMOKE_MODE: when set,
