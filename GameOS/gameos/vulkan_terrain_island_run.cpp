@@ -260,6 +260,7 @@ void fill_frame_ubo(TerrainIsland* s, const Mc2TerrainTier1Feed& feed,
     // VK-PARITY-TERRAIN-2: pool/grid/pad-glow knobs from the shared producers.
     u.numPoolLights       = vkPoolLights;
     // Low 8 / Potato 4 lights per grid cell (the prop pass uses the same caps); High/Medium walk the whole cell.
+    u._lightPad1          = mc2::options::lowCost() ? 1 : 0;
     u._lightPad0          = mc2::options::lowCost() ? (mc2::options::current().baseQuality == 0 ? 4 : 8) : 0;
     u.lightGridDim        = vkGridDim;
     u.lightGridMinX       = feed.lightGridMin[0];

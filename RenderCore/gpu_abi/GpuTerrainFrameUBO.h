@@ -48,7 +48,7 @@ struct TerrainFrameUBO {
     // VK-TERRAIN-LIGHTING sub-slice. std140: pad to off 128 (vec4 align), then the sun
     // dir vec4 + the static light-space mat4 + scalar toggles. LOCKSTEP with the frag.
     int32_t _lightPad0;   // read as the per-cell pool light budget (0 = unlimited); kept under the pad name for the layout gen
-    int32_t _lightPad1;
+    int32_t _lightPad1;   // read as the lean-preset flag (1 on Low/Potato): water skips its ripple noise
     int32_t _lightPad2;
     float   terrainLightDir[4];  // @vec4
     float   staticLightSpaceMatrix[16];  // @mat4
