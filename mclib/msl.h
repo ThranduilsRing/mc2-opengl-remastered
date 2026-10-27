@@ -465,27 +465,6 @@ class TG_MultiShape
 		//This function sets the fog values for the shape.  Straight fog right now.
 		void SetFogRGB (DWORD fRGB);
 
-		//This function does the actual transform math, clip checks and lighting math.
-		//The matrices passed in are the translation/rotation matrix for the shape and
-		//Its inverse.  Also will animate.
-		//Function returns -1 if all vertex screen positions are off screen.
-		//Function returns 0 if any one vertex screen position is off screen.
-		//Function returns 1 is all vertex screen positions are on screen.
-		// NOTE:  THIS IS NOT A RIGOROUS CLIP!!!!!!!!!
-		long TransformMultiShape (glm::vec3 *pos, glm::quat *rot);
-
-		// Slice 2 (object-offload) — Stage 2.B: positions-only variant.
-		// Same body as TransformMultiShape (heirarchy animation, shapeToClip
-		// computation, TG_Shape::s_* state setup all run unchanged) but routes
-		// the per-leaf transform call to TG_Shape::MultiTransformShape_PositionsOnly,
-		// which strips the per-vertex / per-face lighting kernels. Slice 1
-		// batcher draws the actor with GPU vertex lighting (Stage 2.C wires
-		// calc_light() in lighting.hglsl). Called from
-		// BldgAppearance/TreeAppearance/GenericAppearance::update inside the
-		// existing inView cull gate, gated on !needsFullBakeNextFrame &&
-		// GpuStaticPropBatcher::isMultiShapeEligibleForGpuObjects(this).
-		long TransformMultiShape_PositionsOnly (glm::vec3 *pos, glm::quat *rot);
-
 		// Track B (widen registry): recipe-build-only variant.
 		// Runs the hierarchy traversal to populate listOfShapes[i].shapeToWorld
 		// per leaf without allocating from TGL vertex/face/color pools and without
@@ -501,8 +480,6 @@ class TG_MultiShape
 		// Aliased rather than reusing _BuildRecipe directly for self-documenting
 		// use at the mech runtime callsite vs the static-prop registry init use.
 		long TransformMultiShape_HierarchyOnly (glm::vec3 *pos, glm::quat *rot);
-		// HierarchyOnly plus the full CPU transform of the SpotLight_ leaves (cone geometry drawn by the legacy path).
-		long TransformMultiShape_SpotlightLeaves (glm::vec3 *pos, glm::quat *rot);
 		// Presentation joints can move while the simulation turn is frozen.
 		void InvalidateHierarchy()
 		{
@@ -521,15 +498,11 @@ class TG_MultiShape
 				listOfShapes[nodeNum].baseRotation = *rot;
 		}
 
-		//This function takes the current listOfVisibleFaces and draws them using
-		//gos_DrawTriangle.
+		// CPU fallback draw of every leaf the batchers declined (CpuDraw: ambient + infinite lights, queued through the
+		// render submissions); call after a TransformMultiShape_* walk.
 		void Render (bool refreshTextures = false, float forceZ = -1.0f);
 		// UI preview (SimpleCamera, preview_draw.cpp): draws every leaf from the hierarchy matrices; call after a TransformMultiShape*.
 		void PreviewDraw (void);
-
-		//This function takes the current listOfShadowTriangles and draws them using
-		//gos_DrawTriangle.
-		void RenderShadows (bool refreshTextures = false);
 
 		long GetNumShapes (void)
 		{
@@ -743,28 +716,6 @@ class TG_MultiShape
 			return alphaValue;
 		}
 		
- 		bool PerPolySelect (long mouseX, long mouseY)
-		{
-			float mx = mouseX;
-			float my = mouseY;
-
-			for (int i=0;i<numTG_Shapes;i++)
-			{
-				if (listOfShapes[i].node->numVisibleFaces && listOfShapes[i].node->PerPolySelect(mx,my))
-					return true;
-			}
-			
-			return false;
-		}
-		
-		void SetRecalcShadows (bool flag)
-		{
-			for (int i=0;i<numTG_Shapes;i++)
-			{
-				listOfShapes[i].node->SetRecalcShadows(flag);
-			}
-		}
-
 		void SetUseShadow (bool flag)
 		{
 			d_useShadows = flag;

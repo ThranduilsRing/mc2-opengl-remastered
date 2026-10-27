@@ -56,10 +56,6 @@ add_executable(tg_import_dump
     ${MC2_ROOT}/mclib/msl_anim.cpp
     ${MC2_ROOT}/mclib/tgl.cpp
     ${MC2_ROOT}/mclib/tgl_parse.cpp
-    ${MC2_ROOT}/mclib/tgl_render.cpp
-    ${MC2_ROOT}/mclib/tgl_shadows.cpp
-    ${MC2_ROOT}/mclib/tgl_transform.cpp
-    ${MC2_ROOT}/mclib/tgl_transform_light.cpp
     ${MC2_ROOT}/mclib/tgl_types.cpp
     ${MC2_ROOT}/mclib/cident.cpp
     ${MC2_ROOT}/mclib/mathfunc.cpp
