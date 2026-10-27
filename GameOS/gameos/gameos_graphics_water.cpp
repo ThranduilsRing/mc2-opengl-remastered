@@ -3,6 +3,7 @@
 #include "gameos_graphics_material_internal.h"
 #include "mdi_submit.h"                            // MDI-SUBMISSION-SCAFFOLD-1: this piece issues indirect draws
 #include "mc2fmt.h"
+#include "Gates/render_options.h"
 
 float mc2NightLightFactor();   // mclib/camera.cpp: 0 day .. 1 full night
 
@@ -291,6 +292,8 @@ void gosRenderer::renderWaterFastPath(
         // 0 by day and evening, 0.6 at full night (mclib/camera.cpp mc2NightLightFactor).
         const float night = mc2NightLightFactor();
         fsP.f3[2] = 0.6f * (night < 0.0f ? 0.0f : night > 1.0f ? 1.0f : night);
+        // Low/Potato retain a static foam band in the existing water pass.
+        fsP.f3[3] = mc2::options::lowCost() ? 0.0f : 1.0f;
     }
     memcpy(fsP.deep,    g_waterDeepColor,    3*sizeof(float));
     memcpy(fsP.shallow, g_waterShallowColor, 3*sizeof(float));

@@ -35,7 +35,7 @@ layout(set = 0, binding = 1, std140) uniform WaterFsParams {
     vec4 f0;              // (time, cameraPosX, cameraPosY, cameraPosZ)
     vec4 f1;              // (alphaDepth, ABSORPTION_DENSITY, WATER_MAX_ALPHA, RIPPLE_GAIN)
     vec4 f2;              // (GLINT_GAIN, u_waterReflStrength, u_skyYaw, u_waterHdriLod)
-    vec4 f3;              // (screenW, screenH, _pad, _pad)  -- u_waterScreenSize
+    vec4 f3;              // (screenW, screenH, nightDim, animatedShore)
     vec4 DEEP_COLOR;      // .xyz
     vec4 SHALLOW_COLOR;   // .xyz
     // VK-PARITY-WATER-SHORE-1 (WATER-SHORE-EDGE-1): shore-feather inputs.
@@ -188,6 +188,19 @@ void main(void)
                                              WorldPos.xy, F.f7.x, fieldThick);
     const float fieldThickFw = fwidth(fieldThick);
     PREC float tintThick = hasField ? max(fieldThick, 0.0) : WaterThickness;
+    // Recover horizontal shore distance from the depth field already sampled above.
+    // World-space gradients keep the wash width stable across camera zoom and shore slopes.
+    // Derivatives precede coverage discard so helper lanes remain defined at the coast.
+    float shoreDepth = hasField ? fieldThick : WaterThickness;
+    vec2 shoreDx = dFdx(WorldPos.xy), shoreDy = dFdy(WorldPos.xy);
+    vec2 depthD = vec2(dFdx(shoreDepth), dFdy(shoreDepth));
+    float shoreDet = shoreDx.x * shoreDy.y - shoreDx.y * shoreDy.x;
+    vec2 shoreGrad = vec2(shoreDy.y * depthD.x - shoreDx.y * depthD.y,
+                          shoreDx.x * depthD.y - shoreDy.x * depthD.x)
+                   / (abs(shoreDet) > 1e-6 ? shoreDet : 1e-6);
+    float shoreSlope = max(length(shoreGrad), 0.08);
+    float shoreDistance = max(shoreDepth, 0.0) / shoreSlope;
+    float foamAA = max((abs(depthD.x) + abs(depthD.y)) / shoreSlope, 1.0);
     PREC float trans    = clamp(exp(-tintThick * ABSORPTION_DENSITY), 0.0, 1.0);
     PREC vec3  waterCol = mix(DEEP_COLOR, SHALLOW_COLOR, trans);
 
@@ -219,6 +232,24 @@ void main(void)
     PREC float glint = smoothstep(GLINT_THRESH, 0.80, nz);
     col += glint * GLINT_GAIN * waveLOD * GLINT_TINT * nightSky;
     //PORT-END:waterBaseColor
+    // A shallow wash rolls toward the coast and recedes in the SAME water draw.
+    // Coverage and depth stay owned by the existing shore field: no new surface to z-fight.
+    float washReach = 18.0;
+    float shoreRipple = 0.0;
+    float foamBreakup = 1.0;
+    if (F.f3.w > 0.5) {
+        float coastPhase = dot(WorldPos.xy, vec2(0.003, 0.002));
+        washReach = 12.0 + 30.0 * (0.5 + 0.5 * sin(time * 1.25 + coastPhase));
+        shoreRipple = sin(shoreDistance * 0.18 + time * 1.8 + coastPhase) * 0.045;
+        foamBreakup = clamp(0.8 + nz * 0.6, 0.45, 1.0);
+    }
+    float nearShore = 1.0 - smoothstep(36.0, 100.0, shoreDistance);
+    float foam = 1.0 - smoothstep(2.0, 6.0 + foamAA, abs(shoreDistance - washReach));
+    float wash = (1.0 - smoothstep(0.0, washReach + foamAA, shoreDistance)) * 0.10;
+    float foamMix = (foam * 0.42 * foamBreakup + wash) * nearShore;
+    vec3 foamLight = max(vertexLightRGB, vec3(SKY_AMBIENT * nightSky));
+    col *= 1.0 + shoreRipple * nearShore;
+    col = mix(col, vec3(0.72, 0.80, 0.78) * foamLight, foamMix);
     // Static shadow on the light the surface scatters and glints (the reflected sky is untouched), with the receivers' 0.4 floor.
     if (F.f7.z > 0.5) {
         vec2 maskUv = vec2(WorldPos.x + F.f7.w, F.f7.w - WorldPos.y) / max(F.f7.y, 1.0);

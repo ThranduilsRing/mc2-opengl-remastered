@@ -108,7 +108,7 @@ struct WaterFsParams {
     float f0[4];             // off 16  time, camX, camY, camZ
     float f1[4];             // off 32  alphaDepth, ABSORPTION_DENSITY, WATER_MAX_ALPHA, RIPPLE_GAIN
     float f2[4];             // off 48  GLINT_GAIN, u_waterReflStrength, u_skyYaw, u_waterHdriLod
-    float f3[4];             // off 64  screenW, screenH, pad, pad (u_waterScreenSize)
+    float f3[4];             // off 64  screenW, screenH, nightDim, animatedShore
     float DEEP_COLOR[4];     // off 80
     float SHALLOW_COLOR[4];  // off 96
     // VK-PARITY-WATER-SHORE-1 (WATER-SHORE-EDGE-1) -- LOCKSTEP with water_geom.frag.
