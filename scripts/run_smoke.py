@@ -1425,7 +1425,7 @@ def main():
             duration=duration,
             heartbeat_timeout_load_s=e.heartbeat_timeout_load or 60,
             heartbeat_timeout_play_s=e.heartbeat_timeout_play or 3,
-            grace_s=60,
+            grace_s=120,  # cap = duration + grace and includes load; a cold mc2_03 load took 64 s beside other engines
             allow_asset_oob=e.allow_asset_oob,
             # META-FIX INFRA-3: per-mission marker-bucket downgrades from the
             # manifest (allow_asset_oob analog for registered marker rows).
