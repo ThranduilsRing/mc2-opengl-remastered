@@ -6,7 +6,7 @@
   "HostServices": 0,
   "RenderCore": 402,
   "RenderWorld": 0,
-  "code": 13675,
+  "code": 13644,
   "mclib": 22484,
   "shaders": 416
  },
@@ -221,7 +221,7 @@
   "code/simplecamera.cpp": 47,
   "code/tacordr.cpp": 220,
   "code/team.cpp": 81,
-  "code/team_los.cpp": 40,
+  "code/team_los.cpp": 9,
   "code/terrobj.cpp": 113,
   "code/terrobj.h": 20,
   "code/turret.cpp": 521,
@@ -482,8 +482,8 @@
   "shaders/vulkan/terrain_tier1.vert": 71,
   "shaders/vulkan/terrain_tier1_skirt.vert": 71
  },
- "head": "f26e48852",
+ "head": "34150ae82",
  "n": 8,
- "total": 39204,
+ "total": 39173,
  "version": 1
 }

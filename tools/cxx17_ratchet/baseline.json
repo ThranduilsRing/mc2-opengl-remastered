@@ -141,7 +141,7 @@
   "code": {
    "LG01": 0,
    "LG02": 0,
-   "LG03": 362,
+   "LG03": 360,
    "LG04": 16,
    "LG05": 198,
    "LG06": 437,
@@ -2069,9 +2069,6 @@
   "code/team.cpp": {
    "LG03": 1
   },
-  "code/team_los.cpp": {
-   "LG03": 2
-  },
   "code/terrobj.cpp": {
    "LG03": 1,
    "LG04": 4,
@@ -3405,7 +3402,7 @@
    "LG20": 3
   }
  },
- "head": "f26e48852",
+ "head": "34150ae82",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
