@@ -168,7 +168,22 @@ void GVAppearance::updateGeometry (void)
 		// The light row carries this actor's own terrain light colour; gather it now, while light 0 holds it.
 		if (gpuPose_ && !renderShape)
 			gvShape->CacheGpuLightData();
-		if (gpuPose_ || renderShape)
+		spotlightLeavesDrawn_ = false;
+		if (gpuPose_ && !renderShape && eye->isNight)
+		{
+			if (spotlightLeavesShape_ != gvShape)
+			{
+				spotlightLeavesShape_ = gvShape;
+				spotlightLeaves_ = 0;
+				for (int i = 0; i < gvShape->GetNumShapes(); ++i)
+					if (const TG_ShapeRec* rec = gvShape->GetShapeRec(i))
+						if (rec->node && rec->processMe && rec->node->GetIsSpotlight()) ++spotlightLeaves_;
+			}
+			spotlightLeavesDrawn_ = spotlightLeaves_ > 0;
+		}
+		if (spotlightLeavesDrawn_)
+			gvShape->TransformMultiShape_SpotlightLeaves (&xlatPosition,&totalRotation);
+		else if (gpuPose_ || renderShape)
 			gvShape->TransformMultiShape_HierarchyOnly (&xlatPosition,&totalRotation);
 		else
 			gvShape->TransformMultiShape (&xlatPosition,&totalRotation);

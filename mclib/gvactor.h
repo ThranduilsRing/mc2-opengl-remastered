@@ -200,7 +200,9 @@ class GVAppearance : public ObjectAppearance
 		glm::quat poseRot_{1.0f, 0.0f, 0.0f, 0.0f};
 		float poseFog_ = 0.0f;
 		DWORD poseLightRGB_ = 0xffffffff;
-		int spotlightLeaves_ = -1;	// SpotLight_ leaves of the body shape (cones draw through the legacy path at night)
+		int spotlightLeaves_ = 0;	// SpotLight_ leaves of the body shape (cones draw through the legacy path at night)
+		const void* spotlightLeavesShape_ = nullptr;
+		bool spotlightLeavesDrawn_ = false;
 		void transformSensorShapes();
 		bool submitToMechBatcher(uint32_t highlightARGB);
 		TG_MultiShapePtr							gvShadowShape;

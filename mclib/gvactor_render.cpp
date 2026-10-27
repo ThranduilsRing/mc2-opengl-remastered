@@ -148,20 +148,11 @@ long GVAppearance::render (long depthFixup)
 					drawShape->CacheGpuLightDataAllLeaves();
 				drawShape->Render(true);
 			}
-			else if (gpuPose_ && eye->isNight) {
-				// No batcher draws a searchlight cone: transform just those leaves and draw them the legacy way
-				// (Render skips every leaf the hierarchy-only pass left untransformed).
-				if (spotlightLeaves_ < 0) {
-					spotlightLeaves_ = 0;
-					for (int i = 0; i < drawShape->GetNumShapes(); ++i)
-						if (const TG_ShapeRec* rec = drawShape->GetShapeRec(i))
-							if (rec->node && rec->processMe && rec->node->GetIsSpotlight()) ++spotlightLeaves_;
-				}
-				if (spotlightLeaves_ > 0) {
-					drawShape->TransformMultiShape_SpotlightLeaves(&poseXlat_, &poseRot_);
-					drawShape->CacheGpuLightDataAllLeaves();
-					drawShape->Render(true);
-				}
+			else if (gpuPose_ && spotlightLeavesDrawn_) {
+				// No batcher draws a searchlight cone: update transformed just those leaves; draw them the legacy
+				// way (Render skips every leaf the hierarchy-only pass left untransformed).
+				drawShape->CacheGpuLightDataAllLeaves();
+				drawShape->Render(true);
 			}
 
 			if (selected & DRAW_TEXT)
