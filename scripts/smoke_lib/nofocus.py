@@ -198,17 +198,36 @@ def allow_foreground() -> bool:
     return bool(v) and v != "0"
 
 
+def gpu_request(out: dict, perf: bool = False) -> str:
+    """The GPU a run asks for: "2070" (pass/fail default), "xtx", or "default" (perf runs and MC2_HARNESS_GPU=any: no routing, nothing asserted)."""
+    mode = (out.get("MC2_HARNESS_GPU") or os.environ.get("MC2_HARNESS_GPU") or "auto").lower()  # runners scrub the child env; read the shell too
+    perf = perf or out.get("MC2_VK_GPU_TIMESTAMPS", "0") not in ("", "0") or out.get("MC2_FPS_CAP") == "0"         or any(k.startswith("MC2_TRACY") for k in out)
+    if mode == "2070" or (mode == "auto" and not perf):
+        return "2070"
+    return "xtx" if mode == "xtx" else "default"
+
+
 def route_gpu(out: dict, perf: bool = False) -> None:
     """Pass/fail runs go to the RTX 2070 SUPER so they do not contaminate perf runs on the 7900 XTX.
 
     MC2_HARNESS_GPU = auto (default) | xtx | 2070 overrides. Perf = MC2_VK_GPU_TIMESTAMPS, Tracy,
-    uncapped FPS, or a visible-window (show_window) run. An explicit VK_LOADER_DRIVERS_SELECT wins.
+    uncapped FPS, or a visible-window (show_window) run. An explicit MC2_VK_DEVICE wins.
+    The engine reads MC2_VK_DEVICE (a device-name substring): the Vulkan loader on this host ignores
+    VK_LOADER_DRIVERS_SELECT and the engine takes the first discrete device, always the 7900 XTX.
     """
-    mode = (out.get("MC2_HARNESS_GPU") or os.environ.get("MC2_HARNESS_GPU") or "auto").lower()  # runners scrub the child env; read the shell too
-    perf = perf or out.get("MC2_VK_GPU_TIMESTAMPS", "0") not in ("", "0") or out.get("MC2_FPS_CAP") == "0" \
-        or any(k.startswith("MC2_TRACY") for k in out)
-    if mode == "2070" or (mode == "auto" and not perf):
-        out.setdefault("VK_LOADER_DRIVERS_SELECT", "*nvoglv64*")
+    if gpu_request(out, perf) == "2070":
+        out.setdefault("MC2_VK_DEVICE", "NVIDIA")
+
+
+def gpu_mismatch(out: dict, perf: bool, devices: "Sequence[str]") -> "Optional[str]":
+    """A message when the device the engine logged is not the one the run asked for, else None. `devices` = the logged [VK_PROFILE] device names."""
+    want = out.get("MC2_VK_DEVICE") or {"2070": "NVIDIA", "xtx": "AMD"}.get(gpu_request(out, perf))
+    if not want:
+        return None
+    if not devices:
+        return f"GPU routing: the run asked for a device matching {want!r} but its log has no [VK_PROFILE] device line"
+    bad = [d for d in devices if want.lower() not in d.lower()]
+    return f"GPU routing: the run asked for a device matching {want!r} but the engine used {bad[0]!r}" if bad else None
 
 
 def apply_env(env: "Optional[dict]" = None, *, small_window: bool = True,

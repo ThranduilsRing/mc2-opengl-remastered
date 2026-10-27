@@ -46,6 +46,7 @@
 #include "vk_mem_alloc.h"
 
 #include <cassert>
+#include <cctype>
 #include <cstdarg>
 #include <cstdio>
 #include <cstdlib>
@@ -354,8 +355,20 @@ bool VulkanContext::init(bool wantPresent) {
             cands.push_back(std::move(c));
         }
         const Candidate* pick = nullptr;
-        for (const Candidate& c : cands)
-            if (c.ev.accepted && c.discrete) { pick = &c; break; }
+        // MC2_VK_DEVICE: the harness routes pass/fail runs to a named device (the loader ignores VK_LOADER_DRIVERS_SELECT here).
+        std::string hint = mc2::gate::str<"MC2_VK_DEVICE">();
+        if (!hint.empty()) {
+            const auto lower = [](std::string v) { for (char& ch : v) ch = static_cast<char>(std::tolower(static_cast<unsigned char>(ch))); return v; };
+            const std::string want = lower(hint);
+            for (const Candidate& c : cands)
+                if (c.ev.accepted && lower(c.name).find(want) != std::string::npos) { pick = &c; break; }
+            if (!pick) {
+                ctxlog("MC2_VK_DEVICE=%s matches no accepted device; using the default pick", hint.c_str());
+            }
+        }
+        if (!pick)
+            for (const Candidate& c : cands)
+                if (c.ev.accepted && c.discrete) { pick = &c; break; }
         if (!pick)
             for (const Candidate& c : cands)
                 if (c.ev.accepted) { pick = &c; break; }
