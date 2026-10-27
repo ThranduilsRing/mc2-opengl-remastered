@@ -95,6 +95,12 @@ float propMaterialCoverage(int id) {
     return texture(uPropOrm, vec3(vUv * row.uvScale, float(row.material.metallicRoughnessTex))).a;
 }
 
+bool propHasObjectAlbedo(int id) {
+    if (id < 0 || id >= uPropMaterials.materials.length()) return false;
+    PropMaterialGpu row = uPropMaterials.materials[id];
+    return (row.material.flags & kMatFlagPerTexture) != 0u && row.material.albedoTex != 0xffffffffu;
+}
+
 // A per-object albedo replaces the tiered tgl texture of its packet (full resolution, own mips, not chosen by
 // ObjectTextureRes). Returns false when the material names none.
 bool propAlbedoOverride(int id, out vec3 albedo) {

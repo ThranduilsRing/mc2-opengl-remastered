@@ -199,14 +199,14 @@ void main() {
         rgb += vHighlight.rgb * vHighlight.a;
         poolLight = propPoolLight(vec3(1));
         rgb += texc.rgb * poolLight;
-    } else if (uFrame.materialReady != 0 && vLayer >= 0) {
+    } else if (uFrame.materialReady != 0 && (vLayer >= 0 || propHasObjectAlbedo(uPacket.materialId))) {
         // ALPHA-OFF group. Real albedo texture (GL_REPEAT restored via fract, then
         // cropped to this packet's sub-region -- FENCE-UVSCALE-1, mirrors GL's
         // static_prop.frag:206 `fract(v_uv) * vec2(uvScaleX, uvScaleY)` verbatim;
         // uvScale defaults to 1.0 for the common single-texture types so this is a
         // no-op there).
         vec2 uvContinuous = vUv * vUvScale;
-        vec4 texOff = texture(uAlbedo, vec3(fract(uvContinuous), float(vLayer)));
+        vec4 texOff = vLayer >= 0 ? texture(uAlbedo, vec3(fract(uvContinuous), float(vLayer))) : vec4(1.0);
         vec3 albedo = texOff.rgb;
         vec3 objectAlbedo;
         if (propAlbedoOverride(uPacket.materialId, objectAlbedo)) albedo = objectAlbedo;
@@ -218,7 +218,7 @@ void main() {
         // A packet GL alpha-tests although its type sits in the alpha-OFF group (its texture's alpha flag is set after the arrays
         // were built, e.g. the hex lattice props): GL's dither discard, its alpha-test light floor and its alpha-test shadow class.
         if (uPacket.packetAlphaTest != 0) {
-            cover = propCoverage(texOff.a, textureQueryLod(uAlbedo, uvContinuous).y);   // PROP-COVERAGE-1
+            cover = propCoverage(texOff.a, vLayer >= 0 ? textureQueryLod(uAlbedo, uvContinuous).y : 0.0);   // PROP-COVERAGE-1
             rgb = albedo * max(vArgb, vec3(0.5));
             alphaTestClass = true;
         }
