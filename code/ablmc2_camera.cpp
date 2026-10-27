@@ -41,6 +41,8 @@ long getMoversWithinRadius (MoverPtr* moverList, glm::vec3 center, float radius,
 		const float queryRadius = metersPerWorldUnit > 0.0f ? radius / metersPerWorldUnit : -1.0f;
 		for (auto candidate : ObjectManager->nearbyMovers(center, queryRadius)) {
 			MoverPtr mover = ObjectManager->getEntity<Mover>(candidate.id);
+			if (!mover)
+				continue;
 			if (mover->getExists() && !mover->isDisabled() && mover->isEnemy(team))
 				if (mover->numFunctionalWeapons > 0)
 					if (mover->distanceFrom(center) < radius) {
