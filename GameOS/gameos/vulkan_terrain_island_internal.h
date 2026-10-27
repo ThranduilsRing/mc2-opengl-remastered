@@ -132,6 +132,7 @@ struct OvlPending {
 struct OvlState {
     int w = 0, h = 0;
     bool inited = false, disabled = false;
+    int  waitStrikes = 0;
     // OWNED objects in creation order, released in reverse (pipelines before their layout, framebuffer before its render pass, textures first).
     mc2vk::OwnedRenderPass rpass;
     mc2vk::OwnedFramebuffer fb;
@@ -153,6 +154,7 @@ struct OvlState {
 // the allocator and device they were made on. The owners are declared in creation order and released in reverse.
 struct TerrainIsland : mc2vk::IslandState {
     bool disabled = false;
+    int  waitStrikes = 0;
     bool inited   = false;
 
     int w = 0, h = 0;

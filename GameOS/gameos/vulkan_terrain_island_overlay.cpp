@@ -425,8 +425,8 @@ extern "C" int mc2_vk_overlay_run(int w, int h) {
     const uint32_t par = rctx.frameContext().slot;
     const uint64_t frameNo = rctx.frameContext().frame;
     { ZoneScopedN("VKIsl.Overlay.FenceWait");
-      if (!rctx.wait(s->ovlSubmitted[par], 5000000000ull, "overlay submission slot")) { vlog("[VK_TERRAIN_OVERLAY] LOUD: overlay submission slot wait timed out (5 s); skipping this frame, will retry next frame."); return 0; }
-      if (s->setBoundFrame[par] != frameNo && !rctx.wait(s->submitted[par], 5000000000ull, "overlay set slot")) { vlog("[VK_TERRAIN_OVERLAY] LOUD: overlay set slot wait timed out (5 s); skipping this frame, will retry next frame."); return 0; } }
+      if (!vk_island_util::waitStrike(o->waitStrikes, o->disabled, rctx.wait(s->ovlSubmitted[par], 5000000000ull, "overlay submission slot"), "VK_TERRAIN_OVERLAY")) { vlog("[VK_TERRAIN_OVERLAY] LOUD: overlay submission slot wait timed out (5 s); skipping this frame, will retry next frame."); return 0; }
+      if (s->setBoundFrame[par] != frameNo && !vk_island_util::waitStrike(o->waitStrikes, o->disabled, rctx.wait(s->submitted[par], 5000000000ull, "overlay set slot"), "VK_TERRAIN_OVERLAY")) { vlog("[VK_TERRAIN_OVERLAY] LOUD: overlay set slot wait timed out (5 s); skipping this frame, will retry next frame."); return 0; } }
     if (s->setBoundFrame[par] != frameNo) {
         if (!mc2vk::bindMoverShadowDescriptors(s->device,s->set[par])) return 0;
         // Overlays can be the first terrain consumer of this parity (including load warmup).

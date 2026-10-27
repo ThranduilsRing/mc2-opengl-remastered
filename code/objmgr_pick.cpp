@@ -166,7 +166,7 @@ GameObjectPtr GameObjectManager::findByCellPosition (long row, long col)
 	for (long objIndex = 1; objIndex <= numObjects; objIndex++)
 	{
 		GameObjectPtr obj = objList[objIndex];
-		if (obj->getExists())
+		if (obj && obj->getExists())
 		{
 			int cellR, cellC;
 			objList[objIndex]->getCellPosition(cellR,cellC);

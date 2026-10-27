@@ -170,6 +170,7 @@ struct TypeRun {
 
 struct ColorPropIsland : mc2vk::IslandState {
     bool disabled = false;
+    int  waitStrikes = 0;
     bool inited   = false;
     bool useInterop = false;
     bool tier1    = false;   // TIER-1 in-place shared-GBuffer co-write
@@ -1681,12 +1682,12 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
     const uint32_t par = rctx.frameContext().slot;
     {
         ZoneScopedN("VKIsl.Props.FenceWait");
-        if (!rctx.wait(s->submitted[par], 5000000000ull, "prop submission slot")) {
+        if (!vk_island_util::waitStrike(s->waitStrikes, s->disabled, rctx.wait(s->submitted[par], 5000000000ull, "prop submission slot"), "VK_PROP")) {
             setFallback("submission_slot_timeout"); vlog("LOUD: submission slot wait timed out (5 s); skipping this frame, will retry next frame."); return 0;
         }
         // Late coverage also reads this slot's descriptors and frame inputs.
         const VkFence lateFence = s->lateFence[par].get();
-        if (vkWaitForFences(s->device, 1, &lateFence, VK_TRUE, 5ull*1000*1000*1000) != VK_SUCCESS) {
+        if (!vk_island_util::waitStrike(s->waitStrikes, s->disabled, vkWaitForFences(s->device, 1, &lateFence, VK_TRUE, 5ull*1000*1000*1000) == VK_SUCCESS, "VK_PROP")) {
             setFallback("late_fringe_fence_timeout"); vlog("LOUD: late fringe fence wait timed out (5 s); skipping this frame, will retry next frame."); return 0;
         }
     }

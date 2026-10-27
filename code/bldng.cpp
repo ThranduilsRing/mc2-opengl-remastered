@@ -739,9 +739,10 @@ long Building::update (void)
 		// if not, find parent in ObjMgr and get its pointer.
 		if ((parentId != 0xffffffff) && (parentId != 0))
 		{
-			parent = ObjectManager->findByCellPosition((parentId>>16),(parentId & 0x0000ffff))->getWatchID();
-			if (ObjectManager->getByWatchID(parent)->canBeCaptured())
-				ObjectManager->getByWatchID(parent)->setFlag(OBJECT_FLAG_CAPTURABLE, true);
+			GameObjectPtr parentObj = ObjectManager->findByCellPosition((parentId>>16),(parentId & 0x0000ffff));
+			parent = parentObj ? parentObj->getWatchID() : 0;
+			if (parentObj && parentObj->canBeCaptured())
+				parentObj->setFlag(OBJECT_FLAG_CAPTURABLE, true);
 
 			gosASSERT(parent != 0);
 		}
@@ -1399,8 +1400,7 @@ void Building::createBuildingMarines (void) {
 					vehiclePilot->setIdNumber(2500000);
 					// Following is a HACK!! at last minute--marines need to be handled
 					// properly in next game (partId-wise)...
-					vehiclePilot->setPartId(MAX_MOVER_PART_ID - NumMarines++);
-					ObjectManager->notePartId(vehiclePilot, vehiclePilot->getPartId());
+					ObjectManager->forcePartId(vehiclePilot, MAX_MOVER_PART_ID - NumMarines++);
 
 					//----------------------------------------------------------------
 					// Multiplayer stuff for vehicle Pilot.  What should I do Glenn?

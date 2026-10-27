@@ -877,6 +877,7 @@ void MissionMap::setPassable (long row, long col, char* footPrint, bool passable
 		c = col + *data++;
 		len = *data++;
 	}
+	rev.statics++;
 }
 
 void MissionMap::spreadState (long cellRow, long cellCol, long radius) {
@@ -890,6 +891,7 @@ void MissionMap::spreadState (long cellRow, long cellCol, long radius) {
 		if (!getPreserved(cellRow, cellCol))
 			setPreserved(cellRow, cellCol, true);
 		mapView[cellRow, cellCol].setPassable(false);
+		rev.preserved++;   // a mover's per-frame occupancy of a preserved tile; setPreserved above only bumps the first time
 		for (long dir = 0; dir < NUM_DIRECTIONS; dir++) {
 			long adjR = cellRow;
 			long adjC = cellCol;

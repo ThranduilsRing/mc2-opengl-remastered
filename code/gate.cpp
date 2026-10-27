@@ -267,8 +267,10 @@ long Gate::update (void)
 		// if not, find parent in ObjMgr and get its pointer.
 		if ((parentId != 0xffffffff) && (parentId != 0))
 		{
-			parent = ObjectManager->findByCellPosition((parentId>>16),(parentId & 0x0000ffff))->getWatchID();
-			ObjectManager->getByWatchID(parent)->setFlag(OBJECT_FLAG_CAPTURABLE, true);
+			GameObjectPtr parentObj = ObjectManager->findByCellPosition((parentId>>16),(parentId & 0x0000ffff));
+			parent = parentObj ? parentObj->getWatchID() : 0;
+			if (parentObj)
+				parentObj->setFlag(OBJECT_FLAG_CAPTURABLE, true);
 
 			gosASSERT(parent != 0);
 		}
