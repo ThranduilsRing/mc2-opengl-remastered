@@ -649,10 +649,115 @@ void InitializeGameEngine()
 	prefs.reset();
 
 
+
+	
+
+
+	if (getGosRenderer())
+	{
+		mc2::VkSceneRenderer::start();
+	}
+	else
+	{
+	}
+
+	mc2::renderSubmissions().startVertices(500000);
+
+	godMode = true;
+	MOVE_init(30);
+
+	weaponEffects = new WeaponEffects;
+		weaponEffects->init("Effects");
+
+editor = new Editor();
+
+if (justResaveAllMaps)
+{
+    editor->resaveAll();
+}
+
+{
+
+    FullPathFileName guiloader;
+    guiloader.init(artPath, "editorGui", ".fit");
+
+
+    FitIniFile loader;
+    long result = loader.open(guiloader);
+
+    // Log missing editorGui.fit or renderer initialization: either prevents
+    // editor->init() from creating the pilot catalog and object manager.
+    {
+        FILE* f = fopen("editor-startup.log", "a");
+        if (f)
+        {
+            fprintf(f, "InitializeGameEngine: editorGui.fit open result=%ld renderer=%d -> editor->init %s\n",
+                result, getGosRenderer() ? 1 : 0,
+                (result == NO_ERR && getGosRenderer()) ? "RUNS" : "SKIPPED");
+            fclose(f);
+        }
+    }
+
+    if (result == NO_ERR)
+    {
+
+if (getGosRenderer())
+{
+    editor->init(const_cast<char*>((const char*)guiloader));
+}
+else
+{
+}
+    }
+    else
+    {
+    }
+}
+	timerManager = new TimerManager;
+	timerManager->init();
+
+	initColorTables();
+
+	if (!statisticsInitialized)
+	{
+		statisticsInitialized = true;
+	}
+
+	InitDW();
+}
+
+bool alreadyTermed = false;
+void TerminateGameEngine()
+{
+	if (alreadyTermed)
+		return;
+	else
+		alreadyTermed = true;
+
+	destroyColorTables();
+
+	delete timerManager;
+	timerManager = nullptr;
+
+	if ( editor )
+		delete editor;
+	editor = nullptr;
+
+	if (weaponEffects)
+		delete weaponEffects;
+	weaponEffects = nullptr;
+
+	if (userInput)
+	{
+		delete userInput;
+		userInput = nullptr;
+	}
+
 	MOVE_cleanup();
 
     if (mc2::VkSceneRenderer::active())
         mc2::VkSceneRenderer::shutdown();
+
 
 	//
 	//
