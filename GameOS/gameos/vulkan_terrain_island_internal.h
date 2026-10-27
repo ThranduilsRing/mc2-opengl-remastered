@@ -302,7 +302,11 @@ struct TerrainIsland : mc2vk::IslandState {
     std::unordered_map<uint32_t, SkirtMesh> skirtCache;  // VK-TERRAIN-SKIRT (rung 4)
 
     mc2vk::OwnedCommandPool     cpool;
-    VkCommandBuffer   cbuf[2] = {VK_NULL_HANDLE, VK_NULL_HANDLE};
+    VkCommandBuffer   cbuf[4] = {VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE};   // [0,1] terrain run per frame slot, [2,3] scene clear per frame slot
+    // GPU-FRONTIER-1: per engine frame slot, the last submit that used the slot's command buffer / descriptor set. The terrain run, the overlay
+    // (which draws through the run's set[slot]) and the scene clear each wait on their own previous submit only.
+    mc2vk::GpuTicket  submitted[2], ovlSubmitted[2], clearSubmitted[2];
+    uint64_t          setBoundFrame[2] = {~uint64_t(0), ~uint64_t(0)};   // engine frame in which set[slot] was last rewritten (mover binding, dirty textures)
 
     // VK-DRAW-PERF-1: per-pass GPU timestamp timer (3 stamps: pass-start / draws-start /
     // pass-end). Gated + fail-soft inside init(); no-op unless MC2_VK_GPU_TIMESTAMPS set.

@@ -419,16 +419,23 @@ extern "C" int mc2_vk_overlay_run(int w, int h) {
         std::memcpy(static_cast<uint8_t*>(vtxSpan.ptr) + static_cast<size_t>(r.second) * kOvlVertStride, r.first->verts.data(), static_cast<size_t>(r.first->vertCount) * kOvlVertStride);
 
     // ---- sync: same shared parity-slot fence discipline as the other islands ----
-    VkImageResource* colorRes = s->colorRes;
-    VkFrameSync fsC{};
-    { ZoneScopedN("VKIsl.Overlay.FenceWait"); fsC = vkImageResourceBeginFrame(colorRes); }
-    const uint32_t par = fsC.parity & 1u;
-    if (!mc2vk::bindMoverShadowDescriptors(s->device,s->set[par])) return 0;
-    // Overlays can be the first terrain consumer of this parity (including load warmup).
-    // Initialize the shared set after its fence even when the terrain draw was skipped.
-    const std::array<VkImageView,7> views{s->colormapTexture.view(),s->cementTexture.view(),s->shoreMaskTexture.view(),s->matNormalTexture.view(),s->materialTexture.view(),s->macroGradientTexture.view(),s->staticVisibilityDummy.view()};
-    if (s->descriptorsDirty[par] || s->boundTextures[par]!=views) {
-        write_descriptors(s,int(par)); s->boundTextures[par]=views;
+    // GPU-FRONTIER-1: engine frame slot + this island's own previous submit. The overlay draws through the terrain run's set[par]; when the run already
+    // rewrote that set this frame the overlay leaves it alone (same values, and the run's submit may still be in flight). Otherwise the overlay is the
+    // first user of the set this frame and waits the run's previous submit (two frames old) before rewriting it.
+    const uint32_t par = rctx.frameContext().slot;
+    const uint64_t frameNo = rctx.frameContext().frame;
+    { ZoneScopedN("VKIsl.Overlay.FenceWait");
+      if (!rctx.wait(s->ovlSubmitted[par], 5000000000ull, "overlay submission slot")) { o->disabled = true; return 0; }
+      if (s->setBoundFrame[par] != frameNo && !rctx.wait(s->submitted[par], 5000000000ull, "overlay set slot")) { o->disabled = true; return 0; } }
+    if (s->setBoundFrame[par] != frameNo) {
+        if (!mc2vk::bindMoverShadowDescriptors(s->device,s->set[par])) return 0;
+        // Overlays can be the first terrain consumer of this parity (including load warmup).
+        // Initialize the shared set after its wait even when the terrain draw was skipped.
+        const std::array<VkImageView,7> views{s->colormapTexture.view(),s->cementTexture.view(),s->shoreMaskTexture.view(),s->matNormalTexture.view(),s->materialTexture.view(),s->macroGradientTexture.view(),s->staticVisibilityDummy.view()};
+        if (s->descriptorsDirty[par] || s->boundTextures[par]!=views) {
+            write_descriptors(s,int(par)); s->boundTextures[par]=views;
+        }
+        s->setBoundFrame[par] = frameNo;
     }
     for (const auto& item : items) {
         auto& t=*item.tex; const auto view=t.texture.view();
@@ -502,7 +509,8 @@ extern "C" int mc2_vk_overlay_run(int w, int h) {
     si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
     si.commandBufferCount = 1; si.pCommandBuffers = &cb;
     { ZoneScopedN("VKIsl.Overlay.Submit");
-      if (mc2vk::submitGraphics(si, fsC.fence) != VK_SUCCESS) { o->disabled = true; return 0; } }
+      if (mc2vk::submitGraphics(si, VK_NULL_HANDLE) != VK_SUCCESS) { o->disabled = true; return 0; } }
+    s->ovlSubmitted[par] = rctx.tracker().now();
     if (boundStatic == 1 || std::any_of(items.begin(), items.end(), [](const Item& item) { return (item.kind & 4u) != 0; }))
         o->statUsed = true;
 

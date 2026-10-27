@@ -403,11 +403,16 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
     // command buffer. The inline post-submit wait this replaces is kept only under
     // the MC2_VK_TERRAIN_FENCE_DEFER=0 killswitch.
     const clk::time_point tFence0 = clk::now();
-    VkFrameSync fsC{};
-    { ZoneScopedN("VKIsl.Terrain.FenceWait");   // VK-ISLAND-TRACY-1: deferred retire of the parity slot
-      fsC = vkImageResourceBeginFrame(s->colorRes); }
+    // GPU-FRONTIER-1: engine frame slot; the wait covers the previous terrain run AND the previous overlay at this slot (both draw through set[par],
+    // which is rewritten below). The scene clear and the overlay keep their own tickets.
+    const uint32_t par = rctx.frameContext().slot;
+    { ZoneScopedN("VKIsl.Terrain.FenceWait");   // VK-ISLAND-TRACY-1: deferred retire of the slot
+      if (!rctx.wait(s->submitted[par], 5000000000ull, "terrain submission slot") ||
+          !rctx.wait(s->ovlSubmitted[par], 5000000000ull, "terrain overlay slot")) {
+          setFallback("submission_slot_timeout"); s->disabled = true; return 0;
+      } }
     us_fence_wait = usSince(tFence0);
-    const uint32_t par = fsC.parity & 1u;
+    s->setBoundFrame[par] = rctx.frameContext().frame;
     if (!mc2vk::bindMoverShadowDescriptors(s->device,s->set[par])) { setFallback("mover_receiver_unavailable"); s->disabled=true; return 0; }
     const std::array<VkImageView,7> views{s->colormapTexture.view(),s->cementTexture.view(),s->shoreMaskTexture.view(),s->matNormalTexture.view(),s->materialTexture.view(),s->macroGradientTexture.view(),s->staticVisibilityDummy.view()};
     if (s->descriptorsDirty[par] || s->boundTextures[par]!=views) {
@@ -570,7 +575,8 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
     si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
     si.commandBufferCount = 1; si.pCommandBuffers = &cb;
     { ZoneScopedN("VKIsl.Terrain.Submit");   // VK-ISLAND-TRACY-1: vkQueueSubmit
-      if (mc2vk::submitGraphics(si, fsC.fence) != VK_SUCCESS) { setFallback("submit_failed"); s->disabled = true; return 0; } }
+      if (mc2vk::submitGraphics(si, VK_NULL_HANDLE) != VK_SUCCESS) { setFallback("submit_failed"); s->disabled = true; return 0; } }
+    s->submitted[par] = rctx.tracker().now();
     timerGuard.submitted();
 
     // VK-TERRAIN-FENCE-DEFER-1: the inline retire wait is GONE — the submit's fence
@@ -585,7 +591,7 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
     if (!terrainFenceDeferEnabled()) {
         ZoneScopedN("VKIsl.Terrain.InlineFenceWait");   // VK-ISLAND-TRACY-1: killswitch-only inline retire
         const clk::time_point tInline0 = clk::now();
-        if (vkWaitForFences(s->device, 1, &fsC.fence, VK_TRUE, 5ull*1000*1000*1000) != VK_SUCCESS) {
+        if (!rctx.wait(s->submitted[par], 5000000000ull, "terrain inline retire")) {
             setFallback("fence_timeout"); s->disabled = true; return 0;
         }
         us_fence_wait = usSince(tInline0);
@@ -639,10 +645,10 @@ extern "C" int mc2_vk_scene_clear(int w, int h) {
     TerrainIsland* s = parkedIsland();
     if (!s || s->disabled || !s->inited) return 0;
 
-    VkFrameSync fsC{};
-    fsC = vkImageResourceBeginFrame(s->colorRes);
-    const uint32_t par = fsC.parity & 1u;
-    VkCommandBuffer cb = s->cbuf[par];
+    mc2vk::VulkanContext& cctx = mc2vk::getOrCreateEngineVulkanContext();
+    const uint32_t par = cctx.frameContext().slot;
+    if (!cctx.wait(s->clearSubmitted[par], 5000000000ull, "scene clear slot")) { setFallback("clear_slot_timeout"); s->disabled = true; return 0; }
+    VkCommandBuffer cb = s->cbuf[2 + par];
     vkResetCommandBuffer(cb, 0);
     VkCommandBufferBeginInfo bi{};
     bi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -666,7 +672,8 @@ extern "C" int mc2_vk_scene_clear(int w, int h) {
     VkSubmitInfo si{};
     si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
     si.commandBufferCount = 1; si.pCommandBuffers = &cb;
-    if (mc2vk::submitGraphics(si, fsC.fence) != VK_SUCCESS) { setFallback("clear_submit_failed"); s->disabled = true; return 0; }
+    if (mc2vk::submitGraphics(si, VK_NULL_HANDLE) != VK_SUCCESS) { setFallback("clear_submit_failed"); s->disabled = true; return 0; }
+    s->clearSubmitted[par] = cctx.tracker().now();
     g_sceneClearedRenderFrame = g_mc2RenderFrame + 1u;
     return 1;
 }
