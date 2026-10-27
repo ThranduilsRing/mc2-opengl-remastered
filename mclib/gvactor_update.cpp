@@ -163,7 +163,7 @@ void GVAppearance::updateGeometry (void)
 		poseLightRGB_ = lightRGB;
 		poseFog_ = useFog ? 1.0f - static_cast<float>(fogRGB >> 24) / 255.0f : 0.0f;
 		gvShape->SetLightList(eye->getWorldLights(),eye->getNumLights());
-		gpuPose_ = g_useGpuMechs && g_mechPreviewRenderDepth == 0 && gvShape->GetAlphaValue() == 0xff
+		gpuPose_ = g_mechPreviewRenderDepth == 0 && gvShape->GetAlphaValue() == 0xff
 			&& GpuMechBatcher::instance().isVehicleTypeRegistered(gvShape->GetMultiType());
 		// The light row carries this actor's own terrain light colour; gather it now, while light 0 holds it.
 		if (gpuPose_ && !renderShape)
