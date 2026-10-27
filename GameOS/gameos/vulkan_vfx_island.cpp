@@ -777,8 +777,9 @@ bool mc2_vk_vfx_vegetation_run(const mc2veg::CullParams& params, const float* wo
     // The vegetation state keeps one buffer set per engine frame slot (it is not per island slot): the set is free once every
     // island slot of this frame slot has retired, whichever call index the vegetation call got this frame.
     const uint32_t vegPar = par / kVfxCallsPerFrame;
+    const uint32_t vegFirstSlot = vegPar * kVfxCallsPerFrame;
     for (uint32_t call = 0; call < kVfxCallsPerFrame; ++call)
-        if (!slotCtx.wait(mc2vk::GpuTicket{s->ticket[vegPar * kVfxCallsPerFrame + call], 0}, 5ull * 1000 * 1000 * 1000, "vfx_veg_slot")) { setFallback("slot_timeout"); s->disabled = true; return false; }
+        if (!slotCtx.wait(mc2vk::GpuTicket{s->ticket[vegFirstSlot + call], 0}, 5ull * 1000 * 1000 * 1000, "vfx_veg_slot")) { setFallback("slot_timeout"); s->disabled = true; return false; }
     const VkDeviceSize align = slotCtx.frameAlignment();
     if (!prepare_shadow_descriptors(s, par)) return false;
     s->groundLighting.copy(s->device, vegPar, *ground);
