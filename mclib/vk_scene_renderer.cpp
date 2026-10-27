@@ -103,19 +103,19 @@ void mc2::VkSceneRenderer::renderLists (RenderSubmissions& submissions)
 	// MC2_ISSPOTLGT batch. Must run before the ISSPOTLGT consumer loop below
 	// and AFTER every legacy addVertices for the frame (all of which happen in
 	// the object render pass, before renderLists). See mclib/cone_glow.cpp.
-	mc2_cone_glow::FlushFrame();
-	renderListsPreamble(submissions);
-	renderListsSceneDataUpload(submissions);
-	renderListsObjects3D(submissions);
-	renderListsPostObjectsStateRestore(submissions);
+	{ ZoneScopedN("RL.ConeGlow"); mc2_cone_glow::FlushFrame(); }
+	{ ZoneScopedN("RL.renderListsPreamble"); renderListsPreamble(submissions); }
+	{ ZoneScopedN("RL.renderListsSceneDataUpload"); renderListsSceneDataUpload(submissions); }
+	{ ZoneScopedN("RL.renderListsObjects3D"); renderListsObjects3D(submissions); }
+	{ ZoneScopedN("RL.renderListsPostObjectsStateRestore"); renderListsPostObjectsStateRestore(submissions); }
 	renderListsStaticPropRegistryFlush(submissions);
-	renderListsDynamicShadowPass(submissions);
+	{ ZoneScopedN("RL.renderListsDynamicShadowPass"); renderListsDynamicShadowPass(submissions); }
 	// Terrain samples the current mover map, after its producer has submitted.
-	Terrain::flushDrawCommands();
-	renderListsTerrainSolid(submissions);
-	renderListsGpuStaticProps(submissions);
-	renderListsOverlayBatches(submissions);
-	renderListsOverlaysOld(submissions);
+	{ ZoneScopedN("RL.TerrainFlush"); Terrain::flushDrawCommands(); }
+	{ ZoneScopedN("RL.renderListsTerrainSolid"); renderListsTerrainSolid(submissions); }
+	{ ZoneScopedN("RL.renderListsGpuStaticProps"); renderListsGpuStaticProps(submissions); }
+	{ ZoneScopedN("RL.renderListsOverlayBatches"); renderListsOverlayBatches(submissions); }
+	{ ZoneScopedN("RL.renderListsOverlaysOld"); renderListsOverlaysOld(submissions); }
 }
 
 void mc2::VkSceneRenderer::beginFrame()
