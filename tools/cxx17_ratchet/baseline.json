@@ -90,7 +90,7 @@
    "LG17": 1,
    "LG18": 0,
    "LG19": 0,
-   "LG20": 20
+   "LG20": 17
   },
   "RenderCore": {
    "LG01": 0,
@@ -1027,7 +1027,7 @@
   "GuiRuntime/EditorInspector_sections.cpp": {
    "LG06": 1,
    "LG09": 1,
-   "LG20": 6
+   "LG20": 5
   },
   "GuiRuntime/GraphicsOptionsWindow_internal.h": {
    "LG05": 1,
@@ -1035,7 +1035,7 @@
   },
   "GuiRuntime/GraphicsOptionsWindow_mech.cpp": {
    "LG09": 1,
-   "LG20": 14
+   "LG20": 12
   },
   "GuiRuntime/GraphicsOptionsWindow_passes.cpp": {
    "LG09": 8
@@ -3418,7 +3418,7 @@
    "LG20": 3
   }
  },
- "head": "3d514fcaa",
+ "head": "fbf1903af",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",

@@ -15,12 +15,12 @@
  ],
  "files_over_1500": {
   "GameOS/gameos/engine_present_vk.cpp": 2919,
-  "GameOS/gameos/vulkan_color_prop_island.cpp": 1950,
+  "GameOS/gameos/vulkan_color_prop_island.cpp": 2000,
   "GameOS/include/gameos.hpp": 3650,
   "code/artlry.cpp": 1701,
   "code/bldng.cpp": 1692,
   "code/brain_special_dispatch.cpp": 2771,
-  "code/gamecam.cpp": 1647,
+  "code/gamecam.cpp": 1644,
   "code/gameobj.cpp": 2250,
   "code/infowindow.cpp": 1730,
   "code/logisticsdialog.cpp": 2150,
@@ -55,7 +55,7 @@
   "tools/scifi_kit/art/intent_military.py": 3363,
   "tools/terrain_beautify/visual_heightfield.py": 1510
  },
- "head": "e6c81c69a",
+ "head": "fbf1903af",
  "per_dir": {
   "GameAdapters": {
    "files": 13,
@@ -73,7 +73,7 @@
    "files": 19,
    "files_over_1500": 0,
    "files_over_3000": 0,
-   "max_lines": 1133
+   "max_lines": 1126
   },
   "RenderCore": {
    "files": 65,
@@ -186,16 +186,16 @@
    "lines": 2106
   },
   {
+   "file": "GameOS/gameos/vulkan_color_prop_island.cpp",
+   "lines": 2000
+  },
+  {
    "file": "editor/tests/test_objectives.cpp",
    "lines": 1996
   },
   {
    "file": "code/mechlabscreen.cpp",
    "lines": 1952
-  },
-  {
-   "file": "GameOS/gameos/vulkan_color_prop_island.cpp",
-   "lines": 1950
   },
   {
    "file": "mclib/assimp_importer.cpp",
