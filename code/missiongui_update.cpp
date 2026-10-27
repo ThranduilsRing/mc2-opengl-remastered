@@ -70,7 +70,7 @@ namespace {
 
 void updateSaveFixtures()
 {
-	// Tick-boundary quicksave fixtures: MC2_BOOT_QUICKSAVE_AT=N / MC2_BOOT_QUICKLOAD_AT=M
+	// Tick-boundary quicksave fixtures: MC2_BOOT_QUICKSAVE_AT=N / MC2_BOOT_QUICKLOAD_AT=M (sim ticks)
 	// (default unset). One-shot at the first non-movie frame >= N/M, setting the
 	// SAME saveInMissionSave/loadInMissionSave flags the pause-menu QUICK
 	// SAVE/LOAD buttons set (pausewindow.cpp handleMessage SAVE/LOAD; consumed
@@ -82,16 +82,16 @@ void updateSaveFixtures()
 		extern bool saveInMissionSave;
 		extern bool loadInMissionSave;
 		extern bool g_resaveAfterQuickload;
-		extern uint32_t g_mc2FrameCounter;
+		extern long turn;  // sim tick (SIMID simframe = turn - 1): host load cannot move the save/load points
 		static const long s_qsAt = static_cast<long>(mc2::gate::get<"MC2_BOOT_QUICKSAVE_AT">());
 		static const long s_qlAt = static_cast<long>(mc2::gate::get<"MC2_BOOT_QUICKLOAD_AT">());
 		static long s_qsIssuedAt = -1;
 		if (s_qsAt > 0) {
 			static bool s_qsDone = false;
-			if (!s_qsDone && static_cast<long>(g_mc2FrameCounter) >= s_qsAt &&
+			if (!s_qsDone && turn >= s_qsAt &&
 				eye && !eye->inMovieMode) {
 				s_qsDone = true;
-				s_qsIssuedAt = static_cast<long>(g_mc2FrameCounter);
+				s_qsIssuedAt = turn;
 				saveInMissionSave = true;
 			}
 		}
@@ -103,7 +103,7 @@ void updateSaveFixtures()
 			const long loadAt = s_qsAt > 0 && s_qsIssuedAt >= 0
 				? std::max(s_qlAt, s_qsIssuedAt + requestedGap) : s_qlAt;
 			if (!s_qlDone && (s_qsAt <= 0 || s_qsIssuedAt >= 0) &&
-				static_cast<long>(g_mc2FrameCounter) >= loadAt &&
+				turn >= loadAt &&
 				eye && !eye->inMovieMode) {
 				s_qlDone = true;
 				loadInMissionSave = true;

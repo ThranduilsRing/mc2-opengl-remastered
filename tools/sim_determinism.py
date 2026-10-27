@@ -189,6 +189,38 @@ def visible_chain(lines, frames: int | None = None) -> str:
     return h.hexdigest()[:16]
 
 
+_MOVER = re.compile(r"\[SIMID v1 mover\] simframe=(\d+) id=(\d+) .*?pos=(\S+) rot=(\S+) hp=\S+ gesture=(\S+) anim=(\S+) .*?pstep=(\S+)")
+
+
+def detail_diff(path_a: str, path_b: str) -> tuple[dict, dict]:
+    """Per-mover SIMID lines (MC2_SIM_IDENTITY_TRACE_DETAIL=1): -> (motion, anim). motion = pos/rot/path-step diffs, anim = gesture/anim
+    diffs, each {"count", "first": (simframe, mover), "movers": n, "max_pos": metres}. A re-pin is anim-only when motion["count"] == 0."""
+    def load(path):
+        out = {}
+        with open(path, encoding="utf-8", errors="replace") as fh:
+            for ln in fh:
+                m = _MOVER.search(ln)
+                if m:
+                    out[(int(m.group(1)), int(m.group(2)))] = m.groups()[2:]
+        return out
+    a, b = load(path_a), load(path_b)
+    res = {"motion": {"count": 0, "first": None, "movers": set(), "max_pos": 0.0}, "anim": {"count": 0, "first": None, "movers": set(), "max_pos": 0.0}}
+    for key in sorted(a.keys() & b.keys()):
+        (pa, ra, ga, na, sa), (pb, rb, gb, nb, sb) = a[key], b[key]
+        for kind, differs in (("motion", (pa, ra, sa) != (pb, rb, sb)), ("anim", (ga, na) != (gb, nb))):
+            if differs:
+                r = res[kind]
+                r["count"] += 1
+                r["first"] = r["first"] or key
+                r["movers"].add(key[1])
+                if kind == "motion" and pa != pb:
+                    xa, xb = [float(v) for v in pa.split(",")], [float(v) for v in pb.split(",")]
+                    r["max_pos"] = max(r["max_pos"], sum((p - q) ** 2 for p, q in zip(xa, xb)) ** 0.5)
+    for r in res.values():
+        r["movers"] = len(r["movers"])
+    return res["motion"], res["anim"]
+
+
 def compare(a, b, min_frames: int = MIN_FRAMES):
     """-> (ok, message). Only the frames both runs reached are compared."""
     common = min(len(a), len(b))
@@ -541,6 +573,9 @@ def main(argv=None) -> int:
     c.add_argument("log_a")
     c.add_argument("log_b")
     c.add_argument("--min-frames", type=int, default=MIN_FRAMES)
+    dd = sub.add_parser("detail-diff", help="two DETAIL logs: pos/rot/path-step diff next to the gesture/anim diff")
+    dd.add_argument("log_a")
+    dd.add_argument("log_b")
     def env_args(p):
         p.add_argument("--env", action="append", default=[], metavar="NAME=VALUE", help="set for both runs (a mission fixture; repeatable)")
         p.add_argument("--env-a", action="append", default=[], metavar="NAME=VALUE", help="set only for run a (repeatable)")
@@ -593,6 +628,11 @@ def main(argv=None) -> int:
     args = ap.parse_args(argv)
     if args.cmd == "selftest":
         return selftest()
+    if args.cmd == "detail-diff":
+        motion, anim = detail_diff(args.log_a, args.log_b)
+        print(f"pos/rot/path-step: {motion}")
+        print(f"gesture/anim:      {anim}")
+        return 0 if motion["count"] == 0 else 1
     if args.cmd == "write-overlay":
         base = os.path.join(args.install, "data", "missions")
         declared = {f"data/missions/{fn}": _sha256(os.path.join(base, fn)) for fn in sorted(os.listdir(base))

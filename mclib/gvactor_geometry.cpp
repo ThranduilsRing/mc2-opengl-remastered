@@ -11,6 +11,8 @@
 #include "assimp_importer.h"
 #include "Gates/gate.h"
 #include <filesystem>
+#include <set>
+#include <string>
 
 extern uint32_t g_mc2FrameCounter;
 
@@ -41,14 +43,22 @@ void GVAppearance::updateRenderShape()
 				variantType = variant.shape.get();
 		if (!variantType) {
 #ifdef ENABLE_ASSIMP_IMPORTER
+			// A failed import is remembered per (type, lod): logged once, never retried, stock shape stays.
+			static std::set<std::pair<std::string, int>> badLods;
+			const auto badKey = std::make_pair(std::string(appearType->name), lod);
+			if (badLods.count(badKey)) { renderShape.reset(); renderLOD = -1; return; }
+			auto failLod = [&](const char* why) {
+				badLods.insert(badKey);
+				mc2::fmt::print_err("[VEHICLE_RENDER] lod import failed type={} lod={} ({}); using stock shape\n", appearType->name, lod, why);
+				renderShape.reset(); renderLOD = -1;
+			};
+			const auto* lodSrc = !override ? nullptr : (lod == 0 ? &override->sourceRelPath : (static_cast<size_t>(lod - 1) < override->lods.size() ? &override->lods[lod - 1].sourceRelPath : nullptr));
+			if (!lodSrc) { failLod("no override source"); return; }
 			auto type = std::make_unique<TG_TypeMultiShape>();
-			const auto rel = lod == 0 ? override->sourceRelPath : override->lods[lod-1].sourceRelPath;
-			const auto path = (std::filesystem::path(override->manifestDir) / rel).generic_string();
+			const auto path = (std::filesystem::path(override->manifestDir) / *lodSrc).generic_string();
 			try {
-				if (ImportGeometryFromFile(path.c_str(), type.get(), false, true, true) != 0) {
-					renderShape.reset(); renderLOD = -1; return;
-				}
-			} catch (...) { renderShape.reset(); renderLOD = -1; return; }
+				if (ImportGeometryFromFile(path.c_str(), type.get(), false, true, true) != 0) { failLod(path.c_str()); return; }
+			} catch (...) { failLod("exception"); return; }
 			variantType = type.get();
 			appearType->renderVariants.push_back({lod, psRed, psGreen, psBlue, std::move(type)});
 			newVariant = true;
