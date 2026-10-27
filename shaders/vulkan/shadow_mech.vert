@@ -21,6 +21,7 @@ layout(set = 0, binding = 0, std140) uniform ShadowFrameUBO {
 // Per-instance record (64B): generated from RenderCore/gpu_abi/GpuMechInstance.h; a stride that differs from the C++ record shifts every run past the first.
 #include "../include/gpu_abi_mech_instance.gen.hglsl"
 #include "../include/axis.hglsl"
+#include "../include/mech_render_flags.hglsl"
 struct GpuMechBone { vec4 row0, row1, row2, row3; };
 layout(set = 0, binding = 1, std430) readonly buffer InstanceBuffer { GpuMechInstance instances[]; } uInst;
 layout(set = 0, binding = 2, std430) readonly buffer BoneBuffer { GpuMechBone bones[]; } uBones;
@@ -40,5 +41,5 @@ void main() {
     gl_Position = uFrame.lightSpaceMatrix * vec4(worldMC2, 1.0);
     // Ground vehicles (renderFlags bit 6) cast through the mover prop feed (captureMoverShadowShape), as before:
     // collapse their mech-feed copy outside the clip volume.
-    if ((inst.renderFlags & 0x40u) != 0u) gl_Position = vec4(2.0, 2.0, 2.0, 1.0);
+    if ((inst.renderFlags & MECH_RENDER_FLAG_LEGACY_VEHICLE) != 0u) gl_Position = vec4(2.0, 2.0, 2.0, 1.0);
 }

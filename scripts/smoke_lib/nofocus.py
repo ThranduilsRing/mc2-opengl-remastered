@@ -219,10 +219,17 @@ def route_gpu(out: dict, perf: bool = False) -> None:
         out.setdefault("MC2_VK_DEVICE", "NVIDIA")
 
 
-def gpu_mismatch(out: dict, perf: bool, devices: "Sequence[str]") -> "Optional[str]":
-    """A message when the device the engine logged is not the one the run asked for, else None. `devices` = the logged [VK_PROFILE] device names."""
+def gpu_mismatch(out: dict, perf: bool, devices: "Sequence[str]", log_text: str = "") -> "Optional[str]":
+    """A message when the device the engine logged is not the one the run asked for, else None. `devices` = the logged [VK_PROFILE] device names.
+
+    The implicit pass/fail default (hint NVIDIA) is only asserted when the hint matched a device: a host with no such card
+    (the farm laptop) makes the engine log "matches no accepted device", and that run is not red. An explicit
+    MC2_HARNESS_GPU=2070|xtx always asserts."""
     want = out.get("MC2_VK_DEVICE") or {"2070": "NVIDIA", "xtx": "AMD"}.get(gpu_request(out, perf))
     if not want:
+        return None
+    explicit = (out.get("MC2_HARNESS_GPU") or os.environ.get("MC2_HARNESS_GPU") or "auto").lower() in ("2070", "xtx")
+    if not explicit and "matches no accepted device" in log_text:
         return None
     if not devices:
         return f"GPU routing: the run asked for a device matching {want!r} but its log has no [VK_PROFILE] device line"

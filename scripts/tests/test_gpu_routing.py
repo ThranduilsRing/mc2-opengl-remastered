@@ -63,3 +63,9 @@ def test_a_run_on_the_wrong_gpu_or_without_a_device_line_is_red():
     assert "no [VK_PROFILE]" in nofocus.gpu_mismatch({"PATH": "x"}, False, [])
     assert nofocus.gpu_mismatch({"PATH": "x", "MC2_HARNESS_GPU": "xtx"}, False, ["NVIDIA GeForce RTX 2070 SUPER"])
     assert nofocus.gpu_mismatch({"PATH": "x"}, True, ["AMD Radeon RX 7900 XTX"]) is None     # perf run: nothing asked for
+
+
+def test_an_unmatched_implicit_hint_is_not_red_but_an_explicit_request_is():
+    log = "MC2_VK_DEVICE=NVIDIA matches no accepted device; using the default pick"
+    assert nofocus.gpu_mismatch({"PATH": "x"}, False, ["Intel(R) HD Graphics 630"], log) is None
+    assert nofocus.gpu_mismatch({"PATH": "x", "MC2_HARNESS_GPU": "2070"}, False, ["Intel(R) HD Graphics 630"], log)

@@ -1,0 +1,4 @@
+// Mech instance renderFlags bit 6. ONE bit, two meanings: mech_tier1 lights the instance as a ground vehicle (row ambient and
+// sun) and shadow_mech collapses it (the vehicle's shadow comes from the mover feed). C++ copy: kMechRenderFlagLegacyVehicle in
+// GameOS/gameos/gos_mech_batcher.h.
+#define MECH_RENDER_FLAG_LEGACY_VEHICLE 0x40u

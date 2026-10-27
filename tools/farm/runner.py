@@ -36,6 +36,7 @@ def run_job(path, root):
             raise ValueError('timeout must be in (0, 7200] seconds')
         env = dict(os.environ, **job.get('env', {}), MC2_FARM_RESULT_DIR=str(output))
         env.setdefault('MC2_SMOKE_ARTIFACT_ROOT', str(output / 'smoke'))
+        env.setdefault('MC2_HARNESS_GPU', 'any')
         with (output / 'job.log').open('wb') as log:
             child = subprocess.Popen(argv, cwd=job.get('cwd', str(root)), env=env,
                                      stdout=log, stderr=subprocess.STDOUT,

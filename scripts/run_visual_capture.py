@@ -185,6 +185,15 @@ def _mission_started(log_path: Path) -> bool:
         return False
 
 
+def _load_failed(log_path: Path) -> bool:
+    """True when the engine log reports a fatal error before the first presented frame (do not wait out the load cap)."""
+    try:
+        txt = log_path.read_text(encoding="utf-8", errors="replace").lower()
+    except OSError:
+        return False
+    return any(t in txt for t in ("fatal error", "unhandled exception", "access violation"))
+
+
 def guard_exe(exe: Path) -> bool:
     """Vet `exe` before any launch; print the identity line and the refusal.
 
@@ -436,6 +445,8 @@ def run_one(exe: Path, mission: str, bookmarks_path: Path, out_dir: Path,
             if ready_t is None and _mission_started(log_path):
                 ready_t = time.time()
                 deadline = ready_t + duration + 30
+            elif ready_t is None and _load_failed(log_path):
+                break  # fatal error before the first frame: fail now (the process exit check below already covers a dead engine)
             if all(p.exists() for p in expected_pngs.values()):
                 # CAPTURE-EARLY-EXIT-1: finished only when every PNG + sidecar
                 # exists, sizes are non-zero and unchanged across two polls, and
