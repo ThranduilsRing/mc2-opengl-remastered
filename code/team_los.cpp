@@ -100,8 +100,7 @@ static struct LosVerify {
 		const bool legacy = legacyLos(q);
 		++n; vis += legacy ? 1 : 0;
 		if (legacy != kernelBit) ++bad;
-		if ((n % 200000ull) == 0) { printf("[LOS_VERIFY] queries=%llu visible=%llu mismatches=%llu
-", n, vis, bad); fflush(stdout); }
+		if ((n % 200000ull) == 0) { printf("[LOS_VERIFY] queries=%llu visible=%llu mismatches=%llu\n", n, vis, bad); fflush(stdout); }
 		if (corpus) {
 			float f[8] = { q.position.x, q.position.y, q.position.z, q.target.x, q.target.y, q.target.z, q.extRad, q.startExtRad };
 			int32_t t = static_cast<int32_t>(q.teamId);
