@@ -120,7 +120,16 @@ def _is_stale(entry: dict) -> bool:
     age = _age_secs(entry.get("last_used_utc", ""))
     if age is None:
         return True  # unparseable = treat as stale
-    return age > _ttl()
+    return age > _ttl() or _owner_dead(entry)
+
+
+def _owner_dead(entry: dict) -> bool:
+    """True when a lease written by THIS host names a pid that no longer exists: take over now, do not wait out the TTL."""
+    try:
+        pid = int(entry.get("pid") or 0)
+    except (TypeError, ValueError):
+        return False
+    return pid > 0 and entry.get("hostname") == socket.gethostname() and not _pid_alive(pid)
 
 
 def _folder_has_exe(folder: str) -> bool:

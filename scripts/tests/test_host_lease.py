@@ -541,3 +541,37 @@ def test_exclusive_holder_blocks_a_wider_slot_configuration(lease, monkeypatch):
     with pytest.raises(host_lease.HostLeaseBusy):
         host_lease.acquire("third slot", wait=False, scan=lambda: [])
     assert not host_lease.slot_path(2).exists()
+
+
+def test_slot_count_comes_from_the_shared_waiver_file_not_the_environment(monkeypatch, tmp_path):
+    waiver = tmp_path / "waived"
+    monkeypatch.setattr(host_lease, "WAIVER_PATH", waiver)
+    assert not host_lease.waiver_active()
+    waiver.write_text(str(time.time() + 60))
+    assert host_lease.waiver_active()
+    waiver.write_text(str(time.time() - 60))
+    assert not host_lease.waiver_active()
+    monkeypatch.setattr(host_lease, "redirected", lambda: False)
+    monkeypatch.setenv("MC2_HOST_GAME_SLOTS", "1")                      # ignored on the real lease file
+    assert host_lease.slot_count() == 2
+    waiver.write_text(str(time.time() + 60))
+    assert host_lease.slot_count() == 3
+
+
+@pytest.mark.parametrize("in_gate,granted", [(True, True), (False, False)])
+def test_gate_tickets_go_ahead_of_a_queued_pass_fail_run(lease, monkeypatch, in_gate, granted):
+    waiting = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(30)"])
+    try:
+        ticket = {"pid": waiting.pid, "created": host_lease.child_registry.process_create_time(waiting.pid),
+                  "exclusive": False, "priority": 1}
+        host_lease._write_record(lease.with_suffix(".queue.json"), {"tickets": [ticket]})
+        monkeypatch.setenv("MC2_IN_GATE", "1") if in_gate else monkeypatch.delenv("MC2_IN_GATE", raising=False)
+        if granted:
+            host_lease.acquire("gate stage", wait=False, scan=lambda: [], log=lambda m: None)
+            assert host_lease.holds()
+        else:
+            with pytest.raises(host_lease.HostLeaseBusy):
+                host_lease.acquire("pass/fail", wait=False, scan=lambda: [], log=lambda m: None)
+    finally:
+        waiting.kill()
+        waiting.wait()

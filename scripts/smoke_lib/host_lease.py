@@ -2,7 +2,9 @@
 """FIFO engine slots shared across worktrees, with exclusive reservations for timing proofs.
 
 MC2_HOST_CORES_PER_SLOT selects physical cores per slot (default 2).
-MC2_HOST_GAME_SLOTS selects 1..6/max(2,width) slots (default 2); cores 0..1 stay reserved.
+Slot count has ONE source for every worktree: 3 while the owner cores 0-1 waiver file (WAIVER_PATH, holds an expiry epoch)
+is live, otherwise 2. MC2_HOST_GAME_SLOTS is honoured only under a private test/farm lease file. Cores 0..1 stay reserved.
+Queue order: merge-gate stages (MC2_IN_GATE=1) and exclusive holds go ahead of pass/fail runs; FIFO within a class.
 MC2_HOST_LEASE_EXCLUSIVE=1 reserves every slot. Batch hold/release keeps a reservation
 across a serial chain. Dead holders and tickets recover automatically. Private paths
 isolate tests; disabling leases requires MC2_OWNER_NO_LEASE=1.
@@ -37,6 +39,7 @@ BATCH_ENV = "MC2_HOST_LEASE_BATCH"        # the tag of a `hold` batch lease this
 DEFAULT_BATCH_TTL_S = 7200.0
 MAX_BATCH_TTL_S = 6 * 3600.0              # the lane cap: no batch outlives a lane session
 DEFAULT_TIMEOUT_S = 3600.0
+WAIVER_PATH = Path("A:/Games/mc2-ops/owner_cores_waived_until")
 POLL_S = 2.0
 REPORT_EVERY_S = 30.0
 
@@ -49,12 +52,25 @@ def cores_per_slot() -> int:
 
 def slot_count() -> int:
     maximum = 6 // max(2, cores_per_slot())
-    # Two slots limit host load because three can trip the heartbeat_freeze_play smoke gate.
-    # Three remains an env override for sim-only or strict runs that grade no smoke gates.
+    if not redirected():
+        # One shared answer for every worktree, so two processes can never disagree and over-admit.
+        return min(3 if waiver_active() else 2, maximum)
     count = int(os.environ.get("MC2_HOST_GAME_SLOTS", "2"))
     if not 1 <= count <= maximum:
         raise ValueError(f"MC2_HOST_GAME_SLOTS must be between 1 and {maximum}")
     return count
+
+
+def waiver_active(now: Optional[float] = None) -> bool:
+    """True while the owner cores 0-1 waiver file exists and its expiry epoch (if parseable) is in the future."""
+    try:
+        text = WAIVER_PATH.read_text(encoding="utf-8").strip()
+    except OSError:
+        return False
+    try:
+        return float(text) > (time.time() if now is None else now)
+    except ValueError:
+        return True
 
 
 def slot_path(slot: int) -> Path:
@@ -305,7 +321,10 @@ def acquire(label: str, *, wait: bool = True, timeout_s: Optional[float] = None,
     path = lease_path().with_suffix(".queue.json")
     deadline = clock() + timeout_s
     last_report = -REPORT_EVERY_S
-    ticket = {"pid": os.getpid(), "created": child_registry.process_create_time(os.getpid()), "exclusive": exclusive}
+    # Merge-gate stages and exclusive holds queue ahead of pass/fail runs; an exclusive at the head admits nobody behind it.
+    priority = 0 if exclusive or os.environ.get("MC2_IN_GATE") == "1" else 1
+    ticket = {"pid": os.getpid(), "created": child_registry.process_create_time(os.getpid()), "exclusive": exclusive,
+              "priority": priority}
     granted = False
     try:
         while True:
@@ -313,6 +332,7 @@ def acquire(label: str, *, wait: bool = True, timeout_s: Optional[float] = None,
                 queue = [t for t in (_read(path) or {}).get("tickets", []) if _holder_alive(t)]
                 if ticket not in queue:
                     queue.append(ticket)
+                queue.sort(key=lambda t: t.get("priority", 1))   # stable: FIFO within a class
                 records = _records()
                 _remove_records([(p, rec) for p, rec in records
                                  if rec and p.exists() and not _holder_alive(rec)

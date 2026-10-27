@@ -58,3 +58,11 @@ def test_the_deploy_waits_for_the_holder_and_then_goes_ahead(registry, tmp_path,
     assert deploy_payload.take_folder_lease(str(install), 30)
     assert ticks and ticks[0] != ""
     deploy_payload.release_folder_lease(str(install))
+
+
+def test_a_dead_owner_on_this_host_is_taken_over_at_once(registry, tmp_path, monkeypatch):
+    install = tmp_path / "install"
+    install.mkdir()
+    _foreign_lease(install)
+    monkeypatch.setattr(deploy_lease, "_pid_alive", lambda pid: False)   # the owner (this test process) is "dead"
+    assert deploy_payload.take_folder_lease(str(install), 0)
