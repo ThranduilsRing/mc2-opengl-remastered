@@ -193,62 +193,6 @@ void Mission::initTGLForLogistics()
 {
 	// A mission-ending flash must not carry into logistics.
 	TG_Shape::lighteningLevel = 0;
-
-	if (colorPool || vertexPool || facePool || shadowPool || trianglePool)
-	{
-		if (colorPool)
-		{
-			colorPool->destroy();
-			delete colorPool;
-			colorPool = nullptr;
-		}
-		
-		if (vertexPool)
-		{
-			vertexPool->destroy();
-			delete vertexPool;
-			vertexPool = nullptr;
-		}
-
-		if (facePool)
-		{
-			facePool->destroy();
-			delete facePool;
-			facePool = nullptr;
-		}
-
-		if (shadowPool)
-		{
-			shadowPool->destroy();
-			delete shadowPool;
-			shadowPool = nullptr;
-		}
-
-		if (trianglePool)
-		{
-			trianglePool->destroy();
-			delete trianglePool;
-			trianglePool = nullptr;
-		}
-	}
-
-	{
-		// Pools cover one large preview object, including its shadow and Sensor shapes.
-		colorPool 		= new TG_VertexPool;
-		colorPool->init(64000);
-
-		vertexPool 		= new TG_GOSVertexPool;
-		vertexPool->init(64000);
-
-		facePool 		= new TG_DWORDPool;
-		facePool->init(128000);
-
-		shadowPool 		= new TG_ShadowPool;
-		shadowPool->init(64000);
-
-		trianglePool 	= new TG_TrianglePool;
-		trianglePool->init(64000);
-	}
 }
 
 

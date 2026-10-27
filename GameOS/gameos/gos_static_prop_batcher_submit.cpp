@@ -199,6 +199,10 @@ bool GpuStaticPropBatcher::submit(TG_Shape* shape,
         gpu_cull::substrate_appendStaticPropRecord(rec);
     }
 
+    // The Colors SSBO is debug-only (the lit shader ignores it): pad zeros so the block still matches type.vertexCount.
+    const uint32_t numColors = type.vertexCount;
+    bucket.colors.insert(bucket.colors.end(), numColors, 0u);
+
     return true;
 }
 
@@ -543,31 +547,10 @@ bool GpuStaticPropBatcher::submitMultiShape(TG_MultiShape* multi,
             s_counters.skipped_children++;
             continue;
         }
-        // Spotlights during day + other early-outs in TransformShape leave
-        // listOfVertices NULL. CPU Render early-outs on the same condition.
-        // Also listOfColors NULL: CPU also early-outs. Submit's zero-pad
-        // path would render this child black, which is the bug we're
-        // avoiding — so skip here.
-        //
-        // GPU-INSTANCE-SKIP-POOLS-1: in the new GPU-only path, registered
-        // types intentionally run the zero-pool hierarchy walk
-        // (TransformMultiShape_HierarchyOnly) in *Appearance::update, which
-        // leaves listOfVertices/listOfColors NULL but DOES populate
-        // rec.shapeToWorld (used at :4391). Such a child is a legitimate GPU
-        // instance: its geometry is the immutable per-type VBO and its colors
-        // are the debug-only (zero-padded) Colors SSBO the lit shader ignores
-        // (static_prop.vert:5). So admit a NULL-vertex child IFF its type is
-        // registered in s_typeIndex AND we are not in the legacy escape hatch.
-        // A NULL-vertex child whose type is NOT registered (true day-spotlight
-        // early-out) is still skipped, preserving stock behavior.
-        if (!child->listOfVertices || !child->listOfColors) {
-            bool admitAsGpuOnly = false;
-            if (child->myType) {
-                const TG_TypeShape* ts =
-                    static_cast<const TG_TypeShape*>(child->myType);
-                admitAsGpuOnly = (s_typeIndex.find(ts->stableId()) != s_typeIndex.end());
-            }
-            if (!admitAsGpuOnly) {
+        // A leaf whose type was never registered cannot be drawn from the immutable per-type VBO: skip it.
+        {
+            const TG_TypeShape* ts = static_cast<const TG_TypeShape*>(child->myType);
+            if (s_typeIndex.find(ts->stableId()) == s_typeIndex.end()) {
                 s_counters.skipped_children++;
                 continue;
             }

@@ -156,12 +156,6 @@ void UpdateRenderers()
 	turn++;
 
 	reloadBounds = false;
-
-   	colorPool->reset();
-   	vertexPool->reset();
-   	facePool->reset();
-   	shadowPool->reset();
-   	trianglePool->reset();
 }
 
 bool statisticsInitialized = false;
@@ -655,166 +649,10 @@ void InitializeGameEngine()
 	prefs.reset();
 
 
-		colorPool 		= new TG_VertexPool;
-		colorPool->init(20000);
-		
-		vertexPool 		= new TG_GOSVertexPool;
-		vertexPool->init(20000);
-		
-		facePool 		= new TG_DWORDPool;
-		facePool->init(40000);
-		
-		shadowPool 		= new TG_ShadowPool;
-		shadowPool->init(20000);
-		
-		trianglePool 	= new TG_TrianglePool;
-		trianglePool->init(20000);
-
-	
-
-
-	if (getGosRenderer())
-	{
-		mc2::VkSceneRenderer::start();
-	}
-	else
-	{
-	}
-
-	mc2::renderSubmissions().startVertices(500000);
-
-	godMode = true;
-	MOVE_init(30);
-
-	weaponEffects = new WeaponEffects;
-		weaponEffects->init("Effects");
-
-editor = new Editor();
-
-if (justResaveAllMaps)
-{
-    editor->resaveAll();
-}
-
-{
-
-    FullPathFileName guiloader;
-    guiloader.init(artPath, "editorGui", ".fit");
-
-
-    FitIniFile loader;
-    long result = loader.open(guiloader);
-
-    // Log missing editorGui.fit or renderer initialization: either prevents
-    // editor->init() from creating the pilot catalog and object manager.
-    {
-        FILE* f = fopen("editor-startup.log", "a");
-        if (f)
-        {
-            fprintf(f, "InitializeGameEngine: editorGui.fit open result=%ld renderer=%d -> editor->init %s\n",
-                result, getGosRenderer() ? 1 : 0,
-                (result == NO_ERR && getGosRenderer()) ? "RUNS" : "SKIPPED");
-            fclose(f);
-        }
-    }
-
-    if (result == NO_ERR)
-    {
-
-if (getGosRenderer())
-{
-    editor->init(const_cast<char*>((const char*)guiloader));
-}
-else
-{
-}
-    }
-    else
-    {
-    }
-}
-	timerManager = new TimerManager;
-	timerManager->init();
-
-	initColorTables();
-
-	if (!statisticsInitialized)
-	{
-		statisticsInitialized = true;
-	}
-
-	InitDW();
-}
-
-bool alreadyTermed = false;
-void TerminateGameEngine()
-{
-	if (alreadyTermed)
-		return;
-	else
-		alreadyTermed = true;
-
-	destroyColorTables();
-
-	delete timerManager;
-	timerManager = nullptr;
-
-	if ( editor )
-		delete editor;
-	editor = nullptr;
-
-	if (weaponEffects)
-		delete weaponEffects;
-	weaponEffects = nullptr;
-
-	if (userInput)
-	{
-		delete userInput;
-		userInput = nullptr;
-	}
-
 	MOVE_cleanup();
 
     if (mc2::VkSceneRenderer::active())
         mc2::VkSceneRenderer::shutdown();
-
-	if (colorPool || vertexPool || facePool || shadowPool || trianglePool)
-	{
-		if (colorPool)
-		{
-			colorPool->destroy();
-			delete colorPool;
-			colorPool = nullptr;
-		}
-		
-		if (vertexPool)
-		{
-			vertexPool->destroy();
-			delete vertexPool;
-			vertexPool = nullptr;
-		}
-
-		if (facePool)
-		{
-			facePool->destroy();
-			delete facePool;
-			facePool = nullptr;
-		}
-
-		if (shadowPool)
-		{
-			shadowPool->destroy();
-			delete shadowPool;
-			shadowPool = nullptr;
-		}
-
-		if (trianglePool)
-		{
-			trianglePool->destroy();
-			delete trianglePool;
-			trianglePool = nullptr;
-		}
-	}
 
 	//
 	//

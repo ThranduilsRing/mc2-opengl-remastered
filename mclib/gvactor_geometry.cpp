@@ -166,10 +166,9 @@ void GVAppearance::updateRenderShape()
 	renderShape->SetLightsOut(!eye->isNight);
 	renderShape->SetLightList(eye->getWorldLights(), eye->getNumLights());
 	auto rotation = poseRotation();
-	// The static-prop batcher draws a type-material body from its node matrices; the CPU transform runs at draw
-	// time only if that submit declines.
-	if (renderShape->usesTypeMaterials()) renderShape->TransformMultiShape_HierarchyOnly(&translation, &rotation);
-	else renderShape->TransformMultiShape(&translation, &rotation);
+	// The static-prop batcher draws a type-material body from its node matrices; a declined submit falls back to the
+	// CPU draw from the same matrices.
+	renderShape->TransformMultiShape_HierarchyOnly(&translation, &rotation);
 }
 
 

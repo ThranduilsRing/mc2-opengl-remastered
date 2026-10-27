@@ -695,14 +695,7 @@ long BldgAppearance::update (bool animate)
 			// VBO + rec.shapeToWorld; light cache below is pool-independent), so
 			// run the zero-pool hierarchy walk. mc2CacheOrBakeStaticGpuLight still
 			// runs to seed the light index.
-			if (GpuStaticPropBatcher::instance().isMultiShapeEligibleForGpuObjects(bldgShape))
-			{
-				bldgShape->TransformMultiShape_HierarchyOnly (&xlatPosition,&rot);
-			}
-			else
-			{
-				bldgShape->TransformMultiShape (&xlatPosition,&rot);
-			}
+			bldgShape->TransformMultiShape_HierarchyOnly (&xlatPosition,&rot);
 			// 2026-05-10: also seed cachedGpuLightIndex_ in the full-bake
 			// branch. Without this, the first-frame transition out of the
 			// H4 latch (set by registerStatic) leaves the index

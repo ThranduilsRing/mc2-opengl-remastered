@@ -137,21 +137,10 @@ long GVAppearance::render (long depthFixup)
 				submitted = submitToMechBatcher(gpuHighlight);
 			}
 			if (!submitted) {
-				// Declined (or never on the GPU path): the legacy draw needs the CPU-transformed vertices.
-				if (gpuPose_) {
-					eye->setLightColor(0, poseLightRGB_);
-					eye->setLightIntensity(0, 1.0);
-					drawShape->SetLightList(eye->getWorldLights(), eye->getNumLights());
-					drawShape->TransformMultiShape(&poseXlat_, &poseRot_);
-				}
-				if (s_vehicleLitPath)
-					drawShape->CacheGpuLightDataAllLeaves();
-				drawShape->Render(true);
-			}
-			else if (gpuPose_ && spotlightLeavesDrawn_) {
-				// No batcher draws a searchlight cone: update transformed just those leaves; draw them the legacy
-				// way (Render skips every leaf the hierarchy-only pass left untransformed).
-				drawShape->CacheGpuLightDataAllLeaves();
+				// Declined (fading alpha, a type no batcher holds): CPU fallback from the update-time hierarchy, lit by this
+				// actor's own terrain light colour.
+				eye->setLightColor(0, poseLightRGB_);
+				eye->setLightIntensity(0, 1.0);
 				drawShape->Render(true);
 			}
 

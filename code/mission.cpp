@@ -786,16 +786,6 @@ long Mission::render (void)
 			eye->ambientGreen = tempAmbientLight[1];
 			eye->ambientBlue = tempAmbientLight[2];
 		}
-
-		//reset the TGL RAM pools.
-		{
-			ZoneScopedN("Camera.UpdateRenderers tglPools.reset");
-			colorPool->reset();
-			vertexPool->reset();
-			facePool->reset();
-			shadowPool->reset();
-			trianglePool->reset();
-		}
 	}
 
 	return scenarioResult;
@@ -1003,69 +993,7 @@ void Mission::start (void)
 void Mission::initTGLForMission()
 {
 	ZoneScopedN("Mission::initTGLForMission");
-	if (colorPool || vertexPool || facePool || shadowPool || trianglePool)
-	{
-		ZoneScopedN("Mission::initTGLForMission shutdown");
-		logTglPoolPeaks("mission_unload");
-		if (colorPool)
-		{
-			colorPool->destroy();
-			delete colorPool;
-			colorPool = nullptr;
-		}
-		
-		if (vertexPool)
-		{
-			vertexPool->destroy();
-			delete vertexPool;
-			vertexPool = nullptr;
-		}
-
-		if (facePool)
-		{
-			facePool->destroy();
-			delete facePool;
-			facePool = nullptr;
-		}
-
-		if (shadowPool)
-		{
-			shadowPool->destroy();
-			delete shadowPool;
-			shadowPool = nullptr;
-		}
-
-		if (trianglePool)
-		{
-			trianglePool->destroy();
-			delete trianglePool;
-			trianglePool = nullptr;
-		}
-	}
-
-	loadProgress += 1.0f;
-
-	{
-		ZoneScopedN("Mission::initTGLForMission startup");
-		// Pools cover detailed model overrides across active blocks, including
-		// offscreen static props, so early props cannot exhaust storage for mechs.
-		colorPool 		= new TG_VertexPool;
-		colorPool->init(32000000);
-
-		vertexPool 		= new TG_GOSVertexPool;
-		vertexPool->init(32000000);
-
-		facePool 		= new TG_DWORDPool;
-		facePool->init(16000000);
-
-		shadowPool 		= new TG_ShadowPool;
-		shadowPool->init(32000000);
-
-		trianglePool 	= new TG_TrianglePool;
-		trianglePool->init(16000000);
-	}
-
-	loadProgress += 4.0f;
+	loadProgress += 5.0f;
 
 	// Logistics resets the render settings needed by the mission.
 	useFog = true;
@@ -1243,48 +1171,6 @@ void Mission::destroy (bool initLogistics)
 
 	if (initLogistics)
 		initTGLForLogistics();
-	else
-	{
-		if (colorPool || vertexPool || facePool || shadowPool || trianglePool)
-		{
-			logTglPoolPeaks("mission_unload");
-			if (colorPool)
-			{
-				colorPool->destroy();
-				delete colorPool;
-				colorPool = nullptr;
-			}
-
-			if (vertexPool)
-			{
-				vertexPool->destroy();
-				delete vertexPool;
-				vertexPool = nullptr;
-			}
-
-			if (facePool)
-			{
-				facePool->destroy();
-				delete facePool;
-				facePool = nullptr;
-			}
-
-			if (shadowPool)
-			{
-				shadowPool->destroy();
-				delete shadowPool;
-				shadowPool = nullptr;
-			}
-
-			if (trianglePool)
-			{
-				trianglePool->destroy();
-				delete trianglePool;
-				trianglePool = nullptr;
-			}
-		}
-	}
-
 
 	active = FALSE;
 	scenarioResult = mis_PLAYING;

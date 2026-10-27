@@ -542,10 +542,7 @@ long TreeAppearance::update (bool animate)
 			// still call mc2CacheOrBakeStaticGpuLight below (pool-independent — it
 			// only walks the hierarchy + GatherGpuObjectLightDataOnly). Result:
 			// pool peak 99%→0% on the heavy forest, no visual change.
-			if (GpuStaticPropBatcher::instance().isMultiShapeEligibleForGpuObjects(treeShape))
-				treeShape->TransformMultiShape_HierarchyOnly (&xlatPosition,&rot);
-			else
-				treeShape->TransformMultiShape (&xlatPosition,&rot);
+			treeShape->TransformMultiShape_HierarchyOnly (&xlatPosition,&rot);
 			// 2026-05-10: mirror of the BldgAppearance fix.
 			// Seed cachedGpuLightIndex_ in the full-bake branch so the
 			// next render() doesn't fail the UINT32_MAX gate
