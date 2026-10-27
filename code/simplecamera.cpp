@@ -315,7 +315,13 @@ void SimpleCamera::render(long xOffset, long yOffset)
 			else if ( auto* bldg = dynamic_cast<BldgAppearance*>(pObject.get()) )
 				previewShape = bldg->previewShape();
 			if ( previewShape )
+			{
+				// Project with the same panel offset update() centres the shape with.
+				const float offsetX = (bounds[2] + bounds[0] - viewMulX) / 2.f + fudgeX;
+				const float offsetY = (bounds[1] + bounds[3] - viewMulY) / 2.f + fudgeY;
+				TG_Shape::SetViewport(viewMulX,viewMulY,offsetX,offsetY);
 				previewShape->PreviewDraw();
+			}
 			else
 				pObject->render();
 			if ( isPanelPreview )
