@@ -130,7 +130,7 @@ inline constexpr int MAX_MECH_SMOKES = 4;
 // Enums 
 //------------------------------------------------------------------------------------------
 
-enum MechBodyLocationType {
+typedef enum {
 	MECH_BODY_LOCATION_ANY = -1,
 	MECH_BODY_LOCATION_HEAD,
 	MECH_BODY_LOCATION_CTORSO,
@@ -141,7 +141,7 @@ enum MechBodyLocationType {
 	MECH_BODY_LOCATION_LLEG,
 	MECH_BODY_LOCATION_RLEG,
 	NUM_MECH_BODY_LOCATIONS
-};
+} MechBodyLocationType;
 
 enum MechArmorLocationType {
 	MECH_ARMOR_LOCATION_ANY = -1,
