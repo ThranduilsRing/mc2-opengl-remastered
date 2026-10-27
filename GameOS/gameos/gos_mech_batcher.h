@@ -141,6 +141,10 @@ public:
     // Register one Mech3DAppearanceType × LOD. Idempotent.
     // Reads mechType->mechShape[lod] (TG_TypeMultiShape*, stable type-level pointer).
     void registerTypeLod(const Mech3DAppearanceType* mechType, int lod);
+    // A ground vehicle body (GVAppearanceType::gvShape[lod], gvDmgShape): keyed by the type shape itself.
+    // Submit with GpuMechSubmitDesc::mechType == nullptr; the key is mechShape's type shape.
+    void registerVehicleType(TG_TypeMultiShape* typeMulti);
+    bool isVehicleTypeRegistered(const TG_TypeMultiShape* typeMulti) const;
 
     // Upload immutable VBO/IBO after all registerTypeLod() calls.
     void finalizeGeometry();
@@ -178,6 +182,9 @@ public:
 
     static uint64_t getAllowedLateRegEventCount();
     static uint64_t getDisallowedLateRegEventCount();
+
+private:
+    void registerTypeLodImpl(const void* typeKey, TG_TypeMultiShape* typeMulti, int lod);
 };
 
 // ---------------------------------------------------------------------------

@@ -41,9 +41,9 @@
 
 extern "C" void mc2_framegraph_executor_bump_apply_state(unsigned id);
 
-// Key: (Mech3DAppearanceType*, lod) -> s_typeLodRecords index
+// Key: (Mech3DAppearanceType* or a vehicle TG_TypeMultiShape*, lod) -> s_typeLodRecords index
 struct TypeLodKey {
-    const Mech3DAppearanceType* type;
+    const void* type;
     int lod;
     bool operator==(const TypeLodKey& o) const { return type == o.type && lod == o.lod; }
 };
@@ -112,7 +112,7 @@ extern uint64_t s_gpuMechIdWritesThisMission;
 extern uint64_t s_allowedLateRegEvents;
 extern uint64_t s_disallowedLateRegEvents;
 extern bool s_lastFailWasLateReg;
-extern std::unordered_map<const Mech3DAppearanceType*, uint32_t> s_spotlightRealTypeNodeCount;
+extern std::unordered_map<const void*, uint32_t> s_spotlightRealTypeNodeCount;
 extern uint64_t s_spotlightReal_typeNodeEvents;
 extern uint64_t s_spotlightReal_drawWindow;
 extern uint64_t s_spotlightReal_drawMono;

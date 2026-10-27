@@ -1058,6 +1058,10 @@ void GVAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 					GpuStaticPropBatcher::instance().registerMultiShape(appearType->renderLods[i].get(), true, ov);
 		GpuStaticPropBatcher::instance().registerMultiShape(appearType->gvShadowShape);
 		GpuStaticPropBatcher::instance().registerMultiShape(appearType->gvDmgShape);
+		// Stock bodies (and the destroyed shape) draw from per-node matrices through the mech batcher.
+		for (int i = 0; i < MAX_LODS; ++i)
+			GpuMechBatcher::instance().registerVehicleType(appearType->gvShape[i]);
+		GpuMechBatcher::instance().registerVehicleType(appearType->gvDmgShape);
 	}
 }
 

@@ -79,6 +79,9 @@ extern "C" int mc2FreezeMoversActive();
 
 #include "gos_static_prop_batcher.h"
 #include "gos_static_prop_killswitch.h"  // g_useGpuStaticProps
+#include "../GameOS/gameos/gos_mech_batcher.h"  // stock vehicle bodies draw through the mech batcher
+#include "../GameOS/gameos/gos_mech_killswitch.h"  // g_useGpuMechs, g_mechPreviewRenderDepth
+#include "vk_object_lights.h"  // getLightStructCount
 #include "../GameOS/gameos/gpu_cull_readback.h"  // C3: GPU visibility queries
 #include "../code/gameobj.h"  // C3: full GameObject definition for obj->getHandle() in init()
 
