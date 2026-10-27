@@ -289,7 +289,7 @@ def resave_env(save_at: int, load_at: int) -> dict:
 
 def run_fixture(mission: str, save_at: int, load_at: int, deploy: bool, out: str | None, duration: int = 28, plant: str | None = None,
                 install: str = sd.INSTALL_DIR, save_dir: str | None = None, ref_exe: str | None = None, ref_commit: str | None = None,
-                sim_speed: int = 1):
+                sim_speed: int = 1, headless: bool = False):
     """Run `mission` with the save, load, re-save fixtures. -> (out dir, first save path, second save path or None, fingerprint dict or None).
     With `plant` (a save written by another exe, e.g. by tools/campaign_save_roundtrip.py) that file is put where the quickload reads it and
     `save_at` should lie beyond the run, so the first save returned is the planted one.
@@ -311,7 +311,9 @@ def run_fixture(mission: str, save_at: int, load_at: int, deploy: bool, out: str
         if plant:
             shutil.copy2(plant, os.path.join(sdir, "testgame.ims"))
         r = subprocess.run([sys.executable, os.path.join(ROOT, "scripts", "run_smoke.py"), "--mission", mission, "--duration", str(duration),
-                            *smoke_target(install, ref_exe, ref_commit), "--keep-logs", *speed_args(sim_speed)], env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, errors="replace",
+                            *smoke_target(install, ref_exe, ref_commit), "--keep-logs", *speed_args(sim_speed),
+                            # headless: no window or GPU; the run ends on a tick budget past the quickload and its re-save
+                            *(["--headless", "--ticks", str(load_at + 120)] if headless else [])], env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, errors="replace",
                            **console_child.child_kwargs(redirected=True))
         arts = [line.removeprefix("[runner] artifacts: ").strip() for line in r.stdout.splitlines() if line.startswith("[runner] artifacts: ")]
         if not arts or not os.path.exists(os.path.join(arts[-1], mission + ".log")):
@@ -546,7 +548,7 @@ def cmd_fixture(args) -> int:
         return 1
     speed = args.sim_speed or (base or {}).get("sim_speed", 1)
     dest, first, second, fp, rc = run_fixture(args.mission, args.save_at, args.load_at, args.deploy, args.out, args.duration, args.plant,
-                                             args.install, args.save_dir, args.ref_exe, args.ref_commit, sim_speed=speed)
+                                             args.install, args.save_dir, args.ref_exe, args.ref_commit, sim_speed=speed, headless=args.headless)
     ok, lines = fixture_verdict(first, second, args.mask, rc)
     print(f"files kept in {dest}")
     if args.cmd == "resave":
@@ -607,6 +609,7 @@ def main(argv=None) -> int:
         p.add_argument("--save-dir", help="backup/capture directory matching the engine's savePath (Windows installs share ~/.mechcommander2/savegame)")
         sd.add_ref_args(p)
         add_speed_arg(p)
+        p.add_argument("--headless", action="store_true", help="run the fixture headless (no window, GPU or audio; --ticks past the load): the save bytes must match the windowed baseline")
         p.add_argument("--first-save-only", action="store_true",
                        help="baseline/check with --mask: judge only the first save against the baseline and do not fail because the re-save leaves the mask "
                             "(the quickload is lossy: any save and its re-save differ in about 1159 of 20000 packets, so the re-save gate cannot pass); "
