@@ -1176,16 +1176,16 @@ int main(int argc, char** argv)
     AssetScale::shutdown();
 
 #ifdef MC2_IMGUI
-    GuiRuntime::Shutdown();
+    if (!headless) GuiRuntime::Shutdown();
 #endif
     if (!headless) gos_DestroyRenderer();   // headless: process exit frees the state-only renderer
     std::fprintf(stderr, "[SHUTDOWN] renderer end\n"); std::fflush(stderr);
 
     // Islands, then the present path, then the shared VulkanContext: one order, shared with the editor (gos_host_vk.cpp).
-    gos::host::shutdownVulkanBackend();
+    if (!headless) gos::host::shutdownVulkanBackend();
     std::fprintf(stderr, "[SHUTDOWN] vulkan end\n"); std::fflush(stderr);
 
-    graphics::destroy_window(win);
+    if (!headless) graphics::destroy_window(win);
 
     gos_DestroyAudio();
     std::fprintf(stderr, "[SHUTDOWN] audio end\n"); std::fflush(stderr);
