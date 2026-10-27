@@ -702,7 +702,7 @@ bool cp_import_authored(ColorPropIsland* s, const Mc2ColorPropMaterialFeed* feed
     if (have && !texResident) {
         // Per-object rows index a texture table that is not resident here (one slot on Low/Potato, or more maps than the device has slots):
         // clear the flag and indices so the shader never reads them as detail-array layers or unbound descriptors.
-        const size_t dropped = RenderCore::dropPerTextureRows(static_cast<RenderCore::PropMaterialGpu*>(mapped), feed->materialCount);
+        const size_t dropped = RenderCore::dropPerTextureRows(std::span<RenderCore::PropMaterialGpu>(static_cast<RenderCore::PropMaterialGpu*>(mapped), feed->materialCount));
         if (dropped) vlog("per-object textures not resident (%u maps, %u slots): %zu material rows fall back to class scalars.",
                           feed->textureCount, s->propTexSlots, dropped);
     }

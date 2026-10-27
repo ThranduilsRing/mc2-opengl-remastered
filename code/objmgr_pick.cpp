@@ -11,30 +11,30 @@ extern bool ShowMovers;
 
 static std::vector<int> s_moverOrdinalByHandle;	// rebuilt with moverGrid, same lifetime
 
-static void ensureMoverGrid(GameObjectManager& om, mc2::world::SpatialGrid& grid, bool& dirty, MoverPtr* moverList, int numMovers) {
+static void ensureMoverGrid(GameObjectManager& om, mc2::world::SpatialGrid& grid, bool& dirty, std::span<MoverPtr> movers) {
 	if (!dirty) return;
 	grid.clear();
 	GameObjectHandle maxHandle = -1;
-	for (int i = 0; i < numMovers; ++i) {
-		auto* mover = moverList[i];
+	for (int i = 0; i < int(movers.size()); ++i) {
+		auto* mover = movers[i];
 		const auto p = mover->getPosition();
 		grid.add(p.x, p.y, i, om.entityId(mover->getHandle()));
 		maxHandle = std::max(maxHandle, mover->getHandle());
 	}
 	grid.finish();
 	s_moverOrdinalByHandle.assign(size_t(maxHandle + 1), -1);
-	for (int i = 0; i < numMovers; ++i)
-		s_moverOrdinalByHandle[moverList[i]->getHandle()] = int(i);
+	for (int i = 0; i < int(movers.size()); ++i)
+		s_moverOrdinalByHandle[movers[i]->getHandle()] = int(i);
 	dirty = false;
 }
 
 std::vector<mc2::world::SpatialGrid::Candidate> GameObjectManager::nearbyMovers(const glm::vec3& position, float radius) {
-	ensureMoverGrid(*this, moverGrid, moverGridDirty, moverList, numMovers);
+	ensureMoverGrid(*this, moverGrid, moverGridDirty, std::span<MoverPtr>(moverList, size_t(numMovers)));
 	return moverGrid.query(position.x, position.y, radius);
 }
 
 int GameObjectManager::moverOrdinal(GameObjectHandle handle) {
-	ensureMoverGrid(*this, moverGrid, moverGridDirty, moverList, numMovers);
+	ensureMoverGrid(*this, moverGrid, moverGridDirty, std::span<MoverPtr>(moverList, size_t(numMovers)));
 	return (handle >= 0 && size_t(handle) < s_moverOrdinalByHandle.size()) ? s_moverOrdinalByHandle[handle] : -1;
 }
 

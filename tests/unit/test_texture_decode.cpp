@@ -1,5 +1,6 @@
 // The backend-neutral texture decode (GameOS/gameos/texture_decode.cpp): the bytes and policy every backend uploads.
 
+#include <span>
 #include "doctest.h"
 
 #include "texture_decode.h"
@@ -421,7 +422,7 @@ TEST_CASE("prop material rows: per-object rows without resident textures lose th
     rows[1].material.normalTex = 2; rows[1].reserved[1] = 1;
     rows[2].material.flags = MaterialFlags::kPerTexture;
     rows[2].material.normalTex = 0;
-    CHECK(dropPerTextureRows(rows, 3) == 2);
+    CHECK(dropPerTextureRows(std::span<PropMaterialGpu>(rows, 3)) == 2);
     CHECK((rows[0].material.flags & MaterialFlags::kPerTexture) == 0);
     CHECK((rows[0].material.flags & (MaterialFlags::kNormalMap | MaterialFlags::kMetallicRoughness)) == 0);
     CHECK(rows[0].material.normalTex == kMaterialTexAbsent);
@@ -431,7 +432,7 @@ TEST_CASE("prop material rows: per-object rows without resident textures lose th
     CHECK(rows[1].material.normalTex == 2); CHECK(rows[1].reserved[1] == 1);
     CHECK((rows[1].material.flags & MaterialFlags::kNormalMap) != 0);
     CHECK(rows[2].material.normalTex == kMaterialTexAbsent);
-    CHECK(dropPerTextureRows(rows, 3) == 0);   // idempotent
+    CHECK(dropPerTextureRows(std::span<PropMaterialGpu>(rows, 3)) == 0);   // idempotent
 }
 
 TEST_CASE("texture decode: PNG memory and file preserve every RGBA byte") {

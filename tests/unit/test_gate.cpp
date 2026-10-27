@@ -340,7 +340,7 @@ TEST_CASE("table is sorted, unique and every name round-trips through lookupName
     const std::size_t n = gate::tableSize();
     REQUIRE(n == gate::detail::kGateCount);
     // Population floor after the gate amnesty (retired names live in Gates/retired_names.json).
-    REQUIRE(n == 775);   // W76 + W75-fixups(+MC2_VK_PROP_TEX_SLOTS): also retires MC2_GPU_OBJECTS and drops MC2_GPU_GV_SHADOW_SKIP.
+    REQUIRE(n == 773);   // W77: W76 (774, retires MC2_GPU_OBJECTS, drops MC2_GPU_GV_SHADOW_SKIP) +MC2_VK_PROP_TEX_SLOTS -MC2_PATH_SOLVE_ISOLATED -MC2_WATCHID_GENERATION.
     for (std::size_t i = 0; i < n; ++i) {
         if (i > 0) CHECK((rows[i - 1].name < rows[i].name));
         const auto info = gate::lookupName(rows[i].name);
