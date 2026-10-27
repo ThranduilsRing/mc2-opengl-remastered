@@ -1532,12 +1532,12 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
     {
         ZoneScopedN("VKIsl.Props.FenceWait");
         if (!rctx.wait(s->submitted[par], 5000000000ull, "prop submission slot")) {
-            setFallback("submission_slot_timeout"); s->disabled = true; return 0;
+            setFallback("submission_slot_timeout"); vlog("LOUD: submission slot wait timed out (5 s); skipping this frame, will retry next frame."); return 0;
         }
         // Late coverage also reads this slot's descriptors and frame inputs.
         const VkFence lateFence = s->lateFence[par].get();
         if (vkWaitForFences(s->device, 1, &lateFence, VK_TRUE, 5ull*1000*1000*1000) != VK_SUCCESS) {
-            setFallback("late_fringe_fence_timeout"); s->disabled = true; return 0;
+            setFallback("late_fringe_fence_timeout"); vlog("LOUD: late fringe fence wait timed out (5 s); skipping this frame, will retry next frame."); return 0;
         }
     }
     us_fence_wait = usSince(tFence0);
