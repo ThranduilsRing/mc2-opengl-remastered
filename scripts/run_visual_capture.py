@@ -177,6 +177,14 @@ def _engine_capture_done(log_path: Path, n_expected: int) -> bool:
     return wrote >= n_expected
 
 
+def _mission_started(log_path: Path) -> bool:
+    """True once the engine has presented its first mission frame (the in-mission clock starts there)."""
+    try:
+        return "event=first_frame_presented" in log_path.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return False
+
+
 def guard_exe(exe: Path) -> bool:
     """Vet `exe` before any launch; print the identity line and the refusal.
 
@@ -414,12 +422,20 @@ def run_one(exe: Path, mission: str, bookmarks_path: Path, out_dir: Path,
         # cursor every iteration so it stays pinned center through the ENTIRE sweep
         # window (trigger frame + per-bookmark settle) -- a single pre-launch park
         # is not enough if the cursor moves during the run.
-        deadline = t0 + duration + 30
+        # The in-mission budget starts at the first presented frame, not at spawn: a slow or contended load (31 s measured at 4K, 74 s on a
+        # busy host) used to eat the whole budget and kill the engine before any bookmark was requested, which then read as
+        # "no sidecar or no backend/readback_source".
+        load_cap = 300
+        ready_t = None
+        deadline = t0 + load_cap
         done_early = False
         last_sizes = None
         while time.time() < deadline:
             firewall.poll()
             park_cursor_center()
+            if ready_t is None and _mission_started(log_path):
+                ready_t = time.time()
+                deadline = ready_t + duration + 30
             if all(p.exists() for p in expected_pngs.values()):
                 # CAPTURE-EARLY-EXIT-1: finished only when every PNG + sidecar
                 # exists, sizes are non-zero and unchanged across two polls, and
@@ -451,7 +467,7 @@ def run_one(exe: Path, mission: str, bookmarks_path: Path, out_dir: Path,
                 proc.terminate()
                 proc.wait(timeout=5)
             else:
-                remaining = max(1, (t0 + duration + 15) - time.time())
+                remaining = max(1, ((ready_t or t0) + duration + 15) - time.time())
                 proc.wait(timeout=remaining)
         except subprocess.TimeoutExpired:
             proc.kill()
