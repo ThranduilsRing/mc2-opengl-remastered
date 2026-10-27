@@ -24,10 +24,15 @@ struct MaterialSources {
     std::vector<RenderCore::PropMaterialGpu> table;
     std::vector<int32_t> packetIds;
     std::unordered_map<std::string, uint32_t> normalLayers, ormLayers;
+    // Per-object textures (MaterialFlags::kPerTexture rows): each file keeps its own extent, format and complete
+    // mip chain and is addressed by index in the shader's texture table, never packed into a shared-extent array.
+    std::vector<RenderCore::KtxImage> textures;
+    std::unordered_map<std::string, uint32_t> textureIndex;
 };
 
 inline constexpr size_t kMaxMaterials = 512; // bounded table; a mission may contain the whole kit
 inline constexpr uint32_t kMaxDetailEdge = 2048;
+inline constexpr size_t kMaxTextures = 1024;   // must match uPropTex[] in prop_material_vk.glsl
 
 // Normal mips average vectors and renormalize; a cancelling footprint is flat.
 inline void normalizeNormals(std::vector<uint8_t>& pixels) {
@@ -105,6 +110,61 @@ inline void decodeDetailArray(mc2tex::TextureArrayCpu& a, bool normal) {
 inline bool addMaterial(MaterialSources& dst, const ModelOverrideRecord& owner,
                          const ModelOverrideMaterial& input) {
     if (dst.table.size() >= kMaxMaterials) return false;
+    // Per-object path: every named map is a cooked KTX2 (BC5 normal, BC7 ORM, BC7 albedo) that keeps its own extent
+    // and mip chain. Maps of one slot need not share a size.
+    {
+        struct Want { const std::string& source; uint32_t format, altFormat; };
+        const Want wants[3] = {{input.normalPath, 141, 141}, {input.ormPath, 145, 145}, {input.albedoPath, 145, 146}};
+        bool any = false, all = true;
+        for (const auto& w : wants) {
+            if (w.source.empty()) continue;
+            any = true;
+            all = all && isKtx2(w.source);
+        }
+        if (any && all) {
+            RenderCore::PropMaterialGpu gpu{};
+            gpu.material.albedoTex = gpu.material.normalTex = gpu.material.metallicRoughnessTex =
+                gpu.material.emissiveTex = RenderCore::kMaterialTexAbsent;
+            uint32_t* slots[3] = {&gpu.material.normalTex, &gpu.material.metallicRoughnessTex, &gpu.material.albedoTex};
+            std::vector<std::string> keys;
+            bool accepted = true;
+            for (int i = 0; i < 3 && accepted; ++i) {
+                if (wants[i].source.empty()) continue;
+                const auto path = (std::filesystem::path(owner.manifestDir) / wants[i].source).generic_string();
+                auto it = dst.textureIndex.find(path);
+                if (it == dst.textureIndex.end()) {
+                    RenderCore::KtxImage image;
+                    if (dst.textures.size() >= kMaxTextures || !RenderCore::ktxLoadRgba8(path.c_str(), image) ||
+                        (image.vkFormat != wants[i].format && image.vkFormat != wants[i].altFormat) ||
+                        image.width <= 0 || image.height <= 0 || image.width > int(kMaxDetailEdge) || image.height > int(kMaxDetailEdge) ||
+                        mc2tex::mipExtent(image.width, image.mipCount-1) != 1 ||
+                        mc2tex::mipExtent(image.height, image.mipCount-1) != 1) {
+                        accepted = false;   // not a cooked block texture (e.g. RGBA8 from an older mod): legacy route below
+                        break;
+                    }
+                    image.vkFormat = wants[i].format;      // albedo bytes are shaded as authored (encoded), like the tier arrays
+                    image.isSrgb = false;
+                    it = dst.textureIndex.emplace(path, static_cast<uint32_t>(dst.textures.size())).first;
+                    dst.textures.push_back(std::move(image));
+                    keys.push_back(path);
+                }
+                *slots[i] = it->second;
+            }
+            if (!accepted) {
+                for (const auto& k : keys) { dst.textureIndex.erase(k); dst.textures.pop_back(); }
+            } else {
+            gpu.material.flags = RenderCore::MaterialFlags::kPerTexture |
+                (wants[0].source.empty() ? 0u : RenderCore::MaterialFlags::kNormalMap) |
+                (wants[1].source.empty() ? 0u : RenderCore::MaterialFlags::kMetallicRoughness);
+            gpu.material.baseColorFactor = 1; gpu.material.metallicFactor = input.metallic; gpu.material.roughnessFactor = input.roughness;
+            gpu.uvScale[0] = input.uvScale[0]; gpu.uvScale[1] = input.uvScale[1];
+            gpu.normalStrength = input.normalStrength; gpu.aoStrength = input.aoStrength;
+            gpu.materialClass = input.materialClass; gpu.reserved[0] = input.alphaMode; gpu.reserved[1] = 1; // BC5 XY
+            dst.table.push_back(gpu);
+            return true;
+            }
+        }
+    }
     auto cooked = [&](std::string_view source, uint32_t format) -> std::optional<RenderCore::KtxImage> {
         if (!isKtx2(source)) return std::nullopt;
         RenderCore::KtxImage image;
@@ -187,7 +247,7 @@ inline bool addMaterial(MaterialSources& dst, const ModelOverrideRecord& owner,
     };
     if (!valid(normal) || !valid(orm)) return false;
     decodeDetailArray(dst.normal, true); decodeDetailArray(dst.orm, false);
-    for (auto& row : dst.table) row.reserved[1] = 0;
+    for (auto& row : dst.table) if (!(row.material.flags & RenderCore::MaterialFlags::kPerTexture)) row.reserved[1] = 0;
     auto chain = [](const auto& t) -> const std::vector<std::vector<uint8_t>>* {
         return t && t->mipLevels.size() > 1 ? &t->mipLevels : nullptr;
     };

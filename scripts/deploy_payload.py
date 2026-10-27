@@ -1708,6 +1708,8 @@ def main():
     ap.add_argument("--require-clean", action="store_true",
                     help="refuse an executable whose embedded fingerprint says "
                          "dirty=1 (built from an uncommitted tree)")
+    ap.add_argument("--skip-kit", action="store_true",
+                    help="lane installs: leave the install's mods/ kit untouched (no pinned-kit payload, no kit reconcile)")
     ap.add_argument("--allow-new-target", action="store_true",
                     help="DELIBERATELY deploy to a NON-canonical / new ~5GB install "
                          "(release cut, fresh install). Off by default -- deploys are "
@@ -1880,7 +1882,7 @@ def run_deploy(args, src_root, build_dir, target, exe_name, pdb_name):
     vehicle_manifest = None
     kit_tool = None
     remastered = render_options_pin.record(Path(target), os.environ)["values"]["RemasteredBuildings"]
-    if not args.classic_assets and remastered:
+    if not args.classic_assets and not args.skip_kit and remastered:
         try:
             kit_manifest, kit_items = kit_payload.payload(src_root)
             items.extend(kit_items)

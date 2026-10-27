@@ -389,19 +389,22 @@ TEST_CASE("authored prop detail: GPU blocks share layers and mixed mods remain v
     input.roughness=0.6f;
     REQUIRE(mc2prop::addMaterial(dst,owner,input));
     CHECK(dst.table.size()==2);
-    CHECK(dst.normal.layers==1); CHECK(dst.orm.layers==1);
-    CHECK(dst.normal.vkFormat==141); CHECK(dst.orm.vkFormat==145);
-    CHECK(dst.normal.levels[0].size()==16);
-    CHECK(mc2tex::textureArrayLevelBytes(dst.normal,2)==16);
-    CHECK(dst.table[1].material.normalTex==0); CHECK(dst.table[1].reserved[1]==1);
+    // Cooked block maps are per-object textures: own image each, deduplicated by file, no shared array layer.
+    CHECK(dst.normal.layers==0); CHECK(dst.orm.layers==0);
+    REQUIRE(dst.textures.size()==2);
+    CHECK(dst.textures[0].vkFormat==141); CHECK(dst.textures[1].vkFormat==145);
+    CHECK(dst.textures[0].mipCount==3);
+    CHECK((dst.table[1].material.flags & RenderCore::MaterialFlags::kPerTexture)!=0);
+    CHECK(dst.table[1].material.normalTex==0); CHECK(dst.table[1].material.metallicRoughnessTex==1);
+    CHECK(dst.table[1].reserved[1]==1);
     const auto rgbaFile=root/"mc2-detail-blocks-mixed.tga";
     const auto bytes=tga(4,4,32,std::vector<uint8_t>(64,255));
     { std::ofstream out(rgbaFile,std::ios::binary); out.write(reinterpret_cast<const char*>(bytes.data()),bytes.size()); }
     input.normalPath=rgbaFile.filename().generic_string();
     REQUIRE(mc2prop::addMaterial(dst,owner,input));
     CHECK(dst.normal.vkFormat==37); CHECK(dst.orm.vkFormat==37);
-    CHECK(dst.normal.layers==2); CHECK(dst.orm.layers==2);
-    CHECK(dst.table[0].reserved[1]==0);
+    CHECK(dst.normal.layers==1); CHECK(dst.orm.layers==1);   // a mixed row keeps the legacy array route
+    CHECK(dst.table[0].reserved[1]==1);                       // per-object rows keep their BC5 flag
     std::filesystem::remove(root/"mc2-detail-blocks-normal.ktx2");
     std::filesystem::remove(root/"mc2-detail-blocks-orm.ktx2");
     std::filesystem::remove(rgbaFile);

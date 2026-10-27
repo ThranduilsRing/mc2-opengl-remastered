@@ -15,6 +15,7 @@ the VFS (and any texture mod) supplies the same bytes the stock prop uses.
 """
 from __future__ import annotations
 
+import types
 import json
 import re
 import shutil
@@ -29,7 +30,7 @@ PACKAGE_VERSION = "mc2-content-package/1"
 COOKER_VERSION = "mc2-content-cooker/9"  # glass panes carry stable UV1 night-window IDs
 GEOMETRY_CACHE = cache.CacheKind("model-", ".glb")
 SKIN_CACHE = cache.CacheKind("skin-", ".glb")
-DETAIL_EDGE = 512        # every authored detail map in a mission shares this extent (engine array)
+DETAIL_EDGE = 2048       # largest per-object map edge; each map keeps its own power-of-two extent up to this
 SAFE = re.compile(r"[a-z0-9][a-z0-9_-]{0,62}")
 
 
@@ -57,14 +58,15 @@ def stock_texture_name(material):
 
 
 def _detail(material: ir.Material, which: str, report: dict, compress: bool):
+    """Per-object map at its own extent (power of two, at most DETAIL_EDGE); resampled only when it must be."""
     ref = getattr(material, which)
     rgba = texcook.load_rgba(ref.path)
     source = ref.sha256          # key on the resolved source bytes
-    if rgba.shape[:2] != (DETAIL_EDGE, DETAIL_EDGE):
-        rgba = np.array(texcook.Image.fromarray(rgba, "RGBA").resize((DETAIL_EDGE, DETAIL_EDGE),
-                        texcook.Image.Resampling.LANCZOS), dtype=np.uint8)
+    rgba2 = texcook.resize_pow2(rgba, DETAIL_EDGE)
+    if rgba2.shape != rgba.shape:
         report.setdefault("resampled", []).append(f"{material.name}:{which}")
-    return texcook.cook_ktx2(rgba, which, compress=compress, source_sha256=source)
+    return texcook.cook_ktx2(rgba2, "base_color" if which == "albedo" else which, compress=compress,
+                             source_sha256=source if rgba2.shape == rgba.shape else None)
 
 
 ENGINE_NODE_PREFIXES = ("spotlight_", "litwin", "_pab", "los_")   # tgl_types.cpp / msl_load.cpp name rules
@@ -263,6 +265,10 @@ def cook_asset(asset: ir.Asset, out: Path, *, compress=True, max_triangles=None,
                "roughness": m.roughness, "metallic": m.metallic, "uvScale": list(m.detail_uv_scale)}
         if alpha == "MASK":
             row["alphaCutoff"] = m.alpha_cutoff
+        if m.base_color is not None and m.base_color_policy != "stock" and not m.base_color.passthrough and alpha == "OPAQUE":
+            rel = f"{aid}/detail/{slot}_albedo.ktx2"
+            _write(mo / rel, _detail(types.SimpleNamespace(name=m.name, albedo=m.base_color), "albedo", entry, compress))
+            row["albedo"] = rel
         for which in ("normal", "orm"):
             if getattr(m, which) is not None:
                 key = (which, getattr(m, which).sha256)
@@ -365,7 +371,7 @@ def check_package(out) -> list[str]:
                     problems.append(f"{key}: slot {row.get('slot')} needs a reviewed authored class")
                 if row.get("class") not in ir.METALLIC_CLASSES and row.get("metallic", 0) != 0:
                     problems.append(f"{key}: slot {row.get('slot')} class cannot be metallic")
-                for which in ("normal", "orm"):
+                for which in ("normal", "orm", "albedo"):
                     rel = row.get(which)
                     if rel is None:
                         continue
@@ -373,7 +379,7 @@ def check_package(out) -> list[str]:
                         problems.append(f"{key}: slot {row.get('slot')} {which} missing/unsupported {rel}")
                     elif rel.endswith(".ktx2"):
                         vk, w, h, levels = texcook.read_ktx2((mo / rel).read_bytes())
-                        want = texcook.ROLES[which].vk_format
-                        if vk not in (want, texcook.VK_RGBA8_UNORM) or (w, h) != (DETAIL_EDGE, DETAIL_EDGE):
-                            problems.append(f"{key}: {rel} is vkFormat {vk} {w}x{h}, contract {want} {DETAIL_EDGE}^2")
+                        want = texcook.ROLES["base_color" if which == "albedo" else which].vk_format
+                        if vk not in (want, texcook.VK_RGBA8_UNORM) or not all(0 < e <= DETAIL_EDGE and e & (e - 1) == 0 for e in (w, h)):
+                            problems.append(f"{key}: {rel} is vkFormat {vk} {w}x{h}, contract {want}, power-of-two edge <= {DETAIL_EDGE}")
     return problems
