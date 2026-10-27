@@ -114,7 +114,7 @@ inline bool addMaterial(MaterialSources& dst, const ModelOverrideRecord& owner,
     // and mip chain. Maps of one slot need not share a size.
     {
         struct Want { const std::string& source; uint32_t format, altFormat; };
-        const Want wants[3] = {{input.normalPath, 141, 141}, {input.ormPath, 145, 145}, {input.albedoPath, 145, 146}};
+        const Want wants[4] = {{input.normalPath, 141, 141}, {input.ormPath, 145, 145}, {input.albedoPath, 145, 146}, {input.teamMaskPath, 145, 145}};
         bool any = false, all = true;
         for (const auto& w : wants) {
             if (w.source.empty()) continue;
@@ -125,10 +125,10 @@ inline bool addMaterial(MaterialSources& dst, const ModelOverrideRecord& owner,
             RenderCore::PropMaterialGpu gpu{};
             gpu.material.albedoTex = gpu.material.normalTex = gpu.material.metallicRoughnessTex =
                 gpu.material.emissiveTex = RenderCore::kMaterialTexAbsent;
-            uint32_t* slots[3] = {&gpu.material.normalTex, &gpu.material.metallicRoughnessTex, &gpu.material.albedoTex};
+            uint32_t* slots[4] = {&gpu.material.normalTex, &gpu.material.metallicRoughnessTex, &gpu.material.albedoTex, &gpu.material.emissiveTex};
             std::vector<std::string> keys;
             bool accepted = true;
-            for (int i = 0; i < 3 && accepted; ++i) {
+            for (int i = 0; i < 4 && accepted; ++i) {
                 if (wants[i].source.empty()) continue;
                 const auto path = (std::filesystem::path(owner.manifestDir) / wants[i].source).generic_string();
                 auto it = dst.textureIndex.find(path);
@@ -155,7 +155,8 @@ inline bool addMaterial(MaterialSources& dst, const ModelOverrideRecord& owner,
             } else {
             gpu.material.flags = RenderCore::MaterialFlags::kPerTexture |
                 (wants[0].source.empty() ? 0u : RenderCore::MaterialFlags::kNormalMap) |
-                (wants[1].source.empty() ? 0u : RenderCore::MaterialFlags::kMetallicRoughness);
+                (wants[1].source.empty() ? 0u : RenderCore::MaterialFlags::kMetallicRoughness) |
+                (wants[3].source.empty() ? 0u : RenderCore::MaterialFlags::kTeamMask);
             gpu.material.baseColorFactor = 1; gpu.material.metallicFactor = input.metallic; gpu.material.roughnessFactor = input.roughness;
             gpu.uvScale[0] = input.uvScale[0]; gpu.uvScale[1] = input.uvScale[1];
             gpu.normalStrength = input.normalStrength; gpu.aoStrength = input.aoStrength;

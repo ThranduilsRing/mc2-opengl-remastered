@@ -138,6 +138,7 @@ long GVAppearance::render (long depthFixup)
 			if (s_vehicleLitPath)
 				drawShape->CacheGpuLightDataAllLeaves();
 
+			if (renderShape) renderShape->SetTeamPaint(psRed, psGreen, psBlue);
 			const bool submitted = renderShape && GpuStaticPropBatcher::instance().submitMultiShape(
 				drawShape, GpuStaticPropPopulation::Generic, appearType->name);
 			if (!submitted) drawShape->Render(true);

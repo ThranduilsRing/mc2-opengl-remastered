@@ -670,6 +670,12 @@ class TG_MultiShape
 			for (int i=0;i<numTG_Shapes;i++)
 				listOfShapes[i].node->SetARGBHighLight(argb);
 		}
+
+		// Team paint (0x??RRGGBB x3: red, green, blue slots of the stock paint scheme). The static-prop batcher
+		// forwards it per instance; a material's team mask tints with it in the fragment shader.
+		void SetTeamPaint (DWORD r, DWORD g, DWORD b) { teamPaint[0] = r; teamPaint[1] = g; teamPaint[2] = b; teamPaintValid = true; }
+		DWORD teamPaint[3] = {0, 0, 0};
+		bool  teamPaintValid = false;
 		
 		void SetLightsOut (bool lightFlag)
 		{

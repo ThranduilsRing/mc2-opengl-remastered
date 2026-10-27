@@ -203,7 +203,8 @@ public:
                               uint32_t highlightARGB,
                               uint32_t fogARGB,
                               uint32_t flags,
-                              uint32_t lightDataIndex);
+                              uint32_t lightDataIndex,
+                              const uint32_t* teamPaint = nullptr);
 
     // Iterate a multishape's children and submit each SHAPE_NODE leaf using
     // the child's own listOfShapes[i].shapeToWorld. Per-child highlight/fog/

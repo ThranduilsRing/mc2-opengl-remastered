@@ -21,6 +21,7 @@ struct ModelOverrideMaterial {
     float alphaCutoff = 0.5f;
     std::string normalPath;       // .tga or .ktx2 (BC5 / RGBA8), manifest-relative; empty = flat
     std::string ormPath;          // .tga or .ktx2 (BC7 / RGBA8); empty = class scalars, full coverage
+    std::string teamMaskPath;     // .ktx2 (BC7 linear, R = base slot, G = highlight slot, B = secondary slot); empty = no team tint
     std::string albedoPath;       // .ktx2 only (BC7, own mip chain): per-object albedo that replaces the tiered tgl texture; empty = tiered
     float uvScale[2] = {1.0f, 1.0f};
     float normalStrength = 1.0f;
@@ -68,7 +69,7 @@ struct ModelOverrideRecord {
     // (team mask), so one shared body per LOD serves every paint and can be registered before the batcher finalizes.
     bool usesObjectMaps() const {
         for (const auto& m : materials)
-            if (!m.albedoPath.empty() || !m.normalPath.empty() || !m.ormPath.empty()) return true;
+            if (!m.albedoPath.empty() || !m.normalPath.empty() || !m.ormPath.empty() || !m.teamMaskPath.empty()) return true;
         return false;
     }
 };

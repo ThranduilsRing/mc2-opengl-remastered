@@ -111,6 +111,8 @@ static void parseMaterials(const json& entry, ModelOverrideRecord& rec) {
             m.normalPath = path(row, "normal");
             m.ormPath = path(row, "orm");
             m.albedoPath = path(row, "albedo");
+            m.teamMaskPath = path(row, "teamMask");
+            if (!m.teamMaskPath.empty() && !endsWith(m.teamMaskPath, ".ktx2")) throw std::runtime_error("teamMask must be ktx2");
             if (!m.albedoPath.empty() && !endsWith(m.albedoPath, ".ktx2")) throw std::runtime_error("albedo must be ktx2");
             if (version == 1 && m.normalPath.empty() && m.ormPath.empty()) throw std::runtime_error("empty material");
             const auto alpha = RenderCore::surfaceAlphaFromName(row.value("alphaMode", std::string("STOCK")));

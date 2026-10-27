@@ -9,7 +9,8 @@ bool GpuStaticPropBatcher::submit(TG_Shape* shape,
                                   uint32_t highlightARGB,
                                   uint32_t fogARGB,
                                   uint32_t flags,
-                                  uint32_t lightDataIndex) {
+                                  uint32_t lightDataIndex,
+                                  const uint32_t* teamPaint) {
     if (!shape || !shape->matchesTypeMaterials() || s_fatalRegistrationFailure) return false;
 
     // TG_Shape::myType is a TG_TypeNodePtr; for SHAPE_NODE leaves it's a TG_TypeShape.
@@ -80,6 +81,9 @@ bool GpuStaticPropBatcher::submit(TG_Shape* shape,
     inst.fogRGB[1] = ((fogARGB >>  8) & 0xFF) / 255.0f;
     inst.fogRGB[2] = ((fogARGB >>  0) & 0xFF) / 255.0f;
     inst.fogRGB[3] = ((fogARGB >> 24) & 0xFF) / 255.0f;
+    // The Vulkan colour island never reads the fog colour of a prop instance, so an object with a team mask carries
+    // its three paint colours (packed 0x00RRGGBB, raw bits) in fogRGB.xyz.
+    if (teamPaint) std::memcpy(inst.fogRGB, teamPaint, 3 * sizeof(uint32_t));
     {
         // MC2_TREE_DIAG_TRACE diagnostic. See macro definition near line ~50.
         // COUNTER-HONESTY-1: this is a SAMPLE (first kTreeDiagSample records),
@@ -645,7 +649,7 @@ bool GpuStaticPropBatcher::submitMultiShape(TG_MultiShape* multi,
         glm::mat4 xform = glm::mat4(rec.shapeToWorld);
         if (!submit(child, xform,
                     child->aRGBHighlight, child->fogRGB, flags,
-                    lightDataIndex)) {
+                    lightDataIndex, multi->teamPaintValid ? reinterpret_cast<const uint32_t*>(multi->teamPaint) : nullptr)) {
             // submit() rejected after we passed the registration gate —
             // typically a buffer-full condition. Fall back for this frame
             // to keep the visual self-consistent.

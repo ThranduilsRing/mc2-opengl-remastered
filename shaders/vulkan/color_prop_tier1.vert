@@ -95,6 +95,7 @@ flat layout(location = 12) out vec3 vMaterialSun;
 flat layout(location = 13) out uint vMaterialFlags;
 layout(location = 14) out vec2 vTree; // ambient AO, tree material active
 flat layout(location = 15) out uvec2 vWindow; // glass cell ID, stable building seed
+flat layout(location = 16) out uvec3 vTeam;   // team paint 0x00RRGGBB x3 (red, green, blue slot), carried in the instance's fogRGB bits
 
 // Per-type hot-colour magic: the emission colours of the three night tags (windows, outside building lights, building base lights), taken from the type's ini.
 // Three vec4 per type in the order pink, yellow, green; indexed by inst.typeID. Same table the GL prop shader reads.
@@ -232,6 +233,7 @@ void main() {
     vMaterialAmbient = vec3(0);
     vMaterialSun = vec3(0);
     vMaterialFlags = inst.flags;
+    vTeam = floatBitsToUint(inst.fogRGB.xyz);
     if ((inst.flags & kFlagIsWindow) != 0u) {
         vArgb = surfaceEncodeSrgb(surfaceDecodeSrgb(seed) + surfaceDecodeSrgb(inst.aRGBHighlight.rgb));
         return;
