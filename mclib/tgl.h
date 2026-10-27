@@ -934,8 +934,6 @@ class TG_Shape
 															//Draw in this order.  First entry with value 0xffffffff
 															//Means all done, no more to draw.
 
-		float					cur_viewport[4];
-		glm::mat4			cur_shape2clip;
         TG_HWLightsData         lightData_;
 
 		std::vector<TG_ShadowVertex>	shadowVertexStore;	//Owns the shadow vertices (built in CreateFrom, released in destroy(): the instance memory is freed without a destructor).
@@ -1250,20 +1248,6 @@ inline void _TG_ShapeRec::transferFrom (_TG_ShapeRec &rec, const TG_TinyTexture*
     transferFrom(rec);
     if (node) node->instanceTextures_=textures;
 }
-
-////////////////////////////////////////////////////////////////////////////////
-class TG_RenderShape {
-public:
-	HGOSBUFFER vb_;
-	HGOSBUFFER ib_;
-	HGOSVERTEXDECLARATION vdecl_;
-	glm::mat4 mvp_; // model -> projection
-	glm::mat4 mw_; // model -> world
-	float viewport_[4];
-    uint32_t light_data_buffer_index_;
-    bool isHudElement_;
-};
-////////////////////////////////////////////////////////////////////////////////
 
 // CPU routing for sidecar override shapes; no GL material is involved.
 

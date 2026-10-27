@@ -1299,7 +1299,6 @@ void Mission::destroy (bool initLogistics)
         mc2::VkSceneRenderer::reset();
         mc2::effects::reload();
 		mc2::renderSubmissions().freeVertices();
-		mc2::renderSubmissions().freeShapes();
 	}
 
 	if (soundSystem) soundSystem->purgeSoundSystem();

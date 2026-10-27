@@ -114,7 +114,6 @@ void Mission::initBareMinimum()
 
 	// Vertex storage covers forests of detailed model overrides.
 	mc2::renderSubmissions().startVertices(32000000);
-	mc2::renderSubmissions().startShapes(10000);
 
 	initTGLForLogistics();
 

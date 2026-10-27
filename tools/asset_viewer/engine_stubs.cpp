@@ -254,7 +254,6 @@ float Terrain::getTerrainElevation(const glm::vec3&) { return 0.0f; }
 
 unsigned int mc2::vkLights::addLightDataStructure(TG_HWLightsData*) { return 0; }
 unsigned int mc2::vkLights::addLightDataStructureWithPerActorColor(TG_HWLightsData*) { return 0; }
-void mc2::RenderSubmissions::addRenderShape(DWORD, TG_RenderShape*, DWORD) {}
 namespace mc2::textures { DWORD sourceId(DWORD) { return 0; } const char* name(DWORD) { return nullptr; } }
 
 namespace mc2::textures { bool ready() { return false; } }
