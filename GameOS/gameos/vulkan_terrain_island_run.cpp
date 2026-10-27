@@ -314,6 +314,94 @@ void fill_frame_ubo(TerrainIsland* s, const Mc2TerrainTier1Feed& feed,
     u.shoreFieldBoundsW = feed.shoreFieldBounds[2]; u.shoreFieldBoundsH = feed.shoreFieldBounds[3];
 }
 
+// GPU-FRONTIER-1: pure command recording for the terrain pass. Mesh lookups, the distance sort and the dynamic offsets are prepared by
+// mc2_vk_terrain_island_run on the main thread; this touches only the command buffer and the island timers.
+struct TerrainDraw { TerrainPatchConstants patch; const PatchMesh* pm; const SkirtMesh* sm; uint32_t skirtMask; };
+static bool record_terrain(TerrainIsland* s, mc2vk::VulkanContext& rctx, VkCommandBuffer cb, uint32_t par, int w, int h,
+                           const uint32_t (&dynOffs)[4], const std::vector<TerrainDraw>& draws,
+                           unsigned long& drawnOut, unsigned long& skirtDrawnOut) {
+    vkResetCommandBuffer(cb, 0);
+    VkCommandBufferBeginInfo bi{};
+    bi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+    if (vkBeginCommandBuffer(cb, &bi) != VK_SUCCESS) return false;
+    {
+        MC2_VK_GPU_SCOPE(listsScope, cb, "VKIsl.LightLists");
+        s->lightLists.record(rctx, cb, par);
+    }
+    vk_render_pass_timer::Begin(cb, gos_render_pass_timer::Pass_TerrainChunk);
+
+    // VK-DRAW-PERF-1: reset the query pool (outside the render pass) + stamp pass-start.
+    s->gpuTimer.reset(cb);
+    s->gpuTimer.write(cb, 0);
+
+    // FAR-BAND-BLACK-1 FIX: attachment 2 clears to reverse-Z far. The native prefix
+    // clear path also clears color0 and normal here, matching the GL frame-entry
+    // clear plus clearGBuffer1 sentinel before terrain draws into the shared GBuffer.
+    VkClearValue clears[3]{};
+    clears[0].color.float32[0] = g_prefixClearColor[0];
+    clears[0].color.float32[1] = g_prefixClearColor[1];
+    clears[0].color.float32[2] = g_prefixClearColor[2];
+    clears[0].color.float32[3] = g_prefixClearColor[3];
+    clears[1].color.float32[0] = 0.5f;
+    clears[1].color.float32[1] = 0.5f;
+    clears[1].color.float32[2] = 1.0f;
+    clears[1].color.float32[3] = 0.0f;
+    clears[2].depthStencil = {0.0f, 0u};
+
+    VkRenderPassBeginInfo rbi{};
+    rbi.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+    rbi.renderPass = s->rpass.get(); rbi.framebuffer = s->fb.get();
+    rbi.renderArea = {{0, 0}, {static_cast<uint32_t>(w), static_cast<uint32_t>(h)}};
+    rbi.clearValueCount = 3; rbi.pClearValues = clears;
+    MC2_VK_GPU_SCOPE(gpuScope, cb, "VKIsl.Terrain");
+    vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
+
+    VkViewport vp{0.0f, 0.0f, static_cast<float>(w), static_cast<float>(h), 0.0f, 1.0f};
+    VkRect2D scissor{{0, 0}, {static_cast<uint32_t>(w), static_cast<uint32_t>(h)}};
+    vkCmdSetViewport(cb, 0, 1, &vp);
+    vkCmdSetScissor(cb, 0, 1, &scissor);
+    mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->pipe.get());
+
+    // VK-DRAW-PERF-1: stamp draws-start (gap 0->1 = setup + clear/load).
+    s->gpuTimer.write(cb, 1);
+
+    vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 0, 1, &s->set[par], 4, dynOffs);
+
+    // Opaque patches write depth. Submit the nearest chunks first so the early
+    // depth test rejects hidden terrain before running the material shader.
+    drawnOut = 0; skirtDrawnOut = 0;
+    for (const TerrainDraw& d : draws) {
+        vkCmdPushConstants(cb, s->playout.get(), VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(d.patch), &d.patch);
+        mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->pipe.get());
+        VkDeviceSize vboOff = 0;
+        { const VkBuffer vb = d.pm->vbo.get(); vkCmdBindVertexBuffers(cb, 0, 1, &vb, &vboOff); }
+        vkCmdBindIndexBuffer(cb, d.pm->ibo.get(), 0, VK_INDEX_TYPE_UINT16);
+        vkCmdDrawIndexed(cb, d.pm->indexCount, 1, 0, 0, 0);
+        ++drawnOut;
+        if (d.sm) {
+            mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->skirtPipe.get());
+            VkDeviceSize svboOff = 0;
+            { const VkBuffer vb = d.sm->vbo.get(); vkCmdBindVertexBuffers(cb, 0, 1, &vb, &svboOff); }
+            vkCmdBindIndexBuffer(cb, d.sm->ibo.get(), 0, VK_INDEX_TYPE_UINT16);
+            for (int e = 0; e < 4; ++e) {
+                if (((d.skirtMask >> e) & 1u) == 0u) continue;
+                if (d.sm->edgeCount[e] == 0) continue;
+                vkCmdDrawIndexed(cb, d.sm->edgeCount[e], 1, d.sm->edgeOffset[e], 0, 0);
+                ++skirtDrawnOut;
+            }
+        }
+    }
+
+    vkCmdEndRenderPass(cb);
+    gpuScope.end();
+    // VK-DRAW-PERF-1: stamp pass-end (gap 1->2 = all patch/skirt draws).
+    s->gpuTimer.write(cb, 2);
+    vk_render_pass_timer::End(cb, gos_render_pass_timer::Pass_TerrainChunk);
+    if (vkEndCommandBuffer(cb) != VK_SUCCESS) return false;
+    return true;
+}
+
 extern "C" int mc2_vk_terrain_island_run(int w, int h) {
     ZoneScopedN("VK-terrain-island");   // VK-FLIP-FIELD-REPORT-1 coarse region zone
     if (w <= 0 || h <= 0) return 0;
@@ -460,60 +548,6 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
 
     const clk::time_point tRender0 = clk::now();
     ZoneNamedN(zTerrRec, "VK-terrain-record-submit", true);   // VK-FLIP-FIELD-REPORT-1: CPU record+queue-submit (to fn return)
-    vkResetCommandBuffer(cb, 0);
-    VkCommandBufferBeginInfo bi{};
-    bi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-    bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-    if (vkBeginCommandBuffer(cb, &bi) != VK_SUCCESS) { setFallback("record_failed"); s->disabled = true; return 0; }
-    {
-        MC2_VK_GPU_SCOPE(listsScope, cb, "VKIsl.LightLists");
-        s->lightLists.record(rctx, cb, par);
-    }
-    vk_render_pass_timer::Begin(cb, gos_render_pass_timer::Pass_TerrainChunk);
-    vk_render_pass_timer::CancelUnlessSubmitted timerGuard(gos_render_pass_timer::Pass_TerrainChunk);
-
-    // VK-DRAW-PERF-1: reset the query pool (outside the render pass) + stamp pass-start.
-    s->gpuTimer.reset(cb);
-    s->gpuTimer.write(cb, 0);
-
-    // FAR-BAND-BLACK-1 FIX: attachment 2 clears to reverse-Z far. The native prefix
-    // clear path also clears color0 and normal here, matching the GL frame-entry
-    // clear plus clearGBuffer1 sentinel before terrain draws into the shared GBuffer.
-    VkClearValue clears[3]{};
-    clears[0].color.float32[0] = g_prefixClearColor[0];
-    clears[0].color.float32[1] = g_prefixClearColor[1];
-    clears[0].color.float32[2] = g_prefixClearColor[2];
-    clears[0].color.float32[3] = g_prefixClearColor[3];
-    clears[1].color.float32[0] = 0.5f;
-    clears[1].color.float32[1] = 0.5f;
-    clears[1].color.float32[2] = 1.0f;
-    clears[1].color.float32[3] = 0.0f;
-    clears[2].depthStencil = {0.0f, 0u};
-
-    g_sceneClearedRenderFrame = g_mc2RenderFrame + 1u;   // this pass CLEARs color0 / normal / depth (see mc2_vk_scene_clear)
-    VkRenderPassBeginInfo rbi{};
-    rbi.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-    rbi.renderPass = s->rpass.get(); rbi.framebuffer = s->fb.get();
-    rbi.renderArea = {{0, 0}, {static_cast<uint32_t>(w), static_cast<uint32_t>(h)}};
-    rbi.clearValueCount = 3; rbi.pClearValues = clears;
-    MC2_VK_GPU_SCOPE(gpuScope, cb, "VKIsl.Terrain");
-    vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
-
-    VkViewport vp{0.0f, 0.0f, static_cast<float>(w), static_cast<float>(h), 0.0f, 1.0f};
-    VkRect2D scissor{{0, 0}, {static_cast<uint32_t>(w), static_cast<uint32_t>(h)}};
-    vkCmdSetViewport(cb, 0, 1, &vp);
-    vkCmdSetScissor(cb, 0, 1, &scissor);
-    mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->pipe.get());
-
-    // VK-DRAW-PERF-1: stamp draws-start (gap 0->1 = setup + clear/load).
-    s->gpuTimer.write(cb, 1);
-
-    const uint32_t dynOffs[4] = {static_cast<uint32_t>(uboSpan.offset), static_cast<uint32_t>(lpSpans[0].offset),
-                                 static_cast<uint32_t>(lpSpans[1].offset), static_cast<uint32_t>(lpSpans[2].offset)};
-    vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 0, 1, &s->set[par], 4, dynOffs);
-
-    // Opaque patches write depth. Submit the nearest chunks first so the early
-    // depth test rejects hidden terrain before running the material shader.
     std::vector<uint32_t> drawOrder(patchCount);
     std::iota(drawOrder.begin(), drawOrder.end(), 0u);
     const auto distanceSquared = [&](uint32_t i) {
@@ -527,50 +561,26 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
         return da < db || (da == db && a < b);
     });
 
-    unsigned long drawn = 0;
-    unsigned long skirtDrawn = 0;  // VK-TERRAIN-SKIRT (rung 4): skirt edge-strip draw count
+    std::vector<TerrainDraw> draws;
+    draws.reserve(patchCount);
     for (uint32_t i : drawOrder) {
         const Mc2TerrainTier1Patch& pr = feed.patches[i];
         const PatchMesh* pm = getOrBuildPatch(s, pr.quadCountX, pr.quadCountY, pr.lodStep);
         if (!pm || pm->indexCount == 0) continue;
-        const TerrainPatchConstants patch{pr.blockOriginX, pr.blockOriginY, pr.quadCountX, pr.quadCountY,
+        TerrainDraw d{};
+        d.patch = TerrainPatchConstants{pr.blockOriginX, pr.blockOriginY, pr.quadCountX, pr.quadCountY,
             static_cast<int32_t>(pr.edgeStitch),
             (pr.visualMode == 2 && s->visualHeightReady && feed.visualSide > 1) ? 2 : 0, pr.skirtDepth};
-        vkCmdPushConstants(cb, s->playout.get(), VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(patch), &patch);
-        mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->pipe.get());
-        VkDeviceSize vboOff = 0;
-        { const VkBuffer vb = pm->vbo.get(); vkCmdBindVertexBuffers(cb, 0, 1, &vb, &vboOff); }
-        vkCmdBindIndexBuffer(cb, pm->ibo.get(), 0, VK_INDEX_TYPE_UINT16);
-        vkCmdDrawIndexed(cb, pm->indexCount, 1, 0, 0, 0);
-        ++drawn;
-
-        // VK-TERRAIN-SKIRT (rung 4): draw this patch's skirt strips, gated per-block
-        // exactly like GL (skirtDepth>0 AND per-edge mask bit set,
-        // gos_terrain_lod_chunk.cpp:1736,1753-1758). pr.skirtDepth/skirtEdgeMask are
-        // 0 whenever the GL-side skirts sub-gate wasn't armed at capture -- no-op then.
-        if (pr.skirtDepth > 0.0f && pr.skirtEdgeMask != 0u) {
-            const SkirtMesh* sm = getOrBuildSkirtMesh(s, pr.quadCountX, pr.quadCountY, pr.lodStep);
-            if (sm) {
-                mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->skirtPipe.get());
-                VkDeviceSize svboOff = 0;
-                { const VkBuffer vb = sm->vbo.get(); vkCmdBindVertexBuffers(cb, 0, 1, &vb, &svboOff); }
-                vkCmdBindIndexBuffer(cb, sm->ibo.get(), 0, VK_INDEX_TYPE_UINT16);
-                for (int e = 0; e < 4; ++e) {
-                    if (((pr.skirtEdgeMask >> e) & 1u) == 0u) continue;
-                    if (sm->edgeCount[e] == 0) continue;
-                    vkCmdDrawIndexed(cb, sm->edgeCount[e], 1, sm->edgeOffset[e], 0, 0);
-                    ++skirtDrawn;
-                }
-            }
-        }
+        d.pm = pm;
+        if (pr.skirtDepth > 0.0f && pr.skirtEdgeMask != 0u) { d.sm = getOrBuildSkirtMesh(s, pr.quadCountX, pr.quadCountY, pr.lodStep); d.skirtMask = pr.skirtEdgeMask; }
+        draws.push_back(d);
     }
-
-    vkCmdEndRenderPass(cb);
-    gpuScope.end();
-    // VK-DRAW-PERF-1: stamp pass-end (gap 1->2 = all patch/skirt draws).
-    s->gpuTimer.write(cb, 2);
-    vk_render_pass_timer::End(cb, gos_render_pass_timer::Pass_TerrainChunk);
-    if (vkEndCommandBuffer(cb) != VK_SUCCESS) { setFallback("record_failed"); s->disabled = true; return 0; }
+    const uint32_t dynOffs[4] = {static_cast<uint32_t>(uboSpan.offset), static_cast<uint32_t>(lpSpans[0].offset),
+                                 static_cast<uint32_t>(lpSpans[1].offset), static_cast<uint32_t>(lpSpans[2].offset)};
+    g_sceneClearedRenderFrame = g_mc2RenderFrame + 1u;   // the recorded pass CLEARs color0 / normal / depth (see mc2_vk_scene_clear)
+    unsigned long drawn = 0, skirtDrawn = 0;
+    vk_render_pass_timer::CancelUnlessSubmitted timerGuard(gos_render_pass_timer::Pass_TerrainChunk);
+    if (!record_terrain(s, rctx, cb, par, w, h, dynOffs, draws, drawn, skirtDrawn)) { setFallback("record_failed"); s->disabled = true; return 0; }
 
     // Item-4 submit: wait/signal NO GL<->VK semaphores. The fence orders CPU access;
     // downstream native islands (prop/mech/water/post) chain Vulkan-owned resources.

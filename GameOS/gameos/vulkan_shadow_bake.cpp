@@ -1051,11 +1051,12 @@ bool ShadowBake::updateIncremental(VkCommandBuffer cb, uint64_t epoch, const Sha
     ZoneScopedN("ShadowBake.Dirty");
     // CPU state the sub-tiles read: the heights (re-read after a patch) and the live casters (re-resolved after an event).
     if (heightsMoved_ || heights_.empty()) {
+        ZoneScopedN("ShadowBake.Dirty.ReadHeights");
         if (!readHeightGrid()) return false;
         heightsMoved_ = false;
         ++heightsGen_;
     }
-    if (liveStale_) rebuildLive();
+    if (liveStale_) { ZoneScopedN("ShadowBake.Dirty.RebuildLive"); rebuildLive(); }
     if (!ensureTransients() || !ensureIncremental()) return false;
     const uint32_t par = static_cast<uint32_t>(epoch & 1u);
     // This parity's last batch retired when the island waited its fence: its timestamps are final and its buffers and sets free to rewrite.
@@ -1077,6 +1078,8 @@ bool ShadowBake::updateIncremental(VkCommandBuffer cb, uint64_t epoch, const Sha
     std::vector<GpuStaticPropInstance> inst;
     std::vector<TileWork> works(batch.size());
     std::vector<uint8_t> tp(kSubTilesPerFrame * kSlice, 0), ubo(kSubTilesPerFrame * kSlice, 0);
+    {
+    ZoneScopedN("ShadowBake.Dirty.Plan");
     for (size_t i = 0; i < batch.size(); ++i) {
         ShadowBakeTileParams p{};
         planRegion(mc2shadow::subTileRegionWorld(layout_, batch[i]), batch[i].x * mc2shadow::kSubTileTexels, batch[i].y * mc2shadow::kSubTileTexels,
@@ -1086,6 +1089,7 @@ bool ShadowBake::updateIncremental(VkCommandBuffer cb, uint64_t epoch, const Sha
         CasterUBO u{};
         std::memcpy(u.lightSpace, p.window, sizeof(u.lightSpace));
         std::memcpy(ubo.data() + i * kSlice, &u, sizeof(u));
+    }
     }
     if (inst.size() > incInstanceCap_) {
         blog("a dirty batch has more casters than its buffer: the batch is requeued; increase the instance capacity to make progress.");
@@ -1097,6 +1101,7 @@ bool ShadowBake::updateIncremental(VkCommandBuffer cb, uint64_t epoch, const Sha
     if (!incParams_.upload(tp.data(), tp.size(), parBase) || !incCasterUbo_.upload(ubo.data(), ubo.size(), parBase) ||
         (!inst.empty() && !incInstances_.upload(inst.data(), inst.size() * sizeof(GpuStaticPropInstance), instBase))) return false;
     if (incHeightsGen_[par] != heightsGen_) {
+        ZoneScopedN("ShadowBake.Dirty.HeightUpload");
         if (!makeHostBuffer(incHeights_[par], allocator_, device_, heights_.size() * sizeof(float), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, "shadow.bake.dirtyHeights") ||
             !incHeights_[par].upload(heights_.data(), heights_.size() * sizeof(float))) return false;
         incHeightsGen_[par] = heightsGen_;
@@ -1119,6 +1124,7 @@ bool ShadowBake::updateIncremental(VkCommandBuffer cb, uint64_t epoch, const Sha
                          VK_PIPELINE_STAGE_TRANSFER_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 6, pre);
     // Stamped once everything before the batch has finished, so the span is the batch's own GPU time.
     vkCmdWriteTimestamp(cb, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, incQueries_.get(), par * 2);
+    ZoneNamedN(zDirtyRec, "ShadowBake.Dirty.Record", true);
     for (size_t i = 0; i < batch.size(); ++i) {
         RegionJob job{mc2shadow::kSubTileTexels, mc2shadow::kSubTileTexels + 2 * mc2shadow::kTileApron, batch[i].x * mc2shadow::kSubTileTexels,
                       batch[i].y * mc2shadow::kSubTileTexels};

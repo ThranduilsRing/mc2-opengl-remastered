@@ -123,11 +123,16 @@ struct VfxGroupPush {
 static_assert(sizeof(VfxGroupPush) == 24, "VfxGroupPush push-constant size (vfx_particle.vert)");
 
 constexpr uint32_t kMaxSpritePages = 64;   // descriptor-set budget for the sprite pages
+// GPU-FRONTIER-1: the island runs up to three times per engine frame (particles, tube ribbons, vegetation). With two slots in total the third call
+// of a frame, or the first of the next, waited on a submit that had just gone out (Tracy: VKIsl.Vfx.SlotWait 0.78 ms mean). Each engine frame slot
+// now owns its own slot per call.
+constexpr uint32_t kVfxCallsPerFrame = 3;
+constexpr uint32_t kVfxSlots = 2 * kVfxCallsPerFrame;
 
 // Sprite pages borrow generation identities from shared residency. Only descriptor pairs live here.
 struct SpritePage {
-    VkDescriptorSet set[2]{};
-    VkImageView bound[2]{};
+    VkDescriptorSet set[kVfxSlots]{};
+    VkImageView bound[kVfxSlots]{};
     uint64_t lastUsedFrame=~uint64_t(0);
 };
 
@@ -152,8 +157,8 @@ struct VfxIsland : mc2vk::IslandState {
     // One set per parity slot; both bind the engine frame ring with dynamic offsets (0 = frame constants, 1 = particles). ringBound[par][binding] = the ring
     // buffer that binding of set[par] currently points at; a frame whose span came from another buffer (the ring grew) re-points it after the slot's last
     // submit completed.
-    VkDescriptorSet  set[2] = {VK_NULL_HANDLE, VK_NULL_HANDLE};
-    VkBuffer         ringBound[2][2] = {};
+    VkDescriptorSet  set[kVfxSlots] = {};
+    VkBuffer         ringBound[kVfxSlots][2] = {};
     mc2vk::OwnedShaderModule vert, frag, vegFrag;
     mc2vk::OwnedSampler samp;
     mc2vk::OwnedSampler vegetationSampler;
@@ -172,14 +177,23 @@ struct VfxIsland : mc2vk::IslandState {
     mc2vk::OwnedPipeline oneOnePipe;  // GL OneOne: (ONE, ONE), alpha ignored
     mc2vk::OwnedPipeline oneAlphaPipe, oneInvAlphaPipe;
     mc2vk::OwnedCommandPool cpool;
-    VkCommandBuffer  cbuf[2] = {VK_NULL_HANDLE, VK_NULL_HANDLE};   // one per parity slot
-    uint64_t         ticket[2] = {0, 0};                           // timeline value of the slot's last submit (0 = never submitted)
-    uint32_t         nextSlot = 0;
+    VkCommandBuffer  cbuf[kVfxSlots] = {};   // one per slot
+    uint64_t         ticket[kVfxSlots] = {};   // timeline value of the slot's last submit (0 = never submitted)
+    uint64_t         slotFrame = ~uint64_t(0);   // engine frame of callInFrame
+    uint32_t         callInFrame = 0;
 
     int  w = 0, h = 0;
     bool inited = false;
     bool disabled = false;
 };
+
+// The slot for this call: the engine frame slot picks a group, the call index within the frame picks the member (extra calls reuse the last member).
+uint32_t take_slot(VfxIsland* s, mc2vk::VulkanContext& ctx) {
+    const auto fc = ctx.frameContext();
+    if (s->slotFrame != fc.frame) { s->slotFrame = fc.frame; s->callInFrame = 0; }
+    const uint32_t call = std::min(s->callInFrame++, kVfxCallsPerFrame - 1);
+    return (fc.slot % 2u) * kVfxCallsPerFrame + call;
+}
 
 // The ring bindings of one parity set: 0 = frame constants (uniform, explicit range), 1 = particles (storage, the ring's dynamic range).
 void write_ring_bindings(VfxIsland* s, uint32_t par, VkBuffer buf, VkDeviceSize range) {
@@ -238,12 +252,12 @@ std::optional<VkDescriptorSet> get_page(VfxIsland* s,uint32_t handle,uint32_t pa
         if (s->pages.size()>=kMaxSpritePages) {
             auto victim=std::min_element(s->pages.begin(),s->pages.end(),[](const auto& a,const auto& b){return a.second.lastUsedFrame<b.second.lastUsedFrame;});
             if (victim==s->pages.end() || victim->second.lastUsedFrame==frame) return std::nullopt;
-            page=victim->second; page.bound[0]=page.bound[1]=VK_NULL_HANDLE;
+            page=victim->second; for (auto& b : page.bound) b=VK_NULL_HANDLE;
             s->pages.erase(victim);
         } else {
-            const VkDescriptorSetLayout layouts[2]={s->spriteDsl.get(),s->spriteDsl.get()};
+            VkDescriptorSetLayout layouts[kVfxSlots]; for (auto& l : layouts) l=s->spriteDsl.get();
             VkDescriptorSetAllocateInfo alloc{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO};
-            alloc.descriptorPool=s->spritePool.get();alloc.descriptorSetCount=2;alloc.pSetLayouts=layouts;
+            alloc.descriptorPool=s->spritePool.get();alloc.descriptorSetCount=kVfxSlots;alloc.pSetLayouts=layouts;
             if (vkAllocateDescriptorSets(s->device,&alloc,page.set)!=VK_SUCCESS) return std::nullopt;
         }
         it=s->pages.emplace(id,page).first;
@@ -439,18 +453,18 @@ bool init_island(VfxIsland* s, int w, int h) {
         lci.bindingCount = 5; lci.pBindings = b;
         if (!mc2vk::create(s->dsl, s->device, [&](VkDescriptorSetLayout* o) { return vkCreateDescriptorSetLayout(s->device, &lci, nullptr, o); })) { vlog("vkCreateDescriptorSetLayout failed."); return false; }
         VkDescriptorPoolSize sizes[4]{};
-        sizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC; sizes[0].descriptorCount = 2;
-        sizes[1].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC; sizes[1].descriptorCount = 2;
-        sizes[2].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; sizes[2].descriptorCount = 4;
-        sizes[3].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER; sizes[3].descriptorCount = 2;
+        sizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC; sizes[0].descriptorCount = kVfxSlots;
+        sizes[1].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC; sizes[1].descriptorCount = kVfxSlots;
+        sizes[2].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; sizes[2].descriptorCount = 2 * kVfxSlots;
+        sizes[3].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER; sizes[3].descriptorCount = kVfxSlots;
         VkDescriptorPoolCreateInfo pci{};
         pci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-        pci.maxSets = 2; pci.poolSizeCount = 4; pci.pPoolSizes = sizes;
+        pci.maxSets = kVfxSlots; pci.poolSizeCount = 4; pci.pPoolSizes = sizes;
         if (!mc2vk::create(s->pool, s->device, [&](VkDescriptorPool* o) { return vkCreateDescriptorPool(s->device, &pci, nullptr, o); })) { vlog("vkCreateDescriptorPool failed."); return false; }
         VkDescriptorSetAllocateInfo dsai{};
         dsai.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-        const VkDescriptorSetLayout dslHandles2[2] = { s->dsl.get(), s->dsl.get() };
-        dsai.descriptorPool = s->pool.get(); dsai.descriptorSetCount = 2; dsai.pSetLayouts = dslHandles2;
+        VkDescriptorSetLayout dslHandles2[kVfxSlots]; for (auto& l : dslHandles2) l = s->dsl.get();
+        dsai.descriptorPool = s->pool.get(); dsai.descriptorSetCount = kVfxSlots; dsai.pSetLayouts = dslHandles2;
         if (vkAllocateDescriptorSets(s->device, &dsai, s->set) != VK_SUCCESS) { vlog("vkAllocateDescriptorSets failed."); return false; }
     }
 
@@ -484,11 +498,11 @@ bool init_island(VfxIsland* s, int w, int h) {
         slci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
         slci.bindingCount = 1; slci.pBindings = &sb;
         if (!mc2vk::create(s->spriteDsl, s->device, [&](VkDescriptorSetLayout* o) { return vkCreateDescriptorSetLayout(s->device, &slci, nullptr, o); })) { vlog("vkCreateDescriptorSetLayout(sprite) failed."); return false; }
-        VkDescriptorPoolSize spriteSize{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 2 * kMaxSpritePages };
+        VkDescriptorPoolSize spriteSize{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, kVfxSlots * kMaxSpritePages };
         VkDescriptorPoolCreateInfo spci{};
         spci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
         spci.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
-        spci.maxSets = 2 * kMaxSpritePages; spci.poolSizeCount = 1; spci.pPoolSizes = &spriteSize;
+        spci.maxSets = kVfxSlots * kMaxSpritePages; spci.poolSizeCount = 1; spci.pPoolSizes = &spriteSize;
         if (!mc2vk::create(s->spritePool, s->device, [&](VkDescriptorPool* o) { return vkCreateDescriptorPool(s->device, &spci, nullptr, o); })) { vlog("vkCreateDescriptorPool(sprite) failed."); return false; }
 
         VkPipelineLayoutCreateInfo plci{};
@@ -530,7 +544,7 @@ bool init_island(VfxIsland* s, int w, int h) {
         if (!mc2vk::create(s->cpool, s->device, [&](VkCommandPool* o) { return vkCreateCommandPool(s->device, &pci, nullptr, o); })) { vlog("vkCreateCommandPool failed."); return false; }
         VkCommandBufferAllocateInfo cai{};
         cai.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-        cai.commandPool = s->cpool.get(); cai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; cai.commandBufferCount = 2;
+        cai.commandPool = s->cpool.get(); cai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; cai.commandBufferCount = kVfxSlots;
         if (vkAllocateCommandBuffers(s->device, &cai, s->cbuf) != VK_SUCCESS) { vlog("vkAllocateCommandBuffers failed."); return false; }
     }
 
@@ -633,9 +647,9 @@ extern "C" int mc2_vk_vfx_island_run(
 
     // Per-frame data goes into the engine frame ring: frame constants (UBO) then the whole particle array (64B/record), one span. The parity slot's last
     // submit must have completed before its command buffer and set are reused: a timeline ticket, not an island fence.
-    const uint32_t par = s->nextSlot;
-    s->nextSlot ^= 1u;
-    if (!slotCtx.wait(mc2vk::GpuTicket{s->ticket[par], 0}, 5ull * 1000 * 1000 * 1000, "vfx_slot")) { setFallback("slot_timeout"); s->disabled = true; return 0; }
+    const uint32_t par = take_slot(s, slotCtx);
+    { ZoneScopedN("VKIsl.Vfx.SlotWait");
+    if (!slotCtx.wait(mc2vk::GpuTicket{s->ticket[par], 0}, 5ull * 1000 * 1000 * 1000, "vfx_slot")) { setFallback("slot_timeout"); s->disabled = true; return 0; } }
     const VkDeviceSize needBytes = static_cast<VkDeviceSize>(particleCount) * 64u;
     const VkDeviceSize partOff = mc2vk::alignUp(sizeof(VfxVsParams), slotCtx.frameAlignment());
     const mc2vk::FrameAlloc span = slotCtx.frameAlloc(partOff + needBytes);
@@ -645,12 +659,14 @@ extern "C" int mc2_vk_vfx_island_run(
         std::memcpy(static_cast<uint8_t*>(span.ptr) + partOff, particles, static_cast<size_t>(needBytes));
     }
     fill_frame_params(span.ptr, worldToClipGL, camRight, camUp, w, h);
+    { ZoneScopedN("VKIsl.Vfx.Descriptors");
     if (!prepare_shadow_descriptors(s, par)) return 0;
-    write_ring_bindings(s, par, span.buffer, span.range);
+    write_ring_bindings(s, par, span.buffer, span.range); }
     const uint32_t dynOffsets[2] = {static_cast<uint32_t>(span.offset), static_cast<uint32_t>(span.offset + partOff)};
 
     // Resolve service pages after parity retirement; uploads stay asynchronous.
     std::vector<std::optional<VkDescriptorSet>> groupPage(drawCount);
+    { ZoneScopedN("VKIsl.Vfx.Pages");
     for (uint32_t gi = 0; gi < drawCount; ++gi) {
         if (draws[gi].count != 0 && (draws[gi].texture != 0 || draws[gi].atlasColumns == kVfxGeometryAtlas))
             groupPage[gi] = get_page(s, draws[gi].texture, par);
@@ -658,7 +674,7 @@ extern "C" int mc2_vk_vfx_island_run(
         if (!groupPage[gi] && draws[gi].atlasColumns == kVfxGeometryAtlas && draws[gi].start < particleCount &&
             (static_cast<const VfxGeometryVertex*>(particles)[draws[gi].start].flags & VfxGeometryMesh) != 0u)
             groupPage[gi] = get_page(s, 0, par);
-    }
+    } }
     if (s->disabled) return 0;
 
     // Record: one renderpass, per-group pipeline + sub-range draw.
@@ -756,12 +772,11 @@ bool mc2_vk_vfx_vegetation_run(const mc2veg::CullParams& params, const float* wo
     VfxIsland* s = acquire_island(w, h);
     // The island skips the vegetation pipeline when vegetation was off at its creation; a later quality change does not re-create it.
     if (!s || !s->vegetationPipe) return false;
-    const uint32_t par = s->nextSlot;
-    s->nextSlot ^= 1u;
+    const uint32_t par = take_slot(s, slotCtx);
     if (!slotCtx.wait(mc2vk::GpuTicket{s->ticket[par], 0}, 5ull * 1000 * 1000 * 1000, "vfx_slot")) { setFallback("slot_timeout"); s->disabled = true; return false; }
     const VkDeviceSize align = slotCtx.frameAlignment();
     if (!prepare_shadow_descriptors(s, par)) return false;
-    s->groundLighting.copy(s->device, par, *ground);
+    s->groundLighting.copy(s->device, par / kVfxCallsPerFrame, *ground);
     const VkDeviceSize cullOff = mc2vk::alignUp(sizeof(VfxVsParams), align);
     const VkDeviceSize visOff = mc2vk::alignUp(cullOff + sizeof(mc2veg::CullParams), align);
     const mc2vk::FrameAlloc span = slotCtx.frameAlloc(visOff + std::max<VkDeviceSize>(visibility.size_bytes(), 16));
@@ -796,7 +811,7 @@ bool mc2_vk_vfx_vegetation_run(const mc2veg::CullParams& params, const float* wo
         const uint32_t drawDyn = veg->paramsDynamicOffset(par);
         const VkDescriptorSet drawSet = veg->drawSet(par);
         vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->vegLayout.get(), 2, 1, &drawSet, 1, &drawDyn);
-        const VkDescriptorSet groundSet = s->groundLighting.set(par);
+        const VkDescriptorSet groundSet = s->groundLighting.set(par / kVfxCallsPerFrame);
         vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->vegLayout.get(), 3, 1, &groundSet, 4, ground->offsets.data());
         veg->drawIndirect(cb, par);
         vkCmdEndRenderPass(cb);

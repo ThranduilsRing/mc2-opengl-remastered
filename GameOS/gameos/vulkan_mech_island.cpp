@@ -783,6 +783,94 @@ extern "C" int mc2_vk_mech_island_prewarm(int w,int h) {
     return ensure_dummy_scheme(s) ? 1 : 0;
 }
 
+// GPU-FRONTIER-1: pure command recording for the mech pass (depth pre-pass + colour runs). Staging, descriptor-set resolution and the
+// dynamic offsets are prepared by mc2_vk_mech_island_run on the main thread; this touches only the command buffer and the island timers.
+static bool record_mech(MechIsland* s, VkCommandBuffer cb, uint32_t par, int w, int h, const Mc2MechFrameFeed& feed,
+                        const std::vector<VkDescriptorSet>& runSets, const uint32_t (&dynOffsets)[5],
+                        const Mc2GroundLightingFrame* ground, int poolN, unsigned long& runsOut) {
+    vkResetCommandBuffer(cb, 0);
+    VkCommandBufferBeginInfo bi{};
+    bi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+    if (vkBeginCommandBuffer(cb, &bi) != VK_SUCCESS) return false;
+    vk_render_pass_timer::Begin(cb, gos_render_pass_timer::Pass_Mechs);
+
+    // VK-DRAW-PERF-1: reset the query pool (outside the render pass) + stamp pass-start.
+    s->gpuTimer.reset(cb);
+    s->gpuTimer.write(cb, 0);
+
+    VkRenderPassBeginInfo rbi{};
+    rbi.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+    rbi.renderPass = s->rpass.get(); rbi.framebuffer = s->fb.get();
+    rbi.renderArea = {{0, 0}, {static_cast<uint32_t>(w), static_cast<uint32_t>(h)}};
+    rbi.clearValueCount = 0; rbi.pClearValues = nullptr;   // all LOAD
+    MC2_VK_GPU_SCOPE(gpuScope, cb, "VKIsl.Mech");
+    vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
+
+    VkViewport vp{0.0f, 0.0f, static_cast<float>(w), static_cast<float>(h), 0.0f, 1.0f};
+    VkRect2D scissor{{0, 0}, {static_cast<uint32_t>(w), static_cast<uint32_t>(h)}};
+    vkCmdSetViewport(cb, 0, 1, &vp);
+    vkCmdSetScissor(cb, 0, 1, &scissor);
+
+    VkDeviceSize vboOff = 0;
+    const VkBuffer vertexBuffer = s->vbo.get();
+    vkCmdBindVertexBuffers(cb, 0, 1, &vertexBuffer, &vboOff);
+    vkCmdBindIndexBuffer(cb, s->ibo.get(), 0, VK_INDEX_TYPE_UINT32);
+
+    // VK-DRAW-PERF-1: stamp draws-start (gap 0->1 = setup + binds).
+    s->gpuTimer.write(cb, 1);
+
+    // Establish final visible depth with cheap skinning + the identical cutout test.
+    // The color pipeline is read-only EQUAL with early fragment tests: hidden
+    // triangles never execute the local-light loop, and discard cannot write depth.
+    mc2vk::infra::bind(cb,VK_PIPELINE_BIND_POINT_GRAPHICS,s->depthPipe.get());
+    VkDescriptorSet depthSet=VK_NULL_HANDLE;
+    for(uint32_t r=0;r<feed.runCount;++r) {
+        const auto& run=feed.runs[r];if(!run.indexCount || !run.instanceCount)continue;
+        const auto set=runSets[r];
+        if(set!=depthSet) {
+            vkCmdBindDescriptorSets(cb,VK_PIPELINE_BIND_POINT_GRAPHICS,s->playout.get(),0,1,&set,5,dynOffsets);
+            depthSet=set;
+        }
+        const MechRunPC pc{run.materialFlags,0,0};
+        vkCmdPushConstants(cb,s->playout.get(),VK_SHADER_STAGE_FRAGMENT_BIT,0,sizeof(pc),&pc);
+        vkCmdDrawIndexed(cb,run.indexCount,run.instanceCount,run.firstIndex,run.baseVertex,run.instanceBase);
+    }
+    mc2vk::infra::bind(cb,VK_PIPELINE_BIND_POINT_GRAPHICS,s->pipe.get());
+    const auto groundSet = s->groundLighting.set(par);
+    vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 1, 1, &groundSet, 4, ground->offsets.data());
+
+    // One indexed instanced draw per run. firstInstance = run.instanceBase so the VS's
+    // gl_InstanceIndex indexes the instance SSBO snapshot exactly as the GL VS's
+    // u_instanceBase + gl_InstanceID did. Per run: bind the descriptor set for this run's
+    // paint scheme (per-actor cache) so the right albedo (binding 3) is sampled.
+    VkDescriptorSet boundSet = VK_NULL_HANDLE;
+    unsigned long runs = 0;
+    for (uint32_t r = 0; r < feed.runCount; ++r) {
+        const Mc2MechDrawRun& run = feed.runs[r];
+        if (run.indexCount == 0 || run.instanceCount == 0) continue;
+        const VkDescriptorSet set = runSets[r];
+        if (set != boundSet) {
+            vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 0, 1, &set, 5, dynOffsets);
+            boundSet = set;
+        }
+        // VK-PARITY-MECH-1: per-run ALPHA_TEST flag (mech.frag u_materialFlags).
+        const MechRunPC pc{run.materialFlags, 0, uint32_t(poolN)};
+        vkCmdPushConstants(cb, s->playout.get(), VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(pc), &pc);
+        vkCmdDrawIndexed(cb, run.indexCount, run.instanceCount, run.firstIndex, run.baseVertex, run.instanceBase);
+        ++runs;
+    }
+
+    vkCmdEndRenderPass(cb);
+    gpuScope.end();
+    // VK-DRAW-PERF-1: stamp pass-end (gap 1->2 = mech instanced draws).
+    s->gpuTimer.write(cb, 2);
+    vk_render_pass_timer::End(cb, gos_render_pass_timer::Pass_Mechs);
+    if (vkEndCommandBuffer(cb) != VK_SUCCESS) return false;
+    runsOut = runs;
+    return true;
+}
+
 extern "C" int mc2_vk_mech_island_run(int w, int h) {
     ZoneScopedN("VK-mech-island");   // VK-FLIP-FIELD-REPORT-1 coarse region zone
     if (w <= 0 || h <= 0) return 0;
@@ -969,87 +1057,10 @@ extern "C" int mc2_vk_mech_island_run(int w, int h) {
 
     const clk::time_point tRender0 = clk::now();
     ZoneNamedN(zMechRec, "VK-mech-record-submit", true);   // VK-FLIP-FIELD-REPORT-1: CPU record+queue-submit (to fn return)
-    vkResetCommandBuffer(cb, 0);
-    VkCommandBufferBeginInfo bi{};
-    bi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-    bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-    if (vkBeginCommandBuffer(cb, &bi) != VK_SUCCESS) { setFallback("record_failed"); s->disabled = true; return 0; }
-    vk_render_pass_timer::Begin(cb, gos_render_pass_timer::Pass_Mechs);
     vk_render_pass_timer::CancelUnlessSubmitted timerGuard(gos_render_pass_timer::Pass_Mechs);
-
-    // VK-DRAW-PERF-1: reset the query pool (outside the render pass) + stamp pass-start.
-    s->gpuTimer.reset(cb);
-    s->gpuTimer.write(cb, 0);
-
-    VkRenderPassBeginInfo rbi{};
-    rbi.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-    rbi.renderPass = s->rpass.get(); rbi.framebuffer = s->fb.get();
-    rbi.renderArea = {{0, 0}, {static_cast<uint32_t>(w), static_cast<uint32_t>(h)}};
-    rbi.clearValueCount = 0; rbi.pClearValues = nullptr;   // all LOAD
-    MC2_VK_GPU_SCOPE(gpuScope, cb, "VKIsl.Mech");
-    vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
-
-    VkViewport vp{0.0f, 0.0f, static_cast<float>(w), static_cast<float>(h), 0.0f, 1.0f};
-    VkRect2D scissor{{0, 0}, {static_cast<uint32_t>(w), static_cast<uint32_t>(h)}};
-    vkCmdSetViewport(cb, 0, 1, &vp);
-    vkCmdSetScissor(cb, 0, 1, &scissor);
-
-    VkDeviceSize vboOff = 0;
-    const VkBuffer vertexBuffer = s->vbo.get();
-    vkCmdBindVertexBuffers(cb, 0, 1, &vertexBuffer, &vboOff);
-    vkCmdBindIndexBuffer(cb, s->ibo.get(), 0, VK_INDEX_TYPE_UINT32);
-
-    // VK-DRAW-PERF-1: stamp draws-start (gap 0->1 = setup + binds).
-    s->gpuTimer.write(cb, 1);
-
-    // Establish final visible depth with cheap skinning + the identical cutout test.
-    // The color pipeline is read-only EQUAL with early fragment tests: hidden
-    // triangles never execute the local-light loop, and discard cannot write depth.
-    mc2vk::infra::bind(cb,VK_PIPELINE_BIND_POINT_GRAPHICS,s->depthPipe.get());
-    VkDescriptorSet depthSet=VK_NULL_HANDLE;
-    for(uint32_t r=0;r<feed.runCount;++r) {
-        const auto& run=feed.runs[r];if(!run.indexCount || !run.instanceCount)continue;
-        const auto set=runSets[r];
-        if(set!=depthSet) {
-            vkCmdBindDescriptorSets(cb,VK_PIPELINE_BIND_POINT_GRAPHICS,s->playout.get(),0,1,&set,5,dynOffsets);
-            depthSet=set;
-        }
-        const MechRunPC pc{run.materialFlags,0,0};
-        vkCmdPushConstants(cb,s->playout.get(),VK_SHADER_STAGE_FRAGMENT_BIT,0,sizeof(pc),&pc);
-        vkCmdDrawIndexed(cb,run.indexCount,run.instanceCount,run.firstIndex,run.baseVertex,run.instanceBase);
-    }
-    mc2vk::infra::bind(cb,VK_PIPELINE_BIND_POINT_GRAPHICS,s->pipe.get());
-    const auto groundSet = s->groundLighting.set(par);
-    vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 1, 1, &groundSet, 4, ground->offsets.data());
-
-    // One indexed instanced draw per run. firstInstance = run.instanceBase so the VS's
-    // gl_InstanceIndex indexes the instance SSBO snapshot exactly as the GL VS's
-    // u_instanceBase + gl_InstanceID did. Per run: bind the descriptor set for this run's
-    // paint scheme (per-actor cache) so the right albedo (binding 3) is sampled.
-    VkDescriptorSet boundSet = VK_NULL_HANDLE;
-    unsigned long runs = 0;
-    for (uint32_t r = 0; r < feed.runCount; ++r) {
-        const Mc2MechDrawRun& run = feed.runs[r];
-        if (run.indexCount == 0 || run.instanceCount == 0) continue;
-        const VkDescriptorSet set = runSets[r];
-        if (set != boundSet) {
-            vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 0, 1, &set, 5, dynOffsets);
-            boundSet = set;
-        }
-        // VK-PARITY-MECH-1: per-run ALPHA_TEST flag (mech.frag u_materialFlags).
-        const MechRunPC pc{run.materialFlags, 0, uint32_t(poolN)};
-        vkCmdPushConstants(cb, s->playout.get(), VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(pc), &pc);
-        vkCmdDrawIndexed(cb, run.indexCount, run.instanceCount, run.firstIndex, run.baseVertex, run.instanceBase);
-        ++runs;
-    }
-    g_health.runs = runs;
-
-    vkCmdEndRenderPass(cb);
-    gpuScope.end();
-    // VK-DRAW-PERF-1: stamp pass-end (gap 1->2 = mech instanced draws).
-    s->gpuTimer.write(cb, 2);
-    vk_render_pass_timer::End(cb, gos_render_pass_timer::Pass_Mechs);
-    if (vkEndCommandBuffer(cb) != VK_SUCCESS) { setFallback("record_failed"); s->disabled = true; return 0; }
+    unsigned long runsRec = 0;
+    if (!record_mech(s, cb, par, w, h, feed, runSets, dynOffsets, &*ground, poolN, runsRec)) { setFallback("record_failed"); s->disabled = true; return 0; }
+    g_health.runs = runsRec;
 
     // Render-pass dependencies order shared attachments; the ticket protects
     // only this island's command buffer and descriptors.
