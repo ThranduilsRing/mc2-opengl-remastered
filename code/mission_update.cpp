@@ -1286,7 +1286,7 @@ bool Mission::updatePass(bool tickMode, bool runFrame, bool runSim, bool advance
 
 // Per-frame mission update. Normal play runs on the fixed 30 Hz sim tick (code/sim_tick_clock.h): the frame's
 // real time x game speed is banked, whole ticks run out of the bank, and a frame that banks no tick only redraws the
-// unchanged sim state. A paused or frozen sim and multiplayer keep the old one-pass-per-frame update.
+// unchanged sim state. A paused or frozen sim only redraws; multiplayer uses the same paced tick credit as single player.
 long Mission::update (void)
 {
 	ZoneScopedN("Mission::update");
@@ -1304,12 +1304,14 @@ long Mission::update (void)
 			s_tickClock.reset();   // a new mission or a loaded save: no banked time carries over
 		const float renderLength = frameLength;   // DoGameLogic: this render frame's length (1/30 s per virtual frame under the harness clock)
 
-		if (MPlayer || mc2SimTickFrozen(missionInterface))
+		if (!MPlayer && mc2SimTickFrozen(missionInterface))
 		{
 			s_tickClock.reset();
 			pollRealFrameSeconds(renderLength);   // rebase the wall credit so a resume does not burst
-			// Multiplayer runs one tick per frame, paused or frozen runs the frame part alone: no wall time reaches the sim.
-			if (updatePass(true, true, MPlayer != nullptr, true, earlyResult))
+			// Paused or frozen runs the frame part alone: no wall time reaches the sim. Camera/UI keep the game-speed scale.
+			if (!SmokeMode::fixedTimestepEnabled())
+				frameLength *= simSpeedGetMultiplier();
+			if (updatePass(true, true, false, true, earlyResult))
 				return earlyResult;
 			updatePresentationOnly(false, 1.0f);
 		}
