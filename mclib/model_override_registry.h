@@ -63,6 +63,14 @@ struct ModelOverrideRecord {
 
     // The condition variant by name; nullptr = pristine (the record's own chains).
     const ModelOverrideCondition* condition(std::string_view name) const;
+
+    // True when any slot names per-object KTX2 maps. Such an object takes its colour variation from the shader
+    // (team mask), so one shared body per LOD serves every paint and can be registered before the batcher finalizes.
+    bool usesObjectMaps() const {
+        for (const auto& m : materials)
+            if (!m.albedoPath.empty() || !m.normalPath.empty() || !m.ormPath.empty()) return true;
+        return false;
+    }
 };
 
 class ModelOverrideRegistry {

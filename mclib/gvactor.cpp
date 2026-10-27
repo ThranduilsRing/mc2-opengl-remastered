@@ -1050,6 +1050,12 @@ void GVAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 		// (submitted-ness, not registered-ness) if this ever goes live.
 		for (int i = 0; i < MAX_LODS; ++i)
 			GpuStaticPropBatcher::instance().registerMultiShape(appearType->gvShape[i]);
+		// An override body with per-object maps is one shared shape per LOD (paint is shader-side), so it joins the
+		// batcher here, before finalize, and draws through submitMultiShape instead of the CPU fallback.
+		if (const auto* ov = ModelOverrideRegistry::instance().resolve("vehicle", appearType->name); ov && ov->usesObjectMaps())
+			for (int i = 0; i < MAX_LODS; ++i)
+				if (appearType->renderLods[i])
+					GpuStaticPropBatcher::instance().registerMultiShape(appearType->renderLods[i].get(), true, ov);
 		GpuStaticPropBatcher::instance().registerMultiShape(appearType->gvShadowShape);
 		GpuStaticPropBatcher::instance().registerMultiShape(appearType->gvDmgShape);
 	}

@@ -35,8 +35,10 @@ void GVAppearance::updateRenderShape()
 	const auto* override = ModelOverrideRegistry::instance().resolve("vehicle", appearType->name);
 	TG_TypeMultiShape* variantType = nullptr;
 	bool newVariant = false;
-	if (renderLOD != lod || renderRed != psRed || renderGreen != psGreen || renderBlue != psBlue) {
-		for (auto& variant : appearType->renderVariants)
+	const bool shared = override && override->usesObjectMaps() && appearType->renderLods[lod];
+	if (renderLOD != lod || (!shared && (renderRed != psRed || renderGreen != psGreen || renderBlue != psBlue))) {
+		if (shared) variantType = appearType->renderLods[lod].get();
+		else for (auto& variant : appearType->renderVariants)
 			if (variant.lod == lod && variant.red == psRed && variant.green == psGreen && variant.blue == psBlue)
 				variantType = variant.shape.get();
 		if (!variantType) {
