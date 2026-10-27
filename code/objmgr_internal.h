@@ -164,4 +164,10 @@ extern GameObjectManagerPtr ObjectManager;
 extern GameObjectPtr* collisionList;
 extern long numCollidables;
 
+// R3: PartId -> slot hints (ascending). Lives here, not in objmgr.h, so the widely included header stays free of it.
+struct GameObjectManager::PartIdIndex {
+	std::unordered_map<long, std::vector<uint32_t>> slots;
+	bool dirty = true;
+};
+
 #endif // OBJMGR_INTERNAL_H

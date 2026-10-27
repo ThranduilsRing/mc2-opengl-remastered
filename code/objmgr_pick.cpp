@@ -63,45 +63,80 @@ GameObjectPtr GameObjectManager::findObject (glm::vec3 position) {
 
 //---------------------------------------------------------------------------
 
-GameObjectPtr GameObjectManager::findObjectByTypeHandle (long typeHandle) {
+// R3: partId -> slots in ascending slot order. Entries are hints: a hit is accepted only if the object still has
+// that partId and exists, so a stale entry (partId changed or object freed) is skipped, never returned. Contract kept:
+// the first existing object in slot order. GameObjectManager::setPartId, GameObject::Load and the marine hack feed
+// notePartId; a missed feed is caught by the linear cross-check (debug builds, or define MC2_OBJMGR_XCHECK for a proof
+// build), which reports [PARTID_XCHECK] through the diag trace and falls back to the linear answer.
 
-	//-------------------------------------------------
-	// This function was called findObjectId() in MC...
-
-	long numObjects = getMaxObjects();
-	for (long objIndex = 1; objIndex <= numObjects; objIndex++) {
-		GameObjectPtr obj = objList[objIndex];
-		if (obj->getExists() && (obj->getTypeHandle() == typeHandle))
-			return(obj);
-	}
-	return(nullptr);
+void GameObjectManager::resetPartIdIndex (void) {
+	partIdIndex.reset();
 }
 
-//---------------------------------------------------------------------------
+void GameObjectManager::notePartId (GameObjectPtr obj, long newPartId) {
+
+	if (!partIdIndex || partIdIndex->dirty || newPartId == 0)
+		return;
+	const uint32_t slot = obj->getHandle();
+	if (!slot || slot > static_cast<uint32_t>(getMaxObjects()) || objList[slot] != obj) {
+		partIdIndex->dirty = true;
+		return;
+	}
+	auto& v = partIdIndex->slots[newPartId];
+	auto it = std::lower_bound(v.begin(), v.end(), slot);
+	if (it == v.end() || *it != slot)
+		v.insert(it, slot);
+}
 
 GameObjectPtr GameObjectManager::findByPartId (long partId) {
 
 	if (partId == 0)
 		return(nullptr);
 
-	long numObjects = getMaxObjects();
-	for (long objIndex = 1; objIndex <= numObjects; objIndex++) 
-	{
-		GameObjectPtr obj = objList[objIndex];
-		if (obj && obj->getExists() && (obj->getPartId() == partId))
-			return(obj);
+	if (!partIdIndex)
+		partIdIndex = std::make_shared<PartIdIndex>();
+	if (partIdIndex->dirty) {
+		partIdIndex->slots.clear();
+		const long numObjects = getMaxObjects();
+		for (long objIndex = 1; objIndex <= numObjects; objIndex++) {
+			GameObjectPtr obj = objList[objIndex];
+			if (obj && obj->getPartId() != 0)
+				partIdIndex->slots[obj->getPartId()].push_back(static_cast<uint32_t>(objIndex));
+		}
+		partIdIndex->dirty = false;
 	}
-	return(nullptr);
-}
 
-//---------------------------------------------------------------------------
+	GameObjectPtr found = nullptr;
+	if (partIdIndex->slots.contains(partId)) {
+		for (uint32_t slot : partIdIndex->slots.at(partId)) {
+			GameObjectPtr obj = objList[slot];
+			if (obj && obj->getExists() && obj->getPartId() == partId) {
+				found = obj;
+				break;
+			}
+		}
+	}
 
-GameObjectPtr GameObjectManager::findByBlockVertex (long blockNum, long vertex) {
-
-	//----------------------------------------
-	// SLOW compared to using object handle...
-	long partId = calcPartId(TERRAINOBJECT, blockNum, vertex);
-	return(findByPartId(partId));
+#if !defined(NDEBUG) || defined(MC2_OBJMGR_XCHECK)
+	{
+		GameObjectPtr linear = nullptr;
+		const long numObjects = getMaxObjects();
+		for (long objIndex = 1; objIndex <= numObjects; objIndex++) {
+			GameObjectPtr obj = objList[objIndex];
+			if (obj && obj->getExists() && (obj->getPartId() == partId)) { linear = obj; break; }
+		}
+		if (linear != found) {
+			char buf[96];
+			(*std::format_to_n(buf, sizeof(buf) - 1, "{{\"partId\":{:d},\"hash\":{:d},\"linear\":{:d}}}",
+				mc2::fmt::as_i32(partId), mc2::fmt::as_i32(found ? found->getHandle() : 0),
+				mc2::fmt::as_i32(linear ? linear->getHandle() : 0)).out = '\0');
+			mc2_diag::writeEvent("PARTID_XCHECK", 1, 0, buf);
+			partIdIndex->dirty = true;
+			found = linear;
+		}
+	}
+#endif
+	return(found);
 }
 
 //---------------------------------------------------------------------------
@@ -127,16 +162,6 @@ GameObjectPtr GameObjectManager::findByCellPosition (long row, long col)
 	}
 
 	return(nullptr);
-}
-
-//---------------------------------------------------------------------------
-
-GameObjectPtr GameObjectManager::findByUnitInfo (long commander, long group, long mate) {
-
-	//----------------------------------------
-	// SLOW compared to using object handle...
-	long partId = calcPartId(MOVER, commander, group, mate);
-	return(findByPartId(partId));
 }
 
 //---------------------------------------------------------------------------

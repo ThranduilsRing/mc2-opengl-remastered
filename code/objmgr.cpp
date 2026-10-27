@@ -16,15 +16,6 @@ GameObjectManager::GameObjectManager() { init(); }
 GameObjectManager::~GameObjectManager() { destroy(); }
 
 
-// ---------------------------------------------------------------------------
-// MF3-GENERATIONAL-HANDLE-1: generational watch-id validation killswitch.
-// MC2_WATCHID_GENERATION present -> bump-on-free + validate-on-access via the
-// watchGeneration[] side array. Default off: the side array is still allocated
-// in lockstep with watchList[] (always valid) but is never read/written, so
-// behavior is byte-identical to before. No slot reuse this slice.
-// ---------------------------------------------------------------------------
-static const bool s_watchGen = mc2::gate::get<"MC2_WATCHID_GENERATION">();
-
 constexpr int BRIDGE_OBJTYPE = 448;
 constexpr int MINE1 = 60;
 constexpr int MINE2 = 251;
@@ -228,18 +219,12 @@ void GameObjectManager::setNumObjects (long nMechs,
 	//-----------------------------------------------------------
 	// First element in list is NULL (handle of 0 is always NULL)
 	objList = entities.reset(getMaxObjects() + 1);
+	resetPartIdIndex();
 	invalidateSpatialGrid();
 	memset(objList,0,sizeof(GameObjectPtr) * (getMaxObjects() + 1));
 
 	watchList = bindPoolArray(watchListStore, (getMaxObjects() + 1));
 	memset(watchList,0,sizeof(GameObjectPtr) * (getMaxObjects() + 1));
-
-	// MF3-GENERATIONAL-HANDLE-1: generation side array, LOCKSTEP with watchList
-	// (same size, same memset-0). Allocated unconditionally so the pointer is
-	// always valid; only read/written under s_watchGen. Owned by watchGenerationStore
-	// like watchList (released by releasePoolArrays() in destroy()).
-	watchGeneration = bindPoolArray(watchGenerationStore, (getMaxObjects() + 1));
-	memset(watchGeneration,0,sizeof(uint16_t) * (getMaxObjects() + 1));
 
 	long curHandle = 1;
 	//--------------------------------------------------------------
@@ -431,16 +416,6 @@ GroundVehiclePtr GameObjectManager::getOpenVehicle (void)
 
 //---------------------------------------------------------------------------
 
-ElementalPtr GameObjectManager::getElemental (long elementalIndex) {
-
-	if (!elementals || (elementalIndex < 0) || (elementalIndex >= numElementals))
-		return(nullptr);
-
-	return(elementals[elementalIndex]);
-}
-
-//---------------------------------------------------------------------------
-
 BattleMechPtr GameObjectManager::newMech (void) {
 
 	if (numMechs < maxMechs) {
@@ -511,41 +486,8 @@ void GameObjectManager::setWatchID (GameObjectPtr obj) {
 			return;
 		}
 		watchList[nextWatchID] = obj;
-		// MF3-GENERATIONAL-HANDLE-1: stamp the slot's generation on assign (gated).
-		// No reuse this slice, so nextWatchID is a fresh slot (gen 0 -> 1).
-		if (s_watchGen)
-			watchGeneration[nextWatchID] = mc2watch::nextGenerationOnAssign(watchGeneration[nextWatchID]);
 		obj->watchID = nextWatchID++;
 	}
-}
-
-//---------------------------------------------------------------------------
-// MF3-GENERATIONAL-HANDLE-1: additive generational resolve. When the gate is
-// OFF this is behavior-identical to getByWatchID (generation ignored). When ON,
-// a handle whose expectedGen no longer matches the slot's current generation is
-// rejected (fail-safe NULL + rate-limited diag), the same shape as an
-// unresolvable id. No hard assert: a stale result is a recoverable drop, like
-// the existing un-watchable / load-invalidate fail-safes. Zero callers this
-// slice; exercised by gate-ON proof only.
-GameObjectPtr GameObjectManager::getByWatchIDGenerational (unsigned long watchID, uint16_t expectedGen) {
-
-	if (!mc2watch::isResolvableWatchId(watchID, nextWatchID))
-		return nullptr;
-	if (s_watchGen && !mc2watch::generationMatches(watchGeneration[watchID], expectedGen)) {
-		static unsigned long s_watchStaleDrops = 0;
-		++s_watchStaleDrops;
-		if (mc2_diag::tagEnabled("WATCHID_STALE") &&
-			(s_watchStaleDrops == 1 || (s_watchStaleDrops & 0xFF) == 0)) {
-			char _ws_buf[160];
-			(*std::format_to_n(_ws_buf, (sizeof(_ws_buf)) - 1,
-				"{{\"watchID\":{:d},\"expected\":{:d},\"stored\":{:d},\"drops\":{:d}}}",
-				mc2::fmt::as_u32(watchID), mc2::fmt::as_u32(static_cast<unsigned>(expectedGen)),
-				mc2::fmt::as_u32(static_cast<unsigned>(watchGeneration[watchID])), mc2::fmt::as_u32(s_watchStaleDrops)).out = '\0');
-			mc2_diag::writeEvent("WATCHID_STALE", 1, 0, _ws_buf);
-		}
-		return nullptr;
-	}
-	return watchList[watchID];
 }
 
 //---------------------------------------------------------------------------
@@ -558,10 +500,6 @@ void GameObjectManager::freeMover (MoverPtr mover) {
 		MC2_DESTROY(mover, "mover_freed");
 		mover->setFlag(OBJECT_FLAG_REMOVED, true);
 		mover->setPartId(0);
-		// MF3-GENERATIONAL-HANDLE-1: bump the slot's generation on free (gated) so
-		// any cross-frame handle captured at the old generation reads as stale.
-		if (s_watchGen)
-			watchGeneration[mover->watchID] = mc2watch::bumpGenerationOnFree(watchGeneration[mover->watchID]);
 		watchList[mover->watchID] = nullptr;
 		mover->watchID = 0;
 	}
@@ -589,22 +527,6 @@ void GameObjectManager::tradeMover (MoverPtr mover, long newTeamID, long newComm
 	mover->setCommanderId(newCommanderID);
 	modifyMoverLists(mover, MOVERLIST_TRADE);
 }
-
-//---------------------------------------------------------------------------
-
-#ifdef USE_ELEMENTALS
-
-ElementalPtr GameObjectManager::addElemental (void) {
-
-	if (numMechs < maxMechs) {
-		elementals[numElementals]->setExists(true);
-		setPartId(elementals[numElementals], -1, -1, -1);
-		return(elementals[numElementals++]);
-	}
-	return(nullptr);
-}
-
-#endif
 
 //---------------------------------------------------------------------------
 
@@ -682,14 +604,6 @@ CarnagePtr GameObjectManager::getCarnage (CarnageEnumType carnageType) {
 
 //---------------------------------------------------------------------------
 
-void GameObjectManager::releaseCarnage (CarnagePtr obj) {
-
-	obj->setOwner(nullptr);
-	MC2_DESTROY(obj, "pool_released");
-}
-
-//---------------------------------------------------------------------------
-
 LightPtr GameObjectManager::getLight (void) {
 
 	if (!lights || (currentLightIndex < 0) || (currentLightIndex >= numLights))
@@ -702,14 +616,6 @@ LightPtr GameObjectManager::getLight (void) {
 	lights[currentLightIndex]->init(false);
 	lights[currentLightIndex]->setExists(true);
 	return(lights[currentLightIndex++]);
-}
-
-//---------------------------------------------------------------------------
-
-void GameObjectManager::releaseLight (LightPtr obj) {
-
-	MC2_DESTROY(obj, "pool_released");
-//	obj->setOwner(NULL);
 }
 
 //---------------------------------------------------------------------------
@@ -928,11 +834,11 @@ void GameObjectManager::addObject (ObjDataLoader *objData, long& curTerrainObjec
 void GameObjectManager::releasePoolArrays (void)
 {
 	entities.clear();
+	resetPartIdIndex();
 	moverGrid.clear();
 	buildingGrid.clear();
 	invalidateSpatialGrid();
 	std::vector<GameObjectPtr>().swap(watchListStore);
-	std::vector<uint16_t>().swap(watchGenerationStore);
 	std::vector<GameObjectPtr>().swap(collidableStore);
 	std::vector<BattleMechPtr>().swap(mechStore);
 	std::vector<GroundVehiclePtr>().swap(vehicleStore);
@@ -945,7 +851,6 @@ void GameObjectManager::releasePoolArrays (void)
 	std::vector<CarnagePtr>().swap(carnageStore);
 	std::vector<ArtilleryPtr>().swap(artilleryStore);
 	objList = watchList = collidableList = nullptr;
-	watchGeneration = nullptr;
 	mechs = nullptr;
 	vehicles = nullptr;
 	elementals = nullptr;

@@ -256,12 +256,6 @@ class GameObjectManager {
 		RemovedMoverRec			moversRemoved[MAX_REMOVED];
 		unsigned long			nextWatchID;
 		GameObjectPtr			*watchList;
-		// MF3-GENERATIONAL-HANDLE-1: runtime-only generation counters, one per
-		// watchList[] slot, heap-allocated in EXACT lockstep with watchList
-		// (same size getMaxObjects()+1, same memset-0). Never serialized; reset
-		// to base at Load by design. Inert unless MC2_WATCHID_GENERATION is set.
-		uint16_t				*watchGeneration;
-
 		// The pointer arrays above are views of the registry's legacy slots and these vector owners.
 		// bindPoolArray() allocates the other arrays (setNumObjects, Load, buildCollidableList: zeroed storage, view
 		// refreshed); releasePoolArrays() swaps every owner empty and nulls every view, after destroy()'s last actor deletion.
@@ -269,7 +263,6 @@ class GameObjectManager {
 		mc2::world::SpatialGrid moverGrid, buildingGrid;
 		bool moverGridDirty = true, buildingGridDirty = true;
 		std::vector<GameObjectPtr>		watchListStore;
-		std::vector<uint16_t>			watchGenerationStore;
 		std::vector<GameObjectPtr>		collidableStore;
 		std::vector<BattleMechPtr>		mechStore;
 		std::vector<GroundVehiclePtr>	vehicleStore;
@@ -289,6 +282,10 @@ class GameObjectManager {
 			return owner.data();
 		}
 		void releasePoolArrays (void);
+		// R3: PartId -> slots (ascending) hash, rebuilt lazily from objList; defined in objmgr_pick.cpp.
+		struct PartIdIndex;
+		std::shared_ptr<PartIdIndex>	partIdIndex;	// shared_ptr: unit tests define the manager's ctor/dtor with PartIdIndex incomplete
+		void resetPartIdIndex (void);
 
 		long					currentWeaponsIndex;			//points to next entry in rotating weapon array.
 		long					currentCarnageIndex;			//points to next entry in rotating carnage list		
@@ -387,17 +384,11 @@ class GameObjectManager {
 		
 		void tradeMover (MoverPtr mover, long newTeamID, long newCommanderID);
 
-#ifdef USE_ELEMENTAL
-		BattleMechPtr addElemental (void);
-#endif
-
 		BattleMechPtr getMech (long mechIndex);
 
 		GroundVehiclePtr getVehicle (long vehicleIndex);
 
 		GroundVehiclePtr getOpenVehicle (void);
-
-		ElementalPtr getElemental (long elementalIndex);
 
 		TerrainObjectPtr getTerrainObject (long terrainObjectIndex);
 
@@ -411,11 +402,7 @@ class GameObjectManager {
 
 		CarnagePtr getCarnage (CarnageEnumType carnageType);
 
-		void releaseCarnage (CarnagePtr obj);
-
 		LightPtr getLight (void);
-
-		void releaseLight (LightPtr obj);
 
 		ArtilleryPtr getArtillery (void);
 
@@ -481,14 +468,6 @@ class GameObjectManager {
 			return(Terrain::objBlockInfo[blockNumber].firstHandle);
 		}
 
-		long getNumMechs (void) {
-			return(numMechs);
-		}
-
-		long getNumVehicles (void) {
-			return(numVehicles);
-		}
-
 		long getNumMovers (void) {
 			return(numMovers);
 		}
@@ -499,10 +478,6 @@ class GameObjectManager {
 
 		long getNumGoodMovers (void) {
 			return(numGoodMovers);
-		}
-
-		long getNumBadMovers (void) {
-			return(numBadMovers);
 		}
 
 		long getNumTerrainObjects (void) {
@@ -567,14 +542,6 @@ class GameObjectManager {
 			return mc2watch::isResolvableWatchId(watchID, nextWatchID) ? watchList[watchID] : nullptr;
 		}
 
-		// MF3-GENERATIONAL-HANDLE-1: additive generational resolve. Behaves like
-		// getByWatchID, plus (when MC2_WATCHID_GENERATION is set) rejects a handle
-		// whose expectedGen no longer matches the slot's current generation
-		// (stale -> NULL + rate-limited diag). Gate OFF: generation ignored, so
-		// behavior is byte-identical to getByWatchID. Defined in objmgr.cpp.
-		// Zero callers this slice (jobs-arc reconcile entry point).
-		GameObjectPtr getByWatchIDGenerational (unsigned long watchID, uint16_t expectedGen);
-
 		long buildMoverLists (void);
 
 		bool modifyMoverLists (MoverPtr mover, long action);
@@ -587,21 +554,12 @@ class GameObjectManager {
 			return(goodMoverList[index]);
 		}
 
-		MoverPtr getBadMover (long index) {
-			return(badMoverList[index]);
-		}
-
 		GameObjectPtr findObject (glm::vec3 position);
 
 		GameObjectPtr findByPartId (long partId);
-
-		GameObjectPtr findByBlockVertex (long blockNum, long vertex);
+		void notePartId (GameObjectPtr obj, long newPartId);	// feed after every partId write (GameObjectManager::setPartId, GameObject::Load, marines)
 
 		GameObjectPtr findByCellPosition (long row, long col);
-
-		GameObjectPtr findByUnitInfo (long commander, long group, long mate);
-
-		GameObjectPtr findObjectByTypeHandle (long typeHandle);
 
 		GameObjectPtr findObjectByMouse (long mouseX, long mouseY);
 		
@@ -633,29 +591,15 @@ class GameObjectManager {
 
 		bool isTeamCapturing (TeamPtr team, GameObjectWatchID targetWID);
 
-		CarnagePtr createFire (ObjectTypeNumber fireObjTypeHandle,
-							   GameObjectPtr owner,
-							   glm::vec3& position,
-							   float tonnage);
-
 		CarnagePtr createExplosion (long effectId,
 									GameObjectPtr owner,
 									glm::vec3& position,
 									float dmg = 0.0,
 									float radius = 0.0);
 
-		LightPtr createLight (ObjectTypeNumber lightObjTypeHandle);
-
 		WeaponBoltPtr createWeaponBolt (long effectId);
 
 		ArtilleryPtr createArtillery (long artilleryType, glm::vec3& position);
-
-		RemovedMoverRec* getRemovedMovers (long& numRemovedMovers) {
-			numRemovedMovers = numRemoved;
-			return(moversRemoved);
-		}
-
-		bool isRemoved (MoverPtr mover);
 
 		void setWatchID (GameObjectPtr obj);
 

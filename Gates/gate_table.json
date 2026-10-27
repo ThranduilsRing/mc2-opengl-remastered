@@ -1,6 +1,6 @@
 {
  "version": 1,
- "count": 774,
+ "count": 773,
  "gates": [
   {"name": "MC2_ABL_ARG_GUARD", "kind": "Bool", "rule": "Lead1", "default": false, "owner": "code", "retireBy": "", "doc": "ABL crash-safety gates (ABL-OPCODE-BOUNDS-HARDEN) MC2_ABL_ARG_GUARD=1 - enables dispatch-bounds soft path + out-ptr null guards MC2_ABL_RUNTIME_SOFTFAIL=1 -...", "tokens": "", "range": null, "reread": false, "divergent": false, "smokePassthrough": true, "verified": true, "registry": null, "logTopic": ""},
   {"name": "MC2_ABL_ARG_GUARD_REPRO", "kind": "Bool", "rule": "Lead1", "default": false, "owner": "code", "retireBy": "", "doc": "", "tokens": "", "range": null, "reread": false, "divergent": false, "smokePassthrough": true, "verified": true, "registry": null, "logTopic": ""},
@@ -748,7 +748,6 @@
   {"name": "MC2_VSYNC", "kind": "Bool", "rule": "Lead1", "default": false, "owner": "vk", "retireBy": "", "doc": "", "tokens": "", "range": null, "reread": false, "divergent": false, "smokePassthrough": true, "verified": true, "registry": null, "logTopic": ""},
   {"name": "MC2_VULKAN_SPV_DIR", "kind": "String", "rule": "Std", "default": "shaders/vulkan", "owner": "vk", "retireBy": "", "doc": "", "tokens": "", "range": null, "reread": false, "divergent": false, "smokePassthrough": true, "verified": true, "registry": null, "logTopic": ""},
   {"name": "MC2_VULKAN_VALIDATION", "kind": "String", "rule": "Std", "default": "", "owner": "vk", "retireBy": "", "doc": "", "tokens": "", "range": null, "reread": false, "divergent": false, "smokePassthrough": true, "verified": true, "registry": null, "logTopic": ""},
-  {"name": "MC2_WATCHID_GENERATION", "kind": "Bool", "rule": "Presence", "default": false, "owner": "code", "retireBy": "", "doc": "MF3-GENERATIONAL-HANDLE-1: generational watch-id validation killswitch.", "tokens": "", "range": null, "reread": false, "divergent": false, "smokePassthrough": true, "verified": true, "registry": null, "logTopic": ""},
   {"name": "MC2_WATER_ASPECT_DIAG", "kind": "Bool", "rule": "Presence", "default": false, "owner": "code", "retireBy": "", "doc": "[WATER_ASPECT_DIAG v1] env-gated one-shot (MC2_WATER_ASPECT_DIAG=1), silent by default.", "tokens": "", "range": null, "reread": false, "divergent": false, "smokePassthrough": false, "verified": true, "registry": null, "logTopic": ""},
   {"name": "MC2_WATER_BIAS_LEGACY", "kind": "Bool", "rule": "Lead0", "default": false, "owner": "gameos", "retireBy": "", "doc": "", "tokens": "", "range": null, "reread": false, "divergent": false, "smokePassthrough": false, "verified": true, "registry": null, "logTopic": ""},
   {"name": "MC2_WATER_DEBUG", "kind": "Bool", "rule": "Presence", "default": false, "owner": "terrain", "retireBy": "", "doc": "MC2_WATER_DEBUG=1: post-warmup population recon for the renderWater slice.", "tokens": "", "range": null, "reread": false, "divergent": false, "smokePassthrough": true, "verified": true, "registry": null, "logTopic": ""},

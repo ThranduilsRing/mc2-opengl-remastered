@@ -2214,6 +2214,8 @@ void GameObject::Load (GameObjectData *data)
 	objectClass = data->objectClass;
 	handle = data->handle;
 	partId = data->partId;
+	if (ObjectManager)
+		ObjectManager->notePartId(this, partId);
 	watchID = data->watchID;
 
 	position = data->position;

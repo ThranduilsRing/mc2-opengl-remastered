@@ -222,6 +222,7 @@ void GameObjectManager::setPartId (GameObjectPtr obj, long param1, long param2, 
 	// should we have any reason to modify or test 'em as missions are loaded.
 	long partId = calcPartId(obj->getObjectClass(), param1, param2, param3);
 	obj->setPartId(partId);
+	notePartId(obj, partId);
 }
 
 //---------------------------------------------------------------------------
@@ -347,32 +348,6 @@ bool GameObjectManager::isTeamCapturing (TeamPtr team, GameObjectWatchID targetW
 
 //---------------------------------------------------------------------------
 
-CarnagePtr GameObjectManager::createFire (ObjectTypeNumber fireObjTypeHandle,
-										  GameObjectPtr owner,
-										  glm::vec3& position,
-										  float tonnage) {
-
-	CarnagePtr fire = getCarnage(CARNAGE_FIRE);
-	if (fire) {
-		ObjectTypePtr objectType = getObjectType(fireObjTypeHandle);
-		if (objectType) {
-			//------------------------------------------------------------
-			// Make sure the object type we loaded is really a fire object
-			// type. If not, NULL out of here...
-			if (objectType->getObjectClass() != FIRE)
-				return(nullptr);
-			fire->init(false, objectType);
-			fire->setOwner(owner);
-			fire->setTonnage(tonnage);
-			fire->setPosition(position);
-			fire->setExists(true);
-		}
-	}
-	return(fire);
-}
-
-//---------------------------------------------------------------------------
-
 CarnagePtr GameObjectManager::createExplosion (long effectId,
 											   GameObjectPtr owner,
 											   glm::vec3& position,
@@ -435,23 +410,6 @@ CarnagePtr GameObjectManager::createExplosion (long effectId,
 
 //---------------------------------------------------------------------------
 
-LightPtr GameObjectManager::createLight (ObjectTypeNumber lightObjTypeHandle) {
-
-	LightPtr light = getLight();
-	if (light) {
-		ObjectTypePtr objectType = getObjectType(lightObjTypeHandle);
-		light->init(false, objectType);
-//		light->setOwner(owner);
-//		light->setTonnage(tonnage);
-		glm::vec3 startPosition;
-		startPosition = glm::vec3(0.0f);
-		light->setPosition(startPosition);
-		light->setExists(true);
-	}
-	return(light);
-}
-
-//---------------------------------------------------------------------------
 WeaponBoltPtr GameObjectManager::createWeaponBolt (long effectId) 
 {
 	WeaponBoltPtr weaponBolt = getWeapon();
