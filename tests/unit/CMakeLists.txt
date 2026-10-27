@@ -398,6 +398,7 @@ target_sources(mc2_tests PRIVATE
     test_icon_atlas_harness.cpp
     test_timing_math_harness.cpp
     test_job_system_harness.cpp
+    test_los_kernel.cpp
     test_terrain_daylight_harness.cpp
     test_object_light_row_harness.cpp
     test_class_light_band_harness.cpp
@@ -405,6 +406,7 @@ target_sources(mc2_tests PRIVATE
     ${MC2_WORKTREE_ROOT}/GameOS/gameos/native_render_state.cpp
     gos_counter_stubs.cpp
     ${MC2_WORKTREE_ROOT}/code/job_system.cpp
+    ${MC2_WORKTREE_ROOT}/code/los_kernel.cpp
     ${MC2_WORKTREE_ROOT}/code/jobs_fatal.cpp
 )
 target_compile_features(mc2_tests PRIVATE cxx_std_23)

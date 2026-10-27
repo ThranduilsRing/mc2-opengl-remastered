@@ -477,6 +477,7 @@ set(SOURCES
     "code/tacordr.cpp"
     "code/team.cpp"
     "code/team_los.cpp"
+    "code/los_kernel.cpp"
     "code/terrobj.cpp"
     "code/turret.cpp"
     "code/brain_special_dispatch.cpp"
