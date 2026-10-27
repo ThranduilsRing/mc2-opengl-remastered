@@ -978,7 +978,7 @@ void Carnage::createPresentationEffect()
 			gosFX::Effect::Specification* gosEffectSpec = gosFX::EffectLibrary::Instance->Find(weaponEffects->GetEffectName(effectId));
 
 			gosEffect = gosFX::EffectLibrary::Instance->MakeEffect(gosEffectSpec->m_effectID, flags);
-			gosASSERT(gosEffect != NULL);
+			gosASSERT(gosEffect != nullptr);
 
 			MidLevelRenderer::MLRTexturePool::Instance->LoadImages();
 		}

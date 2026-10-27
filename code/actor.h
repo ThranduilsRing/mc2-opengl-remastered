@@ -81,13 +81,13 @@ class VFXAppearanceType : public AppearanceType
 	
 		void init (void)
 		{
-			actorStateData = NULL;
-			textureList = NULL;
+			actorStateData = nullptr;
+			textureList = nullptr;
 			numStates = 0;
 			numPackets = 0;
 
-			users = NULL;
-			lastUser = NULL;
+			users = nullptr;
+			lastUser = nullptr;
 		}
 	
 		VFXAppearanceType (void)
@@ -163,7 +163,7 @@ class VFXAppearance : public Appearance
 		
 	public:
 
-		virtual void init (AppearanceTypePtr tree = NULL, GameObjectPtr obj = NULL);
+		virtual void init (AppearanceTypePtr tree = nullptr, GameObjectPtr obj = nullptr);
 
 		VFXAppearance (void)
 		{

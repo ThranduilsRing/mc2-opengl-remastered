@@ -173,7 +173,7 @@ union _ArtilleryInfo {
 };
 using ArtilleryInfo = _ArtilleryInfo;
 
-typedef struct _ArtilleryData : public GameObjectData
+struct _ArtilleryData : public GameObjectData
 {
 	char				artilleryType;
 	char				teamId;
@@ -185,7 +185,8 @@ typedef struct _ArtilleryData : public GameObjectData
 	bool				inView;
 	glm::vec3		iFacePosition;
 
-} ArtilleryData;
+};
+using ArtilleryData = _ArtilleryData;
 
 class Artillery : public GameObject 
 {
