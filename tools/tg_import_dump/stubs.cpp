@@ -173,7 +173,6 @@ size_t LZCompress(unsigned char* /*dst*/, unsigned char* /*src*/, size_t /*len*/
 //     never reads them on LoadBinaryCopy). Defaults match the engine's.
 // ===========================================================================
 bool  useVertexLighting = true;
-bool  useFaceLighting   = false;
 bool  useFog            = true;
 bool  InEditor          = false;
 int   ObjectTextureSize = 128;

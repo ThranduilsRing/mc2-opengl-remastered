@@ -278,9 +278,7 @@ long TG_Shape::MultiTransformShape (glm::mat4 *shapeToClip, glm::vec3 *backFaceP
 			listOfVisibleFaces[numVisibleFaces] = j;
 			numVisibleFaces++;
 
-			TgXformFrame f;
-			xformFaceLight(theShape, j, f);
-			xformFaceCorners(alphaValue, theShape, j, f);
+			xformFaceCorners(alphaValue, theShape, j);
 			xformFaceQueue(isHudElement, alphaValue, isClamped, theShape, j);
 		}
 	}

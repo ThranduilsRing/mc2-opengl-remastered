@@ -144,7 +144,6 @@ using TG_TypeTrianglePtr = TG_TypeTriangle*;
 struct _TG_Triangle
 {
 	DWORD    		aRGBLight[3];			//RGB Light for this triangle's vertices.
-	DWORD    		fRGBLight[3];			//RGB Fog for this triangle's vertices.
 }; using TG_Triangle = _TG_Triangle;
 
 // Texture handle can change from frame to frame. Texture Animation!
@@ -999,8 +998,7 @@ class TG_Shape
 		void xformVertexBaseColor(bool isHudElement, bool isNight, float nightFactor, TG_TypeShapePtr theShape, long j, TgXformFrame& f);
 		void xformVertexLights(TG_TypeShapePtr theShape, long j, TgXformFrame& f);
 		void xformVertexFog(TG_ShapeRecPtr parentNode, TG_TypeShapePtr theShape, long j, TgXformFrame& f);
-		void xformFaceLight(TG_TypeShapePtr theShape, long j, TgXformFrame& f);
-		void xformFaceCorners(BYTE alphaValue, TG_TypeShapePtr theShape, long j, TgXformFrame& f);
+		void xformFaceCorners(BYTE alphaValue, TG_TypeShapePtr theShape, long j);
 		void xformFaceQueue(bool isHudElement, BYTE alphaValue, bool isClamped, TG_TypeShapePtr theShape, long j);
 
 	public:

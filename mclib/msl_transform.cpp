@@ -258,7 +258,7 @@ long TG_MultiShape::TransformMultiShape (glm::vec3 *pos, glm::quat *rot)
         if (s_buildRecipeOnly)
             continue;
 
-        if (useFaceLighting || useVertexLighting)
+        if (useVertexLighting)
         {
             //----------------------------------------------------
             // Setup Lighting here.
