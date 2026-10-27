@@ -673,8 +673,6 @@ bool saveInMissionSave = false;
 // compare that file with the first save (tools/saveload_roundtrip.py resave).
 bool g_resaveAfterQuickload = false;
 
-float forcedFrameRate = -1.0f;
-
 // ---- MC2_MISSION_SPLIT: wall-ms split of the Mission::update sub-calls -----
 // Locate which logic sub-call owns the 1K-map ~50ms (HITCH logic phase). Default
 // OFF, zero behavior change. Emits per-call ns totals + averages at exit (stdout).

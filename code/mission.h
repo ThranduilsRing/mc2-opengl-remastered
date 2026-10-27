@@ -568,7 +568,6 @@ class Mission
 
 	// Mission::update phases (mission_update.cpp); callers use update().
 		void updateDevHotkeys();
-		void updateFrameClock();
 		void updateTickClock(bool advanceTime);
 		double pollRealFrameSeconds(float harnessFrameSeconds);
 		void resumeTickAudio();

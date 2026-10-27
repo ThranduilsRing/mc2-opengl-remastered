@@ -242,7 +242,6 @@ extern long MaxResourcePoints;
 extern bool loadInMissionSave;
 extern bool saveInMissionSave;
 extern bool g_resaveAfterQuickload;
-extern float forcedFrameRate;
 extern bool 			invulnerableON;
 #include "mission_globals.h"
 extern int32_t NumStateTransitions;
