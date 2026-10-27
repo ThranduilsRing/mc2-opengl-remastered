@@ -868,8 +868,14 @@ void MechWarrior::save (PacketFilePtr file, long packetNum)
 
 long MechWarrior::Save (PacketFilePtr file, long packetNum)
 {
+	// Saves keep the legacy 256 pilot packets (byte-identical for stock missions); slots above are written only when a
+	// pilot there is in use. Old saves load with the extra slots left as setup() made them.
+	long saveCount = std::min<long>(numWarriors, 256);
+	for (long i = saveCount; i < numWarriors; i++)
+		if (warriorList[i] && warriorList[i]->used)
+			saveCount = i + 1;
 	MC2_SAVE_STRUCT(StaticMechWarriorData, staticData);
-	staticData.numWarriors 					= numWarriors;
+	staticData.numWarriors 					= saveCount;
 	staticData.numWarriorsInCombat			= numWarriorsInCombat;
 	MemCpy(staticData.brainsEnabled,brainsEnabled);
 	staticData.minSkill						= minSkill;
@@ -882,7 +888,7 @@ long MechWarrior::Save (PacketFilePtr file, long packetNum)
 	file->writePacket(packetNum,reinterpret_cast<MemoryPtr>(&staticData),sizeof(StaticMechWarriorData),STORAGE_TYPE_RAW);
 	packetNum++;
 
-	for (long i = 0; i < numWarriors; i++)
+	for (long i = 0; i < saveCount; i++)
 	{
 		MechWarrior::warriorList[i]->save(file,packetNum);
 		packetNum++;
