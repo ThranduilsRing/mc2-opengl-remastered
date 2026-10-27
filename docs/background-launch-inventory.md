@@ -44,8 +44,8 @@ FAILS the checker unless it carries `# background-launch: allow <why>`.
 | `tools/tracy_capture_compare.py` | 301 | `nofocus.spawn` | offscreen |
 | `tools/tracy_capture_compare.py` | 341 | `subprocess.run` **raw, allowed:** Tracy csvexport console tool, not the game; windowless via hidden_kwargs | offscreen |
 | `tools/tracy_capture_compare.py` | 376 | `subprocess.run` **raw, allowed:** Tracy csvexport console tool, not the game; windowless via hidden_kwargs | offscreen |
-| `tools/tracy_capture_compare.py` | 410 | `subprocess.run` **raw, allowed:** Tracy csvexport console tool, not the game; windowless via hidden_kwargs | offscreen |
-| `tools/tracy_capture_compare.py` | 463 | `subprocess.run` **raw, allowed:** Tracy csvexport console tool, not the game; windowless via hidden_kwargs | offscreen |
+| `tools/tracy_capture_compare.py` | 412 | `subprocess.run` **raw, allowed:** Tracy csvexport console tool, not the game; windowless via hidden_kwargs | offscreen |
+| `tools/tracy_capture_compare.py` | 465 | `subprocess.run` **raw, allowed:** Tracy csvexport console tool, not the game; windowless via hidden_kwargs | offscreen |
 
 Total engine launch sites: 37
 

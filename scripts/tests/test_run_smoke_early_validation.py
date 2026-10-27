@@ -3,12 +3,15 @@ import subprocess
 import sys
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import console_child  # noqa: E402
+
 ROOT = Path(__file__).resolve().parents[2]
 
 
 def _run(*args):
     return subprocess.run([sys.executable, str(ROOT / "scripts/run_smoke.py"), *args],
-                          capture_output=True, text=True, timeout=60)
+                          capture_output=True, text=True, timeout=60, **console_child.child_kwargs(redirected=True))
 
 
 def test_deploy_path_rejected_before_lease():

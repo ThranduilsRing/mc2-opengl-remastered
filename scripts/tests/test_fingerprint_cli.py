@@ -24,8 +24,12 @@ def test_cli_passes_reference_selection(args, commit, exe):
     launch.assert_not_called()
 
 
-def test_cli_missing_head_preserves_fingerprint_opt_out(capsys):
-    with patch.object(sys, "argv", ["run_smoke.py", "--exe", "missing-test.exe"]), \
+def test_cli_missing_head_preserves_fingerprint_opt_out(capsys, tmp_path):
+    exe = tmp_path / "mc2.exe"
+    exe.write_bytes(b"")
+    ok = type("V", (), {"ok": True, "banner": lambda self: ""})()
+    with patch.object(sys, "argv", ["run_smoke.py", "--exe", str(exe)]), \
+         patch.object(run_smoke._exe_guard, "check_exe", return_value=ok), \
          patch.dict(run_smoke.os.environ, {"MC2_SMOKE_REQUIRE_FINGERPRINT": "0"}), \
          patch.object(run_smoke._fingerprint, "resolve_reference",
                       side_effect=ValueError("cannot resolve fingerprint commit reference HEAD")), \

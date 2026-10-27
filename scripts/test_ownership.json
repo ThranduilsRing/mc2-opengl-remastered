@@ -80,6 +80,8 @@
     {"module": "scripts/tests/test_parent_watchdog.py", "owners": ["scripts_tests"]},
     {"module": "scripts/tests/test_phase_tools.py", "owners": ["scripts_tests"]},
     {"module": "scripts/tests/test_ref_passthrough.py", "owners": ["scripts_tests"]},
+    {"module": "scripts/tests/test_gpu_routing.py", "owners": ["scripts_tests"]},
+    {"module": "scripts/tests/test_run_smoke_early_validation.py", "owners": ["scripts_tests"]},
     {"module": "scripts/tests/test_runner_env_drop.py", "owners": ["scripts_tests"]},
     {"module": "scripts/tests/test_sim_determinism_strict.py", "owners": ["sim_determinism"]},
     {"module": "scripts/tests/test_sim_include_firewall.py", "owners": ["sim_include_firewall"]},
