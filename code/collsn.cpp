@@ -301,7 +301,7 @@ void CollisionGrid::createGrid (void)
 		s_t3Frames++; s_t3Pairs += (long)a.size();
 		if (a != b) { s_t3Bad++; }
 		if (s_t3Frames % 100 == 0 || a != b)
-			fprintf(stderr, "[T3_ORDER] frames=%ld pairs=%ld mismatches=%ld\n", s_t3Frames, s_t3Pairs, s_t3Bad);
+			fprintf(stdout, "[T3_ORDER] frames=%ld pairs=%ld mismatches=%ld\n", s_t3Frames, s_t3Pairs, s_t3Bad);
 	}
 	traverse();
 }

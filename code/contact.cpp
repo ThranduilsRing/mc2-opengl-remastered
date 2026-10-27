@@ -620,10 +620,10 @@ long SensorSystem::scanBattlefield (void)
 			checked++;
 			if (isContact(mover) || calcContactStatus(mover) != CONTACT_NONE) {
 				bad++;
-				fprintf(stderr, "[T4_ORDER] VIOLATION ordinal=%ld contact=%d\n", i, int(isContact(mover)));
+				fprintf(stdout, "[T4_ORDER] VIOLATION ordinal=%ld contact=%d\n", i, int(isContact(mover)));
 			}
 		}
-		if (++scans % 500 == 0) fprintf(stderr, "[T4_ORDER] scans=%ld skipped_checked=%ld violations=%ld\n", scans, checked, bad);
+		if (++scans % 500 == 0) fprintf(stdout, "[T4_ORDER] scans=%ld skipped_checked=%ld violations=%ld\n", scans, checked, bad);
 	}
 	// SENSOR-SCAN-FACTS-1: cache the gate once outside the hot loop (OFF = one bool).
 	const bool _sfacts = mc2_sensor_trace::g_counters.active;
