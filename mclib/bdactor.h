@@ -225,6 +225,12 @@ class BldgAppearance : public ObjectAppearance
 		TG_TypeMultiShape* simulationType_ = nullptr;
 		long simulationAnimationState_ = -1;
 		float simulationFrame_ = 0.0f;
+		// Simulation inputs: the tick writes them (setSimInput, setObjStatus, or setObjectParameters on the init/load paths);
+		// only updateSimPose reads them. The draw path reads position / rotation / status, which presentation writes.
+		glm::vec3 simPosition_{};
+		float simRotation_ = 0.0f;
+		long simStatus_ = 0;
+		void setSimInput (const SimInput& in) override;
 		void updateSimPose();
 		long desiredRenderLOD() const;
 		void updateRenderLOD();

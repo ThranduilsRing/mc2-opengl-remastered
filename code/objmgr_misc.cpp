@@ -571,6 +571,8 @@ void GameObjectManager::updateAppearancesOnly( bool terrain, bool movers, bool o
 						Terrain::objVertexActive[objList[objIndex]->getVertexNum()] &&
 						objList[objIndex]->getExists())
 					{
+						if (objList[objIndex]->getObjectClass() == TERRAINOBJECT)
+							static_cast<TerrainObject*>(objList[objIndex])->applyAppearancePush();
 						if (objList[objIndex]->getAppearance()->recalcBounds())
 						{
 							// Must force here as well.

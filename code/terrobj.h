@@ -200,6 +200,9 @@ class TerrainObject : public GameObject {
 
 		virtual long update (void);
 
+		// Presentation phase: applies the draw-side parameters update() leaves to the presentation pass.
+		void applyAppearancePush (void);
+
 		virtual void render (void);
 
 		virtual void renderShadows (void);
