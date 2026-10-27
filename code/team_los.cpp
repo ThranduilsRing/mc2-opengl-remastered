@@ -65,6 +65,51 @@ extern LineElement *debugLines[];
 #endif
 
 //---------------------------------------------------------------------------
+// TEMP PROOF (T5): MC2_LOS_VERIFY=1 re-runs every kernel query through the legacy walk and compares; MC2_LOS_CORPUS=<file>
+// appends the raw-bit record (inputs, legacy bit, kernel bit).
+#include <cstdio>
+#include <cstdlib>
+static bool legacyLos(const mc2::los::Query& q)
+{
+	int posCellR, posCellC, tarCellR, tarCellC;
+	land->worldToCell(q.position, posCellR, posCellC);
+	land->worldToCell(q.target, tarCellR, tarCellC);
+	float elev = land->getTerrainElevation(q.position);
+	float localStart = q.position.z - elev;
+	elev = land->getTerrainElevation(q.target);
+	float localEnd = q.target.z - elev;
+	return Team::lineOfSight(localStart, posCellR, posCellC, localEnd, tarCellR, tarCellC, q.teamId, q.extRad, q.startExtRad);
+}
+static struct LosVerify {
+	bool on = false;
+	FILE* corpus = nullptr;
+	unsigned long long n = 0, bad = 0, vis = 0;
+	LosVerify() {
+		on = getenv("MC2_LOS_VERIFY") != nullptr;
+		const char* c = getenv("MC2_LOS_CORPUS");
+		if (on && c) corpus = fopen(c, "wb");
+	}
+	~LosVerify() {
+		if (!on) return;
+		printf("[LOS_VERIFY] queries=%llu visible=%llu mismatches=%llu\n", n, vis, bad);
+		fflush(stdout);
+		if (corpus) fclose(corpus);
+	}
+	void check(const mc2::los::Query& q, bool kernelBit) {
+		const bool legacy = legacyLos(q);
+		++n; vis += legacy ? 1 : 0;
+		if (legacy != kernelBit) ++bad;
+		if (corpus) {
+			float f[8] = { q.position.x, q.position.y, q.position.z, q.target.x, q.target.y, q.target.z, q.extRad, q.startExtRad };
+			int32_t t = static_cast<int32_t>(q.teamId);
+			unsigned char bits[2] = { static_cast<unsigned char>(legacy), static_cast<unsigned char>(kernelBit) };
+			fwrite(f, sizeof(f), 1, corpus);
+			fwrite(&t, sizeof(t), 1, corpus);
+			fwrite(bits, sizeof(bits), 1, corpus);
+		}
+	}
+} g_losVerify;
+
 bool Team::teamLineOfSight (glm::vec3 tPos, float extRad)
 {
 	// The range gates run here in roster order; each in-range member contributes one ray. The rays are pure reads, so
@@ -195,11 +240,14 @@ bool Team::teamLineOfSight (glm::vec3 tPos, float extRad)
 	}
 
 	constexpr size_t kBatchMin = 8;
-	if (pending.size() >= kBatchMin && mc2::jobs::enabled())
+	if ((pending.size() >= kBatchMin || g_losVerify.on) && mc2::jobs::enabled())
 	{
 		static std::vector<uint8_t> hits;
 		hits.assign(pending.size(), 0);
 		mc2::los::batch(snap, pending.data(), hits.data(), static_cast<int>(pending.size()));
+		if (g_losVerify.on)
+			for (size_t i = 0; i < pending.size(); ++i)
+				g_losVerify.check(pending[i], hits[i] != 0);
 		for (uint8_t h : hits)
 			if (h)
 				return true;
@@ -369,7 +417,10 @@ bool Team::lineOfSight (glm::vec3 position, glm::vec3 targetPosition, long teamI
 			q.teamId = teamId;
 			q.extRad = extRad;
 			q.startExtRad = startExtRad;
-			return mc2::los::query(snap, q);
+			const bool kb = mc2::los::query(snap, q);
+			if (g_losVerify.on)
+				g_losVerify.check(q, kb);
+			return kb;
 		}
 	}
 
