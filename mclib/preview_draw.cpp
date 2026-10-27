@@ -132,7 +132,9 @@ void TG_Shape::CpuDraw (const glm::mat4& shapeToWorld, const glm::mat4& worldToS
 	// Ambient colour and the infinite lights' directions in shape space.
 	DWORD redAmb = 0, greenAmb = 0, blueAmb = 0;
 	glm::vec3 lightDir[MAX_LIGHTS_IN_WORLD];
-	for (DWORD i = 0; i < s_numLights && i < MAX_LIGHTS_IN_WORLD; i++)
+	// Window and searchlight leaves are not lit by the scene lights (as the old per-vertex kernel).
+	const DWORD numLights = (isSpotlight || isWindow) ? 0 : s_numLights;
+	for (DWORD i = 0; i < numLights && i < MAX_LIGHTS_IN_WORLD; i++)
 	{
 		if (!s_listOfLights[i] || !s_listOfLights[i]->active)
 			continue;
@@ -227,7 +229,7 @@ void TG_Shape::CpuDraw (const glm::mat4& shapeToWorld, const glm::mat4& worldToS
 
 		// Infinite lights, then ambient.
 		const glm::vec3& n = theShape->listOfTypeVertices[j].normal;
-		for (DWORD i = 0; i < s_numLights && i < MAX_LIGHTS_IN_WORLD; i++)
+		for (DWORD i = 0; i < numLights && i < MAX_LIGHTS_IN_WORLD; i++)
 		{
 			if (!s_listOfLights[i] || !s_listOfLights[i]->active || s_listOfLights[i]->lightType != TG_LIGHT_INFINITE)
 				continue;
