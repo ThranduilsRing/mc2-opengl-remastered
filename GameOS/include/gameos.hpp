@@ -173,8 +173,7 @@ struct _GUID
     bool operator!=(const _GUID& other) {
         return !(*this == other);
     }
-};
-using GUID = _GUID;
+}; using GUID = _GUID;
 #endif /* GUID_DEFINED */
 
 
@@ -475,8 +474,7 @@ struct _gosVideo_Info
 	DWORD					dwPitch;		// read-only pitch of video surface
 	DWORD					dwWidth;		// read-only width of video
 	DWORD					dwHeight;		// read-only height of vidoe
-};
-using gosVideo_ResourceInfo = _gosVideo_Info;
+}; using gosVideo_ResourceInfo = _gosVideo_Info;
 
 //////////////////////////////////////////////////////////////////////////////////
 // Send a command to an existing video resource or create a new video resource.
@@ -601,8 +599,7 @@ struct _gosAudio_Format
 	WORD  nBlockAlign; 				// Normally, wBitsPerSample / 8 * nChannels
     WORD  wBitsPerSample;			// Bits per sample for the wFormatTag format type. If wFormatTag is 1 (PCM), then wBitsPerSample should be equal to 8 or 16.
 	WORD  cbSize;					// Size, in bytes, of extra format information appended to the end of the WAVEFORMATEX structure. For PCM's, this should be set to 0. For ADPCM, this should be set to 32.
-};
-using gosAudio_Format = _gosAudio_Format;
+}; using gosAudio_Format = _gosAudio_Format;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 // For gosAudio_UserMemoryPlayList resources, fill in the structure below and pass it in. The information
@@ -626,8 +623,7 @@ struct _gosAudio_ResourceInfo
 	gosAudio_Format			sFormat;		// 1 = PCM, 2 = ADPCM
 	DWORD					dwSizeInBytes;	// size of the data portion of the WAV
 	float					fDuration;		// in seconds
-};
-using gosAudio_ResourceInfo = _gosAudio_ResourceInfo;
+}; using gosAudio_ResourceInfo = _gosAudio_ResourceInfo;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 // GetChannelInfo returns all the following information when inquiring about a channel. Note that
@@ -659,8 +655,7 @@ struct _gosAudio_ChannelInfo
 	float				fDistance;					// Typically 1.0, this defines meters/unit within the sound system
 	float				fReverb;					// If available, the reverbation factor of all channels
 	float				fDecay;						// If available, the decay factor of all channels
-};
-using gosAudio_ChannelInfo = _gosAudio_ChannelInfo;
+}; using gosAudio_ChannelInfo = _gosAudio_ChannelInfo;
 
 //////////////////////////////////////////////////////////////////////////////////
 // Creates a resource to be played later
@@ -802,8 +797,7 @@ struct _gosIME_Appearance
 	DWORD			compColorInputErr;
 	BYTE			compTranslucence;
 	DWORD			compColorText;
-};
-using gosIME_Appearance = _gosIME_Appearance;
+}; using gosIME_Appearance = _gosIME_Appearance;
 
 
 //
@@ -1536,8 +1530,7 @@ struct _gosJoystick_ForceEffect
 	};
 	float	fPeriodSec;
 
-};
-using gosJoystick_ForceEffect = _gosJoystick_ForceEffect;
+}; using gosJoystick_ForceEffect = _gosJoystick_ForceEffect;
 
 //
 // Return the total number of joysticks detected when the application started.
@@ -1893,8 +1886,7 @@ struct _NetPacket
 
 	void	*pData;					// Pointer to message data
 
-};
-using NetPacket = _NetPacket;
+}; using NetPacket = _NetPacket;
 
 #pragma pack(pop)
 
