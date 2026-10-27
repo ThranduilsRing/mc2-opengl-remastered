@@ -1,7 +1,10 @@
 # Headless mission load: presentation dependencies and the seam
 
 Lane claude/arch-headless-load. Design context: .claude/cleanup/sim-kernel-design.md, "Presentation dependencies and the headless runner".
-Status: design plus the tick-budget exit (`--ticks N`). The no-GPU boot itself is NOT built; section 5 is the plan.
+Status: stage 1 is built and proven. `--headless` (smoke mode only) boots a stock mission with no window, GPU device or audio, runs it to
+`--ticks N` and exits 0. Proof (windowed run a vs headless run b, `tools/sim_determinism.py run <m> --duration 60 --ticks 900 --headless`):
+mc2_03 and mc2_10 SIMID chains identical over 901 frames (graded/visual/strict, rng and animrng counts). Headless load took 14 s and the 900 ticks
+1.3 s. The runner's gate verdict for run b is FAIL (vegetation/heartbeat checks are windowed render gates); the SIMID stream is still compared.
 
 ## 1. Where the boot touches presentation today
 
@@ -67,8 +70,18 @@ tick per frame (the harness clock), may overshoot under `--sim-speed N`. Run it 
 
 ## 5. Remaining steps
 
-1. Stage 1 behind `--headless`, driven by crashes: window/renderer/audio skip, texture/buffer/font stubs, guard `g_gos_renderer`.
-2. Headless frame loop: no draw/present; run `Mission::update` directly through the same validating loader.
-3. Proof: headless SIMID chain equals the windowed chain for mc2_03 and mc2_10 over 800-1000 ticks (`tools/sim_determinism.py compare`).
+1-3. DONE (stage 1, section 6).
 4. Stage 2 data-only appearance; split MissionInterfaceManager; Environment-owned weather; logical media completion from ticks.
 5. Harness capability proving presentation never initialized, before dropping the desktop/GPU lease.
+
+## 6. What stage 1 actually needed (the stubs were fewer than the survey feared)
+
+- main(): no `create_window`, `initVulkanBackend`, `gos_CreateRenderer`, GuiRuntime, `gos_CreateAudio`; no render half of the frame loop; no
+  `GuiRuntime::NewFrame`/`gos_RendererHandleEvents`; no window/Vulkan/GUI teardown.
+- `gos_CreateRendererHeadless`: a state-only `gosRenderer` (texture list, screen mode). Textures decode CPU-side and upload lazily at bind, so
+  textures, shapes and appearances needed no stub at all: the normal appearance init ran and the digests match by construction.
+- `gosAudio_*`: early returns when there is no `g_sound_engine` (CreateResource gives a null handle; channel play mode reads as stopped).
+- Not yet proven: the other stock missions, saves, and that no sim state reads the stubbed audio play mode (mc2_03/mc2_10 never diverged).
+- Gotcha: `GameOS/gameos/gos_smoke.cpp` contains NUL bytes, so Edit/Write refuse it and git calls it binary (`git diff --text`). Change it with a
+  byte-level script (open 'rb'/'wb'), and write a backslash as `bytes([92])`; heredoc Python mangles `
+` and ` ` in the replacement text.
