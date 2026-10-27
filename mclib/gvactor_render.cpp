@@ -143,6 +143,21 @@ long GVAppearance::render (long depthFixup)
 					drawShape->CacheGpuLightDataAllLeaves();
 				drawShape->Render(true);
 			}
+			else if (gpuPose_ && eye->isNight) {
+				// No batcher draws a searchlight cone: transform just those leaves and draw them the legacy way
+				// (Render skips every leaf the hierarchy-only pass left untransformed).
+				if (spotlightLeaves_ < 0) {
+					spotlightLeaves_ = 0;
+					for (int i = 0; i < drawShape->GetNumShapes(); ++i)
+						if (const TG_ShapeRec* rec = drawShape->GetShapeRec(i))
+							if (rec->node && rec->processMe && rec->node->GetIsSpotlight()) ++spotlightLeaves_;
+				}
+				if (spotlightLeaves_ > 0) {
+					drawShape->TransformMultiShape_SpotlightLeaves(&poseXlat_, &poseRot_);
+					drawShape->CacheGpuLightDataAllLeaves();
+					drawShape->Render(true);
+				}
+			}
 
 			if (selected & DRAW_TEXT)
 			{
@@ -350,6 +365,7 @@ bool GVAppearance::submitToMechBatcher(uint32_t highlightARGB)
 	GpuMechSubmitDesc desc{};
 	desc.mechShape = gvShape;
 	desc.mechType = nullptr;
+	desc.renderFlags = 0x40u;	// legacy vehicle lighting: sun and ambient, no point or spot lights
 	desc.slot0TexHandle = static_cast<uint32_t>(localTextureHandle);
 	const uint32_t lightRow = gvShape->getCachedGpuLightIndex();
 	if (lightRow == 0xFFFFFFFFu || (mc2::textures::ready() && lightRow >= mc2::vkLights::getLightStructCount())) return false;

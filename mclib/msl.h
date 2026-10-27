@@ -503,6 +503,8 @@ class TG_MultiShape
 		// Aliased rather than reusing _BuildRecipe directly for self-documenting
 		// use at the mech runtime callsite vs the static-prop registry init use.
 		long TransformMultiShape_HierarchyOnly (glm::vec3 *pos, glm::quat *rot);
+		// HierarchyOnly plus the full CPU transform of the SpotLight_ leaves (cone geometry drawn by the legacy path).
+		long TransformMultiShape_SpotlightLeaves (glm::vec3 *pos, glm::quat *rot);
 		// Presentation joints can move while the simulation turn is frozen.
 		void InvalidateHierarchy()
 		{

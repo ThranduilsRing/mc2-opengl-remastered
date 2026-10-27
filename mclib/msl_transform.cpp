@@ -28,6 +28,8 @@ static bool s_multiShapePositionsOnly = false;
 // Track B: when true, TransformMultiShape populates shapeToWorld but skips the
 // pool-allocating MultiTransformShape_* dispatch and the s_cameraOrigin read.
 static bool s_buildRecipeOnly = false;
+// With s_buildRecipeOnly: still transform the SpotLight_ leaves (night cone geometry, which no batcher draws).
+static bool s_spotlightLeavesToo = false;
 
 long TG_MultiShape::TransformMultiShape (glm::vec3 *pos, glm::quat *rot)
 {
@@ -255,7 +257,7 @@ long TG_MultiShape::TransformMultiShape (glm::vec3 *pos, glm::quat *rot)
 
         // GPU recipes consume the hierarchy matrices, not CPU leaf lighting,
         // projection or shadow scratch. Avoid the per-node world-light scan.
-        if (s_buildRecipeOnly)
+        if (s_buildRecipeOnly && !(s_spotlightLeavesToo && listOfShapes[i].node->GetIsSpotlight()))
             continue;
 
         if (useFaceLighting || useVertexLighting)
@@ -489,6 +491,16 @@ long TG_MultiShape::TransformMultiShape_BuildRecipe (glm::vec3 *pos, glm::quat *
 // tessellation; PerPolySelect-on-mechs theoretical via fallback findObjectByMouse
 // but findMoverByMouse rect-only test catches all real mech selection).
 //-------------------------------------------------------------------------------
+// Hierarchy walk plus the full CPU transform of the SpotLight_ leaves only: a GPU-posed vehicle at night still
+// draws its searchlight cones through the legacy path, the body through a batcher.
+long TG_MultiShape::TransformMultiShape_SpotlightLeaves (glm::vec3 *pos, glm::quat *rot)
+{
+    s_spotlightLeavesToo = true;
+    long result = TransformMultiShape_BuildRecipe(pos, rot);
+    s_spotlightLeavesToo = false;
+    return result;
+}
+
 long TG_MultiShape::TransformMultiShape_HierarchyOnly (glm::vec3 *pos, glm::quat *rot)
 {
     // ANIM-HIERARCHYONLY-DEDUP-1: this was a byte-identical copy of
