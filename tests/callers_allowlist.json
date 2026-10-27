@@ -371,5 +371,8 @@
   "scripts/tests/test_rule_defaults.py": "Pytest-discovered module through scripts/run_scripts_tests.py (scripts_tests); lane-rule tool defaults.",
   "scripts/tests/test_cook_priority.py": "Pytest-discovered module through scripts/run_scripts_tests.py (scripts_tests); cook process priority and thread caps.",
   "scripts/tests/test_farm_runner.py": "Pytest module executed by the farm_runner contract row.",
-  "tools/farm/install-task.cmd": "Operator-run scheduled-task installer documented in tools/farm/README.md; run on the farm laptop as Kaitlyn."
+  "tools/farm/install-task.cmd": "Operator-run scheduled-task installer documented in tools/farm/README.md; run on the farm laptop as Kaitlyn.",
+  "scripts/tests/test_gpu_routing.py": "Pytest-discovered module through the scripts_tests/tools_tests contract row.",
+  "scripts/tests/test_isolated_deploy_shaders_vk.py": "Pytest-discovered module through the scripts_tests/tools_tests contract row.",
+  "scripts/tests/test_run_smoke_early_validation.py": "Pytest-discovered module through the scripts_tests/tools_tests contract row."
 }
