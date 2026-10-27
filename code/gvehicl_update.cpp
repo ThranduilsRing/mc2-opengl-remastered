@@ -25,6 +25,23 @@ long GroundVehicle::update (void)
 	AppearancePush push;
 	GVPush gp;
 	auto commitPush = [&]() { appearancePush = push; gvPush = gp; ++pushSerial; };
+	// The sim half of the appearance gets this tick's pose inputs; presentation gets the same parameters through gp / push.
+	auto feedSimHalf = [&](float pitch, float roll) {
+		Appearance::SimInput simInput;
+		simInput.position = position;
+		simInput.rotation = rotation;
+		simInput.torsoRotation = turretRotation;
+		simInput.pitch = pitch;
+		simInput.roll = roll;
+		simInput.hasStatus = true;
+		simInput.status = getStatus();
+		appearance->setSimInput(simInput);
+		gp.hasParams = true;
+		gp.pitch = pitch;
+		gp.roll = roll;
+		push.hasStatus = true;
+		push.status = getStatus();
+	};
 
 	if (withdrawing && (pilot->getStatus() == WARRIOR_STATUS_WITHDRAWN)) 
 	{
@@ -122,22 +139,7 @@ long GroundVehicle::update (void)
 				relationship = 2;
 			}
 
-			{
-				Appearance::SimInput simInput;
-				simInput.position = position;
-				simInput.rotation = rotation;
-				simInput.torsoRotation = turretRotation;
-				simInput.pitch = dRot.x;
-				simInput.roll = dRot.z;
-				simInput.hasStatus = true;
-				simInput.status = getStatus();
-				appearance->setSimInput(simInput);
-			}
-			gp.hasParams = true;
-			gp.pitch = dRot.x;
-			gp.roll = dRot.z;
-			push.hasStatus = true;
-			push.status = getStatus();
+			feedSimHalf(dRot.x, dRot.z);
 			inView = false;
 
 			if (appearance)
@@ -183,22 +185,7 @@ long GroundVehicle::update (void)
 					relationship = 2;
 				}
 
-				{
-					Appearance::SimInput simInput;
-					simInput.position = position;
-					simInput.rotation = rotation;
-					simInput.torsoRotation = turretRotation;
-					simInput.pitch = dRot.x;
-					simInput.roll = dRot.z;
-					simInput.hasStatus = true;
-					simInput.status = getStatus();
-					appearance->setSimInput(simInput);
-				}
-				gp.hasParams = true;
-				gp.pitch = dRot.x;
-				gp.roll = dRot.z;
-				push.hasStatus = true;
-				push.status = getStatus();
+			feedSimHalf(dRot.x, dRot.z);
 				inView = false;
 
 				if (inView)
@@ -533,20 +520,7 @@ long GroundVehicle::update (void)
 				relationship = 2;
 			}
 
-			{
-				Appearance::SimInput simInput;
-				simInput.position = position;
-				simInput.rotation = rotation;
-				simInput.torsoRotation = turretRotation;
-				simInput.hasStatus = true;
-				simInput.status = getStatus();
-				appearance->setSimInput(simInput);
-			}
-			gp.hasParams = true;
-			gp.pitch = 0.0f;
-			gp.roll = 0.0f;
-			push.hasStatus = true;
-			push.status = getStatus();
+			feedSimHalf(0.0f, 0.0f);
 			inView = false;
 
 			int watercellR, watercellC;
