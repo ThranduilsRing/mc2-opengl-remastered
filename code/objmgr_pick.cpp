@@ -353,6 +353,32 @@ float gameplayPickPad() {
     return 4.f * (scale > 1.f ? scale : 1.f);
 }
 
+// Cheap cull before the 8-corner projection: the bounding sphere of the type box against the four side planes of the view
+// frustum, widened by the pick pad. A sphere wholly outside cannot have a padded rect on screen, so results are unchanged.
+bool pickSphereOutsideScreen(const glm::vec3& pos, const AppearanceType* type) {
+    static uint32_t s_rev = 0;
+    static float s_planes[6][4];
+    const auto revision = eye->getViewProjectionRevision();
+    if (!revision) return false;
+    if (revision != s_rev) { eye->extractFrustumPlanes(s_planes); s_rev = revision; }
+    const auto maxAbs = [](float a, float b) { return std::max(std::fabs(a), std::fabs(b)); };
+    const float ex = std::max({maxAbs(type->typeUpperLeft.x, type->typeLowerRight.x), maxAbs(type->typeUpperLeft.y, type->typeLowerRight.y),
+                               maxAbs(type->typeUpperLeft.z, type->typeLowerRight.z)});
+    const float radius = ex * 1.7320509f;   // sqrt(3) * largest half-extent bounds every corner
+    const auto dot = [&](const float* pl) { return pl[0]*pos.x + pl[1]*pos.y + pl[2]*pos.z + pl[3]; };
+    const auto len = [](const float* pl) { return std::sqrt(pl[0]*pl[0] + pl[1]*pl[1] + pl[2]*pl[2]); };
+    // clip w = near + far plane (z and w - z); a pixel of slack at depth w is 2*w/extent in plane units.
+    const float wc[4] = {s_planes[4][0]+s_planes[5][0], s_planes[4][1]+s_planes[5][1], s_planes[4][2]+s_planes[5][2], s_planes[4][3]+s_planes[5][3]};
+    const float wMax = dot(wc) + radius * len(wc);
+    const float pad = 2.f * gameplayPickPad() + 2.f;
+    for (int i = 0; i < 4; ++i) {
+        const float extent = i < 2 ? float(Environment.screenWidth) : float(Environment.screenHeight);
+        const float tol = wMax > 0.f && extent > 0.f ? pad * 2.f * wMax / extent : 0.f;
+        if (dot(s_planes[i]) + radius * len(s_planes[i]) + tol < 0.f) return true;
+    }
+    return false;
+}
+
 bool gameplayPickRect(GameObjectPtr obj, PickRect& rect, bool margin = true) {
     if (!obj || !obj->getExists() || obj->inTransport() || !eye) return false;
     auto* app = obj->getAppearance();
@@ -367,6 +393,7 @@ bool gameplayPickRect(GameObjectPtr obj, PickRect& rect, bool margin = true) {
         if (revision && cache.valid && cache.cameraRevision == revision) {
             l=cache.ulx; t=cache.uly; r=cache.lrx; b=cache.lry;
         } else {
+            if (pickSphereOutsideScreen(ba->position, type)) return false;
             if (!projectPickCandidateRect(ba, l, t, r, b)) return false;
             cache.ulx=l; cache.uly=t; cache.lrx=r; cache.lry=b;
             cache.cameraRevision=revision; cache.valid=true;
@@ -542,7 +569,8 @@ int pickPriority(GameObjectPtr obj) {
 GameObjectPtr pickGameplayObjects(long x, long y, std::span<GameObjectPtr> list,
                                  bool skipDisabled, long excludeCommander, bool terrainOnly) {
     if (!eye || list.empty() || x < 0 || y < 0 || x >= Environment.screenWidth || y >= Environment.screenHeight) return GameObjectPtr{};
-    std::vector<PickCandidate> stack;
+    static thread_local std::vector<PickCandidate> stack;
+    stack.clear();
     for (auto* obj : list) {
         if (!gameplayPickEligible(obj, skipDisabled)
             || (excludeCommander != -1 && obj->getCommanderId() == excludeCommander)
@@ -580,7 +608,13 @@ GameObjectPtr GameObjectManager::findTerrainObjectByMouse(long x, long y, bool s
 
 GameObjectPtr GameObjectManager::findObjectByMouse(long x, long y) {
     gameplayPickBattery(*this);
-    return pickGameplayObjects(x, y, objList ? std::span(&objList[1], getMaxObjects()) : std::span<GameObjectPtr>{}, false);
+    // The hover pick runs every frame: one cached answer per (mouse, view revision, turn).
+    static struct { long x = -1, y = -1; uint32_t revision = 0; long turn = -1; GameObjectPtr result{}; } s_last;
+    const uint32_t revision = eye ? eye->getViewProjectionRevision() : 0;
+    if (revision && s_last.revision == revision && s_last.x == x && s_last.y == y && s_last.turn == ::turn) return s_last.result;
+    auto* result = pickGameplayObjects(x, y, objList ? std::span(&objList[1], getMaxObjects()) : std::span<GameObjectPtr>{}, false);
+    s_last = {x, y, revision, ::turn, result};
+    return result;
 }
 
 bool GameObjectManager::moverInRect(long index, glm::vec3& start, glm::vec3& end) {

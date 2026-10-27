@@ -72,12 +72,10 @@ void GpuStaticPropBatcher::submitCachedInstance(const GpuStaticPropInstance& ins
     if (inst.typeID >= s_types.size()) return;
     PerTypeBucket& bucket = s_bucketsByType[inst.typeID];
 
-    // firstColorOffset must be updated to the current bucket color position
-    // so the GPU shader indexes colors correctly for this frame's layout.
     // Diagnostic counters (submitted_instances_by_pop etc.) are NOT incremented
     // for registry-injected instances — they measure the dynamic compute path.
     GpuStaticPropInstance updated = inst;
-    // firstColorOffset is unused by any production shader (the colors fill is skipped).
+    // firstColorOffset is an ABI field no shader reads.
     updated.firstColorOffset = 0u;
     {
         // MC2_TREE_DIAG_TRACE diagnostic. Same format as submit() so a grep
@@ -159,7 +157,7 @@ void GpuStaticPropBatcher::appendPersistentStaticRange(const GpuStaticPropInstan
 
 // Every frame: bulk-inject each persistent static block into its per-type bucket
 // (one memcpy per type, NOT per leaf). Dynamic instances (if any) are appended by
-// the dynamic submit path separately; static carries 0 colors so colors untouched.
+// the dynamic submit path separately.
 void GpuStaticPropBatcher::reinjectPersistentStatic() {
     // M2a Task 4 DE-MERGE: under the population split, static props are drawn
     // from their own buffer + cmds (the static draw in flush()), so they must NOT

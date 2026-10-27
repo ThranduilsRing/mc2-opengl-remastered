@@ -441,18 +441,28 @@ void ControlGui::renderHoverTip()
 {
 	if ( !g_hoverTipNameID )
 		return;
-	char buffer[256];
-	cLoadString( g_hoverTipNameID, buffer, sizeof(buffer) );
+	// The string and its measure change only with the hovered object (or the screen size), not every frame.
+	static char buffer[256];
+	static DWORD width = 0, height = 0;
+	static long cachedID = 0, cachedScreenW = 0;
+	if ( cachedID != g_hoverTipNameID || cachedScreenW != Environment.screenWidth )
+	{
+		cLoadString( g_hoverTipNameID, buffer, sizeof(buffer) );
+		width = helpFont.width( buffer );
+		height = helpFont.height( buffer, width );
+		cachedID = g_hoverTipNameID;
+		cachedScreenW = Environment.screenWidth;
+	}
 	if ( !buffer[0] )
 		return;
-	DWORD width = helpFont.width( buffer );
-	DWORD height = helpFont.height( buffer, width );
 	const long pad = 3;
 	long left = g_hoverTipX + 16;
 	long top = g_hoverTipY + 20;
 	const long w = static_cast<long>(width), h = static_cast<long>(height);
 	if ( left + w + 2 * pad > Environment.screenWidth )
 		left = Environment.screenWidth - w - 2 * pad;
+	if ( left < 0 )
+		left = 0;
 	if ( top + h + 2 * pad > Environment.screenHeight )
 		top = g_hoverTipY - h - 2 * pad - 4;
 	GUI_RECT box = { left, top, left + w + 2 * pad, top + h + 2 * pad };

@@ -135,16 +135,6 @@ bool IsMechPickDebugEnabled();
 // undetected enemy mechs via the inspect log).
 bool IsMechPickPierceFogEnabled();
 
-// GPU_PICK_HOVER_DYNAMIC-1: hover-pick gate (MC2_GPU_PICK_HOVER=1).
-// Requires MC2_OBJECT_ID_BUFFER=1. When enabled, updateTarget() uses
-// lookupAtPixel to identify mechs under the cursor before falling through
-// to the CPU findObjectByMouse scan. Static props still use CPU path.
-bool IsGpuPickHoverEnabled();
-
-// GPU_PICK_HOVER_DYNAMIC-1: hover-pick verbose trace (MC2_GPU_PICK_HOVER_TRACE=1).
-// Logs attempts/hits/fallbacks from the hover pick block.
-bool IsGpuPickHoverTraceEnabled();
-
 // ground-pick parity oracle gate
 // (MC2_GPU_GROUND_PICK_PARITY=1). Requires MC2_OBJECT_ID_BUFFER=1 to have a
 // live depth+objectID attachment to read. When enabled, the missiongui hover

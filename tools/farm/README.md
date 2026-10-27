@@ -51,8 +51,8 @@ avoids the harness's hardcoded main-host `A:` path. Slot zero uses logical CPUs
 4-7, which exist on the laptop's 4C/8T CPU. Record actual host load separately
 because the harness does not sample load when using a private lease path.
 
-For Intel runs add `VK_LOADER_DRIVERS_SELECT=*igvk*` and verify the selected
-device in the engine log before drawing any Intel conclusions. Launcher Low is
+For Intel runs set `MC2_VK_DEVICE=Intel` (the loader ignores `VK_LOADER_DRIVERS_SELECT`; run_smoke now fails a run whose
+logged `[VK_PROFILE]` device differs) and set `MC2_HARNESS_GPU=any` on a host with one GPU. Launcher Low is
 `MC2_OPTIONS_OVERRIDE=ShadowQuality=0,SpatialAA=0`, with `MC2_VEGETATION_MAX=5000000`,
 `MC2_SHADOW_ENABLE=0`, `MC2_VK_POST_SCREENFX_SHADOW=0`, `MC2_CLOUD_SHADOW=0`,
 `MC2_SHADOW_MOVER_SAMPLES=4`, and `MC2_RENDER_SCALE=0.5` (source:

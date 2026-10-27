@@ -1414,6 +1414,7 @@ def main():
 
     rows: list[report.Row] = []
     _resolution_failures: list[str] = []
+    _gpu_failures: list[str] = []
     # MC2_DIAGNOSTIC_TRACE_FILE: normalise to absolute once, outside the
     # per-mission loop.  The game launches with cwd=exe_dir (not the runner
     # cwd), so a relative path would land in the deploy dir rather than the
@@ -1665,6 +1666,11 @@ def main():
             _asked_w, _asked_h = _asked
             if f"[RESOLUTION] Pre-window: {_asked_w}x{_asked_h} (from MC2_WIDTH/MC2_HEIGHT env)" not in result.stdout_text:
                 _resolution_failures.append(f"{label}: the engine log has no '[RESOLUTION] Pre-window: {_asked_w}x{_asked_h}' line")
+        # The GPU the run asked for must be the one the engine logged ([VK_PROFILE] device): routing that does not reach the device pick is red.
+        _gpu_msg = nofocus.gpu_mismatch({**os.environ, **cfg.env_extra}, bool(args.show_window or os.environ.get("MC2_SMOKE_VISIBLE")),
+                                        [p.device for p in result.summary.vk_profile])
+        if _gpu_msg:
+            _gpu_failures.append(f"{label}: {_gpu_msg}")
         # The options the engine saw: the exe's options.cfg plus the MC2_OPTIONS_OVERRIDE of this run's environment (the runner passes the
         # ambient environment through and applies cfg.env_extra last).
         _options = render_options_pin.record(Path(args.exe).resolve().parent, {**os.environ, **cfg.env_extra})
@@ -1787,6 +1793,8 @@ def main():
 
     if _resolution_failures:
         _run_failures.append("RESOLUTION: " + "; ".join(_resolution_failures))
+    if _gpu_failures:
+        _run_failures.append("GPU: " + "; ".join(_gpu_failures))
     _fp_record = {"reference": _fp_reference, "description": _fp_reference_text,
                   "required": _fp_require, "hard_fail": _fp_hard_fail,
                   "checks": _fp_checks}

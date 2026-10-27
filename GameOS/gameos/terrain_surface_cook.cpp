@@ -12,24 +12,6 @@
 #endif
 
 namespace mc2terrain {
-void cookSurfaceCementCoverage(std::span<uint32_t> words, uint32_t side) {
-    if (!side || words.size() != size_t(side) * side) return;
-    const auto has = [&](int row, int col) {
-        return row >= 0 && col >= 0 && row < int(side) && col < int(side)
-            && (words[size_t(row) * side + size_t(col)] & 0x80000000u) != 0;
-    };
-    for (int row = 0; row < int(side); ++row) {
-        for (int col = 0; col < int(side); ++col) {
-            const uint32_t cfg = ((has(row,col-1) && has(row-1,col) && has(row-1,col-1)) ? 8u : 0u)
-                | ((has(row,col+1) && has(row-1,col) && has(row-1,col+1)) ? 4u : 0u)
-                | ((has(row,col+1) && has(row+1,col) && has(row+1,col+1)) ? 2u : 0u)
-                | ((has(row,col-1) && has(row+1,col) && has(row+1,col-1)) ? 1u : 0u);
-            auto& word = words[size_t(row) * side + size_t(col)];
-            if (word & 0x80000000u) word = (word & ~0x000f0000u) | (cfg << 16);
-        }
-    }
-}
-
 std::array<float, 6> terrainPatchHeightErrors(std::span<const float> heights, uint32_t side,
     uint32_t originX, uint32_t originY, uint32_t quadsX, uint32_t quadsY) {
     std::array<float, 6> errors;

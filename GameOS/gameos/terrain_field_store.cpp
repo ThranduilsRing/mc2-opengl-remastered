@@ -61,7 +61,11 @@ bool TerrainFieldStore::setCementWords(const uint32_t* words, int count) {
         MC2_LOG(Core, Warn, "[TERRAIN_FIELDS v1] rejected {:d} cement words", mc2::fmt::as_i32(count));
         return false;
     }
-    cement_.assign(words, words + count);
+    // A one-plane write (PopulateRecipeCementWords) onto a two-plane store (plane 2 = road art) replaces plane 0 only.
+    if (cement_.size() == 2 * static_cast<size_t>(count))
+        std::copy(words, words + count, cement_.begin());
+    else
+        cement_.assign(words, words + count);
     cementVersion_ = nextVersion();
     return true;
 }
