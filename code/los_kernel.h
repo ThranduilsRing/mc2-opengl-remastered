@@ -41,7 +41,7 @@ struct Snapshot {
 	bool  useRealLOS = false;
 	long  maxTeams = 0;
 	float worldUnitsPerMeter = 0.0f;
-	float small = 0.0f;                   // Stuff::SMALL
+	float smallEps = 0.0f;                   // Stuff::SMALL
 	unsigned long maxTreeLOSCellBlock = 0;
 };
 

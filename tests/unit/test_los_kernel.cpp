@@ -54,7 +54,7 @@ struct World {
         snap.useRealLOS = true;
         snap.maxTeams = 8;
         snap.worldUnitsPerMeter = 5.01f;
-        snap.small = 1e-4f;
+        snap.smallEps = 1e-4f;
         snap.maxTreeLOSCellBlock = 5;
     }
 

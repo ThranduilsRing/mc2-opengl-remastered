@@ -52,7 +52,7 @@ static mc2::los::Snapshot captureLosSnapshot()
 	s.useRealLOS = useRealLOS;
 	s.maxTeams = MAX_TEAMS;
 	s.worldUnitsPerMeter = worldUnitsPerMeter;
-	s.small = Stuff::SMALL;
+	s.smallEps = Stuff::SMALL;
 	s.maxTreeLOSCellBlock = MaxTreeLOSCellBlock;
 	s.valid = true;
 	return s;

@@ -78,7 +78,7 @@ bool walk(const Snapshot& s, float startLocal, long mCellRow, long mCellCol, flo
 		float length = glm::length(deltaCellVec);
 		length *= ACCURACY_ADJUST;
 
-		if (length > s.small)
+		if (length > s.smallEps)
 		{
 			float colLength = (endPos.x - startPos.x) / length;
 			float rowLength = (endPos.y - startPos.y) / length;
@@ -93,8 +93,8 @@ bool walk(const Snapshot& s, float startLocal, long mCellRow, long mCellCol, flo
 			dist = endPos - currentPos;
 
 			float remainingDist = glm::length(dist);
-			bool checkExtent = (extRad > s.small);
-			bool checkStart = (startExtRad > s.small);
+			bool checkExtent = (extRad > s.smallEps);
+			bool checkStart = (startExtRad > s.smallEps);
 			extRad += HALF_CELL_DIST;
 			for (long distIter = 0; distIter < maxDistIter; distIter++)
 			{
