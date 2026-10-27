@@ -288,6 +288,7 @@ struct ColorPropIsland : mc2vk::IslandState {
     mc2vk::OwnedBuffer  hotBuf;           // per-type hot-colour night emission colours (3 vec4 per type)
     mc2vk::ResidentTextureRef normalTexture, ormTexture;
     std::vector<mc2vk::ResidentTextureRef> propTextures;   // per-object maps, index = uPropTex[] slot
+    uint32_t propTexSlots = 1;   // uPropTex[] length; 1 = per-object maps off (lowCost, or a device with tight sampler limits)
     mc2vk::OwnedSampler detailSampler, treeShadowSampler;
     mc2veg::GroundLighting groundLighting;
     std::optional<Mc2GroundLightingFrame> lastGround;   // last terrain frame's offsets; see the run path
@@ -328,7 +329,7 @@ bool make_buffer(ColorPropIsland* s, mc2vk::OwnedBuffer& out, VkDeviceSize size,
 }
 
 constexpr VkDeviceSize kFrameUboRange = sizeof(ColorFrameUBO);
-constexpr uint32_t kPropTextureSlots = 1024;   // uPropTex[] in prop_material_vk.glsl
+constexpr uint32_t kPropTextureSlots = 1024;   // uPropTex[] maximum in prop_material_vk.glsl (spec constant 1)
 
 // Binding 4 (LightsData) is declared when tier1 && wantLighting.
 void write_ring_bindings(ColorPropIsland* s, VkDescriptorSet set) {
@@ -697,7 +698,7 @@ bool cp_import_authored(ColorPropIsland* s, const Mc2ColorPropMaterialFeed* feed
     std::memcpy(mapped, have ? feed->materials : &neutral, static_cast<size_t>(bytes));
     nextTable.unmap();
     std::vector<mc2vk::ResidentTextureRef> nextTextures;
-    if (have && feed->textureCount && !mc2::options::lowCost()) {
+    if (have && feed->textureCount && s->propTexSlots > 1 && feed->textureCount <= s->propTexSlots) {
         // Each map is its own image with its own mip chain. Potato drops the top mip from residency and staging.
         const uint32_t drop = mc2::options::current().baseQuality == 0 ? 1u : 0u;
         for (uint32_t ti = 0; ti < feed->textureCount; ++ti) {
@@ -970,6 +971,13 @@ bool init_island(ColorPropIsland* s, int w, int h) {
         // Base bindings 0(UBO),1(inst SSBO); optional +4(LightsData SSBO, VS). Material
         // (tier1 + MC2_VK_PROP_MATERIAL): +2(alpha-OFF layer SSBO VS), 3(alpha-OFF albedo
         // FS), 5(alpha-ON layer SSBO VS), 6(alpha-ON albedo FS).
+        {
+            // Non-update-after-bind layouts must fit maxPerStageDescriptorSamplers (HD 630: 64). Low/Potato never upload per-object maps.
+            VkPhysicalDeviceProperties props{};
+            vkGetPhysicalDeviceProperties(s->phys, &props);
+            const uint32_t room = std::min(props.limits.maxPerStageDescriptorSamplers, props.limits.maxPerStageDescriptorSampledImages);
+            s->propTexSlots = mc2::options::lowCost() ? 1u : std::clamp(room > 32u ? room - 32u : 1u, 1u, kPropTextureSlots);
+        }
         VkDescriptorSetLayoutBinding b[20]{};
         uint32_t nb = 0;
         b[nb].binding = 0; b[nb].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
@@ -1016,7 +1024,7 @@ bool init_island(ColorPropIsland* s, int w, int h) {
         // Per-object texture table (binding 13): descriptor-indexing array, only the slots a map uses are written.
         const uint32_t kTexBinding = 13;
         b[nb].binding = kTexBinding; b[nb].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        b[nb].descriptorCount = kPropTextureSlots; b[nb].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT; ++nb;
+        b[nb].descriptorCount = s->propTexSlots; b[nb].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT; ++nb;
         VkDescriptorBindingFlags bindFlags[20]{};
         for (uint32_t k = 0; k < nb; ++k)
             if (b[k].binding == kTexBinding) bindFlags[k] = VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT;
@@ -1036,7 +1044,7 @@ bool init_island(ColorPropIsland* s, int w, int h) {
         sizes[nsz++] = {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 2};
         sizes[nsz++] = {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 2u * (1u + (lightBinding ? 1u : 0u))};
         sizes[nsz++] = {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 2u * ((materialBindings ? 2u : 0u) + (s->tier1 ? 1u : 0u) + 2u)};
-        sizes[nsz++] = {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, (materialBindings ? 4u : 0u) + 8u + 2u * kPropTextureSlots};
+        sizes[nsz++] = {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, (materialBindings ? 4u : 0u) + 8u + 2u * s->propTexSlots};
         sizes[nsz++] = {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 2};
         VkDescriptorPoolCreateInfo pci{};
         pci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
@@ -1180,9 +1188,10 @@ bool init_island(ColorPropIsland* s, int w, int h) {
         stages[1].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
         stages[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT; stages[1].module = s->t1_frag.get(); stages[1].pName = "main";
         // Compile the small-EU preset without material detail/specular and long light walks.
-        const int baseQuality = mc2::options::lowCost() ? (mc2::options::current().baseQuality == 0 ? 0 : 1) : 2;
-        const VkSpecializationMapEntry qualityEntry{0, 0, sizeof(baseQuality)};
-        const VkSpecializationInfo qualityInfo{1, &qualityEntry, sizeof(baseQuality), &baseQuality};
+        const int specData[2] = {mc2::options::lowCost() ? (mc2::options::current().baseQuality == 0 ? 0 : 1) : 2,
+                                 static_cast<int>(s->propTexSlots)};
+        const VkSpecializationMapEntry qualityEntry[2] = {{0, 0, sizeof(int)}, {1, sizeof(int), sizeof(int)}};
+        const VkSpecializationInfo qualityInfo{2, qualityEntry, sizeof(specData), specData};
         stages[1].pSpecializationInfo = &qualityInfo;
         VkGraphicsPipelineCreateInfo gp{};
         gp.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;

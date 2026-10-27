@@ -59,6 +59,10 @@ vec3 tlp_terrainPoolLight(vec3 wp, int numPoolLights,
         lgIndexed = true;
     }
     if (lgLo == lgHi) return vec3(0.0);
+#ifdef TLP_POOL_BUDGET
+    // Low/Potato: bound the per-fragment light walk (24 EUs, shared DDR4). 0 = unlimited.
+    { const int budget = TLP_POOL_BUDGET; if (budget > 0) lgHi = min(lgHi, lgLo + budget); }
+#endif
     for (int k = lgLo; k < lgHi; ++k) {
         int i = lgIndexed ? int(lightGridIndices[k]) : k;
         if (i >= numPoolLights) continue;

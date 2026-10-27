@@ -2111,11 +2111,13 @@ bool EnginePresentVk::renderNativeCompositeVisual(float exposure,
     const auto& output = visualTuning_environment().output;
     const bool upscale = mc2::gate::get<"MC2_RENDER_SCALE">() < 1.0 &&
                          (scene->w < s.imgW || scene->h < s.imgH);
+    // Low/Potato (baseQuality < 2) upscale with the single bilinear tap: the 9-tap Catmull-Rom costs 2.1 ms of 3.4 ms on an HD 630 at 720p.
+    const bool cubicUpscale = mc2::options::current().baseQuality >= 2;
     float pc[32] = {
         exposure,
         1.0f / static_cast<float>(upscale ? scene->w : s.imgW),
         1.0f / static_cast<float>(upscale ? scene->h : s.imgH),
-        upscale ? 1.0f : 0.0f,
+        (upscale && cubicUpscale) ? 1.0f : 0.0f,
         0.0f,
         0.0f,
         0.0f,

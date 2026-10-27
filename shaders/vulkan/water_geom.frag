@@ -178,7 +178,8 @@ void main(void)
     PREC float sc = time * WAVE_SPEED * WAVE_FREQ;
     PREC vec2  q0 = WorldPos.xy * WAVE_FREQ        + vec2( 1.00,  0.60) * sc;
     PREC vec2  q1 = WorldPos.xy * WAVE_FREQ * 1.70 + vec2(-0.80, -1.10) * sc;
-    PREC float nz = (fbm3(q0) + fbm3(q1)) - 0.875;
+    // Low/Potato (uT._lightPad1 != 0): flat water, no ripple/glint noise (6 value-noise octaves per fragment on a 24-EU part).
+    PREC float nz = (uT._lightPad1 != 0) ? 0.0 : (fbm3(q0) + fbm3(q1)) - 0.875;
 
     // SHORE-FIELD-1: deep/shallow tint from the smooth shore field (mode 3), not the coarse
     // per-vertex thickness -- no more deep-water diamonds around single low vertices.

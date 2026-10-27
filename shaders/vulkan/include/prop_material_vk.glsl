@@ -14,7 +14,11 @@ layout(set = 0, binding = 10) uniform sampler2DArray uPropNormal;
 layout(set = 0, binding = 11) uniform sampler2DArray uPropOrm;
 // Per-object maps (kMatFlagPerTexture rows): every file is its own image with its own extent and mip chain.
 // Slots are written only for textures a material names (partially bound); a row indexes this table.
-layout(set = 0, binding = 13) uniform sampler2D uPropTex[1024];
+layout(constant_id = 1) const int kPropTexSlots = 1024;
+layout(set = 0, binding = 13) uniform sampler2D uPropTex[kPropTexSlots];
+// kPropTexSlots == 1 means no per-object maps (Low/Potato, or a GPU with tight sampler limits such as the HD 630's 64):
+// the array shrinks to one entry and the path folds away.
+const bool kPerTexMaps = kPropTexSlots > 1;
 layout(set = 0, binding = 12, std430) readonly buffer PropMaterials {
     PropMaterialGpu materials[];
 } uPropMaterials;
@@ -49,7 +53,7 @@ SurfaceMaterial propSurface(int id, vec3 albedo) {
     SurfaceMaterial s;
     s.baseColor = propDecodeColor(albedo);
     s.normal = normalize(mc2ToRender(vNormalStuff));
-    const bool perTex = (row.material.flags & kMatFlagPerTexture) != 0u;
+    const bool perTex = kPerTexMaps && (row.material.flags & kMatFlagPerTexture) != 0u;
     if (row.material.normalTex != 0xffffffffu) {
         vec3 sampleN = perTex ? texture(uPropTex[nonuniformEXT(row.material.normalTex)], uv).rgb
                               : texture(uPropNormal, vec3(uv, float(row.material.normalTex))).rgb;
@@ -90,7 +94,7 @@ bool propHasAuthoredOrm(int id) {
 float propMaterialCoverage(int id) {
     PropMaterialGpu row = uPropMaterials.materials[id];
     if (row.material.metallicRoughnessTex == 0xffffffffu) return 1.0;
-    if ((row.material.flags & kMatFlagPerTexture) != 0u)
+    if (kPerTexMaps && (row.material.flags & kMatFlagPerTexture) != 0u)
         return texture(uPropTex[nonuniformEXT(row.material.metallicRoughnessTex)], vUv * row.uvScale).a;
     return texture(uPropOrm, vec3(vUv * row.uvScale, float(row.material.metallicRoughnessTex))).a;
 }
@@ -98,7 +102,7 @@ float propMaterialCoverage(int id) {
 bool propHasObjectAlbedo(int id) {
     if (id < 0 || id >= uPropMaterials.materials.length()) return false;
     PropMaterialGpu row = uPropMaterials.materials[id];
-    return (row.material.flags & kMatFlagPerTexture) != 0u && row.material.albedoTex != 0xffffffffu;
+    return kPerTexMaps && (row.material.flags & kMatFlagPerTexture) != 0u && row.material.albedoTex != 0xffffffffu;
 }
 
 // A per-object albedo replaces the tiered tgl texture of its packet (full resolution, own mips, not chosen by
@@ -107,7 +111,7 @@ bool propAlbedoOverride(int id, out vec3 albedo) {
     albedo = vec3(0);
     if (id < 0 || id >= uPropMaterials.materials.length()) return false;
     PropMaterialGpu row = uPropMaterials.materials[id];
-    if ((row.material.flags & kMatFlagPerTexture) == 0u || row.material.albedoTex == 0xffffffffu) return false;
+    if (!kPerTexMaps || (row.material.flags & kMatFlagPerTexture) == 0u || row.material.albedoTex == 0xffffffffu) return false;
     albedo = texture(uPropTex[nonuniformEXT(row.material.albedoTex)], vUv * row.uvScale).rgb;
     return true;
 }

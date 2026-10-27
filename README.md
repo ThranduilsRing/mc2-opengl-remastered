@@ -167,8 +167,8 @@ Configurations we have run. This table is updated periodically, not on every bui
 | Ryzen 7 5800X3D, Radeon RX 7900 XTX (driver 26.9.2), earlier host | Windows 10, Vulkan | 1080p | Classic art, default settings | CPU 3.1 ms, GPU 1.1 ms (medians) | CPU 7.4 ms, GPU 2.5 ms (medians) | 2026-10-24 |
 | same | same | 4K | Classic art, default settings | CPU 3.6 ms, GPU 1.5 ms (medians) | CPU 8.3 ms, GPU 3.1 ms (medians) | 2026-10-24 |
 | WSL Ubuntu 24.04, Mesa lavapipe (software Vulkan) under Xvfb | Linux, Vulkan | 320x180 | Potato | not a performance configuration | simulation determinism check only (passes) | 2026-10-25 |
-| Laptop: i7-7700HQ, GeForce GTX 1050 Ti 4 GB (driver 582.78) | Windows, Vulkan | 720p, 1080p | Low / Potato | pending | pending | pending |
-| Same laptop, Intel HD 630 (driver 31.0.101.2145) | Windows, Vulkan | 720p, 1080p | Low / Potato | pending | pending | pending |
+| Laptop: i7-7700HQ, GeForce GTX 1050 Ti 4 GB (driver 582.78) | Windows, Vulkan | 720p | Low / Potato (same numbers within noise) | 181 fps average, 1% low 122 fps (CPU bound, GPU about 1 ms) | 101 fps average, 1% low 41 fps (CPU bound, GPU about 1.5 ms) | 2026-10-27 |
+| Same laptop, Intel HD 630 (driver 31.0.101.2145) | Windows, Vulkan | 720p | Low / Potato | 88 fps average, 1% low 69 fps (both presets) | Low 54 fps average, 1% low 35 fps; Potato 57 fps average, 1% low 38 fps | 2026-10-27 |
 
 Notes: the RTX 2070 SUPER High rows use the Remastered kit; Classic art measured the same in median cost, but Remastered has a heavier night tail (CPU p95 about 20 ms at 4K), so 60 fps is not guaranteed in large night battles. The Medium and Low rows are provisional (host was not fully idle) and show GPU time only. The RX 7900 XTX row is from an older build, kept for comparison.
 
