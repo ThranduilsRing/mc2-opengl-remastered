@@ -573,7 +573,7 @@ Split commit: `e880b7520`.
 
 | Piece | What it holds |
 |---|---|
-| `tgl.cpp` | keeps the globals, pools and pool-statistics code |
+| `tgl.cpp` | keeps the globals |
 | `tgl_load_guard.cpp` | mclib/tgl_load_guard.cpp - META-FIX design B PART 1. |
 | `tgl_parse.cpp` | TG shapes: ASE file parsing and shape loading (TG_TypeShape::ParseASEFile), textures, imported meshes, camera/fog/light setup. |
 | `tgl_types.cpp` | TG shapes: ASE number/name helpers and the TG_TypeNode / TG_TypeShape / TG_Shape lifecycle, binary copy and creation. |
