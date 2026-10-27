@@ -38,25 +38,9 @@ The survey and audit are external evidence at
 
 ## Reproducing the proof
 
-`MC2_DEBUG_STATE_DUMP=1` also emits `[BLDG_GAMEPLAY]` rows at actual building
-coverage calls. Each includes placement/name/rotation/status, gameplay bounds,
-the actual returned cell set, and original intact/destroyed blocking cells and
-per-cell LOS height samples. The second state is explicitly absent when no
-damage mesh exists. These are geometry observations, not a scripted gate-opening
-or destruction scenario; dynamic gate cells come from unchanged mission MOVE
-data. Full logs stay outside git.
-
-```
-py -3 tools/stock_blocking.py --exe E:/mc2-installs/claude-stock-blocking/mc2.exe --out E:/mc2-archive-2026-10/proofs/stock-blocking/cells
-```
-
-The harness runs mc2_01..24 in both modes through the existing smoke runner,
-requires nonempty observations, compares multisets (including duplicate
-placements), and rejects a comparison that never loaded remake geometry.
-The pytest cases exercise changed cells, rubble, LOS, missing observations and
-duplicate placement detection. `results.json` records per-mission counts and
-differences. Simulation identity pairs and day/night visual captures are
-separate proofs of simulation equality and continued remake rendering.
+The `[BLDG_GAMEPLAY]` dump and `tools/stock_blocking.py` comparison harness were
+removed (W67 review: the dump swapped the live GameMap and allocated shapes under
+a diagnostic gate). The evidence below was gathered with them before removal.
 
 ## Validation evidence
 
