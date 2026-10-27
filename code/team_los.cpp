@@ -85,9 +85,10 @@ static struct LosVerify {
 	FILE* corpus = nullptr;
 	unsigned long long n = 0, bad = 0, vis = 0;
 	LosVerify() {
-		on = getenv("MC2_LOS_VERIFY") != nullptr;
-		const char* c = getenv("MC2_LOS_CORPUS");
-		if (on && c) corpus = fopen(c, "wb");
+		on = true;  // TEMP: the smoke harness drops unregistered MC2_ env, so the proof build is always verifying
+		char path[260];
+		snprintf(path, sizeof(path), "E:/mc2-archive-2026-10/proofs/arch-t5/corpus_%lu.bin", static_cast<unsigned long>(GetCurrentProcessId()));
+		corpus = fopen(path, "wb");
 	}
 	~LosVerify() {
 		if (!on) return;
@@ -99,6 +100,8 @@ static struct LosVerify {
 		const bool legacy = legacyLos(q);
 		++n; vis += legacy ? 1 : 0;
 		if (legacy != kernelBit) ++bad;
+		if ((n % 200000ull) == 0) { printf("[LOS_VERIFY] queries=%llu visible=%llu mismatches=%llu
+", n, vis, bad); fflush(stdout); }
 		if (corpus) {
 			float f[8] = { q.position.x, q.position.y, q.position.z, q.target.x, q.target.y, q.target.z, q.extRad, q.startExtRad };
 			int32_t t = static_cast<int32_t>(q.teamId);
