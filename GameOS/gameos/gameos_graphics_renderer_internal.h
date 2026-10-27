@@ -26,6 +26,8 @@ class gosRenderer {
             hudFlushed_ = false;
         }
 
+        void initHeadless();   // --headless: state only, no device calls (gameos_graphics.cpp)
+
         uint32_t addTexture(gosTexture* texture) {
             gosASSERT(texture);
             textureList_.push_back(texture);

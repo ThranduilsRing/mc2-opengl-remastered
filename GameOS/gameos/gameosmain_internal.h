@@ -147,6 +147,7 @@ extern void gos_GetTerrainCameraPos(float* x, float* y, float* z);
 extern void mc2_executor_own_begin_postprocess(gosPostProcess* pp);
 extern void mc2_executor_own_end_postprocess(gosPostProcess* pp);
 extern void gos_CreateRenderer(graphics::RenderWindowHandle win_h, int w, int h);
+extern void gos_CreateRendererHeadless(int w, int h);   // --headless: no window or device
 extern void gos_DestroyRenderer();
 extern void gos_RendererBeginFrame();
 extern void gos_RendererEndFrame();

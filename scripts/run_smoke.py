@@ -608,6 +608,9 @@ def main():
     ap.add_argument("--wait-timeout", type=float, default=None, metavar="SECONDS",
                     help="how long to wait for the host game lease (default 3600, or MC2_HOST_LEASE_TIMEOUT)")
     ap.add_argument("--duration", type=int)
+    ap.add_argument("--headless", action="store_true", help="no window, GPU device or audio (needs --ticks and the fixed clock; see docs/sim/headless-load.md)")
+    ap.add_argument("--ticks", type=int, default=0,
+                    help="tick-budget exit: quit after N sim ticks (needs MC2_SMOKE_FIXED_TIMESTEP=1, as the determinism runs set); --duration stays the timeout")
     ap.add_argument("--sim-determinism", action="store_true",
                     help="set only by tools/sim_determinism.py: raises the --duration cap from 30 to 60 s (owner ruling 2026-10-13: determinism pairs "
                          "need the longer window; tier smokes and captures keep the 30 s cap)")
@@ -847,7 +850,8 @@ def main():
 
     # Host slots precede install leases so queued runs do not reserve an install.
     _host_wait: dict = {"lease_wait_s": 0.0, "host_load": None}
-    if not (args.verify_only or args.resolve_only):
+    # --headless never opens a window or a GPU device, so it needs no host game slot (the install lease below still serialises one install).
+    if not (args.verify_only or args.resolve_only or args.headless):
         from scripts.smoke_lib import host_lease as _host_lease
         _t_lease = time.monotonic()
         try:
@@ -1471,6 +1475,8 @@ def main():
             # manifest (allow_asset_oob analog for registered marker rows).
             marker_overrides=e.marker_overrides,
             show_window=args.show_window,
+            ticks=args.ticks,
+            headless=args.headless,
             env_extra={
                 "MC2_SMOKE_SEED": "0xC0FFEE",
                 # META-FIX design A: force the read-only mover-registry

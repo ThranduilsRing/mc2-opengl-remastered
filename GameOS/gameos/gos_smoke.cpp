@@ -94,6 +94,17 @@ void parseArgs(int argc, char** argv) {
                 failMissingValue("--duration (must be integer 1..86400)");
             }
             g_state.durationSec = static_cast<int>(v);
+        } else if (std::strcmp(a, "--headless") == 0) {
+            g_state.headless = true;
+        } else if (std::strcmp(a, "--ticks") == 0) {
+            if (i + 1 >= argc) failMissingValue("--ticks");
+            const char* s = argv[++i];
+            char* end = nullptr;
+            long v = std::strtol(s, &end, 10);
+            if (end == s || *end != '\0' || v <= 0 || v > 10000000) {
+                failMissingValue("--ticks (must be integer 1..10000000)");
+            }
+            g_state.tickBudget = static_cast<int>(v);
         } else if (std::strcmp(a, "--smoke-active") == 0) {
             g_state.active = true;
         }
@@ -239,6 +250,13 @@ bool resolveMissionPaths() {
 bool shouldQuit() {
     if (!g_state.enabled) return false;
     if (!g_missionReadyT) return false;
+    if (g_state.tickBudget > 0 && g_state.fixedTimestep) {
+        // Tick-budget exit: sim ticks, not wall time. --duration stays the runner's timeout.
+        if (g_fixedSimFrame < static_cast<uint32_t>(g_state.tickBudget)) return false;
+        mc2::fmt::print_out("[SMOKE v1] event=tick_budget ticks={:d}\n", mc2::fmt::as_i32(static_cast<int>(g_fixedSimFrame)));
+        std::fflush(stdout);
+        return true;
+    }
     double ms = elapsedMsSince(g_missionReadyT);
     return ms >= static_cast<double>(g_state.durationSec) * 1000.0;
 }

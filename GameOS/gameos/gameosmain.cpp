@@ -933,9 +933,11 @@ int main(int argc, char** argv)
     // MC2_WINDOWED already folded into Environment.fullScreen above) so the
     // SDL window gets a resizable border for ANY windowed boot, not only when
     // the MC2_WINDOWED env var is set.
-    graphics::RenderWindowHandle win = graphics::create_window("mc2", w, h,
+    // --headless (stage 1, docs/sim/headless-load.md): no window, device, renderer, GUI or audio; the sim runs on the frame loop's logic half.
+    const bool headless = SmokeMode::state().headless;
+    graphics::RenderWindowHandle win = headless ? graphics::RenderWindowHandle{} : graphics::create_window("mc2", w, h,
         Environment.fullScreen == 0);
-    if(!win)
+    if(!win && !headless)
         return 1;
 
     // [HUD-RES-CLAMP v1] (IN-MISSION-DETACH-1 restore): the WINDOW above is
@@ -956,12 +958,13 @@ int main(int argc, char** argv)
     render_contract::initRenderPassOrder();       // CONTRACT-3 (MC2_RENDER_PASS_ORDER=1)
     render_contract::initRenderPassScope();        // ENFORCEMENT-1 (MC2_RENDER_PASS_CONTRACT_TRACE/ASSERT=1)
 
-    initVulkanBackend(win, w, h);
+    if (!headless) initVulkanBackend(win, w, h);
 
     startup_phase("native_device_ready");
-    gos_CreateRenderer(win, w, h);
+    if (headless) gos_CreateRendererHeadless(w, h); else gos_CreateRenderer(win, w, h);
     startup_phase("renderer_created");
 #ifdef MC2_IMGUI
+    if (!headless) {
     GuiRuntime::Init();
     // SDL_ImplSDL2_NewFrame sets DisplaySize from SDL_GetWindowSize (logical pixels).
     // Set it explicitly here as well so the very first frame is correct even before
@@ -971,8 +974,9 @@ int main(int argc, char** argv)
         graphics::get_drawable_size(win, &fbW, &fbH);
         GuiRuntime::NotifyResize(fbW, fbH, Environment.screenWidth, Environment.screenHeight);
     }
+    }
 #endif
-    if(!gos_CreateAudio())
+    if(!headless && !gos_CreateAudio())
     {   // not an error
         MC2_LOG(Audio, Debug, "Failed to create audio");
     }
@@ -1039,6 +1043,7 @@ int main(int argc, char** argv)
         if (gos_dev_shell::pollCommands(g_mc2FrameCounter))
             g_exit = true;
 
+        if (!headless) {   // headless: the logic half above is the whole frame
         // RenderSnapshot is a shallow struct — spans are (ptr, count) into the
         // ping-pong arena. Copy is safe: arena is not reset until the next
         // ExtractRenderSnapshot() call. Emit must complete before any second extraction.
@@ -1092,6 +1097,9 @@ int main(int argc, char** argv)
 #endif
     if (benchFrameStart != mc2::battlebench::Clock::time_point{}) mc2::battlebench::endFrame(mc2::battlebench::milliseconds(benchFrameStart));
     frameFrameCap(s_vsync_active, s_fps_cap_mission, s_fps_cap_menu, start_tick);
+        } else {
+            gos::host::advanceFrameCounter();
+        }   // !headless
 
         FrameMark;
         mc2::gpumem::tick(static_cast<unsigned long>(g_mc2FrameCounter));   // VRAM.Process.MB plot beside the frame marks
@@ -1168,16 +1176,16 @@ int main(int argc, char** argv)
     AssetScale::shutdown();
 
 #ifdef MC2_IMGUI
-    GuiRuntime::Shutdown();
+    if (!headless) GuiRuntime::Shutdown();
 #endif
-    gos_DestroyRenderer();
+    if (!headless) gos_DestroyRenderer();   // headless: process exit frees the state-only renderer
     std::fprintf(stderr, "[SHUTDOWN] renderer end\n"); std::fflush(stderr);
 
     // Islands, then the present path, then the shared VulkanContext: one order, shared with the editor (gos_host_vk.cpp).
-    gos::host::shutdownVulkanBackend();
+    if (!headless) gos::host::shutdownVulkanBackend();
     std::fprintf(stderr, "[SHUTDOWN] vulkan end\n"); std::fflush(stderr);
 
-    graphics::destroy_window(win);
+    if (!headless) graphics::destroy_window(win);
 
     gos_DestroyAudio();
     std::fprintf(stderr, "[SHUTDOWN] audio end\n"); std::fflush(stderr);

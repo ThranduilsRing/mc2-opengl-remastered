@@ -23,6 +23,8 @@ from concurrent.futures import ThreadPoolExecutor
 import console_child
 
 ROOT = Path(__file__).resolve().parents[1]
+#: The one determinism row that keeps a window and a GPU (a guard for the windowed path); the others run headless.
+WINDOWED_DETERMINISM = "mc2_10"
 sys.path.insert(0, str(ROOT / "tools"))
 from lane_merge import git_bash, run_logged  # noqa: E402
 
@@ -75,11 +77,13 @@ def plan(jobs, proof_dir=None, capture_before_runs=1, before_dir=None):
         before = str(proof / "before")
         steps = [(name, [str(before_dir) if arg == before else arg for arg in cmd], env)
                  for name, cmd, env in steps if name != "capture-before"]
+    # Determinism rows run HEADLESS to the baseline's tick count (no GPU, no host slot, ~1/10 of the windowed time); mc2_10 stays windowed
+    # as the one guard that the windowed path itself is still deterministic and still agrees with the baseline.
     for mission in ("mc2_03", "mc2_10", "mc2_24"):
         steps.append(("determinism-" + mission,
                       [py, "tools/sim_determinism.py", "check", mission, "--install", install, "--out", str(proof / ("determinism-" + mission)),
                        # mc2_10 reaches only ~650 of the 800 sim frames in 20 s under load; 2x gets there in half the host time (both runs of a pair share the speed)
-                       *(["--sim-speed", "2"] if mission == "mc2_10" else [])], {}))
+                       *(["--sim-speed", "2"] if mission == WINDOWED_DETERMINISM else ["--headless-both"])], {}))
     for mission in ("mc2_01", "mc2_03", "mc2_10", "mc2_16", "mc2_24"):
         steps.append(("saveload-" + mission,
                       [py, "tools/saveload_roundtrip.py", "check", "--mission", mission,
@@ -141,7 +145,7 @@ def affected_plan(steps, paths, full=False):
     sim = "engine" in domains
     selected = []
     names = {step[0] for step in steps}
-    shared_smokes = {"determinism-" + m for m in ("mc2_03", "mc2_10", "mc2_24")}
+    shared_smokes = {"determinism-" + WINDOWED_DETERMINISM}
     batch_tier = (sim or full) and shared_smokes <= names
     for name, cmd, env in steps:
         env = dict(env)
@@ -163,8 +167,8 @@ def affected_plan(steps, paths, full=False):
         if name == "tier1":
             env["MC2_VULKAN_VALIDATION"] = "1"
             if batch_tier:
-                cmd += ["--mission", "mc2_01", "--mission", "mc2_17"]
-                env["MC2_GATE_COVERAGE"] = "tier1 mc2_03/10/24 assigned to strict determinism smokes; this stage runs mc2_01/17"
+                cmd += ["--mission", "mc2_01", "--mission", "mc2_03", "--mission", "mc2_17", "--mission", "mc2_24"]
+                env["MC2_GATE_COVERAGE"] = "tier1 mc2_10 assigned to the windowed determinism smoke; the headless determinism rows run no GPU, so this stage runs mc2_01/03/17/24"
         if name.startswith("saveload-") and not art and not full:
             if name not in ("saveload-mc2_01", "saveload-mc2_10"):
                 reason = "no kit/art inputs: day/night save/load pair covers shared serialization"

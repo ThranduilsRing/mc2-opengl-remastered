@@ -32,7 +32,7 @@ void frameThrottleLogicEvents() {
         }
 
 #ifdef MC2_IMGUI
-        GuiRuntime::NewFrame();
+        if (!SmokeMode::state().headless) GuiRuntime::NewFrame();
 #endif
 
         {
@@ -53,7 +53,7 @@ void frameThrottleLogicEvents() {
 
         {
             ZoneScopedN("Frame.RendererHandleEvents");
-		    gos_RendererHandleEvents();
+		    if (!SmokeMode::state().headless) gos_RendererHandleEvents();   // headless: no window to resize or fullscreen
         }
 }
 

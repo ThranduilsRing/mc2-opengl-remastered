@@ -598,11 +598,14 @@ def test_tier1_reuses_only_strict_validated_determinism_smokes():
     steps = gate.affected_plan(gate.plan(6), ["code/game.cpp"])
     by_name = {n: (c, e) for n, c, e in steps}
     cmd, _ = by_name["tier1"]
-    assert cmd[-4:] == ["--mission", "mc2_01", "--mission", "mc2_17"]
-    for mission in ("mc2_03", "mc2_10", "mc2_24"):
+    assert cmd[-8:] == ["--mission", "mc2_01", "--mission", "mc2_03", "--mission", "mc2_17", "--mission", "mc2_24"]
+    command, env = by_name["determinism-mc2_10"]
+    assert command[-2:] == ["--sim-speed", "2"] and "--headless-both" not in command
+    assert env["MC2_VULKAN_VALIDATION"] == env["MC2_MOVER_COHERENCE_AUDIT"] == "1"
+    for mission in ("mc2_03", "mc2_24"):   # headless rows: no GPU, so no validation env and no sim-speed
         command, env = by_name["determinism-" + mission]
-        assert command[-2:] == ["--sim-speed", "2"]
-        assert env["MC2_VULKAN_VALIDATION"] == env["MC2_MOVER_COHERENCE_AUDIT"] == "1"
+        assert "--headless-both" in command and "--sim-speed" not in command
+        assert "MC2_VULKAN_VALIDATION" not in env
     assert by_name["validation"][1]["MC2_GATE_REUSE_STAGE"] == "tier1,determinism-mc2_10"
     art = gate.affected_plan(gate.plan(6), ["release_assets_src/model.glb"])
     assert "--mission" not in next(c for n, c, _ in art if n == "tier1")
@@ -657,7 +660,7 @@ def test_captures_keep_symmetric_env_and_do_not_mutate_gameplay(tmp_path):
         assert not after_env.get("MC2_GATE_SKIP_REASON")
     command, env = by_name["tier1"]
     assert "--capture-bookmark" not in command and "--quiet-sample" not in command
-    assert command[command.index("--mission"):] == ["--mission", "mc2_01", "--mission", "mc2_17"]
+    assert command[command.index("--mission"):] == ["--mission", "mc2_01", "--mission", "mc2_03", "--mission", "mc2_17", "--mission", "mc2_24"]
     assert env["MC2_VULKAN_VALIDATION"] == "1"
     assert "--fresh-smoke" in by_name["quiet"][0]
 
