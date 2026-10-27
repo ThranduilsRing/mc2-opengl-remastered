@@ -131,8 +131,12 @@ inline bool addMaterial(MaterialSources& dst, const ModelOverrideRecord& owner,
             for (int i = 0; i < 3 && accepted; ++i) {
                 if (wants[i].source.empty()) continue;
                 const auto path = (std::filesystem::path(owner.manifestDir) / wants[i].source).generic_string();
-                auto it = dst.textureIndex.find(path);
-                if (it == dst.textureIndex.end()) {
+                const auto it = dst.textureIndex.find(path);
+                uint32_t texIdx = 0;
+                if (it != dst.textureIndex.end()) {
+                    const auto& [knownPath, knownIdx] = *it;
+                    texIdx = knownIdx;
+                } else {
                     RenderCore::KtxImage image;
                     if (dst.textures.size() >= kMaxTextures || !RenderCore::ktxLoadRgba8(path.c_str(), image) ||
                         (image.vkFormat != wants[i].format && image.vkFormat != wants[i].altFormat) ||
@@ -144,11 +148,12 @@ inline bool addMaterial(MaterialSources& dst, const ModelOverrideRecord& owner,
                     }
                     image.vkFormat = wants[i].format;      // albedo bytes are shaded as authored (encoded), like the tier arrays
                     image.isSrgb = false;
-                    it = dst.textureIndex.emplace(path, static_cast<uint32_t>(dst.textures.size())).first;
+                    texIdx = static_cast<uint32_t>(dst.textures.size());
+                    dst.textureIndex.emplace(path, texIdx);
                     dst.textures.push_back(std::move(image));
                     keys.push_back(path);
                 }
-                *slots[i] = it->second;
+                *slots[i] = texIdx;
             }
             if (!accepted) {
                 for (const auto& k : keys) { dst.textureIndex.erase(k); dst.textures.pop_back(); }
