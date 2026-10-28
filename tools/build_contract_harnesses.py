@@ -62,6 +62,29 @@ def doctest_case_names():
     return names
 
 
+def case_owner(only):
+    """tests/unit source file(s) declaring a case matching any --only item (names the target that should own it)."""
+    pattern = re.compile(r'\bTEST_CASE(?:_FIXTURE)?\s*\(\s*(?:\w+\s*,\s*)?"([^"]+)"')
+    hits = set()
+    for path in (REPO_ROOT / "tests/unit").glob("test_*.cpp"):
+        names = pattern.findall(path.read_text(encoding="utf-8", errors="replace"))
+        if any(fnmatch.filter(names, item) for item in only if item not in REGISTERED_HARNESSES):
+            hits.add(path.relative_to(REPO_ROOT).as_posix())
+    return sorted(hits)
+
+
+def matched_case_count(exe, filt, env):
+    """Cases the built mc2_tests binary would run for filt (doctest --count), or None when the output is unreadable."""
+    try:
+        proc = subprocess.Popen([str(exe), "--count", "--test-case=" + filt], cwd=REPO_ROOT, env=env,
+                                stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, errors="replace")
+        out = proc.communicate(timeout=120)[0]
+    except (OSError, subprocess.SubprocessError):
+        return None
+    m = re.search(r"passing the current filters:\s*(\d+)", out)
+    return int(m.group(1)) if m else None
+
+
 def test_case_filter(only):
     """--test-case value for --only: a registered contract name selects name/*, anything else is a doctest case name or wildcard."""
     return ",".join(name + "/*" if name in REGISTERED_HARNESSES else name for name in only)
@@ -134,9 +157,14 @@ def build_and_run_unit_tests(config, run, asan=False, only=None, preset=None,
     if preset and not exe.is_file():
         return False, f"requested compiler binary missing in {bdir}"
     command = [str(exe), "--no-breaks"]
+    env = dict(os.environ)
     if only:
         command += ["--test-case=" + test_case_filter(only)]
-    env = dict(os.environ)
+        if matched_case_count(exe, test_case_filter(only), env) == 0:
+            owners = case_owner(only)
+            return False, (f"--only {', '.join(only)} matched 0 doctest cases in {exe.name}"
+                           + (f"; declared in {', '.join(owners)} (is that file in the mc2_tests target, and is the binary rebuilt?)"
+                              if owners else "; no tests/unit/test_*.cpp declares it"))
     if asan:
         # The allocation probe owns leak checks; ASan supplies bounds and lifetime evidence.
         env.setdefault("ASAN_OPTIONS", "detect_leaks=0:halt_on_error=0:print_stacktrace=1")
