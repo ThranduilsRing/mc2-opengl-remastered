@@ -354,6 +354,7 @@ void Mission::updatePathManager() {
 
 // Presentation consumes the last completed tick's snapshots, including during pause.
 void Mission::updatePresentationOnly(bool moversOnly, float alpha) {
+	mc2::overlap::assertSimQuiescent("updatePresentationOnly");   // presentation writes appearance state; never while a tick is in flight
 	if (!moversOnly)
 		gpu_cull::substrate_frameBegin();
     if (mc2::gate::get<"MC2_PRESENTATION_DISABLED">()) return;

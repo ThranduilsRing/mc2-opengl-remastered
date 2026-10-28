@@ -1051,6 +1051,7 @@ int main(int argc, char** argv)
         RenderSnapshot snap;
         {
             ZoneScopedN("ExtractRenderSnapshot");
+            mc2::overlap::assertSimQuiescent("ExtractRenderSnapshot");
             snap = ExtractRenderSnapshot();
         }
         mc2_debug_state::maybeWriteRenderState(snap);
