@@ -771,3 +771,113 @@ def test_batch_resolutions_belong_to_individual_tips(env, tmp_path):
     assert result.returncode == 0, result.stdout + result.stderr
     assert (repo / "a.txt").read_text() == "reviewed-a\n"
     assert (repo / "b.txt").read_text() == "reviewed-b\n"
+
+
+GENERATED_FILES = ("Gates/gate_table.json", "docs/flags.auto.yaml", "tests/callers.json", "docs/split-map.md")
+
+
+def _generated_repo(repo):
+    """A synthetic tree with the generated files the W83 batch conflicted on."""
+    for rel in GENERATED_FILES:
+        write(repo, rel, "base " + rel + "\n")
+    write(repo, "Gates/gate_table.json", '{"version": 1, "count": 2, "gates": []}\n')
+    write(repo, "tests/unit/test_gate.cpp", 'TEST_CASE("x") {\n    REQUIRE(n == 2);\n}\n')
+    write(repo, "regen.py",
+          "import pathlib\n"
+          "for rel in %r:\n"
+          "    p = pathlib.Path(rel)\n"
+          "    p.parent.mkdir(parents=True, exist_ok=True)\n"
+          "    p.write_text('regenerated ' + rel + chr(10))\n" % (GENERATED_FILES,))
+    commit_all(repo, "generated baseline")
+
+
+def _branch_from(repo, name, base, edits, subject):
+    git(repo, "checkout", "-q", "-b", name, base)
+    for rel, content in edits.items():
+        write(repo, rel, content)
+    commit_all(repo, subject)
+    git(repo, "checkout", "-q", "main")
+
+
+def test_batch_auto_resolves_generated_conflicts_and_regenerates(env, monkeypatch, capsys):
+    repo, tools = env
+    _generated_repo(repo)
+    base = git(repo, "rev-parse", "HEAD")
+    _branch_from(repo, "lane_a", base, {"docs/flags.auto.yaml": "lane flags\n"}, "lane a")
+    _branch_from(repo, "lane_b", base, {"tests/callers.json": "lane callers\n"}, "lane b")
+    write(repo, "docs/flags.auto.yaml", "main flags\n")
+    write(repo, "tests/callers.json", "main callers\n")
+    commit_all(repo, "main generated")
+    lm = _load_module()
+    ran = []
+    real_run = lm.run
+    def runner(root, cmd, env=None):
+        ran.append(os.path.basename(cmd[2]))
+        return real_run(root, cmd, env)
+    verifies = []
+    monkeypatch.setattr(lm, "run", runner)
+    monkeypatch.setattr(lm, "verify_merged", lambda root, mode, runner=None: (verifies.append(mode), ("OK", []))[1])
+    monkeypatch.setattr(lm, "GENERATED_REGENERATORS", ((set(GENERATED_FILES), "regen.py", []),))
+    rc = lm.main(["--batch", "lane_a", "lane_b", "--root", str(repo), "--tools-dir", str(tools)])
+    assert rc == 0, capsys.readouterr().err
+    assert ran.count("regen.py") == 2
+    assert verifies == ["build"]
+    for rel in ("docs/flags.auto.yaml", "tests/callers.json"):
+        assert (repo / rel).read_text() == "regenerated " + rel + "\n"
+    assert git(repo, "status", "--porcelain") == ""
+    assert [s for s in git(repo, "log", "--format=%s", "-4").splitlines() if s.startswith("merge lane:")] == [
+        "merge lane: lane b", "merge lane: lane a"]
+
+
+def test_batch_still_stops_on_a_non_generated_conflict(env, monkeypatch, capsys):
+    repo, tools = env
+    _generated_repo(repo)
+    base = git(repo, "rev-parse", "HEAD")
+    _branch_from(repo, "lane_a", base, {"a.txt": "lane a\n", "docs/split-map.md": "lane map\n"}, "lane a")
+    _branch_from(repo, "lane_b", base, {"tests/callers.json": "lane callers\n"}, "lane b")
+    write(repo, "a.txt", "main a\n")
+    write(repo, "docs/split-map.md", "main map\n")
+    commit_all(repo, "main generated")
+    lm = _load_module()
+    monkeypatch.setattr(lm, "GENERATED_REGENERATORS", ((set(GENERATED_FILES), "regen.py", []),))
+    rc, verifies = _run_batch(env, "lane_a", "lane_b")
+    assert rc == 5 and verifies == []
+    assert "BATCH REFUSED" in capsys.readouterr().err
+    assert git(repo, "status", "--porcelain") == ""
+
+
+def test_test_gate_floor_conflict_alone_is_auto_resolved(env, monkeypatch, capsys):
+    repo, tools = env
+    _generated_repo(repo)
+    base = git(repo, "rev-parse", "HEAD")
+    _branch_from(repo, "lane", base, {"tests/unit/test_gate.cpp":
+                                      'TEST_CASE("x") {\n    REQUIRE(n == 5);\n}\n'}, "lane gate")
+    write(repo, "tests/unit/test_gate.cpp", 'TEST_CASE("x") {\n    REQUIRE(n == 3);\n}\n')
+    commit_all(repo, "main gate")
+    lm = _load_module()
+    monkeypatch.setattr(lm, "GENERATED_REGENERATORS", ())
+    rc, out, err = merge(env, "--no-verify")
+    assert rc == 0, err
+    assert "REQUIRE(n == 2);" in (repo / "tests/unit/test_gate.cpp").read_text()
+
+
+def test_test_gate_conflict_with_body_change_still_aborts(env):
+    repo, _ = env
+    _generated_repo(repo)
+    base = git(repo, "rev-parse", "HEAD")
+    _branch_from(repo, "lane", base, {"tests/unit/test_gate.cpp":
+                                      'TEST_CASE("x") {\n    REQUIRE(n == 2);\n    CHECK(lane());\n}\n'}, "lane body")
+    write(repo, "tests/unit/test_gate.cpp", 'TEST_CASE("x") {\n    REQUIRE(n == 2);\n    CHECK(main());\n}\n')
+    commit_all(repo, "main body")
+    rc, _, err = merge(env, "--no-verify")
+    assert rc == 5 and "test_gate.cpp" in err
+
+
+def test_floor_sync_preserves_crlf(tmp_path):
+    lm = _load_module()
+    (tmp_path / "Gates").mkdir()
+    (tmp_path / "tests/unit").mkdir(parents=True)
+    (tmp_path / "Gates/gate_table.json").write_text('{"count": 9}\n', encoding="utf-8")
+    (tmp_path / "tests/unit/test_gate.cpp").write_bytes(b'TEST_CASE("x") {\r\n    REQUIRE(n == 1);\r\n}\r\n')
+    assert lm.sync_test_gate_floor(str(tmp_path))
+    assert (tmp_path / "tests/unit/test_gate.cpp").read_bytes() == b'TEST_CASE("x") {\r\n    REQUIRE(n == 9);\r\n}\r\n'

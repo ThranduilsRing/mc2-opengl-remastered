@@ -96,8 +96,48 @@ REGENERABLE = {
 REGENERABLE.update(p for p in ARTIFACTS if p.endswith((".json", ".md")))
 
 
+# Generated files: their content is a pure function of the tree. A conflict here is
+# resolved to ours and the matching regenerator rewrites them against the merged tree.
+GENERATED = {
+    "Gates/gate_index.gen.h", "Gates/gate_table.json", "Gates/feature_only_rows.json",
+    "RenderCore/RendererFeatureRegistry.h", "docs/flags.auto.yaml",
+    "tests/callers.json", "docs/split-map.md",
+    "docs/background-launch-inventory.md", "docs/background-launch-child-baseline.json",
+    "tests/unit/log_tag_baseline.json",
+}
+# Not generated wholesale: only its population floor is. Merged with the floor line neutralized.
+TEST_GATE = "tests/unit/test_gate.cpp"
+FLOOR_LINE = re.compile(r"^[ \t]*REQUIRE\(n == \d+\);.*$", re.MULTILINE)
+GATE_GENERATED = {"Gates/gate_index.gen.h", "Gates/gate_table.json", "Gates/feature_only_rows.json",
+                  "RenderCore/RendererFeatureRegistry.h", "docs/flags.auto.yaml"}
+
+
+# (files, script relative to the root, args) run after a generated-file conflict was taken as ours.
+GENERATED_REGENERATORS = (
+    # --sync-verified rebuilds the compiler dump (a lane may add rows); --write only re-derives.
+    (GATE_GENERATED, "tools/gate_gen.py", ["--sync-verified"]),
+    ({"docs/split-map.md"}, "tools/split/split_map.py", ["--write"]),
+    ({"docs/background-launch-inventory.md", "docs/background-launch-child-baseline.json"},
+     "scripts/check-background-launch.py", ["--write", "--quiet"]),
+)
+
+
+def is_generated(path):
+    return path in GENERATED
+
+
+def test_gate_only_floor(root: str, sha: str, head_ref: str = "HEAD") -> bool:
+    """True when the lane's test_gate.cpp differs from the merge base only on the population floor."""
+    base = git_out(root, "merge-base", head_ref, sha).strip()
+    def body(rev):
+        r = git(root, "show", f"{rev}:{TEST_GATE}")
+        return FLOOR_LINE.sub("", r.stdout) if r.returncode == 0 else None
+    before, after = body(base), body(sha)
+    return before is not None and before == after
+
+
 def is_regenerable(path):
-    return path in REGENERABLE or any(path.startswith(scope + "/") for scope in ARTIFACTS)
+    return path in REGENERABLE or is_generated(path) or any(path.startswith(scope + "/") for scope in ARTIFACTS)
 # The baselines the follow-up commit may contain (never a glob over tools/).
 TIGHTENED_BASELINES = [
     "tools/file_size_ratchet.baseline.json",
@@ -335,6 +375,60 @@ def load_resolutions(specs: list[str]) -> dict[str, bytes | None]:
     return results
 
 
+def gate_count(root: str) -> int | None:
+    """Rows in the committed gate table, or None when this tree has none (merge-test fixtures)."""
+    try:
+        return int(json.loads((Path(root) / "Gates" / "gate_table.json").read_text(encoding="utf-8"))["count"])
+    except (OSError, KeyError, TypeError, ValueError):
+        return None
+
+
+def sync_test_gate_floor(root: str) -> bool:
+    """Set the test_gate population floor to the gate_gen count; the merge runs no C++ build."""
+    count = gate_count(root)
+    path = Path(root) / "tests" / "unit" / "test_gate.cpp"
+    if count is None or not path.is_file():
+        return False
+    raw = path.read_bytes()
+    crlf = b"\r\n" in raw
+    text = raw.decode("utf-8").replace("\r\n", "\n")
+    updated, n = re.subn(r"REQUIRE\(n == \d+\);", f"REQUIRE(n == {count});", text, count=1)
+    if not n or updated == text:
+        return False
+    if crlf:
+        updated = updated.replace("\n", "\r\n")
+    path.write_bytes(updated.encode("utf-8"))
+    return True
+
+
+def regenerate_generated(root: str, conflicted: list[str], lane_files=()) -> None:
+    """Rewrite generated files taken as ours from the merged tree; the merge commit carries the result."""
+    touched = set(conflicted)
+    for files, script, args in GENERATED_REGENERATORS:
+        if not touched & files:
+            continue
+        if not os.path.isfile(os.path.join(root, script)):
+            if os.path.exists(os.path.join(root, "CLAUDE.md")):
+                abort_and_clean(root, lane_files)
+                raise Stop(5, f"generated conflict needs regenerator {script}, which is missing; merge aborted")
+            continue
+        r = run(root, [sys.executable, "-B", os.path.join(root, script), *args])
+        print(f"lane_merge: regenerate {script}: {'OK' if r.returncode == 0 else 'FAIL'}", flush=True)
+        if r.returncode:
+            abort_and_clean(root, lane_files)
+            raise Stop(5, f"regenerating {script} after a generated conflict failed:\n{r.stdout[-2000:]}")
+    if TEST_GATE in touched:
+        sync_test_gate_floor(root)
+    # The generators also refresh sibling outputs (gate_index.gen.h <- flags.auto.yaml).
+    # Only files that differ from HEAD are staged; the conflicted ones already are.
+    changed = sorted(touched | {p for p in GENERATED
+                                if (Path(root) / p).exists() and git(root, "diff", "--quiet", "--", p).returncode})
+    a = git(root, "add", "--", *changed)
+    if a.returncode:
+        abort_and_clean(root, lane_files)
+        raise Stop(5, "could not stage the regenerated files; merge aborted: " + a.stdout.strip())
+
+
 def do_merge(root: str, sha: str, message: str, lane_files=(), lock_path: str | None = None, lock_wait_s: float = 600,
              sleep=time.sleep, clock=time.monotonic, resolutions=None) -> None:
     """Merge --no-ff; auto-resolve regenerable conflicts to the lane's side, abort on anything else.
@@ -381,18 +475,23 @@ def do_merge(root: str, sha: str, message: str, lane_files=(), lock_path: str | 
             abort_and_clean(root, lane_files)
             raise Stop(5, f"{p}: both sides changed the same row or the text outside the rows; it cannot be merged mechanically "
                           "(keep both and renumber by hand); merge aborted")
-    foreign = [p for p in conflicted if not is_regenerable(p)]
+    floor_only = TEST_GATE in conflicted and test_gate_only_floor(root, sha)
+    foreign = [p for p in conflicted if not is_regenerable(p) and not (floor_only and p == TEST_GATE)]
     if foreign or not (conflicted or tables or resolutions):
         abort_and_clean(root, lane_files)
         what = foreign or ["(merge failed without conflicts)"]
         raise Stop(5, "conflicts outside the regenerable set; merge aborted:\n  " + "\n  ".join(what)
                    + ("" if foreign else "\n" + r.stdout.strip()))
+    generated = [p for p in conflicted if is_generated(p) or (floor_only and p == TEST_GATE)]
     for p in conflicted:
-        c = git(root, "checkout", "--theirs", "--", p)
+        side = "--ours" if p in generated else "--theirs"
+        c = git(root, "checkout", side, "--", p)
         a = git(root, "add", "-u", "--", p) if c.returncode == 0 else c
         if c.returncode != 0 or a.returncode != 0:
             abort_and_clean(root, lane_files)
-            raise Stop(5, f"could not take the lane's {p}; merge aborted: {(c.stdout + a.stdout).strip()}")
+            raise Stop(5, f"could not take {side} for {p}; merge aborted: {(c.stdout + a.stdout).strip()}")
+    if generated:
+        regenerate_generated(root, generated, lane_files)
     c = git(root, "commit", "-m", message, *trailer_args())
     if c.returncode != 0:
         abort_and_clean(root, lane_files)
@@ -723,8 +822,11 @@ def print_plan(root: str, p: dict, args, message: str, resolutions: dict, head_r
     if conf is None:
         print("PLAN conflicts: unknown (git merge-tree unavailable)")
     else:
-        regen = [c for c in conf if is_regenerable(c) or c in BUG_TABLES]
-        other = [c for c in conf if not is_regenerable(c) and c not in BUG_TABLES and c not in resolutions]
+        floor_only = TEST_GATE in conf and test_gate_only_floor(root, p["sha"], head_ref)
+        def takeable(c):
+            return is_regenerable(c) or (floor_only and c == TEST_GATE)
+        regen = [c for c in conf if takeable(c) or c in BUG_TABLES]
+        other = [c for c in conf if not takeable(c) and c not in BUG_TABLES and c not in resolutions]
         print(f"PLAN conflicts={len(conf)} regenerable={len(regen)} blocking={len(other)}"
               + ("" if not other else " (merge would abort): " + ", ".join(other)))
         would_abort = bool(other)
