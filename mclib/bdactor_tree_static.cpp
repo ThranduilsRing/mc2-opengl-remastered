@@ -114,10 +114,7 @@ void TreeAppearance::touchSerialCommit()
 		const bool registered = (staticReg[activeLOD].registered && staticReg[activeLOD].recipeIndex >= 0);
 		const bool skipTaken  = (registered && indexValid);
 		lbssRecordTree(skipTaken, registered && !indexValid);
-		if (skipTaken) {
-			treeShape->setCachedFrame(g_mc2FrameCounter);   // see the touch-skip above
-			return;
-		}
+		if (skipTaken) { treeShape->setCachedFrame(g_mc2FrameCounter); return; }   // see the touch-skip above
 	}
 
 	extern bool mc2LightBakeEnabled();
