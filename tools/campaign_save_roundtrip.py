@@ -16,7 +16,7 @@ at campaign start (PILOT_RUN_NOISE) and, by timing, in the mission the capture l
   py -3 tools/campaign_save_roundtrip.py capture --out DIR --load OLD/save1.ims --load-at 900     # load a save from another exe, re-save
   py -3 tools/campaign_save_roundtrip.py logistics DIR/save1.ims
   py -3 tools/campaign_save_roundtrip.py compare OLD/save1.ims NEW/save2.ims      # logistics text, version/campaign packets, pilot text bytes
-  py -3 tools/saveload_roundtrip.py resave --mission mc2_05 --plant OLD/save1.ims --save-at 1000000000 --load-at 1100 --out DIR   # the mission boot that loads it
+  py -3 tools/saveload_roundtrip.py resave --mission mc2_05 --plant OLD/save1.ims --save-at 0 --load-at 1100 --out DIR   # the mission boot that loads it (a planted load writes no re-save)
   py -3 tools/save_inspect.py diff A.ims B.ims --mask tools/save_noise_mask.json --across-builds
 
 A launch goes through nofocus.spawn (background, host-wide lease). The owner's quicksave is backed up first and put back afterwards.

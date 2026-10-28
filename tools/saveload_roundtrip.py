@@ -291,8 +291,9 @@ def run_fixture(mission: str, save_at: int, load_at: int, deploy: bool, out: str
                 install: str = sd.INSTALL_DIR, save_dir: str | None = None, ref_exe: str | None = None, ref_commit: str | None = None,
                 sim_speed: int = 1, headless: bool = False):
     """Run `mission` with the save, load, re-save fixtures. -> (out dir, first save path, second save path or None, fingerprint dict or None).
-    With `plant` (a save written by another exe, e.g. by tools/campaign_save_roundtrip.py) that file is put where the quickload reads it and
-    `save_at` should lie beyond the run, so the first save returned is the planted one.
+    With `plant` (a save written by another exe, e.g. by tools/campaign_save_roundtrip.py) that file is put where the quickload reads it;
+    `save_at` must be 0 (a quicksave would overwrite it), so the quickload loads it and it comes back as the first save, but the engine writes
+    no re-save after a planted load.
     The owner's quicksave is backed up first and put back afterwards."""
     if deploy:
         sd.build_and_deploy(install)
@@ -534,6 +535,15 @@ def frames_from_baseline(args, base: dict | None) -> str | None:
     return None
 
 
+def plant_refusal(args) -> str | None:
+    """-> a refusal line when --plant cannot load the planted file. WHY before the launch: the quickload fixture waits for the quicksave
+    fixture, so with any nonzero --save-at the run either saves over the planted file or (when that frame is past the run) never quickloads."""
+    if args.plant and args.save_at:
+        return ("--plant needs --save-at 0: with a quicksave frame the run saves over the planted file, or never quickloads it when that "
+                "frame is past the run; pass --save-at 0 --load-at <frame>")
+    return None
+
+
 def cmd_fixture(args) -> int:
     mask_policy(args.mask)
     path = baseline_path(args.mission)
@@ -550,7 +560,11 @@ def cmd_fixture(args) -> int:
             return 1
     refusal = frames_from_baseline(args, base)
     if refusal:
-        print("saveload_roundtrip check: FAIL\n" + refusal)
+        print(f"saveload_roundtrip {args.cmd}: FAIL\n" + refusal)
+        return 1
+    refusal = plant_refusal(args)
+    if refusal:
+        print(f"saveload_roundtrip {args.cmd}: FAIL\n" + refusal)
         return 1
     speed = args.sim_speed or (base or {}).get("sim_speed", 1)
     dest, first, second, fp, rc = run_fixture(args.mission, args.save_at, args.load_at, args.deploy, args.out, args.duration, args.plant,
@@ -609,7 +623,8 @@ def main(argv=None) -> int:
         p.add_argument("--duration", type=int, default=28)
         p.add_argument("--deploy", action="store_true")
         p.add_argument("--out", help="keep save1.ims, save2.ims and the run here (default: a temporary directory)")
-        p.add_argument("--plant", help="resave: a save written by another exe, quickloaded instead of one this run writes (give --save-at beyond the run)")
+        p.add_argument("--plant", help="resave: put this save where the quickload reads it instead of writing one; requires --save-at 0 "
+                                        "(the engine writes no re-save after a planted load)")
         p.add_argument("--mask", help="legacy noise mask: resave ignores declared run/build bytes; baseline/check hash zeroed noise bytes and require the same mask policy (old hashes must be re-recorded)")
         p.add_argument("--install", type=sd.resolve_install, default=sd.INSTALL_DIR, metavar="NAME_OR_PATH", help="launch/deploy install, e.g. lane3")
         p.add_argument("--save-dir", help="backup/capture directory matching the engine's savePath (Windows installs share ~/.mechcommander2/savegame)")
