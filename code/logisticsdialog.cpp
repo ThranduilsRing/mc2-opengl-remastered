@@ -1,4 +1,13 @@
 #include <memory>
+#include <fstream>
+#include <algorithm>
+#include <iterator>
+#include <string>
+#include <string_view>
+#include <vector>
+#include <cstdlib>
+#include <cstring>
+#include <cctype>
 #define LOGISTICSDIALOG_CPP
 /*************************************************************************************************\
 LogisticsDialog.cpp			: Implementation of the LogisticsDialog component.
@@ -718,6 +727,90 @@ void LogisticsSaveDialog::initDialog( const char* path, bool bCampaign )
 	}
 }
 
+// Scans FIT text for [Version] VersionNumber the way FitIniFile's seekBlock and
+// readIdLong do, without building the block index.
+static bool scanSaveVersion( const char* buffer, size_t length, long& versionNumber )
+{
+	bool inVersionBlock = false;
+	const char* cursor = buffer;
+	const char* end = buffer + length;
+	while ( cursor < end )
+	{
+		const char* lineEnd = cursor;
+		while ( lineEnd < end && *lineEnd != '\r' && *lineEnd != '\n' )
+			++lineEnd;
+
+		if ( lineEnd > cursor && cursor[0] == '[' )
+		{
+			// seekBlock compares the whole id; ids are case-sensitive.
+			const char* close = std::find( cursor, lineEnd, ']' );
+			inVersionBlock = ( close != lineEnd && std::string_view( cursor + 1, close - cursor - 1 ) == "Version" );
+		}
+		else if ( inVersionBlock )
+		{
+			// Same match as FitIniFile::readIdLong: "l <name>" case-insensitive, then '='.
+			constexpr size_t prefixLength = 15; // "l VersionNumber"
+			if ( static_cast<size_t>( lineEnd - cursor ) >= prefixLength
+				&& S_strnicmp( cursor, "l VersionNumber", prefixLength ) == 0 )
+			{
+				const char* value = cursor + prefixLength;
+				while ( value < lineEnd && isspace( static_cast<unsigned char>( *value ) ) )
+					++value;
+				if ( value < lineEnd && *value == '=' )
+				{
+					versionNumber = atol( std::string( value + 1, lineEnd ).c_str() );
+					return true;
+				}
+			}
+		}
+
+		cursor = lineEnd;
+		if ( cursor < end && *cursor == '\r' )
+			++cursor;
+		if ( cursor < end && *cursor == '\n' )
+			++cursor;
+	}
+
+	return false;
+}
+
+// Reads just [Version] VersionNumber from the head of a save. FitIniFile::open
+// parses and indexes every block, which made the load dialog scan the whole save
+// directory (256 saves x ~150 KB) on open. Only saves whose Version block is
+// outside the window pay for a full-file read.
+static bool quickReadSaveVersion( const char* filePath, long& versionNumber )
+{
+	constexpr size_t kWindow = 64 * 1024;
+	char buffer[kWindow];
+
+	std::ifstream in( filePath, std::ios::binary );
+	if ( !in )
+		return false;
+
+	in.read( buffer, static_cast<std::streamsize>( kWindow ) );
+	size_t length = static_cast<size_t>( in.gcount() );
+	if ( length < 6 || memcmp( buffer, "FITini", 6 ) != 0 )
+		return false;
+
+	// A full window can end mid-line; drop that fragment so a truncated
+	// VersionNumber is never accepted. The full-file rescan below sees it whole.
+	if ( length == kWindow )
+	{
+		while ( length > 0 && buffer[length - 1] != '\r' && buffer[length - 1] != '\n' )
+			--length;
+	}
+
+	if ( scanSaveVersion( buffer, length, versionNumber ) )
+		return true;
+
+	// Old saves can put Version after an arbitrarily large variant section.
+	// Rescan from the start: the window tail dropped above must not be lost.
+	in.clear();
+	in.seekg( 0, std::ios::beg );
+	const std::vector<char> whole( std::istreambuf_iterator<char>( in ), std::istreambuf_iterator<char>() );
+	return scanSaveVersion( whole.data(), whole.size(), versionNumber );
+}
+
 bool LogisticsSaveDialog::isCorrectVersionSaveGame( char* fileName )
 {
 	FullPathFileName path;
@@ -725,26 +818,9 @@ bool LogisticsSaveDialog::isCorrectVersionSaveGame( char* fileName )
 	bool do_not_make_lower = true;
 	path.init( savePath, fileName, ".fit", do_not_make_lower);
 
-	FitIniFile file;
-
-	if ( NO_ERR != file.open( const_cast<char*>(static_cast<const char*>(path)), READ, 50, do_not_make_lower))
-	{
-		char errorStr[256];
-		(*std::format_to_n( errorStr, sizeof(errorStr) - 1, "couldn't open file {}", mc2::fmt::safe(static_cast<const char*>(path)) ).out = '\0');
-		STOP((errorStr));
-	}
-
-	
-	long result = file.seekBlock( "Version" );
-	if (result != NO_ERR)
-		return false;
-
 	long testVersionNum = 0;
-	result = file.readIdLong( "VersionNumber", testVersionNum );
-	if ( (result == NO_ERR) && (testVersionNum == SaveGameVersionNumber))
-		return true;
-
-	return false;
+	return quickReadSaveVersion( static_cast<const char*>(path), testVersionNum )
+		&& testVersionNum == SaveGameVersionNumber;
 }
 
 void LogisticsSaveDialog::readCampaignNameFromFile( const char* fileName, std::span<char> resultName )
