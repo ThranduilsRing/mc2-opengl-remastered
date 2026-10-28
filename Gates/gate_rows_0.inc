@@ -203,5 +203,5 @@ P("MC2_FIXTURE_ORDER_MOVE_M", Float, 300.0, "code", "", "Meters the MC2_FIXTURE_
 L(Lead0, "MC2_FORCE_43", Bool, false, "gameos", "", "Default-OFF gate (matches the launcher toggle model: checked -> MC2_FORCE_43=1, unchecked -> unset).", passthrough | verified),
 // history: docs/gate-history.md#MC2_FORCE_ALL_VISIBLE
 L(Lead0, "MC2_FORCE_ALL_VISIBLE", Bool, false, "code", "", "FORCE-ALL-VISIBLE-1: mark every unit (mechs, ground vehicles, elementals, all teams) fully visible and sensed, bypassing sensor / contact gating so nothing...", passthrough | registry(Trace, "MC2_TRACE_FORCE_ALL_VISIBLE", -1, false) | verified),
-L(Lead0P, "MC2_FORCE_DYNAMIC_BUILDINGS", Bool, false, "props", "", ""),  // default not derivable from the tree
+L(Lead0P, "MC2_FORCE_DYNAMIC_BUILDINGS", Bool, false, "props", "", "", verified),  // default not derivable from the tree
 L(Lead0P, "MC2_FORCE_DYNAMIC_TREES", Bool, false, "props", "", ""),  // default not derivable from the tree
