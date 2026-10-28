@@ -190,6 +190,8 @@ extern "C" int mc2_color_prop_island_get_frame_feed(Mc2ColorPropFeed* out) {
                 if (auto bt = s_bucketsByType.find(src); bt != s_bucketsByType.end()) bkInGroups += bt->second.instances.size();
             }
             for (const auto& kv : s_persistentStaticStore) stAll += kv.second.size();
+            { int shown = 0; for (const auto& kv : s_bucketsByType) { if (kv.second.instances.empty() || shown >= 8) continue; ++shown;
+                MC2_DIAGFE(stderr, "[PROP_LOD v1] bucket type=%u n=%zu inGroup=%d\n", kv.first, kv.second.instances.size(), int(s_lodGroups.count(kv.first))); } }
             MC2_DIAGFE(stderr, "[PROP_LOD v1] frame-sample groups=%zu inst lod0=%u lod1=%u lod2=%u storeInGroups=%zu bucketInGroups=%zu storeAll=%zu\n", s_lodGroups.size(), perLod[0], perLod[1], perLod[2], stInGroups, bkInGroups, stAll);
         }
     }
