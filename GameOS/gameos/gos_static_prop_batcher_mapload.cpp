@@ -336,15 +336,16 @@ void GpuStaticPropBatcher::registerType(TG_TypeShape* typeShape, TG_TypeMultiSha
     }
 }
 
-void GpuStaticPropBatcher::registerLodGroup(TG_TypeMultiShape* const* shapes, const float* distances, int count) {
-    if (!shapes || !distances || !shapes[0] || count < 2 || count > 3) return;
+void GpuStaticPropBatcher::registerLodGroup(std::span<TG_TypeMultiShape* const> shapes, std::span<const float> distances) {
+    const int count = static_cast<int>(std::min(shapes.size(), distances.size()));
+    if (shapes.empty() || !shapes[0] || count < 2 || count > 3) return;
     auto shapeTypes = [](TG_TypeMultiShape* ms) {
         std::vector<uint32_t> ids;
         for (long i = 0, n = ms->GetNumShapes(); i < n; ++i) {
             TG_TypeNodePtr node = ms->GetTypeNode(i);
             if (!node || node->GetNodeType() != SHAPE_NODE) continue;
-            auto it = s_typeIndex.find(static_cast<TG_TypeShape*>(node)->stableId());
-            ids.push_back(it == s_typeIndex.end() ? 0xFFFFFFFFu : it->second);
+            const auto sid = static_cast<TG_TypeShape*>(node)->stableId();
+            ids.push_back(s_typeIndex.contains(sid) ? s_typeIndex.at(sid) : 0xFFFFFFFFu);
         }
         return ids;
     };
@@ -352,8 +353,6 @@ void GpuStaticPropBatcher::registerLodGroup(TG_TypeMultiShape* const* shapes, co
     std::vector<std::vector<uint32_t>> lods(count);
     for (int k = 1; k < count; ++k)
         if (shapes[k] && shapes[k] != shapes[0] && distances[k] > 0.0f) lods[k] = shapeTypes(shapes[k]);
-    MC2_DIAGFE(stderr, "[PROP_LOD v1] register base0=%u nodes=%zu count=%d n1=%zu n2=%zu d1=%.0f d2=%.0f\n",
-               base.empty() ? 0u : base[0], base.size(), count, lods[1].size(), count > 2 ? lods[2].size() : size_t(0), distances[1], count > 2 ? distances[2] : 0.0f);
     for (size_t n = 0; n < base.size(); ++n) {
         if (base[n] == 0xFFFFFFFFu || s_lodGroups.count(base[n])) continue;
         PropLodGroup g{{base[n], base[n], base[n]}, {0.0f, 0.0f, 0.0f}, 1};

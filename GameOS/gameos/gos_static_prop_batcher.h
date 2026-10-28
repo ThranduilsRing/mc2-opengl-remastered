@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <cstddef>
 #include <array>
+#include <span>
 #include <atomic>
 #include <vector>
 #include <unordered_map>
@@ -154,7 +155,7 @@ public:
     // Distance LOD: shapes[0] is the base multi-shape, shapes[k] the LOD k one (nullptr or == base: not authored);
     // distances[k] is the camera distance from which LOD k draws. Shape nodes pair up by index; a LOD whose node
     // count differs is ignored. Call after registerMultiShape for every shape. Model-override statics only.
-    void registerLodGroup(TG_TypeMultiShape* const* shapes, const float* distances, int count);
+    void registerLodGroup(std::span<TG_TypeMultiShape* const> shapes, std::span<const float> distances);
     const mc2prop::MaterialSources& materialSources() const { return materialSources_; }
 
     // Called at end of registration to upload the immutable VBO/IBO.

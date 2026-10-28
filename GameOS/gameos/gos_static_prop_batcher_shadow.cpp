@@ -142,7 +142,7 @@ extern "C" int mc2_color_prop_island_get_frame_feed(Mc2ColorPropFeed* out) {
     // every (type, LOD) is still one contiguous run (one instanced draw) and the HZB pass sees the same feed.
     static const bool s_lodOn = mc2::gate::get<"MC2_VK_PROP_LOD">();
     static std::unordered_map<uint32_t, std::vector<GpuStaticPropInstance>> s_lodOut;
-    for (auto& kv : s_lodOut) kv.second.clear();
+    for (auto& [lodTid, lodVec] : s_lodOut) lodVec.clear();
     const bool lodActive = s_lodOn && !s_lodGroups.empty();
     if (lodActive) {
         const RenderCore::ViewUniforms vu = RenderCore::framePackets().copyMainView().uniforms;
@@ -164,10 +164,12 @@ extern "C" int mc2_color_prop_island_get_frame_feed(Mc2ColorPropFeed* out) {
             }
         };
         for (const auto& [src, g] : s_lodGroups) {
-            if (auto it = s_persistentStaticStore.find(src); it != s_persistentStaticStore.end())
-                route(it->second.data(), it->second.data() + it->second.size(), g);
+            if (auto it = s_persistentStaticStore.find(src); it != s_persistentStaticStore.end()) {
+                const auto& [stTid, stVec] = *it;
+                route(stVec.data(), stVec.data() + stVec.size(), g);
+            }
             if (auto bt = s_bucketsByType.find(src); bt != s_bucketsByType.end()) {
-                const PerTypeBucket& pb = bt->second;
+                const auto& [bkTid, pb] = *bt;
                 const GpuStaticPropInstance* d0 = pb.instances.data();
                 const uint32_t n  = static_cast<uint32_t>(pb.instances.size());
                 const uint32_t rp = std::min(pb.reinjPos, n);
@@ -177,29 +179,11 @@ extern "C" int mc2_color_prop_island_get_frame_feed(Mc2ColorPropFeed* out) {
             }
         }
     }
-    if (lodActive) {
-        static uint32_t s_lodLogTick = 0;
-        if ((s_lodLogTick++ % 60u) == 0u) {
-            uint32_t perLod[3] = {0, 0, 0};
-            for (const auto& [src, g] : s_lodGroups)
-                for (int k = 0; k < g.count; ++k)
-                    if (auto lo = s_lodOut.find(g.target[k]); lo != s_lodOut.end()) perLod[k] += static_cast<uint32_t>(lo->second.size());
-            size_t stInGroups = 0, bkInGroups = 0, stAll = 0;
-            for (const auto& [src, g] : s_lodGroups) {
-                if (auto it = s_persistentStaticStore.find(src); it != s_persistentStaticStore.end()) stInGroups += it->second.size();
-                if (auto bt = s_bucketsByType.find(src); bt != s_bucketsByType.end()) bkInGroups += bt->second.instances.size();
-            }
-            for (const auto& kv : s_persistentStaticStore) stAll += kv.second.size();
-            { int shown = 0; for (const auto& kv : s_bucketsByType) { if (kv.second.instances.empty() || shown >= 8) continue; ++shown;
-                MC2_DIAGFE(stderr, "[PROP_LOD v1] bucket type=%u n=%zu inGroup=%d\n", kv.first, kv.second.instances.size(), int(s_lodGroups.count(kv.first))); } }
-            MC2_DIAGFE(stderr, "[PROP_LOD v1] frame-sample groups=%zu inst lod0=%u lod1=%u lod2=%u storeInGroups=%zu bucketInGroups=%zu storeAll=%zu\n", s_lodGroups.size(), perLod[0], perLod[1], perLod[2], stInGroups, bkInGroups, stAll);
-        }
-    }
     std::vector<uint32_t> typeIds;
     typeIds.reserve(s_persistentStaticStore.size() + s_bucketsByType.size());
     for (const auto& kv : s_persistentStaticStore) typeIds.push_back(kv.first);
     for (const auto& kv : s_bucketsByType) typeIds.push_back(kv.first);
-    if (lodActive) for (const auto& kv : s_lodOut) if (!kv.second.empty()) typeIds.push_back(kv.first);
+    if (lodActive) for (const auto& [lodTid, lodVec] : s_lodOut) if (!lodVec.empty()) typeIds.push_back(lodTid);
     std::sort(typeIds.begin(), typeIds.end());
     typeIds.erase(std::unique(typeIds.begin(), typeIds.end()), typeIds.end());
     for (uint32_t tid : typeIds) {
@@ -208,8 +192,10 @@ extern "C" int mc2_color_prop_island_get_frame_feed(Mc2ColorPropFeed* out) {
             s_colorFeedFlat.insert(s_colorFeedFlat.end(), v.begin(), v.end());
             continue;
         }
-        if (lodActive) if (auto lo = s_lodOut.find(tid); lo != s_lodOut.end())
-            s_colorFeedFlat.insert(s_colorFeedFlat.end(), lo->second.begin(), lo->second.end());
+        if (lodActive) if (auto lo = s_lodOut.find(tid); lo != s_lodOut.end()) {
+            const auto& [loTid, loVec] = *lo;
+            s_colorFeedFlat.insert(s_colorFeedFlat.end(), loVec.begin(), loVec.end());
+        }
         auto it = s_persistentStaticStore.find(tid);
         if (it != s_persistentStaticStore.end()) {
             const std::vector<GpuStaticPropInstance>& insts = it->second;

@@ -591,7 +591,7 @@ void BldgAppearanceType::registerRenderShapes (void)
 		if (propMaterialSource)
 			for (const auto& lod : propMaterialSource->lods)
 				if (lod.lod > 0 && lod.lod < MAX_LODS && lod.distance > 0.0f) lodDists[lod.lod] = lod.distance;
-		GpuStaticPropBatcher::instance().registerLodGroup(lodShapes, lodDists, MAX_LODS);
+		GpuStaticPropBatcher::instance().registerLodGroup(std::span<TG_TypeMultiShape* const>(lodShapes, MAX_LODS), std::span<const float>(lodDists, MAX_LODS));
 	}
 	GpuStaticPropBatcher::instance().registerMultiShape(getBldgDmgRenderShape(), bldgDmgRenderShape != nullptr,
 		bldgDmgRenderShape ? propMaterialSource : nullptr);
