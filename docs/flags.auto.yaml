@@ -3,9 +3,9 @@
 # Where each gate is read, what the smoke runner forwards and what tier1_env_vars.md says are not here: ask
 # tools/repo_intel (env_var, gate_status), which scan the sources.
 generator_version: "3.0.0"
-gate_count: 773
+gate_count: 772
 registry_entry_count: 152
-verified_count: 733
+verified_count: 732
 flags:
   - name: MC2_ABL_ARG_GUARD
     kind: Bool
@@ -4923,13 +4923,6 @@ flags:
     default: false
     rule: Presence
     owner: code
-    doc: ""
-    verified: true
-  - name: MC2_TGL_POOL_TRACE
-    kind: Bool
-    default: false
-    rule: Presence
-    owner: gameos
     doc: ""
     verified: true
   - name: MC2_THIN_CANARY
