@@ -1813,6 +1813,13 @@ def main():
             release_folder_lease(target)
 
 
+def rebuild_command():
+    """The exact command that rebuilds this worktree's dev exe (what a stale/dirty refusal tells the lane to run)."""
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__))).replace("\\", "/")
+    tree = os.environ.get("MC2_NINJA_TREE")
+    return f"cd {root} && " + (f"MC2_NINJA_TREE={tree} " if tree else "") + "py -3 scripts/ninja_build.py"
+
+
 def require_head_exe(exe, head):
     """Reject stale/missing provenance from the executable bytes, never a header."""
     from exe_fingerprint import extract, sha_agrees
@@ -1821,8 +1828,8 @@ def require_head_exe(exe, head):
         fail(f"REFUSING stale/unattributable executable: {exe}\n"
              f"  embedded build sha={fp.get('sha', 'absent')} != HEAD {head} "
              f"({fp.get('reason', 'SHA mismatch')}).\n"
-             "  Commit first, rebuild this HEAD with scripts/ninja_build.py, "
-             "then deploy --ninja (or name that same tree with --build-dir). "
+             f"  Commit first, rebuild this HEAD with: {rebuild_command()}\n"
+             "  then deploy --ninja (or name that same tree with --build-dir). "
              "--allow-stale-exe only relaxes object timestamps, never provenance.")
     return fp
 
@@ -1879,7 +1886,7 @@ def run_deploy(args, src_root, build_dir, target, exe_name, pdb_name):
     fp = require_head_exe(os.path.join(build_dir, exe_name), src_commit)
     if fp["dirty"]:
         msg = (f"embedded fingerprint says dirty build at {fp['sha']}. "
-               "COMMIT FIRST, rebuild, then deploy.")
+               f"COMMIT FIRST, rebuild ({rebuild_command()}), then deploy.")
         if args.require_clean:
             fail("--require-clean refused deploy: " + msg +
                  " lane_merge verification must build the committed HEAD before the gate deploy stage.")

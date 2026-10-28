@@ -93,8 +93,32 @@ def pool_jobs(argv):
     return argv, tokens
 
 
+def build_warning(root, tree):
+    """One line, or "": uncommitted tracked changes (the exe will fingerprint dirty and deploy --require-clean refuses it) and/or
+    HEAD newer than the sha embedded in the last-built exe. Never raises: a warning must not block a build."""
+    try:
+        def git(*a):
+            return subprocess.run(["git", "-C", root, *a], capture_output=True, text=True, timeout=30,
+                                  **console_child.child_kwargs(redirected=True)).stdout.strip()
+        notes = []
+        dirty = [x for x in git("status", "--porcelain", "--untracked-files=no").splitlines() if x]
+        if dirty:
+            notes.append(f"{len(dirty)} uncommitted tracked change(s): this exe will fingerprint dirty and "
+                         "deploy_payload --require-clean will refuse it (commit before building the exe you deploy)")
+        exe = f"{root}/{tree}/mc2.exe"
+        head = git("rev-parse", "HEAD")
+        if head and os.path.exists(exe):
+            from exe_fingerprint import extract, sha_agrees
+            fp = extract(exe)
+            if fp.get("present") and sha_agrees(fp.get("sha"), head) is not True:
+                notes.append(f"HEAD {head[:9]} is newer than the last build ({str(fp.get('sha'))[:9]}); rebuilding")
+        return "[ninja_build] WARNING: " + "; ".join(notes) if notes else ""
+    except Exception:
+        return ""
+
+
 def main():
-    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__))).replace("\\", "/")
+    root =os.path.dirname(os.path.dirname(os.path.abspath(__file__))).replace("\\", "/")
     argv = sys.argv[1:]
     tree = os.environ.get("MC2_NINJA_TREE") or DEFAULT_TREE
     if "--warm" in argv:
@@ -116,6 +140,9 @@ def main():
         configure(root, tree)
     dry_run = "-n" in argv
     if not dry_run:
+        warning = build_warning(root, tree)
+        if warning:
+            print(warning, flush=True)
         drop_oversize_pdb(root, tree)
     env = compile_cache_env(root) if tree_uses_cache(root, tree) else None  # sccache tree (the default; configure_ninja.py --no-compile-cache opts out)
     if env:

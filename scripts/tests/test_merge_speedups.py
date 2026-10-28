@@ -286,6 +286,7 @@ def test_native_reflection_invariants_reject_wrong_normal_target():
 def test_deploy_clean_refusal_explains_rebuild(monkeypatch, tmp_path, capsys):
     import deploy_payload as dp
     monkeypatch.setattr(dp, "check_exe_fresh", lambda *a, **k: None)
+    monkeypatch.setattr(dp, "_last_failure", [])  # fail() records here; an atexit hook would re-print it after the run
     monkeypatch.setattr(dp, "git_head", lambda *a: "base")
     monkeypatch.setattr(dp, "require_head_exe", lambda *a: {"sha": "base", "dirty": True})
     args = types.SimpleNamespace(allow_stale_exe=False, build64_root=None, require_clean=True)
@@ -294,6 +295,8 @@ def test_deploy_clean_refusal_explains_rebuild(monkeypatch, tmp_path, capsys):
     output = capsys.readouterr()
     assert "--require-clean refused deploy" in output.out + output.err
     assert "rebuild" in output.out + output.err
+    assert dp.rebuild_command() in output.out + output.err
+    assert "scripts/ninja_build.py" in dp.rebuild_command()
 
 
 @pytest.mark.parametrize("jobs", [1, 6])
@@ -1094,3 +1097,19 @@ def test_pre_gate_runs_every_step_and_prints_one_verdict(monkeypatch, capsys, tm
     monkeypatch.setattr(lm, "run", lambda root, cmd, env=None: _r(0))
     assert lm.pre_gate(str(tmp_path), str(tmp_path / "none.exe")) == 0
     assert "PRE-GATE PASS (headless-smoke skipped: no exe)" in capsys.readouterr().out
+
+
+def test_ninja_build_warns_on_dirty_tree_and_stale_exe(monkeypatch, tmp_path):
+    import ninja_build as nb
+    import exe_fingerprint as fpmod
+    calls = {"status": " M a.cpp\n", "rev-parse": "b" * 40 + "\n"}
+    monkeypatch.setattr(nb.subprocess, "run", lambda cmd, **k: types.SimpleNamespace(stdout=calls[cmd[3]]))
+    (tmp_path / "t").mkdir()
+    (tmp_path / "t/mc2.exe").write_bytes(b"x")
+    monkeypatch.setattr(fpmod, "extract", lambda p: {"present": True, "sha": "a" * 12})
+    line = nb.build_warning(str(tmp_path), "t")
+    assert line.startswith("[ninja_build] WARNING:") and "1 uncommitted" in line and "newer than the last build" in line
+    assert "\n" not in line
+    calls["status"] = ""
+    monkeypatch.setattr(fpmod, "extract", lambda p: {"present": True, "sha": "b" * 12})
+    assert nb.build_warning(str(tmp_path), "t") == ""

@@ -32,8 +32,8 @@ regenerable set (merge aborted, the lane's untracked files removed; a "file in u
 build-alltargets/.tidy.lock to clear and retries once); 6 a ratchet failed (merge commit stays).
 7 the merged tree does not build or its doctest fails (the merge commit stays; fix forward).
 Final line: MERGED <sha> (+<follow-up sha>) files=<n> ratchets=OK/FAIL verify=OK/FAIL/SKIPPED overlap=0
-A --batch run first plans every tip (a tip that would abort refuses the whole batch, exit 5, nothing merged); a ratchet failure mid-batch prints
-BATCH STOPPED at <ref> merged=<n> remaining=<refs>, skips the build and exits 6.
+A --batch run first plans every tip (a tip that would abort refuses the whole batch, exit 5, nothing merged); a ratchet failure mid-batch does not
+stop the batch: every tip is merged, then "BATCH RATCHET REDS" lists all failing ratchets per tip, the build is skipped and it exits 6.
 Every successful merged batch verifies, including tooling-only tips, so the embedded SHA is HEAD.
 A --batch run prints one such line per merged tip (verify=DEFERRED) and a final one for the last tip carrying the single verify verdict (files = total, batch=<n>).
 """
@@ -829,7 +829,8 @@ def main(argv: list[str] | None = None) -> int:
         if batch and plan_batch(root, args, refs, resolutions_for):
             raise Stop(5, "BATCH REFUSED: a tip would abort on the blocking conflict(s) above; nothing was merged")
         merged = []        # (merge sha, follow-up sha, files) per merged tip
-        stopped = None     # (ref, failed ratchets) when a ratchet failed mid-batch
+        reds = []          # (ref, failed ratchets) per tip whose ratchets failed
+        stopped = None     # first red ref; a red batch skips the build and exits 6
         for idx, ref in enumerate(refs, 1):
             p = plan(root, ref)
             resolutions = resolutions_for(p)
@@ -850,11 +851,17 @@ def main(argv: list[str] | None = None) -> int:
                 if not batch:
                     print(f"{tag} ratchets=FAIL verify=SKIPPED overlap=0")
                     return 6
-                stopped = (ref, refs[idx:])
-                print(f"BATCH STOPPED at {ref} merged={len(merged)} remaining={' '.join(stopped[1]) or '(none)'}")
-                break
+                # Keep merging: the owner sees every ratchet red of the batch at once (one fix-forward, not one per tip).
+                reds.append((ref, failed))
+                print(f"{tag} ratchets=FAIL verify=DEFERRED overlap=0")
+                continue
             if batch and ref != refs[-1]:
                 print(f"{tag} ratchets=OK verify=DEFERRED overlap=0")
+        if reds:
+            stopped = reds[0][0]
+            print(f"BATCH RATCHET REDS in {len(reds)} of {len(refs)} tip(s), merged={len(merged)}:")
+            for ref, failed in reds:
+                print(f"  {ref}: " + ", ".join(f"{label}(rc={rc})" for label, rc, _ in failed))
         if not merged and not batch:
             return 0
         mode = "none" if args.no_verify else args.verify

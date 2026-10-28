@@ -79,3 +79,5 @@ files are retained. The task and file lock prevent overlapping runners.
 
 Offline verification:
 `bash scripts/check-contracts.sh --rows '^farm_runner$' -j6`.
+
+Lane exe: `submit --exe <mc2.exe> [--data-delta <dir>] job.json` stages the exe (plus a small data overlay) into a per-job tree `C:\mc2farm\work\<id>` (junctions/hardlinks to the seeded install, so cheap), and replaces `{EXE}` / `{ROOT}` in the job JSON; `fetch` deletes that tree. Still no perf numbers or owner captures from the farm.
