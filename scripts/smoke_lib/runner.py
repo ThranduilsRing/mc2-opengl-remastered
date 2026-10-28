@@ -163,6 +163,30 @@ def undriveable_ambient(environ: dict, env_extra: "dict | None" = None) -> dict:
 
 
 _GATE_NAMES = None
+_LEGACY_GATES = None
+
+
+def legacy_gate_names(table_json: str) -> frozenset:
+    """MC2_* names in a gate_table.json text (an older commit's `git show <sha>:Gates/gate_table.json`)."""
+    import json as _json
+    return frozenset(g["name"] for g in _json.loads(table_json)["gates"])
+
+
+def set_legacy_gates(names) -> None:
+    """--legacy-env: run an OLDER exe (A/B against a past build). Its strict config rejects MC2_* names its gate table lacks,
+    so every env this runner would pass is filtered to `names` (see filter_legacy_env)."""
+    global _LEGACY_GATES
+    _LEGACY_GATES = frozenset(names) if names is not None else None
+
+
+def filter_legacy_env(env: dict) -> list:
+    """Drop MC2_* keys the legacy exe does not know, in place. -> the dropped names (sorted); a no-op unless set_legacy_gates ran."""
+    if _LEGACY_GATES is None:
+        return []
+    dropped = sorted(k for k in env if k.startswith("MC2_") and k not in _LEGACY_GATES)
+    for k in dropped:
+        del env[k]
+    return dropped
 
 
 def known_gate_names() -> "frozenset | None":
@@ -253,8 +277,11 @@ def run_one(cfg: RunConfig) -> RunResult:
     for _k in POPPED_ENV:
         env.pop(_k, None)
     env.update(cfg.env_extra)
+    _legacy_dropped = filter_legacy_env(env)
+    if _legacy_dropped:
+        print("[runner] [LEGACY-ENV] not known to the older exe's gate table, not forwarded: " + ", ".join(_legacy_dropped), file=sys.stderr)
 
-    cap = cfg.duration + cfg.grace_s
+    cap =cfg.duration + cfg.grace_s
     # Spawn in the directory that contains the executable so that MC2's
     # CWD-relative file lookups (options.cfg, minprefs.cfg, etc.) resolve
     # against the install directory rather than the runner's working directory.
