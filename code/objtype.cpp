@@ -222,6 +222,7 @@ void ObjectType::setAppearanceTypeName (const char* name)
 
 long ObjectTypeManager::init (const char* objectFileName, long objectTypeCacheSize, long objectCacheSize, long maxObjectTypes) {
 
+	destroy();
 	FullPathFileName objectName;
 	objectName.init(objectPath,objectFileName,".pak");
 
@@ -229,8 +230,14 @@ long ObjectTypeManager::init (const char* objectFileName, long objectTypeCacheSi
 	objectFile = m_objectFile.get();
 
 	long result = objectFile->open(objectName);
-	if (result != NO_ERR)
+	if (result != NO_ERR) {
+		MC2_LOG(Io, Error, "[OBJTYPE_INIT_FAILED] pak={} result={} reason={} file_error={}",
+			static_cast<const char*>(objectName), result,
+			result == PACKET_OUT_OF_RANGE ? "invalid pak checksum/header" : "pak missing or unreadable (open failed)",
+			objectFile->getLastError());
+		destroy();
 		return(result);
+	}
 		
 	// B7o.9: the object type and object heaps are gone (types, actors and their buffers use the CRT and have owners);
 	// the two size parameters are accepted and unused.
@@ -269,14 +276,15 @@ void ObjectTypeManager::destroy(void)
 		std::vector<std::unique_ptr<ObjectType>>().swap(typeStore);
 		std::vector<std::unique_ptr<ObjectType>>().swap(retiredTypes);
 		std::vector<ObjectTypePtr>().swap(tableStore);
-		table = nullptr;
-		numObjectTypes = 0;
 	}
+	table = nullptr;
+	numObjectTypes = 0;
 
-	if (objectFile) 
+	if (m_objectFile)
 	{
-		objectFile->close();
-		objectFile = nullptr;
+		m_objectFile->close();
+		if (objectFile == m_objectFile.get())
+			objectFile = nullptr;
 		m_objectFile.reset();
 	}
 }
@@ -284,6 +292,8 @@ void ObjectTypeManager::destroy(void)
 //---------------------------------------------------------------------------
 
 ObjectTypePtr ObjectTypeManager::load (ObjectTypeNumber objTypeNum, bool noCacheOut, bool forceLoad) {
+	if (!table || !objectFile)
+		return nullptr;
 
 	//-----------------------------------------------------------------------
 	// NOTE: This function attempts to load the objectType into the table. If
@@ -544,8 +554,7 @@ void ObjectTypeManager::remove (ObjectTypePtr objTypePtr) {
 
 ObjectTypePtr ObjectTypeManager::get (ObjectTypeNumber objTypeNum, bool loadIt) {
 
-	if ((objTypeNum < 0) || (objTypeNum >= numObjectTypes)) {
-		PAUSE((" ObjectTypeManager.find: bad objTypeNum %d (max %d) — mod content; returning NULL ", static_cast<int>(objTypeNum), static_cast<int>(numObjectTypes)));
+	if (!table || (objTypeNum < 0) || (objTypeNum >= numObjectTypes)) {
 		return nullptr;
 	}
 
@@ -564,8 +573,8 @@ ObjectTypePtr ObjectTypeManager::get (ObjectTypeNumber objTypeNum, bool loadIt) 
 
 GameObjectPtr ObjectTypeManager::create (ObjectTypeNumber objTypeNum) {
 
-	if ((objTypeNum < 0) || (objTypeNum >= numObjectTypes))
-		Fatal(objTypeNum, " ObjectTypeManager.get: bad objTypeNum ");
+	if (!table || (objTypeNum < 0) || (objTypeNum >= numObjectTypes))
+		return nullptr;
 
 	//----------------------------------------------------------
 	// First, check if the objectType has already been loaded...
@@ -588,7 +597,6 @@ GameObjectPtr ObjectTypeManager::create (ObjectTypeNumber objTypeNum) {
 		return(obj);
 	}
 	
-	Fatal(objTypeNum, " ObjectTypeManager.create: unable to load object type ");
 	return(nullptr);
 }
 

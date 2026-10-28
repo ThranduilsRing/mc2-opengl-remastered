@@ -36,6 +36,7 @@ ROOT = 'C:/mc2farm'
 STAGE_PS = r"""
 $ErrorActionPreference='Stop'
 $i='%(r)s/install'; $w='%(r)s/work/%(id)s'; $s='%(r)s/stage/%(id)s'
+Expand-Archive -LiteralPath "$s/payload.zip" -DestinationPath "$s/delta" -Force
 New-Item -ItemType Directory -Force $w | Out-Null
 foreach ($e in Get-ChildItem $i -Force) {
   if ($e.Name -in 'mc2.exe','mc2.pdb') { continue }
@@ -190,6 +191,35 @@ print(json.dumps(meta))
                       'transferred_bytes': transferred, 'GB': transferred / 1e9}))
 
 
+def payload_archive(exe, destination):
+    """Use deploy's payload list, including baked shaders, without cooking/building."""
+    import deploy_payload as deploy
+    import zipfile
+
+    source = next((p for p in exe.resolve().parents
+                   if (p / 'scripts/deploy_payload.py').is_file()), None)
+    if source is None:
+        raise ValueError('--exe must be in its source worktree/build tree')
+    from contextlib import redirect_stdout
+    with redirect_stdout(sys.stderr):
+        items = deploy.enumerate_payload(str(source), str(exe.parent), exe.name,
+                                         'mc2.pdb', require_build=False)
+    hashes = {'mc2.exe': (deploy.sha256_file(str(exe)), exe.stat().st_size)}
+    with zipfile.ZipFile(destination, 'w', zipfile.ZIP_DEFLATED) as archive:
+        for src, rel, kind in items:
+            if kind in ('exe', 'pdb'):
+                continue
+            path = Path(src)
+            if not path.is_file():
+                if kind in ('shader', 'defs', 'dll'):
+                    raise ValueError(f'missing exe payload: {path}')
+                continue
+            archive.write(path, rel)
+            hashes[rel] = (deploy.sha256_file(str(path)), path.stat().st_size)
+        deploy.write_manifest(str(destination.parent), hashes, deploy.git_head(str(source)))
+        archive.write(destination.parent / deploy.MANIFEST_NAME, deploy.MANIFEST_NAME)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--host', default='Kaitlyn@192.168.68.107')
@@ -224,14 +254,20 @@ def main():
                 parser.error(f'--exe not found: {args.exe}')
             if args.data_delta and not args.data_delta.is_dir():
                 parser.error(f'--data-delta is not a directory: {args.data_delta}')
+            tmpdir = tempfile.TemporaryDirectory()
+            payload = Path(tmpdir.name) / 'payload.zip'
+            try:
+                payload_archive(args.exe.resolve(), payload)
+            except ValueError as exc:
+                parser.error(str(exc))
             remote(args, f"New-Item -ItemType Directory -Force {ROOT}/stage/{job_id} | Out-Null")
             scp(args, args.exe, f'{args.host}:{ROOT}/stage/{job_id}/mc2.exe')
             if args.data_delta:
                 scp(args, args.data_delta, f'{args.host}:{ROOT}/stage/{job_id}/delta', recursive=True)
+            scp(args, payload, f'{args.host}:{ROOT}/stage/{job_id}/payload.zip')
             remote(args, STAGE_PS % {'r': ROOT, 'id': job_id})
             work = f'{ROOT}/work/{job_id}'
             job = substitute(job, {'{EXE}': f'{work}/mc2.exe', '{ROOT}': work})
-            tmpdir = tempfile.TemporaryDirectory()
             upload = Path(tmpdir.name) / 'job.json'
             upload.write_text(json.dumps(job, indent=2), encoding='utf-8')
         scp(args, upload, f'{args.host}:{ROOT}/jobs/{job_id}.upload')

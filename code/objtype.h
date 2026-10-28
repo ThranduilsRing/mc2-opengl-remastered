@@ -210,8 +210,8 @@ class ObjectTypeManager {
 
 	public:
 
-		long					numObjectTypes;
-		ObjectTypePtr*			table;			// view of tableStore
+		long					numObjectTypes = 0;
+		ObjectTypePtr*			table = nullptr;			// view of tableStore
 		std::vector<ObjectTypePtr>	tableStore;	// the slots `table` views: raw pointers, sized once by init(file), kept in step with typeStore
 		std::vector<std::unique_ptr<ObjectType>>	typeStore;	// OWNS the loaded types (CRT memory since B7o.9); destroy() deletes them
 		std::vector<std::unique_ptr<ObjectType>>	retiredTypes;	// types replaced by a forced reload: live objects may still point at them, so they are deleted only by destroy()

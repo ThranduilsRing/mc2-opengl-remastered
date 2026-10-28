@@ -164,7 +164,7 @@ void GameObjectManager::init (const char* objTypeDataFile, long objTypeHeapSize,
 		Fatal(0, " GameObjectManager.init: unable to create objTypeManager ");
 	long result = objTypeManager->init(objTypeDataFile, objTypeHeapSize, objHeapSize);
 	if (result != NO_ERR)
-		Fatal(0, " GameObjectManager.init: unable to init objTypeManager ");
+		return; // The type manager logged the pak failure and remains empty.
 }
 
 //---------------------------------------------------------------------------
