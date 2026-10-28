@@ -465,7 +465,8 @@ def run_ratchets(root: str, tools_dir: str) -> list[tuple[str, int, str]]:
     for label, rel, args in RATCHETS:
         script = os.path.join(tools_dir, *rel.split("/"))
         r = run(root, [sys.executable, "-B", script, *args])
-        tail = "\n".join(lines(r.stdout)[-3:])
+        # every ratchet always runs; a failing one reports its whole violation list, not just the last lines (W78: first hit only)
+        tail = "\n".join(lines(r.stdout)[-60:] if r.returncode else lines(r.stdout)[-3:])
         results.append((label, r.returncode, tail))
     return results
 
