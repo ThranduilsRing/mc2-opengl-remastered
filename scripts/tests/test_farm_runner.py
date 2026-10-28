@@ -86,6 +86,7 @@ def test_host_submit_exe_stages_then_rewrites_job(tmp_path, monkeypatch):
     monkeypatch.setattr(sys, 'argv', ['host', 'submit', str(path), '--exe', str(exe), '--data-delta', str(delta)])
     monkeypatch.setattr(host.uuid, 'uuid4', lambda: SimpleNamespace(hex='b' * 32))
     monkeypatch.setattr(host, 'remote', lambda args, script: calls.append(('ps', script)))
+    monkeypatch.setattr(host, 'payload_archive', lambda exe, dst: dst.write_bytes(b'zip'))
 
     def fake_scp(args, *paths, recursive=False):
         calls.append(('scp', str(paths[-1])))
@@ -96,8 +97,72 @@ def test_host_submit_exe_stages_then_rewrites_job(tmp_path, monkeypatch):
     work = 'C:/mc2farm/work/' + 'b' * 32
     assert uploaded == [{'argv': ['run', work + '/mc2.exe'], 'env': {'X': work + '/d'}}]
     kinds = [c[0] for c in calls]
-    assert kinds == ['ps', 'scp', 'scp', 'ps', 'scp', 'ps']  # mkdir, exe, delta, stage, job.upload, publish
-    assert '/work/' in calls[3][1] or 'work' in calls[3][1]
+    assert kinds == ['ps', 'scp', 'scp', 'scp', 'ps', 'scp', 'ps']
+    assert calls[3][1].endswith('/payload.zip')
+    assert 'Expand-Archive' in calls[4][1]
+
+
+def test_exe_payload_matches_deploy_and_isolated_from_seed(tmp_path, monkeypatch):
+    import deploy_payload as deploy
+    import zipfile
+
+    source = tmp_path / 'lane'
+    (source / 'scripts').mkdir(parents=True)
+    (source / 'scripts/deploy_payload.py').touch()
+    build = source / 'build64-ninja'
+    build.mkdir()
+    exe = build / 'mc2.exe'
+    exe.write_bytes(b'lane exe')
+    entries = [('shaders/include/new.hglsl', 'shader'),
+               ('shaders/vulkan/new.frag.spv', 'shader'),
+               ('data/defs/ui/PACKAGE.fit', 'defs'), ('avcodec.dll', 'dll'),
+               ('3rdparty/smaa/LICENSE', 'support'), ('mc2.pdb', 'pdb')]
+    items = []
+    for rel, kind in entries:
+        path = build / rel
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(rel.encode())
+        items.append((str(path), rel, kind))
+    monkeypatch.setattr(deploy, 'enumerate_payload', lambda *a, **kw: items)
+    monkeypatch.setattr(deploy, 'git_head', lambda *a: 'a' * 40)
+    archive = tmp_path / 'payload.zip'
+    host.payload_archive(exe, archive)
+    staged = tmp_path / 'staged'
+    staged.mkdir()
+    with zipfile.ZipFile(archive) as payload:
+        assert 'mc2.pdb' not in payload.namelist()
+        for rel, kind in entries:
+            if kind != 'pdb':
+                assert payload.read(rel) == rel.encode()
+        payload.extractall(staged)
+    shutil.copy2(exe, staged / 'mc2.exe')
+    report = deploy.staleness_report(str(staged))
+    assert report['has_manifest'] and not report['stale'] and not report['missing']
+    (staged / entries[0][0]).write_bytes(b'seed shader')
+    assert deploy.staleness_report(str(staged))['stale'] == [entries[0][0]]
+    # Payload is expanded before choosing junctions: touched trees are copied.
+    assert host.STAGE_PS.index('Expand-Archive') < host.STAGE_PS.index('foreach')
+    assert 'Test-Path "$s/delta/$($e.Name)"' in host.STAGE_PS
+    if os.name == 'nt':
+        root = tmp_path / 'farm'
+        install = root / 'install'
+        (install / 'shaders/include').mkdir(parents=True)
+        seed = install / entries[0][0]
+        seed.write_bytes(b'seed shader')
+        stage = root / 'stage/sample'
+        stage.mkdir(parents=True)
+        shutil.copy2(exe, stage / 'mc2.exe')
+        shutil.copy2(archive, stage / 'payload.zip')
+        subprocess.run(['powershell', '-NoProfile', '-Command',
+                        host.STAGE_PS % {'r': root.as_posix(), 'id': 'sample'}],
+                       check=True, **console_child.child_kwargs())
+        work = root / 'work/sample'
+        report = deploy.staleness_report(str(work))
+        assert not report['stale'] and not report['missing']
+        (work / entries[0][0]).write_bytes(b'job shader')
+        assert seed.read_bytes() == b'seed shader'
+
+
 
 
 def test_host_data_delta_requires_exe(tmp_path, monkeypatch):

@@ -80,4 +80,4 @@ files are retained. The task and file lock prevent overlapping runners.
 Offline verification:
 `bash scripts/check-contracts.sh --rows '^farm_runner$' -j6`.
 
-Lane exe: `submit --exe <mc2.exe> [--data-delta <dir>] job.json` stages the exe (plus a small data overlay) into a per-job tree `C:\mc2farm\work\<id>` (junctions/hardlinks to the seeded install, so cheap), and replaces `{EXE}` / `{ROOT}` in the job JSON; `fetch` deletes that tree. Still no perf numbers or owner captures from the farm.
+Lane exe: `submit --exe <worktree/build64-ninja/mc2.exe> [--data-delta <dir>] job.json` stages the exe and deploy's matching shaders (including baked SPIR-V), DLLs, definitions and support files into a per-job tree `C:\mc2farm\work\<id>`. PDBs stay on the host. A payload manifest replaces the seed manifest; payload files take precedence over the optional data overlay. Touched trees are copied so the seed is unchanged. `{EXE}` / `{ROOT}` in the job JSON become the staged paths; use `{EXE}` for `--ref-exe` to verify the submitted binary. `fetch` deletes the tree. Still no perf numbers or owner captures from the farm.
