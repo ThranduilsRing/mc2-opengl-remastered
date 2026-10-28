@@ -1,4 +1,5 @@
 #include "doctest.h"
+#include "../../mclib/sim_overlap.h"
 #include "../../mclib/spotlight_diag.h"
 #include <cstdint>
 #include <memory>
