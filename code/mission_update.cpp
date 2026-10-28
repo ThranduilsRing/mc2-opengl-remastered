@@ -1286,7 +1286,8 @@ bool Mission::updatePass(bool tickMode, bool runFrame, bool runSim, bool advance
 
 // Per-frame mission update. Normal play runs on the fixed 30 Hz sim tick (code/sim_tick_clock.h): the frame's
 // real time x game speed is banked, whole ticks run out of the bank, and a frame that banks no tick only redraws the
-// unchanged sim state. A paused or frozen sim only redraws; multiplayer uses the same paced tick credit as single player.
+// unchanged sim state. A paused or frozen sim only redraws; multiplayer uses the same wall-paced tick credit as single player
+// (the retail wall-clock frame timer was deleted in 59b919e49).
 long Mission::update (void)
 {
 	ZoneScopedN("Mission::update");

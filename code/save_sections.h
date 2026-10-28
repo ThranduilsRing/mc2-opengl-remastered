@@ -62,7 +62,9 @@ bool encodeSections(const SectionContainer& container, Bytes& output, std::strin
 bool decodeSections(std::span<const std::uint8_t> bytes, SectionContainer& output, std::string* why = nullptr);
 
 // v1 -> v2: the legacy R2 packet that followed END (tag 'R2AN', version 2/3, animation blob, order queue) becomes
-// ANIM + ORDQ sections. An empty span (a v1 file without the packet) gives an empty container: every section defaults.
+// ANIM + ORDQ sections. An R2 version above 3 is a soft reject (returns false, the caller refuses the file); it used to be fatal.
+// Re-saving drops unknown optional sections (decodeSections discards them), so a save round-tripped by an older build loses them.
+// An empty span (a v1 file without the packet) gives an empty container: every section defaults.
 bool upgradeLegacyR2(std::span<const std::uint8_t> r2, SectionContainer& output, std::string* why = nullptr);
 inline constexpr std::uint32_t legacyR2Tag = 0x4E413252u;
 

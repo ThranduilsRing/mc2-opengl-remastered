@@ -186,7 +186,7 @@ def _mission_started(log_path: Path) -> bool:
         return False
 
 
-_FATAL_LINE = re.compile(r"^(?:\[crash\] (?:code=|\w+ violation)|\[[a-z0-9_ ]+\] fatal[: ]|fatal error:)", re.M)
+_FATAL_LINE = re.compile(r"^(?:\[crash\] (?:code=|\w+ violation)|(?:\[[a-z0-9_ ]+\] )?fatal[: ]|fatal error:)", re.M)
 
 
 def _load_failed(log_path: Path) -> bool:

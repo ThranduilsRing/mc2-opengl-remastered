@@ -5545,49 +5545,49 @@
         },
         {
           "path": "scripts/smoke_lib/nofocus.py",
-          "line": 375,
+          "line": 377,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from . import win_input"
         },
         {
           "path": "scripts/smoke_lib/nofocus.py",
-          "line": 387,
+          "line": 389,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from . import exe_guard, child_registry, host_lease"
         },
         {
           "path": "scripts/smoke_lib/nofocus.py",
-          "line": 403,
+          "line": 405,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from . import exe_guard, host_lease"
         },
         {
           "path": "scripts/smoke_lib/nofocus.py",
-          "line": 418,
+          "line": 420,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from . import exe_guard"
         },
         {
           "path": "scripts/smoke_lib/nofocus.py",
-          "line": 470,
+          "line": 472,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from . import exe_guard, host_lease"
         },
         {
           "path": "scripts/smoke_lib/nofocus.py",
-          "line": 491,
+          "line": 493,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from . import exe_guard"
         },
         {
           "path": "scripts/smoke_lib/nofocus.py",
-          "line": 589,
+          "line": 591,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from . import win_input"
@@ -5920,7 +5920,7 @@
         },
         {
           "path": "scripts/smoke_lib/nofocus.py",
-          "line": 387,
+          "line": 389,
           "evidence": "import",
           "reference": "scripts.smoke_lib.child_registry",
           "text": "from . import exe_guard, child_registry, host_lease"
@@ -6050,35 +6050,35 @@
         },
         {
           "path": "scripts/smoke_lib/nofocus.py",
-          "line": 387,
+          "line": 389,
           "evidence": "import",
           "reference": "scripts.smoke_lib.exe_guard",
           "text": "from . import exe_guard, child_registry, host_lease"
         },
         {
           "path": "scripts/smoke_lib/nofocus.py",
-          "line": 403,
+          "line": 405,
           "evidence": "import",
           "reference": "scripts.smoke_lib.exe_guard",
           "text": "from . import exe_guard, host_lease"
         },
         {
           "path": "scripts/smoke_lib/nofocus.py",
-          "line": 418,
+          "line": 420,
           "evidence": "import",
           "reference": "scripts.smoke_lib.exe_guard",
           "text": "from . import exe_guard"
         },
         {
           "path": "scripts/smoke_lib/nofocus.py",
-          "line": 470,
+          "line": 472,
           "evidence": "import",
           "reference": "scripts.smoke_lib.exe_guard",
           "text": "from . import exe_guard, host_lease"
         },
         {
           "path": "scripts/smoke_lib/nofocus.py",
-          "line": 491,
+          "line": 493,
           "evidence": "import",
           "reference": "scripts.smoke_lib.exe_guard",
           "text": "from . import exe_guard"
@@ -6278,21 +6278,21 @@
         },
         {
           "path": "scripts/smoke_lib/nofocus.py",
-          "line": 387,
+          "line": 389,
           "evidence": "import",
           "reference": "scripts.smoke_lib.host_lease",
           "text": "from . import exe_guard, child_registry, host_lease"
         },
         {
           "path": "scripts/smoke_lib/nofocus.py",
-          "line": 403,
+          "line": 405,
           "evidence": "import",
           "reference": "scripts.smoke_lib.host_lease",
           "text": "from . import exe_guard, host_lease"
         },
         {
           "path": "scripts/smoke_lib/nofocus.py",
-          "line": 470,
+          "line": 472,
           "evidence": "import",
           "reference": "scripts.smoke_lib.host_lease",
           "text": "from . import exe_guard, host_lease"
@@ -6977,14 +6977,14 @@
       "callers_by_stem": [
         {
           "path": "scripts/smoke_lib/nofocus.py",
-          "line": 375,
+          "line": 377,
           "evidence": "import",
           "reference": "scripts.smoke_lib.win_input",
           "text": "from . import win_input"
         },
         {
           "path": "scripts/smoke_lib/nofocus.py",
-          "line": 589,
+          "line": 591,
           "evidence": "import",
           "reference": "scripts.smoke_lib.win_input",
           "text": "from . import win_input"

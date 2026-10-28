@@ -68,3 +68,15 @@ def test_pilot_suffix_requires_validated_schema():
     result = mod.compare([(4, text)], [(4, bytes(changed))], mask)
     assert not result["masked"]
     assert result["outside"] == {"text": [1, 1]}
+
+
+def test_checked_in_v1_fixture_upgrades_to_v2_sections():
+    """A real v1 .ims on disk (tests/fixtures/saves/v1_minimal.ims, 133 bytes): stamp, R2 packet after END -> ANIM + ORDQ."""
+    import tempfile
+    src = os.path.join(HERE, "..", "tests", "fixtures", "saves", "v1_minimal.ims")
+    assert mod.load(src)[1][0][1] == mod.STAMP_V1
+    with tempfile.TemporaryDirectory() as td:
+        dst = os.path.join(td, "v2.ims")
+        sections = mod.upgrade(src, dst)
+        assert [(s[0], s[3]) for s in sections] == [(mod.fourcc("ANIM"), b"\xde\xad\xbe\xef"), (mod.fourcc("ORDQ"), b"\x01\x02\x03")]
+        assert mod.load(dst)[1][0][1] == mod.STAMP_V2
