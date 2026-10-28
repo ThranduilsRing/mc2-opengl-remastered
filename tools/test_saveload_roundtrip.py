@@ -129,7 +129,8 @@ def test_plant_with_a_quicksave_frame_is_refused_before_the_run(monkeypatch, cap
     for frames in (["--save-at", "1000000"], []):                   # an explicit late frame and the default quicksave frame
         assert rt.main(["resave", "--mission", "m", "--plant", "planted.ims", *frames]) == 1
         out = capsys.readouterr().out
-        assert "--save-at 0" in out and "--load-at" in out and len(out.strip().splitlines()) == 1
+        assert "--save-at 0" in out and "--load-at" in out
+        assert out.strip().splitlines()[1:2] and len(out.strip().splitlines()) == 2      # the FAIL header plus one refusal line
 
 
 def test_a_missing_resave_is_a_fail(tmp_path, monkeypatch, capsys):
