@@ -50,10 +50,29 @@
 #include <cstdint>
 #include <span>
 #include <array>
+#include <vector>
+#include <utility>
 #include "../GameOS/gameos/utils/mc2log.h"
 #include "mc2fmt.h"
 
 //***************************************************************************
+
+// Sensor-scoped endpoint memoization. Never reused across mover updates, terrain changes or mission loads.
+static bool s_sensorLosScan = false;
+static std::vector<std::pair<GameObjectPtr, glm::vec3>> s_sensorLosPositions;
+
+glm::vec3 SensorSystemManager::losPosition(GameObjectPtr object)
+{
+	const auto handle = static_cast<size_t>(object->getHandle());
+	if (!s_sensorLosScan || !object->isMover() || handle >= s_sensorLosPositions.size())
+		return object->getLOSPosition();
+	auto& entry = s_sensorLosPositions[handle];
+	if (entry.first != object) {
+		entry.second = object->getLOSPosition();
+		entry.first = object;
+	}
+	return entry.second;
+}
 
 // SENSOR-SCAN-FACTS-1: TU-local telemetry accumulator (default-OFF).
 namespace mc2_sensor_trace { Counters g_counters = {false,0,0,0,0,0,0}; }
@@ -1306,6 +1325,10 @@ void SensorSystemManager::removeTeamSensor (long teamId, SensorSystemPtr sensor)
 void SensorSystemManager::update (void) 
 {
 	{ ZoneScopedN("GameLogic.Sensors.ECM"); updateEcmEffects(); }
+	// Contact updates read poses and terrain; they do not advance either. Drop all entries before the next scan.
+	s_sensorLosPositions.assign(static_cast<size_t>(ObjectManager->maxMovers), {});
+	s_sensorLosScan = true;
+	struct EndScan { ~EndScan() { s_sensorLosScan = false; } } endScan;
 	{ ZoneScopedN("GameLogic.Sensors.Teams"); updateSensors(); }
 //	updateTeamContactLists();
 }

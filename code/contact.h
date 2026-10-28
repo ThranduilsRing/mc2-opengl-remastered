@@ -423,6 +423,9 @@ class SensorSystemManager {
 
 		//void updateTeamContactLists (void);
 
+		// Only memoized during the read-only sensor scan, after every mover has advanced.
+		static glm::vec3 losPosition(GameObjectPtr object);
+
 		void update (void);
 };
 

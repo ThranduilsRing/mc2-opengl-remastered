@@ -110,6 +110,7 @@ static bool inVisualRange(GameObjectPtr obj, const glm::vec3& tPos)
 //---------------------------------------------------------------------------
 bool Team::teamLineOfSight (glm::vec3 tPos, float extRad)
 {
+	ZoneScopedN("GameLogic.LOS.Team");
 	// The range gates run here in roster order; each in-range member contributes one ray. The rays are pure reads, so
 	// they run as one batch (jobs when the batch is big enough) and the answer is "any hit" - the same bit the legacy
 	// first-hit early return produced.

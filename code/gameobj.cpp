@@ -1935,7 +1935,7 @@ bool GameObject::lineOfSight (GameObjectPtr target, float startExtRad)
 			uint16_t& losCell = ObjectManager->moverLineOfSightTable[index];
 			if (mc2::losEpochState(losCell, ObjectManager->moverLosEpoch) == 0)
 			{
-				bool los = Team::lineOfSight(getLOSPosition(), target->getLOSPosition(), getTeamId(), target->getAppearRadius(), startExtRad);
+				bool los = Team::lineOfSight(SensorSystemManager::losPosition(this), SensorSystemManager::losPosition(target), getTeamId(), target->getAppearRadius(), startExtRad);
 				if (los) 
 				{
 					losCell = mc2::losEpochCell(ObjectManager->moverLosEpoch, true);
