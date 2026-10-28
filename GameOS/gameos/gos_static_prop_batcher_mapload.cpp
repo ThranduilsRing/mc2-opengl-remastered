@@ -360,7 +360,10 @@ void GpuStaticPropBatcher::registerLodGroup(TG_TypeMultiShape* const* shapes, co
             if (lods[k].size() != base.size() || lods[k][n] == 0xFFFFFFFFu || distances[k] <= g.dist[k - 1]) break;
             g.target[k] = lods[k][n]; g.dist[k] = distances[k]; g.count = k + 1;
         }
-        if (g.count > 1) s_lodGroups.emplace(base[n], g);
+        if (g.count > 1) {
+            s_lodGroups.emplace(base[n], g);
+            MC2_DIAGFE(stderr, "[PROP_LOD v1] group base=%u lods=%d t1=%u t2=%u d1=%.0f d2=%.0f\n", base[n], g.count, g.target[1], g.target[2], g.dist[1], g.dist[2]);
+        }
     }
 }
 

@@ -177,6 +177,16 @@ extern "C" int mc2_color_prop_island_get_frame_feed(Mc2ColorPropFeed* out) {
             }
         }
     }
+    if (lodActive) {
+        static uint32_t s_lodLogTick = 0;
+        if ((s_lodLogTick++ % 240u) == 0u) {
+            uint32_t perLod[3] = {0, 0, 0};
+            for (const auto& [src, g] : s_lodGroups)
+                for (int k = 0; k < g.count; ++k)
+                    if (auto lo = s_lodOut.find(g.target[k]); lo != s_lodOut.end()) perLod[k] += static_cast<uint32_t>(lo->second.size());
+            MC2_DIAGFE(stderr, "[PROP_LOD v1] frame-sample groups=%zu inst lod0=%u lod1=%u lod2=%u\n", s_lodGroups.size(), perLod[0], perLod[1], perLod[2]);
+        }
+    }
     std::vector<uint32_t> typeIds;
     typeIds.reserve(s_persistentStaticStore.size() + s_bucketsByType.size());
     for (const auto& kv : s_persistentStaticStore) typeIds.push_back(kv.first);
