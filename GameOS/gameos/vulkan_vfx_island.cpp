@@ -179,6 +179,7 @@ struct VfxIsland : mc2vk::IslandState {
     mc2vk::OwnedCommandPool cpool;
     VkCommandBuffer  cbuf[kVfxSlots] = {};   // one per slot
     uint64_t         ticket[kVfxSlots] = {};   // timeline value of the slot's last submit (0 = never submitted)
+    uint64_t         vegTicket[2] = {};        // timeline value of the last vegetation submit per engine frame slot (its buffer set is per frame slot)
     uint64_t         slotFrame = ~uint64_t(0);   // engine frame of callInFrame
     uint32_t         callInFrame = 0;
 
@@ -774,12 +775,11 @@ bool mc2_vk_vfx_vegetation_run(const mc2veg::CullParams& params, const float* wo
     if (!s || !s->vegetationPipe) return false;
     const uint32_t par = take_slot(s, slotCtx);
     if (!slotCtx.wait(mc2vk::GpuTicket{s->ticket[par], 0}, 5ull * 1000 * 1000 * 1000, "vfx_slot")) { setFallback("slot_timeout"); s->disabled = true; return false; }
-    // The vegetation state keeps one buffer set per engine frame slot (it is not per island slot): the set is free once every
-    // island slot of this frame slot has retired, whichever call index the vegetation call got this frame.
+    // The vegetation state keeps one buffer set per engine frame slot (it is not per island slot): the set is free once the last
+    // vegetation submit that used it has retired, whichever call index the vegetation call got this frame. Only that submit
+    // touches the set, so wait on its ticket, not on the other island slots of the frame slot.
     const uint32_t vegPar = par / kVfxCallsPerFrame;
-    const uint32_t vegFirstSlot = vegPar * kVfxCallsPerFrame;
-    for (uint32_t call = 0; call < kVfxCallsPerFrame; ++call)
-        if (!slotCtx.wait(mc2vk::GpuTicket{s->ticket[vegFirstSlot + call], 0}, 5ull * 1000 * 1000 * 1000, "vfx_veg_slot")) { setFallback("slot_timeout"); s->disabled = true; return false; }
+    if (!slotCtx.wait(mc2vk::GpuTicket{s->vegTicket[vegPar], 0}, 5ull * 1000 * 1000 * 1000, "vfx_veg_slot")) { setFallback("slot_timeout"); s->disabled = true; return false; }
     const VkDeviceSize align = slotCtx.frameAlignment();
     if (!prepare_shadow_descriptors(s, par)) return false;
     s->groundLighting.copy(s->device, vegPar, *ground);
@@ -833,7 +833,7 @@ bool mc2_vk_vfx_vegetation_run(const mc2veg::CullParams& params, const float* wo
     { ZoneScopedN("VKIsl.Vfx.Submit");
       uint64_t value = 0;
       if (slotCtx.submit(si, VK_NULL_HANDLE, &value) != VK_SUCCESS) { setFallback("submit_failed"); s->disabled = true; return false; }
-      s->ticket[par] = value; }
+      s->ticket[par] = value; s->vegTicket[vegPar] = value; }
     timerGuard.submitted();
     if (!g_health.nativeVegetationDraws) vlog("native_geometry kind=vegetation gpu_cull=1 regions=%u instances=%u", veg->regionCount(), veg->instanceCount());
     g_health.nativeVegetationDraws += 2;
