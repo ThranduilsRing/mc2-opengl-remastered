@@ -28,6 +28,8 @@
     "tools/tracy_capture_compare.py": "engine launcher through nofocus.spawn/run (vetted by exe_guard); launch-site audit 2026-10-10"
   },
   "direct_spawn": {
+    "scripts/run_battle_bench.py": "--baseline-exe re-invokes this same script as a python child (program is sys.executable); the game itself is launched only inside the child through the existing bench path.",
+    "tools/repin_stale.py": "runs repo baseline tools (saveload_roundtrip, run_smoke) and git queries from a command list; the game is launched by those tools through their own offscreen path.",
     "scripts/gate_wait.py": "Runs a merge-window build or gate command given on its command line and waits; program is a variable (cmake, ninja, check-contracts), never launched from here as the game; console child via console_child.child_kwargs(redirected=True).",
     "tools/farm/runner.py": "Remote serial dispatcher for owner-submitted Python harness jobs; game launches remain inside the seeded harness through nofocus.spawn. Console children share the hidden console through console_child.child_kwargs.",
     "scripts/tests/test_window_emission.py": "Runs glslangValidator and spirv-dis from shader_common.find_tool to verify compiled emission composition; hidden console tools through console_child.child_kwargs(redirected=True).",

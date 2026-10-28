@@ -20,6 +20,6 @@ def test_hung_test_is_interrupted(tmp_path):
     """))
     (tmp_path / "conftest.py").write_text((ROOT / "conftest.py").read_text())
     r = subprocess.run([sys.executable, "-B", "-m", "pytest", str(t), "-q", "-p", "no:cacheprovider", "--rootdir", str(tmp_path)],
-                       env={**__import__("os").environ, "MC2_TEST_TIMEOUT": "2"}, capture_output=True, text=True, timeout=50, cwd=tmp_path)
+                       env={**__import__("os").environ, "MC2_TEST_TIMEOUT": "2"}, capture_output=True, text=True, timeout=50, cwd=tmp_path)  # background-launch: allow pytest child, no engine
     assert "1 failed, 1 passed" in r.stdout, r.stdout[-800:]
     assert "test-timeout" in r.stderr + r.stdout

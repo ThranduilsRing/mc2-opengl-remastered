@@ -326,7 +326,7 @@ def compare_with_baseline(args, out):
     import subprocess
     base_out = out.with_name(out.name + "-baseline")
     print(f"[battle-bench] BASELINE run: {args.baseline_exe} -> {base_out}", flush=True)
-    rc = subprocess.call(baseline_command(args, base_out))
+    rc = subprocess.call(baseline_command(args, base_out))  # background-launch: allow re-runs this same bench script (python child); it launches the game through its own offscreen path
     if rc:
         print(f"[battle-bench] baseline run failed rc={rc}", flush=True)
         return rc

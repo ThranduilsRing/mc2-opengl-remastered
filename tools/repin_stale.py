@@ -24,7 +24,7 @@ SAVE_DIR = os.path.join(ROOT, "tests", "saveload", "baselines")
 
 
 def git(*args: str) -> str:
-    r = subprocess.run(["git", "-C", ROOT, *args], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
+    r = subprocess.run(["git", "-C", ROOT, *args], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)  # background-launch: allow git query, console tool
     return r.stdout.strip() if r.returncode == 0 else ""
 
 
@@ -80,7 +80,7 @@ def repin(row: dict, install: str, det_duration: int, tmp: str) -> bool:
                 return False
             cmd = [logs[0] if c == "@LOG@" else c for c in cmd]
         print("  " + " ".join(cmd[2:]))
-        if subprocess.call(cmd, cwd=ROOT) != 0:
+        if subprocess.call(cmd, cwd=ROOT) != 0:  # background-launch: allow runs the repo baseline tools (saveload_roundtrip/run_smoke) printed above
             return False
     return True
 

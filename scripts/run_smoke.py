@@ -728,7 +728,7 @@ def main():
     args = ap.parse_args()
     if args.legacy_env:
         _legacy_ref = args.ref_commit or "HEAD"
-        _t = subprocess.run(["git", "-C", str(ROOT), "show", f"{_legacy_ref}:Gates/gate_table.json"], capture_output=True, text=True)
+        _t = subprocess.run(["git", "-C", str(ROOT), "show", f"{_legacy_ref}:Gates/gate_table.json"], capture_output=True, text=True)  # background-launch: allow git show, console tool
         if _t.returncode != 0:
             sys.exit(f"--legacy-env: no Gates/gate_table.json at {_legacy_ref} (pass --ref-commit SHA of the older exe's commit)")
         _smoke_runner.set_legacy_gates(_smoke_runner.legacy_gate_names(_t.stdout))
