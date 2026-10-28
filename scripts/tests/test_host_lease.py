@@ -156,7 +156,19 @@ def test_a_live_holder_with_no_engine_for_too_long_is_reclaimed(lease):
     logs = []
     host_lease.acquire("t", wait=False, scan=lambda: [], log=logs.append)
     assert host_lease._read(lease)["pid"] == os.getpid()
-    assert any("idle holder" in m for m in logs)
+    assert any("reclaimed idle holder other lane after" in m for m in logs)
+
+
+def test_a_merge_holder_is_never_reclaimed_as_idle(lease):
+    lease.write_text(json.dumps({"pid": os.getppid(), "created": None, "label": "merge-gate-123",
+                                 "argv": ["merge_gate.py"], "cwd": "A:/Games/mc2-main"}), encoding="utf-8")
+    side = lease.with_suffix(".idle.json")
+    host_lease._write_record(side, {f"{os.getppid()}:None": time.time() - host_lease.IDLE_RECLAIM_S - 60})
+    logs = []
+    with pytest.raises(host_lease.HostLeaseBusy):
+        host_lease.acquire("t", wait=False, scan=lambda: [], log=logs.append)
+    assert json.loads(lease.read_text())["label"] == "merge-gate-123"
+    assert not any("reclaimed" in m for m in logs)
 
 
 def test_waits_until_the_foreign_game_exits(lease):
