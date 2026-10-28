@@ -1,5 +1,6 @@
 {
  "mission": "mc2_03",
+ "note": "pinned with MC2_SIM_OVERLAP on; overlap shifts the cosmetic RNG order / save tick by one",
  "save_at": 1300,
  "load_at": 1400,
  "gates": {

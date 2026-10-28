@@ -1,5 +1,6 @@
 {
  "mission": "mc2_03",
+ "note": "pinned with MC2_SIM_OVERLAP on; overlap shifts the cosmetic RNG order / save tick by one",
  "frames": 1000,
  "chain_schema": 2,
  "chain": "39a6ef01d03af2d1",
