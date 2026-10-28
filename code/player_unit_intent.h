@@ -1,5 +1,5 @@
 #pragma once
-#include <glm/vec3.hpp>
+#include "../mclib/math/glm_config.h"
 
 namespace mc2::player {
 // Commander output for one unit. L1b supplies these from the brain runtime;
