@@ -1,4 +1,9 @@
 #pragma once
+#include "player_unit_intent.h"
+class MechWarrior;
+// Objective sequencing is supplied by Mission; the runtime owns unit decisions.
+mc2::player::UnitIntent producePlayerIntent(MechWarrior* warrior,
+    const glm::vec3& objective, long objectiveTarget, long& squadTarget);
 // TECHSCRIPT-SPECIAL-DISPATCH-1A — trace-only dispatcher shell.
 // TECHSCRIPT-SPECIAL-DISPATCH-1B — adds MC2_BRAIN_DISPATCH_APPLY gate for first effect.
 // TECHSCRIPT-SPECIAL-DISPATCH-1C — FSM-TODO surfacer: raw-scan specials.fit for

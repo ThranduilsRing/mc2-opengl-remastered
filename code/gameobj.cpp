@@ -1788,6 +1788,14 @@ void GameObject::setPosition (const glm::vec3& newPosition, bool calcPositions) 
 		bool gridCoversTerrain = (GameMap->getHeight() >= terrainCells) &&
 		                         (GameMap->getWidth()  >= terrainCells);
 		if (gridCoversTerrain) {
+			if (cellPositionRow >= GameMap->getHeight() || cellPositionCol >= GameMap->getWidth()) {
+				static int reports = 0;
+				if (reports++ < 8)
+					std::fprintf(stderr, "[OFF_MAP] wid=%lu class=%d exists=%d calc=%d pos=(%g,%g,%g) cell=(%u,%u) grid=(%ld,%ld)\n",
+						getWatchID(), static_cast<int>(objectClass), getExists(), calcPositions,
+						position.x, position.y, position.z, cellPositionRow, cellPositionCol,
+						GameMap->getHeight(), GameMap->getWidth());
+			}
 			Assert((cellPositionRow >= 0) && (cellPositionRow < GameMap->getHeight()), 0, " Object moved off map ");
 			Assert((cellPositionCol >= 0) && (cellPositionCol < GameMap->getWidth()), 0, " Object moved off map ");
 		}

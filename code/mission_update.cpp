@@ -13,6 +13,8 @@
 
 // Dev mission test: reports cached objective states and submits normal player orders.
 #include "player_unit_intent.h"
+#include "brain_special_dispatch.h"
+#include "brain_execution_policy.h"
 
 namespace {
 long applyPlayerIntent(Mission& mission, const mc2::player::UnitIntent& intent) {
@@ -114,53 +116,54 @@ void Mission::updateMissionTest(bool report) {
         const bool ended = terminationCounterStarted || scenarioResult != mis_PLAYING || terminationResult == 9999;
         const bool won = ended && (terminationResult == mis_PLAYER_WIN_BIG || terminationResult == mis_PLAYER_WIN_SMALL
             || scenarioResult == mis_PLAYER_WIN_BIG || scenarioResult == mis_PLAYER_WIN_SMALL);
-        mc2::fmt::print_err("[MISSION_VERDICT v1] verdict={} passed={} failed={} pending={} time={:.2f} enemies={} reacted={} disabled_or_dead={} damaged={} destroyed={}\n",
+        int losses = 0, survivors = 0;
+        for (long i = 0; i < Team::home->getRosterSize(); ++i) {
+            auto* unit = Team::home->getMover(i);
+            if (!unit || unit->getCommanderId() != Commander::home->getId()) continue;
+            if (!unit->getExists() || unit->isDisabled() || unit->isDestroyed()) ++losses;
+            else ++survivors;
+        }
+        mc2::fmt::print_err("[MISSION_VERDICT v1] verdict={} passed={} failed={} pending={} time={:.2f} enemies={} reacted={} disabled_or_dead={} damaged={} destroyed={} losses={} survivors={}\n",
             won ? "PASS" : timeout ? "TIMEOUT" : "FAIL", passed, failed, pending, scenarioTime, test.enemies.size(),
             std::ranges::count(test.enemies, true, &MissionTestState::Enemy::moved),
             std::ranges::count(test.enemies, true, &MissionTestState::Enemy::dead),
             std::ranges::count(test.enemies, true, &MissionTestState::Enemy::damaged),
-            std::ranges::count(test.enemies, true, &MissionTestState::Enemy::destroyed));
+            std::ranges::count(test.enemies, true, &MissionTestState::Enemy::destroyed), losses, survivors);
         test.finished = true;
         return;
     }
-    if (!destination || scenarioTime < test.nextOrder) return;
-    test.nextOrder = scenarioTime + 10.0f;
-    const glm::vec3 location{destination->MarkerX(), destination->MarkerY(), 0.0f};
-    // The first mission's hangar is a structure objective, not an enemy mover.
+    if (!destination || scenarioTime < test.nextOrder || !mc2::brainpolicy::techBrain()) return;
+    test.nextOrder = scenarioTime + 2.0f;
+    glm::vec3 location{destination->MarkerX(), destination->MarkerY(), 0.0f};
     GameObjectPtr objectiveTarget = nullptr;
     for (auto* condition : destination->m_conditionList) {
-        if (condition->Species() != DESTROY_SPECIFIC_STRUCTURE) continue;
+        if (condition->Status() == OS_SUCCESSFUL) continue;
         const auto point = condition->GetObjectivePosition();
+        // Some conditions have no position (sentinel); use the authored marker then.
+        if (point.x > -999000.0f && point.y > -999000.0f) location = point;
+        if (condition->Species() != DESTROY_SPECIFIC_STRUCTURE) continue;
         for (long i = 0; i < ObjectManager->getNumBuildings(); ++i) {
             auto* building = ObjectManager->getBuilding(i);
             if (building && building->getExists() && !building->isDestroyed()
                 && glm::distance(building->getPosition(), point) < 1.0f)
                 objectiveTarget = building;
         }
+        if (objectiveTarget) break;
     }
-    int issued = 0, rejected = 0;
+    int issued = 0, rejected = 0, retreating = 0;
+    long focus = 0;
     for (long i = 0; i < Team::home->getRosterSize(); ++i) {
         auto* mover = Team::home->getMover(i);
-        if (!mover || mover->getCommanderId() != Commander::home->getId() || mover->isDisabled() || !mover->getExists()) continue;
-        GameObjectPtr target = objectiveTarget;
-        float distance = 1000.0f;
-        for (long j = 0; j < ObjectManager->getNumMovers(); ++j) {
-            auto* enemy = ObjectManager->getMover(j);
-            if (!enemy || !enemy->getExists() || enemy->isDisabled() || !enemy->getTeam() || Team::home->isFriendly(enemy->getTeam())) continue;
-            const float d = glm::distance(mover->getPosition(), enemy->getPosition());
-            if (d < distance) { target = enemy; distance = d; }
-        }
-        mc2::player::UnitIntent intent{mover->getWatchID(), mc2::player::Goal::Move, location};
-        if (target) {
-            intent.goal = mc2::player::Goal::Attack;
-            intent.targetWatchId = target->getWatchID();
-            intent.posture = mc2::player::Posture::Engage;
-        }
+        if (!mover || mover->getCommanderId() != Commander::home->getId() || mover->isDisabled()
+            || !mover->getExists() || !mover->getPilot()) continue;
+        const auto intent = producePlayerIntent(mover->getPilot(), location,
+            objectiveTarget ? objectiveTarget->getWatchID() : 0, focus);
+        retreating += intent.posture == mc2::player::Posture::Retreat;
         if (applyPlayerIntent(*this, intent)) ++rejected;
         else ++issued;
     }
-    mc2::fmt::print_err("[MISSION_COMMANDER v1] time={:.2f} issued={} rejected={} x={} y={}\n",
-        scenarioTime, issued, rejected, location.x, location.y);
+    mc2::fmt::print_err("[MISSION_COMMANDER v1] producer=TechBrain time={:.2f} issued={} rejected={} retreating={} focus={} x={} y={}\n",
+        scenarioTime, issued, rejected, retreating, focus, location.x, location.y);
 }
 
 // FREEZE-MOVERS-1: ONE predicate for "the simulation tick is suspended".

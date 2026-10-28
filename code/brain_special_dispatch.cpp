@@ -1372,6 +1372,66 @@ void commitBrainIntents(MechWarrior* warrior, MechBrainRuntime* runtime) {
     runtime->pendingIntentCount = 0;
 }
 
+// Player commander decisions live in the same per-pilot runtime as authored OPORDs.
+// The caller commits the returned intent through the tick-stamped player ingress.
+mc2::player::UnitIntent producePlayerIntent(MechWarrior* warrior,
+        const glm::vec3& objective, long objectiveTarget, long& squadTarget) {
+    auto* unit = warrior->getVehicle();
+    warrior->setBrainRuntimeMode(BrainRuntimeMode::Enhanced);
+    auto* runtime = warrior->getBrainRuntime();
+    mc2::player::UnitIntent intent{unit->getWatchID(), mc2::player::Goal::Move, objective};
+    if (!runtime->postSet) {
+        const auto start = unit->getPosition();
+        runtime->postPos[0] = start.x;
+        runtime->postPos[1] = start.y;
+        runtime->postPos[2] = start.z;
+        runtime->postSet = true;
+    }
+    float health = 0, maximum = 0;
+    for (int i = 0; i < unit->numBodyLocations; ++i) {
+        health += unit->body[i].curInternalStructure;
+        maximum += unit->body[i].maxInternalStructure;
+    }
+    // Keep a damaged unit withdrawn until repaired; no oscillation at the threshold.
+    const bool withdrawing = runtime->retreatEffectApplied || (maximum > 0 && health / maximum < 0.55f);
+    if (withdrawing && (maximum <= 0 || health / maximum < 0.8f)) {
+        runtime->retreatEffectApplied = true;
+        runtime->engageTargetWID = 0;
+        intent.location = {runtime->postPos[0], runtime->postPos[1], runtime->postPos[2]};
+        intent.posture = mc2::player::Posture::Retreat;
+        return intent;
+    }
+    runtime->retreatEffectApplied = false;
+    std::array<int, MAX_CONTACTS_PER_TEAM> contacts{};
+    const long count = unit->getContacts(contacts.data(), (1 | 64), CONTACT_SORT_DISTANCE);
+    GameObjectPtr target = nullptr;
+    float best = -1.0f;
+    for (long i = 0; i < count; ++i) {
+        auto* enemy = ObjectManager->get(contacts[i]);
+        if (!enemy || !enemy->getExists() || enemy->isDisabled() || enemy->isDestroyed()
+            || !unit->isEnemy(enemy->getTeam())) continue;
+        const float distance = unit->distanceFrom(enemy->getPosition());
+        // Threat/value per travel cost; shared focus wins among detected local threats.
+        if (distance > 1000.0f) continue;
+        const float score = (1.0f + static_cast<float>(enemy->getThreatRating())
+            + static_cast<float>(enemy->getCurCV()) * 0.01f) / (100.0f + distance)
+            + (enemy->getWatchID() == squadTarget ? 1000.0f : 0.0f);
+        if (score > best) { best = score; target = enemy; }
+    }
+    if (!target && objectiveTarget) {
+        auto* object = ObjectManager->getByWatchID(objectiveTarget);
+        if (object && object->getExists() && !object->isDestroyed()) target = object;
+    }
+    if (target) {
+        intent.goal = mc2::player::Goal::Attack;
+        intent.targetWatchId = target->getWatchID();
+        intent.posture = mc2::player::Posture::Engage;
+        squadTarget = intent.targetWatchId;
+    }
+    runtime->engageTargetWID = intent.targetWatchId;
+    return intent;
+}
+
 // ---------------------------------------------------------------------------
 // BRAIN-ENGAGE-1: tickEngageNearest
 //

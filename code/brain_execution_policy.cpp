@@ -42,6 +42,8 @@ void decide(std::string_view missionFitPath, std::string_view missionDir, std::s
 	Policy p = Policy::Legacy;
 	if (mc2::gate::is<"MC2_BRAIN_POLICY", "legacy">()) {
 		why = "forced-legacy";
+	} else if (mc2::gate::get<"MC2_PLAY_MISSION">()) {
+		p = Policy::TechBrain; why = "player-commander";
 	} else if (mc2::gate::is<"MC2_BRAIN_POLICY", "techbrain">()) {
 		p = Policy::TechBrain; why = "forced-techbrain";
 	} else {

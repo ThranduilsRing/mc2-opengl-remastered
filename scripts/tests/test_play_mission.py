@@ -37,3 +37,23 @@ def test_driver_uses_headless_harness_and_requested_budget(monkeypatch, capsys):
     monkeypatch.setattr(driver.subprocess, "run", run)
     assert driver.main(["--mission", "mc2_01", "--minutes", "1"]) == 0
     assert "verdict=PASS" in capsys.readouterr().out
+
+
+def test_batch_repeats_and_continues_after_failure(monkeypatch, capsys):
+    calls = []
+    def run(name, install, seconds, batch):
+        calls.append((name, seconds, batch))
+        return name == "mc2_01"
+    monkeypatch.setattr(driver, "run_mission", run)
+    assert driver.main(["--batch", "mc2_01,mc2_03", "mc2_01", "--minutes", "1"]) == 1
+    assert calls == [("mc2_01", 60, True), ("mc2_03", 60, True), ("mc2_01", 60, True)]
+    assert "passed=2 failed=1 total=3" in capsys.readouterr().out
+
+
+def test_harness_failure_overrides_engine_pass(monkeypatch, capsys):
+    monkeypatch.setattr(driver.subprocess, "run", lambda *a, **k: type("Result", (), {
+        "returncode": 2, "stdout": "[MISSION_VERDICT v1] verdict=PASS time=1.00"})())
+    assert driver.main(["--batch", "mc2_01"]) == 1
+    text = capsys.readouterr().out
+    assert "verdict=ERROR" in text
+    assert "passed=0 failed=1 total=1" in text

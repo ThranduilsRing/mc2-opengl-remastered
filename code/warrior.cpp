@@ -1295,6 +1295,12 @@ long MechWarrior::setBrain (long brainHandle) {
 long MechWarrior::runBrain (void) {
 
 	ZoneScopedN("GameLogic.AI.BrainRun");
+	// The player commander emits through submitPlayerOrder, never the self-order slot.
+	if (mc2::gate::get<"MC2_PLAY_MISSION">() && mc2::brainpolicy::techBrain()) {
+		auto* playerUnit = getVehicle();
+		if (playerUnit && playerUnit->getTeam() == Team::home) return 0;
+	}
+
 
 //	if (teamId  > -1)
 //		if (teamId != Team::home->getId())
