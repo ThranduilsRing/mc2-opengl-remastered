@@ -38,6 +38,7 @@ def test_reseed_selection_and_incremental_changes(tmp_path):
                           'harness/scripts/run_smoke.py'}
     inventory = {name: [p.stat().st_size, p.stat().st_mtime] for name, p in files.items()}
     assert host.changed_files(files, inventory) == {}
+    assert host.changed_files(files, {k.upper(): v for k, v in inventory.items()}) == {}
     inventory['install/mc2.exe'][0] += 1
     inventory['install/mission.fst'][1] -= 10
     assert set(host.changed_files(files, inventory)) == {'install/mc2.exe', 'install/mission.fst'}

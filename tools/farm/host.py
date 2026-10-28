@@ -72,13 +72,17 @@ def seed_files(install, harness):
                     or path.parts[1] in ('repo_intel', 'mc2x_import', 'mod_install', 'farm')))):
             if path.suffix in ('.py', '.json', '.yaml', '.yml', '.csv', '.txt', '.h', '.cfg'):
                 files['harness/' + name] = harness / path
-    return files, exe
+    # The destination is Windows: manifest/glob casing can differ (sdl2.dll).
+    unique = {name.casefold(): (name, path) for name, path in files.items()}
+    return dict(unique.values()), exe
 
 
 def changed_files(files, inventory):
+    inventory = {name.casefold(): value for name, value in inventory.items()}
     return {name: path for name, path in files.items()
-            if name not in inventory or inventory[name][0] != path.stat().st_size
-            or abs(inventory[name][1] - path.stat().st_mtime) > .001}
+            if name.casefold() not in inventory
+            or inventory[name.casefold()][0] != path.stat().st_size
+            or abs(inventory[name.casefold()][1] - path.stat().st_mtime) > .001}
 
 
 def reseed(args):
