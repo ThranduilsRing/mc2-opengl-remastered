@@ -27,7 +27,7 @@ FAILS the checker unless it carries `# background-launch: allow <why>`.
 | `scripts/run_visual_capture.py` | 421 | `nofocus.spawn` | offscreen |
 | `scripts/run_vk_field_check.py` | 224 | `nofocus.spawn` | offscreen |
 | `scripts/run_vk_field_check.py` | 266 | `nofocus.spawn` | offscreen |
-| `scripts/smoke_lib/runner.py` | 276 | `nofocus.spawn` | offscreen |
+| `scripts/smoke_lib/runner.py` | 278 | `nofocus.spawn` | offscreen |
 | `scripts/sweep_campaign.py` | 63 | `nofocus.spawn` | offscreen |
 | `scripts/tests/test_gpu_routing.py` | 45 | `nofocus.spawn` | offscreen |
 | `scripts/tests/test_harness_desktop_safety.py` | 172 | `nofocus.spawn` | offscreen |
