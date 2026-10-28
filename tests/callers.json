@@ -3872,6 +3872,13 @@
           "text": "from scripts import deploy_payload as dp  # noqa: E402"
         },
         {
+          "path": "scripts/tests/test_farm_runner.py",
+          "line": 141,
+          "evidence": "import",
+          "reference": "deploy_payload",
+          "text": "import deploy_payload as deploy"
+        },
+        {
           "path": "scripts/tests/test_install_hygiene.py",
           "line": 13,
           "evidence": "import",
@@ -3954,6 +3961,13 @@
           "evidence": "import",
           "reference": "deploy_payload",
           "text": "import deploy_payload as dp                          # noqa: E402"
+        },
+        {
+          "path": "tools/farm/host.py",
+          "line": 196,
+          "evidence": "import",
+          "reference": "deploy_payload",
+          "text": "import deploy_payload as deploy"
         },
         {
           "path": "tools/mod_smoke.py",
@@ -10158,7 +10172,7 @@
         },
         {
           "path": "scripts/tests/test_farm_runner.py",
-          "line": 192,
+          "line": 257,
           "evidence": "import",
           "reference": "tools.farm.runner",
           "text": "from tools.farm import runner"
