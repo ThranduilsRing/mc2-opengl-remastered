@@ -1,3 +1,4 @@
+#include "sim_overlap.h"
 //******************************************************************************************
 //
 //	Radio.cpp -- File contains the Radio class functions
@@ -169,6 +170,7 @@ static RadioClip loadRadioClip (PacketFilePtr file, long id)
 //------------------------------------------------------------------------------------------
 long Radio::playMessage (RadioMessageType msgType)
 {
+    mc2::overlap::assertMainThread("Radio::playMessage");
 long i, roll, callsign, fragmentNum, dropOut = 0;
 
 	if (!useSound)
@@ -180,11 +182,6 @@ long i, roll, callsign, fragmentNum, dropOut = 0;
 	if (!owner)
 		return(NO_PLAY);
 
-	if (!soundSystem->checkMessage(owner, messageInfo[msgType].priority, msgType))
-		return(NO_PLAY);
-
-	if ((msgType == RADIO_AMMO_OUT) && ammoOutPlayed)
-		return(NO_PLAY);
 	
 	if (messageInfo[msgType].styleCount > 1)
 	{
@@ -248,6 +245,12 @@ long i, roll, callsign, fragmentNum, dropOut = 0;
 		callsign += messageInfo[RADIO_CALLSIGN].messageMapping;
 	}
 	
+    // Clip choice follows requests, not wall-clock playback/queue occupancy.
+    // Rejected requests must consume the same presentation draws in both modes.
+    if (!soundSystem->checkMessage(owner, messageInfo[msgType].priority, msgType) ||
+        ((msgType == RADIO_AMMO_OUT) && ammoOutPlayed))
+        return NO_PLAY;
+
 	if (callsign)
 	{
 		if (messagesFile[radioID]->seekPacket(callsign) == NO_ERR)

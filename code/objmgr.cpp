@@ -1,3 +1,4 @@
+#include "tick_commit.h"
 //---------------------------------------------------------------------------
 //
 //	objmgr.cpp - This file contains the GameObject Manager class code
@@ -876,7 +877,7 @@ void GameObjectManager::destroy (void)
 	{
 		for (i = 0; i < maxMechs; i++) 
 		{
-			delete mechs[i];
+            mc2::tick::retireObject(mechs[i]);
 			mechs[i] = nullptr;
 		}
 	}
@@ -887,7 +888,7 @@ void GameObjectManager::destroy (void)
 	{
 		for (i = 0; i < maxVehicles; i++) 
 		{
-			delete vehicles[i];
+            mc2::tick::retireObject(vehicles[i]);
 			vehicles[i] = nullptr;
 		}
 	}
@@ -898,7 +899,7 @@ void GameObjectManager::destroy (void)
 	{
 		for (i = 0; i < numTerrainObjects; i++) 
 		{
-			delete terrainObjects[i];
+            mc2::tick::retireObject(terrainObjects[i]);
 			terrainObjects[i] = nullptr;
 		}
 	}
@@ -909,7 +910,7 @@ void GameObjectManager::destroy (void)
 	{
 		for (i = 0; i < numBuildings; i++) 
 		{
-			delete buildings[i];
+            mc2::tick::retireObject(buildings[i]);
 			buildings[i] = nullptr;
 		}
 	}
@@ -920,7 +921,7 @@ void GameObjectManager::destroy (void)
 	{
 		for (i = 0; i < numTurrets; i++) 
 		{
-			delete turrets[i];
+            mc2::tick::retireObject(turrets[i]);
 			turrets[i] = nullptr;
 		}
 	}
@@ -931,7 +932,7 @@ void GameObjectManager::destroy (void)
 	{
 		for (i = 0; i < numGates; i++) 
 		{
-			delete gates[i];
+            mc2::tick::retireObject(gates[i]);
 			gates[i] = nullptr;
 		}
 	}
@@ -942,7 +943,7 @@ void GameObjectManager::destroy (void)
 	{
 		for (i = 0; i < numWeapons; i++) 
 		{
-			delete weapons[i];
+            mc2::tick::retireObject(weapons[i]);
 			weapons[i] = nullptr;
 		}
 	}
@@ -953,7 +954,7 @@ void GameObjectManager::destroy (void)
 	{
 		for (i = 0; i < numCarnage; i++) 
 		{
-			delete carnage[i];
+            mc2::tick::retireObject(carnage[i]);
 			carnage[i] = nullptr;
 		}
 	}
@@ -964,7 +965,7 @@ void GameObjectManager::destroy (void)
 	{
 		for (i = 0; i < numLights; i++) 
 		{
-			delete lights[i];
+            mc2::tick::retireObject(lights[i]);
 			lights[i] = nullptr;
 		}
 	}
@@ -975,7 +976,7 @@ void GameObjectManager::destroy (void)
 	{
 		for (i = 0; i < numArtillery; i++) 
 		{
-			delete artillery[i];
+            mc2::tick::retireObject(artillery[i]);
 			artillery[i] = nullptr;
 		}
 	}

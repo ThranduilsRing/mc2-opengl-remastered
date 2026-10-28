@@ -1,3 +1,4 @@
+#include "../code/tick_commit.h"
 //---------------------------------------------------------------------------
 //
 //	genactor.cpp - This file contains the code for the generic appearance classes
@@ -424,7 +425,9 @@ void GenericAppearance::setGesture (unsigned long gestureId)
 	
 	if (appearType->isRandom(genAnimationState))
 	{
-		currentFrame = mc2_appearance_rng::randomNumber(appearType->getNumFrames(genAnimationState)-1);
+        const long count = appearType->getNumFrames(genAnimationState)-1;
+        auto randomFrame = [this, count] { currentFrame = mc2_appearance_rng::randomNumber(count); };
+        if (!mc2::tick::defer(mc2::tick::Queue::Release, randomFrame)) randomFrame();
 	}
 	
 	isLooping = appearType->isLooped(genAnimationState);

@@ -1,3 +1,4 @@
+#include "../code/tick_commit.h"
 // GVAppearance: paint schemes, gestures, object/mover parameters, bounds, destruction and node positions.
 // Declared in the class headers; shared names in gvactor_internal.h.
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
@@ -175,6 +176,7 @@ void GVAppearance::updateRenderShape()
 
 void GVAppearance::setPaintScheme (void)
 {
+    if (mc2::tick::defer(mc2::tick::Queue::Release, [this] { setPaintScheme(); })) return;
 	DWORD gosHandle = mc2::textures::sourceId(gvShape->GetTextureHandle(0));
 	const bool authoredPaint = renderShape && gvShape == renderShape.get();
 

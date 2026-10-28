@@ -1,3 +1,4 @@
+#include "../code/tick_commit.h"
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include <algorithm>
 #include "mc2fmt.h"
@@ -507,6 +508,7 @@ void Mech3DAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 
 void Mech3DAppearance::initFX (void)
 {
+    if (mc2::tick::defer(mc2::tick::Queue::Release, [this] { initFX(); })) return;
 	if (!InEditor)
 	{
    		if (useNonWeaponEffects && strcmp(weaponEffects->GetEffectName(FX_POOF_ID),"NONE") != 0)
@@ -681,6 +683,7 @@ bool Mech3DAppearance::PerPolySelect (long mouseX, long mouseY)
 
 void Mech3DAppearance::setPaintScheme (void)
 {
+    if (mc2::tick::defer(mc2::tick::Queue::Release, [this] { setPaintScheme(); })) return;
 	// DEGRADE-DON'T-CRASH: partial import with no base shape -> nothing to paint.
 	if (!mechShape)
 		return;

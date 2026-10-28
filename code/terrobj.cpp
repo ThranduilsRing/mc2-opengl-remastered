@@ -1,3 +1,4 @@
+#include "tick_commit.h"
 #include "Gates/preferences_legacy.h"
 //---------------------------------------------------------------------------
 //
@@ -1312,6 +1313,7 @@ long TerrainObject::handleWeaponHit (WeaponShotInfoPtr shotInfo, bool addMultipl
 					{
 						//--------------------------------------------
 						//Play a Dust Poof.
+                        auto dust = [this, position = position, requestedTime = scenarioTime] {
 						if (useNonWeaponEffects)
 						{
 							unsigned flags = gosFX::Effect::ExecuteFlag;
@@ -1339,9 +1341,11 @@ long TerrainObject::handleWeaponHit (WeaponShotInfoPtr shotInfo, bool addMultipl
 							mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
 							mc2::math::buildTranslation(shapeOrigin, actualPosition);
 							
-							gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,nullptr);
+							gosFX::Effect::ExecuteInfo info((Stuff::Time)requestedTime,&shapeOrigin,nullptr);
 							bldgDustPoofEffect->Start(&info);
 						}
+                        };
+                        if (!mc2::tick::defer(mc2::tick::Queue::Release, dust)) dust();
 					}
 				}
 

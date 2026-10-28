@@ -1,3 +1,4 @@
+#include "../code/tick_commit.h"
 #include "../RenderCore/TextureService.h"
 #include "sim_overlap.h"
 // Session source indices and reference lifetime; no file or device dependencies.
@@ -57,6 +58,7 @@ std::shared_ptr<const Bytes> TextureSources::internBytes(const std::string& iden
     slot=bytes; return bytes;
 }
 DWORD TextureSources::publish(std::shared_ptr<TextureSource> source) {
+    std::lock_guard lock(indexMutex_);
     if (assets_.size() >= kTextureAssetLimit) return kInvalidAsset;
     const DWORD id=static_cast<DWORD>(assets_.size());
     source->asset=id; source->retired=retired_;
@@ -128,7 +130,7 @@ DWORD retain(DWORD asset) {
 }
 void release(DWORD asset) {
     { auto source=liveSource(asset); if (source) sourcesIfReady()->release(source); }
-    if (!mc2::overlap::onSimWorker()) if (auto* store=sourcesIfReady()) store->collectRetired();
+    if (!mc2::tick::collecting() && !mc2::overlap::onSimWorker()) if (auto* store=sourcesIfReady()) store->collectRetired();
 }
 DWORD uvScale(DWORD asset) { auto source=liveSource(asset); return source ? source->uvScale : 1; }
 bool logicalSize(DWORD asset, DWORD& width, DWORD& height) {
@@ -148,7 +150,7 @@ void pin(DWORD asset) {
 }
 void unpin(DWORD asset) {
     { auto source=liveSource(asset); if (source && source->pins) { --source->pins; RenderCore::textureService().release(source->handle); } }
-    if (!mc2::overlap::onSimWorker()) if (auto* store=sourcesIfReady()) store->collectRetired();
+    if (!mc2::tick::collecting() && !mc2::overlap::onSimWorker()) if (auto* store=sourcesIfReady()) store->collectRetired();
 }
 DWORD pinCount(DWORD asset) { auto source=liveSource(asset); return source ? source->pins : 0; }
 

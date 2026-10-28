@@ -1,3 +1,4 @@
+#include "tick_commit.h"
 //***************************************************************************
 //
 //	gameobj.cpp -- File contains the Game Object class code
@@ -1543,13 +1544,20 @@ void GameObject::init (bool create) {
 // without releasing (destroy() still releases at the same position as before, see G2).
 void GameObject::adoptAppearance (std::unique_ptr<Appearance> newAppearance) {
 
+    if (mc2::tick::collecting()) releaseAppearance();
 	mc2::adoptOwnedView(appearanceOwner, appearance, newAppearance.release());
 }
 
 void GameObject::releaseAppearance (void) {
 
 	verifyAppearanceView("releaseAppearance");
-	mc2::releaseOwnedView(appearanceOwner, appearance);
+    if (mc2::tick::collecting()) {
+        auto* retired = appearanceOwner.release();
+        mc2::releaseOwnedView(appearanceOwner, appearance);
+        mc2::tick::retireObject(retired);
+    } else {
+        mc2::releaseOwnedView(appearanceOwner, appearance);
+    }
 }
 
 void GameObject::verifyAppearanceView (const char* where) {

@@ -1,3 +1,4 @@
+#include "tick_commit.h"
 //***************************************************************************
 //
 //	carnage.cpp -- File contains the Carnage class code
@@ -488,6 +489,8 @@ void Carnage::init (bool create)
 //---------------------------------------------------------------------------
 void Carnage::init (CarnageEnumType _carnageType) 
 {
+    mc2::tick::releaseEffect(gosEffect);
+    mc2::tick::releaseLight(pointLight, eye, lightId);
 	//--------------------------------------------------------------------
 	// This function not only sets the carnage type, but also re-inits the
 	// object so it may be used again in the game without re-allocating
@@ -624,19 +627,8 @@ void Carnage::finishNow (void)
 	else if (carnageType == CARNAGE_EXPLOSION) 
 	{
 		traceCombatRetire("forced_finish");
-		if (gosEffect)
-		{
-			gosEffect->Kill();		//Effect is over.
-			gosEffect.reset();
-		}
-
-		if (pointLight)
-		{
-			eye->removeWorldLight(lightId,pointLight);
-			std::free(pointLight);
-			pointLight = nullptr;
-		}
-
+        mc2::tick::releaseEffect(gosEffect);
+        mc2::tick::releaseLight(pointLight, eye, lightId);
 		init(false);
 	}
 }	
@@ -882,19 +874,8 @@ void Carnage::destroy (void)
 	}
 	else if (carnageType == CARNAGE_EXPLOSION) 
 	{
-		if (gosEffect)
-		{
-			gosEffect->Kill();		//Effect is over.
-			gosEffect.reset();
-		}
-
-		if (pointLight)
-		{
-			if (eye)
-				eye->removeWorldLight(lightId,pointLight);
-			std::free(pointLight);
-			pointLight = nullptr;
-		}
+        mc2::tick::releaseEffect(gosEffect);
+        mc2::tick::releaseLight(pointLight, eye, lightId);
 	}
 }
 
@@ -902,6 +883,8 @@ void Carnage::destroy (void)
 
 void Carnage::init (bool create, ObjectTypePtr _type) 
 {
+    mc2::tick::releaseEffect(gosEffect);
+    mc2::tick::releaseLight(pointLight, eye, lightId);
 	traceCombatRetire("reinit");
 	GameObject::init(true, _type);
 

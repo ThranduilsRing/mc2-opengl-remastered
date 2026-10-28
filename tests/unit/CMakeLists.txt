@@ -67,6 +67,8 @@ add_executable(mc2_tests
     test_texture_service.cpp  # P4a texture/material identity: key dedupe, mod precedence, paint variants, stale handles, material sets (offline)
     test_visibility_history.cpp # native actor visibility: paired IDs, lagged tiers, OR, stale fail-open
     test_texture_sources.cpp    # session source admission, strong refs, mission scopes, no renderer
+    test_tick_commit.cpp
+    ${MC2_WORKTREE_ROOT}/code/tick_commit.cpp
     ${MC2_WORKTREE_ROOT}/mclib/texture_sources.cpp
     test_frame_fence_core.cpp  # the frame resource slot decision: parity flip, cancel, a failed fence re-create disables it (offline)
     test_handle_slots.cpp  # P3 handle slots: ticket-gated reuse, stale handles refused, generation wrap, range exhaustion (offline)

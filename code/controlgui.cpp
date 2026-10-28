@@ -1,3 +1,4 @@
+#include "tick_commit.h"
 /*************************************************************************************************\
 controlGui.cpp			: Implementation of the controlGui component.
 //---------------------------------------------------------------------------//
@@ -347,8 +348,10 @@ void ControlGui::addMover (MoverPtr mover)
 
 void ControlGui::removeMover (MoverPtr mover) {
 
-	if (mover->getCommanderId() == Commander::home->getId())
-		forceGroupBar.removeMover(mover);
+	if (mover->getCommanderId() == Commander::home->getId()) {
+        auto unlink = [this, mover] { forceGroupBar.removeMover(mover); };
+        if (!mc2::tick::defer(mc2::tick::Queue::MoverUi, unlink)) unlink();
+    }
 }
 
 void ControlGui::initMechs()

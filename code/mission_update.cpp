@@ -1,3 +1,4 @@
+#include "tick_commit.h"
 #include "vk_scene_renderer.h"
 #include "sim_tick_cost.h"
 #include "command_replay.h"
@@ -1136,8 +1137,9 @@ bool Mission::updatePass(bool tickMode, bool runFrame, bool runSim, bool advance
 {
 	const float renderLength = frameLength;
     mc2::diagnostic::TickCost tickCost(s_misSplit && runSim);
-	auto simLength = [&] { tickCost.begin(); if (tickMode) frameLength = mc2::sim::kTickSecondsF; };
-	auto frameLen = [&] { tickCost.end(); frameLength = renderLength; };
+	mc2::tick::Scope tickCommands;
+	auto simLength = [&] { mc2::tick::setCollecting(runSim); tickCost.begin(); if (tickMode) frameLength = mc2::sim::kTickSecondsF; };
+	auto frameLen = [&] { mc2::tick::setCollecting(false); tickCost.end(); frameLength = renderLength; };
 
 	// Every opened tick must complete, including the mission brain's 9999 return.
 	std::optional<mc2::sim::SimulationOrderCompletion<Mission>> orderTickCompletion;
@@ -1348,7 +1350,7 @@ void Mission::overlapKick()
 
 namespace {
 void overlapKickHook() { if (mission) mission->overlapKick(); }
-void overlapJoinHook() { mc2::overlap::waitWorker(); mc2::textures::commitTickTextures(); }
+void overlapJoinHook() { mc2::overlap::waitWorker(); mc2::tick::commitTickQueues(); }
 const bool s_overlapHooksInstalled = (mc2::overlap::installHooks({overlapKickHook, overlapJoinHook}), true);
 }
 
@@ -1364,6 +1366,7 @@ long Mission::update (void)
 	}
 	MisScope _msTotal(MS_TOTAL);  // whole Mission::update; TOTAL - sum(subcalls) = unbracketed
 	mc2::overlap::waitWorker();   // a kicked tick is always finished by the main loop's join; this is the safety net
+	mc2::tick::commitTickQueues();
 	const OverlapPre pre = s_pre;
 	s_pre = OverlapPre{};
 	if (active)
@@ -1379,7 +1382,9 @@ long Mission::update (void)
 			s_tickClock.reset();
 			pollRealFrameSeconds(renderLength);   // rebase the wall credit so a resume does not burst
 			// Multiplayer runs one tick per frame, paused or frozen runs the frame part alone: no wall time reaches the sim.
-			if (updatePass(true, true, MPlayer != nullptr, true, earlyResult))
+			const bool ended = updatePass(true, true, MPlayer != nullptr, true, earlyResult);
+			mc2::tick::commitTickQueues();
+			if (ended)
 				return earlyResult;
 			updatePresentationOnly(false, 1.0f);
 		}
@@ -1412,6 +1417,7 @@ long Mission::update (void)
 				if (tick > 0)
 					++g_mc2FrameCounter;
 				const bool ended = updatePass(true, tick == 0, true, !firstFrame, earlyResult);
+				mc2::tick::commitTickQueues();
 				s_extraTickInFrame = false;
 				if (ended)
 					return earlyResult;

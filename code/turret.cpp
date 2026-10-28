@@ -1,3 +1,4 @@
+#include "tick_commit.h"
 //***************************************************************************
 //
 //	turret.cpp -- File contains the Turret Object code
@@ -569,9 +570,7 @@ long Turret::update (void)
 			
 		if (pointLight)
 		{
-			eye->removeWorldLight(lightId,pointLight);
-			free(pointLight);
-			pointLight = nullptr;
+            mc2::tick::releaseLight(pointLight, eye, lightId);
 		}
 
 		appearance->setObjectParameters(position, rotation, TacticalOverview::maskWorldBars(drawFlags), teamId,Team::getRelation(teamId, Team::home->getId()));

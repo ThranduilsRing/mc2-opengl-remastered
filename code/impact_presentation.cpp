@@ -1,3 +1,4 @@
+#include "tick_commit.h"
 // code/impact_presentation.cpp -- simulation impacts -> impact decal pool -> Vulkan box-decal pass.
 // See impact_presentation.h and docs/impact-damage-design.md.
 
@@ -36,6 +37,19 @@ namespace {
 
 // A pending impact: the raw sim facts. Material and anchor are resolved on the presentation side.
 impact::EventQueue g_queue;
+impact::EventQueue g_tickQueue;
+bool g_commitQueued = false;
+void pushImpact(const impact::Event& event) {
+    if (!mc2::tick::collecting()) { g_queue.push(event); return; }
+    g_tickQueue.push(event);
+    if (!g_commitQueued) {
+        g_commitQueued = true;
+        mc2::tick::defer(mc2::tick::Queue::Impact, [] {
+            g_tickQueue.drain([](const impact::Event& e) { g_queue.push(e); });
+            g_commitQueued = false;
+        });
+    }
+}
 impact::Pool g_pool;
 impact::GpuDecal g_gpu[impact::kMaxDecals];
 
@@ -194,7 +208,7 @@ void onWeaponImpact(long masterId, bool isBeam, bool areaEffect, float damage,
     e.anchorKind = targetWID ? impact::AnchorKind::Static : impact::AnchorKind::World;   // refined on the presentation side
     e.weapon = impact::classifyWeapon(form, isBeam, areaEffect, artillery, inferno);
     e.magnitude = damage;
-    g_queue.push(e);
+    pushImpact(e);
 }
 
 void onExplosion(long effectId, const glm::vec3& pos, float radius) {
@@ -212,7 +226,7 @@ void onExplosion(long effectId, const glm::vec3& pos, float radius) {
     e.pos[0] = pos.x; e.pos[1] = pos.y; e.pos[2] = pos.z;
     e.weapon = w;
     e.magnitude = std::max(radius, effectId == LARGE_AIRSTRIKE_ID ? 80.0f : 30.0f);
-    g_queue.push(e);
+    pushImpact(e);
 }
 
 void reset() {

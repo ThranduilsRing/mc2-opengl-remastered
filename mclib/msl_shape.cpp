@@ -1,3 +1,4 @@
+#include "../code/tick_commit.h"
 // Multi shape layer: TG_MultiShape texture handles, node rotation and position queries, light list, render, shadows, detach and child tests.
 // Declared in the class headers; shared names in msl_internal.h.
 #include "msl_internal.h"
@@ -564,7 +565,7 @@ void TG_MultiShape::BindMaterials() {
         if (!old || !(*old==key)) { instanceMaterials_[i]=registry.acquire(key); changed=true; }
         // The material stores generation identity; gos is resolved only at the legacy producer boundary.
         const DWORD node=key.albedo.isValid() ? service.nodeOf(key.albedo) : texture.mcTextureNodeIndex;
-        if (!mc2::overlap::onSimWorker())
+        if (!mc2::tick::collecting() && !mc2::overlap::onSimWorker())
             texture.gosTextureHandle=mc2::textures::ready() && node!=0xffffffffu ? mc2::textures::sourceId(node) : 0xffffffffu;
     }
     if (changed || !materialSet_.valid()) materialSet_=registry.acquireSet(instanceMaterials_);

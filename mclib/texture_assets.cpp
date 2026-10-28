@@ -1,3 +1,4 @@
+#include "../code/tick_commit.h"
 #include "../RenderCore/TextureService.h"
 #include "sim_overlap.h"
 // VFS texture sources and CPU consumer snapshots, owned by the session service.
@@ -248,7 +249,7 @@ DWORD load(const char* path, gos_TextureFormat format, DWORD hints, DWORD varian
     source->key.source=RenderCore::makeTextureSourceId(provider,path,RenderCore::textureContentHash(source->bytes->data(),source->bytes->size()));
     source->bytes=store.internBytes(source->key.source,source->bytes);
     const DWORD asset=store.publish(std::move(source));
-    if (mc2::overlap::onSimWorker()) store.requestCreate(asset);
+    if (mc2::tick::collecting() || mc2::overlap::onSimWorker()) store.requestCreate(asset);
     return asset;
 }
 void commitTickTextures() {
@@ -259,7 +260,7 @@ void commitTickTextures() {
     }
 }
 DWORD sourceId(DWORD asset) {
-    if (mc2::overlap::onSimWorker()) {
+    if (mc2::tick::collecting() || mc2::overlap::onSimWorker()) {
         if (auto* store=sourcesIfReady()) store->requestCreate(asset);
         return 0;
     }
@@ -307,7 +308,10 @@ DWORD pixels(DWORD* data, gos_TextureFormat format, DWORD hints, DWORD width, DW
     source->bytes=std::make_shared<const Bytes>(begin,begin+size_t(width)*width*4);
     source->width=source->height=source->logicalWidth=source->logicalHeight=width;
     source->format=format; source->hints=hints;
-    return sourceStore().publish(std::move(source));
+    auto& store=sourceStore();
+    const auto asset=store.publish(std::move(source));
+    if (mc2::tick::collecting() || mc2::overlap::onSimWorker()) store.requestCreate(asset);
+    return asset;
 }
 }
 DWORD fromPixels(DWORD* data, gos_TextureFormat format, DWORD hints, DWORD width, DWORD bytesPerPixel) {
