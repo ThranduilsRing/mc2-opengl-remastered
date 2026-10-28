@@ -4035,7 +4035,7 @@
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 1125,
+          "line": 1127,
           "evidence": "import",
           "reference": "exe_fingerprint",
           "text": "import exe_fingerprint as fpmod"
@@ -4614,35 +4614,35 @@
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 992,
+          "line": 994,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 1013,
+          "line": 1015,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 1039,
+          "line": 1041,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 1068,
+          "line": 1070,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 1085,
+          "line": 1087,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
@@ -4736,7 +4736,7 @@
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 1124,
+          "line": 1126,
           "evidence": "import",
           "reference": "ninja_build",
           "text": "import ninja_build as nb"
@@ -5261,7 +5261,7 @@
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 1053,
+          "line": 1055,
           "evidence": "import",
           "reference": "run_tools_tests",
           "text": "import run_tools_tests as tt"
