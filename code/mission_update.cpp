@@ -72,7 +72,7 @@ void Mission::updateMissionTest(bool report) {
             passed += state == OS_SUCCESSFUL;
             failed += state == OS_FAILED;
             pending += state == OS_UNDETERMINED;
-            if (!destination && state == OS_UNDETERMINED && objective->IsActive() && objective->DisplayMarker())
+            if (!destination && state == OS_UNDETERMINED && objective->IsActive())
                 destination = objective;
         }
         ++id;
@@ -126,11 +126,23 @@ void Mission::updateMissionTest(bool report) {
     if (!destination || scenarioTime < test.nextOrder) return;
     test.nextOrder = scenarioTime + 10.0f;
     const glm::vec3 location{destination->MarkerX(), destination->MarkerY(), 0.0f};
+    // The first mission's hangar is a structure objective, not an enemy mover.
+    GameObjectPtr objectiveTarget = nullptr;
+    for (auto* condition : destination->m_conditionList) {
+        if (condition->Species() != DESTROY_SPECIFIC_STRUCTURE) continue;
+        const auto point = condition->GetObjectivePosition();
+        for (long i = 0; i < ObjectManager->getNumBuildings(); ++i) {
+            auto* building = ObjectManager->getBuilding(i);
+            if (building && building->getExists() && !building->isDestroyed()
+                && glm::distance(building->getPosition(), point) < 1.0f)
+                objectiveTarget = building;
+        }
+    }
     int issued = 0, rejected = 0;
     for (long i = 0; i < Team::home->getRosterSize(); ++i) {
         auto* mover = Team::home->getMover(i);
         if (!mover || mover->getCommanderId() != Commander::home->getId() || mover->isDisabled() || !mover->getExists()) continue;
-        Mover* target = nullptr;
+        GameObjectPtr target = objectiveTarget;
         float distance = 1000.0f;
         for (long j = 0; j < ObjectManager->getNumMovers(); ++j) {
             auto* enemy = ObjectManager->getMover(j);
