@@ -73,7 +73,6 @@ FORCED_ENV: dict = {
     # and `[CONFIG v1] warn=...` lines, instead of silently measuring the default config.
     # Exes built before Gates/ landed ignore it.
     "MC2_CONFIG_STRICT": "1",
-    "MC2_TGL_POOL_TRACE": "1",
     "MC2_ASSET_SCALE_TRACE": "1",
     # Engine-side cursor-theft suppression (gos_CursorControlSuppressed,
     # f0c07b87). MC2_SMOKE_MODE already implies it, but set it explicitly so
