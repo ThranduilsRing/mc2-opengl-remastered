@@ -1053,6 +1053,7 @@ int main(int argc, char** argv)
             ZoneScopedN("ExtractRenderSnapshot");
             mc2::overlap::assertSimQuiescent("ExtractRenderSnapshot");
             snap = ExtractRenderSnapshot();
+            mc2::overlap::extractRender();   // G7b K3: game render list + clock (zone ExtractRenderList)
         }
         mc2_debug_state::maybeWriteRenderState(snap);
     frameEmitDrawPackets(snap);

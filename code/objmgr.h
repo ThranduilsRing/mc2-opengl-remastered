@@ -496,6 +496,9 @@ class GameObjectManager {
 			return(numGates);
 		}
 
+		// G7b K3: render() draws the list built here at the render extract (sim quiescent), not the live objects.
+		void extractRenderList (mc2::render_view::RenderList& list);
+
 		void render (bool terrain, bool movers, bool other);
 
 		void renderShadows (bool terrain, bool movers, bool other);

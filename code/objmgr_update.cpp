@@ -976,3 +976,65 @@ void GameObjectManager::updatePresentationCull() {
     gpu_cull::substrate_flushUpload();
     if (gpu_cull::compute_isEnabled()) gpu_cull::compute_emitParitySummary();
 }
+
+// G7b K3: the render extract. Same membership and order as the draw loops in GameObjectManager::render, read while
+// the sim is quiescent; each object copies what its renderView draws. Pointers stay valid until the next commit
+// (deferred frees), which is after the frame's draw.
+void GameObjectManager::extractRenderList (mc2::render_view::RenderList& list)
+{
+	auto add = [](std::vector<mc2::render_view::RenderView>& out, GameObjectPtr obj) {
+		mc2::render_view::RenderView& v = out.emplace_back();
+		v.obj = obj;
+		obj->extractRenderView(v);
+	};
+
+	if (renderObjects)
+	{
+		for (long terrainBlock = 0; terrainBlock < Terrain::numObjBlocks; terrainBlock++)
+		{
+			if (!Terrain::objBlockInfo[terrainBlock].active)
+				continue;
+			long numObjs = Terrain::objBlockInfo[terrainBlock].numObjects;
+			long objIndex = Terrain::objBlockInfo[terrainBlock].firstHandle;
+			for (long terrainObj = 0; terrainObj < numObjs; terrainObj++, objIndex++)
+			{
+				if (objList[objIndex] &&
+					objList[objIndex]->getExists() &&
+					Terrain::objVertexActive[objList[objIndex]->getVertexNum()])
+					add(list.terrain, objList[objIndex]);
+			}
+		}
+	}
+
+	if (mechs && (numMechs < maxMechs))
+		for (long i = 0; i < numMechs; i++)
+			if (mechs[i] && mechs[i]->getExists())
+				add(list.movers, mechs[i]);
+	if (vehicles)
+		for (long i = 0; i < maxVehicles; i++)
+			if (vehicles[i] && vehicles[i]->getExists())
+				add(list.movers, vehicles[i]);
+#ifdef USE_ELEMENTALS
+	if (elementals)
+		for (long i = 0; i < numElementals; i++)
+			if (elementals[i] && elementals[i]->getExists())
+				add(list.movers, elementals[i]);
+#endif
+
+	if (weapons)
+		for (long i = 0; i < numWeapons; i++)
+			if (weapons[i] && weapons[i]->hasPresentation())
+				add(list.other, weapons[i]);
+	if (carnage)
+		for (long i = 0; i < numCarnage; i++)
+			if (carnage[i] && carnage[i]->gosEffect)
+				add(list.other, carnage[i]);
+	if (lights)
+		for (long i = 0; i < numLights; i++)
+			if (lights[i] && lights[i]->getExists())
+				add(list.other, lights[i]);
+	if (artillery)
+		for (long i = 0; i < numArtillery; i++)
+			if (artillery[i] && (artillery[i]->getExists() || artillery[i]->hasPresentation()))
+				add(list.other, artillery[i]);
+}

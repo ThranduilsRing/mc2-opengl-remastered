@@ -96,6 +96,7 @@ void violation(const char* kind, const char* site) {
 } // namespace
 
 void installHooks(const Hooks& hooks) { g_hooks = hooks; }
+void extractRender() { if (g_hooks.extract) g_hooks.extract(); }
 void kickTail() { if (!earlyKick() && g_hooks.kick) g_hooks.kick(); }
 void beginFrameDraw() {
     ++g_drawFrames;

@@ -461,6 +461,7 @@ set(SOURCES
     "code/objmgr.cpp"
     "code/objmgr_io.cpp"
     "code/objmgr_update.cpp"
+    "code/render_view.cpp"
     "code/objmgr_pick.cpp"
     "code/objmgr_misc.cpp"
     "code/objtype.cpp"

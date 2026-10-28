@@ -17,7 +17,10 @@ void onWeaponImpact(long masterId, bool isBeam, bool areaEffect, float damage,
 // An explosion that is not a weapon bolt's own impact (mines, vehicle/mech/building deaths, airstrikes).
 void onExplosion(long effectId, const glm::vec3& pos, float radius);
 
-// Once per rendered frame, before the render lists are flushed.
+// G7b K3: once per rendered frame at the render extract (sim quiescent): drain the queue, resolve anchors, build decals.
+void extract();
+
+// Once per rendered frame, before the render lists are flushed: hands the decals extract() built to the renderer.
 void frame();
 
 // Mission start / load: drop every decal and pending event.

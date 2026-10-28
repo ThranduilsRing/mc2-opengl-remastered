@@ -1,6 +1,7 @@
 #include "tick_commit.h"
 #include "../mclib/sim_overlap.h"
 #include "../mclib/texture_assets.h"
+#include "render_view.h"
 #include <array>
 #include <vector>
 #include <cassert>
@@ -18,6 +19,8 @@ bool defer(Queue queue, std::function<void()> command) {
 void commitTickQueues() {
     mc2::overlap::assertMainThread("commitTickQueues");
     assert(!mc2::overlap::jobInFlight() && !collecting());
+    // G7b K3: the render list holds object pointers; drop it before the deferred frees (the next extract refills it).
+    mc2::render_view::list().clear();
     mc2::textures::commitTickTextures();
     for (auto& queue : queues) {
         // Commands run outside the producer scope, including destructors.

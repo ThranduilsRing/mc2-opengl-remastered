@@ -11,8 +11,9 @@
 namespace mc2::overlap {
 
 // The mission code installs these; the main loop calls kickTail() / joinTail() around the frame's presenting tail.
-struct Hooks { void (*kick)(); void (*join)(); };
+struct Hooks { void (*kick)(); void (*join)(); void (*extract)() = nullptr; };
 void installHooks(const Hooks& hooks);
+void extractRender(); // main thread, at ExtractRenderSnapshot: builds the frame's render list/clock (G7b K3)
 void kickTail();   // main thread: bank the next tick(s) and start them on the sim worker (no-op if not eligible)
 void joinTail();   // main thread: wait for the sim worker to finish (no-op if none is in flight)
 

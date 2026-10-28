@@ -8,6 +8,8 @@
 #include "sim_world_trace.h"
 #include "sim_tick_clock.h"
 #include "../mclib/sim_overlap.h"
+#include "render_view.h"
+#include "impact_presentation.h"
 #include "../mclib/texture_assets.h"
 #include <optional>
 #include "move_recon_stats.h"
@@ -1351,7 +1353,27 @@ void Mission::overlapKick()
 namespace {
 void overlapKickHook() { if (mission) mission->overlapKick(); }
 void overlapJoinHook() { mc2::overlap::waitWorker(); mc2::tick::commitTickQueues(); }
-const bool s_overlapHooksInstalled = (mc2::overlap::installHooks({overlapKickHook, overlapJoinHook}), true);
+// G7b K3: the frame's render view, taken at ExtractRenderSnapshot (after the frame part, before DrawScreen and the
+// early kick). Everything the object draws and the impact decals read from the sim is captured here.
+void overlapExtractHook()
+{
+	ZoneScopedN("ExtractRenderList");
+	auto& clk = mc2::render_view::clock();
+	clk.turn = static_cast<int32_t>(turn);
+	clk.scenarioTime = scenarioTime;
+	clk.dt = frameLength;
+	clk.frame = static_cast<uint32_t>(g_mc2FrameCounter);
+	clk.alpha = static_cast<float>(s_tickClock.alpha());
+	auto& lists = mc2::render_view::list();
+	lists.clear();
+	if (!eye || !eye->active || turn <= 1)   // GameCamera::render draws nothing this frame
+		return;
+	if (ObjectManager)
+		ObjectManager->extractRenderList(lists);
+	impact_presentation::extract();
+}
+const bool s_overlapHooksInstalled =
+	(mc2::overlap::installHooks({overlapKickHook, overlapJoinHook, overlapExtractHook}), true);
 }
 
 // Per-frame mission update. Normal play runs on the fixed 30 Hz sim tick (code/sim_tick_clock.h): the frame's

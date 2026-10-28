@@ -229,16 +229,24 @@ void onExplosion(long effectId, const glm::vec3& pos, float radius) {
     pushImpact(e);
 }
 
+namespace {
+uint32_t g_builtCount = 0;   // extract() -> frame()
+uint32_t g_builtHot = 0;
+}  // namespace
+
 void reset() {
     g_queue.clear();
     g_pool.clear();
+    g_builtCount = 0;
+    g_builtHot = 0;
 #ifdef MC2_VULKAN_ISLAND
     gos_SetImpactDecalFrame(nullptr, 0, 0);
 #endif
 }
 
-void frame() {
-    mc2::overlap::assertSimQuiescent("impact_presentation::frame");
+// G7b K3: everything that reads the sim (queue drain, anchor poses, object classes) runs here, at the render extract.
+void extract() {
+    mc2::overlap::assertSimQuiescent("impact_presentation::extract");
     ZoneScopedN("Impact.Presentation");
     // A new mission (or a load) replaces the object manager and restarts the clock: its decals and pending events belong to
     // the old world.
@@ -284,11 +292,13 @@ void frame() {
     });
     g_pool.update(scenarioTime, resolveAnchor);
     uint32_t hot = 0;
-    const uint32_t n = g_pool.build(scenarioTime, resolveAnchor, g_gpu, impact::kMaxDecals, hot);
+    g_builtCount = g_pool.build(scenarioTime, resolveAnchor, g_gpu, impact::kMaxDecals, hot);
+    g_builtHot = hot;
+}
+
+void frame() {
 #ifdef MC2_VULKAN_ISLAND
-    gos_SetImpactDecalFrame(g_gpu, n, hot);
-#else
-    (void)n;
+    gos_SetImpactDecalFrame(g_gpu, g_builtCount, g_builtHot);
 #endif
 }
 
