@@ -4051,7 +4051,7 @@
         },
         {
           "path": "scripts/smoke_lib/runner.py",
-          "line": 176,
+          "line": 175,
           "evidence": "import",
           "reference": "gate_table_reader",
           "text": "import gate_table_reader"
@@ -5585,7 +5585,7 @@
         },
         {
           "path": "scripts/smoke_lib/runner.py",
-          "line": 335,
+          "line": 334,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from . import render_options_pin"
@@ -6611,7 +6611,7 @@
         },
         {
           "path": "scripts/smoke_lib/runner.py",
-          "line": 335,
+          "line": 334,
           "evidence": "import",
           "reference": "scripts.smoke_lib.render_options_pin",
           "text": "from . import render_options_pin"
