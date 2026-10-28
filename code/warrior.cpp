@@ -8,6 +8,7 @@
 #include "warrior_internal.h"
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"   // str<>()
+#include "brain_execution_policy.h"
 #include "mc2fmt.h"
 #include <utility>
 #include "sim_trace.h"
@@ -23,45 +24,35 @@ namespace mc2_abl_trace {
 // Forwards to the gated inline tracker (byte-identical no-op when OFF).
 void mc2AblNotePeakDepth(int level) { mc2_abl_trace::notePeakDepth(level); }
 
-// MC2_BRAIN_TASKQ gate — checked once at first runBrain call
-static bool s_brainTaskQEnabled     = false;
-static bool s_brainTaskQTraceEnabled = false;
-static bool s_brainTaskQGateChecked  = false;
+// Brain task queue: on under the TechBrain policy (brain_execution_policy.h); re-derived once per mission load.
+static bool          s_brainTaskQEnabled     = false;
+static bool          s_brainTaskQTraceEnabled = false;
+static std::uint32_t s_brainTaskQGateGen     = 0;
 static void initBrainTaskQGate() {
-    if (s_brainTaskQGateChecked) return;
-    s_brainTaskQGateChecked  = true;
-    s_brainTaskQEnabled      = mc2::gate::get<"MC2_BRAIN_TASKQ">();
+    if (s_brainTaskQGateGen == mc2::brainpolicy::generation()) return;
+    s_brainTaskQGateGen      = mc2::brainpolicy::generation();
+    s_brainTaskQEnabled     = mc2::brainpolicy::techBrain();
     s_brainTaskQTraceEnabled = mc2::gate::get<"MC2_BRAIN_TASKQ_TRACE">();
 }
 
-// MC2_BRAIN_RUNTIME gate — checked once at first runBrain call (requires MC2_BRAIN_TASKQ=1)
+// Brain runtime (slot writes + short-circuit): on under the TechBrain policy; re-derived once per mission load.
 static bool             s_brainRuntimeEnabled      = false;
 static bool             s_brainRuntimeTraceEnabled  = false;
-static bool             s_brainRuntimeApplyEnabled  = false;   // MC2_BRAIN_RUNTIME_APPLY=1 (BRAIN-RUNTIME-1B)
-static bool             s_brainRuntimeGateChecked   = false;
+static bool             s_brainRuntimeApplyEnabled  = false;
+static std::uint32_t    s_brainRuntimeGateGen       = 0;
 static BrainRuntimeMode s_brainRuntimeForcedMode    = BrainRuntimeMode::Legacy;
 static void initBrainRuntimeGate() {
-    if (s_brainRuntimeGateChecked) return;
-    s_brainRuntimeGateChecked  = true;
-    s_brainRuntimeEnabled      = mc2::gate::get<"MC2_BRAIN_RUNTIME">();
+    if (s_brainRuntimeGateGen == mc2::brainpolicy::generation()) return;
+    s_brainRuntimeGateGen      = mc2::brainpolicy::generation();
+    s_brainRuntimeEnabled      = mc2::brainpolicy::techBrain();
     s_brainRuntimeTraceEnabled = mc2::gate::get<"MC2_BRAIN_RUNTIME_TRACE">();
-    // MC2_BRAIN_RUNTIME_APPLY=1 enables actual slot writes + short-circuit (BRAIN-RUNTIME-1B).
-    // Requires MC2_BRAIN_RUNTIME=1; warn+stay inert if APPLY=1 but RUNTIME=0.
-    s_brainRuntimeApplyEnabled = mc2::gate::get<"MC2_BRAIN_RUNTIME_APPLY">();
-    if (s_brainRuntimeApplyEnabled && !s_brainRuntimeEnabled) {
-        mc2::fmt::print_err("[BRAIN_RT] WARNING: MC2_BRAIN_RUNTIME_APPLY=1 but MC2_BRAIN_RUNTIME=0 — apply staying inert\n");
-        s_brainRuntimeApplyEnabled = false;
-    }
+    s_brainRuntimeApplyEnabled = s_brainRuntimeEnabled;
     // Mode source: MC2_BRAIN_RUNTIME_FORCE_MODE env override only; per-unit FIT loader may override per-warrior.
+    s_brainRuntimeForcedMode   = BrainRuntimeMode::Legacy;
     if (mc2::gate::isSet<"MC2_BRAIN_RUNTIME_FORCE_MODE">()) {
         if      (mc2::gate::is<"MC2_BRAIN_RUNTIME_FORCE_MODE", "hybrid">())   s_brainRuntimeForcedMode = BrainRuntimeMode::Hybrid;
         else if (mc2::gate::is<"MC2_BRAIN_RUNTIME_FORCE_MODE", "enhanced">()) s_brainRuntimeForcedMode = BrainRuntimeMode::Enhanced;
         else                                                                  s_brainRuntimeForcedMode = BrainRuntimeMode::Legacy;
-    }
-    if (s_brainRuntimeEnabled && !s_brainTaskQEnabled) {
-        mc2::fmt::print_err("[BRAIN_RT] WARNING: MC2_BRAIN_RUNTIME=1 but MC2_BRAIN_TASKQ=0 — runtime staying inert\n");
-        s_brainRuntimeEnabled      = false;
-        s_brainRuntimeApplyEnabled = false;
     }
 }
 
@@ -1455,27 +1446,17 @@ long MechWarrior::runBrain (void) {
 		// the GENERAL-slot write this tick. The synthetic HOLD_TASK is suppressed to ensure
 		// EXACTLY ONE GENERAL-slot write per tick.
 		// When DISPATCH_APPLY=0, synthetic HOLD fires as 1B-runtime default (unchanged).
-		static const bool s_dispatchApply = ([](){
-			if (mc2::gate::get<"MC2_BRAIN_DISPATCH_APPLY">()) {
-				if (!mc2::gate::get<"MC2_BRAIN_DISPATCH">()) {
-					mc2::fmt::print_err("[BRAIN_DISPATCH] WARNING: MC2_BRAIN_DISPATCH_APPLY=1 requires MC2_BRAIN_DISPATCH=1 — apply is INERT\n");
-					std::fflush(stderr);
-					return false;
-				}
-				return true;
-			}
-			return false;
-		})();
+		const bool s_dispatchApply = mc2::brainpolicy::techBrain();   // policy, read live (was a cached gate)
 		// BRAIN-DECISION-INTENT-QUEUE-1: gate check (default OFF).
 		// When ON: executeSpecialBody_Apply emits intents; commitBrainIntents drains them.
-		static const bool s_intentQueue = mc2::gate::get<"MC2_BRAIN_INTENT_QUEUE">();
+		const bool s_intentQueue = mc2::brainpolicy::techBrain();
 		// BRAIN-COMMIT-PHASE-1: deferred commit gate (default OFF).
 		// Requires MC2_BRAIN_INTENT_QUEUE=1 to be meaningful.
 		// Gate ON → inline commitBrainIntents calls are SKIPPED here; intents persist in
 		//   runtime->pendingIntents[] until commitAllBrainIntents() drains them in WID order
 		//   after the full warrior update loop in objmgr.cpp (GameObjectManager::update).
 		// Gate OFF → commitBrainIntents runs inline per-warrior (rung-5 behavior, unchanged).
-		static const bool s_brainCommitPhase = mc2::gate::get<"MC2_BRAIN_COMMIT_PHASE">();
+		const bool s_brainCommitPhase = mc2::brainpolicy::techBrain();
 
 		// BRAIN-WORLD-SNAPSHOT-1: static populate helper (main-thread only).
 		// Accesses protected MechWarrior members — must remain in warrior.cpp.

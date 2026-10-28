@@ -1,5 +1,7 @@
 # Gate history
 
+<!-- B4: the 21 MC2_BRAIN_* gates (RUNTIME, DISPATCH, DISPATCH_APPLY/CALL/VAR/FSM_TODO, INTENT_QUEUE, COMMIT_PHASE, TASKQ, ALIAS, FLOW, FSM, PATROL, ENGAGE, SCOPE_GLOBAL, VARIANTOF, VAR_MISSION, SNAPSHOT, INLINE_EMPTY_SKIP and kin) were retired into the per-mission BrainExecutionPolicy (code/brain_execution_policy.h); their sections below are history only. Override: MC2_BRAIN_POLICY=legacy|techbrain. -->
+
 <!-- quoted-history: default claims below are verbatim history, not current -->
 
 > FROZEN ARCHIVE of the registry prose as it stood when the typed gate table was introduced (no generator writes this file any more). Historical registry text. Defaults and Default-on/off claims below are NOT current; the live default of each gate is in `Gates/gate_table.cpp` (and the code). The default-agreement checker skips this file.

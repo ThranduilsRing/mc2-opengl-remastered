@@ -7,9 +7,7 @@
       "file": "mc2_01_specials.fit",
       "mission": "mc2_01",
       "format": "legacy-fitini",
-      "gates_required": [
-        "MC2_BRAIN_DISPATCH=1"
-      ],
+      "gates_required": [],
       "expected_bodyHasPowerdown": true,
       "expected_bodyHasCoreGuard": true,
       "expected_bodyHasEffect": true,
@@ -27,9 +25,7 @@
       "file": "mc2_01_attack_specials.fit",
       "mission": "mc2_01",
       "format": "legacy-fitini",
-      "gates_required": [
-        "MC2_BRAIN_DISPATCH=1"
-      ],
+      "gates_required": [],
       "expected_bodyHasCoreAttack": true,
       "expected_bodyHasEffect": true,
       "expected_trace_substrings": [
@@ -48,9 +44,7 @@
       "file": "mc2_01_eject_specials.fit",
       "mission": "mc2_01",
       "format": "legacy-fitini",
-      "gates_required": [
-        "MC2_BRAIN_DISPATCH=1"
-      ],
+      "gates_required": [],
       "expected_bodyHasUnitEject": true,
       "expected_bodyHasCoreGuard": true,
       "expected_bodyHasEffect": true,
@@ -68,9 +62,7 @@
       "file": "mc2_01_ejectalias_specials.fit",
       "mission": "mc2_01",
       "format": "legacy-fitini",
-      "gates_required": [
-        "MC2_BRAIN_DISPATCH=1"
-      ],
+      "gates_required": [],
       "expected_bodyHasUnitEject": true,
       "expected_bodyHasEffect": true,
       "expected_trace_substrings": [
@@ -87,9 +79,7 @@
       "file": "mc2_01_guard_specials.fit",
       "mission": "mc2_01",
       "format": "legacy-fitini",
-      "gates_required": [
-        "MC2_BRAIN_DISPATCH=1"
-      ],
+      "gates_required": [],
       "expected_bodyHasCoreGuard": true,
       "expected_bodyHasEffect": true,
       "expected_trace_substrings": [
@@ -106,9 +96,7 @@
       "file": "mc2_01_moveto_specials.fit",
       "mission": "mc2_01",
       "format": "legacy-fitini",
-      "gates_required": [
-        "MC2_BRAIN_DISPATCH=1"
-      ],
+      "gates_required": [],
       "expected_bodyHasCoreMoveTo": true,
       "expected_bodyHasEffect": true,
       "expected_trace_substrings": [
@@ -130,9 +118,7 @@
       "file": "mc2_01_moveto_nan_specials.fit",
       "mission": "mc2_01",
       "format": "legacy-fitini",
-      "gates_required": [
-        "MC2_BRAIN_DISPATCH=1"
-      ],
+      "gates_required": [],
       "expected_bodyHasCoreMoveTo": true,
       "expected_bodyHasEffect": true,
       "expected_trace_substrings": [
@@ -149,9 +135,7 @@
       "file": "mc2_01_retreat_specials.fit",
       "mission": "mc2_01",
       "format": "legacy-fitini",
-      "gates_required": [
-        "MC2_BRAIN_DISPATCH=1"
-      ],
+      "gates_required": [],
       "expected_bodyHasUnitRetreat": true,
       "expected_bodyHasEffect": true,
       "expected_trace_substrings": [
@@ -168,9 +152,7 @@
       "file": "mc2_01_retreatalias_specials.fit",
       "mission": "mc2_01",
       "format": "legacy-fitini",
-      "gates_required": [
-        "MC2_BRAIN_DISPATCH=1"
-      ],
+      "gates_required": [],
       "expected_bodyHasUnitRetreat": true,
       "expected_bodyHasEffect": true,
       "expected_trace_substrings": [
@@ -187,10 +169,7 @@
       "file": "mc2_01_specials_callchain.fit",
       "mission": "mc2_01",
       "format": "brace-block",
-      "gates_required": [
-        "MC2_BRAIN_DISPATCH=1",
-        "MC2_BRAIN_DISPATCH_CALL=1"
-      ],
+      "gates_required": [],
       "expected_bodyHasEffect": false,
       "expected_trace_substrings": [
         "[BRAIN_DISPATCH_CALL]",
@@ -202,10 +181,7 @@
       "file": "mc2_01_specials_callchain_cycle.fit",
       "mission": "mc2_01",
       "format": "brace-block",
-      "gates_required": [
-        "MC2_BRAIN_DISPATCH=1",
-        "MC2_BRAIN_DISPATCH_CALL=1"
-      ],
+      "gates_required": [],
       "expected_bodyHasEffect": false,
       "expected_trace_substrings": [
         "[BRAIN_DISPATCH_CALL_CYCLE]"
@@ -216,10 +192,7 @@
       "file": "mc2_01_specials_callchain_unknown.fit",
       "mission": "mc2_01",
       "format": "brace-block",
-      "gates_required": [
-        "MC2_BRAIN_DISPATCH=1",
-        "MC2_BRAIN_DISPATCH_CALL=1"
-      ],
+      "gates_required": [],
       "expected_bodyHasCoreGuard": true,
       "expected_bodyHasEffect": true,
       "expected_trace_substrings": [
@@ -232,9 +205,7 @@
       "file": "mc2_01_specials_carver_slice.fit",
       "mission": "mc2_01",
       "format": "brace-block",
-      "gates_required": [
-        "MC2_BRAIN_DISPATCH=1"
-      ],
+      "gates_required": [],
       "expected_bodyHasEffect": false,
       "expected_trace_substrings": [
         "[BRAIN_DISPATCH]"
@@ -245,9 +216,7 @@
       "file": "mc2_01_specials_raw.fit",
       "mission": "mc2_01",
       "format": "brace-block",
-      "gates_required": [
-        "MC2_BRAIN_DISPATCH=1"
-      ],
+      "gates_required": [],
       "expected_bodyHasPowerdown": true,
       "expected_bodyHasEffect": true,
       "expected_trace_substrings": [
@@ -282,9 +251,7 @@
       "file": "mc2_17_attack_live_specials.fit",
       "mission": "mc2_17",
       "format": "legacy-fitini",
-      "gates_required": [
-        "MC2_BRAIN_DISPATCH=1"
-      ],
+      "gates_required": [],
       "expected_bodyHasCoreAttack": true,
       "expected_bodyHasEffect": true,
       "expected_trace_substrings": [
@@ -303,9 +270,7 @@
       "file": "mc2_01_attack_enemy_specials.fit",
       "mission": "mc2_01",
       "format": "legacy-fitini",
-      "gates_required": [
-        "MC2_BRAIN_DISPATCH=1"
-      ],
+      "gates_required": [],
       "expected_bodyHasCoreAttack": true,
       "expected_bodyHasEffect": true,
       "expected_trace_substrings": [
@@ -325,9 +290,7 @@
       "file": "mc2_01_attack_self_specials.fit",
       "mission": "mc2_01",
       "format": "legacy-fitini",
-      "gates_required": [
-        "MC2_BRAIN_DISPATCH=1"
-      ],
+      "gates_required": [],
       "expected_bodyHasCoreAttack": true,
       "expected_bodyHasEffect": true,
       "expected_trace_substrings": [
@@ -346,9 +309,7 @@
       "file": "mc2_01_attack_friendly_specials.fit",
       "mission": "mc2_01",
       "format": "legacy-fitini",
-      "gates_required": [
-        "MC2_BRAIN_DISPATCH=1"
-      ],
+      "gates_required": [],
       "expected_bodyHasCoreAttack": true,
       "expected_bodyHasEffect": true,
       "expected_trace_substrings": [
@@ -367,9 +328,7 @@
       "file": "mc2_01_onceguard_specials.fit",
       "mission": "mc2_01",
       "format": "legacy-fitini",
-      "gates_required": [
-        "MC2_BRAIN_DISPATCH=1"
-      ],
+      "gates_required": [],
       "expected_bodyHasPowerdown": true,
       "expected_bodyHasEffect": true,
       "expected_trace_substrings": [
@@ -386,11 +345,7 @@
       "file": "mc2_01_varmission_specials.fit",
       "mission": "mc2_01",
       "format": "raw-brace",
-      "gates_required": [
-        "MC2_BRAIN_DISPATCH=1",
-        "MC2_BRAIN_DISPATCH_VAR=1",
-        "MC2_BRAIN_VAR_MISSION=1"
-      ],
+      "gates_required": [],
       "notes": "TECHSCRIPT-DISPATCH-1D-M: mission-scope Var round-trip. Var.Set mflag=7 then Var.Get mflag; gate ON: BRAIN_VAR_MISSION_SET + BRAIN_VAR_MISSION_GET with val=7. Gate OFF traces-only.",
       "expected_trace_substrings": [
         "BRAIN_VAR_MISSION_SET",
@@ -405,11 +360,7 @@
       "mission": "mc2_01",
       "format": "raw-brace",
       "fsm_sequential": true,
-      "gates_required": [
-        "MC2_BRAIN_DISPATCH=1",
-        "MC2_BRAIN_DISPATCH_APPLY=1",
-        "MC2_BRAIN_FSM=1"
-      ],
+      "gates_required": [],
       "notes": "BRAIN-FSM-1K-A: SetState fires transition; InState match=1 opens gate (CoreGuard fires); InState match=0 closes gate (CoreGuard NOT fired); SetStatePrev restores prior state. Uses fsm_sequential=true to run all 4 bodies on one FsmMechWarrior (state persists).",
       "expected_trace_substrings": [
         "[BRAIN_FSM_SETSTATE] from= to=engage",
@@ -423,12 +374,7 @@
       "file": "mc2_01_patrol_specials.fit",
       "mission": "mc2_01",
       "format": "legacy-fitini",
-      "gates_required": [
-        "MC2_BRAIN_DISPATCH=1",
-        "MC2_BRAIN_DISPATCH_APPLY=1",
-        "MC2_BRAIN_PATROL=1",
-        "MC2_BRAIN_INTENT_QUEUE=1"
-      ],
+      "gates_required": [],
       "expected_bodyHasCorePatrol": true,
       "expected_bodyHasEffect": false,
       "notes": "BRAIN-OPORD-COREPATROL-1: bodyHasCorePatrol=true; effect-via-patrol is a separate mechanism. apply_expectation proves PATROL_START fires, count=2, loop=1, and MOVETO_POINT committed to wp0 (100 100 0) via intent queue. apply_trace_substrings checks Apply-path stderr (not TraceOnly). Arrival/cursor-advance is smoke-only (requires live TacticalOrder::status).",
@@ -464,12 +410,7 @@
       "mission": "mc2_01",
       "format": "raw-brace",
       "fsm_sequential": true,
-      "gates_required": [
-        "MC2_BRAIN_DISPATCH=1",
-        "MC2_BRAIN_DISPATCH_APPLY=1",
-        "MC2_BRAIN_DISPATCH_VAR=1",
-        "MC2_BRAIN_FSM=1"
-      ],
+      "gates_required": [],
       "notes": "BRAIN-FSM-1K-B: Var.Set primes unit var; SetStateIf match=1 transitions to engage (early return); InState engage gate open (CoreGuard records); SetStateIf match=0 (ready=1 != 9) no-op, body continues. Uses fsm_sequential=true (state persists across 4 bodies on one FsmMechWarrior).",
       "expected_trace_substrings": [
         "[BRAIN_FSM_SETSTATEIF] var=ready",
@@ -484,11 +425,7 @@
       "file": "mc2_01_clearmove_specials.fit",
       "mission": "mc2_01",
       "format": "legacy-fitini",
-      "gates_required": [
-        "MC2_BRAIN_DISPATCH=1",
-        "MC2_BRAIN_DISPATCH_APPLY=1",
-        "MC2_BRAIN_INTENT_QUEUE=1"
-      ],
+      "gates_required": [],
       "notes": "DISPATCH-INTENT-CLEARMOVEORDERS-1: emits CLEAR_MOVE intent; commit calls clearMoveOrders(). No setGeneralTacOrder; movement-only scrub.",
       "apply_expectation": {
         "expected_order_code": "NONE",
@@ -509,11 +446,7 @@
       "file": "mc2_01_settargetpriority_specials.fit",
       "mission": "mc2_01",
       "format": "legacy-fitini",
-      "gates_required": [
-        "MC2_BRAIN_DISPATCH=1",
-        "MC2_BRAIN_DISPATCH_APPLY=1",
-        "MC2_BRAIN_INTENT_QUEUE=1"
-      ],
+      "gates_required": [],
       "notes": "UNITQUERY-SETTARGETPRIORITY-1: symbolic args resolved (TARGET_PRIORITY_MOVER->2, CONTACT flag-sum->97) then TARGET_POLICY intent committed via setTargetPriority. No setGeneralTacOrder.",
       "apply_expectation": {
         "expected_order_code": "NONE",
@@ -535,10 +468,7 @@
       "file": "mc2_01_alias_specials.fit",
       "mission": "mc2_01",
       "format": "brace-block",
-      "gates_required": [
-        "MC2_BRAIN_DISPATCH=1",
-        "MC2_BRAIN_ALIAS=1"
-      ],
+      "gates_required": [],
       "expected_bodyHasCoreGuard": true,
       "expected_bodyHasUnitRetreat": true,
       "expected_bodyHasEffect": true,
@@ -565,10 +495,7 @@
       "file": "global_specials.fit",
       "mission": "(shared library)",
       "format": "brace-block",
-      "gates_required": [
-        "MC2_BRAIN_DISPATCH=1",
-        "MC2_BRAIN_SCOPE_GLOBAL=1"
-      ],
+      "gates_required": [],
       "expected_trace_substrings": [
         "[BRAIN_DISPATCH] parsed"
       ],
@@ -579,11 +506,7 @@
       "file": "mc2_01_scopeglobal_specials.fit",
       "mission": "mc2_01",
       "format": "brace-block",
-      "gates_required": [
-        "MC2_BRAIN_DISPATCH=1",
-        "MC2_BRAIN_DISPATCH_CALL=1",
-        "MC2_BRAIN_SCOPE_GLOBAL=1"
-      ],
+      "gates_required": [],
       "expected_trace_substrings": [
         "[BRAIN_SCOPE_GLOBAL] parsed 2 global special block(s)",
         "[BRAIN_SCOPE_GLOBAL_SHADOWED] key=global.shadow.probe",
@@ -604,10 +527,7 @@
       "file": "mc2_01_variantof_specials.fit",
       "mission": "mc2_01",
       "format": "brace-block",
-      "gates_required": [
-        "MC2_BRAIN_DISPATCH=1",
-        "MC2_BRAIN_VARIANTOF=1"
-      ],
+      "gates_required": [],
       "expected_bodyHasCoreGuard": true,
       "expected_bodyHasEffect": true,
       "expected_trace_substrings": [
@@ -632,10 +552,7 @@
       "file": "mc2_01_variantof_override_specials.fit",
       "mission": "mc2_01",
       "format": "brace-block",
-      "gates_required": [
-        "MC2_BRAIN_DISPATCH=1",
-        "MC2_BRAIN_VARIANTOF=1"
-      ],
+      "gates_required": [],
       "expected_bodyHasCoreGuard": true,
       "expected_bodyHasEffect": true,
       "expected_trace_substrings": [
@@ -656,10 +573,7 @@
       "file": "mc2_01_variantof_cycle_specials.fit",
       "mission": "mc2_01",
       "format": "brace-block",
-      "gates_required": [
-        "MC2_BRAIN_DISPATCH=1",
-        "MC2_BRAIN_VARIANTOF=1"
-      ],
+      "gates_required": [],
       "expected_trace_substrings": [
         "[BRAIN_VARIANTOF_CYCLE] child=cycle.a",
         "[BRAIN_VARIANTOF_CYCLE] child=cycle.b"
@@ -674,11 +588,7 @@
       "file": "mc2_01_flow_wait_specials.fit",
       "mission": "mc2_01",
       "format": "brace-block",
-      "gates_required": [
-        "MC2_BRAIN_DISPATCH=1",
-        "MC2_BRAIN_DISPATCH_APPLY=1",
-        "MC2_BRAIN_FLOW=1"
-      ],
+      "gates_required": [],
       "flow_sequential": true,
       "expected_trace_substrings": [
         "[BRAIN_FLOW_WAIT_ARM] idx=1 sec=5 deadline=5000 now=0",
@@ -703,12 +613,7 @@
       "file": "mc2_01_flow_waituntil_specials.fit",
       "mission": "mc2_01",
       "format": "brace-block",
-      "gates_required": [
-        "MC2_BRAIN_DISPATCH=1",
-        "MC2_BRAIN_DISPATCH_APPLY=1",
-        "MC2_BRAIN_DISPATCH_VAR=1",
-        "MC2_BRAIN_FLOW=1"
-      ],
+      "gates_required": [],
       "flow_sequential": true,
       "expected_trace_substrings": [
         "[BRAIN_FLOW_WAIT_UNTIL_GATED] idx=0 key=go want=1 cur=0",
@@ -730,11 +635,7 @@
       "file": "mc2_01_flow_stop_specials.fit",
       "mission": "mc2_01",
       "format": "brace-block",
-      "gates_required": [
-        "MC2_BRAIN_DISPATCH=1",
-        "MC2_BRAIN_DISPATCH_APPLY=1",
-        "MC2_BRAIN_FLOW=1"
-      ],
+      "gates_required": [],
       "flow_sequential": true,
       "expected_trace_substrings": [
         "[BRAIN_FLOW_STOP] idx=1"

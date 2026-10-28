@@ -233,8 +233,8 @@ void applyClearMoveOrders(int wid, MechBrainRuntime* runtime) {
         std::fflush(stderr);
     } else {
         // Intent queue OFF: cannot scrub here (direct call forbidden). Trace + no-op,
-        // mirroring the patrol NO_QUEUE path. Live use requires MC2_BRAIN_INTENT_QUEUE=1.
-        mc2::fmt::print_err("[BRAIN_CLEARMOVE_NO_QUEUE] wid={:d}: requires MC2_BRAIN_INTENT_QUEUE=1\n", mc2::fmt::as_i32(wid));
+        // mirroring the patrol NO_QUEUE path. Live use requires the TechBrain policy.
+        mc2::fmt::print_err("[BRAIN_CLEARMOVE_NO_QUEUE] wid={:d}: requires the TechBrain policy\n", mc2::fmt::as_i32(wid));
         std::fflush(stderr);
     }
 }
@@ -279,7 +279,7 @@ void applySetTargetPriority(int wid, MechBrainRuntime* runtime, BrainVerbFrame& 
         mc2::fmt::print_err("[BRAIN_INTENT_EMIT] verb=UnitQuery.SetTargetpriority order=TARGET_POLICY slot={:d} type={:d} p1={:d} p2={:d} crit={:d} tick={:d} wid={:d}\n", mc2::fmt::as_i32(args5[0]), mc2::fmt::as_i32(args5[1]), mc2::fmt::as_i32(args5[2]), mc2::fmt::as_i32(args5[3]), mc2::fmt::as_i32(args5[4]), mc2::fmt::as_u32(getBrainTickIndex()), mc2::fmt::as_i32(wid));
         std::fflush(stderr);
     } else {
-        mc2::fmt::print_err("[BRAIN_TARGETPRIORITY_NO_QUEUE] wid={:d}: requires MC2_BRAIN_INTENT_QUEUE=1\n", mc2::fmt::as_i32(wid));
+        mc2::fmt::print_err("[BRAIN_TARGETPRIORITY_NO_QUEUE] wid={:d}: requires the TechBrain policy\n", mc2::fmt::as_i32(wid));
         std::fflush(stderr);
     }
 }
@@ -388,8 +388,8 @@ void applyCorePatrol(MechWarrior* warrior, int wid, MechBrainRuntime* runtime, b
                     // Gate OFF (no intent queue): patrol cannot issue MOVETO_POINT here
                     // without adding a 7th setGeneralTacOrder call-site (relaxed_guard_doc
                     // contract requires count=6).  Emit a one-time warning.
-                    // Live-engine usage requires MC2_BRAIN_INTENT_QUEUE=1 for patrol orders.
-                    mc2::fmt::print_err("[BRAIN_PATROL_NO_QUEUE] wid={:d}: patrol requires MC2_BRAIN_INTENT_QUEUE=1 for order emission\n", mc2::fmt::as_i32(wid));
+                    // Live-engine usage requires the TechBrain policy for patrol orders.
+                    mc2::fmt::print_err("[BRAIN_PATROL_NO_QUEUE] wid={:d}: patrol requires the TechBrain policy for order emission\n", mc2::fmt::as_i32(wid));
                     std::fflush(stderr);
                 }
                 appliedEffect = true;
@@ -498,7 +498,7 @@ bool applySetStateIf(MechWarrior* warrior, int wid, VarStore* varStore, bool var
         static bool s_setstateif_var_warn = false;
         if (!s_setstateif_var_warn) {
             s_setstateif_var_warn = true;
-            mc2::fmt::print_err("[BRAIN_FSM_SETSTATEIF] WARNING: Unit.SetStateIf requires MC2_BRAIN_DISPATCH_VAR=1 — verb is INERT\n");
+            mc2::fmt::print_err("[BRAIN_FSM_SETSTATEIF] WARNING: Unit.SetStateIf requires the TechBrain policy — verb is INERT\n");
             std::fflush(stderr);
         }
         // INERT: no transition, body continues.

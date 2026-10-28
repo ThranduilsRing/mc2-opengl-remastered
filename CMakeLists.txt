@@ -483,6 +483,7 @@ set(SOURCES
     "code/brain_special_apply.cpp"
     "code/brain_symbol_resolve.cpp"
     "code/brain_missionfit_oporbd.cpp"
+    "code/brain_execution_policy.cpp"
     "code/brain_tactic_select.cpp"
     "code/fitblockwriter.cpp"
     "code/warrior.cpp"

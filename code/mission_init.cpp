@@ -1,3 +1,4 @@
+#include "brain_execution_policy.h"
 #include "footprints.h"
 // Mission: Mission::init, the mission load sequence.
 // Declared in the class headers; shared names in mission_internal.h.
@@ -384,6 +385,8 @@ void Mission::initMissionFile(glm::vec3* dropZoneList, MissionInitFrame& f) {
 	missionFileName.init(missionPath,missionName,".fit");
 
 	ActivateModForMission(missionFileName);
+	// B4: one per-mission brain policy (Legacy ABL vs TechBrain), decided once the mod overlay is active.
+	mc2::brainpolicy::decide(static_cast<const char*>(missionFileName), missionPath, missionName);
 
 	duration = 60;
 
@@ -898,8 +901,7 @@ void Mission::initMissionScript(MissionInitFrame& f) {
 	MC2_VERIFY(result == NO_ERR, "Mission::init: [Script] missing ScenarioScript");
 
 	// Converted missions retain their ABL objectives and events under LegacyScenarioScript.
-	if (missionScriptName[0] == '\0' &&
-	    mc2::gate::get<"MC2_BRAIN_INLINE_EMPTY_SKIP">()) {
+	if (missionScriptName[0] == '\0') {
 		char legacyScriptName[80] = {0};
 		if (missionFile->readIdString("LegacyScenarioScript", legacyScriptName, 79) == NO_ERR &&
 		    legacyScriptName[0] != '\0') {

@@ -625,8 +625,7 @@
    "ver": -1,
    "stream": "stderr",
    "keys": [
-    "wid",
-    "MC2_BRAIN_INTENT_QUEUE"
+    "wid"
    ],
    "count": 1
   },
@@ -651,27 +650,6 @@
    "ver": -1,
    "stream": "stderr",
    "keys": [
-    "MC2_BRAIN_DISPATCH",
-    "mission",
-    "special_fit"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "BRAIN_DISPATCH",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "MC2_BRAIN_DISPATCH_APPLY",
-    "MC2_BRAIN_DISPATCH"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "BRAIN_DISPATCH",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
     "depth",
     "verb",
     "wid"
@@ -686,6 +664,17 @@
     "index"
    ],
    "count": 2
+  },
+  {
+   "tag": "BRAIN_DISPATCH",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "policy",
+    "mission",
+    "special_fit"
+   ],
+   "count": 1
   },
   {
    "tag": "BRAIN_DISPATCH",
@@ -788,16 +777,6 @@
    "ver": -1,
    "stream": "stderr",
    "keys": [
-    "MC2_BRAIN_DISPATCH_CALL",
-    "MC2_BRAIN_DISPATCH"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "BRAIN_DISPATCH_CALL",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
     "from",
     "to",
     "depth",
@@ -856,17 +835,7 @@
    "ver": -1,
    "stream": "stderr",
    "keys": [],
-   "count": 1
-  },
-  {
-   "tag": "BRAIN_DISPATCH_FSM_TODO",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "MC2_BRAIN_DISPATCH_FSM_TODO",
-    "MC2_BRAIN_DISPATCH"
-   ],
-   "count": 1
+   "count": 2
   },
   {
    "tag": "BRAIN_DISPATCH_FSM_TODO",
@@ -977,11 +946,8 @@
    "tag": "BRAIN_DISPATCH_VAR",
    "ver": -1,
    "stream": "stderr",
-   "keys": [
-    "MC2_BRAIN_DISPATCH_VAR",
-    "MC2_BRAIN_DISPATCH"
-   ],
-   "count": 2
+   "keys": [],
+   "count": 1
   },
   {
    "tag": "BRAIN_DISPATCH_VAR_GET",
@@ -1095,8 +1061,7 @@
    "ver": -1,
    "stream": "stderr",
    "keys": [
-    "wid",
-    "MC2_BRAIN_INTENT_QUEUE"
+    "wid"
    ],
    "count": 1
   },
@@ -1291,9 +1256,7 @@
    "tag": "BRAIN_FSM_SETSTATEIF",
    "ver": -1,
    "stream": "stderr",
-   "keys": [
-    "MC2_BRAIN_DISPATCH_VAR"
-   ],
+   "keys": [],
    "count": 1
   },
   {
@@ -1548,8 +1511,7 @@
    "stream": "stderr",
    "keys": [
     "index",
-    "wid",
-    "MC2_BRAIN_INTENT_QUEUE"
+    "wid"
    ],
    "count": 2
   },
@@ -1558,8 +1520,7 @@
    "ver": -1,
    "stream": "stderr",
    "keys": [
-    "wid",
-    "MC2_BRAIN_INTENT_QUEUE"
+    "wid"
    ],
    "count": 1
   },
@@ -1595,6 +1556,17 @@
    "count": 1
   },
   {
+   "tag": "BRAIN_POLICY",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "mission",
+    "policy",
+    "reason"
+   ],
+   "count": 1
+  },
+  {
    "tag": "BRAIN_REQUEST_HELP",
    "ver": -1,
    "stream": "stderr",
@@ -1621,28 +1593,8 @@
    "ver": -1,
    "stream": "stderr",
    "keys": [
-    "MC2_BRAIN_RUNTIME",
-    "MC2_BRAIN_TASKQ"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "BRAIN_RT",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "MC2_BRAIN_RUNTIME",
+    "policy",
     "mission"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "BRAIN_RT",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "MC2_BRAIN_RUNTIME_APPLY",
-    "MC2_BRAIN_RUNTIME"
    ],
    "count": 1
   },
@@ -1755,8 +1707,7 @@
    "ver": -1,
    "stream": "stderr",
    "keys": [
-    "wid",
-    "MC2_BRAIN_INTENT_QUEUE"
+    "wid"
    ],
    "count": 1
   },
@@ -1826,16 +1777,6 @@
    "keys": [
     "child",
     "parent"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "BRAIN_VAR_MISSION",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "MC2_BRAIN_VAR_MISSION",
-    "MC2_BRAIN_DISPATCH_VAR"
    ],
    "count": 1
   },

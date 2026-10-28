@@ -1,5 +1,6 @@
 // GameObjectManager: GameObjectManager::update with its GOM_UPDATE_COST spans, in-view conflation probe, GPU-cull record and static-skip gates.
 // Declared in the class headers; shared names in objmgr_internal.h.
+#include "brain_execution_policy.h"
 #include "objmgr_internal.h"
 #include "sim_world_trace.h"
 #include "mc2fmt.h"
@@ -764,8 +765,8 @@ void GameObjectManager::updateBrainCommit() {
 	// Each warrior with pendingIntentCount > 0 gets commitBrainIntents() called once.
 	// Emits: [BRAIN_COMMIT_PHASE] committed=<n> warriors in WID order
 	{
-		static const bool s_commitPhaseGate = mc2::gate::get<"MC2_BRAIN_COMMIT_PHASE">();
-		static const bool s_intentQueueGate = mc2::gate::get<"MC2_BRAIN_INTENT_QUEUE">();
+		const bool s_commitPhaseGate = mc2::brainpolicy::techBrain();
+		const bool s_intentQueueGate = mc2::brainpolicy::techBrain();
 		if (s_commitPhaseGate && s_intentQueueGate && numMovers > 0) {
 			// Collect (WID, mover) pairs for stable ordering.
 			static std::vector<std::pair<long, MoverPtr>> s_commitOrder;
