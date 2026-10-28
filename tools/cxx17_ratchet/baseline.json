@@ -142,7 +142,7 @@
    "LG01": 0,
    "LG02": 0,
    "LG03": 360,
-   "LG04": 16,
+   "LG04": 15,
    "LG05": 198,
    "LG06": 437,
    "LG07": 2,
@@ -2112,15 +2112,16 @@
    "LG06": 6
   },
   "code/warrior.cpp": {
-   "LG03": 15,
-   "LG06": 1
+   "LG03": 10
   },
   "code/warrior.h": {
-   "LG04": 1,
    "LG05": 3,
    "LG06": 2,
-   "LG14": 19,
    "LG18": 1
+  },
+  "code/warrior_brain.cpp": {
+   "LG03": 5,
+   "LG06": 1
   },
   "code/warrior_draw.cpp": {
    "LG05": 2
@@ -2135,6 +2136,9 @@
   "code/warrior_target.cpp": {
    "LG04": 1,
    "LG12b": 5
+  },
+  "code/warrior_types.h": {
+   "LG14": 19
   },
   "code/weapon_definition.h": {
    "LG06": 8
@@ -3402,7 +3406,7 @@
    "LG20": 3
   }
  },
- "head": "565e1d9b6",
+ "head": "83543d9eb",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",

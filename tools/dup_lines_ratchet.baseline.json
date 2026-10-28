@@ -7,7 +7,7 @@
   "RenderCore": 402,
   "RenderWorld": 0,
   "code": 13567,
-  "mclib": 22499,
+  "mclib": 22497,
   "shaders": 416
  },
  "dirs": [
@@ -226,9 +226,11 @@
   "code/terrobj.h": 20,
   "code/turret.cpp": 521,
   "code/turret.h": 36,
-  "code/warrior.cpp": 215,
+  "code/warrior.cpp": 142,
   "code/warrior.h": 206,
   "code/warrior_alarms.cpp": 49,
+  "code/warrior_brain.cpp": 33,
+  "code/warrior_combat.cpp": 40,
   "code/warrior_core_orders.cpp": 42,
   "code/warrior_draw.cpp": 18,
   "code/warrior_internal.h": 8,
@@ -260,7 +262,7 @@
   "mclib/bdactor.cpp": 163,
   "mclib/bdactor.h": 34,
   "mclib/bdactor_render.cpp": 145,
-  "mclib/bdactor_static.cpp": 98,
+  "mclib/bdactor_static.cpp": 96,
   "mclib/bdactor_terrain.cpp": 137,
   "mclib/bdactor_tree.cpp": 215,
   "mclib/bdactor_tree_static.cpp": 48,
@@ -482,8 +484,8 @@
   "shaders/vulkan/terrain_tier1.vert": 71,
   "shaders/vulkan/terrain_tier1_skirt.vert": 71
  },
- "head": "213e994bb",
+ "head": "83543d9eb",
  "n": 8,
- "total": 39109,
+ "total": 39107,
  "version": 1
 }
