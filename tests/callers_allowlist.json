@@ -1,4 +1,5 @@
 {
+  "tools/mover_budget.py": "Manual M6 command: the 200-mover sim tick budget verdict (design target 0.6 ms); run by hand or from a perf pass, prints one [MOVER_BUDGET v1] line.",
   "scripts/tests/test_isolated_deploy.py": "Pytest-discovered by scripts/run_scripts_tests.py through scripts/test_ownership.json; isolated deploy classification regression coverage.",
   "scripts/tests/test_kit_visibility.py": "Executed by the kit_visibility contract row through pytest; receipt and runtime override regression coverage.",
   "scripts/tests/test_spirv_fixups.py": "Executed by the spirv_artifacts contract row through pytest; shader package regression coverage.",

@@ -16,6 +16,7 @@
 #ifndef DOBJMGR_H
 #include"dobjmgr.h"
 #endif
+#include "mover_los_epoch.h"
 #include <optional>
 #include <string_view>
 #include "world/entity_registry.h"
@@ -239,7 +240,15 @@ class GameObjectManager {
 		long					numPowerGenerators;
 		long					numSpecialBuildings;
 
-		char*					moverLineOfSightTable;
+		// Epoch LOS cache: cell = (epoch << 2) | state, state 0 unknown / 1 blocked / 2 clear.
+		// A new tick bumps the epoch instead of memsetting maxMovers^2 bytes (M5).
+		uint16_t*				moverLineOfSightTable;
+		uint16_t				moverLosEpoch = 0;
+		void beginMoverLosEpoch (void) {
+			if (!moverLineOfSightTable)
+				return;
+			mc2::losEpochAdvance(std::span<uint16_t>(moverLineOfSightTable, static_cast<size_t>(maxMovers) * static_cast<size_t>(maxMovers)), moverLosEpoch);
+		}
 		bool					useMoverLineOfSightTable;
 
 		GameObjectPtr*			objList;

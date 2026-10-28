@@ -1932,13 +1932,13 @@ bool GameObject::lineOfSight (GameObjectPtr target, float startExtRad)
 		if (isMover() && ObjectManager->useMoverLineOfSightTable) 
 		{
 			long index = (handle * ObjectManager->maxMovers) + target->handle;
-			char losStatus = ObjectManager->moverLineOfSightTable[index];
-			if (losStatus == -1) 
+			uint16_t& losCell = ObjectManager->moverLineOfSightTable[index];
+			if (mc2::losEpochState(losCell, ObjectManager->moverLosEpoch) == 0)
 			{
 				bool los = Team::lineOfSight(getLOSPosition(), target->getLOSPosition(), getTeamId(), target->getAppearRadius(), startExtRad);
 				if (los) 
 				{
-					ObjectManager->moverLineOfSightTable[index] = 1;
+					losCell = mc2::losEpochCell(ObjectManager->moverLosEpoch, true);
 					//Inverse is NOT always true!!!!
 					// I can demonstrate a case!!
 					// -fs
@@ -1946,12 +1946,12 @@ bool GameObject::lineOfSight (GameObjectPtr target, float startExtRad)
 				}
 				else 
 				{
-					ObjectManager->moverLineOfSightTable[index] = 0;
+					losCell = mc2::losEpochCell(ObjectManager->moverLosEpoch, false);
 					// ObjectManager->moverLineOfSightTable[(target->handle * ObjectManager->maxMovers) + handle] = 0;
 				}
 			}
 			
-			if (ObjectManager->moverLineOfSightTable[index])
+			if (mc2::losEpochState(losCell, ObjectManager->moverLosEpoch) == 2)
 			{
 				return true;
 			}

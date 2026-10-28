@@ -369,7 +369,8 @@ void GameObjectManager::setNumObjects (long nMechs,
 	}
 
 	useMoverLineOfSightTable = true;
-	moverLineOfSightTable = static_cast<char*>(std::malloc(maxMovers * maxMovers));
+	moverLosEpoch = 0;
+	moverLineOfSightTable = static_cast<uint16_t*>(std::calloc(static_cast<size_t>(maxMovers) * static_cast<size_t>(maxMovers), sizeof(uint16_t)));
 	if (!moverLineOfSightTable)
 		Fatal(numGates, " GameObjectManager.setNumObjects: cannot malloc moverLineOfSightTable ");
 

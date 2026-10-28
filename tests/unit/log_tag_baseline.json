@@ -5506,6 +5506,28 @@
    "count": 1
   },
   {
+   "tag": "MOVER_FIXTURE",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "result"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "MOVER_FIXTURE",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "result",
+    "requested",
+    "base",
+    "added",
+    "movers"
+   ],
+   "count": 1
+  },
+  {
    "tag": "MOVE_BD",
    "ver": -1,
    "stream": "stdout",
@@ -11092,6 +11114,7 @@
   "MOD_HEALTH",
   "MOVER",
   "MOVER_COHERENCE",
+  "MOVER_FIXTURE",
   "ORDER_LIVENESS_SUMMARY",
   "PERF",
   "REPLAY_DIVERGED",
@@ -11102,6 +11125,7 @@
   "SHADER_SCHEMA",
   "SHADOW_BAKE",
   "SIMID",
+  "SIM_TICK_COST",
   "SMOKE",
   "SOAK",
   "SOUND",
