@@ -872,7 +872,7 @@ def test_auxiliary_determinism_uses_copy_while_saves_stay_serial(tmp_path, monke
     from contextlib import contextmanager
     import merge_gate as gate
     install, clone = tmp_path / "install", tmp_path / "clone"
-    saves, det = threading.Event(), threading.Event()
+    saves, det, saving, mods_done = threading.Event(), threading.Event(), threading.Event(), threading.Event()
     copying = threading.Event()
     calls = []
     @contextmanager
@@ -892,15 +892,17 @@ def test_auxiliary_determinism_uses_copy_while_saves_stay_serial(tmp_path, monke
             assert copying.wait(2)
             assert command[command.index("--base-install") + 1] == str(clone)
             assert command[command.index("--exe") + 1] == str(clone / "mc2.exe")
-            # The old schedule waited for every mod before launching saves.
-            assert saves.wait(2), "mods must overlap the stock proof chain"
+            mods_done.set()
         if command[0] == "det":
             assert command[-1] == str(clone)
+            # W83: a concurrent mod cold load starved this fixture of frames.
+            assert mods_done.is_set()
             det.set()
-            assert saves.wait(2)
         if command[0] == "save":
+            # Neither proof may share a window with the mods battery (W83).
+            assert mods_done.is_set() and not saving.is_set()
+            saving.set()
             saves.set()
-            assert det.wait(2)
         if command[0] == "kit":
             assert command[-1] == str(clone)
         if command[0] == "quiet":
@@ -916,7 +918,7 @@ def test_auxiliary_determinism_uses_copy_while_saves_stay_serial(tmp_path, monke
         ("saveload-mc2_01", ["save"], {}),
         ("kit-visibility", ["kit", "--install", str(install)], {}),
         ("quiet", ["quiet", "--exe", str(install / "mc2.exe")], {})], "head") == 0
-    assert calls.index("mods") < calls.index("det") < calls.index("kit") < calls.index("quiet") < calls.index("cleaned")
+    assert calls.index("mods") < calls.index("det") < calls.index("kit") < calls.index("quiet") < calls.index("save") < calls.index("cleaned")
 
 
 @pytest.mark.parametrize("tier,env,expected", [

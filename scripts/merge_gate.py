@@ -290,7 +290,7 @@ def execute_parallel(steps, head, dry_run=False, keep_going=False):
     Before/deploy/after remain ordered, and every child is joined before return.
     """
     if dry_run:
-        print("Coverage plan: two host slots; isolated mods then determinism overlap stock captures/save-load; contracts/harnesses overlap")
+        print("Coverage plan: two host slots; isolated mods then determinism/saveload overlap stock captures; contracts/harnesses overlap")
         return execute(steps, head, True)
     if os.environ.get("MC2_HOST_LEASE_BATCH"):
         print("Coverage plan: inherited batch reservation requires serial execution")
@@ -331,6 +331,14 @@ def execute_parallel(steps, head, dry_run=False, keep_going=False):
             determinism += [s for s in stock if s[0] in ("kit-visibility", "quiet")
                             and not s[2].get("MC2_GATE_SKIP_REASON")]
             stock = [s for s in stock if s not in determinism]
+        # A mod cold-load starves the save fixture of frames (W83 false reds), so
+        # saveload rows never share a window with the mods battery: they join the
+        # auxiliary worker, which runs mods first. (Without a private clone mods
+        # runs serially ahead of the stock chain, so the order still holds.)
+        if determinism and any(not s[2].get("MC2_GATE_SKIP_REASON") for s in mods):
+            saves = [s for s in stock if s[0].startswith("saveload-")]
+            stock = [s for s in stock if s not in saves]
+            determinism += saves
         offline = [s for s in stock if s[0] in ("contracts", "harnesses", "pytest")]
         offline_result = execute(offline, head, runner=runner, completed=completed) if offline else 0
         if offline_result and not keep_going:
@@ -346,7 +354,7 @@ def execute_parallel(steps, head, dry_run=False, keep_going=False):
         if mods:
             copy_context, copy_future = None, None
             if determinism:
-                command = determinism[0][1]
+                command = next(c for _, c, _ in determinism if "--install" in c)
                 install = Path(command[command.index("--install") + 1]).resolve()
                 copy_context = stock_copy(install)
                 copy_future = pool.submit(copy_context.__enter__)
