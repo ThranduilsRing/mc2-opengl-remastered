@@ -77,7 +77,8 @@ def matched_case_count(exe, filt, env):
     """Cases the built mc2_tests binary would run for filt (doctest --count), or None when the output is unreadable."""
     try:
         proc = subprocess.Popen([str(exe), "--count", "--test-case=" + filt], cwd=REPO_ROOT, env=env,
-                                stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, errors="replace")
+                                stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, errors="replace",
+                                **console_child.child_kwargs(redirected=True))
         out = proc.communicate(timeout=120)[0]
     except (OSError, subprocess.SubprocessError):
         return None

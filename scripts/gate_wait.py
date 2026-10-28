@@ -13,16 +13,19 @@ import subprocess
 import sys
 import time
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import console_child  # noqa: E402
+
 
 def wait(cmd, log, timeout=None):
     started = time.time()
     with open(log, "wb") as fh:
-        p = subprocess.Popen(cmd, stdout=fh, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL)
+        p = subprocess.Popen(cmd, stdout=fh, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL, **console_child.child_kwargs(redirected=True))
         try:
             rc = p.wait(timeout=timeout)
         except subprocess.TimeoutExpired:
             if os.name == "nt":
-                subprocess.run(["taskkill", "/F", "/T", "/PID", str(p.pid)], capture_output=True)
+                subprocess.run(["taskkill", "/F", "/T", "/PID", str(p.pid)], capture_output=True, **console_child.child_kwargs(redirected=True))
             else:
                 p.kill()
             p.wait()
