@@ -754,6 +754,15 @@ void VulkanContext::destroy() {
         messenger_ = VK_NULL_HANDLE;
     }
     if (instance_ != VK_NULL_HANDLE) {
+#ifdef _WIN32
+        // NVIDIA 560.94 can leave an ICD worker running after vkDestroyInstance
+        // unloads its code (nvoglv64.dll_unloaded+0xe76052). Keep the module mapped
+        // until process exit terminates those workers; Vulkan objects still tear down.
+        HMODULE nvidiaIcd = nullptr;
+        if (GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_PIN, L"nvoglv64.dll", &nvidiaIcd)) {
+            ctxlog("NVIDIA ICD retained until process exit (shutdown worker lifetime).");
+        }
+#endif
         vkDestroyInstance(instance_, nullptr);
         instance_ = VK_NULL_HANDLE;
     }
