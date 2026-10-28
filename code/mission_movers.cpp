@@ -24,6 +24,8 @@ void Mission::createPartObject (long partIndex, MoverPtr mover) {
 	{
 		ObjectTypePtr objType = ObjectManager->getObjectType(parts[partIndex].objNumber);
 		Assert(objType != nullptr, partIndex, " Mission.createPartObject: unable to get objType ");
+		if (!objType)
+			return;
 		// Mod-tolerance: if objType is a stub (no appearance name) but the
 		// mission provided a CSVFile, back-fill it so BattleMech::init can
 		// open the chassis .csv. Without this, stub-only mechs crash at

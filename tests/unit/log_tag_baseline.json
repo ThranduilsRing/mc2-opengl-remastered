@@ -5860,6 +5860,18 @@
    "count": 1
   },
   {
+   "tag": "OBJTYPE_INIT_FAILED",
+   "ver": -1,
+   "stream": "log",
+   "keys": [
+    "pak",
+    "result",
+    "reason",
+    "file_error"
+   ],
+   "count": 1
+  },
+  {
    "tag": "OBJ_MVP",
    "ver": -1,
    "stream": "stderr",
