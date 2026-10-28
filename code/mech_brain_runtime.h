@@ -176,6 +176,8 @@ struct MechBrainRuntime {
     float playerFightSince = -1, playerBypassUntil = 0, playerRecoverUntil = 0;
     float playerRegroupUntil = 0;
     unsigned playerRecoveries = 0;
+    unsigned long playerHealthTarget = 0;
+    float playerTargetHealth = 0;
     // BRAIN-FULL-1: the complete declarative Brain{} state (populated from parseMissionFitBrains,
     // after archetype-preset resolution + individual-switch override). Sentinels < 0 / -1 = absent.
     // OPORD type ids: 0=Patrol 1=Guard 2=MoveTo 3=Sentry 4=Escort 5=Ambush 6=Scout 7=Attack

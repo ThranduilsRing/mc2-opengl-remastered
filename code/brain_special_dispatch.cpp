@@ -1459,7 +1459,12 @@ mc2::player::UnitIntent producePlayerIntent(MechWarrior* warrior,
         const float threat = std::max(1.0f, static_cast<float>(enemy->getThreatRating()));
         if (distance < 800) enemyThreat += threat;
         const bool isObjective = enemy->getWatchID() == objectiveTarget;
-        if (!isObjective && now < runtime->playerBypassUntil) continue;
+        const glm::vec3 route = objective - position;
+        const float fraction = std::clamp(glm::dot(enemy->getPosition() - position, route)
+            / std::max(1.0f, glm::dot(route, route)), 0.0f, 1.0f);
+        const bool blocksRoute = distance < 450
+            && glm::distance(enemy->getPosition(), position + fraction * route) < 250;
+        if (!isObjective && now < runtime->playerBypassUntil && !blocksRoute) continue;
         float condition = 1.0f;
         if (enemy->isMover()) {
             auto* mover = static_cast<Mover*>(enemy);
@@ -1479,6 +1484,25 @@ mc2::player::UnitIntent producePlayerIntent(MechWarrior* warrior,
         if (score > best) { best = score; target = enemy; }
     }
     if (enemyThreat > ownThreat * 1.5f && weakTarget) target = weakTarget;
+    if (target) {
+        float remaining = -target->getDamageLevel();
+        if (target->isMover()) {
+            auto* mover = static_cast<Mover*>(target);
+            remaining = 0;
+            for (int loc = 0; loc < mover->numArmorLocations; ++loc) remaining += mover->armor[loc].curArmor;
+            for (int loc = 0; loc < mover->numBodyLocations; ++loc) remaining += mover->body[loc].curInternalStructure;
+        }
+        const bool sameTarget = runtime->playerHealthTarget == target->getWatchID();
+        if (!runtime->playerHealthTarget || (sameTarget && remaining < runtime->playerTargetHealth - 0.01f)) {
+            runtime->playerProgressTime = now;
+            runtime->playerBestDistance = distanceToGoal;
+            runtime->playerRecoverUntil = 0;
+        } else if (!sameTarget && unit->distanceFrom(target->getPosition()) < 450) {
+            runtime->playerRecoverUntil = 0; // Defend against a newly encountered close threat.
+        }
+        runtime->playerHealthTarget = target->getWatchID();
+        runtime->playerTargetHealth = remaining;
+    } else runtime->playerHealthTarget = 0;
     if (target && target->getWatchID() != objectiveTarget) {
         auto* previous = ObjectManager->getByWatchID(runtime->engageTargetWID);
         if (runtime->playerFightSince < 0 || (previous && (previous->isDisabled() || previous->isDestroyed())))
@@ -1491,9 +1515,9 @@ mc2::player::UnitIntent producePlayerIntent(MechWarrior* warrior,
         }
     } else runtime->playerFightSince = -1;
     // Wait for stragglers before contact; briefly withdraw an outmatched force.
-    const bool regroupNeeded = enemyThreat > ownThreat * 1.5f
-        || (enemyThreat > 0 && glm::distance(position, regroup) > 650);
-    if (regroupNeeded && now >= runtime->playerRegroupUntil + 20) {
+    const bool separated = enemyThreat > 0 && glm::distance(position, regroup) > 650;
+    const bool regroupNeeded = enemyThreat > ownThreat * 1.5f || separated;
+    if (separated || (regroupNeeded && now >= runtime->playerRegroupUntil + 20)) {
         runtime->playerRegroupUntil = now + 4;
         std::fprintf(stderr, "[PLAYER_BRAIN] wid=%ld event=regroup own=%.1f threat=%.1f time=%.2f\n",
             unit->getWatchID(), ownThreat, enemyThreat, now);
@@ -1506,7 +1530,7 @@ mc2::player::UnitIntent producePlayerIntent(MechWarrior* warrior,
     }
     // Reissue via a lateral approach after 20 s without closing on the objective.
     // Alternate sides; after two attempts scout another pending marker/last contact.
-    if (!target && now - runtime->playerProgressTime >= 20) {
+    if (now - runtime->playerProgressTime >= 20) {
         runtime->playerProgressTime = now;
         runtime->playerBestDistance = distanceToGoal;
         runtime->playerRecoverUntil = now + 10;
@@ -1521,8 +1545,10 @@ mc2::player::UnitIntent producePlayerIntent(MechWarrior* warrior,
         if (runtime->playerRecoveries > 2) {
             unsigned marker = 0;
             for (auto* candidate : Team::home->objectives) {
-                if (!candidate->IsActive() || candidate->IsHiddenTrigger()
+                if (!candidate->DisplayMarker() || candidate->IsHiddenTrigger()
                     || candidate->ReportedStatus() != OS_UNDETERMINED) continue;
+                const glm::vec3 markerPosition{candidate->MarkerX(), candidate->MarkerY(), 0};
+                if (glm::distance(markerPosition, objective) < 128) continue;
                 if (++marker == (runtime->playerRecoveries - 3) / 2 + 1) {
                     scout = {candidate->MarkerX(), candidate->MarkerY(), 0};
                     break;
@@ -1533,7 +1559,8 @@ mc2::player::UnitIntent producePlayerIntent(MechWarrior* warrior,
         const auto direction = scout - position;
         const float length = std::max(1.0f, glm::length(direction));
         const float side = runtime->playerRecoveries % 2 ? 1.0f : -1.0f;
-        intent.location = position + direction * std::min(1.0f, 400.0f / length)
+        if (runtime->playerRecoveries > 2 && scout != objective) intent.location = scout;
+        else intent.location = position + direction * std::min(1.0f, 400.0f / length)
             + glm::vec3{-direction.y, direction.x, 0} * (side * 250.0f / length);
         intent.location.x = std::clamp(intent.location.x, Terrain::mapTopLeft3d.x + 128,
             Terrain::mapTopLeft3d.x + Terrain::worldUnitsMapSide - 128);
