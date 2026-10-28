@@ -230,7 +230,8 @@ def gpu_mismatch(out: dict, perf: bool, devices: "Sequence[str]", log_text: str 
         return None
     # Explicit = the user asked: MC2_HARNESS_GPU=2070|xtx, or MC2_VK_DEVICE in the shell. A harness-derived hint stays skippable.
     explicit = ((out.get("MC2_HARNESS_GPU") or os.environ.get("MC2_HARNESS_GPU") or "auto").lower() in ("2070", "xtx")
-                or bool(os.environ.get("MC2_VK_DEVICE")))
+                or bool(os.environ.get("MC2_VK_DEVICE"))
+                or want.lower() != "nvidia")   # a hint other than the implicit default was typed by someone: it must match
     if not explicit and "matches no accepted device" in log_text:
         return None
     if not devices:
