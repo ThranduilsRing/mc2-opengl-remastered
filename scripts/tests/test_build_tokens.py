@@ -5,11 +5,20 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 import build_tokens  # noqa: E402
 
 
-def test_pool_size_reads_jobs_file(tmp_path):
-    f = tmp_path / "JOBS"
-    f.write_text("6\n")
-    assert build_tokens.pool_size(str(f)) == 6
-    assert build_tokens.pool_size(str(tmp_path / "missing")) >= 1
+def test_pool_size_reads_build_pool_file(tmp_path, monkeypatch):
+    f = tmp_path / "BUILD_POOL"
+    f.write_text("12\n")
+    assert build_tokens.pool_size(str(f)) == 12
+    # the env override names the pool file; JOBS (per-agent -j) never sizes the pool
+    monkeypatch.setenv("MC2_BUILD_POOL_FILE", str(f))
+    assert build_tokens.pool_size() == 12
+    monkeypatch.delenv("MC2_BUILD_POOL_FILE")
+    # missing or garbage file: cpu_count - 4, at least 1
+    g = tmp_path / "bad"
+    g.write_text("zero\n")
+    want = max(1, (os.cpu_count() or 8) - 4)
+    assert build_tokens.pool_size(str(tmp_path / "missing")) == want
+    assert build_tokens.pool_size(str(g)) == want
 
 
 def test_tokens_are_shared_and_released(tmp_path):

@@ -2,7 +2,8 @@
 
 WHY: five lanes compiling at once stretched a 1023-step build past 1.5 h (2026-10-27). Each token is a byte-range lock on a slot file
 under A:/Games/mc2-ops/build_tokens (MC2_BUILD_TOKEN_DIR overrides); the OS drops the lock when the holder dies, so a crashed build
-never leaks a token. The pool size is the number in A:/Games/mc2-ops/JOBS (MC2_JOBS_FILE overrides), else the core count.
+never leaks a token. The pool size is the host-wide number in A:/Games/mc2-ops/BUILD_POOL (MC2_BUILD_POOL_FILE overrides), else cpu_count - 4.
+A:/Games/mc2-ops/JOBS is the per-agent -j number and never sizes the pool.
 A build asks for K tokens (its -jK), waits until at least one is free, takes up to K, and runs ninja at the width it got.
 """
 from __future__ import annotations
@@ -13,8 +14,8 @@ import time
 OPS = "A:/Games/mc2-ops"
 
 
-def pool_size(jobs_file: str | None = None) -> int:
-    path = jobs_file or os.environ.get("MC2_JOBS_FILE") or os.path.join(OPS, "JOBS")
+def pool_size(pool_file: str | None = None) -> int:
+    path = pool_file or os.environ.get("MC2_BUILD_POOL_FILE") or os.path.join(OPS, "BUILD_POOL")
     try:
         with open(path, encoding="utf-8") as fh:
             n = int(fh.read().split()[0])
@@ -22,7 +23,7 @@ def pool_size(jobs_file: str | None = None) -> int:
             return n
     except (OSError, ValueError, IndexError):
         pass
-    return os.cpu_count() or 4
+    return max(1, (os.cpu_count() or 8) - 4)
 
 
 def token_dir() -> str:
