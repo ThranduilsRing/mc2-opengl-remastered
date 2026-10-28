@@ -193,8 +193,8 @@ void Mission::updateMissionTest(bool report) {
         if (applyPlayerIntent(*this, intent, capture)) ++rejected;
         else ++issued;
     }
-    mc2::fmt::print_err("[MISSION_COMMANDER v1] producer=TechBrain time={:.2f} issued={} rejected={} retreating={} focus={} x={} y={}\n",
-        scenarioTime, issued, rejected, retreating, focus, location.x, location.y);
+    mc2::fmt::print_err("[MISSION_COMMANDER v1] producer=TechBrain time={:.2f} issued={} rejected={} retreating={} focus={} goal_target={} x={} y={}\n",
+        scenarioTime, issued, rejected, retreating, focus, objectiveTarget ? objectiveTarget->getWatchID() : 0, location.x, location.y);
 }
 
 // FREEZE-MOVERS-1: ONE predicate for "the simulation tick is suspended".

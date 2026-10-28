@@ -1396,6 +1396,7 @@ mc2::player::UnitIntent producePlayerIntent(MechWarrior* warrior,
         runtime->playerObjective = objective;
         runtime->playerBestDistance = distanceToGoal;
         runtime->playerProgressTime = now;
+        runtime->playerFightSince = -1;
         runtime->playerRecoverUntil = runtime->playerBypassUntil = 0;
         runtime->playerRecoveries = 0;
     }
@@ -1447,7 +1448,7 @@ mc2::player::UnitIntent producePlayerIntent(MechWarrior* warrior,
     } else runtime->retreatEffectApplied = false;
     std::array<int, MAX_CONTACTS_PER_TEAM> contacts{};
     const long count = unit->getContacts(contacts.data(), (1 | 64), CONTACT_SORT_DISTANCE);
-    GameObjectPtr target = nullptr, weakTarget = nullptr;
+    GameObjectPtr target = nullptr, weakTarget = nullptr, objectiveContact = nullptr;
     float best = -1, weakBest = -1, enemyThreat = 0;
     for (long i = 0; i < count; ++i) {
         auto* enemy = ObjectManager->get(contacts[i]);
@@ -1459,6 +1460,7 @@ mc2::player::UnitIntent producePlayerIntent(MechWarrior* warrior,
         const float threat = std::max(1.0f, static_cast<float>(enemy->getThreatRating()));
         if (distance < 800) enemyThreat += threat;
         const bool isObjective = enemy->getWatchID() == objectiveTarget;
+        if (isObjective) objectiveContact = enemy;
         const glm::vec3 route = objective - position;
         const float fraction = std::clamp(glm::dot(enemy->getPosition() - position, route)
             / std::max(1.0f, glm::dot(route, route)), 0.0f, 1.0f);
@@ -1484,6 +1486,9 @@ mc2::player::UnitIntent producePlayerIntent(MechWarrior* warrior,
         if (score > best) { best = score; target = enemy; }
     }
     if (enemyThreat > ownThreat * 1.5f && weakTarget) target = weakTarget;
+    if (objectiveContact && (runtime->engageTargetWID == objectiveTarget
+        || (runtime->playerFightSince >= 0 && now - runtime->playerFightSince >= 45)))
+        target = objectiveContact;
     if (target) {
         float remaining = -target->getDamageLevel();
         if (target->isMover()) {
@@ -1504,16 +1509,14 @@ mc2::player::UnitIntent producePlayerIntent(MechWarrior* warrior,
         runtime->playerTargetHealth = remaining;
     } else runtime->playerHealthTarget = 0;
     if (target && target->getWatchID() != objectiveTarget) {
-        auto* previous = ObjectManager->getByWatchID(runtime->engageTargetWID);
-        if (runtime->playerFightSince < 0 || (previous && (previous->isDisabled() || previous->isDestroyed())))
-            runtime->playerFightSince = now;
-        if (now - runtime->playerFightSince >= 45) {
+        if (runtime->playerFightSince < 0) runtime->playerFightSince = now;
+        if (now - runtime->playerFightSince >= 45 && now >= runtime->playerBypassUntil) {
             runtime->playerBypassUntil = now + 24;
-            runtime->playerFightSince = -1;
+            runtime->playerFightSince = now;
             target = nullptr;
             std::fprintf(stderr, "[PLAYER_BRAIN] wid=%ld event=disengage time=%.2f\n", unit->getWatchID(), now);
         }
-    } else runtime->playerFightSince = -1;
+    }
     // Wait for stragglers before contact; briefly withdraw an outmatched force.
     const bool separated = enemyThreat > 0 && glm::distance(position, regroup) > 650;
     const bool regroupNeeded = enemyThreat > ownThreat * 1.5f || separated;
