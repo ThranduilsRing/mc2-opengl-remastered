@@ -674,6 +674,11 @@ def main(argv=None) -> int:
         base = os.path.join(args.install, "data", "missions")
         declared = {f"data/missions/{fn}": _sha256(os.path.join(base, fn)) for fn in sorted(os.listdir(base))
                     if fn.endswith((".fit", ".pak")) and os.path.isfile(os.path.join(base, fn))}
+        brain_files = [rel for rel in declared if rel.endswith("_ai.fit") or "_specials" in rel]
+        if brain_files:
+            print("sim_determinism: brain fixtures belong in temporary mod overlays, not the base install; "
+                  "refusing to pin: " + ", ".join(brain_files))
+            return 1
         fp = data_fingerprint(args.install, {"overlay": declared, "stock_digest": ""})
         with open(OVERLAY_MANIFEST, "w", encoding="utf-8", newline="\n") as fh:
             json.dump({"about": "loose fixture files a baseline run may carry on top of the stock data, by sha256; *.beauty sidecars are not fingerprinted; "

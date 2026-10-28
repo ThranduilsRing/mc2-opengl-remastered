@@ -511,11 +511,34 @@ def masked_resave_verdict(first: str | None, second: str | None, mask_path: str,
     return res["first_outside"] is None, si.describe(res)
 
 
+def brain_resave_verdict(first: str | None, second: str | None, rc: int | None = None):
+    """TechBrain's optional BRN1 state must survive save -> load -> re-save byte for byte."""
+    if rc:
+        return False, [f"the smoke run exited {rc}"]
+    reason = save_evidence(first, "quicksave") or save_evidence(second, "re-save")
+    if reason:
+        return False, [reason]
+
+    def brain(path):
+        sections = [raw for _, raw in si.load(path)[1] if raw.startswith(si.SECTION_MAGIC)]
+        return [s for raw in sections for s in si.decode_sections(raw) if s[0] == int.from_bytes(b"BRN1", "little")]
+
+    a, b = brain(first), brain(second)
+    if len(a) != 1 or len(b) != 1:
+        return False, ["BRN1 missing or duplicated in quicksave/re-save"]
+    return a == b, ["BRN1 save -> load -> re-save " + ("identical" if a == b else "DIFFERS")]
+
+
 def fixture_verdict(first: str | None, second: str | None, mask_path: str | None = None, rc: int | None = None):
     # WHY: the mask is the policy under which a differing re-save can still pass; masked_resave_verdict also refuses a missing/empty/crashed run.
     if mask_path:
-        return masked_resave_verdict(first, second, mask_path, rc)
-    return resave_verdict(first, second, rc)
+        ok, lines = masked_resave_verdict(first, second, mask_path, rc)
+    else:
+        ok, lines = resave_verdict(first, second, rc)
+    if os.environ.get("MC2_BRAIN_POLICY") == "techbrain":
+        brain_ok, brain_lines = brain_resave_verdict(first, second, rc)
+        return ok and brain_ok, brain_lines + lines
+    return ok, lines
 
 
 def frames_from_baseline(args, base: dict | None) -> str | None:
