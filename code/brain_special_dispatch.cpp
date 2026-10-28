@@ -1590,7 +1590,7 @@ mc2::player::UnitIntent producePlayerIntent(MechWarrior* warrior,
         if (runtime->playerRecoveries > 2 && scout != objective)
             intent.location = position + direction * std::min(1.0f, 1200.0f / length);
         else intent.location = position + direction * std::min(1.0f, 400.0f / length)
-            + glm::vec3{-direction.y, direction.x, 0} * (side * 1200.0f / length);
+            + glm::vec3{-direction.y, direction.x, 0} * (side * 250.0f / length);
         intent.location.x = std::clamp(intent.location.x, Terrain::mapTopLeft3d.x + 128,
             Terrain::mapTopLeft3d.x + Terrain::worldUnitsMapSide - 128);
         if (!newRecovery) intent.location = retainWaypoint(intent.location);
@@ -1603,10 +1603,7 @@ mc2::player::UnitIntent producePlayerIntent(MechWarrior* warrior,
         auto* object = ObjectManager->getByWatchID(objectiveTarget);
         if (object && !object->isMover() && object->getExists() && !object->isDestroyed()) target = object;
     }
-    if (target && !target->isMover()
-        && unit->distanceFrom(target->getPosition()) > unit->getOptimalFireRange()) {
-        intent.location = target->getPosition();
-    } else if (target) {
+    if (target) {
         intent.goal = mc2::player::Goal::Attack;
         intent.targetWatchId = target->getWatchID();
         intent.posture = mc2::player::Posture::Engage;
@@ -1614,8 +1611,7 @@ mc2::player::UnitIntent producePlayerIntent(MechWarrior* warrior,
     }
     // After a failed long route, keep issuing reachable local legs instead of
     // returning to the same full-map request after each recovery window.
-    if (intent.goal == mc2::player::Goal::Move && (runtime->playerRecoveries > 0
-        || distanceToGoal > 5000 || (target && !target->isMover()))) {
+    if (intent.goal == mc2::player::Goal::Move && (runtime->playerRecoveries > 0 || distanceToGoal > 5000)) {
         const auto route = intent.location - position;
         const float distance = glm::length(route);
         if (distance > 1200) intent.location = position + route * (1200.0f / distance);
