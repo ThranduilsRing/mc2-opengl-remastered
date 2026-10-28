@@ -389,10 +389,15 @@ void GVAppearance::setGesture (unsigned long gestureId)
 	if (gestureId >= MAX_GV_ANIMATIONS)
 		return;
 
-	if ((status == OBJECT_STATUS_DESTROYED) || (status == OBJECT_STATUS_DISABLED))
+	// The tick (gesture requests from GroundVehicle::updateAnimations) reads the sim status and leaves the draw shape alone;
+	// updateGeometry applies the animation to gvShape before it draws.
+	const bool simPass = simulationOwned() && !simPresentationPass;
+	const long gestureStatus = simPass ? simStatus_ : status;
+	if ((gestureStatus == OBJECT_STATUS_DESTROYED) || (gestureStatus == OBJECT_STATUS_DISABLED))
 		return;
 		
-	appearType->setAnimation(gvShape,gestureId);
+	if (!simPass)
+		appearType->setAnimation(gvShape,gestureId);
 	unitAnim().gvAnimationState = gestureId;
 	unitAnim().currentFrame = 0.0f;
 	if (appearType->gvStartF[gestureId])
@@ -430,8 +435,33 @@ glm::vec3 GVAppearance::getHitNode (void)
  	return result;
 }
 
+// The tick's entry to the sim half of the appearance.
+void GVAppearance::setSimInput (const SimInput& in)
+{
+	simPosition_ = in.position;
+	simRotation_ = in.rotation;
+	unitAnim().turretRotation = in.torsoRotation;
+	unitAnim().pitch = in.pitch;
+	unitAnim().roll = in.roll;
+	if (in.hasStatus)
+		simStatus_ = in.status;
+}
+
 void GVAppearance::setObjectParameters (const glm::vec3 &pos, float Rot, long sel, long team, long homeRelations)
 {
+	// Load and init paths seed the sim copy through here (then refreshSimPose); the tick uses setSimInput. As before, the
+	// turret starts out facing the body heading.
+	if (simulationOwned() && !simPresentationPass)
+	{
+		SimInput seed;
+		seed.position = pos;
+		seed.rotation = Rot;
+		seed.torsoRotation = Rot;
+		seed.pitch = unitAnim().pitch;
+		seed.roll = unitAnim().roll;
+		setSimInput(seed);
+	}
+
 	movedThisFrame = false;
 	if ((rotation != Rot) || (!mc2::math::closeEnough(pos, position)))
 		movedThisFrame = true;
@@ -919,10 +949,11 @@ bool GVAppearance::playDestruction (void)
 glm::vec3 GVAppearance::getNodeNamePosition (const char *nodeName)
 {
     if (!simPresentationPass && simPose->ready) {
-        const auto node = gvShape->GetNodeNameId(nodeName);
+        const auto node = simulationShape_ ? simulationShape_->GetNodeNameId(nodeName) : -1;
         return node >= 0 && static_cast<size_t>(node) < simPose->shapeNodes.size()
             ? simPose->shapeNodes[node] : simPose->root;
     }
+	GV_POSE_VIEW_LOCALS
 	glm::vec3 result = position;
 
 	// C3: route to GPU-lagged visibility when killswitch is enabled.
@@ -962,6 +993,7 @@ glm::vec3 GVAppearance::getNodeIdPosition (long nodeId)
 {
     if (!simPresentationPass && simPose->ready) return nodeId >= 0 && static_cast<size_t>(nodeId) < simPose->shapeNodes.size() ? simPose->shapeNodes[nodeId] : simPose->root;
 
+	GV_POSE_VIEW_LOCALS
 	glm::vec3 result = position;
 
 	// C3: route to GPU-lagged visibility when killswitch is enabled.

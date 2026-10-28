@@ -67,8 +67,43 @@ glm::vec3 debugMechActorPosition[MAX_MECHS];
 float mechDebugAngle[MAX_MECHS];
 float torsoDebugAngle[MAX_MECHS];
 
+// The tick's entry to the sim half of the appearance. Same gesture lock as setObjectParameters / setMoverParameters.
+void Mech3DAppearance::setSimInput (const SimInput& in)
+{
+	const auto g = unitAnim().currentGestureId;
+	if (!((g == 23) || (g == 24) || (g == 21) || (g == 22) || (g == 14) || (g == 15)))
+	{
+		simRotation_ = in.rotation;
+		if (simRotation_ > 180)
+			simRotation_ -= 360;
+		if (simRotation_ < -180)
+			simRotation_ += 360;
+
+		unitAnim().torsoRotation = in.torsoRotation;
+		if (unitAnim().torsoRotation > 180)
+			unitAnim().torsoRotation -= 360;
+		if (unitAnim().torsoRotation < -180)
+			unitAnim().torsoRotation += 360;
+	}
+	simPosition_ = in.position;
+	if (in.hasStatus)
+		simStatus_ = in.status;
+	if (in.debugMove)
+		simDebugMove_ = true;
+}
+
 void Mech3DAppearance::setObjectParameters (const glm::vec3 &pos, float Rot, long sel, long team, long homeRelations)
 {
+	// Load and init paths seed the sim copy through here (then refreshSimPose); the tick uses setSimInput.
+	if (simulationOwned() && !simPresentationPass)
+	{
+		SimInput seed;
+		seed.position = pos;
+		seed.rotation = Rot;
+		seed.torsoRotation = unitAnim().torsoRotation;
+		setSimInput(seed);
+	}
+
 	movedThisFrame = false;
 	if ((rotation != Rot) || (!mc2::math::closeEnough(pos, position)))
 		movedThisFrame = true;
@@ -274,7 +309,7 @@ void Mech3DAppearance::copyTo (MechAppearanceData *data)
 	data->lockRotation = unitAnim().lockRotation;
 
 	data->velocity = unitAnim().velocity;
-	data->status = status;
+	data->status = simulationOwned() ? simStatus_ : status;
 
 	data->currentStateGoal = unitAnim().currentStateGoal;
 	data->currentGestureId = unitAnim().currentGestureId;
@@ -411,6 +446,7 @@ glm::vec3 Mech3DAppearance::getHitNodeLeft (void)
 {
     if (!simPresentationPass && simPose->ready) return simPose->hitLeft;
 
+	POSE_VIEW_LOCALS
 	if (hitLeftNodeIndex == -1)
 		hitLeftNodeIndex = mechShape->GetNodeNameId("hit_left");
 
@@ -457,6 +493,7 @@ glm::vec3 Mech3DAppearance::getHitNodeRight (void)
 {
     if (!simPresentationPass && simPose->ready) return simPose->hitRight;
 
+	POSE_VIEW_LOCALS
 	if (hitRightNodeIndex == -1)
 		hitRightNodeIndex = mechShape->GetNodeNameId("hit_right");
 

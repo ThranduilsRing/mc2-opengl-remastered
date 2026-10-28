@@ -571,6 +571,8 @@ void GameObjectManager::updateAppearancesOnly( bool terrain, bool movers, bool o
 						Terrain::objVertexActive[objList[objIndex]->getVertexNum()] &&
 						objList[objIndex]->getExists())
 					{
+						if (objList[objIndex]->getObjectClass() == TERRAINOBJECT)
+							static_cast<TerrainObject*>(objList[objIndex])->applyAppearancePush();
 						if (objList[objIndex]->getAppearance()->recalcBounds())
 						{
 							// Must force here as well.
@@ -607,6 +609,7 @@ void GameObjectManager::updateAppearancesOnly( bool terrain, bool movers, bool o
 			for (long i = 0; i < numMechs; i++)
 				if (mechs[i] && mechs[i]->getExists())
 				{
+					mechs[i]->applyAppearancePush();
 					bool inView = mechs[i]->getAppearance()->recalcBounds();
 					if (inView)
 						mechs[i]->windowsVisible = turn;
@@ -634,6 +637,7 @@ void GameObjectManager::updateAppearancesOnly( bool terrain, bool movers, bool o
 			for (long i = 0; i < numVehicles; i++)
 				if (vehicles[i] && vehicles[i]->getExists())
 				{
+					vehicles[i]->applyAppearancePush();
 					bool inView = vehicles[i]->getAppearance()->recalcBounds();
 					vehicles[i]->windowsVisible = turn;
 

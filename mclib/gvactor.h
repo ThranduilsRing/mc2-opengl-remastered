@@ -182,6 +182,14 @@ class GVAppearanceType : public AppearanceType
 // GVAppearance
 //
 //***********************************************************************
+// Used at the top of the node-position getters: work on the sim copy of shape, node index and pose while updateSimPose builds
+// the palette (see GVAppearance::poseView). The locals shadow the draw-path members of the same names on purpose, so the
+// getter bodies stay as they were.
+#define GV_POSE_VIEW_LOCALS \
+	const PoseView pv_ = poseView(); \
+	TG_MultiShapePtr const gvShape = pv_.shape; long& rotationalNodeIndex = pv_.rotNode; \
+	const glm::vec3 position = pv_.pos; const float rotation = pv_.rot;
+
 class GVAppearance : public ObjectAppearance
 {
 	public:
@@ -234,6 +242,27 @@ class GVAppearance : public ObjectAppearance
 		// C3: cached GameObjectHandle from init(obj), used by GPU-cull lifecycle gates
 		// in node-position functions. -1 = no owner; set in init().
 		long										actorHandle_ = -1;
+
+		// Simulation inputs and pose shape. The tick writes them (setSimInput, or setObjectParameters on the init/load paths);
+		// only the sim animation step and updateSimPose read them. The draw path reads position / rotation / status /
+		// gvShape / rotationalNodeIndex, which presentation writes: the two sets never alias, so a tick can run while the
+		// previous frame is drawn. updateSimPose poses simulationShape_ (a clone of the body or destroyed shape), never gvShape.
+		glm::vec3									simPosition_{};
+		float										simRotation_ = 0.0f;
+		long										simStatus_ = 0;
+		std::unique_ptr<TG_MultiShape>				simulationShape_;
+		const void*									simulationSource_ = nullptr;
+		long										simRotationalNodeIndex_ = -1;
+		bool										buildingSimPose_ = false;
+		// The shape, node index and pose inputs the node-position getters work from: the sim copy while updateSimPose builds
+		// the palette, the draw copy otherwise.
+		struct PoseView { TG_MultiShapePtr shape; long& rotNode; glm::vec3 pos; float rot; };
+		PoseView poseView (void)
+		{
+			if (buildingSimPose_)
+				return { simulationShape_.get(), simRotationalNodeIndex_, simPosition_, simRotation_ };
+			return { gvShape, rotationalNodeIndex, position, rotation };
+		}
 
 
 
@@ -349,6 +378,8 @@ class GVAppearance : public ObjectAppearance
 		virtual bool isMouseOver (float px, float py);
 		
 		virtual void setObjectParameters (const glm::vec3 &pos, float rot, long selected, long team, long homeRelations);
+
+		void setSimInput (const SimInput& in) override;
 
 		virtual void setMoverParameters (float turretRot, float lArmRot = 0.0f, float rArmRot = 0.0f, bool isAirborne = false);
 

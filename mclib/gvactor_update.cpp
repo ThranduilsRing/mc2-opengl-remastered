@@ -19,6 +19,10 @@ static unsigned long s_spotDiagGvCalls      = 0;
 
 glm::quat GVAppearance::poseRotation() const
 {
+		// While updateSimPose builds the palette the pose comes from the sim copies; shadow the draw members for this body.
+		const glm::vec3 position = buildingSimPose_ ? simPosition_ : this->position;
+		const float rotation = buildingSimPose_ ? simRotation_ : this->rotation;
+		const long status = buildingSimPose_ ? simStatus_ : this->status;
 		float pitchAngle = unitAnim().pitch;
 		float rollAngle = unitAnim().roll;
 
@@ -642,6 +646,7 @@ long GVAppearance::update (bool animate)
 
 void GVAppearance::destroy (void)
 {
+	simulationShape_.reset();
 	// (E) T1.12: paired cleanup for SpotLight_-child illumination from
 	// T1.11. Walks CACHED state only (spotlightLights_/spotlightSlotIds_);
 	// does NOT call getNodeIdPosition or any gvShape method — same
@@ -869,7 +874,22 @@ void GVAppearance::flashBuilding (float dur, float fDuration, DWORD color)
 }
 
 void GVAppearance::updateSimPose() {
-    if (!gvShape) return;
+    // Built entirely from the sim copies (simulationShape_, simPosition_/simRotation_/simStatus_): the draw-side gvShape,
+    // position, rotation and status are never touched here, so presentation and render can use them while a tick runs. The
+    // locals shadow the draw members of the same names so the body below is unchanged.
+    if (!appearType || !appearType->gvShape[0]) return;
+    const bool wrecked = simStatus_ == OBJECT_STATUS_DESTROYED || simStatus_ == OBJECT_STATUS_DISABLED;
+    const bool useDamageShape = wrecked && appearType->gvDmgShape;
+    TG_TypeMultiShapePtr const source = useDamageShape ? appearType->gvDmgShape : appearType->gvShape[0];
+    if (!simulationShape_ || simulationSource_ != source) {
+        simulationShape_.reset(source->CreateFrom());
+        simulationSource_ = source;
+    }
+    TG_MultiShapePtr const gvShape = simulationShape_.get();
+    const glm::vec3 position = simPosition_;
+    const float rotation = simRotation_;
+    buildingSimPose_ = true;
+    if (!useDamageShape && unitAnim().gvAnimationState >= 0) appearType->setAnimation(gvShape, unitAnim().gvAnimationState);
     simPose->ready = false;
     glm::vec3 translation;
     mc2ToRender(translation, position);
@@ -898,4 +918,5 @@ void GVAppearance::updateSimPose() {
         ? simPose->shapeNodes[hit] : position;
     simPose->hitRight = simPose->hitLeft;
     simPose->ready = true;
+    buildingSimPose_ = false;
 }

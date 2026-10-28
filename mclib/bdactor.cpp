@@ -213,6 +213,7 @@ void BldgAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 	shapeMax.x = shapeMax.y = 50;
 
     status = OBJECT_STATUS_NORMAL; // sebi: init so will not be garbage
+    simStatus_ = OBJECT_STATUS_NORMAL;
 
 	unitAnim().bdAnimationState =-1;
 	unitAnim().currentFrame = 0.0f;
@@ -536,6 +537,8 @@ void BldgAppearance::setObjStatus (long oStatus)
 
 	}
 
+	if (simulationOwned() && !simPresentationPass)
+		simStatus_ = oStatus;
 	status = oStatus;
 }
 
@@ -685,8 +688,26 @@ void BldgAppearance::setMoverParameters (float turretRot, float lArmRot, float r
 	unitAnim().pitch = lArmRot;
 }
 
+// The tick's entry to the sim half of the appearance.
+void BldgAppearance::setSimInput (const SimInput& in)
+{
+	simPosition_ = in.position;
+	simRotation_ = in.rotation;
+	unitAnim().turretRotation = in.torsoRotation;
+	unitAnim().pitch = in.pitch;
+	if (in.hasStatus)
+		simStatus_ = in.status;
+}
+
 void BldgAppearance::setObjectParameters (const glm::vec3 &pos, float Rot, long sel, long team, long homeRelations)
 {
+	// Load and init paths (and Building::update) seed the sim copy through here; terrain objects use setSimInput.
+	if (simulationOwned() && !simPresentationPass)
+	{
+		simPosition_ = pos;
+		simRotation_ = Rot;
+	}
+
 	rotation = Rot;
 
 	position = pos;
@@ -870,6 +891,11 @@ uint32_t g_bldgAnimGate_animStateToState()     { return s_animStateToStateGestur
 
 void BldgAppearance::updateSimPose()
 {
+    // Built from the sim copies only (simulationShape_, simPosition_/simRotation_/simStatus_); the locals shadow the draw
+    // members of the same names so the body below is unchanged.
+    const glm::vec3 position = simPosition_;
+    const float rotation = simRotation_;
+    const long status = simStatus_;
     if (!appearType) { simulationShape_.reset(); simPose->ready = false; return; }
     auto* source = status == OBJECT_STATUS_DESTROYED && appearType->bldgDmgShape ?
         appearType->bldgDmgShape : appearType->getBldgCollisionShape(0);

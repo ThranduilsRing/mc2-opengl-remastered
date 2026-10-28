@@ -808,6 +808,11 @@ void Mech3DAppearance::updateGeometry (void)
 		}
 	}
 	
+	// The tick no longer touches the jet effect: stop it here once the presented jump has landed.
+	if (jumpJetEffect && jumpJetEffect->IsExecuted() && unitAnim().inJump && !unitAnim().jumpAirborne &&
+		(unitAnim().currentGestureId == GestureJump) && (unitAnim().currentFrame >= mechType->getJumpLandFrame()))
+		jumpJetEffect->Stop();
+
 	if ((unitAnim().currentGestureId == GestureJump) && unitAnim().inJump && jumpJetEffect && jumpJetEffect->IsExecuted())
 	{
 		long jumpNodeId = mechType->numSmokeNodes + mechType->numWeaponNodes;
@@ -993,18 +998,21 @@ void Mech3DAppearance::updateGeometry (void)
 void Mech3DAppearance::updateSimPose (bool advanceClock)
 {
 	ZoneScopedN("GameLogic.Mech3D.UpdateSimPose");
-	if (!mechShape)
+	// Built entirely from the sim copies (simulationShape_, simPosition_/simRotation_/simStatus_, the sim node indices): the
+	// draw-side mechShape, position, rotation, status and node indices are never touched here, so presentation and render can
+	// use them while a tick runs. The locals shadow the draw members of the same names so the body below is unchanged.
+	if (!mechType || !mechType->mechShape[0])
 		return;
 
     if (!simulationShape_) simulationShape_.reset(mechType->mechShape[0]->CreateFrom());
-    auto* drawShape = mechShape;
-    mechShape = simulationShape_.get();
-    const long drawLOD = currentLOD;
-    const long drawRotationNode = rotationalNodeIndex;
-    const long drawHitLeft = hitLeftNodeIndex, drawHitRight = hitRightNodeIndex;
-    currentLOD = 0;
-    rotationalNodeIndex = -1;
-    hitLeftNodeIndex = hitRightNodeIndex = -1;
+    TG_MultiShapePtr const mechShape = simulationShape_.get();
+    const glm::vec3 position = simPosition_;
+    const float rotation = simRotation_;
+    const long status = simStatus_;
+    const long currentLOD = 0;
+    long& rotationalNodeIndex = simRotationalNodeIndex_;
+    rotationalNodeIndex = simHitLeftNodeIndex_ = simHitRightNodeIndex_ = -1;
+    buildingSimPose_ = true;
     simPose->ready = false;
     if (unitAnim().leftArmOff) mechShape->StopUsing("joint_luarm");
     if (unitAnim().rightArmOff) mechShape->StopUsing("joint_ruarm");
@@ -1071,10 +1079,7 @@ void Mech3DAppearance::updateSimPose (bool advanceClock)
         simPose->shapeNodes[i] = (node.x == 0 && node.y == 0 && node.z == 0) ? position : node;
     }
     simPose->ready = true;
-    rotationalNodeIndex = drawRotationNode;
-    hitLeftNodeIndex = drawHitLeft; hitRightNodeIndex = drawHitRight;
-    currentLOD = drawLOD;
-    mechShape = drawShape;
+    buildingSimPose_ = false;
 }
 
 bool Mech3DAppearance::setJumpParameters (glm::vec3 &end)

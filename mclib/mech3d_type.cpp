@@ -690,6 +690,7 @@ glm::vec3 Mech3DAppearance::getWeaponNodePosition (long nodeId)
 {
     if (!simPresentationPass && simPose->ready) return nodeId >= 0 && static_cast<size_t>(nodeId) < simPose->nodes.size() ? simPose->nodes[nodeId] : simPose->root;
 
+	POSE_VIEW_LOCALS
 	glm::vec3 result = position;
 	if ((nodeId < mechType->numSmokeNodes) || (nodeId >= (mechType->numSmokeNodes+mechType->numWeaponNodes)))
 		return result;
@@ -756,6 +757,7 @@ glm::vec3 Mech3DAppearance::getNodeNamePosition (const char *nodeName)
         return node >= 0 && static_cast<size_t>(node) < simPose->shapeNodes.size()
             ? simPose->shapeNodes[node] : simPose->root;
     }
+	POSE_VIEW_LOCALS
 	glm::vec3 result = position;
     if (mechShape && mechShape->GetNumShapes() > 0) {
         const void* type = mechType ? static_cast<const void*>(mechType->mechShape[currentLOD]) : nullptr;
@@ -795,6 +797,7 @@ glm::vec3 Mech3DAppearance::getNodeIdPosition (long nodeId)
 {
     if (!simPresentationPass && simPose->ready) return nodeId >= 0 && static_cast<size_t>(nodeId) < simPose->shapeNodes.size() ? simPose->shapeNodes[nodeId] : simPose->root;
 
+	POSE_VIEW_LOCALS
 	glm::vec3 result = position;
 
 	// No visibility test: update() poses every mech each sim step, so the node is current on and off screen.
@@ -827,6 +830,7 @@ glm::vec3 Mech3DAppearance::getNodePosition (long nodeId)
 {
     if (!simPresentationPass && simPose->ready) return nodeId >= 0 && static_cast<size_t>(nodeId) < simPose->nodes.size() ? simPose->nodes[nodeId] : simPose->root;
 
+	POSE_VIEW_LOCALS
 	glm::vec3 result = position;
 	if ((nodeId < 0) || (nodeId >= mechType->getTotalNodes()))
 		return result;

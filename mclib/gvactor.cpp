@@ -455,6 +455,7 @@ glm::vec3 GVAppearance::getWeaponNodePosition (long nodeId)
 {
     if (!simPresentationPass && simPose->ready) return nodeId >= 0 && static_cast<size_t>(nodeId) < simPose->nodes.size() ? simPose->nodes[nodeId] : simPose->root;
 
+	GV_POSE_VIEW_LOCALS
 	glm::vec3 result = position;
 	if ((nodeId < appearType->numSmokeNodes) || (nodeId >= (appearType->numSmokeNodes+appearType->numWeaponNodes)))
 		return result;
@@ -501,6 +502,7 @@ glm::vec3 GVAppearance::getWeaponNodePosition (long nodeId)
 //-----------------------------------------------------------------------------
 glm::vec3 GVAppearance::getSmokeNodePosition (long nodeId)
 {
+	GV_POSE_VIEW_LOCALS
 	glm::vec3 result = position;
 	if ((nodeId < 0) || (nodeId >= appearType->numSmokeNodes))
 		return result;
@@ -531,6 +533,7 @@ glm::vec3 GVAppearance::getSmokeNodePosition (long nodeId)
 //-----------------------------------------------------------------------------
 glm::vec3 GVAppearance::getDustNodePosition (long nodeId)
 {
+	GV_POSE_VIEW_LOCALS
 	glm::vec3 result = position;
 	if ((nodeId < 0) || (nodeId >= appearType->numFootNodes))
 		return result;
@@ -726,6 +729,8 @@ void GVAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 	destructFX = nullptr;
 	
 	status = 0;
+	simStatus_ = 0;
+	simRotationalNodeIndex_ = -1;
 	unitAnim().roll = unitAnim().pitch = 0.0f;
 
 	currentLOD = 0;
@@ -1068,6 +1073,10 @@ void GVAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 //-----------------------------------------------------------------------------
 void GVAppearance::setObjStatus (long oStatus)
 {
+	// Kill handlers (GroundVehicle destruction, turrets) push the status mid-tick; the sim copy follows at once so the pose
+	// (destroyed shape) matches what the sim saw when the draw shape was swapped here.
+	if (simulationOwned() && !simPresentationPass)
+		simStatus_ = oStatus;
 	if (status != oStatus)
 	{
 		if ((oStatus == OBJECT_STATUS_DESTROYED) || (oStatus == OBJECT_STATUS_DISABLED))

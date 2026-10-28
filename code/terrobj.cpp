@@ -734,6 +734,25 @@ void TerrainObject::primeAppearanceForMissionLoad (void)
 	appearance->setInView(inView);
 }
 
+// Presentation phase: the draw-side parameters the tick no longer pushes (power-out lights, tree pitch and shadow motion).
+// Called for every terrain object the presentation pass visits; idempotent.
+void TerrainObject::applyAppearancePush (void)
+{
+	if (!appearance)
+		return;
+	if (powerSupply)
+	{
+		GameObjectPtr powerObject = ObjectManager->getByWatchID(powerSupply);
+		if (powerObject && (powerObject->getStatus() == OBJECT_STATUS_DESTROYED))
+			appearance->setLightsOut(true);
+	}
+	if (appearance->getAppearanceClass() == TREE_APPR_TYPE)
+	{
+		appearance->setMoverParameters(pitchAngle);
+		static_cast<TreeAppearance*>(appearance)->setShadowMoving(getFlag(OBJECT_FLAG_FALLING));
+	}
+}
+
 long TerrainObject::update (void) {
 
 	if (getFlag(OBJECT_FLAG_JUSTCREATED))
@@ -771,14 +790,14 @@ long TerrainObject::update (void) {
 	}
 
 	//-------------------------------------------
-	// Handle power out.
-	if (appearance && powerSupply)
+	// Handle power out. The tick leaves the lights to applyAppearancePush (presentation); a presentation-pass update() applies them here.
+	if (appearance && powerSupply && simPresentationPass)
 	{
 		GameObjectPtr powerObject = ObjectManager->getByWatchID(powerSupply);
 		if (powerObject && (powerObject->getStatus() == OBJECT_STATUS_DESTROYED))
 			appearance->setLightsOut(true);
 	}
-		
+
  	if (appearance)
 	{
 		if (getFlag(OBJECT_FLAG_FALLING))
@@ -801,15 +820,28 @@ long TerrainObject::update (void) {
 			}
 		}
 
+		// Falling and terrain-map effects above are simulation. Geometry and
+		// dust effects are refreshed by the presentation pass.
+		if (!simPresentationPass)
+		{
+			// The tick feeds only the sim half of a building-class appearance. A tree has no sim state: its draw parameters
+			// (pitch, shadow motion) are applied by applyAppearancePush.
+			if (appearance->getAppearanceClass() != TREE_APPR_TYPE)
+			{
+				Appearance::SimInput simInput;
+				simInput.position = position;
+				simInput.rotation = rotation;
+				simInput.torsoRotation = pitchAngle;
+				appearance->setSimInput(simInput);
+			}
+			return 1;
+		}
 		{
 			appearance->setObjectParameters(position,rotation,FALSE,getTeamId(),terrainObjectHomeRelation(getTeamId()));
 			appearance->setMoverParameters(pitchAngle);
 			if (appearance->getAppearanceClass() == TREE_APPR_TYPE)
 				static_cast<TreeAppearance*>(appearance)->setShadowMoving(getFlag(OBJECT_FLAG_FALLING));
 		}
-		// Falling and terrain-map effects above are simulation. Geometry and
-		// dust effects are refreshed by the presentation pass.
-		if (!simPresentationPass) return 1;
 		bool inView = false;
 		{
 			if (gpu_cull::readback_isEnabled()) {

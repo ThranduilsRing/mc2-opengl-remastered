@@ -24,18 +24,9 @@ long BattleMech::update (void)
 
 	playedCriticalHit = false;
 
-	if ( getTeam() == Team::home )
-	{
-		(static_cast<ObjectAppearance*>(appearance))->pilotNameID = getPilot()->descID;
-		(static_cast<ObjectAppearance*>(appearance))->pilotName[0] = 0;
-		appearance->setMechName( variantName );
-	}
-	else if ( MPlayer )
-	{
-		strcpy( (static_cast<ObjectAppearance*>(appearance))->pilotName, (commanderId > -1) ? MPlayer->playerInfo[commanderId].name : " " );
-	}
-	else
-		(static_cast<ObjectAppearance*>(appearance))->pilotNameID = -1;
+	// What the appearance's draw side needs from this tick is decided below and applied by applyAppearancePush in presentation.
+	bool statusPushed = false;
+	long pushedStatus = 0;
 
 	if (isDestroyed() || isDisabled())
 		setTangible(false);
@@ -345,8 +336,7 @@ long BattleMech::update (void)
 	else if (isDisabled() && !isDestroyed())
 	{
 		updatePathLock(false);
-	
-		(static_cast<ObjectAppearance*>(appearance))->pilotNameID = IDS_NOPILOT;
+
 		control.settings.mech.gestureGoal = -1;
 		updateDynamics();
 
@@ -461,26 +451,153 @@ long BattleMech::update (void)
 				mechRemoved = true;
 			}
 			else if (mechRemoved)
-				appearance->setObjStatus(getStatus());
+			{
+				statusPushed = true;
+				pushedStatus = getStatus();
+			}
 		}
 	}
 
 
-	// Setup the Render stuff here.  Must do in Update to avoid texture lock in render!
-	long relationship = 0;
-	if (getTeamId() == Team::home->getId())
+	// Feed the sim half of the appearance: the animation state machine and SimPose read these sim copies, never the draw state.
+	// Everything the draw side needs (names, pose, status, alpha, sensor level, bars, visual state) is pushed by presentation
+	// from this mech's state: see applyAppearancePush. The tick no longer writes it.
+	if (!mechRemoved && !isDestroyed())
 	{
-		//Two Possibilities.  Either we have the same commander or we don't.
-		// If we do, we are on the same "team", if not we are ALLIES!!!
-		if (getCommanderId() != Commander::home->getId())
+		statusPushed = true;
+		pushedStatus = getStatus();
+	}
+	{
+		Appearance::SimInput simInput;
+		simInput.position = position;
+		simInput.rotation = rotation;
+		simInput.torsoRotation = torsoRotation;
+		simInput.hasStatus = statusPushed;
+		simInput.status = pushedStatus;
+		simInput.debugMove = (control.getType() == CONTROL_PLAYER);
+		appearance->setSimInput(simInput);
+	}
+
+	// Water wake is a request on the sim animation state (the effect is created in presentation).
+	int watercellR, watercellC;
+	land->worldToCell(position,watercellR, watercellC);
+	if (GameMap->getDeepWater(watercellR, watercellC) ||
+		GameMap->getShallowWater(watercellR, watercellC))
+	{
+		appearance->startWaterWake();
+	}
+	else
+	{
+		appearance->stopWaterWake();
+	}
+
+	AppearancePush push;
+	push.hasStatus = statusPushed;
+	push.status = pushedStatus;
+
+	//Must save sensor data HERE now so fades happen OK.
+	if (getTeamId() != Team::home->getId())
+	{
+		conStat = getContactStatus(Team::home->getId(), true);
+
+		if ((conStat == CONTACT_VISUAL) || isDestroyed() || isDisabled() || ShowMovers || (MPlayer && MPlayer->allUnitsDestroyed[MPlayer->commanderID]))
 		{
-			relationship = 1;
+			if (alphaValue != 0xff)
+			{
+				fadeTime += frameLength;
+				if (fadeTime > ContactFadeTime)
+				{
+					fadeTime = ContactFadeTime;
+					alphaValue = 0xff;
+				}
+				else
+				{
+					float fadeValue = fadeTime / ContactFadeTime * 255.0f;
+					alphaValue = fadeValue;
+				}
+			}
+
+			push.hasAlpha = true;
+			push.sensorLevel = 0;
+		}
+		else	//Pretty much anything else is fading out.
+		{
+			if (alphaValue != 0x0)
+			{
+				fadeTime -= frameLength;
+				if (fadeTime < 0.0f)
+				{
+					fadeTime = 0.0f;
+					alphaValue = 0x0;
+				}
+				else
+				{
+					float fadeValue = fadeTime / ContactFadeTime * 255.0f;
+					alphaValue = fadeValue;
+				}
+			}
+
+			push.hasAlpha = true;
+
+			if (conStat == CONTACT_SENSOR_QUALITY_1)
+				push.sensorLevel = 1;
+			else if (conStat == CONTACT_SENSOR_QUALITY_2)
+				push.sensorLevel = 2;
+			else if (conStat == CONTACT_SENSOR_QUALITY_3)
+				push.sensorLevel = 3;
+			else if (conStat == CONTACT_SENSOR_QUALITY_4)
+				push.sensorLevel = 4;
 		}
 	}
 	else
 	{
-		relationship = 2;
+		if (isOnGui)
+		{
+			alphaValue = 0xff;
+			push.sensorLevel = 5;
+			push.hasAlpha = true;
+		}
 	}
+
+	// Sim half only: gesture state machine, frame advance, SimPose. update() returns before any draw work for a battle mech.
+	appearance->update();
+
+	appearancePush = push;
+	++pushSerial;
+
+	//Must make room for holdFireIcons on HUD if this mech might need one!	
+	if (isOnGui && !mechRemoved && (attackRange == FIRERANGE_CURRENT) && !isDisabled() )
+	{
+		mc2::renderSubmissions().addTriangle(holdFireIconHandle,MC2_ISHUDLMNT);
+		mc2::renderSubmissions().addTriangle(holdFireIconHandle,MC2_ISHUDLMNT);
+	}
+	
+	return(1);		//Mech is still around,  false means whack this mech from list.
+}
+
+// Presentation phase: apply what the last update() decided to the draw side of the appearance, in the order the tick used to,
+// before the presentation loop's recalcBounds / pose blend / update(false). A frame with no new tick applies nothing.
+void BattleMech::applyAppearancePush (void)
+{
+	if (pushSerial == pushPresented)
+		return;
+	pushPresented = pushSerial;
+
+	auto* objectAppearance = static_cast<ObjectAppearance*>(appearance);
+	if ( getTeam() == Team::home )
+	{
+		objectAppearance->pilotNameID = getPilot()->descID;
+		objectAppearance->pilotName[0] = 0;
+		appearance->setMechName( variantName );
+	}
+	else if ( MPlayer )
+	{
+		strcpy( objectAppearance->pilotName, (commanderId > -1) ? MPlayer->playerInfo[commanderId].name : " " );
+	}
+	else
+		objectAppearance->pilotNameID = -1;
+	if (isDisabled() && !isDestroyed())
+		objectAppearance->pilotNameID = IDS_NOPILOT;
 
 	long homeRelations = 2;
 	if (getTeam() == Team::home) {
@@ -495,9 +612,9 @@ long BattleMech::update (void)
 		appearance->setMoverParameters(torsoRotation,0.0f,0.0f,true);
 	else
 		appearance->setMoverParameters(torsoRotation);
-	
-	if (!mechRemoved && !isDestroyed())
-		appearance->setObjStatus(getStatus());
+
+	if (appearancePush.hasStatus)
+		appearance->setObjStatus(appearancePush.status);
 
 	if (control.getType() == CONTROL_PLAYER)
 		appearance->setDebugMoveMode();
@@ -531,100 +648,17 @@ long BattleMech::update (void)
 		static_cast<Mech3DAppearance*>(appearance)->setVisualState(vs);
 	}
 
-	int watercellR, watercellC;
-	land->worldToCell(position,watercellR, watercellC);
-	if (GameMap->getDeepWater(watercellR, watercellC) || 
-		GameMap->getShallowWater(watercellR, watercellC))
-	{
-		appearance->startWaterWake();
-	}
-	else
-	{
-		appearance->stopWaterWake();
-	}
-				
-	//Must save sensor data HERE now so fades happen OK.
-	if (getTeamId() != Team::home->getId())
-	{
-		conStat = getContactStatus(Team::home->getId(), true);
+	if (appearancePush.hasAlpha)
+		appearance->setAlphaValue(alphaValue);
+	if (appearancePush.sensorLevel >= 0)
+		appearance->setSensorLevel(appearancePush.sensorLevel);
 
-		if ((conStat == CONTACT_VISUAL) || isDestroyed() || isDisabled() || ShowMovers || (MPlayer && MPlayer->allUnitsDestroyed[MPlayer->commanderID]))
-		{
-			if (alphaValue != 0xff)
-			{
-				fadeTime += frameLength;
-				if (fadeTime > ContactFadeTime)
-				{
-					fadeTime = ContactFadeTime;
-					alphaValue = 0xff;
-				}
-				else
-				{
-					float fadeValue = fadeTime / ContactFadeTime * 255.0f;
-					alphaValue = fadeValue;
-				}
-			}
-			
-			appearance->setAlphaValue(alphaValue);
-			appearance->setSensorLevel(0);
-		}
-		else	//Pretty much anything else is fading out.
-		{
-			if (alphaValue != 0x0)
-			{
-				fadeTime -= frameLength;
-				if (fadeTime < 0.0f)
-				{
-					fadeTime = 0.0f;
-					alphaValue = 0x0;
-				}
-				else
-				{
-					float fadeValue = fadeTime / ContactFadeTime * 255.0f;
-					alphaValue = fadeValue;
-				}
-			}
-			
-			appearance->setAlphaValue(alphaValue);
-			
-			if (conStat == CONTACT_SENSOR_QUALITY_1)
-			{
-				appearance->setSensorLevel(1);
-			}
-			else if (conStat == CONTACT_SENSOR_QUALITY_2)
-			{
-				appearance->setSensorLevel(2);
-			}
-			else if (conStat == CONTACT_SENSOR_QUALITY_3)
-			{
-				appearance->setSensorLevel(3);
-			}
-			else if (conStat == CONTACT_SENSOR_QUALITY_4)
-			{
-				appearance->setSensorLevel(4);
-			}
-		}
-	}
-	else
-	{
-		if (isOnGui)
-		{
-			alphaValue = 0xff;
-			appearance->setSensorLevel(5);
-			appearance->setAlphaValue(alphaValue);
-		}
-	}
-
-	// FORCE-ALL-VISIBLE-1: single chokepoint, after every contact branch above
-	// and before the appearance is pushed. No-op unless MC2_FORCE_ALL_VISIBLE.
+	// FORCE-ALL-VISIBLE-1: single chokepoint, after every contact branch and before the appearance is drawn. No-op unless
+	// MC2_FORCE_ALL_VISIBLE.
 	mc2_vis::forceVisibleOverride(appearance, alphaValue);
 
-	appearance->update();
-
-
-	
 	float barStatus = getTotalEffectiveness();
-	
+
 	DWORD color = 0xff7f7f7f;
 	if ((teamId > -1) && (teamId < 8)) {
 		if (getTeam()->isFriendly(Team::home))
@@ -634,18 +668,9 @@ long BattleMech::update (void)
 		else
 			color = SB_BLUE;
 	}
-		
+
 	appearance->setBarColor(color);
 	appearance->setBarStatus(barStatus);
-
-	//Must make room for holdFireIcons on HUD if this mech might need one!	
-	if (isOnGui && !mechRemoved && (attackRange == FIRERANGE_CURRENT) && !isDisabled() )
-	{
-		mc2::renderSubmissions().addTriangle(holdFireIconHandle,MC2_ISHUDLMNT);
-		mc2::renderSubmissions().addTriangle(holdFireIconHandle,MC2_ISHUDLMNT);
-	}
-	
-	return(1);		//Mech is still around,  false means whack this mech from list.
 }
 
 void BattleMech::render (void) 

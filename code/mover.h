@@ -981,6 +981,20 @@ public:
 		BYTE				alphaValue;						//Current Fade value;
 		int32_t             causeOfDeath;
 
+		// What the tick leaves for presentation to apply to the DRAW side of the appearance (names, pose, status, alpha, sensor
+		// level, bars). The tick writes `appearancePush`; presentation (applyAppearancePush) applies it when `pushSerial`
+		// moved past `pushPresented`, and only presentation writes `pushPresented`. The tick calls the appearance only for its
+		// sim half (Appearance::setSimInput, gesture requests, update()).
+		struct AppearancePush {
+			bool				hasStatus = false;
+			long				status = 0;
+			bool				hasAlpha = false;			// apply alphaValue
+			long				sensorLevel = -1;			// -1: leave unchanged
+		};
+		AppearancePush		appearancePush;
+		uint32_t			pushSerial = 0;
+		uint32_t			pushPresented = 0;
+
 		int32_t				lowestWeaponNodeID;
 		float				lowestWeaponNodeZ;
 
