@@ -96,6 +96,14 @@ uint32_t getBrainTimeMs() {
     return static_cast<uint32_t>((scenarioTime * 1000.0f));
 }
 
+// Save v2 BRN1: the global fixed-tick accumulator travels with the per-warrior runtimes.
+void getBrainFixedTickState(uint32_t& tickIndex, float& accum, float& simLast) {
+    tickIndex = s_brainTickIndex; accum = s_brainFixedTickAccum; simLast = s_brainFixedTickSimLast;
+}
+void setBrainFixedTickState(uint32_t tickIndex, float accum, float simLast) {
+    s_brainTickIndex = tickIndex; s_brainFixedTickAccum = accum; s_brainFixedTickSimLast = simLast;
+}
+
 static void initBrainFixedTickGate() {
     if (s_brainFixedTickGateChecked) return;
     s_brainFixedTickGateChecked = true;

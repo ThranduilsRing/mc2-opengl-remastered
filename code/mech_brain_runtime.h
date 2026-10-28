@@ -1,7 +1,7 @@
 #pragma once
 // MechBrainRuntime — mission-ephemeral brain runtime state for BRAIN-RUNTIME-1A.
-// Not serialized (same non-persistence policy as BrainTaskQueue — if mid-mission
-// save/load support is confirmed later, persistence is a separate BRAIN-SAVELOAD-1 slice).
+// Persisted by the save v2 BRN1 section (code/save_brain_section.cpp) except specialBody/specialIndex (rebuilt from
+// the mission's _specials.fit) and pendingIntents (drained inside the tick that fills them). A new plain field needs a line there.
 // Gate: MC2_BRAIN_RUNTIME (default OFF). Requires MC2_BRAIN_TASKQ=1.
 // 1A contract: struct exists + mode detected + arbitration COMPUTED+TRACE-LOGGED ONLY.
 // NO slot writes, NO ABL short-circuit — those are BRAIN-RUNTIME-1B / DISPATCH-1.

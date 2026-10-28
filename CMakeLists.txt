@@ -486,6 +486,7 @@ set(SOURCES
     "code/brain_tactic_select.cpp"
     "code/fitblockwriter.cpp"
     "code/warrior.cpp"
+    "code/save_brain_section.cpp"
     "code/warrior_alarms.cpp"
     "code/warrior_core_orders.cpp"
     "code/warrior_draw.cpp"

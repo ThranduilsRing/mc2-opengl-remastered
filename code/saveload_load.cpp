@@ -1,5 +1,6 @@
 #include "save_archive.h"
 #include "save_sections.h"
+#include "save_brain_section.h"
 #include "footprints.h"
 // Mission: the second half of the Mission::load sequence -- the managers, terrain, movement data and mission script,
 // the warriors, parts, teams and objects, the commanders, the HUD and the geometry finalize. The first half and the
@@ -642,6 +643,9 @@ static void applySaveSections(std::string_view fileName, const mc2::save::Sectio
         if (archive.finish()) orderQueue = std::move(queue);
         else reject("orders_section");
     } // default: the empty queue resetOrderIngress left
+    if (const auto* brain = sections.find(mc2::save::tagBrain)) {
+        if (!mc2::save::restoreBrainSection(brain->payload)) reject("brain_section");
+    } // default: no brain runtime; the first brain tick allocates it from the mission files, as a v1 load always did
 }
 
 // Activate the camera and finalise the static-prop and mech geometry and the GPU cull buffers.
