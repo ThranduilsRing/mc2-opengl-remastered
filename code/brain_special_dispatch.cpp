@@ -1421,8 +1421,7 @@ mc2::player::UnitIntent producePlayerIntent(MechWarrior* warrior,
         if (ally->getObjectClass() == BATTLEMECH && ally->needsRefit() && !ally->refitBuddyWID)
             wounded = ally;
         if (ally->isRefit()) continue;
-        if (unit->distanceFrom(ally->getPosition()) < 800)
-            ownThreat += std::max(1.0f, static_cast<float>(ally->getThreatRating()));
+        ownThreat += std::max(1.0f, static_cast<float>(ally->getThreatRating()));
         const float rear = glm::distance(ally->getPosition(), home);
         if (rear < rearDistance) { rearDistance = rear; regroup = ally->getPosition(); }
     }
@@ -1461,22 +1460,27 @@ mc2::player::UnitIntent producePlayerIntent(MechWarrior* warrior,
         if (distance < 800) enemyThreat += threat;
         const bool isObjective = enemy->getWatchID() == objectiveTarget
             || (!objectiveTarget && glm::distance(enemy->getPosition(), objective) < 300);
-        // Clear threats in weapon range or on the route; bound a side fight to 45 s.
-        const glm::vec3 route = objective - position;
-        const float fraction = std::clamp(glm::dot(enemy->getPosition() - position, route)
-            / std::max(1.0f, glm::dot(route, route)), 0.0f, 1.0f);
-        const bool blocking = distance < 1000
-            && (distanceToGoal < 1000 || distance < 800
-                || glm::distance(enemy->getPosition(), position + fraction * route) < 500);
-        if (!isObjective && (!blocking || now < runtime->playerBypassUntil)) continue;
-        const float score = threat / std::max(1.0f, static_cast<float>(enemy->getCurCV()))
-            + (enemy->getWatchID() == squadTarget ? 1.0f : 0.0f)
-            + (isObjective ? 1000.0f : 0.0f);
+        if (!isObjective && now < runtime->playerBypassUntil) continue;
+        float condition = 1.0f;
+        if (enemy->isMover()) {
+            auto* mover = static_cast<Mover*>(enemy);
+            float remaining = 0, total = 0;
+            for (int loc = 0; loc < mover->numBodyLocations; ++loc) {
+                remaining += mover->body[loc].curInternalStructure;
+                total += mover->body[loc].maxInternalStructure;
+            }
+            if (total > 0) condition = remaining / total;
+        }
+        // Preserve distance-weighted threat selection; finish weakened threats first.
+        const float score = (1.0f + threat + static_cast<float>(enemy->getCurCV()) * 0.01f)
+            / ((100.0f + distance) * (0.75f + 0.25f * condition))
+            + (enemy->getWatchID() == squadTarget ? 1000.0f : 0.0f);
         if (score > best) { best = score; target = enemy; }
     }
     if (target && target->getWatchID() != objectiveTarget
         && (objectiveTarget || glm::distance(target->getPosition(), objective) >= 300)) {
-        if (runtime->playerFightSince < 0) runtime->playerFightSince = now;
+        if (runtime->playerFightSince < 0 || (runtime->engageTargetWID
+            && runtime->engageTargetWID != target->getWatchID())) runtime->playerFightSince = now;
         if (now - runtime->playerFightSince >= 45) {
             runtime->playerBypassUntil = now + 8;
             runtime->playerFightSince = -1;
@@ -1484,14 +1488,15 @@ mc2::player::UnitIntent producePlayerIntent(MechWarrior* warrior,
             std::fprintf(stderr, "[PLAYER_BRAIN] wid=%ld event=disengage time=%.2f\n", unit->getWatchID(), now);
         }
     } else runtime->playerFightSince = -1;
-    // Regroup the whole force (including a lone scout) when locally outmatched.
-    // Six seconds of withdrawal, then at least twelve seconds to fight/advance.
-    if (enemyThreat > ownThreat * 1.25f && now >= runtime->playerRegroupUntil + 12) {
-        runtime->playerRegroupUntil = now + 6;
+    // Wait for stragglers before contact; briefly withdraw an outmatched force.
+    const bool regroupNeeded = enemyThreat > ownThreat * 1.5f
+        || (enemyThreat > 0 && glm::distance(position, regroup) > 650);
+    if (regroupNeeded && now >= runtime->playerRegroupUntil + 20) {
+        runtime->playerRegroupUntil = now + 4;
         std::fprintf(stderr, "[PLAYER_BRAIN] wid=%ld event=regroup own=%.1f threat=%.1f time=%.2f\n",
             unit->getWatchID(), ownThreat, enemyThreat, now);
     }
-    if (enemyThreat > ownThreat * 1.25f && now < runtime->playerRegroupUntil) {
+    if (regroupNeeded && now < runtime->playerRegroupUntil) {
         intent.location = glm::distance(position, regroup) > 200 ? regroup : home;
         intent.posture = mc2::player::Posture::Retreat;
         runtime->engageTargetWID = 0;
@@ -1505,8 +1510,9 @@ mc2::player::UnitIntent producePlayerIntent(MechWarrior* warrior,
         runtime->playerRecoverUntil = now + 10;
         ++runtime->playerRecoveries;
         runtime->playerBypassUntil = now + 12;
-        std::fprintf(stderr, "[PLAYER_BRAIN] wid=%ld event=repath attempt=%u distance=%.1f time=%.2f\n",
-            unit->getWatchID(), runtime->playerRecoveries, distanceToGoal, now);
+        std::fprintf(stderr, "[PLAYER_BRAIN] wid=%ld event=repath attempt=%u distance=%.1f x=%.1f y=%.1f goal_x=%.1f goal_y=%.1f time=%.2f\n",
+            unit->getWatchID(), runtime->playerRecoveries, distanceToGoal,
+            position.x, position.y, objective.x, objective.y, now);
     }
     if (now < runtime->playerRecoverUntil) {
         glm::vec3 scout = objective;
@@ -1536,7 +1542,7 @@ mc2::player::UnitIntent producePlayerIntent(MechWarrior* warrior,
     }
     if (!target && objectiveTarget) {
         auto* object = ObjectManager->getByWatchID(objectiveTarget);
-        if (object && object->getExists() && !object->isDestroyed()) target = object;
+        if (object && !object->isMover() && object->getExists() && !object->isDestroyed()) target = object;
     }
     if (target) {
         intent.goal = mc2::player::Goal::Attack;

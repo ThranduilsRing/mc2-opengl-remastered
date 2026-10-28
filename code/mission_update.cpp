@@ -20,6 +20,11 @@ namespace {
 long applyPlayerIntent(Mission& mission, const mc2::player::UnitIntent& intent, long captureTarget = 0) {
     auto* object = ObjectManager->getByWatchID(intent.unitWatchId);
     if (!object || !object->isMover()) return 1;
+    if (captureTarget) {
+        auto* current = static_cast<Mover*>(object)->getPilot()->getCurTacOrder();
+        if (current && current->code == TACTICAL_ORDER_CAPTURE && current->targetWID == captureTarget)
+            return 0; // Reissuing every two seconds would restart the capture.
+    }
     TacticalOrder order;
     order.init(ORDER_ORIGIN_PLAYER, captureTarget ? TACTICAL_ORDER_CAPTURE
         : intent.goal == mc2::player::Goal::Attack ? TACTICAL_ORDER_ATTACK_OBJECT
@@ -151,12 +156,11 @@ void Mission::updateMissionTest(bool report) {
     for (auto* condition : destination->m_conditionList) {
         if (condition->Status() == OS_SUCCESSFUL) continue;
         auto point = condition->GetObjectivePosition();
-        // Specific-unit conditions have no tacmap position; follow their authored ID.
+        // Unit IDs identify objective combat targets; navigation keeps the authored marker.
         if (auto* specific = dynamic_cast<CSpecificUnitObjectiveCondition*>(condition)) {
-            if (auto* object = ObjectManager->getByWatchID(specific->UnitWatchID())) {
-                point = object->getPosition();
-                if (condition->Species() == DESTROY_SPECIFIC_ENEMY_UNIT) objectiveTarget = object;
-            }
+            if (!objectiveTarget && condition->Species() == DESTROY_SPECIFIC_ENEMY_UNIT)
+                objectiveTarget = ObjectManager->getByWatchID(specific->UnitWatchID());
+            continue;
         }
         // Work on the first unfinished condition with a position, rather than
         // repeatedly walking to the last condition or an already visited marker.
