@@ -391,8 +391,8 @@ class TestResolveModOverlay(unittest.TestCase):
             td.write_file("mods/mymod/.scratch/data/tgl/scratch.ini", "scratch")
             td.write_file("mods/mymod/data/tgl/real.ini", "real")
             cfg = ResolverConfig(game_dir=td.root, active_mod="mymod")
-            # scratch.ini should NOT be in mod_index (dotdir skipped)
-            self.assertNotIn("data/tgl/scratch.ini", cfg.mod_index)
+            # Scratch is an explicit layer above the active project.
+            self.assertEqual(cfg.mod_index["data/tgl/scratch.ini"][1], "mymod#scratch")
             # real.ini SHOULD be in mod_index
             self.assertIn("data/tgl/real.ini", cfg.mod_index)
 

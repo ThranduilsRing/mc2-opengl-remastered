@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <cstdlib>
 #include <fstream>
 #include <nlohmann/json.hpp>
 #include <zlib.h>
@@ -151,6 +152,7 @@ std::expected<FileResolver, LoadError> FileResolver::mount(ResolverConfig config
     auto& settings = resolver.config_;
     if (settings.mods.empty()) settings.mods = settings.base / "mods";
     if (!settings.activeMod.empty() && !modId(settings.activeMod)) return failure("activeMod", "invalid_mod_id");
+    std::string activeId = settings.activeMod;
     std::vector<std::string> dependencies;
     if (!settings.activeMod.empty()) {
         const auto manifest = settings.mods / settings.activeMod / "mod.json";
@@ -161,6 +163,8 @@ std::expected<FileResolver, LoadError> FileResolver::mount(ResolverConfig config
             try {
                 const auto json = nlohmann::json::parse(text(*bytes));
                 dependencies = json.value("dependencies", std::vector<std::string>{});
+                activeId = json.value("id", settings.activeMod);
+                if (activeId.empty()) activeId = settings.activeMod;
             } catch (const nlohmann::json::exception&) { return failure("mod.json", "invalid_manifest"); }
         }
     }
@@ -186,7 +190,13 @@ std::expected<FileResolver, LoadError> FileResolver::mount(ResolverConfig config
         return {};
     };
     if (!settings.activeMod.empty()) {
-        auto indexed = indexLoose(settings.mods / settings.activeMod, "mod:" + settings.activeMod);
+        const char* scratch = std::getenv("MC2_SCRATCH");
+        if (!scratch || scratch[0] != '0') {
+            auto indexed = indexLoose(settings.mods / settings.activeMod / ".scratch",
+                                      "mod:" + activeId + "#scratch");
+            if (!indexed) return std::unexpected(indexed.error());
+        }
+        auto indexed = indexLoose(settings.mods / settings.activeMod, "mod:" + activeId);
         if (!indexed) return std::unexpected(indexed.error());
     }
     for (const auto& id : dependencies) {

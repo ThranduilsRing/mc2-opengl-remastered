@@ -139,7 +139,7 @@ class ResolverConformanceCorpus(unittest.TestCase):
         # base-strip is engine-only (the editor resolver has no numeric-subdir
         # strip step), so it stays out of the shared corpus; test_resolver.py
         # and the engine tests cover it.
-        self.assertEqual(layers, {"mod:active", "mod:first", "mod:second",
+        self.assertEqual(layers, {"mod:active#scratch", "mod:active", "mod:first", "mod:second",
                                   "base-loose", "fastfile", "MISS"})
         self.assertTrue(keys & {"data/art/shared.tga", "data/art/first-only.tga", "data/art/second-only.tga"})
         self.assertTrue(any("\\" in row["req"] for row in self.fixture["requests"]))
