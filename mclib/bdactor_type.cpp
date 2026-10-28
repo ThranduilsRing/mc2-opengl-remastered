@@ -587,6 +587,10 @@ void BldgAppearanceType::registerRenderShapes (void)
 			lodShapes[i] = (i == 0 || bldgRenderLods[i]) ? getBldgRenderShape(i) : nullptr;
 			lodDists[i] = lodDistance[i];
 		}
+		// The stock .fit LOD distances (x5) already fill lodDistance[]; the authored distances win here.
+		if (propMaterialSource)
+			for (const auto& lod : propMaterialSource->lods)
+				if (lod.lod > 0 && lod.lod < MAX_LODS && lod.distance > 0.0f) lodDists[lod.lod] = lod.distance;
 		GpuStaticPropBatcher::instance().registerLodGroup(lodShapes, lodDists, MAX_LODS);
 	}
 	GpuStaticPropBatcher::instance().registerMultiShape(getBldgDmgRenderShape(), bldgDmgRenderShape != nullptr,
