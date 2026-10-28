@@ -75,6 +75,40 @@ def test_host_submit_publishes_only_after_upload(tmp_path, monkeypatch, capsys):
     assert capsys.readouterr().out.strip() == 'a' * 32
 
 
+def test_host_submit_exe_stages_then_rewrites_job(tmp_path, monkeypatch):
+    path = tmp_path / 'job.json'
+    path.write_text('{"argv": ["run", "{EXE}"], "env": {"X": "{ROOT}/d"}}')
+    exe = tmp_path / 'mc2.exe'
+    exe.write_bytes(b'MZ')
+    delta = tmp_path / 'delta'
+    delta.mkdir()
+    calls, uploaded = [], []
+    monkeypatch.setattr(sys, 'argv', ['host', 'submit', str(path), '--exe', str(exe), '--data-delta', str(delta)])
+    monkeypatch.setattr(host.uuid, 'uuid4', lambda: SimpleNamespace(hex='b' * 32))
+    monkeypatch.setattr(host, 'remote', lambda args, script: calls.append(('ps', script)))
+
+    def fake_scp(args, *paths, recursive=False):
+        calls.append(('scp', str(paths[-1])))
+        if str(paths[-1]).endswith('.upload'):
+            uploaded.append(json.loads(Path(paths[0]).read_text()))
+    monkeypatch.setattr(host, 'scp', fake_scp)
+    host.main()
+    work = 'C:/mc2farm/work/' + 'b' * 32
+    assert uploaded == [{'argv': ['run', work + '/mc2.exe'], 'env': {'X': work + '/d'}}]
+    kinds = [c[0] for c in calls]
+    assert kinds == ['ps', 'scp', 'scp', 'ps', 'scp', 'ps']  # mkdir, exe, delta, stage, job.upload, publish
+    assert '/work/' in calls[3][1] or 'work' in calls[3][1]
+
+
+def test_host_data_delta_requires_exe(tmp_path, monkeypatch):
+    path = tmp_path / 'job.json'
+    path.write_text('{"argv": ["x"]}')
+    monkeypatch.setattr(sys, 'argv', ['host', 'submit', str(path), '--data-delta', str(tmp_path)])
+    with pytest.raises(SystemExit) as result:
+        host.main()
+    assert result.value.code == 2
+
+
 @pytest.mark.parametrize('status,code,expected', [('completed', 0, 0), ('completed', 9, 1), ('interrupted', None, 1)])
 def test_host_wait_propagates_result(monkeypatch, status, code, expected):
     monkeypatch.setattr(sys, 'argv', ['host', 'wait', 'a' * 32])
