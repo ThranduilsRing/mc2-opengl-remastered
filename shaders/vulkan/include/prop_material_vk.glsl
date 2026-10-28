@@ -29,6 +29,7 @@ vec3 propEncodeColor(vec3 c) { return surfaceEncodeSrgb(c); }
 // Derivatives use continuous detail UVs (before repeat), world positions and a
 // render-space normal. Solving both axes preserves mirrored UV handedness.
 vec3 propDetailNormal(vec3 geometric, vec2 uv, vec3 sampled, float strength) {
+    // vWorldPos and geometric already share the vertex shader's Stuff-to-world swizzle.
     vec3 px = dFdx(vWorldPos), py = dFdy(vWorldPos);
     vec2 ux = dFdx(uv), uy = dFdy(uv);
     float det = ux.x * uy.y - ux.y * uy.x;

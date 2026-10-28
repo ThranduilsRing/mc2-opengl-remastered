@@ -286,8 +286,40 @@ void main() {
             rgb = propAddWindowEmission(rgb, emission);
         }
     }
-    oColor = vec4(rgb, cover);
 
+    // Material inputs only: bypass prop lighting, windows and ORM coverage for inspection.
+    // Missing maps use the same class scalars and geometric normal as normal rendering.
+    int debugView = int(uFrame.cameraWorldPos.w);
+    if (debugView != 0 && haveAlbedo) {
+        vec3 debugNormal = normalize(mc2ToRender(vNormalStuff));
+        vec3 rawNormal = vec3(0.5, 0.5, 1.0);
+        float roughness = 1.0, metallic = 0.0, ao = 1.0;
+        bool validMaterial = uPacket.materialId >= 0 && uPacket.materialId < uPropMaterials.materials.length();
+        if (validMaterial) {
+            SurfaceMaterial surface = propSurface(uPacket.materialId, materialAlbedo);
+            debugNormal = surface.normal;
+            roughness = surface.roughness; metallic = surface.metallic; ao = surface.ao;
+            PropMaterialGpu row = uPropMaterials.materials[uPacket.materialId];
+            if (row.material.normalTex != 0xffffffffu) {
+                vec2 uv = vUv * row.uvScale;
+                rawNormal = kPerTexMaps && (row.material.flags & kMatFlagPerTexture) != 0u
+                    ? texture(uPropTex[nonuniformEXT(row.material.normalTex)], uv).rgb
+                    : texture(uPropNormal, vec3(uv, float(row.material.normalTex))).rgb;
+            }
+        }
+        if (debugView == 1) rgb = materialAlbedo;
+        else if (debugView == 2) rgb = debugNormal * 0.5 + 0.5;
+        else if (debugView == 3) rgb = rawNormal;
+        else if (debugView == 4) rgb = vec3(roughness);
+        else if (debugView == 5) rgb = vec3(metallic);
+        else if (debugView == 6) rgb = vec3(ao);
+        else if (debugView == 7) {
+            uint h = uint(uPacket.materialId) + 1u;
+            h ^= h >> 16; h *= 0x7feb352du; h ^= h >> 15; h *= 0x846ca68bu; h ^= h >> 16;
+            rgb = validMaterial ? vec3(h & 255u, (h >> 8) & 255u, (h >> 16) & 255u) / 255.0 : vec3(0);
+        }
+    }
+    oColor = vec4(rgb, cover);
     // location 1: GBuffer1 — bit-adjacent to static_prop.frag:657-661, which selects
     // between TWO shadow classes off the packet's alpha-test bit:
     //   solid prop      -> rc_gbuffer1_screenShadowEligible_noSelfShadow()          a=0.25

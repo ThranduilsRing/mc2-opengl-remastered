@@ -587,6 +587,10 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "Direct-fire projectile speed multiplier (PPC/autocannon/gauss = non-arc bolts).",
     },
     {
+        "MC2_DIAG_PROP_DEBUG_VIEW", "MC2_PROP_DEBUG_VIEW", EnvVarKind::Trace, false,
+        "Prop material view: 0 off, 1 albedo, 2 world normal, 3 raw normal sample (BC5 RG), 4 roughness, 5 metallic, 6 AO, 7 material id hash.",
+    },
+    {
         "MC2_FEATURE_RENDER_BACKEND", "MC2_RENDER_BACKEND", EnvVarKind::Feature, false,
         "Legacy selector, read only to report an ignored value: the engine renders on Vulkan only (the gl opt-out was removed).",
     },

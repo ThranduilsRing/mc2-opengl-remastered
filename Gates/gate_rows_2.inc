@@ -139,6 +139,7 @@ L(Presence, "MC2_PROJECTZ_HEATMAP", Bool, false, "code", "", "", passthrough | v
 L(Presence, "MC2_PROJECTZ_SUMMARY", Bool, false, "code", "", "", passthrough | verified),
 L(Presence, "MC2_PROJECTZ_TRACE", Bool, false, "code", "", "", passthrough | verified),
 // PropBaseLightDir (PROP-BASE-LIGHT-DIR-1)
+G("MC2_PROP_DEBUG_VIEW", Enum, "0", "render", "", "Prop material view: 0 off, 1 albedo, 2 world normal, 3 raw normal sample (BC5 RG), 4 roughness, 5 metallic, 6 AO, 7 material id hash.", passthrough | registry(Trace, "MC2_DIAG_PROP_DEBUG_VIEW", -1, false) | tokens("0|1|2|3|4|5|6|7") | verified),
 L(DefOnAtoiNZ, "MC2_PROP_FIXB_MVP", Bool, true, "props", "", "", verified),  // default not derivable from the tree
 // PropFoliageAlphaFlag (FOLIAGE-ALPHAFLAG-1)
 // FOGLIGHT-LATCH-1: diagnostic probe for the one-shot per-actor light latch.

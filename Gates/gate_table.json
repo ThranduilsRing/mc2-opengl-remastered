@@ -1,6 +1,6 @@
 {
  "version": 1,
- "count": 755,
+ "count": 756,
  "gates": [
   {"name": "MC2_ABL_ARG_GUARD", "kind": "Bool", "rule": "Lead1", "default": false, "owner": "code", "retireBy": "", "doc": "ABL crash-safety gates (ABL-OPCODE-BOUNDS-HARDEN) MC2_ABL_ARG_GUARD=1 - enables dispatch-bounds soft path + out-ptr null guards MC2_ABL_RUNTIME_SOFTFAIL=1 -...", "tokens": "", "range": null, "reread": false, "divergent": false, "smokePassthrough": true, "verified": true, "registry": null, "logTopic": ""},
   {"name": "MC2_ABL_ARG_GUARD_REPRO", "kind": "Bool", "rule": "Lead1", "default": false, "owner": "code", "retireBy": "", "doc": "", "tokens": "", "range": null, "reread": false, "divergent": false, "smokePassthrough": true, "verified": true, "registry": null, "logTopic": ""},
@@ -416,6 +416,7 @@
   {"name": "MC2_PROJECTZ_HEATMAP", "kind": "Bool", "rule": "Presence", "default": false, "owner": "code", "retireBy": "", "doc": "", "tokens": "", "range": null, "reread": false, "divergent": false, "smokePassthrough": true, "verified": true, "registry": null, "logTopic": ""},
   {"name": "MC2_PROJECTZ_SUMMARY", "kind": "Bool", "rule": "Presence", "default": false, "owner": "code", "retireBy": "", "doc": "", "tokens": "", "range": null, "reread": false, "divergent": false, "smokePassthrough": true, "verified": true, "registry": null, "logTopic": ""},
   {"name": "MC2_PROJECTZ_TRACE", "kind": "Bool", "rule": "Presence", "default": false, "owner": "code", "retireBy": "", "doc": "", "tokens": "", "range": null, "reread": false, "divergent": false, "smokePassthrough": true, "verified": true, "registry": null, "logTopic": ""},
+  {"name": "MC2_PROP_DEBUG_VIEW", "kind": "Enum", "rule": "Std", "default": "0", "owner": "render", "retireBy": "", "doc": "Prop material view: 0 off, 1 albedo, 2 world normal, 3 raw normal sample (BC5 RG), 4 roughness, 5 metallic, 6 AO, 7 material id hash.", "tokens": "0|1|2|3|4|5|6|7", "range": null, "reread": false, "divergent": false, "smokePassthrough": true, "verified": true, "registry": {"featureId": "MC2_DIAG_PROP_DEBUG_VIEW", "kind": "Trace", "order": -1, "defaultOn": false}, "logTopic": ""},
   {"name": "MC2_PROP_FIXB_MVP", "kind": "Bool", "rule": "DefOnAtoiNZ", "default": true, "owner": "props", "retireBy": "", "doc": "", "tokens": "", "range": null, "reread": false, "divergent": false, "smokePassthrough": false, "verified": true, "registry": null, "logTopic": ""},
   {"name": "MC2_PURCHASE_ALL", "kind": "Bool", "rule": "Presence", "default": false, "owner": "code", "retireBy": "", "doc": "MC2_PURCHASE_ALL (default OFF; launcher Engine Option): unlock every COMPONENT/weapon so modded gear (e.g.", "tokens": "", "range": null, "reread": false, "divergent": false, "smokePassthrough": false, "verified": true, "registry": null, "logTopic": ""},
   {"name": "MC2_QUADSETUP_ARMED_SKIP", "kind": "Bool", "rule": "Lead0Kill", "default": true, "owner": "terrain", "retireBy": "", "doc": "", "tokens": "", "range": null, "reread": false, "divergent": false, "smokePassthrough": true, "verified": true, "registry": null, "logTopic": ""},
