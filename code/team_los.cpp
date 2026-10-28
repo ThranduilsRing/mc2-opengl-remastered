@@ -19,6 +19,112 @@ static float legacyTerrainElevation(const glm::vec3& position)
 	return land->getTerrainElevation(position);
 }
 
+using ElevationOverride = float (*)(const glm::vec3&);
+
+// Everything the legacy override decision reads, so a mid-turn option/colormap change invalidates the snapshot.
+struct LosElevationState
+{
+	ElevationOverride fn = nullptr;
+	const TerrainColorMap* textureSet = nullptr;
+	const void* colorMap = nullptr;
+	const void* dispAlpha = nullptr;
+	bool displacePositive = false;
+
+	bool operator==(const LosElevationState& o) const
+	{
+		return fn == o.fn && textureSet == o.textureSet && colorMap == o.colorMap &&
+		       dispAlpha == o.dispAlpha && displacePositive == o.displacePositive;
+	}
+};
+
+static LosElevationState losElevationState()
+{
+	LosElevationState state;
+	static const bool s_retireCpuPhong = mc2::options::current().cpuPhongRetire;
+	state.displacePositive = gos_GetTerrainDisplaceScale() > 0.0f;
+	if (!Terrain::terrainTextures2)
+		return state;
+	TerrainColorMap* tcm = Terrain::terrainTextures2;
+	state.textureSet = tcm;
+	state.colorMap = tcm->cpuColorMap;
+	state.dispAlpha = tcm->cpuDispAlpha;
+	if (!s_retireCpuPhong || (state.displacePositive && tcm->cpuColorMap && tcm->cpuDispAlpha))
+		state.fn = &legacyTerrainElevation;
+	return state;
+}
+
+// The by-value inputs captureLosSnapshot copies. The vertex and cell grids are views, so edits to them need no new snapshot.
+struct LosSnapshotKey
+{
+	long turn;
+	const MapData* mapData;
+	const void* landTerrain;
+	const void* vertices;
+	const void* cells;
+	long cellsHeight;
+	long cellsWidth;
+	long realVerticesMapSide;
+	long verticesMapSide;
+	float worldUnitsPerVertex;
+	float oneOverWorldUnitsPerVertex;
+	float worldUnitsMapSide;
+	glm::vec3 mapTopLeft3d;
+	float topLeftVertexX;
+	float topLeftVertexY;
+	LosElevationState elevation;
+	bool useRealLOS;
+	float worldUnitsPerMeter;
+	unsigned long maxTreeLOSCellBlock;
+
+	bool operator==(const LosSnapshotKey& o) const
+	{
+		return turn == o.turn && mapData == o.mapData && landTerrain == o.landTerrain && vertices == o.vertices && cells == o.cells &&
+		       cellsHeight == o.cellsHeight && cellsWidth == o.cellsWidth &&
+		       realVerticesMapSide == o.realVerticesMapSide && verticesMapSide == o.verticesMapSide &&
+		       worldUnitsPerVertex == o.worldUnitsPerVertex &&
+		       oneOverWorldUnitsPerVertex == o.oneOverWorldUnitsPerVertex &&
+		       worldUnitsMapSide == o.worldUnitsMapSide &&
+		       mapTopLeft3d.x == o.mapTopLeft3d.x && mapTopLeft3d.y == o.mapTopLeft3d.y &&
+		       mapTopLeft3d.z == o.mapTopLeft3d.z &&
+		       topLeftVertexX == o.topLeftVertexX && topLeftVertexY == o.topLeftVertexY &&
+		       elevation == o.elevation && useRealLOS == o.useRealLOS &&
+		       worldUnitsPerMeter == o.worldUnitsPerMeter && maxTreeLOSCellBlock == o.maxTreeLOSCellBlock;
+	}
+};
+
+static LosSnapshotKey losSnapshotKey()
+{
+	MapData* md = Terrain::mapData;
+	LosSnapshotKey key{};
+	key.turn = turn;
+	key.mapData = md;
+	key.landTerrain = land;
+	key.vertices = md ? md->getBlocks() : nullptr;
+	if (GameMap)
+	{
+		key.cellsHeight = GameMap->height;
+		key.cellsWidth = GameMap->width;
+		key.cells = GameMap->map.empty() ? nullptr : GameMap->map.data();
+	}
+	key.realVerticesMapSide = Terrain::realVerticesMapSide;
+	key.verticesMapSide = Terrain::verticesBlockSide * Terrain::blocksMapSide;
+	key.worldUnitsPerVertex = Terrain::worldUnitsPerVertex;
+	key.oneOverWorldUnitsPerVertex = Terrain::oneOverWorldUnitsPerVertex;
+	key.worldUnitsMapSide = Terrain::worldUnitsMapSide;
+	key.mapTopLeft3d = Terrain::mapTopLeft3d;
+	if (md)
+	{
+		const Stuff::Vector2DOf<float> tl = md->getTopLeftVertex();
+		key.topLeftVertexX = tl.x;
+		key.topLeftVertexY = tl.y;
+	}
+	key.elevation = losElevationState();
+	key.useRealLOS = useRealLOS;
+	key.worldUnitsPerMeter = worldUnitsPerMeter;
+	key.maxTreeLOSCellBlock = MaxTreeLOSCellBlock;
+	return key;
+}
+
 // Immutable view of the terrain mesh, the cell grid and the legacy globals the LOS walk reads (see los_kernel.h).
 // Non-default terrain options (CPU Phong, dirt displacement) route elevation through the legacy MapData call.
 static mc2::los::Snapshot captureLosSnapshot()
@@ -28,13 +134,7 @@ static mc2::los::Snapshot captureLosSnapshot()
 	if (!md || !md->getBlocks() || !GameMap || GameMap->map.empty())
 		return s;
 
-	static const bool s_retireCpuPhong = mc2::options::current().cpuPhongRetire;
-	if (Terrain::terrainTextures2)
-	{
-		TerrainColorMap* tcm = Terrain::terrainTextures2;
-		if (!s_retireCpuPhong || (gos_GetTerrainDisplaceScale() > 0.0f && tcm->cpuColorMap && tcm->cpuDispAlpha))
-			s.elevationOverride = &legacyTerrainElevation;
-	}
+	s.elevationOverride = losElevationState().fn;
 
 	PostcompVertex* blocks = md->getBlocks();
 	static_assert(sizeof(PostcompVertex) % sizeof(float) == 0 && sizeof(MapCell) == sizeof(uint32_t));
@@ -61,11 +161,21 @@ static mc2::los::Snapshot captureLosSnapshot()
 	return s;
 }
 
-#ifdef LAB_ONLY
-extern bool drawTerrainGrid;
-extern long currentLineElement;
-extern LineElement *debugLines[];
-#endif
+static const mc2::los::Snapshot& losSnapshot()
+{
+	thread_local mc2::los::Snapshot cached;
+	thread_local LosSnapshotKey cachedKey{};
+	thread_local bool hasCached = false;
+	LosSnapshotKey key = losSnapshotKey();
+	if (!hasCached || !(key == cachedKey))
+	{
+		cached = captureLosSnapshot();
+		cachedKey = key;
+		hasCached = true;
+	}
+	return cached;
+}
+
 
 // Is tPos inside this member's visual range (altitude table, scout bonus, LOS factor)?
 static bool inVisualRange(GameObjectPtr obj, const glm::vec3& tPos)
@@ -151,7 +261,7 @@ bool Team::teamLineOfSight (glm::vec3 tPos, float extRad)
 	if (pending.empty())
 		return false;
 
-	const mc2::los::Snapshot snap = captureLosSnapshot();
+	const mc2::los::Snapshot& snap = losSnapshot();
 	if (!snap.valid)
 		return false;
 
@@ -177,7 +287,7 @@ bool Team::lineOfSight (float startLocal, long mCellRow, long mCellCol, float en
 {
 	if ((teamId < 0) || (teamId >= MAX_TEAMS))
 		return true;
-	const mc2::los::Snapshot snap = captureLosSnapshot();
+	const mc2::los::Snapshot& snap = losSnapshot();
 	if (!snap.valid)
 		return false;
 	return mc2::los::walk(snap, startLocal, mCellRow, mCellCol, endLocal, tCellRow, tCellCol, teamId, extRad, startExtRad);
@@ -188,7 +298,7 @@ bool Team::lineOfSight (glm::vec3 position, glm::vec3 targetPosition, long teamI
 {
 	if ((teamId < 0) || (teamId >= MAX_TEAMS))
 		return true;
-	const mc2::los::Snapshot snap = captureLosSnapshot();
+	const mc2::los::Snapshot& snap = losSnapshot();
 	if (!snap.valid)
 		return false;
 	mc2::los::Query q;
