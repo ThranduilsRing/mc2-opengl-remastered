@@ -39,3 +39,23 @@ UI orders issued during frame N+1's frame part take effect one tick later than i
 Two kinds: render or presentation code reached while a tick is in flight (`assertSimQuiescent`), and a thread-affine GPU resource
 call made from the worker (`assertMainThread`). Presentation writes to sim state are caught the first way, because presentation
 may only run when the worker is idle, and by the alphaValue fix, which removed the one known write.
+
+## Early-kick experiment (kick before DrawScreen), 2026-10-28
+
+Result: not shippable on this tree. With the kick moved to straight after snapshot extract, `Mission::render` (reached from
+`draw_screen` -> `UpdateRenderers`, code/mechcmd2_frame.cpp:52) ran while the tick was in flight on every frame
+(`[SIM_OVERLAP v1] VIOLATION render-read-while-tick-in-flight site=Mission::render`, mc2_24, 25 s) and the SIMID stream
+diverged. The render CPU walk is the live-object reader, not the snapshot consumer: `eye->render()` walks visible GameObjects and
+their appearances, `missionInterface->render()` reads mover status, and gosFX / crater / light spawns happen in render. The snapshot
+carries only static props and mech packets. Blockers, as in the design note: deferred spawn and removal queues for bolts, effects,
+craters, lights and mover removal committed at the join; a per-tick UI snapshot for `missionInterface->render`; reads of live
+appearance state in `eye->render()`. None of these exist yet.
+
+Upper bound if they did: the tick is 5.1 to 5.2 ms average (p95 8.0 ms) of a 17.4 to 17.6 ms CPU frame on mc2_24 at 1080p
+(bench frames.jsonl, 716 frames each mode), so up to about 5 ms per frame, bounded by the render CPU time it hides behind.
+
+Input latency: UI orders issued in frame N+1's frame part reach tick N+2 instead of N+1. Input cannot be sampled before the kick
+without running the UI frame part (which writes mover orders) at the tail, so the cost stays one sim tick: 33.3 ms at 30 Hz
+worst case, at most one frame interval in practice (16.7 ms at 60 fps).
+
+Harness note: the smoke runner filters environment variables, so an unregistered MC2_* name given via `--env` does not reach the game.

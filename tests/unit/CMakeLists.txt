@@ -38,6 +38,7 @@ add_executable(mc2_tests
     test_hashing.cpp
     test_projection.cpp     # currently scope-stopped; placeholder skipped case
     test_argb_pack.cpp
+    test_mover_los_epoch.cpp
     test_screen_pick.cpp
     test_quality_presets.cpp
     test_rendercore.cpp     # RENDERCORE-UNIT-TESTS-1: GL-free substrate invariants
@@ -172,6 +173,7 @@ add_executable(mc2_tests
     ${MC2_WORKTREE_ROOT}/GameOS/gameos/terrain_surface_cook.cpp
     test_vk_render_pass_timer.cpp  # VK pass timer tick math (counter wrap, valid bits); header-only, no Vulkan
     test_debug_line_project.cpp  # debug overlay segment projection; header-only
+    test_camera_pick_hash.cpp  # pick revision hash: altitude / shift each move it; header-only
     test_hitch_fence.cpp # hitch trace Vulkan fence-wait record; header-only, no Vulkan
     test_screenshot_slot.cpp  # screenshot request slot and its expiry; header-only
     test_tgl_force_z.cpp  # forceZ reverse-Z mirror, both render paths
@@ -402,6 +404,7 @@ target_sources(mc2_tests PRIVATE
     test_icon_atlas_harness.cpp
     test_timing_math_harness.cpp
     test_job_system_harness.cpp
+    test_los_kernel.cpp
     test_terrain_daylight_harness.cpp
     test_object_light_row_harness.cpp
     test_class_light_band_harness.cpp
@@ -409,6 +412,7 @@ target_sources(mc2_tests PRIVATE
     ${MC2_WORKTREE_ROOT}/GameOS/gameos/native_render_state.cpp
     gos_counter_stubs.cpp
     ${MC2_WORKTREE_ROOT}/code/job_system.cpp
+    ${MC2_WORKTREE_ROOT}/code/los_kernel.cpp
     ${MC2_WORKTREE_ROOT}/code/jobs_fatal.cpp
 )
 target_compile_features(mc2_tests PRIVATE cxx_std_23)
@@ -442,6 +446,8 @@ endif()
 target_sources(mc2_tests PRIVATE
     test_save_archive.cpp
     ${MC2_WORKTREE_ROOT}/code/save_archive.cpp
+    test_save_sections.cpp
+    ${MC2_WORKTREE_ROOT}/code/save_sections.cpp
     test_abl_outarrays.cpp
 )
 target_sources(mc2_tests PRIVATE test_editor_mission_reader.cpp)

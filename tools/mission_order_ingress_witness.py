@@ -171,7 +171,7 @@ def run_authored(args):
         (scratch / f"{case}-gate{gate}.fit").write_text(text, encoding="latin-1")
         env = dict(os.environ, MC2_DEV_SHELL="1", MC2_DEV_SHELL_PORT=str(args.port),
                    MC2_SMOKE_REQUIRE_FINGERPRINT="1", MC2_ACTIVE_MOD=scratch.name,
-                   MC2_MOD_DEPS="", MC2_BRAIN_MISSIONFIT_OPORD=gate)
+                   MC2_MOD_DEPS="", MC2_BRAIN_POLICY=("techbrain" if str(gate) == "1" else "legacy"))
         command = [sys.executable, str(ROOT / "scripts/run_smoke.py"), "--mission", "mc2_01",
                    "--duration", "30", "--keep-logs", "--deploy", "lane3"]
         with subprocess.Popen(command, cwd=ROOT, env=env, **console_child.child_kwargs()) as smoke:

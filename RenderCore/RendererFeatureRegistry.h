@@ -2,7 +2,7 @@
 //
 // Header-only inventory of renderer feature gates and device capabilities.
 // INVENTORY ONLY -- no feature decisions here. Each system's own env-flag
-// accessor (e.g. RenderWorld::IsObjectIdBufferEnabled, g_useGpuMechs) remains
+// accessor (e.g. RenderWorld::IsObjectIdBufferEnabled) remains
 // authoritative for runtime decisions. This header is the single place to
 // look up what env vars exist, what their defaults are, and what GL caps
 // the engine requires per feature.
@@ -379,20 +379,8 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "VIDEO-CAPTURE fixture: =1 overrides the smoke-mode movie skip in MC2Movie::init so in-mission comm videos (mc2_01 V1A.bik ~frame 1600) play under...",
     },
     {
-        "MC2_FEATURE_BRAIN_DISPATCH", "MC2_BRAIN_DISPATCH", EnvVarKind::Feature, false,
-        "TechScript special-dispatch master gate (mission.cpp/brain_special_dispatch.cpp).",
-    },
-    {
         "MC2_BRAIN_FREEZE_TRACE", "MC2_BRAIN_FREEZE_TRACE", EnvVarKind::Trace, false,
         "SAVE/LOAD-AIFREEZE-TRACE-1 (+ ISSUE-10 extension): one-line stderr trace at end of MechWarrior::runBrain (brainState, curTacOrder.code, movePath.numSteps...",
-    },
-    {
-        "MC2_FEATURE_BRAIN_RUNTIME", "MC2_BRAIN_RUNTIME", EnvVarKind::Feature, false,
-        "TechBrain declarative-brain runtime master gate (warrior.cpp).",
-    },
-    {
-        "MC2_FEATURE_BRAIN_RUNTIME_APPLY", "MC2_BRAIN_RUNTIME_APPLY", EnvVarKind::Feature, false,
-        "TechBrain runtime apply gate (warrior.cpp).",
     },
     {
         "MC2_FEATURE_CALLED_SHOT_FIX", "MC2_CALLED_SHOT_FIX", EnvVarKind::Feature, false,
@@ -597,6 +585,10 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
     {
         "MC2_PROJECTILE_SPEED_MULT", "MC2_PROJECTILE_SPEED_MULT", EnvVarKind::Feature, false,
         "Direct-fire projectile speed multiplier (PPC/autocannon/gauss = non-arc bolts).",
+    },
+    {
+        "MC2_DIAG_PROP_DEBUG_VIEW", "MC2_PROP_DEBUG_VIEW", EnvVarKind::Trace, false,
+        "Prop material view: 0 off, 1 albedo, 2 world normal, 3 raw normal sample (BC5 RG), 4 roughness, 5 metallic, 6 AO, 7 material id hash.",
     },
     {
         "MC2_FEATURE_RENDER_BACKEND", "MC2_RENDER_BACKEND", EnvVarKind::Feature, false,

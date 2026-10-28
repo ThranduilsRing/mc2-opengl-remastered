@@ -43,6 +43,10 @@ WAIVER_PATH = Path("A:/Games/mc2-ops/owner_cores_waived_until")
 POLL_S = 2.0
 REPORT_EVERY_S = 30.0
 
+IDLE_RECLAIM_S = float(os.environ.get("MC2_HOST_LEASE_IDLE_S") or 900)   # holder alive but no engine on the host this long -> reclaim
+MERGE_IDLE_TTL_S = 1200.0                # merge holders get at most 20 idle minutes
+
+
 def cores_per_slot() -> int:
     width = int(os.environ.get("MC2_HOST_CORES_PER_SLOT", "2"))
     if not 1 <= width <= 6:
@@ -300,6 +304,35 @@ def foreign_engines() -> List[Tuple[int, str]]:
     return child_registry.engine_processes()
 
 
+def _holder_tag(rec: Optional[dict]) -> str:
+    """The batch/lane tag of a record: `merge-gate-123` for `batch merge-gate-123`, else the label as written."""
+    tag = str(rec.get("batch") or rec.get("label") or "") if rec else ""
+    return tag[len("batch "):] if tag.startswith("batch ") else tag
+
+
+def _reclaim_idle(live, engines, log):
+    """A live holder with no engine on the host for IDLE_RECLAIM_S is stuck (2026-10-27: one blocked lanes for hours): drop it.
+    Batch holds have their own TTL; `merge*` holders get a bounded 20-minute idle allowance.
+    First-seen-idle times live in a sidecar file (the slot records stay untouched)."""
+    side = lease_path().with_suffix(".idle.json")
+    now, seen, keep = time.time(), (_read(side) or {}), []
+    marks = {}
+    for p, rec in live:
+        cur = _read(p)
+        key = f"{rec.get('pid')}:{rec.get('created')}"
+        if not cur or cur.get("batch") or cur.get("legacy_guard") or engines:
+            keep.append((p, rec))
+        elif now - float(seen.get(key, now)) > (MERGE_IDLE_TTL_S if _holder_tag(cur).startswith("merge") else IDLE_RECLAIM_S):
+            log(f"[host-lease] reclaimed idle holder {_holder_tag(cur)} after {now - float(seen[key]):.0f} s: {_describe(cur)}")
+            _remove_records([(p, cur)])
+        else:
+            marks[key] = seen.get(key, now)
+            keep.append((p, rec))
+    if marks != seen:
+        _write_record(side, marks)
+    return keep
+
+
 def acquire(label: str, *, wait: bool = True, timeout_s: Optional[float] = None, kill_orphans: bool = False,
             log: Callable[[str], None] = _log_default,
             sleep: Callable[[float], None] = time.sleep, clock: Callable[[], float] = time.monotonic,
@@ -334,11 +367,16 @@ def acquire(label: str, *, wait: bool = True, timeout_s: Optional[float] = None,
                     queue.append(ticket)
                 queue.sort(key=lambda t: t.get("priority", 1))   # stable: FIFO within a class
                 records = _records()
-                _remove_records([(p, rec) for p, rec in records
-                                 if rec and p.exists() and not _holder_alive(rec)
-                                 and not (_read(p) or {}).get("legacy_guard")])
+                dead = [(p, rec) for p, rec in records
+                        if rec and p.exists() and not _holder_alive(rec)
+                        and not (_read(p) or {}).get("legacy_guard")]
+                for _p, rec in dead:
+                    log(f"[host-lease] reclaiming slot of dead holder: {_describe(rec)}")
+                _remove_records(dead)
                 live = [(p, r) for p, r in records if _holder_alive(r)]
                 foreign = scan() if queue[0] == ticket else []
+                if queue[0] == ticket:
+                    live = _reclaim_idle(live, foreign, log)
                 if foreign and kill_orphans:
                     for pid, _img in foreign:
                         killed, note = child_registry.kill_if_orphan(pid)

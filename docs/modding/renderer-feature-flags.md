@@ -102,7 +102,6 @@ Flags ending in `_TRACE` write per-event or per-frame messages to stderr. Enable
 | `MC2_WATER_DEBUG` | Water fast-path state |
 | `MC2_FX_TRACE` | Particle FX system events |
 | `MC2_ABL_TRACE` | ABL mission script interpreter |
-| `MC2_TGL_POOL_TRACE` | TGL pool NULL slots (warn on exhaustion) |
 | `MC2_SHADER_HOT_RELOAD` | Shader reload events |
 
 ---

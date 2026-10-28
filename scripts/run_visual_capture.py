@@ -42,6 +42,7 @@ import argparse
 import atexit
 import json
 import os
+import re
 import subprocess
 import sys
 import time
@@ -185,13 +186,17 @@ def _mission_started(log_path: Path) -> bool:
         return False
 
 
+_FATAL_LINE = re.compile(r"^(?:\[crash\] (?:code=|\w+ violation)|(?:\[[a-z0-9_ ]+\] )?fatal[: ]|fatal error:)", re.M)
+
+
 def _load_failed(log_path: Path) -> bool:
     """True when the engine log reports a fatal error before the first presented frame (do not wait out the load cap)."""
     try:
         txt = log_path.read_text(encoding="utf-8", errors="replace").lower()
     except OSError:
         return False
-    return any(t in txt for t in ("fatal error", "unhandled exception", "access violation"))
+    # Anchored at line start: the engine's own fatal lines ("[CRASH] code=", "[CRASH] ... violation", "[TAG] FATAL:"), not any line that mentions the words.
+    return _FATAL_LINE.search(txt) is not None
 
 
 def guard_exe(exe: Path) -> bool:

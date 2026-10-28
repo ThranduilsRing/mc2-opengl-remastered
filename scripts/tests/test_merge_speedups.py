@@ -286,6 +286,7 @@ def test_native_reflection_invariants_reject_wrong_normal_target():
 def test_deploy_clean_refusal_explains_rebuild(monkeypatch, tmp_path, capsys):
     import deploy_payload as dp
     monkeypatch.setattr(dp, "check_exe_fresh", lambda *a, **k: None)
+    monkeypatch.setattr(dp, "_last_failure", [])  # fail() records here; an atexit hook would re-print it after the run
     monkeypatch.setattr(dp, "git_head", lambda *a: "base")
     monkeypatch.setattr(dp, "require_head_exe", lambda *a: {"sha": "base", "dirty": True})
     args = types.SimpleNamespace(allow_stale_exe=False, build64_root=None, require_clean=True)
@@ -294,6 +295,8 @@ def test_deploy_clean_refusal_explains_rebuild(monkeypatch, tmp_path, capsys):
     output = capsys.readouterr()
     assert "--require-clean refused deploy" in output.out + output.err
     assert "rebuild" in output.out + output.err
+    assert dp.rebuild_command() in output.out + output.err
+    assert "scripts/ninja_build.py" in dp.rebuild_command()
 
 
 @pytest.mark.parametrize("jobs", [1, 6])
@@ -315,8 +318,15 @@ def test_gate_dry_run_never_executes(monkeypatch, capsys):
     assert "validation | DRY-RUN" in capsys.readouterr().out
 
 
-def test_gate_reports_all_failed_stages(monkeypatch, capsys):
+def test_gate_reports_all_failed_stages(monkeypatch, capsys, tmp_path):
+    from contextlib import contextmanager
     import merge_gate as gate
+    monkeypatch.setenv("MC2_HOST_LEASE_PATH", str(tmp_path / "lease.json"))
+    @contextmanager
+    def batch():
+        yield {"MC2_HOST_LEASE_BATCH": "fixture"}
+    monkeypatch.setattr(gate, "game_batch", batch)
+    monkeypatch.setattr(gate, "log_lease_holders", lambda: None)
     monkeypatch.setattr(gate, "git", lambda *a: "head")
     calls = []
     def runner(cmd, **kw):
@@ -393,10 +403,34 @@ def test_gate_stage_selection():
     steps = gate.plan(6)
     assert [s[0] for s in gate.select_stages(steps, ["deploy,capture-after"])] == ["deploy", "capture-after"]
     assert "pytest" not in [s[0] for s in gate.select_stages(steps, skip=["pytest"])]
+    with pytest.raises(ValueError, match="also needs --skip pytest"):
+        gate.select_stages(steps, skip=["contracts"])
+    assert "contracts" not in [s[0] for s in gate.select_stages(steps, skip=["contracts,pytest"])]
     for stages, skip in ((["missing"], None), (None, ["missing"]), (["deploy", "deploy"], None),
                          (["deploy"], ["deploy"]), ([], None), (None, list(s[0] for s in steps))):
         with pytest.raises(ValueError):
             gate.select_stages(steps, stages, skip)
+    names = [s[0] for s in gate.select_stages(steps)]
+    last_proof = max(i for i, n in enumerate(names) if n.startswith(("saveload-", "determinism-")))
+    assert names.index("mods") > last_proof
+
+
+def test_gate_keep_going_runs_past_a_failed_offline_stage(monkeypatch, capsys):
+    import merge_gate as gate
+    monkeypatch.delenv("MC2_HOST_LEASE_BATCH", raising=False)
+    monkeypatch.setattr(gate, "git", lambda *a: "head")
+    monkeypatch.setattr(gate, "log_lease_holders", lambda: None)
+    calls = []
+    def runner(command, **kw):
+        calls.append(command[0])
+        return _r(int(command[0] == "contracts"))
+    monkeypatch.setattr(gate, "run_child", runner)
+    steps = [("contracts", ["contracts"], {}), ("deploy", ["deploy"], {}), ("tier1", ["stock"], {})]
+    assert gate.execute_parallel(steps, "head") == 1
+    assert calls == ["contracts"]
+    calls.clear()
+    assert gate.execute_parallel(steps, "head", keep_going=True) == 1
+    assert calls == ["contracts", "deploy", "stock"]
 
 
 def test_callers_failure_names_exact_allowlist_entry(capsys):
@@ -1065,3 +1099,38 @@ def test_blocked_capture_reports_missing_proof_without_launching(monkeypatch, ca
     assert "| capture-before | FAIL: fixture: FIFO queue busy" in output
     assert "| tier1 | PASS" in output
     assert "Coverage plan tier1:" in output
+
+
+def test_pre_gate_runs_every_step_and_prints_one_verdict(monkeypatch, capsys, tmp_path):
+    exe = tmp_path / "mc2.exe"
+    exe.write_text("x")
+    monkeypatch.setattr(lm, "regenerate_all", lambda root, dry_run=False: [])
+    ran = []
+
+    def fake_run(root, cmd, env=None):
+        ran.append(os.path.basename(cmd[2]))
+        return _r(1 if "gate_gen.py" in cmd[2] else 0, "stale table")
+    monkeypatch.setattr(lm, "run", fake_run)
+    assert lm.pre_gate(str(tmp_path), str(exe)) == 1
+    out = capsys.readouterr().out
+    assert ran == ["check-background-launch.py", "gate_gen.py", "cxx17_ratchet.py", "run_smoke.py"]  # a red step does not stop the rest
+    assert out.strip().splitlines()[-1] == "PRE-GATE FAIL: gate_gen"
+    monkeypatch.setattr(lm, "run", lambda root, cmd, env=None: _r(0))
+    assert lm.pre_gate(str(tmp_path), str(tmp_path / "none.exe")) == 0
+    assert "PRE-GATE PASS (headless-smoke skipped: no exe)" in capsys.readouterr().out
+
+
+def test_ninja_build_warns_on_dirty_tree_and_stale_exe(monkeypatch, tmp_path):
+    import ninja_build as nb
+    import exe_fingerprint as fpmod
+    calls = {"status": " M a.cpp\n", "rev-parse": "b" * 40 + "\n"}
+    monkeypatch.setattr(nb.subprocess, "run", lambda cmd, **k: types.SimpleNamespace(stdout=calls[cmd[3]]))
+    (tmp_path / "t").mkdir()
+    (tmp_path / "t/mc2.exe").write_bytes(b"x")
+    monkeypatch.setattr(fpmod, "extract", lambda p: {"present": True, "sha": "a" * 12})
+    line = nb.build_warning(str(tmp_path), "t")
+    assert line.startswith("[ninja_build] WARNING:") and "1 uncommitted" in line and "newer than the last build" in line
+    assert "\n" not in line
+    calls["status"] = ""
+    monkeypatch.setattr(fpmod, "extract", lambda p: {"present": True, "sha": "b" * 12})
+    assert nb.build_warning(str(tmp_path), "t") == ""

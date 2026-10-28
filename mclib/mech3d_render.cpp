@@ -1120,33 +1120,6 @@ TG_MultiShape* Mech3DAppearance::previewShape (void)
 
 long Mech3DAppearance::renderShadows (void)
 {
-	// Skip legacy blob shadows when shadow maps are active
-	// ISSUE-34: keyed on the modern shadow path, not tessellation — legacy
-	// pz-gated CPU blob shadows stay off when tess is disabled (their whole-
-	// triangle near-"clip" drops are the uneven-clipping symptom).
-	if (gos_IsModernShadowPathActive())
-		return NO_ERR;
-
-	// DEGRADE-DON'T-CRASH: partial import with no base shape -> no shadow.
-	if (!mechShape)
-		return NO_ERR;
-
-	mechShape->SetTextureHandle(0,localTextureHandle);
-
-	// C3: route renderShadows gate to GPU-lagged visibility when killswitch is enabled.
-	const bool mechShadowVisible = s_gpuCullLifecycle
-		? (gpu_cull::readback_isActorVisibleLagged(static_cast<uint32_t>(actorHandle_)) && visible)
-		: (inView && visible);
-	if (mechShadowVisible)
-	{
-		// Call Multi-shape render stuff here.
-		// DONT RENDER UNTIL FINAL MECH DATA FROM MR CHOI
-		// Call Multi-shape render stuff here.
-		if (mechShadowShape)
-			mechShadowShape->RenderShadows(true);
-		else
-			mechShape->RenderShadows(true);
-	}
-
-	return(NO_ERR);
+	// The CPU blob shadows are gone: shadows come from the modern shadow path.
+	return NO_ERR;
 }

@@ -165,7 +165,7 @@ extern "C" int mc2_vk_water_island_run(
     // GPU-FRONTIER-1: engine frame slot + this island's own previous submit (see the sky island); no shared scene-color fence ring.
     const uint32_t par = slotCtx.frameContext().slot;
     { ZoneScopedN("VKIsl.Water.FenceWait");   // VK-ISLAND-TRACY-1: deferred retire of the slot
-      if (!slotCtx.wait(s->submitted[par], 5000000000ull, "water submission slot")) { setFallback("submission_slot_timeout"); vlog("LOUD: submission slot wait timed out (5 s); skipping this frame, will retry next frame."); return 0; } }
+      if (!vk_island_util::waitStrike(s->waitStrikes, s->disabled, slotCtx.wait(s->submitted[par], 5000000000ull, "water submission slot"), "VK_WATER")) { setFallback("submission_slot_timeout"); vlog("LOUD: submission slot wait timed out (5 s); skipping this frame, will retry next frame."); return 0; } }
     us_fence_wait = usSince(tFence0);
     const auto ground = mc2_vk_ground_lighting_frame();
     if (!ground) return 0;

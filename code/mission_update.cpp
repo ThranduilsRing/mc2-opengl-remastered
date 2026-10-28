@@ -1127,6 +1127,7 @@ void Mission::updateSoakPilotPromote() {
 }
 
 #include "battle_bench_fixture.h"
+#include "mover_budget_fixture.h"
 // One pass of the mission update, in the legacy order. Two parts:
 //   frame part: dev hotkeys, interface, camera, terrain, weather, waypoints, terrain geometry (render frame time);
 //   sim part:   clock, ABL timers, path manager, objects, sensors, collisions, brains, termination (one tick).
@@ -1149,12 +1150,13 @@ bool Mission::updatePass(bool tickMode, bool runFrame, bool runSim, bool advance
 	{
 		benchTick.emplace();
 		mc2BattleBenchObserve();
+		mc2MoverBudgetFixtureTick(static_cast<unsigned>(turn));
 		tickCost.begin();
 		orderTickCompletion.emplace(*this);
 		turn++;
 		worldOrderTick.emplace(turn);
 
-		memset(ObjectManager->moverLineOfSightTable, -1, ObjectManager->maxMovers*ObjectManager->maxMovers);
+		ObjectManager->beginMoverLosEpoch();
 
 #ifdef LAB_ONLY
 		MCTimeLOSCalc = 0;
@@ -1362,7 +1364,8 @@ const bool s_overlapHooksInstalled =
 
 // Per-frame mission update. Normal play runs on the fixed 30 Hz sim tick (code/sim_tick_clock.h): the frame's
 // real time x game speed is banked, whole ticks run out of the bank, and a frame that banks no tick only redraws the
-// unchanged sim state. A paused or frozen sim and multiplayer keep the old one-pass-per-frame update.
+// unchanged sim state. A paused or frozen sim only redraws; multiplayer uses the same wall-paced tick credit as single player
+// (the retail wall-clock frame timer was deleted in 59b919e49).
 long Mission::update (void)
 {
 	ZoneScopedN("Mission::update");
@@ -1383,12 +1386,14 @@ long Mission::update (void)
 			s_tickClock.reset();   // a new mission or a loaded save: no banked time carries over
 		const float renderLength = frameLength;   // DoGameLogic: this render frame's length (1/30 s per virtual frame under the harness clock)
 
-		if (MPlayer || mc2SimTickFrozen(missionInterface))
+		if (!MPlayer && mc2SimTickFrozen(missionInterface))
 		{
 			s_tickClock.reset();
 			pollRealFrameSeconds(renderLength);   // rebase the wall credit so a resume does not burst
-			// Multiplayer runs one tick per frame, paused or frozen runs the frame part alone: no wall time reaches the sim.
-			const bool ended = updatePass(true, true, MPlayer != nullptr, true, earlyResult);
+			// Paused or frozen runs the frame part alone; camera/UI keep the game-speed scale.
+			if (!SmokeMode::fixedTimestepEnabled())
+				frameLength *= simSpeedGetMultiplier();
+			const bool ended = updatePass(true, true, false, true, earlyResult);
 			mc2::tick::commitTickQueues();
 			if (ended)
 				return earlyResult;

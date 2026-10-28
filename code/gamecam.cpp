@@ -219,7 +219,6 @@ extern char  g_dbgLoadScreen[64];
 //---------------------------------------------------------------------------
 void GameCamera::destroy (void)
 {
-	theSky.reset();
 	compass.reset();
 
 	Camera::destroy();
@@ -1149,26 +1148,7 @@ long GameCamera::activate (void)
 	
 	lastShadowLightPitch = lightPitch;
 	
-	//Startup the SKYBox
-	long appearanceType = (GENERIC_APPR_TYPE << 24);
-
-	AppearanceTypePtr genericAppearanceType = nullptr;
-	genericAppearanceType = appearanceTypeList->getAppearance(appearanceType,"skybox");
-	if (!genericAppearanceType)
-	{
-		char msg[1024];
-		sprintf(msg,"No Generic Appearance Named %s","skybox");
-		Fatal(0,msg);
-	}
-	  
-   	theSky = std::make_unique<GenericAppearance>();
-
-	//--------------------------------------------------------------
-	gosASSERT(genericAppearanceType->getAppearanceClass() == GENERIC_APPR_TYPE);
-	theSky->init(static_cast<GenericAppearanceType*>(genericAppearanceType), nullptr);
-	
-	theSky->setSkyNumber(mission->theSkyNumber);
-
+	// The sky is the HDRI pass (GameAdapters::Sky); there is no skybox actor any more.
 	// HDRI-SKY-NUMBER-1: swap the HDRI equirect sky to the mood-appropriate
 	// asset for this mission's sky number (IblHdriRegistry mapping).
 	GameAdapters::Sky::setSkyNumber(static_cast<int>(mission->theSkyNumber));
@@ -1502,21 +1482,6 @@ long GameCamera::update (void)
    		compass->update();		   //Force it to try and draw or stuff will not work!
 	}
 
-	if (theSky)
-	{
-		glm::vec3 pos = getPosition();
-		
-   		theSky->setObjectParameters(pos,0.0f,false,0,0);
-   		theSky->setMoverParameters(0.0f);
-   		theSky->setGesture(0);
-   		theSky->setObjStatus(OBJECT_STATUS_NORMAL);
-   		theSky->setInView(true);
-   		theSky->setVisibility(true,true);
-   		theSky->setFilterState(true);
-		theSky->setIsHudElement();
-   		theSky->update();		   //Force it to try and draw or stuff will not work!
-	}
-  
 	useFog = oldFog;
 	useShadows = oldShadows;
 	

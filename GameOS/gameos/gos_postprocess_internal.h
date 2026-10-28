@@ -53,6 +53,5 @@ extern gosPostProcess* s_postProcess;
 // Free functions defined in the split pieces.
 float mc2ShadowMechSoft();
 bool mc2CloudShadowEnabled();
-void mc2ClampShadowSunAltitude(float& fx, float& fy, float& fz);
 
 #endif // GOS_POSTPROCESS_INTERNAL_H

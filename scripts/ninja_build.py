@@ -28,7 +28,8 @@ from configure_ninja import (DEFAULT_TARGETS, DEFAULT_TREE, NINJA, compile_cache
 
 # PDBs retain obsolete type records across links. Compact before gate copies
 # and per-run freshness hashes dominate; the fresh link retains full symbols.
-PDB_MAX_BYTES = 1024 ** 3
+# A fresh link of mc2.pdb is about 240 MB (2026-10-27, /Z7 objects); 1 GB let incremental links drift to 800 MB+ in the installs.
+PDB_MAX_BYTES = 512 * 1024 ** 2
 
 
 def drop_oversize_pdb(root, tree, limit=PDB_MAX_BYTES):
@@ -40,7 +41,7 @@ def drop_oversize_pdb(root, tree, limit=PDB_MAX_BYTES):
             exe = os.path.join(root, tree, "mc2.exe")
             if os.path.isfile(exe):
                 os.remove(exe)  # PDB is a linker side effect; force Ninja to regenerate both.
-            print(f"[ninja_build] deleted {tree}/mc2.pdb ({size / 1024 ** 3:.1f} GB > {limit / 1024 ** 3:.0f} GB; growth guard)", flush=True)
+            print(f"[ninja_build] deleted {tree}/mc2.pdb ({size / 1024 ** 2:.0f} MB > {limit / 1024 ** 2:.0f} MB; growth guard)", flush=True)
             return True
     except FileNotFoundError:
         pass
@@ -78,8 +79,46 @@ def warm(root, argv, tree):
     print(f"warm: pid {child.pid} building {tree} at {base or 'HEAD'}; log {log}")
 
 
+def pool_jobs(argv):
+    """Take build tokens from the host-wide pool (scripts/build_tokens.py) and rewrite -jN to the width obtained."""
+    import build_tokens
+    idx = next(i for i, a in enumerate(argv) if a.startswith("-j"))
+    want = int(argv[idx][2:] or "2")
+    tokens = build_tokens.acquire(want, timeout_s=120, on_wait=lambda total: print(
+        f"[build-tokens] host pool of {total} jobs is busy; waiting for a free slot", flush=True))
+    if tokens.waited_s >= 1:
+        print(f"[build-tokens] waited {tokens.waited_s:.0f}s, running -j{max(1, len(tokens))}", flush=True)
+    argv = list(argv)
+    argv[idx] = "-j" + str(max(1, len(tokens)))
+    return argv, tokens
+
+
+def build_warning(root, tree):
+    """One line, or "": uncommitted tracked changes (the exe will fingerprint dirty and deploy --require-clean refuses it) and/or
+    HEAD newer than the sha embedded in the last-built exe. Never raises: a warning must not block a build."""
+    try:
+        def git(*a):
+            return subprocess.run(["git", "-C", root, *a], capture_output=True, text=True, timeout=30,
+                                  **console_child.child_kwargs(redirected=True)).stdout.strip()
+        notes = []
+        dirty = [x for x in git("status", "--porcelain", "--untracked-files=no").splitlines() if x]
+        if dirty:
+            notes.append(f"{len(dirty)} uncommitted tracked change(s): this exe will fingerprint dirty and "
+                         "deploy_payload --require-clean will refuse it (commit before building the exe you deploy)")
+        exe = f"{root}/{tree}/mc2.exe"
+        head = git("rev-parse", "HEAD")
+        if head and os.path.exists(exe):
+            from exe_fingerprint import extract, sha_agrees
+            fp = extract(exe)
+            if fp.get("present") and sha_agrees(fp.get("sha"), head) is not True:
+                notes.append(f"HEAD {head[:9]} is newer than the last build ({str(fp.get('sha'))[:9]}); rebuilding")
+        return "[ninja_build] WARNING: " + "; ".join(notes) if notes else ""
+    except Exception:
+        return ""
+
+
 def main():
-    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__))).replace("\\", "/")
+    root =os.path.dirname(os.path.dirname(os.path.abspath(__file__))).replace("\\", "/")
     argv = sys.argv[1:]
     tree = os.environ.get("MC2_NINJA_TREE") or DEFAULT_TREE
     if "--warm" in argv:
@@ -101,16 +140,24 @@ def main():
         configure(root, tree)
     dry_run = "-n" in argv
     if not dry_run:
+        warning = build_warning(root, tree)
+        if warning:
+            print(warning, flush=True)
         drop_oversize_pdb(root, tree)
     env = compile_cache_env(root) if tree_uses_cache(root, tree) else None  # sccache tree (the default; configure_ninja.py --no-compile-cache opts out)
     if env:
         ensure_cache_server(root, env)
+    tokens = None
+    if not dry_run and os.environ.get("MC2_BUILD_TOKENS", "1") != "0":
+        argv, tokens = pool_jobs(argv)
     command = subprocess.list2cmdline([NINJA, "-C", f"{root}/{tree}"] + argv)
     rc = under_vcvars(command, env)
     if rc == 0 and not dry_run and drop_oversize_pdb(root, tree):
         rc = under_vcvars(command, env)  # Fresh full symbols from the same objects; no second compile.
     if started is not None:
         print(f"[warm] done rc={rc} elapsed={time.monotonic() - started:.0f}s", flush=True)
+    if tokens is not None:
+        tokens.close()
     sys.exit(rc)
 
 

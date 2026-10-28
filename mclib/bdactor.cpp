@@ -603,7 +603,7 @@ glm::vec3 BldgAppearance::getNodeIdPosition (long nodeId)
 
 bool BldgAppearance::PerPolySelect (long mouseX, long mouseY)
 {
-	return bldgShape->PerPolySelect(mouseX,mouseY);
+	return false;	// picked through the unified pick bounds; no per-face CPU geometry
 }
 
 void BldgAppearance::setGesture (unsigned long gestureId)

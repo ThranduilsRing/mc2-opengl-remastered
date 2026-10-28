@@ -47,7 +47,7 @@ def _make_fixture_mod(base: str) -> str:
     os.makedirs(os.path.join(mod_dir, "data", "missions"), exist_ok=True)
     os.makedirs(os.path.join(mod_dir, "src"), exist_ok=True)        # must be excluded
     os.makedirs(os.path.join(mod_dir, "out"), exist_ok=True)        # must be excluded
-    os.makedirs(os.path.join(mod_dir, ".scratch"), exist_ok=True)   # dot-dir, must be excluded
+    os.makedirs(os.path.join(mod_dir, ".hidden"), exist_ok=True)    # dot-dir, excluded
 
     # mod.json
     with open(os.path.join(mod_dir, "mod.json"), "w") as fh:
@@ -71,7 +71,7 @@ def _make_fixture_mod(base: str) -> str:
         fh.write("blender source")
     with open(os.path.join(mod_dir, "out", "cook.log"), "w") as fh:
         fh.write("cook output")
-    with open(os.path.join(mod_dir, ".scratch", "temp.txt"), "w") as fh:
+    with open(os.path.join(mod_dir, ".hidden", "temp.txt"), "w") as fh:
         fh.write("scratch")
     # Dot-prefixed file at root of mod
     with open(os.path.join(mod_dir, ".modindex-cache"), "w") as fh:

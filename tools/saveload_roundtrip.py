@@ -291,8 +291,9 @@ def run_fixture(mission: str, save_at: int, load_at: int, deploy: bool, out: str
                 install: str = sd.INSTALL_DIR, save_dir: str | None = None, ref_exe: str | None = None, ref_commit: str | None = None,
                 sim_speed: int = 1, headless: bool = False):
     """Run `mission` with the save, load, re-save fixtures. -> (out dir, first save path, second save path or None, fingerprint dict or None).
-    With `plant` (a save written by another exe, e.g. by tools/campaign_save_roundtrip.py) that file is put where the quickload reads it and
-    `save_at` should lie beyond the run, so the first save returned is the planted one.
+    With `plant` (a save written by another exe, e.g. by tools/campaign_save_roundtrip.py) that file is put where the quickload reads it;
+    `save_at` must be 0 (a quicksave would overwrite it), so the quickload loads it and it comes back as the first save, but the engine writes
+    no re-save after a planted load.
     The owner's quicksave is backed up first and put back afterwards."""
     if deploy:
         sd.build_and_deploy(install)
@@ -412,6 +413,13 @@ def masked_packets(pk, policy: dict):
     return result
 
 
+def _mask_rel(mask_path):
+    try:
+        return os.path.relpath(mask_path, ROOT).replace(os.sep, "/")
+    except ValueError:   # mask on another drive (temp dir): record it absolute
+        return str(mask_path).replace(os.sep, "/")
+
+
 def baseline_record(mission: str, save_at: int, load_at: int, first: str, second: str | None, fingerprint: dict | None,
                     mask_path: str | None = None, first_save_only: bool = False, rc: int | None = None) -> dict:
     pk = si.load(first)[1]
@@ -421,6 +429,8 @@ def baseline_record(mission: str, save_at: int, load_at: int, first: str, second
     pk = masked_packets(pk, policy)
     return {"mission": mission, "save_at": save_at, "load_at": load_at, "gates": resave_env(save_at, load_at), "exe": fingerprint,
             "comparison": policy,
+            # WHY: the classes alone cannot tell a later re-pin which mask file produced them.
+            "mask": (_mask_rel(mask_path) if mask_path else None),
             # WHY recorded: a first-save-only baseline never proved the re-save, so a reader must be able to tell it from a strong one.
             "judged": "first-save-only" if first_save_only else "first-save-and-resave",
             # WHY recorded: --first-save-only waives the re-save's CONTENT, not its existence: a run with no re-save proved nothing.
@@ -510,11 +520,34 @@ def masked_resave_verdict(first: str | None, second: str | None, mask_path: str,
     return res["first_outside"] is None, si.describe(res)
 
 
+def brain_resave_verdict(first: str | None, second: str | None, rc: int | None = None):
+    """TechBrain's optional BRN1 state must survive save -> load -> re-save byte for byte."""
+    if rc:
+        return False, [f"the smoke run exited {rc}"]
+    reason = save_evidence(first, "quicksave") or save_evidence(second, "re-save")
+    if reason:
+        return False, [reason]
+
+    def brain(path):
+        sections = [raw for _, raw in si.load(path)[1] if raw.startswith(si.SECTION_MAGIC)]
+        return [s for raw in sections for s in si.decode_sections(raw) if s[0] == int.from_bytes(b"BRN1", "little")]
+
+    a, b = brain(first), brain(second)
+    if len(a) != 1 or len(b) != 1:
+        return False, ["BRN1 missing or duplicated in quicksave/re-save"]
+    return a == b, ["BRN1 save -> load -> re-save " + ("identical" if a == b else "DIFFERS")]
+
+
 def fixture_verdict(first: str | None, second: str | None, mask_path: str | None = None, rc: int | None = None):
     # WHY: the mask is the policy under which a differing re-save can still pass; masked_resave_verdict also refuses a missing/empty/crashed run.
     if mask_path:
-        return masked_resave_verdict(first, second, mask_path, rc)
-    return resave_verdict(first, second, rc)
+        ok, lines = masked_resave_verdict(first, second, mask_path, rc)
+    else:
+        ok, lines = resave_verdict(first, second, rc)
+    if os.environ.get("MC2_BRAIN_POLICY") == "techbrain":
+        brain_ok, brain_lines = brain_resave_verdict(first, second, rc)
+        return ok and brain_ok, brain_lines + lines
+    return ok, lines
 
 
 def frames_from_baseline(args, base: dict | None) -> str | None:
@@ -534,6 +567,51 @@ def frames_from_baseline(args, base: dict | None) -> str | None:
     return None
 
 
+def plant_refusal(args) -> str | None:
+    """-> a refusal line when --plant cannot load the planted file. WHY before the launch: the quickload fixture waits for the quicksave
+    fixture, so with any nonzero --save-at the run either saves over the planted file or (when that frame is past the run) never quickloads."""
+    if args.plant and args.save_at:
+        return ("--plant needs --save-at 0: with a quicksave frame the run saves over the planted file, or never quickloads it when that "
+                "frame is past the run; pass --save-at 0 --load-at <frame>")
+    return None
+
+
+def previous_baseline(path: str) -> dict | None:
+    try:
+        with open(path, encoding="utf-8") as fh:
+            prev = json.load(fh)
+    except (OSError, ValueError):
+        return None
+    return prev if isinstance(prev, dict) else None
+
+
+def fill_from_previous(args, prev: dict | None) -> None:
+    """--baseline over an existing baseline: unset save_at / load_at / sim_speed / mask / first-save-only come from it, as check does."""
+    if not prev:
+        return
+    for attr in ("save_at", "load_at"):
+        if getattr(args, attr) is None and isinstance(prev.get(attr), int):
+            setattr(args, attr, prev[attr])
+    if not args.sim_speed and isinstance(prev.get("sim_speed"), int):
+        args.sim_speed = prev["sim_speed"]
+    comp = prev.get("comparison") or {}
+    if not args.mask and comp.get("mode") == "zero-masked-bytes-v1":
+        recorded = prev.get("mask")
+        if not isinstance(recorded, str) or not recorded:
+            raise ValueError("previous baseline records a noise mask but no mask path; pass --mask <path> "
+                             "(and --first-save-only if it was judged first-save-only)")
+        candidate = os.path.normpath(recorded if os.path.isabs(recorded) else os.path.join(ROOT, recorded))
+        if not os.path.exists(candidate):
+            raise ValueError(f"previous baseline's mask {recorded} is not readable; pass --mask <path> "
+                             "(and --first-save-only if it was judged first-save-only)")
+        args.mask = candidate
+    if comp.get("mode") == "zero-masked-bytes-v1" and "judged" not in prev:
+        raise ValueError("previous baseline does not record whether it was first-save-only; pass --mask <path> "
+                         "and --first-save-only if that was the original judgement")
+    if prev.get("judged") == "first-save-only":
+        args.first_save_only = True
+
+
 def cmd_fixture(args) -> int:
     mask_policy(args.mask)
     path = baseline_path(args.mission)
@@ -548,9 +626,21 @@ def cmd_fixture(args) -> int:
         except (OSError, ValueError) as err:
             print(f"saveload_roundtrip check: malformed baseline {os.path.relpath(path, ROOT)} ({err}); record it again with --baseline")
             return 1
+    if args.cmd == "baseline":
+        base = previous_baseline(path)
+        try:
+            fill_from_previous(args, base)
+        except ValueError as exc:
+            print(f"saveload_roundtrip baseline: FAIL\n{exc}")
+            return 1
+        base = None
     refusal = frames_from_baseline(args, base)
     if refusal:
-        print("saveload_roundtrip check: FAIL\n" + refusal)
+        print(f"saveload_roundtrip {args.cmd}: FAIL\n" + refusal)
+        return 1
+    refusal = plant_refusal(args)
+    if refusal:
+        print(f"saveload_roundtrip {args.cmd}: FAIL\n" + refusal)
         return 1
     speed = args.sim_speed or (base or {}).get("sim_speed", 1)
     dest, first, second, fp, rc = run_fixture(args.mission, args.save_at, args.load_at, args.deploy, args.out, args.duration, args.plant,
@@ -609,7 +699,8 @@ def main(argv=None) -> int:
         p.add_argument("--duration", type=int, default=28)
         p.add_argument("--deploy", action="store_true")
         p.add_argument("--out", help="keep save1.ims, save2.ims and the run here (default: a temporary directory)")
-        p.add_argument("--plant", help="resave: a save written by another exe, quickloaded instead of one this run writes (give --save-at beyond the run)")
+        p.add_argument("--plant", help="resave: put this save where the quickload reads it instead of writing one; requires --save-at 0 "
+                                        "(the engine writes no re-save after a planted load)")
         p.add_argument("--mask", help="legacy noise mask: resave ignores declared run/build bytes; baseline/check hash zeroed noise bytes and require the same mask policy (old hashes must be re-recorded)")
         p.add_argument("--install", type=sd.resolve_install, default=sd.INSTALL_DIR, metavar="NAME_OR_PATH", help="launch/deploy install, e.g. lane3")
         p.add_argument("--save-dir", help="backup/capture directory matching the engine's savePath (Windows installs share ~/.mechcommander2/savegame)")

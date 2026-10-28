@@ -3,9 +3,9 @@
 # Where each gate is read, what the smoke runner forwards and what tier1_env_vars.md says are not here: ask
 # tools/repo_intel (env_var, gate_status), which scan the sources.
 generator_version: "3.0.0"
-gate_count: 776
-registry_entry_count: 152
-verified_count: 737
+gate_count: 759
+registry_entry_count: 150
+verified_count: 719
 flags:
   - name: MC2_ABL_ARG_GUARD
     kind: Bool
@@ -325,69 +325,6 @@ flags:
     doc: "VIDEO-CAPTURE fixture: =1 overrides the smoke-mode movie skip in MC2Movie::init so in-mission comm videos (mc2_01 V1A.bik ~frame 1600) play under..."
     verified: true
     registry: {feature_id: MC2_TRACE_BOOT_VIDEO, kind: Trace, order: -1, default_on: false}
-  - name: MC2_BRAIN_ALIAS
-    kind: Bool
-    default: false
-    rule: AtoiNZ
-    owner: code
-    doc: ""
-    verified: true
-  - name: MC2_BRAIN_COMMIT_PHASE
-    kind: Bool
-    default: false
-    rule: AtoiNZ
-    owner: code
-    doc: ""
-    verified: true
-  - name: MC2_BRAIN_DISPATCH
-    kind: Bool
-    default: false
-    rule: AtoiNZ
-    owner: code
-    doc: "TechScript special-dispatch master gate (mission.cpp/brain_special_dispatch.cpp)."
-    smoke_passthrough: true
-    verified: true
-    registry: {feature_id: MC2_FEATURE_BRAIN_DISPATCH, kind: Feature, order: -1, default_on: false}
-  - name: MC2_BRAIN_DISPATCH_APPLY
-    kind: Bool
-    default: false
-    rule: AtoiNZ
-    owner: code
-    doc: "Effect layer of the brain special dispatcher; inert without MC2_BRAIN_DISPATCH."
-    smoke_passthrough: true
-    verified: true
-  - name: MC2_BRAIN_DISPATCH_CALL
-    kind: Bool
-    default: false
-    rule: AtoiNZ
-    owner: code
-    doc: "Call chaining of the brain special dispatcher; inert without MC2_BRAIN_DISPATCH."
-    smoke_passthrough: true
-    verified: true
-  - name: MC2_BRAIN_DISPATCH_FSM_TODO
-    kind: Bool
-    default: false
-    rule: AtoiNZ
-    owner: code
-    doc: ""
-    smoke_passthrough: true
-    verified: true
-  - name: MC2_BRAIN_DISPATCH_VAR
-    kind: Bool
-    default: false
-    rule: AtoiNZ
-    owner: code
-    doc: ""
-    smoke_passthrough: true
-    verified: true
-  - name: MC2_BRAIN_ENGAGE
-    kind: Bool
-    default: false
-    rule: AtoiNZ
-    owner: code
-    doc: ""
-    reread: true
-    verified: true
   - name: MC2_BRAIN_FIXED_TICK
     kind: Bool
     default: false
@@ -410,13 +347,6 @@ flags:
     owner: code
     doc: ""
     verified: true
-  - name: MC2_BRAIN_FLOW
-    kind: Bool
-    default: false
-    rule: AtoiNZ
-    owner: code
-    doc: ""
-    verified: true
   - name: MC2_BRAIN_FREEZE_TRACE
     kind: Bool
     default: false
@@ -426,34 +356,6 @@ flags:
     smoke_passthrough: true
     verified: true
     registry: {feature_id: MC2_BRAIN_FREEZE_TRACE, kind: Trace, order: -1, default_on: false}
-  - name: MC2_BRAIN_FSM
-    kind: Bool
-    default: false
-    rule: AtoiNZ
-    owner: code
-    doc: ""
-    verified: true
-  - name: MC2_BRAIN_INLINE_EMPTY_SKIP
-    kind: Bool
-    default: false
-    rule: AtoiNZ
-    owner: code
-    doc: "FULL-CAMPAIGN-1: TechScript/Enhanced-converted missions (carver_v_enhanced) leave ScenarioScript empty - the per-warrior brains move to inline Brain{}..."
-    verified: true
-  - name: MC2_BRAIN_INTENT_QUEUE
-    kind: Bool
-    default: false
-    rule: AtoiNZ
-    owner: code
-    doc: ""
-    verified: true
-  - name: MC2_BRAIN_MISSIONFIT_OPORD
-    kind: Bool
-    default: false
-    rule: AtoiNZ
-    owner: code
-    doc: "BRAIN-MISSIONFIT-OPORD-CONSUMER-1: drive declarative patrol from the inline Brain{} PrimaryOPORD blocks in mission.fit (carver_v_enhanced format)."
-    verified: true
   - name: MC2_BRAIN_MISSION_SEED
     kind: String
     default: ""
@@ -462,32 +364,15 @@ flags:
     doc: "Tactic-weights mission seed text (decimal, 0x hex, leading-0 octal; strtoul base 0 at the reader); empty = the built-in seed."
     smoke_passthrough: true
     verified: true
-  - name: MC2_BRAIN_PATROL
-    kind: Bool
-    default: false
-    rule: AtoiNZ
+  - name: MC2_BRAIN_POLICY
+    kind: Enum
+    default: ""
+    rule: Std
     owner: code
-    doc: ""
-    reread: true
-    verified: true
-  - name: MC2_BRAIN_RUNTIME
-    kind: Bool
-    default: false
-    rule: AtoiNZ
-    owner: code
-    doc: "TechBrain declarative-brain runtime master gate (warrior.cpp)."
+    doc: "Brain execution policy override: legacy forces stock ABL, techbrain forces TechBrain; unset or auto decides per mission at load."
+    tokens: "|auto|legacy|techbrain"
     smoke_passthrough: true
     verified: true
-    registry: {feature_id: MC2_FEATURE_BRAIN_RUNTIME, kind: Feature, order: -1, default_on: false}
-  - name: MC2_BRAIN_RUNTIME_APPLY
-    kind: Bool
-    default: false
-    rule: AtoiNZ
-    owner: code
-    doc: "TechBrain runtime apply gate (warrior.cpp)."
-    smoke_passthrough: true
-    verified: true
-    registry: {feature_id: MC2_FEATURE_BRAIN_RUNTIME_APPLY, kind: Feature, order: -1, default_on: false}
   - name: MC2_BRAIN_RUNTIME_FORCE_MODE
     kind: Enum
     default: ""
@@ -505,34 +390,12 @@ flags:
     doc: ""
     smoke_passthrough: true
     verified: true
-  - name: MC2_BRAIN_SCOPE_GLOBAL
-    kind: Bool
-    default: false
-    rule: AtoiNZ
-    owner: code
-    doc: ""
-    verified: true
-  - name: MC2_BRAIN_SNAPSHOT
-    kind: Bool
-    default: false
-    rule: AtoiNZ
-    owner: code
-    doc: ""
-    verified: true
   - name: MC2_BRAIN_SPECIAL_FIT
     kind: String
     default: ""
     rule: Std
     owner: code
     doc: "DISPATCH-EFFECT-UNITEJECT-1: name of the _specials.fit every warrior loads instead of the mission's own (fixture override); empty = mission name."
-    smoke_passthrough: true
-    verified: true
-  - name: MC2_BRAIN_TASKQ
-    kind: Bool
-    default: false
-    rule: AtoiNZ
-    owner: code
-    doc: ""
     smoke_passthrough: true
     verified: true
   - name: MC2_BRAIN_TASKQ_TRACE
@@ -542,20 +405,6 @@ flags:
     owner: code
     doc: ""
     smoke_passthrough: true
-    verified: true
-  - name: MC2_BRAIN_VARIANTOF
-    kind: Bool
-    default: false
-    rule: AtoiNZ
-    owner: code
-    doc: ""
-    verified: true
-  - name: MC2_BRAIN_VAR_MISSION
-    kind: Bool
-    default: false
-    rule: AtoiNZ
-    owner: code
-    doc: ""
     verified: true
   - name: MC2_BRIDGE_MOVER_PERIOD_SEC
     kind: Float
@@ -2053,7 +1902,7 @@ flags:
     verified: true
   - name: MC2_LIGHTBRIDGE_STABLE_SKIP
     kind: Bool
-    default: false
+    default: true
     rule: Std
     owner: props
     doc: "Std Bool row: any text other than 0/false/off/no/1/true/on/yes (e.g. =2) still reads as on but is reported badvalue, which MC2_CONFIG_STRICT=1 turns fatal."
@@ -2096,7 +1945,6 @@ flags:
     owner: code
     doc: ""
     smoke_passthrough: true
-    verified: true
   - name: MC2_LIGHT_CLAMP_FIXTURE
     kind: Bool
     default: false
@@ -2973,6 +2821,15 @@ flags:
     range: {lo: 0, hi: 1, style: reject}
     smoke_passthrough: true
     verified: true
+  - name: MC2_MOVER_FIXTURE
+    kind: Int
+    default: 0
+    rule: Prefix
+    owner: sim
+    doc: "M6 dev selector: =N tops the mission up to N movers on two teams with move/attack orders (code/mover_budget_fixture.h, tools/mover_budget.py). 0 = off."
+    range: {lo: 0, hi: 1000, style: reject}
+    smoke_passthrough: true
+    verified: true
   - name: MC2_MOVE_CHUNK_SHADOW
     kind: Bool
     default: false
@@ -3344,6 +3201,16 @@ flags:
     doc: ""
     smoke_passthrough: true
     verified: true
+  - name: MC2_PROP_DEBUG_VIEW
+    kind: Enum
+    default: "0"
+    rule: Std
+    owner: render
+    doc: "Prop material view: 0 off, 1 albedo, 2 world normal, 3 raw normal sample (BC5 RG), 4 roughness, 5 metallic, 6 AO, 7 material id hash."
+    tokens: "0|1|2|3|4|5|6|7"
+    smoke_passthrough: true
+    verified: true
+    registry: {feature_id: MC2_DIAG_PROP_DEBUG_VIEW, kind: Trace, order: -1, default_on: false}
   - name: MC2_PROP_FIXB_MVP
     kind: Bool
     default: true
@@ -3678,6 +3545,14 @@ flags:
     rule: Presence
     owner: code
     doc: ""
+    verified: true
+  - name: MC2_SCRATCH
+    kind: Bool
+    default: true
+    rule: Lead0Kill
+    owner: code
+    retire_by: 2026-12-31
+    doc: "Mod VFS layer 0: index mods/<active>/.scratch/data/ above the active mod; 0 = kill-switch."
     verified: true
   - name: MC2_SCREENSHOT_AT_FRAME
     kind: Int
@@ -4071,7 +3946,7 @@ flags:
     verified: true
   - name: MC2_STABLE_LIGHT_SKIP
     kind: Bool
-    default: false
+    default: true
     rule: Std
     owner: props
     doc: "Std Bool row: any text other than 0/false/off/no/1/true/on/yes (e.g. =2) still reads as on but is reported badvalue, which MC2_CONFIG_STRICT=1 turns fatal."
@@ -4087,7 +3962,7 @@ flags:
     verified: true
   - name: MC2_STABLE_LIGHT_SKIP_TOUCH
     kind: Bool
-    default: false
+    default: true
     rule: Std
     owner: props
     doc: "Std Bool row: any text other than 0/false/off/no/1/true/on/yes (e.g. =2) still reads as on but is reported badvalue, which MC2_CONFIG_STRICT=1 turns fatal."
@@ -4951,13 +4826,6 @@ flags:
     owner: code
     doc: ""
     verified: true
-  - name: MC2_TGL_POOL_TRACE
-    kind: Bool
-    default: false
-    rule: Presence
-    owner: gameos
-    doc: ""
-    verified: true
   - name: MC2_THIN_CANARY
     kind: Bool
     default: false
@@ -5621,6 +5489,14 @@ flags:
     rule: Presence
     owner: vk
     doc: ""
+    verified: true
+  - name: MC2_VK_PROP_LOD
+    kind: Bool
+    default: true
+    rule: Lead0Kill
+    owner: vk
+    doc: "Distance LOD for model-override static props in the VK prop island; =0 draws LOD0 always."
+    smoke_passthrough: true
     verified: true
   - name: MC2_VK_PROP_PACKET_DUMP
     kind: String

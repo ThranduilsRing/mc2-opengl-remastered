@@ -46,7 +46,6 @@ set(SOURCES ${SOURCES}
     gos_postprocess_gates.cpp
     gos_postprocess_targets.cpp
     gos_postprocess_skybox.cpp
-    gos_postprocess_shadow.cpp
     gos_postprocess_executor.cpp
     gos_static_prop_batcher.cpp
     # The gos_static_prop_batcher pieces below are contiguous slices of the old file: keep them in this order (namespace-scope initialisers run in link order).

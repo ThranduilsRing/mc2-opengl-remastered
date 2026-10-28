@@ -5,7 +5,9 @@ WHAT: `backup` copies ~/.mechcommander2/savegame/testgame.ims to a sibling `test
 `restore` puts the backed-up file back (or removes the fixture's file when there was none) and clears the marker. A second `backup` while a marker is
 pending keeps the FIRST backup: the file then in place is a fixture's, not the owner's.
 WHY: the quicksave/quickload fixtures (MC2_BOOT_QUICKSAVE_AT / MC2_BOOT_QUICKLOAD_AT) use the same file as the pause-menu quicksave, so every fixture
-run replaces whatever the owner saved. Backups are kept after a restore: they are the owner's data, and only the owner prunes them.
+run replaces whatever the owner saved. Backups are kept after a restore, but only the newest BACKUP_KEEP (5) are kept: older
+`testgame.ims.bak_<YYYYMMDD_HHMMSS>` files are deleted right after a new one is written; a hand-named copy such as
+`testgame.ims.bak_before_boss` never matches and is never deleted. The save itself and every other file are never touched.
 
   py -3 tools/savegame_backup.py backup  [--dir D]
   py -3 tools/savegame_backup.py restore [--dir D]
@@ -21,16 +23,62 @@ import contextlib
 import datetime
 import json
 import os
+import re
 import shutil
 import sys
 import tempfile
+import uuid
+
 
 SAVE_NAME = "testgame.ims"
 MARKER_NAME = SAVE_NAME + ".backup-pending"
+BACKUP_KEEP = 5
+BACKUP_RE = re.compile(r"^" + re.escape(SAVE_NAME) + r"\.bak_\d{8}_\d{6}$")
 
 
 def default_dir() -> str:
     return os.path.join(os.path.expanduser("~"), ".mechcommander2", "savegame")
+
+
+@contextlib.contextmanager
+def scratch_dir():
+    """A throwaway directory for the selftest and the unit tests. -> its path; removed on exit.
+
+    os.mkdir instead of mkdtemp: mkdtemp creates the directory 0700, which some restricted Windows hosts (sandboxed
+    agents, hardened ACLs) refuse to write into. The random name keeps concurrent runs apart.
+    """
+    d = os.path.join(tempfile.gettempdir(), "mc2-savegame-backup-" + uuid.uuid4().hex)
+    os.mkdir(d)
+    try:
+        yield d
+    finally:
+        shutil.rmtree(d, ignore_errors=True)
+
+
+def prune_backups(directory: str, keep: int = BACKUP_KEEP, protect: str | None = None) -> list[str]:
+    """Delete all but the newest `keep` timestamped backups. -> the deleted names.
+
+    Only `testgame.ims.bak_YYYYMMDD_HHMMSS` regular files are candidates: the save, the marker, the lock and
+    hand-named copies (e.g. `testgame.ims.bak_before_boss`) are never touched. `protect` names the backup just
+    written; it survives even when its stamp sorts oldest, so a clock that went backwards can leave `keep` + 1
+    files until the next backup.
+    """
+    found = []
+    with contextlib.suppress(OSError):
+        for name in os.listdir(directory):
+            if BACKUP_RE.match(name) and os.path.isfile(os.path.join(directory, name)):
+                found.append(name)
+    found.sort(reverse=True)
+    keep = max(keep, 0)
+    kept = found[:keep]
+    if protect in found and protect not in kept:
+        kept.append(protect)
+    removed = []
+    for name in [n for n in found if n not in kept]:
+        with contextlib.suppress(OSError):
+            os.remove(os.path.join(directory, name))
+            removed.append(name)
+    return removed
 
 
 def backup(directory: str, now: datetime.datetime | None = None) -> str:
@@ -47,6 +95,7 @@ def backup(directory: str, now: datetime.datetime | None = None) -> str:
         stamp = (now or datetime.datetime.now()).strftime("%Y%m%d_%H%M%S")
         name = f"{SAVE_NAME}.bak_{stamp}"
         shutil.copy2(src, os.path.join(directory, name))
+        prune_backups(directory, protect=name)
     with open(marker, "w", encoding="utf-8") as fh:
         json.dump({"backup": name}, fh)
     return f"backed up to {name}" if name else "no quicksave existed; restore will remove the fixture's file"
@@ -84,8 +133,27 @@ def status(directory: str) -> str:
 
 LOCK_NAME = SAVE_NAME + ".run-lock"
 #: A run that died holding the lock must not block the host forever: a lock older than this is stolen. Waits are bounded too.
-LOCK_STALE_S = 40 * 60
+#: The PID check below catches a dead holder immediately; this bound covers a lock whose holder record is unreadable.
+LOCK_STALE_S = 2 * 60 * 60
 LOCK_WAIT_S = 25 * 60
+
+
+def _pid_alive(pid: int) -> bool:
+    """True when a process with this pid exists on this host. Never sends a signal."""
+    sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "scripts"))
+    from smoke_lib.child_registry import pid_alive
+    return pid_alive(int(pid))
+
+
+def _lock_holder_pid(path: str) -> int | None:
+    try:
+        with open(path, encoding="utf-8") as fh:
+            for field in fh.read().split():
+                if field.startswith("pid="):
+                    return int(field[4:])
+    except (OSError, ValueError):
+        pass
+    return None
 
 
 @contextlib.contextmanager
@@ -104,10 +172,19 @@ def run_lock(directory: str, wait_s: float = LOCK_WAIT_S, stale_s: float = LOCK_
             break
         except FileExistsError:
             try:
-                if time.time() - os.path.getmtime(path) > stale_s:
-                    os.remove(path)
-                    continue
+                age = time.time() - os.path.getmtime(path)
             except OSError:
+                continue
+            holder = _lock_holder_pid(path)
+            if holder is not None and not _pid_alive(holder):
+                with contextlib.suppress(OSError):
+                    os.remove(path)
+                print(f"savegame_backup: took over stale lock {path}: pid {holder} is gone", flush=True)
+                continue
+            if age > stale_s:
+                with contextlib.suppress(OSError):
+                    os.remove(path)
+                print(f"savegame_backup: took over stale lock {path}: held {age / 60:.0f} min (limit {stale_s / 60:.0f})", flush=True)
                 continue
             if time.monotonic() > deadline:
                 raise TimeoutError(f"savegame_backup: save directory {directory} stayed locked by another save run for {wait_s:.0f} s")
@@ -145,7 +222,7 @@ def selftest() -> int:
             return fh.read()
 
     t0 = datetime.datetime(2026, 10, 11, 18, 0, 0)
-    with tempfile.TemporaryDirectory() as d:
+    with scratch_dir() as d:
         with open(os.path.join(d, SAVE_NAME), "wb") as fh:
             fh.write(b"owner")
         backup(d, t0)
@@ -160,13 +237,13 @@ def selftest() -> int:
         expect(os.path.exists(os.path.join(d, SAVE_NAME + ".bak_20261011_180000")), "the backup file is kept after a restore")
         expect("nothing pending" in restore(d), "a restore with nothing pending changes nothing")
         expect(read(d) == b"owner", "a no-op restore leaves the save alone")
-    with tempfile.TemporaryDirectory() as d:
+    with scratch_dir() as d:
         backup(d, t0)
         with open(os.path.join(d, SAVE_NAME), "wb") as fh:
             fh.write(b"fixture")
         restore(d)
         expect(not os.path.exists(os.path.join(d, SAVE_NAME)), "with no owner save, restore removes the fixture's file")
-    with tempfile.TemporaryDirectory() as d:
+    with scratch_dir() as d:
         with open(os.path.join(d, SAVE_NAME), "wb") as fh:
             fh.write(b"owner")
         try:

@@ -49,7 +49,7 @@ EXIT_VIOLATION = checklib.EXIT_VIOLATION
 EXIT_HARNESS_ERROR = checklib.EXIT_HARNESS_ERROR
 
 MECH = "code/mech_weapons.cpp"
-WARRIOR = "code/warrior.cpp"
+WARRIOR = "code/warrior_combat.cpp"
 
 SENTINEL = "FIREGATE-REGION-END"
 TRACE_CALL = "fireGateTrace("

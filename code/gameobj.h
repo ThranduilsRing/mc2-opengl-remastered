@@ -412,9 +412,13 @@ class GameObject {
 			return(-1);
 		}
 
+	protected:
+		// Every partId write goes through GameObjectManager::setPartId / forcePartId so the manager's partId index sees it.
+		friend class GameObjectManager;
 		virtual void setPartId (long newPartId) {
 			partId = newPartId;
 		}
+	public:
 		
 		long getPartId (void) {
 			return(partId);

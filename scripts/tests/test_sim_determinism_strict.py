@@ -116,3 +116,40 @@ def test_merge_gate_refuses_red_smoke_even_with_a_sim_stream(tmp_path, monkeypat
     with pytest.raises(SystemExit, match="gate smoke a failed"):
         sim.run_mission("mc2_03", "20", str(tmp_path / "out"))
     assert not (tmp_path / "out/a").exists()
+
+
+def test_next_duration_scales_and_caps():
+    assert sim.next_duration(20, 10, 1000) == sim.MAX_DURATION
+    assert sim.next_duration(20, 848, 1000) == 29   # ceil(20 * 1000 * 1.2 / 848)
+    assert sim.next_duration(20, 1000, 1000) == 24  # always strictly longer
+
+
+def run_check(monkeypatch, tmp_path, frames_by_duration, needed=1000):
+    base = tmp_path / "base.json"
+    base.write_text(json.dumps({"frames": needed}))
+    monkeypatch.setattr(sim, "baseline_path", lambda m: str(base))
+    monkeypatch.setattr(sim, "_load_env", lambda p: {})
+    seen = []
+
+    def fake_run(mission, duration, out, *a, **k):
+        seen.append(duration)
+        return f"a{duration}", f"b{duration}"
+    monkeypatch.setattr(sim, "run_mission", fake_run)
+    monkeypatch.setattr(sim, "load_simid", lambda p: [""] * frames_by_duration(int(p[1:])))
+    monkeypatch.setattr(sim, "compare", lambda *a, **k: (True, "same"))
+    monkeypatch.setattr(sim, "check_baseline", lambda *a, **k: (True, "ok"))
+    monkeypatch.setattr(sim, "_seed", lambda p: "")
+    monkeypatch.setattr(sim, "data_fingerprint", lambda i: {})
+    rc = sim.main(["check", "mc2_x", "--out", str(tmp_path / "o")])
+    return rc, seen
+
+
+def test_check_extends_duration_on_loaded_host(monkeypatch, tmp_path):
+    rc, seen = run_check(monkeypatch, tmp_path, lambda d: d * 42)  # 20 s -> 840, 29 s -> 1218
+    assert rc == 0 and seen == ["20", "29"]
+
+
+def test_check_inconclusive_not_fail_when_cap_reached(monkeypatch, tmp_path, capsys):
+    rc, seen = run_check(monkeypatch, tmp_path, lambda d: d * 5)
+    assert rc == 3 and "INCONCLUSIVE (too few frames)" in capsys.readouterr().out
+    assert seen[-1] == str(sim.MAX_DURATION)

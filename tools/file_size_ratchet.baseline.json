@@ -15,29 +15,29 @@
  ],
  "files_over_1500": {
   "GameOS/gameos/engine_present_vk.cpp": 2921,
-  "GameOS/gameos/vulkan_color_prop_island.cpp": 2026,
+  "GameOS/gameos/vulkan_color_prop_island.cpp": 2040,
   "GameOS/include/gameos.hpp": 3650,
   "code/artlry.cpp": 1700,
   "code/bldng.cpp": 1691,
-  "code/brain_special_dispatch.cpp": 2771,
-  "code/gamecam.cpp": 1644,
-  "code/gameobj.cpp": 2250,
+  "code/brain_special_dispatch.cpp": 2705,
+  "code/gamecam.cpp": 1609,
+  "code/gameobj.cpp": 2252,
   "code/infowindow.cpp": 1730,
-  "code/logisticsdialog.cpp": 2150,
+  "code/logisticsdialog.cpp": 2230,
   "code/mechlabscreen.cpp": 1952,
   "code/mechlopedia.cpp": 1624,
   "code/missionbegin.cpp": 2227,
-  "code/mover.h": 1906,
+  "code/mover.h": 1923,
   "code/mpparameterscreen.cpp": 2406,
   "code/multplyr.h": 1845,
   "code/objective.cpp": 2437,
   "code/optionsarea.cpp": 1838,
   "code/pilotreviewarea.cpp": 1843,
   "code/tacordr.cpp": 2106,
-  "code/terrobj.cpp": 1726,
-  "code/turret.cpp": 2346,
-  "code/warrior.cpp": 2704,
-  "code/warrior.h": 2192,
+  "code/terrobj.cpp": 1760,
+  "code/turret.cpp": 2349,
+  "code/warrior.cpp": 2693,
+  "code/warrior.h": 2195,
   "editor/tests/test_objectives.cpp": 1996,
   "gui/alistbox.cpp": 1513,
   "mclib/ablenv.cpp": 1585,
@@ -47,15 +47,14 @@
   "mclib/file.cpp": 1739,
   "mclib/gosfx/fcurve.cpp": 1923,
   "mclib/mapdata.cpp": 2508,
-  "mclib/move.h": 1895,
+  "mclib/move.h": 1923,
   "mclib/terrtxm.cpp": 1819,
-  "mclib/tgl.h": 1801,
   "tools/cite_guard.py": 1553,
   "tools/comment_guard.py": 1790,
   "tools/scifi_kit/art/intent_military.py": 3363,
   "tools/terrain_beautify/visual_heightfield.py": 1510
  },
- "head": "e956e4a0d",
+ "head": "52a316964",
  "per_dir": {
   "GameAdapters": {
    "files": 13,
@@ -64,7 +63,7 @@
    "max_lines": 458
   },
   "GameOS": {
-   "files": 379,
+   "files": 378,
    "files_over_1500": 3,
    "files_over_3000": 1,
    "max_lines": 3650
@@ -73,10 +72,10 @@
    "files": 19,
    "files_over_1500": 0,
    "files_over_3000": 0,
-   "max_lines": 1126
+   "max_lines": 1116
   },
   "RenderCore": {
-   "files": 65,
+   "files": 66,
    "files_over_1500": 0,
    "files_over_3000": 0,
    "max_lines": 1490
@@ -88,10 +87,10 @@
    "max_lines": 1016
   },
   "code": {
-   "files": 437,
+   "files": 446,
    "files_over_1500": 21,
    "files_over_3000": 0,
-   "max_lines": 2771
+   "max_lines": 2705
   },
   "editor": {
    "files": 286,
@@ -106,19 +105,19 @@
    "max_lines": 1513
   },
   "mclib": {
-   "files": 561,
-   "files_over_1500": 10,
+   "files": 557,
+   "files_over_1500": 9,
    "files_over_3000": 0,
    "max_lines": 2508
   },
   "shaders": {
-   "files": 108,
+   "files": 109,
    "files_over_1500": 0,
    "files_over_3000": 0,
    "max_lines": 607
   },
   "tools": {
-   "files": 611,
+   "files": 612,
    "files_over_1500": 4,
    "files_over_3000": 1,
    "max_lines": 3363
@@ -143,11 +142,11 @@
   },
   {
    "file": "code/brain_special_dispatch.cpp",
-   "lines": 2771
+   "lines": 2705
   },
   {
    "file": "code/warrior.cpp",
-   "lines": 2704
+   "lines": 2693
   },
   {
    "file": "mclib/mapdata.cpp",
@@ -163,11 +162,15 @@
   },
   {
    "file": "code/turret.cpp",
-   "lines": 2346
+   "lines": 2349
   },
   {
    "file": "code/gameobj.cpp",
-   "lines": 2250
+   "lines": 2252
+  },
+  {
+   "file": "code/logisticsdialog.cpp",
+   "lines": 2230
   },
   {
    "file": "code/missionbegin.cpp",
@@ -175,11 +178,7 @@
   },
   {
    "file": "code/warrior.h",
-   "lines": 2192
-  },
-  {
-   "file": "code/logisticsdialog.cpp",
-   "lines": 2150
+   "lines": 2195
   },
   {
    "file": "code/tacordr.cpp",
@@ -187,7 +186,7 @@
   },
   {
    "file": "GameOS/gameos/vulkan_color_prop_island.cpp",
-   "lines": 2026
+   "lines": 2040
   },
   {
    "file": "editor/tests/test_objectives.cpp",
@@ -202,16 +201,16 @@
    "lines": 1935
   },
   {
+   "file": "code/mover.h",
+   "lines": 1923
+  },
+  {
    "file": "mclib/gosfx/fcurve.cpp",
    "lines": 1923
   },
   {
-   "file": "code/mover.h",
-   "lines": 1906
-  },
-  {
    "file": "mclib/move.h",
-   "lines": 1895
+   "lines": 1923
   },
   {
    "file": "mclib/camera.h",
@@ -234,10 +233,6 @@
    "lines": 1819
   },
   {
-   "file": "mclib/tgl.h",
-   "lines": 1801
-  },
-  {
    "file": "mclib/ablrtn.cpp",
    "lines": 1799
   },
@@ -246,13 +241,17 @@
    "lines": 1790
   },
   {
+   "file": "code/terrobj.cpp",
+   "lines": 1760
+  },
+  {
    "file": "mclib/file.cpp",
    "lines": 1739
   }
  ],
  "total": {
-  "files": 2513,
-  "files_over_1500": 40,
+  "files": 2520,
+  "files_over_1500": 39,
   "files_over_3000": 2,
   "max_lines": 3650
  },

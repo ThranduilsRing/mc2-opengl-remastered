@@ -16,7 +16,7 @@ LogisticsPilot:
 **************************************************************************************************/
 #include <string>
 #include <vector>
-#include"warrior.h"
+#include "warrior_types.h"
 
 inline constexpr int MAX_MISSIONS = 50;
 

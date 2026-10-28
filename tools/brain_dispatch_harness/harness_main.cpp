@@ -604,46 +604,11 @@ int main(int argc, char** argv) {
         return 2;
     }
 
-    // Set required env gates BEFORE any dispatch call (static initializers).
-    // In apply mode we set MC2_BRAIN_DISPATCH_APPLY=1 as well.
-    (void)_putenv("MC2_BRAIN_DISPATCH=1");
-    (void)_putenv("MC2_BRAIN_DISPATCH_CALL=1");
-    (void)_putenv("MC2_BRAIN_DISPATCH_VAR=1");
-    // TECHSCRIPT-DISPATCH-1D-M: enable mission-scope Var store for varmission-roundtrip fixture.
-    (void)_putenv("MC2_BRAIN_VAR_MISSION=1");
-    // enable patrol verb handler for patrol fixtures.
-    (void)_putenv("MC2_BRAIN_PATROL=1");
-    // Preserve the A/B runner's gate-OFF control. Default the queue ON only when the caller did not
-    // set it (so a bare harness run still exercises patrol + the intent path), but an
-    // explicit caller value (the A/B runner sets =0 for the OFF pass) is respected.
-    if (!mc2::gate::isSet<"MC2_BRAIN_INTENT_QUEUE">())
-        (void)_putenv("MC2_BRAIN_INTENT_QUEUE=1");
-    // BRAIN-FSM-1K-A/B: enable FSM verbs for fsm-* fixtures.
-    (void)_putenv("MC2_BRAIN_FSM=1");
-    // enable the alias registry for the alias-registry fixture.
-    // Safe for all other fixtures: resolution only rewrites tokens that match the
-    // registry or the catalog case-insensitively; exact canonical spellings pass through.
-    (void)_putenv("MC2_BRAIN_ALIAS=1");
-    // merge global_specials.fit into every fixture parse.
-    // Safe for all other fixtures: global keys are namespaced global.* (no collisions),
-    // and merge only appends Call targets — entry-body selection is unaffected.
-    (void)_putenv("MC2_BRAIN_SCOPE_GLOBAL=1");
-    // resolve variantOf inheritance for the variantof-* fixtures.
-    // Safe for all other fixtures: resolution only touches entries carrying a variantOf field.
-    (void)_putenv("MC2_BRAIN_VARIANTOF=1");
-    // enable flow verbs for the flow-* fixtures.
-    // Other fixtures gain a trailing "STOP" verb (their STOP sentinels become verbs) —
-    // harmless: STOP is the last body line by convention and is not an effect verb.
-    (void)_putenv("MC2_BRAIN_FLOW=1");
-    if (applyMode) {
-        (void)_putenv("MC2_BRAIN_DISPATCH_APPLY=1");
-    }
-    // MC2_BRAIN_INTENT_QUEUE is read from the environment as-is.
-    // The caller sets it before invoking the harness for gate-ON runs.
-    mc2::gate::invalidateAll();   // the _putenv calls above ran after static initialisers cached gates
-
-    // Detect intent queue gate state (read BEFORE first static-init call).
-    bool intentQueueGateOn = mc2::gate::get<"MC2_BRAIN_INTENT_QUEUE">();
+    // B4: the MC2_BRAIN_* feature gates are retired; the TechBrain policy (dispatch_wrapper.cpp defines
+    // g_policy = TechBrain for this binary) turns the whole brain layer on, queue + commit included.
+    // The old gate-OFF (inline commit) pass no longer exists as a runtime configuration.
+    mc2::gate::invalidateAll();
+    const bool intentQueueGateOn = true;
 
     // writer round-trip self-test (needs the gates set above:
     // ALIAS for alias= lookup, VARIANTOF for inheritance, FLOW for WAIT/STOP verbs).

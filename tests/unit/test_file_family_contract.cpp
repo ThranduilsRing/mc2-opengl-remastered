@@ -667,7 +667,11 @@ std::string readWholeFile (const fs::path &path)
 std::string expectedProvider (const std::string &layer, const std::string &request)
 {
 	const std::string key = fst_normalize_loose_key(request.c_str());
-	if (layer.starts_with("mod:")) return "mods/" + layer.substr(4) + "/" + key;
+	if (layer.starts_with("mod:")) {
+		std::string id = layer.substr(4);
+		if (id.ends_with("#scratch")) return "mods/" + id.substr(0, id.size() - 8) + "/.scratch/" + key;
+		return "mods/" + id + "/" + key;
+	}
 	return key;
 }
 

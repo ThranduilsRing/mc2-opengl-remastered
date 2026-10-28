@@ -139,19 +139,7 @@ def test_dotdir_nested_skip() -> None:
 
 
 def test_resolve_probe_absent_from_index() -> None:
-    """
-    Full ResolverConfig round-trip: probe file under .scratch/ resolves MISS;
-    real file under data/ resolves to mod layer.
-
-    This is the canonical S5 fixture: synthetic mod with
-      mods/<id>/.scratch/data/probe.txt  (dot-dir at mod root -- never walked)
-      mods/<id>/data/probe.txt           (real file -- should win)
-
-    The engine's InitModSearchPaths only passes data/ to IndexModData, so
-    .scratch/ at the mod root is never visited regardless of the dot-skip rule.
-    The dot-skip rule governs entries found INSIDE the data/ walk.
-    This test verifies the resolver mirrors that behavior.
-    """
+    """Layer 0 is explicitly mounted; hidden entries under data remain excluded."""
     with tempfile.TemporaryDirectory() as tmp:
         game_dir = tmp
         mods_root = os.path.join(tmp, "mods")
@@ -159,7 +147,7 @@ def test_resolve_probe_absent_from_index() -> None:
 
         # Real data file
         _make_file(os.path.join(mods_root, mod_id, "data", "probe.txt"), "real")
-        # Dot-dir at mod root (.scratch/ is never passed to the walk)
+        # Explicit scratch layer at the active mod root.
         _make_file(os.path.join(mods_root, mod_id, ".scratch", "data", "probe.txt"),
                    "scratch-override")
         # Dot-dir inside data/ (ruled out by the dot-skip guard)
@@ -173,13 +161,10 @@ def test_resolve_probe_absent_from_index() -> None:
             fst_files=[],
         )
 
-        # Real file resolves to mod layer
+        # Scratch wins over the project file.
         result = resolve("data/probe.txt", cfg)
-        assert result["layer"] == f"mod:{mod_id}", \
-            f"Expected mod layer, got {result['layer']}"
-        assert "real" in open(result["path"]).read(), \
-            "Path should point to the real file"
-
+        assert result["layer"] == f"mod:{mod_id}#scratch"
+        assert open(result["path"]).read() == "scratch-override"
         # Dot-dir entry inside data/ is not reachable
         result2 = resolve("data/.hidden/probe.txt", cfg)
         assert result2["layer"] == "MISS", \

@@ -7,6 +7,7 @@
 
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include "gvehicl_internal.h"
+#include "world/visibility_input.h"
 
 
 constexpr double TURN_THRESHOLD = 20.0;
@@ -1183,4 +1184,8 @@ long GroundVehicle::setTeamId (long _teamId, bool setup)
 	}
 
 	return result;	
+}
+
+bool GroundVehicle::isLayingMines (void) {
+	return(pilot && (pilot->getCurTacOrder()->moveParams.mode == MOVE_MODE_MINELAYING));
 }

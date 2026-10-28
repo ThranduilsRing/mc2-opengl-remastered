@@ -73,6 +73,7 @@ L(Presence, "MC2_MOUSE_RECON", Bool, false, "unclassified", "", "MC2_MOUSE_RECON
 // history: docs/gate-history.md#MC2_MOVER_COHERENCE_AUDIT
 L(Lead0, "MC2_MOVER_COHERENCE_AUDIT", Bool, false, "code", "", "META-FIX design A runtime tier (code/mission.cpp auditMoverCoherence, ~1 Hz): read-only audit that the five per-mover registries (isOnGUI render gate...", passthrough | registry(Trace, "MC2_TRACE_MOVER_COHERENCE_AUDIT", -1, false) | verified),
 P("MC2_MOVER_CONTACT_SHADOW", Float, 0.0, "terrain", "", "", passthrough | range(0.0, 1.0) | verified),
+P("MC2_MOVER_FIXTURE", Int, 0, "sim", "", "M6 dev selector: =N tops the mission up to N movers on two teams with move/attack orders (code/mover_budget_fixture.h, tools/mover_budget.py). 0 = off.", passthrough | range(0, 1000) | verified),
 L(Lead0, "MC2_MOVE_CHUNK_SHADOW", Bool, false, "code", "", "", passthrough | verified),
 L(Lead0, "MC2_MOVE_PATH_CACHE_SHADOW", Bool, false, "code", "", "", passthrough | verified),
 // history: docs/gate-history.md#MC2_MOVE_RECON
@@ -138,6 +139,7 @@ L(Presence, "MC2_PROJECTZ_HEATMAP", Bool, false, "code", "", "", passthrough | v
 L(Presence, "MC2_PROJECTZ_SUMMARY", Bool, false, "code", "", "", passthrough | verified),
 L(Presence, "MC2_PROJECTZ_TRACE", Bool, false, "code", "", "", passthrough | verified),
 // PropBaseLightDir (PROP-BASE-LIGHT-DIR-1)
+G("MC2_PROP_DEBUG_VIEW", Enum, "0", "render", "", "Prop material view: 0 off, 1 albedo, 2 world normal, 3 raw normal sample (BC5 RG), 4 roughness, 5 metallic, 6 AO, 7 material id hash.", passthrough | registry(Trace, "MC2_DIAG_PROP_DEBUG_VIEW", -1, false) | tokens("0|1|2|3|4|5|6|7") | verified),
 L(DefOnAtoiNZ, "MC2_PROP_FIXB_MVP", Bool, true, "props", "", "", verified),  // default not derivable from the tree
 // PropFoliageAlphaFlag (FOLIAGE-ALPHAFLAG-1)
 // FOGLIGHT-LATCH-1: diagnostic probe for the one-shot per-actor light latch.
@@ -192,6 +194,7 @@ G("MC2_RNG_SEED", String, "", "mech", "", "DETERMINISTIC-RNG-1: seed text (decim
 // that abut bare terrain on the indirect terrain path (gos_terrain.frag).
 L(Presence, "MC2_SCENE_LIGHTING_ASSERT", Bool, false, "code", "", "", verified),
 L(Presence, "MC2_SCENE_LIGHTING_TRACE", Bool, false, "code", "", "", verified),
+L(Lead0Kill, "MC2_SCRATCH", Bool, true, "code", "2026-12-31", "Mod VFS layer 0: index mods/<active>/.scratch/data/ above the active mod; 0 = kill-switch.", verified),
 P("MC2_SCREENSHOT_AT_FRAME", Int, -1, "gameos", "", "", passthrough | verified),
 G("MC2_SCREENSHOT_PATH", String, "", "gameos", "", "Oracle: deterministic backbuffer screenshot at a target frame.", passthrough | verified),
 G("MC2_SCREENXY_PREDICATE_MODE", Enum, "", "code", "", "", tokens("|Legacy|Modern") | verified),

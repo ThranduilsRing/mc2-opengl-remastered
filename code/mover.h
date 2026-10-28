@@ -1,3 +1,4 @@
+#include "dradio.h"
 //***************************************************************************
 //
 //	mover.h - This file contains the Mover Class header
@@ -60,9 +61,7 @@
 #include"cmponent.h"
 #endif
 
-#ifndef WARRIOR_H
-#include"warrior.h"
-#endif
+#include "warrior_types.h"
 
 #ifndef DGROUP_H
 #include"dgroup.h"
@@ -1054,7 +1053,10 @@ public:
 		virtual void updateDynamics (void) {
 		}
 
+	protected:
+		friend class GameObjectManager;
 		virtual void setPartId (long newPartId);
+	public:
 
 		virtual void setPosition (glm::vec3& newPosition);
 		

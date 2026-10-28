@@ -1,5 +1,6 @@
 #include "save_archive.h"
-#include "simulation_save_section.h"
+#include "save_sections.h"
+#include "save_brain_section.h"
 #include "footprints.h"
 // Mission: the second half of the Mission::load sequence -- the managers, terrain, movement data and mission script,
 // the warriors, parts, teams and objects, the commanders, the HUD and the geometry finalize. The first half and the
@@ -14,6 +15,8 @@
 #include "../GameOS/gameos/visual_tuning_profile.h"
 #include "../GameOS/gameos/terrain_material_lib.h"
 #include <new>
+
+static void applySaveSections(std::string_view fileName, const mc2::save::SectionContainer& sections, mc2::sim::TacticalOrderQueue& orderQueue);
 
 
 // Create the trigger-area and object managers.
@@ -597,39 +600,52 @@ void Mission::loadLogistics(MissionLoadFrame& f) {
 	LogisticsData::instance->setCurrentMissionNum(currentMissionNum);
 	currentPacket++;
 	//-------------------------------------------------------------------------------------------
-    // Legacy files reserve unused packet slots after END. An empty slot is
-    // absent, rather than an invalid new section.
-    if (currentPacket + 1 < loadFile.getNumPackets() &&
-        loadFile.seekPacket(currentPacket + 1) == NO_ERR && loadFile.getPacketSize() > 0) {
+    // Save v2 sections follow END (validated in openSaveFile). A v1 file carries the legacy R2 packet in that slot, or
+    // nothing; it is upgraded to the same sections in memory, so both versions restore through one path.
+    mc2::save::SectionContainer sections;
+    if (f.saveV2) {
+        if (f.sectionsPacket == currentPacket + 1) sections = std::move(f.sections);
+        else mc2::fmt::print_err("[SAVE v2] event=reject reason=section_position file={}\n", mc2::fmt::safe(f.loadFileName));
+    } else if (currentPacket + 1 < loadFile.getNumPackets() &&
+               loadFile.seekPacket(currentPacket + 1) == NO_ERR && loadFile.getPacketSize() > 0) {
+        // Legacy files reserve unused packet slots after END: an empty slot is absent, not an invalid section.
         const auto size = loadFile.getPacketSize();
-        if (size <= 0 || size > static_cast<int>(mc2::save::maxFileBytes)) Fatal(0, "Invalid R2 save section size");
-        mc2::save::Bytes bytes(static_cast<size_t>(size));
-        loadFile.readPacket(currentPacket + 1, bytes.data());
-        mc2::save::Archive extension(bytes);
-        uint32_t tag = 0, version = 0;
-        std::vector<uint8_t> animation;
-        extension(tag, version);
-        if (tag == 0x4E413252u) {
-            if (version > 3) Fatal(0, "Save file has a newer R2 section than this build understands");
-            if (version != 2 && version != 3) {
-                mc2::fmt::print_err("[SAVE v1] event=reject reason=r2_version version={} file={}\n", version, mc2::fmt::safe(f.loadFileName));
-            } else {
-                extension.sectionVersion = version;
-                mc2::sim::serializeAnimationBlob(extension, animation);
-                auto queue = orderIngress.queue();
-                queue.serialize(extension);
-                // restoreAnimationState validates before it mutates, so a rejected section leaves default animation state.
-                // Dev saves written between de4413807 and f8b4174c3 carry the v3 record layout under version 2; restore validates
-                // before it mutates, so a failed v2 parse retries as v3.
-                if (!extension.finish() ||
-                    !(ObjectManager->restoreAnimationState(animation, version) ||
-                      (version == 2 && ObjectManager->restoreAnimationState(animation, 3))))
-                    mc2::fmt::print_err("[SAVE v1] event=reject reason=r2_section file={}\n", mc2::fmt::safe(f.loadFileName));
-                else orderIngress.queue() = std::move(queue);
-            }
+        std::string why = "r2_size";
+        if (size > 0 && size <= static_cast<int>(mc2::save::maxFileBytes)) {
+            mc2::save::Bytes bytes(static_cast<size_t>(size));
+            loadFile.readPacket(currentPacket + 1, bytes.data());
+            if (mc2::save::upgradeLegacyR2(bytes, sections, &why)) why.clear();
         }
+        if (!why.empty())
+            mc2::fmt::print_err("[SAVE v1] event=reject reason={} file={}\n", why, mc2::fmt::safe(f.loadFileName));
     }
+    applySaveSections(mc2::fmt::safe(f.loadFileName), sections, orderIngress.queue());
 	loadFile.close();
+}
+
+// Restore each known save section, or apply its default when absent (a v1 save, or a v2 save from before the section
+// existed). Defaults equal what a v1 load always reconstructed. B2 (BRN1), B3 (FIX1), M5 (WRLD) and PATH add one entry each.
+static void applySaveSections(std::string_view fileName, const mc2::save::SectionContainer& sections, mc2::sim::TacticalOrderQueue& orderQueue) {
+    auto reject = [&](std::string_view reason) {
+        mc2::fmt::print_err("[SAVE v2] event=reject reason={} file={}\n", reason, fileName);
+    };
+    if (const auto* anim = sections.find(mc2::save::tagAnimation)) {
+        // restoreAnimationState validates before it mutates, so a rejected section leaves default animation state.
+        // Dev saves written between de4413807 and f8b4174c3 carry the v3 record layout under version 2, so a failed v2 parse retries as v3.
+        if (!(ObjectManager->restoreAnimationState(anim->payload, anim->version) ||
+              (anim->version == 2 && ObjectManager->restoreAnimationState(anim->payload, 3))))
+            reject("anim_section");
+    } // default: the animation state the restored objects rebuilt from their own records
+    if (const auto* orders = sections.find(mc2::save::tagOrders)) {
+        mc2::save::Archive archive(orders->payload);
+        auto queue = orderQueue;
+        queue.serialize(archive);
+        if (archive.finish()) orderQueue = std::move(queue);
+        else reject("orders_section");
+    } // default: the empty queue resetOrderIngress left
+    if (const auto* brain = sections.find(mc2::save::tagBrain)) {
+        if (!mc2::save::restoreBrainSection(brain->payload)) reject("brain_section");
+    } // default: no brain runtime; the first brain tick allocates it from the mission files, as a v1 load always did
 }
 
 // Activate the camera and finalise the static-prop and mech geometry and the GPU cull buffers.

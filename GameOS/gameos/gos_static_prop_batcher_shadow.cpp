@@ -136,13 +136,66 @@ extern "C" int mc2_color_prop_island_get_frame_feed(Mc2ColorPropFeed* out) {
     // range reinjectPersistentStatic() copied from the store (else double-draw).
     // Read point: inside the island run, which txmmgr calls after renderLists() has
     // issued all submits and the registry reinject for the frame.
+    // Distance LOD (model-override statics only; MC2_VK_PROP_LOD=0 disables): each instance of a LOD-capable
+    // type is re-typed to the LOD its camera distance selects, with a +-8% band so it never flickers at a
+    // boundary. Re-typed instances are collected per target type and appended in that type's slot below, so
+    // every (type, LOD) is still one contiguous run (one instanced draw) and the HZB pass sees the same feed.
+    static const bool s_lodOn = mc2::gate::get<"MC2_VK_PROP_LOD">();
+    static std::unordered_map<uint32_t, std::vector<GpuStaticPropInstance>> s_lodOut;
+    for (auto& [lodTid, lodVec] : s_lodOut) lodVec.clear();
+    const bool lodActive = s_lodOn && !s_lodGroups.empty();
+    if (lodActive) {
+        const RenderCore::ViewUniforms vu = RenderCore::framePackets().copyMainView().uniforms;
+        const float cx = vu.cameraWorldPos[0], cy = vu.cameraWorldPos[1], cz = vu.cameraWorldPos[2];
+        constexpr float kBand = 0.08f;
+        auto route = [&](const GpuStaticPropInstance* b, const GpuStaticPropInstance* e, const PropLodGroup& g) {
+            for (; b != e; ++b) {
+                const float dx = b->modelMatrix[12] - cx, dy = b->modelMatrix[13] - cy, dz = b->modelMatrix[14] - cz;
+                const float d = std::sqrt(dx * dx + dy * dy + dz * dz);
+                uint32_t px, py, pz;
+                std::memcpy(&px, &b->modelMatrix[12], 4); std::memcpy(&py, &b->modelMatrix[13], 4); std::memcpy(&pz, &b->modelMatrix[14], 4);
+                const uint64_t key = (((uint64_t(px) * 0x9E3779B1ull) ^ (uint64_t(py) * 0x85EBCA77ull) ^ (uint64_t(pz) * 0xC2B2AE3Dull)) << 8) ^ b->typeID;
+                uint8_t& lod = s_lodState[key];
+                while (lod + 1 < g.count && d > g.dist[lod + 1] * (1.0f + kBand)) ++lod;
+                while (lod > 0 && d < g.dist[lod] * (1.0f - kBand)) --lod;
+                GpuStaticPropInstance inst = *b;
+                inst.typeID = g.target[lod];
+                s_lodOut[inst.typeID].push_back(inst);
+            }
+        };
+        for (const auto& [src, g] : s_lodGroups) {
+            if (auto it = s_persistentStaticStore.find(src); it != s_persistentStaticStore.end()) {
+                const auto& [stTid, stVec] = *it;
+                route(stVec.data(), stVec.data() + stVec.size(), g);
+            }
+            if (auto bt = s_bucketsByType.find(src); bt != s_bucketsByType.end()) {
+                const auto& [bkTid, pb] = *bt;
+                const GpuStaticPropInstance* d0 = pb.instances.data();
+                const uint32_t n  = static_cast<uint32_t>(pb.instances.size());
+                const uint32_t rp = std::min(pb.reinjPos, n);
+                const uint32_t re = std::min(rp + pb.reinjCount, n);
+                route(d0, d0 + rp, g);
+                route(d0 + re, d0 + n, g);
+            }
+        }
+    }
     std::vector<uint32_t> typeIds;
     typeIds.reserve(s_persistentStaticStore.size() + s_bucketsByType.size());
     for (const auto& kv : s_persistentStaticStore) typeIds.push_back(kv.first);
     for (const auto& kv : s_bucketsByType) typeIds.push_back(kv.first);
+    if (lodActive) for (const auto& [lodTid, lodVec] : s_lodOut) if (!lodVec.empty()) typeIds.push_back(lodTid);
     std::sort(typeIds.begin(), typeIds.end());
     typeIds.erase(std::unique(typeIds.begin(), typeIds.end()), typeIds.end());
     for (uint32_t tid : typeIds) {
+        if (lodActive && s_lodGroups.count(tid)) {   // a LOD-capable base type: its instances were re-typed above
+            const auto& v = s_lodOut[tid];
+            s_colorFeedFlat.insert(s_colorFeedFlat.end(), v.begin(), v.end());
+            continue;
+        }
+        if (lodActive) if (auto lo = s_lodOut.find(tid); lo != s_lodOut.end()) {
+            const auto& [loTid, loVec] = *lo;
+            s_colorFeedFlat.insert(s_colorFeedFlat.end(), loVec.begin(), loVec.end());
+        }
         auto it = s_persistentStaticStore.find(tid);
         if (it != s_persistentStaticStore.end()) {
             const std::vector<GpuStaticPropInstance>& insts = it->second;

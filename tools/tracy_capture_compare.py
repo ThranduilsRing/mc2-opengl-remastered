@@ -243,7 +243,7 @@ def game_env(arm: str, fixed_timestep: bool, fps_cap, pose, extra_env) -> dict:
 
 def capture_trace(install: Path, arm: str, mission: str, seconds: int, out: Path,
                   extra_env=None, pose=None, fixed_timestep=True, fps_cap=None,
-                  show_window: bool = True) -> int:
+                  show_window: bool = True, ticks: int = 0) -> int:
     """Record one trace under the host lease; retain a caller's existing lease.
 
     Free timestep and an uncapped FPS limit measure renderer throughput.
@@ -267,7 +267,7 @@ def capture_trace(install: Path, arm: str, mission: str, seconds: int, out: Path
 
         # Recorder first: TRACY_ON_DEMAND means the game buffers nothing until connected.
         cap_cmd = [str(cap_exe), "-a", "127.0.0.1", "-p", "8086",
-                   "-s", str(seconds), "-f", "-o", str(out)]
+                   *([] if ticks else ["-s", str(seconds)]), "-f", "-o", str(out)]
         cap_log = out.with_suffix(".capture.log")
         cap_lf = cleanup.enter_context(open(cap_log, "w", encoding="utf-8", errors="replace"))
         # background-launch: allow Tracy recorder console tool, windowless via nofocus.hidden_kwargs.
@@ -285,6 +285,8 @@ def capture_trace(install: Path, arm: str, mission: str, seconds: int, out: Path
         duration = seconds + 5  # game outlives the recorder window
         game_cmd = [str(game), "--profile", "stock", "--mission", mission,
                     "--duration", str(duration)]
+        if ticks:
+            game_cmd += ["--headless", "--ticks", str(ticks)]
         game_log = out.with_suffix(".game.log")
         game_lf = cleanup.enter_context(open(game_log, "w", encoding="utf-8", errors="replace"))
 
@@ -321,6 +323,12 @@ def capture_trace(install: Path, arm: str, mission: str, seconds: int, out: Path
             recorder.kill()
             rc = 1
 
+        if ticks:
+            log_text = game_log.read_text(encoding="utf-8", errors="replace")
+            if f"[SMOKE v1] event=tick_budget ticks={ticks}" not in log_text or "Crash Report" in log_text:
+                print(f"ERROR: capture did not complete {ticks} sim ticks; see {game_log}", file=sys.stderr)
+                rc = 1
+
         if not out.is_file() or out.stat().st_size < MIN_TRACE_BYTES:
             size = out.stat().st_size if out.is_file() else 0
             sys.exit(f"ERROR: trace {out} missing or trivial ({size} bytes < "
@@ -355,7 +363,7 @@ def cmd_capture(args: argparse.Namespace) -> int:
         Path(args.install), args.arm, args.mission, args.seconds,
         Path(args.output), extra_env=args.env, pose=args.pose,
         fixed_timestep=not args.free_timestep, fps_cap=args.fps_cap,
-        show_window=args.show_window,
+        show_window=args.show_window, ticks=args.ticks,
     )
     if rc == 0:
         out = Path(args.output)
@@ -943,6 +951,7 @@ def main() -> int:
     c.add_argument("--arm", choices=list(ARMS), default="vk")
     c.add_argument("--mission", default="mc2_01")
     c.add_argument("--seconds", type=int, default=15, help="Tracy recording window (default 15)")
+    c.add_argument("--ticks", type=int, default=0, help="capture this many headless sim ticks, including mission load; no recorder wall-clock cutoff")
     c.add_argument("--csv", action="store_true", help="also write the full per-zone csvexport table next to the trace (default: top-10 summary only)")
     c.add_argument("-o", "--output", required=True, help="output .tracy path")
     c.add_argument("--pose", default=None, metavar="X,Y,ROT,PROJ,ALT[@FRAME]",

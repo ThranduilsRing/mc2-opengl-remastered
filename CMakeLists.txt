@@ -128,9 +128,8 @@ endif()
 # Notes:
 #   * gos_Malloc/gos_Free are already plain malloc/free (see GameOS/gameos/
 #     gameos.cpp:245). So ASan sees every new/delete with zero bypass work.
-#   * The only custom slab remaining is TG_GOSVertexPool (mclib/tgl.cpp).
-#     Left alone for MVP; annotate with __asan_poison_memory_region later
-#     if ASan stays quiet but pool-exhaustion events keep firing.
+#   * No custom slab remains in mclib/tgl.cpp; GOSVertexPool is plain storage.
+#     If a custom slab returns, annotate it with __asan_poison_memory_region.
 # ---------------------------------------------------------------------------
 option(MC2_ASAN "Build with MSVC AddressSanitizer (parallel dev build)" OFF)
 # Precompiled standard-library header (cmake/pch/mc2_std_pch.h) for the three big targets: gameos, mclib, mc2.
@@ -478,15 +477,20 @@ set(SOURCES
     "code/tacordr.cpp"
     "code/team.cpp"
     "code/team_los.cpp"
+    "code/los_kernel.cpp"
     "code/terrobj.cpp"
     "code/turret.cpp"
     "code/brain_special_dispatch.cpp"
     "code/brain_special_apply.cpp"
     "code/brain_symbol_resolve.cpp"
     "code/brain_missionfit_oporbd.cpp"
+    "code/brain_execution_policy.cpp"
     "code/brain_tactic_select.cpp"
     "code/fitblockwriter.cpp"
     "code/warrior.cpp"
+    "code/warrior_brain.cpp"
+    "code/warrior_combat.cpp"
+    "code/save_brain_section.cpp"
     "code/warrior_alarms.cpp"
     "code/warrior_core_orders.cpp"
     "code/warrior_draw.cpp"
@@ -965,7 +969,7 @@ if(MC2_BUILD_TESTS)
 endif()
 
 target_sources(mc2 PRIVATE code/command_replay.cpp
-    code/combat_sim_hash.cpp code/sim_rng.cpp code/tactical_order_queue.cpp code/save_archive.cpp)
+    code/combat_sim_hash.cpp code/sim_rng.cpp code/tactical_order_queue.cpp code/save_archive.cpp code/save_sections.cpp)
 # The sim API must not inherit wall-clock access from the engine PCH.
 set_source_files_properties(
     "code/sim_rng.cpp"
@@ -981,7 +985,8 @@ if(MC2_BUILD_TESTS)
     add_executable(mc2_authored_order_seam EXCLUDE_FROM_ALL
         $<TARGET_OBJECTS:mc2> tests/unit/test_authored_order_seam.cpp
         tests/unit/test_authored_movement_fixture.cpp tests/unit/test_globalmap_init_refusal.cpp
-        tests/unit/test_combat_retirement_seam.cpp tests/unit/test_movepath_save_padding.cpp)
+        tests/unit/test_combat_retirement_seam.cpp tests/unit/test_movepath_save_padding.cpp
+        tests/unit/test_brain_save_policy_seam.cpp)
     target_compile_definitions(mc2_authored_order_seam PRIVATE $<TARGET_PROPERTY:mc2,COMPILE_DEFINITIONS>)
     target_include_directories(mc2_authored_order_seam PRIVATE
         $<TARGET_PROPERTY:mc2,INCLUDE_DIRECTORIES> "${CMAKE_SOURCE_DIR}/tests/unit")

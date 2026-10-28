@@ -1,3 +1,4 @@
+#include "brain_execution_policy.h"
 #include "../GameOS/gameos/vk_render_infra.h"
 #include "../GameAdapters/SkyRenderAdapter.h"
 // Mission: the second half of the Mission::init load sequence -- warriors and brains, movers and parts,
@@ -41,6 +42,7 @@ void Mission::initWarriorsHeader(MissionInitFrame& f) {
 
 // Load each warrior and its brain.
 void Mission::loadWarriors(MissionInitFrame& f) {
+	bool loggedEmptyBrain = false;
 	auto& missionName = f.missionName; auto& result = f.result; auto& numErrors = f.numErrors;
 	auto& numLinesProcessed = f.numLinesProcessed; auto& numWarriors = f.numWarriors; auto& soakBrainsLoaded = f.soakBrainsLoaded;
 	auto& soakBrainsFailed = f.soakBrainsFailed;
@@ -109,13 +111,15 @@ void Mission::loadWarriors(MissionInitFrame& f) {
 			// .abl file. Without a guard the empty name builds "warriors/.abl" and ABLi_preProcess
 			// STOPs (FATAL: missing ABL), so the mission never reaches the inline-Brain consumers
 			// (e.g. BRAIN-MISSIONFIT-OPORD-CONSUMER-1 below). Gate MC2_BRAIN_INLINE_EMPTY_SKIP
-			// (default OFF). Stock missions always name a brain, so stock is byte-identical — the
+			// (always on). Stock missions always name a brain, so stock is byte-identical — the
 			// guard only fires on an empty, non-MPlayer name.
-			static const bool inlineEmptySkip =
-				mc2::gate::get<"MC2_BRAIN_INLINE_EMPTY_SKIP">();
-			if (inlineEmptySkip && !MPlayer && moduleName[0] == '\0')
+			if (!MPlayer && moduleName[0] == '\0')
 			{
 				pilot->setBrainName("");
+				if (!loggedEmptyBrain) {
+					loggedEmptyBrain = true;
+					mc2::fmt::print_err("[BRAIN_EMPTY_SKIP] mission={} (empty ABL brain name)\n", mc2::fmt::safe(missionName));
+				}
 			}
 			else
 			{
@@ -178,7 +182,7 @@ bool missionFitOpordApplies(const MissionFitBrain& brain, unsigned long numWarri
 // Load the mission-fit order sets for the enhanced brains.
 void Mission::loadMissionFitOpord(MissionInitFrame& f) {
 	auto& missionFileName = f.missionFileName; auto& numWarriors = f.numWarriors;
-	const bool opordEnabled = mc2::gate::get<"MC2_BRAIN_MISSIONFIT_OPORD">();
+	const bool opordEnabled = mc2::brainpolicy::techBrain();
 	File authoredFile;
 	if (authoredFile.open(missionFileName) == NO_ERR) {
 		authoredMissionText.resize(authoredFile.getLength());
@@ -338,11 +342,11 @@ void Mission::loadBrainRuntime(MissionInitFrame& f) {
 	// Gate: MC2_BRAIN_RUNTIME=1 (default OFF). File absence is silent (no fixture = all Legacy).
 	// Single-warrior fixture only: one Brain block keyed "Brain". unitRef "Warrior%d" -> idx.
 	// MC2_BRAIN_RUNTIME_FORCE_MODE (if set) overrides all per-unit modes as a post-load global.
-	if (mc2::gate::get<"MC2_BRAIN_RUNTIME">()) {
+	if (mc2::brainpolicy::techBrain()) {
 		char aiFitName[256];
 		// missionName is the raw name like "mc2_01"; missionPath is "data/missions/".
 		mc2::fmt::to_buf(aiFitName, "{}{}_ai.fit", mc2::fmt::safe(missionPath), mc2::fmt::safe(missionName));
-		mc2::fmt::print_err("[BRAIN_RT] mission load: MC2_BRAIN_RUNTIME=1 mission={} seeking {}\n", mc2::fmt::safe(missionName), mc2::fmt::safe(aiFitName));
+		mc2::fmt::print_err("[BRAIN_RT] mission load: policy=techbrain mission={} seeking {}\n", mc2::fmt::safe(missionName), mc2::fmt::safe(aiFitName));
 		std::fflush(stderr);
 		FitIniFile aiFit;
 		if (aiFit.open(aiFitName) == NO_ERR) {
@@ -473,10 +477,10 @@ void Mission::loadBrainDispatch(MissionInitFrame& f) {
 	// Scan is done once per mission (not per-warrior) because the file is mission-level.
 	// Gate-OFF: byte-identical to pre-1C; no extra parsing, no extra traces.
 	{
-		const bool dispatchOn   = mc2::gate::get<"MC2_BRAIN_DISPATCH">();
-		const bool fsmTodoOn    = mc2::gate::get<"MC2_BRAIN_DISPATCH_FSM_TODO">();
-		const bool dispatchVarOn = mc2::gate::get<"MC2_BRAIN_DISPATCH_VAR">();
-		const bool missionVarOn  = mc2::gate::get<"MC2_BRAIN_VAR_MISSION">();
+		const bool dispatchOn   = mc2::brainpolicy::techBrain();
+		const bool fsmTodoOn    = mc2::brainpolicy::techBrain();
+		const bool dispatchVarOn = mc2::brainpolicy::techBrain();
+		const bool missionVarOn  = mc2::brainpolicy::techBrain();
 
 		// GAP-A: reset the mission-level specials cache at every mission load (unconditional;
 		// produces no trace, so gate-OFF runs stay byte-identical). Prevents a stale cache
@@ -491,11 +495,11 @@ void Mission::loadBrainDispatch(MissionInitFrame& f) {
 		}
 
 		if (fsmTodoOn && !dispatchOn) {
-			mc2::fmt::print_err("[BRAIN_DISPATCH_FSM_TODO] WARN: MC2_BRAIN_DISPATCH_FSM_TODO=1 requires MC2_BRAIN_DISPATCH=1 — inert\n");
+			mc2::fmt::print_err("[BRAIN_DISPATCH_FSM_TODO] WARN: FSM todo requires the TechBrain policy — inert\n");
 			std::fflush(stderr);
 		}
 		if (dispatchVarOn && !dispatchOn) {
-			mc2::fmt::print_err("[BRAIN_DISPATCH_VAR] WARNING: MC2_BRAIN_DISPATCH_VAR=1 requires MC2_BRAIN_DISPATCH=1 -- var handling is INERT\n");
+			mc2::fmt::print_err("[BRAIN_DISPATCH_VAR] WARNING: dispatch var requires the TechBrain policy -- var handling is INERT\n");
 			std::fflush(stderr);
 		}
 
@@ -506,7 +510,7 @@ void Mission::loadBrainDispatch(MissionInitFrame& f) {
 			const std::string specialFitText = mc2::gate::str<"MC2_BRAIN_SPECIAL_FIT">();   // "" when unset or empty
 			const char* specialFitName = specialFitText.empty() ? missionName : specialFitText.c_str();
 
-			mc2::fmt::print_err("[BRAIN_DISPATCH] mission load: MC2_BRAIN_DISPATCH=1 mission={} special_fit={}\n", mc2::fmt::safe(missionName), mc2::fmt::safe(specialFitName));
+			mc2::fmt::print_err("[BRAIN_DISPATCH] mission load: policy=techbrain mission={} special_fit={}\n", mc2::fmt::safe(missionName), mc2::fmt::safe(specialFitName));
 			std::fflush(stderr);
 
 			// 1A/1B: per-warrior verb parse (only for warriors with brainRuntime allocated).

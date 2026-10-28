@@ -565,6 +565,25 @@ def select_missions(entries, missions):
 
 # Owner rule (game runs are about 15 s of in-mission time): a run with no --duration and no tier-declared duration gets this.
 DEFAULT_DURATION_S = 15
+# A freshly deployed exe rebuilds the model cache on its first launch (~85 s measured 2026-10-27): the load cap gets this much extra once.
+COLD_CACHE_EXTRA_GRACE_S = 120
+
+
+def cold_cache_extra_grace(exe, extra=COLD_CACHE_EXTRA_GRACE_S):
+    """Extra load grace (s) when this exe has not been launched by the harness since it was deployed; records the launch."""
+    exe = Path(exe)
+    marker = exe.parent / ".smoke_warm"
+    try:
+        st = exe.stat()
+        stamp = f"{st.st_size}:{st.st_mtime_ns}"
+        cold = not marker.is_file() or marker.read_text().strip() != stamp
+        if cold:
+            marker.write_text(stamp)
+    except OSError:
+        return 0
+    if cold:
+        print(f"[runner] first launch of this exe since deploy: load grace +{extra}s for the model cache rebuild")
+    return extra if cold else 0
 
 
 def main():
@@ -703,7 +722,16 @@ def main():
                     help="capture this saved camera during its matching mission; repeat for day/night")
     ap.add_argument("--capture-out", type=Path)
     ap.add_argument("--quiet-sample", help="mission to run without optional diagnostic/audit gates")
+    ap.add_argument("--legacy-env", action="store_true",
+                    help="A/B against an OLDER exe: forward only the MC2_* gates in Gates/gate_table.json at --ref-commit (the older exe's "
+                         "commit), dropping the rest with a [LEGACY-ENV] line, so its strict config does not reject newer gates")
     args = ap.parse_args()
+    if args.legacy_env:
+        _legacy_ref = args.ref_commit or "HEAD"
+        _t = subprocess.run(["git", "-C", str(ROOT), "show", f"{_legacy_ref}:Gates/gate_table.json"], capture_output=True, text=True)  # background-launch: allow git show, console tool
+        if _t.returncode != 0:
+            sys.exit(f"--legacy-env: no Gates/gate_table.json at {_legacy_ref} (pass --ref-commit SHA of the older exe's commit)")
+        _smoke_runner.set_legacy_gates(_smoke_runner.legacy_gate_names(_t.stdout))
     if args.gpu:
         os.environ["MC2_HARNESS_GPU"] = args.gpu
     if args.capture_bookmark and not args.capture_out:
@@ -1432,6 +1460,7 @@ def main():
         else _trace_file_raw
     )
 
+    _cold_grace = cold_cache_extra_grace(args.exe)
     for e in selected:
         # Lease heartbeat: refresh last_used timestamp at the start of each mission
         # so a multi-mission run does not go stale mid-run.
@@ -1469,7 +1498,7 @@ def main():
             duration=duration,
             heartbeat_timeout_load_s=e.heartbeat_timeout_load or 60,
             heartbeat_timeout_play_s=e.heartbeat_timeout_play or 3,
-            grace_s=120,  # cap = duration + grace and includes load; a cold mc2_03 load took 64 s beside other engines
+            grace_s=120 + _cold_grace,  # cap = duration + grace and includes load; a cold mc2_03 load took 64 s beside other engines
             allow_asset_oob=e.allow_asset_oob,
             # META-FIX INFRA-3: per-mission marker-bucket downgrades from the
             # manifest (allow_asset_oob analog for registered marker rows).

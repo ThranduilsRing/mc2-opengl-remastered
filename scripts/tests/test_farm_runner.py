@@ -15,6 +15,41 @@ from tools.farm.runner import atomic_json, poll_once
 from tools.farm import host
 
 
+def test_reseed_selection_and_incremental_changes(tmp_path):
+    install, harness = tmp_path / 'install', tmp_path / 'harness'
+    install.mkdir()
+    harness.mkdir()
+    (install / 'mc2.exe').write_bytes(b'verified')
+    import hashlib
+    sha = hashlib.sha256(b'verified').hexdigest()
+    (install / '.deployed_manifest.csv').write_text(
+        'manifest_version,v1\nrelpath,sha256,bytes,src_commit\n'
+        f'mc2.exe,{sha},8,abc\nmc2.pdb,unused,10,abc\n')
+    (install / 'mission.fst').write_bytes(b'stock')
+    (install / 'data').mkdir()
+    (install / 'data/stock.fit').write_text('loose stock data')
+    (install / 'data/session.log').write_text('skip')
+    subprocess.run(['git', 'init', '-q', str(harness)], check=True)
+    (harness / 'scripts').mkdir()
+    (harness / 'scripts/run_smoke.py').write_text('pass')
+    (harness / 'scripts/untracked.log').write_text('skip')
+    subprocess.run(['git', '-C', str(harness), 'add', 'scripts/run_smoke.py'], check=True)
+    files, exe = host.seed_files(install, harness)
+    assert exe['src_commit'] == 'abc'
+    assert set(files) == {'install/mc2.exe', 'install/mission.fst',
+                          'install/.deployed_manifest.csv', 'install/data/stock.fit', 'reference/mc2.exe',
+                          'harness/scripts/run_smoke.py'}
+    inventory = {name: [p.stat().st_size, p.stat().st_mtime] for name, p in files.items()}
+    assert host.changed_files(files, inventory) == {}
+    assert host.changed_files(files, {k.upper(): v for k, v in inventory.items()}) == {}
+    inventory['install/mc2.exe'][0] += 1
+    inventory['install/mission.fst'][1] -= 10
+    assert set(host.changed_files(files, inventory)) == {'install/mc2.exe', 'install/mission.fst'}
+    (install / 'mc2.exe').write_bytes(b'corrupt')
+    with pytest.raises(ValueError, match='manifest'):
+        host.seed_files(install, harness)
+
+
 def job(tmp_path, value):
     (tmp_path / 'jobs').mkdir()
     atomic_json(tmp_path / 'jobs' / 'sample.json', value)
@@ -73,6 +108,40 @@ def test_host_submit_publishes_only_after_upload(tmp_path, monkeypatch, capsys):
     assert calls[0][-1].endswith('/' + 'a' * 32 + '.upload')
     assert '.upload -Destination' in calls[1] and '.json' in calls[1]
     assert capsys.readouterr().out.strip() == 'a' * 32
+
+
+def test_host_submit_exe_stages_then_rewrites_job(tmp_path, monkeypatch):
+    path = tmp_path / 'job.json'
+    path.write_text('{"argv": ["run", "{EXE}"], "env": {"X": "{ROOT}/d"}}')
+    exe = tmp_path / 'mc2.exe'
+    exe.write_bytes(b'MZ')
+    delta = tmp_path / 'delta'
+    delta.mkdir()
+    calls, uploaded = [], []
+    monkeypatch.setattr(sys, 'argv', ['host', 'submit', str(path), '--exe', str(exe), '--data-delta', str(delta)])
+    monkeypatch.setattr(host.uuid, 'uuid4', lambda: SimpleNamespace(hex='b' * 32))
+    monkeypatch.setattr(host, 'remote', lambda args, script: calls.append(('ps', script)))
+
+    def fake_scp(args, *paths, recursive=False):
+        calls.append(('scp', str(paths[-1])))
+        if str(paths[-1]).endswith('.upload'):
+            uploaded.append(json.loads(Path(paths[0]).read_text()))
+    monkeypatch.setattr(host, 'scp', fake_scp)
+    host.main()
+    work = 'C:/mc2farm/work/' + 'b' * 32
+    assert uploaded == [{'argv': ['run', work + '/mc2.exe'], 'env': {'X': work + '/d'}}]
+    kinds = [c[0] for c in calls]
+    assert kinds == ['ps', 'scp', 'scp', 'ps', 'scp', 'ps']  # mkdir, exe, delta, stage, job.upload, publish
+    assert '/work/' in calls[3][1] or 'work' in calls[3][1]
+
+
+def test_host_data_delta_requires_exe(tmp_path, monkeypatch):
+    path = tmp_path / 'job.json'
+    path.write_text('{"argv": ["x"]}')
+    monkeypatch.setattr(sys, 'argv', ['host', 'submit', str(path), '--data-delta', str(tmp_path)])
+    with pytest.raises(SystemExit) as result:
+        host.main()
+    assert result.value.code == 2
 
 
 @pytest.mark.parametrize('status,code,expected', [('completed', 0, 0), ('completed', 9, 1), ('interrupted', None, 1)])

@@ -579,6 +579,20 @@ void BldgAppearanceType::registerRenderShapes (void)
 	for (int i = 0; i < MAX_LODS; ++i)
 		GpuStaticPropBatcher::instance().registerMultiShape(getBldgRenderShape(i), isOverride,
 			isOverride ? propMaterialSource : nullptr, false, stockAlphaLighting);
+	if (isOverride) {
+		// Authored LODs: the batcher picks one per instance per frame by camera distance (stock shapes have none).
+		TG_TypeMultiShape* lodShapes[MAX_LODS]{};
+		float lodDists[MAX_LODS]{};
+		for (int i = 0; i < MAX_LODS; ++i) {
+			lodShapes[i] = (i == 0 || bldgRenderLods[i]) ? getBldgRenderShape(i) : nullptr;
+			lodDists[i] = lodDistance[i];
+		}
+		// The stock .fit LOD distances (x5) already fill lodDistance[]; the authored distances win here.
+		if (propMaterialSource)
+			for (const auto& lod : propMaterialSource->lods)
+				if (lod.lod > 0 && lod.lod < MAX_LODS && lod.distance > 0.0f) lodDists[lod.lod] = lod.distance;
+		GpuStaticPropBatcher::instance().registerLodGroup(std::span<TG_TypeMultiShape* const>(lodShapes, MAX_LODS), std::span<const float>(lodDists, MAX_LODS));
+	}
 	GpuStaticPropBatcher::instance().registerMultiShape(getBldgDmgRenderShape(), bldgDmgRenderShape != nullptr,
 		bldgDmgRenderShape ? propMaterialSource : nullptr);
 }

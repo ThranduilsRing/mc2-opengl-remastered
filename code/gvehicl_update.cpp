@@ -1,3 +1,4 @@
+#include "tacticaloverview.h"
 // GroundVehicle: the per-frame update, the GPU-lagged visibility gate, and Save/CopyTo/Load.
 // Declared in the class headers; shared names in gvehicl_internal.h.
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order

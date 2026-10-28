@@ -47,7 +47,6 @@ Split commit: `f0521b300`.
 | `gos_postprocess.cpp` | keeps the singleton, setters, init, scene begin/end and the viewmode/sky accessors |
 | `gos_postprocess_executor.cpp` | gosPostProcess: frame-graph executor ownership accessors, apply-state wrappers and counters. |
 | `gos_postprocess_gates.cpp` | gosPostProcess: shader diagnostics, mech terminator softness and cloud control. |
-| `gos_postprocess_shadow.cpp` | Shared shadow sun clamp and the one-map debug overlay. |
 | `gos_postprocess_skybox.cpp` | Native HDRI sky submission; the terrain pass draws it behind its depth. |
 | `gos_postprocess_targets.cpp` | Native scene-target ownership. Islands, presentation and explicit readbacks share these images; no parallel texture or framebuffer allocations exist. |
 | `gos_postprocess_internal.h` | shared include bundle, extern globals and declarations of the pieces |
@@ -528,7 +527,7 @@ Split commit: `d8ba94970`.
 | `msl_anim.cpp` | Multi shape layer: TG_AnimateShape and _TG_Animation: binary load / save, ASE animation import and animation state. |
 | `msl_load.cpp` | Multi shape layer: TG_TypeMultiShape loading: binary copy, ASE import, texture setup, save and destroy, with the asset-load audit events. |
 | `msl_shape.cpp` | Multi shape layer: TG_MultiShape texture handles, node rotation and position queries, light list, render, shadows, detach and child tests. |
-| `msl_transform.cpp` | Multi shape layer: TG_MultiShape::TransformMultiShape (and its variants) and the GPU light-data cache. |
+| `msl_transform.cpp` | Multi shape layer: the node-hierarchy walk (TransformMultiShape_BuildRecipe / _HierarchyOnly) and the GPU light-data cache. |
 | `msl_internal.h` | shared include bundle, extern globals and declarations of the pieces |
 
 ## `mclib/quad.cpp`
@@ -573,13 +572,9 @@ Split commit: `e880b7520`.
 
 | Piece | What it holds |
 |---|---|
-| `tgl.cpp` | keeps the globals, pools and pool-statistics code |
+| `tgl.cpp` | keeps the globals |
 | `tgl_load_guard.cpp` | mclib/tgl_load_guard.cpp - META-FIX design B PART 1. |
 | `tgl_parse.cpp` | TG shapes: ASE file parsing and shape loading (TG_TypeShape::ParseASEFile), textures, imported meshes, camera/fog/light setup. |
-| `tgl_render.cpp` | TG shapes: TG_Shape::Render, per-poly selection and the render-shape PBR override. |
-| `tgl_shadows.cpp` | TG shapes: shadow transform and shadow rendering. |
-| `tgl_transform.cpp` | TG shapes: TG_Shape::MultiTransformShape and its positions-only variant, light gathering and billboard handling. |
-| `tgl_transform_light.cpp` | TG_Shape: the per-vertex and per-face lighting phases of MultiTransformShape -- hot-colour and base colour, vertex lights, fog and highlight, face lights and the triangle queue. The orchestrator is in tgl_transform.cpp. |
 | `tgl_types.cpp` | TG shapes: ASE number/name helpers and the TG_TypeNode / TG_TypeShape / TG_Shape lifecycle, binary copy and creation. |
 | `tgl_internal.h` | shared include bundle, extern globals and declarations of the pieces |
 

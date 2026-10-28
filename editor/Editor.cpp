@@ -156,12 +156,6 @@ void UpdateRenderers()
 	turn++;
 
 	reloadBounds = false;
-
-   	colorPool->reset();
-   	vertexPool->reset();
-   	facePool->reset();
-   	shadowPool->reset();
-   	trianglePool->reset();
 }
 
 bool statisticsInitialized = false;
@@ -655,20 +649,6 @@ void InitializeGameEngine()
 	prefs.reset();
 
 
-		colorPool 		= new TG_VertexPool;
-		colorPool->init(20000);
-		
-		vertexPool 		= new TG_GOSVertexPool;
-		vertexPool->init(20000);
-		
-		facePool 		= new TG_DWORDPool;
-		facePool->init(40000);
-		
-		shadowPool 		= new TG_ShadowPool;
-		shadowPool->init(20000);
-		
-		trianglePool 	= new TG_TrianglePool;
-		trianglePool->init(20000);
 
 	
 
@@ -778,43 +758,6 @@ void TerminateGameEngine()
     if (mc2::VkSceneRenderer::active())
         mc2::VkSceneRenderer::shutdown();
 
-	if (colorPool || vertexPool || facePool || shadowPool || trianglePool)
-	{
-		if (colorPool)
-		{
-			colorPool->destroy();
-			delete colorPool;
-			colorPool = nullptr;
-		}
-		
-		if (vertexPool)
-		{
-			vertexPool->destroy();
-			delete vertexPool;
-			vertexPool = nullptr;
-		}
-
-		if (facePool)
-		{
-			facePool->destroy();
-			delete facePool;
-			facePool = nullptr;
-		}
-
-		if (shadowPool)
-		{
-			shadowPool->destroy();
-			delete shadowPool;
-			shadowPool = nullptr;
-		}
-
-		if (trianglePool)
-		{
-			trianglePool->destroy();
-			delete trianglePool;
-			trianglePool = nullptr;
-		}
-	}
 
 	//
 	//

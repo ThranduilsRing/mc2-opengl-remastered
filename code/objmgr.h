@@ -16,6 +16,7 @@
 #ifndef DOBJMGR_H
 #include"dobjmgr.h"
 #endif
+#include "mover_los_epoch.h"
 #include <optional>
 #include <string_view>
 #include "world/entity_registry.h"
@@ -239,7 +240,15 @@ class GameObjectManager {
 		long					numPowerGenerators;
 		long					numSpecialBuildings;
 
-		char*					moverLineOfSightTable;
+		// Epoch LOS cache: cell = (epoch << 2) | state, state 0 unknown / 1 blocked / 2 clear.
+		// A new tick bumps the epoch instead of memsetting maxMovers^2 bytes (M5).
+		uint16_t*				moverLineOfSightTable;
+		uint16_t				moverLosEpoch = 0;
+		void beginMoverLosEpoch (void) {
+			if (!moverLineOfSightTable)
+				return;
+			mc2::losEpochAdvance(std::span<uint16_t>(moverLineOfSightTable, static_cast<size_t>(maxMovers) * static_cast<size_t>(maxMovers)), moverLosEpoch);
+		}
 		bool					useMoverLineOfSightTable;
 
 		GameObjectPtr*			objList;
@@ -496,7 +505,7 @@ class GameObjectManager {
 			return(numGates);
 		}
 
-		// G7b K3: render() draws the list built here at the render extract (sim quiescent), not the live objects.
+		// G7b K3: render() draws the list built at the quiescent render extract.
 		void extractRenderList (mc2::render_view::RenderList& list);
 
 		void render (bool terrain, bool movers, bool other);
@@ -580,6 +589,10 @@ class GameObjectManager {
 		long calcPartId (long objectClass, long param1 = 0, long param2 = 0, long param3 = 0);
 
 		void setPartId (GameObjectPtr obj, long param1 = 0, long param2 = 0, long param3 = 0);
+		void forcePartId (GameObjectPtr obj, long newPartId) {		// an explicit id (the marine hack), fed to the index
+			obj->setPartId(newPartId);
+			notePartId(obj, newPartId);
+		}
 
 		long buildCollidableList (void);
 

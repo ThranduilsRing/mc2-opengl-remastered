@@ -1,7 +1,7 @@
 // Shared surface of the MechWarrior translation units (warrior*.cpp).
 //
-// warrior.cpp keeps the data tables, init/clear, the brain-gate statics, runBrain and the decision trees that read
-// the brain gates; the rest of the MechWarrior implementation is split by responsibility.
+// warrior.cpp keeps the data tables and lifecycle. warrior_brain.cpp owns brain gates and ABL execution;
+// warrior_combat.cpp owns combat decisions and action updates. Other pieces keep their named concern.
 #ifndef WARRIOR_INTERNAL_H
 #define WARRIOR_INTERNAL_H
 

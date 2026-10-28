@@ -28,11 +28,7 @@ set(SOURCES ${SOURCES}
     tgainfo.cpp
     tgl.cpp
     tgl_parse.cpp
-    tgl_render.cpp
     preview_draw.cpp
-    tgl_shadows.cpp
-    tgl_transform.cpp
-    tgl_transform_light.cpp
     tgl_types.cpp
     timing.cpp
     render_submissions.cpp

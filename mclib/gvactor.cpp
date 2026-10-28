@@ -309,6 +309,29 @@ void GVAppearanceType::init (const char * fileName)
 		strcpy(rotationalNodeId,"NONE");
 	}
 
+	// An override body must keep the stock turret node (the render pose rotates it by name); a body without it
+	// falls back to the stock shape rather than drawing a frozen turret.
+	if (renderLods[0] && S_stricmp(rotationalNodeId, "NONE") != 0)
+	{
+		const char* turretName = S_stricmp(rotationalNodeId, "sc_turret") == 0 ? "Centipede_turret" : rotationalNodeId;
+		for (int i = 0; i < MAX_LODS; ++i)
+		{
+			if (!renderLods[i]) continue;
+			bool found = false;
+			for (long n = 0; n < renderLods[i]->GetNumShapes() && !found; ++n)
+			{
+				const char* id = renderLods[i]->GetNodeId(n);
+				found = id && S_stricmp(id, turretName) == 0;
+			}
+			if (!found)
+			{
+				mc2::fmt::print_err("[VEHICLE_OVERRIDE] {}: lod {} lacks stock node '{}'; stock fallback\n", fileName, i, turretName);
+				for (auto& shape : renderLods) shape.reset();
+				break;
+			}
+		}
+	}
+
 	//-----------------------------------------------
 	// Load up the Node Data.
 	// Automatic for vehicles now.

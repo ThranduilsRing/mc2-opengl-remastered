@@ -14,6 +14,7 @@
 #ifndef MCLIB_H
 #include"mclib.h"
 #endif
+#include "warrior.h"
 
 #ifndef RADIO_H
 #include"radio.h"

@@ -1221,7 +1221,10 @@ void MissionInterfaceManager::updateTarget( bool bGui)
 				helpTextHeaderID = nameID;
 				helpTextID = descID;
 			}
-			if ( target->getAppearance() && target->getAppearance()->getObjectNameId() > 0 )
+			// Only objects that own a name: movers and the building classes. Scenery terrain objects (fences, lights,
+			// tents) keep the appearance default (the Processing Plant string) and have no name of their own.
+			const long hoverClass = target->getObjectClass();
+			if ( ( target->isMover() || hoverClass == BUILDING || hoverClass == TURRET || hoverClass == GATE ) && target->getAppearance() && target->getAppearance()->getObjectNameId() > 0 )
 			{
 				g_hoverTipNameID = target->getAppearance()->getObjectNameId();
 				g_hoverTipX = mouseX;

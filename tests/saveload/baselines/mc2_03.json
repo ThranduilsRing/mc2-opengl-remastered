@@ -10,7 +10,7 @@
   "MC2_BOOT_QUICKLOAD_AT": "1400"
  },
  "exe": {
-  "sha": "f5fed1d52ae0",
+  "sha": "5fa311a4ef3c",
   "dirty": 0
  },
  "comparison": {
@@ -105,10 +105,11 @@
    }
   }
  },
+ "mask": "tools/save_noise_mask.json",
  "judged": "first-save-only",
  "resave_present": true,
  "packets": 20000,
- "overall": "be80f45b880fc4d2",
+ "overall": "202d384f98e50a4c",
  "resave_identical": false,
  "resave_matches_policy": false,
  "runs": [
@@ -116,22 +117,22 @@
    "data",
    0,
    2,
-   40,
-   "aff84c57f086183a"
+   38,
+   "0f41e3f48edcae68"
   ],
   [
    "text",
    2,
    1,
    30516,
-   "0c60559817628286"
+   "c792b868339aea1c"
   ],
   [
    "data",
    3,
    45,
    546549,
-   "59c0038064af6539"
+   "73ef2657208d1d25"
   ],
   [
    "ObjectManagerData",
@@ -264,7 +265,7 @@
    2923,
    193,
    52427,
-   "ff75acbf4fd89991"
+   "c59674e8f67511ad"
   ],
   [
    "StaticMechWarriorData",
@@ -278,7 +279,7 @@
    3117,
    256,
    5091348,
-   "512cb68dc795c3d4"
+   "a9441af76f8803f5"
   ],
   [
    "TeamStaticData",
@@ -313,14 +314,14 @@
    3378,
    147,
    586824,
-   "2adae32c73ccbb81"
+   "18b357791f4fda91"
   ],
   [
    "GroundVehicleData",
    3525,
    147,
    503328,
-   "69ccf57867f681eb"
+   "8a81a7ee85a5ee62"
   ],
   [
    "TerrainObjectData",
@@ -334,21 +335,21 @@
    3800,
    19,
    14364,
-   "647ba19574d415c4"
+   "520fd9a998b6416e"
   ],
   [
    "TurretData",
    3819,
    1,
    820,
-   "6ab0ab4987b3ba81"
+   "282a28954aa2a617"
   ],
   [
    "BuildingData",
    3820,
    1,
    756,
-   "9dc7a52566d772e7"
+   "67879dcfce97a451"
   ],
   [
    "TerrainObjectData",
@@ -362,7 +363,7 @@
    3944,
    23,
    17388,
-   "ce5d32682bb467bb"
+   "8a467dd8303c039f"
   ],
   [
    "TerrainObjectData",
@@ -376,7 +377,7 @@
    3984,
    3,
    2268,
-   "b0a8c77d198d086b"
+   "d4251423f3aec772"
   ],
   [
    "TerrainObjectData",
@@ -390,14 +391,14 @@
    4079,
    9,
    6804,
-   "9dbfeab47dc242a7"
+   "c19df94ad8388bf9"
   ],
   [
    "GateData",
    4088,
    1,
    760,
-   "ea84e78707891dce"
+   "3521e105062e8d2f"
   ],
   [
    "TerrainObjectData",
@@ -411,7 +412,7 @@
    4090,
    5,
    4100,
-   "8b6fb090a0c03c92"
+   "f65b5788f72765b3"
   ],
   [
    "TerrainObjectData",
@@ -425,7 +426,7 @@
    4155,
    17,
    12852,
-   "bc3c528f3ef2bbd6"
+   "ae947bbdcfd33145"
   ],
   [
    "TerrainObjectData",
@@ -439,7 +440,7 @@
    4313,
    63,
    47628,
-   "dfe50b975902297f"
+   "66f84ab8a3481d69"
   ],
   [
    "TerrainObjectData",
@@ -453,14 +454,14 @@
    4604,
    1,
    820,
-   "2ac9874fed77ba5d"
+   "eca6be9976cfb483"
   ],
   [
    "BuildingData",
    4605,
    1,
    756,
-   "7a4a4d61dfb1b74e"
+   "d135608572aa3e2e"
   ],
   [
    "TerrainObjectData",
@@ -474,7 +475,7 @@
    4649,
    1,
    756,
-   "6aafbe4e3e2ee944"
+   "97f3e226ac9ae71b"
   ],
   [
    "TerrainObjectData",
@@ -488,7 +489,7 @@
    4783,
    29,
    21924,
-   "47721807fb79be18"
+   "1fa0a88e1a7d9741"
   ],
   [
    "TerrainObjectData",
@@ -502,7 +503,7 @@
    5059,
    2,
    1640,
-   "da449a66f4ab7100"
+   "0ab301ee030f2f4a"
   ],
   [
    "TerrainObjectData",
@@ -516,7 +517,7 @@
    5063,
    47,
    35532,
-   "459fe8d3b830ef86"
+   "56e206607dc294f9"
   ],
   [
    "TerrainObjectData",
@@ -530,7 +531,7 @@
    5259,
    2,
    1640,
-   "7911b0e0d2906209"
+   "d9670b15c4ff6a6f"
   ],
   [
    "TerrainObjectData",
@@ -544,7 +545,7 @@
    5436,
    5,
    3780,
-   "29919dca47f90134"
+   "7c0221f57a3c267e"
   ],
   [
    "TerrainObjectData",
@@ -572,7 +573,7 @@
    6148,
    1,
    756,
-   "3c974da875ac3f99"
+   "69e08b6c6abf6c79"
   ],
   [
    "TerrainObjectData",
@@ -633,9 +634,16 @@
   [
    "data",
    6517,
-   3,
-   539091,
-   "c420335d0e45ea8c"
+   2,
+   8,
+   "e815bbb0774dd30f"
+  ],
+  [
+   "sections",
+   6519,
+   1,
+   539135,
+   "360c1a6ea6cca49d"
   ],
   [
    "empty",
@@ -648,7 +656,7 @@
  "about": "digest of the quicksave a round-trip fixture writes; tools/saveload_roundtrip.py --baseline / --check",
  "sim_speed": 2,
  "data_fingerprint": {
-  "digest": "0dfcd001ffde73d0",
+  "digest": "631bc626ca376941",
   "inputs": [
    "mission.fst",
    "tgl.fst",
@@ -664,16 +672,7 @@
   "stock_digest": "8703ccf15c7c117f",
   "overlay": {
    "data/missions/gaea_peaks_01.fit": "aa24a7b6e35ae2b2",
-   "data/missions/gaea_peaks_01.pak": "af7be4e2f5a9c1c4",
-   "data/missions/mc2_01_ai.fit": "05ac63a7d6e6a022",
-   "data/missions/mc2_01_eject_specials.fit": "fb1ae62005af323b",
-   "data/missions/mc2_01_ejectalias_specials.fit": "7dcea591e6e5a519",
-   "data/missions/mc2_01_moveto_nan_specials.fit": "7d179e0afeeeff60",
-   "data/missions/mc2_01_moveto_specials.fit": "ceed6688c9c9402a",
-   "data/missions/mc2_01_specials.fit": "1b484e1e9e1ffd9a",
-   "data/missions/mc2_01_specials_eject.fit": "176239689c456324",
-   "data/missions/mc2_01_specials_ejectalias.fit": "d5ae4996d3e5d3a9",
-   "data/missions/mc2_01_specials_raw_specials.fit": "a48b828b55f5097d"
+   "data/missions/gaea_peaks_01.pak": "af7be4e2f5a9c1c4"
   },
   "problems": []
  }

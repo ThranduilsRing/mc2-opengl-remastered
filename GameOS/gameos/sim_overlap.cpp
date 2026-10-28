@@ -84,11 +84,12 @@ void startWorker() {
 #endif
 }
 
-void violation(const char* kind, const char* site) {
+void violation(std::string_view kind, std::string_view site) {
     const unsigned n = g_violations.fetch_add(1, std::memory_order_relaxed) + 1;
-    { std::lock_guard<std::mutex> lock(g_hazardMutex); ++g_hazards[site]; }
+    { std::lock_guard<std::mutex> lock(g_hazardMutex); ++g_hazards[std::string(site)]; }
     if (!earlyKick()) {
-        if (n <= 20) std::fprintf(stderr, "[SIM_OVERLAP v1] VIOLATION %s site=%s count=%u\n", kind, site, n);
+        if (n <= 20) std::fprintf(stderr, "[SIM_OVERLAP v1] VIOLATION %.*s site=%.*s count=%u\n",
+            static_cast<int>(kind.size()), kind.data(), static_cast<int>(site.size()), site.data(), n);
         if (mc2::gate::get<"MC2_SIM_OVERLAP_AUDIT">()) std::abort();
     }
 }
@@ -131,11 +132,11 @@ void waitWorker() {
 bool jobInFlight() { return g_inFlight.load(std::memory_order_acquire); }
 bool onSimWorker() { return t_onSimWorker; }
 
-void assertSimQuiescent(const char* site) {
+void assertSimQuiescent(std::string_view site) {
     if (g_inFlight.load(std::memory_order_acquire) && !t_onSimWorker) violation("render-read-while-tick-in-flight", site);
 }
 
-void assertMainThread(const char* site) {
+void assertMainThread(std::string_view site) {
     if (t_onSimWorker) violation("sim-worker-called-main-thread-api", site);
 }
 

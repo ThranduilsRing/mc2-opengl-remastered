@@ -13,7 +13,6 @@ set(MC2_PCH_SKIP_gameos
     "GameOS/gameos/gos_postprocess.cpp"
     "GameOS/gameos/gos_postprocess_executor.cpp"
     "GameOS/gameos/gos_postprocess_gates.cpp"
-    "GameOS/gameos/gos_postprocess_shadow.cpp"
     "GameOS/gameos/gos_postprocess_skybox.cpp"
     "GameOS/gameos/gos_rdoc_capture.cpp"
     "GameOS/gameos/gos_static_prop_batcher_finalize_textures.cpp"
@@ -68,8 +67,6 @@ set(MC2_PCH_SKIP_mclib
     "mclib/terrtxm2.cpp"
     "mclib/terrtxm2_bake.cpp"
     "mclib/tgl_parse.cpp"
-    "mclib/tgl_shadows.cpp"
-    "mclib/tgl_transform_light.cpp"
     "mclib/userinput.cpp"
     "mclib/vk_object_light_gather.cpp"
 )

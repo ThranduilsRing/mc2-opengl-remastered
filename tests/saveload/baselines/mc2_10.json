@@ -10,7 +10,7 @@
   "MC2_BOOT_QUICKLOAD_AT": "1400"
  },
  "exe": {
-  "sha": "fbf2c5c41dff",
+  "sha": "24041d68d6bb",
   "dirty": 0
  },
  "comparison": {
@@ -105,10 +105,11 @@
    }
   }
  },
+ "mask": "tools/save_noise_mask.json",
  "judged": "first-save-only",
  "resave_present": true,
  "packets": 20000,
- "overall": "02d5b68cb63918b8",
+ "overall": "1964f66daf246a90",
  "resave_identical": false,
  "resave_matches_policy": false,
  "runs": [
@@ -116,8 +117,8 @@
    "data",
    0,
    2,
-   40,
-   "aff84c57f086183a"
+   38,
+   "0f41e3f48edcae68"
   ],
   [
    "text",
@@ -857,9 +858,16 @@
   [
    "data",
    7093,
-   3,
-   555335,
-   "5f16fb7a1280d08b"
+   2,
+   8,
+   "e815bbb0774dd30f"
+  ],
+  [
+   "sections",
+   7095,
+   1,
+   555379,
+   "77f563531a511316"
   ],
   [
    "empty",
@@ -872,7 +880,7 @@
  "about": "digest of the quicksave a round-trip fixture writes; tools/saveload_roundtrip.py --baseline / --check",
  "sim_speed": 2,
  "data_fingerprint": {
-  "digest": "0dfcd001ffde73d0",
+  "digest": "631bc626ca376941",
   "inputs": [
    "mission.fst",
    "tgl.fst",
@@ -888,16 +896,7 @@
   "stock_digest": "8703ccf15c7c117f",
   "overlay": {
    "data/missions/gaea_peaks_01.fit": "aa24a7b6e35ae2b2",
-   "data/missions/gaea_peaks_01.pak": "af7be4e2f5a9c1c4",
-   "data/missions/mc2_01_ai.fit": "05ac63a7d6e6a022",
-   "data/missions/mc2_01_eject_specials.fit": "fb1ae62005af323b",
-   "data/missions/mc2_01_ejectalias_specials.fit": "7dcea591e6e5a519",
-   "data/missions/mc2_01_moveto_nan_specials.fit": "7d179e0afeeeff60",
-   "data/missions/mc2_01_moveto_specials.fit": "ceed6688c9c9402a",
-   "data/missions/mc2_01_specials.fit": "1b484e1e9e1ffd9a",
-   "data/missions/mc2_01_specials_eject.fit": "176239689c456324",
-   "data/missions/mc2_01_specials_ejectalias.fit": "d5ae4996d3e5d3a9",
-   "data/missions/mc2_01_specials_raw_specials.fit": "a48b828b55f5097d"
+   "data/missions/gaea_peaks_01.pak": "af7be4e2f5a9c1c4"
   },
   "problems": []
  }

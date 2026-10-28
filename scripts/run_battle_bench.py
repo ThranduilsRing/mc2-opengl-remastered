@@ -317,6 +317,26 @@ def diff(before, after):
             print(f"| {scene} / {metric} | {a:.3f} | {b:.3f} | {(b/a-1)*100:+.1f}% |")
 
 
+def baseline_command(args, base_out):
+    """Child invocation that benches the baseline exe with the same shape as the current run."""
+    cmd = [sys.executable, str(Path(__file__).resolve()), "--exe", str(args.baseline_exe), "--out", str(base_out), "--allow-non-head",
+           "--runs", str(args.runs), "--duration", str(args.duration), "--resolution", args.resolution]
+    return cmd + (["--acceptance"] if args.acceptance else [])
+
+
+def compare_with_baseline(args, out):
+    import subprocess
+    base_out = out.with_name(out.name + "-baseline")
+    print(f"[battle-bench] BASELINE run: {args.baseline_exe} -> {base_out}", flush=True)
+    rc = subprocess.call(baseline_command(args, base_out))  # background-launch: allow re-runs this same bench script (python child); it launches the game through its own offscreen path
+    if rc:
+        print(f"[battle-bench] baseline run failed rc={rc}", flush=True)
+        return rc
+    print("[battle-bench] BASELINE (before) vs CURRENT (after)", flush=True)
+    diff(*(json.loads((d / "battle-bench.json").read_text(encoding="utf-8")) for d in (base_out, out)))
+    return 0
+
+
 def resolve_lengths(runs, duration, acceptance):
     """Iteration bench by default (1 run, 20 s); the 2 x 30 s acceptance shape only under --acceptance."""
     return runs or (2 if acceptance else 1), duration or (30 if acceptance else 20)
@@ -351,6 +371,10 @@ def main():
                              "(without it launches use a normal slot and the numbers are provisional)")
     parser.add_argument("--resolution", choices=("all", "1080p", "4k"), default="all")
     parser.add_argument("--diff", nargs=2, type=Path, metavar=("BEFORE", "AFTER"))
+    parser.add_argument("--baseline-exe", type=Path,
+                        help="also bench this non-HEAD exe (a clean build of an earlier commit) with the same options and print "
+                             "baseline vs --exe side by side; the baseline report lands in <out>-baseline")
+    parser.add_argument("--allow-non-head", action="store_true", help=argparse.SUPPRESS)  # set for the baseline child run
     args = parser.parse_args()
     if args.diff:
         diff(*(json.loads(p.read_text(encoding="utf-8")) for p in args.diff)); return 0
@@ -362,9 +386,10 @@ def main():
     hold_install(args.exe.parent.resolve())
     identity = ms.identity_block(generator="battle_bench", exe_path=args.exe, repo_root=ROOT, deploy_target=args.exe.parent)
     provenance = identity["binary_provenance"]
-    if provenance.get("dirty") or not provenance.get("available") or not provenance.get("source_head_matches_binary"):
+    head_ok = args.allow_non_head or provenance.get("source_head_matches_binary")  # a baseline exe is clean but deliberately not HEAD
+    if provenance.get("dirty") or not provenance.get("available") or not head_ok:
         raise ValueError("commit, build and deploy a clean binary first")
-    sha = identity["git"]["commit"]
+    sha = provenance["commit"] if args.allow_non_head else identity["git"]["commit"]
     out = (args.out or Path("E:/mc2-archive-2026-10/proofs/run_battle_bench") / sha).resolve()
     stages.preflight(out)
     out.mkdir(parents=True, exist_ok=True)
@@ -435,6 +460,8 @@ def main():
     print("\n".join(table(report)))
     print(f"[battle-bench] {'exclusive' if args.acceptance else 'shared-slot (provisional)'} launches took {held_s[0]:.0f} s of {time.monotonic() - started:.0f} s wall")
     print(f"[battle-bench] evidence: {out}")
+    if args.baseline_exe:
+        return compare_with_baseline(args, out)
     return 0
 
 

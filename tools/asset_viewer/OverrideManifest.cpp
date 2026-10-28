@@ -15,7 +15,7 @@ std::vector<Warning> ValidateRecordRules(const WorkbenchOverride& r){
     if (!r.renderOnly)                       block("renderOnly","renderOnly must be true (MVP)");
     if (r.fallback!="stock")                 block("fallback","fallback must be \"stock\" (MVP)");
     if (r.scale!=1.0f)                       block("scale","runtime scale must be exactly 1.0 — bake scale into the GLB");
-    { std::string c=lower(r.overrideClass); if (c!="staticprop" && c!="tree") block("class","class must be staticProp or tree"); }
+    { std::string c=lower(r.overrideClass); if (c!="staticprop" && c!="tree" && c!="vehicle") block("class","class must be staticProp, tree or vehicle"); }
     if (r.appearanceName.empty())            block("replaces","no stock appearance bound");
     if (!r.appearanceVerified)               block("appearance-unverified","appearance key not confirmed — verify it matches the engine appearance name");
     if (!isSafeSource(r.sourceRelPath))      block("source","source must be a safe relative .glb/.gltf path");

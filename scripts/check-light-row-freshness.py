@@ -84,6 +84,11 @@ EXEMPT: dict[str, str] = {
     "mclib/bdactor_tree.cpp": _BDACTOR_PRODUCER,
     "mclib/bdactor_tree_static.cpp": _BDACTOR_PRODUCER,
     "mclib/bdactor_update.cpp": _BDACTOR_PRODUCER,
+    "mclib/gvactor_update.cpp": (
+        "PREDICTOR, not a consumer. It only mirrors the decline checks of "
+        "GVAppearance::submitToMechBatcher (mclib/gvactor_render.cpp) to decide whether to reserve the "
+        "CPU body; the real submit stamps the row fresh with setCachedFrame(g_mc2FrameCounter) right "
+        "before it hands the index to the batcher, so the update-time read never reaches a draw."),
     # mclib/mech3d.cpp is intentionally absent from this table: the GPU-mech
     # submit path reads getCachedFrame() unconditionally. An exemption here
     # would advertise an open defect that is closed.

@@ -161,9 +161,8 @@ void GVAppearance::updateGeometry (void)
 			
 		// Pose on the GPU: update walks the node hierarchy only (shapeToWorld per node); the vertex transform,
 		// lighting and fog run in the vertex shader. A shape that cannot go to a batcher (fading alpha, a type
-		// not registered yet, a preview) keeps the full CPU transform, done at draw time if a submit declines.
+		// not registered yet) is drawn by the CPU fallback (TG_MultiShape::Render) from the same matrices.
 		poseXlat_ = xlatPosition;
-		poseRot_ = totalRotation;
 		poseLightRGB_ = lightRGB;
 		poseFog_ = useFog ? 1.0f - static_cast<float>(fogRGB >> 24) / 255.0f : 0.0f;
 		gvShape->SetLightList(eye->getWorldLights(),eye->getNumLights());
@@ -172,25 +171,23 @@ void GVAppearance::updateGeometry (void)
 		// The light row carries this actor's own terrain light colour; gather it now, while light 0 holds it.
 		if (gpuPose_ && !renderShape)
 			gvShape->CacheGpuLightData();
-		spotlightLeavesDrawn_ = false;
-		if (gpuPose_ && !renderShape && eye->isNight)
+		gvShape->TransformMultiShape_HierarchyOnly (&xlatPosition,&totalRotation);
+		if (!renderShape)
 		{
-			if (spotlightLeavesShape_ != gvShape)
+			// Reserve the CPU body whenever the mech-batcher submit can decline, using the same checks
+			// submitToMechBatcher applies. A reservation made after a texture node has a vertex block is unsafe.
+			bool cpuBody = !gpuPose_ || localTextureHandle == 0xffffffff;
+			if (gpuPose_ && !cpuBody)
 			{
-				spotlightLeavesShape_ = gvShape;
-				spotlightLeaves_ = 0;
-				for (int i = 0; i < gvShape->GetNumShapes(); ++i)
-					if (const TG_ShapeRec* rec = gvShape->GetShapeRec(i))
-						if (rec->node && rec->processMe && rec->node->GetIsSpotlight()) ++spotlightLeaves_;
+				const uint32_t lightRow = gvShape->getCachedGpuLightIndex();
+				cpuBody = lightRow == 0xFFFFFFFFu ||
+					(mc2::textures::ready() && lightRow >= mc2::vkLights::getLightStructCount());
 			}
-			spotlightLeavesDrawn_ = spotlightLeaves_ > 0;
+			if (cpuBody)
+				gvShape->ReserveCpuDraw();	// fading/unregistered/no paint/no light row: the CPU fallback draws it
+			else if (eye->isNight)
+				gvShape->ReserveCpuDraw(true);	// the batcher draws the body; no batcher draws the searchlight cones
 		}
-		if (spotlightLeavesDrawn_)
-			gvShape->TransformMultiShape_SpotlightLeaves (&xlatPosition,&totalRotation);
-		else if (gpuPose_ || renderShape)
-			gvShape->TransformMultiShape_HierarchyOnly (&xlatPosition,&totalRotation);
-		else
-			gvShape->TransformMultiShape (&xlatPosition,&totalRotation);
 		updateRenderShape();
 		if (renderShape) renderShape->SetFogRGB(useFog ? fogRGB : 0xffffffff);
 
@@ -523,7 +520,8 @@ void GVAppearance::transformSensorShapes()
 	auto spin = mc2::math::quatFromEuler(mc2::math::Euler(0.0f,sensorSpin * DEGREES_TO_RADS,0.0f));
 	marker->SetFogRGB(0xffffffff);
 	marker->SetLightList(eye->getWorldLights(),eye->getNumLights());
-	marker->TransformMultiShape (&poseXlat_,&spin);
+	marker->TransformMultiShape_HierarchyOnly (&poseXlat_,&spin);
+	marker->ReserveCpuDraw();
 }
 
 long GVAppearance::update (bool animate) 
@@ -863,9 +861,19 @@ void GVAppearance::stopActivity (void)
 	isActivitying = false;
 }
 
+TG_MultiShape* GVAppearance::previewShape (void)
+{
+	TG_MultiShape* shape = renderShape ? renderShape.get() : gvShape;
+	if (!shape)
+		return nullptr;
+	if (!renderShape) shape->SetTextureHandle(0,localTextureHandle);
+	shape->SetARGBHighLight(highlightColor);
+	return shape;
+}
+
 bool GVAppearance::PerPolySelect (long mouseX, long mouseY)
 {
-	return gvShape->PerPolySelect(mouseX,mouseY);
+	return false;	// movers are picked by rect (findMoverByMouse); no per-face CPU geometry
 }
 
 void GVAppearance::flashBuilding (float dur, float fDuration, DWORD color)

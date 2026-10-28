@@ -139,14 +139,16 @@ static void EmitResolveRecord(
         shadowBuf[pos]   = '\0';
     }
 
+    const char* layerIndex = layer && std::string_view(layer).ends_with("#scratch")
+        ? ",\"layer_index\":0" : "";
     if (shadowed) {
         fprintf(g_traceFile,
-            "{\"v\":1,\"t\":%.3f,\"key\":%s,\"req\":%s,\"layer\":%s,\"path\":%s,\"shadowed\":%s}\n",
-            t, keyJ, reqJ, layerJ, pathJ, shadowBuf);
+            "{\"v\":1,\"t\":%.3f,\"key\":%s,\"req\":%s,\"layer\":%s,\"path\":%s,\"shadowed\":%s%s}\n",
+            t, keyJ, reqJ, layerJ, pathJ, shadowBuf, layerIndex);
     } else {
         fprintf(g_traceFile,
-            "{\"v\":1,\"t\":%.3f,\"key\":%s,\"req\":%s,\"layer\":%s,\"path\":%s}\n",
-            t, keyJ, reqJ, layerJ, pathJ);
+            "{\"v\":1,\"t\":%.3f,\"key\":%s,\"req\":%s,\"layer\":%s,\"path\":%s%s}\n",
+            t, keyJ, reqJ, layerJ, pathJ, layerIndex);
     }
 }
 
@@ -334,6 +336,7 @@ static void WriteModIndexCache(
 // Returns number of entries loaded, or nullopt on format error.
 static std::optional<int> LoadModIndexCache(
     std::unordered_map<std::string, ModFileEntry>& idx,
+    std::unordered_map<std::string, std::vector<std::string>>& shadowed,
     const char* cachePath,
     const char* expectedModId,
     const ModCacheSignature& expectedSig,
@@ -384,8 +387,19 @@ static std::optional<int> LoadModIndexCache(
         std::string key    = line;
         std::string path   = tab1 + 1;
         std::string modid  = tab2 + 1;
-        if (idx.find(key) == idx.end())
+        auto existing = idx.find(key);
+        if (existing == idx.end()) {
             idx[key] = { path, modid };
+        } else {
+            // Same loser bookkeeping as IndexModData, so the conflict report
+            // does not depend on whether the layer came from cache or a walk.
+            if (logFileResolve) {
+                printf("[mod-dup] %s  winner=[%s]  loser=[%s]\n",
+                       key.c_str(), existing->second.modId.c_str(), modid.c_str());
+                fflush(stdout);
+            }
+            shadowed[key].push_back(modid);
+        }
         loaded++;
     }
     fclose(f);
@@ -396,6 +410,7 @@ static std::optional<int> LoadModIndexCache(
 // Returns true if cache was valid and loaded, false if a fresh scan is needed.
 static bool TryLoadModCache(
     std::unordered_map<std::string, ModFileEntry>& idx,
+    std::unordered_map<std::string, std::vector<std::string>>& shadowed,
     const char* absModRoot,   // e.g. "A:/Games/.../mods/"
     const char* modId,        // e.g. "mc2x-pbr"
     const char* dataDir       // e.g. "...mods/mc2x-pbr/data/"
@@ -418,7 +433,7 @@ static bool TryLoadModCache(
     ComputeModDataSignature(dataDir, &diskSig);
 
     bool sigMismatch = false;
-    auto loaded = LoadModIndexCache(idx, cachePath, modId, diskSig, &sigMismatch);
+    auto loaded = LoadModIndexCache(idx, shadowed, cachePath, modId, diskSig, &sigMismatch);
     if (!loaded) {
         printf("[mod-cache] refresh modid='%s' reason=%s (files=%llu maxMtime=%llu)\n",
                modId,
@@ -456,9 +471,21 @@ static void IndexModDataCached(
             shadowed[key].push_back(s);
 
     // Merge into idx (first-wins).
-    for (auto& [key, entry] : layer)
-        if (idx.find(key) == idx.end())
+    // A key already owned by a higher layer is a cross-layer duplicate: the walk above
+    // only saw this layer, so record the loser here (the conflict report reads it).
+    for (auto& [key, entry] : layer) {
+        auto existing = idx.find(key);
+        if (existing == idx.end()) {
             idx[key] = entry;
+        } else {
+            if (logFileResolve) {
+                printf("[mod-dup] %s  winner=[%s]  loser=[%s]\n",
+                       key.c_str(), existing->second.modId.c_str(), modId);
+                fflush(stdout);
+            }
+            shadowed[key].push_back(modId);
+        }
+    }
 
     // Collect layer entries for cache (all entries this mod owns in the layer map).
     std::vector<std::pair<std::string,ModFileEntry>> fresh(layer.begin(), layer.end());
@@ -870,6 +897,24 @@ void InitModSearchPaths(const char* modsRoot) {
 
     g_modPriority[modId] = 0;
     for (size_t i = 0; i < deps.size(); ++i) g_modPriority.try_emplace(deps[i], int(i + 1));
+    // Layer 0 (scratch overrides): mods/<active>/.scratch/data/,
+    // indexed BEFORE the active mod so first-wins puts it on top. Always walked fresh
+    // (never cached: small, and a cache would hide edits). Presence of files is the
+    // opt-in; MC2_SCRATCH=0 is the kill-switch. Engine read-only.
+    if (!stockMode && mc2::gate::get<"MC2_SCRATCH">()) {
+        const std::string scrDir = std::string(absRoot) + envMod + "/.scratch/data/";
+        if (GetFileAttributesA(scrDir.c_str()) != INVALID_FILE_ATTRIBUTES) {
+            size_t before = g_modIndex.size();
+            const std::string scrId = modId + "#scratch";
+            IndexModData(g_modIndex, g_shadowedBy, scrDir.c_str(), "data/", scrId.c_str());
+            if (g_modIndex.size() > before) {
+                g_modPriority[scrId] = 0;
+                printf("[mod] scratch layer ACTIVE: %zu files (%s)\n", g_modIndex.size() - before, scrDir.c_str());
+                fflush(stdout);
+            }
+        }
+    }
+
     // Index active mod first (highest priority). Skipped entirely in stock mode.
     char activeDataDir[MAX_PATH];
     _snprintf(activeDataDir, sizeof(activeDataDir), "%s%s/data/", absRoot, envMod);
@@ -877,7 +922,7 @@ void InitModSearchPaths(const char* modsRoot) {
     if (!stockMode && GetFileAttributesA(activeDataDir) != INVALID_FILE_ATTRIBUTES) {
         crashbundle_mod(modId.c_str(), 0);
         size_t before = g_modIndex.size();
-        if (!TryLoadModCache(g_modIndex, absRoot, modId.c_str(), activeDataDir))
+        if (!TryLoadModCache(g_modIndex, g_shadowedBy, absRoot, modId.c_str(), activeDataDir))
             IndexModDataCached(g_modIndex, g_shadowedBy, absRoot, modId.c_str(), activeDataDir, "data/");
         printf("[mod] [1/%zu] active '%s': %zu files\n",
                deps.size()+1, envMod, g_modIndex.size() - before);
@@ -900,7 +945,7 @@ void InitModSearchPaths(const char* modsRoot) {
                 g_modCapabilities[dep] = dj->capabilities;
         }
         size_t before = g_modIndex.size();
-        if (!TryLoadModCache(g_modIndex, absRoot, dep.c_str(), depDataDir))
+        if (!TryLoadModCache(g_modIndex, g_shadowedBy, absRoot, dep.c_str(), depDataDir))
             IndexModDataCached(g_modIndex, g_shadowedBy, absRoot, dep.c_str(), depDataDir, "data/");
         crashbundle_mod(dep.c_str(), int(i + 1));
         printf("[mod] [%zu/%zu] dep '%s': %zu new files\n",
@@ -951,6 +996,11 @@ void InitModSearchPaths(const char* modsRoot) {
             e.winnerModId = entry.modId;
             auto sit = g_shadowedBy.find(key);
             if (sit != g_shadowedBy.end()) e.shadowedModIds = sit->second;
+            // A scratch override of its own project is intentional, not a conflict.
+            if (const size_t h = e.winnerModId.rfind("#scratch"); h != std::string::npos) {
+                const std::string base = e.winnerModId.substr(0, h);
+                std::erase(e.shadowedModIds, base);
+            }
             if (key.rfind("data/defs/", 0) == 0)
                 e.stockExists = (GetFileAttributesA(key.c_str()) != INVALID_FILE_ATTRIBUTES);
             // Skip clean non-def entries early — only entries that can produce a

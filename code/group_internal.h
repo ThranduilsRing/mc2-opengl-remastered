@@ -8,6 +8,7 @@
 #ifndef MCLIB_H
 #include"mclib.h"
 #endif
+#include "warrior.h"
 
 #ifndef GROUP_H
 #include"group.h"

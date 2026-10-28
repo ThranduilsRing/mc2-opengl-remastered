@@ -47,6 +47,7 @@ void TreeAppearance::touch()
 			if (mc2StableLightSkipTouchEnabled() && mc2LightbridgeStableSkipEnabled() && treeEligible) {
 				lbssRecordTree(/*skipTaken=*/true, /*blk_idx=*/false);
 				treeShape->Touch();
+				treeShape->setCachedFrame(g_mc2FrameCounter);   // the flush drops ranges not stamped this frame
 				return;
 			}
 		}
@@ -113,8 +114,7 @@ void TreeAppearance::touchSerialCommit()
 		const bool registered = (staticReg[activeLOD].registered && staticReg[activeLOD].recipeIndex >= 0);
 		const bool skipTaken  = (registered && indexValid);
 		lbssRecordTree(skipTaken, registered && !indexValid);
-		if (skipTaken)
-			return;
+		if (skipTaken) { treeShape->setCachedFrame(g_mc2FrameCounter); return; }   // see the touch-skip above
 	}
 
 	extern bool mc2LightBakeEnabled();

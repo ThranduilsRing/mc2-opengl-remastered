@@ -498,8 +498,9 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
     // which is rewritten below). The scene clear and the overlay keep their own tickets.
     const uint32_t par = rctx.frameContext().slot;
     { ZoneScopedN("VKIsl.Terrain.FenceWait");   // VK-ISLAND-TRACY-1: deferred retire of the slot
-      if (!rctx.wait(s->submitted[par], 5000000000ull, "terrain submission slot") ||
-          !rctx.wait(s->ovlSubmitted[par], 5000000000ull, "terrain overlay slot")) {
+      if (!vk_island_util::waitStrike(s->waitStrikes, s->disabled,
+              rctx.wait(s->submitted[par], 5000000000ull, "terrain submission slot") &&
+              rctx.wait(s->ovlSubmitted[par], 5000000000ull, "terrain overlay slot"), "VK_TERRAIN_ISLAND")) {
           setFallback("submission_slot_timeout"); vlog("[VK_TERRAIN_ISLAND] LOUD: submission slot wait timed out (5 s); skipping this frame, will retry next frame."); return 0;
       } }
     us_fence_wait = usSince(tFence0);
@@ -660,7 +661,7 @@ extern "C" int mc2_vk_scene_clear(int w, int h) {
 
     mc2vk::VulkanContext& cctx = mc2vk::getOrCreateEngineVulkanContext();
     const uint32_t par = cctx.frameContext().slot;
-    if (!cctx.wait(s->clearSubmitted[par], 5000000000ull, "scene clear slot")) { setFallback("clear_slot_timeout"); vlog("[VK_TERRAIN_ISLAND] LOUD: scene clear slot wait timed out (5 s); skipping this frame, will retry next frame."); return 0; }
+    if (!vk_island_util::waitStrike(s->waitStrikes, s->disabled, cctx.wait(s->clearSubmitted[par], 5000000000ull, "scene clear slot"), "VK_TERRAIN_ISLAND")) { setFallback("clear_slot_timeout"); vlog("[VK_TERRAIN_ISLAND] LOUD: scene clear slot wait timed out (5 s); skipping this frame, will retry next frame."); return 0; }
     VkCommandBuffer cb = s->cbuf[2 + par];
     vkResetCommandBuffer(cb, 0);
     VkCommandBufferBeginInfo bi{};

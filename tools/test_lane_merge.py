@@ -220,7 +220,7 @@ def test_ratchet_failure_exit_6_commit_kept(env):
     rc, out, err = merge(env)
     assert rc == 6
     assert "ratchets=FAIL" in out
-    assert "line 5 of cxx17_ratchet" in err and "line 3 of cxx17_ratchet" in err and "line 2 of" not in err
+    assert "line 5 of cxx17_ratchet" in err and "line 0 of cxx17_ratchet" in err  # a failing ratchet prints its whole tail (60 lines), not 3
     assert len(parents(repo)) == 2  # the merge commit stays
 
 
@@ -602,7 +602,7 @@ def test_batch_refuses_to_start_when_a_later_tip_cannot_merge(env, capsys):
     assert git(repo, "rev-parse", "HEAD") == head and git(repo, "status", "--porcelain") == ""
 
 
-def test_batch_ratchet_failure_stops_and_names_the_rest(env, capsys):
+def test_batch_ratchet_failure_keeps_merging_and_lists_all_reds(env, capsys):
     repo, _ = env
     for n in "abc":
         _branch(repo, "lane_" + n, f"{n}_lane.txt", n + "\n", f"lane {n}")
@@ -612,10 +612,11 @@ def test_batch_ratchet_failure_stops_and_names_the_rest(env, capsys):
     rc, verifies = _run_batch(env, "lane_a", "lane_b", "lane_c")
     out = capsys.readouterr().out
     assert rc == 6 and verifies == []     # a tooling-only partial tree has nothing to build
-    assert "BATCH STOPPED at lane_a merged=1 remaining=lane_b lane_c" in out
+    assert "BATCH RATCHET REDS in 3 of 3 tip(s), merged=3" in out
+    assert all(f"  lane_{n}: cxx17(rc=" in out for n in "abc")
     last = out.strip().splitlines()[-1]
     assert last.startswith("MERGED ") and "ratchets=FAIL" in last and "SKIPPED(ratchet-failure)" in last
-    assert (repo / "a_lane.txt").exists() and not (repo / "b_lane.txt").exists()
+    assert all((repo / f"{n}_lane.txt").exists() for n in "abc")
 
 
 def test_batch_with_compiled_changes_skips_build_on_ratchet_failure(env, capsys):
@@ -627,7 +628,7 @@ def test_batch_with_compiled_changes_skips_build_on_ratchet_failure(env, capsys)
     set_mode(env, "cxx17_ratchet/cxx17_ratchet.py", "fail")
     rc, verifies = _run_batch(env, "lane_a", "lane_b")
     assert rc == 6 and verifies == []
-    assert "remaining=lane_b" in capsys.readouterr().out
+    assert "BATCH RATCHET REDS in 2 of 2 tip(s), merged=2" in capsys.readouterr().out
 
 
 def test_compiled_input_classifier():

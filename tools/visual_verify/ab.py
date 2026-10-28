@@ -1,16 +1,20 @@
 #!/usr/bin/env python3
-"""GL-vs-VK parity A/B: capture both backends, then montage + diff metrics.
+"""VK before/after A/B: capture two builds on the Vulkan backend, then montage + crops + diff heatmap + MAD table.
 
+A is the left/"before" image, B the right/"after" one. Pick the two builds one way:
+  --install-a DIR --install-b DIR     two installs (each has its own mc2.exe + data)
+  --exe-a EXE --exe-b EXE [--install DIR]   two exes run against one install's data (staged by hard links; DLLs come from --install)
 Usage:
-  py -3 tools/visual_verify/ab.py --bookmarks a,b [--install DIR] [--env K=V ...]
-        [--crop x0,y0,x1,y1 ...] [--out-root DIR] [--skip-gl GL_DIR]
-  py -3 tools/visual_verify/ab.py --compare-only GL_DIR VK_DIR [--crop ...] [--out-root DIR]
+  py -3 tools/visual_verify/ab.py --bookmarks a,b (--install-a DIR --install-b DIR | --exe-a EXE --exe-b EXE) [--env K=V ...]
+        [--crop x0,y0,x1,y1 ...] [--out-root DIR]
+  py -3 tools/visual_verify/ab.py --compare-only DIR_A DIR_B [--crop ...] [--out-root DIR]
 """
 from __future__ import annotations
 
 import argparse
 import json
 import os
+import shutil
 import subprocess
 import sys
 import time
@@ -87,13 +91,13 @@ def compare(gl_dir: Path, vk_dir: Path, out: Path, crops, bookmarks=None):
     for bm in bookmarks:
         pg, pv = find_png(gl_dir, bm), find_png(vk_dir, bm)
         if not pg or not pv:
-            print(f"[ab] {bm}: missing png (gl={pg} vk={pv})")
+            print(f"[ab] {bm}: missing png (a={pg} b={pv})")
             continue
         a, b = load(pg), load(pv)
         size_mismatch = None
         if a.size != b.size:
-            size_mismatch = {"gl": list(a.size), "vk": list(b.size)}
-            print(f"[ab] WARNING {bm}: image size mismatch GL={a.size} VK={b.size}; resizing VK (metrics unreliable)", flush=True)
+            size_mismatch = {}
+            print(f"[ab] WARNING {bm}: image size mismatch A={a.size} B={b.size}; resizing B (metrics unreliable)", flush=True)
             b = b.resize(a.size, Image.LANCZOS)
         A, B = np.asarray(a).astype(np.int16), np.asarray(b).astype(np.int16)
         D = np.abs(A - B)
@@ -127,38 +131,71 @@ def compare(gl_dir: Path, vk_dir: Path, out: Path, crops, bookmarks=None):
     return rows
 
 
-def main():
+
+
+def stage_install(install: Path, exe: Path, dest: Path) -> Path:
+    """An install clone whose mc2.exe is `exe`: data and DLLs are hard-linked from `install` (copied across volumes)."""
+    def link(src, dst):
+        try:
+            os.link(src, dst)
+        except OSError:
+            shutil.copy2(src, dst)
+    if dest.exists():
+        shutil.rmtree(dest)
+    shutil.copytree(install, dest, copy_function=link)
+    target = dest / "mc2.exe"
+    if target.exists():
+        target.unlink()
+    shutil.copy2(exe, target)
+    return dest
+
+
+def resolve_installs(a, out: Path):
+    """-> (install_a, install_b) from --install-a/--install-b or --exe-a/--exe-b (+ --install); exits on a bad combination."""
+    if a.install_a or a.install_b:
+        if not (a.install_a and a.install_b) or a.exe_a or a.exe_b:
+            sys.exit("use --install-a with --install-b, or --exe-a with --exe-b, not a mix")
+        return a.install_a, a.install_b
+    if a.exe_a and a.exe_b:
+        for e in (a.exe_a, a.exe_b):
+            if not Path(e).is_file():
+                sys.exit(f"exe not found: {e}")
+        return (str(stage_install(Path(a.install), Path(a.exe_a), out / "install_a")),
+                str(stage_install(Path(a.install), Path(a.exe_b), out / "install_b")))
+    sys.exit("need --install-a/--install-b or --exe-a/--exe-b (or --compare-only DIR_A DIR_B)")
+
+
+def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
     ap.add_argument("--bookmarks")
-    ap.add_argument("--install", default=DEFAULT_INSTALL)
-    ap.add_argument("--env", action="append", default=[], metavar="K=V", help="VK-only extras")
+    ap.add_argument("--install-a", metavar="DIR")
+    ap.add_argument("--install-b", metavar="DIR")
+    ap.add_argument("--exe-a", metavar="EXE")
+    ap.add_argument("--exe-b", metavar="EXE")
+    ap.add_argument("--install", default=DEFAULT_INSTALL, help="data/DLL source for --exe-a/--exe-b")
+    ap.add_argument("--env", action="append", default=[], metavar="K=V", help="extra env for both captures")
     ap.add_argument("--crop", action="append", default=[], help="x0,y0,x1,y1 fractions")
     ap.add_argument("--out-root")
-    ap.add_argument("--skip-gl", metavar="DIR")
-    ap.add_argument("--compare-only", nargs=2, metavar=("GL_DIR", "VK_DIR"))
-    a = ap.parse_args()
+    ap.add_argument("--compare-only", nargs=2, metavar=("DIR_A", "DIR_B"))
+    a = ap.parse_args(argv)
     os.environ["MC2_CURSOR_NO_PARK"] = "1"
     crops = [tuple(float(x) for x in c.split(",")) for c in a.crop]
     for c in crops:
         if len(c) != 4:
             sys.exit("--crop needs 4 comma-separated fractions")
     stamp = time.strftime("%Y%m%d_%H%M%S")
+    out = Path(a.out_root) if a.out_root else ROOT / "tests/visual/captures" / f"ab_{stamp}"
     if a.compare_only:
-        gl, vk = Path(a.compare_only[0]), Path(a.compare_only[1])
-        out = Path(a.out_root) if a.out_root else ROOT / "tests/visual/captures" / f"ab_{stamp}"
-        compare(gl, vk, out, crops)
+        compare(Path(a.compare_only[0]), Path(a.compare_only[1]), out, crops)
         return
     if not a.bookmarks:
         sys.exit("--bookmarks required")
-    out = Path(a.out_root) if a.out_root else ROOT / "tests/visual/captures" / f"ab_{stamp}"
     out.mkdir(parents=True, exist_ok=True)
-    if not a.skip_gl:
-        sys.exit("--skip-gl GL_DIR is required: the engine has no GL arm to capture; compare against the gl-baseline-s56 captures")
-    gl = Path(a.skip_gl)
-    vk = out / "vk"
-    run_capture(a.install, a.bookmarks, vk,
-                ["MC2_RENDER_BACKEND=vulkan", "MC2_VK_SHARED_GBUFFER=1"] + a.env)
-    compare(gl, vk, out / "cmp", crops, [s.strip() for s in a.bookmarks.split(",")])
+    ia, ib = resolve_installs(a, out)
+    env = ["MC2_RENDER_BACKEND=vulkan", "MC2_VK_SHARED_GBUFFER=1"] + a.env
+    run_capture(ia, a.bookmarks, out / "a", env)
+    run_capture(ib, a.bookmarks, out / "b", env)
+    compare(out / "a", out / "b", out / "cmp", crops, [s.strip() for s in a.bookmarks.split(",")])
 
 
 if __name__ == "__main__":

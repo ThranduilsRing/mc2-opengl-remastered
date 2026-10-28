@@ -1,3 +1,4 @@
+#include "userinput.h"
 #define LogisticsPilotListBox_CPP
 /*************************************************************************************************\
 LogisticsPilotListBox.cpp			: Implementation of the LogisticsPilotListBox component.
@@ -12,6 +13,7 @@ LogisticsPilotListBox.cpp			: Implementation of the LogisticsPilotListBox compon
 #include "../resource.h"
 #include"pilotreadyscreen.h"
 #include"mc2str.h"
+#include "memfunc.h"
 
 std::unique_ptr<LogisticsPilotListBoxItem> LogisticsPilotListBoxItem::s_templateItem = nullptr;
 

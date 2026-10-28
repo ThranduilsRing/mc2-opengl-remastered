@@ -34,6 +34,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.abspath(os.path.join(HERE, ".."))
@@ -222,8 +223,10 @@ def detail_diff(path_a: str, path_b: str) -> tuple[dict, dict]:
     return res["motion"], res["anim"]
 
 
-def compare(a, b, min_frames: int = MIN_FRAMES):
-    """-> (ok, message). Only the frames both runs reached are compared."""
+def compare(a, b, min_frames: int = MIN_FRAMES, required_length: int = 0):
+    """-> (ok, message). Only the frames both runs reached are compared; required_length additionally rejects a truncated run."""
+    if required_length and (len(a) < required_length or len(b) < required_length):
+        return False, (f"runs reached {len(a)} and {len(b)} sim frames, need {required_length}: a run stopped before the baseline")
     common = min(len(a), len(b))
     if common < min_frames:
         return False, f"only {common} common sim frame(s) (need {min_frames}): the mission did not run long enough to prove anything"
@@ -321,6 +324,13 @@ def build_and_deploy(install: str = INSTALL_DIR) -> None:
 
 #: The longest smoke window a determinism run may ask for (owner ruling 2026-10-13); scripts/run_smoke.py refuses more than 30 s without `--sim-determinism`.
 MAX_DURATION = 60
+#: Wall-clock bound for the extra attempts of one `run`/`check` that fell short of the baseline's frame count (loaded host).
+MAX_WALL = 900
+
+
+def next_duration(duration: int, reached: int, needed: int) -> int:
+    """Seconds for a retry when the slower run reached `reached` of `needed` sim frames in `duration` s (+20% margin, capped at MAX_DURATION)."""
+    return min(MAX_DURATION, max(duration + 1, -(-duration * needed * 12 // (max(reached, 1) * 10))))
 
 
 def smoke_target(install: str, ref_exe: str | None = None, ref_commit: str | None = None) -> list[str]:
@@ -364,17 +374,35 @@ def run_mission(mission: str, duration: str, out: str, extra_env: dict | None = 
                             *target, "--keep-logs", "--sim-determinism", *(["--sim-speed", str(sim_speed)] if sim_speed > 1 else []),
                             *(["--ticks", str(ticks)] if ticks > 0 else []), *(["--headless"] if headless == "both" or (headless and tag == "b") else [])], env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
                            errors="replace", **console_child.child_kwargs(redirected=True))
+        headless_run = headless == "both" or (headless and tag == "b")
         arts = [line.removeprefix("[runner] artifacts: ").strip() for line in r.stdout.splitlines()
                 if line.startswith("[runner] artifacts: ")]
-        if r.returncode and os.environ.get("MC2_IN_GATE") == "1":
+        if not arts:
+            sys.exit(f"sim_determinism: smoke run {tag} produced no artifacts (rc={r.returncode}):\n" + "\n".join(r.stdout.splitlines()[-8:]))
+        log_path = os.path.join(arts[-1], mission + ".log")
+        log_text = ""
+        if os.path.exists(log_path):
+            with open(log_path, encoding="utf-8", errors="replace") as fh:
+                log_text = fh.read()
+        text = r.stdout + "\n" + log_text
+        if headless_run:
+            if not headless_exit_ok(r.returncode, text):
+                sys.exit(f"sim_determinism: headless smoke run {tag} did not reach its tick budget cleanly (rc={r.returncode}):\n"
+                         + "\n".join(r.stdout.splitlines()[-8:]))
+        elif r.returncode and os.environ.get("MC2_IN_GATE") == "1":
             sys.exit(f"sim_determinism: gate smoke {tag} failed (rc={r.returncode}):\n" + r.stdout)
-        if r.returncode and arts and os.path.exists(os.path.join(arts[-1], mission + ".log")):
+        if not headless_run and r.returncode and os.path.exists(log_path):
             print(f"sim_determinism: note: smoke run {tag} returned {r.returncode} (a smoke gate verdict); its SIMID stream is still compared")
-        elif r.returncode or not arts:
+        elif not headless_run and r.returncode:
             sys.exit(f"sim_determinism: smoke run {tag} failed (rc={r.returncode}):\n" + "\n".join(r.stdout.splitlines()[-8:]))
         shutil.copytree(arts[-1], dest)
         logs.append(os.path.join(dest, mission + ".log"))
     return logs
+
+
+def headless_exit_ok(returncode: int, text: str) -> bool:
+    """A headless run is clean only when it reached its tick budget without a crash (mirrors saveload_roundtrip)."""
+    return returncode in (0, 1) and "[SMOKE v1] event=tick_budget" in text and "Crash Report" not in text
 
 
 #: Processes whose presence beside a pair explains a timing-dependent result (builds and other game runs).
@@ -468,6 +496,8 @@ def selftest() -> int:
     expect(not ok and "index 123" in msg and "last agreed" in msg, "a divergence must name its first frame")
     ok, _ = compare(mk(400), mk(350))
     expect(ok, "runs of different length compare over the common prefix")
+    ok, msg = compare(mk(400), mk(300), 300, required_length=400)
+    expect(not ok and "need 400" in msg, "a run b truncated before the --headless-both baseline must fail")
     ok, _ = compare(mk(200), mk(200))
     expect(not ok, "fewer than MIN_FRAMES common frames must fail, not pass")
     ok, _ = compare([], [])
@@ -634,8 +664,11 @@ def main(argv=None) -> int:
     args = ap.parse_args(argv)
     if getattr(args, "headless_both", False):
         args.headless = "both"
-        if args.ticks <= 0 and getattr(args, "cmd", "") == "check":
-            args.ticks = int(json.load(open(baseline_path(args.mission), encoding="utf-8"))["frames"])
+        if getattr(args, "cmd", "") == "check":
+            frames = int(json.load(open(baseline_path(args.mission), encoding="utf-8"))["frames"])
+            if args.ticks <= 0:
+                args.ticks = frames
+            args.min_frames = max(args.min_frames, frames)
     if getattr(args, "headless", False) and getattr(args, "ticks", 0) <= 0:
         sys.exit("sim_determinism: --headless needs --ticks N (a headless run has no wall-clock end)")
     if args.cmd == "selftest":
@@ -649,6 +682,11 @@ def main(argv=None) -> int:
         base = os.path.join(args.install, "data", "missions")
         declared = {f"data/missions/{fn}": _sha256(os.path.join(base, fn)) for fn in sorted(os.listdir(base))
                     if fn.endswith((".fit", ".pak")) and os.path.isfile(os.path.join(base, fn))}
+        brain_files = [rel for rel in declared if rel.endswith("_ai.fit") or "_specials" in rel]
+        if brain_files:
+            print("sim_determinism: brain fixtures belong in temporary mod overlays, not the base install; "
+                  "refusing to pin: " + ", ".join(brain_files))
+            return 1
         fp = data_fingerprint(args.install, {"overlay": declared, "stock_digest": ""})
         with open(OVERLAY_MANIFEST, "w", encoding="utf-8", newline="\n") as fh:
             json.dump({"about": "loose fixture files a baseline run may carry on top of the stock data, by sha256; *.beauty sidecars are not fingerprinted; "
@@ -696,10 +734,26 @@ def main(argv=None) -> int:
                                 ref_exe=args.ref_exe, ref_commit=args.ref_commit, sim_speed=args.sim_speed)
     if args.deploy:
         build_and_deploy(args.install)
-    la, lb = run_mission(args.mission, args.duration, out, extra, install=args.install, ref_exe=args.ref_exe, ref_commit=args.ref_commit,
-                         sim_speed=args.sim_speed, headless=args.headless, ticks=args.ticks)
-    a, b = load_simid(la), load_simid(lb)
-    ok, msg = compare(a, b, args.min_frames)
+    try:
+        needed = int(json.load(open(base, encoding="utf-8"))["frames"]) if base and os.path.exists(base) and not args.headless else 0
+    except (OSError, ValueError, KeyError, TypeError):
+        needed = 0  # unreadable baseline: check_baseline reports it
+    duration, started, attempt = args.duration, time.monotonic(), 0
+    while True:
+        la, lb = run_mission(args.mission, duration, out if attempt == 0 else f"{out}-retry{attempt}", extra, install=args.install,
+                             ref_exe=args.ref_exe, ref_commit=args.ref_commit, sim_speed=args.sim_speed, headless=args.headless, ticks=args.ticks)
+        a, b = load_simid(la), load_simid(lb)
+        reached = min(len(a), len(b))
+        if reached >= needed:
+            break
+        # A loaded host ran fewer sim frames than the baseline pins in this wall-clock window: run longer, not red.
+        longer = next_duration(int(duration), reached, needed)
+        if longer == int(duration) or time.monotonic() - started > MAX_WALL:
+            print(f"sim_determinism: INCONCLUSIVE (too few frames): {reached} of {needed} sim frames in {duration} s on a loaded host; not a FAIL")
+            return 3
+        print(f"sim_determinism: only {reached} of {needed} sim frames in {duration} s (loaded host); retrying with --duration {longer}")
+        duration, attempt = str(longer), attempt + 1
+    ok, msg = compare(a, b, args.min_frames, required_length=args.min_frames if getattr(args, "headless_both", False) else 0)
     print(("sim_determinism: PASS " if ok else "sim_determinism: FAIL ") + msg)
     if ok and base:
         if not os.path.exists(base):

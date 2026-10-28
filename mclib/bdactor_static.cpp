@@ -248,7 +248,7 @@ void BldgAppearance::registerStatic() {
 		// searchlight drew its cone as an OPAQUE LIT tan wedge (the user's
 		// "ghost light" floating wedge + the small wedges at every searchlight
 		// housing; proven by A/B: wedge gone with
-		// MC2_STATIC_PROP_PERSISTENT_BUCKETS=0 / MC2_GPU_OBJECTS=0, unchanged
+		// MC2_STATIC_PROP_PERSISTENT_BUCKETS=0, unchanged
 		// by MC2_LIGHT_CONE_GLOW=0). The bit-2 instanceFlag it used to set was
 		// already dead (shader read deleted in T3.2).
 		// Killswitch MC2_STATICPROP_RECIPE_SPOTLIGHT_SKIP=0 restores the bake.
@@ -556,6 +556,9 @@ void BldgAppearance::touch()
 			lbssRecordBldg(/*eligible=*/true, /*skipTaken=*/true,
 			               /*blk_idx=*/false, /*blk_gen=*/false, /*blk_noelig=*/false);
 			bldgShape->Touch();
+			// The skip bypasses the emit/resubmit that stamped cachedFrame_; the static flush drops any
+			// range whose cachedFrame_ != currentFrame (and render() already suppressed the legacy draw).
+			bldgShape->setCachedFrame(g_mc2FrameCounter);
 			return;
 		}
 
@@ -667,8 +670,10 @@ void BldgAppearance::touchSerialCommit()
 		const bool skipTaken  = stableLightSkipEligible;
 		const bool blk_noelig = !stableLightSkipEligible;
 		lbssRecordBldg(stableLightSkipEligible, skipTaken, /*blk_idx=*/false, /*blk_gen=*/false, blk_noelig);
-		if (skipTaken)
+		if (skipTaken) {
+			bldgShape->setCachedFrame(g_mc2FrameCounter);   // see the touch-skip above
 			return;
+		}
 	}
 
 	extern bool mc2LightBakeEnabled();

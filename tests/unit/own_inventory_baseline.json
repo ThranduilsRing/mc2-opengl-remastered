@@ -46,7 +46,10 @@
      "new": 1
     },
     "code/warrior.cpp": {
-     "delete": 3,
+     "delete": 2
+    },
+    "code/warrior_brain.cpp": {
+     "delete": 1,
      "new": 1
     },
     "mclib/ablenv.cpp": {
@@ -284,7 +287,9 @@
    "delete_array": 0,
    "files": {
     "code/warrior.cpp": {
-     "delete": 1,
+     "delete": 1
+    },
+    "code/warrior_brain.cpp": {
      "new": 1
     }
    },
@@ -1949,18 +1954,6 @@
    "new_array": 0,
    "owners": []
   },
-  "LineElement": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/team_los.cpp": {
-     "new": 2
-    }
-   },
-   "new": 2,
-   "new_array": 0,
-   "owners": []
-  },
   "LinkAction": {
    "delete": 1,
    "delete_array": 0,
@@ -2757,7 +2750,9 @@
    "delete_array": 0,
    "files": {
     "code/warrior.cpp": {
-     "delete": 1,
+     "delete": 1
+    },
+    "code/warrior_brain.cpp": {
      "new": 2
     }
    },
@@ -3681,54 +3676,6 @@
     "Mech3DAppearanceType"
    ]
   },
-  "TG_DWORDPool": {
-   "delete": 4,
-   "delete_array": 0,
-   "files": {
-    "code/mission.cpp": {
-     "delete": 2,
-     "new": 1
-    },
-    "code/mission2.cpp": {
-     "delete": 1,
-     "new": 1
-    },
-    "editor/Editor.cpp": {
-     "delete": 1,
-     "new": 1
-    }
-   },
-   "new": 3,
-   "new_array": 0,
-   "owners": [
-    "",
-    "Mission"
-   ]
-  },
-  "TG_GOSVertexPool": {
-   "delete": 4,
-   "delete_array": 0,
-   "files": {
-    "code/mission.cpp": {
-     "delete": 2,
-     "new": 1
-    },
-    "code/mission2.cpp": {
-     "delete": 1,
-     "new": 1
-    },
-    "editor/Editor.cpp": {
-     "delete": 1,
-     "new": 1
-    }
-   },
-   "new": 3,
-   "new_array": 0,
-   "owners": [
-    "",
-    "Mission"
-   ]
-  },
   "TG_MultiShape": {
    "delete": 0,
    "delete_array": 0,
@@ -3743,54 +3690,6 @@
    "new": 2,
    "new_array": 0,
    "owners": []
-  },
-  "TG_ShadowPool": {
-   "delete": 4,
-   "delete_array": 0,
-   "files": {
-    "code/mission.cpp": {
-     "delete": 2,
-     "new": 1
-    },
-    "code/mission2.cpp": {
-     "delete": 1,
-     "new": 1
-    },
-    "editor/Editor.cpp": {
-     "delete": 1,
-     "new": 1
-    }
-   },
-   "new": 3,
-   "new_array": 0,
-   "owners": [
-    "",
-    "Mission"
-   ]
-  },
-  "TG_TrianglePool": {
-   "delete": 4,
-   "delete_array": 0,
-   "files": {
-    "code/mission.cpp": {
-     "delete": 2,
-     "new": 1
-    },
-    "code/mission2.cpp": {
-     "delete": 1,
-     "new": 1
-    },
-    "editor/Editor.cpp": {
-     "delete": 1,
-     "new": 1
-    }
-   },
-   "new": 3,
-   "new_array": 0,
-   "owners": [
-    "",
-    "Mission"
-   ]
   },
   "TG_TypeMultiShape": {
    "delete": 24,
@@ -3821,30 +3720,6 @@
     "GenericAppearanceType",
     "Mech3DAppearanceType",
     "TreeAppearanceType"
-   ]
-  },
-  "TG_VertexPool": {
-   "delete": 4,
-   "delete_array": 0,
-   "files": {
-    "code/mission.cpp": {
-     "delete": 2,
-     "new": 1
-    },
-    "code/mission2.cpp": {
-     "delete": 1,
-     "new": 1
-    },
-    "editor/Editor.cpp": {
-     "delete": 1,
-     "new": 1
-    }
-   },
-   "new": 3,
-   "new_array": 0,
-   "owners": [
-    "",
-    "Mission"
    ]
   },
   "TOMap": {

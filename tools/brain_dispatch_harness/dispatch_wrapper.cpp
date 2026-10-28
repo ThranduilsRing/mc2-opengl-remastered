@@ -23,3 +23,10 @@
 // The #include guards in the engine headers (WARRIOR_H, TACORDR_H, etc.) are now
 // already defined by our stubs above, so the engine headers will be skipped.
 #include "../../code/brain_special_dispatch.cpp"
+
+// B4: the harness does not link brain_execution_policy.cpp (it needs File + the mission.fit parser); it runs the
+// TechBrain policy unconditionally, which is what every fixture here exercises.
+namespace mc2::brainpolicy {
+Policy g_policy = Policy::TechBrain;
+std::uint32_t g_generation = 1;
+}  // namespace mc2::brainpolicy

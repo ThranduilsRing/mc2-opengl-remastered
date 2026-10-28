@@ -8,6 +8,8 @@ WHAT: opens the PacketFile a Mission::save wrote, unpacks the zlib packets, and 
   ranges A B the differing byte ranges per record class, coalesced over small gaps: how a mask entry is measured from two runs of one exe
   map A      one line per run of packets of one kind (kind, first index, count, bytes)
   digest A   a short digest of every run, the form tools/saveload_roundtrip.py stores as a baseline
+  upgrade A B  (or --upgrade A B) rewrite a v1 save (MC2SAVE.WQT2) as v2: new packet-0 stamp, and the legacy R2 packet after END becomes the
+             v2 section container (ANIM + ORDQ, code/save_sections.h); a v1 file without that packet gets an empty container (all defaults)
 WHY: "the save is a function of the game state" is only checkable by comparing two files; a bare cmp says that they differ, not where. The
 object records, the pilots and the ABL environment are raw structs and byte strings, so a difference of a few bytes at a fixed offset in a
 class names an uninitialised padding byte or an unsaved-but-derived field directly.
@@ -15,6 +17,7 @@ class names an uninitialised padding byte or an unsaved-but-derived field direct
   py -3 tools/save_inspect.py diff a.ims b.ims
   py -3 tools/save_inspect.py diff old.ims new.ims --mask tools/save_noise_mask.json --across-builds
   py -3 tools/save_inspect.py map a.ims
+  py -3 tools/save_inspect.py --upgrade old_v1.ims new_v2.ims
   py -3 tools/save_inspect.py selftest
 """
 from __future__ import annotations
@@ -44,6 +47,90 @@ PILOT_SIZE = 19864
 PILOT_SUFFIX_MAX = 16 * 1024
 #: A run of this many written packets of one kind is split so a digest mismatch still points into the run.
 CHUNK = 256
+#: Save v2 (code/save_sections.h): packet-0 stamps and the section container that follows END.
+STAMP_V1 = b"MC2SAVE.WQT2\0"
+STAMP_V2 = b"MC2SAVE.V2\0"
+SECTION_MAGIC = b"MC2SECTS"
+SECTION_CONTAINER_VERSION = 2
+R2_TAG = 0x4E413252
+REQUIRED = 1
+
+
+def fourcc(text: str) -> int:
+    return int.from_bytes(text.encode("ascii"), "little")
+
+
+def encode_sections(sections) -> bytes:
+    """[(tag, version, flags, payload)] -> the container bytes Mission::save writes: sorted by tag, reserved words zero."""
+    tags = [s[0] for s in sections]
+    if len(set(tags)) != len(tags):
+        raise ValueError("duplicate section")
+    out = bytearray(SECTION_MAGIC + struct.pack("<IIII", SECTION_CONTAINER_VERSION, 0, 0, len(sections)))
+    for tag, version, flags, payload in sorted(sections, key=lambda s: s[0]):
+        out += struct.pack("<IIIII", tag, version, flags, 0, len(payload)) + payload
+    return bytes(out)
+
+
+def decode_sections(raw: bytes):
+    """Container bytes -> [(tag, version, flags, payload)]; raises ValueError on a malformed container."""
+    if raw[:8] != SECTION_MAGIC:
+        raise ValueError("not a section container")
+    version, _, _, count = struct.unpack_from("<IIII", raw, 8)
+    if version != SECTION_CONTAINER_VERSION:
+        raise ValueError(f"container version {version}")
+    pos, out = 24, []
+    for _ in range(count):
+        tag, sv, flags, _, n = struct.unpack_from("<IIIII", raw, pos)
+        pos += 20
+        if pos + n > len(raw):
+            raise ValueError("truncated section")
+        out.append((tag, sv, flags, raw[pos:pos + n]))
+        pos += n
+    if pos != len(raw):
+        raise ValueError("trailing bytes")
+    return out
+
+
+def upgrade_r2(raw: bytes):
+    """The v1 R2 packet (tag, version 2/3, u32-length animation blob, order queue) -> ANIM + ORDQ sections; b"" -> no sections."""
+    if not raw:
+        return []
+    tag, version, n = struct.unpack_from("<III", raw, 0)
+    if tag != R2_TAG or version not in (2, 3) or 12 + n > len(raw):
+        raise ValueError("not a v1 R2 packet")
+    return [(fourcc("ANIM"), version, REQUIRED, raw[12:12 + n]), (fourcc("ORDQ"), 1, REQUIRED, raw[12 + n:])]
+
+
+def end_index(pk) -> int:
+    ends = [i for i, (typ, raw) in enumerate(pk) if typ != NUL and raw == b"END\0"]
+    if not ends:
+        raise ValueError("no END packet")
+    return ends[-1]
+
+
+def upgrade_packets(pk):
+    """v1 packet list -> v2 packet list: only the stamp and the slot after END change. Raises ValueError for a file that is not a v1 save."""
+    if pk and pk[0][1] == STAMP_V2:
+        raise ValueError("already a v2 save")
+    if not pk or pk[0][1] != STAMP_V1:
+        raise ValueError("packet 0 is not the v1 stamp MC2SAVE.WQT2")
+    end = end_index(pk)
+    out = [(0, STAMP_V2)] + list(pk[1:])
+    r2 = out[end + 1][1] if end + 1 < len(out) and out[end + 1][0] != NUL else b""
+    container = (4, encode_sections(upgrade_r2(r2)))
+    if end + 1 < len(out):
+        out[end + 1] = container
+    else:
+        out.append(container)
+    return out
+
+
+def upgrade(src: str, dst: str) -> list:
+    """Write the v2 form of the v1 save `src` to `dst`; -> its sections."""
+    first, pk = scs.read(src)
+    out = upgrade_packets(pk)
+    scs.write(dst, out, first != 0xFEEDFACE)
+    return decode_sections(out[end_index(out) + 1][1])
 
 
 def load(path: str):
@@ -108,6 +195,8 @@ def packet_kind(typ: int, raw: bytes) -> str:
     """Text takes precedence; variable pilot records require a validated suffix."""
     if typ == NUL:
         return "empty"
+    if raw[:8] == SECTION_MAGIC:
+        return "sections"
     if is_text(raw):
         return "text"
     if valid_pilot_suffix(raw):
@@ -342,6 +431,30 @@ def selftest() -> int:
     finally:
         RECORD_SIZES.clear()
         RECORD_SIZES.update(old)
+    golden = bytes.fromhex("4d43325345435453" "02000000" "00000000" "00000000" "02000000"
+                           "414e494d" "03000000" "01000000" "00000000" "01000000" "aa"
+                           "4f524451" "01000000" "01000000" "00000000" "02000000" "0102")   # tests/unit/test_save_sections.cpp
+    r2 = struct.pack("<III", R2_TAG, 3, 1) + b"\xaa" + b"\x01\x02"
+    expect(encode_sections(upgrade_r2(r2)) == golden, "an upgraded R2 packet encodes to the C++ golden container")
+    expect(decode_sections(golden) == upgrade_r2(r2), "the golden container decodes to ANIM + ORDQ")
+    v1 = [(0, STAMP_V1), (0, b"cmp\0"), (4, b"x" * 40), (0, b"\x01\0\0\0"), (0, b"END\0"), (4, r2), (NUL, b"")]
+    v2 = upgrade_packets(v1)
+    expect(v2[0] == (0, STAMP_V2) and v2[5] == (4, golden) and v2[1:5] == v1[1:5] and v2[6] == v1[6],
+           "upgrade rewrites only the stamp and the R2 slot")
+    expect(packet_kind(*v2[5]) == "sections", "the container is its own packet kind")
+    expect(decode_sections(upgrade_packets(v1[:5])[5][1]) == [], "a v1 file without the R2 packet gets an empty container")
+    expect(decode_sections(upgrade_packets(v1[:5] + [(NUL, b"")])[5][1]) == [], "an empty slot after END is no R2 packet")
+    for bad in (v2, [(0, b"nope\0")] + v1[1:], v1[:4]):
+        try:
+            upgrade_packets(bad)
+            expect(False, "a non-v1 packet list is refused")
+        except ValueError:
+            pass
+    with tempfile.TemporaryDirectory() as td:
+        a, b = os.path.join(td, "v1.ims"), os.path.join(td, "v2.ims")
+        scs.write(a, v1, False)
+        upgrade(a, b)
+        expect(load(b)[1] == v2, "upgrade round-trips through the packet file")
     for f in fails:
         print("save_inspect selftest FAIL: " + f)
     print("save_inspect selftest: " + ("FAIL" if fails else "ok"))
@@ -364,7 +477,13 @@ def main(argv=None) -> int:
     m.add_argument("a")
     g = sub.add_parser("digest")
     g.add_argument("a")
+    u = sub.add_parser("upgrade")
+    u.add_argument("a")
+    u.add_argument("b")
     sub.add_parser("selftest")
+    argv = list(sys.argv[1:] if argv is None else argv)
+    if argv and argv[0] == "--upgrade":
+        argv[0] = "upgrade"
     args = ap.parse_args(argv)
     if args.cmd == "selftest":
         return selftest()
@@ -375,6 +494,15 @@ def main(argv=None) -> int:
         if mask is not None:
             return 1 if res["first_outside"] else 0
         return 0 if res["equal"] else 1
+    if args.cmd == "upgrade":
+        try:
+            sections = upgrade(args.a, args.b)
+        except ValueError as err:
+            print(f"save_inspect upgrade: refused: {err}")
+            return 1
+        print(f"wrote {args.b}: v2, " + (", ".join(f"{t.to_bytes(4, 'little').decode()} v{v} {len(p)} bytes" for t, v, _, p in sections)
+                                         or "no sections (defaults)"))
+        return 0
     if args.cmd == "ranges":
         for k, spans in sorted(diff_ranges(load(args.a)[1], load(args.b)[1], args.gap).items()):
             print(f"{k}: " + " ".join(f"{lo}-{hi}" for lo, hi in spans))

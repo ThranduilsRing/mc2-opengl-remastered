@@ -1,7 +1,7 @@
 {
   "_comment": "V1 resolver conformance corpus: ONE specification for three harnesses -- tools/mod_install/resolver.py (static), tests/unit/test_file_family_contract.cpp (engine File::open ladder) and editor/tests/test_catalog.cpp (editor FileResolver). Each harness materializes `files` into an empty deploy root, writes `fst_files` as raw binary FastFile archives (registered in that order; the editor arm takes the order from `config.system_cfg`), mounts with `config`, then resolves every `requests` row. `data/art/dep-order.tga` exists in both dependencies so its winner proves dep[0] > dep[1] (ordered dependencies), and `fst-shared.tga` exists in both archives so its winner proves FastFile registration order. Fields each harness must match: `layer` and provider bytes for all three; `path` (root-relative, forward slashes, lowercase, empty for archive members and misses) for the python and editor harnesses; `shadowed` for the python harness (the only one that exposes the losing layers). Bytes are compared, not mere existence.",
   "source_commit": "a8fda9533",
-  "scope": "Mod roots are mods/<id>/data. Dependencies are mod.json order then config.dependencies (de-duplicated). FastFiles are tried in registration order (first match wins). A loose file (mod or base) beats an archive member. Dot-prefixed entries anywhere under a mod's data/ are never indexed.",
+  "scope": "Scratch mods/<active>/.scratch/data is layer 0 (mod:<id>#scratch), above active data and dependencies; MC2_SCRATCH beginning with 0 disables it. Dependency scratch is never mounted. Dependencies are mod.json order then config.dependencies (de-duplicated). FastFiles are tried in registration order (first match wins). A loose file beats an archive member. Dot-prefixed entries under each data/ root are never indexed.",
   "config": {
     "active_mod": "active",
     "dependencies": ["first", "second"],
@@ -9,6 +9,12 @@
     "system_cfg": "FITini\n[FastFiles]\nl NumFastFiles = 2\nst File0 = \"first.fst\"\nst File1 = \"second.fst\"\nFITend\n"
   },
   "files": [
+    {"path": "mods/active/.scratch/data/art/scratch.tga", "bytes": "scratch"},
+    {"path": "mods/active/data/art/scratch.tga", "bytes": "project"},
+    {"path": "mods/first/data/art/scratch.tga", "bytes": "dependency"},
+    {"path": "mods/active/.scratch/data/art/scratch-only.tga", "bytes": "scratch-only"},
+    {"path": "mods/first/.scratch/data/art/dep-scratch.tga", "bytes": "not-active"},
+    {"path": "mods/active/.scratch/data/.hidden/scratch-hidden.tga", "bytes": "hidden"},
     {"path": "mods/active/mod.json", "bytes": "{\"id\":\"active\",\"dependencies\":[\"first\"]}\n"},
     {"path": "mods/active/data/art/shared.tga", "bytes": "active-mod"},
     {"path": "mods/active/data/art/active-only.tga", "bytes": "active-only"},
@@ -17,7 +23,6 @@
     {"path": "mods/active/data/Packed/Mod.TGA", "bytes": "Mod-Packed"},
     {"path": "mods/active/data/.hidden/secret.tga", "bytes": "active-hidden"},
     {"path": "mods/active/data/art/.dotfile.tga", "bytes": "active-dotfile"},
-    {"path": "mods/active/.scratch/data/art/scratch.tga", "bytes": "active-scratch"},
     {"path": "mods/first/data/art/shared.tga", "bytes": "first-mod"},
     {"path": "mods/first/data/art/dup.tga", "bytes": "first-dup"},
     {"path": "mods/first/data/art/first-only.tga", "bytes": "first-only"},
@@ -46,6 +51,10 @@
     ]}
   ],
   "requests": [
+    {"req": "data/art/scratch.tga", "layer": "mod:active#scratch", "path": "mods/active/.scratch/data/art/scratch.tga", "bytes": "scratch", "shadowed": ["mod:active", "mod:first"]},
+    {"req": "data/art/scratch-only.tga", "layer": "mod:active#scratch", "path": "mods/active/.scratch/data/art/scratch-only.tga", "bytes": "scratch-only", "shadowed": []},
+    {"req": "data/art/dep-scratch.tga", "layer": "MISS", "path": "", "bytes": null, "shadowed": []},
+    {"req": "data/.hidden/scratch-hidden.tga", "layer": "MISS", "path": "", "bytes": null, "shadowed": []},
     {"req": "data/art/shared.tga", "layer": "mod:active", "path": "mods/active/data/art/shared.tga", "bytes": "active-mod", "shadowed": ["mod:first", "mod:second", "base-loose"]},
     {"req": "DATA\\ART\\Shared.TGA", "layer": "mod:active", "path": "mods/active/data/art/shared.tga", "bytes": "active-mod", "shadowed": ["mod:first", "mod:second", "base-loose"]},
     {"req": "data/art/active-only.tga", "layer": "mod:active", "path": "mods/active/data/art/active-only.tga", "bytes": "active-only", "shadowed": []},
@@ -57,7 +66,6 @@
     {"req": "data/art/second-only.tga", "layer": "mod:second", "path": "mods/second/data/art/second-only.tga", "bytes": "second-only", "shadowed": []},
     {"req": "data/art/unlisted.tga", "layer": "MISS", "path": "", "bytes": null, "shadowed": []},
     {"req": "data/art/.dotfile.tga", "layer": "MISS", "path": "", "bytes": null, "shadowed": []},
-    {"req": "data/art/scratch.tga", "layer": "MISS", "path": "", "bytes": null, "shadowed": []},
     {"req": "data/art/.hidden-first.tga", "layer": "MISS", "path": "", "bytes": null, "shadowed": []},
     {"req": "data/art/.dotdir/first.tga", "layer": "MISS", "path": "", "bytes": null, "shadowed": []},
     {"req": "data/.hidden/secret.tga", "layer": "MISS", "path": "", "bytes": null, "shadowed": []},

@@ -86,6 +86,19 @@ inline VkShaderModule loadSpv(VkDevice device, std::string_view pathView, LogFn 
     return mod;
 }
 
+// A submission-slot wait that times out skips the frame and retries; after kMaxWaitTimeouts in a row the device is
+// presumed lost and the island disables itself (5 s per frame forever is worse than the fallback). Returns `ok`.
+inline constexpr int kMaxWaitTimeouts = 3;
+inline bool waitStrike(int& strikes, bool& disabled, bool ok, std::string_view island) {
+    if (ok) { strikes = 0; return true; }
+    if (++strikes >= kMaxWaitTimeouts) {
+        disabled = true;
+        std::fprintf(stderr, "[%.*s] LOUD: %d consecutive 5 s wait timeouts; island DISABLED for the session (device lost?)\n", static_cast<int>(island.size()), island.data(), strikes);
+        std::fflush(stderr);
+    }
+    return false;
+}
+
 }  // namespace vk_island_util
 
 #endif  // MC2_VULKAN_ISLAND

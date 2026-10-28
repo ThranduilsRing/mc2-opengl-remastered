@@ -110,23 +110,8 @@ std::unique_ptr<TG_Shape> TG_TypeNode::CreateFrom (void)
 	auto newShape = std::make_unique<TG_Shape>();
 	gosASSERT(newShape != nullptr);
 
-	//listOfVertices
 	newShape->numVertices = 0;
-	newShape->listOfColors = nullptr;
-	newShape->listOfVertices = nullptr;
-	newShape->listOfShadowVertices = nullptr;
-
-	//listOfTriangles
 	newShape->numTriangles = 0;
-	newShape->listOfTriangles = nullptr;
-
-	//listOfVisibleFaces
-	newShape->numVisibleFaces = 0;
-	newShape->listOfVisibleFaces = nullptr;
-
-	//listOfVisibleShadows
-	newShape->numVisibleShadows = 0;
-	newShape->listOfVisibleShadows = nullptr;
 
 	//Other Data
 	newShape->myType = this;
@@ -135,11 +120,7 @@ std::unique_ptr<TG_Shape> TG_TypeNode::CreateFrom (void)
 		
 	newShape->aRGBHighlight = 0x00000000;
 	newShape->lightsOut = false;
-	newShape->recalcShadows = true;
 	newShape->shapeScalar = 0.0f;
-
-	for (long i=0;i<MAX_SHADOWS;i++)
-		newShape->shadowsVisible[i] = false;
 
 	newShape->isSpotlight = (S_strnicmp(newShape->getNodeName(),"SpotLight_",10) == 0);
 	newShape->isWindow = (S_strnicmp(newShape->getNodeName(),"LitWin_",6) == 0);
@@ -266,79 +247,8 @@ std::unique_ptr<TG_Shape> TG_TypeShape::CreateFrom (void)
 	auto newShape = std::make_unique<TG_Shape>();
 	gosASSERT(newShape != nullptr);
 	
-	//listOfVertices
 	newShape->numVertices = numTypeVertices;
-	if (numTypeVertices)
-	{
-		//Mark with invalid pointer so we now to get RAM from POOL! 	
-		newShape->listOfVertices = nullptr;
-		newShape->listOfColors = nullptr;
-	}
-	else
-	{
-		//Otherwise mark with NULL so we know not to reference!!
-		newShape->listOfVertices = nullptr;
-		newShape->listOfColors = nullptr;
-	}
-
-	//listOfShadowVertices
-	if (numTypeVertices)
-	{
-		//These are UNIQUE to each instance and do not change much per frame.
-		// Thus, store them between frames to save processing time!
-		newShape->shadowVertexStore.resize(static_cast<size_t>(numTypeVertices) * MAX_SHADOWS);
-		newShape->listOfShadowVertices = newShape->shadowVertexStore.data();
-
-		memset(newShape->listOfShadowVertices,0xff,sizeof(TG_ShadowVertex) * numTypeVertices * MAX_SHADOWS);
-		
-		//Mark with invalid pointer so we now to get RAM from POOL! 	
-		newShape->listOfShadowTVertices = nullptr;
-	}
-	else
-	{
-		//Otherwise mark with NULL so we know not to reference!!
-		newShape->listOfShadowVertices = nullptr;
-		newShape->listOfShadowTVertices = nullptr;
-	}
-
-	//listOfTriangles
 	newShape->numTriangles = numTypeTriangles;
-	if (numTypeTriangles)
-	{
-		//Mark with invalid pointer so we now to get RAM from POOL! 	
-		newShape->listOfTriangles = nullptr;
-	}
-	else
-	{
-		//Otherwise mark with NULL so we know not to reference!!
-		newShape->listOfTriangles = nullptr;
-	}
-
-	//listOfVisibleFaces
-	newShape->numVisibleFaces = 0;
-	if (numTypeTriangles)
-	{
-		//Mark with invalid pointer so we now to get RAM from POOL! 	
-		newShape->listOfVisibleFaces = nullptr;
-	}
-	else
-	{
-		//Otherwise mark with NULL so we know not to reference!!
-		newShape->listOfVisibleFaces = nullptr;
-	}
-
-	//listOfVisibleShadows
-	newShape->numVisibleShadows = 0;
-	if (numTypeTriangles)
-	{
-		//Mark with invalid pointer so we now to get RAM from POOL! 	
-		newShape->listOfVisibleShadows = nullptr;
-	}
-	else
-	{
-		//Otherwise mark with NULL so we know not to reference!!
-		newShape->listOfVisibleShadows = nullptr;
-	}
 
 	//Other Data
 	newShape->myType = this;
@@ -347,11 +257,7 @@ std::unique_ptr<TG_Shape> TG_TypeShape::CreateFrom (void)
  	
 	newShape->aRGBHighlight = 0x00000000;
 	newShape->lightsOut = false;
-	newShape->recalcShadows = true;
 	newShape->shapeScalar = 0.0f;
-
-	for (long i=0;i<MAX_SHADOWS;i++)
-		newShape->shadowsVisible[i] = false;
 		
 	newShape->isSpotlight = (S_strnicmp(newShape->getNodeName(),"SpotLight_",10) == 0);
 	newShape->isWindow = (S_strnicmp(newShape->getNodeName(),"LitWin_",6) == 0);
@@ -508,19 +414,7 @@ bool TG_Shape::GetIsAlphaTest() const
 
 void TG_Shape::destroy (void)
 {
-	//THIS IS CORRECT!!!!
-	// They come from a common pool now, Deleteing them would be BAD!!
-	listOfVertices = nullptr;
-	listOfColors = nullptr;
-	listOfTriangles = nullptr;
-	listOfVisibleFaces = nullptr;
-	listOfVisibleShadows = nullptr;
-	listOfShadowTVertices = nullptr;
-
-	std::vector<TG_ShadowVertex>().swap(shadowVertexStore);
-	listOfShadowVertices = nullptr;
-
-	numVertices = numTriangles = numVisibleFaces = 0;
+	numVertices = numTriangles = 0;
 }	
 
 //-------------------------------------------------------------------------------

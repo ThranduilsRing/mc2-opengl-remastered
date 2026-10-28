@@ -267,13 +267,7 @@ long GenericAppearance::render (long depthFixup)
 //-----------------------------------------------------------------------------
 long GenericAppearance::renderShadows (void)
 {
-	if (inView && visible)
-	{
-		//---------------------------------------------
-		// Call Multi-shape render stuff here.
-		genShape->RenderShadows();
-	}
-	return NO_ERR;
+	return NO_ERR;	// the CPU shadow geometry is gone; shadows come from the modern shadow path
 }
 
 //-----------------------------------------------------------------------------
@@ -443,11 +437,13 @@ long GenericAppearance::update (bool animate)
 			// (GenericAppearance::SetLightList(NULL, 0) zaps s_listOfLights)
 			// is brittle — explicit caching removes the fragility.
 			genShape->CacheGpuLightData();
-			genShape->TransformMultiShape_PositionsOnly (&xlatPosition,&rot);
+			genShape->TransformMultiShape_HierarchyOnly (&xlatPosition,&rot);
 		}
 		else
 		{
-			genShape->TransformMultiShape (&xlatPosition,&rot);
+			genShape->TransformMultiShape_HierarchyOnly (&xlatPosition,&rot);
+			if (!GpuStaticPropBatcher::instance().isMultiShapeEligibleForGpuObjects(genShape))
+				genShape->ReserveCpuDraw();	// no batcher takes it: the CPU fallback draws it
 			needsFullBakeNextFrame = false;
 		}
 	}

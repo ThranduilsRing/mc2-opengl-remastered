@@ -179,6 +179,7 @@ struct VfxIsland : mc2vk::IslandState {
     mc2vk::OwnedCommandPool cpool;
     VkCommandBuffer  cbuf[kVfxSlots] = {};   // one per slot
     uint64_t         ticket[kVfxSlots] = {};   // timeline value of the slot's last submit (0 = never submitted)
+    uint64_t         vegTicket[2] = {};        // timeline value of the last vegetation submit per engine frame slot (its buffer set is per frame slot)
     uint64_t         slotFrame = ~uint64_t(0);   // engine frame of callInFrame
     uint32_t         callInFrame = 0;
 
@@ -774,9 +775,14 @@ bool mc2_vk_vfx_vegetation_run(const mc2veg::CullParams& params, const float* wo
     if (!s || !s->vegetationPipe) return false;
     const uint32_t par = take_slot(s, slotCtx);
     if (!slotCtx.wait(mc2vk::GpuTicket{s->ticket[par], 0}, 5ull * 1000 * 1000 * 1000, "vfx_slot")) { setFallback("slot_timeout"); s->disabled = true; return false; }
+    // The vegetation state keeps one buffer set per engine frame slot (it is not per island slot): the set is free once the last
+    // vegetation submit that used it has retired, whichever call index the vegetation call got this frame. Only that submit
+    // touches the set, so wait on its ticket, not on the other island slots of the frame slot.
+    const uint32_t vegPar = par / kVfxCallsPerFrame;
+    if (!slotCtx.wait(mc2vk::GpuTicket{s->vegTicket[vegPar], 0}, 5ull * 1000 * 1000 * 1000, "vfx_veg_slot")) { setFallback("slot_timeout"); s->disabled = true; return false; }
     const VkDeviceSize align = slotCtx.frameAlignment();
     if (!prepare_shadow_descriptors(s, par)) return false;
-    s->groundLighting.copy(s->device, par / kVfxCallsPerFrame, *ground);
+    s->groundLighting.copy(s->device, vegPar, *ground);
     const VkDeviceSize cullOff = mc2vk::alignUp(sizeof(VfxVsParams), align);
     const VkDeviceSize visOff = mc2vk::alignUp(cullOff + sizeof(mc2veg::CullParams), align);
     const mc2vk::FrameAlloc span = slotCtx.frameAlloc(visOff + std::max<VkDeviceSize>(visibility.size_bytes(), 16));
@@ -795,7 +801,7 @@ bool mc2_vk_vfx_vegetation_run(const mc2veg::CullParams& params, const float* wo
     if (vkBeginCommandBuffer(cb, &bi) != VK_SUCCESS) { setFallback("record_failed"); s->disabled = true; return false; }
     vk_render_pass_timer::Begin(cb, gos_render_pass_timer::Pass_AlphaVfx);
     vk_render_pass_timer::CancelUnlessSubmitted timerGuard(gos_render_pass_timer::Pass_AlphaVfx);
-    const bool culled = veg->record(slotCtx, cb, par, span, cullOff, visOff, params, visibility);
+    const bool culled = veg->record(slotCtx, cb, vegPar, span, cullOff, visOff, params, visibility);
     if (culled) {
         VkClearValue clears[3]{};
         VkRenderPassBeginInfo rbi{};
@@ -808,12 +814,12 @@ bool mc2_vk_vfx_vegetation_run(const mc2veg::CullParams& params, const float* wo
         mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->vegetationPipe.get());
         vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->vegLayout.get(), 0, 1, &s->set[par], 2, dynOffsets);
         vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->vegLayout.get(), 1, 1, &*page, 0, nullptr);
-        const uint32_t drawDyn = veg->paramsDynamicOffset(par);
-        const VkDescriptorSet drawSet = veg->drawSet(par);
+        const uint32_t drawDyn = veg->paramsDynamicOffset(vegPar);
+        const VkDescriptorSet drawSet = veg->drawSet(vegPar);
         vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->vegLayout.get(), 2, 1, &drawSet, 1, &drawDyn);
-        const VkDescriptorSet groundSet = s->groundLighting.set(par / kVfxCallsPerFrame);
+        const VkDescriptorSet groundSet = s->groundLighting.set(vegPar);
         vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->vegLayout.get(), 3, 1, &groundSet, 4, ground->offsets.data());
-        veg->drawIndirect(cb, par);
+        veg->drawIndirect(cb, vegPar);
         vkCmdEndRenderPass(cb);
         gpuScope.end();
     }
@@ -827,7 +833,7 @@ bool mc2_vk_vfx_vegetation_run(const mc2veg::CullParams& params, const float* wo
     { ZoneScopedN("VKIsl.Vfx.Submit");
       uint64_t value = 0;
       if (slotCtx.submit(si, VK_NULL_HANDLE, &value) != VK_SUCCESS) { setFallback("submit_failed"); s->disabled = true; return false; }
-      s->ticket[par] = value; }
+      s->ticket[par] = value; s->vegTicket[vegPar] = value; }
     timerGuard.submitted();
     if (!g_health.nativeVegetationDraws) vlog("native_geometry kind=vegetation gpu_cull=1 regions=%u instances=%u", veg->regionCount(), veg->instanceCount());
     g_health.nativeVegetationDraws += 2;

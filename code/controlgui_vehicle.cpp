@@ -449,7 +449,8 @@ void ControlGui::renderHoverTip()
 	{
 		cLoadString( g_hoverTipNameID, buffer, sizeof(buffer) );
 		width = helpFont.width( buffer );
-		height = helpFont.height( buffer, width );
+		// A wrap area exactly as wide as the text makes aFont::height count a second line; give it slack.
+		height = helpFont.height( buffer, width + 8 );
 		cachedID = g_hoverTipNameID;
 		cachedScreenW = Environment.screenWidth;
 	}

@@ -14,6 +14,7 @@ SalvageMechArea.cpp			: Implementation of the SalvageMechArea component.
 #include"logisticsdata.h"
 #include "../resource.h"
 #include"mech.h"
+#include "warrior.h"
 #include<malloc.h>
 #include"mechicon.h"
 #include"platform_windows.h"

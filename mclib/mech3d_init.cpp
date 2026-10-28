@@ -673,12 +673,10 @@ void Mech3DAppearance::hitRight (void)
 	}
 }
 
+// Selection is rect-only (findMoverByMouse / the unified pick bounds); there is no per-face CPU geometry to test.
 bool Mech3DAppearance::PerPolySelect (long mouseX, long mouseY)
 {
-	// DEGRADE-DON'T-CRASH: partial import with no base shape -> not selectable.
-	if (!mechShape)
-		return false;
-	return mechShape->PerPolySelect(mouseX,mouseY);
+	return false;
 }
 
 void Mech3DAppearance::setPaintScheme (void)

@@ -274,43 +274,6 @@ glm::vec3 TG_MultiShape::GetTransformedNodePosition (glm::vec3 *pos, glm::quat *
 glm::quat moveem;
 
 //-------------------------------------------------------------------------------
-//This function takes the current listOfVisibleFaces and draws them using
-//gos_DrawTriangle.
-void TG_MultiShape::Render (bool refreshTextures, float forceZ)
-{
-    BindMaterials();
-	for (long i=0;i<numTG_Shapes;i++)
-	{
-		if (listOfShapes[i].processMe && listOfShapes[i].node)
-		{
-
-			glm::mat4  shapeToClip;
-			shapeToClip = listOfShapes[i].shapeToWorld * TG_Shape::s_worldToClip;
-		
-            glm::mat4 shape2world = glm::mat4(listOfShapes[i].shapeToWorld);
-			listOfShapes[i].node->Render(forceZ,isHudElement,alphaValue,isClamped, &shapeToClip, &shape2world);
-		}
-	}
-}	
-
-//-------------------------------------------------------------------------------
-//This function takes the current listOfVisibleFaces and draws them using
-//gos_DrawTriangle.
-void TG_MultiShape::RenderShadows (bool refreshTextures)
-{
-    BindMaterials();
-	long start = 0;
-	for (long i=0;i<numTG_Shapes;i++)
-	{
-		if (listOfShapes[i].processMe && listOfShapes[i].node)
-		{
-
-			start = listOfShapes[i].node->RenderShadows(start);
-		}
-	}
-}	
-
-//-------------------------------------------------------------------------------
 // This function takes the shape named nodeName and all of its children and stops processing
 // them forever.  Since we can never re-attach a mech arm in the field, this is OK!
 // However, should we want this functionality, it is easy to add!
