@@ -353,11 +353,9 @@ long BattleMech::update (void)
 
 		setPosition(newPosition);
 
-		bool inView = false;
 	
 		if (appearance)
 		{
-			appearance->setInView(inView);
 			appearance->setCombatMode(false);
 		}
 	
@@ -415,13 +413,11 @@ long BattleMech::update (void)
 			playedHeloDestruct = true;
 		}
 
-		bool inView = false;
 	
 		if (appearance)
 		{
 			appearance->setGestureGoal(GestureGoalFallenBackward);
 
-			appearance->setInView(inView);
 			
 			appearance->setCombatMode(false);
 		}

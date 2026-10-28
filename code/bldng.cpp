@@ -1524,7 +1524,6 @@ long Building::handleWeaponHit (WeaponShotInfoPtr shotInfo, bool addMultiplayChu
 
 				appearance->setObjStatus(OBJECT_STATUS_DESTROYED);
 				appearance->setLightsOut(true);
-				appearance->recalcBounds();
 				appearance->update();
 				appearance->markLOS();
 				

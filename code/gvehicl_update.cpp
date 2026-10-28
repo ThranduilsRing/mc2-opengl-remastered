@@ -2,7 +2,6 @@
 // Declared in the class headers; shared names in gvehicl_internal.h.
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include "gvehicl_internal.h"
-#include "appearance_rng.h"
 #include "Gates/gate.h"
 
 
@@ -65,8 +64,6 @@ long GroundVehicle::update (void)
 		setTargeted(false);
 	}
 
-	bool inView = false;
-	
 	if (isDestroyed() && (timeLeft < 0.0))
 	{
 		setTangible(false);
@@ -140,19 +137,8 @@ long GroundVehicle::update (void)
 			}
 
 			feedSimHalf(dRot.x, dRot.z);
-			inView = false;
-
 			if (appearance)
-			{
 				appearance->update();
-				windowsVisible = turn;
-			}
-			
-			if ( attackRange == FIRERANGE_CURRENT && !isDisabled() )
-			{
-				mc2::renderSubmissions().addTriangle(holdFireIconHandle,MC2_DRAWALPHA);
-				mc2::renderSubmissions().addTriangle(holdFireIconHandle,MC2_DRAWALPHA);
-			}
 		}
 			
 		commitPush();
@@ -186,18 +172,6 @@ long GroundVehicle::update (void)
 				}
 
 			feedSimHalf(dRot.x, dRot.z);
-				inView = false;
-
-				if (inView)
-				{
-					appearance->update();
-				}
-				
-				if ( attackRange == FIRERANGE_CURRENT && !isDisabled() )
-				{
-					mc2::renderSubmissions().addTriangle(holdFireIconHandle,MC2_DRAWALPHA);
-					mc2::renderSubmissions().addTriangle(holdFireIconHandle,MC2_DRAWALPHA);
-				}
 			}
  
 			if (!appearance->playDestruction())
@@ -210,7 +184,7 @@ long GroundVehicle::update (void)
 				}
 				else
 				{
-					if (mc2_appearance_rng::rollDice(25))
+					if (RandomNumber(100) < 25)
 					{
 						ObjectManager->createExplosion(INFANTRY_BLOOD_EFFECT,nullptr,position, 0.0f,0.0f);
 					}
@@ -520,8 +494,6 @@ long GroundVehicle::update (void)
 			}
 
 			feedSimHalf(0.0f, 0.0f);
-			inView = false;
-
 			int watercellR, watercellC;
 			land->worldToCell(position,watercellR, watercellC);
 			if (GameMap->getDeepWater(watercellR, watercellC) || 
@@ -618,13 +590,7 @@ long GroundVehicle::update (void)
 				gp.visible = true;
 
 				appearance->update();
-				windowsVisible = turn;
 				
-				if ( attackRange == FIRERANGE_CURRENT && !isDisabled() )
-				{
-					mc2::renderSubmissions().addTriangle(holdFireIconHandle,MC2_DRAWALPHA);
-					mc2::renderSubmissions().addTriangle(holdFireIconHandle,MC2_DRAWALPHA);
-				}
 			}
 		}
 
@@ -835,7 +801,12 @@ void GroundVehicle::render (void)
 			appearance->setObjectNameId(descID);
 			appearance->render();
 			if ( attackRange == FIRERANGE_CURRENT && !isDisabled() )
+			{
+				// Vertex reservation lives with the draw (presentation), not in the tick.
+				mc2::renderSubmissions().addTriangle(holdFireIconHandle,MC2_DRAWALPHA);
+				mc2::renderSubmissions().addTriangle(holdFireIconHandle,MC2_DRAWALPHA);
 				appearance->drawIcon( holdFireIconHandle, 5, 5, color );
+			}
 		}
 	}
 

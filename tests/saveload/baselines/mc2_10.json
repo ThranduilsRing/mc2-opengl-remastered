@@ -10,7 +10,7 @@
   "MC2_BOOT_QUICKLOAD_AT": "1400"
  },
  "exe": {
-  "sha": "0aba76ec6a49",
+  "sha": "f5fed1d52ae0",
   "dirty": 0
  },
  "comparison": {
@@ -108,7 +108,7 @@
  "judged": "first-save-only",
  "resave_present": true,
  "packets": 20000,
- "overall": "dc5c47eed69c562c",
+ "overall": "3f0a59e9b31af92a",
  "resave_identical": false,
  "resave_matches_policy": false,
  "runs": [
@@ -116,8 +116,8 @@
    "data",
    0,
    2,
-   38,
-   "0f41e3f48edcae68"
+   40,
+   "aff84c57f086183a"
   ],
   [
    "text",
@@ -278,14 +278,14 @@
    3874,
    147,
    586824,
-   "b45012757e8640de"
+   "97662a94cb585a25"
   ],
   [
    "GroundVehicleData",
    4021,
    157,
    537568,
-   "3143866a1d81c8eb"
+   "878a7071efe289da"
   ],
   [
    "TerrainObjectData",
@@ -857,16 +857,9 @@
   [
    "data",
    7093,
-   2,
-   8,
-   "e815bbb0774dd30f"
-  ],
-  [
-   "sections",
-   7095,
-   1,
-   555379,
-   "07423fe323dc8121"
+   3,
+   555335,
+   "5f16fb7a1280d08b"
   ],
   [
    "empty",

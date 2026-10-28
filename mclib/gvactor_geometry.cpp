@@ -911,6 +911,14 @@ bool GVAppearance::recalcBounds (void)
 
 bool GVAppearance::playDestruction (void)
 {
+	if (simulationOwned() && !simPresentationPass)
+	{
+		// Tick: record the request (presentEffects plays it) and answer from data only.
+		const bool available = appearType->destructEffect[0] &&
+			gosFX::EffectLibrary::Instance->Find(appearType->destructEffect);
+		if (available) ++unitAnim().destructionSerial;
+		return available;
+	}
 	if (appearType->destructEffect[0])
 	{
 		unsigned flags = gosFX::Effect::ExecuteFlag;

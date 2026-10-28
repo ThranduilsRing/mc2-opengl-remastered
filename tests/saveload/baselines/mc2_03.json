@@ -10,7 +10,7 @@
   "MC2_BOOT_QUICKLOAD_AT": "1400"
  },
  "exe": {
-  "sha": "0aba76ec6a49",
+  "sha": "f5fed1d52ae0",
   "dirty": 0
  },
  "comparison": {
@@ -108,7 +108,7 @@
  "judged": "first-save-only",
  "resave_present": true,
  "packets": 20000,
- "overall": "dda0dd2733160082",
+ "overall": "be80f45b880fc4d2",
  "resave_identical": false,
  "resave_matches_policy": false,
  "runs": [
@@ -116,8 +116,8 @@
    "data",
    0,
    2,
-   38,
-   "0f41e3f48edcae68"
+   40,
+   "aff84c57f086183a"
   ],
   [
    "text",
@@ -633,16 +633,9 @@
   [
    "data",
    6517,
-   2,
-   8,
-   "e815bbb0774dd30f"
-  ],
-  [
-   "sections",
-   6519,
-   1,
-   539135,
-   "fa8259b894bad829"
+   3,
+   539091,
+   "c420335d0e45ea8c"
   ],
   [
    "empty",

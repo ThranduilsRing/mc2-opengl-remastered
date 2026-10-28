@@ -259,7 +259,8 @@ long Gate::update (void)
 		//--------------------------------------------------------
 		// Figure out what the box should be for the tBuilding.
 		appearance->update();
-		appearance->recalcBounds();
+		if (!appearance->simulationOwned())
+			appearance->recalcBounds();   // presentation recalculates bounds for a simulation-owned appearance
 		appearance->setHighlightColor(0x00000000);
 		
 		//-----------------------------------------------------
@@ -784,7 +785,6 @@ void Gate::destroyGate(void)
 	{
 		appearance->markLOS(true);			//Need to clear out before we change to the destroyed shape!!
 		appearance->setObjStatus(OBJECT_STATUS_DESTROYED);
-		appearance->recalcBounds();
 		appearance->update();
 	}
 

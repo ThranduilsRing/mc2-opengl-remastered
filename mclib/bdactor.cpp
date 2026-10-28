@@ -412,6 +412,12 @@ void BldgAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 
 void BldgAppearance::setObjStatus (long oStatus)
 {
+	if (simulationOwned() && !simPresentationPass)
+	{
+		simStatus_ = oStatus;
+		recordSimStatus(oStatus);
+		return;
+	}
 	if (status != oStatus)
 	{
 		if (oStatus == OBJECT_STATUS_DESTROYED) {
@@ -537,8 +543,6 @@ void BldgAppearance::setObjStatus (long oStatus)
 
 	}
 
-	if (simulationOwned() && !simPresentationPass)
-		simStatus_ = oStatus;
 	status = oStatus;
 }
 

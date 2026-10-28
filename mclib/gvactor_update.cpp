@@ -878,6 +878,11 @@ bool GVAppearance::PerPolySelect (long mouseX, long mouseY)
 
 void GVAppearance::flashBuilding (float dur, float fDuration, DWORD color)
 {
+	if (simulationOwned() && !simPresentationPass)
+	{
+		recordSimFlash(dur, fDuration, color);
+		return;
+	}
 	duration = dur;
 	flashDuration = fDuration;
 	flashColor = color;

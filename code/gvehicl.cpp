@@ -303,7 +303,7 @@ bool GroundVehicleType::handleCollision (GameObjectPtr collidee, GameObjectPtr c
 				(static_cast<GroundVehiclePtr>(collidee))->deadByCrushed = true;
 
 				//---------------------------------------------
-				if (!sameTeam && (mc2::world::visibleThisTurn(collidee)))
+				if (!sameTeam)
 					soundSystem->playDigitalSample(MECH_COLLIDE,collider->getPosition());
 
 				return(false);
@@ -338,8 +338,7 @@ bool GroundVehicleType::handleCollision (GameObjectPtr collidee, GameObjectPtr c
 					collidee->rotate(turnAround);
 
 				//---------------------------------------------
-				if (mc2::world::visibleThisTurn(collidee))
-					soundSystem->playDigitalSample(MECH_COLLIDE,collidee->getPosition());
+				soundSystem->playDigitalSample(MECH_COLLIDE,collidee->getPosition());
 				return(false);
 			}
 		}
@@ -393,7 +392,8 @@ bool GroundVehicleType::handleDestruction (GameObjectPtr collidee, GameObjectPtr
 		vehicle->getPilot()->triggerAlarm(PILOT_ALARM_VEHICLE_DESTROYED, collider ? collider->getWatchID() : 0);
 		vehicle->setStatus(OBJECT_STATUS_DESTROYED);
 		vehicle->appearance->setObjStatus(OBJECT_STATUS_DESTROYED);
-		vehicle->appearance->setVisibility(true,true);
+		if (!vehicle->appearance->simulationOwned())
+			vehicle->appearance->setVisibility(true,true);   // presentation sets visibility for a simulation-owned appearance
 		vehicle->appearance->update();
 		vehicle->exploding = false;
 		if (MPlayer)
