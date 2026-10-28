@@ -413,6 +413,13 @@ def masked_packets(pk, policy: dict):
     return result
 
 
+def _mask_rel(mask_path):
+    try:
+        return os.path.relpath(mask_path, ROOT).replace(os.sep, "/")
+    except ValueError:   # mask on another drive (temp dir): record it absolute
+        return str(mask_path).replace(os.sep, "/")
+
+
 def baseline_record(mission: str, save_at: int, load_at: int, first: str, second: str | None, fingerprint: dict | None,
                     mask_path: str | None = None, first_save_only: bool = False, rc: int | None = None) -> dict:
     pk = si.load(first)[1]
@@ -423,7 +430,7 @@ def baseline_record(mission: str, save_at: int, load_at: int, first: str, second
     return {"mission": mission, "save_at": save_at, "load_at": load_at, "gates": resave_env(save_at, load_at), "exe": fingerprint,
             "comparison": policy,
             # WHY: the classes alone cannot tell a later re-pin which mask file produced them.
-            "mask": (os.path.relpath(mask_path, ROOT).replace(os.sep, "/") if mask_path else None),
+            "mask": (_mask_rel(mask_path) if mask_path else None),
             # WHY recorded: a first-save-only baseline never proved the re-save, so a reader must be able to tell it from a strong one.
             "judged": "first-save-only" if first_save_only else "first-save-and-resave",
             # WHY recorded: --first-save-only waives the re-save's CONTENT, not its existence: a run with no re-save proved nothing.
