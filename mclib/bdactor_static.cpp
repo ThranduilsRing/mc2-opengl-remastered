@@ -556,6 +556,9 @@ void BldgAppearance::touch()
 			lbssRecordBldg(/*eligible=*/true, /*skipTaken=*/true,
 			               /*blk_idx=*/false, /*blk_gen=*/false, /*blk_noelig=*/false);
 			bldgShape->Touch();
+			// The skip bypasses the emit/resubmit that stamped cachedFrame_; the static flush drops any
+			// range whose cachedFrame_ != currentFrame (and render() already suppressed the legacy draw).
+			bldgShape->setCachedFrame(g_mc2FrameCounter);
 			return;
 		}
 
@@ -667,8 +670,10 @@ void BldgAppearance::touchSerialCommit()
 		const bool skipTaken  = stableLightSkipEligible;
 		const bool blk_noelig = !stableLightSkipEligible;
 		lbssRecordBldg(stableLightSkipEligible, skipTaken, /*blk_idx=*/false, /*blk_gen=*/false, blk_noelig);
-		if (skipTaken)
+		if (skipTaken) {
+			bldgShape->setCachedFrame(g_mc2FrameCounter);   // see the touch-skip above
 			return;
+		}
 	}
 
 	extern bool mc2LightBakeEnabled();
