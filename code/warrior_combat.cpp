@@ -140,7 +140,7 @@ long MechWarrior::combatDecisionTree (void) {
 			}
 		}
 	}
-	
+
 	if (!target && (curTacOrder.code != TACTICAL_ORDER_ATTACK_POINT)) {
 		#if WARRIOR_DEBUGGING_ENABLED
 			if (debugFlags & WARRIOR_DEBUG_FLAG_COMBAT) {
@@ -513,4 +513,3 @@ void MechWarrior::updateActions (void) {
 //extern L_INTEGER startCk;
 //extern L_INTEGER endCk;
 //extern long		 srWAblUpd;
-

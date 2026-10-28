@@ -151,7 +151,7 @@ long MechWarrior::setBrain (long brainHandle) {
 			brainAlarmCallback[i] = nullptr;
 	}
 	warriorBrainHandle = brainHandle;
-	if (brainHandle > -1) 
+	if (brainHandle > -1)
 	{
 		brain = new ABLModule;
 		brainErr = brain->init(brainHandle);
@@ -620,7 +620,7 @@ long MechWarrior::mainDecisionTree (void) {
 			}
 		}
 	}
-	
+
 	// Is the current tac order accomplished?
 	if ((curTacOrder.code != TACTICAL_ORDER_NONE) && (curTacOrder.status(this) == TACORDER_SUCCESS)) {
 		bool playerOrderQueued = false;
@@ -671,7 +671,7 @@ long MechWarrior::mainDecisionTree (void) {
 	}
 	if ((curTacOrder.code == TACTICAL_ORDER_ATTACK_OBJECT) && (target != tacOrderTarget))
 		setLastTarget(tacOrderTarget);
-	
+
 	// Update pilot brain...
 	// BRAIN-FIXED-TICK-1: advance global sim-time accumulator once per render frame,
 	// before the per-warrior gate so even staggered-out warriors contribute to the advance.
@@ -779,7 +779,7 @@ long MechWarrior::mainDecisionTree (void) {
 				// purge it permanently (NOW, we DON'T want them to
 				// fall back to the general order--the brain must re-order
 				// it)...
-  				tacOrder[ORDERSTATE_GENERAL].init();
+				tacOrder[ORDERSTATE_GENERAL].init();
 				// Now grab the player order...
 				newTacOrder = tacOrder[ORDERSTATE_PLAYER];
 				orderState = ORDERSTATE_PLAYER;
@@ -795,7 +795,7 @@ long MechWarrior::mainDecisionTree (void) {
 			else if (newTacOrderReceived[ORDERSTATE_PLAYER]) {
 				// Make sure we have no general order we fall back to when
 				// we finish this, per Tim's request...
-  				tacOrder[ORDERSTATE_GENERAL].init();
+				tacOrder[ORDERSTATE_GENERAL].init();
 				newTacOrder = tacOrder[ORDERSTATE_PLAYER];
 			}
 			break;
@@ -804,7 +804,7 @@ long MechWarrior::mainDecisionTree (void) {
 			// alarm (self-issued) order...
 			if (newTacOrderReceived[ORDERSTATE_PLAYER]) {
 				alarmPriority = 0;
-  				tacOrder[ORDERSTATE_ALARM].init();
+				tacOrder[ORDERSTATE_ALARM].init();
 				newTacOrder = tacOrder[ORDERSTATE_PLAYER];
 				}
 			else if (newTacOrderReceived[ORDERSTATE_ALARM])
@@ -891,7 +891,7 @@ long MechWarrior::loadBrainParameters (FitIniFile* brainFile, long warriorId) {
 	result = brainFile->readIdLong("NumCells", numCells);
 	if (result != NO_ERR)
 		return(result);
-		
+
 	long numStaticVars = 0;
 	result = brainFile->readIdLong("NumStaticVars", numStaticVars);
 	if (result != NO_ERR)
@@ -1009,4 +1009,3 @@ long MechWarrior::loadBrainParameters (FitIniFile* brainFile, long warriorId) {
 
 	return(NO_ERR);
 }
-
