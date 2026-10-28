@@ -1532,6 +1532,10 @@ def main():
                 **{k: v for k, v in os.environ.items() if k in _SMOKE_PASSTHROUGH},
             },
         )
+        if args.lite:
+            # W82: pan across cached props and abort if registry liveness regresses.
+            cfg.env_extra.update(MC2_STATIC_STALE_DROP_FATAL="1",
+                                 MC2_REGFLUSH_GUARD2="1", MC2_CAM_SMOOTH_TEST="1")
         if args.quiet_sample and e.stem != args.quiet_sample:
             cfg.env_extra.update(MC2_VULKAN_VALIDATION="1", MC2_DEBUG_STATE_DUMP="1", MC2_DIAG_TAGS="CONFIG,BUILD,DEVICE")
         if args.capture_bookmark:

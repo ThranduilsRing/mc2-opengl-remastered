@@ -5305,7 +5305,7 @@
         },
         {
           "path": "scripts/run_smoke.py",
-          "line": 1538,
+          "line": 1542,
           "evidence": "import",
           "reference": "run_visual_capture",
           "text": "from run_visual_capture import smoke_capture"
