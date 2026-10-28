@@ -202,6 +202,7 @@ float BldgAppearance::getWeaponNodeRecycle (long node)
 
 void BldgAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 {
+	frameEffectsFrame = 0xFFFFFFFFu;
 	simulationShape_.reset();
 	simulationType_ = nullptr;
 	simPose->ready = false;

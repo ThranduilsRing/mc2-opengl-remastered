@@ -918,6 +918,9 @@ long TerrainObject::update (void) {
 				//
 				// Stage 3.D will extend this with damage/power/effect checks for
 				// BldgAppearance. Keep this composition pattern explicit here.
+				// Pending damage/activity can create FX that require the full update.
+				// Consume it before asking whether this appearance is still static.
+				if (simPresentationPass) appearance->presentEffects();
 				const bool appearanceClaimsStatic = appearance->IsStaticNow();
 				const bool ownerForcesDynamic     = getFlag(OBJECT_FLAG_FALLING);
 				// Renderer-session guard: skip only when a GPU static/object path is
