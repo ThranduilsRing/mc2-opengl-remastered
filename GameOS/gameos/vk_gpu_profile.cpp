@@ -310,6 +310,11 @@ void frameEnd() {
                     if (g.ctx->submit(si, VK_NULL_HANDLE, &value) == VK_SUCCESS) g.endTicket[cslot] = GpuTicket{value, 0};
                 }
             }
+        } else if (used && cb != VK_NULL_HANDLE) {
+            // The slot's end command buffer did not retire in time: the read-out queries still must be reset or the slot reads stale next lap.
+            const VkQueryPool pool = g.pool;
+            const uint32_t first = rslot * kQueriesPerSlot, count = used * 2;
+            submitOneShot(*g.ctx, [&](VkCommandBuffer one) { vkCmdResetQueryPool(one, pool, first, count); }, "gpuprof_reset_late");
         }
     }
     g.frame.fetch_add(1, std::memory_order_relaxed);
