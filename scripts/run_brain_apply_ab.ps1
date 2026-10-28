@@ -1,8 +1,5 @@
-# BRAIN-DISPATCH-HARNESS-V2: A/B effect-identity runner.
-# Runs the brain_dispatch_harness in --apply-mode twice:
-#   pass A: MC2_BRAIN_INTENT_QUEUE unset (gate OFF) -> direct setGeneralTacOrder
-#   pass B: MC2_BRAIN_INTENT_QUEUE=1  (gate ON)  -> emit -> commitBrainIntents -> setGeneralTacOrder
-# Asserts both passes exit 0 (all apply assertions green), proving gate-OFF == gate-ON A/B identity.
+# Brain apply assertions under the TechBrain policy.
+# Queue emission and commit are unconditional on this path; the former A/B gate is retired.
 #
 # Usage (from worktree root):
 #   powershell -NoProfile -File scripts/run_brain_apply_ab.ps1 [-HarnessExe <path>] [-ManifestPath <path>]
@@ -36,7 +33,7 @@ function Run-HarnessApply {
     return $LASTEXITCODE
 }
 
-# B4: the INTENT_QUEUE OFF pass is gone with the retired gate (queue + commit are part of the TechBrain policy).
+# Queue + commit are part of the TechBrain policy.
 $exitB = Run-HarnessApply
 
 Write-Host ""

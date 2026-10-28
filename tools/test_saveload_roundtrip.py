@@ -12,6 +12,22 @@ def test_selftest_passes():
     assert rt.selftest() == 0
 
 
+def test_brn1_resave_identity_requires_both_sections_and_equal_payload(tmp_path):
+    tag = int.from_bytes(b"BRN1", "little")
+
+    def save(name, payload):
+        sections = [] if payload is None else [(tag, 1, 0, payload)]
+        path = str(tmp_path / name)
+        rt.si.scs.write(path, [(4, rt.si.encode_sections(sections))], False)
+        return path
+
+    first = save("first.ims", b"tick,vars,runtime,queue")
+    assert rt.brain_resave_verdict(first, save("same.ims", b"tick,vars,runtime,queue"))[0]
+    assert not rt.brain_resave_verdict(first, save("changed.ims", b"tick,vars,runtime,OTHER"))[0]
+    assert not rt.brain_resave_verdict(first, save("missing.ims", None))[0]
+    assert not rt.brain_resave_verdict(first, first, rc=3)[0]
+
+
 def test_restore_ignores_cosmetic_rng_and_detects_animation_rng_drift():
     pre = [f"[SIMID v1] simframe={i} t={i / 30:.3f} n=1 graded=a visual=b strict=c rng={i}/2/3 animrng={i}"
            for i in range(50)]

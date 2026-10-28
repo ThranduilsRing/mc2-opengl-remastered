@@ -42,22 +42,26 @@ def _kill_children():
                 pass
     except ImportError:
         if os.name == "nt":
-            subprocess.call(["taskkill", "/F", "/T", "/FI", f"PPID eq {os.getpid()}"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            from scripts.verify_background_launch import process_table
+            for pid, (ppid, _) in process_table().items():
+                if ppid == os.getpid():
+                    subprocess.call(["taskkill", "/F", "/T", "/PID", str(pid)],
+                                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
 def _expire(main_ident, name, seconds, done):
     sys.stderr.write(f"\n[test-timeout] {name} exceeded {seconds:g} s; killing children and interrupting\n")
     faulthandler.dump_traceback(file=sys.stderr, all_threads=True)
-    _kill_children()
     ctypes.pythonapi.PyThreadState_SetAsyncExc(ctypes.c_ulong(main_ident), ctypes.py_object(TimeoutError))
+    _kill_children()
     # A blocking call that is neither a child wait nor interruptible (a Python sleep, a lock) never sees the exception: hard-exit.
     if not done.wait(30):
         sys.stderr.write(f"[test-timeout] {name} still stuck 30 s after the interrupt; exiting the run" + chr(10))
         os._exit(3)
 
 
-@pytest.hookimpl(hookwrapper=True)
-def pytest_runtest_call(item):
+@pytest.hookimpl(hookwrapper=True, tryfirst=True)
+def pytest_runtest_protocol(item, nextitem):
     marker = item.get_closest_marker("timeout")
     seconds = float(marker.args[0]) if marker and marker.args else TEST_TIMEOUT
     if seconds <= 0 or "pytest_timeout" in sys.modules:

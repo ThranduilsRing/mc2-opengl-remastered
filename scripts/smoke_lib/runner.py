@@ -281,7 +281,7 @@ def run_one(cfg: RunConfig) -> RunResult:
     if _legacy_dropped:
         print("[runner] [LEGACY-ENV] not known to the older exe's gate table, not forwarded: " + ", ".join(_legacy_dropped), file=sys.stderr)
 
-    cap =cfg.duration + cfg.grace_s
+    cap = cfg.duration + cfg.grace_s
     # Spawn in the directory that contains the executable so that MC2's
     # CWD-relative file lookups (options.cfg, minprefs.cfg, etc.) resolve
     # against the install directory rather than the runner's working directory.

@@ -2722,14 +2722,14 @@
         },
         {
           "path": "scripts/smoke_lib/host_lease.py",
-          "line": 534,
+          "line": 532,
           "evidence": "import",
           "reference": "scripts.console_child",
           "text": "from scripts import console_child         # type: ignore"
         },
         {
           "path": "scripts/smoke_lib/host_lease.py",
-          "line": 537,
+          "line": 535,
           "evidence": "import",
           "reference": "console_child",
           "text": "import console_child                       # type: ignore"
@@ -4721,6 +4721,13 @@
           "text": "import ninja_build as nb"
         },
         {
+          "path": "scripts/tests/test_build_tokens.py",
+          "line": 6,
+          "evidence": "import",
+          "reference": "ninja_build",
+          "text": "import ninja_build  # noqa: E402"
+        },
+        {
           "path": "scripts/tests/test_merge_speedups.py",
           "line": 14,
           "evidence": "import",
@@ -6355,7 +6362,7 @@
         },
         {
           "path": "scripts/tests/test_host_lease.py",
-          "line": 315,
+          "line": 319,
           "evidence": "command",
           "reference": "scripts.smoke_lib.host_lease",
           "text": "status = subprocess.run([sys.executable, \"-m\", \"scripts.smoke_lib.host_lease\", \"status\"], cwd=str(lane_b), env=env,"
@@ -6525,21 +6532,21 @@
         },
         {
           "path": "tools/test_sim_determinism.py",
-          "line": 32,
+          "line": 44,
           "evidence": "import",
           "reference": "scripts.smoke_lib.logparse",
           "text": "from scripts.smoke_lib.logparse import parse_log"
         },
         {
           "path": "tools/test_sim_determinism.py",
-          "line": 41,
+          "line": 53,
           "evidence": "import",
           "reference": "scripts.smoke_lib.logparse",
           "text": "from scripts.smoke_lib.logparse import parse_log"
         },
         {
           "path": "tools/test_sim_determinism.py",
-          "line": 47,
+          "line": 59,
           "evidence": "import",
           "reference": "scripts.smoke_lib.logparse",
           "text": "from scripts.smoke_lib.logparse import parse_log"
@@ -7867,7 +7874,15 @@
       "basename": "verify_background_launch.py",
       "stem": "verify_background_launch",
       "callers_by_basename": [],
-      "callers_by_stem": []
+      "callers_by_stem": [
+        {
+          "path": "conftest.py",
+          "line": 45,
+          "evidence": "import",
+          "reference": "scripts.verify_background_launch",
+          "text": "from scripts.verify_background_launch import process_table"
+        }
+      ]
     },
     {
       "path": "scripts/verify_campaign_assets.py",
@@ -13374,7 +13389,7 @@
         },
         {
           "path": "tools/test_sim_determinism.py",
-          "line": 48,
+          "line": 60,
           "evidence": "import",
           "reference": "saveload_roundtrip",
           "text": "import saveload_roundtrip as rt"

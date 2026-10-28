@@ -1037,6 +1037,15 @@
    "count": 1
   },
   {
+   "tag": "BRAIN_EMPTY_SKIP",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "mission"
+   ],
+   "count": 1
+  },
+  {
    "tag": "BRAIN_ENGAGE",
    "ver": -1,
    "stream": "stderr",
@@ -1567,6 +1576,15 @@
    "count": 1
   },
   {
+   "tag": "BRAIN_POLICY",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "sidecar"
+   ],
+   "count": 1
+  },
+  {
    "tag": "BRAIN_REQUEST_HELP",
    "ver": -1,
    "stream": "stderr",
@@ -1575,6 +1593,16 @@
     "called",
     "radius",
     "target"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "BRAIN_RESTORE_SKIP",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "policy",
+    "bytes"
    ],
    "count": 1
   },
@@ -5857,6 +5885,13 @@
     "event",
     "note"
    ],
+   "count": 1
+  },
+  {
+   "tag": "OBJTYPE_NO_PACKET",
+   "ver": -1,
+   "stream": "log",
+   "keys": [],
    "count": 1
   },
   {

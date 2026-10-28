@@ -19,6 +19,18 @@ def test_selftest_passes():
     assert sd.selftest() == 0
 
 
+@pytest.mark.parametrize("name", ["mc2_01_ai.fit", "mc2_01_specials.fit", "mc2_01_specials_eject.fit"])
+def test_overlay_pin_refuses_brain_fixtures_in_base_install(tmp_path, monkeypatch, name):
+    missions = tmp_path / "data/missions"
+    missions.mkdir(parents=True)
+    (missions / name).write_text("fixture")
+    manifest = tmp_path / "overlay.json"
+    manifest.write_text("previous pin")
+    monkeypatch.setattr(sd, "OVERLAY_MANIFEST", str(manifest))
+    assert sd.main(["write-overlay", "--install", str(tmp_path)]) == 1
+    assert manifest.read_text() == "previous pin"
+
+
 def test_native_baseline_is_separate(monkeypatch):
     monkeypatch.setattr(sd.sys, "platform", "win32")
     windows = sd.baseline_path("mc2_10")

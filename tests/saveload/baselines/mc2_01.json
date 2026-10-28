@@ -10,7 +10,7 @@
   "MC2_BOOT_QUICKLOAD_AT": "1100"
  },
  "exe": {
-  "sha": "4654904827af",
+  "sha": "2faaea9a2cfd",
   "dirty": 0
  },
  "comparison": {
@@ -108,7 +108,7 @@
  "judged": "first-save-only",
  "resave_present": true,
  "packets": 20000,
- "overall": "fd5241023e192dc1",
+ "overall": "f3a53d4fb20a6e75",
  "resave_identical": false,
  "resave_matches_policy": false,
  "runs": [
@@ -180,7 +180,7 @@
    1795,
    111,
    36767,
-   "70ec9815deaa6a01"
+   "0c52a89cbc955709"
   ],
   [
    "StaticMechWarriorData",
@@ -194,7 +194,7 @@
    1907,
    256,
    5091328,
-   "6878f495860b6408"
+   "3adb4319f0f2e1d7"
   ],
   [
    "TeamStaticData",
@@ -229,14 +229,14 @@
    2168,
    134,
    534928,
-   "912bf3a107caf874"
+   "39f3402e6de1d590"
   ],
   [
    "GroundVehicleData",
    2302,
    151,
    517024,
-   "e6ebfb9208797d2f"
+   "2577bc2d29f28719"
   ],
   [
    "TerrainObjectData",
@@ -424,8 +424,8 @@
    "sections",
    3740,
    1,
-   226717,
-   "6dc273f42af17e9a"
+   214429,
+   "769c678d43e9a6f8"
   ],
   [
    "empty",
@@ -438,7 +438,7 @@
  "about": "digest of the quicksave a round-trip fixture writes; tools/saveload_roundtrip.py --baseline / --check",
  "sim_speed": 1,
  "data_fingerprint": {
-  "digest": "0dfcd001ffde73d0",
+  "digest": "631bc626ca376941",
   "inputs": [
    "mission.fst",
    "tgl.fst",
@@ -454,16 +454,7 @@
   "stock_digest": "8703ccf15c7c117f",
   "overlay": {
    "data/missions/gaea_peaks_01.fit": "aa24a7b6e35ae2b2",
-   "data/missions/gaea_peaks_01.pak": "af7be4e2f5a9c1c4",
-   "data/missions/mc2_01_ai.fit": "05ac63a7d6e6a022",
-   "data/missions/mc2_01_eject_specials.fit": "fb1ae62005af323b",
-   "data/missions/mc2_01_ejectalias_specials.fit": "7dcea591e6e5a519",
-   "data/missions/mc2_01_moveto_nan_specials.fit": "7d179e0afeeeff60",
-   "data/missions/mc2_01_moveto_specials.fit": "ceed6688c9c9402a",
-   "data/missions/mc2_01_specials.fit": "1b484e1e9e1ffd9a",
-   "data/missions/mc2_01_specials_eject.fit": "176239689c456324",
-   "data/missions/mc2_01_specials_ejectalias.fit": "d5ae4996d3e5d3a9",
-   "data/missions/mc2_01_specials_raw_specials.fit": "a48b828b55f5097d"
+   "data/missions/gaea_peaks_01.pak": "af7be4e2f5a9c1c4"
   },
   "problems": []
  }

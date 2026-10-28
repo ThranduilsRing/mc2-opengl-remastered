@@ -3,6 +3,7 @@ import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 import build_tokens  # noqa: E402
+import ninja_build  # noqa: E402
 
 
 def test_pool_size_reads_build_pool_file(tmp_path, monkeypatch):
@@ -35,3 +36,17 @@ def test_tokens_are_shared_and_released(tmp_path):
     assert len(d2) == 3  # freed slots come back
     b.close()
     d2.close()
+
+
+def test_ninja_pool_wait_is_bounded_and_timeout_never_requests_unlimited_jobs(monkeypatch):
+    seen = {}
+
+    def exhausted(want, **kwargs):
+        seen.update(kwargs)
+        return build_tokens.Tokens([], 120, 6)
+
+    monkeypatch.setattr(build_tokens, "acquire", exhausted)
+    argv, tokens = ninja_build.pool_jobs(["mc2", "-j6"])
+    assert seen["timeout_s"] == 120
+    assert argv == ["mc2", "-j1"]
+    tokens.close()
