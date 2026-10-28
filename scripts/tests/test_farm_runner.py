@@ -15,6 +15,37 @@ from tools.farm.runner import atomic_json, poll_once
 from tools.farm import host
 
 
+def test_reseed_selection_and_incremental_changes(tmp_path):
+    install, harness = tmp_path / 'install', tmp_path / 'harness'
+    install.mkdir()
+    harness.mkdir()
+    (install / 'mc2.exe').write_bytes(b'verified')
+    import hashlib
+    sha = hashlib.sha256(b'verified').hexdigest()
+    (install / '.deployed_manifest.csv').write_text(
+        'manifest_version,v1\nrelpath,sha256,bytes,src_commit\n'
+        f'mc2.exe,{sha},8,abc\nmc2.pdb,unused,10,abc\n')
+    (install / 'mission.fst').write_bytes(b'stock')
+    subprocess.run(['git', 'init', '-q', str(harness)], check=True)
+    (harness / 'scripts').mkdir()
+    (harness / 'scripts/run_smoke.py').write_text('pass')
+    (harness / 'scripts/untracked.log').write_text('skip')
+    subprocess.run(['git', '-C', str(harness), 'add', 'scripts/run_smoke.py'], check=True)
+    files, exe = host.seed_files(install, harness)
+    assert exe['src_commit'] == 'abc'
+    assert set(files) == {'install/mc2.exe', 'install/mission.fst',
+                          'install/.deployed_manifest.csv', 'reference/mc2.exe',
+                          'harness/scripts/run_smoke.py'}
+    inventory = {name: [p.stat().st_size, p.stat().st_mtime] for name, p in files.items()}
+    assert host.changed_files(files, inventory) == {}
+    inventory['install/mc2.exe'][0] += 1
+    inventory['install/mission.fst'][1] -= 10
+    assert set(host.changed_files(files, inventory)) == {'install/mc2.exe', 'install/mission.fst'}
+    (install / 'mc2.exe').write_bytes(b'corrupt')
+    with pytest.raises(ValueError, match='manifest'):
+        host.seed_files(install, harness)
+
+
 def job(tmp_path, value):
     (tmp_path / 'jobs').mkdir()
     atomic_json(tmp_path / 'jobs' / 'sample.json', value)
