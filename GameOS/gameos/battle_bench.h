@@ -34,6 +34,6 @@ inline void beginFrame() { ++frame; ticks = 0; tickMs = 0; }
 inline void endFrame(double ms) {
     if (output) std::fprintf(output,
         "{\"type\":\"cpu\",\"frame\":%llu,\"ms\":%.6f,\"ticks\":%u,\"tick_total_ms\":%.6f}\n",
-        static_cast<unsigned long long>(frame), ms, ticks, tickMs);
+        static_cast<unsigned long long>(frame), ms, ticks.load(), tickMs.load());
 }
 } // namespace mc2::battlebench

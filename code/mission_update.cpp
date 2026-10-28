@@ -6,6 +6,7 @@
 #include "mission_internal.h"
 #include "sim_world_trace.h"
 #include "sim_tick_clock.h"
+#include "../GameOS/gameos/sim_overlap.h"
 #include <optional>
 #include "move_recon_stats.h"
 #include <utility>
@@ -1284,6 +1285,70 @@ bool Mission::updatePass(bool tickMode, bool runFrame, bool runSim, bool advance
 	return false;
 }
 
+namespace {
+mc2::sim::TickClock s_tickClock;
+long s_turnAfterLastPass = -1;
+
+// G7 overlap: the kick at the tail of frame N polls the tick clock and runs the banked ticks' sim part on the sim worker;
+// the next Mission::update finds what happened here and runs only the frame part.
+struct OverlapPre {
+	bool valid = false;
+	const Mission* owner = nullptr;
+	int ticks = 0;
+	bool ended = false;
+	long earlyResult = 0;
+	long turn = 0;   // Mission::turn after the worker finished
+};
+OverlapPre s_pre;
+}
+
+// Tail of frame N, main thread, after the render CPU work is done: bank frame N+1's ticks and start them on the sim worker.
+// Not eligible (the serial path runs them at the top of the next frame): first frame, multiplayer, paused or frozen,
+// a pending in-mission save or load.
+void Mission::overlapKick()
+{
+	if (!mc2::gate::get<"MC2_SIM_OVERLAP">() || !active || s_pre.valid)
+		return;
+	if (MPlayer || mc2SimTickFrozen(missionInterface) || loadInMissionSave || saveInMissionSave ||
+	    LastTimeGetTime == 0xffffffff || turn != s_turnAfterLastPass)
+		return;
+	const float renderLength = frameLength;
+	const double realSeconds = pollRealFrameSeconds(renderLength);
+	const int ticks = s_tickClock.advance(realSeconds, simSpeedGetMultiplier());
+	s_pre.valid = true;
+	s_pre.owner = this;
+	s_pre.ticks = ticks;
+	s_pre.turn = turn;
+	if (ticks == 0)
+		return;
+	mc2::overlap::runOnWorker([this, ticks, renderLength] {
+		frameLength = renderLength;
+		long early = 0;
+		bool ended = false;
+		for (int tick = 0; tick < ticks; ++tick)
+		{
+			s_extraTickInFrame = tick > 0;
+			if (tick > 0)
+				++g_mc2FrameCounter;
+			ended = updatePass(true, false, true, true, early);
+			s_extraTickInFrame = false;
+			if (ended || loadInMissionSave)
+				break;
+		}
+		s_pre.ended = ended;
+		s_pre.earlyResult = early;
+		s_pre.turn = turn;
+		if (!ended)
+			s_turnAfterLastPass = turn;
+	});
+}
+
+namespace {
+void overlapKickHook() { if (mission) mission->overlapKick(); }
+void overlapJoinHook() { mc2::overlap::waitWorker(); }
+const bool s_overlapHooksInstalled = (mc2::overlap::installHooks({overlapKickHook, overlapJoinHook}), true);
+}
+
 // Per-frame mission update. Normal play runs on the fixed 30 Hz sim tick (code/sim_tick_clock.h): the frame's
 // real time x game speed is banked, whole ticks run out of the bank, and a frame that banks no tick only redraws the
 // unchanged sim state. A paused or frozen sim and multiplayer keep the old one-pass-per-frame update.
@@ -1295,12 +1360,14 @@ long Mission::update (void)
 		++s_misFrames;
 	}
 	MisScope _msTotal(MS_TOTAL);  // whole Mission::update; TOTAL - sum(subcalls) = unbracketed
+	mc2::overlap::waitWorker();   // a kicked tick is always finished by the main loop's join; this is the safety net
+	const OverlapPre pre = s_pre;
+	s_pre = OverlapPre{};
 	if (active)
 	{
 		long earlyResult = 0;
-		static mc2::sim::TickClock s_tickClock;
-		static long s_turnAfterLastPass = -1;
-		if (turn != s_turnAfterLastPass)
+		const bool usePre = pre.valid && pre.owner == this && pre.turn == turn;
+		if (turn != s_turnAfterLastPass && !usePre)
 			s_tickClock.reset();   // a new mission or a loaded save: no banked time carries over
 		const float renderLength = frameLength;   // DoGameLogic: this render frame's length (1/30 s per virtual frame under the harness clock)
 
@@ -1312,6 +1379,15 @@ long Mission::update (void)
 			if (updatePass(true, true, MPlayer != nullptr, true, earlyResult))
 				return earlyResult;
 			updatePresentationOnly(false, 1.0f);
+		}
+		else if (usePre)
+		{
+			// G7: this frame's ticks already ran on the sim worker during the previous frame's tail; only the frame part is left.
+			if (updatePass(true, true, false, false, earlyResult))
+				return earlyResult;
+			if (pre.ended)
+				return pre.earlyResult;
+			updatePresentationOnly(false, static_cast<float>(s_tickClock.alpha()));
 		}
 		else
 		{
