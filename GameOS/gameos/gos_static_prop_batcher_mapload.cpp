@@ -352,6 +352,8 @@ void GpuStaticPropBatcher::registerLodGroup(TG_TypeMultiShape* const* shapes, co
     std::vector<std::vector<uint32_t>> lods(count);
     for (int k = 1; k < count; ++k)
         if (shapes[k] && shapes[k] != shapes[0] && distances[k] > 0.0f) lods[k] = shapeTypes(shapes[k]);
+    MC2_DIAGFE(stderr, "[PROP_LOD v1] register base0=%u nodes=%zu count=%d n1=%zu n2=%zu d1=%.0f d2=%.0f\n",
+               base.empty() ? 0u : base[0], base.size(), count, lods[1].size(), count > 2 ? lods[2].size() : size_t(0), distances[1], count > 2 ? distances[2] : 0.0f);
     for (size_t n = 0; n < base.size(); ++n) {
         if (base[n] == 0xFFFFFFFFu || s_lodGroups.count(base[n])) continue;
         PropLodGroup g{{base[n], base[n], base[n]}, {0.0f, 0.0f, 0.0f}, 1};
