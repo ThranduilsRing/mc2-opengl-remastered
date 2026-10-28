@@ -295,9 +295,6 @@ long BattleMech::update (void)
 		QueryPerformanceCounter(startCk);
 		#endif
 
-		bool inView = false;
-		if (inView)
-			windowsVisible = turn;
 			
 		if (withdrawing) unitAnimation->withdrawSeconds += frameLength;
         else unitAnimation->withdrawSeconds = 0;
@@ -356,13 +353,9 @@ long BattleMech::update (void)
 
 		setPosition(newPosition);
 
-		bool inView = false;
-		if (inView)
-			windowsVisible = turn;
 	
 		if (appearance)
 		{
-			appearance->setInView(inView);
 			appearance->setCombatMode(false);
 		}
 	
@@ -420,15 +413,11 @@ long BattleMech::update (void)
 			playedHeloDestruct = true;
 		}
 
-		bool inView = false;
-		if (inView)
-			windowsVisible = turn;
 	
 		if (appearance)
 		{
 			appearance->setGestureGoal(GestureGoalFallenBackward);
 
-			appearance->setInView(inView);
 			
 			appearance->setCombatMode(false);
 		}

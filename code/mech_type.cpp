@@ -469,7 +469,7 @@ bool BattleMechType::handleCollision (GameObjectPtr collidee, GameObjectPtr coll
 				if (jumpCollision && (bounceDir == -1)) {
 				}
 
-				if (!sameTeam && (collidee->getWindowsVisible() == turn))
+				if (!sameTeam)
 					soundSystem->playDigitalSample(MECH_COLLIDE,collidee->getPosition());
 
 				return(false);
@@ -500,8 +500,7 @@ bool BattleMechType::handleCollision (GameObjectPtr collidee, GameObjectPtr coll
 				if (turnAround > 0.0)
 					collidee->rotate(turnAround);
 
-				if (collidee->getWindowsVisible() == turn)
-					soundSystem->playDigitalSample(MECH_COLLIDE,collidee->getPosition());
+				soundSystem->playDigitalSample(MECH_COLLIDE,collidee->getPosition());
 				return(false);
 			}
 		}

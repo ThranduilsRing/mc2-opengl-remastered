@@ -230,6 +230,8 @@ class BldgAppearance : public ObjectAppearance
 		glm::vec3 simPosition_{};
 		float simRotation_ = 0.0f;
 		long simStatus_ = 0;
+		// What the sim must read: the draw copy (status) lags the tick, and the camera picks the draw shape.
+		long simStatusView() const { return simulationOwned() ? simStatus_ : status; }
 		void setSimInput (const SimInput& in) override;
 		void updateSimPose();
 		long desiredRenderLOD() const;
@@ -649,6 +651,7 @@ class TreeAppearance : public ObjectAppearance
 
 		TreeAppearanceType*							appearType;
 		TG_MultiShapePtr							treeShape;
+		long										simStatus_ = 0;   // tick copy of the status; the draw swap is deferred to presentation
 
 		// Slice 2 (object-offload): see BldgAppearance::needsFullBakeNextFrame.
 		bool										needsFullBakeNextFrame;

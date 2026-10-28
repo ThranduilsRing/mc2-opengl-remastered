@@ -992,6 +992,11 @@ void BldgAppearance::stopActivity (void)
 
 void BldgAppearance::flashBuilding (float dur, float fDuration, DWORD color)
 {
+	if (simulationOwned() && !simPresentationPass)
+	{
+		recordSimFlash(dur, fDuration, color);
+		return;
+	}
 	duration = dur;
 	flashDuration = fDuration;
 	flashColor = color;

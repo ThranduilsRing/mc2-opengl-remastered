@@ -65,12 +65,26 @@ class Appearance
     std::shared_ptr<mc2::sim::UnitAnimState> simAnim_ = std::make_shared<mc2::sim::UnitAnimState>();
     mc2::sim::UnitAnimState renderAnim_;
     bool simulationOwned_ = false;
+    long pendingStatus_ = 0;
+    float pendingFlash_[2] = {0.0f, 0.0f};
+    DWORD pendingFlashColor_ = 0;
+    bool hasPendingStatus_ = false, hasPendingFlash_ = false;
 public:
     bool simulationOwned() const { return simulationOwned_; }
     mc2::sim::UnitAnimState& unitAnim() { return simPresentationPass ? renderAnim_ : *simAnim_; }
     const mc2::sim::UnitAnimState& unitAnim() const { return simPresentationPass ? renderAnim_ : *simAnim_; }
     auto simulationAnimation() const { return simAnim_; }
-    void presentAnimation(const mc2::sim::UnitAnimState& value) { renderAnim_ = value; }
+    void presentAnimation(const mc2::sim::UnitAnimState& value) { renderAnim_ = value; flushSimEvents(); }
+    // Kill and flash events the tick recorded (it must not touch draw state): consumed here, once per presentation visit.
+    // Last status wins; the draw implementations are idempotent.
+    void recordSimStatus(long oStatus) { pendingStatus_ = oStatus; hasPendingStatus_ = true; }
+    void recordSimFlash(float duration, float flashDuration, DWORD color) {
+        pendingFlash_[0] = duration; pendingFlash_[1] = flashDuration; pendingFlashColor_ = color; hasPendingFlash_ = true;
+    }
+    void flushSimEvents() {
+        if (hasPendingStatus_) { hasPendingStatus_ = false; setObjStatus(pendingStatus_); }
+        if (hasPendingFlash_) { hasPendingFlash_ = false; flashBuilding(pendingFlash_[0], pendingFlash_[1], pendingFlashColor_); }
+    }
     void presentEffects() {
         const auto& value = renderAnim_;
         // Requests are tick-owned; effect creation, random debris and shape edits

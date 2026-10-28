@@ -1303,8 +1303,9 @@ long TerrainObject::handleWeaponHit (WeaponShotInfoPtr shotInfo, bool addMultipl
 					appearance->markLOS(true);
 					appearance->setObjStatus(OBJECT_STATUS_DESTROYED);
 					appearance->setLightsOut(true);
-					appearance->recalcBounds();
-					appearance->update();
+					// Draw bounds and the tree shape swap are presentation work; the sim pose refresh stays here.
+					if (appearance->getAppearanceClass() != TREE_APPR_TYPE)
+						appearance->update();
 					appearance->markLOS();
 					
 					if (!shotInfo->attackerWID && (shotInfo->masterId == -1))	//Somebody stepped on me.
@@ -1358,8 +1359,9 @@ long TerrainObject::handleWeaponHit (WeaponShotInfoPtr shotInfo, bool addMultipl
 					appearance->markLOS(true);
 					appearance->setObjStatus(OBJECT_STATUS_DESTROYED);
 					appearance->setLightsOut(true);
-					appearance->recalcBounds();
-					appearance->update();
+					// Draw bounds and the tree shape swap are presentation work; the sim pose refresh stays here.
+					if (appearance->getAppearanceClass() != TREE_APPR_TYPE)
+						appearance->update();
 					appearance->markLOS();
 				}
 				break;

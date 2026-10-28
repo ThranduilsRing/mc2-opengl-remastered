@@ -782,7 +782,6 @@ void Gate::destroyGate(void)
 	{
 		appearance->markLOS(true);			//Need to clear out before we change to the destroyed shape!!
 		appearance->setObjStatus(OBJECT_STATUS_DESTROYED);
-		appearance->recalcBounds();
 		appearance->update();
 	}
 

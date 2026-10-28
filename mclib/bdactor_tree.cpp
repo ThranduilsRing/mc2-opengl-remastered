@@ -163,6 +163,12 @@ void TreeAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 
 void TreeAppearance::setObjStatus (long oStatus)
 {
+	if (simulationOwned() && !simPresentationPass)
+	{
+		simStatus_ = oStatus;
+		recordSimStatus(oStatus);
+		return;
+	}
 	if (status != oStatus)
 	{
         invalidateStaticRegistration();
@@ -631,9 +637,18 @@ void TreeAppearance::markTerrain (_ScenarioMapCellInfo* pInfo, int type, int cou
 
 void TreeAppearance::markLOS (bool clearIt)
 {
-	//MUST force building to HIGHEST LOD!!!  IMpassability data is only valid at this LOD!!
-	// Building will reset its LOD on next draw!!
-	if (currentLOD)
+	// Line of sight is sim state: read it from the stock LOD0 shape for the sim status, never from the draw shape (its LOD
+	// follows the camera and its damage swap is deferred to presentation).
+	TG_MultiShapePtr los = treeShape;
+	std::unique_ptr<TG_MultiShape> stockLos;
+	if (simulationOwned())
+	{
+		const bool wrecked = simStatus_ == OBJECT_STATUS_DESTROYED || simStatus_ == OBJECT_STATUS_DISABLED;
+		TG_TypeMultiShape* source = (wrecked && appearType->treeDmgShape) ? appearType->treeDmgShape : appearType->treeShape[0];
+		stockLos.reset(source->CreateFrom());
+		los = stockLos.get();
+	}
+	else if (currentLOD)
 	{
 		currentLOD = 0;
 	
@@ -642,20 +657,21 @@ void TreeAppearance::markLOS (bool clearIt)
 		treeShape = nullptr;
 	
 		treeShape = appearType->treeShape[currentLOD]->CreateFrom();
+		los = treeShape;
 	}
 
-	for (int i=0;i<treeShape->GetNumShapes();i++)
+	for (int i=0;i<los->GetNumShapes();i++)
 	{
 		//Check if the artists meant for this piece to NOT block LOS!!
 		// Probably should check for light cones,too!
 		
-		if ((S_strnicmp(treeShape->GetNodeId(i),"LOS_",4) != 0) &&
-			(S_strnicmp(treeShape->GetNodeId(i),"SpotLight_",10) != 0))
+		if ((S_strnicmp(los->GetNodeId(i),"LOS_",4) != 0) &&
+			(S_strnicmp(los->GetNodeId(i),"SpotLight_",10) != 0))
 		{
-			for (int j=0;j<treeShape->GetNumVerticesInShape(i);j++)
+			for (int j=0;j<los->GetNumVerticesInShape(i);j++)
 			{
 				glm::vec3 vertexPos, worldPos;
-				vertexPos = treeShape->GetShapeVertexInEditor(i,j,-rotation);
+				vertexPos = los->GetShapeVertexInEditor(i,j,-rotation);
 				worldPos = position + vertexPos;
 	
 				int cellR, cellC;
@@ -686,6 +702,9 @@ void TreeAppearance::markLOS (bool clearIt)
 			}
 		}
 	}
+
+	if (stockLos)
+		stockLos->ClearAnimation();
 }
 
 bool TreeAppearance::IsStaticNow() const

@@ -1073,10 +1073,14 @@ void GVAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 //-----------------------------------------------------------------------------
 void GVAppearance::setObjStatus (long oStatus)
 {
-	// Kill handlers (GroundVehicle destruction, turrets) push the status mid-tick; the sim copy follows at once so the pose
-	// (destroyed shape) matches what the sim saw when the draw shape was swapped here.
+	// Kill handlers (GroundVehicle destruction, turrets) push the status mid-tick: the sim copy follows at once and the
+	// draw shape swap waits for presentation (flushSimEvents).
 	if (simulationOwned() && !simPresentationPass)
+	{
 		simStatus_ = oStatus;
+		recordSimStatus(oStatus);
+		return;
+	}
 	if (status != oStatus)
 	{
 		if ((oStatus == OBJECT_STATUS_DESTROYED) || (oStatus == OBJECT_STATUS_DISABLED))

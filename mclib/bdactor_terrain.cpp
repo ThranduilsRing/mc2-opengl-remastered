@@ -13,7 +13,7 @@ long BldgAppearance::calcCellsCovered (glm::vec3& pos, short* cellList) {
 
 	//MUST force building to HIGHEST LOD!!!  IMpassability data is only valid at this LOD!!
 	// Building will reset its LOD on next draw!!
-	if (currentLOD)
+	if (currentLOD && !simulationOwned())
 	{
 		currentLOD = 0;
 	
@@ -29,10 +29,12 @@ long BldgAppearance::calcCellsCovered (glm::vec3& pos, short* cellList) {
 	std::unique_ptr<TG_MultiShape> stockCover;          // owns the stock copy, if one is made
 	struct ClearOnExit { TG_MultiShape* s = nullptr; ~ClearOnExit() { if (s) s->ClearAnimation(); } } clearOnExit;
 	TG_MultiShapePtr coverShape = bldgShape;
-	if (appearType->bldgRenderShape || appearType->bldgDmgRenderShape)
+	// A simulation-owned appearance always covers from the stock shape for the sim status: the draw shape and its LOD follow
+	// the camera and the deferred status swap.
+	if (simulationOwned() || appearType->bldgRenderShape || appearType->bldgDmgRenderShape)
 	{
 		TG_TypeMultiShape* source = appearType->getBldgCollisionShape(0);
-		if (status == OBJECT_STATUS_DESTROYED && appearType->bldgDmgShape)
+		if (simStatusView() == OBJECT_STATUS_DESTROYED && appearType->bldgDmgShape)
 			source = appearType->bldgDmgShape;
 		stockCover.reset(source->CreateFrom());
 		coverShape = clearOnExit.s = stockCover.get();
@@ -426,11 +428,11 @@ void BldgAppearance::markLOS (bool clearIt)
 	// Building will reset its LOD on next draw!!
 	// Line of sight comes from the stock shape, never a render override (see markMoveMap).
 	TG_MultiShapePtr tempBldgShape = bldgShape;
-	const bool renderOverridden = appearType->bldgRenderShape || appearType->bldgDmgRenderShape;
+	const bool renderOverridden = simulationOwned() || appearType->bldgRenderShape || appearType->bldgDmgRenderShape;
 	if (currentLOD || renderOverridden)
 	{
 		TG_TypeMultiShape* source = appearType->bldgShape[0];
-		if (renderOverridden && status == OBJECT_STATUS_DESTROYED && appearType->bldgDmgShape)
+		if (renderOverridden && simStatusView() == OBJECT_STATUS_DESTROYED && appearType->bldgDmgShape)
 			source = appearType->bldgDmgShape;
 		tempBldgShape = source->CreateFrom();
 		if (unitAnim().bdAnimationState != -1)
