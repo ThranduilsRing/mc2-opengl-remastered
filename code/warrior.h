@@ -1464,7 +1464,7 @@ class MechWarrior {
 		MechBrainRuntime* getBrainRuntime () { return brainRuntime; }
 		// Save v2 BRN1 (B2): the task queue, and its lazily created twin used when a restore needs it before the first brain tick.
 		BrainTaskQueue* getBrainTaskQueue () { return brainTaskQueue; }
-		BrainTaskQueue* ensureBrainTaskQueue () { if (!brainTaskQueue) brainTaskQueue = new BrainTaskQueue(); return brainTaskQueue; }
+		BrainTaskQueue* ensureBrainTaskQueue () { if (!brainTaskQueue) brainTaskQueue = std::make_unique<BrainTaskQueue>().release(); return brainTaskQueue; }
 
 		bool injure (float numWounds, bool checkEject = true);
 

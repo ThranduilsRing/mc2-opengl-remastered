@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <cstring>
 #include <cstdio>
+#include <span>
 
 // Task types - added in BRAIN-RUNTIME-1B.
 // NOTE: avoid names that collide with legacy #define macros (e.g. dstd.h #define NONE -1).
@@ -94,11 +95,11 @@ public:
     // Save v2 BRN1 (B2): raw image access; restore() replaces the queue and keeps the monotone seq.
     const BrainTaskEntry* data() const { return entries_; }
     uint32_t seq() const { return seq_; }
-    void restore(const BrainTaskEntry* src, int n, uint32_t seq) {
-        count_ = std::min(n, MAX_BRAIN_TASKS);
-        for (int i = 0; i < count_; ++i) entries_[i] = src[i];
-        seq_ = seq;
+    void restore(std::span<const BrainTaskEntry> image) {
+        count_ = std::min(static_cast<int>(image.size()), MAX_BRAIN_TASKS);
+        for (int i = 0; i < count_; ++i) entries_[i] = image[i];
     }
+    void setSeq(uint32_t next) { seq_ = next; }
 
     bool isEmpty() const    { return count_ == 0; }
     int  numPending() const { return count_; }

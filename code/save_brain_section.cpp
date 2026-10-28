@@ -183,7 +183,7 @@ bool restoreBrainSection(std::span<const std::uint8_t> payload) {
             *live = std::move(s.rt);
             applyCachedSpecialBodyToRuntime(live);
         }
-        if (s.hasQueue) w->ensureBrainTaskQueue()->restore(s.q.entries.data(), static_cast<int>(s.q.entries.size()), s.q.seq);
+        if (s.hasQueue) { w->ensureBrainTaskQueue()->restore(s.q.entries); w->getBrainTaskQueue()->setSeq(s.q.seq); }
     }
     return true;
 }
