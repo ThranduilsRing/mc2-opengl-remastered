@@ -49,8 +49,12 @@ long applyPlayerIntent(Mission& mission, const mc2::player::UnitIntent& intent, 
     } else {
         order.moveParams.wayPath.numPoints = 1;
         order.moveParams.wayPath.curPoint = 0;
+        const auto position = object->getPosition();
+        const auto direction = intent.location - position;
+        const float distance = glm::length(direction);
+        const auto requested = distance > 400 ? position + direction * (400.0f / distance) : intent.location;
         glm::vec3 location;
-        if (MoverGroup::calcMoveGoals(intent.location, 1, &location) != 1) return 1;
+        if (MoverGroup::calcMoveGoals(requested, 1, &location) != 1) return 1;
         order.moveParams.wayPath.points[0] = location.x;
         order.moveParams.wayPath.points[1] = location.y;
         order.moveParams.wayPath.points[2] = location.z;
@@ -227,7 +231,7 @@ void Mission::updateMissionTest(bool report) {
         retreating += intent.posture == mc2::player::Posture::Retreat;
         const long capture = captureObjective && objectiveTarget
             && intent.goal == mc2::player::Goal::Move && intent.posture == mc2::player::Posture::Advance
-            && !recovering && glm::distance(mover->getPosition(), location) < 1200 ? objectiveTarget->getWatchID() : 0;
+            && !recovering && glm::distance(mover->getPosition(), location) < 400 ? objectiveTarget->getWatchID() : 0;
         if (applyPlayerIntent(*this, intent, capture)) ++rejected;
         else ++issued;
     }
