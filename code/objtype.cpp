@@ -292,7 +292,7 @@ void ObjectTypeManager::destroy(void)
 //---------------------------------------------------------------------------
 
 ObjectTypePtr ObjectTypeManager::load (ObjectTypeNumber objTypeNum, bool noCacheOut, bool forceLoad) {
-	if (!table || !objectFile)
+	if (!table || !objectFile || objTypeNum == 0)		//Empty manager (failed pak init); first Object always NULL!
 		return nullptr;
 
 	//-----------------------------------------------------------------------
@@ -308,9 +308,6 @@ ObjectTypePtr ObjectTypeManager::load (ObjectTypeNumber objTypeNum, bool noCache
 		PAUSE((" ObjectTypeManager.load: bad objTypeNum %d (max %d) — mod content; returning NULL ", static_cast<int>(objTypeNum), static_cast<int>(numObjectTypes)));
 		return nullptr;
 	}
-
-	if (objTypeNum == 0)		//First Object always NULL!
-		return nullptr;
 
 	if (!forceLoad && get(objTypeNum, false))
 		return(nullptr);
