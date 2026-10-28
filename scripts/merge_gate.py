@@ -34,6 +34,7 @@ from lane_merge import git_bash, run_logged  # noqa: E402
 EXCLUSIVE_PREFIXES = ("capture-before", "capture-after")
 EXCLUSIVE_TTL_S = 1200
 EXCLUSIVE_SECONDS = []
+FAILED_STAGES = []
 
 
 def plan(jobs, proof_dir=None, capture_before_runs=1, before_dir=None):
@@ -57,8 +58,6 @@ def plan(jobs, proof_dir=None, capture_before_runs=1, before_dir=None):
          {"MC2_DEBUG_STATE_DUMP": "1", "MC2_DIAG_TAGS": "CONFIG,BUILD,DEVICE"}),
         ("kit-visibility", [py, "scripts/check-kit-visibility.py", "--install", install,
                             "--out", str(proof / "kit-visibility")], {}),
-        # Stage/run each mod serially: overlapping cold loads and staging I/O hit the wall cap.
-        ("mods", [py, "tools/mod_smoke.py", "--battery", "--workers", "1", "--exe", install + "/mc2.exe", "--build-dir", "build64-ninja"], {}),
         # The ordinary contracts row is offline; fresh default-build quiet grading launches the game, so it lives here with the gate's exe.
         ("quiet", [py, "scripts/check-default-build-quiet.py", "--fresh-smoke", "--exe", install + "/mc2.exe"], {}),
     ]
@@ -88,6 +87,9 @@ def plan(jobs, proof_dir=None, capture_before_runs=1, before_dir=None):
         steps.append(("saveload-" + mission,
                       [py, "tools/saveload_roundtrip.py", "check", "--mission", mission,
                        "--install", install, "--mask", "tools/save_noise_mask.json", "--first-save-only", "--out", str(proof / ("saveload-" + mission))], {}))
+    # Stage/run each mod serially: overlapping cold loads and staging I/O hit the wall cap. The 15-28 min battery runs last so a
+    # failing saveload/determinism row is reported long before it.
+    steps.append(("mods", [py, "tools/mod_smoke.py", "--battery", "--workers", "1", "--exe", install + "/mc2.exe", "--build-dir", "build64-ninja"], {}))
     steps.append(("validation",
                   [py, "scripts/run_smoke.py", "--lite", "--keep-logs", "--deploy", "0.4"],
                   {"MC2_VULKAN_VALIDATION": "1"}))
@@ -280,7 +282,7 @@ def stock_copy(install, parent=None):
         print(f"[merge_gate] removed {target}: {size / 2**30:.2f} GiB logical (physical space not measured)", flush=True)
 
 
-def execute_parallel(steps, head, dry_run=False):
+def execute_parallel(steps, head, dry_run=False, keep_going=False):
     """Overlap isolated mods/determinism with the stock install chain.
 
     Each harness takes its own FIFO host slot. Never share a batch token between
@@ -330,14 +332,17 @@ def execute_parallel(steps, head, dry_run=False):
                             and not s[2].get("MC2_GATE_SKIP_REASON")]
             stock = [s for s in stock if s not in determinism]
         offline = [s for s in stock if s[0] in ("contracts", "harnesses", "pytest")]
-        if offline and execute(offline, head, runner=runner, completed=completed):
+        offline_result = execute(offline, head, runner=runner, completed=completed) if offline else 0
+        if offline_result and not keep_going:
             return 1
         stock = [s for s in stock if s not in offline]
         boundary = next((i + 1 for i, s in enumerate(stock) if s[0] == "deploy"), 0)
         prefix = stock[:boundary]
-        result = execute(prefix, head, runner=runner, completed=completed) if prefix else 0
+        result = execute(prefix, head, runner=runner, completed=completed) if prefix else offline_result
         if result:
-            return result  # do not launch runtime proofs after a failed deploy/offline check
+            if not keep_going:
+                return result  # do not launch runtime proofs after a failed deploy/offline check
+            print("[merge_gate] --keep-going: deploy/pre-stage failure recorded; later stages still run", flush=True)
         if mods:
             copy_context, copy_future = None, None
             if determinism:
@@ -383,6 +388,7 @@ def execute_parallel(steps, head, dry_run=False):
                             copy_context.__exit__(None, None, None)
             pending.append(pool.submit(auxiliary))
         result |= execute(stock[boundary:], head, runner=runner, completed=completed) if stock[boundary:] else 0
+        result |= offline_result
         for future in pending:
             result |= future.result()
         # Reuse can depend on both workers. Join them before reading their verdicts.
@@ -511,6 +517,9 @@ def execute(steps, head, dry_run=False, runner=run_child, completed=None):
     print("| Step | Result | Seconds |\n|---|---|---:|")
     for name, status, elapsed in results:
         print(f"| {name} | {status} | {elapsed:.1f} |")
+    for name, status, _ in results:
+        if status != "PASS" and not status.startswith(("DRY-RUN", "SKIP")):
+            FAILED_STAGES.append((name, status))
     for name, _, overrides in steps:
         if overrides.get("MC2_GATE_COVERAGE"):
             print(f"Coverage plan {name}: {overrides['MC2_GATE_COVERAGE']}")
@@ -554,6 +563,7 @@ class Tee:
 
 
 def main(argv=None):
+    FAILED_STAGES.clear()
     ap = argparse.ArgumentParser(description=__doc__)
     if "MC2_IN_GATE" in os.environ:
         ap.error("MC2_IN_GATE is set: nested merge gates are forbidden")
@@ -566,6 +576,8 @@ def main(argv=None):
     ap.add_argument("--expect-head", help="ref that HEAD must resolve to, e.g. the reviewed merge SHA")
     ap.add_argument("--stages", nargs="+", help="base-stage groups in execution order; both art modes run together (space or comma separated)")
     ap.add_argument("--skip", nargs="+", help="stage names to omit (space or comma separated)")
+    ap.add_argument("--keep-going", action="store_true",
+                    help="run every later stage after a failure; the final verdict still fails and lists all failed stages")
     ap.add_argument("--log", type=Path, help="gate log path (default: timestamped merge-gate proof directory)")
     ap.add_argument("--proofs-dir", type=Path, help="exact proof directory for this invocation")
     ap.add_argument("--before-dir", type=Path, help="reuse a previous capture-before directory")
@@ -650,13 +662,15 @@ def main(argv=None):
         with redirect_stdout(Tee(sys.stdout, log)), redirect_stderr(Tee(sys.stderr, log)):
             print(f"[merge_gate] log: {log_path}", flush=True)
             started = window.get("started", time.time())
-            result = execute_parallel(steps, head, args.dry_run)
+            result = execute_parallel(steps, head, args.dry_run, keep_going=args.keep_going)
             elapsed = time.time() - started
             measured_window = bool(window)
             verdict = ("FAIL" if result else
                        "PASS" if elapsed <= 1200 and measured_window and not omitted else "NEEDS_REVIEW")
             print(f"[merge_gate] exclusive host hold total={sum(EXCLUSIVE_SECONDS) / 60:.1f} min over {len(EXCLUSIVE_SECONDS)} stages (limit 20 min)")
             print(f"[merge_gate] total={elapsed:.1f}s budget=1200s scope={'lane_merge through gate' if measured_window else 'gate only; no verified lane_merge clock'} verdict={verdict}")
+            if FAILED_STAGES:
+                print("[merge_gate] failed stages: " + ", ".join(f"{name} ({status})" for name, status in FAILED_STAGES))
             if args.full and result == 0 and not args.dry_run:
                 (ROOT / "build64-ninja/last-full-gate.json").write_text(json.dumps(dict(head=head, finished=time.time())))
             return result if args.dry_run else (0 if verdict == "PASS" else 1)

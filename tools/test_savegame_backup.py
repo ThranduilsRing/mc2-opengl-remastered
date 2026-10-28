@@ -4,6 +4,8 @@ import os
 import sys
 from pathlib import Path
 
+import pytest
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import savegame_backup as mod  # noqa: E402
@@ -69,3 +71,34 @@ def test_backup_never_prunes_the_one_it_just_wrote():
         # The newest five plus the protected one; the next backup prunes back to five.
         assert len(list(tmp_path.glob(f"{mod.SAVE_NAME}.bak_*"))) == mod.BACKUP_KEEP + 1
         assert not (tmp_path / f"{mod.SAVE_NAME}.bak_20261001_120000").exists()
+
+
+def test_a_lock_whose_holder_is_gone_is_taken_over_at_once(capsys, monkeypatch):
+    monkeypatch.setattr(mod, "_pid_alive", lambda pid: False)
+    with mod.scratch_dir() as d:
+        lock = Path(d) / mod.LOCK_NAME
+        lock.write_text("pid=999999 since=0", encoding="utf-8")
+        with mod.run_lock(d, wait_s=0.1):
+            assert lock.exists()
+        assert not lock.exists()
+    assert "took over stale lock" in capsys.readouterr().out
+
+
+def test_a_live_holder_is_not_taken_over_within_the_age_bound():
+    with mod.scratch_dir() as d:
+        lock = Path(d) / mod.LOCK_NAME
+        lock.write_text(f"pid={os.getpid()} since=0", encoding="utf-8")
+        with pytest.raises(TimeoutError):
+            with mod.run_lock(d, wait_s=0.1):
+                pass
+        assert lock.exists()
+
+
+def test_an_unreadable_holder_record_is_stolen_after_the_age_bound():
+    with mod.scratch_dir() as d:
+        lock = Path(d) / mod.LOCK_NAME
+        lock.write_text("no pid here", encoding="utf-8")
+        os.utime(lock, (0, 0))
+        with mod.run_lock(d, wait_s=0.1):
+            pass
+        assert not lock.exists()
