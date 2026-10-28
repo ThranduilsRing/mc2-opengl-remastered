@@ -2,6 +2,7 @@
 // See impact_presentation.h and docs/impact-damage-design.md.
 
 #include "impact_presentation.h"
+#include "sim_overlap.h"
 
 #include "../RenderCore/ImpactDecals.h"
 #include "Gates/gate.h"
@@ -223,6 +224,7 @@ void reset() {
 }
 
 void frame() {
+    mc2::overlap::assertSimQuiescent("impact_presentation::frame");
     ZoneScopedN("Impact.Presentation");
     // A new mission (or a load) replaces the object manager and restarts the clock: its decals and pending events belong to
     // the old world.

@@ -1058,6 +1058,7 @@ int main(int argc, char** argv)
     frameEmitDrawPackets(snap);
 
         {
+            mc2::overlap::beginFrameDraw();
             ZoneScopedN("DrawScreen");
             mc2_hitch::HitchScope _hitchRender(mc2_hitch::HitchSpanKind::PhaseRender);
 
@@ -1173,6 +1174,7 @@ int main(int argc, char** argv)
 
     // Tier-1 instrumentation (stability spec §2.5): final monotonic summary
     // before tearing down render/audio. Always emitted regardless of env gate.
+    mc2::overlap::printHazards();
     drainTglPoolStatsOnShutdown();
     mc2_object_recon::drainOnShutdown();
     projectz_shutdown();

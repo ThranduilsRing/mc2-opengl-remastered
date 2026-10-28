@@ -9,6 +9,7 @@
 //===========================================================================//
 
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
+#include "sim_overlap.h"
 #include "objmgr_internal.h"
 #include "mc2fmt.h"
 
@@ -997,6 +998,7 @@ void GameObjectManager::destroy (void)
 //---------------------------------------------------------------------------
 
 void GameObjectManager::render (bool terrain, bool movers, bool other) {
+    mc2::overlap::assertSimQuiescent("GameObjectManager::render");
 
 	//-----------------------------------------------------
 	//Set render states as few times as possible.

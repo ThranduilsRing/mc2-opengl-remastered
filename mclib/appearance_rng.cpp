@@ -1,5 +1,6 @@
 // The appearance-side random stream; see appearance_rng.h for what it is for.
 #include "appearance_rng.h"
+#include "sim_overlap.h"
 #include "det_rng.h"
 
 namespace mc2_appearance_rng {
@@ -18,6 +19,7 @@ void reseed(uint32_t seed)
 
 long randomNumber(long range)
 {
+    mc2::overlap::assertMainThread("rng::mc2_appearance_rng.randomNumber");
 	if (range <= 0)
 		return 0;
 	++s_draws;
@@ -26,6 +28,7 @@ long randomNumber(long range)
 
 bool rollDice(long percent)
 {
+    mc2::overlap::assertMainThread("rng::mc2_appearance_rng.rollDice");
 	++s_draws;
 	return ((static_cast<long>(mc2_det_rng::next15(s_state)) * 100) >> 15) < percent;
 }
@@ -44,11 +47,13 @@ uint32_t s_draws = 0;
 }
 void reseed(uint32_t seed) { s_state = seed ^ 0x414E494Du; s_draws = 0; }
 long randomNumber(long range) {
+    mc2::overlap::assertSimQuiescent("rng::mc2_anim_rng.randomNumber");
     if (range <= 0) return 0;
     ++s_draws;
     return static_cast<long>(mc2_det_rng::next15(s_state) % static_cast<uint32_t>(range));
 }
 bool rollDice(long percent) {
+    mc2::overlap::assertSimQuiescent("rng::mc2_anim_rng.rollDice");
     ++s_draws;
     return ((static_cast<long>(mc2_det_rng::next15(s_state)) * 100) >> 15) < percent;
 }

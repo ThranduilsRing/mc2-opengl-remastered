@@ -1,6 +1,7 @@
 // ControlGui: the sensor / overview / weapon-view overlays and ControlGui::render.
 // Declared in the class headers; shared names in controlgui_internal.h.
 #include <algorithm>
+#include "sim_overlap.h"
 #include "controlgui_internal.h"
 #include "mc2fmt.h"
 
@@ -534,6 +535,7 @@ static void updateAndRenderFormationLine( Camera* eye )
 
 void ControlGui::render( bool bPaused )
 {
+    mc2::overlap::assertSimQuiescent("ControlGui::render");
 	if (drawGUIOn)
 	{
 		gos_SetRenderState( gos_State_AlphaMode, gos_Alpha_AlphaInvAlpha );

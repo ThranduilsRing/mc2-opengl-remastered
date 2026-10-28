@@ -1,4 +1,5 @@
 #include "Gates/preferences_legacy.h"
+#include "sim_overlap.h"
 #include "gameos_music_cache.h"
 //---------------------------------------------------------------------------
 // soundsys.cpp - This file is the sound system code
@@ -688,6 +689,7 @@ void SoundSystem::update (void)
 //---------------------------------------------------------------------------
 long SoundSystem::playDigitalMusic (long musicId)
 {
+    mc2::overlap::assertMainThread("SoundSystem::playDigitalMusic");
 	//-------------------------------------------------------------------
 	// Make sure we have a real music filename.
 	if (useMusic)
@@ -764,6 +766,7 @@ long SoundSystem::playDigitalMusic (long musicId)
 //---------------------------------------------------------------------------
 long SoundSystem::playDigitalStream (const char *streamName)
 {
+    mc2::overlap::assertMainThread("SoundSystem::playDigitalStream");
 	const char* accepted = "disabled";
 	std::string resourcePath;
 	bool resourceAccepted = false;
@@ -813,6 +816,7 @@ long SoundSystem::playDigitalStream (const char *streamName)
 //---------------------------------------------------------------------------
 long SoundSystem::playBettySample (unsigned long bettySampleId)
 {
+    mc2::overlap::assertMainThread("SoundSystem::playBettySample");
 	if (useSound && bettySoundBite.empty())	//Playing Betty takes precedence
 	{
 
@@ -864,6 +868,7 @@ long SoundSystem::playBettySample (unsigned long bettySampleId)
 //---------------------------------------------------------------------------
 long SoundSystem::playSupportSample (unsigned long supportSampleId, const char* fileName)
 {
+    mc2::overlap::assertMainThread("SoundSystem::playSupportSample");
 	if (useSound && !supportHandle)		//Playing Support takes precedence
 	{
 		if (!fileName)
@@ -986,6 +991,7 @@ long SoundSystem::findOpenChannel (long start, long end)
 //---------------------------------------------------------------------------
 long SoundSystem::playDigitalSample (unsigned long sampleId, glm::vec3 pos, bool allowDupes)
 {
+    mc2::overlap::assertMainThread("SoundSystem::playDigitalSample");
 	if ((useSound && allowDupes) || (!isPlayingSample(sampleId) && !allowDupes))
 	{
 		if (sampleId >= numSoundBites)
@@ -1044,6 +1050,7 @@ long SoundSystem::playDigitalSample (unsigned long sampleId, glm::vec3 pos, bool
 //---------------------------------------------------------------------------
 void SoundSystem::stopDigitalSample (unsigned long sampleHandleNumber)
 {
+    mc2::overlap::assertMainThread("SoundSystem::stopDigitalSample");
 	if (useSound)
 	{
 		gosAudio_PlayMode
@@ -1058,6 +1065,7 @@ void SoundSystem::stopDigitalSample (unsigned long sampleHandleNumber)
 //---------------------------------------------------------------------------
 void SoundSystem::stopDigitalMusic (void)
 {
+    mc2::overlap::assertMainThread("SoundSystem::stopDigitalMusic");
 	if (useSound && useMusic)
 	{
 		for (MusicSlot& slot : musicSlots)
@@ -1082,6 +1090,7 @@ void SoundSystem::stopDigitalMusic (void)
 //---------------------------------------------------------------------------
 void SoundSystem::stopSupportSample (void)
 {
+    mc2::overlap::assertMainThread("SoundSystem::stopSupportSample");
 	if (stream3Handle)
 	{
 		gosAudio_DestroyResource(&stream3Handle);
@@ -1093,6 +1102,7 @@ void SoundSystem::stopSupportSample (void)
 //---------------------------------------------------------------------------
 void SoundSystem::stopBettySample (void)
 {
+    mc2::overlap::assertMainThread("SoundSystem::stopBettySample");
 	if (bettyHandle)
 	{
 			gosAudio_SetChannelPlayMode(BETTY_CHANNEL, gosAudio_Stop);

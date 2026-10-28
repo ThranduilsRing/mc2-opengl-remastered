@@ -1,4 +1,5 @@
 #include "../RenderCore/TextureService.h"
+#include "sim_overlap.h"
 // VFS texture sources and CPU consumer snapshots, owned by the session service.
 #include "texture_sources_internal.h"
 #include "texture_ref.h"
@@ -249,6 +250,7 @@ DWORD load(const char* path, gos_TextureFormat format, DWORD hints, DWORD varian
     return store.publish(std::move(source));
 }
 DWORD sourceId(DWORD asset) {
+    mc2::overlap::assertMainThread("textures::sourceId");
     if (asset==kInvalidAsset || asset==0) return asset;
     auto source=liveSource(asset);
     if (!source) return 0;

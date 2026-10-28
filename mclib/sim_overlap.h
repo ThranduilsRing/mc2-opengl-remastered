@@ -26,5 +26,7 @@ bool onSimWorker();                            // true on the sim worker thread
 void assertSimQuiescent(const char* site);     // render side: reads live sim objects, so no tick may be in flight
 void assertMainThread(const char* site);       // sim side: GL/Vulkan/texture/sound entry points, never on the worker
 unsigned violationCount();
+void beginFrameDraw(); // counts diagnostic frames; optionally kicks before DrawScreen
+void printHazards();   // once at run shutdown, after the final join
 
 } // namespace mc2::overlap

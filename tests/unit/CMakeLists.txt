@@ -186,6 +186,7 @@ add_executable(mc2_tests
     # Leaf-TU engine sources (no transitive engine include drag).
     ${MC2_WORKTREE_ROOT}/mclib/fst_hash.cpp
     ${MC2_WORKTREE_ROOT}/mclib/appearance_rng.cpp
+    ${MC2_WORKTREE_ROOT}/GameOS/gameos/sim_overlap.cpp
     ${MC2_WORKTREE_ROOT}/mclib/unit_animation_tick.cpp
     ${MC2_WORKTREE_ROOT}/mclib/resource_strings.cpp
     ${MC2_WORKTREE_ROOT}/mclib/alloc_probe.cpp       # allocation accounting seam (portable, proof builds + this tier)

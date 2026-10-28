@@ -9,6 +9,7 @@
 // legacy pool is created by frameJobsInit() (gate MC2_FRAME_JOBS); the new pool
 // is created only by mc2::jobs::startPool() (harness / future adoption wiring).
 #include "frame_jobs.h"
+#include "sim_overlap.h"
 #include "job_system.h"
 #include "jobs_fatal.h"
 
@@ -153,6 +154,7 @@ void frameJobsShutdown() {
 
 void parallelForRange(int count, int batchSize,
                       const std::function<void(int, int)>& fn) {
+    mc2::overlap::assertSimQuiescent("jobs::parallelForRange");
     if (count <= 0) return;
 
     if (!g_enabled || !g_pool) {
@@ -431,6 +433,7 @@ namespace detail {
 void parallel_for_blocks(
     Domain /*dom*/, int count, int batch, int estCostPerItemNs,
     const std::function<void(int, int, int)>& blockBody) {
+    mc2::overlap::assertSimQuiescent("jobs::parallel_for_blocks");
     if (count <= 0) return;
     if (batch < 1) batch = 1;
 

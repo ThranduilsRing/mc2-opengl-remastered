@@ -1,4 +1,5 @@
 #include "../RenderCore/TextureService.h"
+#include "sim_overlap.h"
 // Session source indices and reference lifetime; no file or device dependencies.
 #include "texture_sources_internal.h"
 #include "texture_ref.h"
@@ -29,6 +30,7 @@ TextureSource::~TextureSource() { queueCpuTexture(*this); }
 DWORD assetCapacity() { auto* store=sourcesIfReady(); return store ? store->capacity() : 1; }
 void flushSources(bool all) { if (auto* store=sourcesIfReady()) store->flush(all); }
 void TextureSources::collectRetired() {
+    mc2::overlap::assertMainThread("TextureSources::collectRetired");
     std::vector<DWORD> retired;
     { std::lock_guard lock(retired_->mutex); retired.swap(retired_->pending); }
     for (auto texture : retired)
