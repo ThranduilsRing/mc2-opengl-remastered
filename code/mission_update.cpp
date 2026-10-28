@@ -55,10 +55,13 @@ long applyPlayerIntent(Mission& mission, const mc2::player::UnitIntent& intent, 
     }
     order.moveParams.wayPath.mode[0] = TRAVEL_MODE_FAST;
     order.moveParams.wait = false;
-    auto* current = static_cast<Mover*>(object)->getPilot()->getCurTacOrder();
-    if (current && current->code == order.code) {
+    auto* pilot = static_cast<Mover*>(object)->getPilot();
+    auto* current = pilot->getCurTacOrder();
+    if (current && current->origin == ORDER_ORIGIN_PLAYER && current->code == order.code) {
         if (order.code == TACTICAL_ORDER_MOVETO_POINT) {
-            if (current->moveParams.wayPath.numPoints > 0
+            const auto* path = pilot->getMovePath();
+            if ((pilot->getMovePathRequest() || (path && path->numSteps > 0))
+                && current->moveParams.wayPath.numPoints > 0
                 && current->moveParams.wayPath.mode[0] == order.moveParams.wayPath.mode[0]) {
                 const glm::vec3 previous{current->moveParams.wayPath.points[0], current->moveParams.wayPath.points[1], 0};
                 int oldRow, oldCol, newRow, newCol;

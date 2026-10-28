@@ -1416,7 +1416,10 @@ mc2::player::UnitIntent producePlayerIntent(MechWarrior* warrior,
     // Keep native path progress while travelling to the same intermediate leg.
     const auto retainWaypoint = [&](glm::vec3 desired) {
         const auto* current = warrior->getCurTacOrder();
-        if (!objectiveChanged && current && current->code == TACTICAL_ORDER_MOVETO_POINT
+        const auto* path = warrior->getMovePath();
+        if (!objectiveChanged && current && current->origin == ORDER_ORIGIN_PLAYER
+            && (warrior->getMovePathRequest() || (path && path->numSteps > 0))
+            && current->code == TACTICAL_ORDER_MOVETO_POINT
             && current->moveParams.wayPath.numPoints == 1) {
             const glm::vec3 previous{current->moveParams.wayPath.points[0],
                 current->moveParams.wayPath.points[1], current->moveParams.wayPath.points[2]};
