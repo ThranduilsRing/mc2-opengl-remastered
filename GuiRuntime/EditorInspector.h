@@ -66,9 +66,6 @@ struct TerrainInspectorData {
 // render spine. Filled per frame in gameosmain; displayed in the Object
 // Inspector window. Read-only — no GL state, no mutation of any render path.
 struct TerrainPassSnapshot {
-    uint32_t surfaceProgramId       = 0;
-    uint32_t thinProgramId          = 0;
-    uint32_t overlayProgramId       = 0;
     uint32_t bucketCount            = 0;
     uint32_t vertCount              = 0;
     uint32_t thinRecCount           = 0;
@@ -94,9 +91,6 @@ void setTerrainPassSnapshot(const TerrainPassSnapshot& ts);
 // per frame in gameosmain; displayed in the Object Inspector window.
 // Read-only — no GL state, no mutation of any shadow path.
 struct ShadowPassSnapshot {
-    // Programs (raw GL program object ids; 0 if not linked).
-    uint32_t terrainShadowProgramId    = 0;
-    uint32_t staticPropShadowProgramId = 0;
     // gosPostProcess state.
     bool     shadowsEnabled            = false;
     bool     staticLightMatrixBuilt    = false;
@@ -117,8 +111,6 @@ void setShadowPassSnapshot(const ShadowPassSnapshot& sp);
 // Filled per frame in gameosmain; displayed in the Object Inspector window.
 // Read-only — no GL state, no mutation of any VFX path, no object-IDs.
 struct VfxPassSnapshot {
-    // Program (raw GL program object id for the billboard shader; 0 until linked).
-    uint32_t particleProgramId          = 0;
     // Env-gate state.
     bool     gpuParticlesEnabled        = false;   // MC2_GPU_PARTICLES (default OFF)
     bool     gpuParticlesLogEnabled     = false;   // MC2_GPU_PARTICLES_LOG

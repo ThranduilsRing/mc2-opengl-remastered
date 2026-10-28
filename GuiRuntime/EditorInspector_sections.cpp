@@ -798,14 +798,11 @@ void drawTerrainPass() {
         }
         ImGui::Separator();
         ImGui::Text("Programs:");
-        ImGui::BulletText("surface (solid):      %u", ts.surfaceProgramId);
-        ImGui::BulletText("thin records:         %u", ts.thinProgramId);
         // Read-only readout of the MDI water FS debug mode
         // (live control is deferred to Graphics Options > Water per panel discipline).
         // ::-qualified -> global symbol (decl at file top), not EditorInspector::.
         ImGui::BulletText("water FS debug mode:  %d  (MC2_WATER_DEBUG_MODE; 0=Final)",
                           ::gos_GetWaterFsDebugMode());
-        ImGui::BulletText("overlay:              %u", ts.overlayProgramId);
         ImGui::Separator();
         ImGui::Text("Last flush stats:");
         ImGui::BulletText("draw buckets:    %u", ts.bucketCount);
@@ -842,10 +839,6 @@ void drawShadowPass() {
             ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.3f, 1.0f),
                 "ViewUniforms (binding=3): NOT consumed (legacy shadow matrices)");
         }
-        ImGui::Separator();
-        ImGui::Text("Programs:");
-        ImGui::BulletText("terrain shadow:     %u", sp.terrainShadowProgramId);
-        ImGui::BulletText("static-prop shadow: %u", sp.staticPropShadowProgramId);
         ImGui::Separator();
         ImGui::Text("Caster counts (last flushShadow):");
         ImGui::BulletText("mech         types=%u  instances=%u",
@@ -900,9 +893,6 @@ void drawVfxPass() {
                     "Debug view (MC2_VFX_DEBUG_MODE): %s [ACTIVE]", name);
             }
         }
-        ImGui::Separator();
-        ImGui::Text("Program:");
-        ImGui::BulletText("particle_billboard: %u", vs.particleProgramId);
         ImGui::Separator();
         ImGui::Text("Blend modes (per-group): alpha (0) or additive (1) — set per BeginGroup");
         ImGui::Separator();
