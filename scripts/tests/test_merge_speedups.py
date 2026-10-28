@@ -393,6 +393,9 @@ def test_gate_stage_selection():
     steps = gate.plan(6)
     assert [s[0] for s in gate.select_stages(steps, ["deploy,capture-after"])] == ["deploy", "capture-after"]
     assert "pytest" not in [s[0] for s in gate.select_stages(steps, skip=["pytest"])]
+    with pytest.raises(ValueError, match="also needs --skip pytest"):
+        gate.select_stages(steps, skip=["contracts"])
+    assert "contracts" not in [s[0] for s in gate.select_stages(steps, skip=["contracts,pytest"])]
     for stages, skip in ((["missing"], None), (None, ["missing"]), (["deploy", "deploy"], None),
                          (["deploy"], ["deploy"]), ([], None), (None, list(s[0] for s in steps))):
         with pytest.raises(ValueError):

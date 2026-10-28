@@ -529,6 +529,9 @@ def select_stages(steps, stages=None, skip=None):
     overlap = set(requested) & omitted
     if overlap:
         raise ValueError("stages both selected and skipped: " + ", ".join(sorted(overlap)))
+    if "contracts" in omitted and "pytest" in available and "pytest" not in omitted:
+        raise ValueError("--skip contracts also needs --skip pytest: pytest only dedups against the contracts stage, "
+                         "so skipping contracts alone runs the 45-min standalone pytest stage (W78)")
     selected = [available[name] for name in requested or available if name not in omitted]
     if not selected or stages == []:
         raise ValueError("no stages selected; gate requires at least one stage")
