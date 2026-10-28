@@ -1,4 +1,6 @@
 #include "save_brain_section.h"
+#include "brain_execution_policy.h"
+#include "mc2fmt.h"
 
 #include "brain_mission_var_store.h"
 #include "brain_special_dispatch.h"
@@ -149,6 +151,10 @@ Bytes saveBrainSection() {
 }
 
 bool restoreBrainSection(std::span<const std::uint8_t> payload) {
+    if (!mc2::brainpolicy::techBrain()) {
+        mc2::fmt::print_err("[BRAIN_RESTORE_SKIP] policy=legacy bytes={}\n", payload.size());
+        return true; // Optional BRN1 data must not reactivate brains in a Legacy mission.
+    }
     Archive a(payload);
     std::uint32_t tickIndex = 0, n = 0;
     float accum = 0.0f, simLast = -1.0f;
