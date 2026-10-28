@@ -3532,6 +3532,7 @@ flags:
     default: true
     rule: Lead0Kill
     owner: code
+    retire_by: 2026-12-31
     doc: "Mod VFS layer 0: index mods/<active>/.scratch/data/ above the active mod; 0 = kill-switch."
     verified: true
   - name: MC2_SCREENSHOT_AT_FRAME
