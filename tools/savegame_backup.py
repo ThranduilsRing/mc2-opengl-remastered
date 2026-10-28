@@ -5,7 +5,8 @@ WHAT: `backup` copies ~/.mechcommander2/savegame/testgame.ims to a sibling `test
 `restore` puts the backed-up file back (or removes the fixture's file when there was none) and clears the marker. A second `backup` while a marker is
 pending keeps the FIRST backup: the file then in place is a fixture's, not the owner's.
 WHY: the quicksave/quickload fixtures (MC2_BOOT_QUICKSAVE_AT / MC2_BOOT_QUICKLOAD_AT) use the same file as the pause-menu quicksave, so every fixture
-run replaces whatever the owner saved. Backups are kept after a restore: they are the owner's data, and only the owner prunes them.
+run replaces whatever the owner saved. Backups are kept after a restore, but only the newest BACKUP_KEEP (5) are kept: older
+`testgame.ims.bak_*` files are deleted right after a new one is written. The save itself and every other file are never touched.
 
   py -3 tools/savegame_backup.py backup  [--dir D]
   py -3 tools/savegame_backup.py restore [--dir D]
@@ -24,13 +25,52 @@ import os
 import shutil
 import sys
 import tempfile
+import uuid
+
 
 SAVE_NAME = "testgame.ims"
 MARKER_NAME = SAVE_NAME + ".backup-pending"
+BACKUP_KEEP = 5
 
 
 def default_dir() -> str:
     return os.path.join(os.path.expanduser("~"), ".mechcommander2", "savegame")
+
+
+@contextlib.contextmanager
+def scratch_dir():
+    """A throwaway directory for the selftest and the unit tests. -> its path; removed on exit.
+
+    os.mkdir instead of mkdtemp: mkdtemp creates the directory 0700, which some restricted Windows hosts (sandboxed
+    agents, hardened ACLs) refuse to write into. The random name keeps concurrent runs apart.
+    """
+    d = os.path.join(tempfile.gettempdir(), "mc2-savegame-backup-" + uuid.uuid4().hex)
+    os.mkdir(d)
+    try:
+        yield d
+    finally:
+        shutil.rmtree(d, ignore_errors=True)
+
+
+def prune_backups(directory: str, keep: int = BACKUP_KEEP) -> list[str]:
+    """Delete all but the newest `keep` `testgame.ims.bak_*` files. -> the deleted names.
+
+    The names end in YYYYMMDD_HHMMSS, so they sort chronologically. Only regular files with that exact prefix are
+    candidates: the save, the marker and the lock are never touched.
+    """
+    prefix = SAVE_NAME + ".bak_"
+    found = []
+    with contextlib.suppress(OSError):
+        for name in os.listdir(directory):
+            if name.startswith(prefix) and os.path.isfile(os.path.join(directory, name)):
+                found.append(name)
+    found.sort(reverse=True)
+    removed = []
+    for name in found[max(keep, 0):]:
+        with contextlib.suppress(OSError):
+            os.remove(os.path.join(directory, name))
+            removed.append(name)
+    return removed
 
 
 def backup(directory: str, now: datetime.datetime | None = None) -> str:
@@ -47,6 +87,7 @@ def backup(directory: str, now: datetime.datetime | None = None) -> str:
         stamp = (now or datetime.datetime.now()).strftime("%Y%m%d_%H%M%S")
         name = f"{SAVE_NAME}.bak_{stamp}"
         shutil.copy2(src, os.path.join(directory, name))
+        prune_backups(directory)
     with open(marker, "w", encoding="utf-8") as fh:
         json.dump({"backup": name}, fh)
     return f"backed up to {name}" if name else "no quicksave existed; restore will remove the fixture's file"
@@ -145,7 +186,7 @@ def selftest() -> int:
             return fh.read()
 
     t0 = datetime.datetime(2026, 10, 11, 18, 0, 0)
-    with tempfile.TemporaryDirectory() as d:
+    with scratch_dir() as d:
         with open(os.path.join(d, SAVE_NAME), "wb") as fh:
             fh.write(b"owner")
         backup(d, t0)
@@ -160,13 +201,13 @@ def selftest() -> int:
         expect(os.path.exists(os.path.join(d, SAVE_NAME + ".bak_20261011_180000")), "the backup file is kept after a restore")
         expect("nothing pending" in restore(d), "a restore with nothing pending changes nothing")
         expect(read(d) == b"owner", "a no-op restore leaves the save alone")
-    with tempfile.TemporaryDirectory() as d:
+    with scratch_dir() as d:
         backup(d, t0)
         with open(os.path.join(d, SAVE_NAME), "wb") as fh:
             fh.write(b"fixture")
         restore(d)
         expect(not os.path.exists(os.path.join(d, SAVE_NAME)), "with no owner save, restore removes the fixture's file")
-    with tempfile.TemporaryDirectory() as d:
+    with scratch_dir() as d:
         with open(os.path.join(d, SAVE_NAME), "wb") as fh:
             fh.write(b"owner")
         try:
