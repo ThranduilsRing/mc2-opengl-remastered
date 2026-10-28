@@ -34,3 +34,8 @@ Frame N: frame part (camera, `land->geometry`) -> join tick N (if one was in fli
 
 ## Expected gain (profile-0f5, profiler-free)
 0.5-1.2 ms/frame average, about 3 ms on tick frames (mc2_24 GameLogic 3.9 vs 0.7). P1 alone should also shrink the tick, since most of its time is presentation.
+
+## P1 status (branch claude/p1-appearance-out-of-tick, 2026-10-27)
+The tick (BattleMech::update, GroundVehicle::update, TerrainObject::update) no longer writes the draw side of an appearance. It feeds the **sim half** only: `Appearance::setSimInput` (position, rotation, torso/turret, pitch/roll, status into sim copies), the animation requests (gesture goal, combat mode, brake, smoke, wake, activity, arm blow-off: all writes to the sim `UnitAnimState`), and `update()` = gesture FSM / frame clock + `updateSimPose`. `updateSimPose` poses `simulationShape_` from the sim copies and no longer swaps `mechShape` / `currentLOD` / node indices or reads the draw `gvShape`. Names, pose, status, alpha, sensor level, bars, visibility and visual state are applied by `BattleMech::applyAppearancePush`, `GroundVehicle::applyAppearancePush` and `TerrainObject::applyAppearancePush` from the presentation loops (`updateAppearancesOnly`), when `Mover::pushSerial` moved past `pushPresented` (movers) or every visit (terrain objects). rng.app is unchanged (no D3 move needed; the appearance stream is not drawn from by any moved code).
+
+Left for later packets (tick still touches appearance or render objects): see the lane report.
