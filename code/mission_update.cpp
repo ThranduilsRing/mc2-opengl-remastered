@@ -11,6 +11,145 @@
 #include <utility>
 #include "../GameOS/gameos/utils/mc2log.h"
 
+// Dev mission test: reports cached objective states and submits normal player orders.
+#include "player_unit_intent.h"
+
+namespace {
+long applyPlayerIntent(Mission& mission, const mc2::player::UnitIntent& intent) {
+    auto* object = ObjectManager->getByWatchID(intent.unitWatchId);
+    if (!object || !object->isMover()) return 1;
+    TacticalOrder order;
+    order.init(ORDER_ORIGIN_PLAYER, intent.goal == mc2::player::Goal::Attack
+        ? TACTICAL_ORDER_ATTACK_OBJECT : TACTICAL_ORDER_MOVETO_POINT);
+    if (intent.goal == mc2::player::Goal::Attack) {
+        order.targetWID = intent.targetWatchId;
+        order.attackParams.type = ATTACK_TO_DESTROY;
+        order.attackParams.method = ATTACKMETHOD_RANGED;
+        order.attackParams.range = FIRERANGE_OPTIMAL;
+        order.attackParams.pursue = intent.posture == mc2::player::Posture::Engage;
+    } else {
+        order.moveParams.wayPath.numPoints = 1;
+        order.moveParams.wayPath.curPoint = 0;
+        order.moveParams.wayPath.points[0] = intent.location.x;
+        order.moveParams.wayPath.points[1] = intent.location.y;
+        order.moveParams.wayPath.points[2] = intent.location.z;
+    }
+    order.moveParams.wayPath.mode[0] = TRAVEL_MODE_FAST;
+    order.moveParams.wait = false;
+    return mission.submitPlayerOrder(static_cast<Mover*>(object), order, false);
+}
+const char* missionTestStatus(int state) {
+    return state == OS_SUCCESSFUL ? "PASS" : state == OS_FAILED ? "FAIL" : "PENDING";
+}
+}
+
+void Mission::updateMissionTest(bool report) {
+    if (!mc2::gate::get<"MC2_PLAY_MISSION">() || MPlayer || !Team::home || !Commander::home) return;
+    auto& test = missionTest;
+    if (test.finished) return;
+    if (!report) {
+        if (mc2::gate::get<"MC2_PLAY_MISSION_INVULNERABLE">())
+            Team::noPain[Team::home->getId()] = true;
+        if (mc2::gate::get<"MC2_PLAY_MISSION_SKIP_CINEMATICS">() && eye && eye->inMovieMode)
+            eye->forceMovieToEnd();
+        return;
+    }
+
+    int id = 0, passed = 0, failed = 0, pending = 0;
+    CObjective* destination = nullptr;
+    for (auto* objective : Team::home->objectives) {
+        const int state = objective->ReportedStatus();
+        if (static_cast<int>(test.objectives.size()) <= id) test.objectives.push_back(-1);
+        if (test.objectives[id] != state) {
+            mc2::fmt::print_err("[MISSION_OBJECTIVES v1] id={} text_key={} state={} primary={} hidden={} x={} y={}\n",
+                id, objective->TitleUseResourceString() ? std::to_string(objective->TitleResourceStringID()) : std::format("fit:{}", id),
+                missionTestStatus(state), objective->Priority() == 1,
+                objective->IsHiddenTrigger(), objective->MarkerX(), objective->MarkerY());
+            test.objectives[id] = state;
+        }
+        // Hidden triggers are mission scripting machinery, not player objectives.
+        if (!objective->IsHiddenTrigger()) {
+            passed += state == OS_SUCCESSFUL;
+            failed += state == OS_FAILED;
+            pending += state == OS_UNDETERMINED;
+            if (!destination && state == OS_UNDETERMINED && objective->IsActive() && objective->DisplayMarker())
+                destination = objective;
+        }
+        ++id;
+    }
+
+    for (long i = 0; i < ObjectManager->getNumMovers(); ++i) {
+        auto* mover = ObjectManager->getMover(i);
+        if (!mover || !mover->getTeam() || Team::home->isFriendly(mover->getTeam())) continue;
+        const long wid = mover->getWatchID();
+        auto found = std::ranges::find(test.enemies, wid, &MissionTestState::Enemy::wid);
+        if (found == test.enemies.end()) {
+            test.enemies.push_back({wid, mover->getPosition()});
+            found = std::prev(test.enemies.end());
+            mc2::fmt::print_err("[MISSION_ENEMIES v1] event=spawn wid={} count={}\n", wid, test.enemies.size());
+        }
+        if (!found->moved && glm::distance(found->position, mover->getPosition()) > 5.0f) {
+            found->moved = true;
+            mc2::fmt::print_err("[MISSION_ENEMIES v1] event=react_move wid={}\n", wid);
+        }
+        if (!found->dead && (mover->isDestroyed() || mover->isDisabled())) {
+            found->dead = true;
+            mc2::fmt::print_err("[MISSION_ENEMIES v1] event=disabled_or_dead wid={}\n", wid);
+        }
+        float health = 0;
+        for (int loc = 0; loc < mover->numArmorLocations; ++loc) health += mover->armor[loc].curArmor;
+        for (int loc = 0; loc < mover->numBodyLocations; ++loc) health += mover->body[loc].curInternalStructure;
+        if (!found->damaged && found->health >= 0 && health < found->health) {
+            found->damaged = true;
+            mc2::fmt::print_err("[MISSION_ENEMIES v1] event=damage wid={}\n", wid);
+        }
+        found->health = health;
+        if (!found->destroyed && mover->isDestroyed()) {
+            found->destroyed = true;
+            mc2::fmt::print_err("[MISSION_ENEMIES v1] event=destroyed wid={}\n", wid);
+        }
+    }
+    const bool timeout = scenarioTime >= mc2::gate::get<"MC2_PLAY_MISSION_SECONDS">();
+    if (terminationCounterStarted || scenarioResult != mis_PLAYING || terminationResult == 9999 || timeout) {
+        const bool ended = terminationCounterStarted || scenarioResult != mis_PLAYING || terminationResult == 9999;
+        const bool won = ended && (terminationResult == mis_PLAYER_WIN_BIG || terminationResult == mis_PLAYER_WIN_SMALL
+            || scenarioResult == mis_PLAYER_WIN_BIG || scenarioResult == mis_PLAYER_WIN_SMALL);
+        mc2::fmt::print_err("[MISSION_VERDICT v1] verdict={} passed={} failed={} pending={} time={:.2f} enemies={} reacted={} disabled_or_dead={} damaged={} destroyed={}\n",
+            won ? "PASS" : timeout ? "TIMEOUT" : "FAIL", passed, failed, pending, scenarioTime, test.enemies.size(),
+            std::ranges::count(test.enemies, true, &MissionTestState::Enemy::moved),
+            std::ranges::count(test.enemies, true, &MissionTestState::Enemy::dead),
+            std::ranges::count(test.enemies, true, &MissionTestState::Enemy::damaged),
+            std::ranges::count(test.enemies, true, &MissionTestState::Enemy::destroyed));
+        test.finished = true;
+        return;
+    }
+    if (!destination || scenarioTime < test.nextOrder) return;
+    test.nextOrder = scenarioTime + 10.0f;
+    const glm::vec3 location{destination->MarkerX(), destination->MarkerY(), 0.0f};
+    int issued = 0, rejected = 0;
+    for (long i = 0; i < Team::home->getRosterSize(); ++i) {
+        auto* mover = Team::home->getMover(i);
+        if (!mover || mover->getCommanderId() != Commander::home->getId() || mover->isDisabled() || !mover->getExists()) continue;
+        Mover* target = nullptr;
+        float distance = 1000.0f;
+        for (long j = 0; j < ObjectManager->getNumMovers(); ++j) {
+            auto* enemy = ObjectManager->getMover(j);
+            if (!enemy || !enemy->getExists() || enemy->isDisabled() || !enemy->getTeam() || Team::home->isFriendly(enemy->getTeam())) continue;
+            const float d = glm::distance(mover->getPosition(), enemy->getPosition());
+            if (d < distance) { target = enemy; distance = d; }
+        }
+        mc2::player::UnitIntent intent{mover->getWatchID(), mc2::player::Goal::Move, location};
+        if (target) {
+            intent.goal = mc2::player::Goal::Attack;
+            intent.targetWatchId = target->getWatchID();
+            intent.posture = mc2::player::Posture::Engage;
+        }
+        if (applyPlayerIntent(*this, intent)) ++rejected;
+        else ++issued;
+    }
+    mc2::fmt::print_err("[MISSION_COMMANDER v1] time={:.2f} issued={} rejected={} x={} y={}\n",
+        scenarioTime, issued, rejected, location.x, location.y);
+}
 
 // FREEZE-MOVERS-1: ONE predicate for "the simulation tick is suspended".
 //
@@ -402,6 +541,7 @@ void Mission::updateObjectManager() {
 	if (mc2SimTickFrozen(missionInterface) && !MPlayer) return;
 	{ ZoneScopedN("GameLogic.Mission.TickPrep");
 	ObjectManager->snapshotMoverPoses();
+	updateMissionTest(false);
 	beginOrderSimulationTick();
 	advanceCombatClock(frameLength); }
 	MisScope _ms(MS_OBJMGR);
@@ -1210,6 +1350,7 @@ bool Mission::updatePass(bool tickMode, bool runFrame, bool runSim, bool advance
 						observation->finalResult = 9999;
 					}
 					orderTickCompletion.reset();
+					updateMissionTest(true);
 					frameLen();
 					earlyResult = terminationResult;
 					return true;
@@ -1243,6 +1384,7 @@ bool Mission::updatePass(bool tickMode, bool runFrame, bool runSim, bool advance
 	}
 	// Queue completion belongs to the tick, including its fixed frame length.
 	orderTickCompletion.reset();
+	if (runSim) updateMissionTest(true);
 	frameLen();
 
 #ifdef LAB_ONLY

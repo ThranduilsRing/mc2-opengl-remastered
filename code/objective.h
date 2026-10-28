@@ -570,6 +570,7 @@ public:
 	/* The following function evaluates the status of the objective irrespective of the other
 	objectives (i.e. it disregards qualifiers like "PreviousPrimaryObjectiveMustbeComplete"). */
 	objective_status_type Status();
+	objective_status_type ReportedStatus() const { return m_resolved ? m_resolvedStatus : OS_UNDETERMINED; }
 	/* The following function evaluates the status of the objective in the context of the given
 	objectives. */
 	objective_status_type Status(CObjectives &objectives);

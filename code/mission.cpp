@@ -147,6 +147,7 @@ bool authoredOrderEvidence(const char*, std::string& data, std::string& error) {
 }
 
 void Mission::resetOrderIngress() {
+    missionTest = {};
     orderRecipients.clear();
     authoredMissionText.clear();
     authoredOpordPilots.clear();

@@ -5329,6 +5329,40 @@
    "count": 1
   },
   {
+   "tag": "MISSION_COMMANDER",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "time",
+    "issued",
+    "rejected",
+    "x",
+    "y"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "MISSION_ENEMIES",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "wid"
+   ],
+   "count": 4
+  },
+  {
+   "tag": "MISSION_ENEMIES",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "wid",
+    "count"
+   ],
+   "count": 1
+  },
+  {
    "tag": "MISSION_LIGHT",
    "ver": 1,
    "stream": "stderr",
@@ -5345,12 +5379,45 @@
    "count": 1
   },
   {
+   "tag": "MISSION_OBJECTIVES",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "id",
+    "text_key",
+    "state",
+    "primary",
+    "hidden",
+    "x",
+    "y"
+   ],
+   "count": 1
+  },
+  {
    "tag": "MISSION_SPLIT",
    "ver": 1,
    "stream": "stdout",
    "keys": [
     "event",
     "frames"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "MISSION_VERDICT",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "verdict",
+    "passed",
+    "failed",
+    "pending",
+    "time",
+    "enemies",
+    "reacted",
+    "disabled_or_dead",
+    "damaged",
+    "destroyed"
    ],
    "count": 1
   },
@@ -11089,6 +11156,8 @@
   "ISO_DEPLOY",
   "LINK_GUARD",
   "MARAUDER",
+  "MISSION_OBJECTIVES",
+  "MISSION_VERDICT",
   "MOD_HEALTH",
   "MOVER",
   "MOVER_COHERENCE",
