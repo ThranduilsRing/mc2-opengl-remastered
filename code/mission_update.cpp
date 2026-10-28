@@ -221,7 +221,7 @@ void Mission::updateMissionTest(bool report) {
         retreating += intent.posture == mc2::player::Posture::Retreat;
         const long capture = captureObjective && objectiveTarget
             && intent.goal == mc2::player::Goal::Move && intent.posture == mc2::player::Posture::Advance
-            && !recovering && mover->distanceFrom(location) < 3000 ? objectiveTarget->getWatchID() : 0;
+            && !recovering && glm::distance(mover->getPosition(), location) < 1200 ? objectiveTarget->getWatchID() : 0;
         if (applyPlayerIntent(*this, intent, capture)) ++rejected;
         else ++issued;
     }

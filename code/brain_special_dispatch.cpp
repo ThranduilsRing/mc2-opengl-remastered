@@ -65,6 +65,7 @@
 #include "team.h"
 #include "objective.h"
 #include "terrain.h"
+#include "turret.h"
 
 #include <array>
 #include "mc2fmt.h"
@@ -1462,7 +1463,14 @@ mc2::player::UnitIntent producePlayerIntent(MechWarrior* warrior,
         }
     } else runtime->retreatEffectApplied = false;
     std::array<int, MAX_CONTACTS_PER_TEAM> contacts{};
-    const long count = unit->getContacts(contacts.data(), (1 | 64), CONTACT_SORT_DISTANCE);
+    long count = unit->getContacts(contacts.data(), (1 | 64), CONTACT_SORT_DISTANCE);
+    // Sensor contacts cover movers; visible defensive turrets also block the route.
+    for (long i = 0; i < ObjectManager->getNumTurrets() && count < contacts.size(); ++i) {
+        auto* turret = ObjectManager->getTurret(i);
+        if (turret && turret->getExists() && !turret->isDisabled() && !turret->isDestroyed()
+            && unit->isEnemy(turret->getTeam()) && unit->lineOfSight(turret))
+            contacts[count++] = turret->getHandle();
+    }
     GameObjectPtr target = nullptr, weakTarget = nullptr, objectiveContact = nullptr;
     float best = -1, weakBest = -1, enemyThreat = 0;
     for (long i = 0; i < count; ++i) {
