@@ -672,7 +672,8 @@ void GroundVehicle::applyAppearancePush (void)
 
 		// FORCE-ALL-VISIBLE-1: single chokepoint, after every contact branch and before the appearance is drawn. No-op
 		// unless MC2_FORCE_ALL_VISIBLE.
-		mc2_vis::forceVisibleOverride(appearance, alphaValue);
+		BYTE drawAlpha = alphaValue;   // presentation never writes a sim-owned field (mover.h AppearancePush contract)
+		mc2_vis::forceVisibleOverride(appearance, drawAlpha);
 	}
 }
 
