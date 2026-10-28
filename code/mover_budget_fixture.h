@@ -4,7 +4,8 @@
 #pragma once
 #include <cstdio>
 #include <cmath>
-#include "missiongui_shared_internal.h"
+#include "prefs.h"
+extern CPrefs prefs;
 
 inline void mc2MoverBudgetFixtureTick(unsigned turn)
 {
