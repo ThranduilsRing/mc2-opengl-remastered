@@ -1506,8 +1506,7 @@ mc2::player::UnitIntent producePlayerIntent(MechWarrior* warrior,
         if (score > best) { best = score; target = enemy; }
     }
     if (enemyThreat > ownThreat * 1.5f && weakTarget) target = weakTarget;
-    if (objectiveTarget && (runtime->engageTargetWID == objectiveTarget
-        || (runtime->playerFightSince >= 0 && now - runtime->playerFightSince >= 45))) {
+    if (objectiveTarget) {
         auto* goal = ObjectManager->getByWatchID(objectiveTarget);
         // Authored structure objectives are known locations; moving enemies must be detected.
         if (goal && goal->getExists() && !goal->isDestroyed()
@@ -1534,7 +1533,7 @@ mc2::player::UnitIntent producePlayerIntent(MechWarrior* warrior,
     } else runtime->playerHealthTarget = 0;
     if (target && target->getWatchID() != objectiveTarget) {
         if (runtime->playerFightSince < 0) runtime->playerFightSince = now;
-        if (now - runtime->playerFightSince >= 45 && now >= runtime->playerBypassUntil) {
+        if (now - runtime->playerFightSince >= 12 && now >= runtime->playerBypassUntil) {
             runtime->playerBypassUntil = now + 24;
             runtime->playerFightSince = now;
             target = nullptr;
