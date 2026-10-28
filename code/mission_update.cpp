@@ -8,7 +8,6 @@
 #include "sim_world_trace.h"
 #include "sim_tick_clock.h"
 #include "../mclib/sim_overlap.h"
-#include "../mclib/texture_assets.h"
 #include <optional>
 #include "move_recon_stats.h"
 #include <utility>

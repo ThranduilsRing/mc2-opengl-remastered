@@ -23,12 +23,12 @@ template<class Effect> void releaseEffect(std::unique_ptr<Effect>& effect) {
     auto release = [old] { old->Kill(); delete old; };
     if (!defer(Queue::Release, release)) release();
 }
-template<class Light, class Camera, class Id>
-void releaseLight(Light*& light, Camera* camera, Id id) {
+template<class Light, class WorldLights, class Id>
+void releaseLight(Light*& light, WorldLights* lights, Id id) {
     if (!light) return;
     auto* old = std::exchange(light, nullptr);
-    auto release = [old, camera, id] {
-        if (camera) camera->removeWorldLight(id, old);
+    auto release = [old, lights, id] {
+        if (lights) lights->removeWorldLight(id, old);
         std::free(old);
     };
     if (!defer(Queue::Release, release)) release();
