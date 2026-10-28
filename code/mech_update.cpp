@@ -5,6 +5,7 @@
 #include "appearance_rng.h"
 #include "Gates/gate.h"
 #include "mc2fmt.h"
+#include "gos_profiler.h"
 
 // MC2_GPU_CULL_LIFECYCLE=1 routes AI canBeSeen() combat gates to GPU-lagged visibility (same env var as objmgr.cpp).
 // Read at static-init like the other readers, before any in-main env application.
@@ -15,6 +16,7 @@ constexpr int GestureGoalFallenBackward = 8;
 
 long BattleMech::update (void)
 {
+    ZoneScopedN("GameLogic.Mech.Update");
     unitAnimation = appearance->simulationAnimation();
     simulationPose = appearance->simPose;
 
@@ -158,7 +160,7 @@ long BattleMech::update (void)
 
 		if (g_moveReconEnabled) { g_moveRecon_movers_total++; g_moveRecon_frame_movers++; }
 		{ MoveReconScope _recon_ctrl(&g_moveRecon_ctrl_ns, &g_moveRecon_frame_ctrl_ns);
-		control.update(this);
+		{ ZoneScopedN("GameLogic.Mech.Control"); control.update(this); }
 		}
 
 		if (!getAwake()) {
@@ -619,7 +621,7 @@ long BattleMech::update (void)
 	// and before the appearance is pushed. No-op unless MC2_FORCE_ALL_VISIBLE.
 	mc2_vis::forceVisibleOverride(appearance, alphaValue);
 
-	appearance->update();
+	{ ZoneScopedN("GameLogic.Mech.SimPose"); appearance->update(); }
 
 
 	

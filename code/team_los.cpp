@@ -8,6 +8,7 @@
 #include <gameos.hpp>
 #include "terrtxm2.h"
 #include <vector>
+#include "gos_profiler.h"
 
 static_assert(mc2::los::kCellHeightMask == static_cast<uint32_t>(MAPCELL_HEIGHT_MASK) &&
               mc2::los::kCellHeightShift == MAPCELL_HEIGHT_SHIFT &&
@@ -175,6 +176,7 @@ bool Team::teamLineOfSight (glm::vec3 tPos, float extRad)
 //---------------------------------------------------------------------------
 bool Team::lineOfSight (float startLocal, long mCellRow, long mCellCol, float endLocal, long tCellRow, long tCellCol, long teamId, float extRad, float startExtRad)
 {
+	ZoneScopedN("GameLogic.LOS.Walk");
 	if ((teamId < 0) || (teamId >= MAX_TEAMS))
 		return true;
 	const mc2::los::Snapshot snap = captureLosSnapshot();
@@ -186,6 +188,7 @@ bool Team::lineOfSight (float startLocal, long mCellRow, long mCellCol, float en
 //---------------------------------------------------------------------------
 bool Team::lineOfSight (glm::vec3 position, glm::vec3 targetPosition, long teamId, float extRad, float startExtRad)
 {
+	ZoneScopedN("GameLogic.LOS.Query");
 	if ((teamId < 0) || (teamId >= MAX_TEAMS))
 		return true;
 	const mc2::los::Snapshot snap = captureLosSnapshot();

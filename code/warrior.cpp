@@ -1404,7 +1404,8 @@ long MechWarrior::runBrain (void) {
 		// ABL-VM-FACTS-1: time the fire, read stmts (execute() return) + state
 		// transitions at exit. Byte-identical when the ABL diag tag is OFF.
 		mc2_abl_trace::FireScope ablFire("warrior", static_cast<int>(vehicleWID));
-		long ablStmts = brain->execute();
+		long ablStmts;
+		{ ZoneScopedN("GameLogic.AI.UnitBrainExecute"); ablStmts = brain->execute(); }
 		ablFire.record(ablStmts, NumStateTransitions);
 		// Well, we'll just set it every frame so it doesn't screw up :)
 		setUseGoalPlan(!MPlayer && (getCommander() != Commander::home));

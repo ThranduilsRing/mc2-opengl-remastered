@@ -42,11 +42,11 @@ FAILS the checker unless it carries `# background-launch: allow <why>`.
 | `tools/perf_snapshot.py` | 105 | `nofocus.spawn` | offscreen |
 | `tools/renderdoc/capture.py` | 144 | `nofocus.run` | offscreen |
 | `tools/tracy_capture_compare.py` | 274 | `subprocess.Popen` **raw, allowed:** Tracy recorder console tool, windowless via nofocus.hidden_kwargs. | offscreen |
-| `tools/tracy_capture_compare.py` | 301 | `nofocus.spawn` | offscreen |
-| `tools/tracy_capture_compare.py` | 341 | `subprocess.run` **raw, allowed:** Tracy csvexport console tool, not the game; windowless via hidden_kwargs | offscreen |
-| `tools/tracy_capture_compare.py` | 376 | `subprocess.run` **raw, allowed:** Tracy csvexport console tool, not the game; windowless via hidden_kwargs | offscreen |
-| `tools/tracy_capture_compare.py` | 412 | `subprocess.run` **raw, allowed:** Tracy csvexport console tool, not the game; windowless via hidden_kwargs | offscreen |
-| `tools/tracy_capture_compare.py` | 465 | `subprocess.run` **raw, allowed:** Tracy csvexport console tool, not the game; windowless via hidden_kwargs | offscreen |
+| `tools/tracy_capture_compare.py` | 303 | `nofocus.spawn` | offscreen |
+| `tools/tracy_capture_compare.py` | 349 | `subprocess.run` **raw, allowed:** Tracy csvexport console tool, not the game; windowless via hidden_kwargs | offscreen |
+| `tools/tracy_capture_compare.py` | 384 | `subprocess.run` **raw, allowed:** Tracy csvexport console tool, not the game; windowless via hidden_kwargs | offscreen |
+| `tools/tracy_capture_compare.py` | 420 | `subprocess.run` **raw, allowed:** Tracy csvexport console tool, not the game; windowless via hidden_kwargs | offscreen |
+| `tools/tracy_capture_compare.py` | 473 | `subprocess.run` **raw, allowed:** Tracy csvexport console tool, not the game; windowless via hidden_kwargs | offscreen |
 
 Total engine launch sites: 38
 

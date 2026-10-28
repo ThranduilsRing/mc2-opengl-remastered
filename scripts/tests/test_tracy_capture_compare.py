@@ -299,3 +299,19 @@ def test_zone_summary_prints_top_zones_and_writes_csv_only_when_asked(monkeypatc
     assert "big" in out and "small" not in out and not list(tmp_path.glob("*.csv"))
     capture.zone_summary(tmp_path / "t.tracy", top=1, csv_out=tmp_path / "t.zones.csv")
     assert (tmp_path / "t.zones.csv").read_text(encoding="utf-8") == table
+
+
+@pytest.mark.parametrize("receipt,expected", [
+    ("[SMOKE v1] event=tick_budget ticks=900\n", 0),
+    ("[SMOKE v1] event=tick_budget ticks=38\n", 1),
+    ("[SMOKE v1] event=tick_budget ticks=900\nCrash Report", 1),
+])
+def test_tick_capture_waits_for_disconnect_and_requires_budget(harness, monkeypatch, receipt, expected):
+    h = harness
+    monkeypatch.setattr(Path, "read_text", lambda *args, **kwargs: receipt)
+    assert capture.capture_trace(h.install, "vk", "mc2_03", 15, h.out, ticks=900) == expected
+    recorder_cmd = h.recorder_spawn.call_args.args[0]
+    game_cmd = h.game_spawn.call_args.args[0]
+    assert "-s" not in recorder_cmd
+    assert game_cmd[-3:] == ["--headless", "--ticks", "900"]
+    assert h.events[-1] == "release"

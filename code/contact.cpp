@@ -42,6 +42,7 @@
 
 #include<gameos.hpp>
 
+#include "gos_profiler.h"
 #include"sensor_trace.h"		// SENSOR-SCAN-FACTS-1 (gated, default-OFF)
 #include "sim_trace.h"
 #include "mc2fmt.h"
@@ -795,6 +796,7 @@ void TeamSensorSystem::update (void) {
 		// scan (gated, default-OFF -> byte-identical). ScanScope resets counters
 		// on entry (when active) and emits one "SENSOR" JSONL frame on dtor.
 		{
+			ZoneScopedN("GameLogic.Sensors.Scan");
 			mc2_sensor_trace::ScanScope _sscope(teamId);
 			if (_sscope.active)
 				mc2_sensor_trace::g_counters.numSensors = numSensors;
@@ -809,12 +811,13 @@ void TeamSensorSystem::update (void) {
 
 		//--------------------------------
 		// Now, update current contacts...
+		{ ZoneScopedN("GameLogic.Sensors.Contacts");
 		for (int i = 0; i < numContactUpdatesPerPass; i++) {
 			if (curContactUpdate >= numSensors)
 				curContactUpdate = 0;
 			sensors[curContactUpdate]->updateContacts();
 			curContactUpdate++;
-		}
+		} }
 	}
 }
 
@@ -1302,8 +1305,8 @@ void SensorSystemManager::removeTeamSensor (long teamId, SensorSystemPtr sensor)
 
 void SensorSystemManager::update (void) 
 {
-	updateEcmEffects();
-	updateSensors();
+	{ ZoneScopedN("GameLogic.Sensors.ECM"); updateEcmEffects(); }
+	{ ZoneScopedN("GameLogic.Sensors.Teams"); updateSensors(); }
 //	updateTeamContactLists();
 }
 
