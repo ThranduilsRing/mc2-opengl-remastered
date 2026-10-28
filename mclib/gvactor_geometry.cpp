@@ -1,5 +1,6 @@
 // GVAppearance: paint schemes, gestures, object/mover parameters, bounds, destruction and node positions.
 // Declared in the class headers; shared names in gvactor_internal.h.
+#include <atomic>
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include "texture_assets.h"
 #include "gvactor_internal.h"
@@ -15,13 +16,13 @@
 #include <string>
 #include <string_view>
 
-extern uint32_t g_mc2FrameCounter;
+extern std::atomic<uint32_t> g_mc2FrameCounter;
 
 // The presentation mesh follows the stock pose without entering simulation or picking.
 void GVAppearance::updateRenderShape()
 {
 	// findMoverByMouse selects vehicles by the stock screen rectangle, not triangles.
-	if (g_mc2FrameCounter == 60 && mc2::gate::get<"MC2_VK_PICK_PROBE">())
+	if (g_mc2FrameCounter.load(std::memory_order_relaxed) == 60 && mc2::gate::get<"MC2_VK_PICK_PROBE">())
 		mc2::fmt::print_out("[VEHICLE_PICK] appearance={} pos=({:.2f},{:.2f}) bounds=({:.6f},{:.6f},{:.6f},{:.6f})\n",
 			appearType->name, position.x, position.y, upperLeft.x, upperLeft.y, lowerRight.x, lowerRight.y);
 	if (!appearType->renderLods[0] || status == OBJECT_STATUS_DESTROYED || status == OBJECT_STATUS_DISABLED) {

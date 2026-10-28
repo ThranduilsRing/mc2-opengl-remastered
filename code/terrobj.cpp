@@ -14,6 +14,7 @@
 
 #ifndef MCLIB_H
 #include"mclib.h"
+#include <atomic>
 #endif
 
 #ifndef TERROBJ_H
@@ -78,7 +79,7 @@
 // gameobj.cpp:104). Counters defined here because the gate lives in this TU;
 // objmgr.cpp reads them via the accessors declared in static_update_counters.h.
 //---------------------------------------------------------------------------
-extern uint32_t g_mc2FrameCounter;  // defined in mclib/tgl.cpp:3718
+extern std::atomic<uint32_t> g_mc2FrameCounter;  // defined in mclib/tgl.cpp:3718
 
 // Std row: unset reads the row default, "0"/"false"/"off"/"no" disable, anything else enables.
 // Do NOT regress to a presence test -- that would treat =0 as ENABLED (the GPU_OBJECTS class of bug).
@@ -866,7 +867,7 @@ long TerrainObject::update (void) {
 					// Readback uncertain: CPU recalcBounds is authoritative.
 					// FRAME-JOBS-1: if workers already computed bounds this frame, use cached result.
 					// frameJobsEnabled() is false by default — this branch costs one bool read only.
-					if (frameJobsEnabled() && appearance->boundsFrame == g_mc2FrameCounter) {
+					if (frameJobsEnabled() && appearance->boundsFrame == g_mc2FrameCounter.load(std::memory_order_relaxed)) {
 						inView = appearance->inView;
 					} else {
 						inView = appearance->recalcBounds();
@@ -875,7 +876,7 @@ long TerrainObject::update (void) {
 			} else {
 				// FRAME-JOBS-1: if workers already computed bounds this frame, use cached result.
 				// frameJobsEnabled() is false by default — this branch costs one bool read only.
-				if (frameJobsEnabled() && appearance->boundsFrame == g_mc2FrameCounter) {
+				if (frameJobsEnabled() && appearance->boundsFrame == g_mc2FrameCounter.load(std::memory_order_relaxed)) {
 					inView = appearance->inView;
 				} else {
 					inView = appearance->recalcBounds();
@@ -944,7 +945,7 @@ long TerrainObject::update (void) {
 					++g_routeTouchByClass[_apprClass];
 					if (s_staticUpdateTrace) {
 						MC2_DIAGF("[STATIC_UPDATE v1] event=skip frame=%u obj=%p class=0x%02lx\n",
-							g_mc2FrameCounter, static_cast<void*>(this), _apprClass);
+							g_mc2FrameCounter.load(std::memory_order_relaxed), static_cast<void*>(this), _apprClass);
 						fflush(stdout);
 					}
 					appearance->touch();  // Stage 3.C: advance lastTurnTransformed

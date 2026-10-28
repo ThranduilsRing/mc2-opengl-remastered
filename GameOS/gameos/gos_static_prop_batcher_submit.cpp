@@ -1,5 +1,6 @@
 // GpuStaticPropBatcher: submit, submitMultiShape, the bucket upload, the V6 array build, the depth prepass and the executor apply-state hook.
 // Declared in the class headers; shared names in gos_static_prop_batcher_internal.h.
+#include <atomic>
 #include "gos_static_prop_batcher_internal.h"
 #include "mc2fmt.h"
 
@@ -439,7 +440,7 @@ bool GpuStaticPropBatcher::submitMultiShape(TG_MultiShape* multi,
     // state, the right fix is to re-stamp the row at update() time rather than
     // re-gather here, and this gate should be reconsidered rather than defended.
     // ------------------------------------------------------------------
-    const bool cacheFresh  = (multi->cachedFrame_ == g_mc2FrameCounter);
+    const bool cacheFresh  = (multi->cachedFrame_ == g_mc2FrameCounter.load(std::memory_order_relaxed));
     const bool cacheSet    = (multi->cachedGpuLightIndex_ != 0xFFFFFFFFu);
 
     uint32_t lightDataIndex = 0;
@@ -469,7 +470,7 @@ bool GpuStaticPropBatcher::submitMultiShape(TG_MultiShape* multi,
                         ? const_cast<TG_TypeShape*>(ts0)->getNodeId() : "<unnamed>",
                     (callerName && callerName[0]) ? callerName : "<unknown>",
                     multi->cachedGpuLightIndex_, multi->cachedFrame_,
-                    g_mc2FrameCounter,
+                    g_mc2FrameCounter.load(std::memory_order_relaxed),
                     static_cast<unsigned long long>(s_counters.mono_stale_light_row_regathered));
                 std::fflush(stderr);
             }
@@ -499,7 +500,7 @@ bool GpuStaticPropBatcher::submitMultiShape(TG_MultiShape* multi,
                 "cachedIndex=%u cachedFrame=%u currentFrame=%u "
                 "(no SHAPE_NODE leaf to gather through; actor dropped)\n",
                 (callerName && callerName[0]) ? callerName : "<unknown>",
-                multi->cachedGpuLightIndex_, multi->cachedFrame_, g_mc2FrameCounter);
+                multi->cachedGpuLightIndex_, multi->cachedFrame_, g_mc2FrameCounter.load(std::memory_order_relaxed));
             std::fflush(stderr);
         }
         return false;
@@ -524,7 +525,7 @@ bool GpuStaticPropBatcher::submitMultiShape(TG_MultiShape* multi,
                 "actor dropped)\n",
                 (callerName && callerName[0]) ? callerName : "<unknown>",
                 lightDataIndex, mc2::vkLights::getLightStructCount(),
-                g_mc2FrameCounter);
+                g_mc2FrameCounter.load(std::memory_order_relaxed));
             std::fflush(stderr);
         }
         return false;

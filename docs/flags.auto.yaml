@@ -3,9 +3,9 @@
 # Where each gate is read, what the smoke runner forwards and what tier1_env_vars.md says are not here: ask
 # tools/repo_intel (env_var, gate_status), which scan the sources.
 generator_version: "3.0.0"
-gate_count: 758
+gate_count: 756
 registry_entry_count: 150
-verified_count: 718
+verified_count: 716
 flags:
   - name: MC2_ABL_ARG_GUARD
     kind: Bool
@@ -3230,22 +3230,6 @@ flags:
     default: true
     rule: Lead0Kill
     owner: terrain
-    doc: ""
-    smoke_passthrough: true
-    verified: true
-  - name: MC2_R2B_STATIC_NATURAL_TRACE
-    kind: Bool
-    default: false
-    rule: Presence
-    owner: code
-    doc: ""
-    smoke_passthrough: true
-    verified: true
-  - name: MC2_R2B_TOUCH_PRESERVE
-    kind: Bool
-    default: true
-    rule: Lead0Kill
-    owner: code
     doc: ""
     smoke_passthrough: true
     verified: true

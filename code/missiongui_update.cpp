@@ -1,5 +1,6 @@
 // MissionInterfaceManager: the per-frame update() and the hover/target pick (updateTarget).
 // Declared in the class headers; shared names in missiongui_shared_internal.h.
+#include <atomic>
 #include "missiongui_shared_internal.h"
 #include "mc2fmt.h"
 #include "cursor_world_pick.h"
@@ -138,13 +139,13 @@ void MissionInterfaceManager::update (void)
 	{
 		static const long s_bootPaused = static_cast<long>(mc2::gate::get<"MC2_BOOT_PAUSED">());
 		if (s_bootPaused > 0) {
-			extern uint32_t g_mc2FrameCounter;
+			extern std::atomic<uint32_t> g_mc2FrameCounter;
 			static bool s_done = false;
 			// Wait out the intro swoop: pausing while eye->inMovieMode freezes
 			// the swoop itself and the HUD (drawGUIOn) never arrives — the pause
 			// WINDOW only draws on the live HUD. Trigger at the first frame >= N
 			// that is NOT movie mode.
-			if (!s_done && static_cast<long>(g_mc2FrameCounter) >= s_bootPaused && !isPaused() &&
+			if (!s_done && static_cast<long>(g_mc2FrameCounter.load(std::memory_order_relaxed)) >= s_bootPaused && !isPaused() &&
 				eye && !eye->inMovieMode) {
 				s_done = true;
 				togglePause();
@@ -182,7 +183,7 @@ void MissionInterfaceManager::update (void)
 		static const std::string s_swText = mc2::gate::str<"MC2_DEBUG_VIEW_SWEEP">();   // "" when unset or empty
 		static const char* s_sw = s_swText.c_str();
 		if (s_sw && s_sw[0]) {
-			extern uint32_t g_mc2FrameCounter;
+			extern std::atomic<uint32_t> g_mc2FrameCounter;
 			static long s_start = 600, s_settle = 30;
 			static int  s_stage = -1;   // monotonic: 2*v = view set, 2*v+1 = shot, 12 = done
 			static bool s_init = false;
@@ -192,7 +193,7 @@ void MissionInterfaceManager::update (void)
 				if (sscanf(s_sw, "%ld,%ld", &a, &b) >= 1 && a > 0) s_start = a;
 				if (b >= 5) s_settle = b;
 			}
-			const long f = static_cast<long>(g_mc2FrameCounter);
+			const long f = static_cast<long>(g_mc2FrameCounter.load(std::memory_order_relaxed));
 			if (s_stage < 12 && f >= s_start) {
 				const long per = s_settle + 2;
 				const long rel = f - s_start;

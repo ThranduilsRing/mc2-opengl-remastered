@@ -3,6 +3,7 @@
 #ifndef GAMEOS_GAMEOSMAIN_INTERNAL_H
 #define GAMEOS_GAMEOSMAIN_INTERNAL_H
 
+#include <atomic>
 #include "gameos.hpp"
 #include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
 #include "gos_render.h"
@@ -140,7 +141,7 @@ extern "C" unsigned int       mc2_vfx_getRecordsPerFlushMax();
 extern "C" unsigned long long mc2_vfx_getTrailSpawnTotal();
 extern "C" unsigned long long mc2_vfx_getTrailHeadTotal();
 
-extern uint32_t g_mc2FrameCounter;
+extern std::atomic<uint32_t> g_mc2FrameCounter;
 extern uint32_t g_mc2RenderFrame;
 extern void gos_GetTerrainCameraPos(float* x, float* y, float* z);
 extern void mc2_executor_own_begin_postprocess(gosPostProcess* pp);

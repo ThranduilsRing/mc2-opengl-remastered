@@ -3,6 +3,7 @@
 // WHAT: engine Vulkan bring-up on the host's window (initVulkanBackend) and the per-frame present-or-swap (presentOrSwap).
 // WHY: the editor viewport must run the same present path as the game; a second copy would diverge the way the editor's old forked
 // render loop did. The game's gameosmain and the editor's EditorGameOS both call these.
+#include <atomic>
 #include "gos_host_vk.h"
 #include "mc2fmt.h"
 #include "gos_render.h"
@@ -27,7 +28,7 @@
 
 extern SDL_Window* g_sdl_window;
 extern uint32_t g_mc2FxFireCaptureFrame;   // mclib/tgl.cpp
-extern uint32_t g_mc2FrameCounter;         // mclib/tgl.cpp: logic-pass epoch
+extern std::atomic<uint32_t> g_mc2FrameCounter;         // mclib/tgl.cpp: logic-pass epoch
 extern uint32_t g_mc2RenderFrame;          // mclib/tgl.cpp: render-frame clock, once per presented frame
 
 #if defined(MC2_VULKAN) && defined(MC2_VULKAN_ISLAND)
@@ -143,7 +144,7 @@ void initVulkanBackend(graphics::RenderWindowHandle win, int w, int h) {
 
 namespace gos { namespace host {
 
-void advanceFrameCounter() { ++g_mc2FrameCounter; ++g_mc2RenderFrame; }
+void advanceFrameCounter() { g_mc2FrameCounter.fetch_add(1, std::memory_order_relaxed); ++g_mc2RenderFrame; }
 
 void shutdownVulkanBackend() {
 #ifdef MC2_VULKAN

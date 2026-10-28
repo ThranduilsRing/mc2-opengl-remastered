@@ -1,5 +1,6 @@
 // MissionInterfaceManager: UI-command channel: file polling, verb dispatch and the ack epilogue.
 // Declared in missiongui.h; shared names in missiongui_internal.h.
+#include <atomic>
 #include "missiongui_internal.h"
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"   // str<>()
@@ -186,11 +187,11 @@ void MissionInterfaceManager::processUiCommandChannel()
 			// scenario_runner's at_frame / capture-by-frame gates had to be
 			// wall-clock approximations ((now - t_live) * fps). With this a
 			// driver can gate exactly.
-			extern uint32_t g_mc2FrameCounter;
+			extern std::atomic<uint32_t> g_mc2FrameCounter;
 			if (note.empty())
-				mc2::fmt::print(ack, "[f={:d}] {} -> {}\n", mc2::fmt::as_u32(static_cast<unsigned long>(g_mc2FrameCounter)), line.c_str(), mc2::fmt::safe(result));
+				mc2::fmt::print(ack, "[f={:d}] {} -> {}\n", mc2::fmt::as_u32(static_cast<unsigned long>(g_mc2FrameCounter.load(std::memory_order_relaxed))), line.c_str(), mc2::fmt::safe(result));
 			else
-				mc2::fmt::print(ack, "[f={:d}] {} -> {} ({})\n", mc2::fmt::as_u32(static_cast<unsigned long>(g_mc2FrameCounter)), line.c_str(), mc2::fmt::safe(result), note.c_str());
+				mc2::fmt::print(ack, "[f={:d}] {} -> {} ({})\n", mc2::fmt::as_u32(static_cast<unsigned long>(g_mc2FrameCounter.load(std::memory_order_relaxed))), line.c_str(), mc2::fmt::safe(result), note.c_str());
 			if (!extra.empty())
 				mc2::fmt::print(ack, "{}", extra.c_str());
 		}
@@ -812,12 +813,12 @@ bool MissionInterfaceManager::uiCmdReadback(UiCmdCtx& c)
 	// GAMEPLAY-DRIVER-2: mission-level readback. Lets a driver gate on real
 	// mission state instead of wall-clock guesses.
 	else if (line == "mission_status") {
-		extern uint32_t g_mc2FrameCounter;
+		extern std::atomic<uint32_t> g_mc2FrameCounter;
 		char b[320];
 		// FREEZE-MOVERS-1: frozen/frozenAt ride the EXISTING readback rather
 		// than adding a verb, so assert_mission can gate an A/B arm on "the
 		// movers really were pinned, at the frame I asked for".
-		mc2::fmt::to_buf(b, "  frame={:d} scenarioTime={:.2f} simSpeed={:.2f} fixedTimestep={:d} status={:d} paused={:d} movers={:d} frozen={:d} frozenAt={:d} missionFrame={:d}\n", mc2::fmt::as_u32(static_cast<unsigned long>(g_mc2FrameCounter)), static_cast<double>(scenarioTime), static_cast<double>(simSpeedGetMultiplier()), mc2::fmt::as_i32(SmokeMode::fixedTimestepEnabled() ? 1 : 0), mc2::fmt::as_i32(mission ? mission->getStatus() : -1L), mc2::fmt::as_i32(isPaused() ? 1 : 0), mc2::fmt::as_i32(ObjectManager ? ObjectManager->getNumMovers() : -1L), mc2::fmt::as_i32(mc2FreezeMoversActive()), mc2::fmt::as_i32(mc2FreezeMoversEngagedAt()), mc2::fmt::as_i32(mc2FreezeMoversMissionFrame()));
+		mc2::fmt::to_buf(b, "  frame={:d} scenarioTime={:.2f} simSpeed={:.2f} fixedTimestep={:d} status={:d} paused={:d} movers={:d} frozen={:d} frozenAt={:d} missionFrame={:d}\n", mc2::fmt::as_u32(static_cast<unsigned long>(g_mc2FrameCounter.load(std::memory_order_relaxed))), static_cast<double>(scenarioTime), static_cast<double>(simSpeedGetMultiplier()), mc2::fmt::as_i32(SmokeMode::fixedTimestepEnabled() ? 1 : 0), mc2::fmt::as_i32(mission ? mission->getStatus() : -1L), mc2::fmt::as_i32(isPaused() ? 1 : 0), mc2::fmt::as_i32(ObjectManager ? ObjectManager->getNumMovers() : -1L), mc2::fmt::as_i32(mc2FreezeMoversActive()), mc2::fmt::as_i32(mc2FreezeMoversEngagedAt()), mc2::fmt::as_i32(mc2FreezeMoversMissionFrame()));
 		extra += b;
 		if (Team::home) {
 			mc2::fmt::to_buf(b, "  objectives: status={:d}\n", mc2::fmt::as_i32(static_cast<int>(Team::home->objectives.Status())));

@@ -1,5 +1,6 @@
 #include "icon_registry.h"
 #include "vk_scene_renderer.h"
+#include <atomic>
 #include "render_submissions.h"
 // Game main: the per-frame renderer update, engine termination and DoGameLogic.
 // Declared in the class headers; shared names in mechcmd2_internal.h.
@@ -599,10 +600,10 @@ void __stdcall DoGameLogic()
 		{
 			// S10_BARRAGE=N: one 3 s strike per frame from frame 420 on (N in all) so the strike pool wraps and a slot that held a finished
 			// round is re-initialised; [ALLOC_ART] reinit_freed_appearance counts the appearances that re-init freed (was an orphan).
-			extern uint32_t g_mc2FrameCounter;
+			extern std::atomic<uint32_t> g_mc2FrameCounter;
 			static int s_barrage = 0;
 			static const int s_barrageN = std::getenv("S10_BARRAGE") ? std::atoi(std::getenv("S10_BARRAGE")) : 0;
-			if (s_barrage < s_barrageN && g_mc2FrameCounter >= 420 && !loadInMissionSave && mission && eye)
+			if (s_barrage < s_barrageN && g_mc2FrameCounter.load(std::memory_order_relaxed) >= 420 && !loadInMissionSave && mission && eye)
 			{
 				glm::vec3 strikeAt = eye->getPosition();
 				IfaceCallStrike(ARTILLERY_LARGE, &strikeAt, nullptr, true, false, 3.0f);
@@ -619,7 +620,7 @@ void __stdcall DoGameLogic()
 			}
 		}
 		{
-			extern uint32_t g_mc2FrameCounter;
+			extern std::atomic<uint32_t> g_mc2FrameCounter;
 			extern bool saveInMissionSave;
 			static int s_cycle = 0;
 			static uint32_t s_nextAt = 420;
@@ -628,14 +629,14 @@ void __stdcall DoGameLogic()
 			static const int s_cycles = std::getenv("S10_RELOADS") ? std::atoi(std::getenv("S10_RELOADS")) : 8;
 			static const bool s_strike = !std::getenv("S10_STRIKE") || std::atoi(std::getenv("S10_STRIKE")) != 0;
 			static const bool s_reload = !std::getenv("S10_RELOAD") || std::atoi(std::getenv("S10_RELOAD")) != 0;
-			if (s_cycle < s_cycles && g_mc2FrameCounter >= s_nextAt && !loadInMissionSave && mission && eye)
+			if (s_cycle < s_cycles && g_mc2FrameCounter.load(std::memory_order_relaxed) >= s_nextAt && !loadInMissionSave && mission && eye)
 			{
 				extern void mc2AllocStatsSnapshot(long long*, long long*);
 				long long liveTick = 0, bytesTick = 0;
 				mc2AllocStatsSnapshot(&liveTick, &bytesTick);
 				extern unsigned g_mc2ArtCreated, g_mc2ArtReinit, g_mc2ArtReinitFreed;
 				mc2::fmt::print_out("[ALLOC_ART] n={} created={} reinit={} reinit_freed_appearance={}\n", mc2::fmt::as_i32(s_cycle), mc2::fmt::as_u32(g_mc2ArtCreated), mc2::fmt::as_u32(g_mc2ArtReinit), mc2::fmt::as_u32(g_mc2ArtReinitFreed));
-				mc2::fmt::print_out("[ALLOC_TICK] n={} frame={} live={} bytes={}\n", mc2::fmt::as_i32(s_cycle), mc2::fmt::as_i64(g_mc2FrameCounter), mc2::fmt::as_i64(liveTick), mc2::fmt::as_i64(bytesTick));
+				mc2::fmt::print_out("[ALLOC_TICK] n={} frame={} live={} bytes={}\n", mc2::fmt::as_i32(s_cycle), mc2::fmt::as_i64(g_mc2FrameCounter.load(std::memory_order_relaxed)), mc2::fmt::as_i64(liveTick), mc2::fmt::as_i64(bytesTick));
 				if (s_strike)
 				{
 					glm::vec3 strikeAt = eye->getPosition();
@@ -646,7 +647,7 @@ void __stdcall DoGameLogic()
 					saveInMissionSave = true;
 				else if (s_reload)
 					loadInMissionSave = true;
-				s_nextAt = g_mc2FrameCounter + 90;
+				s_nextAt = g_mc2FrameCounter.load(std::memory_order_relaxed) + 90;
 				++s_cycle;
 			}
 		}

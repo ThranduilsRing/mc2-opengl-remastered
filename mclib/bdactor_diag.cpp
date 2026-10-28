@@ -1,5 +1,6 @@
 // BldgAppearance / TreeAppearance: stable-light-skip, lightbridge and touch-entry diagnostics, light-slot cardinality trace, prop light-latch diag.
 // Declared in the class headers; shared names in bdactor_internal.h.
+#include <atomic>
 #include "bdactor_internal.h"
 #include "mc2fmt.h"
 
@@ -24,7 +25,7 @@
 // baked table, or scale with INSTANCES (K). Pure counting; emits ONE line per
 // map at mission_ready (NOT per-frame). All txmmgr numbers read via accessor
 // free fns (defined mclib/txmmgr.cpp).
-extern uint32_t g_mc2FrameCounter;  // mclib/tgl.cpp
+extern std::atomic<uint32_t> g_mc2FrameCounter;  // mclib/tgl.cpp
 bool mc2StableLightSkipEnabled() {
     static const bool s_enabled = mc2::gate::get<"MC2_STABLE_LIGHT_SKIP">();
     return s_enabled;
@@ -116,7 +117,7 @@ void recordStableLightSkipDiag(bool armed, bool eligible,
         return;
 
     s_stableLightSkipDiag.enabled = true;
-    noteStableLightSkipFrame(g_mc2FrameCounter);
+    noteStableLightSkipFrame(g_mc2FrameCounter.load(std::memory_order_relaxed));
 
     if (armed)
         ++s_stableLightSkipDiag.armed;
@@ -214,7 +215,7 @@ void lbssRecordBldg(bool eligible, bool taken,
     bool blk_idx, bool blk_gen, bool blk_noelig)
 {
     if (!mc2LightbridgeStableSkipDiagEnabled()) return;
-    lbssDiagRollFrame(g_mc2FrameCounter);
+    lbssDiagRollFrame(g_mc2FrameCounter.load(std::memory_order_relaxed));
     ++s_lbssDiag.b_armed;   // always called when armed (caller gate)
     if (eligible) ++s_lbssDiag.b_eligible;
     if (taken)    ++s_lbssDiag.b_taken;
@@ -226,7 +227,7 @@ void lbssRecordBldg(bool eligible, bool taken,
 void lbssRecordTree(bool taken, bool blk_idx)
 {
     if (!mc2LightbridgeStableSkipDiagEnabled()) return;
-    lbssDiagRollFrame(g_mc2FrameCounter);
+    lbssDiagRollFrame(g_mc2FrameCounter.load(std::memory_order_relaxed));
     ++s_lbssDiag.t_total;
     if (taken)   ++s_lbssDiag.t_taken;
     if (blk_idx) ++s_lbssDiag.t_blk_idx;
@@ -307,12 +308,12 @@ namespace mc2_lightslot_trace {
                                       uint32_t lightDataIndex) {
         initFromEnv();
         if (!s_enabled || s_emitted) return;
-        if (g_mc2FrameCounter != s_accFrame) {
+        if (g_mc2FrameCounter.load(std::memory_order_relaxed) != s_accFrame) {
             // Frame boundary: the just-completed frame (s_accFrame) holds a
             // full snapshot of every static tree touched. Try to emit from it
             // BEFORE clearing for the new frame.
             maybeEmit();
-            s_accFrame = g_mc2FrameCounter;
+            s_accFrame = g_mc2FrameCounter.load(std::memory_order_relaxed);
             s_instances = 0;
             s_distinctSlots.clear();
             s_types.clear();

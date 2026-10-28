@@ -120,7 +120,7 @@ extern bool reloadBounds;
 extern float	metersPerWorldUnit;
 extern bool MLRVertexLimitReached;
 
-extern uint32_t g_mc2FrameCounter;  // mclib/tgl.cpp
+extern std::atomic<uint32_t> g_mc2FrameCounter;  // mclib/tgl.cpp
 extern TouchEntryDiag s_touchEntryDiag;
 extern MidLevelRenderer::MLRClipper * theClipper;
 extern std::atomic<uint32_t> s_animTypeIdleNowStatic;

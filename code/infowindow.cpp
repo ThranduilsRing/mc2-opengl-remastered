@@ -1,5 +1,6 @@
 #include <algorithm>
 #include "Gates/preferences_legacy.h"
+#include <atomic>
 #include "../GameOS/gameos/ui_texture.h"
 #include "../mclib/texture_assets.h"
 #define INFOWINDOW_CPP
@@ -806,8 +807,8 @@ void InfoWindow::renderImGui()
 				static const bool s_scrollPin = mc2::gate::get<"MC2_BOOT_INFO_SCROLL">();
 				if ( s_bootInfoScroll > 0 && s_scrollPin )
 				{
-					extern uint32_t g_mc2FrameCounter;
-					if ( static_cast<long>(g_mc2FrameCounter) >= s_bootInfoScroll + 3000 )
+					extern std::atomic<uint32_t> g_mc2FrameCounter;
+					if ( static_cast<long>(g_mc2FrameCounter.load(std::memory_order_relaxed)) >= s_bootInfoScroll + 3000 )
 						ImGui::SetScrollY( ImGui::GetScrollMaxY() );
 				}
 			}
@@ -921,8 +922,8 @@ void InfoWindow::render()
 		static const bool s_scrollPin = mc2::gate::get<"MC2_BOOT_INFO_SCROLL">();
 		if ( s_bootInfoScroll > 0 && s_scrollPin )
 		{
-			extern uint32_t g_mc2FrameCounter;
-			if ( static_cast<long>(g_mc2FrameCounter) >= s_bootInfoScroll + 3000 )
+			extern std::atomic<uint32_t> g_mc2FrameCounter;
+			if ( static_cast<long>(g_mc2FrameCounter.load(std::memory_order_relaxed)) >= s_bootInfoScroll + 3000 )
 				setScrollPos( 1000000 );
 		}
 	}

@@ -1,5 +1,6 @@
 // BldgAppearance / TreeAppearance: TreeAppearance static registry: touch*, registerStatic, prewarm.
 // Declared in the class headers; shared names in bdactor_internal.h.
+#include <atomic>
 #include "bdactor_internal.h"
 #include "../RenderCore/axis_convert.h"
 #include "mc2fmt.h"
@@ -10,14 +11,14 @@ void TreeAppearance::touch()
 	// FRAME-JOBS-2F: if touchSerialCommit() already ran this frame (split path active),
 	// skip redundant Path B work. See BldgAppearance::touch for full contract.
 	if (mc2FrameJobsTouchDiagEnabled()) {
-		touchEntryDiagRollFrame(g_mc2FrameCounter);
-		if (touchSerialCommitFrame == g_mc2FrameCounter) {
+		touchEntryDiagRollFrame(g_mc2FrameCounter.load(std::memory_order_relaxed));
+		if (touchSerialCommitFrame == g_mc2FrameCounter.load(std::memory_order_relaxed)) {
 			++s_touchEntryDiag.legacy_skipped;
 			return;
 		}
 		++s_touchEntryDiag.legacy_ran_nosplit;
 	} else {
-		if (touchSerialCommitFrame == g_mc2FrameCounter)
+		if (touchSerialCommitFrame == g_mc2FrameCounter.load(std::memory_order_relaxed))
 			return;
 	}
 
@@ -39,7 +40,7 @@ void TreeAppearance::touch()
 		// lightDataIndex is still valid on the GPU (same baked-prefix persistence
 		// invariant), so the resubmit below is redundant. Still call treeShape->
 		// Touch() (advance lastTurnTransformed) — skip only the expensive resubmit.
-		// Gate: mc2StableLightSkipTouchEnabled() (default OFF => resubmit still runs).
+		// Gate: mc2StableLightSkipTouchEnabled() (default ON => touch skip preserves registry liveness).
 		{
 			const bool treeRegistered = (staticReg[activeLOD].registered && staticReg[activeLOD].recipeIndex >= 0);
 			const bool treeIdxValid   = (staticReg[activeLOD].lightDataIndex != 0xFFFFFFFFu);
@@ -47,7 +48,7 @@ void TreeAppearance::touch()
 			if (mc2StableLightSkipTouchEnabled() && mc2LightbridgeStableSkipEnabled() && treeEligible) {
 				lbssRecordTree(/*skipTaken=*/true, /*blk_idx=*/false);
 				treeShape->Touch();
-				treeShape->setCachedFrame(g_mc2FrameCounter);   // the flush drops ranges not stamped this frame
+				treeShape->setCachedFrame(g_mc2FrameCounter.load(std::memory_order_relaxed));   // the flush drops ranges not stamped this frame
 				return;
 			}
 		}
@@ -87,9 +88,9 @@ void TreeAppearance::touchSerialCommit()
 {
 	// FRAME-JOBS-2F: stamp this frame unconditionally so touch() (Path B, terrain object
 	// loop) returns immediately. Set BEFORE any early returns including stable-skip.
-	touchSerialCommitFrame = g_mc2FrameCounter;
+	touchSerialCommitFrame = g_mc2FrameCounter.load(std::memory_order_relaxed);
 	if (mc2FrameJobsTouchDiagEnabled()) {
-		touchEntryDiagRollFrame(g_mc2FrameCounter);
+		touchEntryDiagRollFrame(g_mc2FrameCounter.load(std::memory_order_relaxed));
 		++s_touchEntryDiag.serial_commit_hits;
 	}
 
@@ -114,7 +115,7 @@ void TreeAppearance::touchSerialCommit()
 		const bool registered = (staticReg[activeLOD].registered && staticReg[activeLOD].recipeIndex >= 0);
 		const bool skipTaken  = (registered && indexValid);
 		lbssRecordTree(skipTaken, registered && !indexValid);
-		if (skipTaken) { treeShape->setCachedFrame(g_mc2FrameCounter); return; }   // see the touch-skip above
+		if (skipTaken) { treeShape->setCachedFrame(g_mc2FrameCounter.load(std::memory_order_relaxed)); return; }   // see the touch-skip above
 	}
 
 	extern bool mc2LightBakeEnabled();

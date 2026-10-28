@@ -1,5 +1,6 @@
 #include "footprints.h"
 #include "vk_scene_renderer.h"
+#include <atomic>
 #include "effect_resources.h"
 #include "render_submissions.h"
 //******************************************************************************************
@@ -610,7 +611,7 @@ void simSpeedResetToSeed()
 
 // CP-1: frame counter used in the per-mission shadow reset probe.
 // Defined in mclib/tgl.cpp; incremented by GameOS frame-end path.
-extern uint32_t g_mc2FrameCounter;
+extern std::atomic<uint32_t> g_mc2FrameCounter;
 
 //----------------------------------------------------------------------------------
 // Static globals

@@ -1,5 +1,6 @@
 // MissionInterfaceManager: test-only fixtures and determinism verbs (spawn, teleport, freeze_movers, set_light, animate).
 // Declared in missiongui.h; shared names in missiongui_internal.h.
+#include <atomic>
 #include "missiongui_internal.h"
 #include "terrobj.h"
 #include "../mclib/texture_assets.h"
@@ -55,7 +56,7 @@ static long s_freezeMoversBase    = 0;
 // for an unmangled `g_mc2FrameCounter`, while the definition (mechcmd2.cpp) has
 // C++ linkage (?g_mc2FrameCounter@@3IA). That mismatch is a link error, not a
 // compile error, so it only surfaces at the very end of a full build.
-extern uint32_t g_mc2FrameCounter;
+extern std::atomic<uint32_t> g_mc2FrameCounter;
 
 // Consulted by code/mission.cpp (the sim branch) and by the residual-drift
 // sites in mclib/mech3d.cpp + mclib/gvactor.cpp. Self-latching so it does not
@@ -63,7 +64,7 @@ extern uint32_t g_mc2FrameCounter;
 // Frames since Mission::init. THIS is what `freeze_movers on <frame>` counts.
 extern "C" long mc2FreezeMoversMissionFrame()
 {
-	return static_cast<long>(g_mc2FrameCounter) - s_freezeMoversBase;
+	return static_cast<long>(g_mc2FrameCounter.load(std::memory_order_relaxed)) - s_freezeMoversBase;
 }
 
 // Called from Mission::init so a freeze is scoped to the mission that armed it
@@ -72,7 +73,7 @@ extern "C" long mc2FreezeMoversMissionFrame()
 // frozen, with no command in mission B's own session having asked for it.
 extern "C" void mc2FreezeMoversMissionReset()
 {
-	s_freezeMoversBase    = static_cast<long>(g_mc2FrameCounter);
+	s_freezeMoversBase    = static_cast<long>(g_mc2FrameCounter.load(std::memory_order_relaxed));
 	s_freezeMoversOn      = false;
 	s_freezeMoversEngaged = -1;
 	s_freezeMoversAt      = -2;   // re-read env so the gate re-arms per mission
@@ -457,7 +458,7 @@ bool MissionInterfaceManager::uiCmdFixture(UiCmdCtx& c)
 	// design note at the top of this file.
 	else if (line.compare(0, 13, "freeze_movers") == 0 &&
 			 (line.size() == 13 || line[13] == ' ')) {
-		extern uint32_t g_mc2FrameCounter;
+		extern std::atomic<uint32_t> g_mc2FrameCounter;
 		char sub[32] = {0};
 		long atFrame = -1;
 		const int nf = (line.size() > 14)
@@ -477,7 +478,7 @@ bool MissionInterfaceManager::uiCmdFixture(UiCmdCtx& c)
 				mc2::fmt::to_buf(b, "frozen NOW at mission frame {:d} -- not cross-build reproducible; use `freeze_movers on <frame>` for that", mc2::fmt::as_i32(mc2FreezeMoversEngagedAt()));
 			note = b;
 		} else if (s == "status") {
-			mc2::fmt::to_buf(b, "active={:d} armedAt={:d} engagedAt={:d} missionFrame={:d} absFrame={:d}", mc2::fmt::as_i32(mc2FreezeMoversActive()), mc2::fmt::as_i32(mc2FreezeMoversArmedAt()), mc2::fmt::as_i32(mc2FreezeMoversEngagedAt()), mc2::fmt::as_i32(mc2FreezeMoversMissionFrame()), mc2::fmt::as_u32(static_cast<unsigned long>(g_mc2FrameCounter)));
+			mc2::fmt::to_buf(b, "active={:d} armedAt={:d} engagedAt={:d} missionFrame={:d} absFrame={:d}", mc2::fmt::as_i32(mc2FreezeMoversActive()), mc2::fmt::as_i32(mc2FreezeMoversArmedAt()), mc2::fmt::as_i32(mc2FreezeMoversEngagedAt()), mc2::fmt::as_i32(mc2FreezeMoversMissionFrame()), mc2::fmt::as_u32(static_cast<unsigned long>(g_mc2FrameCounter.load(std::memory_order_relaxed))));
 			note = b;
 			result = "ok";
 		} else {

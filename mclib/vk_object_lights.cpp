@@ -1,5 +1,6 @@
 // Vulkan CPU object-light rows, baked static slots and per-frame dedup caches.
 // Declared in the class headers; shared names in render_scene_support.h.
+#include <atomic>
 #include "render_scene_support.h"
 #include "vk_object_lights.h"
 #include <optional>
@@ -119,7 +120,7 @@ namespace {
         const DWORD numLights = TG_Shape::s_numLights;
 
         uint64_t h = 0xcbf29ce484222325ULL;
-        h = fnv1a_64_u32(h, g_mc2FrameCounter);
+        h = fnv1a_64_u32(h, g_mc2FrameCounter.load(std::memory_order_relaxed));
         h = fnv1a_64_u32(h, numLights);
 
         const uintptr_t listPtr = reinterpret_cast<uintptr_t>(listOfLights);
@@ -526,9 +527,9 @@ uint32_t mc2::vkLights::addLightDataStructureWithPerActorColor(TG_HWLightsData* 
     // recursive_mutex allows the nested call to re-acquire on the same thread.
     std::lock_guard<std::recursive_mutex> _lk(s_lightDataMapMu);
 
-    if (s_sceneLightTemplateFrame != g_mc2FrameCounter) {
+    if (s_sceneLightTemplateFrame != g_mc2FrameCounter.load(std::memory_order_relaxed)) {
         s_sceneLightTemplateMap.clear();
-        s_sceneLightTemplateFrame = g_mc2FrameCounter;
+        s_sceneLightTemplateFrame = g_mc2FrameCounter.load(std::memory_order_relaxed);
     }
 
     const auto actorLightSource = firstActiveLightSourceIndex();
@@ -596,7 +597,7 @@ void mc2::vkLights::resetLightData()
 {
     // [LIGHTBRIDGE v1] frame-start boundary: flush the just-completed frame's
     // C5/C6 populate sizing (same boundary the dedup-map reset relies on).
-    lbDrainPerFrame(g_mc2FrameCounter);
+    lbDrainPerFrame(g_mc2FrameCounter.load(std::memory_order_relaxed));
     // FRAME-JOBS-2 precondition: lock during map clears and count rebase.
     std::lock_guard<std::recursive_mutex> _lk(s_lightDataMapMu);
 

@@ -4,6 +4,7 @@
 // Copyright (C) Microsoft Corporation. All rights reserved.                 //
 //===========================================================================//
 
+#include <atomic>
 #include "texture_assets.h"
 #ifndef BDACTOR_H
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
@@ -823,10 +824,10 @@ bool BldgAppearance::recalcBounds (void)
 
 void BldgAppearance::recalcBoundsAndStamp() {
 	// FRAME-JOBS-1 worker path. Do not call from game logic.
-	extern uint32_t g_mc2FrameCounter;
-	if (boundsFrame == g_mc2FrameCounter) return;
+	extern std::atomic<uint32_t> g_mc2FrameCounter;
+	if (boundsFrame == g_mc2FrameCounter.load(std::memory_order_relaxed)) return;
 	recalcBounds();
-	boundsFrame = g_mc2FrameCounter;
+	boundsFrame = g_mc2FrameCounter.load(std::memory_order_relaxed);
 }
 
 bool BldgAppearance::playDestruction (void)

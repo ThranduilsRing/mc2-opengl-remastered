@@ -2,6 +2,7 @@
 //
 // RENDERER-INPUT-READBACK-1. See gos_renderer_input_probe.h for the contract.
 
+#include <atomic>
 #include "gos_renderer_input_probe.h"
 
 #include <cmath>
@@ -15,7 +16,7 @@
 #include "gos_static_prop_registry.h"
 #include "gameos.hpp"  // gos_IsModernShadowPathActive
 
-extern uint32_t g_mc2FrameCounter;
+extern std::atomic<uint32_t> g_mc2FrameCounter;
 
 namespace gos_render_probe {
 
@@ -33,7 +34,7 @@ bool sceneImageSize(int* w, int* h)
 bool readScenePixel(int px, int py, PixelProbe& out)
 {
     out = PixelProbe();
-    out.srcFrameHint = g_mc2FrameCounter > 0 ? static_cast<unsigned long>((g_mc2FrameCounter-1u)) : 0UL;
+    out.srcFrameHint = g_mc2FrameCounter.load(std::memory_order_relaxed) > 0 ? static_cast<unsigned long>((g_mc2FrameCounter.load(std::memory_order_relaxed)-1u)) : 0UL;
     int w=0,h=0;
     if (!mc2vk::sceneReadbackExtent(w,h,mc2vk::SceneColor)) return false;
     out.sceneAvailable=true; out.sceneWidth=w; out.sceneHeight=h; out.px=px; out.py=py;

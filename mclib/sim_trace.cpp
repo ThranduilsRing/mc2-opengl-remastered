@@ -1,4 +1,5 @@
 // The [DT] determinism trace; see sim_trace.h. An empty translation unit when MC2_SIM_TRACE is OFF.
+#include <atomic>
 #include "sim_trace.h"
 
 #if MC2_SIM_TRACE
@@ -9,7 +10,7 @@
 #include <stacktrace>
 #endif
 
-extern uint32_t g_mc2FrameCounter;
+extern std::atomic<uint32_t> g_mc2FrameCounter;
 
 namespace mc2_sim_trace {
 
@@ -20,7 +21,7 @@ bool s_basePrinted = false;
 
 void prefix()
 {
-	std::printf("[DT] f=%u t=%.4f ", static_cast<unsigned>(g_mc2FrameCounter), s_time);
+	std::printf("[DT] f=%u t=%.4f ", static_cast<unsigned>(g_mc2FrameCounter.load(std::memory_order_relaxed)), s_time);
 }
 
 void setTime(double scenarioTime)

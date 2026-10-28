@@ -10,6 +10,7 @@
 //===========================================================================//
 
 #include "tgl_internal.h"
+#include <atomic>
 #include "Gates/gate.h"
 #include "mc2fmt.h"
 #include "vk_object_lights.h"
@@ -70,7 +71,9 @@ bool silentMode = false;		//Used for automated builds to keep errors from poppin
 // code keys on it and must not change. g_mc2RenderFrame is the RENDER-frame clock: advanced exactly once per presented frame by
 // gos::host::advanceFrameCounter() (game and editor); the present path, readback tags and frame-pinned captures key on it.
 // At one logic pass per frame the two are equal.
-uint32_t g_mc2FrameCounter = 0;
+// The overlap worker advances extra logic passes while the host presents. Relaxed
+// accesses protect the epoch; the overlap join synchronizes the sim state itself.
+std::atomic<uint32_t> g_mc2FrameCounter = 0;
 uint32_t g_mc2RenderFrame = 0;
 
 // VK-FIELD-VFX-5: fire-event present-capture arm. 0 = unarmed; the

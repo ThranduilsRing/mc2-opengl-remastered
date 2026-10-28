@@ -9,6 +9,7 @@
 //===========================================================================//
 
 #ifndef MCLIB_H
+#include <atomic>
 #include "terrain_part_chunk.h"
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include"mclib.h"
@@ -111,7 +112,7 @@ bool GameObject::initialize = false;
 // Tier-1 instrumentation (stability spec §3.1-3.4)
 //---------------------------------------------------------------------------
 // Defined at file scope in mclib/tgl.cpp:3718.
-extern uint32_t g_mc2FrameCounter;
+extern std::atomic<uint32_t> g_mc2FrameCounter;
 
 static const bool s_destroyTrace = mc2::gate::get<"MC2_DESTROY_TRACE">();
 
@@ -177,7 +178,7 @@ void GameObject::destroy_instr (const char* reason, const char* file, int line) 
 			char _cbbuf[512];
 			snprintf(_cbbuf, sizeof(_cbbuf),
 				"[DESTROY v1] frame=%u obj=%p kind=%s reason=%s file=%s line=%d exists_was=0 in_view=%d can_be_seen=%d block_active=%d frames_since_active=%d last_update_ret=%d",
-				g_mc2FrameCounter, static_cast<void*>(this), getObjectClassName(snap_kind), reason,
+				g_mc2FrameCounter.load(std::memory_order_relaxed), static_cast<void*>(this), getObjectClassName(snap_kind), reason,
 				file, line, snap_in_view, snap_can_be_seen, snap_block_active,
 				snap_frames_inactive, static_cast<int>(snap_last_update_ret));
 			puts(_cbbuf);
@@ -195,7 +196,7 @@ void GameObject::destroy_instr (const char* reason, const char* file, int line) 
 		char _cbbuf[512];
 		snprintf(_cbbuf, sizeof(_cbbuf),
 			"[DESTROY v1] frame=%u obj=%p kind=%s reason=%s file=%s line=%d exists_was=1 in_view=%d can_be_seen=%d block_active=%d frames_since_active=%d last_update_ret=%d",
-			g_mc2FrameCounter, static_cast<void*>(this), getObjectClassName(snap_kind), reason,
+			g_mc2FrameCounter.load(std::memory_order_relaxed), static_cast<void*>(this), getObjectClassName(snap_kind), reason,
 			file, line, snap_in_view, snap_can_be_seen, snap_block_active,
 			snap_frames_inactive, static_cast<int>(snap_last_update_ret));
 		puts(_cbbuf);
@@ -521,7 +522,7 @@ void LogWeaponFireChunk (WeaponFireChunkPtr chunk, GameObjectPtr attacker, GameO
 			"{{\"ev\":\"fire\",\"a_wid\":{:d},\"a_team\":{:d},\"t_wid\":{:d},\"t_team\":{:d}}}",
 			mc2::fmt::as_u32(attacker->getWatchID(false)), mc2::fmt::as_i32(attacker->getTeamId()),
 			mc2::fmt::as_u32(target->getWatchID(false)), mc2::fmt::as_i32(target->getTeamId())).out = '\0');
-		mc2_diag::writeEvent("COMBAT", 1, g_mc2FrameCounter, _cbf);
+		mc2_diag::writeEvent("COMBAT", 1, g_mc2FrameCounter.load(std::memory_order_relaxed), _cbf);
 	}
 }
 

@@ -1,4 +1,5 @@
 // Native terrain readiness and the shared CPU MVP snapshot; no GL indirect work.
+#include <atomic>
 #include "gos_terrain_indirect_internal.h"
 
 namespace {
@@ -55,7 +56,7 @@ bool ComputePreflight() {
     everArmed = everArmed || frameArmed;
     if (frameArmed && g_loadRaceTrace) {
         g_loadRaceLastTerrainPath = 1;
-        if (g_loadRaceArmFirstFrame < 0) g_loadRaceArmFirstFrame = static_cast<long>(g_mc2FrameCounter);
+        if (g_loadRaceArmFirstFrame < 0) g_loadRaceArmFirstFrame = static_cast<long>(g_mc2FrameCounter.load(std::memory_order_relaxed));
     }
     return frameArmed;
 }

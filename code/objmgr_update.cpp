@@ -1,5 +1,6 @@
 // GameObjectManager: GameObjectManager::update with its GOM_UPDATE_COST spans, in-view conflation probe, GPU-cull record and static-skip gates.
 // Declared in the class headers; shared names in objmgr_internal.h.
+#include <atomic>
 #include "brain_execution_policy.h"
 #include "objmgr_internal.h"
 #include "sim_world_trace.h"
@@ -59,61 +60,6 @@ static bool mc2SkipStaticNaturalDiagEnabled (void)
 	if (cached < 0)
 		cached = mc2::gate::get<"MC2_SKIP_STATIC_TREES_DIAG">() ? 1 : 0;
 	return(cached != 0);
-}
-
-// R2B-STATIC-NATURAL-TOUCH-PRESERVE-1 ──────────────────────────────────────────
-// DEFAULT-ON kill switch. The R2b "skip static-natural update" fast path issues a
-// bare `continue` for static trees/pine-buildings at turn>=3, which skips update()
-// — the producer that stamps the registered multi-shape's cachedFrame_. The
-// static-prop registry flush (gos_static_prop_registry.cpp) drops any registered
-// multi whose cachedFrame_ != currentFrame, so the skipped prop is silently culled
-// from the instance SSBO and never drawn (the black-tree-bug class — see
-// .planning/PROJECT.md "cachedFrame_ stamp" — reintroduced by the R2b skip; the
-// GPU symptom is tree typeIDs entirely absent from the instanced draw). This gate
-// restores the minimal liveness stamp inside the skip path WITHOUT running the
-// expensive update. Set MC2_R2B_TOUCH_PRESERVE=0 to A/B (off => reproduce the
-// drop; the registry stale-drop counter goes nonzero for tree typeIDs).
-static bool mc2R2bTouchPreserveEnabled (void)
-{
-	static int cached = -1;
-	if (cached < 0) {
-		cached = mc2::gate::get<"MC2_R2B_TOUCH_PRESERVE">();  // default-ON
-	}
-	return(cached != 0);
-}
-
-static bool mc2R2bTouchTraceEnabled (void)
-{
-	static int cached = -1;
-	if (cached < 0)
-		cached = mc2::gate::get<"MC2_R2B_STATIC_NATURAL_TRACE">() ? 1 : 0;
-	return(cached != 0);
-}
-
-// Stamp the static-registry liveness (cachedFrame_) of an appearance whose
-// expensive update() the R2b fast path is about to skip. Cheap: no transform, no
-// texture, no bounds — just advances the registered multi-shape's frame stamp so
-// the registry flush keeps it in the instance SSBO. Returns true if any shape was
-// stamped (for the touched_liveness trace counter).
-static inline bool mc2R2bTouchStaticLiveness (AppearancePtr appearance, uint32_t frame)
-{
-	if (!appearance) return false;
-	if (TreeAppearance* ta = dynamic_cast<TreeAppearance*>(appearance)) {
-		bool stamped = false;
-		for (long lod = 0; lod < MAX_LODS; ++lod)
-			if (ta->staticReg[lod].registered && ta->staticReg[lod].shape) {
-				ta->staticReg[lod].shape->setCachedFrame(frame);
-				stamped = true;
-			}
-		return stamped;
-	}
-	if (BldgAppearance* ba = dynamic_cast<BldgAppearance*>(appearance)) {
-		if (ba->staticReg.registered && ba->staticReg.shape) {
-			ba->staticReg.shape->setCachedFrame(frame);
-			return true;
-		}
-	}
-	return false;
 }
 
 static bool mc2StaticTypeNameStartsWith (const char* typeName, const char* prefix)
@@ -413,7 +359,7 @@ void GameObjectManager::updateDestroyTestHook() {
 	// getenv + integer compare, no behavior change.
 	{
 		static const long s_destroyTestFrame = static_cast<long>(mc2::gate::get<"MC2_STATIC_PROP_BUILDING_SHADOW_REBAKE_TEST_DESTROY_AT_FRAME">());
-		if (s_destroyTestFrame >= 0 && static_cast<long>(g_mc2FrameCounter) == s_destroyTestFrame) {
+		if (s_destroyTestFrame >= 0 && static_cast<long>(g_mc2FrameCounter.load(std::memory_order_relaxed)) == s_destroyTestFrame) {
 			// Content-pipeline proof: when a mounted package cooked a destroyed render shape, destroy
 			// every live building of those appearances (the destroyed-state capture); otherwise the
 			// first live building, as the shadow-rebake repro always did.
@@ -430,7 +376,7 @@ void GameObjectManager::updateDestroyTestHook() {
 				BuildingPtr b = buildings[bi];
 				if (!b || b->isDestroyed() || !b->getExists()) continue;
 				if (any && !hasDestroyedOverride(b)) continue;
-				mc2::fmt::print_err("[SHADOW_STATIC_BLDG_REBAKE_TEST v1] event=test_destroy frame={:d} buildingIndex={:d}\n", mc2::fmt::as_u32(g_mc2FrameCounter), mc2::fmt::as_i32(bi));
+				mc2::fmt::print_err("[SHADOW_STATIC_BLDG_REBAKE_TEST v1] event=test_destroy frame={:d} buildingIndex={:d}\n", mc2::fmt::as_u32(g_mc2FrameCounter.load(std::memory_order_relaxed)), mc2::fmt::as_i32(bi));
 				fflush(stderr);
 				b->setDamage(b->getDamageLevel());
 				if (!any) break;

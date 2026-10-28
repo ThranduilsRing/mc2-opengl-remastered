@@ -6,6 +6,7 @@
 #define MECH3D_INTERNAL_H
 
 #include "gos_static_prop_killswitch.h"
+#include <atomic>
 #include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
 #include "../GameOS/gameos/gpu_cull_readback.h"  // C3: GPU visibility queries
 #include "../code/gameobj.h"  // C3: full GameObject definition for obj->getHandle() in init()
@@ -16,7 +17,7 @@
 #include "mech_anim_runtime.h"  // BT2018-SKEL-ENGINE-1B-RUNTIME: imported-mech per-frame re-bake
 #include "../GameOS/gameos/diagnostic_trace.h"  // ANIM_CADENCE guard events
 
-extern uint32_t g_mc2FrameCounter;  // defined in tgl.cpp — gait-advance cadence guard
+extern std::atomic<uint32_t> g_mc2FrameCounter;  // defined in tgl.cpp — gait-advance cadence guard
 // VK-MECH-CAPTURE-DETERMINISM-1: capture-mode-only gait-freeze predicate (defined
 // gos_visual_capture.cpp). Returns nonzero only while a visual-capture sweep has
 // the sim frozen; 0 whenever no MC2_VISUAL_* capture is active -> byte-safe live.

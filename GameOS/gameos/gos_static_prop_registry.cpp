@@ -1,5 +1,6 @@
 #include "static_prop_visible_set.h"
 #include "gos_static_prop_registry_internal.h"
+#include <atomic>
 #include "../../mclib/texture_assets.h"
 
 namespace GpuStaticPropRegistry {
@@ -432,7 +433,7 @@ int32_t registerRecipe(TG_MultiShape* multi,
     rng.count = static_cast<uint32_t>(batch.size());
     rng.multiId = multi->stableId();
     rng.pinsReleased      = false;
-    rng.registeredOnFrame = g_mc2FrameCounter;
+    rng.registeredOnFrame = g_mc2FrameCounter.load(std::memory_order_relaxed);
     rng.firstFlushSeen    = false;
     rng.lightDataIndex    = 0xFFFFFFFFu;  // 2026-05-11 per-instance capture sentinel
     rng.extentRadius      = 0.0f;
@@ -500,7 +501,7 @@ int32_t registerRecipe(TG_MultiShape* multi,
     // Track B: structural first-frame fix. Pre-populate cachedFrame_ so the
     // first flush() after registration passes the staleness gate at flush()
     // without requiring a prior CacheGpuLightData() call.
-    multi->setCachedFrame(g_mc2FrameCounter);
+    multi->setCachedFrame(g_mc2FrameCounter.load(std::memory_order_relaxed));
     return regIdx;
 }
 
@@ -709,7 +710,7 @@ void flush() {
     // V1A: latch BEFORE any early return so queryVisibility() always sees
     // a current-frame value (0 when disabled or nothing visible this frame).
     s_lastFlushLiveCount = static_cast<uint64_t>(s_liveRangeIndices.size());
-    const uint32_t currentFrame = g_mc2FrameCounter;
+    const uint32_t currentFrame = g_mc2FrameCounter.load(std::memory_order_relaxed);
     GpuStaticPropBatcher& batcher = GpuStaticPropBatcher::instance();
     // 2026-05-10 diag: per-frame outcome counters across all ranges.
     static uint64_t s_diag_flush_calls = 0;

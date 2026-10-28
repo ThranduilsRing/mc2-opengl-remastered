@@ -1,5 +1,6 @@
 // BldgAppearance / TreeAppearance: static-actor light bake gate (mc2CacheOrBakeStaticGpuLight) and the cone ground-hit march.
 // Declared in the class headers; shared names in bdactor_internal.h.
+#include <atomic>
 #include "bdactor_internal.h"
 
 // [BAKEORD v1] PROP-BAKE-ORDER-VS-TIME-1 -----------------------------------
@@ -211,13 +212,13 @@ void mc2CacheOrBakeStaticGpuLight(TG_MultiShape* shape,
 		static uint32_t s_readyFrame  = 0;
 		if (s_rebakeOnReady && !s_rebakeDone && SmokeMode::missionHasStarted()) {
 			if (s_readyFrame == 0) {
-				s_readyFrame = g_mc2FrameCounter ? g_mc2FrameCounter : 1;
-			} else if (g_mc2FrameCounter >= s_readyFrame + 8) {
+				s_readyFrame = g_mc2FrameCounter.load(std::memory_order_relaxed) ? g_mc2FrameCounter.load(std::memory_order_relaxed) : 1;
+			} else if (g_mc2FrameCounter.load(std::memory_order_relaxed) >= s_readyFrame + 8) {
 				extern void mc2InvalidateBakedStaticLightCache();
 				mc2InvalidateBakedStaticLightCache();
 				s_rebakeDone = true;
 				MC2_DIAGF("[LIGHTBAKE v1] event=rebake_on_ready frame=%u\n",
-				       static_cast<unsigned>(g_mc2FrameCounter));
+				       static_cast<unsigned>(g_mc2FrameCounter.load(std::memory_order_relaxed)));
 				fflush(stdout);
 			}
 		}
@@ -286,7 +287,7 @@ void mc2CacheOrBakeStaticGpuLight(TG_MultiShape* shape,
 					          "postInvalidate=%d sunActive=%d nl=%d "
 					          "amb=%.4f,%.4f,%.4f sun=%.4f,%.4f,%.4f\n",
 					          static_cast<int>(recipeIndex), ord,
-					          static_cast<unsigned>(g_mc2FrameCounter),
+					          static_cast<unsigned>(g_mc2FrameCounter.load(std::memory_order_relaxed)),
 					          s_lightBakeRebakeDone ? 1 : 0,
 					          sunActive, static_cast<int>(leaf->numLights_),
 					          amb[0], amb[1], amb[2],

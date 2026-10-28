@@ -1,5 +1,6 @@
 #include "footprints.h"
 #include "vk_scene_renderer.h"
+#include <atomic>
 #include "Gates/preferences_legacy.h"
 //---------------------------------------------------------------------------
 //
@@ -266,15 +267,15 @@ void GameCamera::renderViewUniforms() {
 
 			// PUBLISH POINT (shared-foundations P1): the frame's views and scene lighting are built here, once, and frozen. Recording (the island
 			// feeds, the lighting trace) reads the published packets, not the live globals.
-			extern uint32_t g_mc2FrameCounter;
-			if (RenderCore::FramePackets* fp = RenderCore::framePackets().begin(g_mc2FrameCounter)) {
+			extern std::atomic<uint32_t> g_mc2FrameCounter;
+			if (RenderCore::FramePackets* fp = RenderCore::framePackets().begin(g_mc2FrameCounter.load(std::memory_order_relaxed))) {
 				RenderCore::ViewPacket vp{};
 				vp.id = mainView.id;
 				vp.kind = mainView.kind;
 				vp.mode = mainView.mode;
 				for (int i = 0; i < 4; ++i) vp.viewport[i] = mainView.viewport[i];
 				vp.uniforms = vu;
-				vp.frame = g_mc2FrameCounter;
+				vp.frame = g_mc2FrameCounter.load(std::memory_order_relaxed);
 				vp.simTick = static_cast<uint64_t>(turn);   // the sim tick (mclib/timing.h) the frame renders
 				fp->addView(vp);
 				fp->lighting.valid = captureSceneLighting(fp->lighting.scene);

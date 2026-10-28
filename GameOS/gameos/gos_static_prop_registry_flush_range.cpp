@@ -1,6 +1,7 @@
 // GpuStaticPropRegistry: the per-range phases of flush() -- tombstone and currentness guards, the light-row and
 // seam diagnostics and the legacy per-leaf and cached submission paths. The orchestrator is in
 // gos_static_prop_registry.cpp.
+#include <atomic>
 #include "gos_static_prop_registry_internal.h"
 #include "mc2fmt.h"
 
@@ -21,7 +22,7 @@ bool flushRangeTombstoneGuard(uint64_t& s_diag_ranges_total, uint64_t& s_diag_ra
         static uint32_t s_tdFrame = 0xFFFFFFFFu;
         static int s_tdN = 0;
         if (s_td) {
-            const uint32_t fr = static_cast<uint32_t>(g_mc2FrameCounter);
+            const uint32_t fr = static_cast<uint32_t>(g_mc2FrameCounter.load(std::memory_order_relaxed));
             if (fr != s_tdFrame) { s_tdFrame = fr; s_tdN = 0; }
             if ((fr <= 3u || (fr % 120u) == 0u) && s_tdN < 90) {
                 ++s_tdN;
