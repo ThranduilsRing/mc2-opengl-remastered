@@ -150,13 +150,18 @@ void readSlot(uint32_t slot, uint32_t& used) {
     }
     if (!any) return;
     if (mc2::battlebench::output) {
-        std::fprintf(mc2::battlebench::output, "{\"type\":\"gpu\",\"frame\":%llu,\"ms\":%.6f,\"recorded\":%u,\"valid\":%u,\"passes\":{",
+        // One record, one fputs: the sim worker writes tick records to the same stream, so a record built in pieces would interleave.
+        char line[4096];
+        int len = std::snprintf(line, sizeof line, "{\"type\":\"gpu\",\"frame\":%llu,\"ms\":%.6f,\"recorded\":%u,\"valid\":%u,\"passes\":{",
             static_cast<unsigned long long>(g.benchFrames[slot]),
             static_cast<double>(maxEnd - minBegin) * g.nsPerTick / 1.0e6, recorded,
             [&] { uint32_t n = 0; for (uint32_t k = 0; k < nNames; ++k) n += callsOf[k]; return n; }());
-        for (uint32_t k = 0; k < nNames; ++k)
-            std::fprintf(mc2::battlebench::output, "%s\"%s\":%.6f", k ? "," : "", nameOf[k], perName[k]);
-        std::fprintf(mc2::battlebench::output, "}}\n");
+        for (uint32_t k = 0; k < nNames && len > 0 && len < static_cast<int>(sizeof line) - 96; ++k)
+            len += std::snprintf(line + len, sizeof line - len, "%s\"%s\":%.6f", k ? "," : "", nameOf[k], perName[k]);
+        if (len > 0 && len < static_cast<int>(sizeof line) - 4) {
+            std::snprintf(line + len, sizeof line - len, "}}\n");
+            std::fputs(line, mc2::battlebench::output);
+        }
     }
     for (uint32_t k = 0; k < nNames; ++k) {
         Row& row = rowFor(std::string_view(nameOf[k]));
