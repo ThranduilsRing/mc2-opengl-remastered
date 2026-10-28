@@ -22,14 +22,13 @@ struct RenderClock {
     float alpha = 1.0f;        // interpolation weight of the presented poses
 };
 
-enum Flag : uint32_t {
-    Visible = 1u << 0,     // static objects: appearance->canBeSeen(); bolts: drawn at all
-    Bars = 1u << 1,        // set the bar color/status before the draw
-    FireIcon = 1u << 2,    // movers: hold-fire icon
-    HitTarget = 1u << 3,   // bolts
-    Timer = 1u << 4,       // artillery: draw the countdown
-    SeenAtExtract = 1u << 5, // artillery: appearance->canBeSeen() when windowsVisible was stamped
-};
+// RenderView::flags bits.
+inline constexpr uint32_t Visible = 1u << 0;       // static objects: appearance->canBeSeen(); bolts: drawn at all
+inline constexpr uint32_t Bars = 1u << 1;          // set the bar color/status before the draw
+inline constexpr uint32_t FireIcon = 1u << 2;      // movers: hold-fire icon
+inline constexpr uint32_t HitTarget = 1u << 3;     // bolts
+inline constexpr uint32_t Timer = 1u << 4;         // artillery: draw the countdown
+inline constexpr uint32_t SeenAtExtract = 1u << 5; // artillery: appearance->canBeSeen() when windowsVisible was stamped
 
 // What a mover's render() decided from the sim (contact status vs home, team, isOnGui, status).
 enum class Mode : uint8_t { None, Full, Sensor, SensorText, Fade, Own };
@@ -46,7 +45,7 @@ struct RenderView {
     int32_t nameId = 0;        // appearance object-name id, or the sensor text id (Mode::SensorText)
     uint8_t objClass = 0;
     Mode mode = Mode::None;
-    bool has(Flag f) const { return (flags & f) != 0; }
+    bool has(uint32_t f) const { return (flags & f) != 0; }
 };
 
 struct RenderList {
