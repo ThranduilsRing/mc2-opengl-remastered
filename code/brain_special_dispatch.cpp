@@ -1464,9 +1464,10 @@ mc2::player::UnitIntent producePlayerIntent(MechWarrior* warrior,
         const glm::vec3 route = objective - position;
         const float fraction = std::clamp(glm::dot(enemy->getPosition() - position, route)
             / std::max(1.0f, glm::dot(route, route)), 0.0f, 1.0f);
-        const bool blocksRoute = distance < 450
-            && glm::distance(enemy->getPosition(), position + fraction * route) < 250;
-        if (!isObjective && now < runtime->playerBypassUntil && !blocksRoute) continue;
+        const float routeDistance = glm::distance(enemy->getPosition(), position + fraction * route);
+        const bool blocksRoute = distance < 800 && routeDistance < 400;
+        const bool immediateDanger = distance < 450 && routeDistance < 250;
+        if (!isObjective && (!blocksRoute || (now < runtime->playerBypassUntil && !immediateDanger))) continue;
         float condition = 1.0f;
         if (enemy->isMover()) {
             auto* mover = static_cast<Mover*>(enemy);
@@ -1562,7 +1563,8 @@ mc2::player::UnitIntent producePlayerIntent(MechWarrior* warrior,
         const auto direction = scout - position;
         const float length = std::max(1.0f, glm::length(direction));
         const float side = runtime->playerRecoveries % 2 ? 1.0f : -1.0f;
-        if (runtime->playerRecoveries > 2 && scout != objective) intent.location = scout;
+        if (runtime->playerRecoveries > 2 && scout != objective)
+            intent.location = position + direction * std::min(1.0f, 1200.0f / length);
         else intent.location = position + direction * std::min(1.0f, 400.0f / length)
             + glm::vec3{-direction.y, direction.x, 0} * (side * 250.0f / length);
         intent.location.x = std::clamp(intent.location.x, Terrain::mapTopLeft3d.x + 128,
@@ -1581,6 +1583,13 @@ mc2::player::UnitIntent producePlayerIntent(MechWarrior* warrior,
         intent.targetWatchId = target->getWatchID();
         intent.posture = mc2::player::Posture::Engage;
         squadTarget = intent.targetWatchId;
+    }
+    // After a failed long route, keep issuing reachable local legs instead of
+    // returning to the same full-map request after each recovery window.
+    if (intent.goal == mc2::player::Goal::Move && runtime->playerRecoveries > 0) {
+        const auto route = intent.location - position;
+        const float distance = glm::length(route);
+        if (distance > 1200) intent.location = position + route * (1200.0f / distance);
     }
     runtime->engageTargetWID = intent.targetWatchId;
     return intent;
