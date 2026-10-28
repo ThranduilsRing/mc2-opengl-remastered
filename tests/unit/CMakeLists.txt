@@ -169,6 +169,7 @@ add_executable(mc2_tests
     ${MC2_WORKTREE_ROOT}/GameOS/gameos/terrain_surface_cook.cpp
     test_vk_render_pass_timer.cpp  # VK pass timer tick math (counter wrap, valid bits); header-only, no Vulkan
     test_debug_line_project.cpp  # debug overlay segment projection; header-only
+    test_camera_pick_hash.cpp  # pick revision hash: altitude / shift each move it; header-only
     test_hitch_fence.cpp # hitch trace Vulkan fence-wait record; header-only, no Vulkan
     test_screenshot_slot.cpp  # screenshot request slot and its expiry; header-only
     test_tgl_force_z.cpp  # forceZ reverse-Z mirror, both render paths

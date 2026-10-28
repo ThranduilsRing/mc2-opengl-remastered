@@ -2,6 +2,7 @@
 // Declared in the class headers; shared names in camera_internal.h.
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include "camera_internal.h"
+#include "camera_pick_hash.h"
 #include <format>
 namespace {
 // XFORM-CONVENTION-HARNESS-1: the two canonical clip-space convention
@@ -589,23 +590,8 @@ void Camera::calculateProjectionConstants (void)
 	// Stable under per-frame altitude/zoom lerp micro-drift that would otherwise
 	// cause the revision to increment every frame even on a "stationary" camera.
 	{
-		auto snapI = [](float v, float step) -> uint32_t {
-			return static_cast<uint32_t>(static_cast<int32_t>((v / step)));
-		};
-		uint32_t h = snapI(position.x,      0.25f) * 2654435761u
-		           ^ snapI(position.y,      0.25f) * 2246822519u
-		           ^ snapI(cameraShiftZ,    0.25f) * 3266489917u
-		           ^ snapI(cameraRotation,  0.05f) * 374761393u
-		           ^ snapI(projectionAngle, 0.05f) * 668265263u
-		           ^ snapI(camera_fov,      0.1f)  * 2166136261u
-		           // The camera origin is built from the altitude (zoom) and the eased look-at shift, not only the goal
-		           // position: a zoom or an eased pan that left these out kept stale pick rects (hits on objects that
-		           // are not under the cursor, misses on ones that are).
-		           ^ snapI(cameraAltitude,  0.25f) * 2869860233u
-		           ^ snapI(cameraShift.x,   0.25f) * 1597334677u
-		           ^ snapI(cameraShift.y,   0.25f) * 3812015801u
-		           ^ static_cast<uint32_t>(static_cast<int32_t>(screenResolution.x))
-		           ^ static_cast<uint32_t>(static_cast<int32_t>(screenResolution.y)) * 40503u;
+		const uint32_t h = mc2cam::pickInputHash({position.x, position.y, cameraShiftZ, cameraRotation, projectionAngle, camera_fov,
+		                                           cameraAltitude, cameraShift.x, cameraShift.y, screenResolution.x, screenResolution.y});
 		if (h != lastCameraInputHash_) {
 			lastCameraInputHash_ = h;
 			++viewProjectionRevision_;
