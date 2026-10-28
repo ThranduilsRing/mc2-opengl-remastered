@@ -247,7 +247,7 @@ class GameObjectManager {
 		void beginMoverLosEpoch (void) {
 			if (!moverLineOfSightTable)
 				return;
-			mc2::losEpochAdvance(moverLineOfSightTable, (size_t)maxMovers * (size_t)maxMovers, moverLosEpoch);
+			mc2::losEpochAdvance(std::span<uint16_t>(moverLineOfSightTable, static_cast<size_t>(maxMovers) * static_cast<size_t>(maxMovers)), moverLosEpoch);
 		}
 		bool					useMoverLineOfSightTable;
 

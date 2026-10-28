@@ -112,6 +112,7 @@
     "tools/scifi_kit/kit.py": "Headless Blender via the existing blender_runner discovery and console_child; Python invokes only scripts/run_visual_capture.py with --no-kill. The game itself is launched only by that harness through nofocus.spawn.",
     "tools/shader_offline_build/build_variants.py": "program is a variable (git, ninja, glslang, ktx, blender, cook tools, python); launch-site audit 2026-10-10: console tool, not the game",
     "tools/shader_offline_build/slang_compile.py": "program is a variable (slangc, spirv-cross located from the Vulkan SDK; offline shader bake); console tools, not the game, through console_child.child_kwargs(redirected=True) with a 60s timeout; Slang toolchain 2026-10-17",
+    "tools/mover_budget.py": "runs scripts/run_smoke.py (host lease, exe_guard, background-only) through sys.executable; never launches the engine itself",
     "tools/shader_reflect/reflect.py": "program is a variable (git, ninja, glslang, ktx, blender, cook tools, python); launch-site audit 2026-10-10: console tool, not the game",
     "tools/sim_determinism.py": "runs scripts/run_smoke.py (host lease, exe_guard, background-only) and the build/deploy scripts through sys.executable; never launches the engine itself",
     "tools/sim_trace_diff.py": "battery-lane tool: argv built from vetted runners and build tools (the game starts only inside run_smoke/deploy runners); every subprocess call goes through console_child.child_kwargs(redirected=True); merge window 27",

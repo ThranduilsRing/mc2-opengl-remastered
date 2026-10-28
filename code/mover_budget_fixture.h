@@ -33,7 +33,7 @@ inline void mc2MoverBudgetFixtureTick(unsigned turn)
         const long start = ObjectManager->getNumMovers();
         long added = 0;
         for (long n = start; n < target; n++) {
-            const int side = (int)(n & 1), cls = (int)((n >> 1) & 1);
+            const int side = static_cast<int>(n & 1), cls = static_cast<int>((n >> 1) & 1);
             MoverInitData data; memset(&data, 0, sizeof(data));
             strcpy(data.pilotFileName, "pmp_flash");
             strcpy(data.brainFileName, "pbrain");
@@ -48,8 +48,8 @@ inline void mc2MoverBudgetFixtureTick(unsigned turn)
             // Two blocks of 12-wide grids, 60 m apart in x between sides, 40 m pitch.
             const long k = n / 2;
             glm::vec3 pos = origin;
-            pos.x += (side ? 300.0f : -300.0f) + (float)(k % 12) * 40.0f * (side ? 1.0f : -1.0f);
-            pos.y += (float)(k / 12) * 40.0f - 200.0f;
+            pos.x += (side ? 300.0f : -300.0f) + static_cast<float>(k % 12) * 40.0f * (side ? 1.0f : -1.0f);
+            pos.y += static_cast<float>(k / 12) * 40.0f - 200.0f;
             pos.z = land ? land->getTerrainElevation(pos) : 0.0f;
             data.position = pos; data.rotation = 0;
             const long h = mission->addMover(&data);
@@ -57,7 +57,7 @@ inline void mc2MoverBudgetFixtureTick(unsigned turn)
             ++added;
         }
         std::printf("[MOVER_FIXTURE v1] result=spawned requested=%ld base=%ld added=%ld movers=%ld\n",
-            target, start, added, (long)ObjectManager->getNumMovers());
+            target, start, added, static_cast<long>(ObjectManager->getNumMovers()));
         std::fflush(stdout);
         nextOrders = turn + 1;
     }
