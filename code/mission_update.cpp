@@ -49,9 +49,11 @@ long applyPlayerIntent(Mission& mission, const mc2::player::UnitIntent& intent, 
     } else {
         order.moveParams.wayPath.numPoints = 1;
         order.moveParams.wayPath.curPoint = 0;
-        order.moveParams.wayPath.points[0] = intent.location.x;
-        order.moveParams.wayPath.points[1] = intent.location.y;
-        order.moveParams.wayPath.points[2] = intent.location.z;
+        glm::vec3 location;
+        if (MoverGroup::calcMoveGoals(intent.location, 1, &location) != 1) return 1;
+        order.moveParams.wayPath.points[0] = location.x;
+        order.moveParams.wayPath.points[1] = location.y;
+        order.moveParams.wayPath.points[2] = location.z;
     }
     order.moveParams.wayPath.mode[0] = TRAVEL_MODE_FAST;
     order.moveParams.wait = false;
@@ -66,7 +68,8 @@ long applyPlayerIntent(Mission& mission, const mc2::player::UnitIntent& intent, 
                 const glm::vec3 previous{current->moveParams.wayPath.points[0], current->moveParams.wayPath.points[1], 0};
                 int oldRow, oldCol, newRow, newCol;
                 land->worldToCell(previous, oldRow, oldCol);
-                land->worldToCell(intent.location, newRow, newCol);
+                const glm::vec3 requested{order.moveParams.wayPath.points[0], order.moveParams.wayPath.points[1], 0};
+                land->worldToCell(requested, newRow, newCol);
                 if (oldRow == newRow && oldCol == newCol) return 0;
             }
         } else if (current->targetWID == order.targetWID && (order.code != TACTICAL_ORDER_ATTACK_OBJECT
