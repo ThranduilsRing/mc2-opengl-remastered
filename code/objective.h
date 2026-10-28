@@ -141,6 +141,7 @@ public:
 	CSpecificUnitObjectiveCondition(int alignment) : CObjectiveCondition(alignment) { m_pUnitWID = 0; }
 	virtual void CastAndCopy(const CObjectiveCondition *pMaster) { (*this) = (*(dynamic_cast<const CSpecificUnitObjectiveCondition *>(pMaster))); }
 	virtual bool Save( FitIniFile* file );
+    GameObjectWatchID UnitWatchID() const { return m_pUnitWID; }
 };
 
 class CSpecificEnemyUnitObjectiveCondition: public CSpecificUnitObjectiveCondition { /*abstract class*/

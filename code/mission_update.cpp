@@ -22,8 +22,14 @@ long applyPlayerIntent(Mission& mission, const mc2::player::UnitIntent& intent) 
     if (!object || !object->isMover()) return 1;
     TacticalOrder order;
     order.init(ORDER_ORIGIN_PLAYER, intent.goal == mc2::player::Goal::Attack
-        ? TACTICAL_ORDER_ATTACK_OBJECT : TACTICAL_ORDER_MOVETO_POINT);
-    if (intent.goal == mc2::player::Goal::Attack) {
+        ? TACTICAL_ORDER_ATTACK_OBJECT : intent.goal == mc2::player::Goal::Repair
+        ? TACTICAL_ORDER_REFIT : TACTICAL_ORDER_MOVETO_POINT);
+    if (intent.goal == mc2::player::Goal::Repair) {
+        order.targetWID = intent.targetWatchId;
+        order.selectionIndex = -1;
+        order.moveParams.faceObject = true;
+        order.moveParams.fromArea = -1;
+    } else if (intent.goal == mc2::player::Goal::Attack) {
         order.targetWID = intent.targetWatchId;
         order.attackParams.type = ATTACK_TO_DESTROY;
         order.attackParams.method = ATTACKMETHOD_RANGED;
@@ -138,17 +144,27 @@ void Mission::updateMissionTest(bool report) {
     GameObjectPtr objectiveTarget = nullptr;
     for (auto* condition : destination->m_conditionList) {
         if (condition->Status() == OS_SUCCESSFUL) continue;
-        const auto point = condition->GetObjectivePosition();
-        // Some conditions have no position (sentinel); use the authored marker then.
-        if (point.x > -999000.0f && point.y > -999000.0f) location = point;
-        if (condition->Species() != DESTROY_SPECIFIC_STRUCTURE) continue;
-        for (long i = 0; i < ObjectManager->getNumBuildings(); ++i) {
-            auto* building = ObjectManager->getBuilding(i);
-            if (building && building->getExists() && !building->isDestroyed()
-                && glm::distance(building->getPosition(), point) < 1.0f)
-                objectiveTarget = building;
+        auto point = condition->GetObjectivePosition();
+        // Specific-unit conditions have no tacmap position; follow their authored ID.
+        if (auto* specific = dynamic_cast<CSpecificUnitObjectiveCondition*>(condition)) {
+            if (auto* object = ObjectManager->getByWatchID(specific->UnitWatchID())) {
+                point = object->getPosition();
+                if (condition->Species() == DESTROY_SPECIFIC_ENEMY_UNIT) objectiveTarget = object;
+            }
         }
-        if (objectiveTarget) break;
+        // Work on the first unfinished condition with a position, rather than
+        // repeatedly walking to the last condition or an already visited marker.
+        if (point.x <= -999000.0f || point.y <= -999000.0f) continue;
+        location = point;
+        if (condition->Species() == DESTROY_SPECIFIC_STRUCTURE) {
+            for (long i = 0; i < ObjectManager->getNumBuildings(); ++i) {
+                auto* building = ObjectManager->getBuilding(i);
+                if (building && building->getExists() && !building->isDestroyed()
+                    && glm::distance(building->getPosition(), point) < 1.0f)
+                    objectiveTarget = building;
+            }
+        }
+        break;
     }
     int issued = 0, rejected = 0, retreating = 0;
     long focus = 0;
@@ -156,8 +172,9 @@ void Mission::updateMissionTest(bool report) {
         auto* mover = Team::home->getMover(i);
         if (!mover || mover->getCommanderId() != Commander::home->getId() || mover->isDisabled()
             || !mover->getExists() || !mover->getPilot()) continue;
+        if (mover->refitBuddyWID) continue; // Let an accepted repair finish.
         const auto intent = producePlayerIntent(mover->getPilot(), location,
-            objectiveTarget ? objectiveTarget->getWatchID() : 0, focus);
+            objectiveTarget ? objectiveTarget->getWatchID() : 0, focus, scenarioTime);
         retreating += intent.posture == mc2::player::Posture::Retreat;
         if (applyPlayerIntent(*this, intent)) ++rejected;
         else ++issued;
