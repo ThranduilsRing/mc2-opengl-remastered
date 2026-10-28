@@ -1392,6 +1392,7 @@ mc2::player::UnitIntent producePlayerIntent(MechWarrior* warrior,
     }
     const glm::vec3 home{runtime->postPos[0], runtime->postPos[1], runtime->postPos[2]};
     const float distanceToGoal = glm::distance(position, objective);
+    const float sideFightRange = std::max(200.0f, unit->getMaxFireRange());
     const bool objectiveChanged = runtime->playerBestDistance < 0
         || glm::distance(runtime->playerObjective, objective) > 300;
     if (objectiveChanged) {
@@ -1483,7 +1484,7 @@ mc2::player::UnitIntent producePlayerIntent(MechWarrior* warrior,
         const float fraction = std::clamp(glm::dot(enemy->getPosition() - position, route)
             / std::max(1.0f, glm::dot(route, route)), 0.0f, 1.0f);
         const float routeDistance = glm::distance(enemy->getPosition(), position + fraction * route);
-        const bool blocksRoute = distance < 800 && routeDistance < 400;
+        const bool blocksRoute = distance <= sideFightRange && routeDistance < 400;
         if (!isObjective && (!unit->lineOfSight(enemy) || !blocksRoute
             || now < runtime->playerBypassUntil)) continue;
         float condition = 1.0f;
@@ -1603,7 +1604,9 @@ mc2::player::UnitIntent producePlayerIntent(MechWarrior* warrior,
         auto* object = ObjectManager->getByWatchID(objectiveTarget);
         if (object && !object->isMover() && object->getExists() && !object->isDestroyed()) target = object;
     }
-    if (target) {
+    if (target && unit->distanceFrom(target->getPosition()) > sideFightRange) {
+        intent.location = target->getPosition();
+    } else if (target) {
         intent.goal = mc2::player::Goal::Attack;
         intent.targetWatchId = target->getWatchID();
         intent.posture = mc2::player::Posture::Engage;

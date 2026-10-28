@@ -52,7 +52,7 @@ long applyPlayerIntent(Mission& mission, const mc2::player::UnitIntent& intent, 
         const auto position = object->getPosition();
         const auto direction = intent.location - position;
         const float distance = glm::length(direction);
-        const auto requested = distance > 400 ? position + direction * (400.0f / distance) : intent.location;
+        const auto requested = distance > 800 ? position + direction * (800.0f / distance) : intent.location;
         glm::vec3 location;
         if (MoverGroup::calcMoveGoals(requested, 1, &location) != 1) return 1;
         order.moveParams.wayPath.points[0] = location.x;
