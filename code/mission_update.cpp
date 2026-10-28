@@ -39,6 +39,12 @@ long applyPlayerIntent(Mission& mission, const mc2::player::UnitIntent& intent, 
         order.attackParams.type = ATTACK_TO_DESTROY;
         order.attackParams.method = ATTACKMETHOD_RANGED;
         order.attackParams.range = FIRERANGE_OPTIMAL;
+        auto* target = ObjectManager->getByWatchID(intent.targetWatchId);
+        const auto* active = static_cast<Mover*>(object)->getPilot()->getCurTacOrder();
+        if (target && (!object->lineOfSight(target)
+            || (active && active->code == TACTICAL_ORDER_ATTACK_OBJECT
+                && active->targetWID == intent.targetWatchId && active->attackParams.range == FIRERANGE_SHORT)))
+            order.attackParams.range = FIRERANGE_SHORT;
         order.attackParams.pursue = intent.posture == mc2::player::Posture::Engage;
     } else {
         order.moveParams.wayPath.numPoints = 1;

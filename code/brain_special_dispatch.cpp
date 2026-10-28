@@ -1392,7 +1392,9 @@ mc2::player::UnitIntent producePlayerIntent(MechWarrior* warrior,
     }
     const glm::vec3 home{runtime->postPos[0], runtime->postPos[1], runtime->postPos[2]};
     const float distanceToGoal = glm::distance(position, objective);
-    if (runtime->playerBestDistance < 0 || glm::distance(runtime->playerObjective, objective) > 300) {
+    const bool objectiveChanged = runtime->playerBestDistance < 0
+        || glm::distance(runtime->playerObjective, objective) > 300;
+    if (objectiveChanged) {
         runtime->playerObjective = objective;
         runtime->playerBestDistance = distanceToGoal;
         runtime->playerProgressTime = now;
@@ -1411,6 +1413,19 @@ mc2::player::UnitIntent producePlayerIntent(MechWarrior* warrior,
         maximum += unit->body[i].maxInternalStructure;
     }
     float ownThreat = 0;
+    // Keep native path progress while travelling to the same intermediate leg.
+    const auto retainWaypoint = [&](glm::vec3 desired) {
+        const auto* current = warrior->getCurTacOrder();
+        if (!objectiveChanged && current && current->code == TACTICAL_ORDER_MOVETO_POINT
+            && current->moveParams.wayPath.numPoints == 1) {
+            const glm::vec3 previous{current->moveParams.wayPath.points[0],
+                current->moveParams.wayPath.points[1], current->moveParams.wayPath.points[2]};
+            const auto remaining = previous - position;
+            if (glm::length(remaining) > 150 && glm::length(remaining) < 2400
+                && glm::dot(remaining, desired - position) > 0) return previous;
+        }
+        return desired;
+    };
     glm::vec3 regroup = position;
     float rearDistance = glm::distance(position, home);
     MoverPtr repair = nullptr, wounded = nullptr;
@@ -1467,7 +1482,8 @@ mc2::player::UnitIntent producePlayerIntent(MechWarrior* warrior,
         const float routeDistance = glm::distance(enemy->getPosition(), position + fraction * route);
         const bool blocksRoute = distance < 800 && routeDistance < 400;
         const bool immediateDanger = distance < 450 && routeDistance < 250;
-        if (!isObjective && (!blocksRoute || (now < runtime->playerBypassUntil && !immediateDanger))) continue;
+        if (!isObjective && (!unit->lineOfSight(enemy) || !blocksRoute
+            || (now < runtime->playerBypassUntil && !immediateDanger))) continue;
         float condition = 1.0f;
         if (enemy->isMover()) {
             auto* mover = static_cast<Mover*>(enemy);
@@ -1537,8 +1553,10 @@ mc2::player::UnitIntent producePlayerIntent(MechWarrior* warrior,
         return intent;
     }
     // Reissue via a lateral approach after 20 s without closing on the objective.
+    bool newRecovery = false;
     // Alternate sides; after two attempts scout another pending marker/last contact.
     if (now - runtime->playerProgressTime >= 20) {
+        newRecovery = true;
         runtime->playerProgressTime = now;
         runtime->playerBestDistance = distanceToGoal;
         runtime->playerRecoverUntil = now + 10;
@@ -1573,6 +1591,7 @@ mc2::player::UnitIntent producePlayerIntent(MechWarrior* warrior,
             + glm::vec3{-direction.y, direction.x, 0} * (side * 250.0f / length);
         intent.location.x = std::clamp(intent.location.x, Terrain::mapTopLeft3d.x + 128,
             Terrain::mapTopLeft3d.x + Terrain::worldUnitsMapSide - 128);
+        if (!newRecovery) intent.location = retainWaypoint(intent.location);
         intent.location.y = std::clamp(intent.location.y, Terrain::mapTopLeft3d.y - Terrain::worldUnitsMapSide + 128,
             Terrain::mapTopLeft3d.y - 128);
         runtime->engageTargetWID = 0;
@@ -1595,6 +1614,7 @@ mc2::player::UnitIntent producePlayerIntent(MechWarrior* warrior,
         const float distance = glm::length(route);
         if (distance > 1200) intent.location = position + route * (1200.0f / distance);
     }
+    if (intent.goal == mc2::player::Goal::Move) intent.location = retainWaypoint(intent.location);
     runtime->engageTargetWID = intent.targetWatchId;
     return intent;
 }
