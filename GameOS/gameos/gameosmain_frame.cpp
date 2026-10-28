@@ -2,6 +2,7 @@
 // main: the per-frame helpers -- draw-packet emit, the screenshot oracle, the load-race probes, the camera park and the swap.
 // The orchestrator is in gameosmain.cpp.
 #include "gameosmain_internal.h"
+#include <atomic>
 #include "mc2fmt.h"
 #include "gos_host_vk.h"
 #include "vk_scene_readback.h"
@@ -13,7 +14,7 @@
 void frameThrottleLogicEvents() {
         // Explicit diagnostic injection, after startup has reached real mission frames.
         static const auto crashFrame = mc2::gate::get<"MC2_TEST_CRASH_FRAME">();
-        if (crashFrame > 0 && g_mc2FrameCounter >= crashFrame) crashbundle_trigger_test_crash();
+        if (crashFrame > 0 && g_mc2FrameCounter.load(std::memory_order_relaxed) >= crashFrame) crashbundle_trigger_test_crash();
         // Throttle when the window is actually invisible (minimized / hidden),
         // NOT merely when it lacks keyboard focus. Plain focus loss happens
         // constantly during normal play (clicking a chat window, opening
@@ -362,13 +363,13 @@ void frameScreenshotOracle() {
             static const long s_ssFrame = static_cast<long>(mc2::gate::get<"MC2_SCREENSHOT_AT_FRAME">());
             static bool s_ssDone = false;
             if (s_ssPath && s_ssFrame >= 0 && !s_ssDone
-                && static_cast<long>(g_mc2FrameCounter) >= s_ssFrame) {
+                && static_cast<long>(g_mc2FrameCounter.load(std::memory_order_relaxed)) >= s_ssFrame) {
                 // The finished frame is read back by the Vulkan present path; the request completes on that frame.
                 gos::screenshot::request(s_ssPath);
                 s_ssDone = true;   // one attempt: a rejected request logs why and is not retried every frame
             }
             // DEV-SHELL-1: pending shell screenshot.
-            gos_dev_shell::capturePendingScreenshot(g_mc2FrameCounter);
+            gos_dev_shell::capturePendingScreenshot(g_mc2FrameCounter.load(std::memory_order_relaxed));
         }
 }
 
@@ -394,7 +395,7 @@ void frameLoadRaceVerdict() {
                     mc2::gate::isSet<"MC2_LOAD_RACE_VERDICT_FRAME">() ? mc2::gate::get<"MC2_LOAD_RACE_VERDICT_FRAME">()
                                                                       : mc2::gate::get<"MC2_SCREENSHOT_AT_FRAME">());
                 static bool s_vDone = false;
-                if (s_vFrame >= 0 && !s_vDone && static_cast<long>(g_mc2FrameCounter) >= s_vFrame) {
+                if (s_vFrame >= 0 && !s_vDone && static_cast<long>(g_mc2FrameCounter.load(std::memory_order_relaxed)) >= s_vFrame) {
                     s_vDone = true;
                     // A run is "degraded" if a REAL world actor lost its shape
                     // (mech_degrade_real>0) or terrain never became resident.
@@ -409,7 +410,7 @@ void frameLoadRaceVerdict() {
                         "terrain_resident=%s terrain_first_resident_frame=%ld "
                         "degraded=%s\n";
                     fprintf(stderr, fmt,
-                        g_mc2FrameCounter, scenarioTime,
+                        g_mc2FrameCounter.load(std::memory_order_relaxed), scenarioTime,
                         g_loadRaceMechDegrade, g_loadRaceMechDegradeReal,
                         g_loadRaceMechOkReal, g_loadRaceMechOkPreview,
                         g_loadRaceApprNull,
@@ -418,7 +419,7 @@ void frameLoadRaceVerdict() {
                         degraded ? "YES" : "no");
                     fflush(stderr);
                     printf(fmt,
-                        g_mc2FrameCounter, scenarioTime,
+                        g_mc2FrameCounter.load(std::memory_order_relaxed), scenarioTime,
                         g_loadRaceMechDegrade, g_loadRaceMechDegradeReal,
                         g_loadRaceMechOkReal, g_loadRaceMechOkPreview,
                         g_loadRaceApprNull,
@@ -465,7 +466,7 @@ void frameLoadRaceProbes() {
                 }();
                 static size_t s_nextProbe = 0;
                 if (s_nextProbe < s_probeFrames.size() &&
-                    static_cast<long>(g_mc2FrameCounter) >= s_probeFrames[s_nextProbe]) {
+                    static_cast<long>(g_mc2FrameCounter.load(std::memory_order_relaxed)) >= s_probeFrames[s_nextProbe]) {
                     const long pf = s_probeFrames[s_nextProbe];
                     ++s_nextProbe;
 
@@ -519,7 +520,7 @@ void frameLoadRaceProbes() {
                         "scene_px0=%u,%u,%u scene_px1=%u,%u,%u scene_px2=%u,%u,%u "
                         "atlas_texel[%s]=%u,%u,%u,%u\n";
                     fprintf(stderr, fmt,
-                        g_mc2FrameCounter, pf, scenarioTime,
+                        g_mc2FrameCounter.load(std::memory_order_relaxed), pf, scenarioTime,
                         pathStr, (unsigned)atlasSide, g_loadRaceAtlasFirstFrame,
                         g_loadRaceArmFirstFrame, g_loadRaceTerrainFirstResidentFrame,
                         g_loadRaceTerrainResidentNow ? "Y" : "N", g_loadRaceMechDegradeReal,
@@ -527,7 +528,7 @@ void frameLoadRaceProbes() {
                         atlasTexelStatus, atlasTexel[0],atlasTexel[1],atlasTexel[2],atlasTexel[3]);
                     fflush(stderr);
                     printf(fmt,
-                        g_mc2FrameCounter, pf, scenarioTime,
+                        g_mc2FrameCounter.load(std::memory_order_relaxed), pf, scenarioTime,
                         pathStr, (unsigned)atlasSide, g_loadRaceAtlasFirstFrame,
                         g_loadRaceArmFirstFrame, g_loadRaceTerrainFirstResidentFrame,
                         g_loadRaceTerrainResidentNow ? "Y" : "N", g_loadRaceMechDegradeReal,
@@ -551,7 +552,7 @@ void frameCameraPark(graphics::RenderWindowHandle win) {
             // gameplay keeps running. Default OFF = one static pointer check.
             // (Implementation lives in gos_visual_capture.cpp on this branch —
             // the mclib Camera type is visible there, not in this TU.)
-            gos::visual_capture::cameraParkTick(g_mc2FrameCounter);
+            gos::visual_capture::cameraParkTick(g_mc2FrameCounter.load(std::memory_order_relaxed));
 
             // [VISUAL_CAPTURE v1] S9: deterministic PNG + capture-tuple sidecar,
             // and bookmark teleport/settle/capture replay. Reuses the same

@@ -25,6 +25,7 @@
 // These shims wire the remaining call sites to the correct SDL/gameos entry
 // points, or provide safe no-op defaults where the old symbol was pure
 // Win32 boilerplate that has no SDL equivalent.
+#include <atomic>
 #include "stdafx.h"
 #include "EditorRenderTimer.h"
 #include "gos_render_pass_timer.h"  // EditorFramePhase_* whole-frame timing (MC2_EDITOR_GPU_TIMERS)
@@ -58,7 +59,7 @@
 #  include "tracy/Tracy.hpp"
 #endif
 
-extern uint32_t g_mc2FrameCounter;   // engine logic-pass epoch (mclib/tgl.cpp), advanced by gos::host::advanceFrameCounter
+extern std::atomic<uint32_t> g_mc2FrameCounter;   // engine logic-pass epoch (mclib/tgl.cpp), advanced by gos::host::advanceFrameCounter
 extern uint32_t g_mc2RenderFrame;    // render-frame clock (mclib/tgl.cpp), once per presented frame
 
 #ifdef MC2_IMGUI

@@ -11,6 +11,7 @@
 //     the stack — no resource file required.
 
 #include "gos_crashbundle.h"
+#include <atomic>
 #include "crash_content.h"
 #ifdef _WIN32
 #include "crash_content_writer.h"
@@ -72,7 +73,7 @@ static volatile LONG   g_ring_lock   = 0;  // spinlock, 0=free 1=held
 // NS3 boundary: missionName canonical def moved here so gameos_editor (which
 // lacks code/mechcmd2.cpp) can link cleanly. All consumers extern-declare it.
 // C++ linkage (no extern "C") — matches the old mechcmd2.cpp definition.
-extern uint32_t g_mc2FrameCounter; // mclib/tgl.cpp
+extern std::atomic<uint32_t> g_mc2FrameCounter; // mclib/tgl.cpp
 
 // Captured env flags (set once in crashbundle_init)
 static struct {
@@ -256,7 +257,7 @@ static void write_profile_json(void)
     safe_copy_mission_name(mn, sizeof(mn));
 
     uint32_t frame = 0;
-    __try { frame = g_mc2FrameCounter; }
+    __try { frame = g_mc2FrameCounter.load(std::memory_order_relaxed); }
     __except(EXCEPTION_EXECUTE_HANDLER) { frame = 0; }
 
     char buf[2048];
@@ -305,7 +306,7 @@ static size_t format_crash_txt(EXCEPTION_POINTERS* ep, char* out, size_t cap)
     }
 
     uint32_t frame = 0;
-    __try { frame = g_mc2FrameCounter; } __except(EXCEPTION_EXECUTE_HANDLER) {}
+    __try { frame = g_mc2FrameCounter.load(std::memory_order_relaxed); } __except(EXCEPTION_EXECUTE_HANDLER) {}
     sbuff(out, cap, &pos, "Frame: %u\n", frame);
 
     char mn[256];

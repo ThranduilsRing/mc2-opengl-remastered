@@ -1,5 +1,6 @@
 #include "../../GuiRuntime/PlayerFrontEnd.h"
 #include <memory>
+#include <atomic>
 #include <print>
 #include "gameos.hpp"
 #include "../../RenderCore/TextureService.h"
@@ -1041,7 +1042,7 @@ int main(int argc, char** argv)
 
         // DEV-SHELL-1: dev command socket poll. Single static-bool check when
         // MC2_DEV_SHELL unset. Commands run here, on the GL-owning main thread.
-        if (gos_dev_shell::pollCommands(g_mc2FrameCounter))
+        if (gos_dev_shell::pollCommands(g_mc2FrameCounter.load(std::memory_order_relaxed)))
             g_exit = true;
 
         if (!headless) {   // headless: the logic half above is the whole frame
@@ -1070,7 +1071,7 @@ int main(int argc, char** argv)
             gos::host::advanceFrameCounter();
             // [OBJECT_RECON v1] slice-2 recon-zero accumulator drain.
             // No-op cost (~1 cmp + 1 branch) when env not set.
-            mc2_object_recon::drainPerFrame(g_mc2FrameCounter);
+            mc2_object_recon::drainPerFrame(g_mc2FrameCounter.load(std::memory_order_relaxed));
             projectz_frame_tick();
             projectz_overlay_begin_frame();
         }
@@ -1088,7 +1089,7 @@ int main(int argc, char** argv)
         // [FRAME_PASS_STATS v1] frame boundary: promote this frame's per-pass
         // rows + aggregates, emit the summary line at cadence, reset. Placed
         // after the timer FrameEnd; advisory, OFF=zero cost.
-        gos_frame_pass_stats::FrameEnd(static_cast<unsigned long>(g_mc2FrameCounter));
+        gos_frame_pass_stats::FrameEnd(static_cast<unsigned long>(g_mc2FrameCounter.load(std::memory_order_relaxed)));
 
     mc2::overlap::kickTail();   // G7: frame N+1's ticks run on the sim worker while this thread presents and waits out the frame cap
     frameSwapWindow(win);   // the shared host present also ends the Vulkan frame and advances the handle-slot clock
@@ -1105,7 +1106,7 @@ int main(int argc, char** argv)
         }   // !headless
 
         FrameMark;
-        mc2::gpumem::tick(static_cast<unsigned long>(g_mc2FrameCounter));   // VRAM.Process.MB plot beside the frame marks
+        mc2::gpumem::tick(static_cast<unsigned long>(g_mc2FrameCounter.load(std::memory_order_relaxed)));   // VRAM.Process.MB plot beside the frame marks
 
         {
             ZoneScopedN("Frame.ExitCheck");

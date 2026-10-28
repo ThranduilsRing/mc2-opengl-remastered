@@ -7,6 +7,7 @@
 
 
 #ifndef MCLIB_H
+#include <atomic>
 #include"mclib.h"
 #endif
 #include "brain_special_dispatch.h"  // TECHSCRIPT-SPECIAL-DISPATCH-1A: executeSpecialBody_TraceOnly
@@ -135,7 +136,7 @@ enum MechBodyLocationType {
 
 // Globals defined in warrior.cpp (or elsewhere in the engine) that the split pieces share.
 extern int32_t NumStateTransitions;
-extern uint32_t g_mc2FrameCounter;
+extern std::atomic<uint32_t> g_mc2FrameCounter;
 extern float scenarioTime;
 extern float ThreatRatingEffect[8][3];
 extern float BrainUpdateFrequency;

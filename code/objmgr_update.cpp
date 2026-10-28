@@ -1,5 +1,6 @@
 // GameObjectManager: GameObjectManager::update with its GOM_UPDATE_COST spans, in-view conflation probe, GPU-cull record and static-skip gates.
 // Declared in the class headers; shared names in objmgr_internal.h.
+#include <atomic>
 #include "brain_execution_policy.h"
 #include "objmgr_internal.h"
 #include "sim_world_trace.h"
@@ -358,7 +359,7 @@ void GameObjectManager::updateDestroyTestHook() {
 	// getenv + integer compare, no behavior change.
 	{
 		static const long s_destroyTestFrame = static_cast<long>(mc2::gate::get<"MC2_STATIC_PROP_BUILDING_SHADOW_REBAKE_TEST_DESTROY_AT_FRAME">());
-		if (s_destroyTestFrame >= 0 && static_cast<long>(g_mc2FrameCounter) == s_destroyTestFrame) {
+		if (s_destroyTestFrame >= 0 && static_cast<long>(g_mc2FrameCounter.load(std::memory_order_relaxed)) == s_destroyTestFrame) {
 			// Content-pipeline proof: when a mounted package cooked a destroyed render shape, destroy
 			// every live building of those appearances (the destroyed-state capture); otherwise the
 			// first live building, as the shadow-rebake repro always did.
@@ -375,7 +376,7 @@ void GameObjectManager::updateDestroyTestHook() {
 				BuildingPtr b = buildings[bi];
 				if (!b || b->isDestroyed() || !b->getExists()) continue;
 				if (any && !hasDestroyedOverride(b)) continue;
-				mc2::fmt::print_err("[SHADOW_STATIC_BLDG_REBAKE_TEST v1] event=test_destroy frame={:d} buildingIndex={:d}\n", mc2::fmt::as_u32(g_mc2FrameCounter), mc2::fmt::as_i32(bi));
+				mc2::fmt::print_err("[SHADOW_STATIC_BLDG_REBAKE_TEST v1] event=test_destroy frame={:d} buildingIndex={:d}\n", mc2::fmt::as_u32(g_mc2FrameCounter.load(std::memory_order_relaxed)), mc2::fmt::as_i32(bi));
 				fflush(stderr);
 				b->setDamage(b->getDamageLevel());
 				if (!any) break;

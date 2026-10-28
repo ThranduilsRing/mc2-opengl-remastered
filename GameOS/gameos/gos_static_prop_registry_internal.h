@@ -3,6 +3,7 @@
 #ifndef GOS_STATIC_PROP_REGISTRY_INTERNAL_H
 #define GOS_STATIC_PROP_REGISTRY_INTERNAL_H
 
+#include <atomic>
 #include "gos_static_prop_registry.h"
 #include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
 #include "../../mclib/render_submissions.h"  // 2026-05-05: peekLightSlotNumLights/getLightStructCount for flush trace
@@ -32,7 +33,7 @@
 // so its cachedGpuLightIndex_ points at a UBO slot whose content was filled by
 // a different actor THIS frame (or is beyond the upload count). flush() must
 // detect this and skip emitting a draw for that recipe.
-extern uint32_t g_mc2FrameCounter;
+extern std::atomic<uint32_t> g_mc2FrameCounter;
 
 // [G1-STATIC-EAGER-LIGHT v1] Zero-slot probe helper (defined in mclib/txmmgr.cpp).
 // Returns true when lightData_[recipeIndex] has numLights_ > 0 (baked at least once).

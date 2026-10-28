@@ -1,5 +1,6 @@
 // Multi shape layer: the node-hierarchy walk (TransformMultiShape_BuildRecipe / _HierarchyOnly) and the GPU light-data cache.
 // Declared in the class headers; shared names in msl_internal.h.
+#include <atomic>
 #include "msl_internal.h"
 //-------------------------------------------------------------------------------
 // Walks the node hierarchy and publishes shapeToWorld / worldToShape per node. No vertex is touched: the GPU batchers
@@ -243,7 +244,7 @@ void TG_MultiShape::CacheGpuLightData()
 
     if (firstShapeNodeLeaf != nullptr) {
         cachedGpuLightIndex_ = firstShapeNodeLeaf->GatherGpuObjectLightDataOnly();
-        cachedFrame_         = g_mc2FrameCounter;
+        cachedFrame_         = g_mc2FrameCounter.load(std::memory_order_relaxed);
     }
 }
 
@@ -267,7 +268,7 @@ void TG_MultiShape::CacheGpuLightDataAllLeaves()
         if (first) {
             first = false;
             cachedGpuLightIndex_ = idx;
-            cachedFrame_         = g_mc2FrameCounter;
+            cachedFrame_         = g_mc2FrameCounter.load(std::memory_order_relaxed);
         }
     }
 }
@@ -314,7 +315,7 @@ void TG_MultiShape::EmitBakedGpuLightData(int32_t recipeIndex, const TG_HWLights
     // -> ~0 for the static class (the ~1840 calls/~1ms/frame survivor).
     (void)baked;  // identity is recipeIndex; the struct already persists in the slot
     cachedGpuLightIndex_ = static_cast<uint32_t>(recipeIndex);
-    cachedFrame_         = g_mc2FrameCounter;
+    cachedFrame_         = g_mc2FrameCounter.load(std::memory_order_relaxed);
 }
 
 void TG_MultiShape::ResubmitCachedGpuLightData()
@@ -334,7 +335,7 @@ void TG_MultiShape::ResubmitCachedGpuLightData()
     // without a valid index. Kill-switch OFF -> legacy resubmit bit-for-bit.
     extern bool mc2LightBridgeRepointEnabled();
     if (mc2LightBridgeRepointEnabled() &&
-        cachedFrame_ == g_mc2FrameCounter &&
+        cachedFrame_ == g_mc2FrameCounter.load(std::memory_order_relaxed) &&
         cachedGpuLightIndex_ != 0xFFFFFFFFu) {
         static bool s_c6Logged = false;
         if (!s_c6Logged) {
@@ -358,6 +359,6 @@ void TG_MultiShape::ResubmitCachedGpuLightData()
 
     if (firstShapeNodeLeaf != nullptr) {
         cachedGpuLightIndex_ = firstShapeNodeLeaf->ResubmitCachedLightData();
-        cachedFrame_         = g_mc2FrameCounter;
+        cachedFrame_         = g_mc2FrameCounter.load(std::memory_order_relaxed);
     }
 }

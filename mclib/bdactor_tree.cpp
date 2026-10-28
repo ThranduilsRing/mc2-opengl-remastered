@@ -1,5 +1,6 @@
 // BldgAppearance / TreeAppearance: TreeAppearance init, status, bounds, update, terrain marking, LOD select and destroy.
 // Declared in the class headers; shared names in bdactor_internal.h.
+#include <atomic>
 #include <algorithm>
 #include "bdactor_internal.h"
 #include "texture_assets.h"
@@ -370,10 +371,10 @@ bool TreeAppearance::recalcBounds (void)
 
 void TreeAppearance::recalcBoundsAndStamp() {
 	// FRAME-JOBS-1 worker path. Do not call from game logic.
-	extern uint32_t g_mc2FrameCounter;
-	if (boundsFrame == g_mc2FrameCounter) return;
+	extern std::atomic<uint32_t> g_mc2FrameCounter;
+	if (boundsFrame == g_mc2FrameCounter.load(std::memory_order_relaxed)) return;
 	recalcBounds();
-	boundsFrame = g_mc2FrameCounter;
+	boundsFrame = g_mc2FrameCounter.load(std::memory_order_relaxed);
 }
 
 long TreeAppearance::update (bool animate)

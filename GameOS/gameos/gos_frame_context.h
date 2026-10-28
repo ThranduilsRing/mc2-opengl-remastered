@@ -18,11 +18,12 @@
 // globals it is compared against, so it cannot diverge yet. It is wired now so the
 // safety net already exists when the authority slice makes the globals shims: at
 // that point a shim diverging from the context becomes a counted/fatal event.
+#include <atomic>
 #include <cstdint>
 
 namespace RenderCore { struct EngineView; const EngineView& getCurrentView(); }
 
-extern uint32_t g_mc2FrameCounter;   // engine frame clock (mclib/tgl.cpp)
+extern std::atomic<uint32_t> g_mc2FrameCounter;   // engine frame clock (mclib/tgl.cpp)
 extern long     g_mvpDiagFrame;      // raw publish counter (~2x/frame) (gameos_graphics.cpp)
 extern long     g_viewContentEpoch;  // semantic VIEW-CONTENT epoch (VIEW-EPOCH-DEDUPE-1)
 unsigned long   gos_object_mvp_stale_count();          // object draw fell back to live MVP
@@ -43,7 +44,7 @@ struct RenderFrameContext {
 // Build the coherent view from the authoritative globals (read-through).
 inline RenderFrameContext gos_FrameCtx() {
     RenderFrameContext c;
-    c.engineFrame      = static_cast<uint64_t>(g_mc2FrameCounter);
+    c.engineFrame      = static_cast<uint64_t>(g_mc2FrameCounter.load(std::memory_order_relaxed));
     c.viewEpoch        = g_mvpDiagFrame;
     c.viewContentEpoch = g_viewContentEpoch;
     c.view             = &RenderCore::getCurrentView();
@@ -59,7 +60,7 @@ inline bool gos_FrameCtxValidate() {
     const RenderFrameContext c = gos_FrameCtx();
     bool ok = true;
     if (c.viewEpoch   != g_mvpDiagFrame)                    { gos_framectx_note_mismatch("viewEpoch");   ok = false; }
-    if (c.engineFrame != static_cast<uint64_t>(g_mc2FrameCounter)) { gos_framectx_note_mismatch("engineFrame"); ok = false; }
+    if (c.engineFrame != static_cast<uint64_t>(g_mc2FrameCounter.load(std::memory_order_relaxed))) { gos_framectx_note_mismatch("engineFrame"); ok = false; }
     if (c.view        != &RenderCore::getCurrentView())     { gos_framectx_note_mismatch("view");        ok = false; }
     return ok;
 }

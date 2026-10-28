@@ -150,7 +150,7 @@ inline constexpr int VISIBLE_THRESHOLD = 1;
 // Globals defined in objmgr.cpp (or elsewhere in the engine) that the split pieces share.
 extern long* usedBlockList;
 extern long* moverBlockList;
-extern uint32_t g_mc2FrameCounter;
+extern std::atomic<uint32_t> g_mc2FrameCounter;
 extern bool updateTerrainObjects;
 extern bool	updateObjects;
 extern bool	renderTerrainObjects;

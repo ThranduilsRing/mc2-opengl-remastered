@@ -1,5 +1,6 @@
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include <utility>
+#include <atomic>
 #include "utils/mc2log.h"
 // Mech3DAppearance: bounds recalculation, render and renderShadows, with the MLR draw / light-row / FX-count counters they feed.
 // Declared in the class headers; shared names in mech3d_internal.h.
@@ -432,7 +433,7 @@ long Mech3DAppearance::render (long depthFixup)
 			static int s_nullEmits = 0;
 			if (s_mrtNull && s_nullEmits < 20000) {
 				++s_nullEmits;
-				mc2::fmt::print_err("[MECHRESTORE v1] event=nullshape frame={:d} actor={:d} type={:016X} status={:d}\n", mc2::fmt::as_u32(static_cast<unsigned>(g_mc2FrameCounter)), mc2::fmt::as_u32(static_cast<unsigned long>(actorHandle_)), mc2::fmt::as_ptr(static_cast<void*>(mechType)), mc2::fmt::as_i32(static_cast<int>(status)));
+				mc2::fmt::print_err("[MECHRESTORE v1] event=nullshape frame={:d} actor={:d} type={:016X} status={:d}\n", mc2::fmt::as_u32(static_cast<unsigned>(g_mc2FrameCounter.load(std::memory_order_relaxed))), mc2::fmt::as_u32(static_cast<unsigned long>(actorHandle_)), mc2::fmt::as_ptr(static_cast<void*>(mechType)), mc2::fmt::as_i32(static_cast<int>(status)));
 			}
 		}
 		return NO_ERR;
@@ -630,7 +631,7 @@ long Mech3DAppearance::render (long depthFixup)
 				{
 					const uint32_t cachedFR = mechShape->getCachedFrame();
 					const bool cacheSet   = (cachedLI != 0xFFFFFFFFu);
-					const bool cacheFresh = (cachedFR == g_mc2FrameCounter);
+					const bool cacheFresh = (cachedFR == g_mc2FrameCounter.load(std::memory_order_relaxed));
 					// Same index the pre-slice read resolved. The freshness
 					// verdict below RECORDS; it never diverts the submit.
 					uint32_t resolvedLI = cacheSet ? cachedLI : 0u;
@@ -640,7 +641,7 @@ long Mech3DAppearance::render (long depthFixup)
 						// counter inline. Silence is what let this ship.
 						static std::set<const void*> s_loggedStaleMechTypes;
 						if (s_loggedStaleMechTypes.insert(static_cast<const void*>(mechType)).second) {
-							mc2::fmt::print_err("[LIGHTROW_FRESHNESS v1] event=mech_stale_row_detected mechType={:016X} lod={:d} staleIndex={:d} cachedFrame={:d} currentFrame={:d} stale_so_far={:d} (prior-frame light slot; submit PROCEEDS with it -- declining would not draw, see MECH-DECLINE-FIX-1)\n", mc2::fmt::as_ptr(static_cast<void*>(mechType)), mc2::fmt::as_i32(static_cast<int>(currentLOD)), mc2::fmt::as_u32(cachedLI), mc2::fmt::as_u32(cachedFR), mc2::fmt::as_u32(static_cast<unsigned>(g_mc2FrameCounter)), mc2::fmt::as_u64(static_cast<unsigned long long>(s_mechStaleLightRowStale)));
+							mc2::fmt::print_err("[LIGHTROW_FRESHNESS v1] event=mech_stale_row_detected mechType={:016X} lod={:d} staleIndex={:d} cachedFrame={:d} currentFrame={:d} stale_so_far={:d} (prior-frame light slot; submit PROCEEDS with it -- declining would not draw, see MECH-DECLINE-FIX-1)\n", mc2::fmt::as_ptr(static_cast<void*>(mechType)), mc2::fmt::as_i32(static_cast<int>(currentLOD)), mc2::fmt::as_u32(cachedLI), mc2::fmt::as_u32(cachedFR), mc2::fmt::as_u32(static_cast<unsigned>(g_mc2FrameCounter.load(std::memory_order_relaxed))), mc2::fmt::as_u64(static_cast<unsigned long long>(s_mechStaleLightRowStale)));
 							fflush(stderr);
 						}
 					}
@@ -654,7 +655,7 @@ long Mech3DAppearance::render (long depthFixup)
 						static bool s_loggedMechOob = false;
 						if (!s_loggedMechOob) {
 							s_loggedMechOob = true;
-							mc2::fmt::print_err("[LIGHTROW_FRESHNESS v1] event=mech_row_out_of_range mechType={:016X} index={:d} liveRowCount={:d} currentFrame={:d} (INVARIANT BREAK -- shader would read light[] out of bounds; CLAMPED to slot 0)\n", mc2::fmt::as_ptr(static_cast<void*>(mechType)), mc2::fmt::as_u32(resolvedLI), mc2::fmt::as_u32(mc2::vkLights::getLightStructCount()), mc2::fmt::as_u32(static_cast<unsigned>(g_mc2FrameCounter)));
+							mc2::fmt::print_err("[LIGHTROW_FRESHNESS v1] event=mech_row_out_of_range mechType={:016X} index={:d} liveRowCount={:d} currentFrame={:d} (INVARIANT BREAK -- shader would read light[] out of bounds; CLAMPED to slot 0)\n", mc2::fmt::as_ptr(static_cast<void*>(mechType)), mc2::fmt::as_u32(resolvedLI), mc2::fmt::as_u32(mc2::vkLights::getLightStructCount()), mc2::fmt::as_u32(static_cast<unsigned>(g_mc2FrameCounter.load(std::memory_order_relaxed))));
 							fflush(stderr);
 						}
 						resolvedLI = 0u;
@@ -774,7 +775,7 @@ long Mech3DAppearance::render (long depthFixup)
 				const bool emitFail = (!gpuMechSubmitted && s_mechRestoreFailEmits < 20000);
 				if (s_mechRestoreTrace && (emitFail || s_mechRestoreEmits < 2000)) {
 					if (emitFail) ++s_mechRestoreFailEmits; else ++s_mechRestoreEmits;
-					mc2::fmt::print_err("[MECHRESTORE v1] event=submit frame={:d} actor={:d} type={:016X} lod={:d} submitted={:d} cullSkip={:d} lateReg={:d} finalized={:d} status={:d} inView={:d}\n", mc2::fmt::as_u32(static_cast<unsigned>(g_mc2FrameCounter)), mc2::fmt::as_u32(static_cast<unsigned long>(actorHandle_)), mc2::fmt::as_ptr(static_cast<void*>(mechType)), mc2::fmt::as_i32(static_cast<int>(currentLOD)), mc2::fmt::as_i32(gpuMechSubmitted ? 1 : 0), mc2::fmt::as_i32(mechGpuCullSkip ? 1 : 0), mc2::fmt::as_i32(GpuMechBatcher::instance().wasLastFailureLateRegistration() ? 1 : 0), mc2::fmt::as_i32(GpuMechBatcher::instance().isFinalized() ? 1 : 0), mc2::fmt::as_i32(static_cast<int>(status)), mc2::fmt::as_i32(static_cast<int>(inView)));
+					mc2::fmt::print_err("[MECHRESTORE v1] event=submit frame={:d} actor={:d} type={:016X} lod={:d} submitted={:d} cullSkip={:d} lateReg={:d} finalized={:d} status={:d} inView={:d}\n", mc2::fmt::as_u32(static_cast<unsigned>(g_mc2FrameCounter.load(std::memory_order_relaxed))), mc2::fmt::as_u32(static_cast<unsigned long>(actorHandle_)), mc2::fmt::as_ptr(static_cast<void*>(mechType)), mc2::fmt::as_i32(static_cast<int>(currentLOD)), mc2::fmt::as_i32(gpuMechSubmitted ? 1 : 0), mc2::fmt::as_i32(mechGpuCullSkip ? 1 : 0), mc2::fmt::as_i32(GpuMechBatcher::instance().wasLastFailureLateRegistration() ? 1 : 0), mc2::fmt::as_i32(GpuMechBatcher::instance().isFinalized() ? 1 : 0), mc2::fmt::as_i32(static_cast<int>(status)), mc2::fmt::as_i32(static_cast<int>(inView)));
 				}
 			}
 

@@ -1,5 +1,6 @@
 #include "vk_scene_renderer.h"
 #include "sim_tick_cost.h"
+#include <atomic>
 #include "command_replay.h"
 // Mission: the per-frame Mission::update with its MC2_MISSION_SPLIT timing, mover bridge, soak hooks and coherence audit.
 // Declared in the class headers; shared names in mission_internal.h.
@@ -455,7 +456,7 @@ void Mission::updateSimSystems() {
 void Mission::updateTraceHooks() {
 	// Refresh after mission ABL, without advancing a controller twice.
 	if (mc2::replay::active()) missionInterface->updateVTol();
-	mc2_abl_trace::flushFrame(g_mc2FrameCounter, getBrainTickIndex());
+	mc2_abl_trace::flushFrame(g_mc2FrameCounter.load(std::memory_order_relaxed), getBrainTickIndex());
 
 	// Runtime-bridge v0: emit [MOVER v2] mover.state to stdout (env-gated,
 	// throttled to MC2_BRIDGE_MOVER_PERIOD_SEC). Read-only; no-op unless
@@ -1332,7 +1333,7 @@ void Mission::overlapKick()
 		{
 			s_extraTickInFrame = tick > 0;
 			if (tick > 0)
-				++g_mc2FrameCounter;
+				g_mc2FrameCounter.fetch_add(1, std::memory_order_relaxed);
 			ended = updatePass(true, false, true, true, early);
 			s_extraTickInFrame = false;
 			if (ended || loadInMissionSave)
@@ -1414,7 +1415,7 @@ long Mission::update (void)
 				// accumulator, light-row stamps) see each tick as its own frame.
 				s_extraTickInFrame = tick > 0;
 				if (tick > 0)
-					++g_mc2FrameCounter;
+					g_mc2FrameCounter.fetch_add(1, std::memory_order_relaxed);
 				const bool ended = updatePass(true, tick == 0, true, !firstFrame, earlyResult);
 				s_extraTickInFrame = false;
 				if (ended)

@@ -1,5 +1,6 @@
 // GpuStaticPropBatcher: the VK shadow-island geometry feed and the colour-prop island feeds (the GL prop shadow draws are gone).
 // Declared in the class headers; shared names in gos_static_prop_batcher_internal.h.
+#include <atomic>
 #include "gos_static_prop_batcher_internal.h"
 #include "mc2fmt.h"
 #include "view_registry.h"
@@ -11,7 +12,7 @@ void GpuStaticPropBatcher::captureMoverShadowShape(const void* owner, TG_MultiSh
     if (!multi || !multi->listOfShapes || !s_geometryFinalized || g_mechPreviewRenderDepth>0) return;
     auto& feed=mc2shadow::moverPropFeed();
     if (feed.paused()) return;
-    if (feed.contains(owner,g_mc2FrameCounter)) return;
+    if (feed.contains(owner,g_mc2FrameCounter.load(std::memory_order_relaxed))) return;
     static std::vector<GpuStaticPropInstance> leaves;
     leaves.clear();
     for (int i=0;i<multi->numTG_Shapes;++i) {
@@ -22,7 +23,7 @@ void GpuStaticPropBatcher::captureMoverShadowShape(const void* owner, TG_MultiSh
         const uint32_t flags=shape->GetIsAlphaTest()?(1u<<2):0;
         if (GpuStaticPropBatcher::instance().buildRecipeFromShape(shape,glm::mat4(rec.shapeToWorld),0,0,flags,&leaf)) leaves.push_back(leaf);
     }
-    feed.record(owner,leaves,g_mc2FrameCounter);
+    feed.record(owner,leaves,g_mc2FrameCounter.load(std::memory_order_relaxed));
 }
 
 void GpuStaticPropBatcher::setDebugAddrMode(int mode) { debugAddrMode_ = mode; }

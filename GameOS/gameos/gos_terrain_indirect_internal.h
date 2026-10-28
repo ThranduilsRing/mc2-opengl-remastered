@@ -15,6 +15,7 @@
 // parity-printer schema, env-gate semantics).
 //
 
+#include <atomic>
 #include "gos_terrain_indirect.h"
 #include "../../mclib/terrain_material.h"  // single-sourced terrain type -> material
 #include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
@@ -87,7 +88,7 @@ extern bool     g_loadRaceTrace;
 extern long     g_loadRaceAtlasFirstFrame;
 extern long     g_loadRaceArmFirstFrame;
 extern long     g_loadRaceLastTerrainPath;
-extern uint32_t g_mc2FrameCounter;
+extern std::atomic<uint32_t> g_mc2FrameCounter;
 extern float    scenarioTime;
 
 

@@ -25,7 +25,7 @@
 // 2026-05-05: frame-stamp the cache so registry::flush() can skip stale entries
 // (actors whose update() was culled this frame; their cached UBO slot index now
 // points to a slot whose content was filled by a different actor).
-extern uint32_t g_mc2FrameCounter;
+extern std::atomic<uint32_t> g_mc2FrameCounter;
 
 
 #ifndef CIDENT_H

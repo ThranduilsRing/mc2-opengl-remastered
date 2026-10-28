@@ -3,6 +3,7 @@
 // and mechs, terrain overlay / decal batches).
 
 #include "vk_scene_renderer_internal.h"
+#include <atomic>
 #include "mc2fmt.h"
 #include "../GameOS/gameos/static_caster_set.h"
 #include "../GameOS/gameos/shadow_mover_feed.h"
@@ -11,7 +12,7 @@
 extern bool     g_loadRaceTrace;
 extern long     g_loadRaceTerrainFirstResidentFrame;
 extern bool     g_loadRaceTerrainResidentNow;
-extern uint32_t g_mc2FrameCounter;
+extern std::atomic<uint32_t> g_mc2FrameCounter;
 extern long     g_loadRaceAtlasFirstFrame;
 extern long     g_loadRaceArmFirstFrame;
 void mc2::VkSceneRenderer::renderListsDynamicShadowPass (RenderSubmissions& submissions)
@@ -47,8 +48,8 @@ void mc2::VkSceneRenderer::renderListsDynamicShadowPass (RenderSubmissions& subm
 			}
 			{ ZoneScopedN("DSP.MoverFeed");
 			movers=registryMovers;
-			set.appendMoverLeaves(movers,g_mc2FrameCounter);
-			mc2shadow::moverPropFeed().append(movers,g_mc2FrameCounter); }
+			set.appendMoverLeaves(movers,g_mc2FrameCounter.load(std::memory_order_relaxed));
+			mc2shadow::moverPropFeed().append(movers,g_mc2FrameCounter.load(std::memory_order_relaxed)); }
 			render_contract::executorOwnBeginTopLevel(render_contract::PassIdentity::ShadowCaster,"renderLists_unionMovers");
 			{ ZoneScopedN("DSP.RunMovers"); mc2_vk_shadow_island_run_movers(rows,sun,movers.data(),static_cast<unsigned int>(movers.size())); }
 			render_contract::executorOwnEndTopLevel(render_contract::PassIdentity::ShadowCaster,"renderLists_unionMovers");
@@ -120,7 +121,7 @@ void mc2::VkSceneRenderer::renderListsTerrainSolid (RenderSubmissions& submissio
 				g_loadRaceTerrainResidentNow = fully;
 				if (fully && g_loadRaceTerrainFirstResidentFrame < 0)
 				{
-					g_loadRaceTerrainFirstResidentFrame = static_cast<long>(g_mc2FrameCounter);
+					g_loadRaceTerrainFirstResidentFrame = static_cast<long>(g_mc2FrameCounter.load(std::memory_order_relaxed));
 					if (chunkPath)
 						mc2::fmt::print_out("[LOADRACE] terrain first fully-resident frame={:d} (chunk path: atlas_frame={:d} arm_frame={:d})\n", mc2::fmt::as_i32(g_loadRaceTerrainFirstResidentFrame), mc2::fmt::as_i32(g_loadRaceAtlasFirstFrame), mc2::fmt::as_i32(g_loadRaceArmFirstFrame));
 					else

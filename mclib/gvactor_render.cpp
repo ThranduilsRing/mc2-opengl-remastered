@@ -1,10 +1,11 @@
 // GVAppearance: shadow and body rendering (reads the vehicle-lit-path gate).
 // Declared in the class headers; shared names in gvactor_internal.h.
+#include <atomic>
 #include "gvactor_internal.h"
 #include "Gates/gate.h"
 #include "../RenderCore/axis_convert.h"
 
-extern uint32_t g_mc2FrameCounter;
+extern std::atomic<uint32_t> g_mc2FrameCounter;
 
 
 // Vehicle shadows are cast by the shadow cascades from the same per-node matrices the body draws from; the old
@@ -353,12 +354,12 @@ bool GVAppearance::submitToMechBatcher(uint32_t highlightARGB)
 	// Decline counters by reason; one summary line per mission (the frame counter restarts per mission).
 	static uint32_t s_ok = 0, s_paint = 0, s_row = 0, s_range = 0, s_batcher = 0, s_lastFrame = 0;
 	static bool s_logged = false;
-	if (g_mc2FrameCounter < s_lastFrame) { s_ok = s_paint = s_row = s_range = s_batcher = 0; s_logged = false; }
-	s_lastFrame = g_mc2FrameCounter;
-	if (!s_logged && g_mc2FrameCounter >= 600)
+	if (g_mc2FrameCounter.load(std::memory_order_relaxed) < s_lastFrame) { s_ok = s_paint = s_row = s_range = s_batcher = 0; s_logged = false; }
+	s_lastFrame = g_mc2FrameCounter.load(std::memory_order_relaxed);
+	if (!s_logged && g_mc2FrameCounter.load(std::memory_order_relaxed) >= 600)
 	{
 		s_logged = true;
-		mc2::fmt::print_err("[GV_SUBMIT] frame={:d} ok={:d} decline_paint={:d} decline_row={:d} decline_range={:d} decline_batcher={:d}\n", mc2::fmt::as_u32(g_mc2FrameCounter), mc2::fmt::as_u32(s_ok), mc2::fmt::as_u32(s_paint), mc2::fmt::as_u32(s_row), mc2::fmt::as_u32(s_range), mc2::fmt::as_u32(s_batcher));
+		mc2::fmt::print_err("[GV_SUBMIT] frame={:d} ok={:d} decline_paint={:d} decline_row={:d} decline_range={:d} decline_batcher={:d}\n", mc2::fmt::as_u32(g_mc2FrameCounter.load(std::memory_order_relaxed)), mc2::fmt::as_u32(s_ok), mc2::fmt::as_u32(s_paint), mc2::fmt::as_u32(s_row), mc2::fmt::as_u32(s_range), mc2::fmt::as_u32(s_batcher));
 	}
 	if (localTextureHandle == 0xffffffff) { ++s_paint; return false; }
 	GpuMechSubmitDesc desc{};
@@ -370,7 +371,7 @@ bool GVAppearance::submitToMechBatcher(uint32_t highlightARGB)
 	if (lightRow == 0xFFFFFFFFu) { ++s_row; return false; }
 	if (mc2::textures::ready() && lightRow >= mc2::vkLights::getLightStructCount()) { ++s_range; return false; }
 	// The row was gathered at update time; update and render can land on different frames, so stamp it fresh here.
-	gvShape->setCachedFrame(g_mc2FrameCounter);
+	gvShape->setCachedFrame(g_mc2FrameCounter.load(std::memory_order_relaxed));
 	desc.lightDataIndex = lightRow;
 	desc.highlightARGB = highlightARGB;
 	const float haze = std::clamp(std::max(hazeFactor, poseFog_), 0.0f, 1.0f);

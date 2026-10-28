@@ -11,6 +11,7 @@ void updateSaveFixtures();
 
 #ifndef MCLIB_H
 #include"mclib.h"
+#include <atomic>
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"   // str<>()
 #include "gos_crashbundle.h"
@@ -175,7 +176,7 @@ extern void terrainMaterials_apply(const char*);
 extern "C" int mc2FreezeMoversActive();
 extern "C" void mc2FreezeMoversMissionReset();
 extern float frameLength;
-extern uint32_t g_mc2FrameCounter;
+extern std::atomic<uint32_t> g_mc2FrameCounter;
 extern float minFrameRate;
 extern float minFrameLength;
 extern long MissionStartTime;

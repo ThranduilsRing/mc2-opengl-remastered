@@ -1,5 +1,6 @@
 // BldgAppearance / TreeAppearance: BldgAppearance static registry: eligibility, registerStatic, touch*, rebake gates, invalidate, destroy.
 // Declared in the class headers; shared names in bdactor_internal.h.
+#include <atomic>
 #include "bdactor_internal.h"
 #include "../RenderCore/axis_convert.h"
 #include "mc2fmt.h"
@@ -498,14 +499,14 @@ void BldgAppearance::touch()
 	// skip redundant Path B work. When MC2_FRAME_JOBS_TOUCH=0, stamp is never set
 	// (0xFFFFFFFFu initial value cannot match any real frame counter).
 	if (mc2FrameJobsTouchDiagEnabled()) {
-		touchEntryDiagRollFrame(g_mc2FrameCounter);
-		if (touchSerialCommitFrame == g_mc2FrameCounter) {
+		touchEntryDiagRollFrame(g_mc2FrameCounter.load(std::memory_order_relaxed));
+		if (touchSerialCommitFrame == g_mc2FrameCounter.load(std::memory_order_relaxed)) {
 			++s_touchEntryDiag.legacy_skipped;
 			return;
 		}
 		++s_touchEntryDiag.legacy_ran_nosplit;
 	} else {
-		if (touchSerialCommitFrame == g_mc2FrameCounter)
+		if (touchSerialCommitFrame == g_mc2FrameCounter.load(std::memory_order_relaxed))
 			return;
 	}
 
@@ -558,7 +559,7 @@ void BldgAppearance::touch()
 			bldgShape->Touch();
 			// The skip bypasses the emit/resubmit that stamped cachedFrame_; the static flush drops any
 			// range whose cachedFrame_ != currentFrame (and render() already suppressed the legacy draw).
-			bldgShape->setCachedFrame(g_mc2FrameCounter);
+			bldgShape->setCachedFrame(g_mc2FrameCounter.load(std::memory_order_relaxed));
 			return;
 		}
 
@@ -616,9 +617,9 @@ void BldgAppearance::touchSerialCommit()
 	// loop) returns immediately. Set BEFORE any early returns including stable-skip:
 	// if stable-skip fires and we return early, the stamp still prevents Path B from
 	// re-doing work that stable-skip correctly decided to omit.
-	touchSerialCommitFrame = g_mc2FrameCounter;
+	touchSerialCommitFrame = g_mc2FrameCounter.load(std::memory_order_relaxed);
 	if (mc2FrameJobsTouchDiagEnabled()) {
-		touchEntryDiagRollFrame(g_mc2FrameCounter);
+		touchEntryDiagRollFrame(g_mc2FrameCounter.load(std::memory_order_relaxed));
 		++s_touchEntryDiag.serial_commit_hits;
 	}
 
@@ -671,7 +672,7 @@ void BldgAppearance::touchSerialCommit()
 		const bool blk_noelig = !stableLightSkipEligible;
 		lbssRecordBldg(stableLightSkipEligible, skipTaken, /*blk_idx=*/false, /*blk_gen=*/false, blk_noelig);
 		if (skipTaken) {
-			bldgShape->setCachedFrame(g_mc2FrameCounter);   // see the touch-skip above
+			bldgShape->setCachedFrame(g_mc2FrameCounter.load(std::memory_order_relaxed));   // see the touch-skip above
 			return;
 		}
 	}

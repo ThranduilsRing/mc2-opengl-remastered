@@ -1,6 +1,7 @@
 // GpuMechBatcher: submitActor and GpuMechBatcher::flush. flush() is CPU only: it builds the instance, bone and run feeds
 // (the persisted snapshots) the Vulkan mech island and the VK shadow cascades consume.
 // Declared in the class headers; shared names in gos_mech_batcher_internal.h.
+#include <atomic>
 #include "gos_mech_batcher_internal.h"
 #include "../../mclib/texture_assets.h"
 #include "mc2fmt.h"
@@ -487,11 +488,11 @@ static void emitBatcherStats(MechFlushFrame& f) {
         uint32_t fallbackTotal = 0;
         for (int i = 0; i < kGpuMechFallbackReasonCount; ++i)
             fallbackTotal += s_fallbacksThisFrame[i];
-        extern uint32_t g_mc2FrameCounter;
+        extern std::atomic<uint32_t> g_mc2FrameCounter;
         MC2_DIAGFE(stderr,
             "[MECHBATCHER v1] event=summary frame=%u eligible=%u submitted=%zu "
             "buckets=%zu draw_calls=%u instances=%zu fallback_total=%u\n",
-            g_mc2FrameCounter, s_eligibleActorsThisFrame, s_pendingSubmits.size(),
+            g_mc2FrameCounter.load(std::memory_order_relaxed), s_eligibleActorsThisFrame, s_pendingSubmits.size(),
             buckets.size(), drawnCalls, totalInstances, fallbackTotal);
         for (int i = 0; i < kGpuMechFallbackReasonCount; ++i) {
             if (s_fallbacksThisFrame[i] > 0) {

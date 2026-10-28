@@ -86,7 +86,7 @@
 extern bool MLRVertexLimitReached;
 extern bool useFog;
 extern DWORD BaseVertexColor;
-extern uint32_t g_mc2FrameCounter;
+extern std::atomic<uint32_t> g_mc2FrameCounter;
 // Free functions defined in the split pieces.
 bool mc2LightBridgeRepointEnabled();
 bool mc2LightBakeEnabled();

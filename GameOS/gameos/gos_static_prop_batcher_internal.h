@@ -6,6 +6,7 @@
 #ifndef GOS_STATIC_PROP_BATCHER_INTERNAL_H
 #define GOS_STATIC_PROP_BATCHER_INTERNAL_H
 
+#include <atomic>
 #include "gos_static_prop_batcher.h"
 #include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
 #include "render_snapshot.h"             // ExtractedStaticPropPacket full definition for batcher_getDrawSlotEntry
@@ -59,7 +60,7 @@ extern "C" void mc2_vk_color_prop_island_invalidate_geometry();  // vulkan_color
 // consumer does (code/gameobj.cpp:104, code/controlgui.cpp:2390, ...).
 // MUST stay at true file scope -- inside the anonymous namespace below this
 // would acquire internal linkage and fail to resolve at link time.
-extern uint32_t g_mc2FrameCounter;
+extern std::atomic<uint32_t> g_mc2FrameCounter;
 
 #define ALPHA_TRACE(fmt, ...) \
     do { if (s_alphaTrace) { printf("[ALPHA_TEST] " fmt "\n", ##__VA_ARGS__); fflush(stdout); } } while (0)

@@ -1,5 +1,6 @@
 #include "brain_execution_policy.h"
 #include "../GameOS/gameos/vk_render_infra.h"
+#include <atomic>
 #include "../GameAdapters/SkyRenderAdapter.h"
 // Mission: the second half of the Mission::init load sequence -- warriors and brains, movers and parts,
 // terrain objects, commanders, the HUD and the geometry finalize. The first half and the orchestrator are in mission_init.cpp.
@@ -673,7 +674,7 @@ void Mission::initGpuAndLighting() {
 	// the previous mission's state into this mission).
 
 	if (mc2::gate::get<"MC2_DECOR_SHADOW_TRACE">()) {
-		mc2::fmt::print_out("[DECOR_SHADOW v1] event=mission_reset_priming frame={:d}\n", mc2::fmt::as_u32(g_mc2FrameCounter)); fflush(stdout);
+		mc2::fmt::print_out("[DECOR_SHADOW v1] event=mission_reset_priming frame={:d}\n", mc2::fmt::as_u32(g_mc2FrameCounter.load(std::memory_order_relaxed))); fflush(stdout);
 	}
 }
 

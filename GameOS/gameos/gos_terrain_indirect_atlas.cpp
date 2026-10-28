@@ -2,6 +2,7 @@
 // gos_terrain_indirect: dense recipe storage, recipe slot build/flush, colormap atlas and cement catalog atlas upload.
 // Declared in the class headers; shared names in gos_terrain_indirect_internal.h.
 #include "gos_terrain_indirect_internal.h"
+#include <atomic>
 #include "../../mclib/texture_assets.h"
 #include "mc2fmt.h"
 #include "terrain_field_store.h"
@@ -195,14 +196,14 @@ void BuildColormapAtlas() {
                 static bool s_deferLogged = false;
                 if (g_loadRaceTrace && !s_deferLogged) {
                     s_deferLogged = true;
-                    mc2::fmt::print_err("[LOADRACE] NEG-CONTROL atlas upload DEFERRED (scenarioTime={:.2f} < 30) frame={:d}\n", scenarioTime, mc2::fmt::as_u32(g_mc2FrameCounter));
+                    mc2::fmt::print_err("[LOADRACE] NEG-CONTROL atlas upload DEFERRED (scenarioTime={:.2f} < 30) frame={:d}\n", scenarioTime, mc2::fmt::as_u32(g_mc2FrameCounter.load(std::memory_order_relaxed)));
                     fflush(stderr);
                 }
                 return;   // leave g_atlasSize == 0
             }
             s_delayReleased = true;
             if (g_loadRaceTrace) {
-                mc2::fmt::print_err("[LOADRACE] NEG-CONTROL atlas delay RELEASED (scenarioTime={:.2f}) frame={:d} -- uploading now\n", scenarioTime, mc2::fmt::as_u32(g_mc2FrameCounter));
+                mc2::fmt::print_err("[LOADRACE] NEG-CONTROL atlas delay RELEASED (scenarioTime={:.2f}) frame={:d} -- uploading now\n", scenarioTime, mc2::fmt::as_u32(g_mc2FrameCounter.load(std::memory_order_relaxed)));
                 fflush(stderr);
             }
         }
@@ -286,7 +287,7 @@ void BuildColormapAtlas() {
 
     // MC2_LOAD_RACE_TRACE: latch the frame the colormap atlas first exists.
     if (g_loadRaceTrace && atlasSizeCapture > 0 && g_loadRaceAtlasFirstFrame < 0) {
-        g_loadRaceAtlasFirstFrame = static_cast<long>(g_mc2FrameCounter);
+        g_loadRaceAtlasFirstFrame = static_cast<long>(g_mc2FrameCounter.load(std::memory_order_relaxed));
         mc2::fmt::print_err("[LOADRACE] atlas first-resident frame={:d} atlas_side={:d} scenarioTime={:.2f}\n", mc2::fmt::as_i32(g_loadRaceAtlasFirstFrame), mc2::fmt::as_i32(atlasSizeCapture), scenarioTime);
         fflush(stderr);
     }
