@@ -7,6 +7,7 @@
 // Copyright (C) Microsoft Corporation. All rights reserved.                 //
 //===========================================================================//
 
+#include "gos_profiler.h"
 // Include Files
 #ifndef MCLIB_H
 #include"mclib.h"
@@ -243,6 +244,7 @@ long CollisionGrid::add (GameObjectPtr object)
 //------------------------------------------------------------------------------
 void CollisionGrid::createGrid (void)
 {
+	ZoneScopedN("GameLogic.Collisions.Grid");
 	// Flat cell ranges. The legacy bucket lists were LIFO, so within a cell the newest object
 	// comes first, and giants likewise. The traversal below reproduces that exact order.
 	const size_t cells = static_cast<size_t>(xGridWidth) * yGridWidth;
@@ -263,6 +265,7 @@ void CollisionGrid::createGrid (void)
 
 void CollisionGrid::traverse (void)
 {
+	ZoneScopedN("GameLogic.Collisions.Traverse");
 	const GameObjectPtr* const giantBegin = giants.data();
 	const GameObjectPtr* const giantEnd = giantBegin + giants.size();
 

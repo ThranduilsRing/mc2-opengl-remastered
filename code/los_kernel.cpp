@@ -67,6 +67,7 @@ bool walk(const Snapshot& s, float startLocal, long mCellRow, long mCellCol, flo
 
 		getCellPos(s, tCellRow, tCellCol, endPos);
 		getCellPos(s, mCellRow, mCellCol, startPos);
+		const float startGround = startPos.z;
 		startPos.z += startLocal;
 		endPos.z += endLocal;
 
@@ -86,7 +87,8 @@ bool walk(const Snapshot& s, float startLocal, long mCellRow, long mCellCol, flo
 			float heightLen = (endPos.z - startPos.z) / (length + ACCURACY_ADJUST);
 
 			glm::vec3 currentPos = startPos;
-			currentPos.z = terrainElevation(s, currentPos);
+			// The pure elevation path reads x/y only: getCellPos already sampled this exact point.
+			currentPos.z = s.elevationOverride ? terrainElevation(s, currentPos) : startGround;
 			long maxDistIter = (length - 0.5f);
 			long maxTrees = 0;
 
@@ -141,7 +143,9 @@ bool walk(const Snapshot& s, float startLocal, long mCellRow, long mCellCol, flo
 
 				currentPos.x += colLength;
 				currentPos.y += rowLength;
-				currentPos.z = terrainElevation(s, currentPos);
+				// The last sample is never read. Preserve override callback calls, whose inputs include z.
+				if (s.elevationOverride || distIter + 1 < maxDistIter)
+					currentPos.z = terrainElevation(s, currentPos);
 			}
 		}
 	}

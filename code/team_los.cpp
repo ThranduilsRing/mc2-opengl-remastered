@@ -8,6 +8,7 @@
 #include <gameos.hpp>
 #include "terrtxm2.h"
 #include <vector>
+#include "gos_profiler.h"
 
 static_assert(mc2::los::kCellHeightMask == static_cast<uint32_t>(MAPCELL_HEIGHT_MASK) &&
               mc2::los::kCellHeightShift == MAPCELL_HEIGHT_SHIFT &&
@@ -219,6 +220,7 @@ static bool inVisualRange(GameObjectPtr obj, const glm::vec3& tPos)
 //---------------------------------------------------------------------------
 bool Team::teamLineOfSight (glm::vec3 tPos, float extRad)
 {
+	ZoneScopedN("GameLogic.LOS.Team");
 	// The range gates run here in roster order; each in-range member contributes one ray. The rays are pure reads, so
 	// they run as one batch (jobs when the batch is big enough) and the answer is "any hit" - the same bit the legacy
 	// first-hit early return produced.
@@ -285,6 +287,7 @@ bool Team::teamLineOfSight (glm::vec3 tPos, float extRad)
 //---------------------------------------------------------------------------
 bool Team::lineOfSight (float startLocal, long mCellRow, long mCellCol, float endLocal, long tCellRow, long tCellCol, long teamId, float extRad, float startExtRad)
 {
+	ZoneScopedN("GameLogic.LOS.Walk");
 	if ((teamId < 0) || (teamId >= MAX_TEAMS))
 		return true;
 	const mc2::los::Snapshot& snap = losSnapshot();
@@ -296,6 +299,7 @@ bool Team::lineOfSight (float startLocal, long mCellRow, long mCellCol, float en
 //---------------------------------------------------------------------------
 bool Team::lineOfSight (glm::vec3 position, glm::vec3 targetPosition, long teamId, float extRad, float startExtRad)
 {
+	ZoneScopedN("GameLogic.LOS.Query");
 	if ((teamId < 0) || (teamId >= MAX_TEAMS))
 		return true;
 	const mc2::los::Snapshot& snap = losSnapshot();
@@ -308,4 +312,15 @@ bool Team::lineOfSight (glm::vec3 position, glm::vec3 targetPosition, long teamI
 	q.extRad = extRad;
 	q.startExtRad = startExtRad;
 	return mc2::los::query(snap, q);
+}
+
+void Team::lineOfSightBatch(std::span<const mc2::los::Query> queries, std::span<uint8_t> hits)
+{
+	ZoneScopedN("GameLogic.LOS.SensorBatch");
+	const mc2::los::Snapshot snap = captureLosSnapshot();
+	if (!snap.valid) {
+		std::fill(hits.begin(), hits.end(), uint8_t{0});
+		return;
+	}
+	mc2::los::batch(snap, queries, hits);
 }

@@ -147,7 +147,6 @@ inline bool MoveMap::adjacentCellOpenJUMP (long r, long c, long dir) {
 }
 
 inline int MoveMap::calcHPrime (int r, int c) {
-	ZoneScopedN("GameLogic.PathManager.CalcPath3");
 	long sum = 0;
 	if (r > goalR)
 		sum += (r - goalR);
