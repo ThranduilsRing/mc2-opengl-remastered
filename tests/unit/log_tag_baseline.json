@@ -386,6 +386,16 @@
    "count": 1
   },
   {
+   "tag": "AUDIO_SAMPLE",
+   "ver": -1,
+   "stream": "log",
+   "keys": [
+    "id",
+    "channel"
+   ],
+   "count": 1
+  },
+  {
    "tag": "AUTHORED_ORDER",
    "ver": 1,
    "stream": "stderr",
@@ -3541,6 +3551,18 @@
     "unique"
    ],
    "count": 2
+  },
+  {
+   "tag": "G7_HAZARDS",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "mode",
+    "frames",
+    "violations",
+    "sites"
+   ],
+   "count": 1
   },
   {
    "tag": "GAMEPLAY_PICK_SELFTEST",
@@ -10786,7 +10808,7 @@
     "route",
     "wrap",
     "numWeapons",
-    "liveWeapons",
+    "liveOther",
     "numCarnage",
     "numArtillery"
    ],

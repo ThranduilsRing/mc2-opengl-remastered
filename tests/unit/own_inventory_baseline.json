@@ -175,14 +175,13 @@
    ]
   },
   "Artillery": {
-   "delete": 1,
+   "delete": 0,
    "delete_array": 0,
    "files": {
     "code/artlry.cpp": {
      "new": 1
     },
     "code/objmgr.cpp": {
-     "delete": 1,
      "new": 1
     },
     "code/objmgr_io.cpp": {
@@ -191,9 +190,7 @@
    },
    "new": 3,
    "new_array": 0,
-   "owners": [
-    "GameObjectManager"
-   ]
+   "owners": []
   },
   "ArtilleryType": {
    "delete": 0,
@@ -232,14 +229,13 @@
    "owners": []
   },
   "BattleMech": {
-   "delete": 1,
+   "delete": 0,
    "delete_array": 0,
    "files": {
     "code/mech_type.cpp": {
      "new": 1
     },
     "code/objmgr.cpp": {
-     "delete": 1,
      "new": 1
     },
     "code/objmgr_io.cpp": {
@@ -248,9 +244,7 @@
    },
    "new": 3,
    "new_array": 0,
-   "owners": [
-    "GameObjectManager"
-   ]
+   "owners": []
   },
   "BattleMechType": {
    "delete": 0,
@@ -300,14 +294,13 @@
    ]
   },
   "Building": {
-   "delete": 1,
+   "delete": 0,
    "delete_array": 0,
    "files": {
     "code/bldng.cpp": {
      "new": 1
     },
     "code/objmgr.cpp": {
-     "delete": 1,
      "new": 1
     },
     "code/objmgr_io.cpp": {
@@ -316,9 +309,7 @@
    },
    "new": 3,
    "new_array": 0,
-   "owners": [
-    "GameObjectManager"
-   ]
+   "owners": []
   },
   "BuildingAction": {
    "delete": 1,
@@ -764,14 +755,13 @@
    "owners": []
   },
   "Carnage": {
-   "delete": 1,
+   "delete": 0,
    "delete_array": 0,
    "files": {
     "code/carnage.cpp": {
      "new": 2
     },
     "code/objmgr.cpp": {
-     "delete": 1,
      "new": 1
     },
     "code/objmgr_io.cpp": {
@@ -780,9 +770,7 @@
    },
    "new": 4,
    "new_array": 0,
-   "owners": [
-    "GameObjectManager"
-   ]
+   "owners": []
   },
   "ChainIteratorOf<T>": {
    "delete": 0,
@@ -1769,14 +1757,13 @@
    ]
   },
   "Gate": {
-   "delete": 1,
+   "delete": 0,
    "delete_array": 0,
    "files": {
     "code/gate.cpp": {
      "new": 1
     },
     "code/objmgr.cpp": {
-     "delete": 1,
      "new": 1
     },
     "code/objmgr_io.cpp": {
@@ -1785,9 +1772,7 @@
    },
    "new": 3,
    "new_array": 0,
-   "owners": [
-    "GameObjectManager"
-   ]
+   "owners": []
   },
   "GateType": {
    "delete": 0,
@@ -1844,14 +1829,13 @@
    "owners": []
   },
   "GroundVehicle": {
-   "delete": 1,
+   "delete": 0,
    "delete_array": 0,
    "files": {
     "code/gvehicl.cpp": {
      "new": 1
     },
     "code/objmgr.cpp": {
-     "delete": 1,
      "new": 1
     },
     "code/objmgr_io.cpp": {
@@ -1860,9 +1844,7 @@
    },
    "new": 3,
    "new_array": 0,
-   "owners": [
-    "GameObjectManager"
-   ]
+   "owners": []
   },
   "GroundVehicleType": {
    "delete": 0,
@@ -3819,11 +3801,10 @@
    "owners": []
   },
   "TerrainObject": {
-   "delete": 1,
+   "delete": 0,
    "delete_array": 0,
    "files": {
     "code/objmgr.cpp": {
-     "delete": 1,
      "new": 1
     },
     "code/objmgr_io.cpp": {
@@ -3835,9 +3816,7 @@
    },
    "new": 3,
    "new_array": 0,
-   "owners": [
-    "GameObjectManager"
-   ]
+   "owners": []
   },
   "TerrainObjectType": {
    "delete": 0,
@@ -3962,11 +3941,10 @@
    "owners": []
   },
   "Turret": {
-   "delete": 1,
+   "delete": 0,
    "delete_array": 0,
    "files": {
     "code/objmgr.cpp": {
-     "delete": 1,
      "new": 1
     },
     "code/objmgr_io.cpp": {
@@ -3978,9 +3956,7 @@
    },
    "new": 3,
    "new_array": 0,
-   "owners": [
-    "GameObjectManager"
-   ]
+   "owners": []
   },
   "TurretType": {
    "delete": 0,
@@ -4121,11 +4097,10 @@
    "owners": []
   },
   "WeaponBolt": {
-   "delete": 1,
+   "delete": 0,
    "delete_array": 0,
    "files": {
     "code/objmgr.cpp": {
-     "delete": 1,
      "new": 1
     },
     "code/objmgr_io.cpp": {
@@ -4137,9 +4112,7 @@
    },
    "new": 3,
    "new_array": 0,
-   "owners": [
-    "GameObjectManager"
-   ]
+   "owners": []
   },
   "WeaponBoltType": {
    "delete": 0,
@@ -5021,7 +4994,7 @@
   "code/mission_init.cpp": 1,
   "code/missionbegin.cpp": 3,
   "code/mpparameterscreen.cpp": 1,
-  "code/objmgr.cpp": 1,
+  "code/tick_commit.h": 2,
   "editor/Action.cpp": 5,
   "editor/BuildingBrush.cpp": 2,
   "editor/Editor.cpp": 4,
