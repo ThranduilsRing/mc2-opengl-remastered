@@ -58,6 +58,7 @@
 // or any order/movement/attack/OPORD function.
 // Verified by inspection: no warrior pointer, no tac-order type, no slot writes.
 
+#include "brain_execution_policy.h"
 #include "brain_special_internal.h"
 #include "brain_special_frame.h"
 #include "dteam.h"   // MAX_CONTACTS_PER_TEAM: the length of every getContacts output array
@@ -74,20 +75,7 @@ MissionVarStore g_missionVarStore;
 // Gate helper for MC2_BRAIN_VAR_MISSION (1D-M).
 // Requires MC2_BRAIN_DISPATCH_VAR=1 to be meaningful, but has its own separate gate
 // so it can be turned on independently. Warns if turned on without DISPATCH_VAR.
-static bool s_missionVarGate() {
-    static const bool kGate = ([](){
-        if (mc2::gate::get<"MC2_BRAIN_VAR_MISSION">()) {
-            if (!mc2::gate::get<"MC2_BRAIN_DISPATCH_VAR">()) {
-                std::fprintf(stderr, "[BRAIN_VAR_MISSION] WARNING: MC2_BRAIN_VAR_MISSION=1 requires MC2_BRAIN_DISPATCH_VAR=1 — mission-scope writes/reads are INERT\n");
-                std::fflush(stderr);
-                return false;
-            }
-            return true;
-        }
-        return false;
-    })();
-    return kGate;
-}
+static bool s_missionVarGate() { return mc2::brainpolicy::techBrain(); }   // BrainExecutionPolicy (was a gate)
 
 // resetMissionVarStore — clears g_missionVarStore.
 // Call at mission load before warriors execute their first tick.
@@ -108,10 +96,7 @@ static constexpr int kCallChainMaxDepth = 8;
 // Gate MC2_BRAIN_ALIAS (default OFF). When OFF every alias path below is a no-op
 // and behavior is byte-identical to pre-slice (only the 5 hardcoded
 // aliasToCanonical mappings apply, exactly as before).
-static bool s_brainAliasGate() {
-    static const bool kGate = mc2::gate::get<"MC2_BRAIN_ALIAS">();
-    return kGate;
-}
+static bool s_brainAliasGate() { return mc2::brainpolicy::techBrain(); }   // BrainExecutionPolicy (was a gate)
 
 // Forward declaration — defined after aliasToCanonical (used by the dispatch loops above it).
 static const char* resolveVerbAliasToken(const char* verb, char out[256]);
@@ -152,20 +137,7 @@ const SpecialIndexEntry* specialIndexFind(const SpecialIndex& idx, const std::st
 
 // ---------------------------------------------------------------------------
 // Gate helper for DISPATCH_CALL (TECHSCRIPT-CALL-CHAIN-1A).
-static bool s_dispatchCallGate() {
-    static const bool kGate = ([](){
-        if (mc2::gate::get<"MC2_BRAIN_DISPATCH_CALL">()) {
-            if (!mc2::gate::get<"MC2_BRAIN_DISPATCH">()) {
-                std::fprintf(stderr, "[BRAIN_DISPATCH_CALL] WARNING: MC2_BRAIN_DISPATCH_CALL=1 requires MC2_BRAIN_DISPATCH=1 — call chaining is INERT\n");
-                std::fflush(stderr);
-                return false;
-            }
-            return true;
-        }
-        return false;
-    })();
-    return kGate;
-}
+static bool s_dispatchCallGate() { return mc2::brainpolicy::techBrain(); }   // BrainExecutionPolicy (was a gate)
 
 // ---------------------------------------------------------------------------
 // Forward declaration for gate helper (defined after helpers, used by execute functions).
@@ -176,10 +148,7 @@ static bool s_dispatchVarGate();
 // Default OFF. When ON, FSM verbs (SetState/SetStatePrev/InState/NotInState)
 // are active.  When OFF, FSM verb strings fall through to the isRecognizedVerb
 // path (trace-only [BRAIN_DISPATCH] line) — byte-identical for brains without FSM verbs.
-static bool s_brainFsmGate() {
-    static const bool kGate = mc2::gate::get<"MC2_BRAIN_FSM">();
-    return kGate;
-}
+static bool s_brainFsmGate() { return mc2::brainpolicy::techBrain(); }   // BrainExecutionPolicy (was a gate)
 
 // ---------------------------------------------------------------------------
 // Gate helper for MC2_BRAIN_FLOW (BRAINSPECIAL-FLOW-WAIT-1).
@@ -189,34 +158,24 @@ static bool s_brainFsmGate() {
 //     pre-slice parse behavior, byte-identical);
 //   - executeSpecialBody_Apply gates verbs after an unsatisfied WAIT/WAIT_UNTIL and
 //     terminates the tick's body execution at STOP.
-static bool s_brainFlowGate() {
-    static const bool kGate = mc2::gate::get<"MC2_BRAIN_FLOW">();
-    return kGate;
-}
+static bool s_brainFlowGate() { return mc2::brainpolicy::techBrain(); }   // BrainExecutionPolicy (was a gate)
 
 // ---------------------------------------------------------------------------
 // Gate helper for MC2_BRAIN_PATROL (BRAIN-OPORD-COREPATROL-1).
 // Default OFF. When ON, OPORD.CorePatrol parse + per-tick advance are active.
 // NOTE: reads MC2_BRAIN_PATROL fresh per call (not cached) so harness _putenv works.
-static bool s_brainPatrolGate() {
-    return mc2::gate::get<"MC2_BRAIN_PATROL">();
-}
+static bool s_brainPatrolGate() { return mc2::brainpolicy::techBrain(); }   // BrainExecutionPolicy (was a gate)
 
 // BRAIN-ENGAGE-1: MC2_BRAIN_ENGAGE gate (default OFF). When ON, Patrol/Guard runtimes with
 // engageRadius>0 auto-acquire the nearest enemy in range and fire (tickEngageNearest).
 // Read fresh per call (harness _putenv friendly), matching s_brainPatrolGate.
-static bool s_brainEngageGate() {
-    return mc2::gate::get<"MC2_BRAIN_ENGAGE">();
-}
+static bool s_brainEngageGate() { return mc2::brainpolicy::techBrain(); }   // BrainExecutionPolicy (was a gate)
 
 // BRAIN-COMMIT-PHASE-1 (GAP B): MC2_BRAIN_COMMIT_PHASE gate (default OFF).
 // Mirrors warrior.cpp's s_brainCommitPhase / objmgr.cpp's s_commitPhaseGate.
 // When ON, patrol-emitted intents must be left in pendingIntents for the deferred
 // WID-ordered drain (objmgr.cpp) instead of being self-committed inline here.
-static bool s_brainCommitPhaseEnabled() {
-    static const bool kGate = mc2::gate::get<"MC2_BRAIN_COMMIT_PHASE">();
-    return kGate;
-}
+static bool s_brainCommitPhaseEnabled() { return mc2::brainpolicy::techBrain(); }   // BrainExecutionPolicy (was a gate)
 
 // TACTIC-WEIGHTS-B: MC2_TACTIC_WEIGHTS_B gate (default OFF). When ON, the brain's
 // already-selected tactic (runtime->selectedTactic, populated by selectTacticForWarrior
@@ -866,10 +825,7 @@ static bool parseWaitUntilCondition(const char* verbStr, char outKey[32], char o
 // Gate OFF (default): each verb calls setGeneralTacOrder directly — byte-identical to
 // the pre-BRAIN-DECISION-INTENT-QUEUE-1 behavior.
 
-static bool s_intentQueueEnabled() {
-    static const bool kGate = mc2::gate::get<"MC2_BRAIN_INTENT_QUEUE">();
-    return kGate;
-}
+static bool s_intentQueueEnabled() { return mc2::brainpolicy::techBrain(); }   // BrainExecutionPolicy (was a gate)
 
 // ---------------------------------------------------------------------------
 // BRAIN-WORLD-SNAPSHOT-1: MC2_BRAIN_SNAPSHOT gate (default OFF).
@@ -883,10 +839,7 @@ static bool s_intentQueueEnabled() {
 // IDs-not-pointers: snapshot stores WatchIDs, not pointers. ATTACK target
 //   team + existence still read live via ObjectManager::getByWatchID (deferred
 //   to rung 7/8 when a target/contact table snapshot is added).
-bool s_brainSnapshotEnabled() {
-    static const bool kGate = mc2::gate::get<"MC2_BRAIN_SNAPSHOT">();
-    return kGate;
-}
+bool s_brainSnapshotEnabled() { return mc2::brainpolicy::techBrain(); }   // BrainExecutionPolicy (was a gate)
 
 // buildBrainWorldSnapshot — defined in warrior.cpp (static helper; needs protected access).
 
@@ -1532,7 +1485,7 @@ bool tickEngageNearest(MechWarrior* warrior, MechBrainRuntime* runtime, int wid)
                 }
             }
         } else {
-            std::fprintf(stderr, "[BRAIN_ENGAGE_NO_QUEUE] wid=%d requires MC2_BRAIN_INTENT_QUEUE=1\n", wid);
+            std::fprintf(stderr, "[BRAIN_ENGAGE_NO_QUEUE] wid=%d requires the TechBrain policy\n", wid);
             std::fflush(stderr);
         }
     }
@@ -1660,7 +1613,7 @@ bool tickPatrolAdvance(MechWarrior* warrior, MechBrainRuntime* runtime, int wid)
                 commitBrainIntents(warrior, runtime);
             }
         } else {
-            std::fprintf(stderr, "[BRAIN_PATROL_NO_QUEUE] kick index=%u wid=%d: requires MC2_BRAIN_INTENT_QUEUE=1\n",
+            std::fprintf(stderr, "[BRAIN_PATROL_NO_QUEUE] kick index=%u wid=%d: requires the TechBrain policy\n",
                          static_cast<unsigned>(idx), wid);
             std::fflush(stderr);
         }
@@ -1715,7 +1668,7 @@ bool tickPatrolAdvance(MechWarrior* warrior, MechBrainRuntime* runtime, int wid)
     // Emit MOVETO_POINT to new waypoint.
     // Emit MOVETO_POINT via intent queue only.
     // (No direct setGeneralTacOrder here — relaxed_guard_doc call-site count must stay 6.)
-    // Live usage requires MC2_BRAIN_INTENT_QUEUE=1; without it a NO_QUEUE trace fires.
+    // Live usage requires the TechBrain policy; without it a NO_QUEUE trace fires.
     if (s_intentQueueEnabled()) {
         emitBrainIntent(runtime, wid, TACTICAL_ORDER_MOVETO_POINT, -1, wx, wy, wz, 0);
         std::fprintf(stderr, "[BRAIN_PATROL_EMIT] index=%u pos=(%g %g %g) tick=%u wid=%d\n",
@@ -1730,7 +1683,7 @@ bool tickPatrolAdvance(MechWarrior* warrior, MechBrainRuntime* runtime, int wid)
             commitBrainIntents(warrior, runtime);
         }
     } else {
-        std::fprintf(stderr, "[BRAIN_PATROL_NO_QUEUE] advance index=%u wid=%d: requires MC2_BRAIN_INTENT_QUEUE=1\n",
+        std::fprintf(stderr, "[BRAIN_PATROL_NO_QUEUE] advance index=%u wid=%d: requires the TechBrain policy\n",
                      static_cast<unsigned>(newIndex), wid);
         std::fflush(stderr);
     }
@@ -2159,10 +2112,7 @@ static bool parseBrainSpecialBody_FitIni(const char* fitPath, BrainSpecialBody& 
 // Gate OFF (default): no global parse, no merge — byte-identical.
 //
 // FORBIDDEN-CALL CONTRACT: file scan + string ops + fprintf only. No order functions.
-static bool s_brainScopeGlobalGate() {
-    static const bool kGate = mc2::gate::get<"MC2_BRAIN_SCOPE_GLOBAL">();
-    return kGate;
-}
+static bool s_brainScopeGlobalGate() { return mc2::brainpolicy::techBrain(); }   // BrainExecutionPolicy (was a gate)
 
 // Derive "<dir-of-missionFitPath>/global_specials.fit" and raw-scan it into gIndex.
 // Returns true if the file existed and contained at least one TechSpecial block.
@@ -2205,10 +2155,7 @@ static bool parseGlobalSpecials(const char* missionFitPath, SpecialIndex& gIndex
 // Gate OFF (default): variantOf fields are parsed but ignored — byte-identical.
 //
 // FORBIDDEN-CALL CONTRACT: index walk + string copies + fprintf only. No order functions.
-static bool s_brainVariantOfGate() {
-    static const bool kGate = mc2::gate::get<"MC2_BRAIN_VARIANTOF">();
-    return kGate;
-}
+static bool s_brainVariantOfGate() { return mc2::brainpolicy::techBrain(); }   // BrainExecutionPolicy (was a gate)
 
 static void resolveVariantInheritance(SpecialIndex* index) {
     if (!index || !s_brainVariantOfGate()) return;
@@ -2563,7 +2510,7 @@ void handleVarSet(const char* key, const char* value, uint8_t scope, VarStore* s
         // TECHSCRIPT-DISPATCH-1D-M: MC2_BRAIN_VAR_MISSION gate ON → real write to g_missionVarStore.
         // Gate OFF → trace-only (1D deferred behavior preserved).
         if (!s_missionVarGate()) {
-            std::fprintf(stderr, "[BRAIN_DISPATCH_VAR_SET_MISSION_TRACE] key=%s value=%s wid=%d (write deferred -- MC2_BRAIN_VAR_MISSION not set)\n",
+            std::fprintf(stderr, "[BRAIN_DISPATCH_VAR_SET_MISSION_TRACE] key=%s value=%s wid=%d (write deferred -- TechBrain policy off)\n",
                          key, value, wid);
             std::fflush(stderr);
             return;
@@ -2618,7 +2565,7 @@ void handleVarGet(const char* key, uint8_t scope, VarStore* store, int wid) {
         // TECHSCRIPT-DISPATCH-1D-M: MC2_BRAIN_VAR_MISSION gate ON → real read from g_missionVarStore.
         // Gate OFF → trace-only default-only (1D deferred behavior preserved).
         if (!s_missionVarGate()) {
-            std::fprintf(stderr, "[BRAIN_DISPATCH_VAR_GET_MISSION_TRACE] key=%s wid=%d (default -- MC2_BRAIN_VAR_MISSION not set)\n",
+            std::fprintf(stderr, "[BRAIN_DISPATCH_VAR_GET_MISSION_TRACE] key=%s wid=%d (default -- TechBrain policy off)\n",
                          key, wid);
             std::fflush(stderr);
             return;
@@ -2640,20 +2587,7 @@ void handleVarGet(const char* key, uint8_t scope, VarStore* store, int wid) {
 
 // ---------------------------------------------------------------------------
 // Gate init helper for DISPATCH_VAR (used by both execute functions).
-static bool s_dispatchVarGate() {
-    static const bool kGate = ([](){
-        if (mc2::gate::get<"MC2_BRAIN_DISPATCH_VAR">()) {
-            if (!mc2::gate::get<"MC2_BRAIN_DISPATCH">()) {
-                std::fprintf(stderr, "[BRAIN_DISPATCH_VAR] WARNING: MC2_BRAIN_DISPATCH_VAR=1 requires MC2_BRAIN_DISPATCH=1 -- var handling is INERT\n");
-                std::fflush(stderr);
-                return false;
-            }
-            return true;
-        }
-        return false;
-    })();
-    return kGate;
-}
+static bool s_dispatchVarGate() { return mc2::brainpolicy::techBrain(); }   // BrainExecutionPolicy (was a gate)
 
 // ---------------------------------------------------------------------------
 // scanFsmTodosFromFile — TECHSCRIPT-SPECIAL-DISPATCH-1C

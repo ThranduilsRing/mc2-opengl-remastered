@@ -10,7 +10,7 @@
 
 namespace mc2::gate::detail {
 
-inline constexpr std::size_t kGateCount = 772;
+inline constexpr std::size_t kGateCount = 752;
 
 inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_ABL_ARG_GUARD", Kind::Bool, Rule::Lead1, {}},
@@ -54,36 +54,16 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_BOOT_TO_MISSION", Kind::String, Rule::Std, {}},
     {"MC2_BOOT_TO_SCREEN", Kind::String, Rule::Std, {}},
     {"MC2_BOOT_VIDEO", Kind::Bool, Rule::Lead0, {}},
-    {"MC2_BRAIN_ALIAS", Kind::Bool, Rule::AtoiNZ, {}},
-    {"MC2_BRAIN_COMMIT_PHASE", Kind::Bool, Rule::AtoiNZ, {}},
-    {"MC2_BRAIN_DISPATCH", Kind::Bool, Rule::AtoiNZ, {}},
-    {"MC2_BRAIN_DISPATCH_APPLY", Kind::Bool, Rule::AtoiNZ, {}},
-    {"MC2_BRAIN_DISPATCH_CALL", Kind::Bool, Rule::AtoiNZ, {}},
-    {"MC2_BRAIN_DISPATCH_FSM_TODO", Kind::Bool, Rule::AtoiNZ, {}},
-    {"MC2_BRAIN_DISPATCH_VAR", Kind::Bool, Rule::AtoiNZ, {}},
-    {"MC2_BRAIN_ENGAGE", Kind::Bool, Rule::AtoiNZ, {}},
     {"MC2_BRAIN_FIXED_TICK", Kind::Bool, Rule::AtoiNZ, {}},
     {"MC2_BRAIN_FIXED_TICK_HZ", Kind::Float, Rule::Prefix, {}},
     {"MC2_BRAIN_FIXED_TICK_TRACE", Kind::Bool, Rule::AtoiNZ, {}},
-    {"MC2_BRAIN_FLOW", Kind::Bool, Rule::AtoiNZ, {}},
     {"MC2_BRAIN_FREEZE_TRACE", Kind::Bool, Rule::Lead0, {}},
-    {"MC2_BRAIN_FSM", Kind::Bool, Rule::AtoiNZ, {}},
-    {"MC2_BRAIN_INLINE_EMPTY_SKIP", Kind::Bool, Rule::AtoiNZ, {}},
-    {"MC2_BRAIN_INTENT_QUEUE", Kind::Bool, Rule::AtoiNZ, {}},
-    {"MC2_BRAIN_MISSIONFIT_OPORD", Kind::Bool, Rule::AtoiNZ, {}},
     {"MC2_BRAIN_MISSION_SEED", Kind::String, Rule::Std, {}},
-    {"MC2_BRAIN_PATROL", Kind::Bool, Rule::AtoiNZ, {}},
-    {"MC2_BRAIN_RUNTIME", Kind::Bool, Rule::AtoiNZ, {}},
-    {"MC2_BRAIN_RUNTIME_APPLY", Kind::Bool, Rule::AtoiNZ, {}},
+    {"MC2_BRAIN_POLICY", Kind::Enum, Rule::Std, "|auto|legacy|techbrain"},
     {"MC2_BRAIN_RUNTIME_FORCE_MODE", Kind::Enum, Rule::Std, "|legacy|enhanced|hybrid"},
     {"MC2_BRAIN_RUNTIME_TRACE", Kind::Bool, Rule::AtoiNZ, {}},
-    {"MC2_BRAIN_SCOPE_GLOBAL", Kind::Bool, Rule::AtoiNZ, {}},
-    {"MC2_BRAIN_SNAPSHOT", Kind::Bool, Rule::AtoiNZ, {}},
     {"MC2_BRAIN_SPECIAL_FIT", Kind::String, Rule::Std, {}},
-    {"MC2_BRAIN_TASKQ", Kind::Bool, Rule::AtoiNZ, {}},
     {"MC2_BRAIN_TASKQ_TRACE", Kind::Bool, Rule::AtoiNZ, {}},
-    {"MC2_BRAIN_VARIANTOF", Kind::Bool, Rule::AtoiNZ, {}},
-    {"MC2_BRAIN_VAR_MISSION", Kind::Bool, Rule::AtoiNZ, {}},
     {"MC2_BRIDGE_MOVER_PERIOD_SEC", Kind::Float, Rule::Prefix, {}},
     {"MC2_BRIDGE_MOVER_STATE", Kind::Bool, Rule::Presence, {}},
     {"MC2_BUCKET_CENSUS", Kind::Bool, Rule::Presence, {}},
