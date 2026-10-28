@@ -4332,7 +4332,6 @@
    "ver": 1,
    "stream": "buffer",
    "keys": [
-    "tgl_pool",
     "destroy",
     "smoke",
     "water_fp",
@@ -8197,7 +8196,7 @@
     "stage",
     "detail"
    ],
-   "count": 3
+   "count": 4
   },
   {
    "tag": "SMOKE",
