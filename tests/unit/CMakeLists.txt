@@ -38,6 +38,7 @@ add_executable(mc2_tests
     test_hashing.cpp
     test_projection.cpp     # currently scope-stopped; placeholder skipped case
     test_argb_pack.cpp
+    test_mover_los_epoch.cpp
     test_screen_pick.cpp
     test_quality_presets.cpp
     test_rendercore.cpp     # RENDERCORE-UNIT-TESTS-1: GL-free substrate invariants

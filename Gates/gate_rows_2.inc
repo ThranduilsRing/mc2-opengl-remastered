@@ -73,6 +73,7 @@ L(Presence, "MC2_MOUSE_RECON", Bool, false, "unclassified", "", "MC2_MOUSE_RECON
 // history: docs/gate-history.md#MC2_MOVER_COHERENCE_AUDIT
 L(Lead0, "MC2_MOVER_COHERENCE_AUDIT", Bool, false, "code", "", "META-FIX design A runtime tier (code/mission.cpp auditMoverCoherence, ~1 Hz): read-only audit that the five per-mover registries (isOnGUI render gate...", passthrough | registry(Trace, "MC2_TRACE_MOVER_COHERENCE_AUDIT", -1, false) | verified),
 P("MC2_MOVER_CONTACT_SHADOW", Float, 0.0, "terrain", "", "", passthrough | range(0.0, 1.0) | verified),
+P("MC2_MOVER_FIXTURE", Int, 0, "sim", "", "M6 dev selector: =N tops the mission up to N movers on two teams with move/attack orders (code/mover_budget_fixture.h, tools/mover_budget.py). 0 = off.", passthrough | range(0, 1000) | verified),
 L(Lead0, "MC2_MOVE_CHUNK_SHADOW", Bool, false, "code", "", "", passthrough | verified),
 L(Lead0, "MC2_MOVE_PATH_CACHE_SHADOW", Bool, false, "code", "", "", passthrough | verified),
 // history: docs/gate-history.md#MC2_MOVE_RECON

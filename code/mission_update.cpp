@@ -1122,6 +1122,7 @@ void Mission::updateSoakPilotPromote() {
 }
 
 #include "battle_bench_fixture.h"
+#include "mover_budget_fixture.h"
 // One pass of the mission update, in the legacy order. Two parts:
 //   frame part: dev hotkeys, interface, camera, terrain, weather, waypoints, terrain geometry (render frame time);
 //   sim part:   clock, ABL timers, path manager, objects, sensors, collisions, brains, termination (one tick).
@@ -1143,12 +1144,13 @@ bool Mission::updatePass(bool tickMode, bool runFrame, bool runSim, bool advance
 	{
 		benchTick.emplace();
 		mc2BattleBenchObserve();
+		mc2MoverBudgetFixtureTick(static_cast<unsigned>(turn));
 		tickCost.begin();
 		orderTickCompletion.emplace(*this);
 		turn++;
 		worldOrderTick.emplace(turn);
 
-		memset(ObjectManager->moverLineOfSightTable, -1, ObjectManager->maxMovers*ObjectManager->maxMovers);
+		ObjectManager->beginMoverLosEpoch();
 
 #ifdef LAB_ONLY
 		MCTimeLOSCalc = 0;
