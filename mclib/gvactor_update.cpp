@@ -168,10 +168,22 @@ void GVAppearance::updateGeometry (void)
 		if (gpuPose_ && !renderShape)
 			gvShape->CacheGpuLightData();
 		gvShape->TransformMultiShape_HierarchyOnly (&xlatPosition,&totalRotation);
-		if (!gpuPose_ && !renderShape)
-			gvShape->ReserveCpuDraw();	// fading or unregistered: the CPU fallback draws it
-		else if (gpuPose_ && !renderShape && eye->isNight)
-			gvShape->ReserveCpuDraw(true);	// the batcher draws the body; no batcher draws the searchlight cones
+		if (!renderShape)
+		{
+			// Reserve the CPU body whenever the mech-batcher submit can decline, using the same checks
+			// submitToMechBatcher applies. A reservation made after a texture node has a vertex block is unsafe.
+			bool cpuBody = !gpuPose_ || localTextureHandle == 0xffffffff;
+			if (gpuPose_ && !cpuBody)
+			{
+				const uint32_t lightRow = gvShape->getCachedGpuLightIndex();
+				cpuBody = lightRow == 0xFFFFFFFFu ||
+					(mc2::textures::ready() && lightRow >= mc2::vkLights::getLightStructCount());
+			}
+			if (cpuBody)
+				gvShape->ReserveCpuDraw();	// fading/unregistered/no paint/no light row: the CPU fallback draws it
+			else if (eye->isNight)
+				gvShape->ReserveCpuDraw(true);	// the batcher draws the body; no batcher draws the searchlight cones
+		}
 		updateRenderShape();
 		if (renderShape) renderShape->SetFogRGB(useFog ? fogRGB : 0xffffffff);
 
