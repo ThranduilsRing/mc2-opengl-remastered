@@ -304,6 +304,7 @@ void Mission::updateTickClock(bool advanceTime) {
 
 // Update the interface, camera, terrain, weather, waypoints and the path manager.
 void Mission::updateFrontEnd() {
+	GameMap->clearCellDebugs(0);
 	{ ZoneScopedN("Mission.clearArrays"); MisScope _ms(MS_CLEARARRAYS); mc2::VkSceneRenderer::beginFrame(); }
 
 	if (missionInterface)
@@ -1308,7 +1309,7 @@ OverlapPre s_pre;
 // a pending in-mission save or load.
 void Mission::overlapKick()
 {
-	if (!mc2::gate::get<"MC2_SIM_OVERLAP">() || !active || s_pre.valid)
+	if (!mc2::gate::get<"MC2_SIM_OVERLAP">() || !mc2::gate::get<"MC2_DETERMINISTIC_RNG">() || !active || s_pre.valid)
 		return;
 	if (MPlayer || mc2SimTickFrozen(missionInterface) || loadInMissionSave || saveInMissionSave ||
 	    LastTimeGetTime == 0xffffffff || turn != s_turnAfterLastPass)

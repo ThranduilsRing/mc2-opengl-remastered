@@ -73,7 +73,7 @@ long		SpecialtyListItem::s_itemCount = 0; // hack, we really don't want to delet
 
 PilotReviewScreen* PilotReviewScreen::instance = nullptr;
 
-extern float frameLength;
+extern thread_local float frameLength;
 
 constexpr auto RP_TEXTID = 3;
 constexpr int HELP_TEXTID = 2;

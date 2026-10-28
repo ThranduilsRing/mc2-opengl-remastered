@@ -16,10 +16,10 @@
 //----------------------------------------------------------------------------------
 extern bool		gamePaused;			//Is the game paused?
 extern long 	turn;				//What frame of the scenario is it?
-extern float	frameLength;		//Duration of last frame in seconds.
+extern thread_local float	frameLength;		//Duration of last frame in seconds.
 extern float	scenarioTime;		//Time scenario has been running.
 extern DWORD	LastTimeGetTime;	//Stores Interval since timeGetTime last called.
-extern bool		simPresentationPass;	//True while a render frame without a sim tick re-poses appearances: update() must not advance sim state (FSM, dice, timers).
+extern thread_local bool		simPresentationPass;	//True while a render frame without a sim tick re-poses appearances: update() must not advance sim state (FSM, dice, timers).
 
 //----------------------------------------------------------------------------------
 // Macro Definitions
