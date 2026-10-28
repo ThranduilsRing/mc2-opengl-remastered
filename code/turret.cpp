@@ -576,13 +576,16 @@ long Turret::update (void)
 
 		appearance->setObjectParameters(position, rotation, TacticalOverview::maskWorldBars(drawFlags), teamId,Team::getRelation(teamId, Team::home->getId()));
 		appearance->setMoverParameters(turretRotation,0.0f,0.0f);
-		bool inView = appearance->recalcBounds();
-	
 		if (appearance)
 		{
-			appearance->setInView(true);
+			// Bounds, visibility and the visible stamp are presentation work for a simulation-owned appearance.
+			if (!appearance->simulationOwned())
+			{
+				appearance->recalcBounds();
+				appearance->setInView(true);
+				windowsVisible = turn;
+			}
 			appearance->update();
-			windowsVisible = turn;
 			didReveal = true;
 		}
 		

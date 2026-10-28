@@ -391,7 +391,8 @@ bool GroundVehicleType::handleDestruction (GameObjectPtr collidee, GameObjectPtr
 		vehicle->getPilot()->triggerAlarm(PILOT_ALARM_VEHICLE_DESTROYED, collider ? collider->getWatchID() : 0);
 		vehicle->setStatus(OBJECT_STATUS_DESTROYED);
 		vehicle->appearance->setObjStatus(OBJECT_STATUS_DESTROYED);
-		vehicle->appearance->setVisibility(true,true);
+		if (!vehicle->appearance->simulationOwned())
+			vehicle->appearance->setVisibility(true,true);   // presentation sets visibility for a simulation-owned appearance
 		vehicle->appearance->update();
 		vehicle->exploding = false;
 		if (MPlayer)

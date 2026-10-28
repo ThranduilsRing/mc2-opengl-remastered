@@ -2,7 +2,6 @@
 // Declared in the class headers; shared names in gvehicl_internal.h.
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include "gvehicl_internal.h"
-#include "appearance_rng.h"
 #include "Gates/gate.h"
 
 
@@ -140,12 +139,6 @@ long GroundVehicle::update (void)
 			feedSimHalf(dRot.x, dRot.z);
 			if (appearance)
 				appearance->update();
-			
-			if ( attackRange == FIRERANGE_CURRENT && !isDisabled() )
-			{
-				mc2::renderSubmissions().addTriangle(holdFireIconHandle,MC2_DRAWALPHA);
-				mc2::renderSubmissions().addTriangle(holdFireIconHandle,MC2_DRAWALPHA);
-			}
 		}
 			
 		commitPush();
@@ -179,11 +172,6 @@ long GroundVehicle::update (void)
 				}
 
 			feedSimHalf(dRot.x, dRot.z);
-				if ( attackRange == FIRERANGE_CURRENT && !isDisabled() )
-				{
-					mc2::renderSubmissions().addTriangle(holdFireIconHandle,MC2_DRAWALPHA);
-					mc2::renderSubmissions().addTriangle(holdFireIconHandle,MC2_DRAWALPHA);
-				}
 			}
  
 			if (!appearance->playDestruction())
@@ -603,11 +591,6 @@ long GroundVehicle::update (void)
 
 				appearance->update();
 				
-				if ( attackRange == FIRERANGE_CURRENT && !isDisabled() )
-				{
-					mc2::renderSubmissions().addTriangle(holdFireIconHandle,MC2_DRAWALPHA);
-					mc2::renderSubmissions().addTriangle(holdFireIconHandle,MC2_DRAWALPHA);
-				}
 			}
 		}
 
@@ -818,7 +801,12 @@ void GroundVehicle::render (void)
 			appearance->setObjectNameId(descID);
 			appearance->render();
 			if ( attackRange == FIRERANGE_CURRENT && !isDisabled() )
+			{
+				// Vertex reservation lives with the draw (presentation), not in the tick.
+				mc2::renderSubmissions().addTriangle(holdFireIconHandle,MC2_DRAWALPHA);
+				mc2::renderSubmissions().addTriangle(holdFireIconHandle,MC2_DRAWALPHA);
 				appearance->drawIcon( holdFireIconHandle, 5, 5, color );
+			}
 		}
 	}
 
