@@ -31,3 +31,13 @@ def test_unknown_mission_rejected_before_lease(tmp_path):
     r = _run("--mission", "no_such_mission", "--exe", str(exe), "--no-wait")
     # the exe guard may refuse an empty stub first (exit 7); the mission error must not need a lease either way
     assert r.returncode in (2, 7) and "host lease" not in r.stderr.lower()
+
+
+def test_cold_cache_grace_applies_once_per_deployed_exe(tmp_path):
+    import run_smoke
+    exe = tmp_path / "mc2.exe"
+    exe.write_bytes(b"one")
+    assert run_smoke.cold_cache_extra_grace(exe) == run_smoke.COLD_CACHE_EXTRA_GRACE_S
+    assert run_smoke.cold_cache_extra_grace(exe) == 0
+    exe.write_bytes(b"redeployed")
+    assert run_smoke.cold_cache_extra_grace(exe) == run_smoke.COLD_CACHE_EXTRA_GRACE_S
