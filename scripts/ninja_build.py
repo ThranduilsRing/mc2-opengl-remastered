@@ -79,6 +79,20 @@ def warm(root, argv, tree):
     print(f"warm: pid {child.pid} building {tree} at {base or 'HEAD'}; log {log}")
 
 
+def pool_jobs(argv):
+    """Take build tokens from the host-wide pool (scripts/build_tokens.py) and rewrite -jN to the width obtained."""
+    import build_tokens
+    idx = next(i for i, a in enumerate(argv) if a.startswith("-j"))
+    want = int(argv[idx][2:] or "2")
+    tokens = build_tokens.acquire(want, on_wait=lambda total: print(
+        f"[build-tokens] host pool of {total} jobs is busy; waiting for a free slot", flush=True))
+    if tokens.waited_s >= 1:
+        print(f"[build-tokens] waited {tokens.waited_s:.0f}s, running -j{len(tokens)}", flush=True)
+    argv = list(argv)
+    argv[idx] = "-j" + str(len(tokens))
+    return argv, tokens
+
+
 def main():
     root = os.path.dirname(os.path.dirname(os.path.abspath(__file__))).replace("\\", "/")
     argv = sys.argv[1:]
@@ -106,12 +120,17 @@ def main():
     env = compile_cache_env(root) if tree_uses_cache(root, tree) else None  # sccache tree (the default; configure_ninja.py --no-compile-cache opts out)
     if env:
         ensure_cache_server(root, env)
+    tokens = None
+    if not dry_run and os.environ.get("MC2_BUILD_TOKENS", "1") != "0":
+        argv, tokens = pool_jobs(argv)
     command = subprocess.list2cmdline([NINJA, "-C", f"{root}/{tree}"] + argv)
     rc = under_vcvars(command, env)
     if rc == 0 and not dry_run and drop_oversize_pdb(root, tree):
         rc = under_vcvars(command, env)  # Fresh full symbols from the same objects; no second compile.
     if started is not None:
         print(f"[warm] done rc={rc} elapsed={time.monotonic() - started:.0f}s", flush=True)
+    if tokens is not None:
+        tokens.close()
     sys.exit(rc)
 
 
