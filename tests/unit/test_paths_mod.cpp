@@ -451,6 +451,10 @@ TEST_CASE("mod-index cache: a cache whose count line is negative is a miss, not 
 }
 TEST_CASE("mod VFS layer 0: a .scratch override wins; a planted duplicate is reported on fresh walk and on cache hit")
 {
+	const char* tracePath = "mvh_scratch_trace.jsonl";
+	remove(tracePath);
+	mc2::gate::ScopedOverride<"MC2_LOG_FILE_RESOLVE"> traceLevel("2");
+	mc2::gate::ScopedOverride<"MC2_RESOLVE_TRACE_FILE"> traceFile(tracePath);
 	removeJsonTree();
 	_mkdir(kJsonModsRoot);
 	for (const std::string &b : { jsonBase(), depBase() })
@@ -486,11 +490,22 @@ TEST_CASE("mod VFS layer 0: a .scratch override wins; a planted duplicate is rep
 	CHECK(std::string(owner).find("#scratch") != std::string::npos);
 	CHECK(out.find("[mod] conflict:") != std::string::npos);
 	CHECK(out.find("dup.txt") != std::string::npos);
-	CHECK(out.find("mod.txt") == std::string::npos);   // scratch-over-own-project is not a conflict
+	CHECK(out.find(std::string("[MODCONFLICT_DUPLICATE_FILE] ") + kModRelPath) == std::string::npos);
 
 	// Cache hit: shadowed bookkeeping must survive the cache path.
 	_putenv_s(kEnvRebuildCache, "");
 	out = captureStdout([] { InitModSearchPaths(kJsonModsRoot); });
+	// Remount closed/flushed the previous JSONL stream.
+	{
+		FILE* trace = fopen(tracePath, "rb");
+		REQUIRE(trace != nullptr);
+		char record[4096]{};
+		const size_t count = fread(record, 1, sizeof(record) - 1, trace);
+		fclose(trace);
+		REQUIRE(count > 0);
+		CHECK(std::string(record).find("#scratch\"") != std::string::npos);
+		CHECK(std::string(record).find("\"layer_index\":0") != std::string::npos);
+	}
 	CHECK(out.find("[mod-cache] hit") != std::string::npos);
 	CHECK(out.find("dup.txt") != std::string::npos);
 
@@ -506,6 +521,11 @@ TEST_CASE("mod VFS layer 0: a .scratch override wins; a planted duplicate is rep
 
 	setActiveMod(nullptr);
 	InitModSearchPaths(kJsonModsRoot);
+	{
+		mc2::gate::ScopedOverride<"MC2_RESOLVE_TRACE_FILE"> noTrace("");
+		InitModSearchPaths("");
+	}
+	remove(tracePath);
 	remove((scr + "/" + kModRelPath).c_str());
 	_rmdir((scr + "/data/mvh_scratch_data").c_str());
 	_rmdir((scr + "/data").c_str());

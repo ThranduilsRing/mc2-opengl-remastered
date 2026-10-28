@@ -139,14 +139,16 @@ static void EmitResolveRecord(
         shadowBuf[pos]   = '\0';
     }
 
+    const char* layerIndex = layer && std::string_view(layer).ends_with("#scratch")
+        ? ",\"layer_index\":0" : "";
     if (shadowed) {
         fprintf(g_traceFile,
-            "{\"v\":1,\"t\":%.3f,\"key\":%s,\"req\":%s,\"layer\":%s,\"path\":%s,\"shadowed\":%s}\n",
-            t, keyJ, reqJ, layerJ, pathJ, shadowBuf);
+            "{\"v\":1,\"t\":%.3f,\"key\":%s,\"req\":%s,\"layer\":%s,\"path\":%s,\"shadowed\":%s%s}\n",
+            t, keyJ, reqJ, layerJ, pathJ, shadowBuf, layerIndex);
     } else {
         fprintf(g_traceFile,
-            "{\"v\":1,\"t\":%.3f,\"key\":%s,\"req\":%s,\"layer\":%s,\"path\":%s}\n",
-            t, keyJ, reqJ, layerJ, pathJ);
+            "{\"v\":1,\"t\":%.3f,\"key\":%s,\"req\":%s,\"layer\":%s,\"path\":%s%s}\n",
+            t, keyJ, reqJ, layerJ, pathJ, layerIndex);
     }
 }
 

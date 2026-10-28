@@ -297,7 +297,7 @@ class ResolverConfig:
     def _build_index(self) -> None:
         """
         Mirrors InitModSearchPaths (file.cpp:486-565):
-        index active mod first, then dep[0], dep[1], ... dep[N-1].
+        index scratch first, then active mod, then dep[0], dep[1], ... dep[N-1].
         """
         assert self.active_mod
         mods_root = self.mods_root.rstrip("/")
@@ -313,7 +313,12 @@ class ResolverConfig:
         # If mod.json missing or id field empty, fall back to folder name (file.cpp:516-521)
         effective_id = mod_id_from_json if mod_id_from_json else self.active_mod
 
-        # Index active mod (highest priority)
+        # Layer 0 is walked fresh before the active mod (first wins).
+        if not os.environ.get("MC2_SCRATCH", "1").startswith("0"):
+            _index_mod_layer(self.mod_index, self.shadowed,
+                             f"{mod_dir}/.scratch/data/", effective_id + "#scratch")
+
+        # Layer 1: active mod.
         active_data = f"{mod_dir}/data/"
         _index_mod_layer(self.mod_index, self.shadowed, active_data, effective_id)
 

@@ -222,6 +222,8 @@ def pack_mod(mod_dir: str, out_dir: Path) -> Path:
     """Pack a mod directory into <out_dir>/<id>-<version>.mc2mod and return the
     package path. Shared by cmd_pack and cmd_publish. Reproducible: all members
     written via _write_zip_member (pinned timestamps/permissions)."""
+    if (Path(mod_dir) / ".scratch").exists():
+        raise ValueError(f"{Path(mod_dir).name}: .scratch exists; run tools/mod_scratch.py promote/discard")
     mod_id, name, version = _read_mod_json(mod_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     package_path = out_dir / f"{mod_id}-{version}{PACKAGE_EXT}"
@@ -827,7 +829,11 @@ def main(argv: Optional[List[str]] = None) -> int:
     if fn is None:
         print(f"ERROR: unknown command '{args.command}'", file=sys.stderr)
         return 1
-    return fn(args)
+    try:
+        return fn(args)
+    except ValueError as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 1
 
 
 if __name__ == "__main__":
