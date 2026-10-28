@@ -1540,7 +1540,7 @@ mc2::player::UnitIntent producePlayerIntent(MechWarrior* warrior,
     // Wait for stragglers before contact; briefly withdraw an outmatched force.
     const bool separated = enemyThreat > 0 && glm::distance(position, regroup) > 650;
     const bool regroupNeeded = enemyThreat > ownThreat * 1.5f || separated;
-    if (separated || (regroupNeeded && now >= runtime->playerRegroupUntil + 20)) {
+    if (regroupNeeded && now >= runtime->playerRegroupUntil + 20) {
         runtime->playerRegroupUntil = now + 4;
         std::fprintf(stderr, "[PLAYER_BRAIN] wid=%ld event=regroup own=%.1f threat=%.1f time=%.2f\n",
             unit->getWatchID(), ownThreat, enemyThreat, now);
