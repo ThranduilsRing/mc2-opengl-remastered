@@ -10,7 +10,7 @@
   "MC2_BOOT_QUICKLOAD_AT": "1100"
  },
  "exe": {
-  "sha": "f5fed1d52ae0",
+  "sha": "8ef10a7c46bf",
   "dirty": 0
  },
  "comparison": {
@@ -108,7 +108,7 @@
  "judged": "first-save-only",
  "resave_present": true,
  "packets": 20000,
- "overall": "366fd66c93dc90fb",
+ "overall": "5ac6bc5c543e0dea",
  "resave_identical": false,
  "resave_matches_policy": false,
  "runs": [
@@ -116,8 +116,8 @@
    "data",
    0,
    2,
-   40,
-   "aff84c57f086183a"
+   38,
+   "0f41e3f48edcae68"
   ],
   [
    "text",
@@ -180,7 +180,7 @@
    1795,
    111,
    36767,
-   "0c52a89cbc955709"
+   "70ec9815deaa6a01"
   ],
   [
    "StaticMechWarriorData",
@@ -194,7 +194,7 @@
    1907,
    256,
    5091328,
-   "3adb4319f0f2e1d7"
+   "6878f495860b6408"
   ],
   [
    "TeamStaticData",
@@ -416,9 +416,16 @@
   [
    "data",
    3738,
-   3,
-   214385,
-   "96fc6de84d36ec12"
+   2,
+   8,
+   "e815bbb0774dd30f"
+  ],
+  [
+   "sections",
+   3740,
+   1,
+   226717,
+   "6dc273f42af17e9a"
   ],
   [
    "empty",
