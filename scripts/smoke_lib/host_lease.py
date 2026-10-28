@@ -44,6 +44,7 @@ POLL_S = 2.0
 REPORT_EVERY_S = 30.0
 
 IDLE_RECLAIM_S = float(os.environ.get("MC2_HOST_LEASE_IDLE_S") or 900)   # holder alive but no engine on the host this long -> reclaim
+MERGE_IDLE_TTL_S = 1200.0                # merge holders get at most 20 idle minutes
 
 
 def cores_per_slot() -> int:
@@ -311,7 +312,7 @@ def _holder_tag(rec: Optional[dict]) -> str:
 
 def _reclaim_idle(live, engines, log):
     """A live holder with no engine on the host for IDLE_RECLAIM_S is stuck (2026-10-27: one blocked lanes for hours): drop it.
-    Batch holds are exempt (their own TTL ends them), and so are `merge*` holders: a merge window holds through long builds.
+    Batch holds have their own TTL; `merge*` holders get a bounded 20-minute idle allowance.
     First-seen-idle times live in a sidecar file (the slot records stay untouched)."""
     side = lease_path().with_suffix(".idle.json")
     now, seen, keep = time.time(), (_read(side) or {}), []
@@ -321,10 +322,7 @@ def _reclaim_idle(live, engines, log):
         key = f"{rec.get('pid')}:{rec.get('created')}"
         if not cur or cur.get("batch") or cur.get("legacy_guard") or engines:
             keep.append((p, rec))
-        elif _holder_tag(cur).startswith("merge"):
-            marks.pop(key, None)
-            keep.append((p, rec))
-        elif now - float(seen.get(key, now)) > IDLE_RECLAIM_S:
+        elif now - float(seen.get(key, now)) > (MERGE_IDLE_TTL_S if _holder_tag(cur).startswith("merge") else IDLE_RECLAIM_S):
             log(f"[host-lease] reclaimed idle holder {_holder_tag(cur)} after {now - float(seen[key]):.0f} s: {_describe(cur)}")
             _remove_records([(p, cur)])
         else:

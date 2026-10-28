@@ -201,7 +201,7 @@ def count_callsites_in_commit(lines):
     """Count warrior->setGeneralTacOrder( lines inside commitBrainIntents.
 
     BRAIN-DECISION-INTENT-QUEUE-1: commitBrainIntents is the sole caller of
-    setGeneralTacOrder when MC2_BRAIN_INTENT_QUEUE=1.  Its callsite count must
+    setGeneralTacOrder under the TechBrain policy. Its callsite count must
     also equal the verb count (one per verb = 6).
     Returns -1 if the function is not found (checker emits WARN, not FAIL — the
     commit function is new and may not exist in older branches).

@@ -84,12 +84,12 @@ def pool_jobs(argv):
     import build_tokens
     idx = next(i for i, a in enumerate(argv) if a.startswith("-j"))
     want = int(argv[idx][2:] or "2")
-    tokens = build_tokens.acquire(want, on_wait=lambda total: print(
+    tokens = build_tokens.acquire(want, timeout_s=120, on_wait=lambda total: print(
         f"[build-tokens] host pool of {total} jobs is busy; waiting for a free slot", flush=True))
     if tokens.waited_s >= 1:
-        print(f"[build-tokens] waited {tokens.waited_s:.0f}s, running -j{len(tokens)}", flush=True)
+        print(f"[build-tokens] waited {tokens.waited_s:.0f}s, running -j{max(1, len(tokens))}", flush=True)
     argv = list(argv)
-    argv[idx] = "-j" + str(len(tokens))
+    argv[idx] = "-j" + str(max(1, len(tokens)))
     return argv, tokens
 
 

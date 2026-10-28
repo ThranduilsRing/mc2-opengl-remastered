@@ -42,6 +42,7 @@ void Mission::initWarriorsHeader(MissionInitFrame& f) {
 
 // Load each warrior and its brain.
 void Mission::loadWarriors(MissionInitFrame& f) {
+	bool loggedEmptyBrain = false;
 	auto& missionName = f.missionName; auto& result = f.result; auto& numErrors = f.numErrors;
 	auto& numLinesProcessed = f.numLinesProcessed; auto& numWarriors = f.numWarriors; auto& soakBrainsLoaded = f.soakBrainsLoaded;
 	auto& soakBrainsFailed = f.soakBrainsFailed;
@@ -115,6 +116,10 @@ void Mission::loadWarriors(MissionInitFrame& f) {
 			if (!MPlayer && moduleName[0] == '\0')
 			{
 				pilot->setBrainName("");
+				if (!loggedEmptyBrain) {
+					loggedEmptyBrain = true;
+					mc2::fmt::print_err("[BRAIN_EMPTY_SKIP] mission={} (empty ABL brain name)\n", mc2::fmt::safe(missionName));
+				}
 			}
 			else
 			{
