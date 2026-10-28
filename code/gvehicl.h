@@ -316,7 +316,8 @@ class GroundVehicle : public Mover {
 		// Presentation phase: applies appearancePush / gvPush to the draw side of the appearance.
 		void applyAppearancePush (void);
 
-		virtual void render (void);
+		virtual void extractRenderView (mc2::render_view::RenderView& view);
+		virtual void renderView (const mc2::render_view::RenderView& view);
 
 		virtual void renderShadows (void);
 		

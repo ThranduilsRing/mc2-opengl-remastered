@@ -237,6 +237,11 @@ class WeaponBolt : public GameObject
 			float				startUV;
 			float				goalHeight;
 
+			// G7b K3: the sim-written beam geometry render reads, copied at the render extract.
+			glm::vec3			rvLaserVertices[4];
+			glm::vec3			rvLaserSide[4];
+			float				rvStartUV = 0.0f;
+
 			// Reserved for velocity-based shader fades; unused by trails.
 			glm::vec3		prev_position;
 
@@ -313,7 +318,8 @@ class WeaponBolt : public GameObject
 		void createPresentationResources();
 		std::uint64_t simulationHash();
 		bool hasPresentation() const { return targetPosition != nullptr; }
-		virtual void render (void);
+		virtual void extractRenderView (mc2::render_view::RenderView& view);
+		virtual void renderView (const mc2::render_view::RenderView& view);
 		
 		virtual void init (bool create, ObjectTypePtr _type);
 		

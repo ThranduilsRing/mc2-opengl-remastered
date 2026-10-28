@@ -91,7 +91,8 @@ class Light : public GameObject {
 				
 		virtual long update (void);
 
-		virtual void render (void);
+		virtual void extractRenderView (mc2::render_view::RenderView& view);
+		virtual void renderView (const mc2::render_view::RenderView& view);
 		
 		virtual void init (bool create, ObjectTypePtr _type);
 

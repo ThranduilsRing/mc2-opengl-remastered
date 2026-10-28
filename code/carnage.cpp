@@ -812,14 +812,19 @@ void Carnage::updatePresentation()
 
 //---------------------------------------------------------------------------
 
-void Carnage::render (void) 
+// G7b K3: the sim reads (type, JUSTCREATED, position) at the render extract; the draw reads the view.
+void Carnage::extractRenderView (mc2::render_view::RenderView& view)
 {
-	if (carnageType == CARNAGE_FIRE) 
+	GameObject::extractRenderView(view);
+	if (carnageType == CARNAGE_EXPLOSION && !getFlag(OBJECT_FLAG_JUSTCREATED))
+		view.flags |= mc2::render_view::Visible;
+}
+
+void Carnage::renderView (const mc2::render_view::RenderView& view)
+{
+	if (view.has(mc2::render_view::Visible))
 	{
-	}
-	else if (carnageType == CARNAGE_EXPLOSION) 
-	{
-		if (gosEffect && gosEffect->IsExecuted() && !getFlag(OBJECT_FLAG_JUSTCREATED))
+		if (gosEffect && gosEffect->IsExecuted())
 		{
 			gosFX::Effect::DrawInfo drawInfo;
 			drawInfo.m_clipper = theClipper;
@@ -832,18 +837,18 @@ void Carnage::render (void)
 	
 			drawInfo.m_state = mlrState;
 			drawInfo.m_clippingFlags = 0x0;
-	
+
 			glm::vec3 actualPosition;
-			mc2ToRender(actualPosition, position);
-			
+			mc2ToRender(actualPosition, view.position);
+
 			glm::mat4 	shapeOrigin;
 			glm::mat4	localToWorld;
-			
+
 			mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
 			mc2::math::buildTranslation(shapeOrigin, actualPosition);
-			
+
 			drawInfo.m_parentToWorld = &shapeOrigin;
-	 
+
 			if (!MLRVertexLimitReached)
 				gosEffect->Draw(&drawInfo);
 		}

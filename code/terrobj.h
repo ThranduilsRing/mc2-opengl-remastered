@@ -203,7 +203,8 @@ class TerrainObject : public GameObject {
 		// Presentation phase: applies the draw-side parameters update() leaves to the presentation pass.
 		void applyAppearancePush (void);
 
-		virtual void render (void);
+		virtual void extractRenderView (mc2::render_view::RenderView& view);
+		virtual void renderView (const mc2::render_view::RenderView& view);
 
 		virtual void renderShadows (void);
 		

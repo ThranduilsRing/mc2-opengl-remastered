@@ -131,12 +131,20 @@ long Light::update (void) {
 
 //---------------------------------------------------------------------------
 
-void Light::render (void) {
+// G7b K3: the paused onScreen() stamp (a windowsVisible write) runs at the render extract; the draw reads the view.
+void Light::extractRenderView (mc2::render_view::RenderView& view) {
 
+	GameObject::extractRenderView(view);
 	if (gamePaused)
 		onScreen();
 
-	if (!getFlag(OBJECT_FLAG_JUSTCREATED) && (windowsVisible == turn) && !getFlag(OBJECT_FLAG_DONE)) {
+	if (!getFlag(OBJECT_FLAG_JUSTCREATED) && (windowsVisible == turn) && !getFlag(OBJECT_FLAG_DONE))
+		view.flags |= mc2::render_view::Visible;
+}
+
+void Light::renderView (const mc2::render_view::RenderView& view) {
+
+	if (view.has(mc2::render_view::Visible)) {
 #ifdef USE_LIGHT_APPEARANCE
 		lightAppearance->render(LIGHT_DEPTH_FIXUP);
 #endif

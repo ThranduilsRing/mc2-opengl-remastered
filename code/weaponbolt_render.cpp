@@ -22,10 +22,67 @@ static bool vkVfxTraceOn()
 	return s_on;
 }
 
-void WeaponBolt::render (void)
+// G7b K3: the sim-written fields render reads (flags, positions, beam geometry, target hot spot, owner facing) are
+// copied here at the render extract, while the sim is quiescent.
+static glm::vec3 boltTargetHotSpot (const glm::vec3& raw, GameObjectWatchID targetWID, int32_t targetHotSpot)
 {
-	if (!getFlag(OBJECT_FLAG_JUSTCREATED) && !isTargeted())	//can we be seen by the enemy?
+	glm::vec3 hotSpot = raw;
+	GameObjectPtr target = ObjectManager->getByWatchID(targetWID);
+	if (target)
 	{
+		if (!target->isMech())
+		{
+			hotSpot = target->getPositionFromHS(targetHotSpot);
+		}
+		else
+		{
+			if (targetHotSpot)
+				hotSpot = target->appearance->getHitNodeLeft();
+			else
+				hotSpot = target->appearance->getHitNodeRight();
+		}
+	}
+	return hotSpot;
+}
+
+void WeaponBolt::extractRenderView (mc2::render_view::RenderView& view)
+{
+	GameObject::extractRenderView(view);
+	if (getFlag(OBJECT_FLAG_JUSTCREATED) || isTargeted())	//can we be seen by the enemy?
+		return;
+	view.flags |= mc2::render_view::Visible;
+	if (hitTarget)
+		view.flags |= mc2::render_view::HitTarget;
+	view.aux[0] = laserPosition;
+	if (targetPosition)
+	{
+		view.aux[2] = *targetPosition;
+		view.aux[1] = boltTargetHotSpot(*targetPosition, targetWID, targetHotSpot);
+	}
+	// Draw with the same flight heading as Execute, not GameObject's base facing.
+	view.value[0] = targetPosition ? -world_angle_between(laserPosition, *targetPosition) : rotation;
+	GameObjectPtr myOwner = ObjectManager->getByWatchID(ownerWID);
+	view.value[1] = myOwner ? myOwner->getRotation() : 0.0f;
+	for (int i = 0; i < 4; i++)
+	{
+		rvLaserVertices[i] = laserVertices[i];
+		rvLaserSide[i] = laserSide[i];
+	}
+	rvStartUV = startUV;
+}
+
+void WeaponBolt::renderView (const mc2::render_view::RenderView& view)
+{
+	if (view.has(mc2::render_view::Visible))
+	{
+		// Extract copies under the member names, so the draw body below reads the view.
+		const glm::vec3 position = view.position;
+		glm::vec3 laserPosition = view.aux[0];
+		glm::vec3 (&laserVertices)[4] = rvLaserVertices;
+		glm::vec3 (&laserSide)[4] = rvLaserSide;
+		const float startUV = rvStartUV;
+		const bool hitTarget = view.has(mc2::render_view::HitTarget);
+
 		gosFX::Effect::DrawInfo drawInfo;
 		drawInfo.m_clipper = theClipper;
 		
@@ -44,7 +101,7 @@ void WeaponBolt::render (void)
 		const bool useImmediate = true;
 		const bool vfxTrace = vkVfxTraceOn();
 		// Draw with the same flight heading as Execute, not GameObject's base facing.
-		const float effectHeading = targetPosition ? -world_angle_between(laserPosition, *targetPosition) : rotation;
+		const float effectHeading = view.value[0];
 
 		if (!gosEffect && !hitTarget && !(static_cast<WeaponBoltTypePtr>(getObjectType()))->isBeam)
 		{
@@ -324,22 +381,7 @@ void WeaponBolt::render (void)
 			edgeMode <<= 24;
 			
 			glm::vec3 actualPosition;
-			glm::vec3 hotSpot = *targetPosition;
-			GameObjectPtr target = ObjectManager->getByWatchID(targetWID);
-			if (target)
-			{
-				if (!target->isMech())
-				{
-					hotSpot = target->getPositionFromHS(targetHotSpot);
-				}
-				else
-				{
-					if (targetHotSpot)
-						hotSpot = target->appearance->getHitNodeLeft();
-					else
-						hotSpot = target->appearance->getHitNodeRight(); 
-				}
-			}
+			glm::vec3 hotSpot = view.aux[1];
 				
 			glm::vec3 length;
 			length = hotSpot - position;
@@ -576,22 +618,7 @@ void WeaponBolt::render (void)
 			if (gosEffect)
 			{
 				glm::vec3 actualPosition;
-				glm::vec3 hotSpot = *targetPosition;
-				GameObjectPtr target = ObjectManager->getByWatchID(targetWID);
-				if (target)
-				{
-					if (!target->isMech())
-					{
-						hotSpot = target->getPositionFromHS(targetHotSpot);
-					}
-					else
-					{
-						if (targetHotSpot)
-							hotSpot = target->appearance->getHitNodeLeft();
-						else
-							hotSpot = target->appearance->getHitNodeRight(); 
-					}
-				}
+				glm::vec3 hotSpot = view.aux[1];
 	
 				mc2ToRender(actualPosition, hotSpot);	//Play the beam hitting effect at the hit location
 				
@@ -648,13 +675,7 @@ void WeaponBolt::render (void)
 			mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
 			mc2::math::buildTranslation(shapeOrigin, mPosition);
 			
-			GameObjectPtr myOwner = ObjectManager->getByWatchID(ownerWID);
-			glm::quat effectRot;
-		
-			if (myOwner)
-				effectRot = mc2::math::quatFromEuler(mc2::math::Euler(0.0f, myOwner->getRotation() * DEGREES_TO_RADS,0.0f));
-			else
-				effectRot = mc2::math::quatFromEuler(mc2::math::Euler(0.0f,0.0f,0.0f)); 
+			glm::quat effectRot = mc2::math::quatFromEuler(mc2::math::Euler(0.0f, view.value[1] * DEGREES_TO_RADS,0.0f));
 
 			localToWorld = mc2::math::multiply(gosFX::Effect_Into_Motion, effectRot);
 			localResult = localToWorld * shapeOrigin;
@@ -667,22 +688,7 @@ void WeaponBolt::render (void)
 
 		if (hitEffect && hitTarget && hitEffect->IsExecuted())
 		{
-			glm::vec3 hotSpot = *targetPosition;
-			GameObjectPtr target = ObjectManager->getByWatchID(targetWID);
-			if (target)
-			{
-				if (!target->isMech())
-				{
-					hotSpot = target->getPositionFromHS(targetHotSpot);
-				}
-				else
-				{
-					if (targetHotSpot)
-						hotSpot = target->appearance->getHitNodeLeft();
-					else
-						hotSpot = target->appearance->getHitNodeRight(); 
-				}
-			}
+			glm::vec3 hotSpot = view.aux[1];
 
 			glm::vec3 tPosition;
 			mc2ToRender(tPosition, hotSpot);
@@ -701,7 +707,7 @@ void WeaponBolt::render (void)
 
 		if (missEffect && hitTarget && missEffect->IsExecuted())
 		{
-			glm::vec3 hotSpot = *targetPosition;
+			glm::vec3 hotSpot = view.aux[2];
 			
 			glm::vec3 tPosition;
 			mc2ToRender(tPosition, hotSpot);
@@ -720,7 +726,7 @@ void WeaponBolt::render (void)
 
 		if (waterMissEffect && hitTarget && waterMissEffect->IsExecuted())
 		{
-			glm::vec3 hotSpot = *targetPosition;
+			glm::vec3 hotSpot = view.aux[2];
 			
 			glm::vec3 tPosition;
 			tPosition.x = -hotSpot.x;

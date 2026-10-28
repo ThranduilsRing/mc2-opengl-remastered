@@ -596,13 +596,13 @@ void Gate::lightOnFire (float timeToBurn)
 }
 
 //---------------------------------------------------------------------------
-void Gate::render (void)
+// G7b K3: the old render() split at the render extract (sim reads and writes here; the draw only touches the appearance).
+void Gate::extractRenderView (mc2::render_view::RenderView& view)
 {
-	// Mirror Building::render: bypass canBeSeen() cull when the GPU
-	// static-prop path is on — the legacy angular cull has a huge
-	// false-negative rate at wolfman zoom.
+	GameObject::extractRenderView(view);
 	if (appearance->canBeSeen())
 	{
+		view.flags |= mc2::render_view::Visible;
 		//--------------------------------------
 		if (getDrawBars())
 		{
@@ -625,27 +625,40 @@ void Gate::render (void)
 					color = SB_BLUE;
 			}
 				
-			appearance->setBarColor(color);
-			appearance->setBarStatus(barStatus);
+			view.flags |= mc2::render_view::Bars;
+			view.barColor = color;
+			view.barStatus = barStatus;
 		}
 
 		if ((static_cast<GateTypePtr>(getObjectType()))->gateTypeName < IDS_MC2_STRING_START)
 		{
-			appearance->setObjectNameId((static_cast<GateTypePtr>(getObjectType()))->gateTypeName + IDS_MC2_STRING_START);
+			view.nameId = (static_cast<GateTypePtr>(getObjectType()))->gateTypeName + IDS_MC2_STRING_START;
 		}
 		else
 		{
-			appearance->setObjectNameId((static_cast<GateTypePtr>(getObjectType()))->gateTypeName);
+			view.nameId = (static_cast<GateTypePtr>(getObjectType()))->gateTypeName;
 		}
 
 
 		windowsVisible = turn;
-		appearance->setVisibility(true,true);
-		appearance->render();
 	}
-	
+
 	setSelected(false);		//ALWAYS reset the selected flags.  GUI needs this to work!
 	setTargeted( false );	//ALWAYS do it here, too!  Otherwise things may draw FUNNY!
+}
+
+void Gate::renderView (const mc2::render_view::RenderView& view)
+{
+	if (!view.has(mc2::render_view::Visible))
+		return;
+	if (view.has(mc2::render_view::Bars))
+	{
+		appearance->setBarColor(view.barColor);
+		appearance->setBarStatus(view.barStatus);
+	}
+	appearance->setObjectNameId(view.nameId);
+	appearance->setVisibility(true,true);
+	appearance->render();
 }
 
 //---------------------------------------------------------------------------

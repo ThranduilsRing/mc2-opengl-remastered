@@ -1990,10 +1990,13 @@ void Turret::renderShadows (void)
 
 //---------------------------------------------------------------------------
 
-void Turret::render (void) 
+// G7b K3: the old render() split at the render extract (sim reads and writes here; the draw only touches the appearance).
+void Turret::extractRenderView (mc2::render_view::RenderView& view)
 {
+	GameObject::extractRenderView(view);
 	if (appearance->canBeSeen())
 	{
+		view.flags |= mc2::render_view::Visible;
 		if (TacticalOverview::maskWorldBars(drawFlags) & DRAW_BARS )
 		{
 			TurretTypePtr type = static_cast<TurretTypePtr>(getObjectType());
@@ -2015,28 +2018,41 @@ void Turret::render (void)
 					color = SB_BLUE;
 			}
 				
-			appearance->setBarColor(color);
-			appearance->setBarStatus(barStatus);
+			view.flags |= mc2::render_view::Bars;
+			view.barColor = color;
+			view.barStatus = barStatus;
 		}
 
 		if ((static_cast<TurretTypePtr>(getObjectType()))->turretTypeName < IDS_MC2_STRING_START)
 		{
-			appearance->setObjectNameId((static_cast<TurretTypePtr>(getObjectType()))->turretTypeName + IDS_MC2_STRING_START);
+			view.nameId = (static_cast<TurretTypePtr>(getObjectType()))->turretTypeName + IDS_MC2_STRING_START;
 		}
 		else
 		{
-			appearance->setObjectNameId((static_cast<TurretTypePtr>(getObjectType()))->turretTypeName);
+			view.nameId = (static_cast<TurretTypePtr>(getObjectType()))->turretTypeName;
 		}
 
 
 		windowsVisible = turn;
-		appearance->setVisibility(true,true);
-		appearance->render();
 	}
-	
+
 	setSelected(false);		//ALWAYS reset the selected flags.  GUI needs this to work!
 	setTargeted( false );	//ALWAYS do it here, too!  Otherwise things may draw FUNNY!
 
+}
+
+void Turret::renderView (const mc2::render_view::RenderView& view)
+{
+	if (!view.has(mc2::render_view::Visible))
+		return;
+	if (view.has(mc2::render_view::Bars))
+	{
+		appearance->setBarColor(view.barColor);
+		appearance->setBarStatus(view.barStatus);
+	}
+	appearance->setObjectNameId(view.nameId);
+	appearance->setVisibility(true,true);
+	appearance->render();
 }
 
 //---------------------------------------------------------------------------

@@ -701,115 +701,134 @@ void GroundVehicle::renderShadows (void)
 }	
 
 
-void GroundVehicle::render (void) 
+// G7b K3: the old render() split at the render extract. Contact status, team, effectiveness, tonnage and the fire range
+// are read here; renderView keeps the main-only parts (GPU readback lag, appearance, icons).
+void GroundVehicle::extractRenderView (mc2::render_view::RenderView& view)
 {
-	if (Terrain::IsGameSelectTerrainPosition(position))
+	using mc2::render_view::Mode;
+	GameObject::extractRenderView(view);
+	if (!Terrain::IsGameSelectTerrainPosition(position))
+		return;
+	if (teamId != Team::home->getId())
 	{
-		if (teamId != Team::home->getId())
-		{
-			long cStat = conStat;
-	
-			if ((cStat == CONTACT_VISUAL) || isDestroyed() || isDisabled() || ShowMovers || (MPlayer && MPlayer->allUnitsDestroyed[MPlayer->commanderID]))
-			{
-				float barStatus = getTotalEffectiveness();
-				
-				DWORD color = 0xff7f7f7f;
-				if ((teamId > -1) && (teamId < 8)) {
-					if (getTeam()->isFriendly(Team::home))
-						color = SB_GREEN;
-					else if (getTeam()->isEnemy(Team::home))
-						color = SB_RED;
-					else
-						color = SB_BLUE;
-				}
-					
-				appearance->setBarColor(color);
-				appearance->setBarStatus(barStatus);
-				appearance->setObjectNameId(descID);
-				appearance->render();
-			}
-			else if (cStat == CONTACT_SENSOR_QUALITY_1)
-			{
-				appearance->setBarColor(SB_RED);
-				appearance->render();
-				
-			}
-			else if (cStat == CONTACT_SENSOR_QUALITY_2)
-			{
-				appearance->setBarColor(SB_RED);
-				appearance->render();
-				
-			}
-			else if (cStat == CONTACT_SENSOR_QUALITY_3)
-			{
-				appearance->setBarColor(SB_RED);
-				appearance->render();
-	
-				long resourceID = 0;
-				if (tonnage <= 40)
-					resourceID = IDS_SENSOR_LIGHT_VEHICLE;
-				else if (tonnage <= 65)
-					resourceID = IDS_SENSOR_MEDIUM_VEHICLE;
-				else
-					resourceID = IDS_SENSOR_HEAVY_VEHICLE;
-					
-				// C3: route canBeSeen() to GPU-lagged visibility; 1-frame HUD lag: accepted.
-				const bool gvInViewQ3 = s_gpuCullLifecycle
-					? gpu_cull::readback_isActorVisibleLagged(static_cast<uint32_t>(getHandle()))
-					: appearance->canBeSeen();
-				if ( gvInViewQ3 )
-					drawSensorTextHelp (appearance->getScreenPos().x, appearance->getScreenPos().y+20.0f, resourceID,SD_RED,false);
-			}
-			else if (cStat == CONTACT_SENSOR_QUALITY_4)
-			{
-				appearance->setBarColor(SB_RED);
-				appearance->render();
+		long cStat = conStat;
 
-				// C3: route canBeSeen() to GPU-lagged visibility; 1-frame HUD lag: accepted.
-				const bool gvInViewQ4 = s_gpuCullLifecycle
-					? gpu_cull::readback_isActorVisibleLagged(static_cast<uint32_t>(getHandle()))
-					: appearance->canBeSeen();
-				if ( gvInViewQ4 )
-					drawSensorTextHelp (appearance->getScreenPos().x, appearance->getScreenPos().y+20.0f,descID,SD_RED,false);
+		if ((cStat == CONTACT_VISUAL) || isDestroyed() || isDisabled() || ShowMovers || (MPlayer && MPlayer->allUnitsDestroyed[MPlayer->commanderID]))
+		{
+			DWORD color = 0xff7f7f7f;
+			if ((teamId > -1) && (teamId < 8)) {
+				if (getTeam()->isFriendly(Team::home))
+					color = SB_GREEN;
+				else if (getTeam()->isEnemy(Team::home))
+					color = SB_RED;
+				else
+					color = SB_BLUE;
 			}
-			else if (alphaValue != 0x0)	//What if we are out of LOS and NOT on sensors!!!  Let 'em fade out.
+			view.mode = Mode::Full;
+			view.barColor = color;
+			view.barStatus = getTotalEffectiveness();
+			view.nameId = descID;
+		}
+		else if ((cStat == CONTACT_SENSOR_QUALITY_1) || (cStat == CONTACT_SENSOR_QUALITY_2))
+		{
+			view.mode = Mode::Sensor;
+		}
+		else if (cStat == CONTACT_SENSOR_QUALITY_3)
+		{
+			view.mode = Mode::SensorText;
+			if (tonnage <= 40)
+				view.nameId = IDS_SENSOR_LIGHT_VEHICLE;
+			else if (tonnage <= 65)
+				view.nameId = IDS_SENSOR_MEDIUM_VEHICLE;
+			else
+				view.nameId = IDS_SENSOR_HEAVY_VEHICLE;
+		}
+		else if (cStat == CONTACT_SENSOR_QUALITY_4)
+		{
+			view.mode = Mode::SensorText;
+			view.nameId = descID;
+		}
+		else if (alphaValue != 0x0)	//What if we are out of LOS and NOT on sensors!!!  Let 'em fade out.
+		{
+			view.mode = Mode::Fade;
+		}
+	}
+	else
+	{
+		DWORD color = 0xff7f7f7f;
+		if (getTeamId() == Team::home->getId())
+		{
+			//Two Possibilities.  Either we have the same commander or we don't.
+			// If we do, we are on the same "team", if not we are ALLIES!!!
+			if (getCommanderId() != Commander::home->getId())
 			{
-				appearance->setBarColor(SB_RED);
-				appearance->render();
+				color = 0x000000ff;
 			}
 		}
-		else 
+		else
 		{
-			float barStatus = getTotalEffectiveness();
-			
-			DWORD color = 0xff7f7f7f;
-			if (getTeamId() == Team::home->getId())
-			{
-				//Two Possibilities.  Either we have the same commander or we don't.
-				// If we do, we are on the same "team", if not we are ALLIES!!!
-				if (getCommanderId() != Commander::home->getId())
-				{
-					color = 0x000000ff; 
-				}
-			}
-			else
-			{
-				color = 0x00ff0000; 
-			}
-				
-			appearance->setBarColor(color);
-			appearance->setBarStatus(barStatus);
-			appearance->setObjectNameId(descID);
+			color = 0x00ff0000;
+		}
+		view.mode = Mode::Own;
+		view.barColor = color;
+		view.barStatus = getTotalEffectiveness();
+		view.nameId = descID;
+		if ( attackRange == FIRERANGE_CURRENT && !isDisabled() )
+			view.flags |= mc2::render_view::FireIcon;
+	}
+}
+
+void GroundVehicle::renderView (const mc2::render_view::RenderView& view)
+{
+	using mc2::render_view::Mode;
+	switch (view.mode)
+	{
+		case Mode::Full:
+			appearance->setBarColor(view.barColor);
+			appearance->setBarStatus(view.barStatus);
+			appearance->setObjectNameId(view.nameId);
 			appearance->render();
-			if ( attackRange == FIRERANGE_CURRENT && !isDisabled() )
+			break;
+
+		case Mode::Sensor:
+		case Mode::Fade:
+			appearance->setBarColor(SB_RED);
+			appearance->render();
+			break;
+
+		case Mode::SensorText:
+		{
+			appearance->setBarColor(SB_RED);
+			appearance->render();
+
+			// C3: route canBeSeen() to GPU-lagged visibility; 1-frame HUD lag: accepted.
+			const bool gvInView = s_gpuCullLifecycle
+				? gpu_cull::readback_isActorVisibleLagged(static_cast<uint32_t>(getHandle()))
+				: appearance->canBeSeen();
+			if ( gvInView )
+				drawSensorTextHelp (appearance->getScreenPos().x, appearance->getScreenPos().y+20.0f, view.nameId,SD_RED,false);
+			break;
+		}
+
+		case Mode::Own:
+			appearance->setBarColor(view.barColor);
+			appearance->setBarStatus(view.barStatus);
+			appearance->setObjectNameId(view.nameId);
+			appearance->render();
+			if ( view.has(mc2::render_view::FireIcon) )
 			{
 				// Vertex reservation lives with the draw (presentation), not in the tick.
 				mc2::renderSubmissions().addTriangle(holdFireIconHandle,MC2_DRAWALPHA);
 				mc2::renderSubmissions().addTriangle(holdFireIconHandle,MC2_DRAWALPHA);
-				appearance->drawIcon( holdFireIconHandle, 5, 5, color );
+				appearance->drawIcon( holdFireIconHandle, 5, 5, view.barColor );
 			}
-		}
+			break;
+
+		default:
+			break;
 	}
+
+	// Debug-only path overlay: still reads the pilot's live move path (MC2 debug key; not on in normal play).
 
 	if (drawTerrainGrid)
 	{

@@ -1073,9 +1073,12 @@ void Building::setCommanderId (long _commanderId) {
 
 //---------------------------------------------------------------------------
 
-void Building::render (void) {
+// G7b K3: the old render() split at the render extract. Everything below that reads or writes the sim runs here, so
+// the draw (renderView) only touches the appearance.
+void Building::extractRenderView (mc2::render_view::RenderView& view) {
+	GameObject::extractRenderView(view);
 
-	if (!getFlag(OBJECT_FLAG_JUSTCREATED)) 
+	if (!getFlag(OBJECT_FLAG_JUSTCREATED))
 	{
 		setFlag(OBJECT_FLAG_ONFIRE, false);
 	}
@@ -1087,6 +1090,7 @@ void Building::render (void) {
 	// 2026-04-19-static-prop-handoff.md.
 	if (appearance->canBeSeen())
 	{
+		view.flags |= mc2::render_view::Visible;
 		//--------------------------------------
 		if (getDrawBars())
 		{
@@ -1116,27 +1120,39 @@ void Building::render (void) {
 					color = SB_RED;
 			}
 			
-			appearance->setBarColor(color);
-			appearance->setBarStatus(barStatus);
+			view.flags |= mc2::render_view::Bars;
+			view.barColor = color;
+			view.barStatus = barStatus;
 		}
 
 		if ((static_cast<BuildingTypePtr>(getObjectType()))->buildingTypeName < IDS_MC2_STRING_START)
 		{
-			appearance->setObjectNameId((static_cast<BuildingTypePtr>(getObjectType()))->buildingTypeName + IDS_MC2_STRING_START);
+			view.nameId = (static_cast<BuildingTypePtr>(getObjectType()))->buildingTypeName + IDS_MC2_STRING_START;
 		}
 		else
 		{
-			appearance->setObjectNameId((static_cast<BuildingTypePtr>(getObjectType()))->buildingTypeName);
+			view.nameId = (static_cast<BuildingTypePtr>(getObjectType()))->buildingTypeName;
 		}
 
 
 		windowsVisible = turn;
-		appearance->setVisibility(true,true);
-		appearance->render();
 	}
-	
+
 	setSelected(false);		//ALWAYS reset the selected flags.  GUI needs this to work!
 	setTargeted( false );	//ALWAYS do it here, too!  Otherwise things may draw FUNNY!
+}
+
+void Building::renderView (const mc2::render_view::RenderView& view) {
+	if (!view.has(mc2::render_view::Visible))
+		return;
+	if (view.has(mc2::render_view::Bars))
+	{
+		appearance->setBarColor(view.barColor);
+		appearance->setBarStatus(view.barStatus);
+	}
+	appearance->setObjectNameId(view.nameId);
+	appearance->setVisibility(true,true);
+	appearance->render();
 }
 
 //---------------------------------------------------------------------------
