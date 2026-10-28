@@ -133,8 +133,51 @@ def status(directory: str) -> str:
 
 LOCK_NAME = SAVE_NAME + ".run-lock"
 #: A run that died holding the lock must not block the host forever: a lock older than this is stolen. Waits are bounded too.
-LOCK_STALE_S = 40 * 60
+#: The PID check below catches a dead holder immediately; this bound covers a lock whose holder record is unreadable.
+LOCK_STALE_S = 2 * 60 * 60
 LOCK_WAIT_S = 25 * 60
+
+
+def _pid_alive(pid: int) -> bool:
+    """True when a process with this pid exists on this host. Never sends a signal."""
+    if pid <= 0:
+        return False
+    try:
+        import psutil
+        return psutil.pid_exists(pid) and psutil.Process(pid).status() != psutil.STATUS_ZOMBIE
+    except ImportError:
+        pass
+    except Exception:   # psutil.Error includes AccessDenied, which still means the pid exists
+        return True
+    if os.name == "nt":
+        import ctypes
+        k32 = ctypes.windll.kernel32
+        handle = k32.OpenProcess(0x1000, False, int(pid))   # PROCESS_QUERY_LIMITED_INFORMATION
+        if not handle:
+            return False
+        try:
+            code = ctypes.c_ulong(0)
+            return bool(k32.GetExitCodeProcess(handle, ctypes.byref(code))) and code.value == 259
+        finally:
+            k32.CloseHandle(handle)
+    try:
+        os.kill(int(pid), 0)    # POSIX only: signal 0 sends nothing
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+    return True
+
+
+def _lock_holder_pid(path: str) -> int | None:
+    try:
+        with open(path, encoding="utf-8") as fh:
+            for field in fh.read().split():
+                if field.startswith("pid="):
+                    return int(field[4:])
+    except (OSError, ValueError):
+        pass
+    return None
 
 
 @contextlib.contextmanager
@@ -153,10 +196,19 @@ def run_lock(directory: str, wait_s: float = LOCK_WAIT_S, stale_s: float = LOCK_
             break
         except FileExistsError:
             try:
-                if time.time() - os.path.getmtime(path) > stale_s:
-                    os.remove(path)
-                    continue
+                age = time.time() - os.path.getmtime(path)
             except OSError:
+                continue
+            holder = _lock_holder_pid(path)
+            if holder is not None and not _pid_alive(holder):
+                with contextlib.suppress(OSError):
+                    os.remove(path)
+                print(f"savegame_backup: took over stale lock {path}: pid {holder} is gone", flush=True)
+                continue
+            if age > stale_s:
+                with contextlib.suppress(OSError):
+                    os.remove(path)
+                print(f"savegame_backup: took over stale lock {path}: held {age / 60:.0f} min (limit {stale_s / 60:.0f})", flush=True)
                 continue
             if time.monotonic() > deadline:
                 raise TimeoutError(f"savegame_backup: save directory {directory} stayed locked by another save run for {wait_s:.0f} s")

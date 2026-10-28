@@ -422,6 +422,8 @@ def baseline_record(mission: str, save_at: int, load_at: int, first: str, second
     pk = masked_packets(pk, policy)
     return {"mission": mission, "save_at": save_at, "load_at": load_at, "gates": resave_env(save_at, load_at), "exe": fingerprint,
             "comparison": policy,
+            # WHY: the classes alone cannot tell a later re-pin which mask file produced them.
+            "mask": (os.path.relpath(mask_path, ROOT).replace(os.sep, "/") if mask_path else None),
             # WHY recorded: a first-save-only baseline never proved the re-save, so a reader must be able to tell it from a strong one.
             "judged": "first-save-only" if first_save_only else "first-save-and-resave",
             # WHY recorded: --first-save-only waives the re-save's CONTENT, not its existence: a run with no re-save proved nothing.
@@ -564,10 +566,18 @@ def fill_from_previous(args, prev: dict | None) -> None:
         args.sim_speed = prev["sim_speed"]
     comp = prev.get("comparison") or {}
     if not args.mask and comp.get("mode") == "zero-masked-bytes-v1":
-        # The record keeps the mask classes, not its path: reuse the repo mask when it still says the same thing.
-        default = os.path.join(ROOT, "tools", "save_noise_mask.json")
-        if os.path.exists(default) and mask_policy(default) == comp:
-            args.mask = default
+        recorded = prev.get("mask")
+        if not isinstance(recorded, str) or not recorded:
+            raise ValueError("previous baseline records a noise mask but no mask path; pass --mask <path> "
+                             "(and --first-save-only if it was judged first-save-only)")
+        candidate = os.path.normpath(recorded if os.path.isabs(recorded) else os.path.join(ROOT, recorded))
+        if not os.path.exists(candidate):
+            raise ValueError(f"previous baseline's mask {recorded} is not readable; pass --mask <path> "
+                             "(and --first-save-only if it was judged first-save-only)")
+        args.mask = candidate
+    if comp.get("mode") == "zero-masked-bytes-v1" and "judged" not in prev:
+        raise ValueError("previous baseline does not record whether it was first-save-only; pass --mask <path> "
+                         "and --first-save-only if that was the original judgement")
     if prev.get("judged") == "first-save-only":
         args.first_save_only = True
 
@@ -588,7 +598,11 @@ def cmd_fixture(args) -> int:
             return 1
     if args.cmd == "baseline":
         base = previous_baseline(path)
-        fill_from_previous(args, base)
+        try:
+            fill_from_previous(args, base)
+        except ValueError as exc:
+            print(f"saveload_roundtrip baseline: FAIL\n{exc}")
+            return 1
         base = None
     refusal = frames_from_baseline(args, base)
     if refusal:

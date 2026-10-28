@@ -410,6 +410,27 @@ def test_gate_stage_selection():
                          (["deploy"], ["deploy"]), ([], None), (None, list(s[0] for s in steps))):
         with pytest.raises(ValueError):
             gate.select_stages(steps, stages, skip)
+    names = [s[0] for s in gate.select_stages(steps)]
+    last_proof = max(i for i, n in enumerate(names) if n.startswith(("saveload-", "determinism-")))
+    assert names.index("mods") > last_proof
+
+
+def test_gate_keep_going_runs_past_a_failed_offline_stage(monkeypatch, capsys):
+    import merge_gate as gate
+    monkeypatch.delenv("MC2_HOST_LEASE_BATCH", raising=False)
+    monkeypatch.setattr(gate, "git", lambda *a: "head")
+    monkeypatch.setattr(gate, "log_lease_holders", lambda: None)
+    calls = []
+    def runner(command, **kw):
+        calls.append(command[0])
+        return _r(int(command[0] == "contracts"))
+    monkeypatch.setattr(gate, "run_child", runner)
+    steps = [("contracts", ["contracts"], {}), ("deploy", ["deploy"], {}), ("tier1", ["stock"], {})]
+    assert gate.execute_parallel(steps, "head") == 1
+    assert calls == ["contracts"]
+    calls.clear()
+    assert gate.execute_parallel(steps, "head", keep_going=True) == 1
+    assert calls == ["contracts", "deploy", "stock"]
 
 
 def test_callers_failure_names_exact_allowlist_entry(capsys):
