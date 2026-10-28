@@ -573,6 +573,7 @@ void GameObjectManager::updateAppearancesOnly( bool terrain, bool movers, bool o
 					{
 						if (objList[objIndex]->getObjectClass() == TERRAINOBJECT)
 							static_cast<TerrainObject*>(objList[objIndex])->applyAppearancePush();
+						objList[objIndex]->getAppearance()->flushSimEvents();
 						if (objList[objIndex]->getAppearance()->recalcBounds())
 						{
 							// Must force here as well.
@@ -610,6 +611,7 @@ void GameObjectManager::updateAppearancesOnly( bool terrain, bool movers, bool o
 				if (mechs[i] && mechs[i]->getExists())
 				{
 					mechs[i]->applyAppearancePush();
+					mechs[i]->getAppearance()->flushSimEvents();
 					bool inView = mechs[i]->getAppearance()->recalcBounds();
 					if (inView)
 						mechs[i]->windowsVisible = turn;
@@ -638,6 +640,7 @@ void GameObjectManager::updateAppearancesOnly( bool terrain, bool movers, bool o
 				if (vehicles[i] && vehicles[i]->getExists())
 				{
 					vehicles[i]->applyAppearancePush();
+					vehicles[i]->getAppearance()->flushSimEvents();
 					bool inView = vehicles[i]->getAppearance()->recalcBounds();
 					vehicles[i]->windowsVisible = turn;
 
@@ -668,6 +671,7 @@ void GameObjectManager::updateAppearancesOnly( bool terrain, bool movers, bool o
 				if (turrets[i] && turrets[i]->getExists()) 
 				{
                     turrets[i]->updatePresentationLighting();
+					turrets[i]->getAppearance()->flushSimEvents();
 					if (turrets[i]->getAppearance()->recalcBounds())
 					{
 						// Must force here as well.
@@ -714,6 +718,7 @@ void GameObjectManager::updateAppearancesOnly( bool terrain, bool movers, bool o
 			{
 				if (lights[i] && lights[i]->getExists()) 
 				{
+					lights[i]->getAppearance()->flushSimEvents();
 					if (lights[i]->getAppearance()->recalcBounds() )
 					{
 						MC2_WORLD_UPDATE("appearance_lights", lights[i]);

@@ -567,6 +567,8 @@ void GameObjectManager::updateFrameJobsPrepass(int& frameJobsPrePassCount) {
 					GameObjectPtr obj = objList[h];
 					if (!obj || !obj->getExists()) continue;
 					if (!Terrain::objVertexActive[obj->getVertexNum()]) continue;
+					// Shape/status changes belong on the main thread, before workers compute their bounds.
+					if (auto* appearance = obj->getAppearance()) appearance->flushSimEvents();
 					s_frameJobsHandles.push_back(h);
 				}
 			}
