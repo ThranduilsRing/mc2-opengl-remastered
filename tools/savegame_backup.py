@@ -140,33 +140,9 @@ LOCK_WAIT_S = 25 * 60
 
 def _pid_alive(pid: int) -> bool:
     """True when a process with this pid exists on this host. Never sends a signal."""
-    if pid <= 0:
-        return False
-    try:
-        import psutil
-        return psutil.pid_exists(pid) and psutil.Process(pid).status() != psutil.STATUS_ZOMBIE
-    except ImportError:
-        pass
-    except Exception:   # psutil.Error includes AccessDenied, which still means the pid exists
-        return True
-    if os.name == "nt":
-        import ctypes
-        k32 = ctypes.windll.kernel32
-        handle = k32.OpenProcess(0x1000, False, int(pid))   # PROCESS_QUERY_LIMITED_INFORMATION
-        if not handle:
-            return False
-        try:
-            code = ctypes.c_ulong(0)
-            return bool(k32.GetExitCodeProcess(handle, ctypes.byref(code))) and code.value == 259
-        finally:
-            k32.CloseHandle(handle)
-    try:
-        os.kill(int(pid), 0)    # POSIX only: signal 0 sends nothing
-    except ProcessLookupError:
-        return False
-    except PermissionError:
-        return True
-    return True
+    sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "scripts"))
+    from smoke_lib.child_registry import pid_alive
+    return pid_alive(int(pid))
 
 
 def _lock_holder_pid(path: str) -> int | None:
