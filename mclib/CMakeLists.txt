@@ -47,6 +47,7 @@ set(SOURCES ${SOURCES}
     texture_sources.cpp
     texture_assets.cpp
     ../code/tick_commit.cpp
+    ../code/render_view_store.cpp
     tex_resolve_table.cpp
     userinput.cpp
     vk_umbrella_gate.cpp

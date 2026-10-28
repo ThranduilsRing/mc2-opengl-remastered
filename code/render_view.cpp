@@ -1,4 +1,4 @@
-// G7b K3: per-frame render clock + render list storage (see render_view.h), and the GameObject defaults.
+// G7b K3: the render extract hook and the GameObject defaults (storage: render_view_store.cpp).
 #include "render_view.h"
 #include "gameobj.h"
 #include "objmgr.h"
@@ -8,18 +8,6 @@
 #include <tracy/Tracy.hpp>
 
 extern uint32_t g_mc2FrameCounter;
-
-namespace mc2::render_view {
-
-namespace {
-RenderClock g_clock;
-RenderList g_list;
-}  // namespace
-
-RenderClock& clock() { return g_clock; }
-RenderList& list() { return g_list; }
-
-}  // namespace mc2::render_view
 
 // The overlap extract hook (installed by code/mission_update.cpp), main thread at ExtractRenderSnapshot with the sim
 // quiescent: stamp the clock, then capture everything the object draws and the impact decals read from the sim.
