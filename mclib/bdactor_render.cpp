@@ -178,8 +178,9 @@ long BldgAppearance::render (long depthFixup)
 						fflush(stderr);
 					}
 				}
+				// Vulkan registered buildings are valid on NVIDIA; retain an explicit rebake fallback.
 				static const bool s_forceDynamicBldgs =
-				    bdForceDynamicDefault<"MC2_FORCE_DYNAMIC_BUILDINGS">();
+				    mc2::gate::get<"MC2_FORCE_DYNAMIC_BUILDINGS">();
 				if (s_forceDynamicBldgs) {
 					invalidateStaticRegistration();
 				} else if (bldgShape && bldgShape->getCachedGpuLightIndex() == UINT32_MAX) {
