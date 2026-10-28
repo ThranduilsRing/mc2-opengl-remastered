@@ -39,9 +39,7 @@
 #include"cmponent.h"
 #endif
 
-#ifndef WARRIOR_H
-#include"warrior.h"
-#endif
+#include "warrior_types.h"
 
 #ifndef MECHCLASS_H
 #include"mechclass.h"
@@ -431,9 +429,7 @@ class GroundVehicle : public Mover {
 			return(control.settings.groundVehicle.throttle < 0);
 		}
 
-		virtual bool isLayingMines (void) {
-			return(pilot && (pilot->getCurTacOrder()->moveParams.mode == MOVE_MODE_MINELAYING));
-		}
+		virtual bool isLayingMines (void);
 
 		virtual bool isMineSweeper (void) {
 			return(mineSweeper);

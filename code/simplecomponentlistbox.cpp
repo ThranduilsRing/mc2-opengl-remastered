@@ -15,6 +15,7 @@ SimpleComponentListBox.cpp			: Implementation of the SimpleComponentListBox comp
 #include"cmponent.h"
 #include"unitprofile.h"	// EQUIP-ADD-UI-NAME-1 (S3): equipmentAddUiTextForStringId
 #include "mc2fmt.h"
+#include "memfunc.h"
 
 //-------------------------------------------------------------------------------------------------
 ComponentListBox::ComponentListBox()

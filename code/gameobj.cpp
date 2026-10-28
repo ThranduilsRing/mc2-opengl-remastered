@@ -15,6 +15,7 @@
 #include "gos_crashbundle.h"
 #include"terrain_runtime.h"
 #endif
+#include "warrior.h"
 
 #ifndef GAMEOBJ_H
 #include"gameobj.h"

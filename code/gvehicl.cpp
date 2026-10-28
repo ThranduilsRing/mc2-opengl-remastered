@@ -1185,3 +1185,7 @@ long GroundVehicle::setTeamId (long _teamId, bool setup)
 
 	return result;	
 }
+
+bool GroundVehicle::isLayingMines (void) {
+	return(pilot && (pilot->getCurTacOrder()->moveParams.mode == MOVE_MODE_MINELAYING));
+}

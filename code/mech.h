@@ -40,9 +40,7 @@
 #include"cmponent.h"
 #endif
 
-#ifndef WARRIOR_H
-#include"warrior.h"
-#endif
+#include "warrior_types.h"
 
 #ifdef USE_JETS
 #ifndef DJET_H

@@ -1513,17 +1513,6 @@
       "occurrence": 1
     },
     {
-      "tu": "code/warrior.cpp",
-      "file": "code/warrior.cpp",
-      "chain": [
-        "code/warrior.cpp"
-      ],
-      "rule": "extern-shim",
-      "subject": "extern callable",
-      "evidence": "extern long MovePathManager_getFrameCounter (void);",
-      "occurrence": 1
-    },
-    {
       "tu": "code/mission_update.cpp",
       "file": "code/mission_internal.h",
       "chain": [
