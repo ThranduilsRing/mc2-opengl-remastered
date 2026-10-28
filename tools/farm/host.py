@@ -53,6 +53,14 @@ def seed_files(install, harness):
         if rel.parts[0] in ('tools', 'scripts', 'importer', '3rdparty'):
             continue
         files['install/' + rel.as_posix()] = install / rel
+    # The deploy manifest owns the engine payload, not all stock loose data.
+    for folder in ('data', 'assets', 'shaders', 'shaders_vk'):
+        for path in (install / folder).rglob('*'):
+            rel = path.relative_to(install)
+            if (path.is_file() and not any(part.lower() in
+                    ('savegame', 'cache', '__pycache__', 'crashes') for part in rel.parts)
+                    and path.suffix.lower() not in ('.log', '.tmp', '.bak', '.pdb', '.dmp', '.ims')):
+                files['install/' + rel.as_posix()] = path
     # Stock game archives/configs are not all owned by the deploy manifest.
     for pattern in ('*.fst', '*.dll', '*.cfg'):
         for path in install.glob(pattern):

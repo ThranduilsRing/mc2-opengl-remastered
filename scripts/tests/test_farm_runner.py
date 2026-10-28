@@ -26,6 +26,9 @@ def test_reseed_selection_and_incremental_changes(tmp_path):
         'manifest_version,v1\nrelpath,sha256,bytes,src_commit\n'
         f'mc2.exe,{sha},8,abc\nmc2.pdb,unused,10,abc\n')
     (install / 'mission.fst').write_bytes(b'stock')
+    (install / 'data').mkdir()
+    (install / 'data/stock.fit').write_text('loose stock data')
+    (install / 'data/session.log').write_text('skip')
     subprocess.run(['git', 'init', '-q', str(harness)], check=True)
     (harness / 'scripts').mkdir()
     (harness / 'scripts/run_smoke.py').write_text('pass')
@@ -34,7 +37,7 @@ def test_reseed_selection_and_incremental_changes(tmp_path):
     files, exe = host.seed_files(install, harness)
     assert exe['src_commit'] == 'abc'
     assert set(files) == {'install/mc2.exe', 'install/mission.fst',
-                          'install/.deployed_manifest.csv', 'reference/mc2.exe',
+                          'install/.deployed_manifest.csv', 'install/data/stock.fit', 'reference/mc2.exe',
                           'harness/scripts/run_smoke.py'}
     inventory = {name: [p.stat().st_size, p.stat().st_mtime] for name, p in files.items()}
     assert host.changed_files(files, inventory) == {}
