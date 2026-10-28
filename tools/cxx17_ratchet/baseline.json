@@ -205,7 +205,7 @@
    "LG17": 81,
    "LG18": 36,
    "LG19": 0,
-   "LG20": 10
+   "LG20": 9
   },
   "tests": {
    "LG01": 0,
@@ -2312,7 +2312,7 @@
    "LG13": 2
   },
   "mclib/bdactor_render.cpp": {
-   "LG20": 2
+   "LG20": 1
   },
   "mclib/bdactor_sidecar.cpp": {
    "LG06": 5,
@@ -3402,7 +3402,7 @@
    "LG20": 3
   }
  },
- "head": "b3b2165ce",
+ "head": "ea73ecc48",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
