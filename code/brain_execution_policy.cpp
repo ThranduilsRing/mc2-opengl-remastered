@@ -3,6 +3,7 @@
 
 #include <string>
 #include <string_view>
+#include <unordered_set>
 
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"   // str<>()
@@ -22,6 +23,17 @@ namespace {
 bool fileExists(std::string_view path) {
 	File f;
 	return f.open(std::string(path).c_str()) == NO_ERR;
+}
+
+bool overlayBrainFile(std::string_view path) {
+	if (ResolveModFileSource(path).path) return true;
+	if (fileExists(path)) {
+		static std::unordered_set<std::string> ignored;
+		if (const auto [it, inserted] = ignored.emplace(path); inserted)
+			mc2::fmt::print_err("[BRAIN_POLICY] ignored base-game brain sidecar={} (use a mod overlay or explicit brain policy)\n",
+				mc2::fmt::safe(it->c_str()));
+	}
+	return false;
 }
 
 // True when the raw mission.fit text carries at least one inline Brain{} block.
@@ -47,8 +59,8 @@ void decide(std::string_view missionFitPath, std::string_view missionDir, std::s
 	} else {
 		const std::string base = std::string(missionDir).append(missionName);
 		if (missionFitHasBrainBlock(missionFitPath))                    { p = Policy::TechBrain; why = "mission.fit Brain{}"; }
-		else if (fileExists(base + "_specials.fit"))                    { p = Policy::TechBrain; why = "_specials.fit"; }
-		else if (fileExists(base + "_ai.fit"))                          { p = Policy::TechBrain; why = "_ai.fit"; }
+		else if (overlayBrainFile(base + "_specials.fit"))              { p = Policy::TechBrain; why = "mod _specials.fit"; }
+		else if (overlayBrainFile(base + "_ai.fit"))                    { p = Policy::TechBrain; why = "mod _ai.fit"; }
 		else if (!mc2::gate::str<"MC2_BRAIN_SPECIAL_FIT">().empty())    { p = Policy::TechBrain; why = "special-fit-gate"; }
 	}
 	g_policy = p;
