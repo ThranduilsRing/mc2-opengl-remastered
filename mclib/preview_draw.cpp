@@ -4,7 +4,8 @@
 //   World fallback (compass, sensor markers, detached arms, vehicles and props a batcher declined): queued through the
 //   render submissions like any other legacy triangle.
 // Lighting matches the old per-vertex kernel (hot-colour markers, ambient, infinite lights, highlight, base colour);
-// fog, specular, point/spot/terrain lights and shadows are not applied. The GPU batchers do those for everything they take.
+// fog uses the shape's fogRGB alpha plus the camera distance haze (the GPU path's poseFog_/hazeFactor).
+// Specular, point/spot/terrain lights and shadows are not applied. The GPU batchers do those for everything they take.
 #include "msl_internal.h"
 #include "tgl_internal.h"
 #include "mc2fmt.h"
@@ -38,6 +39,68 @@ DWORD cpuDrawFlags(bool alphaTest, bool hud, bool clamped)
 	if (clamped) addFlags |= MC2_ISTERRAIN;
 	if (alphaTest) addFlags |= MC2_ALPHATEST;
 	return addFlags;
+}
+
+struct ClipVertex
+{
+	Stuff::Vector4D clip;
+	float u, v;
+	DWORD argb, frgb;
+};
+
+float clipDistance (const ClipVertex& v, int plane)
+{
+	// Reverse-Z: the near plane is z=w and the far plane is z=0. plane 2 is w>0 (in front of the eye).
+	if (plane == 1)
+		return -v.clip.z;
+	if (plane == 2)
+		return -v.clip.w;
+	return v.clip.z - v.clip.w;
+}
+
+DWORD lerpColor (DWORD a, DWORD b, float t)
+{
+	DWORD out = 0;
+	for (int shift = 0; shift < 32; shift += 8)
+	{
+		const float ca = static_cast<float>((a >> shift) & 0xff);
+		const float cb = static_cast<float>((b >> shift) & 0xff);
+		out |= static_cast<DWORD>(float2long(ca + (cb - ca) * t)) << shift;
+	}
+	return out;
+}
+
+ClipVertex lerpClip (const ClipVertex& a, const ClipVertex& b, float t)
+{
+	ClipVertex out;
+	out.clip.x = a.clip.x + (b.clip.x - a.clip.x) * t;
+	out.clip.y = a.clip.y + (b.clip.y - a.clip.y) * t;
+	out.clip.z = a.clip.z + (b.clip.z - a.clip.z) * t;
+	out.clip.w = a.clip.w + (b.clip.w - a.clip.w) * t;
+	out.u = a.u + (b.u - a.u) * t;
+	out.v = a.v + (b.v - a.v) * t;
+	out.argb = lerpColor(a.argb, b.argb, t);
+	out.frgb = lerpColor(a.frgb, b.frgb, t);
+	return out;
+}
+
+int clipPolygon (const ClipVertex* src, int count, int plane, ClipVertex* dst)
+{
+	int out = 0;
+	for (int i = 0; i < count; i++)
+	{
+		const ClipVertex& a = src[i];
+		const ClipVertex& b = src[(i + 1) % count];
+		const float da = clipDistance(a, plane);
+		const float db = clipDistance(b, plane);
+		const bool insideA = da <= 0.0f;
+		const bool insideB = db <= 0.0f;
+		if (insideA)
+			dst[out++] = a;
+		if (insideA != insideB)
+			dst[out++] = lerpClip(a, b, da / (da - db));
+	}
+	return out;
 }
 }
 
@@ -74,7 +137,8 @@ void TG_Shape::ReserveCpuDraw (BYTE alphaValue, bool hud, bool clamped, bool spo
 			continue;
 		DWORD node, flags;
 		cpuDrawKey(textures, theShape->listOfTypeTriangles[j], isWindow, isSpotlight, alphaValue, addFlags, node, flags);
-		mc2::renderSubmissions().addTriangle(node, flags);
+		// Near/far clipping can turn one triangle into a quad, so reserve both triangles up front.
+		mc2::renderSubmissions().addTriangleBulk(node, flags, 2);
 	}
 }
 
@@ -152,7 +216,22 @@ void TG_Shape::CpuDraw (const glm::mat4& shapeToWorld, const glm::mat4& worldToS
 
 	const glm::mat4 shapeToClip = shapeToWorld * s_worldToClip;
 	static thread_local std::vector<gos_VERTEX> verts;
+	static thread_local std::vector<Stuff::Vector4D> clips;
 	verts.resize(numVertices);
+	if (world)
+		clips.resize(numVertices);
+
+	// The GPU legacy shader mixes the scene fog colour with vFogValue = frgb.a/255. The old kernel took
+	// the darker of the shape's elevation fog and the camera distance haze; the GPU vehicle path does the
+	// same via max(hazeFactor, poseFog_).
+	DWORD worldFog = fogRGB;
+	if (useFog && !isSpotlight)
+	{
+		const float haze = std::clamp(Camera::HazeFactor, 0.0f, 1.0f);
+		const DWORD distFog = static_cast<DWORD>(float2long((1.0f - haze) * 255.0f));
+		if (distFog < (worldFog >> 24))
+			worldFog = (worldFog & 0x00ffffff) | (distFog << 24);
+	}
 
 	for (long j = 0; j < numVertices; j++)
 	{
@@ -162,6 +241,8 @@ void TG_Shape::CpuDraw (const glm::mat4& shapeToWorld, const glm::mat4& worldToS
 
 		Stuff::Vector4D xform;
 		xform.MultiplyPoint(pos, shapeToClip);
+		if (world)
+			clips[j] = xform;
 		gos_VERTEX& v = verts[j];
 		if (eye->usePerspective)
 		{
@@ -178,7 +259,7 @@ void TG_Shape::CpuDraw (const glm::mat4& shapeToWorld, const glm::mat4& worldToS
 			v.z = xform.z;
 			v.rhw = 0.000001f;
 		}
-		v.frgb = 0xff000000;
+		v.frgb = (world && !isSpotlight) ? worldFog : 0xff000000;
 		if (g_previewCaptureBounds)
 		{
 			if (v.x < g_previewBoundsMinX) g_previewBoundsMinX = v.x;
@@ -268,6 +349,27 @@ void TG_Shape::CpuDraw (const glm::mat4& shapeToWorld, const glm::mat4& worldToS
 	const TG_TinyTexture* textures = materialTextures();
 	DWORD lastTextureUsed = 0xffffffff;
 
+	auto projectClip = [&](const ClipVertex& cv, gos_VERTEX& v)
+	{
+		const Stuff::Vector4D& xform = cv.clip;
+		if (eye->usePerspective)
+		{
+			const float rhw = (xform.w != 0.0f) ? 1.0f / xform.w : 1.0f;
+			v.x = (xform.x * rhw) * viewMulX + viewAddX;
+			v.y = (xform.y * rhw) * viewMulY + viewAddY;
+			v.z = xform.z * rhw;
+			v.rhw = fabs(rhw);
+		}
+		else
+		{
+			v.x = (1.0f - xform.x) * viewMulX + viewAddX;
+			v.y = (1.0f - xform.y) * viewMulY + viewAddY;
+			v.z = xform.z;
+			v.rhw = 0.000001f;
+		}
+		v.u = cv.u; v.v = cv.v; v.argb = cv.argb; v.frgb = cv.frgb;
+	};
+
 	for (DWORD j = 0; j < numTriangles; j++)
 	{
 		const TG_TypeTriangle& tri = theShape->listOfTypeTriangles[j];
@@ -283,15 +385,37 @@ void TG_Shape::CpuDraw (const glm::mat4& shapeToWorld, const glm::mat4& worldToS
 
 		if (world)
 		{
-			if (!(gv[0].z >= 0.0f && gv[0].z < 1.0f && gv[1].z >= 0.0f && gv[1].z < 1.0f && gv[2].z >= 0.0f && gv[2].z < 1.0f))
-				continue;
-			if (forcedZ >= 0.0f)
-				gv[0].z = gv[1].z = gv[2].z = forcedZ;
 			if (!isWindow && !isSpotlight && !textures)
+				continue;
+			const ClipVertex in[3] = {
+				{ clips[tri.Vertices[0]], gv[0].u, gv[0].v, gv[0].argb, gv[0].frgb },
+				{ clips[tri.Vertices[1]], gv[1].u, gv[1].v, gv[1].argb, gv[1].frgb },
+				{ clips[tri.Vertices[2]], gv[2].u, gv[2].v, gv[2].argb, gv[2].frgb }
+			};
+			ClipVertex nearClipped[8], farClipped[8];
+			int count = clipPolygon(in, 3, 0, nearClipped);
+			if (count)
+				count = clipPolygon(nearClipped, count, 1, farClipped);
+			if (count && eye->usePerspective)
+			{
+				ClipVertex frontClipped[8];
+				count = clipPolygon(farClipped, count, 2, frontClipped);
+				std::copy(frontClipped, frontClipped + count, farClipped);
+			}
+			if (count < 3)
 				continue;
 			DWORD node, flags;
 			cpuDrawKey(textures, tri, isWindow, isSpotlight, alphaValue, addFlags, node, flags);
-			mc2::renderSubmissions().addVertices(node, gv, flags);
+			for (int k = 1; k + 1 < count; k++)
+			{
+				gos_VERTEX out[3];
+				projectClip(farClipped[0], out[0]);
+				projectClip(farClipped[k], out[1]);
+				projectClip(farClipped[k + 1], out[2]);
+				if (forcedZ >= 0.0f)
+					out[0].z = out[1].z = out[2].z = forcedZ;
+				mc2::renderSubmissions().addVertices(node, out, flags);
+			}
 			continue;
 		}
 
