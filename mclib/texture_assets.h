@@ -23,6 +23,7 @@ DWORD findAndRetain(const char* path, gos_TextureFormat format, DWORD hints, DWO
 DWORD retain(DWORD asset);
 void release(DWORD asset);
 DWORD sourceId(DWORD asset);
+void commitTickTextures(); // main only, after joining the tick
 DWORD fromPixels(DWORD* pixels, gos_TextureFormat format, DWORD hints, DWORD width, DWORD bytesPerPixel=4);
 DWORD fromRawPixels(DWORD* pixels, gos_TextureFormat format, DWORD hints, DWORD width, DWORD bytesPerPixel=4);
 long save(DWORD asset,const char* path);

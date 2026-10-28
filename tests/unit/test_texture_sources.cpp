@@ -3,6 +3,7 @@
 #include "doctest.h"
 #include "../../mclib/texture_sources_internal.h"
 #include "../../mclib/texture_ref.h"
+#include "../../mclib/sim_overlap.h"
 
 namespace {
 struct Sources {
@@ -28,6 +29,24 @@ struct Sources {
 }
 
 TEST_SUITE("TextureSources") {
+TEST_CASE("worker texture release retires only at the join") {
+    std::vector<DWORD> destroyed;
+    Sources s([&](DWORD texture) { destroyed.push_back(texture); });
+    const auto id=s.add("worker-retire");
+    s.index->get(id)->cpuTexture=71;
+    mc2::overlap::runOnWorker([&] {
+        s.index->requestCreate(id);
+        mc2::textures::release(id);
+    });
+    mc2::overlap::waitWorker();
+    CHECK(destroyed.empty());
+    CHECK(s.index->takeCreates()==std::vector<DWORD>{id});
+    CHECK(s.index->takeCreates().empty());
+    s.index->collectRetired();
+    CHECK(destroyed==std::vector<DWORD>{71});
+    s.index->collectRetired();
+    CHECK(destroyed.size()==1);
+}
 TEST_CASE("cooked images retire across distinct missions while live handles survive") {
     Sources s;
     RenderCore::TextureKey persistent; persistent.source="persistent-ui";

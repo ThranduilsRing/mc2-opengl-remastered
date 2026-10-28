@@ -54,7 +54,11 @@ public:
         auto it = cpuTextures_.find(texture);
         return it == cpuTextures_.end() ? nullptr : it->second.lock();
     }
+    // Only the tick appends; main drains after joining. Asset ids never recycle.
+    void requestCreate(DWORD asset) { creates_.push_back(asset); }
+    std::vector<DWORD> takeCreates() { std::vector<DWORD> out; out.swap(creates_); return out; }
 private:
+    std::vector<DWORD> creates_;
     static std::string nameKey(const char* name, DWORD variant);
     // Weak indices never extend payload lifetime. IDs are monotonic for the session;
     // retiring a source cannot make a stale DWORD name a different source later.

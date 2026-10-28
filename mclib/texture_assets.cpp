@@ -247,9 +247,22 @@ DWORD load(const char* path, gos_TextureFormat format, DWORD hints, DWORD varian
     }
     source->key.source=RenderCore::makeTextureSourceId(provider,path,RenderCore::textureContentHash(source->bytes->data(),source->bytes->size()));
     source->bytes=store.internBytes(source->key.source,source->bytes);
-    return store.publish(std::move(source));
+    const DWORD asset=store.publish(std::move(source));
+    if (mc2::overlap::onSimWorker()) store.requestCreate(asset);
+    return asset;
+}
+void commitTickTextures() {
+    mc2::overlap::assertMainThread("textures::commitTickTextures");
+    if (auto* store=sourcesIfReady()) {
+        for (auto asset : store->takeCreates()) sourceId(asset);
+        store->collectRetired();
+    }
 }
 DWORD sourceId(DWORD asset) {
+    if (mc2::overlap::onSimWorker()) {
+        if (auto* store=sourcesIfReady()) store->requestCreate(asset);
+        return 0;
+    }
     mc2::overlap::assertMainThread("textures::sourceId");
     if (asset==kInvalidAsset || asset==0) return asset;
     auto source=liveSource(asset);
