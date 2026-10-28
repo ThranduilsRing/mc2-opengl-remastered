@@ -1,3 +1,4 @@
+#include "dradio.h"
 //***************************************************************************
 //
 //	mover.h - This file contains the Mover Class header
@@ -60,9 +61,7 @@
 #include"cmponent.h"
 #endif
 
-#ifndef WARRIOR_H
-#include"warrior.h"
-#endif
+#include "warrior_types.h"
 
 #ifndef DGROUP_H
 #include"dgroup.h"

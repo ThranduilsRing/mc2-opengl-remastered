@@ -1,3 +1,4 @@
+#include "userinput.h"
 #define LogisticsPilotListBox_CPP
 /*************************************************************************************************\
 LogisticsPilotListBox.cpp			: Implementation of the LogisticsPilotListBox component.
