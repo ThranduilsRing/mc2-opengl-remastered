@@ -20,11 +20,6 @@ namespace {
 long applyPlayerIntent(Mission& mission, const mc2::player::UnitIntent& intent, long captureTarget = 0) {
     auto* object = ObjectManager->getByWatchID(intent.unitWatchId);
     if (!object || !object->isMover()) return 1;
-    if (captureTarget) {
-        auto* current = static_cast<Mover*>(object)->getPilot()->getCurTacOrder();
-        if (current && current->code == TACTICAL_ORDER_CAPTURE && current->targetWID == captureTarget)
-            return 0; // Reissuing every two seconds would restart the capture.
-    }
     TacticalOrder order;
     order.init(ORDER_ORIGIN_PLAYER, captureTarget ? TACTICAL_ORDER_CAPTURE
         : intent.goal == mc2::player::Goal::Attack ? TACTICAL_ORDER_ATTACK_OBJECT
@@ -54,6 +49,24 @@ long applyPlayerIntent(Mission& mission, const mc2::player::UnitIntent& intent, 
     }
     order.moveParams.wayPath.mode[0] = TRAVEL_MODE_FAST;
     order.moveParams.wait = false;
+    auto* current = static_cast<Mover*>(object)->getPilot()->getCurTacOrder();
+    if (current && current->code == order.code) {
+        if (order.code == TACTICAL_ORDER_MOVETO_POINT) {
+            if (current->moveParams.wayPath.numPoints > 0
+                && current->moveParams.wayPath.mode[0] == order.moveParams.wayPath.mode[0]) {
+                const glm::vec3 previous{current->moveParams.wayPath.points[0], current->moveParams.wayPath.points[1], 0};
+                int oldRow, oldCol, newRow, newCol;
+                land->worldToCell(previous, oldRow, oldCol);
+                land->worldToCell(intent.location, newRow, newCol);
+                if (oldRow == newRow && oldCol == newCol) return 0;
+            }
+        } else if (current->targetWID == order.targetWID && (order.code != TACTICAL_ORDER_ATTACK_OBJECT
+            || (current->attackParams.method == order.attackParams.method
+                && current->attackParams.range == order.attackParams.range
+                && current->attackParams.pursue == order.attackParams.pursue))) {
+            return 0; // Preserve pursuit, aim and action progress for an unchanged order.
+        }
+    }
     const long result = mission.submitPlayerOrder(static_cast<Mover*>(object), order, false);
     if (!result && captureTarget)
         mc2::fmt::print_err("[PLAYER_BRAIN] wid={} event=capture target={} x={} y={}\n",

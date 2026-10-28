@@ -1495,7 +1495,7 @@ mc2::player::UnitIntent producePlayerIntent(MechWarrior* warrior,
             && (!goal->isMover() || goal == objectiveContact)) target = goal;
     }
     if (target) {
-        float remaining = -target->getDamageLevel();
+        float remaining = -target->getDamage();
         if (target->isMover()) {
             auto* mover = static_cast<Mover*>(target);
             remaining = 0;
