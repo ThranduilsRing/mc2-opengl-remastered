@@ -54,7 +54,7 @@
   "tools/scifi_kit/art/intent_military.py": 3363,
   "tools/terrain_beautify/visual_heightfield.py": 1510
  },
- "head": "b59cba347",
+ "head": "52a316964",
  "per_dir": {
   "GameAdapters": {
    "files": 13,
@@ -63,7 +63,7 @@
    "max_lines": 458
   },
   "GameOS": {
-   "files": 379,
+   "files": 378,
    "files_over_1500": 3,
    "files_over_3000": 1,
    "max_lines": 3650
@@ -72,7 +72,7 @@
    "files": 19,
    "files_over_1500": 0,
    "files_over_3000": 0,
-   "max_lines": 1126
+   "max_lines": 1116
   },
   "RenderCore": {
    "files": 66,
@@ -250,7 +250,7 @@
   }
  ],
  "total": {
-  "files": 2521,
+  "files": 2520,
   "files_over_1500": 39,
   "files_over_3000": 2,
   "max_lines": 3650
