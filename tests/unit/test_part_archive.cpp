@@ -54,6 +54,8 @@ float GameObject::relFacingTo(glm::vec3, long) { return 0; }
 float GameObject::getExtentRadius() { return 0; }
 void GameObject::setExtentRadius(float) {}
 bool GameObject::canBeSeen_instr() const { return false; }
+void GameObject::extractRenderView(mc2::render_view::RenderView&) {}
+void GameObject::renderView(const mc2::render_view::RenderView&) {}
 long GameObject::getCaptureBlocker(GameObjectPtr, GameObjectPtr*) { return 0; }
 long GameObject::kill() { return 0; }
 bool GameObject::onScreen() { return false; }

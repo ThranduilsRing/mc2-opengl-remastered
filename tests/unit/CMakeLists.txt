@@ -69,6 +69,7 @@ add_executable(mc2_tests
     test_texture_sources.cpp    # session source admission, strong refs, mission scopes, no renderer
     test_tick_commit.cpp
     ${MC2_WORKTREE_ROOT}/code/tick_commit.cpp
+    ${MC2_WORKTREE_ROOT}/code/render_view_store.cpp
     ${MC2_WORKTREE_ROOT}/mclib/texture_sources.cpp
     test_frame_fence_core.cpp  # the frame resource slot decision: parity flip, cancel, a failed fence re-create disables it (offline)
     test_handle_slots.cpp  # P3 handle slots: ticket-gated reuse, stale handles refused, generation wrap, range exhaustion (offline)
