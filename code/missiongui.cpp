@@ -458,8 +458,8 @@ void MissionInterfaceManager::extractHudSnapshot()
     rows.clear();
     for (int i = 0; i < MAX_TEAMS; ++i)
         if (paintingVtol[i] && vTol[i])
-            rows.push_back({vTol[i].get(), dustCloud[i] && dustCloud[i]->IsExecuted() ? dustCloud[i] : nullptr,
-                recoveryBeam[i] && recoveryBeam[i]->IsExecuted() ? recoveryBeam[i] : nullptr, vTol[i]->position});
+            rows.push_back({vTol[i].get(), dustCloud[i] && dustCloud[i]->IsExecuted() ? dustCloud[i].get() : nullptr,
+                recoveryBeam[i] && recoveryBeam[i]->IsExecuted() ? recoveryBeam[i].get() : nullptr, vTol[i]->position});
 }
 
 void MissionInterfaceManager::drawVTOL (void)
