@@ -729,7 +729,10 @@ def main(argv=None) -> int:
                                 ref_exe=args.ref_exe, ref_commit=args.ref_commit, sim_speed=args.sim_speed)
     if args.deploy:
         build_and_deploy(args.install)
-    needed = int(json.load(open(base, encoding="utf-8"))["frames"]) if base and os.path.exists(base) and not args.headless else 0
+    try:
+        needed = int(json.load(open(base, encoding="utf-8"))["frames"]) if base and os.path.exists(base) and not args.headless else 0
+    except (OSError, ValueError, KeyError, TypeError):
+        needed = 0  # unreadable baseline: check_baseline reports it
     duration, started, attempt = args.duration, time.monotonic(), 0
     while True:
         la, lb = run_mission(args.mission, duration, out if attempt == 0 else f"{out}-retry{attempt}", extra, install=args.install,
