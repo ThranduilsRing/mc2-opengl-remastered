@@ -11,6 +11,7 @@
 #include "mc2fmt.h"
 #include "tgl_force_z.h"
 #include <algorithm>
+#include <span>
 #include <vector>
 
 namespace {
@@ -84,9 +85,10 @@ ClipVertex lerpClip (const ClipVertex& a, const ClipVertex& b, float t)
 	return out;
 }
 
-int clipPolygon (const ClipVertex* src, int count, int plane, ClipVertex* dst)
+int clipPolygon (std::span<const ClipVertex> src, int plane, ClipVertex* dst)
 {
 	int out = 0;
+	const int count = static_cast<int>(src.size());
 	for (int i = 0; i < count; i++)
 	{
 		const ClipVertex& a = src[i];
@@ -101,6 +103,25 @@ int clipPolygon (const ClipVertex* src, int count, int plane, ClipVertex* dst)
 			dst[out++] = lerpClip(a, b, da / (da - db));
 	}
 	return out;
+}
+
+void projectClipVertex (const Stuff::Vector4D& xform, bool perspective, float viewMulX, float viewMulY, float viewAddX, float viewAddY, gos_VERTEX& v)
+{
+	if (perspective)
+	{
+		const float rhw = (xform.w != 0.0f) ? 1.0f / xform.w : 1.0f;
+		v.x = (xform.x * rhw) * viewMulX + viewAddX;
+		v.y = (xform.y * rhw) * viewMulY + viewAddY;
+		v.z = xform.z * rhw;
+		v.rhw = fabs(rhw);
+	}
+	else
+	{
+		v.x = (1.0f - xform.x) * viewMulX + viewAddX;
+		v.y = (1.0f - xform.y) * viewMulY + viewAddY;
+		v.z = xform.z;
+		v.rhw = 0.000001f;
+	}
 }
 }
 
@@ -244,21 +265,7 @@ void TG_Shape::CpuDraw (const glm::mat4& shapeToWorld, const glm::mat4& worldToS
 		if (world)
 			clips[j] = xform;
 		gos_VERTEX& v = verts[j];
-		if (eye->usePerspective)
-		{
-			const float rhw = (xform.w != 0.0f) ? 1.0f / xform.w : 1.0f;
-			v.x = (xform.x * rhw) * viewMulX + viewAddX;
-			v.y = (xform.y * rhw) * viewMulY + viewAddY;
-			v.z = xform.z * rhw;
-			v.rhw = fabs(rhw);
-		}
-		else
-		{
-			v.x = (1.0f - xform.x) * viewMulX + viewAddX;
-			v.y = (1.0f - xform.y) * viewMulY + viewAddY;
-			v.z = xform.z;
-			v.rhw = 0.000001f;
-		}
+		projectClipVertex(xform, eye->usePerspective, viewMulX, viewMulY, viewAddX, viewAddY, v);
 		v.frgb = (world && !isSpotlight) ? worldFog : 0xff000000;
 		if (g_previewCaptureBounds)
 		{
@@ -352,21 +359,7 @@ void TG_Shape::CpuDraw (const glm::mat4& shapeToWorld, const glm::mat4& worldToS
 	auto projectClip = [&](const ClipVertex& cv, gos_VERTEX& v)
 	{
 		const Stuff::Vector4D& xform = cv.clip;
-		if (eye->usePerspective)
-		{
-			const float rhw = (xform.w != 0.0f) ? 1.0f / xform.w : 1.0f;
-			v.x = (xform.x * rhw) * viewMulX + viewAddX;
-			v.y = (xform.y * rhw) * viewMulY + viewAddY;
-			v.z = xform.z * rhw;
-			v.rhw = fabs(rhw);
-		}
-		else
-		{
-			v.x = (1.0f - xform.x) * viewMulX + viewAddX;
-			v.y = (1.0f - xform.y) * viewMulY + viewAddY;
-			v.z = xform.z;
-			v.rhw = 0.000001f;
-		}
+		projectClipVertex(xform, eye->usePerspective, viewMulX, viewMulY, viewAddX, viewAddY, v);
 		v.u = cv.u; v.v = cv.v; v.argb = cv.argb; v.frgb = cv.frgb;
 	};
 
@@ -393,13 +386,13 @@ void TG_Shape::CpuDraw (const glm::mat4& shapeToWorld, const glm::mat4& worldToS
 				{ clips[tri.Vertices[2]], gv[2].u, gv[2].v, gv[2].argb, gv[2].frgb }
 			};
 			ClipVertex nearClipped[8], farClipped[8];
-			int count = clipPolygon(in, 3, 0, nearClipped);
+			int count = clipPolygon(in, 0, nearClipped);
 			if (count)
-				count = clipPolygon(nearClipped, count, 1, farClipped);
+				count = clipPolygon(std::span<const ClipVertex>(nearClipped, count), 1, farClipped);
 			if (count && eye->usePerspective)
 			{
 				ClipVertex frontClipped[8];
-				count = clipPolygon(farClipped, count, 2, frontClipped);
+				count = clipPolygon(std::span<const ClipVertex>(farClipped, count), 2, frontClipped);
 				std::copy(frontClipped, frontClipped + count, farClipped);
 			}
 			if (count < 3)
