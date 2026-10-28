@@ -12,6 +12,7 @@ InfoWindow.cpp			: Implementation of the InfoWindow component.
 
 #include"infowindow.h"
 #include"mclib.h"
+#include "warrior.h"
 #include "../resource.h"
 #include"mover.h"
 #include"mechicon.h"
