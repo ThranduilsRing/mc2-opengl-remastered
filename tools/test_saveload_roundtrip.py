@@ -120,6 +120,18 @@ def _save(path, size=64):
     return str(path)
 
 
+def test_plant_with_a_quicksave_frame_is_refused_before_the_run(monkeypatch, capsys):
+    """WHY: the quickload fixture only fires after the quicksave unless --save-at 0, so a plant with a later --save-at was never loaded and the
+    tool reported the run's own stale save as the planted one. The refusal must name the fix and must not spend a run."""
+    def no_run(*a, **k):
+        raise AssertionError("no run may start")
+    monkeypatch.setattr(rt, "run_fixture", no_run)
+    for frames in (["--save-at", "1000000"], []):                   # an explicit late frame and the default quicksave frame
+        assert rt.main(["resave", "--mission", "m", "--plant", "planted.ims", *frames]) == 1
+        out = capsys.readouterr().out
+        assert "--save-at 0" in out and "--load-at" in out and len(out.strip().splitlines()) == 1
+
+
 def test_a_missing_resave_is_a_fail(tmp_path, monkeypatch, capsys):
     """WHY: the quickload crashed and wrote no re-save, so the tool compared nothing and still printed PASS."""
     first = _save(tmp_path / "a.ims")
