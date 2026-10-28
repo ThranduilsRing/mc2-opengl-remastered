@@ -3,9 +3,9 @@
  "frames": 1000,
  "chain_schema": 2,
  "chain": "7a3a56e750289c6f",
- "full": "7f0bfdd28e9ec64b",
- "visible_chain": "7a31e97e9d928a7d",
- "sha": "2091cc4e333a",
+ "full": "7368bdf90d29d091",
+ "visible_chain": "b1b74ee9941c5c99",
+ "sha": "24041d68d6bb",
  "seed": "0x8777174C",
  "data_fingerprint": {
   "digest": "631bc626ca376941",

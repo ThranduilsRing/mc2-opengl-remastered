@@ -10,7 +10,7 @@
   "MC2_BOOT_QUICKLOAD_AT": "1400"
  },
  "exe": {
-  "sha": "4654904827af",
+  "sha": "24041d68d6bb",
   "dirty": 0
  },
  "comparison": {
@@ -105,6 +105,7 @@
    }
   }
  },
+ "mask": "tools/save_noise_mask.json",
  "judged": "first-save-only",
  "resave_present": true,
  "packets": 20000,
