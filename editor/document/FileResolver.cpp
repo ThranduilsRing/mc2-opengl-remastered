@@ -7,6 +7,8 @@
 #include <nlohmann/json.hpp>
 #include <zlib.h>
 
+#include "Gates/gate.h"
+
 namespace editor::document {
 namespace {
 constexpr std::size_t fileLimit = 256 * 1024 * 1024;
@@ -190,8 +192,7 @@ std::expected<FileResolver, LoadError> FileResolver::mount(ResolverConfig config
         return {};
     };
     if (!settings.activeMod.empty()) {
-        const char* scratch = std::getenv("MC2_SCRATCH");
-        if (!scratch || scratch[0] != '0') {
+        if (mc2::gate::get<"MC2_SCRATCH">()) {   // row default ON; =0 is the kill-switch
             auto indexed = indexLoose(settings.mods / settings.activeMod / ".scratch",
                                       "mod:" + activeId + "#scratch");
             if (!indexed) return std::unexpected(indexed.error());

@@ -7,6 +7,7 @@
 #pragma once
 
 #include <functional>
+#include <string_view>
 
 namespace mc2::overlap {
 
@@ -23,8 +24,8 @@ bool jobInFlight();                            // true between runOnWorker and t
 bool onSimWorker();                            // true on the sim worker thread
 
 // Audit. A violation prints "[SIM_OVERLAP v1] VIOLATION ..." once per site; MC2_SIM_OVERLAP_AUDIT=1 aborts.
-void assertSimQuiescent(const char* site);     // render side: reads live sim objects, so no tick may be in flight
-void assertMainThread(const char* site);       // sim side: GL/Vulkan/texture/sound entry points, never on the worker
+void assertSimQuiescent(std::string_view site);     // render side: reads live sim objects, so no tick may be in flight
+void assertMainThread(std::string_view site);      // sim side: GL/Vulkan/texture/sound entry points, never on the worker
 unsigned violationCount();
 
 } // namespace mc2::overlap
