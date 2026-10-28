@@ -9,6 +9,15 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import run_battle_bench as bench
 
 
+@pytest.mark.parametrize("value", [None, "0", "1", "invalid"])
+def test_building_path_override_is_explicit(monkeypatch, tmp_path, value):
+    monkeypatch.delenv("MC2_FORCE_DYNAMIC_BUILDINGS", raising=False)
+    if value is not None:
+        monkeypatch.setenv("MC2_FORCE_DYNAMIC_BUILDINGS", value)
+    declared = bench.environment(tmp_path / "commands.txt", 1920, 1080)
+    assert declared.get("MC2_FORCE_DYNAMIC_BUILDINGS") == (value if value in ("0", "1") else None)
+
+
 @pytest.fixture
 def evidence(tmp_path):
     rows = [{"type": "world", "frame": 1, "sim_s": 0, "movers": 50, "units_alive": 50, "mechs": 48, "destroyed": 7},

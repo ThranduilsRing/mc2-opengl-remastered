@@ -94,6 +94,8 @@ def environment(channel, width, height):
                 "MC2_FORCE_ALL_VISIBLE": "0"}
     if os.environ.get("MC2_SIM_OVERLAP") in ("0", "1"):   # G7 A/B: the bench passes this one gate through
         declared["MC2_SIM_OVERLAP"] = os.environ["MC2_SIM_OVERLAP"]
+    if os.environ.get("MC2_FORCE_DYNAMIC_BUILDINGS") in ("0", "1"):
+        declared["MC2_FORCE_DYNAMIC_BUILDINGS"] = os.environ["MC2_FORCE_DYNAMIC_BUILDINGS"]
     return declared
 
 
