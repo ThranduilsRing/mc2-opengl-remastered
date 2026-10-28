@@ -179,7 +179,7 @@ extern "C" int mc2_color_prop_island_get_frame_feed(Mc2ColorPropFeed* out) {
     }
     if (lodActive) {
         static uint32_t s_lodLogTick = 0;
-        if ((s_lodLogTick++ % 240u) == 0u) {
+        if ((s_lodLogTick++ % 60u) == 0u) {
             uint32_t perLod[3] = {0, 0, 0};
             for (const auto& [src, g] : s_lodGroups)
                 for (int k = 0; k < g.count; ++k)
