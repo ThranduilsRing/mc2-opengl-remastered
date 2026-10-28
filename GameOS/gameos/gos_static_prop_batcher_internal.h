@@ -297,6 +297,11 @@ extern std::vector<GpuStaticPropPacket>                   s_packets;
 extern std::vector<uint8_t>                                s_packetAlphaBaked;   // per-packet alpha-test answer baked at finalize; cleared with s_packets
 extern std::vector<GpuStaticPropType>                     s_types;
 extern std::unordered_map<TG_TypeNodeId, uint32_t>  s_typeIndex;
+// Distance LOD for model-override statics: base (LOD0) typeID -> the typeID that draws each LOD of the same shape node.
+// target[0] == the base type; dist[k] is the authored switch distance of LOD k (render units == MC2 units).
+struct PropLodGroup { uint32_t target[3]; float dist[3]; int count; };
+extern std::unordered_map<uint32_t, PropLodGroup> s_lodGroups;
+extern std::unordered_map<uint64_t, uint8_t>      s_lodState;   // per-instance hysteresis memory, keyed by (typeID, position)
 extern std::vector<RenderCore::StaticPropTypeDesc>        s_typeDescTable;
 extern bool s_gpuPropsTrace;
 extern unsigned g_regCall[4];

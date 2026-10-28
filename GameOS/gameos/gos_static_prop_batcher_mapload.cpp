@@ -130,6 +130,7 @@ void GpuStaticPropBatcher::onMapUnload() {
     s_materialGpuSidecarValid = false;
     s_sortedPacketOrder.clear(); s_alphaOffCmdCount = s_alphaOnCmdCount = 0;
     s_bucketsByType.clear(); s_persistentStaticStore.clear();
+    s_lodGroups.clear(); s_lodState.clear();
     s_persistentStaticGen = s_staticBaseBuiltGen = 0xFFFFFFFFFFFFFFFFull;
     s_staticBaseInstanceForType.clear();
     onMapLoad();
@@ -332,6 +333,34 @@ void GpuStaticPropBatcher::registerType(TG_TypeShape* typeShape, TG_TypeMultiSha
             mc2::fmt::print_err("[SEAMPROBE] sample=first400 registerType srcId={:016X} typeID={:d} numTris={:d} numVerts={:d} finalized={:d}\n", mc2::fmt::as_u64(typeShape ? typeShape->stableId().value : 0), mc2::fmt::as_u32(newTypeID), mc2::fmt::as_u32(numTris), mc2::fmt::as_u32(numVerts), mc2::fmt::as_i32(static_cast<int>(s_geometryFinalized)));
             fflush(stderr);
         }
+    }
+}
+
+void GpuStaticPropBatcher::registerLodGroup(TG_TypeMultiShape* const* shapes, const float* distances, int count) {
+    if (!shapes || !distances || !shapes[0] || count < 2 || count > 3) return;
+    auto shapeTypes = [](TG_TypeMultiShape* ms) {
+        std::vector<uint32_t> ids;
+        for (long i = 0, n = ms->GetNumShapes(); i < n; ++i) {
+            TG_TypeNodePtr node = ms->GetTypeNode(i);
+            if (!node || node->GetNodeType() != SHAPE_NODE) continue;
+            auto it = s_typeIndex.find(static_cast<TG_TypeShape*>(node)->stableId());
+            ids.push_back(it == s_typeIndex.end() ? 0xFFFFFFFFu : it->second);
+        }
+        return ids;
+    };
+    const std::vector<uint32_t> base = shapeTypes(shapes[0]);
+    std::vector<std::vector<uint32_t>> lods(count);
+    for (int k = 1; k < count; ++k)
+        if (shapes[k] && shapes[k] != shapes[0] && distances[k] > 0.0f) lods[k] = shapeTypes(shapes[k]);
+    for (size_t n = 0; n < base.size(); ++n) {
+        if (base[n] == 0xFFFFFFFFu || s_lodGroups.count(base[n])) continue;
+        PropLodGroup g{{base[n], base[n], base[n]}, {0.0f, 0.0f, 0.0f}, 1};
+        for (int k = 1; k < count; ++k) {
+            // An unusable LOD k ends the chain: farther LODs would skip it.
+            if (lods[k].size() != base.size() || lods[k][n] == 0xFFFFFFFFu || distances[k] <= g.dist[k - 1]) break;
+            g.target[k] = lods[k][n]; g.dist[k] = distances[k]; g.count = k + 1;
+        }
+        if (g.count > 1) s_lodGroups.emplace(base[n], g);
     }
 }
 

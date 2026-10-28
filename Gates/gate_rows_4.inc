@@ -157,6 +157,7 @@ L(Presence, "MC2_VK_PRESENT_VERIFY", Bool, false, "gameos", "", "", passthrough 
 L(Lead0Kill, "MC2_VK_PROP_FENCE_DEFER", Bool, true, "vk", "", "", verified | passthrough),
 L(Presence, "MC2_VK_PROP_LIGHT_PROBE", Bool, false, "vk", "", "", verified),
 L(Presence, "MC2_VK_PROP_LIGHT_VERTEX_PROBE", Bool, false, "vk", "", "", verified),
+L(Lead0Kill, "MC2_VK_PROP_LOD", Bool, true, "vk", "", "Distance LOD for model-override static props in the VK prop island; =0 draws LOD0 always.", verified | passthrough),
 G("MC2_VK_PROP_PACKET_DUMP", String, "", "vk", "", "", verified),
 L(Lead1, "MC2_VK_PROP_PERF", Bool, false, "vk", "", "", passthrough | verified),
 G("MC2_VK_PROP_TEX_SLOTS", Int, 0, "vk", "", "Test knob: cap the per-object prop texture slot count (0 = device derived); exercises the more-maps-than-slots path.", verified),
