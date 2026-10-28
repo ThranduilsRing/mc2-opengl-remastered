@@ -24,6 +24,24 @@ py -3 tools/farm/host.py wait <printed-id>
 py -3 tools/farm/host.py fetch <printed-id> E:/mc2-archive-2026-10/proofs/farm-runner
 ```
 
+After each merge window, reseed from the verified merge-gate install before
+submitting jobs (main-host temporary files must use G:, never C:):
+
+```powershell
+$env:TMP = 'G:/mc2-tmp'; $env:TEMP = $env:TMP; $env:TMPDIR = $env:TMP
+py -3 tools/farm/host.py reseed --install A:/Games/mc2-opengl/mc2-win64-v0.4 --harness A:/Games/mc2-main
+```
+
+`reseed` checks the source executable against `.deployed_manifest.csv`, copies
+runtime payload and interpreted harness files over SSH to `C:/mc2farm`, and pins
+`reference/mc2.exe` with its source commit and SHA-256 in `reference/seed.json`.
+It transfers only files whose size or modification time changed, preserves
+modification times, and reports transferred bytes/decimal GB. It excludes PDBs,
+build trees, untracked harness files and game run outputs; it does not delete
+existing laptop files. Run with the queue idle; do not reseed during a game job.
+Fetch `reference/seed.json` alongside job proofs. This GPU supplies pass/fail
+evidence only; do not report laptop performance numbers.
+
 Example `smoke.json` (the harness and independent reference executable must
 already have been seeded from the verified merge-gate output):
 

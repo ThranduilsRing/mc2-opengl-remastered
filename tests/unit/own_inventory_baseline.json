@@ -46,7 +46,10 @@
      "new": 1
     },
     "code/warrior.cpp": {
-     "delete": 3,
+     "delete": 2
+    },
+    "code/warrior_brain.cpp": {
+     "delete": 1,
      "new": 1
     },
     "mclib/ablenv.cpp": {
@@ -284,7 +287,9 @@
    "delete_array": 0,
    "files": {
     "code/warrior.cpp": {
-     "delete": 1,
+     "delete": 1
+    },
+    "code/warrior_brain.cpp": {
      "new": 1
     }
    },
@@ -2745,7 +2750,9 @@
    "delete_array": 0,
    "files": {
     "code/warrior.cpp": {
-     "delete": 1,
+     "delete": 1
+    },
+    "code/warrior_brain.cpp": {
      "new": 2
     }
    },
