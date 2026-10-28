@@ -10,7 +10,7 @@
   "MC2_BOOT_QUICKLOAD_AT": "1100"
  },
  "exe": {
-  "sha": "2faaea9a2cfd",
+  "sha": "5fa311a4ef3c",
   "dirty": 0
  },
  "comparison": {
@@ -105,10 +105,11 @@
    }
   }
  },
+ "mask": "tools/save_noise_mask.json",
  "judged": "first-save-only",
  "resave_present": true,
  "packets": 20000,
- "overall": "f3a53d4fb20a6e75",
+ "overall": "c5069a27753a397f",
  "resave_identical": false,
  "resave_matches_policy": false,
  "runs": [
@@ -229,14 +230,14 @@
    2168,
    134,
    534928,
-   "39f3402e6de1d590"
+   "912bf3a107caf874"
   ],
   [
    "GroundVehicleData",
    2302,
    151,
    517024,
-   "2577bc2d29f28719"
+   "e6ebfb9208797d2f"
   ],
   [
    "TerrainObjectData",
