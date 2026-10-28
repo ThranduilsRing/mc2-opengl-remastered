@@ -18,7 +18,7 @@
   "GameOS/gameos/vulkan_color_prop_island.cpp": 2040,
   "GameOS/include/gameos.hpp": 3650,
   "code/artlry.cpp": 1700,
-  "code/bldng.cpp": 1692,
+  "code/bldng.cpp": 1691,
   "code/brain_special_dispatch.cpp": 2705,
   "code/gamecam.cpp": 1609,
   "code/gameobj.cpp": 2252,
@@ -34,8 +34,8 @@
   "code/optionsarea.cpp": 1838,
   "code/pilotreviewarea.cpp": 1843,
   "code/tacordr.cpp": 2106,
-  "code/terrobj.cpp": 1758,
-  "code/turret.cpp": 2346,
+  "code/terrobj.cpp": 1760,
+  "code/turret.cpp": 2349,
   "code/warrior.cpp": 2693,
   "code/warrior.h": 2195,
   "editor/tests/test_objectives.cpp": 1996,
@@ -54,7 +54,7 @@
   "tools/scifi_kit/art/intent_military.py": 3363,
   "tools/terrain_beautify/visual_heightfield.py": 1510
  },
- "head": "dc0975ee4",
+ "head": "b59cba347",
  "per_dir": {
   "GameAdapters": {
    "files": 13,
@@ -162,7 +162,7 @@
   },
   {
    "file": "code/turret.cpp",
-   "lines": 2346
+   "lines": 2349
   },
   {
    "file": "code/gameobj.cpp",
@@ -242,7 +242,7 @@
   },
   {
    "file": "code/terrobj.cpp",
-   "lines": 1758
+   "lines": 1760
   },
   {
    "file": "mclib/file.cpp",
