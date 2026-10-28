@@ -203,3 +203,14 @@ bool Team::lineOfSight (glm::vec3 position, glm::vec3 targetPosition, long teamI
 	q.startExtRad = startExtRad;
 	return mc2::los::query(snap, q);
 }
+
+void Team::lineOfSightBatch(std::span<const mc2::los::Query> queries, std::span<uint8_t> hits)
+{
+	ZoneScopedN("GameLogic.LOS.SensorBatch");
+	const mc2::los::Snapshot snap = captureLosSnapshot();
+	if (!snap.valid) {
+		std::fill(hits.begin(), hits.end(), uint8_t{0});
+		return;
+	}
+	mc2::los::batch(snap, queries, hits);
+}

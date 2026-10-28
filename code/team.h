@@ -32,6 +32,8 @@
 #ifndef OBJECTIVE_H
 #include"objective.h"
 #endif
+#include "los_kernel.h"
+
 
 //***************************************************************************
 
@@ -148,6 +150,9 @@ class Team {
 		static bool lineOfSight (float startLocal, long mCellRow, long mCellCol, float endLocal, long tCellRow, long tCellCol, long teamId, float targetRadius, float startRadius = 0.0f);
 
 		static bool lineOfSight (glm::vec3 myPos, glm::vec3 targetPosition, long teamId, float targetRadius, float startRadius = 0.0f);
+		// Immutable rays; callers apply hits and contact changes in their original order.
+		static void lineOfSightBatch(std::span<const mc2::los::Query> queries, std::span<uint8_t> hits);
+
 
 		//-------------------------------------------		
 		// Can anyone on my team see this position?

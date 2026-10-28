@@ -45,6 +45,7 @@
 #include "gos_profiler.h"
 #include"sensor_trace.h"		// SENSOR-SCAN-FACTS-1 (gated, default-OFF)
 #include "sim_trace.h"
+#include "mover_los_epoch.h"
 #include "mc2fmt.h"
 #include "score_sort.h"
 #include <cstdint>
@@ -66,12 +67,12 @@ glm::vec3 SensorSystemManager::losPosition(GameObjectPtr object)
 	const auto handle = static_cast<size_t>(object->getHandle());
 	if (!s_sensorLosScan || !object->isMover() || handle >= s_sensorLosPositions.size())
 		return object->getLOSPosition();
-	auto& entry = s_sensorLosPositions[handle];
-	if (entry.first != object) {
-		entry.second = object->getLOSPosition();
-		entry.first = object;
+	auto& [cachedObject, cachedPosition] = s_sensorLosPositions[handle];
+	if (cachedObject != object) {
+		cachedPosition = object->getLOSPosition();
+		cachedObject = object;
 	}
-	return entry.second;
+	return cachedPosition;
 }
 
 // SENSOR-SCAN-FACTS-1: TU-local telemetry accumulator (default-OFF).
@@ -630,6 +631,46 @@ long SensorSystem::scanBattlefield (void)
 	}
 	// SENSOR-SCAN-FACTS-1: cache the gate once outside the hot loop (OFF = one bool).
 	const bool _sfacts = mc2_sensor_trace::g_counters.active;
+	// Stage only missing directional mover rays. Contacts cannot change poses or terrain;
+	// workers read the snapshot, and the original loop below still owns every contact update.
+	if (s_sensorLosScan && owner->isMover() && owner->getTeam() &&
+		ObjectManager->useMoverLineOfSightTable) {
+		const bool visualOnly = !notShutdown || ((range == 0.0) && !broken);
+		MoverPtr source = static_cast<MoverPtr>(owner);
+		const bool canScan = visualOnly || (hasLOSCapability && source->sensor != 255 &&
+			!source->inventory[source->sensor].disabled && !broken);
+		if (canScan) {
+			static thread_local std::vector<mc2::los::Query> rays;
+			static thread_local std::vector<long> cells;
+			static thread_local std::vector<uint8_t> hits;
+			rays.clear();
+			cells.clear();
+			const float visualRange = owner->lineOfSightRange();
+			for (const Visit& v : visit) {
+				MoverPtr target = ObjectManager->getMover(v.ordinal);
+				if (!target->getExists() || target->getTeamId() == owner->getTeamId() ||
+					(!v.candidate && !isContact(target)) || target->getFlag(OBJECT_FLAG_REMOVED) ||
+					!Terrain::IsGameSelectTerrainPosition(target->getPosition())) continue;
+				if (!visualOnly && (!target->getFlag(OBJECT_FLAG_SENSOR) || target->isDisabled())) continue;
+				if (glm::length(target->getPosition() - owner->getPosition()) > visualRange) continue;
+				const long cell = owner->getHandle() * ObjectManager->maxMovers + target->getHandle();
+				if (mc2::losEpochState(ObjectManager->moverLineOfSightTable[cell], ObjectManager->moverLosEpoch)) continue;
+				mc2::los::Query ray;
+				ray.position = SensorSystemManager::losPosition(owner);
+				ray.target = SensorSystemManager::losPosition(target);
+				ray.teamId = owner->getTeamId();
+				ray.extRad = target->getAppearRadius();
+				rays.push_back(ray);
+				cells.push_back(cell);
+			}
+			if (!rays.empty()) {
+				hits.resize(rays.size());
+				Team::lineOfSightBatch(rays, hits);
+				for (size_t i = 0; i < hits.size(); ++i)
+					ObjectManager->moverLineOfSightTable[cells[i]] = mc2::losEpochCell(ObjectManager->moverLosEpoch, hits[i] != 0);
+			}
+		}
+	}
 	for (const Visit& v : visit)
 	{
 		if (_sfacts) mc2_sensor_trace::g_counters.pairsTested++;
