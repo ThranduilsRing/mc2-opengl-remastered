@@ -44,7 +44,7 @@ Split commit: `f0521b300`.
 
 | Piece | What it holds |
 |---|---|
-| `gos_postprocess.cpp` | keeps the singleton, setters, init, scene begin/end, the viewmode/sky accessors, the shadow sun-altitude gate and the one-map shadow debug overlay |
+| `gos_postprocess.cpp` | keeps the singleton, setters, init, scene begin/end and the viewmode/sky accessors |
 | `gos_postprocess_executor.cpp` | gosPostProcess: frame-graph executor ownership accessors, apply-state wrappers and counters. |
 | `gos_postprocess_gates.cpp` | gosPostProcess: shader diagnostics, mech terminator softness and cloud control. |
 | `gos_postprocess_skybox.cpp` | Native HDRI sky submission; the terrain pass draws it behind its depth. |
