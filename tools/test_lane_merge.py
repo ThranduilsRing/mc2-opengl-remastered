@@ -220,7 +220,7 @@ def test_ratchet_failure_exit_6_commit_kept(env):
     rc, out, err = merge(env)
     assert rc == 6
     assert "ratchets=FAIL" in out
-    assert "line 5 of cxx17_ratchet" in err and "line 3 of cxx17_ratchet" in err and "line 2 of" not in err
+    assert "line 5 of cxx17_ratchet" in err and "line 0 of cxx17_ratchet" in err  # a failing ratchet prints its whole tail (60 lines), not 3
     assert len(parents(repo)) == 2  # the merge commit stays
 
 
