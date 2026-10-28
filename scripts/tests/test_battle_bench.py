@@ -122,6 +122,26 @@ def test_bench_defaults_are_the_iteration_shape_until_acceptance():
     assert bench.resolve_lengths(3, 25, False) == (3, 25)
 
 
+def test_bench_scrub_preserves_overlap_ab_gate(tmp_path, monkeypatch):
+    monkeypatch.setattr(sys, "argv", ["run_battle_bench.py", "--out", str(tmp_path / "report")])
+    monkeypatch.setenv("MC2_SIM_OVERLAP", "0")
+    monkeypatch.setenv("MC2_RENDER_SCALE", "0.25")
+    monkeypatch.setattr(bench, "hold_install", lambda _: None)
+    monkeypatch.setattr(bench.ms, "identity_block", lambda **_: {
+        "binary_provenance": {"available": True, "dirty": False, "source_head_matches_binary": True},
+        "git": {"commit": "a" * 40}})
+    monkeypatch.setattr(bench.stages, "preflight", lambda _: None)
+
+    def after_scrub(*args):
+        assert bench.environment(tmp_path / "commands", 1920, 1080)["MC2_SIM_OVERLAP"] == "0"
+        assert "MC2_RENDER_SCALE" not in bench.os.environ
+        raise RuntimeError("checked scrub before launch")
+
+    monkeypatch.setattr(bench.render_options_pin, "record", after_scrub)
+    with pytest.raises(RuntimeError, match="checked scrub before launch"):
+        bench.main()
+
+
 def test_visual_capture_default_duration_is_about_15s_and_grows_only_for_big_sweeps():
     capture = bench.capture
     assert capture.default_duration(1, 120, 30) == 15

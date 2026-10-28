@@ -457,7 +457,7 @@ void Mission::updateSimSystems() {
 void Mission::updateTraceHooks() {
 	// Refresh after mission ABL, without advancing a controller twice.
 	if (mc2::replay::active()) missionInterface->updateVTol();
-	mc2_abl_trace::flushFrame(g_mc2FrameCounter, getBrainTickIndex());
+	mc2_abl_trace::flushFrame(mc2::overlap::simulationFrame(g_mc2FrameCounter), getBrainTickIndex());
 
 	// Runtime-bridge v0: emit [MOVER v2] mover.state to stdout (env-gated,
 	// throttled to MC2_BRIDGE_MOVER_PERIOD_SEC). Read-only; no-op unless
@@ -1295,7 +1295,7 @@ namespace {
 mc2::sim::TickClock s_tickClock;
 long s_turnAfterLastPass = -1;
 
-// G7 overlap: the kick at the tail of frame N polls the tick clock and runs the banked ticks' sim part on the sim worker;
+// G7b: the kick after frame N's extract polls the tick clock and runs the banked ticks' sim part on the sim worker;
 // the next Mission::update finds what happened here and runs only the frame part.
 struct OverlapPre {
 	bool valid = false;
@@ -1304,11 +1304,12 @@ struct OverlapPre {
 	bool ended = false;
 	long earlyResult = 0;
 	long turn = 0;   // Mission::turn after the worker finished
+	uint32_t extraFrames = 0; // published to the main frame clock only after DrawScreen has joined
 };
 OverlapPre s_pre;
 }
 
-// Tail of frame N, main thread, after the render CPU work is done: bank frame N+1's ticks and start them on the sim worker.
+// After frame N's extract, main thread: bank frame N+1's ticks and start them on the sim worker.
 // Not eligible (the serial path runs them at the top of the next frame): first frame, multiplayer, paused or frozen,
 // a pending in-mission save or load.
 void Mission::overlapKick()
@@ -1327,15 +1328,17 @@ void Mission::overlapKick()
 	s_pre.turn = turn;
 	if (ticks == 0)
 		return;
-	mc2::overlap::runOnWorker([this, ticks, renderLength] {
+	const uint32_t firstFrame = g_mc2FrameCounter + (mc2::gate::is<"MC2_SIM_OVERLAP_DIAGNOSTIC", "early">() ? 1u : 0u);
+	mc2::overlap::runOnWorker([this, ticks, renderLength, firstFrame] {
 		frameLength = renderLength;
 		long early = 0;
 		bool ended = false;
 		for (int tick = 0; tick < ticks; ++tick)
 		{
+			mc2::overlap::setSimulationFrame(firstFrame + static_cast<uint32_t>(tick));
 			s_extraTickInFrame = tick > 0;
 			if (tick > 0)
-				++g_mc2FrameCounter;
+				++s_pre.extraFrames;
 			ended = updatePass(true, false, true, true, early);
 			s_extraTickInFrame = false;
 			if (ended || loadInMissionSave)
@@ -1353,7 +1356,11 @@ void extractRenderFrame(float tickAlpha);   // code/render_view.cpp (presentatio
 
 namespace {
 void overlapKickHook() { if (mission) mission->overlapKick(); }
-void overlapJoinHook() { mc2::overlap::waitWorker(); mc2::tick::commitTickQueues(); }
+void overlapJoinHook() {
+	mc2::overlap::waitWorker();
+	g_mc2FrameCounter += std::exchange(s_pre.extraFrames, 0u);
+	mc2::tick::commitTickQueues();
+}
 // G7b K3: the frame's render view is taken at ExtractRenderSnapshot (after the frame part, before DrawScreen and the
 // early kick); the presentation side lives in code/render_view.cpp, this sim unit only hands it the tick alpha.
 void overlapExtractHook() { extractRenderFrame(static_cast<float>(s_tickClock.alpha())); }
@@ -1373,8 +1380,7 @@ long Mission::update (void)
 		++s_misFrames;
 	}
 	MisScope _msTotal(MS_TOTAL);  // whole Mission::update; TOTAL - sum(subcalls) = unbracketed
-	mc2::overlap::waitWorker();   // a kicked tick is always finished by the main loop's join; this is the safety net
-	mc2::tick::commitTickQueues();
+	overlapJoinHook();   // the main loop joins after draw; also publish deferred epochs on this safety-net path
 	const OverlapPre pre = s_pre;
 	s_pre = OverlapPre{};
 	if (active)
@@ -1400,7 +1406,7 @@ long Mission::update (void)
 		}
 		else if (usePre)
 		{
-			// G7: this frame's ticks already ran on the sim worker during the previous frame's tail; only the frame part is left.
+			// This frame's ticks already ran while the previous snapshot was drawn; only the frame part is left.
 			if (updatePass(true, true, false, false, earlyResult))
 				return earlyResult;
 			if (pre.ended)

@@ -2,8 +2,7 @@
 // MC2-JOBS-CORE-1 — implementation of both the legacy FRAME-JOBS-1 free-function
 // API (parallelForRange / frameJobsInit / ... — evolved verbatim from the old
 // code/frame_jobs.cpp, ZERO behavior change) and the new domain-tagged
-// `mc2::jobs` API. The new API is DORMANT: no engine caller, exercised only by
-// tools/job_system_harness.
+// `mc2::jobs` API. Sim LOS and presentation bounds/touch use separate domains.
 //
 // Both share the same proven epoch-bump / shared-cursor fork/join idiom. The
 // legacy pool is created by frameJobsInit() (gate MC2_FRAME_JOBS); the new pool
@@ -267,7 +266,7 @@ struct NewPool {
     std::vector<std::thread> threads;
 };
 
-NewPool* g_np = nullptr;
+NewPool* g_np[2]{}; // independent dispatch state for overlapping render and sim work
 
 inline void runBlock(NewPool* p, int idx) {
     const int begin = idx * p->batch;
@@ -279,6 +278,7 @@ void npWorker(NewPool* p, int workerId) {
     MC2_JOBS_THREAD_NAME("Jobs ", workerId);
     t_isWorker     = true;
     t_isPoolThread = true;
+    g_isFrameJobsWorker = true;
     while (true) {
         {
             std::unique_lock<std::mutex> lk(p->mu);
@@ -307,9 +307,8 @@ void npWorker(NewPool* p, int workerId) {
 // Unconditional fork/join across the block range (no adaptive/reentrancy
 // checks — the callers apply those). Main thread participates.
 void dispatchBlocksRaw(
-    int count, int batch,
+    NewPool* p, int count, int batch,
     const std::function<void(int, int, int)>& blockBody) {
-    NewPool* p = g_np;
     p->body      = blockBody;
     p->count     = count;
     p->batch     = batch;
@@ -367,28 +366,33 @@ constexpr std::size_t kArenaBytes = 1u << 20;  // 1 MiB per participant
 void startPool(int workerCount) {
     stopPool();
     if (workerCount < 0) workerCount = 0;
-    g_np = new NewPool();
-    g_np->numWorkers = workerCount;
-    // Startup must not count as a completed dispatch.
-    g_np->workerEpoch.assign(std::max(0, workerCount), g_np->epoch);
-    for (int i = 0; i < workerCount; ++i)
-        g_np->threads.emplace_back(npWorker, g_np, i);
+    // Split the existing thread budget instead of doubling it for overlapping domains.
+    for (int domain = 0; domain < 2; ++domain) {
+        auto* p = g_np[domain] = new NewPool();
+        p->numWorkers = domain == static_cast<int>(Domain::Render) ? workerCount / 2 : (workerCount + 1) / 2;
+        // Startup must not count as a completed dispatch.
+        p->workerEpoch.assign(p->numWorkers, p->epoch);
+        for (int i = 0; i < p->numWorkers; ++i)
+            p->threads.emplace_back(npWorker, p, i);
+    }
 }
 
 void stopPool() {
-    if (!g_np) return;
-    {
-        std::lock_guard<std::mutex> lk(g_np->mu);
-        g_np->quit = true;
+    for (auto*& p : g_np) {
+        if (!p) continue;
+        {
+            std::lock_guard<std::mutex> lk(p->mu);
+            p->quit = true;
+        }
+        p->cvWork.notify_all();
+        for (auto& t : p->threads) t.join();
+        delete p;
+        p = nullptr;
     }
-    g_np->cvWork.notify_all();
-    for (auto& t : g_np->threads) t.join();
-    delete g_np;
-    g_np = nullptr;
 }
 
-bool enabled()     { return g_np != nullptr && g_np->numWorkers >= 1; }
-int  workerCount() { return g_np ? g_np->numWorkers : 0; }
+bool enabled()     { return workerCount() > 0; }
+int  workerCount() { return g_np[0] ? g_np[0]->numWorkers + g_np[1]->numWorkers : 0; }
 
 bool isWorkerThread() { return t_isWorker; }
 bool isPoolThread()   { return t_isPoolThread; }
@@ -443,9 +447,10 @@ std::uint32_t rand_keyed(std::uint32_t turn, std::uint32_t stableKey,
 // ---- block dispatch entry (the shared core of parallel_for/parallel_reduce) -
 namespace detail {
 void parallel_for_blocks(
-    Domain /*dom*/, int count, int batch, int estCostPerItemNs,
+    Domain dom, int count, int batch, int estCostPerItemNs,
     const std::function<void(int, int, int)>& blockBody) {
-    mc2::overlap::assertSimQuiescent("jobs::parallel_for_blocks");
+    if (dom == Domain::Sim) mc2::overlap::assertSimQuiescent("jobs::parallel_for_blocks(Sim)");
+    else mc2::overlap::assertMainThread("jobs::parallel_for_blocks(Render)");
     if (count <= 0) return;
     if (batch < 1) batch = 1;
 
@@ -462,11 +467,12 @@ void parallel_for_blocks(
         return;
     }
     // (c) No pool / no workers -> serial inline.
-    if (!enabled()) {
+    auto* p = g_np[static_cast<int>(dom)];
+    if (!p || p->numWorkers == 0) {
         runBlocksSerial(count, batch, blockBody);
         return;
     }
-    dispatchBlocksRaw(count, batch, blockBody);
+    dispatchBlocksRaw(p, count, batch, blockBody);
 }
 } // namespace detail
 
@@ -482,13 +488,14 @@ int64_t measureDispatchFloorNs(int iters) {
     if (!enabled() || iters < 1) return 0;
     using clk = std::chrono::steady_clock;
     // count = participants, batch = 1, empty body -> pure wake + join cost.
-    const int participants = workerCount() + 1;
+    auto* p = g_np[static_cast<int>(Domain::Render)];
+    const int participants = p->numWorkers + 1;
     auto noop = [](int, int, int) {};
     std::vector<int64_t> samples;
     samples.reserve(iters);
     for (int i = 0; i < iters; ++i) {
         auto t0 = clk::now();
-        dispatchBlocksRaw(participants, 1, noop);
+        dispatchBlocksRaw(p, participants, 1, noop);
         auto t1 = clk::now();
         samples.push_back(
             std::chrono::duration_cast<std::chrono::nanoseconds>(t1 - t0).count());

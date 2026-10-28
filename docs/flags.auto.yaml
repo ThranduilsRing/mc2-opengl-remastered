@@ -3733,7 +3733,7 @@ flags:
     default: true
     rule: Lead0Kill
     owner: code
-    doc: "G7: run the banked sim tick on a worker overlapped with the frame tail; 0 = serial loop."
+    doc: "G7b: run the banked sim tick on a worker during snapshot drawing; 0 = serial loop."
     smoke_passthrough: true
     verified: true
   - name: MC2_SIM_OVERLAP_AUDIT
@@ -3746,10 +3746,10 @@ flags:
     verified: true
   - name: MC2_SIM_OVERLAP_DIAGNOSTIC
     kind: Enum
-    default: "tail"
+    default: "early"
     rule: Std
     owner: code
-    doc: "G7b K0 dev selector: early kicks before DrawScreen and counts hazards without aborting; tail preserves the shipping kick."
+    doc: "G7b K5: early is the shipped kick before DrawScreen; tail restores the diagnostic tail kick. Audit applies to both."
     tokens: "tail|early"
     smoke_passthrough: true
     verified: true

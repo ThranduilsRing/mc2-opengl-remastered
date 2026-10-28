@@ -15,6 +15,7 @@
 //----------------------------------------------------------------------------------
 
 #include "mission_internal.h"
+#include "render_view.h"
 #include "render_resource_owners.h"
 #include "mc2fmt.h"
 #include "command_replay.h"
@@ -785,7 +786,7 @@ long Mission::render (void)
 		}
 	}
 
-	return scenarioResult;
+	return mc2::render_view::clock().missionResult;
 }
 
 //----------------------------------------------------------------------------------

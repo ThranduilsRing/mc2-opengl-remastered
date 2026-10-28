@@ -11,6 +11,7 @@
 #include <vector>
 #include "frame_jobs.h"
 #include "job_system.h"
+#include "sim_overlap.h"
 #include "jobs_fatal.h"
 
 #include <cstdint>
@@ -91,6 +92,47 @@ static std::uint64_t dbits(double d) {
     std::uint64_t u = 0;
     std::memcpy(&u, &d, sizeof(u));
     return u;
+}
+
+TEST_CASE_FIXTURE(JobsFixture, "job_system_harness/render_and_sim_dispatch_overlap") {
+    mc2::gate::ScopedOverride<"MC2_SIM_OVERLAP_AUDIT"> audit("1");
+    jobs::startPool(4);
+    jobs::kDispatchFloorNs = 0;
+    REQUIRE(jobs::workerCount() == 4);
+    std::array<std::atomic<int>, 257> sim{}, render{};
+    std::atomic<bool> simEntered{false}, renderEntered{false}, timedOut{false};
+    std::atomic<uint32_t> workerFrame{0};
+    auto rendezvous = [&](std::atomic<bool>& own, std::atomic<bool>& peer) {
+        own.store(true, std::memory_order_release);
+        const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(2);
+        while (!peer.load(std::memory_order_acquire)) {
+            if (std::chrono::steady_clock::now() >= deadline) {
+                timedOut.store(true);
+                break;
+            }
+            std::this_thread::yield();
+        }
+    };
+    mc2::overlap::runOnWorker([&] {
+        mc2::overlap::setSimulationFrame(73);
+        workerFrame.store(mc2::overlap::simulationFrame(5));
+        jobs::parallel_for(jobs::Domain::Sim, 257, 1, 1000, [&](int b, int e) {
+            rendezvous(simEntered, renderEntered);
+            for (int i = b; i < e; ++i) ++sim[i];
+        });
+    });
+    jobs::parallel_for(jobs::Domain::Render, 257, 1, 1000, [&](int b, int e) {
+        rendezvous(renderEntered, simEntered);
+        for (int i = b; i < e; ++i) ++render[i];
+    });
+    mc2::overlap::waitWorker();
+    CHECK_FALSE(timedOut.load());
+    CHECK(workerFrame.load() == 73);
+    CHECK(mc2::overlap::simulationFrame(5) == 5);
+    for (int i = 0; i < 257; ++i) {
+        CHECK(sim[i].load() == 1);
+        CHECK(render[i].load() == 1);
+    }
 }
 
 static int itemValue(int i) { return (i * 2654435761u) ^ (i >> 3); }

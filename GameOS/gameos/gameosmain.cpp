@@ -1066,6 +1066,11 @@ int main(int argc, char** argv)
             draw_screen();
         }
 
+        // Draw reads only the extracted snapshot. Wait before probes and frame counters touch live state;
+        // the battle CPU timer includes any uncovered tick time rather than hiding it behind the frame cap.
+        // Resource queues still commit after present, when this frame's GPU references have been submitted.
+        mc2::overlap::waitWorker();
+
         {
             // Bump the canonical frame counter.
             ZoneScopedN("Frame.AdvanceFrameCounter");
@@ -1101,6 +1106,8 @@ int main(int argc, char** argv)
     frameFrameCap(s_vsync_active, s_fps_cap_mission, s_fps_cap_menu, start_tick);
     mc2::overlap::joinTail();   // the sim is quiescent again before anything touches live sim objects
         } else {
+            mc2::overlap::beginFrameDraw(); // keep the early worker path active in headless determinism/save harnesses
+            mc2::overlap::waitWorker();
             gos::host::advanceFrameCounter();
             mc2::overlap::kickTail();   // headless: no tail to hide behind; kick and join keep the worker path under the same harness
             mc2::overlap::joinTail();

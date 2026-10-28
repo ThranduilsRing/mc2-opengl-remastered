@@ -22,6 +22,7 @@ struct RenderClock {
     float scenarioTime = 0.0f;
     float dt = 0.0f;           // render frame length
     uint32_t frame = 0;        // g_mc2FrameCounter
+    uint32_t missionResult = 0;
     float alpha = 1.0f;        // interpolation weight of the presented poses
 };
 

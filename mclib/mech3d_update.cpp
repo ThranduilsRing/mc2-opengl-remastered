@@ -2,6 +2,7 @@
 // Declared in the class headers; shared names in mech3d_internal.h.
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include "mech3d_internal.h"
+#include "sim_overlap.h"
 #include "../RenderCore/axis_convert.h"
 #include "mc2fmt.h"
 #include "anim_freeze.h"
@@ -307,7 +308,7 @@ long Mech3DAppearance::update (bool animate)
 							static std::unordered_map<void*, uint32_t> s_lastAdvanceFrame;
 							static uint64_t s_ac_advances = 0, s_ac_doubles = 0;
 							++s_ac_advances;
-							const uint32_t _ac_frame = g_mc2FrameCounter;
+							const uint32_t _ac_frame = mc2::overlap::simulationFrame(g_mc2FrameCounter);
 							auto _ac_it = s_lastAdvanceFrame.find(static_cast<void*>(this));
 							const bool _ac_double = (_ac_it != s_lastAdvanceFrame.end() && _ac_it->second == _ac_frame);
 							s_lastAdvanceFrame[static_cast<void*>(this)] = _ac_frame;

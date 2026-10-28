@@ -9,6 +9,7 @@
 #include <tracy/Tracy.hpp>
 
 extern uint32_t g_mc2FrameCounter;
+extern unsigned long scenarioResult;
 
 // The overlap extract hook (installed by code/mission_update.cpp), main thread at ExtractRenderSnapshot with the sim
 // quiescent: stamp the clock, then capture everything the object draws and the impact decals read from the sim.
@@ -20,6 +21,7 @@ void extractRenderFrame(float tickAlpha)
 	clk.scenarioTime = scenarioTime;
 	clk.dt = frameLength;
 	clk.frame = g_mc2FrameCounter;
+	clk.missionResult = static_cast<uint32_t>(scenarioResult);
 	clk.alpha = tickAlpha;
 	auto& lists = mc2::render_view::list();
 	lists.clear();

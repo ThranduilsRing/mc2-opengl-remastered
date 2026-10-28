@@ -1,6 +1,7 @@
 // GameObjectManager: GameObjectManager::update with its GOM_UPDATE_COST spans, in-view conflation probe, GPU-cull record and static-skip gates.
 // Declared in the class headers; shared names in objmgr_internal.h.
 #include "brain_execution_policy.h"
+#include "job_system.h"
 #include "objmgr_internal.h"
 #include "sim_world_trace.h"
 #include "mc2fmt.h"
@@ -580,7 +581,7 @@ void GameObjectManager::updateFrameJobsPrepass(int& frameJobsPrePassCount) {
 			auto _fj_t0 = std::chrono::high_resolution_clock::now();
 			{
 				ZoneScopedN("FrameJobs.RecalcBounds");
-				parallelForRange(count, frameJobsBatch(),
+				mc2::jobs::parallel_for(mc2::jobs::Domain::Render, count, frameJobsBatch(), 1000,
 					[](int begin, int end) {
 						// FRAME-JOBS-1: Tier B only. No appearance->update() here.
 						// Tier C (txmmgr) is NOT worker-safe. See FRAME-JOBS-2.
@@ -642,7 +643,7 @@ void GameObjectManager::updateFrameJobsPrepass(int& frameJobsPrePassCount) {
 			auto _tw0 = std::chrono::high_resolution_clock::now();
 			int touchCount = worker_submitted;
 			if (touchCount > 0) {
-				parallelForRange(touchCount, frameJobsBatch(), [](int begin, int end) {
+				mc2::jobs::parallel_for(mc2::jobs::Domain::Render, touchCount, frameJobsBatch(), 1000, [](int begin, int end) {
 					g_isFrameJobsWorker = true;
 					for (int i = begin; i < end; ++i) {
 						GameObjectPtr obj = ObjectManager->objList[s_splitHandles[i]];
