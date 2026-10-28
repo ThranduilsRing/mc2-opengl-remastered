@@ -61,61 +61,6 @@ static bool mc2SkipStaticNaturalDiagEnabled (void)
 	return(cached != 0);
 }
 
-// R2B-STATIC-NATURAL-TOUCH-PRESERVE-1 ──────────────────────────────────────────
-// DEFAULT-ON kill switch. The R2b "skip static-natural update" fast path issues a
-// bare `continue` for static trees/pine-buildings at turn>=3, which skips update()
-// — the producer that stamps the registered multi-shape's cachedFrame_. The
-// static-prop registry flush (gos_static_prop_registry.cpp) drops any registered
-// multi whose cachedFrame_ != currentFrame, so the skipped prop is silently culled
-// from the instance SSBO and never drawn (the black-tree-bug class — see
-// .planning/PROJECT.md "cachedFrame_ stamp" — reintroduced by the R2b skip; the
-// GPU symptom is tree typeIDs entirely absent from the instanced draw). This gate
-// restores the minimal liveness stamp inside the skip path WITHOUT running the
-// expensive update. Set MC2_R2B_TOUCH_PRESERVE=0 to A/B (off => reproduce the
-// drop; the registry stale-drop counter goes nonzero for tree typeIDs).
-static bool mc2R2bTouchPreserveEnabled (void)
-{
-	static int cached = -1;
-	if (cached < 0) {
-		cached = mc2::gate::get<"MC2_R2B_TOUCH_PRESERVE">();  // default-ON
-	}
-	return(cached != 0);
-}
-
-static bool mc2R2bTouchTraceEnabled (void)
-{
-	static int cached = -1;
-	if (cached < 0)
-		cached = mc2::gate::get<"MC2_R2B_STATIC_NATURAL_TRACE">() ? 1 : 0;
-	return(cached != 0);
-}
-
-// Stamp the static-registry liveness (cachedFrame_) of an appearance whose
-// expensive update() the R2b fast path is about to skip. Cheap: no transform, no
-// texture, no bounds — just advances the registered multi-shape's frame stamp so
-// the registry flush keeps it in the instance SSBO. Returns true if any shape was
-// stamped (for the touched_liveness trace counter).
-static inline bool mc2R2bTouchStaticLiveness (AppearancePtr appearance, uint32_t frame)
-{
-	if (!appearance) return false;
-	if (TreeAppearance* ta = dynamic_cast<TreeAppearance*>(appearance)) {
-		bool stamped = false;
-		for (long lod = 0; lod < MAX_LODS; ++lod)
-			if (ta->staticReg[lod].registered && ta->staticReg[lod].shape) {
-				ta->staticReg[lod].shape->setCachedFrame(frame);
-				stamped = true;
-			}
-		return stamped;
-	}
-	if (BldgAppearance* ba = dynamic_cast<BldgAppearance*>(appearance)) {
-		if (ba->staticReg.registered && ba->staticReg.shape) {
-			ba->staticReg.shape->setCachedFrame(frame);
-			return true;
-		}
-	}
-	return false;
-}
-
 static bool mc2StaticTypeNameStartsWith (const char* typeName, const char* prefix)
 {
 	return(typeName && prefix && (std::strncmp(typeName, prefix, std::strlen(prefix)) == 0));

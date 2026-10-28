@@ -39,7 +39,7 @@ void TreeAppearance::touch()
 		// lightDataIndex is still valid on the GPU (same baked-prefix persistence
 		// invariant), so the resubmit below is redundant. Still call treeShape->
 		// Touch() (advance lastTurnTransformed) — skip only the expensive resubmit.
-		// Gate: mc2StableLightSkipTouchEnabled() (default OFF => resubmit still runs).
+		// Gate: mc2StableLightSkipTouchEnabled() (default ON => touch skip preserves registry liveness).
 		{
 			const bool treeRegistered = (staticReg[activeLOD].registered && staticReg[activeLOD].recipeIndex >= 0);
 			const bool treeIdxValid   = (staticReg[activeLOD].lightDataIndex != 0xFFFFFFFFu);

@@ -1,6 +1,6 @@
 {
  "version": 1,
- "count": 758,
+ "count": 756,
  "gates": [
   {"name": "MC2_ABL_ARG_GUARD", "kind": "Bool", "rule": "Lead1", "default": false, "owner": "code", "retireBy": "", "doc": "ABL crash-safety gates (ABL-OPCODE-BOUNDS-HARDEN) MC2_ABL_ARG_GUARD=1 - enables dispatch-bounds soft path + out-ptr null guards MC2_ABL_RUNTIME_SOFTFAIL=1 -...", "tokens": "", "range": null, "reread": false, "divergent": false, "smokePassthrough": true, "verified": true, "registry": null, "logTopic": ""},
   {"name": "MC2_ABL_ARG_GUARD_REPRO", "kind": "Bool", "rule": "Lead1", "default": false, "owner": "code", "retireBy": "", "doc": "", "tokens": "", "range": null, "reread": false, "divergent": false, "smokePassthrough": true, "verified": true, "registry": null, "logTopic": ""},
@@ -420,8 +420,6 @@
   {"name": "MC2_PROP_FIXB_MVP", "kind": "Bool", "rule": "DefOnAtoiNZ", "default": true, "owner": "props", "retireBy": "", "doc": "", "tokens": "", "range": null, "reread": false, "divergent": false, "smokePassthrough": false, "verified": true, "registry": null, "logTopic": ""},
   {"name": "MC2_PURCHASE_ALL", "kind": "Bool", "rule": "Presence", "default": false, "owner": "code", "retireBy": "", "doc": "MC2_PURCHASE_ALL (default OFF; launcher Engine Option): unlock every COMPONENT/weapon so modded gear (e.g.", "tokens": "", "range": null, "reread": false, "divergent": false, "smokePassthrough": false, "verified": true, "registry": null, "logTopic": ""},
   {"name": "MC2_QUADSETUP_ARMED_SKIP", "kind": "Bool", "rule": "Lead0Kill", "default": true, "owner": "terrain", "retireBy": "", "doc": "", "tokens": "", "range": null, "reread": false, "divergent": false, "smokePassthrough": true, "verified": true, "registry": null, "logTopic": ""},
-  {"name": "MC2_R2B_STATIC_NATURAL_TRACE", "kind": "Bool", "rule": "Presence", "default": false, "owner": "code", "retireBy": "", "doc": "", "tokens": "", "range": null, "reread": false, "divergent": false, "smokePassthrough": true, "verified": true, "registry": null, "logTopic": ""},
-  {"name": "MC2_R2B_TOUCH_PRESERVE", "kind": "Bool", "rule": "Lead0Kill", "default": true, "owner": "code", "retireBy": "", "doc": "", "tokens": "", "range": null, "reread": false, "divergent": false, "smokePassthrough": true, "verified": true, "registry": null, "logTopic": ""},
   {"name": "MC2_RAIN_BATCH", "kind": "Bool", "rule": "Lead0Kill", "default": true, "owner": "code", "retireBy": "", "doc": "", "tokens": "", "range": null, "reread": false, "divergent": false, "smokePassthrough": false, "verified": true, "registry": null, "logTopic": ""},
   {"name": "MC2_RDC_CAPTURE_FRAME", "kind": "Int", "rule": "Prefix", "default": 0, "owner": "gameos", "retireBy": "", "doc": "", "tokens": "", "range": null, "reread": false, "divergent": false, "smokePassthrough": false, "verified": true, "registry": null, "logTopic": ""},
   {"name": "MC2_RDC_CAPTURE_PATH", "kind": "String", "rule": "Std", "default": "", "owner": "gameos", "retireBy": "", "doc": "Expand and VALIDATE the path template here, at arm time -- deliberately NOT down in resolveApiOnce().", "tokens": "", "range": null, "reread": false, "divergent": false, "smokePassthrough": false, "verified": true, "registry": null, "logTopic": ""},

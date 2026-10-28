@@ -550,7 +550,7 @@ void BldgAppearance::touch()
 		// in touchWorkerPrepass(). Skipping only the expensive resubmit keeps the
 		// legacy CPU-render staleness guard (tgl.cpp) byte-identical. staticReg
 		// fields are already correct from the last full update()/resubmit. Gate:
-		// mc2StableLightSkipTouchEnabled() (default OFF => resubmit still runs).
+		// mc2StableLightSkipTouchEnabled() (default ON => touch skip preserves registry liveness).
 		if (mc2StableLightSkipTouchEnabled() && mc2LightbridgeStableSkipEnabled()
 		    && stableLightSkipArmed && stableLightSkipEligible) {
 			lbssRecordBldg(/*eligible=*/true, /*skipTaken=*/true,

@@ -145,8 +145,6 @@ L(DefOnAtoiNZ, "MC2_PROP_FIXB_MVP", Bool, true, "props", "", "", verified),  // 
 // FOGLIGHT-LATCH-1: diagnostic probe for the one-shot per-actor light latch.
 L(Presence, "MC2_PURCHASE_ALL", Bool, false, "code", "", "MC2_PURCHASE_ALL (default OFF; launcher Engine Option): unlock every COMPONENT/weapon so modded gear (e.g.", verified),
 L(Lead0Kill, "MC2_QUADSETUP_ARMED_SKIP", Bool, true, "terrain", "", "", passthrough | verified),
-L(Presence, "MC2_R2B_STATIC_NATURAL_TRACE", Bool, false, "code", "", "", passthrough | verified),
-L(Lead0Kill, "MC2_R2B_TOUCH_PRESERVE", Bool, true, "code", "", "", passthrough | verified),
 L(Lead0Kill, "MC2_RAIN_BATCH", Bool, true, "code", "", "", verified),
 P("MC2_RDC_CAPTURE_FRAME", Int, 0, "gameos", "", "", verified),
 G("MC2_RDC_CAPTURE_PATH", String, "", "gameos", "", "Expand and VALIDATE the path template here, at arm time -- deliberately NOT down in resolveApiOnce().", verified),
