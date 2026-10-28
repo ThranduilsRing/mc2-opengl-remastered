@@ -145,6 +145,20 @@ def test_a_dead_holder_is_taken_over(lease, monkeypatch):
     assert json.loads(lease.read_text())["pid"] == os.getpid()
 
 
+def test_a_live_holder_with_no_engine_for_too_long_is_reclaimed(lease):
+    _foreign_holder(lease, os.getppid())
+    with pytest.raises(host_lease.HostLeaseBusy):                       # first sighting only stamps
+        host_lease.acquire("t", wait=False, scan=lambda: [], log=lambda m: None)
+    side = lease.with_suffix(".idle.json")
+    marks = host_lease._read(side)
+    assert len(marks) == 1                                              # first sighting only stamps the idle start
+    host_lease._write_record(side, {k: time.time() - host_lease.IDLE_RECLAIM_S - 60 for k in marks})
+    logs = []
+    host_lease.acquire("t", wait=False, scan=lambda: [], log=logs.append)
+    assert host_lease._read(lease)["pid"] == os.getpid()
+    assert any("idle holder" in m for m in logs)
+
+
 def test_waits_until_the_foreign_game_exits(lease):
     games = [[(4242, "mc2.exe")], [(4242, "mc2.exe")], []]
     sleeps = []

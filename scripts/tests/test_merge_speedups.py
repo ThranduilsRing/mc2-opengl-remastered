@@ -393,6 +393,9 @@ def test_gate_stage_selection():
     steps = gate.plan(6)
     assert [s[0] for s in gate.select_stages(steps, ["deploy,capture-after"])] == ["deploy", "capture-after"]
     assert "pytest" not in [s[0] for s in gate.select_stages(steps, skip=["pytest"])]
+    with pytest.raises(ValueError, match="also needs --skip pytest"):
+        gate.select_stages(steps, skip=["contracts"])
+    assert "contracts" not in [s[0] for s in gate.select_stages(steps, skip=["contracts,pytest"])]
     for stages, skip in ((["missing"], None), (None, ["missing"]), (["deploy", "deploy"], None),
                          (["deploy"], ["deploy"]), ([], None), (None, list(s[0] for s in steps))):
         with pytest.raises(ValueError):
@@ -1065,3 +1068,22 @@ def test_blocked_capture_reports_missing_proof_without_launching(monkeypatch, ca
     assert "| capture-before | FAIL: fixture: FIFO queue busy" in output
     assert "| tier1 | PASS" in output
     assert "Coverage plan tier1:" in output
+
+
+def test_pre_gate_runs_every_step_and_prints_one_verdict(monkeypatch, capsys, tmp_path):
+    exe = tmp_path / "mc2.exe"
+    exe.write_text("x")
+    monkeypatch.setattr(lm, "regenerate_all", lambda root, dry_run=False: [])
+    ran = []
+
+    def fake_run(root, cmd, env=None):
+        ran.append(os.path.basename(cmd[2]))
+        return _r(1 if "gate_gen.py" in cmd[2] else 0, "stale table")
+    monkeypatch.setattr(lm, "run", fake_run)
+    assert lm.pre_gate(str(tmp_path), str(exe)) == 1
+    out = capsys.readouterr().out
+    assert ran == ["check-background-launch.py", "gate_gen.py", "cxx17_ratchet.py", "run_smoke.py"]  # a red step does not stop the rest
+    assert out.strip().splitlines()[-1] == "PRE-GATE FAIL: gate_gen"
+    monkeypatch.setattr(lm, "run", lambda root, cmd, env=None: _r(0))
+    assert lm.pre_gate(str(tmp_path), str(tmp_path / "none.exe")) == 0
+    assert "PRE-GATE PASS (headless-smoke skipped: no exe)" in capsys.readouterr().out
