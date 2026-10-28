@@ -3336,6 +3336,13 @@
           "text": "import console_child  # noqa: E402  (windowless console children)"
         },
         {
+          "path": "tools/mover_budget.py",
+          "line": 23,
+          "evidence": "import",
+          "reference": "console_child",
+          "text": "import console_child  # noqa: E402"
+        },
+        {
           "path": "tools/phase/asm_dead_strip.py",
           "line": 22,
           "evidence": "import",
@@ -12291,6 +12298,13 @@
       ]
     },
     {
+      "path": "tools/mover_budget.py",
+      "basename": "mover_budget.py",
+      "stem": "mover_budget",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
       "path": "tools/objective_outcomes.py",
       "basename": "objective_outcomes.py",
       "stem": "objective_outcomes",
@@ -15696,6 +15710,13 @@
           "evidence": "import",
           "reference": "sim_determinism",
           "text": "from sim_determinism import smoke_target as _target"
+        },
+        {
+          "path": "tools/mover_budget.py",
+          "line": 24,
+          "evidence": "import",
+          "reference": "sim_determinism",
+          "text": "import sim_determinism as sd  # noqa: E402"
         },
         {
           "path": "tools/saveload_roundtrip.py",
