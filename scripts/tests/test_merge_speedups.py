@@ -315,8 +315,15 @@ def test_gate_dry_run_never_executes(monkeypatch, capsys):
     assert "validation | DRY-RUN" in capsys.readouterr().out
 
 
-def test_gate_reports_all_failed_stages(monkeypatch, capsys):
+def test_gate_reports_all_failed_stages(monkeypatch, capsys, tmp_path):
+    from contextlib import contextmanager
     import merge_gate as gate
+    monkeypatch.setenv("MC2_HOST_LEASE_PATH", str(tmp_path / "lease.json"))
+    @contextmanager
+    def batch():
+        yield {"MC2_HOST_LEASE_BATCH": "fixture"}
+    monkeypatch.setattr(gate, "game_batch", batch)
+    monkeypatch.setattr(gate, "log_lease_holders", lambda: None)
     monkeypatch.setattr(gate, "git", lambda *a: "head")
     calls = []
     def runner(cmd, **kw):

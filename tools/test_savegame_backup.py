@@ -42,3 +42,30 @@ def test_prune_backups_is_noop_below_limit():
             (tmp_path / f"{mod.SAVE_NAME}.bak_2026100{day}_120000").write_bytes(b"x")
         assert mod.prune_backups(str(tmp_path)) == []
         assert len(list(tmp_path.glob(f"{mod.SAVE_NAME}.bak_*"))) == 2
+
+
+def test_prune_backups_leaves_hand_named_copies_alone():
+    with mod.scratch_dir() as d:
+        tmp_path = Path(d)
+        hand = tmp_path / f"{mod.SAVE_NAME}.bak_before_boss"
+        hand.write_bytes(b"keep me")
+        for day in range(1, 8):
+            (tmp_path / f"{mod.SAVE_NAME}.bak_2026100{day}_120000").write_bytes(b"x")
+        removed = mod.prune_backups(str(tmp_path))
+        assert len(removed) == 2
+        assert hand.read_bytes() == b"keep me"
+
+
+def test_backup_never_prunes_the_one_it_just_wrote():
+    with mod.scratch_dir() as d:
+        tmp_path = Path(d)
+        (tmp_path / mod.SAVE_NAME).write_bytes(b"owner")
+        for day in range(1, 8):
+            (tmp_path / f"{mod.SAVE_NAME}.bak_2026100{day}_120000").write_bytes(b"old")
+        # The clock went backwards: the new stamp sorts below every existing backup.
+        assert mod.backup(str(tmp_path), datetime.datetime(2025, 1, 1, 0, 0, 0)).startswith("backed up to ")
+        just_written = tmp_path / f"{mod.SAVE_NAME}.bak_20250101_000000"
+        assert just_written.exists()
+        # The newest five plus the protected one; the next backup prunes back to five.
+        assert len(list(tmp_path.glob(f"{mod.SAVE_NAME}.bak_*"))) == mod.BACKUP_KEEP + 1
+        assert not (tmp_path / f"{mod.SAVE_NAME}.bak_20261001_120000").exists()

@@ -804,10 +804,14 @@ static bool quickReadSaveVersion( std::string_view filePath, long& versionNumber
 		return true;
 
 	// Old saves can put Version after an arbitrarily large variant section.
-	// Rescan from the start: the window tail dropped above must not be lost.
+	// Rescan from the start: the window tail dropped above must not be lost,
+	// but never read a corrupt/huge save whole: cap the rescan at 4 MB.
+	constexpr size_t kRescanMax = 4 * 1024 * 1024;
 	in.clear();
 	in.seekg( 0, std::ios::beg );
-	const std::vector<char> whole( ( std::istreambuf_iterator<char>( in ) ), std::istreambuf_iterator<char>() );
+	std::vector<char> whole( kRescanMax );
+	in.read( whole.data(), static_cast<std::streamsize>( kRescanMax ) );
+	whole.resize( static_cast<size_t>( in.gcount() ) );
 	return scanSaveVersion( std::string_view( whole.data(), whole.size() ), versionNumber );
 }
 

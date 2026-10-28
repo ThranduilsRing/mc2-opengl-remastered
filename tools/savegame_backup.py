@@ -6,7 +6,8 @@ WHAT: `backup` copies ~/.mechcommander2/savegame/testgame.ims to a sibling `test
 pending keeps the FIRST backup: the file then in place is a fixture's, not the owner's.
 WHY: the quicksave/quickload fixtures (MC2_BOOT_QUICKSAVE_AT / MC2_BOOT_QUICKLOAD_AT) use the same file as the pause-menu quicksave, so every fixture
 run replaces whatever the owner saved. Backups are kept after a restore, but only the newest BACKUP_KEEP (5) are kept: older
-`testgame.ims.bak_*` files are deleted right after a new one is written. The save itself and every other file are never touched.
+`testgame.ims.bak_<YYYYMMDD_HHMMSS>` files are deleted right after a new one is written; a hand-named copy such as
+`testgame.ims.bak_before_boss` never matches and is never deleted. The save itself and every other file are never touched.
 
   py -3 tools/savegame_backup.py backup  [--dir D]
   py -3 tools/savegame_backup.py restore [--dir D]
@@ -22,6 +23,7 @@ import contextlib
 import datetime
 import json
 import os
+import re
 import shutil
 import sys
 import tempfile
@@ -31,6 +33,7 @@ import uuid
 SAVE_NAME = "testgame.ims"
 MARKER_NAME = SAVE_NAME + ".backup-pending"
 BACKUP_KEEP = 5
+BACKUP_RE = re.compile(r"^" + re.escape(SAVE_NAME) + r"\.bak_\d{8}_\d{6}$")
 
 
 def default_dir() -> str:
@@ -52,21 +55,26 @@ def scratch_dir():
         shutil.rmtree(d, ignore_errors=True)
 
 
-def prune_backups(directory: str, keep: int = BACKUP_KEEP) -> list[str]:
-    """Delete all but the newest `keep` `testgame.ims.bak_*` files. -> the deleted names.
+def prune_backups(directory: str, keep: int = BACKUP_KEEP, protect: str | None = None) -> list[str]:
+    """Delete all but the newest `keep` timestamped backups. -> the deleted names.
 
-    The names end in YYYYMMDD_HHMMSS, so they sort chronologically. Only regular files with that exact prefix are
-    candidates: the save, the marker and the lock are never touched.
+    Only `testgame.ims.bak_YYYYMMDD_HHMMSS` regular files are candidates: the save, the marker, the lock and
+    hand-named copies (e.g. `testgame.ims.bak_before_boss`) are never touched. `protect` names the backup just
+    written; it survives even when its stamp sorts oldest, so a clock that went backwards can leave `keep` + 1
+    files until the next backup.
     """
-    prefix = SAVE_NAME + ".bak_"
     found = []
     with contextlib.suppress(OSError):
         for name in os.listdir(directory):
-            if name.startswith(prefix) and os.path.isfile(os.path.join(directory, name)):
+            if BACKUP_RE.match(name) and os.path.isfile(os.path.join(directory, name)):
                 found.append(name)
     found.sort(reverse=True)
+    keep = max(keep, 0)
+    kept = found[:keep]
+    if protect in found and protect not in kept:
+        kept.append(protect)
     removed = []
-    for name in found[max(keep, 0):]:
+    for name in [n for n in found if n not in kept]:
         with contextlib.suppress(OSError):
             os.remove(os.path.join(directory, name))
             removed.append(name)
@@ -87,7 +95,7 @@ def backup(directory: str, now: datetime.datetime | None = None) -> str:
         stamp = (now or datetime.datetime.now()).strftime("%Y%m%d_%H%M%S")
         name = f"{SAVE_NAME}.bak_{stamp}"
         shutil.copy2(src, os.path.join(directory, name))
-        prune_backups(directory)
+        prune_backups(directory, protect=name)
     with open(marker, "w", encoding="utf-8") as fh:
         json.dump({"backup": name}, fh)
     return f"backed up to {name}" if name else "no quicksave existed; restore will remove the fixture's file"
