@@ -119,6 +119,8 @@ GENERATED_REGENERATORS = (
     ({"docs/split-map.md"}, "tools/split/split_map.py", ["--write"]),
     ({"docs/background-launch-inventory.md", "docs/background-launch-child-baseline.json"},
      "scripts/check-background-launch.py", ["--write", "--quiet"]),
+    ({"tests/callers.json"}, "tools/callers.py", []),
+    ({"tests/unit/log_tag_baseline.json"}, "tools/log_tag_census.py", ["--write"]),
 )
 
 
@@ -404,6 +406,7 @@ def sync_test_gate_floor(root: str) -> bool:
 def regenerate_generated(root: str, conflicted: list[str], lane_files=()) -> None:
     """Rewrite generated files taken as ours from the merged tree; the merge commit carries the result."""
     touched = set(conflicted)
+    stageable = set(GENERATED)
     for files, script, args in GENERATED_REGENERATORS:
         if not touched & files:
             continue
@@ -417,11 +420,16 @@ def regenerate_generated(root: str, conflicted: list[str], lane_files=()) -> Non
         if r.returncode:
             abort_and_clean(root, lane_files)
             raise Stop(5, f"regenerating {script} after a generated conflict failed:\n{r.stdout[-2000:]}")
+        if script == "tools/gate_gen.py":
+            # Sync also updates verification metadata in the authored row sources.
+            stageable.add("Gates/gate_table.cpp")
+            stageable.update(p.relative_to(root).as_posix()
+                             for p in (Path(root) / "Gates").glob("gate_rows_*.inc"))
     if TEST_GATE in touched:
         sync_test_gate_floor(root)
     # The generators also refresh sibling outputs (gate_index.gen.h <- flags.auto.yaml).
     # Only files that differ from HEAD are staged; the conflicted ones already are.
-    changed = sorted(touched | {p for p in GENERATED
+    changed = sorted(touched | {p for p in stageable
                                 if (Path(root) / p).exists() and git(root, "diff", "--quiet", "--", p).returncode})
     a = git(root, "add", "--", *changed)
     if a.returncode:

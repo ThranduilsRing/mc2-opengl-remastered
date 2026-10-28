@@ -4,6 +4,7 @@
 #include "../../GameOS/gameos/utils/mc2log.h"
 
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <filesystem>
 #include <fstream>
@@ -16,12 +17,19 @@ TEST_CASE("ObjectTypeManager refuses a failing pak and remains safely empty")
 {
     struct State {
         std::string oldPath = objectPath;
-        std::string stem = (std::filesystem::temp_directory_path() / "mc2_objtype_init_failure").string();
-        std::FILE* capture = std::tmpfile();
+        std::filesystem::path scratch = [] {
+            const char* path = std::getenv("MC2_SCRATCH");
+            std::filesystem::path dir = path && *path ? path : "G:/mc2-tmp";
+            std::filesystem::create_directories(dir);
+            return dir;
+        }();
+        std::string stem = (scratch / "mc2_objtype_init_failure").string();
+        std::FILE* capture = std::fopen((stem + ".log").c_str(), "w+b");
         ~State() {
             std::strcpy(objectPath, oldPath.c_str());
             mc2::log::setStreamOverrideForTest(mc2::log::Stream::Err, nullptr);
             if (capture) std::fclose(capture);
+            std::remove((stem + ".log").c_str());
             std::remove((stem + ".pak").c_str());
         }
     } state;

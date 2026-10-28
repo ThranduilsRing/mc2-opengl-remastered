@@ -776,6 +776,49 @@ def test_batch_resolutions_belong_to_individual_tips(env, tmp_path):
 GENERATED_FILES = ("Gates/gate_table.json", "docs/flags.auto.yaml", "tests/callers.json", "docs/split-map.md")
 
 
+def test_every_generated_file_has_a_regenerator():
+    lm = _load_module()
+    assert lm.GENERATED == set().union(*(files for files, _, _ in lm.GENERATED_REGENERATORS))
+
+
+@pytest.mark.parametrize("path,script,args", [
+    ("Gates/gate_table.json", "tools/gate_gen.py", ["--sync-verified"]),
+    ("tests/callers.json", "tools/callers.py", []),
+    ("tests/unit/log_tag_baseline.json", "tools/log_tag_census.py", ["--write"]),
+])
+def test_generated_conflict_regenerates_and_commits_all_outputs(env, monkeypatch, path, script, args):
+    repo, _ = env
+    lm = _load_module()
+    authored = ("Gates/gate_table.cpp", "Gates/gate_rows_core.inc", "Gates/gate_rows_render.inc")
+    outputs = (path, *authored) if script == "tools/gate_gen.py" else (path,)
+    for rel in outputs:
+        write(repo, rel, "base\n")
+    write(repo, script, "# fake generator\n")
+    commit_all(repo, "generator baseline")
+    lane_branch(repo, {path: "lane\n"})
+    write(repo, path, "main\n")
+    commit_all(repo, "main output")
+    calls = []
+
+    def runner(root, cmd, env=None):
+        calls.append(cmd)
+        for rel in outputs:
+            write(repo, rel, "regenerated\n")
+        write(repo, "a.txt", "unrelated\n")
+        return subprocess.CompletedProcess(cmd, 0, "")
+
+    monkeypatch.setattr(lm, "run", runner)
+    lm.do_merge(str(repo), "lane", "merge lane")
+    assert calls == [[sys.executable, "-B", os.path.join(str(repo), script), *args]]
+    for rel in outputs:
+        assert git(repo, "show", "HEAD:" + rel) == "regenerated"
+    assert git(repo, "show", "HEAD:a.txt") == "a"
+    assert git(repo, "diff", "--name-only") == "a.txt"
+    assert not git(repo, "diff", "--cached", "--name-only")
+    for rel in authored:
+        assert not lm.is_generated(rel)
+
+
 def _generated_repo(repo):
     """A synthetic tree with the generated files the W83 batch conflicted on."""
     for rel in GENERATED_FILES:
