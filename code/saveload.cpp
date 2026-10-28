@@ -487,8 +487,11 @@ bool Mission::openSaveFile(MissionLoadFrame& f) {
 			--last;
 		char end[4]{};
 		std::string why;
-		if (last < 3 || loadFile.seekPacket(last - 1) != NO_ERR || loadFile.getPacketSize() != 4 ||
-			loadFile.readPacket(last - 1, reinterpret_cast<MemoryPtr>(end)) != 4 || memcmp(end, "END", 4) != 0)
+		// Layout tail: logistics, currentMissionNum (4 bytes), END, sections. loadLogistics expects sections at END + 1; a file whose tail
+		// does not look like that is refused here, before teardown, instead of loading partially with default sections.
+		if (last < 5 || loadFile.seekPacket(last - 1) != NO_ERR || loadFile.getPacketSize() != 4 ||
+			loadFile.readPacket(last - 1, reinterpret_cast<MemoryPtr>(end)) != 4 || memcmp(end, "END", 4) != 0 ||
+			loadFile.seekPacket(last - 2) != NO_ERR || loadFile.getPacketSize() != 4)
 			why = "section_position";
 		else if (loadFile.seekPacket(last) != NO_ERR || loadFile.getPacketSize() > static_cast<int>(mc2::save::maxFileBytes))
 			why = "section_size";
