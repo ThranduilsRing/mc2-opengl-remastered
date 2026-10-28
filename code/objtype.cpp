@@ -65,6 +65,7 @@
 #endif
 
 #include "package_chassis.h"
+#include "../GameOS/gameos/utils/mc2log.h"
 
 //---------------------------------------------------------------------------
 
@@ -331,6 +332,12 @@ ObjectTypePtr ObjectTypeManager::load (ObjectTypeNumber objTypeNum, bool noCache
 		// MiscTerrainObject "hack" to maintain MC1 compatibility...
 		objectTypeNum = TERRAINOBJECT_TYPE;
 		isMiscTerrObj = true;
+		}
+	else if (objTypeNum >= objectFile->getNumPackets()) {
+		// Mission part IDs are FitIDs from buildings.csv; mechs and vehicles past the end of the pak (every
+		// MC2X/MCO campaign) take their chassis from the CSV via BattleMech::init(variantNum). The stub
+		// substitution below is the designed path; seeking the pak only raised STOP[PACKET_OOB] and four Fatal lines.
+		MC2_LOG_ONCE(Io, Info, "[OBJTYPE_NO_PACKET] first type {} is past the {}-packet object pak; CSV-driven stub type used", static_cast<int>(objTypeNum), static_cast<int>(objectFile->getNumPackets()));
 		}
 	else if (objectFile->seekPacket(objTypeNum) == NO_ERR) {
 		if (objTypeNum == 268) {
