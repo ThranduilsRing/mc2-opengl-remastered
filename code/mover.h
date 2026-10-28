@@ -1,4 +1,3 @@
-#include "dradio.h"
 //***************************************************************************
 //
 //	mover.h - This file contains the Mover Class header
@@ -11,6 +10,7 @@
 
 #ifndef MOVER_H
 #define MOVER_H
+#include "dradio.h"
 #include "unit_anim_state.h"
 
 #ifndef MCLIB_H
