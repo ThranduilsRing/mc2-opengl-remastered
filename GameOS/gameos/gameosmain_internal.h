@@ -124,7 +124,6 @@ extern "C" uint32_t gos_getMechShadowInstDrawn();
 // VFX-SPINE-0: C-linkage accessors from the particle bridge + batcher TUs.
 // Same file-scope rule as the shadow accessors above (extern "C" cannot live
 // at block scope). Read-only — these only return file-static counters.
-extern "C" unsigned int       gos_vfx_getParticleProgramId();
 extern "C" unsigned int       gos_vfx_getSsboCapacity();
 extern "C" int                gos_vfx_getInitFailed();
 extern "C" int                gos_vfx_getCameraSetThisFrame();

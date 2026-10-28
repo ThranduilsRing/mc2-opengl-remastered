@@ -236,13 +236,9 @@ void frameEmitDrawPackets(RenderSnapshot& snap) {
             //
             // Free-function accessors defined in gameos_graphics.cpp; full
             // gosRenderer type is private to that TU.
-            extern uint32_t gos_getTerrainSurfaceProgramId();
-            extern uint32_t gos_getThinTerrainProgramId();
-            extern uint32_t gos_getTerrainOverlayProgramId();
             {
                 const RenderCore::EngineView& view = RenderCore::getCurrentView();
                 snap.terrainPass.viewId          = view.id;
-                snap.terrainPass.legacyProgramId = gos_getTerrainSurfaceProgramId();
                 // The retired GL patch stream has no draws; native terrain publishes its own feed.
                 snap.terrainPass.drawCallCount   = 0u;
                 uint32_t flags = 0u;
@@ -261,9 +257,6 @@ void frameEmitDrawPackets(RenderSnapshot& snap) {
             // from live accessors (no behavior change for those).
             {
                 EditorInspector::TerrainPassSnapshot ts;
-                ts.surfaceProgramId   = snap.terrainPass.legacyProgramId;
-                ts.thinProgramId      = gos_getThinTerrainProgramId();
-                ts.overlayProgramId   = gos_getTerrainOverlayProgramId();
                 ts.bucketCount  = snap.terrainPass.drawCallCount;
                 ts.vertCount    = 0u;
                 ts.thinRecCount = 0u;
@@ -284,14 +277,10 @@ void frameEmitDrawPackets(RenderSnapshot& snap) {
             {
                 // C++-linkage helpers defined in gameos_graphics.cpp. C-linkage
                 // accessors declared at file scope (top of TU).
-                extern uint32_t gos_getTerrainShadowProgramId();
-                extern uint32_t gos_getStaticPropShadowProgramId();
                 extern bool     gos_getShadowsEnabled();
                 extern int      gos_getShadowMapSize();
                 extern int      gos_getDynShadowMapSize();
                 EditorInspector::ShadowPassSnapshot sp;
-                sp.terrainShadowProgramId      = gos_getTerrainShadowProgramId();
-                sp.staticPropShadowProgramId   = gos_getStaticPropShadowProgramId();
                 sp.shadowsEnabled              = gos_getShadowsEnabled();
                 sp.staticLightMatrixBuilt      = mc2_vk_shadow_island_bake_ready()!=0;
                 sp.shadowMapSize               = gos_getShadowMapSize();
@@ -308,7 +297,6 @@ void frameEmitDrawPackets(RenderSnapshot& snap) {
             // GL state touched, no VFX mutation, no object-IDs.
             {
                 EditorInspector::VfxPassSnapshot vs;
-                vs.particleProgramId          = static_cast<uint32_t>(gos_vfx_getParticleProgramId());
                 vs.gpuParticlesEnabled        = (mc2_vfx_isEnabled() != 0);
                 vs.gpuParticlesLogEnabled     = (mc2_vfx_isLogEnabled() != 0);
                 vs.initFailed                 = (gos_vfx_getInitFailed() != 0);

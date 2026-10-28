@@ -155,10 +155,6 @@ extern "C" void gos_particle_bridge_flush(const mc2::particles::GpuParticle* rec
 
 }
 
-extern "C" unsigned int gos_vfx_getParticleProgramId()
-{
-    return 0u;
-}
 extern "C" unsigned int gos_vfx_getSsboCapacity()
 {
     return 0u;

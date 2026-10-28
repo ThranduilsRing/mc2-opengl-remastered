@@ -59,8 +59,6 @@ GameOS/gameos/gos_postprocess_executor.cpp::g_executorValidationFailures < kMaxE
 GameOS/gameos/gos_postprocess_executor.cpp::g_executorValidationFailures < kMaxExecutorFailureLog
 GameOS/gameos/gos_postprocess_executor.cpp::g_executorValidationFailures < kMaxExecutorFailureLog
 GameOS/gameos/gos_postprocess_executor.cpp::g_executorValidationFailures < kMaxExecutorFailureLog
-GameOS/gameos/gos_postprocess_shadow.cpp::s_dynN <= 1
-GameOS/gameos/gos_postprocess_shadow.cpp::s_frustN <= 3
 GameOS/gameos/gos_postprocess_diag.cpp::s_probeFrame <= 3
 GameOS/gameos/gos_postprocess_diag.cpp::s_probeFrame <= 5
 GameOS/gameos/gos_postprocess_executor.cpp::s_warnCount < 4
@@ -129,7 +127,6 @@ mclib/txmmgr_lights.cpp::s_lbStabilityViolations <= 32
 # patched blind by this lane.
 # ---------------------------------------------------------------------------
 GameOS/gameos/gameosmain.cpp::g_loadPhaseCount < kMaxLoadPhaseSamples
-GameOS/gameos/gos_postprocess_shadow.cpp::s_csmN <= 1
 editor/EditorDebugOverlay.cpp::s_warned < 3
 editor/EditorDebugOverlay.cpp::s_logged < 3
 mclib/move_recon.cpp::s_pcBurstPrints < 30

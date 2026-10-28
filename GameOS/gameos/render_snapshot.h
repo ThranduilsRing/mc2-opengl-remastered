@@ -136,12 +136,11 @@ struct TerrainPassFacts {
     static constexpr uint32_t kFlagOverflow         = 1u << 2;
 
     uint32_t viewId           = 0u;  // RenderCore::getCurrentView().id
-    uint32_t legacyProgramId  = 0u;  // gl program id (terrain surface); legacy until PipelineDesc lands
     uint32_t drawCallCount    = 0u;  // TerrainPatchStream::getLastFlushBucketCount() (prev-flush)
     uint32_t flags            = 0u;  // OR of kFlag* above
     // Note: visibleBlockCount intentionally omitted — no existing counter to source.
 };
-static_assert(sizeof(TerrainPassFacts) == 16,
+static_assert(sizeof(TerrainPassFacts) == 12,
     "TerrainPassFacts layout changed — update inspector consumers");
 
 // Per-frame render snapshot: immutable view of extracted engine state.

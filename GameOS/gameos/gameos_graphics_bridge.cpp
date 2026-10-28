@@ -6,26 +6,6 @@
 #include "mc2fmt.h"
 
 
-// TERRAIN-SPINE-0: free-function program-id accessors for the read-only
-// Terrain Pass inspector. Defined here (after the gosRenderer class body)
-// so other TUs (gameosmain.cpp) can reference them without seeing the full
-// class. Each returns the raw GL program object id, or 0 if not linked.
-uint32_t gos_getTerrainSurfaceProgramId() { return 0u; }
-uint32_t gos_getThinTerrainProgramId() {
-    return 0u; // Retired GL program; native pipelines have their own identity.
-}
-uint32_t gos_getTerrainOverlayProgramId() {
-    return 0u; // Retired GL program; native pipelines have their own identity.
-}
-
-// SHADOW-SPINE-0: read-only program-id accessor for the static-prop shadow
-// program (shadow_static_prop.vert + shadow_instanced.frag). Mirrors the
-// terrain accessors above. Returns 0 when not linked.
-uint32_t gos_getStaticPropShadowProgramId() { return 0u; }
-// SHADOW-SPINE-0: terrain shadow program is owned by the shadow_terrain
-// gosRenderMaterial (not a direct glsl_program* slot). Look up via the
-// material's shader. Returns 0 when not yet loaded.
-uint32_t gos_getTerrainShadowProgramId() { return 0u; }
 // SHADOW-SPINE-0: read-only accessors for shadow-pass pipeline state.
 // All read from the existing gosPostProcess singleton; no new state.
 bool gos_getShadowsEnabled() {
