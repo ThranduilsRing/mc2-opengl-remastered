@@ -147,6 +147,28 @@
       ]
     },
     {
+      "path": "scripts/build_tokens.py",
+      "basename": "build_tokens.py",
+      "stem": "build_tokens",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "scripts/ninja_build.py",
+          "line": 84,
+          "evidence": "import",
+          "reference": "build_tokens",
+          "text": "import build_tokens"
+        },
+        {
+          "path": "scripts/tests/test_build_tokens.py",
+          "line": 5,
+          "evidence": "import",
+          "reference": "build_tokens",
+          "text": "import build_tokens  # noqa: E402"
+        }
+      ]
+    },
+    {
       "path": "scripts/camera_sweep_smoke.py",
       "basename": "camera_sweep_smoke.py",
       "stem": "camera_sweep_smoke",
@@ -704,7 +726,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/run_smoke.py",
-          "line": 1109,
+          "line": 1118,
           "evidence": "command",
           "reference": "scripts/check-deploy-coherence.py",
           "text": "_coh = subprocess.run("
@@ -806,7 +828,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/run_smoke.py",
-          "line": 1043,
+          "line": 1052,
           "evidence": "command",
           "reference": "scripts/check-deploy-target.py",
           "text": "_g = subprocess.run(_gcmd, capture_output=True, text=True, timeout=60, **nofocus.hidden_kwargs())"
@@ -2176,7 +2198,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/run_smoke.py",
-          "line": 1127,
+          "line": 1136,
           "evidence": "command",
           "reference": "scripts/check_shader_bom.py",
           "text": "_bom = subprocess.run("
@@ -3758,7 +3780,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/run_smoke.py",
-          "line": 985,
+          "line": 994,
           "evidence": "command",
           "reference": "scripts/deploy_payload.py",
           "text": "_v = subprocess.run(cmd, capture_output=True, text=True, timeout=300, **nofocus.hidden_kwargs())"
@@ -3774,7 +3796,7 @@
         },
         {
           "path": "scripts/run_smoke.py",
-          "line": 1400,
+          "line": 1409,
           "evidence": "import",
           "reference": "scripts.deploy_payload",
           "text": "from scripts import deploy_payload as _dp"
@@ -4058,7 +4080,7 @@
         },
         {
           "path": "scripts/smoke_lib/runner.py",
-          "line": 175,
+          "line": 199,
           "evidence": "import",
           "reference": "gate_table_reader",
           "text": "import gate_table_reader"
@@ -4824,6 +4846,13 @@
           "text": "import run_battle_bench as bench"
         },
         {
+          "path": "scripts/tests/test_battle_bench_baseline.py",
+          "line": 7,
+          "evidence": "import",
+          "reference": "run_battle_bench",
+          "text": "import run_battle_bench as rbb  # noqa: E402"
+        },
+        {
           "path": "scripts/tests/test_rule_defaults.py",
           "line": 60,
           "evidence": "import",
@@ -5234,7 +5263,7 @@
         },
         {
           "path": "scripts/run_smoke.py",
-          "line": 1529,
+          "line": 1538,
           "evidence": "import",
           "reference": "run_visual_capture",
           "text": "from run_visual_capture import smoke_capture"
@@ -5411,35 +5440,35 @@
         },
         {
           "path": "scripts/run_smoke.py",
-          "line": 814,
+          "line": 823,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from scripts.smoke_lib import deploy_lease as _deploy_lease"
         },
         {
           "path": "scripts/run_smoke.py",
-          "line": 874,
+          "line": 883,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from scripts.smoke_lib import host_lease as _host_lease"
         },
         {
           "path": "scripts/run_smoke.py",
-          "line": 887,
+          "line": 896,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from scripts.smoke_lib import host_load as _host_load"
         },
         {
           "path": "scripts/run_smoke.py",
-          "line": 1072,
+          "line": 1081,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from scripts.smoke_lib import preflight_cache as _pfcache"
         },
         {
           "path": "scripts/run_smoke.py",
-          "line": 1258,
+          "line": 1267,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from scripts.smoke_lib import child_registry as _children"
@@ -5614,7 +5643,7 @@
         },
         {
           "path": "scripts/smoke_lib/runner.py",
-          "line": 334,
+          "line": 361,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from . import render_options_pin"
@@ -5863,7 +5892,7 @@
         },
         {
           "path": "scripts/run_smoke.py",
-          "line": 1258,
+          "line": 1267,
           "evidence": "import",
           "reference": "scripts.smoke_lib.child_registry",
           "text": "from scripts.smoke_lib import child_registry as _children"
@@ -5985,7 +6014,7 @@
         },
         {
           "path": "scripts/run_smoke.py",
-          "line": 814,
+          "line": 823,
           "evidence": "import",
           "reference": "scripts.smoke_lib.deploy_lease",
           "text": "from scripts.smoke_lib import deploy_lease as _deploy_lease"
@@ -6242,7 +6271,7 @@
       "callers_by_stem": [
         {
           "path": "scripts/run_smoke.py",
-          "line": 874,
+          "line": 883,
           "evidence": "import",
           "reference": "scripts.smoke_lib.host_lease",
           "text": "from scripts.smoke_lib import host_lease as _host_lease"
@@ -6313,7 +6342,7 @@
       "callers_by_stem": [
         {
           "path": "scripts/run_smoke.py",
-          "line": 887,
+          "line": 896,
           "evidence": "import",
           "reference": "scripts.smoke_lib.host_load",
           "text": "from scripts.smoke_lib import host_load as _host_load"
@@ -6604,7 +6633,7 @@
       "callers_by_stem": [
         {
           "path": "scripts/run_smoke.py",
-          "line": 1072,
+          "line": 1081,
           "evidence": "import",
           "reference": "scripts.smoke_lib.preflight_cache",
           "text": "from scripts.smoke_lib import preflight_cache as _pfcache"
@@ -6640,7 +6669,7 @@
         },
         {
           "path": "scripts/smoke_lib/runner.py",
-          "line": 334,
+          "line": 361,
           "evidence": "import",
           "reference": "scripts.smoke_lib.render_options_pin",
           "text": "from . import render_options_pin"
@@ -7084,6 +7113,13 @@
       "callers_by_stem": []
     },
     {
+      "path": "scripts/tests/test_ab_vk_only.py",
+      "basename": "test_ab_vk_only.py",
+      "stem": "test_ab_vk_only",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
       "path": "scripts/tests/test_axis_swizzle_ratchet.py",
       "basename": "test_axis_swizzle_ratchet.py",
       "stem": "test_axis_swizzle_ratchet",
@@ -7094,6 +7130,13 @@
       "path": "scripts/tests/test_battle_bench.py",
       "basename": "test_battle_bench.py",
       "stem": "test_battle_bench",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
+      "path": "scripts/tests/test_battle_bench_baseline.py",
+      "basename": "test_battle_bench_baseline.py",
+      "stem": "test_battle_bench_baseline",
       "callers_by_basename": [],
       "callers_by_stem": []
     },
@@ -7136,6 +7179,13 @@
       "path": "scripts/tests/test_build_compiler_presets.py",
       "basename": "test_build_compiler_presets.py",
       "stem": "test_build_compiler_presets",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
+      "path": "scripts/tests/test_build_tokens.py",
+      "basename": "test_build_tokens.py",
+      "stem": "test_build_tokens",
       "callers_by_basename": [],
       "callers_by_stem": []
     },
@@ -7504,6 +7554,13 @@
       "callers_by_stem": []
     },
     {
+      "path": "scripts/tests/test_legacy_env.py",
+      "basename": "test_legacy_env.py",
+      "stem": "test_legacy_env",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
       "path": "scripts/tests/test_lighting_divergence.py",
       "basename": "test_lighting_divergence.py",
       "stem": "test_lighting_divergence",
@@ -7616,6 +7673,13 @@
       "callers_by_stem": []
     },
     {
+      "path": "scripts/tests/test_per_test_timeout.py",
+      "basename": "test_per_test_timeout.py",
+      "stem": "test_per_test_timeout",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
       "path": "scripts/tests/test_phase_tools.py",
       "basename": "test_phase_tools.py",
       "stem": "test_phase_tools",
@@ -7637,6 +7701,13 @@
       "callers_by_stem": []
     },
     {
+      "path": "scripts/tests/test_repin_stale.py",
+      "basename": "test_repin_stale.py",
+      "stem": "test_repin_stale",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
       "path": "scripts/tests/test_rule_defaults.py",
       "basename": "test_rule_defaults.py",
       "stem": "test_rule_defaults",
@@ -7654,6 +7725,13 @@
       "path": "scripts/tests/test_runner_env_drop.py",
       "basename": "test_runner_env_drop.py",
       "stem": "test_runner_env_drop",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
+      "path": "scripts/tests/test_saveload_baseline_defaults.py",
+      "basename": "test_saveload_baseline_defaults.py",
+      "stem": "test_saveload_baseline_defaults",
       "callers_by_basename": [],
       "callers_by_stem": []
     },
@@ -12737,6 +12815,21 @@
       "callers_by_stem": []
     },
     {
+      "path": "tools/repin_stale.py",
+      "basename": "repin_stale.py",
+      "stem": "repin_stale",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "scripts/tests/test_repin_stale.py",
+          "line": 10,
+          "evidence": "import",
+          "reference": "repin_stale",
+          "text": "import repin_stale as rs  # noqa: E402"
+        }
+      ]
+    },
+    {
       "path": "tools/repo_intel/binding_index.py",
       "basename": "binding_index.py",
       "stem": "binding_index",
@@ -13219,6 +13312,13 @@
         {
           "path": "scripts/tests/test_ref_passthrough.py",
           "line": 17,
+          "evidence": "import",
+          "reference": "saveload_roundtrip",
+          "text": "import saveload_roundtrip as sl  # noqa: E402"
+        },
+        {
+          "path": "scripts/tests/test_saveload_baseline_defaults.py",
+          "line": 11,
           "evidence": "import",
           "reference": "saveload_roundtrip",
           "text": "import saveload_roundtrip as sl  # noqa: E402"
@@ -18311,7 +18411,15 @@
       "basename": "ab.py",
       "stem": "ab",
       "callers_by_basename": [],
-      "callers_by_stem": []
+      "callers_by_stem": [
+        {
+          "path": "scripts/tests/test_ab_vk_only.py",
+          "line": 13,
+          "evidence": "import",
+          "reference": "ab",
+          "text": "import ab  # noqa: E402"
+        }
+      ]
     },
     {
       "path": "tools/visual_verify/bless.py",
@@ -18379,7 +18487,7 @@
         },
         {
           "path": "tools/visual_verify/ab.py",
-          "line": 38,
+          "line": 42,
           "evidence": "command",
           "reference": "tools/visual_verify/capture.py",
           "text": "rc = subprocess.call(cmd, env=dict(os.environ, MC2_CURSOR_NO_PARK=\"1\"))"

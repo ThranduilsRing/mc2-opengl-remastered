@@ -722,7 +722,16 @@ def main():
                     help="capture this saved camera during its matching mission; repeat for day/night")
     ap.add_argument("--capture-out", type=Path)
     ap.add_argument("--quiet-sample", help="mission to run without optional diagnostic/audit gates")
+    ap.add_argument("--legacy-env", action="store_true",
+                    help="A/B against an OLDER exe: forward only the MC2_* gates in Gates/gate_table.json at --ref-commit (the older exe's "
+                         "commit), dropping the rest with a [LEGACY-ENV] line, so its strict config does not reject newer gates")
     args = ap.parse_args()
+    if args.legacy_env:
+        _legacy_ref = args.ref_commit or "HEAD"
+        _t = subprocess.run(["git", "-C", str(ROOT), "show", f"{_legacy_ref}:Gates/gate_table.json"], capture_output=True, text=True)  # background-launch: allow git show, console tool
+        if _t.returncode != 0:
+            sys.exit(f"--legacy-env: no Gates/gate_table.json at {_legacy_ref} (pass --ref-commit SHA of the older exe's commit)")
+        _smoke_runner.set_legacy_gates(_smoke_runner.legacy_gate_names(_t.stdout))
     if args.gpu:
         os.environ["MC2_HARNESS_GPU"] = args.gpu
     if args.capture_bookmark and not args.capture_out:

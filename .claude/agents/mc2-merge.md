@@ -13,3 +13,4 @@ First read and follow `A:/Games/mc2-ops/lane-rules.md` (JOBS in `A:/Games/mc2-op
 - Resolve conflicts by understanding both sides; never take one side blindly and never bypass a hook.
 - Verify vegetation still draws (capture or smoke evidence) and that the baseline chains (ratchets, smoke and determinism baselines) are intact at the merged HEAD.
 - Report what merged, what was skipped and why, then the Time and token budget table (lane-rules section 7). Commit locally; never push.
+- After the gate, at the merged HEAD, run `py -3 tools/repin_stale.py` (lists determinism and saveload baselines whose recorded exe is more than 50 commits behind HEAD; exit 1 when any is stale). When it lists some, re-pin them once here, not in a lane: deploy HEAD to an install, then `py -3 tools/repin_stale.py --repin --install <install> [--only mc2_01,mc2_03]` and commit the changed baselines as `merge follow-up: stale baselines re-pinned at merged HEAD`.

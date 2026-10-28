@@ -544,6 +544,34 @@ def plant_refusal(args) -> str | None:
     return None
 
 
+def previous_baseline(path: str) -> dict | None:
+    try:
+        with open(path, encoding="utf-8") as fh:
+            prev = json.load(fh)
+    except (OSError, ValueError):
+        return None
+    return prev if isinstance(prev, dict) else None
+
+
+def fill_from_previous(args, prev: dict | None) -> None:
+    """--baseline over an existing baseline: unset save_at / load_at / sim_speed / mask / first-save-only come from it, as check does."""
+    if not prev:
+        return
+    for attr in ("save_at", "load_at"):
+        if getattr(args, attr) is None and isinstance(prev.get(attr), int):
+            setattr(args, attr, prev[attr])
+    if not args.sim_speed and isinstance(prev.get("sim_speed"), int):
+        args.sim_speed = prev["sim_speed"]
+    comp = prev.get("comparison") or {}
+    if not args.mask and comp.get("mode") == "zero-masked-bytes-v1":
+        # The record keeps the mask classes, not its path: reuse the repo mask when it still says the same thing.
+        default = os.path.join(ROOT, "tools", "save_noise_mask.json")
+        if os.path.exists(default) and mask_policy(default) == comp:
+            args.mask = default
+    if prev.get("judged") == "first-save-only":
+        args.first_save_only = True
+
+
 def cmd_fixture(args) -> int:
     mask_policy(args.mask)
     path = baseline_path(args.mission)
@@ -558,6 +586,10 @@ def cmd_fixture(args) -> int:
         except (OSError, ValueError) as err:
             print(f"saveload_roundtrip check: malformed baseline {os.path.relpath(path, ROOT)} ({err}); record it again with --baseline")
             return 1
+    if args.cmd == "baseline":
+        base = previous_baseline(path)
+        fill_from_previous(args, base)
+        base = None
     refusal = frames_from_baseline(args, base)
     if refusal:
         print(f"saveload_roundtrip {args.cmd}: FAIL\n" + refusal)
