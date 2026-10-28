@@ -807,7 +807,7 @@ static bool quickReadSaveVersion( std::string_view filePath, long& versionNumber
 	// Rescan from the start: the window tail dropped above must not be lost.
 	in.clear();
 	in.seekg( 0, std::ios::beg );
-	const std::vector<char> whole( std::istreambuf_iterator<char>( in ), std::istreambuf_iterator<char>() );
+	const std::vector<char> whole( ( std::istreambuf_iterator<char>( in ) ), std::istreambuf_iterator<char>() );
 	return scanSaveVersion( std::string_view( whole.data(), whole.size() ), versionNumber );
 }
 
