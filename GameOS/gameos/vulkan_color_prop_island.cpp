@@ -270,7 +270,7 @@ struct ColorPropIsland : mc2vk::IslandState {
         int32_t baseVertex;
     };
     std::vector<LateDraw> lateDraws;
-    uint32_t lateParity = 0, lateDynCount = 0, lateOffsets[4]{};
+    uint32_t lateParity = 0, lateDynCount = 0, lateOffsets[4]{}, lateGroundOffsets[4]{};
 
     // Owned objects are declared in creation order and released in reverse by the destructor, while the device is alive (the engine context releases the
     // parked island ahead of the device). An image is declared before its view so the view is released first.
@@ -1865,6 +1865,7 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
     if (s->tier1 && s->wantLighting) dynOffsets[nDyn++] = static_cast<uint32_t>(lightSpan ? lightSpan.offset : mainSpan.offset);
     s->lateParity = par; s->lateDynCount = nDyn;
     std::copy_n(dynOffsets, nDyn, s->lateOffsets);
+    std::copy_n(ground->offsets.data(), 4, s->lateGroundOffsets);
     g_health.stageInstUs = usSince(tStage0);
     // VK-FLIP-FIELD-REPORT-1: the instance+UBO staging above is the per-frame prop
     // upload cost (a coarse zone for it would nest cleanly; kept as the usSince metric
@@ -1975,6 +1976,9 @@ extern "C" void mc2_vk_color_prop_island_late_fringe() {
     vkCmdSetViewport(cb,0,1,&vp); vkCmdSetScissor(cb,0,1,&scissor);
     mc2vk::infra::bind(cb,VK_PIPELINE_BIND_POINT_GRAPHICS,s->t1_fringePipe.get());
     vkCmdBindDescriptorSets(cb,VK_PIPELINE_BIND_POINT_GRAPHICS,s->playout.get(),0,1,&s->set[par],s->lateDynCount,s->lateOffsets);
+    // The fringe pipeline shares playout (set 1 = ground lighting); unbound set 1 is invalid and loses the device.
+    const VkDescriptorSet lateGround = s->groundLighting.set(par);
+    vkCmdBindDescriptorSets(cb,VK_PIPELINE_BIND_POINT_GRAPHICS,s->playout.get(),1,1,&lateGround,4,s->lateGroundOffsets);
     VkDeviceSize offset = 0; const VkBuffer vertexBuffer = s->vbo.get();
     vkCmdBindVertexBuffers(cb,0,1,&vertexBuffer,&offset);
     vkCmdBindIndexBuffer(cb,s->ibo.get(),0,VK_INDEX_TYPE_UINT32);

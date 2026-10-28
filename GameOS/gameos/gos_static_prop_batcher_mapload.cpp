@@ -130,6 +130,7 @@ void GpuStaticPropBatcher::onMapUnload() {
     s_materialGpuSidecarValid = false;
     s_sortedPacketOrder.clear(); s_alphaOffCmdCount = s_alphaOnCmdCount = 0;
     s_bucketsByType.clear(); s_persistentStaticStore.clear();
+    s_lodGroups.clear(); s_lodState.clear();
     s_persistentStaticGen = s_staticBaseBuiltGen = 0xFFFFFFFFFFFFFFFFull;
     s_staticBaseInstanceForType.clear();
     onMapLoad();
@@ -331,6 +332,38 @@ void GpuStaticPropBatcher::registerType(TG_TypeShape* typeShape, TG_TypeMultiSha
             ++s_seamRegLogged;
             mc2::fmt::print_err("[SEAMPROBE] sample=first400 registerType srcId={:016X} typeID={:d} numTris={:d} numVerts={:d} finalized={:d}\n", mc2::fmt::as_u64(typeShape ? typeShape->stableId().value : 0), mc2::fmt::as_u32(newTypeID), mc2::fmt::as_u32(numTris), mc2::fmt::as_u32(numVerts), mc2::fmt::as_i32(static_cast<int>(s_geometryFinalized)));
             fflush(stderr);
+        }
+    }
+}
+
+void GpuStaticPropBatcher::registerLodGroup(std::span<TG_TypeMultiShape* const> shapes, std::span<const float> distances) {
+    const int count = static_cast<int>(std::min(shapes.size(), distances.size()));
+    if (shapes.empty() || !shapes[0] || count < 2 || count > 3) return;
+    auto shapeTypes = [](TG_TypeMultiShape* ms) {
+        std::vector<uint32_t> ids;
+        for (long i = 0, n = ms->GetNumShapes(); i < n; ++i) {
+            TG_TypeNodePtr node = ms->GetTypeNode(i);
+            if (!node || node->GetNodeType() != SHAPE_NODE) continue;
+            const auto sid = static_cast<TG_TypeShape*>(node)->stableId();
+            ids.push_back(s_typeIndex.contains(sid) ? s_typeIndex.at(sid) : 0xFFFFFFFFu);
+        }
+        return ids;
+    };
+    const std::vector<uint32_t> base = shapeTypes(shapes[0]);
+    std::vector<std::vector<uint32_t>> lods(count);
+    for (int k = 1; k < count; ++k)
+        if (shapes[k] && shapes[k] != shapes[0] && distances[k] > 0.0f) lods[k] = shapeTypes(shapes[k]);
+    for (size_t n = 0; n < base.size(); ++n) {
+        if (base[n] == 0xFFFFFFFFu || s_lodGroups.count(base[n])) continue;
+        PropLodGroup g{{base[n], base[n], base[n]}, {0.0f, 0.0f, 0.0f}, 1};
+        for (int k = 1; k < count; ++k) {
+            // An unusable LOD k ends the chain: farther LODs would skip it.
+            if (lods[k].size() != base.size() || lods[k][n] == 0xFFFFFFFFu || distances[k] <= g.dist[k - 1]) break;
+            g.target[k] = lods[k][n]; g.dist[k] = distances[k]; g.count = k + 1;
+        }
+        if (g.count > 1) {
+            s_lodGroups.emplace(base[n], g);
+            MC2_DIAGFE(stderr, "[PROP_LOD v1] group base=%u lods=%d t1=%u t2=%u d1=%.0f d2=%.0f\n", base[n], g.count, g.target[1], g.target[2], g.dist[1], g.dist[2]);
         }
     }
 }

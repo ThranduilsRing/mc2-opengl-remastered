@@ -1,6 +1,6 @@
 {
  "version": 1,
- "count": 754,
+ "count": 755,
  "gates": [
   {"name": "MC2_ABL_ARG_GUARD", "kind": "Bool", "rule": "Lead1", "default": false, "owner": "code", "retireBy": "", "doc": "ABL crash-safety gates (ABL-OPCODE-BOUNDS-HARDEN) MC2_ABL_ARG_GUARD=1 - enables dispatch-bounds soft path + out-ptr null guards MC2_ABL_RUNTIME_SOFTFAIL=1 -...", "tokens": "", "range": null, "reread": false, "divergent": false, "smokePassthrough": true, "verified": true, "registry": null, "logTopic": ""},
   {"name": "MC2_ABL_ARG_GUARD_REPRO", "kind": "Bool", "rule": "Lead1", "default": false, "owner": "code", "retireBy": "", "doc": "", "tokens": "", "range": null, "reread": false, "divergent": false, "smokePassthrough": true, "verified": true, "registry": null, "logTopic": ""},
@@ -710,6 +710,7 @@
   {"name": "MC2_VK_PROP_FENCE_DEFER", "kind": "Bool", "rule": "Lead0Kill", "default": true, "owner": "vk", "retireBy": "", "doc": "", "tokens": "", "range": null, "reread": false, "divergent": false, "smokePassthrough": true, "verified": true, "registry": null, "logTopic": ""},
   {"name": "MC2_VK_PROP_LIGHT_PROBE", "kind": "Bool", "rule": "Presence", "default": false, "owner": "vk", "retireBy": "", "doc": "", "tokens": "", "range": null, "reread": false, "divergent": false, "smokePassthrough": false, "verified": true, "registry": null, "logTopic": ""},
   {"name": "MC2_VK_PROP_LIGHT_VERTEX_PROBE", "kind": "Bool", "rule": "Presence", "default": false, "owner": "vk", "retireBy": "", "doc": "", "tokens": "", "range": null, "reread": false, "divergent": false, "smokePassthrough": false, "verified": true, "registry": null, "logTopic": ""},
+  {"name": "MC2_VK_PROP_LOD", "kind": "Bool", "rule": "Lead0Kill", "default": true, "owner": "vk", "retireBy": "", "doc": "Distance LOD for model-override static props in the VK prop island; =0 draws LOD0 always.", "tokens": "", "range": null, "reread": false, "divergent": false, "smokePassthrough": true, "verified": true, "registry": null, "logTopic": ""},
   {"name": "MC2_VK_PROP_PACKET_DUMP", "kind": "String", "rule": "Std", "default": "", "owner": "vk", "retireBy": "", "doc": "", "tokens": "", "range": null, "reread": false, "divergent": false, "smokePassthrough": false, "verified": true, "registry": null, "logTopic": ""},
   {"name": "MC2_VK_PROP_PERF", "kind": "Bool", "rule": "Lead1", "default": false, "owner": "vk", "retireBy": "", "doc": "", "tokens": "", "range": null, "reread": false, "divergent": false, "smokePassthrough": true, "verified": true, "registry": null, "logTopic": ""},
   {"name": "MC2_VK_PROP_TEX_SLOTS", "kind": "Int", "rule": "Std", "default": 0, "owner": "vk", "retireBy": "", "doc": "Test knob: cap the per-object prop texture slot count (0 = device derived); exercises the more-maps-than-slots path.", "tokens": "", "range": null, "reread": false, "divergent": false, "smokePassthrough": false, "verified": true, "registry": null, "logTopic": ""},
