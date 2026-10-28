@@ -650,9 +650,47 @@ def regenerate_all(root, *, dry_run=False):
     return changed
 
 
+def pre_gate(root: str, exe: str | None = None) -> int:
+    """Everything that used to fail only after the gate started (W79: three reruns), run in order at the merged HEAD.
+    Every step runs; one verdict line at the end. Exit 0 = clean."""
+    py = [sys.executable, "-B"]
+    steps = [
+        ("regenerate-all", None),
+        ("background-launch", py + [os.path.join(root, "scripts", "check-background-launch.py"), "--quiet"]),
+        ("gate_gen", py + [os.path.join(root, "tools", "gate_gen.py"), "--check"]),
+        ("cxx17", py + [os.path.join(root, "tools", "cxx17_ratchet", "cxx17_ratchet.py"), "--check", "--worktree"]),
+    ]
+    exe = exe or os.path.join(root, "build64-ninja", "mc2.exe")
+    if os.path.isfile(exe):   # parse-level sanity of the headless smoke path; --resolve-only launches nothing
+        steps.append(("headless-smoke", py + [os.path.join(root, "scripts", "run_smoke.py"), "--headless", "--ticks", "10",
+                                              "--resolve-only", "--exe", exe]))
+    failed = []
+    for label, cmd in steps:
+        if cmd is None:
+            try:
+                changed = regenerate_all(root, dry_run=True)
+                rc, out = (1 if changed else 0), ("would change: " + ", ".join(changed))
+            except Stop as exc:
+                rc, out = 1, str(exc)
+        else:
+            r = run(root, cmd)
+            rc, out = r.returncode, "\n".join(lines(r.stdout)[-15:])
+        print(f"pre-gate: {label}: {'OK' if rc == 0 else 'FAIL'}", flush=True)
+        if rc:
+            print(out, flush=True)
+            failed.append(label)
+    print("PRE-GATE " + ("PASS" if not failed else "FAIL: " + ", ".join(failed))
+          + ("" if os.path.isfile(exe) else " (headless-smoke skipped: no exe)"))
+    return 1 if failed else 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("ref", nargs="?", help="lane tip: sha or branch")
+    ap.add_argument("--pre-gate", action="store_true",
+                    help="at the merged HEAD run regenerate-all (dry), check-background-launch, gate_gen --check, cxx17 and a no-game headless "
+                         "run_smoke row; all run, one PRE-GATE PASS/FAIL line; --root picks the tree")
+    ap.add_argument("--exe", help="with --pre-gate: exe for the headless row (default <root>/build64-ninja/mc2.exe, skipped if absent)")
     ap.add_argument("--batch", nargs="+", metavar="TIP",
                     help="merge these tips in order; baseline follow-ups after each, build + doctest verify once at the end")
     ap.add_argument("--message", help="merge commit subject; with --batch a template: {subject} = the tip's subject, {n} = its position")
@@ -740,6 +778,8 @@ def main(argv: list[str] | None = None) -> int:
         stream.reconfigure(errors="replace")
     ap = build_parser()
     args = ap.parse_args(argv)
+    if args.pre_gate:
+        return pre_gate(args.root, args.exe)
     if not args.regenerate_all and bool(args.ref) == bool(args.batch):
         ap.error("give one lane tip, or --batch with several")
     if args.regenerate_all and (args.ref or args.batch):
