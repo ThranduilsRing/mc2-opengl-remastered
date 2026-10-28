@@ -1,3 +1,4 @@
+#include "render_view.h"
 #include "Gates/preferences_legacy.h"
 #define FORCEGROUPBAR_CPP
 /*************************************************************************************************\
@@ -29,7 +30,7 @@ ForceGroupBar.cpp			: Implementation of the ForceGroupBar component.
 
 // Squad status: one short word for a mech's current activity, and a rank so a
 // squad card can show the highest-priority member status.
-static const char* moverStatusStr( Mover* m )
+const char* extractMoverHudStatus( Mover* m )
 {
 	if ( !m ) return "IDLE";
 	MechWarrior* w = m->getPilot();
@@ -119,8 +120,8 @@ void ForceGroupBar::renderOverviewIcons( Camera* eye, float alpha )
 	{
 		ForceGroupIcon* ic = icons[i];
 		if ( !ic || !ic->unit ) continue;
-		if ( ic->unit->isDestroyed() || ic->unit->isDisabled() ) continue;
-		glm::vec3 wp = ic->unit->getPosition();
+		if ( !mc2::render_view::hud().mover(ic->unit).active ) continue;
+		glm::vec3 wp = mc2::render_view::hud().mover(ic->unit).position;
 		// Project through the SAME GL clip matrix the GPU renders the mechs with
 		// (worldToClipGL). The default projectForScreenXY routes through the
 		// legacy projectZ/cameraToClip path, which disagrees with the GL render
@@ -185,7 +186,7 @@ void ForceGroupBar::renderOverviewIcons( Camera* eye, float alpha )
 	{
 		float ddx = chip[i].cx - chip[i].tx, ddy = chip[i].cy - chip[i].ty;
 		if ( ddx * ddx + ddy * ddy < 16.0f ) continue;	// not displaced
-		unsigned long lc = aBits | ( chip[i].ic->unit->getSelected() ? 0x004bff4b : 0x0000aa00 );
+		unsigned long lc = aBits | ( mc2::render_view::hud().mover(chip[i].ic->unit).selected ? 0x004bff4b : 0x0000aa00 );
 		gos_VERTEX ln[2];
 		for ( int k = 0; k < 2; ++k ) { ln[k].z = 0; ln[k].rhw = .5f; ln[k].argb = lc; ln[k].frgb = 0; ln[k].u = ln[k].v = 0; }
 		ln[0].x = chip[i].tx; ln[0].y = chip[i].ty;
@@ -211,7 +212,7 @@ void ForceGroupBar::renderOverviewIcons( Camera* eye, float alpha )
         drawOverviewIconCell(chip[i].ic, l, t, r, b, iconArgb);
 
 		// Short name label under the chip (de-overlapped already).
-		const char* nm = chip[i].ic->unit->getName();
+		const char* nm = mc2::render_view::hud().mover(chip[i].ic->unit).name.c_str();
 		if ( font && nm && nm[0] )
 		{
 			const int lx = static_cast<int>(( chip[i].cx - chipW * 0.5f ));
@@ -255,9 +256,9 @@ int ForceGroupBar::renderOverviewSquadCards( Camera* eye, float alpha,
 	{
 		ForceGroupIcon* ic = icons[i];
 		if ( !ic || !ic->unit ) continue;
-		if ( ic->unit->isDestroyed() || ic->unit->isDisabled() ) continue;
+		if ( !mc2::render_view::hud().mover(ic->unit).active ) continue;
 		int g = -1;
-		for ( int j = 0; j < MAXG; ++j ) if ( ic->unit->isInUnitGroup( j ) ) { g = j; break; }
+		for ( int j = 0; j < MAXG; ++j ) if ( (mc2::render_view::hud().mover(ic->unit).groups & (1u << j)) ) { g = j; break; }
 		if ( g >= 0 ) gMem[g][gCnt[g]++] = i;
 		else singles[nS++] = i;
 	}
@@ -273,7 +274,7 @@ int ForceGroupBar::renderOverviewSquadCards( Camera* eye, float alpha,
 		{
 			int ii = gMem[g][k];
 			c.mem[nm++] = ii;
-			ModernClipResult r = eye->projectModernClipGL( icons[ii]->unit->getPosition() );
+			ModernClipResult r = eye->projectModernClipGL( mc2::render_view::hud().mover(icons[ii]->unit).position );
 			if ( r.admit && r.clip.w > 0.05f )
 			{
 				sx += vax + ( r.clip.x / r.clip.w * 0.5f + 0.5f ) * vmx;
@@ -288,7 +289,7 @@ int ForceGroupBar::renderOverviewSquadCards( Camera* eye, float alpha,
 	for ( int s = 0; s < nS; ++s )
 	{
 		int ii = singles[s];
-		ModernClipResult r = eye->projectModernClipGL( icons[ii]->unit->getPosition() );
+		ModernClipResult r = eye->projectModernClipGL( mc2::render_view::hud().mover(icons[ii]->unit).position );
 		if ( !r.admit || r.clip.w <= 0.05f ) continue;
 		Card& c = cards[nCards];
 		c.fg = -1; c.nm = 1; c.mem[0] = ii;
@@ -371,7 +372,7 @@ int ForceGroupBar::renderOverviewSquadCards( Camera* eye, float alpha,
 		{
 			char title[24];
 			if ( cards[i].fg >= 0 ) mc2::fmt::to_buf(title, "SQUAD {:d}", mc2::fmt::as_i32(cards[i].fg));
-			else { const char* nm = icons[cards[i].mem[0]]->unit->getName(); strncpy( title, nm ? nm : "UNIT", 20 ); title[20] = 0; }
+			else { const char* nm = mc2::render_view::hud().mover(icons[cards[i].mem[0]]->unit).name.c_str(); strncpy( title, nm ? nm : "UNIT", 20 ); title[20] = 0; }
 			gos_TextSetAttributes( font, aBits | 0x00eaf6ff, 1.0f, false, true, false, false );
 			gos_TextSetPosition( static_cast<int>(( l + pad )), static_cast<int>(( t + 2 )) );
 			gos_TextDraw( title );
@@ -380,7 +381,7 @@ int ForceGroupBar::renderOverviewSquadCards( Camera* eye, float alpha,
 			const char* best = "IDLE"; int bestRank = -1;
 			for ( int m = 0; m < cards[i].nm; m++ )
 			{
-				const char* s = moverStatusStr( icons[cards[i].mem[m]]->unit );
+				const char* s = mc2::render_view::hud().mover(icons[cards[i].mem[m]]->unit).orderStatus;
 				int rk = statusRank( s );
 				if ( rk > bestRank ) { bestRank = rk; best = s; }
 			}
@@ -737,7 +738,7 @@ void ForceGroupBar::render()
 
 	for ( int i = 0; i < MAX_ICONS; i++ )
 	{
-		if (forceNumFlashes && icons[i] && icons[i]->unit->canJump())
+		if (forceNumFlashes && icons[i] && mc2::render_view::hud().mover(icons[i]->unit).canJump)
 		{
 			if ( forceFlashTime > .25f )
 			{

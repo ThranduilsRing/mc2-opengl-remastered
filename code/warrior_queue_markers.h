@@ -15,7 +15,8 @@
 namespace mc2 {
 
 template <class Marker, std::size_t N>
-using QueueMarkerArray = std::array<std::unique_ptr<Marker>, N>;
+// The HUD retains marker appearances until the next quiescent extract, even if a tick dequeues their order.
+using QueueMarkerArray = std::array<std::shared_ptr<Marker>, N>;
 
 // The only code that clears the slots wholesale (clear, restore, rebind, destroy).
 template <class Marker, std::size_t N>

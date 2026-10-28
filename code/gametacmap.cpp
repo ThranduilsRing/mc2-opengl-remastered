@@ -1,3 +1,4 @@
+#include "render_view.h"
 #include <algorithm>
 #include "Gates/preferences_legacy.h"
 #include "../GameOS/gameos/ui_texture.h"
@@ -246,7 +247,7 @@ void GameTacMap::render()
 	//-----------------------------------------------------------
 	// Render the objective markers
 	long count = 0;
-	for ( CObjective* pObjective : Team::home->objectives )
+	for (const auto& pObjective : mc2::render_view::hud().objectives)
 	{
 		//We are there.  Start flashing.
 		if ((objectiveAnimationId == count) && objectiveNumFlashes)
@@ -259,7 +260,7 @@ void GameTacMap::render()
 			}
 			else if ( objectiveFlashTime > 0.25f)
 			{
-				pObjective->RenderMarkers(this, 0);
+				CObjective::RenderMarkers(pObjective, this, 0);
 			}
 
 			if (objectiveNumFlashes == 0)
@@ -270,7 +271,7 @@ void GameTacMap::render()
 		}
 		else
 		{
-			pObjective->RenderMarkers(this, 0);
+			CObjective::RenderMarkers(pObjective, this, 0);
 		}
 
 		count++;
@@ -335,7 +336,28 @@ void GameTacMap::render()
 
 // factored VERBATIM from the legacy render() (slice E) — shared by the legacy
 // draw above and the ImGui overlay path. Arrays are caller-sized MAX_MOVERS.
-int GameTacMap::collectBlips( unsigned long* colors, unsigned long* ringColors,
+void GameTacMap::extractHudBlips()
+{
+    unsigned long colors[MAX_MOVERS], rings[MAX_MOVERS], ranges[MAX_MOVERS];
+    glm::vec3 positions[MAX_MOVERS]; bool selected[MAX_MOVERS];
+    const int count = extractBlips(colors, rings, positions, ranges, selected);
+    auto& rows = mc2::render_view::hud().blips;
+    rows.clear();
+    for (int i = 0; i < count; ++i) rows.push_back({positions[i], colors[i], rings[i], ranges[i], selected[i]});
+}
+
+int GameTacMap::collectBlips(unsigned long* colors, unsigned long* rings, glm::vec3* positions,
+    unsigned long* ranges, bool* selected)
+{
+    const auto& rows = mc2::render_view::hud().blips;
+    for (size_t i = 0; i < rows.size(); ++i) {
+        colors[i] = rows[i].color; rings[i] = rows[i].ring; positions[i] = rows[i].position;
+        ranges[i] = rows[i].range; selected[i] = rows[i].selected;
+    }
+    return static_cast<int>(rows.size());
+}
+
+int GameTacMap::extractBlips( unsigned long* colors, unsigned long* ringColors,
 							  glm::vec3* positions, unsigned long* ranges,
 							  bool* selected )
 {
@@ -537,7 +559,7 @@ bool GameTacMap::renderImGui()
 	//      incl. animate() flash windowing. Non-NAV = shadowed marker text at
 	//      worldToTacMap pos; NAV draws nothing on the tac map.
 	long objCount = 0;
-	for ( CObjective* o : Team::home->objectives )
+	for (const auto& o : mc2::render_view::hud().objectives)
 	{
 		bool draw = true;
 		if ( ( objectiveAnimationId == objCount ) && objectiveNumFlashes )
@@ -556,16 +578,16 @@ bool GameTacMap::renderImGui()
 		}
 		if ( draw )
 		{
-			if ( !o->IsResolved() && o->DisplayMarker() && o->IsActive()
-				 && o->DisplayMarker() != NAV )
+			if ( o.visible
+				 && o.marker != NAV )
 			{
 				glm::vec3 objectivePos;
-				objectivePos.x = o->MarkerX();
-				objectivePos.y = o->MarkerY();
+				objectivePos.x = o.position.x;
+				objectivePos.y = o.position.y;
 				objectivePos.z = 0.f;
 				gos_VERTEX pos;
 				worldToTacMap( objectivePos, pos );
-				const char* txt = o->MarkerText();
+				const char* txt = o.markerText.c_str();
 				const ImVec2 ts = ImGui::CalcTextSize( txt );
 				ImVec2 c = toPanel( pos.x, pos.y );
 				c.x -= ts.x * 0.5f; c.y -= ts.y * 0.5f;

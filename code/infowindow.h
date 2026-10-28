@@ -68,6 +68,7 @@ class InfoWindow
 		void setUnit( Mover* pNewUnit );
 		void update();
 		void render();
+		void extractHudSnapshot();
 
 		// INFO-IMGUI-SLICE-1: gate + ImGui panel. Default OFF -> legacy path.
 		static bool imguiInfoEnabled();
@@ -98,8 +99,23 @@ class InfoWindow
 		// Returns false when the section is hidden (enemy / non-mech /
 		// disabled / destroyed / no pilot) — legacy then skips it exactly as
 		// the old inline condition did.
-		bool gatherPilotRows( InfoPilotRows& out ) const;
 
+        struct HudInfo {
+            std::string name;
+            float health = 0;
+            int weaponCount = 0;
+            unsigned char names[60]{};
+            char disabled[60][2]{}, ranges[60]{};
+            long ammo[60]{};
+            bool draw[4]{}, pilotVisible = false;
+            char equipment[4]{};
+            unsigned char equipmentMaster[4]{};
+            std::vector<InfoLoadoutRow> loadout;
+            InfoPilotRows pilot{};
+        } hudInfo;
+        int extractWeaponRows(unsigned char names[60], char disabled[60][2], long ammo[60], char ranges[60], bool draw[4]) const;
+        void extractLoadoutRows(std::vector<InfoLoadoutRow>& out) const;
+        bool extractPilotRows(InfoPilotRows& out) const;
 		float		scrollPos;
 		float		scrollLength;
 		float		infoLength;

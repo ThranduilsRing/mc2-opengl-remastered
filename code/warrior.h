@@ -15,6 +15,7 @@
 #include "warrior_types.h"
 #include <array>
 #include <optional>
+namespace mc2::render_view { struct HudMover; }
 
 #ifndef MCLIB_H
 #include"mclib.h"
@@ -1066,6 +1067,7 @@ class MechWarrior {
 		}
 
 		void drawWaypointPath();
+		void extractHudPaths(mc2::render_view::HudMover& row);
 		void drawOverviewMovePath( unsigned long color );
 		bool getMoveDestination( glm::vec3& out );
 		void updateDrawWaypointPath();

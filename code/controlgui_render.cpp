@@ -1,3 +1,4 @@
+#include "render_view.h"
 // ControlGui: the sensor / overview / weapon-view overlays and ControlGui::render.
 // Declared in the class headers; shared names in controlgui_internal.h.
 #include <algorithm>
@@ -97,56 +98,21 @@ static void drawTowerGlyph( Camera* eye, const glm::vec3& wp, unsigned long col 
 
 static void renderSensorView( Camera* eye )
 {
-	if ( !eye || !Team::home || !ObjectManager ) return;
+	if (!eye || !mc2::render_view::hud().home) return;
 	const unsigned long aBits = 0xcc000000;	// ~80% alpha
 	bool prevExempt = gos_GetHudScaleExempt();
 	gos_SetHudScaleExempt( true );
 
-	// One ring per unit, from its own sensor (same data the minimap uses):
-	// green = friendly, red = detected enemy. Radius is the world-unit range.
-	for ( int i = 0; i < ObjectManager->numMovers; i++ )
-	{
-		MoverPtr m = ObjectManager->getMover( i );
-		if ( !m || !m->getExists() || m->isDestroyed() || m->isDisabled() ) continue;
-		SensorSystem* es = m->getSensorSystem();
-		float rangeMeters = es ? es->getRange() : 0.0f;	// sensor range, in meters
-		if ( rangeMeters < 10.0f || es->broken ) continue;	// suppress units with no real sensor
-		if ( m->getStatus() == OBJECT_STATUS_SHUTDOWN ) continue;
-
-		float radiusWorld = rangeMeters * worldUnitsPerMeter;	// ground ring radius (world units)
-
-		if ( m->getTeamId() == Team::home->id )
-		{
-			drawSensorRing( eye, m->getPosition(), radiusWorld, 0x0000cc00, aBits );	// friendly green
-		}
-		else
-		{
-			long contactStatus = m->getContactStatus( Team::home->getId(), true );
-			if ( contactStatus == CONTACT_NONE ) continue;	// only detected enemies
-			drawSensorRing( eye, m->getPosition(), radiusWorld, 0x00ff2020, aBits );	// enemy red
-		}
-	}
-
-	// Friendly NON-MOVER sensors (sensor towers etc.): same team-sensor list
-	// the coverage tint reads. Cyan ring + tower glyph so the source reads on
-	// the tac map.
-	TeamSensorSystem* sys = SensorManager ? SensorManager->getTeamSensor( Team::home->getId() ) : 0;
-	if ( sys )
-	{
-		const unsigned long kTowerCyan = 0x0033ddff;
-		for ( int j = 0; j < sys->numSensors; ++j )
-		{
-			SensorSystem* ps = sys->sensors[j];
-			if ( !ps || ps->broken || !ps->owner ) continue;
-			if ( ps->owner->isMover() ) continue;	// movers handled above
-			if ( ps->owner->isDestroyed() ) continue;
-			float rangeMeters = ps->getRange();
-			if ( rangeMeters < 10.0f ) continue;
-			glm::vec3 tp = ps->owner->getPosition();
-			drawSensorRing( eye, tp, rangeMeters * worldUnitsPerMeter, kTowerCyan, aBits );
-			drawTowerGlyph( eye, tp, aBits | kTowerCyan );
-		}
-	}
+    for (const auto& row : mc2::render_view::hud().movers) {
+        if (!row.active || row.sensorRange < 10 || row.sensorBroken || row.shutdown) continue;
+        if (!row.friendly && !row.detected) continue;
+        drawSensorRing(eye, row.position, row.sensorRange * worldUnitsPerMeter,
+            row.friendly ? 0x0000cc00 : 0x00ff2020, aBits);
+    }
+    for (const auto& row : mc2::render_view::hud().sensors) {
+        drawSensorRing(eye, row.position, row.range * worldUnitsPerMeter, 0x0033ddff, aBits);
+        drawTowerGlyph(eye, row.position, aBits | 0x0033ddff);
+    }
 
 	gos_SetHudScaleExempt( prevExempt );
 }
@@ -158,23 +124,15 @@ static void renderSensorView( Camera* eye )
 // ranges. Reliable (plain dark quads), no stencil / RTT.
 static void renderOverviewCoverageTint( Camera* eye, float alpha )
 {
-	if ( !eye || alpha <= 0.0f || !Team::home )
+	if (!eye || alpha <= 0.0f || !mc2::render_view::hud().home)
 		return;
 
 	struct Cov { float x, y, r; };
 	Cov cov[256];
 	int nc = 0;
-	TeamSensorSystem* sys = SensorManager ? SensorManager->getTeamSensor( Team::home->getId() ) : 0;
-	if ( sys )
-		for ( int j = 0; j < sys->numSensors && nc < 256; ++j )
-		{
-			SensorSystem* ps = sys->sensors[j];
-			if ( !ps || ps->broken ) continue;
-			float r = ps->getRange();
-			if ( r < 1.0f || !ps->owner || ps->owner->isDestroyed() ) continue;
-			glm::vec3 p = ps->owner->getPosition();
-			cov[nc].x = p.x; cov[nc].y = p.y; cov[nc].r = r; nc++;
-		}
+    for (const auto& row : mc2::render_view::hud().coverage) {
+        cov[nc].x = row.position.x; cov[nc].y = row.position.y; cov[nc].r = row.range; ++nc;
+    }
 
 	const float D    = 0.30f * alpha;	// max darkness in unsighted areas
 	const int   sw   = Environment.screenWidth;
@@ -229,7 +187,7 @@ static void renderOverviewCoverageTint( Camera* eye, float alpha )
 // signature/shutdown gating the tac map uses.
 static void renderOverviewEnemyMarkers( Camera* eye, float alpha )
 {
-	if ( !eye || alpha <= 0.0f || !Team::home )
+	if (!eye || alpha <= 0.0f || !mc2::render_view::hud().home)
 		return;
 
 	unsigned long aB = static_cast<unsigned long>(( alpha * 255.0f ));
@@ -246,29 +204,13 @@ static void renderOverviewEnemyMarkers( Camera* eye, float alpha )
 	bool prevExempt = gos_GetHudScaleExempt();
 	gos_SetHudScaleExempt( true );
 
-	for ( int i = 0; i < ObjectManager->numMovers; i++ )
-	{
-		MoverPtr mover = ObjectManager->getMover( i );
-		if ( !(mover && mover->getExists() && !(mover->isDestroyed() || mover->isDisabled())) )
-			continue;
-		if ( mover->getTeamId() == Team::home->id )
-			continue;	// friendlies are the icon overlay
-
-		long contactStatus = mover->getContactStatus( Team::home->getId(), true );
-		if ( !( (contactStatus != CONTACT_NONE)
-		        && (mover->getStatus() != OBJECT_STATUS_SHUTDOWN)
-		        && (!mover->hasNullSignature())
-		        && (mover->getEcmRange() <= 0.0f) ) )
-			continue;	// undetected / ECM / null-sig / shut down
-
-		unsigned long rgb = 0x00ff0000;	// enemy red
-		if ( mover->getTeam() && mover->getTeam()->isNeutral( Team::home ) )
-			rgb = 0x000000ff;		// neutral blue
-		if ( mover->getSelected() )
-			rgb |= 0x003f3f3f;		// brighten when selected
-		unsigned long col = aBits | rgb;
-
-		glm::vec3 wp = mover->getPosition();
+    for (const auto& mover : mc2::render_view::hud().movers)
+    {
+        if (!mover.active || mover.friendly || !mover.enemyMarker) continue;
+        unsigned long rgb = mover.neutral ? 0x000000ff : 0x00ff0000;
+        if (mover.selected) rgb |= 0x003f3f3f;
+        unsigned long col = aBits | rgb;
+        glm::vec3 wp = mover.position;
 		ModernClipResult r = eye->projectModernClipGL( wp );
 		if ( !r.admit || r.clip.w <= 0.05f )
 			continue;
@@ -394,7 +336,7 @@ static void drawWeaponBandUnion( Camera* eye, const glm::vec3* centers,
 
 static void renderWeaponView( Camera* eye )
 {
-	if ( !eye || !Team::home || !ObjectManager ) return;
+	if (!eye || !mc2::render_view::hud().home) return;
 	static const unsigned long kBandColor[3] = { 0x00ffe24b, 0x00ff9b30, 0x00ff5a3a }; // S/M/L
 	static const int kBandWR[3] = { 0 /*SHORT*/, 1 /*MEDIUM*/, 2 /*LONG*/ };
 	const unsigned long aBits = 0xb0000000;
@@ -404,24 +346,13 @@ static void renderWeaponView( Camera* eye )
 	glm::vec3 centers[3][kMax];
 	bool sel[3][kMax];
 	int n[3] = { 0, 0, 0 };
-	for ( int i = 0; i < ObjectManager->numMovers; i++ )
-	{
-		MoverPtr m = ObjectManager->getMover( i );
-		if ( !m || !m->getExists() || m->isDestroyed() || m->isDisabled() ) continue;
-		if ( m->getTeamId() != Team::home->id ) continue;
-		// Own units only: allied/neutral same-team units (e.g. mission objects
-		// far off in the fog) must not leak their firing ranges onto the map.
-		if ( !m->getCommander() || m->getCommander()->getId() != Commander::home->getId() ) continue;
-		bool band[3];
-		m->getWeaponBandsPresent( band );
-		for ( int b = 0; b < 3; b++ )
-			if ( band[b] && n[b] < kMax )
-			{
-				centers[b][n[b]] = m->getPosition();
-				sel[b][n[b]] = m->getSelected();
-				n[b]++;
-			}
-	}
+    for (const auto& m : mc2::render_view::hud().movers) {
+        if (!m.active || !m.friendly || !m.own) continue;
+        for (int b = 0; b < 3; ++b)
+            if (m.weaponBands[b] && n[b] < kMax) {
+                centers[b][n[b]] = m.position; sel[b][n[b]] = m.selected; ++n[b];
+            }
+    }
 
 	bool prevExempt = gos_GetHudScaleExempt();
 	gos_SetHudScaleExempt( true );
@@ -533,9 +464,98 @@ static void updateAndRenderFormationLine( Camera* eye )
 	gos_SetHudScaleExempt( prevExempt );
 }
 
+extern const char* extractMoverHudStatus(Mover* mover);
+
+void ControlGui::extractHudSnapshot()
+{
+    auto& hud = mc2::render_view::hud();
+    hud.movers.clear(); hud.roster.clear(); hud.sensors.clear(); hud.coverage.clear(); hud.objectives.clear();
+    hud.home = Team::home != nullptr;
+    hud.timeLimit = mission ? static_cast<float>(mission->m_timeLimit) : 0;
+    hud.resourcePoints = LogisticsData::instance ? LogisticsData::instance->getResourcePoints() : 0;
+    hud.ended = mission && mission->terminationCounterStarted;
+    hud.objectiveStatus = OS_SUCCESSFUL;
+    hud.objectiveCount = Team::home ? Team::home->objectives.Count() : 0;
+    if (!Team::home || !ObjectManager) return;
+    for (int i = 0; i < ObjectManager->numMovers; ++i) {
+        Mover* m = ObjectManager->getMover(i);
+        if (!m) continue;
+        auto& row = hud.movers.emplace_back();
+        row.object = m; row.position = m->getPosition();
+        row.active = m->getExists() && !m->isDestroyed() && !m->isDisabled();
+        row.friendly = m->getTeamId() == Team::home->id;
+        row.own = m->getCommander() && m->getCommander()->getId() == Commander::home->getId();
+        row.neutral = m->getTeam() && m->getTeam()->isNeutral(Team::home);
+        row.selected = m->getSelected(); row.onGui = m->isOnGUI();
+        row.shutdown = m->getStatus() == OBJECT_STATUS_SHUTDOWN;
+        row.canJump = m->canJump();
+        row.name = m->getName();
+        row.health = m->getAppearance() ? m->getAppearance()->barStatus : 0;
+        // Object draws used to set barStatus before the HUD. Read that same pending value at extract.
+        for (const auto& view : mc2::render_view::list().movers)
+            if (view.obj == m && (view.mode == mc2::render_view::Mode::Full || view.mode == mc2::render_view::Mode::Own)) {
+                row.health = view.barStatus; break;
+            }
+        for (int g = 0; g < 10; ++g) if (m->isInUnitGroup(g)) row.groups |= 1u << g;
+        auto* sensor = m->getSensorSystem();
+        row.sensorRange = sensor ? sensor->getRange() : 0;
+        row.sensorBroken = !sensor || sensor->broken;
+        const long contact = m->getContactStatus(Team::home->getId(), true);
+        row.detected = contact != CONTACT_NONE;
+        row.enemyMarker = row.detected && !row.shutdown && !m->hasNullSignature() && m->getEcmRange() <= 0;
+        m->getWeaponBandsPresent(row.weaponBands);
+        glm::vec3 destination;
+        row.moving = m->getMoveDestination(destination);
+        if (auto* pilot = m->getPilot()) {
+            row.pilot = pilot; row.pilotName = pilot->getName();
+            row.messagePlaying = pilot->getMessagePlaying();
+            pilot->extractHudPaths(row);
+            row.orderStatus = extractMoverHudStatus(m);
+        }
+    }
+    for (long i = 0; i < Team::home->getRosterSize(); ++i) {
+        const auto* object = Team::home->getMover(i);
+        for (size_t j = 0; j < hud.movers.size(); ++j)
+            if (hud.movers[j].object == object) { hud.roster.push_back(j); break; }
+    }
+    if (auto* sys = SensorManager ? SensorManager->getTeamSensor(Team::home->getId()) : nullptr)
+        for (int i = 0; i < sys->numSensors; ++i) {
+            auto* sensor = sys->sensors[i];
+            if (!sensor || sensor->broken || !sensor->owner || sensor->owner->isDestroyed()) continue;
+            const float range = sensor->getRange();
+            if (range >= 1 && hud.coverage.size() < 256)
+                hud.coverage.push_back({sensor->owner->getPosition(), range, false});
+            if (!sensor->owner->isMover() && range >= 10)
+                hud.sensors.push_back({sensor->owner->getPosition(), range, true});
+        }
+    for (CObjective* objective : Team::home->objectives) {
+        auto& row = hud.objectives.emplace_back();
+        row.object = objective;
+        row.position = {objective->MarkerX(), objective->MarkerY(), 0};
+        row.marker = objective->DisplayMarker(); row.markerText = objective->MarkerText();
+        row.visible = !objective->IsResolved() && row.marker && objective->IsActive();
+        row.active = objective->IsActive(); row.hidden = objective->IsHiddenTrigger();
+        row.primary = objective->Priority() == 1;
+        row.status = objective->observedStatus();
+        row.points = objective->ResourcePoints(); row.description = objective->LocalizedDescription();
+        row.color = row.status == OS_FAILED ? 0xffc61c00 : row.status == OS_SUCCESSFUL ? 0xff41c700 : 0xffffc600;
+        if (objective->ActivateOnFlag() && mission->actualTime - objective->ActivationTime() < 20
+            && static_cast<int>(2 * (mission->actualTime - objective->ActivationTime())) % 2 == 0)
+            row.color = 0xffffffff;
+    }
+    // Display the status resolved by the tick; Status() evaluates conditions and dispatches actions.
+    for (const auto& row : hud.objectives) {
+        if (!row.primary) continue;
+        const int status = row.active ? row.status : OS_UNDETERMINED;
+        if (status == OS_FAILED) { hud.objectiveStatus = OS_FAILED; break; }
+        if (status == OS_UNDETERMINED) hud.objectiveStatus = OS_UNDETERMINED;
+    }
+    tacMap.extractHudBlips();
+    if (infoWnd) infoWnd->extractHudSnapshot();
+}
+
 void ControlGui::render( bool bPaused )
 {
-    mc2::overlap::assertSimQuiescent("ControlGui::render");
 	if (drawGUIOn)
 	{
 		gos_SetRenderState( gos_State_AlphaMode, gos_Alpha_AlphaInvAlpha );
@@ -584,20 +604,20 @@ void ControlGui::render( bool bPaused )
 			static const unsigned long kSquadColors[10] = {
 				0x004bff4b, 0x004b9bff, 0x00ffd24b, 0x00ff7b4b, 0x00c77bff,
 				0x004bffe0, 0x00ff4b9b, 0x009bff4b, 0x00b0b0ff, 0x00ffffff };
-			if ( Team::home )
+			if ( mc2::render_view::hud().home )
 			{
 				// Per-mech arrows fade with the icon stage.
 				if ( iconW > 0.01f )
 				{
 					unsigned long pa = static_cast<unsigned long>(( iconW * 255.0f )) << 24;
-					for ( long i = 0; i < Team::home->getRosterSize(); i++ )
+					for (size_t index : mc2::render_view::hud().roster)
 					{
-						Mover* m = static_cast<Mover*>(Team::home->getMover( i ));
-						if ( !m || !m->isOnGUI() || m->isDestroyed() || m->isDisabled() ) continue;
-						if ( m->getCommander()->getId() != Commander::home->getId() ) continue;
+						const auto& m = mc2::render_view::hud().movers[index];
+						if ( !m.onGui || !m.active ) continue;
+						if ( !m.own ) continue;
 						int g = -1;
-						for ( int j = 0; j < 10; ++j ) if ( m->isInUnitGroup( j ) ) { g = j; break; }
-						m->drawOverviewMovePath( pa | ( ( g >= 0 ) ? kSquadColors[g] : 0x0000cc00 ) );
+						for ( int j = 0; j < 10; ++j ) if ( (m.groups & (1u << j)) ) { g = j; break; }
+						mc2::render_view::drawHudOverviewPath(m,  pa | ( ( g >= 0 ) ? kSquadColors[g] : 0x0000cc00 ) );
 					}
 				}
 				// Single squad arrow per force group, fading with the card stage:
@@ -608,16 +628,16 @@ void ControlGui::render( bool bPaused )
 					unsigned long pa = static_cast<unsigned long>(( cardViz * 255.0f )) << 24;
 					for ( int g = 0; g < 10; ++g )
 					{
-						for ( long i = 0; i < Team::home->getRosterSize(); i++ )
+						for (size_t index : mc2::render_view::hud().roster)
 						{
-							Mover* m = static_cast<Mover*>(Team::home->getMover( i ));
-							if ( !m || !m->isOnGUI() || m->isDestroyed() || m->isDisabled() ) continue;
-							if ( m->getCommander()->getId() != Commander::home->getId() ) continue;
-							if ( !m->isInUnitGroup( g ) ) continue;
+							const auto& m = mc2::render_view::hud().movers[index];
+							if ( !m.onGui || !m.active ) continue;
+							if ( !m.own ) continue;
+							if ( !(m.groups & (1u << g)) ) continue;
 							glm::vec3 d;
-							if ( m->getMoveDestination( d ) )	// this member has a move
+							if ( m.moving )	// this member has a move
 							{
-								m->drawOverviewMovePath( pa | kSquadColors[g] );
+								mc2::render_view::drawHudOverviewPath(m,  pa | kSquadColors[g] );
 								break;	// only the leader's path for the squad
 							}
 						}
@@ -640,9 +660,9 @@ void ControlGui::render( bool bPaused )
 				hits[hI].r = raw[hI].r; hits[hI].b = raw[hI].b;
 			}
 			g_tacticalOverview.setCardHits( std::span(hits).first(nh) );
-			if ( markerA > 0.01f && Team::home )
-				for ( CObjective* pObjective : Team::home->objectives )
-					pObjective->RenderOverviewMarker( eye, markerA );
+			if ( markerA > 0.01f && mc2::render_view::hud().home )
+				for (const auto& row : mc2::render_view::hud().objectives)
+                    CObjective::RenderOverviewMarker(row, eye, markerA);
 		}
 
 		// slice C site 1 (render dispatch): registry under MC2_HUD_IMGUI_TABS,
@@ -723,10 +743,10 @@ void ControlGui::render( bool bPaused )
 	if (drawGUIOn)
 	{
 		// draw the mission timer if we have one
-		if ( mission->m_timeLimit > 0 )
+		if ( mc2::render_view::hud().timeLimit > 0 )
 		{
 	
-			float fTime = static_cast<float>(mission->m_timeLimit) - scenarioTime;
+			float fTime = static_cast<float>(mc2::render_view::hud().timeLimit) - mc2::render_view::clock().scenarioTime;
 			int time = static_cast<int>(fTime);
 	
 			if ( time <= 120  && !twoMinWarningPlayed )
@@ -784,8 +804,8 @@ void ControlGui::render( bool bPaused )
 			pauseWnd->render();
 	
 	
-		if ((!MPlayer && (Team::home->objectives.Count() != 0) && (Team::home->objectives.Status() != OS_UNDETERMINED))
-			|| mission->terminationCounterStarted)
+		if ((!MPlayer && (mc2::render_view::hud().objectiveCount != 0) && (mc2::render_view::hud().objectiveStatus != OS_UNDETERMINED))
+			|| mc2::render_view::hud().ended)
 		{
 			if ( !resultsTime )
 				resultsTime = .001f;

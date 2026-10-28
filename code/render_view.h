@@ -8,9 +8,12 @@
 
 #include <cstdint>
 #include <vector>
+#include <string>
+#include <memory>
 #include "math/glm_config.h"
 
 class GameObject;
+class BldgAppearance;
 
 namespace mc2::render_view {
 
@@ -52,6 +55,61 @@ struct RenderList {
     std::vector<RenderView> terrain, movers, other;
     void clear() { terrain.clear(); movers.clear(); other.clear(); }
 };
+
+// G7b K4: copied at the render extract; pointers are identity keys only.
+struct HudMover {
+    const GameObject* object = nullptr;
+    const void* pilot = nullptr;
+    glm::vec3 position{};
+    std::string name, pilotName;
+    float health = 0, sensorRange = 0;
+    uint16_t groups = 0;
+    bool active = false, friendly = false, own = false, neutral = false;
+    bool selected = false, onGui = false, shutdown = false, canJump = false;
+    bool messagePlaying = false, sensorBroken = true, detected = false, enemyMarker = false, moving = false;
+    bool weaponBands[3]{};
+    const char* orderStatus = "IDLE";
+    std::vector<glm::vec3> waypoints, overviewPath;
+    std::vector<std::shared_ptr<BldgAppearance>> waypointMarkers;
+    glm::vec3 waypointStart{};
+    bool waypointFirst = false;
+};
+struct HudSensor { glm::vec3 position{}; float range = 0; bool tower = false; };
+struct HudObjective {
+    const void* object = nullptr;
+    glm::vec3 position{};
+    std::string markerText, description;
+    bool visible = false, active = false, hidden = false, primary = false;
+    int marker = 0, status = 0;
+    long points = 0, color = 0;
+};
+struct HudBlip { glm::vec3 position{}; unsigned long color = 0, ring = 0, range = 0; bool selected = false; };
+struct HudVtol { void* appearance = nullptr; void* dust = nullptr; void* beam = nullptr; glm::vec3 position{}; };
+struct HudSnapshot {
+    std::vector<HudMover> movers;
+    std::vector<size_t> roster;
+    std::vector<HudSensor> sensors, coverage;
+    std::vector<HudObjective> objectives;
+    std::vector<HudBlip> blips;
+    std::vector<HudVtol> vtols;
+    bool home = false, ended = false;
+    int objectiveStatus = 0, objectiveCount = 0;
+    long resourcePoints = 0;
+    float timeLimit = 0;
+    const HudMover& mover(const GameObject* object) const {
+        for (const auto& row : movers) if (row.object == object) return row;
+        static const HudMover empty;
+        return empty;
+    }
+    const HudObjective& objective(const void* object) const {
+        for (const auto& row : objectives) if (row.object == object) return row;
+        static const HudObjective empty;
+        return empty;
+    }
+};
+HudSnapshot& hud();
+void drawHudWaypoints(const HudMover& row);
+void drawHudOverviewPath(const HudMover& row, unsigned long color);
 
 RenderClock& clock();
 RenderList& list();

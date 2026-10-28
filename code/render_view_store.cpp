@@ -7,9 +7,11 @@ namespace mc2::render_view {
 namespace {
 RenderClock g_clock;
 RenderList g_list;
+HudSnapshot g_hud;
 }  // namespace
 
 RenderClock& clock() { return g_clock; }
 RenderList& list() { return g_list; }
+HudSnapshot& hud() { return g_hud; }
 
 }  // namespace mc2::render_view

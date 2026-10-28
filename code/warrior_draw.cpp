@@ -1,84 +1,56 @@
+#include "render_view.h"
 // MechWarrior: waypoint and overview move-path drawing.
 // Declared in the class headers; shared names in warrior_internal.h.
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include "warrior_internal.h"
 
 
+void MechWarrior::extractHudPaths(mc2::render_view::HudMover& row)
+{
+    if (!tacOrderQueue || !getVehicle()) return;
+    row.waypointStart = row.position;
+    glm::vec3 first(getCurTacOrder()->moveParams.wayPath.points[0],
+        getCurTacOrder()->moveParams.wayPath.points[1], getCurTacOrder()->moveParams.wayPath.points[2]);
+    row.overviewPath.push_back(row.position);
+    if (tacOrderQueueLooping && numTacOrdersQueued > 0)
+        row.waypointStart = tacOrderQueue[numTacOrdersQueued - 1].point;
+    else if (first.x != 0 && first.y != 0) {
+        first.z = TerrainRuntime::groundElevation(first);
+        row.waypointFirst = true;
+        row.waypoints.push_back(first);
+        row.overviewPath.push_back(first);
+    }
+    for (int i = 0; i < numTacOrdersQueued; ++i) {
+        row.waypoints.push_back(tacOrderQueue[i].point);
+        row.waypointMarkers.push_back(queueMarkers[i]);
+        if (row.overviewPath.size() < 64) row.overviewPath.push_back(tacOrderQueue[i].point);
+    }
+}
+
+void mc2::render_view::drawHudWaypoints(const HudMover& row)
+{
+    glm::vec3 previous = row.waypointStart;
+    for (size_t i = 0; i < row.waypoints.size(); ++i) {
+        const size_t marker = i - static_cast<size_t>(row.waypointFirst);
+        if (i >= static_cast<size_t>(row.waypointFirst) && row.waypointMarkers[marker])
+            row.waypointMarkers[marker]->render();
+        Stuff::Vector4D a, b;
+        // Preserve the legacy projection direction for the preview and queued segments.
+        glm::vec3 start = row.waypointFirst && i == 0 ? previous : row.waypoints[i];
+        glm::vec3 end = row.waypointFirst && i == 0 ? row.waypoints[i] : previous;
+        eye->projectForScreenXY(start, a);
+        eye->projectForScreenXY(end, b);
+        a.z = b.z = 0.1f; a.w = b.w = 0.9999f;
+        LineElement line(a, b, 0xffff0000, 0, -1);
+        line.draw();
+        previous = row.waypoints[i];
+    }
+}
+
 void MechWarrior::drawWaypointPath()
 {
-	if ( tacOrderQueue )
-	{
-		glm::vec3 tmpPos = this->getVehicle()->getPosition();
-		
-		{
-			Stuff::Vector4D screenPos1;
-			Stuff::Vector4D screenPos2;
-
-			glm::vec3 pos;
-			pos.x = getCurTacOrder()->moveParams.wayPath.points[0];
-			pos.y = getCurTacOrder()->moveParams.wayPath.points[1];
-			pos.z = getCurTacOrder()->moveParams.wayPath.points[2];
-
-			if ( tacOrderQueueLooping )
-			{
-				tmpPos = tacOrderQueue[numTacOrdersQueued - 1].point;
-			}
-
-			else if ( pos.x != 0 && pos.y != 0  )
-			{
-
-				pos.z = TerrainRuntime::groundElevation( pos );
-				// [PROJECTZ:ScreenXYOracle id=warrior_tac_order_preview_start]
-				eye->projectForScreenXY( tmpPos, screenPos1 );
-				// [PROJECTZ:ScreenXYOracle id=warrior_tac_order_preview_end]
-				eye->projectForScreenXY( pos, screenPos2 );
-
-				Stuff::Vector4D vertices[2];
-				vertices[0].x = screenPos1.x;
-				vertices[0].y = screenPos1.y;
-				vertices[1].x = screenPos2.x;
-				vertices[1].y = screenPos2.y;
-
-				vertices[0].z = vertices[1].z = 0.1f;
-				vertices[0].w = vertices[1].w = 0.9999f;
-
-				LineElement line( vertices[0], vertices[1], 0xffff0000, 0, -1 );
-				line.draw();
-				
-				tmpPos = pos;
-			}
-		}
-
-		for ( int i = 0; i < numTacOrdersQueued; i++ )
-		{
-			if ( queueMarkers[i] )
-				queueMarkers[i]->render();
-			
-			Stuff::Vector4D screenPos1;
-			Stuff::Vector4D screenPos2;
-
-			// [PROJECTZ:ScreenXYOracle id=warrior_tac_queue_segment_start]
-			eye->projectForScreenXY( tacOrderQueue[i].point, screenPos1 );
-			// [PROJECTZ:ScreenXYOracle id=warrior_tac_queue_segment_end]
-			eye->projectForScreenXY( tmpPos, screenPos2 );
-
-   			Stuff::Vector4D vertices[2];
-   			vertices[0].x = screenPos1.x;
-   			vertices[0].y = screenPos1.y;
-   			vertices[1].x = screenPos2.x;
-   			vertices[1].y = screenPos2.y;
-
-   			vertices[0].z = vertices[1].z = 0.1f;
-   			vertices[0].w = vertices[1].w = 0.9999f;
-
-   			LineElement line( vertices[0], vertices[1], 0xffff0000, 0, -1 );
-   			line.draw();
-
-			tmpPos = tacOrderQueue[i].point;
-		}
-
-	}
-
+    for (const auto& row : mc2::render_view::hud().movers)
+        if (row.pilot == this) { mc2::render_view::drawHudWaypoints(row); break; }
 }
 
 static void drawThickSeg( float x0, float y0, float x1, float y1, float hw, unsigned long color )
@@ -110,32 +82,18 @@ static void drawArrowHead( float tx, float ty, float dx, float dy, float sz, uns
 	gos_DrawTriangles( t, 3 );
 }
 
-void MechWarrior::drawOverviewMovePath( unsigned long color )
+void MechWarrior::drawOverviewMovePath(unsigned long color)
 {
-	if ( !tacOrderQueue || !getVehicle() )
-		return;
+    for (const auto& row : mc2::render_view::hud().movers)
+        if (row.pilot == this) { mc2::render_view::drawHudOverviewPath(row, color); break; }
+}
 
-	// Straight line through the move waypoints: start at the mech, the current
-	// move target, then any queued waypoints. (Full A* route tracing was tried
-	// but the path data isn't reliable here; revisit after the pathfinding work.)
-	const int kMaxPts = 64;
-	glm::vec3 pts[kMaxPts];
-	int np = 0;
-	pts[np++] = getVehicle()->getPosition();
-
-	glm::vec3 first;
-	first.x = getCurTacOrder()->moveParams.wayPath.points[0];
-	first.y = getCurTacOrder()->moveParams.wayPath.points[1];
-	first.z = getCurTacOrder()->moveParams.wayPath.points[2];
-	if ( !tacOrderQueueLooping && first.x != 0.0f && first.y != 0.0f )
-	{
-		first.z = TerrainRuntime::groundElevation( first );
-		pts[np++] = first;
-	}
-	for ( int i = 0; i < numTacOrdersQueued && np < kMaxPts; i++ )
-		pts[np++] = tacOrderQueue[i].point;
-	if ( np < 2 )
-		return;
+void mc2::render_view::drawHudOverviewPath(const HudMover& row, unsigned long color)
+{
+    const int kMaxPts = 64;
+    const auto& pts = row.overviewPath;
+    const int np = static_cast<int>(pts.size());
+    if (np < 2) return;
 
 	float sx[kMaxPts], sy[kMaxPts]; bool ok[kMaxPts];
 	float vmx, vmy, vax, vay;

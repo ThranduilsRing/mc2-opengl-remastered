@@ -2,6 +2,7 @@
 #include "render_view.h"
 #include "gameobj.h"
 #include "objmgr.h"
+#include "missiongui.h"
 #include "impact_presentation.h"
 #include "../mclib/camera.h"
 #include "../mclib/timing.h"
@@ -22,11 +23,11 @@ void extractRenderFrame(float tickAlpha)
 	clk.alpha = tickAlpha;
 	auto& lists = mc2::render_view::list();
 	lists.clear();
-	if (!eye || !eye->active || turn <= 1)   // GameCamera::render draws nothing this frame
-		return;
-	if (ObjectManager)
-		ObjectManager->extractRenderList(lists);
-	impact_presentation::extract();
+	if (eye && eye->active && turn > 1) {
+		if (ObjectManager) ObjectManager->extractRenderList(lists);
+		impact_presentation::extract();
+	}
+	if (auto* ui = MissionInterfaceManager::instance()) ui->extractHudSnapshot();
 }
 
 void GameObject::extractRenderView(mc2::render_view::RenderView& view)

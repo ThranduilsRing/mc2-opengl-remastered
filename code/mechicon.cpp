@@ -1,3 +1,4 @@
+#include "render_view.h"
 #include "../RenderCore/TextureService.h"
 #include "../GameOS/gameos/ui_texture.h"
 #include "../mclib/texture_assets.h"
@@ -704,14 +705,14 @@ bool IsDbcsString(const char* pszString)
 
 void ForceGroupIcon::render()
 {
-	// here I draw the text
+	const auto& row = mc2::render_view::hud().mover(unit);
 	if ( !unit )
 		return;
 
 	int forceGroup = -1;
 	for ( int i = 0; i < 10; ++i )
 	{
-		if ( unit->isInUnitGroup( i ) )
+		if ( (row.groups & (1u << i)) )
 			forceGroup = i;
 	}
 
@@ -720,7 +721,7 @@ void ForceGroupIcon::render()
 	if ( forceGroup == 0 )
 		forceGroup = 10;
 	int color = forceGroup == -1 ? ForceGroupColors[10] : ForceGroupColors[forceGroup-1];
-	float health = unit->getAppearance()->barStatus;
+	float health = row.health;
 
 	
 	// draw pilotName
@@ -729,7 +730,7 @@ void ForceGroupIcon::render()
 	drawRect( tmpRect, color);
 
 	char buffer[256];
-	strcpy( buffer, unit->getPilot()->getName() );
+	strcpy( buffer, row.pilotName.c_str() );
 	for (int i = 0; i < strlen( buffer ); i++ )
 		CharUpper( buffer );
 
@@ -778,7 +779,7 @@ void ForceGroupIcon::render()
 
 
 	// if has jumpjets, draws jump jet icon
-	if ( unit->canJump() )
+	if ( row.canJump )
 	{
 		jumpJetIcon->move( selectionRect[locationIndex].left, selectionRect[locationIndex].bottom );
 		jumpJetIcon->render( );
@@ -788,7 +789,7 @@ void ForceGroupIcon::render()
 
 
 
-	if ( unit && pilotVideoPilot == unit->getPilot()  )
+	if ( unit && pilotVideoPilot == row.pilot  )
 	{
 		gos_VERTEX v[4];
 		for (int i = 0; i < 4; i++ )
@@ -810,7 +811,7 @@ void ForceGroupIcon::render()
 
 		if ( bMovie )
 		{
-			if ( unit && (unit->getStatus () == OBJECT_STATUS_SHUTDOWN) )
+			if ( unit && (row.shutdown) )
 			{
 				bMovie->stop();
 				bMovie.reset();
@@ -833,24 +834,24 @@ void ForceGroupIcon::render()
 	}
 
 
-	if ( unit && (unit->getStatus () == OBJECT_STATUS_SHUTDOWN) )
+	if ( unit && (row.shutdown) )
 	{
 		drawRect( selectionRect[locationIndex], 0xaa000000 );
 	}
 
 
 	// if selected, draw white rectangle
-	if ( unit->getSelected() )
+	if ( row.selected )
 	{
 		drawEmptyRect( selectionRect[locationIndex], 0xffffffff, 0xffffffff );
 	}
 
-	if ( unit->getPilot() )
+	if ( row.pilot )
 	{
-		if ( unit->getPilot()->getMessagePlaying() )
+		if ( row.messagePlaying )
 		{
 			long color = 0xffffff00;
-			msgPlayTime += frameLength;
+			msgPlayTime += mc2::render_view::clock().dt;
 			if ( msgPlayTime > .25 )
 				msgPlayTime = 0;
 			if ( msgPlayTime > .125 )

@@ -1,3 +1,4 @@
+#include "render_view.h"
 // Mover: sensor text, waypoint drawing, optimal cells, mover placement, ejection and Save/CopyTo/Load.
 // Declared in mover.h; shared names in mover_internal.h.
 #include "mover_internal.h"
@@ -24,13 +25,12 @@ void Mover::drawSensorTextHelp (float screenX, float screenY, long resID, DWORD 
 
 void Mover::drawWaypointPath()
 {
-	getPilot()->drawWaypointPath();
+	mc2::render_view::drawHudWaypoints(mc2::render_view::hud().mover(this));
 }
 
 void Mover::drawOverviewMovePath( unsigned long color )
 {
-	if ( getPilot() )
-		getPilot()->drawOverviewMovePath( color );
+	mc2::render_view::drawHudOverviewPath(mc2::render_view::hud().mover(this), color);
 }
 
 bool Mover::getMoveDestination( glm::vec3& out )

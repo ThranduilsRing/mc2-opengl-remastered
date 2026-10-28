@@ -1,3 +1,4 @@
+#include "render_view.h"
 //--------------------------------------------------------------------------------------
 //
 // MechCommander 2
@@ -450,16 +451,27 @@ void HandlePlayerOrder (MoverPtr mover, TacticalOrderPtr tacOrder) {
 }
 						
 //--------------------------------------------------------------------------------------
+void MissionInterfaceManager::extractHudSnapshot()
+{
+    controlGui.extractHudSnapshot();
+    auto& rows = mc2::render_view::hud().vtols;
+    rows.clear();
+    for (int i = 0; i < MAX_TEAMS; ++i)
+        if (paintingVtol[i] && vTol[i])
+            rows.push_back({vTol[i].get(), dustCloud[i] && dustCloud[i]->IsExecuted() ? dustCloud[i] : nullptr,
+                recoveryBeam[i] && recoveryBeam[i]->IsExecuted() ? recoveryBeam[i] : nullptr, vTol[i]->position});
+}
+
 void MissionInterfaceManager::drawVTOL (void)
 {
-	for (long vtolNum = 0;vtolNum < MAX_TEAMS; vtolNum++)
+	for (const auto& row : mc2::render_view::hud().vtols)
 	{
-		if ( paintingVtol[vtolNum] && vTol[vtolNum] )
+		if (row.appearance)
 		{
-			vTol[vtolNum]->render();
-			vTol[vtolNum]->renderShadows();
+			static_cast<BldgAppearance*>(row.appearance)->render();
+			static_cast<BldgAppearance*>(row.appearance)->renderShadows();
 			
-			if (dustCloud[vtolNum] && dustCloud[vtolNum]->IsExecuted())
+			if (row.dust)
 			{
 				gosFX::Effect::DrawInfo drawInfo;
 				drawInfo.m_clipper = theClipper;
@@ -468,7 +480,7 @@ void MissionInterfaceManager::drawVTOL (void)
 				glm::mat4	localToWorld;
 				glm::mat4	localResult;
 						
-				glm::vec3 dustPos = vTol[vtolNum]->position;
+				glm::vec3 dustPos = row.position;
 				glm::vec3 wakePos;
 				mc2ToRender(wakePos, dustPos);
 				
@@ -477,10 +489,10 @@ void MissionInterfaceManager::drawVTOL (void)
 						
 				drawInfo.m_parentToWorld = &shapeOrigin;
 				if (!MLRVertexLimitReached)
-					dustCloud[vtolNum]->Draw(&drawInfo);
+					static_cast<gosFX::Effect*>(row.dust)->Draw(&drawInfo);
 			}
 			
-			if (recoveryBeam[vtolNum] && recoveryBeam[vtolNum]->IsExecuted())
+			if (row.beam)
 			{
 				gosFX::Effect::DrawInfo drawInfo;
 				drawInfo.m_clipper = theClipper;
@@ -489,7 +501,7 @@ void MissionInterfaceManager::drawVTOL (void)
 				glm::mat4	localToWorld;
 				glm::mat4	localResult;
 						
-				glm::vec3 dustPos = vTol[vtolNum]->position;
+				glm::vec3 dustPos = row.position;
 				glm::vec3 wakePos;
 				mc2ToRender(wakePos, dustPos);
 				
@@ -498,7 +510,7 @@ void MissionInterfaceManager::drawVTOL (void)
 						
 				drawInfo.m_parentToWorld = &shapeOrigin;
 				if (!MLRVertexLimitReached)
-					recoveryBeam[vtolNum]->Draw(&drawInfo);
+					static_cast<gosFX::Effect*>(row.beam)->Draw(&drawInfo);
 			}
 		}
 	}
@@ -588,15 +600,10 @@ void MissionInterfaceManager::render (void)
 
 		if ( userInput->getKeyDown( WAYPOINT_KEY ) || controlGui.getMines() )
 		{
-			Team* pTeam = Team::home;
-			for (long i=0;i<pTeam->getRosterSize();i++)
-			{
-				Mover* pMover = static_cast<Mover*>(pTeam->getMover( i ));
-				if ( pMover->isSelected()  && pMover->getCommander()->getId() == Commander::home->getId() )
-				{
-					pMover->drawWaypointPath();
-				}
-			}
+            for (size_t index : mc2::render_view::hud().roster) {
+                const auto& row = mc2::render_view::hud().movers[index];
+                if (row.selected && row.own) mc2::render_view::drawHudWaypoints(row);
+            }
 			
 		}
 
@@ -606,7 +613,7 @@ void MissionInterfaceManager::render (void)
 			return;
 		}
 
-		if (turn > 3 /*&& !controlGui.inRegion(userInput->getMouseX(), userInput->getMouseY())*/ )
+		if (mc2::render_view::clock().turn > 3)
 		{
 #ifdef DRAW_CURSOR_CROSSHAIRS
 			Stuff::Vector4D cursorPos;

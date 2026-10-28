@@ -66,7 +66,7 @@ struct Mk {
 	Mk (int k) : uid(g_nextUid++), kind(k) { g_live[uid] = k; ++g_created; }
 	~Mk (void) { CHECK(g_live.erase(uid) == 1); ++g_destroyed; }
 };
-using MkPtr = std::unique_ptr<Mk>;
+using MkPtr = std::shared_ptr<Mk>;
 void resetRegistry (void) { CHECK(g_live.empty()); g_live.clear(); g_created = g_destroyed = 0; g_nextUid = 1; }
 MkPtr makeMarker (const Rec& r) { return r.moveMode < 3 ? MkPtr(new Mk(r.moveMode)) : MkPtr(); }
 int uidOf (const MkPtr& p) { return p ? p->uid : 0; }
@@ -430,4 +430,21 @@ TEST_CASE("queue markers: stale id - enqueue leaves it, the record shift moves i
 	rig.run("D");
 	CHECK(rig.prod.queue[0].id == idSlot1);             // peek of the new head now reads the old second slot's id
 	rig.prod.clear();
+}
+
+TEST_CASE("queued marker survives dequeue while a HUD frame retains it")
+{
+    resetRegistry();
+    Rec records[N + 1]{};
+    mc2::QueueMarkerArray<Mk, N> markers;
+    markers[0] = std::make_shared<Mk>(1);
+    auto hudMarker = markers[0];
+    const int before = g_destroyed;
+    mc2::shiftQueueDown(records, markers, 1);
+    CHECK_FALSE(markers[0]);
+    CHECK(g_destroyed == before);
+    CHECK(hudMarker->kind == 1);
+    hudMarker.reset();
+    CHECK(g_destroyed == before + 1);
+    CHECK(g_live.empty());
 }
