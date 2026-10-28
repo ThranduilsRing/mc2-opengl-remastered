@@ -2053,7 +2053,7 @@ flags:
     verified: true
   - name: MC2_LIGHTBRIDGE_STABLE_SKIP
     kind: Bool
-    default: false
+    default: true
     rule: Std
     owner: props
     doc: "Std Bool row: any text other than 0/false/off/no/1/true/on/yes (e.g. =2) still reads as on but is reported badvalue, which MC2_CONFIG_STRICT=1 turns fatal."
@@ -4045,7 +4045,7 @@ flags:
     verified: true
   - name: MC2_STABLE_LIGHT_SKIP
     kind: Bool
-    default: false
+    default: true
     rule: Std
     owner: props
     doc: "Std Bool row: any text other than 0/false/off/no/1/true/on/yes (e.g. =2) still reads as on but is reported badvalue, which MC2_CONFIG_STRICT=1 turns fatal."
@@ -4061,7 +4061,7 @@ flags:
     verified: true
   - name: MC2_STABLE_LIGHT_SKIP_TOUCH
     kind: Bool
-    default: false
+    default: true
     rule: Std
     owner: props
     doc: "Std Bool row: any text other than 0/false/off/no/1/true/on/yes (e.g. =2) still reads as on but is reported badvalue, which MC2_CONFIG_STRICT=1 turns fatal."
