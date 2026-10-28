@@ -815,7 +815,7 @@ long GameObjectManager::Load (PacketFilePtr file, long packetNum)
 
 	useMoverLineOfSightTable = true;
 	moverLosEpoch = 0;
-	moverLineOfSightTable = static_cast<uint16_t*>(std::calloc((size_t)maxMovers * (size_t)maxMovers, sizeof(uint16_t)));
+	moverLineOfSightTable = static_cast<uint16_t*>(std::calloc(static_cast<size_t>(maxMovers) * static_cast<size_t>(maxMovers), sizeof(uint16_t)));
 	if (!moverLineOfSightTable)
 		Fatal(numGates, " GameObjectManager.setNumObjects: cannot malloc moverLineOfSightTable ");
 
