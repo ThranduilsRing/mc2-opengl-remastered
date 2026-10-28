@@ -54,7 +54,11 @@ long applyPlayerIntent(Mission& mission, const mc2::player::UnitIntent& intent, 
     }
     order.moveParams.wayPath.mode[0] = TRAVEL_MODE_FAST;
     order.moveParams.wait = false;
-    return mission.submitPlayerOrder(static_cast<Mover*>(object), order, false);
+    const long result = mission.submitPlayerOrder(static_cast<Mover*>(object), order, false);
+    if (!result && captureTarget)
+        mc2::fmt::print_err("[PLAYER_BRAIN] wid={} event=capture target={} x={} y={}\n",
+            intent.unitWatchId, captureTarget, object->getPosition().x, object->getPosition().y);
+    return result;
 }
 const char* missionTestStatus(int state) {
     return state == OS_SUCCESSFUL ? "PASS" : state == OS_FAILED ? "FAIL" : "PENDING";
@@ -186,10 +190,19 @@ void Mission::updateMissionTest(bool report) {
         if (mover->refitBuddyWID) continue; // Let an accepted repair finish.
         const auto intent = producePlayerIntent(mover->getPilot(), location,
             objectiveTarget && !captureObjective ? objectiveTarget->getWatchID() : 0, focus, scenarioTime);
+        auto* runtime = mover->getPilot()->getBrainRuntime();
+        const bool recovering = runtime->playerRecoverUntil > scenarioTime;
+        auto* current = mover->getPilot()->getCurTacOrder();
+        const bool healthRetreat = intent.posture == mc2::player::Posture::Retreat && runtime->retreatEffectApplied;
+        if (captureObjective && objectiveTarget && !recovering && !healthRetreat
+            && current && current->code == TACTICAL_ORDER_CAPTURE && current->targetWID == objectiveTarget->getWatchID()) {
+            ++issued; // Let the normal capture action finish before taking another side fight.
+            continue;
+        }
         retreating += intent.posture == mc2::player::Posture::Retreat;
         const long capture = captureObjective && objectiveTarget
             && intent.goal == mc2::player::Goal::Move && intent.posture == mc2::player::Posture::Advance
-            && intent.location == location ? objectiveTarget->getWatchID() : 0;
+            && !recovering && mover->distanceFrom(location) < 3000 ? objectiveTarget->getWatchID() : 0;
         if (applyPlayerIntent(*this, intent, capture)) ++rejected;
         else ++issued;
     }

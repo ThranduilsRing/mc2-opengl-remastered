@@ -1487,9 +1487,13 @@ mc2::player::UnitIntent producePlayerIntent(MechWarrior* warrior,
         if (score > best) { best = score; target = enemy; }
     }
     if (enemyThreat > ownThreat * 1.5f && weakTarget) target = weakTarget;
-    if (objectiveContact && (runtime->engageTargetWID == objectiveTarget
-        || (runtime->playerFightSince >= 0 && now - runtime->playerFightSince >= 45)))
-        target = objectiveContact;
+    if (objectiveTarget && (runtime->engageTargetWID == objectiveTarget
+        || (runtime->playerFightSince >= 0 && now - runtime->playerFightSince >= 45))) {
+        auto* goal = ObjectManager->getByWatchID(objectiveTarget);
+        // Authored structure objectives are known locations; moving enemies must be detected.
+        if (goal && goal->getExists() && !goal->isDestroyed()
+            && (!goal->isMover() || goal == objectiveContact)) target = goal;
+    }
     if (target) {
         float remaining = -target->getDamageLevel();
         if (target->isMover()) {
@@ -1586,7 +1590,7 @@ mc2::player::UnitIntent producePlayerIntent(MechWarrior* warrior,
     }
     // After a failed long route, keep issuing reachable local legs instead of
     // returning to the same full-map request after each recovery window.
-    if (intent.goal == mc2::player::Goal::Move && runtime->playerRecoveries > 0) {
+    if (intent.goal == mc2::player::Goal::Move && (runtime->playerRecoveries > 0 || distanceToGoal > 5000)) {
         const auto route = intent.location - position;
         const float distance = glm::length(route);
         if (distance > 1200) intent.location = position + route * (1200.0f / distance);
