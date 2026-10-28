@@ -1489,9 +1489,8 @@ mc2::player::UnitIntent producePlayerIntent(MechWarrior* warrior,
             / std::max(1.0f, glm::dot(route, route)), 0.0f, 1.0f);
         const float routeDistance = glm::distance(enemy->getPosition(), position + fraction * route);
         const bool blocksRoute = distance < 800 && routeDistance < 400;
-        const bool immediateDanger = distance < 450 && routeDistance < 250;
         if (!isObjective && (!unit->lineOfSight(enemy) || !blocksRoute
-            || (now < runtime->playerBypassUntil && !immediateDanger))) continue;
+            || now < runtime->playerBypassUntil)) continue;
         float condition = 1.0f;
         if (enemy->isMover()) {
             auto* mover = static_cast<Mover*>(enemy);
