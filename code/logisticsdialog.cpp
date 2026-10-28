@@ -729,11 +729,11 @@ void LogisticsSaveDialog::initDialog( const char* path, bool bCampaign )
 
 // Scans FIT text for [Version] VersionNumber the way FitIniFile's seekBlock and
 // readIdLong do, without building the block index.
-static bool scanSaveVersion( const char* buffer, size_t length, long& versionNumber )
+static bool scanSaveVersion( std::string_view text, long& versionNumber )
 {
 	bool inVersionBlock = false;
-	const char* cursor = buffer;
-	const char* end = buffer + length;
+	const char* cursor = text.data();
+	const char* end = text.data() + text.size();
 	while ( cursor < end )
 	{
 		const char* lineEnd = cursor;
@@ -778,12 +778,12 @@ static bool scanSaveVersion( const char* buffer, size_t length, long& versionNum
 // parses and indexes every block, which made the load dialog scan the whole save
 // directory (256 saves x ~150 KB) on open. Only saves whose Version block is
 // outside the window pay for a full-file read.
-static bool quickReadSaveVersion( const char* filePath, long& versionNumber )
+static bool quickReadSaveVersion( std::string_view filePath, long& versionNumber )
 {
 	constexpr size_t kWindow = 64 * 1024;
 	char buffer[kWindow];
 
-	std::ifstream in( filePath, std::ios::binary );
+	std::ifstream in( std::string( filePath ), std::ios::binary );
 	if ( !in )
 		return false;
 
@@ -800,7 +800,7 @@ static bool quickReadSaveVersion( const char* filePath, long& versionNumber )
 			--length;
 	}
 
-	if ( scanSaveVersion( buffer, length, versionNumber ) )
+	if ( scanSaveVersion( std::string_view( buffer, length ), versionNumber ) )
 		return true;
 
 	// Old saves can put Version after an arbitrarily large variant section.
@@ -808,7 +808,7 @@ static bool quickReadSaveVersion( const char* filePath, long& versionNumber )
 	in.clear();
 	in.seekg( 0, std::ios::beg );
 	const std::vector<char> whole( std::istreambuf_iterator<char>( in ), std::istreambuf_iterator<char>() );
-	return scanSaveVersion( whole.data(), whole.size(), versionNumber );
+	return scanSaveVersion( std::string_view( whole.data(), whole.size() ), versionNumber );
 }
 
 bool LogisticsSaveDialog::isCorrectVersionSaveGame( char* fileName )
