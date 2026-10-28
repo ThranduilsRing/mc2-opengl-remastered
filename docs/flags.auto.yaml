@@ -5,7 +5,7 @@
 generator_version: "3.0.0"
 gate_count: 754
 registry_entry_count: 149
-verified_count: 715
+verified_count: 714
 flags:
   - name: MC2_ABL_ARG_GUARD
     kind: Bool
@@ -1115,7 +1115,6 @@ flags:
     rule: Lead0P
     owner: props
     doc: ""
-    verified: true
   - name: MC2_FORCE_DYNAMIC_TREES
     kind: Bool
     default: false
