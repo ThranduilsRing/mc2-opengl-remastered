@@ -3,9 +3,9 @@
 # Where each gate is read, what the smoke runner forwards and what tier1_env_vars.md says are not here: ask
 # tools/repo_intel (env_var, gate_status), which scan the sources.
 generator_version: "3.0.0"
-gate_count: 773
+gate_count: 774
 registry_entry_count: 152
-verified_count: 733
+verified_count: 734
 flags:
   - name: MC2_ABL_ARG_GUARD
     kind: Bool
@@ -3677,6 +3677,13 @@ flags:
     rule: Presence
     owner: code
     doc: ""
+    verified: true
+  - name: MC2_SCRATCH
+    kind: Bool
+    default: true
+    rule: Lead0Kill
+    owner: code
+    doc: "Mod VFS layer 0: index mods/<active>/.scratch/data/ above the active mod; 0 = kill-switch."
     verified: true
   - name: MC2_SCREENSHOT_AT_FRAME
     kind: Int

@@ -10,7 +10,7 @@
 
 namespace mc2::gate::detail {
 
-inline constexpr std::size_t kGateCount = 773;
+inline constexpr std::size_t kGateCount = 774;
 
 inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_ABL_ARG_GUARD", Kind::Bool, Rule::Lead1, {}},
@@ -490,6 +490,7 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_RNG_SEED", Kind::String, Rule::Std, {}},
     {"MC2_SCENE_LIGHTING_ASSERT", Kind::Bool, Rule::Presence, {}},
     {"MC2_SCENE_LIGHTING_TRACE", Kind::Bool, Rule::Presence, {}},
+    {"MC2_SCRATCH", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_SCREENSHOT_AT_FRAME", Kind::Int, Rule::Prefix, {}},
     {"MC2_SCREENSHOT_PATH", Kind::String, Rule::Std, {}},
     {"MC2_SCREENXY_PREDICATE_MODE", Kind::Enum, Rule::Std, "|Legacy|Modern"},

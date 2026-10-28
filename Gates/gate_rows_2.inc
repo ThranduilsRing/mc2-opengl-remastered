@@ -192,6 +192,7 @@ G("MC2_RNG_SEED", String, "", "mech", "", "DETERMINISTIC-RNG-1: seed text (decim
 // that abut bare terrain on the indirect terrain path (gos_terrain.frag).
 L(Presence, "MC2_SCENE_LIGHTING_ASSERT", Bool, false, "code", "", "", verified),
 L(Presence, "MC2_SCENE_LIGHTING_TRACE", Bool, false, "code", "", "", verified),
+L(Lead0Kill, "MC2_SCRATCH", Bool, true, "code", "", "Mod VFS layer 0: index mods/<active>/.scratch/data/ above the active mod; 0 = kill-switch.", verified),
 P("MC2_SCREENSHOT_AT_FRAME", Int, -1, "gameos", "", "", passthrough | verified),
 G("MC2_SCREENSHOT_PATH", String, "", "gameos", "", "Oracle: deterministic backbuffer screenshot at a target frame.", passthrough | verified),
 G("MC2_SCREENXY_PREDICATE_MODE", Enum, "", "code", "", "", tokens("|Legacy|Modern") | verified),
