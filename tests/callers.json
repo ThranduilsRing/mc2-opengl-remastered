@@ -59,7 +59,7 @@
         },
         {
           "path": "tools/build_contract_harnesses.py",
-          "line": 191,
+          "line": 192,
           "evidence": "import",
           "reference": "bootstrap_worktree_build",
           "text": "from bootstrap_worktree_build import cache_args"
@@ -2364,7 +2364,7 @@
         },
         {
           "path": "tools/build_contract_harnesses.py",
-          "line": 24,
+          "line": 25,
           "evidence": "import",
           "reference": "configure_ninja",
           "text": "import configure_ninja as cn"
@@ -3163,7 +3163,7 @@
         },
         {
           "path": "tools/build_contract_harnesses.py",
-          "line": 23,
+          "line": 24,
           "evidence": "import",
           "reference": "console_child",
           "text": "import console_child"
