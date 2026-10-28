@@ -1375,6 +1375,9 @@ long Mission::update (void)
 			s_tickClock.reset();   // a new mission or a loaded save: no banked time carries over
 		const float renderLength = frameLength;   // DoGameLogic: this render frame's length (1/30 s per virtual frame under the harness clock)
 
+		if (usePre && pre.ended)
+			return pre.earlyResult;
+
 		if (!MPlayer && mc2SimTickFrozen(missionInterface))
 		{
 			s_tickClock.reset();
@@ -1391,8 +1394,6 @@ long Mission::update (void)
 			// G7: this frame's ticks already ran on the sim worker during the previous frame's tail; only the frame part is left.
 			if (updatePass(true, true, false, false, earlyResult))
 				return earlyResult;
-			if (pre.ended)
-				return pre.earlyResult;
 			updatePresentationOnly(false, static_cast<float>(s_tickClock.alpha()));
 		}
 		else
