@@ -168,6 +168,7 @@ static LONG WINAPI mc2_unhandled_exception_filter(EXCEPTION_POINTERS* ep)
 #include "utils/mc2log.h"   // LOGGING-FACADE-P0: mc2::log::init() before the NUL redirect
 #include "Gates/gate_cold.h"   // typed gate registry: main-entered marker, invalidateAll, [CONFIG v1]
 #include "mc2fmt.h"
+#include "../../mclib/sim_overlap.h"
 
 // Tier-1 instrumentation (stability spec §5.1): single source of truth for
 // the frame=... field used by TGL_POOL, DESTROY, and GL_ERROR log lines.
@@ -1050,6 +1051,7 @@ int main(int argc, char** argv)
         RenderSnapshot snap;
         {
             ZoneScopedN("ExtractRenderSnapshot");
+            mc2::overlap::assertSimQuiescent("ExtractRenderSnapshot");
             snap = ExtractRenderSnapshot();
         }
         mc2_debug_state::maybeWriteRenderState(snap);
@@ -1088,14 +1090,18 @@ int main(int argc, char** argv)
         // after the timer FrameEnd; advisory, OFF=zero cost.
         gos_frame_pass_stats::FrameEnd(static_cast<unsigned long>(g_mc2FrameCounter));
 
+    mc2::overlap::kickTail();   // G7: frame N+1's ticks run on the sim worker while this thread presents and waits out the frame cap
     frameSwapWindow(win);   // the shared host present also ends the Vulkan frame and advances the handle-slot clock
 #ifdef MC2_VULKAN_ISLAND
     mc2vk::gpuprof::frameEnd();   // VK-GPU-ZONES: after the present submit so the frame's scopes are all recorded; Tracy collect + per-pass timestamp read
 #endif
     if (benchFrameStart != mc2::battlebench::Clock::time_point{}) mc2::battlebench::endFrame(mc2::battlebench::milliseconds(benchFrameStart));
     frameFrameCap(s_vsync_active, s_fps_cap_mission, s_fps_cap_menu, start_tick);
+    mc2::overlap::joinTail();   // the sim is quiescent again before anything touches live sim objects
         } else {
             gos::host::advanceFrameCounter();
+            mc2::overlap::kickTail();   // headless: no tail to hide behind; kick and join keep the worker path under the same harness
+            mc2::overlap::joinTail();
         }   // !headless
 
         FrameMark;

@@ -1,1 +1,4 @@
-{}
+{
+  "scripts/tests/test_farm_runner.py": 2,
+  "tools/farm/host.py": 1
+}

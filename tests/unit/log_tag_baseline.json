@@ -8126,6 +8126,16 @@
    "count": 1
   },
   {
+   "tag": "SIM_OVERLAP",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "site",
+    "count"
+   ],
+   "count": 1
+  },
+  {
    "tag": "SIM_TICK_COST",
    "ver": 1,
    "stream": "stdout",

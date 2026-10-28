@@ -340,7 +340,7 @@ TEST_CASE("table is sorted, unique and every name round-trips through lookupName
     const std::size_t n = gate::tableSize();
     REQUIRE(n == gate::detail::kGateCount);
     // Population floor after the gate amnesty (retired names live in Gates/retired_names.json).
-    REQUIRE(n == 756);   // m83: prop-material-debugview +MC2_PROP_DEBUG_VIEW. m83: prop-lod-select +MC2_VK_PROP_LOD (default ON). M6: +MC2_MOVER_FIXTURE (753). W81: B4 retires 21 MC2_BRAIN_* gates (BrainExecutionPolicy) and adds MC2_BRAIN_POLICY; W80: mod-vfs-l0 adds MC2_SCRATCH (773 before B4). W79: W78-fixups retires MC2_TGL_POOL_TRACE (773). W77: W76 (774, retires MC2_GPU_OBJECTS, drops MC2_GPU_GV_SHADOW_SKIP) +MC2_VK_PROP_TEX_SLOTS -MC2_PATH_SOLVE_ISOLATED -MC2_WATCHID_GENERATION.
+    REQUIRE(n == 758);   // m83: g7-overlap-impl +MC2_SIM_OVERLAP +MC2_SIM_OVERLAP_AUDIT. m83: prop-material-debugview +MC2_PROP_DEBUG_VIEW. m83: prop-lod-select +MC2_VK_PROP_LOD (default ON). M6: +MC2_MOVER_FIXTURE (753). W81: B4 retires 21 MC2_BRAIN_* gates (BrainExecutionPolicy) and adds MC2_BRAIN_POLICY; W80: mod-vfs-l0 adds MC2_SCRATCH (773 before B4). W79: W78-fixups retires MC2_TGL_POOL_TRACE (773). W77: W76 (774, retires MC2_GPU_OBJECTS, drops MC2_GPU_GV_SHADOW_SKIP) +MC2_VK_PROP_TEX_SLOTS -MC2_PATH_SOLVE_ISOLATED -MC2_WATCHID_GENERATION.
     for (std::size_t i = 0; i < n; ++i) {
         if (i > 0) CHECK((rows[i - 1].name < rows[i].name));
         const auto info = gate::lookupName(rows[i].name);

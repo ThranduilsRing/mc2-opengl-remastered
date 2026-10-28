@@ -92,6 +92,8 @@ def environment(channel, width, height):
                 "MC2_VK_GPU_TIMESTAMPS": "1", "MC2_FPS_CAP": "0", "MC2_VSYNC": "0",
                 "MC2_WIDTH": str(width), "MC2_HEIGHT": str(height), "MC2_LAUNCHER_ENV_JSON": "0",
                 "MC2_FORCE_ALL_VISIBLE": "0"}
+    if os.environ.get("MC2_SIM_OVERLAP") in ("0", "1"):   # G7 A/B: the bench passes this one gate through
+        declared["MC2_SIM_OVERLAP"] = os.environ["MC2_SIM_OVERLAP"]
     return declared
 
 

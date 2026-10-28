@@ -3254,7 +3254,7 @@
         },
         {
           "path": "tools/farm/host.py",
-          "line": 17,
+          "line": 21,
           "evidence": "import",
           "reference": "console_child",
           "text": "import console_child"
@@ -10158,7 +10158,7 @@
         },
         {
           "path": "scripts/tests/test_farm_runner.py",
-          "line": 157,
+          "line": 192,
           "evidence": "import",
           "reference": "tools.farm.runner",
           "text": "from tools.farm import runner"
@@ -11740,6 +11740,13 @@
           "evidence": "import",
           "reference": "mc2mod",
           "text": "import mc2mod  # noqa: E402"
+        },
+        {
+          "path": "tests/mod_install/test_mod_scratch.py",
+          "line": 10,
+          "evidence": "import",
+          "reference": "tools.mc2mod.mc2mod",
+          "text": "from tools.mc2mod.mc2mod import main as pack_main, pack_mod"
         }
       ]
     },
@@ -12388,6 +12395,13 @@
           "text": "from resolver import ResolverConfig, _build_fst_set, _discover_fst_listings"
         },
         {
+          "path": "tests/mod_install/test_mod_scratch.py",
+          "line": 9,
+          "evidence": "import",
+          "reference": "tools.mod_install.resolver",
+          "text": "from tools.mod_install.resolver import ResolverConfig, resolve"
+        },
+        {
           "path": "tests/mod_install/test_resolver.py",
           "line": 20,
           "evidence": "import",
@@ -12416,6 +12430,13 @@
           "text": "from resolver import ResolverConfig, resolve, _index_mod_layer, normalize_key"
         },
         {
+          "path": "tools/mod_scratch.py",
+          "line": 15,
+          "evidence": "import",
+          "reference": "tools.mod_install.resolver",
+          "text": "from tools.mod_install.resolver import load_config, _index_mod_layer, _read_mod_json, normalize_key"
+        },
+        {
           "path": "tools/registry/build_index.py",
           "line": 80,
           "evidence": "import",
@@ -12430,6 +12451,21 @@
       "stem": "test_dotdir_skip",
       "callers_by_basename": [],
       "callers_by_stem": []
+    },
+    {
+      "path": "tools/mod_scratch.py",
+      "basename": "mod_scratch.py",
+      "stem": "mod_scratch",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tests/mod_install/test_mod_scratch.py",
+          "line": 8,
+          "evidence": "import",
+          "reference": "tools.mod_scratch",
+          "text": "from tools.mod_scratch import main, run"
+        }
+      ]
     },
     {
       "path": "tools/mod_smoke.py",

@@ -587,6 +587,7 @@ class Mission
 		void updateOrderLiveness();
 		void updateSoakPilotPromote();
 	public:
+		void overlapKick();   // G7: tail of the frame, main thread: bank the next ticks and run their sim part on the sim worker
 
 		// TEAM-COMMANDER-OWNERSHIP-1: single teardown authority for the
 		// Team::teams[]/Commander::commanders[] static arrays. Idempotent,
