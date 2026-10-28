@@ -1447,8 +1447,8 @@ mc2::player::UnitIntent producePlayerIntent(MechWarrior* warrior,
     } else runtime->retreatEffectApplied = false;
     std::array<int, MAX_CONTACTS_PER_TEAM> contacts{};
     const long count = unit->getContacts(contacts.data(), (1 | 64), CONTACT_SORT_DISTANCE);
-    GameObjectPtr target = nullptr;
-    float best = -1, enemyThreat = 0;
+    GameObjectPtr target = nullptr, weakTarget = nullptr;
+    float best = -1, weakBest = -1, enemyThreat = 0;
     for (long i = 0; i < count; ++i) {
         auto* enemy = ObjectManager->get(contacts[i]);
         if (!enemy || !enemy->getExists() || enemy->isDisabled() || enemy->isDestroyed()
@@ -1458,8 +1458,7 @@ mc2::player::UnitIntent producePlayerIntent(MechWarrior* warrior,
         runtime->playerLastContact = enemy->getPosition();
         const float threat = std::max(1.0f, static_cast<float>(enemy->getThreatRating()));
         if (distance < 800) enemyThreat += threat;
-        const bool isObjective = enemy->getWatchID() == objectiveTarget
-            || (!objectiveTarget && glm::distance(enemy->getPosition(), objective) < 300);
+        const bool isObjective = enemy->getWatchID() == objectiveTarget;
         if (!isObjective && now < runtime->playerBypassUntil) continue;
         float condition = 1.0f;
         if (enemy->isMover()) {
@@ -1472,17 +1471,20 @@ mc2::player::UnitIntent producePlayerIntent(MechWarrior* warrior,
             if (total > 0) condition = remaining / total;
         }
         // Preserve distance-weighted threat selection; finish weakened threats first.
-        const float score = (1.0f + threat + static_cast<float>(enemy->getCurCV()) * 0.01f)
-            / ((100.0f + distance) * (0.75f + 0.25f * condition))
+        const float score = (1.0f + static_cast<float>(enemy->getThreatRating())
+            + static_cast<float>(enemy->getCurCV()) * 0.01f) / (100.0f + distance)
             + (enemy->getWatchID() == squadTarget ? 1000.0f : 0.0f);
+        const float weakScore = score / (0.75f + 0.25f * condition);
+        if (weakScore > weakBest) { weakBest = weakScore; weakTarget = enemy; }
         if (score > best) { best = score; target = enemy; }
     }
-    if (target && target->getWatchID() != objectiveTarget
-        && (objectiveTarget || glm::distance(target->getPosition(), objective) >= 300)) {
-        if (runtime->playerFightSince < 0 || (runtime->engageTargetWID
-            && runtime->engageTargetWID != target->getWatchID())) runtime->playerFightSince = now;
+    if (enemyThreat > ownThreat * 1.5f && weakTarget) target = weakTarget;
+    if (target && target->getWatchID() != objectiveTarget) {
+        auto* previous = ObjectManager->getByWatchID(runtime->engageTargetWID);
+        if (runtime->playerFightSince < 0 || (previous && (previous->isDisabled() || previous->isDestroyed())))
+            runtime->playerFightSince = now;
         if (now - runtime->playerFightSince >= 45) {
-            runtime->playerBypassUntil = now + 8;
+            runtime->playerBypassUntil = now + 24;
             runtime->playerFightSince = -1;
             target = nullptr;
             std::fprintf(stderr, "[PLAYER_BRAIN] wid=%ld event=disengage time=%.2f\n", unit->getWatchID(), now);
