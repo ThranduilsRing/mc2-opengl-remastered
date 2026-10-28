@@ -6,7 +6,7 @@
 #include "mission_internal.h"
 #include "sim_world_trace.h"
 #include "sim_tick_clock.h"
-#include "../GameOS/gameos/sim_overlap.h"
+#include "../mclib/sim_overlap.h"
 #include <optional>
 #include "move_recon_stats.h"
 #include <utility>

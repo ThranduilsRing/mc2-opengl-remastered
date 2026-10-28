@@ -3,7 +3,7 @@
 #include "gameos_graphics_material_internal.h"
 #include "KtxLoader.h"          // kKtxMaxEdge: the edge bound every pre-compressed texture shares with the KTX2 parser
 #include "mc2fmt.h"
-#include "sim_overlap.h"
+#include "../../mclib/sim_overlap.h"
 #include "texture_decode.h"
 #include "ui_texture.h"
 #include "vulkan_legacy_shape_island.h"

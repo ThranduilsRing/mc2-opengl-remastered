@@ -1,5 +1,5 @@
 // G7 sim/render overlap worker and audit hooks. Design and the shared-structure audit: docs/plans/2026-10-28-g7-overlap-audit.md.
-#include "sim_overlap.h"
+#include "../../mclib/sim_overlap.h"
 
 #include <atomic>
 #include <condition_variable>
