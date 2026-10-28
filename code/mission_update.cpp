@@ -17,14 +17,19 @@
 #include "brain_execution_policy.h"
 
 namespace {
-long applyPlayerIntent(Mission& mission, const mc2::player::UnitIntent& intent) {
+long applyPlayerIntent(Mission& mission, const mc2::player::UnitIntent& intent, long captureTarget = 0) {
     auto* object = ObjectManager->getByWatchID(intent.unitWatchId);
     if (!object || !object->isMover()) return 1;
     TacticalOrder order;
-    order.init(ORDER_ORIGIN_PLAYER, intent.goal == mc2::player::Goal::Attack
-        ? TACTICAL_ORDER_ATTACK_OBJECT : intent.goal == mc2::player::Goal::Repair
-        ? TACTICAL_ORDER_REFIT : TACTICAL_ORDER_MOVETO_POINT);
-    if (intent.goal == mc2::player::Goal::Repair) {
+    order.init(ORDER_ORIGIN_PLAYER, captureTarget ? TACTICAL_ORDER_CAPTURE
+        : intent.goal == mc2::player::Goal::Attack ? TACTICAL_ORDER_ATTACK_OBJECT
+        : intent.goal == mc2::player::Goal::Repair ? TACTICAL_ORDER_REFIT : TACTICAL_ORDER_MOVETO_POINT);
+    if (captureTarget) {
+        order.targetWID = captureTarget;
+        order.attackParams.type = ATTACK_NONE;
+        order.attackParams.method = ATTACKMETHOD_RAMMING;
+        order.attackParams.pursue = true;
+    } else if (intent.goal == mc2::player::Goal::Repair) {
         order.targetWID = intent.targetWatchId;
         order.selectionIndex = -1;
         order.moveParams.faceObject = true;
@@ -142,6 +147,7 @@ void Mission::updateMissionTest(bool report) {
     test.nextOrder = scenarioTime + 2.0f;
     glm::vec3 location{destination->MarkerX(), destination->MarkerY(), 0.0f};
     GameObjectPtr objectiveTarget = nullptr;
+    bool captureObjective = false;
     for (auto* condition : destination->m_conditionList) {
         if (condition->Status() == OS_SUCCESSFUL) continue;
         auto point = condition->GetObjectivePosition();
@@ -156,7 +162,8 @@ void Mission::updateMissionTest(bool report) {
         // repeatedly walking to the last condition or an already visited marker.
         if (point.x <= -999000.0f || point.y <= -999000.0f) continue;
         location = point;
-        if (condition->Species() == DESTROY_SPECIFIC_STRUCTURE) {
+        captureObjective = condition->Species() == CAPTURE_STRUCTURE;
+        if (condition->Species() == DESTROY_SPECIFIC_STRUCTURE || captureObjective) {
             for (long i = 0; i < ObjectManager->getNumBuildings(); ++i) {
                 auto* building = ObjectManager->getBuilding(i);
                 if (building && building->getExists() && !building->isDestroyed()
@@ -174,9 +181,12 @@ void Mission::updateMissionTest(bool report) {
             || !mover->getExists() || !mover->getPilot()) continue;
         if (mover->refitBuddyWID) continue; // Let an accepted repair finish.
         const auto intent = producePlayerIntent(mover->getPilot(), location,
-            objectiveTarget ? objectiveTarget->getWatchID() : 0, focus, scenarioTime);
+            objectiveTarget && !captureObjective ? objectiveTarget->getWatchID() : 0, focus, scenarioTime);
         retreating += intent.posture == mc2::player::Posture::Retreat;
-        if (applyPlayerIntent(*this, intent)) ++rejected;
+        const long capture = captureObjective && objectiveTarget
+            && intent.goal == mc2::player::Goal::Move && intent.posture == mc2::player::Posture::Advance
+            && intent.location == location ? objectiveTarget->getWatchID() : 0;
+        if (applyPlayerIntent(*this, intent, capture)) ++rejected;
         else ++issued;
     }
     mc2::fmt::print_err("[MISSION_COMMANDER v1] producer=TechBrain time={:.2f} issued={} rejected={} retreating={} focus={} x={} y={}\n",
