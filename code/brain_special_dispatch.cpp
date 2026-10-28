@@ -1484,7 +1484,7 @@ mc2::player::UnitIntent producePlayerIntent(MechWarrior* warrior,
         const float fraction = std::clamp(glm::dot(enemy->getPosition() - position, route)
             / std::max(1.0f, glm::dot(route, route)), 0.0f, 1.0f);
         const float routeDistance = glm::distance(enemy->getPosition(), position + fraction * route);
-        const bool blocksRoute = distance <= sideFightRange && routeDistance < 400;
+        const bool blocksRoute = distance < 200 && routeDistance < 400;
         if (!isObjective && (!unit->lineOfSight(enemy) || !blocksRoute
             || now < runtime->playerBypassUntil)) continue;
         float condition = 1.0f;
@@ -1506,7 +1506,8 @@ mc2::player::UnitIntent producePlayerIntent(MechWarrior* warrior,
         if (score > best) { best = score; target = enemy; }
     }
     if (enemyThreat > ownThreat * 1.5f && weakTarget) target = weakTarget;
-    if (objectiveTarget) {
+    if (objectiveTarget && (runtime->engageTargetWID == objectiveTarget
+        || (runtime->playerFightSince >= 0 && now - runtime->playerFightSince >= 45))) {
         auto* goal = ObjectManager->getByWatchID(objectiveTarget);
         // Authored structure objectives are known locations; moving enemies must be detected.
         if (goal && goal->getExists() && !goal->isDestroyed()
@@ -1533,7 +1534,7 @@ mc2::player::UnitIntent producePlayerIntent(MechWarrior* warrior,
     } else runtime->playerHealthTarget = 0;
     if (target && target->getWatchID() != objectiveTarget) {
         if (runtime->playerFightSince < 0) runtime->playerFightSince = now;
-        if (now - runtime->playerFightSince >= 12 && now >= runtime->playerBypassUntil) {
+        if (now - runtime->playerFightSince >= 45 && now >= runtime->playerBypassUntil) {
             runtime->playerBypassUntil = now + 24;
             runtime->playerFightSince = now;
             target = nullptr;
