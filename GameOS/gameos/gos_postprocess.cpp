@@ -360,3 +360,18 @@ void gosPostProcess::endScene()
     drawShadowDebugOverlay();
     gos_InvalidateRenderStateCache();
 }
+
+float mc2ShadowMinSunAltDeg()
+{
+    static const float s_minAltDeg = mc2::gate::get<"MC2_SHADOW_MIN_SUN_ALT">();
+    return s_minAltDeg;
+}
+
+void gosPostProcess::drawShadowDebugOverlay() {
+    if (!showShadowDebug_ || !initialized_) return;
+#if defined(MC2_VULKAN) && defined(MC2_VULKAN_ISLAND)
+    if (mc2_vk_shadow_island_movers_ready())
+        if (void* view=mc2_vk_shadow_island_get_mover_debug_view())
+            mc2vk::getOrCreateEnginePresentVk().renderNativeCsmShadowDebugOverlay(view,0);
+#endif
+}

@@ -68,7 +68,7 @@
 #include "vulkan_shared_scene_depth.h"
 #include "vulkan_shadow_island_live.h"
 #include "vulkan_mover_shadow.h"
-#include "gos_postprocess_internal.h"   // mc2ShadowGuardClampedSun, mc2ClampShadowSunAltitude
+#include "gos_postprocess_internal.h"   // mc2ShadowGuardClampedSun
 #include "vk_shared_gbuffer_gate.h"
 
 // Fixed-timestep clock so the animated cloud/foam time matches the GL path under smoke.
