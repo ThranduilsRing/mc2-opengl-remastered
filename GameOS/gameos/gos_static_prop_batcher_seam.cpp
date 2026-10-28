@@ -30,25 +30,30 @@ uint64_t GpuStaticPropBatcher::getDisallowedLateRegEventCount() {
 // GpuStaticPropBatcher::isMultiShapeEligibleForGpuObjects
 // Cheap, side-effect-free eligibility check used by the addRenderShape gate
 // (tgl.cpp:2522 Stage 2.B) and by *Appearance::update (Stage 2.B) before
-// calling submitMultiShape. Returns true iff every SHAPE_NODE leaf under `multi` is registered in s_typeIndex.
+// calling submitMultiShape. Returns true iff submitMultiShape's pre-submit gates pass:
+// geometry is finalized, registration has not failed fatally, and every SHAPE_NODE
+// leaf under `multi` is registered in s_typeIndex.
 // MUST NOT mutate any batcher state, log, or increment counters.
 bool GpuStaticPropBatcher::isMultiShapeEligibleForGpuObjects(
         const TG_MultiShape* multi) const {
-    if (!multi || !multi->usesTypeMaterials()) return false;
+    if (!multi || !multi->usesTypeMaterials() || !s_geometryFinalized || s_fatalRegistrationFailure) return false;
 
     const int n = multi->numTG_Shapes;
     if (n <= 0 || !multi->listOfShapes) return false;
 
+    bool sawShapeNode = false;
     for (int i = 0; i < n; ++i) {
         const TG_ShapeRec& rec = multi->listOfShapes[i];
         if (!rec.processMe || !rec.node) continue;
         const TG_Shape* child = rec.node.get();
         if (!child->myType) continue;
         if (child->myType->GetNodeType() != SHAPE_NODE) continue;  // skip helpers/bones
+        if (!child->matchesTypeMaterials()) return false;
+        sawShapeNode = true;
         const TG_TypeShape* ts = static_cast<const TG_TypeShape*>(child->myType);
         if (s_typeIndex.find(ts->stableId()) == s_typeIndex.end()) return false;
     }
-    return true;
+    return sawShapeNode;
 }
 
 void gos_GpuPropsCycleDebugMode() {

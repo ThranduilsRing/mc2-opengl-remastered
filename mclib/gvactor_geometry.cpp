@@ -169,7 +169,7 @@ void GVAppearance::updateRenderShape()
 	// The static-prop batcher draws a type-material body from its node matrices; a declined submit falls back to the
 	// CPU draw from the same matrices.
 	renderShape->TransformMultiShape_HierarchyOnly(&translation, &rotation);
-	if (!renderShape->usesTypeMaterials())
+	if (!GpuStaticPropBatcher::instance().isMultiShapeEligibleForGpuObjects(renderShape.get()))
 		renderShape->ReserveCpuDraw();
 }
 
