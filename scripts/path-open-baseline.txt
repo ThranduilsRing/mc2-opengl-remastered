@@ -3,7 +3,7 @@
 # CreateFileA GENERIC_READ / ifstream) in code/ gui/ mclib/, excluding
 # '// path-audit: loose-only' tagged lines. Regenerate ONLY deliberately:
 #   sh scripts/check-path-normalization.sh --update-baseline
-# Generated at 4642f50b9.
+# Generated at 8e59d3725.
 2	code/brain_special_dispatch.cpp
 1	code/gamecam.cpp
 3	gui/UiDefs_parse.cpp
@@ -11,10 +11,9 @@
 1	mclib/assimp_importer.cpp
 1	mclib/bdactor_sidecar.cpp
 4	mclib/ffile.cpp
-7	mclib/file.cpp
+4	mclib/file.cpp
 1	mclib/fx_def_registry.cpp
-2	mclib/model_override_registry.cpp
+1	mclib/model_override_registry.cpp
 8	mclib/terrain_init.cpp
 1	mclib/terrtxm2_bake.cpp
 1	mclib/terrtxm2_load.cpp
-1	mclib/txmmgr_texture.cpp

@@ -783,7 +783,7 @@ static bool quickReadSaveVersion( std::string_view filePath, long& versionNumber
 	constexpr size_t kWindow = 64 * 1024;
 	char buffer[kWindow];
 
-	std::ifstream in( std::string( filePath ), std::ios::binary );
+	std::ifstream in( std::string( filePath ), std::ios::binary );	// path-audit: loose-only
 	if ( !in )
 		return false;
 
