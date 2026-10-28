@@ -74,9 +74,15 @@ TEST_CASE("save sections: rejects malformed, newer and unknown required sections
     SectionContainer unknownRequired; unknownRequired.add(fourcc('Z', 'Z', 'Z', 'Z'), 1, true, {7});
     CHECK_FALSE(decodeSections(encoded(unknownRequired), out, &why)); CHECK(why == "unknown_required_section");
 
-    SectionContainer unknownOptional = sample(); unknownOptional.add(tagBrain, 1, false, {7});
+    SectionContainer unknownOptional = sample(); unknownOptional.add(tagWorld, 1, false, {7});  // WRLD is reserved: unknown to this build
     REQUIRE(decodeSections(encoded(unknownOptional), out));
     CHECK(out == SectionContainer{{{tagAnimation, 3, 1, {0xaa}}, {tagOrders, 1, 1, {1, 2}}}});
+
+    SectionContainer brain = sample(); brain.add(tagBrain, 1, false, {7});
+    REQUIRE(decodeSections(encoded(brain), out));
+    CHECK(out.find(tagBrain)->payload == Bytes{7});  // BRN1 is known: kept, not dropped
+    SectionContainer brainNewer = sample(); brainNewer.add(tagBrain, 2, false, {7});
+    CHECK_FALSE(decodeSections(encoded(brainNewer), out, &why)); CHECK(why == "section_version");
 
     SectionContainer duplicate = sample(); duplicate.add(tagOrders, 1, true, {});
     Bytes ignored;
