@@ -386,5 +386,8 @@
   "scripts/tests/test_deploy_fail_last.py": "Pytest-discovered module through the scripts_tests/tools_tests contract row.",
   "scripts/tests/test_gpu_routing.py": "Pytest-discovered module through the scripts_tests/tools_tests contract row.",
   "scripts/tests/test_isolated_deploy_shaders_vk.py": "Pytest-discovered module through the scripts_tests/tools_tests contract row.",
-  "scripts/tests/test_run_smoke_early_validation.py": "Pytest-discovered module through the scripts_tests/tools_tests contract row."
+  "scripts/tests/test_run_smoke_early_validation.py": "Pytest-discovered module through the scripts_tests/tools_tests contract row.",
+  "scripts/tests/test_gate_state.py": "Pytest-discovered module through scripts/run_scripts_tests.py (scripts_tests).",
+  "scripts/tests/test_gate_farm.py": "Pytest-discovered module through scripts/run_scripts_tests.py (scripts_tests).",
+  "tools/test_mkmerge.py": "Pytest-discovered module through scripts/run_tools_tests.py (tools_tests)."
 }

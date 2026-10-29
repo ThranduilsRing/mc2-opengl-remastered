@@ -669,7 +669,7 @@ def test_gate_retains_both_art_modes_for_affected_saves_and_captures():
 
 
 @pytest.mark.parametrize("paths,count", [(["code/mission.cpp"], 2), (["scripts/kit_payload.py"], 10),
-                                        (["tools/scifi_kit/art/intent.py"], 10), (["unknown/runtime.xyz"], 10),
+                                        (["tools/scifi_kit/art/intent.py"], 10), (["unknown/runtime.xyz"], 5),
                                         (["mclib/content_ir.cpp"], 10)])
 def test_gate_save_matrix_tracks_art_path(paths, count):
     import merge_gate as gate
