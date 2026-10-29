@@ -3547,6 +3547,13 @@
           "text": "import console_child  # noqa: E402"
         },
         {
+          "path": "tools/stress_overlap.py",
+          "line": 35,
+          "evidence": "import",
+          "reference": "console_child",
+          "text": "import console_child  # noqa: E402"
+        },
+        {
           "path": "tools/terrain_beautify/cook_markings.py",
           "line": 99,
           "evidence": "import",
@@ -5390,7 +5397,7 @@
         },
         {
           "path": "scripts/run_smoke.py",
-          "line": 1547,
+          "line": 1550,
           "evidence": "import",
           "reference": "run_visual_capture",
           "text": "from run_visual_capture import smoke_capture"
@@ -5851,6 +5858,13 @@
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from scripts.smoke_lib import child_registry, exe_guard"
+        },
+        {
+          "path": "scripts/tests/test_sim_overlap_audit_gate.py",
+          "line": 8,
+          "evidence": "import",
+          "reference": "scripts.smoke_lib",
+          "text": "from scripts.smoke_lib import gates, logparse"
         },
         {
           "path": "tests/smoke/test_capture_backend.py",
@@ -6319,6 +6333,13 @@
           "text": "from scripts.smoke_lib import gates, logparse"
         },
         {
+          "path": "scripts/tests/test_sim_overlap_audit_gate.py",
+          "line": 8,
+          "evidence": "import",
+          "reference": "scripts.smoke_lib.gates",
+          "text": "from scripts.smoke_lib import gates, logparse"
+        },
+        {
           "path": "tests/smoke/test_gates.py",
           "line": 2,
           "evidence": "import",
@@ -6534,6 +6555,13 @@
         {
           "path": "scripts/tests/test_install_hygiene.py",
           "line": 14,
+          "evidence": "import",
+          "reference": "scripts.smoke_lib.logparse",
+          "text": "from scripts.smoke_lib import gates, logparse"
+        },
+        {
+          "path": "scripts/tests/test_sim_overlap_audit_gate.py",
+          "line": 8,
           "evidence": "import",
           "reference": "scripts.smoke_lib.logparse",
           "text": "from scripts.smoke_lib import gates, logparse"
@@ -7003,7 +7031,7 @@
       "callers_by_stem": [
         {
           "path": "scripts/run_smoke.py",
-          "line": 1652,
+          "line": 1655,
           "evidence": "import",
           "reference": "scripts.smoke_lib.runtime_bridge",
           "text": "from scripts.smoke_lib.runtime_bridge import RuntimeBridge"
@@ -7942,6 +7970,13 @@
       "callers_by_stem": []
     },
     {
+      "path": "scripts/tests/test_sim_overlap_audit_gate.py",
+      "basename": "test_sim_overlap_audit_gate.py",
+      "stem": "test_sim_overlap_audit_gate",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
       "path": "scripts/tests/test_slang_build.py",
       "basename": "test_slang_build.py",
       "stem": "test_slang_build",
@@ -7959,6 +7994,13 @@
       "path": "scripts/tests/test_stage_root.py",
       "basename": "test_stage_root.py",
       "stem": "test_stage_root",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
+      "path": "scripts/tests/test_stress_overlap.py",
+      "basename": "test_stress_overlap.py",
+      "stem": "test_stress_overlap",
       "callers_by_basename": [],
       "callers_by_stem": []
     },
@@ -16264,6 +16306,13 @@
           "text": "import sim_determinism as sim"
         },
         {
+          "path": "scripts/tests/test_sim_overlap_audit_gate.py",
+          "line": 9,
+          "evidence": "import",
+          "reference": "sim_determinism",
+          "text": "import sim_determinism as sim"
+        },
+        {
           "path": "tools/battery.py",
           "line": 92,
           "evidence": "import",
@@ -16487,6 +16536,21 @@
       "stem": "verb_chain_equiv",
       "callers_by_basename": [],
       "callers_by_stem": []
+    },
+    {
+      "path": "tools/stress_overlap.py",
+      "basename": "stress_overlap.py",
+      "stem": "stress_overlap",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "scripts/tests/test_stress_overlap.py",
+          "line": 7,
+          "evidence": "import",
+          "reference": "stress_overlap",
+          "text": "import stress_overlap as so"
+        }
+      ]
     },
     {
       "path": "tools/terrain_beautify/control_map_tool.py",

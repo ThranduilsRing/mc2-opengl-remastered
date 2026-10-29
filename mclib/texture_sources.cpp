@@ -59,8 +59,10 @@ std::shared_ptr<TextureSource> TextureSources::find(const char* name, DWORD vari
     // isLive takes TextureService::mu_: call it without indexMutex_ (lock order in texture_sources_internal.h).
     if (source && RenderCore::textureService().isLive(source->handle)) return source;
     std::lock_guard lock(indexMutex_);
-    auto it=named_.find(key);
-    if (it!=named_.end() && it->second==id) named_.erase(it);   // unless a publish re-pointed the name meanwhile
+    if (auto it=named_.find(key); it!=named_.end()) {
+        const auto& [named, target]=*it;
+        if (target==id) named_.erase(it);   // unless a publish re-pointed the name meanwhile
+    }
     return {};
 }
 std::shared_ptr<const Bytes> TextureSources::internBytes(const std::string& identity, std::shared_ptr<const Bytes> bytes) {

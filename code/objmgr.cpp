@@ -11,6 +11,7 @@
 
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include <atomic>
+#include "utils/mc2log.h"
 #include "sim_overlap.h"
 #include "objmgr_internal.h"
 #include "mc2fmt.h"
@@ -1020,11 +1021,8 @@ bool viewIsCurrent (const mc2::render_view::RenderView& v)
 	if (std::atomic_ref<uint32_t>(v.obj->generation).load(std::memory_order_acquire) == v.generation)
 		return true;
 	if (++g_staleViewSkips <= 8)
-	{
-		printf("[SIM_OVERLAP v1] stale_view_skip class=%u watch=%u total=%llu\n",
-			unsigned(v.objClass), v.watchId, static_cast<unsigned long long>(g_staleViewSkips));
-		fflush(stdout);
-	}
+		MC2_LOG_OUT(Sim, Warn, "[SIM_OVERLAP v1] stale_view_skip sample=first8 class={} watch={} total={}",
+			unsigned(v.objClass), v.watchId, g_staleViewSkips);
 	return false;
 }
 }
