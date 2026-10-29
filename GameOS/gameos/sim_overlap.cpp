@@ -24,8 +24,11 @@ namespace mc2::overlap {
 namespace {
 
 Hooks g_hooks{};
+constexpr int kUnregistered = -1;
+thread_local int t_role = kUnregistered;   // Owner value once the thread registered
 thread_local bool t_onSimWorker = false;
 thread_local uint32_t t_simFrame = 0;
+std::atomic<bool> g_renderThread{false};   // a dedicated render thread registered: Main no longer owns Render
 std::atomic<bool> g_inFlight{false};
 std::atomic<unsigned> g_violations{0};
 
@@ -39,7 +42,7 @@ struct Worker {
 Worker g_worker;
 
 void workerMain() {
-    t_onSimWorker = true;
+    registerThread(Owner::Sim);
 #ifdef TRACY_ENABLE
     tracy::SetThreadName("SimOverlap");
 #endif
@@ -79,14 +82,47 @@ void startWorker() {
 #endif
 }
 
-void violation(std::string_view kind, std::string_view site) {
+void violation(std::string_view kind, std::string_view site, bool hard = false) {
     const unsigned n = g_violations.fetch_add(1, std::memory_order_relaxed) + 1;
-    if (n <= 20) std::fprintf(stderr, "[SIM_OVERLAP v1] VIOLATION %.*s site=%.*s count=%u\n",
-        static_cast<int>(kind.size()), kind.data(), static_cast<int>(site.size()), site.data(), n);
-    if (mc2::gate::get<"MC2_SIM_OVERLAP_AUDIT">()) std::abort();
+    const bool abortNow = hard || mc2::gate::get<"MC2_SIM_OVERLAP_AUDIT">();
+    if (n <= 20 || abortNow) {
+        std::fprintf(stderr, "[SIM_OVERLAP v1] VIOLATION %.*s site=%.*s count=%u%s\n",
+            static_cast<int>(kind.size()), kind.data(), static_cast<int>(site.size()), site.data(), n, abortNow ? " abort=1" : "");
+        std::fflush(stderr);
+    }
+    if (abortNow) std::abort();
+}
+
+const char* ownerName(Owner o) { return o == Owner::Main ? "main" : o == Owner::Sim ? "sim" : "render"; }
+
+// True when the calling thread may enter `domain`. Unregistered threads (job pool, tools) are not judged.
+bool owns(Owner domain) {
+    if (t_role == kUnregistered) return true;
+    const Owner me = static_cast<Owner>(t_role);
+    switch (domain) {
+    case Owner::Main:   return me == Owner::Main;
+    case Owner::Render: return me == Owner::Render || (me == Owner::Main && !g_renderThread.load(std::memory_order_acquire));
+    case Owner::Sim:    return me == Owner::Sim || (me == Owner::Main && !g_inFlight.load(std::memory_order_acquire));
+    }
+    return false;
+}
+
+void checkOwner(Owner domain, std::string_view site, bool hard) {
+    if (owns(domain)) return;
+    char kind[64];
+    std::snprintf(kind, sizeof kind, "%s-thread-called-%s-api", ownerName(static_cast<Owner>(t_role)), ownerName(domain));
+    violation(kind, site, hard);
 }
 
 } // namespace
+
+void registerThread(Owner role) {
+    t_role = static_cast<int>(role);
+    t_onSimWorker = role == Owner::Sim;
+    if (role == Owner::Render) g_renderThread.store(true, std::memory_order_release);
+}
+void assertOwner(Owner domain, std::string_view site) { checkOwner(domain, site, false); }
+void requireOwner(Owner domain, std::string_view site) { checkOwner(domain, site, true); }
 
 void installHooks(const Hooks& hooks) { g_hooks = hooks; }
 void extractRender() { if (g_hooks.extract) g_hooks.extract(); }
@@ -119,10 +155,6 @@ void setSimulationFrame(uint32_t frame) { t_simFrame = frame; }
 
 void assertSimQuiescent(std::string_view site) {
     if (g_inFlight.load(std::memory_order_acquire) && !t_onSimWorker) violation("render-read-while-tick-in-flight", site);
-}
-
-void assertMainThread(std::string_view site) {
-    if (t_onSimWorker) violation("sim-worker-called-main-thread-api", site);
 }
 
 } // namespace mc2::overlap
