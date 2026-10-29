@@ -2213,7 +2213,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1535,
+          "line": 1536,
           "evidence": "command",
           "reference": "scripts/check_sim_include_firewall.py",
           "text": "run_check \"sim_include_firewall\"        \"py -3 -B scripts/tests/test_sim_include_firewall.py && py -3 scripts/check_sim_include_firewall.py\""
@@ -4914,6 +4914,13 @@
           "evidence": "import",
           "reference": "run_battle_bench",
           "text": "import run_battle_bench as bench"
+        },
+        {
+          "path": "tools/perf/mission_cpu_profile.py",
+          "line": 26,
+          "evidence": "import",
+          "reference": "run_battle_bench",
+          "text": "import run_battle_bench as battle"
         }
       ]
     },
@@ -5245,14 +5252,14 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1531,
+          "line": 1532,
           "evidence": "command",
           "reference": "scripts/run_tools_tests.py",
           "text": "run_check_tri \"tools_tests\"             \"py -3 scripts/run_tools_tests.py\""
         },
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1532,
+          "line": 1533,
           "evidence": "command",
           "reference": "scripts/run_tools_tests.py",
           "text": "run_check_tri \"kit_art\"                 \"py -3 scripts/run_tools_tests.py --suite art\""
@@ -7638,6 +7645,13 @@
       "callers_by_stem": []
     },
     {
+      "path": "scripts/tests/test_mission_cpu_profile.py",
+      "basename": "test_mission_cpu_profile.py",
+      "stem": "test_mission_cpu_profile",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
       "path": "scripts/tests/test_mission_order_ingress_witness.py",
       "basename": "test_mission_order_ingress_witness.py",
       "stem": "test_mission_order_ingress_witness",
@@ -7805,7 +7819,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1535,
+          "line": 1536,
           "evidence": "command",
           "reference": "scripts/tests/test_sim_include_firewall.py",
           "text": "run_check \"sim_include_firewall\"        \"py -3 -B scripts/tests/test_sim_include_firewall.py && py -3 scripts/check_sim_include_firewall.py\""
@@ -12705,6 +12719,21 @@
           "text": "import pch_audit as pa  # noqa: E402"
         }
       ]
+    },
+    {
+      "path": "tools/perf/mission_cpu_profile.py",
+      "basename": "mission_cpu_profile.py",
+      "stem": "mission_cpu_profile",
+      "callers_by_basename": [
+        {
+          "path": "scripts/tests/test_mission_cpu_profile.py",
+          "line": 12,
+          "evidence": "load module",
+          "reference": "tools/perf/mission_cpu_profile.py",
+          "text": "spec = importlib.util.spec_from_file_location(\"mission_cpu_profile\", PATH)"
+        }
+      ],
+      "callers_by_stem": []
     },
     {
       "path": "tools/perf_baseline_report.py",
@@ -17885,6 +17914,13 @@
           "evidence": "import",
           "reference": "tracy_capture_compare",
           "text": "import tracy_capture_compare as capture  # noqa: E402"
+        },
+        {
+          "path": "tools/perf/mission_cpu_profile.py",
+          "line": 25,
+          "evidence": "import",
+          "reference": "tracy_capture_compare",
+          "text": "import tracy_capture_compare as tracy"
         }
       ]
     },
