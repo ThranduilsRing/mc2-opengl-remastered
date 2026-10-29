@@ -20,6 +20,7 @@
 #endif
 
 #include <memory>
+#include "sim_overlap.h"
 #include "sim_world_trace.h"
 #include "render_view.h"
 
@@ -402,6 +403,7 @@ class GameObject {
 		}
 
 		virtual AppearancePtr getAppearance (void) {
+			mc2::overlap::assertLiveSimRead("GameObject::getAppearance");
 			return(appearance);
 		}
 		
@@ -535,6 +537,7 @@ class GameObject {
 		}
 
 		virtual glm::vec3 getPosition (void) {
+			mc2::overlap::assertLiveSimRead("GameObject::getPosition");
 			return(position);
 		}
 

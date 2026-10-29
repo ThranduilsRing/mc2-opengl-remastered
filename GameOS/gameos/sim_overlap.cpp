@@ -2,10 +2,12 @@
 #include "../../mclib/sim_overlap.h"
 
 #include <atomic>
+#include <chrono>
 #include <condition_variable>
 #include <cstdio>
 #include <cstdlib>
 #include <mutex>
+#include <random>
 #include <thread>
 
 #include "Gates/gate.h"
@@ -31,6 +33,15 @@ thread_local uint32_t t_simFrame = 0;
 std::atomic<bool> g_renderThread{false};   // a dedicated render thread registered: Main no longer owns Render
 std::atomic<bool> g_inFlight{false};
 std::atomic<unsigned> g_violations{0};
+
+// MC2_SIM_OVERLAP_JITTER: a per-thread engine seeded from the clock, so the sim's RNG streams never move.
+void jitterSleep() {
+    const int maxMs = mc2::gate::get<"MC2_SIM_OVERLAP_JITTER">();
+    if (maxMs <= 0) return;
+    thread_local std::minstd_rand rng(static_cast<unsigned>(std::chrono::steady_clock::now().time_since_epoch().count()));
+    const int ms = static_cast<int>(rng() % static_cast<unsigned>(maxMs + 1));
+    if (ms > 0) std::this_thread::sleep_for(std::chrono::milliseconds(ms));
+}
 
 struct Worker {
     std::mutex m;
@@ -58,6 +69,7 @@ void workerMain() {
 #ifdef TRACY_ENABLE
             ZoneScopedN("SimOverlap.Tick");
 #endif
+            jitterSleep();
             job();
         }
         {
@@ -116,6 +128,12 @@ void checkOwner(Owner domain, std::string_view site, bool hard) {
 
 } // namespace
 
+std::atomic<bool> g_renderFence{false};
+
+void fenceRead(std::string_view site) {
+    if (t_role == static_cast<int>(Owner::Main)) violation("main-read-live-sim-inside-render-fence", site);
+}
+
 void registerThread(Owner role) {
     t_role = static_cast<int>(role);
     t_onSimWorker = role == Owner::Sim;
@@ -128,6 +146,9 @@ void installHooks(const Hooks& hooks) { g_hooks = hooks; }
 void extractRender() { if (g_hooks.extract) g_hooks.extract(); }
 void beginFrameDraw() {
     if (g_hooks.kick) g_hooks.kick();
+    if (g_inFlight.load(std::memory_order_acquire) && mc2::gate::get<"MC2_OVERLAP_DEBUG">())
+        g_renderFence.store(true, std::memory_order_release);
+    jitterSleep();
 }
 void joinTail() { if (g_hooks.join) g_hooks.join(); }
 
@@ -143,6 +164,7 @@ void runOnWorker(std::function<void()> job) {
 }
 
 void waitWorker() {
+    g_renderFence.store(false, std::memory_order_release);
     if (!g_inFlight.load(std::memory_order_acquire)) return;
     std::unique_lock<std::mutex> lk(g_worker.m);
     g_worker.cv.wait(lk, [] { return !g_inFlight.load(std::memory_order_acquire); });

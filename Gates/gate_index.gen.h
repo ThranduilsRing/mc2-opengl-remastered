@@ -10,7 +10,7 @@
 
 namespace mc2::gate::detail {
 
-inline constexpr std::size_t kGateCount = 759;
+inline constexpr std::size_t kGateCount = 761;
 
 inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_ABL_ARG_GUARD", Kind::Bool, Rule::Lead1, {}},
@@ -406,6 +406,7 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_OOB_LETTERBOX", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_OPTIONS_OVERRIDE", Kind::String, Rule::Std, {}},
     {"MC2_OS_CURSOR", Kind::Bool, Rule::Presence, {}},
+    {"MC2_OVERLAP_DEBUG", Kind::Bool, Rule::Lead1, {}},
     {"MC2_OVERLAY_BIAS_LEGACY", Kind::Bool, Rule::Lead0, {}},
     {"MC2_OVERLAY_CEMENT_ADOPT", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_OVERLAY_MAGENTA_TRACE", Kind::Bool, Rule::Presence, {}},
@@ -499,6 +500,7 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_SIM_IDENTITY_TRACE_DETAIL", Kind::Bool, Rule::Std, {}},
     {"MC2_SIM_OVERLAP", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_SIM_OVERLAP_AUDIT", Kind::Bool, Rule::Lead1, {}},
+    {"MC2_SIM_OVERLAP_JITTER", Kind::Int, Rule::Prefix, {}},
     {"MC2_SIM_SPEED", Kind::Float, Rule::Prefix, {}},
     {"MC2_SKIP_STATIC_BUILDINGS", Kind::Bool, Rule::Lead0, {}},
     {"MC2_SKIP_STATIC_TREES", Kind::Bool, Rule::Lead0Kill, {}},
