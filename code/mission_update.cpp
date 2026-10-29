@@ -276,7 +276,9 @@ void Mission::updateMissionTest(bool report) {
                 const auto route = location - mover->getPosition();
                 const float fraction = std::clamp(glm::dot(enemy->getPosition() - mover->getPosition(), route)
                     / std::max(1.0f, glm::dot(route, route)), 0.0f, 1.0f);
-                if (enemy != objectiveTarget && (distance > std::max(200.0f, mover->getMaxFireRange())
+                if (extracting) {
+                    if (glm::distance(enemy->getPosition(), location) >= MaxExtractUnitDistance) continue;
+                } else if (enemy != objectiveTarget && (distance > std::max(200.0f, mover->getMaxFireRange())
                     || glm::distance(enemy->getPosition(), mover->getPosition() + fraction * route) > 400)) continue;
                 float remaining = 0, total = 0;
                 if (enemy->isMover()) {
@@ -392,7 +394,8 @@ void Mission::updateMissionTest(bool report) {
             }
         }
         auto intent = producePlayerIntent(mover->getPilot(), location,
-            objectiveTarget && !captureObjective ? objectiveTarget->getWatchID() : 0, squads[index], scenarioTime);
+            extracting ? squads[index].targetWatchId
+                : objectiveTarget && !captureObjective ? objectiveTarget->getWatchID() : 0, squads[index], scenarioTime);
         // Keep the force outside its own pending strike, including moving/capturing units.
         if (scenarioTime < test.airstrikeUntil && !mover->isRefit() && !mover->isRecover()
             && !mover->isGuardTower()) {

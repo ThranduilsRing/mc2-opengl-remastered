@@ -1509,7 +1509,7 @@ mc2::player::UnitIntent producePlayerIntent(MechWarrior* warrior,
         }
     } else runtime->retreatEffectApplied = false;
     std::array<int, MAX_CONTACTS_PER_TEAM> contacts{};
-    const long count = squad.extracting ? 0 : unit->getContacts(contacts.data(), (1 | 64), CONTACT_SORT_DISTANCE);
+    const long count = unit->getContacts(contacts.data(), (1 | 64), CONTACT_SORT_DISTANCE);
     GameObjectPtr target = nullptr, weakTarget = nullptr, objectiveContact = nullptr;
     float best = -1, weakBest = -1, enemyThreat = 0;
     for (long i = 0; i < count; ++i) {
@@ -1522,6 +1522,7 @@ mc2::player::UnitIntent producePlayerIntent(MechWarrior* warrior,
         const float threat = std::max(1.0f, static_cast<float>(enemy->getThreatRating()));
         if (distance < 800) enemyThreat += threat;
         const bool isObjective = enemy->getWatchID() == objectiveTarget;
+        if (squad.extracting && !isObjective) continue;
         if (isObjective) objectiveContact = enemy;
         const glm::vec3 route = objective - position;
         const float fraction = std::clamp(glm::dot(enemy->getPosition() - position, route)
@@ -1595,7 +1596,7 @@ mc2::player::UnitIntent producePlayerIntent(MechWarrior* warrior,
     }
     // Wait for stragglers before contact; briefly withdraw an outmatched force.
     const bool separated = enemyThreat > 0 && glm::distance(position, regroup) > 1600;
-    const bool regroupNeeded = enemyThreat > ownThreat * 1.5f || separated;
+    const bool regroupNeeded = !squad.extracting && (enemyThreat > ownThreat * 1.5f || separated);
     if (regroupNeeded && now >= runtime->playerRegroupUntil + 20) {
         runtime->playerRegroupUntil = now + 4;
         std::fprintf(stderr, "[PLAYER_BRAIN] wid=%ld event=regroup own=%.1f threat=%.1f time=%.2f\n",
