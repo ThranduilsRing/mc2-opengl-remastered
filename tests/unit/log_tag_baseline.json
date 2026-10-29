@@ -3553,18 +3553,6 @@
    "count": 2
   },
   {
-   "tag": "G7_HAZARDS",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "mode",
-    "frames",
-    "violations",
-    "sites"
-   ],
-   "count": 1
-  },
-  {
    "tag": "GAMEPLAY_PICK_SELFTEST",
    "ver": 1,
    "stream": "stderr",

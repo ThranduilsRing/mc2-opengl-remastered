@@ -10,7 +10,7 @@
 
 namespace mc2::gate::detail {
 
-inline constexpr std::size_t kGateCount = 759;
+inline constexpr std::size_t kGateCount = 758;
 
 inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_ABL_ARG_GUARD", Kind::Bool, Rule::Lead1, {}},
@@ -497,7 +497,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_SIM_IDENTITY_TRACE_DETAIL", Kind::Bool, Rule::Std, {}},
     {"MC2_SIM_OVERLAP", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_SIM_OVERLAP_AUDIT", Kind::Bool, Rule::Lead1, {}},
-    {"MC2_SIM_OVERLAP_DIAGNOSTIC", Kind::Enum, Rule::Std, "tail|early"},
     {"MC2_SIM_SPEED", Kind::Float, Rule::Prefix, {}},
     {"MC2_SKIP_STATIC_BUILDINGS", Kind::Bool, Rule::Lead0, {}},
     {"MC2_SKIP_STATIC_TREES", Kind::Bool, Rule::Lead0Kill, {}},

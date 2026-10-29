@@ -1328,7 +1328,7 @@ void Mission::overlapKick()
 	s_pre.turn = turn;
 	if (ticks == 0)
 		return;
-	const uint32_t firstFrame = g_mc2FrameCounter + (mc2::gate::is<"MC2_SIM_OVERLAP_DIAGNOSTIC", "early">() ? 1u : 0u);
+	const uint32_t firstFrame = g_mc2FrameCounter + 1u;
 	mc2::overlap::runOnWorker([this, ticks, renderLength, firstFrame] {
 		frameLength = renderLength;
 		long early = 0;

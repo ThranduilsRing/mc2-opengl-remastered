@@ -1097,7 +1097,6 @@ int main(int argc, char** argv)
         // after the timer FrameEnd; advisory, OFF=zero cost.
         gos_frame_pass_stats::FrameEnd(static_cast<unsigned long>(g_mc2FrameCounter));
 
-    mc2::overlap::kickTail();   // G7: frame N+1's ticks run on the sim worker while this thread presents and waits out the frame cap
     frameSwapWindow(win);   // the shared host present also ends the Vulkan frame and advances the handle-slot clock
 #ifdef MC2_VULKAN_ISLAND
     mc2vk::gpuprof::frameEnd();   // VK-GPU-ZONES: after the present submit so the frame's scopes are all recorded; Tracy collect + per-pass timestamp read
@@ -1109,7 +1108,6 @@ int main(int argc, char** argv)
             mc2::overlap::beginFrameDraw(); // keep the early worker path active in headless determinism/save harnesses
             mc2::overlap::waitWorker();
             gos::host::advanceFrameCounter();
-            mc2::overlap::kickTail();   // headless: no tail to hide behind; kick and join keep the worker path under the same harness
             mc2::overlap::joinTail();
         }   // !headless
 
@@ -1177,7 +1175,6 @@ int main(int argc, char** argv)
         validateWriteResults();
     }
 
-    mc2::overlap::printHazards();
     mc2_object_recon::drainOnShutdown();
     projectz_shutdown();
     std::fprintf(stderr, "[SHUTDOWN] engine begin\n"); std::fflush(stderr);

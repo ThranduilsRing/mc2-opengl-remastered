@@ -10,11 +10,10 @@
 
 namespace mc2::overlap {
 
-// The mission code installs these; the main loop calls kickTail() / joinTail() around the frame's presenting tail.
+// The mission code installs these; the main loop kicks after extract and joins after present.
 struct Hooks { void (*kick)(); void (*join)(); void (*extract)() = nullptr; };
 void installHooks(const Hooks& hooks);
 void extractRender(); // main thread, at ExtractRenderSnapshot: builds the frame's render list/clock (G7b K3)
-void kickTail();   // main thread: bank the next tick(s) and start them on the sim worker (no-op if not eligible)
 void joinTail();   // main thread: wait for the sim worker to finish (no-op if none is in flight)
 
 // Sim worker.
@@ -25,11 +24,9 @@ bool onSimWorker();                            // true on the sim worker thread
 uint32_t simulationFrame(uint32_t serialFrame); // worker's tick epoch; render's frame counter stays unchanged during draw
 void setSimulationFrame(uint32_t frame);        // sim worker only, before each tick
 
-// Audit. A violation prints "[SIM_OVERLAP v1] VIOLATION ..." once per site; MC2_SIM_OVERLAP_AUDIT=1 aborts.
+// Audit. The first 20 violations print "[SIM_OVERLAP v1] VIOLATION ..."; MC2_SIM_OVERLAP_AUDIT=1 aborts.
 void assertSimQuiescent(std::string_view site);     // render side: reads live sim objects, so no tick may be in flight
 void assertMainThread(std::string_view site);      // sim side: GL/Vulkan/texture/sound entry points, never on the worker
-unsigned violationCount();
-void beginFrameDraw(); // kicks after extraction, before DrawScreen (diagnostic tail selector retained until K6)
-void printHazards();   // once at run shutdown, after the final join
+void beginFrameDraw(); // main thread: bank and kick after extraction, before DrawScreen (no-op if not eligible)
 
 } // namespace mc2::overlap

@@ -6,8 +6,6 @@
 #include <cstdio>
 #include <cstdlib>
 #include <mutex>
-#include <map>
-#include <string>
 #include <thread>
 
 #include "Gates/gate.h"
@@ -30,10 +28,6 @@ thread_local bool t_onSimWorker = false;
 thread_local uint32_t t_simFrame = 0;
 std::atomic<bool> g_inFlight{false};
 std::atomic<unsigned> g_violations{0};
-std::mutex g_hazardMutex;
-std::map<std::string, unsigned> g_hazards;
-unsigned g_drawFrames = 0;
-bool earlyKick() { return mc2::gate::is<"MC2_SIM_OVERLAP_DIAGNOSTIC", "early">(); }
 
 struct Worker {
     std::mutex m;
@@ -87,7 +81,6 @@ void startWorker() {
 
 void violation(std::string_view kind, std::string_view site) {
     const unsigned n = g_violations.fetch_add(1, std::memory_order_relaxed) + 1;
-    { std::lock_guard<std::mutex> lock(g_hazardMutex); ++g_hazards[std::string(site)]; }
     if (n <= 20) std::fprintf(stderr, "[SIM_OVERLAP v1] VIOLATION %.*s site=%.*s count=%u\n",
         static_cast<int>(kind.size()), kind.data(), static_cast<int>(site.size()), site.data(), n);
     if (mc2::gate::get<"MC2_SIM_OVERLAP_AUDIT">()) std::abort();
@@ -97,17 +90,8 @@ void violation(std::string_view kind, std::string_view site) {
 
 void installHooks(const Hooks& hooks) { g_hooks = hooks; }
 void extractRender() { if (g_hooks.extract) g_hooks.extract(); }
-void kickTail() { if (!earlyKick() && g_hooks.kick) g_hooks.kick(); }
 void beginFrameDraw() {
-    ++g_drawFrames;
-    if (earlyKick() && g_hooks.kick) g_hooks.kick();
-}
-void printHazards() {
-    std::lock_guard<std::mutex> lock(g_hazardMutex);
-    std::fprintf(stderr, "[G7_HAZARDS v1] mode=%s frames=%u violations=%u sites=", earlyKick() ? "early" : "tail", g_drawFrames, violationCount());
-    for (const auto& [site, count] : g_hazards)
-        std::fprintf(stderr, "%s:%u/%.6f,", site.c_str(), count, g_drawFrames ? double(count) / g_drawFrames : 0.0);
-    std::fprintf(stderr, "\n");
+    if (g_hooks.kick) g_hooks.kick();
 }
 void joinTail() { if (g_hooks.join) g_hooks.join(); }
 
@@ -140,7 +124,5 @@ void assertSimQuiescent(std::string_view site) {
 void assertMainThread(std::string_view site) {
     if (t_onSimWorker) violation("sim-worker-called-main-thread-api", site);
 }
-
-unsigned violationCount() { return g_violations.load(std::memory_order_relaxed); }
 
 } // namespace mc2::overlap

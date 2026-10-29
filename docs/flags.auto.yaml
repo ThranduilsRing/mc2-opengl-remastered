@@ -3,9 +3,9 @@
 # Where each gate is read, what the smoke runner forwards and what tier1_env_vars.md says are not here: ask
 # tools/repo_intel (env_var, gate_status), which scan the sources.
 generator_version: "3.0.0"
-gate_count: 759
+gate_count: 758
 registry_entry_count: 150
-verified_count: 719
+verified_count: 718
 flags:
   - name: MC2_ABL_ARG_GUARD
     kind: Bool
@@ -3733,7 +3733,8 @@ flags:
     default: true
     rule: Lead0Kill
     owner: code
-    doc: "G7b: run the banked sim tick on a worker during snapshot drawing; 0 = serial loop."
+    retire_by: 2026-11-04
+    doc: "G7b: run the banked sim tick on a worker during snapshot drawing; 0 = serial loop. Retire after three green merge windows."
     smoke_passthrough: true
     verified: true
   - name: MC2_SIM_OVERLAP_AUDIT
@@ -3742,15 +3743,6 @@ flags:
     rule: Lead1
     owner: code
     doc: "G7: abort on the first overlap audit violation (render touches sim state mid-tick)."
-    smoke_passthrough: true
-    verified: true
-  - name: MC2_SIM_OVERLAP_DIAGNOSTIC
-    kind: Enum
-    default: "early"
-    rule: Std
-    owner: code
-    doc: "G7b K5: early is the shipped kick before DrawScreen; tail restores the diagnostic tail kick. Audit applies to both."
-    tokens: "tail|early"
     smoke_passthrough: true
     verified: true
   - name: MC2_SIM_SPEED
