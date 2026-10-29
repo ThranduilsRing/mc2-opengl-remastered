@@ -98,12 +98,22 @@ bool GpuMechBatcher::submitActor(const GpuMechSubmitDesc& desc) {
     //
     // SLOTS 1+ are type-stable; reading from owningTypeShape is correct.
     ps.packetTexHandles.resize(rec.packetCount, 0);
+    const auto numTextures = static_cast<uint32_t>(desc.mechShape->GetNumTextures());
+    uint32_t lastTextureSlot = 0;
+    uint32_t lastTextureHandle = 0;
     for (uint32_t p = 0; p < rec.packetCount; ++p) {
         const GpuMechPacket& pkt = s_packets[rec.firstPacket + p];
         if (pkt.textureSlot == 0) {
             ps.packetTexHandles[p] = desc.slot0TexHandle;
-        } else if (pkt.textureSlot < static_cast<uint32_t>(desc.mechShape->GetNumTextures())) {
-            ps.packetTexHandles[p]=mc2::textures::sourceId(desc.mechShape->GetTextureHandle(pkt.textureSlot));
+        } else if (pkt.textureSlot < numTextures) {
+            // Adjacent packets often share a material. Keep this lookup local
+            // to one actor so paint, LOD and reload need no cache invalidation.
+            // A failed realization must still be retried by the next packet.
+            if (pkt.textureSlot != lastTextureSlot || !lastTextureHandle) {
+                lastTextureSlot = pkt.textureSlot;
+                lastTextureHandle = mc2::textures::sourceId(desc.mechShape->GetTextureHandle(pkt.textureSlot));
+            }
+            ps.packetTexHandles[p] = lastTextureHandle;
         }
     }
 
