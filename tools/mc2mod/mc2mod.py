@@ -50,12 +50,17 @@ PACKAGE_SCHEMA = "mc2-package/1"
 RECEIPT_SCHEMA = "mc2-install-receipt/1"
 PACKAGE_EXT = ".mc2mod"
 
+# Shared with the L1 VFS tools, also when invoked as a script.
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from mod_install import management
+
 # Canonical deploy roots that the installer refuses to touch (ruling: canonical
 # guard -- overridable only by --i-know-this-is-canonical which v1 does NOT
 # implement).
 _CANONICAL_DEPLOY_ROOTS: List[str] = [
     "a:/games/mc2-opengl/mc2-win64-v0.4",
     "a:/games/mc2-opengl/mc2-win64-0.4c",
+    "a:/games/mc2-opengl/mc2-win64-v0.4c",
 ]
 
 # Pinned zip-member timestamp for reproducible packs.  Without this, two pack
@@ -245,7 +250,9 @@ def pack_mod(mod_dir: str, out_dir: Path) -> Path:
         "name": name,
         "version": version,
         "files": files_meta,
-        "dependencies": [],
+        "dependencies": [{"id": dep, "version": "*"} for dep in
+                         json.loads((Path(mod_dir) / "mod.json").read_text(encoding="utf-8"))
+                         .get("dependencies", [])],
     }, indent=2).encode("utf-8")
 
     # Write zip.  All members go through _write_zip_member so timestamps and
@@ -464,7 +471,7 @@ def _print_advisory(deploy_dir: str, mod_id: str, pkg_sha: str, pkg: Dict[str, A
 # Subcommand: install
 # ---------------------------------------------------------------------------
 
-def cmd_install(args: argparse.Namespace) -> int:
+def _install_staged(args: argparse.Namespace) -> int:
     pkg_path = args.package
     deploy_dir = str(Path(args.deploy).resolve())
 
@@ -776,12 +783,28 @@ def cmd_publish(args: argparse.Namespace) -> int:
 # CLI entry point
 # ---------------------------------------------------------------------------
 
+def cmd_install(args: argparse.Namespace) -> int:
+    return management.install_retained(args, _install_staged, _is_canonical_deploy, cmd_verify_lite)
+
+
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="mc2mod",
         description="MC2 mod packager / installer (S8 v1)",
     )
     sub = parser.add_subparsers(dest="command", required=True)
+
+    p_list = sub.add_parser("list", help="List installed versions and legacy folders")
+    p_list.add_argument("--deploy", required=True)
+    p_rollback = sub.add_parser("rollback", help="Restore a verified retained version")
+    p_rollback.add_argument("id")
+    p_rollback.add_argument("--to", required=True)
+    p_rollback.add_argument("--deploy", required=True)
+    p_check = sub.add_parser("check", help="Predict active-chain path and models.json conflicts")
+    p_check.add_argument("--deploy", required=True)
+    p_check.add_argument("--active", required=True)
+    p_check.add_argument("--deps", default="", help="MC2_MOD_DEPS, comma/semicolon separated")
+    p_check.add_argument("--log", help="Compare prediction to a fresh engine mod-dup log")
 
     # pack
     p_pack = sub.add_parser("pack", help="Pack a mod directory into a .mc2mod archive")
@@ -824,6 +847,9 @@ def main(argv: Optional[List[str]] = None) -> int:
         "install": cmd_install,
         "uninstall": cmd_uninstall,
         "publish": cmd_publish,
+        "list": management.list_mods,
+        "rollback": lambda ns: management.rollback(ns, _is_canonical_deploy),
+        "check": management.check,
     }
     fn = dispatch.get(args.command)
     if fn is None:
@@ -831,7 +857,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         return 1
     try:
         return fn(args)
-    except ValueError as exc:
+    except (ValueError, OSError, zipfile.BadZipFile) as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         return 1
 

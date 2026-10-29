@@ -1425,6 +1425,7 @@ run_check "review_anchor_stability"          "py -3 scripts/check-review-anchor-
 # rather than reimplementing run_check. Seconds, three short child runs.
 run_check "agents_md"                  "sh scripts/check-agents-md.sh"
 run_check "asset_manifest_fixtures"    "py -3 scripts/check-asset-manifest-fixtures.py"
+run_check "mod_packaging"             "py -3 -B -m pytest tests/mod_install/test_packaging.py tests/mc2mod -q -p no:cacheprovider"
 run_check "asset_pipeline_doc"         "sh scripts/check-asset-pipeline-doc.sh"
 run_check "claude_md_pointer"          "sh scripts/check-claude-md-pointer.sh"
 run_check "json_isolation"             "sh scripts/check-json-isolation.sh"
