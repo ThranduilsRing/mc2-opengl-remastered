@@ -6,7 +6,7 @@
   "HostServices": 0,
   "RenderCore": 402,
   "RenderWorld": 0,
-  "code": 13426,
+  "code": 13284,
   "mclib": 22497,
   "shaders": 416
  },
@@ -224,7 +224,6 @@
   "code/terrobj.h": 20,
   "code/turret.cpp": 526,
   "code/turret.h": 36,
-  "code/warrior.cpp": 142,
   "code/warrior.h": 206,
   "code/warrior_alarms.cpp": 49,
   "code/warrior_brain.cpp": 33,
@@ -481,8 +480,8 @@
   "shaders/vulkan/terrain_tier1.vert": 71,
   "shaders/vulkan/terrain_tier1_skirt.vert": 71
  },
- "head": "083c83a2a",
+ "head": "38538eba3",
  "n": 8,
- "total": 38952,
+ "total": 38810,
  "version": 1
 }

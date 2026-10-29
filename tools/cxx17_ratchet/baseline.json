@@ -141,7 +141,7 @@
   "code": {
    "LG01": 0,
    "LG02": 0,
-   "LG03": 352,
+   "LG03": 342,
    "LG04": 15,
    "LG05": 198,
    "LG06": 437,
@@ -2114,9 +2114,6 @@
   "code/unitprofile_fit.cpp": {
    "LG06": 6
   },
-  "code/warrior.cpp": {
-   "LG03": 10
-  },
   "code/warrior.h": {
    "LG05": 3,
    "LG06": 2,
@@ -3409,7 +3406,7 @@
    "LG20": 3
   }
  },
- "head": "083c83a2a",
+ "head": "38538eba3",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
