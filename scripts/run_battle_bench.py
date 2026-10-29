@@ -96,6 +96,8 @@ def environment(channel, width, height):
         declared["MC2_SIM_OVERLAP"] = os.environ["MC2_SIM_OVERLAP"]
     if os.environ.get("MC2_SIM_OVERLAP_AUDIT") in ("0", "1"):
         declared["MC2_SIM_OVERLAP_AUDIT"] = os.environ["MC2_SIM_OVERLAP_AUDIT"]
+    if "MC2_VULKAN_VALIDATION" in os.environ:
+        declared["MC2_VULKAN_VALIDATION"] = os.environ["MC2_VULKAN_VALIDATION"]
     if os.environ.get("MC2_FORCE_DYNAMIC_BUILDINGS") in ("0", "1"):
         declared["MC2_FORCE_DYNAMIC_BUILDINGS"] = os.environ["MC2_FORCE_DYNAMIC_BUILDINGS"]
     return declared
@@ -401,7 +403,7 @@ def main():
         raise ValueError("output already contains a run; choose --out to preserve the baseline")
     # Retain the declared overlap A/B gate as well as the host lease controls.
     for key in list(os.environ):
-        if key.startswith("MC2_") and not key.startswith("MC2_HOST_LEASE") and key not in ("MC2_SIM_OVERLAP", "MC2_SIM_OVERLAP_AUDIT"):
+        if key.startswith("MC2_") and not key.startswith("MC2_HOST_LEASE") and key not in ("MC2_SIM_OVERLAP", "MC2_SIM_OVERLAP_AUDIT", "MC2_VULKAN_VALIDATION"):
             del os.environ[key]
     report = {"schema": "battle-bench/1", "sha": sha, "identity": identity, "scenario": scenario, "build_config": "RelWithDebInfo",
               "scenario_sha256": sha_file(SCENARIO), "content": None, "profile": "stock/default-on native Vulkan",
