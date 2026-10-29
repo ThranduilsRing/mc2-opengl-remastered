@@ -526,34 +526,6 @@
    "count": 1
   },
   {
-   "tag": "BLKIDX",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "event",
-    "src",
-    "blockIdx",
-    "z_excluded"
-   ],
-   "count": 2
-  },
-  {
-   "tag": "BLKIDX",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "event",
-    "src",
-    "wx",
-    "wy",
-    "wz",
-    "helper",
-    "cpu",
-    "match"
-   ],
-   "count": 2
-  },
-  {
    "tag": "BOOKMARK_SAVE",
    "ver": 1,
    "stream": "stderr",
@@ -7218,23 +7190,6 @@
     "count",
     "firstTypeID",
     "multi"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "REGFLUSH_TYPEHIST",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [],
-   "count": 1
-  },
-  {
-   "tag": "REGFLUSH_TYPEHIST",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "typeID",
-    "count"
    ],
    "count": 1
   },
