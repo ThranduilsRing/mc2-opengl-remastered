@@ -37,12 +37,37 @@ MissionMapPtr GameMap = nullptr;
 GlobalMapPtr GlobalMoveMap[3] = {nullptr, nullptr, nullptr};
 static std::unique_ptr<MissionMap> s_gameMapOwner;
 static std::unique_ptr<GlobalMap> s_globalMoveMapOwner[3];
-static std::unique_ptr<MoveMap> s_pathFindMapOwner[2];
+// Both search participants are prepared at load: frame/load thread (0), overlap
+// simulation worker (1). Binding a prepared set never allocates. Global-map
+// mutation and live callbacks still require synchronous service (M3).
+static std::unique_ptr<MoveMap> s_pathFindMapOwner[2][2];
+static thread_local int s_pathMapWorker = 0;
+
+void MOVE_bindPathFindMaps (int worker) {
+	if (worker < 0 || worker > 1)
+		Fatal(0, " Invalid path scratch worker ");
+	s_pathMapWorker = worker;
+	for (int which = 0; which < 2; ++which)
+		PathFindMap[which] = s_pathFindMapOwner[worker][which].get();
+}
+
+void MOVE_configurePathFindMaps (void) {
+	// Called after mission load (including quickload), while simulation is joined.
+	for (int which = 0; which < 2; ++which) {
+		auto* source = PathFindMap[which];
+		for (auto& worker : s_pathFindMapOwner)
+			if (worker[which]) {
+				worker[which]->blockedDoorCallback = source->blockedDoorCallback;
+				worker[which]->placeStationaryMoversCallback = source->placeStationaryMoversCallback;
+			}
+	}
+}
 
 MoveMapPtr MOVE_acquirePathFindMap (int which) {
-	if (!s_pathFindMapOwner[which])
-		s_pathFindMapOwner[which] = std::make_unique<MoveMap>();
-	PathFindMap[which] = s_pathFindMapOwner[which].get();
+	auto& owner = s_pathFindMapOwner[s_pathMapWorker][which];
+	if (!owner)
+		owner = std::make_unique<MoveMap>();
+	PathFindMap[which] = owner.get();
 	return PathFindMap[which];
 }
 
@@ -265,7 +290,7 @@ char TeamRelations[MAX_TEAMS][MAX_TEAMS] = {
 
 bool PreserveMapTiles = false;
 
-MoveMapPtr PathFindMap[2] = {nullptr, nullptr};
+thread_local MoveMapPtr PathFindMap[2] = {nullptr, nullptr};
 
 float MoveMap::distanceFloat[DISTANCE_TABLE_DIM][DISTANCE_TABLE_DIM];
 int MoveMap::distanceInt[DISTANCE_TABLE_DIM][DISTANCE_TABLE_DIM];
@@ -423,14 +448,17 @@ void MOVE_init (long moveRange) {
 	// race later once solves may run off-thread).
 	buildCellShiftDistanceTable();
 
-	PathFindMap[SECTOR_PATHMAP] = MOVE_acquirePathFindMap(SECTOR_PATHMAP);
-	PathFindMap[SECTOR_PATHMAP]->init(SECTOR_DIM*2, SECTOR_DIM*2);
-
-	PathFindMap[SIMPLE_PATHMAP] = MOVE_acquirePathFindMap(SIMPLE_PATHMAP);
 	SimpleMovePathRange = moveRange;
 	if (SimpleMovePathRange <= 20)
 		Fatal(0, " MOVE_Init: MoveRange TOO SMALL. Go see Glenn. ");
-	PathFindMap[SIMPLE_PATHMAP]->init(SimpleMovePathRange * 2 + 1, SimpleMovePathRange * 2 + 1);
+	for (auto& worker : s_pathFindMapOwner) {
+		for (auto& owner : worker)
+			if (!owner)
+				owner = std::make_unique<MoveMap>();
+		worker[SECTOR_PATHMAP]->init(SECTOR_DIM*2, SECTOR_DIM*2);
+		worker[SIMPLE_PATHMAP]->init(SimpleMovePathRange * 2 + 1, SimpleMovePathRange * 2 + 1);
+	}
+	MOVE_bindPathFindMaps(s_pathMapWorker);
 }
 
 bool EditorSave = false;
@@ -495,6 +523,8 @@ void MOVE_buildData (long height, long width, MissionMapCellInfo* mapData, long 
 	GlobalMoveMap[2] = s_globalMoveMapOwner[2].get();
 	GlobalMoveMap[2]->blank = true;
 	GlobalMoveMap[2]->build(nullptr);
+	for (auto* globalMap : GlobalMoveMap)
+		globalMap->openHeap.reserve(globalMap->numDoors + NUM_DOOR_OFFSETS);
 
 	printf("[MOVE_BD] all GlobalMaps built OK\n"); fflush(stdout);
 
@@ -620,6 +650,9 @@ long MOVE_readData (PacketFile* packetFile, long whichPacket) {
 	//			numOffMap[0]++;
 
 	// PATHFINDING-FACTS-1: emit map topology once at mission load (gated, default-OFF).
+	for (auto* globalMap : GlobalMoveMap)
+		if (globalMap)
+			globalMap->openHeap.reserve(globalMap->numDoors + NUM_DOOR_OFFSETS);
 	{
 		int areas = (GlobalMoveMap[0]) ? GlobalMoveMap[0]->numAreas : 0;
 		int doors = (GlobalMoveMap[0]) ? GlobalMoveMap[0]->numDoors : 0;
@@ -644,8 +677,9 @@ void MOVE_cleanup (void) {
 	for (auto& observer : GlobalMoveMap)
 		observer = nullptr;
 
-	for (auto& owner : s_pathFindMapOwner)
-		owner.reset();
+	for (auto& worker : s_pathFindMapOwner)
+		for (auto& owner : worker)
+			owner.reset();
 	PathFindMap[SECTOR_PATHMAP] = nullptr;
 	PathFindMap[SIMPLE_PATHMAP] = nullptr;
 }
@@ -656,6 +690,7 @@ void MOVE_cleanup (void) {
 
 void MissionMap::init (long h, long w) {
 
+	rev.statics++; // raw grid replacement also invalidates prepared search inputs
 	height = h;
 	width = w;
 	gTerrainPartIdStride = (w > TERRAIN_PART_ID_STRIDE_STOCK) ? w : TERRAIN_PART_ID_STRIDE_STOCK;

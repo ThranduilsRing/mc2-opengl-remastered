@@ -157,6 +157,7 @@ void Mission::loadMovement(MissionLoadFrame& f) {
 	PathFindMap[SIMPLE_PATHMAP]->placeStationaryMoversCallback = PlaceStationaryMovers;
 	PathFindMap[SECTOR_PATHMAP]->forestCost = forestMoveCost;
 	PathFindMap[SIMPLE_PATHMAP]->forestCost = forestMoveCost;
+	MOVE_configurePathFindMaps();
 	PathManager = new MovePathManager;
 
 	loadProgress = 40.0f;

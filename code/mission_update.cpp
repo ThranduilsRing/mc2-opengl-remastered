@@ -1334,6 +1334,7 @@ void Mission::overlapKick()
 		return;
 	const uint32_t firstFrame = g_mc2FrameCounter + 1u;
 	mc2::overlap::runOnWorker([this, ticks, renderLength, firstFrame] {
+		MOVE_bindPathFindMaps(1);
 		frameLength = renderLength;
 		long early = 0;
 		bool ended = false;
@@ -1362,6 +1363,7 @@ namespace {
 void overlapKickHook() { if (mission) mission->overlapKick(); }
 void overlapJoinHook() {
 	mc2::overlap::waitWorker();
+	MOVE_bindPathFindMaps(0);
 	g_mc2FrameCounter += std::exchange(s_pre.extraFrames, 0u);
 	mc2::tick::commitTickQueues();
 }

@@ -846,6 +846,7 @@ void Mission::initPathfinding(MissionInitFrame& f) {
 	PathFindMap[SIMPLE_PATHMAP]->placeStationaryMoversCallback = PlaceStationaryMovers;
 	PathFindMap[SECTOR_PATHMAP]->forestCost = forestMoveCost;
 	PathFindMap[SIMPLE_PATHMAP]->forestCost = forestMoveCost;
+	MOVE_configurePathFindMaps();
 	PathManager = new MovePathManager;
 
 #ifdef LAB_ONLY

@@ -15,12 +15,6 @@ void MoveMap::reKeyOpen (long cellId, long newKey) {
 		mc2::fmt::print_err("[PATH v1] event=open_list_miss solver=movemap id={:d}\n", mc2::fmt::as_i32(cellId));
 }
 
-// The window is at most this many cells; the OPEN list starts that big (capped, the list grows when a search needs more).
-int MoveMap::openHeapReserve (void) const {
-
-	return std::min<int>(static_cast<int>(width) * static_cast<int>(height), 20000);
-}
-
 unsigned long long mc2_path_trace::hashMovePath (const MovePath* path) {
 	unsigned long long h = 1469598103934665603ull;
 	auto mix = [&h](const void* p, size_t n) {
@@ -48,11 +42,15 @@ long MoveMap::calcPath (MovePathPtr path, glm::vec3* goalWorldPos, int* goalCell
 	mc2_move::SolveContext ctx;
 
 	// PATHFINDING-FACTS-1: gated per-solve telemetry (default-OFF, byte-identical).
-	mc2_path_trace::SolveScope _pt("plain");
+	mc2_path_trace::SolveScope _pt("plain", openHeap);
 	_pt.out = path;
 	const bool _pathTrace = _pt.active;
 	long _ptNodes = 0;
 	long _ptOpenPeak = 0;
+	if (!inputRevisionsValid()) {
+		path->numSteps = path->numStepsWhenNotPaused = 0;
+		return 0;
+	}
 
 	MoveReconScope _recon_al(&g_moveRecon_astar_local_ns, &g_moveRecon_frame_astar_local_ns);
 	MoveReconNodeCounter _aln;  // per-call local node-expansion size (Warrior.Path 2ms layer)
@@ -98,8 +96,7 @@ long MoveMap::calcPath (MovePathPtr path, glm::vec3* goalWorldPos, int* goalCell
 	if (maxHPrime < 500)
 		maxHPrime = 500;
 	
-	// The open list is this map's own (openHeap), sized to the window and empty at the start of every solve.
-	openHeap.reserve(openHeapReserve());
+	// Storage was sized at init; each solve starts with an empty OPEN list below.
 	solveJumpOnBlocked = ctx.jumpOnBlocked();
 
 	int curCol = startC;
@@ -474,11 +471,15 @@ long MoveMap::calcPathJUMP (MovePathPtr path, glm::vec3* goalWorldPos, int* goal
 	mc2_move::SolveContext ctx;
 
 	// PATHFINDING-FACTS-1: gated per-solve telemetry (default-OFF, byte-identical).
-	mc2_path_trace::SolveScope _pt("jump");
+	mc2_path_trace::SolveScope _pt("jump", openHeap);
 	_pt.out = path;
 	const bool _pathTrace = _pt.active;
 	long _ptNodes = 0;
 	long _ptOpenPeak = 0;
+	if (!inputRevisionsValid()) {
+		path->numSteps = path->numStepsWhenNotPaused = 0;
+		return 0;
+	}
 
 	#ifdef TIME_PATH
 		L_INTEGER calcStart, calcStop;
@@ -501,8 +502,7 @@ long MoveMap::calcPathJUMP (MovePathPtr path, glm::vec3* goalWorldPos, int* goal
 	if (maxHPrime < 500)
 		maxHPrime = 500;
 	
-	// The open list is this map's own (openHeap), sized to the window and empty at the start of every solve.
-	openHeap.reserve(openHeapReserve());
+	// Storage was sized at init; each solve starts with an empty OPEN list below.
 	solveJumpOnBlocked = ctx.jumpOnBlocked();
 
     int curCol = startC;

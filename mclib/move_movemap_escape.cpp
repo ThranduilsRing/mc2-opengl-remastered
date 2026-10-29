@@ -10,11 +10,15 @@ long MoveMap::calcEscapePath (MovePathPtr path, glm::vec3* goalWorldPos, long* g
 	mc2_move::SolveContext ctx;
 
 	// PATHFINDING-FACTS-1: gated per-solve telemetry (default-OFF, byte-identical).
-	mc2_path_trace::SolveScope _pt("escape");
+	mc2_path_trace::SolveScope _pt("escape", openHeap);
 	_pt.out = path;
 	const bool _pathTrace = _pt.active;
 	long _ptNodes = 0;
 	long _ptOpenPeak = 0;
+	if (!inputRevisionsValid()) {
+		path->numSteps = path->numStepsWhenNotPaused = 0;
+		return 0;
+	}
 
 	#ifdef TIME_PATH
 		L_INTEGER calcStart, calcStop;
@@ -42,8 +46,7 @@ long MoveMap::calcEscapePath (MovePathPtr path, glm::vec3* goalWorldPos, long* g
 	if (maxHPrime < 500)
 		maxHPrime = 500;
 	
-	// The open list is this map's own (openHeap), sized to the window and empty at the start of every solve.
-	openHeap.reserve(openHeapReserve());
+	// Storage was sized at init; each solve starts with an empty OPEN list below.
 	solveJumpOnBlocked = ctx.jumpOnBlocked();
 
 	long curCol = startC;

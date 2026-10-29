@@ -832,6 +832,7 @@ class MissionMap {
 		void setWall (long row, long col, bool wallHere) {
 			if (!inBounds(row, col)) return;
 			map[row * width + col].setWall(wallHere);
+			rev.statics++;
 		}
 
 		bool getRoad (long row, long col) {
@@ -842,6 +843,7 @@ class MissionMap {
 		void setRoad (long row, long col, bool roadHere) {
 			if (!inBounds(row, col)) return;
 			map[row * width + col].setRoad(roadHere);
+			rev.statics++;
 		}
 
 		bool getShallowWater (long row, long col) {
@@ -852,6 +854,7 @@ class MissionMap {
 		void setShallowWater (long row, long col, bool shallowWaterHere) {
 			if (!inBounds(row, col)) return;
 			map[row * width + col].setShallowWater(shallowWaterHere);
+			rev.statics++;
 		}
 
 		bool getDeepWater (long row, long col) {
@@ -862,6 +865,7 @@ class MissionMap {
 		void setDeepWater (long row, long col, bool deepWaterHere) {
 			if (!inBounds(row, col)) return;
 			map[row * width + col].setDeepWater(deepWaterHere);
+			rev.statics++;
 		}
 
 		bool getBuildGate (long row, long col) {
@@ -872,6 +876,7 @@ class MissionMap {
 		void setBuildGate (long row, long col, bool set) {
 			if (!inBounds(row, col)) return;
 			map[row * width + col].setBuildGate(set);
+			rev.statics++;
 		}
 
 		bool getBuildWall (long row, long col) {
@@ -882,6 +887,7 @@ class MissionMap {
 		void setBuildWall (long row, long col, bool set) {
 			if (!inBounds(row, col)) return;
 			map[row * width + col].setBuildWall(set);
+			rev.statics++;
 		}
 
 		bool getBuildLandBridge (long row, long col) {
@@ -892,6 +898,7 @@ class MissionMap {
 		void setBuildLandBridge (long row, long col, bool set) {
 			if (!inBounds(row, col)) return;
 			map[row * width + col].setBuildLandBridge(set);
+			rev.statics++;
 		}
 
 		bool getForest (long row, long col) {
@@ -902,6 +909,7 @@ class MissionMap {
 		void setForest (long row, long col, bool set) {
 			if (!inBounds(row, col)) return;
 			map[row * width + col].setForest(set);
+			rev.statics++;
 		}
 
 		bool getOffMap (long row, long col) {
@@ -913,6 +921,7 @@ class MissionMap {
 		void setOffMap (long row, long col, bool set) {
 			if (!inBounds(row, col)) return;
 			map[row * width + col].setOffMap(set);
+			rev.statics++;
 		}
 
 		bool getBuildSpecial (long row, long col) {
@@ -928,6 +937,7 @@ class MissionMap {
 		void setBuildNotSet (long row, long col, bool set) {
 			if (!inBounds(row, col)) return;
 			map[row * width + col].setBuildNotSet(set);
+			rev.statics++;
 		}
 
 		long getHeight (void) {
@@ -953,6 +963,7 @@ class MissionMap {
 			preservedCells[numPreservedCells].row = row;
 			preservedCells[numPreservedCells].col = col;
 			map[row * width + col].setPreserved(1);
+			rev.preserved++;
 			numPreservedCells++;
 		}
 
@@ -1695,6 +1706,10 @@ class MoveMap {
 		// The OPEN list of every solve this map runs. WHY a member: the list used to be one global shared by all solvers, so a solve could meet nodes another
 		// solve had left in it; each map now owns its list and a solve starts it empty.
 		mc2::OpenHeap		openHeap;
+		// A prepared grid may be reused only against the mission inputs it baked.
+		MissionMapPtr inputMap = nullptr;
+		MoveLayerRevisions inputRevisions;
+		bool inputRevisionsValid (void) const;
 
 		static float		distanceFloat[DISTANCE_TABLE_DIM][DISTANCE_TABLE_DIM];
 		static int			distanceInt[DISTANCE_TABLE_DIM][DISTANCE_TABLE_DIM];
@@ -1704,9 +1719,6 @@ class MoveMap {
 
 		// Gives the OPEN node of a map cell its new key; a cell flagged OPEN that the list does not hold is skipped (one log line per map, an assert in debug).
 		void reKeyOpen (long cellId, long newKey);
-		// First size of the OPEN list for a solve: the window, capped; the list grows past it when a search needs more.
-		int openHeapReserve (void) const;
-
 		bool adjacentCellOpen (long mapCellIndex, long dir);
 		bool adjacentCellOpenJUMP (long r, long c, long dir);
 		void propogateCost (long mapCellIndex, long cost, long g);
@@ -1756,6 +1768,7 @@ class MoveMap {
 			placeStationaryMoversCallback = nullptr;
 			solveJumpOnBlocked = false;
 			maxHPrime = 1000;
+			inputMap = nullptr;
 		}
 		
 		MoveMap (void) {
@@ -1914,7 +1927,10 @@ void MOVE_cleanup (void);
 
 extern MissionMapPtr		GameMap;
 extern GlobalMapPtr			GlobalMoveMap[3];
-extern MoveMapPtr			PathFindMap[2];
+extern thread_local MoveMapPtr	PathFindMap[2];
+// Preallocated frame/load (0) and overlap-simulation (1) scratch views.
+void MOVE_bindPathFindMaps (int worker);
+void MOVE_configurePathFindMaps (void);
 extern long					SimpleMovePathRange;
 
 //***************************************************************************
