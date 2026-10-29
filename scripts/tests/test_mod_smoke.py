@@ -137,7 +137,51 @@ def test_mission_only_in_fst_is_found(tmp_path, monkeypatch):
     _w(mod / "mission.fst")
     monkeypatch.setattr(ms, "_fst_mission_stems",
                         lambda fst: ({"mc2_05", "mc2_06"}, {"mc2_05", "mc2_06"}))
+    monkeypatch.setattr(ms, '_campaign_stems', lambda *a: [])
     assert ms.pick_mission([mod]) == ("mc2_05", "first-mission")
+
+
+def test_required_campaign_first_and_middle_never_use_stock_fallback(tmp_path):
+    import pytest
+    for folder, campaign in ms.CAMPAIGNS.items():
+        mod = tmp_path / folder
+        for stem in ('z_first', 'b_second', 'm_middle', 'a_last', 'mc2_01'):
+            _w(mod / f'data/missions/{stem}.fit')
+        _w(mod / 'data/campaign/campaign.fit', _campaign('mc2_01'))
+        _w(mod / f'data/campaign/{campaign}', _campaign('z_first', 'b_second') +
+           _campaign('m_middle', 'a_last'))
+        picks = ms.pick_missions([mod], folder)
+        assert [stem for stem, _ in picks] == ['z_first', 'm_middle']
+        assert picks == ms.pick_missions([mod], folder)
+        assert all(campaign in source for _, source in picks)
+        assert ms.pick_missions([mod], folder, 'a_last') == [('a_last', 'override')]
+        (mod / f'data/campaign/{campaign}').unlink()
+        with pytest.raises(ValueError, match='required campaign'):
+            ms.pick_missions([mod], folder)
+
+
+def test_campaign_in_fst_and_loose_campaign_priority(tmp_path):
+    import struct
+    mod = tmp_path / 'MC2X-REAP3'
+    campaign = _campaign('own_first', 'own_middle').encode('latin-1')
+    name = b'data\\campaign\\reap3_campaign.fit'
+    mod.mkdir()
+    (mod / 'mission.fst').write_bytes(struct.pack('<II', 0xCADDECAF, 1) +
+        struct.pack('<IIII250s', 274, len(campaign), len(campaign), 0, name) + campaign)
+    for stem in ('own_first', 'own_middle', 'loose_first', 'loose_middle'):
+        _w(mod / f'data/missions/{stem}.fit')
+    assert [s for s, _ in ms.pick_missions([mod], mod.name)] == ['own_first', 'own_middle']
+    _w(mod / 'data/campaign/reap3_campaign.fit', _campaign('loose_first', 'loose_middle'))
+    assert [s for s, _ in ms.pick_missions([mod], mod.name)] == ['loose_first', 'loose_middle']
+
+
+def test_gate_mod_duration_is_fifteen_seconds():
+    import ast
+    tree = ast.parse((ROOT / 'scripts/merge_gate.py').read_text())
+    durations = [node.value for node in ast.walk(tree) if isinstance(node, ast.List)
+                 and any(isinstance(item, ast.Constant) and item.value == '--stage-root' for item in node.elts)
+                 for node in node.elts if isinstance(node, ast.Constant)]
+    assert durations[-2:] == ['--duration', '15']
 
 
 # --- staging -----------------------------------------------------------------
@@ -443,6 +487,7 @@ def test_single_worker_waits_for_cold_run_and_collects_later_failures(tmp_path, 
     monkeypatch.setattr(ms, 'select_mods', lambda _: [('One', 'one', ''), ('Two', 'two', '')])
     monkeypatch.setattr(ms, 'mod_layers', lambda root, folder, _: [root / folder])
     monkeypatch.setattr(ms, 'pick_mission', lambda *a: ('mc2_01', 'fixture'))
+    monkeypatch.setattr(ms, 'ensure_loose_mission', lambda *a: False)
     monkeypatch.setattr(ms, 'resolve_build', lambda *a: (base / 'mc2.exe', base))
     monkeypatch.setattr(ms.stages, 'preflight', lambda *a: None)
     monkeypatch.setattr(ms.stages, 'prune_old', lambda *a, **kw: None)

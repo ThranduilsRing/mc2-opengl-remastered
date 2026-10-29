@@ -353,7 +353,7 @@ def install_plan(steps, install):
             idx = command.index("--deploy")
             command[idx:idx + 2] = ["--exe", str(install / "mc2.exe")]
         if name == "mods":
-            command += ["--base-install", str(install), "--stage-root", str(install.parent / (install.name + "-mods-stage")), "--duration", "5"]
+            command += ["--base-install", str(install), "--stage-root", str(install.parent / (install.name + "-mods-stage")), "--duration", "15"]
         result.append((name, command, env))
     return result
 

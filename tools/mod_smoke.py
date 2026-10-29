@@ -64,6 +64,11 @@ BATTERY = (
 # Counts from E:/mc2-installs/mod_smoke-stage/20261029-141617-498123/artifacts.
 # Budgets are per mission; extending coverage does not grant extra warnings.
 WARNING_BUDGET = Path(__file__).with_name('mod_warning_budget.json')
+CAMPAIGNS = {
+    'MCO-Carver5': 'carver V original.fit',
+    'MC2X-REAP3': 'reap3_campaign.fit',
+    'MC2-Exodus': 'exodus.fit',
+}
 
 
 def warning_counts(text: str) -> dict[str, int]:
@@ -377,18 +382,51 @@ def link_engine(cache: Path, target: Path) -> dict:
     return place_tree(cache, target, link_ok=link_ok, private_loose=True, cached_links=True)
 
 
-def _campaign_stems(layer: Path) -> list[str]:
+def _campaign_stems(layer: Path, campaign: str | None = None) -> list[str]:
     folder = layer / 'data' / 'campaign'
-    if not folder.is_dir():
-        return []
-    files = sorted(folder.glob('*.fit'), key=lambda p: (p.name.lower() != 'campaign.fit', p.name.lower()))
-    for fit in files:
-        text = fit.read_text(encoding='latin-1', errors='replace')
+    texts = {}
+    fst = layer / 'mission.fst'
+    if fst.is_file():
+        sys.path.insert(0, str(ROOT / 'tools' / 'mod_install'))
+        sys.path.insert(0, str(ROOT / 'tools'))
+        import fst_listing
+        from mc2x_import import fst as fst_lib
+        entries = fst_listing.parse_fst(str(fst))
+        with fst.open('rb') as stream:
+            is_lz = stream.read(4) == b'\xaf\xec\xdd\xfa'
+            for entry in entries:
+                key = fst_listing.normalize_key(entry['name'])
+                if key.startswith('data/campaign/') and key.endswith('.fit'):
+                    stream.seek(entry['offset'])
+                    data = stream.read(entry['size'])
+                    texts[Path(key).name] = fst_lib.decompress_entry(
+                        0, entry['size'], entry['realSize'], is_lz, data).decode('latin-1')
+    for fit in folder.glob('*.fit'):
+        texts[fit.name.lower()] = fit.read_text(encoding='latin-1', errors='replace')
+    names = [campaign.lower()] if campaign else sorted(texts, key=lambda n: (n != 'campaign.fit', n))
+    for name in names:
+        text = texts.get(name, '')
         stems = [m.group(1).lower() for m in re.finditer(
             r'^\s*st\s+FileName\s*=\s*"([^"]+)"', text, re.M | re.I)]
         if stems:
             return stems
     return []
+
+
+def pick_missions(layers: list[Path], folder: str, override: str | None = None) -> list[tuple[str, str]]:
+    """Required campaigns cover their first and middle distinct playable entries."""
+    if override or folder not in CAMPAIGNS:
+        return [pick_mission(layers, override)]
+    fits, _ = available_missions(layers)
+    campaign = CAMPAIGNS[folder]
+    for layer in reversed(layers):
+        stems = list(dict.fromkeys(s for s in _campaign_stems(layer, campaign) if s in fits))
+        if stems:
+            if len(stems) < 2:
+                raise ValueError(f'{folder}: campaign {campaign} needs two distinct missions')
+            source = f'campaign:{layer.name}/{campaign}'
+            return [(stems[0], source + ':first'), (stems[len(stems) // 2], source + ':middle')]
+    raise ValueError(f'{folder}: no playable missions in required campaign {campaign}')
 
 
 def _fst_mission_stems(fst: Path) -> tuple[set[str], set[str]]:
@@ -821,8 +859,9 @@ def battery(args) -> int:
         for layer in layers:
             if not layer.is_dir():
                 raise FileNotFoundError(f'mod install not found: {layer}')
-        stem, how = pick_mission(layers, args.mission)
-        plan.append((display, folder, layers, stem, how))
+        picks = pick_missions(layers, folder, args.mission)
+        plan.append((display, folder, layers, picks))
+        print(f'[mod_smoke] {display}: mission plan {picks}', flush=True)
     stages.preflight(stage_root)
     # _cache is persistent payload, never an aged disposable run.
     if not args.keep_stages:
@@ -837,20 +876,26 @@ def battery(args) -> int:
     # A batch token pins one slot. Sharing it across children would bypass isolation.
     workers = 1 if os.environ.get('MC2_HOST_LEASE_BATCH') or args.fail_fast else getattr(args, 'workers', 2)
     def smoke(entry, staged, stats, stage_s):
-        display, folder, layers, stem, how = entry
-        run_started = time.monotonic()
+        display, folder, layers, picks = entry
         timeout = max(args.timeout, 600) if folder == 'MCO-Carver5' else args.timeout
-        result = run_mod(staged, stem, args.duration, timeout, getattr(args, 'ref_exe', None))
-        result['warning_excess'] = warning_excess(result.get('warnings', {}), folder)
-        log = run_root / (folder + '.log')
-        shutil.copy2(staged / 'smoke.log', log)
-        result.update({'mod': display, 'mission': stem, 'mission_source': how,
-                       'staged': str(staged), 'stage_stats': stats, 'log': str(log),
-                       'stage_s': stage_s, 'run_s': time.monotonic() - run_started,
-                       'identity': tree_identity(staged)})
-        print('[mod_smoke]', display, result_word(result), health_cell(result['health']),
-              f"stage={stage_s:.1f}s run={result['run_s']:.1f}s", flush=True)
-        return result
+        results = []
+        for index, (stem, how) in enumerate(picks):
+            ensure_loose_mission(layers, staged, stem)
+            run_started = time.monotonic()
+            result = run_mod(staged, stem, args.duration, timeout, getattr(args, 'ref_exe', None))
+            result['warning_excess'] = warning_excess(result.get('warnings', {}), folder)
+            log = run_root / (folder + f'-{index}.log')
+            shutil.copy2(staged / 'smoke.log', log)
+            result.update({'mod': display, 'mission': stem, 'mission_source': how,
+                           'staged': str(staged), 'stage_stats': stats, 'log': str(log),
+                           'stage_s': stage_s, 'run_s': time.monotonic() - run_started,
+                           'identity': tree_identity(staged)})
+            print('[mod_smoke]', display, stem, how, result_word(result), health_cell(result['health']),
+                  f"stage={stage_s:.1f}s run={result['run_s']:.1f}s", flush=True)
+            results.append(result)
+            if args.fail_fast and result_word(result) != 'PASS':
+                break
+        return results
     try:
         engine_started = time.monotonic()
         summary = build_engine_cache(cache, build, build64, base_install)
@@ -862,7 +907,8 @@ def battery(args) -> int:
         # Each child acquires its own normal FIFO game-worker lease.
         with ThreadPoolExecutor(max_workers=workers) as pool:
             for entry in plan:
-                display, folder, layers, stem, how = entry
+                display, folder, layers, picks = entry
+                stem, how = picks[0]
                 stage_started = time.monotonic()
                 cached = []
                 for layer in layers:
@@ -881,10 +927,10 @@ def battery(args) -> int:
                 future = pool.submit(smoke, entry, staged, stats, stage_s)
                 futures.append(future)
                 if workers == 1:
-                    result = future.result()
+                    result = future.result()[-1]
                 if args.fail_fast and result_word(result) != 'PASS':
                     break
-            rows = [future.result() for future in futures]
+            rows = [row for future in futures for row in future.result()]
     finally:
         if not args.keep_stages:
             for disposable in [cache, *(run_root / entry[1] for entry in plan)]:
@@ -914,7 +960,7 @@ def main() -> int:
     ap.add_argument('--base-install', default=str(DEFAULT_BASE_INSTALL),
                     help='read-only install supplying assets, stock FSTs and configs')
     ap.add_argument('--workers', type=int, choices=(1, 2), default=2)
-    ap.add_argument('--duration', type=int, default=5)
+    ap.add_argument('--duration', type=int, default=15)
     ap.add_argument('--timeout', type=int, default=300)
     ap.add_argument('--fail-fast', action='store_true')
     ap.add_argument('--keep-stages', action='store_true',
