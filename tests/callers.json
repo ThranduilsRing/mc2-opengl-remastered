@@ -5181,7 +5181,7 @@
       "callers_by_stem": [
         {
           "path": "scripts/tests/test_battle_bench.py",
-          "line": 153,
+          "line": 162,
           "evidence": "import",
           "reference": "run_smoke",
           "text": "import run_smoke"
