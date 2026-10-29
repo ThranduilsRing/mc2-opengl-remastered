@@ -2215,14 +2215,12 @@ bool ReadNavMarkers( FitIniFile* missionFile, CObjectives &objectives )
 
 int C_RemoveStructure::Execute()
 {
-	glm::vec3 ludicrousPos;
-	ludicrousPos.x = 100000.f;
-	ludicrousPos.y = 100000.f;
-	ludicrousPos.z = 100000.f;
-
-	Building * m_pBuilding = static_cast<Building *>(ObjectManager->getByWatchID(m_pBuildingWID));
-	m_pBuilding->position = ludicrousPos;
-	m_pBuilding->update();
+	auto* building = ObjectManager->getByWatchID(m_pBuildingWID);
+	if (!building || building->getObjectClass() != BUILDING) return false;
+	// Nav markers are retired objects, not live buildings at an off-map sentinel.
+	building->setTangible(false);
+	building->setAwake(false);
+	building->setExists(false);
 	if (objectiveObservationEnabled()) {
 		objectiveObservationSink("structure", "updated", "removed", std::to_string(m_pBuildingWID).c_str());
 	}

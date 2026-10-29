@@ -774,6 +774,10 @@ def main():
     # loses soak coverage (mid-mission combat/FX/leak/hitch observation), so it
     # must stay opt-in and never silently replace the 30s default.
     duration_cap = 60 if args.sim_determinism else 30
+    # Mission test runs explicitly request a simulation budget in minutes.
+    # Keep longer wall budgets confined to this headless developer fixture.
+    if args.headless and os.environ.get("MC2_PLAY_MISSION") == "1":
+        duration_cap = max(duration_cap, int(os.environ.get("MC2_PLAY_MISSION_SECONDS", "300")) + 30)
     if args.duration is not None:
         if args.duration > duration_cap:
             print(f"[runner] ERROR: --duration {args.duration} exceeds the hard "

@@ -4,6 +4,7 @@
 #include "missiongui_shared_internal.h"
 #include "mc2fmt.h"
 #include "mech3d.h"
+#include "brain_execution_policy.h"
 #include <utility>
 #include <string_view>
 
@@ -120,6 +121,41 @@ void updateMissionSupportPreloads()
 			std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - supportPreloadStart).count());
 }
 
+
+// Dev commander purchases obey the same permissions, prices and delivery path as the UI.
+bool MissionInterfaceManager::requestPlayerSupport(int command, glm::vec3 position, MoverPtr salvage)
+{
+    if (!mc2::gate::get<"MC2_PLAY_MISSION">() || !mc2::brainpolicy::techBrain()
+        || MPlayer || !Commander::home || !Team::home || !LogisticsData::instance) return false;
+    auto* logistics = LogisticsData::instance;
+    const bool allowed = command == ControlGui::LARGE_AIRSTRIKE ? logistics->canHaveAirStrike()
+        : command == ControlGui::GUARD_TOWER ? logistics->canHaveArtilleryPiece()
+        : command == ControlGui::REPAIR_VEHICLE ? logistics->canHaveRepairTruck()
+        : command == ControlGui::RECOVERY_TEAM ? logistics->canHaveSalavageCraft() : false;
+    const long cost = controlGui.playerSupportCost(command);
+    if (!allowed || cost < 0 || logistics->getResourcePoints() < cost
+        || controlGui.isAddingVehicle() || controlGui.isAddingAirstrike() || controlGui.isAddingSalvage()) return false;
+    const bool strike = command == ControlGui::LARGE_AIRSTRIKE;
+    const long vehicle = command == ControlGui::REPAIR_VEHICLE ? 182
+        : command == ControlGui::RECOVERY_TEAM ? 147 : 415;
+    if (!Team::home->teamLineOfSight(position, 0.0f)) return false;
+    if (!strike) {
+        if (!controlGui.getVehicleNameFromID(vehicle)) return false;
+        if (paintingVtol[Commander::home->getId()] || rosterIconCount() >= MAX_ICONS) return false;
+        if (command == ControlGui::RECOVERY_TEAM) {
+            if (!salvage || !salvage->getExists() || !salvage->isDisabled() || salvage->isDestroyed()
+                || salvage->getObjectClass() != BATTLEMECH || !logistics->gotPilotsLeft()) return false;
+        } else if (!canAddVehicle(position)) return false;
+    }
+    position.z = land->getTerrainElevation(position);
+    logistics->decrementResourcePoints(cost);
+    if (strike) IfaceCallStrike(ARTILLERY_LARGE, &position, nullptr);
+    else beginVtol(vehicle, Commander::home->getId(), &position, salvage);
+    mc2::fmt::print_err("[PLAYER_SUPPORT v1] time={:.2f} command={} target={} cost={} rp={} x={:.1f} y={:.1f}\n",
+        scenarioTime, command, salvage ? salvage->getWatchID() : 0, cost,
+        logistics->getResourcePoints(), position.x, position.y);
+    return true;
+}
 
 void MissionInterfaceManager::addAirstrike()
 {

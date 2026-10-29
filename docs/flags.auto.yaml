@@ -3,9 +3,9 @@
 # Where each gate is read, what the smoke runner forwards and what tier1_env_vars.md says are not here: ask
 # tools/repo_intel (env_var, gate_status), which scan the sources.
 generator_version: "3.0.0"
-gate_count: 756
+gate_count: 760
 registry_entry_count: 150
-verified_count: 716
+verified_count: 720
 flags:
   - name: MC2_ABL_ARG_GUARD
     kind: Bool
@@ -3121,6 +3121,38 @@ flags:
     rule: Std
     owner: editor
     doc: ""
+    verified: true
+  - name: MC2_PLAY_MISSION
+    kind: Bool
+    default: false
+    rule: Std
+    owner: code
+    doc: "Dev-only scripted mission commander and objective verdict reporting."
+    smoke_passthrough: true
+    verified: true
+  - name: MC2_PLAY_MISSION_INVULNERABLE
+    kind: Bool
+    default: false
+    rule: Std
+    owner: code
+    doc: "Dev-only home-team damage immunity for mission tests."
+    smoke_passthrough: true
+    verified: true
+  - name: MC2_PLAY_MISSION_SECONDS
+    kind: Int
+    default: 300
+    rule: Std
+    owner: code
+    doc: "Dev-only mission test simulation timeout in seconds."
+    smoke_passthrough: true
+    verified: true
+  - name: MC2_PLAY_MISSION_SKIP_CINEMATICS
+    kind: Bool
+    default: false
+    rule: Std
+    owner: code
+    doc: "Dev-only mission test cinematic skip; direct mission harness skips briefing."
+    smoke_passthrough: true
     verified: true
   - name: MC2_POSTPROCESS_COMPUTE_BLUR
     kind: Bool

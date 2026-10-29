@@ -320,6 +320,24 @@ class Mission
 		// The global appearanceTypeList pointer is a non-owning view.
 		std::unique_ptr<AppearanceTypeList> appearanceTypes;
 
+		// Process-local dev test state; never part of the save format or stock simulation.
+		struct MissionTestState {
+			std::vector<int> objectives;
+			struct Enemy {
+				long wid; glm::vec3 position;
+				bool moved = false, dead = false, damaged = false, destroyed = false;
+				float health = -1;
+			};
+			std::vector<Enemy> enemies;
+			std::vector<long> squadMembers;
+			float nextSupport = 0;
+			bool artilleryOrdered = false;
+			glm::vec3 airstrikePosition{};
+			float airstrikeUntil = 0;
+			float nextOrder = 0;
+			bool finished = false;
+		} missionTest;
+		void updateMissionTest(bool report);
 		mc2::sim::MissionOrderIngress orderIngress;
 		mc2::combat::CombatClock combatClock;
 		using OrderRecipientBinding = mc2::sim::MissionRecipientBinding<Mover, MechWarrior>;

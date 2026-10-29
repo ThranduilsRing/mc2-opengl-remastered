@@ -125,6 +125,10 @@ L(Presence, "MC2_PATH_JUMP_FAIL_BACKOFF", Bool, false, "code", "", "PATHFINDING-
 L(Presence, "MC2_PICK_BEHIND_LEGACY", Bool, false, "code", "", "INPUT-CURSOR-OFFSCREEN-TARGET-RECON-1 / -FIX-1: a near-plane-clipped OBB corner projects to (0,0) with w<=1e-4 (camera.h:860-862).", verified),
 L(Presence, "MC2_PICK_CAP_TRACE", Bool, false, "code", "", "", passthrough | verified),
 G("MC2_PLAYTEST_EXE", String, "", "editor", "", "", verified),
+G("MC2_PLAY_MISSION", Bool, false, "code", "", "Dev-only scripted mission commander and objective verdict reporting.", passthrough | verified),
+G("MC2_PLAY_MISSION_INVULNERABLE", Bool, false, "code", "", "Dev-only home-team damage immunity for mission tests.", passthrough | verified),
+G("MC2_PLAY_MISSION_SECONDS", Int, 300, "code", "", "Dev-only mission test simulation timeout in seconds.", passthrough | verified),
+G("MC2_PLAY_MISSION_SKIP_CINEMATICS", Bool, false, "code", "", "Dev-only mission test cinematic skip; direct mission harness skips briefing.", passthrough | verified),
 L(Lead0P, "MC2_POSTPROCESS_COMPUTE_BLUR", Bool, false, "post", "", ""),
 // POST-FX-CAS-1: AMD FidelityFX Contrast Adaptive Sharpening (GL composite).
 G("MC2_PRESENTATION_DISABLED", Bool, false, "code", "", "Replay proof: suppress presentation extraction updates while simulation continues.", passthrough | registry(Trace, "MC2_PRESENTATION_DISABLED", -1, false) | verified),

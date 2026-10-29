@@ -195,6 +195,10 @@ class ControlGui
 
 		const char* getVehicleName( long& ID );
 		const char* getVehicleNameFromID (long ID);
+		long playerSupportCost(int command) const {
+			return command >= LARGE_AIRSTRIKE && command < STOP_VEHICLE
+				? vehicleCosts[command - LARGE_AIRSTRIKE] : -1;
+		}
 		void swapResolutions( int newResolutionX, int resolutionY );
 
 		GameTacMap						tacMap;

@@ -55,6 +55,8 @@ tier3 ruins allow_asset_oob=1 mod=TangoMaster deps=mc2x-compat reason="TangoMast
 tier3 area16 allow_asset_oob=1 mod=DarkRain deps=mc2x-compat reason="DarkRain campaign mod"
 tier3 coldstone allow_asset_oob=1 mod=DarkRain deps=mc2x-compat reason="DarkRain campaign mod"
 tier3 cfv2_mission1_escort allow_asset_oob=1 mod=MCO-ClanEagle deps=mco-compat reason="MCO-ClanEagle AI behavior measurement"
+# Four plain destroy objectives; no player escort or active camera script.
+tier3 desfox1 mod=desertfoxformcosetup deps=mcosetup628(1) reason="Desert Fox player-brain mission proof"
 
 # 1K-vertex map fixture for TerrainLOD Phase 8 extraction sweeps (not a gate)
 tier3 1kbasicmap heartbeat_timeout_load=180 heartbeat_timeout_play=60 reason="1K map LOD active/solid A/B fixture"

@@ -142,6 +142,7 @@ public:
 	CSpecificUnitObjectiveCondition(int alignment) : CObjectiveCondition(alignment) { m_pUnitWID = 0; }
 	virtual void CastAndCopy(const CObjectiveCondition *pMaster) { (*this) = (*(dynamic_cast<const CSpecificUnitObjectiveCondition *>(pMaster))); }
 	virtual bool Save( FitIniFile* file );
+    GameObjectWatchID UnitWatchID() const { return m_pUnitWID; }
 };
 
 class CSpecificEnemyUnitObjectiveCondition: public CSpecificUnitObjectiveCondition { /*abstract class*/
@@ -571,6 +572,7 @@ public:
 	/* The following function evaluates the status of the objective irrespective of the other
 	objectives (i.e. it disregards qualifiers like "PreviousPrimaryObjectiveMustbeComplete"). */
 	objective_status_type Status();
+	objective_status_type ReportedStatus() const { return m_resolved ? m_resolvedStatus : OS_UNDETERMINED; }
 	/* The following function evaluates the status of the objective in the context of the given
 	objectives. */
 	objective_status_type Status(CObjectives &objectives);

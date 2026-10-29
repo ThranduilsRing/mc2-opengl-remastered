@@ -338,6 +338,7 @@ public:
 		void	doGuard(GameObject* pObj);
 		int toggleHotKeys();
 		void	beginVtol(long supportID, long commanderID = 0, glm::vec3* reinforcePos = nullptr, MoverPtr salvageTarget = nullptr);
+		bool requestPlayerSupport(int command, glm::vec3 position, MoverPtr salvage = nullptr);
 
 		//Tutorial Stuff goes here.
 		bool startAnimation(long buttonId,bool isButton,bool isPressed,float timeToScroll,long numFlashes);

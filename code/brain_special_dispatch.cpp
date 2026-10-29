@@ -62,6 +62,9 @@
 #include "brain_special_internal.h"
 #include "brain_special_frame.h"
 #include "dteam.h"   // MAX_CONTACTS_PER_TEAM: the length of every getContacts output array
+#include "team.h"
+#include "objective.h"
+#include "terrain.h"
 
 #include <array>
 #include "mc2fmt.h"
@@ -1372,7 +1375,307 @@ void commitBrainIntents(MechWarrior* warrior, MechBrainRuntime* runtime) {
     runtime->pendingIntentCount = 0;
 }
 
-// ---------------------------------------------------------------------------
+// Player commander decisions live in the same per-pilot runtime as authored OPORDs.
+// The caller commits the returned intent through the tick-stamped player ingress.
+mc2::player::UnitIntent producePlayerIntent(MechWarrior* warrior,
+        const glm::vec3& objective, long objectiveTarget, const mc2::player::SquadIntent& squad, float now) {
+    auto* unit = warrior->getVehicle();
+    warrior->setBrainRuntimeMode(BrainRuntimeMode::Enhanced);
+    auto* runtime = warrior->getBrainRuntime();
+    mc2::player::UnitIntent intent{unit->getWatchID(), mc2::player::Goal::Move, objective};
+    const auto position = unit->getPosition();
+    if (!runtime->postSet) {
+        runtime->postPos[0] = position.x;
+        runtime->postPos[1] = position.y;
+        runtime->postPos[2] = position.z;
+        runtime->postSet = true;
+    }
+    const glm::vec3 home{runtime->postPos[0], runtime->postPos[1], runtime->postPos[2]};
+    const float distanceToGoal = glm::distance(position, objective);
+    const float sideFightRange = std::max(200.0f, unit->getMaxFireRange());
+    const bool objectiveChanged = runtime->playerBestDistance < 0
+        || glm::distance(runtime->playerObjective, objective) > 300;
+    if (objectiveChanged) {
+        runtime->playerObjective = objective;
+        runtime->playerBestDistance = distanceToGoal;
+        runtime->playerProgressTime = now;
+        runtime->playerFightSince = -1;
+        runtime->playerRecoverUntil = runtime->playerBypassUntil = 0;
+        runtime->playerRecoveries = 0;
+    }
+    if (distanceToGoal < runtime->playerBestDistance - 40) {
+        runtime->playerBestDistance = distanceToGoal;
+        runtime->playerProgressTime = now;
+    }
+
+    float health = 0, maximum = 0, armor = 0, maxArmor = 0;
+    for (int i = 0; i < unit->numBodyLocations; ++i) {
+        health += unit->body[i].curInternalStructure;
+        maximum += unit->body[i].maxInternalStructure;
+    }
+    for (int i = 0; i < unit->numArmorLocations; ++i) {
+        armor += unit->armor[i].curArmor;
+        maxArmor += unit->armor[i].maxArmor;
+    }
+    float ownThreat = 0;
+    // Keep native path progress while travelling to the same intermediate leg.
+    const auto retainWaypoint = [&](glm::vec3 desired) {
+        const auto* current = warrior->getCurTacOrder();
+        const auto* path = warrior->getMovePath();
+        if (!objectiveChanged && current && current->origin == ORDER_ORIGIN_PLAYER
+            && (warrior->getMovePathRequest() || (path && path->numSteps > 0))
+            && current->code == TACTICAL_ORDER_MOVETO_POINT
+            && current->moveParams.wayPath.numPoints == 1) {
+            const glm::vec3 previous{current->moveParams.wayPath.points[0],
+                current->moveParams.wayPath.points[1], current->moveParams.wayPath.points[2]};
+            const auto remaining = previous - position;
+            if (glm::length(remaining) > 150 && glm::length(remaining) < 2400
+                && glm::dot(remaining, desired - position) > 0) return previous;
+        }
+        return desired;
+    };
+    glm::vec3 regroup = squad.rally;
+    MoverPtr repair = nullptr, wounded = nullptr;
+    float repairDistance = 1e30f, woundedScore = -1;
+    for (long i = 0; i < Team::home->getRosterSize(); ++i) {
+        auto* ally = Team::home->getMover(i);
+        if (!ally || !ally->getExists() || ally->isDisabled() || ally->isDestroyed()
+            || ally->getCommanderId() != unit->getCommanderId()) continue;
+        if (ally->isRefit() && ally->getRefitPoints() > 0 && !ally->refitBuddyWID
+            && unit->distanceFrom(ally->getPosition()) < repairDistance) {
+            repair = ally;
+            repairDistance = unit->distanceFrom(ally->getPosition());
+        }
+        if (ally->getObjectClass() == BATTLEMECH && ally->needsRefit() && !ally->refitBuddyWID) {
+            float remaining = 0, total = 0;
+            for (int loc = 0; loc < ally->numArmorLocations; ++loc) {
+                if (loc < ally->numBodyLocations && ally->body[loc].damageState == IS_DAMAGE_DESTROYED) continue;
+                remaining += ally->armor[loc].curArmor;
+                total += ally->armor[loc].maxArmor;
+            }
+            bool urgent = total > 0 && remaining < total * 0.85f;
+            for (int loc = 0; loc < ally->numBodyLocations; ++loc)
+                urgent |= ally->body[loc].curInternalStructure > 0
+                    && ally->body[loc].curInternalStructure < ally->body[loc].maxInternalStructure * 0.85f;
+            for (long ammo = 0; ammo < ally->numAmmoTypes; ++ammo)
+                urgent |= ally->ammoTypeTotal[ammo].curAmount < ally->ammoTypeTotal[ammo].maxAmount * 0.25f;
+            const float score = (2.0f - (total > 0 ? remaining / total : 1.0f))
+                / (50.0f + unit->distanceFrom(ally->getPosition()));
+            if (urgent && score > woundedScore) { woundedScore = score; wounded = ally; }
+        }
+        if (ally->isRefit()) continue;
+        if (unit->distanceFrom(ally->getPosition()) < 600)
+            ownThreat += std::max(1.0f, static_cast<float>(ally->getThreatRating()));
+    }
+    if (unit->isRefit()) {
+        if (!squad.extracting && wounded && unit->getRefitPoints() > 0) {
+            intent.goal = mc2::player::Goal::Repair;
+            intent.targetWatchId = wounded->getWatchID();
+        } else intent.location = squad.extracting ? objective : regroup;
+        return intent;
+    }
+    if (unit->isRecover()) {
+        float nearest = 1e30f;
+        for (long i = 0; i < ObjectManager->getNumMovers(); ++i) {
+            auto* wreck = ObjectManager->getMover(i);
+            if (!wreck || !wreck->getExists() || !wreck->isDisabled() || wreck->isDestroyed()
+                || wreck->getObjectClass() != BATTLEMECH || wreck->recoverBuddyWID
+                || !Team::home->teamLineOfSight(wreck->getPosition(), 0.0f)) continue;
+            const float distance = unit->distanceFrom(wreck->getPosition());
+            if (distance < nearest) {
+                nearest = distance;
+                intent.goal = mc2::player::Goal::Recover;
+                intent.targetWatchId = wreck->getWatchID();
+            }
+        }
+        if (!intent.targetWatchId) intent.location = regroup;
+        return intent;
+    }
+    // Damaged units seek mission-provided support; resume only after repair.
+    const bool withdrawing = !squad.extracting && (runtime->retreatEffectApplied
+        || (maximum > 0 && health / maximum < (repair ? 0.85f : 0.55f))
+        || (repair && maxArmor > 0 && armor / maxArmor < 0.6f));
+    const bool repaired = repair && unit->getObjectClass() == BATTLEMECH && !unit->needsRefit();
+    if (withdrawing && !repaired && ((maximum > 0 && health / maximum < 0.9f)
+        || (maxArmor > 0 && armor / maxArmor < 0.9f))) {
+        if (!runtime->retreatEffectApplied) runtime->playerRegroupUntil = now + 12;
+        runtime->retreatEffectApplied = true;
+        if (repair || now < runtime->playerRegroupUntil) {
+            runtime->engageTargetWID = 0;
+            intent.location = repair ? repair->getPosition()
+                : glm::distance(position, regroup) > 200 ? regroup : home;
+            intent.posture = mc2::player::Posture::Retreat;
+            return intent;
+        }
+    } else runtime->retreatEffectApplied = false;
+    std::array<int, MAX_CONTACTS_PER_TEAM> contacts{};
+    const long count = unit->getContacts(contacts.data(), (1 | 64), CONTACT_SORT_DISTANCE);
+    GameObjectPtr target = nullptr, weakTarget = nullptr, objectiveContact = nullptr;
+    float best = -1, weakBest = -1, enemyThreat = 0;
+    for (long i = 0; i < count; ++i) {
+        auto* enemy = ObjectManager->get(contacts[i]);
+        if (!enemy || !enemy->getExists() || enemy->isDisabled() || enemy->isDestroyed()
+            || !unit->isEnemy(enemy->getTeam())) continue;
+        const float distance = unit->distanceFrom(enemy->getPosition());
+        if (distance > 1000) continue;
+        runtime->playerLastContact = enemy->getPosition();
+        const float threat = std::max(1.0f, static_cast<float>(enemy->getThreatRating()));
+        if (distance < 800) enemyThreat += threat;
+        const bool isObjective = enemy->getWatchID() == objectiveTarget;
+        if (squad.extracting && !isObjective) continue;
+        if (isObjective) objectiveContact = enemy;
+        const glm::vec3 route = objective - position;
+        const float fraction = std::clamp(glm::dot(enemy->getPosition() - position, route)
+            / std::max(1.0f, glm::dot(route, route)), 0.0f, 1.0f);
+        const float routeDistance = glm::distance(enemy->getPosition(), position + fraction * route);
+        const bool blocksRoute = distance < std::max(200.0f, sideFightRange) && routeDistance < 400;
+        if (!isObjective && (!unit->lineOfSight(enemy) || (!blocksRoute && enemy->getWatchID() != squad.targetWatchId)
+            || now < runtime->playerBypassUntil)) continue;
+        float condition = 1.0f;
+        if (enemy->isMover()) {
+            auto* mover = static_cast<Mover*>(enemy);
+            float remaining = 0, total = 0;
+            for (int loc = 0; loc < mover->numBodyLocations; ++loc) {
+                remaining += mover->body[loc].curInternalStructure;
+                total += mover->body[loc].maxInternalStructure;
+            }
+            if (total > 0) condition = remaining / total;
+        }
+        // Preserve distance-weighted threat selection; finish weakened threats first.
+        const float score = (1.0f + static_cast<float>(enemy->getThreatRating())
+            + static_cast<float>(enemy->getCurCV()) * 0.01f) / (100.0f + distance)
+            + (enemy->getWatchID() == squad.targetWatchId ? 1000.0f : 0.0f);
+        const float weakScore = score / (0.75f + 0.25f * condition);
+        if (weakScore > weakBest) { weakBest = weakScore; weakTarget = enemy; }
+        if (score > best) { best = score; target = enemy; }
+    }
+    if (enemyThreat > ownThreat * 1.5f && weakTarget) target = weakTarget;
+    if (unit->isGuardTower()) {
+        if (target && unit->distanceFrom(target->getPosition()) <= sideFightRange) {
+            intent.goal = mc2::player::Goal::Attack;
+            intent.targetWatchId = target->getWatchID();
+            intent.posture = mc2::player::Posture::Engage;
+            intent.longRange = true;
+        } else intent.location = position;
+        return intent;
+    }
+    if (objectiveTarget && (runtime->engageTargetWID == objectiveTarget
+        || (runtime->playerFightSince >= 0 && now - runtime->playerFightSince >= 45))) {
+        auto* goal = ObjectManager->getByWatchID(objectiveTarget);
+        // Authored structure objectives are known locations; moving enemies must be detected.
+        if (goal && goal->getExists() && !goal->isDestroyed()
+            && (!goal->isMover() || goal == objectiveContact)) target = goal;
+    }
+    if (target) {
+        float remaining = -target->getDamage();
+        if (target->isMover()) {
+            auto* mover = static_cast<Mover*>(target);
+            remaining = 0;
+            for (int loc = 0; loc < mover->numArmorLocations; ++loc) remaining += mover->armor[loc].curArmor;
+            for (int loc = 0; loc < mover->numBodyLocations; ++loc) remaining += mover->body[loc].curInternalStructure;
+        }
+        const bool sameTarget = runtime->playerHealthTarget == target->getWatchID();
+        if (!runtime->playerHealthTarget || (sameTarget && remaining < runtime->playerTargetHealth - 0.01f)) {
+            runtime->playerProgressTime = now;
+            runtime->playerBestDistance = distanceToGoal;
+            runtime->playerRecoverUntil = 0;
+        } else if (!sameTarget && unit->distanceFrom(target->getPosition()) < 450) {
+            runtime->playerRecoverUntil = 0; // Defend against a newly encountered close threat.
+        }
+        runtime->playerHealthTarget = target->getWatchID();
+        runtime->playerTargetHealth = remaining;
+    } else runtime->playerHealthTarget = 0;
+    if (target && target->getWatchID() != objectiveTarget) {
+        if (runtime->playerFightSince < 0) runtime->playerFightSince = now;
+        if (now - runtime->playerFightSince >= 45 && now >= runtime->playerBypassUntil) {
+            runtime->playerBypassUntil = now + 24;
+            runtime->playerFightSince = now;
+            target = nullptr;
+            std::fprintf(stderr, "[PLAYER_BRAIN] wid=%ld event=disengage time=%.2f\n", unit->getWatchID(), now);
+        }
+    }
+    // Wait for stragglers before contact; briefly withdraw an outmatched force.
+    const bool separated = enemyThreat > 0 && glm::distance(position, regroup) > 1600;
+    const bool regroupNeeded = !squad.extracting && (enemyThreat > ownThreat * 1.5f || separated);
+    if (regroupNeeded && now >= runtime->playerRegroupUntil + 20) {
+        runtime->playerRegroupUntil = now + 4;
+        std::fprintf(stderr, "[PLAYER_BRAIN] wid=%ld event=regroup own=%.1f threat=%.1f time=%.2f\n",
+            unit->getWatchID(), ownThreat, enemyThreat, now);
+    }
+    if (regroupNeeded && now < runtime->playerRegroupUntil) {
+        intent.location = glm::distance(position, regroup) > 200 ? regroup : home;
+        intent.posture = mc2::player::Posture::Retreat;
+        runtime->engageTargetWID = 0;
+        return intent;
+    }
+    // Reissue via a lateral approach after 20 s without closing on the objective.
+    bool newRecovery = false;
+    // Alternate sides; after two attempts scout another pending marker/last contact.
+    if (now - runtime->playerProgressTime >= 20) {
+        newRecovery = true;
+        runtime->playerProgressTime = now;
+        runtime->playerBestDistance = distanceToGoal;
+        runtime->playerRecoverUntil = now + 10;
+        ++runtime->playerRecoveries;
+        runtime->playerBypassUntil = now + 12;
+        std::fprintf(stderr, "[PLAYER_BRAIN] wid=%ld event=repath attempt=%u distance=%.1f x=%.1f y=%.1f goal_x=%.1f goal_y=%.1f time=%.2f\n",
+            unit->getWatchID(), runtime->playerRecoveries, distanceToGoal,
+            position.x, position.y, objective.x, objective.y, now);
+    }
+    if (now < runtime->playerRecoverUntil) {
+        glm::vec3 scout = objective;
+        if (runtime->playerRecoveries > 2) {
+            unsigned marker = 0;
+            for (auto* candidate : Team::home->objectives) {
+                if (!candidate->DisplayMarker() || candidate->IsHiddenTrigger()
+                    || candidate->ReportedStatus() != OS_UNDETERMINED) continue;
+                const glm::vec3 markerPosition{candidate->MarkerX(), candidate->MarkerY(), 0};
+                if (glm::distance(markerPosition, objective) < 128) continue;
+                if (++marker == (runtime->playerRecoveries - 3) / 2 + 1) {
+                    scout = {candidate->MarkerX(), candidate->MarkerY(), 0};
+                    break;
+                }
+            }
+            if (scout == objective && runtime->playerLastContact != glm::vec3{}) scout = runtime->playerLastContact;
+        }
+        const auto direction = scout - position;
+        const float length = std::max(1.0f, glm::length(direction));
+        const float side = runtime->playerRecoveries % 2 ? 1.0f : -1.0f;
+        if (runtime->playerRecoveries > 2 && scout != objective)
+            intent.location = position + direction * std::min(1.0f, 1200.0f / length);
+        else intent.location = position + direction * std::min(1.0f, 400.0f / length)
+            + glm::vec3{-direction.y, direction.x, 0} * (side * 250.0f / length);
+        intent.location.x = std::clamp(intent.location.x, Terrain::mapTopLeft3d.x + 128,
+            Terrain::mapTopLeft3d.x + Terrain::worldUnitsMapSide - 128);
+        if (!newRecovery) intent.location = retainWaypoint(intent.location);
+        intent.location.y = std::clamp(intent.location.y, Terrain::mapTopLeft3d.y - Terrain::worldUnitsMapSide + 128,
+            Terrain::mapTopLeft3d.y - 128);
+        runtime->engageTargetWID = 0;
+        return intent;
+    }
+    if (!target && objectiveTarget) {
+        auto* object = ObjectManager->getByWatchID(objectiveTarget);
+        if (object && !object->isMover() && object->getExists() && !object->isDestroyed()) target = object;
+    }
+    if (target && unit->distanceFrom(target->getPosition()) > sideFightRange && !unit->isGuardTower()) {
+        intent.location = target->getPosition();
+    } else if (target) {
+        intent.goal = mc2::player::Goal::Attack;
+        intent.targetWatchId = target->getWatchID();
+        intent.posture = mc2::player::Posture::Engage;
+        intent.longRange = unit->isGuardTower() || (maxArmor > 0 && armor < maxArmor * 0.65f);
+    }
+    // After a failed long route, keep issuing reachable local legs instead of
+    // returning to the same full-map request after each recovery window.
+    if (intent.goal == mc2::player::Goal::Move && (runtime->playerRecoveries > 0 || distanceToGoal > 5000)) {
+        const auto route = intent.location - position;
+        const float distance = glm::length(route);
+        if (distance > 1200) intent.location = position + route * (1200.0f / distance);
+    }
+    if (intent.goal == mc2::player::Goal::Move) intent.location = retainWaypoint(intent.location);
+    runtime->engageTargetWID = intent.targetWatchId;
+    return intent;
+}
 // BRAIN-ENGAGE-1: tickEngageNearest
 //
 // Per-tick autonomous threat engagement for Patrol/Guard OPORDs (discussion #19: Patrol/Guard
