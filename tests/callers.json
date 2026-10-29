@@ -3330,11 +3330,25 @@
           "text": "from scripts import console_child"
         },
         {
+          "path": "tools/mc2texcook/batch_cook.py",
+          "line": 43,
+          "evidence": "import",
+          "reference": "console_child",
+          "text": "import console_child"
+        },
+        {
           "path": "tools/mc2texcook/cook_pbr_maps.py",
           "line": 35,
           "evidence": "import",
           "reference": "console_child",
           "text": "import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)"
+        },
+        {
+          "path": "tools/mc2texcook/cook_tgl_tiers.py",
+          "line": 22,
+          "evidence": "import",
+          "reference": "console_child",
+          "text": "import console_child"
         },
         {
           "path": "tools/mc2x_import/manifest.py",
@@ -9261,7 +9275,7 @@
           "line": 27,
           "evidence": "import",
           "reference": "tools.content_pipeline",
-          "text": "from . import cache, gltf_io, ir, texcook, validate"
+          "text": "from . import cache, gltf_io, ir, texcook, validate, provenance"
         },
         {
           "path": "tools/content_pipeline/tests/test_content_pipeline.py",
@@ -9269,6 +9283,13 @@
           "evidence": "import",
           "reference": "tools.content_pipeline",
           "text": "from tools.content_pipeline import cache, gltf_io, ir, package, texcook, validate  # noqa: E402"
+        },
+        {
+          "path": "tools/content_pipeline/tests/test_provenance.py",
+          "line": 10,
+          "evidence": "import",
+          "reference": "tools.content_pipeline",
+          "text": "from tools.content_pipeline import provenance, texcook"
         },
         {
           "path": "tools/content_pipeline/tests/test_schema_sync.py",
@@ -9282,7 +9303,7 @@
           "line": 35,
           "evidence": "import",
           "reference": "tools.content_pipeline",
-          "text": "from . import cache"
+          "text": "from . import cache, provenance"
         },
         {
           "path": "tools/content_pipeline/validate.py",
@@ -9290,6 +9311,27 @@
           "evidence": "import",
           "reference": "tools.content_pipeline",
           "text": "from . import gltf_io"
+        },
+        {
+          "path": "tools/mc2texcook/batch_cook.py",
+          "line": 41,
+          "evidence": "import",
+          "reference": "tools.content_pipeline",
+          "text": "from tools.content_pipeline import provenance"
+        },
+        {
+          "path": "tools/mc2texcook/cook_burnin_bc7.py",
+          "line": 11,
+          "evidence": "import",
+          "reference": "tools.content_pipeline",
+          "text": "from tools.content_pipeline import provenance, texcook"
+        },
+        {
+          "path": "tools/mc2texcook/cook_tgl_tiers.py",
+          "line": 20,
+          "evidence": "import",
+          "reference": "tools.content_pipeline",
+          "text": "from tools.content_pipeline import provenance"
         },
         {
           "path": "tools/scifi_kit/art/content.py",
@@ -9346,7 +9388,7 @@
           "line": 27,
           "evidence": "import",
           "reference": "tools.content_pipeline.cache",
-          "text": "from . import cache, gltf_io, ir, texcook, validate"
+          "text": "from . import cache, gltf_io, ir, texcook, validate, provenance"
         },
         {
           "path": "tools/content_pipeline/tests/test_content_pipeline.py",
@@ -9360,7 +9402,7 @@
           "line": 35,
           "evidence": "import",
           "reference": "tools.content_pipeline.cache",
-          "text": "from . import cache"
+          "text": "from . import cache, provenance"
         }
       ]
     },
@@ -9626,7 +9668,7 @@
           "line": 27,
           "evidence": "import",
           "reference": "tools.content_pipeline.gltf_io",
-          "text": "from . import cache, gltf_io, ir, texcook, validate"
+          "text": "from . import cache, gltf_io, ir, texcook, validate, provenance"
         },
         {
           "path": "tools/content_pipeline/tests/test_content_pipeline.py",
@@ -9732,7 +9774,7 @@
           "line": 27,
           "evidence": "import",
           "reference": "tools.content_pipeline.ir",
-          "text": "from . import cache, gltf_io, ir, texcook, validate"
+          "text": "from . import cache, gltf_io, ir, texcook, validate, provenance"
         },
         {
           "path": "tools/content_pipeline/tests/test_content_pipeline.py",
@@ -9808,9 +9850,66 @@
       ]
     },
     {
+      "path": "tools/content_pipeline/provenance.py",
+      "basename": "provenance.py",
+      "stem": "provenance",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tools/content_pipeline/package.py",
+          "line": 27,
+          "evidence": "import",
+          "reference": "tools.content_pipeline.provenance",
+          "text": "from . import cache, gltf_io, ir, texcook, validate, provenance"
+        },
+        {
+          "path": "tools/content_pipeline/tests/test_provenance.py",
+          "line": 10,
+          "evidence": "import",
+          "reference": "tools.content_pipeline.provenance",
+          "text": "from tools.content_pipeline import provenance, texcook"
+        },
+        {
+          "path": "tools/content_pipeline/texcook.py",
+          "line": 35,
+          "evidence": "import",
+          "reference": "tools.content_pipeline.provenance",
+          "text": "from . import cache, provenance"
+        },
+        {
+          "path": "tools/mc2texcook/batch_cook.py",
+          "line": 41,
+          "evidence": "import",
+          "reference": "tools.content_pipeline.provenance",
+          "text": "from tools.content_pipeline import provenance"
+        },
+        {
+          "path": "tools/mc2texcook/cook_burnin_bc7.py",
+          "line": 11,
+          "evidence": "import",
+          "reference": "tools.content_pipeline.provenance",
+          "text": "from tools.content_pipeline import provenance, texcook"
+        },
+        {
+          "path": "tools/mc2texcook/cook_tgl_tiers.py",
+          "line": 20,
+          "evidence": "import",
+          "reference": "tools.content_pipeline.provenance",
+          "text": "from tools.content_pipeline import provenance"
+        }
+      ]
+    },
+    {
       "path": "tools/content_pipeline/tests/test_content_pipeline.py",
       "basename": "test_content_pipeline.py",
       "stem": "test_content_pipeline",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
+      "path": "tools/content_pipeline/tests/test_provenance.py",
+      "basename": "test_provenance.py",
+      "stem": "test_provenance",
       "callers_by_basename": [],
       "callers_by_stem": []
     },
@@ -9839,7 +9938,7 @@
           "line": 27,
           "evidence": "import",
           "reference": "tools.content_pipeline.texcook",
-          "text": "from . import cache, gltf_io, ir, texcook, validate"
+          "text": "from . import cache, gltf_io, ir, texcook, validate, provenance"
         },
         {
           "path": "tools/content_pipeline/tests/test_content_pipeline.py",
@@ -9847,6 +9946,20 @@
           "evidence": "import",
           "reference": "tools.content_pipeline.texcook",
           "text": "from tools.content_pipeline import cache, gltf_io, ir, package, texcook, validate  # noqa: E402"
+        },
+        {
+          "path": "tools/content_pipeline/tests/test_provenance.py",
+          "line": 10,
+          "evidence": "import",
+          "reference": "tools.content_pipeline.texcook",
+          "text": "from tools.content_pipeline import provenance, texcook"
+        },
+        {
+          "path": "tools/mc2texcook/cook_burnin_bc7.py",
+          "line": 11,
+          "evidence": "import",
+          "reference": "tools.content_pipeline.texcook",
+          "text": "from tools.content_pipeline import provenance, texcook"
         }
       ]
     },
@@ -9868,7 +9981,7 @@
           "line": 27,
           "evidence": "import",
           "reference": "tools.content_pipeline.validate",
-          "text": "from . import cache, gltf_io, ir, texcook, validate"
+          "text": "from . import cache, gltf_io, ir, texcook, validate, provenance"
         },
         {
           "path": "tools/content_pipeline/tests/test_content_pipeline.py",
@@ -11827,6 +11940,13 @@
           "text": "import batch_cook"
         },
         {
+          "path": "tools/content_pipeline/tests/test_provenance.py",
+          "line": 32,
+          "evidence": "import",
+          "reference": "tools.mc2texcook.batch_cook",
+          "text": "from tools.mc2texcook import batch_cook"
+        },
+        {
           "path": "tools/mc2texcook/tests/test_mc2texcook.py",
           "line": 251,
           "evidence": "import",
@@ -11848,6 +11968,21 @@
       "stem": "burnin_zcompress",
       "callers_by_basename": [],
       "callers_by_stem": []
+    },
+    {
+      "path": "tools/mc2texcook/cook_burnin_bc7.py",
+      "basename": "cook_burnin_bc7.py",
+      "stem": "cook_burnin_bc7",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tools/content_pipeline/tests/test_provenance.py",
+          "line": 11,
+          "evidence": "import",
+          "reference": "tools.mc2texcook.cook_burnin_bc7",
+          "text": "from tools.mc2texcook.cook_burnin_bc7 import cook"
+        }
+      ]
     },
     {
       "path": "tools/mc2texcook/cook_concrete_detail.py",
@@ -11922,7 +12057,7 @@
         },
         {
           "path": "tools/mc2texcook/batch_cook.py",
-          "line": 38,
+          "line": 39,
           "evidence": "import",
           "reference": "mc2texcook",
           "text": "import mc2texcook  # noqa: E402"
