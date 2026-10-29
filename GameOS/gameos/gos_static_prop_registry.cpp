@@ -838,9 +838,9 @@ void flush() {
             && freshLightIdx == s_recipes[rng.first].lightDataIndex;
         flushLeafDiag(regIdx, rng, freshLightIdx, useCachedBlob);
         if (!useCachedBlob) {
-            flushLegacyRange(batcher, s_diag_flush_calls, s_diag_leaves_appended, regIdx, rng, freshLightIdx, actorWorldCenter);
+            flushLegacyRange(batcher, rng, freshLightIdx);
         } else {
-            flushCachedRange(batcher, s_storeDirty, s_diag_leaves_appended, regIdx, rng);
+            flushCachedRange(batcher, s_storeDirty, rng);
         }
     }
 

@@ -6,47 +6,19 @@
 namespace GpuStaticPropRegistry {
 
 
-// Rebuild the persistent static store and golden list from every registered recipe.
-void flushFrozenStoreRebuild(GpuStaticPropBatcher& batcher_pb, bool s_storeDirty) {
-    if (s_staticFrozenReg && s_storeDirty) {
-        // G2 GPU-Scene: under the frozen-records gate the store + golden are built
-        // from ALL alive registered recipes (not the per-frame visible
-        // s_liveRangeIndices), so the GPU owns frustum culling and the frozen set
-        // never shrinks (dissolves the M1 freeze-collapse). Runs on dirty only; the
-        // per-visible-range loop below skips its store-append + golden capture under
-        // the gate (no double-build). Each leaf is stamped with the permanent
-        // per-actor light slot (== regIdx, the slot G1 eager-bakes) so off-screen
-        // leaves (never markVisible'd) carry a correct lightDataIndex. recipeToStoreSlot
-        // is captured in the SAME order appendPersistentStaticRange fills the store
-        // (per-type, range-ascending) so record-index == instance-pool-slot holds.
-        std::fill(s_pbStoreCursor.begin(), s_pbStoreCursor.end(), 0u);
-        s_goldenRecipeList.clear();
-        s_goldenDirty = true;
-        for (uint32_t aregIdx = 0u; aregIdx < s_recipeRanges.size(); ++aregIdx) {
-            RecipeRange& arng = s_recipeRanges[aregIdx];
-            if (arng.count == 0u || !arng.multi()) continue;   // tombstone guard
-            for (uint32_t i = 0u; i < arng.count; ++i) {
-                const uint32_t ri = arng.first + i;
-                if (ri >= s_recipes.size()) break;
-                s_recipes[ri].lightDataIndex = aregIdx;   // permanent per-actor slot
-            }
-            batcher_pb.appendPersistentStaticRange(&s_recipes[arng.first], arng.count);
-            for (uint32_t i = 0u; i < arng.count; ++i) {
-                const uint32_t ri = arng.first + i;
-                if (ri >= s_recipes.size()) break;
-                if (ri < s_cachedActorRecordValid.size() && !s_cachedActorRecordValid[ri]) {
-                    buildCachedActorRecord(arng, ri, s_cachedActorRecord[ri]);
-                    s_cachedActorRecordValid[ri] = 1u;
-                }
-                const uint32_t tid = s_recipes[ri].typeID;
-                if (tid >= s_pbStoreCursor.size()) s_pbStoreCursor.resize(tid + 1u, 0u);
-                if (ri < s_recipeToStoreSlot.size())
-                    s_recipeToStoreSlot[ri] = s_pbStoreCursor[tid]++;
-                s_goldenRecipeList.push_back(ri);
-            }
-            if (aregIdx < static_cast<uint32_t>(s_recipeHasSubstrateRecord.size()))
-                s_recipeHasSubstrateRecord[aregIdx] = 1u;
+// Preserve the optional all-recipes store; native visibility is computed from
+// the color feed, so no GL cull-prefix records or per-type scatter ranks exist.
+void flushFrozenStoreRebuild(GpuStaticPropBatcher& batcher, bool storeDirty) {
+    if (!s_staticFrozenReg || !storeDirty) return;
+    for (uint32_t regIdx = 0; regIdx < s_recipeRanges.size(); ++regIdx) {
+        RecipeRange& rng = s_recipeRanges[regIdx];
+        if (rng.count == 0 || !rng.multi()) continue;
+        for (uint32_t i = 0; i < rng.count; ++i) {
+            const uint32_t ri = rng.first + i;
+            if (ri >= s_recipes.size()) break;
+            s_recipes[ri].lightDataIndex = regIdx;
         }
+        batcher.appendPersistentStaticRange(&s_recipes[rng.first], rng.count);
     }
 }
 

@@ -4,6 +4,40 @@ using RenderCore::VisibilityHistory;
 using RenderCore::VisibilityTier;
 
 TEST_SUITE("VisibilityHistory") {
+TEST_CASE("handleless prop records cannot change actor visibility") {
+    VisibilityHistory actors(2), withProps(5);
+    for (uint32_t frame=0; frame<4; ++frame) {
+        actors.advance(); withProps.advance();
+        const uint32_t expectedSlot=frame%VisibilityHistory::kSlots;
+        auto sample=[&](uint32_t slot, VisibilityHistory::Sample& s) {
+            if (slot!=expectedSlot) return false;
+            s.count=2;
+            s.ids[0]=7; s.bits[0]=frame%2;
+            s.ids[1]=19; s.bits[1]=(frame+1)%2;
+            return true;
+        };
+        REQUIRE(actors.consume(sample)==VisibilityTier::Tier1_NMinusOne);
+        REQUIRE(withProps.consume([&](uint32_t slot, VisibilityHistory::Sample& s) {
+            if (!sample(slot,s)) return false;
+            // Both admitted and rejected static leaves have no actor handle.
+            s.count=5;
+            s.ids[2]=0; s.bits[2]=0;
+            s.ids[3]=0; s.bits[3]=1;
+            s.ids[4]=0; s.bits[4]=frame%2;
+            return true;
+        })==VisibilityTier::Tier1_NMinusOne);
+        for (bool conservativeOr : {false,true}) {
+            const auto a=actors.buildSnapshot(32,conservativeOr,true);
+            const auto b=withProps.buildSnapshot(32,conservativeOr,true);
+            CHECK(a.overflow==b.overflow);
+            CHECK(a.visible==b.visible);
+            CHECK(a.invisible==b.invisible);
+            CHECK(a.orAdmits==b.orAdmits);
+            for (uint32_t id=0; id<32; ++id)
+                CHECK(actors.isVisible(id)==withProps.isVisible(id));
+        }
+    }
+}
 TEST_CASE("dense terrain missions retain high actor IDs across range changes") {
     VisibilityHistory h(1); h.advance();
     auto high=[](uint32_t slot, VisibilityHistory::Sample& s) {

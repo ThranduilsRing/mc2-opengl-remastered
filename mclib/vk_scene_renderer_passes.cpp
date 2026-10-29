@@ -242,44 +242,11 @@ void mc2::VkSceneRenderer::renderListsGpuStaticProps (RenderSubmissions& submiss
 
 
 		{
-			// [RENDERLISTS_COST v1] prep+cull-dispatch only; the two flush units
-			// below carry their own spans (no double-count vs total).
-			// Stage 3.C registry flush MOVED earlier (before flushShadow, see
-			// STATIC-PROP SHADOW-ORDER FIX 2026-05-29) so terrain-object instances
-			// are in s_bucketsByType before the shadow-time SSBO upload locks the
-			// slot. It injects static-registry instances into batcher buckets AND
-			// appends Cat_StaticProp substrate records for the cull shader; both are
-			// now done above, before this block. Do NOT re-add a flush() call here
-			// (double-flush). compute_dispatch() below still runs after it.
-
-			// Step 4.6 (global-pool slice 1): compute per-cmd baseInstance prefix-sum
-			// and advance the coalesce ring slot BEFORE compute_dispatch() so the
-			// patch shader can read baseInstanceByCmd[] in the same dispatch.
-			// The GpuSP.PrepBaseInstance Tracy zone (override branch).
-			{
-				ZoneScopedN("GpuSP.PrepBaseInstance");
-				batcher_prepareBaseInstanceTable();
-			}
-
-			// C1b GPU authority flip: compute_dispatch() is now called HERE
-			// (moved from mission.cpp) so it processes BOTH dynamic actor records
-			// (from substrate_flushUpload in objmgr::update) AND the static prop
-			// records appended by GpuStaticPropRegistry::flush() above.
-			// The patch shader then writes GPU-computed instanceCounts into the
-			// indirect command buffer. GpuStaticPropBatcher::flush() below uses
-			// glMultiDrawElementsIndirect which reads those GPU-authoritative counts.
-			// M1 FROZEN-STATIC-CULL-RECORDS: build + install the frozen static
-			// cull-record prefix now that baseInstanceForType is valid (set by
-			// batcher_prepareBaseInstanceTable above) and before compute_dispatch
-			// consumes the records. No-op on clean frames / unless the gate is set.
-			{ GpuStaticPropRegistry::buildStaticPrefixGolden(); }
-
+			// Native color/HZB read the prop feed, not the retired GL coalesce
+			// base-instance table or its static cull prefix. Only actors with handles
+			// need the lagged visibility dispatch below.
 			if (gpu_cull::compute_isEnabled()) {
 				ZoneScopedN("GpuSP.CullDispatch");
-				// VK-GL-LOST-DRAWS: nullptr tag = unmeasured. compute_dispatch() is compute-only (no raster); a
-				// GL_SAMPLES_PASSED segment holding only compute + barriers returns a garbage
-				// ~1e12 on this driver (begin snapshot never taken) and mis-attributes the frame's
-				// real draws to it. Suspend the query for it.
 				gpu_cull::compute_dispatch();
 			}
 
