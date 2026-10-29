@@ -606,7 +606,9 @@ long SensorSystem::scanBattlefield (void)
 	long numNewContacts = 0;
 
 	long numMovers = ObjectManager->getNumMovers();
-	const float radius = std::max(owner->lineOfSightRange(), getEffectiveRange() / metersPerWorldUnit);
+	const float visualRange = owner->lineOfSightRange();
+	const float sensorRange = getEffectiveRange();
+	const float radius = std::max(visualRange, sensorRange / metersPerWorldUnit);
 	// Visit set, ascending mover-list order: grid candidates plus movers that are already contacts
 	// (so their removals still happen in list order). Every other mover cannot change state.
 	struct Visit { int ordinal; bool candidate; };
@@ -635,7 +637,10 @@ long SensorSystem::scanBattlefield (void)
 		for (const Visit& v : visit) {
 			if (!v.candidate) continue;
 			++mc2_sensor_trace::g_counters.candidates;
-			if (glm::length(ObjectManager->getMover(v.ordinal)->getPosition() - owner->getPosition()) <= radius)
+			const auto position = ObjectManager->getMover(v.ordinal)->getPosition();
+			// Visual range is 3D/world units; sensor range is XY/meters.
+			if (glm::length(position - owner->getPosition()) <= visualRange ||
+				owner->distanceFrom(position) <= sensorRange)
 				++mc2_sensor_trace::g_counters.neighbors;
 		}
 	}
@@ -653,7 +658,6 @@ long SensorSystem::scanBattlefield (void)
 			static thread_local std::vector<uint8_t> hits;
 			rays.clear();
 			cells.clear();
-			const float visualRange = owner->lineOfSightRange();
 			for (const Visit& v : visit) {
 				MoverPtr target = ObjectManager->getMover(v.ordinal);
 				if (!target->getExists() || target->getTeamId() == owner->getTeamId() ||

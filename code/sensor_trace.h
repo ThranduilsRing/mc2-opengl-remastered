@@ -40,7 +40,7 @@ struct Counters {
 	long removes;        // contacts removed this team-update
 	long modifies;       // contacts modified this team-update
 	long candidates;     // conservative spatial-grid candidates
-	long neighbors;      // candidates inside the exact scan radius
+	long neighbors;      // candidates admitted by either exact range predicate
 	long losBatches;
 	long losRays;
 	long losBlocks;       // fixed 64-ray blocks
