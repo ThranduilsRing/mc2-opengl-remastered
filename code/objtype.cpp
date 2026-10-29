@@ -66,7 +66,6 @@
 
 #include "package_chassis.h"
 #include "../GameOS/gameos/utils/mc2log.h"
-#include <unordered_set>
 
 //---------------------------------------------------------------------------
 
@@ -80,6 +79,10 @@ long					ObjectTypeManager::wallLightTypeHandle = 0xFFFFFFFF;
 unsigned long			NextIdNumber = 0x30000001;		//Big number to indicate
 														//This object is NOT a mission
 														//part.  Trust Me. -ffs
+
+// Like objectFile, these belong to the active mission's type manager.
+static unsigned long s_skippedFitIds = 0;
+static unsigned long s_skippedObjTypeNums = 0;
 
 //***************************************************************************
 //* OBJECTTYPE class
@@ -272,6 +275,7 @@ void ObjectTypeManager::destroy(void)
 {
 	if (table) 
 	{
+		MC2_LOG(Io, Info, "[OBJTYPE_OOB_SUMMARY] fit_ids={} obj_type_nums={}", s_skippedFitIds, s_skippedObjTypeNums);
 		// The types release their own text (owned members) as the owners go.
 		std::vector<std::unique_ptr<ObjectType>>().swap(typeStore);
 		std::vector<std::unique_ptr<ObjectType>>().swap(retiredTypes);
@@ -279,6 +283,7 @@ void ObjectTypeManager::destroy(void)
 	}
 	table = nullptr;
 	numObjectTypes = 0;
+	s_skippedFitIds = s_skippedObjTypeNums = 0;
 
 	if (m_objectFile)
 	{
@@ -305,6 +310,7 @@ ObjectTypePtr ObjectTypeManager::load (ObjectTypeNumber objTypeNum, bool noCache
 	// if it's unable to load the object type from the packet file.
 
 	if ((objTypeNum < 0) || (objTypeNum >= numObjectTypes)) {
+		++s_skippedObjTypeNums;
 		PAUSE((" ObjectTypeManager.load: bad objTypeNum %d (max %d) — mod content; returning NULL ", static_cast<int>(objTypeNum), static_cast<int>(numObjectTypes)));
 		return nullptr;
 	}
@@ -345,9 +351,7 @@ ObjectTypePtr ObjectTypeManager::load (ObjectTypeNumber objTypeNum, bool noCache
 		// Mission part IDs are FitIDs from buildings.csv; mechs and vehicles past the end of the pak (every
 		// MC2X/MCO campaign) take their chassis from the CSV via BattleMech::init(variantNum). The stub
 		// substitution below is the designed path; seeking the pak only raised STOP[PACKET_OOB] and four Fatal lines.
-		static std::unordered_set<long> warnedTypes;
-		if (const auto [it, inserted] = warnedTypes.insert(objTypeNum); inserted)
-			MC2_LOG(Io, Info, "[OBJTYPE_NO_PACKET] type {} is past the {}-packet object pak; CSV-driven stub type used", static_cast<int>(*it), static_cast<int>(objectFile->getNumPackets()));
+		++s_skippedFitIds;
 		}
 	else if (objectFile->seekPacket(objTypeNum) == NO_ERR) {
 		if (objTypeNum == 268) {
@@ -552,6 +556,7 @@ void ObjectTypeManager::remove (ObjectTypePtr objTypePtr) {
 ObjectTypePtr ObjectTypeManager::get (ObjectTypeNumber objTypeNum, bool loadIt) {
 
 	if (!table || (objTypeNum < 0) || (objTypeNum >= numObjectTypes)) {
+		if (table) ++s_skippedObjTypeNums;
 		return nullptr;
 	}
 
@@ -570,8 +575,10 @@ ObjectTypePtr ObjectTypeManager::get (ObjectTypeNumber objTypeNum, bool loadIt) 
 
 GameObjectPtr ObjectTypeManager::create (ObjectTypeNumber objTypeNum) {
 
-	if (!table || (objTypeNum < 0) || (objTypeNum >= numObjectTypes))
+	if (!table || (objTypeNum < 0) || (objTypeNum >= numObjectTypes)) {
+		if (table) ++s_skippedObjTypeNums;
 		return nullptr;
+	}
 
 	//----------------------------------------------------------
 	// First, check if the objectType has already been loaded...

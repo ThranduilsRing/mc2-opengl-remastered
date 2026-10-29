@@ -459,11 +459,23 @@ def test_cache_atomic_publish_and_lru(tmp_path):
 
 # --------------------------------------------------------------------------- cook contract
 
-def test_tiers_are_real_downscales_and_never_enlarge():
+def test_tiers_are_real_downscales_and_never_enlarge(caplog):
     img = np.zeros((128, 64, 4), np.uint8)
     tiers = texcook.base_color_tiers(img)
     assert tiers[32].shape[:2] == (32, 16) and tiers[64].shape[:2] == (64, 32)
     assert tiers[256].shape[:2] == (128, 64) and tiers[1024].shape[:2] == (128, 64)
+    assert len(caplog.records) == 1
+    assert "texture tiers collapse at source 64x128" in caplog.text
+    assert "256=64x128" in caplog.text
+
+
+def test_tier_collapse_accounts_for_texel_scale(caplog):
+    img = np.zeros((128, 128, 4), np.uint8)
+    texcook.base_color_tiers(img, tiers=(32, 64, 128))
+    assert not caplog.records
+    texcook.base_color_tiers(img, tiers=(32, 64, 128), texel_scale=4)
+    assert len(caplog.records) == 1
+    assert "texel_scale=4" in caplog.text
 
 
 def test_normal_mips_unit_and_coverage_preserved():

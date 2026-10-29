@@ -5900,10 +5900,13 @@
    "count": 1
   },
   {
-   "tag": "OBJTYPE_NO_PACKET",
+   "tag": "OBJTYPE_OOB_SUMMARY",
    "ver": -1,
    "stream": "log",
-   "keys": [],
+   "keys": [
+    "fit_ids",
+    "obj_type_nums"
+   ],
    "count": 1
   },
   {

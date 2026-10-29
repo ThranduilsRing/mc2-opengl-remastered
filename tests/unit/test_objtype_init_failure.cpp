@@ -75,6 +75,10 @@ TEST_CASE("ObjectTypeManager refuses a failing pak and remains safely empty")
     CHECK(manager.get(-1) == nullptr);
     CHECK(manager.get(4096) == nullptr);
     CHECK(manager.get(45, false) == nullptr);
+    CHECK(manager.load(-1) == nullptr);
+    CHECK(manager.create(4096) == nullptr);
+    REQUIRE(manager.load(45) != nullptr); // No packet: preserve the CSV stub path.
+    CHECK(manager.get(45) != nullptr);    // Cached lookups are not skipped loads.
     REQUIRE_FALSE(std::filesystem::exists(state.stem + "_missing.pak"));
     CHECK(manager.init((state.stem + "_missing").c_str(), 0, 0) != NO_ERR);
     empty();
@@ -97,4 +101,12 @@ TEST_CASE("ObjectTypeManager refuses a failing pak and remains safely empty")
     empty();
     manager.destroy();
     empty();
+    std::fflush(state.capture);
+    std::rewind(state.capture);
+    logged.clear();
+    while (const auto n = std::fread(buffer, 1, sizeof buffer, state.capture))
+        logged.append(buffer, n);
+    const auto summary = logged.find("[OBJTYPE_OOB_SUMMARY] fit_ids=1 obj_type_nums=4");
+    REQUIRE(summary != std::string::npos);
+    CHECK(logged.find("[OBJTYPE_OOB_SUMMARY]", summary + 1) == std::string::npos);
 }
