@@ -255,6 +255,25 @@ def get_render_state() -> str:
 
 
 @mcp.tool()
+def get_runtime_observation() -> str:
+    """Return per-frame mission zone nanoseconds, mover/brain census and resources.
+
+    Counts are read-only; census_valid=false means no active mission. Zone values
+    sum repeated scopes in one mission frame, not lifetime averages.
+    """
+    data = _latest()
+    if data is None:
+        return _not_available()
+    if "runtime_observation" not in data:
+        return "runtime_observation absent; running build predates bridge P2."
+    return _stale_banner() + json.dumps({
+        "frame": data.get("frame"),
+        "observation": data["runtime_observation"],
+        "resources": data.get("runtime_resources", {}),
+    }, indent=2)
+
+
+@mcp.tool()
 def get_render_health() -> str:
     """
     Return a compact render health summary.
