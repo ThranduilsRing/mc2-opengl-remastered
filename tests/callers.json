@@ -286,7 +286,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1460,
+          "line": 1461,
           "evidence": "command",
           "reference": "scripts/check-asset-manifests.py",
           "text": "run_check \"asset_manifests\"            \"py -3 scripts/check-asset-manifests.py --quiet\""
@@ -301,7 +301,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1428,
+          "line": 1429,
           "evidence": "command",
           "reference": "scripts/check-asset-pipeline-doc.sh",
           "text": "run_check \"asset_pipeline_doc\"         \"sh scripts/check-asset-pipeline-doc.sh\""
@@ -316,7 +316,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1461,
+          "line": 1462,
           "evidence": "command",
           "reference": "scripts/check-asset-scale-callers.sh",
           "text": "run_check \"asset_scale_callers\"        \"sh scripts/check-asset-scale-callers.sh\""
@@ -558,7 +558,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1429,
+          "line": 1430,
           "evidence": "command",
           "reference": "scripts/check-claude-md-pointer.sh",
           "text": "run_check \"claude_md_pointer\"          \"sh scripts/check-claude-md-pointer.sh\""
@@ -1094,7 +1094,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1430,
+          "line": 1431,
           "evidence": "command",
           "reference": "scripts/check-json-isolation.sh",
           "text": "run_check \"json_isolation\"             \"sh scripts/check-json-isolation.sh\""
@@ -1227,7 +1227,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1468,
+          "line": 1469,
           "evidence": "command",
           "reference": "scripts/check-manifest-schema.py",
           "text": "run_check \"manifest_schema\"            \"py -3 scripts/check-manifest-schema.py --strict\""
@@ -1279,7 +1279,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1431,
+          "line": 1432,
           "evidence": "command",
           "reference": "scripts/check-memory-size.py",
           "text": "run_check \"memory_size\"                \"py -3 scripts/check-memory-size.py\""
@@ -1294,7 +1294,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1432,
+          "line": 1433,
           "evidence": "command",
           "reference": "scripts/check-mlr-leaves-gated.sh",
           "text": "run_check \"mlr_leaves_gated\"           \"sh scripts/check-mlr-leaves-gated.sh\""
@@ -1412,7 +1412,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1433,
+          "line": 1434,
           "evidence": "command",
           "reference": "scripts/check-object-mvp-currency.py",
           "text": "run_check \"object_mvp_currency\"        \"py -3 scripts/check-object-mvp-currency.py\""
@@ -1434,7 +1434,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1444,
+          "line": 1445,
           "evidence": "command",
           "reference": "scripts/check-oracle-registry.py",
           "text": "run_check \"oracle_registry\"            \"py -3 scripts/check-oracle-registry.py --allow-missing-artifacts\""
@@ -1471,7 +1471,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1434,
+          "line": 1435,
           "evidence": "command",
           "reference": "scripts/check-particles-no-cpu-projection.sh",
           "text": "run_check \"particles_no_cpu_projection\" \"sh scripts/check-particles-no-cpu-projection.sh\""
@@ -1783,7 +1783,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1462,
+          "line": 1463,
           "evidence": "command",
           "reference": "scripts/check-smoke-matrices.py",
           "text": "run_check \"smoke_matrices\"             \"py -3 scripts/check-smoke-matrices.py --quiet\""
@@ -1960,7 +1960,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1435,
+          "line": 1436,
           "evidence": "command",
           "reference": "scripts/check-toolchain-bom.py",
           "text": "run_check \"toolchain_bom\"              \"py -3 scripts/check-toolchain-bom.py\""
@@ -1975,7 +1975,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1436,
+          "line": 1437,
           "evidence": "command",
           "reference": "scripts/check-unified-projection-retirement.sh",
           "text": "run_check \"unified_projection_retirement\" \"sh scripts/check-unified-projection-retirement.sh\""
@@ -2213,7 +2213,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1536,
+          "line": 1537,
           "evidence": "command",
           "reference": "scripts/check_sim_include_firewall.py",
           "text": "run_check \"sim_include_firewall\"        \"py -3 -B scripts/tests/test_sim_include_firewall.py && py -3 scripts/check_sim_include_firewall.py\""
@@ -5066,7 +5066,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1507,
+          "line": 1508,
           "evidence": "command",
           "reference": "scripts/run_scripts_tests.py",
           "text": "run_check \"scripts_tests\"              \"py -3 scripts/run_scripts_tests.py\""
@@ -5266,14 +5266,14 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1532,
+          "line": 1533,
           "evidence": "command",
           "reference": "scripts/run_tools_tests.py",
           "text": "run_check_tri \"tools_tests\"             \"py -3 scripts/run_tools_tests.py\""
         },
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1533,
+          "line": 1534,
           "evidence": "command",
           "reference": "scripts/run_tools_tests.py",
           "text": "run_check_tri \"kit_art\"                 \"py -3 scripts/run_tools_tests.py --suite art\""
@@ -7840,7 +7840,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1536,
+          "line": 1537,
           "evidence": "command",
           "reference": "scripts/tests/test_sim_include_firewall.py",
           "text": "run_check \"sim_include_firewall\"        \"py -3 -B scripts/tests/test_sim_include_firewall.py && py -3 scripts/check_sim_include_firewall.py\""
@@ -11796,6 +11796,13 @@
           "evidence": "import",
           "reference": "tools.mc2mod.mc2mod",
           "text": "from tools.mc2mod.mc2mod import main as pack_main, pack_mod"
+        },
+        {
+          "path": "tests/mod_install/test_packaging.py",
+          "line": 12,
+          "evidence": "import",
+          "reference": "mc2mod",
+          "text": "from mc2mod import main, pack_mod"
         }
       ]
     },
@@ -12424,6 +12431,13 @@
       ]
     },
     {
+      "path": "tools/mod_install/management.py",
+      "basename": "management.py",
+      "stem": "management",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
       "path": "tools/mod_install/parity_smoke.py",
       "basename": "parity_smoke.py",
       "stem": "parity_smoke",
@@ -12463,6 +12477,13 @@
           "evidence": "import",
           "reference": "resolver",
           "text": "from resolver import ResolverConfig, load_config, normalize_key, parse_mod_deps, resolve  # noqa: E402"
+        },
+        {
+          "path": "tools/mod_install/management.py",
+          "line": 12,
+          "evidence": "import",
+          "reference": "tools.mod_install.resolver",
+          "text": "from .resolver import ResolverConfig, _index_mod_layer, _read_mod_json, parse_mod_deps"
         },
         {
           "path": "tools/mod_install/parity_smoke.py",
@@ -18394,6 +18415,28 @@
       "stem": "validate_glb",
       "callers_by_basename": [],
       "callers_by_stem": []
+    },
+    {
+      "path": "tools/validate_mod_package.py",
+      "basename": "validate_mod_package.py",
+      "stem": "validate_mod_package",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tests/mod_install/test_packaging.py",
+          "line": 14,
+          "evidence": "import",
+          "reference": "validate_mod_package",
+          "text": "from validate_mod_package import file_hash, main as validate_main, validate"
+        },
+        {
+          "path": "tools/mod_install/management.py",
+          "line": 13,
+          "evidence": "import",
+          "reference": "validate_mod_package",
+          "text": "from validate_mod_package import ID, VERSION, file_hash, read_json, validate"
+        }
+      ]
     },
     {
       "path": "tools/verified.py",
