@@ -4077,7 +4077,7 @@
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 1133,
+          "line": 1135,
           "evidence": "import",
           "reference": "exe_fingerprint",
           "text": "import exe_fingerprint as fpmod"
@@ -4628,63 +4628,63 @@
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 797,
+          "line": 799,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 810,
+          "line": 812,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 852,
+          "line": 854,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 874,
+          "line": 876,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 1000,
+          "line": 1002,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 1021,
+          "line": 1023,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 1047,
+          "line": 1049,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 1076,
+          "line": 1078,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 1093,
+          "line": 1095,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
@@ -4778,7 +4778,7 @@
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 1132,
+          "line": 1134,
           "evidence": "import",
           "reference": "ninja_build",
           "text": "import ninja_build as nb"
@@ -5317,7 +5317,7 @@
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 1061,
+          "line": 1063,
           "evidence": "import",
           "reference": "run_tools_tests",
           "text": "import run_tools_tests as tt"
@@ -5397,7 +5397,7 @@
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 767,
+          "line": 769,
           "evidence": "import",
           "reference": "run_visual_capture",
           "text": "import run_visual_capture as capture"
@@ -16118,7 +16118,7 @@
       "callers_by_basename": [
         {
           "path": "GameOS/gameos/CMakeLists.txt",
-          "line": 488,
+          "line": 489,
           "evidence": "cmake command",
           "reference": "${CMAKE_SOURCE_DIR}/tools/shader_offline_build/slang_compile.py",
           "text": "COMMAND \"${Python3_EXECUTABLE}\""
