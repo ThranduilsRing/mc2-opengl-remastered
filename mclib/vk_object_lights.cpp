@@ -83,22 +83,13 @@ namespace {
         return fnv1a_64_bytes(h, &b, sizeof(b));
     }
 
-    static inline std::optional<uint32_t> decomposeFirstActiveLightColor(TG_HWLightsData* lights) {
-        const TG_LightPtr* listOfLights = TG_Shape::s_listOfLights;
-        const DWORD numLights = TG_Shape::s_numLights;
-
-        for (DWORD iLight = 0; iLight < numLights; ++iLight) {
-            if ((listOfLights[iLight] != nullptr) && listOfLights[iLight]->active) {
-                const DWORD startLight = listOfLights[iLight]->GetaRGB();
-                lights->lightColor[0][0] = ((startLight >> 16) & 0x000000ff) / 255.0f;
-                lights->lightColor[0][1] = ((startLight >> 8) & 0x000000ff) / 255.0f;
-                lights->lightColor[0][2] = ((startLight) & 0x000000ff) / 255.0f;
-                lights->lightColor[0][3] = 1.0f;
-                return 0u;
-            }
-        }
-
-        return std::nullopt;
+    // The caller already selected the first active source while building the
+    // template key. Reuse its colour instead of walking the light list again.
+    static inline void decomposeActorLightColor(TG_HWLightsData* lights, DWORD startLight) {
+        lights->lightColor[0][0] = ((startLight >> 16) & 0x000000ff) / 255.0f;
+        lights->lightColor[0][1] = ((startLight >> 8) & 0x000000ff) / 255.0f;
+        lights->lightColor[0][2] = ((startLight) & 0x000000ff) / 255.0f;
+        lights->lightColor[0][3] = 1.0f;
     }
 
     static inline std::optional<uint32_t> firstActiveLightSourceIndex() {
@@ -538,6 +529,7 @@ uint32_t mc2::vkLights::addLightDataStructureWithPerActorColor(TG_HWLightsData* 
         GatherLightsParameters(light_data);
         return addLightDataStructure(light_data);
     }
+    const DWORD actorColor = TG_Shape::s_listOfLights[*actorLightSource]->GetaRGB();
 
     const uint64_t key = sceneLightTemplateKey(*actorLightSource);
     auto it = s_sceneLightTemplateMap.find(key);
@@ -545,7 +537,8 @@ uint32_t mc2::vkLights::addLightDataStructureWithPerActorColor(TG_HWLightsData* 
         ++s_lbFrameMiss;  // [LIGHTBRIDGE v1] template miss (GatherLightsParameters runs)
         CachedSceneLightTemplate entry;
         GatherLightsParameters(&entry.data);
-        entry.actorLightSlot = decomposeFirstActiveLightColor(&entry.data).value_or(0xFFFFFFFFu);
+        decomposeActorLightColor(&entry.data, actorColor);
+        entry.actorLightSlot = 0u;
         it = s_sceneLightTemplateMap.emplace(key, entry).first;
     } else {
         ++s_lbFrameHit;  // [LIGHTBRIDGE v1] template hit (trailing FNV+memcmp = retirable redundancy)
@@ -554,7 +547,7 @@ uint32_t mc2::vkLights::addLightDataStructureWithPerActorColor(TG_HWLightsData* 
     *light_data = it->second.data;
     const bool perActor = (it->second.actorLightSlot != 0xFFFFFFFFu);
     if (perActor)
-        (void)decomposeFirstActiveLightColor(light_data);
+        decomposeActorLightColor(light_data, actorColor);
 
     // [LIGHTBRIDGE v1] substitutive repoint: on the (template + per-actor-
     // color) cache hit, return the resolved slot directly and SKIP the
@@ -569,7 +562,7 @@ uint32_t mc2::vkLights::addLightDataStructureWithPerActorColor(TG_HWLightsData* 
     if (!s_lbRepointInit) lbRepointInitFromEnv();
     if (s_lbRepointEnabled) {
         const uint32_t actorARGB = perActor
-            ? static_cast<uint32_t>(TG_Shape::s_listOfLights[*actorLightSource]->GetaRGB())
+            ? static_cast<uint32_t>(actorColor)
             : 0u;
         const uint64_t combined =
             key ^ (static_cast<uint64_t>(actorARGB) * 0x9E3779B97F4A7C15ULL);
