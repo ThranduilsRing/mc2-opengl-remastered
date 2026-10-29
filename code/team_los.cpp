@@ -325,5 +325,10 @@ void Team::lineOfSightBatch(std::span<const mc2::los::Query> queries, std::span<
 	}
 	if (mc2_sensor_trace::g_counters.active && snap.elevationOverride)
 		++mc2_sensor_trace::g_counters.legacyBatches;
+	// Single-block batches stay inline; larger batches exceed the dispatch floor.
+	if (mc2_sensor_trace::g_counters.active && !snap.elevationOverride &&
+		mc2::jobs::enabled() && queries.size() > 64) {
+		++mc2_sensor_trace::g_counters.jobDispatches;
+	}
 	mc2::los::batch(snap, queries, hits);
 }
