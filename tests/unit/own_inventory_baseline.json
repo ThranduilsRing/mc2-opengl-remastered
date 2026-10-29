@@ -3179,19 +3179,16 @@
    "owners": []
   },
   "NewPool": {
-   "delete": 1,
+   "delete": 0,
    "delete_array": 0,
    "files": {
     "code/job_system.cpp": {
-     "delete": 1,
      "new": 1
     }
    },
    "new": 1,
    "new_array": 0,
-   "owners": [
-    ""
-   ]
+   "owners": []
   },
   "Note": {
    "delete": 2,
@@ -4981,6 +4978,7 @@
   "code/forcegroupbar.cpp": 3,
   "code/gamesound.cpp": 1,
   "code/infowindow.cpp": 1,
+  "code/job_system.cpp": 1,
   "code/loadscreen.cpp": 7,
   "code/logistics.cpp": 1,
   "code/logisticsdata_modify.cpp": 3,
