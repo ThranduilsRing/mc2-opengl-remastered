@@ -87,9 +87,8 @@ def plan(jobs, proof_dir=None, capture_before_runs=1, before_dir=None):
         steps.append(("saveload-" + mission,
                       [py, "tools/saveload_roundtrip.py", "check", "--mission", mission,
                        "--install", install, "--mask", "tools/save_noise_mask.json", "--first-save-only", "--out", str(proof / ("saveload-" + mission))], {}))
-    # Stage/run each mod serially: overlapping cold loads and staging I/O hit the wall cap. The 15-28 min battery runs last so a
-    # failing saveload/determinism row is reported long before it.
-    steps.append(("mods", [py, "tools/mod_smoke.py", "--battery", "--workers", "1", "--exe", install + "/mc2.exe", "--build-dir", "build64-ninja"], {}))
+    # Staging has one cache writer; two isolated smoke children lease their own slots.
+    steps.append(("mods", [py, "tools/mod_smoke.py", "--battery", "--workers", "2", "--exe", install + "/mc2.exe", "--build-dir", "build64-ninja"], {}))
     steps.append(("validation",
                   [py, "scripts/run_smoke.py", "--lite", "--keep-logs", "--deploy", "0.4"],
                   {"MC2_VULKAN_VALIDATION": "1"}))
@@ -335,7 +334,7 @@ def execute_parallel(steps, head, dry_run=False, keep_going=False):
         # saveload rows never share a window with the mods battery: they join the
         # auxiliary worker, which runs mods first. (Without a private clone mods
         # runs serially ahead of the stock chain, so the order still holds.)
-        if determinism and any(not s[2].get("MC2_GATE_SKIP_REASON") for s in mods):
+        if any(not s[2].get("MC2_GATE_SKIP_REASON") for s in mods):
             saves = [s for s in stock if s[0].startswith("saveload-")]
             stock = [s for s in stock if s not in saves]
             determinism += saves

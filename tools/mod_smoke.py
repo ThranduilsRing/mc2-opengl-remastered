@@ -81,6 +81,8 @@ IMMUTABLE_SUFFIXES = {'.fst', '.pak', '.exe', '.dll', '.spv', '.glsl', '.hglsl',
 # Cooked model entries replace via temp+rename (cook_cache.cpp), never write through
 # an existing inode. Sharing these 500+ MB saves a copy for every mod.
 IMMUTABLE_SUFFIXES.update(('.mci', '.exr'))
+# Legacy campaign images and movies are read-only payload too.
+IMMUTABLE_SUFFIXES.update(('.jpg', '.jpeg', '.bik'))
 CONFIG_FILES = ('prefs.cfg', 'options.cfg', 'minprefs.cfg')
 # Root data files that override the mod pack and must not be copied over it.
 STOCK_ROOT_FILES = ('prefs.cfg', 'options.cfg', 'system.cfg')
@@ -128,7 +130,7 @@ def place_file(source: Path, target: Path, link_ok: bool = True, incremental=Fal
     share a volume; immutable assets may use a file symlink across volumes. The target is unlinked first so an existing
     hardlink is replaced rather than written through. Returns 'link' or 'copy'."""
     target.parent.mkdir(parents=True, exist_ok=True)
-    if incremental and target.is_file():
+    if incremental and target.is_file() and not target.is_symlink():
         a, b = source.stat(), target.stat()
         if (a.st_size, a.st_mtime_ns) == (b.st_size, b.st_mtime_ns):
             return 'unchanged'
@@ -320,15 +322,17 @@ def overlay_mod(layer: Path, target: Path, link_ok: bool = True, cached_links=Fa
         extra = place_tree(assets, target / 'assets', link_ok=link_ok, private_loose=True, cached_links=cached_links, incremental=incremental)
         stats['files'] += extra['files']
         stats['bytes'] += extra['bytes']
+        stats['linked'] += extra['linked']
     stock = {s.lower() for s in STOCK_ROOT_FILES}
     for entry in sorted(layer.iterdir()):
         if not entry.is_file() or entry.name.lower() in stock:
             continue
         if entry.suffix.lower() not in ('.fst', '.pak'):
             continue
-        place_file(entry, target / entry.name, link_ok=link_ok, incremental=incremental)
+        how = place_file(entry, target / entry.name, link_ok=link_ok, incremental=incremental)
         stats['files'] += 1
         stats['bytes'] += entry.stat().st_size
+        stats['linked'] += how == 'link'
     for name in CONFIG_FILES:
         src = layer / name
         if src.is_file():
@@ -537,11 +541,12 @@ def fill_stock_gap(base_install: Path, target: Path, cache: Path | None = None) 
 
 def stage_mod(cache: Path, layers: list[Path], target: Path, stem: str,
               base_install: Path | None = None, cached_layers=False, gap_cache=None) -> dict:
-    stats = {'engine': link_engine(cache, target), 'mod_files': 0, 'mod_bytes': 0}
+    stats = {'engine': link_engine(cache, target), 'mod_files': 0, 'mod_bytes': 0, 'mod_linked': 0}
     for layer in layers:
         s = overlay_mod(layer, target, cached_links=cached_layers)
         stats['mod_files'] += s['files']
         stats['mod_bytes'] += s['bytes']
+        stats['mod_linked'] += s['linked']
     if base_install is not None:
         stats['stock_gap'] = fill_stock_gap(base_install, target, gap_cache)
     stats['mission_extracted'] = ensure_loose_mission(layers, target, stem)
@@ -652,10 +657,16 @@ def refresh_layer(layer: Path, target: Path) -> dict:
     for old in target.rglob('*'):
         if (old.is_file() or old.is_symlink()) and old.relative_to(target) not in wanted:
             old.unlink()
-    return overlay_mod(layer, target, incremental=True)
+    # Materialize cross-volume sources once in the persistent cache. Stages
+    # then hardlink local payload instead of inheriting source-volume symlinks.
+    return overlay_mod(layer, target, link_ok=same_volume(layer, target), incremental=True)
 
 
 def run_mod(staged: Path, stem: str, duration: int, timeout: int, ref_exe: Path | None = None) -> dict:
+    # Give the bounded host-lease wait its own allowance in the outer watchdog;
+    # a queue wait is not a game hang.
+    lease_wait = min(float(os.environ.get('MC2_HOST_LEASE_TIMEOUT') or 1200), 1200)
+    wall_timeout = timeout + lease_wait
     cmd = [
         sys.executable, str(ROOT / 'scripts' / 'run_smoke.py'),
         '--exe', str(staged / 'mc2.exe'),
@@ -663,6 +674,7 @@ def run_mod(staged: Path, stem: str, duration: int, timeout: int, ref_exe: Path 
         '--allow-any-mission',
         '--duration', str(duration),
         '--keep-logs',
+        '--wait-timeout', str(lease_wait),
     ]
     if ref_exe is not None:
         cmd += ['--ref-exe', str(ref_exe)]
@@ -676,7 +688,7 @@ def run_mod(staged: Path, stem: str, duration: int, timeout: int, ref_exe: Path 
     print('[mod_smoke] run:', ' '.join(cmd), flush=True)
     try:
         proc = subprocess.run(cmd, cwd=str(ROOT), capture_output=True,
-                              text=True, timeout=timeout, env=env,
+                              text=True, timeout=wall_timeout, env=env,
                               **console_child.child_kwargs(redirected=True))
         output = (proc.stdout or '') + (proc.stderr or '')
         rc = proc.returncode
@@ -684,7 +696,7 @@ def run_mod(staged: Path, stem: str, duration: int, timeout: int, ref_exe: Path 
         output = (exc.stdout or '') + (exc.stderr or '')
         if isinstance(output, bytes):
             output = output.decode('utf-8', 'replace')
-        output += f'\n[mod_smoke] TIMEOUT after {timeout}s\n'
+        output += f'\n[mod_smoke] TIMEOUT after {wall_timeout:g}s (includes lease wait)\n'
         rc = 124
     log = staged / 'smoke.log'
     log.write_text(output, encoding='utf-8', errors='replace')
@@ -782,7 +794,8 @@ def battery(args) -> int:
     def smoke(entry, staged, stats, stage_s):
         display, folder, layers, stem, how = entry
         run_started = time.monotonic()
-        result = run_mod(staged, stem, args.duration, args.timeout, getattr(args, 'ref_exe', None))
+        timeout = max(args.timeout, 600) if folder == 'MCO-Carver5' else args.timeout
+        result = run_mod(staged, stem, args.duration, timeout, getattr(args, 'ref_exe', None))
         log = run_root / (folder + '.log')
         shutil.copy2(staged / 'smoke.log', log)
         result.update({'mod': display, 'mission': stem, 'mission_source': how,
