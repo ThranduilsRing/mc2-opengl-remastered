@@ -1,4 +1,4 @@
-// Dear ImGui in-game integration -- wired for MC2 OpenGL port in collaboration with @methuselas.
+// Dear ImGui in-game integration -- Vulkan rendering; integration with @methuselas.
 // Dear ImGui by Omar Cornut et al. -- https://github.com/ocornut/imgui
 #pragma once
 
@@ -18,8 +18,8 @@ namespace GuiRuntime {
     void SetEditorMode(bool on);
     bool IsEditorMode();
 
-    void Init();      // call once after GL context created
-    void Shutdown();  // call once before context destroyed
+    void Init();      // call once after the Vulkan renderer is initialized
+    void Shutdown();  // call once before renderer shutdown
     void NewFrame();  // call each frame before game/UI drawing
     void Render();    // call each frame after all game drawing, before swap
 
@@ -94,6 +94,7 @@ namespace GuiRuntime {
     bool PushUiClipRect(float x, float y, float w, float h);
     void PopUiClipRect();
 
+    // Opaque UI texture identifier; the historical parameter name is retained.
     bool DrawUiImage(std::uint64_t glTextureName,
                      float x,
                      float y,

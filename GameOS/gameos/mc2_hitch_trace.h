@@ -1,10 +1,9 @@
 // mc2_hitch_trace.h — H1a hitch attribution layer.
-// Include AFTER all GL/GameOS includes in suspect TUs. Never include in
-// shared or precompiled headers.
+// Include in instrumented TUs, outside shared or precompiled headers.
 //
 // Gates: MC2_HITCH_TRACE=1 (enable), MC2_HITCH_MS=<float> (threshold, default 20).
-// Zero cost when disabled: g_mc2HitchEnabled is a static-init bool; MC2_GL_*
-// macros reduce to raw GL calls with a single predicted-branch bool check.
+// g_mc2HitchEnabled is cached at startup. Legacy GL-named counters retain
+// their layout and log keys; the retired GL instrumentation wrappers are gone.
 #pragma once
 #include <chrono>
 #include <cstdint>
@@ -25,28 +24,28 @@ struct HitchFrameAccum {
 
     // Terrain solid dispatch sub-counters (filled by gos_terrain_indirect.cpp)
     uint32_t terrainBinds       = 0;
-    uint32_t terrainUploads     = 0;   // glBufferData + glBufferSubData count
+    uint32_t terrainUploads     = 0;   // legacy terrain buffer-upload count
     uint32_t terrainTexImageCalls = 0;
 
     // Static-prop flush sub-counters (filled by gos_static_prop_batcher.cpp)
     uint32_t staticRecords      = 0;   // caller fills after flush
     uint32_t staticDrawCmds     = 0;   // caller fills after flush
-    uint64_t staticBufferBytes  = 0;   // cumulative from MC2_GL_* wrappers
+    uint64_t staticBufferBytes  = 0;   // legacy cumulative upload bytes
     uint32_t staticRealloc      = 0;   // caller sets on buffer orphan/realloc
-    uint32_t staticMap          = 0;   // glMapBufferRange count
+    uint32_t staticMap          = 0;   // legacy buffer-map count
 
     // Water sub-counters (filled by gos_terrain_water_stream.cpp)
     uint8_t  waterCalled        = 0;
     uint8_t  waterPresent       = 0;
     uint8_t  waterEarlyOut      = 0;
-    uint32_t waterGlCalls       = 0;   // total MC2_GL_* hits inside water scope
+    uint32_t waterGlCalls       = 0;   // legacy water API-call count
 
     // H1b water CPU sub-spans (ms). Only populated when waterMs is significant.
     double waterGuardsMs      = 0.0;  // early-out checks + lazy init
     double waterRecipeMs      = 0.0;  // EnsureRecipeBufferUploaded
     double waterBuildWindowMs = 0.0;  // BuildQuadWindowSSBO (CPU loop + hash lookup)
-    double waterUploadMs      = 0.0;  // glBufferSubData for quad window SSBO
-    double waterDispatchMs    = 0.0;  // compute dispatch + glMemoryBarrier calls
+    double waterUploadMs      = 0.0;  // legacy quad-window upload span
+    double waterDispatchMs    = 0.0;  // legacy compute-dispatch span
     // H1b water stats
     uint32_t waterRecipeCount    = 0;  // g_recipes.size() at dispatch time
     uint32_t waterWindowCount    = 0;  // windowCount / dispatchCount
@@ -56,10 +55,10 @@ struct HitchFrameAccum {
     // H1c frame-phase spans (ms). Populated by HitchScope in gameosmain.cpp.
     double phaseLogicMs      = 0.0;  // GameLogic (DoGameLogic)
     double phaseRenderMs     = 0.0;  // DrawScreen (draw_screen)
-    double phasePresentMs    = 0.0;  // SwapWindow (SDL_GL_SwapWindow + any preFinish)
+    double phasePresentMs    = 0.0;  // frame presentation
     double phaseCapMs        = 0.0;  // Frame cap sleep
 
-    // GL call counts (all instrumented TUs combined)
+    // Legacy GL call-count fields retained for the hitch log schema.
     uint32_t glBufferDataCalls        = 0;
     uint64_t glBufferDataBytes        = 0;
     uint32_t glBufferSubDataCalls     = 0;
@@ -144,7 +143,7 @@ struct HitchScope {
 } // namespace mc2_hitch
 
 // ---------------------------------------------------------------------------
-// Globals exposed so MC2_GL_* macros inline without a function call.
+// Cached enable state and shared frame accumulator for instrumentation.
 // ---------------------------------------------------------------------------
 extern bool                        g_mc2HitchEnabled;
 extern mc2_hitch::HitchFrameAccum  g_mc2HitchAccum;
