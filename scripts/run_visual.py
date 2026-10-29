@@ -16,6 +16,8 @@ from pathlib import Path
 import subprocess
 import sys
 
+import console_child
+
 ROOT = Path(__file__).resolve().parents[1]
 CONFIG = Path(__file__).with_name("visual_regions.json")
 GOLDEN = Path("E:/mc2-archive-2026-10/golden/visual-a")
@@ -81,7 +83,8 @@ def capture(install, out, doc):
                    "--bookmarks", str(fixed), "--out-dir", str(dest),
                    "--trigger-frame", "240", "--settle", "30", "--no-kill"]
         with (dest / "runner.log").open("w", encoding="utf-8") as log:
-            result = subprocess.run(command, cwd=ROOT, stdout=log, stderr=subprocess.STDOUT)
+            result = subprocess.run(command, cwd=ROOT, stdout=log, stderr=subprocess.STDOUT,
+                                    **console_child.child_kwargs(redirected=True))
         if result.returncode:
             raise ValueError(f"capture failed: {dest / 'runner.log'} (rc={result.returncode})")
         print(f"captured {scene['name']}", flush=True)
