@@ -311,7 +311,9 @@ bool query(const Snapshot& s, const Query& q)
 
 void batch(const Snapshot& s, std::span<const Query> q, std::span<uint8_t> out)
 {
-	if (s.elevationOverride)  // reads engine globals: main thread only
+	// A single fixed block cannot run in parallel; waking the pool only adds a join.
+	// Overrides read engine globals and must also stay on the calling thread.
+	if (s.elevationOverride || q.size() <= kBlockQueries)
 	{
 		for (size_t i = 0; i < q.size(); ++i)
 			out[i] = query(s, q[i]) ? 1 : 0;

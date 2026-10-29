@@ -194,9 +194,12 @@ TEST_CASE("los_kernel_worker_matrix") {
 
     for (int workers : {1, 2, 4}) {
         mc2::jobs::startPool(workers);
-        std::fill(got.begin(), got.end(), uint8_t(2));
-        mc2::los::batch(w.snap, q, got);
-        CHECK(std::memcmp(serial.data(), got.data(), static_cast<size_t>(n)) == 0);
+        for (size_t count : {size_t(0), size_t(1), size_t(3), size_t(4), size_t(63), size_t(64), size_t(65), size_t(128), size_t(n)}) {
+            std::fill(got.begin(), got.end(), uint8_t(2));
+            mc2::los::batch(w.snap, std::span(q).first(count), std::span(got).first(count));
+            CHECK(std::memcmp(serial.data(), got.data(), count) == 0);
+            if (count < got.size()) CHECK(got[count] == 2);
+        }
         mc2::jobs::stopPool();
     }
     // Pool off: batch runs inline and still matches.
