@@ -44,40 +44,12 @@ void BldgAppearance::updateRenderLOD()
 	needsFullBakeNextFrame = true;
 }
 
-long BldgAppearance::update (bool animate)
+void BldgAppearance::updateFrameEffects()
 {
-	if (simPresentationPass) presentEffects();
-
-	::mc2_object_recon::Scope _recon_bldg_(
-		&::mc2_object_recon::g_per_frame.bldg_update_ns,
-		&::mc2_object_recon::g_per_frame.bldg_update_calls);
-	glm::vec3 xlatPosition;
-	glm::quat rot;
-
-
-    if (!simPresentationPass || !simulationOwned()) {
-	if (simulationOwned()) {
-		if (unitAnim().lastAnimAdvanceFrame == static_cast<uint32_t>(turn)) { updateSimPose(); return TRUE; }
-		unitAnim().lastAnimAdvanceFrame = static_cast<uint32_t>(turn);
-	}
-	// Recycle the weapon Nodes
-	if (!unitAnim().nodeRecycle.empty())
-	{
-		for (long i=0;i<appearType->numWeaponNodes;i++)
-		{
-			if (unitAnim().nodeRecycle[i] > 0.0f)
-			{
-				unitAnim().nodeRecycle[i] -= frameLength;
-				if (unitAnim().nodeRecycle[i] < 0.0f)
-					unitAnim().nodeRecycle[i] = 0.0f;
-			}
-		}
-	}
-	if (animate) mc2::sim::advanceLinearAnimation(unitAnim(), unitAnim().bdFrameRate, appearType->getNumFrames(unitAnim().bdAnimationState), frameLength);
-
-        if (simulationOwned()) { updateSimPose(); return TRUE; }
-    }
-	updateRenderLOD();
+	// Main-thread presentation only. touch() can follow a split serial commit,
+	// or update() in the same frame; neither may enqueue the effects twice.
+	if (frameEffectsFrame == g_mc2FrameCounter) return;
+	frameEffectsFrame = g_mc2FrameCounter;
 	updateSearchlight();
    	if (appearType->terrainLightRGB != 0xffffffff && (eye->nightFactor > 0.0f) && !forceLightsOut)
    	{
@@ -532,6 +504,43 @@ long BldgAppearance::update (bool animate)
 	{
 		drawFlash = false;
 	}
+
+}
+
+long BldgAppearance::update (bool animate)
+{
+	if (simPresentationPass) presentEffects();
+
+	::mc2_object_recon::Scope _recon_bldg_(
+		&::mc2_object_recon::g_per_frame.bldg_update_ns,
+		&::mc2_object_recon::g_per_frame.bldg_update_calls);
+	glm::vec3 xlatPosition;
+	glm::quat rot;
+
+    if (!simPresentationPass || !simulationOwned()) {
+	if (simulationOwned()) {
+		if (unitAnim().lastAnimAdvanceFrame == static_cast<uint32_t>(turn)) { updateSimPose(); return TRUE; }
+		unitAnim().lastAnimAdvanceFrame = static_cast<uint32_t>(turn);
+	}
+	// Recycle the weapon Nodes
+	if (!unitAnim().nodeRecycle.empty())
+	{
+		for (long i=0;i<appearType->numWeaponNodes;i++)
+		{
+			if (unitAnim().nodeRecycle[i] > 0.0f)
+			{
+				unitAnim().nodeRecycle[i] -= frameLength;
+				if (unitAnim().nodeRecycle[i] < 0.0f)
+					unitAnim().nodeRecycle[i] = 0.0f;
+			}
+		}
+	}
+	if (animate) mc2::sim::advanceLinearAnimation(unitAnim(), unitAnim().bdFrameRate, appearType->getNumFrames(unitAnim().bdAnimationState), frameLength);
+
+        if (simulationOwned()) { updateSimPose(); return TRUE; }
+    }
+	updateRenderLOD();
+	updateFrameEffects();
 
 	// Under the GPU static-prop path, compute xlatPosition/rot + fog/light
 	// for every building so the later TransformMultiShape (also gated on inView)

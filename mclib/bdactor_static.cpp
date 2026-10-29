@@ -495,6 +495,9 @@ bool BldgAppearance::IsStaticNow() const
 
 void BldgAppearance::touch()
 {
+	// Keep visual emissions in terrain-object order, including the split path
+	// whose serial light-cache commit may already have run before this visit.
+	updateFrameEffects();
 	// FRAME-JOBS-2F: if touchSerialCommit() already ran this frame (split path active),
 	// skip redundant Path B work. When MC2_FRAME_JOBS_TOUCH=0, stamp is never set
 	// (0xFFFFFFFFu initial value cannot match any real frame counter).

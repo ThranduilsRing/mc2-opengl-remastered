@@ -340,6 +340,8 @@ class BldgAppearance : public ObjectAppearance
 		// Presentation only: never serialized or copied to unitAnim/simulationShape_.
 		float searchlightYaw_ = 0.0f, searchlightPitch_ = 0.0f, searchlightTime_ = 0.0f;
 		void updateSearchlight();
+		void updateFrameEffects();
+		uint32_t frameEffectsFrame = 0xFFFFFFFFu;
 		void releaseBldgShape();
 		
 		bool										fogLightSet;
