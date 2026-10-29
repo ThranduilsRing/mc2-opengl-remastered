@@ -1,5 +1,45 @@
-<!-- doc-status: current | reviewed:2026-10-11 -->
+<!-- doc-status: current | reviewed:2026-10-29 -->
 # Perf budget + oracle harness
+
+## Current advisory cockpit (2026-10-29)
+
+`docs/perf-budget.json` restores per-mission CPU/GPU budgets for mc2_01/03/10/24
+and battle. Shared metric goals apply to every mission: CPU Frame <1 ms at
+1080p, DrawScreen <0.1 ms, GPU frame <=5 ms at 4K (200 fps throughput), and a
+single 200-mover simulation tick <=0.6 ms. GPU throughput alone does not prove
+end-to-end 4K 200 fps. CPU scopes are inclusive elapsed time, including waits.
+The baseline records the repeat profiles from `perf/cpu-profile-2026-10-28.md`:
+four remain NOISY; only battle is quiet. GPU and isolated tick baselines are
+unmeasured (`null`), never inferred from CPU Frame or GameLogic.
+
+```bash
+py -3 tools/perf/budget_check.py --profile <profile.json> --previous <previous-profile.json>
+py -3 tools/perf/budget_check.py --install E:/mc2-installs/<lane>
+py -3 tools/perf/budget_check.py --validate-schema
+```
+
+The first command accepts `mission_cpu_profile.py` output; `--previous` is
+optional. The second runs the same profiler for all five missions (20 seconds
+each), preserving raw profiles. Both write `index.html` and `budget.json` to
+`E:/mc2-archive-2026-10/proofs/perf-report/` (fresh captures in timestamped
+subdirectories). `--out` overrides the destination. The HTML contains per-mission
+goal verdicts, baseline deltas, distance to goal, previous-run deltas and the
+five largest zones. Deltas involving NOISY evidence are descriptive only.
+
+NOISY, unknown noise status, capture errors and missing measurements produce
+INCONCLUSIVE, never a performance pass/fail from noise. Quiet measured metrics
+are compared to goals; baselines are references, not acceptance thresholds.
+A quiet mission fails if a measured goal fails, and passes only if all goals
+have measurements and pass. Missing missions remain INCONCLUSIVE. Exit codes:
+0 all pass, 1 quiet goal failure, 2 inconclusive, 3 invalid input/tool error.
+
+The CPU profiler does not supply GPU or isolated tick data. Optional per-run
+`measurements` can supply `gpu_frame_ms: {"value": 4.8, "resolution": [3840,2160]}`
+and `mover_tick_ms: {"value": 0.5, "movers": 200, "ticks_per_sample": 1}`.
+These use the run's noise classification and must describe actual measurements.
+The `perf_budget_schema` contract validates only the versioned budget structure;
+it imports no game harness and launches no game. Performance evaluation is
+**not connected to the merge gate**. The older oracle material below is historical.
 
 The shared vocabulary that turns smoke runs into **comparable** results. Seeded
 from Baseline A (`82add3ca`, post-8z, captured off `mc2-win64-0.4c`). Every
@@ -12,7 +52,7 @@ structural lane (GlStateGuard, Tube, HZB, IBL/PBR, service-lane) runs its before
 |---|---|
 | oracleparse.py (smoke_lib; retired 2026-10-12, cull wave 1) | Was the render-oracle parser + `judge_oracles`; no gate or runner imported it after `oracle_report.py` went. Recover from git history if an oracle gate is ever built. |
 | `oracle_report.py` (retired 2026-10-09) | Was the CLI: logs dir → per-mission oracle + `[PERF v1]` table, judged vs this budget. No gate or runner called it; recover it from git history if needed. |
-| docs/perf-budget.json (archived 2026-10-11, E:/mc2-archive-2026-10/docs/cull-wave1-docs-2026-10-11.tar.gz) | Per-mission floors/ceilings. |
+| `docs/perf-budget.json` (restored 2026-10-29) | Current goals + labeled baselines; old floors/ceilings were archived 2026-10-11. |
 | this doc | Vocabulary, thresholds, classification rules. |
 
 ## Usage

@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "baseline_source": "docs/perf/cpu-profile-2026-10-28.md (repeat mission profiles; four remain NOISY)",
+  "metrics": {
+    "cpu_frame_ms": {"goal": 1.0, "strict": true, "context": "1920x1080; Frame inclusive elapsed mean, including waits"},
+    "draw_screen_ms": {"goal": 0.1, "strict": true, "context": "1920x1080; DrawScreen inclusive elapsed per Frame"},
+    "gpu_frame_ms": {"goal": 5.0, "strict": false, "context": "3840x2160; GPU frame mean, equivalent to 200 fps GPU throughput; not end-to-end fps"},
+    "mover_tick_ms": {"goal": 0.6, "strict": false, "context": "200 movers; single simulation tick mean; do not substitute GameLogic or multi-tick worker batches"}
+  },
+  "missions": {
+    "mc2_01": {"baseline_status": "NOISY", "baseline": {"cpu_frame_ms": 1.644, "draw_screen_ms": 1.105, "gpu_frame_ms": null, "mover_tick_ms": null}},
+    "mc2_03": {"baseline_status": "NOISY", "baseline": {"cpu_frame_ms": 1.592, "draw_screen_ms": 0.933, "gpu_frame_ms": null, "mover_tick_ms": null}},
+    "mc2_10": {"baseline_status": "NOISY", "baseline": {"cpu_frame_ms": 5.800, "draw_screen_ms": 4.558, "gpu_frame_ms": null, "mover_tick_ms": null}},
+    "mc2_24": {"baseline_status": "NOISY", "baseline": {"cpu_frame_ms": 1.941, "draw_screen_ms": 0.972, "gpu_frame_ms": null, "mover_tick_ms": null}},
+    "battle": {"baseline_status": "quiet", "baseline": {"cpu_frame_ms": 10.426, "draw_screen_ms": 5.874, "gpu_frame_ms": null, "mover_tick_ms": null}}
+  }
+}
