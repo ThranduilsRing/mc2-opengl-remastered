@@ -24,6 +24,52 @@ def _campaign(first: str, second: str = "") -> str:
     return out
 
 
+def test_warning_budget_baselines_and_growth():
+    import json
+    budgets = json.loads(ms.WARNING_BUDGET.read_text())
+    for mod, budget in budgets.items():
+        for message, count in budget.items():
+            text = '\n'.join('[12:00] STOP ' + message + '!' for _ in range(count))
+            counts = ms.warning_counts(text)
+            assert ms.warning_excess(counts, mod) == {}
+            assert ms.warning_excess(ms.warning_counts(text + '\nSTOP ' + message), mod) == {message: 1}
+            assert ms.warning_excess(ms.warning_counts('STOP new error'), mod) == {'new error': 1}
+
+
+def test_all_requested_diagnostics_fail_even_with_healthy_draw_and_ai():
+    for text in ('[FATAL] broken', '[CRASH] access violation', 'ObjectTypeManager.load: failed',
+                 'Texture not correct size!', 'STOP bad object'):
+        counts = ms.warning_counts(text)
+        assert sum(counts.values()) == 1
+        row = {'exit': 0, 'health': {'mech_ok': True, 'ai_ok': True},
+               'warning_excess': ms.warning_excess(counts, 'MC2-Exodus')}
+        assert ms.result_word(row) == 'FAIL(warning budget)'
+    assert ms.warning_counts('normal load\nmechs=3') == {}
+
+
+def test_budget_is_per_mod_and_preserves_new_line_classes():
+    assert ms.warning_excess(ms.warning_counts('STOP Texture not correct size!'), 'MCO-Carver5') == {}
+    assert ms.warning_excess(ms.warning_counts('STOP Texture not correct size!'), 'MC2-Exodus')
+    assert ms.warning_excess(ms.warning_counts('STOP Texture not correct size: NEW'), 'MCO-Carver5')
+
+
+def test_legacy_stops_without_newlines_count_every_occurrence():
+    assert ms.warning_counts('STOPTexture not correct size!' * 3 + '[TerrainLOD v1] ready') == {
+        'Texture not correct size': 3}
+    assert ms.warning_counts('STOPMech Werewolf has ammo for a weapon it is not carrying!  Ammo Index is 205' * 2) == {
+        'Mech Werewolf has ammo for a weapon it is not carrying': 2}
+    fatal = ("STOP [FATAL -1091633151]  ObjectTypeManager.load: can't create object  PAUSE "
+             'ObjectTypeManager.load: objType NULL post-switch for objTypeNum 1202 — substituting stub BattleMechType ')
+    assert ms.warning_counts(fatal * 8 + '[CONTENT_COOK] source=x') == {
+        "ObjectTypeManager.load: can't create object": 8}
+    assert ms.warning_counts(fatal.replace('—', 'â€\u201d')) == {
+        "ObjectTypeManager.load: can't create object": 1}
+    assert ms.warning_counts('STOP[PACKET_OOB] packet=2000') == {'[PACKET_OOB] packet=2000': 1}
+    assert ms.warning_counts('STOPMech Werewolf has ammo for a weapon it is not carrying!  '
+        'Ammo Index is 205logistics: parsed 32 mech files in 4203 ms') == {
+            'Mech Werewolf has ammo for a weapon it is not carrying': 1}
+
+
 def test_kept_stage_copies_independent_bookmarks(tmp_path):
     source, target = tmp_path / "base", tmp_path / "stage"
     bookmark = _w(source / "saved_bookmarks/mc2_10.json", "camera")
@@ -331,6 +377,16 @@ def test_run_mod_preserves_head_default_and_forwards_explicit_reference(tmp_path
     assert '--ref-exe' not in seen[0][0]
     assert seen[1][0][-2:] == ['--ref-exe', str(tmp_path / 'reference.exe')]
     assert seen[0][1]['MC2_SMOKE_ARTIFACT_ROOT'] == str(tmp_path / 'artifacts/mod')
+
+
+def test_run_mod_counts_saved_log_once_and_keeps_harness_crashes(tmp_path, monkeypatch):
+    from types import SimpleNamespace
+    text = GOOD + '\nSTOPTexture not correct size!'
+    monkeypatch.setattr(ms, 'artifact_log_text', lambda *a: text)
+    monkeypatch.setattr(ms.subprocess, 'run', lambda *a, **kw:
+        SimpleNamespace(returncode=0, stdout=text + '\n[CRASH] harness failure', stderr=''))
+    result = ms.run_mod(tmp_path, 'fixture', 15, 60)
+    assert result['warnings'] == {'Texture not correct size': 1, 'harness failure': 1}
 
 
 def test_legacy_media_links_and_configs_remain_private(tmp_path):

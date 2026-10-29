@@ -61,6 +61,38 @@ BATTERY = (
     ('MechCommanderOmnitech', 'MechCommanderOmnitech', None),
     ('MCO-Carver5', 'MCO-Carver5', 'MechCommanderOmnitech'),
 )
+# Counts from E:/mc2-installs/mod_smoke-stage/20261029-141617-498123/artifacts.
+# Budgets are per mission; extending coverage does not grant extra warnings.
+WARNING_BUDGET = Path(__file__).with_name('mod_warning_budget.json')
+
+
+def warning_counts(text: str) -> dict[str, int]:
+    """Count events, including legacy STOP calls that omit the newline."""
+    counts = {}
+    for line in text.splitlines():
+        for event in re.split(r'(?=STOP)', line):
+            match = re.search(r'STOP|\[?FATAL\b|\[CRASH\]|ObjectTypeManager\.|Texture not correct size', event)
+            if not match:
+                continue
+            message = event[match.start():].strip()
+            message = re.sub(r'^STOP\s*:?\s*', '', message)
+            message = re.sub(r'^(?:\[FATAL(?: -?\d+)?\]|FATAL|\[CRASH\])\s*:?\s*', '', message)
+            # A different logger may follow a non-newline STOP on the same line.
+            message = re.split(r'(?<!^)\[(?!FATAL\b|CRASH\])', message)[0]
+            message = re.sub(r'\s+', ' ', message).strip().rstrip('!')
+            message = re.sub(r'logistics: parsed \d+ mech files in \d+ ms$', '', message)
+            message = re.sub(r'(!? Ammo Index is \d+)$', '', message)
+            message = re.sub(r"(ObjectTypeManager\.load: can't create object) PAUSE "
+                             r'ObjectTypeManager\.load: objType NULL post-switch for objTypeNum \d+ '
+                             r'(?:—|â€\u201d|-) substituting stub BattleMechType$', r'\1', message)
+            counts[message] = counts.get(message, 0) + 1
+    return counts
+
+
+def warning_excess(counts: dict[str, int], mod: str) -> dict[str, int]:
+    budget = json.loads(WARNING_BUDGET.read_text(encoding='utf-8')).get(mod, {})
+    return {line: count - budget.get(line, 0) for line, count in counts.items()
+            if count > budget.get(line, 0)}
 
 # Engine-owned loose data that deploy_payload does not enumerate (relative to the
 # base install). Files only count when absent from the stock fast files, so the
@@ -619,8 +651,12 @@ def artifact_log_text(started: float, stem: str, root: Path | None = None) -> st
 def collect_log_text(smoke_output: str) -> str:
     """Smoke stdout plus every engine log run_smoke names or leaves nearby."""
     parts = [smoke_output]
+    seen = set()
     for m in re.finditer(r'([A-Za-z]:[\\/][^\s|"\']+\.(?:log|txt|jsonl))', smoke_output):
         p = Path(m.group(1))
+        if p in seen:
+            continue
+        seen.add(p)
         try:
             if p.is_file() and p.stat().st_size < 64 * 1024 * 1024:
                 parts.append(p.read_text(encoding='utf-8', errors='replace'))
@@ -706,10 +742,17 @@ def run_mod(staged: Path, stem: str, duration: int, timeout: int, ref_exe: Path 
     verdict = next(
         (line.strip() for line in output.splitlines()
          if line.startswith('|') and ('PASS' in line or 'FAIL' in line)), '')
-    text = '\n'.join([collect_log_text(output), artifact_log_text(started, stem, artifacts)])
+    engine_log = artifact_log_text(started, stem, artifacts)
+    text = '\n'.join([collect_log_text(output), engine_log])
     health = analyze_health(text)
+    warnings = warning_counts(engine_log or collect_log_text(output))
+    # The harness can emit its own crash outside the engine log. Do not count
+    # a diagnostic twice just because stdout also echoed the saved engine log.
+    for message, count in warning_counts(output).items():
+        warnings[message] = max(warnings.get(message, 0), count)
     return {'exit': rc, 'fingerprint': fingerprint, 'verdict': verdict,
-            'log': str(log), 'health': health, 'note': failure_note(text)}
+            'log': str(log), 'health': health, 'note': failure_note(text),
+            'warnings': warnings}
 
 
 def failure_note(text: str) -> str:
@@ -723,6 +766,8 @@ def failure_note(text: str) -> str:
 def result_word(row: dict) -> str:
     if row['exit'] != 0:
         return 'FAIL(exit %s)' % row['exit']
+    if row.get('warning_excess'):
+        return 'FAIL(warning budget)'
     h = row['health']
     if not (h['mech_ok'] and h['ai_ok']):
         return 'HEALTH-FAIL'
@@ -732,7 +777,7 @@ def result_word(row: dict) -> str:
 def format_table(rows: list[dict]) -> str:
     head = ('mod', 'mission', 'result', 'health', 'note')
     body = [(r['mod'], r['mission'], result_word(r), health_cell(r['health']),
-             r.get('note', '') if result_word(r) != 'PASS' else '') for r in rows]
+             json.dumps(r['warning_excess']) if r.get('warning_excess') else r.get('note', '')) for r in rows]
     widths = [max(len(str(x[i])) for x in [head] + body) for i in range(5)]
     line = lambda cells: '| ' + ' | '.join(str(c).ljust(w) for c, w in zip(cells, widths)) + ' |'
     return '\n'.join([line(head), line(['-' * w for w in widths])] + [line(b) for b in body])
@@ -796,6 +841,7 @@ def battery(args) -> int:
         run_started = time.monotonic()
         timeout = max(args.timeout, 600) if folder == 'MCO-Carver5' else args.timeout
         result = run_mod(staged, stem, args.duration, timeout, getattr(args, 'ref_exe', None))
+        result['warning_excess'] = warning_excess(result.get('warnings', {}), folder)
         log = run_root / (folder + '.log')
         shutil.copy2(staged / 'smoke.log', log)
         result.update({'mod': display, 'mission': stem, 'mission_source': how,
