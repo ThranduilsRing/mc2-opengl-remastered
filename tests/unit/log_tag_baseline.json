@@ -5371,9 +5371,13 @@
    "ver": 1,
    "stream": "stderr",
    "keys": [
+    "producer",
     "time",
     "issued",
     "rejected",
+    "retreating",
+    "focus",
+    "goal_target",
     "x",
     "y"
    ],
@@ -5455,7 +5459,9 @@
     "reacted",
     "disabled_or_dead",
     "damaged",
-    "destroyed"
+    "destroyed",
+    "losses",
+    "survivors"
    ],
    "count": 1
   },
@@ -6620,10 +6626,160 @@
    "count": 1
   },
   {
+   "tag": "PLAYER_BRAIN",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "wid",
+    "event",
+    "attempt",
+    "distance",
+    "x",
+    "y",
+    "goal_x",
+    "goal_y",
+    "time"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "PLAYER_BRAIN",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "wid",
+    "event",
+    "own",
+    "threat",
+    "time"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "PLAYER_BRAIN",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "wid",
+    "event",
+    "target",
+    "x",
+    "y"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "PLAYER_BRAIN",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "wid",
+    "event",
+    "time"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "PLAYER_ORDER",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "time",
+    "wid",
+    "result",
+    "long_range",
+    "capture"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "PLAYER_PILOT",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "time",
+    "wid",
+    "goal",
+    "posture",
+    "target",
+    "distance",
+    "range",
+    "armor",
+    "structure",
+    "refit",
+    "points",
+    "buddy",
+    "rp",
+    "x",
+    "y",
+    "squad",
+    "leader"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "PLAYER_RESOURCES",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "time",
+    "rp",
+    "repair_present",
+    "repair_needed",
+    "purchased",
+    "allow_repair",
+    "allow_salvage",
+    "allow_air",
+    "allow_arty"
+   ],
+   "count": 1
+  },
+  {
    "tag": "PLAYER_SETTINGS",
    "ver": -1,
    "stream": "stdout",
    "keys": [],
+   "count": 1
+  },
+  {
+   "tag": "PLAYER_SQUAD",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "time",
+    "squad",
+    "leader",
+    "members",
+    "focus",
+    "x",
+    "y"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "PLAYER_SUPPORT",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "time",
+    "command",
+    "target",
+    "cost",
+    "rp",
+    "x",
+    "y"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "PLAYER_SUPPORT_RECYCLE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "handle",
+    "team",
+    "sensor_index"
+   ],
    "count": 1
   },
   {
