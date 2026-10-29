@@ -8,7 +8,8 @@
 #include "../mclib/timing.h"
 #include <tracy/Tracy.hpp>
 
-extern uint32_t g_mc2FrameCounter;
+#include <atomic>
+extern std::atomic<uint32_t> g_mc2FrameCounter;
 extern unsigned long scenarioResult;
 
 // The overlap extract hook (installed by code/mission_update.cpp), main thread at ExtractRenderSnapshot with the sim
