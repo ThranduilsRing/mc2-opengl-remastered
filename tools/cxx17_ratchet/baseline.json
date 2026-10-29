@@ -54,7 +54,7 @@
    "LG05": 97,
    "LG06": 361,
    "LG07": 0,
-   "LG08": 155,
+   "LG08": 153,
    "LG09": 4,
    "LG10": 9,
    "LG11": 59,
@@ -596,10 +596,10 @@
    "LG05": 8
   },
   "GameOS/gameos/gos_static_prop_registry_flush_range.cpp": {
-   "LG08": 14
+   "LG08": 13
   },
   "GameOS/gameos/gos_static_prop_registry_flush_tail.cpp": {
-   "LG08": 5
+   "LG08": 4
   },
   "GameOS/gameos/gos_static_prop_registry_internal.h": {
    "LG12a": 1
@@ -3413,7 +3413,7 @@
    "LG20": 3
   }
  },
- "head": "575800f54",
+ "head": "01469d396",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
