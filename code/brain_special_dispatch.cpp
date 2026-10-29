@@ -1468,10 +1468,10 @@ mc2::player::UnitIntent producePlayerIntent(MechWarrior* warrior,
             ownThreat += std::max(1.0f, static_cast<float>(ally->getThreatRating()));
     }
     if (unit->isRefit()) {
-        if (wounded && unit->getRefitPoints() > 0) {
+        if (!squad.extracting && wounded && unit->getRefitPoints() > 0) {
             intent.goal = mc2::player::Goal::Repair;
             intent.targetWatchId = wounded->getWatchID();
-        } else intent.location = regroup;
+        } else intent.location = squad.extracting ? objective : regroup;
         return intent;
     }
     if (unit->isRecover()) {
@@ -1492,9 +1492,9 @@ mc2::player::UnitIntent producePlayerIntent(MechWarrior* warrior,
         return intent;
     }
     // Damaged units seek mission-provided support; resume only after repair.
-    const bool withdrawing = runtime->retreatEffectApplied
+    const bool withdrawing = !squad.extracting && (runtime->retreatEffectApplied
         || (maximum > 0 && health / maximum < (repair ? 0.85f : 0.55f))
-        || (repair && maxArmor > 0 && armor / maxArmor < 0.6f);
+        || (repair && maxArmor > 0 && armor / maxArmor < 0.6f));
     const bool repaired = repair && unit->getObjectClass() == BATTLEMECH && !unit->needsRefit();
     if (withdrawing && !repaired && ((maximum > 0 && health / maximum < 0.9f)
         || (maxArmor > 0 && armor / maxArmor < 0.9f))) {
@@ -1509,7 +1509,7 @@ mc2::player::UnitIntent producePlayerIntent(MechWarrior* warrior,
         }
     } else runtime->retreatEffectApplied = false;
     std::array<int, MAX_CONTACTS_PER_TEAM> contacts{};
-    const long count = unit->getContacts(contacts.data(), (1 | 64), CONTACT_SORT_DISTANCE);
+    const long count = squad.extracting ? 0 : unit->getContacts(contacts.data(), (1 | 64), CONTACT_SORT_DISTANCE);
     GameObjectPtr target = nullptr, weakTarget = nullptr, objectiveContact = nullptr;
     float best = -1, weakBest = -1, enemyThreat = 0;
     for (long i = 0; i < count; ++i) {
@@ -1527,7 +1527,7 @@ mc2::player::UnitIntent producePlayerIntent(MechWarrior* warrior,
         const float fraction = std::clamp(glm::dot(enemy->getPosition() - position, route)
             / std::max(1.0f, glm::dot(route, route)), 0.0f, 1.0f);
         const float routeDistance = glm::distance(enemy->getPosition(), position + fraction * route);
-        const bool blocksRoute = distance < std::max(200.0f, sideFightRange) && routeDistance < 1200;
+        const bool blocksRoute = distance < std::max(200.0f, sideFightRange) && routeDistance < 400;
         if (!isObjective && (!unit->lineOfSight(enemy) || (!blocksRoute && enemy->getWatchID() != squad.targetWatchId)
             || now < runtime->playerBypassUntil)) continue;
         float condition = 1.0f;

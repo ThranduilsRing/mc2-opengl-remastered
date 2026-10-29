@@ -7,6 +7,7 @@ struct SquadIntent {
     unsigned id = 0;
     long leaderWatchId = 0, targetWatchId = 0;
     glm::vec3 rally{};
+    bool extracting = false;
 };
 enum class Goal { Move, Attack, Repair, Recover };
 enum class Posture { Advance, Engage, Retreat };

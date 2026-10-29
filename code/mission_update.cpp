@@ -188,6 +188,7 @@ void Mission::updateMissionTest(bool report) {
     glm::vec3 location{destination->MarkerX(), destination->MarkerY(), 0.0f};
     GameObjectPtr objectiveTarget = nullptr;
     bool captureObjective = false;
+    bool extracting = false;
     for (auto* condition : destination->m_conditionList) {
         if (condition->Status() == OS_SUCCESSFUL) continue;
         auto point = condition->GetObjectivePosition();
@@ -201,6 +202,9 @@ void Mission::updateMissionTest(bool report) {
         // repeatedly walking to the last condition or an already visited marker.
         if (point.x <= -999000.0f || point.y <= -999000.0f) continue;
         location = point;
+        extracting = condition->Species() == MOVE_ALL_SURVIVING_MECHS_TO_AREA
+            || condition->Species() == MOVE_ALL_SURVIVING_UNITS_TO_AREA
+            || condition->Species() == MOVE_ALL_UNITS_TO_AREA;
         captureObjective = condition->Species() == CAPTURE_STRUCTURE;
         if (condition->Species() == DESTROY_SPECIFIC_STRUCTURE || captureObjective) {
             for (long i = 0; i < ObjectManager->getNumBuildings(); ++i) {
@@ -250,6 +254,7 @@ void Mission::updateMissionTest(bool report) {
     }
     for (std::size_t i = 0; i < squads.size(); ++i) {
         auto& squad = squads[i];
+        squad.extracting = extracting;
         if (members[i]) squad.rally /= static_cast<float>(members[i]);
         float best = -1;
         for (auto* mover : units) {
@@ -262,6 +267,11 @@ void Mission::updateMissionTest(bool report) {
                     || !mover->isEnemy(enemy->getTeam()) || !mover->lineOfSight(enemy)) continue;
                 const float distance = mover->distanceFrom(enemy->getPosition());
                 if (distance > std::max(300.0f, mover->getMaxFireRange())) continue;
+                const auto route = location - mover->getPosition();
+                const float fraction = std::clamp(glm::dot(enemy->getPosition() - mover->getPosition(), route)
+                    / std::max(1.0f, glm::dot(route, route)), 0.0f, 1.0f);
+                if (enemy != objectiveTarget && (distance > std::max(200.0f, mover->getMaxFireRange())
+                    || glm::distance(enemy->getPosition(), mover->getPosition() + fraction * route) > 400)) continue;
                 float remaining = 0, total = 0;
                 if (enemy->isMover()) {
                     auto* target = static_cast<Mover*>(enemy);
@@ -280,7 +290,7 @@ void Mission::updateMissionTest(bool report) {
         mc2::fmt::print_err("[PLAYER_SQUAD v1] time={:.2f} squad={} leader={} members={} focus={} x={:.1f} y={:.1f}\n",
             scenarioTime, i, squad.leaderWatchId, members[i], squad.targetWatchId, squad.rally.x, squad.rally.y);
     }
-    if (!units.empty() && scenarioTime >= test.nextSupport) {
+    if (!extracting && !units.empty() && scenarioTime >= test.nextSupport) {
         auto* gui = MissionInterfaceManager::instance();
         auto position = units.front()->getPosition();
         float ownStrength = 0, enemyStrength = 0;

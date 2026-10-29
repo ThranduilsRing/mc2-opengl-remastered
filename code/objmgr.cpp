@@ -11,6 +11,8 @@
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include "objmgr_internal.h"
 #include "mc2fmt.h"
+#include "brain_execution_policy.h"
+#include "Gates/gate.h"
 
 GameObjectManager::GameObjectManager() { init(); }
 GameObjectManager::~GameObjectManager() { destroy(); }
@@ -439,6 +441,16 @@ BattleMechPtr GameObjectManager::newMech (void) {
 GroundVehiclePtr GameObjectManager::newVehicle (void) {
 
 	if (numVehicles < maxVehicles) {
+        // Detach a recycled support slot before init discards its old sensor.
+        // Otherwise setTeamId removes the fresh, unregistered sensor at index -1.
+        if (mc2::gate::get<"MC2_PLAY_MISSION">() && mc2::brainpolicy::techBrain()
+            && vehicles[numVehicles]->getTeamId() >= 0) {
+            auto* sensor = vehicles[numVehicles]->getSensorSystem();
+            mc2::fmt::print_err("[PLAYER_SUPPORT_RECYCLE] handle={} team={} sensor_index={}\n",
+                vehicles[numVehicles]->getHandle(), vehicles[numVehicles]->getTeamId(),
+                sensor ? sensor->getMasterIndex() : -1);
+            vehicles[numVehicles]->setTeamId(-1, true);
+        }
 		vehicles[numVehicles]->init(false);
 		vehicles[numVehicles]->setExists(true);
 		setPartId(vehicles[numVehicles], -1, -1, -1);
