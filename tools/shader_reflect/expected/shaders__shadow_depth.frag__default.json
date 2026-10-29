@@ -1,9 +1,0 @@
-{
-  "defines": [],
-  "outputs": [],
-  "shader": "shaders/shadow_depth.frag",
-  "ssbos": [],
-  "stage": "frag",
-  "ubos": [],
-  "variant": "default"
-}
