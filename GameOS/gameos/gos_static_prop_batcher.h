@@ -285,13 +285,11 @@ public:
     // Drop hysteresis only when a recipe dies, never merely when it leaves the view.
     void forgetLodState(const GpuStaticPropInstance& inst);
 
-    // 2b Stage 2 (Mechanism B-reinject): persistent static instance store.
-    // Registry drives: clear+append on a dirty generation, reinject every frame.
+    // Registry rebuilds the persistent static instance store on a dirty generation.
     uint64_t persistentStaticGen();
     void     setPersistentStaticGen(uint64_t g);
     void     clearPersistentStatic();
     void     appendPersistentStaticRange(const GpuStaticPropInstance* arr, uint32_t count);
-    void     reinjectPersistentStatic();
 
     [[nodiscard]] bool buildRecipeFromShape(
             TG_Shape* shape,

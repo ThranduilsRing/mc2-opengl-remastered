@@ -18,12 +18,8 @@ size_t   s_colorCapacity    = 0;
 
 std::unordered_map<uint32_t, PerTypeBucket> s_bucketsByType;
 
-// 2b Stage 2 (Mechanism B-reinject): persistent per-type static instance store,
-// rebuilt only when the registry generation changes. Each frame the registry
-// flush BULK-injects these blocks into s_bucketsByType (one memcpy per type)
-// instead of re-walking the registry per leaf — killing the per-leaf walk/push/
-// map overhead. Downstream (uploadAllBucketsIfNeeded + coalesce pool build) read
-// s_bucketsByType unchanged.
+// Persistent per-type static instance store, read directly by the native feed.
+// Rebuilt only when the registry generation or visible set changes.
 std::unordered_map<uint32_t, std::vector<GpuStaticPropInstance>> s_persistentStaticStore;
 uint64_t s_persistentStaticGen = 0xFFFFFFFFFFFFFFFFull;  // sentinel = never built
 
@@ -438,7 +434,6 @@ std::vector<float> s_typeHotColors;
 // Same prior-frame semantics as s_recipeHasSubstrateRecord / hasCullRecord:
 //   flush(frame N) snapshots -> extraction(frame N+1) reads -> 0 on frame 1.
 std::unordered_map<uint32_t, uint32_t> s_typeInstanceCountPrevFrame;
-bool s_reinjectedThisFrame = false;  // item-4 once-per-frame guard
 
 std::vector<uint8_t>              s_slotBucketIndex;    // per sorted draw slot
 std::vector<uint32_t>             s_bucketCmdCount;     // per bucket, in sorted-slot order
@@ -487,7 +482,7 @@ std::vector<StaticDrawCmd>   s_staticDrawCmds;          // CPU mirror
 // (GPU executes in submission order -> the latest fence covers all earlier).
 
 // Gate: MC2_STATIC_POP_SPLIT env AND the G2 frozen-records path armed. Defined
-// early (before onMapUnload / the draw / reinject) so all use sites resolve.
+// early (before onMapUnload / the draw) so all use sites resolve.
 bool staticPopSplitArmed() {
     static const bool s_on = mc2::gate::get<"MC2_STATIC_POP_SPLIT">();
     return s_on && GpuStaticPropRegistry::frozenRecordsArmed();
