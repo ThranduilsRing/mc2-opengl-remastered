@@ -1928,6 +1928,9 @@ void MOVE_cleanup (void);
 extern MissionMapPtr		GameMap;
 extern GlobalMapPtr			GlobalMoveMap[3];
 extern thread_local MoveMapPtr	PathFindMap[2];
+// Preallocated frame/load (0) and overlap-simulation (1) scratch views.
+void MOVE_bindPathFindMaps (int worker);
+void MOVE_configurePathFindMaps (void);
 extern long					SimpleMovePathRange;
 
 //***************************************************************************

@@ -999,17 +999,26 @@ TEST_CASE("AuthoredOrderProduction/path scratch is private to its worker and ret
     MOVE_init(21);
     auto* mainScratch = PathFindMap[SIMPLE_PATHMAP];
     mainScratch->map[0].parent = 11;
+    mainScratch->placeStationaryMoversCallback = [](MoveMapPtr) {};
+    MOVE_configurePathFindMaps();
     MoveMapPtr workerScratch = nullptr;
-    bool initiallyEmpty = false, retained = false;
+    bool initiallyEmpty = false, retained = false, prepared = false, configured = false;
     std::thread worker([&] {
         initiallyEmpty = PathFindMap[SIMPLE_PATHMAP] == nullptr;
+        MOVE_bindPathFindMaps(1);
+        prepared = PathFindMap[SIMPLE_PATHMAP] && PathFindMap[SIMPLE_PATHMAP]->map.size() == 43 * 43;
         workerScratch = MOVE_acquirePathFindMap(SIMPLE_PATHMAP);
-        workerScratch->init(43, 43);
+        const auto allocations = workerScratch->openHeap.allocations();
+        configured = workerScratch->placeStationaryMoversCallback == mainScratch->placeStationaryMoversCallback;
         workerScratch->map[0].parent = 17;
-        retained = MOVE_acquirePathFindMap(SIMPLE_PATHMAP) == workerScratch;
+        MOVE_bindPathFindMaps(1);
+        retained = MOVE_acquirePathFindMap(SIMPLE_PATHMAP) == workerScratch &&
+                   workerScratch->openHeap.allocations() == allocations;
     });
     worker.join();
     CHECK(initiallyEmpty);
+    CHECK(prepared);
+    CHECK(configured);
     CHECK(retained);
     CHECK(workerScratch != mainScratch);
     CHECK(PathFindMap[SIMPLE_PATHMAP] == mainScratch);
