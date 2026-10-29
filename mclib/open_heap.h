@@ -48,16 +48,23 @@ public:
 		nodes_.push_back(PQNode{0, 0xFFFFFFFFu, 0, 0}); // slot 0 only keeps the positions 1-based
 	}
 
-	void reserve(int expectedNodes) { nodes_.reserve(static_cast<std::size_t>(expectedNodes) + 2); }
+	void reserve(int expectedNodes) {
+		const auto capacity = nodes_.capacity();
+		nodes_.reserve(static_cast<std::size_t>(expectedNodes) + 2);
+		allocations_ += nodes_.capacity() != capacity;
+	}
 	void clear() { nodes_.resize(1); }
 	bool isEmpty() const { return nodes_.size() == 1; }
 	int size() const { return static_cast<int>(nodes_.size()) - 1; }
 
 	void insert(const PQNode& item)
 	{
-		if (nodes_.size() == nodes_.capacity() && ++growths_ == 1)
-			mc2::fmt::print_err("[PATH v1] event=open_list_growth reserved={:d} needed={:d}\n", mc2::fmt::as_i32(static_cast<long>(nodes_.capacity())),
-				mc2::fmt::as_i32(static_cast<long>(nodes_.size()) + 1));
+		if (nodes_.size() == nodes_.capacity()) {
+			++allocations_;
+			if (++growths_ == 1)
+				mc2::fmt::print_err("[PATH v1] event=open_list_growth reserved={:d} needed={:d}\n", mc2::fmt::as_i32(static_cast<long>(nodes_.capacity())),
+					mc2::fmt::as_i32(static_cast<long>(nodes_.size()) + 1));
+		}
 		nodes_.push_back(item);
 		upHeap(size());
 	}
@@ -118,6 +125,7 @@ public:
 	int rekeyMisses() const { return rekeyMisses_; }
 	// How many inserts had to reallocate; the first of them logged a line.
 	int growths() const { return growths_; }
+	int allocations() const { return allocations_; } // reallocations after construction, including reserve()
 
 	const PQNode& at(int position) const { return nodes_[static_cast<std::size_t>(position)]; }
 
@@ -152,6 +160,7 @@ private:
 
 	int rekeyMisses_ = 0;
 	int growths_ = 0;
+	int allocations_ = 0;
 	std::vector<PQNode> nodes_; // [0] is the filler, [1 .. size()] the heap
 };
 

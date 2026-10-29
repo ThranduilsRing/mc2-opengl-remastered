@@ -17,6 +17,8 @@
 #include <cstdio>
 #include <chrono>
 #include <format>
+#include "open_heap.h"
+#include "move.h"
 
 class MovePath;
 
@@ -44,14 +46,30 @@ struct SolveScope {
 	int   trunc;               // 1 if numCells > MAX_STEPS_PER_MOVEPATH
 	int   fail;                // 1 if no goal found
 	const MovePath* out = nullptr;  // the path this solve fills; hashed into the event
+	const mc2::OpenHeap& heap;
+	int initialAllocations;
+	MoveLayerRevisions revisions;
+	bool previousRevisionMatch = false;
 
-	explicit SolveScope(const char* variantName)
+	explicit SolveScope(const char* variantName, const mc2::OpenHeap& searchHeap)
 		: active(mc2_diag::tagEnabled("PATH")),
 		  variant(variantName),
-		  nodes(0), openPeak(0), len(-1), trunc(0), fail(1)
+		  nodes(0), openPeak(0), len(-1), trunc(0), fail(1),
+		  heap(searchHeap), initialAllocations(searchHeap.allocations())
 	{
-		if (active)
+		if (active) {
+			// Count opportunities before attempting speculative work. Matching layer
+			// revisions alone do not validate object generations or request inputs.
+			static thread_local const MissionMap* previousMap = nullptr;
+			static thread_local MoveLayerRevisions previousRevisions;
+			if (GameMap) {
+				revisions = GameMap->rev;
+				previousRevisionMatch = previousMap == GameMap && previousRevisions == revisions;
+				previousMap = GameMap;
+				previousRevisions = revisions;
+			}
 			t0 = std::chrono::steady_clock::now();
+		}
 	}
 
 	~SolveScope() {
@@ -62,8 +80,10 @@ struct SolveScope {
 		char buf[288];
 		auto bufEnd = std::format_to_n(buf, sizeof(buf) - 1,
 			"{{\"ev\":\"solve\",\"variant\":\"{}\",\"us\":{:.2f},\"nodes\":{},"
-			"\"open_peak\":{},\"len\":{},\"trunc\":{},\"fail\":{},\"h\":\"{:016x}\"}}",
-			variant, us, nodes, openPeak, len, trunc, fail, (out && !fail) ? hashMovePath(out) : 0ull);
+			"\"open_peak\":{},\"len\":{},\"trunc\":{},\"fail\":{},\"h\":\"{:016x}\",\"allocs\":{},\"same_rev\":{},\"valid_rev\":{}}}",
+			variant, us, nodes, openPeak, len, trunc, fail, (out && !fail) ? hashMovePath(out) : 0ull,
+			heap.allocations() - initialAllocations, previousRevisionMatch ? 1 : 0,
+			(GameMap && GameMap->rev == revisions) ? 1 : 0);
 		*bufEnd.out = '\0';
 		mc2_diag::writeEvent("PATH", 1, 0, buf);
 	}

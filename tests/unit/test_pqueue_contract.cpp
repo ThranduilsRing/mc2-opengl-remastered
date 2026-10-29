@@ -383,11 +383,18 @@ TEST_CASE("OH6 an insert past the first reservation is counted once per realloca
 	for (uint32_t i = 1; i <= 8; ++i)
 		sized.insert(PQNode{static_cast<int32_t>(i), i, 0, 0});
 	CHECK(sized.growths() == 0);
+	CHECK(sized.allocations() == 0);
+	sized.reserve(128);
+	CHECK(sized.allocations() == 1);
+	sized.clear();
+	sized.reserve(128);
+	CHECK(sized.allocations() == 1); // retaining scratch must not allocate again
 	mc2::OpenHeap tiny(1);
 	for (uint32_t i = 1; i <= 64; ++i)
 		tiny.insert(PQNode{static_cast<int32_t>(i), i, 0, 0});
 	CHECK(tiny.growths() >= 1);
 	CHECK(tiny.size() == 64);
+	CHECK(tiny.allocations() == tiny.growths());
 	tiny.clear();
 	CHECK(tiny.growths() >= 1); // clear() keeps the counter: it belongs to the heap object
 }

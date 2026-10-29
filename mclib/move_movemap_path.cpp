@@ -48,7 +48,7 @@ long MoveMap::calcPath (MovePathPtr path, glm::vec3* goalWorldPos, int* goalCell
 	mc2_move::SolveContext ctx;
 
 	// PATHFINDING-FACTS-1: gated per-solve telemetry (default-OFF, byte-identical).
-	mc2_path_trace::SolveScope _pt("plain");
+	mc2_path_trace::SolveScope _pt("plain", openHeap);
 	_pt.out = path;
 	const bool _pathTrace = _pt.active;
 	long _ptNodes = 0;
@@ -474,7 +474,7 @@ long MoveMap::calcPathJUMP (MovePathPtr path, glm::vec3* goalWorldPos, int* goal
 	mc2_move::SolveContext ctx;
 
 	// PATHFINDING-FACTS-1: gated per-solve telemetry (default-OFF, byte-identical).
-	mc2_path_trace::SolveScope _pt("jump");
+	mc2_path_trace::SolveScope _pt("jump", openHeap);
 	_pt.out = path;
 	const bool _pathTrace = _pt.active;
 	long _ptNodes = 0;
