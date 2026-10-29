@@ -275,6 +275,10 @@ long GenericAppearance::renderShadows (void)
 long GenericAppearance::update (bool animate)
 {
 	const bool simOnly = !simPresentationPass && (simulationOwned() || mc2::overlap::onSimWorker());
+	if (simOnly && animate) {
+		if (unitAnim().lastAnimAdvanceFrame == static_cast<uint32_t>(turn)) return TRUE;
+		unitAnim().lastAnimAdvanceFrame = static_cast<uint32_t>(turn);
+	}
 	::mc2_object_recon::Scope _recon_generic_(
 		&::mc2_object_recon::g_per_frame.generic_update_ns,
 		&::mc2_object_recon::g_per_frame.generic_update_calls);

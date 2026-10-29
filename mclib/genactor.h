@@ -194,6 +194,7 @@ class GenericAppearance : public ObjectAppearance
 		}
 
 		virtual long update (bool animate = true);
+		void setSimInput(const SimInput&) override { update(); }
 		virtual long render (long depthFixup = 0);
 
 		virtual long renderShadows (void);
