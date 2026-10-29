@@ -6,6 +6,7 @@
 #include "heap.h"
 #include "team.h"
 #include "mission_load_frame.h"
+#include "combat_clock_archive.h"
 #include <bit>
 #include <array>
 #include <cstdlib>
@@ -318,7 +319,7 @@ TEST_CASE("CombatRetirementProduction/native loader preserves absolute deadlines
     PacketFile file;
     REQUIRE(file.open(path.c_str()) == NO_ERR);
     REQUIRE_FALSE(GameObjectManager::checkSavedObjects(&file));
-    const auto savedClock = readCombatClock(file);
+    const auto savedClock = mc2::save::readSavedCombatClock(file);
     REQUIRE(savedClock);
     owner.resetCombatClock();
     owner.restoreCombatClock(*savedClock);
@@ -344,7 +345,14 @@ TEST_CASE("CombatRetirementProduction/native loader preserves absolute deadlines
     REQUIRE(resave.create(resavePath.c_str()) == NO_ERR);
     resave.reserve(32);
     SavedCombatClock continued{owner.getCombatClock().ticks, owner.getCombatClock().frac};
-    resave.writePacket(3, reinterpret_cast<MemoryPtr>(&continued), sizeof(continued), STORAGE_TYPE_RAW);
+    resave.writePacket(0, reinterpret_cast<MemoryPtr>(const_cast<char*>(mc2::save::saveStampV2)),
+        sizeof(mc2::save::saveStampV2), STORAGE_TYPE_RAW);
+    mc2::save::CombatClockValue value{continued.ticks, continued.frac};
+    mc2::save::Archive archive;
+    archive(value);
+    REQUIRE(archive.good());
+    resave.writePacket(3, const_cast<MemoryPtr>(archive.bytes().data()),
+        static_cast<unsigned int>(archive.bytes().size()), STORAGE_TYPE_RAW);
     objects.Save(&resave, 4);
     resave.close();
     REQUIRE(resave.open(resavePath.c_str()) == NO_ERR);
@@ -359,7 +367,7 @@ TEST_CASE("CombatRetirementProduction/native loader preserves absolute deadlines
     objects.destroy();
     objects.objTypeManager = world.ownedTypes;
     owner.resetCombatClock();
-    owner.restoreCombatClock(*readCombatClock(resave));
+    owner.restoreCombatClock(*mc2::save::readSavedCombatClock(resave));
     REQUIRE(objects.Load(&resave, 4) == 15);
     CHECK(owner.getCombatClock().ticks == continued.ticks);
     CHECK(std::bit_cast<std::uint64_t>(owner.getCombatClock().frac) == std::bit_cast<std::uint64_t>(continued.frac));

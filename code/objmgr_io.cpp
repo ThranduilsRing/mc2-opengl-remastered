@@ -1,4 +1,5 @@
 #include "save_archive.h"
+#include "combat_clock_archive.h"
 #include "save_exactness.h"
 #include "appearance_rng.h"
 #include "sim_rng_state.h"
@@ -656,7 +657,7 @@ std::optional<std::string_view> GameObjectManager::checkSavedObjects (PacketFile
 	sizes.pureMover = sizeof(MoverData);
 
 	const long resume = file->getCurrentPacket();
-	if (!mc2::combat::readCombatClock(*file))
+	if (!mc2::save::readSavedCombatClock(*file))
 		return "invalid_combat_clock";
 	const long numPackets = file->getNumPackets();
 	auto sizeAt = [file](uint32_t packet) -> uint32_t {
