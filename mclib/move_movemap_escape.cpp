@@ -139,10 +139,7 @@ long MoveMap::calcEscapePath (MovePathPtr path, glm::vec3* goalWorldPos, long* g
 
 						if (succMapNode->flags & MOVEFLAG_OPEN) {
 							if (succNodeG < succMapNode->g) {
-								succMapNode->parent = dirToParent;
-								succMapNode->g = succNodeG;
-								succMapNode->fPrime = succNodeG + succMapNode->hPrime;
-								reKeyOpen(succRow * MAX_MAPWIDTH + succCol, succMapNode->fPrime);
+								updateOpenNode(*succMapNode, dirToParent, succNodeG, succRow * MAX_MAPWIDTH + succCol);
 							}
 							}
 						else if (succMapNode->flags & MOVEFLAG_CLOSED) {

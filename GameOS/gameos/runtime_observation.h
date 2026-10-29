@@ -7,13 +7,14 @@
 #include "runtime_bridge.h"
 #include <sstream>
 #include <string>
+#include <string_view>
 
 namespace mc2::observation {
 inline bool enabled() {
     static const bool value = mc2::gate::get<"MC2_DEBUG_STATE_DUMP">() || mc2::bridge::configured();
     return value;
 }
-struct Zone { const char* name = nullptr; uint64_t ns = 0; };
+struct Zone { std::string_view name; uint64_t ns = 0; };
 struct Mover { long partId = 0, handle = 0, team = 0; float x = 0, y = 0, z = 0, rotation = 0; };
 struct Sample {
     uint64_t frame = 0;
@@ -30,7 +31,7 @@ inline void beginFrame() {
     current = {};
     current.frame = next;
 }
-inline void recordZone(unsigned index, const char* name, uint64_t ns) {
+inline void recordZone(unsigned index, std::string_view name, uint64_t ns) {
     if (index >= current.zones.size()) { ++current.overflow; return; }
     current.zones[index].name = name;
     current.zones[index].ns += ns;
@@ -44,7 +45,7 @@ inline std::string json() {
         << ",\"zone_ns\":{";
     bool first = true;
     for (const auto& zone : current.zones) {
-        if (!zone.name) continue;
+        if (zone.name.empty()) continue;
         if (!first) out << ',';
         first = false;
         out << '"' << zone.name << "\":" << zone.ns;

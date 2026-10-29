@@ -1719,6 +1719,7 @@ class MoveMap {
 
 		// Gives the OPEN node of a map cell its new key; a cell flagged OPEN that the list does not hold is skipped (one log line per map, an assert in debug).
 		void reKeyOpen (long cellId, long newKey);
+		void updateOpenNode(MoveMapNode& node, long parent, long g, long cellId);
 		bool adjacentCellOpen (long mapCellIndex, long dir);
 		bool adjacentCellOpenJUMP (long r, long c, long dir);
 		void propogateCost (long mapCellIndex, long cost, long g);

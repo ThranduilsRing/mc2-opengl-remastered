@@ -23,29 +23,29 @@ TEST_CASE("runtime_bridge/session requires a GUID") {
 }
 TEST_CASE("runtime_bridge/subscriptions authenticate version session rate and streams") {
     using namespace mc2::bridge;
-    Subscription subscription;
     auto message = request();
-    REQUIRE(subscribe(message, session, subscription));
-    CHECK(subscription.hz == 2);
-    CHECK(subscription.state);
-    CHECK(subscription.movers);
+    auto subscription = subscribe(message, session);
+    REQUIRE(subscription);
+    CHECK(subscription->hz == 2);
+    CHECK(subscription->state);
+    CHECK(subscription->movers);
     for (const auto& bad : {Json(0), Json(31), Json(-1), Json("2"), Json(nullptr)}) {
         message = request(); message["hz"] = bad;
-        CHECK_FALSE(subscribe(message, session, subscription));
-        CHECK(subscription.hz == 2);
+        CHECK_FALSE(subscribe(message, session));
     }
     message = request(); message["version"] = 2;
-    CHECK_FALSE(subscribe(message, session, subscription));
+    CHECK_FALSE(subscribe(message, session));
     message = request(); message["session"] = "stale-session";
-    CHECK_FALSE(subscribe(message, session, subscription));
+    CHECK_FALSE(subscribe(message, session));
     message = request(); message["streams"] = {"eval"};
-    CHECK_FALSE(subscribe(message, session, subscription));
+    CHECK_FALSE(subscribe(message, session));
     for (const char* command : {"pause", "resume", "stop", "eval", "teleport"}) {
         message = request(); message["type"] = command;
-        CHECK_FALSE(subscribe(message, session, subscription));
+        CHECK_FALSE(subscribe(message, session));
     }
     message = request(); message["streams"] = Json::array();
-    REQUIRE(subscribe(message, session, subscription));
-    CHECK_FALSE(subscription.state);
-    CHECK_FALSE(subscription.movers);
+    subscription = subscribe(message, session);
+    REQUIRE(subscription);
+    CHECK_FALSE(subscription->state);
+    CHECK_FALSE(subscription->movers);
 }

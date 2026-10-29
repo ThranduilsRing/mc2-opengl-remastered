@@ -100,8 +100,12 @@ struct Transport {
                     // Wrong session/version is fatal. No control dispatcher exists in P3.
                     if (!message.contains("version") || message["version"] != 1 ||
                         !message.contains("session") || message["session"] != session) break;
-                    bool accepted = subscribe(message, session, subscription);
-                    if (accepted) hz = (subscription.state || subscription.movers) ? subscription.hz : 0;
+                    const auto next = subscribe(message, session);
+                    const bool accepted = next.has_value();
+                    if (accepted) {
+                        subscription = *next;
+                        hz = (subscription.state || subscription.movers) ? subscription.hz : 0;
+                    }
                     live = sendJson(socket, {{"version", 1}, {"session", session},
                         {"type", accepted ? "ack" : "nack"}, {"seq", message.value("seq", Json(nullptr))}});
                 }
@@ -110,8 +114,8 @@ struct Transport {
                     std::lock_guard lock(mutex);
                     snapshot.swap(state); transforms.swap(movers);
                 }
-                auto emit = [&](const char* stream, const std::string& body) {
-                    auto payload = Json::parse(body, nullptr, false);
+                auto emit = [&](std::string_view stream, std::string_view body) {
+                    auto payload = Json::parse(body.begin(), body.end(), nullptr, false);
                     if (payload.is_discarded()) return false;
                     return sendJson(socket, {{"version", 1}, {"type", "telemetry"}, {"session", session},
                         {"stream", stream}, {"dropped", dropped.load()}, {"data", std::move(payload)}});

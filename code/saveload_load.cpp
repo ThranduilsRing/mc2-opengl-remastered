@@ -152,13 +152,7 @@ void Mission::loadMovement(MissionLoadFrame& f) {
 			STOP(("Mission has no movement Data.  QuickSaved Map"));
 	}
 
-	PathFindMap[SECTOR_PATHMAP]->blockedDoorCallback = GetBlockedDoorCells;
-	PathFindMap[SECTOR_PATHMAP]->placeStationaryMoversCallback = PlaceStationaryMovers;
-	PathFindMap[SIMPLE_PATHMAP]->placeStationaryMoversCallback = PlaceStationaryMovers;
-	PathFindMap[SECTOR_PATHMAP]->forestCost = forestMoveCost;
-	PathFindMap[SIMPLE_PATHMAP]->forestCost = forestMoveCost;
-	MOVE_configurePathFindMaps();
-	PathManager = new MovePathManager;
+	configurePathfinding(forestMoveCost);
 
 	loadProgress = 40.0f;
 }

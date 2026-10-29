@@ -537,6 +537,7 @@ class Mission
 		void initTriggerAndDropZone(MissionInitFrame& f);
 		void initMissionSettings(MissionInitFrame& f);
 		void initTerrain(MissionInitFrame& f);
+		void configurePathfinding(long forestMoveCost);
 		void initPathfinding(MissionInitFrame& f);
 		void initAblCoreLibs(MissionInitFrame& f);
 		void initMissionScript(MissionInitFrame& f);

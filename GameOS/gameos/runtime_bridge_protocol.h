@@ -4,6 +4,7 @@
 #include <cmath>
 #include <cstdint>
 #include <string_view>
+#include <optional>
 
 namespace mc2::bridge {
 using Json = nlohmann::json;
@@ -26,21 +27,20 @@ inline bool validSession(std::string_view text) {
     return true;
 }
 struct Subscription { double hz = 0; bool state = false, movers = false; };
-inline bool subscribe(const Json& message, std::string_view session, Subscription& result) {
+inline std::optional<Subscription> subscribe(const Json& message, std::string_view session) {
     if (!message.is_object() || !message.contains("version") || message["version"] != 1 ||
         !message.contains("session") || message["session"] != std::string(session) ||
         !message.contains("type") || message["type"] != "subscribe" ||
         !message.contains("hz") || !message["hz"].is_number() ||
-        !message.contains("streams") || !message["streams"].is_array()) return false;
+        !message.contains("streams") || !message["streams"].is_array()) return std::nullopt;
     Subscription next;
     next.hz = message["hz"].get<double>();
-    if (!std::isfinite(next.hz) || next.hz < 0.25 || next.hz > 30) return false;
+    if (!std::isfinite(next.hz) || next.hz < 0.25 || next.hz > 30) return std::nullopt;
     for (const auto& stream : message["streams"]) {
         if (stream == "runtime.observation") next.state = true;
         else if (stream == "mover.transform") next.movers = true;
-        else return false;
+        else return std::nullopt;
     }
-    result = next;
-    return true;
+    return next;
 }
 } // namespace mc2::bridge

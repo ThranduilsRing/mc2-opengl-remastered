@@ -15,6 +15,13 @@ void MoveMap::reKeyOpen (long cellId, long newKey) {
 		mc2::fmt::print_err("[PATH v1] event=open_list_miss solver=movemap id={:d}\n", mc2::fmt::as_i32(cellId));
 }
 
+void MoveMap::updateOpenNode(MoveMapNode& node, long parent, long g, long cellId) {
+	node.parent = parent;
+	node.g = g;
+	node.fPrime = g + node.hPrime;
+	reKeyOpen(cellId, node.fPrime);
+}
+
 unsigned long long mc2_path_trace::hashMovePath (const MovePath* path) {
 	unsigned long long h = 1469598103934665603ull;
 	auto mix = [&h](const void* p, size_t n) {
@@ -605,10 +612,7 @@ long MoveMap::calcPathJUMP (MovePathPtr path, glm::vec3* goalWorldPos, int* goal
 
 						if (succMapNode->flags & MOVEFLAG_OPEN) {
 							if (succNodeG < succMapNode->g) {
-								succMapNode->parent = dirToParent;
-								succMapNode->g = succNodeG;
-								succMapNode->fPrime = succNodeG + succMapNode->hPrime;
-								reKeyOpen(succRow * MAX_MAPWIDTH + succCol, succMapNode->fPrime);
+								updateOpenNode(*succMapNode, dirToParent, succNodeG, succRow * MAX_MAPWIDTH + succCol);
 							}
 							}
 						else if (succMapNode->flags & MOVEFLAG_CLOSED) {

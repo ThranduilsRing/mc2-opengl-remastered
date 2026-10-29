@@ -141,7 +141,7 @@
   "code": {
    "LG01": 0,
    "LG02": 0,
-   "LG03": 350,
+   "LG03": 349,
    "LG04": 15,
    "LG05": 198,
    "LG06": 437,
@@ -2045,7 +2045,7 @@
    "LG12a": 1
   },
   "code/saveload_load.cpp": {
-   "LG03": 8,
+   "LG03": 7,
    "LG11": 3
   },
   "code/simplecamera.cpp": {
@@ -3413,7 +3413,7 @@
    "LG20": 3
   }
  },
- "head": "01469d396",
+ "head": "035b0a2d8",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",

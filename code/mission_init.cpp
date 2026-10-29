@@ -775,6 +775,16 @@ void Mission::initTerrain(MissionInitFrame& f) {
 	mission_phase_mark("terrain_ready"); // LOAD-PHASE-FACTS-1: FST/pak parse + terrain prime done
 }
 
+void Mission::configurePathfinding(long forestMoveCost) {
+	PathFindMap[SECTOR_PATHMAP]->blockedDoorCallback = GetBlockedDoorCells;
+	PathFindMap[SECTOR_PATHMAP]->placeStationaryMoversCallback = PlaceStationaryMovers;
+	PathFindMap[SIMPLE_PATHMAP]->placeStationaryMoversCallback = PlaceStationaryMovers;
+	PathFindMap[SECTOR_PATHMAP]->forestCost = forestMoveCost;
+	PathFindMap[SIMPLE_PATHMAP]->forestCost = forestMoveCost;
+	MOVE_configurePathFindMaps();
+	PathManager = new MovePathManager;
+}
+
 // Initialise the move system, the path-find maps and the path manager.
 void Mission::initPathfinding(MissionInitFrame& f) {
 	auto& forestMoveCost = f.forestMoveCost; auto& pakFile = f.pakFile;
@@ -841,13 +851,7 @@ void Mission::initPathfinding(MissionInitFrame& f) {
 		}
 	}
 
-	PathFindMap[SECTOR_PATHMAP]->blockedDoorCallback = GetBlockedDoorCells;
-	PathFindMap[SECTOR_PATHMAP]->placeStationaryMoversCallback = PlaceStationaryMovers;
-	PathFindMap[SIMPLE_PATHMAP]->placeStationaryMoversCallback = PlaceStationaryMovers;
-	PathFindMap[SECTOR_PATHMAP]->forestCost = forestMoveCost;
-	PathFindMap[SIMPLE_PATHMAP]->forestCost = forestMoveCost;
-	MOVE_configurePathFindMaps();
-	PathManager = new MovePathManager;
+	configurePathfinding(forestMoveCost);
 
 #ifdef LAB_ONLY
 	x=GetCycles();

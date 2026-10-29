@@ -7,7 +7,7 @@
   "RenderCore": 402,
   "RenderWorld": 0,
   "code": 13426,
-  "mclib": 22495,
+  "mclib": 22490,
   "shaders": 416
  },
  "dirs": [
@@ -410,9 +410,9 @@
   "mclib/move_globalmap_build.cpp": 26,
   "mclib/move_globalmap_doors.cpp": 8,
   "mclib/move_globalmap_path.cpp": 16,
-  "mclib/move_movemap_escape.cpp": 174,
+  "mclib/move_movemap_escape.cpp": 175,
   "mclib/move_movemap_goals.cpp": 118,
-  "mclib/move_movemap_path.cpp": 385,
+  "mclib/move_movemap_path.cpp": 379,
   "mclib/msl_anim.cpp": 29,
   "mclib/msl_load.cpp": 13,
   "mclib/msl_shape.cpp": 85,
@@ -481,8 +481,8 @@
   "shaders/vulkan/terrain_tier1.vert": 71,
   "shaders/vulkan/terrain_tier1_skirt.vert": 71
  },
- "head": "15790e490",
+ "head": "035b0a2d8",
  "n": 8,
- "total": 38950,
+ "total": 38945,
  "version": 1
 }
