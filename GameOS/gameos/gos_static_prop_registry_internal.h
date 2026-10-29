@@ -99,8 +99,6 @@ extern const bool s_perInstanceLight;
 extern const bool s_staticFrozenReg;
 
 // Registry state the flush phases read and write.
-extern uint64_t s_cullRecordVersion;
-extern std::vector<uint8_t> s_prevCullRecord;
 extern std::vector<GpuStaticPropInstance> s_recipes;
 extern std::vector<RecipeRange> s_recipeRanges;
 extern std::vector<gpu_cull::GpuActorRecord> s_cachedActorRecord;
@@ -109,7 +107,6 @@ extern std::vector<uint32_t> s_recipeToStoreSlot;
 extern std::vector<uint32_t> s_goldenRecipeList;
 extern std::vector<uint32_t> s_pbStoreCursor;
 extern bool s_goldenDirty;
-extern std::vector<uint8_t> s_recipeHasSubstrateRecord;
 extern std::vector<uint32_t> s_liveRangeIndices;
 extern uint64_t s_firstFrameSkipCount;
 
@@ -127,7 +124,6 @@ void flushLegacyRange(GpuStaticPropBatcher& batcher, RecipeRange& rng, uint32_t 
 void flushCachedRange(GpuStaticPropBatcher& batcher, bool storeDirty, RecipeRange& rng);
 void flushZeroLightProbe(uint64_t s_diag_flush_calls);
 void flushDiagSummary(uint64_t s_diag_flush_calls, uint64_t& s_diag_ranges_total, uint64_t& s_diag_ranges_tombstone, uint64_t& s_diag_ranges_stale_frame, uint64_t& s_diag_ranges_stale_after_drawn, uint64_t& s_diag_ranges_drawn, uint64_t& s_diag_leaves_appended, uint64_t& s_diag_persistent_vanish, uint64_t s_diag_total_ns, bool s_guard2, std::unordered_map<int, uint64_t>& s_staleByType, std::unordered_map<uint32_t, uint32_t>& s_staleStreak);
-void flushCullRecordVersion();
 
 }  // namespace GpuStaticPropRegistry
 

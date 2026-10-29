@@ -59,13 +59,6 @@ const bool s_perInstanceLight =
 // generation across frames means the persistent static store is reusable.
 static uint64_t s_registryGeneration = 0;
 
-// STATICPROP-SNAPSHOT-BRIDGE-COMPARE-1: monotonic version of the submitted-prop set.
-// Bumped at end of flush() when s_recipeHasSubstrateRecord differs from the previous
-// flush. In a stable scene (same props submitted each frame), this stays stable.
-// Never reset — stays monotonic across missions so callers can use it as a change
-// signal even across level boundaries.
-uint64_t              s_cullRecordVersion = 0;
-std::vector<uint8_t>  s_prevCullRecord;  // copy of s_recipeHasSubstrateRecord from last flush
 
 
 // MC2_TEX_LIFECYCLE_TRACE=1 — same env flag used by mclib/txmmgr.cpp,
@@ -147,12 +140,6 @@ bool                  s_goldenDirty = false; // a dirty rebuild happened; golden
 // Indexed by typeID (dense); resized as needed by staticPropCacheTypePrimaryMaterial.
 static std::vector<GpuStaticPropRegistry::StaticPropTypeMaterialCache> s_typeMatCache;
 
-// v2: tracks whether flush() called substrate_appendStaticPropRecord for each recipe.
-// Indexed by recipeIndex (parallel to s_recipeRanges). Reset to 0 at flush() start;
-// set to 1 after substrate_appendStaticPropRecord in the flush loop.
-// Cleared entirely in destroy() (see the ClearCullSubmissionState helper below).
-// Do NOT clear in staticPropRegistryClearMaterialCache() — different lifecycle.
-std::vector<uint8_t> s_recipeHasSubstrateRecord;
 
 // M1.5 C1 fix: typeID -> recipeIndex side-map. Populated by
 // registerRecipe(); set to -1 on invalidate(). Lookup returns -1
@@ -408,7 +395,6 @@ void destroy() {
     s_cachedActorRecordValid.clear(); s_cachedActorRecordValid.shrink_to_fit();
     s_liveRangeIndices.clear(); s_liveRangeIndices.shrink_to_fit();
     s_typeMatCache.clear();          s_typeMatCache.shrink_to_fit();
-    staticPropRegistryClearCullSubmissionState();
     // unordered_map has no shrink_to_fit(); swap with empty to release bucket
     // allocation back to the heap, matching the intent of the surrounding
     // vector .clear()+.shrink_to_fit() pattern. Mission 2 may register a
@@ -456,11 +442,9 @@ int32_t registerRecipe(TG_MultiShape* multi,
         regIdx = static_cast<int32_t>(s_recipeRangeFreeList.back());
         s_recipeRangeFreeList.pop_back();
         s_recipeRanges[static_cast<size_t>(regIdx)] = rng;          // overwrite tombstone
-        s_recipeHasSubstrateRecord[static_cast<size_t>(regIdx)] = 0u;
     } else {
         regIdx = static_cast<int32_t>(s_recipeRanges.size());
         s_recipeRanges.push_back(rng);
-        s_recipeHasSubstrateRecord.push_back(0u); // v2: one slot per recipe, parallel to s_recipeRanges
     }
     // M1.5 C1: maintain typeID -> recipeIndex side-map for the
     // batcher's objectIdRaw producer. All instances in `batch` share
@@ -585,9 +569,6 @@ void invalidate(int32_t regIdx) {
     }
     SP_TRACE("invalidate regIdx=%d (was count=%u)", regIdx, rng.count);
     rng.count = 0;
-    // v2: zero-out substrate tracking (don't erase — keeps index stable).
-    if (static_cast<size_t>(regIdx) < s_recipeHasSubstrateRecord.size())
-        s_recipeHasSubstrateRecord[static_cast<size_t>(regIdx)] = 0u;
     rng.multiId = {};
     rng.lightDataIndex = 0xFFFFFFFFu;  // 2026-05-11 reset capture on invalidate
     rng.extentRadius   = 0.0f;         // 2026-05-22 F4 T3 reset extent radius
@@ -608,7 +589,6 @@ void invalidate(int32_t regIdx) {
 uint64_t getRegistryGeneration() { return s_registryGeneration; }
 
 // STATICPROP-SNAPSHOT-BRIDGE-COMPARE-1: submitted-prop set version.
-uint64_t getCullRecordVersion() { return s_cullRecordVersion; }
 
 bool isReady(int32_t regIdx) {
     if (regIdx < 0 || static_cast<uint32_t>(regIdx) >= s_recipeRanges.size()) return false;
@@ -738,10 +718,6 @@ void flush() {
     static uint64_t s_diag_total_ns = 0;
     const auto _flush_t0 = std::chrono::steady_clock::now();
     ++s_diag_flush_calls;
-    // v2: reset per-recipe cull-submission tracking for this frame.
-    // Timing: flush(N) clears → sets bits; extraction(N+1) reads before flush(N+1).
-    // So extraction always sees frame N state, NOT the current frame being built.
-    std::fill(s_recipeHasSubstrateRecord.begin(), s_recipeHasSubstrateRecord.end(), 0u);
 
     // Rebuild static instances only when their registry generation or visible
     // set changes. The native color feed reads this store directly; transient
@@ -852,7 +828,6 @@ void flush() {
 
     flushZeroLightProbe(s_diag_flush_calls);
     flushDiagSummary(s_diag_flush_calls, s_diag_ranges_total, s_diag_ranges_tombstone, s_diag_ranges_stale_frame, s_diag_ranges_stale_after_drawn, s_diag_ranges_drawn, s_diag_leaves_appended, s_diag_persistent_vanish, s_diag_total_ns, s_guard2, s_staleByType, s_staleStreak);
-    flushCullRecordVersion();
     // compute_dispatch() runs after this (moved to txmmgr.cpp between registry flush
     // and batcher flush) so it sees the appended static prop records.
     // batcher.flush() is called by txmmgr.cpp immediately after compute_dispatch().
@@ -1046,22 +1021,6 @@ void staticPropRegistryClearMaterialCache() {
     s_typeMatCache.shrink_to_fit();
 }
 
-void staticPropRegistryClearCullSubmissionState() {
-    s_recipeHasSubstrateRecord.clear();
-    s_recipeHasSubstrateRecord.shrink_to_fit();
-    s_prevCullRecord.clear();
-    s_prevCullRecord.shrink_to_fit();
-    // Do NOT reset s_cullRecordVersion — stays monotonic across missions.
-}
-
-bool staticPropGetHasCullRecord(int32_t recipeIndex, bool* out) {
-    if (!out) return false;
-    *out = false;
-    if (!recipeValid(recipeIndex)) return false;
-    if (static_cast<size_t>(recipeIndex) < s_recipeHasSubstrateRecord.size())
-        *out = (s_recipeHasSubstrateRecord[static_cast<size_t>(recipeIndex)] != 0u);
-    return true;
-}
 
 bool staticPropGetTexArrayLayer(int32_t recipeIndex, int32_t* out) {
     if (!out) return false;

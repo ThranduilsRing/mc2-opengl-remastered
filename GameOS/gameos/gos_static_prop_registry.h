@@ -268,26 +268,11 @@ void staticPropCacheTypePrimaryMaterial(uint32_t typeID,
 //   - GpuStaticPropBatcher::onMapUnload()
 void staticPropRegistryClearMaterialCache();
 
-// Clears s_recipeHasSubstrateRecord entirely (called from destroy() only).
-// Per-frame reset (fill to 0) happens inside flush() — NOT via this function.
-// NOT called from finalizeGeometry() or staticPropRegistryClearMaterialCache().
-void staticPropRegistryClearCullSubmissionState();
-
-// Returns false + *out=false if recipeIndex is invalid, tombstoned, or out is null.
-// *out is true iff substrate_appendStaticPropRecord was called for this recipe
-// in the most recent PREVIOUS render frame's flush() pass.
-// NOTE: ExtractRenderSnapshot() runs BEFORE flush() — this reflects the prior frame.
-bool staticPropGetHasCullRecord(int32_t recipeIndex, bool* out);
 
 // 2b Stage 2: monotonic registry generation (bumped on spawn/despawn/immutable-field
 // write). A clean generation across frames means the persistent static store is reusable.
 uint64_t getRegistryGeneration();
 
-// STATICPROP-SNAPSHOT-BRIDGE-COMPARE-1: monotonic version of the submitted-prop set.
-// Bumped at end of flush() only when s_recipeHasSubstrateRecord differs from the
-// previous flush. In a stable scene (same props visible every frame), this is stable
-// across frames — the caller can skip re-extraction when this is unchanged.
-uint64_t getCullRecordVersion();
 
 // Returns GpuStaticPropInstance.flags for the first leaf of this recipe.
 // bit 0: lightsOut, bit 1: isWindow, bit 2: isSpotlight.
