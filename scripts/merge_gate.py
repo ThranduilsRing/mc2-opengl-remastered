@@ -78,6 +78,7 @@ class GateState:
             if self.resume and self.path.exists():
                 previous = json.loads(self.path.read_text(encoding="utf-8"))
                 self.data["stages"] = previous.get("stages", {})
+            self.data["exe_sha"] = self.exe_sha()
             self.write()
         except BaseException:
             self.__exit__(None, None, None)
