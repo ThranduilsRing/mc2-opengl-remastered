@@ -24,6 +24,7 @@ std::size_t cost(const StructuralState& state)
         }
     }
     for (const auto& section : state.syntax.sections) size += section.name.capacity() + section.fields.capacity() * sizeof(NodeId);
+    for (const auto& source : state.brainSidecars) if (source) size += source->capacity();
     for (const auto& entity : state.entities) {
         if (entity.objectProfile) size += entity.objectProfile->capacity();
         if (entity.csvFile) size += entity.csvFile->capacity();

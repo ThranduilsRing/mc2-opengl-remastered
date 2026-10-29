@@ -121,6 +121,35 @@ struct BuildingPlacement {
     std::int32_t forestInstance = -1, scale{};
     std::optional<double> markerRadius;
 };
+
+// Authoring values reference Parts by identity; ABL literal scans never create these.
+struct PatrolPoint {
+    std::uint32_t id{};
+    std::array<double, 3> position{};
+    bool operator==(const PatrolPoint&) const = default;
+};
+struct PatrolPath {
+    std::uint32_t id{};
+    std::string name;
+    bool loop{};
+    std::int32_t stance = 2;
+    std::vector<PatrolPoint> points;
+    bool operator==(const PatrolPath&) const = default;
+};
+struct BrainCell {
+    std::uint32_t number{}, type{};
+    double value{};
+    bool operator==(const BrainCell&) const = default;
+};
+struct BrainAssignment {
+    EntityId entity;
+    std::optional<std::string> module;
+    std::optional<std::uint32_t> staticVars;
+    std::optional<std::vector<BrainCell>> cells;
+    // Complete, lossless Brain block, independent of the legacy module and cells.
+    std::optional<std::string> definition;
+    bool operator==(const BrainAssignment&) const = default;
+};
 enum class ConditionSpecies : std::uint8_t {
     destroyAll, destroyNumber, destroyGroup, destroyUnit, destroyStructure,
     captureOrDestroyAll, captureOrDestroyNumber, captureOrDestroyGroup, captureOrDestroyUnit, captureOrDestroyStructure,
@@ -227,6 +256,7 @@ struct StructuralState {
     std::vector<Entity> entities;
     std::vector<Objective> objectives;
     std::vector<std::byte> placements;
+    std::array<std::optional<std::string>, 2> brainSidecars;
 };
 
 inline std::string identifier(std::string_view text) {
@@ -269,6 +299,10 @@ public:
     const Field* find(NodeId section, std::string_view name) const;
     const Field* find(std::string_view section, std::string_view name) const;
     const Entity* entity(EntityId id) const;
+    std::expected<std::optional<PatrolPath>, LoadError> patrolPath(EntityId id) const;
+    std::expected<BrainAssignment, LoadError> brainAssignment(EntityId id) const;
+    // Existing mission authoring formats: [0] _ai.fit, [1] _specials.fit.
+    const std::array<std::optional<std::string>, 2>& brainSidecars() const { return brainSidecars_; }
     bool hasMarkerReference(EntityId id) const;
     std::expected<std::optional<NodeId>, LoadError> markerReference(EntityId id) const;
     std::string fitBytes() const;
@@ -286,6 +320,7 @@ private:
     std::vector<std::uint32_t> markerObjects_;
     std::vector<Objective> objectives_;
     std::string savedFit_;
+    std::array<std::optional<std::string>, 2> brainSidecars_, savedBrainSidecars_;
     std::vector<std::byte> savedPlacements_, placements_, encodedPak_;
     std::unordered_map<std::string, std::unordered_map<std::string, NodeId>> index_;
     std::unordered_map<std::uint64_t, std::size_t> fieldIndex_;

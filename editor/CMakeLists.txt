@@ -11,6 +11,7 @@ add_library(editor_document STATIC
     document/MissionStructure.cpp
     document/CommandHistory.cpp
     document/EntityCommands.cpp
+    document/BrainPathCommands.cpp
     document/FileResolver.cpp
     document/ObjectCatalog.cpp
     document/ResourceNames.cpp
@@ -27,7 +28,7 @@ if(NOT TARGET mc2_tool_vk)
 endif()
 
 function(add_editor_shell target)
-    add_executable(${target} WIN32 shell/main.cpp shell/EntityPanels.cpp shell/ObjectivePanel.cpp shell/ObjectivePresentation.cpp shell/FileWorkflow.cpp
+    add_executable(${target} WIN32 shell/main.cpp shell/EntityPanels.cpp shell/BrainPathPanel.cpp shell/ObjectivePanel.cpp shell/ObjectivePresentation.cpp shell/FileWorkflow.cpp
         "${CMAKE_SOURCE_DIR}/3rdparty/imgui/misc/cpp/imgui_stdlib.cpp")
     add_dependencies(${target} build_fingerprint)
     target_compile_features(${target} PRIVATE cxx_std_23)
@@ -52,6 +53,7 @@ target_compile_definitions(EditorShellSmoke PRIVATE MC2_EDITOR_SMOKE_HOST=1)
 
 set(editor_document_test_sources tests/test_main.cpp tests/test_document.cpp tests/test_structure.cpp
     tests/test_catalog.cpp
+    tests/test_brain_paths.cpp
     tests/test_placement.cpp
     tests/test_objectives.cpp
     "${CMAKE_SOURCE_DIR}/code/brain_missionfit_oporbd.cpp")
@@ -75,7 +77,7 @@ target_include_directories(editor_resource_tests PRIVATE
     "${CMAKE_SOURCE_DIR}/GameOS/gameos" "${CMAKE_SOURCE_DIR}/GameOS/include")
 target_link_libraries(editor_resource_tests PRIVATE editor_document mc2_gate SDL2::SDL2)
 
-add_executable(editor_panel_tests tests/test_main.cpp tests/test_panels.cpp tests/test_files.cpp shell/EntityPanels.cpp shell/ObjectivePanel.cpp shell/ObjectivePresentation.cpp shell/PanelProof.cpp shell/ObjectiveProof.cpp shell/FileWorkflow.cpp shell/FileProof.cpp
+add_executable(editor_panel_tests tests/test_main.cpp tests/test_panels.cpp tests/test_files.cpp shell/EntityPanels.cpp shell/BrainPathPanel.cpp shell/ObjectivePanel.cpp shell/ObjectivePresentation.cpp shell/PanelProof.cpp shell/ObjectiveProof.cpp shell/FileWorkflow.cpp shell/FileProof.cpp
     "${CMAKE_SOURCE_DIR}/3rdparty/imgui/misc/cpp/imgui_stdlib.cpp")
 target_compile_features(editor_panel_tests PRIVATE cxx_std_23)
 target_compile_definitions(editor_panel_tests PRIVATE MC2_EDITOR_SMOKE_HOST=1)

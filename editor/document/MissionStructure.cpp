@@ -28,7 +28,7 @@ std::vector<std::string> sectionKeys(const Syntax& syntax,
 
 StructuralState MissionDocument::structuralState() const
 {
-    return {syntax_, entities_, objectives_, placements_};
+    return {syntax_, entities_, objectives_, placements_, brainSidecars_};
 }
 
 std::expected<void, LoadError> MissionDocument::restore(const StructuralState& state)
@@ -39,6 +39,7 @@ std::expected<void, LoadError> MissionDocument::restore(const StructuralState& s
     entities_ = state.entities;
     objectives_ = state.objectives;
     placements_ = state.placements;
+    brainSidecars_ = state.brainSidecars;
     encodedPak_ = std::move(*encoded);
     rebuildIndex();
     for (const auto& section : syntax_.sections) nextNodeId_ = std::max(nextNodeId_, section.id.value + 1);
@@ -148,6 +149,6 @@ std::expected<StructuralState, LoadError> MissionDocument::structuralCandidate(s
         for (auto& scalar : objective.scalars) if (scalar.source) scalar.source = remap.at(scalar.source->value);
     }
     return StructuralState{std::move(candidate->syntax_), std::move(candidate->entities_),
-        std::move(candidate->objectives_), std::move(placements)};
+        std::move(candidate->objectives_), std::move(placements), brainSidecars_};
 }
 }
