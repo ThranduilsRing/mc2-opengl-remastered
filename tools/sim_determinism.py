@@ -70,6 +70,18 @@ def observation_error(lines) -> str:
         previous = tick
     return ""
 GATES = {"MC2_SMOKE_FIXED_TIMESTEP": "1", "MC2_SIM_IDENTITY_TRACE": "1"}
+#: Missions whose determinism runs also arm the G7b overlap audit (aborts on the first violation; read-only otherwise, so the SIMID
+#: chain is unchanged).
+OVERLAP_AUDIT_MISSIONS = ("mc2_10",)
+OVERLAP_VIOLATION = "[SIM_OVERLAP v1] VIOLATION"
+
+
+def overlap_violation(text: str) -> str:
+    """The first `[SIM_OVERLAP v1] VIOLATION` line in a run's output, or ""."""
+    for line in text.splitlines():
+        if OVERLAP_VIOLATION in line:
+            return line.strip()
+    return ""
 #: A comparison over fewer frames proves nothing (the mission may not have left the loading screen).
 MIN_FRAMES = 300
 #: One baseline file per mission.
@@ -369,7 +381,8 @@ def run_mission(mission: str, duration: str, out: str, extra_env: dict | None = 
         dest = os.path.join(out, tag)
         if os.path.exists(dest):
             sys.exit(f"sim_determinism: output already exists: {dest}; use a fresh --out")
-        env = dict(os.environ, **GATES, **(extra_env or {}).get("both", {}), **(extra_env or {}).get(tag, {}))
+        env = dict(os.environ, **GATES, **({"MC2_SIM_OVERLAP_AUDIT": "1"} if mission in OVERLAP_AUDIT_MISSIONS else {}),
+                   **(extra_env or {}).get("both", {}), **(extra_env or {}).get(tag, {}))
         r = subprocess.run([sys.executable, os.path.join(ROOT, "scripts", "run_smoke.py"), "--mission", mission, "--duration", duration,
                             *target, "--keep-logs", "--sim-determinism", *(["--sim-speed", str(sim_speed)] if sim_speed > 1 else []),
                             *(["--ticks", str(ticks)] if ticks > 0 else []), *(["--headless"] if headless == "both" or (headless and tag == "b") else [])], env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
@@ -385,6 +398,9 @@ def run_mission(mission: str, duration: str, out: str, extra_env: dict | None = 
             with open(log_path, encoding="utf-8", errors="replace") as fh:
                 log_text = fh.read()
         text = r.stdout + "\n" + log_text
+        violation = overlap_violation(text)
+        if violation:
+            sys.exit(f"sim_determinism: smoke run {tag} hit an overlap audit violation (RED):\n{violation}")
         if headless_run:
             if not headless_exit_ok(r.returncode, text):
                 sys.exit(f"sim_determinism: headless smoke run {tag} did not reach its tick budget cleanly (rc={r.returncode}):\n"

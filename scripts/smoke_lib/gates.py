@@ -90,7 +90,8 @@ def evaluate(s: LogSummary, cfg: GateConfig, *,
                           cfg.marker_overrides.get(mb.bucket, False))
         if mb.severity == "red" and not overridden:
             buckets.append(mb.bucket)
-            details.append(f"{n} {mb.bucket} marker line(s)")
+            first = s.marker_first.get(mb.bucket)
+            details.append(f"{n} {mb.bucket} marker line(s)" + (f"; first: {first}" if first else ""))
         else:
             details.append(f"[advisory] {n} {mb.bucket} marker line(s)")
 
