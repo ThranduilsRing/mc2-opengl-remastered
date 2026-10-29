@@ -849,7 +849,7 @@ bool ForceGroupBar::setPilotVideo( const char* pVideo, MechWarrior* pPilot )
 	{
 		for ( int i = 0; i < iconCount; i++ )
 		{
-			if ( icons[i] && icons[i]->unit->getPilot() == pPilot )
+			if ( icons[i] && icons[i]->unit && icons[i]->unit->getPilot() == pPilot )
 			{
 				ForceGroupIcon::pilotVideoPilot = pPilot;
 				FullPathFileName aviPath;
