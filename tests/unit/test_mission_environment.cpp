@@ -12,6 +12,7 @@
 // Real profile loader/resolver; only the renderer setters are replaced.
 namespace {
 float exposure=1, softness=2.5f, water=0, brightness=1, additive=1, lit=0.7f, specular=0.05f;
+int waterReflections=2;
 std::array<float,4> grass{-0.02f,0.06f,0.22f,0.40f}, dirt{-0.02f,0.06f,0.22f,0.45f};
 VisualTuningSource source(std::string text) { return {"data/visual_tuning.json","fixture",std::move(text),true}; }
 struct TempProfile {
@@ -29,6 +30,8 @@ float gos_GetTerrainShadowSoftness() { return softness; }
 void gos_SetTerrainShadowSoftness(float v) { softness=v; }
 float gos_GetWaterSkyTintStrength() { return water; }
 void gos_SetWaterSkyTintStrength(float v) { water=v; }
+int gos_GetWaterReflectionQuality() { return waterReflections; }
+void gos_SetWaterReflectionQuality(int v) { waterReflections=v; }
 extern "C" float gos_vfx_getBrightness() { return brightness; }
 extern "C" void gos_vfx_setBrightness(float v) { brightness=v; }
 extern "C" float gos_vfx_getAdditiveBrightness() { return additive; }
@@ -157,7 +160,7 @@ TEST_CASE("MissionEnvironment/real loader resets renderer state on mission and m
 TEST_CASE("MissionEnvironment/save migrates without losing unrelated fields or missions") {
     TempProfile file(R"({"custom":{"retain":true},"defaults":{"exposure":1},"missions":{"other":{"exposure":1.4},"a":{"customField":"retain"}}})");
     mc2::gate::ScopedOverride<"MC2_VISUAL_TUNING_FILE"> path(file.path.string().c_str());
-    visualTuning_applyProfile("a"); exposure=1.7f;
+    visualTuning_applyProfile("a"); exposure=1.7f; waterReflections=1;
     REQUIRE(visualTuning_saveCurrentToMission());
     std::ifstream input(file.path); nlohmann::json saved; input>>saved;
     CHECK(saved["schemaVersion"]==2);
@@ -165,6 +168,7 @@ TEST_CASE("MissionEnvironment/save migrates without losing unrelated fields or m
     CHECK(saved["missions"]["other"]["exposure"]==1.4);
     CHECK(saved["missions"]["a"]["customField"]=="retain");
     CHECK(saved["missions"]["a"]["exposure"].get<float>()==1.7f);
+    CHECK(saved["missions"]["a"]["waterReflections"].get<int>()==1);
 }
 
 TEST_CASE("MissionEnvironment/invalid files cannot be overwritten by save") {

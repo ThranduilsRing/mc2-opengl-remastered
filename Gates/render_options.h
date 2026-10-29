@@ -31,6 +31,7 @@ struct RenderOptions {
     int shadowQuality = 2; // 0 Potato, 1 Medium, 2 High
     int baseQuality = 2;   // 0 Potato, 1 Low, 2 Medium/High; bandwidth/ALU budget
     bool shorelineLegacySuppress = true;    // suppress the legacy shoreline post pass
+    int waterReflections = 2; // 0 Off, 1 Sky only, 2 Half-res; spatial, no history
     bool cpuPhongRetire          = true;    // gameplay elevation follows the drawn terrain surface
 
     // Static prop lighting.
@@ -80,6 +81,7 @@ inline constexpr Option kOptions[] = {
     detail::longOpt ("SpatialAA",                     &RenderOptions::spatialAA, 0, 3),
     detail::longOpt ("ShadowQuality", &RenderOptions::shadowQuality, 0, 2),
     detail::longOpt ("BaseQuality", &RenderOptions::baseQuality, 0, 2),
+    detail::longOpt ("WaterReflections", &RenderOptions::waterReflections, 0, 2),
     detail::boolOpt ("ShorelineLegacySuppress",       &RenderOptions::shorelineLegacySuppress),
     detail::boolOpt ("CpuPhongRetire",                &RenderOptions::cpuPhongRetire),
     detail::boolOpt ("StaticPropAmbient",             &RenderOptions::staticPropAmbient),

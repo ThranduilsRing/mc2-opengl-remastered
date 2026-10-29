@@ -536,6 +536,10 @@ void drawStaticPropTuningSection() {
 // ignores them. Defaults match the shader consts EXACTLY; Reset buttons
 // restore them (so the default render stays byte-identical).
 void drawWaterSection() {
+    const char* reflectionModes[] = {"Off", "Sky only", "Half-res"};
+    int reflectionQuality = gos_GetWaterReflectionQuality();
+    if (ImGui::Combo("Reflections##water", &reflectionQuality, reflectionModes, 3))
+        gos_SetWaterReflectionQuality(reflectionQuality);
     ImGui::SeparatorText("Debug View (MDI path)");
     {
         const char* kWaterModes[] = {
@@ -644,30 +648,6 @@ void drawWaterSection() {
         if (!gateOn) ImGui::EndDisabled();
     }
 
-    ImGui::SeparatorText("Terrain Reflection RT (gated; blends over sky)");
-    {
-        // Env is the HARD gate (also drives the RT fill pass); slider disabled
-        // when OFF so it cannot bypass it. Needs BOTH this + Sky Reflection ON to
-        // contribute (the RT modulates the reflected COLOR; Sky Reflection drives
-        // the reflection mix factor). ~0% coverage at the steep camera -> falls
-        // back to SH sky (water never goes empty).
-        bool rtGate = (gos_GetWaterReflectionRtGate() != 0);
-        if (rtGate) ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f), "MC2_WATER_REFLECTION_RT: ON (default 0.85)");
-        else        ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "MC2_WATER_REFLECTION_RT: off (set =1; needs Sky Reflection ON too)");
-
-        if (!rtGate) ImGui::BeginDisabled();
-        float rt = gos_GetWaterRtStrength();
-        if (ImGui::SliderFloat("RT blend strength##wat", &rt, 0.0f, 1.0f, "%.3f"))
-            gos_SetWaterRtStrength(rt);
-        if (ImGui::IsItemHovered())
-            ImGui::SetTooltip("How strongly valid terrain-RT pixels replace the SH sky in the\n"
-                              "reflection. Debug mode 8 = RT sample, 9 = final reflection blend.\n"
-                              "Marginal at the steep gameplay camera (terrain off-frustum).");
-        ImGui::SameLine();
-        if (ImGui::SmallButton("Reset##watrt")) gos_SetWaterRtStrength(rtGate ? 0.85f : 0.0f);
-        if (!rtGate) ImGui::EndDisabled();
-    }
-
     if (ImGui::SmallButton("Reset ALL water defaults##wat")) {
         gos_SetWaterFsDebugMode(0);
         gos_SetWaterAbsorptionDensity(0.022f);
@@ -681,6 +661,7 @@ void drawWaterSection() {
         // Reflection: reset to the gate-appropriate default (0 when gate OFF).
         gos_SetWaterReflStrength(gos_GetWaterReflectionGate() ? 0.15f : 0.0f);
         gos_SetWaterRtStrength(gos_GetWaterReflectionRtGate() ? 0.85f : 0.0f);
+        gos_SetWaterReflectionQuality(2);
     }
     ImGui::TextDisabled("MDI path only (MC2_GPU_DRIVEN_WATER=1). Defaults = byte-identical.");
 }

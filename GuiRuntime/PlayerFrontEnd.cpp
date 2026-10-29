@@ -385,6 +385,9 @@ void drawOptions() {
             if (std::string_view(option.key) == "SpatialAA") {
                 const char* labels[] = {"Off", "SMAA 1x", "FXAA", "CMAA2"};
                 ImGui::Combo("Anti-aliasing", &(draft.*option.l), labels, 4);
+            } else if (std::string_view(option.key) == "WaterReflections") {
+                const char* labels[] = {"Off", "Sky only", "Half-res"};
+                ImGui::Combo("Water reflections", &(draft.*option.l), labels, 3);
             } else ImGui::SliderInt(label, &(draft.*option.l), int(option.lo), int(option.hi));
         } else ImGui::SliderFloat(label, &(draft.*option.f), float(option.lo), float(option.hi));
     }
