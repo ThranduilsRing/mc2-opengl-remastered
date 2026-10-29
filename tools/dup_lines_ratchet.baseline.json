@@ -6,7 +6,7 @@
   "HostServices": 0,
   "RenderCore": 402,
   "RenderWorld": 0,
-  "code": 13442,
+  "code": 13426,
   "mclib": 22497,
   "shaders": 416
  },
@@ -200,7 +200,6 @@
   "code/mpsetuparea.cpp": 214,
   "code/mpsetuparea.h": 8,
   "code/mpstats.cpp": 34,
-  "code/object_walk_trace.h": 8,
   "code/objective.cpp": 470,
   "code/objmgr.cpp": 75,
   "code/objmgr.h": 29,
@@ -216,7 +215,6 @@
   "code/salvagemecharea.cpp": 31,
   "code/saveload.cpp": 72,
   "code/saveload_load.cpp": 56,
-  "code/sensor_trace.h": 8,
   "code/sim_identity.cpp": 20,
   "code/simplecamera.cpp": 47,
   "code/tacordr.cpp": 220,
@@ -483,8 +481,8 @@
   "shaders/vulkan/terrain_tier1.vert": 71,
   "shaders/vulkan/terrain_tier1_skirt.vert": 71
  },
- "head": "ea8b9f168",
+ "head": "cb470cbcb",
  "n": 8,
- "total": 38982,
+ "total": 38966,
  "version": 1
 }
