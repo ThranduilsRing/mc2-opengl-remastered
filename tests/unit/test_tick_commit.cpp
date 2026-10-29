@@ -53,6 +53,7 @@ TEST_CASE("tick commit keeps resources alive until ordered main-thread commit") 
 TEST_CASE("typed effect release kills and destroys at commit or inline") {
     bool killed=false, dead=false;
     auto effect=std::make_unique<Effect>(killed,dead);
+    const auto* snapshot=effect.get();
     mc2::overlap::runOnWorker([&] {
         mc2::tick::Scope scope;
         mc2::tick::setCollecting(true);
@@ -60,6 +61,7 @@ TEST_CASE("typed effect release kills and destroys at commit or inline") {
     });
     mc2::overlap::waitWorker();
     CHECK_FALSE(effect); CHECK_FALSE(killed); CHECK_FALSE(dead);
+    CHECK_FALSE(snapshot->killed); CHECK_FALSE(snapshot->dead);
     mc2::tick::commitTickQueues();
     CHECK(killed); CHECK(dead);
     killed=dead=false;
