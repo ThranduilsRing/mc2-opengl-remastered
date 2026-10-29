@@ -1383,6 +1383,12 @@ const bool s_overlapHooksInstalled =
 long Mission::update (void)
 {
 	ZoneScopedN("Mission::update");
+	if (s_misSplit) {
+		if (!s_misAtexit) { s_misAtexit = true; std::atexit(misEmit); }
+		++s_misFrames;
+	}
+	MisScope _msTotal(MS_TOTAL);  // whole Mission::update; TOTAL - sum(subcalls) = unbracketed
+	overlapJoinHook();   // join before observing any simulation-owned object
 	if (mc2::observation::enabled()) {
 		mc2::observation::beginFrame();
 		auto& sample = mc2::observation::current;
@@ -1393,15 +1399,16 @@ long Mission::update (void)
 				const auto mover = ObjectManager->getMover(i);
 				const auto pilot = mover ? mover->getPilot() : nullptr;
 				if (pilot) { ++sample.pilots; if (pilot->getBrain()) ++sample.brains; }
+				if (mover && mc2::bridge::configured()) {
+					if (sample.transformCount < sample.transforms.size()) {
+						const auto position = mover->getPosition();
+						sample.transforms[sample.transformCount++] = {mover->getPartId(), long(mover->getHandle()),
+							mover->getTeamId(), position.x, position.y, position.z, mover->getRotation()};
+					} else ++sample.transformDropped;
+				}
 			}
 		}
 	}
-	if (s_misSplit) {
-		if (!s_misAtexit) { s_misAtexit = true; std::atexit(misEmit); }
-		++s_misFrames;
-	}
-	MisScope _msTotal(MS_TOTAL);  // whole Mission::update; TOTAL - sum(subcalls) = unbracketed
-	overlapJoinHook();   // the main loop joins after draw; also publish deferred epochs on this safety-net path
 	const OverlapPre pre = s_pre;
 	s_pre = OverlapPre{};
 	if (active)

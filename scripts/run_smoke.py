@@ -627,6 +627,7 @@ def main():
     ap.add_argument("--wait-timeout", type=float, default=None, metavar="SECONDS",
                     help="how long to wait for the host game lease (default 3600, or MC2_HOST_LEASE_TIMEOUT)")
     ap.add_argument("--duration", type=int)
+    ap.add_argument("--runtime-bridge", action="store_true", help="dev-only loopback observation socket v1")
     ap.add_argument("--headless", action="store_true", help="no window, GPU device or audio (needs --ticks and the fixed clock; see docs/sim/headless-load.md)")
     ap.add_argument("--ticks", type=int, default=0,
                     help="tick-budget exit: quit after N sim ticks (needs MC2_SMOKE_FIXED_TIMESTEP=1, as the determinism runs set); --duration stays the timeout")
@@ -1647,7 +1648,17 @@ def main():
 
         print(f"[runner] running {label} (tier={tier} duration={duration})",
               file=sys.stderr)
-        result = run_one(cfg)
+        if args.runtime_bridge or os.environ.get("MC2_BRIDGE") == "1":
+            from scripts.smoke_lib.runtime_bridge import RuntimeBridge
+            bridge_output = Path(cfg.exe[0]).resolve().parent / "debug_state/latest_runtime_bridge.json"
+            with RuntimeBridge(bridge_output) as bridge:
+                cfg.env_extra.update(bridge.environment)
+                result = run_one(cfg)
+            print(f"[runner] runtime bridge: {bridge_output}", file=sys.stderr)
+        else:
+            # Normal harness launches cannot inherit a dev socket selector.
+            cfg.env_extra.update(MC2_BRIDGE="0", MC2_BRIDGE_PORT="0", MC2_BRIDGE_SESSION="")
+            result = run_one(cfg)
         if e.stem == args.quiet_sample:
             (artifact_dir / "quiet_sample.json").write_text(json.dumps({
                 "mission": e.stem, "env_extra": cfg.env_extra,

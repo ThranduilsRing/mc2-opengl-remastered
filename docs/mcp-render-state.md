@@ -1,6 +1,33 @@
 <!-- doc-status: current | reviewed:2026-10-11 -->
 # MC2 Render-State MCP Server
 
+Runtime bridge P2/P3: `get_runtime_observation()` reads the latest dump's mission
+zone timings, brain/mover census, light pool and registry statistics.
+`get_runtime_socket_state()` reads the harness's last v1 socket capture, including
+session identity, timestamp, dropped samples and mover transforms.
+Collect with `py -3 scripts/run_smoke.py --mission mc2_01 --runtime-bridge --exe <lane-install>/mc2.exe`.
+Normal harness runs explicitly select no socket. No control commands exist.
+Setting `MC2_BRIDGE=1` on the harness is equivalent to `--runtime-bridge` (for
+determinism A/B runs); the harness always generates its own port and GUID.
+
+Socket v1 uses a four-byte **big-endian** unsigned payload length (1..1048576),
+then a UTF-8 JSON object. Every message has `version:1`, `type`, `session`.
+The harness binds only 127.0.0.1 on an ephemeral port and supplies `MC2_BRIDGE=1`,
+`MC2_BRIDGE_PORT`, `MC2_BRIDGE_SESSION` (fresh GUID); the game connects out.
+Game `hello` includes `read_only:true` and `build_id` (git SHA). The authenticated parent sends
+`subscribe` with `seq`, `streams:["runtime.observation","mover.transform"]`,
+`hz` in 0.25..30. Game replies `ack` or `nack` with `seq`; unsupported commands
+are always rejected. Wrong version/session or invalid framing closes the socket.
+Telemetry contains `stream`, `data`, cumulative `dropped`. The state stream
+carries the full render snapshot, even when file dumping is disabled. Transforms
+carry part_id/handle/team/position/rotation, capped at 256 with explicit truncation;
+these IDs are scoped to this session's current mission, not persistent save IDs.
+One pending sample replaces older samples; main-thread publication never waits
+for I/O. The worker makes at most one reconnect and falls back to existing stdout
+and file observation on failure. The harness records `latest_runtime_bridge.json`
+on completion; its timestamp describes the last sample, not current liveness.
+P4 remains deferred: the design requires weeks of stable observation first.
+
 Read-only MCP bridge from Claude agents to the running MC2 engine and smoke
 artifacts. No engine mutation, no command queue, no networking inside mc2.exe.
 

@@ -71,8 +71,11 @@ G("MC2_BRAIN_RUNTIME_FORCE_MODE", Enum, "", "code", "", "MC2_BRAIN_RUNTIME_FORCE
 L(AtoiNZ, "MC2_BRAIN_RUNTIME_TRACE", Bool, false, "code", "", "", passthrough | verified),
 G("MC2_BRAIN_SPECIAL_FIT", String, "", "code", "", "DISPATCH-EFFECT-UNITEJECT-1: name of the _specials.fit every warrior loads instead of the mission's own (fixture override); empty = mission name.", passthrough | verified),
 L(AtoiNZ, "MC2_BRAIN_TASKQ_TRACE", Bool, false, "code", "", "", passthrough | verified),
+G("MC2_BRIDGE", Bool, false, "gameos", "", "Dev tool selector: harness-owned read-only socket; requires port and session GUID.", verified),
 P("MC2_BRIDGE_MOVER_PERIOD_SEC", Float, 2.0, "code", "", "Seconds between bridge-mover state bursts; below 0.25 clamps to 0.25.", passthrough | clampRange(0.25, 3.4e38) | verified),
 L(Presence, "MC2_BRIDGE_MOVER_STATE", Bool, false, "unclassified", "", "", passthrough | verified),
+P("MC2_BRIDGE_PORT", Int, 0, "gameos", "", "Harness loopback connect-back port; zero selects no transport.", verified),
+G("MC2_BRIDGE_SESSION", String, "", "gameos", "", "Fresh harness session GUID, echoed in the v1 hello.", verified),
 L(Presence, "MC2_BUCKET_CENSUS", Bool, false, "terrain", "", ""),
 // history: docs/gate-history.md#MC2_BURNIN_NO_JPG
 // GitHub-issue fix batch 2026-07-16, part 2 (issues #9, #17)

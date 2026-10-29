@@ -1006,6 +1006,12 @@ bool writeFile(const std::filesystem::path& path, std::string_view content) {
 namespace mc2_debug_state {
 
 void maybeWriteRenderState(const RenderSnapshot& snap) {
+    if (mc2::bridge::sampleDue()) {
+        StaticPropOpaqueDebugState sp{};
+        batcher_getStaticPropOpaqueDebugState(&sp);
+        mc2::bridge::publish(buildSnapshotJson(snap, sp, RenderCore::getCurrentView(), readPassState(), "socket"),
+                             mc2::observation::moverJson());
+    }
     static const bool s_enabled = mc2::gate::get<"MC2_DEBUG_STATE_DUMP">();
     if (!s_enabled) return;
     s_lastSnap = snap;  // cache for writeShutdownState()
@@ -1037,6 +1043,7 @@ void maybeWriteRenderState(const RenderSnapshot& snap) {
 }
 
 void writeShutdownState() {
+    mc2::bridge::shutdown();
     static const bool s_enabled = mc2::gate::get<"MC2_DEBUG_STATE_DUMP">();
     if (!s_enabled) return;
 

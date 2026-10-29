@@ -1899,6 +1899,16 @@
    "count": 1
   },
   {
+   "tag": "BRIDGE",
+   "ver": 0,
+   "stream": "stdout",
+   "keys": [
+    "ev",
+    "protocol"
+   ],
+   "count": 2
+  },
+  {
    "tag": "BUILD_FINGERPRINT",
    "ver": 1,
    "stream": "stdout",

@@ -274,6 +274,19 @@ def get_runtime_observation() -> str:
 
 
 @mcp.tool()
+def get_runtime_socket_state() -> str:
+    """Read the last harness-owned socket v1 capture, including time and session.
+
+    Run run_smoke.py --runtime-bridge to collect. The timestamp describes the
+    last sample; a saved capture does not establish current process liveness.
+    """
+    data = _read_json(_STATE_DIR / "latest_runtime_bridge.json")
+    if data is None:
+        return "No socket capture; launch the harness with --runtime-bridge."
+    return json.dumps(data, indent=2)
+
+
+@mcp.tool()
 def get_render_health() -> str:
     """
     Return a compact render health summary.
