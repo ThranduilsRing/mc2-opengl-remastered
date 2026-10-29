@@ -101,6 +101,7 @@ def export_zones(trace):
     # Stream all events once: computing p95 from aggregate mean/max is invalid.
     with trace.with_suffix(".export.log").open("w", encoding="utf-8") as log:
         flags = {"creationflags": subprocess.BELOW_NORMAL_PRIORITY_CLASS} if os.name == "nt" else {}
+        # background-launch: allow Tracy CSV console exporter, never an engine.
         child = subprocess.Popen([str(tracy.tracy_exe("tracy-csvexport.exe")), "-u", str(trace)],
                                  stdout=subprocess.PIPE, stderr=log, text=True,
                                  **nofocus.hidden_kwargs(**flags))
