@@ -318,8 +318,7 @@ void batch(const Snapshot& s, std::span<const Query> q, std::span<uint8_t> out)
 			out[i] = query(s, q[i]) ? 1 : 0;
 		return;
 	}
-	mc2::jobs::parallel_for(mc2::jobs::Domain::Sim, static_cast<int>(q.size()), kBlockQueries, kCostNsPerQuery,
-		[&s, q, out](int begin, int end) {
+	const auto runBlock = [&s, q, out](int begin, int end) {
 			// Sensor rays share an origin. Its terrain inputs remain immutable until
 			// this block joins; mixed-origin callers retain the exact query path.
 			const glm::vec3& origin = q[begin].position;
@@ -340,7 +339,14 @@ void batch(const Snapshot& s, std::span<const Query> q, std::span<uint8_t> out)
 				out[i] = walk(s, localStart, posCellR, posCellC, localEnd, tarCellR, tarCellC,
 					q[i].teamId, q[i].extRad, q[i].startExtRad) ? 1 : 0;
 			}
-		});
+		};
+	// One block cannot share work. Avoid waking and joining the pool for it.
+	if (q.size() <= kBlockQueries) {
+		if (!q.empty()) runBlock(0, static_cast<int>(q.size()));
+	} else {
+		mc2::jobs::parallel_for(mc2::jobs::Domain::Sim, static_cast<int>(q.size()),
+			kBlockQueries, kCostNsPerQuery, runBlock);
+	}
 }
 
 }  // namespace mc2::los
