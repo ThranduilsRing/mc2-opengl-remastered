@@ -180,7 +180,13 @@ float legacyElevation(const World& w, const glm::vec3& position)
 TEST_CASE("los_kernel_worker_matrix") {
     World w;
     const int n = 6000;
-    const std::vector<mc2::los::Query> q = w.queries(n, 99u);
+    std::vector<mc2::los::Query> q = w.queries(n, 99u);
+    bool shared = false;
+    SUBCASE("mixed origins") {}
+    SUBCASE("shared sensor origin") {
+        shared = true;
+        for (auto& ray : q) ray.position = q.front().position;
+    }
 
     mc2::jobs::stopPool();
     std::vector<uint8_t> serial(static_cast<size_t>(n)), got(static_cast<size_t>(n));
@@ -189,8 +195,10 @@ TEST_CASE("los_kernel_worker_matrix") {
 
     int visible = 0;
     for (uint8_t v : serial) visible += v;
-    CHECK(visible > n / 10);       // the corpus exercises both outcomes
-    CHECK(visible < n - n / 10);
+    if (!shared) {
+        CHECK(visible > n / 10);       // the mixed corpus exercises both outcomes
+        CHECK(visible < n - n / 10);
+    }
 
     for (int workers : {1, 2, 4}) {
         mc2::jobs::startPool(workers);

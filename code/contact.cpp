@@ -675,6 +675,7 @@ long SensorSystem::scanBattlefield (void)
 				if (_sfacts) {
 					++mc2_sensor_trace::g_counters.losBatches;
 					mc2_sensor_trace::g_counters.losRays += static_cast<long>(rays.size());
+					mc2_sensor_trace::g_counters.losBlocks += static_cast<long>((rays.size() + 63) / 64);
 					if (rays.size() <= 64) ++mc2_sensor_trace::g_counters.singleBlockBatches;
 				}
 				hits.resize(rays.size());

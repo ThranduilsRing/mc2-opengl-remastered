@@ -3,6 +3,7 @@
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include "team_internal.h"
 #include "los_kernel.h"
+#include "sensor_trace.h"
 #include "job_system.h"
 #include "Gates/render_options.h"
 #include <gameos.hpp>
@@ -322,5 +323,7 @@ void Team::lineOfSightBatch(std::span<const mc2::los::Query> queries, std::span<
 		std::fill(hits.begin(), hits.end(), uint8_t{0});
 		return;
 	}
+	if (mc2_sensor_trace::g_counters.active && snap.elevationOverride)
+		++mc2_sensor_trace::g_counters.legacyBatches;
 	mc2::los::batch(snap, queries, hits);
 }

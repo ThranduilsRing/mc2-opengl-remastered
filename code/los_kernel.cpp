@@ -3,6 +3,7 @@
 #include <cmath>  // before any other include: which floor/sqrt overload a call binds must not depend on include order
 #include "los_kernel.h"
 #include "job_system.h"
+#include <cstring>
 
 namespace mc2::los {
 
@@ -311,9 +312,7 @@ bool query(const Snapshot& s, const Query& q)
 
 void batch(const Snapshot& s, std::span<const Query> q, std::span<uint8_t> out)
 {
-	// A single fixed block cannot run in parallel; waking the pool only adds a join.
-	// Overrides read engine globals and must also stay on the calling thread.
-	if (s.elevationOverride || q.size() <= kBlockQueries)
+	if (s.elevationOverride)  // reads engine globals: main thread only
 	{
 		for (size_t i = 0; i < q.size(); ++i)
 			out[i] = query(s, q[i]) ? 1 : 0;
@@ -321,8 +320,26 @@ void batch(const Snapshot& s, std::span<const Query> q, std::span<uint8_t> out)
 	}
 	mc2::jobs::parallel_for(mc2::jobs::Domain::Sim, static_cast<int>(q.size()), kBlockQueries, kCostNsPerQuery,
 		[&s, q, out](int begin, int end) {
-			for (int i = begin; i < end; ++i)
-				out[i] = query(s, q[i]) ? 1 : 0;
+			// Sensor rays share an origin. Its terrain inputs remain immutable until
+			// this block joins; mixed-origin callers retain the exact query path.
+			const glm::vec3& origin = q[begin].position;
+			int posCellR, posCellC;
+			worldToCell(s, origin, posCellR, posCellC);
+			float elev = terrainElevation(s, origin);
+			const float localStart = origin.z - elev;
+			for (int i = begin; i < end; ++i) {
+				// Compare representations so signed zeros cannot share cached math.
+				if (std::memcmp(&q[i].position, &origin, sizeof(origin)) != 0) {
+					out[i] = query(s, q[i]) ? 1 : 0;
+					continue;
+				}
+				int tarCellR, tarCellC;
+				worldToCell(s, q[i].target, tarCellR, tarCellC);
+				elev = terrainElevation(s, q[i].target);
+				float localEnd = q[i].target.z - elev;
+				out[i] = walk(s, localStart, posCellR, posCellC, localEnd, tarCellR, tarCellC,
+					q[i].teamId, q[i].extRad, q[i].startExtRad) ? 1 : 0;
+			}
 		});
 }
 
