@@ -489,6 +489,7 @@ set(SOURCES
     "code/brain_execution_policy.cpp"
     "code/brain_tactic_select.cpp"
     "code/fitblockwriter.cpp"
+    "code/warrior.cpp"
     "code/warrior_brain.cpp"
     "code/warrior_combat.cpp"
     "code/save_brain_section.cpp"

@@ -2,6 +2,8 @@
   "schema_version": 1,
   "aggregate_owner": "scripts_tests",
   "tests": [
+    {"module": "scripts/tests/test_mission_cpu_profile.py", "owners": ["scripts_tests"]},
+    {"module": "scripts/tests/test_play_mission.py", "owners": ["scripts_tests"]},
     {"module": "scripts/tests/test_native_harness.py", "owners": ["scripts_tests"]},
     {"module": "scripts/tests/test_kit_visibility.py", "owners": ["kit_visibility"]},
     {"module": "scripts/tests/test_spirv_fixups.py", "owners": ["spirv_artifacts"]},

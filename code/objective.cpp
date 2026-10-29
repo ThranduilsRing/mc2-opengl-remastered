@@ -2220,7 +2220,7 @@ int C_RemoveStructure::Execute()
 	// Nav markers are retired objects, not live buildings at an off-map sentinel.
 	building->setTangible(false);
 	building->setAwake(false);
-	building->setExists(false);
+	MC2_DESTROY(building, "objective_remove_structure");
 	if (objectiveObservationEnabled()) {
 		objectiveObservationSink("structure", "updated", "removed", std::to_string(m_pBuildingWID).c_str());
 	}
