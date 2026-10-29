@@ -85,6 +85,10 @@ private:
     std::array<document::Scalar, 3> payloadDraft_{};
     std::vector<document::CatalogSource> placementSources_;
     std::string module_, status_;
+    document::PatrolPath pathDraft_;
+    std::optional<document::BrainAssignment> brainDraft_;
+    std::string brainPathError_;
+    void brainPaths();
     int unitTeam_{}, buildingTeam_{}, playerTeam_{};
     std::uint64_t revision_ = ~std::uint64_t{};
 #ifdef MC2_EDITOR_SMOKE_HOST

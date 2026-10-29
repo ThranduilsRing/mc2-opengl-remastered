@@ -76,6 +76,13 @@ void EntityPanels::refresh()
         unitDraft_.csvFile = e->csvFile.value_or("");
         unitDraft_.transform = {e->position, e->rotation}; unitTeam_ = static_cast<int>(e->team);
         module_ = e->warrior ? text(document_, *e->warrior, "Brain") : "";
+        brainPathError_.clear();
+        auto path = document_.patrolPath(unit_);
+        pathDraft_ = path && *path ? **path : document::PatrolPath{e->exportedPart.value_or(1), "", false, 2, {}};
+        if (!path) brainPathError_ = path.error().reason;
+        auto brain = document_.brainAssignment(unit_);
+        brainDraft_ = brain ? std::optional(*brain) : std::nullopt;
+        if (!brain && e->warrior) brainPathError_ += " " + brain.error().reason;
         unitDraft_.warriorProfile = e->warrior ? text(document_, *e->warrior, "Profile") : "";
     }
     if (const auto* e = document_.entity(building_)) {
@@ -286,6 +293,7 @@ void EntityPanels::draw()
     if (!assigned) ImGui::TextUnformatted("No explicit Pilot assignment; place a unit with a pilot profile.");
     ImGui::TextUnformatted("Enhanced OPORD summary (read only)");
     ImGui::TextWrapped("%s", opordSummary(document_, unit_).c_str());
+    brainPaths();
     ImGui::PopID(); ImGui::NextColumn();
     ImGui::PushID("building"); ImGui::TextUnformatted("Building"); selector(true); refresh();
     ImGui::TextUnformatted("Placement defaults (copied from selection)");
