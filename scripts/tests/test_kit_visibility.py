@@ -44,6 +44,19 @@ int main(int argc, char** argv) {
     return user
 
 
+def test_archive_only_building_guard_requires_mod_ownership(tmp_path, priority_probe):
+    """Legacy root FSTs lack the owner that makes archive-only mod art win.
+
+    Keep this boundary explicit: a missing loose file is protected only when
+    LookupModOwner supplies a user mod, which root FastFile lookup does not do.
+    """
+    path = tmp_path / 'data/tgl/archive-only-building.ini'
+    assert not path.exists()
+    assert priority_probe(path, 'user-mod', no_stock_read=True)
+    assert not priority_probe(path, '', no_stock_read=True)
+    assert not priority_probe(path, 'mc2-industrial-kit', no_stock_read=True)
+
+
 @pytest.mark.parametrize("case", ["fresh", "fresh-no-sidecar", "legacy", "legacy-no-source", "legacy-bc7", "legacy-alternate-cook", "user-ktx", "user-tga", "mod", "edited-reference", "modder-cook", "uppercase-stock"])
 def test_four_way_kit_priority(tmp_path, priority_probe, case):
     from PIL import Image
