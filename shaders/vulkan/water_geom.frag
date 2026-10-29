@@ -110,7 +110,7 @@ PREC vec3 waterEvalHdri(PREC vec3 rdir) {
                        rdir.x * s + rdir.y * c,
                        rdir.z);
     PREC vec2 uv = vec2(atan(d.y, d.x) / (2.0 * 3.14159265) + 0.5,
-                        asin(clamp(d.z, -1.0, 1.0)) / 3.14159265 + 0.5);
+                        1.0 - (asin(clamp(d.z, -1.0, 1.0)) / 3.14159265 + 0.5));
     PREC vec3 raw = textureLod(u_hdri, uv, u_waterHdriLod).rgb;
     // Reinhard per-channel: physical HDR values [0, inf) -> [0, 1).
     // Keeps blue > red for clear sky (hue preserved), prevents sun/bright-cloud

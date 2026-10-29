@@ -33,7 +33,7 @@ void main() {
     // An opaque surface in front of the water cannot contribute a water pixel.
     float opaque=textureLod(sceneDepth,uv,0).r;
     if (opaque>start.z/start.w+U.p2.y+0.0001) return;
-    vec3 reflected=reflect(normalize(origin-F.f0.yzw),vec3(0,0,1));
+    vec3 reflected=reflect(ray,vec3(0,0,1));
     vec3 endWorld=origin+reflected*65536.0;
     vec4 finish=U.worldToClip*vec4(endWorld,1.0);
     // Clip before perspective division, including rays towards the camera.
