@@ -18,7 +18,7 @@ TEST_CASE("ObjectTypeManager refuses a failing pak and remains safely empty")
     struct State {
         std::string oldPath = objectPath;
         std::filesystem::path scratch = [] {
-            const char* path = std::getenv("MC2_SCRATCH");
+            const char* path = std::getenv("TMP");
             std::filesystem::path dir = path && *path ? path : "G:/mc2-tmp";
             std::filesystem::create_directories(dir);
             return dir;

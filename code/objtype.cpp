@@ -551,12 +551,11 @@ void ObjectTypeManager::remove (ObjectTypePtr objTypePtr) {
 
 ObjectTypePtr ObjectTypeManager::get (ObjectTypeNumber objTypeNum, bool loadIt) {
 
-	if (!table)
-		return nullptr;
-	if ((objTypeNum < 0) || (objTypeNum >= numObjectTypes)) {
+	if (table && ((objTypeNum < 0) || (objTypeNum >= numObjectTypes))) {
 		PAUSE((" ObjectTypeManager.find: bad objTypeNum %d (max %d) — mod content; returning NULL ", static_cast<int>(objTypeNum), static_cast<int>(numObjectTypes)));
-		return nullptr;
 	}
+	if (!table || (objTypeNum < 0) || (objTypeNum >= numObjectTypes))
+		return nullptr;
 
 	//---------------------------
 	// If not, cache it in now...
