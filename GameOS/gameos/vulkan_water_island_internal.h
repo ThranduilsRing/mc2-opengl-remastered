@@ -203,6 +203,7 @@ struct WaterIsland : mc2vk::IslandState {
     mc2vk::OwnedPipelineLayout reflectionLayout;
     mc2vk::OwnedPipeline reflectionPipe;
     bool reflectionInitialized = false;
+    bool mapHasWater = true;
     mc2vk::OwnedRenderPass rpass;
     mc2vk::OwnedFramebuffer fb;
     mc2vk::OwnedDescriptorSetLayout dsl;

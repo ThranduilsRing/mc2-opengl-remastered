@@ -67,6 +67,9 @@ bool prepareNative(WaterIsland* s, mc2vk::VulkanContext& ctx) {
     if (s->nativeFailed) return false;
     const auto capacity = WaterStream::GetNativeCapacity();
     if (!capacity) return false;
+    // GetNativeCapacity adds 4096 records of slack after counting eligible quads.
+    // A dry map skips the reflection pass, including its attachment transitions.
+    s->mapHasWater = capacity->eligibleBound > 4096u;
     ZoneScopedN("VKIsl.Water.PrepareNative");
     if (!s->recipeUploaded) {
         if (!upload_recipes_device(s, WaterStream::GetRecipes(), WaterStream::GetRecipeCount())) return false;
@@ -293,7 +296,7 @@ extern "C" int mc2_vk_water_island_run(
             fsLocal.f7[2] = (s->maskView != VK_NULL_HANDLE) ? 1.0f : 0.0f;
             fsLocal.f7[3] = halfMap;
         }
-        fsLocal.DEEP_COLOR[3] = gos_GetWaterReflectionQuality()==2 ? 1.0f : 0.0f;
+        fsLocal.DEEP_COLOR[3] = s->mapHasWater && gos_GetWaterReflectionQuality()==2 ? 1.0f : 0.0f;
         std::memcpy(base + fsUboOff, &fsLocal, sizeof(WaterFsParams));
         if (s->ringBound[par] != uboSpan.buffer) {
             mc2vk::writeDynamicBinding(s->device, s->set[par], 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, uboSpan.buffer, sizeof(WaterVsParams));
@@ -334,7 +337,7 @@ extern "C" int mc2_vk_water_island_run(
             std::memcpy(wf.mvp, nat->mvp, sizeof(wf.mvp));
             wf.frameCos = nat->frameCos; wf.waterElevation = nat->waterElevation; wf.shoreExt = nat->shoreExt;
             wf.mapSide = nat->mapSide; wf.biasLegacy = nat->biasLegacy;
-            if (gos_GetWaterReflectionQuality()==2) {
+            if (s->mapHasWater && gos_GetWaterReflectionQuality()==2) {
                 wf.reflectionGroupsX=uint32_t(((w+1)/2+7)/8);
                 wf.reflectionGroupsY=uint32_t(((h+1)/2+7)/8);
             }
@@ -346,7 +349,7 @@ extern "C" int mc2_vk_water_island_run(
         }
 
         const uint32_t uboOffsets[2] = {static_cast<uint32_t>(uboSpan.offset), static_cast<uint32_t>(uboSpan.offset + fsUboOff)};
-        record_reflection(s,cb,par,uboOffsets,gos_GetWaterReflectionQuality()==2);
+        record_reflection(s,cb,par,uboOffsets,s->mapHasWater && gos_GetWaterReflectionQuality()==2);
         // All attachments LOAD -> clear values ignored (array must still cover them).
         VkClearValue clears[3]{};
         VkRenderPassBeginInfo rbi{};
