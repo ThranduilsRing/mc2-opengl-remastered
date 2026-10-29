@@ -219,6 +219,23 @@ void Mission::updateMissionTest(bool report) {
         if (mover->refitBuddyWID) continue; // Let an accepted repair finish.
         const auto intent = producePlayerIntent(mover->getPilot(), location,
             objectiveTarget && !captureObjective ? objectiveTarget->getWatchID() : 0, focus, scenarioTime);
+        float armor = 0, maxArmor = 0, structure = 0, maxStructure = 0;
+        for (int loc = 0; loc < mover->numArmorLocations; ++loc) {
+            armor += mover->armor[loc].curArmor;
+            maxArmor += mover->armor[loc].maxArmor;
+        }
+        for (int loc = 0; loc < mover->numBodyLocations; ++loc) {
+            structure += mover->body[loc].curInternalStructure;
+            maxStructure += mover->body[loc].maxInternalStructure;
+        }
+        auto* chosen = ObjectManager->getByWatchID(intent.targetWatchId);
+        mc2::fmt::print_err("[PLAYER_PILOT v1] time={:.2f} wid={} goal={} posture={} target={} distance={:.1f} range={:.1f} armor={:.2f} structure={:.2f} refit={} points={} buddy={} rp={} x={:.1f} y={:.1f}\n",
+            scenarioTime, mover->getWatchID(), static_cast<int>(intent.goal), static_cast<int>(intent.posture),
+            intent.targetWatchId, chosen ? mover->distanceFrom(chosen->getPosition()) : -1.0f,
+            mover->getMaxFireRange(), maxArmor > 0 ? armor / maxArmor : 1.0f,
+            maxStructure > 0 ? structure / maxStructure : 1.0f, mover->isRefit(),
+            mover->getRefitPoints(), mover->refitBuddyWID, LogisticsData::instance->getResourcePoints(),
+            mover->getPosition().x, mover->getPosition().y);
         auto* runtime = mover->getPilot()->getBrainRuntime();
         const bool recovering = runtime->playerRecoverUntil > scenarioTime;
         auto* current = mover->getPilot()->getCurTacOrder();
