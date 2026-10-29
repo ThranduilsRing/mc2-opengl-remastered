@@ -94,6 +94,47 @@ def test_cached_immutable_overlay_preserves_links_and_private_configs(tmp_path):
     assert (layer / "data/types.fit").read_bytes() == b"private"
 
 
+def test_two_workers_cover_all_six_mods_and_carver_budget(tmp_path, monkeypatch):
+    import json
+    import threading
+    from types import SimpleNamespace
+    mods, base, build = (tmp_path / name for name in ('mods', 'base', 'build64-ninja'))
+    base.mkdir()
+    build.mkdir()
+    (build / 'mc2.exe').write_bytes(b'exe')
+    for _, folder, _ in mod_smoke.BATTERY:
+        mission = mods / folder / 'data/missions/first.fit'
+        mission.parent.mkdir(parents=True)
+        mission.write_bytes(b'mission')
+    monkeypatch.delenv('MC2_HOST_LEASE_BATCH', raising=False)
+    monkeypatch.setattr(mod_smoke.stages, 'preflight', lambda *a: None)
+    monkeypatch.setattr(mod_smoke, 'pick_mission', lambda *a: ('first', 'fixture'))
+    monkeypatch.setattr(mod_smoke, '_load_deploy_payload', lambda: SimpleNamespace(ensure_terrain_materials=lambda *a: None))
+    def engine(cache, *a):
+        cache.mkdir()
+        (cache / 'mc2.exe').write_bytes(b'exe')
+        return {}
+    monkeypatch.setattr(mod_smoke, 'build_engine_cache', engine)
+    rendezvous = threading.Barrier(2)
+    seen = {}
+    def run(stage, stem, duration, timeout, ref):
+        seen[stage.name] = timeout
+        rendezvous.wait(timeout=5)
+        (stage / 'smoke.log').write_text('fixture')
+        return {'exit': 0, 'health': {'mech_ok': True, 'ai_ok': True,
+            'mech_instances_max': 1, 'mlr_mech_draws': 0, 'first_brain_s': 0.2, 'first_order_s': None}}
+    monkeypatch.setattr(mod_smoke, 'run_mod', run)
+    args = SimpleNamespace(install_root=mods, base_install=base, exe=str(build / 'mc2.exe'),
+        build_dir='build64-ninja', stage_root=tmp_path / 'stages', mod='', mission='',
+        keep_stages=False, workers=2, duration=5, timeout=300, fail_fast=False)
+    assert mod_smoke.battery(args) == 0
+    assert seen == {folder: 600 if folder == 'MCO-Carver5' else 300
+                    for _, folder, _ in mod_smoke.BATTERY}
+    rows = json.loads(next((tmp_path / 'stages').glob('*/battery.json')).read_text())
+    assert [row['mod'] for row in rows] == [name for name, _, _ in mod_smoke.BATTERY]
+    assert not list((tmp_path / 'stages').rglob('mc2.exe'))
+
+
 @pytest.mark.parametrize("crash", [False, True, "engine"])
 def test_battery_isolates_workers_and_cleans_even_on_exception(tmp_path, monkeypatch, crash):
     monkeypatch.delenv("MC2_HOST_LEASE_BATCH", raising=False)

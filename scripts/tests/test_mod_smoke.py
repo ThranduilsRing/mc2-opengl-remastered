@@ -319,7 +319,10 @@ def test_run_mod_preserves_head_default_and_forwards_explicit_reference(tmp_path
     seen = []
     def run(cmd, **kw):
         seen.append((cmd, kw['env']))
+        assert float(cmd[cmd.index('--wait-timeout') + 1]) == 1200
+        assert kw['timeout'] == 1260
         return SimpleNamespace(returncode=0, stdout=GOOD, stderr='')
+    monkeypatch.setenv('MC2_HOST_LEASE_TIMEOUT', '3600')
     monkeypatch.setattr(ms.subprocess, 'run', run)
     stage = tmp_path / 'mod'
     stage.mkdir()
@@ -328,6 +331,38 @@ def test_run_mod_preserves_head_default_and_forwards_explicit_reference(tmp_path
     assert '--ref-exe' not in seen[0][0]
     assert seen[1][0][-2:] == ['--ref-exe', str(tmp_path / 'reference.exe')]
     assert seen[0][1]['MC2_SMOKE_ARTIFACT_ROOT'] == str(tmp_path / 'artifacts/mod')
+
+
+def test_legacy_media_links_and_configs_remain_private(tmp_path):
+    layer, cache, stage = (tmp_path / n for n in ('layer', 'cache', 'stage'))
+    for name in ('photo.jpg', 'photo.jpeg', 'movie.bik'):
+        _w(layer / 'data' / name)
+    _w(layer / 'data/types.fit', 'private')
+    _w(layer / 'prefs.cfg', 'private')
+    ms.refresh_layer(layer, cache)
+    stats = ms.overlay_mod(cache, stage, cached_links=True)
+    assert stats['linked'] == 3
+    for name in ('photo.jpg', 'photo.jpeg', 'movie.bik'):
+        assert os.path.samefile(layer / 'data' / name, stage / 'data' / name)
+    for name in ('data/types.fit', 'prefs.cfg'):
+        (stage / name).write_text('runtime')
+        assert (layer / name).read_text() == (cache / name).read_text() == 'private'
+
+
+def test_cross_volume_layer_cache_materializes_once_then_hardlinks(tmp_path, monkeypatch):
+    layer, cache, stage = (tmp_path / n for n in ('layer', 'cache', 'stage'))
+    source = _w(layer / 'data/objects.pak', 'packed')
+    cached = cache / 'data/objects.pak'
+    cached.parent.mkdir(parents=True)
+    cached.symlink_to(source)  # migrate the previous cross-volume cache format
+    monkeypatch.setattr(ms, 'same_volume', lambda *a: False)
+    ms.refresh_layer(layer, cache)
+    assert not cached.is_symlink()
+    assert not os.path.samefile(source, cached)
+    monkeypatch.setattr(ms.shutil, 'copy2', lambda *a: (_ for _ in ()).throw(AssertionError('warm payload copied')))
+    ms.refresh_layer(layer, cache)
+    ms.overlay_mod(cache, stage, cached_links=True)
+    assert os.path.samefile(cached, stage / 'data/objects.pak')
 
 
 

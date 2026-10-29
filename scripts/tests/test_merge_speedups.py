@@ -231,7 +231,7 @@ def test_gate_plan_uses_verified_ninja_and_required_checks():
     steps = gate.plan(6)
     mods = next(cmd for name, cmd, _ in steps if name == "mods")
     assert "--fail-fast" not in mods
-    assert mods[mods.index("--workers") + 1] == "1"
+    assert mods[mods.index("--workers") + 1] == "2"
     assert len(steps) == 20
     quiet = next(cmd for name, cmd, _ in steps if name == "quiet")
     assert quiet[-3:-1] == ["--fresh-smoke", "--exe"] and quiet[-1].endswith("mc2-win64-v0.4/mc2.exe")
@@ -867,7 +867,8 @@ def test_offline_stages_overlap_before_deploy(monkeypatch):
     assert calls[-1] == "deploy" and set(calls) == {"contracts", "harness", "deploy"}
 
 
-def test_auxiliary_determinism_uses_copy_while_saves_stay_serial(tmp_path, monkeypatch):
+@pytest.mark.parametrize('with_determinism', [True, False])
+def test_auxiliary_determinism_uses_copy_while_saves_stay_serial(tmp_path, monkeypatch, with_determinism):
     import threading
     from contextlib import contextmanager
     import merge_gate as gate
@@ -912,13 +913,18 @@ def test_auxiliary_determinism_uses_copy_while_saves_stay_serial(tmp_path, monke
     monkeypatch.setattr(gate, "git", lambda *a: "head")
     monkeypatch.setattr(gate, "stock_copy", copy)
     monkeypatch.setattr(gate, "run_child", runner)
-    assert gate.execute_parallel([("deploy", ["deploy"], {}),
+    steps = [("deploy", ["deploy"], {}),
         ("mods", ["mods", "--base-install", str(install), "--exe", str(install / "mc2.exe")], {}),
         ("determinism-mc2_10", ["det", "--install", str(install)], {}),
-        ("saveload-mc2_01", ["save"], {}),
+        ("saveload-mc2_01", ["save", "--install", str(install)], {}),
         ("kit-visibility", ["kit", "--install", str(install)], {}),
-        ("quiet", ["quiet", "--exe", str(install / "mc2.exe")], {})], "head") == 0
-    assert calls.index("mods") < calls.index("det") < calls.index("kit") < calls.index("quiet") < calls.index("save") < calls.index("cleaned")
+        ("quiet", ["quiet", "--exe", str(install / "mc2.exe")], {})]
+    if not with_determinism:
+        steps = [s for s in steps if s[0] not in ('determinism-mc2_10', 'kit-visibility', 'quiet')]
+    assert gate.execute_parallel(steps, "head") == 0
+    assert calls.index("mods") < calls.index("save") < calls.index("cleaned")
+    if with_determinism:
+        assert calls.index("mods") < calls.index("det") < calls.index("kit") < calls.index("quiet") < calls.index("save")
 
 
 @pytest.mark.parametrize("tier,env,expected", [
