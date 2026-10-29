@@ -3122,12 +3122,9 @@
     },
     "code/mission_init.cpp": {
      "new": 1
-    },
-    "code/saveload_load.cpp": {
-     "new": 1
     }
    },
-   "new": 2,
+   "new": 1,
    "new_array": 0,
    "owners": [
     "Mission"
