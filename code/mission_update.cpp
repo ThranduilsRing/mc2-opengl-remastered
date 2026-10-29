@@ -21,12 +21,18 @@ namespace {
 long applyPlayerIntent(Mission& mission, const mc2::player::UnitIntent& intent, long captureTarget = 0) {
     auto* object = ObjectManager->getByWatchID(intent.unitWatchId);
     if (!object || !object->isMover()) return 1;
+    auto* mover = static_cast<Mover*>(object);
+    const bool cancelSupport = mover->refitBuddyWID || mover->recoverBuddyWID;
+    const bool powerUp = object->getStatus() == OBJECT_STATUS_SHUTDOWN;
     TacticalOrder order;
-    order.init(ORDER_ORIGIN_PLAYER, captureTarget ? TACTICAL_ORDER_CAPTURE
+    order.init(ORDER_ORIGIN_PLAYER, cancelSupport ? TACTICAL_ORDER_STOP
+        : powerUp ? TACTICAL_ORDER_POWERUP : captureTarget ? TACTICAL_ORDER_CAPTURE
         : intent.goal == mc2::player::Goal::Attack ? TACTICAL_ORDER_ATTACK_OBJECT
         : intent.goal == mc2::player::Goal::Repair ? TACTICAL_ORDER_REFIT
         : intent.goal == mc2::player::Goal::Recover ? TACTICAL_ORDER_RECOVER : TACTICAL_ORDER_MOVETO_POINT);
-    if (captureTarget) {
+    if (cancelSupport || powerUp) {
+        // Service owns shutdown; resume normal commands only after native cancellation/power-up.
+    } else if (captureTarget) {
         order.targetWID = captureTarget;
         order.attackParams.type = ATTACK_NONE;
         order.attackParams.method = ATTACKMETHOD_RAMMING;
@@ -316,7 +322,11 @@ void Mission::updateMissionTest(bool report) {
         bool purchased = false;
         if (gui && (needsRepair || scenarioTime < 10) && !hasRepair && safe(position, 250))
             purchased = gui->requestPlayerSupport(ControlGui::REPAIR_VEHICLE, position);
-        if (gui && !purchased) {
+        const bool lostUnit = std::ranges::any_of(test.squadMembers, [](long wid) {
+            auto* unit = ObjectManager->getByWatchID(wid);
+            return !unit || !unit->getExists() || unit->isDisabled() || unit->isDestroyed();
+        });
+        if (gui && !purchased && lostUnit) {
             for (long i = 0; i < ObjectManager->getNumMovers(); ++i) {
                 auto* wreck = ObjectManager->getMover(i);
                 if (!wreck || !wreck->getExists() || !wreck->isDisabled() || wreck->isDestroyed()
@@ -363,7 +373,16 @@ void Mission::updateMissionTest(bool report) {
         auto* mover = Team::home->getMover(i);
         if (!mover || mover->getCommanderId() != Commander::home->getId() || mover->isDisabled()
             || !mover->getExists() || !mover->getPilot()) continue;
-        if (mover->refitBuddyWID || mover->recoverBuddyWID) continue; // Let support actions finish.
+        if (!extracting && (mover->refitBuddyWID || mover->recoverBuddyWID)) {
+            auto* buddy = ObjectManager->getByWatchID(mover->refitBuddyWID
+                ? mover->refitBuddyWID : mover->recoverBuddyWID);
+            auto* service = mover->isRefit() || mover->isRecover() ? mover
+                : buddy && buddy->isMover() ? static_cast<Mover*>(buddy) : nullptr;
+            const auto* order = service && service->getPilot() ? service->getPilot()->getCurTacOrder() : nullptr;
+            if (buddy && buddy->getExists() && !buddy->isDestroyed() && order
+                && (order->code == TACTICAL_ORDER_RECOVER
+                    || (order->code == TACTICAL_ORDER_REFIT && !buddy->isDisabled()))) continue;
+        }
         auto index = squadIndex(mover);
         if (mover->isRefit() || mover->isRecover()) {
             float nearest = 1e30f;
