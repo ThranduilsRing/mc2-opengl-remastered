@@ -20,6 +20,7 @@ bytes are deterministic); the KTX2 container is written here. No downloads.
 from __future__ import annotations
 
 import io
+import logging
 import os
 import struct
 import subprocess
@@ -305,4 +306,11 @@ def base_color_tiers(rgba: np.ndarray, tiers=TIERS, texel_scale: int = 1):
     if texel_scale not in (1, 2, 4, 8, 16):
         raise ValueError("texel_scale must be 1, 2, 4, 8 or 16")
     src = resize_pow2(rgba, max(rgba.shape[:2]))
-    return {t: resize_pow2(src, t * texel_scale) for t in tiers}
+    result = {t: resize_pow2(src, t * texel_scale) for t in tiers}
+    shapes = [image.shape[:2] for image in result.values()]
+    if len(set(shapes)) < len(shapes):
+        logging.getLogger(__name__).warning(
+            "texture tiers collapse at source %dx%d (texel_scale=%d): %s",
+            src.shape[1], src.shape[0], texel_scale,
+            ", ".join(f"{tier}={image.shape[1]}x{image.shape[0]}" for tier, image in result.items()))
+    return result

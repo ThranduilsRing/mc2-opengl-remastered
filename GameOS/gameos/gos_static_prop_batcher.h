@@ -282,6 +282,8 @@ public:
     const std::vector<GpuStaticPropInstance>& getLastBuiltBatch() const;
 
     void submitCachedInstance(const GpuStaticPropInstance& inst);
+    // Drop hysteresis only when a recipe dies, never merely when it leaves the view.
+    void forgetLodState(const GpuStaticPropInstance& inst);
 
     // 2b Stage 2 (Mechanism B-reinject): persistent static instance store.
     // Registry drives: clear+append on a dirty generation, reinject every frame.

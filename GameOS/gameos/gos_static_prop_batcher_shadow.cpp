@@ -123,6 +123,18 @@ extern "C" void mc2_color_prop_island_end_frame() {
         s_typeInstanceCountPrevFrame[kv.first] = kv.second.instanceCount;
 }
 
+static uint64_t propLodKey(const GpuStaticPropInstance& inst) {
+    uint32_t px, py, pz;
+    std::memcpy(&px, &inst.modelMatrix[12], 4);
+    std::memcpy(&py, &inst.modelMatrix[13], 4);
+    std::memcpy(&pz, &inst.modelMatrix[14], 4);
+    return (((uint64_t(px) * 0x9E3779B1ull) ^ (uint64_t(py) * 0x85EBCA77ull) ^ (uint64_t(pz) * 0xC2B2AE3Dull)) << 8) ^ inst.typeID;
+}
+
+void GpuStaticPropBatcher::forgetLodState(const GpuStaticPropInstance& inst) {
+    s_lodState.erase(propLodKey(inst));
+}
+
 extern "C" int mc2_color_prop_island_get_frame_feed(Mc2ColorPropFeed* out) {
     if (!out) return 0;
     if (!s_geometryFinalized || s_fatalRegistrationFailure) return 0;
@@ -153,10 +165,7 @@ extern "C" int mc2_color_prop_island_get_frame_feed(Mc2ColorPropFeed* out) {
             for (; b != e; ++b) {
                 const float dx = b->modelMatrix[12] - cx, dy = b->modelMatrix[13] - cy, dz = b->modelMatrix[14] - cz;
                 const float d = std::sqrt(dx * dx + dy * dy + dz * dz);
-                uint32_t px, py, pz;
-                std::memcpy(&px, &b->modelMatrix[12], 4); std::memcpy(&py, &b->modelMatrix[13], 4); std::memcpy(&pz, &b->modelMatrix[14], 4);
-                const uint64_t key = (((uint64_t(px) * 0x9E3779B1ull) ^ (uint64_t(py) * 0x85EBCA77ull) ^ (uint64_t(pz) * 0xC2B2AE3Dull)) << 8) ^ b->typeID;
-                uint8_t& lod = s_lodState[key];
+                uint8_t& lod = s_lodState[propLodKey(*b)];
                 while (lod + 1 < g.count && d > g.dist[lod + 1] * (1.0f + kBand)) ++lod;
                 while (lod > 0 && d < g.dist[lod] * (1.0f - kBand)) --lod;
                 GpuStaticPropInstance inst = *b;

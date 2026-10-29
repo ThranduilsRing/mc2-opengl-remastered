@@ -20,7 +20,7 @@ target_compile_features(editor_document PUBLIC cxx_std_23)
 target_include_directories(editor_document PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/document")
 target_include_directories(editor_document PRIVATE "${CMAKE_SOURCE_DIR}/3rdparty/include")
 target_include_directories(editor_document PRIVATE "${CMAKE_SOURCE_DIR}/mclib")
-target_link_libraries(editor_document PRIVATE ZLIB::ZLIB)
+target_link_libraries(editor_document PRIVATE ZLIB::ZLIB mc2_gate)
 
 if(NOT TARGET mc2_tool_vk)
     add_subdirectory("${CMAKE_SOURCE_DIR}/tools/common" "${CMAKE_BINARY_DIR}/tools_common")
