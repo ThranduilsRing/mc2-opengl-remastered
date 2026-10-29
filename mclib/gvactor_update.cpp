@@ -917,7 +917,7 @@ void GVAppearance::updateSimPose() {
     auto turret = mc2::math::quatFromEuler(mc2::math::Euler(0.0f, unitAnim().turretRotation * DEGREES_TO_RADS, 0.0f));
     gvShape->SetNodeRotation(appearType->rotationalNodeId, &turret);
     gvShape->SetFrameNum(unitAnim().currentFrame);
-    gvShape->TransformMultiShape_BuildRecipe(&translation, &rootRotation);
+    gvShape->TransformSimPose(&translation, &rootRotation);
     simPose->root = position;
     simPose->heading = rotation;
     simPose->nodes.resize(appearType->getTotalNodes());

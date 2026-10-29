@@ -1037,7 +1037,7 @@ void Mech3DAppearance::updateSimPose (bool advanceClock)
 	qRotation = mc2::math::quatFromEuler(mc2::math::Euler(0.0f, rotation * DEGREES_TO_RADS, 0.0f));
 	glm::vec3 xlatPosition;
 	mc2ToRender(xlatPosition, position);
-	mechShape->TransformMultiShape_BuildRecipe(&xlatPosition, &qRotation);
+	mechShape->TransformSimPose(&xlatPosition, &qRotation);
 	{
 		mc2mechanim::MechMotion _mm;
 		_mm.gestureId = static_cast<int>(unitAnim().currentGestureId);

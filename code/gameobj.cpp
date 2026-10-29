@@ -2175,7 +2175,9 @@ void GameObject::CopyTo (GameObjectData *data)
 	data->cellPositionRow = cellPositionRow;
 	data->cellPositionCol = cellPositionCol;
 	data->d_vertexNum = d_vertexNum;
-	data->flags = flags;
+	// Cursor targeting belongs to presentation, not the saved object state.
+	// Its timing can differ while a simulation job is in flight.
+	data->flags = flags & ~OBJECT_FLAG_TARGETED;
 	data->debugFlags = debugFlags;
 	data->status = status;
 
@@ -2209,7 +2211,8 @@ void GameObject::CopyTo (GameObjectData *data)
 	data->blipFrame = blipFrame;
 	data->numAttackers = numAttackers;
 
-	data->drawFlags = drawFlags;
+	// Rebuild the stable selection overlay; hover bars/text/colour are transient.
+	data->drawFlags = (data->flags & OBJECT_FLAG_SELECTED) ? (DRAW_BARS | DRAW_BRACKETS) : DRAW_NORMAL;
 }
 
 //---------------------------------------------------------------------------
