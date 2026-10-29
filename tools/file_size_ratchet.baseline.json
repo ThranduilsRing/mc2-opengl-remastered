@@ -16,7 +16,7 @@
  "files_over_1500": {
   "GameOS/gameos/engine_present_vk.cpp": 2905,
   "GameOS/gameos/vulkan_color_prop_island.cpp": 2073,
-  "GameOS/include/gameos.hpp": 3650,
+  "GameOS/include/gameos.hpp": 3367,
   "code/artlry.cpp": 1717,
   "code/bldng.cpp": 1707,
   "code/brain_special_dispatch.cpp": 2696,
@@ -53,7 +53,7 @@
   "tools/scifi_kit/art/intent_military.py": 3363,
   "tools/terrain_beautify/visual_heightfield.py": 1510
  },
- "head": "29ad0afcf",
+ "head": "c7ef9a666",
  "per_dir": {
   "GameAdapters": {
    "files": 13,
@@ -65,7 +65,7 @@
    "files": 379,
    "files_over_1500": 3,
    "files_over_3000": 1,
-   "max_lines": 3650
+   "max_lines": 3367
   },
   "GuiRuntime": {
    "files": 19,
@@ -129,7 +129,7 @@
  "top": [
   {
    "file": "GameOS/include/gameos.hpp",
-   "lines": 3650
+   "lines": 3367
   },
   {
    "file": "tools/scifi_kit/art/intent_military.py",
@@ -252,7 +252,7 @@
   "files": 2546,
   "files_over_1500": 38,
   "files_over_3000": 2,
-  "max_lines": 3650
+  "max_lines": 3367
  },
  "version": 1
 }

@@ -488,16 +488,6 @@ void __stdcall gos_SetRenderViewport(float x, float y, float w, float h)
 	g_gos_renderer->setRenderViewport(vec4(x, y, w, h));
 }
 
-void __stdcall gos_GetRenderViewport(float* x, float* y, float* w, float* h)
-{
-    gosASSERT(x && y && w && h);
-    gosASSERT(g_gos_renderer);
-	vec4 vp = g_gos_renderer->getRenderViewport();
-	*x = vp.x;
-	*y = vp.y;
-	*w = vp.z;
-	*h = vp.w;
-}
 
 size_t __stdcall gos_GetMachineInformation( MachineInfo mi, int Param1/*=0*/, int Param2/*=0*/, int Param3/*=0*/, int Param4/*=0*/)
 {
@@ -568,11 +558,6 @@ gosBuffer* __stdcall gos_CreateBuffer(gosBUFFER_TYPE type, gosBUFFER_USAGE usage
     return buffer;
 }
 
-uint32_t gos_GetBufferSizeBytes(HGOSBUFFER buffer)
-{
-	gosASSERT(buffer);
-    return buffer->element_size_ * buffer->count_;
-}
 
 void __stdcall gos_DestroyBuffer(gosBuffer* buffer)
 {
@@ -581,11 +566,6 @@ void __stdcall gos_DestroyBuffer(gosBuffer* buffer)
 
 
 
-void __stdcall gos_UpdateBuffer(HGOSBUFFER buffer, void* data, size_t offset, size_t num_bytes)
-{
-    if (!buffer || !data || offset > buffer->bytes_.size() || num_bytes > buffer->bytes_.size() - offset) return;
-    std::memcpy(buffer->bytes_.data() + offset, data, num_bytes);
-}
 
 HGOSVERTEXDECLARATION __stdcall gos_CreateVertexDeclaration(gosVERTEX_FORMAT_RECORD* records, int count)
 {
@@ -606,11 +586,6 @@ void __stdcall gos_DestroyVertexDeclaration(HGOSVERTEXDECLARATION vdecl)
 
 }
 
-void __stdcall gos_ForceApplyRenderStates() {
-    if (!g_gos_renderer) return;
-    g_gos_renderer->invalidateRenderStateCache();
-    g_gos_renderer->applyRenderStates();
-}
 
 // RENDER_STATES v1: invalidation hook for fast paths that disturb GL state outside
 // of applyRenderStates() (terrain bridges, water fast path, post-process composite,

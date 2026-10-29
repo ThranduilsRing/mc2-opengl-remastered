@@ -5,6 +5,10 @@
 
 #include <atomic>
 #include "gameos.hpp"
+
+// Window audit probes used only by the GameOS frame driver.
+bool __stdcall gos_GetHudResClampEnabled();
+bool __stdcall gos_ProbeDrawableSize(int* w, int* h);
 #include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
 #include "gos_render.h"
 #include "render_host_kind.h"
