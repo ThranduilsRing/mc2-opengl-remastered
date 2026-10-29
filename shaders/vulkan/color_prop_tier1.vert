@@ -266,6 +266,9 @@ void main() {
                 sunColorFed = lightsData_.light[lightIndex].light_color[i].xyz;
                 sunDirFed = lightsData_.light[lightIndex].light_dir[i].xyz;
                 sunFound = true;
+                // Only the first directional light contributes; later pool
+                // records cannot change the result.
+                break;
             }
         }
     }
