@@ -726,7 +726,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/run_smoke.py",
-          "line": 1122,
+          "line": 1123,
           "evidence": "command",
           "reference": "scripts/check-deploy-coherence.py",
           "text": "_coh = subprocess.run("
@@ -828,7 +828,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/run_smoke.py",
-          "line": 1056,
+          "line": 1057,
           "evidence": "command",
           "reference": "scripts/check-deploy-target.py",
           "text": "_g = subprocess.run(_gcmd, capture_output=True, text=True, timeout=60, **nofocus.hidden_kwargs())"
@@ -2198,7 +2198,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/run_smoke.py",
-          "line": 1140,
+          "line": 1141,
           "evidence": "command",
           "reference": "scripts/check_shader_bom.py",
           "text": "_bom = subprocess.run("
@@ -2213,7 +2213,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1539,
+          "line": 1540,
           "evidence": "command",
           "reference": "scripts/check_sim_include_firewall.py",
           "text": "run_check \"sim_include_firewall\"        \"py -3 -B scripts/tests/test_sim_include_firewall.py && py -3 scripts/check_sim_include_firewall.py\""
@@ -3815,7 +3815,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/run_smoke.py",
-          "line": 998,
+          "line": 999,
           "evidence": "command",
           "reference": "scripts/deploy_payload.py",
           "text": "_v = subprocess.run(cmd, capture_output=True, text=True, timeout=300, **nofocus.hidden_kwargs())"
@@ -3831,7 +3831,7 @@
         },
         {
           "path": "scripts/run_smoke.py",
-          "line": 1413,
+          "line": 1414,
           "evidence": "import",
           "reference": "scripts.deploy_payload",
           "text": "from scripts import deploy_payload as _dp"
@@ -5109,7 +5109,7 @@
         },
         {
           "path": "scripts/mcp/mc2_render_state_server.py",
-          "line": 728,
+          "line": 760,
           "evidence": "command",
           "reference": "scripts/run_smoke.py",
           "text": "result = subprocess.run("
@@ -5287,14 +5287,14 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1535,
+          "line": 1536,
           "evidence": "command",
           "reference": "scripts/run_tools_tests.py",
           "text": "run_check_tri \"tools_tests\"             \"py -3 scripts/run_tools_tests.py\""
         },
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1536,
+          "line": 1537,
           "evidence": "command",
           "reference": "scripts/run_tools_tests.py",
           "text": "run_check_tri \"kit_art\"                 \"py -3 scripts/run_tools_tests.py --suite art\""
@@ -5390,7 +5390,7 @@
         },
         {
           "path": "scripts/run_smoke.py",
-          "line": 1546,
+          "line": 1547,
           "evidence": "import",
           "reference": "run_visual_capture",
           "text": "from run_visual_capture import smoke_capture"
@@ -5567,35 +5567,35 @@
         },
         {
           "path": "scripts/run_smoke.py",
-          "line": 827,
+          "line": 828,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from scripts.smoke_lib import deploy_lease as _deploy_lease"
         },
         {
           "path": "scripts/run_smoke.py",
-          "line": 887,
+          "line": 888,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from scripts.smoke_lib import host_lease as _host_lease"
         },
         {
           "path": "scripts/run_smoke.py",
-          "line": 900,
+          "line": 901,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from scripts.smoke_lib import host_load as _host_load"
         },
         {
           "path": "scripts/run_smoke.py",
-          "line": 1085,
+          "line": 1086,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from scripts.smoke_lib import preflight_cache as _pfcache"
         },
         {
           "path": "scripts/run_smoke.py",
-          "line": 1271,
+          "line": 1272,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from scripts.smoke_lib import child_registry as _children"
@@ -6019,7 +6019,7 @@
         },
         {
           "path": "scripts/run_smoke.py",
-          "line": 1271,
+          "line": 1272,
           "evidence": "import",
           "reference": "scripts.smoke_lib.child_registry",
           "text": "from scripts.smoke_lib import child_registry as _children"
@@ -6141,7 +6141,7 @@
         },
         {
           "path": "scripts/run_smoke.py",
-          "line": 827,
+          "line": 828,
           "evidence": "import",
           "reference": "scripts.smoke_lib.deploy_lease",
           "text": "from scripts.smoke_lib import deploy_lease as _deploy_lease"
@@ -6398,7 +6398,7 @@
       "callers_by_stem": [
         {
           "path": "scripts/run_smoke.py",
-          "line": 887,
+          "line": 888,
           "evidence": "import",
           "reference": "scripts.smoke_lib.host_lease",
           "text": "from scripts.smoke_lib import host_lease as _host_lease"
@@ -6469,7 +6469,7 @@
       "callers_by_stem": [
         {
           "path": "scripts/run_smoke.py",
-          "line": 900,
+          "line": 901,
           "evidence": "import",
           "reference": "scripts.smoke_lib.host_load",
           "text": "from scripts.smoke_lib import host_load as _host_load"
@@ -6760,7 +6760,7 @@
       "callers_by_stem": [
         {
           "path": "scripts/run_smoke.py",
-          "line": 1085,
+          "line": 1086,
           "evidence": "import",
           "reference": "scripts.smoke_lib.preflight_cache",
           "text": "from scripts.smoke_lib import preflight_cache as _pfcache"
@@ -6992,6 +6992,21 @@
           "evidence": "import",
           "reference": "scripts.smoke_lib.runner",
           "text": "from scripts.smoke_lib.runner import Verdict"
+        }
+      ]
+    },
+    {
+      "path": "scripts/smoke_lib/runtime_bridge.py",
+      "basename": "runtime_bridge.py",
+      "stem": "runtime_bridge",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "scripts/run_smoke.py",
+          "line": 1652,
+          "evidence": "import",
+          "reference": "scripts.smoke_lib.runtime_bridge",
+          "text": "from scripts.smoke_lib.runtime_bridge import RuntimeBridge"
         }
       ]
     },
@@ -7884,6 +7899,20 @@
       "callers_by_stem": []
     },
     {
+      "path": "scripts/tests/test_runtime_bridge.py",
+      "basename": "test_runtime_bridge.py",
+      "stem": "test_runtime_bridge",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
+      "path": "scripts/tests/test_runtime_bridge_socket.py",
+      "basename": "test_runtime_bridge_socket.py",
+      "stem": "test_runtime_bridge_socket",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
       "path": "scripts/tests/test_saveload_baseline_defaults.py",
       "basename": "test_saveload_baseline_defaults.py",
       "stem": "test_saveload_baseline_defaults",
@@ -7904,7 +7933,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1539,
+          "line": 1540,
           "evidence": "command",
           "reference": "scripts/tests/test_sim_include_firewall.py",
           "text": "run_check \"sim_include_firewall\"        \"py -3 -B scripts/tests/test_sim_include_firewall.py && py -3 scripts/check_sim_include_firewall.py\""
@@ -16089,7 +16118,7 @@
       "callers_by_basename": [
         {
           "path": "GameOS/gameos/CMakeLists.txt",
-          "line": 487,
+          "line": 488,
           "evidence": "cmake command",
           "reference": "${CMAKE_SOURCE_DIR}/tools/shader_offline_build/slang_compile.py",
           "text": "COMMAND \"${Python3_EXECUTABLE}\""
