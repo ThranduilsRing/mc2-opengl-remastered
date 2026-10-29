@@ -1239,6 +1239,33 @@
    "count": 1
   },
   {
+   "tag": "BRAIN_FREEZE_TRACE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "wid",
+    "brainState",
+    "curTacOrder.code",
+    "movePath.numSteps",
+    "moveState",
+    "hasBrain",
+    "orderState",
+    "mainGoal",
+    "goalWID",
+    "genOrder",
+    "pos",
+    "lastMoveErr",
+    "t",
+    "status",
+    "weapons",
+    "pending",
+    "target",
+    "los",
+    "mapSide"
+   ],
+   "count": 1
+  },
+  {
    "tag": "BRAIN_FSM_INSTATE",
    "ver": -1,
    "stream": "stderr",

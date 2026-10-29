@@ -271,6 +271,7 @@ Split commit: `e8aaccaa1`.
 | `mission_parts_archive.cpp` | Part archives stage validated records before publishing mission state. |
 | `mission_update.cpp` | Mission: the per-frame Mission::update with its MC2_MISSION_SPLIT timing, mover bridge, soak hooks and coherence audit. |
 | `mission_update_audit.cpp` | Mission: the runtime-bridge mover.state emitter and the mover-registry coherence audit that Mission::update calls once per frame. Declared in mission_internal.h. |
+| `mission_update_test.cpp` | Dev mission test: reports cached objective states and submits normal player orders. |
 | `mission_internal.h` | shared include bundle, extern globals and declarations of the pieces |
 
 ## `code/missiongui.cpp`

@@ -1247,14 +1247,21 @@
   },
   "code/brain_special_dispatch.cpp": {
    "LG04": 1,
-   "LG05": 5,
-   "LG06": 23,
+   "LG05": 4,
+   "LG06": 19,
    "LG11": 1,
    "LG14": 1
   },
   "code/brain_special_dispatch.h": {
    "LG05": 1,
    "LG06": 8
+  },
+  "code/brain_special_fsm_scan.cpp": {
+   "LG06": 1
+  },
+  "code/brain_special_vars.cpp": {
+   "LG05": 1,
+   "LG06": 3
   },
   "code/brain_symbol_resolve.cpp": {
    "LG05": 3,
@@ -3406,7 +3413,7 @@
    "LG20": 3
   }
  },
- "head": "7f336e160",
+ "head": "98749ad67",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
