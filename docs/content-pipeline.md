@@ -84,6 +84,24 @@ one 512 extent per mission (one array). Blocks are encoded with the installed Di
 + params + sha256 of **resolved bytes**, entries `<prefix><16 hex><ext>`, temp-file + atomic
 rename, per-kind LRU - the same rules as the engine's `cook_cache` (shadow/terrain cooks).
 
+Cooked texture and model directories also carry tool-only `cook.json` records, keyed by
+output filename: `sourceHash` (SHA-256 of the resolved source, or canonical model IR),
+`tool`, `toolVersion` (SHA-256 pin of implementation/encoder bytes), `params`, and
+`outputHash`. Records have sorted keys and no timestamps or output-directory paths;
+repeating the same cook produces identical records. Texture cache keys include the
+encoder/implementation pin. Legacy `batch_cook.py` and `cook_tgl_tiers.py` emit the
+same records for newly cooked outputs; skipping an existing file does not attest it.
+
+`py -3 tools/mc2texcook/cook_burnin_bc7.py SOURCE --output OUTPUT.ktx2` uses the
+common CPU texconv encoder (`-nogpu`, one thread) and KTX2 writer, bypassing the cache.
+The default `burnin` preset preserves the shipped colormap's linear UNORM, mip-0-only
+contract (vkFormat 145); `--preset base_color` cooks baked kit/remade building images
+with sRGB and a complete mip chain (146). Building images must have power-of-two edges.
+Neither preset resizes the source. Keep JPG/TGA fallbacks; this command does not deploy
+or change runtime probe order. Compare two independent output trees, including their
+`cook.json` files, before publishing. Stored BC7 remains lossy relative to its source;
+new cooks are not automatically substituted for shipped visuals.
+
 ## How things plug in
 
 - **New asset:** add a recipe entry (frontend + explicit per-slot classes + provenance), run

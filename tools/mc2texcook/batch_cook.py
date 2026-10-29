@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import subprocess
 import sys
 import tempfile
@@ -36,6 +37,10 @@ _HERE = Path(__file__).resolve().parent
 if str(_HERE) not in sys.path:
     sys.path.insert(0, str(_HERE))
 import mc2texcook  # noqa: E402
+sys.path.insert(0, str(_HERE.parents[1]))
+from tools.content_pipeline import provenance
+sys.path.insert(0, str(_HERE.parents[1] / "scripts"))
+import console_child
 
 
 def _cook_one(src_path: Path, dst_path: Path, preset: str, txm_size: int) -> tuple[int, int]:
@@ -85,6 +90,7 @@ def _cook_one_bc7(src_path: Path, dst_path: Path, ktx_tool: str,
         create_fmt = "R8G8B8A8_UNORM" if linear else "R8G8B8A8_SRGB"
         assign_tf = "linear" if linear else "srgb"
         create_step = [ktx_tool, "create", "--encode", "uastc",
+                       "--threads", "1",
                        "--format", create_fmt, "--assign-tf", assign_tf]
         if gen_mips:
             create_step.append("--generate-mipmap")
@@ -95,7 +101,9 @@ def _cook_one_bc7(src_path: Path, dst_path: Path, ktx_tool: str,
             [ktx_tool, "transcode", "--target", "bc7",
              str(uastc_path), str(dst_path)],
         ):
-            r = subprocess.run(step, capture_output=True, text=True)
+            r = subprocess.run(step, capture_output=True, text=True,
+                               env=dict(os.environ, OMP_NUM_THREADS="1"),
+                               **console_child.child_kwargs(redirected=True))
             if r.returncode != 0:
                 raise RuntimeError(
                     f"ktx step failed ({step[1]}): rc={r.returncode} "
@@ -196,6 +204,12 @@ def main() -> int:
                                          gen_mips=not args.no_mips, preset=args.preset)
                 else:
                     w, h = _cook_one(src_path, dst_path, args.preset, args.size)
+                provenance.record(dst_path, source_hash=provenance.sha256(src_path.read_bytes()),
+                    tool="mc2-batch-cook",
+                    version=provenance.tool_version(__file__, mc2texcook.__file__,
+                        *([args.ktx_tool] if args.bc7 else [])),
+                    params={"preset": args.preset, "txmSize": args.size, "bc7": args.bc7,
+                            "mips": not args.no_mips if args.bc7 else True})
                 key = f"{w}x{h}"
                 dim_hist[key] = dim_hist.get(key, 0) + 1
                 cooked += 1

@@ -24,7 +24,7 @@ from pathlib import Path
 
 import numpy as np
 
-from . import cache, gltf_io, ir, texcook, validate
+from . import cache, gltf_io, ir, texcook, validate, provenance
 
 PACKAGE_VERSION = "mc2-content-package/1"
 COOKER_VERSION = "mc2-content-cooker/9"  # glass panes carry stable UV1 night-window IDs
@@ -131,6 +131,12 @@ def cook_base_colors(asset, out, entry, compress, runtime_names=None):
             _write(tdir / Path(name).with_suffix(".ktx2"),
                    texcook.cook_ktx2(img, "base_color", alpha_cutoff=cutoff, compress=compress,
                        source_sha256=ir.sha256_bytes((bytes.fromhex(m.base_color.sha256) if m.base_color else b"") + img.tobytes())))
+            source_hash = m.base_color.sha256 if m.base_color else ir.sha256_bytes(bytes([255] * 4))
+            params = {"role": "base_color", "tier": tier, "width": img.shape[1], "height": img.shape[0],
+                      "factor": list(m.base_color_factor), "alphaMode": m.alpha_mode, "cutoff": cutoff,
+                      "texelScale": int(asset.frontend.get("texel_scale", 1))}
+            for output in (tdir / name, tdir / Path(name).with_suffix(".ktx2")):
+                texcook.record_cook(output, source_hash, params, compress)
             entry["files"].setdefault("base_color", []).append(f"data/tgl/{tier}/{name}")
 
     return names
@@ -219,6 +225,9 @@ def cook_asset(asset: ir.Asset, out: Path, *, compress=True, max_triangles=None,
             cache.write_entry(cache.DEFAULT_DIR, GEOMETRY_CACHE, key, data)
         entry.setdefault("geometry_cache", {})[stem] = {"key": f"{key:016x}", "hit": hit}
         _write(path, data)
+        provenance.record(path, source_hash=content, tool="mc2-content-cooker",
+            version=provenance.tool_version(__file__, gltf_io.__file__, ir.__file__),
+            params={"contract": COOKER_VERSION, "chain": stem, "names": names})
         issues = validate.validate_runtime_glb(path, max_triangles=max_triangles)
         entry["validation"][stem] = [list(i) for i in issues]
         if validate.errors(issues):
@@ -268,6 +277,8 @@ def cook_asset(asset: ir.Asset, out: Path, *, compress=True, max_triangles=None,
         if m.base_color is not None and m.base_color_policy != "stock" and not m.base_color.passthrough and alpha == "OPAQUE":
             rel = f"{aid}/detail/{slot}_albedo.ktx2"
             _write(mo / rel, _detail(types.SimpleNamespace(name=m.name, albedo=m.base_color), "albedo", entry, compress))
+            texcook.record_cook(mo / rel, m.base_color.sha256,
+                               {"role": "base_color", "edge": DETAIL_EDGE}, compress)
             row["albedo"] = rel
         for which in ("normal", "orm"):
             if getattr(m, which) is not None:
@@ -275,6 +286,8 @@ def cook_asset(asset: ir.Asset, out: Path, *, compress=True, max_triangles=None,
                 if key not in detail_paths:
                     rel = f"{aid}/detail/{slot}_{which}.ktx2"
                     _write(mo / rel, _detail(m, which, entry, compress))
+                    texcook.record_cook(mo / rel, getattr(m, which).sha256,
+                                       {"role": which, "edge": DETAIL_EDGE}, compress)
                     detail_paths[key] = rel
                 row[which] = detail_paths[key]
         slots.append(row)

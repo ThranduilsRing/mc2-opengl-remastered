@@ -30,9 +30,9 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
-from PIL import Image
+from PIL import Image, __version__ as PILLOW_VERSION
 
-from . import cache
+from . import cache, provenance
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts"))
 import console_child  # noqa: E402  (windowless console children; scripts/console_child.py)
@@ -275,7 +275,9 @@ def cook_ktx2(rgba: np.ndarray, role: str, *, alpha_cutoff=None, compress=True,
         raise ValueError(f"unknown texture role {role!r}")
     h, w = rgba.shape[:2]
     params = {"role": role, "w": w, "h": h, "cutoff": alpha_cutoff, "compress": compress,
-              "encoder": "texconv-cpu" if compress else "rgba8"}
+              "encoder": "texconv-cpu" if compress else "rgba8",
+              "toolVersion": texture_tool_version(compress),
+              "pillow": PILLOW_VERSION, "numpy": np.__version__}
     key = cache.cache_key(CONTRACT_VERSION, params, [source_sha256 or rgba.tobytes()])
 
     def produce():
@@ -286,6 +288,18 @@ def cook_ktx2(rgba: np.ndarray, role: str, *, alpha_cutoff=None, compress=True,
     if cache_dir == "default":
         cache_dir = cache.DEFAULT_DIR
     return cache.cached(cache_dir, KTX_KIND, key, produce)
+
+
+def texture_tool_version(compress=True):
+    return provenance.tool_version(__file__, Path(__file__).with_name("package.py"),
+                                   provenance.__file__, *([TEXCONV] if compress else []))
+
+
+def record_cook(output, source_hash, params, compress=True):
+    provenance.record(output, source_hash=source_hash, tool="mc2-content-texcook",
+                      version=texture_tool_version(compress),
+                      params=dict(params, contract=CONTRACT_VERSION, compress=compress,
+                                  pillow=PILLOW_VERSION, numpy=np.__version__))
 
 
 def write_tga(path, rgba: np.ndarray):

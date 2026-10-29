@@ -13,9 +13,13 @@ Usage:
     py -3 cook_tgl_tiers.py --zip <mc2-tgl.zip> --deploy <.../data/tgl>
         [--tiers 256,512,1024] [--test] [--limit N] [--preset albedo]
 """
-import argparse, io, subprocess, sys, tempfile, time, zipfile
+import argparse, io, os, subprocess, sys, tempfile, time, zipfile
 from pathlib import Path
 from PIL import Image
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from tools.content_pipeline import provenance
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts"))
+import console_child
 
 KTX = r"A:/Games/mc2-tools/ktx/ktx.exe"
 
@@ -30,10 +34,12 @@ def _ktx_cook(img: Image.Image, dst: Path, srgb: bool):
         img.convert("RGBA").save(png, "PNG")
         for step in (
             [KTX, "create", "--encode", "uastc", "--format", fmt,
-             "--assign-tf", tf, "--generate-mipmap", str(png), str(uastc)],
+             "--threads", "1", "--assign-tf", tf, "--generate-mipmap", str(png), str(uastc)],
             [KTX, "transcode", "--target", "bc7", str(uastc), str(dst)],
         ):
-            r = subprocess.run(step, capture_output=True, text=True)
+            r = subprocess.run(step, capture_output=True, text=True,
+                               env=dict(os.environ, OMP_NUM_THREADS="1"),
+                               **console_child.child_kwargs(redirected=True))
             if r.returncode != 0:
                 raise RuntimeError(f"ktx {step[1]} rc={r.returncode}: "
                                    f"{(r.stderr or r.stdout).strip()[:200]}")
@@ -101,6 +107,10 @@ def main() -> int:
                 ri = _resized(img, cap)
                 dst = args.deploy / str(cap) / (Path(stem).stem + ".ktx2")
                 _ktx_cook(ri, dst, srgb)
+                provenance.record(dst, source_hash=provenance.sha256(raw), tool="mc2-tgl-tiers",
+                    version=provenance.tool_version(__file__, KTX),
+                    params={"preset": args.preset, "tier": cap, "resize": "lanczos-never-upscale",
+                            "width": ri.width, "height": ri.height, "archiveEntry": e})
                 outs.append(f"{cap}:{ri.size[0]}x{ri.size[1]}")
                 cooked += 1
             print(f"  [{i}/{len(entries)}] {stem} (src {nw}x{nh}) -> {' '.join(outs)}")
