@@ -180,7 +180,13 @@ float legacyElevation(const World& w, const glm::vec3& position)
 TEST_CASE("los_kernel_worker_matrix") {
     World w;
     const int n = 6000;
-    const std::vector<mc2::los::Query> q = w.queries(n, 99u);
+    std::vector<mc2::los::Query> q = w.queries(n, 99u);
+    bool shared = false;
+    SUBCASE("mixed origins") {}
+    SUBCASE("shared sensor origin") {
+        shared = true;
+        for (auto& ray : q) ray.position = q.front().position;
+    }
 
     mc2::jobs::stopPool();
     std::vector<uint8_t> serial(static_cast<size_t>(n)), got(static_cast<size_t>(n));
@@ -189,14 +195,19 @@ TEST_CASE("los_kernel_worker_matrix") {
 
     int visible = 0;
     for (uint8_t v : serial) visible += v;
-    CHECK(visible > n / 10);       // the corpus exercises both outcomes
-    CHECK(visible < n - n / 10);
+    if (!shared) {
+        CHECK(visible > n / 10);       // the mixed corpus exercises both outcomes
+        CHECK(visible < n - n / 10);
+    }
 
     for (int workers : {1, 2, 4}) {
         mc2::jobs::startPool(workers);
-        std::fill(got.begin(), got.end(), uint8_t(2));
-        mc2::los::batch(w.snap, q, got);
-        CHECK(std::memcmp(serial.data(), got.data(), static_cast<size_t>(n)) == 0);
+        for (size_t count : {size_t(0), size_t(1), size_t(3), size_t(4), size_t(63), size_t(64), size_t(65), size_t(128), size_t(n)}) {
+            std::fill(got.begin(), got.end(), uint8_t(2));
+            mc2::los::batch(w.snap, std::span(q).first(count), std::span(got).first(count));
+            CHECK(std::memcmp(serial.data(), got.data(), count) == 0);
+            if (count < got.size()) CHECK(got[count] == 2);
+        }
         mc2::jobs::stopPool();
     }
     // Pool off: batch runs inline and still matches.

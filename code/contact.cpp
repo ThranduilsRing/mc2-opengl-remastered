@@ -631,6 +631,14 @@ long SensorSystem::scanBattlefield (void)
 	}
 	// SENSOR-SCAN-FACTS-1: cache the gate once outside the hot loop (OFF = one bool).
 	const bool _sfacts = mc2_sensor_trace::g_counters.active;
+	if (_sfacts) {
+		for (const Visit& v : visit) {
+			if (!v.candidate) continue;
+			++mc2_sensor_trace::g_counters.candidates;
+			if (glm::length(ObjectManager->getMover(v.ordinal)->getPosition() - owner->getPosition()) <= radius)
+				++mc2_sensor_trace::g_counters.neighbors;
+		}
+	}
 	// Stage only missing directional mover rays. Contacts cannot change poses or terrain;
 	// workers read the snapshot, and the original loop below still owns every contact update.
 	if (s_sensorLosScan && owner->isMover() && owner->getTeam() &&
@@ -664,6 +672,12 @@ long SensorSystem::scanBattlefield (void)
 				cells.push_back(cell);
 			}
 			if (!rays.empty()) {
+				if (_sfacts) {
+					++mc2_sensor_trace::g_counters.losBatches;
+					mc2_sensor_trace::g_counters.losRays += static_cast<long>(rays.size());
+					mc2_sensor_trace::g_counters.losBlocks += static_cast<long>((rays.size() + 63) / 64);
+					if (rays.size() <= 64) ++mc2_sensor_trace::g_counters.singleBlockBatches;
+				}
 				hits.resize(rays.size());
 				Team::lineOfSightBatch(rays, hits);
 				for (size_t i = 0; i < hits.size(); ++i)
