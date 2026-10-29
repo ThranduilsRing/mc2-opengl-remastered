@@ -30,6 +30,7 @@ bool s_tacticWeightsBEnabled();
 bool emitBrainIntent(MechBrainRuntime* runtime, int warriorId, TacticalOrderCode orderType, int targetWID,
                      float wx, float wy, float wz, uint32_t sourceBodyId);
 bool emitBrainClearMoveIntent(MechBrainRuntime* runtime, int warriorId);
+bool s_missionVarGate();
 bool emitBrainTargetPolicyIntent(MechBrainRuntime* runtime, int warriorId,
                                  long slot, long type, long p1, long p2, long p3);
 
