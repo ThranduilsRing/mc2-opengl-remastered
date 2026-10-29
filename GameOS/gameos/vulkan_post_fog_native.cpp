@@ -34,6 +34,7 @@
 #include "gos_postprocess.h"
 #include "vk_render_pass_timer.h"
 #include "vk_gpu_profile.h"   // VK-GPU-ZONES: MC2_VK_GPU_SCOPE
+#include <tracy/Tracy.hpp>
 #include "Gates/gate.h"
 #include "Gates/render_options.h"
 #include "Gates/gate_cold.h"   // str<>()
@@ -348,7 +349,8 @@ bool build_state(gosPostProcess::VkPostFogNative* s, int w, int h) {
         if (!mc2vk::create(s->pool, s->device, [&](VkDescriptorPool* h) { r = vkCreateDescriptorPool(s->device, &pci, nullptr, h); return r; })) {
             vlog("vkCreateDescriptorPool failed (%d).", static_cast<int>(r)); return false;
         }
-        for (auto& frame : s->frames) {
+    }
+    for (auto& frame : s->frames) {
         VkDescriptorSetLayout layouts[2] = { s->dsl.get(), s->dsl.get() };
         VkDescriptorSet setsOut[2] = { VK_NULL_HANDLE, VK_NULL_HANDLE };
         VkDescriptorSetAllocateInfo dsai{};
@@ -382,7 +384,6 @@ bool build_state(gosPostProcess::VkPostFogNative* s, int w, int h) {
         writes[3].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         writes[3].pBufferInfo = &oobUboInfo;
         vkUpdateDescriptorSets(s->device, 4, writes, 0, nullptr);
-        }
     }
 
     // Two pipelines — fixed-function state IDENTICAL to the subgraph's (fullscreen
@@ -513,6 +514,7 @@ void gosPostProcess::prewarmVkFog() {
 
 bool gosPostProcess::runVkPostFogNative()
 {
+    ZoneScopedN("VKIsl.Post.Fog");
     if (mc2::options::lowCost()) return true;
     const auto fog=RenderCore::vulkan::selectFogPasses(sceneHasTerrain_,edgeFogEnabled_,fogOobEnabled_,mapHalfExtent_);
     if (!fog.edge && !fog.oob) return false;
@@ -529,6 +531,7 @@ bool gosPostProcess::runVkPostFogNative()
     auto& frame = s->frames[mc2vk::getOrCreateEngineVulkanContext().frameContext().slot];
     // Wait only when reusing this slot, before host writes and command-buffer reset.
     {
+        ZoneScopedN("VKIsl.Post.FogSlotWait");
         const std::chrono::steady_clock::time_point tWait0 = std::chrono::steady_clock::now();
         if (!mc2vk::getOrCreateEngineVulkanContext().wait(mc2vk::GpuTicket{frame.ticket, 0}, 5ull * 1000 * 1000 * 1000, "post_prev_submit")) {
             setFallback("fence_timeout"); s->disabled = true; return false;

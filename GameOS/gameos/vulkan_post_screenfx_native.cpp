@@ -43,6 +43,7 @@
 #include "gos_postprocess.h"
 #include "vk_render_pass_timer.h"
 #include "vk_gpu_profile.h"   // VK-GPU-ZONES: MC2_VK_GPU_SCOPE
+#include <tracy/Tracy.hpp>
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"   // str<>()
 #include "Gates/render_options.h"   // options.cfg PropShadowReceive
@@ -437,8 +438,8 @@ bool build_state(gosPostProcess::VkPostScreenFx* s, int w, int h) {
         pci.maxSets = 6; pci.poolSizeCount = 2; pci.pPoolSizes = sizes;
         r = mc2vk::createChecked(s->pool, s->device, [&](auto* h) { return vkCreateDescriptorPool(s->device, &pci, nullptr, h); });
         if (r != VK_SUCCESS) { vlog("vkCreateDescriptorPool failed (%d).", static_cast<int>(r)); return false; }
-
-        for (auto& frame : s->frames) {
+    }
+    for (auto& frame : s->frames) {
         VkDescriptorSetAllocateInfo dsai{};
         dsai.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
         dsai.descriptorPool = s->pool.get(); dsai.descriptorSetCount = 1;
@@ -509,7 +510,6 @@ bool build_state(gosPostProcess::VkPostScreenFx* s, int w, int h) {
         writes[8].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         writes[8].pBufferInfo = &shadowUboInfo;
         vkUpdateDescriptorSets(s->device, 9, writes, 0, nullptr);
-        }
     }
 
     // Two pipelines — fullscreen tri, no vertex input, cull none, MULTIPLY
@@ -670,6 +670,7 @@ void gosPostProcess::prewarmVkScreenFx() {
 
 bool gosPostProcess::runVkPostScreenShadowStaticNative()
 {
+    ZoneScopedN("VKIsl.Post.Shadow");
     const bool dynamicCasterActive=mc2::gate::get<"MC2_SHADOW_ENABLE">();
     const bool moverReady=dynamicCasterActive && mc2_vk_shadow_island_movers_ready();
     const bool dynamicActive=dynamicCasterActive;
@@ -684,6 +685,7 @@ bool gosPostProcess::runVkPostScreenShadowStaticNative()
     auto& frame = s->frames[mc2vk::getOrCreateEngineVulkanContext().frameContext().slot];
     // Retire this frame slot before rewriting its descriptors/UBO or command buffer.
     {
+        ZoneScopedN("VKIsl.Post.ShadowSlotWait");
         const std::chrono::steady_clock::time_point tWait0 = std::chrono::steady_clock::now();
         if (!mc2vk::getOrCreateEngineVulkanContext().wait(mc2vk::GpuTicket{frame.ticket[0], 0}, 5ull * 1000 * 1000 * 1000, "post_prev_submit")) {
             setFallback("fence_timeout"); s->disabled = true; return false;
@@ -850,6 +852,7 @@ bool gosPostProcess::runVkPostScreenShadowStaticNative()
 // ---------------------------------------------------------------------------
 unsigned gosPostProcess::runVkPostScreenFxNative()
 {
+    ZoneScopedN("VKIsl.Post.ScreenFx");
     // Per-pass parity guards — EXACT mirrors of the GL bodies' early-outs.
     const bool wantCloud = g_fx.cloudGate != 0
         && enableCloudShadow_ && sceneHasTerrain_;
@@ -865,6 +868,7 @@ unsigned gosPostProcess::runVkPostScreenFxNative()
     auto& frame = s->frames[mc2vk::getOrCreateEngineVulkanContext().frameContext().slot];
     // Retire this frame slot; the other slot may still be executing on the GPU.
     {
+        ZoneScopedN("VKIsl.Post.ScreenFxSlotWait");
         const std::chrono::steady_clock::time_point tWait0 = std::chrono::steady_clock::now();
         if (!mc2vk::getOrCreateEngineVulkanContext().wait(mc2vk::GpuTicket{frame.ticket[1], 0}, 5ull * 1000 * 1000 * 1000, "post_prev_submit")) {
             setFallback("fence_timeout"); s->disabled = true; return 0;
