@@ -517,6 +517,7 @@ set(SOURCES
     "code/mission.cpp"
     "code/sim_tick_cost.cpp"
     "code/mission_update.cpp"
+    "code/mission_update_test.cpp"
     "code/mission_update_audit.cpp"
     "code/mission_movers.cpp"
     "code/mission_init.cpp"
