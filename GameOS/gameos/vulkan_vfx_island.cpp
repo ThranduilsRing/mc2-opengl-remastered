@@ -123,10 +123,10 @@ struct VfxGroupPush {
 static_assert(sizeof(VfxGroupPush) == 24, "VfxGroupPush push-constant size (vfx_particle.vert)");
 
 constexpr uint32_t kMaxSpritePages = 64;   // descriptor-set budget for the sprite pages
-// GPU-FRONTIER-1: the island runs up to three times per engine frame (particles, tube ribbons, vegetation). With two slots in total the third call
-// of a frame, or the first of the next, waited on a submit that had just gone out (Tracy: VKIsl.Vfx.SlotWait 0.78 ms mean). Each engine frame slot
-// now owns its own slot per call.
-constexpr uint32_t kVfxCallsPerFrame = 3;
+// Each engine frame can submit vegetation, billboards, tube ribbons and mesh effects.
+// Give each call its own command buffer and descriptors: sharing the last slot makes
+// the fourth call wait for the third call's same-frame GPU submission to retire.
+constexpr uint32_t kVfxCallsPerFrame = 4;
 constexpr uint32_t kVfxSlots = 2 * kVfxCallsPerFrame;
 
 // Sprite pages borrow generation identities from shared residency. Only descriptor pairs live here.
@@ -536,7 +536,7 @@ bool init_island(VfxIsland* s, int w, int h) {
             !s->oneAlphaPipe || !s->oneInvAlphaPipe || (GosVegetation::isEnabled() && !s->vegetationPipe)) { setFallback("pipeline_create_failed"); return false; }
     }
 
-    // Command pool + two command buffers (one per parity slot; the slot is reused once its last submit completed, a timeline ticket, no island fence).
+    // One command buffer per call and frame slot; reuse waits on its last timeline ticket.
     {
         VkCommandPoolCreateInfo pci{};
         pci.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
