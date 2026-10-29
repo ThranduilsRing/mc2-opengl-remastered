@@ -909,18 +909,9 @@ class TG_Shape
 		{
 			numVertices = numTriangles = 0;
 
-			// Slice 2 (object-offload) — Stage 2.C: keep s_listOfLights and
-			// s_numLights consistent. Pre-Stage-2.C a latent bug here cleared
-			// s_listOfLights but not s_numLights — never fired in practice
-			// because the only GatherLightsParameters call ran inside
-			// MultiTransformShape, immediately after SetLightList. Stage 2.C
-			// adds a render-time reader (GatherGpuObjectLightDataOnly via
-			// submitMultiShape) that can fire when init() ran on a freshly-
-			// constructed TG_Shape between an earlier actor's SetLightList
-			// and this read — null-deref on s_listOfLights[i] in
-			// GatherLightsParameters. Reset both to keep the count truthful.
-			s_listOfLights = nullptr;
-			s_numLights = 0;
+			// Light-list statics belong to the render pass (SetLightList), not
+			// this instance. Sim-side CreateFrom can construct leaves while
+			// draw gathers lights; resetting them here invalidates that gather.
 
 			aRGBHighlight = 0x00000000;
 			
