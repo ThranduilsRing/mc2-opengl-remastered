@@ -3212,7 +3212,7 @@
         },
         {
           "path": "tools/content_pipeline/texcook.py",
-          "line": 37,
+          "line": 38,
           "evidence": "import",
           "reference": "console_child",
           "text": "import console_child  # noqa: E402  (windowless console children; scripts/console_child.py)"
@@ -8666,7 +8666,7 @@
       "callers_by_stem": [
         {
           "path": "tools/content_pipeline/tests/test_content_pipeline.py",
-          "line": 601,
+          "line": 613,
           "evidence": "import",
           "reference": "test_ase_submaterial",
           "text": "from test_ase_submaterial import SINGLE_MAT_ASE"
@@ -9244,7 +9244,7 @@
         },
         {
           "path": "tools/content_pipeline/texcook.py",
-          "line": 34,
+          "line": 35,
           "evidence": "import",
           "reference": "tools.content_pipeline",
           "text": "from . import cache"
@@ -9322,7 +9322,7 @@
         },
         {
           "path": "tools/content_pipeline/texcook.py",
-          "line": 34,
+          "line": 35,
           "evidence": "import",
           "reference": "tools.content_pipeline.cache",
           "text": "from . import cache"
