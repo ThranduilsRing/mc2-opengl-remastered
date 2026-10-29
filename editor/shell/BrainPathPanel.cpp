@@ -7,6 +7,19 @@ void EntityPanels::brainPaths()
 {
     using namespace document;
     if (!brainPathError_.empty()) ImGui::TextWrapped("%s", brainPathError_.c_str());
+    if (ImGui::TreeNode("Mission brain sidecars")) {
+        ImGui::TextWrapped("Mission-wide sources. AI uses [Brain] unitRef/mode and [Tactics]; specials use TechSpecial bodies.");
+        constexpr std::array labels{"AI source (_ai.fit)", "Specials source (_specials.fit)"};
+        for (std::size_t i = 0; i < labels.size(); ++i) {
+            ImGui::PushID(static_cast<int>(i));
+            ImGui::InputTextMultiline(labels[i], &brainSidecarDrafts_[i], ImVec2(-1, 160));
+            if (ImGui::Button("Apply source")) report(history_.setBrainSidecar(i, brainSidecarDrafts_[i]));
+            ImGui::SameLine();
+            if (ImGui::Button("Remove sidecar")) report(history_.setBrainSidecar(i, std::nullopt));
+            ImGui::PopID();
+        }
+        ImGui::TreePop();
+    }
     if (ImGui::TreeNode("Patrol path")) {
         ImGui::InputText("Path name", &pathDraft_.name);
         ImGui::Checkbox("Loop", &pathDraft_.loop);

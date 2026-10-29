@@ -70,6 +70,8 @@ void EntityPanels::refresh()
             for (const auto& e : document_.entities()) if (e.packetRecord.has_value() == building) { selected = e.id; break; }
         }
     }
+    for (std::size_t i = 0; i < brainSidecarDrafts_.size(); ++i)
+        brainSidecarDrafts_[i] = document_.brainSidecars()[i].value_or("");
     if (const auto* e = document_.entity(unit_)) {
         unitDraft_.objectNumber = e->objectNumber;
         unitDraft_.objectProfile = e->objectProfile.value_or("");

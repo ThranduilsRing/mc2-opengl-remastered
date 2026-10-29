@@ -134,17 +134,89 @@ TEST_CASE("B4/stock mc2_01 byte-identical save and authored round trip" * doctes
     const auto target = output("mc2_01");
     REQUIRE(doc->save(target, {}));
     CHECK(bytes(target.string() + ".fit") == bytes(fit)); CHECK(bytes(target.string() + ".pak") == bytes(pak));
+    CHECK_FALSE(std::filesystem::exists(output("mc2_01_ai.fit")));
+    CHECK_FALSE(std::filesystem::exists(output("mc2_01_specials.fit")));
     const auto found = std::ranges::find_if(doc->entities(), [](const Entity& entity) { return entity.warrior.has_value(); });
     REQUIRE(found != doc->entities().end()); const auto id = found->id;
     const auto before = doc->fitBytes(); const auto assignment = doc->brainAssignment(id); REQUIRE(assignment);
     CommandHistory history(*doc); const std::array ids{id};
     REQUIRE(history.setPatrolPath(ids, path()));
     auto brain = *assignment; brain.module = "project_patrol"; REQUIRE(history.setBrainAssignment(brain));
+    const std::string ai = "FITini\r\n[Brain]\r\nst unitRef=\"" + doc->section(*doc->entity(id)->warrior)->name + "\"\r\nl mode=2\r\n";
+    REQUIRE(history.setBrainSidecar(0, ai));
     REQUIRE(doc->save(output("mc2_01_authored"), {}));
     auto reopened = MissionDocument::read(output("mc2_01_authored.fit"), output("mc2_01_authored.pak"), {}, doc->markerObjects()); REQUIRE(reopened);
     REQUIRE(reopened->patrolPath(id)); CHECK(**reopened->patrolPath(id) == path());
     REQUIRE(reopened->brainAssignment(id)); CHECK(*reopened->brainAssignment(id) == brain);
-    REQUIRE(history.undo()); REQUIRE(history.undo()); CHECK(doc->fitBytes() == before);
+    CHECK(reopened->brainSidecars()[0] == ai);
+    REQUIRE(history.undo()); REQUIRE(history.undo()); REQUIRE(history.undo()); CHECK(doc->fitBytes() == before);
     REQUIRE(doc->save(output("mc2_01_undo"), {}));
     CHECK(bytes(output("mc2_01_undo.fit")) == bytes(fit)); CHECK(bytes(output("mc2_01_undo.pak")) == bytes(pak));
 }
+
+TEST_CASE("B4/mission brain sidecars preserve source absence and undo across structural edits") {
+    auto doc = fixture(); CommandHistory history(doc);
+    const auto id = history.insertUnit(unit()); REQUIRE(id);
+    const auto stem = output("sidecar_roundtrip");
+    REQUIRE(doc.save(stem, {})); CHECK_FALSE(doc.modified());
+    const auto fit = doc.fitBytes();
+    const std::string ai = "FITini\r\n// preserve unknown fields and whitespace\r\n[Brain]\r\nst unitRef = \"Warrior1\"\r\nl mode = 2\r\nst Extension=\"opaque\"\r\n";
+    const std::string specials = "// existing TechSpecial grammar\nTechSpecial {\n key=\"test\"\n type=\"MissionSpecial\"\n Body {\n STOP\n }\n}\n";
+    REQUIRE(history.setBrainSidecar(0, ai)); REQUIRE(history.setBrainSidecar(1, specials));
+    CHECK(doc.modified()); CHECK(doc.fitBytes() == fit);
+    auto brain = doc.brainAssignment(*id); REQUIRE(brain); brain->module = "changed";
+    REQUIRE(history.setBrainAssignment(*brain)); CHECK(doc.brainSidecars()[0] == ai);
+    REQUIRE(history.undo()); CHECK(doc.brainSidecars()[1] == specials);
+    REQUIRE(doc.save(stem, {})); CHECK_FALSE(doc.modified());
+    auto reopened = MissionDocument::read(output("sidecar_roundtrip.fit"), output("sidecar_roundtrip.pak"), {});
+    REQUIRE(reopened); CHECK(reopened->brainSidecars() == doc.brainSidecars()); CHECK_FALSE(reopened->modified());
+    const auto revision = doc.revision(); REQUIRE(history.setBrainSidecar(0, ai)); CHECK(doc.revision() == revision);
+    CHECK_FALSE(history.setBrainSidecar(2, ai)); CHECK_FALSE(history.setBrainSidecar(0, std::string("x\0y", 3)));
+    REQUIRE(history.setBrainSidecar(0, std::nullopt)); CHECK(doc.modified());
+    REQUIRE(history.undo()); CHECK_FALSE(doc.modified()); REQUIRE(history.redo());
+    REQUIRE(history.setBrainSidecar(1, std::string{})); // empty source is distinct from absence
+    REQUIRE(doc.save(stem, {}));
+    CHECK_FALSE(std::filesystem::exists(output("sidecar_roundtrip_ai.fit")));
+    CHECK(bytes(output("sidecar_roundtrip_specials.fit")).empty());
+    reopened = MissionDocument::read(output("sidecar_roundtrip.fit"), output("sidecar_roundtrip.pak"), {});
+    REQUIRE(reopened); CHECK_FALSE(reopened->brainSidecars()[0]); REQUIRE(reopened->brainSidecars()[1]);
+    CHECK(reopened->brainSidecars()[1]->empty());
+    REQUIRE(reopened->save(output("sidecar_copy"), {}));
+    CHECK(bytes(output("sidecar_copy.fit")) == bytes(output("sidecar_roundtrip.fit")));
+    CHECK(bytes(output("sidecar_copy.pak")) == bytes(output("sidecar_roundtrip.pak")));
+    CHECK(bytes(output("sidecar_copy_specials.fit")).empty());
+}
+
+TEST_CASE("B4/sidecar destination failure leaves mission and dirty state unchanged") {
+    auto doc = fixture(); CommandHistory history(doc);
+    const auto stem = output("sidecar_failure"); REQUIRE(doc.save(stem, {}));
+    const auto beforeFit = bytes(output("sidecar_failure.fit")), beforePak = bytes(output("sidecar_failure.pak"));
+    REQUIRE(history.setBrainSidecar(0, "FITini\n[Brain]\nst unitRef=\"Warrior1\"\nl mode=2\n"));
+    const auto obstacle = output("sidecar_failure_ai.fit"); std::filesystem::create_directory(obstacle);
+    CHECK_FALSE(doc.save(stem, {})); CHECK(doc.modified());
+    CHECK(bytes(output("sidecar_failure.fit")) == beforeFit); CHECK(bytes(output("sidecar_failure.pak")) == beforePak);
+    std::filesystem::remove(obstacle);
+}
+
+#ifdef _WIN32
+TEST_CASE("B4/locked specials rollback restores FIT PAK and earlier AI backup") {
+    auto doc = fixture(); CommandHistory history(doc);
+    REQUIRE(history.setBrainSidecar(0, "// original AI\n"));
+    REQUIRE(history.setBrainSidecar(1, "// original specials\n"));
+    const auto stem = output("sidecar_rollback"); REQUIRE(doc.save(stem, {}));
+    const auto fit = bytes(output("sidecar_rollback.fit")), pak = bytes(output("sidecar_rollback.pak"));
+    const auto ai = bytes(output("sidecar_rollback_ai.fit")), specials = bytes(output("sidecar_rollback_specials.fit"));
+    REQUIRE(history.setBrainSidecar(0, "// replacement AI\n"));
+    REQUIRE(history.setBrainSidecar(1, "// replacement specials\n"));
+    REQUIRE(history.setText(doc.find("MissionSettings", "MissionName")->id, "Changed", "Name"));
+    {
+        // MSVC's file stream shares reads/writes but excludes delete/rename.
+        std::ifstream locked(output("sidecar_rollback_specials.fit"), std::ios::binary); REQUIRE(locked);
+        const auto failed = doc.save(stem, {}); REQUIRE_FALSE(failed);
+        CHECK(failed.error().reason == "backup_failed"); CHECK(doc.modified());
+        CHECK(bytes(output("sidecar_rollback.fit")) == fit); CHECK(bytes(output("sidecar_rollback.pak")) == pak);
+        CHECK(bytes(output("sidecar_rollback_ai.fit")) == ai); CHECK(bytes(output("sidecar_rollback_specials.fit")) == specials);
+    }
+    REQUIRE(doc.save(stem, {})); CHECK_FALSE(doc.modified());
+}
+#endif

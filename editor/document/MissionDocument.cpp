@@ -40,12 +40,12 @@ void diagnostic(const Diagnostic& log, std::string_view mission, const LoadError
 {
     if (log) log(std::format("[EDITOR_MODEL v1] mission={} field={} offset={} reason={} rejected=1", logText(mission), logText(error.field), error.offset, error.reason));
 }
-std::expected<std::vector<std::byte>, LoadError> readBytes(const std::filesystem::path& path, std::size_t limit)
+std::expected<std::vector<std::byte>, LoadError> readBytes(const std::filesystem::path& path, std::size_t limit, bool allowEmpty = false)
 {
     std::ifstream input(path, std::ios::binary | std::ios::ate);
     if (!input) return std::unexpected(LoadError{pathText(path.filename()), "open_failed", 0});
     const auto size = input.tellg();
-    if (size <= 0 || static_cast<std::uint64_t>(size) > limit) return std::unexpected(LoadError{pathText(path.filename()), "file_size_limit", 0});
+    if (size < 0 || (!allowEmpty && size == 0) || static_cast<std::uint64_t>(size) > limit) return std::unexpected(LoadError{pathText(path.filename()), "file_size_limit", 0});
     std::vector<std::byte> result(static_cast<std::size_t>(size));
     input.seekg(0);
     input.read(reinterpret_cast<char*>(result.data()), size);
@@ -76,6 +76,13 @@ bool writeBytes(const std::filesystem::path& path, std::span<const std::byte> by
     output.close();
     return wrote && static_cast<bool>(output);
 }
+std::array<std::filesystem::path, 2> sidecarPaths(std::filesystem::path fit)
+{
+    fit.replace_extension();
+    auto ai = fit, specials = fit;
+    ai += "_ai.fit"; specials += "_specials.fit";
+    return {ai, specials};
+}
 std::expected<void, LoadError> recoveryState(const std::filesystem::path& fit)
 {
     std::error_code ec;
@@ -104,7 +111,20 @@ std::expected<MissionDocument, LoadError> MissionDocument::read(const std::files
     if (!source) { diagnostic(log, pathText(fit), source.error()); return std::unexpected(source.error()); }
     auto packets = readBytes(pak, pakByteLimit);
     if (!packets) { diagnostic(log, pathText(fit), packets.error()); return std::unexpected(packets.error()); }
-    return decode(std::string(reinterpret_cast<const char*>(source->data()), source->size()), std::move(*packets), pathText(fit), log, markerObjects);
+    auto document = decode(std::string(reinterpret_cast<const char*>(source->data()), source->size()), std::move(*packets), pathText(fit), log, markerObjects);
+    if (!document) return document;
+    const auto sidecars = sidecarPaths(fit);
+    for (std::size_t i = 0; i < sidecars.size(); ++i) {
+        std::error_code ec;
+        const bool exists = std::filesystem::exists(sidecars[i], ec);
+        if (ec) return std::unexpected(LoadError{pathText(sidecars[i]), "sidecar_query_failed", 0});
+        if (!exists) continue;
+        auto bytes = readBytes(sidecars[i], fitByteLimit, true);
+        if (!bytes) return std::unexpected(bytes.error());
+        document->brainSidecars_[i] = std::string(reinterpret_cast<const char*>(bytes->data()), bytes->size());
+    }
+    document->savedBrainSidecars_ = document->brainSidecars_;
+    return document;
 }
 
 std::expected<MissionDocument, LoadError> MissionDocument::decode(std::string fit, std::vector<std::byte> pak, std::string mission,
@@ -628,7 +648,7 @@ std::string MissionDocument::fitBytes() const
 }
 bool MissionDocument::modified() const
 {
-    return placements_ != savedPlacements_ || fitBytes() != savedFit_;
+    return placements_ != savedPlacements_ || fitBytes() != savedFit_ || brainSidecars_ != savedBrainSidecars_;
 }
 
 std::expected<void, LoadError> MissionDocument::assign(NodeId id, Value value)
@@ -663,6 +683,13 @@ std::expected<void, LoadError> MissionDocument::save(const std::filesystem::path
     auto pakBackup = pak; pakBackup += ".previous." + transaction;
     auto journal = fit; journal.replace_extension(); journal += ".transaction.active";
     auto completedJournal = fit; completedJournal.replace_extension(); completedJournal += ".transaction." + transaction;
+    const auto sidecars = sidecarPaths(fit);
+    auto sidecarStages = sidecars, sidecarBackups = sidecars;
+    std::array<bool, 2> hadSidecars{}, oldSidecars{}, newSidecars{};
+    for (std::size_t i = 0; i < sidecars.size(); ++i) {
+        sidecarStages[i] += ".stage." + transaction;
+        sidecarBackups[i] += ".previous." + transaction;
+    }
     std::error_code ec;
     if (std::filesystem::exists(fitStage, ec) || std::filesystem::exists(pakStage, ec) || std::filesystem::exists(fitBackup, ec) || std::filesystem::exists(pakBackup, ec) || std::filesystem::exists(completedJournal, ec)) return reject("recovery_files_present");
     if (ec) return reject("destination_query_failed");
@@ -670,17 +697,33 @@ std::expected<void, LoadError> MissionDocument::save(const std::filesystem::path
     if (ec || (hadFit && !std::filesystem::is_regular_file(fit, ec))) return reject("destination_not_regular");
     const bool hadPak = std::filesystem::exists(pak, ec);
     if (ec || (hadPak && !std::filesystem::is_regular_file(pak, ec))) return reject("destination_not_regular");
+    for (std::size_t i = 0; i < sidecars.size(); ++i) {
+        hadSidecars[i] = std::filesystem::exists(sidecars[i], ec);
+        if (ec || (hadSidecars[i] && !std::filesystem::is_regular_file(sidecars[i], ec))) return reject("destination_not_regular");
+        if (std::filesystem::exists(sidecarStages[i], ec) || std::filesystem::exists(sidecarBackups[i], ec)) return reject("recovery_files_present");
+        if (ec) return reject("destination_query_failed");
+    }
     if (!fit.parent_path().empty()) std::filesystem::create_directories(fit.parent_path(), ec);
     if (ec) return reject("staging_directory_failed");
     const auto recovery = recoveryState(fit);
     if (!recovery) return reject(recovery.error().reason);
-    const std::string pending = "pending\nFIT=" + pathText(fit) + "\nPAK=" + pathText(pak) + "\nFIT_previous=" + pathText(fitBackup) + "\nPAK_previous=" + pathText(pakBackup) + "\n";
+    std::string pending = "pending\nFIT=" + pathText(fit) + "\nPAK=" + pathText(pak) + "\nFIT_previous=" + pathText(fitBackup) + "\nPAK_previous=" + pathText(pakBackup) + "\n";
+    for (std::size_t i = 0; i < sidecars.size(); ++i)
+        pending += "sidecar=" + pathText(sidecars[i]) + "\nsidecar_previous=" + pathText(sidecarBackups[i]) +
+            "\nsidecar_stage=" + pathText(sidecarStages[i]) + "\nsidecar_present=" + (brainSidecars_[i] ? "1\n" : "0\n");
     // A single exclusive journal reserves this destination against another publisher.
     if (!writeBytes(journal, std::as_bytes(std::span(pending)), true)) return reject("journal_write_failed");
     const auto output = fitBytes();
     if (!writeBytes(fitStage, std::as_bytes(std::span(output)), true) || !writeBytes(pakStage, pakBytes(), true)) return reject("staging_write_failed");
     auto verified = read(fitStage, pakStage, {}, markerObjects_);
     if (!verified || verified->fitBytes() != output || !std::ranges::equal(verified->pakBytes(), pakBytes())) return reject("staging_verification_failed");
+    for (std::size_t i = 0; i < sidecars.size(); ++i) if (brainSidecars_[i]) {
+        const auto& source = *brainSidecars_[i];
+        if (!writeBytes(sidecarStages[i], std::as_bytes(std::span(source)), true)) return reject("staging_write_failed");
+        const auto bytes = readBytes(sidecarStages[i], fitByteLimit, true);
+        if (!bytes || bytes->size() != source.size() ||
+            !std::ranges::equal(*bytes, std::as_bytes(std::span(source)))) return reject("staging_verification_failed");
+    }
     bool oldFit{}, oldPak{}, newFit{}, newPak{};
     auto rollback = [&] {
         bool ok = true;
@@ -689,8 +732,10 @@ std::expected<void, LoadError> MissionDocument::save(const std::filesystem::path
         };
         if (newFit) restore(fit, fitStage);
         if (newPak) restore(pak, pakStage);
+        for (std::size_t i = 0; i < sidecars.size(); ++i) if (newSidecars[i]) restore(sidecars[i], sidecarStages[i]);
         if (oldFit) restore(fitBackup, fit);
         if (oldPak) restore(pakBackup, pak);
+        for (std::size_t i = 0; i < sidecars.size(); ++i) if (oldSidecars[i]) restore(sidecarBackups[i], sidecars[i]);
         if (ok) {
             const std::string rolledBack = "rolled_back\n" + pending.substr(8);
             ok = writeBytes(journal, std::as_bytes(std::span(rolledBack)));
@@ -700,18 +745,29 @@ std::expected<void, LoadError> MissionDocument::save(const std::filesystem::path
     };
     if (hadFit) { std::filesystem::rename(fit, fitBackup, ec); if (ec) return reject(rollback() ? "backup_failed" : "rollback_failed"); oldFit = true; }
     if (hadPak) { std::filesystem::rename(pak, pakBackup, ec); if (ec) return reject(rollback() ? "backup_failed" : "rollback_failed"); oldPak = true; }
+    for (std::size_t i = 0; i < sidecars.size(); ++i) if (hadSidecars[i]) {
+        std::filesystem::rename(sidecars[i], sidecarBackups[i], ec);
+        if (ec) return reject(rollback() ? "backup_failed" : "rollback_failed");
+        oldSidecars[i] = true;
+    }
     std::filesystem::rename(fitStage, fit, ec);
     if (ec) return reject(rollback() ? "publication_failed" : "rollback_failed");
     newFit = true;
     std::filesystem::rename(pakStage, pak, ec);
     if (ec) return reject(rollback() ? "publication_failed" : "rollback_failed");
     newPak = true;
+    for (std::size_t i = 0; i < sidecars.size(); ++i) if (brainSidecars_[i]) {
+        std::filesystem::rename(sidecarStages[i], sidecars[i], ec);
+        if (ec) return reject(rollback() ? "publication_failed" : "rollback_failed");
+        newSidecars[i] = true;
+    }
     const std::string committed = "committed\n" + pending.substr(8);
     if (!writeBytes(journal, std::as_bytes(std::span(committed)))) return reject(rollback() ? "journal_commit_failed" : "rollback_failed");
     std::filesystem::rename(journal, completedJournal, ec);
     if (ec) return reject(rollback() ? "journal_archive_failed" : "rollback_failed");
     savedFit_ = output;
     savedPlacements_ = placements_;
+    savedBrainSidecars_ = brainSidecars_;
     mission_ = pathText(fit);
     return {};
 }

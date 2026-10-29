@@ -51,6 +51,7 @@ public:
     std::expected<void, LoadError> setLegacyBrain(EntityId unit, std::string module);
     std::expected<void, LoadError> setPatrolPath(std::span<const EntityId> units, std::optional<PatrolPath> path);
     std::expected<void, LoadError> setBrainAssignment(const BrainAssignment& assignment);
+    std::expected<void, LoadError> setBrainSidecar(std::size_t index, std::optional<std::string> source);
     std::expected<void, LoadError> replace(std::string fit, std::vector<std::byte> pak,
         std::string mission, const Diagnostic& log);
     void adopt(MissionDocument document);

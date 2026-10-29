@@ -182,6 +182,16 @@ std::expected<void, LoadError> CommandHistory::setPatrolPath(std::span<const Ent
     return commitStructure(edited(std::move(fit), std::move(edits)), document_.placements_, identities(document_), "Patrol path");
 }
 
+std::expected<void, LoadError> CommandHistory::setBrainSidecar(std::size_t index, std::optional<std::string> source)
+{
+    if (index >= document_.brainSidecars_.size()) return reject("invalid_sidecar_index");
+    if (source && (source->size() > fitByteLimit || source->find('\0') != source->npos)) return reject("invalid_sidecar_source");
+    if (document_.brainSidecars_[index] == source) return {};
+    auto after = document_.structuralState();
+    after.brainSidecars[index] = std::move(source);
+    return commit(StructuralCommand{document_.structuralState(), std::move(after), "Brain sidecar"});
+}
+
 std::expected<void, LoadError> CommandHistory::setBrainAssignment(const BrainAssignment& assignment)
 {
     auto before = document_.brainAssignment(assignment.entity);

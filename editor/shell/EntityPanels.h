@@ -87,6 +87,7 @@ private:
     std::string module_, status_;
     document::PatrolPath pathDraft_;
     std::optional<document::BrainAssignment> brainDraft_;
+    std::array<std::string, 2> brainSidecarDrafts_;
     std::string brainPathError_;
     void brainPaths();
     int unitTeam_{}, buildingTeam_{}, playerTeam_{};

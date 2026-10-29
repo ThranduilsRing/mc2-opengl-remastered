@@ -256,6 +256,7 @@ struct StructuralState {
     std::vector<Entity> entities;
     std::vector<Objective> objectives;
     std::vector<std::byte> placements;
+    std::array<std::optional<std::string>, 2> brainSidecars;
 };
 
 inline std::string identifier(std::string_view text) {
@@ -300,6 +301,8 @@ public:
     const Entity* entity(EntityId id) const;
     std::expected<std::optional<PatrolPath>, LoadError> patrolPath(EntityId id) const;
     std::expected<BrainAssignment, LoadError> brainAssignment(EntityId id) const;
+    // Existing mission authoring formats: [0] _ai.fit, [1] _specials.fit.
+    const std::array<std::optional<std::string>, 2>& brainSidecars() const { return brainSidecars_; }
     bool hasMarkerReference(EntityId id) const;
     std::expected<std::optional<NodeId>, LoadError> markerReference(EntityId id) const;
     std::string fitBytes() const;
@@ -317,6 +320,7 @@ private:
     std::vector<std::uint32_t> markerObjects_;
     std::vector<Objective> objectives_;
     std::string savedFit_;
+    std::array<std::optional<std::string>, 2> brainSidecars_, savedBrainSidecars_;
     std::vector<std::byte> savedPlacements_, placements_, encodedPak_;
     std::unordered_map<std::string, std::unordered_map<std::string, NodeId>> index_;
     std::unordered_map<std::uint64_t, std::size_t> fieldIndex_;
