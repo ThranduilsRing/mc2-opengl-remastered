@@ -1,0 +1,15 @@
+{
+  "schema_v": 1,
+  "tile_px": 32,
+  "regions": [
+    {"name": "world", "rect": [0, 0, 1, 0.8], "channel_delta": 16, "changed_fraction": 0.02},
+    {"name": "hud", "rect": [0, 0.8, 1, 1], "channel_delta": 24, "changed_fraction": 0.05}
+  ],
+  "scenes": [
+    {"name": "day", "mission": "mc2_01", "bookmarks": "mc2_01_buildings.json", "pose": "airport_bldgs_close"},
+    {"name": "night", "mission": "mc2_10", "bookmarks": "mc2_10_night_runway_low.json", "pose": "night_runway_threshold"},
+    {"name": "base", "mission": "mc2_03", "bookmarks": "mc2_03_building_faces.json", "pose": "industrial_lightaway"},
+    {"name": "battle", "mission": "mc2_24", "bookmarks": "mc2_24_building_faces.json", "pose": "fortress_lightaway"},
+    {"name": "mech", "mission": "mc2_01", "bookmarks": "mc2_01_saved_mechday.json", "pose": "saved_mechday"}
+  ]
+}

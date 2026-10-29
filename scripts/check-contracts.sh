@@ -1467,6 +1467,7 @@ run_check "smoke_matrices"             "py -3 scripts/check-smoke-matrices.py --
 # were both graded as run/release manifests and told to grow an identity block.
 run_check "manifest_schema"            "py -3 scripts/check-manifest-schema.py --strict"
 run_check "perf_budget_schema"         "py -3 tools/perf/budget_check.py --validate-schema"
+run_check "visual_regression_schema"   "py -3 scripts/run_visual.py --validate-schema"
 # new_gates (scripts/check-new-gates.py --base HEAD~1) is retired: a new MC2_* gate in a diff must be a row of the gate
 # table or it does not compile, and a raw getenv is a ratchet failure. Last revision of the script: a0cf5620d.
 
