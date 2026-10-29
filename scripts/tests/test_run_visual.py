@@ -90,5 +90,16 @@ def test_report_and_missing_sidecar(tmp_path, config):
     assert 'viewport' in (out / "index.html").read_text()
     assert json.loads((out / "report.json").read_text())["scenes"][0]["boxes"]
     path.with_suffix(".json").unlink()
-    with pytest.raises(OSError):
-        visual.compare(golden, candidate, out, config)
+    assert visual.compare(golden, candidate, out, config) == 2
+    assert json.loads((out / "report.json").read_text())["status"] == "INCOMPLETE"
+
+
+def test_interrupted_set_never_passes(tmp_path, config):
+    golden, candidate = tmp_path / "golden", tmp_path / "candidate"
+    make_set(golden, config)
+    make_set(candidate, config)
+    (candidate / "set.json").unlink()
+    assert visual.compare(golden, candidate, tmp_path / "report", config) == 2
+    report = json.loads((tmp_path / "report/report.json").read_text())
+    assert report["status"] == "INCOMPLETE"
+    assert all(row["boxes"] == [] for row in report["scenes"])

@@ -47,6 +47,9 @@ py -3 scripts/run_visual.py --compare-only CAPTURE_DIR --golden GOLDEN_DIR --out
 
 Exit codes: 0 clean, 1 changed regions, 2 invalid or missing evidence. Missing
 PNGs/sidecars, non-deterministic captures, incompatible dimensions, camera poses,
-render settings or recipes fail explicitly. A change in simulation timing is
+render settings or recipes fail explicitly. Interrupted sets and missing scene
+evidence produce an `INCOMPLETE` report (exit 2), showing available montages and
+the missing scenes; even identical available frames cannot make that report clean.
+A change in simulation timing is
 recorded in the report and may explain boxed changes; this tool is not a sim
 determinism verdict.

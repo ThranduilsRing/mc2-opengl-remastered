@@ -123,23 +123,35 @@ def changed_boxes(a, b, doc):
 def compare(golden, candidate, out, doc):
     from PIL import Image, ImageDraw
     import numpy as np
-    # Both arms must use the same capture recipe and tolerance map.
+    # An interrupted sweep can be reviewed, but can never receive a clean verdict.
+    errors = []
     for directory in (golden, candidate):
-        if json.loads((directory / "set.json").read_text(encoding="utf-8"))["config"] != doc:
+        manifest = directory / "set.json"
+        if not manifest.is_file():
+            errors.append(f"incomplete capture set: {manifest}")
+        elif json.loads(manifest.read_text(encoding="utf-8"))["config"] != doc:
             raise ValueError(f"capture recipe differs: {directory}")
     out.mkdir(parents=True, exist_ok=True)
     rows, cards = [], []
     for scene in doc["scenes"]:
-        ap, aside = evidence(golden, scene)
-        bp, bside = evidence(candidate, scene)
+        try:
+            ap, aside = evidence(golden, scene)
+            bp, bside = evidence(candidate, scene)
+            # Open both files before accepting a scene as usable evidence.
+            with Image.open(ap) as src:
+                a = src.convert("RGB")
+            with Image.open(bp) as src:
+                b = src.convert("RGB")
+        except (OSError, ValueError, KeyError, TypeError) as exc:
+            rows.append({"scene": scene["name"], "error": str(exc)})
+            errors.append(f"{scene['name']}: {exc}")
+            cards.append(f'<article><h2>{scene["name"]}: INCOMPLETE</h2>'
+                         f'<p>{html.escape(str(exc))}</p></article>')
+            continue
         for key in ("cap_pos", "cap_rot", "cap_proj", "cap_alt", "width", "height",
                     "trigger_frame", "seed", "render_options"):
             if aside.get(key) != bside.get(key):
                 raise ValueError(f"incompatible {key} in {scene['name']} sidecars")
-        with Image.open(ap) as src:
-            a = src.convert("RGB")
-        with Image.open(bp) as src:
-            b = src.convert("RGB")
         boxes = changed_boxes(a, b, doc)
         mad = float(np.abs(np.asarray(a, dtype=np.int16) - np.asarray(b, dtype=np.int16)).mean())
         rows.append({"scene": scene["name"], "mad": mad, "boxes": boxes,
@@ -157,8 +169,9 @@ def compare(golden, candidate, out, doc):
         cards.append(f'<article><h2>{html.escape(scene["name"])}: {len(boxes)} changed regions</h2>'
                      f'<p>Golden (left) / candidate (right, red boxes). MAD {mad:.4f} (informational).</p>'
                      f'<a href="{name}"><img src="{name}" alt="{scene["name"]} comparison"></a></article>')
-    changed = any(row["boxes"] for row in rows)
-    report = {"schema_v": 1, "status": "CHANGED" if changed else "CLEAN", "scenes": rows,
+    changed = any(row.get("boxes") for row in rows)
+    status = "INCOMPLETE" if errors else "CHANGED" if changed else "CLEAN"
+    report = {"schema_v": 1, "status": status, "errors": errors, "scenes": rows,
               "golden": str(golden), "candidate": str(candidate), "tolerances": doc["regions"]}
     (out / "report.json").write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
     (out / "index.html").write_text('<!doctype html><html lang="en"><meta charset="utf-8">'
@@ -167,9 +180,10 @@ def compare(golden, candidate, out, doc):
         'font:16px system-ui}img{width:100%;height:auto}article{margin:24px 0}a{color:#9cf}</style>'
         f'<h1>Visual Phase A: {report["status"]}</h1><p>Local region tolerances decide the result. '
         'Tap a montage to inspect at full resolution. <a href="report.json">Box coordinates and tolerances</a>.</p>'
+        + ''.join(f'<p>{html.escape(error)}</p>' for error in errors)
         + ''.join(cards) + '</html>', encoding="utf-8")
-    print(f"{report['status']}: {sum(len(r['boxes']) for r in rows)} changed regions; {out / 'index.html'}")
-    return int(changed)
+    print(f"{status}: {sum(len(r.get('boxes', [])) for r in rows)} changed regions; {out / 'index.html'}")
+    return 2 if errors else int(changed)
 
 
 def main():
