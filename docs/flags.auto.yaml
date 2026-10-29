@@ -3717,7 +3717,8 @@ flags:
     default: true
     rule: Lead0Kill
     owner: code
-    doc: "G7: run the banked sim tick on a worker overlapped with the frame tail; 0 = serial loop."
+    retire_by: 2026-11-04
+    doc: "G7b: run the banked sim tick on a worker during snapshot drawing; 0 = serial loop. Retire after three green merge windows."
     smoke_passthrough: true
     verified: true
   - name: MC2_SIM_OVERLAP_AUDIT

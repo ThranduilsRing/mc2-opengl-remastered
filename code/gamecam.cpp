@@ -89,6 +89,7 @@ extern "C" void mc2_vfx_pass_end();
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"   // str<>()
 #include "impact_presentation.h"
+#include "render_view.h"
 
 namespace {
 // Marks the quads drawn inside a scope as exempt from the HUD batch's bottom-band shrink, then restores the previous state.
@@ -757,7 +758,7 @@ void GameCamera::render (void)
 	std::unique_ptr<gosFX::PertCloud::Specification> oraclePert;
 	std::vector<gosFX::EffectPtr> oracleMeshes;
 
-	if (active && turn > 1)
+	if (active && mc2::render_view::clock().turn > 1)   // G7b K3: the extracted turn, not the live one
 	{
 		ZoneScopedN("GameCamera::render activeScene");
 		//----------------------------------------------------------

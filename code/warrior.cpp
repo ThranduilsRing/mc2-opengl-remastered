@@ -1,3 +1,4 @@
+#include "tick_commit.h"
 //===========================================================================//
 // Copyright (C) Microsoft Corporation. All rights reserved.                 //
 //===========================================================================//
@@ -718,7 +719,12 @@ bool limitFrequency = true;
 				return;
 				
 			radioLog.lastMessageTime = scenarioTime;
-			radioLog.lastMessage = radio->playMessage(static_cast<RadioMessageType>(message));
+            // Radios are mission-owned. A reused pilot slot receives another radio.
+            auto speak = [this, requestedRadio = radio, message] {
+                if (radio == requestedRadio)
+                    radioLog.lastMessage = requestedRadio->playMessage(static_cast<RadioMessageType>(message));
+            };
+            if (!mc2::tick::defer(mc2::tick::Queue::Sound, speak)) speak();
 			radioLog.lastMessageType = static_cast<RadioMessageType>(message);
 		}
 		//According to Derek this never happens.  ONLY your pilots speak!!

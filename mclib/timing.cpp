@@ -17,10 +17,10 @@
 
 //----------------------------------------------------------------------------------
 long	turn = 0;
-float	frameLength = 0.05f;
+thread_local float	frameLength = 0.05f;
 float	scenarioTime = 0.0;
 DWORD	LastTimeGetTime = 0;
-bool simPresentationPass = false;
+thread_local bool simPresentationPass = false;
 
 const char *monthName[12] = 
 {

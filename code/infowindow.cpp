@@ -1,3 +1,4 @@
+#include "render_view.h"
 #include <algorithm>
 #include "Gates/preferences_legacy.h"
 #include <atomic>
@@ -382,6 +383,30 @@ bool InfoWindow::imguiInfoEnabled()
 // pUnit read this frame. The mech paperdoll icon is DEFERRED to slice-2 (its
 // area is left blank). Loadout content comes from the shared gatherLoadoutRows
 // helper so it cannot drift from the legacy enumeration.
+void InfoWindow::extractHudSnapshot()
+{
+    hudInfo = HudInfo{};
+    if (!pUnit) return;
+    hudInfo.name = pUnit->getIfaceName();
+    hudInfo.health = mc2::render_view::hud().mover(pUnit).health;
+    hudInfo.weaponCount = extractWeaponRows(hudInfo.names, hudInfo.disabled, hudInfo.ammo, hudInfo.ranges, hudInfo.draw);
+    extractLoadoutRows(hudInfo.loadout);
+    hudInfo.pilotVisible = extractPilotRows(hudInfo.pilot);
+    hudInfo.equipment[0] = pUnit->ecm; hudInfo.equipment[1] = pUnit->probe;
+    hudInfo.equipment[2] = pUnit->jumpJets; hudInfo.equipment[3] = pUnit->isMech() ? pUnit->sensor : 255;
+    for (int i = 0; i < 4; ++i)
+        if (hudInfo.equipment[i] != 255) hudInfo.equipmentMaster[i] = pUnit->inventory[hudInfo.equipment[i]].masterID;
+}
+
+int InfoWindow::gatherWeaponRows(unsigned char names[60], char disabled[60][2], long ammo[60], char ranges[60], bool draw[4]) const
+{
+    std::copy_n(hudInfo.names, 60, names); std::copy_n(hudInfo.ammo, 60, ammo);
+    std::copy_n(hudInfo.ranges, 60, ranges); std::copy_n(hudInfo.draw, 4, draw);
+    for (int i = 0; i < 60; ++i) { disabled[i][0] = hudInfo.disabled[i][0]; disabled[i][1] = hudInfo.disabled[i][1]; }
+    return hudInfo.weaponCount;
+}
+void InfoWindow::gatherLoadoutRows(std::vector<InfoLoadoutRow>& out) const { out = hudInfo.loadout; }
+
 void InfoWindow::renderImGui()
 {
 	// INFO-IMGUI-SLICE-3: legacy placement transform. Legacy HUD verts go through
@@ -459,7 +484,7 @@ void InfoWindow::renderImGui()
 	char nameBuf[256];
 	const char* name;
 	if ( pUnit )
-		name = pUnit->getIfaceName();
+		name = hudInfo.name.c_str();
 	else
 	{
 		cLoadString( IDS_NOUNIT, nameBuf, 255 );
@@ -484,7 +509,7 @@ void InfoWindow::renderImGui()
 	const float hbB = AY( static_cast<float>(HEALTHBOTTOM) );
 	if ( pUnit )
 	{
-		float barStatus = pUnit->getAppearance()->barStatus;
+		float barStatus = hudInfo.health;
 		barStatus = std::clamp(barStatus, 0.0f, 1.0f);
 
 		DWORD color;
@@ -653,8 +678,8 @@ void InfoWindow::renderImGui()
 			// below), reusing the fit-loaded StaticInfo rect + UVs read-only —
 			// the same pattern as the OBJ status tiles / info arrow caps. Atlas
 			// GL names are re-resolved per frame (OBJ-IMGUI-SLICE-1 lesson).
-			InfoPilotRows pilot;
-			if ( gatherPilotRows( pilot ) )
+			const auto& pilot = hudInfo.pilot;
+			if (hudInfo.pilotVisible)
 			{
 				Divider();
 
@@ -996,14 +1021,14 @@ void InfoWindow::render()
 	// draw the name of the unit
 	if ( pUnit )
 	{
-		drawName( pUnit->getIfaceName() );
+		drawName( hudInfo.name.c_str() );
 	
 		gos_SetRenderState( gos_State_Texture, 0 );
 
 		// draw the health bar
 		DWORD					color;
 		
-		float barStatus = pUnit->getAppearance()->barStatus;
+		float barStatus = hudInfo.health;
 			
 		if (barStatus > 1.0f)
 			barStatus = 1.0f;
@@ -1165,7 +1190,7 @@ void InfoWindow::update()
 // former inline loop in drawScrollingStuff (same zero-inits, same walk over
 // pUnit->inventory[numOther .. numOther+numWeapons]). Returns the distinct entry
 // count. Used by BOTH the legacy draw and gatherLoadoutRows so they cannot drift.
-int InfoWindow::gatherWeaponRows( unsigned char names[60], char disabledCount[60][2],
+int InfoWindow::extractWeaponRows( unsigned char names[60], char disabledCount[60][2],
 	long ammo[60], char ranges[60], bool bDraw[4] ) const
 {
 	memset( disabledCount, 0, sizeof( char ) * 60 * 2);
@@ -1235,7 +1260,7 @@ int InfoWindow::gatherWeaponRows( unsigned char names[60], char disabledCount[60
 // Mirrors drawScrollingStuff's text: weapon rows "N/M  NAME" grouped by range
 // (textColors[]), each optional "shots left" ammo row, then the ecm/probe/jump/
 // sensor equipment rows (0xffc29b00). Weapon enumeration is the shared helper.
-void InfoWindow::gatherLoadoutRows( std::vector<InfoLoadoutRow>& out ) const
+void InfoWindow::extractLoadoutRows( std::vector<InfoLoadoutRow>& out ) const
 {
 	out.clear();
 	if ( !pUnit )
@@ -1249,7 +1274,7 @@ void InfoWindow::gatherLoadoutRows( std::vector<InfoLoadoutRow>& out ) const
 	unsigned char names[60];
 	bool bDraw[4];
 
-	int count = gatherWeaponRows( names, disabledCount, ammo, ranges, bDraw );
+	int count = extractWeaponRows( names, disabledCount, ammo, ranges, bDraw );
 
 	for ( int j = 0; j < 3; j++ )
 	{
@@ -1301,7 +1326,7 @@ void InfoWindow::gatherLoadoutRows( std::vector<InfoLoadoutRow>& out ) const
 // drawScrollingStuff (same visibility condition, same dead-pilot fallback, same
 // ACE rank special-case, same specialty enumeration) so the two paths cannot
 // drift on WHAT the pilot section says.
-bool InfoWindow::gatherPilotRows( InfoPilotRows& out ) const
+bool InfoWindow::extractPilotRows( InfoPilotRows& out ) const
 {
 	out = InfoPilotRows();
 
@@ -1481,10 +1506,10 @@ void InfoWindow::drawScrollingStuff()
 	MemSet(names, 0);
 
 	char count[4];
-	count[0] = pUnit->ecm;
-	count[1] = pUnit->probe;
-	count[2] = pUnit->jumpJets;
-	count[3] = pUnit->isMech() ?  pUnit->sensor : 255;
+	count[0] = hudInfo.equipment[0];
+	count[1] = hudInfo.equipment[1];
+	count[2] = hudInfo.equipment[2];
+	count[3] = hudInfo.equipment[3];
 
 	if ((count[0] || count[1] || count[2] || count[3] ) )
 	{
@@ -1511,14 +1536,14 @@ void InfoWindow::drawScrollingStuff()
 			char tmpName[256];
 			// EQUIP-ADD-UI-NAME-1 (S3): same DisplayName fallback as above.
 			const char* addName = equipmentAddUiTextForStringId(
-				IDS_COMP_ABBR0 + pUnit->inventory[count[curWeapon]].masterID );
+				IDS_COMP_ABBR0 + hudInfo.equipmentMaster[curWeapon] );
 			if ( addName )
 			{
 				strncpy( tmpName, addName, 255 );
 				tmpName[255] = 0;
 			}
 			else
-				cLoadString( IDS_COMP_ABBR0 + pUnit->inventory[count[curWeapon]].masterID, tmpName, 255 );
+				cLoadString( IDS_COMP_ABBR0 + hudInfo.equipmentMaster[curWeapon], tmpName, 255 );
 
 			if ( curY > NAMETOP )
 			{
@@ -1541,8 +1566,8 @@ void InfoWindow::drawScrollingStuff()
 	// content factored into the shared gatherPilotRows helper (ImGui panel uses
 	// the same one). Draw calls below are byte-identical to the former inline
 	// reads — same strings, same values, same order.
-	InfoPilotRows pilotRows;
-	if ( gatherPilotRows( pilotRows ) )
+	const auto& pilotRows = hudInfo.pilot;
+	if (hudInfo.pilotVisible)
 	{
 		if ( icon )
 		{

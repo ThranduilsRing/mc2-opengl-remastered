@@ -1,7 +1,9 @@
+#include "tick_commit.h"
 // code/impact_presentation.cpp -- simulation impacts -> impact decal pool -> Vulkan box-decal pass.
 // See impact_presentation.h and docs/impact-damage-design.md.
 
 #include "impact_presentation.h"
+#include "sim_overlap.h"
 
 #include "../RenderCore/ImpactDecals.h"
 #include "Gates/gate.h"
@@ -35,6 +37,19 @@ namespace {
 
 // A pending impact: the raw sim facts. Material and anchor are resolved on the presentation side.
 impact::EventQueue g_queue;
+impact::EventQueue g_tickQueue;
+bool g_commitQueued = false;
+void pushImpact(const impact::Event& event) {
+    if (!mc2::tick::collecting()) { g_queue.push(event); return; }
+    g_tickQueue.push(event);
+    if (!g_commitQueued) {
+        g_commitQueued = true;
+        mc2::tick::defer(mc2::tick::Queue::Impact, [] {
+            g_tickQueue.drain([](const impact::Event& e) { g_queue.push(e); });
+            g_commitQueued = false;
+        });
+    }
+}
 impact::Pool g_pool;
 impact::GpuDecal g_gpu[impact::kMaxDecals];
 
@@ -193,7 +208,7 @@ void onWeaponImpact(long masterId, bool isBeam, bool areaEffect, float damage,
     e.anchorKind = targetWID ? impact::AnchorKind::Static : impact::AnchorKind::World;   // refined on the presentation side
     e.weapon = impact::classifyWeapon(form, isBeam, areaEffect, artillery, inferno);
     e.magnitude = damage;
-    g_queue.push(e);
+    pushImpact(e);
 }
 
 void onExplosion(long effectId, const glm::vec3& pos, float radius) {
@@ -211,18 +226,27 @@ void onExplosion(long effectId, const glm::vec3& pos, float radius) {
     e.pos[0] = pos.x; e.pos[1] = pos.y; e.pos[2] = pos.z;
     e.weapon = w;
     e.magnitude = std::max(radius, effectId == LARGE_AIRSTRIKE_ID ? 80.0f : 30.0f);
-    g_queue.push(e);
+    pushImpact(e);
 }
+
+namespace {
+uint32_t g_builtCount = 0;   // extract() -> frame()
+uint32_t g_builtHot = 0;
+}  // namespace
 
 void reset() {
     g_queue.clear();
     g_pool.clear();
+    g_builtCount = 0;
+    g_builtHot = 0;
 #ifdef MC2_VULKAN_ISLAND
     gos_SetImpactDecalFrame(nullptr, 0, 0);
 #endif
 }
 
-void frame() {
+// G7b K3: everything that reads the sim (queue drain, anchor poses, object classes) runs here, at the render extract.
+void extract() {
+    mc2::overlap::assertSimQuiescent("impact_presentation::extract");
     ZoneScopedN("Impact.Presentation");
     // A new mission (or a load) replaces the object manager and restarts the clock: its decals and pending events belong to
     // the old world.
@@ -268,11 +292,13 @@ void frame() {
     });
     g_pool.update(scenarioTime, resolveAnchor);
     uint32_t hot = 0;
-    const uint32_t n = g_pool.build(scenarioTime, resolveAnchor, g_gpu, impact::kMaxDecals, hot);
+    g_builtCount = g_pool.build(scenarioTime, resolveAnchor, g_gpu, impact::kMaxDecals, hot);
+    g_builtHot = hot;
+}
+
+void frame() {
 #ifdef MC2_VULKAN_ISLAND
-    gos_SetImpactDecalFrame(g_gpu, n, hot);
-#else
-    (void)n;
+    gos_SetImpactDecalFrame(g_gpu, g_builtCount, g_builtHot);
 #endif
 }
 

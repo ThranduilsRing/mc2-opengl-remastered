@@ -6,6 +6,7 @@
 //===========================================================================//
 
 #include"stuffheaders.hpp"
+#include "../sim_overlap.h"
 
 std::uint64_t Random::GetDrawCount()
 {
@@ -109,6 +110,7 @@ void Random::Init()
 int
 	Random::GetRandomInt()
 {
+    mc2::overlap::assertMainThread("rng::gosFX");
 	++Instance->m_drawCount;
 	int
 		indent,

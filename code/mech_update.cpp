@@ -675,120 +675,137 @@ void BattleMech::applyAppearancePush (void)
 	appearance->setBarStatus(barStatus);
 }
 
-void BattleMech::render (void) 
+// G7b K3: the old render() split at the render extract. Contact status, team, effectiveness, tonnage, isOnGui and the
+// fire range are read here; renderView keeps the main-only parts (GPU readback lag, appearance, icons).
+void BattleMech::extractRenderView (mc2::render_view::RenderView& view)
 {
-	if (Terrain::IsGameSelectTerrainPosition(position))
+	using mc2::render_view::Mode;
+	GameObject::extractRenderView(view);
+	if (!Terrain::IsGameSelectTerrainPosition(position))
+		return;
+	if (getTeamId() != Team::home->getId())
 	{
-		if (getTeamId() != Team::home->getId())
-		{
-			long cStat = conStat;
-	
-			if ((cStat == CONTACT_VISUAL) || isDestroyed() || isDisabled() || ShowMovers || (MPlayer && MPlayer->allUnitsDestroyed[MPlayer->commanderID]))
-			{
-				float barStatus = getTotalEffectiveness();
-				
-				DWORD color = 0xff7f7f7f;
-				if ((teamId > -1) && (teamId < 8)) {
-					if (getTeam()->isFriendly(Team::home))
-						color = SB_GREEN;
-					else if (getTeam()->isEnemy(Team::home))
-						color = SB_RED;
-					else
-						color = SB_BLUE;
-				}
-					
-				appearance->setBarColor(color);
-				appearance->setBarStatus(barStatus);
-				appearance->setObjectNameId(descID);
-				appearance->setVisibility(true,true);
-				appearance->render();
-			}
-			else if (cStat == CONTACT_SENSOR_QUALITY_1)
-			{
-				appearance->setBarColor(SB_RED);
-				appearance->setVisibility(true,true);
-				appearance->render();
-	
-			}
-			else if (cStat == CONTACT_SENSOR_QUALITY_2)
-			{
-				appearance->setBarColor(SB_RED);
-				appearance->setVisibility(true,true);
-				appearance->render();
-	
-			}
-			else if (cStat == CONTACT_SENSOR_QUALITY_3)
-			{
-				appearance->setBarColor(SB_RED);
-				appearance->setVisibility(true,true);
-				appearance->render();
-	
-				// C3: route canBeSeen() to GPU-lagged visibility; 1-frame HUD lag: accepted.
-				const bool mechInViewQ3 = s_gpuCullLifecycle
-					? gpu_cull::readback_isActorVisibleLagged(static_cast<uint32_t>(getHandle()))
-					: appearance->canBeSeen();
-				if ( mechInViewQ3 )
-				{
-					if (tonnage < 40)
-						drawSensorTextHelp (appearance->getScreenPos().x, appearance->getScreenPos().y+20.0f, IDS_SENSOR_LIGHT_MECH,SD_RED,false);
-					else if (tonnage < 65)
-						drawSensorTextHelp (appearance->getScreenPos().x, appearance->getScreenPos().y+20.0f, IDS_SENSOR_MEDIUM_MECH,SD_RED,false);
-					else if (tonnage < 80)
-						drawSensorTextHelp (appearance->getScreenPos().x, appearance->getScreenPos().y+20.0f, IDS_SENSOR_HEAVY_MECH,SD_RED,false);
-					else
-						drawSensorTextHelp (appearance->getScreenPos().x, appearance->getScreenPos().y+20.0f, IDS_SENSOR_ASSAULT_MECH,SD_RED,false);
-				}
-			}
-			else if (cStat == CONTACT_SENSOR_QUALITY_4)
-			{
-				appearance->setBarColor(SB_RED);
-				appearance->setVisibility(true,true);
-				appearance->render();
+		long cStat = conStat;
 
-				// C3: route canBeSeen() to GPU-lagged visibility; 1-frame HUD lag: accepted.
-				const bool mechInViewQ4 = s_gpuCullLifecycle
-					? gpu_cull::readback_isActorVisibleLagged(static_cast<uint32_t>(getHandle()))
-					: appearance->canBeSeen();
-				if ( mechInViewQ4 )
-					drawSensorTextHelp (appearance->getScreenPos().x, appearance->getScreenPos().y+20.0f,descID,SD_RED,false);
+		if ((cStat == CONTACT_VISUAL) || isDestroyed() || isDisabled() || ShowMovers || (MPlayer && MPlayer->allUnitsDestroyed[MPlayer->commanderID]))
+		{
+			DWORD color = 0xff7f7f7f;
+			if ((teamId > -1) && (teamId < 8)) {
+				if (getTeam()->isFriendly(Team::home))
+					color = SB_GREEN;
+				else if (getTeam()->isEnemy(Team::home))
+					color = SB_RED;
+				else
+					color = SB_BLUE;
+			}
+			view.mode = Mode::Full;
+			view.barColor = color;
+			view.barStatus = getTotalEffectiveness();
+			view.nameId = descID;
+		}
+		else if ((cStat == CONTACT_SENSOR_QUALITY_1) || (cStat == CONTACT_SENSOR_QUALITY_2))
+		{
+			view.mode = Mode::Sensor;
+		}
+		else if (cStat == CONTACT_SENSOR_QUALITY_3)
+		{
+			view.mode = Mode::SensorText;
+			if (tonnage < 40)
+				view.nameId = IDS_SENSOR_LIGHT_MECH;
+			else if (tonnage < 65)
+				view.nameId = IDS_SENSOR_MEDIUM_MECH;
+			else if (tonnage < 80)
+				view.nameId = IDS_SENSOR_HEAVY_MECH;
+			else
+				view.nameId = IDS_SENSOR_ASSAULT_MECH;
+		}
+		else if (cStat == CONTACT_SENSOR_QUALITY_4)
+		{
+			view.mode = Mode::SensorText;
+			view.nameId = descID;
+		}
+	}
+	else if (isOnGui)
+	{
+		DWORD color = 0x0000ff00;
+		if (getTeamId() == Team::home->getId())
+		{
+			//Two Possibilities.  Either we have the same commander or we don't.
+			// If we do, we are on the same "team", if not we are ALLIES!!!
+			if (getCommanderId() != Commander::home->getId())
+			{
+				color = 0x000000ff;
 			}
 		}
 		else
 		{
-			if (isOnGui)
-			{
-				float barStatus = getTotalEffectiveness();
-
-				DWORD color = 0x0000ff00;
-				if (getTeamId() == Team::home->getId())
-				{
-					//Two Possibilities.  Either we have the same commander or we don't.
-					// If we do, we are on the same "team", if not we are ALLIES!!!
-					if (getCommanderId() != Commander::home->getId())
-					{
-						color = 0x000000ff;
-					}
-				}
-				else
-				{
-					color = 0x00ff0000;
-				}
-
-				appearance->setBarColor(color);
-				appearance->setBarStatus(barStatus);
-				appearance->setObjectNameId(descID);
-				appearance->setVisibility(true,true);
-				appearance->setSensorLevel(0);
-				appearance->render();
-				// C3: route canBeSeen() to GPU-lagged visibility; 1-frame fire-icon lag: accepted.
-				const bool mechInViewFire = s_gpuCullLifecycle
-					? gpu_cull::readback_isActorVisibleLagged(static_cast<uint32_t>(getHandle()))
-					: appearance->canBeSeen();
-				if ( attackRange == FIRERANGE_CURRENT && !isDisabled() && mechInViewFire )
-					appearance->drawIcon( holdFireIconHandle, 5, 5, color | 0xff000000 );
-			}
+			color = 0x00ff0000;
 		}
+		view.mode = Mode::Own;
+		view.barColor = color;
+		view.barStatus = getTotalEffectiveness();
+		view.nameId = descID;
+		if (attackRange == FIRERANGE_CURRENT && !isDisabled())
+			view.flags |= mc2::render_view::FireIcon;
 	}
+}
+
+void BattleMech::renderView (const mc2::render_view::RenderView& view)
+{
+	using mc2::render_view::Mode;
+	switch (view.mode)
+	{
+		case Mode::Full:
+			appearance->setBarColor(view.barColor);
+			appearance->setBarStatus(view.barStatus);
+			appearance->setObjectNameId(view.nameId);
+			appearance->setVisibility(true,true);
+			appearance->render();
+			break;
+
+		case Mode::Sensor:
+			appearance->setBarColor(SB_RED);
+			appearance->setVisibility(true,true);
+			appearance->render();
+			break;
+
+		case Mode::SensorText:
+		{
+			appearance->setBarColor(SB_RED);
+			appearance->setVisibility(true,true);
+			appearance->render();
+
+			// C3: route canBeSeen() to GPU-lagged visibility; 1-frame HUD lag: accepted.
+			const bool mechInView = s_gpuCullLifecycle
+				? gpu_cull::readback_isActorVisibleLagged(static_cast<uint32_t>(getHandle()))
+				: appearance->canBeSeen();
+			if ( mechInView )
+				drawSensorTextHelp (appearance->getScreenPos().x, appearance->getScreenPos().y+20.0f, view.nameId,SD_RED,false);
+			break;
+		}
+
+		case Mode::Own:
+		{
+			appearance->setBarColor(view.barColor);
+			appearance->setBarStatus(view.barStatus);
+			appearance->setObjectNameId(view.nameId);
+			appearance->setVisibility(true,true);
+			appearance->setSensorLevel(0);
+			appearance->render();
+			// C3: route canBeSeen() to GPU-lagged visibility; 1-frame fire-icon lag: accepted.
+			const bool mechInViewFire = s_gpuCullLifecycle
+				? gpu_cull::readback_isActorVisibleLagged(static_cast<uint32_t>(getHandle()))
+				: appearance->canBeSeen();
+			if ( view.has(mc2::render_view::FireIcon) && mechInViewFire )
+				appearance->drawIcon( holdFireIconHandle, 5, 5, view.barColor | 0xff000000 );
+			break;
+		}
+
+		default:
+			break;
+	}
+
+	// Debug-only path overlay: still reads the pilot's live move path (MC2 debug key; not on in normal play).
 
 	if (drawTerrainGrid)
 	{

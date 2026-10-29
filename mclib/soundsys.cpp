@@ -1,4 +1,6 @@
+#include "../code/tick_commit.h"
 #include "Gates/preferences_legacy.h"
+#include "sim_overlap.h"
 #include "gameos_music_cache.h"
 //---------------------------------------------------------------------------
 // soundsys.cpp - This file is the sound system code
@@ -686,8 +688,10 @@ void SoundSystem::update (void)
 }
 
 //---------------------------------------------------------------------------
-long SoundSystem::playDigitalMusic (long musicId)
+std::optional<long> SoundSystem::playDigitalMusic (long musicId)
 {
+    if (mc2::tick::defer(mc2::tick::Queue::Sound, [this, musicId] { playDigitalMusic(musicId); })) return std::nullopt;
+    mc2::overlap::assertMainThread("SoundSystem::playDigitalMusic");
 	//-------------------------------------------------------------------
 	// Make sure we have a real music filename.
 	if (useMusic)
@@ -695,7 +699,7 @@ long SoundSystem::playDigitalMusic (long musicId)
 		if ((musicId >= 0) && (musicId < numDMS) && (strncmp(digitalMusic[musicId].id.c_str(),"NONE",4) != 0))
 		{
 			if (musicId == currentMusicId)
-				return(-1);
+				return std::nullopt;
 				
 			if (useSound)
 			{
@@ -731,7 +735,7 @@ long SoundSystem::playDigitalMusic (long musicId)
 					}
 					else
 					{
-						return(-1);
+						return std::nullopt;
 					}
 
 					MusicSlot& s = musicSlots[slot];
@@ -762,8 +766,14 @@ long SoundSystem::playDigitalMusic (long musicId)
 }
 
 //---------------------------------------------------------------------------
-long SoundSystem::playDigitalStream (const char *streamName)
+std::optional<long> SoundSystem::playDigitalStream (const char *streamName)
 {
+    if (mc2::tick::collecting()) {
+        const std::string name = streamName ? streamName : "";
+        mc2::tick::defer(mc2::tick::Queue::Sound, [this, name] { playDigitalStream(name.c_str()); });
+        return std::nullopt;
+    }
+    mc2::overlap::assertMainThread("SoundSystem::playDigitalStream");
 	const char* accepted = "disabled";
 	std::string resourcePath;
 	bool resourceAccepted = false;
@@ -813,7 +823,9 @@ long SoundSystem::playDigitalStream (const char *streamName)
 //---------------------------------------------------------------------------
 long SoundSystem::playBettySample (unsigned long bettySampleId)
 {
-	if (useSound && bettySoundBite.empty())	//Playing Betty takes precedence
+    const bool queued = mc2::tick::defer(mc2::tick::Queue::Sound, [this, bettySampleId] { playBettySample(bettySampleId); });
+    if (!queued) mc2::overlap::assertMainThread("SoundSystem::playBettySample");
+	if (!queued && (useSound && bettySoundBite.empty()))	//Playing Betty takes precedence
 	{
 
 		if (bettySampleId >= numBettySamples)
@@ -864,7 +876,14 @@ long SoundSystem::playBettySample (unsigned long bettySampleId)
 //---------------------------------------------------------------------------
 long SoundSystem::playSupportSample (unsigned long supportSampleId, const char* fileName)
 {
-	if (useSound && !supportHandle)		//Playing Support takes precedence
+    const bool queued = mc2::tick::collecting();
+    if (queued) {
+        const std::string name = fileName ? fileName : "";
+        const bool named = fileName != nullptr;
+        mc2::tick::defer(mc2::tick::Queue::Sound, [this, supportSampleId, name, named] { playSupportSample(supportSampleId, named ? name.c_str() : nullptr); });
+    }
+    if (!queued) mc2::overlap::assertMainThread("SoundSystem::playSupportSample");
+	if (!queued && useSound && !supportHandle)		//Playing Support takes precedence
 	{
 		if (!fileName)
 		{
@@ -986,13 +1005,14 @@ long SoundSystem::findOpenChannel (long start, long end)
 //---------------------------------------------------------------------------
 long SoundSystem::playDigitalSample (unsigned long sampleId, glm::vec3 pos, bool allowDupes)
 {
-	if ((useSound && allowDupes) || (!isPlayingSample(sampleId) && !allowDupes))
+    const bool queued = mc2::tick::defer(mc2::tick::Queue::Sound, [this, sampleId, pos, allowDupes] { playDigitalSample(sampleId, pos, allowDupes); });
+    if (!queued) mc2::overlap::assertMainThread("SoundSystem::playDigitalSample");
+	if (!queued && ((useSound && allowDupes) || (!isPlayingSample(sampleId) && !allowDupes)))
 	{
 		if (sampleId >= numSoundBites)
 			return(-1);
-			
-		long ourChannel = findOpenChannel(1,SUPPORT_CHANNEL);
-	
+
+		long ourChannel = findOpenChannel(1, SUPPORT_CHANNEL);
 		if (ourChannel != -1)
 		{
 			float distanceVolume = 1.0f;
@@ -1032,6 +1052,7 @@ long SoundSystem::playDigitalSample (unsigned long sampleId, glm::vec3 pos, bool
 			{
 				gosAudio_AssignResourceToChannel( ourChannel, sounds[sampleId].resourceHandle );
 				gosAudio_SetChannelPlayMode(ourChannel, gosAudio_PlayOnce);
+                MC2_LOG(Audio, Debug, "[AUDIO_SAMPLE] id={} channel={}", sampleId, ourChannel);
 			}
 			
 			return(ourChannel);
@@ -1044,6 +1065,8 @@ long SoundSystem::playDigitalSample (unsigned long sampleId, glm::vec3 pos, bool
 //---------------------------------------------------------------------------
 void SoundSystem::stopDigitalSample (unsigned long sampleHandleNumber)
 {
+    if (mc2::tick::defer(mc2::tick::Queue::Sound, [this, sampleHandleNumber] { stopDigitalSample(sampleHandleNumber); })) return;
+    mc2::overlap::assertMainThread("SoundSystem::stopDigitalSample");
 	if (useSound)
 	{
 		gosAudio_PlayMode
@@ -1058,6 +1081,9 @@ void SoundSystem::stopDigitalSample (unsigned long sampleHandleNumber)
 //---------------------------------------------------------------------------
 void SoundSystem::stopDigitalMusic (void)
 {
+    scriptMusic.stop();
+    auto stop = [this] {
+    mc2::overlap::assertMainThread("SoundSystem::stopDigitalMusic");
 	if (useSound && useMusic)
 	{
 		for (MusicSlot& slot : musicSlots)
@@ -1076,12 +1102,15 @@ void SoundSystem::stopDigitalMusic (void)
 		currentMusicId = -1;
 	}
 
-	scriptMusic.stop();		// a stop is an explicit call from mission code, so the script's view follows it with audio on or off
-}	
+    };
+    if (!mc2::tick::defer(mc2::tick::Queue::Sound, stop)) stop();
+}
 
 //---------------------------------------------------------------------------
 void SoundSystem::stopSupportSample (void)
 {
+    if (mc2::tick::defer(mc2::tick::Queue::Sound, [this] { stopSupportSample(); })) return;
+    mc2::overlap::assertMainThread("SoundSystem::stopSupportSample");
 	if (stream3Handle)
 	{
 		gosAudio_DestroyResource(&stream3Handle);
@@ -1093,6 +1122,8 @@ void SoundSystem::stopSupportSample (void)
 //---------------------------------------------------------------------------
 void SoundSystem::stopBettySample (void)
 {
+    if (mc2::tick::defer(mc2::tick::Queue::Sound, [this] { stopBettySample(); })) return;
+    mc2::overlap::assertMainThread("SoundSystem::stopBettySample");
 	if (bettyHandle)
 	{
 			gosAudio_SetChannelPlayMode(BETTY_CHANNEL, gosAudio_Stop);

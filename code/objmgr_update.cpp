@@ -2,6 +2,7 @@
 // Declared in the class headers; shared names in objmgr_internal.h.
 #include <atomic>
 #include "brain_execution_policy.h"
+#include "job_system.h"
 #include "objmgr_internal.h"
 #include "sim_world_trace.h"
 #include "mc2fmt.h"
@@ -526,7 +527,7 @@ void GameObjectManager::updateFrameJobsPrepass(int& frameJobsPrePassCount) {
 			auto _fj_t0 = std::chrono::high_resolution_clock::now();
 			{
 				ZoneScopedN("FrameJobs.RecalcBounds");
-				parallelForRange(count, frameJobsBatch(),
+				mc2::jobs::parallel_for(mc2::jobs::Domain::Render, count, frameJobsBatch(), 1000,
 					[](int begin, int end) {
 						// FRAME-JOBS-1: Tier B only. No appearance->update() here.
 						// Tier C (txmmgr) is NOT worker-safe. See FRAME-JOBS-2.
@@ -588,7 +589,7 @@ void GameObjectManager::updateFrameJobsPrepass(int& frameJobsPrePassCount) {
 			auto _tw0 = std::chrono::high_resolution_clock::now();
 			int touchCount = worker_submitted;
 			if (touchCount > 0) {
-				parallelForRange(touchCount, frameJobsBatch(), [](int begin, int end) {
+				mc2::jobs::parallel_for(mc2::jobs::Domain::Render, touchCount, frameJobsBatch(), 1000, [](int begin, int end) {
 					g_isFrameJobsWorker = true;
 					for (int i = begin; i < end; ++i) {
 						GameObjectPtr obj = ObjectManager->objList[s_splitHandles[i]];
@@ -924,4 +925,66 @@ void GameObjectManager::updatePresentationCull() {
             emitGpuCullRecord(turrets[i], gpu_cull::Cat_Turret, gpu_cull::Consumer_RenderGate);
     gpu_cull::substrate_flushUpload();
     if (gpu_cull::compute_isEnabled()) gpu_cull::compute_emitParitySummary();
+}
+
+// G7b K3: the render extract. Same membership and order as the draw loops in GameObjectManager::render, read while
+// the sim is quiescent; each object copies what its renderView draws. Pointers stay valid until the next commit
+// (deferred frees), which is after the frame's draw.
+void GameObjectManager::extractRenderList (mc2::render_view::RenderList& list)
+{
+	auto add = [](std::vector<mc2::render_view::RenderView>& out, GameObjectPtr obj) {
+		mc2::render_view::RenderView& v = out.emplace_back();
+		v.obj = obj;
+		obj->extractRenderView(v);
+	};
+
+	if (renderObjects)
+	{
+		for (long terrainBlock = 0; terrainBlock < Terrain::numObjBlocks; terrainBlock++)
+		{
+			if (!Terrain::objBlockInfo[terrainBlock].active)
+				continue;
+			long numObjs = Terrain::objBlockInfo[terrainBlock].numObjects;
+			long objIndex = Terrain::objBlockInfo[terrainBlock].firstHandle;
+			for (long terrainObj = 0; terrainObj < numObjs; terrainObj++, objIndex++)
+			{
+				if (objList[objIndex] &&
+					objList[objIndex]->getExists() &&
+					Terrain::objVertexActive[objList[objIndex]->getVertexNum()])
+					add(list.terrain, objList[objIndex]);
+			}
+		}
+	}
+
+	if (mechs && (numMechs < maxMechs))
+		for (long i = 0; i < numMechs; i++)
+			if (mechs[i] && mechs[i]->getExists())
+				add(list.movers, mechs[i]);
+	if (vehicles)
+		for (long i = 0; i < maxVehicles; i++)
+			if (vehicles[i] && vehicles[i]->getExists())
+				add(list.movers, vehicles[i]);
+#ifdef USE_ELEMENTALS
+	if (elementals)
+		for (long i = 0; i < numElementals; i++)
+			if (elementals[i] && elementals[i]->getExists())
+				add(list.movers, elementals[i]);
+#endif
+
+	if (weapons)
+		for (long i = 0; i < numWeapons; i++)
+			if (weapons[i] && weapons[i]->hasPresentation())
+				add(list.other, weapons[i]);
+	if (carnage)
+		for (long i = 0; i < numCarnage; i++)
+			if (carnage[i] && carnage[i]->gosEffect)
+				add(list.other, carnage[i]);
+	if (lights)
+		for (long i = 0; i < numLights; i++)
+			if (lights[i] && lights[i]->getExists())
+				add(list.other, lights[i]);
+	if (artillery)
+		for (long i = 0; i < numArtillery; i++)
+			if (artillery[i] && (artillery[i]->getExists() || artillery[i]->hasPresentation()))
+				add(list.other, artillery[i]);
 }

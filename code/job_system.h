@@ -7,10 +7,8 @@
 // verbatim in frame_jobs.h (a back-compat shim) and implemented in the same TU
 // (job_system.cpp) with ZERO behavior change for existing callers.
 //
-// CORE-1 is DORMANT: nothing in the engine calls the `mc2::jobs` API yet (no
-// new callers, no gate). It is exercised only by the offline unit harness
-// (tools/job_system_harness). Adoption sites land in later slices, each behind
-// its own default-OFF gate.
+// Render and Sim have independent dispatch state so both can fork concurrently.
+// startPool splits its thread budget between the domains; reductions keep canonical block order.
 //
 // SAFETY: worker bodies must be GL-free AND alloc-free (never touch
 // UserHeap/gos_PushCurrentHeap; pre-size containers on main; take transient

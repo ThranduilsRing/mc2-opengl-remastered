@@ -57,7 +57,7 @@ class PauseWindow;
 // paths enumerate/color objectives through the SAME logic and can never drift.
 struct ObjectiveUiRow
 {
-	CObjective*	obj;		// live objective (description read at draw time)
+	std::string description;	// copied at extract
 	bool		primary;	// 1 == Priority()
 	long		color;		// ARGB status color (incl. activation flash)
 	bool		succeeded;	// Status == OS_SUCCESSFUL
@@ -278,6 +278,7 @@ class ControlGui
 		void	renderObjective( const ObjectiveUiRow& row, long xPos, long yPos, bool bDrawTotal );
 		// OBJ-IMGUI-SLICE-1: shared objective-row gather (legacy + ImGui paths).
 		int		gatherObjectiveRows( ObjectiveUiRow* rows, int maxRows );
+		void extractHudSnapshot();
 		static bool	imguiObjEnabled();
 		void	renderObjectivesImGui();
 		// SMALLPANELS-IMGUI-SLICE-1: mission-timer + comm-video panels.

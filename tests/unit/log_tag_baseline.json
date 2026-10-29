@@ -386,6 +386,16 @@
    "count": 1
   },
   {
+   "tag": "AUDIO_SAMPLE",
+   "ver": -1,
+   "stream": "log",
+   "keys": [
+    "id",
+    "channel"
+   ],
+   "count": 1
+  },
+  {
    "tag": "AUTHORED_ORDER",
    "ver": 1,
    "stream": "stderr",
@@ -10801,7 +10811,7 @@
     "route",
     "wrap",
     "numWeapons",
-    "liveWeapons",
+    "liveOther",
     "numCarnage",
     "numArtillery"
    ],

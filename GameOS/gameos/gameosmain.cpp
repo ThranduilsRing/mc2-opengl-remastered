@@ -1054,16 +1054,23 @@ int main(int argc, char** argv)
             ZoneScopedN("ExtractRenderSnapshot");
             mc2::overlap::assertSimQuiescent("ExtractRenderSnapshot");
             snap = ExtractRenderSnapshot();
+            mc2::overlap::extractRender();   // G7b K3: game render list + clock (zone ExtractRenderList)
         }
         mc2_debug_state::maybeWriteRenderState(snap);
     frameEmitDrawPackets(snap);
 
         {
+            mc2::overlap::beginFrameDraw();
             ZoneScopedN("DrawScreen");
             mc2_hitch::HitchScope _hitchRender(mc2_hitch::HitchSpanKind::PhaseRender);
 
             draw_screen();
         }
+
+        // Draw reads only the extracted snapshot. Wait before probes and frame counters touch live state;
+        // the battle CPU timer includes any uncovered tick time rather than hiding it behind the frame cap.
+        // Resource queues still commit after present, when this frame's GPU references have been submitted.
+        mc2::overlap::waitWorker();
 
         {
             // Bump the canonical frame counter.
@@ -1091,7 +1098,6 @@ int main(int argc, char** argv)
         // after the timer FrameEnd; advisory, OFF=zero cost.
         gos_frame_pass_stats::FrameEnd(static_cast<unsigned long>(g_mc2FrameCounter.load(std::memory_order_relaxed)));
 
-    mc2::overlap::kickTail();   // G7: frame N+1's ticks run on the sim worker while this thread presents and waits out the frame cap
     frameSwapWindow(win);   // the shared host present also ends the Vulkan frame and advances the handle-slot clock
 #ifdef MC2_VULKAN_ISLAND
     mc2vk::gpuprof::frameEnd();   // VK-GPU-ZONES: after the present submit so the frame's scopes are all recorded; Tracy collect + per-pass timestamp read
@@ -1100,8 +1106,9 @@ int main(int argc, char** argv)
     frameFrameCap(s_vsync_active, s_fps_cap_mission, s_fps_cap_menu, start_tick);
     mc2::overlap::joinTail();   // the sim is quiescent again before anything touches live sim objects
         } else {
+            mc2::overlap::beginFrameDraw(); // keep the early worker path active in headless determinism/save harnesses
+            mc2::overlap::waitWorker();
             gos::host::advanceFrameCounter();
-            mc2::overlap::kickTail();   // headless: no tail to hide behind; kick and join keep the worker path under the same harness
             mc2::overlap::joinTail();
         }   // !headless
 

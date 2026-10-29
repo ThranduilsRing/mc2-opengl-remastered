@@ -1,3 +1,4 @@
+#include "tick_commit.h"
 //---------------------------------------------------------------------------
 //
 //	objmgr.cpp - This file contains the GameObject Manager class code
@@ -9,6 +10,7 @@
 //===========================================================================//
 
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
+#include "sim_overlap.h"
 #include "objmgr_internal.h"
 #include "mc2fmt.h"
 
@@ -876,7 +878,7 @@ void GameObjectManager::destroy (void)
 	{
 		for (i = 0; i < maxMechs; i++) 
 		{
-			delete mechs[i];
+            mc2::tick::retireObject(mechs[i]);
 			mechs[i] = nullptr;
 		}
 	}
@@ -887,7 +889,7 @@ void GameObjectManager::destroy (void)
 	{
 		for (i = 0; i < maxVehicles; i++) 
 		{
-			delete vehicles[i];
+            mc2::tick::retireObject(vehicles[i]);
 			vehicles[i] = nullptr;
 		}
 	}
@@ -898,7 +900,7 @@ void GameObjectManager::destroy (void)
 	{
 		for (i = 0; i < numTerrainObjects; i++) 
 		{
-			delete terrainObjects[i];
+            mc2::tick::retireObject(terrainObjects[i]);
 			terrainObjects[i] = nullptr;
 		}
 	}
@@ -909,7 +911,7 @@ void GameObjectManager::destroy (void)
 	{
 		for (i = 0; i < numBuildings; i++) 
 		{
-			delete buildings[i];
+            mc2::tick::retireObject(buildings[i]);
 			buildings[i] = nullptr;
 		}
 	}
@@ -920,7 +922,7 @@ void GameObjectManager::destroy (void)
 	{
 		for (i = 0; i < numTurrets; i++) 
 		{
-			delete turrets[i];
+            mc2::tick::retireObject(turrets[i]);
 			turrets[i] = nullptr;
 		}
 	}
@@ -931,7 +933,7 @@ void GameObjectManager::destroy (void)
 	{
 		for (i = 0; i < numGates; i++) 
 		{
-			delete gates[i];
+            mc2::tick::retireObject(gates[i]);
 			gates[i] = nullptr;
 		}
 	}
@@ -942,7 +944,7 @@ void GameObjectManager::destroy (void)
 	{
 		for (i = 0; i < numWeapons; i++) 
 		{
-			delete weapons[i];
+            mc2::tick::retireObject(weapons[i]);
 			weapons[i] = nullptr;
 		}
 	}
@@ -953,7 +955,7 @@ void GameObjectManager::destroy (void)
 	{
 		for (i = 0; i < numCarnage; i++) 
 		{
-			delete carnage[i];
+            mc2::tick::retireObject(carnage[i]);
 			carnage[i] = nullptr;
 		}
 	}
@@ -964,7 +966,7 @@ void GameObjectManager::destroy (void)
 	{
 		for (i = 0; i < numLights; i++) 
 		{
-			delete lights[i];
+            mc2::tick::retireObject(lights[i]);
 			lights[i] = nullptr;
 		}
 	}
@@ -975,7 +977,7 @@ void GameObjectManager::destroy (void)
 	{
 		for (i = 0; i < numArtillery; i++) 
 		{
-			delete artillery[i];
+            mc2::tick::retireObject(artillery[i]);
 			artillery[i] = nullptr;
 		}
 	}
@@ -998,6 +1000,8 @@ void GameObjectManager::destroy (void)
 //---------------------------------------------------------------------------
 
 void GameObjectManager::render (bool terrain, bool movers, bool other) {
+	// G7b K3: draws the RenderList built at the render extract; no live sim reads here.
+	const mc2::render_view::RenderList& rl = mc2::render_view::list();
 
 	//-----------------------------------------------------
 	//Set render states as few times as possible.
@@ -1040,64 +1044,28 @@ void GameObjectManager::render (bool terrain, bool movers, bool other) {
 		}
 	}
 
-	if (terrain && renderObjects)
+	if (terrain)
 	{
 		ZoneScopedN("RenderObjects.Terrain");
-		for (long terrainBlock = 0; terrainBlock < Terrain::numObjBlocks; terrainBlock++)
+		// Cull-cascade consumer (object render). Post-8c source of truth for
+		// objBlockInfo[].active / objVertexActive[] is the cull-merged Step 6
+		// slim reduction loop in mclib/terrain.cpp; the extract walks it.
+		for (const mc2::render_view::RenderView& v : rl.terrain)
 		{
-			// Cull-cascade consumer (object render). Post-8c source of truth for
-			// objBlockInfo[].active / objVertexActive[] is the cull-merged Step 6
-			// slim reduction loop in mclib/terrain.cpp (8c-part-1 merges the
-			// per-vertex cull writes into that loop) — NOT the deleted VPL body,
-			// NOT a "Step 5 / 5B slim pass" (that producer never existed; v3.2
-			// deleted it). See VPL-retirement plan v3.5 note (CRIT-0).
-			if (Terrain::objBlockInfo[terrainBlock].active)
+			v.obj->renderView(v);
+			if (MaxObjectsDrawn)
 			{
-				long numObjs = Terrain::objBlockInfo[terrainBlock].numObjects;
-				long objIndex = Terrain::objBlockInfo[terrainBlock].firstHandle;
-				for (long terrainObj = 0; terrainObj < numObjs; terrainObj++, objIndex++)
-				{
-					if (objList[objIndex] &&
-						objList[objIndex]->getExists() &&
-						Terrain::objVertexActive[objList[objIndex]->getVertexNum()])
-					{
-						objList[objIndex]->render();
-						if (MaxObjectsDrawn)
-						{
-							//-----------------------------------------
-							// No more element groups, so stop drawing.
-							return;
-						}
-					}
-				}
+				//-----------------------------------------
+				// No more element groups, so stop drawing.
+				return;
 			}
 		}
 	}
 
 	if (movers) {
 		ZoneScopedN("RenderObjects.Movers");
-		if (mechs && (numMechs < maxMechs)) 
-		{
-			for (long i = 0; i < numMechs; i++)
-			{
-				if (mechs[i] && mechs[i]->getExists())
-					mechs[i]->render();
-			}
-		}
-
-		if (vehicles) {
-			for (long i = 0; i < maxVehicles; i++)
-				if (vehicles[i] && vehicles[i]->getExists())
-					vehicles[i]->render();
-		}
-
-#ifdef USE_ELEMENTALS
-		if (elementals) {
-			for (long i = 0; i < numElementals; i++)
-				if (elementals[i] && elementals[i]->getExists())
-					elementals[i]->render();
-		}
-#endif
+		for (const mc2::render_view::RenderView& v : rl.movers)
+			v.obj->renderView(v);
 	}
 
 	if (other) {
@@ -1124,10 +1092,10 @@ void GameObjectManager::render (bool terrain, bool movers, bool other) {
 		// VK-FIELD-VFX-2 trace (MC2_VK_VFX_TRACE): confirm the route + live effect counts.
 		static const bool s_vfxRouteTrace = mc2vkgate::vfxTraceOn();
 		if (s_vfxRouteTrace) {
-			long liveW = 0;
-			if (weapons) for (long i = 0; i < numWeapons; i++) if (weapons[i] && weapons[i]->getExists()) liveW++;
+			// The live-weapon count is now the extracted "other" list size (bolts + effects drawn this frame).
+			const long liveW = static_cast<long>(rl.other.size());
 			if (liveW > 0) {
-				printf("[VK_VFX_TRACE] objmgr other-block route=%d IsHUD-wrap=%d numWeapons=%ld liveWeapons=%ld numCarnage=%ld numArtillery=%ld\n",
+				printf("[VK_VFX_TRACE] objmgr other-block route=%d IsHUD-wrap=%d numWeapons=%ld liveOther=%ld numCarnage=%ld numArtillery=%ld\n",
 					1, 1, numWeapons, liveW, numCarnage, numArtillery);
 				fflush(stdout);
 			}
@@ -1153,35 +1121,9 @@ void GameObjectManager::render (bool terrain, bool movers, bool other) {
 		// blend). scaleExempt so the bottom-band HUD shrink doesn't move the effects.
 		gos_SetHudScaleExempt(true);
 		gos_SetRenderState(gos_State_IsHUD, 1);
-		if (weapons) {
-			for (long i = 0; i < numWeapons; i++) {
-				if (weapons[i] && weapons[i]->hasPresentation())
-					weapons[i]->render();
-			}
-		}
-
-		if (carnage) {
-			for (long i = 0; i < numCarnage; i++) {
-				if (carnage[i] && carnage[i]->gosEffect)
-				{
-					carnage[i]->render();
-				}
-			}
-		}
-
-		if (lights) {
-			for (long i = 0; i < numLights; i++) {
-				if (lights[i] && lights[i]->getExists())
-					lights[i]->render();
-			}
-		}
-
-		if (artillery) {
-			for (long i = 0; i < numArtillery; i++) {
-				if (artillery[i] && (artillery[i]->getExists() || artillery[i]->hasPresentation()))
-					artillery[i]->render();
-			}
-		}
+		// Weapons, carnage, lights, artillery: the extract keeps that order.
+		for (const mc2::render_view::RenderView& v : rl.other)
+			v.obj->renderView(v);
 		gos_SetRenderState(gos_State_IsHUD, 0);
 		gos_SetHudScaleExempt(prevVfxExempt);
 	}

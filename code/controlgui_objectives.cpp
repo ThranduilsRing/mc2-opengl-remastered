@@ -1,3 +1,4 @@
+#include "render_view.h"
 #include "../GameOS/gameos/ui_texture.h"
 #include "../mclib/texture_assets.h"
 // ControlGui: objective start, results, the ImGui objectives / timer / video panels and the legacy objective rows.
@@ -55,7 +56,7 @@ void ControlGui::renderResults()
 		if ( infoWnd ) // kill info wnd stuff
 			infoWnd->setUnit( nullptr );
 
-		resultsTime += frameLength;
+		resultsTime += mc2::render_view::clock().dt;
 		float t0, t1, p0, p1;
 		t1 = p1 = t0 = p0 = 0.f;
 		float delta = 0.f;
@@ -103,7 +104,7 @@ void ControlGui::renderResults()
 			
 
 		char text[256];
-		if ( Team::home->objectives.Status() == OS_SUCCESSFUL ) 
+		if ( mc2::render_view::hud().objectiveStatus == OS_SUCCESSFUL )
 			cLoadString( IDS_MISSION_SUCCESS, text, 256 );
 		else
 			cLoadString( IDS_MISSION_FAILED, text, 256 );
@@ -128,7 +129,7 @@ void ControlGui::renderResults()
 			0, 3 );
 
 		float fadeTime = objectiveTime - objectiveMoveInfo[OBJECTVE_MOVE_COUNT - 1].time - 3.0f 
-			- Team::home->objectives.Count();
+			- mc2::render_view::hud().objectiveCount;
 		
 		if ( !neverEndingStory && (fadeTime > 0.f) )
 		{
@@ -155,48 +156,17 @@ bool ControlGui::imguiObjEnabled()
 // primaries first in team-list order then secondaries) and the status->color
 // mapping incl. the activation flash. Both the legacy RenderObjectives loops
 // and renderObjectivesImGui consume this, so the two paths cannot drift.
-int ControlGui::gatherObjectiveRows( ObjectiveUiRow* rows, int maxRows )
+int ControlGui::gatherObjectiveRows(ObjectiveUiRow* rows, int maxRows)
 {
-	int n = 0;
-	if ( !Team::home )
-		return 0;
-
-	for ( int pass = 0; pass < 2; pass++ )
-	{
-		const bool wantPrimary = ( pass == 0 );
-		for ( CObjective* pObjective : Team::home->objectives )
-		{
-			if ( !pObjective->IsActive() || pObjective->IsHiddenTrigger() )
-				continue;
-			const bool primary = ( 1 == pObjective->Priority() );
-			if ( primary != wantPrimary )
-				continue;
-			if ( n >= maxRows )
-				return n;
-
-			const int status = pObjective->Status( Team::home->objectives );
-			long color = status == OS_FAILED ? 0xffc61c00 :
-				( status == OS_SUCCESSFUL ? 0xff41c700 : 0xffffc600 );
-
-			// flash newly-activated objectives (same math as the legacy draw)
-			if ( pObjective->ActivateOnFlag() &&
-				(20.0/*seconds*//*arbitrary*/ > (mission->actualTime - pObjective->ActivationTime())) )
-			{
-				int tempI = static_cast<int>((2.0/*Hz*//*flash frequency*/ * (mission->actualTime - pObjective->ActivationTime())));
-				if ( 0 == (tempI % 2) )
-					color = 0xffffffff;
-			}
-
-			rows[n].obj = pObjective;
-			rows[n].primary = primary;
-			rows[n].color = color;
-			rows[n].succeeded = ( status == OS_SUCCESSFUL );
-			rows[n].failed = ( status == OS_FAILED );
-			rows[n].points = pObjective->ResourcePoints();
-			n++;
-		}
-	}
-	return n;
+    int n = 0;
+    for (int pass = 0; pass < 2; ++pass)
+        for (const auto& row : mc2::render_view::hud().objectives) {
+            if (!row.active || row.hidden || row.primary != (pass == 0)) continue;
+            if (n == maxRows) return n;
+            rows[n++] = {row.description, row.primary, row.color, row.status == OS_SUCCESSFUL,
+                row.status == OS_FAILED, row.points};
+        }
+    return n;
 }
 
 // OBJ-IMGUI-SLICE-1: ImGui objectives overlay (MC2_UI_IMGUI_OBJ=1). Hybrid
@@ -219,7 +189,7 @@ void ControlGui::renderObjectivesImGui()
 		return;
 	}
 
-	objectiveTime += frameLength;	// renderResults' end-of-mission fade reads this
+	objectiveTime += mc2::render_view::clock().dt;	// renderResults' end-of-mission fade reads this
 
 	// Map the authored layout space into the 16:9 HUD canvas box (same pattern
 	// as PauseWindow/InfoWindow::renderImGui). The OBJECTIVES* constants are
@@ -346,7 +316,7 @@ void ControlGui::renderObjectivesImGui()
 	// Same accumulation, totals reveal timing and kill-marker click as legacy.
 	auto DrawRow = [&]( const ObjectiveUiRow& row, long yPos, bool bTotal ){
 		char desc[256];
-		strncpy( desc, row.obj->LocalizedDescription().c_str(), 255 );
+		strncpy( desc, row.description.c_str(), 255 );
 		desc[255] = 0;
 
 		ShadowText( AX( OBJECTIVESLEFT + shiftX ), AY( static_cast<float>(yPos) ), static_cast<unsigned long>(row.color), desc );
@@ -645,7 +615,7 @@ void ControlGui::RenderObjectives()
 			}
 		}
 	
-		objectiveTime += frameLength;
+		objectiveTime += mc2::render_view::clock().dt;
 
 		float t0, t1, p0, p1;
 
@@ -863,11 +833,9 @@ void ControlGui::renderPlayerStatus(float xDelta)
 // ImGui overlay). Pixel output unchanged.
 void ControlGui::renderObjective( const ObjectiveUiRow& row, long xPos, long yPos, bool bDrawTotal )
 {
-	CObjective* pObjective = row.obj;
 	const long color = row.color;
-	gosASSERT(pObjective->IsActive());
 
-	drawShadowText( color, 0xff000000, guiFont.getTempHandle(), xPos, yPos, 1, pObjective->LocalizedDescription().c_str(), 0,
+	drawShadowText( color, 0xff000000, guiFont.getTempHandle(), xPos, yPos, 1, row.description.c_str(), 0,
 		guiFont.getSize() );
 	if ( bDrawTotal )
 	{
@@ -888,7 +856,7 @@ void ControlGui::renderObjective( const ObjectiveUiRow& row, long xPos, long yPo
 
 		// draw .............
 		DWORD tmpULong1, tmpULong2;
-		gos_TextStringLength( &tmpULong1, &tmpULong2, pObjective->LocalizedDescription().c_str() );
+		gos_TextStringLength( &tmpULong1, &tmpULong2, row.description.c_str() );
 		descWidth = static_cast<int>(tmpULong1);
 		height = static_cast<int>(tmpULong2);
 		gos_TextStringLength( &tmpULong1, &tmpULong2, "...................." );

@@ -37,6 +37,7 @@ class GameTacMap: public TacMap
 	void init( unsigned char* bitmapData, int dataSize );
 	void update(); // do not call these two functions from editor
 	void render();
+	void extractHudBlips();
 
 	// MC2_HUD_IMGUI_TACMAP (IN-MISSION-HUD-IMGUI-SCOPE-1 slice E):
 	// ImGui panel replaces the legacy gos-batch tac-map draw AND its
@@ -83,6 +84,8 @@ class GameTacMap: public TacMap
 	// team/selection/contact) — factored verbatim from the legacy render()
 	// loops so the ImGui path draws from the SAME data (arrays sized
 	// MAX_MOVERS by the callers). Returns count.
+	int extractBlips( unsigned long* colors, unsigned long* ringColors,
+                      glm::vec3* positions, unsigned long* ranges, bool* selected );
 	int collectBlips( unsigned long* colors, unsigned long* ringColors,
 					  glm::vec3* positions, unsigned long* ranges,
 					  bool* selected );

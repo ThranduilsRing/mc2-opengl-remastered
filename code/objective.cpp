@@ -1,3 +1,4 @@
+#include "render_view.h"
 #define OBJECTIVE_CPP
 /*************************************************************************************************\
 Objective.cpp			: Implementation of the Objective component.
@@ -2070,27 +2071,27 @@ objective_status_type CObjectives::Status() {
 
 }*/
 
-bool CObjective::RenderMarkers(GameTacMap *tacMap, bool blink ) 
+bool CObjective::RenderMarkers(const mc2::render_view::HudObjective& row, GameTacMap *tacMap, bool blink )
 {
 	bool bRetVal = 0;
-	if (m_resolved || !m_displayMarker || !m_isActive)
+	if (!row.visible)
 	{
 		//Draw Nothing.  Objective is resolved or hidden
 	} 
 	else 
 	{
 			glm::vec3 objectivePos;
-			objectivePos.x = m_markerX;
-			objectivePos.y = m_markerY;
+			objectivePos.x = row.position.x;
+			objectivePos.y = row.position.y;
 			long color = SD_YELLOW;
 
-			if ( m_displayMarker == NAV )
+			if ( row.marker == NAV )
 			{
 				bRetVal = 1; // true if we drew something
 
 				if ( blink )
 				{
-					s_lastBlinkTime += frameLength;
+					s_lastBlinkTime += mc2::render_view::clock().dt;
 					if ( s_lastBlinkTime > s_blinkLength )
 					{
 						s_lastBlinkTime = 0.f;
@@ -2112,8 +2113,8 @@ bool CObjective::RenderMarkers(GameTacMap *tacMap, bool blink )
 
 				unsigned long width, height;
 				height = s_markerFont->height();
-				width = s_markerFont->width( m_markerText );
-				drawShadowText( 0xffffffff, 0xff000000, s_markerFont->getTempHandle(), pos.x - width/2, pos.y - height/2, true, m_markerText, 0, s_markerFont->getSize(), -2, 2 );
+				width = s_markerFont->width( row.markerText.c_str() );
+				drawShadowText( 0xffffffff, 0xff000000, s_markerFont->getTempHandle(), pos.x - width/2, pos.y - height/2, true, row.markerText.c_str(), 0, s_markerFont->getSize(), -2, 2 );
 
 			}
 
@@ -2122,20 +2123,20 @@ bool CObjective::RenderMarkers(GameTacMap *tacMap, bool blink )
 	return bRetVal;
 }
 
-void CObjective::RenderOverviewMarker( Camera* eye, float alpha )
+void CObjective::RenderOverviewMarker(const mc2::render_view::HudObjective& row, Camera* eye, float alpha )
 {
 	if ( !eye || alpha <= 0.0f )
 		return;
-	if ( m_resolved || !m_displayMarker || !m_isActive )
+	if ( !row.visible )
 		return;
-	if ( !m_markerText[0] || !s_markerFont )
+	if ( !row.markerText.c_str()[0] || !s_markerFont )
 		return;
 
 	// World position of the marker, lifted to the terrain surface so it projects
 	// onto the ground at altitude (objectives are authored at z=0).
 	glm::vec3 wp;
-	wp.x = m_markerX;
-	wp.y = m_markerY;
+	wp.x = row.position.x;
+	wp.y = row.position.y;
 	wp.z = 0.0f;
 	if ( land )
 		wp.z = land->getTerrainElevation( wp );
@@ -2155,7 +2156,7 @@ void CObjective::RenderOverviewMarker( Camera* eye, float alpha )
 	const unsigned long fg = ( aByte << 24 ) | 0x00ffe600; // warm yellow, cross-faded
 	const unsigned long bg = ( aByte << 24 ) | 0x00000000; // black shadow
 
-	unsigned long width  = s_markerFont->width( m_markerText );
+	unsigned long width  = s_markerFont->width( row.markerText.c_str() );
 	unsigned long height = s_markerFont->height();
 
 	// Exempt from the bottom-band HUD shrink (world-anchored, like the icons).
@@ -2163,7 +2164,7 @@ void CObjective::RenderOverviewMarker( Camera* eye, float alpha )
 	gos_SetHudScaleExempt( true );
 	drawShadowText( fg, bg, s_markerFont->getTempHandle(),
 	                static_cast<long>(( sx - width / 2 )), static_cast<long>(( sy - height / 2 )),
-	                true, m_markerText, 0, s_markerFont->getSize(), -2, 2 );
+	                true, row.markerText.c_str(), 0, s_markerFont->getSize(), -2, 2 );
 	gos_SetHudScaleExempt( prevExempt );
 }
 

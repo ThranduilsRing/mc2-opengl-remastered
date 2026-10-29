@@ -24,6 +24,7 @@ add_executable(mc2fx
     ${MC2FX_GOSFX_SRC}
     ${MC2FX_MLR_SRC}
     ${MC2FX_PARTICLES_SRC}
+    "${CMAKE_SOURCE_DIR}/GameOS/gameos/sim_overlap.cpp"
     ${MC2FX_STUFF_SRC}
     # Tracy client (TRACY_ENABLE is global; any TU including gos_profiler.h
     # inline-instantiates the Tracy queue). Same gotcha asset_viewer hit.

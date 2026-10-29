@@ -505,6 +505,9 @@ class GameObjectManager {
 			return(numGates);
 		}
 
+		// G7b K3: render() draws the list built at the quiescent render extract.
+		void extractRenderList (mc2::render_view::RenderList& list);
+
 		void render (bool terrain, bool movers, bool other);
 
 		void renderShadows (bool terrain, bool movers, bool other);

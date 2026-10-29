@@ -290,7 +290,8 @@ class Artillery : public GameObject
 		bool presentationInitialized = false;
 		bool presentationImpactStarted = false;
 
-		virtual void render (void);
+		virtual void extractRenderView (mc2::render_view::RenderView& view);
+		virtual void renderView (const mc2::render_view::RenderView& view);
 
 		virtual void init (bool create, ObjectTypePtr _type);
 

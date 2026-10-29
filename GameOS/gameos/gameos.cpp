@@ -1,4 +1,5 @@
 #include <memory>
+#include "../../mclib/sim_overlap.h"
 #include "gameos.hpp"
 #include "toolos.hpp"
 #include "memorymanager.hpp" // gos_Heap
@@ -321,6 +322,7 @@ void __stdcall gos_srand(unsigned int seed)
 
 int __stdcall gos_rand()
 {
+    mc2::overlap::assertSimQuiescent("rng::sim");
     if (gos_detRngEnabled()) {
         const int result = static_cast<int>(mc2_det_rng::next15(s_lcg_state));
         // Trace is gated twice: compile-time MC2_RNG_TRACE define AND the

@@ -33,7 +33,7 @@ PauseWindow.cpp			: Implementation of the PauseWindow component.
 #include "mc2fmt.h"
 #include <utility>
 
-extern float frameLength;
+extern thread_local float frameLength;
 
 extern bool bInvokeOptionsScreenFlag;
 extern long helpTextHeaderID;

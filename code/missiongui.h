@@ -214,6 +214,7 @@ public:
 		
 		virtual void update (void);
 		virtual void drawVTOL (void);
+		void extractHudSnapshot();
 		virtual void render (void);
 						
 		void	initMechs(){ controlGui.initMechs(); }	

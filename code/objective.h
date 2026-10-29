@@ -1,5 +1,6 @@
 #ifndef OBJECTIVE_H
 #define OBJECTIVE_H
+namespace mc2::render_view { struct HudObjective; }
 /*************************************************************************************************\
 Objective.h			: Interface for the Objective component.
 //---------------------------------------------------------------------------//
@@ -573,6 +574,7 @@ public:
 	/* The following function evaluates the status of the objective in the context of the given
 	objectives. */
 	objective_status_type Status(CObjectives &objectives);
+	objective_status_type observedStatus() const { return m_resolved ? m_resolvedStatus : OS_UNDETERMINED; }
 	void Status(objective_status_type newStatus);
 	/* The following function evaluates the status of the objective in the context of the given
 	objectives. It returns a bool telling me if the objective has failed or been completed since I last checked!*/
@@ -636,11 +638,11 @@ public:
 	void ActivationTime(double activationTime) { m_activationTime = activationTime; }
 	double ActivationTime() { return m_activationTime; }
 	void Render( unsigned long xPos, unsigned long yPos, HGOSFONT3D );
-	bool RenderMarkers (GameTacMap *tacMap, bool blink);		//TacMap calls this to draw objective markers on tacMap.
+	static bool RenderMarkers(const mc2::render_view::HudObjective& row, GameTacMap* tacMap, bool blink);
 
 	// Tactical Overview: draw this objective's marker text projected over its
 	// world location on the main 3D screen (like the tac map, but in the world).
-	void RenderOverviewMarker (Camera* eye, float alpha);
+	static void RenderOverviewMarker(const mc2::render_view::HudObjective& row, Camera* eye, float alpha);
 
 	friend class Mission;
 	friend struct ObjectiveObservationFixture;

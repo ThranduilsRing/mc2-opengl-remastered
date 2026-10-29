@@ -35,9 +35,10 @@ class TextureSources final : public RenderCore::TextureSourceOwner {
 public:
     explicit TextureSources(std::function<void(DWORD)> retireCpu = {}) : retireCpu_(std::move(retireCpu)) { assets_.resize(1); }
     void collectRetired() override;
-    DWORD capacity() const { return static_cast<DWORD>(assets_.size()); }
+    DWORD capacity() const { std::lock_guard lock(indexMutex_); return static_cast<DWORD>(assets_.size()); }
     const std::vector<std::weak_ptr<TextureSource>>& assets() const { return assets_; }
     std::shared_ptr<TextureSource> get(DWORD asset) const {
+        std::lock_guard lock(indexMutex_);
         return asset < assets_.size() ? assets_[asset].lock() : nullptr;
     }
     std::shared_ptr<TextureSource> find(const char* name, DWORD variant);
@@ -54,7 +55,13 @@ public:
         auto it = cpuTextures_.find(texture);
         return it == cpuTextures_.end() ? nullptr : it->second.lock();
     }
+    // Only the tick appends; main drains after joining. Asset ids never recycle.
+    void requestCreate(DWORD asset) { creates_.push_back(asset); }
+    std::vector<DWORD> takeCreates() { std::vector<DWORD> out; out.swap(creates_); return out; }
 private:
+    // Main render lookups may overlap tick admission (vector growth).
+    mutable std::mutex indexMutex_;
+    std::vector<DWORD> creates_;
     static std::string nameKey(const char* name, DWORD variant);
     // Weak indices never extend payload lifetime. IDs are monotonic for the session;
     // retiring a source cannot make a stale DWORD name a different source later.

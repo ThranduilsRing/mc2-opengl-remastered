@@ -11,6 +11,7 @@
 // Include Files
 #ifndef WEATHER_H
 #include"weather.h"
+#include "sim_overlap.h"
 #endif
 
 #ifndef GAMESOUND_H
@@ -163,6 +164,7 @@ void Weather::init (FitIniFilePtr missionFile)
 // stream so that the camera, or the effects option that turns weather off, cannot move the shared stream the simulation uses.
 long Weather::randomNumber (long range)
 {
+    mc2::overlap::assertMainThread("rng::weather.randomNumber");
 	++rngDraws;
 	return mc2_det_rng::next15(rngState) % range;
 }
@@ -170,6 +172,7 @@ long Weather::randomNumber (long range)
 // The same shaping as RollDice, on the weather's own stream.
 bool Weather::rollDice (long percent)
 {
+    mc2::overlap::assertMainThread("rng::weather.rollDice");
 	++rngDraws;
 	return ((static_cast<long>(mc2_det_rng::next15(rngState)) * 100) >> 15) < percent;
 }

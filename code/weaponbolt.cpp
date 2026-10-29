@@ -1,3 +1,4 @@
+#include "tick_commit.h"
 //---------------------------------------------------------------------------
 //
 // weaponbolt.cpp -- File contains the WeaponBolt Object code
@@ -413,44 +414,12 @@ void WeaponBolt::destroy (void)
 		targetPosition = nullptr;
 	}
 
-	// Effects can outlive the mission.
-	if (pointLight)
-	{
-		if (eye)
-			eye->removeWorldLight(lightId,pointLight);
-		std::free(pointLight);
-		pointLight = nullptr;
-	}
-
-	if (hitEffect)
-	{
-		hitEffect->Kill();
-		hitEffect.reset();
-	}
-
-	if (muzzleEffect)
-	{
-		muzzleEffect->Kill();
-		muzzleEffect.reset();
-	}
-
-	if (gosEffect)
-	{
-		gosEffect->Kill();	 
-		gosEffect.reset();
-	}
-
-	if (missEffect)
-	{
-		missEffect->Kill();	 
-		missEffect.reset();
-	}
-
-	if (waterMissEffect)
-	{
-		waterMissEffect->Kill();
-		waterMissEffect.reset();
-	}
+    mc2::tick::releaseLight(pointLight, eye, lightId);
+    mc2::tick::releaseEffect(hitEffect);
+    mc2::tick::releaseEffect(muzzleEffect);
+    mc2::tick::releaseEffect(gosEffect);
+    mc2::tick::releaseEffect(missEffect);
+    mc2::tick::releaseEffect(waterMissEffect);
 }
 
 // ---------------------------------------------------------------------------
@@ -496,10 +465,10 @@ void WeaponBolt::init (bool create, ObjectTypePtr _type)
 
 	objectClass = WEAPONBOLT;
 	
-	lightId = -9;	//Tell it to make one!
 	
 
 	destroy();
+	lightId = -9; // reset only after retiring the previous light id
 	mcTextureHandle = 0;
 	gosTextureHandle = 0xffffffff;
 
@@ -677,44 +646,12 @@ void WeaponBolt::finishNow (void)
 	if (getExists())
 	{
 
-		if (hitEffect)
-		{
-			hitEffect->Kill();
-			hitEffect.reset();
-		}
-
-		if (muzzleEffect)
-		{
-			muzzleEffect->Kill();
-			muzzleEffect.reset();
-		}
-
-		if (missEffect)
-		{
-			missEffect->Kill();
-			missEffect.reset();
-		}
-
-		if (waterMissEffect)
-		{
-			waterMissEffect->Kill();
-			waterMissEffect.reset();
-		}
-
-		if (gosEffect)
-		{
-			gosEffect->Kill();		//Effect is over.  Otherwise, wait until hit!
-			gosEffect.reset();
-		}
-
-		if (pointLight)
-		{
-			if (eye)
-				eye->removeWorldLight(lightId,pointLight);
-			std::free(pointLight);
-			pointLight = nullptr;
-		}
-
+        mc2::tick::releaseEffect(hitEffect);
+        mc2::tick::releaseEffect(muzzleEffect);
+        mc2::tick::releaseEffect(missEffect);
+        mc2::tick::releaseEffect(waterMissEffect);
+        mc2::tick::releaseEffect(gosEffect);
+        mc2::tick::releaseLight(pointLight, eye, lightId);
 		GameObjectPtr target = ObjectManager->getByWatchID(targetWID);
 		if (target)
 		{

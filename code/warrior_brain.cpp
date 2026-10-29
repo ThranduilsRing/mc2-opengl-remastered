@@ -6,6 +6,7 @@
 
 #include <atomic>
 #include "warrior_internal.h"
+#include "sim_overlap.h"
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"   // str<>()
 #include "brain_execution_policy.h"
@@ -678,8 +679,9 @@ long MechWarrior::mainDecisionTree (void) {
 	// BRAIN-FIXED-TICK-1: advance global sim-time accumulator once per render frame,
 	// before the per-warrior gate so even staggered-out warriors contribute to the advance.
 	initBrainFixedTickGate();
-	if (s_brainFixedTickEnabled && s_brainAccumLastFrame != g_mc2FrameCounter.load(std::memory_order_relaxed)) {
-		s_brainAccumLastFrame = g_mc2FrameCounter.load(std::memory_order_relaxed);
+	const uint32_t simFrame = mc2::overlap::simulationFrame(g_mc2FrameCounter);
+	if (s_brainFixedTickEnabled && s_brainAccumLastFrame != simFrame) {
+		s_brainAccumLastFrame = simFrame;
 		bool ticked = advanceBrainFixedTickAccumulator(scenarioTime);
 		if (s_brainFixedTickTrace && ticked) {
 			mc2::fmt::print_err("[BRAIN_FIXED_TICK] tick={:d} simTime={:.4f} ranThisFrame={:d}\n", mc2::fmt::as_u32(s_brainTickIndex), static_cast<double>(scenarioTime), mc2::fmt::as_u32(s_brainTicksThisFrame));

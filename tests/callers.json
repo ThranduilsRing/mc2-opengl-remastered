@@ -59,7 +59,7 @@
         },
         {
           "path": "tools/build_contract_harnesses.py",
-          "line": 191,
+          "line": 192,
           "evidence": "import",
           "reference": "bootstrap_worktree_build",
           "text": "from bootstrap_worktree_build import cache_args"
@@ -1694,7 +1694,7 @@
       "callers_by_basename": [
         {
           "path": "CMakeLists.txt",
-          "line": 953,
+          "line": 954,
           "evidence": "cmake command",
           "reference": "${CMAKE_SOURCE_DIR}/scripts/check-shader-schema.sh",
           "text": "COMMAND ${BASH_EXECUTABLE} ${CMAKE_SOURCE_DIR}/scripts/check-shader-schema.sh"
@@ -2364,7 +2364,7 @@
         },
         {
           "path": "tools/build_contract_harnesses.py",
-          "line": 24,
+          "line": 25,
           "evidence": "import",
           "reference": "configure_ninja",
           "text": "import configure_ninja as cn"
@@ -3163,7 +3163,7 @@
         },
         {
           "path": "tools/build_contract_harnesses.py",
-          "line": 23,
+          "line": 24,
           "evidence": "import",
           "reference": "console_child",
           "text": "import console_child"
@@ -5160,7 +5160,7 @@
       "callers_by_stem": [
         {
           "path": "scripts/tests/test_battle_bench.py",
-          "line": 133,
+          "line": 153,
           "evidence": "import",
           "reference": "run_smoke",
           "text": "import run_smoke"
@@ -15860,7 +15860,7 @@
       "callers_by_basename": [
         {
           "path": "CMakeLists.txt",
-          "line": 931,
+          "line": 932,
           "evidence": "cmake command",
           "reference": "${CMAKE_SOURCE_DIR}/tools/shader_reflect/reflect.py",
           "text": "COMMAND ${Python3_EXECUTABLE}"

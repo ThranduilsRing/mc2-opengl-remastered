@@ -71,6 +71,7 @@ add_library(mc2_tglloader STATIC
     # loader lib must carry them too.
     "${CMAKE_SOURCE_DIR}/mclib/render_contract.cpp"
     # MC2-JOBS-CORE-1: frame_jobs.cpp -> job_system.cpp (+ jobs_fatal.cpp).
+    "${CMAKE_SOURCE_DIR}/GameOS/gameos/sim_overlap.cpp"
     "${CMAKE_SOURCE_DIR}/code/job_system.cpp"
     "${CMAKE_SOURCE_DIR}/code/jobs_fatal.cpp"
     # --- Stuff library TUs (game-free math + containers) ---

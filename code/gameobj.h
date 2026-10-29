@@ -21,6 +21,7 @@
 
 #include <memory>
 #include "sim_world_trace.h"
+#include "render_view.h"
 
 #ifndef DOBJTYPE_H
 #include"dobjtype.h"
@@ -301,6 +302,7 @@ struct _GameObjectData
 	int32_t						drawFlags;			
 }; using GameObjectData = _GameObjectData;
 
+
 class GameObject {
 
 	public:
@@ -385,7 +387,13 @@ class GameObject {
 
 		virtual void render (void) {
 		}
-		
+
+		// G7b K3: extractRenderView runs at the render extract (main, no tick in flight) and captures what this
+		// object's draw reads from the sim (and does the render-time sim writes); renderView draws from it.
+		// Defaults: no captured state, renderView calls render().
+		virtual void extractRenderView (mc2::render_view::RenderView& view);
+		virtual void renderView (const mc2::render_view::RenderView& view);
+
 		virtual void renderShadows (void) {
 		}
 

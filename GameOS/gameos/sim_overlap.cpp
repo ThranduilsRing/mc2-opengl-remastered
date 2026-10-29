@@ -25,6 +25,7 @@ namespace {
 
 Hooks g_hooks{};
 thread_local bool t_onSimWorker = false;
+thread_local uint32_t t_simFrame = 0;
 std::atomic<bool> g_inFlight{false};
 std::atomic<unsigned> g_violations{0};
 
@@ -81,14 +82,17 @@ void startWorker() {
 void violation(std::string_view kind, std::string_view site) {
     const unsigned n = g_violations.fetch_add(1, std::memory_order_relaxed) + 1;
     if (n <= 20) std::fprintf(stderr, "[SIM_OVERLAP v1] VIOLATION %.*s site=%.*s count=%u\n",
-                                       static_cast<int>(kind.size()), kind.data(), static_cast<int>(site.size()), site.data(), n);
+        static_cast<int>(kind.size()), kind.data(), static_cast<int>(site.size()), site.data(), n);
     if (mc2::gate::get<"MC2_SIM_OVERLAP_AUDIT">()) std::abort();
 }
 
 } // namespace
 
 void installHooks(const Hooks& hooks) { g_hooks = hooks; }
-void kickTail() { if (g_hooks.kick) g_hooks.kick(); }
+void extractRender() { if (g_hooks.extract) g_hooks.extract(); }
+void beginFrameDraw() {
+    if (g_hooks.kick) g_hooks.kick();
+}
 void joinTail() { if (g_hooks.join) g_hooks.join(); }
 
 void runOnWorker(std::function<void()> job) {
@@ -110,6 +114,8 @@ void waitWorker() {
 
 bool jobInFlight() { return g_inFlight.load(std::memory_order_acquire); }
 bool onSimWorker() { return t_onSimWorker; }
+uint32_t simulationFrame(uint32_t serialFrame) { return t_onSimWorker ? t_simFrame : serialFrame; }
+void setSimulationFrame(uint32_t frame) { t_simFrame = frame; }
 
 void assertSimQuiescent(std::string_view site) {
     if (g_inFlight.load(std::memory_order_acquire) && !t_onSimWorker) violation("render-read-while-tick-in-flight", site);
@@ -118,7 +124,5 @@ void assertSimQuiescent(std::string_view site) {
 void assertMainThread(std::string_view site) {
     if (t_onSimWorker) violation("sim-worker-called-main-thread-api", site);
 }
-
-unsigned violationCount() { return g_violations.load(std::memory_order_relaxed); }
 
 } // namespace mc2::overlap

@@ -1,3 +1,4 @@
+#include "render_view.h"
 // ControlGui: the vehicle tab: update, render, click handling and the vehicle command state.
 // Declared in the class headers; shared names in controlgui_internal.h.
 #include "controlgui_internal.h"
@@ -183,13 +184,13 @@ void ControlGui::renderVehicleTab()
 	char originalStr[256];
 
 	cLoadString( IDS_RP, originalStr, 256 );
-	sprintf( buffer, originalStr, static_cast<long>(LogisticsData::instance->getResourcePoints()) );
+	sprintf( buffer, originalStr, static_cast<long>(mc2::render_view::hud().resourcePoints) );
 
 	//We are there.  Start flashing.
 	/// TUTORIAL!!!
 	if (rpNumFlashes)
 	{
-		rpFlashTime += frameLength;
+		rpFlashTime += mc2::render_view::clock().dt;
 		if ( rpFlashTime > .5f )
 		{
 			rpFlashTime = 0.0f;

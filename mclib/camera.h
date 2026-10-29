@@ -13,6 +13,7 @@
 
 #ifndef DCAMERA_H
 #include"dcamera.h"
+#include "sim_overlap.h"
 #endif
 
 #ifndef TERRAIN_H
@@ -1400,6 +1401,7 @@ class Camera
 
 		long addWorldLight (TG_LightPtr light)
 		{
+    mc2::overlap::assertMainThread("Camera::addWorldLight");
 			numLights = MAX_LIGHTS_IN_WORLD;
 			bool lightAdded = false;
 			for (long i=0;i<MAX_LIGHTS_IN_WORLD;i++)
@@ -1419,6 +1421,7 @@ class Camera
 
 		void removeWorldLight (DWORD lightNum, TG_LightPtr light)
 		{
+    mc2::overlap::assertMainThread("Camera::removeWorldLight");
 			if ((lightNum < MAX_LIGHTS_IN_WORLD) && (worldLights[lightNum] == light))
 			{
 				mc2_spotlight_diag::untag_slot(this, static_cast<long>(lightNum));

@@ -69,6 +69,7 @@ add_executable(tg_import_dump
     ${MC2_ROOT}/mclib/fst_hash.cpp
     ${MC2_ROOT}/mclib/heap.cpp
     ${MC2_ROOT}/mclib/paths.cpp
+    ${MC2_ROOT}/GameOS/gameos/sim_overlap.cpp
     ${MC2_ROOT}/mclib/timing.cpp
     ${MC2_ROOT}/mclib/cpu_proj_cost_split.cpp
     ${MC2_ROOT}/mclib/projectz_trace.cpp

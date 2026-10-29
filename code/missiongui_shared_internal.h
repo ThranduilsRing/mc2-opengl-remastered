@@ -48,7 +48,7 @@ extern long helpTextID;
 extern CPrefs prefs;
 extern bool invulnerableON;
 extern bool MLRVertexLimitReached;
-extern float frameLength;
+extern thread_local float frameLength;
 extern void DEBUGWINS_print (const char* s, long window = 0);
 extern void DEBUGWINS_setGameObject (long debugObj, GameObjectPtr obj);
 extern void DEBUGWINS_toggle (bool* windowsOpen);

@@ -1185,13 +1185,32 @@ void Artillery::drawSelectBox (unsigned char color)
 }
 	
 //---------------------------------------------------------------------------
-void Artillery::render (void)
+// G7b K3: the old render() split at the render extract. The strike timer, its screen anchor, the impact position and the
+// windowsVisible stamp are taken here; the draw (hit effect, timer text, appearance, bomber) reads the view.
+void Artillery::extractRenderView (mc2::render_view::RenderView& view)
 {
-	// Bypass inView cull under the GPU static-prop killswitch. Artillery
-	// (aerial bombers, etc.) can be spawned mid-mission and their
-	// inView flag has the same wolfman-zoom false-negative problem as
-	// every other actor class.
-	if (inView)
+	GameObject::extractRenderView(view);
+	if (!inView)
+		return;
+	view.flags |= mc2::render_view::Visible;
+	if ( (!MPlayer && (info.strike.timeToImpact > 0.f)) ||
+		 (MPlayer &&  info.strike.timeToImpact > 0.f
+		 && ((teamId == Team::home->getId()) || info.strike.timeToImpact < 3.0f)))
+	{
+		view.flags |= mc2::render_view::Timer;
+		view.value[0] = info.strike.timeToImpact;
+		view.aux[0] = iFacePosition;
+		if (appearance->canBeSeen())
+		{
+			view.flags |= mc2::render_view::SeenAtExtract;
+			windowsVisible = turn;
+		}
+	}
+}
+
+void Artillery::renderView (const mc2::render_view::RenderView& view)
+{
+	if (view.has(mc2::render_view::Visible))
 	{
 		if (hitEffect )
 		{
@@ -1212,21 +1231,19 @@ void Artillery::render (void)
 			drawInfo.m_clippingFlags = 0x0;
 			
 			glm::vec3 actualPosition;
-			mc2ToRender(actualPosition, position);
-			
+			mc2ToRender(actualPosition, view.position);
+
 			glm::mat4 	shapeOrigin;
-			
+
 			mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
 			mc2::math::buildTranslation(shapeOrigin, actualPosition);
-			
+
 			drawInfo.m_parentToWorld = &shapeOrigin;
-	 
+
 			if (!MLRVertexLimitReached)
 				hitEffect->Draw(&drawInfo);
 		}
-		if ( (!MPlayer && (info.strike.timeToImpact > 0.f)) ||
-			 (MPlayer &&  info.strike.timeToImpact > 0.f
-			 && ((teamId == Team::home->getId()) || info.strike.timeToImpact < 3.0f)))
+		if (view.has(mc2::render_view::Timer))
 		{
 			// We are drawing the timer.
 			// Draw it.
@@ -1235,11 +1252,11 @@ void Artillery::render (void)
 			switch (artilleryType)
 			{
 				case ARTILLERY_LARGE:
-					sprintf(text,"%02.2f",info.strike.timeToImpact);
+					sprintf(text,"%02.2f",view.value[0]);
 				break;
-				
+
 				case ARTILLERY_SMALL:
-					sprintf(text,"%02.2f",info.strike.timeToImpact);
+					sprintf(text,"%02.2f",view.value[0]);
 				break;
 				
 				case ARTILLERY_SENSOR:
@@ -1250,7 +1267,8 @@ void Artillery::render (void)
 			DWORD width, height;
 			Stuff::Vector4D moveHere;
 			// [PROJECTZ:ScreenXYOracle id=artlry_iface_float_help]
-			eye->projectForScreenXY( iFacePosition, moveHere );
+			glm::vec3 iFace = view.aux[0];
+			eye->projectForScreenXY( iFace, moveHere );
 
 			gos_TextSetAttributes (gosFontHandle, 0, gosFontScale, false, false, false, false);
 			gos_TextStringLength(&width,&height,text);
@@ -1262,9 +1280,8 @@ void Artillery::render (void)
 		
 			globalFloatHelp->setFloatHelp(text,moveHere,SD_GREEN,0x0,gosFontScale,false,false,false,false);
 		
-			if (appearance->canBeSeen())
+			if (view.has(mc2::render_view::SeenAtExtract))
 			{
-				windowsVisible = turn;
 				appearance->setVisibility(true,true);
 				appearance->render(-1);
 			}

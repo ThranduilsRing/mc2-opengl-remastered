@@ -1,3 +1,4 @@
+#include "tick_commit.h"
 #include "Gates/preferences_legacy.h"
 //---------------------------------------------------------------------------
 //
@@ -1010,11 +1011,30 @@ long TerrainObject::update (void) {
 
 //---------------------------------------------------------------------------
 
-void TerrainObject::render (void) {
-
-	if (!getFlag(OBJECT_FLAG_JUSTCREATED)) 
+// G7b K3: the old render() split at the render extract. The selection bar status is read and the selected/targeted
+// reset done here; renderView keeps the main-only parts (GPU readback gate, appearance, dust effect).
+void TerrainObject::extractRenderView (mc2::render_view::RenderView& view) {
+	GameObject::extractRenderView(view);
+	if (getSelected())
 	{
+		TerrainObjectTypePtr type = static_cast<TerrainObjectTypePtr>(getObjectType());
+		float barStatus = 1.0;
+		float totalDmgLvl = type->getDamageLevel();
+		if (totalDmgLvl > 0.0)
+			barStatus -= getDamage() / totalDmgLvl;
+
+		if (barStatus < 0.0)
+			barStatus = 0.0;
+
+		view.flags |= mc2::render_view::Bars;
+		view.barColor = 0xff7f7f7f;
+		view.barStatus = barStatus;
 	}
+	setSelected(false);		//ALWAYS reset the selected flags.  GUI needs this to work!
+	setTargeted( false );	//ALWAYS do it here, too!  Otherwise things may draw FUNNY!
+}
+
+void TerrainObject::renderView (const mc2::render_view::RenderView& view) {
 
 	// RENDER-GATE-FIX (mirrors the "CORRECTED" logic in update() line 794-817):
 	// Readback can CONFIRM visibility but must NOT DENY it. The readback is lagged
@@ -1036,21 +1056,10 @@ void TerrainObject::render (void) {
 	}
 	if (renderGate)
 	{
-		if (getSelected())
+		if (view.has(mc2::render_view::Bars))
 		{
-			TerrainObjectTypePtr type = static_cast<TerrainObjectTypePtr>(getObjectType());
-			float barStatus = 1.0;
-			float totalDmgLvl = type->getDamageLevel();
-			if (totalDmgLvl > 0.0)
-				barStatus -= getDamage() / totalDmgLvl;
-			
-			if (barStatus < 0.0)
-				barStatus = 0.0;
-
-			DWORD color = 0xff7f7f7f;
-			
-			appearance->setBarColor(color);
-			appearance->setBarStatus(barStatus);
+			appearance->setBarColor(view.barColor);
+			appearance->setBarStatus(view.barStatus);
 		}
 
 		//For debug purposes only.  Will crash pause!!	Sorry Heidi!
@@ -1080,20 +1089,17 @@ void TerrainObject::render (void) {
 			glm::mat4 	shapeOrigin;
 			glm::mat4	localToWorld;
 
-			mc2ToRender(actualPosition, position);
-							
+			mc2ToRender(actualPosition, view.position);
+
  			mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
 			mc2::math::buildTranslation(shapeOrigin, actualPosition);
-				
+
 			drawInfo.m_parentToWorld = &shapeOrigin;
-	 
+
 			if (!MLRVertexLimitReached)
 				bldgDustPoofEffect->Draw(&drawInfo);
 		}
 	}
-	
-	setSelected(false);		//ALWAYS reset the selected flags.  GUI needs this to work!
-	setTargeted( false );	//ALWAYS do it here, too!  Otherwise things may draw FUNNY!
 }
 
 //---------------------------------------------------------------------------
@@ -1313,6 +1319,7 @@ long TerrainObject::handleWeaponHit (WeaponShotInfoPtr shotInfo, bool addMultipl
 					{
 						//--------------------------------------------
 						//Play a Dust Poof.
+                        auto dust = [this, position = position, requestedTime = scenarioTime] {
 						if (useNonWeaponEffects)
 						{
 							unsigned flags = gosFX::Effect::ExecuteFlag;
@@ -1340,9 +1347,11 @@ long TerrainObject::handleWeaponHit (WeaponShotInfoPtr shotInfo, bool addMultipl
 							mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
 							mc2::math::buildTranslation(shapeOrigin, actualPosition);
 							
-							gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,nullptr);
+							gosFX::Effect::ExecuteInfo info((Stuff::Time)requestedTime,&shapeOrigin,nullptr);
 							bldgDustPoofEffect->Start(&info);
 						}
+                        };
+                        if (!mc2::tick::defer(mc2::tick::Queue::Release, dust)) dust();
 					}
 				}
 

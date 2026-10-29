@@ -13,6 +13,7 @@ import fnmatch
 import os
 from pathlib import Path
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -226,6 +227,8 @@ def build_and_run_order_seam(run, cache=False, jobs=None, seam_tree=None, seam_p
         return True
     # Engine-linked fixtures use relative paths; keep them away from worktree scratch.
     with tempfile.TemporaryDirectory(prefix="mc2-order-seam-") as fixture_dir:
+        shutil.copytree(REPO_ROOT / "tests/fixtures/brain_runtime",
+                        Path(fixture_dir) / "tests/fixtures/brain_runtime")
         command = [str(exe), "--no-breaks"]
         census = "AuthoredOrderProduction/read-only stock and mod mission Part census"
         env = dict(os.environ)

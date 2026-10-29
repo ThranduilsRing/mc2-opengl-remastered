@@ -395,9 +395,9 @@ def main():
     out.mkdir(parents=True, exist_ok=True)
     if (out / "battle-bench.json").exists():
         raise ValueError("output already contains a run; choose --out to preserve the baseline")
-    # Scrub ambient feature overrides; retain the host lease controls understood by the harness.
+    # Retain the declared overlap A/B gate as well as the host lease controls.
     for key in list(os.environ):
-        if key.startswith("MC2_") and not key.startswith("MC2_HOST_LEASE"):
+        if key.startswith("MC2_") and not key.startswith("MC2_HOST_LEASE") and key != "MC2_SIM_OVERLAP":
             del os.environ[key]
     report = {"schema": "battle-bench/1", "sha": sha, "identity": identity, "scenario": scenario, "build_config": "RelWithDebInfo",
               "scenario_sha256": sha_file(SCENARIO), "content": None, "profile": "stock/default-on native Vulkan",

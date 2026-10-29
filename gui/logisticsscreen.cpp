@@ -19,7 +19,7 @@ LogisticsScreen.cpp			: Implementation of the LogisticsScreen component.
 
 extern long helpTextID;
 extern long helpTextHeaderID;
-extern float frameLength;
+extern thread_local float frameLength;
 
 // see logisticsscreen.h. Default null = stock path.
 const char* (*gEquipmentUiTextHook)(long stringId) = nullptr;

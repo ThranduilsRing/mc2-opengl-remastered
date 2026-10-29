@@ -9,6 +9,7 @@
 
 #ifndef SOUNDSYS_H
 #define SOUNDSYS_H
+#include <optional>
 //---------------------------------------------------------------------------
 // Include files
 #ifndef DSTD_H
@@ -306,9 +307,9 @@ class SoundSystem
 
 		long playDigitalSample (unsigned long sampleId, glm::vec3 pos = glm::vec3(-9999.0f,-9999.0,-9999.0f), bool allowDupes = false);
 		
-		long playDigitalMusic (long musicId);
+		std::optional<long> playDigitalMusic (long musicId);
 		
-		long playDigitalStream (const char *streamName);
+		std::optional<long> playDigitalStream (const char *streamName);
 											 
 		bool isDigitalMusicPlaying (void);
 		bool isPlayingSample(long sampleId);
