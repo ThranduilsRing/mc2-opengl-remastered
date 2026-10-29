@@ -816,12 +816,14 @@ void Carnage::updatePresentation()
 void Carnage::extractRenderView (mc2::render_view::RenderView& view)
 {
 	GameObject::extractRenderView(view);
+	view.effects[0] = gosEffect.get();
 	if (carnageType == CARNAGE_EXPLOSION && !getFlag(OBJECT_FLAG_JUSTCREATED))
 		view.flags |= mc2::render_view::Visible;
 }
 
 void Carnage::renderView (const mc2::render_view::RenderView& view)
 {
+	auto* const gosEffect = view.effects[0];
 	if (view.has(mc2::render_view::Visible))
 	{
 		if (gosEffect && gosEffect->IsExecuted())

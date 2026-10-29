@@ -122,6 +122,8 @@ void Mech3DAppearance::setObjStatus (long oStatus)
 
 void Mech3DAppearance::updateGeometry (void)
 {
+	if (!simPresentationPass && (simulationOwned() || mc2::overlap::onSimWorker())) { updateSimPose(); return; }
+	mc2::overlap::assertMainThread("Mech3DAppearance::updateGeometry");
     mc2mechanim::CopyImportedActorPose(simulationShape_.get(), mechShape);
 	ZoneScopedN("GameLogic.Mech3D.UpdateGeometry");
 	// F3 CPU projection cost-baseline: sidecar bucket (NEVER in

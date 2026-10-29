@@ -3,6 +3,7 @@
 #include <atomic>
 #include "render_scene_support.h"
 #include "vk_object_lights.h"
+#include "sim_overlap.h"
 #include <optional>
 #include "mc2fmt.h"
 
@@ -120,7 +121,7 @@ namespace {
         const DWORD numLights = TG_Shape::s_numLights;
 
         uint64_t h = 0xcbf29ce484222325ULL;
-        h = fnv1a_64_u32(h, g_mc2FrameCounter.load(std::memory_order_relaxed));
+        h = fnv1a_64_u32(h, mc2::overlap::simulationFrame(g_mc2FrameCounter));
         h = fnv1a_64_u32(h, numLights);
 
         const uintptr_t listPtr = reinterpret_cast<uintptr_t>(listOfLights);
@@ -527,9 +528,10 @@ uint32_t mc2::vkLights::addLightDataStructureWithPerActorColor(TG_HWLightsData* 
     // recursive_mutex allows the nested call to re-acquire on the same thread.
     std::lock_guard<std::recursive_mutex> _lk(s_lightDataMapMu);
 
-    if (s_sceneLightTemplateFrame != g_mc2FrameCounter.load(std::memory_order_relaxed)) {
+    const auto lightFrame = mc2::overlap::simulationFrame(g_mc2FrameCounter);
+    if (s_sceneLightTemplateFrame != lightFrame) {
         s_sceneLightTemplateMap.clear();
-        s_sceneLightTemplateFrame = g_mc2FrameCounter.load(std::memory_order_relaxed);
+        s_sceneLightTemplateFrame = lightFrame;
     }
 
     const auto actorLightSource = firstActiveLightSourceIndex();

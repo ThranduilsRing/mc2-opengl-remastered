@@ -4992,7 +4992,6 @@
   "code/mission_init.cpp": 1,
   "code/missionbegin.cpp": 3,
   "code/mpparameterscreen.cpp": 1,
-  "code/tick_commit.h": 2,
   "editor/Action.cpp": 5,
   "editor/BuildingBrush.cpp": 2,
   "editor/Editor.cpp": 4,

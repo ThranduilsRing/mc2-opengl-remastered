@@ -134,6 +134,8 @@ def test_bench_defaults_are_the_iteration_shape_until_acceptance():
 def test_bench_scrub_preserves_overlap_ab_gate(tmp_path, monkeypatch):
     monkeypatch.setattr(sys, "argv", ["run_battle_bench.py", "--out", str(tmp_path / "report")])
     monkeypatch.setenv("MC2_SIM_OVERLAP", "0")
+    monkeypatch.setenv("MC2_SIM_OVERLAP_AUDIT", "1")
+    monkeypatch.setenv("MC2_VULKAN_VALIDATION", "1")
     monkeypatch.setenv("MC2_RENDER_SCALE", "0.25")
     monkeypatch.setattr(bench, "hold_install", lambda _: None)
     monkeypatch.setattr(bench.ms, "identity_block", lambda **_: {
@@ -143,6 +145,8 @@ def test_bench_scrub_preserves_overlap_ab_gate(tmp_path, monkeypatch):
 
     def after_scrub(*args):
         assert bench.environment(tmp_path / "commands", 1920, 1080)["MC2_SIM_OVERLAP"] == "0"
+        assert bench.environment(tmp_path / "commands", 1920, 1080)["MC2_SIM_OVERLAP_AUDIT"] == "1"
+        assert bench.environment(tmp_path / "commands", 1920, 1080)["MC2_VULKAN_VALIDATION"] == "1"
         assert "MC2_RENDER_SCALE" not in bench.os.environ
         raise RuntimeError("checked scrub before launch")
 

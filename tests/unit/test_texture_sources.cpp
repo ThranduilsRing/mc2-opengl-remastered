@@ -4,6 +4,8 @@
 #include "../../mclib/texture_sources_internal.h"
 #include "../../mclib/texture_ref.h"
 #include "../../mclib/sim_overlap.h"
+#include <barrier>
+#include <future>
 
 namespace {
 struct Sources {
@@ -29,6 +31,32 @@ struct Sources {
 }
 
 TEST_SUITE("TextureSources") {
+TEST_CASE("source admission overlaps named lookup byte interning and snapshots") {
+    Sources s;
+    const auto base=s.add("concurrent/base");
+    auto bytes=std::make_shared<const std::vector<uint8_t>>(std::vector<uint8_t>{1,2,3,4});
+    const auto interned=s.index->internBytes("concurrent/shared",bytes);
+    std::barrier start(2);
+    auto run=[&](unsigned worker) {
+        start.arrive_and_wait();
+        for (unsigned i=0;i<512;++i) {
+            const auto name="concurrent/"+std::to_string(worker)+"/"+std::to_string(i);
+            const auto id=s.add(name.c_str());
+            auto found=s.index->find(name.c_str(),0);
+            auto snapshot=s.index->assets();
+            if (!found || found->asset!=id || !s.index->find("concurrent/base",0) ||
+                s.index->find("missing",0) || snapshot.size()<=id || snapshot[id].expired() ||
+                s.index->internBytes("concurrent/shared",bytes)!=interned || !s.index->get(base))
+                return false;
+        }
+        return true;
+    };
+    auto a=std::async(std::launch::async,run,0);
+    auto b=std::async(std::launch::async,run,1);
+    CHECK(a.get()); CHECK(b.get());
+    CHECK(s.index->capacity()==1026);
+}
+
 TEST_CASE("worker texture release retires only at the join") {
     std::vector<DWORD> destroyed;
     Sources s([&](DWORD texture) { destroyed.push_back(texture); });

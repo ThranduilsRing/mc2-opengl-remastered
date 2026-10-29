@@ -1332,6 +1332,7 @@ class Camera
 		
 		void setLightColor (long index, DWORD argb)
 		{
+			mc2::overlap::assertMainThread("Camera::setLightColor");
 			if ((index >= 0) && (index < numLights) && worldLights[index])
 				worldLights[index]->SetaRGB(argb);
 		}
@@ -1346,6 +1347,7 @@ class Camera
 
 		void setLightIntensity (long index, float intensity)
 		{
+			mc2::overlap::assertMainThread("Camera::setLightIntensity");
 			if ((index >= 0) && (index < numLights) && worldLights[index])
 				worldLights[index]->intensity = intensity;
 		}

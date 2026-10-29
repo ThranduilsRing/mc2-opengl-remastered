@@ -391,7 +391,8 @@ long Mech3DAppearance::update (bool animate)
 	}
 	} // end !simPresentationPass
 		
-	if (!simPresentationPass && actorHandle_ >= 0) { updateSimPose(); return TRUE; }
+	if (!simPresentationPass && (simulationOwned() || mc2::overlap::onSimWorker())) { updateSimPose(); return TRUE; }
+	mc2::overlap::assertMainThread("Mech3DAppearance::update presentation");
 
 	// LIGHT-CULL-RADIUS-1 freshness (batch-6 item 5 ext a/c): the light
 	// owner-intent writers live in updateGeometry, which is frustum-culled

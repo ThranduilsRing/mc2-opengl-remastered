@@ -10,6 +10,7 @@
 //===========================================================================//
 
 #include "tgl_internal.h"
+#include "sim_overlap.h"
 #include <atomic>
 #include "Gates/gate.h"
 #include "mc2fmt.h"
@@ -126,6 +127,7 @@ void TG_Shape::SetViewport (float mulX, float mulY, float addX, float addY)
 //This function sets the list of lights used to light the shape (the CPU fallback draw reads them).
 long TG_Shape::SetLightList (TG_LightPtr *lightList, DWORD nLights)
 {
+	mc2::overlap::assertMainThread("TG_Shape::SetLightList");
 	if (lightList)
 	{
 		s_listOfLights = lightList;
