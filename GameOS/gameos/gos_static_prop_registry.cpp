@@ -575,8 +575,9 @@ void invalidate(int32_t regIdx) {
         }
     }
     for (uint32_t i = 0; i < rng.count; ++i) {
-        GpuStaticPropBatcher::instance().forgetLodState(s_recipes[rng.first + i]);
-        s_recipes[rng.first + i] = GpuStaticPropInstance{};
+        auto& recipe = s_recipes[rng.first + i];
+        GpuStaticPropBatcher::instance().forgetLodState(recipe);
+        recipe = GpuStaticPropInstance{};
         // 2A patch 3: this recipe leaf's immutable fields (modelMatrix, typeID) are
         // being zeroed — invalidate the cached cull record so Task 4 rebuilds it if
         // this slot is ever reused after a re-registration.
