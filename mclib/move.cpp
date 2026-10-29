@@ -37,7 +37,9 @@ MissionMapPtr GameMap = nullptr;
 GlobalMapPtr GlobalMoveMap[3] = {nullptr, nullptr, nullptr};
 static std::unique_ptr<MissionMap> s_gameMapOwner;
 static std::unique_ptr<GlobalMap> s_globalMoveMapOwner[3];
-static std::unique_ptr<MoveMap> s_pathFindMapOwner[2];
+// Initialize on the thread before searching; searches never allocate these grids.
+// Global-map mutation and live callbacks still require synchronous service (M3).
+static thread_local std::unique_ptr<MoveMap> s_pathFindMapOwner[2];
 
 MoveMapPtr MOVE_acquirePathFindMap (int which) {
 	if (!s_pathFindMapOwner[which])
@@ -265,7 +267,7 @@ char TeamRelations[MAX_TEAMS][MAX_TEAMS] = {
 
 bool PreserveMapTiles = false;
 
-MoveMapPtr PathFindMap[2] = {nullptr, nullptr};
+thread_local MoveMapPtr PathFindMap[2] = {nullptr, nullptr};
 
 float MoveMap::distanceFloat[DISTANCE_TABLE_DIM][DISTANCE_TABLE_DIM];
 int MoveMap::distanceInt[DISTANCE_TABLE_DIM][DISTANCE_TABLE_DIM];
@@ -495,6 +497,8 @@ void MOVE_buildData (long height, long width, MissionMapCellInfo* mapData, long 
 	GlobalMoveMap[2] = s_globalMoveMapOwner[2].get();
 	GlobalMoveMap[2]->blank = true;
 	GlobalMoveMap[2]->build(nullptr);
+	for (auto* globalMap : GlobalMoveMap)
+		globalMap->openHeap.reserve(globalMap->numDoors + NUM_DOOR_OFFSETS);
 
 	printf("[MOVE_BD] all GlobalMaps built OK\n"); fflush(stdout);
 
@@ -620,6 +624,9 @@ long MOVE_readData (PacketFile* packetFile, long whichPacket) {
 	//			numOffMap[0]++;
 
 	// PATHFINDING-FACTS-1: emit map topology once at mission load (gated, default-OFF).
+	for (auto* globalMap : GlobalMoveMap)
+		if (globalMap)
+			globalMap->openHeap.reserve(globalMap->numDoors + NUM_DOOR_OFFSETS);
 	{
 		int areas = (GlobalMoveMap[0]) ? GlobalMoveMap[0]->numAreas : 0;
 		int doors = (GlobalMoveMap[0]) ? GlobalMoveMap[0]->numDoors : 0;
@@ -656,6 +663,7 @@ void MOVE_cleanup (void) {
 
 void MissionMap::init (long h, long w) {
 
+	rev.statics++; // raw grid replacement also invalidates prepared search inputs
 	height = h;
 	width = w;
 	gTerrainPartIdStride = (w > TERRAIN_PART_ID_STRIDE_STOCK) ? w : TERRAIN_PART_ID_STRIDE_STOCK;

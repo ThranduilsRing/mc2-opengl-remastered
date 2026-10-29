@@ -15,6 +15,8 @@ void MoveMap::init (long maxW, long maxH) {
 	// A second init on a sized map replaces the grid (it does not leak the first one).
 	const size_t cellCount = static_cast<size_t>(maxWidth) * static_cast<size_t>(maxHeight);
 	map.assign(cellCount, MoveMapNode{});
+	openHeap.reserve(static_cast<int>(cellCount));
+	inputMap = nullptr;
 
 	mapRowStartTable.assign(static_cast<size_t>(maxHeight), 0);
 	for (long r = 0; r < maxHeight; r++)
@@ -53,7 +55,12 @@ void MoveMap::init (long maxW, long maxH) {
 	clear();
 }
 
+bool MoveMap::inputRevisionsValid (void) const {
+	return inputMap && inputMap == GameMap && inputRevisions == GameMap->rev;
+}
+
 void MoveMap::clear (void) {
+	inputMap = nullptr;
 
 	int numMapCells = maxWidth * height;
 	int initHPrime = ZeroHPrime ? 0 : HPRIME_NOT_CALCED;
@@ -452,6 +459,8 @@ long MoveMap::setUp (long mapULr,
 		if (placeStationaryMoversCallback)
 			(*placeStationaryMoversCallback)(this);
 
+	inputMap = GameMap;
+	inputRevisions = GameMap->rev;
 	return(NO_ERR);
 }
 
@@ -649,5 +658,7 @@ long MoveMap::setUp (long level,
 		if (placeStationaryMoversCallback)
 			(*placeStationaryMoversCallback)(this);
 
+	inputMap = GameMap;
+	inputRevisions = GameMap->rev;
 	return(NO_ERR);
 }

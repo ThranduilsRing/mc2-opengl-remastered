@@ -140,7 +140,7 @@ extern long					RamObjectWID;
 extern long MaxMoveGoalChecks;
 extern float DelayedOrderTime;
 extern float GroupOrderGoalOffset;
-extern MoveMapPtr			PathFindMap[2/*NUM_PATHMAPS*/];
+extern thread_local MoveMapPtr	PathFindMap[2/*NUM_PATHMAPS*/];
 extern long goalMap[GOALMAP_CELL_DIM * GOALMAP_CELL_DIM];
 extern long goalMapRowStart[GOALMAP_CELL_DIM];
 extern char goalMapRowCol[GOALMAP_CELL_DIM * GOALMAP_CELL_DIM][2];

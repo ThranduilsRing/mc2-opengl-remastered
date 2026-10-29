@@ -81,7 +81,7 @@ extern bool IsDiagonalStep[NUM_CELL_OFFSETS];
 extern char mineLayout[4][MAPCELL_DIM * MAPCELL_DIM];
 extern char TeamRelations[MAX_TEAMS][MAX_TEAMS];
 extern bool PreserveMapTiles;
-extern MoveMapPtr PathFindMap[2];
+extern thread_local MoveMapPtr PathFindMap[2];
 MoveMapPtr MOVE_acquirePathFindMap (int which);
 extern bool EditorSave;
 

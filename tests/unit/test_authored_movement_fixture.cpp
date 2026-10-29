@@ -22,6 +22,7 @@
 #include "mc2video.h"
 #include <chrono>
 #include <fstream>
+#include <thread>
 
 #include <array>
 #include <cstring>
@@ -991,6 +992,90 @@ TEST_CASE("AuthoredOrderProduction/MOVE revisions see runtime footprint and spre
     CHECK(first > r.preserved);
     GameMap->spreadState(100, 100, 1);          // tile already preserved: the passable write must still count
     CHECK(GameMap->rev.preserved > first);
+}
+
+TEST_CASE("AuthoredOrderProduction/path scratch is private to its worker and retained") {
+    MovementWorld world;
+    MOVE_init(21);
+    auto* mainScratch = PathFindMap[SIMPLE_PATHMAP];
+    mainScratch->map[0].parent = 11;
+    MoveMapPtr workerScratch = nullptr;
+    bool initiallyEmpty = false, retained = false;
+    std::thread worker([&] {
+        initiallyEmpty = PathFindMap[SIMPLE_PATHMAP] == nullptr;
+        workerScratch = MOVE_acquirePathFindMap(SIMPLE_PATHMAP);
+        workerScratch->init(43, 43);
+        workerScratch->map[0].parent = 17;
+        retained = MOVE_acquirePathFindMap(SIMPLE_PATHMAP) == workerScratch;
+    });
+    worker.join();
+    CHECK(initiallyEmpty);
+    CHECK(retained);
+    CHECK(workerScratch != mainScratch);
+    CHECK(PathFindMap[SIMPLE_PATHMAP] == mainScratch);
+    CHECK(mainScratch->map[0].parent == 11);
+}
+
+TEST_CASE("AuthoredOrderProduction/path scratch rejects changed inputs and rebakes without allocations") {
+    MovementWorld world;
+    MOVE_init(21);
+    MOVE_buildData(180, 180, nullptr, 0, nullptr);
+    world.saved.keep(FindingEscapePath);
+    FindingEscapePath = false;
+    auto* scratch = PathFindMap[SIMPLE_PATHMAP];
+    auto prepare = [&] {
+        auto start = world.point(90);
+        REQUIRE(scratch->setUp(70, 70, 43, 43, 0, &start, 90, 90,
+                              world.point(95), 20, 25, 50, 0, 8) == NO_ERR);
+        REQUIRE(scratch->inputRevisionsValid());
+    };
+    prepare();
+    const auto allocations = scratch->openHeap.allocations();
+    MovePath path;
+    int goalCell[2]{};
+    REQUIRE(scratch->calcPath(&path, nullptr, goalCell) > 0);
+    const auto expectedPath = mc2_path_trace::hashMovePath(&path);
+    using Mutation = void (*)(MissionMap&);
+    const Mutation mutations[] = {
+        [](MissionMap& m) { m.setTerrain(1, 1, 1); },
+        [](MissionMap& m) { m.setOverlay(1, 1, 1); },
+        [](MissionMap& m) { m.setLocalHeight(1, 1, 1); },
+        [](MissionMap& m) { m.setPassable(1, 1, false); },
+        [](MissionMap& m) { m.setRoad(1, 1, true); },
+        [](MissionMap& m) { m.setWall(1, 1, true); },
+        [](MissionMap& m) { m.setShallowWater(1, 1, true); },
+        [](MissionMap& m) { m.setDeepWater(1, 1, true); },
+        [](MissionMap& m) { m.setBuildGate(1, 1, true); },
+        [](MissionMap& m) { m.setBuildWall(1, 1, true); },
+        [](MissionMap& m) { m.setBuildLandBridge(1, 1, true); },
+        [](MissionMap& m) { m.setBuildNotSet(1, 1, true); },
+        [](MissionMap& m) { m.setForest(1, 1, true); },
+        [](MissionMap& m) { m.setOffMap(1, 1, true); },
+        [](MissionMap& m) { m.setMover(1, 1, true); },
+        [](MissionMap& m) { m.setGate(1, 1, true); },
+        [](MissionMap& m) { m.setMine(1, 1, 1); },
+        [](MissionMap& m) { m.setPathlock(0, 1, 1, true); },
+        [](MissionMap& m) { m.setPreserved(1, 1, true); },
+        [](MissionMap& m) { m.preserveCell(1, 2); },
+    };
+    for (auto mutate : mutations) {
+        mutate(*GameMap);
+        CHECK_FALSE(scratch->inputRevisionsValid());
+        CHECK(scratch->calcPath(&path, nullptr, nullptr) == 0);
+        CHECK(scratch->calcPathJUMP(&path, nullptr, nullptr) == 0);
+        CHECK(scratch->calcEscapePath(&path, nullptr, nullptr) == 0);
+        CHECK(path.numSteps == 0);
+        CHECK(path.numStepsWhenNotPaused == 0);
+        prepare();
+        REQUIRE(scratch->calcPath(&path, nullptr, goalCell) > 0);
+        CHECK(mc2_path_trace::hashMovePath(&path) == expectedPath);
+        CHECK(scratch->openHeap.allocations() == allocations);
+    }
+    const auto revision = GameMap->rev.statics;
+    GameMap->init(180, 180);
+    CHECK(GameMap->rev.statics == revision + 1);
+    CHECK_FALSE(scratch->inputRevisionsValid());
+    CHECK(scratch->calcPath(&path, nullptr, nullptr) == 0);
 }
 
 TEST_CASE("AuthoredOrderProduction/classification uses the requested buffer and retries a ready zero-step path") {
