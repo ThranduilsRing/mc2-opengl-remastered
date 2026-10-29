@@ -171,6 +171,27 @@ long MechWarrior::setBrain (long brainHandle) {
 long MechWarrior::runBrain (void) {
 
 	ZoneScopedN("GameLogic.AI.BrainRun");
+	// The player commander emits through submitPlayerOrder, never the self-order slot.
+	if (mc2::gate::get<"MC2_PLAY_MISSION">() && mc2::brainpolicy::techBrain()) {
+		auto* playerUnit = getVehicle();
+        if (playerUnit && playerUnit->getTeam() == Team::home && Commander::home
+            && playerUnit->getCommanderId() == Commander::home->getId()) {
+            if (mc2::gate::get<"MC2_BRAIN_FREEZE_TRACE">()) {
+                auto* path = getMovePath();
+                const auto pos = playerUnit->getPosition();
+                auto* target = ObjectManager->getByWatchID(curTacOrder.targetWID);
+                mc2::fmt::print_err("[BRAIN_FREEZE_TRACE] wid={} brainState={} curTacOrder.code={} movePath.numSteps={} moveState={} hasBrain={} orderState={} mainGoal={} goalWID={} genOrder={} pos=({:.0f},{:.0f}) lastMoveErr={} t={:.2f} status={} weapons={} pending={} target={} los={} mapSide={:.0f}\n",
+                    vehicleWID, static_cast<int>(brainState), static_cast<int>(curTacOrder.code), path ? path->numSteps : -1,
+                    moveOrders.moveState, brain ? 1 : 0, static_cast<int>(orderState), static_cast<int>(mainGoalAction),
+                    mainGoalObjectWID, static_cast<int>(tacOrder[ORDERSTATE_GENERAL].code), pos.x, pos.y, LastMoveCalcErr,
+                    scenarioTime, static_cast<int>(playerUnit->getStatus()), static_cast<int>(playerUnit->numWeapons),
+                    getMovePathRequest() != nullptr, curTacOrder.targetWID, target ? static_cast<int>(playerUnit->lineOfSight(target)) : -1,
+                    Terrain::worldUnitsMapSide);
+            }
+            return 0;
+        }
+	}
+
 
 //	if (teamId  > -1)
 //		if (teamId != Team::home->getId())
@@ -810,6 +831,11 @@ long MechWarrior::mainDecisionTree (void) {
 				alarmPriority = 0;
 				tacOrder[ORDERSTATE_ALARM].init();
 				newTacOrder = tacOrder[ORDERSTATE_PLAYER];
+                // The test commander owns this replacement; do not resume the superseded alarm.
+                if (mc2::gate::get<"MC2_PLAY_MISSION">() && mc2::brainpolicy::techBrain()
+                    && getTeam() == Team::home && Commander::home
+                    && getVehicle()->getCommanderId() == Commander::home->getId())
+                    orderState = ORDERSTATE_PLAYER;
 				}
 			else if (newTacOrderReceived[ORDERSTATE_ALARM])
 				newTacOrder = tacOrder[ORDERSTATE_ALARM];
