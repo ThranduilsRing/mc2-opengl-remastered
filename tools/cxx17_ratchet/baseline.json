@@ -141,7 +141,7 @@
   "code": {
    "LG01": 0,
    "LG02": 0,
-   "LG03": 360,
+   "LG03": 352,
    "LG04": 15,
    "LG05": 198,
    "LG06": 437,
@@ -1956,7 +1956,7 @@
    "LG06": 5
   },
   "code/objmgr.cpp": {
-   "LG03": 21,
+   "LG03": 11,
    "LG05": 2,
    "LG06": 1,
    "LG12a": 2
@@ -2077,6 +2077,9 @@
   },
   "code/terrobj.h": {
    "LG14": 1
+  },
+  "code/tick_commit.h": {
+   "LG03": 2
   },
   "code/turret.cpp": {
    "LG03": 1,
@@ -3406,7 +3409,7 @@
    "LG20": 3
   }
  },
- "head": "b3ee3e336",
+ "head": "ea8b9f168",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
