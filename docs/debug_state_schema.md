@@ -4,6 +4,15 @@
 Schema version: `MC2_DEBUG_STATE_V1`
 
 Written by `GameOS/gameos/debug_state_dump.cpp` when `MC2_DEBUG_STATE_DUMP=1`.
+
+Bridge P2 adds `runtime_observation` (version 1): `mission_frame`,
+`census_valid`, mover/pilot/ABL-brain counts, `zone_ns` and `zone_overflow`.
+Zones sum repeated mission scopes within the latest mission update; absent
+zones did not run. These are wall-clock CPU timings, excluded from SIMID.
+`mission_frame` is a process-local observation sequence, not a simulation turn.
+`runtime_resources` reports the light pool and snapshot light counts, valid
+render resources, static registry active/slot/leaf counts and generation.
+The MCP `get_runtime_observation` tool reads both blocks; older dumps remain valid.
 Default output: `debug_state/latest_render_state.json` (override: `MC2_DEBUG_STATE_DUMP_DIR`).
 Cadence: frame 1, then every 300 frames.
 Optional rolling history: `history_0.json`..`history_7.json` when `MC2_DEBUG_STATE_DUMP_HISTORY=1`.

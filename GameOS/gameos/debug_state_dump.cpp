@@ -1,6 +1,9 @@
 #include "vk_render_infra.h"
 #include "shadow_quality.h"
 #include "debug_state_dump.h"
+#include "runtime_observation.h"
+#include "gos_terrain_lighting.h"
+#include "gos_static_prop_registry.h"
 #include "visual_tuning_profile.h"
 
 #include "gameos.hpp"           // SHADOW-OBSERVABILITY-1: mc2ShadowCsm* accessors
@@ -289,6 +292,15 @@ std::string buildSnapshotJson(const RenderSnapshot& snap,
     s << "{\n";
     s << "  \"schema\": \"MC2_DEBUG_STATE_V2\",\n";
     s << "  \"schema_version\": 2,\n";
+    s << "  \"runtime_observation\": " << mc2::observation::json() << ",\n";
+    s << "  \"runtime_resources\": {\"light_pool\":"
+      << gos_terrain_lighting::GetLightPoolLightCount()
+      << ",\"snapshot_lights\":" << snap.lights.size()
+      << ",\"render_resources\":" << RenderCore::getRenderResourceCount()
+      << ",\"static_active\":" << GpuStaticPropRegistry::getActiveCount()
+      << ",\"static_slots\":" << GpuStaticPropRegistry::getRecipeRangeSlotCount()
+      << ",\"static_leaves\":" << GpuStaticPropRegistry::getRecipeLeafCount()
+      << ",\"static_generation\":" << GpuStaticPropRegistry::getRegistryGeneration() << "},\n";
     s << "  \"session_id\": \"" << s_sessionId() << "\",\n";
     s << "  \"pid\": " << s_pid() << ",\n";
     s << "  \"build_id\": \"" << buildConfigString() << "-unknown\",\n";
@@ -994,6 +1006,12 @@ bool writeFile(const std::filesystem::path& path, std::string_view content) {
 namespace mc2_debug_state {
 
 void maybeWriteRenderState(const RenderSnapshot& snap) {
+    if (mc2::bridge::sampleDue()) {
+        StaticPropOpaqueDebugState sp{};
+        batcher_getStaticPropOpaqueDebugState(&sp);
+        mc2::bridge::publish(buildSnapshotJson(snap, sp, RenderCore::getCurrentView(), readPassState(), "socket"),
+                             mc2::observation::moverJson());
+    }
     static const bool s_enabled = mc2::gate::get<"MC2_DEBUG_STATE_DUMP">();
     if (!s_enabled) return;
     s_lastSnap = snap;  // cache for writeShutdownState()
@@ -1025,6 +1043,7 @@ void maybeWriteRenderState(const RenderSnapshot& snap) {
 }
 
 void writeShutdownState() {
+    mc2::bridge::shutdown();
     static const bool s_enabled = mc2::gate::get<"MC2_DEBUG_STATE_DUMP">();
     if (!s_enabled) return;
 

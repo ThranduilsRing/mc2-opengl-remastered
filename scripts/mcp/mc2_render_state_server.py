@@ -255,6 +255,38 @@ def get_render_state() -> str:
 
 
 @mcp.tool()
+def get_runtime_observation() -> str:
+    """Return per-frame mission zone nanoseconds, mover/brain census and resources.
+
+    Counts are read-only; census_valid=false means no active mission. Zone values
+    sum repeated scopes in one mission frame, not lifetime averages.
+    """
+    data = _latest()
+    if data is None:
+        return _not_available()
+    if "runtime_observation" not in data:
+        return "runtime_observation absent; running build predates bridge P2."
+    return _stale_banner() + json.dumps({
+        "frame": data.get("frame"),
+        "observation": data["runtime_observation"],
+        "resources": data.get("runtime_resources", {}),
+    }, indent=2)
+
+
+@mcp.tool()
+def get_runtime_socket_state() -> str:
+    """Read the last harness-owned socket v1 capture, including time and session.
+
+    Run run_smoke.py --runtime-bridge to collect. The timestamp describes the
+    last sample; a saved capture does not establish current process liveness.
+    """
+    data = _read_json(_STATE_DIR / "latest_runtime_bridge.json")
+    if data is None:
+        return "No socket capture; launch the harness with --runtime-bridge."
+    return json.dumps(data, indent=2)
+
+
+@mcp.tool()
 def get_render_health() -> str:
     """
     Return a compact render health summary.

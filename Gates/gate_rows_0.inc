@@ -31,7 +31,7 @@ L(Lead0Kill, "MC2_ASSIMP_MECH_IMPORT", Bool, true, "mech", "", "BT2018 mech impo
 L(Presence, "MC2_BLDG_DIAG_TRACE", Bool, false, "props", "", "", verified),
 L(Presence, "MC2_BLDG_REG_TRACE", Bool, false, "props", "", "", verified),
 L(Lead0Kill, "MC2_BLDG_TYPE_ANIM_STATIC_ELIGIBLE", Bool, true, "props", "", "", passthrough | verified),
-L(Presence, "MC2_BLKIDX_TRACE", Bool, false, "props", "", "", verified),
+L(Presence, "MC2_BLKIDX_TRACE", Bool, false, "props", "", ""),
 L(Presence, "MC2_BLOCK_FRUSTUM_FALLBACK", Bool, false, "terrain", "", "F6 T1/T2: cache frustum planes once per frame (O(1)) into Camera member.", verified),
 G("MC2_BOOKMARK_SAVE_DIR", String, "", "code", "", "Directory the Save Camera Bookmark button writes into; empty = ./saved_bookmarks.", passthrough | verified),
 L(Lead1, "MC2_BOOKMARK_SAVE_TEST", Bool, false, "code", "", "BOOKMARK-SAVE-BUTTON-1 test hook: =1 triggers one bookmark save shortly after mission load.", passthrough | verified),
@@ -71,8 +71,11 @@ G("MC2_BRAIN_RUNTIME_FORCE_MODE", Enum, "", "code", "", "MC2_BRAIN_RUNTIME_FORCE
 L(AtoiNZ, "MC2_BRAIN_RUNTIME_TRACE", Bool, false, "code", "", "", passthrough | verified),
 G("MC2_BRAIN_SPECIAL_FIT", String, "", "code", "", "DISPATCH-EFFECT-UNITEJECT-1: name of the _specials.fit every warrior loads instead of the mission's own (fixture override); empty = mission name.", passthrough | verified),
 L(AtoiNZ, "MC2_BRAIN_TASKQ_TRACE", Bool, false, "code", "", "", passthrough | verified),
+G("MC2_BRIDGE", Bool, false, "gameos", "", "Dev tool selector: harness-owned read-only socket; requires port and session GUID.", verified),
 P("MC2_BRIDGE_MOVER_PERIOD_SEC", Float, 2.0, "code", "", "Seconds between bridge-mover state bursts; below 0.25 clamps to 0.25.", passthrough | clampRange(0.25, 3.4e38) | verified),
 L(Presence, "MC2_BRIDGE_MOVER_STATE", Bool, false, "unclassified", "", "", passthrough | verified),
+P("MC2_BRIDGE_PORT", Int, 0, "gameos", "", "Harness loopback connect-back port; zero selects no transport.", verified),
+G("MC2_BRIDGE_SESSION", String, "", "gameos", "", "Fresh harness session GUID, echoed in the v1 hello.", verified),
 L(Presence, "MC2_BUCKET_CENSUS", Bool, false, "terrain", "", ""),
 // history: docs/gate-history.md#MC2_BURNIN_NO_JPG
 // GitHub-issue fix batch 2026-07-16, part 2 (issues #9, #17)

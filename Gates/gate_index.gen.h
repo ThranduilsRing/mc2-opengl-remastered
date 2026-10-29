@@ -10,7 +10,7 @@
 
 namespace mc2::gate::detail {
 
-inline constexpr std::size_t kGateCount = 756;
+inline constexpr std::size_t kGateCount = 759;
 
 inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_ABL_ARG_GUARD", Kind::Bool, Rule::Lead1, {}},
@@ -64,8 +64,11 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_BRAIN_RUNTIME_TRACE", Kind::Bool, Rule::AtoiNZ, {}},
     {"MC2_BRAIN_SPECIAL_FIT", Kind::String, Rule::Std, {}},
     {"MC2_BRAIN_TASKQ_TRACE", Kind::Bool, Rule::AtoiNZ, {}},
+    {"MC2_BRIDGE", Kind::Bool, Rule::Std, {}},
     {"MC2_BRIDGE_MOVER_PERIOD_SEC", Kind::Float, Rule::Prefix, {}},
     {"MC2_BRIDGE_MOVER_STATE", Kind::Bool, Rule::Presence, {}},
+    {"MC2_BRIDGE_PORT", Kind::Int, Rule::Prefix, {}},
+    {"MC2_BRIDGE_SESSION", Kind::String, Rule::Std, {}},
     {"MC2_BUCKET_CENSUS", Kind::Bool, Rule::Presence, {}},
     {"MC2_CALLED_SHOT_FIX", Kind::Bool, Rule::Lead0P, {}},
     {"MC2_CAMERA_ASPECT_NATIVE", Kind::Bool, Rule::Lead0Kill, {}},
