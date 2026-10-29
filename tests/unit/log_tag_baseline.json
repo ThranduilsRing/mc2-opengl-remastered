@@ -7772,6 +7772,13 @@
    "count": 1
   },
   {
+   "tag": "SENSOR",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [],
+   "count": 1
+  },
+  {
    "tag": "SHADOW_BAKE",
    "ver": -1,
    "stream": "stderr",
