@@ -525,7 +525,7 @@ def execute(steps, head, dry_run=False, runner=run_child, completed=None):
     for name, status, elapsed in results:
         print(f"| {name} | {status} | {elapsed:.1f} |")
     for name, status, _ in results:
-        if status != "PASS" and not status.startswith(("DRY-RUN", "SKIP")):
+        if status != "PASS" and not status.startswith(("DRY-RUN", "SKIP", "REUSED:")):
             FAILED_STAGES.append((name, status))
     for name, _, overrides in steps:
         if overrides.get("MC2_GATE_COVERAGE"):

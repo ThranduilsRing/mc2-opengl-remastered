@@ -19,6 +19,6 @@ TEST_CASE("runtime_observation/frame reset and repeated zones") {
     CHECK(current.frame == 2);
     CHECK_FALSE(current.censusValid);
     CHECK(current.movers == 0);
-    CHECK(current.zones[0].name == nullptr);
+    CHECK(current.zones[0].name.empty());
     CHECK(current.overflow == 0);
 }

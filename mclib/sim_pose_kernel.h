@@ -13,7 +13,7 @@ struct PoseNodeInput {
     int parent = -1;
     bool current = false;
     bool animated = false;
-    glm::quat base{1, 0, 0, 0}, animation{1, 0, 0, 0};
+    glm::quat base = mc2::math::quatXYZW(0.0f, 0.0f, 0.0f, 1.0f), animation = mc2::math::quatXYZW(0.0f, 0.0f, 0.0f, 1.0f);
     glm::vec3 translation{};
     PoseMatrices cached;
 };

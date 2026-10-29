@@ -36,7 +36,7 @@ long TG_MultiShape::TransformSimPose(glm::vec3* pos, glm::quat* rot)
         in.base = rec.baseRotation;
         in.animated = rec.currentAnimation != nullptr;
         in.animation = in.animated && rec.currentAnimation->quat
-            ? rec.currentAnimation->quat[frame] : glm::quat(1, 0, 0, 0);
+            ? rec.currentAnimation->quat[frame] : mc2::math::quatXYZW(0.0f, 0.0f, 0.0f, 1.0f);
         in.translation = in.animated && rec.currentAnimation->pos
             ? rec.currentAnimation->pos[frame]
             : (in.parent < 0 ? rec.node->myType->GetNodeCenter() : rec.node->myType->GetRelativeNodeCenter());

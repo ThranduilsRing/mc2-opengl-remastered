@@ -30,6 +30,7 @@ get_filename_component(MC2_WORKTREE_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../.." ABS
 add_executable(mc2_tests
     test_runtime_observation.cpp
     test_runtime_bridge_protocol.cpp
+    ${MC2_WORKTREE_ROOT}/GameOS/gameos/runtime_bridge_protocol.cpp
     test_building_gameplay_observation.cpp
     test_main.cpp           # owns DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
     test_abl_callback_address.cpp

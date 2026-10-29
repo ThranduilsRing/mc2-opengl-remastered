@@ -1,5 +1,6 @@
 #include "runtime_bridge.h"
 #include "runtime_bridge_protocol.h"
+#include "../../3rdparty/include/nlohmann/json.hpp"
 #include "../include/build_identity.h"
 #include "../../Gates/gate_cold.h"
 #include <winsock2.h>
@@ -11,6 +12,7 @@
 #include <thread>
 
 namespace mc2::bridge {
+using Json = nlohmann::json;
 namespace {
 using Clock = std::chrono::steady_clock;
 struct Transport {
@@ -100,7 +102,7 @@ struct Transport {
                     // Wrong session/version is fatal. No control dispatcher exists in P3.
                     if (!message.contains("version") || message["version"] != 1 ||
                         !message.contains("session") || message["session"] != session) break;
-                    const auto next = subscribe(message, session);
+                    const auto next = subscribe(message.dump(), session);
                     const bool accepted = next.has_value();
                     if (accepted) {
                         subscription = *next;

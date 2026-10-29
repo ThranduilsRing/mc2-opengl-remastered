@@ -1,9 +1,11 @@
 #include "doctest.h"
 #include "../../GameOS/gameos/runtime_bridge_protocol.h"
+#include "../../3rdparty/include/nlohmann/json.hpp"
 
 namespace {
+using Json = nlohmann::json;
 constexpr const char* session = "12345678-1234-1234-1234-123456789abc";
-mc2::bridge::Json request() {
+Json request() {
     return {{"version", 1}, {"session", session}, {"type", "subscribe"}, {"hz", 2},
             {"streams", {"runtime.observation", "mover.transform"}}};
 }
@@ -24,28 +26,29 @@ TEST_CASE("runtime_bridge/session requires a GUID") {
 TEST_CASE("runtime_bridge/subscriptions authenticate version session rate and streams") {
     using namespace mc2::bridge;
     auto message = request();
-    auto subscription = subscribe(message, session);
+    auto subscription = subscribe(message.dump(), session);
     REQUIRE(subscription);
     CHECK(subscription->hz == 2);
     CHECK(subscription->state);
     CHECK(subscription->movers);
     for (const auto& bad : {Json(0), Json(31), Json(-1), Json("2"), Json(nullptr)}) {
         message = request(); message["hz"] = bad;
-        CHECK_FALSE(subscribe(message, session));
+        CHECK_FALSE(subscribe(message.dump(), session));
     }
     message = request(); message["version"] = 2;
-    CHECK_FALSE(subscribe(message, session));
+    CHECK_FALSE(subscribe(message.dump(), session));
     message = request(); message["session"] = "stale-session";
-    CHECK_FALSE(subscribe(message, session));
+    CHECK_FALSE(subscribe(message.dump(), session));
     message = request(); message["streams"] = {"eval"};
-    CHECK_FALSE(subscribe(message, session));
+    CHECK_FALSE(subscribe(message.dump(), session));
     for (const char* command : {"pause", "resume", "stop", "eval", "teleport"}) {
         message = request(); message["type"] = command;
-        CHECK_FALSE(subscribe(message, session));
+        CHECK_FALSE(subscribe(message.dump(), session));
     }
     message = request(); message["streams"] = Json::array();
-    subscription = subscribe(message, session);
+    subscription = subscribe(message.dump(), session);
     REQUIRE(subscription);
     CHECK_FALSE(subscription->state);
     CHECK_FALSE(subscription->movers);
+    CHECK_FALSE(subscribe("{", session));
 }

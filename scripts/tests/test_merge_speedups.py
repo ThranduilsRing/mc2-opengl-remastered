@@ -730,6 +730,7 @@ def test_parallel_validation_reuse_joins_both_workers(tmp_path, monkeypatch, cap
     import threading
     from contextlib import contextmanager
     import merge_gate as gate
+    monkeypatch.setattr(gate, "FAILED_STAGES", [])
     tier_done = threading.Event()
     det_done = threading.Event()
     @contextmanager
@@ -760,6 +761,7 @@ def test_parallel_validation_reuse_joins_both_workers(tmp_path, monkeypatch, cap
     output = capsys.readouterr().out
     assert ("FAIL reuse" in output) == (failed_source is not None)
     assert ("validation: REUSED" in output) == (failed_source is None)
+    assert any(name == "validation" for name, _ in gate.FAILED_STAGES) == (failed_source is not None)
 
 
 def test_smoke_bookmark_capture_rejects_missing_or_wrong_evidence(tmp_path, monkeypatch):

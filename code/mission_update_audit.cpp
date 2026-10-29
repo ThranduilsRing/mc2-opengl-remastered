@@ -3,6 +3,44 @@
 #include <algorithm>
 #include "mission_internal.h"
 #include "mc2fmt.h"
+#include "runtime_observation_scope.h"
+#include "../GameOS/gameos/runtime_observation.h"
+#include <chrono>
+
+namespace mc2::observation {
+PhaseScope::PhaseScope(unsigned index, std::string_view name) : index_(index), name_(name) {
+    if (enabled())
+        startNs_ = static_cast<uint64_t>(std::chrono::duration_cast<std::chrono::nanoseconds>(
+            std::chrono::steady_clock::now().time_since_epoch()).count());
+}
+PhaseScope::~PhaseScope() {
+    if (!startNs_) return;
+    const auto now = static_cast<uint64_t>(std::chrono::duration_cast<std::chrono::nanoseconds>(
+        std::chrono::steady_clock::now().time_since_epoch()).count());
+    recordZone(index_, name_, now - startNs_);
+}
+void observeFrame(bool active) {
+    if (!enabled()) return;
+    beginFrame();
+    auto& sample = current;
+    sample.censusValid = active && ObjectManager;
+    if (sample.censusValid) {
+        sample.movers = ObjectManager->getNumMovers();
+        for (long i = 0; i < sample.movers; ++i) {
+            const auto mover = ObjectManager->getMover(i);
+            const auto pilot = mover ? mover->getPilot() : nullptr;
+            if (pilot) { ++sample.pilots; if (pilot->getBrain()) ++sample.brains; }
+            if (mover && mc2::bridge::configured()) {
+                if (sample.transformCount < sample.transforms.size()) {
+                    const auto position = mover->getPosition();
+                    sample.transforms[sample.transformCount++] = {mover->getPartId(), static_cast<long>(mover->getHandle()),
+                        mover->getTeamId(), position.x, position.y, position.z, mover->getRotation()};
+                } else ++sample.transformDropped;
+            }
+        }
+    }
+}
+}
 
 //----------------------------------------------------------------------------------
 // MC2_BRIDGE_MOVER_STATE -- runtime-bridge v0 (mover.state over stdout).

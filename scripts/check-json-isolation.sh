@@ -32,6 +32,9 @@ for f in $hits; do
     mclib/fx_def_registry.cpp) ;;
     tests/model_override/test_model_override_registry.cpp) ;;
     GameOS/gameos/visual_tuning_profile.cpp) ;;
+    GameOS/gameos/runtime_bridge.cpp) ;;
+    GameOS/gameos/runtime_bridge_protocol.cpp) ;;
+    tests/unit/test_runtime_bridge_protocol.cpp) ;;
     tests/unit/test_mission_environment.cpp) ;;
     */model_override_registry.cpp) ;;
     */anim_override_registry.cpp) ;;

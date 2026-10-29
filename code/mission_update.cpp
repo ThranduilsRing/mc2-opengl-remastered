@@ -4,7 +4,7 @@
 #include <atomic>
 #include "command_replay.h"
 // Mission: the per-frame Mission::update with its MC2_MISSION_SPLIT timing, mover bridge, soak hooks and coherence audit.
-#include "../GameOS/gameos/runtime_observation.h"
+#include "runtime_observation_scope.h"
 // Declared in the class headers; shared names in mission_internal.h.
 #include "mission_internal.h"
 #include "sim_world_trace.h"
@@ -102,19 +102,17 @@ namespace {
 	}
 	struct MisScope {
 		int idx; std::chrono::steady_clock::time_point t0;
-		explicit MisScope(MisPhase i) : idx(std::to_underlying(i)) {
-			if (s_misSplit || mc2::observation::enabled()) t0 = std::chrono::steady_clock::now();
+		mc2::observation::PhaseScope observation;
+		explicit MisScope(MisPhase i) : idx(std::to_underlying(i)), observation(idx, s_misNames[idx]) {
+			if (s_misSplit) t0 = std::chrono::steady_clock::now();
 		}
 		~MisScope() {
-			if (!s_misSplit && !mc2::observation::enabled()) return;
+			if (!s_misSplit) return;
 			unsigned long long ns = (unsigned long long)
 				std::chrono::duration_cast<std::chrono::nanoseconds>(
 					std::chrono::steady_clock::now() - t0).count();
-			if (mc2::observation::enabled()) mc2::observation::recordZone(idx, s_misNames[idx], ns);
-			if (s_misSplit) {
-				s_misNs[idx] += ns;
-				if (ns > s_misMax[idx]) s_misMax[idx] = ns;
-			}
+			s_misNs[idx] += ns;
+			if (ns > s_misMax[idx]) s_misMax[idx] = ns;
 		}
 	};
 }
@@ -1391,26 +1389,7 @@ long Mission::update (void)
 	}
 	MisScope _msTotal(MS_TOTAL);  // whole Mission::update; TOTAL - sum(subcalls) = unbracketed
 	overlapJoinHook();   // join before observing any simulation-owned object
-	if (mc2::observation::enabled()) {
-		mc2::observation::beginFrame();
-		auto& sample = mc2::observation::current;
-		sample.censusValid = active && ObjectManager;
-		if (sample.censusValid) {
-			sample.movers = ObjectManager->getNumMovers();
-			for (long i = 0; i < sample.movers; ++i) {
-				const auto mover = ObjectManager->getMover(i);
-				const auto pilot = mover ? mover->getPilot() : nullptr;
-				if (pilot) { ++sample.pilots; if (pilot->getBrain()) ++sample.brains; }
-				if (mover && mc2::bridge::configured()) {
-					if (sample.transformCount < sample.transforms.size()) {
-						const auto position = mover->getPosition();
-						sample.transforms[sample.transformCount++] = {mover->getPartId(), long(mover->getHandle()),
-							mover->getTeamId(), position.x, position.y, position.z, mover->getRotation()};
-					} else ++sample.transformDropped;
-				}
-			}
-		}
-	}
+	mc2::observation::observeFrame(active);
 	const OverlapPre pre = s_pre;
 	s_pre = OverlapPre{};
 	if (active)

@@ -1,4 +1,10 @@
 {
+  "scripts/tests/test_perf_budget.py": "Pytest-discovered by scripts/run_scripts_tests.py through scripts/test_ownership.json.",
+  "scripts/tests/test_run_visual.py": "Pytest-discovered by scripts/run_scripts_tests.py through scripts/test_ownership.json.",
+  "scripts/tests/test_runtime_bridge.py": "Executed by the runtime_bridge contract row through pytest.",
+  "scripts/tests/test_runtime_bridge_socket.py": "Executed by the runtime_bridge contract row through pytest.",
+  "tools/content_pipeline/tests/test_provenance.py": "Pytest-discovered by scripts/run_tools_tests.py; content pipeline provenance coverage.",
+  "tools/mod_install/management.py": "Library imported by tools/mc2mod/mc2mod.py for retained install, list, rollback and conflict checks.",
   "scripts/tests/test_mission_cpu_profile.py": "Pytest-discovered by scripts/run_scripts_tests.py through scripts/test_ownership.json; mission CPU profile regression coverage.",
   "scripts/tests/test_play_mission.py": "Pytest-discovered by scripts/run_scripts_tests.py through scripts/test_ownership.json; mission launch regression coverage.",
   "tools/mover_budget.py": "Manual M6 command: the 200-mover sim tick budget verdict (design target 0.6 ms); run by hand or from a perf pass, prints one [MOVER_BUDGET v1] line.",

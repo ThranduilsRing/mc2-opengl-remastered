@@ -123,6 +123,7 @@ set(SOURCES ${SOURCES}
     view_registry.cpp
     debug_state_dump.cpp
     runtime_bridge.cpp
+    runtime_bridge_protocol.cpp
     dbg_asset_globals.cpp
     diagnostic_trace.cpp
     visual_tuning_profile.cpp
