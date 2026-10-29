@@ -33,7 +33,7 @@
    ]
   },
   "ABLModule": {
-   "delete": 3,
+   "delete": 5,
    "delete_array": 0,
    "files": {
     "code/mission.cpp": {
@@ -44,6 +44,9 @@
     },
     "code/saveload_load.cpp": {
      "new": 1
+    },
+    "code/warrior.cpp": {
+     "delete": 2
     },
     "code/warrior_brain.cpp": {
      "delete": 1,
@@ -274,16 +277,21 @@
    ]
   },
   "BrainTaskQueue": {
-   "delete": 0,
+   "delete": 1,
    "delete_array": 0,
    "files": {
+    "code/warrior.cpp": {
+     "delete": 1
+    },
     "code/warrior_brain.cpp": {
      "new": 1
     }
    },
    "new": 1,
    "new_array": 0,
-   "owners": []
+   "owners": [
+    "MechWarrior"
+   ]
   },
   "Building": {
    "delete": 0,
@@ -2720,16 +2728,21 @@
    "owners": []
   },
   "MechBrainRuntime": {
-   "delete": 0,
+   "delete": 1,
    "delete_array": 0,
    "files": {
+    "code/warrior.cpp": {
+     "delete": 1
+    },
     "code/warrior_brain.cpp": {
      "new": 2
     }
    },
    "new": 2,
    "new_array": 0,
-   "owners": []
+   "owners": [
+    "MechWarrior"
+   ]
   },
   "MechIcon": {
    "delete": 0,
@@ -2772,6 +2785,21 @@
    "new": 7,
    "new_array": 0,
    "owners": []
+  },
+  "MechWarrior": {
+   "delete": 1,
+   "delete_array": 0,
+   "files": {
+    "code/warrior.cpp": {
+     "delete": 1,
+     "new": 1
+    }
+   },
+   "new": 1,
+   "new_array": 0,
+   "owners": [
+    "MechWarrior"
+   ]
   },
   "Mechlopedia": {
    "delete": 0,
@@ -3070,6 +3098,21 @@
     "aAnimation"
    ]
   },
+  "MovePath": {
+   "delete": 1,
+   "delete_array": 0,
+   "files": {
+    "code/warrior.cpp": {
+     "delete": 1,
+     "new": 1
+    }
+   },
+   "new": 1,
+   "new_array": 0,
+   "owners": [
+    "MechWarrior"
+   ]
+  },
   "MovePathManager": {
    "delete": 1,
    "delete_array": 0,
@@ -3268,15 +3311,19 @@
    ]
   },
   "Radio": {
-   "delete": 1,
+   "delete": 2,
    "delete_array": 0,
    "files": {
+    "code/warrior.cpp": {
+     "delete": 1,
+     "new": 1
+    },
     "code/warrior_state.cpp": {
      "delete": 1,
      "new": 1
     }
    },
-   "new": 1,
+   "new": 2,
    "new_array": 0,
    "owners": [
     "MechWarrior"
