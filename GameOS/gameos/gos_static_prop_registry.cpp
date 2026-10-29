@@ -743,11 +743,9 @@ void flush() {
     // So extraction always sees frame N state, NOT the current frame being built.
     std::fill(s_recipeHasSubstrateRecord.begin(), s_recipeHasSubstrateRecord.end(), 0u);
 
-    // 2b Stage 2 (Mechanism B-reinject): the persistent static store is rebuilt only
-    // when the registry generation changes (spawn/despawn/light-change). On a clean
-    // generation the per-range loop skips the instance append entirely; the static
-    // instances are bulk-reinjected into s_bucketsByType after the loop. The records
-    // (substrate) still run per-frame (that's Stage 3 work).
+    // Rebuild static instances only when their registry generation or visible
+    // set changes. The native color feed reads this store directly; transient
+    // buckets contain only this frame's dynamic submissions.
     GpuStaticPropBatcher& batcher_pb = GpuStaticPropBatcher::instance();
     // The store holds the VISIBLE ranges (s_liveRangeIndices), so a change of that set is a
     // structural change too. Without this a clean generation reused the last dirty frame's
@@ -844,7 +842,9 @@ void flush() {
         }
     }
 
-    flushReinjectPersistentStore(batcher_pb, s_currentGen, s_storeDirty);
+    // The native feed reads the persistent store directly and used to discard
+    // its duplicate in the transient buckets. Publish only dirty generations.
+    if (s_storeDirty) batcher_pb.setPersistentStaticGen(s_currentGen);
 
     s_diag_total_ns += static_cast<uint64_t>(
         std::chrono::duration_cast<std::chrono::nanoseconds>(

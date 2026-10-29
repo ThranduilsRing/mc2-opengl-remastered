@@ -125,7 +125,6 @@ void flushSeamProbe(uint32_t regIdx, RecipeRange& rng, const float (&actorWorldC
 void flushLeafDiag(uint32_t regIdx, RecipeRange& rng, uint32_t freshLightIdx, bool useCachedBlob);
 void flushLegacyRange(GpuStaticPropBatcher& batcher, RecipeRange& rng, uint32_t freshLightIdx);
 void flushCachedRange(GpuStaticPropBatcher& batcher, bool storeDirty, RecipeRange& rng);
-void flushReinjectPersistentStore(GpuStaticPropBatcher& batcher_pb, uint64_t s_currentGen, bool s_storeDirty);
 void flushZeroLightProbe(uint64_t s_diag_flush_calls);
 void flushDiagSummary(uint64_t s_diag_flush_calls, uint64_t& s_diag_ranges_total, uint64_t& s_diag_ranges_tombstone, uint64_t& s_diag_ranges_stale_frame, uint64_t& s_diag_ranges_stale_after_drawn, uint64_t& s_diag_ranges_drawn, uint64_t& s_diag_leaves_appended, uint64_t& s_diag_persistent_vanish, uint64_t s_diag_total_ns, bool s_guard2, std::unordered_map<int, uint64_t>& s_staleByType, std::unordered_map<uint32_t, uint32_t>& s_staleStreak);
 void flushCullRecordVersion();

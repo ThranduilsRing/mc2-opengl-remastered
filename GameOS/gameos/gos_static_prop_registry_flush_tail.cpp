@@ -1,5 +1,5 @@
-// GpuStaticPropRegistry: the persistent-store rebuild and the post-loop phases of flush() -- store reinject, the
-// diagnostic summaries and the cull-record version bump. The orchestrator is in gos_static_prop_registry.cpp.
+// GpuStaticPropRegistry: the persistent-store rebuild, diagnostic summaries and
+// cull-record version bump. The orchestrator is in gos_static_prop_registry.cpp.
 #include "gos_static_prop_registry_internal.h"
 #include "mc2fmt.h"
 
@@ -20,15 +20,6 @@ void flushFrozenStoreRebuild(GpuStaticPropBatcher& batcher, bool storeDirty) {
         }
         batcher.appendPersistentStaticRange(&s_recipes[rng.first], rng.count);
     }
-}
-
-// Finalise the persistent static store and bulk-inject it into the per-type buckets.
-void flushReinjectPersistentStore(GpuStaticPropBatcher& batcher_pb, uint64_t s_currentGen, bool s_storeDirty) {
-    // 2b Stage 2 (Mechanism B-reinject): finalize the store on a dirty rebuild, then
-    // bulk-inject the static blocks into s_bucketsByType every frame (one memcpy per
-    // type). The downstream upload + coalesce pool read s_bucketsByType unchanged.
-    if (s_storeDirty) batcher_pb.setPersistentStaticGen(s_currentGen);
-    batcher_pb.reinjectPersistentStatic();
 }
 
 // Count the registered props whose light slot was never baked and dump their rows once.
