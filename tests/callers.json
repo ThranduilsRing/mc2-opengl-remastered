@@ -2213,7 +2213,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1537,
+          "line": 1538,
           "evidence": "command",
           "reference": "scripts/check_sim_include_firewall.py",
           "text": "run_check \"sim_include_firewall\"        \"py -3 -B scripts/tests/test_sim_include_firewall.py && py -3 scripts/check_sim_include_firewall.py\""
@@ -5080,7 +5080,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1508,
+          "line": 1509,
           "evidence": "command",
           "reference": "scripts/run_scripts_tests.py",
           "text": "run_check \"scripts_tests\"              \"py -3 scripts/run_scripts_tests.py\""
@@ -5280,14 +5280,14 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1533,
+          "line": 1534,
           "evidence": "command",
           "reference": "scripts/run_tools_tests.py",
           "text": "run_check_tri \"tools_tests\"             \"py -3 scripts/run_tools_tests.py\""
         },
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1534,
+          "line": 1535,
           "evidence": "command",
           "reference": "scripts/run_tools_tests.py",
           "text": "run_check_tri \"kit_art\"                 \"py -3 scripts/run_tools_tests.py --suite art\""
@@ -7778,6 +7778,13 @@
       "callers_by_stem": []
     },
     {
+      "path": "scripts/tests/test_perf_budget.py",
+      "basename": "test_perf_budget.py",
+      "stem": "test_perf_budget",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
       "path": "scripts/tests/test_phase_tools.py",
       "basename": "test_phase_tools.py",
       "stem": "test_phase_tools",
@@ -7854,7 +7861,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1537,
+          "line": 1538,
           "evidence": "command",
           "reference": "scripts/tests/test_sim_include_firewall.py",
           "text": "run_check \"sim_include_firewall\"        \"py -3 -B scripts/tests/test_sim_include_firewall.py && py -3 scripts/check_sim_include_firewall.py\""
@@ -12898,6 +12905,28 @@
       ]
     },
     {
+      "path": "tools/perf/budget_check.py",
+      "basename": "budget_check.py",
+      "stem": "budget_check",
+      "callers_by_basename": [
+        {
+          "path": "scripts/check-contracts.sh",
+          "line": 1470,
+          "evidence": "command",
+          "reference": "tools/perf/budget_check.py",
+          "text": "run_check \"perf_budget_schema\"         \"py -3 tools/perf/budget_check.py --validate-schema\""
+        },
+        {
+          "path": "scripts/tests/test_perf_budget.py",
+          "line": 11,
+          "evidence": "load module",
+          "reference": "tools/perf/budget_check.py",
+          "text": "spec = importlib.util.spec_from_file_location('budget_check', ROOT / 'tools/perf/budget_check.py')"
+        }
+      ],
+      "callers_by_stem": []
+    },
+    {
       "path": "tools/perf/mission_cpu_profile.py",
       "basename": "mission_cpu_profile.py",
       "stem": "mission_cpu_profile",
@@ -12910,7 +12939,15 @@
           "text": "spec = importlib.util.spec_from_file_location(\"mission_cpu_profile\", PATH)"
         }
       ],
-      "callers_by_stem": []
+      "callers_by_stem": [
+        {
+          "path": "tools/perf/budget_check.py",
+          "line": 157,
+          "evidence": "import",
+          "reference": "mission_cpu_profile",
+          "text": "import mission_cpu_profile"
+        }
+      ]
     },
     {
       "path": "tools/perf_baseline_report.py",
