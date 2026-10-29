@@ -176,7 +176,7 @@ extern void terrainMaterials_apply(const char*);
 extern "C" int mc2FreezeMoversActive();
 extern "C" void mc2FreezeMoversMissionReset();
 extern thread_local float frameLength;
-extern uint32_t g_mc2FrameCounter;
+extern std::atomic<uint32_t> g_mc2FrameCounter;
 extern float minFrameRate;
 extern float minFrameLength;
 extern long MissionStartTime;
