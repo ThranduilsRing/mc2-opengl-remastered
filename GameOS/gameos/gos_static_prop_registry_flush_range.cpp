@@ -452,6 +452,14 @@ void flushCachedRange(GpuStaticPropBatcher& batcher, bool s_storeDirty, uint64_t
         batcher.appendPersistentStaticRange(&s_recipes[rng.first], rng.count);
     // 2. Per-recipe cached cull records.
     if (gpu_cull::substrate_isEnabled()) {
+        // The frozen store rebuilt every invalidated record before this range
+        // was visited. Clean frames reuse that golden store without leaf reads.
+        if (s_staticFrozenReg) {
+            s_diag_leaves_appended += rng.count;
+            if (rng.count && regIdx < static_cast<uint32_t>(s_recipeHasSubstrateRecord.size()))
+                s_recipeHasSubstrateRecord[regIdx] = 1u;
+            return;
+        }
         for (uint32_t i = 0; i < rng.count; ++i) {
             const uint32_t ri = rng.first + i;
             // Lazy build of the cached cull record on first flush of this recipe.
@@ -459,11 +467,7 @@ void flushCachedRange(GpuStaticPropBatcher& batcher, bool s_storeDirty, uint64_t
                 buildCachedActorRecord(rng, ri, s_cachedActorRecord[ri]);
                 s_cachedActorRecordValid[ri] = 1u;
             }
-            // Under the frozen-records gate the golden (records + store rank) is built from ALL alive recipes in the
-            // all-recipes pass, so the per-visible loop adds nothing here.
-            if (!s_staticFrozenReg) {
-                gpu_cull::substrate_appendStaticPropRecord(s_cachedActorRecord[ri]);
-            }
+            gpu_cull::substrate_appendStaticPropRecord(s_cachedActorRecord[ri]);
             ++s_diag_leaves_appended;
             // v2: record substrate submission for this recipe (matches the per-leaf path exactly).
             if (regIdx < static_cast<uint32_t>(s_recipeHasSubstrateRecord.size()))
