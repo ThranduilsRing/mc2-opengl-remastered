@@ -101,17 +101,9 @@ extern const bool s_staticFrozenReg;
 // Registry state the flush phases read and write.
 extern std::vector<GpuStaticPropInstance> s_recipes;
 extern std::vector<RecipeRange> s_recipeRanges;
-extern std::vector<gpu_cull::GpuActorRecord> s_cachedActorRecord;
-extern std::vector<uint8_t> s_cachedActorRecordValid;
-extern std::vector<uint32_t> s_recipeToStoreSlot;
-extern std::vector<uint32_t> s_goldenRecipeList;
-extern std::vector<uint32_t> s_pbStoreCursor;
-extern bool s_goldenDirty;
 extern std::vector<uint32_t> s_liveRangeIndices;
 extern uint64_t s_firstFrameSkipCount;
 
-// Builds the immutable cull record for one recipe leaf.
-void buildCachedActorRecord(const RecipeRange& rng, uint32_t recipeIdx, gpu_cull::GpuActorRecord& out);
 
 // Phases of flush() (gos_static_prop_registry_flush_range.cpp, gos_static_prop_registry_flush_tail.cpp).
 void flushFrozenStoreRebuild(GpuStaticPropBatcher& batcher_pb, bool s_storeDirty);

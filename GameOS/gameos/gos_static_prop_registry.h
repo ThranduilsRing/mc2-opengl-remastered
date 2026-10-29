@@ -108,11 +108,6 @@ const char* getRecipeShapeName(int32_t recipeIndex);
 // then draws everything in one combined GPU pass.
 void flush();
 
-// M1 FROZEN-STATIC-CULL-RECORDS: build + install the frozen static cull-record
-// prefix (pool-ordered). Call once per frame AFTER batcher_prepareBaseInstanceTable()
-// and BEFORE gpu_cull::compute_dispatch(). No-op on clean frames and unless
-// MC2_GPU_CULL_STATIC_FROZEN_RECORDS is set. See gos_static_prop_registry.cpp.
-void buildStaticPrefixGolden();
 
 // M2a POPULATION-SPLIT: true when MC2_GPU_CULL_STATIC_FROZEN_RECORDS (G2) is
 // armed. Cross-module gate read by the batcher's static population-split path.

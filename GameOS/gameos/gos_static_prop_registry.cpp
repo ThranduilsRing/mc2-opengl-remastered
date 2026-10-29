@@ -115,26 +115,8 @@ static uint8_t s_popsEverTagged = 0u;
 // per-frame cost this targets.
 static std::vector<uint32_t>              s_recipeRangeFreeList;
 static const bool s_recipeRecycle = mc2::gate::get<"MC2_STATIC_RECIPE_RECYCLE">();
-
-// 2A: per-recipe cached immutable cull record (one per s_recipes[] entry).
-// Built lazily on first flush of a recipe; invalidated on any immutable-field write.
-// Sized in lockstep with s_recipes (resize in registerRecipe, new entries valid=0).
-std::vector<gpu_cull::GpuActorRecord> s_cachedActorRecord;
-std::vector<uint8_t>                  s_cachedActorRecordValid; // 0/1 per recipe
-
-// M1 FROZEN-STATIC-CULL-RECORDS (gate MC2_GPU_CULL_STATIC_FROZEN_RECORDS).
-// On a dirty store rebuild, capture each recipe's type-local STORE RANK (its slot
-// within s_persistentStaticStore[typeID], == its instance-pool slot within the
-// type). gpu_cull_buildStaticPrefixGolden() (called after
-// batcher_prepareBaseInstanceTable) then places each cull record at
-// baseInstanceForType[typeID] + storeRank == the exact binding-0 slot the draw
-// indexes, so record-index == instance-pool-slot by construction. All gated;
-// gate-off leaves the per-frame substrate_appendStaticPropRecord path untouched.
+// The all-recipes persistent instance store still serves the population split.
 const bool s_staticFrozenReg = mc2::gate::get<"MC2_GPU_CULL_STATIC_FROZEN_RECORDS">();
-std::vector<uint32_t> s_recipeToStoreSlot;   // [ri] -> type-local store rank (dirty-built)
-std::vector<uint32_t> s_goldenRecipeList;    // recipes placed this dirty, in store order
-std::vector<uint32_t> s_pbStoreCursor;       // per-type store cursor (reset/grown at dirty)
-bool                  s_goldenDirty = false; // a dirty rebuild happened; golden needs rebuild
 
 // v1.1: per-typeID primary material cache. Populated by finalizeGeometry().
 // Indexed by typeID (dense); resized as needed by staticPropCacheTypePrimaryMaterial.
@@ -174,66 +156,7 @@ uint64_t s_firstFrameSkipCount = 0;
 // ineligible). Emitted in destroy() for per-mission accounting.
 static uint64_t s_lateSpawnTypeUnknownCount = 0;
 
-// patch 3/4: any write to a recipe's immutable fields (modelMatrix, typeID,
-// lightDataIndex, bounds/extent, category/block inputs) MUST call this so the
-// next flush rebuilds the cached record from the new values.
-static void invalidateCachedFlushRecord(uint32_t recipeIndex) {
-    if (recipeIndex < s_cachedActorRecordValid.size())
-        s_cachedActorRecordValid[recipeIndex] = 0u;
-}
-
-// Builds the immutable cull record for ONE recipe leaf (recipeIdx into s_recipes[]).
-// worldCenter uses the range's actor-root translation (actor-center fix: the root
-// leaf's modelMatrix translation is shared across all leaves of the range).
-// category uses THIS recipe's typeID (per-leaf — a multi-leaf range has different
-// typeIDs per leaf, so per-range sharing is incorrect for category scatter).
-// Pure function of immutable recipe + range data; produces byte-identical output
-// to the inline per-leaf build in flush() for the same recipe+range pair.
-// Shared with the flush phase helpers (gos_static_prop_registry_internal.h).
-void buildCachedActorRecord(const RecipeRange& rng, uint32_t recipeIdx,
-                            gpu_cull::GpuActorRecord& out) {
-    out = gpu_cull::GpuActorRecord{};
-    // World position: axis-swap from Stuff/MLR frame to raw MC2 world coords.
-    // Mirrors the inline actor-center fix at flush():~712-717.
-    const float* rootMtx = s_recipes[rng.first].modelMatrix;
-    const float actorWorldCenter[3] = {
-        -rootMtx[3],   // raw.x = -stuff.x
-         rootMtx[11],  // raw.y =  stuff.z
-         rootMtx[7],   // raw.z =  stuff.y (elev)
-    };
-    out.worldCenter[0] = actorWorldCenter[0];
-    out.worldCenter[1] = actorWorldCenter[1];
-    out.worldCenter[2] = actorWorldCenter[2];
-    // Bounding radius from per-prop extent radius; fallback to 200.0f for
-    // unpatched callers or missing shape pointer (preserves pre-fix behavior).
-    out.boundingRadius = (rng.extentRadius > 0.0f) ? rng.extentRadius : 200.0f;
-    out.worldAabbMin[0] = out.worldCenter[0] - out.boundingRadius;
-    out.worldAabbMin[1] = out.worldCenter[1] - out.boundingRadius;
-    out.worldAabbMin[2] = out.worldCenter[2] - out.boundingRadius;
-    out.worldAabbMax[0] = out.worldCenter[0] + out.boundingRadius;
-    out.worldAabbMax[1] = out.worldCenter[1] + out.boundingRadius;
-    out.worldAabbMax[2] = out.worldCenter[2] + out.boundingRadius;
-    // Category: this recipe's typeID (per-leaf) in upper 28 bits + Cat_StaticProp in lower 4.
-    out.category = (static_cast<uint32_t>(s_recipes[recipeIdx].typeID) << 4)
-                 | static_cast<uint32_t>(gpu_cull::Cat_StaticProp);
-    // Diagnostic force-admit flag (mirrors the flush() inline s_diag_forceAdmit check).
-    static const bool s_diag_forceAdmit = mc2::gate::get<"MC2_STATIC_FORCE_ADMIT">();
-    out.flags          = s_diag_forceAdmit
-                           ? static_cast<uint32_t>(gpu_cull::Flag_AlwaysVisible)
-                           : gpu_cull::Flag_None;
-    out.actorId        = 0u;   // static props have no actor handle
-    out.prevVisibilityBit = 1u; // CPU admitted this prop this frame
-    out.consumerFlags  = 0u;
-    // Terrain block index: feed raw-MC2 east [0] and north [1] only (never elevation [2]).
-    out.blockIdx = static_cast<uint32_t>(
-        Terrain::worldToBlockIdx(out.worldCenter[0], out.worldCenter[1]));
-}
-
-// Release every pin held by a single RecipeRange. Idempotent via
-// rng.pinsReleased — invalidate() may run before destroy() does its
-// safety-net sweep, and we don't want to unpinNode the same node twice.
-// No shrink_to_fit() — parent s_recipeRanges is also cleared on destroy(),
-// and the per-range vector destructor handles deallocation.
+// Idempotent: invalidate() may release a range before destroy() sweeps it.
 static void releasePinsForRange(RecipeRange& rng) {
     if (rng.pinsReleased) return;
     if (mc2::textures::ready()) {
@@ -390,9 +313,6 @@ void destroy() {
     // RECIPE-SLOT-RECYCLE: the free-list holds indices into s_recipeRanges; it MUST
     // be emptied in lockstep or a stale index would alias / go out of bounds next mission.
     s_recipeRangeFreeList.clear(); s_recipeRangeFreeList.shrink_to_fit();
-    // 2A: clear the per-recipe cached actor-record arrays (parallel to s_recipes).
-    s_cachedActorRecord.clear();      s_cachedActorRecord.shrink_to_fit();
-    s_cachedActorRecordValid.clear(); s_cachedActorRecordValid.shrink_to_fit();
     s_liveRangeIndices.clear(); s_liveRangeIndices.shrink_to_fit();
     s_typeMatCache.clear();          s_typeMatCache.shrink_to_fit();
     // unordered_map has no shrink_to_fit(); swap with empty to release bucket
@@ -427,11 +347,6 @@ int32_t registerRecipe(TG_MultiShape* multi,
     rng.population        = 0xFFu;        // SHADOW-STATIC-BUILDINGS-2: unset until setRecipePopulation()
     rng.noShadow          = false;        // SHADOW-FOLIAGE: casts unless setRecipeNoShadow(true)
     s_recipes.insert(s_recipes.end(), batch.begin(), batch.end());
-    // 2A: keep cached-actor-record arrays in lockstep with s_recipes.
-    // New entries are valid=0 (uncached); they will be lazily built on first flush (Task 4).
-    s_cachedActorRecord.resize(s_recipes.size());
-    s_cachedActorRecordValid.resize(s_recipes.size(), 0u);
-    s_recipeToStoreSlot.resize(s_recipes.size(), 0u);  // M1: lockstep with s_recipes
     ++s_registryGeneration;   // 2b Stage 2: spawn = structural change
     // RECIPE-SLOT-RECYCLE: reuse a tombstoned regIdx when available (caps max regIdx
     // -> caps the baked-light high-water S -> caps the per-frame light upload/scan).
@@ -514,7 +429,6 @@ void markVisible(int32_t regIdx, uint32_t lightDataIndex, float extentRadius) {
     if (lightOrExtentChanged) {
         for (uint32_t k = rng.first; k < rng.first + rng.count; ++k) {
             s_recipes[k].lightDataIndex = lightDataIndex;  // range light → every leaf
-            invalidateCachedFlushRecord(k);                // rebuild cached record next flush
         }
         ++s_registryGeneration;   // 2b Stage 2: immutable-field (light/extent) write
     }
@@ -562,10 +476,6 @@ void invalidate(int32_t regIdx) {
         auto& recipe = s_recipes[rng.first + i];
         GpuStaticPropBatcher::instance().forgetLodState(recipe);
         recipe = GpuStaticPropInstance{};
-        // 2A patch 3: this recipe leaf's immutable fields (modelMatrix, typeID) are
-        // being zeroed — invalidate the cached cull record so Task 4 rebuilds it if
-        // this slot is ever reused after a re-registration.
-        invalidateCachedFlushRecord(rng.first + i);
     }
     SP_TRACE("invalidate regIdx=%d (was count=%u)", regIdx, rng.count);
     rng.count = 0;
@@ -611,83 +521,9 @@ const char* getRecipeShapeName(int32_t recipeIndex) {
     return rng.shapeName[0] ? rng.shapeName : nullptr;
 }
 
-// M1 FROZEN-STATIC-CULL-RECORDS: build the frozen static cull-record prefix and
-// install it via substrate_rebuildStaticPrefix. Call once per frame AFTER
-// batcher_prepareBaseInstanceTable() (so baseInstanceForType is valid) and BEFORE
-// compute_dispatch(). Rebuilds only when a store-dirty flush happened
-// (s_goldenDirty); a clean frame is a no-op (the substrate keeps the frozen
-// prefix). No effect unless MC2_GPU_CULL_STATIC_FROZEN_RECORDS is set.
-// M2a POPULATION-SPLIT: expose the G2 frozen-records gate to the batcher.
-// s_staticFrozenReg lives in the file-local anonymous namespace above, so this
-// definition (in the GpuStaticPropRegistry namespace) can read it directly.
 bool frozenRecordsArmed() { return s_staticFrozenReg; }
 
-void buildStaticPrefixGolden() {
-    if (!s_staticFrozenReg) return;
-    if (!s_goldenDirty) return;                          // nothing changed since last build
-    if (!batcher_isBaseInstanceTableReady()) return;     // base table not valid this frame yet
-
-    const uint32_t S = static_cast<uint32_t>(s_goldenRecipeList.size());
-    static std::vector<gpu_cull::GpuActorRecord> s_goldenStaging;
-    s_goldenStaging.assign(S, gpu_cull::GpuActorRecord{});
-
-    // Scatter each recipe's cached cull record to its exact binding-0 slot:
-    //   global_slot = baseInstanceForType[typeID] + storeRank
-    // Upload (batcher:4995) and baseInstanceForType (batcher:7764) share the
-    // alpha-group ordering, so global_slot is the instance the draw renders for
-    // this record => record-index == instance-pool-slot by construction.
-    uint32_t placed = 0u, outOfRange = 0u;
-    for (uint32_t ri : s_goldenRecipeList) {
-        if (ri >= s_recipes.size()) { ++outOfRange; continue; }
-        const uint32_t tid  = s_recipes[ri].typeID;
-        const uint32_t base = batcher_getBaseInstanceForType(tid);
-        const uint32_t rank = (ri < s_recipeToStoreSlot.size()) ? s_recipeToStoreSlot[ri] : 0u;
-        const uint32_t slot = base + rank;
-        if (slot >= S) { ++outOfRange; continue; }       // base+rank must land in [0,S)
-        s_goldenStaging[slot] = s_cachedActorRecord[ri];
-        ++placed;
-    }
-
-    gpu_cull::substrate_rebuildStaticPrefix(s_goldenStaging.data(), S);
-    s_goldenDirty = false;
-
-    // Order-validation oracle (gated): for each placed record, verify its actor
-    // center is near the recipe's own leaf world position (within the bounding
-    // sphere). A base+rank mis-scatter puts a DIFFERENT, far-away prop at the slot
-    // => large position delta. This catches an ordering bug that per-type
-    // counts-parity cannot see. MC2_GPU_CULL_STATIC_FROZEN_ORDER_ORACLE=1.
-    static const bool s_orderOracle = mc2::gate::get<"MC2_GPU_CULL_STATIC_FROZEN_ORDER_ORACLE">();
-    if (s_orderOracle) {
-        uint32_t checked = 0u, mismatch = 0u;
-        for (uint32_t ri : s_goldenRecipeList) {
-            if (ri >= s_recipes.size()) continue;
-            const uint32_t tid  = s_recipes[ri].typeID;
-            const uint32_t slot = batcher_getBaseInstanceForType(tid)
-                                + ((ri < s_recipeToStoreSlot.size()) ? s_recipeToStoreSlot[ri] : 0u);
-            if (slot >= S) continue;
-            const gpu_cull::GpuActorRecord& rec = s_goldenStaging[slot];
-            // Leaf world pos from its model matrix (Stuff col-major; unswap to raw
-            // MC2 east/north, matching the cull-record build at flush():~923-925).
-            const float* m  = s_recipes[ri].modelMatrix;
-            const float lx  = -m[3];      // raw east  = -stuff.x
-            const float ly  =  m[11];     // raw north =  stuff.z
-            const float dx  = rec.worldCenter[0] - lx;
-            const float dy  = rec.worldCenter[1] - ly;
-            const float tol = rec.boundingRadius * rec.boundingRadius + 1.0f;
-            ++checked;
-            if (dx*dx + dy*dy > tol) ++mismatch;   // far apart => wrong prop at slot
-        }
-        fprintf(stderr, "[GPU_CULL_FROZEN_ORDER_ORACLE] S=%u placed=%u outOfRange=%u "
-                "checked=%u posMismatch=%u\n", S, placed, outOfRange, checked, mismatch);
-        fflush(stderr);
-    }
-}
-
-
-// Builds this frame's static-prop instance and cull-record submissions from the visible ranges. The latch, the
-// diagnostic counters and clock, the range loop with the per-range light row, actor centre and cached-blob choice,
-// and the cached / legacy branch stay here; each phase body is a helper declared in
-// gos_static_prop_registry_internal.h.
+// Expand visible ranges into the native instance feed.
 void flush() {
     // V1A: latch BEFORE any early return so queryVisibility() always sees
     // a current-frame value (0 when disabled or nothing visible this frame).
@@ -857,8 +693,7 @@ bool staticPropGetTypeId(int32_t recipeIndex, uint32_t* out) {
 
 // TERRAIN-DECAL-SLICE-0C: live per-frame modelMatrix overwrite for interactive
 // placement tuning. Overwrites EVERY leaf's modelMatrix (all leaves of a mesh-decal
-// recipe share the same face-frame transform), invalidates the cached cull records
-// so the GPU cull position is rebuilt, and bumps the registry generation so the
+// recipe share the same face-frame transform), and bumps the registry generation so the
 // persistent-static store re-uploads next flush (same dirty mechanism markVisible
 // uses for light/extent writes). Cheap: one memcpy per leaf + a generation bump.
 // Returns false for an invalid/tombstoned recipe. Intended for a handful of decals
@@ -868,7 +703,6 @@ bool staticPropSetAllLeafMatrices(int32_t recipeIndex, const float in[16]) {
     const RecipeRange& rng = s_recipeRanges[static_cast<size_t>(recipeIndex)];
     for (uint32_t i = 0; i < rng.count; ++i) {
         memcpy(s_recipes[rng.first + i].modelMatrix, in, sizeof(float) * 16);
-        invalidateCachedFlushRecord(rng.first + i);
     }
     ++s_registryGeneration;   // force persistent-static store rebuild next flush
     return true;

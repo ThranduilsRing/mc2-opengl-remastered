@@ -3,9 +3,9 @@
 # Where each gate is read, what the smoke runner forwards and what tier1_env_vars.md says are not here: ask
 # tools/repo_intel (env_var, gate_status), which scan the sources.
 generator_version: "3.0.0"
-gate_count: 759
+gate_count: 755
 registry_entry_count: 150
-verified_count: 721
+verified_count: 719
 flags:
   - name: MC2_ABL_ARG_GUARD
     kind: Bool
@@ -177,12 +177,6 @@ flags:
     doc: ""
     smoke_passthrough: true
     verified: true
-  - name: MC2_BLKIDX_TRACE
-    kind: Bool
-    default: false
-    rule: Presence
-    owner: props
-    doc: ""
   - name: MC2_BLOCK_FRUSTUM_FALLBACK
     kind: Bool
     default: false
@@ -1484,13 +1478,6 @@ flags:
     rule: Presence
     owner: props
     doc: ""
-    verified: true
-  - name: MC2_GPU_CULL_STATIC_FROZEN_ORDER_ORACLE
-    kind: Bool
-    default: false
-    rule: Presence
-    owner: props
-    doc: "Order-validation oracle (gated): for each placed record, verify its actor center is near the recipe's own leaf world position (within the bounding sphere)."
     verified: true
   - name: MC2_GPU_CULL_STATIC_FROZEN_RECORDS
     kind: Bool
@@ -3360,12 +3347,6 @@ flags:
     owner: props
     doc: ""
     verified: true
-  - name: MC2_REGFLUSH_TYPEHIST
-    kind: Bool
-    default: false
-    rule: Presence
-    owner: props
-    doc: ""
   - name: MC2_RENDERSTATES_LEGACY
     kind: Bool
     default: false
@@ -3982,14 +3963,6 @@ flags:
     rule: Lead0Kill
     owner: props
     doc: ""
-    smoke_passthrough: true
-    verified: true
-  - name: MC2_STATIC_FORCE_ADMIT
-    kind: Bool
-    default: false
-    rule: Presence
-    owner: props
-    doc: "2026-05-10 diag: MC2_STATIC_FORCE_ADMIT mirrors registry::flush behavior so the env-var A/B (cull-bypassed vs cull-active) covers BOTH substrate-record..."
     smoke_passthrough: true
     verified: true
   - name: MC2_STATIC_LEAF_DIAG

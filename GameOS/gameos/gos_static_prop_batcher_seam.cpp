@@ -749,11 +749,7 @@ void batcher_prepareBaseInstanceTable() {
     // the instance the draw renders.
     s_baseInstanceForType = baseInstanceForType;
 
-    // M2a POPULATION-SPLIT: rebuild the static-only base table + fill the static
-    // instance buffer when the persistent store changed (both dirty-gated on
-    // s_persistentStaticGen). The base table must be ready before the golden
-    // scatter (buildStaticPrefixGolden) reads it later this frame. Default-off
-    // => not called => byte-identical.
+    // Rebuild the population split's static instance table only when its store changes.
     if (staticPopSplitArmed()) {
         rebuildStaticBaseInstanceTableIfDirty();
     }

@@ -159,7 +159,6 @@ L(Presence, "MC2_REBUILD_MOD_CACHE", Bool, false, "code", "", "", reread | verif
 L(Presence, "MC2_REGFLUSH_DIAG_TRACE", Bool, false, "props", "", "", passthrough | verified),
 L(Presence, "MC2_REGFLUSH_GUARD2", Bool, false, "props", "", "STATIC-REGISTRY-CURRENTNESS-GUARD-2: generalize the R2b stale_after_drawn counter beyond the single tree case.", passthrough | verified),
 L(Presence, "MC2_REGFLUSH_MULTI", Bool, false, "props", "", "", verified),
-L(Presence, "MC2_REGFLUSH_TYPEHIST", Bool, false, "props", "", ""),
 L(Exact1, "MC2_RENDERSTATES_LEGACY", Bool, false, "gameos", "", "", verified),
 L(Presence, "MC2_RENDERSTATES_TRACE", Bool, false, "gameos", "", "Optional diagnostic: print the first 8 mismatch reasons.", verified),
 // VK-P13-SELECTOR-1 / T1: the top-level GL-vs-Vulkan backend selector.
