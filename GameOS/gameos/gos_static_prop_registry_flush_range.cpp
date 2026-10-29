@@ -281,195 +281,21 @@ void flushLeafDiag(uint32_t regIdx, RecipeRange& rng, uint32_t freshLightIdx, bo
     }
 }
 
-// Submit each leaf of the range with the fresh light index and append its cull record.
-void flushLegacyRange(GpuStaticPropBatcher& batcher, uint64_t s_diag_flush_calls, uint64_t& s_diag_leaves_appended, uint32_t regIdx, RecipeRange& rng, uint32_t freshLightIdx, const float (&actorWorldCenter)[3]) {
-    // Per-leaf rebuild path: a range whose light row does not match its stamped recipe value.
+// Native prop draws consume the instance feed directly. Handleless prop leaves
+// have no consumer in VisibilityHistory; rebuilding their old GL cull stream
+// only added CPU work and enlarged every native cull upload and readback.
+void flushLegacyRange(GpuStaticPropBatcher& batcher, RecipeRange& rng, uint32_t freshLightIdx) {
+    if (s_staticFrozenReg) return; // already present in the all-recipes store
     for (uint32_t i = 0; i < rng.count; ++i) {
-        GpuStaticPropInstance inst = s_recipes[rng.first + i]; // stack copy
+        GpuStaticPropInstance inst = s_recipes[rng.first + i];
         inst.lightDataIndex = freshLightIdx;
-        // G2: under the frozen-records gate this legacy (light-mismatch) range is
-        // already in the all-recipes persistent store — skip the per-frame submit
-        // to avoid double-counting the instance.
-        if (!s_staticFrozenReg)
-            batcher.submitCachedInstance(inst);
-
-        // C1b GPU authority flip: emit one GpuActorRecord per submitted static prop
-        // instance so the compute cull shader can scatter it into the correct bucket
-        // (typeID). This appends to the already-flushed substrate slot; compute_dispatch()
-        // runs AFTER this loop (moved from mission.cpp to txmmgr.cpp) and picks up the
-        // updated hdr->recordCount.
-        //
-        // category encoding: low 4 bits = Cat_StaticProp (5), upper 28 bits = typeID.
-        // Shader: uint cat = rec.category & CATEGORY_MASK; if cat == CAT_STATIC_PROP,
-        //         uint bucket = rec.category >> 4;  →  correct bucket scatter.
-        //
-        // Flag_AlwaysVisible NOT set: the GPU frustum test runs (using worldCenter +
-        // boundingRadius). This can conservatively cull props near the frustum edge;
-        // acceptable because the CPU-side markVisible() already gates which recipes
-        // reach this loop (CPU visibility IS the admission gate for registry path).
-        // Any GPU-culled prop that the CPU admitted will just fall back to 0-count
-        // draw — invisible for that frame, restored next frame as it re-enters frustum.
-        if (gpu_cull::substrate_isEnabled()) {
-            gpu_cull::GpuActorRecord gpuRec{};
-            // World position: inst.modelMatrix is Stuff row-vector
-            // convention stored in column-major array order
-            // (mclib/stuff/matrix.hpp:133 — `entries[(column<<2)+row]`).
-            // Translation lives at row 3, columns 0..2. With column-
-            // major storage, M(row,col) = entries[(col<<2)+row], so:
-            //   M(3,0) = entries[(0<<2)+3] = entries[3]   (tx)
-            //   M(3,1) = entries[(1<<2)+3] = entries[7]   (ty)
-            //   M(3,2) = entries[(2<<2)+3] = entries[11]  (tz)
-            // entries[12]/[13]/[14] are the BOTTOM ROW of columns 0..2
-            // (always 0 for affine transforms). Reading those produces
-            // worldCenter≈(0,0,0) for every static prop — the cull then
-            // projects every prop to the world origin, so all admit/
-            // reject together as the camera rotates (1° flip = all on/
-            // all off). Verified against Matrix4D::BuildTranslation at
-            // mclib/stuff/matrix.cpp:214 and the existing diagnostic at
-            // gos_static_prop_batcher.cpp:1879-1882.
-            //
-            // Coord-space: the translation is in Stuff/MLR camera frame
-            // (.x=-rawX, .y=elev, .z=rawY) per BldgAppearance and
-            // TreeAppearance::registerStatic in mclib/bdactor.cpp.
-            // gos_GetTerrainMVPMat4 (axisSwap * worldToClip) expects raw
-            // MC2 world coords (x=east, y=north, z=elev) and bakes the
-            // swap, so unswap here:
-            //   raw.x = -stuff.x  =  -entries[3]
-            //   raw.y =  stuff.z  =   entries[11]
-            //   raw.z =  stuff.y  =   entries[7]   (elev)
-            // Mirrors the per-vertex swap in static_prop.vert at
-            // `world_mc2 = vec3(-world_stuff.x, world_stuff.z, world_stuff.y)`.
-            // 2026-05-10 actor-center fix: use the parent multishape's
-            // root translation (computed once per range above) for EVERY
-            // leaf's substrate record. Cull treats the actor as a single
-            // visibility unit; all (typeID, leaf) records of one actor
-            // accept-or-reject as a group. Per-leaf inst.modelMatrix
-            // remains correct in the per-frame instance SSBO for shader
-            // placement — only the cull-side worldCenter is unified.
-            gpuRec.worldCenter[0] = actorWorldCenter[0];
-            gpuRec.worldCenter[1] = actorWorldCenter[1];
-            gpuRec.worldCenter[2] = actorWorldCenter[2];
-            // Bounding radius: use per-prop extent radius captured by markVisible()
-            // from bldgShape/treeShape->GetExtentRadius() (F4 T3, 2026-05-22).
-            // This fixes static-prop pop-in: post-F1 the correct GL-NDC matrix
-            // produces a tighter clipSpaceFrustumAdmitSphere envelope than the
-            // old D3D-pixel-homog matrix; large props (>200 units) were
-            // over-culled when their centroid exited the frustum by >200 units.
-            // Fallback to 200.0f when extentRadius == 0.0f (unpatched callers or
-            // missing shape pointer) preserves prior behavior.
-            gpuRec.boundingRadius = (rng.extentRadius > 0.0f) ? rng.extentRadius : 200.0f;
-            gpuRec.worldAabbMin[0] = gpuRec.worldCenter[0] - gpuRec.boundingRadius;
-            gpuRec.worldAabbMin[1] = gpuRec.worldCenter[1] - gpuRec.boundingRadius;
-            gpuRec.worldAabbMin[2] = gpuRec.worldCenter[2] - gpuRec.boundingRadius;
-            gpuRec.worldAabbMax[0] = gpuRec.worldCenter[0] + gpuRec.boundingRadius;
-            gpuRec.worldAabbMax[1] = gpuRec.worldCenter[1] + gpuRec.boundingRadius;
-            gpuRec.worldAabbMax[2] = gpuRec.worldCenter[2] + gpuRec.boundingRadius;
-            // Category: typeID in upper 28 bits + Cat_StaticProp (5) in lower 4 bits.
-            gpuRec.category = (static_cast<uint32_t>(inst.typeID) << 4)
-                            | static_cast<uint32_t>(gpu_cull::Cat_StaticProp);
-            // 2026-05-10 diag: temp force always-visible to A/B-test whether
-            // the cull is rejecting buildings.
-            static const bool s_diag_forceAdmit = mc2::gate::get<"MC2_STATIC_FORCE_ADMIT">();
-            gpuRec.flags          = s_diag_forceAdmit
-                                      ? static_cast<uint32_t>(gpu_cull::Flag_AlwaysVisible)
-                                      : gpu_cull::Flag_None;
-            gpuRec.actorId        = 0u;   // static props have no actor handle
-            gpuRec.prevVisibilityBit = 1u; // CPU admitted this prop this frame
-            gpuRec.consumerFlags  = 0u;
-            // C1b temporal-superset Slice 1: real terrain block index so
-            // the block rollup can stamp the right block. worldCenter[0]
-            // is raw-MC2 east, [1] raw-MC2 north (the -stuff.x unswap was
-            // applied above producing the east-frame). Feed [0],[1] ONLY;
-            // NEVER [2] (elevation). worldCenter fully populated above.
-            gpuRec.blockIdx       = static_cast<uint32_t>(
-                Terrain::worldToBlockIdx(gpuRec.worldCenter[0],
-                                         gpuRec.worldCenter[1]));
-            // [BLKIDX v1] env-gated GEOMETRIC probe (demote-not-delete).
-            // Non-degeneracy is provably blind to a frame mirror — assert
-            // the helper == hand-rolled CPU block math for THIS prop's
-            // true raw position, plus zero_verify of the [2]-exclusion.
-            {
-                static const bool s_blkidxTrace = mc2::gate::get<"MC2_BLKIDX_TRACE">();
-                if (s_blkidxTrace) {
-                    const float pwx = gpuRec.worldCenter[0];
-                    const float pwy = gpuRec.worldCenter[1];
-                    long mx = (static_cast<long>(pwx) >> 7) + Terrain::halfVerticesMapSide;
-                    long bx = static_cast<long>((mx * Terrain::oneOverVerticesBlockSide));
-                    long my = Terrain::halfVerticesMapSide -
-                              ((static_cast<long>(pwy) >> 7) + 1);
-                    long by = static_cast<long>((my * Terrain::oneOverVerticesBlockSide));
-                    long cpuBlk = bx + (by * Terrain::blocksMapSide);
-                    long helperBlk = Terrain::worldToBlockIdx(pwx, pwy);
-                    mc2::fmt::print_err("[BLKIDX v1] event=geom_check src=registry wx={:.1f} wy={:.1f} wz={:.1f} helper={:d} cpu={:d} match={:d}\n", pwx, pwy, gpuRec.worldCenter[2], mc2::fmt::as_i32(helperBlk), mc2::fmt::as_i32(cpuBlk), mc2::fmt::as_i32((helperBlk == cpuBlk) ? 1 : 0));
-                    // zero_verify: elevation [2] must NEVER influence the
-                    // index — recompute ignoring [2] (trivially true here
-                    // since helper takes only [0],[1]) and assert equality.
-                    mc2::fmt::print_err("[BLKIDX v1] event=zero_verify src=registry blockIdx={:d} z_excluded=1\n",
-                        mc2::fmt::as_u32(gpuRec.blockIdx));
-                    fflush(stderr);
-                }
-            }
-            // M1: under the frozen-records gate, the legacy (light-mismatch)
-            // path is unsupported — these ranges go to submitCachedInstance
-            // (per-frame bucket), NOT the persistent store, so they have no
-            // frozen golden slot. In the default config (per-instance light on)
-            // NO range reaches this path. If one does under the gate it will
-            // surface as oracle emptyPoolButVisible. Skip the per-frame append.
-            if (!s_staticFrozenReg)
-                gpu_cull::substrate_appendStaticPropRecord(gpuRec);
-            ++s_diag_leaves_appended;
-            // v2: record substrate submission for this recipe (extraction reads previous frame's state).
-            if (regIdx < static_cast<uint32_t>(s_recipeHasSubstrateRecord.size()))
-                s_recipeHasSubstrateRecord[regIdx] = 1u;
-            // 2026-05-10 diag: typeID histogram. MC2_REGFLUSH_TYPEHIST=1 to enable.
-            {
-                static const bool s_th = mc2::gate::get<"MC2_REGFLUSH_TYPEHIST">();
-                static std::array<uint64_t, 1024> s_typeHist{};
-                if (s_th) {
-                    if (inst.typeID < s_typeHist.size()) ++s_typeHist[inst.typeID];
-                    if (s_diag_flush_calls == 600 && i == 0) {
-                        mc2::fmt::print_err("[REGFLUSH_TYPEHIST v1] non-zero buckets:\n");
-                        for (size_t t = 0; t < s_typeHist.size(); ++t) {
-                            if (s_typeHist[t] > 0) {
-                                mc2::fmt::print_err("[REGFLUSH_TYPEHIST v1] typeID={:d} count={:d}\n", mc2::fmt::as_size(t), mc2::fmt::as_u64(static_cast<unsigned long long>(s_typeHist[t])));
-                            }
-                        }
-                        fflush(stderr);
-                    }
-                }
-            }
-        }
+        batcher.submitCachedInstance(inst);
     }
 }
 
-// Bulk-submit the range from the cached records and the persistent store.
-void flushCachedRange(GpuStaticPropBatcher& batcher, bool s_storeDirty, uint64_t& s_diag_leaves_appended, uint32_t regIdx, RecipeRange& rng) {
-    // 1. Instances: recipes carry the permanent lightDataIndex, so no per-frame light patch is needed. Append to the
-    //    persistent store ONLY on a dirty generation; a clean frame skips this entirely (it is reinjected in bulk after
-    //    the loop). Under the frozen-records gate the store is built from ALL recipes in the all-recipes pass, so the
-    //    per-visible append is skipped.
-    if (s_storeDirty && !s_staticFrozenReg)
+void flushCachedRange(GpuStaticPropBatcher& batcher, bool storeDirty, RecipeRange& rng) {
+    if (storeDirty && !s_staticFrozenReg)
         batcher.appendPersistentStaticRange(&s_recipes[rng.first], rng.count);
-    // 2. Per-recipe cached cull records.
-    if (gpu_cull::substrate_isEnabled()) {
-        for (uint32_t i = 0; i < rng.count; ++i) {
-            const uint32_t ri = rng.first + i;
-            // Lazy build of the cached cull record on first flush of this recipe.
-            if (!s_cachedActorRecordValid[ri]) {
-                buildCachedActorRecord(rng, ri, s_cachedActorRecord[ri]);
-                s_cachedActorRecordValid[ri] = 1u;
-            }
-            // Under the frozen-records gate the golden (records + store rank) is built from ALL alive recipes in the
-            // all-recipes pass, so the per-visible loop adds nothing here.
-            if (!s_staticFrozenReg) {
-                gpu_cull::substrate_appendStaticPropRecord(s_cachedActorRecord[ri]);
-            }
-            ++s_diag_leaves_appended;
-            // v2: record substrate submission for this recipe (matches the per-leaf path exactly).
-            if (regIdx < static_cast<uint32_t>(s_recipeHasSubstrateRecord.size()))
-                s_recipeHasSubstrateRecord[regIdx] = 1u;
-        }
-    }
 }
 
 }  // namespace GpuStaticPropRegistry
