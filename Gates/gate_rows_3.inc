@@ -17,9 +17,6 @@ P("MC2_SHADOW_MECH_SOFT", Float, 1.0, "unclassified", "", "", clampRange(0.0, 4.
 // history: docs/gate-history.md#MC2_SHADOW_MIN_SUN_ALT
 P("MC2_SHADOW_MIN_SUN_ALT", Float, 15.0, "post", "", "SHADOW-SUN-ALT-CLAMP-1 tunable: minimum EFFECTIVE sun altitude in DEGREES used by the shadow projection matrices (mc2ClampShadowSunAltitude...", passthrough | registry(Trace, "MC2_TUNE_SHADOW_MIN_SUN_ALT", -1, false) | verified),
 P("MC2_SHADOW_MOVER_SAMPLES", Int, 32, "post", "", "Spatial mover-shadow filter samples; independent of texture residency and static shadow quality.", clampRange(4, 32) | passthrough | verified),
-L(Lead0Kill, "MC2_SHADOW_PROP_ALPHA", Bool, true, "props", "", "", passthrough),
-L(Lead0Kill, "MC2_SHADOW_PROP_ALPHA_ATLAS", Bool, true, "props", "", "", passthrough),
-L(Lead0Kill, "MC2_SHADOW_ROBUST_BASIS", Bool, true, "post", "", ""),
 L(Presence, "MC2_SHAPE_C_PARITY_CHECK", Bool, false, "terrain", "", "", passthrough | verified),
 // ShorelineLegacySuppress (SHORELINE-GLOW-1)
 // kFeatureTable is indexed by RendererFeature, so this entry's position is
