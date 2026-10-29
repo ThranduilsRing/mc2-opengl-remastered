@@ -46,13 +46,15 @@ std::string TextureSources::nameKey(const char* name, DWORD variant) {
     return key+'|'+std::to_string(variant);
 }
 std::shared_ptr<TextureSource> TextureSources::find(const char* name, DWORD variant) {
+    std::lock_guard lock(indexMutex_);
     auto it=named_.find(nameKey(name,variant));
     if (it==named_.end()) return {};
-    auto source=get(it->second);
+    auto source=it->second < assets_.size() ? assets_[it->second].lock() : nullptr;
     if (source && RenderCore::textureService().isLive(source->handle)) return source;
     named_.erase(it); return {};
 }
 std::shared_ptr<const Bytes> TextureSources::internBytes(const std::string& identity, std::shared_ptr<const Bytes> bytes) {
+    std::lock_guard lock(indexMutex_);
     auto& slot=bytes_[identity];
     if (auto existing=slot.lock()) return existing;
     slot=bytes; return bytes;
@@ -94,7 +96,7 @@ void TextureSources::flush(bool all) {
     // Membership only: retain buffer owners while counting physical storage.
     // This set is never traversed and cannot determine submission order.
     std::unordered_set<std::shared_ptr<const Bytes>> unique;
-    for (const auto& weak : assets_) if (auto source=weak.lock()) {
+    for (const auto& weak : assets()) if (auto source=weak.lock()) {
         if (!RenderCore::textureService().isLive(source->handle)) continue;
         ++live; owned+=source->ownedReferences; roots+=source->users-source->ownedReferences;
         if (source->bytes && unique.insert(source->bytes).second) encoded+=source->bytes->size();

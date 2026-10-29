@@ -537,8 +537,9 @@ long BldgAppearance::update (bool animate)
 	}
 	if (animate) mc2::sim::advanceLinearAnimation(unitAnim(), unitAnim().bdFrameRate, appearType->getNumFrames(unitAnim().bdAnimationState), frameLength);
 
-        if (simulationOwned()) { updateSimPose(); return TRUE; }
+        if (simulationOwned() || mc2::overlap::onSimWorker()) { updateSimPose(); return TRUE; }
     }
+	mc2::overlap::assertMainThread("BldgAppearance::update presentation");
 	updateRenderLOD();
 	updateFrameEffects();
 

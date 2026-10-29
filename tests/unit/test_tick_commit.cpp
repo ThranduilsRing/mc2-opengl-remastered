@@ -9,6 +9,12 @@ struct Object {
     bool& dead;
     ~Object() { dead=true; if (commits) commits->push_back(6); }
 };
+struct Effect {
+    bool& killed;
+    bool& dead;
+    void Kill() { killed=true; }
+    ~Effect() { dead=true; }
+};
 }
 // Device-free texture seam: the engine implementation creates/collects here.
 namespace mc2::textures {
@@ -42,4 +48,22 @@ TEST_CASE("tick commit keeps resources alive until ordered main-thread commit") 
     CHECK_FALSE(collecting());
     CHECK_FALSE(defer(Queue::Sound,[]{ FAIL("frame commands must execute inline"); }));
     commits=nullptr;
+}
+
+TEST_CASE("typed effect release kills and destroys at commit or inline") {
+    bool killed=false, dead=false;
+    auto effect=std::make_unique<Effect>(killed,dead);
+    mc2::overlap::runOnWorker([&] {
+        mc2::tick::Scope scope;
+        mc2::tick::setCollecting(true);
+        mc2::tick::releaseEffect(effect);
+    });
+    mc2::overlap::waitWorker();
+    CHECK_FALSE(effect); CHECK_FALSE(killed); CHECK_FALSE(dead);
+    mc2::tick::commitTickQueues();
+    CHECK(killed); CHECK(dead);
+    killed=dead=false;
+    effect=std::make_unique<Effect>(killed,dead);
+    mc2::tick::releaseEffect(effect);
+    CHECK_FALSE(effect); CHECK(killed); CHECK(dead);
 }

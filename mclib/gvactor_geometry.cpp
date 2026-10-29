@@ -22,6 +22,8 @@ extern std::atomic<uint32_t> g_mc2FrameCounter;
 // The presentation mesh follows the stock pose without entering simulation or picking.
 void GVAppearance::updateRenderShape()
 {
+	if (!simPresentationPass && (simulationOwned() || mc2::overlap::onSimWorker())) return;
+	mc2::overlap::assertMainThread("GVAppearance::updateRenderShape");
 	// findMoverByMouse selects vehicles by the stock screen rectangle, not triangles.
 	if (g_mc2FrameCounter.load(std::memory_order_relaxed) == 60 && mc2::gate::get<"MC2_VK_PICK_PROBE">())
 		mc2::fmt::print_out("[VEHICLE_PICK] appearance={} pos=({:.2f},{:.2f}) bounds=({:.6f},{:.6f},{:.6f},{:.6f})\n",

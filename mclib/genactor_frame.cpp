@@ -1,6 +1,7 @@
 // GenericAppearance: render, renderShadows, update and the appearance teardown.
 // Declared in the class headers; shared names in genactor_internal.h.
 #include "genactor_internal.h"
+#include "sim_overlap.h"
 
 
 //-----------------------------------------------------------------------------
@@ -273,6 +274,7 @@ long GenericAppearance::renderShadows (void)
 //-----------------------------------------------------------------------------
 long GenericAppearance::update (bool animate)
 {
+	const bool simOnly = !simPresentationPass && (simulationOwned() || mc2::overlap::onSimWorker());
 	::mc2_object_recon::Scope _recon_generic_(
 		&::mc2_object_recon::g_per_frame.generic_update_ns,
 		&::mc2_object_recon::g_per_frame.generic_update_calls);
@@ -281,7 +283,7 @@ long GenericAppearance::update (bool animate)
 	glm::quat yawAngle;
 	glm::quat pitchAngle;
 
-	if (inView)
+	if (inView && !simOnly)
 	{
 		if (rotation > 180)
 			rotation -= 360;
@@ -363,7 +365,7 @@ long GenericAppearance::update (bool animate)
 			mc2_cone_glow::QueueBeaconGlow(genShape, eye->getNightFactor());
 	}
 
-	if (animate && genFrameRate != 0.0f)
+	if ((!simPresentationPass || !simulationOwned()) && animate && genFrameRate != 0.0f)
 	{
 		//--------------------------------------------------------
 		// Make sure animation runs no faster than bdFrameRate fps.
@@ -411,8 +413,10 @@ long GenericAppearance::update (bool animate)
 			}
 		}
 		
-		genShape->SetFrameNum(currentFrame);
 	}
+	if (simOnly) return TRUE;
+	mc2::overlap::assertMainThread("GenericAppearance::update presentation");
+	genShape->SetFrameNum(currentFrame);
 
 	// Under the GPU static-prop path we transform regardless of inView so
 	// listOfVertices is fresh when submitMultiShape runs.

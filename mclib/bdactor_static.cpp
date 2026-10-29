@@ -446,6 +446,8 @@ int32_t BldgAppearance::getStaticRecipeIndex() const {
 // We re-use the static mc2CacheOrBakeStaticGpuLight() declared above in this TU.
 bool BldgAppearance::prewarmStaticLightBake(Camera* cam)
 {
+	if (mc2::overlap::onSimWorker()) return false;
+	mc2::overlap::assertMainThread("BldgAppearance::prewarmStaticLightBake");
 	// Gate: only bake objects that are registered and have the latch set.
 	if (!staticReg.registered || staticReg.recipeIndex < 0)
 		return false;

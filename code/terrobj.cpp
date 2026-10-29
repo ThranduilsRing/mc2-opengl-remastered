@@ -1,4 +1,5 @@
 #include "tick_commit.h"
+#include "sim_overlap.h"
 #include "Gates/preferences_legacy.h"
 //---------------------------------------------------------------------------
 //
@@ -868,7 +869,7 @@ long TerrainObject::update (void) {
 					// Readback uncertain: CPU recalcBounds is authoritative.
 					// FRAME-JOBS-1: if workers already computed bounds this frame, use cached result.
 					// frameJobsEnabled() is false by default — this branch costs one bool read only.
-					if (frameJobsEnabled() && appearance->boundsFrame == g_mc2FrameCounter.load(std::memory_order_relaxed)) {
+					if (frameJobsEnabled() && appearance->boundsFrame == mc2::overlap::simulationFrame(g_mc2FrameCounter)) {
 						inView = appearance->inView;
 					} else {
 						inView = appearance->recalcBounds();
@@ -877,7 +878,7 @@ long TerrainObject::update (void) {
 			} else {
 				// FRAME-JOBS-1: if workers already computed bounds this frame, use cached result.
 				// frameJobsEnabled() is false by default — this branch costs one bool read only.
-				if (frameJobsEnabled() && appearance->boundsFrame == g_mc2FrameCounter.load(std::memory_order_relaxed)) {
+				if (frameJobsEnabled() && appearance->boundsFrame == mc2::overlap::simulationFrame(g_mc2FrameCounter)) {
 					inView = appearance->inView;
 				} else {
 					inView = appearance->recalcBounds();
