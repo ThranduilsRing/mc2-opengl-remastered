@@ -61,7 +61,7 @@
    "LG12a": 59,
    "LG12b": 24,
    "LG13": 299,
-   "LG14": 55,
+   "LG14": 54,
    "LG15": 0,
    "LG16": 5,
    "LG17": 70,
@@ -152,7 +152,7 @@
    "LG11": 102,
    "LG12a": 67,
    "LG12b": 98,
-   "LG13": 22,
+   "LG13": 17,
    "LG14": 93,
    "LG15": 0,
    "LG16": 2,
@@ -691,8 +691,7 @@
   "GameOS/gameos/mc2_verify.cpp": {
    "LG06": 6,
    "LG11": 1,
-   "LG12b": 1,
-   "LG14": 1
+   "LG12b": 1
   },
   "GameOS/gameos/mdi_submit.h": {
    "LG06": 1
@@ -1840,9 +1839,6 @@
    "LG06": 3,
    "LG14": 8,
    "LG17": 3
-  },
-  "code/mover_attack.cpp": {
-   "LG13": 5
   },
   "code/mover_combat.cpp": {
    "LG06": 1,
@@ -3405,7 +3401,7 @@
    "LG20": 3
   }
  },
- "head": "b608a5020",
+ "head": "6df94a210",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
