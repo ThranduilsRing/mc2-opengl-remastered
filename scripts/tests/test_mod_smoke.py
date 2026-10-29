@@ -2,6 +2,7 @@
 import importlib.util
 import os
 import sys
+import pytest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -22,6 +23,54 @@ def _campaign(first: str, second: str = "") -> str:
     if second:
         out += '[Group1Mission0]\nst FileName = "%s"\n' % second
     return out
+
+
+def test_asset_precheck_json_failure_and_timeout(tmp_path, monkeypatch):
+    from types import SimpleNamespace
+    import json
+    calls = []
+    def run(cmd, **kw):
+        calls.append((cmd, kw))
+        return SimpleNamespace(returncode=1, stdout=json.dumps({'loaded': 2, 'failures': ['FATAL']}))
+    monkeypatch.setattr(ms.subprocess, 'run', run)
+    assert ms.asset_precheck(tmp_path / 'probe.exe', tmp_path)['failures'] == ['FATAL']
+    assert calls[0][1]['timeout'] == 55
+    assert calls[0][0][1] == str(tmp_path.resolve())
+    for stdout, code in [('not JSON', 0), ('{}', 0), ('{"loaded":0,"failures":[]}', 0),
+                         ('{"loaded":2,"failures":[]}', 7)]:
+        monkeypatch.setattr(ms.subprocess, 'run', lambda *a, **kw: SimpleNamespace(returncode=code, stdout=stdout, stderr=''))
+        assert ms.asset_precheck(tmp_path / 'probe.exe', tmp_path)['failures']
+    monkeypatch.setattr(ms.subprocess, 'run', lambda *a, **kw: (_ for _ in ()).throw(ms.subprocess.TimeoutExpired(a[0], 55)))
+    assert ms.asset_precheck(tmp_path / 'probe.exe', tmp_path)['failures']
+
+
+def test_asset_load_real_packet_fixture(tmp_path):
+    """Exercise the production ObjectTypeManager; no mission or renderer startup."""
+    import json
+    import struct
+    import pytest
+    exe = ROOT / 'build64-ninja/mc2_mod_load.exe'
+    if not exe.exists():
+        pytest.skip('build mc2_mod_load to exercise the C++ packet fixture')
+    _w(tmp_path / 'system.cfg', 'FITini\n[FastFiles]\nl NumFastFiles = 0\nFITend\n')
+    pak = tmp_path / 'data/objects/object2.pak'
+    packet = (b'FITini\n[ObjectClass]\nl ObjectTypeNum = 1\n'
+              b'[BuildingData]\nul DmgLevel = 100\n'
+              b'[ObjectType]\nl ExplosionObject = -1\nl DestroyedObject = -1\nFITend\n')
+    pak.parent.mkdir(parents=True)
+    def write_packet(data):
+        # Two packet slots, 0 unused; raw slot 1 begins after the 16-byte header.
+        pak.write_bytes(struct.pack('<4I', 0xFEEDFACE, 16, (7 << 29) | 16, 16) + data)
+    write_packet(packet)
+    report = ms.asset_precheck(exe, tmp_path)
+    assert report['loaded'] == 1, report
+    assert not report['failures'], report
+    write_packet(packet.replace(b'[BuildingData]', b'[MissingData]'))
+    report = ms.asset_precheck(exe, tmp_path)
+    assert report['failures'], report
+    assert 'ObjectTypeManager.load' in report.get('log', ''), report
+    pak.unlink()
+    assert ms.asset_precheck(exe, tmp_path)['failures']
 
 
 def test_warning_budget_baselines_and_growth():
@@ -476,7 +525,8 @@ def test_old_cooked_cache_is_discarded_and_not_reused(tmp_path):
     ms.discard_legacy_cooked_cache(tmp_path)
 
 
-def test_single_worker_waits_for_cold_run_and_collects_later_failures(tmp_path, monkeypatch):
+@pytest.mark.parametrize('asset_mode', [None, 'fail', 'pass'])
+def test_single_worker_waits_for_cold_run_and_collects_later_failures(tmp_path, monkeypatch, asset_mode):
     from types import SimpleNamespace
     import threading
     source, base, stages = tmp_path / 'source', tmp_path / 'base', tmp_path / 'stages'
@@ -516,11 +566,23 @@ def test_single_worker_waits_for_cold_run_and_collects_later_failures(tmp_path, 
         return {'exit': int(target.name == 'one'), 'health': {}}
     monkeypatch.setattr(ms, 'stage_mod', stage)
     monkeypatch.setattr(ms, 'run_mod', run)
+    def precheck(exe, target):
+        calls.append('asset-' + target.name)
+        finished.set()
+        return {'loaded': 1, 'failures': ['FATAL'] if asset_mode == 'fail' else []}
+    monkeypatch.setattr(ms, 'asset_precheck', precheck)
     args = SimpleNamespace(install_root=source, stage_root=stages, base_install=base,
                            exe=None, build_dir=None, mod='', mission=None, keep_stages=False,
                            workers=1, fail_fast=False, duration=5, timeout=30)
+    if asset_mode:
+        args.asset_load_exe = base / 'probe.exe'
     assert ms.battery(args) == 1
-    assert calls == ['stage-one', 'run-one', 'stage-two', 'run-two']
+    expected = ['stage-one', 'run-one', 'stage-two', 'run-two']
+    if asset_mode == 'fail':
+        expected = ['stage-one', 'asset-one', 'stage-two', 'asset-two']
+    elif asset_mode == 'pass':
+        expected = ['stage-one', 'asset-one', 'run-one', 'stage-two', 'asset-two', 'run-two']
+    assert calls == expected
     import json
     report = next(stages.glob('*/battery.json'))
     assert len(json.loads(report.read_text())) == 2

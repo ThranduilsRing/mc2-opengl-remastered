@@ -839,6 +839,31 @@ def discard_legacy_cooked_cache(persistent):
         shutil.rmtree(cooked)
 
 
+def asset_precheck(exe: Path, staged: Path) -> dict:
+    """Offline table load; bounded separately from the mission timeout."""
+    try:
+        child = console_child.child_kwargs(redirected=True)
+        if os.name == 'nt':
+            child['creationflags'] = (child.get('creationflags', 0) & ~subprocess.BELOW_NORMAL_PRIORITY_CLASS) | subprocess.IDLE_PRIORITY_CLASS
+        proc = subprocess.run([str(exe.resolve()), str(staged.resolve())],
+                              capture_output=True, text=True, timeout=55,
+                              **child)
+        try:
+            report = json.loads(proc.stdout)
+        except ValueError:
+            return {'loaded': 0, 'failures': [f'invalid JSON from asset loader; exit {proc.returncode}'],
+                    'log': proc.stderr[-4096:]}
+        if not isinstance(report, dict) or not isinstance(report.get('failures'), list) or not isinstance(report.get('loaded'), int):
+            raise ValueError('invalid asset-load report')
+        if proc.returncode and not report['failures']:
+            report['failures'].append(f'exit {proc.returncode}')
+        if report['loaded'] <= 0 and not report['failures']:
+            report['failures'].append('no object types loaded')
+        return report
+    except (OSError, ValueError, subprocess.TimeoutExpired) as exc:
+        return {'loaded': 0, 'failures': [str(exc)]}
+
+
 def battery(args) -> int:
     source_root = Path(args.install_root).resolve()
     if source_root.name.lower() == GOLDEN_INSTALL:
@@ -879,10 +904,22 @@ def battery(args) -> int:
         display, folder, layers, picks = entry
         timeout = max(args.timeout, 600) if folder == 'MCO-Carver5' else args.timeout
         results = []
+        precheck = None
+        if getattr(args, 'asset_load_exe', None):
+            precheck = asset_precheck(Path(args.asset_load_exe), staged)
+            (run_root / (folder + '-asset-load.json')).write_text(json.dumps(precheck, indent=2), encoding='utf-8')
+            print(f'[mod_smoke] {display}: asset-load loaded={precheck["loaded"]} failures={len(precheck["failures"])}', flush=True)
         for index, (stem, how) in enumerate(picks):
             ensure_loose_mission(layers, staged, stem)
             run_started = time.monotonic()
-            result = run_mod(staged, stem, args.duration, timeout, getattr(args, 'ref_exe', None))
+            if precheck and precheck['failures']:
+                result = {'exit': 1, 'health': analyze_health(''), 'asset_load': precheck,
+                          'note': 'asset-load pre-check failed'}
+                (staged / 'smoke.log').write_text(json.dumps(precheck), encoding='utf-8')
+            else:
+                result = run_mod(staged, stem, args.duration, timeout, getattr(args, 'ref_exe', None))
+                if precheck is not None:
+                    result['asset_load'] = precheck
             result['warning_excess'] = warning_excess(result.get('warnings', {}), folder)
             log = run_root / (folder + f'-{index}.log')
             shutil.copy2(staged / 'smoke.log', log)
@@ -955,6 +992,8 @@ def main() -> int:
     ap.add_argument('--exe', default=None, help='current mc2.exe')
     ap.add_argument('--ref-exe', type=Path, help='explicit smoke byte-identity reference (default: worktree HEAD)')
     ap.add_argument('--build-dir', default='build64-ninja')
+    ap.add_argument('--asset-load-exe', type=Path,
+                    help='optional mc2_mod_load executable: offline per-mod pre-check (55 s limit)')
     ap.add_argument('--install-root', default=str(DEFAULT_INSTALL_ROOT))
     ap.add_argument('--stage-root', default=str(DEFAULT_BATTERY_ROOT))
     ap.add_argument('--base-install', default=str(DEFAULT_BASE_INSTALL),

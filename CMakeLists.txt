@@ -980,6 +980,16 @@ set_source_files_properties(
     PROPERTIES SKIP_PRECOMPILE_HEADERS ON
 )
 
+# Offline mod table sweep: reuse the cached engine objects, with a console entry
+# point. No GameOS startup, renderer, mission, or game executable behavior change.
+add_executable(mc2_mod_load EXCLUDE_FROM_ALL
+    $<TARGET_OBJECTS:mc2> tools/mod_load.cpp)
+target_compile_definitions(mc2_mod_load PRIVATE $<TARGET_PROPERTY:mc2,COMPILE_DEFINITIONS>)
+target_include_directories(mc2_mod_load PRIVATE $<TARGET_PROPERTY:mc2,INCLUDE_DIRECTORIES>)
+target_link_libraries(mc2_mod_load PRIVATE $<TARGET_PROPERTY:mc2,LINK_LIBRARIES>)
+target_link_options(mc2_mod_load PRIVATE $<TARGET_PROPERTY:mc2,LINK_OPTIONS>)
+add_dependencies(mc2_mod_load build_fingerprint)
+
 # Separate engine linkage avoids the standalone tests' initializer/actor stubs.
 if(MC2_BUILD_TESTS)
     # The seam links the object files of the mc2 target (same sources, same flags, same definitions) instead of compiling every
