@@ -1829,10 +1829,7 @@ class Camera
 			lookTargetObject = targId;
 		}
 		
-		long getCameraTargetId (void)
-		{
-			return lookTargetObject;
-		}
+		long getCameraTargetId (void);
 		
 };		
 

@@ -3,6 +3,11 @@
 #include "camera_internal.h"
 #include "sim_trace.h"
 
+long Camera::getCameraTargetId(void)
+{
+    return lookTargetObject;
+}
+
 
 static inline float camWrap180 (float a)
 {
