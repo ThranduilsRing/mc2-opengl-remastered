@@ -7,6 +7,7 @@
 #include "sim_world_trace.h"
 #include "sim_tick_clock.h"
 #include <optional>
+#include <array>
 #include "move_recon_stats.h"
 #include <utility>
 #include "../GameOS/gameos/utils/mc2log.h"
@@ -23,9 +24,15 @@ long applyPlayerIntent(Mission& mission, const mc2::player::UnitIntent& intent, 
     TacticalOrder order;
     order.init(ORDER_ORIGIN_PLAYER, captureTarget ? TACTICAL_ORDER_CAPTURE
         : intent.goal == mc2::player::Goal::Attack ? TACTICAL_ORDER_ATTACK_OBJECT
-        : intent.goal == mc2::player::Goal::Repair ? TACTICAL_ORDER_REFIT : TACTICAL_ORDER_MOVETO_POINT);
+        : intent.goal == mc2::player::Goal::Repair ? TACTICAL_ORDER_REFIT
+        : intent.goal == mc2::player::Goal::Recover ? TACTICAL_ORDER_RECOVER : TACTICAL_ORDER_MOVETO_POINT);
     if (captureTarget) {
         order.targetWID = captureTarget;
+        order.attackParams.type = ATTACK_NONE;
+        order.attackParams.method = ATTACKMETHOD_RAMMING;
+        order.attackParams.pursue = true;
+    } else if (intent.goal == mc2::player::Goal::Recover) {
+        order.targetWID = intent.targetWatchId;
         order.attackParams.type = ATTACK_NONE;
         order.attackParams.method = ATTACKMETHOD_RAMMING;
         order.attackParams.pursue = true;
@@ -38,14 +45,9 @@ long applyPlayerIntent(Mission& mission, const mc2::player::UnitIntent& intent, 
         order.targetWID = intent.targetWatchId;
         order.attackParams.type = ATTACK_TO_DESTROY;
         order.attackParams.method = ATTACKMETHOD_RANGED;
-        order.attackParams.range = FIRERANGE_OPTIMAL;
-        auto* target = ObjectManager->getByWatchID(intent.targetWatchId);
-        const auto* active = static_cast<Mover*>(object)->getPilot()->getCurTacOrder();
-        if (target && (!object->lineOfSight(target)
-            || (active && active->code == TACTICAL_ORDER_ATTACK_OBJECT
-                && active->targetWID == intent.targetWatchId && active->attackParams.range == FIRERANGE_SHORT)))
-            order.attackParams.range = FIRERANGE_SHORT;
-        order.attackParams.pursue = intent.posture == mc2::player::Posture::Engage;
+        order.attackParams.range = intent.longRange ? FIRERANGE_LONG : FIRERANGE_OPTIMAL;
+        order.attackParams.pursue = intent.posture == mc2::player::Posture::Engage
+            && !static_cast<Mover*>(object)->isGuardTower();
     } else {
         order.moveParams.wayPath.numPoints = 1;
         order.moveParams.wayPath.curPoint = 0;
@@ -210,15 +212,157 @@ void Mission::updateMissionTest(bool report) {
         }
         break;
     }
+    // Stable four-unit squads survive casualties; support units follow the nearest squad.
+    std::vector<MoverPtr> units;
+    bool hasRepair = false, needsRepair = false;
+    for (long i = 0; i < Team::home->getRosterSize(); ++i) {
+        auto* mover = Team::home->getMover(i);
+        if (!mover || mover->getCommanderId() != Commander::home->getId() || !mover->getExists()
+            || mover->isDisabled() || mover->isDestroyed() || !mover->getPilot()) continue;
+        units.push_back(mover);
+        hasRepair |= mover->isRefit() && mover->getRefitPoints() > 0;
+        float armor = 0, total = 0;
+        for (int loc = 0; loc < mover->numArmorLocations; ++loc) {
+            armor += mover->armor[loc].curArmor;
+            total += mover->armor[loc].maxArmor;
+        }
+        needsRepair |= mover->getObjectClass() == BATTLEMECH && mover->needsRefit()
+            && (total <= 0 || armor < total * 0.85f);
+        if (!mover->isRefit() && !mover->isRecover() && !mover->isGuardTower()
+            && std::ranges::find(test.squadMembers, mover->getWatchID()) == test.squadMembers.end())
+            test.squadMembers.push_back(mover->getWatchID());
+    }
+    std::vector<mc2::player::SquadIntent> squads(std::max<std::size_t>(1, (test.squadMembers.size() + 3) / 4));
+    std::vector<int> members(squads.size());
+    const auto squadIndex = [&](MoverPtr mover) {
+        const auto found = std::ranges::find(test.squadMembers, mover->getWatchID());
+        return found == test.squadMembers.end() ? std::size_t{0}
+            : static_cast<std::size_t>(found - test.squadMembers.begin()) / 4;
+    };
+    for (auto* mover : units) {
+        if (mover->isRefit() || mover->isRecover() || mover->isGuardTower()) continue;
+        const auto index = squadIndex(mover);
+        auto& squad = squads[index];
+        squad.id = static_cast<unsigned>(index);
+        if (!squad.leaderWatchId) squad.leaderWatchId = mover->getWatchID();
+        squad.rally += mover->getPosition();
+        ++members[index];
+    }
+    for (std::size_t i = 0; i < squads.size(); ++i) {
+        auto& squad = squads[i];
+        if (members[i]) squad.rally /= static_cast<float>(members[i]);
+        float best = -1;
+        for (auto* mover : units) {
+            if (squadIndex(mover) != i || mover->isRefit() || mover->isRecover()) continue;
+            std::array<int, MAX_CONTACTS_PER_TEAM> contacts{};
+            const long count = mover->getContacts(contacts.data(), (1 | 64), CONTACT_SORT_DISTANCE);
+            for (long c = 0; c < count; ++c) {
+                auto* enemy = ObjectManager->get(contacts[c]);
+                if (!enemy || !enemy->getExists() || enemy->isDisabled() || enemy->isDestroyed()
+                    || !mover->isEnemy(enemy->getTeam()) || !mover->lineOfSight(enemy)) continue;
+                const float distance = mover->distanceFrom(enemy->getPosition());
+                if (distance > std::max(300.0f, mover->getMaxFireRange())) continue;
+                float remaining = 0, total = 0;
+                if (enemy->isMover()) {
+                    auto* target = static_cast<Mover*>(enemy);
+                    for (int loc = 0; loc < target->numBodyLocations; ++loc) {
+                        remaining += target->body[loc].curInternalStructure;
+                        total += target->body[loc].maxInternalStructure;
+                    }
+                }
+                const float condition = total > 0 ? remaining / total : 1.0f;
+                const float score = (1.0f + enemy->getThreatRating())
+                    / ((100.0f + distance) * (0.5f + 0.5f * condition))
+                    + (enemy == objectiveTarget && !captureObjective ? 1000.0f : 0.0f);
+                if (score > best) { best = score; squad.targetWatchId = enemy->getWatchID(); }
+            }
+        }
+        mc2::fmt::print_err("[PLAYER_SQUAD v1] time={:.2f} squad={} leader={} members={} focus={} x={:.1f} y={:.1f}\n",
+            scenarioTime, i, squad.leaderWatchId, members[i], squad.targetWatchId, squad.rally.x, squad.rally.y);
+    }
+    if (!units.empty() && scenarioTime >= test.nextSupport) {
+        auto* gui = MissionInterfaceManager::instance();
+        auto position = units.front()->getPosition();
+        const auto safe = [&](const glm::vec3& point, float radius) {
+            for (const auto& contact : test.enemies) {
+                auto* enemy = ObjectManager->getByWatchID(contact.wid);
+                if (enemy && enemy->getExists() && !enemy->isDisabled() && !enemy->isDestroyed()
+                    && Team::home->teamLineOfSight(enemy->getPosition(), 0.0f)
+                    && enemy->distanceFrom(point) < radius) return false;
+            }
+            return true;
+        };
+        bool purchased = false;
+        if (gui && (needsRepair || scenarioTime < 10) && !hasRepair && safe(position, 250))
+            purchased = gui->requestPlayerSupport(ControlGui::REPAIR_VEHICLE, position);
+        if (gui && !purchased) {
+            for (long i = 0; i < ObjectManager->getNumMovers(); ++i) {
+                auto* wreck = ObjectManager->getMover(i);
+                if (!wreck || !wreck->getExists() || !wreck->isDisabled() || wreck->isDestroyed()
+                    || wreck->getObjectClass() != BATTLEMECH || wreck->recoverBuddyWID
+                    || !safe(wreck->getPosition(), 300)) continue;
+                if (gui->requestPlayerSupport(ControlGui::RECOVERY_TEAM, wreck->getPosition(), wreck)) {
+                    purchased = true;
+                    break;
+                }
+            }
+        }
+        if (gui && !purchased) {
+            for (const auto& squad : squads) {
+                auto* target = ObjectManager->getByWatchID(squad.targetWatchId);
+                if (!target) continue;
+                bool clear = true;
+                for (long i = 0; i < ObjectManager->getNumMovers(); ++i) {
+                    auto* ally = ObjectManager->getMover(i);
+                    if (ally && ally->getTeam() && Team::home->isFriendly(ally->getTeam())
+                        && ally->getExists() && !ally->isDestroyed()
+                        && ally->distanceFrom(target->getPosition()) < 150) clear = false;
+                }
+                if (clear && gui->requestPlayerSupport(ControlGui::LARGE_AIRSTRIKE, target->getPosition())) {
+                    purchased = true;
+                    test.airstrikePosition = target->getPosition();
+                    test.airstrikeUntil = scenarioTime + 15.0f;
+                    break;
+                }
+            }
+        }
+        if (gui && !purchased && !test.artilleryOrdered && safe(position, 250)) {
+            purchased = gui->requestPlayerSupport(ControlGui::GUARD_TOWER, position);
+            test.artilleryOrdered = purchased;
+        }
+        mc2::fmt::print_err("[PLAYER_RESOURCES v1] time={:.2f} rp={} repair_present={} repair_needed={} purchased={} allow_repair={} allow_salvage={} allow_air={} allow_arty={}\n",
+            scenarioTime, LogisticsData::instance->getResourcePoints(), hasRepair, needsRepair, purchased,
+            LogisticsData::instance->canHaveRepairTruck(), LogisticsData::instance->canHaveSalavageCraft(),
+            LogisticsData::instance->canHaveAirStrike(), LogisticsData::instance->canHaveArtilleryPiece());
+        test.nextSupport = scenarioTime + (purchased ? 20.0f : 6.0f);
+    }
     int issued = 0, rejected = 0, retreating = 0;
     long focus = 0;
     for (long i = 0; i < Team::home->getRosterSize(); ++i) {
         auto* mover = Team::home->getMover(i);
         if (!mover || mover->getCommanderId() != Commander::home->getId() || mover->isDisabled()
             || !mover->getExists() || !mover->getPilot()) continue;
-        if (mover->refitBuddyWID) continue; // Let an accepted repair finish.
-        const auto intent = producePlayerIntent(mover->getPilot(), location,
-            objectiveTarget && !captureObjective ? objectiveTarget->getWatchID() : 0, focus, scenarioTime);
+        if (mover->refitBuddyWID || mover->recoverBuddyWID) continue; // Let support actions finish.
+        auto index = squadIndex(mover);
+        if (mover->isRefit() || mover->isRecover()) {
+            float nearest = 1e30f;
+            for (std::size_t j = 0; j < squads.size(); ++j) {
+                const float distance = mover->distanceFrom(squads[j].rally);
+                if (members[j] && distance < nearest) { nearest = distance; index = j; }
+            }
+        }
+        auto intent = producePlayerIntent(mover->getPilot(), location,
+            objectiveTarget && !captureObjective ? objectiveTarget->getWatchID() : 0, squads[index], scenarioTime);
+        // Keep the force outside its own pending strike, including moving/capturing units.
+        if (scenarioTime < test.airstrikeUntil && !mover->isRefit() && !mover->isRecover()
+            && !mover->isGuardTower()) {
+            const auto away = mover->getPosition() - test.airstrikePosition;
+            intent = {static_cast<long>(mover->getWatchID()), mc2::player::Goal::Move, mover->getPosition()};
+            intent.posture = mc2::player::Posture::Retreat;
+            if (mover->distanceFrom(test.airstrikePosition) < 150 && glm::length(away) > 0)
+                intent.location += glm::normalize(away) * 1200.0f;
+        }
+        focus = squads[index].targetWatchId;
         float armor = 0, maxArmor = 0, structure = 0, maxStructure = 0;
         for (int loc = 0; loc < mover->numArmorLocations; ++loc) {
             armor += mover->armor[loc].curArmor;
@@ -229,18 +373,19 @@ void Mission::updateMissionTest(bool report) {
             maxStructure += mover->body[loc].maxInternalStructure;
         }
         auto* chosen = ObjectManager->getByWatchID(intent.targetWatchId);
-        mc2::fmt::print_err("[PLAYER_PILOT v1] time={:.2f} wid={} goal={} posture={} target={} distance={:.1f} range={:.1f} armor={:.2f} structure={:.2f} refit={} points={} buddy={} rp={} x={:.1f} y={:.1f}\n",
+        mc2::fmt::print_err("[PLAYER_PILOT v1] time={:.2f} wid={} goal={} posture={} target={} distance={:.1f} range={:.1f} armor={:.2f} structure={:.2f} refit={} points={} buddy={} rp={} x={:.1f} y={:.1f} squad={} leader={}\n",
             scenarioTime, mover->getWatchID(), static_cast<int>(intent.goal), static_cast<int>(intent.posture),
             intent.targetWatchId, chosen ? mover->distanceFrom(chosen->getPosition()) : -1.0f,
             mover->getMaxFireRange(), maxArmor > 0 ? armor / maxArmor : 1.0f,
             maxStructure > 0 ? structure / maxStructure : 1.0f, mover->isRefit(),
             mover->getRefitPoints(), mover->refitBuddyWID, LogisticsData::instance->getResourcePoints(),
-            mover->getPosition().x, mover->getPosition().y);
+            mover->getPosition().x, mover->getPosition().y, index, squads[index].leaderWatchId);
         auto* runtime = mover->getPilot()->getBrainRuntime();
         const bool recovering = runtime->playerRecoverUntil > scenarioTime;
         auto* current = mover->getPilot()->getCurTacOrder();
         const bool healthRetreat = intent.posture == mc2::player::Posture::Retreat && runtime->retreatEffectApplied;
         if (captureObjective && objectiveTarget && !recovering && !healthRetreat
+            && scenarioTime >= test.airstrikeUntil
             && current && current->code == TACTICAL_ORDER_CAPTURE && current->targetWID == objectiveTarget->getWatchID()) {
             ++issued; // Let the normal capture action finish before taking another side fight.
             continue;
@@ -248,9 +393,13 @@ void Mission::updateMissionTest(bool report) {
         retreating += intent.posture == mc2::player::Posture::Retreat;
         const long capture = captureObjective && objectiveTarget
             && intent.goal == mc2::player::Goal::Move && intent.posture == mc2::player::Posture::Advance
+            && !mover->isRefit() && !mover->isRecover() && !mover->isGuardTower()
             && !recovering && glm::distance(mover->getPosition(), location) < 400 ? objectiveTarget->getWatchID() : 0;
-        if (applyPlayerIntent(*this, intent, capture)) ++rejected;
+        const long result = applyPlayerIntent(*this, intent, capture);
+        if (result) ++rejected;
         else ++issued;
+        mc2::fmt::print_err("[PLAYER_ORDER v1] time={:.2f} wid={} result={} long_range={} capture={}\n",
+            scenarioTime, mover->getWatchID(), result, intent.longRange, capture);
     }
     mc2::fmt::print_err("[MISSION_COMMANDER v1] producer=TechBrain time={:.2f} issued={} rejected={} retreating={} focus={} goal_target={} x={} y={}\n",
         scenarioTime, issued, rejected, retreating, focus, objectiveTarget ? objectiveTarget->getWatchID() : 0, location.x, location.y);

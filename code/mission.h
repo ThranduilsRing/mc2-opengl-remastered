@@ -329,6 +329,11 @@ class Mission
 				float health = -1;
 			};
 			std::vector<Enemy> enemies;
+			std::vector<long> squadMembers;
+			float nextSupport = 0;
+			bool artilleryOrdered = false;
+			glm::vec3 airstrikePosition{};
+			float airstrikeUntil = 0;
 			float nextOrder = 0;
 			bool finished = false;
 		} missionTest;
