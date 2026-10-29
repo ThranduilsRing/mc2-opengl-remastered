@@ -1,5 +1,27 @@
-<!-- doc-status: current | written 2026-10-17 (lane 2 session 50) -->
+<!-- doc-status: historical | written 2026-10-17 (lane 2 session 50) | reviewed:2026-10-29 -->
 # GL deletion, step 3 and beyond: ordered plan (2026-10-17)
+
+## Current disposition (2026-10-29)
+
+The plan and session amendments below are historical evidence, not outstanding
+implementation steps. The owned GL execution backend is removed; see the
+[retirement audit](../../docs/plans/2026-10-29-gl-removal-audit.md) for current
+ownership and remaining acceptance work. `render_backend_select.cpp` is VK-only;
+there is no GL opt-out, fallback, or GL A/B arm to preserve. Native shader assets
+and GPU ABI fixtures remain dependencies and must not be deleted by extension.
+
+The s53 native lighting/water producer receipt below remains evidence of that
+transition. The s52 private-GL editor blocker is superseded:
+`editor/EditorGameOS.cpp` calls shared `initVulkanBackend` and
+`gos::host::shutdownVulkanBackend`. This source finding does not certify current
+editor acceptance; editor proof belongs to audit packet 5.
+
+Partial-alpha fade over scene and HUD remains an evidence obligation: the s53
+letterbox receipt below did not prove it. Keep it in audit packet 4 until a
+specific later receipt is located. All 29 parity rows remain closed, including
+row 18's accepted deletion and row 29's accepted beam-head shape residual.
+
+## Historical plan and amendments (all sections below)
 
 State at writing: VK parity rows 1-29 all closed (owner, 2026-10-17); step 1 (capture/tooling GL arms) and step 2 (debug views, diagnostics, object parity,
 hitch, screenshot) done except two items the owner ruled KEEP/LATER (lost-draws tracker: goes with the GL interop; debug views: terrain `tessDebug` goes with

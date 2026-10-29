@@ -1,7 +1,16 @@
-<!-- doc-status: current | reviewed:2026-10-11 -->
+<!-- doc-status: current | reviewed:2026-10-29 -->
 # Known issues (current)
 
 To report a new issue: [GitHub Issues](https://github.com/ThranduilsRing/mc2-opengl-remastered/issues)
+
+Renderer reconciliation (2026-10-29): the owned GL execution backend is removed;
+Vulkan is unconditional (`GameOS/gameos/render_backend_select.cpp`). Historical
+GL mechanisms and issue receipts below are retained for provenance, not as open
+VK parity blockers. All 29 parity rows are closed; row 18 accepts cliff decal
+fill/colour-blend deletion (custom mod content still needs checks), and row 29
+accepts slightly blockier beam heads. See the
+[GL retirement audit](plans/2026-10-29-gl-removal-audit.md) for remaining evidence.
+This documentation update does not certify fresh visual, editor or mod acceptance.
 
 ---
 
@@ -44,14 +53,19 @@ Known bugs that affect anyone running the game are listed below.
 
 - **Shadow banding** shifts slightly with camera rotation due to view-dependent tessellation. *Status: MITIGATED.* STATIC-SHADOW-BANDING-1 (`9c31e2bf`, PCF undersampling fix) and STATIC-SHADOW-BANDING-2 (`5b0e488e`, slope-normal bias + normal-offset receiver) address this; gate `MC2_SHADOW_STATIC_BANDFIX_V2` is default ON (`=0` reverts). Awaiting user field check.
 - ~~**Water "HDR clipped" at odd desktop resolutions**~~ **ROOT-CAUSED + FIXED (deferred item 8, `claude/deferred-sweep-1`).** The reflection-FBO is NOT fixed-size — it's `drawableWidth/4 x drawableHeight/4` (480×270 was just the 1920×1080 case). The real bug: `gos_terrain_water_mdi.frag` (former GL source, removed in s63)'s `dFdx(nz)` aspect compensation (`WATER-ASPECT-CORRECT-1`) assumed the perspective frustum is ALWAYS 4:3-locked while the viewport is native-res — true before `UI-ASPECT-ANCHOR-1` (`mclib/camera.cpp`), which now builds the frustum at the real drawable aspect BY DEFAULT. The shader kept unconditionally "correcting" a stretch that no longer exists by default, injecting an aspect-proportional artificial distortion into the wave-reflection normal that grows the further the window aspect departs from 4:3 — exactly the odd-resolution signature. Fixed by passing the actual effective frustum aspect to the shader (`u_waterProjAspect`, mirrors `g_cameraProjAspectNative`) instead of hardcoding 4/3; the correction is now a no-op under the default native-aspect path and only activates under the legacy `MC2_CAMERA_ASPECT_NATIVE=0` frustum, where it's still needed. Confirmed via the shader's own `u_waterDebugMode=10` (Aniso) probe that `dFdx(WorldPos)`/`dFdy(WorldPos)` anisotropy is already resolution-independent (mid-gray ~103.6-103.7 at both 1920×1080 and 3072×1500) — geometry is not stretched, so the shader-side compensation had nothing left to correct. Native-vs-legacy A/B with `MC2_WATER_REFLECTION_RT=1` (debug mode 9) at 3072×1500 shows the fix changes the sampled reflection content, confirming real effect. Caveat: this dev deploy's overcast-sky HDRI fails to load (`exr_load_failed`, pre-existing/unrelated — `data/hdr/mud_road_puresky_16k.exr` is an external-pack asset per `docs/testing/ibl_hdri_external_pack.txt`, not installed here) so the water reflection fell back to the smooth SH-L2 sky term in this session's captures, which produced a byte-identical before/after at the default (non-RT) resolution matrix I ran — the fix's effect is real (confirmed above) but its magnitude on the ORIGINAL dramatic "dark/blown/noisy" report likely depends on a high-frequency HDRI sun-disk reflection being active, which this environment lacks. Commit `337c2c1e`; tier1 5/5 PASS post-fix.
-- **GPU gosFX FX render badly → REVERTED to CPU/MLR (default-off, 2026-06-15 `4ad31a9e`).** The GPU oracle FX paths (`MC2_VFX_ORACLE_TUBE` / `MC2_GPU_PARTICLES` / `MC2_VFX_ORACLE_RENDER`) rendered tube trails as flat grey sheets / wrong animations; all three flipped back to **default-OFF** so gosFX uses the known-good legacy CPU/MLR path. Opt back into a GPU path with its env var `=1` (the breakage returns; the energy-beam visual upgrade was never done). The PPC "little ball" uAdditive discard fix (`ac9f3315`) is still in the shader but off the default path.
+- **Historical GPU gosFX rollback (2026-06-15 `4ad31a9e`), superseded.** Current `Gates/gate_table.json` defaults `MC2_GPU_PARTICLES` ON for native Card/CardCloud rendering; `=0` suppresses those draws because CPU routes are retired. Parity row 29 is closed by the October 17 owner ruling after missing-head/halo fixes, with slightly blockier beam-head shape accepted. The June default-OFF/CPU fallback advice no longer applies.
 
-## VK field-env (MC2_VK_SHARED_GBUFFER=1) — status 2026-07-14
+## Historical VK field-env — July 2026 receipts, reconciled 2026-10-29
+
+The bullets below describe the former mixed-backend bring-up, not current
+configuration requirements. `MC2_VK_SHARED_GBUFFER` is now an ignored compatibility
+diagnostic; it does not select a renderer. Fatal VK failure has no GL fallback
+(`render_backend_select.cpp`, `gos_host_vk.cpp`).
 
 - **Torn grey scene on fail-soft — FIXED (historical: the GL fallback is gone, see tier1_env_vars.md "VK init failure policy") (VK-FAILSOFT-DISARM-1/2, `0c9723be`/`51942bd2`/`1c57d6f6`/`ad982de2`).** A session fail-soft used to flip present to GL while leaving the VK content family armed → VK-owned layers vanished, only residual GL VFX/decals remained (a torn half-grey scene, sometimes with pause-bobbing mechs on the GL path). Now `forceGLFallback` disarms the umbrella (complete GL scene instead), and present-level failures (minimized window, `NATIVE_WINDOW_IN_USE` swapchain flake) DEFER + retry instead of forcing GL — the session stays VK. See the "VK fail-soft semantics" section in `tier1_env_vars.md`.
 - **Weapon VFX under VK — all classes now composite (VFX-6/7, `f6e1b3d1`/`9963130479`).** Earlier only lasers showed: gosFX effect geometry (AC tracers, missile trails, muzzle flashes, explosions) draws at `theClipper->RenderNow()`, outside the objmgr IsHUD scope, into the discarded GL scene. Now that flush is routed through the composited tail (gated `MC2_VK_VFX`) with (ONE,ONE) additive pipes for muzzle-flash sprites.
 - **S2b grey transient (~1-in-4 real-time launches)** — historically an intermittent grey field launch. The `NATIVE_WINDOW_IN_USE` swapchain-flake-at-boot path was the leading mechanism and is now covered by the defer-retry fail-soft fix above; a live confirmation soak (repeated real-time launches at `ad982de2`+) is the remaining follow-up. If grey recurs, grab `debug_state/latest_render_state.json` immediately — the per-island `used_vulkan`/`fallback_reason` receipts distinguish a fail-soft from a genuine render bug.
-- **Deliberate field-config gaps:** shadows OFF (shadow-island parity hazard unresolved), sky = flat VK clear-colour stand-in (no VK HDRI pass — a feature slice). These are documented non-goals, not bugs.
+- **Former field-config gaps are superseded:** VK shadows are owned by `GameOS/gameos/gameos_graphics_shadow.cpp` and `vulkan_shadow_island_live.cpp`; HDRI upload/draw is owned by `vulkan_sky_island.cpp`. `Gates/gate_table.json` defaults `MC2_SHADOW_ENABLE` and `MC2_HDRI_SKY` ON. The July shadows-OFF/no-HDRI statement is not a current non-goal or parity blocker; fresh quality checks require captures.
 
 ---
 
@@ -61,11 +75,21 @@ Extracted from CLAUDE.md 2026-05-24. Issues here are KNOWN — don't re-discover
 them. Add new findings as new bullets; remove fixed ones outright (don't append
 "FIXED" — delete the bullet).
 
-## GL state / render-state cache (META-FIX DEBT)
+## Historical GL state / render-state cache debt (retired backend)
+
+The proposed `GlStateGuard` below addressed raw GL state in the removed backend.
+There are no owned GL context/API consumers at the audit baseline; do not build
+a new GL guard or treat this former implementation debt as an open VK blocker.
 
 - **No mechanical GL-state save/restore contract for GPU-direct passes (GREYBEARD: GlStateGuard meta-fix, deferred 2026-06-01).** GPU-direct passes (particle bridge, water fast path, mech/static-prop batchers, terrain bridges, post-process, shadow direct draws) set blend/cull/depth via RAW GL that bypasses the gos render-state cache (`gos_SetRenderState`/`applyRenderStates`, single `stateCacheValid_` bit). Each must manually (a) save/restore touched slots and (b) call `gos_InvalidateRenderStateCache()` — enforced only by comment + discipline. The invalidation call-site list at `GameOS/gameos/gameos_graphics_renderer_internal.h:708` has grown to ~14 entries = the footprint of the gap. Failures this class produced: explosion cards backface-culled (sub-pass `copySceneDepthForParticles` re-enabled GL_CULL_FACE mid-flush), water vanished (inherited SimpleCamera `SetBackFaceOn`), stale-cached blend on legacy MLR draws after a raw-GL pass. **Meta-fix:** a `GlStateGuard` RAII scope (snapshot slots + set on ctor; restore + `gos_InvalidateRenderStateCache()` on dtor) wrapping every GPU-direct pass; sub-passes get an inner guard. Collapses the 14-item manual list to zero, makes the bug class impossible by construction. No-behavior-change refactor; touches all ~14 sites in one coordinated slice. Interim patches landed 2026-06-01 (particle-bridge cull re-assert + bridge/water cache-invalidate) — substitutive for the visible flicker; the guard refactor remains the upstream fix.
 
 ## Shadows
+
+The legacy cull/foliage claims below require current VK reproduction before being
+treated as active defects. In particular, `vulkan_shadow_island_live.cpp` now
+binds the colour island's alpha array and per-packet alpha metadata for foliage
+and fence casters; the old legacy-only alpha-test claim does not establish a VK
+atlas defect. These source findings supply no new visual quality receipt.
 
 - **Shadow re-render stutter when camera moves >500 units — FIXED (`e9b9aea7`, 2026-05-16).** The "design ready" static world-fixed shadow map this entry pointed at shipped as `e9b9aea7` ("static full-map shadow feed + Phase-1 camera-accum retire"), which predates this known_issues.md line (added 2026-05-24/25) but was never cross-referenced back to it. The retired code was the exact mechanism this entry describes: a camera-move-gated (~100u, later documented as ~500u in `docs/architecture.md`) re-bake of the static shadow FBO. Post-fix, the static terrain shadow builds exactly ONCE per mission (`gos_StaticLightMatrixBuilt()` latch, `mclib/vk_scene_renderer_phases.cpp`) and never touches camera position again — a >500-unit jump structurally cannot trigger a re-render. Re-verified empirically 2026-07-17 (`DEFERRED-SWEEP-1`, no code change needed): a hard ~990-unit teleport onto a `shadow_cascade` mc2_24 view (`tests/visual/bookmarks/mc2_24_shadow_jump500.json`) captures byte-identical at `MC2_VISUAL_SETTLE=1` vs `2/30/60`. Dynamic CSM cascades rebuild fully every frame regardless of camera motion, so they carry no jump-triggered cost either.
 - **Dynamic prop shadows: no light-box cull yet** — with MC2_SHADOW_DYNAMIC_PROP_CASTERS=1 the dynamic pass draws ALL registered non-building props every frame (visibility-independent, depth-only) regardless of the light box. Cheap now; **HZB is the planned long-term fix**. Interim: CPU light-box AABB cull (must cull vs the LIGHT box, not the camera frustum). See `memory/shadow_dynamic_projection_and_caster_feed_fixed.md`.
@@ -75,6 +99,10 @@ them. Add new findings as new bullets; remove fixed ones outright (don't append
 - **Shadow VRAM cost.** 3 cascades × 8192² (`MC2_SHADOW_MAP_SIZE` default 8192) ≈ **805 MB**. Set `MC2_SHADOW_MAP_SIZE=4096` for ≈ **201 MB** (with R0=512 → 0.25 WU/texel, still sharp). Future option (not implemented): per-cascade resolution — keep cascades 0/1 at 8192 and put the full-map far cascade in a separate 4096 texture, saving VRAM without softening the near cascades.
 
 ## Water / terrain rendering
+
+The GL shader/ring-buffer mechanisms cited below are historical. The shoreline
+and fast-pan reports remain unverified issue claims for current VK reproduction;
+removed GL file paths and retired diagnostic knobs are not current test recipes.
 
 - **Cement pad `mat6_normal.tga` saga — RESOLVED (deferred item 3, claude/deferred-sweep-1).** History: the CEMENT-DETAIL-COLOR experiment sampled `matNormalArray[MAT_LAYER_PAINTED_CONC]` (= `data/textures/mat6_normal.tga`, at the time a true normal map) as *color* → dark blue slab; on 2026-06-14 the on-disk `.tga` was literally swapped to a concrete ALBEDO (backup kept as `mat6_normal.tga.orig_normal`) to compensate; `ead760df` (2026-06-16) then restored the cement diffuse atlas as the pad's albedo source in `gos_terrain.frag` + `terrain_lod_chunk.frag` (permanent, later absorbed by CEMENT-HARD-EDGE-1 — no "stopgap" code remains to retire). That left the RESIDUAL bug: layer 6 is still sampled AS A NORMAL for cement relief (`terrain_lod_chunk.frag` ~1031, `gos_terrain.frag` ~720), and every install deployed after 2026-06-14 (v0.4 AND rc1 — the old "fixed in rc1, not 0.4" claim was stale, both carried the same albedo-content file) decoded albedo-as-normal on pads. **Fix:** the true normal map is now repo-tracked at `data/textures/mat6_normal.tga` and ships via `deploy_payload.py` `GAME_DATA_PAYLOAD`, so any deploy mechanically restores correct pad relief. Cement albedo stays atlas-sourced.
 
@@ -118,6 +146,11 @@ them. Add new findings as new bullets; remove fixed ones outright (don't append
 
 ## Editor picking
 
+The GL viewport mechanism in this historical report needs reproduction against
+the shared VK editor bring-up (`editor/EditorGameOS.cpp`) before it is an active
+VK defect. Editor resize/picking and smoke acceptance remain audit packet 5;
+this lane changes no editor code and supplies no editor runtime receipt.
+
 - **Editor pick uses raw MFC client pixels vs GL viewport space (pre-existing, low-risk).** `EditorObjectMgr::getObjectAtScreenPosition` now forward-projects each object to screen via `Camera::projectForScreenXY` and matches by pixel distance (fixed the wrong-far-object pick; commit screen-space-pick). The click coords are raw MFC `CPoint` client pixels, while `projectForScreenXY` uses the `gos_GetViewport` GL viewport — same space the status bar uses, and they agree UNLESS the editor window is resized so GL viewport width != MFC client width (`EditorInterface.cpp:~4072` normalizes this for the gameplay-pick path but the status-bar/object-pick paths do not). Correct in the common no-resize case; if a resize-offset pick is ever reported, normalize the click coords the same way the gameplay pick does. Meta-fix history: `memory/editor_pick_screen_projection_metafix.md`.
 
 ## Editor smoke
@@ -147,6 +180,10 @@ them. Add new findings as new bullets; remove fixed ones outright (don't append
 - ~~**mc2_10 `ok=0` due to `staticPropValidationFail` (`sp_fail=1`).**~~ **FIXED `7bdbd1fd`.** `invalidateStaticRegistration()` tombstoned the registry recipe but never called `retireRecord` on the matching `s_objectRecords` slot; the slot stayed `alive=true` with a tombstoned recipe, causing `sp_fail=1` from frame ~1706 onward. Fix: `retireRecord` call added. Requires re-validation of mc2_10 with `MC2_RENDER_SNAPSHOT_LOG=1` to confirm ok=1 throughout.
 
 ## RenderWorld arc residuals
+
+The MLR-specific counters, projection convention and override recipes below are
+historical retirement notes. They do not prove a current VK defect or a supported
+MLR fallback; reproduce any remaining symptom through the current native routes.
 
 - **MLR-rendered mechs do not write object IDs (M2.5 known gap).** M2.6 pickup will work only for GPU-batched mech pixels. Empirical tier1 data shows `mlr_mech_draws=0` across all 5 missions, so the gap is rare-in-practice. If tier1 ever shows `mlr_mech_draws>0`, M2.6 must preserve mover-first legacy fallback for those mechs and cannot claim full mech GPU-pick coverage. Counter: `[MECHBATCHER v1] event=mlr_mech_summary mlr_mech_draws=M` on per-mission summary.
 - **gosFX dev-override broken under unified projection (F1 ship).** Running with `MC2_DISABLE_GOSFX=0` after F1 will render gosFX particles wrong: MLR's `mlrclipper.cpp:206-209,305,321,347` reads of `cameraToClip(2,2)` and `(3,2)` use stale MC2-pixel-homogeneous convention while the runtime uniforms drive shaders via the new GL convention (clip.w > 0 for in-front; polarity folded into `kAxisSwapMC2toGL` per addendum-rclipw-polarity.md). Default `MC2_DISABLE_GOSFX=1` (gate-dead MLR work-leaves) is unaffected. Runtime guard prints `[UNIFIED_PROJ v1] WARN:` stderr once per startup. Dev-override path re-enabled when MLR retirement Slices 1-5 ship.
