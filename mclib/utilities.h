@@ -113,6 +113,11 @@ std::string loadResourceString(unsigned int id, HSTRRES handle = gosResourceHand
 // Null destinations/nonpositive capacities, null handles and null provider
 // results return 0 with one rejection line.
 // The caller must supply capacity writable bytes; unused tail bytes are zeroed.
+// Owning convenience API. The capacity overload retains bounded-call rejection
+// and diagnostics when replacing a fixed buffer; capacity includes the terminator.
+std::string cLoadString(unsigned int id);
+std::string cLoadString(unsigned int id, int capacity);
+
 int cLoadString(unsigned int id, char* destination, int capacity,
                 HSTRRES handle = gosResourceHandle);
 

@@ -13,6 +13,10 @@
 #include <string>
 #include <cstring>
 #include <vector>
+#include <thread>
+#include <condition_variable>
+#include <mutex>
+#include <chrono>
 #include "../GameOS/gameos/gos_crashbundle.h"
 #include "Gates/gate_cold.h"  // gate reads below, and markMainEntered / invalidateAll / dumpConfig: EditRel has no gameosmain
 
@@ -489,7 +493,8 @@ EditorMFCApp::EditorMFCApp()
 EditorMFCApp theApp;
 
 
-static DWORD WINAPI s_smoke_thread(LPVOID);   // smoke driver: defined below
+static std::jthread s_smokeThread;
+static void s_smoke_thread(std::stop_token stop);   // smoke driver: defined below
 
 bool EditorBackgroundLaunch()
 {
@@ -569,7 +574,11 @@ BOOL EditorMFCApp::InitInstance()
 	if (g_cliExitAfterSec > 0)
 	{
 		EarlyTrace("InitInstance: starting smoke driver thread");
-		::CreateThread(nullptr, 0, s_smoke_thread, nullptr, 0, nullptr);
+		try {
+			s_smokeThread = std::jthread(s_smoke_thread);
+		} catch (...) {
+			// Keep thread startup failure nonfatal.
+		}
 	}
 
 #ifdef _AFXDLL
@@ -854,8 +863,15 @@ void EditorClearStartupWarning()
 // g_cliSuppressModals), so no fragile external dialog-dismissal is needed -- that
 // approach (PostMessage WM_CLOSE) crashed the editor by hitting non-modal panels.
 // An absolute backstop fires if the load step never completes.
-static DWORD WINAPI s_smoke_thread(LPVOID)
+static void s_smoke_thread(std::stop_token stop)
 {
+	std::condition_variable_any wake;
+	std::mutex mutex;
+	std::unique_lock lock(mutex);
+	const auto pause = [&](DWORD milliseconds) {
+		wake.wait_for(lock, stop, std::chrono::milliseconds(milliseconds), [] { return false; });
+		return stop.stop_requested();
+	};
 	DWORD start = ::GetTickCount();
 	DWORD loadTick = 0;
 	DWORD sec = (DWORD)(g_cliExitAfterSec > 0 ? g_cliExitAfterSec : 12);
@@ -866,20 +882,20 @@ static DWORD WINAPI s_smoke_thread(LPVOID)
 	if (g_cliSmokeFoliageMenu)
 	{
 		while (!(g_cliSmokeWorkDone && g_smokeMainHwnd) && (::GetTickCount() - start) < 120000u)
-			::Sleep(100);
+			if (pause(100)) return;
 		HWND w = (HWND)g_smokeMainHwnd;
 		if (w)
 		{
-			::Sleep(700);
+			if (pause(700)) return;
 			g_menuVis0 = FoliageRender::Visible() ? 1 : 0;
 			::PostMessageA(w, WM_COMMAND, MAKEWPARAM(ID_FOLIAGE_TOGGLE, 0), 0);  // off
-			::Sleep(900);
+			if (pause(900)) return;
 			g_menuVis1 = FoliageRender::Visible() ? 1 : 0;
 			::PostMessageA(w, WM_COMMAND, MAKEWPARAM(ID_FOLIAGE_TOGGLE, 0), 0);  // on
-			::Sleep(900);
+			if (pause(900)) return;
 			g_menuVis2 = FoliageRender::Visible() ? 1 : 0;
 			::PostMessageA(w, WM_COMMAND, MAKEWPARAM(ID_FOLIAGE_CLEAR, 0), 0);   // clear
-			::Sleep(900);
+			if (pause(900)) return;
 			g_menuClearCount = FoliageRender::Count();
 			::PostMessageA(w, WM_COMMAND, MAKEWPARAM(ID_FOLIAGE_GENERATE, 0), 0); // reload (shells generator)
 			// Generate re-runs the generator synchronously on the main thread; poll
@@ -888,14 +904,14 @@ static DWORD WINAPI s_smoke_thread(LPVOID)
 			// the poll window is generous (180 * 500ms = 90s) to avoid a false
 			// reload=0 when the synchronous regen simply hasn't returned yet.
 			for (int i = 0; i < 180 && FoliageRender::Count() <= 0; ++i)
-				::Sleep(500);
+				if (pause(500)) return;
 			g_menuReloadCount = FoliageRender::Count();
 		}
 		s_emit_esmoke("foliage_menu");
 		::ExitProcess(0);
 	}
 
-	for (;;)
+	while (!stop.stop_requested())
 	{
 		DWORD now = ::GetTickCount();
 		if (g_cliSmokeWorkDone && loadTick == 0)
@@ -908,16 +924,16 @@ static DWORD WINAPI s_smoke_thread(LPVOID)
 			if (g_cliSmokeCleanClose && loadedDone && g_smokeMainHwnd)
 			{
 				::PostMessageA((HWND)g_smokeMainHwnd, WM_CLOSE, 0, 0);
-				::Sleep(30000);   // the normal shutdown ends the process before this returns
+				if (pause(30000)) return;   // the normal shutdown ends the process before this returns
 				fprintf(stderr, "[ESMOKE v1] event=clean_close_timeout\n");
 				fflush(stderr);
 				::ExitProcess(4);
 			}
 			::ExitProcess(0);
 		}
-		::Sleep(200);
+		if (pause(200)) return;
 	}
-	return 0;
+
 }
 
 // -playtest driver tick. Called from OnIdle AND from the 8 ms viewport render timer:
@@ -1290,6 +1306,10 @@ int EditorMFCApp::ExitInstance()
 	delete m_pMainWnd;
 	m_pMainWnd = 0;
 
-	return CWinApp::ExitInstance();
+	const int exitCode = CWinApp::ExitInstance();
+	// Keep the smoke thread's 30-second backstop active through all shutdown work.
+	s_smokeThread.request_stop();
+	if (s_smokeThread.joinable()) s_smokeThread.join();
+	return exitCode;
 }
 

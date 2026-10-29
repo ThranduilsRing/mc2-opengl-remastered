@@ -5,6 +5,8 @@
 #include <dbghelp.h>
 #include <cstdio>
 #include <cstdlib>
+#include <thread>
+#include <chrono>
 
 #include "EditorWatchdog.h"
 #include "Gates/gate.h"
@@ -100,12 +102,13 @@ void captureStall(DWORD stallMs)
     ResumeThread(th);
 }
 
-DWORD WINAPI watchdogProc(LPVOID)
+void watchdogProc(std::stop_token stop)
 {
     LONGLONG lastCaptureMs = 0;
-    for (;;)
+    while (!stop.stop_requested())
     {
-        Sleep(kPollMs);
+        std::this_thread::sleep_for(std::chrono::milliseconds(kPollMs));
+        if (stop.stop_requested()) return;
         const LONGLONG now = (LONGLONG)GetTickCount64();
         const LONGLONG beat = s_lastBeatMs;
         if (beat == 0) continue;
@@ -116,7 +119,6 @@ DWORD WINAPI watchdogProc(LPVOID)
             captureStall((DWORD)age);
         }
     }
-    return 0;
 }
 
 void initOnce()
@@ -136,7 +138,12 @@ void initOnce()
     s_lastBeatMs = (LONGLONG)GetTickCount64();
 
     appendLog("[WATCHDOG] armed (MC2_EDITOR_WATCHDOG=1, stall>500ms)");
-    CreateThread(nullptr, 0, watchdogProc, nullptr, 0, nullptr);
+    static std::jthread watchdog;
+    try {
+        watchdog = std::jthread(watchdogProc);
+    } catch (...) {
+        // Keep thread startup failure nonfatal.
+    }
 }
 
 } // namespace

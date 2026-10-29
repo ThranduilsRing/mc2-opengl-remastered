@@ -59,3 +59,16 @@ int cLoadString(unsigned int id, char* destination, int capacity, HSTRRES handle
     std::memcpy(destination, text, length);
     return static_cast<int>(length);
 }
+
+std::string cLoadString(unsigned int id)
+{
+    return loadResourceString(id);
+}
+
+std::string cLoadString(unsigned int id, int capacity)
+{
+    std::string value(capacity > 0 ? static_cast<size_t>(capacity) : 0, '\0');
+    const int length = cLoadString(id, value.data(), capacity);
+    value.resize(static_cast<size_t>(length));
+    return value;
+}

@@ -86,3 +86,21 @@ Removed names (including declaration-only APIs):
 - `gos_UserExit`
 - `gos_VertexBuffersLost`
 - `gos_getRenderMaterial`
+
+
+## Packet 2: bounded convenience and thread ownership
+
+`cLoadString(id)` returns the existing owning resource value. The capacity
+overload delegates to the original bounded loader, preserving empty results
+and diagnostics for missing or oversized mod strings. Four fixed-buffer
+display sites use that overload; mutating and caller-owned buffers stay bounded.
+The resource-string corpus checks both ownership and the old rejection boundary.
+
+Both editor background routines use `std::jthread` and stop-aware shutdown.
+The smoke driver joins after editor teardown; its normal delays and exit
+deadlines are unchanged. The simulation worker retains its explicit 8 MB stack.
+
+The GL-removal audit branch still declared both Vulkan options. They are now
+fixed normal CMake variables, so old cache entries cannot disable the required
+backend or its native regions. Existing compile definitions and target wiring
+remain intact for standalone tools.

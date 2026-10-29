@@ -53,12 +53,14 @@ def test_native_donor_copy_filters_retired_gl_but_keeps_sdl_and_math(tmp_path):
                    for p in (lane / "3rdparty").rglob("*"))
 
 
-def test_native_render_hosts_reject_a_gl_only_configure():
-    """G2: Vulkan is the required renderer backend; the root configure rejects MC2_VULKAN=OFF."""
+def test_native_render_hosts_require_vulkan_without_cache_options():
+    """Vulkan and native regions cannot be disabled by stale cache entries."""
     root = (ROOT / "CMakeLists.txt").read_text(encoding="utf-8")
-    assert "if(NOT MC2_VULKAN)" in root
-    assert "MC2_VULKAN=OFF is not supported" in root
-    assert "MC2_VULKAN_ISLAND=ON requires MC2_VULKAN=ON" in root
+    assert "option(MC2_VULKAN " not in root
+    assert "option(MC2_VULKAN_ISLAND " not in root
+    assert "set(MC2_VULKAN ON)" in root
+    assert "set(MC2_VULKAN_ISLAND ON)" in root
+    assert "find_package(Vulkan REQUIRED)" in root
 
 
 def test_gated_layout_macros_stay_public_on_gameos():

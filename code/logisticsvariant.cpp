@@ -134,11 +134,7 @@ int LogisticsChassis::init( CSVFile* file, int chassisID )
 		}		
 	}
 
-	char tmpWeightClass[256];
-
-	cLoadString( ID, tmpWeightClass, 256 );
-
-	mechClass = tmpWeightClass;
+	mechClass = cLoadString(ID, 256).c_str();
 
 	// VEHICLE-AUTO-PILOT-1: logistics-safe vehicle detection. objTypeManager is null at the
 	// logistics/pilot-ready screen, so we cannot query the real object class. Use two
