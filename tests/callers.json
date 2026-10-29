@@ -3971,7 +3971,7 @@
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 189,
+          "line": 191,
           "evidence": "import_module",
           "reference": "deploy_payload",
           "text": "return importlib.import_module('deploy_payload')"
@@ -4049,7 +4049,7 @@
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 1127,
+          "line": 1133,
           "evidence": "import",
           "reference": "exe_fingerprint",
           "text": "import exe_fingerprint as fpmod"
@@ -4222,7 +4222,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/merge_gate.py",
-          "line": 268,
+          "line": 267,
           "evidence": "command",
           "reference": "scripts/make-isolated-deploy.py",
           "text": "subprocess.run([sys.executable, str(ROOT / \"scripts/make-isolated-deploy.py\"),"
@@ -4621,42 +4621,42 @@
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 873,
+          "line": 874,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 994,
+          "line": 1000,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 1015,
+          "line": 1021,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 1041,
+          "line": 1047,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 1070,
+          "line": 1076,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 1087,
+          "line": 1093,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
@@ -4750,7 +4750,7 @@
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 1126,
+          "line": 1132,
           "evidence": "import",
           "reference": "ninja_build",
           "text": "import ninja_build as nb"
@@ -5137,7 +5137,7 @@
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 678,
+          "line": 690,
           "evidence": "command",
           "reference": "scripts/run_smoke.py",
           "text": "proc = subprocess.run(cmd, cwd=str(ROOT), capture_output=True,"
@@ -5275,7 +5275,7 @@
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 1055,
+          "line": 1061,
           "evidence": "import",
           "reference": "run_tools_tests",
           "text": "import run_tools_tests as tt"
@@ -12036,14 +12036,14 @@
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 444,
+          "line": 448,
           "evidence": "import_module",
           "reference": "fst",
           "text": "fst_lib = importlib.import_module('fst')"
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 480,
+          "line": 484,
           "evidence": "import_module",
           "reference": "fst",
           "text": "fst_lib = importlib.import_module('fst')"
@@ -12360,28 +12360,28 @@
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 231,
+          "line": 233,
           "evidence": "import",
           "reference": "fst_listing",
           "text": "import fst_listing"
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 360,
+          "line": 364,
           "evidence": "import",
           "reference": "fst_listing",
           "text": "import fst_listing"
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 462,
+          "line": 466,
           "evidence": "import",
           "reference": "fst_listing",
           "text": "import fst_listing"
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 481,
+          "line": 485,
           "evidence": "import",
           "reference": "fst_listing",
           "text": "import fst_listing"
