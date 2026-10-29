@@ -62,6 +62,9 @@ public:
     std::vector<DWORD> takeCreates() { std::vector<DWORD> out; out.swap(creates_); return out; }
 private:
     // Main render lookups may overlap tick admission (vector growth).
+    // Lock order: indexMutex_ -> TextureService::mu_. publish() acquires the service handle under indexMutex_ so the
+    // asset id and handle land together; nothing may take indexMutex_ while holding mu_. Lookups (find) drop
+    // indexMutex_ before calling into the service.
     mutable std::mutex indexMutex_;
     std::vector<DWORD> creates_;
     static std::string nameKey(const char* name, DWORD variant);

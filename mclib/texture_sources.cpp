@@ -46,12 +46,22 @@ std::string TextureSources::nameKey(const char* name, DWORD variant) {
     return key+'|'+std::to_string(variant);
 }
 std::shared_ptr<TextureSource> TextureSources::find(const char* name, DWORD variant) {
-    std::lock_guard lock(indexMutex_);
-    auto it=named_.find(nameKey(name,variant));
-    if (it==named_.end()) return {};
-    auto source=it->second < assets_.size() ? assets_[it->second].lock() : nullptr;
+    const std::string key=nameKey(name,variant);
+    std::shared_ptr<TextureSource> source;
+    DWORD id=0;
+    {
+        std::lock_guard lock(indexMutex_);
+        auto it=named_.find(key);
+        if (it==named_.end()) return {};
+        id=it->second;
+        source=id < assets_.size() ? assets_[id].lock() : nullptr;
+    }
+    // isLive takes TextureService::mu_: call it without indexMutex_ (lock order in texture_sources_internal.h).
     if (source && RenderCore::textureService().isLive(source->handle)) return source;
-    named_.erase(it); return {};
+    std::lock_guard lock(indexMutex_);
+    auto it=named_.find(key);
+    if (it!=named_.end() && it->second==id) named_.erase(it);   // unless a publish re-pointed the name meanwhile
+    return {};
 }
 std::shared_ptr<const Bytes> TextureSources::internBytes(const std::string& identity, std::shared_ptr<const Bytes> bytes) {
     std::lock_guard lock(indexMutex_);

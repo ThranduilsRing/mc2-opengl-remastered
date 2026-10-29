@@ -311,6 +311,7 @@ class GameObject {
 		GameObjectHandle			handle = 0;			//Used to reference into master obj table
 		int32_t                     partId;				//What is my unique part number.
 		uint32_t                    watchID;			//Used to reference in the game engine
+		uint32_t                    generation = 0;		// bumped by init(); the render extract stamps it to spot pooled-slot reuse
 
 		GameObjectTypeHandle		typeHandle;			//Who made me?
 		glm::vec3				position;			//Where am I?

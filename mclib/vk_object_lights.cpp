@@ -476,6 +476,7 @@ uint32_t mc2LightSlotTableCount()        { return mc2::vkLights::active() ? mc2:
 uint32_t mc2::vkLights::addLightDataStructure(TG_HWLightsData* light_data)
 {
     ZoneScopedN("addLightDataStructure scan");
+    mc2::overlap::assertOwner(mc2::overlap::Owner::Render, "vkLights::addLightDataStructure");
     // FRAME-JOBS-2 precondition: lock covers map lookup + grow-if-needed +
     // table write + map insert as a single atomic sequence.
     std::lock_guard<std::recursive_mutex> _lk(s_lightDataMapMu);
@@ -513,6 +514,7 @@ uint32_t mc2::vkLights::addLightDataStructure(TG_HWLightsData* light_data)
 uint32_t mc2::vkLights::addLightDataStructureWithPerActorColor(TG_HWLightsData* light_data)
 {
     gosASSERT(light_data);
+    mc2::overlap::assertOwner(mc2::overlap::Owner::Render, "vkLights::addLightDataStructureWithPerActorColor");
     LbScope _lb_;  // [LIGHTBRIDGE v1] C5/C6 populate sizing (RAII, all return paths)
     // FRAME-JOBS-2 precondition: protects s_sceneLightTemplateMap, s_lightSlotByActorKey,
     // and (via the nested addLightDataStructure call) s_lightDataDedupMap + lightData_ grow.

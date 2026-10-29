@@ -744,7 +744,7 @@ long Mission::render (void)
 {
 	mc2::sim::PresentationScope presentationScope;
 	ZoneScopedN("Camera.UpdateRenderers Mission.render");
-	if (active)
+	if (mc2::render_view::clock().missionActive)   // the extracted flag: the overlapped tick can end the mission mid-draw
 	{
 		unsigned char tempAmbientLight[3];
 		if (KillAmbientLight) {
