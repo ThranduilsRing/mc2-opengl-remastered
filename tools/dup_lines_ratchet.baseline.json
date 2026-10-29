@@ -6,7 +6,7 @@
   "HostServices": 0,
   "RenderCore": 402,
   "RenderWorld": 0,
-  "code": 13426,
+  "code": 13418,
   "mclib": 22490,
   "shaders": 416
  },
@@ -189,7 +189,7 @@
   "code/mover_path.cpp": 190,
   "code/mpconnectiontype.cpp": 134,
   "code/mpconnectiontype.h": 8,
-  "code/mpgamebrowser.cpp": 125,
+  "code/mpgamebrowser.cpp": 117,
   "code/mpgamebrowser.h": 9,
   "code/mphostgame.cpp": 70,
   "code/mphostgame.h": 8,
@@ -481,8 +481,8 @@
   "shaders/vulkan/terrain_tier1.vert": 71,
   "shaders/vulkan/terrain_tier1_skirt.vert": 71
  },
- "head": "035b0a2d8",
+ "head": "b608a5020",
  "n": 8,
- "total": 38945,
+ "total": 38937,
  "version": 1
 }

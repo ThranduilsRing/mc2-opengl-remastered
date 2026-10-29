@@ -19,6 +19,7 @@ SalvageMechArea.cpp			: Implementation of the SalvageMechArea component.
 #include"gamesound.h"
 #include"mc2str.h"
 #include<malloc.h>
+#include "mc2fmt.h"
 
 // Interactive cheat gates — read once at startup, default OFF
 // The launcher writes these into launcher_env.json, which main() applies after static initialization, so they
@@ -280,7 +281,7 @@ void SalvageMechScreen::update()
 
 
 	char cBillText[32];
-	sprintf( cBillText, "%ld", amount );
+	mc2::fmt::to_buf( cBillText, "{:d}", mc2::fmt::as_i32(amount) );
 	textObjects[RP_TEXTID].setText( cBillText );
 	textObjects[RP_TEXTID].setColor( color );
 
@@ -440,7 +441,7 @@ SalvageListItem::SalvageListItem( BattleMech* pMech )
 	// add salvage
 	char text[64];
 	long salvageAmount = costToSalvage;
-	sprintf( text, "%ld", salvageAmount );
+	mc2::fmt::to_buf( text, "{:d}", mc2::fmt::as_i32(salvageAmount) );
  	pText = new aText(  );
 	*pText = *costText;
 	pText->setText( text );
@@ -448,7 +449,7 @@ SalvageListItem::SalvageListItem( BattleMech* pMech )
 
 	// add tonnage
 	long tonnage = pMech->tonnage;
-	sprintf( text, "%ld", tonnage );
+	mc2::fmt::to_buf( text, "{:d}", mc2::fmt::as_i32(tonnage) );
 	pText = new aText(  );
 	*pText = *weightText;
 	pText->setText( text );
@@ -665,7 +666,7 @@ void SalvageMechArea::init( FitIniFile* file )
 	char blockName[64];
 	for ( int i = 0; i < 3; i++ )
 	{
-		sprintf( blockName, "AttributeMeter%ld", i );
+		mc2::fmt::to_buf( blockName, "AttributeMeter{:d}", mc2::fmt::as_i32(i) );
 		attributeMeters[i].init( file, blockName );
 	}
 
@@ -689,13 +690,13 @@ void SalvageMechArea::setMech( LogisticsVariant* pMech, long red, long green, lo
 
 		textObjects[NAME_TEXTID].setText( pMech->getName() );
 		char text[256];
-		sprintf( text, "%f", pMech->getMaxWeight() );
+		mc2::fmt::to_buf( text, "{:f}", pMech->getMaxWeight() );
 		textObjects[WEIGHT_TEXTID].setText( text );
-		sprintf( text, "%ld", pMech->getArmor() );
+		mc2::fmt::to_buf( text, "{:d}", mc2::fmt::as_i32(pMech->getArmor()) );
 		textObjects[ARMOR_TEXTID].setText( text );
-		sprintf( text, "%ld", pMech->getDisplaySpeed() );
+		mc2::fmt::to_buf( text, "{:d}", mc2::fmt::as_i32(pMech->getDisplaySpeed()) );
 		textObjects[SPEED_TEXTID].setText( text );
-		sprintf( text, "%ld", pMech->getJumpRange() * 25 );
+		mc2::fmt::to_buf( text, "{:d}", mc2::fmt::as_i32(pMech->getJumpRange() * 25) );
 		textObjects[JUMP_TEXTID].setText( text );
 		uint32_t tmpColor;
 		textObjects[RANGE_TEXTID].setText( pMech->getOptimalRangeString( tmpColor ) );

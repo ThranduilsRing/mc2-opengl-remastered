@@ -340,7 +340,7 @@ TEST_CASE("table is sorted, unique and every name round-trips through lookupName
     const std::size_t n = gate::tableSize();
     REQUIRE(n == gate::detail::kGateCount);
     // Population floor after the gate amnesty (retired names live in Gates/retired_names.json).
-    REQUIRE(n == 760);   // W83 review: retire dead R2b preserve and trace gates.
+    REQUIRE(n == 759);   // Match the gate tooling lineage's committed table.
     for (std::size_t i = 0; i < n; ++i) {
         if (i > 0) CHECK((rows[i - 1].name < rows[i].name));
         const auto info = gate::lookupName(rows[i].name);

@@ -41,6 +41,7 @@
 #include"abldbug.h"
 #endif
 #include "../GameOS/gameos/utils/mc2log.h"
+#include "mc2fmt.h"
 
 //---------------------------------------------------------------------------
 // A scalar static or eternal is saved as a whole StackItem, but only its 4-byte integer / real / byte arm is meaningful. The union also has
@@ -215,7 +216,7 @@ void ABL_CloseProfileLog (void) {
 	{
 		DumpProfileLog();
 		char s[512];
-		sprintf(s, "\nNum Total Lines = %d\n", TotalProfileLogLines);
+		mc2::fmt::to_buf(s, "\nNum Total Lines = {:d}\n", mc2::fmt::as_i32(TotalProfileLogLines));
 		ProfileLog->writeString(s);
 		ProfileLog->close();
 		delete ProfileLog;
@@ -279,7 +280,7 @@ void UserFile::close (void) {
 	if (inUse) {
 		dump();
 		char s[512];
-		sprintf(s, "\nNum Total Lines = %d\n", totalLines);
+		mc2::fmt::to_buf(s, "\nNum Total Lines = {:d}\n", mc2::fmt::as_i32(totalLines));
 		filePtr.writeString(s);
 		filePtr.close();
 		inUse = false;
@@ -567,7 +568,7 @@ long ABLModule::init (int moduleHandle) {
 		staticData = static_cast<StackItemPtr>(ABL_alloc(ABLPool::Stack, sizeof(StackItem) * numStatics));
 		if (!staticData) {
 			char err[255];
-			sprintf(err, "ABL: Unable to AblStackHeap->malloc staticData [Module %d]", id);
+			mc2::fmt::to_buf(err, "ABL: Unable to AblStackHeap->malloc staticData [Module {:d}]", mc2::fmt::as_i32(id));
 			ABL_Fatal(0, err);
 		}
 		long* sizeList = ModuleRegistry[handle].sizeStaticVars;
@@ -576,7 +577,7 @@ long ABLModule::init (int moduleHandle) {
 				staticData[i].address = static_cast<char*>(ABL_alloc(ABLPool::Stack, sizeList[i]));
 				if (!staticData) {
 					char err[255];
-					sprintf(err, "ABL: Unable to AblStackHeap->malloc staticData address [Module %d]", id);
+					mc2::fmt::to_buf(err, "ABL: Unable to AblStackHeap->malloc staticData address [Module {:d}]", mc2::fmt::as_i32(id));
 					ABL_Fatal(0, err);
 				}
 				}
@@ -589,7 +590,7 @@ long ABLModule::init (int moduleHandle) {
 		orderCallFlags = static_cast<unsigned long*>(ABL_alloc(ABLPool::Stack, sizeof(unsigned long) * numLongs));
 		if (!orderCallFlags) {
 			char err[255];
-			sprintf(err, "ABL: Unable to AblStackHeap->malloc orderCallFlags [Module %d]", id);
+			mc2::fmt::to_buf(err, "ABL: Unable to AblStackHeap->malloc orderCallFlags [Module {:d}]", mc2::fmt::as_i32(id));
 			ABL_Fatal(0, err);
 		}
 		for (long i = 0; i < numLongs; i++)
@@ -610,7 +611,7 @@ long ABLModule::init (int moduleHandle) {
 		SymTableNodePtr startState = searchSymTable("start", ModuleRegistry[handle].moduleIdPtr->defn.info.routine.localSymTable);
 		if (!startState) {
 			char err[255];
-			sprintf(err, "ABL: FSM has no Start state [%s]", CurModule->getName());
+			mc2::fmt::to_buf(err, "ABL: FSM has no Start state [{}]", mc2::fmt::safe(CurModule->getName()));
 			ABL_Fatal(0, err);
 		}
 		prevState = nullptr;
@@ -694,7 +695,7 @@ void ABLModule::read (ABLFile* moduleFile) {
 			staticData = static_cast<StackItemPtr>(ABL_alloc(ABLPool::Stack, sizeof(StackItem) * numStatics));
 			if (!staticData) {
 				char err[255];
-				sprintf(err, "ABL: Unable to AblStackHeap->malloc staticData [Module %d]", id);
+				mc2::fmt::to_buf(err, "ABL: Unable to AblStackHeap->malloc staticData [Module {:d}]", mc2::fmt::as_i32(id));
 				ABL_Fatal(0, err);
 			}
 		}
@@ -705,14 +706,14 @@ void ABLModule::read (ABLFile* moduleFile) {
 					staticData[i].address = static_cast<char*>(ABL_alloc(ABLPool::Stack, sizeList[i]));
 					if (!staticData) {
 						char err[255];
-						sprintf(err, "ABL: Unable to AblStackHeap->malloc staticData address [Module %d]", id);
+						mc2::fmt::to_buf(err, "ABL: Unable to AblStackHeap->malloc staticData address [Module {:d}]", mc2::fmt::as_i32(id));
 						ABL_Fatal(0, err);
 					}
 				}
 				long result = moduleFile->read(reinterpret_cast<unsigned char*>(staticData[i].address), sizeList[i]);
 				if (!result) {
 					char err[255];
-					sprintf(err, "ABL: Unable to read staticData.address [Module %d]", id);
+					mc2::fmt::to_buf(err, "ABL: Unable to read staticData.address [Module {:d}]", mc2::fmt::as_i32(id));
 					ABL_Fatal(0, err);
 				}
 				}
@@ -722,7 +723,7 @@ void ABLModule::read (ABLFile* moduleFile) {
 				clearScalarSlotPointerArm(&staticData[i]);
 				if (!result) {
 					char err[255];
-					sprintf(err, "ABL: Unable to read staticData [Module %d]", id);
+					mc2::fmt::to_buf(err, "ABL: Unable to read staticData [Module {:d}]", mc2::fmt::as_i32(id));
 					ABL_Fatal(0, err);
 				}
 			}
@@ -734,7 +735,7 @@ void ABLModule::read (ABLFile* moduleFile) {
 			orderCallFlags = static_cast<unsigned long*>(ABL_alloc(ABLPool::Stack, sizeof(unsigned long) * numLongs));
 		if (!orderCallFlags) {
 			char err[255];
-			sprintf(err, "ABLModule.read: Unable to AblStackHeap->malloc orderCallFlags [Module %d]", id);
+			mc2::fmt::to_buf(err, "ABLModule.read: Unable to AblStackHeap->malloc orderCallFlags [Module {:d}]", mc2::fmt::as_i32(id));
 			ABL_Fatal(0, err);
 		}
 		for (long i = 0; i < numLongs; i++)
@@ -912,7 +913,7 @@ long ABLModule::execute (ABLParamPtr paramList) {
 					char* dest = static_cast<char*>(ABL_alloc(ABLPool::Stack, static_cast<size_t>(size)));
 					if (!dest) {
 						char err[255];
-						sprintf(err, "ABL: Unable to AblStackHeap->malloc array parameter [Module %d]", id);
+						mc2::fmt::to_buf(err, "ABL: Unable to AblStackHeap->malloc array parameter [Module {:d}]", mc2::fmt::as_i32(id));
 						ABL_Fatal(0, err);
 					}
 					char* src = tos->address;
@@ -1053,7 +1054,7 @@ long ABLModule::execute (ABLParamPtr moduleParamList, SymTableNodePtr functionId
 					char* dest = static_cast<char*>(ABL_alloc(ABLPool::Stack, static_cast<size_t>(size)));
 					if (!dest) {
 						char err[255];
-						sprintf(err, "ABL: Unable to AblStackHeap->malloc array parameter [Module %d]", id);
+						mc2::fmt::to_buf(err, "ABL: Unable to AblStackHeap->malloc array parameter [Module {:d}]", mc2::fmt::as_i32(id));
 						ABL_Fatal(0, err);
 					}
 					char* src = tos->address;
@@ -1490,7 +1491,7 @@ void ABLi_loadEnvironment (ABLFile* ablFile, bool malloc) {
 			return;
 		if (!result) {
 			char err[255];
-			sprintf(err, "ABLi_loadEnvironment: Unable to read filename [Module %d]", i);
+			mc2::fmt::to_buf(err, "ABLi_loadEnvironment: Unable to read filename [Module {:d}]", mc2::fmt::as_i32(i));
 			ABL_Fatal(0, err);
 		}
 		if (malloc) {
@@ -1498,7 +1499,7 @@ void ABLi_loadEnvironment (ABLFile* ablFile, bool malloc) {
 			ABLModulePtr library = ABLi_loadLibrary(reinterpret_cast<const char*>(fileName), &numErrors, &numLinesProcessed, nullptr, false, false);
 			if (!library) {
 				char err[255];
-				sprintf(err, "ABLi_loadEnvironment: Unable to load library [Module %d]", i);
+				mc2::fmt::to_buf(err, "ABLi_loadEnvironment: Unable to load library [Module {:d}]", mc2::fmt::as_i32(i));
 				ABL_Fatal(0, err);
 			}
 		}
@@ -1511,7 +1512,7 @@ void ABLi_loadEnvironment (ABLFile* ablFile, bool malloc) {
 			return;
 		if (!result) {
 			char err[255];
-			sprintf(err, "ABLi_loadEnvironment: Unable to read filename [Module %d]", i);
+			mc2::fmt::to_buf(err, "ABLi_loadEnvironment: Unable to read filename [Module {:d}]", mc2::fmt::as_i32(i));
 			ABL_Fatal(0, err);
 		}
 		long numErrors, numLinesProcessed;
@@ -1519,7 +1520,7 @@ void ABLi_loadEnvironment (ABLFile* ablFile, bool malloc) {
 			int handle = ABLi_preProcess(reinterpret_cast<const char*>(fileName), &numErrors, &numLinesProcessed);
 			if (handle < 0) {
 				char err[255];
-				sprintf(err, "ABLi_loadEnvironment: Unable to preprocess [Module %d]", i);
+				mc2::fmt::to_buf(err, "ABLi_loadEnvironment: Unable to preprocess [Module {:d}]", mc2::fmt::as_i32(i));
 				ABL_Fatal(0, err);
 			}
 		}
@@ -1528,7 +1529,7 @@ void ABLi_loadEnvironment (ABLFile* ablFile, bool malloc) {
 	int mark = ablFile->readInt();
     if(mark != ABL_ENV_MARK) {
         char err[255];
-        sprintf(err, "ABLi_loadEnvironment: mark vlue is not as expected (%d), actual: %d\n", ABL_ENV_MARK, mark);
+        mc2::fmt::to_buf(err, "ABLi_loadEnvironment: mark vlue is not as expected ({:d}), actual: {:d}\n", mc2::fmt::as_i32(ABL_ENV_MARK), mc2::fmt::as_i32(mark));
         ABL_Fatal(0, err);
     }
 

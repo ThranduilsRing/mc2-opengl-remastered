@@ -25,7 +25,8 @@ static bool userBuildingAsset(std::string_view name)
 			static std::unordered_map<std::string, bool> userArchives;
 			const std::string archiveName = archive->getFileName();
 			auto [it, inserted] = userArchives.try_emplace(archiveName, false);
-			if (inserted) it->second = userPackedBuildingArchive(archiveName, [](const auto& file) {
+			auto& [cachedArchiveName, isUserArchive] = *it;
+			if (inserted) isUserArchive = userPackedBuildingArchive(archiveName, [](const auto& file) {
 				std::ifstream input(file, std::ios::binary); // path-audit: root FST provenance
 				uLong crc = crc32(0, nullptr, 0);
 				char buffer[65536];
@@ -33,7 +34,7 @@ static bool userBuildingAsset(std::string_view name)
 					crc = crc32(crc, reinterpret_cast<const Bytef*>(buffer), static_cast<uInt>(input.gcount()));
 				return input.eof() ? static_cast<uint32_t>(crc) : 0u;
 			});
-			if (it->second) return true;
+			if (isUserArchive) return true;
 		}
 	}
 	return userLooseBuildingAsset(name, owner ? owner : "",

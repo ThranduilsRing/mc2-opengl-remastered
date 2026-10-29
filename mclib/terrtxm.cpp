@@ -248,7 +248,7 @@ long TerrainTextures::init (const char *fileName, const char *baseName)
 	for (int i=0;i<numTypes;i++)
 	{
 		char blockName[512];
-		sprintf(blockName,"TerrainType%d",i);
+		mc2::fmt::to_buf(blockName,"TerrainType{:d}",mc2::fmt::as_i32(i));
 
 		result = textureFile.seekBlock(blockName);
 		if (result == NO_ERR)
@@ -340,7 +340,7 @@ long TerrainTextures::init (const char *fileName, const char *baseName)
 	for (int i=0;i<numOverlays;i++)
 	{
 		char blockName[512];
-		sprintf(blockName,"OverlayType%d",i);
+		mc2::fmt::to_buf(blockName,"OverlayType{:d}",mc2::fmt::as_i32(i));
 
 		result = textureFile.seekBlock(blockName);
 		gosASSERT(result == NO_ERR);
@@ -404,7 +404,7 @@ long TerrainTextures::init (const char *fileName, const char *baseName)
 	for (int i=0;i<numDetails;i++)
 	{
 		char blockName[512];
-		sprintf(blockName,"DetailType%d",i);
+		mc2::fmt::to_buf(blockName,"DetailType{:d}",mc2::fmt::as_i32(i));
 
 		result = textureFile.seekBlock(blockName);
 		gosASSERT(result == NO_ERR);
@@ -591,28 +591,28 @@ long TerrainTextures::initDetail (long typeNum, long detailNum)
 		switch (j)
 		{
 			case 0:
-				sprintf(mipPath,"%s%d" PATH_SEPARATOR,texturePath,TERRAIN_TXM_SIZE);
+				mc2::fmt::to_buf(mipPath,"{}{:d}" PATH_SEPARATOR "",mc2::fmt::safe(texturePath),mc2::fmt::as_i32(TERRAIN_TXM_SIZE));
 				mipSize = TERRAIN_TXM_SIZE;
 				break;	
 
 			case 1:
-				sprintf(mipPath,"%s%d" PATH_SEPARATOR,texturePath,(TERRAIN_TXM_SIZE>>1));
+				mc2::fmt::to_buf(mipPath,"{}{:d}" PATH_SEPARATOR "",mc2::fmt::safe(texturePath),mc2::fmt::as_i32((TERRAIN_TXM_SIZE>>1)));
 				mipSize = (TERRAIN_TXM_SIZE>>1);
 				break;
 
 			case 2:
-				sprintf(mipPath,"%s%d" PATH_SEPARATOR,texturePath,(TERRAIN_TXM_SIZE>>2));
+				mc2::fmt::to_buf(mipPath,"{}{:d}" PATH_SEPARATOR "",mc2::fmt::safe(texturePath),mc2::fmt::as_i32((TERRAIN_TXM_SIZE>>2)));
 				mipSize = (TERRAIN_TXM_SIZE>>2);
 				break;
 
 			case 3:
-				sprintf(mipPath,"%s%d" PATH_SEPARATOR,texturePath,(TERRAIN_TXM_SIZE>>3));
+				mc2::fmt::to_buf(mipPath,"{}{:d}" PATH_SEPARATOR "",mc2::fmt::safe(texturePath),mc2::fmt::as_i32((TERRAIN_TXM_SIZE>>3)));
 				mipSize = (TERRAIN_TXM_SIZE>>3);
 				break;
 		}
 
 		char tmpy[512];
-		sprintf(tmpy,"%s%04d",details[typeNum].detailName,detailNum);
+		mc2::fmt::to_buf(tmpy,"{}{:04d}",mc2::fmt::safe(details[typeNum].detailName),mc2::fmt::as_i32(detailNum));
 
 		FullPathFileName fileName;
 		fileName.init(mipPath,tmpy,".tga");
@@ -642,22 +642,22 @@ long TerrainTextures::initTexture (long typeNum)
 		switch (j)
 		{
 			case 0:
-				sprintf(mipPath,"%s%d" PATH_SEPARATOR, texturePath,TERRAIN_TXM_SIZE);
+				mc2::fmt::to_buf(mipPath,"{}{:d}" PATH_SEPARATOR "", mc2::fmt::safe(texturePath),mc2::fmt::as_i32(TERRAIN_TXM_SIZE));
 				mipSize = TERRAIN_TXM_SIZE;
 				break;	
 
 			case 1:
-				sprintf(mipPath,"%s%d" PATH_SEPARATOR, texturePath,(TERRAIN_TXM_SIZE>>1));
+				mc2::fmt::to_buf(mipPath,"{}{:d}" PATH_SEPARATOR "", mc2::fmt::safe(texturePath),mc2::fmt::as_i32((TERRAIN_TXM_SIZE>>1)));
 				mipSize = (TERRAIN_TXM_SIZE>>1);
 				break;
 
 			case 2:
-				sprintf(mipPath,"%s%d" PATH_SEPARATOR, texturePath,(TERRAIN_TXM_SIZE>>2));
+				mc2::fmt::to_buf(mipPath,"{}{:d}" PATH_SEPARATOR "", mc2::fmt::safe(texturePath),mc2::fmt::as_i32((TERRAIN_TXM_SIZE>>2)));
 				mipSize = (TERRAIN_TXM_SIZE>>2);
 				break;
 
 			case 3:
-				sprintf(mipPath,"%s%d" PATH_SEPARATOR, texturePath,(TERRAIN_TXM_SIZE>>3));
+				mc2::fmt::to_buf(mipPath,"{}{:d}" PATH_SEPARATOR "", mc2::fmt::safe(texturePath),mc2::fmt::as_i32((TERRAIN_TXM_SIZE>>3)));
 				mipSize = (TERRAIN_TXM_SIZE>>3);
 				break;
 		}
@@ -717,22 +717,22 @@ void TerrainTextures::initMask (long typeNum)
 		switch (i)
 		{
 			case 0:
-				sprintf(mipPath,"%s%dmask" PATH_SEPARATOR,texturePath,(TERRAIN_TXM_SIZE>>0));
+				mc2::fmt::to_buf(mipPath,"{}{:d}mask" PATH_SEPARATOR "",mc2::fmt::safe(texturePath),mc2::fmt::as_i32((TERRAIN_TXM_SIZE>>0)));
 				mipSize = (TERRAIN_TXM_SIZE>>0);
 				break;	
 
 			case 1:
-				sprintf(mipPath,"%s%dmask" PATH_SEPARATOR,texturePath,(TERRAIN_TXM_SIZE>>1));
+				mc2::fmt::to_buf(mipPath,"{}{:d}mask" PATH_SEPARATOR "",mc2::fmt::safe(texturePath),mc2::fmt::as_i32((TERRAIN_TXM_SIZE>>1)));
 				mipSize = (TERRAIN_TXM_SIZE>>1);
 				break;
 
 			case 2:
-				sprintf(mipPath,"%s%dmask" PATH_SEPARATOR,texturePath,(TERRAIN_TXM_SIZE>>2));
+				mc2::fmt::to_buf(mipPath,"{}{:d}mask" PATH_SEPARATOR "",mc2::fmt::safe(texturePath),mc2::fmt::as_i32((TERRAIN_TXM_SIZE>>2)));
 				mipSize = (TERRAIN_TXM_SIZE>>2);
 				break;
 
 			case 3:
-				sprintf(mipPath,"%s%dmask" PATH_SEPARATOR,texturePath,(TERRAIN_TXM_SIZE>>3));
+				mc2::fmt::to_buf(mipPath,"{}{:d}mask" PATH_SEPARATOR "",mc2::fmt::safe(texturePath),mc2::fmt::as_i32((TERRAIN_TXM_SIZE>>3)));
 				mipSize = (TERRAIN_TXM_SIZE>>3);
 				break;
 		}
@@ -740,7 +740,7 @@ void TerrainTextures::initMask (long typeNum)
 		for (long j=0;j<MC_MASK_NUM;j++)
 		{
 			char tmpy[512];
-			sprintf(tmpy,"%s%04d",types[typeNum].maskName,j);
+			mc2::fmt::to_buf(tmpy,"{}{:04d}",mc2::fmt::safe(types[typeNum].maskName),mc2::fmt::as_i32(j));
 
 			FullPathFileName fileName;
 			fileName.init(mipPath,tmpy,".tga");
@@ -778,28 +778,28 @@ long TerrainTextures::initOverlay (long overlayNum, long txmNum, char *txmName)
 		switch (j)
 		{
 			case 0:
-				sprintf(mipPath,"%s%dOverlays" PATH_SEPARATOR,texturePath,TERRAIN_TXM_SIZE);
+				mc2::fmt::to_buf(mipPath,"{}{:d}Overlays" PATH_SEPARATOR "",mc2::fmt::safe(texturePath),mc2::fmt::as_i32(TERRAIN_TXM_SIZE));
 				mipSize = TERRAIN_TXM_SIZE;
 				break;	
 
 			case 1:
-				sprintf(mipPath,"%s%dOverlays" PATH_SEPARATOR,texturePath,(TERRAIN_TXM_SIZE>>1));
+				mc2::fmt::to_buf(mipPath,"{}{:d}Overlays" PATH_SEPARATOR "",mc2::fmt::safe(texturePath),mc2::fmt::as_i32((TERRAIN_TXM_SIZE>>1)));
 				mipSize = (TERRAIN_TXM_SIZE>>1);
 				break;
 
 			case 2:
-				sprintf(mipPath,"%s%dOverlays" PATH_SEPARATOR,texturePath,(TERRAIN_TXM_SIZE>>2));
+				mc2::fmt::to_buf(mipPath,"{}{:d}Overlays" PATH_SEPARATOR "",mc2::fmt::safe(texturePath),mc2::fmt::as_i32((TERRAIN_TXM_SIZE>>2)));
 				mipSize = (TERRAIN_TXM_SIZE>>2);
 				break;
 
 			case 3:
-				sprintf(mipPath,"%s%dOverlays" PATH_SEPARATOR,texturePath,(TERRAIN_TXM_SIZE>>3));
+				mc2::fmt::to_buf(mipPath,"{}{:d}Overlays" PATH_SEPARATOR "",mc2::fmt::safe(texturePath),mc2::fmt::as_i32((TERRAIN_TXM_SIZE>>3)));
 				mipSize = (TERRAIN_TXM_SIZE>>3);
 				break;
 		}
 
 		char tmpy[512];
-		sprintf(tmpy,"%s%04d",txmName,txmNum);
+		mc2::fmt::to_buf(tmpy,"{}{:04d}",mc2::fmt::safe(txmName),mc2::fmt::as_i32(txmNum));
 
 		FullPathFileName fileName;
 		fileName.init(mipPath,tmpy,".tga");
@@ -820,7 +820,7 @@ long TerrainTextures::initOverlay (long overlayNum, long txmNum, char *txmName)
 		if (hiresEdge > 0)
 		{
 			char hiresPath[512];
-			sprintf(hiresPath,"%s%dOverlays" PATH_SEPARATOR,texturePath,hiresEdge);
+			mc2::fmt::to_buf(hiresPath,"{}{:d}Overlays" PATH_SEPARATOR "",mc2::fmt::safe(texturePath),mc2::fmt::as_i32(hiresEdge));
 			hiresName.init(hiresPath,tmpy,".tga");
 
 			File probe;
@@ -1345,7 +1345,7 @@ long TerrainTextures::createTransition (DWORD typeInfo, DWORD overlayInfo)
 		if (quickLoad)
 		{
 			char nameData[256];
-			sprintf(nameData,"%08d.%08d.txm",typeInfo,overlayInfo);
+			mc2::fmt::to_buf(nameData,"{:08d}.{:08d}.txm",mc2::fmt::as_i32(typeInfo),mc2::fmt::as_i32(overlayInfo));
 
 			FullPathFileName testPath;
 			testPath.init(texturePath,nameData,"");
@@ -1401,23 +1401,23 @@ long TerrainTextures::createTransition (DWORD typeInfo, DWORD overlayInfo)
 			switch (kmp)
 			{
 				case 0:
-					sprintf(mipPath,"%s%d" PATH_SEPARATOR,texturePath,(TERRAIN_TXM_SIZE>>0));
+					mc2::fmt::to_buf(mipPath,"{}{:d}" PATH_SEPARATOR "",mc2::fmt::safe(texturePath),mc2::fmt::as_i32((TERRAIN_TXM_SIZE>>0)));
 					mipSize = (TERRAIN_TXM_SIZE>>0);
 					break;	
 
 				case 1:
-					sprintf(mipPath,"%s%d" PATH_SEPARATOR,texturePath,(TERRAIN_TXM_SIZE>>1));
+					mc2::fmt::to_buf(mipPath,"{}{:d}" PATH_SEPARATOR "",mc2::fmt::safe(texturePath),mc2::fmt::as_i32((TERRAIN_TXM_SIZE>>1)));
 					mipSize = (TERRAIN_TXM_SIZE>>1);
 					break;
 
 				case 2:
-					sprintf(mipPath,"%s%d" PATH_SEPARATOR,texturePath,(TERRAIN_TXM_SIZE>>2));
+					mc2::fmt::to_buf(mipPath,"{}{:d}" PATH_SEPARATOR "",mc2::fmt::safe(texturePath),mc2::fmt::as_i32((TERRAIN_TXM_SIZE>>2)));
 					mipSize = (TERRAIN_TXM_SIZE>>2);
 					break;
 
 
 				case 3:
-					sprintf(mipPath,"%s%d" PATH_SEPARATOR,texturePath,(TERRAIN_TXM_SIZE>>3));
+					mc2::fmt::to_buf(mipPath,"{}{:d}" PATH_SEPARATOR "",mc2::fmt::safe(texturePath),mc2::fmt::as_i32((TERRAIN_TXM_SIZE>>3)));
 					mipSize = (TERRAIN_TXM_SIZE>>3);
 					break;
 			}
@@ -1549,7 +1549,7 @@ long TerrainTextures::createTransition (DWORD typeInfo, DWORD overlayInfo)
 			// for all of the textures...
 			//
 			char nameData[256];
-			sprintf(nameData,"%08d.%08d.txm",typeInfo,overlayInfo);
+			mc2::fmt::to_buf(nameData,"{:08d}.{:08d}.txm",mc2::fmt::as_i32(typeInfo),mc2::fmt::as_i32(overlayInfo));
 
 			FullPathFileName testPath;
 			testPath.init(texturePath,nameData,"");
