@@ -68,7 +68,6 @@ float mc2NightLightFactor();   // mclib/camera.cpp: 0 day/evening .. 1 full nigh
 #include <cstddef>   // offsetof (M2 layout asserts)
 #include <vector>
 #include <string>
-#include <unordered_map>
 #include <chrono>
 #include <algorithm>
 #include <tracy/Tracy.hpp>   // VK-FLIP-FIELD-REPORT-1: coarse per-region frame zones
@@ -1303,42 +1302,32 @@ bool upload_geometry_once(ColorPropIsland* s) {
              static_cast<unsigned long long>(feed.iboBytes));
         return false;
     }
-    // Imported triangle corners often repeat identical vertices. Reuse their
-    // first index so the GPU's post-transform cache can reuse the vertex result.
-    // Compare all consumed attributes, preserving seams, light tags and triangle
-    // order. The source local-vertex ID at bytes 32..35 is unused by this shader,
-    // but prevents the batcher's full-record dedup from merging these vertices.
-    // The shaders do not consume gl_VertexIndex. Keep the shared VBO and
-    // packet offsets intact (including the shadow island's original geometry).
-    const auto* sourceIndices = static_cast<const uint32_t*>(iboCpu);
-    const auto* vertexBytes = static_cast<const char*>(vboCpu);
-    std::vector<uint32_t> cachedIndices(sourceIndices, sourceIndices + iboBytes / sizeof(uint32_t));
-    uint64_t reusedIndices = 0;
-    for (uint32_t p = 0; p < feed.packetCount; ++p) {
-        const auto& packet = feed.packets[p];
-        if (feed.vertexStride != 40 || uint64_t(packet.firstIndex) + packet.indexCount > cachedIndices.size()) continue;
-        std::unordered_map<std::string, uint32_t> firstVertex;
-        firstVertex.reserve(packet.indexCount);
-        for (uint32_t j = 0; j < packet.indexCount; ++j) {
-            const uint32_t index = sourceIndices[packet.firstIndex + j];
-            const uint64_t offset = (uint64_t(packet.baseVertex) + index) * feed.vertexStride;
-            if (offset + feed.vertexStride > vboBytes) continue;
-            std::string vertex(vertexBytes + offset, 32);
-            vertex.append(vertexBytes + offset + 36, 4);
-            const auto [it, inserted] = firstVertex.try_emplace(std::move(vertex), index);
-            if (!inserted && it->second != index) {
-                cachedIndices[packet.firstIndex + j] = it->second;
-                ++reusedIndices;
-            }
-        }
-    }
-    vlog("prop vertex-cache reuse: remapped=%llu indices=%llu.",
-         static_cast<unsigned long long>(reusedIndices), static_cast<unsigned long long>(cachedIndices.size()));
-    // A failed copy leaves both buffers empty, so the next frame's retry starts from nothing.
-    if (!s->vbo.createFilled(s->allocator, s->device, vboCpu, vboBytes, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, "colorprop.vbo") ||
-        !s->ibo.createFilled(s->allocator, s->device, cachedIndices.data(), iboBytes, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, "colorprop.ibo")) {
+    // Static geometry is read every frame. Keep the identical bytes in device
+    // memory rather than the CPU-writable allocation createFilled() provides.
+    mc2vk::OwnedBuffer stageVertices, stageIndices;
+    if (!stageVertices.createFilled(s->allocator, s->device, vboCpu, vboBytes, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, "colorprop.stage.vertices") ||
+        !stageIndices.createFilled(s->allocator, s->device, iboCpu, iboBytes, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, "colorprop.stage.indices") ||
+        !s->vbo.createDeviceLocal(s->allocator, s->device, vboBytes, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, "colorprop.vbo") ||
+        !s->ibo.createDeviceLocal(s->allocator, s->device, iboBytes, VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, "colorprop.ibo")) {
         vlog("geometry upload failed (buffer creation or map); retrying next frame.");
         s->vbo.reset();
+        s->ibo.reset();
+        return false;
+    }
+    auto& ctx = mc2vk::getOrCreateEngineVulkanContext();
+    if (!mc2vk::submitOneShot(ctx, [&](VkCommandBuffer cb) {
+        const VkBufferCopy vertices{0, 0, vboBytes}, indices{0, 0, iboBytes};
+        vkCmdCopyBuffer(cb, stageVertices.get(), s->vbo.get(), 1, &vertices);
+        vkCmdCopyBuffer(cb, stageIndices.get(), s->ibo.get(), 1, &indices);
+        VkMemoryBarrier barrier{VK_STRUCTURE_TYPE_MEMORY_BARRIER};
+        barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+        barrier.dstAccessMask = VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT | VK_ACCESS_INDEX_READ_BIT;
+        vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT,
+                             0, 1, &barrier, 0, nullptr, 0, nullptr);
+    }, "colorprop_geometry_upload")) {
+        vlog("geometry upload failed (copy submit); retrying next frame.");
+        s->vbo.reset();
+        s->ibo.reset();
         return false;
     }
 
