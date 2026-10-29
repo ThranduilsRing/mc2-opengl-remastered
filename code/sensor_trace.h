@@ -102,7 +102,9 @@ struct ScanScope {
 			mc2::fmt::as_i32(g_counters.modifies), mc2::fmt::as_i32(g_counters.candidates),
 			mc2::fmt::as_i32(g_counters.neighbors), mc2::fmt::as_i32(g_counters.losBatches),
 			mc2::fmt::as_i32(g_counters.losRays), mc2::fmt::as_i32(g_counters.singleBlockBatches), us).out = '\0');
-		mc2_diag::writeEvent("SENSOR", 1, 0, buf);
+		// Headless runs have no graphics-owned JSONL sink.
+		if (!mc2_diag::writeEvent("SENSOR", 1, 0, buf))
+			mc2::fmt::print(stdout, "[SENSOR v1] {}\n", buf);
 		g_counters.active = false;
 	}
 };
