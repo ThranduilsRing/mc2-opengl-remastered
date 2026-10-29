@@ -18,6 +18,7 @@ set(SOURCES ${SOURCES}
     content_ir.cpp
     msl_shape.cpp
     msl_transform.cpp
+    sim_pose.cpp
     msl_anim.cpp
     paths.cpp
     routines.cpp
