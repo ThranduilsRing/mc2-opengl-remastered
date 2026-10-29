@@ -379,6 +379,9 @@ void TreeAppearance::recalcBoundsAndStamp() {
 
 long TreeAppearance::update (bool animate)
 {
+	// Trees have no simulation animation; presentation owns their geometry and lights.
+	if (!simPresentationPass && (simulationOwned() || mc2::overlap::onSimWorker())) return TRUE;
+	mc2::overlap::assertMainThread("TreeAppearance::update");
 	::mc2_object_recon::Scope _recon_tree_(
 		&::mc2_object_recon::g_per_frame.tree_update_ns,
 		&::mc2_object_recon::g_per_frame.tree_update_calls);

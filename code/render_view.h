@@ -14,6 +14,7 @@
 
 class GameObject;
 class BldgAppearance;
+namespace gosFX { class Effect; }
 
 namespace mc2::render_view {
 
@@ -39,6 +40,9 @@ enum class Mode : uint8_t { None, Full, Sensor, SensorText, Fade, Own };
 
 struct RenderView {
     GameObject* obj = nullptr;
+    // The tick can clear/reuse owner slots; releaseEffect retains these payloads until the join.
+    // Bolts: body, muzzle, hit, miss, water miss; carnage: body.
+    gosFX::Effect* effects[5]{};
     glm::vec3 position{0.0f};  // sim position
     glm::vec3 aux[3]{};        // bolts: laser tip, resolved hit point, raw target point
     uint32_t watchId = 0;

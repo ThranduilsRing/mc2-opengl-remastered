@@ -833,7 +833,7 @@ long MechWarrior::mainDecisionTree (void) {
 				newTacOrder = tacOrder[ORDERSTATE_PLAYER];
                 // The test commander owns this replacement; do not resume the superseded alarm.
                 if (mc2::gate::get<"MC2_PLAY_MISSION">() && mc2::brainpolicy::techBrain()
-                    && getTeam() == Team::home && Commander::home
+                    && getTeam() == Team::home && Commander::home && getVehicle()
                     && getVehicle()->getCommanderId() == Commander::home->getId())
                     orderState = ORDERSTATE_PLAYER;
 				}

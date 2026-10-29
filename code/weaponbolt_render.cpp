@@ -48,6 +48,11 @@ static glm::vec3 boltTargetHotSpot (const glm::vec3& raw, GameObjectWatchID targ
 void WeaponBolt::extractRenderView (mc2::render_view::RenderView& view)
 {
 	GameObject::extractRenderView(view);
+	view.effects[0] = gosEffect.get();
+	view.effects[1] = muzzleEffect.get();
+	view.effects[2] = hitEffect.get();
+	view.effects[3] = missEffect.get();
+	view.effects[4] = waterMissEffect.get();
 	if (getFlag(OBJECT_FLAG_JUSTCREATED) || isTargeted())	//can we be seen by the enemy?
 		return;
 	view.flags |= mc2::render_view::Visible;
@@ -73,6 +78,11 @@ void WeaponBolt::extractRenderView (mc2::render_view::RenderView& view)
 
 void WeaponBolt::renderView (const mc2::render_view::RenderView& view)
 {
+	auto* const gosEffect = view.effects[0];
+	auto* const muzzleEffect = view.effects[1];
+	auto* const hitEffect = view.effects[2];
+	auto* const missEffect = view.effects[3];
+	auto* const waterMissEffect = view.effects[4];
 	if (view.has(mc2::render_view::Visible))
 	{
 		// Extract copies under the member names, so the draw body below reads the view.

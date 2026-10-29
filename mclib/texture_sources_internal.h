@@ -36,7 +36,7 @@ public:
     explicit TextureSources(std::function<void(DWORD)> retireCpu = {}) : retireCpu_(std::move(retireCpu)) { assets_.resize(1); }
     void collectRetired() override;
     DWORD capacity() const { std::lock_guard lock(indexMutex_); return static_cast<DWORD>(assets_.size()); }
-    const std::vector<std::weak_ptr<TextureSource>>& assets() const { return assets_; }
+    std::vector<std::weak_ptr<TextureSource>> assets() const { std::lock_guard lock(indexMutex_); return assets_; }
     std::shared_ptr<TextureSource> get(DWORD asset) const {
         std::lock_guard lock(indexMutex_);
         return asset < assets_.size() ? assets_[asset].lock() : nullptr;
@@ -49,9 +49,11 @@ public:
     std::shared_ptr<const std::vector<uint8_t>> internBytes(
         const std::string& identity, std::shared_ptr<const std::vector<uint8_t>> bytes);
     void noteCpuTexture(const std::shared_ptr<TextureSource>& source) {
+        std::lock_guard lock(indexMutex_);
         if (source->cpuTexture) cpuTextures_[source->cpuTexture] = source;
     }
     std::shared_ptr<TextureSource> fromCpuTexture(DWORD texture) const {
+        std::lock_guard lock(indexMutex_);
         auto it = cpuTextures_.find(texture);
         return it == cpuTextures_.end() ? nullptr : it->second.lock();
     }

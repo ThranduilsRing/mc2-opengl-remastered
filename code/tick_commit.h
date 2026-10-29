@@ -20,7 +20,7 @@ struct Scope {
 template<class Effect> void releaseEffect(std::unique_ptr<Effect>& effect) {
     if (!effect) return;
     auto* old = effect.release();
-    auto release = [old] { old->Kill(); delete old; };
+    auto release = [old] { std::unique_ptr<Effect> owner(old); owner->Kill(); };
     if (!defer(Queue::Release, release)) release();
 }
 template<class Light, class WorldLights, class Id>
@@ -38,7 +38,7 @@ void releaseLight(Light*& light, WorldLights* lights, Id id) {
 // Actual delete sites use this helper so the destructor and storage both wait
 // until commit; never defer only operator delete after a destructor has run.
 template<class Object> void retireObject(Object* object) {
-    auto release = [object] { delete object; };
+    auto release = [object] { std::unique_ptr<Object> owner(object); };
     if (!defer(Queue::Graveyard, release)) release();
 }
 } // namespace mc2::tick

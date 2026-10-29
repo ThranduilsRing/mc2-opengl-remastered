@@ -13,7 +13,9 @@
 #pragma once
 
 #include <cstdint>
+#include <deque>
 #include <map>
+#include <mutex>
 #include <unordered_map>
 #include <vector>
 
@@ -64,6 +66,7 @@ public:
 
     // The handle of `key`: new (a row index of the MaterialGpu table) or the existing one.
     MaterialHandle acquire(const MaterialKey& key) {
+        std::lock_guard lock(mutex_);
         if (auto it = byKey_.find(key); it != byKey_.end()) {
             const auto& [k, idx] = *it;
             return MaterialHandle::make(idx, kIssuedGeneration);
@@ -73,14 +76,18 @@ public:
         byKey_.emplace(key, idx);
         return MaterialHandle::make(idx, kIssuedGeneration);
     }
-    bool owns(MaterialHandle h) const { return h.isValid() && h.generation() == kIssuedGeneration && h.index() < keys_.size(); }
-    const MaterialKey* keyOf(MaterialHandle h) const { return owns(h) ? &keys_[h.index()] : nullptr; }
+    bool owns(MaterialHandle h) const { std::lock_guard lock(mutex_); return ownsUnlocked(h); }
+    const MaterialKey* keyOf(MaterialHandle h) const {
+        std::lock_guard lock(mutex_);
+        return ownsUnlocked(h) ? &keys_[h.index()] : nullptr;
+    }
 
     // The set of these materials (one per mesh material slot, in slot order): an existing set with the same handles, or a new contiguous range.
     // A list naming a handle this registry did not issue gets no set (an invalid ref), so no set ever holds a foreign handle.
     MaterialSetRef acquireSet(const std::vector<MaterialHandle>& slots) {
+        std::lock_guard lock(mutex_);
         for (const MaterialHandle h : slots)
-            if (!owns(h)) return MaterialSetRef{};
+            if (!ownsUnlocked(h)) return MaterialSetRef{};
         if (auto it = bySet_.find(slots); it != bySet_.end()) {
             const auto& [k, ref] = *it;
             return ref;
@@ -94,6 +101,7 @@ public:
         return r;
     }
     MaterialHandle materialOfSetSlot(MaterialSetRef set, uint32_t slot) const {
+        std::lock_guard lock(mutex_);
         // The ref must be a set this registry issued (its base and count as registered), and the slot inside it.
         if (!set.valid() || slot >= set.count) return MaterialHandle::invalid();
         const auto it = setCountByBase_.find(set.base);
@@ -101,10 +109,12 @@ public:
         return setSlots_[set.base + slot];
     }
 
-    uint32_t materialCount() const { return static_cast<uint32_t>(keys_.size()); }
-    uint32_t setCount() const { return static_cast<uint32_t>(bySet_.size()); }
+    uint32_t materialCount() const { std::lock_guard lock(mutex_); return static_cast<uint32_t>(keys_.size()); }
+    uint32_t setCount() const { std::lock_guard lock(mutex_); return static_cast<uint32_t>(bySet_.size()); }
 
 private:
+    bool ownsUnlocked(MaterialHandle h) const { return h.isValid() && h.generation() == kIssuedGeneration && h.index() < keys_.size(); }
+    mutable std::mutex mutex_;
     struct SlotsLess {
         bool operator()(const std::vector<MaterialHandle>& a, const std::vector<MaterialHandle>& b) const {
             if (a.size() != b.size()) return a.size() < b.size();
@@ -113,7 +123,8 @@ private:
             return false;
         }
     };
-    std::vector<MaterialKey> keys_;
+    // Keys are immutable; pointers returned by keyOf survive concurrent admission.
+    std::deque<MaterialKey> keys_;
     std::unordered_map<MaterialKey, uint32_t, MaterialKeyHash> byKey_;
     std::vector<MaterialHandle> setSlots_;
     std::unordered_map<uint32_t, uint32_t> setCountByBase_;   // issued sets: base -> count

@@ -7,6 +7,8 @@
 #include "TextureStream.h"
 #include "../../GameOS/gameos/vk_texture_pending.h"
 #include <future>
+#include <barrier>
+#include <thread>
 #include "../../GameOS/gameos/vk_completion_tracker.h"
 
 using namespace RenderCore;
@@ -199,6 +201,33 @@ TEST_CASE("a set is a contiguous range in slot order") {
     const MaterialSetRef s2 = r.acquireSet({m2, m1, m0});                      // a different order is a different set
     CHECK_FALSE(s == s2);
     CHECK(s2.base == s.base + 3);
+}
+
+TEST_CASE("material admission overlaps lookups without invalidating keys") {
+    MaterialRegistry registry;
+    const auto firstKey = matKey(1, 0, TextureHandle::make(1, 1));
+    const auto first = registry.acquire(firstKey);
+    const auto* saved = registry.keyOf(first);
+    std::barrier start(4);
+    std::vector<std::future<bool>> workers;
+    for (unsigned worker = 0; worker < 4; ++worker) {
+        workers.push_back(std::async(std::launch::async, [&, worker] {
+            start.arrive_and_wait();
+            for (unsigned i = 0; i < 2048; ++i) {
+                const auto key = matKey(2 + i, worker, TextureHandle::make(1, 1));
+                const auto h = registry.acquire(key);
+                const auto set = registry.acquireSet({first, h});
+                if (registry.acquire(firstKey) != first || !registry.owns(h) ||
+                    registry.keyOf(first) != saved || !(*saved == firstKey) ||
+                    !(*registry.keyOf(h) == key) || registry.materialOfSetSlot(set, 1) != h)
+                    return false;
+            }
+            return true;
+        }));
+    }
+    for (auto& worker : workers) CHECK(worker.get());
+    CHECK(registry.materialCount() == 8193);
+    CHECK(registry.setCount() == 8192);
 }
 
 TEST_CASE("handles and set refs the registry did not issue are refused") {

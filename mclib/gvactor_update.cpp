@@ -79,6 +79,8 @@ glm::quat GVAppearance::poseRotation() const
 
 void GVAppearance::updateGeometry (void)
 {
+	if (!simPresentationPass && (simulationOwned() || mc2::overlap::onSimWorker())) { updateSimPose(); return; }
+	mc2::overlap::assertMainThread("GVAppearance::updateGeometry");
 		if (unitAnim().gvAnimationState >= 0) appearType->setAnimation(gvShape, unitAnim().gvAnimationState);
 		gvShape->SetFrameNum(unitAnim().currentFrame);
 		if (rotation > 180)
@@ -590,7 +592,8 @@ long GVAppearance::update (bool animate)
 	// wall-clock frameLength. Same mech-vs-vehicle asymmetry as sensorSpin.
 	if ((!simPresentationPass || !simulationOwned()) && animate) mc2::sim::advanceLinearAnimation(unitAnim(), unitAnim().gvFrameRate, appearType->getNumFrames(unitAnim().gvAnimationState), frameLength);
 
-	if (!simPresentationPass && simulationOwned() && actorHandle_ >= 0) { updateSimPose(); return TRUE; }
+	if (!simPresentationPass && (simulationOwned() || mc2::overlap::onSimWorker())) { updateSimPose(); return TRUE; }
+	mc2::overlap::assertMainThread("GVAppearance::update presentation");
 
 	// LIGHT-CULL-RADIUS-1 freshness (batch-6 item 5 ext a/c): light owner
 	// intent + coarse position refreshed EVERY frame even when
