@@ -75,8 +75,8 @@ void main() {
                 vec2 edge=min(hitUV,1.0-hitUV);
                 float confidence=smoothstep(0.0,0.04,min(edge.x,edge.y));
                 imageStore(reflectionOut,pixel,vec4(textureLod(sceneColor,hitUV,0).rgb*confidence,confidence));
+                return;
             }
-            return;
         }
         previous=t;
     }
