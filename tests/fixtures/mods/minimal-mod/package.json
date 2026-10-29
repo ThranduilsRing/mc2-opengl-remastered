@@ -1,0 +1,1 @@
+{"schema": "mc2-package/1", "id": "minimal-mod", "name": "Minimal mod", "version": "1.0.0", "dependencies": [], "files": [{"path": "data/example.txt", "size": 7, "sha256": "36c8168624b0b6e3a623e064b82730af1c30c1dae97ab260237a800c39707941"}, {"path": "mod.json", "size": 78, "sha256": "4590865c7504f989ecbb1a9ad9239da6ef22fd5a4d244099e59fdd6d6c3c30fb"}]}
