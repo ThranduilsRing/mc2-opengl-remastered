@@ -32,7 +32,7 @@ def test_schema_and_validation_only_path(budget, monkeypatch):
 
 
 @pytest.mark.parametrize('mutate', [
-    lambda b: b.update(version=2),
+    lambda b: b.update(version=1),
     lambda b: b['missions'].pop('battle'),
     lambda b: b['metrics']['cpu_frame_ms'].update(goal=-1),
     lambda b: b['metrics']['cpu_frame_ms'].update(goal=True),
@@ -68,10 +68,15 @@ def test_missing_and_contradictory_noise_are_inconclusive(budget):
 
 
 def test_strict_goals_deltas_and_missing_metrics(budget):
-    result = tool.compare(profile(1), budget, profile(2))['mc2_01']
+    for mark in budget['missions']['mc2_01']['bookmarks'].values():
+        mark['cpu_frame_ms'] = 'unmeasured'
+    data = profile(1)
+    data['runs']['mc2_01']['bookmarks'] = {name: profile(1)['runs']['mc2_01']
+                                         for name in tool.CAMERA_NAMES}
+    result = tool.compare(data, budget, profile(2))['mc2_01']
     frame = result['metrics']['cpu_frame_ms']
     assert frame['status'] == 'FAIL'  # owner says under 1 ms
-    assert frame['delta_baseline_ms'] == pytest.approx(-0.644)
+    assert frame['delta_baseline_ms'] is None  # old single-view baseline is not an envelope baseline
     assert frame['distance_goal_ms'] == 0
     assert frame['delta_previous_ms'] == -1
     assert result['metrics']['gpu_frame_ms']['status'] == 'INCONCLUSIVE'
@@ -84,6 +89,7 @@ def test_supplementary_metrics_require_context(budget):
     run = data['runs']['mc2_01']
     run['measurements'] = {'gpu_frame_ms': {'value': 5, 'resolution': [3840, 2160]},
                            'mover_tick_ms': {'value': 0.6, 'movers': 200, 'ticks_per_sample': 1}}
+    data['runs']['mc2_01'] = {'noise': run['noise'], 'bookmarks': {name: run.copy() for name in tool.CAMERA_NAMES}}
     assert tool.compare(data, budget)['mc2_01']['status'] == 'PASS'
     run['measurements']['gpu_frame_ms']['resolution'] = [1920, 1080]
     assert tool.compare(data, budget)['mc2_01']['status'] == 'INCONCLUSIVE'
@@ -108,6 +114,27 @@ def test_cli_failure_and_invalid_budget(tmp_path):
     source = tmp_path / 'bad.json'
     source.write_text('{}')
     assert tool.main(['--budget', str(source), '--validate-schema']) == 3
+
+
+def test_worst_bookmark_and_missing_coverage(budget):
+    run = profile()['runs']['mc2_01']
+    run['bookmarks'] = {name: profile(0.1)['runs']['mc2_01'] for name in tool.CAMERA_NAMES}
+    run['bookmarks']['orbit'] = profile(9)['runs']['mc2_01']
+    data = {'runs': {'mc2_01': run}}
+    result = tool.compare(data, budget)['mc2_01']['metrics']['cpu_frame_ms']
+    assert (result['value'], result['worst_bookmark'], result['status']) == (9, 'orbit', 'FAIL')
+    for mark in budget['missions']['mc2_01']['bookmarks'].values():
+        mark['cpu_frame_ms'] = 1
+    budget['missions']['mc2_01']['bookmarks']['wolfman']['cpu_frame_ms'] = 5
+    assert tool.compare(data, budget)['mc2_01']['metrics']['cpu_frame_ms']['delta_baseline_ms'] == 4
+    del run['bookmarks']['wolfman']
+    assert tool.compare(data, budget)['mc2_01']['status'] == 'INCONCLUSIVE'
+
+
+def test_unmeasured_bookmark_metrics_do_not_pass(budget):
+    budget['missions']['mc2_01']['bookmarks']['orbit']['cpu_frame_ms'] = 'unknown'
+    with pytest.raises(ValueError, match='values'):
+        tool.validate_budget(budget)
 
 
 def test_capture_mode_preserves_profile_and_errors(tmp_path, monkeypatch):

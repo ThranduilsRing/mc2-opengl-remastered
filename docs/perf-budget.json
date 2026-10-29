@@ -1,17 +1,74 @@
 {
-  "version": 1,
-  "baseline_source": "docs/perf/cpu-profile-2026-10-28.md (repeat mission profiles; four remain NOISY)",
+  "version": 2,
+  "baseline_source": "Legacy single-view: docs/perf/cpu-profile-2026-10-28.md; camera envelope: docs/perf/camera-bookmarks-first-2026-10-29.md (NOISY; 4K GPU and 200-mover ticks unmeasured)",
   "metrics": {
-    "cpu_frame_ms": {"goal": 1.0, "strict": true, "context": "1920x1080; Frame inclusive elapsed mean, including waits"},
-    "draw_screen_ms": {"goal": 0.1, "strict": true, "context": "1920x1080; DrawScreen inclusive elapsed per Frame"},
-    "gpu_frame_ms": {"goal": 5.0, "strict": false, "context": "3840x2160; GPU frame mean, equivalent to 200 fps GPU throughput; not end-to-end fps"},
-    "mover_tick_ms": {"goal": 0.6, "strict": false, "context": "200 movers; single simulation tick mean; do not substitute GameLogic or multi-tick worker batches"}
+    "cpu_frame_ms": {"goal":1,"strict":true,"context":"1920x1080; Frame inclusive elapsed mean, including waits"},
+    "draw_screen_ms": {"goal":0.1,"strict":true,"context":"1920x1080; DrawScreen inclusive elapsed per Frame"},
+    "gpu_frame_ms": {"goal":5,"strict":false,"context":"3840x2160; GPU frame mean, equivalent to 200 fps GPU throughput; not end-to-end fps"},
+    "mover_tick_ms": {"goal":0.6,"strict":false,"context":"200 movers; single simulation tick mean; do not substitute GameLogic or multi-tick worker batches"}
   },
   "missions": {
-    "mc2_01": {"baseline_status": "NOISY", "baseline": {"cpu_frame_ms": 1.644, "draw_screen_ms": 1.105, "gpu_frame_ms": null, "mover_tick_ms": null}},
-    "mc2_03": {"baseline_status": "NOISY", "baseline": {"cpu_frame_ms": 1.592, "draw_screen_ms": 0.933, "gpu_frame_ms": null, "mover_tick_ms": null}},
-    "mc2_10": {"baseline_status": "NOISY", "baseline": {"cpu_frame_ms": 5.800, "draw_screen_ms": 4.558, "gpu_frame_ms": null, "mover_tick_ms": null}},
-    "mc2_24": {"baseline_status": "NOISY", "baseline": {"cpu_frame_ms": 1.941, "draw_screen_ms": 0.972, "gpu_frame_ms": null, "mover_tick_ms": null}},
-    "battle": {"baseline_status": "quiet", "baseline": {"cpu_frame_ms": 10.426, "draw_screen_ms": 5.874, "gpu_frame_ms": null, "mover_tick_ms": null}}
+    "mc2_01": {
+      "baseline_status": "NOISY",
+      "baseline": {"cpu_frame_ms":1.644,"draw_screen_ms":1.105,"gpu_frame_ms":null,"mover_tick_ms":null},
+      "bookmarks": {
+        "low_horizon_0": {"cpu_frame_ms":2.330026,"draw_screen_ms":1.15993,"gpu_frame_ms":"unmeasured","mover_tick_ms":"unmeasured"},
+        "low_horizon_90": {"cpu_frame_ms":2.375513,"draw_screen_ms":1.17915,"gpu_frame_ms":"unmeasured","mover_tick_ms":"unmeasured"},
+        "low_horizon_180": {"cpu_frame_ms":2.588924,"draw_screen_ms":1.317438,"gpu_frame_ms":"unmeasured","mover_tick_ms":"unmeasured"},
+        "low_horizon_270": {"cpu_frame_ms":2.32813,"draw_screen_ms":1.167728,"gpu_frame_ms":"unmeasured","mover_tick_ms":"unmeasured"},
+        "cinematic_close": {"cpu_frame_ms":2.42105,"draw_screen_ms":1.200826,"gpu_frame_ms":"unmeasured","mover_tick_ms":"unmeasured"},
+        "oblique_default": {"cpu_frame_ms":2.206876,"draw_screen_ms":1.143869,"gpu_frame_ms":"unmeasured","mover_tick_ms":"unmeasured"},
+        "wolfman": {"cpu_frame_ms":2.454803,"draw_screen_ms":1.240801,"gpu_frame_ms":"unmeasured","mover_tick_ms":"unmeasured"},
+        "topdown": {"cpu_frame_ms":2.172214,"draw_screen_ms":1.113105,"gpu_frame_ms":"unmeasured","mover_tick_ms":"unmeasured"},
+        "orbit": {"cpu_frame_ms":2.568363,"draw_screen_ms":1.197888,"gpu_frame_ms":"unmeasured","mover_tick_ms":"unmeasured"},
+        "sun_facing_low": {"cpu_frame_ms":2.818822,"draw_screen_ms":1.271114,"gpu_frame_ms":"unmeasured","mover_tick_ms":"unmeasured"}
+      }
+    },
+    "mc2_03": {
+      "baseline_status": "NOISY",
+      "baseline": {"cpu_frame_ms":1.592,"draw_screen_ms":0.933,"gpu_frame_ms":null,"mover_tick_ms":null},
+      "bookmarks": {
+        "default": {"cpu_frame_ms":"unmeasured","draw_screen_ms":"unmeasured","gpu_frame_ms":"unmeasured","mover_tick_ms":"unmeasured"}
+      }
+    },
+    "mc2_10": {
+      "baseline_status": "NOISY",
+      "baseline": {"cpu_frame_ms":5.8,"draw_screen_ms":4.558,"gpu_frame_ms":null,"mover_tick_ms":null},
+      "bookmarks": {
+        "low_horizon_0": {"cpu_frame_ms":3.729597,"draw_screen_ms":1.903821,"gpu_frame_ms":"unmeasured","mover_tick_ms":"unmeasured"},
+        "low_horizon_90": {"cpu_frame_ms":6.422161,"draw_screen_ms":2.878313,"gpu_frame_ms":"unmeasured","mover_tick_ms":"unmeasured"},
+        "low_horizon_180": {"cpu_frame_ms":3.566468,"draw_screen_ms":1.746272,"gpu_frame_ms":"unmeasured","mover_tick_ms":"unmeasured"},
+        "low_horizon_270": {"cpu_frame_ms":4.608571,"draw_screen_ms":2.097941,"gpu_frame_ms":"unmeasured","mover_tick_ms":"unmeasured"},
+        "cinematic_close": {"cpu_frame_ms":4.613426,"draw_screen_ms":2.29029,"gpu_frame_ms":"unmeasured","mover_tick_ms":"unmeasured"},
+        "oblique_default": {"cpu_frame_ms":3.743657,"draw_screen_ms":1.746146,"gpu_frame_ms":"unmeasured","mover_tick_ms":"unmeasured"},
+        "wolfman": {"cpu_frame_ms":5.314452,"draw_screen_ms":2.540258,"gpu_frame_ms":"unmeasured","mover_tick_ms":"unmeasured"},
+        "topdown": {"cpu_frame_ms":3.851703,"draw_screen_ms":1.800698,"gpu_frame_ms":"unmeasured","mover_tick_ms":"unmeasured"},
+        "orbit": {"cpu_frame_ms":4.396561,"draw_screen_ms":2.105612,"gpu_frame_ms":"unmeasured","mover_tick_ms":"unmeasured"},
+        "sun_facing_low": {"cpu_frame_ms":5.083894,"draw_screen_ms":2.396423,"gpu_frame_ms":"unmeasured","mover_tick_ms":"unmeasured"}
+      }
+    },
+    "mc2_24": {
+      "baseline_status": "NOISY",
+      "baseline": {"cpu_frame_ms":1.941,"draw_screen_ms":0.972,"gpu_frame_ms":null,"mover_tick_ms":null},
+      "bookmarks": {
+        "low_horizon_0": {"cpu_frame_ms":4.177689,"draw_screen_ms":1.888725,"gpu_frame_ms":"unmeasured","mover_tick_ms":"unmeasured"},
+        "low_horizon_90": {"cpu_frame_ms":1.990586,"draw_screen_ms":0.778317,"gpu_frame_ms":"unmeasured","mover_tick_ms":"unmeasured"},
+        "low_horizon_180": {"cpu_frame_ms":3.976368,"draw_screen_ms":1.840292,"gpu_frame_ms":"unmeasured","mover_tick_ms":"unmeasured"},
+        "low_horizon_270": {"cpu_frame_ms":2.278459,"draw_screen_ms":0.937576,"gpu_frame_ms":"unmeasured","mover_tick_ms":"unmeasured"},
+        "cinematic_close": {"cpu_frame_ms":2.185163,"draw_screen_ms":0.897026,"gpu_frame_ms":"unmeasured","mover_tick_ms":"unmeasured"},
+        "oblique_default": {"cpu_frame_ms":2.213216,"draw_screen_ms":0.910531,"gpu_frame_ms":"unmeasured","mover_tick_ms":"unmeasured"},
+        "wolfman": {"cpu_frame_ms":2.633001,"draw_screen_ms":1.0515,"gpu_frame_ms":"unmeasured","mover_tick_ms":"unmeasured"},
+        "topdown": {"cpu_frame_ms":3.753876,"draw_screen_ms":0.984712,"gpu_frame_ms":"unmeasured","mover_tick_ms":"unmeasured"},
+        "orbit": {"cpu_frame_ms":3.060691,"draw_screen_ms":0.92116,"gpu_frame_ms":"unmeasured","mover_tick_ms":"unmeasured"},
+        "sun_facing_low": {"cpu_frame_ms":3.441703,"draw_screen_ms":1.573247,"gpu_frame_ms":"unmeasured","mover_tick_ms":"unmeasured"}
+      }
+    },
+    "battle": {
+      "baseline_status": "quiet",
+      "baseline": {"cpu_frame_ms":10.426,"draw_screen_ms":5.874,"gpu_frame_ms":null,"mover_tick_ms":null},
+      "bookmarks": {
+        "default": {"cpu_frame_ms":"unmeasured","draw_screen_ms":"unmeasured","gpu_frame_ms":"unmeasured","mover_tick_ms":"unmeasured"}
+      }
+    }
   }
 }

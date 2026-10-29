@@ -1,0 +1,17 @@
+{
+  "schema_v": 1,
+  "mission": "mc2_24",
+  "_note": "Camera envelope, owner correction 2026-10-29. Revised after viewing the first set: the (-400,1200) fortress point put low views against a wall, so that set was rejected. Open-road focus (-1216,-5737.334) is 300 WU north of the player Uller spawn in mission.fst data/missions/mc2_24.fit, following its road. Cinematic focus remains on that Uller (-1216,-6037.334), now viewed from the side. Sun azimuth = LightDirYaw(300)+45 = 345 degrees. Orbit PNG grades the start pose; the live bench_view sweep covers 360 degrees in ten seconds.",
+  "bookmarks": [
+    {"name":"low_horizon_0","pos":[-1216,-5737.334,0],"rot":0,"proj":10,"alt":150,"covers":["camera_envelope"]},
+    {"name":"low_horizon_90","pos":[-1216,-5737.334,0],"rot":90,"proj":10,"alt":150,"covers":["camera_envelope"]},
+    {"name":"low_horizon_180","pos":[-1216,-5737.334,0],"rot":180,"proj":10,"alt":150,"covers":["camera_envelope"]},
+    {"name":"low_horizon_270","pos":[-1216,-5737.334,0],"rot":270,"proj":10,"alt":150,"covers":["camera_envelope"]},
+    {"name":"cinematic_close","pos":[-1216,-6037.334,0],"rot":90,"proj":-10,"alt":100,"covers":["mech"]},
+    {"name":"oblique_default","pos":[-1216,-5737.334,0],"rot":45,"proj":35,"alt":1200,"covers":["camera_envelope"]},
+    {"name":"wolfman","pos":[-1216,-5737.334,0],"rot":45,"proj":60,"alt":6000,"covers":["camera_envelope"]},
+    {"name":"topdown","pos":[-1216,-5737.334,0],"rot":45,"proj":88,"alt":3000,"covers":["camera_envelope"]},
+    {"name":"orbit","pos":[-1216,-5737.334,0],"rot":45,"proj":20,"alt":400,"covers":["camera_envelope"],"sweep":{"degrees":360,"seconds":10}},
+    {"name":"sun_facing_low","pos":[-1216,-5737.334,0],"rot":345,"proj":12,"alt":150,"covers":["camera_envelope"]}
+  ]
+}
