@@ -283,6 +283,17 @@ void Mission::updateMissionTest(bool report) {
     if (!units.empty() && scenarioTime >= test.nextSupport) {
         auto* gui = MissionInterfaceManager::instance();
         auto position = units.front()->getPosition();
+        float ownStrength = 0, enemyStrength = 0;
+        for (auto* ally : units)
+            if (!ally->isRefit() && !ally->isRecover() && ally->distanceFrom(position) < 600)
+                ownStrength += std::max(1.0f, static_cast<float>(ally->getThreatRating()));
+        for (const auto& contact : test.enemies) {
+            auto* enemy = ObjectManager->getByWatchID(contact.wid);
+            if (enemy && enemy->getExists() && !enemy->isDisabled() && !enemy->isDestroyed()
+                && enemy->distanceFrom(position) < 600 && Team::home->teamLineOfSight(enemy->getPosition(), 0.0f))
+                enemyStrength += std::max(1.0f, static_cast<float>(enemy->getThreatRating()));
+        }
+        const bool outmatched = enemyStrength > ownStrength * 0.75f;
         const auto safe = [&](const glm::vec3& point, float radius) {
             for (const auto& contact : test.enemies) {
                 auto* enemy = ObjectManager->getByWatchID(contact.wid);
@@ -307,7 +318,7 @@ void Mission::updateMissionTest(bool report) {
                 }
             }
         }
-        if (gui && !purchased) {
+        if (gui && !purchased && outmatched) {
             for (const auto& squad : squads) {
                 auto* target = ObjectManager->getByWatchID(squad.targetWatchId);
                 if (!target) continue;
@@ -326,7 +337,7 @@ void Mission::updateMissionTest(bool report) {
                 }
             }
         }
-        if (gui && !purchased && !test.artilleryOrdered && safe(position, 250)) {
+        if (gui && !purchased && outmatched && !test.artilleryOrdered && safe(position, 100)) {
             purchased = gui->requestPlayerSupport(ControlGui::GUARD_TOWER, position);
             test.artilleryOrdered = purchased;
         }

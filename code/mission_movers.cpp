@@ -3,6 +3,7 @@
 // Declared in the class headers; shared names in mission_internal.h.
 #include "mission_internal.h"
 #include "mc2fmt.h"
+#include "brain_execution_policy.h"
 
 
 
@@ -384,6 +385,14 @@ typedef struct _MoverInitData {
 				appearance->refreshSimPose();
 			}
 
+            if (mc2::gate::get<"MC2_PLAY_MISSION">() && mc2::brainpolicy::techBrain()) {
+                mc2::fmt::print_err("[PLAYER_SUPPORT_CONTACTS] event=before_scan handle={} wid={} info={} sensor={}\n",
+                    mover->getHandle(), mover->getWatchID(), static_cast<void*>(mover->getContactInfo()),
+                    static_cast<void*>(mover->getSensorSystem()));
+                for (long team = 0; team < Team::numTeams; ++team)
+                    mc2::fmt::print_err("[PLAYER_SUPPORT_CONTACTS] team={} contacts={}\n",
+                        team, SensorManager->getTeamSensor(team)->numContacts);
+            }
 			for (long i = 0; i < ObjectManager->getNumMovers(); i++) {
 				MoverPtr curMover = ObjectManager->getMover(i);
 				if (!curMover->isDisabled()) {
@@ -393,6 +402,10 @@ typedef struct _MoverInitData {
 						curMover->getPilot()->triggerAlarm(PILOT_ALARM_NEW_MOVER, mover->getWatchID());
 				}
 			}
+			if (mc2::gate::get<"MC2_PLAY_MISSION">() && mc2::brainpolicy::techBrain())
+				for (long team = 0; team < Team::numTeams; ++team)
+					mc2::fmt::print_err("[PLAYER_SUPPORT_CONTACTS] event=after_scan team={} contacts={}\n",
+						team, SensorManager->getTeamSensor(team)->numContacts);
 	
 			if (moverSpec->numComponents > 0) {
 				if (mover->getObjectClass() != BATTLEMECH)

@@ -1449,12 +1449,19 @@ mc2::player::UnitIntent producePlayerIntent(MechWarrior* warrior,
         if (ally->getObjectClass() == BATTLEMECH && ally->needsRefit() && !ally->refitBuddyWID) {
             float remaining = 0, total = 0;
             for (int loc = 0; loc < ally->numArmorLocations; ++loc) {
+                if (loc < ally->numBodyLocations && ally->body[loc].damageState == IS_DAMAGE_DESTROYED) continue;
                 remaining += ally->armor[loc].curArmor;
                 total += ally->armor[loc].maxArmor;
             }
+            bool urgent = total > 0 && remaining < total * 0.85f;
+            for (int loc = 0; loc < ally->numBodyLocations; ++loc)
+                urgent |= ally->body[loc].curInternalStructure > 0
+                    && ally->body[loc].curInternalStructure < ally->body[loc].maxInternalStructure * 0.85f;
+            for (long ammo = 0; ammo < ally->numAmmoTypes; ++ammo)
+                urgent |= ally->ammoTypeTotal[ammo].curAmount < ally->ammoTypeTotal[ammo].maxAmount * 0.25f;
             const float score = (2.0f - (total > 0 ? remaining / total : 1.0f))
                 / (50.0f + unit->distanceFrom(ally->getPosition()));
-            if (score > woundedScore) { woundedScore = score; wounded = ally; }
+            if (urgent && score > woundedScore) { woundedScore = score; wounded = ally; }
         }
         if (ally->isRefit()) continue;
         if (unit->distanceFrom(ally->getPosition()) < 600)
@@ -1488,7 +1495,8 @@ mc2::player::UnitIntent producePlayerIntent(MechWarrior* warrior,
     const bool withdrawing = runtime->retreatEffectApplied
         || (maximum > 0 && health / maximum < (repair ? 0.85f : 0.55f))
         || (repair && maxArmor > 0 && armor / maxArmor < 0.6f);
-    if (withdrawing && ((maximum > 0 && health / maximum < 0.9f)
+    const bool repaired = repair && unit->getObjectClass() == BATTLEMECH && !unit->needsRefit();
+    if (withdrawing && !repaired && ((maximum > 0 && health / maximum < 0.9f)
         || (maxArmor > 0 && armor / maxArmor < 0.9f))) {
         if (!runtime->retreatEffectApplied) runtime->playerRegroupUntil = now + 12;
         runtime->retreatEffectApplied = true;
