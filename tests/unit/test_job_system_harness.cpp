@@ -13,6 +13,7 @@
 #include "job_system.h"
 #include "sim_overlap.h"
 #include "jobs_fatal.h"
+#include "sim_pose_kernel.h"
 
 #include <cstdint>
 #include <cstdio>
@@ -50,6 +51,65 @@ struct JobsFixture {
         jobs::kDispatchFloorNs = dispatchFloor;
     }
 };
+
+TEST_CASE_FIXTURE(JobsFixture, "job_system_harness/immutable_pose_bits") {
+    using namespace mc2::sim;
+    std::vector<PoseNodeInput> inputs(96);
+    std::vector<PoseMatrices> legacy(inputs.size()), actual(inputs.size());
+    glm::mat4 origin;
+    mc2::math::buildRotation(origin, mc2::math::Euler(0.1f, -0.7f, 0.3f));
+    mc2::math::buildTranslation(origin, glm::vec3(-313.0f, 0.0f, 177.0f));
+    // Forest, non-animated roots, missing channels, base rotations and a
+    // parent whose turn stamp is already current (same-turn pose refresh).
+    for (int i = 0; i < static_cast<int>(inputs.size()); ++i) {
+        auto& n = inputs[i];
+        n.parent = i % 17 == 0 ? -1 : (i - 1) / 2;
+        n.animated = i % 3 != 0;
+        n.base = i % 4 == 0 ? glm::quat(1, 0, 0, 0)
+            : mc2::math::quatFromEuler(mc2::math::Euler(0.02f * i, 0.1f, -0.03f));
+        n.animation = i % 5 == 0 ? glm::quat(1, 0, 0, 0)
+            : mc2::math::quatFromEuler(mc2::math::Euler(-0.1f, 0.013f * i, 0.0f));
+        n.translation = glm::vec3(i * 0.7f, -i * 0.03f, i % 7);
+        // Independent serial oracle from the original hierarchy walk.
+        glm::mat4 local;
+        if (n.animated) {
+            auto q = n.animation;
+            if (!(n.base.w == 1 && n.base.x == 0 && n.base.y == 0 && n.base.z == 0))
+                q = glm::normalize(mc2::math::composeQuat(q, n.base));
+            mc2::math::buildRotation(local, q);
+        } else if (n.parent < 0) {
+            mc2::math::buildRotation(local, mc2::math::Euler(0, 0, 0));
+        } else {
+            mc2::math::buildRotation(local, n.base);
+        }
+        mc2::math::buildTranslation(local, n.translation);
+        legacy[i].local = n.parent < 0 ? local : local * legacy[n.parent].local;
+        legacy[i].world = legacy[i].local * origin;
+        legacy[i].inverse = glm::inverse(legacy[i].world);
+        if (i % 11 == 0) {
+            n.current = true;
+            n.cached = legacy[i];
+            n.translation = glm::vec3(999); // cached matrices must win
+        }
+    }
+    for (int workers : {0, 1, 3}) {
+        jobs::startPool(workers);
+        jobs::kDispatchFloorNs = 0;
+        jobs::parallel_for(jobs::Domain::Sim, static_cast<int>(inputs.size()), 8, 1000,
+            [&](int begin, int end) {
+                for (int i = begin; i < end; ++i) actual[i] = poseNode(inputs, origin, i);
+            });
+        jobs::stopPool();
+        for (size_t i = 0; i < inputs.size(); ++i) {
+            CAPTURE(workers, i);
+            CHECK(std::memcmp(&actual[i], &legacy[i], sizeof(PoseMatrices)) == 0);
+            // All stock node/shape/hit/cockpit positions use these exact slots.
+            const auto at = [](const glm::mat4& m) { return glm::vec3(-m[0][3], m[2][3], m[1][3]); };
+            const auto a = at(actual[i].world), b = at(legacy[i].world);
+            CHECK(std::memcmp(&a, &b, sizeof(a)) == 0);
+        }
+    }
+}
 
 TEST_CASE_FIXTURE(JobsFixture, "job_system_harness/startup_cannot_release_first_dispatch_early") {
     mc2::gate::ScopedOverride<"MC2_FRAME_JOBS"> enabled("1");

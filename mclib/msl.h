@@ -471,6 +471,8 @@ class TG_MultiShape
 		// requiring TG_Shape::s_cameraOrigin to be non-null. Safe to call during
 		// Mission::init before the camera is initialized.
 		long TransformMultiShape_BuildRecipe (glm::vec3 *pos, glm::quat *rot);
+		// Simulation-only immutable capture, fork/join, then node-order publish.
+		long TransformSimPose (glm::vec3 *pos, glm::quat *rot);
 
 		// Slice D-leaf-skip-v2 (2026-05-09): runtime alias of _BuildRecipe for the
 		// GPU mech body callsite. Reuses s_buildRecipeOnly mechanism to skip
