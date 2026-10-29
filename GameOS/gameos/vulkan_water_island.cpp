@@ -155,6 +155,20 @@ void write_descriptors(WaterIsland* s, int only) {
             vkUpdateDescriptorSets(s->device, 1, &w4, 0, nullptr);
         }
         vkUpdateDescriptorSets(s->device, 2, w, 0, nullptr);
+        if (s->reflectionView && s->reflectionSampler && s->hdriSampler) {
+            const VkDescriptorImageInfo images[]{
+                {s->hdriSampler.get(),s->reflectionView.get(),VK_IMAGE_LAYOUT_GENERAL},
+                {s->hdriSampler.get(),s->sColorRes->view.get(),VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL},
+                {s->reflectionSampler.get(),s->reflectionDepthView.get(),VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL},
+                {VK_NULL_HANDLE,s->reflectionView.get(),VK_IMAGE_LAYOUT_GENERAL}};
+            VkWriteDescriptorSet writes[4]{};
+            for (int k=0;k<4;++k) {
+                writes[k].sType=VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; writes[k].dstSet=s->set[i];
+                writes[k].dstBinding=8+k; writes[k].descriptorCount=1; writes[k].pImageInfo=&images[k];
+                writes[k].descriptorType=k==3 ? VK_DESCRIPTOR_TYPE_STORAGE_IMAGE : VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+            }
+            vkUpdateDescriptorSets(s->device,4,writes,0,nullptr);
+        }
         // VK-PARITY-WATER-SHORE-1: bindings 3/4 (shore height / mask), once imported.
         if (s->shHTexture && s->shMTexture && s->hdriSampler) {
             VkDescriptorImageInfo shInfo[2] = {

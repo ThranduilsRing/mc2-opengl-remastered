@@ -196,6 +196,13 @@ struct WaterIsland : mc2vk::IslandState {
     VkBuffer ringBound[2] = {};
     mc2vk::OwnedBuffer recipeBuf;
     mc2vk::OwnedBuffer thinBuf[2];
+    mc2vk::OwnedImage reflectionImage;
+    mc2vk::OwnedImageView reflectionView, reflectionDepthView;
+    mc2vk::OwnedSampler reflectionSampler;
+    mc2vk::OwnedShaderModule reflectionShader;
+    mc2vk::OwnedPipelineLayout reflectionLayout;
+    mc2vk::OwnedPipeline reflectionPipe;
+    bool reflectionInitialized = false;
     mc2vk::OwnedRenderPass rpass;
     mc2vk::OwnedFramebuffer fb;
     mc2vk::OwnedDescriptorSetLayout dsl;
@@ -231,6 +238,8 @@ using namespace vk_water_detail;
 // State and functions of the water island, shared by the pieces (defined in the piece that owns them).
 namespace vk_water_detail {
 extern WaterIslandHealth g_health;
+bool init_reflection(WaterIsland* s);
+void record_reflection(WaterIsland* s, VkCommandBuffer cb, uint32_t par, const uint32_t* offsets, bool enabled);
 extern InteropForbidden g_forbidden;
 extern unsigned long g_depthInGetTexImage;
 extern unsigned long g_depthInCopyBufferToImage;

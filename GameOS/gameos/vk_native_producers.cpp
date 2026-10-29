@@ -84,7 +84,7 @@ bool NativeProducers::init(const VulkanContext& ctx, uint32_t numVertices, uint3
         VkDrawArgsParams ap{{static_cast<int32_t>(maxThin_), 6, 0, 0}};
         if (!argsUbo_[p].upload(&ap, sizeof(ap))) return false;
         if (!makeDevice(header_[p], 16, kStorage | dst | src, "producers.header", static_cast<int>(p)) ||
-            !makeDevice(drawArgs_[p], 16, kStorage | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT, "producers.drawArgs", static_cast<int>(p)) ||
+            !makeDevice(drawArgs_[p], 32, kStorage | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT, "producers.drawArgs", static_cast<int>(p)) ||
             !makeDevice(thin_[p], static_cast<VkDeviceSize>(maxThin_) * 48u, kStorage | src, "producers.thin", static_cast<int>(p))) return false;
     }
     writeAll();
@@ -317,6 +317,9 @@ bool NativeProducers::record(VkCommandBuffer cb, uint32_t par, const gos_terrain
     wp.misc0[0] = W.waterElevation; wp.misc0[1] = W.frameCos; wp.misc0[2] = W.shoreExt;
     wp.misc1[0] = static_cast<int32_t>(recipeCount_); wp.misc1[1] = static_cast<int32_t>(maxThin_);
     wp.misc1[2] = static_cast<int32_t>(W.mapSide); wp.misc1[3] = W.biasLegacy;
+    const VkDrawArgsParams ap{{static_cast<int32_t>(maxThin_), 6,
+        static_cast<int32_t>(W.reflectionGroupsX), static_cast<int32_t>(W.reflectionGroupsY)}};
+    if (!argsUbo_[par].upload(&ap, sizeof(ap))) return false;
 
     VulkanContext& rctx = getOrCreateEngineVulkanContext();
     const VkDeviceSize al = rctx.frameAlignment();

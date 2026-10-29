@@ -1,11 +1,10 @@
 // VK-P9a WATER-INTEROP -- Vulkan port of the MC2 armed water FS
 // (shaders/gos_terrain_water_mdi.frag), BASE-LAYER (o_isWater==1) subset with
-// REFLECTION + HDRI OFF (P9a). Writes MRT: FragColor(0) + GBuffer1(1).
+// Writes MRT: FragColor(0) + GBuffer1(1); spatial water reflection over HDRI/SH sky.
 //
 // PARITY CONTRACT: reproduces the o_isWater==1 base-water branch VERBATIM with
-// the reflection/HDRI block skipped (u_waterReflStrength==0 && u_waterRtStrength==0
-// && u_waterHdriLod<0 && debug==0 -> the whole `if(...)` reflection block is a
-// no-op in the GL FS too, so this is byte-equivalent to the GL default gate cfg).
+// reflection disabled by the Off quality setting. Sky only uses HDRI/SH; Half-res
+// adds current-frame reflected terrain/props with sky fallback for missing hits.
 // Material params (DEEP/SHALLOW/ABSORPTION/etc.) are the exact former-const
 // defaults seeded by the C++ upload (WATER-TUNING-UI-1). fog_color is uploaded as
 // the current render state (CINEMATIC-WATER-WHITE-1 gives vec4(0) by water time).
@@ -36,7 +35,7 @@ layout(set = 0, binding = 1, std140) uniform WaterFsParams {
     vec4 f1;              // (alphaDepth, ABSORPTION_DENSITY, WATER_MAX_ALPHA, RIPPLE_GAIN)
     vec4 f2;              // (GLINT_GAIN, u_waterReflStrength, u_skyYaw, u_waterHdriLod)
     vec4 f3;              // (screenW, screenH, nightDim, animatedShore)
-    vec4 DEEP_COLOR;      // .xyz
+    vec4 DEEP_COLOR;      // .xyz color, .w Half-res reflection enabled
     vec4 SHALLOW_COLOR;   // .xyz
     // VK-PARITY-WATER-SHORE-1 (WATER-SHORE-EDGE-1): shore-feather inputs.
     vec4 f4;              // (u_shoreMode, u_hasShoreHeight, u_hasShoreMask, u_shoreFeatherWu)
@@ -61,6 +60,7 @@ layout(set = 0, binding = 4) uniform sampler2D u_shoreMask;
 // The static shadow bake's mask (R8 + mips over the terrain grid, row 0 north, evaluated at max(terrain, water)): the same texel the ground at
 // the shoreline reads, so the shadow runs across the coast without a cut. Read only when F.f7.z says it is bound.
 layout(set = 0, binding = 7) uniform sampler2D u_staticMask;
+layout(set = 0, binding = 8) uniform sampler2D u_waterReflection;
 #include "../include/water_shore_edge.hglsl"
 #include "../include/edge_haze.hglsl"   // VK-PARITY-F3: WATER-EDGE-FEATHER-1 (EDGE_HAZE_SKY, edgeHazeAmount)
 
@@ -262,12 +262,8 @@ void main(void)
     col = mix(col, F.f9.xyz * nightSky, clamp(F.f8.w, 0.0, 1.0));
 
     // ---- RUNG-6.5 WATER-REFLECTION PORT (WATER-SKY-REFLECTION-1 + WATER-HDRI-REFL-1) ----
-    // Verbatim port of the GL reflection block (gos_terrain_water_mdi.frag), minus:
-    //  - terrain-RT contact sub-block (MC2_WATER_REFLECTION_RT default-OFF ->
-    //    u_waterRtStrength==0 -> the GL sub-block is a no-op in the field config;
-    //    NOT ported — reflectCol stays = skyReflCol, byte-equivalent to GL default);
-    //  - u_waterDebugMode terms (VK FS has no debug-view path; GL evaluates the
-    //    block for debug 7/8/9 even at strength 0 but reflMix stays 0 -> Final same).
+    // Sky setup and Fresnel retain the GL material math; spatial geometry is
+    // coverage-blended over the sky before the Fresnel mix below.
     // Gate parity: u_waterReflStrength is fed from gos_GetWaterReflStrength()
     // (MC2_WATER_REFLECTION=0 -> 0.0 -> block skipped, same as GL).
     if (u_waterReflStrength > 0.0) {
@@ -295,7 +291,13 @@ void main(void)
         skyReflCol = mix(skyReflCol, F.f9.xyz, GRAZE_SKY_PULL * grazeW) * nightSky;
         reflectCol = skyReflCol;   // default reflection = sky (fallback/base)
         //PORT-END:waterReflSetup
-        // (terrain-RT contact sub-block skipped here — see header note above)
+        if (F.DEEP_COLOR.w > 0.5) {
+            vec2 reflectionUV=gl_FragCoord.xy/u_waterScreenSize + nzGrad*0.003;
+            if (all(greaterThan(reflectionUV,vec2(0))) && all(lessThan(reflectionUV,vec2(1)))) {
+                vec4 geometry=texture(u_waterReflection,reflectionUV);
+                reflectCol=skyReflCol*(1.0-geometry.a)+geometry.rgb;
+            }
+        }
         //PORT-BEGIN:waterReflMix
         PREC float fres = REFL_F0 + (1.0 - REFL_F0) * pow(1.0 - max(vdir.z, 0.0), 5.0);
         // WATER-GRAZE-REFL-1: grazing fragments keep full reflection at distance.
