@@ -2213,7 +2213,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1538,
+          "line": 1539,
           "evidence": "command",
           "reference": "scripts/check_sim_include_firewall.py",
           "text": "run_check \"sim_include_firewall\"        \"py -3 -B scripts/tests/test_sim_include_firewall.py && py -3 scripts/check_sim_include_firewall.py\""
@@ -2691,6 +2691,13 @@
           "evidence": "import",
           "reference": "console_child",
           "text": "import console_child  # noqa: E402"
+        },
+        {
+          "path": "scripts/run_visual.py",
+          "line": 19,
+          "evidence": "import",
+          "reference": "console_child",
+          "text": "import console_child"
         },
         {
           "path": "scripts/smoke_lib/exe_guard.py",
@@ -5080,7 +5087,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1509,
+          "line": 1510,
           "evidence": "command",
           "reference": "scripts/run_scripts_tests.py",
           "text": "run_check \"scripts_tests\"              \"py -3 scripts/run_scripts_tests.py\""
@@ -5280,14 +5287,14 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1534,
+          "line": 1535,
           "evidence": "command",
           "reference": "scripts/run_tools_tests.py",
           "text": "run_check_tri \"tools_tests\"             \"py -3 scripts/run_tools_tests.py\""
         },
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1535,
+          "line": 1536,
           "evidence": "command",
           "reference": "scripts/run_tools_tests.py",
           "text": "run_check_tri \"kit_art\"                 \"py -3 scripts/run_tools_tests.py --suite art\""
@@ -5318,6 +5325,28 @@
       ]
     },
     {
+      "path": "scripts/run_visual.py",
+      "basename": "run_visual.py",
+      "stem": "run_visual",
+      "callers_by_basename": [
+        {
+          "path": "scripts/check-contracts.sh",
+          "line": 1471,
+          "evidence": "command",
+          "reference": "scripts/run_visual.py",
+          "text": "run_check \"visual_regression_schema\"   \"py -3 scripts/run_visual.py --validate-schema\""
+        },
+        {
+          "path": "scripts/tests/test_run_visual.py",
+          "line": 11,
+          "evidence": "load module",
+          "reference": "scripts/run_visual.py",
+          "text": "spec = importlib.util.spec_from_file_location(\"run_visual\", SCRIPT)"
+        }
+      ],
+      "callers_by_stem": []
+    },
+    {
       "path": "scripts/run_visual_capture.py",
       "basename": "run_visual_capture.py",
       "stem": "run_visual_capture",
@@ -5328,6 +5357,13 @@
           "evidence": "command",
           "reference": "scripts/run_visual_capture.py",
           "text": "subprocess.run(cmd, check=False, **console_child.child_kwargs())"
+        },
+        {
+          "path": "scripts/run_visual.py",
+          "line": 86,
+          "evidence": "command",
+          "reference": "scripts/run_visual_capture.py",
+          "text": "result = subprocess.run(command, cwd=ROOT, stdout=log, stderr=subprocess.STDOUT,"
         },
         {
           "path": "tools/scifi_kit/kit.py",
@@ -7834,6 +7870,13 @@
       "callers_by_stem": []
     },
     {
+      "path": "scripts/tests/test_run_visual.py",
+      "basename": "test_run_visual.py",
+      "stem": "test_run_visual",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
       "path": "scripts/tests/test_runner_env_drop.py",
       "basename": "test_runner_env_drop.py",
       "stem": "test_runner_env_drop",
@@ -7861,7 +7904,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1538,
+          "line": 1539,
           "evidence": "command",
           "reference": "scripts/tests/test_sim_include_firewall.py",
           "text": "run_check \"sim_include_firewall\"        \"py -3 -B scripts/tests/test_sim_include_firewall.py && py -3 scripts/check_sim_include_firewall.py\""
