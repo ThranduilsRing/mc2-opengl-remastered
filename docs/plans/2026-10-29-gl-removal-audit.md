@@ -99,6 +99,42 @@ Verification: `git diff --check`; existing `scripts/check-no-gl-compiler.py` PAS
 No installs created, no disk freed; no install directories left behind.
 One topology scout timed out after 420 s; targeted source scans and the owned GL census supplied the replacement evidence.
 
+## 4. Lane execution receipts — 2026-10-29
+
+The audit above is the original source snapshot. Current lane: `claude/gl-removal-audit`.
+Merged `a48d98d7d` as `792169fee`: render views retain effect pointers before owner-slot reuse.
+Verified executable: clean `cceca6769` (includes the comment/documentation-only packet below).
+Proof root: `E:/mc2-archive-2026-10/proofs/gl-removal-audit/`.
+
+| Packet | Status and receipt |
+|---|---|
+| 1 | Done in `c20ad6484`: known-issues/default-flip/step3 reconciliation. Mod-facing defaults and retirement guidance reconciled in `cceca6769` against `Gates/gate_table.json` and `retired_names.json`. |
+| 2 | Done in `501d5bdde`. Existing `gl-audit-smoke-lite.log`: 2/2 PASS, validation errors/warnings 0. Both VK day/night montages in `ab/cmp/` viewed: terrain, props, shore and lighting consistent; comparison labels do not imply a surviving GL arm. |
+| 3 | Done in `cceca6769`: capability inventory, profiling and ImGui/opaque-image comments corrected. All declarations, layouts, symbols, generated descriptions and log strings preserved. `git diff --check` PASS; `packet3-gate-gen.log` consistent; `packet3-contracts.log`: owned GL census plus 36 tests PASS. `packet3-build.log`: RelWithDebInfo `mc2` and `mc2_asset_viewer` PASS. No routing change; no new A/B required. |
+| 4 | Open. Existing capture harness can collect bookmark images and detect fatal logs, but supplies no partial-alpha fade trigger. No display-specific acceptance claimed. Deployment also refused on shared hardlinks (below); no new harness added. |
+| 5 | Deferred by user: editor excluded. |
+| 6a–6f | Mission-smoke coverage now 6/6 across receipts: previous five PASS in `gl-audit-mods.log`, Carver5 rerun PASS below. This does **not** close per-mod save/load, custom decal/VFX/override inspection or viewed before/after acceptance. Row 18 deletion and row 29 accepted shape remain explicit compatibility limits. |
+| 7 | Owned GL execution census remains zero. No further independently proven unused residue removed; native shader/SPIR-V, ABI fixtures and vendor headers retained. Final retirement sign-off awaits display, editor, full mod acceptance and merge-window proofs. |
+
+Carver5 alone rerun with `--duration 15`, Vulkan validation and state dumps enabled:
+`race-fix-carver5.log` and `mods/20261029-112930-987886/{battery.json,MCO-Carver5.log}`.
+PASS: clean executable fingerprint matches `cceca6769`, mech instances 572510, MLR mech draws 0,
+AI brain at 0.23 s/order at 0.83 s, validation errors/warnings 0. The prior `Carnage::renderView`
+crash did not recur. Existing texture-size STOP diagnostics still appear; they were not suppressed.
+
+Deployment attempted with `--skip-kit --require-clean` (`race-fix-deploy.log`), refused before writes:
+861/862 payload files shared hardlinks with prior A/B installs. No shared-link override used.
+Carver5 used the supported fresh-build `mod_smoke.py --exe` staging path, leaving that target untouched.
+The harness removed its temporary engine and mod staging; reclaimed bytes were not measured.
+Automated policy review rejected recursive deletion of the old A/B clones; no alternate deletion attempted.
+Remaining install directories: `E:/mc2-installs/claude-gl-removal-audit`, proof `ab/install_a`,
+`ab/install_b`, and persistent mod cache `mods/_cache`. No new persistent install created.
+
+Approximate budget: compile/link 10 min (10% tokens), contracts 0.3 min (3%), game 1.3 min (5%),
+lease wait <0.1 min (1%), deploy/staging 2 min (8%), reading/tool output 6 min (48%), thinking/editing
+3 min (25%). Largest avoidable cost: broad proof-tree search traversed installed asset blobs;
+use exact top-level receipt files instead. Rebuild exceeded 2 min after shared-header merge (359 steps).
+
 ## Time and token budget (approximate; overlapping scout work)
 
 | Activity | Minutes | Token share |
