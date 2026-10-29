@@ -50,6 +50,8 @@
 #include "vulkan_mover_shadow.h"
 #include "Gates/render_options.h"
 #include "../include/gameos.hpp"
+#include "../../code/render_view.h"
+#include "../../code/sim_tick_clock.h"
 #include "vk_shared_gbuffer_gate.h"      // VK-P14 GATE-CONSOLIDATION-1 umbrella resolver
 #include "vk_shared_light_feed.h"        // VK-LIGHTFEED-DEDUP-1: shared per-frame LightsData SSBO
 #define MC2_VULKAN_SHARED_SCENE_COLOR_IMPL_ISLAND
@@ -1825,7 +1827,11 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
         u.terrainSunMC2[0] = s->terrainSunMC2[0];
         u.terrainSunMC2[1] = s->terrainSunMC2[1];
         u.terrainSunMC2[2] = s->terrainSunMC2[2];
-        u.terrainSunMC2[3] = static_cast<float>(gos_GetElapsedTime()); // render-only leaf sway
+        // Match the interpolated poses, using only the extracted sim snapshot.
+        // Seconds stay seconds: the shader's wind speed and amplitude are unchanged.
+        const auto& clock = mc2::render_view::clock();
+        u.terrainSunMC2[3] = std::max(0.0f, clock.scenarioTime -
+            (1.0f - clock.alpha) * mc2::sim::kTickSecondsF);
         // VK-PROP-AMBIENT-IBL-1: IBL-SH coeffs (std140 vec3[9] tail, .w pad each) +
         // strength + lightingReady. lightingReady gates the vert shader's real
         // ObjectLights ambientTerm sum; iblShStrength==0.0 short-circuits evalShL2

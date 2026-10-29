@@ -90,6 +90,7 @@ extern "C" void mc2_vfx_pass_end();
 #include "Gates/gate_cold.h"   // str<>()
 #include "impact_presentation.h"
 #include "render_view.h"
+#include "sim_tick_clock.h"
 
 namespace {
 // Marks the quads drawn inside a scope as exempt from the HUD batch's bottom-band shrink, then restores the previous state.
@@ -888,8 +889,10 @@ void GameCamera::render (void)
 				float lx = 0.0f, ly = 0.0f, lz = 1.0f;
 				gos_GetTerrainLightDir(&lx, &ly, &lz);
 				const float terrainLightDir_4f[4] = { lx, ly, lz, 0.0f };
-				// Wall-clock wind otherwise moves between frozen oracle samples.
-				const float missionTime = mc2::animationsFrozen() ? 0.0f : static_cast<float>(gos_GetElapsedTime());
+				// Use the same interpolated sim seconds as stock-leaf sway.
+				const auto& clock = mc2::render_view::clock();
+				const float missionTime = mc2::animationsFrozen() ? 0.0f :
+					std::max(0.0f, clock.scenarioTime - (1.0f - clock.alpha) * mc2::sim::kTickSecondsF);
 				// The physical eye is Stuff (west,elevation,north), not the orbit target.
 				const glm::vec3 vegEye = getCameraOrigin();
 				const float vegHalfMap = Terrain::worldUnitsMapSide * 0.5f;
