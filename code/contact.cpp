@@ -625,6 +625,11 @@ long SensorSystem::scanBattlefield (void)
 		const auto candidates = ObjectManager->nearbyMovers(owner->getPosition(), radius);
 		size_t ci = 0;
 		for (const auto& cand : candidates) {
+			const auto position = ObjectManager->getMover(cand.ordinal)->getPosition();
+			// Match both consumers' range math. Existing contacts still enter through
+			// contactOrdinals below, including out-of-range removals in original order.
+			if (owner->distanceFrom(position) > sensorRange &&
+				glm::length(position - owner->getPosition()) > visualRange) continue;
 			while (ci < contactOrdinals.size() && contactOrdinals[ci] < int(cand.ordinal)) visit.push_back({contactOrdinals[ci++], false});
 			while (ci < contactOrdinals.size() && contactOrdinals[ci] == int(cand.ordinal)) ci++;
 			visit.push_back({int(cand.ordinal), true});
