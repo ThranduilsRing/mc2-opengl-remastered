@@ -46,6 +46,8 @@ struct Counters {
 	long losBlocks;       // fixed 64-ray blocks
 	long legacyBatches;   // elevation override: no cached origin
 	long singleBlockBatches; // batches with no inter-block parallelism
+	long jobDispatches;   // pool wake/join calls (four or more rays)
+	long singleBlockDispatches; // wake/join calls with only one runnable block
 
 	void reset(bool a) {
 		active = a;
@@ -53,6 +55,7 @@ struct Counters {
 		adds = removes = modifies = 0;
 		candidates = neighbors = losBatches = losRays = singleBlockBatches = 0;
 		losBlocks = legacyBatches = 0;
+		jobDispatches = singleBlockDispatches = 0;
 	}
 };
 
@@ -99,13 +102,14 @@ struct ScanScope {
 		double us = std::chrono::duration<double, std::micro>(t1 - t0).count();
 		char buf[512];
 		(*std::format_to_n(buf, (sizeof(buf)) - 1,
-			"{{\"ev\":\"frame\",\"team\":{:d},\"num_sensors\":{:d},\"num_movers\":{:d},\"pairs_tested\":{:d},\"adds\":{:d},\"removes\":{:d},\"modifies\":{:d},\"candidates\":{:d},\"neighbors\":{:d},\"los_batches\":{:d},\"los_rays\":{:d},\"single_block_batches\":{:d},\"los_blocks\":{:d},\"legacy_batches\":{:d},\"scan_us\":{:.2f}}}",
+			"{{\"ev\":\"frame\",\"team\":{:d},\"num_sensors\":{:d},\"num_movers\":{:d},\"pairs_tested\":{:d},\"adds\":{:d},\"removes\":{:d},\"modifies\":{:d},\"candidates\":{:d},\"neighbors\":{:d},\"los_batches\":{:d},\"los_rays\":{:d},\"single_block_batches\":{:d},\"los_blocks\":{:d},\"legacy_batches\":{:d},\"job_dispatches\":{:d},\"single_block_dispatches\":{:d},\"scan_us\":{:.2f}}}",
 			mc2::fmt::as_i32(team), mc2::fmt::as_i32(g_counters.numSensors), mc2::fmt::as_i32(g_counters.numMovers),
 			mc2::fmt::as_i32(g_counters.pairsTested), mc2::fmt::as_i32(g_counters.adds), mc2::fmt::as_i32(g_counters.removes),
 			mc2::fmt::as_i32(g_counters.modifies), mc2::fmt::as_i32(g_counters.candidates),
 			mc2::fmt::as_i32(g_counters.neighbors), mc2::fmt::as_i32(g_counters.losBatches),
 			mc2::fmt::as_i32(g_counters.losRays), mc2::fmt::as_i32(g_counters.singleBlockBatches),
-			mc2::fmt::as_i32(g_counters.losBlocks), mc2::fmt::as_i32(g_counters.legacyBatches), us).out = '\0');
+			mc2::fmt::as_i32(g_counters.losBlocks), mc2::fmt::as_i32(g_counters.legacyBatches),
+			mc2::fmt::as_i32(g_counters.jobDispatches), mc2::fmt::as_i32(g_counters.singleBlockDispatches), us).out = '\0');
 		// Headless runs have no graphics-owned JSONL sink.
 		if (!mc2_diag::writeEvent("SENSOR", 1, 0, buf))
 			mc2::fmt::print(stdout, "[SENSOR v1] {}\n", buf);
