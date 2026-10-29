@@ -34,6 +34,7 @@
 #include "gos_postprocess.h"
 #include "vk_render_pass_timer.h"
 #include "vk_gpu_profile.h"   // VK-GPU-ZONES: MC2_VK_GPU_SCOPE
+#include <tracy/Tracy.hpp>
 #include "Gates/gate.h"
 #include "Gates/render_options.h"
 #include "Gates/gate_cold.h"   // str<>()
@@ -161,15 +162,17 @@ struct gosPostProcess::VkPostFogNative {
     VkImageResource* sDepthRes = nullptr;
     // VK-RUNG8-ITEM5: shared scene is VK-only (no GL view); direct-chain only.
 
-    VkDescriptorSet  edgeSet = VK_NULL_HANDLE;   // allocated from `pool`, freed with it
-    VkDescriptorSet  oobSet  = VK_NULL_HANDLE;
-    VkCommandBuffer  cbuf[2] = {VK_NULL_HANDLE, VK_NULL_HANDLE}; // per parity slot; allocated from `cpool`, freed with it
+    // Match the engine frame ring so fog does not serialize next-frame setup.
+    struct Frame {
+        VkDescriptorSet edgeSet = VK_NULL_HANDLE, oobSet = VK_NULL_HANDLE;
+        VkCommandBuffer cbuf = VK_NULL_HANDLE;
+        mc2vk::OwnedBuffer edgeUbo, oobUbo;
+        uint64_t ticket = 0;
+    } frames[2];
 
     // OWNED objects, declared in creation order: the destructor releases them in reverse (the owner idles the GPU first, see destroy_state).
     mc2vk::OwnedImageView  depthSampleView; // depth-aspect view over sDepthRes->image
     mc2vk::OwnedSampler    depthSampler;    // NEAREST/CLAMP (matches GL fog sampling)
-    mc2vk::OwnedBuffer     edgeUbo;
-    mc2vk::OwnedBuffer     oobUbo;
     mc2vk::OwnedRenderPass rpass;
     mc2vk::OwnedFramebuffer fb;
     mc2vk::OwnedDescriptorSetLayout dsl;
@@ -180,7 +183,6 @@ struct gosPostProcess::VkPostFogNative {
     mc2vk::OwnedPipeline   edgePipe;
     mc2vk::OwnedPipeline   oobPipe;
     mc2vk::OwnedCommandPool cpool;
-    uint64_t ticket = 0;   // timeline value of this pass's last submit (0 = never): waited at the NEXT run, not inline after the submit
 };
 
 namespace {
@@ -270,8 +272,10 @@ bool build_state(gosPostProcess::VkPostFogNative* s, int w, int h) {
         }
     }
 
-    if (!make_buffer(s, sizeof(EdgeFogParams), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, s->edgeUbo, "postfog.edgeUbo")) return false;
-    if (!make_buffer(s, sizeof(FogOobParams),  VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, s->oobUbo, "postfog.oobUbo"))  return false;
+    for (auto& frame : s->frames) {
+        if (!make_buffer(s, sizeof(EdgeFogParams), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, frame.edgeUbo, "postfog.edgeUbo")) return false;
+        if (!make_buffer(s, sizeof(FogOobParams), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, frame.oobUbo, "postfog.oobUbo")) return false;
+    }
 
     // Render pass: 1 attachment = SHARED scene color0. LOAD (fog blends OVER the
     // scene), STORE; layout-STABLE COLOR_ATTACHMENT both ends (GL hands it over /
@@ -337,14 +341,16 @@ bool build_state(gosPostProcess::VkPostFogNative* s, int w, int h) {
             vlog("vkCreateDescriptorSetLayout failed (%d).", static_cast<int>(r)); return false;
         }
         VkDescriptorPoolSize sizes[2]{};
-        sizes[0].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; sizes[0].descriptorCount = 2;
-        sizes[1].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;         sizes[1].descriptorCount = 2;
+        sizes[0].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; sizes[0].descriptorCount = 4;
+        sizes[1].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;         sizes[1].descriptorCount = 4;
         VkDescriptorPoolCreateInfo pci{};
         pci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-        pci.maxSets = 2; pci.poolSizeCount = 2; pci.pPoolSizes = sizes;
+        pci.maxSets = 4; pci.poolSizeCount = 2; pci.pPoolSizes = sizes;
         if (!mc2vk::create(s->pool, s->device, [&](VkDescriptorPool* h) { r = vkCreateDescriptorPool(s->device, &pci, nullptr, h); return r; })) {
             vlog("vkCreateDescriptorPool failed (%d).", static_cast<int>(r)); return false;
         }
+    }
+    for (auto& frame : s->frames) {
         VkDescriptorSetLayout layouts[2] = { s->dsl.get(), s->dsl.get() };
         VkDescriptorSet setsOut[2] = { VK_NULL_HANDLE, VK_NULL_HANDLE };
         VkDescriptorSetAllocateInfo dsai{};
@@ -352,29 +358,29 @@ bool build_state(gosPostProcess::VkPostFogNative* s, int w, int h) {
         dsai.descriptorPool = s->pool.get(); dsai.descriptorSetCount = 2; dsai.pSetLayouts = layouts;
         r = vkAllocateDescriptorSets(s->device, &dsai, setsOut);
         if (r != VK_SUCCESS) { vlog("vkAllocateDescriptorSets failed (%d).", static_cast<int>(r)); return false; }
-        s->edgeSet = setsOut[0]; s->oobSet = setsOut[1];
+        frame.edgeSet = setsOut[0]; frame.oobSet = setsOut[1];
 
         VkDescriptorImageInfo imgInfo{};
         imgInfo.sampler = s->depthSampler.get();
         imgInfo.imageView = s->depthSampleView.get();
         imgInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-        VkDescriptorBufferInfo edgeUboInfo{ s->edgeUbo.get(), 0, VK_WHOLE_SIZE };
-        VkDescriptorBufferInfo oobUboInfo { s->oobUbo.get(), 0, VK_WHOLE_SIZE };
+        VkDescriptorBufferInfo edgeUboInfo{ frame.edgeUbo.get(), 0, VK_WHOLE_SIZE };
+        VkDescriptorBufferInfo oobUboInfo { frame.oobUbo.get(), 0, VK_WHOLE_SIZE };
         VkWriteDescriptorSet writes[4]{};
         writes[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        writes[0].dstSet = s->edgeSet; writes[0].dstBinding = 0; writes[0].descriptorCount = 1;
+        writes[0].dstSet = frame.edgeSet; writes[0].dstBinding = 0; writes[0].descriptorCount = 1;
         writes[0].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
         writes[0].pImageInfo = &imgInfo;
         writes[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        writes[1].dstSet = s->edgeSet; writes[1].dstBinding = 1; writes[1].descriptorCount = 1;
+        writes[1].dstSet = frame.edgeSet; writes[1].dstBinding = 1; writes[1].descriptorCount = 1;
         writes[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         writes[1].pBufferInfo = &edgeUboInfo;
         writes[2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        writes[2].dstSet = s->oobSet; writes[2].dstBinding = 0; writes[2].descriptorCount = 1;
+        writes[2].dstSet = frame.oobSet; writes[2].dstBinding = 0; writes[2].descriptorCount = 1;
         writes[2].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
         writes[2].pImageInfo = &imgInfo;
         writes[3].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        writes[3].dstSet = s->oobSet; writes[3].dstBinding = 1; writes[3].descriptorCount = 1;
+        writes[3].dstSet = frame.oobSet; writes[3].dstBinding = 1; writes[3].descriptorCount = 1;
         writes[3].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         writes[3].pBufferInfo = &oobUboInfo;
         vkUpdateDescriptorSets(s->device, 4, writes, 0, nullptr);
@@ -472,9 +478,11 @@ bool build_state(gosPostProcess::VkPostFogNative* s, int w, int h) {
         cai.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
         cai.commandPool = s->cpool.get();
         cai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-        cai.commandBufferCount = 2;
-        r = vkAllocateCommandBuffers(s->device, &cai, s->cbuf);
-        if (r != VK_SUCCESS) { vlog("vkAllocateCommandBuffers failed (%d).", static_cast<int>(r)); return false; }
+        cai.commandBufferCount = 1;
+        for (auto& frame : s->frames) {
+            r = vkAllocateCommandBuffers(s->device, &cai, &frame.cbuf);
+            if (r != VK_SUCCESS) { vlog("vkAllocateCommandBuffers failed (%d).", static_cast<int>(r)); return false; }
+        }
     }
 
     s->inited = true;
@@ -506,6 +514,7 @@ void gosPostProcess::prewarmVkFog() {
 
 bool gosPostProcess::runVkPostFogNative()
 {
+    ZoneScopedN("VKIsl.Post.Fog");
     if (mc2::options::lowCost()) return true;
     const auto fog=RenderCore::vulkan::selectFogPasses(sceneHasTerrain_,edgeFogEnabled_,fogOobEnabled_,mapHalfExtent_);
     if (!fog.edge && !fog.oob) return false;
@@ -519,11 +528,12 @@ bool gosPostProcess::runVkPostFogNative()
     if (!vkPostFogNative_) vkPostFogNative_.reset(new VkPostFogNative());
     VkPostFogNative* s = vkPostFogNative_.get();
     if (s->disabled) return false;
-    // The previous submit of this pass must have completed before its host-visible inputs are rewritten and its command buffer is reused. A timeline
-    // ticket waited here (a frame after the submit, normally already complete) replaces the fence the pass used to wait inline right after every submit.
+    auto& frame = s->frames[mc2vk::getOrCreateEngineVulkanContext().frameContext().slot];
+    // Wait only when reusing this slot, before host writes and command-buffer reset.
     {
+        ZoneScopedN("VKIsl.Post.FogSlotWait");
         const std::chrono::steady_clock::time_point tWait0 = std::chrono::steady_clock::now();
-        if (!mc2vk::getOrCreateEngineVulkanContext().wait(mc2vk::GpuTicket{s->ticket, 0}, 5ull * 1000 * 1000 * 1000, "post_prev_submit")) {
+        if (!mc2vk::getOrCreateEngineVulkanContext().wait(mc2vk::GpuTicket{frame.ticket, 0}, 5ull * 1000 * 1000 * 1000, "post_prev_submit")) {
             setFallback("fence_timeout"); s->disabled = true; return false;
         }
         g_pf.waitUsLast = std::chrono::duration<double, std::micro>(std::chrono::steady_clock::now() - tWait0).count();
@@ -566,9 +576,9 @@ bool gosPostProcess::runVkPostFogNative()
         p.u_horizonClampEnabled = fogHorizonClampEnabled_ ? 1 : 0;
         p.u_horizonFadeStartSin = fogHorizonFadeStartSin_;
         p.u_horizonFadeEndSin   = fogHorizonFadeEndSin_;
-        if (void* m = s->edgeUbo.map()) {
+        if (void* m = frame.edgeUbo.map()) {
             std::memcpy(m, &p, sizeof(p));
-            s->edgeUbo.unmap();
+            frame.edgeUbo.unmap();
         }
     }
     if (fog.oob) {
@@ -584,16 +594,16 @@ bool gosPostProcess::runVkPostFogNative()
         p.u_time = SmokeMode::fixedTimestepEnabled()
                      ? static_cast<float>(SmokeMode::fixedClockSeconds())
                      : static_cast<float>(SDL_GetTicks()) / 1000.0f;
-        if (void* m = s->oobUbo.map()) {
+        if (void* m = frame.oobUbo.map()) {
             std::memcpy(m, &p, sizeof(p));
-            s->oobUbo.unmap();
+            frame.oobUbo.unmap();
         }
     }
 
     // ---- Shared resource ownership (VK-RUNG8 item-4: direct-chain only). Native fog
     // engages only when upstream left the shared GBuffer Vulkan-owned; otherwise decline
     // to the GL fog pass (native-or-decline). No GL<->VK semaphore handoff. ----
-    VkCommandBuffer cb = s->cbuf[0u];
+    VkCommandBuffer cb = frame.cbuf;
 
     vkResetCommandBuffer(cb, 0);
     VkCommandBufferBeginInfo bi{};
@@ -637,7 +647,7 @@ bool gosPostProcess::runVkPostFogNative()
     const auto fogDraws=fog.record([&](RenderCore::vulkan::PostprocessSubPassId pass) {
         const bool edge=pass==RenderCore::vulkan::PostprocessSubPassId::EdgeFog;
         const auto pipeline=edge ? s->edgePipe.get() : s->oobPipe.get();
-        const auto descriptor=edge ? s->edgeSet : s->oobSet;
+        const auto descriptor=edge ? frame.edgeSet : frame.oobSet;
         mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
         vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 0, 1, &descriptor, 0, nullptr);
         vkCmdDraw(cb, 3, 1, 0, 0);
@@ -662,7 +672,7 @@ bool gosPostProcess::runVkPostFogNative()
     VkSubmitInfo si{};
     si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
     si.commandBufferCount = 1; si.pCommandBuffers = &cb;
-    if (mc2vk::getOrCreateEngineVulkanContext().submit(si, VK_NULL_HANDLE, &s->ticket) != VK_SUCCESS) {
+    if (mc2vk::getOrCreateEngineVulkanContext().submit(si, VK_NULL_HANDLE, &frame.ticket) != VK_SUCCESS) {
         setFallback("submit_failed"); s->disabled = true; return false;
     }
     timerGuard.submitted();

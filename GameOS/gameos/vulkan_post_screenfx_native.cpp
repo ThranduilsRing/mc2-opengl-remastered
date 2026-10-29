@@ -43,6 +43,7 @@
 #include "gos_postprocess.h"
 #include "vk_render_pass_timer.h"
 #include "vk_gpu_profile.h"   // VK-GPU-ZONES: MC2_VK_GPU_SCOPE
+#include <tracy/Tracy.hpp>
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"   // str<>()
 #include "Gates/render_options.h"   // options.cfg PropShadowReceive
@@ -198,18 +199,19 @@ struct gosPostProcess::VkPostScreenFx {
     // VK-RUNG8-ITEM5: shared scene is VK-only (no GL view); direct-chain only.
     // The static sun map comes from the shadow island (binding 2, rewritten every draw), the cascades too (bindings 4 and 5).
 
-    VkDescriptorSet  cloudSet = VK_NULL_HANDLE;   // allocated from `pool`, freed with it
-    VkDescriptorSet  shoreSet = VK_NULL_HANDLE;
-    VkDescriptorSet  shadowSet = VK_NULL_HANDLE;
-    VkCommandBuffer  cbuf[2] = {VK_NULL_HANDLE, VK_NULL_HANDLE}; // per parity slot; allocated from `cpool`, freed with it
+    // Host-written resources must follow the engine's two frames in flight.
+    // A single set makes next-frame preparation wait for the previous GPU pass.
+    struct Frame {
+        VkDescriptorSet cloudSet = VK_NULL_HANDLE, shoreSet = VK_NULL_HANDLE, shadowSet = VK_NULL_HANDLE;
+        VkCommandBuffer cbuf[2]{}; // shadow, then cloud/shoreline
+        mc2vk::OwnedBuffer cloudUbo, shoreUbo, shadowUbo;
+        uint64_t ticket[2]{};
+    } frames[2];
 
     // OWNED objects, declared in creation order: the state is moved into a scope-local in destroy_state so the destructor releases them in REVERSE (a member-wise move-assignment would release forward); the owner idles the GPU first.
     mc2vk::OwnedImageView   depthSampleView;       // depth-aspect view over sDepthRes->image
     mc2vk::OwnedSampler     gbufSampler;           // NEAREST/CLAMP (GL sceneDepthTex_/sceneNormalTex_ parity)
     mc2vk::OwnedSampler     shadowCompareSampler;
-    mc2vk::OwnedBuffer      cloudUbo;
-    mc2vk::OwnedBuffer      shoreUbo;
-    mc2vk::OwnedBuffer      shadowUbo;
     mc2vk::OwnedRenderPass  rpass;                 // shared color0, LOAD/STORE layout-stable
     mc2vk::OwnedFramebuffer fb;
     mc2vk::OwnedDescriptorSetLayout cloudDsl;
@@ -226,7 +228,6 @@ struct gosPostProcess::VkPostScreenFx {
     mc2vk::OwnedPipeline    shorePipe;
     mc2vk::OwnedPipeline    shadowPipe;
     mc2vk::OwnedCommandPool cpool;
-    uint64_t ticket[2] = {0, 0};   // timeline value of this pass's last submit (0 = never): waited at the NEXT run, not inline after the submit
 };
 
 namespace {
@@ -333,9 +334,11 @@ bool build_state(gosPostProcess::VkPostScreenFx* s, int w, int h) {
         }
     }
 
-    if (!make_buffer(s, s->cloudUbo, sizeof(ScreenFxCloudParams), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, "screenfx.cloudUbo")) return false;
-    if (!make_buffer(s, s->shoreUbo, sizeof(ScreenFxShoreParams), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, "screenfx.shoreUbo")) return false;
-    if (!make_buffer(s, s->shadowUbo, sizeof(ScreenFxShadowParams), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, "screenfx.shadowUbo")) return false;
+    for (auto& frame : s->frames) {
+        if (!make_buffer(s, frame.cloudUbo, sizeof(ScreenFxCloudParams), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, "screenfx.cloudUbo")) return false;
+        if (!make_buffer(s, frame.shoreUbo, sizeof(ScreenFxShoreParams), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, "screenfx.shoreUbo")) return false;
+        if (!make_buffer(s, frame.shadowUbo, sizeof(ScreenFxShadowParams), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, "screenfx.shadowUbo")) return false;
+    }
 
     // Render pass: 1 attachment = SHARED scene color0. LOAD (multiply blends
     // against the scene), STORE; layout-STABLE COLOR_ATTACHMENT both ends
@@ -428,14 +431,15 @@ bool build_state(gosPostProcess::VkPostScreenFx* s, int w, int h) {
         if (r != VK_SUCCESS) { vlog("vkCreateDescriptorSetLayout(shadow) failed (%d).", static_cast<int>(r)); return false; }
 
         VkDescriptorPoolSize sizes[2]{};
-        sizes[0].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; sizes[0].descriptorCount = 7;
-        sizes[1].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;         sizes[1].descriptorCount = 4;
+        sizes[0].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; sizes[0].descriptorCount = 14;
+        sizes[1].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;         sizes[1].descriptorCount = 8;
         VkDescriptorPoolCreateInfo pci{};
         pci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-        pci.maxSets = 3; pci.poolSizeCount = 2; pci.pPoolSizes = sizes;
+        pci.maxSets = 6; pci.poolSizeCount = 2; pci.pPoolSizes = sizes;
         r = mc2vk::createChecked(s->pool, s->device, [&](auto* h) { return vkCreateDescriptorPool(s->device, &pci, nullptr, h); });
         if (r != VK_SUCCESS) { vlog("vkCreateDescriptorPool failed (%d).", static_cast<int>(r)); return false; }
-
+    }
+    for (auto& frame : s->frames) {
         VkDescriptorSetAllocateInfo dsai{};
         dsai.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
         dsai.descriptorPool = s->pool.get(); dsai.descriptorSetCount = 1;
@@ -443,13 +447,13 @@ bool build_state(gosPostProcess::VkPostScreenFx* s, int w, int h) {
         const VkDescriptorSetLayout shoreDslHandle = s->shoreDsl.get();
         const VkDescriptorSetLayout shadowDslHandle = s->shadowDsl.get();
         dsai.pSetLayouts = &cloudDslHandle;
-        r = vkAllocateDescriptorSets(s->device, &dsai, &s->cloudSet);
+        r = vkAllocateDescriptorSets(s->device, &dsai, &frame.cloudSet);
         if (r != VK_SUCCESS) { vlog("vkAllocateDescriptorSets(cloud) failed (%d).", static_cast<int>(r)); return false; }
         dsai.pSetLayouts = &shoreDslHandle;
-        r = vkAllocateDescriptorSets(s->device, &dsai, &s->shoreSet);
+        r = vkAllocateDescriptorSets(s->device, &dsai, &frame.shoreSet);
         if (r != VK_SUCCESS) { vlog("vkAllocateDescriptorSets(shore) failed (%d).", static_cast<int>(r)); return false; }
         dsai.pSetLayouts = &shadowDslHandle;
-        r = vkAllocateDescriptorSets(s->device, &dsai, &s->shadowSet);
+        r = vkAllocateDescriptorSets(s->device, &dsai, &frame.shadowSet);
         if (r != VK_SUCCESS) { vlog("vkAllocateDescriptorSets(shadow) failed (%d).", static_cast<int>(r)); return false; }
 
         VkDescriptorImageInfo depthInfo{};
@@ -465,44 +469,44 @@ bool build_state(gosPostProcess::VkPostScreenFx* s, int w, int h) {
         // Binding 2 (the static map) starts on the scene depth so it is valid before the shadow island's first static build; each draw rewrites it.
         staticShadowInfo.imageView = s->depthSampleView.get();
         staticShadowInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-        VkDescriptorBufferInfo cloudUboInfo{ s->cloudUbo.get(), 0, VK_WHOLE_SIZE };
-        VkDescriptorBufferInfo shoreUboInfo{ s->shoreUbo.get(), 0, VK_WHOLE_SIZE };
-        VkDescriptorBufferInfo shadowUboInfo{ s->shadowUbo.get(), 0, VK_WHOLE_SIZE };
+        VkDescriptorBufferInfo cloudUboInfo{ frame.cloudUbo.get(), 0, VK_WHOLE_SIZE };
+        VkDescriptorBufferInfo shoreUboInfo{ frame.shoreUbo.get(), 0, VK_WHOLE_SIZE };
+        VkDescriptorBufferInfo shadowUboInfo{ frame.shadowUbo.get(), 0, VK_WHOLE_SIZE };
         VkWriteDescriptorSet writes[9]{};
         writes[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        writes[0].dstSet = s->cloudSet; writes[0].dstBinding = 0; writes[0].descriptorCount = 1;
+        writes[0].dstSet = frame.cloudSet; writes[0].dstBinding = 0; writes[0].descriptorCount = 1;
         writes[0].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
         writes[0].pImageInfo = &depthInfo;
         writes[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        writes[1].dstSet = s->cloudSet; writes[1].dstBinding = 1; writes[1].descriptorCount = 1;
+        writes[1].dstSet = frame.cloudSet; writes[1].dstBinding = 1; writes[1].descriptorCount = 1;
         writes[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         writes[1].pBufferInfo = &cloudUboInfo;
         writes[2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        writes[2].dstSet = s->shoreSet; writes[2].dstBinding = 0; writes[2].descriptorCount = 1;
+        writes[2].dstSet = frame.shoreSet; writes[2].dstBinding = 0; writes[2].descriptorCount = 1;
         writes[2].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
         writes[2].pImageInfo = &depthInfo;
         writes[3].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        writes[3].dstSet = s->shoreSet; writes[3].dstBinding = 1; writes[3].descriptorCount = 1;
+        writes[3].dstSet = frame.shoreSet; writes[3].dstBinding = 1; writes[3].descriptorCount = 1;
         writes[3].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
         writes[3].pImageInfo = &normalInfo;
         writes[4].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        writes[4].dstSet = s->shoreSet; writes[4].dstBinding = 2; writes[4].descriptorCount = 1;
+        writes[4].dstSet = frame.shoreSet; writes[4].dstBinding = 2; writes[4].descriptorCount = 1;
         writes[4].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         writes[4].pBufferInfo = &shoreUboInfo;
         writes[5].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        writes[5].dstSet = s->shadowSet; writes[5].dstBinding = 0; writes[5].descriptorCount = 1;
+        writes[5].dstSet = frame.shadowSet; writes[5].dstBinding = 0; writes[5].descriptorCount = 1;
         writes[5].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
         writes[5].pImageInfo = &depthInfo;
         writes[6].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        writes[6].dstSet = s->shadowSet; writes[6].dstBinding = 1; writes[6].descriptorCount = 1;
+        writes[6].dstSet = frame.shadowSet; writes[6].dstBinding = 1; writes[6].descriptorCount = 1;
         writes[6].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
         writes[6].pImageInfo = &normalInfo;
         writes[7].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        writes[7].dstSet = s->shadowSet; writes[7].dstBinding = 2; writes[7].descriptorCount = 1;
+        writes[7].dstSet = frame.shadowSet; writes[7].dstBinding = 2; writes[7].descriptorCount = 1;
         writes[7].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
         writes[7].pImageInfo = &staticShadowInfo;
         writes[8].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        writes[8].dstSet = s->shadowSet; writes[8].dstBinding = 3; writes[8].descriptorCount = 1;
+        writes[8].dstSet = frame.shadowSet; writes[8].dstBinding = 3; writes[8].descriptorCount = 1;
         writes[8].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         writes[8].pBufferInfo = &shadowUboInfo;
         vkUpdateDescriptorSets(s->device, 9, writes, 0, nullptr);
@@ -612,8 +616,10 @@ bool build_state(gosPostProcess::VkPostScreenFx* s, int w, int h) {
         cai.commandPool = s->cpool.get();
         cai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
         cai.commandBufferCount = 2;
-        rr = vkAllocateCommandBuffers(s->device, &cai, s->cbuf);
-        if (rr != VK_SUCCESS) { vlog("vkAllocateCommandBuffers failed (%d).", static_cast<int>(rr)); return false; }
+        for (auto& frame : s->frames) {
+            rr = vkAllocateCommandBuffers(s->device, &cai, frame.cbuf);
+            if (rr != VK_SUCCESS) { vlog("vkAllocateCommandBuffers failed (%d).", static_cast<int>(rr)); return false; }
+        }
     }
 
     s->inited = true;
@@ -664,6 +670,7 @@ void gosPostProcess::prewarmVkScreenFx() {
 
 bool gosPostProcess::runVkPostScreenShadowStaticNative()
 {
+    ZoneScopedN("VKIsl.Post.Shadow");
     const bool dynamicCasterActive=mc2::gate::get<"MC2_SHADOW_ENABLE">();
     const bool moverReady=dynamicCasterActive && mc2_vk_shadow_island_movers_ready();
     const bool dynamicActive=dynamicCasterActive;
@@ -675,11 +682,12 @@ bool gosPostProcess::runVkPostScreenShadowStaticNative()
     if (!vkPostScreenFx_) vkPostScreenFx_.reset(new VkPostScreenFx());
     VkPostScreenFx* s = vkPostScreenFx_.get();
     if (s->disabled) return false;
-    // The previous submit of this pass must have completed before its host-visible inputs are rewritten and its command buffer is reused. A timeline
-    // ticket waited here (a frame after the submit, normally already complete) replaces the fence the pass used to wait inline right after every submit.
+    auto& frame = s->frames[mc2vk::getOrCreateEngineVulkanContext().frameContext().slot];
+    // Retire this frame slot before rewriting its descriptors/UBO or command buffer.
     {
+        ZoneScopedN("VKIsl.Post.ShadowSlotWait");
         const std::chrono::steady_clock::time_point tWait0 = std::chrono::steady_clock::now();
-        if (!mc2vk::getOrCreateEngineVulkanContext().wait(mc2vk::GpuTicket{s->ticket[0], 0}, 5ull * 1000 * 1000 * 1000, "post_prev_submit")) {
+        if (!mc2vk::getOrCreateEngineVulkanContext().wait(mc2vk::GpuTicket{frame.ticket[0], 0}, 5ull * 1000 * 1000 * 1000, "post_prev_submit")) {
             setFallback("fence_timeout"); s->disabled = true; return false;
         }
         g_fx.waitUsLast = std::chrono::duration<double, std::micro>(std::chrono::steady_clock::now() - tWait0).count();
@@ -700,13 +708,13 @@ bool gosPostProcess::runVkPostScreenShadowStaticNative()
             return false;
         }
     }
-    if (!mc2vk::bindMoverShadowDescriptors(s->device,s->shadowSet)) { setFallback("mover_receiver_unavailable"); return false; }
+    if (!mc2vk::bindMoverShadowDescriptors(s->device,frame.shadowSet)) { setFallback("mover_receiver_unavailable"); return false; }
     // The static sun map is the shadow island's, used only when its build is of the engine's current generation, so it pairs with
     // staticLightSpaceMatrix_ below. Without it and without the cascades this pass declines and the GL screen-shadow pass runs.
     float objectMatrix[16]{};
     const VkImageView staticView=reinterpret_cast<VkImageView>(mc2_vk_shadow_island_get_object_view());
     const bool hasStaticShadow=staticView && mc2_vk_shadow_island_get_object_matrix(objectMatrix);
-    if ((!hasStaticShadow && !moverReady) || !s->shadowSet ||
+    if ((!hasStaticShadow && !moverReady) || !frame.shadowSet ||
         !s->shadowPipe) {
         setFallback("static_shadow_substrate_not_ready");
         return false;
@@ -719,9 +727,9 @@ bool gosPostProcess::runVkPostScreenShadowStaticNative()
     p.enableShadows = hasStaticShadow ? 1 : 0;
     p.debugMode = 0;
     void* m = nullptr;
-    if ((m = s->shadowUbo.map()) != nullptr) {
+    if ((m = frame.shadowUbo.map()) != nullptr) {
         std::memcpy(m, &p, sizeof(p));
-        s->shadowUbo.unmap();
+        frame.shadowUbo.unmap();
     }
     {   // binding 2: the static map, or the scene depth (never sampled: enableShadows=0) so the binding stays valid
         VkDescriptorImageInfo staticInfo{};
@@ -730,7 +738,7 @@ bool gosPostProcess::runVkPostScreenShadowStaticNative()
         staticInfo.imageLayout = hasStaticShadow ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
         VkWriteDescriptorSet w{};
         w.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        w.dstSet = s->shadowSet; w.dstBinding = 2; w.descriptorCount = 1;
+        w.dstSet = frame.shadowSet; w.dstBinding = 2; w.descriptorCount = 1;
         w.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
         w.pImageInfo = &staticInfo;
         vkUpdateDescriptorSets(s->device, 1, &w, 0, nullptr);
@@ -743,7 +751,7 @@ bool gosPostProcess::runVkPostScreenShadowStaticNative()
 
     // VK-RUNG8 item-4: direct-chain only — engage only when upstream is direct-chain,
     // else decline to the GL screenfx passes. No GL<->VK semaphore handoff.
-    VkCommandBuffer cb = s->cbuf[0u];
+    VkCommandBuffer cb = frame.cbuf[0];
 
     vkResetCommandBuffer(cb, 0);
     VkCommandBufferBeginInfo bi{};
@@ -791,7 +799,7 @@ bool gosPostProcess::runVkPostScreenShadowStaticNative()
     MC2_VK_GPU_SCOPE(gpuScope, cb, "VKIsl.Post.ShadowResolve");
     vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
     mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->shadowPipe.get());
-    vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->shadowPlayout.get(), 0, 1, &s->shadowSet, 0, nullptr);
+    vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->shadowPlayout.get(), 0, 1, &frame.shadowSet, 0, nullptr);
     vkCmdDraw(cb, 3, 1, 0, 0);
     vkCmdEndRenderPass(cb);
     gpuScope.end();
@@ -818,7 +826,7 @@ bool gosPostProcess::runVkPostScreenShadowStaticNative()
     VkSubmitInfo si{};
     si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
     si.commandBufferCount = 1; si.pCommandBuffers = &cb;
-    if (mc2vk::getOrCreateEngineVulkanContext().submit(si, VK_NULL_HANDLE, &s->ticket[0]) != VK_SUCCESS) {
+    if (mc2vk::getOrCreateEngineVulkanContext().submit(si, VK_NULL_HANDLE, &frame.ticket[0]) != VK_SUCCESS) {
         setFallback("submit_failed"); return false;
     }
     timerGuard.submitted();
@@ -844,6 +852,7 @@ bool gosPostProcess::runVkPostScreenShadowStaticNative()
 // ---------------------------------------------------------------------------
 unsigned gosPostProcess::runVkPostScreenFxNative()
 {
+    ZoneScopedN("VKIsl.Post.ScreenFx");
     // Per-pass parity guards — EXACT mirrors of the GL bodies' early-outs.
     const bool wantCloud = g_fx.cloudGate != 0
         && enableCloudShadow_ && sceneHasTerrain_;
@@ -856,11 +865,12 @@ unsigned gosPostProcess::runVkPostScreenFxNative()
     if (!vkPostScreenFx_) vkPostScreenFx_.reset(new VkPostScreenFx());
     VkPostScreenFx* s = vkPostScreenFx_.get();
     if (s->disabled) return 0;
-    // The previous submit of this pass must have completed before its host-visible inputs are rewritten and its command buffer is reused. A timeline
-    // ticket waited here (a frame after the submit, normally already complete) replaces the fence the pass used to wait inline right after every submit.
+    auto& frame = s->frames[mc2vk::getOrCreateEngineVulkanContext().frameContext().slot];
+    // Retire this frame slot; the other slot may still be executing on the GPU.
     {
+        ZoneScopedN("VKIsl.Post.ScreenFxSlotWait");
         const std::chrono::steady_clock::time_point tWait0 = std::chrono::steady_clock::now();
-        if (!mc2vk::getOrCreateEngineVulkanContext().wait(mc2vk::GpuTicket{s->ticket[1], 0}, 5ull * 1000 * 1000 * 1000, "post_prev_submit")) {
+        if (!mc2vk::getOrCreateEngineVulkanContext().wait(mc2vk::GpuTicket{frame.ticket[1], 0}, 5ull * 1000 * 1000 * 1000, "post_prev_submit")) {
             setFallback("fence_timeout"); s->disabled = true; return 0;
         }
         g_fx.waitUsLast = std::chrono::duration<double, std::micro>(std::chrono::steady_clock::now() - tWait0).count();
@@ -903,9 +913,9 @@ unsigned gosPostProcess::runVkPostScreenFxNative()
         p.cloudOctaves  = cloudOctaves_;
         p.cloudEnable   = 1;   // gated in C++ above; 1 inside the pass (GL parity)
         void* m = nullptr;
-        if ((m = s->cloudUbo.map()) != nullptr) {
+        if ((m = frame.cloudUbo.map()) != nullptr) {
             std::memcpy(m, &p, sizeof(p));
-            s->cloudUbo.unmap();
+            frame.cloudUbo.unmap();
         }
     }
     if (wantShore) {
@@ -916,16 +926,16 @@ unsigned gosPostProcess::runVkPostScreenFxNative()
                         ? static_cast<float>(SmokeMode::fixedClockSeconds())
                         : static_cast<float>(SDL_GetTicks()) / 1000.0f;
         void* m = nullptr;
-        if ((m = s->shoreUbo.map()) != nullptr) {
+        if ((m = frame.shoreUbo.map()) != nullptr) {
             std::memcpy(m, &p, sizeof(p));
-            s->shoreUbo.unmap();
+            frame.shoreUbo.unmap();
         }
     }
 
     // ---- Shared resource ownership (handoff mode, or direct-chain skip). ----
     // VK-RUNG8 item-4: direct-chain only — engage only when upstream is direct-chain,
     // else decline to the GL screenfx passes. No GL<->VK semaphore handoff.
-    VkCommandBuffer cb = s->cbuf[1u];
+    VkCommandBuffer cb = frame.cbuf[1];
 
     vkResetCommandBuffer(cb, 0);
     VkCommandBufferBeginInfo bi{};
@@ -984,12 +994,12 @@ unsigned gosPostProcess::runVkPostScreenFxNative()
         vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
         if (wantCloud) {
             mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->cloudPipe.get());
-            vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->cloudPlayout.get(), 0, 1, &s->cloudSet, 0, nullptr);
+            vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->cloudPlayout.get(), 0, 1, &frame.cloudSet, 0, nullptr);
             vkCmdDraw(cb, 3, 1, 0, 0);
         }
         if (wantShore) {
             mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->shorePipe.get());
-            vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->shorePlayout.get(), 0, 1, &s->shoreSet, 0, nullptr);
+            vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->shorePlayout.get(), 0, 1, &frame.shoreSet, 0, nullptr);
             vkCmdDraw(cb, 3, 1, 0, 0);
         }
         vkCmdEndRenderPass(cb);
@@ -1019,7 +1029,7 @@ unsigned gosPostProcess::runVkPostScreenFxNative()
     VkSubmitInfo si{};
     si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
     si.commandBufferCount = 1; si.pCommandBuffers = &cb;
-    if (mc2vk::getOrCreateEngineVulkanContext().submit(si, VK_NULL_HANDLE, &s->ticket[1]) != VK_SUCCESS) {
+    if (mc2vk::getOrCreateEngineVulkanContext().submit(si, VK_NULL_HANDLE, &frame.ticket[1]) != VK_SUCCESS) {
         setFallback("submit_failed"); s->disabled = true; return 0;
     }
     timerGuard.submitted();

@@ -1302,11 +1302,32 @@ bool upload_geometry_once(ColorPropIsland* s) {
              static_cast<unsigned long long>(feed.iboBytes));
         return false;
     }
-    // A failed copy leaves both buffers empty, so the next frame's retry starts from nothing.
-    if (!s->vbo.createFilled(s->allocator, s->device, vboCpu, vboBytes, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, "colorprop.vbo") ||
-        !s->ibo.createFilled(s->allocator, s->device, iboCpu, iboBytes, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, "colorprop.ibo")) {
+    // Static geometry is read every frame. Keep the identical bytes in device
+    // memory rather than the CPU-writable allocation createFilled() provides.
+    mc2vk::OwnedBuffer stageVertices, stageIndices;
+    if (!stageVertices.createFilled(s->allocator, s->device, vboCpu, vboBytes, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, "colorprop.stage.vertices") ||
+        !stageIndices.createFilled(s->allocator, s->device, iboCpu, iboBytes, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, "colorprop.stage.indices") ||
+        !s->vbo.createDeviceLocal(s->allocator, s->device, vboBytes, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, "colorprop.vbo") ||
+        !s->ibo.createDeviceLocal(s->allocator, s->device, iboBytes, VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, "colorprop.ibo")) {
         vlog("geometry upload failed (buffer creation or map); retrying next frame.");
         s->vbo.reset();
+        s->ibo.reset();
+        return false;
+    }
+    auto& ctx = mc2vk::getOrCreateEngineVulkanContext();
+    if (!mc2vk::submitOneShot(ctx, [&](VkCommandBuffer cb) {
+        const VkBufferCopy vertices{0, 0, vboBytes}, indices{0, 0, iboBytes};
+        vkCmdCopyBuffer(cb, stageVertices.get(), s->vbo.get(), 1, &vertices);
+        vkCmdCopyBuffer(cb, stageIndices.get(), s->ibo.get(), 1, &indices);
+        VkMemoryBarrier barrier{VK_STRUCTURE_TYPE_MEMORY_BARRIER};
+        barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+        barrier.dstAccessMask = VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT | VK_ACCESS_INDEX_READ_BIT;
+        vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT,
+                             0, 1, &barrier, 0, nullptr, 0, nullptr);
+    }, "colorprop_geometry_upload")) {
+        vlog("geometry upload failed (copy submit); retrying next frame.");
+        s->vbo.reset();
+        s->ibo.reset();
         return false;
     }
 
