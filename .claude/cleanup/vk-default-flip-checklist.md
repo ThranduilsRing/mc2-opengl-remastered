@@ -1,5 +1,28 @@
-<!-- doc-status: current | reviewed:2026-10-11 -->
-# VK default-flip checklist (recon, read-only, 2026-10-08)
+<!-- doc-status: historical | reviewed:2026-10-29 -->
+# VK default-flip checklist (historical recon, 2026-10-08)
+
+## Current disposition (2026-10-29)
+
+The recon below records the October 8/12 state, including old commands and removed
+source paths; it is not a current port assignment or an executable go/no-go list.
+`GameOS/gameos/render_backend_select.cpp` now selects Vulkan unconditionally and
+reports `MC2_RENDER_BACKEND=gl` as ignored. There is no GL fallback or GL capture
+arm. Do not revert the old default-flip commits or restore the GL opt-out.
+
+All 29 parity rows are closed; see [the parity record](../VK-PARITY-GAPS.md).
+Row 18 is an accepted deletion of cliff decal fill/colour blend, with custom mod
+content still requiring compatibility checks. Row 29 accepts slightly blockier
+beam heads; `Gates/gate_table.json` now defaults GPU particles ON and records the
+CPU routes as retired. The old default-OFF justification is historical.
+
+Useful acceptance cases remain: partial-alpha fade over scene and HUD,
+letterbox/movie/FORCE_43, menus/video/cursor, resize/minimize recovery, fatal VK
+initialization, and VK goldens/validation. This reconciliation supplies no new
+runtime receipt for them. Follow packets 4-6 of
+[the retirement audit](../../docs/plans/2026-10-29-gl-removal-audit.md) for proof;
+compare pinned VK baseline/candidate day and night captures and view the montage.
+
+## Historical recon (all sections below)
 
 ## 1. Letterbox bars under VK
 - Cinematic bars = untextured gos_DrawQuads in code/gamecam.cpp:841-~900 (bars) and :~903 (fadeAlpha quad). Opaque-black via MC2_LETTERBOX_OPAQUE.

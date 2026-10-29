@@ -1,7 +1,5 @@
 // mc2_hitch_trace.cpp — H1a hitch attribution layer implementation.
-// This file does NOT include mc2_hitch_trace.h after GL headers to avoid
-// recursive macro expansion. The header is included first before any GL
-// headers that might be transitively pulled in.
+// Legacy GL-named fields and log keys remain stable for trace consumers.
 #include "mc2_hitch_trace.h"
 
 #include <chrono>
@@ -125,7 +123,7 @@ void EndFrame(uint32_t frame, double dtMs) {
         }
     }
 
-    // Detail line: GL totals.
+    // Detail line: legacy GL totals (stable log schema).
     mc2::fmt::print_err("[HITCH_GL] glBufferData={:d} glBufferDataBytes={:d} glBufferSubData={:d} glBufferSubDataBytes={:d} glMapBuffer={:d} glTexImage={:d} glTexImageBytes={:d} glTexSubImage={:d} glTexSubImageBytes={:d} glBindTexture={:d} glUseProgram={:d}\n",
         mc2::fmt::as_u32(a.glBufferDataCalls),    mc2::fmt::as_u64(static_cast<unsigned long long>(a.glBufferDataBytes)),
         mc2::fmt::as_u32(a.glBufferSubDataCalls), mc2::fmt::as_u64(static_cast<unsigned long long>(a.glBufferSubDataBytes)),

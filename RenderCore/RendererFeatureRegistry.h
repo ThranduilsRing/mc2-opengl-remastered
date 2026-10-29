@@ -4,8 +4,7 @@
 // INVENTORY ONLY -- no feature decisions here. Each system's own env-flag
 // accessor (e.g. RenderWorld::IsObjectIdBufferEnabled) remains
 // authoritative for runtime decisions. This header is the single place to
-// look up what env vars exist, what their defaults are, and what GL caps
-// the engine requires per feature.
+// look up what env vars exist and what their defaults are.
 //
 // Enforcement: scripts/check-env-registry.sh greps this file for all
 // "MC2_[A-Z_]+" string literals. Any MC2_* var used in source that does not
@@ -17,8 +16,7 @@
 //
 // Usage:
 //   DeviceCaps caps{};
-//   fillDeviceCaps(caps);             // caller provides; needs GL context
-//   debugDumpFeatureRegistry(caps);   // stderr banner at startup
+//   debugDumpFeatureRegistry(caps);   // optional legacy diagnostic banner
 //
 // Firewall: MUST NOT include any GL header or game-side header.
 
@@ -33,9 +31,10 @@ namespace RenderCore {
 // ---------------------------------------------------------------------------
 // Device capabilities
 // ---------------------------------------------------------------------------
-// POD struct; caller fills it with GL queries after context creation.
-// Zero-initialised default = "unknown / not queried yet".
-// Nothing in this header calls GL.
+// Legacy diagnostic payload; field names and layout are retained for compatibility.
+// Zero-initialised default = "unknown / not queried yet". These fields do not
+// describe the active Vulkan device; see GameOS/gameos/vk_device_profile.h.
+// Nothing in this header queries a graphics API.
 
 struct DeviceCaps {
     int  glMajor              = 0;   // GL_MAJOR_VERSION
@@ -97,7 +96,7 @@ enum class RendererFeature : int {
     // Feature gates
     ObjectIdBuffer      = 2,   // MC2_OBJECT_ID_BUFFER
     TerrainTessellation = 3,   // MC2_TERRAIN_TESS (default-ON kill-switch, ISSUE-34)
-    ReverseZ            = 4,   // (no env var -- glClipControl unconditional)
+    ReverseZ            = 4,   // reverse-Z is unconditional
     ShadowMaps          = 5,   // MC2_SHADOW_ENABLE
     ImGui               = 6,   // MC2_IMGUI
     ImGuiInspector      = 7,   // MC2_IMGUI_INSPECTOR
@@ -820,7 +819,7 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
 // Debug dump
 // ---------------------------------------------------------------------------
 // Emits a [RENDERER_FEATURES v1] startup banner to stderr.
-// Call once after fillDeviceCaps() and GL context creation.
+// Optional legacy diagnostic; preserves the v1 field names for log consumers.
 // Prints Feature entries normally; Retired entries with [RETIRED] tag.
 // Trace entries (kAuxEnvVars) are not printed here -- they are per-subsystem.
 

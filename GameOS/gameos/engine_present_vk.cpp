@@ -275,21 +275,6 @@ bool objectIdDirectChainGateEnabled() {
     return on;
 }
 
-// VK-RUNG8-ITEM8: the present interop tail is deleted. A present gate that only
-// ever SELECTED a now-deleted branch is retired to a parseable no-op (item-9
-// pattern). MC2_VK_PRESENT_SKIP_GL_HANDOFF selected the VK-owned skip of the
-// GL->VK handoff (the handoff itself is gone -> the skip is unconditional).
-// MC2_VK_PRESENT_TAIL_HOOK is NOT retired -- it still gates the native HUD/ImGui
-// tail recording. Emitted once from init().
-void emitDeprecatedPresentGateNotes() {
-    static bool done = false;
-    if (done) return;
-    done = true;
-    if (mc2::gate::get<"MC2_VK_PRESENT_SKIP_GL_HANDOFF">())
-        plog("MC2_VK_PRESENT_SKIP_GL_HANDOFF is deprecated (item-8): the GL->VK "
-             "present handoff is deleted; the skip is now unconditional. No-op.");
-}
-
 bool presentNativeStrictEnabled() {
     static const bool on = mc2::gate::get<"MC2_VK_PRESENT_NATIVE_STRICT">();
     return on;
@@ -1977,7 +1962,6 @@ bool EnginePresentVk::init(VulkanContext& ctx, SDL_Window* window, uint32_t w, u
 
     created_ = true;
     health_.created = true;
-    emitDeprecatedPresentGateNotes();
     if (s.ctx) health_.validation_errors = s.ctx->health().validationErrors;
     plog("present path UP: extent=%ux%u images=%zu mode=%s.",
          s.scExtent.width, s.scExtent.height, s.scImages.size(),
