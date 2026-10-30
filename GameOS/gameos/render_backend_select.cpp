@@ -59,7 +59,7 @@ void fatalBackendFailure(const char* reason) {
     if (!automated) {
         std::string text = "MechCommander 2 could not start the Vulkan renderer:\n\n";
         text += why;
-        text += "\n\nUpdate your graphics driver and make sure the GPU supports Vulkan 1.3.";
+        text += "\n\nUpdate your graphics driver and make sure the GPU supports the Vulkan 1.2 device profile.";
         MessageBoxA(nullptr, text.c_str(), "MechCommander 2", MB_OK | MB_ICONERROR);
     }
 #endif

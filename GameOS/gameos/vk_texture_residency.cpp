@@ -127,7 +127,7 @@ bool TextureResidency::init() {
     flat.pixels={128,128,255,255}; arrayPlaceholder_=upload(flat,false,nullptr,1,true);
     if (!arrayPlaceholder_) return false;
     table_->placeholder(placeholder_);
-    MC2_LOG(Vk, Debug, "[VK_TEXTURE_SERVICE v1] capacity={} flights=2 placeholder=0 legacy_boundary=P9", capacity_);
+    MC2_LOG(Vk, Info, "[VK_TEXTURE_SERVICE v1] capacity={} flights=2 placeholder=0 legacy_boundary=P9", capacity_);
     return true;
 }
 

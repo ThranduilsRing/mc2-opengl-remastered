@@ -387,6 +387,22 @@ bool VulkanContext::init(bool wantPresent) {
         health_.deviceName[sizeof(health_.deviceName) - 1] = '\0';
         health_.profileLine = profile::formatLine(pick->name, pick->caps, pick->ev);
         profileLog(health_.profileLine);
+        VkPhysicalDeviceDriverProperties driver{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DRIVER_PROPERTIES};
+        VkPhysicalDeviceProperties2 props{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2};
+        props.pNext = caps.usableApi() >= profile::kFloorApi ? &driver : nullptr;
+        vkGetPhysicalDeviceProperties2(phys_, &props);
+        VkPhysicalDeviceMemoryProperties memory{};
+        vkGetPhysicalDeviceMemoryProperties(phys_, &memory);
+        uint64_t localBytes = 0;
+        for (uint32_t i = 0; i < memory.memoryHeapCount; ++i)
+            if (memory.memoryHeaps[i].flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT) localBytes += memory.memoryHeaps[i].size;
+        const auto& limits = props.properties.limits;
+        const auto capacity = (std::min)({4096u, limits.maxPerStageDescriptorSamplers, limits.maxPerStageDescriptorSampledImages,
+            limits.maxDescriptorSetSamplers, limits.maxDescriptorSetSampledImages, limits.maxPerStageResources});
+        std::fprintf(stderr, "[VK_CAPABILITY v1] gpu=\"%s\" driver=\"%s %s\" driver_version=%u vram_mib=%llu low_floor_mib=512 bindless=%u samplers=%u refused=%s\n",
+            pick->name.c_str(), driver.driverName, driver.driverInfo, props.properties.driverVersion,
+            static_cast<unsigned long long>(localBytes / (1024 * 1024)), capacity, limits.maxPerStageDescriptorSamplers,
+            profile::joinOr(pick->ev.missingRequired).c_str());
         if (!accepted) return fail("device profile: required item(s) missing on " + pick->name + ": " + profile::joinOr(pick->ev.missingRequired));
     }
 

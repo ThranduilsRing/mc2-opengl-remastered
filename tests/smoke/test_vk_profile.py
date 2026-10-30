@@ -49,7 +49,7 @@ def test_a_missing_facility_of_the_ruling_refuses_the_device():
         (p,) = vk_profile.parse(line)
         assert not p.accepted and p.required_missing == [facility]
         (problem,) = vk_profile.grade([p])
-        assert "REFUSED" in problem and facility in problem and "fell back to GL" in problem
+        assert "REFUSED" in problem and facility in problem and "refused startup" in problem
 
 
 def test_a_truncated_or_foreign_line_is_skipped():
@@ -63,7 +63,7 @@ def test_grading_is_red_for_a_refused_verdict_and_for_a_contradiction_but_not_fo
     wanted_only = OK_LINE.replace("wanted_missing=-", "wanted_missing=memory_budget")
     assert vk_profile.grade(vk_profile.parse(wanted_only)) == []         # an optional item (the memory-budget extension) is reported, never a failure
     refused = vk_profile.grade(vk_profile.parse(OLD_GPU))
-    assert len(refused) == 1 and "REFUSED" in refused[0] and "api_1_2" in refused[0] and "fell back to GL" in refused[0]
+    assert len(refused) == 1 and "REFUSED" in refused[0] and "api_1_2" in refused[0] and "refused startup" in refused[0]
     contradiction = OK_LINE.replace("required_missing=-", "required_missing=limits")
     assert "lists required item(s) missing" in vk_profile.grade(vk_profile.parse(contradiction))[0]
 
