@@ -158,6 +158,8 @@ def plan(src: Path, guard, seed=None) -> tuple[list, list, int, int]:
 def seed_member(rel, guard, manifest):
     """Only runtime data and manifested payload enter the lean seed projection."""
     low = rel.casefold()
+    if low.startswith('mods/'):
+        return False
     if low in manifest or low == '.deployed_manifest.csv':
         # PDBs are deploy/debug outputs, never runtime seed inputs.
         return not low.endswith('.pdb')
@@ -165,7 +167,7 @@ def seed_member(rel, guard, manifest):
         # Startup reads prefs.cfg unconditionally; minprefs.cfg supplies the
         # first-run options/orgprefs defaults. Neither is deployed payload.
         return low.endswith(('.fst', '.pak')) or low in (
-            'options.cfg', 'system.cfg', 'prefs.cfg', 'minprefs.cfg')
+            'options.cfg', 'system.cfg', 'prefs.cfg', 'minprefs.cfg', 'orgprefs.cfg')
     if low.startswith(('cache/', 'crashes/', 'debug_state/', 'saved_bookmarks/', 'mods/')):
         return False
     if low.endswith(('.log', '.tmp', '.bak', '.cookstamp', '.dmp')):
@@ -682,7 +684,7 @@ def write_seed_manifest(dst, seed):
         fields = ['relpath', 'sha256', 'bytes', 'src_commit', 'timestamp', 'mtime_ns']
         writer.writerow(fields)
         for row in seed.values():
-            if not row['relpath'].lower().endswith('.pdb'):
+            if (dst / row['relpath']).is_file() and not row['relpath'].lower().endswith('.pdb'):
                 writer.writerow([row.get(k, '') for k in fields])
 
 

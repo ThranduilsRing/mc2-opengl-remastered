@@ -74,11 +74,12 @@ def lean_tool():
 
 
 def lean_fixture(src):
-    payload = ['mc2.exe', 'runtime.dll', 'shaders_vk/a.spv', 'data/terrain_materials.json', 'mc2.pdb']
+    payload = ['mc2.exe', 'runtime.dll', 'shaders_vk/a.spv', 'data/terrain_materials.json', 'mc2.pdb',
+               'mods/deployed/mod.json']
     junk = ['debug_state/state.json', 'cache/content-model/temp.mci', 'harness.log',
             'data/textures/123.456.ktx2', 'tools/authoring.exe', 'mods/custom/mod.json']
     for rel in payload + junk + ['textures.fst', 'data/missions/a.fit', 'options.cfg', 'system.cfg',
-                               'prefs.cfg', 'minprefs.cfg']:
+                               'prefs.cfg', 'minprefs.cfg', 'orgprefs.cfg']:
         path = src / rel
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(b'fixture')
@@ -99,12 +100,16 @@ def test_lean_projection_is_private_and_has_no_runtime_cache(tmp_path):
     guard = iso._load_guard()
     links, copies, _, copied_bytes = iso.plan(src, guard, seed)
     all_rels = {r for r, _ in links + copies}
-    assert set(payload) - {'mc2.pdb'} <= all_rels
+    assert set(payload) - {'mc2.pdb', 'mods/deployed/mod.json'} <= all_rels
+    assert 'mods/deployed/mod.json' not in all_rels
     assert not set(junk) & all_rels
     assert 'mc2.pdb' not in all_rels
     assert 'textures.fst' in {r for r, _ in links}
-    assert {'prefs.cfg', 'minprefs.cfg'} <= {r for r, _ in copies}
+    assert {'prefs.cfg', 'minprefs.cfg', 'orgprefs.cfg'} <= {r for r, _ in copies}
     iso.build(src, dst, links, copies)
+    iso.write_seed_manifest(dst, seed)
+    projected = iso.verified_seed(dst)
+    assert set(projected) == set(payload) - {'mc2.pdb', 'mods/deployed/mod.json'}
     assert not (src / 'mc2.exe').samefile(dst / 'mc2.exe')
     for rel in ('prefs.cfg', 'minprefs.cfg'):
         assert (dst / rel).read_bytes() == (src / rel).read_bytes()
