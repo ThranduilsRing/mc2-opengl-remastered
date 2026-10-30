@@ -319,8 +319,9 @@ def run_fixture(mission: str, save_at: int, load_at: int, deploy: bool, out: str
     env = dict(os.environ, **resave_env(save_at, load_at))
     # A movie defers BOTH fixtures, preserving their gap. mc2_03 saves about
     # 449 ticks late: load_at + 120 used to terminate before its quickload.
-    # Keep bounded headroom; continuation still judges only its 1..60 ticks.
-    headless_ticks = load_at + max(120, duration * 30)
+    # Keep fixed headroom; duration is a wall timeout, not a simulation budget.
+    # Slow content reloads may need more wall time without adding observed ticks.
+    headless_ticks = load_at + 600
     if continuation:
         env["MC2_SIM_IDENTITY_TRACE_DETAIL"] = "1"
     with savegame_backup.guarded(sdir):
@@ -383,7 +384,7 @@ def resave_verdict(first: str | None, second: str | None, rc: int | None = None)
     if rc:
         return False, [f"the smoke run exited {rc}: the quickload did not complete, so the re-save cannot be trusted (see the run log)"]
     if not first:
-        return False, ["no quicksave was written: the quicksave fixture did not fire (SAVE_AT is a render frame; the run may have ended first)"]
+        return False, ["no quicksave was written: the quicksave fixture did not fire (SAVE_AT is a fixed tick; the run may have ended first)"]
     if not second:
         return False, ["no re-save was written: the quickload did not run or failed (see the run log)"]
     reason = save_evidence(first, "quicksave") or save_evidence(second, "re-save")
