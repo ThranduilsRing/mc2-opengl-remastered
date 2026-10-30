@@ -46,6 +46,9 @@ template<class T> void zero(T& value) {
     else if constexpr (requires { value.reset(); }) value.reset();
     else if constexpr (std::is_array_v<T>) { for (auto& item : value) save_probe::zero(item); }
     else if constexpr (std::is_arithmetic_v<T> || std::is_enum_v<T>) value = T{};
+    else if constexpr (requires { value.x; value.y; value.z; }) {
+        save_probe::zero(value.x); save_probe::zero(value.y); save_probe::zero(value.z);
+    }
     else if constexpr (std::is_trivially_copyable_v<T>) std::memset(&value, 0, sizeof(value));
     else static_assert(sizeof(T) == 0, "zero this nested value independently of its defaults");
 }
