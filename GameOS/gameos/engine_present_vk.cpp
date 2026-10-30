@@ -2788,7 +2788,8 @@ void EnginePresentVk::verifyReadbackContent() {
     mc2vk::VulkanContext& ctx = *s.ctx;
     // First-five-frame proofs need consecutive images. Normal readbacks stay
     // asynchronous; this explicit capture mode retires each copy in its frame.
-    const bool consecutive = mc2::gate::get<"MC2_SCREENSHOT_AT_FRAME">() == -5 && gos::screenshot::pending();
+    const bool consecutive = (mc2::gate::get<"MC2_SCREENSHOT_AT_FRAME">() == -5 && gos::screenshot::pending()) ||
+        (mc2::gate::get<"MC2_EXPERIMENT_TEMPORAL_AB">() != 0 && gos::visual_capture::vkCapturePending());
 
     // ---- consume the outstanding request, if its copy has finished ----
     auto consume = [&](const unsigned char* px, uint32_t rw, uint32_t rh, uint64_t readbackTag) {

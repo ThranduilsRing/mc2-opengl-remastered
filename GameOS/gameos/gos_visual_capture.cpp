@@ -549,7 +549,9 @@ void parse_replay_cfg() {
     static const std::string s_replayPath = mc2::gate::str<"MC2_VISUAL_BOOKMARK_CAPTURE">();   // "" when unset or empty
     g_replay.path = mc2::gate::isSet<"MC2_VISUAL_BOOKMARK_CAPTURE">() ? s_replayPath.c_str() : nullptr;
     if (!g_replay.path) return;
-    { long s = mc2::gate::get<"MC2_VISUAL_SETTLE">(); if (s > 0) g_replay.settleFrames = static_cast<int>(s); }
+    { long s = mc2::gate::get<"MC2_VISUAL_SETTLE">();
+      if (s > 0 || (s == 0 && mc2::gate::get<"MC2_EXPERIMENT_TEMPORAL_AB">() != 0))
+          g_replay.settleFrames = static_cast<int>(s); }
     g_replay.dir = mc2::gate::isSet<"MC2_VISUAL_CAPTURE_DIR">() ? mc2::gate::str<"MC2_VISUAL_CAPTURE_DIR">() : std::string(".");
     // Reuse MC2_VISUAL_CAPTURE_FRAME as the deterministic sweep-trigger frame
     // (default 120). Both runs trigger the freeze+sweep at the same frame so
