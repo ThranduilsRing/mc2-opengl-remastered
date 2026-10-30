@@ -266,6 +266,8 @@ def first_run(install: Path, out_dir: Path) -> None:
     if (install / "options.cfg").read_bytes() != (install / "minprefs.cfg").read_bytes():
         fail("first startup did not copy minprefs.cfg to options.cfg", code=2)
     text = (out_dir / "first-run.log").read_text(encoding="utf-8", errors="replace")
+    if "[BUILD_FINGERPRINT v1]" not in text:
+        fail("first startup emitted no build fingerprint", code=2)
     if "[RENDER_BACKEND] FATAL" in text:
         fail("first startup refused the Vulkan device", code=2)
 

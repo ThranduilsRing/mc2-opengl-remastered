@@ -111,8 +111,12 @@ z() {
     # Every independently downloaded asset carries the distribution terms.
     cp "$REPO/license.txt" "$REPO/EULA.txt" "$REPO/LICENSES.md" \
        "$REPO/THIRD_PARTY_NOTICES.md" .
-    "$SEVENZIP" a -tzip -mx=7 -mmt=1 -bso0 -bsp0 "$@" \
-        license.txt EULA.txt LICENSES.md THIRD_PARTY_NOTICES.md
+    if [ "$2" = "." ]; then
+        "$SEVENZIP" a -tzip -mx=7 -mmt=1 -bso0 -bsp0 "$@"
+    else
+        "$SEVENZIP" a -tzip -mx=7 -mmt=1 -bso0 -bsp0 "$@" \
+            license.txt EULA.txt LICENSES.md THIRD_PARTY_NOTICES.md
+    fi
 }
 
 # Stage a clean tree we can shape, so we can exclude stock-resolution burnins
