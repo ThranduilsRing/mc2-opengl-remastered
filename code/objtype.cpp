@@ -351,8 +351,12 @@ ObjectTypePtr ObjectTypeManager::load (ObjectTypeNumber objTypeNum, bool noCache
 	else if (objTypeNum >= objectFile->getNumPackets()) {
 		// Mission part IDs are FitIDs from buildings.csv; mechs and vehicles past the end of the pak (every
 		// MC2X/MCO campaign) take their chassis from the CSV via BattleMech::init(variantNum). The stub
-		// substitution below is the designed path; seeking the pak only raised STOP[PACKET_OOB] and four Fatal lines.
+		// is the designed path; seeking the pak only raised STOP[PACKET_OOB] and four Fatal lines.
 		++s_skippedFitIds;
+		auto csvMechType = std::make_unique<BattleMechType>();
+		csvMechType->setObjTypeNum(objTypeNum);
+		objType = csvMechType.release(); // typeStore below takes ownership
+		objectTypeNum = BATTLEMECH_TYPE;
 		}
 	else if (objectFile->seekPacket(objTypeNum) == NO_ERR) {
 		if (objTypeNum == 268) {
@@ -392,8 +396,8 @@ ObjectTypePtr ObjectTypeManager::load (ObjectTypeNumber objTypeNum, bool noCache
 			Fatal(CANT_LOAD_INVALID_OBJECT, " ObjectTypeManager.load: can't create object ");
 			break;
 		case BATTLEMECH_TYPE: {
-			if (packageType)
-				break;               // built from the package definition above
+			if (objType)
+				break;               // built from the CSV stub or package definition above
 			objType = new BattleMechType;
 			objType->setObjTypeNum(objTypeNum);
 			if (objType->init(objectFile,objectFile->getPacketSize()) != NO_ERR)
