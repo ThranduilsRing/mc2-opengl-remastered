@@ -1,7 +1,34 @@
 #include "doctest.h"
 #include "tactical_order_queue.h"
+#include "save_field_probe.h"
 
 #include <algorithm>
+
+namespace mc2::sim {
+struct TacticalOrderQueueFieldProbe {
+    static void check(TacticalOrderQueue& sample) {
+        using T = TacticalOrderQueue;
+        SAVE_FIELD_SHAPE(sample, pending, sources, receipts, nextReceiptId, completed,
+            executing, applying, nextApplying, applicationActive);
+        CHECK(save_probe::memberBytes<T>(&T::pending_, &T::sources_, &T::receipts_,
+            &T::nextReceiptId_, &T::completed_, &T::executing_, &T::applying_,
+            &T::nextApplying_, &T::applicationActive_) + 7 == sizeof(T));
+        save::Archive writer;
+        sample.serialize(writer);
+        REQUIRE(writer.good());
+        // completed_ belongs to the caller's tick boundary; the other non-wire
+        // members are idle execution scratch and serialize rejects an active tick.
+        T decoded(sample.completed_);
+        save::Archive reader(writer.bytes());
+        decoded.serialize(reader);
+        REQUIRE(reader.finish());
+        CHECK(decoded.pending_ == sample.pending_);
+        CHECK(decoded.sources_ == sample.sources_);
+        CHECK(decoded.receipts_ == sample.receipts_);
+        CHECK(decoded.nextReceiptId_ == sample.nextReceiptId_);
+    }
+};
+}
 
 namespace {
 using namespace mc2::sim;
@@ -84,6 +111,23 @@ void drain(TacticalOrderQueue& queue, Tick tick, Application& application) {
 } // namespace
 
 TEST_SUITE("TacticalOrderQueue") {
+TEST_CASE("save fields: ORDQ private state census and continuation image") {
+    Permit permit;
+    TacticalOrderQueue queue;
+    Application application;
+    constexpr uint32_t source = 0x01010101, instance = 0x02020202;
+    REQUIRE(queue.registerSource({source, SourceKind::ABL, InstanceId{instance}}));
+    auto first = order(source, 0, 1);
+    first.issuer = InstanceId{instance};
+    first.queueMode = QueueMode::Append;
+    REQUIRE(queue.submit(first, permit));
+    drain(queue, 1, application);
+    auto second = first;
+    second.sequence = 1;
+    second.applyTick = 10;
+    REQUIRE(queue.submit(second, permit));
+    TacticalOrderQueueFieldProbe::check(queue);
+}
 TEST_CASE("mission content source codec bounds and permission rules") {
     Permit permit;
     TacticalOrderQueue queue;

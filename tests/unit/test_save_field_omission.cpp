@@ -126,7 +126,7 @@ TEST_CASE("save fields: ORDQ nested payloads independent member census") {
         move.wayPath = path;
         SAVE_FIELD_SHAPE(move, wayPath, faceObject, wait, mode, escapeTile, jump, fromArea, keepMoving);
         CHECK(save_probe::memberBytes<T>(&T::wayPath, &T::faceObject, &T::wait, &T::mode,
-            &T::escapeTile, &T::jump, &T::fromArea, &T::keepMoving) + 7 == sizeof(T));
+            &T::escapeTile, &T::jump, &T::fromArea, &T::keepMoving) + 11 == sizeof(T));
         CHECK(save_probe::roundtrip(move, [](auto& a, auto& v) { a(v); }, &T::wayPath,
             &T::faceObject, &T::wait, &T::mode, &T::escapeTile, &T::jump, &T::fromArea, &T::keepMoving));
     }
@@ -151,11 +151,31 @@ TEST_CASE("save fields: ORDQ nested payloads independent member census") {
     sample.attack = attack;
     sample.target = ObjectRef{0x01010101, 0x02020202};
     SAVE_FIELD_SHAPE(sample, orderId, origin, kind, unitOrder, subOrder, move, attack, target, formationOrdinal, groupFlags, support);
-    CHECK(save_probe::memberBytes<T>(ORDER_MEMBERS) + 2 == sizeof(T));
+    CHECK(save_probe::memberBytes<T>(ORDER_MEMBERS) + 10 == sizeof(T));
     CHECK(save_probe::roundtrip(sample, [](auto& a, auto& v) { a(v); }, ORDER_MEMBERS));
     sample.kind = OrderKind::Airstrike;
     sample.move.reset(); sample.attack.reset(); sample.target.reset();
     sample.support = AirstrikeCommand{CommanderId{0x03030303}, {1.25f, 2.25f, 3.25f}, StrikeKind::Large};
     CHECK(save_probe::roundtrip(sample, [](auto& a, auto& v) { a(v); }, ORDER_MEMBERS));
 #undef ORDER_MEMBERS
+}
+
+TEST_CASE("save fields: ORDQ leaf shapes reject additions even inside padding") {
+    using namespace mc2::sim;
+    ObjectRef ref; SAVE_FIELD_SHAPE(ref, slot, generation);
+    CommanderId commander; SAVE_FIELD_SHAPE(commander, value);
+    InstanceId instance; SAVE_FIELD_SHAPE(instance, value);
+    RosterEntryId roster; SAVE_FIELD_SHAPE(roster, value);
+    AirstrikeCommand airstrike; SAVE_FIELD_SHAPE(airstrike, commanderId, worldPoint, strikeKind);
+    ReinforcementCommand reinforcement; SAVE_FIELD_SHAPE(reinforcement, commanderId, rosterEntryIds, worldPoint);
+    ObjectiveArgument objective; SAVE_FIELD_SHAPE(objective, objectiveId, completed);
+    ResourceArgument resource; SAVE_FIELD_SHAPE(resource, commanderId, resourcePoints);
+    MissionResultArgument result; SAVE_FIELD_SHAPE(result, result);
+    MissionControlCommand control; SAVE_FIELD_SHAPE(control, action, arguments);
+    OrderSource source; SAVE_FIELD_SHAPE(source, sourceId, kind, instanceId, nextSequence, lastAdmittedSequence);
+    OrderEnvelope envelope; SAVE_FIELD_SHAPE(envelope, applyTick, sourceId, sequence, issuer, recipients, queueMode, payload);
+    ApplicationOutcome outcome; SAVE_FIELD_SHAPE(outcome, result, reasonCode);
+    RecipientResult recipient; SAVE_FIELD_SHAPE(recipient, recipient, ordinal, result, reasonCode);
+    OrderReceipt receipt; SAVE_FIELD_SHAPE(receipt, receiptId, sourceId, sequence, applyTick,
+        admissionStatus, applicationStatus, results, commandResult, acknowledged);
 }
