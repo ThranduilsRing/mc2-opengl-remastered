@@ -16,9 +16,9 @@ long GameObjectManager::buildMoverLists (void) {
 
 	for (long i = 0; i < numMechs; i++) {
 		MoverPtr mover = dynamic_cast<MoverPtr>(mechs[i]);
+		moverList[numMovers++] = mover;
 		if (!mover->getTeam())
 			continue;
-		moverList[numMovers++] = mover;
 		if (mover->getTeam()->isFriendly(Team::home))
 			goodMoverList[numGoodMovers++] = mover;
 		else if (mover->getTeam()->isEnemy(Team::home))
@@ -27,9 +27,9 @@ long GameObjectManager::buildMoverLists (void) {
 
 	for (int i = 0; i < numVehicles; i++) {
 		MoverPtr mover = dynamic_cast<MoverPtr>(vehicles[i]);
+		moverList[numMovers++] = mover;
 		if (!mover->getTeam())
 			continue;
-		moverList[numMovers++] = mover;
 		if (mover->getTeam()->isFriendly(Team::home))
 			goodMoverList[numGoodMovers++] = mover;
 		else if (mover->getTeam()->isEnemy(Team::home))
