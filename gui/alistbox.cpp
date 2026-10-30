@@ -1363,10 +1363,7 @@ void aTextListItem::render()
 
 void aTextListItem::setText( long resID )
 {
-	char tmp[4096];
-	tmp[0] = 0;
-	cLoadString( resID, tmp, 4095 );
-	text = tmp;
+	text = cLoadString(resID, 4095).c_str();
 }
 
 void aTextListItem::sizeToText()

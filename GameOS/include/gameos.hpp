@@ -394,24 +394,8 @@ void __stdcall GetGameOSEnvironment( const char* CommandLine );
 // Called by the Game to cause GameOS to quit and exit (at the end of the current frame - not immediatly)
 //
 void __stdcall gos_TerminateApplication();
-//
-// In the Environment.TerminateGameEngine routine this function will tell you if you can prompt the user or if you must just terminate (for exmaple on log file playback)
-//
-bool __stdcall gos_UserExit();
-//
-// While the application is inside the Environment.TerminateGameEngine routine it may execute this to make GameOS continue.
-//
-void __stdcall gos_AbortTermination();
 
 
-//
-// This API can be used to create 'modal' dialogs. It will run the GameOS main lopp (reading input devices, rendering etc...) WITHOUT running the gamelogic.
-// This allows you to call this function in a loop from within your GameLogic to wait for a key, do a modal dialog etc.. Then continue with your game logic.
-// This API returns true if the user closed the window or called gos_TerminateApplication. The application will exit when it finishs it's GameLogic loop
-// It is passed the function to call in place of the original gamelogic. If this is passed 0, no game logic is called. If the original gamelogic loop should be used, pass Environment.DoGameLogic
-// Returns true if the game was terminated
-//
-bool __stdcall gos_RunMainLoop( void(__stdcall *DoGameLogic)()=0 );
 
 
 
@@ -689,10 +673,6 @@ void __stdcall gosAudio_AssignResourceToChannel( int Channel, HGOSAUDIO hgosaudi
 void __stdcall gosAudio_SetChannelSlider( int Channel, enum gosAudio_Properties, float value1, float value2 = 0.0f, float value3 = 0.0f );
 void __stdcall gosAudio_GetChannelSlider( int Channel, enum gosAudio_Properties, float* value1, float* value2 = 0, float* value3 = 0 );
 
-//////////////////////////////////////////////////////////////////////////////////
-// Set the speaker configuration. See enum above.
-//
-void __stdcall gosAudio_SetSpeakerConfig( DWORD config );
 
 //////////////////////////////////////////////////////////////////////////////////
 // Play, Loop, Stop, Pause, or Continue a particular channel
@@ -703,22 +683,8 @@ void __stdcall gosAudio_SetChannelPlayMode( int Channel, enum gosAudio_PlayMode 
 //
 gosAudio_PlayMode __stdcall gosAudio_GetChannelPlayMode( int Channel );
 
-//////////////////////////////////////////////////////////////////////////////////
-// Get the filename, type, frequency and number of channels for a sound resource
-//
-void __stdcall gosAudio_GetResourceInfo( HGOSAUDIO hSound, gosAudio_ResourceInfo* sri );
-void __stdcall gosAudio_GetChannelInfo( int Channel, gosAudio_ChannelInfo* sri );
 
-//////////////////////////////////////////////////////////////////////////////////
-// Reset the sound system if you wanna change the original sound device,
-// or the KHz of the mixer....
-//
-void __stdcall gosAudio_Reset();
 
-//////////////////////////////////////////////////////////////////////////////////
-// Get a list of available sound devices. Returns <available> possibilities as strings in <name>
-//
-void __stdcall gosAudio_DeviceOptions( char names[8][128], int* available );
 
 
 
@@ -817,19 +783,6 @@ void __stdcall gos_CloseResourceDLL(HSTRRES Handle);
 //
 const char* __stdcall gos_GetResourceString(HSTRRES Handle, DWORD Id );
 
-//
-// Returns a void* to block of memory stored in the resource .dll. Resources
-// that are stored in this fashion must be a "custom" resource and their resource type
-// string must match that of the 2nd parameter.
-//
-// If the resource cannot be found, a NULL is returned.
-//
-// If the resource is found, size is set to the size of resource in
-// bytes and the resource data is copied into a freshly allocated memory block from the
-// currently designated heap. It is the responsibility of the client application to
-// release this memory when it is no longer needed.
-//
-void* __stdcall gos_GetResourceData( DWORD Handle, const char* type, DWORD id, size_t * size );
 
 //
 // If the user's OS supports IME, this function will Enable/Disable the user's ability to interface with the IME for
@@ -873,11 +826,6 @@ void _stdcall gos_SetIMEAppearance( const gosIME_Appearance* pia );
 //
 void _stdcall gos_GetIMEAppearance( gosIME_Appearance* pia );
 
-//
-// Tell the IME whether or not the IME should process keystrokes in Overwrite mode
-// (bInsert = false) or in Insert mode (bInsert = true)
-//
-void _stdcall gos_SetIMEInsertMode(bool bInsert);
 
 //
 // Returns a localized string describing a date as either short form "02/03/2000" or Verbose form "Wednesday, May 3rd, 1999"
@@ -887,10 +835,6 @@ void _stdcall gos_SetIMEInsertMode(bool bInsert);
 char* __stdcall gos_GetFormattedDate( bool Verbose, WORD Year=-1, WORD Month=-1, WORD Day=-1 );
 
 
-//
-// Returns the year month and day
-//
-void  __stdcall gos_GetUnformattedDate(  WORD *Year, WORD *Month, WORD *Day);
 
 
 //
@@ -972,10 +916,6 @@ void __stdcall gos_TextSetAttributes( HGOSFONT3D FontHandle, DWORD Foreground, f
 // This API just updates internal variables, it's very fast to change any of these parameters
 //
 void __stdcall gos_TextSetPosition( int XPosition, int YPosition );
-//
-// Returns the current print position
-//
-void __stdcall gos_TextGetPrintPosition( int* XPosition, int* YPosition );
 //
 // Set the region that the cursor will be clipped to (in screen pixels)
 // The text will be clipped or wrap when the right edge is reached
@@ -1059,10 +999,6 @@ bool __stdcall gos_FontGetGlyphDesc( HGOSFONT3D FontHandle, int Char, gos_FontGl
 //		//					/ character (/ not followed by a special code will be displayed as - // is only required to display strings like "//color"
 //
 void __stdcall gos_TextDraw( const char *Message, ... );
-//
-// Same as above, but an arglist can be passed
-//
-void __stdcall gos_TextDrawV( const char *Message, char* arglist );
 
 
 
@@ -1103,16 +1039,7 @@ void* __stdcall gos_OpenMemoryMappedFile( const char* FileName, BYTE** MemoryIma
 void __stdcall gos_CloseMemoryMappedFile( void* Handle );
 
 
-//
-// Opens and reads in the whole file in a background thread. The MemoryImage pointer will be NULL until the file is read in completly.
-//    When you are finished with the file, the Close function below must be called.
-//
-DWORD __stdcall gos_ReadFileInBackground( const char* FileName, BYTE** MemoryImage, DWORD* Size, DWORD Offset=0, DWORD MaxSize=0xffffffff );
 
-//
-// Closes and releases the memory used by a file read in the background.
-//
-void __stdcall gos_CloseBackgroundFile( DWORD Handle );
 
 
 
@@ -1722,12 +1649,6 @@ void __stdcall gos_LoadDataFromRegistry( const char* keyName, void* pData, DWORD
 //
 void __stdcall gos_SaveDataToRegistry( const char* keyName,  void* pData,  DWORD szData );
 
-//
-// Saves a string starting at pData, length szData into the registry key specified.
-//
-// This is the same as the gos_SaveDataToRegistry API, except it's saved as a readable string
-//
-void __stdcall gos_SaveStringToRegistry( const char* keyName,  char* pData,  DWORD szData );
 
 
 // sebi:
@@ -1781,10 +1702,6 @@ bool __stdcall gos_NetCheckLobby();
 //
 bool __stdcall gos_NetStartGame( char* GameOptionsScript, bool Secure=0 );
 
-//
-// Leaves the current network game.
-//
-void __stdcall gos_NetEndGame();
 
 //
 // Returns networking information
@@ -1841,7 +1758,6 @@ enum gosNetInfo
 
 };
 
-void* __stdcall gos_NetInformation( gosNetInfo Info, DWORD Parameter=0, char* Name=0 );
 
 
 
@@ -1891,15 +1807,7 @@ struct _NetPacket
 #pragma pack(pop)
 
 
-//
-// Get the next network message, returns 0 when no more messages
-//
-NetPacket* __stdcall gos_NetGetMessage();
 
-//
-// Send a network message
-//
-bool __stdcall gos_NetSendMessage( NetPacket* Message );
 
 
 
@@ -1917,10 +1825,6 @@ enum gos_NetCommands
 	gos_Commend_UpdateMaxPlayers,	// Updates the number of maximum players allowed in a game from Environment.NetworkMaxPlayers
 
 };
-//
-//
-//
-void __stdcall gos_NetServerCommands( gos_NetCommands Command, DWORD Data1 );
 
 
 
@@ -2286,15 +2190,7 @@ void __stdcall gos_DrawLines( gos_VERTEX* Vertices, int NumVertices );
 //
 void __stdcall gos_DrawTriangles( gos_VERTEX* Vertices, int NumVertices );
 
-//
-// Draws a strip, pass a pointer to an array of gos_VERTEX's - every vertex after the 2nd is a new triangle
-//
-void __stdcall gos_DrawStrips( gos_VERTEX* Vertices, int NumVertices );
 
-//
-// Draws a fan, pass a pointer to an array of gos_VERTEX's - every vertex after the 2nd is a new triangle
-//
-void __stdcall gos_DrawFans( gos_VERTEX* Vertices, int NumVertices );
 
 //
 // Draw quads, pass a pointer to an array of gos_VERTEX's - every four vertices is a new quad
@@ -2318,9 +2214,7 @@ void __stdcall gos_RenderIndexedArray( gos_VERTEX_3UV* pVertexArray, DWORD Numbe
 
 
 void __stdcall gos_SetRenderViewport(float x, float y, float w, float h);
-void __stdcall gos_GetRenderViewport(float* x, float* y, float* w, float* h); //sebi
 
-void __stdcall gos_ForceApplyRenderStates();
 void __stdcall gos_InvalidateRenderStateCache();
 
 // Terrain tessellation API
@@ -2328,9 +2222,6 @@ void __stdcall gos_SetTerrainTessParams(float level, float near_dist, float far_
 void __stdcall gos_SetTerrainPhongAlpha(float a);
 void __stdcall gos_SetTerrainDisplaceScale(float s);
 void __stdcall gos_SetTerrainWireframe(bool w);
-void __stdcall gos_TerrainExtraReset();
-void __stdcall gos_TerrainExtraAdd(const gos_TERRAIN_EXTRA* data, int count);
-void __stdcall gos_SetTerrainBatchExtras(const gos_TERRAIN_EXTRA* extras, int count);
 void __stdcall gos_SetTerrainDebugMode(float mode);
 float __stdcall gos_GetTerrainDebugMode();
 bool __stdcall gos_IsTerrainTessellationActive();
@@ -2364,12 +2255,6 @@ int   mc2ShaderPathTint();
 // Stuff::Matrix4D -> row-major and writes the terrain_mvp_ cache so all
 // gos_GetTerrainMVPMat4() callers inherit transparently.
 void __stdcall gos_SetWorldToClipGL(const glm::mat4& mat);
-// gos_SetTerrainMVP: raw 16-float row-major matrix upload to terrain_mvp_.
-// Used by EditorCamera.h shim and gamecam.cpp (via gos_SetWorldToClipGL).
-// The two APIs write the SAME terrain_mvp_ cache; use whichever matches
-// the matrix available (Stuff::Matrix4D vs raw float[16]).
-void __stdcall gos_SetTerrainMVP(const float* matrix16);
-void __stdcall gos_SetTerrainViewport(float vmx, float vmy, float vax, float vay);
 void __stdcall gos_SetTerrainCameraPos(float x, float y, float z);
 
 // World-space overlay batch API ─────────────────────────────────────────────
@@ -2410,11 +2295,9 @@ void gos_SetTerrainLightDir(float x, float y, float z);
 // shaders multiply it into their RAW (unburned) texels. Killswitch
 // MC2_CEMENT_MISSION_LIGHT=0 forces (1,1,1) inside the setter.
 void gos_SetTerrainMissionFlatLight(float r, float g, float b);
-void gos_GetTerrainMissionFlatLight(float* r, float* g, float* b);
 void gos_SetTerrainDetailParams(float tiling, float strength);
 // Detail-normal slot `index` (0-8) takes a texture from gos_NewTerrainNormalTexture and owns it from then on.
 void gos_SetTerrainMaterialNormal(int index, DWORD handle);
-void gos_SetTerrainWorldScale(float scale);
 void gos_SetTerrainCellBombParams(float scale, float jitter, float rotation);
 void gos_SetTerrainPOMParams(float scale, float minLayers, float maxLayers);
 // A width x width RGBA8 detail-normal texture as a gos texture handle (REPEAT, linear, no mips); its texels stay with the handle
@@ -2490,8 +2373,6 @@ void __stdcall gos_SetHudCanvasExemptMode(int mode);
 int  __stdcall gos_GetHudCanvasExemptMode();
 bool __stdcall gos_ComputeHudCanvasBox(int w, int h, int* ox, int* oy, int* obw, int* obh);
 
-// Shadow mode — render terrain depth to shadow FBO
-void gos_SetShadowMode(bool enable);
 
 // GPU particle bridge — narrow GL-name resolver.
 // Returns the raw OpenGL texture name (GLuint) for a resident GOS texture
@@ -2744,35 +2625,11 @@ enum gosPRIMITIVETYPE
 
 
 
-//
-// Sets the region of screen that will be rendered to. (The default values set at the start of each frame are 0, 0, Environment.screenWidth, Environment.screenHeight)
-//
-void __stdcall gos_SetViewport( DWORD LeftX, DWORD RightX, DWORD Width, DWORD height, float MinZ=0.0f, float MaxZ=1.0f );
 
-//
-// Sets the WORLD/VIEW or PROJECTION matrix
-//
-void __stdcall gos_SetTransform( gosTRANSFORMTYPE TransformType, gosMATRIX* MatrixData );
 
-//
-// Multiplies the current WORLD/VIEW or PROJECTION matrix by another
-//
-void __stdcall gos_MultiplyTransform( gosTRANSFORMTYPE TransformType, gosMATRIX* MatrixData );
 
-//
-// Sets the parameters of a light (LightNumber can be any number)
-//
-void __stdcall gos_SetLight( DWORD LightNumber, gosLIGHT* LightData );
 
-//
-// Enables / Disables a light (Maximum of gos_GetMachineInformation( gos_Info_GetMaximumActiveLights ) lights enabled at once)
-//
-void __stdcall gos_LightEnable( DWORD LightNumber, bool Enable );
 
-//
-// Sets the parameters of the current material
-//
-void __stdcall gos_SetMaterial( gosMATERIAL* MaterialData );
 
 //
 // Transforms and renders an indexed array of vertices
@@ -2781,80 +2638,16 @@ void __stdcall gos_SetMaterial( gosMATERIAL* MaterialData );
 //
 void __stdcall gos_RenderIndexedArray( void* pVertexArray, DWORD NumberVertices, WORD* lpwIndices, DWORD NumberIndices, gosVERTEXTYPE VertexType, gosPRIMITIVETYPE PrimitiveType=PRIMITIVE_TRIANGLELIST );
 
-//sebi
-HGOSRENDERMATERIAL __stdcall gos_getRenderMaterial(const char* material);
-void __stdcall gos_ApplyRenderMaterial(HGOSRENDERMATERIAL material);
-void __stdcall gos_SetRenderMaterialParameterFloat4(HGOSRENDERMATERIAL material, const char* name, const float* v);
-void __stdcall gos_SetRenderMaterialParameterMat4(HGOSRENDERMATERIAL material, const char* name, const float* m);
-void __stdcall gos_SetRenderMaterialParameterInt(HGOSRENDERMATERIAL material, const char* name, int v);
-void __stdcall gos_SetRenderMaterialSamplerUnit(HGOSRENDERMATERIAL material, const char* name, uint32_t unit);
-void __stdcall gos_SetRenderMaterialUniformBlockBindingPoint(HGOSRENDERMATERIAL material, const char* name, uint32_t slot);
-void __stdcall gos_SetCommonMaterialParameters(HGOSRENDERMATERIAL material);
 // Bind shadow map textures + uniforms to an already-applied material (for GPU-projected objects)
 void __stdcall gos_SetupObjectShadows(HGOSRENDERMATERIAL material);
-// [LIGHTSSBO v1] LightsData SSBO (was UBO). Upload = create/grow + rebind
-// buffer to LIGHT_DATA_SSBO_BINDING; Destroy = teardown; BindStorageBlock
-// = per-draw program block->binding for the legacy lit materials.
-void __stdcall gos_LightDataSsbo_Upload(const void* data, size_t bytes);
-// [LIGHTSSBO v2] Split upload: prefix [0..prefixBytes) is the immutable static
-// light table (uploaded only when prefixDirty); suffix [prefixBytes..totalBytes)
-// is the per-frame dynamic light data. `data` is the full contiguous CPU mirror
-// of length totalBytes. On first call / grow, uploads the whole buffer.
-void __stdcall gos_LightDataSsbo_UploadSplit(const void* data, size_t prefixBytes,
-                                             size_t totalBytes, bool prefixDirty);
-void __stdcall gos_LightDataSsbo_Destroy();
-// VEHICLE-LIGHTING-PATH-1: night light-pool bind/upload for material-only
-// callers (mclib ShapeRenderer). No-op-safe when the pool gates are off.
-void __stdcall gos_UploadObjectLightPools(HGOSRENDERMATERIAL material);
 
 
 
-//
-// Returns a handle to a vertex buffer
-//
-// If the Optimized flag is set, when the Vertex Buffer is locked and unlocked the first time it will be optimized. It cannot be locked again after this.
-// Only valid in game logic - not valid in update renderer.
-//
-DWORD __stdcall gos_CreateVertexBuffer( DWORD NumberVertices, bool Optimized, gosVERTEXTYPE VertexType );
 
-//
-// Deletes the vertex buffer
-//
-// Only valid in game logic - not valid in update renderer.
-//
-void __stdcall gos_DeleteVertexBuffer( DWORD VertexBufferHandle );
 
-//
-// Locks a vertex buffer and returns a pointer to the base address
-//
-// If the DiscardContents flag is true, D3D may return a pointer to a new vertex buffer, the old contents will be discarded.
-// If the NoOverwrite flag is true, D3D will assume you are only ADDING new vertices, D3D may still be rendering old vertices in the buffer.
-// Valid in game logic or the update renderer
-//
-void* __stdcall gos_LockVertexBuffer( DWORD VertexBufferHandle, bool DiscardContents, bool NoOverwrite );
 
-//
-// Unlocks a vertex buffer
-//
-// Valid in game logic or the update renderer
-//
-void __stdcall gos_UnLockVertexBuffer( DWORD VertexBufferHandle );
 
-//
-// Application should check this at the start of a frame. If the user has changed modes or video cards, this will be true.
-// All vertex buffers will be marked INVALID and cannot be rendered with until locked and unlocked. (Their content restored).
-//
-// If you pass no parameter, or 0 it will tell you if ALL vertex buffers have been lost since the last frame.
-// If you pass a specific handle to a vertex buffer it will tell you if that vertex buffer is currently lost (so you only have to restore vertex buffers when you need them)
-//
-bool __stdcall gos_VertexBuffersLost( DWORD VertexBufferHandle=0 );
 
-//
-// Renders a vertex buffer of untransformed vertices
-//
-// NOTE: When PrimitiveType is a POINTLIST the lpwIndices and NumberIndices are ignored, it is treated as a list of points
-//
-void __stdcall gos_RenderVertexBuffer( DWORD VertexBufferHandle, DWORD StartVertex, DWORD NumberVertices, WORD* lpwIndices, DWORD NumberIndices, gosPRIMITIVETYPE PrimitiveType=PRIMITIVE_TRIANGLELIST );
 
 
 enum class gosBUFFER_TYPE {
@@ -2892,9 +2685,7 @@ struct gosVERTEX_FORMAT_RECORD {
 
 HGOSBUFFER __stdcall gos_CreateBuffer(gosBUFFER_TYPE type, gosBUFFER_USAGE usage, int element_size, uint32_t count, void* pdata);
 void __stdcall gos_DestroyBuffer(HGOSBUFFER buffer);
-void __stdcall gos_UpdateBuffer(HGOSBUFFER buffer, void* data, size_t offset, size_t num_bytes);
 
-uint32_t gos_GetBufferSizeBytes(HGOSBUFFER buffer);
 
 HGOSVERTEXDECLARATION __stdcall gos_CreateVertexDeclaration(gosVERTEX_FORMAT_RECORD* records, int count);
 void __stdcall gos_DestroyVertexDeclaration(HGOSVERTEXDECLARATION buffer);
@@ -2934,17 +2725,7 @@ void __stdcall gos_SetScreenMode( DWORD Width, DWORD Height, DWORD bitDepth=16, 
 // because gameos_graphics.cpp compiles into the gameos_editor lib without it.
 void __stdcall gos_SetHudResClampEnabled( bool enabled );
 
-// META-FIX design D (MC2_RES_ASSERT runtime audit — RenderCore/
-// ResolutionContract.h): trivial getter for the clamp gate above (only the
-// setter existed before; the per-frame audit in gameosmain.cpp draw_screen
-// needs to READ it to assert "clamp enabled => logical canvas is 800x600").
-bool __stdcall gos_GetHudResClampEnabled();
 
-// META-FIX design D: fresh SDL drawable probe (graphics::get_drawable_size on
-// the live window) for the per-frame audit's staleness check — the cached
-// Environment.drawableWidth/Height only refreshes in handleEvents. Returns
-// false when no renderer/window exists yet. Read-only.
-bool __stdcall gos_ProbeDrawableSize( int* w, int* h );
 
 // PREVIEW-FBO-FIXED-800x600-1: offscreen mech-preview render target, fixed at
 // 800x600 (the legacy 2D UI's native virtual canvas -- Environment.screenWidth
@@ -2958,12 +2739,6 @@ bool __stdcall gos_ProbeDrawableSize( int* w, int* h );
 void __stdcall gos_BeginCameraPreviewRender();
 void __stdcall gos_EndCameraPreviewRender();
 
-//
-// This API sets the current gamma correction value. The default value is 1.0 (no correction applied). All color values are effected by (value/255 ^ (1.0/gamma)).
-//
-void __stdcall gos_SetGammaValue( float Gamma );					// Default 1.0
-void __stdcall gos_SetBrightnessValue( DWORD Brightness );		// Value range 0-10,000, default 750 (See DirectX docs)
-void __stdcall gos_SetContrastValue( DWORD Contrast );			// Value range 0-20,000, default 10,000 (See DirectX docs)
 
 
 //
@@ -3154,53 +2929,12 @@ void __stdcall gos_UnLockTexture( DWORD Handle );
 // raw GL calls rather than the gos texture-state machine.
 //
 
-//
-// Converts from 32bpp source to subrect of n-bpp dest, bypassing intermediate 32bpp buffer
-//
-void __stdcall gos_ConvertTextureRect( DWORD Handle, DWORD DestLeft, DWORD DestTop, DWORD *Source, DWORD SourcePitch, DWORD Width, DWORD Height );
 
 
-//
-// Reinitialise texture manager - recreates the video memory texture heaps based on the Environment settings.
-//
-// Returns false if not enough texture memory (reduce heap sizes)
-//
-bool __stdcall gos_RecreateTextureHeaps();
 
-//
-// Preloads a texture into texture memory - this occurs after the endscene/blit. So may occur in parallel with the next game logic loop.
-//
-void __stdcall gos_PreloadTexture( DWORD Handle );
 
-void __stdcall gos_SetTextureName( DWORD Handle, const char *name );
-const char* __stdcall gos_GetTextureName( DWORD Handle );
 
-//
-// Render to a texture using blade.
-//
-// Currently GameOS only supports rendering to the alpha bit of a KEYED texture (ie: 1555).
-// When you start rendering, the texture will be filled with the value 0x0000.
-// Where you render with blade, the value 0x8000 will be put in the texture.
-// If you render a model from the lights point of view, you could now use this texture as a 'shadow map'.
-//
-//   . The texture handle passed must be a texture created with these flags: gos_NewEmptyTexture( gos_Texture_Keyed, gosHint_DisableMipmap|gosHint_DontShrink )
-//   . Only one texture can be rendered to at a time.
-//   . No rendering to the back buffer can occur between these two calls.
-//   . A texture that has been already used in the current frame cannot be rendered too.
-//   . No renderstates are allowed between these two calls.
-//
-void __stdcall gos_StartRenderToTexture( DWORD Handle );
-//
-// When rendering to a texture is complete, this API must be called to process it.
-//
-// The 'ClearBorder' parameter will cause GameOS to clear a single pixel border around the texture. This allows the texture to be used in CLAMP mode with no artifacts.
-//
-void __stdcall gos_EndRenderToTexture( bool ClearBorder=0 );
 
-//
-// Returns true if the TGA has a valid header.
-//
-bool __stdcall gos_CheckValidTGA( BYTE *Data, DWORD DataSize );
 
 
 
@@ -3263,11 +2997,6 @@ void __stdcall AddStatistic( const char* Name, const char* TypeName, gosType Typ
 //
 void __stdcall StatisticFormat( const char* String );
 
-//
-// This API will return the value for a statistic. If the statistic is a timer the value returned will always be in milliseconds, never percentage.
-// The 'Frame' parameter can be used to return old data from previous frames. The values 0 to -511 are valid.
-//
-float __stdcall gos_ReturnStatistic( const char* Name, int Frame=0 );
 
 
 
@@ -3328,18 +3057,6 @@ void __stdcall DelDebuggerMenuItem( const char* Name );
 //
 DWORD __stdcall CallDebuggerMenuItem( const char* Name, DWORD MenuFunction );
 
-//
-// This function enables or disables the math exception handler
-//
-// Default precision mode is 53  bits.
-// Single precision mode is 24 bits.
-//
-// When exceptions are enabled, INVALID and ZERODIVIDE cause exceptions
-//
-// You can get the current states (for pushing and poping for example) with GetMathExceptions.
-//
-void __stdcall gos_MathExceptions( bool EnableExceptions, bool SinglePrecision );
-void __stdcall gos_GetMathExceptions( bool* Exceptions, bool* SinglePrecision );
 
 
 
