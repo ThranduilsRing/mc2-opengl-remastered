@@ -52,6 +52,7 @@ template<class T> void zero(T& value) {
 
 template<class T, class Codec, class... M>
 bool roundtrip(T sample, Codec codec, M... members) {
+    const T expected = sample;
     mc2::save::Archive writer;
     codec(writer, sample);
     REQUIRE(writer.good());
@@ -62,7 +63,7 @@ bool roundtrip(T sample, Codec codec, M... members) {
     mc2::save::Archive reader(writer.bytes());
     codec(reader, decoded);
     REQUIRE(reader.finish());
-    return (save_probe::equal(sample.*members, decoded.*members) && ...);
+    return (save_probe::equal(expected.*members, decoded.*members) && ...);
 }
 
 // Pin native padding separately; a new member must update this independent census.

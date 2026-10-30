@@ -58,6 +58,8 @@ TEST_CASE("save fields: nonzero defaults cannot hide a dropped field") {
     struct Defaults { uint32_t first = 7, second = 9; };
     CHECK_FALSE(save_probe::roundtrip(Defaults{1, 9}, [](auto& a, auto& v) { a(v.first); },
         &Defaults::first, &Defaults::second));
+    CHECK_FALSE(save_probe::roundtrip(Defaults{1, 9}, [](auto& a, auto& v) { a(v.first); v.second = 0; },
+        &Defaults::first, &Defaults::second));
 }
 
 TEST_CASE("save fields: ANIM independent member census") {
