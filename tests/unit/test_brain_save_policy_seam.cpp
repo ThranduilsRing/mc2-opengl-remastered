@@ -191,10 +191,19 @@ TEST_CASE("save fields: BRN1 task and runtime scalar census") {
     sample.playerRecoveries = 0x07070707;
     sample.playerHealthTarget = 0x08080808;
     sample.playerTargetHealth = 9.25f;
-    CHECK_FALSE(save_probe::roundtrip(sample, mc2::save::serializeBrainRuntime,
-        &T::playerBestDistance, &T::playerProgressTime, &T::playerFightSince, &T::playerBypassUntil,
-        &T::playerRecoverUntil, &T::playerRegroupUntil, &T::playerRecoveries,
-        &T::playerHealthTarget, &T::playerTargetHealth));
+    const auto knownLoss = [&](auto member, const char* field) {
+        CAPTURE(field);
+        CHECK_FALSE(save_probe::roundtrip(sample, mc2::save::serializeBrainRuntime, member));
+    };
+    knownLoss(&T::playerBestDistance, "playerBestDistance");
+    knownLoss(&T::playerProgressTime, "playerProgressTime");
+    knownLoss(&T::playerFightSince, "playerFightSince");
+    knownLoss(&T::playerBypassUntil, "playerBypassUntil");
+    knownLoss(&T::playerRecoverUntil, "playerRecoverUntil");
+    knownLoss(&T::playerRegroupUntil, "playerRegroupUntil");
+    knownLoss(&T::playerRecoveries, "playerRecoveries");
+    knownLoss(&T::playerHealthTarget, "playerHealthTarget");
+    knownLoss(&T::playerTargetHealth, "playerTargetHealth");
 }
 
 TEST_CASE("BrainSavePolicy/sidecars select TechBrain only from a temporary mod overlay") {
