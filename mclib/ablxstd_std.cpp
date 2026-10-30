@@ -466,7 +466,6 @@ void execStdAssert (void) {
 void execStdRandom (void) {
 
 	int n = ABLi_peekInteger();
-	if (mc2::gate::get<"MC2_SIM_IDENTITY_TRACE_DETAIL">()) mc2::fmt::print_err("[LOADABLRNG] mod={} line={} n={}\n", CurModule ? CurModule->getName() : "?", execLineNumber, n);
 	//---------------------------------------------------------------------
 	// This is, like, a really bad number generator. But, you get the idea.
 	// Once we know which pseudo-random number algorithm we want to use, we
