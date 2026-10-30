@@ -2,7 +2,7 @@
 //
 // Native water input source: mission-static recipes plus per-frame scalars.
 // The Vulkan producer culls the recipe population and emits thin records.
-// No CPU candidate walk or GL upload remains.
+// No CPU thin packing or GL upload remains.
 //
 // Why the indirection: `Terrain::quadList` is rebuilt every frame as a
 // camera-relative window (mapdata.cpp:1072 makeLists), so a "static recipe
@@ -21,6 +21,8 @@ extern int gos_WaterShoreMode();
 #include "gpu_driven_common.h"
 #include "gos_static_prop_killswitch.h"  // gos_GetTerrainMVPMat4()
 #include "gos_terrain_indirect.h"        // IsFrameSolidArmed()
+#include "terrain_field_store.h"
+#include "gos_terrain_lod_chunk.h"
 #include <cassert>
 
 // WATER-BIAS-LINEARIZE-1 (gameos.hpp): FAST-water bias mode (0 = proportional
@@ -97,10 +99,53 @@ struct WaterVisibilityChunk {
 std::vector<WaterVisibilityChunk> g_waterChunks;
 uint32_t g_waterChunkMapSide=0;
 float g_waterChunkThreshold=0;
+std::vector<uint8_t> g_fieldWetRecipes, g_fieldWetChunks;
+uint64_t g_fieldWetVersion=0;
+float g_fieldWetElevation=0;
+
+bool UpdateFieldWaterCoverage(float elevation) {
+    const auto* store=gos_TerrainFieldStore();
+    if (!store) return false;
+    const auto& h=store->waterShoreHeight();
+    const float* b=gos_TerrainLodChunk_WaterShoreHeightBounds();
+    if (h.width<1 || h.height<1 || h.texels.empty() || !b || b[2]<=0 || b[3]<=0) return false;
+    if (g_fieldWetVersion==h.version && g_fieldWetElevation==elevation && g_fieldWetRecipes.size()==g_recipes.size()) return true;
+    g_fieldWetVersion=h.version; g_fieldWetElevation=elevation;
+    g_fieldWetRecipes.assign(g_recipes.size(),0);
+    g_fieldWetChunks.assign(g_waterChunks.size(),0);
+    for (size_t c=0;c<g_waterChunks.size();++c) {
+        for (uint32_t id:g_waterChunks[c].recipes) {
+            const auto& r=g_recipes[id];
+            const float u0=(std::min({r.v0x,r.v1x,r.v2x,r.v3x})-b[0])/b[2];
+            const float u1=(std::max({r.v0x,r.v1x,r.v2x,r.v3x})-b[0])/b[2];
+            const float v0=(b[1]-std::max({r.v0y,r.v1y,r.v2y,r.v3y}))/b[3];
+            const float v1=(b[1]-std::min({r.v0y,r.v1y,r.v2y,r.v3y}))/b[3];
+            bool wet=true; // outside the field, the material uses its legacy fallback
+            if (u0>=0 && u1<=1 && v0>=0 && v1<=1) {
+                const int x0=std::clamp(int(std::floor(u0*(h.width-1)))-1,0,h.width-1);
+                const int x1=std::clamp(int(std::floor(u1*(h.width-1)))+2,0,h.width-1);
+                const int y0=std::clamp(int(std::floor(v0*(h.height-1)))-1,0,h.height-1);
+                const int y1=std::clamp(int(std::floor(v1*(h.height-1)))+2,0,h.height-1);
+                float lo=std::numeric_limits<float>::max(), hi=std::numeric_limits<float>::lowest();
+                for (int y=y0;y<=y1;++y) for (int x=x0;x<=x1;++x) {
+                    const float z=h.texels[size_t(y)*h.width+x]; lo=std::min(lo,z); hi=std::max(hi,z);
+                }
+                // A separable Catmull-Rom sample has at most 9/32 negative
+                // weight. Include overshoot, not just texel minima, so curved
+                // shorelines and small pools cannot disappear from reflections.
+                wet=lo==hi ? lo<elevation : lo-0.28125f*(hi-lo)<=elevation+0.001f;
+            }
+            g_fieldWetRecipes[id]=uint8_t(wet);
+            g_fieldWetChunks[c] |= uint8_t(wet);
+        }
+    }
+    return true;
+}
 
 uint32_t BuildWaterChunks(uint32_t side, float threshold) {
     const uint32_t across=(side+15)/16;
     g_waterChunks.clear();
+    g_fieldWetRecipes.clear();
     g_waterChunks.resize(across*across);
     g_waterChunkMapSide=side;
     g_waterChunkThreshold=threshold;
@@ -375,11 +420,15 @@ std::optional<NativeCapacity> GetNativeCapacity() {
     return NativeCapacity{side * side, n + n / 8u + 4096u};
 }
 
-bool NativeWaterInFrustum(const VkNativeInputs& f) {
+bool NativeWaterInFrustum(const VkNativeInputs& f, bool shoreFieldActive) {
     if (!f.mapSide) return false;
     const float threshold=f.waterElevation+f.shoreExt;
     if (g_waterChunkMapSide!=f.mapSide || threshold>g_waterChunkThreshold)
         BuildWaterChunks(f.mapSide,threshold+64.0f);
+    const bool field=shoreFieldActive && UpdateFieldWaterCoverage(f.waterElevation);
+    // Mode 3 adds 60 wu solely for field carving. Without that field, the
+    // legacy alpha ramp cannot cover those extra dry candidates.
+    const float visibleThreshold=threshold-(!shoreFieldActive && gos_WaterShoreMode()==3 ? 60.0f : 0.0f)+std::abs(f.frameCos);
     // Common outside planes, never "any corner inside": large triangles can
     // cross the viewport even when all their vertices lie outside it.
     const auto mask=[&](float x,float y,float z) {
@@ -392,8 +441,9 @@ bool NativeWaterInFrustum(const VkNativeInputs& f) {
             | (uint32_t(cy < -cw-e)<<3) | (uint32_t(cy > cw+e)<<4);
     };
     const float amplitude=std::abs(f.frameCos);
-    for (const auto& chunk:g_waterChunks) {
-        if (chunk.recipes.empty()) continue;
+    for (size_t c=0;c<g_waterChunks.size();++c) {
+        const auto& chunk=g_waterChunks[c];
+        if (chunk.recipes.empty() || (field && !g_fieldWetChunks[c])) continue;
         uint32_t outside=31;
         for (uint32_t i=0;i<8;++i)
             outside &= mask((i&1)?chunk.maxX:chunk.minX,(i&2)?chunk.maxY:chunk.minY,
@@ -401,7 +451,8 @@ bool NativeWaterInFrustum(const VkNativeInputs& f) {
         if (outside) continue;
         for (uint32_t id:chunk.recipes) {
             const auto& r=g_recipes[id];
-            if (!(r.waterBits&0x01010101u) && std::min({r.v0e,r.v1e,r.v2e,r.v3e})>=threshold) continue;
+            if (field && !g_fieldWetRecipes[id]) continue;
+            if (!(r.waterBits&0x01010101u) && std::min({r.v0e,r.v1e,r.v2e,r.v3e})>=(field?threshold:visibleThreshold)) continue;
             const float x[4]={r.v0x,r.v1x,r.v2x,r.v3x}, y[4]={r.v0y,r.v1y,r.v2y,r.v3y};
             uint32_t clips[4];
             for (uint32_t i=0;i<4;++i)

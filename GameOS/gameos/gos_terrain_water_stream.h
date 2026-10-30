@@ -142,7 +142,7 @@ struct VkNativeInputs {
 bool GetVkNativeInputs(VkNativeInputs& out);
 // Current-camera, conservative water visibility. Static chunk bounds only;
 // no GPU readback, previous-frame visibility, or reflection history.
-bool NativeWaterInFrustum(const VkNativeInputs& frame);
+bool NativeWaterInFrustum(const VkNativeInputs& frame, bool shoreFieldActive);
 
 // Readiness of the native input source, usable before the water pass captures
 // its per-frame MVP/scalars. Does not read a previous frame's captured snapshot.

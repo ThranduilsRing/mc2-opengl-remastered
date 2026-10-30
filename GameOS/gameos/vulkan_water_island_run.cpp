@@ -247,8 +247,6 @@ extern "C" int mc2_vk_water_island_run(
         if (!gos_terrain_lighting::GetVkProducerSnapshot(first) || !first.numVertices) nat = nullptr;
     }
     if (!nat) return 0;   // nothing will submit
-    reflectThisFrame=s->mapHasWater && gos_GetWaterReflectionQuality()==2
-        && WaterStream::NativeWaterInFrustum(*nat);
 
     // Mission reload can destroy the previous bake's view. Refresh the borrowed
     // mask before ANY descriptor rewrite, including the first native thin bind.
@@ -277,6 +275,8 @@ extern "C" int mc2_vk_water_island_run(
         // is really imported (mirrors GL u_shoreFlat = mode==3 && shTex != 0).
         const bool shoreSdf = static_cast<int>(fsLocal.f4[0] + 0.5f) == 3 &&
                               s->shHReal && s->shHSdf;
+        reflectThisFrame=s->mapHasWater && gos_GetWaterReflectionQuality()==2
+            && WaterStream::NativeWaterInFrustum(*nat,shoreSdf);
         vsLocal.p3[1] = shoreSdf ? 1.0f : 0.0f;
         std::memcpy(base, &vsLocal, sizeof(WaterVsParams));
         // RUNG-6.5 fail-soft: if the real HDRI bytes aren't imported (dummy
