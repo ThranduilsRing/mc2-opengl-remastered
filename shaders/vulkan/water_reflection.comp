@@ -32,9 +32,8 @@ void main() {
     vec3 origin=nearP+ray*distanceToPlane;
     vec4 start=U.worldToClip*vec4(origin,1.0);
     if (start.w<=0.0) return;
-    // An opaque surface in front of the water cannot contribute a water pixel.
-    float opaque=textureLod(sceneDepth,uv,0).r;
-    if (opaque>start.z/start.w+U.p2.y+0.0001) return;
+    // Raster water owns coverage. Its shore depth-only lift can cover coarse
+    // terrain above this physical plane, so opaque depth cannot reject it here.
     vec3 reflected=reflect(ray,vec3(0,0,1));
     vec3 endWorld=origin+reflected*65536.0;
     vec4 finish=U.worldToClip*vec4(endWorld,1.0);
@@ -55,18 +54,23 @@ void main() {
     vec3 q0=origin/start.w, q1=endWorld/finish.w;
     float k0=1.0/start.w, k1=1.0/finish.w;
     float previous=0.0;
+    float previousGap=textureLod(sceneDepth,beginUV,0).r-start.z/start.w;
     for (int i=1;i<=24;++i) {
         float t=extent*float(i)/24.0;
         vec2 hitUV=beginUV+delta*t;
         float sceneZ=textureLod(sceneDepth,hitUV,0).r;
         float rayZ=mix(start.z/start.w,finish.z/finish.w,t);
-        if (sceneZ>0.0 && rayZ<sceneZ) {
+        float gap=sceneZ-rayZ;
+        // Reflected rays may travel towards or away from the eye. Find either
+        // crossing direction; a one-sided test loses high-angle reflections.
+        if ((gap>=0.0)!=(previousGap>=0.0)) {
             float lo=previous, hi=t;
             for (int refine=0;refine<5;++refine) {
                 float mid=(lo+hi)*0.5;
                 vec2 midUV=beginUV+delta*mid;
-                if (mix(start.z/start.w,finish.z/finish.w,mid)<textureLod(sceneDepth,midUV,0).r) hi=mid;
-                else lo=mid;
+                float midGap=textureLod(sceneDepth,midUV,0).r-mix(start.z/start.w,finish.z/finish.w,mid);
+                if ((midGap>=0.0)==(previousGap>=0.0)) lo=mid;
+                else hi=mid;
             }
             hitUV=beginUV+delta*hi;
             vec3 hit=unproject(inv,hitUV,textureLod(sceneDepth,hitUV,0).r);
@@ -81,5 +85,6 @@ void main() {
             }
         }
         previous=t;
+        previousGap=gap;
     }
 }
