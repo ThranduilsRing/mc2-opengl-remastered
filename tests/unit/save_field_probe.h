@@ -41,12 +41,24 @@ template<class T, class... M> T patterned(M... members) {
     return value;
 }
 
+template<class T> void zero(T& value) {
+    if constexpr (requires { value.clear(); }) value.clear();
+    else if constexpr (requires { value.reset(); }) value.reset();
+    else if constexpr (std::is_array_v<T>) { for (auto& item : value) save_probe::zero(item); }
+    else if constexpr (std::is_arithmetic_v<T> || std::is_enum_v<T>) value = T{};
+    else if constexpr (std::is_trivially_copyable_v<T>) std::memset(&value, 0, sizeof(value));
+    else static_assert(sizeof(T) == 0, "zero this nested value independently of its defaults");
+}
+
 template<class T, class Codec, class... M>
 bool roundtrip(T sample, Codec codec, M... members) {
     mc2::save::Archive writer;
     codec(writer, sample);
     REQUIRE(writer.good());
     T decoded{};
+    // Default member initializers can equal the pattern and hide an omission.
+    // Zero each independently listed field before invoking the actual decoder.
+    (save_probe::zero(decoded.*members), ...);
     mc2::save::Archive reader(writer.bytes());
     codec(reader, decoded);
     REQUIRE(reader.finish());

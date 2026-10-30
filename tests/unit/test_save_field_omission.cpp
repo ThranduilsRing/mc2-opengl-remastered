@@ -42,6 +42,22 @@ template<> inline void pattern(mc2::sim::ImportedAnimState& value, unsigned char
     using T = mc2::sim::ImportedAnimState;
     value = patterned<T>(IMPORTED_MEMBERS);
 }
+template<> inline void zero(mc2::sim::ImportedAnimState& value) {
+    value = {};
+    value.durationSec = 0;
+    value.lastFrame = 0;
+    value.phase = {0, false, false};
+}
+template<> inline void zero(mc2::sim::TacticalOrder& value) {
+    value = {};
+    value.kind = mc2::sim::OrderKind::None;
+}
+}
+
+TEST_CASE("save fields: nonzero defaults cannot hide a dropped field") {
+    struct Defaults { uint32_t first = 7, second = 9; };
+    CHECK_FALSE(save_probe::roundtrip(Defaults{1, 9}, [](auto& a, auto& v) { a(v.first); },
+        &Defaults::first, &Defaults::second));
 }
 
 TEST_CASE("save fields: ANIM independent member census") {
