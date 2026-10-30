@@ -6,6 +6,11 @@
 #include <tuple>
 #include <type_traits>
 
+// A new field can consume existing padding without changing sizeof. Structured
+// binding arity still changes, so the census fails to compile in that case too.
+#define SAVE_FIELD_SHAPE(value, ...) \
+    (void)[](auto& object) { auto& [__VA_ARGS__] = object; return std::tie(__VA_ARGS__); }(value)
+
 namespace save_probe {
 template<class T> bool equal(const T& a, const T& b) {
     if constexpr (std::is_array_v<T>) {

@@ -35,6 +35,8 @@ TEST_CASE("save fields: BRN1 section fixed tick and mission variables") {
         }
     } restore;
     using E = MissionVarEntry;
+    SAVE_FIELD_SHAPE(g_missionVarStore, entries, count);
+    SAVE_FIELD_SHAPE(g_missionVarStore.entries[0], key, value, lastWriterWID, lastWriteTick);
     CHECK(save_probe::memberBytes<E>(&E::key, &E::value, &E::lastWriterWID, &E::lastWriteTick) == sizeof(E));
     using S = MissionVarStore;
     CHECK(save_probe::memberBytes<S>(&S::entries, &S::count) == sizeof(S));
@@ -88,6 +90,7 @@ TEST_CASE("save fields: BRN1 task and runtime scalar census") {
         using T = BrainTaskEntry;
         auto sample = save_probe::patterned<T>(&T::priority_tier, &T::insertion_frame_ms,
             &T::stable_seq_id, &T::warrior_id, &T::type, &T::_reserved);
+        SAVE_FIELD_SHAPE(sample, priority_tier, insertion_frame_ms, stable_seq_id, warrior_id, type, reserved);
         CHECK(save_probe::memberBytes<T>(&T::priority_tier, &T::insertion_frame_ms,
             &T::stable_seq_id, &T::warrior_id, &T::type, &T::_reserved) + 3 == sizeof(T));
         CHECK(save_probe::roundtrip(sample, mc2::save::serializeBrainTask, &T::priority_tier,
@@ -101,6 +104,23 @@ TEST_CASE("save fields: BRN1 task and runtime scalar census") {
         &T::playerRecoveries, &T::playerHealthTarget, &T::playerTargetHealth,
         &T::waitStates, &T::pendingIntents, &T::pendingIntentCount) + 29 == sizeof(T));
     auto sample = save_probe::patterned<T>(BRAIN_SCALARS);
+    SAVE_FIELD_SHAPE(sample, mode, activeOpordSlot, opordFallbackPolicy, completionFlags,
+        tacticWeights, weightsNormalized, selectedTactic, pendingEventMask, pad,
+        lastRequestOrdersFrame, initialHoldPushed, dispatchEffectApplied, ejectEffectApplied,
+        guardEffectApplied, moveToEffectApplied, attackEffectApplied, retreatEffectApplied,
+        currentState, prevState, specialBody, varStore, specialIndex, patrolWaypointCount,
+        patrolWaypointIndex, patrolWaypoints, patrolLoop, patrolActive, patrolStarted,
+        engageRadius, engageTargetWID, guardHold, playerObjective, playerLastContact,
+        playerBestDistance, playerProgressTime, playerFightSince, playerBypassUntil,
+        playerRecoverUntil, playerRegroupUntil, playerRecoveries, playerHealthTarget,
+        playerTargetHealth, opordType, opordCursor, swAttackerHelpRadius, swDefenderHelpRadius,
+        swRequestHelp, swReturnToPost, swWakeOnAttack, swPoweredDown, postPos, postSet,
+        sentryAsleep, sentryWoken, scoutObserveOnly, escortTargetWID, escortMoving,
+        helpTargetWID, waitStates, waitStateCount, flowFiredIdx, flowFiredCount,
+        pendingIntents, pendingIntentCount);
+    SAVE_FIELD_SHAPE(sample.varStore, entries, count);
+    SAVE_FIELD_SHAPE(sample.varStore.entries[0], key, value, scope);
+    SAVE_FIELD_SHAPE(sample.waitStates[0], verbIndex, armed, satisfied, deadlineMs);
     sample.currentState[31] = sample.prevState[31] = 0;
     sample.patrolWaypointCount = sample.patrolWaypointIndex = 2;
     sample.waitStateCount = sample.flowFiredCount = 2;

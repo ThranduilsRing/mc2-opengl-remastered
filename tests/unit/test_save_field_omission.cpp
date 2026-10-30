@@ -50,6 +50,9 @@ TEST_CASE("save fields: ANIM independent member census") {
     {
         using T = ImportedAnimState;
         imported = save_probe::patterned<T>(IMPORTED_MEMBERS);
+        SAVE_FIELD_SHAPE(imported, activeClip, pendingClip, pendingStreak, turnStreak, havePrev,
+            prevPx, prevPy, prevPz, prevHeading, clipTimeSec, durationSec, lastFrame, phase, mode, locomotion);
+        SAVE_FIELD_SHAPE(imported.phase, prevGesture, jumpStarted, landing);
         imported.phase = {0x15151515, true, true};
         CHECK(save_probe::memberBytes<T>(IMPORTED_MEMBERS) + 6 == sizeof(T));
         CHECK(save_probe::roundtrip(imported, [](auto& a, auto& v) { a(v); }, IMPORTED_MEMBERS));
@@ -57,6 +60,14 @@ TEST_CASE("save fields: ANIM independent member census") {
     using T = UnitAnimState;
     auto sample = save_probe::patterned<T>(ANIM_MEMBERS);
     sample.imported = imported;
+    SAVE_FIELD_SHAPE(sample, mechFrameRate, leftArmOff, rightArmOff, fallen, forceStop,
+        atTransitionToNextGesture, inReverse, inJump, jumpSetup, jumpAirborne, oncePerFrame,
+        lockRotation, velocity, currentStateGoal, currentGestureId, transitionState, oldStateGoal,
+        hitGestureId, currentFrame, lastAnimAdvanceFrame, idleTime, jumpDestination, jumpVelocity,
+        nodeUsed, nodeRecycle, inCombatMode, torsoRotation, turretRotation, pitch, roll,
+        velocityMagnitude, gvAnimationState, gvFrameRate, isReversed, isLooping, setFirstFrame,
+        canTransition, bdAnimationState, bdFrameRate, withdrawSeconds, smokeLevel, wakeRequested,
+        activityEffect, activityLoop, ejectionSerial, destructionSerial, imported);
     CHECK(save_probe::memberBytes<T>(ANIM_MEMBERS) + 14 == sizeof(T));
     CHECK(save_probe::roundtrip(sample, [](auto& a, auto& v) { a(v); }, ANIM_MEMBERS));
 }
@@ -72,6 +83,7 @@ TEST_CASE("save fields: ORDQ execution independent member census") {
     sample.payload.formationOrdinal = 0x02020202;
     sample.payload.groupFlags = 0x03030303;
     sample.pointUnit = ObjectRef{0x04040404, 0x05050505};
+    SAVE_FIELD_SHAPE(sample, payload, issuedTick, notBeforeTick, lastUpdateTick, stage, status, lastMoveGoal, pointUnit);
     CHECK(save_probe::memberBytes<T>(&T::payload, &T::issuedTick, &T::notBeforeTick, &T::lastUpdateTick,
         &T::stage, &T::status, &T::lastMoveGoal, &T::pointUnit) + 0 == sizeof(T));
     CHECK(save_probe::roundtrip(sample, [](auto& a, auto& v) { a(v); }, &T::payload,
@@ -102,6 +114,7 @@ TEST_CASE("save fields: ORDQ nested payloads independent member census") {
         using T = WayPath;
         path = save_probe::patterned<T>(&T::points, &T::curPoint, &T::mode);
         path.curPoint = 1;
+        SAVE_FIELD_SHAPE(path, points, curPoint, mode);
         CHECK(save_probe::memberBytes<T>(&T::points, &T::curPoint, &T::mode) + 4 == sizeof(T));
         CHECK(save_probe::roundtrip(path, [](auto& a, auto& v) { a(v); }, &T::points, &T::curPoint, &T::mode));
     }
@@ -111,6 +124,7 @@ TEST_CASE("save fields: ORDQ nested payloads independent member census") {
         move = save_probe::patterned<T>(&T::faceObject, &T::wait, &T::mode, &T::escapeTile,
             &T::jump, &T::fromArea, &T::keepMoving);
         move.wayPath = path;
+        SAVE_FIELD_SHAPE(move, wayPath, faceObject, wait, mode, escapeTile, jump, fromArea, keepMoving);
         CHECK(save_probe::memberBytes<T>(&T::wayPath, &T::faceObject, &T::wait, &T::mode,
             &T::escapeTile, &T::jump, &T::fromArea, &T::keepMoving) + 7 == sizeof(T));
         CHECK(save_probe::roundtrip(move, [](auto& a, auto& v) { a(v); }, &T::wayPath,
@@ -121,6 +135,7 @@ TEST_CASE("save fields: ORDQ nested payloads independent member census") {
         using T = TacAttackParams;
         attack = save_probe::patterned<T>(&T::type, &T::method, &T::range, &T::tactic,
             &T::aimLocation, &T::pursue, &T::obliterate, &T::targetPoint);
+        SAVE_FIELD_SHAPE(attack, type, method, range, tactic, aimLocation, pursue, obliterate, targetPoint);
         CHECK(save_probe::memberBytes<T>(&T::type, &T::method, &T::range, &T::tactic,
             &T::aimLocation, &T::pursue, &T::obliterate, &T::targetPoint) + 2 == sizeof(T));
         CHECK(save_probe::roundtrip(attack, [](auto& a, auto& v) { a(v); }, &T::type,
@@ -135,6 +150,7 @@ TEST_CASE("save fields: ORDQ nested payloads independent member census") {
     sample.move = move;
     sample.attack = attack;
     sample.target = ObjectRef{0x01010101, 0x02020202};
+    SAVE_FIELD_SHAPE(sample, orderId, origin, kind, unitOrder, subOrder, move, attack, target, formationOrdinal, groupFlags, support);
     CHECK(save_probe::memberBytes<T>(ORDER_MEMBERS) + 2 == sizeof(T));
     CHECK(save_probe::roundtrip(sample, [](auto& a, auto& v) { a(v); }, ORDER_MEMBERS));
     sample.kind = OrderKind::Airstrike;

@@ -16,9 +16,11 @@ TEST_CASE("save fields: warrior queue tail independent member census") {
 	sample.targets = {0x01010101, 0x02020202};
 	sample.curGlobalStep = 1;
 	sample.lastGoalPath = {0x0303, 0x0404};
+	SAVE_FIELD_SHAPE(sample, targets, globalPath, curGlobalStep, lastGoalPath);
 	using S = GlobalPathStep;
 	sample.globalPath = {save_probe::patterned<S>(&S::startDoor, &S::thruArea, &S::goalDoor,
 		&S::start, &S::goal, &S::goalCell, &S::costToGoal)};
+	SAVE_FIELD_SHAPE(sample.globalPath[0], startDoor, thruArea, goalDoor, start, goal, goalCell, costToGoal);
 	CHECK(save_probe::memberBytes<S>(&S::startDoor, &S::thruArea, &S::goalDoor,
 		&S::start, &S::goal, &S::goalCell, &S::costToGoal) == sizeof(S));
 	CHECK(save_probe::memberBytes<T>(&T::targets, &T::globalPath, &T::curGlobalStep,
