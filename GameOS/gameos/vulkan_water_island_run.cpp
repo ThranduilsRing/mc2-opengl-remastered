@@ -225,6 +225,7 @@ extern "C" int mc2_vk_water_island_run(
 
     const clk::time_point tStage0 = clk::now();
     const WaterStream::VkNativeInputs* nat = nullptr;   // STEP 3.4P: set in the feed block when the native producers run this frame
+    bool reflectThisFrame=false;
     {
     ZoneScopedN("VKIsl.Water.Feed");   // VK-ISLAND-TRACY-1: recipe/thin/UBO staging (steps 1-3)
     // ---- 1) Upload recipe SSBO once (mission-static), into device-local memory (the cull compute reads it every frame). ----
@@ -246,6 +247,8 @@ extern "C" int mc2_vk_water_island_run(
         if (!gos_terrain_lighting::GetVkProducerSnapshot(first) || !first.numVertices) nat = nullptr;
     }
     if (!nat) return 0;   // nothing will submit
+    reflectThisFrame=s->mapHasWater && gos_GetWaterReflectionQuality()==2
+        && WaterStream::NativeWaterInFrustum(*nat);
 
     // Mission reload can destroy the previous bake's view. Refresh the borrowed
     // mask before ANY descriptor rewrite, including the first native thin bind.
@@ -296,7 +299,7 @@ extern "C" int mc2_vk_water_island_run(
             fsLocal.f7[2] = (s->maskView != VK_NULL_HANDLE) ? 1.0f : 0.0f;
             fsLocal.f7[3] = halfMap;
         }
-        fsLocal.DEEP_COLOR[3] = s->mapHasWater && gos_GetWaterReflectionQuality()==2 ? 1.0f : 0.0f;
+        fsLocal.DEEP_COLOR[3] = reflectThisFrame ? 1.0f : 0.0f;
         std::memcpy(base + fsUboOff, &fsLocal, sizeof(WaterFsParams));
         if (s->ringBound[par] != uboSpan.buffer) {
             mc2vk::writeDynamicBinding(s->device, s->set[par], 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, uboSpan.buffer, sizeof(WaterVsParams));
@@ -337,7 +340,7 @@ extern "C" int mc2_vk_water_island_run(
             std::memcpy(wf.mvp, nat->mvp, sizeof(wf.mvp));
             wf.frameCos = nat->frameCos; wf.waterElevation = nat->waterElevation; wf.shoreExt = nat->shoreExt;
             wf.mapSide = nat->mapSide; wf.biasLegacy = nat->biasLegacy;
-            if (s->mapHasWater && gos_GetWaterReflectionQuality()==2) {
+            if (reflectThisFrame) {
                 wf.reflectionGroupsX=uint32_t(((w+1)/2+7)/8);
                 wf.reflectionGroupsY=uint32_t(((h+1)/2+7)/8);
             }
@@ -349,7 +352,7 @@ extern "C" int mc2_vk_water_island_run(
         }
 
         const uint32_t uboOffsets[2] = {static_cast<uint32_t>(uboSpan.offset), static_cast<uint32_t>(uboSpan.offset + fsUboOff)};
-        record_reflection(s,cb,par,uboOffsets,s->mapHasWater && gos_GetWaterReflectionQuality()==2);
+        record_reflection(s,cb,par,uboOffsets,reflectThisFrame);
         // All attachments LOAD -> clear values ignored (array must still cover them).
         VkClearValue clears[3]{};
         VkRenderPassBeginInfo rbi{};

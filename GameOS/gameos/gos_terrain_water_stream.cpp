@@ -28,6 +28,8 @@ extern int gos_WaterShoreMode();
 extern int mc2WaterBiasLegacy();
 
 #include <vector>
+#include <algorithm>
+#include <limits>
 #include <unordered_map>
 #include <cstdio>
 #include <cstdlib>
@@ -85,6 +87,37 @@ float EffShoreExt(float baseAlphaDepth) {
 namespace {
 
 std::vector<WaterRecipe> g_recipes;
+// Static 16-cell water chunks make the reflection's empty-view test cheap.
+// Only candidate chunks visit recipes, and the first visible triangle wins.
+struct WaterVisibilityChunk {
+    float minX=std::numeric_limits<float>::max(), minY=std::numeric_limits<float>::max();
+    float maxX=std::numeric_limits<float>::lowest(), maxY=std::numeric_limits<float>::lowest();
+    std::vector<uint32_t> recipes;
+};
+std::vector<WaterVisibilityChunk> g_waterChunks;
+uint32_t g_waterChunkMapSide=0;
+float g_waterChunkThreshold=0;
+
+uint32_t BuildWaterChunks(uint32_t side, float threshold) {
+    const uint32_t across=(side+15)/16;
+    g_waterChunks.clear();
+    g_waterChunks.resize(across*across);
+    g_waterChunkMapSide=side;
+    g_waterChunkThreshold=threshold;
+    uint32_t eligible=0;
+    for (uint32_t i=0;i<g_recipes.size();++i) {
+        const auto& r=g_recipes[i];
+        if (!(r.waterBits&0x01010101u) && std::min({r.v0e,r.v1e,r.v2e,r.v3e})>=threshold) continue;
+        auto& chunk=g_waterChunks[(r.quadIdx/side/16)*across+(r.quadIdx%side/16)];
+        chunk.recipes.push_back(i);
+        chunk.minX=std::min({chunk.minX,r.v0x,r.v1x,r.v2x,r.v3x});
+        chunk.maxX=std::max({chunk.maxX,r.v0x,r.v1x,r.v2x,r.v3x});
+        chunk.minY=std::min({chunk.minY,r.v0y,r.v1y,r.v2y,r.v3y});
+        chunk.maxY=std::max({chunk.maxY,r.v0y,r.v1y,r.v2y,r.v3y});
+        ++eligible;
+    }
+    return eligible;
+}
 // vertexNum (= mapY*realVerticesMapSide + mapX of top-left corner) → recipeIdx
 std::unordered_map<uint32_t, uint32_t> g_vertexNumToRecipe;
 bool g_ready = false;
@@ -111,6 +144,8 @@ inline uint8_t terrainTypeToMaterialLocal(uint32_t terrainType) {
 } // namespace
 
 void Reset() {
+    g_waterChunks.clear();
+    g_waterChunkMapSide=0;
     g_recipes.clear();
     g_recipes.shrink_to_fit();
     g_vertexNumToRecipe.clear();
@@ -132,6 +167,8 @@ bool IsFullRecipeAuthoritative() {
 }
 
 void Build() {
+    g_waterChunks.clear();
+    g_waterChunkMapSide=0;
     g_recipes.clear();
     g_vertexNumToRecipe.clear();
     g_ready = false;
@@ -334,10 +371,47 @@ std::optional<NativeCapacity> GetNativeCapacity() {
     if (!NativeInputSourceReady()) return std::nullopt;
     const uint32_t side = static_cast<uint32_t>(Terrain::realVerticesMapSide);
     const float threshold = Terrain::waterElevation + EffShoreExt(MapData::alphaDepth) + 64.0f;
-    uint32_t n = 0;
-    for (const auto& r : g_recipes)
-        if ((r.waterBits & 0x01010101u) != 0u || r.v0e < threshold || r.v1e < threshold || r.v2e < threshold || r.v3e < threshold) ++n;
+    const uint32_t n=BuildWaterChunks(side,threshold);
     return NativeCapacity{side * side, n + n / 8u + 4096u};
+}
+
+bool NativeWaterInFrustum(const VkNativeInputs& f) {
+    if (!f.mapSide) return false;
+    const float threshold=f.waterElevation+f.shoreExt;
+    if (g_waterChunkMapSide!=f.mapSide || threshold>g_waterChunkThreshold)
+        BuildWaterChunks(f.mapSide,threshold+64.0f);
+    // Common outside planes, never "any corner inside": large triangles can
+    // cross the viewport even when all their vertices lie outside it.
+    const auto mask=[&](float x,float y,float z) {
+        const float* m=f.mvp;
+        const float cx=m[0]*x+m[4]*y+m[8]*z+m[12];
+        const float cy=m[1]*x+m[5]*y+m[9]*z+m[13];
+        const float cw=m[3]*x+m[7]*y+m[11]*z+m[15];
+        const float e=std::abs(cw)*0.0001f+0.001f; // conservative at screen edges
+        return uint32_t(cw < -e) | (uint32_t(cx < -cw-e)<<1) | (uint32_t(cx > cw+e)<<2)
+            | (uint32_t(cy < -cw-e)<<3) | (uint32_t(cy > cw+e)<<4);
+    };
+    const float amplitude=std::abs(f.frameCos);
+    for (const auto& chunk:g_waterChunks) {
+        if (chunk.recipes.empty()) continue;
+        uint32_t outside=31;
+        for (uint32_t i=0;i<8;++i)
+            outside &= mask((i&1)?chunk.maxX:chunk.minX,(i&2)?chunk.maxY:chunk.minY,
+                f.waterElevation+((i&4)?amplitude:-amplitude));
+        if (outside) continue;
+        for (uint32_t id:chunk.recipes) {
+            const auto& r=g_recipes[id];
+            if (!(r.waterBits&0x01010101u) && std::min({r.v0e,r.v1e,r.v2e,r.v3e})>=threshold) continue;
+            const float x[4]={r.v0x,r.v1x,r.v2x,r.v3x}, y[4]={r.v0y,r.v1y,r.v2y,r.v3y};
+            uint32_t clips[4];
+            for (uint32_t i=0;i<4;++i)
+                clips[i]=mask(x[i],y[i],f.waterElevation+((r.waterBits&(0x80u<<(i*8)))?-f.frameCos:f.frameCos));
+            const bool bottomLeft=(r.flags&kFlagBitUvModeBottomLeft)!=0;
+            if (bottomLeft ? (!(clips[0]&clips[1]&clips[3]) || !(clips[1]&clips[2]&clips[3]))
+                           : (!(clips[0]&clips[1]&clips[2]) || !(clips[0]&clips[2]&clips[3]))) return true;
+        }
+    }
+    return false;
 }
 
 // STEP 3.4P: the native Vulkan cull/pack produces the thin records on the GPU (the GL compute dispatch, the CPU thin pack, the GL thin ring,
