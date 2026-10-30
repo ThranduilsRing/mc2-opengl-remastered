@@ -109,6 +109,7 @@ def test_dry_run_does_not_write_stage_evidence(journal, monkeypatch):
 
 
 def test_resume_preserves_original_log(tmp_path, monkeypatch):
+    monkeypatch.delenv('MC2_IN_GATE', raising=False)
     proof = tmp_path / 'proof'
     proof.mkdir()
     log = proof / 'gate.log'
