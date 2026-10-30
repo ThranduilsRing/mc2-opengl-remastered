@@ -122,13 +122,6 @@ struct EnginePresentVk::Impl {
     bool frameFinished = false;
     uint32_t captureFrame = 0, captureFireFrame = 0;
     VkResult lastWsiResult = VK_SUCCESS;
-    struct Composite {
-        float exposure = 1, gain = 1, tint[3]{};
-        int viewMode = 0, engineIdxBase = 0, tonemap = 0;
-        bool cas = false, pending = false;
-        float sharpness = 0;
-        int x = 0, y = 0, width = 0, height = 0;
-    } composite;
     // VK-PRESENT-SINGLESUBMIT-1: the CSM shadow-debug overlay (opt-in debug) is
     // STASHED here and
     // recorded into the tail cbuf so it stays ordered after the composite (which no
@@ -285,6 +278,22 @@ struct EnginePresentVk::Impl {
 };
 
 namespace {
+
+bool waitCompositeSlot(EnginePresentVk::Impl& s, EnginePresentHealth& health) {
+    ZoneScopedN("VKIsl.Present.CompositeWait");
+    const auto start = std::chrono::steady_clock::now();
+    const VkFence fence = s.curInFlight().get();
+    const VkResult result = vkWaitForFences(s.dev, 1, &fence, VK_TRUE, 5ull * 1000 * 1000 * 1000);
+    health.composite_wait_us_last = std::chrono::duration<double, std::micro>(std::chrono::steady_clock::now() - start).count();
+    if (!present_thread::onWorker()) mc2_hitch::RecordFenceWait(health.composite_wait_us_last / 1000.0);
+    if (result != VK_SUCCESS) return false;
+    health.composite_wait_us_accum += health.composite_wait_us_last;
+    ++health.composite_wait_samples;
+    if ((health.composite_wait_samples % 600) == 1)
+        plog("[QWI-WAIT] composite wait_us_last=%.1f wait_us_avg=%.1f samples=%u",
+             health.composite_wait_us_last, health.composite_wait_us_accum / health.composite_wait_samples, health.composite_wait_samples);
+    return true;
+}
 
 bool objectIdDirectChainGateEnabled() {
     static const bool on = []() {
@@ -2047,13 +2056,6 @@ bool EnginePresentVk::renderNativeCompositeVisual(float exposure,
                                                   bool casEnabled, float casSharpness, int tonemapMode,
                                                   int viewportX, int viewportY,
                                                   int viewportW, int viewportH) {
-    if (present_thread::enabled() && !present_thread::onWorker()) {
-        if (!created_ || !impl_ || !nativeCompositeArmed_) return false;
-        impl_->composite = {exposure, lowLightGain, {lowLightTint[0], lowLightTint[1], lowLightTint[2]},
-            viewMode, engineIdxBase, tonemapMode, casEnabled, true, casSharpness,
-            viewportX, viewportY, viewportW, viewportH};
-        return true;
-    }
     mc2::overlap::assertOwner(mc2::overlap::Owner::Render, "renderNativeCompositeVisual");
     if (!created_ || !impl_ || !nativeCompositeArmed_)
         return false;
@@ -2086,36 +2088,8 @@ bool EnginePresentVk::renderNativeCompositeVisual(float exposure,
     VkFrameSync fsScene{};
     VkFrameSync fsObjectId{};
 
-    // VK-PRESENT-SINGLESUBMIT-1: the ONLY CPU wait on the present path. Retire the
-    // PREVIOUS frame's single submit (composite+tail+blit) before either of its two
-    // command buffers is reset for re-recording. The fence is NOT reset here — it is
-    // reset immediately before the submit that will signal it (presentFrame), so a
-    // mid-frame present decline (DISARM-2b) can never leave it unsignaled and hang
-    // this wait. Timer kept from VK-QWI-TO-FENCE-1 (same [QWI-WAIT] receipt tag):
-    // it now measures the previous-frame retire wait instead of an inline drain.
-    {
-        ZoneScopedN("VKIsl.Present.CompositeWait");   // VK-ISLAND-TRACY-1: retire prev frame's single submit (the ONLY present-path CPU wait)
-        using clk = std::chrono::steady_clock;
-        const clk::time_point tWait0 = clk::now();
-        const VkFence inFlightFence = s.curInFlight().get();
-        const VkResult waitResult = vkWaitForFences(s.dev, 1, &inFlightFence, VK_TRUE,
-                                                    5ull * 1000 * 1000 * 1000);
-        health_.composite_wait_us_last =
-            std::chrono::duration<double, std::micro>(clk::now() - tWait0).count();
-        // A failed or timed-out wait is the worst hitch there is, so it is recorded before the present declines.
-        if (waitResult != VK_SUCCESS) {
-            if (!present_thread::onWorker()) mc2_hitch::RecordFenceWait(health_.composite_wait_us_last / 1000.0);
-            return false;
-        }
-        health_.composite_wait_us_accum += health_.composite_wait_us_last;
-        if (!present_thread::onWorker()) mc2_hitch::RecordFenceWait(health_.composite_wait_us_last / 1000.0);
-        ++health_.composite_wait_samples;
-        if ((health_.composite_wait_samples % 600) == 1)
-            plog("[QWI-WAIT] composite wait_us_last=%.1f wait_us_avg=%.1f samples=%u",
-                 health_.composite_wait_us_last,
-                 health_.composite_wait_us_accum / static_cast<double>(health_.composite_wait_samples),
-                 health_.composite_wait_samples);
-    }
+    // The worker retires the next slot before releasing main; inline mode retains the original wait here.
+    if (!present_thread::enabled() && !waitCompositeSlot(s, health_)) return false;
 
     // Record into the composite's OWN cbuf; the submit happens in presentFrame as
     // half of the single {compositeCbuf, cbuf} submission.
@@ -2455,19 +2429,11 @@ void EnginePresentVk::shutdownImguiVulkanRenderer() {
     health_.imgui_vk_ready = false;
 }
 
-// The worker owns composite recording, acquire, submission and frame retirement.
+// The worker owns acquire, composite submission, tail recording and frame retirement.
 bool EnginePresentVk::presentFrame(uint32_t drawableW, uint32_t drawableH,
                                      bool verifyReadback) {
     mc2::overlap::assertOwner(mc2::overlap::Owner::Render, "presentFrame");
-    if (impl_) {
-        impl_->frameFinished = false;
-        auto& c = impl_->composite;
-        if (c.pending) {
-            c.pending = false;
-            renderNativeCompositeVisual(c.exposure, c.viewMode, c.engineIdxBase, c.gain, c.tint,
-                c.cas, c.sharpness, c.tonemap, c.x, c.y, c.width, c.height);
-        }
-    }
+    if (impl_) impl_->frameFinished = false;
     const bool ok = presentFrameBody(drawableW, drawableH, verifyReadback);
     if (!ok) present_thread::requestInline();
     // Declined frames still retire their allocations and release the producer.
@@ -2487,6 +2453,7 @@ void EnginePresentVk::finishFrame() {
     health_.validation_errors = s.ctx->health().validationErrors;
     gpuprof::frameEnd();
     s.ctx->frameBoundary();
+    if (present_thread::onWorker() && !waitCompositeSlot(s, health_)) present_thread::requestInline();
     s.frameFinished = true;
     if (present_thread::onWorker() && (health_.present_frames % 300) == 1) logHealth();
 }
