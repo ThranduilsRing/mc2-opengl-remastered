@@ -35,11 +35,50 @@ TEST_CASE("save fields: BRN1 task and runtime scalar census") {
             &T::insertion_frame_ms, &T::stable_seq_id, &T::warrior_id, &T::type, &T::_reserved));
     }
     using T = MechBrainRuntime;
+    CHECK(save_probe::memberBytes<T>(BRAIN_SCALARS, &T::_pad, &T::specialBody,
+        &T::varStore, &T::specialIndex, &T::playerObjective, &T::playerLastContact,
+        &T::playerBestDistance, &T::playerProgressTime, &T::playerFightSince,
+        &T::playerBypassUntil, &T::playerRecoverUntil, &T::playerRegroupUntil,
+        &T::playerRecoveries, &T::playerHealthTarget, &T::playerTargetHealth,
+        &T::waitStates, &T::pendingIntents, &T::pendingIntentCount) + 29 == sizeof(T));
     auto sample = save_probe::patterned<T>(BRAIN_SCALARS);
     sample.currentState[31] = sample.prevState[31] = 0;
     sample.patrolWaypointCount = sample.patrolWaypointIndex = 2;
     sample.waitStateCount = sample.flowFiredCount = 2;
+    sample.varStore.count = 2;
+    for (int i = 0; i < sample.varStore.count; ++i) {
+        auto& entry = sample.varStore.entries[i];
+        std::memset(entry.key, 'A' + i, sizeof(entry.key) - 1);
+        std::memset(entry.value, 'a' + i, sizeof(entry.value) - 1);
+        entry.key[31] = entry.value[31] = 0;
+        entry.scope = static_cast<VarScope>(i);
+    }
+    for (size_t i = 0; i < std::size(sample.waitStates); ++i) {
+        auto& state = sample.waitStates[i];
+        state.verbIndex = static_cast<decltype(state.verbIndex)>(i + 1);
+        state.armed = state.satisfied = true;
+        state.deadlineMs = uint32_t(i + 1) * 0x01010101;
+    }
     CHECK(save_probe::roundtrip(sample, mc2::save::serializeBrainRuntime, BRAIN_SCALARS));
+    mc2::save::Archive writer;
+    mc2::save::serializeBrainRuntime(writer, sample);
+    REQUIRE(writer.good());
+    T decoded{};
+    mc2::save::Archive reader(writer.bytes());
+    mc2::save::serializeBrainRuntime(reader, decoded);
+    REQUIRE(reader.finish());
+    REQUIRE(decoded.varStore.count == sample.varStore.count);
+    for (int i = 0; i < sample.varStore.count; ++i) {
+        CHECK(std::strcmp(decoded.varStore.entries[i].key, sample.varStore.entries[i].key) == 0);
+        CHECK(std::strcmp(decoded.varStore.entries[i].value, sample.varStore.entries[i].value) == 0);
+        CHECK(decoded.varStore.entries[i].scope == sample.varStore.entries[i].scope);
+    }
+    for (size_t i = 0; i < std::size(sample.waitStates); ++i) {
+        CHECK(decoded.waitStates[i].verbIndex == sample.waitStates[i].verbIndex);
+        CHECK(decoded.waitStates[i].armed == sample.waitStates[i].armed);
+        CHECK(decoded.waitStates[i].satisfied == sample.waitStates[i].satisfied);
+        CHECK(decoded.waitStates[i].deadlineMs == sample.waitStates[i].deadlineMs);
+    }
     // Explicit debt: these live player-command fields are absent from BRN1.
     // A loss is detected, never mistaken for successful whole-runtime coverage.
     sample.playerBestDistance = 1.25f;
