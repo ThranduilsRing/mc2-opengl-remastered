@@ -163,11 +163,12 @@ def finish(target_dir, manifest, tool, cooker=subprocess.run, *, kit_rel=KIT_REL
     recipes_by_sha = {}
     model_shas = {r["path"]: r["sha256"] for r in manifest["files"] if r["path"].endswith(".glb")}
     outputs = set()
+    unique = {}
     for rel in models:
-        digest = model_shas[rel]
-        if digest in recipes_by_sha:
-            recipes[rel] = recipes_by_sha[digest]
-            continue
+        unique.setdefault(model_shas[rel], rel)
+
+    def cook_model(item):
+        digest, rel = item
         result = cooker([str(tool), (kit_rel / rel).as_posix(), *IMPORT_ARGS],
                         cwd=target, capture_output=True, text=True, timeout=120, env=dict(os.environ, OMP_NUM_THREADS="1"),
                         **console_child.child_kwargs(redirected=True))
@@ -176,9 +177,14 @@ def finish(target_dir, manifest, tool, cooker=subprocess.run, *, kit_rel=KIT_REL
         keys = re.findall(r"\[CONTENT_COOK\].*?key=([0-9a-f]{16})", result.stdout + result.stderr)
         if len(keys) != 1:
             raise ValueError(f"industrial importer did not report one native recipe: {rel}")
-        outputs.add(cache / f"model-{keys[0]}.mci")
-        recipes[rel] = f"model-{keys[0]}.mci"
-        recipes_by_sha[digest] = recipes[rel]
+        return digest, f"model-{keys[0]}.mci"
+
+    jobs = max(1, int(Path("A:/Games/mc2-ops/JOBS").read_text()))
+    with ThreadPoolExecutor(max_workers=jobs) as pool:
+        recipes_by_sha.update(pool.map(cook_model, unique.items()))
+    for rel in models:
+        recipes[rel] = recipes_by_sha[model_shas[rel]]
+        outputs.add(cache / recipes[rel])
     outputs = sorted(outputs)
     if len(outputs) != unique_models or any(not p.is_file() or p.stat().st_size == 0 for p in outputs):
         raise ValueError(f"industrial cook incomplete: {len(outputs)} recipes for {unique_models} distinct GLBs")
