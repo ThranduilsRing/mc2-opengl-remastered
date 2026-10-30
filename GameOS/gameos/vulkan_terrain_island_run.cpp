@@ -327,6 +327,7 @@ static bool record_terrain(TerrainIsland* s, mc2vk::VulkanContext& rctx, VkComma
     if (vkBeginCommandBuffer(cb, &bi) != VK_SUCCESS) return false;
     // Dynamic draws write reprojection corrections over this zero field. The
     // fullscreen camera pass later adds camera motion to every covered surface.
+    if (mc2::gate::get<"MC2_EXPERIMENT_TEMPORAL_AB">() == 3)
     for (const auto slot : {MC2_SHARED_SCENE_MOTION, MC2_SHARED_SCENE_REACTIVE}) {
         auto* motion = mc2SharedSceneColorGetResource(slot);
         if (!motion) continue;
