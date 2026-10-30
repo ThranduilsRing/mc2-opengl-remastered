@@ -148,9 +148,10 @@ def test_four_way_kit_priority(tmp_path, priority_probe, case):
         assert priority_probe(installed)
 
 
-def test_bundled_definition_receipt_preserves_user_and_mod_edits(tmp_path, priority_probe):
+@pytest.mark.parametrize("extension", [".ini", ".glb"])
+def test_bundled_definition_receipt_preserves_user_and_mod_edits(tmp_path, priority_probe, extension):
     target = tmp_path / "install"
-    rel = "data/tgl/spotlight.ini"
+    rel = "data/tgl/spotlight" + extension
     path = target / rel
     path.parent.mkdir(parents=True)
     bundled = b"FITini\n[AnimationNode]\nst ElevationNodeId=\"battery\"\n"
