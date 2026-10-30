@@ -13,6 +13,7 @@ def test_archived_legacy_fixture_bytes_match_manifest():
     from pathlib import Path
     folder = Path(rt.ROOT) / "tests/fixtures/saves"
     manifest = json.loads((folder / "manifest.json").read_text())
+    assert manifest["$schema"] == "save-fixture-manifest-v1"
     for entry in manifest["fixtures"]:
         data = (folder / entry["file"]).read_bytes()
         assert len(data) == entry["bytes"]

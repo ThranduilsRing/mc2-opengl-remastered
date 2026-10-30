@@ -1,4 +1,5 @@
 {
+  "$schema": "save-fixture-manifest-v1",
   "golden_v04c": {
     "status": "BLOCKED: harness refuses golden d662802367d8 because it lacks MC2_WINDOW_OFFSCREEN; no provenance-backed existing IMS found",
     "proof": "E:/mc2-archive-2026-10/proofs/lane7/cxx23-a/golden.log"
@@ -13,6 +14,6 @@
     {"file": "after_mc2_07.fit", "bytes": 153172, "sha256": "bf01870a9fdb5a4f3439f33de0172db4109c7086c22af5ea692479a66b6ba72d"}
   ],
   "campaign_source": "A:/Games/mc2-opengl/MC2X-CVE-G/data/savegame/",
-  "campaign_verdict": "LogisticsSaveDialog::isCorrectVersionSaveGame filters VersionNumber 10052 (current 10004); direct LogisticsData::load returns -1 at the same version check, after initialization. Not IMS input.",
+  "campaign_verdict": "The campaign menu's isCorrectVersionCampaignSave filters VersionNumber 10052 (current 10004). Direct LogisticsData::load is not exercised; its source rejects -1 at the version check if initialization reaches it. Not IMS input.",
   "missing_campaign_file": "after_mc2_06.fit is absent in the supplied mod install"
 }
