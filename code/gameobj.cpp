@@ -1572,14 +1572,6 @@ void GameObject::verifyAppearanceView (const char* where) {
 
 //---------------------------------------------------------------------------
 
-ObjectTypePtr GameObject::getObjectType (void) {
-
-	mc2::overlap::assertLiveSimRead("GameObject::getObjectType");
-	return(ObjectManager->getObjectType(typeHandle));
-}
-
-//---------------------------------------------------------------------------
-
 void GameObject::init (bool create, ObjectTypePtr _type) {
 
 	typeHandle = _type->whatAmI();

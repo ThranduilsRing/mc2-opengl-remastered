@@ -155,6 +155,11 @@ ObjectTypePtr GameObjectManager::getObjectType (ObjectTypeNumber typeHandle) {
 	return(objTypeManager->get(typeHandle));
 }
 
+ObjectTypePtr GameObject::getObjectType (void) {
+	mc2::overlap::assertLiveSimRead("GameObject::getObjectType");
+	return(ObjectManager->getObjectType(typeHandle));
+}
+
 void GameObjectManager::preloadTickSpawnTypes (void) {
 	auto preload = [this](long typeNum) {
 		if (typeNum >= 0 && typeNum < objTypeManager->numObjectTypes) objTypeManager->get(typeNum);
