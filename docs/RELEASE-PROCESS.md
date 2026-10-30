@@ -8,14 +8,15 @@ and upload.
 
 ## 1. Where the version lives (bump policy)
 
-There is **no semantic version constant compiled into the exe**. Version
-identity is spread across three places — keep them consistent:
+`project(mc2 VERSION ...)` in `CMakeLists.txt` is the semantic release version.
+Use that version for the release tag and folder; the runtime fingerprint
+identifies the exact source commit. Do not infer a version from an old install.
 
 | Place | What it carries | Bump action |
 |---|---|---|
 | `cmake/GenerateBuildFingerprint.cmake` → `build64/generated/build_fingerprint.h` | git SHA + dirty flag, embedded in the exe and printed as the `[BUILD_FINGERPRINT v1]` startup banner | automatic — but **commit before building**; a `-dirty` fingerprint is unattributable and `scripts/deploy_payload.py` warns on it |
 | Release lane / deploy folder name (e.g. `A:/Games/mc2-opengl/releases/mc2-win64-v0.5.1`) and the `DEPLOY` env consumed by `scripts/build_release.sh` | the human-facing version string | create a new lane per release; point `DEPLOY` at it |
-| `RELEASE_README.md` title + GitHub Release tag/name | what users see | edit the README header; tag `v<version>` |
+| `CMakeLists.txt` project VERSION + GitHub Release tag/name | what users see | bump VERSION; tag `v<version>` |
 
 Bump policy: patch (`v0.5.0` → `v0.5.1`) for fix rounds on the same feature
 set; minor for a new feature wave; `-rc1` suffixes for candidate lanes that

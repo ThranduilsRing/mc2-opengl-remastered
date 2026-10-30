@@ -1,7 +1,7 @@
-# MechCommander 2 — OpenGL Remastered (v0.5.2)
+# MechCommander 2 — Vulkan Remastered
 
 A modernized build of MechCommander 2: PBR terrain, real-time shadows,
-tessellation, modern post-processing, a campaign/mod launcher, and a Mission
+tessellation, modern post-processing, an in-game campaign picker, and a Mission
 Editor. Original gameplay and missions are unchanged. Plays the stock campaign
 plus a large library of community campaigns (MC2X / MCO) — 19 campaigns,
 ~398 missions.
@@ -12,8 +12,11 @@ campaigns), see [docs/STARTER-GUIDE.md](docs/STARTER-GUIDE.md).
 ## Requirements
 
 - Windows 10 or 11 (64-bit)
-- GPU with OpenGL 4.3 support (NVIDIA GTX 900 series or later, AMD RX 400
-  series or later, or Intel Iris Xe)
+- A GPU and current driver supporting Vulkan 1.2, descriptor indexing,
+  timeline semaphores, buffer device address, dynamic rendering and
+  synchronization2. Unsupported devices fail at startup; there is no GL fallback.
+- Microsoft Visual C++ 2015–2022 x64 runtime (app-local runtime DLLs ship
+  with the engine). Install GPU drivers separately; vulkan-1.dll is not bundled.
 - ~6 GB free disk space
 
 ## Install
@@ -35,9 +38,10 @@ The `burnins-4x` zips are technically optional — the game falls back to
 stock-resolution lightmaps inside the FST archives — but terrain colormaps
 look noticeably blurry without them.
 
-No original MC2 install required to play the stock campaign. Community
-campaigns are imported from an existing MC2X/MCO install via the launcher
-(see below).
+The game-data zip contains stock assets under the accompanying Microsoft
+license terms, including non-commercial restrictions. The maintainer must
+confirm redistribution rights before publishing it. Community campaigns are
+imported from an existing MC2X/MCO install using the CLI below.
 
 **Optional:** Extract `mc2-load-points.zip` (53 KB) into
 `%USERPROFILE%\.mechcommander2\savegame\` (create the folder if it doesn't
@@ -68,6 +72,14 @@ on startup and logs invalid/unknown entries with `MC2_LOG=1`.
 
 If you hit a problem, `run-with-log.bat` captures a `stderr.log` next to the
 executable.
+
+On first run, missing `options.cfg` is copied from `minprefs.cfg`; desktop
+resolution is detected automatically. `MC2_VK_DEVICE` selects a GPU by name
+substring. User saves live in `%USERPROFILE%\.mechcommander2\savegame`;
+crash dumps live in `crashes/minidump.dmp` beside the executable.
+Saves may break until the final release; incompatible save versions are hidden.
+Every subdirectory under `mods/` is activated at startup: keep unused examples
+outside that directory.
 
 ## Mission Editor
 
@@ -118,12 +130,12 @@ been dropped; see the release notes of each release for the fixed list):
 
 ## Troubleshooting
 
-**Black screen / immediate crash:** your GPU may not support OpenGL 4.3. Check
-`stderr.log` for a `[GPU]` line — if the version is below 4.3 the engine will
-not start.
+**Black screen / immediate crash:** check `stderr.log` for `[VK_PROFILE v1]`
+and `[RENDER_BACKEND] FATAL`. Update the GPU driver and verify the Vulkan
+requirements above. Missing game data may also prevent startup without a dialog.
 
 **Black terrain on an imported campaign:** that campaign is missing its
-colormaps — re-import it in the launcher from its original install.
+colormaps — re-import it with the CLI above from its original install.
 
 **Wrong textures / scrambled icons:** do not replace `data/art/` files from
 third-party mods that predate this release. Some icon atlas files are
