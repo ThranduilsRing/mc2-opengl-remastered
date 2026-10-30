@@ -29,3 +29,6 @@ def test_release_requires_baked_shaders(tmp_path):
     (tmp_path / "glew32.dll").unlink()
     (tmp_path / "SDL2.dll").unlink()
     assert release.verify_tree(tmp_path) == ["required runtime missing: SDL2.dll"]
+    (tmp_path / "SDL2.dll").touch()
+    (tmp_path / "prefs.cfg").unlink()
+    assert release.verify_tree(tmp_path) == ["required file missing: prefs.cfg"]

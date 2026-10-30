@@ -314,7 +314,7 @@ done
 # Prefs files at the deploy root. *.cfg glob naturally excludes
 # options.cfg.old (different extension), which is a developer-side backup
 # we don't want to ship.
-for cfg in minprefs.cfg orgprefs.cfg system.cfg; do
+for cfg in minprefs.cfg orgprefs.cfg prefs.cfg system.cfg; do
     cp "$DEPLOY/$cfg" "$STAGE/engine/"
 done
 cp "$STAGE/engine/minprefs.cfg" "$STAGE/engine/options.cfg"
@@ -324,7 +324,7 @@ rm -f "$OUTDIR/mc2-remastered-engine.zip"
 # branch. options.cfg's presence is what makes mc2.exe skip the sniffer
 # dialog on first launch; minprefs.cfg is the fallback source the engine
 # would copy from if options.cfg ever went missing.
-for required_cfg in options.cfg minprefs.cfg orgprefs.cfg system.cfg; do
+for required_cfg in options.cfg minprefs.cfg orgprefs.cfg prefs.cfg system.cfg; do
     if ! "$SEVENZIP" l "$OUTDIR/mc2-remastered-engine.zip" | grep -q " $required_cfg\$"; then
         echo "[engine] FAIL — $required_cfg missing from engine.zip (sniffer-loop regression)"; exit 1
     fi

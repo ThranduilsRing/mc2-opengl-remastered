@@ -78,6 +78,7 @@ REQUIRED_FILES = [
     "options.cfg",    # sniffer-bypass: engine checks for this on startup
     "minprefs.cfg",   # sniffer self-heal CopyFile source
     "orgprefs.cfg",
+    "prefs.cfg",      # engine preferences are read separately from options.cfg
     "system.cfg",
 ]
 REQUIRED_DIRS = [
