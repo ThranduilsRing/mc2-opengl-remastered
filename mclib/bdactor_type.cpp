@@ -7,6 +7,8 @@
 #include <string_view>
 #include "stock_lamp_definition.h"
 #include "loose_asset_priority.h"
+#include <zlib.h>
+#include <unordered_map>
 
 extern char missionName[];
 
@@ -15,6 +17,22 @@ static bool userBuildingAsset(std::string_view name)
 	const std::string storage(name);
 	const auto* path = storage.c_str();
 	const auto* owner = LookupModOwner(path);
+	if (!owner || std::string_view(owner) == "mc2-industrial-kit") {
+		if (const auto archiveName = LookupArchivePath(path); !archiveName.empty()) {
+			static std::unordered_map<std::string, bool> userArchives;
+			auto [it, inserted] = userArchives.try_emplace(archiveName, false);
+			auto& [archiveKey, isUserArchive] = *it;
+			if (inserted) isUserArchive = userPackedBuildingArchive(archiveName, [](const auto& file) {
+				std::ifstream input(file, std::ios::binary); // path-audit: loose-only root FST container checksum
+				uLong crc = crc32(0, nullptr, 0);
+				char buffer[65536];
+				while (input.read(buffer, sizeof(buffer)) || input.gcount())
+					crc = crc32(crc, reinterpret_cast<const Bytef*>(buffer), static_cast<uInt>(input.gcount()));
+				return input.eof() ? static_cast<uint32_t>(crc) : 0u;
+			});
+			if (isUserArchive) return true;
+		}
+	}
 	return userLooseBuildingAsset(name, owner ? owner : "",
 		[&] { return ReadArchiveBytes(path, 64u * 1024u * 1024u); });
 }

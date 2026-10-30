@@ -32,7 +32,7 @@
   "scripts/tests/test_saveload_baseline_defaults.py": "Discovered dynamically by scripts/run_scripts_tests.py through scripts/test_ownership.json; tooling round 3 regression coverage.",
   "scripts/tests/test_build_tokens.py": "Discovered dynamically by scripts/run_scripts_tests.py through scripts/test_ownership.json; tooling round 3 regression coverage.",
   "scripts/tests/test_battle_bench_baseline.py": "Discovered dynamically by scripts/run_scripts_tests.py through scripts/test_ownership.json; tooling round 3 regression coverage.",
-  "scripts/tests/test_battle_bench.py":"Discovered dynamically by scripts/run_scripts_tests.py through scripts/test_ownership.json; validates integrated battle evidence and workload identity.",
+  "scripts/tests/test_battle_bench.py": "Discovered dynamically by scripts/run_scripts_tests.py through scripts/test_ownership.json; validates integrated battle evidence and workload identity.",
   "tools/command_replay.py": "Manual command replay recorder/player and proof entry point requested by game-logic R2; invokes the existing smoke harness and never starts the engine directly.",
   "scripts/tests/test_check_doc_links.py": "Discovered dynamically by scripts/run_scripts_tests.py through scripts/test_ownership.json; exercises the tracked-document link contract.",
   "tools/mapgen/__init__.py": "Python package marker for the mapgen command modules; not an executable entry point.",
@@ -394,5 +394,10 @@
   "scripts/tests/test_isolated_deploy_shaders_vk.py": "Pytest-discovered module through the scripts_tests/tools_tests contract row.",
   "scripts/tests/test_run_smoke_early_validation.py": "Pytest-discovered module through the scripts_tests/tools_tests contract row.",
   "scripts/run_scripts_tests.py": "Executed by tools/lane_merge.py --precheck through PYTHON_SUITES; the caller scanner does not resolve the dispatch table.",
-  "scripts/tests/test_nightly_dual_gpu.py": "Pytest-discovered by scripts/run_scripts_tests.py through scripts/test_ownership.json during lane precheck."
+  "scripts/tests/test_nightly_dual_gpu.py": "Pytest-discovered by scripts/run_scripts_tests.py through scripts/test_ownership.json during lane precheck.",
+  "scripts/tests/test_gate_state.py": "Pytest-discovered module through scripts/run_scripts_tests.py (scripts_tests).",
+  "scripts/tests/test_gate_farm.py": "Pytest-discovered module through scripts/run_scripts_tests.py (scripts_tests).",
+  "tools/test_mkmerge.py": "Pytest-discovered module through scripts/run_tools_tests.py (tools_tests).",
+  "scripts/tests/test_sim_overlap_audit_gate.py": "Pytest-discovered by scripts/run_scripts_tests.py through scripts/test_ownership.json.",
+  "scripts/tests/test_stress_overlap.py": "Pytest-discovered by scripts/run_scripts_tests.py through scripts/test_ownership.json."
 }

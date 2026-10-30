@@ -155,6 +155,17 @@ ObjectTypePtr GameObjectManager::getObjectType (ObjectTypeNumber typeHandle) {
 	return(objTypeManager->get(typeHandle));
 }
 
+void GameObjectManager::preloadTickSpawnTypes (void) {
+	auto preload = [this](long typeNum) {
+		if (typeNum >= 0 && typeNum < objTypeManager->numObjectTypes) objTypeManager->get(typeNum);
+	};
+	if (weaponEffects)
+		for (long effectId = 0; effectId < weaponEffects->getNumEffects(); effectId++)
+			preload(weaponEffects->GetEffectObjNum(effectId));
+	for (long typeNum : {static_cast<long>(SMALL_ARTLRY), static_cast<long>(BIG_ARTLRY), static_cast<long>(SENSOR_ARTLRY), static_cast<long>(VEHICLEPILOT_ID)})
+		preload(typeNum);
+}
+
 //---------------------------------------------------------------------------
 
 void GameObjectManager::removeObjectType (ObjectTypeNumber typeHandle) {

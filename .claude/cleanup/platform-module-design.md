@@ -2,6 +2,10 @@
 Split GameOS by responsibility; isolate native OS access; prove the same product with MSVC and clang-cl before Linux.
 Design only, 2026-10-13; no engine changes or builds; Windows remains supported through the single final release.
 
+2026-10-29: the census below is historical. Packet 1 removes 72 uncalled API
+names and makes three live internal declarations private; see
+`docs/plans/2026-10-29-gameos-api-trim.md` for the verified retirement list.
+
 ## Scope and measured baseline
 
 Research used only this worktree at HEAD `254751f589429aaf9f33e2c46249fec3c97159be`; other agents' dirty editor files were left untouched.

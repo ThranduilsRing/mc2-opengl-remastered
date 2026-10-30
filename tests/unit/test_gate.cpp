@@ -317,6 +317,10 @@ TEST_CASE("Tri is an enum class with no bool conversion") {
 
 namespace {
 constexpr std::array kRetiredGates{
+    "MC2_BLKIDX_TRACE",
+    "MC2_GPU_CULL_STATIC_FROZEN_ORDER_ORACLE",
+    "MC2_REGFLUSH_TYPEHIST",
+    "MC2_STATIC_FORCE_ADMIT",
     "MC2_FXAA",
     "MC2_FXAA_EDGE_THRESHOLD",
     "MC2_FXAA_EDGE_THRESHOLD_MIN",
@@ -340,7 +344,7 @@ TEST_CASE("table is sorted, unique and every name round-trips through lookupName
     const std::size_t n = gate::tableSize();
     REQUIRE(n == gate::detail::kGateCount);
     // Population floor after the gate amnesty (retired names live in Gates/retired_names.json).
-    REQUIRE(n == 756);   // Gate amnesty: three default-OFF rows without readers retired.
+    REQUIRE(n == 754);   // Combined gate retirements and overlap audit selectors.
     for (std::size_t i = 0; i < n; ++i) {
         if (i > 0) CHECK((rows[i - 1].name < rows[i].name));
         const auto info = gate::lookupName(rows[i].name);

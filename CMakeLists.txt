@@ -165,31 +165,11 @@ option(MC2_SIM_TRACE_ABL "With MC2_SIM_TRACE: also trace every ABL standard-rout
 # bodies for the members the rest of the game names, so the lobby screens still compile and every `if (MPlayer)` path is the
 # single-player one; the main menu's multiplayer button is already disabled. ON: the full layer, as before.
 option(MC2_MULTIPLAYER "Compile the multiplayer session layer (code/multplyr*.cpp)" OFF)
-# Compile-gate the Vulkan backend.
-# Default OFF -> zero Vulkan code compiled, zero Vulkan headers/loader required,
-# normal build completely unaffected + no Vulkan dependency. When ON, we
-# find_package(Vulkan) (the SDK loader/headers), link it into gameos, and
-# compile the Vulkan sources under -DMC2_VULKAN.
-option(MC2_VULKAN "Compile the Vulkan backend (2026-10-05: default ON; Vulkan is the target backend)" ON)
-# G2: Vulkan is the only supported renderer backend. An explicit -DMC2_VULKAN=OFF is rejected here
-# instead of silently configuring a tree whose renderer paths are all compiled out.
-if(NOT MC2_VULKAN)
-    message(FATAL_ERROR
-        "MC2_VULKAN=OFF is not supported: Vulkan is the required renderer backend. "
-        "Configure with -DMC2_VULKAN=ON (the default).")
-endif()
-if(MC2_VULKAN)
-    find_package(Vulkan REQUIRED)
-    message(STATUS "MC2_VULKAN=ON -- Vulkan found: ${Vulkan_LIBRARY} (include ${Vulkan_INCLUDE_DIR})")
-endif()
-
-# MC2_VULKAN_ISLAND: compile Vulkan-owned render-region implementations into
-# gameos. Default OFF -> byte-identical non-island build. Requires MC2_VULKAN=ON
-# (volk + VMA + headers); each runtime path remains separately gated/fail-soft.
-option(MC2_VULKAN_ISLAND "Compile Vulkan-owned render regions into gameos (default ON)" ON)
-if(MC2_VULKAN_ISLAND AND NOT MC2_VULKAN)
-    message(FATAL_ERROR "MC2_VULKAN_ISLAND=ON requires MC2_VULKAN=ON (volk/VMA/Vulkan headers).")
-endif()
+# Vulkan and its native render regions are required. Keep the compile definitions
+# shared by the root and standalone targets; these are no longer cache options.
+set(MC2_VULKAN ON)
+set(MC2_VULKAN_ISLAND ON)
+find_package(Vulkan REQUIRED)
 
 if(MC2_ASAN)
     if(NOT MSVC)
@@ -479,6 +459,7 @@ set(SOURCES
     "code/team_los.cpp"
     "code/los_kernel.cpp"
     "code/terrobj.cpp"
+    "code/terrobj_position.cpp"
     "code/turret.cpp"
     "code/brain_special_dispatch.cpp"
     "code/brain_special_fsm_scan.cpp"
@@ -515,6 +496,7 @@ set(SOURCES
     "code/ablmc2_repro.cpp"
     "code/ablmc2_state.cpp"
     "code/gamecam.cpp"
+    "code/gamecam_bookmark.cpp"
     "code/mission.cpp"
     "code/sim_tick_cost.cpp"
     "code/mission_update.cpp"
@@ -701,53 +683,28 @@ if(MC2_PCH)
     endforeach()
 endif()
 add_dependencies(mc2 build_fingerprint)
-# VULKAN-EDGE-FOG-ISLAND-2a: ensure the SPIR-V shaders (edge_fog.{vert,frag}.spv,
-# etc.) are baked when building the mc2 target directly (mc2_vulkan_shaders
-# is an ALL target, but --target mc2 does not pull ALL). Only exists under MC2_VULKAN.
-if(MC2_VULKAN_ISLAND AND TARGET mc2_vulkan_shaders)
+# A direct mc2 build needs the shaders even though it does not pull the ALL target.
+if(TARGET mc2_vulkan_shaders)
     add_dependencies(mc2 mc2_vulkan_shaders)
 endif()
-# VULKAN-EDGE-FOG-ISLAND-2b: gos_postprocess.h changes the gosPostProcess class
-# LAYOUT under #ifdef MC2_VULKAN_ISLAND (adds vkFogIsland_ + method decls). The
-# macro is PUBLIC on gameos, but gameos_main / mc2 do NOT consume gameos's usage
-# requirements (gameos_main has no target_link_libraries(gameos)), so define it
-# directly on the TUs that include the header, or getSceneFBO()/getWidth()/
-# getHeight() read the wrong offset (ODR) -> garbage FBO -> visual capture never
-# fires. Harmless when the header block declares only an opaque pointer + decls.
-#
-# VULKAN-ISLAND-ODR-HARDEN-1: gos_postprocess.h is ALSO included by TUs in mclib,
-# renderworld, gameadapters and gui_runtime (all of which link into mc2). Those
-# targets do NOT consume gameos's PUBLIC usage requirement (they don't
-# target_link_libraries(gameos)), so without the define here they would see the
-# smaller (member-absent) gosPostProcess layout -> shifted offsets for any member
-# declared after vkFogIsland_ -> ODR mismatch in the ON build. Propagate the
-# define to EVERY consuming target so the layout is uniform across the whole link.
-# Only added when the option is ON, so build64 (option OFF) stays byte-identical.
-if(MC2_VULKAN_ISLAND)
-    target_compile_definitions(gameos_main PRIVATE MC2_VULKAN_ISLAND)
-    target_compile_definitions(mc2 PRIVATE MC2_VULKAN_ISLAND)
-    target_compile_definitions(mclib PRIVATE MC2_VULKAN_ISLAND)
-    target_compile_definitions(renderworld PRIVATE MC2_VULKAN_ISLAND)
-    target_compile_definitions(gameadapters PRIVATE MC2_VULKAN_ISLAND)
-    target_compile_definitions(gui_runtime PRIVATE MC2_VULKAN_ISLAND)
-endif()
+# These consumers include Vulkan-dependent class layouts without inheriting
+# gameos's public definitions. Keep their layouts consistent across the link.
+target_compile_definitions(gameos_main PRIVATE MC2_VULKAN_ISLAND)
+target_compile_definitions(mc2 PRIVATE MC2_VULKAN_ISLAND)
+target_compile_definitions(mclib PRIVATE MC2_VULKAN_ISLAND)
+target_compile_definitions(renderworld PRIVATE MC2_VULKAN_ISLAND)
+target_compile_definitions(gameadapters PRIVATE MC2_VULKAN_ISLAND)
+target_compile_definitions(gui_runtime PRIVATE MC2_VULKAN_ISLAND)
 
-# VK-P13-SELECTOR-1 / T2: gameosmain.cpp (in the gameos_main target) includes
-# vulkan_context.h under #ifdef MC2_VULKAN to birth the shared engine VK device
-# at engine init. gameos_main gets MC2_VULKAN + the volk/Vulkan-headers include
-# path so that #ifdef is active and <volk.h> resolves. Guarded on MC2_VULKAN so
-# the GL-only build (option OFF) is byte-identical (the block never runs -> the
-# =vulkan selector fail-softs to GL via the #else path in gameosmain.cpp).
-if(MC2_VULKAN)
-    target_compile_definitions(gameos_main PRIVATE MC2_VULKAN)
-    target_compile_definitions(gui_runtime PRIVATE MC2_VULKAN)
-    target_include_directories(gameos_main PRIVATE
-        "${CMAKE_SOURCE_DIR}/3rdparty/volk"
-        ${Vulkan_INCLUDE_DIR})
-    target_include_directories(gui_runtime PRIVATE
-        "${CMAKE_SOURCE_DIR}/3rdparty/volk"
-        ${Vulkan_INCLUDE_DIR})
-endif()
+# Startup and GUI runtime access the engine device and need these headers directly.
+target_compile_definitions(gameos_main PRIVATE MC2_VULKAN)
+target_compile_definitions(gui_runtime PRIVATE MC2_VULKAN)
+target_include_directories(gameos_main PRIVATE
+    "${CMAKE_SOURCE_DIR}/3rdparty/volk"
+    ${Vulkan_INCLUDE_DIR})
+target_include_directories(gui_runtime PRIVATE
+    "${CMAKE_SOURCE_DIR}/3rdparty/volk"
+    ${Vulkan_INCLUDE_DIR})
 target_link_libraries(mc2 mclib fx_trace particles gosfx mlr stuff gui gameos gameos_main windows ZLIB::ZLIB ${SDL2_LIBRARIES} SDL2_mixer::SDL2_mixer ${ADDITIONAL_LIBS} renderworld gameadapters editorbridge imgui gui_runtime mc2_gate)
 
 if(MC2_IMGUI)
@@ -979,6 +936,16 @@ set_source_files_properties(
     "code/tactical_order_queue.cpp"
     PROPERTIES SKIP_PRECOMPILE_HEADERS ON
 )
+
+# Offline mod table sweep: reuse the cached engine objects, with a console entry
+# point. No GameOS startup, renderer, mission, or game executable behavior change.
+add_executable(mc2_mod_load EXCLUDE_FROM_ALL
+    $<TARGET_OBJECTS:mc2> tools/mod_load.cpp)
+target_compile_definitions(mc2_mod_load PRIVATE $<TARGET_PROPERTY:mc2,COMPILE_DEFINITIONS>)
+target_include_directories(mc2_mod_load PRIVATE $<TARGET_PROPERTY:mc2,INCLUDE_DIRECTORIES>)
+target_link_libraries(mc2_mod_load PRIVATE $<TARGET_PROPERTY:mc2,LINK_LIBRARIES>)
+target_link_options(mc2_mod_load PRIVATE $<TARGET_PROPERTY:mc2,LINK_OPTIONS>)
+add_dependencies(mc2_mod_load build_fingerprint)
 
 # Separate engine linkage avoids the standalone tests' initializer/actor stubs.
 if(MC2_BUILD_TESTS)

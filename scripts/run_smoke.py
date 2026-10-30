@@ -1519,6 +1519,9 @@ def main():
                 # default stays OFF). Any [MOVER_COHERENCE] VIOLATION line
                 # red-flags the mission via the mover_coherence marker bucket.
                 **({"MC2_MOVER_COHERENCE_AUDIT": "1"} if args.tier and e.stem != args.quiet_sample else {}),
+                # G7b overlap audit (dev selector, shipped OFF): ON in tier1 and smoke-lite. It aborts on the first
+                # [SIM_OVERLAP v1] VIOLATION, which the sim_overlap_violation marker bucket turns red.
+                **({"MC2_SIM_OVERLAP_AUDIT": "1"} if args.tier == "tier1" or args.lite else {}),
                 **({"MC2_SIM_SPEED": str(args.sim_speed)} if args.sim_speed else {}),
                 **(render_resolution.tier_size_env(tier, e.resolution) if e.resolution or args.tier == "resolution" or args.show_window
                    else {"MC2_WIDTH": "854", "MC2_HEIGHT": "480"}),

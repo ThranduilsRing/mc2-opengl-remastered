@@ -112,7 +112,7 @@ def test_host_submit_publishes_only_after_upload(tmp_path, monkeypatch, capsys):
 
 def test_host_submit_exe_stages_then_rewrites_job(tmp_path, monkeypatch):
     path = tmp_path / 'job.json'
-    path.write_text('{"argv": ["run", "{EXE}"], "env": {"X": "{ROOT}/d"}}')
+    path.write_text('{"argv": ["run", "{EXE}", "--out", "{RESULT}/proof"], "env": {"X": "{ROOT}/d"}}')
     exe = tmp_path / 'mc2.exe'
     exe.write_bytes(b'MZ')
     delta = tmp_path / 'delta'
@@ -130,7 +130,8 @@ def test_host_submit_exe_stages_then_rewrites_job(tmp_path, monkeypatch):
     monkeypatch.setattr(host, 'scp', fake_scp)
     host.main()
     work = 'C:/mc2farm/work/' + 'b' * 32
-    assert uploaded == [{'argv': ['run', work + '/mc2.exe'], 'env': {'X': work + '/d'}}]
+    result = 'C:/mc2farm/results/' + 'b' * 32
+    assert uploaded == [{'argv': ['run', work + '/mc2.exe', '--out', result + '/proof'], 'env': {'X': work + '/d'}}]
     kinds = [c[0] for c in calls]
     assert kinds == ['ps', 'scp', 'scp', 'scp', 'ps', 'scp', 'ps']
     assert calls[3][1].endswith('/payload.zip')

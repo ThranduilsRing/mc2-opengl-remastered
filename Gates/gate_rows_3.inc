@@ -51,6 +51,7 @@ G("MC2_SIM_IDENTITY_TRACE", Bool, false, "code", "", "SIM-IDENTITY-HASH-1: emit 
 G("MC2_SIM_IDENTITY_TRACE_DETAIL", Bool, false, "code", "", "SIM-IDENTITY-HASH-1: with MC2_SIM_IDENTITY_TRACE on, additionally emit one `[SIMID v1 mover]` line per mover per sim frame.", passthrough | registry(Trace, "MC2_SIM_IDENTITY_TRACE_DETAIL", -1, false) | verified),
 L(Lead0Kill, "MC2_SIM_OVERLAP", Bool, true, "code", "2026-11-04", "G7b: run the banked sim tick on a worker during snapshot drawing; 0 = serial loop. Retire after three green merge windows.", passthrough | verified),
 L(Lead1, "MC2_SIM_OVERLAP_AUDIT", Bool, false, "code", "", "G7: abort on the first overlap audit violation (render touches sim state mid-tick).", passthrough | verified),
+P("MC2_SIM_OVERLAP_JITTER", Int, 0, "code", "", "G7: dev selector, sleep 0..N ms (own RNG) at sim tick start and before DrawScreen to shake out overlap races.", passthrough | clampRange(0, 50) | verified),
 P("MC2_SIM_SPEED", Float, 1.0, "code", "", "SIM-SPEED-BUTTON-1: play (wall clock) = seed of the HUD/dev-shell dt multiplier; harness fixed-step clock, unfocused = floor(N) 1/30 s steps per drawn frame.", passthrough | clampRange(0.25, 4.0) | verified),
 L(Lead0, "MC2_SKIP_STATIC_BUILDINGS", Bool, false, "code", "", "", verified),
 L(Lead0Kill, "MC2_SKIP_STATIC_TREES", Bool, true, "code", "", "", verified),
@@ -95,7 +96,6 @@ G("MC2_STABLE_LIGHT_SKIP_TOUCH", Bool, true, "props", "", "Std Bool row: any tex
 // Static-prop ORM (PBR) — load-only feature + trace
 // history: docs/gate-history.md#MC2_STATICPROP_MATERIAL_PBR_SLOTS
 L(Lead0Kill, "MC2_STATICPROP_RECIPE_SPOTLIGHT_SKIP", Bool, true, "props", "", "", passthrough | verified),
-L(Presence, "MC2_STATIC_FORCE_ADMIT", Bool, false, "props", "", "2026-05-10 diag: MC2_STATIC_FORCE_ADMIT mirrors registry::flush behavior so the env-var A/B (cull-bypassed vs cull-active) covers BOTH substrate-record...", passthrough | verified),
 L(Presence, "MC2_STATIC_LEAF_DIAG", Bool, false, "props", "", "", verified),
 // history: docs/gate-history.md#MC2_STATIC_LIGHT_UPLOAD_SPLIT
 L(Lead0Kill, "MC2_STATIC_LIGHT_UPLOAD_SPLIT", Bool, true, "code", "", "STATICPROP-PERMANENT-INSTANCE-LIGHTS-1: upload the immutable static light prefix [0..S) once/dirty-only + the dynamic suffix [S..count) per frame, instead...", registry(Feature, "MC2_FEATURE_STATIC_LIGHT_UPLOAD_SPLIT", -1, true)),

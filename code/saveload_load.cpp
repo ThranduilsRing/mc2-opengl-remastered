@@ -645,6 +645,8 @@ static void applySaveSections(std::string_view fileName, const mc2::save::Sectio
 
 // Activate the camera and finalise the static-prop and mech geometry and the GPU cull buffers.
 void Mission::loadActivateAndFinalize() {
+	// Quickload replaces the type manager without passing through Mission::init.
+	ObjectManager->preloadTickSpawnTypes();
 	ObjectManager->snapshotMoverPoses();
 	ObjectManager->extractRenderSnapshots();
 	eye->activate();

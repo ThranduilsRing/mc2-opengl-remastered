@@ -106,9 +106,10 @@ def test_two_workers_cover_all_six_mods_and_carver_budget(tmp_path, monkeypatch)
         mission = mods / folder / 'data/missions/first.fit'
         mission.parent.mkdir(parents=True)
         mission.write_bytes(b'mission')
+        mission.with_name('middle.fit').write_bytes(b'mission')
     monkeypatch.delenv('MC2_HOST_LEASE_BATCH', raising=False)
     monkeypatch.setattr(mod_smoke.stages, 'preflight', lambda *a: None)
-    monkeypatch.setattr(mod_smoke, 'pick_mission', lambda *a: ('first', 'fixture'))
+    monkeypatch.setattr(mod_smoke, 'pick_missions', lambda *a: [('first', 'fixture:first'), ('middle', 'fixture:middle')])
     monkeypatch.setattr(mod_smoke, '_load_deploy_payload', lambda: SimpleNamespace(ensure_terrain_materials=lambda *a: None))
     def engine(cache, *a):
         cache.mkdir()
@@ -117,8 +118,11 @@ def test_two_workers_cover_all_six_mods_and_carver_budget(tmp_path, monkeypatch)
     monkeypatch.setattr(mod_smoke, 'build_engine_cache', engine)
     rendezvous = threading.Barrier(2)
     seen = {}
+    missions = {}
     def run(stage, stem, duration, timeout, ref):
         seen[stage.name] = timeout
+        missions.setdefault(stage.name, []).append(stem)
+        assert duration == 15
         rendezvous.wait(timeout=5)
         (stage / 'smoke.log').write_text('fixture')
         return {'exit': 0, 'health': {'mech_ok': True, 'ai_ok': True,
@@ -126,12 +130,14 @@ def test_two_workers_cover_all_six_mods_and_carver_budget(tmp_path, monkeypatch)
     monkeypatch.setattr(mod_smoke, 'run_mod', run)
     args = SimpleNamespace(install_root=mods, base_install=base, exe=str(build / 'mc2.exe'),
         build_dir='build64-ninja', stage_root=tmp_path / 'stages', mod='', mission='',
-        keep_stages=False, workers=2, duration=5, timeout=300, fail_fast=False)
+        keep_stages=False, workers=2, duration=15, timeout=300, fail_fast=False)
     assert mod_smoke.battery(args) == 0
     assert seen == {folder: 600 if folder == 'MCO-Carver5' else 300
                     for _, folder, _ in mod_smoke.BATTERY}
     rows = json.loads(next((tmp_path / 'stages').glob('*/battery.json')).read_text())
-    assert [row['mod'] for row in rows] == [name for name, _, _ in mod_smoke.BATTERY]
+    assert [row['mod'] for row in rows] == [name for name, _, _ in mod_smoke.BATTERY for _ in range(2)]
+    assert all(stems == ['first', 'middle'] for stems in missions.values())
+    assert len({row['log'] for row in rows}) == 12
     assert not list((tmp_path / 'stages').rglob('mc2.exe'))
 
 

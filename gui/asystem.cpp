@@ -1051,10 +1051,9 @@ void aText::render( long x, long y )
 
 void aText::setText( long resID )
 {
-	char tmp[1280];
-	cLoadString( resID, tmp, 1279 );
-	if (tmp[0] != 0)
-		text = tmp;
+	const std::string tmp = cLoadString(resID, 1279);
+	if (!tmp.empty())
+		text = tmp.c_str();
 	else
 	{
 		char tmpy[1280];

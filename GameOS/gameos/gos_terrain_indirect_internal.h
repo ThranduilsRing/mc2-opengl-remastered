@@ -29,7 +29,6 @@
 #include "../../RenderCore/RenderResourceRegistry.h"   // REGISTRY-TERRAIN-SSBO-1: recipe/thin/cement/mask ids
 // WATER-TERRAIN-REFLECTION-1: install a mirror MVP into the terrain_mvp_ cache
 // (defined __stdcall in gameos_graphics.cpp; same cache gos_GetTerrainMVPMat4 reads).
-void __stdcall gos_SetTerrainMVP(const float* matrix16);
 
 // View-epoch counter. Global-scope (defined in gameos_graphics.cpp), so the
 // extern MUST live OUTSIDE namespace gos_terrain_indirect or the linker mangles

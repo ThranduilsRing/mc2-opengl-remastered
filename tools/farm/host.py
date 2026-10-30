@@ -267,7 +267,8 @@ def main():
             scp(args, payload, f'{args.host}:{ROOT}/stage/{job_id}/payload.zip')
             remote(args, STAGE_PS % {'r': ROOT, 'id': job_id})
             work = f'{ROOT}/work/{job_id}'
-            job = substitute(job, {'{EXE}': f'{work}/mc2.exe', '{ROOT}': work})
+            job = substitute(job, {'{EXE}': f'{work}/mc2.exe', '{ROOT}': work,
+                                   '{RESULT}': f'{ROOT}/results/{job_id}'})
             upload = Path(tmpdir.name) / 'job.json'
             upload.write_text(json.dumps(job, indent=2), encoding='utf-8')
         scp(args, upload, f'{args.host}:{ROOT}/jobs/{job_id}.upload')

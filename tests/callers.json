@@ -1109,21 +1109,21 @@
       "callers_by_basename": [
         {
           "path": "scripts/tests/test_kit_visibility.py",
-          "line": 143,
+          "line": 171,
           "evidence": "load module",
           "reference": "scripts/check-kit-visibility.py",
           "text": "spec = importlib.util.spec_from_file_location(\"kit_check\", ROOT / \"scripts/check-kit-visibility.py\")"
         },
         {
           "path": "scripts/tests/test_kit_visibility.py",
-          "line": 160,
+          "line": 188,
           "evidence": "load module",
           "reference": "scripts/check-kit-visibility.py",
           "text": "spec = importlib.util.spec_from_file_location(\"kit_check_stale\", ROOT / \"scripts/check-kit-visibility.py\")"
         },
         {
           "path": "scripts/tests/test_kit_visibility.py",
-          "line": 175,
+          "line": 203,
           "evidence": "load module",
           "reference": "scripts/check-kit-visibility.py",
           "text": "spec = importlib.util.spec_from_file_location(\"kit_check_native\", ROOT / \"scripts/check-kit-visibility.py\")"
@@ -1694,7 +1694,7 @@
       "callers_by_basename": [
         {
           "path": "CMakeLists.txt",
-          "line": 957,
+          "line": 914,
           "evidence": "cmake command",
           "reference": "${CMAKE_SOURCE_DIR}/scripts/check-shader-schema.sh",
           "text": "COMMAND ${BASH_EXECUTABLE} ${CMAKE_SOURCE_DIR}/scripts/check-shader-schema.sh"
@@ -2638,7 +2638,7 @@
         },
         {
           "path": "scripts/merge_gate.py",
-          "line": 23,
+          "line": 26,
           "evidence": "import",
           "reference": "console_child",
           "text": "import console_child"
@@ -3386,6 +3386,13 @@
           "text": "import console_child"
         },
         {
+          "path": "tools/mkmerge.py",
+          "line": 9,
+          "evidence": "import",
+          "reference": "console_child",
+          "text": "import console_child"
+        },
+        {
           "path": "tools/mod_smoke.py",
           "line": 46,
           "evidence": "import",
@@ -3549,6 +3556,13 @@
         {
           "path": "tools/split/verb_chain_equiv.py",
           "line": 52,
+          "evidence": "import",
+          "reference": "console_child",
+          "text": "import console_child  # noqa: E402"
+        },
+        {
+          "path": "tools/stress_overlap.py",
+          "line": 35,
           "evidence": "import",
           "reference": "console_child",
           "text": "import console_child  # noqa: E402"
@@ -3908,7 +3922,7 @@
         },
         {
           "path": "scripts/tests/test_farm_runner.py",
-          "line": 141,
+          "line": 142,
           "evidence": "import",
           "reference": "deploy_payload",
           "text": "import deploy_payload as deploy"
@@ -4006,7 +4020,7 @@
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 191,
+          "line": 229,
           "evidence": "import_module",
           "reference": "deploy_payload",
           "text": "return importlib.import_module('deploy_payload')"
@@ -4257,7 +4271,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/merge_gate.py",
-          "line": 230,
+          "line": 348,
           "evidence": "command",
           "reference": "scripts/make-isolated-deploy.py",
           "text": "subprocess.run([sys.executable, str(ROOT / \"scripts/make-isolated-deploy.py\"),"
@@ -4445,8 +4459,22 @@
       "callers_by_basename": [],
       "callers_by_stem": [
         {
+          "path": "scripts/tests/test_gate_farm.py",
+          "line": 12,
+          "evidence": "import",
+          "reference": "merge_gate",
+          "text": "import merge_gate as gate"
+        },
+        {
+          "path": "scripts/tests/test_gate_state.py",
+          "line": 12,
+          "evidence": "import",
+          "reference": "merge_gate",
+          "text": "import merge_gate as gate"
+        },
+        {
           "path": "scripts/tests/test_kit_visibility.py",
-          "line": 151,
+          "line": 179,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate"
@@ -5185,7 +5213,7 @@
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 690,
+          "line": 765,
           "evidence": "command",
           "reference": "scripts/run_smoke.py",
           "text": "proc = subprocess.run(cmd, cwd=str(ROOT), capture_output=True,"
@@ -5366,7 +5394,7 @@
         },
         {
           "path": "scripts/run_visual.py",
-          "line": 86,
+          "line": 96,
           "evidence": "command",
           "reference": "scripts/run_visual_capture.py",
           "text": "result = subprocess.run(command, cwd=ROOT, stdout=log, stderr=subprocess.STDOUT,"
@@ -5396,7 +5424,7 @@
         },
         {
           "path": "scripts/run_smoke.py",
-          "line": 1547,
+          "line": 1550,
           "evidence": "import",
           "reference": "run_visual_capture",
           "text": "from run_visual_capture import smoke_capture"
@@ -5857,6 +5885,13 @@
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from scripts.smoke_lib import child_registry, exe_guard"
+        },
+        {
+          "path": "scripts/tests/test_sim_overlap_audit_gate.py",
+          "line": 8,
+          "evidence": "import",
+          "reference": "scripts.smoke_lib",
+          "text": "from scripts.smoke_lib import gates, logparse"
         },
         {
           "path": "tests/smoke/test_capture_backend.py",
@@ -6332,6 +6367,13 @@
           "text": "from scripts.smoke_lib import gates, logparse"
         },
         {
+          "path": "scripts/tests/test_sim_overlap_audit_gate.py",
+          "line": 8,
+          "evidence": "import",
+          "reference": "scripts.smoke_lib.gates",
+          "text": "from scripts.smoke_lib import gates, logparse"
+        },
+        {
           "path": "tests/smoke/test_gates.py",
           "line": 2,
           "evidence": "import",
@@ -6547,6 +6589,13 @@
         {
           "path": "scripts/tests/test_install_hygiene.py",
           "line": 14,
+          "evidence": "import",
+          "reference": "scripts.smoke_lib.logparse",
+          "text": "from scripts.smoke_lib import gates, logparse"
+        },
+        {
+          "path": "scripts/tests/test_sim_overlap_audit_gate.py",
+          "line": 8,
           "evidence": "import",
           "reference": "scripts.smoke_lib.logparse",
           "text": "from scripts.smoke_lib import gates, logparse"
@@ -7016,7 +7065,7 @@
       "callers_by_stem": [
         {
           "path": "scripts/run_smoke.py",
-          "line": 1652,
+          "line": 1655,
           "evidence": "import",
           "reference": "scripts.smoke_lib.runtime_bridge",
           "text": "from scripts.smoke_lib.runtime_bridge import RuntimeBridge"
@@ -7189,7 +7238,7 @@
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 47,
+          "line": 48,
           "evidence": "import",
           "reference": "stage_root",
           "text": "import stage_root as stages  # noqa: E402  (default staging roots on E:, free-space preflight)"
@@ -7611,6 +7660,20 @@
       "callers_by_stem": []
     },
     {
+      "path": "scripts/tests/test_gate_farm.py",
+      "basename": "test_gate_farm.py",
+      "stem": "test_gate_farm",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
+      "path": "scripts/tests/test_gate_state.py",
+      "basename": "test_gate_state.py",
+      "stem": "test_gate_state",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
       "path": "scripts/tests/test_gate_table_gen.py",
       "basename": "test_gate_table_gen.py",
       "stem": "test_gate_table_gen",
@@ -7976,6 +8039,13 @@
       "callers_by_stem": []
     },
     {
+      "path": "scripts/tests/test_sim_overlap_audit_gate.py",
+      "basename": "test_sim_overlap_audit_gate.py",
+      "stem": "test_sim_overlap_audit_gate",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
       "path": "scripts/tests/test_slang_build.py",
       "basename": "test_slang_build.py",
       "stem": "test_slang_build",
@@ -7993,6 +8063,13 @@
       "path": "scripts/tests/test_stage_root.py",
       "basename": "test_stage_root.py",
       "stem": "test_stage_root",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
+      "path": "scripts/tests/test_stress_overlap.py",
+      "basename": "test_stress_overlap.py",
+      "stem": "test_stress_overlap",
       "callers_by_basename": [],
       "callers_by_stem": []
     },
@@ -10448,7 +10525,7 @@
         },
         {
           "path": "scripts/tests/test_farm_runner.py",
-          "line": 257,
+          "line": 258,
           "evidence": "import",
           "reference": "tools.farm.runner",
           "text": "from tools.farm import runner"
@@ -10693,7 +10770,7 @@
       "callers_by_stem": [
         {
           "path": "scripts/merge_gate.py",
-          "line": 29,
+          "line": 32,
           "evidence": "import",
           "reference": "lane_merge",
           "text": "from lane_merge import git_bash, run_logged  # noqa: E402"
@@ -12299,7 +12376,7 @@
         },
         {
           "path": "scripts/tests/test_mod_smoke.py",
-          "line": 294,
+          "line": 433,
           "evidence": "import",
           "reference": "fst",
           "text": "import fst"
@@ -12355,14 +12432,14 @@
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 448,
+          "line": 519,
           "evidence": "import_module",
           "reference": "fst",
           "text": "fst_lib = importlib.import_module('fst')"
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 484,
+          "line": 555,
           "evidence": "import_module",
           "reference": "fst",
           "text": "fst_lib = importlib.import_module('fst')"
@@ -12431,6 +12508,13 @@
           "evidence": "import",
           "reference": "mc2x_import",
           "text": "import mc2x_import"
+        },
+        {
+          "path": "tools/mod_smoke.py",
+          "line": 394,
+          "evidence": "import",
+          "reference": "mc2x_import",
+          "text": "from mc2x_import import fst as fst_lib"
         }
       ]
     },
@@ -12665,6 +12749,21 @@
       ]
     },
     {
+      "path": "tools/mkmerge.py",
+      "basename": "mkmerge.py",
+      "stem": "mkmerge",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tools/test_mkmerge.py",
+          "line": 10,
+          "evidence": "import",
+          "reference": "mkmerge",
+          "text": "import mkmerge"
+        }
+      ]
+    },
+    {
       "path": "tools/mod_install/fst_listing.py",
       "basename": "fst_listing.py",
       "stem": "fst_listing",
@@ -12679,28 +12778,35 @@
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 233,
+          "line": 271,
           "evidence": "import",
           "reference": "fst_listing",
           "text": "import fst_listing"
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 364,
+          "line": 393,
           "evidence": "import",
           "reference": "fst_listing",
           "text": "import fst_listing"
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 466,
+          "line": 435,
           "evidence": "import",
           "reference": "fst_listing",
           "text": "import fst_listing"
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 485,
+          "line": 537,
+          "evidence": "import",
+          "reference": "fst_listing",
+          "text": "import fst_listing"
+        },
+        {
+          "path": "tools/mod_smoke.py",
+          "line": 556,
           "evidence": "import",
           "reference": "fst_listing",
           "text": "import fst_listing"
@@ -12821,7 +12927,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/tests/test_mod_smoke.py",
-          "line": 9,
+          "line": 10,
           "evidence": "load module",
           "reference": "tools/mod_smoke.py",
           "text": "_spec = importlib.util.spec_from_file_location(\"mod_smoke\", ROOT / \"tools\" / \"mod_smoke.py\")"
@@ -13077,7 +13183,7 @@
       "callers_by_stem": [
         {
           "path": "tools/perf/budget_check.py",
-          "line": 157,
+          "line": 202,
           "evidence": "import",
           "reference": "mission_cpu_profile",
           "text": "import mission_cpu_profile"
@@ -16253,7 +16359,7 @@
       "callers_by_basename": [
         {
           "path": "CMakeLists.txt",
-          "line": 935,
+          "line": 892,
           "evidence": "cmake command",
           "reference": "${CMAKE_SOURCE_DIR}/tools/shader_reflect/reflect.py",
           "text": "COMMAND ${Python3_EXECUTABLE}"
@@ -16322,6 +16428,13 @@
         {
           "path": "scripts/tests/test_sim_determinism_strict.py",
           "line": 10,
+          "evidence": "import",
+          "reference": "sim_determinism",
+          "text": "import sim_determinism as sim"
+        },
+        {
+          "path": "scripts/tests/test_sim_overlap_audit_gate.py",
+          "line": 9,
           "evidence": "import",
           "reference": "sim_determinism",
           "text": "import sim_determinism as sim"
@@ -16550,6 +16663,21 @@
       "stem": "verb_chain_equiv",
       "callers_by_basename": [],
       "callers_by_stem": []
+    },
+    {
+      "path": "tools/stress_overlap.py",
+      "basename": "stress_overlap.py",
+      "stem": "stress_overlap",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "scripts/tests/test_stress_overlap.py",
+          "line": 7,
+          "evidence": "import",
+          "reference": "stress_overlap",
+          "text": "import stress_overlap as so"
+        }
+      ]
     },
     {
       "path": "tools/terrain_beautify/control_map_tool.py",
@@ -17375,6 +17503,13 @@
       "path": "tools/test_log_tag_census.py",
       "basename": "test_log_tag_census.py",
       "stem": "test_log_tag_census",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
+      "path": "tools/test_mkmerge.py",
+      "basename": "test_mkmerge.py",
+      "stem": "test_mkmerge",
       "callers_by_basename": [],
       "callers_by_stem": []
     },

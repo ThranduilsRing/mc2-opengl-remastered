@@ -125,6 +125,8 @@ class WeaponEffects
 			return mc2_word_none;
 		}
 		
+		long getNumEffects (void) const { return numEffects; }
+
  		long GetEffectObjNum (long effectId)
 		{
 			if ((effectId >= 0) && (effectId < numEffects))

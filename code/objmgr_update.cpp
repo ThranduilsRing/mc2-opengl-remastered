@@ -935,6 +935,7 @@ void GameObjectManager::extractRenderList (mc2::render_view::RenderList& list)
 	auto add = [](std::vector<mc2::render_view::RenderView>& out, GameObjectPtr obj) {
 		mc2::render_view::RenderView& v = out.emplace_back();
 		v.obj = obj;
+		v.generation = obj->generation;
 		obj->extractRenderView(v);
 	};
 

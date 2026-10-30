@@ -24,6 +24,9 @@ def priority_probe(tmp_path_factory):
     source = folder / "probe.cpp"
     source.write_text('''#include "loose_asset_priority.h"
 int main(int argc, char** argv) {
+    if (argc > 4) return userPackedBuildingArchive(argv[1], [&](const auto&) {
+        return static_cast<uint32_t>(std::stoul(argv[4], nullptr, 16));
+    }) ? 1 : 0;
     bool read = false;
     bool user = userLooseBuildingAsset(argv[1], argv[2], [&] {
         read = true;
@@ -37,11 +40,36 @@ int main(int argc, char** argv) {
     subprocess.run(["clang++", "-std=c++20", "-O2", "-I", str(ROOT / "mclib"),
                     str(source), "-o", str(exe)], check=True, capture_output=True,
                    **console_child.child_kwargs(redirected=True))
-    def user(path, owner="", no_stock_read=False):
-        result = nofocus.run([str(exe), str(path), owner] + (["no-read"] if no_stock_read else []))
+    def user(path, owner="", no_stock_read=False, archive_crc=None):
+        extra = ['archive', archive_crc] if archive_crc is not None else (["no-read"] if no_stock_read else [])
+        result = nofocus.run([str(exe), str(path), owner] + extra)
         assert result.returncode in (0, 1)
         return result.returncode == 1
     return user
+
+
+def test_archive_only_building_guard_requires_mod_ownership(tmp_path, priority_probe):
+    """Legacy root FSTs lack the owner that makes archive-only mod art win.
+
+    Keep this boundary explicit: a missing loose file is protected only when
+    LookupModOwner supplies a user mod, which root FastFile lookup does not do.
+    """
+    path = tmp_path / 'data/tgl/archive-only-building.ini'
+    assert not path.exists()
+    assert priority_probe(path, 'user-mod', no_stock_read=True)
+    assert not priority_probe(path, '', no_stock_read=True)
+    assert not priority_probe(path, 'mc2-industrial-kit', no_stock_read=True)
+
+
+def test_legacy_archive_art_wins_and_stock_keeps_kit(tmp_path, priority_probe):
+    archive = tmp_path / 'tgl.fst'
+    archive.write_bytes(b'mod-only packed art')
+    assert priority_probe(archive, archive_crc='0')
+    # Equal-size edits still belong to the mod; only known stock bytes yield.
+    with archive.open('wb') as stream:
+        stream.truncate(34295854)
+    assert not priority_probe(archive, archive_crc='aef6a9dd')
+    assert priority_probe(archive, archive_crc='aef6a9de')
 
 
 @pytest.mark.parametrize("case", ["fresh", "fresh-no-sidecar", "legacy", "legacy-no-source", "legacy-bc7", "legacy-alternate-cook", "user-ktx", "user-tga", "mod", "edited-reference", "modder-cook", "uppercase-stock"])

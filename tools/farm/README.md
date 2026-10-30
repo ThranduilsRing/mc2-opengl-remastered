@@ -115,3 +115,7 @@ and flight copies. Physical heaps still retain the OS/driver safety margin.
 On UMA, the startup `vram_mib` is the device-local shared heap, not dedicated VRAM.
 
 Lane exe: `submit --exe <worktree/build64-ninja/mc2.exe> [--data-delta <dir>] job.json` stages the exe and deploy's matching shaders (including baked SPIR-V), DLLs, definitions and support files into a per-job tree `C:\mc2farm\work\<id>`. PDBs stay on the host. A payload manifest replaces the seed manifest; payload files take precedence over the optional data overlay. Touched trees are copied so the seed is unchanged. `{EXE}` / `{ROOT}` in the job JSON become the staged paths; use `{EXE}` for `--ref-exe` to verify the submitted binary. `fetch` deletes the tree. Still no perf numbers or owner captures from the farm.
+
+`{RESULT}` becomes the per-job result directory, which `fetch` retrieves.
+Merge gates can use `--farm-determinism` to run the trio there alongside local
+save/load checks; failures and missing farm evidence still fail the gate.

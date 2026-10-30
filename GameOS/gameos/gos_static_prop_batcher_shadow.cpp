@@ -81,33 +81,6 @@ extern "C" int mc2_shadow_island_get_geometry_feed(Mc2ShadowGeomFeed* out) {
 // GpuStaticPropInstance array grouped by typeID, and hand out the world->clip matrix
 // + reverse-Z depth bias. Called by the color island ONLY when its gate is ON (the
 // GL flush() is skipped in that case).
-//
-// CURRENT BEHAVIOUR (supersedes the history below): per type the feed is the
-// persistent-store block FIRST, then this frame's dynamic submits from
-// s_bucketsByType (excluding the reinjPos/reinjCount range copied from the store);
-// mc2_color_prop_island_end_frame() performs flush()'s end-of-frame bookkeeping.
-// The 'persistent store only' text below describes the original fix, kept for context.
-//
-// VK-PROP-COVERAGE FIX (source correction): originally this read s_bucketsByType.
-// That map is a per-FRAME accumulator whose ONLY per-frame clear lives inside
-// GpuStaticPropBatcher::flush() (line ~7661) — which is SKIPPED when the island owns
-// the frame. So s_bucketsByType was simultaneously (a) unbounded-accumulating across
-// island frames (measured on mc2_01: feed_total 968 -> 1.17M over ~10 frames as
-// reinjectPersistentStatic() re-appended the whole store every frame with nothing
-// clearing it), overflowing the island's instance/buffer capacity so only low-offset
-// building runs survived -> "props are building-only"; and (b) on frames where the
-// registry's frame-currency optimisation left it near-empty, feeding only 1-2 props.
-// Either way the buckets are the WRONG source for a "draw one frame's full prop set"
-// island that runs in place of flush().
-//
-// The AUTHORITATIVE, stable, all-population set is the persistent-static store
-// (s_persistentStaticStore) — the registry recipes for every registered static prop:
-// Buildings AND Trees AND Generic (all use the registry markVisible path; measured:
-// 733 trees eligible, all via the store, dyn-submit=0). It is population-agnostic and
-// is exactly what reinjectPersistentStatic() copies into the GL buckets each frame, so
-// feeding it directly gives the island the SAME prop set GL flush() draws — trees,
-// tents, misc props included — without the accumulation hazard. Read-only: does NOT
-// mutate any batcher state. Output is a reused static scratch vector.
 extern "C" uint32_t mc2_static_prop_vertex_stride(void) { return static_cast<uint32_t>(kVertexStride); }
 
 // Called by txmmgr once per frame at the point where the GL flush() is skipped because
@@ -116,7 +89,6 @@ extern "C" void mc2_color_prop_island_end_frame() {
     // Mirror flush()'s end-of-frame bookkeeping (see flush(): s_bucketsByType.clear
     // + s_lastUploadedSlot reset + prev-frame per-type instance count snapshot).
     s_bucketsByType.clear();
-    s_reinjectedThisFrame = false;
     s_lastUploadedSlot = 0xFFFFFFFFu;
     s_typeInstanceCountPrevFrame.clear();
     for (const auto& kv : s_typeRanges)
@@ -145,10 +117,9 @@ extern "C" int mc2_color_prop_island_get_frame_feed(Mc2ColorPropFeed* out) {
     // one type-run per contiguous typeID block via firstInstance). Deterministic
     // ordering (ascending typeID) so the flattening is stable frame-to-frame.
     // Per type: persistent-store block first, then this frame's DYNAMIC submits
-    // (buildings failing isStaticEligible etc.) from s_bucketsByType, excluding the
-    // range reinjectPersistentStatic() copied from the store (else double-draw).
+    // (buildings failing isStaticEligible etc.) from s_bucketsByType.
     // Read point: inside the island run, which txmmgr calls after renderLists() has
-    // issued all submits and the registry reinject for the frame.
+    // issued all submits for the frame.
     // Distance LOD (model-override statics only; MC2_VK_PROP_LOD=0 disables): each instance of a LOD-capable
     // type is re-typed to the LOD its camera distance selects, with a +-8% band so it never flickers at a
     // boundary. Re-typed instances are collected per target type and appended in that type's slot below, so
@@ -182,10 +153,7 @@ extern "C" int mc2_color_prop_island_get_frame_feed(Mc2ColorPropFeed* out) {
                 const auto& [bkTid, pb] = *bt;
                 const GpuStaticPropInstance* d0 = pb.instances.data();
                 const uint32_t n  = static_cast<uint32_t>(pb.instances.size());
-                const uint32_t rp = std::min(pb.reinjPos, n);
-                const uint32_t re = std::min(rp + pb.reinjCount, n);
-                route(d0, d0 + rp, g);
-                route(d0 + re, d0 + n, g);
+                route(d0, d0 + n, g);
             }
         }
     }
@@ -214,11 +182,7 @@ extern "C" int mc2_color_prop_island_get_frame_feed(Mc2ColorPropFeed* out) {
         auto bt = s_bucketsByType.find(tid);
         if (bt != s_bucketsByType.end()) {
             const PerTypeBucket& b = bt->second;
-            const uint32_t n  = static_cast<uint32_t>(b.instances.size());
-            const uint32_t rp = std::min(b.reinjPos, n);
-            const uint32_t re = std::min(rp + b.reinjCount, n);
-            s_colorFeedFlat.insert(s_colorFeedFlat.end(), b.instances.begin(), b.instances.begin() + rp);
-            s_colorFeedFlat.insert(s_colorFeedFlat.end(), b.instances.begin() + re, b.instances.end());
+            s_colorFeedFlat.insert(s_colorFeedFlat.end(), b.instances.begin(), b.instances.end());
         }
     }
     if (s_colorFeedFlat.empty()) return 0;

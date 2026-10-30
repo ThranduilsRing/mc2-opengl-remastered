@@ -31,15 +31,105 @@ OUT = Path("E:/mc2-archive-2026-10/proofs/cpu-profile")
 # Sibling scopes in gameosmain.cpp / gameosmain_frame.cpp. GameLogic includes
 # 0..N fixed simulation ticks and dispatch/wait when sim overlap is enabled.
 SPLIT = {"sim tick/logic": "GameLogic", "render": "DrawScreen", "present": "SwapWindow"}
+CAMERA_MISSIONS = {"mc2_01", "mc2_10", "mc2_24"}
+BOOKMARK_DIR = ROOT / "tests/visual/bookmarks"
+
+
+def camera_bookmarks(mission):
+    return json.loads((BOOKMARK_DIR / f"{mission}_camera.json").read_text(encoding="utf-8"))
+
+
+def distribution(values):
+    return ({"mean_ms": sum(values) / len(values), "p95_ms": p95(values),
+             "worst_ms": max(values), "count": len(values)} if values else "unmeasured")
+
+
+def drive_bookmarks(channel, marks, captures, mission, done, errors):
+    """One launch: frozen PNG sweep, then live timed views; acknowledgements anchor timing."""
+    try:
+        deadline = time.monotonic() + 1440  # bounded normal lease wait plus mission load
+        while not done.wait(.1):
+            if all((captures / f"{mission}_{m['name']}{suffix}").is_file()
+                   for m in marks for suffix in (".png", ".json")):
+                break
+            if time.monotonic() > deadline:
+                raise RuntimeError("bookmark PNG sweep did not finish")
+        ack = channel.with_suffix(".txt.ack")
+        def send(mark):
+            command = battle.view_command(mark)
+            before = ack.stat().st_size if ack.exists() else 0
+            channel.write_text(command + "\n", encoding="utf-8")
+            until = time.monotonic() + 10
+            while not done.wait(.01):
+                receipt = ack.read_text(encoding="utf-8")[before:] if ack.exists() else ""
+                if f"{command} -> ok" in receipt:
+                    return
+                if time.monotonic() > until:
+                    raise RuntimeError(f"camera command unacknowledged: {command}")
+            raise RuntimeError("game ended during camera schedule")
+        # Allow the last readback to drain and the sweep to restore pause state.
+        if done.wait(.5):
+            return
+        for mark in marks:
+            send(mark)
+            if mark["name"] == "orbit":
+                start = time.monotonic()
+                for step in range(1, 101):
+                    if done.wait(max(0, start + step / 10 - time.monotonic())):
+                        raise RuntimeError("orbit interrupted")
+                    send(dict(mark, rot=mark["rot"] + step * 3.6))
+                if time.monotonic() - start > 10.5:
+                    raise RuntimeError("orbit command channel could not sustain 10 s sweep")
+            elif done.wait(1.5):
+                raise RuntimeError("bookmark schedule interrupted")
+        # Sentinel closes the final measurement interval.
+        send(marks[0])
+    except Exception as exc:
+        errors.append(str(exc))
+
+
+def bookmark_measurements(directory, marks, log):
+    rows = [json.loads(line) for line in (directory / "frames.jsonl").read_text().splitlines()]
+    views = [r for r in rows if r["type"] == "view"]
+    expected = len(marks) + 101  # 100 orbit steps and closing sentinel
+    if len(views) != expected:
+        raise RuntimeError(f"camera schedule incomplete: {len(views)}/{expected} views")
+    result, cursor = {}, 0
+    gpu_available = "[VK_GPU_PASSES v1]" in log
+    for mark in marks:
+        steps = 101 if mark["name"] == "orbit" else 1
+        first, end = views[cursor]["frame"], views[cursor + steps]["frame"]
+        cursor += steps
+        # Exclude teleport and pipeline latency; retain all frames of the moving orbit.
+        start = first + (1 if mark["name"] == "orbit" else 4)
+        samples = [r for r in rows if start <= r.get("frame", -1) < end]
+        gpu = [r for r in samples if r["type"] == "gpu" and r["recorded"] == r["valid"]]
+        cpu = [r["ms"] for r in samples if r["type"] == "cpu"]
+        scopes = sorted({k for r in gpu for k in r["passes"]}) if gpu_available else []
+        png = directory / f"{directory.name}_{mark['name']}.png"
+        captured = json.loads(png.with_suffix(".json").read_text(encoding="utf-8"))
+        actual = {key: captured.get(key) for key in ("cap_pos", "cap_rot", "cap_proj", "cap_alt")}
+        delta = abs(((actual["cap_rot"] - mark["rot"] + 180) % 360) - 180)
+        pose_matches = (all(abs(a - b) <= 2 for a, b in zip(actual["cap_pos"][:2], mark["pos"][:2]))
+                        and abs(actual["cap_proj"] - mark["proj"]) <= .5 and delta <= .5)
+        result[mark["name"]] = {"pose": mark, "frame_range": [start, end],
+            "captured_pose": actual, "pose_matches": pose_matches, "visual_review": "unreviewed",
+            "cpu_frame": distribution(cpu), "zones": {},
+            "gpu_span": distribution([r["ms"] for r in gpu]) if gpu_available else "unmeasured",
+            "gpu_passes": {k: distribution([r["passes"].get(k, 0) for r in gpu]) for k in scopes},
+            "resolution": [1920, 1080], "last_cpu_frame": max(r["frame"] for r in rows if r["type"] == "cpu"),
+            "capture": str(png)}
+        if not cpu:
+            raise RuntimeError(f"no CPU samples for {mark['name']}")
+    return result
 
 
 def p95(values):
     return sorted(values)[max(0, math.ceil(len(values) * .95) - 1)] if values else None
 
 
-def summarize(reader):
+def summarize(reader, frame_range=None, bookmarks=None):
     """Aggregate real individual events, merging identical names across threads."""
-    durations = defaultdict(list)
     events = []
     for row in reader:
         column = next((key for key in ("ns", "duration_ns", "exec_time_ns", "duration")
@@ -49,24 +139,53 @@ def summarize(reader):
         value = int(row[column])
         if value < 0:
             raise ValueError("negative Tracy zone duration")
-        events.append((row["name"], int(row["ns_since_start"]) if row.get("ns_since_start") else None, value))
-    frames = [(start, duration) for name, start, duration in events if name == "Frame" and start is not None]
-    start_frame = min(start for start, _ in frames) if frames else None
-    end_frame = max(start + duration for start, duration in frames) if frames else None
-    for name, start, duration in events:
-        if frames and (start is None or start < start_frame or start + duration > end_frame):
-            continue
-        durations[name].append(duration)
-    if not durations:
-        raise ValueError("Tracy export contains no CPU events")
-    return {name: {"count": len(values), "total_ms": sum(values) / 1e6,
-                   "p95_ms": p95(values) / 1e6} for name, values in durations.items()}
+        events.append((sys.intern(row["name"]), int(row["ns_since_start"]) if row.get("ns_since_start") else None, value))
+    frames = sorted((start, duration) for name, start, duration in events if name == "Frame" and start is not None)
+    def aggregate(window=None):
+        selected = frames if window is None else frames[window[0] - 1:window[1] - 1]
+        if window is not None and len(selected) != window[1] - window[0]:
+            raise ValueError("bookmark frame range missing from Tracy")
+        start_frame = selected[0][0] if selected else None
+        end_frame = max(start + duration for start, duration in selected) if selected else None
+        durations = defaultdict(list)
+        for name, start, duration in events:
+            if selected and (start is None or start < start_frame or start + duration > end_frame):
+                continue
+            durations[name].append(duration)
+        if not durations:
+            raise ValueError("Tracy export contains no CPU events")
+        return {name: {"count": len(values), "total_ms": sum(values) / 1e6,
+                       "p95_ms": p95(values) / 1e6,
+                       "worst_ms": max(values) / 1e6} for name, values in durations.items()}
+    if bookmarks:
+        expected = next(iter(bookmarks.values()))["last_cpu_frame"]
+        if len(frames) != expected:
+            raise RuntimeError(f"Tracy/frame counter alignment missing: {len(frames)} Frame scopes, last CPU frame {expected}")
+        for mark in bookmarks.values():
+            mark["zones"] = aggregate(mark["frame_range"])
+    return aggregate(frame_range)
 
 
 def capture_mission(install, mission, seconds, trace, extra_env):
     """Record through mission exit: a connection-time cutoff can capture only loading."""
     env = tracy.game_env("vk", False, 0, None, extra_env)
     env["MC2_FORCE_ALL_VISIBLE"] = "0"  # profile normal mission visibility, overriding smoke's forced value
+    marks = camera_bookmarks(mission)["bookmarks"] if mission in CAMERA_MISSIONS else []
+    done, errors = threading.Event(), []
+    driver = None
+    if marks:
+        channel = trace.parent / "commands.txt"
+        channel.write_text(f"bench_output {trace.parent / 'frames.jsonl'}\n", encoding="utf-8")
+        env.update({"MC2_TEST_SPAWN": "1", "MC2_UI_COMMAND_FILE": str(channel),
+                    "MC2_VISUAL_BOOKMARK_CAPTURE": str(BOOKMARK_DIR / f"{mission}_camera.json"),
+                    "MC2_VISUAL_CAPTURE_DIR": str(trace.parent), "MC2_VISUAL_CAPTURE_FRAME": "120",
+                    "MC2_VISUAL_SETTLE": "30", "MC2_VK_GPU_TIMESTAMPS": "1",
+                    "MC2_WIDTH": "1920", "MC2_HEIGHT": "1080", "MC2_FPS_CAP": "0", "MC2_VSYNC": "0",
+                    "MC2_DETERMINISTIC_RNG": "1"})
+        # The PNG sweep freezes simulation; the subsequent performance schedule resumes live simulation.
+        env.pop("MC2_SMOKE_FIXED_TIMESTEP", None)
+        driver = threading.Thread(target=drive_bookmarks,
+            args=(channel, marks, trace.parent, mission, done, errors))
     # game_env returns a full environment; don't declare harness-only ambient
     # MC2_HOST_* settings as engine overrides under runner's strict gate check.
     for key in runner.unregistered_ambient(env):
@@ -82,11 +201,18 @@ def capture_mission(install, mission, seconds, trace, extra_env):
                                     **nofocus.hidden_kwargs(**flags))
         try:
             time.sleep(1)  # recorder binds before the on-demand Tracy client boots
+            if driver:
+                driver.start()
             result = runner.run_one(runner.RunConfig(
                 exe=[str(install / "mc2.exe")], profile="stock", stem=mission,
                 duration=seconds, heartbeat_timeout_load_s=120,
                 heartbeat_timeout_play_s=15, grace_s=150, env_extra=env, show_window=True))
             trace.with_suffix(".game.log").write_text(result.stdout_text, encoding="utf-8")
+            done.set()
+            if driver:
+                driver.join(timeout=15)
+            if errors:
+                raise RuntimeError("; ".join(errors))
             if result.exit_code or result.killed_by_timeout:
                 return result.exit_code or 1
             recorder.wait(timeout=60)
@@ -94,10 +220,13 @@ def capture_mission(install, mission, seconds, trace, extra_env):
                 raise RuntimeError(f"missing/trivial Tracy capture; see {log.name}")
             return result.exit_code or int(result.killed_by_timeout)
         finally:
+            done.set()
+            if driver and driver.is_alive():
+                driver.join(timeout=15)
             tracy._stop_capture_child(recorder)
 
 
-def export_zones(trace):
+def export_zones(trace, bookmarks=None):
     # Stream all events once: computing p95 from aggregate mean/max is invalid.
     with trace.with_suffix(".export.log").open("w", encoding="utf-8") as log:
         flags = {"creationflags": subprocess.BELOW_NORMAL_PRIORITY_CLASS} if os.name == "nt" else {}
@@ -109,7 +238,7 @@ def export_zones(trace):
         timer.start()
         try:
             with child.stdout:
-                zones = summarize(csv.DictReader(child.stdout))
+                zones = summarize(csv.DictReader(child.stdout), bookmarks=bookmarks)
             if child.wait(timeout=10):
                 raise RuntimeError(f"Tracy export failed; see {log.name}")
             return zones
@@ -249,8 +378,8 @@ def profile(args, name, directory, psutil):
         channel = battle.prepare(directory, scenario, "day")
         env = [f"{k}={v}" for k, v in battle.environment(channel, 1920, 1080).items()]
     started = time.monotonic()
-    # A bounded exclusive window prevents a second MC2 instance feeding Tracy.
-    with host_lease.exclusive_window(f"mission CPU perf {name}", timeout_s=120):
+    # Standard bounded perf lease prevents a second MC2 instance feeding Tracy.
+    with host_lease.exclusive_window(f"mission CPU perf {name}", timeout_s=1200):
         waited = time.monotonic() - started
         others = game_processes(psutil)
         if others:
@@ -260,7 +389,7 @@ def profile(args, name, directory, psutil):
         samples = HostSamples(psutil)
         try:
             with samples:
-                rc = capture_mission(args.install, mission, args.seconds, trace, env)
+                rc = capture_mission(args.install, mission, max(args.seconds, 60) if name in CAMERA_MISSIONS else args.seconds, trace, env)
         finally:
             noise = noise_report(samples)
             (directory / "host-load.json").write_text(json.dumps(noise, indent=2), encoding="utf-8")
@@ -276,11 +405,14 @@ def profile(args, name, directory, psutil):
         ack = channel.with_suffix(channel.suffix + ".ack")
         if not ack.exists() or "bench_attack -> ok" not in ack.read_text(encoding="utf-8", errors="replace"):
             raise RuntimeError("battle spawn/attack was not acknowledged")
-    zones = export_zones(trace)
+    bookmarks = bookmark_measurements(directory, camera_bookmarks(name)["bookmarks"], log) if name in CAMERA_MISSIONS else {}
+    zones = export_zones(trace, bookmarks)
     missing = set(SPLIT.values()) - zones.keys()
     if missing:
         raise RuntimeError(f"missing frame scopes {sorted(missing)}; trace is not a mission profile")
-    return {"mission": mission, "noise": noise, "zones": zones,
+    return {"mission": mission, "noise": noise, "zones": zones, "bookmarks": bookmarks,
+            "duration_seconds": max(args.seconds, 60) if name in CAMERA_MISSIONS else args.seconds,
+            "capture_clock": "wall-clock; review PNGs only, not deterministic goldens" if bookmarks else None,
             "lease_wait_seconds": waited, "game_run_seconds": run_seconds,
             "trace": str(trace)}
 
@@ -299,7 +431,7 @@ def main(argv=None):
         parser.error("unset MC2_SMOKE_FIXED_TIMESTEP: CPU profiling requires wall-clock simulation")
     import psutil
     if os.name == "nt":
-        psutil.Process().nice(psutil.BELOW_NORMAL_PRIORITY_CLASS)
+        psutil.Process().nice(psutil.IDLE_PRIORITY_CLASS)
     args.install = args.install.resolve()
     exe = args.install / "mc2.exe"
     if not exe.is_file():
@@ -326,6 +458,9 @@ def main(argv=None):
             run = profile(args, name, directory / name, psutil)
             report["runs"][name] = run
             rendered = table(name, run["zones"], run["noise"], args.top)
+            for bookmark, data in run.get("bookmarks", {}).items():
+                rendered += "\n\n" + table(f"{name}/{bookmark}", data["zones"], run["noise"], args.top)
+                rendered += f"\n\nCPU frame: {data['cpu_frame']}; GPU span: {data['gpu_span']}."
             text.append(rendered)
             print(rendered, flush=True)
         except (Exception, SystemExit) as exc:

@@ -64,6 +64,7 @@ inline constexpr int GROUNDVEHICLE_HIT_ARC_RIGHT = 3;
 inline constexpr unsigned int NO_APPEARANCE_FOR_VEHICLE = 0xFFFD0001;
 inline constexpr unsigned int NO_APPEARANCE_TYPE_FOR_VEHICLE = 0xFFFD0009;
 inline constexpr unsigned int APPEARANCE_NOT_GV_TYPE = 0xFFFD000A;
+inline constexpr int VEHICLEPILOT_ID = 638;   // the ejected pilot a dying vehicle spawns mid-tick (preloadTickSpawnTypes loads it)
 
 inline constexpr int NUM_CRITICAL_SPACES_FRONT = 1;
 inline constexpr int NUM_CRITICAL_SPACES_LEFT = 1;
