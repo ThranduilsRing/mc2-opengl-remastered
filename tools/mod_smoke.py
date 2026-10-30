@@ -171,6 +171,9 @@ def place_file(source: Path, target: Path, link_ok: bool = True, incremental=Fal
     share a volume; immutable assets may use a file symlink across volumes. The target is unlinked first so an existing
     hardlink is replaced rather than written through. Returns 'link' or 'copy'."""
     target.parent.mkdir(parents=True, exist_ok=True)
+    # Windows loaded-module locks cover every hardlink to an EXE/DLL. A stock
+    # smoke must not prevent another stage from deleting its runtime payload.
+    link_ok = link_ok and source.suffix.lower() not in {'.exe', '.dll'}
     if incremental and target.is_file() and not target.is_symlink():
         a, b = source.stat(), target.stat()
         if (a.st_size, a.st_mtime_ns) == (b.st_size, b.st_mtime_ns):

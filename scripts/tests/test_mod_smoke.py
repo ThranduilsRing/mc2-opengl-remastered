@@ -266,6 +266,19 @@ def test_stage_layers_and_isolation(tmp_path):
     assert (stage / "system.cfg").read_text() == "engine cfg"
 
 
+def test_staged_runtime_modules_have_private_inodes(tmp_path):
+    cache = tmp_path / "cache"
+    for name in ("mc2.exe", "avcodec-61.dll", "data/shared.pak"):
+        _w(cache / name, "runtime")
+    first, second = tmp_path / "first", tmp_path / "second"
+    ms.link_engine(cache, first)
+    ms.link_engine(cache, second)
+    for name in ("mc2.exe", "avcodec-61.dll"):
+        assert not os.path.samefile(cache / name, first / name)
+        assert not os.path.samefile(first / name, second / name)
+    assert os.path.samefile(first / "data/shared.pak", second / "data/shared.pak")
+
+
 def test_addon_stacks_on_base_mod(tmp_path):
     cache = tmp_path / "cache"
     _w(cache / "mc2.exe", "exe")
