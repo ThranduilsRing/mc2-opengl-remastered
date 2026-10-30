@@ -602,11 +602,7 @@ void LogisticsVehicle::init( FitIniFile& file )
 	file.readIdLong( "DescIndex", chassisNameID );
 	file.readIdFloat( "CurTonnage", maxWeight );
 
-	char tmpWeightClass[256];
-
-	cLoadString( IDS_VEHICLE_CLASS, tmpWeightClass, 256 );
-
-	mechClass = tmpWeightClass;
+	mechClass = cLoadString(IDS_VEHICLE_CLASS, 256).c_str();
 
 	if ( NO_ERR !=file.readIdLong( "HouseID", houseID ) )
 	{

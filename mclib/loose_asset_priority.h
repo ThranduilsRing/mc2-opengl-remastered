@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <algorithm>
 #include <cctype>
+#include <utility>
 
 inline std::string assetLower(std::string_view text)
 {
@@ -69,4 +70,19 @@ inline bool userLooseBuildingAsset(std::string_view name, std::string_view owner
     if (verifiedLooseStockAsset(std::filesystem::path(name))) return false;
     if (looseTexture(std::filesystem::path(name))) return true;
     return looseAssetDiffers(name, readStock());
+}
+
+// Legacy root FSTs have no mod owner. Only the shipped stock archives may
+// supply packed art underneath the bundled kit; other archives retain their art.
+template<class ChecksumReader>
+inline bool userPackedBuildingArchive(const std::filesystem::path& archive, ChecksumReader&& checksum)
+{
+    std::error_code error;
+    const auto size = std::filesystem::file_size(archive, error);
+    if (error) return true;
+    // Stock v0.4 FST byte counts and CRC32s, independent of their installed name.
+    for (const auto [bytes, crc] : {std::pair<uintmax_t, uint32_t>{34295854, 0xaef6a9ddu},
+                                  {183579930, 0xd42c47e3u}, {24488767, 0xddda74ceu}})
+        if (size == bytes) return checksum(archive) != crc;
+    return true;
 }

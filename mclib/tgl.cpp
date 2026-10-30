@@ -95,6 +95,7 @@ void TG_Shape::Touch() {
 //render pass if the camera does not change for that pass.
 void TG_Shape::SetCameraMatrices (glm::mat4 *camOrigin, glm::mat4 *camToClip)
 {
+	mc2::overlap::assertOwner(mc2::overlap::Owner::Render, "TG_Shape::SetCameraMatrices");
 	s_cameraOrigin = camOrigin;
 	s_cameraToClip = camToClip;
 
@@ -105,6 +106,7 @@ void TG_Shape::SetCameraMatrices (glm::mat4 *camOrigin, glm::mat4 *camToClip)
 
 void TG_Shape::SetFog (DWORD fRGB, float fStart, float fFull)
 {
+	mc2::overlap::assertOwner(mc2::overlap::Owner::Render, "TG_Shape::SetFog");
 	fogColor = fRGB;
 	fogStart = fStart;
 	fogFull = fFull;
@@ -118,6 +120,7 @@ void TG_Shape::SetFog (DWORD fRGB, float fStart, float fFull)
 
 void TG_Shape::SetViewport (float mulX, float mulY, float addX, float addY)
 {
+	mc2::overlap::assertOwner(mc2::overlap::Owner::Render, "TG_Shape::SetViewport");
 	viewMulX = mulX;
 	viewMulY = mulY;
 	viewAddX = addX;

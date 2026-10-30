@@ -17,7 +17,7 @@ spec.loader.exec_module(profile)
 def test_real_percentiles_merge_same_named_events():
     rows = "name,ns,thread\nA,1000000,1\nA,9000000,2\nB,3000000,1\n"
     zones = profile.summarize(csv.DictReader(io.StringIO(rows)))
-    assert zones["A"] == {"count": 2, "total_ms": 10, "p95_ms": 9}
+    assert zones["A"] == {"count": 2, "total_ms": 10, "p95_ms": 9, "worst_ms": 9}
     assert profile.p95(range(1, 101)) == 95
 
 
@@ -28,6 +28,28 @@ def test_startup_and_partial_events_are_excluded_from_mission_tables():
     zones = profile.summarize(csv.DictReader(io.StringIO(rows)))
     assert "load" not in zones and "partial" not in zones
     assert zones["GameLogic"]["total_ms"] == 1
+
+
+def test_bookmark_window_excludes_other_camera_frames():
+    rows = ('name,ns_since_start,ns\nFrame,10,10\nDrawScreen,11,5\n'
+            'Frame,30,20\nDrawScreen,31,15\nFrame,60,10\nDrawScreen,61,3\n')
+    zones = profile.summarize(csv.DictReader(io.StringIO(rows)), [2, 3])
+    assert zones['Frame']['total_ms'] == 20 / 1e6
+    assert zones['DrawScreen']['worst_ms'] == 15 / 1e6
+
+
+def test_frame_distribution_keeps_worst_hitch():
+    result = profile.distribution([1] * 99 + [50])
+    assert result == {'mean_ms': 1.49, 'p95_ms': 1, 'worst_ms': 50, 'count': 100}
+
+
+def test_missing_bookmark_trace_frames_never_use_entire_trace():
+    rows = 'name,ns_since_start,ns\nFrame,10,10\nDrawScreen,11,5\n'
+    with pytest.raises(ValueError, match='frame range missing'):
+        profile.summarize(csv.DictReader(io.StringIO(rows)), [2, 3])
+    with pytest.raises(RuntimeError, match='alignment missing'):
+        profile.summarize(csv.DictReader(io.StringIO(rows)), bookmarks={
+            'orbit': {'last_cpu_frame': 3, 'frame_range': [1, 2]}})
 
 
 @pytest.mark.parametrize("csv_text", ["name,total_ns\nA,100\n", "name,ns\n", "name,ns\nA,-1\n"])
@@ -89,7 +111,7 @@ def test_other_game_refusal_never_launches_capture(tmp_path, monkeypatch):
         pytest.fail("capture launched despite another game")
     monkeypatch.setattr(profile, "capture_mission", forbidden)
     with pytest.raises(RuntimeError, match="refusing profile with other games"):
-        profile.profile(SimpleNamespace(install=tmp_path, seconds=10), "mc2_01", tmp_path / "out", None)
+        profile.profile(SimpleNamespace(install=tmp_path, seconds=10), "mc2_03", tmp_path / "out", None)
 
 
 def test_runner_does_not_receive_host_knobs_or_wait_for_failed_client(tmp_path, monkeypatch):

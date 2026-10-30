@@ -171,7 +171,7 @@ bool __stdcall gos_FontGetGlyphDesc( HGOSFONT3D FontHandle, int Char, gos_FontGl
 
 DWORD __stdcall gos_NewEmptyTexture( gos_TextureFormat Format, const char* Name, DWORD HeightWidth, DWORD Hints/*=0*/, gos_RebuildFunction pFunc/*=0*/, void *pInstance/*=0*/)
 {
-    mc2::overlap::assertMainThread("gos_NewEmptyTexture");   // GPU resource entry: never from the sim worker
+    mc2::overlap::requireOwner(mc2::overlap::Owner::Render, "gos_NewEmptyTexture");   // GPU resource entry: never from the sim worker
     int w = HeightWidth;
     int h = HeightWidth;
     if(HeightWidth&0xffff0000)
@@ -190,7 +190,7 @@ DWORD __stdcall gos_NewEmptyTexture( gos_TextureFormat Format, const char* Name,
 }
 DWORD __stdcall gos_NewTextureFromMemory( gos_TextureFormat Format, const char* FileName, BYTE* pBitmap, DWORD Size, DWORD Hints/*=0*/, gos_RebuildFunction pFunc/*=0*/, void *pInstance/*=0*/)
 {
-    mc2::overlap::assertMainThread("gos_NewTextureFromMemory");   // GPU resource entry: never from the sim worker
+    mc2::overlap::requireOwner(mc2::overlap::Owner::Render, "gos_NewTextureFromMemory");   // GPU resource entry: never from the sim worker
     gosASSERT(pFunc == 0);
 
     gosTexture* ptex = new gosTexture(Format, FileName, Hints, pBitmap, Size, true);
@@ -257,7 +257,7 @@ DWORD gos_NewTerrainNormalTexture(const unsigned char* rgbaData, int width)
 
 DWORD __stdcall gos_NewTextureFromFile( gos_TextureFormat Format, const char* FileName, DWORD Hints/*=0*/, gos_RebuildFunction pFunc/*=0*/, void *pInstance/*=0*/)
 {
-    mc2::overlap::assertMainThread("gos_NewTextureFromFile");   // GPU resource entry: never from the sim worker
+    mc2::overlap::requireOwner(mc2::overlap::Owner::Render, "gos_NewTextureFromFile");   // GPU resource entry: never from the sim worker
     gosTexture* ptex = new gosTexture(Format, FileName, Hints, nullptr, 0, false);
     if(!ptex->prepareSource()) {
         STOP(("Failed to create texture\n"));
@@ -267,7 +267,7 @@ DWORD __stdcall gos_NewTextureFromFile( gos_TextureFormat Format, const char* Fi
 }
 void __stdcall gos_DestroyTexture( DWORD Handle )
 {
-    mc2::overlap::assertMainThread("gos_DestroyTexture");   // GPU resource entry: never from the sim worker
+    mc2::overlap::requireOwner(mc2::overlap::Owner::Render, "gos_DestroyTexture");   // GPU resource entry: never from the sim worker
 #ifdef MC2_VULKAN_ISLAND
     if (mc2vk::engineVulkanContextValid()) mc2vk::getOrCreateEngineVulkanContext().textures().forgetLegacyUi(Handle);
 #endif
@@ -488,16 +488,6 @@ void __stdcall gos_SetRenderViewport(float x, float y, float w, float h)
 	g_gos_renderer->setRenderViewport(vec4(x, y, w, h));
 }
 
-void __stdcall gos_GetRenderViewport(float* x, float* y, float* w, float* h)
-{
-    gosASSERT(x && y && w && h);
-    gosASSERT(g_gos_renderer);
-	vec4 vp = g_gos_renderer->getRenderViewport();
-	*x = vp.x;
-	*y = vp.y;
-	*w = vp.z;
-	*h = vp.w;
-}
 
 size_t __stdcall gos_GetMachineInformation( MachineInfo mi, int Param1/*=0*/, int Param2/*=0*/, int Param3/*=0*/, int Param4/*=0*/)
 {
@@ -568,11 +558,6 @@ gosBuffer* __stdcall gos_CreateBuffer(gosBUFFER_TYPE type, gosBUFFER_USAGE usage
     return buffer;
 }
 
-uint32_t gos_GetBufferSizeBytes(HGOSBUFFER buffer)
-{
-	gosASSERT(buffer);
-    return buffer->element_size_ * buffer->count_;
-}
 
 void __stdcall gos_DestroyBuffer(gosBuffer* buffer)
 {
@@ -581,11 +566,6 @@ void __stdcall gos_DestroyBuffer(gosBuffer* buffer)
 
 
 
-void __stdcall gos_UpdateBuffer(HGOSBUFFER buffer, void* data, size_t offset, size_t num_bytes)
-{
-    if (!buffer || !data || offset > buffer->bytes_.size() || num_bytes > buffer->bytes_.size() - offset) return;
-    std::memcpy(buffer->bytes_.data() + offset, data, num_bytes);
-}
 
 HGOSVERTEXDECLARATION __stdcall gos_CreateVertexDeclaration(gosVERTEX_FORMAT_RECORD* records, int count)
 {
@@ -606,11 +586,6 @@ void __stdcall gos_DestroyVertexDeclaration(HGOSVERTEXDECLARATION vdecl)
 
 }
 
-void __stdcall gos_ForceApplyRenderStates() {
-    if (!g_gos_renderer) return;
-    g_gos_renderer->invalidateRenderStateCache();
-    g_gos_renderer->applyRenderStates();
-}
 
 // RENDER_STATES v1: invalidation hook for fast paths that disturb GL state outside
 // of applyRenderStates() (terrain bridges, water fast path, post-process composite,

@@ -142,12 +142,6 @@ bool propPerfGateRequested() {
     return state == 1;
 }
 
-// Prop co-write is unconditionally direct-chain-native (the GL<->VK
-// semaphore-handoff arm and the shared-scene GL-import half are deleted).
-bool propDirectChainRequested() {
-    return true;
-}
-
 std::string spv_dir() { return vk_island_util::spvDir(); }
 
 VkShaderModule load_spv(VkDevice device, std::string_view path) {
@@ -836,7 +830,6 @@ bool init_island(ColorPropIsland* s, int w, int h) {
 
     // VK-RUNG8-ITEM5: fire the one-shot MC2_VK_PROP_DIRECT_CHAIN deprecation note if
     // the retired gate was explicitly set (result ignored — always direct-chain-native).
-    (void)propDirectChainRequested();
 
     s->tier1 = true;
     s->wantMaterial = true;

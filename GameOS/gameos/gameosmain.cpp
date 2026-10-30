@@ -798,6 +798,7 @@ int main(int argc, char** argv)
     RenderCore::TextureServiceScope textureScope(textures);
     // Gate reads resolved before this line are "pre-main" (static initialisers).
     mc2::gate::markMainEntered();
+    mc2::overlap::registerThread(mc2::overlap::Owner::Main);   // thread registry: this thread owns Main (and Render)
     initDpiAwareness();
 
     initLauncherEnv();

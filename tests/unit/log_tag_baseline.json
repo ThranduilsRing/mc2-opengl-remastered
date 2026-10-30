@@ -3759,19 +3759,6 @@
    "count": 1
   },
   {
-   "tag": "GPU_CULL_FROZEN_ORDER_ORACLE",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "S",
-    "placed",
-    "outOfRange",
-    "checked",
-    "posMismatch"
-   ],
-   "count": 1
-  },
-  {
    "tag": "GPU_PARTICLES",
    "ver": 1,
    "stream": "stderr",
@@ -7026,13 +7013,6 @@
    "count": 1
   },
   {
-   "tag": "PROP_REINJECT",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [],
-   "count": 1
-  },
-  {
    "tag": "QUADSETUP_SKIP",
    "ver": 1,
    "stream": "stdout",
@@ -8369,6 +8349,18 @@
     "abl",
     "rng",
     "animrng"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SIM_OVERLAP",
+   "ver": 1,
+   "stream": "log",
+   "keys": [
+    "sample",
+    "class",
+    "watch",
+    "total"
    ],
    "count": 1
   },
@@ -11419,6 +11411,7 @@
   "SHADER_SCHEMA",
   "SHADOW_BAKE",
   "SIMID",
+  "SIM_OVERLAP",
   "SIM_TICK_COST",
   "SMOKE",
   "SOAK",

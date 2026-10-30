@@ -3,6 +3,7 @@
 #include "gameobj.h"
 #include "objmgr.h"
 #include "missiongui.h"
+#include "mission.h"
 #include "impact_presentation.h"
 #include "../mclib/camera.h"
 #include "../mclib/timing.h"
@@ -23,6 +24,7 @@ void extractRenderFrame(float tickAlpha)
 	clk.dt = frameLength;
 	clk.frame = g_mc2FrameCounter;
 	clk.missionResult = static_cast<uint32_t>(scenarioResult);
+	clk.missionActive = mission && mission->isActive();
 	clk.alpha = tickAlpha;
 	auto& lists = mc2::render_view::list();
 	lists.clear();

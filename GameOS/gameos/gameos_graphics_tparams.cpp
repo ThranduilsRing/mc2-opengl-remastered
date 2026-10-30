@@ -102,9 +102,6 @@ bool __stdcall gos_IsModernShadowPathActive() {
     return g_gos_renderer != nullptr;
 }
 
-void gos_SetShadowMode(bool enable) {
-    if (g_gos_renderer) g_gos_renderer->setShadowMode(enable);
-}
 
 void gos_GetTerrainCameraPos(float* x, float* y, float* z) {
     if (g_gos_renderer) {
@@ -231,16 +228,6 @@ void __stdcall gos_SetWorldToClipGL(const glm::mat4& mat)
         fflush(stderr);
     }
 }
-// gos_SetTerrainMVP / gos_SetTerrainViewport: raw-float counterparts to
-// gos_SetWorldToClipGL. Used by EditorCamera.h which builds the matrix
-// via axis-swap math rather than going through Stuff::Matrix4D. Both APIs
-// write the same terrain_mvp_ cache in the renderer.
-void __stdcall gos_SetTerrainMVP(const float* matrix16) {
-    if (g_gos_renderer) g_gos_renderer->setTerrainMVP(matrix16);
-}
-void __stdcall gos_SetTerrainViewport(float vmx, float vmy, float vax, float vay) {
-    if (g_gos_renderer) g_gos_renderer->setTerrainViewport(vmx, vmy, vax, vay);
-}
 void __stdcall gos_SetTerrainCameraPos(float x, float y, float z) {
     if (g_gos_renderer) g_gos_renderer->setTerrainCameraPos(x, y, z);
 }
@@ -337,9 +324,6 @@ void gos_SetTerrainDaylightLevel(float level) {
 float gos_GetTerrainDaylightLevel() {
     return s_gosTerrainDaylight;
 }
-// VK-TERRAIN-LODFADE: reuses the existing gos_GetTerrainCameraPos free function
-// (defined above at the gos_SetShadowMode block) for the camera-distance fade port --
-// no new accessor needed.
 
 // CEMENT-NIGHT-LIGHT-1: mission flat-pad light colour feed (gamecam.cpp, per
 // frame). Killswitch MC2_CEMENT_MISSION_LIGHT=0 -> force (1,1,1) (repro of the
@@ -364,9 +348,6 @@ void gos_SetTerrainDetailParams(float tiling, float strength) {
 }
 void gos_SetTerrainMaterialNormal(int index, DWORD handle) {
     if (g_gos_renderer) g_gos_renderer->setTerrainMaterialNormal(index, handle);
-}
-void gos_SetTerrainWorldScale(float scale) {
-    if (g_gos_renderer) g_gos_renderer->setTerrainWorldScale(scale);
 }
 void gos_SetTerrainCellBombParams(float scale, float jitter, float rotation) {
     if (g_gos_renderer) g_gos_renderer->setTerrainCellBombParams(scale, jitter, rotation);

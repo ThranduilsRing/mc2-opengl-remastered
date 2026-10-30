@@ -995,6 +995,7 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, glm
 initPartsHeader(f);
 	initPartsLoad(loadType, dropZoneID, dropZoneList, commandersToLoad, numMoversPerCommander, f);
 	initObjectCounts(loadType, f);
+	ObjectManager->preloadTickSpawnTypes();   // G7: the overlap worker must never load an object type
 	initGpuAndLighting();
 	initSpawnActors(loadType);
 	initTerrainObjectsLoad(commandersToLoad, f);

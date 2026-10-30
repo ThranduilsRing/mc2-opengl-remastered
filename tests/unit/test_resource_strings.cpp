@@ -289,3 +289,14 @@ TEST_CASE("resource_strings/negative control old copy violates the same mod fixt
     CHECK(oldBacking[256] != 'A');
     CHECK(oldBacking[modText.size() - 1] == 'M');
 }
+
+TEST_CASE("resource_strings/owning cLoadString preserves bounded rejection")
+{
+    Fixture fixture("exact");
+    CHECK(cLoadString(42) == "exact");
+    CHECK(cLoadString(42, 6) == "exact");
+    CHECK(fixture.diagnostics().empty());
+    CHECK(cLoadString(42, 5).empty());
+    CHECK(fixture.diagnostics() ==
+        "[RESOURCE_STRING v1] event=too_long id=42 source_length=5 capacity=5 copied=0\n");
+}

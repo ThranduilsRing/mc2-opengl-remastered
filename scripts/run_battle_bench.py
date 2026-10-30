@@ -234,6 +234,10 @@ def perf_run(exe, directory, scenario, phase, size, duration, expected_sha):
     (directory / "engine.log").write_text(result.stdout_text, encoding="utf-8")
     (directory / "environment.json").write_text(json.dumps(record, indent=2), encoding="utf-8")
     verify_runtime(result.stdout_text, expected_sha)
+    violation = next((line.strip() for line in result.stdout_text.splitlines() if "[SIM_OVERLAP v1] VIOLATION" in line), "")
+    if violation:   # the G7b overlap audit caught a cross-thread touch: RED whatever the timings say
+        print(f"[battle_bench] RED overlap audit violation: {violation}", file=sys.stderr)
+        raise RuntimeError(f"overlap audit violation: {directory}; {violation}")
     if result.exit_code or result.killed_by_timeout or not result.verdict.passed or errors:
         raise RuntimeError(f"smoke failed: {directory}; exit={result.exit_code}; verdict={result.verdict}; camera={errors}")
     summary = summarize(directory, result.stdout_text, scenario)

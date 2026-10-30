@@ -169,6 +169,10 @@ MARKER_BUCKETS: tuple = (
     # never red. Emitter: GameOS/gameos/vulkan_context.cpp; the layer is on only when the run sets MC2_VULKAN_VALIDATION (smoke, never a player).
     MarkerBucket(re.compile(r"\[VK_VALIDATION v1\] severity=error\b"),
                  "vk_validation_error", "red", None),
+    # The G7b sim/render overlap audit caught a thread touching a domain it does not own (MC2_SIM_OVERLAP_AUDIT, on in tier1 and the
+    # determinism run; audit mode aborts on the first one). Emitter: GameOS/gameos/sim_overlap.cpp violation(). Never downgraded.
+    MarkerBucket(re.compile(r"\[SIM_OVERLAP v1\] VIOLATION\b"),
+                 "sim_overlap_violation", "red", None),
 )
 
 
@@ -219,6 +223,8 @@ class LogSummary:
     # Per-bucket marker counts (bucket -> hit count) for
     # every registered MARKER_BUCKETS row. Empty dict when no marker fired.
     marker_counts: dict = field(default_factory=dict)
+    # The first matching line per bucket, so a red verdict can print what fired.
+    marker_first: dict = field(default_factory=dict)
     # Sim determinism: how many `[SIMID v1] simframe=` lines the engine printed (MC2_SIM_IDENTITY_TRACE) and a short digest of all of them.
     # Two runs under MC2_SMOKE_FIXED_TIMESTEP + MC2_DETERMINISTIC_RNG must carry the same chain over their common frames (tools/sim_determinism.py).
     simid_frames: int = 0
@@ -299,6 +305,7 @@ def parse_log(text: str,
         for mb in MARKER_BUCKETS:
             if mb.pattern.search(line):
                 s.marker_counts[mb.bucket] = s.marker_counts.get(mb.bucket, 0) + 1
+                s.marker_first.setdefault(mb.bucket, line.strip()[:400])
 
         for rule in PRESENCE_RULES:
             if rule.pattern.search(line):

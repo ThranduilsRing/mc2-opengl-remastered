@@ -484,10 +484,6 @@ void __stdcall gos_TerminateApplication()
     mc2_log_exit_caller("gos_TerminateApplication");
 }
 
-void __stdcall gos_AbortTermination()
-{
-    g_gos_exit_game_os = false;
-}
 ////////////////////////////////////////////////////////////////////////////////
 __int64 __stdcall gos_GetDriveFreeSpace( char* Path )
 {
@@ -628,10 +624,6 @@ void __stdcall gos_SaveDataToRegistry( const char* keyName,  void* pData,  DWORD
     // TODO:
 }
 
-void __stdcall gos_SaveStringToRegistry( const char* keyName,  char* pData,  DWORD szData )
-{
-    // TODO;
-}
 
 bool __stdcall gos_GetUserDataDirectory(char* user_dir, const int len)
 {

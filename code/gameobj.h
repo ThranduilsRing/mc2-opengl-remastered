@@ -20,6 +20,7 @@
 #endif
 
 #include <memory>
+#include "sim_overlap.h"
 #include "sim_world_trace.h"
 #include "render_view.h"
 
@@ -311,6 +312,7 @@ class GameObject {
 		GameObjectHandle			handle = 0;			//Used to reference into master obj table
 		int32_t                     partId;				//What is my unique part number.
 		uint32_t                    watchID;			//Used to reference in the game engine
+		uint32_t                    generation = 0;		// bumped by init(); the render extract stamps it to spot pooled-slot reuse
 
 		GameObjectTypeHandle		typeHandle;			//Who made me?
 		glm::vec3				position;			//Where am I?
@@ -401,6 +403,7 @@ class GameObject {
 		}
 
 		virtual AppearancePtr getAppearance (void) {
+			mc2::overlap::assertLiveSimRead("GameObject::getAppearance");
 			return(appearance);
 		}
 		
@@ -534,6 +537,7 @@ class GameObject {
 		}
 
 		virtual glm::vec3 getPosition (void) {
+			mc2::overlap::assertLiveSimRead("GameObject::getPosition");
 			return(position);
 		}
 

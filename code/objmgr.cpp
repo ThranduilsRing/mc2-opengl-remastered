@@ -10,6 +10,8 @@
 //===========================================================================//
 
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
+#include <atomic>
+#include "utils/mc2log.h"
 #include "sim_overlap.h"
 #include "objmgr_internal.h"
 #include "mc2fmt.h"
@@ -1011,6 +1013,20 @@ void GameObjectManager::destroy (void)
 
 //---------------------------------------------------------------------------
 
+namespace {
+// The sim worker can re-init a pooled slot (bolts, carnage) while the snapshot draws: skip that view.
+uint64_t g_staleViewSkips = 0;
+bool viewIsCurrent (const mc2::render_view::RenderView& v)
+{
+	if (std::atomic_ref<uint32_t>(v.obj->generation).load(std::memory_order_acquire) == v.generation)
+		return true;
+	if (++g_staleViewSkips <= 8)
+		MC2_LOG_OUT(Sim, Warn, "[SIM_OVERLAP v1] stale_view_skip sample=first8 class={} watch={} total={}",
+			unsigned(v.objClass), v.watchId, g_staleViewSkips);
+	return false;
+}
+}
+
 void GameObjectManager::render (bool terrain, bool movers, bool other) {
 	// G7b K3: draws the RenderList built at the render extract; no live sim reads here.
 	const mc2::render_view::RenderList& rl = mc2::render_view::list();
@@ -1064,6 +1080,8 @@ void GameObjectManager::render (bool terrain, bool movers, bool other) {
 		// slim reduction loop in mclib/terrain.cpp; the extract walks it.
 		for (const mc2::render_view::RenderView& v : rl.terrain)
 		{
+			if (!viewIsCurrent(v))
+				continue;
 			v.obj->renderView(v);
 			if (MaxObjectsDrawn)
 			{
@@ -1077,7 +1095,8 @@ void GameObjectManager::render (bool terrain, bool movers, bool other) {
 	if (movers) {
 		ZoneScopedN("RenderObjects.Movers");
 		for (const mc2::render_view::RenderView& v : rl.movers)
-			v.obj->renderView(v);
+			if (viewIsCurrent(v))
+				v.obj->renderView(v);
 	}
 
 	if (other) {
@@ -1135,7 +1154,8 @@ void GameObjectManager::render (bool terrain, bool movers, bool other) {
 		gos_SetRenderState(gos_State_IsHUD, 1);
 		// Weapons, carnage, lights, artillery: the extract keeps that order.
 		for (const mc2::render_view::RenderView& v : rl.other)
-			v.obj->renderView(v);
+			if (viewIsCurrent(v))
+				v.obj->renderView(v);
 		gos_SetRenderState(gos_State_IsHUD, 0);
 		gos_SetHudScaleExempt(prevVfxExempt);
 	}

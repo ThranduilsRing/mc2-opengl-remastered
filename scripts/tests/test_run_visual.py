@@ -103,3 +103,21 @@ def test_interrupted_set_never_passes(tmp_path, config):
     report = json.loads((tmp_path / "report/report.json").read_text())
     assert report["status"] == "INCOMPLETE"
     assert all(row["boxes"] == [] for row in report["scenes"])
+
+
+def test_camera_sets_share_one_capture_launch(tmp_path, config, monkeypatch):
+    commands = []
+    def fake_run(command, **kwargs):
+        from types import SimpleNamespace
+        assert '--no-kill' in command
+        fixed = Path(command[command.index('--bookmarks') + 1])
+        commands.append(json.loads(fixed.read_text()))
+        return SimpleNamespace(returncode=0)
+    monkeypatch.setattr(visual.subprocess, 'run', fake_run)
+    install = tmp_path / 'install'
+    install.mkdir()
+    (install / 'mc2.exe').write_bytes(b'identity')
+    visual.capture(install, tmp_path / 'out', config)
+    sets = [doc for doc in commands if len(doc['bookmarks']) == 10]
+    assert {doc['mission'] for doc in sets} == {'mc2_01', 'mc2_10', 'mc2_24'}
+    assert len(commands) == 8  # five original scenes plus three complete camera sets

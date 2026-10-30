@@ -122,11 +122,6 @@ namespace gos_static_prop_batcher_detail {
 
 struct PerTypeBucket {
     std::vector<GpuStaticPropInstance> instances;
-    // VK color feed: range of `instances` that reinjectPersistentStatic() bulk-copied
-    // from the persistent store this frame. The VK feed already flattens the store,
-    // so it skips this range and appends only the per-frame dynamic remainder.
-    uint32_t reinjPos   = 0;
-    uint32_t reinjCount = 0;
 };
 
 struct TypeRangeSsbo {
@@ -334,7 +329,6 @@ extern std::vector<int32_t> s_typeAlbedoLayer;
 extern std::vector<int32_t> s_typeAlphaClass;
 extern std::vector<float> s_typeHotColors;
 extern std::unordered_map<uint32_t, uint32_t> s_typeInstanceCountPrevFrame;
-extern bool s_reinjectedThisFrame;
 extern std::vector<uint8_t>              s_slotBucketIndex;
 extern std::vector<uint32_t>             s_bucketCmdCount;
 extern std::vector<uint32_t> s_sortedTypeOrder;

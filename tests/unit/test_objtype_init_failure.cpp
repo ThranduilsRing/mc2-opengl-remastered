@@ -117,4 +117,6 @@ TEST_CASE("ObjectTypeManager refuses a failing pak and remains safely empty")
     const auto summary = logged.find("[OBJTYPE_OOB_SUMMARY] fit_ids=1 obj_type_nums=4");
     REQUIRE(summary != std::string::npos);
     CHECK(logged.find("[OBJTYPE_OOB_SUMMARY]", summary + 1) == std::string::npos);
+    CHECK(logged.find("can't create object") == std::string::npos);
+    CHECK(logged.find("substituting stub") == std::string::npos);
 }

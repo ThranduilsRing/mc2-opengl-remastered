@@ -505,7 +505,8 @@ class Mech3DAppearance: public ObjectAppearance
 		struct PoseView { TG_MultiShapePtr shape; long& rotNode; long& hitLeft; long& hitRight; long lod; glm::vec3 pos; float rot; };
 		PoseView poseView (void)
 		{
-			if (buildingSimPose_)
+			// Presentation must not read the worker's build flag or mutable sim shape.
+			if (!simPresentationPass && buildingSimPose_)
 				return { simulationShape_.get(), simRotationalNodeIndex_, simHitLeftNodeIndex_, simHitRightNodeIndex_, 0, simPosition_, simRotation_ };
 			return { mechShape, rotationalNodeIndex, hitLeftNodeIndex, hitRightNodeIndex, currentLOD, position, rotation };
 		}

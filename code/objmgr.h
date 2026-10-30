@@ -581,6 +581,8 @@ class GameObjectManager {
 		ObjectTypePtr loadObjectType (ObjectTypeNumber typeHandle);
 
 		ObjectTypePtr getObjectType (ObjectTypeNumber typeHandle);
+		// Mission load: load every type a sim tick can spawn (weapon effects, artillery) so the overlap worker never loads one.
+		void preloadTickSpawnTypes (void);
 
 		void removeObjectType (ObjectTypeNumber typeHandle);
 
