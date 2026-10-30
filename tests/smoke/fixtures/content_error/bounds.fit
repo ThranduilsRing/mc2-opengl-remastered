@@ -1,0 +1,7 @@
+[3DBounds]
+l UpperLeftX=-40
+l UpperLeftY=-40
+l UpperLeftZ=-40
+l LowerRightX=40
+l LowerRightY=40
+// Deliberately missing LowerRightZ: exactly one content error per appearance.

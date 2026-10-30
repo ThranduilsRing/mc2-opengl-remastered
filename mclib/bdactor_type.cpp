@@ -1,6 +1,7 @@
 // BldgAppearance / TreeAppearance: BldgAppearanceType and TreeAppearanceType init/destroy.
 // Declared in the class headers; shared names in bdactor_internal.h.
 #include "bdactor_internal.h"
+#include "content_error.h"
 #include "texture_assets.h"
 #include "mc2fmt.h"
 #include "gos_static_prop_batcher.h"
@@ -107,7 +108,11 @@ void BldgAppearanceType::init (const char * fileName)
 	FitIniFile iniFile;
 	long result = iniFile.open(iniName);
 	if (result != NO_ERR)
-		STOP(("Could not find building appearance INI file %s",iniName));
+	{
+		bldgShape[0] = std::make_unique<TG_TypeMultiShape>().release();
+		tglVerifyShapeLoaded(bldgShape[0], -1, "appearance definition", iniName, &baseShapeLoadFailed);
+		return;
+	}
 	bool userArt = userBuildingAsset(static_cast<const char*>(iniName));
 	std::string lampDefinition(iniFile.fileSize(), '\0');
 	iniFile.read(0, reinterpret_cast<MemoryPtr>(lampDefinition.data()), static_cast<long>(lampDefinition.size()));
@@ -119,17 +124,15 @@ void BldgAppearanceType::init (const char * fileName)
 	// opts this asset into LoadFromFile (glb/fbx probe) for LOD0. Stock assets
 	// with no [Import] block take the unchanged LoadTGMultiShapeFromASE path.
 	char importSourceBase[256] = "";
-	if (iniFile.seekBlock("Import") == NO_ERR &&
-	    iniFile.readIdString("Source", importSourceBase, 255) == NO_ERR &&
-	    importSourceBase[0])
-	{
-		char* dot = strrchr(importSourceBase, '.');
-		if (dot) *dot = '\0';
-	}
+	tglReadImportSource(iniFile, importSourceBase);
 
 	result = iniFile.seekBlock("TGLData");
 	if (result != NO_ERR)
-		Fatal(result,"Could not find block in building appearance INI file");
+	{
+		bldgShape[0] = std::make_unique<TG_TypeMultiShape>().release();
+		tglVerifyShapeLoaded(bldgShape[0], -1, "appearance definition", iniName, &baseShapeLoadFailed);
+		return;
+	}
 
 	result = iniFile.readIdBoolean("SpinMe",spinMe);
 	if (result != NO_ERR)
@@ -199,7 +202,7 @@ void BldgAppearanceType::init (const char * fileName)
 				userArt |= userBuildingShape(aseFileName);
 				result = iniFile.readIdFloat(baseLODDist,lodDistance[i]);
 				if (result != NO_ERR)
-					STOP(("LOD %d has no distance value in file %s",i,fileName));
+					mc2::content::error(mc2::content::Kind::Shape, static_cast<const char*>(iniName), "LOD missing distance; using default");
 				// Push out LOD-swap thresholds so high-detail meshes stay visible
 				// at greater zoom-out. See visual_preference_knobs.md.
 				lodDistance[i] *= 5.0f;
@@ -230,7 +233,8 @@ void BldgAppearanceType::init (const char * fileName)
 			}
 			else if (!i)
 			{
-				STOP(("No base LOD for shape %s",fileName));
+				bldgShape[0] = std::make_unique<TG_TypeMultiShape>().release();
+				tglVerifyShapeLoaded(bldgShape[0], -1, "appearance definition", iniName, &baseShapeLoadFailed);
 			}
 		}
 	}
@@ -259,7 +263,10 @@ void BldgAppearanceType::init (const char * fileName)
 	{
 		result = iniFile.readIdString("FileName",aseFileName,511);
 		if (result != NO_ERR)
-			Fatal(result,"Could not find ASE FileName in building appearance INI file");
+		{
+			mc2::content::error(mc2::content::Kind::Shape, static_cast<const char*>(iniName), "missing damage FileName");
+			aseFileName[0] = '\0';
+		}
 	
 		userArt |= userBuildingShape(aseFileName);
 		FullPathFileName dmgName;
@@ -336,7 +343,7 @@ void BldgAppearanceType::init (const char * fileName)
 	{
 		result = iniFile.readIdString("FileName",destructEffect,59);
 		if (result != NO_ERR)
-			STOP(("Could not Find DestructEffectName in building appearance INI file"));
+			mc2::content::error(mc2::content::Kind::Shape, static_cast<const char*>(iniName), "missing DestructEffectName");
 	
 	}
 	else
@@ -655,22 +662,24 @@ void TreeAppearanceType::init (const char * fileName)
 	
 	long result = iniFile.open(iniName);
 	if (result != NO_ERR)
-		Fatal(result,"Could not find building appearance INI file");
+	{
+		treeShape[0] = std::make_unique<TG_TypeMultiShape>().release();
+		tglVerifyShapeLoaded(treeShape[0], -1, "appearance definition", iniName, &baseShapeLoadFailed);
+		return;
+	}
 
 	// ASSIMP-TREE-IMPORT-1 — optional GLB probe for trees. Mirror of
 	// mech3d.cpp [Import] pattern. LOD0 only; LOD1+ and damage stay ASE.
 	char importSourceBase[256] = "";
-	if (iniFile.seekBlock("Import") == NO_ERR &&
-	    iniFile.readIdString("Source", importSourceBase, 255) == NO_ERR &&
-	    importSourceBase[0])
-	{
-		char* dot = strrchr(importSourceBase, '.');
-		if (dot) *dot = '\0';
-	}
+	tglReadImportSource(iniFile, importSourceBase);
 
 	result = iniFile.seekBlock("TGLData");
 	if (result != NO_ERR)
-		Fatal(result,"Could not find block in building appearance INI file");
+	{
+		treeShape[0] = std::make_unique<TG_TypeMultiShape>().release();
+		tglVerifyShapeLoaded(treeShape[0], -1, "appearance definition", iniName, &baseShapeLoadFailed);
+		return;
+	}
 
 	result = iniFile.readIdBoolean("ForestClump",isForestClump);
 	if (result != NO_ERR)
@@ -696,7 +705,7 @@ void TreeAppearanceType::init (const char * fileName)
 			{
 				result = iniFile.readIdFloat(baseLODDist,lodDistance[i]);
 				if (result != NO_ERR)
-					STOP(("LOD %d has no distance value in file %s",i,fileName));
+					mc2::content::error(mc2::content::Kind::Shape, static_cast<const char*>(iniName), "LOD missing distance; using default");
 				// Push out LOD-swap thresholds so high-detail meshes stay visible
 				// at greater zoom-out. See visual_preference_knobs.md.
 				lodDistance[i] *= 5.0f;
@@ -731,7 +740,8 @@ void TreeAppearanceType::init (const char * fileName)
 			}
 			else if (!i)
 			{
-				STOP(("No base LOD for shape %s",fileName));
+				treeShape[0] = std::make_unique<TG_TypeMultiShape>().release();
+				tglVerifyShapeLoaded(treeShape[0], -1, "appearance definition", iniName, &baseShapeLoadFailed);
 			}
 		}
 	}
@@ -812,7 +822,10 @@ void TreeAppearanceType::init (const char * fileName)
 	{
 		result = iniFile.readIdString("FileName",aseFileName,511);
 		if (result != NO_ERR)
-			Fatal(result,"Could not find ASE FileName in building appearance INI file");
+		{
+			mc2::content::error(mc2::content::Kind::Shape, static_cast<const char*>(iniName), "missing damage FileName");
+			aseFileName[0] = '\0';
+		}
 	
 		FullPathFileName dmgName;
 		dmgName.init(tglPath,aseFileName,".ase");
