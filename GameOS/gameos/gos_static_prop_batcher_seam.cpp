@@ -158,28 +158,6 @@ void GpuStaticPropBatcher::appendPersistentStaticRange(const GpuStaticPropInstan
     }
 }
 
-// Every frame: bulk-inject each persistent static block into its per-type bucket
-// (one memcpy per type, NOT per leaf). Dynamic instances (if any) are appended by
-// the dynamic submit path separately.
-void GpuStaticPropBatcher::reinjectPersistentStatic() {
-    // M2a Task 4 DE-MERGE: under the population split, static props are drawn
-    // from their own buffer + cmds (the static draw in flush()), so they must NOT
-    // be merged into the dynamic bucket (else they double-draw). s_bucketsByType
-    // becomes dynamic-only.
-    if (staticPopSplitArmed()) return;
-    // reinjPos/reinjCount (VK color feed) assume ONE reinject per frame; flag cleared at frame end.
-    { static bool s_warned = false;
-      if (s_reinjectedThisFrame && !s_warned) { s_warned = true;
-          mc2::fmt::print_err("[PROP_REINJECT] WARNING reinjectPersistentStatic called twice in one frame; reinjPos/reinjCount guard invalid\n"); }
-      s_reinjectedThisFrame = true; }
-    for (auto& [typeID, block] : s_persistentStaticStore) {
-        if (block.empty()) continue;
-        PerTypeBucket& bucket = s_bucketsByType[typeID];
-        bucket.reinjPos   = static_cast<uint32_t>(bucket.instances.size());
-        bucket.reinjCount = static_cast<uint32_t>(block.size());
-        bucket.instances.insert(bucket.instances.end(), block.begin(), block.end());  // bulk
-    }
-}
 
 bool GpuStaticPropBatcher::buildRecipeFromShape(
         TG_Shape* shape,
@@ -749,11 +727,7 @@ void batcher_prepareBaseInstanceTable() {
     // the instance the draw renders.
     s_baseInstanceForType = baseInstanceForType;
 
-    // M2a POPULATION-SPLIT: rebuild the static-only base table + fill the static
-    // instance buffer when the persistent store changed (both dirty-gated on
-    // s_persistentStaticGen). The base table must be ready before the golden
-    // scatter (buildStaticPrefixGolden) reads it later this frame. Default-off
-    // => not called => byte-identical.
+    // Rebuild the population split's static instance table only when its store changes.
     if (staticPopSplitArmed()) {
         rebuildStaticBaseInstanceTableIfDirty();
     }

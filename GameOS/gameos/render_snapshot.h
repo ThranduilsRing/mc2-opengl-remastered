@@ -81,16 +81,6 @@ struct ExtractedStaticProp {
     // RecipeRange::lightDataIndex; 0xFFFFFFFFu if getter failed.
     uint32_t lightDataIndex;
 
-    // --- cull / AABB ---
-    // v2: true iff substrate_appendStaticPropRecord was called for this recipe
-    // in the most recent PREVIOUS render frame's flush() pass.
-    // ExtractRenderSnapshot() runs BEFORE flush() — hasCullRecord reflects prior frame.
-    // Sphere AABB is caller-derived (no new struct fields needed):
-    //   hasBounds = (boundingRadius > 0.0f)
-    //   aabbMin   = {worldCenterX, worldCenterY, worldCenterZ} - boundingRadius
-    //   aabbMax   = {worldCenterX, worldCenterY, worldCenterZ} + boundingRadius
-    bool hasCullRecord;
-
     // --- metadata (v2) ---
     uint8_t  alphaClass;    // 0=alpha-off, 1=alpha-on; from s_types[typeID].alphaClass
     uint32_t instanceFlags; // GpuStaticPropInstance.flags: bit0=lightsOut, bit1=isWindow, bit2=isSpotlight
@@ -181,8 +171,6 @@ struct RenderSnapshot {
     uint32_t staticPropMultiPacket    = 0;  // type has > 1 packet
 
     // v2 metadata counters
-    uint32_t staticPropCullSubmitted      = 0;  // hasCullRecord == true
-    uint32_t staticPropCullMissing        = 0;  // hasCullRecord == false
     uint32_t staticPropHasBounds          = 0;  // boundingRadius > 0
     uint32_t staticPropAlphaOn            = 0;  // alphaClass == 1
     uint32_t staticPropHasShapeName       = 0;  // shapeName[0] != '\0'

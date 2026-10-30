@@ -231,11 +231,6 @@ bool recipeInstanceFlags(int32_t recipeIndex, uint32_t* out) {
     return GpuStaticPropRegistry::staticPropGetInstanceFlags(recipeIndex, out);
 }
 
-bool recipeHadCullRecord(int32_t recipeIndex, bool* out) {
-    if (!out || recipeIndex < 0) return false;
-    return GpuStaticPropRegistry::staticPropGetHasCullRecord(recipeIndex, out);
-}
-
 bool getMaterialGpuData(uint32_t materialHandleBits, RenderCore::MaterialGpu* out) {
     if (!out || materialHandleBits == 0u) return false;
     RenderCore::MaterialHandle mh;

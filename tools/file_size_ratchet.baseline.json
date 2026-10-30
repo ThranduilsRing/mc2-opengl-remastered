@@ -15,12 +15,12 @@
  ],
  "files_over_1500": {
   "GameOS/gameos/engine_present_vk.cpp": 2905,
-  "GameOS/gameos/vulkan_color_prop_island.cpp": 2073,
+  "GameOS/gameos/vulkan_color_prop_island.cpp": 2066,
   "GameOS/include/gameos.hpp": 3650,
   "code/artlry.cpp": 1717,
   "code/bldng.cpp": 1707,
   "code/brain_special_dispatch.cpp": 2696,
-  "code/gamecam.cpp": 1614,
+  "code/gamecam.cpp": 1579,
   "code/gameobj.cpp": 2262,
   "code/infowindow.cpp": 1757,
   "code/logisticsdialog.cpp": 2230,
@@ -34,7 +34,7 @@
   "code/optionsarea.cpp": 1838,
   "code/pilotreviewarea.cpp": 1844,
   "code/tacordr.cpp": 2106,
-  "code/terrobj.cpp": 1774,
+  "code/terrobj.cpp": 1761,
   "code/turret.cpp": 2365,
   "code/warrior.h": 1929,
   "editor/tests/test_objectives.cpp": 1996,
@@ -42,7 +42,7 @@
   "mclib/ablenv.cpp": 1585,
   "mclib/ablrtn.cpp": 1799,
   "mclib/assimp_importer.cpp": 1935,
-  "mclib/camera.h": 1855,
+  "mclib/camera.h": 1852,
   "mclib/file.cpp": 1739,
   "mclib/gosfx/fcurve.cpp": 1923,
   "mclib/mapdata.cpp": 2508,
@@ -177,7 +177,7 @@
   },
   {
    "file": "GameOS/gameos/vulkan_color_prop_island.cpp",
-   "lines": 2073
+   "lines": 2066
   },
   {
    "file": "editor/tests/test_objectives.cpp",
@@ -209,7 +209,7 @@
   },
   {
    "file": "mclib/camera.h",
-   "lines": 1855
+   "lines": 1852
   },
   {
    "file": "code/multplyr.h",
@@ -237,7 +237,7 @@
   },
   {
    "file": "code/terrobj.cpp",
-   "lines": 1774
+   "lines": 1761
   },
   {
    "file": "code/infowindow.cpp",

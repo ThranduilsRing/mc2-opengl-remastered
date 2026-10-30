@@ -169,7 +169,6 @@ bool recipeModelMatrix(int32_t recipeIndex, float out[16]);
 bool recipeTypeId(int32_t recipeIndex, uint32_t* out);
 bool recipeLightDataIndex(int32_t recipeIndex, uint32_t* out);
 bool recipeInstanceFlags(int32_t recipeIndex, uint32_t* out);
-bool recipeHadCullRecord(int32_t recipeIndex, bool* out);
 
 // M3-inspector: look up the MaterialGpu sidecar entry for a material handle.
 // materialHandleBits is LookupResult::materialHandleBits (0 = sentinel / unknown).

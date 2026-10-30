@@ -10,7 +10,7 @@
 
 namespace mc2::gate::detail {
 
-inline constexpr std::size_t kGateCount = 761;
+inline constexpr std::size_t kGateCount = 757;
 
 inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_ABL_ARG_GUARD", Kind::Bool, Rule::Lead1, {}},
@@ -35,7 +35,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_BLDG_DIAG_TRACE", Kind::Bool, Rule::Presence, {}},
     {"MC2_BLDG_REG_TRACE", Kind::Bool, Rule::Presence, {}},
     {"MC2_BLDG_TYPE_ANIM_STATIC_ELIGIBLE", Kind::Bool, Rule::Lead0Kill, {}},
-    {"MC2_BLKIDX_TRACE", Kind::Bool, Rule::Presence, {}},
     {"MC2_BLOCK_FRUSTUM_FALLBACK", Kind::Bool, Rule::Presence, {}},
     {"MC2_BOOKMARK_SAVE_DIR", Kind::String, Rule::Std, {}},
     {"MC2_BOOKMARK_SAVE_TEST", Kind::Bool, Rule::Lead1, {}},
@@ -204,7 +203,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_GPU_CULL_READBACK", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_GPU_CULL_READBACK_TRACE", Kind::Bool, Rule::Presence, {}},
     {"MC2_GPU_CULL_STATIC_EAGER_LIGHT_BAKE", Kind::Bool, Rule::Presence, {}},
-    {"MC2_GPU_CULL_STATIC_FROZEN_ORDER_ORACLE", Kind::Bool, Rule::Presence, {}},
     {"MC2_GPU_CULL_STATIC_FROZEN_RECORDS", Kind::Bool, Rule::Presence, {}},
     {"MC2_GPU_CULL_STATIC_LIGHT_ZERO_PROBE", Kind::Bool, Rule::Presence, {}},
     {"MC2_GPU_CULL_SUBSTRATE", Kind::Bool, Rule::Lead0Kill, {}},
@@ -449,7 +447,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_REGFLUSH_DIAG_TRACE", Kind::Bool, Rule::Presence, {}},
     {"MC2_REGFLUSH_GUARD2", Kind::Bool, Rule::Presence, {}},
     {"MC2_REGFLUSH_MULTI", Kind::Bool, Rule::Presence, {}},
-    {"MC2_REGFLUSH_TYPEHIST", Kind::Bool, Rule::Presence, {}},
     {"MC2_RENDERSTATES_LEGACY", Kind::Bool, Rule::Exact1, {}},
     {"MC2_RENDERSTATES_TRACE", Kind::Bool, Rule::Presence, {}},
     {"MC2_RENDER_BACKEND", Kind::String, Rule::Std, {}},
@@ -530,7 +527,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_STABLE_LIGHT_SKIP_DIAG", Kind::Bool, Rule::Std, {}},
     {"MC2_STABLE_LIGHT_SKIP_TOUCH", Kind::Bool, Rule::Std, {}},
     {"MC2_STATICPROP_RECIPE_SPOTLIGHT_SKIP", Kind::Bool, Rule::Lead0Kill, {}},
-    {"MC2_STATIC_FORCE_ADMIT", Kind::Bool, Rule::Presence, {}},
     {"MC2_STATIC_LEAF_DIAG", Kind::Bool, Rule::Presence, {}},
     {"MC2_STATIC_LIGHT_UPLOAD_SPLIT", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_STATIC_PER_INSTANCE_LIGHT", Kind::Bool, Rule::Std, {}},

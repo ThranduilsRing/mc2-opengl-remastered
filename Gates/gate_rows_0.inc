@@ -31,7 +31,6 @@ L(Lead0Kill, "MC2_ASSIMP_MECH_IMPORT", Bool, true, "mech", "", "BT2018 mech impo
 L(Presence, "MC2_BLDG_DIAG_TRACE", Bool, false, "props", "", "", verified),
 L(Presence, "MC2_BLDG_REG_TRACE", Bool, false, "props", "", "", verified),
 L(Lead0Kill, "MC2_BLDG_TYPE_ANIM_STATIC_ELIGIBLE", Bool, true, "props", "", "", passthrough | verified),
-L(Presence, "MC2_BLKIDX_TRACE", Bool, false, "props", "", ""),
 L(Presence, "MC2_BLOCK_FRUSTUM_FALLBACK", Bool, false, "terrain", "", "F6 T1/T2: cache frustum planes once per frame (O(1)) into Camera member.", verified),
 G("MC2_BOOKMARK_SAVE_DIR", String, "", "code", "", "Directory the Save Camera Bookmark button writes into; empty = ./saved_bookmarks.", passthrough | verified),
 L(Lead1, "MC2_BOOKMARK_SAVE_TEST", Bool, false, "code", "", "BOOKMARK-SAVE-BUTTON-1 test hook: =1 triggers one bookmark save shortly after mission load.", passthrough | verified),

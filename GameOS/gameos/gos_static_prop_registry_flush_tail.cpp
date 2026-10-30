@@ -104,23 +104,5 @@ void flushDiagSummary(uint64_t s_diag_flush_calls, uint64_t& s_diag_ranges_total
     }
 }
 
-// Bump the cull-record version when the submitted prop set changed.
-void flushCullRecordVersion() {
-    // STATICPROP-SNAPSHOT-BRIDGE-COMPARE-1: bump s_cullRecordVersion only when the
-    // set of props submitted to the GPU cull substrate changed vs the previous flush.
-    // In a stable scene (same props visible each frame), this stays constant after warmup.
-    {
-        bool changed = (s_prevCullRecord.size() != s_recipeHasSubstrateRecord.size());
-        if (!changed) {
-            for (size_t ci = 0; ci < s_recipeHasSubstrateRecord.size(); ++ci) {
-                if (s_prevCullRecord[ci] != s_recipeHasSubstrateRecord[ci]) { changed = true; break; }
-            }
-        }
-        if (changed) {
-            ++s_cullRecordVersion;
-            s_prevCullRecord = s_recipeHasSubstrateRecord;
-        }
-    }
-}
 
 }  // namespace GpuStaticPropRegistry

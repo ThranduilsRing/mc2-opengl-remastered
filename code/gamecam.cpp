@@ -1492,41 +1492,6 @@ long GameCamera::update (void)
 	return result;
 }
 
-//---------------------------------------------------------------------------
-// mc2_hzb_dump_camera_view — C-linkage helper called from GuiRuntime/EditorInspector.cpp
-// ("Save Camera View (HZB)" button). Writes saved_view.txt in the same format that
-// the MC2_HZB_VIEW_FILE replay reader (fscanf "X=%f Y=%f Z=%f ROT=%f ANGLE=%f ALT=%f")
-// expects. Keeping this here avoids pulling camera.h -> terrain.h into GuiRuntime.
-extern "C" int mc2_hzb_dump_camera_view(void)
-{
-	// Author target == replay target: honor MC2_HZB_VIEW_FILE (the same env the
-	// replay reader reads) if set, else fall back to the hardcoded path.
-	const std::string envPath = mc2::gate::str<"MC2_HZB_VIEW_FILE">();   // "" when unset or empty
-	const char* dumpPath = !envPath.empty() ? envPath.c_str() : "A:/Games/mc2-hzb-cull/saved_view.txt";
-	if (!eye) {
-		fprintf(stderr, "[HZB_VIEW_DUMP v1] ERROR: eye is null\n");
-		fflush(stderr);
-		return 0;
-	}
-	glm::vec3 pos = eye->getPosition();
-	float rot   = eye->getCameraRotation();
-	float angle = eye->getProjectionAngle();
-	float alt   = eye->getCameraAltitude();
-	// Do NOT assume the output dir exists; if fopen fails, report and fail (return 0).
-	FILE* df = fopen(dumpPath, "w");
-	if (df) {
-		fprintf(df, "X=%.4f Y=%.4f Z=%.4f ROT=%.4f ANGLE=%.4f ALT=%.4f\n",
-		        pos.x, pos.y, pos.z, rot, angle, alt);
-		fclose(df);
-		fprintf(stderr, "[HZB_VIEW_DUMP v1] saved X=%.4f Y=%.4f Z=%.4f ROT=%.4f ANGLE=%.4f ALT=%.4f -> '%s'\n",
-		        pos.x, pos.y, pos.z, rot, angle, alt, dumpPath);
-		fflush(stderr);
-		return 1;
-	}
-	fprintf(stderr, "[HZB_VIEW_DUMP v1] ERROR: cannot open '%s' for write\n", dumpPath);
-	fflush(stderr);
-	return 0;
-}
 
 //---------------------------------------------------------------------------
 // mc2_save_camera_bookmark — C-linkage helper called from
