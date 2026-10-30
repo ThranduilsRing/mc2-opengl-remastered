@@ -51,8 +51,13 @@ def serial_env() -> dict:
     return {**DETERMINISM, "MC2_SIM_OVERLAP": "0", "MC2_SIM_OVERLAP_AUDIT": "1", "MC2_SIM_OVERLAP_JITTER": "0"}
 
 
+# The sim worker and the render thread share the console, so another thread's line can land inside a SIMID line (an
+# unbuffered fwrite writes its last byte separately). Find each record anywhere; stop at the next "[" (sim_determinism.load_simid).
+_SIMID_RECORD = re.compile(re.escape(SIMID) + r"[^\r\n\[]*")
+
+
 def simid_lines(text: str) -> list[str]:
-    return [_RNG_COUNTS.sub(r" rng=\1", ln.strip()) for ln in text.splitlines() if ln.startswith(SIMID)]
+    return [_RNG_COUNTS.sub(r" rng=\1", m.group().rstrip()) for m in _SIMID_RECORD.finditer(text)]
 
 
 def chain(lines: list[str], frames: int) -> str:

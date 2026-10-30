@@ -21,6 +21,13 @@ def test_cosmetic_rng_counts_do_not_split_hashes():
     assert a == b
 
 
+def test_interleaved_console_lines_keep_every_record():
+    # Another thread's line glued after a record, and a record glued after another line.
+    text = ("[SIMID v1] simframe=1 rng=5/1/1 animrng=2[SHADOW_BAKE] re-recorded\n"
+            "samples=601[SIMID v1] simframe=2 rng=6/1/1 animrng=2\n")
+    assert so.simid_lines(text) == ["[SIMID v1] simframe=1 rng=5 animrng=2", "[SIMID v1] simframe=2 rng=6 animrng=2"]
+
+
 def test_green_on_matching_prefix_red_on_mismatch_or_violation():
     ok = so.judge([row("serial", lines(400)), row("jitter1", lines(350))])
     assert ok["green"] and ok["frames_compared"] == 350

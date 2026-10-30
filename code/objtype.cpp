@@ -567,7 +567,8 @@ ObjectTypePtr ObjectTypeManager::get (ObjectTypeNumber objTypeNum, bool loadIt) 
 	// If not, cache it in now...
 	if (!table[objTypeNum] && loadIt) {
 		// Type loads build appearances/effects: never on the overlap worker (preloadTickSpawnTypes covers tick spawns).
-		mc2::overlap::assertOwner(mc2::overlap::Owner::Main, "ObjectTypeManager::get load");
+		const std::string site = "ObjectTypeManager::get load type=" + std::to_string(objTypeNum);   // names the offender
+		mc2::overlap::assertOwner(mc2::overlap::Owner::Main, site);
 		if (!load(objTypeNum, true, true)) {
 //			Fatal(objTypeNum, " ObjectTypeManager.get: unable to load object type "); 
 		}
