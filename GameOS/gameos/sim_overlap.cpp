@@ -34,9 +34,9 @@ std::atomic<bool> g_renderThread{false};   // a dedicated render thread register
 std::atomic<bool> g_inFlight{false};
 std::atomic<unsigned> g_violations{0};
 
-// MC2_SIM_OVERLAP_JITTER: a per-thread engine seeded from the clock, so the sim's RNG streams never move.
+// Audit levels above 2 add jitter with a private RNG, leaving the sim's streams unchanged.
 void jitterSleep() {
-    const int maxMs = mc2::gate::get<"MC2_SIM_OVERLAP_JITTER">();
+    const int maxMs = mc2::gate::get<"MC2_SIM_OVERLAP_AUDIT">() - 2;
     if (maxMs <= 0) return;
     thread_local std::minstd_rand rng(static_cast<unsigned>(std::chrono::steady_clock::now().time_since_epoch().count()));
     const int ms = static_cast<int>(rng() % static_cast<unsigned>(maxMs + 1));
@@ -146,7 +146,7 @@ void installHooks(const Hooks& hooks) { g_hooks = hooks; }
 void extractRender() { if (g_hooks.extract) g_hooks.extract(); }
 void beginFrameDraw() {
     if (g_hooks.kick) g_hooks.kick();
-    if (g_inFlight.load(std::memory_order_acquire) && mc2::gate::get<"MC2_OVERLAP_DEBUG">())
+    if (g_inFlight.load(std::memory_order_acquire) && mc2::gate::get<"MC2_SIM_OVERLAP_AUDIT">() >= 2)
         g_renderFence.store(true, std::memory_order_release);
     jitterSleep();
 }

@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """stress_overlap -- shake the G7b sim/render overlap with jitter and the abort-on-violation audit.
 
-WHAT: launches each mission N times through scripts/run_smoke.py with MC2_SIM_OVERLAP_AUDIT=1 (abort on the first
-violation), MC2_OVERLAP_DEBUG=1 (render-owns fence) and MC2_SIM_OVERLAP_JITTER=<ms>, under the determinism clock
+WHAT: launches each mission N times through scripts/run_smoke.py with MC2_SIM_OVERLAP_AUDIT=2+<jitter ms> (abort on the
+first violation, render-owns fence and private-RNG jitter), under the determinism clock
 (MC2_SMOKE_FIXED_TIMESTEP=1, MC2_SIM_IDENTITY_TRACE=1). Each run's SIMID chain is hashed over the frames every run of that
 mission reached; one serial reference run per mission (MC2_SIM_OVERLAP=0, no jitter) must give the same hash. A run is red
 when it prints a `[SIM_OVERLAP v1] VIOLATION` line, aborts, or its hash differs from the serial reference.
@@ -43,12 +43,11 @@ MIN_FRAMES = 300
 
 
 def stress_env(jitter_ms: int) -> dict:
-    return {**DETERMINISM, "MC2_SIM_OVERLAP": "1", "MC2_SIM_OVERLAP_AUDIT": "1", "MC2_OVERLAP_DEBUG": "1",
-            "MC2_SIM_OVERLAP_JITTER": str(jitter_ms)}
+    return {**DETERMINISM, "MC2_SIM_OVERLAP": "1", "MC2_SIM_OVERLAP_AUDIT": str(2 + max(0, min(50, jitter_ms)))}
 
 
 def serial_env() -> dict:
-    return {**DETERMINISM, "MC2_SIM_OVERLAP": "0", "MC2_SIM_OVERLAP_AUDIT": "1", "MC2_SIM_OVERLAP_JITTER": "0"}
+    return {**DETERMINISM, "MC2_SIM_OVERLAP": "0", "MC2_SIM_OVERLAP_AUDIT": "1"}
 
 
 # The sim worker and the render thread share the console, so another thread's line can land inside a SIMID line (an
@@ -136,7 +135,7 @@ def main(argv=None) -> int:
     p.add_argument("--missions", default="mc2_10,mc2_24,mc2_01")
     p.add_argument("--runs", type=int, default=8)
     p.add_argument("--duration", type=int, default=20)
-    p.add_argument("--jitter", type=int, default=6, help="MC2_SIM_OVERLAP_JITTER ms (0..50)")
+    p.add_argument("--jitter", type=int, default=6, help="audit jitter in ms (0..50)")
     p.add_argument("--out", required=True)
     args = p.parse_args(argv)
     os.makedirs(args.out, exist_ok=True)
