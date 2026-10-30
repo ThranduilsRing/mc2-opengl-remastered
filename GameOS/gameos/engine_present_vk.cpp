@@ -2760,7 +2760,7 @@ bool EnginePresentVk::presentFrameBody(uint32_t drawableW, uint32_t drawableH,
     }
 
     ++health_.present_frames;
-    finishFrame();
+    if (present_thread::onWorker()) finishFrame();
     // Main may now record frame N+1. Only the queue and immutable WSI handles are touched here.
     { ZoneScopedN("VKIsl.Present.QueuePresent");
       s.lastWsiResult = s.ctx->present(s.presentQ, pi); }
