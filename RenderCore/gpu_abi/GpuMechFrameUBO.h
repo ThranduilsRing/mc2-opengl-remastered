@@ -34,6 +34,7 @@ struct MechFrameUBO {
     int32_t poolI[4];           // @ivec4 numPoolLights, soft, moverMax, compress
     int32_t miscI[4];           // @ivec4 specDebugMask, -, -, -
     float   environmentAmbient[4]; // @vec4 mission sky RGB; ground is half the sky
+    float   previousWorldToClipGL[16]; // @mat4 unjittered N-1 main-view projection
 };
 
 #include "GpuMechFrameUBO.layout.gen.h"

@@ -1,6 +1,6 @@
 // RenderCore/gpu_abi/GpuMechInstance.h
 //
-// SINGLE SOURCE OF TRUTH for the per-instance mech SSBO record (64 B, std430).
+// SINGLE SOURCE OF TRUTH for the per-instance mech SSBO record (80 B, std430).
 // Hand-written; tools/gpu_abi_gen.py reads the annotated struct below and emits,
 // committed and byte-deterministic:
 //   RenderCore/gpu_abi/GpuMechInstance.layout.gen.h        (C++ sizeof/offsetof asserts,
@@ -32,6 +32,7 @@ struct alignas(16) GpuMechInstance {
     uint32_t materialIdx;         // index into s_mechMaterialTable; 0 = not assigned
     float    visualDamage01;      // [0,1] composite damage, for ViewMode consumers
     uint32_t visualFlags;         // RenderCore::MechVisualFlagBits
+    uint32_t previousBoneOffset;  // N-1 palette in the same bone SSBO; current palette for a new actor
 };
 
 #include "GpuMechInstance.layout.gen.h"

@@ -109,7 +109,7 @@ class Batcher {
     // before Stage 5' default-flip). Safe to call when is_enabled() is false
     // (returns immediately without staging). Particle is appended to the
     // currently-open group (most recent BeginGroup call).
-    void Emit(const GpuParticle& p);
+    void Emit(const GpuParticle& p, const void* source = nullptr, uint32_t corner = 0);
 
     // Resolve MLR pool indices in each GroupInfo to GOS texture handles.
     // Must be called AFTER renderLists() (which triggers LoadImages()) and

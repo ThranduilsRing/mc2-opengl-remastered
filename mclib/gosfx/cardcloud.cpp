@@ -816,7 +816,7 @@ void gosFX::CardCloud::DrawState(DrawInfo *info)
 					vertex.kind_flags = 8u | 64u | (additive ? 2u : 0u) |
 						(state.GetTextureWrapMode() == MidLevelRenderer::MLRState::TextureClamp ? 16u : 0u) |
 						(state.GetTextureHandle() == 0 ? 32u : 0u);
-					batcher.Emit(vertex);
+					batcher.Emit(vertex, GetParticle(i), corner);
 				}
 			}
 		}

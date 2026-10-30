@@ -23,7 +23,7 @@
 namespace mc2 {
 namespace particles {
 
-// 64-byte std430 record. Layout chosen so vec3 fields sit on 16-byte
+// 80-byte std430 record. Layout chosen so vec3 fields sit on 16-byte
 // boundaries (std430 vec3 alignment == 16). Padding is explicit so the
 // struct compiles identically MSVC / Clang / GCC.
 //
@@ -55,6 +55,8 @@ struct GpuParticle {
     float    age;
     float    size;
     uint32_t atlasIndex;     // per-particle atlas frame index (see comment above)
+    float    previousPosition[3]; // previous rendered position, when previousValid != 0
+    float    previousValid;
 };
 
 // Accessors for kind_flags bit fields.
@@ -65,7 +67,7 @@ inline void     gpu_particle_set_kind(GpuParticle& p, uint8_t k)  { p.kind_flags
 inline void     gpu_particle_set_is_head(GpuParticle& p, bool v)  { p.kind_flags = v ? (p.kind_flags | 1u) : (p.kind_flags & ~1u); }
 
 // --- std430 lockstep asserts (plan §5.4 v2 MAJOR-4 fold-in) ---
-static_assert(sizeof(GpuParticle) == 64,
+static_assert(sizeof(GpuParticle) == 80,
               "GpuParticle size drift — update shaders/include/particles.hglsl in the same commit");
 static_assert(alignof(GpuParticle) >= 4,
               "GpuParticle alignment too low for std430 mirror");
@@ -79,6 +81,7 @@ static_assert(offsetof(GpuParticle, lifetime)   == 48, "GpuParticle.lifetime off
 static_assert(offsetof(GpuParticle, age)        == 52, "GpuParticle.age offset drift");
 static_assert(offsetof(GpuParticle, size)       == 56, "GpuParticle.size offset drift");
 static_assert(offsetof(GpuParticle, atlasIndex) == 60, "GpuParticle.atlasIndex offset drift");
+static_assert(offsetof(GpuParticle, previousPosition) == 64, "GpuParticle.previousPosition offset drift");
 
 }  // namespace particles
 }  // namespace mc2

@@ -244,6 +244,19 @@ void GameCamera::renderViewUniforms() {
 					out[r * 4 + c] = col[c * 4 + r];
 		};
 		stuffToRowMajor(eye->worldToClipGL(), vu.worldToClipGL);
+		extern std::atomic<uint32_t> g_mc2FrameCounter;
+		const uint32_t viewFrame = g_mc2FrameCounter.load(std::memory_order_relaxed);
+		static RenderCore::ViewUniforms previousView{};
+		static uint32_t previousViewFrame = UINT32_MAX;
+		static float previousProjection[16]{};
+		const bool consecutiveView = previousViewFrame != UINT32_MAX && viewFrame == previousViewFrame + 1;
+		if (viewFrame != previousViewFrame)
+			std::memcpy(previousProjection,
+			    consecutiveView ? previousView.worldToClipGL : vu.worldToClipGL,
+			    sizeof(previousProjection));
+		std::memcpy(vu.previousWorldToClipGL, previousProjection, sizeof(vu.previousWorldToClipGL));
+		previousView = vu;
+		previousViewFrame = viewFrame;
 		stuffToRowMajor(eye->worldToViewGL(), vu.worldToViewGL);
 		const glm::vec3 orig = eye->cameraOriginGL();
 		vu.cameraWorldPos[0] = orig.x;
