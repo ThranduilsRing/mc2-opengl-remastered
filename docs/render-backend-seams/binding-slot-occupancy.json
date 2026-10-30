@@ -1083,7 +1083,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/terrain_tier1.frag",
-        "line": 34,
+        "line": 33,
         "role": "u_shorelineMask",
         "std": null,
         "type": "sampler2D",
@@ -1095,7 +1095,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/terrain_tier1.frag",
-        "line": 27,
+        "line": 26,
         "role": "u_materialWeights",
         "std": null,
         "type": "sampler2D",
@@ -1107,7 +1107,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/terrain_tier1.frag",
-        "line": 26,
+        "line": 25,
         "role": "u_macroGradient",
         "std": null,
         "type": "sampler2D",
@@ -2167,7 +2167,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/terrain_tier1.frag",
-        "line": 32,
+        "line": 31,
         "role": "u_matNormalArray",
         "std": null,
         "type": "sampler2DArray",
