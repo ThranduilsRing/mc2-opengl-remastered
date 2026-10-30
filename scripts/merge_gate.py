@@ -53,7 +53,6 @@ def plan(jobs, proof_dir=None, capture_before_runs=1, before_dir=None):
                               str(proof / "after"), "--out-root", str(proof / "ab")], {}),
         ("contracts", [git_bash(), "scripts/check-contracts.sh", "-j" + str(jobs)], {}),
         ("harnesses", [py, "tools/build_contract_harnesses.py", "--run", "--unit", "-j", str(jobs)], {}),
-        ("pytest", [py, "-B", "-m", "pytest", "scripts/tests", "-q", "-p", "no:cacheprovider"], {}),
         ("tier1", [py, "scripts/run_smoke.py", "--tier", "tier1", "--keep-logs", "--deploy", "0.4"],
          {"MC2_DEBUG_STATE_DUMP": "1", "MC2_DIAG_TAGS": "CONFIG,BUILD,DEVICE"}),
         ("kit-visibility", [py, "scripts/check-kit-visibility.py", "--install", install,
@@ -159,9 +158,6 @@ def affected_plan(steps, paths, full=False):
                 reason = "docs/tooling-only diff has no runtime inputs"
             elif name == "harnesses" and not sim:
                 reason = "diff has no C++ harness inputs"
-        if name == "pytest" and "contracts" in names:
-            env["MC2_GATE_REUSE_STAGE"] = "contracts"
-            reason = "scripts_tests contract row owns these modules; no duplicate execution"
         if name == "validation" and (game or full) and "tier1" in names:
             env["MC2_GATE_REUSE_STAGE"] = "tier1,determinism-mc2_10" if batch_tier else "tier1"
             reason = "tier1 and shared determinism smokes grade Vulkan validation errors/layer activation"
@@ -540,9 +536,6 @@ def select_stages(steps, stages=None, skip=None):
     overlap = set(requested) & omitted
     if overlap:
         raise ValueError("stages both selected and skipped: " + ", ".join(sorted(overlap)))
-    if "contracts" in omitted and "pytest" in available and "pytest" not in omitted:
-        raise ValueError("--skip contracts also needs --skip pytest: pytest only dedups against the contracts stage, "
-                         "so skipping contracts alone runs the 45-min standalone pytest stage (W78)")
     selected = [available[name] for name in requested or available if name not in omitted]
     if not selected or stages == []:
         raise ValueError("no stages selected; gate requires at least one stage")

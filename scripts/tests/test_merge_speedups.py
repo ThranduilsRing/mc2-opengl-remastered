@@ -104,7 +104,8 @@ def test_contained_batch_refreshes_window_receipt(tmp_path, monkeypatch):
 def test_contract_board_owns_inner_worker_budget(tmp_path, jobs):
     from pathlib import Path
     script = Path(ROOT, 'scripts/check-contracts.sh').read_text()
-    script = script.replace('py -3 scripts/run_scripts_tests.py', r'test \"$MC2_TEST_JOBS\" -eq 1')
+    script = script.replace('# Aggregate Python suites run in tools/lane_merge.py --precheck, before the merge window.',
+                            r'run_check "scripts_tests" "test \"$MC2_TEST_JOBS\" -eq 1"')
     fixture = tmp_path / 'board.sh'
     fixture.write_text(script, encoding='utf-8', newline='\n')
     result = subprocess.run([lm.git_bash(), fixture.as_posix(), '--rows', '^scripts_tests$', '--no-cache', f'-j{jobs}'],
@@ -232,7 +233,7 @@ def test_gate_plan_uses_verified_ninja_and_required_checks():
     mods = next(cmd for name, cmd, _ in steps if name == "mods")
     assert "--fail-fast" not in mods
     assert mods[mods.index("--workers") + 1] == "2"
-    assert len(steps) == 20
+    assert len(steps) == 19
     quiet = next(cmd for name, cmd, _ in steps if name == "quiet")
     assert quiet[-3:-1] == ["--fresh-smoke", "--exe"] and quiet[-1].endswith("mc2-win64-v0.4/mc2.exe")
     by_name = {name: (cmd, env) for name, cmd, env in steps}
@@ -402,10 +403,8 @@ def test_gate_stage_selection():
     import merge_gate as gate
     steps = gate.plan(6)
     assert [s[0] for s in gate.select_stages(steps, ["deploy,capture-after"])] == ["deploy", "capture-after"]
-    assert "pytest" not in [s[0] for s in gate.select_stages(steps, skip=["pytest"])]
-    with pytest.raises(ValueError, match="also needs --skip pytest"):
-        gate.select_stages(steps, skip=["contracts"])
-    assert "contracts" not in [s[0] for s in gate.select_stages(steps, skip=["contracts,pytest"])]
+    assert "pytest" not in [s[0] for s in steps]
+    assert "contracts" not in [s[0] for s in gate.select_stages(steps, skip=["contracts"])]
     for stages, skip in ((["missing"], None), (None, ["missing"]), (["deploy", "deploy"], None),
                          (["deploy"], ["deploy"]), ([], None), (None, list(s[0] for s in steps))):
         with pytest.raises(ValueError):
@@ -618,16 +617,17 @@ def test_full_restores_all_domains_and_reuses_covered_checks():
     import merge_gate as gate
     steps = gate.affected_plan(gate.plan(6), ["docs/intro.md"], full=True)
     skipped = {n for n, _, e in steps if e.get("MC2_GATE_SKIP_REASON")}
-    assert skipped == {"pytest", "validation"}
+    assert skipped == {"validation"}
     assert all(e.get("MC2_GATE_REUSE_STAGE") for n, _, e in steps if n in skipped)
     # Selecting a stand-alone stage cannot reuse a check that was never run.
-    assert not gate.affected_plan([gate.plan(6)[6]], [], True)[0][2].get("MC2_GATE_SKIP_REASON")
+    validation = next(s for s in gate.plan(6) if s[0] == "validation")
+    assert not gate.affected_plan([validation], [], True)[0][2].get("MC2_GATE_SKIP_REASON")
 
 
 def test_gate_reuse_fails_when_producing_check_failed(monkeypatch, capsys):
     import merge_gate as gate
     monkeypatch.setattr(gate, "git", lambda *a: "head")
-    steps = gate.affected_plan([("contracts", ["fake"], {}), ("pytest", ["duplicate"], {})], ["tools/a.py"])
+    steps = gate.affected_plan([("tier1", ["fake"], {}), ("validation", ["duplicate"], {})], ["code/game.cpp"])
     calls = []
     assert gate.execute(steps, "head", runner=lambda cmd, **kw: calls.append(cmd) or _r(1)) == 1
     assert calls == [["fake"]]

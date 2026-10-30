@@ -48,6 +48,33 @@ FAKES = {
 }
 
 
+@pytest.mark.parametrize("red", [None, "run_scripts_tests.py", "run_tools_tests.py", "ninja_build.py"])
+def test_precheck_runs_python_suites_and_reuses_lane_build(env, monkeypatch, capsys, red):
+    from tools import lane_merge as lm
+    repo, _ = env
+    git(repo, "branch", "claude/nifty-mendeleev")
+    before = git(repo, "rev-parse", "HEAD")
+    actual_run = lm.run
+    seen = []
+    def runner(root, cmd, env=None):
+        if cmd[0] == "git":
+            return actual_run(root, cmd, env)
+        seen.append((root, cmd))
+        if "scripts/ninja_build.py" in cmd:
+            assert root == str(repo)
+        else:
+            assert root != str(repo)
+        return subprocess.CompletedProcess(cmd, int(any(lm.Path(a).name == red for a in cmd)), "fixture failure")
+    monkeypatch.setattr(lm, "run", runner)
+    assert lm.main(["--root", str(repo), "--precheck", "HEAD"]) == int(red is not None)
+    assert len(seen) == 9
+    assert all("--tighten" not in cmd for _, cmd in seen)
+    assert {label for label, _ in lm.PYTHON_SUITES} == {"scripts_tests", "tools_tests"}
+    assert git(repo, "rev-parse", "HEAD") == before
+    assert not git(repo, "status", "--porcelain")
+    assert ("PRECHECK FAIL" if red else "PRECHECK PASS") in capsys.readouterr().out
+
+
 def git(cwd, *args, check=True):
     r = subprocess.run(["git", "-C", str(cwd), *args], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
                        **console_child.child_kwargs(redirected=True))
