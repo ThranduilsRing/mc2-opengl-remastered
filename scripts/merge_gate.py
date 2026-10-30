@@ -243,6 +243,11 @@ def stock_copy(install, parent=None):
     finally:
         if target.parent != parent or not target.name.startswith(prefix):
             raise RuntimeError(f"refusing cleanup outside lane install: {target}")
+        mod_stage = target.with_name(target.name + "-mods-stage")
+        if mod_stage.exists():
+            if mod_stage.resolve().parent != parent:
+                raise RuntimeError(f"refusing cleanup outside lane install: {mod_stage}")
+            shutil.rmtree(mod_stage)
         size = sum(p.stat().st_size for p in target.rglob("*") if p.is_file())
         shutil.rmtree(target)
         print(f"[merge_gate] removed {target}: {size / 2**30:.2f} GiB logical (physical space not measured)", flush=True)
@@ -369,6 +374,29 @@ def execute_parallel(steps, head, dry_run=False, keep_going=False):
         if reused:
             result |= execute(reused, head, runner=runner, completed=completed)
     return result
+
+
+def execute_window(steps, head, dry_run=False, keep_going=False):
+    """Prove a private candidate before publishing the verified build to v0.4."""
+    deploy = next((s for s in steps if s[0] == "deploy"), None)
+    tier1 = next((s for s in steps if s[0] == "tier1" and not s[2].get("MC2_GATE_SKIP_REASON")), None)
+    if not deploy or deploy[2].get("MC2_GATE_SKIP_REASON"):
+        return execute_parallel(steps, head, dry_run, keep_going)
+    candidate = Path("E:/mc2-installs/merge-gate-candidate")
+    def prove(install):
+        staged = install_plan(steps, install)
+        # Before evidence belongs to the currently published executable.
+        staged = [original if original[0].startswith("capture-before") else private
+                  for original, private in zip(steps, staged)]
+        result = execute_parallel(staged, head, dry_run, keep_going)
+        if result or not tier1:
+            print("[merge_gate] publish-v0.4: withheld (candidate failed or tier1 not run)", flush=True)
+            return result
+        return execute([("publish-v0.4", deploy[1], {})], head, dry_run)
+    if dry_run:
+        return prove(candidate)
+    with stock_copy(Path("E:/mc2-installs/_lean-seed")) as install:
+        return prove(install)
 
 
 def validate_before(before_dir, expected_sha):
@@ -625,7 +653,8 @@ def main(argv=None):
         with redirect_stdout(Tee(sys.stdout, log)), redirect_stderr(Tee(sys.stderr, log)):
             print(f"[merge_gate] log: {log_path}", flush=True)
             started = window.get("started", time.time())
-            result = execute_parallel(steps, head, args.dry_run, keep_going=args.keep_going)
+            execute_gate = execute_parallel if args.install else execute_window
+            result = execute_gate(steps, head, args.dry_run, keep_going=args.keep_going)
             elapsed = time.time() - started
             measured_window = bool(window)
             verdict = ("FAIL" if result else

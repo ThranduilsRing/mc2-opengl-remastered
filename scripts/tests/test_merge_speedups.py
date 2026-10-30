@@ -505,6 +505,30 @@ def test_reused_before_evidence_never_launches_old_classic_exe(tmp_path, monkeyp
     assert gate.main(args) == 0
 
 
+@pytest.mark.parametrize("failure,omit_tier1,skip_tier1", [(False, False, False), (True, False, False), (False, True, False), (False, False, True)])
+def test_publish_requires_successful_candidate_and_tier1(monkeypatch, tmp_path, failure, omit_tier1, skip_tier1):
+    from contextlib import contextmanager
+    import merge_gate as gate
+    @contextmanager
+    def candidate(*args):
+        yield tmp_path
+    monkeypatch.setattr(gate, "stock_copy", candidate)
+    checked, published = [], []
+    monkeypatch.setattr(gate, "execute_parallel", lambda steps, *a: checked.extend(steps) or int(failure))
+    monkeypatch.setattr(gate, "execute", lambda steps, *a: published.extend(steps) or 0)
+    steps = gate.plan(6)
+    if omit_tier1:
+        steps = [s for s in steps if s[0] != "tier1"]
+    if skip_tier1:
+        steps = [(n, c, dict(e, MC2_GATE_SKIP_REASON="filtered") if n == "tier1" else e) for n, c, e in steps]
+    assert gate.execute_window(steps, "head", keep_going=True) == int(failure)
+    assert bool(published) == (not failure and not omit_tier1 and not skip_tier1)
+    assert next(c for n, c, _ in checked if n == "deploy")[-2:] == [str(tmp_path), "--allow-new-target"]
+    if published:
+        assert published[0][0] == "publish-v0.4"
+        assert str(tmp_path) not in published[0][1]
+
+
 def test_gate_logs_lease_holder_and_age(monkeypatch, capsys):
     import merge_gate as gate
     from smoke_lib import host_lease
@@ -826,6 +850,9 @@ def test_stock_copy_is_private_and_always_removed(tmp_path, fail):
         try:
             with gate.stock_copy(install) as clone:
                 assert clone.parent == install.parent
+                mod_stage = clone.with_name(clone.name + "-mods-stage")
+                mod_stage.mkdir()
+                (mod_stage / "cached-mod").write_text("disposable")
                 assert not (clone / "mod_smoke-stage").exists()
                 assert (clone / "cache/model.mci").read_text() == "warm cache"
                 recipe = clone / native.relative_to(install)
@@ -844,6 +871,7 @@ def test_stock_copy_is_private_and_always_removed(tmp_path, fail):
         except RuntimeError:
             assert fail
         assert not clone.exists()
+        assert not mod_stage.exists()
 
 
 def test_offline_stages_overlap_before_deploy(monkeypatch):
@@ -1080,7 +1108,8 @@ def test_gate_without_window_receipt_keeps_full_current_coverage(tmp_path, monke
     monkeypatch.setattr(gate, "execute", lambda steps, *a: seen.extend(steps) or 0)
     assert gate.main(["--dry-run", "--proofs-dir", str(tmp_path / "proof")]) == 0
     assert len([n for n, _, _ in seen if n.startswith("saveload-")]) == 5
-    assert "capture-before-classic" in {n for n, _, _ in seen}
+    assert "capture-before" in {n for n, _, _ in seen}
+    assert not any(n.endswith("-classic") for n, _, _ in seen)
     assert all("MC2_GATE_SKIP_REASON" not in env for name, _, env in seen
                if name.startswith(("capture-", "saveload-", "determinism-")))
     assert all(e["MC2_SMOKE_ARTIFACT_ROOT"] == str(tmp_path / "proof/smokes" / n)
