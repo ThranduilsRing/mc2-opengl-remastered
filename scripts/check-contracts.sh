@@ -1507,7 +1507,7 @@ run_check "visual_regression_schema"   "py -3 scripts/run_visual.py --validate-s
 # a module that fully passed with unchanged recorded inputs is not re-run. --no-cache / CONTRACTS_NO_CACHE=1 turns it off.
 run_check "mission_codec_golden"       "MC2_CODEC_REQUIRED=1 py -3 -B -m pytest tests/mapgen/test_mission_codec.py -q -p no:cacheprovider"
 run_check "farm_runner"                "py -3 -B -m pytest scripts/tests/test_farm_runner.py -q -p no:cacheprovider"
-run_check "scripts_tests"              "py -3 scripts/run_scripts_tests.py"
+# Aggregate Python suites run in tools/lane_merge.py --precheck, before the merge window.
 run_check "mission_cpu_profile"        "py -3 -B -m pytest scripts/tests/test_mission_cpu_profile.py -q -p no:cacheprovider"
 run_check "runtime_bridge"             "py -3 -B -m pytest scripts/tests/test_runtime_bridge.py scripts/tests/test_runtime_bridge_socket.py -q -p no:cacheprovider"
 run_check "mod_smoke"                  "py -3 -B -m pytest scripts/tests/test_mod_smoke.py scripts/tests/test_stage_root.py tests/smoke/test_mod_smoke_staging.py -q -p no:cacheprovider"
@@ -1533,7 +1533,7 @@ run_check "kit_visibility"             "py -3 -B -m pytest scripts/tests/test_ki
 # only shrink. Nobody fixed the pinned failures when this row was added.
 # Excluded: test_cxx17_ratchet (own row above) and test_release_zip_install
 # (assembles release zips + launches a smoke; not an offline contract).
-run_check_tri "tools_tests"             "py -3 scripts/run_tools_tests.py"
+# tools_tests retains its known-failure exit-code handling in lane_merge precheck.
 run_check_tri "kit_art"                 "py -3 scripts/run_tools_tests.py --suite art"
 run_check "anim_parity"                 "py -3 -B -m pytest tools/anim_parity/test_audit.py tools/content_pipeline/tests -q -p no:cacheprovider"
 run_check "mapgen_fof"                  "py -3 -B -m pytest tests/mapgen/test_fields_of_fire.py tests/mapgen/test_footprints.py tests/mapgen/test_pixel_generate.py tests/mapgen/test_mission_writer.py -q -p no:cacheprovider"

@@ -344,7 +344,7 @@ TEST_CASE("table is sorted, unique and every name round-trips through lookupName
     const std::size_t n = gate::tableSize();
     REQUIRE(n == gate::detail::kGateCount);
     // Population floor after the gate amnesty (retired names live in Gates/retired_names.json).
-    REQUIRE(n == 757);   // W86 fixups: retire four unused static cull diagnostics.
+    REQUIRE(n == 752);   // Overlap diagnostics share the existing audit selector.
     for (std::size_t i = 0; i < n; ++i) {
         if (i > 0) CHECK((rows[i - 1].name < rows[i].name));
         const auto info = gate::lookupName(rows[i].name);
@@ -1873,6 +1873,15 @@ TEST_CASE("MC2_RENDER_BACKEND text: gl/GL is the removed backend, a typo is flag
 	CHECK(mc2::backendRequestFromText("GL") == BackendRequest::RemovedGl);
 	for (const char* typo : {"opengl", "Vulkan", "Gl", "gl "})
 		CHECK(mc2::backendRequestFromText(typo) == BackendRequest::Unrecognized);
+}
+
+TEST_CASE("overlap audit retains numeric fence and jitter levels") {
+    for (int level : {0, 1, 2, 8, 52}) {
+        gate::ScopedOverride<"MC2_SIM_OVERLAP_AUDIT"> audit(std::to_string(level).c_str());
+        CHECK(gate::get<"MC2_SIM_OVERLAP_AUDIT">() == level);
+    }
+    CHECK_FALSE(gate::lookupName("MC2_OVERLAP_DEBUG").has_value());
+    CHECK_FALSE(gate::lookupName("MC2_SIM_OVERLAP_JITTER").has_value());
 }
 
 TEST_CASE("spatial AA defaults on and all four modes round-trip through options.cfg") {

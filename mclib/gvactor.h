@@ -26,6 +26,7 @@
 #endif
 
 #include"vis_semantics.h"   // VISIBILITY-SEMANTICS-1
+#include "sim_overlap.h"
 #include "math/mc2_xform.h"  // mc2::math::quatXYZW
 
 #ifndef OBJECTAPPEARANCE_H
@@ -259,8 +260,8 @@ class GVAppearance : public ObjectAppearance
 		struct PoseView { TG_MultiShapePtr shape; long& rotNode; glm::vec3 pos; float rot; };
 		PoseView poseView (void)
 		{
-			// Presentation must not read the worker's build flag or mutable sim shape.
-			if (!simPresentationPass && buildingSimPose_)
+			// Main can request simulation reads for LOS/UI; only inspect the build flag while owning Sim.
+			if (!simPresentationPass && (mc2::overlap::onSimWorker() || !mc2::overlap::jobInFlight()) && buildingSimPose_)
 				return { simulationShape_.get(), simRotationalNodeIndex_, simPosition_, simRotation_ };
 			return { gvShape, rotationalNodeIndex, position, rotation };
 		}

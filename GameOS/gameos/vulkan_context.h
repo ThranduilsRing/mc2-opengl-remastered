@@ -28,8 +28,8 @@
 #include "vk_completion_tracker.h"
 #include "vk_deferred_destroy.h"
 #include "vk_device_profile.h"
-#ifdef MC2_VULKAN_ISLAND
 #include "vk_frame_ring.h"
+#ifdef MC2_VULKAN_ISLAND
 #include "vk_readback.h"
 #include "vk_shared_light_feed.h"
 #include "vk_upload.h"
@@ -195,11 +195,11 @@ public:
     // valid until the frame that asked for it has completed. `align` 0 = the device uniform / storage offset alignment. An empty result means the
     // allocation failed; the caller declines its draw. Main thread only.
     FrameAlloc frameAlloc(VkDeviceSize size, VkDeviceSize align = 0) { return frameRing_.alloc(*this, size, align ? align : frameAlign_); }
-    // The frame the engine loop is recording, the number of frames the engine keeps in flight (2, or 1 under MC2_VK_FRAMES_IN_FLIGHT=1) and the slot every
-    // per-frame object of the present path uses (frame % framesInFlight; 0 at N=1). The frame ring itself always alternates its two regions.
+    // The frame the engine loop is recording, the active frame count and each per-frame object's slot (frame % framesInFlight; 0 at N=1).
+    // The transient memory ring always rotates through kMaxFramesInFlight regions.
     struct FrameContext { uint64_t frame = 0; uint32_t slot = 0; uint32_t framesInFlight = 1; };
     FrameContext frameContext() const { return {tracker_.frameNo(), framesInFlight_ < 2 ? 0u : static_cast<uint32_t>(tracker_.frameNo() % framesInFlight_), framesInFlight_}; }
-    void setFramesInFlight(uint32_t n) { framesInFlight_ = n < 2 ? 1u : 2u; }
+    void setFramesInFlight(uint32_t n) { framesInFlight_ = n < 1 ? 1u : n > kMaxFramesInFlight ? kMaxFramesInFlight : n; }
     const FrameRing& frameRing() const { return frameRing_; }
     // GPU -> CPU readbacks that never block (see vk_readback.h).
     ReadbackRing& readbacks() { return readbacks_; }

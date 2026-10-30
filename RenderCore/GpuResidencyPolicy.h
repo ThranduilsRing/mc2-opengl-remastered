@@ -15,7 +15,9 @@ struct GpuResidencyPolicy {
     uint32_t textureEdge, terrainEdge;
 };
 constexpr GpuResidencyPolicy gpuResidencyPolicy(int quality) {
-    if (quality == 0) return {512 * gpuMiB, 32 * gpuMiB, 0, 2048, 2048};
+    // The frame ring needs 96 MiB including flight copies. Its upload admission must
+    // fit that allocation while all resources still share the 512 MiB low ceiling.
+    if (quality == 0) return {512 * gpuMiB, 128 * gpuMiB, 0, 2048, 2048};
     if (quality == 1) return {1024 * gpuMiB, 128 * gpuMiB, 32 * gpuMiB, 4096, 4096};
     return {2048 * gpuMiB, 256 * gpuMiB, vegetationResidentCeiling, 16384, 4096};
 }

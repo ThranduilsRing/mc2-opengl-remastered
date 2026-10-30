@@ -176,16 +176,16 @@ struct ShadowIsland : mc2vk::IslandState {
 
     uint32_t      vertexStride = 0;
     bool          geomUploaded = false;
-    VkDeviceSize  instCapBytes[2] = {0, 0};   // per frame parity
+    VkDeviceSize  instCapBytes[mc2vk::kMaxFramesInFlight] = {0, 0};   // per frame parity
 
     // Per-type packets + type runs (copied once per map).
     std::vector<Mc2ShadowPacket> packets;  // firstIndex/indexCount/baseVertex per packet
     std::vector<TypeRun>         typeRuns;  // firstPacket/packetCount per typeID (indexed by typeID)
 
-    VkDescriptorSet   set[2] = {VK_NULL_HANDLE, VK_NULL_HANDLE};   // one per frame parity, allocated from `pool`, freed with it
-    VkCommandBuffer   cbuf[2] = {VK_NULL_HANDLE, VK_NULL_HANDLE};   // the frame's command buffer, one per parity, allocated from `cpool`, freed with it
+    VkDescriptorSet   set[mc2vk::kMaxFramesInFlight] = {VK_NULL_HANDLE, VK_NULL_HANDLE};   // one per frame parity, allocated from `pool`, freed with it
+    VkCommandBuffer   cbuf[mc2vk::kMaxFramesInFlight] = {VK_NULL_HANDLE, VK_NULL_HANDLE};   // the frame's command buffer, one per parity, allocated from `cpool`, freed with it
 
-    // The frame's recording. The first pass of an epoch (one per frame) begins the command buffer of parity `epoch & 1`; every pass of the frame appends a
+    // The frame's recording. The first pass of an epoch begins its `epoch % kMaxFramesInFlight` command buffer; every pass of the frame appends a
     // render pass to it and mc2_vk_shadow_island_submit_frame() submits it once. Nothing waits for the GPU after the submit: the parity's fence is waited when
     // that parity is recorded again, two frames later, and it is the retire of everything the parity's buffers held.
     uint64_t recordEpoch = ~0ull;
@@ -211,12 +211,12 @@ struct ShadowIsland : mc2vk::IslandState {
     // OWNED objects, declared in creation order: the destructor releases them in reverse, so a framebuffer goes before the view and render pass it uses.
     mc2vk::OwnedBuffer vbo;   // VK-owned copies of the shared static-prop VBO/IBO (P8a (B))
     mc2vk::OwnedBuffer ibo;
-    mc2vk::OwnedBuffer instBuf[2];   // per-parity instance SSBO (memcpy of the GpuStaticPropInstance vector)
+    mc2vk::OwnedBuffer instBuf[mc2vk::kMaxFramesInFlight];   // per-parity instance SSBO (memcpy of the GpuStaticPropInstance vector)
     mc2vk::OwnedBuffer ubo;          // kMaxPassesPerFrame slices per parity, one light-space matrix each
     mc2vk::OwnedImageView   depthAttView;   // depth-attachment view of the shared image
     mc2vk::OwnedRenderPass  rpass;
     mc2vk::OwnedFramebuffer fb;
-    mc2vk::OwnedFence       frameFence[2];   // signalled when the submit of parity p has retired; created signalled
+    mc2vk::OwnedFence       frameFence[mc2vk::kMaxFramesInFlight];   // signalled when the submit of parity p has retired; created signalled
     mc2vk::OwnedDescriptorSetLayout dsl;
     mc2vk::OwnedDescriptorSetLayout alphaDsl;   // set 1 of the caster layout: the colour island's alpha-ON albedo array
     mc2vk::OwnedDescriptorPool      pool;
@@ -246,13 +246,13 @@ struct ShadowIsland : mc2vk::IslandState {
         VkImageResource staticAtlas{}, liveAtlas{};   // their depth-aspect views serve as attachment and sampled view
         mc2vk::OwnedRenderPass bakePass, livePass;
         mc2vk::OwnedFramebuffer bakeFb, liveFb;
-        mc2vk::OwnedBuffer inst[2];
-        VkDeviceSize instCap[2] = {0, 0};
+        mc2vk::OwnedBuffer inst[mc2vk::kMaxFramesInFlight];
+        VkDeviceSize instCap[mc2vk::kMaxFramesInFlight] = {0, 0};
         mc2vk::OwnedDescriptorPool pool;
-        VkDescriptorSet set[2] = {VK_NULL_HANDLE, VK_NULL_HANDLE};
+        VkDescriptorSet set[mc2vk::kMaxFramesInFlight] = {VK_NULL_HANDLE, VK_NULL_HANDLE};
         uint64_t bakedKey[mc2localshadow::kTiles] = {};
         std::vector<GpuStaticPropInstance> leaves;   // the resolved static caster set
-        uint64_t leavesVersion = ~0ull, leavesDelta = ~0ull;
+        uint64_t leavesVersion = ~0ull, leavesGeneration = ~0ull;
         uint32_t tilesDrawn = 0;
         uint64_t bakesTotal = 0;
     } local;
@@ -419,13 +419,13 @@ static bool init_local_shadow(ShadowIsland* s) {
         !makeFb(L.liveFb, L.livePass.get(), L.liveAtlas.view.get())) {
         vlog("local light shadow passes unavailable."); return false;
     }
-    VkDescriptorPoolSize sizes[2]{{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 2}, {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 2}};
+    VkDescriptorPoolSize sizes[2]{{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, mc2vk::kMaxFramesInFlight}, {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, mc2vk::kMaxFramesInFlight}};
     VkDescriptorPoolCreateInfo pci{VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO};
-    pci.maxSets = 2; pci.poolSizeCount = 2; pci.pPoolSizes = sizes;
+    pci.maxSets = mc2vk::kMaxFramesInFlight; pci.poolSizeCount = 2; pci.pPoolSizes = sizes;
     if (!mc2vk::create(L.pool, s->device, [&](auto* h) { return vkCreateDescriptorPool(s->device, &pci, nullptr, h); })) return false;
-    const VkDescriptorSetLayout layouts[2] = {s->dsl.get(), s->dsl.get()};
+    VkDescriptorSetLayout layouts[mc2vk::kMaxFramesInFlight]; for (auto& layout : layouts) layout = s->dsl.get();
     VkDescriptorSetAllocateInfo dsai{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO};
-    dsai.descriptorPool = L.pool.get(); dsai.descriptorSetCount = 2; dsai.pSetLayouts = layouts;
+    dsai.descriptorPool = L.pool.get(); dsai.descriptorSetCount = mc2vk::kMaxFramesInFlight; dsai.pSetLayouts = layouts;
     if (vkAllocateDescriptorSets(s->device, &dsai, L.set) != VK_SUCCESS) return false;
     L.ok = true;
     vlog("local light shadow atlas %ux%u (%u tiles of %u^2, D16).", kAtlasW, kAtlasH, kTiles, kTileSide);
@@ -507,7 +507,7 @@ bool init_island(ShadowIsland* s, int size) {
     }
 
     // ---- Instance SSBO + UBO. ----
-    if (!make_buffer(s, s->ubo, 2 * kMaxPassesPerFrame * kUboSliceBytes, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, true, "shadow.ubo")) return false;
+    if (!make_buffer(s, s->ubo, mc2vk::kMaxFramesInFlight * kMaxPassesPerFrame * kUboSliceBytes, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, true, "shadow.ubo")) return false;
 
     // ---- Depth-only render pass (single depth attachment; CLEAR to 1.0 forward-Z,
     // STORE). Interop layout: GL never writes this image, VK is sole producer; we
@@ -577,23 +577,23 @@ bool init_island(ShadowIsland* s, int size) {
             vlog("vkCreateDescriptorSetLayout failed."); return false;
         }
         VkDescriptorPoolSize sizes[2]{};
-        sizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC; sizes[0].descriptorCount = 2;
-        sizes[1].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; sizes[1].descriptorCount = 2;
+        sizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC; sizes[0].descriptorCount = mc2vk::kMaxFramesInFlight;
+        sizes[1].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; sizes[1].descriptorCount = mc2vk::kMaxFramesInFlight;
         VkDescriptorPoolCreateInfo pci{};
         pci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-        pci.maxSets = 2; pci.poolSizeCount = 2; pci.pPoolSizes = sizes;
+        pci.maxSets = mc2vk::kMaxFramesInFlight; pci.poolSizeCount = 2; pci.pPoolSizes = sizes;
         if (!mc2vk::create(s->pool, s->device, [&](auto* h) { return vkCreateDescriptorPool(s->device, &pci, nullptr, h); })) {
             vlog("vkCreateDescriptorPool failed."); return false;
         }
         VkDescriptorSetAllocateInfo dsai{};
         dsai.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
         const VkDescriptorSetLayout dslHandle = s->dsl.get();
-        const VkDescriptorSetLayout setLayouts[2] = {dslHandle, dslHandle};
-        dsai.descriptorPool = s->pool.get(); dsai.descriptorSetCount = 2; dsai.pSetLayouts = setLayouts;
+        VkDescriptorSetLayout setLayouts[mc2vk::kMaxFramesInFlight]; for (auto& layout : setLayouts) layout = dslHandle;
+        dsai.descriptorPool = s->pool.get(); dsai.descriptorSetCount = mc2vk::kMaxFramesInFlight; dsai.pSetLayouts = setLayouts;
         if (vkAllocateDescriptorSets(s->device, &dsai, s->set) != VK_SUCCESS) {
             vlog("vkAllocateDescriptorSets failed."); return false;
         }
-        for (uint32_t par = 0; par < 2; ++par) {
+        for (uint32_t par = 0; par < mc2vk::kMaxFramesInFlight; ++par) {
             if (!ensure_inst_capacity(s, par, 256 * 1024)) return false;   // ~2340 instances to start
         }
     }
@@ -661,14 +661,14 @@ bool init_island(ShadowIsland* s, int size) {
         }
         VkCommandBufferAllocateInfo cai{};
         cai.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-        cai.commandPool = s->cpool.get(); cai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; cai.commandBufferCount = 2;
+        cai.commandPool = s->cpool.get(); cai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; cai.commandBufferCount = mc2vk::kMaxFramesInFlight;
         if (vkAllocateCommandBuffers(s->device, &cai, s->cbuf) != VK_SUCCESS) {
             vlog("vkAllocateCommandBuffers failed."); return false;
         }
         VkFenceCreateInfo fci{};
         fci.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
         fci.flags = VK_FENCE_CREATE_SIGNALED_BIT;
-        for (uint32_t par = 0; par < 2; ++par) {
+        for (uint32_t par = 0; par < mc2vk::kMaxFramesInFlight; ++par) {
             if (!mc2vk::create(s->frameFence[par], s->device, [&](auto* h) { return vkCreateFence(s->device, &fci, nullptr, h); })) {
                 vlog("frame fence failed."); return false;
             }
@@ -768,11 +768,11 @@ static bool productReady(bool recorded) {
     return s && recorded && !s->recording;
 }
 
-// Starts the frame's recording when the first pass of an epoch asks. The wait on the parity's fence is the retire of the submit made two frames ago: it is
+// Starts the frame's recording when the first pass of an epoch asks. The slot's fence retires its previous submit: it is
 // never a wait on this frame's work, and in steady state it has long been signalled.
 static bool begin_frame(ShadowIsland* s, uint64_t epoch) {
     if (s->recording && s->recordEpoch == epoch) return true;
-    const uint32_t par = static_cast<uint32_t>(epoch & 1u);
+    const uint32_t par = static_cast<uint32_t>(epoch % mc2vk::kMaxFramesInFlight);
     const VkFence fence = s->frameFence[par].get();
     { ZoneScopedN("VKIsl.Shadow.FenceWait");
       if (vkWaitForFences(s->device, 1, &fence, VK_TRUE, 5ull * 1000 * 1000 * 1000) != VK_SUCCESS) {
@@ -1103,13 +1103,13 @@ static void record_local_shadows(ShadowIsland* s) {
     ZoneScopedN("VKIsl.Shadow.LocalLights");
 
     const auto& casterSet = mc2shadow::staticCasterSet();
-    if (casterSet.version() != L.leavesVersion || casterSet.deltaVersion() != L.leavesDelta) {
+    // Static lamp tiles refresh once per submitted, drained caster/height burst.
+    if (casterSet.version() != L.leavesVersion || s->bake.objectGeneration() != L.leavesGeneration) {
         casterSet.resolve(L.leaves);
         L.leavesVersion = casterSet.version();
-        L.leavesDelta = casterSet.deltaVersion();
+        L.leavesGeneration = s->bake.objectGeneration();
         for (auto& k : L.bakedKey) k = 0;
     }
-
     uint32_t bake[kTiles], bakeCount = 0, used[kTiles], usedCount = 0;
     for (uint32_t t = 0; t < kTiles && t < tileCount; ++t) {
         if (!tiles[t].used) continue;
@@ -1118,7 +1118,6 @@ static void record_local_shadows(ShadowIsland* s) {
         if (!tiles[t].mover && tiles[t].key != L.bakedKey[t]) bake[bakeCount++] = t;
     }
     if (usedCount == 0) return;
-
     if (bakeCount > 0) {
         std::vector<GpuStaticPropInstance> staged;
         std::vector<InstRun> runs[kTiles];
@@ -1167,6 +1166,7 @@ static void record_local_shadows(ShadowIsland* s) {
             local_draw_static(s, cb, runs[bi], dyn);
             L.bakedKey[t] = tiles[t].key;
             ++L.bakesTotal;
+            s->bake.countLocalTileRebakes(1);
         }
         vkCmdEndRenderPass(cb);
         bakeScope.end();

@@ -155,10 +155,17 @@ ObjectTypePtr GameObjectManager::getObjectType (ObjectTypeNumber typeHandle) {
 	return(objTypeManager->get(typeHandle));
 }
 
+ObjectTypePtr GameObject::getObjectType (void) {
+	mc2::overlap::assertLiveSimRead("GameObject::getObjectType");
+	return(ObjectManager->getObjectType(typeHandle));
+}
+
 void GameObjectManager::preloadTickSpawnTypes (void) {
 	auto preload = [this](long typeNum) {
 		if (typeNum >= 0 && typeNum < objTypeManager->numObjectTypes) objTypeManager->get(typeNum);
 	};
+	// The stock AC/10 effect (18) resolves to bolt type 459 through this table.
+	// Run for every new type manager, including the one rebuilt by quickload.
 	if (weaponEffects)
 		for (long effectId = 0; effectId < weaponEffects->getNumEffects(); effectId++)
 			preload(weaponEffects->GetEffectObjNum(effectId));
@@ -539,6 +546,8 @@ void GameObjectManager::extractRenderSnapshots() {
         proxy.current = mover->getPosition(); proxy.heading = mover->getRotation();
         proxy.animation = *mover->getAppearance()->simulationAnimation();
         proxy.attachments = *mover->getAppearance()->simPose;
+        mover->committedLosPosition = mover->getLOSPosition();
+        mover->committedHasWeaponNode = mover->hasWeaponNode();
         if (proxy.stamp != s_interpStamp) {
             proxy.pos = proxy.current; proxy.rot = proxy.heading;
             proxy.previousAnimation = proxy.animation;

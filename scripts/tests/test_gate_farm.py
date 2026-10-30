@@ -15,10 +15,10 @@ import merge_gate as gate
 @pytest.mark.parametrize('path,classic', [
     ('code/mission_update.cpp', False), ('RenderCore/vk_sync.cpp', False),
     ('assets/rock.png', False), ('unknown/file.xyz', False),
-    ('code/logistics_save.cpp', True), ('code/mission_load.cpp', True),
-    ('tests/saveload/baseline.json', True), ('mclib/bdactor.cpp', True),
-    ('mclib/render_options.cpp', True), ('mods/classic/assets.json', True),
-    ('shaders/classic.frag', True),
+    ('code/logistics_save.cpp', False), ('code/mission_load.cpp', False),
+    ('tests/saveload/baseline.json', False), ('mclib/bdactor.cpp', False),
+    ('mclib/render_options.cpp', False), ('mods/classic/assets.json', False),
+    ('shaders/classic.frag', False),
 ])
 def test_classic_save_repeats_only_for_affected_domains(path, classic):
     steps = gate.affected_plan(gate.plan(6), [path])

@@ -10,7 +10,7 @@
 
 namespace mc2::gate::detail {
 
-inline constexpr std::size_t kGateCount = 757;
+inline constexpr std::size_t kGateCount = 752;
 
 inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_ABL_ARG_GUARD", Kind::Bool, Rule::Lead1, {}},
@@ -265,7 +265,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_LIGHTING_SHADOW_PREDICATE_MODE", Kind::Enum, Rule::Std, "|Legacy|Modern"},
     {"MC2_LIGHTSLOT_TRACE", Kind::Bool, Rule::Presence, {}},
     {"MC2_LIGHT_BILLBOARD_FACING", Kind::String, Rule::Std, {}},
-    {"MC2_LIGHT_BILLBOARD_TWOSIDED", Kind::Bool, Rule::Lead0, {}},
     {"MC2_LIGHT_CLAMP_FIXTURE", Kind::Bool, Rule::Exact1, {}},
     {"MC2_LIGHT_CLAMP_PROBE", Kind::Bool, Rule::Exact1, {}},
     {"MC2_LIGHT_CONE_AIM_FLIP", Kind::Bool, Rule::Lead1, {}},
@@ -404,7 +403,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_OOB_LETTERBOX", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_OPTIONS_OVERRIDE", Kind::String, Rule::Std, {}},
     {"MC2_OS_CURSOR", Kind::Bool, Rule::Presence, {}},
-    {"MC2_OVERLAP_DEBUG", Kind::Bool, Rule::Lead1, {}},
     {"MC2_OVERLAY_BIAS_LEGACY", Kind::Bool, Rule::Lead0, {}},
     {"MC2_OVERLAY_CEMENT_ADOPT", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_OVERLAY_MAGENTA_TRACE", Kind::Bool, Rule::Presence, {}},
@@ -496,8 +494,7 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_SIM_IDENTITY_TRACE", Kind::Bool, Rule::Std, {}},
     {"MC2_SIM_IDENTITY_TRACE_DETAIL", Kind::Bool, Rule::Std, {}},
     {"MC2_SIM_OVERLAP", Kind::Bool, Rule::Lead0Kill, {}},
-    {"MC2_SIM_OVERLAP_AUDIT", Kind::Bool, Rule::Lead1, {}},
-    {"MC2_SIM_OVERLAP_JITTER", Kind::Int, Rule::Prefix, {}},
+    {"MC2_SIM_OVERLAP_AUDIT", Kind::Int, Rule::Prefix, {}},
     {"MC2_SIM_SPEED", Kind::Float, Rule::Prefix, {}},
     {"MC2_SKIP_STATIC_BUILDINGS", Kind::Bool, Rule::Lead0, {}},
     {"MC2_SKIP_STATIC_TREES", Kind::Bool, Rule::Lead0Kill, {}},
@@ -639,7 +636,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_TEXMGR_LOAD_TRACE", Kind::Bool, Rule::Presence, {}},
     {"MC2_TEX_LIFECYCLE_TRACE", Kind::Bool, Rule::Presence, {}},
     {"MC2_TEX_LIFECYCLE_TRACE_VERBOSE", Kind::Bool, Rule::Presence, {}},
-    {"MC2_THIN_CANARY", Kind::Bool, Rule::Lead1, {}},
     {"MC2_THIN_DEBUG", Kind::Bool, Rule::Presence, {}},
     {"MC2_TOBJ_COST_SPLIT", Kind::Bool, Rule::Presence, {}},
     {"MC2_TOBJ_PARITY", Kind::Bool, Rule::Presence, {}},
@@ -679,7 +675,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_VFX_ORACLE_SHAPE", Kind::Bool, Rule::DefOnLead0, {}},
     {"MC2_VFX_ORACLE_SHAPE_LOG", Kind::Bool, Rule::Lead1, {}},
     {"MC2_VFX_ORACLE_TUBE", Kind::Bool, Rule::DefOnLead0, {}},
-    {"MC2_VFX_ORACLE_TUBE_COVERAGE", Kind::Bool, Rule::Lead1, {}},
     {"MC2_VIEWMODE_FRAMEWORK", Kind::Bool, Rule::Lead0, {}},
     {"MC2_VIEW_MODE", Kind::String, Rule::Std, {}},
     {"MC2_VIEW_UNIFORMS", Kind::Bool, Rule::Lead0Kill, {}},

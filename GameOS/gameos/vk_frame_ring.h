@@ -1,6 +1,6 @@
-// vk_frame_ring.h -- per-frame transient memory: one host-visible buffer, two slot regions, linear bump allocation.
+// vk_frame_ring.h -- per-frame transient memory: one host-visible buffer, kSlots regions, linear bump allocation.
 //
-// Frame F bumps inside slot F % 2 and the slot is reset when frame F begins, after the context has seen the ticket of frame F-2 complete (so the GPU
+// Frame F bumps inside slot F % kSlots and the slot is reset when frame F begins, after the context has seen the ticket of frame F-kSlots complete (so the GPU
 // is done with everything the slot's previous user wrote). The caller gets {buffer, offset, cpu pointer} and binds the buffer at that offset (vertex
 // buffers, dynamic-offset descriptors, copy sources). A request that does not fit grows the ring: a larger buffer replaces it and the old one is
 // retired through the deferred-destroy queue, so what this frame already handed out stays valid until the frame completes.
@@ -19,14 +19,16 @@
 
 namespace mc2vk {
 
+inline constexpr uint32_t kMaxFramesInFlight = 3;
+
 class FrameRingCore {
 public:
-    static constexpr uint32_t kSlots = 2;
+    static constexpr uint32_t kSlots = kMaxFramesInFlight;
 
     // New capacity per slot: every slot starts empty (a replaced buffer is fresh memory).
-    void setCapacity(uint64_t perSlot) { cap_ = perSlot; head_[0] = head_[1] = 0; }
-    // Frame F opens: its slot restarts at zero, but only when the caller proved the slot's previous user (frame F-2) completed. Without that proof
-    // (restart == false) the slot keeps its head: new allocations bump past what F-2 wrote and a full slot fails soft, never overwriting live bytes.
+    void setCapacity(uint64_t perSlot) { cap_ = perSlot; for (auto& head : head_) head = 0; }
+    // Frame F opens: its slot restarts at zero, but only when the caller proved the slot's previous user (frame F-kSlots) completed. Without that proof
+    // (restart == false) the slot keeps its head: new allocations bump past what F-kSlots wrote and a full slot fails soft, never overwriting live bytes.
     void beginFrame(uint64_t frameNo, bool restart = true) { slot_ = static_cast<uint32_t>(frameNo % kSlots); if (restart) head_[slot_] = 0; }
     // Returns false when the request does not fit; otherwise *ringOffset is the byte offset in the whole buffer.
     bool alloc(uint64_t size, uint64_t align, uint64_t* ringOffset) {
@@ -51,7 +53,7 @@ public:
 
 private:
     uint64_t cap_ = 0;
-    uint64_t head_[kSlots] = {0, 0};
+    uint64_t head_[kSlots] = {};
     uint64_t peak_ = 0;
     uint32_t slot_ = 0;
 };
@@ -87,7 +89,7 @@ struct FrameAlloc {
 
 class FrameRing {
 public:
-    // Opens frame `frameNo`. The caller (the context) has already made sure frame F-2 completed.
+    // Opens frame `frameNo`. The caller (the context) has already made sure frame F-kSlots completed.
     void beginFrame(uint64_t frameNo, bool restart = true) { core_.beginFrame(frameNo, restart); }
     // Never blocks. An empty FrameAlloc means the allocation failed (no device memory); callers fail soft.
     FrameAlloc alloc(VulkanContext& ctx, VkDeviceSize size, VkDeviceSize align);

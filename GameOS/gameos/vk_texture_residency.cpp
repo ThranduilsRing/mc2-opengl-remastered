@@ -107,14 +107,15 @@ bool TextureResidency::init() {
     binding.descriptorCount = capacity_; binding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
     VkDescriptorSetLayoutCreateInfo li{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO}; li.bindingCount=1; li.pBindings=&binding;
     if (!mc2vk::create(layout_, ctx_.device(), [&](VkDescriptorSetLayout* s) { return vkCreateDescriptorSetLayout(ctx_.device(), &li, nullptr, s); })) return false;
-    VkDescriptorPoolSize size{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, capacity_ * 2};
-    VkDescriptorPoolCreateInfo pi{VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO}; pi.maxSets=2; pi.poolSizeCount=1; pi.pPoolSizes=&size;
+    VkDescriptorPoolSize size{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, capacity_ * kMaxFramesInFlight};
+    VkDescriptorPoolCreateInfo pi{VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO}; pi.maxSets=kMaxFramesInFlight; pi.poolSizeCount=1; pi.pPoolSizes=&size;
     if (!mc2vk::create(pool_, ctx_.device(), [&](VkDescriptorPool* p) { return vkCreateDescriptorPool(ctx_.device(), &pi, nullptr, p); })) return false;
-    VkDescriptorSetLayout layouts[] = {layout_.get(),layout_.get()}; VkDescriptorSet sets[2]{};
+    VkDescriptorSetLayout layouts[kMaxFramesInFlight]; for (auto& layout : layouts) layout = layout_.get();
+    VkDescriptorSet sets[kMaxFramesInFlight]{};
     VkDescriptorSetAllocateInfo ai{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO};
-    ai.descriptorPool=pool_.get(); ai.descriptorSetCount=2; ai.pSetLayouts=layouts;
+    ai.descriptorPool=pool_.get(); ai.descriptorSetCount=kMaxFramesInFlight; ai.pSetLayouts=layouts;
     if (vkAllocateDescriptorSets(ctx_.device(),&ai,sets)!=VK_SUCCESS) return false;
-    for (int i=0;i<2;++i) flights_[i].set=sets[i];
+    for (uint32_t i=0;i<kMaxFramesInFlight;++i) flights_[i].set=sets[i];
     RenderCore::KtxImage image; image.width=image.height=2; image.mipCount=1; image.vkFormat=37; image.mipByteOffsets={0};
     // Async residency is normal during screen changes. Keep the checkerboard
     // diagnostic opt-in; players see a blank image until the upload publishes.
@@ -127,7 +128,7 @@ bool TextureResidency::init() {
     flat.pixels={128,128,255,255}; arrayPlaceholder_=upload(flat,false,nullptr,1,true);
     if (!arrayPlaceholder_) return false;
     table_->placeholder(placeholder_);
-    MC2_LOG(Vk, Debug, "[VK_TEXTURE_SERVICE v1] capacity={} flights=2 placeholder=0 legacy_boundary=P9", capacity_);
+    MC2_LOG(Vk, Info, "[VK_TEXTURE_SERVICE v1] capacity={} flights={} placeholder=0 legacy_boundary=P9", capacity_, flights_.size());
     return true;
 }
 

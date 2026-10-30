@@ -104,7 +104,8 @@ def test_contained_batch_refreshes_window_receipt(tmp_path, monkeypatch):
 def test_contract_board_owns_inner_worker_budget(tmp_path, jobs):
     from pathlib import Path
     script = Path(ROOT, 'scripts/check-contracts.sh').read_text()
-    script = script.replace('py -3 scripts/run_scripts_tests.py', r'test \"$MC2_TEST_JOBS\" -eq 1')
+    script = script.replace('# Aggregate Python suites run in tools/lane_merge.py --precheck, before the merge window.',
+                            r'run_check "scripts_tests" "test \"$MC2_TEST_JOBS\" -eq 1"')
     fixture = tmp_path / 'board.sh'
     fixture.write_text(script, encoding='utf-8', newline='\n')
     result = subprocess.run([lm.git_bash(), fixture.as_posix(), '--rows', '^scripts_tests$', '--no-cache', f'-j{jobs}'],
@@ -232,7 +233,7 @@ def test_gate_plan_uses_verified_ninja_and_required_checks():
     mods = next(cmd for name, cmd, _ in steps if name == "mods")
     assert "--fail-fast" not in mods
     assert mods[mods.index("--workers") + 1] == "2"
-    assert len(steps) == 20
+    assert len(steps) == 19
     quiet = next(cmd for name, cmd, _ in steps if name == "quiet")
     assert quiet[-3:-1] == ["--fresh-smoke", "--exe"] and quiet[-1].endswith("mc2-win64-v0.4/mc2.exe")
     by_name = {name: (cmd, env) for name, cmd, env in steps}
@@ -402,10 +403,8 @@ def test_gate_stage_selection():
     import merge_gate as gate
     steps = gate.plan(6)
     assert [s[0] for s in gate.select_stages(steps, ["deploy,capture-after"])] == ["deploy", "capture-after"]
-    assert "pytest" not in [s[0] for s in gate.select_stages(steps, skip=["pytest"])]
-    with pytest.raises(ValueError, match="also needs --skip pytest"):
-        gate.select_stages(steps, skip=["contracts"])
-    assert "contracts" not in [s[0] for s in gate.select_stages(steps, skip=["contracts,pytest"])]
+    assert "pytest" not in [s[0] for s in steps]
+    assert "contracts" not in [s[0] for s in gate.select_stages(steps, skip=["contracts"])]
     for stages, skip in ((["missing"], None), (None, ["missing"]), (["deploy", "deploy"], None),
                          (["deploy"], ["deploy"]), ([], None), (None, list(s[0] for s in steps))):
         with pytest.raises(ValueError):
@@ -497,12 +496,36 @@ def test_reused_before_evidence_never_launches_old_classic_exe(tmp_path, monkeyp
             "--proofs-dir", str(tmp_path / "proof")]
     assert gate.main(args) == 0
     assert not any(n.startswith("capture-before") for n, _, _ in seen)
-    compare = next(c for n, c, _ in seen if n == "compare-captures-classic")
-    assert compare[compare.index("--compare-only") + 1] == str(classic)
+    assert not any(n.endswith("-classic") for n, _, _ in seen)
+    compare = next(c for n, c, _ in seen if n == "compare-captures")
+    assert compare[compare.index("--compare-only") + 1] == str(before)
     manifest["identity"]["exe"]["sha256"] = "b" * 64
     (classic / "capture_run.json").write_text(json.dumps(manifest))
-    with pytest.raises(SystemExit):
-        gate.main(args)
+    assert gate.main(args) == 0
+
+
+@pytest.mark.parametrize("failure,omit_tier1,skip_tier1", [(False, False, False), (True, False, False), (False, True, False), (False, False, True)])
+def test_publish_requires_successful_candidate_and_tier1(monkeypatch, tmp_path, failure, omit_tier1, skip_tier1):
+    from contextlib import contextmanager
+    import merge_gate as gate
+    @contextmanager
+    def candidate(*args):
+        yield tmp_path
+    monkeypatch.setattr(gate, "stock_copy", candidate)
+    checked, published = [], []
+    monkeypatch.setattr(gate, "execute_parallel", lambda steps, *a: checked.extend(steps) or int(failure))
+    monkeypatch.setattr(gate, "execute", lambda steps, *a: published.extend(steps) or 0)
+    steps = gate.plan(6)
+    if omit_tier1:
+        steps = [s for s in steps if s[0] != "tier1"]
+    if skip_tier1:
+        steps = [(n, c, dict(e, MC2_GATE_SKIP_REASON="filtered") if n == "tier1" else e) for n, c, e in steps]
+    assert gate.execute_window(steps, "head", keep_going=True) == int(failure)
+    assert bool(published) == (not failure and not omit_tier1 and not skip_tier1)
+    assert next(c for n, c, _ in checked if n == "deploy")[-2:] == [str(tmp_path), "--allow-new-target"]
+    if published:
+        assert published[0][0] == "publish-v0.4"
+        assert str(tmp_path) not in published[0][1]
 
 
 def test_gate_logs_lease_holder_and_age(monkeypatch, capsys):
@@ -594,16 +617,17 @@ def test_full_restores_all_domains_and_reuses_covered_checks():
     import merge_gate as gate
     steps = gate.affected_plan(gate.plan(6), ["docs/intro.md"], full=True)
     skipped = {n for n, _, e in steps if e.get("MC2_GATE_SKIP_REASON")}
-    assert skipped == {"pytest", "validation"}
+    assert skipped == {"validation"}
     assert all(e.get("MC2_GATE_REUSE_STAGE") for n, _, e in steps if n in skipped)
     # Selecting a stand-alone stage cannot reuse a check that was never run.
-    assert not gate.affected_plan([gate.plan(6)[6]], [], True)[0][2].get("MC2_GATE_SKIP_REASON")
+    validation = next(s for s in gate.plan(6) if s[0] == "validation")
+    assert not gate.affected_plan([validation], [], True)[0][2].get("MC2_GATE_SKIP_REASON")
 
 
 def test_gate_reuse_fails_when_producing_check_failed(monkeypatch, capsys):
     import merge_gate as gate
     monkeypatch.setattr(gate, "git", lambda *a: "head")
-    steps = gate.affected_plan([("contracts", ["fake"], {}), ("pytest", ["duplicate"], {})], ["tools/a.py"])
+    steps = gate.affected_plan([("tier1", ["fake"], {}), ("validation", ["duplicate"], {})], ["code/game.cpp"])
     calls = []
     assert gate.execute(steps, "head", runner=lambda cmd, **kw: calls.append(cmd) or _r(1)) == 1
     assert calls == [["fake"]]
@@ -647,30 +671,27 @@ def test_tier1_reuses_only_strict_validated_determinism_smokes():
     assert all("--sim-speed" not in c for n, c, _ in full if n.startswith("determinism-") and n != "determinism-mc2_10")   # mc2_10 always runs at 2x (9104ff298)
 
 
-def test_gate_retains_both_art_modes_for_affected_saves_and_captures():
+def test_gate_removes_classic_twins_of_current_checks():
     import merge_gate as gate
     steps = gate.affected_plan(gate.plan(6), ["mclib/bdactor_type.cpp"])
     names = [n for n, _, _ in steps]
-    assert names.index("capture-before-classic") < names.index("deploy")
-    assert names.index("capture-after-classic") > names.index("deploy")
-    assert "compare-captures-classic" in names
+    assert not any(n.endswith("-classic") for n in names)
     captures = {n: c for n, c, _ in steps if n.startswith("capture-")}
-    assert all("MC2_OPTIONS_OVERRIDE=RemasteredBuildings=" + ("FALSE" if n.endswith("-classic") else "TRUE") in c for n, c in captures.items())
+    assert all("MC2_OPTIONS_OVERRIDE=RemasteredBuildings=TRUE" in c for c in captures.values())
     for mission in ("mc2_01", "mc2_03", "mc2_10", "mc2_16", "mc2_24"):
         modes = [(c, e) for n, c, e in steps if n.startswith("saveload-" + mission)]
-        assert len(modes) == 2 and modes[0][0] != modes[1][0]
-        assert {e["MC2_OPTIONS_OVERRIDE"] for _, e in modes} == {"RemasteredBuildings=TRUE", "RemasteredBuildings=FALSE"}
+        assert len(modes) == 1
+        assert modes[0][1]["MC2_OPTIONS_OVERRIDE"] == "RemasteredBuildings=TRUE"
         assert all("--sim-speed" not in c for c, _ in modes)
-        assert modes[1][0][-2:] == ["--duration", "20"]
         assert ("--duration" in modes[0][0]) == (mission not in ("mc2_10", "mc2_24"))
     full = gate.affected_plan(gate.plan(6), ["scripts/merge_gate.py"], full=True)
     assert all("--sim-speed" not in c and "--duration" not in c
                for n, c, _ in full if n.startswith("saveload-"))
 
 
-@pytest.mark.parametrize("paths,count", [(["code/mission.cpp"], 2), (["scripts/kit_payload.py"], 10),
-                                        (["tools/scifi_kit/art/intent.py"], 10), (["unknown/runtime.xyz"], 5),
-                                        (["mclib/content_ir.cpp"], 10)])
+@pytest.mark.parametrize("paths,count", [(["code/mission.cpp"], 2), (["scripts/kit_payload.py"], 5),
+                                        (["tools/scifi_kit/art/intent.py"], 5), (["unknown/runtime.xyz"], 5),
+                                        (["mclib/content_ir.cpp"], 5)])
 def test_gate_save_matrix_tracks_art_path(paths, count):
     import merge_gate as gate
     cases = [(n, e) for n, _, e in gate.affected_plan(gate.plan(6), paths)
@@ -685,7 +706,7 @@ def test_captures_keep_symmetric_env_and_do_not_mutate_gameplay(tmp_path):
     steps = gate.install_plan(gate.affected_plan(gate.plan(6, tmp_path),
         ["scripts/kit_payload.py"]), tmp_path / "install")
     by_name = {n: (c, e) for n, c, e in steps}
-    for suffix in ("", "-classic"):
+    for suffix in ("",):
         before, before_env = by_name["capture-before" + suffix]
         after, after_env = by_name["capture-after" + suffix]
         before = list(before)
@@ -829,6 +850,9 @@ def test_stock_copy_is_private_and_always_removed(tmp_path, fail):
         try:
             with gate.stock_copy(install) as clone:
                 assert clone.parent == install.parent
+                mod_stage = clone.with_name(clone.name + "-mods-stage")
+                mod_stage.mkdir()
+                (mod_stage / "cached-mod").write_text("disposable")
                 assert not (clone / "mod_smoke-stage").exists()
                 assert (clone / "cache/model.mci").read_text() == "warm cache"
                 recipe = clone / native.relative_to(install)
@@ -847,6 +871,7 @@ def test_stock_copy_is_private_and_always_removed(tmp_path, fail):
         except RuntimeError:
             assert fail
         assert not clone.exists()
+        assert not mod_stage.exists()
 
 
 def test_offline_stages_overlap_before_deploy(monkeypatch):
@@ -1074,7 +1099,7 @@ def test_art_selection_handles_git_quoted_unicode_paths(tmp_path, monkeypatch):
     assert tt.art_changed(base)
 
 
-def test_gate_without_window_receipt_keeps_full_both_mode_coverage(tmp_path, monkeypatch):
+def test_gate_without_window_receipt_keeps_full_current_coverage(tmp_path, monkeypatch):
     import merge_gate as gate
     monkeypatch.delenv("MC2_IN_GATE", raising=False)
     monkeypatch.setattr(gate, "ROOT", tmp_path)
@@ -1082,8 +1107,9 @@ def test_gate_without_window_receipt_keeps_full_both_mode_coverage(tmp_path, mon
     seen = []
     monkeypatch.setattr(gate, "execute", lambda steps, *a: seen.extend(steps) or 0)
     assert gate.main(["--dry-run", "--proofs-dir", str(tmp_path / "proof")]) == 0
-    assert len([n for n, _, _ in seen if n.startswith("saveload-")]) == 10
-    assert "capture-before-classic" in {n for n, _, _ in seen}
+    assert len([n for n, _, _ in seen if n.startswith("saveload-")]) == 5
+    assert "capture-before" in {n for n, _, _ in seen}
+    assert not any(n.endswith("-classic") for n, _, _ in seen)
     assert all("MC2_GATE_SKIP_REASON" not in env for name, _, env in seen
                if name.startswith(("capture-", "saveload-", "determinism-")))
     assert all(e["MC2_SMOKE_ARTIFACT_ROOT"] == str(tmp_path / "proof/smokes" / n)

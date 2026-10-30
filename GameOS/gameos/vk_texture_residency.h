@@ -98,7 +98,7 @@ private:
     std::unique_ptr<RenderCore::TextureDescriptorTable> table_;
     std::shared_ptr<Image> placeholder_, arrayPlaceholder_;
     std::unordered_map<uint32_t, Resident> residents_;
-    std::array<Flight, 2> flights_;
+    std::array<Flight, kMaxFramesInFlight> flights_;
     struct LegacyUi { std::weak_ptr<const std::vector<uint8_t>> source; ResidentTextureRef texture, pending; };
     std::unordered_map<uint64_t, LegacyUi> legacyUi_;
     uint64_t targetSerial_ = 0;

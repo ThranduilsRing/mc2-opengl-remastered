@@ -1844,14 +1844,7 @@ class MoveMap {
 
 		void setCost (long row, long col, long newCost);
 
-		void adjustCost (long row, long col, long costAdj) {
-			if (!inBounds(row, col)) return;
-			long index = row * width + col;
-			long cost = map[index].cost + costAdj;
-			if (cost < 1)
-				cost = 1;
-			map[index].cost = cost;
-		}
+		void adjustCost (long row, long col, long costAdj);
 
 		void setStart (long row, long col) {
 			startR = row;
@@ -1894,19 +1887,6 @@ class MoveMap {
 			return((row >= minRow) && (row <= maxRow) && (col >= minCol) && (col <= maxCol));
 		}
 };
-
-//---------------------------------------------------------------------------
-
-inline void MoveMap::setCost (long row, long col, long newCost) {
-
-	// Write-path OOB guard: oversized maps have a MOVE grid smaller than the
-	// terrain grid, so a world->cell-derived row/col can exceed the grid and
-	// WRITE-AV here. No-op off-map, matching the guarded inline setters. This
-	// out-of-line def was the one accessor 77a0c12a flagged for follow-up.
-	if (!inBounds(row, col))
-		return;
-	map[row * maxWidth + col].cost = newCost;
-}
 
 //---------------------------------------------------------------------------
 

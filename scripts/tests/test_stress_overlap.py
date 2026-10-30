@@ -15,6 +15,14 @@ def row(tag, ln, violation=""):
     return {"mission": "m", "tag": tag, "rc": 0, "frames": len(ln), "violation": violation, "aborted": False, "_lines": ln}
 
 
+def test_audit_levels_keep_fence_and_jitter_without_retired_gates():
+    for jitter, level in ((0, "2"), (6, "8"), (50, "52")):
+        env = so.stress_env(jitter)
+        assert env["MC2_SIM_OVERLAP_AUDIT"] == level
+        assert "MC2_OVERLAP_DEBUG" not in env and "MC2_SIM_OVERLAP_JITTER" not in env
+    assert so.serial_env()["MC2_SIM_OVERLAP_AUDIT"] == "1"
+
+
 def test_cosmetic_rng_counts_do_not_split_hashes():
     a = so.simid_lines("\n".join(f"[SIMID v1] simframe=1 rng=5/{k}/{k}" for k in (1,)))
     b = so.simid_lines("[SIMID v1] simframe=1 rng=5/9/9")

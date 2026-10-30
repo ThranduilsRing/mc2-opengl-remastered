@@ -46,7 +46,7 @@ public:
                 {{0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC}, {1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC},
                  {2, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC}, {3, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC}}, "light_lists", logFailures)) return fail();
             failure = "descriptors";
-            if (!sets_.set(0) && !sets_.create(ctx.device(), pipeline_, 2, "light_lists", logFailures)) return fail();
+            if (!sets_.set(0) && !sets_.create(ctx.device(), pipeline_, kMaxFramesInFlight, "light_lists", logFailures)) return fail();
             const auto* lights = static_cast<const gos_terrain_lighting::GpuTerrainLight*>(pool);
             float lo[2]{(std::numeric_limits<float>::max)(), (std::numeric_limits<float>::max)()};
             float hi[2]{-lo[0], -lo[1]};

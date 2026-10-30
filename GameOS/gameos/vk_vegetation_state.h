@@ -55,7 +55,7 @@ struct PopulationStats {
 // The persistent population. Main thread only.
 class State final : public mc2vk::IslandState {
 public:
-    static constexpr uint32_t kSlots = 2;   // frame parity, as the VFX island
+    static constexpr uint32_t kSlots = mc2vk::kMaxFramesInFlight;
 
     // Whether the engine context holds a state yet, and the state itself (created on first use; needs a valid engine context).
     static bool exists();

@@ -76,7 +76,7 @@ extern "C" int mc2_vk_water_island_prewarm(int w,int h) {
     water.mvp[12] = 1e9f;
     bool recorded = true;
     const bool submitted = mc2vk::submitOneShot(ctx, [&](VkCommandBuffer cb) {
-        for (uint32_t par = 0; par < 2; ++par)
+        for (uint32_t par = 0; par < mc2vk::kMaxFramesInFlight; ++par)
             recorded = s->native->record(cb, par, light, water, false) && recorded;
     }, "water_load_dispatch");
     return submitted && recorded ? 1 : 0;

@@ -8,6 +8,7 @@ the baselines that tightened. Doing it by hand risks sweeping another lane's dir
 staged files into the merge commit.
 
 Usage:
+  py -3 tools/lane_merge.py --precheck <tip>   virtual nifty merge: ratchets, Python suites, callers and mc2 link
   py -3 tools/lane_merge.py <sha-or-branch> [--message "..."] [--dry-run]
   py -3 tools/lane_merge.py --batch A B C [--dry-run]   several tips in a row: ratchets regenerated and committed after EACH merge,
                                                         the build + doctest verify (step e) once at the end
@@ -757,10 +758,15 @@ def regenerate_all(root, *, dry_run=False):
     return changed
 
 
+PYTHON_SUITES = [
+    ("scripts_tests", ["scripts/run_scripts_tests.py"]),
+    ("tools_tests", ["scripts/run_tools_tests.py"]),
+]
+
+
 def precheck(root: str, tip: str) -> int:
-    """Grade the would-be nifty tree in a disposable clone, without merging it."""
+    """Grade the virtual nifty merge, including Python suites, without merging it."""
     failed = []
-    conflicts = None
     try:
         base = git_out(root, "rev-parse", "claude/nifty-mendeleev^{commit}")
         sha = git_out(root, "rev-parse", tip + "^{commit}")
@@ -769,10 +775,11 @@ def precheck(root: str, tip: str) -> int:
             raise Stop(5, "merge-tree unavailable")
         if conflicts:
             raise Stop(5, "conflicts=" + ",".join(conflicts))
-        commit = virtual_head(root, base, sha, tree)
+        commit = sha if base == sha else virtual_head(root, base, sha, tree)
         if not commit:
             raise Stop(5, "cannot create virtual commit")
-        # Keep build output on the lane drive, rather than the G: temp drive.
+        # Reuse the lane's warm build when it already contains the virtual result.
+        lane_tree = git_out(root, "rev-parse", "HEAD^{tree}")
         with tempfile.TemporaryDirectory(prefix="lane-precheck-", dir=os.path.abspath(root)) as scratch:
             snapshot = os.path.join(scratch, "tree")
             r = run(root, ["git", "clone", "--quiet", "--shared", "--no-checkout", os.path.abspath(root), snapshot])
@@ -782,18 +789,23 @@ def precheck(root: str, tip: str) -> int:
             py = [sys.executable, "-B"]
             steps = [(label, py + [os.path.join("tools", script), *[a for a in args if a != "--tighten"]])
                      for label, script, args in RATCHETS]
-            steps += [
-                ("configure", py + ["scripts/configure_ninja.py", "--build-dir", "build64-ninja"]),
-                ("link-mc2", py + ["scripts/ninja_build.py", "mc2", "-j", str(host_jobs())]),
-                ("callers", py + ["tools/callers.py", "--check"]),
-            ]
+            steps += [("callers", py + ["tools/callers.py", "--check"])]
+            steps += [(label, py + args) for label, args in PYTHON_SUITES]
             for label, command in steps:
                 r = run(snapshot, command, env=verify_env(snapshot))
+                print(f"precheck: {label}: " + ("KNOWN" if label == "tools_tests" and r.returncode == 3 else "PASS" if r.returncode == 0 else "FAIL"), flush=True)
+                if r.returncode not in ((0, 3) if label == "tools_tests" else (0,)):
+                    failed.append(label + ":" + failure_summary(r.stdout).replace("\n", " "))
+            build_root = root if tree == lane_tree and not git_out(root, "status", "--porcelain", "--untracked-files=no") else snapshot
+            build_steps = [] if build_root == root else [("configure", py + ["scripts/configure_ninja.py", "--build-dir", "build64-ninja"])]
+            build_steps += [("link-mc2", py + ["scripts/ninja_build.py", "mc2", "-j", host_jobs()])]
+            for label, command in build_steps:
+                r = run(build_root, command, env=verify_env(build_root))
                 if r.returncode:
                     failed.append(label + ":" + failure_summary(r.stdout).replace("\n", " "))
     except (Stop, OSError) as exc:
         failed.append(str(exc).replace("\n", " "))
-    print("PRECHECK " + ("FAIL " + "; ".join(failed) if failed else "PASS conflicts=0 ratchets=5 link=mc2 callers=OK"))
+    print("PRECHECK " + ("FAIL " + "; ".join(failed) if failed else "PASS conflicts=0 ratchets=5 link=mc2 callers=OK python=OK"))
     return int(bool(failed))
 
 
@@ -834,7 +846,7 @@ def pre_gate(root: str, exe: str | None = None) -> int:
 def build_parser() -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("ref", nargs="?", help="lane tip: sha or branch")
-    ap.add_argument("--precheck", metavar="TIP", help="offline virtual merge against nifty: ratchets, mc2 link, callers")
+    ap.add_argument("--precheck", metavar="TIP", help="offline virtual nifty merge: ratchets, callers, Python suites, mc2 link")
     ap.add_argument("--pre-gate", action="store_true",
                     help="at the merged HEAD run regenerate-all (dry), check-background-launch, gate_gen --check, cxx17 and a no-game headless "
                          "run_smoke row; all run, one PRE-GATE PASS/FAIL line; --root picks the tree")
@@ -1018,8 +1030,7 @@ def main(argv: list[str] | None = None) -> int:
         if not merged and not batch:
             return 0
         mode = "none" if args.no_verify else args.verify
-        record = dict(base=window_base, head=git_out(root, "rev-parse", "HEAD"), started=window_started,
-                      tips=[git_out(root, "rev-parse", ref + "^{commit}") for ref in refs])
+        record = dict(base=window_base, head=git_out(root, "rev-parse", "HEAD"), started=window_started)
         record_path = Path(root) / "build64-ninja/merge-window.json"
         if batch and merged and not stopped:
             qfailed = quick_rows(root)

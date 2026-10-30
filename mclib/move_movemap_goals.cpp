@@ -2,6 +2,20 @@
 // Declared in the class headers; shared names in move_internal.h.
 #include "move_internal.h"
 
+void MoveMap::setCost (long row, long col, long newCost) {
+	// Oversized terrain can extend beyond the movement grid.
+	if (!inBounds(row, col)) return;
+	map[row * maxWidth + col].cost = newCost;
+}
+
+void MoveMap::adjustCost (long row, long col, long costAdj) {
+	if (!inBounds(row, col)) return;
+	long index = row * width + col;
+	long cost = map[index].cost + costAdj;
+	if (cost < 1) cost = 1;
+	map[index].cost = cost;
+}
+
 
 
 

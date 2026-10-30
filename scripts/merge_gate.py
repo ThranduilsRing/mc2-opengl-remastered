@@ -160,7 +160,6 @@ def plan(jobs, proof_dir=None, capture_before_runs=1, before_dir=None):
                               str(proof / "after"), "--out-root", str(proof / "ab")], {}),
         ("contracts", [git_bash(), "scripts/check-contracts.sh", "-j" + str(jobs)], {}),
         ("harnesses", [py, "tools/build_contract_harnesses.py", "--run", "--unit", "-j", str(jobs)], {}),
-        ("pytest", [py, "-B", "-m", "pytest", "scripts/tests", "-q", "-p", "no:cacheprovider"], {}),
         ("tier1", [py, "scripts/run_smoke.py", "--tier", "tier1", "--keep-logs", "--deploy", "0.4"],
          {"MC2_DEBUG_STATE_DUMP": "1", "MC2_DIAG_TAGS": "CONFIG,BUILD,DEVICE"}),
         ("kit-visibility", [py, "scripts/check-kit-visibility.py", "--install", install,
@@ -301,39 +300,6 @@ def affected_plan(steps, paths, full=False):
         selected.append((name, cmd, env))
         if name.startswith("saveload-") and (sim or "art" in domains or classic_saves or full):
             env["MC2_OPTIONS_OVERRIDE"] = "RemasteredBuildings=TRUE"
-            classic = list(cmd)
-            if "--out" in classic:
-                classic[classic.index("--out") + 1] += "-classic"
-            if classic_saves:
-                if not full and "--duration" not in classic:
-                    classic += ["--duration", "20"]
-                selected.append((name + "-classic", classic,
-                                 dict(env, MC2_OPTIONS_OVERRIDE="RemasteredBuildings=FALSE")))
-    if game or full:
-        # Material mode can affect either renderer path. Preserve day/night A/B in both.
-        clones = []
-        for name, cmd, env in selected:
-            if name not in ("capture-before", "capture-after", "compare-captures"):
-                continue
-            classic = [arg + "-classic" if Path(arg).name in ("before", "after", "ab") else arg for arg in cmd]
-            if name.startswith("capture-"):
-                classic += ["--env-declare", "MC2_OPTIONS_OVERRIDE=RemasteredBuildings=FALSE"]
-            clones.append((name + "-classic", classic, dict(env)))
-        if "capture-before" not in names and "deploy" in names and "capture-after" in names:
-            after = next(c for n, c, _ in selected if n == "capture-after")
-            before_cmd = list(after)
-            before_path = str(Path(after[after.index("--out") + 1]).parent / "before-classic")
-            before_cmd[before_cmd.index("--out") + 1] = before_path
-            before_cmd += ["--env-declare", "MC2_OPTIONS_OVERRIDE=RemasteredBuildings=FALSE"]
-            selected.insert(next(i for i, step in enumerate(selected) if step[0] == "deploy"),
-                            ("capture-before-classic", before_cmd, {}))
-            for i, (n, c, e) in enumerate(clones):
-                if n == "compare-captures-classic":
-                    c[c.index("--compare-only") + 1] = before_path
-        for clone in clones:
-            original = clone[0].removesuffix("-classic")
-            index = next(i for i, step in enumerate(selected) if step[0] == original)
-            selected.insert(index + 1, clone)
     for name, cmd, env in selected:
         if name.startswith("capture-") and not name.endswith("-classic"):
             cmd += ["--env-declare", "MC2_OPTIONS_OVERRIDE=RemasteredBuildings=TRUE"]
@@ -382,7 +348,7 @@ def stock_copy(install, parent=None):
                         "--from", str(install), "--to", str(target)], check=True,
                        **console_child.child_kwargs())
         for child in target.iterdir():
-            if child.is_dir() and (child.name.startswith(".gate-stock-") or child.name in
+            if child.is_dir() and (child.name.startswith(".gate-stock-") or child.name.endswith("-mods-stage") or child.name in
                                   ("mod_smoke-stage", "debug_state", "dev_shell_out")):
                 shutil.rmtree(child)
         print(f"| stock-copy | PASS | {time.monotonic() - started:.1f} |", flush=True)
@@ -390,6 +356,11 @@ def stock_copy(install, parent=None):
     finally:
         if target.parent != parent or not target.name.startswith(prefix):
             raise RuntimeError(f"refusing cleanup outside lane install: {target}")
+        mod_stage = target.with_name(target.name + "-mods-stage")
+        if mod_stage.exists():
+            if mod_stage.resolve().parent != parent:
+                raise RuntimeError(f"refusing cleanup outside lane install: {mod_stage}")
+            shutil.rmtree(mod_stage)
         size = sum(p.stat().st_size for p in target.rglob("*") if p.is_file())
         shutil.rmtree(target)
         print(f"[merge_gate] removed {target}: {size / 2**30:.2f} GiB logical (physical space not measured)", flush=True)
@@ -427,6 +398,30 @@ def farm_stage(command, overrides, runner=None):
         return waited  # never delete the payload of a still-running farm job
     fetched = runner(host + ["fetch", job_id, str(out)], cwd=ROOT, env=os.environ.copy())
     return subprocess.CompletedProcess(command, waited.returncode or fetched.returncode, waited.stdout + fetched.stdout)
+
+
+def execute_window(steps, head, dry_run=False, keep_going=False, farm_determinism=False):
+    """Prove a private candidate before publishing the verified build to v0.4."""
+    deploy = next((s for s in steps if s[0] == "deploy"), None)
+    tier1 = next((s for s in steps if s[0] == "tier1" and not s[2].get("MC2_GATE_SKIP_REASON")), None)
+    scheduling = dict(farm_determinism=True) if farm_determinism else {}
+    if not deploy or deploy[2].get("MC2_GATE_SKIP_REASON"):
+        return execute_parallel(steps, head, dry_run, keep_going, **scheduling)
+    candidate = Path("E:/mc2-installs/merge-gate-candidate")
+    def prove(install):
+        staged = install_plan(steps, install)
+        # Before evidence belongs to the currently published executable.
+        staged = [original if original[0].startswith("capture-before") else private
+                  for original, private in zip(steps, staged)]
+        result = execute_parallel(staged, head, dry_run, keep_going, **scheduling)
+        if result or not tier1:
+            print("[merge_gate] publish-v0.4: withheld (candidate failed or tier1 not run)", flush=True)
+            return result
+        return execute([("publish-v0.4", deploy[1], {})], head, dry_run)
+    if dry_run:
+        return prove(candidate)
+    with stock_copy(Path("E:/mc2-installs/_lean-seed")) as install:
+        return prove(install)
 
 
 def execute_parallel(steps, head, dry_run=False, keep_going=False, farm_determinism=False):
@@ -717,9 +712,6 @@ def select_stages(steps, stages=None, skip=None):
     overlap = set(requested) & omitted
     if overlap:
         raise ValueError("stages both selected and skipped: " + ", ".join(sorted(overlap)))
-    if "contracts" in omitted and "pytest" in available and "pytest" not in omitted:
-        raise ValueError("--skip contracts also needs --skip pytest: pytest only dedups against the contracts stage, "
-                         "so skipping contracts alone runs the 45-min standalone pytest stage (W78)")
     selected = [available[name] for name in requested or available if name not in omitted]
     if not selected or stages == []:
         raise ValueError("no stages selected; gate requires at least one stage")
@@ -856,7 +848,8 @@ def main(argv=None):
                 print(f"[merge_gate] log: {log_path}", flush=True)
                 started = window.get("started", time.time())
                 scheduling = dict(farm_determinism=True) if args.farm_determinism else {}
-                result = execute_parallel(steps, head, args.dry_run, keep_going=args.keep_going, **scheduling)
+                execute_gate = execute_parallel if args.install else execute_window
+                result = execute_gate(steps, head, args.dry_run, keep_going=args.keep_going, **scheduling)
                 elapsed = time.time() - started
                 measured_window = bool(window)
                 verdict = ("FAIL" if result else

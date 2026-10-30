@@ -65,7 +65,7 @@ def grade(profiles: "list[Profile]") -> "list[str]":
     for p in profiles:
         if p.verdict != "ok":
             problems.append(f"Vulkan device profile REFUSED {p.device!r} (api {p.api}, floor {p.floor}): required item(s) missing: "
-                            f"{','.join(p.required_missing) or 'unspecified'}; the engine fell back to GL")
+                            f"{','.join(p.required_missing) or 'unspecified'}; the engine refused startup")
         elif p.required_missing:
             problems.append(f"Vulkan device profile says ok for {p.device!r} but lists required item(s) missing: {','.join(p.required_missing)}")
     return problems

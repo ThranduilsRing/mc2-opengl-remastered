@@ -1,6 +1,7 @@
 #pragma once
 #ifdef MC2_VULKAN_ISLAND
 #include "vk_owned.h"
+#include "vk_frame_ring.h"
 #include "vulkan_ground_lighting.h"
 namespace mc2veg {
 // Fragment-only subset of the terrain layout: FS uses four SSBOs, VS stays at
@@ -9,7 +10,7 @@ namespace mc2veg {
 class GroundLighting {
     mc2vk::OwnedDescriptorSetLayout layout_;
     mc2vk::OwnedDescriptorPool pool_;
-    VkDescriptorSet sets_[2]{};
+    VkDescriptorSet sets_[mc2vk::kMaxFramesInFlight]{};
     // 19 = LOCAL-LIGHTS-2 local-light shadow atlas, read by the pool loop.
     static constexpr uint32_t bindings_[]{0, 2, 3, 4, 11, 12, 13, 16, 19};
     static constexpr size_t kN = sizeof(bindings_) / sizeof(bindings_[0]);
@@ -30,16 +31,16 @@ public:
         lci.bindingCount = static_cast<uint32_t>(kN); lci.pBindings = bindings;
         if (!mc2vk::create(layout_, device, [&](VkDescriptorSetLayout* out) { return vkCreateDescriptorSetLayout(device, &lci, nullptr, out); })) return false;
         const VkDescriptorPoolSize sizes[]{
-            {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 2},
-            {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 2},
-            {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 6},
-            {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 8}};
+            {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, mc2vk::kMaxFramesInFlight},
+            {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, mc2vk::kMaxFramesInFlight},
+            {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 3 * mc2vk::kMaxFramesInFlight},
+            {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 4 * mc2vk::kMaxFramesInFlight}};
         VkDescriptorPoolCreateInfo pci{VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO};
-        pci.maxSets = 2; pci.poolSizeCount = 4; pci.pPoolSizes = sizes;
+        pci.maxSets = mc2vk::kMaxFramesInFlight; pci.poolSizeCount = 4; pci.pPoolSizes = sizes;
         if (!mc2vk::create(pool_, device, [&](VkDescriptorPool* out) { return vkCreateDescriptorPool(device, &pci, nullptr, out); })) return false;
-        const VkDescriptorSetLayout layouts[]{layout(), layout()};
+        VkDescriptorSetLayout layouts[mc2vk::kMaxFramesInFlight]; for (auto& entry : layouts) entry = layout();
         VkDescriptorSetAllocateInfo alloc{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO};
-        alloc.descriptorPool = pool_.get(); alloc.descriptorSetCount = 2; alloc.pSetLayouts = layouts;
+        alloc.descriptorPool = pool_.get(); alloc.descriptorSetCount = mc2vk::kMaxFramesInFlight; alloc.pSetLayouts = layouts;
         return vkAllocateDescriptorSets(device, &alloc, sets_) == VK_SUCCESS;
     }
     // Caller must retire this VFX parity before changing its descriptors.

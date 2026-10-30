@@ -777,6 +777,9 @@ class Mover : public GameObject {
 public:
     std::shared_ptr<mc2::sim::UnitAnimState> unitAnimation;
     std::shared_ptr<mc2::sim::SimPose> simulationPose;
+    // Published during render extraction, before the next worker tick starts.
+    glm::vec3 committedLosPosition{};
+    bool committedHasWeaponNode = false;
 
 	//------------
 	//Data Members

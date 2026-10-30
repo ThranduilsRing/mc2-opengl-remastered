@@ -103,7 +103,6 @@ G("MC2_OOB_FOG_COLOR", String, "", "post", "", "", verified),
 L(Lead0Kill, "MC2_OOB_LETTERBOX", Bool, true, "post", "", ""),
 G("MC2_OPTIONS_OVERRIDE", String, "", "code", "", "Test channel: Key=Value,... options.cfg keys applied over the file at startup (smoke matrices, capture drivers); never saved.", passthrough | verified),
 L(Presence, "MC2_OS_CURSOR", Bool, false, "unclassified", "", "Hide the OS cursor.", verified),
-L(Lead1, "MC2_OVERLAP_DEBUG", Bool, false, "code", "", "G7: dev selector, arms the render-owns fence (live GameObject reads on Main between the tick kick and waitWorker are violations).", passthrough | verified),
 // RUNWAY-CLOSE-1: overlay-art flat-light exemption A/B arm (enum 63, LAST).
 L(Lead0, "MC2_OVERLAY_BIAS_LEGACY", Bool, false, "gameos", "", "", verified),
 // OVERLAY-CEMENT-ADOPT-1 (CONCRETE-DELIVER-1): the DELIVERED cure for the

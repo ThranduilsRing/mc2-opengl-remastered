@@ -3267,6 +3267,13 @@
           "text": "import console_child"
         },
         {
+          "path": "tools/farm/nightly_dual_gpu.py",
+          "line": 15,
+          "evidence": "import",
+          "reference": "scripts.console_child",
+          "text": "from scripts import console_child"
+        },
+        {
           "path": "tools/farm/runner.py",
           "line": 16,
           "evidence": "import",
@@ -3310,7 +3317,7 @@
         },
         {
           "path": "tools/lane_merge.py",
-          "line": 57,
+          "line": 58,
           "evidence": "import",
           "reference": "console_child",
           "text": "import console_child  # noqa: E402  (windowless console children without a conhost each)"
@@ -3964,21 +3971,21 @@
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 198,
+          "line": 199,
           "evidence": "import",
           "reference": "deploy_payload",
           "text": "import deploy_payload as dp"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 219,
+          "line": 220,
           "evidence": "import",
           "reference": "deploy_payload",
           "text": "import deploy_payload as dp"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 287,
+          "line": 288,
           "evidence": "import",
           "reference": "deploy_payload",
           "text": "import deploy_payload as dp"
@@ -4091,7 +4098,7 @@
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 1135,
+          "line": 1161,
           "evidence": "import",
           "reference": "exe_fingerprint",
           "text": "import exe_fingerprint as fpmod"
@@ -4264,7 +4271,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/merge_gate.py",
-          "line": 381,
+          "line": 347,
           "evidence": "command",
           "reference": "scripts/make-isolated-deploy.py",
           "text": "subprocess.run([sys.executable, str(ROOT / \"scripts/make-isolated-deploy.py\"),"
@@ -4474,154 +4481,154 @@
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 230,
+          "line": 231,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 255,
+          "line": 256,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 313,
+          "line": 314,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 323,
+          "line": 324,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 342,
+          "line": 343,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 357,
+          "line": 358,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 365,
+          "line": 366,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 379,
+          "line": 380,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 390,
+          "line": 391,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 402,
+          "line": 403,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 419,
+          "line": 418,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 446,
+          "line": 445,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 467,
+          "line": 466,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 481,
+          "line": 480,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 509,
+          "line": 510,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 520,
+          "line": 532,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 582,
+          "line": 543,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 594,
+          "line": 605,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 604,
+          "line": 617,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 614,
+          "line": 628,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 631,
+          "line": 638,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 651,
+          "line": 655,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
@@ -4635,7 +4642,7 @@
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 684,
+          "line": 696,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
@@ -4649,70 +4656,77 @@
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 732,
+          "line": 726,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 799,
+          "line": 753,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 812,
+          "line": 820,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 854,
+          "line": 833,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 876,
+          "line": 879,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 1002,
+          "line": 901,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 1023,
+          "line": 1027,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 1049,
+          "line": 1048,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 1078,
+          "line": 1074,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 1095,
+          "line": 1103,
+          "evidence": "import",
+          "reference": "merge_gate",
+          "text": "import merge_gate as gate"
+        },
+        {
+          "path": "scripts/tests/test_merge_speedups.py",
+          "line": 1121,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
@@ -4806,7 +4820,7 @@
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 1134,
+          "line": 1160,
           "evidence": "import",
           "reference": "ninja_build",
           "text": "import ninja_build as nb"
@@ -5112,15 +5126,7 @@
       "path": "scripts/run_scripts_tests.py",
       "basename": "run_scripts_tests.py",
       "stem": "run_scripts_tests",
-      "callers_by_basename": [
-        {
-          "path": "scripts/check-contracts.sh",
-          "line": 1510,
-          "evidence": "command",
-          "reference": "scripts/run_scripts_tests.py",
-          "text": "run_check \"scripts_tests\"              \"py -3 scripts/run_scripts_tests.py\""
-        }
-      ],
+      "callers_by_basename": [],
       "callers_by_stem": []
     },
     {
@@ -5183,6 +5189,13 @@
           "evidence": "command",
           "reference": "scripts/run_smoke.py",
           "text": "result = subprocess.run(command, cwd=ROOT, env=env, capture_output=True, text=True,"
+        },
+        {
+          "path": "tools/farm/nightly_dual_gpu.py",
+          "line": 78,
+          "evidence": "command",
+          "reference": "scripts/run_smoke.py",
+          "text": "result = subprocess.run([sys.executable, str(ROOT / \"scripts/run_smoke.py\"),"
         },
         {
           "path": "tools/mission_order_ingress_witness.py",
@@ -5315,13 +5328,6 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1536,
-          "evidence": "command",
-          "reference": "scripts/run_tools_tests.py",
-          "text": "run_check_tri \"tools_tests\"             \"py -3 scripts/run_tools_tests.py\""
-        },
-        {
-          "path": "scripts/check-contracts.sh",
           "line": 1537,
           "evidence": "command",
           "reference": "scripts/run_tools_tests.py",
@@ -5338,14 +5344,14 @@
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 623,
+          "line": 647,
           "evidence": "import",
           "reference": "run_tools_tests",
           "text": "import run_tools_tests as tt"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 1063,
+          "line": 1088,
           "evidence": "import",
           "reference": "run_tools_tests",
           "text": "import run_tools_tests as tt"
@@ -5425,7 +5431,7 @@
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 769,
+          "line": 790,
           "evidence": "import",
           "reference": "run_visual_capture",
           "text": "import run_visual_capture as capture"
@@ -5963,6 +5969,13 @@
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from scripts.smoke_lib import cockpit"
+        },
+        {
+          "path": "tools/farm/nightly_dual_gpu.py",
+          "line": 16,
+          "evidence": "import",
+          "reference": "scripts.smoke_lib",
+          "text": "from scripts.smoke_lib import vk_profile, vk_validation"
         }
       ]
     },
@@ -7085,6 +7098,13 @@
           "evidence": "import",
           "reference": "scripts.smoke_lib.vk_profile",
           "text": "from scripts.smoke_lib import logparse, report, vk_profile"
+        },
+        {
+          "path": "tools/farm/nightly_dual_gpu.py",
+          "line": 16,
+          "evidence": "import",
+          "reference": "scripts.smoke_lib.vk_profile",
+          "text": "from scripts.smoke_lib import vk_profile, vk_validation"
         }
       ]
     },
@@ -7128,6 +7148,13 @@
           "evidence": "import",
           "reference": "scripts.smoke_lib.vk_validation",
           "text": "from scripts.smoke_lib import logparse, report, vk_validation"
+        },
+        {
+          "path": "tools/farm/nightly_dual_gpu.py",
+          "line": 16,
+          "evidence": "import",
+          "reference": "scripts.smoke_lib.vk_validation",
+          "text": "from scripts.smoke_lib import vk_profile, vk_validation"
         }
       ]
     },
@@ -7857,6 +7884,13 @@
       "callers_by_stem": []
     },
     {
+      "path": "scripts/tests/test_nightly_dual_gpu.py",
+      "basename": "test_nightly_dual_gpu.py",
+      "stem": "test_nightly_dual_gpu",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
       "path": "scripts/tests/test_no_gl_compiler.py",
       "basename": "test_no_gl_compiler.py",
       "stem": "test_no_gl_compiler",
@@ -8169,7 +8203,7 @@
         },
         {
           "path": "tools/lane_merge.py",
-          "line": 59,
+          "line": 60,
           "evidence": "import",
           "reference": "_git_util",
           "text": "import _git_util  # noqa: E402  (shared git helpers)"
@@ -9228,7 +9262,7 @@
           "line": 11,
           "evidence": "import",
           "reference": "tools.callers",
-          "text": "from tools import callers"
+          "text": "from tools import callers, lane_merge"
         },
         {
           "path": "tests/test_callers.py",
@@ -10462,6 +10496,21 @@
       "callers_by_stem": []
     },
     {
+      "path": "tools/farm/nightly_dual_gpu.py",
+      "basename": "nightly_dual_gpu.py",
+      "stem": "nightly_dual_gpu",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "scripts/tests/test_nightly_dual_gpu.py",
+          "line": 6,
+          "evidence": "import",
+          "reference": "tools.farm.nightly_dual_gpu",
+          "text": "from tools.farm.nightly_dual_gpu import FLOOR, grade"
+        }
+      ]
+    },
+    {
       "path": "tools/farm/runner.py",
       "basename": "runner.py",
       "stem": "runner",
@@ -10734,6 +10783,13 @@
           "text": "from tools.lane_merge import git_bash   # a bare \"bash\" from a Python child is the WSL launcher, not Git Bash"
         },
         {
+          "path": "scripts/tests/test_contract_coverage.py",
+          "line": 11,
+          "evidence": "import",
+          "reference": "tools.lane_merge",
+          "text": "from tools import callers, lane_merge"
+        },
+        {
           "path": "scripts/tests/test_merge_speedups.py",
           "line": 12,
           "evidence": "import",
@@ -10749,14 +10805,7 @@
         },
         {
           "path": "tools/test_lane_merge.py",
-          "line": 83,
-          "evidence": "import",
-          "reference": "tools.lane_merge",
-          "text": "from tools import lane_merge as lm"
-        },
-        {
-          "path": "tools/test_lane_merge.py",
-          "line": 352,
+          "line": 333,
           "evidence": "import",
           "reference": "lane_merge",
           "text": "import lane_merge as lm  # noqa: E402"

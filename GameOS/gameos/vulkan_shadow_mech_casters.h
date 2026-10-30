@@ -18,6 +18,7 @@
 #include <volk.h>
 
 #include "vk_owned.h"
+#include "vk_frame_ring.h"
 #include "vulkan_mech_island.h"   // Mc2MechDrawRun
 
 #include <cstdint>
@@ -65,14 +66,14 @@ private:
     bool geomUploaded_ = false;
     uint32_t stagedInstances_ = 0;
     uint64_t iboIndexCount_ = 0;
-    VkDeviceSize vboCap_ = 0, iboCap_ = 0, instCap_[2] = {0, 0}, boneCap_[2] = {0, 0};
+    VkDeviceSize vboCap_ = 0, iboCap_ = 0, instCap_[kMaxFramesInFlight] = {}, boneCap_[kMaxFramesInFlight] = {};
     std::vector<Mc2MechDrawRun> runs_;   // the runs that passed validation this epoch
 
     // Declared in creation order: released in reverse, so the pipeline goes before its layout and shaders, the sets with their pool before the layout.
-    OwnedBuffer vbo_, ibo_, instBuf_[2], boneBuf_[2];
+    OwnedBuffer vbo_, ibo_, instBuf_[kMaxFramesInFlight], boneBuf_[kMaxFramesInFlight];
     OwnedDescriptorSetLayout dsl_;
     OwnedDescriptorPool pool_;
-    VkDescriptorSet set_[2] = {VK_NULL_HANDLE, VK_NULL_HANDLE};   // allocated from pool_, freed with it
+    VkDescriptorSet set_[kMaxFramesInFlight] = {};   // allocated from pool_, freed with it
     OwnedPipelineLayout layout_;
     OwnedShaderModule vert_, frag_;
     OwnedPipeline pipeline_;

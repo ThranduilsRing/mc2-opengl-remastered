@@ -120,9 +120,9 @@ bool make_buffer(WaterIsland* s, mc2vk::OwnedBuffer& out, VkDeviceSize size, VkB
 // validation error + crash (dstSet == VK_NULL_HANDLE). The post-alloc write_descriptors
 // in init_island covers the initial bind; later reallocs re-write with a valid set.
 void write_descriptors(WaterIsland* s, int only) {
-    if (only<0) { s->imageDescriptorsDirty[0]=s->imageDescriptorsDirty[1]=true; return; }
+    if (only<0) { for (auto& dirty : s->imageDescriptorsDirty) dirty = true; return; }
     // Resource changes mark both slots dirty; each slot is written only after its fence.
-    for (int i = 0; i < 2; ++i) {
+    for (uint32_t i = 0; i < mc2vk::kMaxFramesInFlight; ++i) {
         if (i!=only) continue;
         s->imageDescriptorsDirty[i]=false;
         if (s->set[i] == VK_NULL_HANDLE) continue;   // set not allocated yet (early init path)

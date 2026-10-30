@@ -14,6 +14,7 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include "vk_frame_ring.h"
 
 namespace mc2vk {
 
@@ -30,7 +31,7 @@ struct GpuTicket {
 
 class CompletionTracker {
 public:
-    static constexpr uint32_t kMaxFramesInFlight = 2;
+    static constexpr uint32_t kMaxFramesInFlight = mc2vk::kMaxFramesInFlight;
     static constexpr uint32_t kFrameRing = 8;   // sealed frames remembered; older ones answer "complete"
 
     // The next value for a submit on `q`. The caller signals exactly this value on the queue's timeline semaphore, in submission order.

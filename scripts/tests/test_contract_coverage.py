@@ -8,7 +8,7 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
-from tools import callers
+from tools import callers, lane_merge
 from scripts import console_child
 
 
@@ -54,11 +54,12 @@ def coverage_problems(checks, inventory, manual, board, harnesses, registered, d
     return issues
 
 
-def ownership_problems(modules, ownership, board):
+def ownership_problems(modules, ownership, board, external_owners=None):
     """Each discovered Python test module has one contract-row owner, or scripts_tests."""
     issues = []
     rows = re.findall(r'^run_check(?:_tri)?\s+"([^"]+)"\s+"([^"]+)"', board, re.M)
     commands = {label: command for label, command in rows}
+    commands.update(external_owners or {})
     tests = {}
     for entry in ownership.get("tests", []):
         module = entry.get("module")
@@ -155,7 +156,8 @@ def test_contract_and_test_tier_coverage():
                                entries(read("scripts/unregistered-harness-debt.txt"), "#"), tracked)
     modules = [f"scripts/tests/{path.name}" for path in (ROOT / "scripts/tests").glob("test_*.py")]
     issues += ownership_problems(modules, json.loads(read("scripts/test_ownership.json")),
-                                 read("scripts/check-contracts.sh"))
+                                 read("scripts/check-contracts.sh"),
+                                 dict(lane_merge.PYTHON_SUITES))
     cmakes = {path: read(path) for path in ("CMakeLists.txt", "tests/unit/CMakeLists.txt",
               "tests/model_override/CMakeLists.txt", "tests/static_natural_skip/CMakeLists.txt")}
     sources = {path.name: path.read_text(encoding="utf-8")

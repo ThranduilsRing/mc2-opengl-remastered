@@ -300,7 +300,7 @@ void NativeProducers::syncInputs(uint32_t p, VkBuffer buffer, VkDeviceSize range
 
 bool NativeProducers::record(VkCommandBuffer cb, uint32_t par, const gos_terrain_lighting::VkProducerSnapshot& L, const WaterCullFrame& W, bool parity) {
     if (!ready_) return false;
-    par &= 1u;
+    par %= kSlots;
 
     // ---- stage the frame's inputs: one frame-ring span holding both parameter blocks, the lighting window and the lights ----
     VkTerrainLightingParams lp{};

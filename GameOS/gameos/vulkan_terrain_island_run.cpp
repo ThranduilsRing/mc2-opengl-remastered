@@ -497,10 +497,11 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
     // GPU-FRONTIER-1: engine frame slot; the wait covers the previous terrain run AND the previous overlay at this slot (both draw through set[par],
     // which is rewritten below). The scene clear and the overlay keep their own tickets.
     const uint32_t par = rctx.frameContext().slot;
+    // Both submits signal the graphics timeline: the later ticket covers the earlier one, including repeated calls in this frame.
+    const auto slotTicket = mc2vk::GpuTicket::both(s->submitted[par], s->ovlSubmitted[par]);
     { ZoneScopedN("VKIsl.Terrain.FenceWait");   // VK-ISLAND-TRACY-1: deferred retire of the slot
       if (!vk_island_util::waitStrike(s->waitStrikes, s->disabled,
-              rctx.wait(s->submitted[par], 5000000000ull, "terrain submission slot") &&
-              rctx.wait(s->ovlSubmitted[par], 5000000000ull, "terrain overlay slot"), "VK_TERRAIN_ISLAND")) {
+              rctx.wait(slotTicket, 5000000000ull, "terrain submission slot"), "VK_TERRAIN_ISLAND")) {
           setFallback("submission_slot_timeout"); vlog("[VK_TERRAIN_ISLAND] LOUD: submission slot wait timed out (5 s); skipping this frame, will retry next frame."); return 0;
       } }
     us_fence_wait = usSince(tFence0);
@@ -662,7 +663,7 @@ extern "C" int mc2_vk_scene_clear(int w, int h) {
     mc2vk::VulkanContext& cctx = mc2vk::getOrCreateEngineVulkanContext();
     const uint32_t par = cctx.frameContext().slot;
     if (!vk_island_util::waitStrike(s->waitStrikes, s->disabled, cctx.wait(s->clearSubmitted[par], 5000000000ull, "scene clear slot"), "VK_TERRAIN_ISLAND")) { setFallback("clear_slot_timeout"); vlog("[VK_TERRAIN_ISLAND] LOUD: scene clear slot wait timed out (5 s); skipping this frame, will retry next frame."); return 0; }
-    VkCommandBuffer cb = s->cbuf[2 + par];
+    VkCommandBuffer cb = s->cbuf[mc2vk::kMaxFramesInFlight + par];
     vkResetCommandBuffer(cb, 0);
     VkCommandBufferBeginInfo bi{};
     bi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;

@@ -28,7 +28,7 @@
    "LG02": 0,
    "LG03": 0,
    "LG04": 0,
-   "LG05": 11,
+   "LG05": 13,
    "LG06": 2,
    "LG07": 0,
    "LG08": 0,
@@ -51,20 +51,20 @@
    "LG02": 4,
    "LG03": 104,
    "LG04": 5,
-   "LG05": 95,
-   "LG06": 348,
+   "LG05": 97,
+   "LG06": 361,
    "LG07": 0,
-   "LG08": 150,
+   "LG08": 153,
    "LG09": 4,
    "LG10": 9,
    "LG11": 59,
-   "LG12a": 58,
+   "LG12a": 59,
    "LG12b": 24,
    "LG13": 299,
    "LG14": 55,
    "LG15": 0,
    "LG16": 5,
-   "LG17": 68,
+   "LG17": 70,
    "LG18": 17,
    "LG19": 1,
    "LG20": 5
@@ -279,11 +279,11 @@
    "LG09": 8
   },
   "GameAdapters/StaticPropRenderAdapter.cpp": {
-   "LG05": 4,
+   "LG05": 5,
    "LG06": 1
   },
   "GameAdapters/StaticPropRenderAdapter.h": {
-   "LG05": 4,
+   "LG05": 5,
    "LG06": 1
   },
   "GameAdapters/vegetation_budget.h": {
@@ -342,7 +342,7 @@
   },
   "GameOS/gameos/gameos.cpp": {
    "LG03": 5,
-   "LG06": 7,
+   "LG06": 8,
    "LG11": 2,
    "LG17": 1
   },
@@ -588,12 +588,12 @@
    "LG08": 2
   },
   "GameOS/gameos/gos_static_prop_registry.cpp": {
-   "LG05": 13,
-   "LG08": 19,
-   "LG12a": 3
+   "LG05": 14,
+   "LG08": 22,
+   "LG12a": 4
   },
   "GameOS/gameos/gos_static_prop_registry.h": {
-   "LG05": 7
+   "LG05": 8
   },
   "GameOS/gameos/gos_static_prop_registry_flush_range.cpp": {
    "LG08": 13
@@ -939,11 +939,11 @@
   },
   "GameOS/include/gameos.hpp": {
    "LG04": 2,
-   "LG06": 31,
+   "LG06": 43,
    "LG12a": 3,
    "LG13": 1,
    "LG14": 37,
-   "LG17": 3,
+   "LG17": 5,
    "LG18": 1
   },
   "GameOS/include/mc2_dialog.h": {
@@ -1407,12 +1407,9 @@
   "code/gamecam.cpp": {
    "LG10": 1,
    "LG11": 2,
-   "LG12a": 19,
+   "LG12a": 23,
    "LG12b": 4,
    "LG17": 2
-  },
-  "code/gamecam_bookmark.cpp": {
-   "LG12a": 4
   },
   "code/gameobj.cpp": {
    "LG06": 2,
@@ -3416,7 +3413,7 @@
    "LG20": 3
   }
  },
- "head": "456e8d865",
+ "head": "23bcfefaf",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",

@@ -98,6 +98,22 @@ files are retained. The task and file lock prevent overlapping runners.
 Offline verification:
 `bash scripts/check-contracts.sh --rows '^farm_runner$' -j6`.
 
+Nightly host job: `nightly_dual_gpu.json` is for a runner on the **main PC**,
+whose GPUs are the RX 7900 XTX and RTX 2070 SUPER (not the laptop queue).
+Run its argv nightly at 03:00 in the logged-in desktop session, or register
+after merging with Windows Task Scheduler (daily, interactive, limited user):
+`schtasks /Create /TN MC2NightlyDualGPU /SC DAILY /ST 03:00 /IT /RL LIMITED /TR "py -3 A:/Games/mc2-main/tools/farm/nightly_dual_gpu.py --exe A:/Games/mc2-opengl/mc2-win64-v0.4/mc2.exe"`.
+The script runs both smoke-lite missions serially per GPU through the existing
+lease/focus-safe harness. Each GPU gets a report line, logs and proofs under
+`E:/mc2-archive-2026-10/proofs/nightly-dual-gpu` (or the farm result directory).
+Missing validation, wrong GPU, residency refusals, denials, peak beyond the
+declared low budget or VMA usage above 512 MiB fail the job. Successful texture
+mip/resample reductions implement low quality and are allowed; terminal
+placeholder/off/skipped-draw refusals fail. The low preset uses half-scale scene
+rendering at 1080p within a **512 MiB logical residency budget**, including staging
+and flight copies. Physical heaps still retain the OS/driver safety margin.
+On UMA, the startup `vram_mib` is the device-local shared heap, not dedicated VRAM.
+
 Lane exe: `submit --exe <worktree/build64-ninja/mc2.exe> [--data-delta <dir>] job.json` stages the exe and deploy's matching shaders (including baked SPIR-V), DLLs, definitions and support files into a per-job tree `C:\mc2farm\work\<id>`. PDBs stay on the host. A payload manifest replaces the seed manifest; payload files take precedence over the optional data overlay. Touched trees are copied so the seed is unchanged. `{EXE}` / `{ROOT}` in the job JSON become the staged paths; use `{EXE}` for `--ref-exe` to verify the submitted binary. `fetch` deletes the tree. Still no perf numbers or owner captures from the farm.
 
 `{RESULT}` becomes the per-job result directory, which `fetch` retrieves.

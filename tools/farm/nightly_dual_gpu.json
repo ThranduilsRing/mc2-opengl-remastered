@@ -1,0 +1,6 @@
+{
+  "argv": ["py", "-3", "A:/Games/mc2-main/tools/farm/nightly_dual_gpu.py", "--exe", "A:/Games/mc2-opengl/mc2-win64-v0.4/mc2.exe"],
+  "cwd": "A:/Games/mc2-main",
+  "timeout": 1800,
+  "env": {"TMP": "G:/mc2-tmp", "TEMP": "G:/mc2-tmp", "TMPDIR": "G:/mc2-tmp"}
+}

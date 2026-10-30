@@ -48,50 +48,31 @@ FAKES = {
 }
 
 
-@pytest.mark.parametrize("red", [None, "file_size_ratchet.py", "ninja_build.py", "callers.py"])
-def test_precheck_grades_virtual_tree(env, monkeypatch, capsys, red):
+@pytest.mark.parametrize("red", [None, "run_scripts_tests.py", "run_tools_tests.py", "ninja_build.py"])
+def test_precheck_runs_python_suites_and_reuses_lane_build(env, monkeypatch, capsys, red):
     from tools import lane_merge as lm
     repo, _ = env
     git(repo, "branch", "claude/nifty-mendeleev")
-    git(repo, "checkout", "-qb", "lane")
-    write(repo, "lane.txt", "virtual merge\n")
-    commit_all(repo, "lane")
-    git(repo, "checkout", "-q", "main")
     before = git(repo, "rev-parse", "HEAD")
     actual_run = lm.run
     seen = []
-
     def runner(root, cmd, env=None):
         if cmd[0] == "git":
             return actual_run(root, cmd, env)
-        assert root != str(repo)
-        assert (lm.Path(root) / "lane.txt").read_text() == "virtual merge\n"
-        seen.append(cmd)
+        seen.append((root, cmd))
+        if "scripts/ninja_build.py" in cmd:
+            assert root == str(repo)
+        else:
+            assert root != str(repo)
         return subprocess.CompletedProcess(cmd, int(any(lm.Path(a).name == red for a in cmd)), "fixture failure")
-
     monkeypatch.setattr(lm, "run", runner)
-    assert lm.precheck(str(repo), "lane") == int(red is not None)
-    assert len(seen) == 8
-    assert all("--tighten" not in cmd for cmd in seen)
-    assert "mc2" in seen[6]
+    assert lm.main(["--root", str(repo), "--precheck", "HEAD"]) == int(red is not None)
+    assert len(seen) == 9
+    assert all("--tighten" not in cmd for _, cmd in seen)
+    assert {label for label, _ in lm.PYTHON_SUITES} == {"scripts_tests", "tools_tests"}
     assert git(repo, "rev-parse", "HEAD") == before
     assert not git(repo, "status", "--porcelain")
     assert ("PRECHECK FAIL" if red else "PRECHECK PASS") in capsys.readouterr().out
-
-
-def test_precheck_conflicts_are_listed_without_running_checks(env, monkeypatch, capsys):
-    from tools import lane_merge as lm
-    repo, _ = env
-    git(repo, "checkout", "-qb", "lane")
-    write(repo, "a.txt", "lane\n")
-    commit_all(repo, "lane")
-    git(repo, "checkout", "-q", "main")
-    write(repo, "a.txt", "nifty\n")
-    commit_all(repo, "nifty")
-    git(repo, "branch", "claude/nifty-mendeleev")
-    monkeypatch.setattr(lm, "run", lambda *a, **k: pytest.fail("must not grade conflicted tree"))
-    assert lm.precheck(str(repo), "lane") == 1
-    assert "conflicts=a.txt" in capsys.readouterr().out
 
 
 def git(cwd, *args, check=True):

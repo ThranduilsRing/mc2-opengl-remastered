@@ -7994,6 +7994,26 @@
    "ver": -1,
    "stream": "stderr",
    "keys": [
+    "drained",
+    "sub_tiles",
+    "batches",
+    "mean",
+    "max",
+    "object_map_records",
+    "dirty_batches",
+    "local_tile_rebakes",
+    "frames",
+    "records_per_1000",
+    "batches_per_1000",
+    "local_tiles_per_1000"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SHADOW_BAKE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
     "footprint"
    ],
    "count": 1
@@ -8167,18 +8187,6 @@
    "keys": [
     "resident_mb",
     "transient_peak_mb"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "SHADOW_BAKE",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "sub_tiles",
-    "batches",
-    "mean",
-    "max"
    ],
    "count": 1
   },
@@ -10076,6 +10084,22 @@
    "count": 1
   },
   {
+   "tag": "VK_CAPABILITY",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "gpu",
+    "driver",
+    "driver_version",
+    "vram_mib",
+    "low_floor_mib",
+    "bindless",
+    "samplers",
+    "refused"
+   ],
+   "count": 1
+  },
+  {
    "tag": "VK_ENGINE_CONTEXT",
    "ver": -1,
    "stream": "stderr",
@@ -10649,6 +10673,15 @@
     "handle",
     "attempts",
     "fallback"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_RESIDENCY",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "phase"
    ],
    "count": 1
   },

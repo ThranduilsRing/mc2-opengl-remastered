@@ -222,7 +222,7 @@ struct ColorPropIsland : mc2vk::IslandState {
     // Per-frame data (UBO, instance rows, LightsData) lives in the engine frame ring; set[par] binds it with dynamic offsets (bindings 0, 1,
     // 4). ringBound[par][binding] = the ring buffer that binding of set[par] currently points at; a frame whose spans came from another buffer
     // (the ring grew), or a set rewritten by write_descriptors, is re-pointed after beginFrame retired the parity.
-    VkBuffer      ringBound[2][9] = {};
+    VkBuffer      ringBound[mc2vk::kMaxFramesInFlight][9] = {};
 
     // VK-PROP-AMBIENT-IBL-1: per-frame copy of the live GL LightsData SSBO (binding 4,
     // Tier-1 only) so the vert shader's calc_light-style ambient sum reads the same
@@ -255,11 +255,11 @@ struct ColorPropIsland : mc2vk::IslandState {
     uint32_t      albedoOnLayers = 0;
     VkDeviceSize  layerOnCapBytes = 0;
 
-    VkDescriptorSet   set[2] = {VK_NULL_HANDLE, VK_NULL_HANDLE};   // per parity slot (VK-PROP-FENCE-DEFER-1); set[i] binds ubo/inst/light[i]
-    VkCommandBuffer   cbuf[2] = {VK_NULL_HANDLE, VK_NULL_HANDLE};   // allocated from `cpool`, freed with it
-    VkCommandBuffer lateCbuf[2] = {VK_NULL_HANDLE, VK_NULL_HANDLE};
-    mc2vk::OwnedFence lateFence[2];
-    mc2vk::GpuTicket submitted[2];   // per engine frame slot: the last core submit that used cbuf[slot], set[slot] and the slot's inputs
+    VkDescriptorSet   set[mc2vk::kMaxFramesInFlight] = {VK_NULL_HANDLE, VK_NULL_HANDLE};   // per parity slot (VK-PROP-FENCE-DEFER-1); set[i] binds ubo/inst/light[i]
+    VkCommandBuffer   cbuf[mc2vk::kMaxFramesInFlight] = {VK_NULL_HANDLE, VK_NULL_HANDLE};   // allocated from `cpool`, freed with it
+    VkCommandBuffer lateCbuf[mc2vk::kMaxFramesInFlight] = {VK_NULL_HANDLE, VK_NULL_HANDLE};
+    mc2vk::OwnedFence lateFence[mc2vk::kMaxFramesInFlight];
+    mc2vk::GpuTicket submitted[mc2vk::kMaxFramesInFlight];   // per engine frame slot: the last core submit that used cbuf[slot], set[slot] and the slot's inputs
     struct LateDraw {
         int32_t pc[8];
         uint32_t indexCount, instanceCount, firstIndex, firstInstance;
@@ -276,8 +276,8 @@ struct ColorPropIsland : mc2vk::IslandState {
     mc2vk::OwnedDescriptorSetLayout dsl;
     mc2vk::OwnedDescriptorPool pool;
     mc2vk::ResidentTextureRef albedoTexture;
-    bool descriptorsDirty[2]={true,true};
-    std::array<VkImageView,2> boundTextures[2]{};
+    bool descriptorsDirty[mc2vk::kMaxFramesInFlight]={};
+    std::array<VkImageView,2> boundTextures[mc2vk::kMaxFramesInFlight]{};
     mc2vk::OwnedSampler albedoSamp;
     mc2vk::OwnedBuffer  layerBuf;         // per-type int layer SSBO
     mc2vk::ResidentTextureRef albedoOnTexture;
@@ -292,7 +292,7 @@ struct ColorPropIsland : mc2vk::IslandState {
     std::optional<Mc2GroundLightingFrame> lastGround;   // last terrain frame's offsets; see the run path
     bool groundMissing = false;
     uint32_t groundMissingFrames = 0;       // consecutive frames without a live terrain frame; stale offsets/copies are dropped past a short grace
-    bool groundCopied[2] = {false, false};   // this parity's own ground-lighting set holds a copy from a live terrain frame
+    bool groundCopied[mc2vk::kMaxFramesInFlight] = {false, false};   // this parity's own ground-lighting set holds a copy from a live terrain frame
     mc2vk::OwnedBuffer materialBuf;
     mc2vk::OwnedShaderModule t1_vert, t1_frag;
     mc2vk::OwnedPipelineLayout playout;
@@ -359,7 +359,7 @@ void sync_ring_bindings(ColorPropIsland* s, uint32_t par, const mc2vk::FrameAllo
 }
 
 void write_descriptors(ColorPropIsland* s, int parity = -1) {
-    if (parity<0) { s->descriptorsDirty[0]=s->descriptorsDirty[1]=true; return; }
+    if (parity<0) { for (auto& dirty : s->descriptorsDirty) dirty = true; return; }
     for (int i=parity;i<=parity;++i) {
     s->descriptorsDirty[i]=false;
     if (s->set[i] == VK_NULL_HANDLE) continue;
@@ -1050,21 +1050,21 @@ bool init_island(ColorPropIsland* s, int w, int h) {
         // Dynamic: 0 UBO; 1 + 4 (lights) SSBO. Static SSBOs: layer tables (2, 5) and the hot-colour table (7).
         VkDescriptorPoolSize sizes[5]{};
         uint32_t nsz = 0;
-        sizes[nsz++] = {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 2};
-        sizes[nsz++] = {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 2u * (1u + (lightBinding ? 1u : 0u))};
-        sizes[nsz++] = {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 2u * ((materialBindings ? 2u : 0u) + (s->tier1 ? 1u : 0u) + 2u)};
-        sizes[nsz++] = {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, (materialBindings ? 4u : 0u) + 8u + 2u * s->propTexSlots};
-        sizes[nsz++] = {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 2};
+        sizes[nsz++] = {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, mc2vk::kMaxFramesInFlight};
+        sizes[nsz++] = {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, mc2vk::kMaxFramesInFlight * (1u + (lightBinding ? 1u : 0u))};
+        sizes[nsz++] = {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, mc2vk::kMaxFramesInFlight * ((materialBindings ? 2u : 0u) + (s->tier1 ? 1u : 0u) + 2u)};
+        sizes[nsz++] = {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, mc2vk::kMaxFramesInFlight * ((materialBindings ? 2u : 0u) + 4u + s->propTexSlots)};
+        sizes[nsz++] = {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, mc2vk::kMaxFramesInFlight};
         VkDescriptorPoolCreateInfo pci{};
         pci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-        pci.maxSets = 2; pci.poolSizeCount = nsz; pci.pPoolSizes = sizes;
+        pci.maxSets = mc2vk::kMaxFramesInFlight; pci.poolSizeCount = nsz; pci.pPoolSizes = sizes;
         if (!mc2vk::create(s->pool, s->device, [&](VkDescriptorPool* h) { return vkCreateDescriptorPool(s->device, &pci, nullptr, h); })) {
             vlog("vkCreateDescriptorPool failed."); return false;
         }
-        VkDescriptorSetLayout layouts[2] = { s->dsl.get(), s->dsl.get() };
+        VkDescriptorSetLayout layouts[mc2vk::kMaxFramesInFlight]; for (auto& layout : layouts) layout = s->dsl.get();
         VkDescriptorSetAllocateInfo dsai{};
         dsai.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-        dsai.descriptorPool = s->pool.get(); dsai.descriptorSetCount = 2; dsai.pSetLayouts = layouts;
+        dsai.descriptorPool = s->pool.get(); dsai.descriptorSetCount = mc2vk::kMaxFramesInFlight; dsai.pSetLayouts = layouts;
         if (vkAllocateDescriptorSets(s->device, &dsai, s->set) != VK_SUCCESS) {
             vlog("vkAllocateDescriptorSets failed."); return false;
         }
@@ -1248,7 +1248,7 @@ bool init_island(ColorPropIsland* s, int w, int h) {
         }
         VkCommandBufferAllocateInfo cai{};
         cai.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-        cai.commandPool = s->cpool.get(); cai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; cai.commandBufferCount = 2;
+        cai.commandPool = s->cpool.get(); cai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; cai.commandBufferCount = mc2vk::kMaxFramesInFlight;
         if (vkAllocateCommandBuffers(s->device, &cai, s->cbuf) != VK_SUCCESS) {
             vlog("vkAllocateCommandBuffers failed."); return false;
         }
@@ -1713,7 +1713,7 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
     auto groundNow = mc2_vk_ground_lighting_frame();
     if (groundNow) { s->lastGround = *groundNow; s->groundMissing = false; s->groundMissingFrames = 0; }
     else if (++s->groundMissingFrames > 2) {   // terrain gone (teardown, ring growth, mission change): the cached offsets and copied set may name freed/recycled resources
-        s->lastGround.reset(); s->groundCopied[0] = s->groundCopied[1] = false;
+        s->lastGround.reset(); for (auto& copied : s->groundCopied) copied = false;
     }
     if (!groundNow && !s->groundMissing) {
         s->groundMissing = true;
