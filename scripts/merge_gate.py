@@ -160,7 +160,6 @@ def plan(jobs, proof_dir=None, capture_before_runs=1, before_dir=None):
                               str(proof / "after"), "--out-root", str(proof / "ab")], {}),
         ("contracts", [git_bash(), "scripts/check-contracts.sh", "-j" + str(jobs)], {}),
         ("harnesses", [py, "tools/build_contract_harnesses.py", "--run", "--unit", "-j", str(jobs)], {}),
-        ("pytest", [py, "-B", "-m", "pytest", "scripts/tests", "-q", "-p", "no:cacheprovider"], {}),
         ("tier1", [py, "scripts/run_smoke.py", "--tier", "tier1", "--keep-logs", "--deploy", "0.4"],
          {"MC2_DEBUG_STATE_DUMP": "1", "MC2_DIAG_TAGS": "CONFIG,BUILD,DEVICE"}),
         ("kit-visibility", [py, "scripts/check-kit-visibility.py", "--install", install,
@@ -349,7 +348,7 @@ def stock_copy(install, parent=None):
                         "--from", str(install), "--to", str(target)], check=True,
                        **console_child.child_kwargs())
         for child in target.iterdir():
-            if child.is_dir() and (child.name.startswith(".gate-stock-") or child.name in
+            if child.is_dir() and (child.name.startswith(".gate-stock-") or child.name.endswith("-mods-stage") or child.name in
                                   ("mod_smoke-stage", "debug_state", "dev_shell_out")):
                 shutil.rmtree(child)
         print(f"| stock-copy | PASS | {time.monotonic() - started:.1f} |", flush=True)
@@ -708,9 +707,6 @@ def select_stages(steps, stages=None, skip=None):
     overlap = set(requested) & omitted
     if overlap:
         raise ValueError("stages both selected and skipped: " + ", ".join(sorted(overlap)))
-    if "contracts" in omitted and "pytest" in available and "pytest" not in omitted:
-        raise ValueError("--skip contracts also needs --skip pytest: pytest only dedups against the contracts stage, "
-                         "so skipping contracts alone runs the 45-min standalone pytest stage (W78)")
     selected = [available[name] for name in requested or available if name not in omitted]
     if not selected or stages == []:
         raise ValueError("no stages selected; gate requires at least one stage")
