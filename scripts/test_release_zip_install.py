@@ -117,6 +117,10 @@ def extract_zip(zip_path: Path, dest: Path, label: str) -> list[str]:
     """Extract zip into dest, returning list of relative paths extracted."""
     extracted: list[str] = []
     with zipfile.ZipFile(zip_path, "r") as zf:
+        names = {name.replace("\\", "/") for name in zf.namelist()}
+        for required in ("license.txt", "EULA.txt", "LICENSES.md"):
+            if required not in names:
+                raise ValueError(f"{zip_path.name}: missing {required}")
         for info in zf.infolist():
             if info.is_dir():
                 continue
@@ -139,6 +143,12 @@ def verify_tree(install: Path) -> list[str]:
 
     if (install / "mc2-launcher.exe").exists():
         failures.append("retired mc2-launcher.exe must not ship; launch mc2.exe")
+    for path in install.iterdir():
+        name = path.name.lower()
+        if path.is_file() and (".bak" in name or name.startswith(("harness_", "h2prefs"))):
+            failures.append(f"developer artifact must not ship: {path.name}")
+        if path.suffix.lower() == ".cfg" and name not in {"minprefs.cfg", "orgprefs.cfg", "system.cfg"}:
+            failures.append(f"non-factory configuration must not ship: {path.name}")
 
     dlls = (REPO_ROOT / "scripts/release-dlls.txt").read_text().splitlines()
     for dll in dlls:
@@ -255,6 +265,10 @@ def first_launch(exe: Path, output: Path) -> int:
     finally:
         host_lease.release()
     options = exe.parent / "options.cfg"
+    text = (output / "first_launch.log").read_text(errors="replace")
+    if "[BUILD_FINGERPRINT v1]" not in text or "[RENDER_BACKEND] FATAL" in text:
+        log("FAIL: first-launch build fingerprint missing or Vulkan fatal")
+        return 1
     if result.returncode or not options.is_file():
         return result.returncode or 1
     if options.read_bytes() != (exe.parent / "minprefs.cfg").read_bytes():
