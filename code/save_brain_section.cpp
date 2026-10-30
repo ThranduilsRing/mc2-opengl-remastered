@@ -48,7 +48,15 @@ void count(Archive& a, int& n, int cap) {
     n = static_cast<int>(raw);
 }
 
-void runtime(Archive& a, MechBrainRuntime& r) {
+} // namespace
+
+void serializeBrainTask(Archive& a, BrainTaskEntry& e) {
+    a(e.priority_tier, e.insertion_frame_ms, e.stable_seq_id, e.warrior_id);
+    u8(a, e.type);
+    a.raw(e._reserved);
+}
+
+void serializeBrainRuntime(Archive& a, MechBrainRuntime& r) {
     u8(a, r.mode);
     if (a.good() && std::to_underlying(r.mode) > 2) { a.reject("brain_mode"); return; }
     a(r.activeOpordSlot, r.opordFallbackPolicy, r.completionFlags, r.weightsNormalized, r.pendingEventMask,
@@ -88,23 +96,17 @@ void runtime(Archive& a, MechBrainRuntime& r) {
     for (auto& f : r.flowFiredIdx) a(f);
 }
 
-struct QueueImage {
-    std::vector<BrainTaskEntry> entries;
-    std::uint32_t seq = 0;
-};
-
-void queue(Archive& a, QueueImage& q) {
+void serializeBrainQueue(Archive& a, BrainQueueValue& q) {
     a(q.seq);
     int n = static_cast<int>(q.entries.size());
     count(a, n, BrainTaskQueue::MAX_BRAIN_TASKS);
     if (a.reading() && a.good()) q.entries.assign(static_cast<size_t>(n), BrainTaskEntry{});
     for (auto& e : q.entries) {
-        a(e.priority_tier, e.insertion_frame_ms, e.stable_seq_id, e.warrior_id);
-        u8(a, e.type);
-        a.raw(e._reserved);
+        serializeBrainTask(a, e);
     }
 }
 
+namespace {
 void missionVars(Archive& a, MissionVarStore& s) {
     int n = s.count;
     count(a, n, MissionVarStore::kMissionVarStoreCap);
@@ -138,13 +140,13 @@ Bytes saveBrainSection() {
         MechWarrior* w = MechWarrior::warriorList[id];
         bool hasRuntime = w->getBrainRuntime() != nullptr, hasQueue = w->getBrainTaskQueue() != nullptr;
         a(id, hasRuntime, hasQueue);
-        if (hasRuntime) runtime(a, *w->getBrainRuntime());
+        if (hasRuntime) serializeBrainRuntime(a, *w->getBrainRuntime());
         if (hasQueue) {
             const BrainTaskQueue& live = *w->getBrainTaskQueue();
-            QueueImage q;
+            BrainQueueValue q;
             q.seq = live.seq();
             q.entries.assign(live.data(), live.data() + live.numPending());
-            queue(a, q);
+            serializeBrainQueue(a, q);
         }
     }
     return a.good() ? a.bytes() : Bytes{};
@@ -164,15 +166,15 @@ bool restoreBrainSection(std::span<const std::uint8_t> payload) {
     missionVars(a, vars);
     a(n);
     if (a.good() && n > MAX_WARRIORS) a.reject("brain_warrior_count");
-    struct Staged { std::uint32_t id = 0; bool hasRuntime = false, hasQueue = false; MechBrainRuntime rt{}; QueueImage q; };
+    struct Staged { std::uint32_t id = 0; bool hasRuntime = false, hasQueue = false; MechBrainRuntime rt{}; BrainQueueValue q; };
     std::vector<Staged> staged;
     for (std::uint32_t i = 0; a.good() && i < n; ++i) {
         Staged s;
         a(s.id, s.hasRuntime, s.hasQueue);
         if (!a.good()) break;
         if (s.id >= MAX_WARRIORS || !MechWarrior::warriorList[s.id] || !MechWarrior::warriorList[s.id]->isUsed()) { a.reject("brain_warrior"); break; }
-        if (s.hasRuntime) runtime(a, s.rt);
-        if (s.hasQueue) queue(a, s.q);
+        if (s.hasRuntime) serializeBrainRuntime(a, s.rt);
+        if (s.hasQueue) serializeBrainQueue(a, s.q);
         staged.push_back(std::move(s));
     }
     if (!a.finish()) return false;

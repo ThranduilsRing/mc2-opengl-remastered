@@ -1,11 +1,23 @@
 """saveload_roundtrip: the analysis that compares the simulation after a quickload with the one after the quicksave."""
 import json
+import hashlib
 import os
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import saveload_roundtrip as rt  # noqa: E402
+
+
+def test_archived_legacy_fixture_bytes_match_manifest():
+    from pathlib import Path
+    folder = Path(rt.ROOT) / "tests/fixtures/saves"
+    manifest = json.loads((folder / "manifest.json").read_text())
+    assert manifest["$schema"] == "save-fixture-manifest-v1"
+    for entry in manifest["fixtures"]:
+        data = (folder / entry["file"]).read_bytes()
+        assert len(data) == entry["bytes"]
+        assert hashlib.sha256(data).hexdigest() == entry["sha256"]
 
 
 def test_selftest_passes():
@@ -221,16 +233,29 @@ def test_run_retains_failed_smoke_evidence_and_limits_liveness_fixture(tmp_path,
     (artifact / "mc2_01.log").write_text("fixture did not load")
     monkeypatch.setattr(rt, "ROOT", str(tmp_path))
     monkeypatch.setattr(rt.savegame_backup, "guarded", lambda path: nullcontext())
+    save_dir = tmp_path / "savegame"
+    save_dir.mkdir()
+    def owner_dir_forbidden():
+        raise AssertionError("a mocked save guard must never reach the owner's save directory")
+    monkeypatch.setattr(rt.savegame_backup, "default_dir", owner_dir_forbidden)
     observed = []
+    commands = []
     def smoke(*args, **kwargs):
         observed.append(kwargs["env"])
+        commands.append(args[0])
         # A newer foreign run must never replace this invocation's evidence.
         other = artifact.with_name("2099-foreign")
         other.mkdir(exist_ok=True)
         (other / "mc2_01.log").write_text("foreign green run")
         return subprocess.CompletedProcess(args, 1, f"[runner] artifacts: {artifact}\nfailed gate")
     monkeypatch.setattr(rt.subprocess, "run", smoke)
-    ok, report = rt.run("mc2_01", 300, False, str(tmp_path / "out"), "lane3")
-    assert not ok and "failed gate" in report and any("no load found" in line for line in report)
-    assert "MC2_FIXTURE_ORDER_LIVENESS" not in observed[0]
-    assert (tmp_path / "out/run/mc2_01.log").read_text() == "fixture did not load"
+    for duration in (20, 120):
+        dest = tmp_path / f"out-{duration}"
+        ok, report = rt.run("mc2_01", 60, False, str(dest), "lane3", save_dir=str(save_dir),
+                            headless=True, duration=duration)
+        assert not ok and "failed gate" in report and any("no load found" in line for line in report)
+        assert "MC2_FIXTURE_ORDER_LIVENESS" not in observed[-1]
+        # A save deferred to tick 1449 needs load 1849 + a 60-tick observation.
+        # More startup allowance must not buy extra post-load simulation ticks.
+        assert int(commands[-1][commands[-1].index("--ticks") + 1]) == 2000
+        assert (dest / "run/mc2_01.log").read_text() == "fixture did not load"

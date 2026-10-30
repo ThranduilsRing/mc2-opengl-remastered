@@ -2,6 +2,7 @@
 #include "../GameOS/gameos/crash_content.h"
 #include "save_exactness.h"
 #include "save_sections.h"
+#include "combat_clock_archive.h"
 #include "save_brain_section.h"
 #include "utils/mc2log.h"
 //******************************************************************************************
@@ -206,9 +207,12 @@ void Mission::save (const char *saveFileName)
 
 	saveFile.writePacket(currentPacket,tmpRAM,fileSz,STORAGE_TYPE_ZLIB);
 	currentPacket++;
-	mc2::combat::SavedCombatClock savedClock{combatClock.ticks, combatClock.frac};
-	saveFile.writePacket(currentPacket++, reinterpret_cast<MemoryPtr>(&savedClock),
-		sizeof(savedClock), STORAGE_TYPE_RAW);
+	mc2::save::CombatClockValue savedClock{combatClock.ticks, combatClock.frac};
+	mc2::save::Archive clockArchive;
+	savedClock.serialize(clockArchive);
+	if (!clockArchive.good()) Fatal(0, "Invalid combat clock save");
+	saveFile.writePacket(currentPacket++, const_cast<MemoryPtr>(clockArchive.bytes().data()),
+		static_cast<unsigned int>(clockArchive.bytes().size()), STORAGE_TYPE_RAW);
 
 	dmyFile.close();
 	DeleteFile(tmpName);
@@ -514,7 +518,7 @@ bool Mission::openSaveFile(MissionLoadFrame& f) {
 	}
 	currentPacket = 2;
 
-	if (const auto why = GameObjectManager::checkSavedObjects(&loadFile)) {
+	if (const auto why = GameObjectManager::checkSavedObjects(&loadFile, nullptr, f.saveV2)) {
 		mc2::fmt::print_err("[SAVE v1] event=reject reason={} file={}\n", *why, mc2::fmt::safe(loadFileName));
 		return true;
 	}
@@ -551,7 +555,7 @@ void Mission::loadResetSimState(MissionLoadFrame& f) {
 
 				
 	turn = 0;
-	restoreCombatClock(*mc2::combat::readCombatClock(f.loadFile));
+	restoreCombatClock(*mc2::save::readSavedCombatClock(f.loadFile, f.saveV2));
 	terminationCounterStarted = 0;
 	terminationResult = mis_PLAYING;
 	forcedTerminationResult = mis_PLAYING;

@@ -2638,7 +2638,7 @@
         },
         {
           "path": "scripts/merge_gate.py",
-          "line": 23,
+          "line": 26,
           "evidence": "import",
           "reference": "console_child",
           "text": "import console_child"
@@ -3379,6 +3379,13 @@
           "text": "import console_child"
         },
         {
+          "path": "tools/mkmerge.py",
+          "line": 9,
+          "evidence": "import",
+          "reference": "console_child",
+          "text": "import console_child"
+        },
+        {
           "path": "tools/mod_smoke.py",
           "line": 46,
           "evidence": "import",
@@ -3499,7 +3506,7 @@
         },
         {
           "path": "tools/sim_determinism.py",
-          "line": 42,
+          "line": 41,
           "evidence": "import",
           "reference": "console_child",
           "text": "import console_child  # noqa: E402"
@@ -3901,7 +3908,7 @@
         },
         {
           "path": "scripts/tests/test_farm_runner.py",
-          "line": 141,
+          "line": 142,
           "evidence": "import",
           "reference": "deploy_payload",
           "text": "import deploy_payload as deploy"
@@ -4250,7 +4257,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/merge_gate.py",
-          "line": 267,
+          "line": 381,
           "evidence": "command",
           "reference": "scripts/make-isolated-deploy.py",
           "text": "subprocess.run([sys.executable, str(ROOT / \"scripts/make-isolated-deploy.py\"),"
@@ -4444,6 +4451,20 @@
       "stem": "merge_gate",
       "callers_by_basename": [],
       "callers_by_stem": [
+        {
+          "path": "scripts/tests/test_gate_farm.py",
+          "line": 12,
+          "evidence": "import",
+          "reference": "merge_gate",
+          "text": "import merge_gate as gate"
+        },
+        {
+          "path": "scripts/tests/test_gate_state.py",
+          "line": 12,
+          "evidence": "import",
+          "reference": "merge_gate",
+          "text": "import merge_gate as gate"
+        },
         {
           "path": "scripts/tests/test_kit_visibility.py",
           "line": 151,
@@ -7598,6 +7619,20 @@
       "callers_by_stem": []
     },
     {
+      "path": "scripts/tests/test_gate_farm.py",
+      "basename": "test_gate_farm.py",
+      "stem": "test_gate_farm",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
+      "path": "scripts/tests/test_gate_state.py",
+      "basename": "test_gate_state.py",
+      "stem": "test_gate_state",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
       "path": "scripts/tests/test_gate_table_gen.py",
       "basename": "test_gate_table_gen.py",
       "stem": "test_gate_table_gen",
@@ -10413,7 +10448,7 @@
         },
         {
           "path": "scripts/tests/test_farm_runner.py",
-          "line": 257,
+          "line": 258,
           "evidence": "import",
           "reference": "tools.farm.runner",
           "text": "from tools.farm import runner"
@@ -10658,7 +10693,7 @@
       "callers_by_stem": [
         {
           "path": "scripts/merge_gate.py",
-          "line": 29,
+          "line": 32,
           "evidence": "import",
           "reference": "lane_merge",
           "text": "from lane_merge import git_bash, run_logged  # noqa: E402"
@@ -10679,7 +10714,21 @@
         },
         {
           "path": "tools/test_lane_merge.py",
-          "line": 306,
+          "line": 53,
+          "evidence": "import",
+          "reference": "tools.lane_merge",
+          "text": "from tools import lane_merge as lm"
+        },
+        {
+          "path": "tools/test_lane_merge.py",
+          "line": 83,
+          "evidence": "import",
+          "reference": "tools.lane_merge",
+          "text": "from tools import lane_merge as lm"
+        },
+        {
+          "path": "tools/test_lane_merge.py",
+          "line": 352,
           "evidence": "import",
           "reference": "lane_merge",
           "text": "import lane_merge as lm  # noqa: E402"
@@ -12616,6 +12665,21 @@
       ]
     },
     {
+      "path": "tools/mkmerge.py",
+      "basename": "mkmerge.py",
+      "stem": "mkmerge",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tools/test_mkmerge.py",
+          "line": 10,
+          "evidence": "import",
+          "reference": "mkmerge",
+          "text": "import mkmerge"
+        }
+      ]
+    },
+    {
       "path": "tools/mod_install/fst_listing.py",
       "basename": "fst_listing.py",
       "stem": "fst_listing",
@@ -13776,7 +13840,7 @@
         },
         {
           "path": "tools/test_saveload_roundtrip.py",
-          "line": 8,
+          "line": 9,
           "evidence": "import",
           "reference": "saveload_roundtrip",
           "text": "import saveload_roundtrip as rt  # noqa: E402"
@@ -17326,6 +17390,13 @@
       "path": "tools/test_log_tag_census.py",
       "basename": "test_log_tag_census.py",
       "stem": "test_log_tag_census",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
+      "path": "tools/test_mkmerge.py",
+      "basename": "test_mkmerge.py",
+      "stem": "test_mkmerge",
       "callers_by_basename": [],
       "callers_by_stem": []
     },

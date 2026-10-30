@@ -2,6 +2,10 @@
 #define LOGISTICSDIALOG_H
 #include <memory>
 #include <span>
+#include <string_view>
+
+// The menu's read-only campaign version preflight, also exercised by legacy fixtures.
+bool isCorrectVersionCampaignSave(std::string_view path);
 /*************************************************************************************************\
 LogisticsDialog.h			: Interface for the LogisticsDialog component.
 //---------------------------------------------------------------------------//

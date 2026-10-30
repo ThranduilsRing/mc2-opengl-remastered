@@ -108,8 +108,10 @@ std::string compileBytes(const CompileFixture& fixture, const Routine& routine) 
 struct CompileLog {
     FILE* file = nullptr;
     int saved = -1;
+    std::filesystem::path path;
     CompileLog() {
-        const auto path = std::filesystem::temp_directory_path() / "abl-r1-compile-stderr.txt";
+        path = std::filesystem::temp_directory_path() /
+            ("abl-r1-compile-stderr-" + std::to_string(GetCurrentProcessId()) + ".txt");
         file = std::fopen(path.string().c_str(), "w+b");
         if (!file) throw std::runtime_error("cannot capture compiler stderr");
         std::fflush(stderr);
@@ -121,6 +123,8 @@ struct CompileLog {
         _dup2(saved, _fileno(stderr));
         _close(saved);
         std::fclose(file);
+        std::error_code error;
+        std::filesystem::remove(path, error);
     }
     std::string text() {
         std::fflush(stderr);
@@ -135,14 +139,22 @@ struct CompileLog {
 TEST_CASE("ContentCook/cache publication failure is reported as failure") {
     namespace fs = std::filesystem;
     const auto previous = fs::current_path();
-    const auto sandbox = fs::temp_directory_path() / ("mc2-cook-write-failure-" + std::to_string(GetCurrentProcessId()));
+    const auto sandbox = fs::temp_directory_path() / ("mc2-cook-write-failure-" +
+        std::to_string(GetCurrentProcessId()) + "-" + std::to_string(GetTickCount64()));
     fs::create_directories(sandbox);
     struct Restore {
         fs::path previous, sandbox;
-        ~Restore() { fs::current_path(previous); fs::remove_all(sandbox); }
+        ~Restore() {
+            std::error_code error;
+            fs::current_path(previous, error);
+            CHECK_MESSAGE(!error, "restore cook cwd: ", error.message());
+            fs::remove_all(sandbox, error);
+            CHECK_MESSAGE(!error, "remove cook scratch: ", error.message());
+        }
     } restore{previous, sandbox};
     fs::current_path(sandbox);
     std::ofstream("cache") << "blocks cache directory creation";
+    REQUIRE(fs::is_regular_file("cache"));
     mc2::content::Asset asset;
     asset.nodes.emplace_back();
     asset.nodes.back().name = "helper";
@@ -152,7 +164,8 @@ TEST_CASE("ContentCook/cache publication failure is reported as failure") {
     const auto text = log.text();
     CHECK(text.find("[CONTENT_COOK_ERROR]") != std::string::npos);
     CHECK(text.find("[CONTENT_COOK]") == std::string::npos);
-    fs::remove("cache");
+    std::error_code removeError;
+    REQUIRE_MESSAGE(fs::remove("cache", removeError), "remove cache blocker: ", removeError.message());
     CHECK(mc2::content::cook(asset, ""));
     CHECK(mc2::content::cook(asset, ""));
 }
@@ -572,7 +585,7 @@ TEST_CASE("AuthoredOrderProduction/BattleMech patrol reverses at endpoints (warr
 TEST_CASE("CommandReplay/runtime player movers use the queue and reject reused identities") {
     SeamWorldResources resources;
     struct RuntimeObjects : GameObjectManager {
-        RuntimeObjects() { objList = entities.reset(2); maxMechs = 1; collisionSystem = nullptr; moverLineOfSightTable = nullptr; }
+        RuntimeObjects() { objList = entities.reset(2); maxMechs = 1; maxVehicles = 0; collisionSystem = nullptr; moverLineOfSightTable = nullptr; }
         ~RuntimeObjects() { objList = nullptr; maxMechs = 0; }
     } objects;
     Pilot pilot;
