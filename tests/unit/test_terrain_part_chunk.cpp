@@ -2,6 +2,30 @@
 #include "terrain_part_chunk.h"
 #include "tacorder_terrain_queue.h"
 #include "save_struct_zero.h"
+#include "save_field_probe.h"
+
+bool operator==(const _GlobalPathStep& a, const _GlobalPathStep& b) {
+	return a.startDoor == b.startDoor && a.thruArea == b.thruArea && a.goalDoor == b.goalDoor &&
+		a.start == b.start && a.goal == b.goal && a.goalCell[0] == b.goalCell[0] &&
+		a.goalCell[1] == b.goalCell[1] && a.costToGoal == b.costToGoal;
+}
+
+TEST_CASE("save fields: warrior queue tail independent member census") {
+	using T = SavedQueueTargets;
+	T sample;
+	sample.targets = {0x01010101, 0x02020202};
+	sample.curGlobalStep = 1;
+	sample.lastGoalPath = {0x0303, 0x0404};
+	using S = GlobalPathStep;
+	sample.globalPath = {save_probe::patterned<S>(&S::startDoor, &S::thruArea, &S::goalDoor,
+		&S::start, &S::goal, &S::goalCell, &S::costToGoal)};
+	CHECK(save_probe::memberBytes<S>(&S::startDoor, &S::thruArea, &S::goalDoor,
+		&S::start, &S::goal, &S::goalCell, &S::costToGoal) == sizeof(S));
+	CHECK(save_probe::memberBytes<T>(&T::targets, &T::globalPath, &T::curGlobalStep,
+		&T::lastGoalPath) + 4 == sizeof(T));
+	CHECK(save_probe::roundtrip(sample, [](auto& a, auto& v) { a(v); }, &T::targets,
+		&T::globalPath, &T::curGlobalStep, &T::lastGoalPath));
+}
 
 TEST_CASE("saved active order retains identity and mid-order execution state") {
 	MC2_SAVE_STRUCT(TacticalOrder, active);

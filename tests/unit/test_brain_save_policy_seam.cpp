@@ -1,6 +1,9 @@
 #include "doctest.h"
 #include "brain_execution_policy.h"
 #include "save_brain_section.h"
+#include "save_field_probe.h"
+#include "mech_brain_runtime.h"
+#include "brain_task_queue.h"
 #include "file.h"
 #include "Gates/gate_cold.h"
 
@@ -8,6 +11,51 @@
 #include <process.h>
 
 void getBrainFixedTickState(uint32_t&, float&, float&);
+
+#define BRAIN_SCALARS &T::mode, &T::activeOpordSlot, &T::opordFallbackPolicy, &T::completionFlags, \
+    &T::tacticWeights, &T::weightsNormalized, &T::selectedTactic, &T::pendingEventMask, \
+    &T::lastRequestOrdersFrame, &T::initialHoldPushed, &T::dispatchEffectApplied, &T::ejectEffectApplied, \
+    &T::guardEffectApplied, &T::moveToEffectApplied, &T::attackEffectApplied, &T::retreatEffectApplied, \
+    &T::currentState, &T::prevState, &T::patrolWaypointCount, &T::patrolWaypointIndex, \
+    &T::patrolWaypoints, &T::patrolLoop, &T::patrolActive, &T::patrolStarted, &T::engageRadius, \
+    &T::engageTargetWID, &T::guardHold, &T::opordType, &T::opordCursor, &T::swAttackerHelpRadius, \
+    &T::swDefenderHelpRadius, &T::swRequestHelp, &T::swReturnToPost, &T::swWakeOnAttack, \
+    &T::swPoweredDown, &T::postPos, &T::postSet, &T::sentryAsleep, &T::sentryWoken, \
+    &T::scoutObserveOnly, &T::escortTargetWID, &T::escortMoving, &T::helpTargetWID, \
+    &T::waitStateCount, &T::flowFiredIdx, &T::flowFiredCount
+
+TEST_CASE("save fields: BRN1 task and runtime scalar census") {
+    {
+        using T = BrainTaskEntry;
+        auto sample = save_probe::patterned<T>(&T::priority_tier, &T::insertion_frame_ms,
+            &T::stable_seq_id, &T::warrior_id, &T::type, &T::_reserved);
+        CHECK(save_probe::memberBytes<T>(&T::priority_tier, &T::insertion_frame_ms,
+            &T::stable_seq_id, &T::warrior_id, &T::type, &T::_reserved) + 3 == sizeof(T));
+        CHECK(save_probe::roundtrip(sample, mc2::save::serializeBrainTask, &T::priority_tier,
+            &T::insertion_frame_ms, &T::stable_seq_id, &T::warrior_id, &T::type, &T::_reserved));
+    }
+    using T = MechBrainRuntime;
+    auto sample = save_probe::patterned<T>(BRAIN_SCALARS);
+    sample.currentState[31] = sample.prevState[31] = 0;
+    sample.patrolWaypointCount = sample.patrolWaypointIndex = 2;
+    sample.waitStateCount = sample.flowFiredCount = 2;
+    CHECK(save_probe::roundtrip(sample, mc2::save::serializeBrainRuntime, BRAIN_SCALARS));
+    // Explicit debt: these live player-command fields are absent from BRN1.
+    // A loss is detected, never mistaken for successful whole-runtime coverage.
+    sample.playerBestDistance = 1.25f;
+    sample.playerProgressTime = 2.25f;
+    sample.playerFightSince = 3.25f;
+    sample.playerBypassUntil = 4.25f;
+    sample.playerRecoverUntil = 5.25f;
+    sample.playerRegroupUntil = 6.25f;
+    sample.playerRecoveries = 0x07070707;
+    sample.playerHealthTarget = 0x08080808;
+    sample.playerTargetHealth = 9.25f;
+    CHECK_FALSE(save_probe::roundtrip(sample, mc2::save::serializeBrainRuntime,
+        &T::playerBestDistance, &T::playerProgressTime, &T::playerFightSince, &T::playerBypassUntil,
+        &T::playerRecoverUntil, &T::playerRegroupUntil, &T::playerRecoveries,
+        &T::playerHealthTarget, &T::playerTargetHealth));
+}
 
 TEST_CASE("BrainSavePolicy/sidecars select TechBrain only from a temporary mod overlay") {
     namespace fs = std::filesystem;
