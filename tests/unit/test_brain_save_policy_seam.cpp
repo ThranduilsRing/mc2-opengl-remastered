@@ -180,8 +180,8 @@ TEST_CASE("save fields: BRN1 task and runtime scalar census") {
         CHECK(decoded.waitStates[i].satisfied == sample.waitStates[i].satisfied);
         CHECK(decoded.waitStates[i].deadlineMs == sample.waitStates[i].deadlineMs);
     }
-    // Explicit debt: these live player-command fields are absent from BRN1.
-    // A loss is detected, never mistaken for successful whole-runtime coverage.
+    // These live player-command fields are absent from BRN1. The proof bar
+    // must fail until persistence or an owner-approved rebuild policy resolves them.
     sample.playerBestDistance = 1.25f;
     sample.playerProgressTime = 2.25f;
     sample.playerFightSince = 3.25f;
@@ -194,21 +194,21 @@ TEST_CASE("save fields: BRN1 task and runtime scalar census") {
     mc2::save::Archive lossWriter;
     mc2::save::serializeBrainRuntime(lossWriter, sample);
     REQUIRE(lossWriter.good());
-    // Valid, identical bytes prove the nine changes were ignored, not rejected.
-    CHECK(lossWriter.bytes() == writer.bytes());
-    const auto knownLoss = [&](auto member, const char* field) {
-        CAPTURE(field);
-        CHECK_FALSE(save_probe::roundtrip(sample, mc2::save::serializeBrainRuntime, member));
+    const bool unchangedBytes = lossWriter.bytes() == writer.bytes();
+    CAPTURE(unchangedBytes); // Identical valid bytes diagnose ignored fields.
+    const auto requireField = [&](auto member, const char* field) {
+        CAPTURE(std::string(field));
+        CHECK(save_probe::roundtrip(sample, mc2::save::serializeBrainRuntime, member));
     };
-    knownLoss(&T::playerBestDistance, "playerBestDistance");
-    knownLoss(&T::playerProgressTime, "playerProgressTime");
-    knownLoss(&T::playerFightSince, "playerFightSince");
-    knownLoss(&T::playerBypassUntil, "playerBypassUntil");
-    knownLoss(&T::playerRecoverUntil, "playerRecoverUntil");
-    knownLoss(&T::playerRegroupUntil, "playerRegroupUntil");
-    knownLoss(&T::playerRecoveries, "playerRecoveries");
-    knownLoss(&T::playerHealthTarget, "playerHealthTarget");
-    knownLoss(&T::playerTargetHealth, "playerTargetHealth");
+    requireField(&T::playerBestDistance, "playerBestDistance");
+    requireField(&T::playerProgressTime, "playerProgressTime");
+    requireField(&T::playerFightSince, "playerFightSince");
+    requireField(&T::playerBypassUntil, "playerBypassUntil");
+    requireField(&T::playerRecoverUntil, "playerRecoverUntil");
+    requireField(&T::playerRegroupUntil, "playerRegroupUntil");
+    requireField(&T::playerRecoveries, "playerRecoveries");
+    requireField(&T::playerHealthTarget, "playerHealthTarget");
+    requireField(&T::playerTargetHealth, "playerTargetHealth");
 }
 
 TEST_CASE("BrainSavePolicy/sidecars select TechBrain only from a temporary mod overlay") {
