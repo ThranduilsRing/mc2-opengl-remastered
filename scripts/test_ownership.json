@@ -2,7 +2,6 @@
   "schema_version": 1,
   "aggregate_owner": "scripts_tests",
   "tests": [
-    {"module": "scripts/tests/test_vfx_no_objectid.py", "owners": ["vfx_no_objectid"]},
     {
       "module": "scripts/tests/test_content_error.py",
       "owners": ["content_error_stock"]

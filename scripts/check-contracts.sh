@@ -883,7 +883,7 @@ run_check "include_firewall"       "sh scripts/check-include-firewall.sh"
 run_check "vk_submit_funnel"       "sh scripts/check-vk-submit-funnel.sh"
 run_check "vk_pipeline_infra"      "sh scripts/check-vk-submit-funnel.sh --pipelines"
 run_check "sim_no_audio_reads"     "sh scripts/check-sim-no-audio-reads.sh"
-run_check "vfx_no_objectid"        "sh scripts/check-vfx-no-objectid.sh && py -3 -B -m pytest scripts/tests/test_vfx_no_objectid.py -q -p no:cacheprovider"
+run_check "vfx_no_objectid"        "sh scripts/check-vfx-no-objectid.sh"
 run_check "veg_gpu_cull"             "py -3 scripts/check-veg-gpu-cull.py"   # vegetation culls on the GPU: no CPU per-instance path, C++/GLSL parameter block in lockstep
 run_check "destroy_invariant"      "sh scripts/check-destroy-invariant.sh"
 run_check "render_contract_gbuf1"  "sh scripts/check-render-contract-gbuffer1.sh"
