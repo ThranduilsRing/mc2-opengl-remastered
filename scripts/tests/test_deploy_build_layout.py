@@ -12,6 +12,7 @@ Run:
 from __future__ import annotations
 
 import os
+import pytest
 from contextlib import ExitStack
 import shutil
 import subprocess
@@ -76,6 +77,7 @@ def _ninja_tree(tmp_path):
     _touch(b / "build.ninja")
     _touch(b / "mc2.exe")
     _touch(b / "CMakeFiles" / "mc2.dir" / "code" / "a.cpp.obj")
+    _touch(b / "shaders" / "vulkan" / "test.vert.spv")
     return b
 
 
@@ -104,6 +106,14 @@ def test_enumerate_payload_needs_only_game(tmp_path):
     assert "mc2-launcher.exe" not in rel
     assert {"tools/mc2_import/import_tool.py", "tools/mc2x_import/manifest.py",
             "tools/mco_import/build_object2.py", "scripts/console_child.py"} <= rel
+
+
+def test_deploy_refuses_missing_baked_shaders(tmp_path, capsys):
+    b = _ninja_tree(tmp_path)
+    (b / "shaders/vulkan/test.vert.spv").unlink()
+    with pytest.raises(SystemExit):
+        dp.enumerate_payload(str(ROOT), str(b), "mc2.exe", "mc2.pdb")
+    assert "No baked Vulkan SPIR-V" in capsys.readouterr().err
 
 
 def test_native_payload_has_no_windows_runtime(tmp_path):

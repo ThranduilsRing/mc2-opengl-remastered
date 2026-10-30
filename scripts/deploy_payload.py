@@ -944,9 +944,7 @@ def enumerate_payload(src_root, build_dir, exe_name, pdb_name,
     # Without this, any deployed install hits "cannot open spv" ->
     # vk_device_init_failed for every Vulkan region/island, even though the
     # exe + GL shaders deployed fine (found by VK-REGION-SSAO-1 content pass).
-    # Soft: MC2_VULKAN is an opt-in CMake flag, so most builds never produce
-    # these; only enforce the lockstep hash-match discipline (kind="shader")
-    # for whichever ones ARE present in the build output.
+    # Vulkan-only builds require baked shaders; source-only deploys cannot run.
     vk_spv_dir = os.path.join(b64, "shaders", "vulkan") if b64 else ""
     if vk_spv_dir and os.path.isdir(vk_spv_dir):
         for fn in sorted(os.listdir(vk_spv_dir)):
