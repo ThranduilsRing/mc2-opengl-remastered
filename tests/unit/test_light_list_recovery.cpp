@@ -11,6 +11,7 @@
 #include "../../GameOS/gameos/gos_terrain_lighting.h"
 
 namespace {
+#include "../../GameOS/gameos/vk_frame_ring.h"
 using VkDeviceSize = uint64_t;
 constexpr int VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC = 0;
 constexpr int VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC = 1;
@@ -27,9 +28,11 @@ struct Pipeline {
 };
 struct Sets {
     bool valid = false;
-    int set(int) const { return valid; }
-    bool create(int, Pipeline&, int, const char*, bool logFailures) {
+    int count = 0;
+    int set(int index) const { return valid && index >= 0 && index < count; }
+    bool create(int, Pipeline&, int slots, const char*, bool logFailures) {
         ++descriptorAttempts;
+        count = slots;
         if (failDescriptors && logFailures) ++lowerLogs;
         return valid = !failDescriptors;
     }
@@ -114,6 +117,8 @@ TEST_CASE("LightLists/optional failures retain terrain bindings and recover next
         CHECK(stage_light_pool(&island,feed,count,dim,spans));
         CHECK(count == 4096); CHECK(dim == 64);
         CHECK(island.lightLists.sets_.valid);
+        for (uint32_t slot = 0; slot < mc2vk::kMaxFramesInFlight; ++slot)
+            CHECK(island.lightLists.sets_.set(slot) != 0);
         CHECK(spans[2].bytes->size() == 64u*64u*4096u*4u);
     }
 }
