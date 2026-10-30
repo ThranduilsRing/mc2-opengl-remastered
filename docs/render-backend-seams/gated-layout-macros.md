@@ -774,9 +774,9 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_native_producers.h:67`
-- Class: `ProducerParity`  (data-member)
-- Member: `uint32_t lightCompared = 0, lightMismatch = 0, fogMismatch = 0, lightMaxDelta = 0;`
+- Header: `GameOS/gameos/vk_native_producers.h:61`
+- Class: `WaterCullFrame`  (data-member)
+- Member: `uint32_t reflectionGroupsX = 0, reflectionGroupsY = 0;`
 - Consuming targets: gameos
 - Reached by define: gameos[gameos(PUBLIC)]
 
@@ -784,13 +784,21 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 - Header: `GameOS/gameos/vk_native_producers.h:68`
 - Class: `ProducerParity`  (data-member)
+- Member: `uint32_t lightCompared = 0, lightMismatch = 0, fogMismatch = 0, lightMaxDelta = 0;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vk_native_producers.h:69`
+- Class: `ProducerParity`  (data-member)
 - Member: `bool     truncated = false;`
 - Consuming targets: gameos
 - Reached by define: gameos[gameos(PUBLIC)]
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_native_producers.h:70`
+- Header: `GameOS/gameos/vk_native_producers.h:71`
 - Class: `ProducerParity`  (data-member)
 - Member: `bool     haveDiff = false;`
 - Consuming targets: gameos
@@ -798,7 +806,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_native_producers.h:111`
+- Header: `GameOS/gameos/vk_native_producers.h:112`
 - Class: `NativeProducers`  (data-member)
 - Member: `bool ready_ = false;`
 - Consuming targets: gameos
@@ -806,7 +814,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_native_producers.h:112`
+- Header: `GameOS/gameos/vk_native_producers.h:113`
 - Class: `NativeProducers`  (data-member)
 - Member: `VkDevice device_ = VK_NULL_HANDLE;`
 - Consuming targets: gameos
@@ -814,7 +822,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_native_producers.h:113`
+- Header: `GameOS/gameos/vk_native_producers.h:114`
 - Class: `NativeProducers`  (data-member)
 - Member: `VmaAllocator allocator_ = nullptr;`
 - Consuming targets: gameos
@@ -822,7 +830,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_native_producers.h:114`
+- Header: `GameOS/gameos/vk_native_producers.h:115`
 - Class: `NativeProducers`  (data-member)
 - Member: `const VulkanContext* ctx_ = nullptr;`
 - Consuming targets: gameos
@@ -830,7 +838,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_native_producers.h:115`
+- Header: `GameOS/gameos/vk_native_producers.h:116`
 - Class: `NativeProducers`  (data-member)
 - Member: `uint32_t numVertices_ = 0, recipeCount_ = 0, maxThin_ = 0;`
 - Consuming targets: gameos
@@ -838,7 +846,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_native_producers.h:116`
+- Header: `GameOS/gameos/vk_native_producers.h:117`
 - Class: `NativeProducers`  (data-member)
 - Member: `VkBuffer recipes_ = VK_NULL_HANDLE;`
 - Consuming targets: gameos
@@ -846,7 +854,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_native_producers.h:117`
+- Header: `GameOS/gameos/vk_native_producers.h:118`
 - Class: `NativeProducers`  (data-member)
 - Member: `bool lightOutCleared_ = false;`
 - Consuming targets: gameos
@@ -854,7 +862,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_native_producers.h:120`
+- Header: `GameOS/gameos/vk_native_producers.h:121`
 - Class: `NativeProducers`  (data-member)
 - Member: `ComputePipeline lightP_, cullP_, argsP_;`
 - Consuming targets: gameos
@@ -862,7 +870,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_native_producers.h:121`
+- Header: `GameOS/gameos/vk_native_producers.h:122`
 - Class: `NativeProducers`  (data-member)
 - Member: `ComputeSets lightSets_, cullSets_, argsSets_;`
 - Consuming targets: gameos
@@ -870,7 +878,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_native_producers.h:125`
+- Header: `GameOS/gameos/vk_native_producers.h:126`
 - Class: `NativeProducers`  (data-member)
 - Member: `VkBuffer ringBound_[kSlots] = {VK_NULL_HANDLE, VK_NULL_HANDLE};`
 - Consuming targets: gameos
@@ -878,7 +886,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_native_producers.h:129`
+- Header: `GameOS/gameos/vk_native_producers.h:130`
 - Class: `NativeProducers`  (data-member)
 - Member: `OwnedBuffer parityHdr_, parityThin_, parityLight_;`
 - Consuming targets: gameos
@@ -886,7 +894,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_native_producers.h:130`
+- Header: `GameOS/gameos/vk_native_producers.h:131`
 - Class: `NativeProducers`  (data-member)
 - Member: `uint32_t parityLightFirst_ = 0, parityLightCount_ = 0;`
 - Consuming targets: gameos
@@ -3182,4 +3190,4 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ---
 
-Result: 397 guard(s) analyzed, 0 violation(s).
+Result: 398 guard(s) analyzed, 0 violation(s).

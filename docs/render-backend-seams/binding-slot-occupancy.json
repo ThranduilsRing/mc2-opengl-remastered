@@ -1,6 +1,6 @@
 {
   "summary": {
-    "glsl_blocks_with_binding": 255,
+    "glsl_blocks_with_binding": 261,
     "native_pairs": 7,
     "fails": 0,
     "warns": 0
@@ -523,6 +523,16 @@
         "type": "uniform",
         "source": "shaders/vulkan/water_geom.vert",
         "branch": {}
+      },
+      {
+        "side": "glsl",
+        "file": "shaders/vulkan/water_reflection.comp",
+        "line": 5,
+        "role": "WaterVsParams",
+        "std": "std140",
+        "type": "uniform",
+        "source": "shaders/vulkan/water_reflection.comp",
+        "branch": {}
       }
     ],
     "set0:binding1": [
@@ -835,7 +845,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/water_geom.frag",
-        "line": 34,
+        "line": 33,
         "role": "WaterFsParams",
         "std": "std140",
         "type": "uniform",
@@ -850,6 +860,16 @@
         "std": "std140",
         "type": "uniform",
         "source": "shaders/vulkan/water_geom.vert",
+        "branch": {}
+      },
+      {
+        "side": "glsl",
+        "file": "shaders/vulkan/water_reflection.comp",
+        "line": 9,
+        "role": "WaterFsParams",
+        "std": "std140",
+        "type": "uniform",
+        "source": "shaders/vulkan/water_reflection.comp",
         "branch": {}
       }
     ],
@@ -882,6 +902,16 @@
         "std": "std430",
         "type": "buffer",
         "source": "shaders/vulkan/terrain_tier1_skirt.vert",
+        "branch": {}
+      },
+      {
+        "side": "glsl",
+        "file": "shaders/vulkan/water_reflection.comp",
+        "line": 13,
+        "role": "sceneDepth",
+        "std": null,
+        "type": "sampler2D",
+        "source": "shaders/vulkan/water_reflection.comp",
         "branch": {}
       }
     ],
@@ -931,6 +961,16 @@
         "branch": {
           "3": 0
         }
+      },
+      {
+        "side": "glsl",
+        "file": "shaders/vulkan/water_reflection.comp",
+        "line": 14,
+        "role": "reflectionOut",
+        "std": null,
+        "type": "image2D",
+        "source": "shaders/vulkan/water_reflection.comp",
+        "branch": {}
       }
     ],
     "set0:binding12": [
@@ -1433,7 +1473,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/water_geom.frag",
-        "line": 56,
+        "line": 55,
         "role": "u_hdri",
         "std": null,
         "type": "sampler2D",
@@ -1817,7 +1857,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/water_geom.frag",
-        "line": 60,
+        "line": 59,
         "role": "u_shoreHeightTex",
         "std": null,
         "type": "sampler2D",
@@ -1951,7 +1991,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/water_geom.frag",
-        "line": 61,
+        "line": 60,
         "role": "u_shoreMask",
         "std": null,
         "type": "sampler2D",
@@ -2265,7 +2305,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/water_geom.frag",
-        "line": 64,
+        "line": 63,
         "role": "u_staticMask",
         "std": null,
         "type": "sampler2D",
@@ -2339,6 +2379,16 @@
         "type": "buffer",
         "source": "shaders/vulkan/include/vegetation_cull_common.glsl",
         "branch": {}
+      },
+      {
+        "side": "glsl",
+        "file": "shaders/vulkan/water_geom.frag",
+        "line": 64,
+        "role": "u_waterReflection",
+        "std": null,
+        "type": "sampler2D",
+        "source": "shaders/vulkan/water_geom.frag",
+        "branch": {}
       }
     ],
     "set0:binding9": [
@@ -2387,6 +2437,16 @@
         "branch": {
           "1": 0
         }
+      },
+      {
+        "side": "glsl",
+        "file": "shaders/vulkan/water_reflection.comp",
+        "line": 12,
+        "role": "sceneColor",
+        "std": null,
+        "type": "sampler2D",
+        "source": "shaders/vulkan/water_reflection.comp",
+        "branch": {}
       }
     ],
     "set1:binding0": [
@@ -2976,6 +3036,7 @@
     "shaders/vulkan/vfx_vegetation.frag",
     "shaders/vulkan/vfx_vegetation.vert",
     "shaders/vulkan/water_geom.frag",
-    "shaders/vulkan/water_geom.vert"
+    "shaders/vulkan/water_geom.vert",
+    "shaders/vulkan/water_reflection.comp"
   ]
 }

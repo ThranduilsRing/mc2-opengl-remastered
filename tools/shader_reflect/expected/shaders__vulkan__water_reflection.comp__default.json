@@ -1,0 +1,71 @@
+{
+  "defines": [],
+  "outputs": [],
+  "shader": "shaders/vulkan/water_reflection.comp",
+  "ssbos": [],
+  "stage": "comp",
+  "ubos": [
+    {
+      "binding": 0,
+      "members": [
+        {
+          "array_stride": null,
+          "matrix_stride": 16,
+          "name": "worldToClip",
+          "offset": 0,
+          "type": "mat4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "p0",
+          "offset": 64,
+          "type": "vec4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "p1",
+          "offset": 80,
+          "type": "vec4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "p2",
+          "offset": 96,
+          "type": "vec4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "p3",
+          "offset": 112,
+          "type": "vec4"
+        }
+      ],
+      "name": "WaterVsParams"
+    },
+    {
+      "binding": 1,
+      "members": [
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "fogColor",
+          "offset": 0,
+          "type": "vec4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "f0",
+          "offset": 16,
+          "type": "vec4"
+        }
+      ],
+      "name": "WaterFsParams"
+    }
+  ],
+  "variant": "default"
+}
