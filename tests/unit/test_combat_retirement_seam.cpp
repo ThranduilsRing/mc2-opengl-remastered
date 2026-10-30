@@ -7,6 +7,8 @@
 #include "team.h"
 #include "mission_load_frame.h"
 #include "combat_clock_archive.h"
+#include "logisticsdialog.h"
+#include "paths.h"
 #include <bit>
 #include <array>
 #include <cstdlib>
@@ -28,6 +30,11 @@ struct CombatRetirementSeam {
         frame.loadFileName = path;
         return owner.openSaveFile(frame);
     }
+    static bool rejectsVersion(Mission& owner, const char* path) {
+        MissionLoadFrame frame{};
+        frame.loadFileName = path;
+        return owner.openSaveFile(frame) && frame.incompatibleSave;
+    }
     static void update(Mission& owner) { owner.updateObjectManager(); }
     static void complete(Mission& owner) { owner.completeOrderSimulationTick(); }
     static void reinit(Mission& owner) { owner.initTeamRelations(MISSION_LOAD_SP_QUICKSTART); }
@@ -45,6 +52,28 @@ struct CombatRetirementSeam {
         std::destroy_at(&owner.orderFixtureReceipt);
     }
 };
+
+struct LegacySaveFixtureTest {
+    static bool acceptsCampaign(char* name) {
+        std::array<char, sizeof(savePath)> previous;
+        std::memcpy(previous.data(), savePath, sizeof(savePath));
+        std::strcpy(savePath, "tests/fixtures/saves/");
+        LogisticsSaveDialog dialog;
+        const bool result = dialog.isCorrectVersionSaveGame(name);
+        std::memcpy(savePath, previous.data(), sizeof(savePath));
+        return result;
+    }
+};
+
+TEST_CASE("save fixtures: shipped legacy mod saves refuse before teardown") {
+    CombatRetirementSeam::Storage storage;
+    CHECK(CombatRetirementSeam::rejectsVersion(storage.owner,
+        "tests/fixtures/saves/omnitech-testgame.ims"));
+    for (int index : {1, 2, 3, 4, 5, 7}) {
+        auto name = std::format("after_mc2_{:02}", index);
+        CHECK_FALSE(LegacySaveFixtureTest::acceptsCampaign(name.data()));
+    }
+}
 
 namespace {
 struct World {

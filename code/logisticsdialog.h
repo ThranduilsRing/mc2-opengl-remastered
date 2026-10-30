@@ -156,6 +156,7 @@ private:
 
 class LogisticsSaveDialog : public LogisticsDialog
 {
+	friend struct LegacySaveFixtureTest;
 	public:
 
 		static LogisticsSaveDialog* instance(){ return s_instance.get(); }
