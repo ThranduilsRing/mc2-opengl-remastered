@@ -3379,6 +3379,13 @@
           "text": "import console_child"
         },
         {
+          "path": "tools/mkmerge.py",
+          "line": 9,
+          "evidence": "import",
+          "reference": "console_child",
+          "text": "import console_child"
+        },
+        {
           "path": "tools/mod_smoke.py",
           "line": 46,
           "evidence": "import",
@@ -4006,7 +4013,7 @@
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 228,
+          "line": 229,
           "evidence": "import_module",
           "reference": "deploy_payload",
           "text": "return importlib.import_module('deploy_payload')"
@@ -5193,7 +5200,7 @@
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 764,
+          "line": 765,
           "evidence": "command",
           "reference": "scripts/run_smoke.py",
           "text": "proc = subprocess.run(cmd, cwd=str(ROOT), capture_output=True,"
@@ -7204,7 +7211,7 @@
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 47,
+          "line": 48,
           "evidence": "import",
           "reference": "stage_root",
           "text": "import stage_root as stages  # noqa: E402  (default staging roots on E:, free-space preflight)"
@@ -12376,14 +12383,14 @@
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 518,
+          "line": 519,
           "evidence": "import_module",
           "reference": "fst",
           "text": "fst_lib = importlib.import_module('fst')"
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 554,
+          "line": 555,
           "evidence": "import_module",
           "reference": "fst",
           "text": "fst_lib = importlib.import_module('fst')"
@@ -12455,7 +12462,7 @@
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 393,
+          "line": 394,
           "evidence": "import",
           "reference": "mc2x_import",
           "text": "from mc2x_import import fst as fst_lib"
@@ -12722,35 +12729,35 @@
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 270,
+          "line": 271,
           "evidence": "import",
           "reference": "fst_listing",
           "text": "import fst_listing"
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 392,
+          "line": 393,
           "evidence": "import",
           "reference": "fst_listing",
           "text": "import fst_listing"
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 434,
+          "line": 435,
           "evidence": "import",
           "reference": "fst_listing",
           "text": "import fst_listing"
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 536,
+          "line": 537,
           "evidence": "import",
           "reference": "fst_listing",
           "text": "import fst_listing"
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 555,
+          "line": 556,
           "evidence": "import",
           "reference": "fst_listing",
           "text": "import fst_listing"
