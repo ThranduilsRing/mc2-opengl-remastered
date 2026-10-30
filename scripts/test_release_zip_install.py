@@ -74,6 +74,9 @@ ZIP_ORDER: list[tuple[str, bool, str]] = [
 
 REQUIRED_FILES = [
     "mc2.exe",
+    "license.txt",
+    "EULA.txt",
+    "LICENSES.md",
     "minprefs.cfg",   # sniffer self-heal CopyFile source
     "orgprefs.cfg",
     "system.cfg",

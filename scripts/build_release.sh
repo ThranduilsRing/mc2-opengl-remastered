@@ -107,7 +107,11 @@ disk_guard "${TMPDIR:-/tmp}"   8 "release staging tree (mktemp -d)"
 
 mkdir -p "$OUTDIR"
 
-z() { "$SEVENZIP" a -tzip -mx=7 -bso0 -bsp0 "$@"; }
+z() {
+    "$SEVENZIP" a -tzip -mx=7 -bso0 -bsp0 "$@"
+    # Every independently downloadable archive carries the distribution terms.
+    ( cd "$REPO" && "$SEVENZIP" a -tzip -mx=7 -bso0 -bsp0 "$1" license.txt EULA.txt LICENSES.md )
+}
 
 # Stage a clean tree we can shape, so we can exclude stock-resolution burnins
 # from gamedata without touching the deployed install.
@@ -297,9 +301,8 @@ done
 # VC++ runtime, "don't install under Program Files", and the bat picker.
 # RELEASE_README has the full feature list, known issues, and GH issue
 # triage. license.txt + EULA.txt are required for any public distribution.
-for f in "$DEPLOY"/INSTALL.txt "$DEPLOY"/RELEASE_README.md "$DEPLOY"/license.txt "$DEPLOY"/EULA.txt; do
-    [ -e "$f" ] && cp "$f" "$STAGE/engine/"
-done
+cp "$REPO/RELEASE_README.md" "$STAGE/engine/"
+if [ -f "$DEPLOY/INSTALL.txt" ]; then cp "$DEPLOY/INSTALL.txt" "$STAGE/engine/"; fi
 # Editor splashes at the deploy root (esplash.bmp, tacsplash.bmp).
 for f in "$DEPLOY"/esplash.bmp "$DEPLOY"/tacsplash.bmp; do
     [ -e "$f" ] && cp "$f" "$STAGE/engine/"

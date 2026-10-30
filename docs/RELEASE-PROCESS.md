@@ -70,6 +70,9 @@ release" — never listed as shipped until re-verified against the merged tree.
    Example mods come from examples/mods/ (mod.json plus data/ overlays),
    never from the deploy's locally installed mods. The in-game picker and
    tools/mc2_import/import_tool.py replace launcher workflows.
+   Every zip carries license.txt, EULA.txt and LICENSES.md from the repository.
+   Before publishing original game assets, the maintainer must re-confirm
+   redistribution permission; automated checks do not constitute that approval.
 6. Gate: py -3 scripts/test_release_zip_install.py --zip-dir <OUTDIR>
    -> must PASS (exit 0). This is the zips-only install + smoke proof; see
    release-checklist.md for exit codes and why.
