@@ -398,28 +398,28 @@
         },
         {
           "path": "scripts/tests/test_native_binding_contracts.py",
-          "line": 103,
+          "line": 104,
           "evidence": "import_module",
           "reference": "check-binding-slots",
           "text": "checker = importlib.import_module('check-binding-slots')"
         },
         {
           "path": "scripts/tests/test_native_binding_contracts.py",
-          "line": 110,
+          "line": 111,
           "evidence": "import_module",
           "reference": "check-binding-slots",
           "text": "scanner = importlib.import_module('check-binding-slots')"
         },
         {
           "path": "scripts/tests/test_native_binding_contracts.py",
-          "line": 153,
+          "line": 154,
           "evidence": "import_module",
           "reference": "check-binding-slots",
           "text": "assert importlib.import_module('check-binding-slots').main() == 0"
         },
         {
           "path": "scripts/tests/test_native_binding_contracts.py",
-          "line": 159,
+          "line": 160,
           "evidence": "import_module",
           "reference": "check-binding-slots",
           "text": "scanner = importlib.import_module('check-binding-slots')"
@@ -791,7 +791,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/deploy_payload.py",
-          "line": 1971,
+          "line": 1972,
           "evidence": "command",
           "reference": "scripts/check-deploy-hygiene.py",
           "text": "r = subprocess.run([sys.executable, hygiene, target],"
@@ -2125,14 +2125,14 @@
       "callers_by_stem": [
         {
           "path": "scripts/tests/test_native_binding_contracts.py",
-          "line": 136,
+          "line": 137,
           "evidence": "import_module",
           "reference": "check-vulkan-bindings",
           "text": "checker = importlib.import_module('check-vulkan-bindings')"
         },
         {
           "path": "scripts/tests/test_native_binding_contracts.py",
-          "line": 155,
+          "line": 156,
           "evidence": "import_module",
           "reference": "check-vulkan-bindings",
           "text": "assert importlib.import_module('check-vulkan-bindings').main() == 1"
@@ -4049,7 +4049,7 @@
         },
         {
           "path": "scripts/deploy_payload.py",
-          "line": 1825,
+          "line": 1826,
           "evidence": "import",
           "reference": "exe_fingerprint",
           "text": "from exe_fingerprint import extract, sha_agrees"
@@ -4236,7 +4236,7 @@
         },
         {
           "path": "scripts/deploy_payload.py",
-          "line": 1900,
+          "line": 1901,
           "evidence": "import",
           "reference": "kit_payload",
           "text": "import kit_payload"
