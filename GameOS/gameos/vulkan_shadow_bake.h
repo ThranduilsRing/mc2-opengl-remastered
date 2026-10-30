@@ -228,7 +228,8 @@ private:
     bool liveStale_ = true;
     uint32_t liveRebuilds_ = 0;
     double cpuStage_[3] = {0, 0, 0};   // cold bake CPU ms: resolve, content key, tile planning
-    bool incActive_ = false, heightsMoved_ = false, eventsSinceDrain_ = false;
+    bool incActive_ = false, heightsMoved_ = false, eventsSinceDrain_ = false, objectDirty_ = false;
+    uint64_t objectMapRecords_ = 0, dirtyBatches_ = 0, localTileRebakes_ = 0, statsEpoch_ = 0;
     uint64_t lastIncEpoch_ = 0, incRecordedEpoch_ = ~0ull, heightsGen_ = 1, incHeightsGen_[2] = {0, 0};
     uint32_t incSubTiles_ = 0, incBatches_ = 0, eventsLogged_ = 0;
     double incMaxGpuMs_ = 0.0, incSumGpuMs_ = 0.0;

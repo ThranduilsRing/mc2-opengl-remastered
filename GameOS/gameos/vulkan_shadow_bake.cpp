@@ -252,7 +252,8 @@ void ShadowBake::invalidate() {
     recorded_ = submitted_ = recordedMask_ = false;
     releaseIncremental();
     incQueries_.reset();
-    incActive_ = heightsMoved_ = eventsSinceDrain_ = false;
+    incActive_ = heightsMoved_ = eventsSinceDrain_ = objectDirty_ = false;
+    objectMapRecords_ = dirtyBatches_ = localTileRebakes_ = statsEpoch_ = 0;
     diagRequest_ = diagPending_ = diagForceFull_ = false;
     diagBuf_.reset();
     diagInc_.clear();
@@ -310,9 +311,8 @@ std::optional<ShadowBake::BakeKeys> ShadowBake::inputsReady(const ShadowBakeInpu
     BakeKeys keys;
     keys.mask = h | 1u;
     keys.object = keys.mask;
-    const uint64_t delta=set.deltaVersion(), height=store->heightVersion();
-    keys.object=mc2shadow::fnv1a(&delta,sizeof(delta),keys.object);
-    keys.object=mc2shadow::fnv1a(&height,sizeof(height),keys.object)|1u;
+    // Caster deltas and height patches are consumed by the dirty path. Its
+    // drained burst refreshes the object map once, without changing the mask.
     return keys;
 }
 
@@ -446,6 +446,7 @@ void ShadowBake::drawRuns(VkCommandBuffer cb, const ShadowBakeInputs& in, std::s
 
 bool ShadowBake::update(VkCommandBuffer cb, uint64_t epoch, const ShadowBakeInputs& in) {
     if (!inited_) return false;
+    if (objectMapRecords_ == 0) statsEpoch_ = epoch;
     retire(epoch);
     // Cold tiles only read retained CPU uploads; queue barriers order shared scratch reuse.
     // Continue next frame without waiting two epochs; only the final submit must retire before release.
@@ -485,7 +486,7 @@ bool ShadowBake::update(VkCommandBuffer cb, uint64_t epoch, const ShadowBakeInpu
 
 bool ShadowBake::wantsFrame() const {
     if (!inited_) return false;
-    if (recorded_) return true;
+    if (recorded_ || objectDirty_ || incActive_ || mc2shadow::staticCasterSet().hasEvents()) return true;
     return mc2shadow::staticCasterSet().version() != 0 && !maskReady_;
 }
 
@@ -506,7 +507,13 @@ void ShadowBake::markSubmitted(uint64_t epoch) {
 void ShadowBake::retire(uint64_t epoch) {
     if (!recorded_) return;
     // Recorded into an earlier frame that never submitted: the products stay as they were. Within the recording frame it is still pending.
-    if (!submitted_) { if (epoch != recordedEpoch_) recorded_ = false; return; }
+    if (!submitted_) {
+        if (epoch != recordedEpoch_) {
+            if (!recordedMask_) objectDirty_ = true;
+            recorded_ = false;
+        }
+        return;
+    }
     if (epoch < submittedEpoch_ + 2 || (epoch & 1u) != (submittedEpoch_ & 1u)) return;
     recorded_ = false;
     submitted_ = false;
@@ -838,12 +845,12 @@ bool ShadowBake::recordBake(VkCommandBuffer cb, const ShadowBakeInputs& in) {
         // The object map and its allocations are prepared once, before spreading mask work over frames.
         if (!recordObjectMap(cb, in, tileCount * kQueriesPerTile + 2)) return false;
         coldPending_ = true;
-        recordedObjectGeneration_ = recordedObjectKey_;
+        recordedObjectGeneration_ = objectMapRecords_;
         if (!recordColdTile(cb, in)) return false;
         gpuScope.end();
     }
     if ((!recordedMask_ || warm) && !recordObjectMap(cb, in, tileCount * kQueriesPerTile + 2)) return false;
-    recordedObjectGeneration_ = recordedObjectKey_;
+    recordedObjectGeneration_ = objectMapRecords_;
     cpuMs_ = std::chrono::duration<double, std::milli>(clk::now() - t0).count();
     warmReadMs_ = warmReadMs;
     if (recordedMask_ && warm) {
@@ -856,7 +863,7 @@ bool ShadowBake::recordBake(VkCommandBuffer cb, const ShadowBakeInputs& in) {
                             mc2shadow::kSunAngularRadiusDeg, mc2shadow::kFadeStartWorld, mc2shadow::kFadeEndWorld, fadeMax_, waterZ_, heightSide_,
                             heightSpacing_, cpuMs_);
     } else {
-        mc2::fmt::print_err("[SHADOW_BAKE] object map re-recorded: generation={} casters={}\n", mc2::fmt::as_u64(recordedObjectKey_), mc2::fmt::as_size(leaves_.size()));
+        mc2::fmt::print_err("[SHADOW_BAKE] object map re-recorded: generation={} casters={}\n", mc2::fmt::as_u64(recordedObjectGeneration_), mc2::fmt::as_size(leaves_.size()));
     }
     return true;
 }
@@ -1000,6 +1007,7 @@ bool ShadowBake::updateIncremental(VkCommandBuffer cb, uint64_t epoch, const Sha
     }
     if (set.hasEvents()) {
         for (const auto& ev : set.takeEvents()) {
+            objectDirty_ = true;
             applyLiveEvent(ev.before, ev.after);
             for (const auto* side : {&ev.before, &ev.after}) {
                 if (const auto r = leavesFootprint(*side)) {
@@ -1028,14 +1036,36 @@ bool ShadowBake::updateIncremental(VkCommandBuffer cb, uint64_t epoch, const Sha
                 dirty_.add(mc2shadow::subTilesForRect(layout_, grownForDirty(mc2shadow::shadowFootprint(lo, hi, sun_, terrainMin_, tanT)), 0));
             }
             heightsMoved_ = true;
+            objectDirty_ = true;
             eventsSinceDrain_ = true;
         }
     }
+    const auto logDirtyStats = [&] {
+        const uint64_t frames = epoch - statsEpoch_ + 1;
+        mc2::fmt::print_err("[SHADOW_BAKE] dirty queue drained: drained={} sub_tiles={} batches={} batch_gpu_ms mean={:.3f} max={:.3f} (budget {} sub-tiles a frame) object_map_records={} dirty_batches={} local_tile_rebakes={} frames={} records_per_1000={:.2f} batches_per_1000={:.2f} local_tiles_per_1000={:.2f}\n",
+                            dirty_.empty() && !objectDirty_, incSubTiles_, incBatches_, incTimed_ ? incSumGpuMs_ / incTimed_ : 0.0, incMaxGpuMs_, kSubTilesPerFrame,
+                            objectMapRecords_, dirtyBatches_, localTileRebakes_, frames,
+                            1000.0 * objectMapRecords_ / frames, 1000.0 * dirtyBatches_ / frames, 1000.0 * localTileRebakes_ / frames);
+    };
+    const bool statsDue = (epoch - statsEpoch_ + 1) % 1000 == 0;
+    if (statsDue) logDirtyStats();
     if (dirty_.empty()) {
+        // Reuse the regular object-only submission/retirement path after the
+        // last dirty batch has stopped reading the shared caster resources.
+        if (objectDirty_ && (!incActive_ || epoch >= lastIncEpoch_ + 2)) {
+            recordedKey_ = bakedKey_;
+            recordedObjectKey_ = objectKey_;
+            recordedMask_ = false;
+            if (!recordBake(cb, in)) return false;
+            objectDirty_ = false;
+            recorded_ = true;
+            submitted_ = false;
+            recordedEpoch_ = incRecordedEpoch_ = epoch;
+            return true;
+        }
         if (incActive_ && epoch >= lastIncEpoch_ + 2) {
             incActive_ = false;
-            mc2::fmt::print_err("[SHADOW_BAKE] dirty queue drained: sub_tiles={} batches={} batch_gpu_ms mean={:.3f} max={:.3f} (budget {} sub-tiles a frame)\n",
-                                incSubTiles_, incBatches_, incTimed_ ? incSumGpuMs_ / incTimed_ : 0.0, incMaxGpuMs_, kSubTilesPerFrame);
+            if (!statsDue) logDirtyStats();
             incSubTiles_ = incBatches_ = incTimed_ = 0;
             incMaxGpuMs_ = incSumGpuMs_ = 0.0;
             if (eventsSinceDrain_ && diagOn()) diagRequest_ = true;
@@ -1144,6 +1174,7 @@ bool ShadowBake::updateIncremental(VkCommandBuffer cb, uint64_t epoch, const Sha
     incRecordedEpoch_ = epoch;
     incSubTiles_ += static_cast<uint32_t>(batch.size());
     ++incBatches_;
+    ++dirtyBatches_;
     return true;
 }
 
@@ -1404,6 +1435,7 @@ bool ShadowBake::recordObjectMap(VkCommandBuffer cb, const ShadowBakeInputs& in,
     gpuScope.end();
     if (queryCount_) vkCmdWriteTimestamp(cb, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, queries_.get(), queryBase + 1);
     objectInitialized_ = true;
+    ++objectMapRecords_;
     return true;
 }
 
