@@ -1,4 +1,5 @@
 #include "brain_execution_policy.h"
+#include "content_error.h"
 #include "footprints.h"
 // Mission: Mission::init, the mission load sequence.
 // Declared in the class headers; shared names in mission_internal.h.
@@ -520,7 +521,10 @@ void Mission::initTeamsAndCommanders(long loadType, glm::vec3* dropZoneList, cha
 		result = missionFile->readIdULong("NumParts",numParts);
 		// MC2_VERIFY reclassified from gosASSERT (slice MC2-VERIFY-LIVE-1)
 		if (!MC2_VERIFY(result == NO_ERR, "Mission::init: [Parts] NumParts read failed"))
-			numParts = 0;	// log mode: degrade to no parts instead of iterating garbage
+		{
+			mc2::content::error(mc2::content::Kind::MissionData, missionFileName, "missing NumParts; no parts loaded");
+			numParts = 0;
+		}
 		if (numParts)
 			for (int i = 1; i < long(numParts + 1); i++) {
 				char partName[12];
@@ -529,7 +533,10 @@ void Mission::initTeamsAndCommanders(long loadType, glm::vec3* dropZoneList, cha
 				result = missionFile->seekBlock(partName);
 				// MC2_VERIFY reclassified from gosASSERT (slice MC2-VERIFY-LIVE-1)
 				if (!MC2_VERIFY(result == NO_ERR, "Mission::init: missing [%s] block", partName))
-					continue;	// log mode: skip the absent part
+				{
+					mc2::content::error(mc2::content::Kind::MissionData, missionFileName, partName);
+					continue;
+				}
 
 				char teamID = -1;
 				result = missionFile->readIdChar("TeamId", teamID);
@@ -643,7 +650,10 @@ void Mission::initTeamsAndCommanders(long loadType, glm::vec3* dropZoneList, cha
 					!MC2_VERIFY((Commander::commanders[ctlCommander] != nullptr) && (Team::teams[ctlTeam] != nullptr),
 						"Mission::init: commandersToLoad[%ld] names uninitialized commander %ld / team %ld",
 						i, ctlCommander, ctlTeam))
-					continue;	// log mode: skip the malformed entry
+				{
+					mc2::content::error(mc2::content::Kind::MissionData, missionFileName, "invalid commander/team entry; skipped");
+					continue;
+				}
 				Commander::commanders[ctlCommander]->setTeam(Team::teams[ctlTeam]);
 			}
 		}
@@ -964,6 +974,7 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, glm
 	extern int g_lightProbeSetupPath; g_lightProbeSetupPath = 1; // [GPUPROPS v1]
 	ZoneScopedN("Mission::init");
 	MissionInitFrame f;
+	mc2::content::resetMission();
 	f.missionFileView = &missionFile;
 	f.missionName = missionName;
 	resetOrderIngress(); // Old tokens cannot cross reinitialization.
@@ -1006,4 +1017,5 @@ initPartsHeader(f);
 	initInterface(f);
 initLabTimingAndClose();
 	initFinalizeGeometry();
+	mc2::content::reportMission(missionName);
 }

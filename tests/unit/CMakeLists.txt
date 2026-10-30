@@ -619,3 +619,4 @@ if(TARGET glm::glm)
 endif()
 
 target_sources(mc2_tests PRIVATE test_tgl_registry.cpp)
+target_sources(mc2_tests PRIVATE test_content_error.cpp ${MC2_WORKTREE_ROOT}/mclib/content_error.cpp)
