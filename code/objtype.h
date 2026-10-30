@@ -257,7 +257,7 @@ class ObjectTypeManager {
 
 		void remove (ObjectTypePtr ptr);
 			
-		ObjectTypePtr load (ObjectTypeNumber objTypeNum, bool noCacheOut = true, bool forceLoad = false);
+		ObjectTypePtr load (ObjectTypeNumber objTypeNum, bool noCacheOut = true, bool forceLoad = false, bool csvMover = false);
 
 		ObjectTypePtr get (ObjectTypeNumber objTypeNum, bool loadIt = true);
 

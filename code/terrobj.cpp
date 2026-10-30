@@ -1174,9 +1174,24 @@ void TerrainObject::setDamage (long newDamage) {
 		
 //---------------------------------------------------------------------------
 
+namespace {
+// Missing authored types retain an inert appearance for footprint/update callers.
+class InvisibleContentAppearance final : public Appearance {
+	void setObjectParameters(const glm::vec3&, float, long, long, long) override {}
+};
+}
+
 void TerrainObject::init (bool create, ObjectTypePtr objType) {
 
 	GameObject::init(true, objType);
+	if (!objType->getAppearanceTypeName() && objType->getExtentRadius() == 0.0f) {
+		adoptAppearance(std::make_unique<InvisibleContentAppearance>());
+		appearance->init(nullptr, this);
+		setFlag(OBJECT_FLAG_JUSTCREATED, false);
+		setTangible(false);
+		setStatus(OBJECT_STATUS_DESTROYED);
+		return;
+	}
 
 	setFlag(OBJECT_FLAG_JUSTCREATED, true);
 

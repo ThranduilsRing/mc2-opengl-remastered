@@ -578,7 +578,7 @@ class GameObjectManager {
 		
 		bool moverInRect(long index, glm::vec3 &dStart, glm::vec3 &dEnd);
 
-		ObjectTypePtr loadObjectType (ObjectTypeNumber typeHandle);
+		ObjectTypePtr loadObjectType (ObjectTypeNumber typeHandle, bool csvMover = false);
 
 		ObjectTypePtr getObjectType (ObjectTypeNumber typeHandle);
 

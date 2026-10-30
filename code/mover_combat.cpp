@@ -1,4 +1,6 @@
 // Mover: tactical orders, weapon helpers, weapon-fire/critical-hit/radio chunk queues, contacts and weapon queries.
+#include "content_error.h"
+#include <cstdio>
 // Declared in mover.h; shared names in mover_internal.h.
 #include "mover_internal.h"
 #include "Gates/gate.h"
@@ -851,8 +853,12 @@ void Mover::calcAmmoTotals (void)
 				}
 			}
 
-			if (!foundAmmoWeapon)
-				STOP(("Mech %s has ammo for a weapon it is not carrying!  Ammo Index is %d",name,ammoMasterId));
+			if (!foundAmmoWeapon) {
+				char message[128];
+				std::snprintf(message, sizeof(message), "orphan ammo %ld; zeroing amount", ammoMasterId);
+				mc2::content::error(mc2::content::Kind::WeaponAmmo, name, message);
+				inventory[i].amount = 0;
+			}
 		}
 
 		memcpy(ammoTypeTotal, totalList, sizeof(AmmoTally) * numAmmoTypes);

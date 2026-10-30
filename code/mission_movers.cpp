@@ -2,6 +2,8 @@
 #include "sim_world_trace.h"
 // Declared in the class headers; shared names in mission_internal.h.
 #include "mission_internal.h"
+#include "content_error.h"
+#include <string>
 #include "mc2fmt.h"
 
 
@@ -55,14 +57,22 @@ void Mission::createPartObject (long partIndex, MoverPtr mover) {
 				{
 					FitIniFile profileFile;
 					long result = profileFile.open(ObjectTypeManager::objectFile,ObjectTypeManager::objectFile->getPacketSize());
-					if (result != NO_ERR)
-						STOP((" Mission.createPartObject: can't open file "));
+					if (result != NO_ERR) {
+						mc2::content::error(mc2::content::Kind::MissionData, std::to_string(parts[partIndex].objNumber).c_str(), "cannot open mover profile; skipped");
+						MC2_DESTROY(mover, "invalid_content_profile");
+						parts[partIndex].objectWID = 0;
+						return;
+					}
 
 					if (result == NO_ERR) 
 					{
 						result = mover->init(&profileFile);
-						if (result != NO_ERR)
-							STOP((" Mission.createPartObject: bad Profile File "));
+						if (result != NO_ERR) {
+							mc2::content::error(mc2::content::Kind::MissionData, std::to_string(parts[partIndex].objNumber).c_str(), "bad mover profile; skipped");
+							MC2_DESTROY(mover, "invalid_content_profile");
+							parts[partIndex].objectWID = 0;
+							return;
+						}
 					}
 					
 					profileFile.close();
@@ -256,10 +266,12 @@ typedef struct _MoverInitData {
 } MoverInitData;
 */
 			//parts[i].gestureId = 2; // this has never changed
-	ObjectTypePtr objType = ObjectManager->loadObjectType(moverSpec->objNumber);
+	ObjectTypePtr objType = ObjectManager->loadObjectType(moverSpec->objNumber, moverSpec->csvFileName[0] != '\0');
 	if (!objType)
 		objType = ObjectManager->getObjectType(moverSpec->objNumber);
 	if (objType) {
+		if (!objType->getAppearanceTypeName() && moverSpec->csvFileName[0])
+			objType->setAppearanceTypeName(moverSpec->csvFileName);
 		MoverPtr mover = nullptr;
 		switch (objType->getObjectTypeClass()) {
 			case BATTLEMECH_TYPE:
@@ -291,14 +303,22 @@ typedef struct _MoverInitData {
 					{
 						FitIniFile profileFile;
 						long result = profileFile.open(ObjectTypeManager::objectFile,ObjectTypeManager::objectFile->getPacketSize());
-						if (result != NO_ERR)
-							STOP((" Mission.createPartObject: can't open file "));
+						if (result != NO_ERR) {
+							mc2::content::error(mc2::content::Kind::MissionData, std::to_string(moverSpec->objNumber).c_str(), "cannot open mover profile; skipped");
+							MC2_DESTROY(mover, "invalid_content_profile");
+							MechWarrior::freeWarrior(pilot);
+							return 0;
+						}
 	
 						if (result == NO_ERR) 
 						{
 							{ ZoneScopedN("Mission.AddMover.Profile"); result = mover->init(&profileFile); }
-							if (result != NO_ERR)
-								STOP((" Mission.createPartObject: bad Profile File "));
+							if (result != NO_ERR) {
+								mc2::content::error(mc2::content::Kind::MissionData, std::to_string(moverSpec->objNumber).c_str(), "bad mover profile; skipped");
+								MC2_DESTROY(mover, "invalid_content_profile");
+								MechWarrior::freeWarrior(pilot);
+								return 0;
+							}
 						}
 						
 						profileFile.close();

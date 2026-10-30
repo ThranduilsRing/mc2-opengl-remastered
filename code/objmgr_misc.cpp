@@ -143,9 +143,9 @@ bool GameObjectManager::modifyMoverLists (MoverPtr mover, long action) {
 
 //---------------------------------------------------------------------------
 
-ObjectTypePtr GameObjectManager::loadObjectType (ObjectTypeNumber typeHandle) {
+ObjectTypePtr GameObjectManager::loadObjectType (ObjectTypeNumber typeHandle, bool csvMover) {
 
-	return(objTypeManager->load(typeHandle));
+	return(objTypeManager->load(typeHandle, true, false, csvMover));
 }
 
 //---------------------------------------------------------------------------

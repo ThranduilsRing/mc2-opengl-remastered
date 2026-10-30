@@ -8,6 +8,8 @@
 
 //---------------------------------------------------------------------------
 // Include Files
+#include "content_error.h"
+#include <string>
 #ifndef MCLIB_H
 #include"mclib.h"
 #endif
@@ -296,7 +298,7 @@ void ObjectTypeManager::destroy(void)
 
 //---------------------------------------------------------------------------
 
-ObjectTypePtr ObjectTypeManager::load (ObjectTypeNumber objTypeNum, bool noCacheOut, bool forceLoad) {
+ObjectTypePtr ObjectTypeManager::load (ObjectTypeNumber objTypeNum, bool noCacheOut, bool forceLoad, bool csvMover) {
 	if (!table || !objectFile || objTypeNum == 0)		//Empty manager (failed pak init); first Object always NULL!
 		return nullptr;
 
@@ -311,6 +313,7 @@ ObjectTypePtr ObjectTypeManager::load (ObjectTypeNumber objTypeNum, bool noCache
 
 	if ((objTypeNum < 0) || (objTypeNum >= numObjectTypes)) {
 		++s_skippedObjTypeNums;
+		mc2::content::error(mc2::content::Kind::ObjectType, std::to_string(objTypeNum).c_str(), "object type out of range");
 		PAUSE((" ObjectTypeManager.load: bad objTypeNum %d (max %d) — mod content; returning NULL ", static_cast<int>(objTypeNum), static_cast<int>(numObjectTypes)));
 		return nullptr;
 	}
@@ -320,22 +323,24 @@ ObjectTypePtr ObjectTypeManager::load (ObjectTypeNumber objTypeNum, bool noCache
 
 	bool isMiscTerrObj = false;
 	long objectTypeNum = -1;
+	const std::string contentPath = "Object2.pak/" + std::to_string(objTypeNum);
 	ObjectTypePtr objType = nullptr;
+	auto rejectType = [&] { std::unique_ptr<ObjectType> rejected(objType); objType = nullptr; };
 	// BT2018-FIRST-CLASS P3: package chassis own object-type numbers after the last
 	// Object2.pak packet; their type definition is the package's chassisdef.fit.
 	packageChassisEnsureRegistry(objectFile->getNumPackets(), bridgeTypeHandle);
 	const mc2pkg::PackageChassis* packageType = packageChassisByTypeNum(objTypeNum);
 	if (packageType) {
 		File fitFile;
-		if (fitFile.open(packageType->fitPath.c_str()) != NO_ERR)
-			Fatal(objTypeNum, " ObjectTypeManager.load: package chassis definition did not open ");
+		const bool opened = fitFile.open(packageType->fitPath.c_str()) == NO_ERR;
 		auto packageMechType = std::make_unique<BattleMechType>();
 		packageMechType->setObjTypeNum(objTypeNum);
-		if (packageMechType->init(&fitFile, fitFile.fileSize()) != NO_ERR)
-			Fatal(objTypeNum, " ObjectTypeManager.load: unable to init package Mech type ");
+		if (opened && packageMechType->init(&fitFile, fitFile.fileSize()) == NO_ERR) {
+			objType = packageMechType.release(); // typeStore below takes ownership.
+			objectTypeNum = BATTLEMECH_TYPE;
+		} else
+			mc2::content::error(mc2::content::Kind::ObjectType, packageType->fitPath, "invalid package chassis; terrain placeholder");
 		fitFile.close();
-		objType = packageMechType.release();   // typeStore below takes ownership
-		objectTypeNum = BATTLEMECH_TYPE;
 	}
 	else if ((objTypeNum == bridgeTypeHandle) ||
 		(objTypeNum == forestTypeHandle) ||
@@ -364,22 +369,22 @@ ObjectTypePtr ObjectTypeManager::load (ObjectTypeNumber objTypeNum, bool noCache
 		FitIniFile objTypeFile;
 		long result = objTypeFile.open(objectFile,objectFile->getPacketSize());
 		if (result != NO_ERR)
-			Fatal(objTypeNum, " ObjectTypeManager.load: can't create object ");
+			mc2::content::error(mc2::content::Kind::ObjectType, contentPath.c_str(), "invalid object definition");
 
-		result = objTypeFile.seekBlock("ObjectClass");
+		if (result == NO_ERR) result = objTypeFile.seekBlock("ObjectClass");
 		if (result != NO_ERR)
-			Fatal(objTypeNum, " ObjectTypeManager.load: can't create object ");
+			mc2::content::error(mc2::content::Kind::ObjectType, contentPath.c_str(), "missing ObjectClass");
 				
-		result = objTypeFile.readIdLong("ObjectTypeNum",objectTypeNum);
+		if (result == NO_ERR) result = objTypeFile.readIdLong("ObjectTypeNum",objectTypeNum);
 		if (result != NO_ERR)
-			Fatal(objTypeNum, " ObjectTypeManager.load: can't create object ");
+			objectTypeNum = -1;
 
 		objTypeFile.close();
 
 		objectFile->seekPacket(objTypeNum);
 		}
 	else
-		Fatal(objTypeNum, " ObjectTypeManager.load: can't create object ");
+		mc2::content::error(mc2::content::Kind::ObjectType, contentPath.c_str(), "missing object packet");
 
 	//-----------------------------------------------------
 	// Now that we know what type it is, let's create it...
@@ -388,7 +393,6 @@ ObjectTypePtr ObjectTypeManager::load (ObjectTypeNumber objTypeNum, bool noCache
 			//----------------------------------------------
 			// In theory we can't ever get here.
 			// Because we did our jobs correctly!!
-			Fatal(CANT_LOAD_INVALID_OBJECT, " ObjectTypeManager.load: can't create object ");
 			break;
 		case BATTLEMECH_TYPE: {
 			if (packageType)
@@ -396,14 +400,14 @@ ObjectTypePtr ObjectTypeManager::load (ObjectTypeNumber objTypeNum, bool noCache
 			objType = new BattleMechType;
 			objType->setObjTypeNum(objTypeNum);
 			if (objType->init(objectFile,objectFile->getPacketSize()) != NO_ERR)
-				Fatal(objectTypeNum, " ObjectTypeManager.load: unable to init Mech type ");
+				rejectType();
 			}
 			break;
 		case VEHICLE_TYPE: {
 			objType = new GroundVehicleType;
 			objType->setObjTypeNum(objTypeNum);
 			if (objType->init(objectFile,objectFile->getPacketSize()) != NO_ERR)
-				Fatal(objectTypeNum, " ObjectTypeManager.load: unable to init Vehicle type ");
+				rejectType();
 			}
 			break;			
 		case TREEBUILDING_TYPE:
@@ -411,14 +415,14 @@ ObjectTypePtr ObjectTypeManager::load (ObjectTypeNumber objTypeNum, bool noCache
 			objType = new BuildingType;
 			objType->setObjTypeNum(objTypeNum);
 			if (objType->init(objectFile,objectFile->getPacketSize()) != NO_ERR)
-				Fatal(objectTypeNum, " ObjectTypeManager.load: unable to init Building type ");
+				rejectType();
 			}
 			break;
 		case TREE_TYPE: {
 			objType = new TerrainObjectType;
 			objType->setObjTypeNum(objTypeNum);
 			if (objType->init(objectFile,objectFile->getPacketSize()) != NO_ERR)
-				Fatal(objectTypeNum, " ObjectTypeManager.load: unable to init TerrainObject:Tree type ");
+				rejectType();
 			}
 			break;
 		case TERRAINOBJECT_TYPE: {
@@ -427,7 +431,7 @@ ObjectTypePtr ObjectTypeManager::load (ObjectTypeNumber objTypeNum, bool noCache
 			if (isMiscTerrObj)
 				(static_cast<TerrainObjectTypePtr>(objType))->initMiscTerrObj(objTypeNum);
 			else if (objType->init(objectFile,objectFile->getPacketSize()) != NO_ERR)
-				Fatal(objectTypeNum, " ObjectTypeManager.load: unable to init TerrainObject type ");
+				rejectType();
 			}
 			break;
 		case WEAPONBOLT_TYPE:
@@ -435,7 +439,7 @@ ObjectTypePtr ObjectTypeManager::load (ObjectTypeNumber objTypeNum, bool noCache
 			objType = new WeaponBoltType;
 			objType->setObjTypeNum(objTypeNum);
 			if (objType->init(objectFile,objectFile->getPacketSize()) != NO_ERR)
-				Fatal(objectTypeNum, " ObjectTypeManager.load: unable to init WeaponBolt type ");
+				rejectType();
 		}
 		break;
 
@@ -443,7 +447,7 @@ ObjectTypePtr ObjectTypeManager::load (ObjectTypeNumber objTypeNum, bool noCache
 			objType = new TurretType;
 			objType->setObjTypeNum(objTypeNum);
 			if (objType->init(objectFile,objectFile->getPacketSize()) != NO_ERR)
-				Fatal(objectTypeNum, " ObjectTypeManager.load: unable to init Turret type ");
+				rejectType();
 			}
 			break;
 
@@ -451,7 +455,7 @@ ObjectTypePtr ObjectTypeManager::load (ObjectTypeNumber objTypeNum, bool noCache
 			objType = new ExplosionType;
 			objType->setObjTypeNum(objTypeNum);
 			if (objType->init(objectFile,objectFile->getPacketSize()) != NO_ERR)
-				Fatal(objectTypeNum, " ObjectTypeManager.load: unable to init Explosion type ");
+				rejectType();
 			}
 			break;
 
@@ -459,7 +463,7 @@ ObjectTypePtr ObjectTypeManager::load (ObjectTypeNumber objTypeNum, bool noCache
 			objType = new FireType;
 			objType->setObjTypeNum(objTypeNum);
 			if (objType->init(objectFile,objectFile->getPacketSize()) != NO_ERR)
-				Fatal(objectTypeNum, " ObjectTypeManager.load: unable to init Fire type ");
+				rejectType();
 			}
 			break;
 
@@ -467,7 +471,7 @@ ObjectTypePtr ObjectTypeManager::load (ObjectTypeNumber objTypeNum, bool noCache
 			objType = new GateType;
 			objType->setObjTypeNum(objTypeNum);
 			if (objType->init(objectFile,objectFile->getPacketSize()) != NO_ERR)
-				Fatal(objectTypeNum, " ObjectTypeManager.load: unable to init Gate type ");
+				rejectType();
 			}
 			break;
 
@@ -475,7 +479,7 @@ ObjectTypePtr ObjectTypeManager::load (ObjectTypeNumber objTypeNum, bool noCache
 			objType = new ArtilleryType;
 			objType->setObjTypeNum(objTypeNum);
 			if (objType->init(objectFile,objectFile->getPacketSize()) != NO_ERR)
-				Fatal(objectTypeNum, " ObjectTypeManager.load: unable to init Artillery type ");
+				rejectType();
 			}
 			break;
 
@@ -485,7 +489,7 @@ ObjectTypePtr ObjectTypeManager::load (ObjectTypeNumber objTypeNum, bool noCache
 			objType = new BuildingType;
 			objType->setObjTypeNum(objTypeNum);
 			if (objType->init(objectFile,objectFile->getPacketSize()) != NO_ERR)
-				Fatal(objectTypeNum, " ObjectTypeManager.load: unable to init KliegLight(BuildingType) ");
+				rejectType();
 			}
 			break;
 
@@ -497,16 +501,16 @@ ObjectTypePtr ObjectTypeManager::load (ObjectTypeNumber objTypeNum, bool noCache
 			//Fatal(OBJECT_TYPE_NUMBER_UNDEFINED, " ObjectTypeManager.load: undefined objType ");
 	}
 
-	// Mod-tolerance: the CRAPPY_OBJECT arm above breaks without assigning
-	// objType (its Fatal() is soft in Release), and mod paks can deliver
-	// ObjectClass.ObjectTypeNum = CRAPPY_OBJECT or some other case arm whose
-	// new-allocation was never reached. Fall back to a stub BattleMechType
-	// so the mission can still spawn player mechs — their actual chassis
-	// comes from the CSV via BattleMech::init(variantNum), not the pak entry.
 	if (!objType) {
-		objType = new BattleMechType;
+		// Only a declared CSV-backed mover can replace a missing pak definition with a mech.
+		if (csvMover && !packageType)
+			objType = new BattleMechType;
+		else {
+			mc2::content::error(mc2::content::Kind::ObjectType, contentPath.c_str(), "unusable object type; invisible terrain placeholder");
+			objType = std::make_unique<TerrainObjectType>().release();
+			objType->setExtentRadius(0.0f);
+		}
 		objType->setObjTypeNum(objTypeNum);
-		PAUSE((" ObjectTypeManager.load: objType NULL post-switch for objTypeNum %d — substituting stub BattleMechType ", static_cast<int>(objTypeNum)));
 	}
 
 	if (noCacheOut)	{

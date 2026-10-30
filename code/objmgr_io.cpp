@@ -1,4 +1,6 @@
 #include "save_archive.h"
+#include "content_error.h"
+#include <string>
 #include "save_exactness.h"
 #include "appearance_rng.h"
 #include "sim_rng_state.h"
@@ -124,8 +126,10 @@ void GameObjectManager::countObject( ObjDataLoader *data)
 	if (!objType)
 		objType = objTypeManager->load(data->objTypeNum);
 	
-	if (!objType)
+	if (!objType) {
+		mc2::content::error(mc2::content::Kind::ObjectType, std::to_string(data->objTypeNum).c_str(), "placed object type missing; skipped");
 		return;
+	}
 			//Fatal(objDataBlock[i].objTypeNum, " GameObjectManager.countTerrainObjects: bad objType ");
 		switch (objType->getObjectClass()) 
 		{

@@ -195,6 +195,8 @@ float startLocal = 40.0f;
 	return(0);
 }
 
+#include "content_error.h"
+
 void Mover::setMoveType (long type) {
 
 	moveType = type;
@@ -204,8 +206,11 @@ void Mover::setMoveType (long type) {
 		moveLevel = 0;
 	else if (moveType == MOVETYPE_AIR)
 		moveLevel = 2;
-	else
-		STOP(("Mover.setMoveType: bad moveType %d", type));
+	else {
+		mc2::content::error(mc2::content::Kind::MoveType, name, "invalid MoveType; using ground");
+		moveType = MOVETYPE_GROUND;
+		moveLevel = 0;
+	}
 }
 
 
