@@ -43,7 +43,7 @@ inline constexpr std::array<KnownSection, 4> knownSections{{{tagAnimation, 3}, {
 // Object records themselves remain in stable handle order for legacy readers.
 struct SavedMoverLists {
     std::vector<std::uint32_t> mechs, vehicles, movers, friendly, hostile;
-    std::int32_t turn = 2;
+    std::int32_t turn = 0;
     void serialize(Archive& archive, std::uint32_t version = 2) {
         archive.sequence(mechs, maxSequenceLength);
         archive.sequence(vehicles, maxSequenceLength);

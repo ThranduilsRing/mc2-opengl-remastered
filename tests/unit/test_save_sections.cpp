@@ -28,7 +28,7 @@ TEST_CASE("save fields: compacted mover pools and registration order round trip"
     legacyRestored.serialize(legacyInput, 1);
     REQUIRE(legacyInput.finish());
     auto legacyExpected = expected;
-    legacyExpected.turn = 2;
+    legacyExpected.turn = 0;
     CHECK(legacyRestored == legacyExpected);
     auto truncated = output.bytes();
     truncated.pop_back();
