@@ -753,7 +753,7 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_WATER_HDRI_REFL_FULL", Kind::Bool, Rule::Lead0, {}},
     {"MC2_WATER_MATERIAL_PROBE", Kind::Bool, Rule::Presence, {}},
     {"MC2_WATER_REFLECTION", Kind::Bool, Rule::Lead0Kill, {}},
-    {"MC2_WATER_REFLECTION_RT", Kind::Bool, Rule::Lead0, {}},
+    {"MC2_WATER_REFLECTION_RT", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_WATER_S6_COST", Kind::Bool, Rule::Presence, {}},
     {"MC2_WATER_S6_TRACE", Kind::Bool, Rule::Presence, {}},
     {"MC2_WATER_SHORE_FEATHER", Kind::Float, Rule::Prefix, {}},

@@ -3,6 +3,7 @@
 #include "../../GameAdapters/MissionEnvironmentAdapter.h"
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"
+#include "Gates/render_options.h"
 #include "ibl_sh_runtime.h"
 #include "../../RenderCore/IblHdriRegistry.h"
 #include "../../RenderCore/IblShRegistry.h"
@@ -19,6 +20,8 @@
 // Definitions in gameos_graphics.cpp / gos_postprocess.cpp / gos_particle_bridge.cpp.
 extern float gos_GetWaterSkyTintStrength();
 extern void  gos_SetWaterSkyTintStrength(float v);
+extern int   gos_GetWaterReflectionQuality();
+extern void  gos_SetWaterReflectionQuality(int quality);
 extern float gos_GetExposure();
 extern void  gos_SetExposure(float v);
 extern "C" void  gos_vfx_setBrightness(float v);
@@ -56,7 +59,8 @@ std::map<std::string, float> engineDefaults() {
         {"vignette",0}, {"topWarmthStrength",0},
         {"unitAmbientScale",1.2f}, {"buildingSpillIntensityScale",1.0f},
         {"exposure",1}, {"shadowSoftness",2.5f}, {"staticPropIblStrength",0.5f},
-        {"waterSkyTintStrength",0}, {"vfxBrightness",1}, {"vfxAdditiveBrightness",1},
+        {"waterSkyTintStrength",0}, {"waterReflections",float(mc2::options::current().waterReflections)},
+        {"vfxBrightness",1}, {"vfxAdditiveBrightness",1},
         {"vfxLitStrength",0.7f}, {"mechSpecularStrength",0.05f},
         {"terrainClassGrassGmRLo",-0.02f}, {"terrainClassGrassGmRHi",0.06f},
         {"terrainClassGrassBrLo",0.22f}, {"terrainClassGrassBrHi",0.40f},
@@ -263,6 +267,11 @@ static void applyKey(const char* key, float val, int& count) {
         // every mission load and replaces the batcher's pre-mission fallback.
         g_iblShStrength = val < 0.0f ? 0.0f : (val > 3.0f ? 3.0f : val);
         count++;
+    } else if (strcmp(key, "waterReflections") == 0) {
+        if (val >= 0 && val <= 2 && std::floor(val) == val) {
+            gos_SetWaterReflectionQuality(int(val));
+            count++;
+        }
     } else if (strcmp(key, "waterSkyTintStrength") == 0) {
         {
             gos_SetWaterSkyTintStrength(val);
@@ -373,6 +382,7 @@ bool visualTuning_saveCurrentToMission() {
     current["exposure"]                  = gos_GetExposure();
     current["staticPropIblStrength"]     = g_iblShStrength;
     current["waterSkyTintStrength"]      = gos_GetWaterSkyTintStrength();
+    current["waterReflections"]         = float(gos_GetWaterReflectionQuality());
     current["vfxBrightness"]             = gos_vfx_getBrightness();
     current["vfxAdditiveBrightness"]     = gos_vfx_getAdditiveBrightness();
     current["vfxLitStrength"]            = gos_vfx_getLitStrength();  // VFX-LIT-PARTICLES-MVP-1

@@ -33,15 +33,15 @@ def test_completeness(tmp_path, monkeypatch):
     build.mkdir()
     target.mkdir()
     (target / EXE).write_bytes(b"MZ")
-    for d in dp.FFMPEG_DLLS:
-        (build / d).write_bytes(b"x")
+    for d in dp.RUNTIME_DLLS:
+        (build / d.lower()).write_bytes(b"x")
     # check-only: nothing copied, everything missing is listed
     gaps = dp.check_install_complete(str(target), EXE, str(build), fix=False)
-    assert set(dp.FFMPEG_DLLS) <= set(gaps) and {"assets/", "data/", "shaders/"} <= set(gaps)
-    assert not (target / dp.FFMPEG_DLLS[0]).exists()
+    assert {d.lower() for d in dp.RUNTIME_DLLS} <= set(gaps) and {"assets/", "data/", "shaders/"} <= set(gaps)
+    assert not (target / dp.RUNTIME_DLLS[0]).exists()
     # fix: DLLs copied from the build dir, only the folders remain
     assert dp.check_install_complete(str(target), EXE, str(build)) == ["assets/", "data/", "shaders/"]
-    assert (target / dp.FFMPEG_DLLS[0]).is_file()
+    assert (target / dp.RUNTIME_DLLS[0]).is_file()
     for d in dp.REQUIRED_DIRS:
         (target / d).mkdir()
         (target / d / "f").write_bytes(b"x")
@@ -76,7 +76,7 @@ def test_transitive_imports_are_walked(tmp_path, monkeypatch):
     (target / EXE).write_bytes(b"MZ")
     (build / "a_dep.dll").write_bytes(b"x")
     graph = {EXE: {"a_dep.dll"}, "a_dep.dll": {"b_dep.dll"}}
-    monkeypatch.setattr(dp, "FFMPEG_DLLS", ())
+    monkeypatch.setattr(dp, "RUNTIME_DLLS", ())
     monkeypatch.setattr(dp, "_pe_imports", lambda path: graph.get(Path(path).name, set()))
     gaps = dp.check_install_complete(str(target), EXE, str(build), fix=True)
     assert "b_dep.dll" in gaps and "a_dep.dll" not in gaps
@@ -128,7 +128,7 @@ def test_viewer_payload_provenance_runtime_and_shaders(tmp_path, monkeypatch, si
 def test_completeness_checks_installed_viewer(tmp_path, monkeypatch):
     (tmp_path / EXE).write_bytes(b"MZ")
     (tmp_path / "mc2_asset_viewer.exe").write_bytes(b"MZ")
-    monkeypatch.setattr(dp, "FFMPEG_DLLS", ())
+    monkeypatch.setattr(dp, "RUNTIME_DLLS", ())
     monkeypatch.setattr(dp, "_pe_imports", lambda path: {"viewer_only.dll"}
                         if Path(path).name == "mc2_asset_viewer.exe" else set())
     assert "viewer_only.dll" in dp.check_install_complete(str(tmp_path), EXE, str(tmp_path), fix=False)

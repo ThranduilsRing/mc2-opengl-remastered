@@ -107,7 +107,11 @@ disk_guard "${TMPDIR:-/tmp}"   8 "release staging tree (mktemp -d)"
 
 mkdir -p "$OUTDIR"
 
-z() { "$SEVENZIP" a -tzip -mx=7 -bso0 -bsp0 "$@"; }
+z() {
+    "$SEVENZIP" a -tzip -mx=7 -bso0 -bsp0 "$@"
+    # Every independently downloadable archive carries the distribution terms.
+    ( cd "$REPO" && "$SEVENZIP" a -tzip -mx=7 -bso0 -bsp0 "$1" license.txt EULA.txt LICENSES.md )
+}
 
 # Stage a clean tree we can shape, so we can exclude stock-resolution burnins
 # from gamedata without touching the deployed install.
@@ -249,6 +253,9 @@ echo "[engine] staging"
 mkdir -p "$STAGE/engine"
 cp "$DEPLOY/mc2.exe" "$STAGE/engine/"
 cp -r "$DEPLOY/shaders" "$STAGE/engine/"
+if ! find "$STAGE/engine/shaders/vulkan" -name '*.spv' -type f -size +0c -print -quit | grep -q .; then
+    echo "[engine] FAIL: missing baked Vulkan SPIR-V"; exit 1
+fi
 for importer in mc2_import mc2x_import mco_import; do
     mkdir -p "$STAGE/engine/tools"
     cp -r "$REPO/tools/$importer" "$STAGE/engine/tools/"
@@ -272,41 +279,44 @@ fi
 # the REPO tree (canonical, reviewed content) — NOT from the deploy's mods/
 # dir, which accumulates local/third-party mods that must never leak into a
 # public zip. mods/dist (packed .mc2mod artifacts) is build output, excluded.
-echo "[engine] staging example mods (repo mods/)"
+echo "[engine] staging example mods (examples/mods/)"
 mkdir -p "$STAGE/engine/mods"
-for moddir in "$REPO"/mods/*/; do
+for moddir in "$REPO"/examples/mods/*/; do
+    [ -f "$moddir/mod.json" ] && [ -d "$moddir/data" ] || continue
     modname="$(basename "$moddir")"
-    [ "$modname" = "dist" ] && continue
     cp -r "$moddir" "$STAGE/engine/mods/$modname"
 done
-# Runtime DLLs at the deploy root (SDL2, GLEW, FFmpeg, MSVC redist, etc).
-for f in "$DEPLOY"/*.dll "$DEPLOY"/run-with-log.bat "$DEPLOY"/run-mc2.bat; do
+# Reviewed runtime DLLs only. The driver supplies Vulkan; users install the
+# x64 VC++ redistributable. Never ship debug DLLs or leftovers from an old deploy.
+while IFS= read -r dll; do
+    dll="${dll%$'\r'}"
+    [ -n "$dll" ] || continue
+    [ -f "$DEPLOY/$dll" ] || { echo "[engine] FAIL: missing $dll"; exit 1; }
+    cp "$DEPLOY/$dll" "$STAGE/engine/"
+done < "$REPO/scripts/release-dlls.txt"
+for f in "$DEPLOY"/run-with-log.bat "$DEPLOY"/run-mc2.bat; do
     [ -e "$f" ] && cp "$f" "$STAGE/engine/"
 done
 # Idiot-proof docs at the install root. INSTALL.txt covers SmartScreen,
 # VC++ runtime, "don't install under Program Files", and the bat picker.
 # RELEASE_README has the full feature list, known issues, and GH issue
 # triage. license.txt + EULA.txt are required for any public distribution.
-for f in "$DEPLOY"/INSTALL.txt "$DEPLOY"/RELEASE_README.md "$DEPLOY"/license.txt "$DEPLOY"/EULA.txt; do
-    [ -e "$f" ] && cp "$f" "$STAGE/engine/"
-done
+cp "$REPO/RELEASE_README.md" "$STAGE/engine/"
+if [ -f "$DEPLOY/INSTALL.txt" ]; then cp "$DEPLOY/INSTALL.txt" "$STAGE/engine/"; fi
 # Editor splashes at the deploy root (esplash.bmp, tacsplash.bmp).
 for f in "$DEPLOY"/esplash.bmp "$DEPLOY"/tacsplash.bmp; do
     [ -e "$f" ] && cp "$f" "$STAGE/engine/"
 done
-# Prefs files at the deploy root. *.cfg glob naturally excludes
-# options.cfg.old (different extension), which is a developer-side backup
-# we don't want to ship.
-for f in "$DEPLOY"/*.cfg; do
-    [ -e "$f" ] && cp "$f" "$STAGE/engine/"
+# Factory preferences only. First launch creates options.cfg from minprefs.cfg;
+# never distribute the packager's personal settings or harness configurations.
+for cfg in minprefs.cfg orgprefs.cfg system.cfg; do
+    cp "$DEPLOY/$cfg" "$STAGE/engine/"
 done
 rm -f "$OUTDIR/mc2-remastered-engine.zip"
 ( cd "$STAGE/engine" && z "$OUTDIR/mc2-remastered-engine.zip" . ) >/dev/null
 # Sanity: engine zip must contain the cfg files that gate the sniffer
-# branch. options.cfg's presence is what makes mc2.exe skip the sniffer
-# dialog on first launch; minprefs.cfg is the fallback source the engine
-# would copy from if options.cfg ever went missing.
-for required_cfg in options.cfg minprefs.cfg orgprefs.cfg system.cfg; do
+# branch. minprefs.cfg is the factory source for first-launch options.cfg.
+for required_cfg in minprefs.cfg orgprefs.cfg system.cfg; do
     if ! "$SEVENZIP" l "$OUTDIR/mc2-remastered-engine.zip" | grep -q " $required_cfg\$"; then
         echo "[engine] FAIL — $required_cfg missing from engine.zip (sniffer-loop regression)"; exit 1
     fi

@@ -58,6 +58,7 @@ struct WaterCullFrame {
     float    shoreExt;
     uint32_t mapSide;
     int32_t  biasLegacy;
+    uint32_t reflectionGroupsX = 0, reflectionGroupsY = 0;
 };
 
 // Result of one GL-vs-VK comparison (parity frames only).
@@ -123,7 +124,7 @@ private:
     // The per-frame inputs (lighting vertices and lights, the two parameter blocks) are frame-ring spans bound with dynamic offsets; ringBound_[par] = the
     // ring buffer slot `par`'s bindings currently name (the slot's set is rewritten only after the island's slot fence retired its last use).
     VkBuffer ringBound_[kSlots] = {VK_NULL_HANDLE, VK_NULL_HANDLE};
-    OwnedBuffer argsUbo_[kSlots];   // constant: the thin capacity
+    OwnedBuffer argsUbo_[kSlots];   // thin capacity + this frame's reflection dispatch size
     OwnedBuffer header_[kSlots], drawArgs_[kSlots], thin_[kSlots];   // device-local
     // Parity readback (host-visible), made on first use.
     OwnedBuffer parityHdr_, parityThin_, parityLight_;

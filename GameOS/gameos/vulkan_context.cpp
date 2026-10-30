@@ -440,6 +440,11 @@ bool VulkanContext::init(bool wantPresent) {
 
     VkPhysicalDeviceFeatures2 enableFeatures{};
     enableFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+    // Optional water-only near-plane clamp for cinematic cameras. Devices
+    // without this core feature retain ordinary raster clipping.
+    VkPhysicalDeviceFeatures optionalWaterFeatures{};
+    vkGetPhysicalDeviceFeatures(phys_, &optionalWaterFeatures);
+    enableFeatures.features.depthClamp = optionalWaterFeatures.depthClamp;
     VkPhysicalDeviceVulkan12Features en12{};
     en12.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
     VkPhysicalDeviceVulkan13Features en13{};

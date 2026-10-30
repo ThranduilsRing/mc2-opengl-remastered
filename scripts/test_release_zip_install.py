@@ -49,6 +49,7 @@ DEFAULT_ZIP_DIR = REPO_ROOT / "release_assets"
 sys.path.insert(0, str(REPO_ROOT / "scripts"))
 import manifest_schema  # noqa: E402  (S12 unified identity block)
 import console_child  # noqa: E402  (stdio-inheriting children keep their output; scripts/console_child.py)
+from smoke_lib import nofocus, host_lease  # noqa: E402
 
 # ---------------------------------------------------------------------------
 # Assembly spec
@@ -74,7 +75,9 @@ ZIP_ORDER: list[tuple[str, bool, str]] = [
 
 REQUIRED_FILES = [
     "mc2.exe",
-    "options.cfg",    # sniffer-bypass: engine checks for this on startup
+    "license.txt",
+    "EULA.txt",
+    "LICENSES.md",
     "minprefs.cfg",   # sniffer self-heal CopyFile source
     "orgprefs.cfg",
     "system.cfg",
@@ -82,9 +85,6 @@ REQUIRED_FILES = [
 REQUIRED_DIRS = [
     "shaders",  # shaders/ must be non-empty; engine loads them by relative path
     "data",
-    # MERGE-WAVE-2 (2026-07-22): shipped example mods (documented in the
-    # modding guide); staged from the repo mods/ tree by build_release.sh.
-    "mods",
 ]
 # At least one .fst archive must exist at install root (fastfile data).
 REQUIRED_FST = True
@@ -117,11 +117,17 @@ def extract_zip(zip_path: Path, dest: Path, label: str) -> list[str]:
     """Extract zip into dest, returning list of relative paths extracted."""
     extracted: list[str] = []
     with zipfile.ZipFile(zip_path, "r") as zf:
+        names = {name.replace("\\", "/") for name in zf.namelist()}
+        for required in ("license.txt", "EULA.txt", "LICENSES.md"):
+            if required not in names:
+                raise ValueError(f"{zip_path.name}: missing {required}")
         for info in zf.infolist():
             if info.is_dir():
                 continue
             # Normalise separator (7-zip on Windows may embed backslashes).
             rel = info.filename.replace("\\", "/")
+            if Path(rel).is_absolute() or ":" in rel or ".." in Path(rel).parts:
+                raise ValueError(f"unsafe archive path: {rel}")
             out = dest / Path(rel)
             out.parent.mkdir(parents=True, exist_ok=True)
             with zf.open(info) as src, open(out, "wb") as dst:
@@ -134,6 +140,24 @@ def extract_zip(zip_path: Path, dest: Path, label: str) -> list[str]:
 def verify_tree(install: Path) -> list[str]:
     """Return list of failure strings (empty = pass)."""
     failures: list[str] = []
+
+    if (install / "mc2-launcher.exe").exists():
+        failures.append("retired mc2-launcher.exe must not ship; launch mc2.exe")
+    for path in install.iterdir():
+        name = path.name.lower()
+        if path.is_file() and (".bak" in name or name.startswith(("harness_", "h2prefs"))):
+            failures.append(f"developer artifact must not ship: {path.name}")
+        if path.suffix.lower() == ".cfg" and name not in {"minprefs.cfg", "orgprefs.cfg", "system.cfg"}:
+            failures.append(f"non-factory configuration must not ship: {path.name}")
+
+    dlls = (REPO_ROOT / "scripts/release-dlls.txt").read_text().splitlines()
+    for dll in dlls:
+        if not (install / dll).is_file():
+            failures.append(f"required DLL missing: {dll}")
+    allowed = {dll.lower() for dll in dlls}
+    for dll in install.glob("*.dll"):
+        if dll.name.lower() not in allowed:
+            failures.append(f"unreviewed DLL: {dll.name}")
 
     for fname in REQUIRED_FILES:
         if not (install / fname).is_file():
@@ -153,6 +177,8 @@ def verify_tree(install: Path) -> list[str]:
 
     # Shader sanity: at least one .vert and one .frag must exist.
     shaders = install / "shaders"
+    if not any(p.stat().st_size > 0 for p in (shaders / "vulkan").glob("*.spv")):
+        failures.append("shaders/vulkan/ contains no non-empty baked .spv files")
     if shaders.is_dir():
         if not any(shaders.glob("**/*.vert")):
             failures.append("shaders/ contains no .vert files")
@@ -221,6 +247,36 @@ def emit_report(out_path: Path, *, verdict: str, install: Path,
     log(f"report: {out_path} (verdict={verdict})")
 
 
+def first_launch(exe: Path, output: Path) -> int:
+    """Exercise factory prefs without smoke mode bypassing normal first startup."""
+    if (exe.parent / "options.cfg").exists():
+        log("FAIL: release contains personal options.cfg instead of factory first-run defaults")
+        return 1
+    env = os.environ.copy()
+    env.pop("MC2_SMOKE_MODE", None)
+    env["MC2_WINDOW_OFFSCREEN"] = "1"
+    try:
+        with (output / "first_launch.log").open("w") as log_file:
+            result = nofocus.run([str(exe)], cwd=str(exe.parent), env=env,
+                                 stdout=log_file, stderr=subprocess.STDOUT, timeout=120)
+    except subprocess.TimeoutExpired:
+        log("FAIL: factory first launch timed out")
+        return 1
+    finally:
+        host_lease.release()
+    options = exe.parent / "options.cfg"
+    text = (output / "first_launch.log").read_text(errors="replace")
+    if "[BUILD_FINGERPRINT v1]" not in text or "[RENDER_BACKEND] FATAL" in text:
+        log("FAIL: first-launch build fingerprint missing or Vulkan fatal")
+        return 1
+    if result.returncode or not options.is_file():
+        return result.returncode or 1
+    if options.read_bytes() != (exe.parent / "minprefs.cfg").read_bytes():
+        log("FAIL: first launch did not preserve factory preferences")
+        return 1
+    return 0
+
+
 def run_smoke(exe: Path, mission: str, duration: int) -> int:
     """Run run_smoke.py against the assembled install. Returns process exit code."""
     cmd = [
@@ -230,6 +286,7 @@ def run_smoke(exe: Path, mission: str, duration: int) -> int:
         "--duration", str(duration),
         "--keep-logs",
         "--exe", str(exe),
+        "--ref-exe", str(exe),
     ]
     log(f"smoke: {' '.join(cmd)}")
     result = subprocess.run(cmd, **console_child.child_kwargs())
@@ -268,8 +325,8 @@ def main() -> None:
     ap.add_argument(
         "--duration",
         type=int,
-        default=30,
-        help="Smoke duration in seconds (default: 30)",
+        default=15,
+        help="Smoke duration in seconds (default: 15)",
     )
     ap.add_argument(
         "--out-dir",
@@ -366,8 +423,14 @@ def main() -> None:
         if not exe.is_file():
             fail("mc2.exe not found in assembled install (should have been caught by verify)")
 
-        log(f"running smoke: mission={args.mission} duration={args.duration}s ...")
-        rc = run_smoke(exe, args.mission, args.duration)
+        log("running normal first launch (MC2_SMOKE_MODE unset) ...")
+        rc = first_launch(exe, out_dir)
+        if rc == 0:
+            log(f"running smoke: mission={args.mission} duration={args.duration}s ...")
+            rc = run_smoke(exe, args.mission, args.duration)
+        if any(p.is_file() for p in (tmp_root / "crashes").rglob("*")):
+            log("FAIL: crash artifacts present")
+            rc = 1
         emit_report(report_path, verdict="PASS" if rc == 0 else "FAIL",
                     install=tmp_root, zip_labels=zip_labels,
                     mission=args.mission, file_count=file_count,

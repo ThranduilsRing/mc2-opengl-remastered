@@ -75,6 +75,9 @@ def _ninja_tree(tmp_path):
     b = tmp_path / "build64-ninja"
     _touch(b / "build.ninja")
     _touch(b / "mc2.exe")
+    for dll in dp.RUNTIME_DLLS:
+        _touch(b / dll)
+    _touch(b / "shaders/vulkan/fixture.vert.spv")
     _touch(b / "CMakeFiles" / "mc2.dir" / "code" / "a.cpp.obj")
     return b
 
@@ -104,6 +107,22 @@ def test_enumerate_payload_needs_only_game(tmp_path):
     assert "mc2-launcher.exe" not in rel
     assert {"tools/mc2_import/import_tool.py", "tools/mc2x_import/manifest.py",
             "tools/mco_import/build_object2.py", "scripts/console_child.py"} <= rel
+
+
+def test_missing_baked_shaders_refuses_deploy(tmp_path):
+    import pytest
+    b = _ninja_tree(tmp_path)
+    (b / "shaders/vulkan/fixture.vert.spv").unlink()
+    with pytest.raises(SystemExit):
+        dp.enumerate_payload(str(ROOT), str(b), "mc2.exe", "mc2.pdb")
+
+
+def test_dynamic_resource_dll_is_required(tmp_path):
+    import pytest
+    b = _ninja_tree(tmp_path)
+    (b / "mc2res_64.dll").unlink()
+    with pytest.raises(SystemExit):
+        dp.enumerate_payload(str(ROOT), str(b), "mc2.exe", "mc2.pdb")
 
 
 def test_native_payload_has_no_windows_runtime(tmp_path):

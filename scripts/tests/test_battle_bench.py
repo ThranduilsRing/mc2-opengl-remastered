@@ -132,6 +132,7 @@ def test_bench_defaults_are_the_iteration_shape_until_acceptance():
 
 
 def test_bench_scrub_preserves_overlap_ab_gate(tmp_path, monkeypatch):
+    monkeypatch.setattr(bench.os, "environ", bench.os.environ.copy())
     monkeypatch.setattr(sys, "argv", ["run_battle_bench.py", "--out", str(tmp_path / "report")])
     monkeypatch.setenv("MC2_SIM_OVERLAP", "0")
     monkeypatch.setenv("MC2_SIM_OVERLAP_AUDIT", "1")

@@ -794,6 +794,10 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "VK-FIELD-VFX-2: per-bolt weapon-fire pipeline trace.",
     },
     {
+        "MC2_FEATURE_WATER_REFLECTION_RT", "MC2_WATER_REFLECTION_RT", EnvVarKind::Feature, true,
+        "Half-resolution spatial water reflection; =0 falls back to sky only. WaterReflections in options.cfg selects Off/Sky only/Half-res.",
+    },
+    {
         "MC2_FEATURE_WATER_SHORE_MASK", "MC2_WATER_SHORE_MASK", EnvVarKind::Feature, true,
         "WATER-SHORE-MASK-1: per-mission shoreline mask sidecar (data/missions/<m>.beauty/shoreline_mask.png) drives the water shore edge.",
     },

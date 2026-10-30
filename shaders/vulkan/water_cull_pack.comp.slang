@@ -85,13 +85,17 @@ float4 projectWaterClip(float wx, float wy, uint vWaterBits)
     return P.c0 * wx + P.c1 * wy + P.c2 * elev + P.c3;
 }
 
-bool pzOk(float4 clip)
+// Conservative triangle admission: clipping is the rasterizer's job. Requiring
+// every corner inside near Z removed whole water tiles in low cinematic views.
+// XY rejection also makes the reflection indirect dispatch zero off screen.
+bool triangleVisible(float4 a, float4 b, float4 c)
 {
-    if (clip.w <= 1e-4) return false;
-    float biasedZ = (P.misc1.w != 0)
-                  ? clip.z + WATER_DEPTH_FUDGE_FAST * clip.w
-                  : clip.z + WATER_DEPTH_FUDGE_FAST_REL * clip.z;
-    return biasedZ >= 0.0 && biasedZ < clip.w;
+    if (a.w <= 1e-4 && b.w <= 1e-4 && c.w <= 1e-4) return false;
+    if (a.x < -a.w && b.x < -b.w && c.x < -c.w) return false;
+    if (a.x >  a.w && b.x >  b.w && c.x >  c.w) return false;
+    if (a.y < -a.w && b.y < -b.w && c.y < -c.w) return false;
+    if (a.y >  a.w && b.y >  b.w && c.y >  c.w) return false;
+    return true;
 }
 
 [shader("compute")]
@@ -112,23 +116,23 @@ void main(uint3 tid : SV_DispatchThreadID)
     bool submergedSand = !waterFlagged && (r.v0e < thr || r.v1e < thr || r.v2e < thr || r.v3e < thr);
     if (!(waterFlagged || submergedSand)) return;
 
-    bool ok0 = pzOk(projectWaterClip(r.v0x, r.v0y, w0));
-    bool ok1 = pzOk(projectWaterClip(r.v1x, r.v1y, w1));
-    bool ok2 = pzOk(projectWaterClip(r.v2x, r.v2y, w2));
-    bool ok3 = pzOk(projectWaterClip(r.v3x, r.v3y, w3));
+    float4 clip0 = projectWaterClip(r.v0x, r.v0y, w0);
+    float4 clip1 = projectWaterClip(r.v1x, r.v1y, w1);
+    float4 clip2 = projectWaterClip(r.v2x, r.v2y, w2);
+    float4 clip3 = projectWaterClip(r.v3x, r.v3y, w3);
 
     bool isBottomLeft = (r.flags & kFlagBitUvModeBottomLeft) != 0u;
     bool pzTri1;
     bool pzTri2;
     if (!isBottomLeft)
     {
-        pzTri1 = ok0 && ok1 && ok2;
-        pzTri2 = ok0 && ok2 && ok3;
+        pzTri1 = triangleVisible(clip0, clip1, clip2);
+        pzTri2 = triangleVisible(clip0, clip2, clip3);
     }
     else
     {
-        pzTri1 = ok0 && ok1 && ok3;
-        pzTri2 = ok1 && ok2 && ok3;
+        pzTri1 = triangleVisible(clip0, clip1, clip3);
+        pzTri2 = triangleVisible(clip1, clip2, clip3);
     }
     if (!pzTri1 && !pzTri2) return;
 

@@ -194,7 +194,7 @@ P("MC2_WATER_HDRI_LOD", Float, 0.0, "gameos", "", "", passthrough | verified),  
 L(Lead0, "MC2_WATER_HDRI_REFL_FULL", Bool, false, "gameos", "", "", passthrough | verified),
 L(Presence, "MC2_WATER_MATERIAL_PROBE", Bool, false, "terrain", "", "", verified),
 L(Lead0Kill, "MC2_WATER_REFLECTION", Bool, true, "gameos", "", "", verified),
-L(Lead0, "MC2_WATER_REFLECTION_RT", Bool, false, "terrain", "", "", passthrough | verified),
+L(Lead0Kill, "MC2_WATER_REFLECTION_RT", Bool, true, "terrain", "", "Half-resolution spatial water reflection; =0 falls back to sky only. WaterReflections in options.cfg selects Off/Sky only/Half-res.", passthrough | registry(Feature, "MC2_FEATURE_WATER_REFLECTION_RT", -1, true) | verified),
 L(Presence, "MC2_WATER_S6_COST", Bool, false, "terrain", "", "S6 coarse cost A/B instrument: ONE QPC pair around the WHOLE per-frame setupTextures loop (NOT per-quad - the per-quad std::chrono COST_SPLIT scopes are...", passthrough | verified),
 L(Presence, "MC2_WATER_S6_TRACE", Bool, false, "terrain", "", "", verified),
 // ── WATER-SUN-SPEC-2 ───────────────────────────────────────────────────

@@ -1255,6 +1255,7 @@ TEST_CASE("render options default to what the gate rows they replaced defaulted 
     CHECK(d.postCasSharpness == 0.5f);
     CHECK(d.tonemapMode == 0);
     CHECK(d.shadowQuality == 2);
+    CHECK(d.waterReflections == 2);
     CHECK(d.shorelineLegacySuppress);
     CHECK(d.cpuPhongRetire);
     CHECK(d.staticPropAmbient);        // the flat fill is ON; the PBR specular below is OFF (owner ruling 2026-10-13: most props carry no PBR data)
@@ -1277,7 +1278,7 @@ TEST_CASE("render option keys are unique and findable") {
     CHECK(mo::find("NotAnOption") == nullptr);
     CHECK(mo::find("cpuphongretire") == mo::find("CpuPhongRetire"));   // keys are case-insensitive like options.cfg
     CHECK(mo::find("PostCAS") != mo::find("PostCASSharpness"));
-    CHECK(mo::kOptionCount == 19);
+    CHECK(mo::kOptionCount == 20);
 }
 
 TEST_CASE("render option values outside their bounds, NaN and garbage are rejected and change nothing") {

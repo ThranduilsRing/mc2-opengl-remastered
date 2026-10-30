@@ -21,13 +21,14 @@ def values(**changes):
 
 def test_table_has_the_engines_options_with_their_defaults():
     t = {o.key: o for o in rop.table()}
-    assert len(t) == 19
+    assert len(t) == 20
     assert t["BaseQuality"].default == 2 and (t["BaseQuality"].lo, t["BaseQuality"].hi) == (0, 2)
     assert t["RemasteredBuildings"].default is True
     assert t["SpatialAA"].default == 1 and (t["SpatialAA"].lo, t["SpatialAA"].hi) == (0, 3)
     assert t["ShadowQuality"].default == 2 and (t["ShadowQuality"].lo, t["ShadowQuality"].hi) == (0, 2)
     assert t["CpuPhongRetire"].default is True and t["StaticPropPbr"].default is False and t["StaticPropAmbient"].default is True
     assert t["ImpactDecals"].default == 2 and t["ImpactDecals"].hi == 2
+    assert t["WaterReflections"].default == 2 and (t["WaterReflections"].lo, t["WaterReflections"].hi) == (0, 2)
     assert t["SunAxisFix"].default is False
     assert t["PostCASSharpness"].default == 0.5 and t["PostCASSharpness"].hi == 1.0
     assert t["TonemapMode"].kind == "long" and (t["TonemapMode"].lo, t["TonemapMode"].hi) == (0, 3)

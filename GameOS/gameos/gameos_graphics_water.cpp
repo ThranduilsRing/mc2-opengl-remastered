@@ -7,6 +7,16 @@
 
 float mc2NightLightFactor();   // mclib/camera.cpp: 0 day .. 1 full night
 
+namespace { int waterReflectionQuality = -1; }
+int gos_GetWaterReflectionQuality() {
+    const int quality = waterReflectionQuality < 0 ? mc2::options::current().waterReflections : waterReflectionQuality;
+    if (!mc2::gate::get<"MC2_WATER_REFLECTION">()) return 0;
+    return quality == 2 && !mc2::gate::get<"MC2_WATER_REFLECTION_RT">() ? 1 : quality;
+}
+void gos_SetWaterReflectionQuality(int quality) {
+    waterReflectionQuality = quality < 0 ? 0 : quality > 2 ? 2 : quality;
+}
+
 
 // gos_terrain_bridge_bindThinUniforms deleted by DEAD-BRIDGE-DELETE-1: zero external
 // callers (the internal terrainBindThinUniformsForPatchStream IS live; this standalone
@@ -283,7 +293,7 @@ void gosRenderer::renderWaterFastPath(
     // RUNG-6.5 WATER-REFLECTION PORT: reflection inputs (MC2_WATER_REFLECTION=0 -> strength 0.0 -> FS block skipped; !isHdriReady -> lod -1 -> SH-L2 fallback).
     {
         const bool vkHdriAvail = ppVk->isHdriReady();
-        fsP.f2[1] = gos_GetWaterReflStrength();                       // u_waterReflStrength
+        fsP.f2[1] = gos_GetWaterReflectionQuality() ? gos_GetWaterReflStrength() : 0.0f;
         fsP.f2[2] = vkHdriAvail ? ppVk->getSkyYaw() : 0.0f;           // u_skyYaw
         fsP.f2[3] = vkHdriAvail ? mc2WaterHdriLodDefault() : -1.0f;   // u_waterHdriLod
         fsP.f3[0] = static_cast<float>(ppVk->getWidth());                          // u_waterScreenSize

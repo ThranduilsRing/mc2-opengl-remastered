@@ -11459,6 +11459,44 @@
    "count": 1
   },
   {
+   "tag": "WATER_VIS",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "mode",
+    "shore_active",
+    "field",
+    "kind",
+    "water",
+    "extent",
+    "wet"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "WATER_VIS",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "visible_recipe",
+    "xy",
+    "min_elev",
+    "bits",
+    "masks"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "WATER_VIS",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "wet_recipe",
+    "bounds"
+   ],
+   "count": 1
+  },
+  {
    "tag": "WRECK_PICK_PROBE",
    "ver": -1,
    "stream": "stdout",

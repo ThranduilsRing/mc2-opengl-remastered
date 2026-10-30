@@ -1,0 +1,90 @@
+// Spatial, water-only SSR. Alpha is coverage; missing/offscreen geometry uses the
+// water material's HDRI/SH sky. No history, jitter, readback or scene re-submission.
+#version 450
+layout(local_size_x=8, local_size_y=8) in;
+layout(set=0,binding=0,std140) uniform WaterVsParams {
+    mat4 worldToClip;
+    vec4 p0, p1, p2, p3;
+} U;
+layout(set=0,binding=1,std140) uniform WaterFsParams {
+    vec4 fogColor, f0;
+} F;
+layout(set=0,binding=9) uniform sampler2D sceneColor;
+layout(set=0,binding=10) uniform sampler2D sceneDepth;
+layout(set=0,binding=11,rgba16f) writeonly uniform image2D reflectionOut;
+
+vec3 unproject(mat4 inv, vec2 uv, float depth) {
+    vec4 h = inv * vec4(uv*2.0-1.0,depth,1.0);
+    return h.xyz/h.w;
+}
+void main() {
+    ivec2 pixel=ivec2(gl_GlobalInvocationID.xy), size=imageSize(reflectionOut);
+    if (any(greaterThanEqual(pixel,size))) return;
+    imageStore(reflectionOut,pixel,vec4(0));
+    vec2 uv=(vec2(pixel)+0.5)/vec2(size);
+    mat4 inv=inverse(U.worldToClip);
+    // The legacy projection's signed far plane lies behind the eye. Both
+    // depths below are on its visible branch, so the ray points into the scene.
+    vec3 nearP=unproject(inv,uv,1.0), farP=unproject(inv,uv,0.5);
+    vec3 ray=normalize(farP-nearP);
+    if (ray.z>=-0.0001) return;
+    float distanceToPlane=(U.p0.x-nearP.z)/ray.z;
+    vec3 origin=nearP+ray*distanceToPlane;
+    vec4 start=U.worldToClip*vec4(origin,1.0);
+    if (start.w<=0.0) return;
+    // Raster water owns coverage. Its shore depth-only lift can cover coarse
+    // terrain above this physical plane, so opaque depth cannot reject it here.
+    vec3 reflected=reflect(ray,vec3(0,0,1));
+    vec3 endWorld=origin+reflected*65536.0;
+    vec4 finish=U.worldToClip*vec4(endWorld,1.0);
+    // Clip before perspective division, including rays towards the camera.
+    if (finish.w<0.01) {
+        float t=(start.w-0.01)/(start.w-finish.w);
+        endWorld=mix(origin,endWorld,t);
+        finish=U.worldToClip*vec4(endWorld,1.0);
+    }
+    vec2 beginUV=start.xy/start.w*0.5+0.5;
+    vec2 delta=finish.xy/finish.w*0.5+0.5-beginUV;
+    float extent=1.0;
+    for (int axis=0;axis<2;++axis) {
+        if (abs(delta[axis])>0.00001)
+            extent=min(extent,((delta[axis]>0.0?0.999:0.001)-beginUV[axis])/delta[axis]);
+    }
+    if (extent<=0.0 || length(delta*extent*vec2(size))<2.0) return;
+    vec3 q0=origin/start.w, q1=endWorld/finish.w;
+    float k0=1.0/start.w, k1=1.0/finish.w;
+    float previous=0.0;
+    float previousGap=textureLod(sceneDepth,beginUV,0).r-start.z/start.w;
+    for (int i=1;i<=24;++i) {
+        float t=extent*float(i)/24.0;
+        vec2 hitUV=beginUV+delta*t;
+        float sceneZ=textureLod(sceneDepth,hitUV,0).r;
+        float rayZ=mix(start.z/start.w,finish.z/finish.w,t);
+        float gap=sceneZ-rayZ;
+        // Reflected rays may travel towards or away from the eye. Find either
+        // crossing direction; a one-sided test loses high-angle reflections.
+        if ((gap>=0.0)!=(previousGap>=0.0)) {
+            float lo=previous, hi=t;
+            for (int refine=0;refine<5;++refine) {
+                float mid=(lo+hi)*0.5;
+                vec2 midUV=beginUV+delta*mid;
+                float midGap=textureLod(sceneDepth,midUV,0).r-mix(start.z/start.w,finish.z/finish.w,mid);
+                if ((midGap>=0.0)==(previousGap>=0.0)) lo=mid;
+                else hi=mid;
+            }
+            hitUV=beginUV+delta*hi;
+            vec3 hit=unproject(inv,hitUV,textureLod(sceneDepth,hitUV,0).r);
+            vec3 rayPoint=mix(q0,q1,hi)/mix(k0,k1,hi);
+            // Reject the underside, lakebed and depth discontinuities. A miss
+            // remains transparent rather than stretching an edge texel.
+            if (hit.z>U.p0.x+1.0 && length(hit-rayPoint)<max(12.0,length(hit-origin)*0.005)) {
+                vec2 edge=min(hitUV,1.0-hitUV);
+                float confidence=smoothstep(0.0,0.04,min(edge.x,edge.y));
+                imageStore(reflectionOut,pixel,vec4(textureLod(sceneColor,hitUV,0).rgb*confidence,confidence));
+                return;
+            }
+        }
+        previous=t;
+        previousGap=gap;
+    }
+}

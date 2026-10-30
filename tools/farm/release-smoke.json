@@ -1,0 +1,16 @@
+{
+  "argv": ["python", "C:/mc2farm/harness/scripts/test_release_zip_install.py", "--zip-dir", "C:/mc2farm/release", "--out-dir", "C:/mc2farm/release-proof", "--mission", "mc2_01", "--duration", "15"],
+  "cwd": "C:/mc2farm/harness",
+  "timeout": 900,
+  "env": {
+    "PYTHONDONTWRITEBYTECODE": "1",
+    "TMP": "C:/mc2farm/tmp",
+    "TEMP": "C:/mc2farm/tmp",
+    "TMPDIR": "C:/mc2farm/tmp",
+    "MC2_HOST_LEASE_PATH": "C:/mc2farm/host_game_lease.json",
+    "MC2_DEPLOY_LEASE_PATH": "C:/mc2farm/deploy_leases.json",
+    "MC2_CHILD_REGISTRY_DIR": "C:/mc2farm/children",
+    "MC2_HOST_GAME_SLOTS": "1",
+    "MC2_DEBUG_STATE_DUMP": "1"
+  }
+}

@@ -6,11 +6,11 @@
 //
 // Set 0:
 //   b0  StructuredBuffer<uint>      header; [0] = visibleCount
-//   b1  RWStructuredBuffer<uint>    draw args (4 words, VkDrawIndirectCommand)
+//   b1  RWStructuredBuffer<uint>    draw (words 0..3), reflection dispatch (4..6)
 //   b2  ConstantBuffer<DrawArgsParams>
 
 struct DrawArgsParams {
-    int4 v;   // x maxThinRecords, y vertsPerRecord, z,w unused
+    int4 v;   // maxThinRecords, vertsPerRecord, reflection dispatch groups x/y
 };
 
 [[vk::binding(0, 0)]] StructuredBuffer<uint> header;
@@ -26,4 +26,9 @@ void main(uint3 tid : SV_DispatchThreadID)
     drawArgs[1] = 1u;
     drawArgs[2] = 0u;
     drawArgs[3] = 0u;
+    // No water admitted by this frame's cull -> zero reflection invocations.
+    drawArgs[4] = count != 0u ? uint(P.v.z) : 0u;
+    drawArgs[5] = uint(P.v.w);
+    drawArgs[6] = 1u;
+    drawArgs[7] = 0u;
 }

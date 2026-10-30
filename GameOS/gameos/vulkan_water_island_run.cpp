@@ -13,12 +13,63 @@ void gos_GetTerrainChunkGridInfo(int* mapSide, float* halfMap);
 
 #ifdef MC2_VULKAN_ISLAND
 
+int gos_GetWaterReflectionQuality();
+
+void vk_water_detail::record_reflection(WaterIsland* s, VkCommandBuffer cb, uint32_t par, const uint32_t* offsets, bool enabled) {
+    auto barrier=[&](VkImage image,VkImageAspectFlags aspect,VkImageLayout from,VkImageLayout to,
+                     VkPipelineStageFlags src,VkAccessFlags read,VkPipelineStageFlags dst,VkAccessFlags write) {
+        VkImageMemoryBarrier b{VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER};
+        b.srcAccessMask=read; b.dstAccessMask=write; b.oldLayout=from; b.newLayout=to;
+        b.srcQueueFamilyIndex=b.dstQueueFamilyIndex=VK_QUEUE_FAMILY_IGNORED;
+        b.image=image; b.subresourceRange={aspect,0,1,0,1};
+        vkCmdPipelineBarrier(cb,src,dst,0,0,nullptr,0,nullptr,1,&b);
+    };
+    // Keep the statically used water sampler valid even in Off/Sky-only mode.
+    if (!s->reflectionInitialized) {
+        barrier(s->reflectionImage.get(),VK_IMAGE_ASPECT_COLOR_BIT,VK_IMAGE_LAYOUT_UNDEFINED,VK_IMAGE_LAYOUT_GENERAL,
+            VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,0,VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+            VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_SHADER_READ_BIT);
+        s->reflectionInitialized=true;
+    }
+    if (!enabled) return;
+    MC2_VK_GPU_SCOPE(reflectionScope,cb,"VKIsl.Water.Reflection");
+    mc2vk::cmdBarrier(cb,VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+        VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT,
+        VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,VK_ACCESS_SHADER_WRITE_BIT);
+    barrier(s->sColorRes->image.get(),VK_IMAGE_ASPECT_COLOR_BIT,
+        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+        VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+        VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,VK_ACCESS_SHADER_READ_BIT);
+    const auto depthAspect=VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
+    barrier(s->sDepthRes->image.get(),depthAspect,
+        VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,
+        VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+        VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,VK_ACCESS_SHADER_READ_BIT);
+    mc2vk::infra::bind(cb,VK_PIPELINE_BIND_POINT_COMPUTE,s->reflectionPipe.get());
+    vkCmdBindDescriptorSets(cb,VK_PIPELINE_BIND_POINT_COMPUTE,s->reflectionLayout.get(),0,1,&s->set[par],2,offsets);
+    vkCmdDispatchIndirect(cb,s->native->drawArgs(par),16);
+    mc2vk::cmdBarrier(cb,VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,VK_ACCESS_SHADER_WRITE_BIT,
+        VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,VK_ACCESS_SHADER_READ_BIT);
+    barrier(s->sColorRes->image.get(),VK_IMAGE_ASPECT_COLOR_BIT,
+        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+        VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,VK_ACCESS_SHADER_READ_BIT,
+        VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT);
+    barrier(s->sDepthRes->image.get(),depthAspect,
+        VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+        VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,VK_ACCESS_SHADER_READ_BIT,
+        VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
+        VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT);
+}
+
 namespace {
 bool prepareNative(WaterIsland* s, mc2vk::VulkanContext& ctx) {
     if (s->native && s->native->ready()) return true;
     if (s->nativeFailed) return false;
     const auto capacity = WaterStream::GetNativeCapacity();
     if (!capacity) return false;
+    // GetNativeCapacity adds 4096 records of slack after counting eligible quads.
+    // A dry map skips the reflection pass, including its attachment transitions.
+    s->mapHasWater = capacity->eligibleBound > 4096u;
     ZoneScopedN("VKIsl.Water.PrepareNative");
     if (!s->recipeUploaded) {
         if (!upload_recipes_device(s, WaterStream::GetRecipes(), WaterStream::GetRecipeCount())) return false;
@@ -174,6 +225,7 @@ extern "C" int mc2_vk_water_island_run(
 
     const clk::time_point tStage0 = clk::now();
     const WaterStream::VkNativeInputs* nat = nullptr;   // STEP 3.4P: set in the feed block when the native producers run this frame
+    bool reflectThisFrame=false;
     {
     ZoneScopedN("VKIsl.Water.Feed");   // VK-ISLAND-TRACY-1: recipe/thin/UBO staging (steps 1-3)
     // ---- 1) Upload recipe SSBO once (mission-static), into device-local memory (the cull compute reads it every frame). ----
@@ -223,6 +275,8 @@ extern "C" int mc2_vk_water_island_run(
         // is really imported (mirrors GL u_shoreFlat = mode==3 && shTex != 0).
         const bool shoreSdf = static_cast<int>(fsLocal.f4[0] + 0.5f) == 3 &&
                               s->shHReal && s->shHSdf;
+        reflectThisFrame=s->mapHasWater && gos_GetWaterReflectionQuality()==2
+            && WaterStream::NativeWaterInFrustum(*nat,shoreSdf);
         vsLocal.p3[1] = shoreSdf ? 1.0f : 0.0f;
         std::memcpy(base, &vsLocal, sizeof(WaterVsParams));
         // RUNG-6.5 fail-soft: if the real HDRI bytes aren't imported (dummy
@@ -245,6 +299,7 @@ extern "C" int mc2_vk_water_island_run(
             fsLocal.f7[2] = (s->maskView != VK_NULL_HANDLE) ? 1.0f : 0.0f;
             fsLocal.f7[3] = halfMap;
         }
+        fsLocal.DEEP_COLOR[3] = reflectThisFrame ? 1.0f : 0.0f;
         std::memcpy(base + fsUboOff, &fsLocal, sizeof(WaterFsParams));
         if (s->ringBound[par] != uboSpan.buffer) {
             mc2vk::writeDynamicBinding(s->device, s->set[par], 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, uboSpan.buffer, sizeof(WaterVsParams));
@@ -285,6 +340,10 @@ extern "C" int mc2_vk_water_island_run(
             std::memcpy(wf.mvp, nat->mvp, sizeof(wf.mvp));
             wf.frameCos = nat->frameCos; wf.waterElevation = nat->waterElevation; wf.shoreExt = nat->shoreExt;
             wf.mapSide = nat->mapSide; wf.biasLegacy = nat->biasLegacy;
+            if (reflectThisFrame) {
+                wf.reflectionGroupsX=uint32_t(((w+1)/2+7)/8);
+                wf.reflectionGroupsY=uint32_t(((h+1)/2+7)/8);
+            }
             if (!s->native->record(cb, par, snap, wf, false)) {
                 // record() fails only before it records a command: close the begun buffer so it is never left open, then fail soft.
                 vkEndCommandBuffer(cb);
@@ -292,6 +351,8 @@ extern "C" int mc2_vk_water_island_run(
             }
         }
 
+        const uint32_t uboOffsets[2] = {static_cast<uint32_t>(uboSpan.offset), static_cast<uint32_t>(uboSpan.offset + fsUboOff)};
+        record_reflection(s,cb,par,uboOffsets,reflectThisFrame);
         // All attachments LOAD -> clear values ignored (array must still cover them).
         VkClearValue clears[3]{};
         VkRenderPassBeginInfo rbi{};
@@ -302,7 +363,6 @@ extern "C" int mc2_vk_water_island_run(
         MC2_VK_GPU_SCOPE(gpuScope, cb, "VKIsl.Water");
         vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
         mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->pipe.get());
-        const uint32_t uboOffsets[2] = {static_cast<uint32_t>(uboSpan.offset), static_cast<uint32_t>(uboSpan.offset + fsUboOff)};
         vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 0, 1, &s->set[par], 2, uboOffsets);
         const auto groundSet = s->groundLighting.set(par);
         vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 1, 1, &groundSet, 4, ground->offsets.data());

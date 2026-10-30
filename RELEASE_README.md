@@ -1,7 +1,10 @@
-# MechCommander 2 — OpenGL Remastered (v0.5.2)
+# MechCommander 2 — Remastered (Vulkan)
+
+Release version: `project(mc2 VERSION ...)` in `CMakeLists.txt`; the release
+tag must match it. The startup build fingerprint identifies the exact commit.
 
 A modernized build of MechCommander 2: PBR terrain, real-time shadows,
-tessellation, modern post-processing, a campaign/mod launcher, and a Mission
+tessellation, modern post-processing, an in-game campaign/mod picker, and a Mission
 Editor. Original gameplay and missions are unchanged. Plays the stock campaign
 plus a large library of community campaigns (MC2X / MCO) — 19 campaigns,
 ~398 missions.
@@ -12,8 +15,13 @@ campaigns), see [docs/STARTER-GUIDE.md](docs/STARTER-GUIDE.md).
 ## Requirements
 
 - Windows 10 or 11 (64-bit)
-- GPU with OpenGL 4.3 support (NVIDIA GTX 900 series or later, AMD RX 400
-  series or later, or Intel Iris Xe)
+- A Vulkan-capable GPU and current vendor driver. The engine requires Vulkan
+  1.2 plus dynamic rendering, synchronization2, buffer device address, timeline
+  semaphores and descriptor indexing; Vulkan version alone is insufficient.
+  Unsupported devices fail at startup; see `[VK_PROFILE]` and `[RENDER_BACKEND]`
+  in the log. The current error dialog describes this as Vulkan 1.3.
+- Microsoft Visual C++ 2015–2022 Redistributable (x64), installed separately
+  if the runtime is missing. `vulkan-1.dll` comes from the graphics driver.
 - ~6 GB free disk space
 
 ## Install
@@ -35,9 +43,10 @@ The `burnins-4x` zips are technically optional — the game falls back to
 stock-resolution lightmaps inside the FST archives — but terrain colormaps
 look noticeably blurry without them.
 
-No original MC2 install required to play the stock campaign. Community
-campaigns are imported from an existing MC2X/MCO install via the launcher
-(see below).
+The game-data zip contains original Microsoft/FASA assets. Distribution is
+subject to the included license/EULA; the maintainer must confirm redistribution
+rights before publishing. You can import data from an existing MC2/MC2X/MCO
+installation with the CLI below.
 
 **Optional:** Extract `mc2-load-points.zip` (53 KB) into
 `%USERPROFILE%\.mechcommander2\savegame\` (create the folder if it doesn't
@@ -68,6 +77,13 @@ on startup and logs invalid/unknown entries with `MC2_LOG=1`.
 
 If you hit a problem, `run-with-log.bat` captures a `stderr.log` next to the
 executable.
+
+On first launch `minprefs.cfg` seeds `options.cfg`; the initial resolution comes
+from the desktop. `MC2_VK_DEVICE` selects a GPU by name substring. Crash dumps
+are written to `crashes/minidump.dmp` beside the executable; user data lives in
+`%USERPROFILE%/.mechcommander2`. Saves use version 10004; older saves are filtered
+out and compatibility may change until the final release. Every subdirectory
+of `mods/` is activated, so install only mods you intend to use.
 
 ## Mission Editor
 
@@ -118,12 +134,13 @@ been dropped; see the release notes of each release for the fixed list):
 
 ## Troubleshooting
 
-**Black screen / immediate crash:** your GPU may not support OpenGL 4.3. Check
-`stderr.log` for a `[GPU]` line — if the version is below 4.3 the engine will
-not start.
+**Black screen / immediate crash:** update your graphics driver and inspect
+`stderr.log` for `[VK_PROFILE]` and `[RENDER_BACKEND] FATAL`. All required Vulkan
+features must be available; there is no OpenGL fallback. Check that the required
+game-data zip and `shaders/vulkan/*.spv` were extracted into the install folder.
 
 **Black terrain on an imported campaign:** that campaign is missing its
-colormaps — re-import it in the launcher from its original install.
+colormaps — re-import it with the CLI from its original install.
 
 **Wrong textures / scrambled icons:** do not replace `data/art/` files from
 third-party mods that predate this release. Some icon atlas files are

@@ -791,7 +791,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/deploy_payload.py",
-          "line": 1971,
+          "line": 1970,
           "evidence": "command",
           "reference": "scripts/check-deploy-hygiene.py",
           "text": "r = subprocess.run([sys.executable, hygiene, target],"
@@ -4042,7 +4042,7 @@
         },
         {
           "path": "scripts/deploy_payload.py",
-          "line": 1825,
+          "line": 1824,
           "evidence": "import",
           "reference": "exe_fingerprint",
           "text": "from exe_fingerprint import extract, sha_agrees"
@@ -4222,14 +4222,14 @@
       "callers_by_stem": [
         {
           "path": "scripts/deploy_payload.py",
-          "line": 1231,
+          "line": 1230,
           "evidence": "import",
           "reference": "kit_payload",
           "text": "from kit_payload import contained_path"
         },
         {
           "path": "scripts/deploy_payload.py",
-          "line": 1900,
+          "line": 1899,
           "evidence": "import",
           "reference": "kit_payload",
           "text": "import kit_payload"
@@ -5157,7 +5157,7 @@
         },
         {
           "path": "scripts/test_release_zip_install.py",
-          "line": 235,
+          "line": 292,
           "evidence": "command",
           "reference": "scripts/run_smoke.py",
           "text": "result = subprocess.run(cmd, **console_child.child_kwargs())"
@@ -5250,7 +5250,7 @@
       "callers_by_stem": [
         {
           "path": "scripts/tests/test_battle_bench.py",
-          "line": 166,
+          "line": 167,
           "evidence": "import",
           "reference": "run_smoke",
           "text": "import run_smoke"
@@ -5559,14 +5559,14 @@
         },
         {
           "path": "scripts/deploy_payload.py",
-          "line": 757,
+          "line": 758,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from scripts.smoke_lib import deploy_lease"
         },
         {
           "path": "scripts/deploy_payload.py",
-          "line": 797,
+          "line": 798,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from scripts.smoke_lib import bounded_wait"
@@ -6023,7 +6023,7 @@
       "callers_by_stem": [
         {
           "path": "scripts/deploy_payload.py",
-          "line": 797,
+          "line": 798,
           "evidence": "import",
           "reference": "scripts.smoke_lib.bounded_wait",
           "text": "from scripts.smoke_lib import bounded_wait"
@@ -6203,7 +6203,7 @@
       "callers_by_stem": [
         {
           "path": "scripts/deploy_payload.py",
-          "line": 757,
+          "line": 758,
           "evidence": "import",
           "reference": "scripts.smoke_lib.deploy_lease",
           "text": "from scripts.smoke_lib import deploy_lease"
@@ -6431,7 +6431,7 @@
         },
         {
           "path": "tests/smoke/test_render_options_pin.py",
-          "line": 167,
+          "line": 168,
           "evidence": "import",
           "reference": "scripts.smoke_lib.gates",
           "text": "from scripts.smoke_lib.gates import Verdict"
@@ -6644,7 +6644,7 @@
         },
         {
           "path": "tests/smoke/test_render_options_pin.py",
-          "line": 168,
+          "line": 169,
           "evidence": "import",
           "reference": "scripts.smoke_lib.logparse",
           "text": "from scripts.smoke_lib.logparse import LogSummary"
@@ -7335,7 +7335,15 @@
       "basename": "test_release_zip_install.py",
       "stem": "test_release_zip_install",
       "callers_by_basename": [],
-      "callers_by_stem": []
+      "callers_by_stem": [
+        {
+          "path": "scripts/tests/test_release_payload.py",
+          "line": 8,
+          "evidence": "import",
+          "reference": "test_release_zip_install",
+          "text": "import test_release_zip_install as release"
+        }
+      ]
     },
     {
       "path": "scripts/test_visual_diff.py",
@@ -7985,6 +7993,13 @@
       "path": "scripts/tests/test_ref_passthrough.py",
       "basename": "test_ref_passthrough.py",
       "stem": "test_ref_passthrough",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
+      "path": "scripts/tests/test_release_payload.py",
+      "basename": "test_release_payload.py",
+      "stem": "test_release_payload",
       "callers_by_basename": [],
       "callers_by_stem": []
     },
@@ -16322,7 +16337,7 @@
       "callers_by_basename": [
         {
           "path": "GameOS/gameos/CMakeLists.txt",
-          "line": 491,
+          "line": 492,
           "evidence": "cmake command",
           "reference": "${CMAKE_SOURCE_DIR}/tools/shader_offline_build/slang_compile.py",
           "text": "COMMAND \"${Python3_EXECUTABLE}\""
@@ -18443,7 +18458,7 @@
       "callers_by_basename": [
         {
           "path": "tests/smoke/test_render_options_pin.py",
-          "line": 144,
+          "line": 145,
           "evidence": "load module",
           "reference": "tools/tracy_capture_compare.py",
           "text": "spec = importlib.util.spec_from_file_location(\"tracy_capture_compare_under_test\", ROOT / \"tools\" / \"tracy_capture_compare.py\")"
@@ -19239,7 +19254,7 @@
       "callers_by_stem": [
         {
           "path": "tests/smoke/test_render_options_pin.py",
-          "line": 124,
+          "line": 125,
           "evidence": "import",
           "reference": "capture_ab",
           "text": "import capture_ab"
