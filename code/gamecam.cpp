@@ -255,7 +255,11 @@ void GameCamera::renderViewUniforms() {
 			vu.jitterNdc[1] = 2.0f * (RenderCore::halton(sample, 3) - 0.5f) / h;
 			RenderCore::applyViewJitter(vu.worldToClipGL, vu.jitterNdc);
 			// All scene feeds and depth reconstruction borrow this render-only copy.
-			gos_SetTerrainMVP(vu.worldToClipGL);
+			glm::mat4 jittered;
+			for (int r = 0; r < 4; ++r)
+				for (int c = 0; c < 4; ++c)
+					jittered[c][r] = vu.worldToClipGL[r * 4 + c];
+			gos_SetWorldToClipGL(jittered);
 		}
 		static RenderCore::ViewUniforms previousView{};
 		static uint32_t previousViewFrame = UINT32_MAX;
