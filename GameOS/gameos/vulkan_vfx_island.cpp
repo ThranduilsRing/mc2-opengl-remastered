@@ -499,6 +499,7 @@ bool init_island(VfxIsland* s, int w, int h) {
         slci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
         slci.bindingCount = 1; slci.pBindings = &sb;
         if (!mc2vk::create(s->spriteDsl, s->device, [&](VkDescriptorSetLayout* o) { return vkCreateDescriptorSetLayout(s->device, &slci, nullptr, o); })) { vlog("vkCreateDescriptorSetLayout(sprite) failed."); return false; }
+        mc2vk::infra::materialSampler(sci);
         VkDescriptorPoolSize spriteSize{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, kVfxSlots * kMaxSpritePages };
         VkDescriptorPoolCreateInfo spci{};
         spci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;

@@ -57,20 +57,9 @@ Expected extents below are allocation rules, not captured validation evidence.
 | 3840 x 2160 | 1.0 | 3840 x 2160 | 3840 x 2160 |
 | 3840 x 2160 | 0.67 | 2573 x 1447 | 3840 x 2160 |
 
-Temporal inputs are always generated at scene resolution: RG16F UV motion
-(previous minus current), plus an R8_UNORM reactive mask cleared each scene.
-Water writes opacity and surviving transparent/additive VFX writes conservative
-coverage, combined with MAX blending. The mask is available through
-`MC2_SHARED_SCENE_REACTIVE`; a consumer must transition it from color-attachment
-layout before sampling. Fixed mission exposure is `gos_GetExposure()` (the same
-linear multiplier as postprocess `p0.x`). No automatic exposure or pre-exposure
-is applied.
-
-`MC2_RENDER_JITTER=1` selects an eight-sample Halton (2,3) offset of less than
-half a render pixel. `ViewUniforms::jitterNdc` carries the clip-space offset;
-main-view render matrices and depth reconstruction include it. Camera matrices
-used for picking, shadow projections and baking retain their original values.
-The default zero offset bypasses projection arithmetic.
+The completed temporal experiment has been removed. No motion/reactive targets,
+history generation or jitter run without a temporal consumer. Fixed mission
+exposure remains `gos_GetExposure()`; there is no automatic pre-exposure.
 
 Material sampler creation uses `mc2vk::infra::materialSampler` to apply
 `log2(MC2_RENDER_SCALE)` mip bias (zero at native resolution). UI, shadow,

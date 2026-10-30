@@ -10,7 +10,7 @@ layout(set = 0, binding = 1) uniform usampler2D objectIdTex;
 
 layout(push_constant) uniform Params {
     vec4 p0; // exposure, inverse source extent, cubic upscale
-    vec4 p1; // reserved.xyz, casEnabled
+    vec4 p1; // encoded reconstruction, reserved.yz, casEnabled
     vec4 p2; // viewMode, lowLightGain, lowLightTint.r, lowLightTint.g
     vec4 p3; // lowLightTint.b, engineIdxBase, casSharpness, tonemapMode
     vec4 p4; // grade.rgb, vignette strength
@@ -21,6 +21,7 @@ layout(push_constant) uniform Params {
 
 // Profile output is neutral by default. CAS grades each tap consistently.
 vec3 gradeSample(vec3 sampleColor, vec2 uv) {
+    if (u.p1.x != 0.0) return sampleColor;
     vec3 color = sampleColor * u.p0.x;
 
     color *= u.p4.rgb;
@@ -152,6 +153,10 @@ float ignTriangle(vec2 p) {
 void main() {
     vec3 color = (u.p1.w != 0.0) ? casFilter(TexCoord)
                : reconstructedColor(TexCoord);
+    if (u.p1.x != 0.0) {
+        FragColor = vec4(clamp(color, 0.0, 1.0), 1.0);
+        return;
+    }
     color = applyTonemap(color);
     color = clamp(color + ignTriangle(floor(gl_FragCoord.xy)) / 255.0, 0.0, 1.0);
 

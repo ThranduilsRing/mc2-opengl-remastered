@@ -43,6 +43,9 @@ extern "C" int mc2_vk_overlay_prewarm(int,int);
 extern "C" int mc2_vk_impact_decals_prewarm(int,int);
 
 namespace mc2vk::infra {
+void materialSampler(VkSamplerCreateInfo& info) {
+    info.mipLodBias = float(std::log2(mc2::gate::get<"MC2_RENDER_SCALE">()));
+}
 namespace {
 uint64_t hashBytes(const void* data, size_t n) {
     auto p = static_cast<const unsigned char*>(data);

@@ -181,6 +181,7 @@ bool ovl_init(TerrainIsland* s, OvlState* o, int w, int h) {
         sci.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
         sci.addressModeU = sci.addressModeV = sci.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
         sci.minLod = 0.0f; sci.maxLod = 16.0f;
+        mc2vk::infra::materialSampler(sci);
         if (!mc2vk::create(o->samp, s->device, [&](auto* h) { return vkCreateSampler(s->device, &sci, nullptr, h); })) return false;
         VkDescriptorSetLayoutBinding b{};
         b.binding = 0; b.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;

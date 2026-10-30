@@ -29,6 +29,7 @@ void mc2PrewarmMissionPipelines();
 
 namespace mc2vk::infra {
 void init(VkDevice device, VkPhysicalDevice physical);
+void materialSampler(VkSamplerCreateInfo& info);
 void shutdown();
 void frame();
 void prewarm(int width, int height);
