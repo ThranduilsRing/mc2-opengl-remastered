@@ -144,10 +144,17 @@ TEST_CASE("ContentCook/cache publication failure is reported as failure") {
     fs::create_directories(sandbox);
     struct Restore {
         fs::path previous, sandbox;
-        ~Restore() { fs::current_path(previous); fs::remove_all(sandbox); }
+        ~Restore() {
+            std::error_code error;
+            fs::current_path(previous, error);
+            CHECK_MESSAGE(!error, "restore cook cwd: ", error.message());
+            fs::remove_all(sandbox, error);
+            CHECK_MESSAGE(!error, "remove cook scratch: ", error.message());
+        }
     } restore{previous, sandbox};
     fs::current_path(sandbox);
     std::ofstream("cache") << "blocks cache directory creation";
+    REQUIRE(fs::is_regular_file("cache"));
     mc2::content::Asset asset;
     asset.nodes.emplace_back();
     asset.nodes.back().name = "helper";
@@ -157,7 +164,8 @@ TEST_CASE("ContentCook/cache publication failure is reported as failure") {
     const auto text = log.text();
     CHECK(text.find("[CONTENT_COOK_ERROR]") != std::string::npos);
     CHECK(text.find("[CONTENT_COOK]") == std::string::npos);
-    fs::remove("cache");
+    std::error_code removeError;
+    REQUIRE_MESSAGE(fs::remove("cache", removeError), "remove cache blocker: ", removeError.message());
     CHECK(mc2::content::cook(asset, ""));
     CHECK(mc2::content::cook(asset, ""));
 }
