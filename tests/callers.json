@@ -4271,7 +4271,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/merge_gate.py",
-          "line": 348,
+          "line": 347,
           "evidence": "command",
           "reference": "scripts/make-isolated-deploy.py",
           "text": "subprocess.run([sys.executable, str(ROOT / \"scripts/make-isolated-deploy.py\"),"
