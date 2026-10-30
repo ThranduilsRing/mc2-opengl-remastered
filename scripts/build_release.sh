@@ -111,7 +111,7 @@ z() {
     # Every independently downloaded asset carries the distribution terms.
     cp "$REPO/license.txt" "$REPO/EULA.txt" "$REPO/LICENSES.md" \
        "$REPO/THIRD_PARTY_NOTICES.md" .
-    "$SEVENZIP" a -tzip -mx=7 -bso0 -bsp0 "$@" \
+    "$SEVENZIP" a -tzip -mx=7 -mmt=1 -bso0 -bsp0 "$@" \
         license.txt EULA.txt LICENSES.md THIRD_PARTY_NOTICES.md
 }
 

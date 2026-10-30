@@ -86,6 +86,7 @@ REQUIRED_DIRS = [
 ]
 # At least one .fst archive must exist at install root (fastfile data).
 REQUIRED_FST = True
+REQUIRED_DLLS = (REPO_ROOT / "scripts/release-dlls.txt").read_text().splitlines()
 
 MANIFEST_NAME = "release_install_manifest.csv"
 REPORT_NAME = "release_install_report.json"
@@ -132,6 +133,14 @@ def extract_zip(zip_path: Path, dest: Path, label: str) -> list[str]:
 def verify_tree(install: Path) -> list[str]:
     """Return list of failure strings (empty = pass)."""
     failures: list[str] = []
+
+    for name in REQUIRED_DLLS:
+        if not (install / name).is_file():
+            failures.append(f"required runtime missing: {name}")
+    allowed = {name.casefold() for name in REQUIRED_DLLS}
+    for dll in install.glob("*.dll"):
+        if dll.name.casefold() not in allowed:
+            failures.append(f"unreviewed runtime: {dll.name}")
 
     for fname in REQUIRED_FILES:
         if not (install / fname).is_file():
@@ -309,7 +318,7 @@ def main() -> None:
     args = ap.parse_args()
 
     zip_dir: Path = args.zip_dir.resolve()
-    out_dir: Path = (args.out_dir or zip_dir).resolve()
+    out_dir: Path = (args.out_dir or Path(os.environ.get("MC2_FARM_RESULT_DIR", zip_dir))).resolve()
 
     if not zip_dir.is_dir():
         fail(f"--zip-dir not found: {zip_dir}")

@@ -10,7 +10,7 @@ spec.loader.exec_module(release)
 
 
 def test_release_requires_baked_shaders(tmp_path):
-    for name in release.REQUIRED_FILES:
+    for name in release.REQUIRED_FILES + release.REQUIRED_DLLS:
         (tmp_path / name).touch()
     for name in release.REQUIRED_DIRS:
         (tmp_path / name).mkdir(exist_ok=True)
@@ -24,3 +24,8 @@ def test_release_requires_baked_shaders(tmp_path):
     (tmp_path / "shaders/vulkan").mkdir()
     (tmp_path / "shaders/vulkan/test.vert.spv").write_bytes(b"\x03\x02\x23\x07")
     assert release.verify_tree(tmp_path) == []
+    (tmp_path / "glew32.dll").touch()
+    assert release.verify_tree(tmp_path) == ["unreviewed runtime: glew32.dll"]
+    (tmp_path / "glew32.dll").unlink()
+    (tmp_path / "SDL2.dll").unlink()
+    assert release.verify_tree(tmp_path) == ["required runtime missing: SDL2.dll"]

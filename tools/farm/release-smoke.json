@@ -1,5 +1,5 @@
 {
-  "argv": ["python", "{ROOT}/release-proof/scripts/test_release_zip_install.py", "--zip-dir", "{ROOT}/release-assets", "--first-run", "--mission", "mc2_01", "--duration", "15", "--out-dir", "{ROOT}/release-report"],
+  "argv": ["python", "{ROOT}/release-proof/scripts/test_release_zip_install.py", "--zip-dir", "{ROOT}/release-assets", "--first-run", "--mission", "mc2_01", "--duration", "15"],
   "cwd": "C:/mc2farm/harness",
   "timeout": 600,
   "env": {
