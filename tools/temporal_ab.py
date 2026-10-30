@@ -64,7 +64,7 @@ def metrics(frames):
 
 
 def process(directory, mission):
-    """Keep review strips, crops, GIFs and sidecars; discard intermediate PNGs."""
+    """Keep original frames until semantic crop review and final cleanup."""
     result = {}
     for group in ['hold','pan','orbit','low']:
         paths = sorted(directory.glob(f'{mission}_{group}_[0-9]*.png'))
@@ -88,7 +88,9 @@ def process(directory, mission):
             result[group]['regions'] = {name: metrics([im.crop(box) for im in images]) for name,box in boxes.items()}
         # Six consecutive frames in each strip. Two crops selected by maximum
         # temporal variance, spatially separated; labels explicitly say candidates.
-        selected = images[:6]
+        start=len(images)//2
+        selected = images[start:start+6]
+        result[group]['strip_frames']=ids[start:start+6]
         strip = Image.new('RGB',(6*320,180))
         for i,im in enumerate(selected): strip.paste(im.resize((320,180)),(320*i,0))
         strip.save(directory/f'{group}-strip.jpg',quality=88)
@@ -100,6 +102,9 @@ def process(directory, mission):
         for _,x,y in sorted(candidates,reverse=True):
             if all(abs(x-a)>192 or abs(y-b)>128 for a,b in chosen): chosen.append((x,y))
             if len(chosen)==2: break
+        reference=directory.parent/'A_smaa/metrics.json'
+        if reference.exists() and directory.name!='A_smaa':
+            chosen=[tuple(box[:2]) for box in json.loads(reference.read_text())[group]['crop_boxes']]
         result[group]['crop_boxes'] = [[x,y,x+192,y+128] for x,y in chosen]
         cropstrip=Image.new('RGB',(6*192,2*128))
         for j,(x,y) in enumerate(chosen):
@@ -110,7 +115,6 @@ def process(directory, mission):
             gif[0].save(directory/f'{group}.gif',save_all=True,append_images=gif[1:],duration=167,loop=0)
         for im in images: im.close()
     (directory/'metrics.json').write_text(json.dumps(result,indent=2),encoding='utf-8')
-    for p in directory.glob(f'{mission}_*.png'): p.unlink()
     return result
 
 
