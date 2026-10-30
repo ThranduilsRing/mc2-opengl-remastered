@@ -52,6 +52,9 @@ template<> inline void zero(mc2::sim::TacticalOrder& value) {
     value = {};
     value.kind = mc2::sim::OrderKind::None;
 }
+template<> inline void zero(mc2::sim::WayPath& value) {
+    value.points.clear(); value.curPoint = 0; value.mode.clear();
+}
 }
 
 TEST_CASE("save fields: nonzero defaults cannot hide a dropped field") {
