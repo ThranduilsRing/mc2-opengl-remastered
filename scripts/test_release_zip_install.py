@@ -74,7 +74,6 @@ ZIP_ORDER: list[tuple[str, bool, str]] = [
 
 REQUIRED_FILES = [
     "mc2.exe",
-    "options.cfg",    # sniffer-bypass: engine checks for this on startup
     "minprefs.cfg",   # sniffer self-heal CopyFile source
     "orgprefs.cfg",
     "system.cfg",
@@ -134,6 +133,15 @@ def extract_zip(zip_path: Path, dest: Path, label: str) -> list[str]:
 def verify_tree(install: Path) -> list[str]:
     """Return list of failure strings (empty = pass)."""
     failures: list[str] = []
+
+    dlls = (REPO_ROOT / "scripts/release-dlls.txt").read_text().splitlines()
+    for dll in dlls:
+        if not (install / dll).is_file():
+            failures.append(f"required DLL missing: {dll}")
+    allowed = {dll.lower() for dll in dlls}
+    for dll in install.glob("*.dll"):
+        if dll.name.lower() not in allowed:
+            failures.append(f"unreviewed DLL: {dll.name}")
 
     for fname in REQUIRED_FILES:
         if not (install / fname).is_file():

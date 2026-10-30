@@ -279,8 +279,15 @@ for moddir in "$REPO"/mods/*/; do
     [ "$modname" = "dist" ] && continue
     cp -r "$moddir" "$STAGE/engine/mods/$modname"
 done
-# Runtime DLLs at the deploy root (SDL2, GLEW, FFmpeg, MSVC redist, etc).
-for f in "$DEPLOY"/*.dll "$DEPLOY"/run-with-log.bat "$DEPLOY"/run-mc2.bat; do
+# Reviewed runtime DLLs only. The driver supplies Vulkan; users install the
+# x64 VC++ redistributable. Never ship debug DLLs or leftovers from an old deploy.
+while IFS= read -r dll; do
+    dll="${dll%$'\r'}"
+    [ -n "$dll" ] || continue
+    [ -f "$DEPLOY/$dll" ] || { echo "[engine] FAIL: missing $dll"; exit 1; }
+    cp "$DEPLOY/$dll" "$STAGE/engine/"
+done < "$REPO/scripts/release-dlls.txt"
+for f in "$DEPLOY"/run-with-log.bat "$DEPLOY"/run-mc2.bat; do
     [ -e "$f" ] && cp "$f" "$STAGE/engine/"
 done
 # Idiot-proof docs at the install root. INSTALL.txt covers SmartScreen,
@@ -297,8 +304,8 @@ done
 # Prefs files at the deploy root. *.cfg glob naturally excludes
 # options.cfg.old (different extension), which is a developer-side backup
 # we don't want to ship.
-for f in "$DEPLOY"/*.cfg; do
-    [ -e "$f" ] && cp "$f" "$STAGE/engine/"
+for cfg in minprefs.cfg orgprefs.cfg system.cfg; do
+    cp "$DEPLOY/$cfg" "$STAGE/engine/"
 done
 rm -f "$OUTDIR/mc2-remastered-engine.zip"
 ( cd "$STAGE/engine" && z "$OUTDIR/mc2-remastered-engine.zip" . ) >/dev/null
@@ -306,7 +313,7 @@ rm -f "$OUTDIR/mc2-remastered-engine.zip"
 # branch. options.cfg's presence is what makes mc2.exe skip the sniffer
 # dialog on first launch; minprefs.cfg is the fallback source the engine
 # would copy from if options.cfg ever went missing.
-for required_cfg in options.cfg minprefs.cfg orgprefs.cfg system.cfg; do
+for required_cfg in minprefs.cfg orgprefs.cfg system.cfg; do
     if ! "$SEVENZIP" l "$OUTDIR/mc2-remastered-engine.zip" | grep -q " $required_cfg\$"; then
         echo "[engine] FAIL — $required_cfg missing from engine.zip (sniffer-loop regression)"; exit 1
     fi
