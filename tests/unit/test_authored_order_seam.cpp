@@ -431,7 +431,7 @@ TEST_CASE("ABLSave/completed orders survive a save: resumed execution equals uni
     const struct { const char* name; std::string bytes; } refused[] = {
         {"truncated section", image.substr(0, image.size() - 2)},
         {"section missing its flag word", image.substr(0, image.size() - 4)},
-        {"section with a word too many", image + std::string(4, '')},
+        {"section with a word too many", image + std::string(4, '\x11')},
         {"legacy tail ending in the mark", legacyImage + mark},
         {"legacy tail of two words ending in the mark", legacyImage + std::string(4, '"') + mark},
     };
