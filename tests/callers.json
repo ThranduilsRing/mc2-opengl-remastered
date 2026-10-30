@@ -2030,7 +2030,7 @@
           "line": 886,
           "evidence": "command",
           "reference": "scripts/check-vfx-no-objectid.sh",
-          "text": "run_check \"vfx_no_objectid\"        \"sh scripts/check-vfx-no-objectid.sh\""
+          "text": "run_check \"vfx_no_objectid\"        \"sh scripts/check-vfx-no-objectid.sh && py -3 -B -m pytest scripts/tests/test_vfx_no_objectid.py -q -p no:cacheprovider\""
         }
       ],
       "callers_by_stem": []
@@ -2957,6 +2957,13 @@
           "evidence": "import",
           "reference": "console_child",
           "text": "import console_child  # noqa: E402"
+        },
+        {
+          "path": "scripts/tests/test_vfx_no_objectid.py",
+          "line": 7,
+          "evidence": "import",
+          "reference": "scripts.console_child",
+          "text": "from scripts import console_child"
         },
         {
           "path": "scripts/tests/test_window_emission.py",
@@ -8141,6 +8148,13 @@
       "path": "scripts/tests/test_veg_card_cook.py",
       "basename": "test_veg_card_cook.py",
       "stem": "test_veg_card_cook",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
+      "path": "scripts/tests/test_vfx_no_objectid.py",
+      "basename": "test_vfx_no_objectid.py",
+      "stem": "test_vfx_no_objectid",
       "callers_by_basename": [],
       "callers_by_stem": []
     },

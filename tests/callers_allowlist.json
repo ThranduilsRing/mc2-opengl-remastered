@@ -1,4 +1,5 @@
 {
+  "scripts/tests/test_vfx_no_objectid.py": "Executed by the vfx_no_objectid contract row through pytest; run_check shell dispatch is not a direct executable caller.",
   "tools/test_temporal_ab.py": "Pytest-discovered by scripts/run_tools_tests.py during lane_merge precheck; temporal metric regression tests.",
   "scripts/tests/test_content_error.py": "pytest module executed by the content_error_stock contract row; pytest dispatch is not a direct executable call",
   "scripts/tests/test_release_payload.py": "Pytest-discovered by scripts/run_scripts_tests.py through scripts/test_ownership.json; release artifact regression coverage.",
