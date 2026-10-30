@@ -1472,7 +1472,7 @@ long GameCamera::update (void)
 	useFog = false;
 	useShadows = false;
 		
-  	if (compass && (mc2::render_view::clock().turn > 3))
+	if (compass && (mc2::render_view::clock().turn > 3))
 	{
   		
    		compass->setObjectParameters(getPosition(),0.0f,false,0,0);
