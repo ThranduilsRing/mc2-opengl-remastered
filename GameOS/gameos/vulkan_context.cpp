@@ -664,20 +664,20 @@ void VulkanContext::beginFrame() {
     { ZoneScopedN("VKContext.Collect"); deferred_.collect(tracker_); }
     { ZoneScopedN("VKContext.InfraFrame"); infra::frame(); }
 #ifdef MC2_VULKAN_ISLAND
-    // The ring slot of this frame was last written by frame F-kSlots: its work must be done before the slot restarts. The islands' own fences keep this
-    // true today; the wait only costs anything if one of them let a frame run further ahead.
+    // Retire the active descriptor/buffer slot before any per-frame writes. framesInFlight_ <= kSlots, so its ticket also covers the older transient
+    // ring slot F-kSlots. This keeps the N=1/2 overrides safe while the transient ring always has kSlots regions.
     const uint64_t f = tracker_.frameNo();
     // The slot restarts only when that completion is proven: a timed-out wait falls back to a device idle, and if even that leaves the ticket
     // incomplete (device lost) the slot keeps its head, so the CPU never overwrites bytes the GPU may still read.
     bool slotFree = true;
-    if (f > FrameRingCore::kSlots) {
+    if (f > framesInFlight_) {
         ZoneScopedN("VKContext.RingWait");
-        const GpuTicket t = tracker_.frameTicket(f - FrameRingCore::kSlots);
+        const GpuTicket t = tracker_.frameTicket(f - framesInFlight_);
         if (!wait(t, 5ull * 1000 * 1000 * 1000, "frame_ring_slot")) {
             waitIdle("frame_ring_slot_timeout");
             poll();
             slotFree = tracker_.isComplete(t);
-            if (!slotFree) ctxlog("frame %llu: ticket of frame %llu never completed; ring slot NOT restarted.", static_cast<unsigned long long>(f), static_cast<unsigned long long>(f - FrameRingCore::kSlots));
+            if (!slotFree) ctxlog("frame %llu: ticket of frame %llu never completed; ring slot NOT restarted.", static_cast<unsigned long long>(f), static_cast<unsigned long long>(f - framesInFlight_));
         }
     }
     frameRing_.beginFrame(f, slotFree);
