@@ -10,11 +10,6 @@
       "location": 1,
       "name": "GBuffer1",
       "type": "vec4"
-    },
-    {
-      "location": 2,
-      "name": "Reactive",
-      "type": "float"
     }
   ],
   "shader": "shaders/vulkan/water_geom.frag",

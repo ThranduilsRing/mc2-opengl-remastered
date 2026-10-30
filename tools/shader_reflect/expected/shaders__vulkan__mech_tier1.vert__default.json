@@ -24,7 +24,7 @@
           "matrix_stride": null,
           "name": "bones",
           "offset": 0,
-          "type": "_431"
+          "type": "_430"
         }
       ],
       "name": "BoneBuffer"
@@ -145,13 +145,6 @@
           "name": "environmentAmbient",
           "offset": 208,
           "type": "vec4"
-        },
-        {
-          "array_stride": null,
-          "matrix_stride": 16,
-          "name": "previousWorldToClipGL",
-          "offset": 224,
-          "type": "mat4"
         }
       ],
       "name": "MechFrameUBO"

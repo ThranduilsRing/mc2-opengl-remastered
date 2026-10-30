@@ -10,11 +10,6 @@
       "location": 1,
       "name": "o_normal",
       "type": "vec4"
-    },
-    {
-      "location": 2,
-      "name": "o_motion",
-      "type": "vec4"
     }
   ],
   "shader": "shaders/vulkan/vfx_vegetation.frag",

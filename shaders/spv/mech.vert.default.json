@@ -6,14 +6,14 @@
   "specializationParams": [],
   "artifact": "mech.vert.default.dbbae7d3.spv",
   "spv_dir": "shaders/spv",
-  "source_sha256": "a09c1ff40f68a215dc2ba7b57a712da9bc49a7f7eb1939073f8761c2fb884dc2",
-  "spirv_sha256": "0012facd6924c8ede5bab3fdc4c35517ffa1145c708abb8a0a41b204b3e37179",
+  "source_sha256": "c29f28fbb5221226dace01094738c5e8e7d566ac9a9b65a687aabccc4762f58f",
+  "spirv_sha256": "e135f6b976e8101ccf11988c823f95ceb5f535e9a3c158eedbc4c523792e1f69",
   "bindings": {
     "ubos": [
       {
-        "type": "_572",
+        "type": "_503",
         "name": "MechFrameUBO",
-        "block_size": 288,
+        "block_size": 224,
         "set": 0,
         "binding": 0
       }
@@ -36,7 +36,7 @@
         "binding": 1
       },
       {
-        "type": "_404",
+        "type": "_403",
         "name": "BoneBuffer",
         "readonly": true,
         "block_size": 0,
@@ -299,7 +299,7 @@
         }
       ]
     },
-    "_399": {
+    "_398": {
       "name": "GpuMechBone",
       "members": [
         {
@@ -320,7 +320,7 @@
         }
       ]
     },
-    "_402": {
+    "_401": {
       "name": "GpuMechBone",
       "members": [
         {
@@ -345,12 +345,12 @@
         }
       ]
     },
-    "_404": {
+    "_403": {
       "name": "BoneBuffer",
       "members": [
         {
           "name": "bones",
-          "type": "_402",
+          "type": "_401",
           "array": [
             0
           ],
@@ -362,7 +362,7 @@
         }
       ]
     },
-    "_572": {
+    "_503": {
       "name": "MechFrameUBO",
       "members": [
         {
@@ -435,16 +435,10 @@
           "name": "environmentAmbient",
           "type": "vec4",
           "offset": 208
-        },
-        {
-          "name": "previousWorldToClipGL",
-          "type": "mat4",
-          "offset": 224,
-          "matrix_stride": 16
         }
       ]
     },
-    "_595": {
+    "_526": {
       "name": "gl_PerVertex",
       "members": [
         {
@@ -510,10 +504,6 @@
       }
     ],
     "outputs": [
-      {
-        "name": "vPreviousWorldPos",
-        "location": 11
-      },
       {
         "name": "vUv",
         "location": 0
