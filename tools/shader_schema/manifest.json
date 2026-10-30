@@ -21,7 +21,7 @@
       "cppType": "GpuMechInstance",
       "glslSource": "shaders/include/gpu_abi_mech_instance.gen.hglsl",
       "glslType": "GpuMechInstance",
-      "expectedSize": 80,
+      "expectedSize": 64,
       "goldenShader": "shaders/vulkan/mech_tier1.vert",
       "goldenVariant": "default",
       "requiredShaders": [

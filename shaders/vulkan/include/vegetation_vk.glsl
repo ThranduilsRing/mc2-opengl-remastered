@@ -71,11 +71,5 @@ void mc2VegetationVertex(vec3 i_worldPos, float i_yaw, float i_scale, float i_se
 
     v_cardNormal = vec3(sy * vertFactor, -cy * vertFactor, flatFactor);
     v_worldPos = worldPos;
-    float previousWindNoise = sin(windPhase1 + (D.grid.z - time) * 0.35) * 0.75
-                            + sin(windPhase2 + (D.grid.z - time) * 0.55) * 0.25;
-    float previousSway = previousWindNoise * a_card.y * a_card.y * windStr * effectiveScale * windFade * vertFactor;
-    vec3 previousWorld = worldPos + vec3((previousSway - sway) * cy, (previousSway - sway) * sy, 0.0);
-    v_previousClip = U.previousWorldToClipGL * vec4(previousWorld, 1.0);
-    v_currentAtPrevious = U.worldToClipGL * vec4(worldPos, 1.0);
     gl_Position = U.worldToClipGL * vec4(worldPos, 1.0);
 }

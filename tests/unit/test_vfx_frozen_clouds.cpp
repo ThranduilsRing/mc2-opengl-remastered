@@ -85,9 +85,13 @@ bool payloadMatches(std::span<const GpuParticle> actual, std::span<const GpuPart
 {
     if (actual.size() != expected.size()) return false;
     for (std::size_t i = 0; i < actual.size(); ++i) {
-        // Pin every original visual byte. N-1 history changes after a moved draw
-        // settles; identity and gap handling are checked independently below.
-        if (std::memcmp(&actual[i], &expected[i], offsetof(GpuParticle, previousPosition)) != 0)
+        const auto& a = actual[i];
+        const auto& e = expected[i];
+        if (!std::equal(std::begin(a.position), std::end(a.position), std::begin(e.position)) ||
+            !std::equal(std::begin(a.color), std::end(a.color), std::begin(e.color)) ||
+            !std::equal(std::begin(a.velocity), std::end(a.velocity), std::begin(e.velocity)) ||
+            a.size != e.size || a.age != e.age || a.lifetime != e.lifetime ||
+            a.atlasIndex != e.atlasIndex || a.kind_flags != e.kind_flags || a._pad0 != e._pad0)
             return false;
     }
     return true;
@@ -465,7 +469,7 @@ void checkFrozenCloud(bool alignX = false, bool alignY = false, unsigned sides =
             if (repeat == 0) firstPayload = actual;
             REQUIRE(actual.size() == firstPayload.size());
             if (!actual.empty()) {
-                CHECK(payloadMatches(actual, firstPayload));
+                CHECK(std::memcmp(actual.data(), firstPayload.data(), actual.size() * sizeof(GpuParticle)) == 0);
                 // Every checked component must reject a same-count corrupted bridge payload.
                 auto corrupted = actual;
                 corrupted.front() = {};
@@ -634,50 +638,4 @@ TEST_CASE("vfx_frozen/card budget counts quads and resets after flush")
     CHECK(batcher.inspect_overflowReported());
     batcher.Flush();
     CHECK(capture.records.size() == 31);
-}
-
-TEST_CASE("vfx_frozen/history follows identity across reordering and resets after a gap")
-{
-    if (!mc2::particles::Batcher::is_enabled()) return;
-    mc2::particles::Batcher batcher(8);
-    BridgeCapture capture;
-    borrowedCapture = &capture;
-    struct Reset { ~Reset() { borrowedCapture = nullptr; } } reset;
-    int identityA = 0, identityB = 0;
-    GpuParticle a{}, b{};
-    a.position[0] = 10.0f;
-    b.position[1] = 20.0f;
-    batcher.BeginGroup(0, 0, 0, 1, 1);
-    batcher.Emit(a, &identityA);
-    batcher.Emit(b, &identityB);
-    batcher.Flush();
-    REQUIRE(capture.records.size() == 2);
-    CHECK(capture.records[0].previousValid == 0.0f);
-    CHECK(capture.records[1].previousValid == 0.0f);
-
-    capture.records.clear();
-    a.position[0] = 12.0f;
-    b.position[1] = 22.0f;
-    batcher.BeginGroup(0, 0, 0, 1, 1);
-    batcher.Emit(b, &identityB);
-    batcher.Emit(a, &identityA);
-    batcher.Flush();
-    REQUIRE(capture.records.size() == 2);
-    CHECK(capture.records[0].previousValid == 1.0f);
-    CHECK(capture.records[0].previousPosition[1] == 20.0f);
-    CHECK(capture.records[1].previousValid == 1.0f);
-    CHECK(capture.records[1].previousPosition[0] == 10.0f);
-
-    capture.records.clear();
-    batcher.BeginGroup(0, 0, 0, 1, 1);
-    batcher.Emit(a, &identityA);
-    batcher.Flush();
-    REQUIRE(capture.records.size() == 1);
-    CHECK(capture.records[0].previousValid == 0.0f); // still geometry
-    capture.records.clear();
-    batcher.BeginGroup(0, 0, 0, 1, 1);
-    batcher.Emit(b, &identityB);
-    batcher.Flush();
-    REQUIRE(capture.records.size() == 1);
-    CHECK(capture.records[0].previousValid == 0.0f); // B was absent for one frame
 }

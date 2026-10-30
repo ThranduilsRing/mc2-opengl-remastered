@@ -16,7 +16,6 @@
 #define PREC highp
 #endif
 #include "include/terrain_frame_vk.glsl"
-layout(constant_id = 31) const bool kExperimentToksvig = false;
 #include "include/concrete_detail_vk.glsl"
 
 layout(location = 0) in vec3  WorldPos;
