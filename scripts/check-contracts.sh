@@ -1507,6 +1507,7 @@ run_check "visual_regression_schema"   "py -3 scripts/run_visual.py --validate-s
 # a module that fully passed with unchanged recorded inputs is not re-run. --no-cache / CONTRACTS_NO_CACHE=1 turns it off.
 run_check "mission_codec_golden"       "MC2_CODEC_REQUIRED=1 py -3 -B -m pytest tests/mapgen/test_mission_codec.py -q -p no:cacheprovider"
 run_check "farm_runner"                "py -3 -B -m pytest scripts/tests/test_farm_runner.py -q -p no:cacheprovider"
+run_check "release_payload"            "py -3 -B -m pytest scripts/tests/test_release_payload.py -q -p no:cacheprovider"
 run_check "scripts_tests"              "py -3 scripts/run_scripts_tests.py"
 run_check "mission_cpu_profile"        "py -3 -B -m pytest scripts/tests/test_mission_cpu_profile.py -q -p no:cacheprovider"
 run_check "runtime_bridge"             "py -3 -B -m pytest scripts/tests/test_runtime_bridge.py scripts/tests/test_runtime_bridge_socket.py -q -p no:cacheprovider"
