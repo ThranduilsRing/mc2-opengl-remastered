@@ -114,7 +114,7 @@ struct gosPostProcess::VkPostHzbNative {
     VkImageResource* depthRes = nullptr;
     // VK-RUNG8-ITEM5: shared scene is VK-only (no GL view); direct-chain only.
 
-    VkCommandBuffer cbuf[2] = {VK_NULL_HANDLE, VK_NULL_HANDLE};   // allocated from `cpool`, freed with it
+    VkCommandBuffer cbuf[mc2vk::kMaxFramesInFlight] = {VK_NULL_HANDLE, VK_NULL_HANDLE};   // allocated from `cpool`, freed with it
 
     // One reduction level: its image, view, framebuffer and UBO are owned (declared so the UBO goes first, the image last).
     struct Level {
@@ -641,7 +641,7 @@ bool build_state(gosPostProcess::VkPostHzbNative* s, int w, int h, int mipCount)
         cai.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
         cai.commandPool = s->cpool.get();
         cai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-        cai.commandBufferCount = 2;
+        cai.commandBufferCount = mc2vk::kMaxFramesInFlight;
         r = vkAllocateCommandBuffers(s->device, &cai, s->cbuf);
         if (r != VK_SUCCESS) {
             vlog("vkAllocateCommandBuffers failed (%d).", static_cast<int>(r));

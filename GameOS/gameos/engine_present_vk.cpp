@@ -101,11 +101,11 @@ struct EnginePresentVk::Impl {
     std::vector<mc2vk::OwnedSemaphore> renderSems;   // one per image (present-wait target)
 
     // per-frame sync: one acquire semaphore, one in-flight fence and one pair of command buffers per frame slot. slot() = engine frame % slotCount;
-    // slotCount is 2 (two frames in flight) unless MC2_VK_FRAMES_IN_FLIGHT=1 (the kill switch) pins every frame to slot 0 (the former single frame).
+    // slotCount defaults to kMaxFramesInFlight; MC2_VK_FRAMES_IN_FLIGHT=1 pins every frame to slot 0.
     mc2vk::OwnedCommandPool   cpool;
-    VkCommandBuffer cbufs[2]  = {VK_NULL_HANDLE, VK_NULL_HANDLE};   // present tail: overlay + HUD/ImGui + blit
-    mc2vk::OwnedSemaphore     acquireSems[2];
-    mc2vk::OwnedFence         inFlights[2];
+    VkCommandBuffer cbufs[mc2vk::kMaxFramesInFlight] = {};   // present tail: overlay + HUD/ImGui + blit
+    mc2vk::OwnedSemaphore     acquireSems[mc2vk::kMaxFramesInFlight];
+    mc2vk::OwnedFence         inFlights[mc2vk::kMaxFramesInFlight];
     uint32_t slotCount = 1;
     uint32_t slot() const { return ctx->frameContext().slot; }
     VkCommandBuffer&       curCbuf()          { return cbufs[slot()]; }
@@ -123,7 +123,7 @@ struct EnginePresentVk::Impl {
     // compositeFence (deleted): the ONLY CPU wait on the present path is now the
     // inFlight wait for the PREVIOUS frame's single submit, taken at composite-record
     // time before either cbuf is reset.
-    VkCommandBuffer compositeCbufs[2] = {VK_NULL_HANDLE, VK_NULL_HANDLE};
+    VkCommandBuffer compositeCbufs[mc2vk::kMaxFramesInFlight] = {};
     bool            compositePending = false;
     // VK-PRESENT-SINGLESUBMIT-1: the CSM shadow-debug overlay (opt-in debug) is
     // STASHED here and
@@ -1929,27 +1929,27 @@ bool EnginePresentVk::init(VulkanContext& ctx, SDL_Window* window, uint32_t w, u
         VkCommandBufferAllocateInfo cai{VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO};
         cai.commandPool = s.cpool.get();
         cai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-        cai.commandBufferCount = 2;
+        cai.commandBufferCount = mc2vk::kMaxFramesInFlight;
         if (vkAllocateCommandBuffers(s.dev, &cai, s.cbufs) != VK_SUCCESS)
             return fail("vkAllocateCommandBuffers failed");
         VkSemaphoreCreateInfo semci{VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO};
         VkFenceCreateInfo fci{VK_STRUCTURE_TYPE_FENCE_CREATE_INFO};
         fci.flags = VK_FENCE_CREATE_SIGNALED_BIT;
-        for (uint32_t i = 0; i < 2; ++i) {
+        for (uint32_t i = 0; i < mc2vk::kMaxFramesInFlight; ++i) {
             if (!mc2vk::create(s.acquireSems[i], s.dev, [&](auto* h) { return vkCreateSemaphore(s.dev, &semci, nullptr, h); }))
                 return fail("vkCreateSemaphore(acquire) failed");
             if (!mc2vk::create(s.inFlights[i], s.dev, [&](auto* h) { return vkCreateFence(s.dev, &fci, nullptr, h); }))
                 return fail("vkCreateFence(inFlight) failed");
         }
-        s.slotCount = mc2::gate::get<"MC2_VK_FRAMES_IN_FLIGHT">() >= 2 ? 2u : 1u;
-        ctx.setFramesInFlight(s.slotCount);
+        ctx.setFramesInFlight(static_cast<uint32_t>((std::max)(1, mc2::gate::get<"MC2_VK_FRAMES_IN_FLIGHT">())));
+        s.slotCount = ctx.frameContext().framesInFlight;
         if (mc2DiagVerbose()) plog("[VK_FRAMES_IN_FLIGHT v1] frames_in_flight=%u (MC2_VK_FRAMES_IN_FLIGHT=1 is the kill switch).", s.slotCount);
         // VK-PRESENT-SINGLESUBMIT-1: the composite's own command buffer (recorded at
         // composite time, submitted together with the tail cbuf in ONE submit).
         VkCommandBufferAllocateInfo cai2{VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO};
         cai2.commandPool = s.cpool.get();
         cai2.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-        cai2.commandBufferCount = 2;
+        cai2.commandBufferCount = mc2vk::kMaxFramesInFlight;
         if (vkAllocateCommandBuffers(s.dev, &cai2, s.compositeCbufs) != VK_SUCCESS)
             return fail("vkAllocateCommandBuffers(composite) failed");
     }
@@ -2380,8 +2380,9 @@ bool EnginePresentVk::presentFrameBody(uint32_t drawableW, uint32_t drawableH,
         // the pending composite recording: it references the about-to-be-destroyed
         // shared image / framebuffers and must never be submitted.
         {
-            const VkFence fences[2] = {s.inFlights[0].get(), s.inFlights[1].get()};
-            VkResult done = vkWaitForFences(s.dev, 2, fences, VK_TRUE, 5ull * 1000 * 1000 * 1000);
+            VkFence fences[mc2vk::kMaxFramesInFlight]{};
+            for (uint32_t i = 0; i < s.slotCount; ++i) fences[i] = s.inFlights[i].get();
+            VkResult done = vkWaitForFences(s.dev, s.slotCount, fences, VK_TRUE, 5ull * 1000 * 1000 * 1000);
             // A timeout proves nothing: the in-flight frame may still read the image. Only an idle device proves it; a failed idle (device lost) leaves
             // the image alone and fails the present, so buildSharedImage never destroys an image the GPU may still use.
             if (done != VK_SUCCESS) done = vkDeviceWaitIdle(s.dev);
@@ -2850,7 +2851,7 @@ void EnginePresentVk::destroy() {
         shutdownImguiVulkanRenderer();
         if (s.dev) s.ctx->drainDeferred("present_destroy");   // retired HUD mirrors name this object descriptor pool
         // VK-PRESENT-SINGLESUBMIT-1: compositeCbuf is pool-allocated (freed with the pool); just drop the pending state.
-        s.compositeCbufs[0] = s.compositeCbufs[1] = VK_NULL_HANDLE;
+        for (auto& cb : s.compositeCbufs) cb = VK_NULL_HANDLE;
         s.compositePending = false;
         s.pendingShadowDebugView = VK_NULL_HANDLE;
         // Every owned object (pipelines, layouts, buffers and their memory, the swapchain, the surface, the command pool) is released by ~Impl, in

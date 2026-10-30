@@ -127,7 +127,7 @@ constexpr uint32_t kMaxSpritePages = 64;   // descriptor-set budget for the spri
 // Give each call its own command buffer and descriptors: sharing the last slot makes
 // the fourth call wait for the third call's same-frame GPU submission to retire.
 constexpr uint32_t kVfxCallsPerFrame = 4;
-constexpr uint32_t kVfxSlots = 2 * kVfxCallsPerFrame;
+constexpr uint32_t kVfxSlots = mc2vk::kMaxFramesInFlight * kVfxCallsPerFrame;
 
 // Sprite pages borrow generation identities from shared residency. Only descriptor pairs live here.
 struct SpritePage {
@@ -179,7 +179,7 @@ struct VfxIsland : mc2vk::IslandState {
     mc2vk::OwnedCommandPool cpool;
     VkCommandBuffer  cbuf[kVfxSlots] = {};   // one per slot
     uint64_t         ticket[kVfxSlots] = {};   // timeline value of the slot's last submit (0 = never submitted)
-    uint64_t         vegTicket[2] = {};        // timeline value of the last vegetation submit per engine frame slot (its buffer set is per frame slot)
+    uint64_t         vegTicket[mc2vk::kMaxFramesInFlight] = {};        // timeline value of the last vegetation submit per engine frame slot (its buffer set is per frame slot)
     uint64_t         slotFrame = ~uint64_t(0);   // engine frame of callInFrame
     uint32_t         callInFrame = 0;
 
@@ -193,7 +193,7 @@ uint32_t take_slot(VfxIsland* s, mc2vk::VulkanContext& ctx) {
     const auto fc = ctx.frameContext();
     if (s->slotFrame != fc.frame) { s->slotFrame = fc.frame; s->callInFrame = 0; }
     const uint32_t call = std::min(s->callInFrame++, kVfxCallsPerFrame - 1);
-    return (fc.slot % 2u) * kVfxCallsPerFrame + call;
+    return fc.slot * kVfxCallsPerFrame + call;
 }
 
 // The ring bindings of one parity set: 0 = frame constants (uniform, explicit range), 1 = particles (storage, the ring's dynamic range).

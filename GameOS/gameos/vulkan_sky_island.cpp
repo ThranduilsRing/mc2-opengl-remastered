@@ -79,8 +79,8 @@ struct Island : mc2vk::IslandState {
     struct VkImageResource* colorRes = nullptr;
     struct VkImageResource* depthRes = nullptr;
     VkDescriptorSet set = VK_NULL_HANDLE;   // allocated from `pool`, freed with it
-    VkCommandBuffer cbuf[2] = {};           // allocated from `cpool`, freed with it
-    mc2vk::GpuTicket submitted[2];          // per engine frame slot: the last submit that used cbuf[slot]
+    VkCommandBuffer cbuf[mc2vk::kMaxFramesInFlight] = {};           // allocated from `cpool`, freed with it
+    mc2vk::GpuTicket submitted[mc2vk::kMaxFramesInFlight];          // per engine frame slot: the last submit that used cbuf[slot]
     uint64_t hdriGeneration = 0; bool hdriAttempted = false, hdriReal = false;   // the CPU HDRI generation imported
 
     mc2vk::OwnedCommandPool cpool;
@@ -260,7 +260,7 @@ bool init_island(Island* s, int w, int h) {
         if (!mc2vk::create(s->cpool, s->device, [&](VkCommandPool* h) { return vkCreateCommandPool(s->device, &cpi, nullptr, h); })) { setFallback("cmdpool_failed"); return false; }
         VkCommandBufferAllocateInfo cbi{};
         cbi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-        cbi.commandPool = s->cpool.get(); cbi.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; cbi.commandBufferCount = 2;
+        cbi.commandPool = s->cpool.get(); cbi.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; cbi.commandBufferCount = mc2vk::kMaxFramesInFlight;
         if (vkAllocateCommandBuffers(s->device, &cbi, s->cbuf) != VK_SUCCESS) { setFallback("cmdbuf_failed"); return false; }
     }
     {   // sampler: same as the water island's HDRI sampler (linear, clamp, full mip range)

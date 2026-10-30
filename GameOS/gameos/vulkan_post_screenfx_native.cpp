@@ -206,7 +206,7 @@ struct gosPostProcess::VkPostScreenFx {
         VkCommandBuffer cbuf[2]{}; // shadow, then cloud/shoreline
         mc2vk::OwnedBuffer cloudUbo, shoreUbo, shadowUbo;
         uint64_t ticket[2]{};
-    } frames[2];
+    } frames[mc2vk::kMaxFramesInFlight];
 
     // OWNED objects, declared in creation order: the state is moved into a scope-local in destroy_state so the destructor releases them in REVERSE (a member-wise move-assignment would release forward); the owner idles the GPU first.
     mc2vk::OwnedImageView   depthSampleView;       // depth-aspect view over sDepthRes->image
@@ -431,11 +431,11 @@ bool build_state(gosPostProcess::VkPostScreenFx* s, int w, int h) {
         if (r != VK_SUCCESS) { vlog("vkCreateDescriptorSetLayout(shadow) failed (%d).", static_cast<int>(r)); return false; }
 
         VkDescriptorPoolSize sizes[2]{};
-        sizes[0].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; sizes[0].descriptorCount = 14;
-        sizes[1].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;         sizes[1].descriptorCount = 8;
+        sizes[0].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; sizes[0].descriptorCount = 7 * mc2vk::kMaxFramesInFlight;
+        sizes[1].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;         sizes[1].descriptorCount = 4 * mc2vk::kMaxFramesInFlight;
         VkDescriptorPoolCreateInfo pci{};
         pci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-        pci.maxSets = 6; pci.poolSizeCount = 2; pci.pPoolSizes = sizes;
+        pci.maxSets = 3 * mc2vk::kMaxFramesInFlight; pci.poolSizeCount = 2; pci.pPoolSizes = sizes;
         r = mc2vk::createChecked(s->pool, s->device, [&](auto* h) { return vkCreateDescriptorPool(s->device, &pci, nullptr, h); });
         if (r != VK_SUCCESS) { vlog("vkCreateDescriptorPool failed (%d).", static_cast<int>(r)); return false; }
     }

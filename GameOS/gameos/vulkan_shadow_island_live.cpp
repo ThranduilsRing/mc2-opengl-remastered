@@ -185,7 +185,7 @@ struct ShadowIsland : mc2vk::IslandState {
     VkDescriptorSet   set[mc2vk::kMaxFramesInFlight] = {VK_NULL_HANDLE, VK_NULL_HANDLE};   // one per frame parity, allocated from `pool`, freed with it
     VkCommandBuffer   cbuf[mc2vk::kMaxFramesInFlight] = {VK_NULL_HANDLE, VK_NULL_HANDLE};   // the frame's command buffer, one per parity, allocated from `cpool`, freed with it
 
-    // The frame's recording. The first pass of an epoch (one per frame) begins the command buffer of parity `epoch & 1`; every pass of the frame appends a
+    // The frame's recording. The first pass of an epoch begins its `epoch % kMaxFramesInFlight` command buffer; every pass of the frame appends a
     // render pass to it and mc2_vk_shadow_island_submit_frame() submits it once. Nothing waits for the GPU after the submit: the parity's fence is waited when
     // that parity is recorded again, two frames later, and it is the retire of everything the parity's buffers held.
     uint64_t recordEpoch = ~0ull;
@@ -768,7 +768,7 @@ static bool productReady(bool recorded) {
     return s && recorded && !s->recording;
 }
 
-// Starts the frame's recording when the first pass of an epoch asks. The wait on the parity's fence is the retire of the submit made two frames ago: it is
+// Starts the frame's recording when the first pass of an epoch asks. The slot's fence retires its previous submit: it is
 // never a wait on this frame's work, and in steady state it has long been signalled.
 static bool begin_frame(ShadowIsland* s, uint64_t epoch) {
     if (s->recording && s->recordEpoch == epoch) return true;

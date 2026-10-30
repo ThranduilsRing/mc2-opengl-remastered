@@ -664,7 +664,7 @@ void VulkanContext::beginFrame() {
     { ZoneScopedN("VKContext.Collect"); deferred_.collect(tracker_); }
     { ZoneScopedN("VKContext.InfraFrame"); infra::frame(); }
 #ifdef MC2_VULKAN_ISLAND
-    // The ring slot of this frame was last written by frame F-2: its work must be done before the slot restarts. The islands' own fences keep this
+    // The ring slot of this frame was last written by frame F-kSlots: its work must be done before the slot restarts. The islands' own fences keep this
     // true today; the wait only costs anything if one of them let a frame run further ahead.
     const uint64_t f = tracker_.frameNo();
     // The slot restarts only when that completion is proven: a timed-out wait falls back to a device idle, and if even that leaves the ticket

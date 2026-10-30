@@ -5325,10 +5325,10 @@ flags:
     registry: {feature_id: MC2_FEATURE_VK_FORCE_FAIL, kind: Trace, order: -1, default_on: false}
   - name: MC2_VK_FRAMES_IN_FLIGHT
     kind: Int
-    default: 2
+    default: 3
     rule: Prefix
     owner: vk
-    doc: "Frames in flight of the Vulkan present path: 2 (default); =1 is the kill switch back to one frame."
+    doc: "Frames in flight of the Vulkan present path: 3 (default); =2 retains two frames, =1 is the kill switch back to one frame."
     smoke_passthrough: true
     verified: true
   - name: MC2_VK_GPU_TIMESTAMPS
