@@ -23,13 +23,15 @@ void main() {
     imageStore(reflectionOut,pixel,vec4(0));
     vec2 uv=(vec2(pixel)+0.5)/vec2(size);
     mat4 inv=inverse(U.worldToClip);
-    vec3 nearP=unproject(inv,uv,1.0), farP=unproject(inv,uv,0.0);
+    // The legacy projection's signed far plane lies behind the eye. Both
+    // depths below are on its visible branch, so the ray points into the scene.
+    vec3 nearP=unproject(inv,uv,1.0), farP=unproject(inv,uv,0.5);
     vec3 ray=normalize(farP-nearP);
     if (ray.z>=-0.0001) return;
     float distanceToPlane=(U.p0.x-nearP.z)/ray.z;
-    if (distanceToPlane<=0.0) return;
     vec3 origin=nearP+ray*distanceToPlane;
     vec4 start=U.worldToClip*vec4(origin,1.0);
+    if (start.w<=0.0) return;
     // An opaque surface in front of the water cannot contribute a water pixel.
     float opaque=textureLod(sceneDepth,uv,0).r;
     if (opaque>start.z/start.w+U.p2.y+0.0001) return;
