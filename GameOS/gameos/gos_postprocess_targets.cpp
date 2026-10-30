@@ -57,10 +57,11 @@ void gosPostProcess::createSceneTargets(int w, int h) {
     require(sharedSceneDepth_ != nullptr,"depth");
     sharedSceneNormal_ = mc2SharedSceneColorCreate(MC2_SHARED_SCENE_NORMAL,width_,height_,&reason);
     require(sharedSceneNormal_ != nullptr,"normal");
-    sharedSceneMotion_ = mc2SharedSceneColorCreate(MC2_SHARED_SCENE_MOTION,width_,height_,&reason);
-    require(sharedSceneMotion_ != nullptr,"motion");
-    sharedSceneReactive_ = mc2SharedSceneColorCreate(MC2_SHARED_SCENE_REACTIVE,width_,height_,&reason);
-    require(sharedSceneReactive_ != nullptr,"reactive");
+    // Optional temporal inputs must never consume the shipping scene budget.
+    if (mc2::gate::get<"MC2_EXPERIMENT_TEMPORAL_AB">() == 3) {
+        sharedSceneMotion_ = mc2SharedSceneColorCreate(MC2_SHARED_SCENE_MOTION,width_,height_,&reason);
+        sharedSceneReactive_ = mc2SharedSceneColorCreate(MC2_SHARED_SCENE_REACTIVE,width_,height_,&reason);
+    }
     if (RenderWorld::IsObjectIdBufferEnabled()) {
         sharedSceneObjectId_ = mc2SharedSceneColorCreate(MC2_SHARED_SCENE_OBJECT_ID,width_,height_,&reason);
         require(sharedSceneObjectId_ != nullptr,"objectId");
