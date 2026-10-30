@@ -78,6 +78,33 @@ depth and lookup samplers retain their existing bias. Explicit-LOD reads such
 as the water HDRI reflection keep their authored LOD; the sampler bias affects
 implicit derivative-based material reads.
 
+### Upscale prerequisite validation (2026-10-30)
+
+Proofs live in `E:/mc2-archive-2026-10/proofs/upscale-prereqs/`.
+The compared binaries are baseline `c7ef9a666` and candidate `e843a30c4`.
+The original baseline-versus-baseline runway captures differ by 3,704 pixels;
+this is pre-existing settle/shadow-bake noise, not an upscale regression.
+The close-out captures use trigger frame 900 and 120 settle frames, with
+shadow-bake queue-drain messages checked before readback. Comparisons use the
+baseline repeat noise as their tolerance and require visual inspection.
+
+At 20 seconds, SIMID 03, 10 and 24 pass both repeat equality and their committed
+baselines (`close-simid20-mc2_03`, `recovery-simid20-mc2_10`, `simid20-mc2_24`).
+Explicit `MC2_RENDER_JITTER=0` plus `MC2_RENDER_SCALE=1.0` matches the default
+night captures exactly in all three shoreline views; the day runway control
+differs by 2,329 pixels, within the original baseline noise, and was viewed.
+Fresh baseline repeats (`close-base-a-*`, `close-base-b-*`) have a maximum
+day-view difference of 8,618 pixels. All nine explicit native/jitter-off views
+versus baseline A are within that measured envelope (maximum 8,618); the runway
+is exact. Baseline, default and explicit night captures are pixel-identical.
+The first default day capture has timing outliers beyond that envelope (maximum
+23,147 pixels versus baseline A). Its same-binary, same-settings repeat
+(`close-default-repeat-mc2_01`) is within the envelope in all nine views
+(maximum 8,618), has an exact runway match and differs from explicit native/
+jitter-off by at most 2,230 pixels. No engine change was made between repeats.
+All nine close-out captures have zero Vulkan validation errors. The viewed
+cross-map, runway and shoreline comparisons show no visible scene regression.
+
 ## Modern spine vs legacy dispatch (corrected 2026-06-22 RENDER-CONTRACT-INDEX-1)
 
 This document's Bucket A–D taxonomy is a **coordinate-space / submission-space**
