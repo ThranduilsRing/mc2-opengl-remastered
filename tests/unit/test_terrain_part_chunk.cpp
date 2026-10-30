@@ -209,6 +209,20 @@ TEST_CASE("v2 order paths retain 256 steps and a cursor beyond the legacy byte c
 #include "unit_anim_state.h"
 #include "simulation_save_section.h"
 #include "save_exactness.h"
+
+TEST_CASE("save fields: ANIM pool and sensor tail uses the production writer") {
+	using T = mc2::save::AnimationTail;
+	auto sample = save_probe::patterned<T>(&T::order, &T::scanCursor, &T::enemyInLOS, &T::hasScan);
+	for (size_t i = 0; i < 6; ++i)
+		for (auto& handle : sample.order[i]) save_probe::pattern(handle, static_cast<unsigned char>(i + 1));
+	sample.scanCursor = 3;
+	SAVE_FIELD_SHAPE(sample, order, scanCursor, enemyInLOS, hasScan);
+	CHECK(save_probe::memberBytes<T>(&T::order, &T::scanCursor, &T::enemyInLOS, &T::hasScan) + 2 == sizeof(T));
+	CHECK(save_probe::roundtrip(sample, [](auto& archive, auto& value) {
+		if (archive.reading()) mc2::save::readAnimationTail(archive, value, 8, true);
+		else mc2::save::writeAnimationTail(archive, value);
+	}, &T::order, &T::scanCursor, &T::enemyInLOS, &T::hasScan));
+}
 #include <cstdlib>
 
 namespace {

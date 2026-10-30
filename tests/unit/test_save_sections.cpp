@@ -46,6 +46,12 @@ Bytes r2Packet(std::uint32_t version, const Bytes& animation, const Bytes& queue
 } // namespace
 
 TEST_CASE("save sections: golden wire bytes, sorted and byte-stable") {
+    SavedSection shape;
+    SAVE_FIELD_SHAPE(shape, tag, version, flags, payload);
+    CHECK(save_probe::memberBytes<SavedSection>(&SavedSection::tag, &SavedSection::version,
+        &SavedSection::flags, &SavedSection::payload) + 4 == sizeof(SavedSection));
+    SectionContainer containerShape;
+    SAVE_FIELD_SHAPE(containerShape, sections);
     const auto bytes = encoded(sample());
     CHECK(hex(bytes) == goldenHex);
     CHECK(encoded(sample()) == bytes);

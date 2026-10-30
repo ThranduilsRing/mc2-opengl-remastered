@@ -96,13 +96,7 @@ void serializeBrainRuntime(Archive& a, MechBrainRuntime& r) {
     for (auto& f : r.flowFiredIdx) a(f);
 }
 
-namespace {
-struct QueueImage {
-    std::vector<BrainTaskEntry> entries;
-    std::uint32_t seq = 0;
-};
-
-void queue(Archive& a, QueueImage& q) {
+void serializeBrainQueue(Archive& a, BrainQueueValue& q) {
     a(q.seq);
     int n = static_cast<int>(q.entries.size());
     count(a, n, BrainTaskQueue::MAX_BRAIN_TASKS);
@@ -112,6 +106,7 @@ void queue(Archive& a, QueueImage& q) {
     }
 }
 
+namespace {
 void missionVars(Archive& a, MissionVarStore& s) {
     int n = s.count;
     count(a, n, MissionVarStore::kMissionVarStoreCap);
@@ -148,10 +143,10 @@ Bytes saveBrainSection() {
         if (hasRuntime) serializeBrainRuntime(a, *w->getBrainRuntime());
         if (hasQueue) {
             const BrainTaskQueue& live = *w->getBrainTaskQueue();
-            QueueImage q;
+            BrainQueueValue q;
             q.seq = live.seq();
             q.entries.assign(live.data(), live.data() + live.numPending());
-            queue(a, q);
+            serializeBrainQueue(a, q);
         }
     }
     return a.good() ? a.bytes() : Bytes{};
@@ -171,7 +166,7 @@ bool restoreBrainSection(std::span<const std::uint8_t> payload) {
     missionVars(a, vars);
     a(n);
     if (a.good() && n > MAX_WARRIORS) a.reject("brain_warrior_count");
-    struct Staged { std::uint32_t id = 0; bool hasRuntime = false, hasQueue = false; MechBrainRuntime rt{}; QueueImage q; };
+    struct Staged { std::uint32_t id = 0; bool hasRuntime = false, hasQueue = false; MechBrainRuntime rt{}; BrainQueueValue q; };
     std::vector<Staged> staged;
     for (std::uint32_t i = 0; a.good() && i < n; ++i) {
         Staged s;
@@ -179,7 +174,7 @@ bool restoreBrainSection(std::span<const std::uint8_t> payload) {
         if (!a.good()) break;
         if (s.id >= MAX_WARRIORS || !MechWarrior::warriorList[s.id] || !MechWarrior::warriorList[s.id]->isUsed()) { a.reject("brain_warrior"); break; }
         if (s.hasRuntime) serializeBrainRuntime(a, s.rt);
-        if (s.hasQueue) queue(a, s.q);
+        if (s.hasQueue) serializeBrainQueue(a, s.q);
         staged.push_back(std::move(s));
     }
     if (!a.finish()) return false;

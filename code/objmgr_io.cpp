@@ -1314,15 +1314,19 @@ std::vector<uint8_t> GameObjectManager::saveAnimationState() {
             handles.reserve(pool.size());
             for (auto* object : pool) handles.push_back(object ? static_cast<int32_t>(object->getHandle()) : -1);
         }
-        archive(handles);
+        return handles;
     };
-    poolOrder(std::span(turrets, static_cast<size_t>(numTurrets))); poolOrder(std::span(buildings, static_cast<size_t>(numBuildings)));
-    poolOrder(std::span(gates, static_cast<size_t>(numGates))); poolOrder(std::span(artillery, static_cast<size_t>(numArtillery)));
-    poolOrder(std::span(carnage, static_cast<size_t>(numCarnage))); poolOrder(std::span(weapons, static_cast<size_t>(numWeapons)));
+    mc2::save::AnimationTail tail;
+    tail.order[0] = poolOrder(std::span(turrets, static_cast<size_t>(numTurrets)));
+    tail.order[1] = poolOrder(std::span(buildings, static_cast<size_t>(numBuildings)));
+    tail.order[2] = poolOrder(std::span(gates, static_cast<size_t>(numGates)));
+    tail.order[3] = poolOrder(std::span(artillery, static_cast<size_t>(numArtillery)));
+    tail.order[4] = poolOrder(std::span(carnage, static_cast<size_t>(numCarnage)));
+    tail.order[5] = poolOrder(std::span(weapons, static_cast<size_t>(numWeapons)));
     // Sensor scan state: one team scans per tick and getSensorsActive reads the flag the scans leave; mission scripts branch on it.
-    int32_t scanCursor = SensorManager ? static_cast<int32_t>(SensorManager->getScanCursor()) : 0;
-    bool enemyInLOS = SensorSystemManager::enemyInLOS;
-    archive(scanCursor, enemyInLOS);
+    tail.scanCursor = SensorManager ? static_cast<int32_t>(SensorManager->getScanCursor()) : 0;
+    tail.enemyInLOS = SensorSystemManager::enemyInLOS;
+    mc2::save::writeAnimationTail(archive, tail);
     if (!archive.good()) Fatal(0, "Unable to serialize authoritative animation state");
     return archive.bytes();
 }

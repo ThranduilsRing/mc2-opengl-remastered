@@ -15,6 +15,28 @@
 void getBrainFixedTickState(uint32_t&, float&, float&);
 void setBrainFixedTickState(uint32_t, float, float);
 
+bool operator==(const BrainTaskEntry& a, const BrainTaskEntry& b) {
+    return std::tie(a.priority_tier, a.insertion_frame_ms, a.stable_seq_id, a.warrior_id, a.type) ==
+        std::tie(b.priority_tier, b.insertion_frame_ms, b.stable_seq_id, b.warrior_id, b.type) &&
+        std::memcmp(a._reserved, b._reserved, sizeof(a._reserved)) == 0;
+}
+
+TEST_CASE("save fields: BRN1 queue image retains sequence and every task byte") {
+    using T = mc2::save::BrainQueueValue;
+    using E = BrainTaskEntry;
+    T sample;
+    sample.seq = 0x01010101;
+    sample.entries = {save_probe::patterned<E>(&E::priority_tier, &E::insertion_frame_ms,
+        &E::stable_seq_id, &E::warrior_id, &E::type, &E::_reserved)};
+    SAVE_FIELD_SHAPE(sample, entries, seq);
+    CHECK(save_probe::memberBytes<T>(&T::entries, &T::seq) + 4 == sizeof(T));
+    CHECK(save_probe::roundtrip(sample, mc2::save::serializeBrainQueue, &T::entries, &T::seq));
+    mc2::save::Archive writer;
+    mc2::save::serializeBrainQueue(writer, sample);
+    REQUIRE(writer.good());
+    CHECK(writer.bytes().size() == 8 + sizeof(E) - 3);
+}
+
 TEST_CASE("save fields: BRN1 section fixed tick and mission variables") {
     struct Restore {
         uint32_t tick;
