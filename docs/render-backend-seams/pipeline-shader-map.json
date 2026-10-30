@@ -1,6 +1,8 @@
 {
   "_doc": "Live Vulkan GLSL stages by pipeline. Local includes are expanded by the census, so entries belong to their including stage. Alternate skirt and alpha pipelines are separate layouts. Slang descriptors are covered by the Slang contracts.",
   "pipelines": {
+    "aa_experiment_rcas": {"stages": ["shaders/vulkan/aa_experiment_rcas.frag"], "includes": []},
+    "aa_experiment_taa": {"stages": ["shaders/vulkan/aa_experiment_taa.frag"], "includes": []},
     "aa_fxaa": {"stages": ["shaders/vulkan/aa_fxaa.frag"], "includes": []},
     "aa_smaa_blend": {"stages": ["shaders/vulkan/aa_smaa_blend.frag"], "includes": []},
     "aa_smaa_edges": {"stages": ["shaders/vulkan/aa_smaa_edges.frag"], "includes": []},
@@ -18,6 +20,7 @@
     "legacy_shape_tier1": {"stages": ["shaders/vulkan/legacy_shape_tier1.frag", "shaders/vulkan/legacy_shape_tier1.vert"], "includes": []},
     "mech_depth": {"stages": ["shaders/vulkan/mech_depth.frag", "shaders/vulkan/mech_depth.vert"], "includes": []},
     "mech_tier1": {"stages": ["shaders/vulkan/mech_tier1.frag", "shaders/vulkan/mech_tier1.vert"], "includes": []},
+    "motion_vectors": {"stages": ["shaders/vulkan/motion_vectors.frag"], "includes": []},
     "postprocess": {"stages": ["shaders/vulkan/postprocess.frag", "shaders/vulkan/postprocess.vert"], "includes": []},
     "postprocess_visual": {"stages": ["shaders/vulkan/postprocess_visual.frag", "shaders/vulkan/postprocess_visual.vert"], "includes": []},
     "screen_shadow_csm": {"stages": ["shaders/vulkan/screen_shadow_csm.frag", "shaders/vulkan/screen_shadow_csm.vert"], "includes": []},

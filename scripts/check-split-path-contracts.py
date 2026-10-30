@@ -153,6 +153,9 @@ TESS_SCAN_DIRS = ["code", "gui", "mclib", "GameOS", "RenderCore", "RenderWorld",
 
 PAIRS = {}
 ISLANDS = {
+    "shaders/vulkan/aa_experiment_rcas.frag": "Dev-only spatial AA comparison; Vulkan-only prototype, no shipping GL sibling. Evidence: docs/temporal-ab-decision.md.",
+    "shaders/vulkan/aa_experiment_taa.frag": "Dev-only temporal AA comparison; Vulkan-only prototype, no shipping GL sibling. Evidence: docs/temporal-ab-decision.md.",
+    "shaders/vulkan/motion_vectors.frag": "Native Vulkan velocity prerequisite; no GL consumer or sibling. Default-path parity is checked by the merge gate day/night captures.",
     "shaders/vulkan/edge_fog.frag": "Native Vulkan fog; the GL twin was retired in s63.",
     "shaders/vulkan/fog_oob.frag": "Native Vulkan fog; the GL twin was retired in s63.",
     "shaders/vulkan/edge_fog.vert":   "VK fullscreen-triangle VS for edge_fog; GL pass has no dedicated .vert sibling",

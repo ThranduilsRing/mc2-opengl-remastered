@@ -14,7 +14,8 @@ def source(tmp_path, monkeypatch):
     monkeypatch.syspath_prepend(str(ROOT / 'scripts'))
     shutil.copytree(ROOT / 'shaders', tmp_path / 'shaders')
     for rel in ('GameOS/gameos/vulkan_mech_island.cpp', 'mclib/camera.cpp',
-                '3rdparty/smaa/SMAA.hlsl'):
+                '3rdparty/smaa/SMAA.hlsl', '3rdparty/fsr1/ffx_a.h',
+                '3rdparty/fsr1/ffx_fsr1.h'):
         target = tmp_path / rel
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(ROOT / rel, target)

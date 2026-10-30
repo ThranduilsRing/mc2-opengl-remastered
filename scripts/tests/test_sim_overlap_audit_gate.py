@@ -8,7 +8,8 @@ sys.path.insert(0, str(ROOT / "tools"))
 from scripts.smoke_lib import gates, logparse
 import sim_determinism as sim
 
-CLEAN = "[INSTR v1] enabled: test\n[SMOKE v1] event=summary result=pass\n"
+CLEAN = ("[INSTR v1] enabled: test\n[SMOKE v1] event=summary result=pass\n"
+         "[CONTENT_SUMMARY] mission=mc2_10 total=0 texture=0 shape=0 objtype=0 ammo=0 movetype=0 sound=0 missiondata=0\n")
 LINE = "[SIM_OVERLAP v1] VIOLATION kind=owner site=ObjectTypeManager::get load"
 
 

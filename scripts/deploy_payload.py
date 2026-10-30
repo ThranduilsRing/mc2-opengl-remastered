@@ -1504,15 +1504,16 @@ def check_install_complete(target, exe_name, build_dir, fix=True):
                 missing.append(name + "/")
         return sorted(missing)
     sysdirs = [os.path.join(os.environ.get("SystemRoot", "C:/Windows"), d) for d in ("System32", "SysWOW64")]
+    runtimes = {d.lower() for d in RUNTIME_DLLS}
 
     def is_system(n):
-        return n.startswith(("api-ms-", "ext-ms-")) or any(os.path.exists(os.path.join(d, n)) for d in sysdirs)
+        return n not in runtimes and (n.startswith(("api-ms-", "ext-ms-")) or any(os.path.exists(os.path.join(d, n)) for d in sysdirs))
 
     exe = next((c for c in (os.path.join(target, exe_name), os.path.join(build_dir, exe_name)) if os.path.isfile(c)), None)
     if exe is None:
         return [f"{exe_name} (not found in target or build dir)"]
     try:
-        todo = (_pe_imports(exe) if exe else set()) | {d.lower() for d in RUNTIME_DLLS}
+        todo = (_pe_imports(exe) if exe else set()) | runtimes
         for name in ("mc2_asset_viewer.exe", "ui_editor.exe", "mc2fx_preview.exe", "mc2weapon_gui.exe"):
             tool = os.path.join(target, name)
             if os.path.isfile(tool):
