@@ -5381,7 +5381,7 @@
         },
         {
           "path": "scripts/run_visual.py",
-          "line": 86,
+          "line": 96,
           "evidence": "command",
           "reference": "scripts/run_visual_capture.py",
           "text": "result = subprocess.run(command, cwd=ROOT, stdout=log, stderr=subprocess.STDOUT,"
@@ -13127,7 +13127,7 @@
       "callers_by_stem": [
         {
           "path": "tools/perf/budget_check.py",
-          "line": 157,
+          "line": 202,
           "evidence": "import",
           "reference": "mission_cpu_profile",
           "text": "import mission_cpu_profile"
