@@ -81,9 +81,6 @@ REQUIRED_FILES = [
 REQUIRED_DIRS = [
     "shaders",  # shaders/ must be non-empty; engine loads them by relative path
     "data",
-    # MERGE-WAVE-2 (2026-07-22): shipped example mods (documented in the
-    # modding guide); staged from the repo mods/ tree by build_release.sh.
-    "mods",
 ]
 # At least one .fst archive must exist at install root (fastfile data).
 REQUIRED_FST = True
@@ -133,6 +130,9 @@ def extract_zip(zip_path: Path, dest: Path, label: str) -> list[str]:
 def verify_tree(install: Path) -> list[str]:
     """Return list of failure strings (empty = pass)."""
     failures: list[str] = []
+
+    if (install / "mc2-launcher.exe").exists():
+        failures.append("retired mc2-launcher.exe must not ship; launch mc2.exe")
 
     dlls = (REPO_ROOT / "scripts/release-dlls.txt").read_text().splitlines()
     for dll in dlls:

@@ -275,11 +275,11 @@ fi
 # the REPO tree (canonical, reviewed content) — NOT from the deploy's mods/
 # dir, which accumulates local/third-party mods that must never leak into a
 # public zip. mods/dist (packed .mc2mod artifacts) is build output, excluded.
-echo "[engine] staging example mods (repo mods/)"
+echo "[engine] staging example mods (examples/mods/)"
 mkdir -p "$STAGE/engine/mods"
-for moddir in "$REPO"/mods/*/; do
+for moddir in "$REPO"/examples/mods/*/; do
+    [ -f "$moddir/mod.json" ] && [ -d "$moddir/data" ] || continue
     modname="$(basename "$moddir")"
-    [ "$modname" = "dist" ] && continue
     cp -r "$moddir" "$STAGE/engine/mods/$modname"
 done
 # Reviewed runtime DLLs only. The driver supplies Vulkan; users install the
@@ -304,18 +304,15 @@ done
 for f in "$DEPLOY"/esplash.bmp "$DEPLOY"/tacsplash.bmp; do
     [ -e "$f" ] && cp "$f" "$STAGE/engine/"
 done
-# Prefs files at the deploy root. *.cfg glob naturally excludes
-# options.cfg.old (different extension), which is a developer-side backup
-# we don't want to ship.
+# Factory preferences only. First launch creates options.cfg from minprefs.cfg;
+# never distribute the packager's personal settings or harness configurations.
 for cfg in minprefs.cfg orgprefs.cfg system.cfg; do
     cp "$DEPLOY/$cfg" "$STAGE/engine/"
 done
 rm -f "$OUTDIR/mc2-remastered-engine.zip"
 ( cd "$STAGE/engine" && z "$OUTDIR/mc2-remastered-engine.zip" . ) >/dev/null
 # Sanity: engine zip must contain the cfg files that gate the sniffer
-# branch. options.cfg's presence is what makes mc2.exe skip the sniffer
-# dialog on first launch; minprefs.cfg is the fallback source the engine
-# would copy from if options.cfg ever went missing.
+# branch. minprefs.cfg is the factory source for first-launch options.cfg.
 for required_cfg in minprefs.cfg orgprefs.cfg system.cfg; do
     if ! "$SEVENZIP" l "$OUTDIR/mc2-remastered-engine.zip" | grep -q " $required_cfg\$"; then
         echo "[engine] FAIL — $required_cfg missing from engine.zip (sniffer-loop regression)"; exit 1

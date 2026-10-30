@@ -22,3 +22,9 @@ def test_source_shaders_cannot_replace_baked_spirv(tmp_path):
     assert any('baked .spv' in f for f in release.verify_tree(tmp_path))
     (shaders / 'test.vert.spv').write_bytes(b'\x03\x02\x23\x07')
     assert not any('baked .spv' in f for f in release.verify_tree(tmp_path))
+
+
+def test_retired_launcher_is_rejected(tmp_path):
+    (tmp_path / 'mc2-launcher.exe').touch()
+    assert any('retired' in f for f in release.verify_tree(tmp_path))
+    assert not any('mods/' in f for f in release.verify_tree(tmp_path))

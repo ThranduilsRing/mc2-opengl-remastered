@@ -66,11 +66,10 @@ release" — never listed as shipped until re-verified against the merged tree.
 5. Package: DEPLOY=<release lane> bash scripts/build_release.sh
    -> release_assets/*.zip (engine, gamedata, burnins-4x pt1+pt2, art, tgl,
    movies; the script verifies burnins are 4x and nothing leaked between zips).
-   CAUTION (as of 2026-07-22): build_release.sh predates the launcher — it
-   does NOT copy mc2-launcher.exe or the shipped mods/ tree into the engine
-   zip, and scripts/test_release_zip_install.py does not require them either.
-   Until the script is extended, verify the launcher + mods/ land in the
-   engine zip manually before publishing.
+   Start mc2.exe directly; the retired mc2-launcher.exe must not ship.
+   Example mods come from examples/mods/ (mod.json plus data/ overlays),
+   never from the deploy's locally installed mods. The in-game picker and
+   tools/mc2_import/import_tool.py replace launcher workflows.
 6. Gate: py -3 scripts/test_release_zip_install.py --zip-dir <OUTDIR>
    -> must PASS (exit 0). This is the zips-only install + smoke proof; see
    release-checklist.md for exit codes and why.
@@ -87,7 +86,7 @@ maintainer pulls the trigger.
 ## 3a. Per-release Tracy perf baseline
 
 Every release gets a Tracy baseline so later releases can be regression-checked
-against it. Capture BOTH arms (GL + VK) at the canonical pose and store the
+against it. Capture Vulkan at the canonical pose and store the
 result under `release_assets/<version>/tracy/`:
 
 ```
@@ -96,14 +95,14 @@ py -3 tools/tracy_capture_compare.py baseline \
     --name v<version> --out-dir release_assets/v<version>/tracy
 ```
 
-This writes the two `.tracy` traces plus `baseline.json` + `summary.md`
+This writes `.tracy` traces plus `baseline.json` + `summary.md`
 (frames, fps, per-zone means) into that dir. `release_assets/` is gitignored, so
 archive the `summary.md` + `baseline.json` alongside the published zips (step 7)
 as the perf provenance for the release — the multi-MB `.tracy` files stay local.
 
 Hygiene is baked in: uncapped (`MC2_FPS_CAP=0`), free-timestep, no
-`MC2_VK_PRESENT_VERIFY`. Keep the game window visible during the VK arm or it
-fail-softs to GL. Full details, arms, and the `regress` cross-check against a
+`MC2_VK_PRESENT_VERIFY`. Vulkan is mandatory; there is no GL fallback.
+Full details and the `regress` cross-check against a
 prior release's baseline: [tracy-harness.md](tracy-harness.md).
 
 ## 4. References
