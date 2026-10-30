@@ -6,6 +6,7 @@
 #include <atomic>
 #include "gos_host_vk.h"
 #include "present_thread.h"
+#include "../../RenderCore/TextureService.h"
 #include "mc2fmt.h"
 #include "gos_render.h"
 #include "gos_screenshot.h"
@@ -187,6 +188,7 @@ void retirePresentHandles(unsigned long) {
     const auto& tracker = ctx.tracker();
     const uint64_t frame = tracker.frameNo(), slots = ctx.frameContext().framesInFlight;
     const uint64_t retired = frame > slots ? frame - slots : 0;
+    RenderCore::textureService().collectSourceRetirements();
     // beginFrame proved this slot complete before releasing main. Polling here would wait on the WSI queue lock.
     RenderWorld::advanceFrame(frame, tracker.isComplete(tracker.frameTicket(retired)) ? retired : 0);
 }
