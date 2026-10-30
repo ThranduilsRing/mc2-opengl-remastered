@@ -63,7 +63,7 @@ def analyze(text_lines, frames_needed: int = 300):
     frames, movers = parse(text_lines)
     jumps = [i for i in range(1, len(frames)) if frames[i][1] < frames[i - 1][1] - 0.01]
     if not jumps:
-        return False, ["no load found: the scenario clock never went back (did the quickload fixture fire? SAVE_AT/LOAD_AT are render frames)"]
+        return False, ["no load found: the scenario clock never went back (SAVE_AT/LOAD_AT are fixed ticks; an intro camera can defer both fixtures)"]
     j = jumps[0]
     t_load = frames[j][1]
     pre = [i for i in range(j) if abs(frames[i][1] - t_load) < 0.02]
@@ -317,6 +317,10 @@ def run_fixture(mission: str, save_at: int, load_at: int, deploy: bool, out: str
     sdir = save_dir or savegame_backup.default_dir()
     second_src = os.path.join(sdir, "testgame_resave.ims")
     env = dict(os.environ, **resave_env(save_at, load_at))
+    # A movie defers BOTH fixtures, preserving their gap. mc2_03 saves about
+    # 449 ticks late: load_at + 120 used to terminate before its quickload.
+    # Keep bounded headroom; continuation still judges only its 1..60 ticks.
+    headless_ticks = load_at + max(120, duration * 30)
     if continuation:
         env["MC2_SIM_IDENTITY_TRACE_DETAIL"] = "1"
     with savegame_backup.guarded(sdir):
@@ -331,7 +335,7 @@ def run_fixture(mission: str, save_at: int, load_at: int, deploy: bool, out: str
         r = subprocess.run([sys.executable, os.path.join(ROOT, "scripts", "run_smoke.py"), "--mission", mission, "--duration", str(duration),
                             *smoke_target(install, ref_exe, ref_commit), "--keep-logs", *speed_args(sim_speed),
                             # headless: no window or GPU; the run ends on a tick budget past the quickload and its re-save
-                            *(["--headless", "--ticks", str(load_at + 120)] if headless else [])], env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, errors="replace",
+                            *(["--headless", "--ticks", str(headless_ticks)] if headless else [])], env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, errors="replace",
                            **console_child.child_kwargs(redirected=True))
         with open(os.path.join(dest, "runner.txt"), "w", encoding="utf-8") as fh:
             fh.write(r.stdout)
@@ -713,8 +717,8 @@ def main(argv=None) -> int:
                            ("check", "compare a fresh round-trip save with the recorded digest")):
         p = sub.add_parser(name, help=helptext)
         p.add_argument("--mission", default="mc2_01")
-        p.add_argument("--save-at", type=int, help=f"render frame of the quicksave (check: the baseline's; else {DEFAULT_SAVE_AT})")
-        p.add_argument("--load-at", type=int, help=f"render frame of the quickload (check: the baseline's; else {DEFAULT_LOAD_AT})")
+        p.add_argument("--save-at", type=int, help=f"fixed tick of the quicksave (check: the baseline's; else {DEFAULT_SAVE_AT})")
+        p.add_argument("--load-at", type=int, help=f"fixed tick of the quickload (check: the baseline's; else {DEFAULT_LOAD_AT})")
         p.add_argument("--duration", type=int, default=28)
         p.add_argument("--deploy", action="store_true")
         p.add_argument("--out", help="keep save1.ims, save2.ims and the run here (default: a temporary directory)")

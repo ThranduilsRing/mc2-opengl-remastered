@@ -239,15 +239,20 @@ def test_run_retains_failed_smoke_evidence_and_limits_liveness_fixture(tmp_path,
         raise AssertionError("a mocked save guard must never reach the owner's save directory")
     monkeypatch.setattr(rt.savegame_backup, "default_dir", owner_dir_forbidden)
     observed = []
+    commands = []
     def smoke(*args, **kwargs):
         observed.append(kwargs["env"])
+        commands.append(args[0])
         # A newer foreign run must never replace this invocation's evidence.
         other = artifact.with_name("2099-foreign")
         other.mkdir(exist_ok=True)
         (other / "mc2_01.log").write_text("foreign green run")
         return subprocess.CompletedProcess(args, 1, f"[runner] artifacts: {artifact}\nfailed gate")
     monkeypatch.setattr(rt.subprocess, "run", smoke)
-    ok, report = rt.run("mc2_01", 60, False, str(tmp_path / "out"), "lane3", save_dir=str(save_dir))
+    ok, report = rt.run("mc2_01", 60, False, str(tmp_path / "out"), "lane3", save_dir=str(save_dir),
+                        headless=True, duration=20)
     assert not ok and "failed gate" in report and any("no load found" in line for line in report)
     assert "MC2_FIXTURE_ORDER_LIVENESS" not in observed[0]
+    # A save deferred to tick 1449 needs load 1849 + a 60-tick observation.
+    assert int(commands[0][commands[0].index("--ticks") + 1]) >= 1909
     assert (tmp_path / "out/run/mc2_01.log").read_text() == "fixture did not load"
