@@ -206,6 +206,9 @@ class LogSummary:
     pool_nulls: int = 0
     asset_oob: int = 0
     shader_errors: int = 0
+    content_errors: int = 0
+    content_summaries: int = 0
+    content_counts: dict = field(default_factory=dict)
     missing_files: int = 0
     crash_handler_hit: bool = False
     smoke_summary_result: Optional[str] = None
@@ -308,6 +311,14 @@ def parse_log(text: str,
             if p.search(line): s.crash_handler_hit = True; break
         for p in SHADER_ERROR_PATTERNS:
             if p.search(line): s.shader_errors += 1; break
+        if "[CONTENT_SUMMARY]" in line:
+            values = dict(re.findall(r"(\w+)=(\d+)", line))
+            kinds = {"texture", "shape", "objtype", "ammo", "movetype", "sound", "missiondata"}
+            if kinds <= values.keys() and "total" in values and int(values["total"]) == sum(int(values[k]) for k in kinds):
+                s.content_summaries += 1
+                s.content_errors += int(values.pop("total"))
+                for key, value in values.items():
+                    s.content_counts[key] = s.content_counts.get(key, 0) + int(value)
         for p in MISSING_FILE_PATTERNS:
             if p.search(line): s.missing_files += 1; break
 

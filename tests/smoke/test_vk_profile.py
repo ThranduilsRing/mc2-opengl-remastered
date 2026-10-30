@@ -84,6 +84,7 @@ def test_a_refused_profile_makes_the_mission_verdict_red():
 
     def run(text):
         s = logparse.parse_log(text)
+        s.content_summaries = 1
         s.instr_banner_seen = s.smoke_banner_seen = s.mission_resolve_seen = True
         s.smoke_summary_result, s.mission_ready_ms, s.heartbeats_play, s.last_heartbeat_wall_s_play = "pass", 5000.0, 30, 30.5
         s.perf = logparse.PerfRow(avg_fps=60)

@@ -231,6 +231,7 @@ class RunConfig:
     grace_s: int                        # walltime cap = duration + grace
     env_extra: dict
     allow_asset_oob: bool = False
+    content_error_budget: int = 0
     # META-FIX INFRA-3: per-mission marker-bucket downgrades (bucket -> True).
     marker_overrides: dict = field(default_factory=dict)
     show_window: bool = False
@@ -370,6 +371,7 @@ def run_one(cfg: RunConfig) -> RunResult:
         validation_requested=vk_validation.requested(env),
         stem=cfg.stem,
         vegetation_expected=vegetation_expected,
+        content_error_budget=cfg.content_error_budget,
     )
     verdict = evaluate(summary, gcfg, exit_code=proc.returncode,
                        walltime_s=walltime, killed_by_timeout=killed)

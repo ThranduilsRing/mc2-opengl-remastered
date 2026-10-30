@@ -24,6 +24,7 @@ class GateConfig:
     # The smoke mission under test: selects the PRESENCE_RULES rows that apply.
     stem: str = ""
     vegetation_expected: bool = True  # Low/Potato retain only stock objects.
+    content_error_budget: Optional[int] = 0
 
 
 @dataclass
@@ -76,6 +77,10 @@ def evaluate(s: LogSummary, cfg: GateConfig, *,
         buckets.append("asset_oob"); details.append(f"{s.asset_oob} oob")
     if s.shader_errors > 0:
         buckets.append("shader_error"); details.append(f"{s.shader_errors}")
+    if cfg.content_error_budget is not None and s.content_errors > cfg.content_error_budget:
+        buckets.append("content_error"); details.append(f"{s.content_errors} content errors")
+    if not s.content_summaries:
+        buckets.append("content_summary_missing")
     if s.missing_files > 0:
         buckets.append("missing_file"); details.append(f"{s.missing_files}")
 

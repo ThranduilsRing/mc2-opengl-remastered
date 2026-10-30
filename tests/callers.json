@@ -726,7 +726,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/run_smoke.py",
-          "line": 1123,
+          "line": 1127,
           "evidence": "command",
           "reference": "scripts/check-deploy-coherence.py",
           "text": "_coh = subprocess.run("
@@ -828,7 +828,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/run_smoke.py",
-          "line": 1057,
+          "line": 1061,
           "evidence": "command",
           "reference": "scripts/check-deploy-target.py",
           "text": "_g = subprocess.run(_gcmd, capture_output=True, text=True, timeout=60, **nofocus.hidden_kwargs())"
@@ -858,7 +858,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/make-isolated-deploy.py",
-          "line": 277,
+          "line": 325,
           "evidence": "command",
           "reference": "scripts/check-disk-space.py",
           "text": "rc = subprocess.run("
@@ -1035,7 +1035,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/make-isolated-deploy.py",
-          "line": 122,
+          "line": 124,
           "evidence": "load module",
           "reference": "scripts/check-hardlink-isolation.py",
           "text": "spec = importlib.util.spec_from_file_location(\"check_hardlink_isolation\","
@@ -2198,7 +2198,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/run_smoke.py",
-          "line": 1141,
+          "line": 1145,
           "evidence": "command",
           "reference": "scripts/check_shader_bom.py",
           "text": "_bom = subprocess.run("
@@ -2213,7 +2213,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1540,
+          "line": 1541,
           "evidence": "command",
           "reference": "scripts/check_sim_include_firewall.py",
           "text": "run_check \"sim_include_firewall\"        \"py -3 -B scripts/tests/test_sim_include_firewall.py && py -3 scripts/check_sim_include_firewall.py\""
@@ -2617,7 +2617,7 @@
         },
         {
           "path": "scripts/make-isolated-deploy.py",
-          "line": 74,
+          "line": 76,
           "evidence": "import",
           "reference": "console_child",
           "text": "import console_child  # noqa: E402  (stdio-inheriting children keep their output; scripts/console_child.py)"
@@ -2729,14 +2729,14 @@
         },
         {
           "path": "scripts/smoke_lib/host_lease.py",
-          "line": 532,
+          "line": 549,
           "evidence": "import",
           "reference": "scripts.console_child",
           "text": "from scripts import console_child         # type: ignore"
         },
         {
           "path": "scripts/smoke_lib/host_lease.py",
-          "line": 535,
+          "line": 552,
           "evidence": "import",
           "reference": "console_child",
           "text": "import console_child                       # type: ignore"
@@ -3815,7 +3815,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/run_smoke.py",
-          "line": 999,
+          "line": 1003,
           "evidence": "command",
           "reference": "scripts/deploy_payload.py",
           "text": "_v = subprocess.run(cmd, capture_output=True, text=True, timeout=300, **nofocus.hidden_kwargs())"
@@ -3831,7 +3831,7 @@
         },
         {
           "path": "scripts/run_smoke.py",
-          "line": 1414,
+          "line": 1418,
           "evidence": "import",
           "reference": "scripts.deploy_payload",
           "text": "from scripts import deploy_payload as _dp"
@@ -3915,7 +3915,7 @@
         },
         {
           "path": "scripts/tests/test_isolated_deploy.py",
-          "line": 10,
+          "line": 12,
           "evidence": "import",
           "reference": "deploy_payload",
           "text": "import deploy_payload as dp"
@@ -3999,7 +3999,7 @@
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 191,
+          "line": 194,
           "evidence": "import_module",
           "reference": "deploy_payload",
           "text": "return importlib.import_module('deploy_payload')"
@@ -4222,7 +4222,7 @@
         },
         {
           "path": "scripts/tests/test_isolated_deploy.py",
-          "line": 11,
+          "line": 13,
           "evidence": "import",
           "reference": "kit_payload",
           "text": "import kit_payload"
@@ -4264,10 +4264,17 @@
         },
         {
           "path": "scripts/tests/test_isolated_deploy.py",
-          "line": 15,
+          "line": 18,
           "evidence": "load module",
           "reference": "scripts/make-isolated-deploy.py",
           "text": "spec = importlib.util.spec_from_file_location("
+        },
+        {
+          "path": "scripts/tests/test_isolated_deploy.py",
+          "line": 70,
+          "evidence": "load module",
+          "reference": "scripts/make-isolated-deploy.py",
+          "text": "spec = importlib.util.spec_from_file_location('lean_iso', ROOT / 'scripts/make-isolated-deploy.py')"
         }
       ],
       "callers_by_stem": []
@@ -5172,7 +5179,7 @@
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 690,
+          "line": 694,
           "evidence": "command",
           "reference": "scripts/run_smoke.py",
           "text": "proc = subprocess.run(cmd, cwd=str(ROOT), capture_output=True,"
@@ -5287,14 +5294,14 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1536,
+          "line": 1537,
           "evidence": "command",
           "reference": "scripts/run_tools_tests.py",
           "text": "run_check_tri \"tools_tests\"             \"py -3 scripts/run_tools_tests.py\""
         },
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1537,
+          "line": 1538,
           "evidence": "command",
           "reference": "scripts/run_tools_tests.py",
           "text": "run_check_tri \"kit_art\"                 \"py -3 scripts/run_tools_tests.py --suite art\""
@@ -5390,7 +5397,7 @@
         },
         {
           "path": "scripts/run_smoke.py",
-          "line": 1547,
+          "line": 1552,
           "evidence": "import",
           "reference": "run_visual_capture",
           "text": "from run_visual_capture import smoke_capture"
@@ -5567,35 +5574,35 @@
         },
         {
           "path": "scripts/run_smoke.py",
-          "line": 828,
+          "line": 832,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from scripts.smoke_lib import deploy_lease as _deploy_lease"
         },
         {
           "path": "scripts/run_smoke.py",
-          "line": 888,
+          "line": 892,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from scripts.smoke_lib import host_lease as _host_lease"
         },
         {
           "path": "scripts/run_smoke.py",
-          "line": 901,
+          "line": 905,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from scripts.smoke_lib import host_load as _host_load"
         },
         {
           "path": "scripts/run_smoke.py",
-          "line": 1086,
+          "line": 1090,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from scripts.smoke_lib import preflight_cache as _pfcache"
         },
         {
           "path": "scripts/run_smoke.py",
-          "line": 1272,
+          "line": 1276,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from scripts.smoke_lib import child_registry as _children"
@@ -5770,7 +5777,7 @@
         },
         {
           "path": "scripts/smoke_lib/runner.py",
-          "line": 361,
+          "line": 362,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from . import render_options_pin"
@@ -5840,7 +5847,7 @@
         },
         {
           "path": "scripts/tests/test_install_hygiene.py",
-          "line": 145,
+          "line": 146,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from scripts.smoke_lib import manifest"
@@ -5861,7 +5868,7 @@
         },
         {
           "path": "tests/smoke/test_marker_buckets.py",
-          "line": 183,
+          "line": 185,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from scripts.smoke_lib import render_options_pin"
@@ -6019,7 +6026,7 @@
         },
         {
           "path": "scripts/run_smoke.py",
-          "line": 1272,
+          "line": 1276,
           "evidence": "import",
           "reference": "scripts.smoke_lib.child_registry",
           "text": "from scripts.smoke_lib import child_registry as _children"
@@ -6141,7 +6148,7 @@
         },
         {
           "path": "scripts/run_smoke.py",
-          "line": 828,
+          "line": 832,
           "evidence": "import",
           "reference": "scripts.smoke_lib.deploy_lease",
           "text": "from scripts.smoke_lib import deploy_lease as _deploy_lease"
@@ -6341,14 +6348,14 @@
         },
         {
           "path": "tests/smoke/test_marker_buckets.py",
-          "line": 146,
+          "line": 147,
           "evidence": "import",
           "reference": "scripts.smoke_lib.gates",
           "text": "from scripts.smoke_lib.gates import GateConfig, evaluate"
         },
         {
           "path": "tests/smoke/test_marker_buckets.py",
-          "line": 182,
+          "line": 184,
           "evidence": "import",
           "reference": "scripts.smoke_lib.gates",
           "text": "from scripts.smoke_lib.gates import GateConfig, evaluate"
@@ -6383,7 +6390,7 @@
         },
         {
           "path": "tests/smoke/test_vk_validation.py",
-          "line": 105,
+          "line": 106,
           "evidence": "import",
           "reference": "scripts.smoke_lib.gates",
           "text": "from scripts.smoke_lib.gates import GateConfig, evaluate"
@@ -6398,7 +6405,7 @@
       "callers_by_stem": [
         {
           "path": "scripts/run_smoke.py",
-          "line": 888,
+          "line": 892,
           "evidence": "import",
           "reference": "scripts.smoke_lib.host_lease",
           "text": "from scripts.smoke_lib import host_lease as _host_lease"
@@ -6447,7 +6454,7 @@
         },
         {
           "path": "scripts/tests/test_host_lease.py",
-          "line": 319,
+          "line": 331,
           "evidence": "command",
           "reference": "scripts.smoke_lib.host_lease",
           "text": "status = subprocess.run([sys.executable, \"-m\", \"scripts.smoke_lib.host_lease\", \"status\"], cwd=str(lane_b), env=env,"
@@ -6469,7 +6476,7 @@
       "callers_by_stem": [
         {
           "path": "scripts/run_smoke.py",
-          "line": 901,
+          "line": 905,
           "evidence": "import",
           "reference": "scripts.smoke_lib.host_load",
           "text": "from scripts.smoke_lib import host_load as _host_load"
@@ -6582,7 +6589,7 @@
         },
         {
           "path": "tests/smoke/test_vk_profile.py",
-          "line": 98,
+          "line": 99,
           "evidence": "import",
           "reference": "scripts.smoke_lib.logparse",
           "text": "from scripts.smoke_lib.logparse import LogSummary"
@@ -6596,7 +6603,7 @@
         },
         {
           "path": "tests/smoke/test_vk_validation.py",
-          "line": 79,
+          "line": 80,
           "evidence": "import",
           "reference": "scripts.smoke_lib.logparse",
           "text": "from scripts.smoke_lib.logparse import LogSummary"
@@ -6653,7 +6660,7 @@
         },
         {
           "path": "scripts/tests/test_install_hygiene.py",
-          "line": 145,
+          "line": 146,
           "evidence": "import",
           "reference": "scripts.smoke_lib.manifest",
           "text": "from scripts.smoke_lib import manifest"
@@ -6760,7 +6767,7 @@
       "callers_by_stem": [
         {
           "path": "scripts/run_smoke.py",
-          "line": 1086,
+          "line": 1090,
           "evidence": "import",
           "reference": "scripts.smoke_lib.preflight_cache",
           "text": "from scripts.smoke_lib import preflight_cache as _pfcache"
@@ -6796,14 +6803,14 @@
         },
         {
           "path": "scripts/smoke_lib/runner.py",
-          "line": 361,
+          "line": 362,
           "evidence": "import",
           "reference": "scripts.smoke_lib.render_options_pin",
           "text": "from . import render_options_pin"
         },
         {
           "path": "tests/smoke/test_marker_buckets.py",
-          "line": 183,
+          "line": 185,
           "evidence": "import",
           "reference": "scripts.smoke_lib.render_options_pin",
           "text": "from scripts.smoke_lib import render_options_pin"
@@ -6974,14 +6981,14 @@
         },
         {
           "path": "tests/smoke/test_vk_profile.py",
-          "line": 99,
+          "line": 100,
           "evidence": "import",
           "reference": "scripts.smoke_lib.runner",
           "text": "from scripts.smoke_lib.runner import Verdict"
         },
         {
           "path": "tests/smoke/test_vk_validation.py",
-          "line": 80,
+          "line": 81,
           "evidence": "import",
           "reference": "scripts.smoke_lib.runner",
           "text": "from scripts.smoke_lib.runner import Verdict"
@@ -7003,7 +7010,7 @@
       "callers_by_stem": [
         {
           "path": "scripts/run_smoke.py",
-          "line": 1652,
+          "line": 1657,
           "evidence": "import",
           "reference": "scripts.smoke_lib.runtime_bridge",
           "text": "from scripts.smoke_lib.runtime_bridge import RuntimeBridge"
@@ -7412,6 +7419,13 @@
       "path": "scripts/tests/test_console_child.py",
       "basename": "test_console_child.py",
       "stem": "test_console_child",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
+      "path": "scripts/tests/test_content_error.py",
+      "basename": "test_content_error.py",
+      "stem": "test_content_error",
       "callers_by_basename": [],
       "callers_by_stem": []
     },
@@ -7933,7 +7947,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1540,
+          "line": 1541,
           "evidence": "command",
           "reference": "scripts/tests/test_sim_include_firewall.py",
           "text": "run_check \"sim_include_firewall\"        \"py -3 -B scripts/tests/test_sim_include_firewall.py && py -3 scripts/check_sim_include_firewall.py\""
@@ -12236,7 +12250,7 @@
         },
         {
           "path": "scripts/tests/test_mod_smoke.py",
-          "line": 294,
+          "line": 304,
           "evidence": "import",
           "reference": "fst",
           "text": "import fst"
@@ -12292,14 +12306,14 @@
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 448,
+          "line": 451,
           "evidence": "import_module",
           "reference": "fst",
           "text": "fst_lib = importlib.import_module('fst')"
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 484,
+          "line": 487,
           "evidence": "import_module",
           "reference": "fst",
           "text": "fst_lib = importlib.import_module('fst')"
@@ -12616,28 +12630,28 @@
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 233,
+          "line": 236,
           "evidence": "import",
           "reference": "fst_listing",
           "text": "import fst_listing"
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 364,
+          "line": 367,
           "evidence": "import",
           "reference": "fst_listing",
           "text": "import fst_listing"
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 466,
+          "line": 469,
           "evidence": "import",
           "reference": "fst_listing",
           "text": "import fst_listing"
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 485,
+          "line": 488,
           "evidence": "import",
           "reference": "fst_listing",
           "text": "import fst_listing"

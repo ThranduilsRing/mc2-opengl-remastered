@@ -62,6 +62,9 @@ BATTERY = (
     ('MCO-Carver5', 'MCO-Carver5', 'MechCommanderOmnitech'),
 )
 
+# Per-mod mission-load budgets, pinned by the content-channel smoke proof.
+CONTENT_BUDGETS = {"MC2X-CVE-G": 2, "MechCommanderOmnitech": 0}
+
 # Engine-owned loose data that deploy_payload does not enumerate (relative to the
 # base install). Files only count when absent from the stock fast files, so the
 # list can never shadow stock or mod content.
@@ -675,6 +678,7 @@ def run_mod(staged: Path, stem: str, duration: int, timeout: int, ref_exe: Path 
         '--duration', str(duration),
         '--keep-logs',
         '--wait-timeout', str(lease_wait),
+        '--content-error-budget', str(CONTENT_BUDGETS.get(staged.name, 0)),
     ]
     if ref_exe is not None:
         cmd += ['--ref-exe', str(ref_exe)]
@@ -708,8 +712,11 @@ def run_mod(staged: Path, stem: str, duration: int, timeout: int, ref_exe: Path 
          if line.startswith('|') and ('PASS' in line or 'FAIL' in line)), '')
     text = '\n'.join([collect_log_text(output), artifact_log_text(started, stem, artifacts)])
     health = analyze_health(text)
+    summaries = re.findall(r'\[CONTENT_SUMMARY\].*?total=(\d+)', text)
+    content_errors = max(map(int, summaries), default=None)
     return {'exit': rc, 'fingerprint': fingerprint, 'verdict': verdict,
-            'log': str(log), 'health': health, 'note': failure_note(text)}
+            'log': str(log), 'health': health, 'note': failure_note(text),
+            'content_errors': content_errors, 'content_budget': CONTENT_BUDGETS.get(staged.name, 0)}
 
 
 def failure_note(text: str) -> str:
@@ -723,6 +730,8 @@ def failure_note(text: str) -> str:
 def result_word(row: dict) -> str:
     if row['exit'] != 0:
         return 'FAIL(exit %s)' % row['exit']
+    if row.get('content_errors') is not None and row['content_errors'] > row.get('content_budget', 0):
+        return 'CONTENT-FAIL'
     h = row['health']
     if not (h['mech_ok'] and h['ai_ok']):
         return 'HEALTH-FAIL'
@@ -730,10 +739,11 @@ def result_word(row: dict) -> str:
 
 
 def format_table(rows: list[dict]) -> str:
-    head = ('mod', 'mission', 'result', 'health', 'note')
+    head = ('mod', 'mission', 'result', 'health', 'content / budget', 'note')
     body = [(r['mod'], r['mission'], result_word(r), health_cell(r['health']),
+             f"{r.get('content_errors', '?')} / {r.get('content_budget', 'unbaselined')}",
              r.get('note', '') if result_word(r) != 'PASS' else '') for r in rows]
-    widths = [max(len(str(x[i])) for x in [head] + body) for i in range(5)]
+    widths = [max(len(str(x[i])) for x in [head] + body) for i in range(len(head))]
     line = lambda cells: '| ' + ' | '.join(str(c).ljust(w) for c, w in zip(cells, widths)) + ' |'
     return '\n'.join([line(head), line(['-' * w for w in widths])] + [line(b) for b in body])
 
