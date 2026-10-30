@@ -251,6 +251,7 @@ def first_run(install: Path, out_dir: Path) -> None:
     (install / "options.cfg").unlink(missing_ok=True)
     env = os.environ.copy()
     env.pop("MC2_SMOKE_MODE", None)
+    env["MC2_LOG"] = "1"
     env["MC2_WINDOW_OFFSCREEN"] = "1"
     with (out_dir / "first-run.log").open("w", encoding="utf-8") as log_file:
         proc = nofocus.spawn([str(install / "mc2.exe")], cwd=str(install),
