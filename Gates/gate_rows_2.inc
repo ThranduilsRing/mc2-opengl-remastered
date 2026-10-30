@@ -132,6 +132,7 @@ G("MC2_PLAY_MISSION_SKIP_CINEMATICS", Bool, false, "code", "", "Dev-only mission
 L(Lead0P, "MC2_POSTPROCESS_COMPUTE_BLUR", Bool, false, "post", "", ""),
 // POST-FX-CAS-1: AMD FidelityFX Contrast Adaptive Sharpening (GL composite).
 G("MC2_PRESENTATION_DISABLED", Bool, false, "code", "", "Replay proof: suppress presentation extraction updates while simulation continues.", passthrough | registry(Trace, "MC2_PRESENTATION_DISABLED", -1, false) | verified),
+L(Lead0Kill, "MC2_PRESENT_THREAD", Bool, true, "gameos", "2026-11-02", "P2 present worker; set 0 for the inline rollback. Retire within three merge windows.", passthrough | registry(Feature, "MC2_PRESENT_THREAD", -1, true) | verified),
 P("MC2_PREVIEW_FBO_SCALE", Int, 0, "gameos", "", "", verified),  // default not derivable from the tree
 L(Lead1, "MC2_PREVIEW_SCENE_DRAIN", Bool, false, "code", "", "", verified),
 // PPC / direct-fire projectile knobs (gameplay; launcher-toggleable)

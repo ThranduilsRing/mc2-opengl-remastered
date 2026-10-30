@@ -14,6 +14,7 @@ namespace gos { namespace host {
 void advanceFrameCounter();
 // Destroy islands, present resources and the shared Vulkan device before the SDL window.
 void shutdownVulkanBackend();
+void retirePresentHandles(unsigned long frameCounter);
 // Submit/present native work, or hold the previous frame while a minimized surface recovers.
 void presentOrSwap(graphics::RenderWindowHandle win, unsigned long frameCounter);
 }}

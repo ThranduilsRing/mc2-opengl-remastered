@@ -141,7 +141,7 @@ bool ensure_hdri(Island* s, uint64_t generation) {
     // Keyed on the CPU copy's load generation: a reloaded HDRI can come back under the same GL name.
     if (s->hdriAttempted && s->hdriGeneration == generation) return static_cast<bool>(s->hdriView);
     s->hdriAttempted = true; s->hdriGeneration = generation; s->hdriReal = false;
-    if (s->hdriView || s->hdriImg) { vkDeviceWaitIdle(s->device); destroy_hdri(s); }
+    if (s->hdriView || s->hdriImg) { mc2vk::getOrCreateEngineVulkanContext().waitIdle("hdri_replace"); destroy_hdri(s); }
 
     VkFormat fmt = VK_FORMAT_R16G16B16A16_SFLOAT;
     int w = 1, h = 1; uint32_t mips = 1;
@@ -232,7 +232,7 @@ bool ensure_hdri(Island* s, uint64_t generation) {
     });
     if (!ok) { vlog("HDRI upload submit failed."); return false; }
     s->hdriReal = haveReal;
-    vkDeviceWaitIdle(s->device);   // rare (<=2x per session): descriptor rewrite safety
+    mc2vk::getOrCreateEngineVulkanContext().waitIdle("hdri_descriptors");
     update_set(s);
     vlog("HDRI %s import: %dx%d fmt=%d mips=%u source_version=%llu (copy-once).", haveReal ? "REAL" : "DUMMY", w, h, static_cast<int>(fmt), mips, static_cast<unsigned long long>(generation));
     return true;

@@ -164,6 +164,8 @@ public:
     // up to here has finished". `si` keeps its binary waits and signals; `fence` (may be null) is passed through unchanged. `si.pNext` must be empty.
     // On success *outValue (when given) is the timeline value this submit signals. Thread-safe.
     VkResult submit(const VkSubmitInfo& si, VkFence fence, uint64_t* outValue = nullptr) const;
+    // Present shares external queue synchronization with submit, even when both families alias.
+    VkResult present(VkQueue queue, const VkPresentInfoKHR& info) const;
 private:
     VkResult submitLocked(const VkSubmitInfo& si, VkFence fence, uint64_t* outValue) const;   // submitMutex_ held
     GpuTicket flushUploadsLocked() const;

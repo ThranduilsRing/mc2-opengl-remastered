@@ -586,6 +586,10 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "Replay proof: suppress presentation extraction updates while simulation continues.",
     },
     {
+        "MC2_PRESENT_THREAD", "MC2_PRESENT_THREAD", EnvVarKind::Feature, true,
+        "P2 present worker; set 0 for the inline rollback. Retire within three merge windows.",
+    },
+    {
         "MC2_PROJECTILE_SPEED_MULT", "MC2_PROJECTILE_SPEED_MULT", EnvVarKind::Feature, false,
         "Direct-fire projectile speed multiplier (PPC/autocannon/gauss = non-arc bolts).",
     },

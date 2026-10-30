@@ -5,6 +5,7 @@
 // render loop did. The game's gameosmain and the editor's EditorGameOS both call these.
 #include <atomic>
 #include "gos_host_vk.h"
+#include "present_thread.h"
 #include "mc2fmt.h"
 #include "gos_render.h"
 #include "gos_screenshot.h"
@@ -147,6 +148,7 @@ namespace gos { namespace host {
 void advanceFrameCounter() { g_mc2FrameCounter.fetch_add(1, std::memory_order_relaxed); ++g_mc2RenderFrame; }
 
 void shutdownVulkanBackend() {
+    mc2vk::present_thread::stop();
 #ifdef MC2_VULKAN
 #ifdef MC2_VULKAN_ISLAND
     // Islands first: each frees its Vulkan objects (and the GL interop FBO / imported texture, if any) while the GL context and the shared
@@ -180,6 +182,7 @@ static void advanceHandleClock(unsigned long frameCounter) {
 #endif
     RenderWorld::advanceFrame(frameNo, doneFrame);
 }
+void retirePresentHandles(unsigned long frameCounter) { advanceHandleClock(frameCounter); }
 
 // Present the finished frame: the Vulkan present when the backend is up, else the GL swap.
 void presentOrSwap(graphics::RenderWindowHandle win, unsigned long frameCounter) {
@@ -262,6 +265,12 @@ void presentOrSwap(graphics::RenderWindowHandle win, unsigned long frameCounter)
                 gos::visual_capture::vkCapturePending() ||   // VK-VISUAL-CAPTURE-1
                 gos::screenshot::pending();
             vkPresentAttempted = true;
+            if (mc2vk::present_thread::enabled()) {
+                mc2vk::present_thread::enqueue(static_cast<uint32_t>(pdw), static_cast<uint32_t>(pdh),
+                    verify, g_mc2RenderFrame, g_mc2FxFireCaptureFrame);
+                return;
+            }
+            vkpres.setCaptureFrame(g_mc2RenderFrame, g_mc2FxFireCaptureFrame);
             if (vkpres.presentFrame(static_cast<uint32_t>(pdw), static_cast<uint32_t>(pdh), verify)) {
                 vkPresented = true;
                 static unsigned long s_vkHealthCadence = 0;
