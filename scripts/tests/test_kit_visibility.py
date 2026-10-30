@@ -148,7 +148,7 @@ def test_four_way_kit_priority(tmp_path, priority_probe, case):
         assert priority_probe(installed)
 
 
-@pytest.mark.parametrize("extension", [".ini", ".glb"])
+@pytest.mark.parametrize("extension", [".ini", ".glb", ".mcasset.json"])
 def test_bundled_definition_receipt_preserves_user_and_mod_edits(tmp_path, priority_probe, extension):
     target = tmp_path / "install"
     rel = "data/tgl/spotlight" + extension

@@ -22,12 +22,13 @@ inline bool looseTexture(const std::filesystem::path& path)
     return ext == ".ktx2" || ext == ".tga";
 }
 
-// Deploy receipts byte-verified stock textures, appearance definitions and GLBs.
+// Deploy receipts byte-verified stock textures, appearance definitions and GLB packages.
 // Legacy general-cooker stamps cannot certify stock provenance.
 inline bool verifiedLooseStockAsset(const std::filesystem::path& path)
 {
     const auto ext = assetLower(path.extension().string());
-    if (!looseTexture(path) && ext != ".ini" && ext != ".glb") return false;
+    if (!looseTexture(path) && ext != ".ini" && ext != ".glb" &&
+        !assetLower(path.filename().string()).ends_with(".mcasset.json")) return false;
     std::error_code error;
     const bool hasStamp = std::filesystem::exists(path.string() + ".cookstamp", error);
     if (error) return false;
