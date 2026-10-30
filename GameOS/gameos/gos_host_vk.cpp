@@ -182,7 +182,14 @@ static void advanceHandleClock(unsigned long frameCounter) {
 #endif
     RenderWorld::advanceFrame(frameNo, doneFrame);
 }
-void retirePresentHandles(unsigned long frameCounter) { advanceHandleClock(frameCounter); }
+void retirePresentHandles(unsigned long) {
+    const auto& ctx = mc2vk::getOrCreateEngineVulkanContext();
+    const auto& tracker = ctx.tracker();
+    const uint64_t frame = tracker.frameNo(), slots = ctx.frameContext().framesInFlight;
+    const uint64_t retired = frame > slots ? frame - slots : 0;
+    // beginFrame proved this slot complete before releasing main. Polling here would wait on the WSI queue lock.
+    RenderWorld::advanceFrame(frame, tracker.isComplete(tracker.frameTicket(retired)) ? retired : 0);
+}
 
 // Present the finished frame: the Vulkan present when the backend is up, else the GL swap.
 void presentOrSwap(graphics::RenderWindowHandle win, unsigned long frameCounter) {

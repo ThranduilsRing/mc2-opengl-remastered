@@ -586,8 +586,9 @@ VkResult VulkanContext::submit(const VkSubmitInfo& si, VkFence fence, uint64_t* 
 }
 
 VkResult VulkanContext::present(VkQueue queue, const VkPresentInfoKHR& info) const {
-    mc2::overlap::assertOwner(mc2::overlap::Owner::Present, "vkQueuePresentKHR");
     std::lock_guard<std::mutex> lock(submitMutex_);
+    present_thread::seal(); // Next-frame submits must stay behind this present, even when main wakes immediately.
+    mc2::overlap::assertOwner(mc2::overlap::Owner::Present, "vkQueuePresentKHR");
     return vkQueuePresentKHR(queue, &info);
 }
 

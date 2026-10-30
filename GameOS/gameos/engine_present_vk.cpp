@@ -2472,6 +2472,7 @@ bool EnginePresentVk::presentFrame(uint32_t drawableW, uint32_t drawableH,
     if (!ok) present_thread::requestInline();
     // Declined frames still retire their allocations and release the producer.
     if (impl_ && !impl_->frameFinished) finishFrame();
+    if (present_thread::onWorker() && mc2::overlap::isOwner(mc2::overlap::Owner::Render)) present_thread::seal();
     return ok;
 }
 
@@ -2488,7 +2489,6 @@ void EnginePresentVk::finishFrame() {
     s.ctx->frameBoundary();
     s.frameFinished = true;
     if (present_thread::onWorker() && (health_.present_frames % 300) == 1) logHealth();
-    present_thread::seal();
 }
 
 bool EnginePresentVk::presentFrameBody(uint32_t drawableW, uint32_t drawableH,
