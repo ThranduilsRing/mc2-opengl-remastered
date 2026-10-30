@@ -2959,6 +2959,13 @@
           "text": "import console_child  # noqa: E402"
         },
         {
+          "path": "scripts/tests/test_vfx_no_objectid.py",
+          "line": 7,
+          "evidence": "import",
+          "reference": "console_child",
+          "text": "import console_child"
+        },
+        {
           "path": "scripts/tests/test_window_emission.py",
           "line": 10,
           "evidence": "import",

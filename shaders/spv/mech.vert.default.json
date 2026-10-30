@@ -6,8 +6,8 @@
   "specializationParams": [],
   "artifact": "mech.vert.default.dbbae7d3.spv",
   "spv_dir": "shaders/spv",
-  "source_sha256": "c29f28fbb5221226dace01094738c5e8e7d566ac9a9b65a687aabccc4762f58f",
-  "spirv_sha256": "e135f6b976e8101ccf11988c823f95ceb5f535e9a3c158eedbc4c523792e1f69",
+  "source_sha256": "1d2ed9c9fd521929d8e056b712f0b7facd5ea202850ae5ba6933adfcefc38507",
+  "spirv_sha256": "9b61300de3a0d32eefbc1bfb1890a3854ebf272269aa1d6b5389d4bf2796d4f0",
   "bindings": {
     "ubos": [
       {
@@ -215,10 +215,6 @@
         {
           "name": "visualFlags",
           "type": "uint"
-        },
-        {
-          "name": "previousBoneOffset",
-          "type": "uint"
         }
       ]
     },
@@ -274,11 +270,6 @@
           "name": "visualFlags",
           "type": "uint",
           "offset": 60
-        },
-        {
-          "name": "previousBoneOffset",
-          "type": "uint",
-          "offset": 64
         }
       ]
     },
@@ -295,7 +286,7 @@
             true
           ],
           "offset": 0,
-          "array_stride": 80
+          "array_stride": 64
         }
       ]
     },
