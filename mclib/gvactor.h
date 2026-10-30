@@ -259,7 +259,8 @@ class GVAppearance : public ObjectAppearance
 		struct PoseView { TG_MultiShapePtr shape; long& rotNode; glm::vec3 pos; float rot; };
 		PoseView poseView (void)
 		{
-			if (buildingSimPose_)
+			// Presentation must not read the worker's build flag or mutable sim shape.
+			if (!simPresentationPass && buildingSimPose_)
 				return { simulationShape_.get(), simRotationalNodeIndex_, simPosition_, simRotation_ };
 			return { gvShape, rotationalNodeIndex, position, rotation };
 		}
