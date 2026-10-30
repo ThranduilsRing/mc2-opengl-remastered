@@ -7,7 +7,7 @@
   "RenderCore": 402,
   "RenderWorld": 0,
   "code": 13422,
-  "mclib": 22490,
+  "mclib": 22477,
   "shaders": 416
  },
  "dirs": [
@@ -263,7 +263,7 @@
   "mclib/bdactor_terrain.cpp": 137,
   "mclib/bdactor_tree.cpp": 215,
   "mclib/bdactor_tree_static.cpp": 47,
-  "mclib/bdactor_type.cpp": 93,
+  "mclib/bdactor_type.cpp": 94,
   "mclib/bdactor_update.cpp": 188,
   "mclib/camera.h": 189,
   "mclib/camera_daylight.cpp": 60,
@@ -281,7 +281,7 @@
   "mclib/ffile.cpp": 47,
   "mclib/file.cpp": 212,
   "mclib/fit_number.h": 64,
-  "mclib/genactor.cpp": 201,
+  "mclib/genactor.cpp": 176,
   "mclib/genactor.h": 9,
   "mclib/genactor_frame.cpp": 30,
   "mclib/gosfx/card.cpp": 99,
@@ -315,7 +315,7 @@
   "mclib/gosfx/spinningcloud.hpp": 40,
   "mclib/gosfx/tube.cpp": 48,
   "mclib/gosfx/tube.hpp": 31,
-  "mclib/gvactor.cpp": 299,
+  "mclib/gvactor.cpp": 300,
   "mclib/gvactor.h": 17,
   "mclib/gvactor_geometry.cpp": 264,
   "mclib/gvactor_render.cpp": 100,
@@ -456,8 +456,8 @@
   "mclib/terrain_raycast.cpp": 27,
   "mclib/terrain_render.cpp": 34,
   "mclib/terrtxm.cpp": 194,
-  "mclib/terrtxm2_bake.cpp": 139,
-  "mclib/terrtxm2_load.cpp": 97,
+  "mclib/terrtxm2_bake.cpp": 148,
+  "mclib/terrtxm2_load.cpp": 98,
   "mclib/tgainfo.cpp": 88,
   "mclib/tgl_parse.cpp": 103,
   "mclib/tgl_types.cpp": 126,
@@ -481,8 +481,8 @@
   "shaders/vulkan/terrain_tier1.vert": 71,
   "shaders/vulkan/terrain_tier1_skirt.vert": 71
  },
- "head": "50ae93470",
+ "head": "e174fc7de",
  "n": 8,
- "total": 38941,
+ "total": 38928,
  "version": 1
 }
