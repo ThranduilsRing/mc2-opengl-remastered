@@ -109,6 +109,7 @@ void waitIdle() {
 }
 void enqueue(uint32_t width, uint32_t height, bool verify, uint32_t renderFrame, uint32_t fireFrame) {
     mc2::overlap::assertMainThread("present_thread::enqueue");
+    RenderCore::textureService().collectSourceRetirements();
     std::lock_guard lock(mutex);
     assert(!pending && sealed);
     packet = {width, height, renderFrame, fireFrame, verify, paceFps, std::move(retiredTextures)};

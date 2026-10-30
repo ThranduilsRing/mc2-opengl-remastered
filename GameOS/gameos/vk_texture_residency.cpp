@@ -1,5 +1,6 @@
 #ifdef MC2_VULKAN_ISLAND
 #include "vk_texture_residency.h"
+#include "present_thread.h"
 #include "vk_texture_pending.h"
 #include <tracy/Tracy.hpp>
 #include "RenderCore/GpuResidencyPolicy.h"
@@ -265,7 +266,9 @@ ResidentTextureRef TextureResidency::requestKtx(const RenderCore::TextureKey& ke
 void TextureResidency::pump() {
     ZoneScopedN("TextureResidency.Pump");
     const auto started=std::chrono::steady_clock::now();
-    { ZoneScopedN("TextureResidency.CollectSources"); service_.collectSourceRetirements(); }
+    if (!present_thread::onWorker()) {
+        ZoneScopedN("TextureResidency.CollectSources"); service_.collectSourceRetirements();
+    }
     std::vector<RenderCore::TextureHandle> retired;
     { std::lock_guard lock(retiredMutex_); retired.swap(retired_); }
     { ZoneScopedN("TextureResidency.RetireImages"); for (auto handle : retired) {
