@@ -193,9 +193,9 @@ struct MechIsland : mc2vk::IslandState {
     // Per-frame data (UBO, instance + bone snapshots, LightsData, night pool) lives in the engine frame ring; every scheme set binds it with dynamic
     // offsets (bindings 0, 1, 2, 4, 5). ringBound[par][binding] = the ring buffer that binding of every scheme set of that parity points at; a frame
     // that allocated from another buffer (the ring grew) or a set created since rewrites it.
-    VkBuffer ringBound[2][8] = {};
+    VkBuffer ringBound[mc2vk::kMaxFramesInFlight][8] = {};
     // LOCAL-LIGHTS-2: the local-light shadow atlas binding 8 of every scheme set of a parity (null = sets hold the dummy).
-    VkImageView localShadowBound[2] = {};
+    VkImageView localShadowBound[mc2vk::kMaxFramesInFlight] = {};
 
     // VK-MECH-MATERIAL-LIGHTING-1: per-frame LightsData span (binding 4) for calc_light.
     bool     wantLighting  = false;   // MC2_VK_MECH_LIGHTING gate
@@ -213,15 +213,15 @@ struct MechIsland : mc2vk::IslandState {
     mc2vk::ResidentTextureRef whiteTexture;
     struct SchemeEntry {
         uint64_t albedo=0,ao=0,nrm=0;
-        VkDescriptorSet set[2]={};
-        std::array<VkImageView,3> bound[2]{};
+        VkDescriptorSet set[mc2vk::kMaxFramesInFlight]={};
+        std::array<VkImageView,3> bound[mc2vk::kMaxFramesInFlight]{};
         uint64_t lastUsedFrame=~uint64_t(0);
     };
     std::vector<SchemeEntry> schemes;
     static constexpr uint32_t kMaxSchemes=4096; // descriptor cache only; image admission belongs to TextureResidency
 
-    VkCommandBuffer cbuf[2] = {VK_NULL_HANDLE, VK_NULL_HANDLE};   // allocated from `cpool`, freed with it
-    mc2vk::GpuTicket submitted[2];
+    VkCommandBuffer cbuf[mc2vk::kMaxFramesInFlight] = {VK_NULL_HANDLE, VK_NULL_HANDLE};   // allocated from `cpool`, freed with it
+    mc2vk::GpuTicket submitted[mc2vk::kMaxFramesInFlight];
 
     // VK-DRAW-PERF-1: per-pass GPU timestamp timer (3 stamps: pass-start / draws-start /
     // pass-end). Gated + fail-soft inside init(); no-op unless MC2_VK_GPU_TIMESTAMPS set.
@@ -365,13 +365,13 @@ bool make_albedo_sampler(MechIsland* s) {
 // Allocate a descriptor set pair for a scheme (all 8 bindings), write buffer bindings
 // + its three images. Returns false on failure.
 bool alloc_scheme_sets(MechIsland* s, VkImageView albedo, VkImageView ao, VkImageView nrm,
-                       VkDescriptorSet out[2]) {
-    VkDescriptorSetLayout layouts[2] = {s->dsl.get(), s->dsl.get()};
+                       VkDescriptorSet out[mc2vk::kMaxFramesInFlight]) {
+    VkDescriptorSetLayout layouts[mc2vk::kMaxFramesInFlight]; for (auto& layout : layouts) layout = s->dsl.get();
     VkDescriptorSetAllocateInfo dsai{};
     dsai.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-    dsai.descriptorPool = s->pool.get(); dsai.descriptorSetCount = 2; dsai.pSetLayouts = layouts;
+    dsai.descriptorPool = s->pool.get(); dsai.descriptorSetCount = mc2vk::kMaxFramesInFlight; dsai.pSetLayouts = layouts;
     if (vkAllocateDescriptorSets(s->device, &dsai, out) != VK_SUCCESS) return false;
-    for (uint32_t par = 0; par < 2; ++par) {
+    for (uint32_t par = 0; par < mc2vk::kMaxFramesInFlight; ++par) {
         write_ring_bindings(s, out[par]);
         for (VkBuffer& b : s->ringBound[par]) b = VK_NULL_HANDLE;   // the next frame of this parity rewrites its sets at the buffers its spans live in
         bind_scheme_images(s, out[par], albedo, ao, nrm);
@@ -422,7 +422,7 @@ VkDescriptorSet get_scheme_set(MechIsland* s,uint64_t albedo,uint64_t ao,uint64_
         } else {
             auto victim=std::min_element(s->schemes.begin()+1,s->schemes.end(),[](const auto& a,const auto& b){return a.lastUsedFrame<b.lastUsedFrame;});
             if (victim==s->schemes.end() || victim->lastUsedFrame==frame) return s->schemes[0].set[par];
-            entry=&*victim; entry->bound[0]={}; entry->bound[1]={};
+            entry=&*victim; for (auto& bound : entry->bound) bound = {};
         }
         entry->albedo=albedo; entry->ao=ao; entry->nrm=nrm;
     }
@@ -486,7 +486,7 @@ bool init_island(MechIsland* s, int w, int h) {
         if (!mc2vk::create(s->cpool, s->device, [&](VkCommandPool* h) { return vkCreateCommandPool(s->device, &pci, nullptr, h); })) { vlog("cmd pool failed."); return false; }
         VkCommandBufferAllocateInfo cai{};
         cai.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-        cai.commandPool = s->cpool.get(); cai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; cai.commandBufferCount = 2;
+        cai.commandPool = s->cpool.get(); cai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; cai.commandBufferCount = mc2vk::kMaxFramesInFlight;
         if (vkAllocateCommandBuffers(s->device, &cai, s->cbuf) != VK_SUCCESS) { vlog("cmd bufs failed."); return false; }
     }
 
@@ -588,12 +588,12 @@ bool init_island(MechIsland* s, int w, int h) {
         // each set = 1 UBO + 4 SSBO (inst/bone/lights/pool) + 3 samplers (albedo/AO/normal).
         const uint32_t N = MechIsland::kMaxSchemes;
         VkDescriptorPoolSize sizes[3]{};
-        sizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC; sizes[0].descriptorCount = 2 * N;
-        sizes[1].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC; sizes[1].descriptorCount = 8 * N;  // inst+bone+lights+pool, two parities
-        sizes[2].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; sizes[2].descriptorCount = 8 * N;  // albedo+AO+normal+local shadow, two parities
+        sizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC; sizes[0].descriptorCount = 1 * mc2vk::kMaxFramesInFlight * N;
+        sizes[1].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC; sizes[1].descriptorCount = 4 * mc2vk::kMaxFramesInFlight * N;  // inst+bone+lights+pool, two parities
+        sizes[2].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; sizes[2].descriptorCount = 4 * mc2vk::kMaxFramesInFlight * N;  // albedo+AO+normal+local shadow, two parities
         VkDescriptorPoolCreateInfo pci{};
         pci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-        pci.maxSets = 2 * N; pci.poolSizeCount = 3; pci.pPoolSizes = sizes;
+        pci.maxSets = mc2vk::kMaxFramesInFlight * N; pci.poolSizeCount = 3; pci.pPoolSizes = sizes;
         if (!mc2vk::create(s->pool, s->device, [&](VkDescriptorPool* h) { return vkCreateDescriptorPool(s->device, &pci, nullptr, h); })) { vlog("pool failed."); return false; }
         // Always-present dummy white scheme (schemes[0]) = binding-3 fallback for runs
         // with no slot-0 paint texture (and the material-OFF flat-fill path).

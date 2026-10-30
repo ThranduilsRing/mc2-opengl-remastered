@@ -160,7 +160,7 @@ struct WaterIsland : mc2vk::IslandState {
     // their rare (re)writes are vkDeviceWaitIdle-guarded.
     VkDeviceSize  recipeBytes = 0;
     bool          recipeUploaded = false;
-    VkDeviceSize  thinCapBytes[2] = {0, 0};   // grows to high-water-mark
+    VkDeviceSize  thinCapBytes[mc2vk::kMaxFramesInFlight] = {0, 0};   // grows to high-water-mark
 
     // RUNG-6.5 WATER-REFLECTION: copy-once HDRI equirect import (binding 2).
     // Copied ONCE from the GL HDRI texture (BC6H mip0 sidecar in the field
@@ -183,9 +183,9 @@ struct WaterIsland : mc2vk::IslandState {
     bool          shoreAttempted = false;
     uint64_t      shoreHeightVersion = 0, shoreMaskVersion = 0;
 
-    VkDescriptorSet   set[2] = {VK_NULL_HANDLE, VK_NULL_HANDLE};   // per parity slot (VK-WATER-FENCE-DEFER-1); allocated from `pool`, freed with it
-    VkCommandBuffer   cbuf[2] = {VK_NULL_HANDLE, VK_NULL_HANDLE};  // allocated from `cpool`, freed with it
-    mc2vk::GpuTicket  submitted[2];   // per engine frame slot: the last submit that used cbuf[slot], set[slot] and buffers[slot]
+    VkDescriptorSet   set[mc2vk::kMaxFramesInFlight] = {VK_NULL_HANDLE, VK_NULL_HANDLE};   // per parity slot (VK-WATER-FENCE-DEFER-1); allocated from `pool`, freed with it
+    VkCommandBuffer   cbuf[mc2vk::kMaxFramesInFlight] = {VK_NULL_HANDLE, VK_NULL_HANDLE};  // allocated from `cpool`, freed with it
+    mc2vk::GpuTicket  submitted[mc2vk::kMaxFramesInFlight];   // per engine frame slot: the last submit that used cbuf[slot], set[slot] and buffers[slot]
 
     bool descNeedsThinRewrite = true; // thinBuf realloc -> descriptor rewrite
 
@@ -193,15 +193,15 @@ struct WaterIsland : mc2vk::IslandState {
     // parked island ahead of the device). An image is declared before its view so the view is released first.
     // The vertex and fragment parameter UBOs live in the engine frame ring (one span per frame); set[par] binds them with dynamic offsets (bindings 0, 1).
     // ringBound[par] = the ring buffer they currently point at; a frame whose span came from another buffer re-points them after the slot fence.
-    VkBuffer ringBound[2] = {};
+    VkBuffer ringBound[mc2vk::kMaxFramesInFlight] = {};
     mc2vk::OwnedBuffer recipeBuf;
-    mc2vk::OwnedBuffer thinBuf[2];
+    mc2vk::OwnedBuffer thinBuf[mc2vk::kMaxFramesInFlight];
     mc2vk::OwnedRenderPass rpass;
     mc2vk::OwnedFramebuffer fb;
     mc2vk::OwnedDescriptorSetLayout dsl;
     mc2vk::OwnedDescriptorPool pool;
-    bool imageDescriptorsDirty[2]={true,true};
-    std::array<VkImageView,4> boundTextures[2]{};
+    bool imageDescriptorsDirty[mc2vk::kMaxFramesInFlight]={};
+    std::array<VkImageView,4> boundTextures[mc2vk::kMaxFramesInFlight]{};
     // The shadow bake's mask (binding 7) while the bake is ready; the shader reads it only when the frame's f7.z says so.
     VkImageView maskView = VK_NULL_HANDLE;
     bool hdriSourceReal=false,shHSourceReal=false,shMSourceReal=false;
@@ -219,7 +219,7 @@ struct WaterIsland : mc2vk::IslandState {
     // GL readback feed stays in use for the session.
     std::unique_ptr<mc2vk::NativeProducers> native;
     bool     nativeFailed = false;
-    bool     thinNative[2] = {false, false};   // what binding 6 of each parity set currently points at: true = native thin_, false = thinBuf
+    bool     thinNative[mc2vk::kMaxFramesInFlight] = {false, false};   // what binding 6 of each parity set currently points at: true = native thin_, false = thinBuf
     uint64_t nativeFrames = 0;   // frames the native path completed; schedules the parity frames
 };
 

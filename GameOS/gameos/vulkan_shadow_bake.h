@@ -21,6 +21,7 @@
 #include "shadow_mask_asset.h"
 #include "vk_compute_pipeline.h"
 #include "vk_owned.h"
+#include "vk_frame_ring.h"
 #include "vulkan_shadow_island_live.h"   // Mc2ShadowPacket
 
 #include <array>
@@ -231,15 +232,15 @@ private:
     double cpuStage_[3] = {0, 0, 0};   // cold bake CPU ms: resolve, content key, tile planning
     bool incActive_ = false, heightsMoved_ = false, eventsSinceDrain_ = false, objectDirty_ = false;
     uint64_t objectMapRecords_ = 0, dirtyBatches_ = 0, localTileRebakes_ = 0, statsEpoch_ = 0;
-    uint64_t lastIncEpoch_ = 0, incRecordedEpoch_ = ~0ull, heightsGen_ = 1, incHeightsGen_[2] = {0, 0};
+    uint64_t lastIncEpoch_ = 0, incRecordedEpoch_ = ~0ull, heightsGen_ = 1, incHeightsGen_[mc2vk::kMaxFramesInFlight] = {0, 0};
     uint32_t incSubTiles_ = 0, incBatches_ = 0, eventsLogged_ = 0;
     double incMaxGpuMs_ = 0.0, incSumGpuMs_ = 0.0;
     uint32_t incTimed_ = 0;
     uint32_t incInstanceCap_ = 0;
-    bool incQueryUsed_[2] = {false, false};
-    OwnedBuffer incParams_, incCasterUbo_, incPass_, incInstances_, incHeights_[2];
+    bool incQueryUsed_[mc2vk::kMaxFramesInFlight] = {false, false};
+    OwnedBuffer incParams_, incCasterUbo_, incPass_, incInstances_, incHeights_[mc2vk::kMaxFramesInFlight];
     OwnedQueryPool incQueries_;
-    VkDescriptorSet incComputeSet_[2] = {VK_NULL_HANDLE, VK_NULL_HANDLE}, incWindowSet_[2] = {VK_NULL_HANDLE, VK_NULL_HANDLE};
+    VkDescriptorSet incComputeSet_[mc2vk::kMaxFramesInFlight] = {VK_NULL_HANDLE, VK_NULL_HANDLE}, incWindowSet_[mc2vk::kMaxFramesInFlight] = {VK_NULL_HANDLE, VK_NULL_HANDLE};
     // MC2_SHADOW_DIAG: the dirty-updated mask read back and compared with a fresh bake of the same state.
     bool diagRequest_ = false, diagPending_ = false, diagForceFull_ = false, diagSwept_ = false;
     uint64_t diagEpoch_ = 0;

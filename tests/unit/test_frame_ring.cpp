@@ -30,32 +30,41 @@ TEST_CASE("a slot whose previous user is unproven keeps its head (timed-out tick
     FrameRingCore r;
     r.setCapacity(512);
     uint64_t a = 0, b = 0, c = 0;
-    r.beginFrame(2);
+    r.beginFrame(FrameRingCore::kSlots);
     CHECK(r.alloc(300, 1, &a));
     CHECK(a == 0);
-    r.beginFrame(3);
-    r.beginFrame(4, false);                              // F-2 not proven complete: no restart
+    r.beginFrame(FrameRingCore::kSlots + 1);
+    r.beginFrame(2 * FrameRingCore::kSlots, false);       // previous slot user not proven complete: no restart
     CHECK(r.alloc(100, 1, &b));
     CHECK(b == 300);                                     // bumps past F-2's bytes, never onto them
     CHECK_FALSE(r.alloc(200, 1, &c));                    // a full slot fails soft
-    r.beginFrame(6);                                     // proven: restarts
+    r.beginFrame(3 * FrameRingCore::kSlots);              // proven: restarts
     CHECK(r.alloc(10, 1, &c));
     CHECK(c == 0);
 }
 
-TEST_CASE("the two frames in flight never share bytes") {
+TEST_CASE("all frames in flight have disjoint regions until reuse") {
     FrameRingCore r;
     r.setCapacity(512);
-    uint64_t f2 = 0, f3 = 0, f4 = 0;
-    r.beginFrame(2);
-    CHECK(r.alloc(512, 1, &f2));                         // slot 0 full
-    CHECK(f2 == 0);
-    r.beginFrame(3);
-    CHECK(r.alloc(512, 1, &f3));                         // slot 1
-    CHECK(f3 == 512);
-    r.beginFrame(4);                                     // slot 0 again: restarts at its base
-    CHECK(r.alloc(8, 1, &f4));
-    CHECK(f4 == 0);
+    for (uint32_t slot = 0; slot < FrameRingCore::kSlots; ++slot) {
+        r.beginFrame(slot);
+        uint64_t offset = 0;
+        CHECK(r.alloc(512, 1, &offset));
+        CHECK(offset == slot * 512);
+    }
+    // Unproven reuse keeps each full region intact, including the last slot.
+    for (uint32_t slot = 0; slot < FrameRingCore::kSlots; ++slot) {
+        r.beginFrame(FrameRingCore::kSlots + slot, false);
+        uint64_t offset = 0;
+        CHECK_FALSE(r.alloc(1, 1, &offset));
+    }
+    r.setCapacity(512);                                 // replacement resets every head
+    for (uint32_t slot = 0; slot < FrameRingCore::kSlots; ++slot) {
+        r.beginFrame(slot, false);
+        uint64_t offset = 0;
+        CHECK(r.alloc(8, 1, &offset));
+        CHECK(offset == slot * 512);
+    }
 }
 
 TEST_CASE("a request that does not fit is refused and leaves the head alone") {

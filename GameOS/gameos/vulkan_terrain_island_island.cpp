@@ -157,7 +157,7 @@ const SkirtMesh* getOrBuildSkirtMesh(TerrainIsland* s, int qcX, int qcY, int lod
 constexpr VkImageLayout kDirectShadowLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
 
 void write_descriptors(TerrainIsland* s, int parity) {
-    if (parity<0) { s->descriptorsDirty[0]=s->descriptorsDirty[1]=true; return; }
+    if (parity<0) { for (auto& dirty : s->descriptorsDirty) dirty = true; return; }
     // Only the retired parity is written; upload requests mark both parities dirty.
     for (int i = parity; i <= parity; ++i) {
     s->descriptorsDirty[i]=false;
@@ -451,7 +451,7 @@ bool init_island(TerrainIsland* s, int w, int h) {
         }
         VkCommandBufferAllocateInfo cai{};
         cai.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-        cai.commandPool = s->cpool.get(); cai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; cai.commandBufferCount = 4;
+        cai.commandPool = s->cpool.get(); cai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; cai.commandBufferCount = 2 * mc2vk::kMaxFramesInFlight;
         if (vkAllocateCommandBuffers(s->device, &cai, s->cbuf) != VK_SUCCESS) {
             vlog("vkAllocateCommandBuffers failed."); return false;
         }
@@ -580,23 +580,23 @@ bool init_island(TerrainIsland* s, int w, int h) {
         }
         // VK-TERRAIN-FENCE-DEFER-1: TWO sets (one per parity slot), so pool sizes double.
         VkDescriptorPoolSize sizes[5]{};
-        sizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;  sizes[0].descriptorCount = 2;
-        sizes[1].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;          sizes[1].descriptorCount = 6;  // (height + cement + visual-height) x2
+        sizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;  sizes[0].descriptorCount = 1 * mc2vk::kMaxFramesInFlight;
+        sizes[1].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;          sizes[1].descriptorCount = 3 * mc2vk::kMaxFramesInFlight;  // (height + cement + visual-height) x2
         // Image samplers per set: colormap, cement, static shadow, matNormalArray, dyn shadow, csm array, csm full map,
         // shoreline mask, shore field; two sets.
-        sizes[2].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;  sizes[2].descriptorCount = 26;   // + local shadow atlas x2
-        sizes[3].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;  sizes[3].descriptorCount = 6;  // light pool + grid header + grid indices, x2
-        sizes[4].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER; sizes[4].descriptorCount = 2;
+        sizes[2].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;  sizes[2].descriptorCount = 13 * mc2vk::kMaxFramesInFlight;   // + local shadow atlas x2
+        sizes[3].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;  sizes[3].descriptorCount = 3 * mc2vk::kMaxFramesInFlight;  // light pool + grid header + grid indices, x2
+        sizes[4].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER; sizes[4].descriptorCount = 1 * mc2vk::kMaxFramesInFlight;
         VkDescriptorPoolCreateInfo pci{};
         pci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-        pci.maxSets = 2; pci.poolSizeCount = 5; pci.pPoolSizes = sizes;
+        pci.maxSets = mc2vk::kMaxFramesInFlight; pci.poolSizeCount = 5; pci.pPoolSizes = sizes;
         if (!mc2vk::create(s->pool, s->device, [&](auto* h) { return vkCreateDescriptorPool(s->device, &pci, nullptr, h); })) {
             vlog("vkCreateDescriptorPool failed."); return false;
         }
-        VkDescriptorSetLayout layouts[2] = { s->dsl.get(), s->dsl.get() };
+        VkDescriptorSetLayout layouts[mc2vk::kMaxFramesInFlight]; for (auto& layout : layouts) layout = s->dsl.get();
         VkDescriptorSetAllocateInfo dsai{};
         dsai.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-        dsai.descriptorPool = s->pool.get(); dsai.descriptorSetCount = 2; dsai.pSetLayouts = layouts;
+        dsai.descriptorPool = s->pool.get(); dsai.descriptorSetCount = mc2vk::kMaxFramesInFlight; dsai.pSetLayouts = layouts;
         if (vkAllocateDescriptorSets(s->device, &dsai, s->set) != VK_SUCCESS) {
             vlog("vkAllocateDescriptorSets failed."); return false;
         }

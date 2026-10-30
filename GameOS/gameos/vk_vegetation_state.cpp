@@ -243,7 +243,8 @@ bool State::ensureDrawLayout(mc2vk::VulkanContext& ctx) {
     VkDescriptorPoolCreateInfo pci{VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO};
     pci.maxSets = kSlots; pci.poolSizeCount = 2; pci.pPoolSizes = sizes;
     if (!mc2vk::create(drawPool_, dev, [&](VkDescriptorPool* o) { return vkCreateDescriptorPool(dev, &pci, nullptr, o); })) return false;
-    const VkDescriptorSetLayout layouts[kSlots] = {drawDsl_.get(), drawDsl_.get()};
+    VkDescriptorSetLayout layouts[kSlots];
+    for (auto& layout : layouts) layout = drawDsl_.get();
     VkDescriptorSetAllocateInfo ai{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO};
     ai.descriptorPool = drawPool_.get(); ai.descriptorSetCount = kSlots; ai.pSetLayouts = layouts;
     if (vkAllocateDescriptorSets(dev, &ai, drawSets_) != VK_SUCCESS) { drawSets_[0] = drawSets_[1] = VK_NULL_HANDLE; return false; }

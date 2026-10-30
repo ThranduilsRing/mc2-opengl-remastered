@@ -94,20 +94,20 @@ bool ShadowMechCasters::init(VkDevice device, VmaAllocator allocator, VkRenderPa
     if (!create(dsl_, device_, [&](auto* h) { return vkCreateDescriptorSetLayout(device_, &lci, nullptr, h); })) { mc2::fmt::print_err("[VK_SHADOW_MECH] descriptor layout failed.\n"); return false; }
 
     VkDescriptorPoolSize sizes[2]{};
-    sizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC; sizes[0].descriptorCount = 2;
-    sizes[1].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; sizes[1].descriptorCount = 4;
+    sizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC; sizes[0].descriptorCount = kMaxFramesInFlight;
+    sizes[1].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; sizes[1].descriptorCount = 2 * kMaxFramesInFlight;
     VkDescriptorPoolCreateInfo pci{};
     pci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-    pci.maxSets = 2;
+    pci.maxSets = kMaxFramesInFlight;
     pci.poolSizeCount = 2;
     pci.pPoolSizes = sizes;
     if (!create(pool_, device_, [&](auto* h) { return vkCreateDescriptorPool(device_, &pci, nullptr, h); })) { mc2::fmt::print_err("[VK_SHADOW_MECH] descriptor pool failed.\n"); return false; }
     const VkDescriptorSetLayout dslHandle = dsl_.get();
-    const VkDescriptorSetLayout setLayouts[2] = {dslHandle, dslHandle};
+    VkDescriptorSetLayout setLayouts[kMaxFramesInFlight]; for (auto& layout : setLayouts) layout = dslHandle;
     VkDescriptorSetAllocateInfo dsai{};
     dsai.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
     dsai.descriptorPool = pool_.get();
-    dsai.descriptorSetCount = 2;
+    dsai.descriptorSetCount = kMaxFramesInFlight;
     dsai.pSetLayouts = setLayouts;
     if (vkAllocateDescriptorSets(device_, &dsai, set_) != VK_SUCCESS) { mc2::fmt::print_err("[VK_SHADOW_MECH] descriptor set allocation failed.\n"); return false; }
 
@@ -171,7 +171,7 @@ void ShadowMechCasters::stage(uint64_t epoch) {
                             mc2::fmt::as_u64(iboIndexCount_), geomGen_);
     }
 
-    const uint32_t parity = static_cast<uint32_t>(epoch & 1u);
+    const uint32_t parity = static_cast<uint32_t>(epoch % kMaxFramesInFlight);
     const VkDeviceSize instBytes = static_cast<VkDeviceSize>(feed.instanceCount) * kMechInstanceBytes;
     const VkDeviceSize boneBytes = static_cast<VkDeviceSize>(feed.boneCount) * kMechBoneBytes;
     const VkBuffer oldInst = instBuf_[parity].get(), oldBone = boneBuf_[parity].get();
@@ -200,7 +200,7 @@ void ShadowMechCasters::stage(uint64_t epoch) {
 void ShadowMechCasters::record(VkCommandBuffer cb, uint32_t parity, uint32_t uboOffset) const {
     if (!hasCasters() || !geomUploaded_ || !pipeline_) return;
     mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_.get());
-    const VkDescriptorSet set = set_[parity & 1u];
+    const VkDescriptorSet set = set_[parity % kMaxFramesInFlight];
     vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, layout_.get(), 0, 1, &set, 1, &uboOffset);
     const VkBuffer vertexBuf = vbo_.get();
     const VkDeviceSize offset = 0;

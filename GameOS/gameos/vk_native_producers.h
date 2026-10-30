@@ -17,6 +17,7 @@
 #include "gos_terrain_lighting.h"
 #include "vk_compute_pipeline.h"
 #include "vk_owned.h"
+#include "vk_frame_ring.h"
 
 #include <cstdint>
 
@@ -71,7 +72,7 @@ struct ProducerParity {
 
 class NativeProducers {
 public:
-    static constexpr uint32_t kSlots = 2;            // parity slots (the island's frame parity)
+    static constexpr uint32_t kSlots = kMaxFramesInFlight;
     static constexpr uint32_t kMaxThin = 131072;     // thin-record capacity per slot (6.3 MB); an overflow shows in the parity line
     static constexpr uint32_t kParityCap = 32768;    // records read back on a parity frame
     // VRAM ceiling for the thin-record capacity: 1 << 20 records x 48 B = 48 MB per slot (96 MB for both). It covers every quad of a
@@ -86,8 +87,8 @@ public:
     bool prewarmPipelines(const VulkanContext& ctx);
     bool ready() const noexcept { return ready_; }
 
-    VkBuffer thin(uint32_t par) const noexcept { return thin_[par & 1].get(); }
-    VkBuffer drawArgs(uint32_t par) const noexcept { return drawArgs_[par & 1].get(); }
+    VkBuffer thin(uint32_t par) const noexcept { return thin_[par % kSlots].get(); }
+    VkBuffer drawArgs(uint32_t par) const noexcept { return drawArgs_[par % kSlots].get(); }
     uint32_t maxThin() const noexcept { return maxThin_; }
 
     // Stages this frame's inputs into slot `par` (the slot must be retired) and records lighting -> cull/pack -> draw-args with the barriers, ending

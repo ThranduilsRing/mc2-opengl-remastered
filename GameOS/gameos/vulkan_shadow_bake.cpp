@@ -77,19 +77,18 @@ bool ShadowBake::init(VkDevice device, VmaAllocator allocator, VkPhysicalDevice 
     plci.setLayoutCount = 2; plci.pSetLayouts = setLayouts;
     plci.pushConstantRangeCount = 1; plci.pPushConstantRanges = &pcr;
     if (!create(casterLayout_, device_, [&](auto* h) { return vkCreatePipelineLayout(device_, &plci, nullptr, h); })) { blog("caster pipeline layout failed."); return false; }
-    VkDescriptorPoolSize sizes[2] = {{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 4}, {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 4}};
+    VkDescriptorPoolSize sizes[2] = {{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 2 + kMaxFramesInFlight}, {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 2 + kMaxFramesInFlight}};
     VkDescriptorPoolCreateInfo pci{VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO};
-    pci.maxSets = 4; pci.poolSizeCount = 2; pci.pPoolSizes = sizes;
+    pci.maxSets = 2 + kMaxFramesInFlight; pci.poolSizeCount = 2; pci.pPoolSizes = sizes;
     if (!create(casterPool_, device_, [&](auto* h) { return vkCreateDescriptorPool(device_, &pci, nullptr, h); })) { blog("caster pool failed."); return false; }
-    const VkDescriptorSetLayout four[4] = {casterDsl_.get(), casterDsl_.get(), casterDsl_.get(), casterDsl_.get()};
+    VkDescriptorSetLayout four[2 + kMaxFramesInFlight]; for (auto& layout : four) layout = casterDsl_.get();
     VkDescriptorSetAllocateInfo dsai{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO};
-    dsai.descriptorPool = casterPool_.get(); dsai.descriptorSetCount = 4; dsai.pSetLayouts = four;
-    VkDescriptorSet sets[4]{};
+    dsai.descriptorPool = casterPool_.get(); dsai.descriptorSetCount = 2 + kMaxFramesInFlight; dsai.pSetLayouts = four;
+    VkDescriptorSet sets[2 + kMaxFramesInFlight]{};
     if (vkAllocateDescriptorSets(device_, &dsai, sets) != VK_SUCCESS) { blog("caster sets failed."); return false; }
     windowCasterSet_ = sets[0];
     objectCasterSet_ = sets[1];
-    incWindowSet_[0] = sets[2];
-    incWindowSet_[1] = sets[3];
+    for (uint32_t slot = 0; slot < kMaxFramesInFlight; ++slot) incWindowSet_[slot] = sets[2 + slot];
 
     opaqueFrag_ = OwnedShaderModule(device_, vk_island_util::loadSpv(device_, dir + "shadow_prop.frag.spv", nullptr));
     alphaFrag_ = OwnedShaderModule(device_, vk_island_util::loadSpv(device_, dir + "shadow_prop_alpha.frag.spv", nullptr));
@@ -135,19 +134,18 @@ bool ShadowBake::init(VkDevice device, VmaAllocator allocator, VkPhysicalDevice 
         blog("compute SPIR-V missing: no bake.");
         return false;
     }
-    const VkDescriptorPoolSize csizes[4] = {{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 6}, {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 6},
-                                            {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 6}, {VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 12}};
+    const VkDescriptorPoolSize csizes[4] = {{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 2 * (1 + kMaxFramesInFlight)}, {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 2 * (1 + kMaxFramesInFlight)},
+                                            {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 2 * (1 + kMaxFramesInFlight)}, {VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 4 * (1 + kMaxFramesInFlight)}};
     VkDescriptorPoolCreateInfo cpci{VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO};
-    cpci.maxSets = 3; cpci.poolSizeCount = 4; cpci.pPoolSizes = csizes;
+    cpci.maxSets = 1 + kMaxFramesInFlight; cpci.poolSizeCount = 4; cpci.pPoolSizes = csizes;
     if (!create(computePool_, device_, [&](auto* h) { return vkCreateDescriptorPool(device_, &cpci, nullptr, h); })) { blog("compute pool failed."); return false; }
-    const VkDescriptorSetLayout cdsl[3] = {pcss_.setLayout(), pcss_.setLayout(), pcss_.setLayout()};
+    VkDescriptorSetLayout cdsl[1 + kMaxFramesInFlight]; for (auto& layout : cdsl) layout = pcss_.setLayout();
     VkDescriptorSetAllocateInfo cai{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO};
-    cai.descriptorPool = computePool_.get(); cai.descriptorSetCount = 3; cai.pSetLayouts = cdsl;
-    VkDescriptorSet csets[3]{};
+    cai.descriptorPool = computePool_.get(); cai.descriptorSetCount = 1 + kMaxFramesInFlight; cai.pSetLayouts = cdsl;
+    VkDescriptorSet csets[1 + kMaxFramesInFlight]{};
     if (vkAllocateDescriptorSets(device_, &cai, csets) != VK_SUCCESS) { blog("compute set failed."); return false; }
     computeSet_ = csets[0];
-    incComputeSet_[0] = csets[1];
-    incComputeSet_[1] = csets[2];
+    for (uint32_t slot = 0; slot < kMaxFramesInFlight; ++slot) incComputeSet_[slot] = csets[1 + slot];
 
     // Outside the window everything is lit: a white border is the far plane.
     VkSamplerCreateInfo sci{VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO};
@@ -514,7 +512,7 @@ void ShadowBake::retire(uint64_t epoch) {
         }
         return;
     }
-    if (epoch < submittedEpoch_ + 2 || (epoch & 1u) != (submittedEpoch_ & 1u)) return;
+    if (epoch < submittedEpoch_ + kMaxFramesInFlight || epoch % kMaxFramesInFlight != submittedEpoch_ % kMaxFramesInFlight) return;
     recorded_ = false;
     submitted_ = false;
     if (coldPending_) return;
@@ -1090,7 +1088,7 @@ bool ShadowBake::updateIncremental(VkCommandBuffer cb, uint64_t epoch, const Sha
     }
     if (liveStale_) { ZoneScopedN("ShadowBake.Dirty.RebuildLive"); rebuildLive(); }
     if (!ensureTransients() || !ensureIncremental()) return false;
-    const uint32_t par = static_cast<uint32_t>(epoch & 1u);
+    const uint32_t par = static_cast<uint32_t>(epoch % kMaxFramesInFlight);
     // This parity's last batch retired when the island waited its fence: its timestamps are final and its buffers and sets free to rewrite.
     if (incQueryUsed_[par]) {
         uint64_t ts[2] = {0, 0};
@@ -1183,10 +1181,10 @@ bool ShadowBake::updateIncremental(VkCommandBuffer cb, uint64_t epoch, const Sha
 bool ShadowBake::ensureIncremental() {
     if (incParams_) return true;
     incInstanceCap_ = 65536;
-    if (!makeHostBuffer(incParams_, allocator_, device_, 2 * kSubTilesPerFrame * kSlice, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, "shadow.bake.dirtyParams") ||
-        !makeHostBuffer(incCasterUbo_, allocator_, device_, 2 * kSubTilesPerFrame * kSlice, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, "shadow.bake.dirtyCasterUbo") ||
+    if (!makeHostBuffer(incParams_, allocator_, device_, kMaxFramesInFlight * kSubTilesPerFrame * kSlice, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, "shadow.bake.dirtyParams") ||
+        !makeHostBuffer(incCasterUbo_, allocator_, device_, kMaxFramesInFlight * kSubTilesPerFrame * kSlice, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, "shadow.bake.dirtyCasterUbo") ||
         !makeHostBuffer(incPass_, allocator_, device_, 3 * kSlice, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, "shadow.bake.dirtyPass") ||
-        !makeHostBuffer(incInstances_, allocator_, device_, 2 * incInstanceCap_ * sizeof(GpuStaticPropInstance), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, "shadow.bake.dirtyInstances")) {
+        !makeHostBuffer(incInstances_, allocator_, device_, kMaxFramesInFlight * incInstanceCap_ * sizeof(GpuStaticPropInstance), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, "shadow.bake.dirtyInstances")) {
         blog("dirty-update buffers failed.");
         return false;
     }
@@ -1199,11 +1197,11 @@ bool ShadowBake::ensureIncremental() {
     if (!incQueries_) {
         VkQueryPoolCreateInfo qci{VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO};
         qci.queryType = VK_QUERY_TYPE_TIMESTAMP;
-        qci.queryCount = 4;
+        qci.queryCount = 2 * kMaxFramesInFlight;
         if (!create(incQueries_, device_, [&](auto* h) { return vkCreateQueryPool(device_, &qci, nullptr, h); })) { blog("dirty query pool failed."); return false; }
     }
-    incHeightsGen_[0] = incHeightsGen_[1] = 0;
-    incQueryUsed_[0] = incQueryUsed_[1] = false;
+    for (auto& gen : incHeightsGen_) gen = 0;
+    for (auto& used : incQueryUsed_) used = false;
     return true;
 }
 
@@ -1233,7 +1231,7 @@ void ShadowBake::writeIncrementalSets(uint32_t par) {
 }
 
 void ShadowBake::retireIncremental(uint64_t epoch) {
-    if (!diagPending_ || epoch < diagEpoch_ + 2 || (epoch & 1u) != (diagEpoch_ & 1u)) return;
+    if (!diagPending_ || epoch < diagEpoch_ + kMaxFramesInFlight || epoch % kMaxFramesInFlight != diagEpoch_ % kMaxFramesInFlight) return;
     diagPending_ = false;
     void* p = diagBuf_.map();
     if (p) {
@@ -1247,9 +1245,9 @@ void ShadowBake::retireIncremental(uint64_t epoch) {
 
 void ShadowBake::releaseIncremental() {
     incParams_.reset(); incCasterUbo_.reset(); incPass_.reset(); incInstances_.reset();
-    incHeights_[0].reset(); incHeights_[1].reset();
-    incHeightsGen_[0] = incHeightsGen_[1] = 0;
-    incQueryUsed_[0] = incQueryUsed_[1] = false;
+    for (auto& heights : incHeights_) heights.reset();
+    for (auto& gen : incHeightsGen_) gen = 0;
+    for (auto& used : incQueryUsed_) used = false;
 }
 
 // The live casters (the bake's caster set as the registry has it now) with their light boxes: built once, then edited by each event.

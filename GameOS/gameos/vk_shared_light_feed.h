@@ -48,7 +48,7 @@ private:
         VkDeviceSize capacity = 0;
         std::vector<uint64_t> generations;
     };
-    Slot slots_[2];
+    Slot slots_[mc2vk::kMaxFramesInFlight];
     uint64_t revision_ = 0;
     FrameAlloc    span_;
     uint64_t      frame_ = ~0ull;     // CompletionTracker frame of the last copy attempt

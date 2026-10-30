@@ -113,8 +113,8 @@ static_assert(sizeof(OvlPC) == 48, "OvlPC push-constant lockstep");
 
 struct OvlTex {
     mc2vk::ResidentTextureRef texture;
-    VkDescriptorSet set[2] = {};
-    VkImageView bound[2] = {};   // freed with the pool
+    VkDescriptorSet set[mc2vk::kMaxFramesInFlight] = {};
+    VkImageView bound[mc2vk::kMaxFramesInFlight] = {};   // freed with the pool
     // The texels this import came from; a reloaded texture publishes a new vector, so identity says when to re-import.
     std::shared_ptr<const std::vector<uint8_t>> source;
 };
@@ -145,7 +145,7 @@ struct OvlState {
     mc2vk::OwnedBuffer stat;   // persistent bake; replaced buffers retire after their last GPU use
     VkDeviceSize statCap = 0; uint64_t statVersion = UINT64_MAX;
     bool statUsed = false;    // a load snapshot can be corrected in place before its first submit
-    VkCommandBuffer cbuf[2] = {};   // allocated from the island's pool
+    VkCommandBuffer cbuf[mc2vk::kMaxFramesInFlight] = {};   // allocated from the island's pool
     OvlTex dummy;
     std::unordered_map<uint32_t, OvlTex> texs;   // key: gos texture handle
 };
@@ -181,7 +181,7 @@ struct TerrainIsland : mc2vk::IslandState {
     // Pipeline (2 GBuffer outputs, reverse-Z GEQUAL depth-write, cull NONE, no blend).
     mc2vk::OwnedDescriptorSetLayout dsl;
     mc2vk::OwnedDescriptorPool  pool;
-    VkDescriptorSet   set[2] = {VK_NULL_HANDLE, VK_NULL_HANDLE};   // per parity slot (VK-TERRAIN-FENCE-DEFER-1); set[i] binds ubo[i]
+    VkDescriptorSet   set[mc2vk::kMaxFramesInFlight] = {VK_NULL_HANDLE, VK_NULL_HANDLE};   // per parity slot (VK-TERRAIN-FENCE-DEFER-1); set[i] binds ubo[i]
     mc2vk::LightLists lightLists;
     Mc2GroundLightingFrame groundFrame{};
     uint64_t groundFrameNo = ~uint64_t(0);
@@ -216,8 +216,8 @@ struct TerrainIsland : mc2vk::IslandState {
     // COLORMAP-BASE sub-slice: VK-owned copy-once import of the GL colormap atlas
     // (g_atlasGLTex). Sampled image + view + sampler; binding 2. Keyed by the GL tex
     // name so a re-built atlas (per-mission) re-imports.
-    bool descriptorsDirty[2] = {true,true};
-    std::array<VkImageView,7> boundTextures[2]{};
+    bool descriptorsDirty[mc2vk::kMaxFramesInFlight] = {};
+    std::array<VkImageView,7> boundTextures[mc2vk::kMaxFramesInFlight]{};
     mc2vk::ResidentTextureRef colormapTexture;
     mc2vk::OwnedSampler     colormapSamp;
     uint64_t      colormapVersionImported = 0;   // field-store colormap version last imported (0 = none yet)
@@ -291,7 +291,7 @@ struct TerrainIsland : mc2vk::IslandState {
     // 11-13) are spans of it, bound with dynamic offsets (in binding order 0, 11, 12, 13). ringBound[par][k] (k = 0 UBO, 1-3 pool/header/indices) = the
     // ring buffer that binding of set[par] currently points at; a frame whose spans came from another buffer (the ring grew), or a set rewritten by
     // write_descriptors, is re-pointed after beginFrame retired the parity.
-    VkBuffer      ringBound[2][4] = {};
+    VkBuffer      ringBound[mc2vk::kMaxFramesInFlight][4] = {};
 
     // VK-PARITY-TERRAIN-2: per-parity host-visible copies of the GL terrain light pool
     // (GL binding 28 -> VK binding 11), light-grid header (29 -> 12) and index list
@@ -304,11 +304,13 @@ struct TerrainIsland : mc2vk::IslandState {
     std::unordered_map<uint32_t, SkirtMesh> skirtCache;  // VK-TERRAIN-SKIRT (rung 4)
 
     mc2vk::OwnedCommandPool     cpool;
-    VkCommandBuffer   cbuf[4] = {VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE};   // [0,1] terrain run per frame slot, [2,3] scene clear per frame slot
+    VkCommandBuffer   cbuf[2 * mc2vk::kMaxFramesInFlight] = {};   // terrain run slots, then scene clear slots
     // GPU-FRONTIER-1: per engine frame slot, the last submit that used the slot's command buffer / descriptor set. The terrain run, the overlay
     // (which draws through the run's set[slot]) and the scene clear each wait on their own previous submit only.
-    mc2vk::GpuTicket  submitted[2], ovlSubmitted[2], clearSubmitted[2];
-    uint64_t          setBoundFrame[2] = {~uint64_t(0), ~uint64_t(0)};   // engine frame in which set[slot] was last rewritten (mover binding, dirty textures)
+    mc2vk::GpuTicket  submitted[mc2vk::kMaxFramesInFlight], ovlSubmitted[mc2vk::kMaxFramesInFlight], clearSubmitted[mc2vk::kMaxFramesInFlight];
+    std::array<uint64_t, mc2vk::kMaxFramesInFlight> setBoundFrame = [] {
+        std::array<uint64_t, mc2vk::kMaxFramesInFlight> frames; frames.fill(UINT64_MAX); return frames;
+    }();   // engine frame in which set[slot] was last rewritten (mover binding, dirty textures)
 
     // VK-DRAW-PERF-1: per-pass GPU timestamp timer (3 stamps: pass-start / draws-start /
     // pass-end). Gated + fail-soft inside init(); no-op unless MC2_VK_GPU_TIMESTAMPS set.

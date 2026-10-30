@@ -662,7 +662,7 @@ extern "C" int mc2_vk_scene_clear(int w, int h) {
     mc2vk::VulkanContext& cctx = mc2vk::getOrCreateEngineVulkanContext();
     const uint32_t par = cctx.frameContext().slot;
     if (!vk_island_util::waitStrike(s->waitStrikes, s->disabled, cctx.wait(s->clearSubmitted[par], 5000000000ull, "scene clear slot"), "VK_TERRAIN_ISLAND")) { setFallback("clear_slot_timeout"); vlog("[VK_TERRAIN_ISLAND] LOUD: scene clear slot wait timed out (5 s); skipping this frame, will retry next frame."); return 0; }
-    VkCommandBuffer cb = s->cbuf[2 + par];
+    VkCommandBuffer cb = s->cbuf[mc2vk::kMaxFramesInFlight + par];
     vkResetCommandBuffer(cb, 0);
     VkCommandBufferBeginInfo bi{};
     bi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
