@@ -20,6 +20,7 @@ from PIL import Image, ImageDraw
 ROOT = Path(__file__).resolve().parents[1]
 sys.path[:0] = [str(ROOT / 'scripts'), str(ROOT / 'tools/perf')]
 import run_visual_capture as capture
+import console_child
 from smoke_lib import host_lease, runner
 from mission_cpu_profile import HostSamples, noise_report
 
@@ -131,7 +132,8 @@ def captures():
                   '--trigger-frame','300','--settle','0','--duration','600','--no-kill']
             for k,v in declared(mode,1920,1080).items(): argv += ['--env-declare',f'{k}={v}']
             with (OUT/f'{mission}-{mode}-harness.log').open('w',encoding='utf-8') as log:
-                rc=subprocess.run(argv,cwd=ROOT,stdout=log,stderr=subprocess.STDOUT).returncode
+                rc=subprocess.run([sys.executable, *argv[1:]],cwd=ROOT,stdout=log,stderr=subprocess.STDOUT,
+                                  **console_child.child_kwargs(redirected=True)).returncode
             if rc: raise RuntimeError(f'capture failed {mission}/{mode}: {rc}')
             result=process(directory,mission)
             print(f'CAPTURE {mission}/{mode}: consecutive='+str(all(r['consecutive'] for r in result.values())),flush=True)
@@ -180,7 +182,8 @@ def perf():
 
 
 def report():
-    sha=subprocess.check_output(['git','rev-parse','HEAD'],cwd=ROOT,text=True).strip()
+    sha=subprocess.check_output(['git','rev-parse','HEAD'],cwd=ROOT,text=True,
+                                **console_child.child_kwargs(redirected=True)).strip()
     lines=[f'# Temporal A/B — {sha}', '', 'DEV ONLY. Defaults unchanged. B is unavailable: multisample attachment/pipeline work exceeds cheap enablement.',
         'E uses AF16 plus derivative normal-variance roughness inflation (Toksvig-style; no stored mip moments).',
         'Simulation/foliage frozen at seed 0xC0FFEE, trigger frame 300. Orbit: 301 consecutive frames, 360°/10 s nominal at 30 fps; low sweep: 121 frames/4 s.',

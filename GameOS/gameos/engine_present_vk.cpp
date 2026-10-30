@@ -12,15 +12,12 @@
 #include "vk_texture_residency.h"
 #include "vk_one_shot.h"
 #include "texture_decode.h"   // gos_GetTextureTexelsByGlName
-
 #if defined(MC2_VULKAN) && defined(MC2_VULKAN_ISLAND)
-
 // Win32 surface entrypoints + names are gated behind this macro (matches
 // vulkan_context.cpp / vk_image_resource.h). Define BEFORE volk.h.
 #if defined(_WIN32) && !defined(VK_USE_PLATFORM_WIN32_KHR)
 #define VK_USE_PLATFORM_WIN32_KHR
 #endif
-
 #include "vulkan_context.h"
 #include "vk_gpu_profile.h"   // VK-GPU-ZONES: MC2_VK_GPU_SCOPE
 #include "mc2_diag_verbose.h"
@@ -33,16 +30,13 @@
 #define MC2_VULKAN_SHARED_SCENE_DEPTH_IMPL_ISLAND
 #include "vulkan_shared_scene_depth.h"
 #include "vk_shared_gbuffer_gate.h"
-
 #include "imgui.h"
 #include "imgui_impl_vulkan.h"
-
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_vulkan.h>
 #ifdef _WIN32
 #include <SDL2/SDL_syswm.h>   // P13b: SDL_GetWindowWMInfo -> HWND / HINSTANCE
 #endif
-
 #include <cstdarg>
 #include <cstddef>
 #include <cstdio>
@@ -54,14 +48,10 @@
 #include <utility>
 #include <unordered_map>
 #include <vector>
-
 extern uint32_t g_mc2RenderFrame;
 extern uint32_t g_mc2FxFireCaptureFrame;
-
 namespace mc2vk {
-
 namespace {
-
 void plog(const char* fmt, ...) {
     mc2::fmt::print_err("[VK_PRESENT] ");
     va_list ap; va_start(ap, fmt);
@@ -70,7 +60,6 @@ void plog(const char* fmt, ...) {
     mc2::fmt::print_err("\n");
     std::fflush(stderr);
 }
-
 const char* presentModeName(VkPresentModeKHR m) {
     switch (m) {
         case VK_PRESENT_MODE_FIFO_KHR:         return "FIFO";
@@ -82,7 +71,6 @@ const char* presentModeName(VkPresentModeKHR m) {
 }
 
 }  // namespace
-
 struct EnginePresentVk::Impl {
     VulkanContext*   ctx   = nullptr;
     VkInstance       inst  = VK_NULL_HANDLE;

@@ -285,7 +285,7 @@ void Batcher::ResolveTextures()
 void Batcher::Flush() {
     if (!is_enabled()) return;
     ++impl_->frame;
-    std::erase_if(impl_->history, [this](const auto& entry) { return entry.second.frame + 1 < impl_->frame; });
+    std::erase_if(impl_->history, [this](const auto& entry) { const auto& [id, saved] = entry; return saved.frame + 1 < impl_->frame; });
     ++g_flush_total;
     if (impl_->staging.empty()) {
         impl_->groups.clear();

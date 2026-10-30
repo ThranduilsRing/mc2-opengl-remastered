@@ -26,7 +26,7 @@ bool GpuMechBatcher::submitActor(const GpuMechSubmitDesc& desc) {
         ++s_disallowedLateRegEvents;
         return false;
     }
-    const uint32_t typeLodIdx = it->second;
+    const auto& [registeredType, typeLodIdx] = *it;
     const GpuMechTypeLodRecord& rec = s_typeLodRecords[typeLodIdx];
 
     PendingSubmit ps;
@@ -281,7 +281,7 @@ void MechFlushFrame::buildBuckets() {
     }
 
     totalInstances = 0;
-    for (const auto& kv : buckets) totalInstances += kv.second.size();
+    for (const auto& [key, submits] : buckets) totalInstances += submits.size();
 }
 
 // Append each actor bone palette to the bone snapshot and record its base offset.
@@ -297,7 +297,7 @@ void MechFlushFrame::writeBones() {
     std::unordered_map<uint32_t, History> nextHistory;
     extern std::atomic<uint32_t> g_mc2FrameCounter;
     const uint32_t frame = g_mc2FrameCounter.load(std::memory_order_relaxed);
-    std::erase_if(history, [frame](const auto& entry) { return entry.second.frame + 1 != frame; });
+    std::erase_if(history, [frame](const auto& entry) { const auto& [id, saved] = entry; return saved.frame + 1 != frame; });
     s_vkMechBoneSnapshot.clear();
     s_vkMechBoneSnapshot.reserve(totalBones * 2);
     for (uint32_t si = 0; si < static_cast<uint32_t>(s_pendingSubmits.size()); ++si) {
@@ -306,10 +306,15 @@ void MechFlushFrame::writeBones() {
             s_vkMechBoneSnapshot.push_back(b);
         const auto& actor = s_pendingSubmits[si];
         const auto old = history.find(actor.desc.objectIdRaw);
-        const bool valid = actor.desc.objectIdRaw != 0 && old != history.end() &&
-            old->second.type == actor.typeLodIdx && old->second.bones.size() == actor.bones.size();
+        const History* previousHistory = nullptr;
+        if (old != history.end()) {
+            const auto& [id, saved] = *old;
+            previousHistory = &saved;
+        }
+        const bool valid = actor.desc.objectIdRaw != 0 && previousHistory &&
+            previousHistory->type == actor.typeLodIdx && previousHistory->bones.size() == actor.bones.size();
         actorPreviousBoneBase[si] = static_cast<uint32_t>(s_vkMechBoneSnapshot.size());
-        const auto& previous = valid ? old->second.bones : actor.bones;
+        const auto& previous = valid ? previousHistory->bones : actor.bones;
         s_vkMechBoneSnapshot.insert(s_vkMechBoneSnapshot.end(), previous.begin(), previous.end());
         if (actor.desc.objectIdRaw != 0)
             nextHistory[actor.desc.objectIdRaw] = History{frame, actor.typeLodIdx, actor.bones};

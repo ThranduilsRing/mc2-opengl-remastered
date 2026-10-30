@@ -19,7 +19,6 @@ layout(constant_id = 31) const bool kExperimentToksvig = false;
 #include "../include/edge_haze.hglsl"   // edgeHazeAmount + EDGE_HAZE_SKY, shared with GL
 
 layout(location = 0) in vec3 v_worldPos;
-
 layout(location = 0) out vec4 fragColor;   // MRT0 color
 layout(location = 1) out vec4 GBuffer1;    // MRT1 normal + shadow class
 
