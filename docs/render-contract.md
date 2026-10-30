@@ -38,6 +38,15 @@ not main-view images. Picking and cursor projections use unjittered matrices.
 | Scene reconstruction / CAS | display (composite), before UI |
 | HUD, text, ImGui; final swapchain blit | display |
 
+The UI order is enforced by `EnginePresentVk::presentFrame`: its single queue
+submission executes `{compositeCbuf, cbuf}` in that order. The composite command
+buffer finishes scene AA and, when scaled, reconstruction/CAS into `sharedImg`.
+The tail command buffer then calls `recordPendingHudColorProof` (including
+textured HUD/text), followed by `recordPendingImgui`, before the swapchain blit.
+Both UI paths attach to the display-sized `sharedImg`; neither attaches to
+`scaledComposite` or the shared scene images. This order also holds at scale 1.0,
+where reconstruction is skipped. UI must never become input to scene AA or CAS.
+
 Expected extents below are allocation rules, not captured validation evidence.
 `[SCENE_TARGETS]`, `[RENDER_SIZES]` and `[SPATIAL_AA]` report actual runtime extents.
 
