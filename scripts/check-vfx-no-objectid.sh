@@ -12,7 +12,9 @@
 # the mech, nothing happens — no log line marks the failure. Hard to
 # debug from the gameplay symptom back to the FS shader source.
 #
-# Cure: prohibit `layout(location=2) out` declarations in VFX shaders.
+# Cure: prohibit `layout(location=2) out` declarations in GL VFX shaders.
+# Vulkan VFX binds color/normal/motion/reactive (no object-ID attachment),
+# so location 2 is floating-point motion; prohibit integer outputs there.
 # Enforced mechanically — a contributor who tries to add the write hits
 # CI failure immediately rather than three months later when a player
 # reports flaky mech-pick.
@@ -55,6 +57,7 @@ tube_ribbon.frag
 
 ALLOWLIST="scripts/check-vfx-no-objectid.allowlist"
 PATTERN='layout[[:space:]]*\([[:space:]]*location[[:space:]]*=[[:space:]]*2[[:space:]]*\)[[:space:]]*out'
+VK_PATTERN='layout[[:space:]]*\([^)]*\)[[:space:]]*out[[:space:]]+(uint|int|uvec[234]|ivec[234])[[:space:]]'
 
 VIOLATIONS=0
 
@@ -103,7 +106,11 @@ echo "$BASENAMES" | while IFS= read -r name; do
     # `// note: layout(location=2) out is forbidden here`) is not flagged.
     # Mirrors the fix in check-no-raw-gl-from-game.sh; sed preserves line
     # numbers (lines stay in stream, comment portion blanked).
-    sed 's|//.*$||' "$src" | grep -nE "$PATTERN" 2>/dev/null | while IFS= read -r match; do
+    case "$name" in
+        vulkan/*) pattern="$VK_PATTERN" ;;
+        *) pattern="$PATTERN" ;;
+    esac
+    sed 's|//.*$||' "$src" | grep -nE "$pattern" 2>/dev/null | while IFS= read -r match; do
         [ -z "$match" ] && continue
         printf '%s:%s\n' "$src" "$match"
     done
@@ -119,7 +126,7 @@ if [ -s "$TMPHITS" ]; then
         if is_comment_line "$line"; then
             continue
         fi
-        echo "VIOLATION: VFX shader writes objectID attachment-2 in ${line}" >&2
+        echo "VIOLATION: VFX shader declares an objectID/integer output in ${line}" >&2
         VIOLATIONS=$((VIOLATIONS+1))
     done < "$TMPHITS"
 fi
@@ -127,7 +134,7 @@ fi
 if [ "$VIOLATIONS" -gt 0 ]; then
     echo "" >&2
     echo "scripts/check-vfx-no-objectid.sh: ${VIOLATIONS} violation(s)" >&2
-    echo "VFX shaders MUST NOT write color-attachment-2 (R32_UINT objectID)." >&2
+    echo "VFX shaders MUST NOT write GL attachment-2 or Vulkan integer outputs (objectID)." >&2
     echo "Integer attachments do not blend; particle writes last-write-wins clobber" >&2
     echo "underlying mech/static-prop IDs, silently breaking M2.6 mech-pick." >&2
     echo "" >&2
@@ -141,5 +148,5 @@ if [ "$VIOLATIONS" -gt 0 ]; then
     exit 1
 fi
 
-echo "scripts/check-vfx-no-objectid.sh: clean (VFX shaders satisfy attachment-2 prohibition)"
+echo "scripts/check-vfx-no-objectid.sh: clean (VFX shaders satisfy objectID prohibition)"
 exit 0

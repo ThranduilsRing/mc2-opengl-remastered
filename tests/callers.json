@@ -4027,7 +4027,7 @@
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 232,
+          "line": 235,
           "evidence": "import_module",
           "reference": "deploy_payload",
           "text": "return importlib.import_module('deploy_payload')"
@@ -5206,7 +5206,7 @@
         },
         {
           "path": "tools/farm/nightly_dual_gpu.py",
-          "line": 78,
+          "line": 79,
           "evidence": "command",
           "reference": "scripts/run_smoke.py",
           "text": "result = subprocess.run([sys.executable, str(ROOT / \"scripts/run_smoke.py\"),"
@@ -5227,7 +5227,7 @@
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 769,
+          "line": 772,
           "evidence": "command",
           "reference": "scripts/run_smoke.py",
           "text": "proc = subprocess.run(cmd, cwd=str(ROOT), capture_output=True,"
@@ -12419,7 +12419,7 @@
         },
         {
           "path": "scripts/tests/test_mod_smoke.py",
-          "line": 443,
+          "line": 456,
           "evidence": "import",
           "reference": "fst",
           "text": "import fst"
@@ -12475,14 +12475,14 @@
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 522,
+          "line": 525,
           "evidence": "import_module",
           "reference": "fst",
           "text": "fst_lib = importlib.import_module('fst')"
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 558,
+          "line": 561,
           "evidence": "import_module",
           "reference": "fst",
           "text": "fst_lib = importlib.import_module('fst')"
@@ -12554,7 +12554,7 @@
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 397,
+          "line": 400,
           "evidence": "import",
           "reference": "mc2x_import",
           "text": "from mc2x_import import fst as fst_lib"
@@ -12821,35 +12821,35 @@
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 274,
+          "line": 277,
           "evidence": "import",
           "reference": "fst_listing",
           "text": "import fst_listing"
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 396,
+          "line": 399,
           "evidence": "import",
           "reference": "fst_listing",
           "text": "import fst_listing"
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 438,
+          "line": 441,
           "evidence": "import",
           "reference": "fst_listing",
           "text": "import fst_listing"
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 540,
+          "line": 543,
           "evidence": "import",
           "reference": "fst_listing",
           "text": "import fst_listing"
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 559,
+          "line": 562,
           "evidence": "import",
           "reference": "fst_listing",
           "text": "import fst_listing"
