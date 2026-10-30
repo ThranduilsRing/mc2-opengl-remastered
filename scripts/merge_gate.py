@@ -265,7 +265,7 @@ def stock_copy(install, parent=None):
     started = time.monotonic()
     try:
         subprocess.run([sys.executable, str(ROOT / "scripts/make-isolated-deploy.py"),
-                        "--from", str(install), "--to", str(target)], check=True,
+                        "--from", str(install), "--to", str(target), '--snapshot'], check=True,
                        **console_child.child_kwargs())
         for child in target.iterdir():
             if child.is_dir() and (child.name.startswith(".gate-stock-") or child.name in
