@@ -13,6 +13,7 @@ vec3 mv_lampPoolNormal(vec3 wp, vec3 macroN, float lod);
 #include "include/terrain_frame_vk.glsl"   // TerrainFrameUBO + set-0 resources + CSM shadow helpers
 #undef TLP_LAMP_NORMAL
 #include "include/ground_lighting.glsl"
+layout(constant_id = 31) const bool kExperimentToksvig = false;
 #include "include/concrete_detail_vk.glsl"
 #include "../include/axis.hglsl"   // mc2ToRender: the POM view vector is built in the MC2 world frame
 #include "../include/edge_haze.hglsl"   // edgeHazeAmount + EDGE_HAZE_SKY, shared with GL

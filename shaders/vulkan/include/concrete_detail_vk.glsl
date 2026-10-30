@@ -36,6 +36,11 @@ MaterialDetail cdEval(int layer, vec2 wp, vec2 dx, vec2 dy) {
     MaterialDetail d;
     d.n = normalize(vec3(nxy, 1.0));
     d.roughness = clamp(a.z, 0.05, 1.0);
+    // DEV experiment: derivative normal variance, same roughness moment as props.
+    if (kExperimentToksvig) {
+        vec3 nx=dFdx(d.n), ny=dFdy(d.n);
+        d.roughness=pow(min(1.0,pow(d.roughness,4.0)+min(0.25,0.5*(dot(nx,nx)+dot(ny,ny)))),0.25);
+    }
     d.ao = a.w;
     d.lum = 1.0;
     return d;

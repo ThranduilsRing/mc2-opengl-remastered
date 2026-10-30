@@ -57,7 +57,9 @@ struct SpatialAA::Impl {
     int mode = 0;
     bool uploaded = false;
     bool lookupPending = false;
-    Texture input, area, search, cmaaEdges, heads;
+    Texture input, area, search, cmaaEdges, heads, history;
+    bool historyValid = false;
+    VkImageView motionView = VK_NULL_HANDLE;
     std::vector<Texture> transientSlots;
     OwnedImageView inputSrgb;
     OwnedBuffer lookupUpload;
@@ -130,8 +132,11 @@ struct SpatialAA::Impl {
         wr.descriptorType = separate ? VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE : VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
         wr.pImageInfo = &ii; vkUpdateDescriptorSets(dev, 1, &wr, 0, nullptr);
     }
-    bool init(VulkanContext& context, const VkImageResource& output, int selected) {
+    bool init(VulkanContext& context, const VkImageResource& output, int selected, VkImageView motion) {
         ctx = &context; dev = ctx->device(); w = output.w; h = output.h; mode = selected;
+        motionView = motion;
+        if (mode == 4 && (!motion || !history.create(context, w, h, VK_FORMAT_R8G8B8A8_UNORM,
+                VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT))) return false;
         if (mode == 1 && !initGraph(output)) return false;
         if (mode != 1 && !input.create(*ctx, w, h, mode == 3 ? VK_FORMAT_R8G8B8A8_SRGB : VK_FORMAT_R8G8B8A8_UNORM,
                           VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, mode == 1)) return false;
@@ -187,7 +192,8 @@ struct SpatialAA::Impl {
             std::memcpy(bytes.data(), areaTexBytes, AREATEX_SIZE); std::memcpy(bytes.data() + AREATEX_SIZE, searchTexBytes, SEARCHTEX_SIZE);
             if (!lookupUpload.createFilled(ctx->allocator(), dev, bytes.data(), bytes.size(), VK_BUFFER_USAGE_TRANSFER_SRC_BIT, "spatialAA.lookups")) return false;
         }
-        const char* names[] = {smaa ? "aa_smaa_edges.frag.spv" : "aa_fxaa.frag.spv", "aa_smaa_weights.frag.spv", "aa_smaa_blend.frag.spv"};
+        const char* names[] = {mode == 4 ? "aa_experiment_taa.frag.spv" : mode == 5 ? "aa_experiment_rcas.frag.spv" :
+                              smaa ? "aa_smaa_edges.frag.spv" : "aa_fxaa.frag.spv", "aa_smaa_weights.frag.spv", "aa_smaa_blend.frag.spv"};
         VkImageView targets[] = {smaa ? graphTexture(2).view.get() : output.view.get(),
                                 smaa ? graphTexture(3).view.get() : VK_NULL_HANDLE, output.view.get()};
         // loadSpv registers every AA module with infra::shader for reload and breadcrumbs.
@@ -200,6 +206,7 @@ struct SpatialAA::Impl {
             if (!allocateSet(dsl.get(), sets[i])) return false;
             // All bindings are initialized, even when a particular shader omits one.
             for (uint32_t j = 0; j < 3; ++j) sampled(sets[i], j, inputTexture().view.get());
+            if (mode == 4) { sampled(sets[i], 1, history.view.get()); sampled(sets[i], 2, motionView); }
             OwnedShaderModule fs(dev, vk_island_util::loadSpv(dev, vk_island_util::spvDir() + names[i], nullptr));
             if (!fs) return false;
             graphics[i] = makeGraphics(vs.get(), fs.get());
@@ -304,7 +311,8 @@ struct SpatialAA::Impl {
             vkCmdSetViewport(cb, 0, 1, &vp); vkCmdSetScissor(cb, 0, 1, &sc);
             infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, graphics[i].get());
             vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, layout.get(), 0, 1, &sets[i], 0, nullptr);
-            float metrics[] = {1.0f / static_cast<float>(w), 1.0f / static_cast<float>(h), float(w), float(h)};
+            float metrics[] = {1.0f / static_cast<float>(w), 1.0f / static_cast<float>(h), float(w),
+                               mode == 4 ? (historyValid ? 1.0f : 0.0f) : float(h)};
             vkCmdPushConstants(cb, layout.get(), VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(metrics), metrics);
             vkCmdDraw(cb, 3, 1, 0, 0); vkCmdEndRenderPass(cb);
     }
@@ -363,20 +371,20 @@ void SpatialAA::reset() { impl_.reset(); failedMode_ = -1; }
 void SpatialAA::submitted() {
     if (impl_ && impl_->lookupPending) impl_->uploaded = true;
 }
-bool SpatialAA::prepare(VulkanContext& ctx, const VkImageResource& output, int mode) {
-    if (mode < 0 || mode > 3) mode = 1;
+bool SpatialAA::prepare(VulkanContext& ctx, const VkImageResource& output, int mode, VkImageView motion) {
+    if (mode < 0 || mode > 5) mode = 1;
     if (failedMode_ != mode) failedMode_ = -1;
     if (failedMode_ == mode && failedW_ == output.w && failedH_ == output.h) return false;
     if (impl_ && impl_->w == output.w && impl_->h == output.h && impl_->mode == mode) return true;
     if (impl_) { ctx.waitIdle("spatial_aa_change"); reset(); }
     if (!mode) return true;
     auto next = std::make_unique<Impl>();
-    if (!next->init(ctx, output, mode)) {
+    if (!next->init(ctx, output, mode, motion)) {
         failedMode_ = mode; failedW_ = output.w; failedH_ = output.h;
         mc2::fmt::print_err("[SPATIAL_AA] shader_error=1 mode={} initialization failed; scene retained\n", mode);
         return false;
     }
-    mc2::fmt::print_err("[SPATIAL_AA] mode={} extent={}x{} spatial=1 before_hud=1\n", mode, output.w, output.h);
+    mc2::fmt::print_err("[SPATIAL_AA] mode={} extent={}x{} spatial={} before_hud=1\n", mode, output.w, output.h, mode != 4);
     impl_ = std::move(next);
     failedMode_ = -1;
     return true;
@@ -384,12 +392,20 @@ bool SpatialAA::prepare(VulkanContext& ctx, const VkImageResource& output, int m
 void SpatialAA::record(VkCommandBuffer cb, const VkImageResource& output) {
     if (!impl_) return;
     auto& s = *impl_;
-    const char* names[] = {"VKIsl.AA.Off", "VKIsl.AA.SMAA1x", "VKIsl.AA.FXAA", "VKIsl.AA.CMAA2"};
+    const char* names[] = {"VKIsl.AA.Off", "VKIsl.AA.SMAA1x", "VKIsl.AA.FXAA", "VKIsl.AA.CMAA2", "VKIsl.Experiment.TAA", "VKIsl.Experiment.RCAS"};
     MC2_VK_GPU_SCOPE(scope, cb, names[s.mode]);
     // Scratch images are shared across frame slots on one queue; retire prior reads before overwriting them.
     memoryBarrier(cb, VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT, VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT,
                   VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT);
     if (s.mode == 1) { s.recordGraph(cb, output); return; }
+    if (s.mode == 4 && !s.historyValid) {
+        imageBarrier(cb, s.history.image.get(), VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+            0, VK_ACCESS_TRANSFER_WRITE_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
+        VkClearColorValue clear{}; VkImageSubresourceRange range{VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
+        vkCmdClearColorImage(cb, s.history.image.get(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &clear, 1, &range);
+        imageBarrier(cb, s.history.image.get(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+            VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+    }
     imageBarrier(cb, output.image.get(), VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
                  VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_ACCESS_TRANSFER_READ_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
     imageBarrier(cb, s.input.image.get(), VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 0, VK_ACCESS_TRANSFER_WRITE_BIT,
@@ -404,6 +420,19 @@ void SpatialAA::record(VkCommandBuffer cb, const VkImageResource& output) {
         // The final AA render pass discards the prior attachment contents after the copy finishes.
         memoryBarrier(cb, VK_ACCESS_TRANSFER_READ_BIT, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
         s.recordGraphics(cb);
+    }
+    if (s.mode == 4) {
+        imageBarrier(cb, output.image.get(), VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+            VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_ACCESS_TRANSFER_READ_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
+        imageBarrier(cb, s.history.image.get(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+            VK_ACCESS_SHADER_READ_BIT, VK_ACCESS_TRANSFER_WRITE_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
+        vkCmdCopyImage(cb, output.image.get(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, s.history.image.get(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copy);
+        imageBarrier(cb, s.history.image.get(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+            VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+        imageBarrier(cb, output.image.get(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+            VK_ACCESS_TRANSFER_READ_BIT, VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+            VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
+        s.historyValid = true;
     }
 }
 }

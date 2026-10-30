@@ -858,6 +858,15 @@ void onPostRenderFrame(unsigned int frame, int sceneW, int sceneH) {
                    g_replay.triggerFrame, deterministic);
         ++g_replay.idx;
         g_replay.teleported = false;
+        // DEV ONLY: ordered bookmarks are a per-render-frame camera track.
+        // Zero settle produces consecutive frames after the initial warmup pose.
+        if (mc2::gate::get<"MC2_EXPERIMENT_TEMPORAL_AB">() != 0 &&
+            g_replay.settleFrames == 0 && g_replay.idx < g_replay.marks.size()) {
+            apply_bookmark(g_replay.marks[g_replay.idx]);
+            g_replay.teleported = true;
+            g_replay.settleCount = 0;
+            g_replay.extendCount = 0;
+        }
     }
 }
 

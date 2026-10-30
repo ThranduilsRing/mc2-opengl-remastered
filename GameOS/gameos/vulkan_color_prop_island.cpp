@@ -1199,10 +1199,10 @@ bool init_island(ColorPropIsland* s, int w, int h) {
         stages[1].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
         stages[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT; stages[1].module = s->t1_frag.get(); stages[1].pName = "main";
         // Compile the small-EU preset without material detail/specular and long light walks.
-        const int specData[2] = {mc2::options::lowCost() ? (mc2::options::current().baseQuality == 0 ? 0 : 1) : 2,
-                                 static_cast<int>(s->propTexSlots)};
-        const VkSpecializationMapEntry qualityEntry[2] = {{0, 0, sizeof(int)}, {1, sizeof(int), sizeof(int)}};
-        const VkSpecializationInfo qualityInfo{2, qualityEntry, sizeof(specData), specData};
+        const int specData[3] = {mc2::options::lowCost() ? (mc2::options::current().baseQuality == 0 ? 0 : 1) : 2,
+                                 static_cast<int>(s->propTexSlots), mc2::gate::get<"MC2_EXPERIMENT_TEMPORAL_AB">() == 5};
+        const VkSpecializationMapEntry qualityEntry[3] = {{0, 0, sizeof(int)}, {1, sizeof(int), sizeof(int)}, {31, 2*sizeof(int), sizeof(int)}};
+        const VkSpecializationInfo qualityInfo{3, qualityEntry, sizeof(specData), specData};
         stages[1].pSpecializationInfo = &qualityInfo;
         VkGraphicsPipelineCreateInfo gp{};
         gp.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;

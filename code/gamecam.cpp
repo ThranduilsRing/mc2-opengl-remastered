@@ -246,7 +246,7 @@ void GameCamera::renderViewUniforms() {
 		stuffToRowMajor(eye->worldToClipGL(), vu.worldToClipGL);
 		extern std::atomic<uint32_t> g_mc2FrameCounter;
 		const uint32_t viewFrame = g_mc2FrameCounter.load(std::memory_order_relaxed);
-		if (mc2::gate::get<"MC2_RENDER_JITTER">()) {
+		if (mc2::gate::get<"MC2_RENDER_JITTER">() || mc2::gate::get<"MC2_EXPERIMENT_TEMPORAL_AB">() == 3) {
 			const float scale = mc2::gate::get<"MC2_RENDER_SCALE">();
 			const int w = (std::max)(1, int(std::lround(Environment.drawableWidth * scale)));
 			const int h = (std::max)(1, int(std::lround(Environment.drawableHeight * scale)));

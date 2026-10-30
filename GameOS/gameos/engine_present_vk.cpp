@@ -142,6 +142,7 @@ struct EnginePresentVk::Impl {
     mc2vk::OwnedFramebuffer scaledCompositeFramebuffer;
     VkDescriptorSet upscaleSet = VK_NULL_HANDLE;
     SpatialAA spatialAA;
+    SpatialAA experimentAA; // DEV ONLY: remove after temporal A/B decision.
     MotionVectors motionVectors;
     uint32_t        imgW = 0, imgH = 0;
 
@@ -265,6 +266,7 @@ struct EnginePresentVk::Impl {
     // other member is an owner and follows in reverse declaration order.
     ~Impl() {
         spatialAA.reset();
+        experimentAA.reset();
         motionVectors.reset();
         scaledCompositeFramebuffer.reset();
         if (dev != VK_NULL_HANDLE) vkImageResourceDestroy(&scaledComposite, dev);
@@ -1845,6 +1847,7 @@ uint32_t recordPendingHudColorProof(EnginePresentVk::Impl& s, VkCommandBuffer cb
 bool buildSharedImage(EnginePresentVk::Impl& s, uint32_t w, uint32_t h, std::string& reason) {
     // Tear down prior.
     s.spatialAA.reset();
+    s.experimentAA.reset();
     s.motionVectors.reset();
     destroyImguiFramebuffer(s);
     destroyHudColorFramebuffer(s);
@@ -2102,7 +2105,8 @@ bool EnginePresentVk::renderNativeCompositeVisual(float exposure,
 
     // Record into the composite's OWN cbuf; the submit happens in presentFrame as
     // half of the single {compositeCbuf, cbuf} submission.
-    const int aaMode = mc2::options::current().spatialAA;
+    const int experiment = mc2::gate::get<"MC2_EXPERIMENT_TEMPORAL_AB">();
+    const int aaMode = experiment == 3 ? 0 : experiment ? 1 : mc2::options::current().spatialAA;
     const bool scaled = bool(s.scaledComposite.image);
     const auto& aaOutput = scaled ? s.scaledComposite : s.sharedImg;
     const bool aaReady = s.spatialAA.prepare(*s.ctx, aaOutput, aaMode);
@@ -2110,6 +2114,8 @@ bool EnginePresentVk::renderNativeCompositeVisual(float exposure,
     auto* motionTarget = mc2SharedSceneColorGetResource(MC2_SHARED_SCENE_MOTION);
     const bool motionReady = motionDepth && motionTarget && s.motionVectors.prepare(*s.ctx, *motionDepth, *motionTarget);
     if (!motionReady) return false;
+    const bool experimentReady = (experiment == 3 || experiment == 4) &&
+        s.experimentAA.prepare(*s.ctx, s.sharedImg, experiment == 3 ? 4 : 5, s.motionVectors.view());
     ZoneNamedN(zCompRec, "VKIsl.Present.CompositeRecord", true);   // VK-ISLAND-TRACY-1 (to fn return)
     VkCommandBuffer cc = s.curCompositeCbuf();
     s.compositePending = false;
@@ -2206,9 +2212,10 @@ bool EnginePresentVk::renderNativeCompositeVisual(float exposure,
         mc2vk::infra::bind(cc, VK_PIPELINE_BIND_POINT_GRAPHICS, s.compositePipe.get());
         vkCmdBindDescriptorSets(cc, VK_PIPELINE_BIND_POINT_GRAPHICS, s.compositeLayout.get(),
                                0, 1, &s.upscaleSet, 0, nullptr);
-        pc[3] = (upscale && cubicUpscale) ? 1.0f : 0.0f;
+        pc[3] = experiment == 4 ? 2.0f : (upscale && cubicUpscale) ? 1.0f : 0.0f;
+        pc[27] = float(s.imgW); pc[31] = float(s.imgH);
         pc[4] = 1.0f; // already tone-mapped and graded; only reconstruct/sharpen
-        pc[7] = casEnabled ? 1.0f : 0.0f;
+        pc[7] = experiment == 4 ? 0.0f : casEnabled ? 1.0f : 0.0f;
         vkCmdPushConstants(cc, s.compositeLayout.get(), VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(pc), pc);
         vkCmdDraw(cc, 3, 1, 0, 0);
         vkCmdEndRenderPass(cc);
@@ -2217,6 +2224,8 @@ bool EnginePresentVk::renderNativeCompositeVisual(float exposure,
             VK_ACCESS_SHADER_READ_BIT, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
             VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
     }
+
+    if (experimentReady) s.experimentAA.record(cc, s.sharedImg);
 
     barrier(cc, scene->image.get(),
             VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
@@ -2729,6 +2738,7 @@ bool EnginePresentVk::presentFrameBody(uint32_t drawableW, uint32_t drawableH,
     }
 
     s.spatialAA.submitted();
+    s.experimentAA.submitted();
     s.motionVectors.submitted();
     VkPresentInfoKHR pi{VK_STRUCTURE_TYPE_PRESENT_INFO_KHR};
     pi.waitSemaphoreCount = 1;

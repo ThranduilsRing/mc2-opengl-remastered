@@ -10,7 +10,7 @@ class SpatialAA {
 public:
     SpatialAA();
     ~SpatialAA();
-    bool prepare(VulkanContext& ctx, const VkImageResource& output, int mode);
+    bool prepare(VulkanContext& ctx, const VkImageResource& output, int mode, VkImageView motion = VK_NULL_HANDLE);
     void record(VkCommandBuffer cb, const VkImageResource& output);
     void submitted();
     void reset();
