@@ -191,6 +191,11 @@ TEST_CASE("save fields: BRN1 task and runtime scalar census") {
     sample.playerRecoveries = 0x07070707;
     sample.playerHealthTarget = 0x08080808;
     sample.playerTargetHealth = 9.25f;
+    mc2::save::Archive lossWriter;
+    mc2::save::serializeBrainRuntime(lossWriter, sample);
+    REQUIRE(lossWriter.good());
+    // Valid, identical bytes prove the nine changes were ignored, not rejected.
+    CHECK(lossWriter.bytes() == writer.bytes());
     const auto knownLoss = [&](auto member, const char* field) {
         CAPTURE(field);
         CHECK_FALSE(save_probe::roundtrip(sample, mc2::save::serializeBrainRuntime, member));
