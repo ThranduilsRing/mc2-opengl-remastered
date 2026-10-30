@@ -1,5 +1,14 @@
 # Farm desktop runner
 
+Fresh release install: copy the release archives to `C:/mc2farm/release`, and
+sync `scripts/test_release_zip_install.py` plus `scripts/release-dlls.txt` to
+the harness. Create `C:/mc2farm/tmp`, then submit `tools/farm/release-smoke.json`.
+This extracts only the release zips into an empty temporary directory, checks
+DLLs and SPIR-V, runs normal first launch with smoke mode unset, verifies factory
+preferences, then runs `mc2_01` for 15 s and rejects crash artifacts. The temporary
+install is removed on completion. Fetch the job log and archive `release-proof/`
+with the zips. The existing seed install is never used for this proof.
+
 The laptop is a separate, serial game slot. SSH is session 0; GPU jobs must run
 through `MC2FarmRunner` in Kaitlyn's logged-in desktop session. All laptop files
 belong under `C:\mc2farm`. No service or firewall changes are needed.
