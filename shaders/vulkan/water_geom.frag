@@ -291,18 +291,22 @@ void main(void)
         skyReflCol = mix(skyReflCol, F.f9.xyz, GRAZE_SKY_PULL * grazeW) * nightSky;
         reflectCol = skyReflCol;   // default reflection = sky (fallback/base)
         //PORT-END:waterReflSetup
+        vec4 geometry=vec4(0);
         if (F.DEEP_COLOR.w > 0.5) {
             vec2 reflectionUV=gl_FragCoord.xy/u_waterScreenSize + nzGrad*0.003;
             if (all(greaterThan(reflectionUV,vec2(0))) && all(lessThan(reflectionUV,vec2(1)))) {
-                vec4 geometry=texture(u_waterReflection,reflectionUV);
-                reflectCol=skyReflCol*(1.0-geometry.a)+geometry.rgb;
+                geometry=texture(u_waterReflection,reflectionUV);
             }
         }
         //PORT-BEGIN:waterReflMix
         PREC float fres = REFL_F0 + (1.0 - REFL_F0) * pow(1.0 - max(vdir.z, 0.0), 5.0);
         // WATER-GRAZE-REFL-1: grazing fragments keep full reflection at distance.
         reflMix = clamp(fres * u_waterReflStrength * max(waveLOD, fres), 0.0, REFL_MAX);
-        col = mix(col, reflectCol, reflMix);   // reflMix==0 at SH strength 0 -> no-op
+        // Ripple LOD fades only the legacy sky treatment. Geometry retains
+        // Schlick reflectance at distance; coverage fades smoothly to that sky.
+        float geometryMix=clamp(fres*u_waterReflStrength,0.0,REFL_MAX);
+        float totalMix=mix(reflMix,geometryMix,geometry.a);
+        col=col*(1.0-totalMix)+reflectCol*(reflMix*(1.0-geometry.a))+geometry.rgb*geometryMix;
         //PORT-END:waterReflMix
     }
 
