@@ -582,9 +582,11 @@ void destroyShadowDebugFramebuffer(EnginePresentVk::Impl& s) { s.shadowDebugFram
 
 bool ensureCompositeObjects(EnginePresentVk::Impl& s) {
     if (!s.ctx) return false;
-    auto* motionDepth = mc2SharedSceneDepthGetResource();
-    auto* motionTarget = mc2SharedSceneColorGetResource(MC2_SHARED_SCENE_MOTION);
-    if (!motionDepth || !motionTarget || !s.motionVectors.prepare(*s.ctx, *motionDepth, *motionTarget)) return false;
+    if (mc2::gate::get<"MC2_EXPERIMENT_TEMPORAL_AB">() == 3) {
+        auto* depth = mc2SharedSceneDepthGetResource();
+        auto* target = mc2SharedSceneColorGetResource(MC2_SHARED_SCENE_MOTION);
+        if (depth && target) s.motionVectors.prepare(*s.ctx, *depth, *target);
+    }
     if (s.compositePipe.get() && s.compositeFramebuffer.get()) return true;
     if (s.compositeVkFailed || !s.dev || !s.sharedImg.view || s.imgW == 0 || s.imgH == 0)
         return false;
@@ -709,8 +711,7 @@ bool ensureCompositeObjects(EnginePresentVk::Impl& s) {
     ii[1].imageView = objectId && objectId->view.get() ? objectId->view.get() : scene->view.get();
     ii[1].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
     auto* motion = mc2SharedSceneColorGetResource(MC2_SHARED_SCENE_MOTION);
-    if (!motion) return false;
-    ii[2] = {s.compositeNearestSampler.get(), s.motionVectors.view(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
+    ii[2] = {s.compositeNearestSampler.get(), motion && s.motionVectors.view() ? s.motionVectors.view() : scene->view.get(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
     VkWriteDescriptorSet wr[3]{};
     for (uint32_t i = 0; i < 3; ++i) {
         wr[i].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -2100,9 +2101,8 @@ bool EnginePresentVk::renderNativeCompositeVisual(float exposure,
     const bool aaReady = s.spatialAA.prepare(*s.ctx, aaOutput, aaMode);
     auto* motionDepth = mc2SharedSceneDepthGetResource();
     auto* motionTarget = mc2SharedSceneColorGetResource(MC2_SHARED_SCENE_MOTION);
-    const bool motionReady = motionDepth && motionTarget && s.motionVectors.prepare(*s.ctx, *motionDepth, *motionTarget);
-    if (!motionReady) return false;
-    const bool experimentReady = (experiment == 3 || experiment == 4) &&
+    const bool motionReady = experiment == 3 && motionDepth && motionTarget && s.motionVectors.prepare(*s.ctx, *motionDepth, *motionTarget);
+    const bool experimentReady = ((experiment == 3 && motionReady) || experiment == 4) &&
         s.experimentAA.prepare(*s.ctx, s.sharedImg, experiment == 3 ? 4 : 5, s.motionVectors.view());
     ZoneNamedN(zCompRec, "VKIsl.Present.CompositeRecord", true);   // VK-ISLAND-TRACY-1 (to fn return)
     VkCommandBuffer cc = s.curCompositeCbuf();
