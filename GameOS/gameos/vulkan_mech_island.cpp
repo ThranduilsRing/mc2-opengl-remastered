@@ -356,6 +356,7 @@ bool make_albedo_sampler(MechIsland* s) {
     if (s->albedoSamp) return true;
     VkSamplerCreateInfo sci{};
     sci.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+    mc2vk::infra::materialSampler(sci);
     sci.magFilter = VK_FILTER_LINEAR; sci.minFilter = VK_FILTER_LINEAR;
     sci.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR; sci.maxLod=VK_LOD_CLAMP_NONE;
     sci.addressModeU = sci.addressModeV = sci.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;

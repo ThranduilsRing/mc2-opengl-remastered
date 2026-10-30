@@ -135,6 +135,9 @@ struct EnginePresentVk::Impl {
     // the shared VK-only present image (native VK composite writes it, VK blits it
     // into the swapchain). VK-RUNG8-ITEM8: no GL interop view / copy FBO any more.
     VkImageResource sharedImg{};
+    VkImageResource scaledComposite{};
+    mc2vk::OwnedFramebuffer scaledCompositeFramebuffer;
+    VkDescriptorSet upscaleSet = VK_NULL_HANDLE;
     SpatialAA spatialAA;
     uint32_t        imgW = 0, imgH = 0;
 
@@ -258,6 +261,8 @@ struct EnginePresentVk::Impl {
     // other member is an owner and follows in reverse declaration order.
     ~Impl() {
         spatialAA.reset();
+        scaledCompositeFramebuffer.reset();
+        if (dev != VK_NULL_HANDLE) vkImageResourceDestroy(&scaledComposite, dev);
         imguiFramebuffer.reset();
         hudColorFramebuffer.reset();
         compositeFramebuffer.reset();
@@ -573,7 +578,11 @@ struct HudTexPush {
 
 void destroyImguiFramebuffer(EnginePresentVk::Impl& s) { s.imguiFramebuffer.reset(); }
 void destroyHudColorFramebuffer(EnginePresentVk::Impl& s) { s.hudColorFramebuffer.reset(); }
-void destroyCompositeFramebuffer(EnginePresentVk::Impl& s) { s.compositeFramebuffer.reset(); }
+void destroyCompositeFramebuffer(EnginePresentVk::Impl& s) {
+    s.scaledCompositeFramebuffer.reset();
+    if (s.scaledComposite.image) vkImageResourceDestroy(&s.scaledComposite, s.dev);
+    s.compositeFramebuffer.reset();
+}
 void destroyShadowDebugFramebuffer(EnginePresentVk::Impl& s) { s.shadowDebugFramebuffer.reset(); }
 
 bool ensureCompositeObjects(EnginePresentVk::Impl& s) {
@@ -583,6 +592,15 @@ bool ensureCompositeObjects(EnginePresentVk::Impl& s) {
 
     VkImageResource* scene = mc2SharedSceneColorGetResource(MC2_SHARED_SCENE_COLOR0);
     if (!scene || !scene->view) return false;
+
+    // AA reads display-encoded color, at scene resolution, before reconstruction.
+    if ((scene->w < s.imgW || scene->h < s.imgH) && !s.scaledComposite.image) {
+        if (!vkImageResourceCreate(&s.scaledComposite, s.dev, s.phys, scene->w, scene->h,
+                VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
+                VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT |
+                VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
+                "present.renderResolutionColor")) return false;
+    }
 
     if (!s.compositeSampler) {
         VkSamplerCreateInfo ci{VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO};
@@ -640,6 +658,15 @@ bool ensureCompositeObjects(EnginePresentVk::Impl& s) {
             s.compositeVkFailed = true; return false;
         }
     }
+    if (s.scaledComposite.image && !s.scaledCompositeFramebuffer) {
+        VkImageView att = s.scaledComposite.view.get();
+        VkFramebufferCreateInfo fb{VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO};
+        fb.renderPass = s.compositeRenderPass.get();
+        fb.attachmentCount = 1; fb.pAttachments = &att;
+        fb.width = scene->w; fb.height = scene->h; fb.layers = 1;
+        if (!mc2vk::create(s.scaledCompositeFramebuffer, s.dev,
+            [&](auto* h) { return vkCreateFramebuffer(s.dev, &fb, nullptr, h); })) return false;
+    }
     if (!s.compositeDsl) {
         VkDescriptorSetLayoutBinding b[2]{};
         b[0].binding = 0;
@@ -655,9 +682,9 @@ bool ensureCompositeObjects(EnginePresentVk::Impl& s) {
         }
     }
     if (!s.compositePool) {
-        VkDescriptorPoolSize size{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 2};
+        VkDescriptorPoolSize size{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 4};
         VkDescriptorPoolCreateInfo pci{VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO};
-        pci.maxSets = 1; pci.poolSizeCount = 1; pci.pPoolSizes = &size;
+        pci.maxSets = 2; pci.poolSizeCount = 1; pci.pPoolSizes = &size;
         if (!mc2vk::create(s.compositePool, s.dev, [&](auto* h) { return vkCreateDescriptorPool(s.dev, &pci, nullptr, h); })) {
             s.compositeVkFailed = true; return false;
         }
@@ -667,6 +694,9 @@ bool ensureCompositeObjects(EnginePresentVk::Impl& s) {
         const VkDescriptorSetLayout compositeDslHandle = s.compositeDsl.get();
         ai.pSetLayouts = &compositeDslHandle;
         if (vkAllocateDescriptorSets(s.dev, &ai, &s.compositeSet) != VK_SUCCESS) {
+            s.compositeVkFailed = true; return false;
+        }
+        if (vkAllocateDescriptorSets(s.dev, &ai, &s.upscaleSet) != VK_SUCCESS) {
             s.compositeVkFailed = true; return false;
         }
     }
@@ -688,6 +718,13 @@ bool ensureCompositeObjects(EnginePresentVk::Impl& s) {
         wr[i].pImageInfo = &ii[i];
     }
     vkUpdateDescriptorSets(s.dev, 2, wr, 0, nullptr);
+    if (s.scaledComposite.image) {
+        ii[0].imageView = s.scaledComposite.view.get();
+        for (auto& write : wr) write.dstSet = s.upscaleSet;
+        vkUpdateDescriptorSets(s.dev, 2, wr, 0, nullptr);
+    }
+    plog("[RENDER_SIZES] scene=%ux%u aa=%ux%u composite_hud_imgui=%ux%u",
+         scene->w, scene->h, scene->w, scene->h, s.imgW, s.imgH);
 
     if (!s.compositeLayout) {
         VkPushConstantRange pc{};
@@ -2052,7 +2089,9 @@ bool EnginePresentVk::renderNativeCompositeVisual(float exposure,
     // Record into the composite's OWN cbuf; the submit happens in presentFrame as
     // half of the single {compositeCbuf, cbuf} submission.
     const int aaMode = mc2::options::current().spatialAA;
-    const bool aaReady = s.spatialAA.prepare(*s.ctx, s.sharedImg, aaMode);
+    const bool scaled = bool(s.scaledComposite.image);
+    const auto& aaOutput = scaled ? s.scaledComposite : s.sharedImg;
+    const bool aaReady = s.spatialAA.prepare(*s.ctx, aaOutput, aaMode);
     ZoneNamedN(zCompRec, "VKIsl.Present.CompositeRecord", true);   // VK-ISLAND-TRACY-1 (to fn return)
     VkCommandBuffer cc = s.curCompositeCbuf();
     s.compositePending = false;
@@ -2075,9 +2114,9 @@ bool EnginePresentVk::renderNativeCompositeVisual(float exposure,
 
     VkRenderPassBeginInfo rp{VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO};
     rp.renderPass = s.compositeRenderPass.get();
-    rp.framebuffer = s.compositeFramebuffer.get();
+    rp.framebuffer = scaled ? s.scaledCompositeFramebuffer.get() : s.compositeFramebuffer.get();
     rp.renderArea.offset = {0, 0};
-    rp.renderArea.extent = {s.imgW, s.imgH};
+    rp.renderArea.extent = {aaOutput.w, aaOutput.h};
     VkClearValue clear{};
     clear.color = {{0.0f, 0.0f, 0.0f, 1.0f}};
     rp.clearValueCount = 1;
@@ -2087,6 +2126,11 @@ bool EnginePresentVk::renderNativeCompositeVisual(float exposure,
     VkViewport vp{static_cast<float>(viewportX), static_cast<float>(viewportY),
                   static_cast<float>(viewportW), static_cast<float>(viewportH), 0.0f, 1.0f};
     VkRect2D sc{{viewportX, viewportY}, {static_cast<uint32_t>(viewportW), static_cast<uint32_t>(viewportH)}};
+    if (scaled) {
+        vp.x *= float(scene->w) / s.imgW; vp.y *= float(scene->h) / s.imgH;
+        vp.width *= float(scene->w) / s.imgW; vp.height *= float(scene->h) / s.imgH;
+        sc = {{int32_t(vp.x), int32_t(vp.y)}, {uint32_t(vp.width), uint32_t(vp.height)}};
+    }
     vkCmdSetViewport(cc, 0, 1, &vp);
     vkCmdSetScissor(cc, 0, 1, &sc);
     mc2vk::infra::bind(cc, VK_PIPELINE_BIND_POINT_GRAPHICS, s.compositePipe.get());
@@ -2101,11 +2145,11 @@ bool EnginePresentVk::renderNativeCompositeVisual(float exposure,
         exposure,
         1.0f / static_cast<float>(upscale ? scene->w : s.imgW),
         1.0f / static_cast<float>(upscale ? scene->h : s.imgH),
-        (upscale && cubicUpscale) ? 1.0f : 0.0f,
         0.0f,
         0.0f,
         0.0f,
-        casEnabled ? 1.0f : 0.0f,
+        0.0f,
+        (!scaled && casEnabled) ? 1.0f : 0.0f,
         static_cast<float>(viewMode),
         lowLightGain,
         lowLightTint ? lowLightTint[0] : 0.7f,
@@ -2125,7 +2169,33 @@ bool EnginePresentVk::renderNativeCompositeVisual(float exposure,
     vkCmdEndRenderPass(cc);
     gpuScope.end();
 
-    if (aaReady) s.spatialAA.record(cc, s.sharedImg);
+    if (aaReady) s.spatialAA.record(cc, aaOutput);
+    if (scaled) {
+        barrier(cc, s.scaledComposite.image.get(),
+            VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+            VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT,
+            VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+        rp.framebuffer = s.compositeFramebuffer.get();
+        rp.renderArea.extent = {s.imgW, s.imgH};
+        MC2_VK_GPU_SCOPE(upscaleScope, cc, "VKIsl.Present.Upscale");
+        vkCmdBeginRenderPass(cc, &rp, VK_SUBPASS_CONTENTS_INLINE);
+        vp = {float(viewportX), float(viewportY), float(viewportW), float(viewportH), 0.0f, 1.0f};
+        sc = {{viewportX, viewportY}, {uint32_t(viewportW), uint32_t(viewportH)}};
+        vkCmdSetViewport(cc, 0, 1, &vp); vkCmdSetScissor(cc, 0, 1, &sc);
+        mc2vk::infra::bind(cc, VK_PIPELINE_BIND_POINT_GRAPHICS, s.compositePipe.get());
+        vkCmdBindDescriptorSets(cc, VK_PIPELINE_BIND_POINT_GRAPHICS, s.compositeLayout.get(),
+                               0, 1, &s.upscaleSet, 0, nullptr);
+        pc[3] = (upscale && cubicUpscale) ? 1.0f : 0.0f;
+        pc[4] = 1.0f; // already tone-mapped and graded; only reconstruct/sharpen
+        pc[7] = casEnabled ? 1.0f : 0.0f;
+        vkCmdPushConstants(cc, s.compositeLayout.get(), VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(pc), pc);
+        vkCmdDraw(cc, 3, 1, 0, 0);
+        vkCmdEndRenderPass(cc);
+        barrier(cc, s.scaledComposite.image.get(),
+            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+            VK_ACCESS_SHADER_READ_BIT, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+            VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
+    }
 
     barrier(cc, scene->image.get(),
             VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
@@ -2177,7 +2247,8 @@ bool EnginePresentVk::prewarmPipelines() {
     Impl& s=*impl_;
     const bool ready = ensureCompositeObjects(s) && ensureHudColorObjects(s) && ensureHudTexObjects(s) &&
         (!ImGui::GetCurrentContext() || ensureImguiVulkan(s)) &&
-        s.spatialAA.prepare(*s.ctx, s.sharedImg, mc2::options::current().spatialAA);
+        s.spatialAA.prepare(*s.ctx, s.scaledComposite.image ? s.scaledComposite : s.sharedImg,
+                            mc2::options::current().spatialAA);
     if (!ready) return false;
     // Pipeline creation alone leaves driver work for the first command recording.
     // This load-only composite is overwritten by the first scene; it never presents

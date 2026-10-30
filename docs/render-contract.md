@@ -18,6 +18,42 @@ Use this file when changing:
 If a proposed change does not fit one of the contract buckets below, the change
 is probably introducing a new bridge state and should be reconsidered.
 
+## Main-view resolution ownership
+
+`MC2_RENDER_SCALE` scales each scene axis with `max(1, lround(display * scale))`.
+Shadow maps, light caches and bake targets have independent resolutions. They are
+not main-view images. Picking and cursor projections use unjittered matrices.
+
+| Pass / target | Resolution owner |
+|---|---|
+| Sky, terrain, props, legacy shapes, skinned mechs | shared scene color/depth, render |
+| MRT1 normals, object IDs | shared scene, render |
+| Water, particles, vegetation, impact decals | shared scene, render |
+| Water reflection | HDRI texture / SH; no main-view reflection or refraction target |
+| Screen shadow/contact/shore resolve | shared scene color/normal/depth, render |
+| Edge and out-of-bounds fog | shared scene color/depth, render |
+| HZB build | render at mip 0; subsequent mips halve, rounded up |
+| Tone mapping / grading | render; encoded intermediate only when scaled |
+| SMAA color copy, edges, weights, neighborhood; FXAA / CMAA2 | render |
+| Scene reconstruction / CAS | display (composite), before UI |
+| HUD, text, ImGui; final swapchain blit | display |
+
+Expected extents below are allocation rules, not captured validation evidence.
+`[SCENE_TARGETS]`, `[RENDER_SIZES]` and `[SPATIAL_AA]` report actual runtime extents.
+
+| Display | Scale | Scene / AA / HZB mip 0 / fog / screen resolve | Composite / HUD / ImGui |
+|---|---|---|---|
+| 1920 x 1080 | 1.0 | 1920 x 1080 | 1920 x 1080 |
+| 1920 x 1080 | 0.67 | 1286 x 724 | 1920 x 1080 |
+| 3840 x 2160 | 1.0 | 3840 x 2160 | 3840 x 2160 |
+| 3840 x 2160 | 0.67 | 2573 x 1447 | 3840 x 2160 |
+
+Material sampler creation uses `mc2vk::infra::materialSampler` to apply
+`log2(MC2_RENDER_SCALE)` mip bias (zero at native resolution). UI, shadow,
+depth and lookup samplers retain their existing bias. Explicit-LOD reads such
+as the water HDRI reflection keep their authored LOD; the sampler bias affects
+implicit derivative-based material reads.
+
 ## Modern spine vs legacy dispatch (corrected 2026-06-22 RENDER-CONTRACT-INDEX-1)
 
 This document's Bucket A–D taxonomy is a **coordinate-space / submission-space**

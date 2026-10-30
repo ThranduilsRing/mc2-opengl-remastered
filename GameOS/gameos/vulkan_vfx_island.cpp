@@ -486,6 +486,7 @@ bool init_island(VfxIsland* s, int w, int h) {
         sci.addressModeU = sci.addressModeV = sci.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
         sci.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
         sci.maxLod = VK_LOD_CLAMP_NONE;
+        mc2vk::infra::materialSampler(sci);
         VkPhysicalDeviceProperties vegetationProps{};
         vkGetPhysicalDeviceProperties(s->phys, &vegetationProps);
         sci.anisotropyEnable = mc2vk::profile::featureEnabled(ctx.profile(), "samplerAnisotropy") ? VK_TRUE : VK_FALSE;
