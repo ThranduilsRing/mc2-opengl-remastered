@@ -31,6 +31,7 @@ extern int mc2WaterBiasLegacy();
 
 #include <vector>
 #include <algorithm>
+#include <array>
 #include <limits>
 #include <unordered_map>
 #include <cstdio>
@@ -100,6 +101,7 @@ std::vector<WaterVisibilityChunk> g_waterChunks;
 uint32_t g_waterChunkMapSide=0;
 float g_waterChunkThreshold=0;
 std::vector<uint8_t> g_fieldWetRecipes, g_fieldWetChunks;
+std::vector<std::array<float,4>> g_fieldWetBounds;
 uint64_t g_fieldWetVersion=0;
 float g_fieldWetElevation=0;
 
@@ -108,32 +110,49 @@ bool UpdateFieldWaterCoverage(float elevation) {
     if (!store) return false;
     const auto& h=store->waterShoreHeight();
     const float* b=gos_TerrainLodChunk_WaterShoreHeightBounds();
-    if (h.width<1 || h.height<1 || h.texels.empty() || !b || b[2]<=0 || b[3]<=0) return false;
+    if (h.width<2 || h.height<2 || h.texels.empty() || !b || b[2]<=0 || b[3]<=0) return false;
     if (g_fieldWetVersion==h.version && g_fieldWetElevation==elevation && g_fieldWetRecipes.size()==g_recipes.size()) return true;
     g_fieldWetVersion=h.version; g_fieldWetElevation=elevation;
     g_fieldWetRecipes.assign(g_recipes.size(),0);
+    g_fieldWetBounds.resize(g_recipes.size());
     g_fieldWetChunks.assign(g_waterChunks.size(),0);
     for (size_t c=0;c<g_waterChunks.size();++c) {
         for (uint32_t id:g_waterChunks[c].recipes) {
             const auto& r=g_recipes[id];
-            const float u0=(std::min({r.v0x,r.v1x,r.v2x,r.v3x})-b[0])/b[2];
-            const float u1=(std::max({r.v0x,r.v1x,r.v2x,r.v3x})-b[0])/b[2];
-            const float v0=(b[1]-std::max({r.v0y,r.v1y,r.v2y,r.v3y}))/b[3];
-            const float v1=(b[1]-std::min({r.v0y,r.v1y,r.v2y,r.v3y}))/b[3];
+            const float minX=std::min({r.v0x,r.v1x,r.v2x,r.v3x}), maxX=std::max({r.v0x,r.v1x,r.v2x,r.v3x});
+            const float minY=std::min({r.v0y,r.v1y,r.v2y,r.v3y}), maxY=std::max({r.v0y,r.v1y,r.v2y,r.v3y});
+            const float u0=(minX-b[0])/b[2], u1=(maxX-b[0])/b[2];
+            const float v0=(b[1]-maxY)/b[3], v1=(b[1]-minY)/b[3];
+            auto& box=g_fieldWetBounds[id];
+            box={minX,minY,maxX,maxY};
             bool wet=true; // outside the field, the material uses its legacy fallback
             if (u0>=0 && u1<=1 && v0>=0 && v1<=1) {
-                const int x0=std::clamp(int(std::floor(u0*(h.width-1)))-1,0,h.width-1);
-                const int x1=std::clamp(int(std::floor(u1*(h.width-1)))+2,0,h.width-1);
-                const int y0=std::clamp(int(std::floor(v0*(h.height-1)))-1,0,h.height-1);
-                const int y1=std::clamp(int(std::floor(v1*(h.height-1)))+2,0,h.height-1);
-                float lo=std::numeric_limits<float>::max(), hi=std::numeric_limits<float>::lowest();
+                const int x0=std::clamp(int(std::floor(u0*(h.width-1))),0,h.width-2);
+                const int x1=std::clamp(int(std::floor(u1*(h.width-1))),0,h.width-2);
+                const int y0=std::clamp(int(std::floor(v0*(h.height-1))),0,h.height-2);
+                const int y1=std::clamp(int(std::floor(v1*(h.height-1))),0,h.height-2);
+                const float dx=b[2]/float(h.width-1), dy=b[3]/float(h.height-1);
+                wet=false;
+                box={std::numeric_limits<float>::max(),std::numeric_limits<float>::max(),
+                     std::numeric_limits<float>::lowest(),std::numeric_limits<float>::lowest()};
                 for (int y=y0;y<=y1;++y) for (int x=x0;x<=x1;++x) {
-                    const float z=h.texels[size_t(y)*h.width+x]; lo=std::min(lo,z); hi=std::max(hi,z);
+                    float lo=std::numeric_limits<float>::max(), hi=std::numeric_limits<float>::lowest();
+                    for (int sy=y-1;sy<=y+2;++sy) for (int sx=x-1;sx<=x+2;++sx) {
+                        const float z=h.texels[size_t(std::clamp(sy,0,h.height-1))*h.width+std::clamp(sx,0,h.width-1)];
+                        lo=std::min(lo,z); hi=std::max(hi,z);
+                    }
+                    // Bound each bicubic cell, not the entire terrain quad:
+                    // a dry viewport must not inherit a wet corner off screen.
+                    if (lo==hi ? lo>=elevation : lo-0.28125f*(hi-lo)>elevation+0.001f) continue;
+                    wet=true;
+                    box[0]=std::min(box[0],std::max(minX,b[0]+x*dx));
+                    box[2]=std::max(box[2],std::min(maxX,b[0]+(x+1)*dx));
+                    box[1]=std::min(box[1],std::max(minY,b[1]-(y+1)*dy));
+                    box[3]=std::max(box[3],std::min(maxY,b[1]-y*dy));
                 }
                 // A separable Catmull-Rom sample has at most 9/32 negative
                 // weight. Include overshoot, not just texel minima, so curved
                 // shorelines and small pools cannot disappear from reflections.
-                wet=lo==hi ? lo<elevation : lo-0.28125f*(hi-lo)<=elevation+0.001f;
             }
             g_fieldWetRecipes[id]=uint8_t(wet);
             g_fieldWetChunks[c] |= uint8_t(wet);
@@ -461,6 +480,17 @@ bool NativeWaterInFrustum(const VkNativeInputs& f, bool shoreFieldActive) {
             const auto& r=g_recipes[id];
             if (field && !g_fieldWetRecipes[id]) continue;
             if (!(r.waterBits&0x01010101u) && std::min({r.v0e,r.v1e,r.v2e,r.v3e})>=(field?threshold:visibleThreshold)) continue;
+            if (field) {
+                const auto& box=g_fieldWetBounds[id];
+                uint32_t dryOutside=31;
+                for (uint32_t i=0;i<8;++i)
+                    dryOutside &= mask((i&1)?box[2]:box[0],(i&2)?box[3]:box[1],
+                        f.waterElevation+((i&4)?amplitude:-amplitude));
+                if (dryOutside) continue;
+                if (trace) std::fprintf(stderr,"[WATER_VIS v1] wet_recipe=%u bounds=%.1f/%.1f/%.1f/%.1f\n",id,
+                    double(box[0]),double(box[1]),double(box[2]),double(box[3]));
+                return true;
+            }
             const float x[4]={r.v0x,r.v1x,r.v2x,r.v3x}, y[4]={r.v0y,r.v1y,r.v2y,r.v3y};
             uint32_t clips[4];
             for (uint32_t i=0;i<4;++i)
