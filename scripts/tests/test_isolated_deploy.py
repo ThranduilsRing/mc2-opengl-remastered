@@ -1,5 +1,7 @@
 """Fresh installs keep in-place deploy writes private; atomic recipes may share."""
 import importlib.util
+import csv
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -9,6 +11,7 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
 import deploy_payload as dp
 import kit_payload
+import pytest
 
 
 def test_fresh_install_covers_deploy_payload(tmp_path, monkeypatch):
@@ -61,3 +64,62 @@ def test_fresh_install_covers_deploy_payload(tmp_path, monkeypatch):
     victim = next(iter(sorted(rels)))
     (dst / victim).write_bytes(b"new payload")
     assert (src / victim).read_bytes() == b"stock"
+
+
+def lean_tool():
+    spec = importlib.util.spec_from_file_location('lean_iso', ROOT / 'scripts/make-isolated-deploy.py')
+    iso = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(iso)
+    return iso
+
+
+def lean_fixture(src):
+    payload = ['mc2.exe', 'runtime.dll', 'shaders_vk/a.spv', 'data/terrain_materials.json', 'mc2.pdb']
+    junk = ['debug_state/state.json', 'cache/content-model/temp.mci', 'harness.log',
+            'data/textures/123.456.ktx2', 'tools/authoring.exe', 'mods/custom/mod.json']
+    for rel in payload + junk + ['textures.fst', 'data/missions/a.fit', 'options.cfg', 'system.cfg',
+                               'prefs.cfg', 'minprefs.cfg']:
+        path = src / rel
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(b'fixture')
+    with (src / '.deployed_manifest.csv').open('w', newline='') as f:
+        writer = csv.writer(f)
+        writer.writerow(['manifest_version', 'v1'])
+        writer.writerow(['relpath', 'sha256', 'bytes', 'src_commit', 'timestamp', 'mtime_ns'])
+        for rel in payload:
+            writer.writerow([rel, hashlib.sha256(b'fixture').hexdigest(), 7, 'abc', '', 0])
+    return payload, junk
+
+
+def test_lean_projection_is_private_and_has_no_runtime_cache(tmp_path):
+    iso = lean_tool()
+    src, dst = tmp_path / 'source', tmp_path / 'dest'
+    payload, junk = lean_fixture(src)
+    seed = iso.verified_seed(src)
+    guard = iso._load_guard()
+    links, copies, _, copied_bytes = iso.plan(src, guard, seed)
+    all_rels = {r for r, _ in links + copies}
+    assert set(payload) - {'mc2.pdb'} <= all_rels
+    assert not set(junk) & all_rels
+    assert 'mc2.pdb' not in all_rels
+    assert 'textures.fst' in {r for r, _ in links}
+    assert {'prefs.cfg', 'minprefs.cfg'} <= {r for r, _ in copies}
+    iso.build(src, dst, links, copies)
+    assert not (src / 'mc2.exe').samefile(dst / 'mc2.exe')
+    for rel in ('prefs.cfg', 'minprefs.cfg'):
+        assert (dst / rel).read_bytes() == (src / rel).read_bytes()
+        assert not (src / rel).samefile(dst / rel)
+    assert (src / 'textures.fst').samefile(dst / 'textures.fst')
+    assert guard.run_check(str(dst), deep=True)[0] == 'OK'
+    assert copied_bytes < iso.plan(src, guard)[3]
+
+
+def test_seed_rejects_tampered_payload_and_missing_manifest(tmp_path):
+    iso = lean_tool()
+    lean_fixture(tmp_path)
+    (tmp_path / 'runtime.dll').write_bytes(b'tampered')
+    with pytest.raises(SystemExit):
+        iso.verified_seed(tmp_path)
+    (tmp_path / '.deployed_manifest.csv').unlink()
+    with pytest.raises(SystemExit):
+        iso.verified_seed(tmp_path)

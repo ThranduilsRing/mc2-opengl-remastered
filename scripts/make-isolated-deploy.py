@@ -64,6 +64,8 @@ Pure stdlib. Examples:
 from __future__ import annotations
 
 import argparse
+import csv
+import hashlib
 import importlib.util
 import os
 import shutil
@@ -130,7 +132,7 @@ def _load_guard():
 # Planning
 # ---------------------------------------------------------------------------
 
-def plan(src: Path, guard) -> tuple[list, list, int, int]:
+def plan(src: Path, guard, seed=None) -> tuple[list, list, int, int]:
     """Walk src once. Returns (to_link, to_copy, link_bytes, copy_bytes)."""
     to_link, to_copy = [], []
     link_bytes = copy_bytes = 0
@@ -138,6 +140,8 @@ def plan(src: Path, guard) -> tuple[list, list, int, int]:
         for fn in files:
             p = Path(dirpath) / fn
             rel = p.relative_to(src).as_posix()
+            if seed is not None and not seed_member(rel, guard, seed):
+                continue
             try:
                 size = p.stat().st_size
             except OSError:
@@ -149,6 +153,53 @@ def plan(src: Path, guard) -> tuple[list, list, int, int]:
                 to_link.append((rel, size))
                 link_bytes += size
     return to_link, to_copy, link_bytes, copy_bytes
+
+
+def seed_member(rel, guard, manifest):
+    """Only runtime data and manifested payload enter the lean seed projection."""
+    low = rel.casefold()
+    if low in manifest or low == '.deployed_manifest.csv':
+        # PDBs are deploy/debug outputs, never runtime seed inputs.
+        return not low.endswith('.pdb')
+    if '/' not in low:
+        # Startup reads prefs.cfg unconditionally; minprefs.cfg supplies the
+        # first-run options/orgprefs defaults. Neither is deployed payload.
+        return low.endswith(('.fst', '.pak')) or low in (
+            'options.cfg', 'system.cfg', 'prefs.cfg', 'minprefs.cfg')
+    if low.startswith(('cache/', 'crashes/', 'debug_state/', 'saved_bookmarks/', 'mods/')):
+        return False
+    if low.endswith(('.log', '.tmp', '.bak', '.cookstamp', '.dmp')):
+        return False
+    # Runtime texture caches and authoring tools are writable artifacts; only
+    # explicitly deployed files in these roots are admitted above.
+    return low.startswith(('data/', 'assets/')) and guard.classify(rel) == 'data'
+
+
+def verified_seed(src):
+    """Verify the payload manifest before projecting a source into a lean tree."""
+    path = src / '.deployed_manifest.csv'
+    if not path.is_file():
+        fail(f'lean seed requires a deployed manifest: {path}', 2)
+    with path.open(encoding='utf-8-sig', newline='') as f:
+        rows = csv.reader(f)
+        if next(rows, [])[:2] != ['manifest_version', 'v1']:
+            fail(f'unsupported seed manifest: {path}', 2)
+        manifest = {r['relpath'].casefold(): r for r in csv.DictReader(f)}
+    if 'mc2.exe' not in manifest:
+        fail('lean seed manifest does not contain mc2.exe', 2)
+    for rel, row in manifest.items():
+        if rel.endswith('.pdb'):
+            continue
+        candidate = (src / row['relpath']).resolve()
+        if not candidate.is_relative_to(src.resolve()):
+            fail(f'seed manifest path escapes source: {rel}', 2)
+        if not candidate.is_file():
+            fail(f'seed manifest file missing: {rel}', 2)
+        with candidate.open('rb') as f:
+            digest = hashlib.file_digest(f, 'sha256').hexdigest()
+        if digest != row['sha256']:
+            fail(f'seed manifest hash mismatch: {rel}', 2)
+    return manifest
 
 
 def same_volume(a: Path, b: Path) -> bool:
@@ -513,7 +564,7 @@ def main(argv=None) -> int:
     ap = argparse.ArgumentParser(
         description="Create a hardlink-isolated private lane install: share "
                     "read-only data, copy only what gets written.")
-    ap.add_argument("--from", dest="src", help="existing install to base on")
+    ap.add_argument("--from", dest="src", help="verified deployed seed tree (.deployed_manifest.csv required)")
     ap.add_argument("--lane", dest="lane",
                     help=f"lane NAME -> {PRIVATE_ROOT}\\NAME (the default "
                          "destination convention; prefer this over --to)")
@@ -522,6 +573,8 @@ def main(argv=None) -> int:
                          "root is genuinely not what you want")
     ap.add_argument("--dry-run", action="store_true",
                     help="report the plan and cost; write nothing")
+    ap.add_argument('--snapshot', action='store_true',
+                    help='merge-gate snapshot: retain warm caches and the complete source tree')
     ap.add_argument("--selftest", action="store_true",
                     help="prove the tool works; temp dirs only")
     args = ap.parse_args(argv)
@@ -578,7 +631,14 @@ def main(argv=None) -> int:
              "well under one. Choose a --to on the same volume as --from.", 2)
 
     out(f"planning: {src}  ->  {dst}")
-    to_link, to_copy, link_bytes, copy_bytes = plan(src, guard)
+    full_link, full_copy, full_lb, full_cb = plan(src, guard)
+    seed = None if args.snapshot else verified_seed(src)
+    to_link = [(r, n) for r, n in full_link if seed is None or seed_member(r, guard, seed)]
+    to_copy = [(r, n) for r, n in full_copy if seed is None or seed_member(r, guard, seed)]
+    link_bytes = sum(n for _, n in to_link)
+    copy_bytes = sum(n for _, n in to_copy)
+    out(f'{"warm snapshot" if args.snapshot else "lean verified seed"}: {gb(full_lb + full_cb)} -> {gb(link_bytes + copy_bytes)}; '
+        f'private copies {gb(full_cb)} -> {gb(copy_bytes)}')
     out(f"  link (read-only data) : {len(to_link):6d} files, "
         f"{gb(link_bytes)}  [costs nothing]")
     out(f"  copy (written artifacts): {len(to_copy):6d} files, "
@@ -599,6 +659,10 @@ def main(argv=None) -> int:
 
     dst.mkdir(parents=True, exist_ok=True)
     linked, copied = build(src, dst, to_link, to_copy)
+    # The seed is a projection, so retain only the manifest rows it contains.
+    # This makes the resulting tree a verified source for the next lane, too.
+    if seed is not None:
+        write_seed_manifest(dst, seed)
     out(f"built: {linked} linked, {copied} copied")
     verify(dst, guard)
 
@@ -609,6 +673,17 @@ def main(argv=None) -> int:
         "--allow-new-target:")
     out(f"  py -3 scripts/deploy_payload.py \"{dst}\" --allow-new-target")
     return 0
+
+
+def write_seed_manifest(dst, seed):
+    with (dst / '.deployed_manifest.csv').open('w', encoding='utf-8', newline='') as f:
+        writer = csv.writer(f)
+        writer.writerow(['manifest_version', 'v1'])
+        fields = ['relpath', 'sha256', 'bytes', 'src_commit', 'timestamp', 'mtime_ns']
+        writer.writerow(fields)
+        for row in seed.values():
+            if not row['relpath'].lower().endswith('.pdb'):
+                writer.writerow([row.get(k, '') for k in fields])
 
 
 if __name__ == "__main__":
