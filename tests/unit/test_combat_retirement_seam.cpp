@@ -58,6 +58,7 @@ TEST_CASE("save fixtures: shipped legacy mod saves refuse before teardown") {
         "tests/fixtures/saves/omnitech-testgame.ims"));
     for (int index : {1, 2, 3, 4, 5, 7}) {
         auto path = std::format("tests/fixtures/saves/after_mc2_{:02}.fit", index);
+        REQUIRE(std::filesystem::is_regular_file(path));
         CHECK_FALSE(isCorrectVersionCampaignSave(path));
     }
 }
