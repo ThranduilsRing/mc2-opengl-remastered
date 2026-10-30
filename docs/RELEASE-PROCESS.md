@@ -8,6 +8,11 @@ and upload.
 
 ## 1. Where the version lives (bump policy)
 
+Before publishing game-data assets, the owner must re-confirm redistribution
+rights under EULA.txt (non-commercial Microsoft assets). Each zip carries
+EULA.txt, license.txt, LICENSES.md and THIRD_PARTY_NOTICES.md. Automated smoke
+proves installation, not permission to redistribute those assets.
+
 `project(mc2 VERSION ...)` in `CMakeLists.txt` is the semantic release version.
 Use that version for the release tag and folder; the runtime fingerprint
 identifies the exact source commit. Do not infer a version from an old install.

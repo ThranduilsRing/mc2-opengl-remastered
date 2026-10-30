@@ -107,7 +107,13 @@ disk_guard "${TMPDIR:-/tmp}"   8 "release staging tree (mktemp -d)"
 
 mkdir -p "$OUTDIR"
 
-z() { "$SEVENZIP" a -tzip -mx=7 -bso0 -bsp0 "$@"; }
+z() {
+    # Every independently downloaded asset carries the distribution terms.
+    cp "$REPO/license.txt" "$REPO/EULA.txt" "$REPO/LICENSES.md" \
+       "$REPO/THIRD_PARTY_NOTICES.md" .
+    "$SEVENZIP" a -tzip -mx=7 -bso0 -bsp0 "$@" \
+        license.txt EULA.txt LICENSES.md THIRD_PARTY_NOTICES.md
+}
 
 # Stage a clean tree we can shape, so we can exclude stock-resolution burnins
 # from gamedata without touching the deployed install.
