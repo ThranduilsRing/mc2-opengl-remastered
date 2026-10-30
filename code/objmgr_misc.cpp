@@ -159,8 +159,6 @@ void GameObjectManager::preloadTickSpawnTypes (void) {
 	auto preload = [this](long typeNum) {
 		if (typeNum >= 0 && typeNum < objTypeManager->numObjectTypes) objTypeManager->get(typeNum);
 	};
-	// Quicksave visits empty pooled objects through GameObject::CopyTo on the sim worker.
-	preload(0);
 	if (weaponEffects)
 		for (long effectId = 0; effectId < weaponEffects->getNumEffects(); effectId++)
 			preload(weaponEffects->GetEffectObjNum(effectId));

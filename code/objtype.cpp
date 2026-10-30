@@ -564,7 +564,8 @@ ObjectTypePtr ObjectTypeManager::get (ObjectTypeNumber objTypeNum, bool loadIt) 
 		PAUSE((" ObjectTypeManager.find: bad objTypeNum %d (max %d) — mod content; returning NULL ", static_cast<int>(objTypeNum), static_cast<int>(numObjectTypes)));
 		++s_skippedObjTypeNums;
 	}
-	if (!table || (objTypeNum < 0) || (objTypeNum >= numObjectTypes))
+	// Slot zero is always null (load also rejects it); reading it cannot load a type.
+	if (!table || (objTypeNum <= 0) || (objTypeNum >= numObjectTypes))
 		return nullptr;
 
 	//---------------------------
