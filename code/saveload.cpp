@@ -167,7 +167,6 @@ void Mission::save (const char *saveFileName)
 	writeIdFloatExact(&tempFile, "ActualTime", actualTime);
 	writeIdFloatExact(&tempFile, "RunningTime", runningTime);
 	writeIdFloatExact(&tempFile, "ScenarioTime", scenarioTime);
-	tempFile.writeIdLong("ScenarioTurn", turn);
 	tempFile.writeIdFloat("DropZoneX"							, dropZone.x);
 	tempFile.writeIdFloat("DropZoneY"							, dropZone.y);
 	tempFile.writeIdFloat("DropZoneZ"							, dropZone.z);
@@ -304,11 +303,11 @@ void Mission::save (const char *saveFileName)
             handles(std::span(ObjectManager->vehicles, ObjectManager->maxVehicles)),
             handles(std::span(ObjectManager->moverList, ObjectManager->getNumMovers())),
             handles(std::span(ObjectManager->goodMoverList, ObjectManager->numGoodMovers)),
-            handles(std::span(ObjectManager->badMoverList, ObjectManager->numBadMovers))};
+            handles(std::span(ObjectManager->badMoverList, ObjectManager->numBadMovers)), turn};
         mc2::save::Archive archive;
         lists.serialize(archive);
         if (!archive.good()) Fatal(0, "WRLD save section failed");
-        sections.add(mc2::save::tagWorld, 1, true, archive.bytes());
+        sections.add(mc2::save::tagWorld, 2, true, archive.bytes());
     }
     sections.add(mc2::save::tagAnimation, 3, true, ObjectManager->saveAnimationState());
     {
@@ -866,8 +865,6 @@ void Mission::loadMissionSettings(MissionLoadFrame& f) {
 	result = missionFile.readIdFloat("ScenarioTime"						, scenarioTime);
 	if (result != NO_ERR)
 		STOP(("ScenarioTime missing from IN-Mission Save"));
-	if (missionFile.readIdLong("ScenarioTurn", turn) != NO_ERR)
-		turn = 2; // Old saves resume beyond the fresh-mission sensor warmup.
 
 	result = missionFile.readIdFloat("DropZoneX"						, dropZone.x);
 	if (result != NO_ERR)

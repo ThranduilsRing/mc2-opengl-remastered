@@ -621,13 +621,14 @@ void Mission::loadLogistics(MissionLoadFrame& f) {
 // Restore each known save section, or apply its default when absent (a v1 save, or a v2 save from before the section
 // existed). Defaults equal what a v1 load always reconstructed. B2 (BRN1), B3 (FIX1), M5 (WRLD) and PATH add one entry each.
 static void applySaveSections(std::string_view fileName, const mc2::save::SectionContainer& sections, mc2::sim::TacticalOrderQueue& orderQueue) {
+    turn = 2; // Old saves resume beyond the fresh-mission sensor warmup.
     auto reject = [&](std::string_view reason) {
         mc2::fmt::print_err("[SAVE v2] event=reject reason={} file={}\n", reason, fileName);
     };
     if (const auto* world = sections.find(mc2::save::tagWorld)) {
         mc2::save::Archive archive(world->payload);
         mc2::save::SavedMoverLists lists;
-        lists.serialize(archive);
+        lists.serialize(archive, world->version);
         auto valid = [](const auto& handles, int kind) {
             std::vector<std::uint8_t> seen(ObjectManager->getMaxObjects() + 1);
             for (auto handle : handles) {
@@ -646,6 +647,7 @@ static void applySaveSections(std::string_view fileName, const mc2::save::Sectio
             !valid(lists.movers, 2) || !valid(lists.friendly, 2) || !valid(lists.hostile, 2)) {
             reject("world_section");
         } else {
+            turn = lists.turn;
             for (size_t i = 0; i < lists.mechs.size(); ++i)
                 ObjectManager->mechs[i] = static_cast<BattleMechPtr>(ObjectManager->get(lists.mechs[i]));
             for (size_t i = 0; i < lists.vehicles.size(); ++i)

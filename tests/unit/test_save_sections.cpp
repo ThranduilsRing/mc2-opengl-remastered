@@ -7,11 +7,12 @@
 
 TEST_CASE("save fields: compacted mover pools and registration order round trip") {
     using namespace mc2::save;
-    const SavedMoverLists expected{{7, 2, 5}, {9, 6, 8}, {2, 9, 7}, {7}, {2, 9}};
+    const SavedMoverLists expected{{7, 2, 5}, {9, 6, 8}, {2, 9, 7}, {7}, {2, 9}, 1300};
     auto source = expected;
-    SAVE_FIELD_SHAPE(source, mechs, vehicles, movers, friendly, hostile);
+    SAVE_FIELD_SHAPE(source, mechs, vehicles, movers, friendly, hostile, turn);
     CHECK(save_probe::memberBytes<SavedMoverLists>(&SavedMoverLists::mechs, &SavedMoverLists::vehicles,
-        &SavedMoverLists::movers, &SavedMoverLists::friendly, &SavedMoverLists::hostile) == sizeof(SavedMoverLists));
+        &SavedMoverLists::movers, &SavedMoverLists::friendly, &SavedMoverLists::hostile, &SavedMoverLists::turn)
+        > sizeof(SavedMoverLists) - alignof(SavedMoverLists));
     Archive output;
     source.serialize(output);
     REQUIRE(output.good());
@@ -20,6 +21,15 @@ TEST_CASE("save fields: compacted mover pools and registration order round trip"
     restored.serialize(input);
     REQUIRE(input.finish());
     CHECK(restored == expected);
+    Archive legacyOutput;
+    source.serialize(legacyOutput, 1);
+    SavedMoverLists legacyRestored;
+    Archive legacyInput(legacyOutput.bytes());
+    legacyRestored.serialize(legacyInput, 1);
+    REQUIRE(legacyInput.finish());
+    auto legacyExpected = expected;
+    legacyExpected.turn = 2;
+    CHECK(legacyRestored == legacyExpected);
     auto truncated = output.bytes();
     truncated.pop_back();
     Archive bad(truncated);

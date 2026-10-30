@@ -37,18 +37,20 @@ inline constexpr std::uint32_t tagPath = fourcc('P', 'A', 'T', 'H');
 // Sections this build reads and the newest payload version of each. A newer version, or an unknown section flagged
 // required, rejects the file before the running mission is torn down; an unknown optional section is skipped.
 struct KnownSection { std::uint32_t tag; std::uint32_t maxVersion; };
-inline constexpr std::array<KnownSection, 4> knownSections{{{tagAnimation, 3}, {tagOrders, 1}, {tagBrain, 2}, {tagWorld, 1}}};
+inline constexpr std::array<KnownSection, 4> knownSections{{{tagAnimation, 3}, {tagOrders, 1}, {tagBrain, 2}, {tagWorld, 2}}};
 
 // Handles retain the compacted pool prefixes, free-slot order and mover-list order.
 // Object records themselves remain in stable handle order for legacy readers.
 struct SavedMoverLists {
     std::vector<std::uint32_t> mechs, vehicles, movers, friendly, hostile;
-    void serialize(Archive& archive) {
+    std::int32_t turn = 2;
+    void serialize(Archive& archive, std::uint32_t version = 2) {
         archive.sequence(mechs, maxSequenceLength);
         archive.sequence(vehicles, maxSequenceLength);
         archive.sequence(movers, 1024);
         archive.sequence(friendly, 1024);
         archive.sequence(hostile, 1024);
+        if (version >= 2) archive(turn);
     }
     bool operator==(const SavedMoverLists&) const = default;
 };
