@@ -348,7 +348,7 @@ TEST_CASE("CombatRetirementProduction/native loader preserves absolute deadlines
     PacketFile file;
     REQUIRE(file.open(path.c_str()) == NO_ERR);
     REQUIRE_FALSE(GameObjectManager::checkSavedObjects(&file));
-    const auto savedClock = mc2::save::readSavedCombatClock(file);
+    const auto savedClock = mc2::save::readSavedCombatClock(file, false);
     REQUIRE(savedClock);
     owner.resetCombatClock();
     owner.restoreCombatClock(*savedClock);
@@ -391,12 +391,12 @@ TEST_CASE("CombatRetirementProduction/native loader preserves absolute deadlines
         CHECK(restored.retireDeadlineTick == deadlines[i].tick);
         CHECK(restored.retireDeadlineState == deadlines[i].savedState());
     }
-    REQUIRE_FALSE(GameObjectManager::checkSavedObjects(&resave));
+    REQUIRE_FALSE(GameObjectManager::checkSavedObjects(&resave, nullptr, true));
     objects.objTypeManager = nullptr;
     objects.destroy();
     objects.objTypeManager = world.ownedTypes;
     owner.resetCombatClock();
-    owner.restoreCombatClock(*mc2::save::readSavedCombatClock(resave));
+    owner.restoreCombatClock(*mc2::save::readSavedCombatClock(resave, true));
     REQUIRE(objects.Load(&resave, 4) == 15);
     CHECK(owner.getCombatClock().ticks == continued.ticks);
     CHECK(std::bit_cast<std::uint64_t>(owner.getCombatClock().frac) == std::bit_cast<std::uint64_t>(continued.frac));

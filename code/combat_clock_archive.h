@@ -22,14 +22,9 @@ struct CombatClockValue {
 // Preserve the packet cursor on both paths, including malformed records. The fixed
 // 16-byte LE value representation matches the Windows legacy clock bytes exactly.
 template<class Packet>
-std::optional<combat::SavedCombatClock> readSavedCombatClock(Packet& file) {
+std::optional<combat::SavedCombatClock> readSavedCombatClock(Packet& file, bool saveV2) {
     const auto resume = file.getCurrentPacket();
-    char stamp[sizeof(saveStampV2)]{};
-    const bool v2 = file.seekPacket(0) == 0 && file.getPacketSize() == sizeof(stamp) &&
-        file.readPacket(0, reinterpret_cast<unsigned char*>(stamp)) == sizeof(stamp) &&
-        std::memcmp(stamp, saveStampV2, sizeof(stamp)) == 0;
-    file.seekPacket(resume);
-    if (!v2) return combat::readCombatClock(file);
+    if (!saveV2) return combat::readCombatClock(file);
     std::array<std::uint8_t, 16> bytes{};
     CombatClockValue clock;
     const bool valid = file.getNumPackets() > combat::combatClockPacket &&

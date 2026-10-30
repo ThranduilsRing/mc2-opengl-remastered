@@ -518,7 +518,7 @@ bool Mission::openSaveFile(MissionLoadFrame& f) {
 	}
 	currentPacket = 2;
 
-	if (const auto why = GameObjectManager::checkSavedObjects(&loadFile)) {
+	if (const auto why = GameObjectManager::checkSavedObjects(&loadFile, nullptr, f.saveV2)) {
 		mc2::fmt::print_err("[SAVE v1] event=reject reason={} file={}\n", *why, mc2::fmt::safe(loadFileName));
 		return true;
 	}
@@ -555,7 +555,7 @@ void Mission::loadResetSimState(MissionLoadFrame& f) {
 
 				
 	turn = 0;
-	restoreCombatClock(*mc2::save::readSavedCombatClock(f.loadFile));
+	restoreCombatClock(*mc2::save::readSavedCombatClock(f.loadFile, f.saveV2));
 	terminationCounterStarted = 0;
 	terminationResult = mis_PLAYING;
 	forcedTerminationResult = mis_PLAYING;

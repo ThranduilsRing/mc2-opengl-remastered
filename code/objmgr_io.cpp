@@ -640,7 +640,7 @@ ObjectTypePtr GameObjectManager::savedObjectType (long typeNum, long slot)
 }
 
 //-------------------------------------------------------------------
-std::optional<std::string_view> GameObjectManager::checkSavedObjects (PacketFilePtr file, long* headerPacket)
+std::optional<std::string_view> GameObjectManager::checkSavedObjects (PacketFilePtr file, long* headerPacket, bool saveV2)
 {
 	using namespace mc2_saved_objects;
 	RecordSizes sizes = {};
@@ -657,7 +657,7 @@ std::optional<std::string_view> GameObjectManager::checkSavedObjects (PacketFile
 	sizes.pureMover = sizeof(MoverData);
 
 	const long resume = file->getCurrentPacket();
-	if (!mc2::save::readSavedCombatClock(*file))
+	if (!mc2::save::readSavedCombatClock(*file, saveV2))
 		return "invalid_combat_clock";
 	const long numPackets = file->getNumPackets();
 	auto sizeAt = [file](uint32_t packet) -> uint32_t {

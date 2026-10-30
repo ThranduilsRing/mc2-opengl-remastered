@@ -1,6 +1,7 @@
 #include "doctest.h"
 #include "save_sections.h"
 #include "combat_clock_archive.h"
+#include "save_field_probe.h"
 
 #include <string>
 
@@ -160,6 +161,15 @@ TEST_CASE("save sections: combat clock value bytes and malformed corpus") {
     }
 }
 
+TEST_CASE("save fields: clock omission catcher rejects a dropped member") {
+    using T = CombatClockValue;
+    auto sample = save_probe::patterned<T>(&T::ticks, &T::frac);
+    sample.frac = 0.625; // The clock fraction has a domain restriction.
+    CHECK(save_probe::memberBytes<T>(&T::ticks, &T::frac) == sizeof(T));
+    CHECK(save_probe::roundtrip(sample, [](auto& a, auto& v) { a(v); }, &T::ticks, &T::frac));
+    CHECK_FALSE(save_probe::roundtrip(sample, [](auto& a, auto& v) { a(v.ticks); }, &T::ticks, &T::frac));
+}
+
 TEST_CASE("save sections: V2 clock and legacy clock preserve the packet cursor") {
     struct Packets {
         std::array<Bytes, 4> data;
@@ -179,21 +189,21 @@ TEST_CASE("save sections: V2 clock and legacy clock preserve the packet cursor")
     file.data[3].assign(native, native + sizeof(legacy));
     // Pre-V2 stamp takes the unchanged native reader.
     file.data[0] = {'o', 'l', 'd', 0};
-    auto restored = readSavedCombatClock(file);
+    auto restored = readSavedCombatClock(file, false);
     REQUIRE(restored);
     CHECK(restored->ticks == legacy.ticks);
     CHECK(restored->frac == legacy.frac);
     CHECK(file.cursor == 2);
     file.data[0].assign(saveStampV2, saveStampV2 + sizeof(saveStampV2));
-    restored = readSavedCombatClock(file);
+    restored = readSavedCombatClock(file, true);
     REQUIRE(restored);
     CHECK(restored->ticks == legacy.ticks);
     CHECK(restored->frac == legacy.frac);
     CHECK(file.cursor == 2);
     file.data[3].back() = 0x7f; // non-finite/out-of-range binary64
-    CHECK_FALSE(readSavedCombatClock(file));
+    CHECK_FALSE(readSavedCombatClock(file, true));
     CHECK(file.cursor == 2);
     file.data[3].resize(8);
-    CHECK_FALSE(readSavedCombatClock(file));
+    CHECK_FALSE(readSavedCombatClock(file, true));
     CHECK(file.cursor == 2);
 }

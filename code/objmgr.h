@@ -628,7 +628,7 @@ class GameObjectManager {
 
 		// Structural check of the object packets of a save; nothing when sound, else a reason tag. Run before the
 		// running mission is torn down so a bad save is refused instead of crashing the loader.
-		static std::optional<std::string_view> checkSavedObjects (PacketFilePtr file, long* headerPacket = nullptr);
+		static std::optional<std::string_view> checkSavedObjects (PacketFilePtr file, long* headerPacket = nullptr, bool saveV2 = false);
 		ObjectTypePtr savedObjectType (long typeNum, long slot);
 };
 
