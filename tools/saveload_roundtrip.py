@@ -83,14 +83,18 @@ def analyze(text_lines, frames_needed: int = 300):
         report.append(f"digests identical over {horizon} frames" + ("" if ok else f" (need {frames_needed})"))
         return ok, report
     report.append(f"DIGESTS DIVERGE {first} frame(s) after the load (identical before that)")
+    report.append("  pre-load : " + frames[i0 + first][2])
+    report.append("  post-load: " + frames[j + first][2])
     a, b = movers.get(i0 + first, {}), movers.get(j + first, {})
     diff = [i for i in a if a[i] != b.get(i)]
     if diff:
         report.append(f"{len(diff)} of {len(a)} movers differ at that frame; first three:")
         for i in diff[:3]:
             report.append(f"  id {i}\n    saved : {a[i]}\n    loaded: {b.get(i)}")
-    else:
+    elif not a or not b:
         report.append("(no per-mover detail in the log: rerun with MC2_SIM_IDENTITY_TRACE_DETAIL=1)")
+    else:
+        report.append("per-mover records match; compare the global SIMID fields above")
     # How far the state stays close: the share of post-load frames whose digest still equals the saved run's.
     same = sum(1 for k in range(horizon) if frames[i0 + k][2] == frames[j + k][2])
     report.append(f"{same} of {horizon} compared frames have an identical digest")
