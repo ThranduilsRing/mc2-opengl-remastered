@@ -14,20 +14,20 @@
   "tools"
  ],
  "files_over_1500": {
-  "GameOS/gameos/engine_present_vk.cpp": 2905,
+  "GameOS/gameos/engine_present_vk.cpp": 2906,
   "GameOS/gameos/vulkan_color_prop_island.cpp": 2066,
   "GameOS/include/gameos.hpp": 3367,
   "code/artlry.cpp": 1717,
   "code/bldng.cpp": 1707,
   "code/brain_special_dispatch.cpp": 2696,
   "code/gamecam.cpp": 1579,
-  "code/gameobj.cpp": 2262,
+  "code/gameobj.cpp": 2260,
   "code/infowindow.cpp": 1757,
   "code/logisticsdialog.cpp": 2230,
   "code/mechlabscreen.cpp": 1952,
   "code/mechlopedia.cpp": 1624,
   "code/missionbegin.cpp": 2227,
-  "code/mover.h": 1922,
+  "code/mover.h": 1925,
   "code/mpparameterscreen.cpp": 2406,
   "code/multplyr.h": 1845,
   "code/objective.cpp": 2436,
@@ -43,17 +43,17 @@
   "mclib/ablrtn.cpp": 1799,
   "mclib/assimp_importer.cpp": 1935,
   "mclib/camera.h": 1852,
-  "mclib/file.cpp": 1739,
+  "mclib/file.cpp": 1751,
   "mclib/gosfx/fcurve.cpp": 1923,
   "mclib/mapdata.cpp": 2508,
-  "mclib/move.h": 1923,
+  "mclib/move.h": 1920,
   "mclib/terrtxm.cpp": 1819,
   "tools/cite_guard.py": 1553,
   "tools/comment_guard.py": 1790,
   "tools/scifi_kit/art/intent_military.py": 3363,
   "tools/terrain_beautify/visual_heightfield.py": 1510
  },
- "head": "fc156bae9",
+ "head": "3844469d8",
  "per_dir": {
   "GameAdapters": {
    "files": 13,
@@ -116,7 +116,7 @@
    "max_lines": 607
   },
   "tools": {
-   "files": 626,
+   "files": 627,
    "files_over_1500": 4,
    "files_over_3000": 1,
    "max_lines": 3363
@@ -137,7 +137,7 @@
   },
   {
    "file": "GameOS/gameos/engine_present_vk.cpp",
-   "lines": 2905
+   "lines": 2906
   },
   {
    "file": "code/brain_special_dispatch.cpp",
@@ -161,7 +161,7 @@
   },
   {
    "file": "code/gameobj.cpp",
-   "lines": 2268
+   "lines": 2260
   },
   {
    "file": "code/logisticsdialog.cpp",
@@ -188,10 +188,6 @@
    "lines": 1952
   },
   {
-   "file": "mclib/move.h",
-   "lines": 1940
-  },
-  {
    "file": "mclib/assimp_importer.cpp",
    "lines": 1935
   },
@@ -200,12 +196,16 @@
    "lines": 1929
   },
   {
+   "file": "code/mover.h",
+   "lines": 1925
+  },
+  {
    "file": "mclib/gosfx/fcurve.cpp",
    "lines": 1923
   },
   {
-   "file": "code/mover.h",
-   "lines": 1922
+   "file": "mclib/move.h",
+   "lines": 1920
   },
   {
    "file": "mclib/camera.h",
@@ -245,11 +245,11 @@
   },
   {
    "file": "mclib/file.cpp",
-   "lines": 1739
+   "lines": 1751
   }
  ],
  "total": {
-  "files": 2563,
+  "files": 2564,
   "files_over_1500": 38,
   "files_over_3000": 2,
   "max_lines": 3367
