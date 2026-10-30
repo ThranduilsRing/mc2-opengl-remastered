@@ -4,6 +4,7 @@ import csv
 import hashlib
 import json
 import os
+import re
 from pathlib import Path
 import sys
 
@@ -110,6 +111,11 @@ def test_lean_projection_is_private_and_has_no_runtime_cache(tmp_path):
     iso.write_seed_manifest(dst, seed)
     projected = iso.verified_seed(dst)
     assert set(projected) == set(payload) - {'mc2.pdb', 'mods/deployed/mod.json'}
+    # Dry-run the release packager's mandatory preference inputs on a fresh seed.
+    release = (ROOT / 'scripts/build_release.sh').read_text(encoding='utf-8')
+    required = re.search(r'for cfg in ([^;]+); do\s+cp "\$DEPLOY/\$cfg"', release)[1].split()
+    assert required == ['minprefs.cfg', 'orgprefs.cfg', 'prefs.cfg', 'system.cfg']
+    assert all((dst / cfg).read_bytes() == b'fixture' for cfg in required)
     assert not (src / 'mc2.exe').samefile(dst / 'mc2.exe')
     for rel in ('prefs.cfg', 'minprefs.cfg'):
         assert (dst / rel).read_bytes() == (src / rel).read_bytes()
