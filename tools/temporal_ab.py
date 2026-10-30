@@ -1,31 +1,24 @@
 """Offline analysis of archived temporal A/B captures; experiment retired.
 
-Run capture, perf, report in that order. Uses only existing background harnesses.
+Report archived evidence; capture and perf launch modes have been retired.
 Camera tracks use 30 rendered frames/second of nominal camera time; simulation
 and foliage are frozen at the same seeded trigger frame in every arm.
 """
 import argparse
 import html
 import json
-import os
 from pathlib import Path
-import re
 import subprocess
 import sys
-import time
 
 import numpy as np
 from PIL import Image, ImageDraw
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path[:0] = [str(ROOT / 'scripts'), str(ROOT / 'tools/perf')]
-import run_visual_capture as capture
 import console_child
-from smoke_lib import host_lease, runner
-from mission_cpu_profile import HostSamples, noise_report
 
 OUT = Path('E:/mc2-archive-2026-10/proofs/temporal-ab')
-INSTALL = Path('E:/mc2-installs/claude-temporal-ab')
 MODES = {'A_smaa': 1, 'C_taa': 3, 'D_fsr1': 4, 'E_spatial': 5}
 MISSIONS = ['mc2_01', 'mc2_10', 'mc2_24']
 

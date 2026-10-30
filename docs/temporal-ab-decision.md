@@ -67,3 +67,5 @@ and viewer build, five selected shader/gate contract rows, four resource-graph
 doctests (47 assertions), default-off day/night smoke, deterministic frame/seed
 identity audit. Continuation reran metric tests (2 passed); documentation uses
 `git diff --check`. No engine code or defaults changed in this continuation.
+# W88 fixup: the completed experiment's runtime gates and motion attachments
+# were removed; this decision and archived evidence analysis remain available.

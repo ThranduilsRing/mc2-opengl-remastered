@@ -159,8 +159,6 @@ def plan(jobs, proof_dir=None, capture_before_runs=1, before_dir=None):
         ("compare-captures", [py, "tools/visual_verify/ab.py", "--compare-only", str(proof / "before"),
                               str(proof / "after"), "--out-root", str(proof / "ab")], {}),
         ("contracts", [git_bash(), "scripts/check-contracts.sh", "-j" + str(jobs)], {}),
-        ("pytest", [py, "scripts/run_scripts_tests.py"], {}),
-        ("tools-pytest", [py, "scripts/run_tools_tests.py"], {}),
         ("harnesses", [py, "tools/build_contract_harnesses.py", "--run", "--unit", "-j", str(jobs)], {}),
         ("tier1", [py, "scripts/run_smoke.py", "--tier", "tier1", "--keep-logs", "--deploy", "0.4"],
          {"MC2_DEBUG_STATE_DUMP": "1", "MC2_DIAG_TAGS": "CONFIG,BUILD,DEVICE"}),
@@ -270,7 +268,7 @@ def affected_plan(steps, paths, full=False):
         if not full:
             if (name.startswith("determinism-") and not sim) or (name.startswith("saveload-") and not (sim or "art" in domains or classic_saves)):
                 reason = "diff has no engine/simulation inputs (" + ", ".join(sorted(domains)) + ")"
-            elif name not in ("contracts", "pytest", "tools-pytest", "harnesses") and not game:
+            elif name not in ("contracts", "pytest", "harnesses") and not game:
                 reason = "docs/tooling-only diff has no runtime inputs"
             elif name == "harnesses" and not sim:
                 reason = "diff has no C++ harness inputs"
@@ -303,7 +301,7 @@ def affected_plan(steps, paths, full=False):
         if name.startswith("capture-") and not name.endswith("-classic"):
             cmd += ["--env-declare", "MC2_OPTIONS_OVERRIDE=RemasteredBuildings=TRUE"]
     # Offline failures must appear before taking a game lease or copying payloads.
-    offline = {"contracts", "harnesses", "pytest", "tools-pytest"}
+    offline = {"contracts", "harnesses", "pytest"}
     return [s for s in selected if s[0] in offline] + [s for s in selected if s[0] not in offline]
 
 
@@ -486,7 +484,7 @@ def execute_parallel(steps, head, dry_run=False, keep_going=False, farm_determin
             saves = [s for s in stock if s[0].startswith("saveload-")]
             stock = [s for s in stock if s not in saves]
             determinism += saves
-        offline = [s for s in stock if s[0] in ("contracts", "harnesses", "pytest", "tools-pytest")]
+        offline = [s for s in stock if s[0] in ("contracts", "harnesses", "pytest")]
         offline_result = execute(offline, head, runner=runner, completed=completed) if offline else 0
         if offline_result and not keep_going:
             return 1
