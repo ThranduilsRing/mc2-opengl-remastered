@@ -10,7 +10,7 @@
 
 namespace mc2::gate::detail {
 
-inline constexpr std::size_t kGateCount = 752;
+inline constexpr std::size_t kGateCount = 753;
 
 inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_ABL_ARG_GUARD", Kind::Bool, Rule::Lead1, {}},
@@ -423,6 +423,7 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_PLAY_MISSION_SKIP_CINEMATICS", Kind::Bool, Rule::Std, {}},
     {"MC2_POSTPROCESS_COMPUTE_BLUR", Kind::Bool, Rule::Lead0P, {}},
     {"MC2_PRESENTATION_DISABLED", Kind::Bool, Rule::Std, {}},
+    {"MC2_PRESENT_THREAD", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_PREVIEW_FBO_SCALE", Kind::Int, Rule::Prefix, {}},
     {"MC2_PREVIEW_SCENE_DRAIN", Kind::Bool, Rule::Lead1, {}},
     {"MC2_PROJECTILE_SPEED_MULT", Kind::Float, Rule::Prefix, {}},

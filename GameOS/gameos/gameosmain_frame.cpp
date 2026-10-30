@@ -5,6 +5,7 @@
 #include <atomic>
 #include "mc2fmt.h"
 #include "gos_host_vk.h"
+#include "present_thread.h"
 #include "vk_scene_readback.h"
 #include "terrain_field_store.h"
 #include "texture_decode.h"
@@ -623,6 +624,11 @@ void frameSwapWindow(graphics::RenderWindowHandle win) {
 
 // Sleep to the mission / menu frame cap unless vsync paces the loop.
 void frameFrameCap(bool s_vsync_active, int s_fps_cap_mission, int s_fps_cap_menu, uint64_t start_tick) {
+        if (mc2vk::present_thread::enabled()) {
+            const int cap = s_vsync_active ? 0 : SmokeMode::missionHasStarted() ? s_fps_cap_mission : s_fps_cap_menu;
+            mc2vk::present_thread::pace(start_tick, cap);
+            return;
+        }
         // Frame cap: sleep to hold target frame time and reduce GPU thrashing.
         // Skipped when vsync is active (vsync already owns pacing).
         // Uses mission-state-aware cap: 90 FPS in menus, 165 FPS in missions.

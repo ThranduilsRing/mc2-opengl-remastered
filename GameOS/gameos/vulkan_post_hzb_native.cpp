@@ -174,7 +174,7 @@ bool make_buffer(gosPostProcess::VkPostHzbNative* s, VkDeviceSize size,
 // Releases the owned objects (the state's destructor does it, once the GPU is idle) and resets the state; the borrowed handles are not touched.
 void destroy_state(gosPostProcess::VkPostHzbNative* s) {
     if (!s) return;
-    if (s->device != VK_NULL_HANDLE) vkDeviceWaitIdle(s->device);
+    if (s->device != VK_NULL_HANDLE) mc2vk::getOrCreateEngineVulkanContext().waitIdle("hzb_destroy");
     const bool disabled = s->disabled;
     *s = gosPostProcess::VkPostHzbNative{};
     s->disabled = disabled;
@@ -237,7 +237,7 @@ bool build_prop_cull(gosPostProcess::VkPostHzbNative& state, uint32_t count) {
     if (s->cullCapacity >= count) return true;
     // The color pass can still be reading the old mask after the HZB ticket.
     // Only capacity growth replaces its storage/descriptors; retire every reader.
-    vkDeviceWaitIdle(s->device);
+    mc2vk::getOrCreateEngineVulkanContext().waitIdle("hzb_capacity");
     s->previousCount = 0; // the retired mask no longer supplies telemetry
     s->cullCapacity = (std::max)(1024u, std::bit_ceil(count));
     s->cullPool.reset(); s->projected.reset(); s->visibility.reset(); s->instances.reset();

@@ -3,9 +3,9 @@
 # Where each gate is read, what the smoke runner forwards and what tier1_env_vars.md says are not here: ask
 # tools/repo_intel (env_var, gate_status), which scan the sources.
 generator_version: "3.0.0"
-gate_count: 752
-registry_entry_count: 149
-verified_count: 719
+gate_count: 753
+registry_entry_count: 150
+verified_count: 720
 flags:
   - name: MC2_ABL_ARG_GUARD
     kind: Bool
@@ -3170,6 +3170,16 @@ flags:
     smoke_passthrough: true
     verified: true
     registry: {feature_id: MC2_PRESENTATION_DISABLED, kind: Trace, order: -1, default_on: false}
+  - name: MC2_PRESENT_THREAD
+    kind: Bool
+    default: true
+    rule: Lead0Kill
+    owner: gameos
+    retire_by: 2026-11-02
+    doc: "P2 present worker; set 0 for the inline rollback. Retire within three merge windows."
+    smoke_passthrough: true
+    verified: true
+    registry: {feature_id: MC2_PRESENT_THREAD, kind: Feature, order: -1, default_on: true}
   - name: MC2_PREVIEW_FBO_SCALE
     kind: Int
     default: 0

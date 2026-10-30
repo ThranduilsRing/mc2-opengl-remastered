@@ -17,6 +17,7 @@ def test_current_native_hosts():
     ('GameOS/gameos/gos_render.cpp', 'SDL_WINDOW_VULKAN', 'SDL_WINDOW_OPENGL', 'retired GL'),
     ('editor/EditorGosRender.cpp', 'SDL_HINT_VIDEO_FOREIGN_WINDOW_VULKAN', 'old_hint', 'foreign child'),
     ('GameOS/gameos/gos_render.cpp', 'SDL_GetWindowSizeInPixels', 'oldSize', 'pixel extent'),
+    ('GameOS/gameos/gos_host_vk.cpp', 'get_drawable_size(win, &pdw, &pdh)', 'oldSize(win, &pdw, &pdh)', 'captured native pixel extent'),
     ('editor/EditorGameOS.cpp', 'initVulkanBackend(g_editorRenderWindow, w, h);', '', 'device startup'),
 ])
 def test_rejects_host_regressions(path, before, after, expected):
@@ -30,6 +31,12 @@ def test_rejects_driver_call_even_when_no_context_type_is_declared():
     files = checker.snapshot()
     files['GameOS/gameos/gos_host_vk.cpp'] += '\nvoid bad() { glClear(0); }\n'
     assert any('retired GL' in error for error in checker.audit(files))
+
+
+def test_present_worker_cannot_query_sdl_extent():
+    files = checker.snapshot()
+    files['GameOS/gameos/engine_present_vk.cpp'] += '\nvoid bad() { SDL_GetWindowSizeInPixels(window, &w, &h); }\n'
+    assert any('without querying SDL' in error for error in checker.audit(files))
 
 @pytest.mark.parametrize('path', ['editor/shell/main.cpp', 'editor/shell/PanelProof.cpp',
                                  'ui_editor/UiEditorMain.cpp', 'ui_editor/UiEditorImageCache.cpp'])

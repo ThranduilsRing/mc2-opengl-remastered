@@ -3,6 +3,7 @@
 #include "gameos_graphics_material_internal.h"
 #include "KtxLoader.h"          // kKtxMaxEdge: the edge bound every pre-compressed texture shares with the KTX2 parser
 #include "mc2fmt.h"
+#include "present_thread.h"
 #include "../../mclib/sim_overlap.h"
 #include "texture_decode.h"
 #include "ui_texture.h"
@@ -41,11 +42,13 @@ void gosRendererDeleteTexture(DWORD texId)
 //
 void _stdcall gos_DrawLines(gos_VERTEX* Vertices, int NumVertices)
 {
+    mc2::overlap::assertOwner(mc2::overlap::Owner::Render, "gos_DrawLines");
     gosASSERT(g_gos_renderer);
     g_gos_renderer->drawLines(Vertices, NumVertices);
 }
 void _stdcall gos_DrawPoints(gos_VERTEX* Vertices, int NumVertices)
 {
+    mc2::overlap::assertOwner(mc2::overlap::Owner::Render, "gos_DrawPoints");
     gosASSERT(g_gos_renderer);
     g_gos_renderer->drawPoints(Vertices, NumVertices);
 }
@@ -53,18 +56,21 @@ void _stdcall gos_DrawPoints(gos_VERTEX* Vertices, int NumVertices)
 bool g_disable_quads = true;
 void _stdcall gos_DrawQuads(gos_VERTEX* Vertices, int NumVertices)
 {
+    mc2::overlap::assertOwner(mc2::overlap::Owner::Render, "gos_DrawQuads");
     gosASSERT(g_gos_renderer);
     if(g_disable_quads == false )
         g_gos_renderer->drawQuads(Vertices, NumVertices);
 }
 void _stdcall gos_DrawTriangles(gos_VERTEX* Vertices, int NumVertices)
 {
+    mc2::overlap::assertOwner(mc2::overlap::Owner::Render, "gos_DrawTriangles");
     gosASSERT(g_gos_renderer);
     g_gos_renderer->drawTris(Vertices, NumVertices);
 }
 
 void __stdcall gos_GetViewport( float* pViewportMulX, float* pViewportMulY, float* pViewportAddX, float* pViewportAddY )
 {
+    mc2::overlap::assertOwner(mc2::overlap::Owner::Render, "gos_GetViewport");
     gosASSERT(g_gos_renderer);
 #ifdef MC2_VULKAN_ISLAND
     if (mc2_vk_preview_active()) { *pViewportMulX=800; *pViewportMulY=600; *pViewportAddX=*pViewportAddY=0; return; }
@@ -93,6 +99,7 @@ static gosFont* gosLoadFontCached(std::string_view fontView)
 
 HGOSFONT3D __stdcall gos_LoadFont( const char* FontFile, DWORD StartLine/* = 0*/, int CharCount/* = 256*/, DWORD TextureHandle/*=0*/)
 {
+    mc2::overlap::assertOwner(mc2::overlap::Owner::Render, "gos_LoadFont");
     if(!FontFile || !g_gos_renderer)
         return nullptr;
 
@@ -110,6 +117,7 @@ HGOSFONT3D __stdcall gos_LoadFont( const char* FontFile, DWORD StartLine/* = 0*/
 
 void __stdcall gos_DeleteFont( HGOSFONT3D FontHandle )
 {
+    mc2::overlap::assertOwner(mc2::overlap::Owner::Render, "gos_DeleteFont");
     gosASSERT(FontHandle);
     gosFont* font = FontHandle;
     getGosRenderer()->deleteFont(font);
@@ -119,6 +127,7 @@ void __stdcall gos_DeleteFont( HGOSFONT3D FontHandle )
 // text helper (code/hud_imgui_font.cpp). Contract documented in gameos.hpp.
 bool __stdcall gos_FontGetAtlasDesc( HGOSFONT3D FontHandle, gos_FontAtlasDesc* Out )
 {
+    mc2::overlap::assertOwner(mc2::overlap::Owner::Render, "gos_FontGetAtlasDesc");
     if(!FontHandle || !Out || !g_gos_renderer)
         return false;
 
@@ -149,6 +158,7 @@ bool __stdcall gos_FontGetAtlasDesc( HGOSFONT3D FontHandle, gos_FontAtlasDesc* O
 
 bool __stdcall gos_FontGetGlyphDesc( HGOSFONT3D FontHandle, int Char, gos_FontGlyphDesc* Out )
 {
+    mc2::overlap::assertOwner(mc2::overlap::Owner::Render, "gos_FontGetGlyphDesc");
     if(!FontHandle || !Out)
         return false;
 
@@ -216,6 +226,7 @@ DWORD __stdcall gos_NewCompressedTexture2D( uint32_t vkFormat, int w, int h,
                                             const uint8_t* blockData, size_t byteLen,
                                             const char* name )
 {
+    mc2::overlap::assertOwner(mc2::overlap::Owner::Render, "gos_NewCompressedTexture2D");
     const bool bc7 = vkFormat == mc2tex::kVkFormatBc7Unorm || vkFormat == mc2tex::kVkFormatBc7Srgb;
     if(!blockData || !bc7 || w <= 0 || h <= 0 || w > (int)RenderCore::kKtxMaxEdge || h > (int)RenderCore::kKtxMaxEdge ||
        byteLen != mc2tex::bc7LevelBytes(static_cast<uint32_t>(w), static_cast<uint32_t>(h))) {
@@ -240,6 +251,7 @@ DWORD __stdcall gos_NewCompressedTexture2D( uint32_t vkFormat, int w, int h,
 
 DWORD gos_NewTerrainNormalTexture(const unsigned char* rgbaData, int width)
 {
+    mc2::overlap::assertOwner(mc2::overlap::Owner::Render, "gos_NewTerrainNormalTexture");
     if(!rgbaData || width <= 0 || width > (int)RenderCore::kKtxMaxEdge) {
         MC2_LOG(Core, Warn, "[TEXTURE_DECODE v1] rejected terrain normal texture: width {:d}", mc2::fmt::as_i32(width));
         return INVALID_TEXTURE_ID;
@@ -269,13 +281,15 @@ void __stdcall gos_DestroyTexture( DWORD Handle )
 {
     mc2::overlap::requireOwner(mc2::overlap::Owner::Render, "gos_DestroyTexture");   // GPU resource entry: never from the sim worker
 #ifdef MC2_VULKAN_ISLAND
-    if (mc2vk::engineVulkanContextValid()) mc2vk::getOrCreateEngineVulkanContext().textures().forgetLegacyUi(Handle);
+    if (mc2vk::present_thread::enabled()) mc2vk::present_thread::forgetTexture(Handle);
+    else if (mc2vk::engineVulkanContextValid()) mc2vk::getOrCreateEngineVulkanContext().textures().forgetLegacyUi(Handle);
 #endif
     g_gos_renderer->deleteTexture(Handle);
 }
 
 void __stdcall gos_LockTexture( DWORD Handle, DWORD MipMapSize, bool ReadOnly, TEXTUREPTR* TextureInfo )
 {
+    mc2::overlap::assertOwner(mc2::overlap::Owner::Render, "gos_LockTexture");
     // TODO: does not really locks texture
     
     gosASSERT(MipMapSize == 0);
@@ -305,6 +319,7 @@ void __stdcall gos_LockTexture( DWORD Handle, DWORD MipMapSize, bool ReadOnly, T
 
 void __stdcall gos_UnLockTexture( DWORD Handle )
 {
+    mc2::overlap::assertOwner(mc2::overlap::Owner::Render, "gos_UnLockTexture");
     // Pairs with gos_LockTexture: a handle that gave an empty lock has nothing to release.
     gosTexture* ptex = (Handle < g_gos_renderer->getTextureListSize()) ? g_gos_renderer->getTexture(Handle) : nullptr;
     if (!ptex)
@@ -342,6 +357,7 @@ void __stdcall gos_RenderIndexedArray( gos_VERTEX_2UV* pVertexArray, DWORD Numbe
 
 void __stdcall gos_SetRenderState( gos_RenderState RenderState, int Value )
 {
+    mc2::overlap::assertOwner(mc2::overlap::Owner::Render, "gos_SetRenderState");
     gosASSERT(g_gos_renderer);
     // gos_BlendDecal mode is not suported (currently texture color always modulated with vertex color)
     //gosASSERT(RenderState!=gos_State_TextureMapBlend || (Value == gos_BlendDecal));
@@ -469,6 +485,7 @@ bool __stdcall gos_Compute43Box( int w, int h, int* ox, int* oy, int* obw, int* 
 
 void __stdcall gos_SetupViewport( bool FillZ, float ZBuffer, bool FillBG, DWORD BGColor, float top, float left, float bottom, float right, bool ClearStencil/*=0*/, DWORD StencilValue/*=0*/)
 {
+    mc2::overlap::assertOwner(mc2::overlap::Owner::Render, "gos_SetupViewport");
     gosASSERT(g_gos_renderer);
     g_gos_renderer->setupViewport(FillZ, ZBuffer, FillBG, BGColor, top, left, bottom, right, ClearStencil, StencilValue);
 }
@@ -476,6 +493,7 @@ void __stdcall gos_SetupViewport( bool FillZ, float ZBuffer, bool FillBG, DWORD 
 
 void __stdcall gos_SetRenderViewport(float x, float y, float w, float h)
 {
+    mc2::overlap::assertOwner(mc2::overlap::Owner::Render, "gos_SetRenderViewport");
     gosASSERT(g_gos_renderer);
 	// IN-MISSION-DETACH-1: store-only, EXACTLY like the nifty base (the
 	// glViewport call has been commented out there since the GL port). The
@@ -547,6 +565,7 @@ bool gos_GetDisplayModeByIndex(int DisplayIndex, int ModeIndex, int* XRes, int* 
 
 gosBuffer* __stdcall gos_CreateBuffer(gosBUFFER_TYPE type, gosBUFFER_USAGE usage, int element_size, uint32_t count, void* buffer_data)
 {
+    mc2::overlap::assertOwner(mc2::overlap::Owner::Render, "gos_CreateBuffer");
     if (element_size <= 0 || count > SIZE_MAX / static_cast<size_t>(element_size)) return nullptr;
     auto* buffer = new gosBuffer;
     buffer->element_size_ = element_size;
@@ -561,6 +580,7 @@ gosBuffer* __stdcall gos_CreateBuffer(gosBUFFER_TYPE type, gosBUFFER_USAGE usage
 
 void __stdcall gos_DestroyBuffer(gosBuffer* buffer)
 {
+    mc2::overlap::assertOwner(mc2::overlap::Owner::Render, "gos_DestroyBuffer");
     delete buffer;
 }
 
@@ -569,6 +589,7 @@ void __stdcall gos_DestroyBuffer(gosBuffer* buffer)
 
 HGOSVERTEXDECLARATION __stdcall gos_CreateVertexDeclaration(gosVERTEX_FORMAT_RECORD* records, int count)
 {
+    mc2::overlap::assertOwner(mc2::overlap::Owner::Render, "gos_CreateVertexDeclaration");
 	gosASSERT(records && count > 0);
     gosASSERT(g_gos_renderer);
 	gosVertexDeclaration* vdecl = gosVertexDeclaration::create(records, count);
@@ -578,6 +599,7 @@ HGOSVERTEXDECLARATION __stdcall gos_CreateVertexDeclaration(gosVERTEX_FORMAT_REC
 
 void __stdcall gos_DestroyVertexDeclaration(HGOSVERTEXDECLARATION vdecl)
 {
+    mc2::overlap::assertOwner(mc2::overlap::Owner::Render, "gos_DestroyVertexDeclaration");
 	gosASSERT(vdecl);
     gosASSERT(g_gos_renderer);
 	bool rv = g_gos_renderer->deleteVertexDeclaration(vdecl);
@@ -592,6 +614,7 @@ void __stdcall gos_DestroyVertexDeclaration(HGOSVERTEXDECLARATION vdecl)
 // shadow direct draws, indirect terrain). Callers MUST call this AFTER finishing
 // their direct-GL work so the next applyRenderStates() does a full re-apply.
 void __stdcall gos_InvalidateRenderStateCache() {
+    mc2::overlap::assertOwner(mc2::overlap::Owner::Render, "gos_InvalidateRenderStateCache");
     if (!g_gos_renderer) return;
     g_gos_renderer->invalidateRenderStateCache();
 }
@@ -623,6 +646,7 @@ static int camPreviewScale()
 
 void __stdcall gos_BeginCameraPreviewRender()
 {
+    mc2::overlap::assertOwner(mc2::overlap::Owner::Render, "gos_BeginCameraPreviewRender");
     if (!g_gos_renderer) return;
     const int sc = camPreviewScale();
 #ifdef MC2_VULKAN_ISLAND
@@ -633,6 +657,7 @@ void __stdcall gos_BeginCameraPreviewRender()
 
 void __stdcall gos_EndCameraPreviewRender()
 {
+    mc2::overlap::assertOwner(mc2::overlap::Owner::Render, "gos_EndCameraPreviewRender");
 #ifdef MC2_VULKAN_ISLAND
     if (mc2_vk_preview_active()) { mc2_vk_preview_end(); return; }
 #endif

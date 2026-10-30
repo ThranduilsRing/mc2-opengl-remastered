@@ -132,6 +132,7 @@ public:
     // tracker, the frame ring and the deferred-destroy queue without a separate call.
     bool presentFrame(uint32_t drawableW, uint32_t drawableH,
                         bool verifyReadback);
+    void setCaptureFrame(uint32_t renderFrame, uint32_t fireFrame);
 
     void destroy();
 
@@ -193,6 +194,7 @@ public:
 private:
     // T5 content proof: read back the shared image, fold a checksum into health.
     void verifyReadbackContent();
+    void finishFrame();
 
     Impl* impl_ = nullptr;
 

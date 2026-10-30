@@ -24,6 +24,8 @@
 #endif
 
 #include "vulkan_context.h"
+#include "present_thread.h"
+#include "../../mclib/sim_overlap.h"
 #ifndef _WIN32
 #define NO_SDL_VULKAN_TYPEDEFS
 #include <SDL2/SDL_vulkan.h>
@@ -160,6 +162,7 @@ bool resolveValidationPreset(std::vector<VkValidationFeatureEnableEXT>& feats,
 }  // namespace
 
 bool VulkanContext::init(bool wantPresent) {
+    mc2::overlap::assertOwner(mc2::overlap::Owner::Render, "VulkanContext::init");
     health_.attempted = true;
 
     // Idempotent: already up, or already tried and failed.
@@ -563,7 +566,9 @@ void VulkanContext::retireIsland(IslandSlot slot) {
 #endif
 
 void VulkanContext::waitIdle(std::string_view why) const {
+    mc2::overlap::assertOwner(mc2::overlap::Owner::Render, "VulkanContext::waitIdle");
     if (device_ == VK_NULL_HANDLE) return;
+    std::lock_guard<std::mutex> lock(submitMutex_);
     const VkResult r = vkDeviceWaitIdle(device_);
     // A lost device ends the wait with an error; the release that follows is still safe, but the log must say the GPU did not drain.
     if (r != VK_SUCCESS) ctxlog("vkDeviceWaitIdle failed before %.*s: VkResult=%d.", static_cast<int>(why.size()), why.data(), static_cast<int>(r));
@@ -571,12 +576,20 @@ void VulkanContext::waitIdle(std::string_view why) const {
 }
 
 VkResult VulkanContext::submit(const VkSubmitInfo& si, VkFence fence, uint64_t* outValue) const {
+    mc2::overlap::assertOwner(mc2::overlap::Owner::Render, "VulkanContext::submit");
     if (device_ == VK_NULL_HANDLE || gfxTimeline_ == VK_NULL_HANDLE) return VK_ERROR_DEVICE_LOST;
     std::lock_guard<std::mutex> lock(submitMutex_);   // the value and the queue order must agree
 #ifdef MC2_VULKAN_ISLAND
     flushUploadsLocked();   // queued uploads run ahead of every submit that may sample them
 #endif
     return submitLocked(si, fence, outValue);
+}
+
+VkResult VulkanContext::present(VkQueue queue, const VkPresentInfoKHR& info) const {
+    std::lock_guard<std::mutex> lock(submitMutex_);
+    present_thread::seal(); // Next-frame submits must stay behind this present, even when main wakes immediately.
+    mc2::overlap::assertOwner(mc2::overlap::Owner::Present, "vkQueuePresentKHR");
+    return vkQueuePresentKHR(queue, &info);
 }
 
 #ifdef MC2_VULKAN_ISLAND
@@ -634,6 +647,7 @@ VkResult VulkanContext::submitLocked(const VkSubmitInfo& si, VkFence fence, uint
 }
 
 void VulkanContext::poll() const {
+    mc2::overlap::assertOwner(mc2::overlap::Owner::Render, "VulkanContext::poll");
     if (gfxTimeline_ == VK_NULL_HANDLE) return;
     uint64_t v = 0;
     const VkResult result = vkGetSemaphoreCounterValue(device_, gfxTimeline_, &v);
@@ -651,6 +665,7 @@ bool VulkanContext::isComplete(const GpuTicket& t) const {
 }
 
 bool VulkanContext::wait(const GpuTicket& t, uint64_t timeoutNs, std::string_view why) const {
+    mc2::overlap::assertOwner(mc2::overlap::Owner::Render, "VulkanContext::wait");
     if (isComplete(t)) return true;
     if (gfxTimeline_ == VK_NULL_HANDLE) return false;
     VkSemaphoreWaitInfo wi{VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO};
@@ -664,6 +679,7 @@ bool VulkanContext::wait(const GpuTicket& t, uint64_t timeoutNs, std::string_vie
 }
 
 void VulkanContext::beginFrame() {
+    mc2::overlap::assertOwner(mc2::overlap::Owner::Render, "VulkanContext::beginFrame");
     if (tracker_.frameOpen()) return;
     { ZoneScopedN("VKContext.Poll"); poll(); }
     tracker_.beginFrame();
@@ -703,6 +719,7 @@ void VulkanContext::drainDeferred(std::string_view why) {
 }
 
 void VulkanContext::endFrame() {
+    mc2::overlap::assertOwner(mc2::overlap::Owner::Render, "VulkanContext::endFrame");
     ZoneScopedN("VKContext.EndFrame");
 #ifdef MC2_VULKAN_ISLAND
     flushUploads();   // an upload queued this frame is submitted inside it, so the frame ticket covers its staging
@@ -737,6 +754,7 @@ void VulkanContext::endFrame() {
 }
 
 void VulkanContext::destroy() {
+    mc2::overlap::assertOwner(mc2::overlap::Owner::Render, "VulkanContext::destroy");
 #ifdef MC2_VULKAN_ISLAND
     gpuprof::shutdown(*this);
 #endif
@@ -837,10 +855,13 @@ void setObjectName(VkDevice device, VkObjectType type, uint64_t handle, std::str
 }
 
 VulkanContext& getOrCreateEngineVulkanContext() {
+    present_thread::waitSealed();
+    mc2::overlap::assertOwner(mc2::overlap::Owner::Render, "getOrCreateEngineVulkanContext");
     return engineContext();
 }
 
 bool engineVulkanContextValid() {
+    present_thread::waitSealed();
     return engineContext().valid();
 }
 

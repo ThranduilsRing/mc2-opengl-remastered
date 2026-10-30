@@ -41,6 +41,19 @@ public:
     uint64_t legacyUiId(uint32_t gosHandle, uint32_t width, uint32_t height, VkFormat format,
                         std::shared_ptr<const std::vector<uint8_t>> bytes, bool displaySpace = true, bool mipmaps = false);
     void forgetLegacyUi(uint32_t gosHandle) { for (uint64_t policy=0;policy<4;++policy) legacyUi_.erase(gosHandle | (policy<<32)); }
+    // Remove CPU identity now; release these exact generations on the present owner.
+    std::vector<ResidentTextureRef> detachLegacyUi(uint32_t gosHandle) {
+        std::vector<ResidentTextureRef> retired;
+        for (uint64_t policy = 0; policy < 4; ++policy) {
+            const auto found = legacyUi_.find(gosHandle | (policy << 32));
+            if (found == legacyUi_.end()) continue;
+            auto& [legacyKey, entry] = *found;
+            retired.push_back(std::move(entry.texture));
+            retired.push_back(std::move(entry.pending));
+            legacyUi_.erase(found);
+        }
+        return retired;
+    }
     bool contains(RenderCore::TextureHandle handle) const { return residents_.contains(handle.raw()); }
     // A legacy node already owns this identity; attach its pixels without adding a second CPU reference.
     void attach(RenderCore::TextureHandle handle, std::shared_ptr<const RenderCore::KtxImage> image, bool useMips = false);

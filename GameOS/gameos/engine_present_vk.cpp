@@ -1,6 +1,8 @@
 #include "../../RenderCore/TextureService.h"
 #include <algorithm>
 #include "engine_present_vk.h"
+#include "present_thread.h"
+#include "../../mclib/sim_overlap.h"
 #include "visual_tuning_profile.h"
 #include "Gates/gate.h"
 #include "gos_visual_capture.h"   // VK-VISUAL-CAPTURE-1
@@ -27,6 +29,7 @@
 #include "vulkan_shared_scene_color.h"
 #include "vk_shared_gbuffer_gate.h"
 #include "imgui.h"
+#include "present_imgui_snapshot.h"
 #include "imgui_impl_vulkan.h"
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_vulkan.h>
@@ -103,6 +106,9 @@ struct EnginePresentVk::Impl {
     // declined presents keep the fence signaled until a submit can signal it.
     VkCommandBuffer compositeCbufs[mc2vk::kMaxFramesInFlight] = {};
     bool            compositePending = false;
+    bool frameFinished = false;
+    uint32_t captureFrame = 0, captureFireFrame = 0;
+    VkResult lastWsiResult = VK_SUCCESS;
     // Shadow debug joins the tail after the composite.
     VkImageView     pendingShadowDebugView = VK_NULL_HANDLE;
     int             pendingShadowDebugLayer = 0;
@@ -127,6 +133,11 @@ struct EnginePresentVk::Impl {
     mc2vk::OwnedRenderPass    imguiRenderPass;
     mc2vk::OwnedFramebuffer   imguiFramebuffer;
     ImDrawData*     pendingImguiDrawData = nullptr;
+    PresentImguiSnapshot ownedImgui;
+    void clearImgui() {
+        ownedImgui.clear();
+        pendingImguiDrawData = nullptr;
+    }
     // GL texture name (the ImTextureID the game passes) -> a Vulkan image and the descriptor set ImGui_ImplVulkan binds for it.
     // Members release in reverse order: view, image, memory. The upload's staging bytes live in the frame ring.
     struct ImguiTexEntry {
@@ -230,6 +241,22 @@ struct EnginePresentVk::Impl {
 };
 
 namespace {
+
+bool waitCompositeSlot(EnginePresentVk::Impl& s, EnginePresentHealth& health) {
+    ZoneScopedN("VKIsl.Present.CompositeWait");
+    const auto start = std::chrono::steady_clock::now();
+    const VkFence fence = s.curInFlight().get();
+    const VkResult result = vkWaitForFences(s.dev, 1, &fence, VK_TRUE, 5ull * 1000 * 1000 * 1000);
+    health.composite_wait_us_last = std::chrono::duration<double, std::micro>(std::chrono::steady_clock::now() - start).count();
+    if (!present_thread::onWorker()) mc2_hitch::RecordFenceWait(health.composite_wait_us_last / 1000.0);
+    if (result != VK_SUCCESS) return false;
+    health.composite_wait_us_accum += health.composite_wait_us_last;
+    ++health.composite_wait_samples;
+    if ((health.composite_wait_samples % 600) == 1)
+        plog("[QWI-WAIT] composite wait_us_last=%.1f wait_us_avg=%.1f samples=%u",
+             health.composite_wait_us_last, health.composite_wait_us_accum / health.composite_wait_samples, health.composite_wait_samples);
+    return true;
+}
 
 bool objectIdDirectChainGateEnabled() {
     static const bool on = []() {
@@ -1980,6 +2007,7 @@ bool EnginePresentVk::renderNativeCompositeVisual(float exposure,
                                                   bool casEnabled, float casSharpness, int tonemapMode,
                                                   int viewportX, int viewportY,
                                                   int viewportW, int viewportH) {
+    mc2::overlap::assertOwner(mc2::overlap::Owner::Render, "renderNativeCompositeVisual");
     if (!created_ || !impl_ || !nativeCompositeArmed_)
         return false;
     Impl& s = *impl_;
@@ -2011,36 +2039,8 @@ bool EnginePresentVk::renderNativeCompositeVisual(float exposure,
     VkFrameSync fsScene{};
     VkFrameSync fsObjectId{};
 
-    // VK-PRESENT-SINGLESUBMIT-1: the ONLY CPU wait on the present path. Retire the
-    // PREVIOUS frame's single submit (composite+tail+blit) before either of its two
-    // command buffers is reset for re-recording. The fence is NOT reset here — it is
-    // reset immediately before the submit that will signal it (presentFrame), so a
-    // mid-frame present decline (DISARM-2b) can never leave it unsignaled and hang
-    // this wait. Timer kept from VK-QWI-TO-FENCE-1 (same [QWI-WAIT] receipt tag):
-    // it now measures the previous-frame retire wait instead of an inline drain.
-    {
-        ZoneScopedN("VKIsl.Present.CompositeWait");   // VK-ISLAND-TRACY-1: retire prev frame's single submit (the ONLY present-path CPU wait)
-        using clk = std::chrono::steady_clock;
-        const clk::time_point tWait0 = clk::now();
-        const VkFence inFlightFence = s.curInFlight().get();
-        const VkResult waitResult = vkWaitForFences(s.dev, 1, &inFlightFence, VK_TRUE,
-                                                    5ull * 1000 * 1000 * 1000);
-        health_.composite_wait_us_last =
-            std::chrono::duration<double, std::micro>(clk::now() - tWait0).count();
-        // A failed or timed-out wait is the worst hitch there is, so it is recorded before the present declines.
-        if (waitResult != VK_SUCCESS) {
-            mc2_hitch::RecordFenceWait(health_.composite_wait_us_last / 1000.0);
-            return false;
-        }
-        health_.composite_wait_us_accum += health_.composite_wait_us_last;
-        mc2_hitch::RecordFenceWait(health_.composite_wait_us_last / 1000.0);
-        ++health_.composite_wait_samples;
-        if ((health_.composite_wait_samples % 600) == 1)
-            plog("[QWI-WAIT] composite wait_us_last=%.1f wait_us_avg=%.1f samples=%u",
-                 health_.composite_wait_us_last,
-                 health_.composite_wait_us_accum / static_cast<double>(health_.composite_wait_samples),
-                 health_.composite_wait_samples);
-    }
+    // The worker retires the next slot before releasing main; inline mode retains the original wait here.
+    if (!present_thread::enabled() && !waitCompositeSlot(s, health_)) return false;
 
     // Record into the composite's OWN cbuf; the submit happens in presentFrame as
     // half of the single {compositeCbuf, cbuf} submission.
@@ -2287,6 +2287,8 @@ bool EnginePresentVk::prepareImguiVulkanFrame() {
     if (!created_ || !impl_)
         return false;
     Impl& s = *impl_;
+    if (!s.imguiVkInited || ImGui::GetIO().Fonts->TexID == 0)
+        present_thread::waitIdle(); // The backend's font upload submits directly to the shared queue.
     if (!ensureImguiVulkan(s))
         return false;
     health_.imgui_vk_ready = true;
@@ -2301,7 +2303,14 @@ bool EnginePresentVk::renderImguiVulkanDrawData(ImDrawData* drawData) {
     if (!ensureImguiVulkan(s))
         return false;
     health_.imgui_vk_ready = true;
-    s.pendingImguiDrawData = drawData;
+    s.clearImgui();
+    if (s.ownedImgui.assign(*drawData)) {
+        s.pendingImguiDrawData = &s.ownedImgui.data;
+    } else {
+        present_thread::stop();
+        plog("INLINE FALLBACK: ImGui callback requires main ownership");
+        s.pendingImguiDrawData = drawData;
+    }
     return true;
 }
 
@@ -2346,26 +2355,38 @@ void EnginePresentVk::shutdownImguiVulkanRenderer() {
         }
         s.imguiVkInited = false;
     }
-    s.pendingImguiDrawData = nullptr;
+    s.clearImgui();
     s.pendingHudDraws.clear();
     health_.imgui_vk_ready = false;
 }
 
-// One frame: copy-1 (GL FBO-0 -> shared GL tex) + signal, then copy-2 (VK blit
-// shared -> swapchain) + present. Rebuild swapchain + shared image on resize.
-// VK-P14b: when endScene rendered straight into the shared image (directFbo_!=0),
-// copy-1 is SKIPPED here and the Y-flip is done in copy-2 instead.
+// The worker owns acquire, composite submission, tail recording and frame retirement.
 bool EnginePresentVk::presentFrame(uint32_t drawableW, uint32_t drawableH,
                                      bool verifyReadback) {
-    mc2vk::VulkanContext* const ctx = (created_ && impl_) ? impl_->ctx : nullptr;
+    mc2::overlap::assertOwner(mc2::overlap::Owner::Render, "presentFrame");
+    if (impl_) impl_->frameFinished = false;
     const bool ok = presentFrameBody(drawableW, drawableH, verifyReadback);
-    // A recorded composite that this frame's submit did not consume (present declined, minimized, failed) is dropped here: it was recorded against this
-    // frame's ring allocations and deferred-destroy epoch, which the boundary below moves past, so it must never be submitted later.
-    if (impl_) impl_->compositePending = false;
-    // Every exit advances the frame, including skipped presents: a slot is reused only after its ticket completes (beginFrame waits it), so
-    // advancing never frees GPU-owned memory early, and not advancing would pin the ring on one slot.
-    if (ctx) { ZoneScopedN("VKIsl.Present.FrameBoundary"); ctx->frameBoundary(); }
+    if (!ok) present_thread::requestInline();
+    // Declined frames still retire their allocations and release the producer.
+    if (impl_ && !impl_->frameFinished) finishFrame();
+    if (present_thread::onWorker() && mc2::overlap::isOwner(mc2::overlap::Owner::Render)) present_thread::seal();
     return ok;
+}
+
+void EnginePresentVk::setCaptureFrame(uint32_t renderFrame, uint32_t fireFrame) {
+    if (impl_) { impl_->captureFrame = renderFrame; impl_->captureFireFrame = fireFrame; }
+}
+
+void EnginePresentVk::finishFrame() {
+    Impl& s = *impl_;
+    s.compositePending = false;
+    presentImageVkOwned_ = false;
+    health_.validation_errors = s.ctx->health().validationErrors;
+    gpuprof::frameEnd();
+    s.ctx->frameBoundary();
+    if (present_thread::onWorker() && !waitCompositeSlot(s, health_)) present_thread::requestInline();
+    s.frameFinished = true;
+    if (present_thread::onWorker() && (health_.present_frames % 300) == 1) logHealth();
 }
 
 bool EnginePresentVk::presentFrameBody(uint32_t drawableW, uint32_t drawableH,
@@ -2377,14 +2398,22 @@ bool EnginePresentVk::presentFrameBody(uint32_t drawableW, uint32_t drawableH,
     ZoneScopedN("VKIsl.Present.Frame");   // VK-ISLAND-TRACY-1: presentFrame total (CPU)
     Impl& s = *impl_;
 
-    // P13b: do NOT drain SDL events here. We present onto the SAME visible GL
-    // window the game owns; its events (esp. mouse-motion) must flow to the
-    // game's normal SDL event loop (gameosmain process_events). The old hidden-
-    // window drain-and-discard would starve the game of input.
+    // WSI results are consumed only after main has transferred the next frame.
+    if (s.lastWsiResult != VK_SUCCESS) {
+        const VkResult previous = std::exchange(s.lastWsiResult, VK_SUCCESS);
+        if (previous == VK_ERROR_OUT_OF_DATE_KHR || previous == VK_SUBOPTIMAL_KHR) {
+            std::string reason;
+            if (!rebuildSwapchain(s, drawableW, drawableH, health_, reason)) {
+                health_.fallback_reason = reason;
+                return false;
+            }
+        } else {
+            health_.fallback_reason = "vkQueuePresentKHR failed (" + std::to_string(static_cast<int>(previous)) + ")";
+            return false;
+        }
+    }
 
-    // Minimized / zero-drawable: skip present this frame (fail-soft, no crash).
-    // The game loop also throttles on MINIMIZED via g_sdl_window, but guard here
-    // too so a zero extent never reaches the swapchain rebuild.
+    // Drawable dimensions are captured by main; the worker never pumps SDL.
     if (drawableW == 0 || drawableH == 0) {
         return true;   // nothing to present; try again next frame
     }
@@ -2427,31 +2456,14 @@ bool EnginePresentVk::presentFrameBody(uint32_t drawableW, uint32_t drawableH,
         }
     }
 
-    // ==== VK-RUNG8-ITEM8: present interop tail deleted ======================
-    // The present image is VK-only. Its sole producer is the native VK composite
-    // (renderNativeCompositeVisual, which RECORDS this frame's composite into
-    // s.curCompositeCbuf() — VK-PRESENT-SINGLESUBMIT-1: submitted below together with
-    // the tail) plus the native HUD/ImGui recorded into the tail hook below. There
-    // is NO GL copy-1 blit and NO GL->VK semaphore handoff any more: a GL-scene /
-    // VK-present hybrid can no longer exist (the mirror of item-5's VK-scene /
-    // GL-present deletion). If VK did not produce the present image this frame
-    // there is no GL rescue inside VK present -- copy-1 is gone.
     if (!presentImageVkOwned_ || !s.compositePending) {
-        // The sole surviving present strict-canary trigger.
         presentNativeStrictAbort("present_image_not_vk_owned");
-        // Native present is armed but the VK composite did not produce the image
-        // this frame. Tolerate a bounded warmup/hiccup streak (skip + retry, no
-        // stale present, no GL drop); once the streak exceeds the budget this
-        // config plainly cannot produce a VK present image (native composite
-        // permanently declined, or the gates only look armed) -> fail-soft the
-        // whole session to GL. copy-1 no longer rescues a non-VK-owned frame.
+        // Tolerate bounded warmup, but never submit stale image contents.
         static const unsigned int kNotOwnedBudget = 240u;   // ~a few seconds @60fps
         if (notOwnedStreak_ < kNotOwnedBudget) {
             ++notOwnedStreak_;
             return true;   // transient: retry next frame
         }
-        // On Windows GL exists; on Metal (no GL) this decline becomes product
-        // behaviour per the METAL-GATE-AUDIT-2 fail-soft redefinition.
         health_.fallback_reason =
             "present image not VK-owned (native VK composite required post item-8)";
         return false;
@@ -2471,7 +2483,7 @@ bool EnginePresentVk::presentFrameBody(uint32_t drawableW, uint32_t drawableH,
       r = vkAcquireNextImageKHR(s.dev, s.swapchain.get(), UINT64_MAX, s.curAcquireSem().get(), VK_NULL_HANDLE, &imageIndex); }
     if (r == VK_ERROR_OUT_OF_DATE_KHR) {
         // Rebuild for the current drawable; minimized windows retry next frame.
-        int dw = 0, dh = 0; SDL_GetWindowSizeInPixels(window_, &dw, &dh);
+        const int dw = static_cast<int>(drawableW), dh = static_cast<int>(drawableH);
         if (dw > 0 && dh > 0) {
             std::string rr;
             if (!rebuildSwapchain(s, static_cast<uint32_t>(dw), static_cast<uint32_t>(dh), health_, rr)) {
@@ -2565,7 +2577,7 @@ bool EnginePresentVk::presentFrameBody(uint32_t drawableW, uint32_t drawableH,
             ++health_.imgui_vk_frames;
     }
 
-    // shared image: GL left it in COLOR_ATTACHMENT layout -> TRANSFER_SRC for blit.
+    // The composite's color writes precede the swapchain blit.
     barrier(s.curCbuf(), s.sharedImg.image.get(),
             VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
             VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_ACCESS_TRANSFER_READ_BIT,
@@ -2583,10 +2595,7 @@ bool EnginePresentVk::presentFrameBody(uint32_t drawableW, uint32_t drawableH,
     region.srcOffsets[0] = {0, 0, 0};
     region.srcOffsets[1] = {static_cast<int32_t>(s.imgW), static_cast<int32_t>(s.imgH), 1};
     region.dstSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
-    // VK-RUNG8-ITEM8 Y-flip: the present image is always VK-produced with GL
-    // bottom-left origin (the composite renders it un-flipped), so copy-2 always
-    // does the flip that copy-1 used to do: swap the dst Y offsets (0,H)->(H,0)
-    // so the top-left-origin swapchain image is upright.
+    // The native composite has a bottom-left origin; WSI has a top-left origin.
     region.dstOffsets[0] = {0, static_cast<int32_t>(s.scExtent.height), 0};
     region.dstOffsets[1] = {static_cast<int32_t>(s.scExtent.width), 0, 1};
     vkCmdBlitImage(s.curCbuf(),
@@ -2594,32 +2603,18 @@ bool EnginePresentVk::presentFrameBody(uint32_t drawableW, uint32_t drawableH,
                    scImg,             VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                    1, &region, VK_FILTER_LINEAR);
 
-    // Optional readback of the shared image (T5 content proof), recorded on a
-    // separate one-shot command buffer AFTER the blit source barrier settles.
-    // (Handled below outside this cbuf to avoid layout juggling; see readback.)
-
     // swapchain -> PRESENT_SRC.
     barrier(s.curCbuf(), scImg, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
             VK_ACCESS_TRANSFER_WRITE_BIT, 0,
             VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
-    // Return the shared image to COLOR_ATTACHMENT for the next GL frame + the
-    // VK->GL semaphore signal below.
+    // Return the shared image to COLOR_ATTACHMENT for the next native composite.
     barrier(s.curCbuf(), s.sharedImg.image.get(),
             VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
             VK_ACCESS_TRANSFER_READ_BIT, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
             VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
     vkEndCommandBuffer(s.curCbuf());
 
-    // VK-PRESENT-SINGLESUBMIT-1: THE single present-path submit — composite cbuf
-    // first, tail cbuf (overlay + HUD/ImGui + swapchain blit) second, executed in
-    // command-buffer order; the tail's entry barriers order the composite's writes
-    // for the tail passes and the blit. Waits ONLY the swapchain acquire semaphore
-    // (dst stage COLOR_ATTACHMENT_OUTPUT — GPU-side this also gates the composite's
-    // color writes, which is correct and merely schedules them after the acquire;
-    // no CPU wait is involved). Signals the per-image render semaphore for present
-    // and the inFlight fence, which the NEXT frame's composite-record waits. The
-    // fence is reset HERE, immediately before the submit that will signal it —
-    // never on a decline path (DISARM-2b hang guard).
+    // Submit the composite and tail together, ordered after acquire. Reset the slot fence only for a real submit.
     VkSemaphore imgRenderSem = s.renderSems[imageIndex].get();
     VkSemaphore waitSem      = s.curAcquireSem().get();
     VkPipelineStageFlags waitStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
@@ -2653,28 +2648,6 @@ bool EnginePresentVk::presentFrameBody(uint32_t drawableW, uint32_t drawableH,
     const VkSwapchainKHR swapchainHandle = s.swapchain.get();
     pi.pSwapchains        = &swapchainHandle;
     pi.pImageIndices      = &imageIndex;
-    { ZoneScopedN("VKIsl.Present.QueuePresent");   // VK-ISLAND-TRACY-1: vkQueuePresentKHR (vsync/WSI block lands here)
-      r = vkQueuePresentKHR(s.presentQ, &pi); }
-    if (r == VK_SUCCESS) {
-        ++health_.present_frames;
-    } else if (r == VK_ERROR_OUT_OF_DATE_KHR || r == VK_SUBOPTIMAL_KHR) {
-        ++health_.present_frames;
-        int dw = 0, dh = 0; SDL_GetWindowSizeInPixels(window_, &dw, &dh);
-        if (dw > 0 && dh > 0) {
-            std::string rr;
-            if (!rebuildSwapchain(s, static_cast<uint32_t>(dw), static_cast<uint32_t>(dh), health_, rr)) {
-                health_.fallback_reason = rr; return false;
-            }
-        }
-    } else if (r == VK_ERROR_DEVICE_LOST) {
-        mc2vk::infra::deviceLost();
-        health_.fallback_reason = "DEVICE_LOST at present"; return false;
-    } else {
-        health_.fallback_reason = "vkQueuePresentKHR failed (" + std::to_string(static_cast<int>(r)) + ")";
-        plog("%s. fail-soft.", health_.fallback_reason.c_str());
-        return false;
-    }
-
     // ==== T5 content verification: read back the shared image ==============
     // Proves the VK composite populated the shared image with REAL, CHANGING content.
     // Cheap + throttled: only when requested (T5 window), fully synchronous.
@@ -2682,8 +2655,11 @@ bool EnginePresentVk::presentFrameBody(uint32_t drawableW, uint32_t drawableH,
         verifyReadbackContent();
     }
 
-    if (s.ctx) health_.validation_errors = s.ctx->health().validationErrors;
-    presentImageVkOwned_ = false;
+    ++health_.present_frames;
+    if (present_thread::onWorker()) finishFrame();
+    // Main may now record frame N+1. Only the queue and immutable WSI handles are touched here.
+    { ZoneScopedN("VKIsl.Present.QueuePresent");
+      s.lastWsiResult = s.ctx->present(s.presentQ, pi); }
     return true;
 }
 
@@ -2721,12 +2697,12 @@ void EnginePresentVk::verifyReadbackContent() {
         {
             if (mc2::gate::isNonEmpty<"MC2_VK_PRESENT_DUMP_FRAME">()) {
                 const unsigned long pin = static_cast<unsigned long>(mc2::gate::get<"MC2_VK_PRESENT_DUMP_FRAME">());
-                if (s_ppmDone || static_cast<unsigned long>(g_mc2RenderFrame) < pin)
+                if (s_ppmDone || static_cast<unsigned long>(s.captureFrame) < pin)
                     ppmPath = nullptr; // not yet at the pinned frame, or already captured
             } else if (mc2::gate::get<"MC2_VK_PRESENT_DUMP_ON_FIRE">()) {
                 // The fire fixture arms a mid-volley frame; zero suppresses capture.
-                if (s_ppmDone || g_mc2FxFireCaptureFrame == 0 ||
-                    g_mc2RenderFrame < g_mc2FxFireCaptureFrame)
+                if (s_ppmDone || s.captureFireFrame == 0 ||
+                    s.captureFrame < s.captureFireFrame)
                     ppmPath = nullptr;
             }
         }
@@ -2783,7 +2759,7 @@ void EnginePresentVk::verifyReadbackContent() {
     const uint32_t rw = s.imgW, rh = s.imgH;
     const VkDeviceSize needed = static_cast<VkDeviceSize>(rw) * rh * 4u;
     if (needed == 0) return;
-    const uint64_t tag = g_mc2RenderFrame;
+    const uint64_t tag = s.captureFrame;
     VkBuffer dst = VK_NULL_HANDLE;
     const mc2vk::ReadbackToken tok = ctx.readbacks().request(ctx, needed, tag, &dst);
     if (!tok) return;
@@ -2896,6 +2872,8 @@ void EnginePresentVk::logHealth() const {
 }
 
 EnginePresentVk& getOrCreateEnginePresentVk() {
+    present_thread::waitSealed();
+    mc2::overlap::assertOwner(mc2::overlap::Owner::Render, "getOrCreateEnginePresentVk");
     static EnginePresentVk g_enginePresent;
     return g_enginePresent;
 }

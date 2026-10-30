@@ -39,7 +39,7 @@ def audit(files):
                  'editor/shell/main.cpp', 'ui_editor/UiEditorMain.cpp'):
         if 'SDL_WINDOW_VULKAN' not in code(files[path]):
             failures.append(path + ': native SDL window flag missing')
-    for path in (PREFIX + 'gos_render.cpp', 'editor/EditorGosRender.cpp', PREFIX + 'engine_present_vk.cpp'):
+    for path in (PREFIX + 'gos_render.cpp', 'editor/EditorGosRender.cpp'):
         if 'SDL_GetWindowSizeInPixels' not in code(files[path]):
             failures.append(path + ': native pixel extent query missing')
     if 'SDL_HINT_VIDEO_FOREIGN_WINDOW_VULKAN' not in code(files['editor/EditorGosRender.cpp']):
@@ -51,6 +51,10 @@ def audit(files):
         if tokens.find('shutdownVulkanBackend(') > tokens.find('graphics::destroy_window('):
             failures.append(path + ': GPU owner must shut down before its SDL window')
     native = code(files[PREFIX + 'gos_host_vk.cpp'])
+    if not re.search(r'get_drawable_size\s*\(\s*win\s*,\s*&pdw\s*,\s*&pdh\s*\)', native):
+        failures.append('present host: captured native pixel extent missing')
+    if 'SDL_GetWindowSizeInPixels' in code(files[PREFIX + 'engine_present_vk.cpp']):
+        failures.append('present worker must consume the captured extent without querying SDL')
     for call in ('vkGetPhysicalDeviceProperties', 'GetModuleHandleW', 'fatalBackendFailure'):
         if not re.search(r'\b' + call + r'\s*\(', native):
             failures.append('native host query/startup missing: ' + call)

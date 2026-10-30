@@ -6869,6 +6869,22 @@
    "count": 1
   },
   {
+   "tag": "PRESENT_THREAD",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [],
+   "count": 3
+  },
+  {
+   "tag": "PRESENT_THREAD",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "mailbox_depth"
+   ],
+   "count": 1
+  },
+  {
    "tag": "PREVIEW",
    "ver": -1,
    "stream": "log",

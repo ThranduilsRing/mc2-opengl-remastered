@@ -205,7 +205,7 @@ bool make_buffer(gosPostProcess::VkPostFogNative* s, VkDeviceSize size,
 // Releases the owned objects (the state's destructor does it, once the GPU is idle) and resets the state; the borrowed handles are not touched.
 void destroy_state(gosPostProcess::VkPostFogNative* s) {
     if (!s) return;
-    if (s->device != VK_NULL_HANDLE) vkDeviceWaitIdle(s->device);
+    if (s->device != VK_NULL_HANDLE) mc2vk::getOrCreateEngineVulkanContext().waitIdle("fog_destroy");
     const bool disabled = s->disabled;
     *s = gosPostProcess::VkPostFogNative{};
     s->disabled = disabled;

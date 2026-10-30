@@ -296,7 +296,7 @@ set_source_files_properties(
 )
 
 # Vulkan bring-up + present shared by the game and the editor.
-list(APPEND SOURCES gos_host_vk.cpp)
+list(APPEND SOURCES gos_host_vk.cpp present_thread.cpp)
 
 set(MAIN_SRC gameosmain.cpp gameosmain_init.cpp gameosmain_frame.cpp)
 

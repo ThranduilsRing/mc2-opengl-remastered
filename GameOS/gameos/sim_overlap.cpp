@@ -31,6 +31,7 @@ thread_local int t_role = kUnregistered;   // Owner value once the thread regist
 thread_local bool t_onSimWorker = false;
 thread_local uint32_t t_simFrame = 0;
 std::atomic<bool> g_renderThread{false};   // a dedicated render thread registered: Main no longer owns Render
+std::atomic<bool> g_presentThread{false};
 std::atomic<bool> g_inFlight{false};
 std::atomic<unsigned> g_violations{0};
 
@@ -105,7 +106,7 @@ void violation(std::string_view kind, std::string_view site, bool hard = false) 
     if (abortNow) std::abort();
 }
 
-const char* ownerName(Owner o) { return o == Owner::Main ? "main" : o == Owner::Sim ? "sim" : "render"; }
+const char* ownerName(Owner o) { return o == Owner::Main ? "main" : o == Owner::Sim ? "sim" : o == Owner::Present ? "present" : "render"; }
 
 // True when the calling thread may enter `domain`. Unregistered threads (job pool, tools) are not judged.
 bool owns(Owner domain) {
@@ -113,7 +114,9 @@ bool owns(Owner domain) {
     const Owner me = static_cast<Owner>(t_role);
     switch (domain) {
     case Owner::Main:   return me == Owner::Main;
-    case Owner::Render: return me == Owner::Render || (me == Owner::Main && !g_renderThread.load(std::memory_order_acquire));
+    case Owner::Render: return (me == Owner::Render && g_renderThread.load(std::memory_order_acquire)) ||
+                               (me == Owner::Main && !g_renderThread.load(std::memory_order_acquire));
+    case Owner::Present: return me == Owner::Present || (me == Owner::Main && !g_presentThread.load(std::memory_order_acquire));
     case Owner::Sim:    return me == Owner::Sim || (me == Owner::Main && !g_inFlight.load(std::memory_order_acquire));
     }
     return false;
@@ -140,6 +143,9 @@ void registerThread(Owner role) {
     if (role == Owner::Render) g_renderThread.store(true, std::memory_order_release);
 }
 void assertOwner(Owner domain, std::string_view site) { checkOwner(domain, site, false); }
+bool isOwner(Owner domain) { return owns(domain); }
+void setRenderWorkerOwns(bool owns) { g_renderThread.store(owns, std::memory_order_release); }
+void setPresentWorkerRegistered(bool registered) { g_presentThread.store(registered, std::memory_order_release); }
 void requireOwner(Owner domain, std::string_view site) { checkOwner(domain, site, true); }
 
 void installHooks(const Hooks& hooks) { g_hooks = hooks; }
