@@ -236,6 +236,9 @@ bool init_island(WaterIsland* s, int w, int h) {
         ia.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
         VkPipelineRasterizationStateCreateInfo rs{};
         rs.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+        VkPhysicalDeviceFeatures waterFeatures{};
+        vkGetPhysicalDeviceFeatures(s->phys, &waterFeatures);
+        rs.depthClampEnable = waterFeatures.depthClamp;
         rs.polygonMode = VK_POLYGON_MODE_FILL; rs.cullMode = VK_CULL_MODE_NONE;
         rs.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE; rs.lineWidth = 1.0f;
         VkPipelineMultisampleStateCreateInfo ms{};
