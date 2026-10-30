@@ -426,6 +426,14 @@ bool NativeWaterInFrustum(const VkNativeInputs& f, bool shoreFieldActive) {
     if (g_waterChunkMapSide!=f.mapSide || threshold>g_waterChunkThreshold)
         BuildWaterChunks(f.mapSide,threshold+64.0f);
     const bool field=shoreFieldActive && UpdateFieldWaterCoverage(f.waterElevation);
+    static uint32_t debugFrame=0;
+    const bool trace=DebugOn() && (++debugFrame%120==0);
+    if (trace) {
+        const auto* store=gos_TerrainFieldStore();
+        std::fprintf(stderr,"[WATER_VIS v1] mode=%d shore_active=%d field=%d kind=%d water=%.3f extent=%.3f wet=%zu/%zu\n",
+            gos_WaterShoreMode(),int(shoreFieldActive),int(field),store?int(store->waterShoreHeightKind()):-1,
+            double(f.waterElevation),double(f.shoreExt),size_t(std::count(g_fieldWetRecipes.begin(),g_fieldWetRecipes.end(),uint8_t(1))),g_recipes.size());
+    }
     // Mode 3 adds 60 wu solely for field carving. Without that field, the
     // legacy alpha ramp cannot cover those extra dry candidates.
     const float visibleThreshold=threshold-(!shoreFieldActive && gos_WaterShoreMode()==3 ? 60.0f : 0.0f)+std::abs(f.frameCos);
@@ -459,7 +467,11 @@ bool NativeWaterInFrustum(const VkNativeInputs& f, bool shoreFieldActive) {
                 clips[i]=mask(x[i],y[i],f.waterElevation+((r.waterBits&(0x80u<<(i*8)))?-f.frameCos:f.frameCos));
             const bool bottomLeft=(r.flags&kFlagBitUvModeBottomLeft)!=0;
             if (bottomLeft ? (!(clips[0]&clips[1]&clips[3]) || !(clips[1]&clips[2]&clips[3]))
-                           : (!(clips[0]&clips[1]&clips[2]) || !(clips[0]&clips[2]&clips[3]))) return true;
+                           : (!(clips[0]&clips[1]&clips[2]) || !(clips[0]&clips[2]&clips[3]))) {
+                if (trace) std::fprintf(stderr,"[WATER_VIS v1] visible_recipe=%u xy=%.1f/%.1f min_elev=%.3f bits=0x%x masks=%u/%u/%u/%u\n",
+                    id,double(r.v0x),double(r.v0y),double(std::min({r.v0e,r.v1e,r.v2e,r.v3e})),r.waterBits,clips[0],clips[1],clips[2],clips[3]);
+                return true;
+            }
         }
     }
     return false;
