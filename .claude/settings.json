@@ -1,0 +1,11 @@
+{
+  "hooks": {
+    "PreToolUse": [{
+      "matcher": "Bash|PowerShell|exec_command",
+      "hooks": [{"type": "command", "command": "py -3 A:/Games/mc2-ops/hooks/lane_pretool.py", "timeout": 5}]
+    }],
+    "UserPromptSubmit": [{
+      "hooks": [{"type": "command", "command": "py -3 .claude/hooks/memory_recall.py", "timeout": 5}]
+    }]
+  }
+}
