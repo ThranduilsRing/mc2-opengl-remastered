@@ -180,8 +180,7 @@ TEST_CASE("save fields: BRN1 task and runtime scalar census") {
         CHECK(decoded.waitStates[i].satisfied == sample.waitStates[i].satisfied);
         CHECK(decoded.waitStates[i].deadlineMs == sample.waitStates[i].deadlineMs);
     }
-    // These live player-command fields are absent from BRN1. The proof bar
-    // must fail until persistence or an owner-approved rebuild policy resolves them.
+    // Player command progress must survive along with its objective and contact.
     sample.playerBestDistance = 1.25f;
     sample.playerProgressTime = 2.25f;
     sample.playerFightSince = 3.25f;
@@ -191,6 +190,8 @@ TEST_CASE("save fields: BRN1 task and runtime scalar census") {
     sample.playerRecoveries = 0x07070707;
     sample.playerHealthTarget = 0x08080808;
     sample.playerTargetHealth = 9.25f;
+    sample.playerObjective = {10.25f, 11.25f, 12.25f};
+    sample.playerLastContact = {13.25f, 14.25f, 15.25f};
     mc2::save::Archive lossWriter;
     mc2::save::serializeBrainRuntime(lossWriter, sample);
     REQUIRE(lossWriter.good());
@@ -209,6 +210,8 @@ TEST_CASE("save fields: BRN1 task and runtime scalar census") {
     requireField(&T::playerRecoveries, "playerRecoveries");
     requireField(&T::playerHealthTarget, "playerHealthTarget");
     requireField(&T::playerTargetHealth, "playerTargetHealth");
+    requireField(&T::playerObjective, "playerObjective");
+    requireField(&T::playerLastContact, "playerLastContact");
 }
 
 TEST_CASE("BrainSavePolicy/sidecars select TechBrain only from a temporary mod overlay") {

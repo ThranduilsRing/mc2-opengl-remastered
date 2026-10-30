@@ -639,7 +639,7 @@ static void applySaveSections(std::string_view fileName, const mc2::save::Sectio
         else reject("orders_section");
     } // default: the empty queue resetOrderIngress left
     if (const auto* brain = sections.find(mc2::save::tagBrain)) {
-        if (!mc2::save::restoreBrainSection(brain->payload)) reject("brain_section");
+        if (!mc2::save::restoreBrainSection(brain->payload, brain->version)) reject("brain_section");
     } // default: no brain runtime; the first brain tick allocates it from the mission files, as a v1 load always did
 }
 

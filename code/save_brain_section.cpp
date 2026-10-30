@@ -56,7 +56,7 @@ void serializeBrainTask(Archive& a, BrainTaskEntry& e) {
     a.raw(e._reserved);
 }
 
-void serializeBrainRuntime(Archive& a, MechBrainRuntime& r) {
+static void brainRuntime(Archive& a, MechBrainRuntime& r, std::uint32_t version) {
     u8(a, r.mode);
     if (a.good() && std::to_underlying(r.mode) > 2) { a.reject("brain_mode"); return; }
     a(r.activeOpordSlot, r.opordFallbackPolicy, r.completionFlags, r.weightsNormalized, r.pendingEventMask,
@@ -94,6 +94,18 @@ void serializeBrainRuntime(Archive& a, MechBrainRuntime& r) {
     }
     for (auto& w : r.waitStates) a(w.verbIndex, w.armed, w.satisfied, w.deadlineMs);
     for (auto& f : r.flowFiredIdx) a(f);
+    if (version >= 2) {
+        a(r.playerObjective.x, r.playerObjective.y, r.playerObjective.z,
+          r.playerLastContact.x, r.playerLastContact.y, r.playerLastContact.z,
+          r.playerBestDistance, r.playerProgressTime, r.playerFightSince,
+          r.playerBypassUntil, r.playerRecoverUntil, r.playerRegroupUntil,
+          r.playerRecoveries, r.playerTargetHealth);
+        wid(a, r.playerHealthTarget);
+    }
+}
+
+void serializeBrainRuntime(Archive& a, MechBrainRuntime& r) {
+    brainRuntime(a, r, brainSectionVersion);
 }
 
 void serializeBrainQueue(Archive& a, BrainQueueValue& q) {
@@ -152,7 +164,7 @@ Bytes saveBrainSection() {
     return a.good() ? a.bytes() : Bytes{};
 }
 
-bool restoreBrainSection(std::span<const std::uint8_t> payload) {
+bool restoreBrainSection(std::span<const std::uint8_t> payload, std::uint32_t version) {
     if (!mc2::brainpolicy::techBrain()) {
         mc2::fmt::print_err("[BRAIN_RESTORE_SKIP] policy=legacy bytes={}\n", payload.size());
         return true; // Optional BRN1 data must not reactivate brains in a Legacy mission.
@@ -173,7 +185,7 @@ bool restoreBrainSection(std::span<const std::uint8_t> payload) {
         a(s.id, s.hasRuntime, s.hasQueue);
         if (!a.good()) break;
         if (s.id >= MAX_WARRIORS || !MechWarrior::warriorList[s.id] || !MechWarrior::warriorList[s.id]->isUsed()) { a.reject("brain_warrior"); break; }
-        if (s.hasRuntime) serializeBrainRuntime(a, s.rt);
+        if (s.hasRuntime) brainRuntime(a, s.rt, version);
         if (s.hasQueue) serializeBrainQueue(a, s.q);
         staged.push_back(std::move(s));
     }

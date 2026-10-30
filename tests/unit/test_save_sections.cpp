@@ -89,7 +89,7 @@ TEST_CASE("save sections: rejects malformed, newer and unknown required sections
     SectionContainer brain = sample(); brain.add(tagBrain, 1, false, {7});
     REQUIRE(decodeSections(encoded(brain), out));
     CHECK(out.find(tagBrain)->payload == Bytes{7});  // BRN1 is known: kept, not dropped
-    SectionContainer brainNewer = sample(); brainNewer.add(tagBrain, 2, false, {7});
+    SectionContainer brainNewer = sample(); brainNewer.add(tagBrain, 3, false, {7});
     CHECK_FALSE(decodeSections(encoded(brainNewer), out, &why)); CHECK(why == "section_version");
 
     SectionContainer duplicate = sample(); duplicate.add(tagOrders, 1, true, {});

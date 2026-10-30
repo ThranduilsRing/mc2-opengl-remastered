@@ -21,6 +21,6 @@ void serializeBrainQueue(Archive& archive, BrainQueueValue& queue);
 // Empty result: nothing to persist (no section is written).
 Bytes saveBrainSection();
 // False leaves the live state untouched: the whole section is parsed into staging before any warrior changes.
-bool restoreBrainSection(std::span<const std::uint8_t> payload);
-inline constexpr std::uint32_t brainSectionVersion = 1;
+inline constexpr std::uint32_t brainSectionVersion = 2;
+bool restoreBrainSection(std::span<const std::uint8_t> payload, std::uint32_t version = brainSectionVersion);
 }

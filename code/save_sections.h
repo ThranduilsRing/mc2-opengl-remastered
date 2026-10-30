@@ -37,7 +37,7 @@ inline constexpr std::uint32_t tagPath = fourcc('P', 'A', 'T', 'H');
 // Sections this build reads and the newest payload version of each. A newer version, or an unknown section flagged
 // required, rejects the file before the running mission is torn down; an unknown optional section is skipped.
 struct KnownSection { std::uint32_t tag; std::uint32_t maxVersion; };
-inline constexpr std::array<KnownSection, 3> knownSections{{{tagAnimation, 3}, {tagOrders, 1}, {tagBrain, 1}}};
+inline constexpr std::array<KnownSection, 3> knownSections{{{tagAnimation, 3}, {tagOrders, 1}, {tagBrain, 2}}};
 
 struct SavedSection {
     std::uint32_t tag = 0;
