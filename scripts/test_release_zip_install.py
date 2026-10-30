@@ -49,7 +49,7 @@ DEFAULT_ZIP_DIR = REPO_ROOT / "release_assets"
 sys.path.insert(0, str(REPO_ROOT / "scripts"))
 import manifest_schema  # noqa: E402  (S12 unified identity block)
 import console_child  # noqa: E402  (stdio-inheriting children keep their output; scripts/console_child.py)
-from smoke_lib import nofocus
+from smoke_lib import host_lease, nofocus
 
 # ---------------------------------------------------------------------------
 # Assembly spec
@@ -408,7 +408,8 @@ def main() -> None:
 
         log(f"running smoke: mission={args.mission} duration={args.duration}s ...")
         if args.first_run:
-            first_run(tmp_root, out_dir)
+            with host_lease.shared_window():
+                first_run(tmp_root, out_dir)
         rc = run_smoke(exe, args.mission, args.duration)
         if any((tmp_root / "crashes").rglob("*.dmp")):
             rc = 2
