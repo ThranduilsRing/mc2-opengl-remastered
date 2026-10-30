@@ -230,7 +230,7 @@ def test_run_retains_failed_smoke_evidence_and_limits_liveness_fixture(tmp_path,
         (other / "mc2_01.log").write_text("foreign green run")
         return subprocess.CompletedProcess(args, 1, f"[runner] artifacts: {artifact}\nfailed gate")
     monkeypatch.setattr(rt.subprocess, "run", smoke)
-    ok, report = rt.run("mc2_01", 300, False, str(tmp_path / "out"), "lane3")
+    ok, report = rt.run("mc2_01", 60, False, str(tmp_path / "out"), "lane3")
     assert not ok and "failed gate" in report and any("no load found" in line for line in report)
     assert "MC2_FIXTURE_ORDER_LIVENESS" not in observed[0]
     assert (tmp_path / "out/run/mc2_01.log").read_text() == "fixture did not load"
