@@ -13,7 +13,7 @@
 #define VMA_DYNAMIC_VULKAN_FUNCTIONS 0
 #include <vk_mem_alloc.h>
 #include "utils/mc2log.h"
-#include "mc2_diag_verbose.h"
+#include "diagnostic_trace.h"
 #include <algorithm>
 #include <cstring>
 #include <utility>
