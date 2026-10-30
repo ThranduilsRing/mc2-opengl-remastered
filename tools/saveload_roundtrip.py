@@ -74,6 +74,13 @@ def analyze(text_lines, frames_needed: int = 300):
     report = [f"load at sim frame {frames[j][0]} (t={t_load:.3f}) matched to pre-load frame {frames[i0][0]}; {after} frames after the load"]
     first = None
     for k in range(min(after, j - i0, frames_needed)):
+        pre_frame, post_frame = frames[i0 + k], frames[j + k]
+        if (abs(pre_frame[1] - post_frame[1]) > 0.002 or
+                (k and (pre_frame[0] != frames[i0 + k - 1][0] + 1 or
+                        post_frame[0] != frames[j + k - 1][0] + 1 or
+                        abs(pre_frame[1] - frames[i0 + k - 1][1] - 1 / 30) > 0.002 or
+                        abs(post_frame[1] - frames[j + k - 1][1] - 1 / 30) > 0.002))):
+            return False, [*report, f"non-contiguous or shifted fixed tick at +{k}: pre={pre_frame[:2]} post={post_frame[:2]}"]
         if frames[i0 + k][2] != frames[j + k][2]:
             first = k
             break
@@ -131,6 +138,9 @@ def selftest() -> int:
         fails.append("an empty window must not pass")
     if not analyze(bad, frames_needed=10)[0] or analyze(bad, frames_needed=11)[0]:
         fails.append("the bounded window must include exactly the requested frames")
+    gapped = [line for index, line in enumerate(good) if index not in (70, 110)]
+    if analyze(gapped, frames_needed=30)[0]:
+        fails.append("matching dropped ticks in both halves cannot prove a contiguous window")
     with tempfile.TemporaryDirectory() as td:
         def mkfile(name, pk):
             p = os.path.join(td, name)
