@@ -421,12 +421,13 @@ extern "C" int mc2_vk_overlay_run(int w, int h) {
     // ---- sync: same shared parity-slot fence discipline as the other islands ----
     // GPU-FRONTIER-1: engine frame slot + this island's own previous submit. The overlay draws through the terrain run's set[par]; when the run already
     // rewrote that set this frame the overlay leaves it alone (same values, and the run's submit may still be in flight). Otherwise the overlay is the
-    // first user of the set this frame and waits the run's previous submit (two frames old) before rewriting it.
+    // first user of the set this frame and waits the run's previous submit at this slot before rewriting it.
     const uint32_t par = rctx.frameContext().slot;
     const uint64_t frameNo = rctx.frameContext().frame;
+    // The later graphics ticket covers both prior users. A set already bound this frame stays untouched, so exclude its live terrain submit.
+    const auto slotTicket = s->setBoundFrame[par] == frameNo ? s->ovlSubmitted[par] : mc2vk::GpuTicket::both(s->ovlSubmitted[par], s->submitted[par]);
     { ZoneScopedN("VKIsl.Overlay.FenceWait");
-      if (!vk_island_util::waitStrike(o->waitStrikes, o->disabled, rctx.wait(s->ovlSubmitted[par], 5000000000ull, "overlay submission slot"), "VK_TERRAIN_OVERLAY")) { vlog("[VK_TERRAIN_OVERLAY] LOUD: overlay submission slot wait timed out (5 s); skipping this frame, will retry next frame."); return 0; }
-      if (s->setBoundFrame[par] != frameNo && !vk_island_util::waitStrike(o->waitStrikes, o->disabled, rctx.wait(s->submitted[par], 5000000000ull, "overlay set slot"), "VK_TERRAIN_OVERLAY")) { vlog("[VK_TERRAIN_OVERLAY] LOUD: overlay set slot wait timed out (5 s); skipping this frame, will retry next frame."); return 0; } }
+      if (!vk_island_util::waitStrike(o->waitStrikes, o->disabled, rctx.wait(slotTicket, 5000000000ull, "overlay submission slot"), "VK_TERRAIN_OVERLAY")) { vlog("[VK_TERRAIN_OVERLAY] LOUD: overlay submission slot wait timed out (5 s); skipping this frame, will retry next frame."); return 0; } }
     if (s->setBoundFrame[par] != frameNo) {
         if (!mc2vk::bindMoverShadowDescriptors(s->device,s->set[par])) return 0;
         // Overlays can be the first terrain consumer of this parity (including load warmup).

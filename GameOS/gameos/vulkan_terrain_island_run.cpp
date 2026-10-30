@@ -497,10 +497,11 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
     // GPU-FRONTIER-1: engine frame slot; the wait covers the previous terrain run AND the previous overlay at this slot (both draw through set[par],
     // which is rewritten below). The scene clear and the overlay keep their own tickets.
     const uint32_t par = rctx.frameContext().slot;
+    // Both submits signal the graphics timeline: the later ticket covers the earlier one, including repeated calls in this frame.
+    const auto slotTicket = mc2vk::GpuTicket::both(s->submitted[par], s->ovlSubmitted[par]);
     { ZoneScopedN("VKIsl.Terrain.FenceWait");   // VK-ISLAND-TRACY-1: deferred retire of the slot
       if (!vk_island_util::waitStrike(s->waitStrikes, s->disabled,
-              rctx.wait(s->submitted[par], 5000000000ull, "terrain submission slot") &&
-              rctx.wait(s->ovlSubmitted[par], 5000000000ull, "terrain overlay slot"), "VK_TERRAIN_ISLAND")) {
+              rctx.wait(slotTicket, 5000000000ull, "terrain submission slot"), "VK_TERRAIN_ISLAND")) {
           setFallback("submission_slot_timeout"); vlog("[VK_TERRAIN_ISLAND] LOUD: submission slot wait timed out (5 s); skipping this frame, will retry next frame."); return 0;
       } }
     us_fence_wait = usSince(tFence0);
