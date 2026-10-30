@@ -340,7 +340,7 @@ TEST_CASE("table is sorted, unique and every name round-trips through lookupName
     const std::size_t n = gate::tableSize();
     REQUIRE(n == gate::detail::kGateCount);
     // Population floor after the gate amnesty (retired names live in Gates/retired_names.json).
-    REQUIRE(n == 759);   // W86: dead GL/shadow gates retired; bridge entries included.
+    REQUIRE(n == 761);   // W86: dead GL/shadow gates retired; bridge entries included. +2 overlap dev selectors (MC2_OVERLAP_DEBUG, MC2_SIM_OVERLAP_JITTER).
     for (std::size_t i = 0; i < n; ++i) {
         if (i > 0) CHECK((rows[i - 1].name < rows[i].name));
         const auto info = gate::lookupName(rows[i].name);

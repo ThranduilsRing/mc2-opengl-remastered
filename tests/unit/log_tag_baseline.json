@@ -8375,6 +8375,18 @@
   {
    "tag": "SIM_OVERLAP",
    "ver": 1,
+   "stream": "log",
+   "keys": [
+    "sample",
+    "class",
+    "watch",
+    "total"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SIM_OVERLAP",
+   "ver": 1,
    "stream": "stderr",
    "keys": [
     "site",
@@ -11419,6 +11431,7 @@
   "SHADER_SCHEMA",
   "SHADOW_BAKE",
   "SIMID",
+  "SIM_OVERLAP",
   "SIM_TICK_COST",
   "SMOKE",
   "SOAK",

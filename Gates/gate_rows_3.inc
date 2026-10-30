@@ -51,6 +51,7 @@ G("MC2_SIM_IDENTITY_TRACE", Bool, false, "code", "", "SIM-IDENTITY-HASH-1: emit 
 G("MC2_SIM_IDENTITY_TRACE_DETAIL", Bool, false, "code", "", "SIM-IDENTITY-HASH-1: with MC2_SIM_IDENTITY_TRACE on, additionally emit one `[SIMID v1 mover]` line per mover per sim frame.", passthrough | registry(Trace, "MC2_SIM_IDENTITY_TRACE_DETAIL", -1, false) | verified),
 L(Lead0Kill, "MC2_SIM_OVERLAP", Bool, true, "code", "2026-11-04", "G7b: run the banked sim tick on a worker during snapshot drawing; 0 = serial loop. Retire after three green merge windows.", passthrough | verified),
 L(Lead1, "MC2_SIM_OVERLAP_AUDIT", Bool, false, "code", "", "G7: abort on the first overlap audit violation (render touches sim state mid-tick).", passthrough | verified),
+P("MC2_SIM_OVERLAP_JITTER", Int, 0, "code", "", "G7: dev selector, sleep 0..N ms (own RNG) at sim tick start and before DrawScreen to shake out overlap races.", passthrough | clampRange(0, 50) | verified),
 P("MC2_SIM_SPEED", Float, 1.0, "code", "", "SIM-SPEED-BUTTON-1: play (wall clock) = seed of the HUD/dev-shell dt multiplier; harness fixed-step clock, unfocused = floor(N) 1/30 s steps per drawn frame.", passthrough | clampRange(0.25, 4.0) | verified),
 L(Lead0, "MC2_SKIP_STATIC_BUILDINGS", Bool, false, "code", "", "", verified),
 L(Lead0Kill, "MC2_SKIP_STATIC_TREES", Bool, true, "code", "", "", verified),

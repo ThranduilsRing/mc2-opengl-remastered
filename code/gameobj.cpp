@@ -1501,6 +1501,8 @@ void GameObject::operator delete (void* us) {
 
 void GameObject::init (bool create) {
 	if (ObjectManager) ObjectManager->invalidateEntity(handle, this);
+	// The draw compares this against its extract stamp (atomic_ref: the sim worker re-inits pooled slots mid-draw).
+	std::atomic_ref<uint32_t>(generation).fetch_add(1, std::memory_order_release);
 
 	objectClass = GAMEOBJECT;
 	if (initialize) {
@@ -1572,6 +1574,7 @@ void GameObject::verifyAppearanceView (const char* where) {
 
 ObjectTypePtr GameObject::getObjectType (void) {
 
+	mc2::overlap::assertLiveSimRead("GameObject::getObjectType");
 	return(ObjectManager->getObjectType(typeHandle));
 }
 

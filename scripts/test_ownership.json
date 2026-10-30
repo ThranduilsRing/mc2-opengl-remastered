@@ -102,6 +102,8 @@
     {"module": "scripts/tests/test_run_smoke_early_validation.py", "owners": ["scripts_tests"]},
     {"module": "scripts/tests/test_runner_env_drop.py", "owners": ["scripts_tests"]},
     {"module": "scripts/tests/test_sim_determinism_strict.py", "owners": ["sim_determinism"]},
+    {"module": "scripts/tests/test_sim_overlap_audit_gate.py", "owners": ["scripts_tests"]},
+    {"module": "scripts/tests/test_stress_overlap.py", "owners": ["scripts_tests"]},
     {"module": "scripts/tests/test_sim_include_firewall.py", "owners": ["sim_include_firewall"]},
     {"module": "scripts/tests/test_slang_build.py", "owners": ["slang_build"]},
     {"module": "scripts/tests/test_terrain_feed_compare.py", "owners": ["scripts_tests"]},

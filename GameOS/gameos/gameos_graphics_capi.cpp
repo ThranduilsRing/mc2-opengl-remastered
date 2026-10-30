@@ -171,7 +171,7 @@ bool __stdcall gos_FontGetGlyphDesc( HGOSFONT3D FontHandle, int Char, gos_FontGl
 
 DWORD __stdcall gos_NewEmptyTexture( gos_TextureFormat Format, const char* Name, DWORD HeightWidth, DWORD Hints/*=0*/, gos_RebuildFunction pFunc/*=0*/, void *pInstance/*=0*/)
 {
-    mc2::overlap::assertMainThread("gos_NewEmptyTexture");   // GPU resource entry: never from the sim worker
+    mc2::overlap::requireOwner(mc2::overlap::Owner::Render, "gos_NewEmptyTexture");   // GPU resource entry: never from the sim worker
     int w = HeightWidth;
     int h = HeightWidth;
     if(HeightWidth&0xffff0000)
@@ -190,7 +190,7 @@ DWORD __stdcall gos_NewEmptyTexture( gos_TextureFormat Format, const char* Name,
 }
 DWORD __stdcall gos_NewTextureFromMemory( gos_TextureFormat Format, const char* FileName, BYTE* pBitmap, DWORD Size, DWORD Hints/*=0*/, gos_RebuildFunction pFunc/*=0*/, void *pInstance/*=0*/)
 {
-    mc2::overlap::assertMainThread("gos_NewTextureFromMemory");   // GPU resource entry: never from the sim worker
+    mc2::overlap::requireOwner(mc2::overlap::Owner::Render, "gos_NewTextureFromMemory");   // GPU resource entry: never from the sim worker
     gosASSERT(pFunc == 0);
 
     gosTexture* ptex = new gosTexture(Format, FileName, Hints, pBitmap, Size, true);
@@ -257,7 +257,7 @@ DWORD gos_NewTerrainNormalTexture(const unsigned char* rgbaData, int width)
 
 DWORD __stdcall gos_NewTextureFromFile( gos_TextureFormat Format, const char* FileName, DWORD Hints/*=0*/, gos_RebuildFunction pFunc/*=0*/, void *pInstance/*=0*/)
 {
-    mc2::overlap::assertMainThread("gos_NewTextureFromFile");   // GPU resource entry: never from the sim worker
+    mc2::overlap::requireOwner(mc2::overlap::Owner::Render, "gos_NewTextureFromFile");   // GPU resource entry: never from the sim worker
     gosTexture* ptex = new gosTexture(Format, FileName, Hints, nullptr, 0, false);
     if(!ptex->prepareSource()) {
         STOP(("Failed to create texture\n"));
@@ -267,7 +267,7 @@ DWORD __stdcall gos_NewTextureFromFile( gos_TextureFormat Format, const char* Fi
 }
 void __stdcall gos_DestroyTexture( DWORD Handle )
 {
-    mc2::overlap::assertMainThread("gos_DestroyTexture");   // GPU resource entry: never from the sim worker
+    mc2::overlap::requireOwner(mc2::overlap::Owner::Render, "gos_DestroyTexture");   // GPU resource entry: never from the sim worker
 #ifdef MC2_VULKAN_ISLAND
     if (mc2vk::engineVulkanContextValid()) mc2vk::getOrCreateEngineVulkanContext().textures().forgetLegacyUi(Handle);
 #endif

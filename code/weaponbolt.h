@@ -241,6 +241,8 @@ class WeaponBolt : public GameObject
 			glm::vec3			rvLaserVertices[4];
 			glm::vec3			rvLaserSide[4];
 			float				rvStartUV = 0.0f;
+			// The bolt type the draw reads; the tick may re-init this pooled slot with another type mid-draw.
+			WeaponBoltTypePtr	rvType = nullptr;
 
 			// Reserved for velocity-based shader fades; unused by trails.
 			glm::vec3		prev_position;

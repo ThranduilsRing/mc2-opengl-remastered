@@ -278,7 +278,7 @@ void GameCamera::renderViewUniforms() {
 				for (int i = 0; i < 4; ++i) vp.viewport[i] = mainView.viewport[i];
 				vp.uniforms = vu;
 				vp.frame = g_mc2FrameCounter.load(std::memory_order_relaxed);
-				vp.simTick = static_cast<uint64_t>(turn);   // the sim tick (mclib/timing.h) the frame renders
+				vp.simTick = static_cast<uint64_t>(mc2::render_view::clock().turn);   // the extracted sim tick the frame renders
 				fp->addView(vp);
 				fp->lighting.valid = captureSceneLighting(fp->lighting.scene);
 				RenderCore::framePackets().publish();
@@ -850,7 +850,7 @@ void GameCamera::render (void)
 
 		if (!drawOldWay && !inMovieMode)
 		{
-			if (compass && (turn > 3) && drawCompass)
+			if (compass && (mc2::render_view::clock().turn > 3) && drawCompass)
 			{
 				ZoneScopedN("GameCamera::render compass");
 				compass->render(-1);		//Force this to zBuffer in front of everything
@@ -1101,7 +1101,7 @@ void GameCamera::render (void)
 		gos_SetRenderState(	gos_State_ZWrite, 0);
 		gos_SetRenderState( gos_State_Perspective, 1);
 
-		if (compass && (turn > 3) && drawCompass)
+		if (compass && (mc2::render_view::clock().turn > 3) && drawCompass)
 			compass->render();
 	}
 	
@@ -1472,7 +1472,7 @@ long GameCamera::update (void)
 	useFog = false;
 	useShadows = false;
 		
-  	if (compass && (turn > 3))
+  	if (compass && (mc2::render_view::clock().turn > 3))
 	{
   		
    		compass->setObjectParameters(getPosition(),0.0f,false,0,0);

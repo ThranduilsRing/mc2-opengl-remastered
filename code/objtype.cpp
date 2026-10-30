@@ -66,6 +66,7 @@
 
 #include "package_chassis.h"
 #include "../GameOS/gameos/utils/mc2log.h"
+#include "../mclib/sim_overlap.h"
 
 //---------------------------------------------------------------------------
 
@@ -565,6 +566,9 @@ ObjectTypePtr ObjectTypeManager::get (ObjectTypeNumber objTypeNum, bool loadIt) 
 	//---------------------------
 	// If not, cache it in now...
 	if (!table[objTypeNum] && loadIt) {
+		// Type loads build appearances/effects: never on the overlap worker (preloadTickSpawnTypes covers tick spawns).
+		const std::string site = "ObjectTypeManager::get load type=" + std::to_string(objTypeNum);   // names the offender
+		mc2::overlap::assertOwner(mc2::overlap::Owner::Main, site);
 		if (!load(objTypeNum, true, true)) {
 //			Fatal(objTypeNum, " ObjectTypeManager.get: unable to load object type "); 
 		}

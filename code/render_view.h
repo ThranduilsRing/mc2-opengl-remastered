@@ -24,6 +24,7 @@ struct RenderClock {
     float dt = 0.0f;           // render frame length
     uint32_t frame = 0;        // g_mc2FrameCounter
     uint32_t missionResult = 0;
+    bool missionActive = false; // Mission::active (the tick's mission script can end the mission mid-draw)
     float alpha = 1.0f;        // interpolation weight of the presented poses
 };
 
@@ -46,6 +47,7 @@ struct RenderView {
     glm::vec3 position{0.0f};  // sim position
     glm::vec3 aux[3]{};        // bolts: laser tip, resolved hit point, raw target point
     uint32_t watchId = 0;
+    uint32_t generation = 0;   // obj->generation at extract; the draw skips the view when the slot was re-inited
     uint32_t flags = 0;
     uint32_t barColor = 0;
     float barStatus = 0.0f;
