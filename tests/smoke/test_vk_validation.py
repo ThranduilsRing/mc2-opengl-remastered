@@ -63,6 +63,7 @@ def _verdict(text):
     from scripts.smoke_lib.gates import GateConfig, evaluate
     cfg = GateConfig(heartbeat_timeout_load_s=60, heartbeat_timeout_play_s=3, duration_s=30)
     s = logparse.parse_log(text)
+    s.content_summaries = 1
     s.instr_banner_seen = s.smoke_banner_seen = s.mission_resolve_seen = True
     s.smoke_summary_result, s.mission_ready_ms, s.heartbeats_play, s.last_heartbeat_wall_s_play = "pass", 5000.0, 30, 30.5
     s.perf = logparse.PerfRow(avg_fps=60)
@@ -107,6 +108,7 @@ def test_the_gate_grades_an_unconfirmed_request_red_and_a_confirmed_one_clean():
 
     def run(text):
         s = logparse.parse_log(text)
+        s.content_summaries = 1
         s.instr_banner_seen = s.smoke_banner_seen = s.mission_resolve_seen = True
         s.smoke_summary_result, s.mission_ready_ms, s.heartbeats_play, s.last_heartbeat_wall_s_play = "pass", 5000.0, 30, 30.5
         s.perf = logparse.PerfRow(avg_fps=60)

@@ -39,6 +39,11 @@ struct AnimationTail {
     int32_t scanCursor = 0;
     bool enemyInLOS = false, hasScan = false;
 };
+// Current writers always include both parts; hasScan is reader-derived metadata.
+inline void writeAnimationTail(Archive& archive, AnimationTail& tail) {
+    for (auto& handles : tail.order) archive(handles);
+    archive(tail.scanCursor, tail.enemyInLOS);
+}
 inline void readAnimationTail(Archive& archive, AnimationTail& tail, int numTeams, bool haveSensor) {
     if (archive.remaining() > 0)
         for (auto& handles : tail.order) archive(handles);

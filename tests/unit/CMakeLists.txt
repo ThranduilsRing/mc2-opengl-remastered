@@ -450,6 +450,7 @@ target_sources(mc2_tests PRIVATE
     test_save_archive.cpp
     ${MC2_WORKTREE_ROOT}/code/save_archive.cpp
     test_save_sections.cpp
+    test_save_field_omission.cpp
     ${MC2_WORKTREE_ROOT}/code/save_sections.cpp
     test_abl_outarrays.cpp
 )
@@ -619,3 +620,4 @@ if(TARGET glm::glm)
 endif()
 
 target_sources(mc2_tests PRIVATE test_tgl_registry.cpp)
+target_sources(mc2_tests PRIVATE test_content_error.cpp ${MC2_WORKTREE_ROOT}/mclib/content_error.cpp)

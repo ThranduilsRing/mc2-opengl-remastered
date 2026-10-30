@@ -7,7 +7,7 @@ CFG = GateConfig(heartbeat_timeout_load_s=60, heartbeat_timeout_play_s=3,
 def _base():
     # walltime_s=31 in the tests below; set last play heartbeat at 30.5s
     # wallclock so the default 3s play gate is satisfied.
-    return LogSummary(instr_banner_seen=True, smoke_banner_seen=True,
+    return LogSummary(content_summaries=1, instr_banner_seen=True, smoke_banner_seen=True,
                       mission_resolve_seen=True, smoke_summary_result="pass",
                       mission_ready_ms=5000.0, heartbeats_play=30,
                       last_heartbeat_wall_s_play=30.5,

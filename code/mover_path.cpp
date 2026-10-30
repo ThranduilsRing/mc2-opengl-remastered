@@ -4,6 +4,8 @@
 #include <array>
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include "mover_internal.h"
+#include "Gates/gate.h"
+#include "mc2fmt.h"
 
 
 glm::vec3 Mover::calcOffsetMoveGoal (glm::vec3 target) {
@@ -195,6 +197,8 @@ float startLocal = 40.0f;
 	return(0);
 }
 
+#include "content_error.h"
+
 void Mover::setMoveType (long type) {
 
 	moveType = type;
@@ -204,8 +208,11 @@ void Mover::setMoveType (long type) {
 		moveLevel = 0;
 	else if (moveType == MOVETYPE_AIR)
 		moveLevel = 2;
-	else
-		STOP(("Mover.setMoveType: bad moveType %d", type));
+	else {
+		mc2::content::error(mc2::content::Kind::MoveType, name, "invalid MoveType; using ground");
+		moveType = MOVETYPE_GROUND;
+		moveLevel = 0;
+	}
 }
 
 
@@ -1241,6 +1248,10 @@ int Mover::calcMovePath (MovePathPtr path,
 									jumpCost,
 									numOffsets,
 									moveParams);
+		if (mc2::gate::get<"MC2_SIM_IDENTITY_TRACE_DETAIL">() && getPartId() == 724)
+			mc2::fmt::print_err("[LOADPATH] t={} start={},{},{} cell={}/{} areas={}/{} door={} final={},{},{} speed={} level={} cost={} jump={} offsets={} params={} setup={}\n",
+				scenarioTime, start.x, start.y, start.z, posCellR, posCellC, thruArea[0], thruArea[1], goalDoor,
+				finalGoal.x, finalGoal.y, finalGoal.z, maxMoveSpeed, moveLevel, clearCost, jumpCost, numOffsets, moveParams, result);
 		if (result == -1) {
 			JumpOnBlocked = false;
 			return(-999);
@@ -1257,6 +1268,8 @@ int Mover::calcMovePath (MovePathPtr path,
 		else
 			result = PathFindMap[SECTOR_PATHMAP]->calcPath(path, goal, goalCell);
 		PathFindMap[SECTOR_PATHMAP]->setMover(0);
+		if (mc2::gate::get<"MC2_SIM_IDENTITY_TRACE_DETAIL">() && getPartId() == 724)
+			mc2::fmt::print_err("[LOADPATH] t={} result={}\n", scenarioTime, result);
 		JumpOnBlocked = false;
 	}
 

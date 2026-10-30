@@ -1,6 +1,7 @@
 // TerrainColorMap: getScaledColorMap and TerrainColorMap::init(fileName): the mission colormap load.
 // Declared in the class headers; shared names in terrtxm2_internal.h.
 #include "terrtxm2_internal.h"
+#include "content_error.h"
 #include "texture_assets.h"
 #include "mc2fmt.h"
 #include "tga_scratch.h"
@@ -43,6 +44,7 @@ void TerrainColorMap::getScaledColorMap (MemoryPtr bfr, long dWidth)
 #if defined(DEBUG) || defined(PROFILE)
 				PAUSE(("Unable to open Terrain Color Map %s.  Press Continue",colorMapName));
 #endif
+				mc2::content::error(mc2::content::Kind::Texture, static_cast<const char*>(colorMapName), "missing colormap; flat fallback");
 				return;
 			}
 		}
@@ -56,7 +58,10 @@ void TerrainColorMap::getScaledColorMap (MemoryPtr bfr, long dWidth)
 		{
 			MemoryPtr loadBuffer = tgaFileImage.data() + sizeof(TGAFileHeader);
 			if (colorMapInfo.width != colorMapInfo.height)
-				STOP(("Color Map is not a perfect Square"));
+			{
+				mc2::content::error(mc2::content::Kind::Texture, static_cast<const char*>(colorMapName), "colormap not square; flat fallback");
+				return;
+			}
 			if (!tgaPixelsPresent(tgaFileImage, colorMapInfo, "colour map"))
 				return;
 			
@@ -152,6 +157,21 @@ static long sReadIdFloat(FitIniFile* missionFile, const char *varName, float &va
 long TerrainColorMap::init (char *fileName)
 {
 	ZoneScopedN("TerrainColorMap::init");
+	auto flatFallback = [&] {
+		releaseColorMapScratch();
+		if (cpuColorMap) free(cpuColorMap);
+		cpuColorMap = static_cast<unsigned char*>(malloc(4));
+		gosASSERT(cpuColorMap != nullptr);
+		if (!cpuColorMap) return -1;
+		cpuColorMap[0] = 255; cpuColorMap[1] = 0;
+		cpuColorMap[2] = 255; cpuColorMap[3] = 255;
+		cpuColorMapSize = 1;
+		numTextures = 0;
+		numTexturesAcross = fractionPerTexture = 1.0f;
+		colorMapStarted = true;
+		ktx2ColormapPath[0] = '\0';
+		return NO_ERR;
+	};
 	if (!colorMapStarted)
 	{
 		ZoneScopedN("TerrainColorMap::init cold");
@@ -276,7 +296,10 @@ long TerrainColorMap::init (char *fileName)
 
 			float checkNum = float(jpgColorMapWidth) / float(COLOR_MAP_TEXTURE_SIZE);
 			if (checkNum != float(numTextures))
-				STOP(("Color Map is %d pixels wide which is not even divisible by %d",jpgColorMapWidth,COLOR_MAP_TEXTURE_SIZE));
+				{
+					mc2::content::error(mc2::content::Kind::Texture, static_cast<const char*>(colorMapName), "colormap tile size mismatch; flat fallback");
+				return flatFallback();
+				}
 
 			if (skipColormapTiles()) {
 				mc2::fmt::print_out("[COLORMAP] skip {:d}^2 tile GL upload ({:d}x{:d}) [COLORMAP-TILES-RETIRE-1]\n", mc2::fmt::as_i32(static_cast<long>(numTexturesAcross)), mc2::fmt::as_i32(jpgColorMapWidth), mc2::fmt::as_i32(jpgColorMapWidth));
@@ -335,7 +358,10 @@ long TerrainColorMap::init (char *fileName)
 				{
 					result = colorMapFile.open(colorMapName);
 					if (result != NO_ERR)
-						STOP(("Unable to open Terrain Color Map %s", static_cast<const char*>(colorMapName)));
+				{
+					mc2::content::error(mc2::content::Kind::Texture, static_cast<const char*>(colorMapName), "missing colormap; flat fallback");
+					return flatFallback();
+				}
 				}
 				else
 				{
@@ -344,7 +370,7 @@ long TerrainColorMap::init (char *fileName)
 
 				ZoneScopedN("TerrainColorMap::init colorMap read");
 				if (!loadTga(colorMapFile, tgaFileImage, colorMapInfo, "colour map"))
-					return -1;
+				return flatFallback();
 			}
 
 
@@ -352,9 +378,12 @@ long TerrainColorMap::init (char *fileName)
 			{
 				MemoryPtr loadBuffer = tgaFileImage.data() + sizeof(TGAFileHeader);
 				if (colorMapInfo.width != colorMapInfo.height)
-					STOP(("Color Map is not a perfect Square"));
+				{
+					mc2::content::error(mc2::content::Kind::Texture, static_cast<const char*>(colorMapName), "colormap not square; flat fallback");
+					return flatFallback();
+				}
 				if (!tgaPixelsPresent(tgaFileImage, colorMapInfo, "colour map"))
-					return -1;
+					return flatFallback();
 
 				//-----------------------------------------------------------------
 				// Check if 24 or 32 bit.  If 24, do the necessary stuff to it.
@@ -399,7 +428,10 @@ long TerrainColorMap::init (char *fileName)
 
 				float checkNum = float(colorMapInfo.width) / float(COLOR_MAP_TEXTURE_SIZE);
 				if (checkNum != float(numTextures))
-					STOP(("Color Map is %d pixels wide which is not even divisible by %d",colorMapInfo.width,COLOR_MAP_TEXTURE_SIZE));
+					{
+						mc2::content::error(mc2::content::Kind::Texture, static_cast<const char*>(colorMapName), "colormap tile size mismatch; flat fallback");
+					return flatFallback();
+					}
 
 				//------------------------------------------------------------------------
 				// Must check image_descriptor to see if we need to un upside down image.

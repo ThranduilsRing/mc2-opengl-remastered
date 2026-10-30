@@ -17,6 +17,18 @@ from scripts.smoke_lib import host_lease, nofocus  # noqa: E402
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..")
 
 
+@pytest.mark.parametrize('slots', [2, 3])
+def test_real_host_partition_never_assigns_build_or_desktop_cores(monkeypatch, slots):
+    monkeypatch.setattr(host_lease, 'redirected', lambda: False)
+    monkeypatch.setattr(host_lease.sys, 'platform', 'win32')
+    monkeypatch.setattr(host_lease.os, 'cpu_count', lambda: 16)
+    monkeypatch.setattr(host_lease, 'slot_count', lambda: slots)
+    masks = [host_lease.affinity_mask(i) for i in range(slots)]
+    assert sum(masks) == 0xf000
+    assert all(mask and not mask & 0x0fff for mask in masks)
+    assert all(not a & b for i, a in enumerate(masks) for b in masks[i+1:])
+
+
 @pytest.fixture()
 def lease(tmp_path, monkeypatch):
     monkeypatch.setenv("MC2_HOST_CORES_PER_SLOT", "1")

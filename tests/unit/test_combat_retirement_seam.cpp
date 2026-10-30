@@ -6,6 +6,8 @@
 #include "heap.h"
 #include "team.h"
 #include "mission_load_frame.h"
+#include "combat_clock_archive.h"
+#include "logisticsdialog.h"
 #include <bit>
 #include <array>
 #include <cstdlib>
@@ -27,6 +29,11 @@ struct CombatRetirementSeam {
         frame.loadFileName = path;
         return owner.openSaveFile(frame);
     }
+    static bool rejectsVersion(Mission& owner, const char* path) {
+        MissionLoadFrame frame{};
+        frame.loadFileName = path;
+        return owner.openSaveFile(frame) && frame.incompatibleSave;
+    }
     static void update(Mission& owner) { owner.updateObjectManager(); }
     static void complete(Mission& owner) { owner.completeOrderSimulationTick(); }
     static void reinit(Mission& owner) { owner.initTeamRelations(MISSION_LOAD_SP_QUICKSTART); }
@@ -44,6 +51,17 @@ struct CombatRetirementSeam {
         std::destroy_at(&owner.orderFixtureReceipt);
     }
 };
+
+TEST_CASE("save fixtures: shipped legacy mod saves refuse before teardown") {
+    CombatRetirementSeam::Storage storage;
+    CHECK(CombatRetirementSeam::rejectsVersion(storage.owner,
+        "tests/fixtures/saves/omnitech-testgame.ims"));
+    for (int index : {1, 2, 3, 4, 5, 7}) {
+        auto path = std::format("tests/fixtures/saves/after_mc2_{:02}.fit", index);
+        REQUIRE(std::filesystem::is_regular_file(path));
+        CHECK_FALSE(isCorrectVersionCampaignSave(path));
+    }
+}
 
 namespace {
 struct World {
@@ -318,7 +336,7 @@ TEST_CASE("CombatRetirementProduction/native loader preserves absolute deadlines
     PacketFile file;
     REQUIRE(file.open(path.c_str()) == NO_ERR);
     REQUIRE_FALSE(GameObjectManager::checkSavedObjects(&file));
-    const auto savedClock = readCombatClock(file);
+    const auto savedClock = mc2::save::readSavedCombatClock(file, false);
     REQUIRE(savedClock);
     owner.resetCombatClock();
     owner.restoreCombatClock(*savedClock);
@@ -344,7 +362,14 @@ TEST_CASE("CombatRetirementProduction/native loader preserves absolute deadlines
     REQUIRE(resave.create(resavePath.c_str()) == NO_ERR);
     resave.reserve(32);
     SavedCombatClock continued{owner.getCombatClock().ticks, owner.getCombatClock().frac};
-    resave.writePacket(3, reinterpret_cast<MemoryPtr>(&continued), sizeof(continued), STORAGE_TYPE_RAW);
+    resave.writePacket(0, reinterpret_cast<MemoryPtr>(const_cast<char*>(mc2::save::saveStampV2)),
+        sizeof(mc2::save::saveStampV2), STORAGE_TYPE_RAW);
+    mc2::save::CombatClockValue value{continued.ticks, continued.frac};
+    mc2::save::Archive archive;
+    archive(value);
+    REQUIRE(archive.good());
+    resave.writePacket(3, const_cast<MemoryPtr>(archive.bytes().data()),
+        static_cast<unsigned int>(archive.bytes().size()), STORAGE_TYPE_RAW);
     objects.Save(&resave, 4);
     resave.close();
     REQUIRE(resave.open(resavePath.c_str()) == NO_ERR);
@@ -354,12 +379,12 @@ TEST_CASE("CombatRetirementProduction/native loader preserves absolute deadlines
         CHECK(restored.retireDeadlineTick == deadlines[i].tick);
         CHECK(restored.retireDeadlineState == deadlines[i].savedState());
     }
-    REQUIRE_FALSE(GameObjectManager::checkSavedObjects(&resave));
+    REQUIRE_FALSE(GameObjectManager::checkSavedObjects(&resave, nullptr, true));
     objects.objTypeManager = nullptr;
     objects.destroy();
     objects.objTypeManager = world.ownedTypes;
     owner.resetCombatClock();
-    owner.restoreCombatClock(*readCombatClock(resave));
+    owner.restoreCombatClock(*mc2::save::readSavedCombatClock(resave, true));
     REQUIRE(objects.Load(&resave, 4) == 15);
     CHECK(owner.getCombatClock().ticks == continued.ticks);
     CHECK(std::bit_cast<std::uint64_t>(owner.getCombatClock().frac) == std::bit_cast<std::uint64_t>(continued.frac));

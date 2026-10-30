@@ -133,6 +133,7 @@ def test_slim_apply_restore_only_loose_files(tmp_path, monkeypatch):
 ])
 def test_texture_diagnostics_fail_otherwise_passing_smoke(line, bucket):
     clean = '[INSTR v1] enabled: test\n[SMOKE v1] event=summary result=pass\n'
+    clean += '[CONTENT_SUMMARY] mission=fixture total=0 texture=0 shape=0 objtype=0 ammo=0 movetype=0 sound=0 missiondata=0\n'
     def evaluate(text):
         return gates.evaluate(logparse.parse_log(text), gates.GateConfig(), exit_code=0, walltime_s=1)
     assert evaluate(clean).passed

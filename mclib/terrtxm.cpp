@@ -1,6 +1,7 @@
 //---------------------------------------------------------------------------
 //
 // TerrTxm.cpp -- File contains class code for the Terrain Textures
+#include "content_error.h"
 //
 //---------------------------------------------------------------------------//
 // Copyright (C) Microsoft Corporation. All rights reserved.                 //
@@ -1356,16 +1357,16 @@ long TerrainTextures::createTransition (DWORD typeInfo, DWORD overlayInfo)
 			{
 				long mipSize = TERRAIN_TXM_SIZE;
 				std::vector<unsigned char> fileRAM;
-				if (!mc2::tga::readAllBytes(txmFile, fileRAM))
-					STOP(("Read Error with Texture %s",static_cast<const char*>(testPath)));
+				const bool cacheRead = mc2::tga::readAllBytes(txmFile, fileRAM);
 
 				std::vector<unsigned char> lzBuffer(mipSize * mipSize * sizeof(DWORD));
-				long bufferSize = static_cast<long>(LZDecomp(lzBuffer.data(),fileRAM.data(),fileRAM.size(),mipSize * mipSize * sizeof(DWORD)));
-				if (bufferSize != (mipSize * mipSize * sizeof(DWORD)))
-					STOP(("Texture not correct size!"));
+				long bufferSize = cacheRead ? static_cast<long>(LZDecomp(lzBuffer.data(),fileRAM.data(),fileRAM.size(),mipSize * mipSize * sizeof(DWORD))) : -1;
+				if (!cacheRead || bufferSize != (mipSize * mipSize * sizeof(DWORD)))
+					mc2::content::error(mc2::content::Kind::Texture, static_cast<const char*>(testPath), "invalid transition cache; regenerating");
 
 				txmFile.close();
 
+				if (cacheRead && bufferSize == (mipSize * mipSize * sizeof(DWORD))) {
 				long result = textureFromMemoryAlpha(lzBuffer.data(),mipSize);
 				txmResult = result;
 
@@ -1375,6 +1376,7 @@ long TerrainTextures::createTransition (DWORD typeInfo, DWORD overlayInfo)
 				nextTransition++;
 
 				return (txmResult);
+				}
 			}
 		}
 

@@ -229,6 +229,8 @@ def build_and_run_order_seam(run, cache=False, jobs=None, seam_tree=None, seam_p
     with tempfile.TemporaryDirectory(prefix="mc2-order-seam-") as fixture_dir:
         shutil.copytree(REPO_ROOT / "tests/fixtures/brain_runtime",
                         Path(fixture_dir) / "tests/fixtures/brain_runtime")
+        shutil.copytree(REPO_ROOT / "tests/fixtures/saves",
+                        Path(fixture_dir) / "tests/fixtures/saves")
         command = [str(exe), "--no-breaks"]
         census = "AuthoredOrderProduction/read-only stock and mod mission Part census"
         env = dict(os.environ)

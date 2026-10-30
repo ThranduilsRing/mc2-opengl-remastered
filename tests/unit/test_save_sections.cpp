@@ -1,7 +1,41 @@
 #include "doctest.h"
 #include "save_sections.h"
+#include "combat_clock_archive.h"
+#include "save_field_probe.h"
 
 #include <string>
+
+TEST_CASE("save fields: compacted mover pools and registration order round trip") {
+    using namespace mc2::save;
+    const SavedMoverLists expected{{7, 2, 5}, {9, 6, 8}, {2, 9, 7}, {7}, {2, 9}, 1300};
+    auto source = expected;
+    SAVE_FIELD_SHAPE(source, mechs, vehicles, movers, friendly, hostile, turn);
+    CHECK(save_probe::memberBytes<SavedMoverLists>(&SavedMoverLists::mechs, &SavedMoverLists::vehicles,
+        &SavedMoverLists::movers, &SavedMoverLists::friendly, &SavedMoverLists::hostile, &SavedMoverLists::turn)
+        > sizeof(SavedMoverLists) - alignof(SavedMoverLists));
+    Archive output;
+    source.serialize(output);
+    REQUIRE(output.good());
+    SavedMoverLists restored;
+    Archive input(output.bytes());
+    restored.serialize(input);
+    REQUIRE(input.finish());
+    CHECK(restored == expected);
+    Archive legacyOutput;
+    source.serialize(legacyOutput, 1);
+    SavedMoverLists legacyRestored;
+    Archive legacyInput(legacyOutput.bytes());
+    legacyRestored.serialize(legacyInput, 1);
+    REQUIRE(legacyInput.finish());
+    auto legacyExpected = expected;
+    legacyExpected.turn = 2;
+    CHECK(legacyRestored == legacyExpected);
+    auto truncated = output.bytes();
+    truncated.pop_back();
+    Archive bad(truncated);
+    restored.serialize(bad);
+    CHECK_FALSE(bad.finish());
+}
 
 namespace {
 using namespace mc2::save;
@@ -44,6 +78,12 @@ Bytes r2Packet(std::uint32_t version, const Bytes& animation, const Bytes& queue
 } // namespace
 
 TEST_CASE("save sections: golden wire bytes, sorted and byte-stable") {
+    SavedSection shape;
+    SAVE_FIELD_SHAPE(shape, tag, version, flags, payload);
+    CHECK(save_probe::memberBytes<SavedSection>(&SavedSection::tag, &SavedSection::version,
+        &SavedSection::flags, &SavedSection::payload) + 4 == sizeof(SavedSection));
+    SectionContainer containerShape;
+    SAVE_FIELD_SHAPE(containerShape, sections);
     const auto bytes = encoded(sample());
     CHECK(hex(bytes) == goldenHex);
     CHECK(encoded(sample()) == bytes);
@@ -74,14 +114,14 @@ TEST_CASE("save sections: rejects malformed, newer and unknown required sections
     SectionContainer unknownRequired; unknownRequired.add(fourcc('Z', 'Z', 'Z', 'Z'), 1, true, {7});
     CHECK_FALSE(decodeSections(encoded(unknownRequired), out, &why)); CHECK(why == "unknown_required_section");
 
-    SectionContainer unknownOptional = sample(); unknownOptional.add(tagWorld, 1, false, {7});  // WRLD is reserved: unknown to this build
+    SectionContainer unknownOptional = sample(); unknownOptional.add(tagPath, 1, false, {7});  // PATH is reserved: unknown to this build
     REQUIRE(decodeSections(encoded(unknownOptional), out));
     CHECK(out == SectionContainer{{{tagAnimation, 3, 1, {0xaa}}, {tagOrders, 1, 1, {1, 2}}}});
 
     SectionContainer brain = sample(); brain.add(tagBrain, 1, false, {7});
     REQUIRE(decodeSections(encoded(brain), out));
     CHECK(out.find(tagBrain)->payload == Bytes{7});  // BRN1 is known: kept, not dropped
-    SectionContainer brainNewer = sample(); brainNewer.add(tagBrain, 2, false, {7});
+    SectionContainer brainNewer = sample(); brainNewer.add(tagBrain, 3, false, {7});
     CHECK_FALSE(decodeSections(encoded(brainNewer), out, &why)); CHECK(why == "section_version");
 
     SectionContainer duplicate = sample(); duplicate.add(tagOrders, 1, true, {});
@@ -111,4 +151,98 @@ TEST_CASE("save sections: a v1 R2 packet upgrades to ANIM + ORDQ; no packet mean
     CHECK_FALSE(upgradeLegacyR2(badTag, out, &why)); CHECK(why == "r2_tag");
     auto shortBlob = r2Packet(3, {1, 2, 3}, {}); shortBlob.pop_back();
     CHECK_FALSE(upgradeLegacyR2(shortBlob, out));
+}
+
+TEST_CASE("save sections: combat clock value bytes and malformed corpus") {
+    CombatClockValue sample{0x0102030405060708ull, 0.5};
+    Archive archive;
+    archive(sample);
+    REQUIRE(archive.good());
+    CHECK(hex(archive.bytes()) == "0807060504030201000000000000e03f");
+    for (const auto frac : {0.0, -0.0, std::numeric_limits<double>::denorm_min(),
+                           0.875, std::nextafter(1.0, 0.0)}) {
+        CombatClockValue value{mc2::combat::invalidTick - 1, frac};
+        Archive writer;
+        writer(value);
+        REQUIRE(writer.good());
+        CombatClockValue restored;
+        REQUIRE(decodeRecord(writer.bytes(), restored));
+        CHECK(restored.ticks == value.ticks);
+        CHECK(std::bit_cast<std::uint64_t>(restored.frac) == std::bit_cast<std::uint64_t>(frac));
+        mc2::combat::SavedCombatClock legacy{value.ticks, frac};
+        REQUIRE(sizeof(legacy) == 16);
+        CHECK(std::memcmp(writer.bytes().data(), &legacy, 16) == 0);
+    }
+    for (std::size_t size = 0; size < archive.bytes().size(); ++size) {
+        CombatClockValue previous{7, 0.25};
+        CHECK_FALSE(decodeRecord(std::span(archive.bytes()).first(size), previous));
+        CHECK(previous.ticks == 7);
+        CHECK(previous.frac == 0.25);
+    }
+    auto extra = archive.bytes();
+    extra.push_back(0);
+    CombatClockValue previous{7, 0.25};
+    CHECK_FALSE(decodeRecord(extra, previous));
+    for (const auto value : {CombatClockValue{mc2::combat::invalidTick, 0}, {0, -0.1}, {0, 1},
+                            {0, std::numeric_limits<double>::infinity()},
+                            {0, std::numeric_limits<double>::quiet_NaN()}}) {
+        auto candidate = value;
+        Archive writer;
+        writer(candidate);
+        CHECK_FALSE(writer.good());
+        // Raw scalars bypass the writer validator to exercise hostile input too.
+        Archive malformed;
+        malformed(candidate.ticks, candidate.frac);
+        CHECK_FALSE(decodeRecord(malformed.bytes(), previous));
+        CHECK(previous.ticks == 7);
+        CHECK(previous.frac == 0.25);
+    }
+}
+
+TEST_CASE("save fields: clock omission catcher rejects a dropped member") {
+    using T = CombatClockValue;
+    auto sample = save_probe::patterned<T>(&T::ticks, &T::frac);
+    SAVE_FIELD_SHAPE(sample, ticks, frac);
+    sample.frac = std::bit_cast<double>(0x3fe2020202020202ull); // Valid fraction; every byte is nonzero.
+    CHECK(save_probe::memberBytes<T>(&T::ticks, &T::frac) == sizeof(T));
+    CHECK(save_probe::roundtrip(sample, [](auto& a, auto& v) { a(v); }, &T::ticks, &T::frac));
+    CHECK_FALSE(save_probe::roundtrip(sample, [](auto& a, auto& v) { a(v.ticks); }, &T::ticks, &T::frac));
+}
+
+TEST_CASE("save sections: V2 clock and legacy clock preserve the packet cursor") {
+    struct Packets {
+        std::array<Bytes, 4> data;
+        int cursor = 2;
+        int getCurrentPacket() const { return cursor; }
+        int getNumPackets() const { return static_cast<int>(data.size()); }
+        int seekPacket(int index) { cursor = index; return 0; }
+        int getPacketSize() const { return static_cast<int>(data[cursor].size()); }
+        int readPacket(int index, unsigned char* output) {
+            cursor = index;
+            std::memcpy(output, data[index].data(), data[index].size());
+            return getPacketSize();
+        }
+    } file;
+    mc2::combat::SavedCombatClock legacy{1234, 0.875};
+    const auto* native = reinterpret_cast<const std::uint8_t*>(&legacy);
+    file.data[3].assign(native, native + sizeof(legacy));
+    // Pre-V2 stamp takes the unchanged native reader.
+    file.data[0] = {'o', 'l', 'd', 0};
+    auto restored = readSavedCombatClock(file, false);
+    REQUIRE(restored);
+    CHECK(restored->ticks == legacy.ticks);
+    CHECK(restored->frac == legacy.frac);
+    CHECK(file.cursor == 2);
+    file.data[0].assign(saveStampV2, saveStampV2 + sizeof(saveStampV2));
+    restored = readSavedCombatClock(file, true);
+    REQUIRE(restored);
+    CHECK(restored->ticks == legacy.ticks);
+    CHECK(restored->frac == legacy.frac);
+    CHECK(file.cursor == 2);
+    file.data[3].back() = 0x7f; // non-finite/out-of-range binary64
+    CHECK_FALSE(readSavedCombatClock(file, true));
+    CHECK(file.cursor == 2);
+    file.data[3].resize(8);
+    CHECK_FALSE(readSavedCombatClock(file, true));
+    CHECK(file.cursor == 2);
 }

@@ -138,6 +138,8 @@ def render_markdown(rows: list[Row], *, tier: str, profile: str,
     head += _vram_line(rows)
     head += _vk_profile_line(rows)
     head += _vk_validation_line(rows)
+    head += "> **Content errors:** " + ", ".join(
+        f"{r.stem}={r.summary.content_errors}" for r in rows) + "\n\n"
     table = [
         "| Mission | Result | Bucket                 | Frames | Avg FPS | p1% | Load ms | Δ destroys |",
         "|---------|--------|------------------------|--------|---------|-----|---------|-----------|"
@@ -199,6 +201,9 @@ def render_json(rows: list[Row], *, tier: str, profile: str,
                 "mission_ready_ms": r.summary.mission_ready_ms,
                 "destroys_delta": r.destroys_delta,
                 "simid_frames": r.summary.simid_frames,
+                "content_errors": r.summary.content_errors,
+                "content_summaries": r.summary.content_summaries,
+                "content_counts": r.summary.content_counts,
                 "simid_chain": r.summary.simid_chain,
                 "render_options": r.render_options,
                 "vram": [{"phase": v.phase, "backend": v.backend, "values": v.values} for v in (getattr(r.summary, "vram", None) or [])],

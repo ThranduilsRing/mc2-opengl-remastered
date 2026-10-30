@@ -3,6 +3,8 @@
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include "ablmc2_internal.h"
 #include "abl_script_events.h"
+#include "Gates/gate.h"
+#include "mc2fmt.h"
 #include <algorithm>
 #include <iterator>
 #include <span>
@@ -699,6 +701,7 @@ void execGetSensorsActive (void)
 
 void execGetCurrentMusicId (void) 
 {
+	if (mc2::gate::get<"MC2_SIM_IDENTITY_TRACE_DETAIL">()) mc2::fmt::print_err("[LOADMUSIC] t={:.4f} turn={} id={} combat={} sensor={}\n", scenarioTime, turn, soundSystem->getCurrentMusicId(), MechWarrior::anyPlayerInCombat(), SensorSystemManager::enemyInLOS);
 	ABLi_pushInteger(soundSystem->getCurrentMusicId());
 }
 

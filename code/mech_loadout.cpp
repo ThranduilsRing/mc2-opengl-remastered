@@ -1,6 +1,7 @@
 // BattleMech: loadout build: BattleMech::init(variant) and resetComponents.
 // Declared in the class headers; shared names in mech_internal.h.
 #include "mech_internal.h"
+#include "content_error.h"
 #include "Gates/gate.h"
 #include "mc2fmt.h"
 #include "package_chassis.h"
@@ -141,12 +142,12 @@ long BattleMech::init (DWORD variantNum)
 	result = mechFile.readString( 23 + ( 97 * variantNum ), 2, variantName, 63 );
 	if (result == 1)
 	{
-		PAUSE(("Variant Number %d does not exist for mech %s.  Please set variant in editor!",variantNum,static_cast<const char*>(csvName)));
+		mc2::content::error(mc2::content::Kind::ObjectType, static_cast<const char*>(csvName), "missing variant; using variant zero");
 		variantNum = 0;
 		variantID = 0;
 		result = mechFile.readString( 23 + ( 97 * variantNum ), 2, variantName, 63 );
 		if (result == 1)
-			STOP(("Can't even find Variant 0 for mech %s",csvName));
+			mc2::content::error(mc2::content::Kind::ObjectType, static_cast<const char*>(csvName), "missing variant zero");
 	}
 
 	status = 0;
@@ -931,7 +932,7 @@ void BattleMech::resetComponents (long totalComponents, long *componentList)
 						maxMoveSpeed *= 1.2f;
 					continue;
 				}
-				STOP(("Invalid component added in Logistics %d",componentList[newItems]));
+				mc2::content::error(mc2::content::Kind::WeaponAmmo, name, "invalid engine in loadout; skipped");
 				break;
 			}
 
@@ -941,7 +942,7 @@ void BattleMech::resetComponents (long totalComponents, long *componentList)
 			case COMPONENT_FORM_POWER_AMPLIFIER:
 			case COMPONENT_FORM_CASE:
 			case COMPONENT_FORM_ACTUATOR:
-				STOP(("Invalid component added in Logistics %d",componentList[newItems]));
+				mc2::content::error(mc2::content::Kind::WeaponAmmo, name, "invalid component in loadout; skipped");
 				break;
 				
 			case COMPONENT_FORM_SENSOR:

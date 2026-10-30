@@ -2,6 +2,7 @@
 // Declared in the class headers; shared names in terrtxm2_internal.h.
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include "texture_assets.h"
+#include "content_error.h"
 #include "terrtxm2_internal.h"
 #include "mc2fmt.h"
 #include "tga_scratch.h"
@@ -136,7 +137,10 @@ void TerrainColorMap::refractalizeBaseMesh (const char *fileName, long Threshold
 	File OEMtgaFile;
 	long result = OEMtgaFile.create(OEMheightName);
 	if (result != NO_ERR)
-		STOP(("Couldnt create height map %s on refractalize.  Error: %d",static_cast<const char*>(OEMheightName),result));
+	{
+		mc2::content::error(mc2::content::Kind::Texture, static_cast<const char*>(OEMheightName), "cannot regenerate height map");
+		return;
+	}
 	
 	OEMtgaFile.write(reinterpret_cast<MemoryPtr>(&tgaOutput),sizeof(TGAFileHeader));
 	OEMtgaFile.write(sourceData,Terrain::realVerticesMapSide * Terrain::realVerticesMapSide);
@@ -192,7 +196,10 @@ void TerrainColorMap::refractalizeBaseMesh (const char *fileName, long Threshold
 	File tgaFile;
 	result = tgaFile.create(heightName);
 	if (result != NO_ERR)
-		STOP(("Couldnt create height map %s on refractalize.  Error: %d",static_cast<const char*>(heightName),result));
+	{
+		mc2::content::error(mc2::content::Kind::Texture, static_cast<const char*>(heightName), "cannot regenerate height map");
+		return;
+	}
 	
 	tgaFile.write(reinterpret_cast<MemoryPtr>(&tgaOutput),sizeof(TGAFileHeader));
 
@@ -270,7 +277,10 @@ void TerrainColorMap::burnInShadows (bool doBumpPass, const char *fileName)
 			File heightMapFile;
 			long result = heightMapFile.open(heightName);
 			if (result != NO_ERR)
-				STOP(("Unable to find Hi-Res Height Data"));
+			{
+				mc2::content::error(mc2::content::Kind::Texture, static_cast<const char*>(heightName), "missing height map; flat fallback");
+				return;
+			}
 				
 			std::vector<unsigned char> tgaFileImage;
 			TGAFileHeader heightMapInfo{};
@@ -279,7 +289,7 @@ void TerrainColorMap::burnInShadows (bool doBumpPass, const char *fileName)
 			
 			if (heightMapInfo.width != pixelWidth)
 			{
-				PAUSE(("Hi-Res Height Map wrong size %d. Should be %d. No shadows will be burnt.  Press Continue",heightMapInfo.width,pixelWidth));
+				mc2::content::error(mc2::content::Kind::Texture, static_cast<const char*>(heightName), "height map size mismatch; flat fallback");
 				return;
 			}
 
@@ -287,7 +297,10 @@ void TerrainColorMap::burnInShadows (bool doBumpPass, const char *fileName)
 			{
 				MemoryPtr loadBuffer = tgaFileImage.data() + sizeof(TGAFileHeader);
 				if (heightMapInfo.width != heightMapInfo.height)
-					STOP(("Height Map is not a perfect Square"));
+				{
+					mc2::content::error(mc2::content::Kind::Texture, static_cast<const char*>(heightName), "height map not square; flat fallback");
+					return;
+				}
 				if (!tgaPixelsPresent(tgaFileImage, heightMapInfo, "hi-res height map"))
 					return;
 				
@@ -924,7 +937,7 @@ void TerrainColorMap::recalcLight(const char *fileName)
 	long result = colorMapFile.open(colorMapName);
 	if (result != NO_ERR)
 	{
-		PAUSE(("Unable to open Terrain Color Map %s.  Cannot Re-light map.  Press Continue", static_cast<const char*>(colorMapName)));
+		mc2::content::error(mc2::content::Kind::Texture, static_cast<const char*>(colorMapName), "missing colormap; flat fallback");
 		return;
 	}
 			
@@ -937,7 +950,10 @@ void TerrainColorMap::recalcLight(const char *fileName)
 	{
 		MemoryPtr loadBuffer = tgaFileImage.data() + sizeof(TGAFileHeader);
 		if (colorMapInfo.width != colorMapInfo.height)
-			STOP(("Color Map is not a perfect Square"));
+		{
+			mc2::content::error(mc2::content::Kind::Texture, static_cast<const char*>(colorMapName), "colormap not square; flat fallback");
+			return;
+		}
 		if (!tgaPixelsPresent(tgaFileImage, colorMapInfo, "colour map"))
 			return;
 			
@@ -980,7 +996,10 @@ void TerrainColorMap::recalcLight(const char *fileName)
 			
 		float checkNum = float(colorMapInfo.width) / float(COLOR_MAP_TEXTURE_SIZE);
 		if (checkNum != float(numTextures))
-			STOP(("Color Map is %d pixels wide which is not even divisible by %d",colorMapInfo.width,COLOR_MAP_TEXTURE_SIZE));
+			{
+				mc2::content::error(mc2::content::Kind::Texture, static_cast<const char*>(colorMapName), "colormap tile size mismatch; flat fallback");
+				releaseColorMapScratch(); return;
+			}
 				
 		//------------------------------------------------------------------------
 		// Must check image_descriptor to see if we need to un upside down image.
@@ -1077,7 +1096,10 @@ void TerrainColorMap::resetBaseTexture (const char *fileName)
 		{
 			result = colorMapFile.open(colorMapName);
 			if (result != NO_ERR)
-				STOP(("Unable to open Terrain Color Map %s",static_cast<const char*>(colorMapName)));
+			{
+				mc2::content::error(mc2::content::Kind::Texture, static_cast<const char*>(colorMapName), "missing colormap; flat fallback");
+				return;
+			}
 		}
 		else
 		{
@@ -1094,7 +1116,11 @@ void TerrainColorMap::resetBaseTexture (const char *fileName)
 	if (colorMapInfo.image_type == UNC_TRUE)
 	{
 		if (colorMapInfo.width != colorMapInfo.height)
-			STOP(("Color Map is not a perfect Square"));
+		{
+			mc2::content::error(mc2::content::Kind::Texture, static_cast<const char*>(colorMapName), "colormap not square; flat fallback");
+			releaseColorMapScratch();
+			return;
+		}
 
 		if (!jpgLoaded)
 		{
@@ -1147,7 +1173,10 @@ void TerrainColorMap::resetBaseTexture (const char *fileName)
 
 		float checkNum = float(colorMapInfo.width) / float(COLOR_MAP_TEXTURE_SIZE);
 		if (checkNum != float(numTextures))
-			STOP(("Color Map is %d pixels wide which is not even divisible by %d",colorMapInfo.width,COLOR_MAP_TEXTURE_SIZE));
+			{
+				mc2::content::error(mc2::content::Kind::Texture, static_cast<const char*>(colorMapName), "colormap tile size mismatch; flat fallback");
+				releaseColorMapScratch(); return;
+			}
 			
 		//------------------------------------------------------------------------
 		// Must check image_descriptor to see if we need to un upside down image.

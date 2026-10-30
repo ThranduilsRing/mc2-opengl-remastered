@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """saveload_roundtrip - does a quicksave followed by a quickload put the simulation back where it was?
 
-WHAT: runs one mission with units moving (mc2_16 under MC2_FIXTURE_ORDER_LIVENESS) under the determinism gates, quicksaves at render frame
+WHAT: runs one mission under the determinism gates, quicksaves at fixed tick
 SAVE_AT and quickloads at LOAD_AT (the MC2_BOOT_QUICKSAVE_AT / MC2_BOOT_QUICKLOAD_AT fixtures set the same flags as the pause menu buttons),
 and compares the `[SIMID v1]` digests the simulation prints AFTER the load with the ones it printed after the save, frame by frame. The load puts
 the scenario clock back, so the first post-load frame is matched to the pre-load frame with the same time. A save/load that restores everything
@@ -10,12 +10,12 @@ WHY: nothing else exercises Mission::save/load; the enum and ownership steps tou
 must load, and the round trip is the proof.
 With MC2_SIM_IDENTITY_TRACE_DETAIL=1 the first divergent frame is explained mover by mover (gesture, path step, position, target).
 
-  py -3 tools/saveload_roundtrip.py run [--mission mc2_16] [--frames 300] [--deploy]
+  py -3 tools/saveload_roundtrip.py run --mission mc2_03 --headless --save-at 300 --load-at 420 --frames 60
   py -3 tools/saveload_roundtrip.py resave [--mission mc2_01] [--save-at 1500] [--load-at 1700]   # save, quickload, save again: byte identity
   py -3 tools/saveload_roundtrip.py --baseline [--mission mc2_01]   # record the digest of the round-trip save (tests/saveload/baselines/)
   py -3 tools/saveload_roundtrip.py --check [--mission mc2_01]      # run again and compare with the recorded digest
   py -3 tools/saveload_roundtrip.py --baseline --mission mc2_01 --mask tools/save_noise_mask.json --first-save-only   # the masked digest of the first save; the lossy re-save is no gate
-  py -3 tools/saveload_roundtrip.py analyze path/to/mission.log [--frames 300]
+  py -3 tools/saveload_roundtrip.py analyze path/to/mission.log [--frames 60]
   py -3 tools/saveload_roundtrip.py selftest
 """
 from __future__ import annotations
@@ -58,10 +58,12 @@ def parse(text_lines):
 
 def analyze(text_lines, frames_needed: int = 300):
     """-> (ok, [report lines])"""
+    if frames_needed < 1:
+        return False, ["continuation window must contain at least one frame"]
     frames, movers = parse(text_lines)
     jumps = [i for i in range(1, len(frames)) if frames[i][1] < frames[i - 1][1] - 0.01]
     if not jumps:
-        return False, ["no load found: the scenario clock never went back (did the quickload fixture fire? SAVE_AT/LOAD_AT are render frames)"]
+        return False, ["no load found: the scenario clock never went back (SAVE_AT/LOAD_AT are fixed ticks; an intro camera can defer both fixtures)"]
     j = jumps[0]
     t_load = frames[j][1]
     pre = [i for i in range(j) if abs(frames[i][1] - t_load) < 0.02]
@@ -71,26 +73,37 @@ def analyze(text_lines, frames_needed: int = 300):
     after = len(frames) - j
     report = [f"load at sim frame {frames[j][0]} (t={t_load:.3f}) matched to pre-load frame {frames[i0][0]}; {after} frames after the load"]
     first = None
-    for k in range(min(after, j - i0)):
+    for k in range(min(after, j - i0, frames_needed)):
+        pre_frame, post_frame = frames[i0 + k], frames[j + k]
+        if (abs(pre_frame[1] - post_frame[1]) > 0.002 or
+                (k and (pre_frame[0] != frames[i0 + k - 1][0] + 1 or
+                        post_frame[0] != frames[j + k - 1][0] + 1 or
+                        abs(pre_frame[1] - frames[i0 + k - 1][1] - 1 / 30) > 0.002 or
+                        abs(post_frame[1] - frames[j + k - 1][1] - 1 / 30) > 0.002))):
+            return False, [*report, f"non-contiguous or shifted fixed tick at +{k}: pre={pre_frame[:2]} post={post_frame[:2]}"]
         if frames[i0 + k][2] != frames[j + k][2]:
             first = k
             break
-    horizon = min(after, j - i0)
+    horizon = min(after, j - i0, frames_needed)
     if first is None:
         ok = horizon >= frames_needed
         report.append(f"digests identical over {horizon} frames" + ("" if ok else f" (need {frames_needed})"))
         return ok, report
     report.append(f"DIGESTS DIVERGE {first} frame(s) after the load (identical before that)")
+    report.append("  pre-load : " + frames[i0 + first][2])
+    report.append("  post-load: " + frames[j + first][2])
     a, b = movers.get(i0 + first, {}), movers.get(j + first, {})
     diff = [i for i in a if a[i] != b.get(i)]
     if diff:
         report.append(f"{len(diff)} of {len(a)} movers differ at that frame; first three:")
         for i in diff[:3]:
             report.append(f"  id {i}\n    saved : {a[i]}\n    loaded: {b.get(i)}")
-    else:
+    elif not a or not b:
         report.append("(no per-mover detail in the log: rerun with MC2_SIM_IDENTITY_TRACE_DETAIL=1)")
+    else:
+        report.append("per-mover records match; compare the global SIMID fields above")
     # How far the state stays close: the share of post-load frames whose digest still equals the saved run's.
-    same = sum(1 for k in range(min(after, j - i0)) if frames[i0 + k][2] == frames[j + k][2])
+    same = sum(1 for k in range(horizon) if frames[i0 + k][2] == frames[j + k][2])
     report.append(f"{same} of {horizon} compared frames have an identical digest")
     return first >= frames_needed, report
 
@@ -121,6 +134,13 @@ def selftest() -> int:
     ok, rep = analyze(good[:110], frames_needed=30)
     if ok:
         fails.append("too few post-load frames must fail")
+    if analyze(good, frames_needed=0)[0]:
+        fails.append("an empty window must not pass")
+    if not analyze(bad, frames_needed=10)[0] or analyze(bad, frames_needed=11)[0]:
+        fails.append("the bounded window must include exactly the requested frames")
+    gapped = [line for index, line in enumerate(good) if index not in (70, 110)]
+    if analyze(gapped, frames_needed=30)[0]:
+        fails.append("matching dropped ticks in both halves cannot prove a contiguous window")
     with tempfile.TemporaryDirectory() as td:
         def mkfile(name, pk):
             p = os.path.join(td, name)
@@ -250,28 +270,23 @@ def runner_failed(returncode: int, output: str) -> bool:
 
 def run(mission: str, frames: int, deploy: bool, out: str | None, install: str = sd.INSTALL_DIR,
         save_dir: str | None = None, ref_exe: str | None = None, ref_commit: str | None = None, sim_speed: int = 1,
-        save_at: int = int(SAVE_AT), load_at: int = int(LOAD_AT)):
-    if deploy:
-        sd.build_and_deploy(install)
-    env = dict(os.environ, **ENV)
-    env.update(MC2_BOOT_QUICKSAVE_AT=str(save_at), MC2_BOOT_QUICKLOAD_AT=str(load_at))
-    if mission != "mc2_16":
-        env.pop("MC2_FIXTURE_ORDER_LIVENESS", None)  # this fixture/summary belongs to mc2_16 only
-    with savegame_backup.guarded(save_dir):
-        r = subprocess.run([sys.executable, os.path.join(ROOT, "scripts", "run_smoke.py"), "--mission", mission, "--duration", "28", *smoke_target(install, ref_exe, ref_commit),
-                            "--keep-logs", *speed_args(sim_speed)], env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, errors="replace",
-                           **console_child.child_kwargs(redirected=True))
-    arts = [line.removeprefix("[runner] artifacts: ").strip() for line in r.stdout.splitlines() if line.startswith("[runner] artifacts: ")]
-    if not arts or not os.path.exists(os.path.join(arts[-1], mission + ".log")):
-        sys.exit("saveload_roundtrip: the smoke run produced no log:\n" + "\n".join(r.stdout.splitlines()[-8:]))
-    dest = out or tempfile.mkdtemp(prefix="saveload_")
-    shutil.copytree(arts[-1], os.path.join(dest, "run"), dirs_exist_ok=True)
+        save_at: int = int(SAVE_AT), load_at: int = int(LOAD_AT), duration: int = 28, headless: bool = False):
+    if frames < 1 or frames > 60:
+        return False, ["use a bounded continuation window of 1..60 fixed ticks (up to 2 seconds)"]
+    if save_at < 1 or load_at <= save_at:
+        return False, ["continuation requires 0 < save-at < load-at"]
+    dest, first, second, _, rc = run_fixture(mission, save_at, load_at, deploy, out, duration,
+        install=install, save_dir=save_dir, ref_exe=ref_exe, ref_commit=ref_commit,
+        sim_speed=sim_speed, headless=headless, continuation=True)
     log = os.path.join(dest, "run", mission + ".log")
     with open(log, encoding="utf-8", errors="replace") as fh:
         ok, report = analyze(fh.read().splitlines(), frames)
     # A clock rewind alone cannot excuse a failed smoke gate; retain its evidence even on failure.
-    if runner_failed(r.returncode, r.stdout):
-        return False, [f"the smoke run failed (rc={r.returncode})", *r.stdout.splitlines()[-8:], *report]
+    missing = save_evidence(first, "first save") or save_evidence(second, "re-save")
+    if rc or missing:
+        with open(os.path.join(dest, "runner.txt"), encoding="utf-8", errors="replace") as fh:
+            runner_lines = fh.read().splitlines()
+        return False, [f"the smoke run failed (rc={rc}): {missing or 'see run log'}", *runner_lines[-8:], *report]
     return ok, report
 
 
@@ -289,7 +304,7 @@ def resave_env(save_at: int, load_at: int) -> dict:
 
 def run_fixture(mission: str, save_at: int, load_at: int, deploy: bool, out: str | None, duration: int = 28, plant: str | None = None,
                 install: str = sd.INSTALL_DIR, save_dir: str | None = None, ref_exe: str | None = None, ref_commit: str | None = None,
-                sim_speed: int = 1, headless: bool = False):
+                sim_speed: int = 1, headless: bool = False, continuation: bool = False):
     """Run `mission` with the save, load, re-save fixtures. -> (out dir, first save path, second save path or None, fingerprint dict or None).
     With `plant` (a save written by another exe, e.g. by tools/campaign_save_roundtrip.py) that file is put where the quickload reads it;
     `save_at` must be 0 (a quicksave would overwrite it), so the quickload loads it and it comes back as the first save, but the engine writes
@@ -302,6 +317,13 @@ def run_fixture(mission: str, save_at: int, load_at: int, deploy: bool, out: str
     sdir = save_dir or savegame_backup.default_dir()
     second_src = os.path.join(sdir, "testgame_resave.ims")
     env = dict(os.environ, **resave_env(save_at, load_at))
+    # A movie defers BOTH fixtures, preserving their gap. mc2_03 saves about
+    # 449 ticks late: load_at + 120 used to terminate before its quickload.
+    # Keep fixed headroom; duration is a wall timeout, not a simulation budget.
+    # Slow content reloads may need more wall time without adding observed ticks.
+    headless_ticks = load_at + 600
+    if continuation:
+        env["MC2_SIM_IDENTITY_TRACE_DETAIL"] = "1"
     with savegame_backup.guarded(sdir):
         if os.path.exists(second_src):
             os.remove(second_src)
@@ -314,8 +336,10 @@ def run_fixture(mission: str, save_at: int, load_at: int, deploy: bool, out: str
         r = subprocess.run([sys.executable, os.path.join(ROOT, "scripts", "run_smoke.py"), "--mission", mission, "--duration", str(duration),
                             *smoke_target(install, ref_exe, ref_commit), "--keep-logs", *speed_args(sim_speed),
                             # headless: no window or GPU; the run ends on a tick budget past the quickload and its re-save
-                            *(["--headless", "--ticks", str(load_at + 120)] if headless else [])], env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, errors="replace",
+                            *(["--headless", "--ticks", str(headless_ticks)] if headless else [])], env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, errors="replace",
                            **console_child.child_kwargs(redirected=True))
+        with open(os.path.join(dest, "runner.txt"), "w", encoding="utf-8") as fh:
+            fh.write(r.stdout)
         arts = [line.removeprefix("[runner] artifacts: ").strip() for line in r.stdout.splitlines() if line.startswith("[runner] artifacts: ")]
         if not arts or not os.path.exists(os.path.join(arts[-1], mission + ".log")):
             sys.exit("saveload_roundtrip: the smoke run produced no log:\n" + "\n".join(r.stdout.splitlines()[-8:]))
@@ -360,7 +384,7 @@ def resave_verdict(first: str | None, second: str | None, rc: int | None = None)
     if rc:
         return False, [f"the smoke run exited {rc}: the quickload did not complete, so the re-save cannot be trusted (see the run log)"]
     if not first:
-        return False, ["no quicksave was written: the quicksave fixture did not fire (SAVE_AT is a render frame; the run may have ended first)"]
+        return False, ["no quicksave was written: the quicksave fixture did not fire (SAVE_AT is a fixed tick; the run may have ended first)"]
     if not second:
         return False, ["no re-save was written: the quickload did not run or failed (see the run log)"]
     reason = save_evidence(first, "quicksave") or save_evidence(second, "re-save")
@@ -694,8 +718,8 @@ def main(argv=None) -> int:
                            ("check", "compare a fresh round-trip save with the recorded digest")):
         p = sub.add_parser(name, help=helptext)
         p.add_argument("--mission", default="mc2_01")
-        p.add_argument("--save-at", type=int, help=f"render frame of the quicksave (check: the baseline's; else {DEFAULT_SAVE_AT})")
-        p.add_argument("--load-at", type=int, help=f"render frame of the quickload (check: the baseline's; else {DEFAULT_LOAD_AT})")
+        p.add_argument("--save-at", type=int, help=f"fixed tick of the quicksave (check: the baseline's; else {DEFAULT_SAVE_AT})")
+        p.add_argument("--load-at", type=int, help=f"fixed tick of the quickload (check: the baseline's; else {DEFAULT_LOAD_AT})")
         p.add_argument("--duration", type=int, default=28)
         p.add_argument("--deploy", action="store_true")
         p.add_argument("--out", help="keep save1.ims, save2.ims and the run here (default: a temporary directory)")
@@ -712,10 +736,12 @@ def main(argv=None) -> int:
                             "(the quickload is lossy: any save and its re-save differ in about 1159 of 20000 packets, so the re-save gate cannot pass); "
                             "the re-save verdict is still printed and recorded as information")
     r = sub.add_parser("run")
-    r.add_argument("--mission", default="mc2_16")
-    r.add_argument("--frames", type=int, default=300, help="post-load frames that must match")
-    r.add_argument("--save-at", type=int, default=int(SAVE_AT), help="render frame of the quicksave")
-    r.add_argument("--load-at", type=int, default=int(LOAD_AT), help="render frame of the quickload")
+    r.add_argument("--mission", default="mc2_03")
+    r.add_argument("--frames", type=int, default=60, help="post-load fixed ticks that must match (1..60)")
+    r.add_argument("--save-at", type=int, default=int(SAVE_AT), help="fixed tick of the quicksave (may wait for the intro camera)")
+    r.add_argument("--load-at", type=int, default=int(LOAD_AT), help="fixed tick of the quickload")
+    r.add_argument("--headless", action="store_true", help="reach the fixtures on a fixed tick budget without rendering")
+    r.add_argument("--duration", type=int, default=28, help="smoke timeout in seconds")
     r.add_argument("--deploy", action="store_true")
     r.add_argument("--out")
     r.add_argument("--install", type=sd.resolve_install, default=sd.INSTALL_DIR, metavar="NAME_OR_PATH")
@@ -724,7 +750,7 @@ def main(argv=None) -> int:
     add_speed_arg(r)
     a = sub.add_parser("analyze")
     a.add_argument("log")
-    a.add_argument("--frames", type=int, default=300)
+    a.add_argument("--frames", type=int, default=60)
     sub.add_parser("selftest")
     args = ap.parse_args(argv)
     if args.cmd == "selftest":
@@ -736,7 +762,7 @@ def main(argv=None) -> int:
             ok, rep = analyze(fh.read().splitlines(), args.frames)
     else:
         ok, rep = run(args.mission, args.frames, args.deploy, args.out, args.install, args.save_dir, args.ref_exe, args.ref_commit, args.sim_speed or 1,
-                      args.save_at, args.load_at)
+                      args.save_at, args.load_at, args.duration, args.headless)
     print(("saveload_roundtrip: PASS" if ok else "saveload_roundtrip: FAIL") + "\n" + "\n".join(rep))
     return 0 if ok else 1
 

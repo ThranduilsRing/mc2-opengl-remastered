@@ -151,3 +151,57 @@ TEST_CASE("GlobalMap::init falls back to the packets it read when the counts des
 	in.close();
 	CHECK(captured(capture).find("numDoors is out of range") != std::string::npos);
 }
+
+TEST_CASE("save fields: global map load retains active door link costs")
+{
+	TestStateGuard guard;
+	guard.path = (std::filesystem::temp_directory_path() / "mc2_globalmap_link_save.pak").string();
+	{
+		PacketFile out;
+		REQUIRE(out.create(guard.path.c_str()) == NO_ERR);
+		out.reserve(21);
+		writeHeader(out, 0, Header{30, 30, 1, 1, 2, 1, 2, 14});
+		short cells[900]{};
+		GlobalMapArea areas[2]{};
+		for (auto& area : areas) {
+			area.numDoors = 1;
+			area.teamID = -1;
+			area.open = true;
+		}
+		GlobalMapDoor doors[3]{};
+		doors[0].area[1] = 1;
+		doors[0].open = true;
+		doors[0].numLinks[0] = doors[0].numLinks[1] = 1;
+		DoorInfo info[2]{{0, 0}, {0, 1}};
+		auto write = [&](int packet, auto& value) {
+			REQUIRE(out.writePacket(packet, reinterpret_cast<MemoryPtr>(&value), sizeof(value)) > 0);
+		};
+		write(10, cells);
+		write(11, areas);
+		write(12, info[0]);
+		write(13, info[1]);
+		write(14, doors);
+		DoorLink links[3]{};
+		links[0].cost = 1000;
+		links[0].openCost = 10;
+		write(15, links);
+		write(16, links);
+		DoorLink scratch[2]{};
+		for (int packet = 17; packet < 21; ++packet)
+			write(packet, scratch);
+	}
+	PacketFile in;
+	REQUIRE(in.open(guard.path.c_str()) == NO_ERR);
+	auto map = std::make_unique<GlobalMap>();
+	REQUIRE(map->init(&in, 0, true) == 21);
+	REQUIRE_FALSE(map->badLoad);
+	CHECK(map->doors_links[0][0][0].cost == 1000);
+	CHECK(map->doors_links[0][1][0].cost == 1000);
+	CHECK(map->doors_links[0][0][0].openCost == 10);
+	// Mission assets still normalize the editor's link costs at initial load.
+	auto fresh = std::make_unique<GlobalMap>();
+	REQUIRE(fresh->init(&in, 0) == 21);
+	REQUIRE_FALSE(fresh->badLoad);
+	CHECK(fresh->doors_links[0][0][0].cost == 10);
+	CHECK(fresh->doors_links[0][1][0].cost == 10);
+}

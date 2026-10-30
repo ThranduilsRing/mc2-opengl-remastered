@@ -7,6 +7,7 @@ set(SOURCES ${SOURCES}
     color.cpp
     debugging.cpp
     err.cpp
+    content_error.cpp
     floathelp.cpp
     heap.cpp
     lzcomp.cpp

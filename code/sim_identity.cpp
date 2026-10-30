@@ -132,6 +132,15 @@ void collectMovers(std::vector<MoverRecord>& out) {
 
 		MechWarriorPtr pilot = mover->getPilot();
 		if (pilot) {
+			if (simIdentityTraceDetail() && mover->getPartId() == 724) {
+				auto& o = *pilot->getMoveOrders();
+				mc2::fmt::print_err("[LOADFIELD] t={:.4f} time={} next={} new={} type={} goal={} global={}/{} p0={}/{}/{} p1={}/{}/{} wait={} yield={} yieldstate={} laststep={} request={} state={}/{} run={} throttle={}\n",
+					scenarioTime, o.time, o.nextUpdate, o.newGoal, o.pathType, o.goalType,
+					o.curGlobalStep, o.numGlobalSteps, o.path[0]->curStep, o.path[0]->numSteps, o.path[0]->numStepsWhenNotPaused,
+					o.path[1]->curStep, o.path[1]->numSteps, o.path[1]->numStepsWhenNotPaused,
+					o.waitForPointTime, o.yieldTime, o.yieldState, o.timeOfLastStep, pilot->getMovePathRequest() != nullptr,
+					o.moveState, o.moveStateGoal, o.run, static_cast<int>(o.speedThrottle));
+			}
 			r.status     = static_cast<int32_t>(pilot->getStatus());
 			r.brainState = static_cast<int32_t>(pilot->getBrainState());
 			r.moveState  = static_cast<int32_t>(pilot->getMoveState());

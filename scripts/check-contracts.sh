@@ -1309,7 +1309,7 @@ run_check "stock_mission_data"          "py -3 scripts/check-stock-mission-data.
 # STEP-3.5 (2026-10-11): the comparator behind "SIMID unchanged" -- two runs of one mission under the determinism gates must agree frame by frame.
 # The selftest is offline; the live proof is `py -3 tools/sim_determinism.py run mc2_03 --baseline` (launches the game twice; run it at the program boundaries).
 run_check "sim_determinism"             "py -3 tools/sim_determinism.py selftest && py -3 -B -m pytest scripts/tests/test_sim_determinism_strict.py scripts/tests/test_world_order_diff.py -q -p no:cacheprovider"
-# The save/load round trip (tools/saveload_roundtrip.py run) launches the game; this row proves its analysis. Live result at 2026-10-11: FAILS (see lane1-state).
+# Offline analyzer proof only. Live per-slice continuation gate: docs/plans/2026-10-29-cxx23-status.md (03/10/24, 60 ticks).
 run_check "saveload_roundtrip"          "py -3 tools/saveload_roundtrip.py selftest"
 run_check "save_inspect"                "py -3 tools/save_inspect.py selftest"
 # STEP-4 B0 (2026-10-11): the ownership ledger (type -> allocation sites, typed free sites, owner) and the pointer-order hazard list, both
@@ -1511,6 +1511,7 @@ run_check "farm_runner"                "py -3 -B -m pytest scripts/tests/test_fa
 run_check "mission_cpu_profile"        "py -3 -B -m pytest scripts/tests/test_mission_cpu_profile.py -q -p no:cacheprovider"
 run_check "runtime_bridge"             "py -3 -B -m pytest scripts/tests/test_runtime_bridge.py scripts/tests/test_runtime_bridge_socket.py -q -p no:cacheprovider"
 run_check "mod_smoke"                  "py -3 -B -m pytest scripts/tests/test_mod_smoke.py scripts/tests/test_stage_root.py tests/smoke/test_mod_smoke_staging.py -q -p no:cacheprovider"
+run_check "content_error_stock"        "py -3 -B -m pytest scripts/tests/test_content_error.py -q -p no:cacheprovider"
 run_check "network_startup"            "py -3 -B -m pytest scripts/tests/test_network_startup.py scripts/tests/test_firewall_dialog.py -q -p no:cacheprovider"
 run_check "kit_visibility"             "py -3 -B -m pytest scripts/tests/test_kit_visibility.py -q -p no:cacheprovider"
 

@@ -8,6 +8,7 @@ a = ap.parse_args()
 print("[INSTR v1] enabled: tgl_pool=0 destroy=0 gl_error_print=1 smoke=1 build=fake", flush=True)
 print(f"[SMOKE v1] event=banner mode=passive mission={a.mission} profile={a.profile} duration={a.duration} seed=0xc0ffee", flush=True)
 print(f"[TIMING v1] event=mission_ready elapsed_ms=500", flush=True)
+print(f"[CONTENT_SUMMARY] mission={a.mission} total=0 texture=0 shape=0 objtype=0 ammo=0 movetype=0 sound=0 missiondata=0", flush=True)
 for i in range(a.duration):
     print(f"[HEARTBEAT] frames={60*(i+1)} elapsed_ms={1000*(i+1)} fps=60.0", flush=True)
     time.sleep(1)

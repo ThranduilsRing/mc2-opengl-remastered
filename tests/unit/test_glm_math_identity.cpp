@@ -12,6 +12,7 @@
 #include "math/mc2_xform.h"
 #include "doctest.h"
 
+#include <array>
 #include <bit>
 #include <cmath>
 #include <cstdint>
@@ -246,4 +247,74 @@ TEST_CASE("glm engine math: byte formats old files read back (E1-E3)") {
     const mc2::math::Obb obb(m, glm::vec3(1.0f, 2.0f, 3.0f), 9.0f);
     obbStream << obb;
     CHECK(obbStream.GetBytesUsed() == 64);
+}
+
+TEST_CASE("glm engine math: E1-E3 preserve boundary-value bits on write and read") {
+    // Independent wire words: signed zeros, subnormals, normal boundaries and large/small
+    // finite values. Rotate them through every field so a dropped component cannot hide.
+    constexpr std::array<std::uint32_t, 16> words{
+        0x00000000u, 0x80000000u, 0x00000001u, 0x80000001u,
+        0x007fffffu, 0x807fffffu, 0x00800000u, 0x80800000u,
+        0x3f800000u, 0xbf800000u, 0x0da24260u, 0x8da24260u,
+        0x7149f2cau, 0xf149f2cau, 0x7f7fffffu, 0xff7fffffu};
+    static_assert(sizeof(float) == sizeof(std::uint32_t));
+    for (std::size_t start = 0; start < words.size(); ++start) {
+        INFO(start);
+        std::array<std::uint32_t, 16> wire{};
+        for (std::size_t i = 0; i < wire.size(); ++i) wire[i] = words[(start + i) % words.size()];
+        auto value = [&](std::size_t i) { return std::bit_cast<float>(wire[i]); };
+        auto bits = [](float f) { return std::bit_cast<std::uint32_t>(f); };
+        auto checkWire = [&](Stuff::DynamicMemoryStream& stream, std::size_t count) {
+            REQUIRE(stream.GetBytesUsed() == count * sizeof(float));
+            stream.Rewind();
+            CHECK(std::memcmp(stream.GetPointer(), wire.data(), count * sizeof(float)) == 0);
+        };
+
+        const glm::quat q = mc2::math::quatXYZW(value(0), value(1), value(2), value(3));
+        CHECK(std::memcmp(&q, wire.data(), 4 * sizeof(float)) == 0);
+        Stuff::DynamicMemoryStream quaternionStream(16);
+        quaternionStream << q;
+        checkWire(quaternionStream, 4);
+        glm::quat restoredQ{};
+        quaternionStream >> restoredQ;
+        CHECK(std::memcmp(&restoredQ, wire.data(), 4 * sizeof(float)) == 0);
+
+        const glm::vec3 v(value(0), value(1), value(2));
+        CHECK(std::memcmp(&v, wire.data(), 3 * sizeof(float)) == 0);
+        Stuff::DynamicMemoryStream vectorStream(16);
+        vectorStream << v;
+        checkWire(vectorStream, 3);
+        glm::vec3 restoredV{};
+        vectorStream >> restoredV;
+        CHECK(std::memcmp(&restoredV, wire.data(), 3 * sizeof(float)) == 0);
+
+        glm::mat4 matrix(0.0f);
+        for (int c = 0; c < 4; ++c)
+            for (int r = 0; r < 4; ++r) matrix[c][r] = value(c * 4 + r);
+        Stuff::DynamicMemoryStream matrixStream(16);
+        matrixStream << matrix;
+        checkWire(matrixStream, 12);
+        glm::mat4 restoredMatrix(7.0f);
+        matrixStream >> restoredMatrix;
+        for (int c = 0; c < 3; ++c)
+            for (int r = 0; r < 4; ++r) CHECK(bits(restoredMatrix[c][r]) == wire[c * 4 + r]);
+        for (int r = 0; r < 4; ++r)
+            CHECK(bits(restoredMatrix[3][r]) == bits(r == 3 ? 1.0f : 0.0f));
+
+        const mc2::math::Obb obb(matrix, glm::vec3(value(12), value(13), value(14)), value(15));
+        Stuff::DynamicMemoryStream obbStream(16);
+        obbStream << obb;
+        checkWire(obbStream, 16);
+        mc2::math::Obb restoredObb{};
+        obbStream >> restoredObb;
+        for (int c = 0; c < 3; ++c)
+            for (int r = 0; r < 4; ++r) CHECK(bits(restoredObb.localToParent[c][r]) == wire[c * 4 + r]);
+        for (int r = 0; r < 4; ++r)
+            CHECK(bits(restoredObb.localToParent[3][r]) == bits(r == 3 ? 1.0f : 0.0f));
+        for (int i = 0; i < 3; ++i) CHECK(bits(restoredObb.axisExtents[i]) == wire[12 + i]);
+        CHECK(bits(restoredObb.sphereRadius) == wire[15]);
+        Stuff::DynamicMemoryStream resaved(16);
+        resaved << restoredObb;
+        checkWire(resaved, 16);
+    }
 }

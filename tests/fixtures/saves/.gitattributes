@@ -1,0 +1,3 @@
+# Frozen save fixtures must retain the bytes covered by manifest.json.
+*.fit binary
+*.ims binary

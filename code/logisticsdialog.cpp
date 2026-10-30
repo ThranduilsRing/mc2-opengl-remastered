@@ -815,6 +815,12 @@ static bool quickReadSaveVersion( std::string_view filePath, long& versionNumber
 	return scanSaveVersion( std::string_view( whole.data(), whole.size() ), versionNumber );
 }
 
+bool isCorrectVersionCampaignSave(std::string_view path)
+{
+	long version = 0;
+	return quickReadSaveVersion(path, version) && version == SaveGameVersionNumber;
+}
+
 bool LogisticsSaveDialog::isCorrectVersionSaveGame( char* fileName )
 {
 	FullPathFileName path;
@@ -822,9 +828,7 @@ bool LogisticsSaveDialog::isCorrectVersionSaveGame( char* fileName )
 	bool do_not_make_lower = true;
 	path.init( savePath, fileName, ".fit", do_not_make_lower);
 
-	long testVersionNum = 0;
-	return quickReadSaveVersion( static_cast<const char*>(path), testVersionNum )
-		&& testVersionNum == SaveGameVersionNumber;
+	return isCorrectVersionCampaignSave(static_cast<const char*>(path));
 }
 
 void LogisticsSaveDialog::readCampaignNameFromFile( const char* fileName, std::span<char> resultName )

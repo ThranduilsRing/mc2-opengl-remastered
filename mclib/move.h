@@ -1451,7 +1451,7 @@ class GlobalMap {
 
 		long build (MissionMapCellInfo* mapData);
 
-		long init (PacketFilePtr mapFile, long whichPacket = 0);
+		long init (PacketFilePtr mapFile, long whichPacket = 0, bool restoreSavedCosts = false);
 
 		long write (PacketFile* packetFile, long whichPacket = 0);
 
@@ -1899,7 +1899,7 @@ void DeleteMapCells (MissionMapCellInfo* mapData);
 void MOVE_init (long moveRange);
 void MOVE_buildData (long height, long width, MissionMapCellInfo* mapData, long numSpecialAreas, GameObjectFootPrint* specialAreaFootPrints);
 long MOVE_saveData (PacketFile* packetFile, long whichPacket = 0);
-long MOVE_readData (PacketFile* packetFile, long whichPacket);
+long MOVE_readData (PacketFile* packetFile, long whichPacket, bool restoreSavedCosts = false);
 void MOVE_cleanup (void);
 
 //long BuildAndSaveMoveData (char* fileName, long height, long width, MissionMapCellInfo* mapData);

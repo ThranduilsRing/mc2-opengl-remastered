@@ -18,6 +18,16 @@ def _w(path: Path, text: str = "x") -> Path:
     return path
 
 
+def test_content_budget_is_enforced_and_visible():
+    row = dict(mod="fixture", mission="broken", exit=0,
+               health=ms.analyze_health(""), content_errors=2, content_budget=1)
+    row["health"].update(mech_ok=True, ai_ok=True)
+    assert ms.result_word(row) == "CONTENT-FAIL"
+    row["content_budget"] = 2
+    assert ms.result_word(row) == "PASS"
+    assert "2 / 2" in ms.format_table([row])
+
+
 def _campaign(first: str, second: str = "") -> str:
     out = '[Campaign]\nl GroupCount = 2\n[Group0Mission0]\nst FileName = "%s"\n' % first
     if second:

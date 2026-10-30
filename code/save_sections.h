@@ -28,7 +28,7 @@ inline constexpr std::uint32_t sectionRequired = 1u;
 // Frozen tags. The wire value is the four ASCII bytes in order.
 inline constexpr std::uint32_t tagAnimation = fourcc('A', 'N', 'I', 'M');  // ObjectManager animation state (R2 layout v2/v3)
 inline constexpr std::uint32_t tagOrders = fourcc('O', 'R', 'D', 'Q');     // TacticalOrderQueue
-// Written: BRN1 (B2 brain runtime). Reserved, not yet written: FIX1 (B3 D2 fields), WRLD (M5 entity table + caps), PATH (path queue).
+// Written: BRN1 (brain runtime), WRLD (mover pool/list order). Reserved: FIX1 (D2 fields), PATH (path queue).
 inline constexpr std::uint32_t tagBrain = fourcc('B', 'R', 'N', '1');
 inline constexpr std::uint32_t tagFix = fourcc('F', 'I', 'X', '1');
 inline constexpr std::uint32_t tagWorld = fourcc('W', 'R', 'L', 'D');
@@ -37,7 +37,23 @@ inline constexpr std::uint32_t tagPath = fourcc('P', 'A', 'T', 'H');
 // Sections this build reads and the newest payload version of each. A newer version, or an unknown section flagged
 // required, rejects the file before the running mission is torn down; an unknown optional section is skipped.
 struct KnownSection { std::uint32_t tag; std::uint32_t maxVersion; };
-inline constexpr std::array<KnownSection, 3> knownSections{{{tagAnimation, 3}, {tagOrders, 1}, {tagBrain, 1}}};
+inline constexpr std::array<KnownSection, 4> knownSections{{{tagAnimation, 3}, {tagOrders, 1}, {tagBrain, 2}, {tagWorld, 2}}};
+
+// Handles retain the compacted pool prefixes, free-slot order and mover-list order.
+// Object records themselves remain in stable handle order for legacy readers.
+struct SavedMoverLists {
+    std::vector<std::uint32_t> mechs, vehicles, movers, friendly, hostile;
+    std::int32_t turn = 2;
+    void serialize(Archive& archive, std::uint32_t version = 2) {
+        archive.sequence(mechs, maxSequenceLength);
+        archive.sequence(vehicles, maxSequenceLength);
+        archive.sequence(movers, 1024);
+        archive.sequence(friendly, 1024);
+        archive.sequence(hostile, 1024);
+        if (version >= 2) archive(turn);
+    }
+    bool operator==(const SavedMoverLists&) const = default;
+};
 
 struct SavedSection {
     std::uint32_t tag = 0;

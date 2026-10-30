@@ -1,0 +1,19 @@
+{
+  "$schema": "save-fixture-manifest-v1",
+  "golden_v04c": {
+    "status": "BLOCKED: harness refuses golden d662802367d8 because it lacks MC2_WINDOW_OFFSCREEN; no provenance-backed existing IMS found",
+    "proof": "E:/mc2-archive-2026-10/proofs/lane7/cxx23-a/golden.log"
+  },
+  "fixtures": [
+    {"file": "omnitech-testgame.ims", "source": "A:/Games/mc2-opengl/MechCommanderOmnitech/data/savegame/testgame.ims", "bytes": 737671, "sha256": "e030ce007525315d84339cb70d45494ab7f43c101d9d0c0c8bc4b920450defbf", "verdict": "Mission::openSaveFile rejects stamp m00064 before teardown; incompatibleSave=true"},
+    {"file": "after_mc2_01.fit", "bytes": 139049, "sha256": "5cee74902d8efd2b75d55c870a6c3f41423fb85360cae6242dfd37bcb6d295a7"},
+    {"file": "after_mc2_02.fit", "bytes": 140202, "sha256": "cad3008b3f6ed20718d556c057bb7d159ef468962c6d6e3335ac6b424225cc69"},
+    {"file": "after_mc2_03.fit", "bytes": 142069, "sha256": "8aace76a166a7f50471d1a3c78e4e5c6daccb6f3dc199ed19e37ca50024d5935"},
+    {"file": "after_mc2_04.fit", "bytes": 145170, "sha256": "e741b3d4f52b51acc17a45bf49256d5080b85ed1589ccf14d8a216dbfae889b4"},
+    {"file": "after_mc2_05.fit", "bytes": 147883, "sha256": "1e70190bbbb5714c3c6968d33af8e1c4264da046b64415c5d545d83319472bea"},
+    {"file": "after_mc2_07.fit", "bytes": 153172, "sha256": "bf01870a9fdb5a4f3439f33de0172db4109c7086c22af5ea692479a66b6ba72d"}
+  ],
+  "campaign_source": "A:/Games/mc2-opengl/MC2X-CVE-G/data/savegame/",
+  "campaign_verdict": "The campaign menu's isCorrectVersionCampaignSave filters VersionNumber 10052 (current 10004). Direct LogisticsData::load is not exercised; its source rejects -1 at the version check if initialization reaches it. Not IMS input.",
+  "missing_campaign_file": "after_mc2_06.fit is absent in the supplied mod install"
+}

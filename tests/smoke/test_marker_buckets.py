@@ -11,7 +11,7 @@ CFG = GateConfig(heartbeat_timeout_load_s=60, heartbeat_timeout_play_s=3,
 
 
 def _base():
-    return LogSummary(instr_banner_seen=True, smoke_banner_seen=True,
+    return LogSummary(content_summaries=1, instr_banner_seen=True, smoke_banner_seen=True,
                       mission_resolve_seen=True, smoke_summary_result="pass",
                       mission_ready_ms=5000.0, heartbeats_play=30,
                       last_heartbeat_wall_s_play=30.5,
@@ -130,6 +130,7 @@ def test_the_in_mission_video_floor_is_an_absence_rule_for_mc2_10():
 
     def run(stem, text):
         s = parse_log(text)
+        s.content_summaries = 1
         s.instr_banner_seen = s.smoke_banner_seen = s.mission_resolve_seen = True
         s.smoke_summary_result, s.mission_ready_ms, s.heartbeats_play, s.last_heartbeat_wall_s_play = "pass", 5000.0, 30, 30.5
         s.perf = PerfRow(avg_fps=60)
@@ -147,6 +148,7 @@ def test_the_vegetation_floor_is_an_absence_rule_for_the_large_tier1_maps():
 
     def run(stem, text):
         s = parse_log(text)
+        s.content_summaries = 1
         s.instr_banner_seen = s.smoke_banner_seen = s.mission_resolve_seen = True
         s.smoke_summary_result, s.mission_ready_ms, s.heartbeats_play, s.last_heartbeat_wall_s_play = "pass", 5000.0, 30, 30.5
         s.perf = PerfRow(avg_fps=60)

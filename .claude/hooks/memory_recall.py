@@ -9,7 +9,9 @@ import re
 import sys
 
 MEM_DIR = os.path.expanduser("~/.claude/projects/A--Games-mc2-opengl-src/memory").replace("\\", "/")
-TOP_N = 5
+TOP_N = 3
+SKIP_PREFIXES = ('heartbeat', '[heartbeat', '<task-notification', '[system notification',
+                 '<agent-message', '<command')
 STOP = set("""the a an and or of to in on for with is are was be it this that we you i
 our my me do does did not no yes can should would could just like make from at by as
 into out up so if then than but also what how why when where which who all any some
@@ -40,6 +42,8 @@ def main():
     except Exception:
         return
     if not isinstance(prompt, str):
+        return
+    if prompt.lstrip().lower().startswith(SKIP_PREFIXES):
         return
     q = words(prompt)
     if len(q) < 2 or not os.path.isdir(MEM_DIR):

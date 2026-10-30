@@ -353,6 +353,7 @@ struct OrderApplication {
 };
 
 class TacticalOrderQueue {
+    friend struct TacticalOrderQueueFieldProbe;
 public:
     explicit TacticalOrderQueue(Tick completed = 0) : completed_(completed) {}
     std::expected<void, OrderError> registerSource(OrderSource source);

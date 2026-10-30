@@ -598,7 +598,7 @@ void Mission::initObjectCounts(long loadType, MissionInitFrame& f) {
 	long numVehicles = 0;
 	for (int i = 1; i < (numParts + 1); i++) 
 	{
-		ObjectTypePtr objType = ObjectManager->loadObjectType(parts[i].objNumber);
+		ObjectTypePtr objType = ObjectManager->loadObjectType(parts[i].objNumber, parts[i].csvFile[0] != '\0');
 		if (!objType)
 			objType = ObjectManager->getObjectType(parts[i].objNumber);
 		if (objType)

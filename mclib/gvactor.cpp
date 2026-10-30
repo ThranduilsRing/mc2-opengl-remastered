@@ -1,6 +1,7 @@
 //---------------------------------------------------------------------------
 //
 //	gvactor.cpp - This file contains the code for the Ground Vehicle Actor class
+#include "content_error.h"
 //
 //	MechCommander 2
 //
@@ -71,22 +72,24 @@ void GVAppearanceType::init (const char * fileName)
 	FitIniFile iniFile;
 	long result = iniFile.open(iniName);
 	if (result != NO_ERR)
-		Fatal(result,"Could not find vehicle appearance INI file");
+	{
+		gvShape[0] = std::make_unique<TG_TypeMultiShape>().release();
+		tglVerifyShapeLoaded(gvShape[0], -1, "appearance definition", iniName, &baseShapeLoadFailed);
+		return;
+	}
 
 	// ASSIMP-GV-IMPORT-1 — optional GLB probe for vehicles. Mirror of
 	// mech3d.cpp [Import] pattern. LOD0 only; shadow/damage shapes stay ASE.
 	char importSourceBase[256] = "";
-	if (iniFile.seekBlock("Import") == NO_ERR &&
-	    iniFile.readIdString("Source", importSourceBase, 255) == NO_ERR &&
-	    importSourceBase[0])
-	{
-		char* dot = strrchr(importSourceBase, '.');
-		if (dot) *dot = '\0';
-	}
+	tglReadImportSource(iniFile, importSourceBase);
 
 	result = iniFile.seekBlock("TGLData");
 	if (result != NO_ERR)
-		Fatal(result,"Could not find block in vehicle appearance INI file");
+	{
+		gvShape[0] = std::make_unique<TG_TypeMultiShape>().release();
+		tglVerifyShapeLoaded(gvShape[0], -1, "appearance definition", iniName, &baseShapeLoadFailed);
+		return;
+	}
 
 	char aseFileName[512];
 	result = iniFile.readIdString("FileName",aseFileName,511);
@@ -105,7 +108,7 @@ void GVAppearanceType::init (const char * fileName)
 			{
 				result = iniFile.readIdFloat(baseLODDist,lodDistance[i]);
 				if (result != NO_ERR)
-					STOP(("LOD %d has no distance value in file %s",i,fileName));
+					mc2::content::error(mc2::content::Kind::Shape, static_cast<const char*>(iniName), "LOD missing distance; using default");
 				// Push out LOD-swap thresholds so high-detail meshes stay visible
 				// at greater zoom-out. See visual_preference_knobs.md.
 				lodDistance[i] *= 5.0f;
@@ -135,7 +138,8 @@ void GVAppearanceType::init (const char * fileName)
 			}
 			else if (!i)
 			{
-				STOP(("No base LOD for shape %s",fileName));
+				gvShape[0] = std::make_unique<TG_TypeMultiShape>().release();
+				tglVerifyShapeLoaded(gvShape[0], -1, "appearance definition", iniName, &baseShapeLoadFailed);
 			}
 		}
 	}
@@ -208,7 +212,10 @@ void GVAppearanceType::init (const char * fileName)
 	{
 		result = iniFile.readIdString("FileName",aseFileName,511);
 		if (result != NO_ERR)
-			Fatal(result,"Could not find ASE FileName in building appearance INI file");
+		{
+			mc2::content::error(mc2::content::Kind::Shape, static_cast<const char*>(iniName), "missing damage FileName");
+			aseFileName[0] = '\0';
+		}
 	
 		FullPathFileName dmgName;
 		dmgName.init(tglPath,aseFileName,".ase");
@@ -233,7 +240,7 @@ void GVAppearanceType::init (const char * fileName)
 	{
 		result = iniFile.readIdString("FileName",destructEffect,59);
 		if (result != NO_ERR)
-			STOP(("Could not Find DestructEffectName in building appearance INI file"));
+			mc2::content::error(mc2::content::Kind::Shape, static_cast<const char*>(iniName), "missing DestructEffectName");
 	
 	}
 	else

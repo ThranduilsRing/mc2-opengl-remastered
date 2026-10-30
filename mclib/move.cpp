@@ -579,7 +579,7 @@ long MOVE_saveData (PacketFile* packetFile, long whichPacket) {
 	return(numMissionMapPackets + numGlobalMap0Packets + numGlobalMap1Packets + numGlobalMap2Packets + 2);
 }
 
-long MOVE_readData (PacketFile* packetFile, long whichPacket) {
+long MOVE_readData (PacketFile* packetFile, long whichPacket, bool restoreSavedCosts) {
 
 	s_gameMapOwner = std::make_unique<MissionMap>();
 	GameMap = s_gameMapOwner.get();
@@ -593,7 +593,7 @@ long MOVE_readData (PacketFile* packetFile, long whichPacket) {
 	s_globalMoveMapOwner[0] = std::make_unique<GlobalMap>();
 	GlobalMoveMap[0] = s_globalMoveMapOwner[0].get();
 	// The mission map reports a small packet count (zero is Fatal above), so this one sum cannot overflow and needs no saturation.
-	long numGlobalMap0Packets = GlobalMoveMap[0]->init(packetFile, whichPacket + numMissionMapPackets);
+	long numGlobalMap0Packets = GlobalMoveMap[0]->init(packetFile, whichPacket + numMissionMapPackets, restoreSavedCosts);
 	long numGlobalMap1Packets = 0;
 	long numGlobalMap2Packets = 0;
 	if (!GlobalMoveMap[0]->badLoad) {
@@ -602,14 +602,14 @@ long MOVE_readData (PacketFile* packetFile, long whichPacket) {
 		GlobalMoveMap[1] = s_globalMoveMapOwner[1].get();
 		GlobalMoveMap[1]->hover = true;
 		const long map1Start = mc2::globalmap::advanceCursor(whichPacket + numMissionMapPackets, numGlobalMap0Packets);
-		numGlobalMap1Packets = GlobalMoveMap[1]->init(packetFile, map1Start);
+		numGlobalMap1Packets = GlobalMoveMap[1]->init(packetFile, map1Start, restoreSavedCosts);
 
 		// Let's read the helicoptor move map...
 		s_globalMoveMapOwner[2] = std::make_unique<GlobalMap>();
 		GlobalMoveMap[2] = s_globalMoveMapOwner[2].get();
 		GlobalMoveMap[2]->blank = true;
 		const long map2Start = mc2::globalmap::advanceCursor(map1Start, numGlobalMap1Packets);
-		numGlobalMap2Packets = GlobalMoveMap[2]->init(packetFile, map2Start);
+		numGlobalMap2Packets = GlobalMoveMap[2]->init(packetFile, map2Start, restoreSavedCosts);
 		// Delete the pathExistsTable for this one, since we don't use it...
 		GlobalMoveMap[2]->releasePathExistsTable();
 

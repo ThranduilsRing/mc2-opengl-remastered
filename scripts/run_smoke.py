@@ -648,6 +648,8 @@ def main():
                     help="GPU routing: pass/fail runs default to the RTX 2070 SUPER (auto); perf/timing runs "
                          "(MC2_VK_GPU_TIMESTAMPS, --show-window) keep the RX 7900 XTX. Override with xtx or 2070")
     ap.add_argument("--profile", default="stock")
+    ap.add_argument("--content-error-budget", type=int, default=0,
+                    help="maximum content errors for a mod smoke (stock default: zero)")
     ap.add_argument("--show-window", action="store_true",
                     help="Start mission windows visible instead of minimized; use for FPS/perf runs.")
     ap.add_argument("--exe", default=None,
@@ -727,6 +729,8 @@ def main():
                     help="A/B against an OLDER exe: forward only the MC2_* gates in Gates/gate_table.json at --ref-commit (the older exe's "
                          "commit), dropping the rest with a [LEGACY-ENV] line, so its strict config does not reject newer gates")
     args = ap.parse_args()
+    if args.content_error_budget < 0:
+        ap.error("--content-error-budget must be non-negative")
     if args.legacy_env:
         _legacy_ref = args.ref_commit or "HEAD"
         _t = subprocess.run(["git", "-C", str(ROOT), "show", f"{_legacy_ref}:Gates/gate_table.json"], capture_output=True, text=True)  # background-launch: allow git show, console tool
@@ -1505,6 +1509,7 @@ def main():
             heartbeat_timeout_play_s=e.heartbeat_timeout_play or 3,
             grace_s=120 + _cold_grace,  # cap = duration + grace and includes load; a cold mc2_03 load took 64 s beside other engines
             allow_asset_oob=e.allow_asset_oob,
+            content_error_budget=args.content_error_budget,
             # META-FIX INFRA-3: per-mission marker-bucket downgrades from the
             # manifest (allow_asset_oob analog for registered marker rows).
             marker_overrides=e.marker_overrides,

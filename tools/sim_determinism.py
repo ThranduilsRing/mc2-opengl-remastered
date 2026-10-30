@@ -34,7 +34,6 @@ import shutil
 import subprocess
 import sys
 import tempfile
-import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.abspath(os.path.join(HERE, ".."))
@@ -336,13 +335,6 @@ def build_and_deploy(install: str = INSTALL_DIR) -> None:
 
 #: The longest smoke window a determinism run may ask for (owner ruling 2026-10-13); scripts/run_smoke.py refuses more than 30 s without `--sim-determinism`.
 MAX_DURATION = 60
-#: Wall-clock bound for the extra attempts of one `run`/`check` that fell short of the baseline's frame count (loaded host).
-MAX_WALL = 900
-
-
-def next_duration(duration: int, reached: int, needed: int) -> int:
-    """Seconds for a retry when the slower run reached `reached` of `needed` sim frames in `duration` s (+20% margin, capped at MAX_DURATION)."""
-    return min(MAX_DURATION, max(duration + 1, -(-duration * needed * 12 // (max(reached, 1) * 10))))
 
 
 def smoke_target(install: str, ref_exe: str | None = None, ref_commit: str | None = None) -> list[str]:
@@ -754,21 +746,14 @@ def main(argv=None) -> int:
         needed = int(json.load(open(base, encoding="utf-8"))["frames"]) if base and os.path.exists(base) and not args.headless else 0
     except (OSError, ValueError, KeyError, TypeError):
         needed = 0  # unreadable baseline: check_baseline reports it
-    duration, started, attempt = args.duration, time.monotonic(), 0
-    while True:
-        la, lb = run_mission(args.mission, duration, out if attempt == 0 else f"{out}-retry{attempt}", extra, install=args.install,
-                             ref_exe=args.ref_exe, ref_commit=args.ref_commit, sim_speed=args.sim_speed, headless=args.headless, ticks=args.ticks)
-        a, b = load_simid(la), load_simid(lb)
-        reached = min(len(a), len(b))
-        if reached >= needed:
-            break
-        # A loaded host ran fewer sim frames than the baseline pins in this wall-clock window: run longer, not red.
-        longer = next_duration(int(duration), reached, needed)
-        if longer == int(duration) or time.monotonic() - started > MAX_WALL:
-            print(f"sim_determinism: INCONCLUSIVE (too few frames): {reached} of {needed} sim frames in {duration} s on a loaded host; not a FAIL")
-            return 3
-        print(f"sim_determinism: only {reached} of {needed} sim frames in {duration} s (loaded host); retrying with --duration {longer}")
-        duration, attempt = str(longer), attempt + 1
+    la, lb = run_mission(args.mission, args.duration, out, extra, install=args.install,
+                        ref_exe=args.ref_exe, ref_commit=args.ref_commit, sim_speed=args.sim_speed,
+                        headless=args.headless, ticks=args.ticks)
+    a, b = load_simid(la), load_simid(lb)
+    reached = min(len(a), len(b))
+    if reached < needed:
+        print(f"sim_determinism: INCONCLUSIVE (too few frames): {reached} of {needed} sim frames within the requested {args.duration} s budget")
+        return 3
     ok, msg = compare(a, b, args.min_frames, required_length=args.min_frames if getattr(args, "headless_both", False) else 0)
     print(("sim_determinism: PASS " if ok else "sim_determinism: FAIL ") + msg)
     if ok and base:

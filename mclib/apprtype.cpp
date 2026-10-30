@@ -71,6 +71,8 @@ long g_loadRaceLastTerrainPath           = 0;    // last preflight: 0=none 1=gpu
 
 //---------------------------------------------------------------------------
 // Class AppearanceType
+#include "content_error.h"
+
 void AppearanceType::init (const char *fileName)
 {
 	nameStore = fileName;
@@ -91,7 +93,7 @@ void AppearanceType::init (const char *fileName)
 		// and the appearance just gets default selection bounds. (Game ships all
 		// assets, so it never reaches this; game behavior unchanged.)
 		designerTypeBounds = false;
-		PAUSE(("AppearanceType: missing appearance INI %s -- using default bounds", static_cast<const char*>(iniName)));
+		mc2::content::error(mc2::content::Kind::Shape, static_cast<const char*>(iniName), "missing appearance INI; default bounds");
 		return;
 	}
 		
@@ -103,37 +105,37 @@ void AppearanceType::init (const char *fileName)
 		long tmpy;
 		result = iniFile.readIdLong("UpperLeftX",tmpy);
 		if (result != NO_ERR)
-			STOP(("Cant find upperleftX type bounds in %s",iniName));
+			mc2::content::error(mc2::content::Kind::Shape, static_cast<const char*>(iniName), "missing 3DBounds.UpperLeftX; default bounds");
 		else
 			typeUpperLeft.x = tmpy;
 			
 		result = iniFile.readIdLong("UpperLeftY",tmpy);
 		if (result != NO_ERR)
-			STOP(("Cant find upperleftX type bounds in %s",iniName));
+			mc2::content::error(mc2::content::Kind::Shape, static_cast<const char*>(iniName), "missing 3DBounds.UpperLeftY; default bounds");
 		else
 			typeUpperLeft.y = tmpy;
   			
 		result = iniFile.readIdLong("UpperLeftZ",tmpy);
 		if (result != NO_ERR)
-			STOP(("Cant find upperleftX type bounds in %s",iniName));
+			mc2::content::error(mc2::content::Kind::Shape, static_cast<const char*>(iniName), "missing 3DBounds.UpperLeftZ; default bounds");
 		else
 			typeUpperLeft.z = tmpy;
 			
   		result = iniFile.readIdLong("LowerRightX",tmpy);
 		if (result != NO_ERR)
-			STOP(("Cant find upperleftX type bounds in %s",iniName));
+			mc2::content::error(mc2::content::Kind::Shape, static_cast<const char*>(iniName), "missing 3DBounds.LowerRightX; default bounds");
  		else
 			typeLowerRight.x = tmpy;
     		
 		result = iniFile.readIdLong("LowerRightY",tmpy);
 		if (result != NO_ERR)
-			STOP(("Cant find upperleftX type bounds in %s",iniName));
+			mc2::content::error(mc2::content::Kind::Shape, static_cast<const char*>(iniName), "missing 3DBounds.LowerRightY; default bounds");
  		else
 			typeLowerRight.y = tmpy;
 			
 		result = iniFile.readIdLong("LowerRightZ",tmpy);
 		if (result != NO_ERR)
-			STOP(("Cant find upperleftX type bounds in %s",iniName));
+			mc2::content::error(mc2::content::Kind::Shape, static_cast<const char*>(iniName), "missing 3DBounds.LowerRightZ; default bounds");
  		else
 			typeLowerRight.z = tmpy;
     }
@@ -159,7 +161,7 @@ void AppearanceType::reinit (void)
 		// and the appearance just gets default selection bounds. (Game ships all
 		// assets, so it never reaches this; game behavior unchanged.)
 		designerTypeBounds = false;
-		PAUSE(("AppearanceType: missing appearance INI %s -- using default bounds", static_cast<const char*>(iniName)));
+		mc2::content::error(mc2::content::Kind::Shape, static_cast<const char*>(iniName), "missing appearance INI; default bounds");
 		return;
 	}
 		
@@ -171,37 +173,37 @@ void AppearanceType::reinit (void)
 		long tmpy;
 		result = iniFile.readIdLong("UpperLeftX",tmpy);
 		if (result != NO_ERR)
-			STOP(("Cant find upperleftX type bounds in %s",iniName));
+			mc2::content::error(mc2::content::Kind::Shape, static_cast<const char*>(iniName), "missing 3DBounds.UpperLeftX; default bounds");
 		else
 			typeUpperLeft.x = tmpy;
 			
 		result = iniFile.readIdLong("UpperLeftY",tmpy);
 		if (result != NO_ERR)
-			STOP(("Cant find upperleftX type bounds in %s",iniName));
+			mc2::content::error(mc2::content::Kind::Shape, static_cast<const char*>(iniName), "missing 3DBounds.UpperLeftY; default bounds");
 		else
 			typeUpperLeft.y = tmpy;
   			
 		result = iniFile.readIdLong("UpperLeftZ",tmpy);
 		if (result != NO_ERR)
-			STOP(("Cant find upperleftX type bounds in %s",iniName));
+			mc2::content::error(mc2::content::Kind::Shape, static_cast<const char*>(iniName), "missing 3DBounds.UpperLeftZ; default bounds");
 		else
 			typeUpperLeft.z = tmpy;
 			
   		result = iniFile.readIdLong("LowerRightX",tmpy);
 		if (result != NO_ERR)
-			STOP(("Cant find upperleftX type bounds in %s",iniName));
+			mc2::content::error(mc2::content::Kind::Shape, static_cast<const char*>(iniName), "missing 3DBounds.LowerRightX; default bounds");
  		else
 			typeLowerRight.x = tmpy;
     		
 		result = iniFile.readIdLong("LowerRightY",tmpy);
 		if (result != NO_ERR)
-			STOP(("Cant find upperleftX type bounds in %s",iniName));
+			mc2::content::error(mc2::content::Kind::Shape, static_cast<const char*>(iniName), "missing 3DBounds.LowerRightY; default bounds");
  		else
 			typeLowerRight.y = tmpy;
 			
 		result = iniFile.readIdLong("LowerRightZ",tmpy);
 		if (result != NO_ERR)
-			STOP(("Cant find upperleftX type bounds in %s",iniName));
+			mc2::content::error(mc2::content::Kind::Shape, static_cast<const char*>(iniName), "missing 3DBounds.LowerRightZ; default bounds");
  		else
 			typeLowerRight.z = tmpy;
     }

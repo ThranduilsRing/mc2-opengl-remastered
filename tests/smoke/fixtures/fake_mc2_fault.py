@@ -27,6 +27,8 @@ a = ap.parse_args()
 def emit(line):
     print(line, flush=True)
 
+emit(f"[CONTENT_SUMMARY] mission={a.mission} total=0 texture=0 shape=0 objtype=0 ammo=0 movetype=0 sound=0 missiondata=0")
+
 
 def instr():
     emit("[INSTR v1] enabled: tgl_pool=1 destroy=0 gl_error_print=1 smoke=1 build=fake")

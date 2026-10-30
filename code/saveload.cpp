@@ -2,6 +2,8 @@
 #include "../GameOS/gameos/crash_content.h"
 #include "save_exactness.h"
 #include "save_sections.h"
+#include <span>
+#include "combat_clock_archive.h"
 #include "save_brain_section.h"
 #include "utils/mc2log.h"
 //******************************************************************************************
@@ -206,9 +208,12 @@ void Mission::save (const char *saveFileName)
 
 	saveFile.writePacket(currentPacket,tmpRAM,fileSz,STORAGE_TYPE_ZLIB);
 	currentPacket++;
-	mc2::combat::SavedCombatClock savedClock{combatClock.ticks, combatClock.frac};
-	saveFile.writePacket(currentPacket++, reinterpret_cast<MemoryPtr>(&savedClock),
-		sizeof(savedClock), STORAGE_TYPE_RAW);
+	mc2::save::CombatClockValue savedClock{combatClock.ticks, combatClock.frac};
+	mc2::save::Archive clockArchive;
+	savedClock.serialize(clockArchive);
+	if (!clockArchive.good()) Fatal(0, "Invalid combat clock save");
+	saveFile.writePacket(currentPacket++, const_cast<MemoryPtr>(clockArchive.bytes().data()),
+		static_cast<unsigned int>(clockArchive.bytes().size()), STORAGE_TYPE_RAW);
 
 	dmyFile.close();
 	DeleteFile(tmpName);
@@ -286,6 +291,24 @@ void Mission::save (const char *saveFileName)
 
     // Save v2: the versioned section container follows the unchanged legacy END packet (save_sections.h).
     mc2::save::SectionContainer sections;
+    {
+        auto handles = [](auto slots) {
+            std::vector<std::uint32_t> result;
+            result.reserve(slots.size());
+            for (auto* mover : slots) result.push_back(ObjectManager->getHandle(mover));
+            return result;
+        };
+        mc2::save::SavedMoverLists lists{
+            handles(std::span(ObjectManager->mechs, ObjectManager->maxMechs)),
+            handles(std::span(ObjectManager->vehicles, ObjectManager->maxVehicles)),
+            handles(std::span(ObjectManager->moverList, ObjectManager->getNumMovers())),
+            handles(std::span(ObjectManager->goodMoverList, ObjectManager->numGoodMovers)),
+            handles(std::span(ObjectManager->badMoverList, ObjectManager->numBadMovers)), turn};
+        mc2::save::Archive archive;
+        lists.serialize(archive);
+        if (!archive.good()) Fatal(0, "WRLD save section failed");
+        sections.add(mc2::save::tagWorld, 2, true, archive.bytes());
+    }
     sections.add(mc2::save::tagAnimation, 3, true, ObjectManager->saveAnimationState());
     {
         mc2::save::Archive orders;
@@ -514,7 +537,7 @@ bool Mission::openSaveFile(MissionLoadFrame& f) {
 	}
 	currentPacket = 2;
 
-	if (const auto why = GameObjectManager::checkSavedObjects(&loadFile)) {
+	if (const auto why = GameObjectManager::checkSavedObjects(&loadFile, nullptr, f.saveV2)) {
 		mc2::fmt::print_err("[SAVE v1] event=reject reason={} file={}\n", *why, mc2::fmt::safe(loadFileName));
 		return true;
 	}
@@ -551,7 +574,7 @@ void Mission::loadResetSimState(MissionLoadFrame& f) {
 
 				
 	turn = 0;
-	restoreCombatClock(*mc2::combat::readCombatClock(f.loadFile));
+	restoreCombatClock(*mc2::save::readSavedCombatClock(f.loadFile, f.saveV2));
 	terminationCounterStarted = 0;
 	terminationResult = mis_PLAYING;
 	forcedTerminationResult = mis_PLAYING;
