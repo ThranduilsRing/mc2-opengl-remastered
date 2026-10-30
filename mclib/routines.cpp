@@ -13,6 +13,8 @@
 #include "platform_windows.h"
 #include "Gates/gate.h"
 #include "sim_trace.h"
+#include "mc2fmt.h"
+#include <intrin.h>
 
 void memclear(void *Dest,int Length);
 void memfill(void *Dest,int Length);
@@ -88,6 +90,7 @@ unsigned long SimMissionSeed (void)
 long RandomNumber (long range)
 {
 	++s_simDraws;
+	if (mc2::gate::get<"MC2_SIM_IDENTITY_TRACE_DETAIL">()) mc2::fmt::print_err("[LOADRNG] n={} range={} caller={:x}\n", s_simDraws, range, reinterpret_cast<uintptr_t>(_ReturnAddress()) - reinterpret_cast<uintptr_t>(GetModuleHandle(nullptr)));
 	MC2_SIM_TRACE_STACK("RNGCALL");
     //sebi
 	//gosASSERT(RAND_MAX==(1<<15)-1 );		// This is always TRUE in VC
@@ -100,6 +103,7 @@ long RandomNumber (long range)
 bool RollDice (long percent)
 {
 	++s_simDraws;
+	if (mc2::gate::get<"MC2_SIM_IDENTITY_TRACE_DETAIL">()) mc2::fmt::print_err("[LOADRNG] n={} percent={} caller={:x}\n", s_simDraws, percent, reinterpret_cast<uintptr_t>(_ReturnAddress()) - reinterpret_cast<uintptr_t>(GetModuleHandle(nullptr)));
 	MC2_SIM_TRACE_STACK("RNGCALL");
 	// DETERMINISTIC-RNG-1 (RISK#2): stock RollDice calls CRT rand() DIRECTLY,
 	// bypassing gos_rand. Under MC2_DETERMINISTIC_RNG it must share the single
