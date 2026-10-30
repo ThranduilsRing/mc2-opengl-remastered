@@ -136,23 +136,30 @@ bool UpdateFieldWaterCoverage(float elevation) {
                 box={std::numeric_limits<float>::max(),std::numeric_limits<float>::max(),
                      std::numeric_limits<float>::lowest(),std::numeric_limits<float>::lowest()};
                 for (int y=y0;y<=y1;++y) for (int x=x0;x<=x1;++x) {
-                    float lo=std::numeric_limits<float>::max(), hi=std::numeric_limits<float>::lowest();
-                    for (int sy=y-1;sy<=y+2;++sy) for (int sx=x-1;sx<=x+2;++sx) {
-                        const float z=h.texels[size_t(std::clamp(sy,0,h.height-1))*h.width+std::clamp(sx,0,h.width-1)];
-                        lo=std::min(lo,z); hi=std::max(hi,z);
+                    float rows[4][4];
+                    for (int sy=0;sy<4;++sy) {
+                        float p[4];
+                        for (int sx=0;sx<4;++sx)
+                            p[sx]=h.texels[size_t(std::clamp(y+sy-1,0,h.height-1))*h.width+std::clamp(x+sx-1,0,h.width-1)];
+                        rows[sy][0]=p[1]; rows[sy][1]=p[1]+(p[2]-p[0])/6.0f;
+                        rows[sy][2]=p[2]-(p[3]-p[1])/6.0f; rows[sy][3]=p[2];
                     }
-                    // Bound each bicubic cell, not the entire terrain quad:
-                    // a dry viewport must not inherit a wet corner off screen.
-                    if (lo==hi ? lo>=elevation : lo-0.28125f*(hi-lo)>elevation+0.001f) continue;
+                    float lo=std::numeric_limits<float>::max(), hi=std::numeric_limits<float>::lowest();
+                    for (int sx=0;sx<4;++sx) {
+                        const float p0=rows[1][sx], p1=p0+(rows[2][sx]-rows[0][sx])/6.0f;
+                        const float p3=rows[2][sx], p2=p3-(rows[3][sx]-rows[1][sx])/6.0f;
+                        lo=std::min({lo,p0,p1,p2,p3}); hi=std::max({hi,p0,p1,p2,p3});
+                    }
+                    // Catmull-Rom converted to Bezier: its 16 control points
+                    // bound the entire bicubic cell, including real overshoot.
+                    // This avoids inventing wet slivers on a monotone dry slope.
+                    if (lo==hi ? lo>=elevation : lo>elevation+0.001f) continue;
                     wet=true;
                     box[0]=std::min(box[0],std::max(minX,b[0]+x*dx));
                     box[2]=std::max(box[2],std::min(maxX,b[0]+(x+1)*dx));
                     box[1]=std::min(box[1],std::max(minY,b[1]-(y+1)*dy));
                     box[3]=std::max(box[3],std::min(maxY,b[1]-y*dy));
                 }
-                // A separable Catmull-Rom sample has at most 9/32 negative
-                // weight. Include overshoot, not just texel minima, so curved
-                // shorelines and small pools cannot disappear from reflections.
             }
             g_fieldWetRecipes[id]=uint8_t(wet);
             g_fieldWetChunks[c] |= uint8_t(wet);
