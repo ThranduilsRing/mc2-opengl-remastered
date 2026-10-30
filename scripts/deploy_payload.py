@@ -288,6 +288,7 @@ FFMPEG_DLLS = [
     "swscale-8.dll",
     "swresample-5.dll",
 ]
+RUNTIME_DLLS = Path(__file__).with_name("release-dlls.txt").read_text().splitlines()
 
 
 def log(msg):
@@ -928,10 +929,12 @@ def enumerate_payload(src_root, build_dir, exe_name, pdb_name,
     if not native:
         items.append((pdb_src, pdb_name, "pdb"))  # presence checked later
 
-    for dll in (() if native else FFMPEG_DLLS):
+    for dll in (() if native else RUNTIME_DLLS):
         p = os.path.join(build_dir, dll)
         if os.path.isfile(p):
             items.append((p, dll, "dll"))
+        elif require_build:
+            fail(f"required runtime DLL missing from build: {p}")
 
     b64 = find_build_root(build_dir, build64_root)
     # Baked Vulkan SPIR-V (VULKAN-SHADER-TOOLCHAIN-1): glslangValidator/glslc
@@ -1508,7 +1511,7 @@ def check_install_complete(target, exe_name, build_dir, fix=True):
     if exe is None:
         return [f"{exe_name} (not found in target or build dir)"]
     try:
-        todo = (_pe_imports(exe) if exe else set()) | {d.lower() for d in FFMPEG_DLLS}
+        todo = (_pe_imports(exe) if exe else set()) | {d.lower() for d in RUNTIME_DLLS}
         for name in ("mc2_asset_viewer.exe", "ui_editor.exe", "mc2fx_preview.exe", "mc2weapon_gui.exe"):
             tool = os.path.join(target, name)
             if os.path.isfile(tool):

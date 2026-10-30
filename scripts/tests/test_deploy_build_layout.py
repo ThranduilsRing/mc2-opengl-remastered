@@ -75,6 +75,8 @@ def _ninja_tree(tmp_path):
     b = tmp_path / "build64-ninja"
     _touch(b / "build.ninja")
     _touch(b / "mc2.exe")
+    for dll in dp.RUNTIME_DLLS:
+        _touch(b / dll)
     _touch(b / "shaders/vulkan/fixture.vert.spv")
     _touch(b / "CMakeFiles" / "mc2.dir" / "code" / "a.cpp.obj")
     return b
@@ -111,6 +113,14 @@ def test_missing_baked_shaders_refuses_deploy(tmp_path):
     import pytest
     b = _ninja_tree(tmp_path)
     (b / "shaders/vulkan/fixture.vert.spv").unlink()
+    with pytest.raises(SystemExit):
+        dp.enumerate_payload(str(ROOT), str(b), "mc2.exe", "mc2.pdb")
+
+
+def test_dynamic_resource_dll_is_required(tmp_path):
+    import pytest
+    b = _ninja_tree(tmp_path)
+    (b / "mc2res_64.dll").unlink()
     with pytest.raises(SystemExit):
         dp.enumerate_payload(str(ROOT), str(b), "mc2.exe", "mc2.pdb")
 
