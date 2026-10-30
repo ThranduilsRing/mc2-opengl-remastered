@@ -10,7 +10,7 @@
 
 namespace mc2::gate::detail {
 
-inline constexpr std::size_t kGateCount = 760;
+inline constexpr std::size_t kGateCount = 761;
 
 inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_ABL_ARG_GUARD", Kind::Bool, Rule::Lead1, {}},
@@ -455,6 +455,7 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_RENDER_CONTRACT_ASSERT", Kind::Bool, Rule::Lead0, {}},
     {"MC2_RENDER_FRAME_DRIVER", Kind::Bool, Rule::Presence, {}},
     {"MC2_RENDER_FRAME_PLAN_TRACE", Kind::Bool, Rule::Presence, {}},
+    {"MC2_RENDER_JITTER", Kind::Bool, Rule::Std, {}},
     {"MC2_RENDER_MOTION_DEBUG", Kind::Bool, Rule::Std, {}},
     {"MC2_RENDER_PASS_CONTRACT_ASSERT", Kind::Bool, Rule::Lead1, {}},
     {"MC2_RENDER_PASS_CONTRACT_TRACE", Kind::Bool, Rule::Lead1, {}},

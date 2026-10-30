@@ -3,9 +3,9 @@
 # Where each gate is read, what the smoke runner forwards and what tier1_env_vars.md says are not here: ask
 # tools/repo_intel (env_var, gate_status), which scan the sources.
 generator_version: "3.0.0"
-gate_count: 760
+gate_count: 761
 registry_entry_count: 150
-verified_count: 722
+verified_count: 723
 flags:
   - name: MC2_ABL_ARG_GUARD
     kind: Bool
@@ -3409,6 +3409,14 @@ flags:
     rule: Presence
     owner: gameos
     doc: ""
+    smoke_passthrough: true
+    verified: true
+  - name: MC2_RENDER_JITTER
+    kind: Bool
+    default: false
+    rule: Std
+    owner: post
+    doc: "Developer selector: eight-sample Halton (2,3) subpixel scene projection; picking remains unjittered."
     smoke_passthrough: true
     verified: true
   - name: MC2_RENDER_MOTION_DEBUG

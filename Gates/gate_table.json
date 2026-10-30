@@ -1,6 +1,6 @@
 {
  "version": 1,
- "count": 760,
+ "count": 761,
  "gates": [
   {"name": "MC2_ABL_ARG_GUARD", "kind": "Bool", "rule": "Lead1", "default": false, "owner": "code", "retireBy": "", "doc": "ABL crash-safety gates (ABL-OPCODE-BOUNDS-HARDEN) MC2_ABL_ARG_GUARD=1 - enables dispatch-bounds soft path + out-ptr null guards MC2_ABL_RUNTIME_SOFTFAIL=1 -...", "tokens": "", "range": null, "reread": false, "divergent": false, "smokePassthrough": true, "verified": true, "registry": null, "logTopic": ""},
   {"name": "MC2_ABL_ARG_GUARD_REPRO", "kind": "Bool", "rule": "Lead1", "default": false, "owner": "code", "retireBy": "", "doc": "", "tokens": "", "range": null, "reread": false, "divergent": false, "smokePassthrough": true, "verified": true, "registry": null, "logTopic": ""},
@@ -444,6 +444,7 @@
   {"name": "MC2_RENDER_CONTRACT_ASSERT", "kind": "Bool", "rule": "Lead0", "default": false, "owner": "code", "retireBy": "", "doc": "", "tokens": "", "range": null, "reread": false, "divergent": false, "smokePassthrough": true, "verified": false, "registry": null, "logTopic": ""},
   {"name": "MC2_RENDER_FRAME_DRIVER", "kind": "Bool", "rule": "Presence", "default": false, "owner": "gameos", "retireBy": "", "doc": "GAME-EDITOR-RENDER-FRAME-DRIVER-1 (Slice 6): gated A/B adoption of the shared RenderFrameDriver seam.", "tokens": "", "range": null, "reread": false, "divergent": false, "smokePassthrough": false, "verified": true, "registry": null, "logTopic": ""},
   {"name": "MC2_RENDER_FRAME_PLAN_TRACE", "kind": "Bool", "rule": "Presence", "default": false, "owner": "gameos", "retireBy": "", "doc": "", "tokens": "", "range": null, "reread": false, "divergent": false, "smokePassthrough": true, "verified": true, "registry": null, "logTopic": ""},
+  {"name": "MC2_RENDER_JITTER", "kind": "Bool", "rule": "Std", "default": false, "owner": "post", "retireBy": "", "doc": "Developer selector: eight-sample Halton (2,3) subpixel scene projection; picking remains unjittered.", "tokens": "", "range": null, "reread": false, "divergent": false, "smokePassthrough": true, "verified": true, "registry": null, "logTopic": ""},
   {"name": "MC2_RENDER_MOTION_DEBUG", "kind": "Bool", "rule": "Std", "default": false, "owner": "post", "retireBy": "", "doc": "Developer view: UV motion around neutral gray; does not enable or disable motion generation.", "tokens": "", "range": null, "reread": false, "divergent": false, "smokePassthrough": true, "verified": true, "registry": null, "logTopic": ""},
   {"name": "MC2_RENDER_PASS_CONTRACT_ASSERT", "kind": "Bool", "rule": "Lead1", "default": false, "owner": "code", "retireBy": "", "doc": "", "tokens": "", "range": null, "reread": false, "divergent": false, "smokePassthrough": false, "verified": true, "registry": null, "logTopic": ""},
   {"name": "MC2_RENDER_PASS_CONTRACT_TRACE", "kind": "Bool", "rule": "Lead1", "default": false, "owner": "code", "retireBy": "", "doc": "", "tokens": "", "range": null, "reread": false, "divergent": false, "smokePassthrough": false, "verified": true, "registry": null, "logTopic": ""},

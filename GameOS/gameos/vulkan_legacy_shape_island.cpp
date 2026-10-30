@@ -1,4 +1,5 @@
 #include "../../RenderCore/TextureService.h"
+#include "../../RenderCore/FramePackets.h"
 // vulkan_legacy_shape_island.cpp -- VK-PARITY-F1: VK owner of the legacy MLR
 // solid-object vertex loop (ground vehicles etc.). See the header for the why;
 // structure = vulkan_mech_island.cpp's shared-GBuffer co-write path (LOAD-preserve
@@ -543,6 +544,13 @@ extern "C" int mc2_vk_legacy_shape_island_run(int w, int h, const Mc2LegacyMlrFr
         LegacyFrameUBO u{};
         const float* proj = gos_GetProj2ScreenMat4();
         if (proj) std::memcpy(u.proj, proj, sizeof(u.proj));
+        if (!s->preview) {
+            const auto view = RenderCore::framePackets().copyMainView();
+            for (int c = 0; c < 4; ++c) {
+                u.proj[c] += view.uniforms.jitterNdc[0] * u.proj[12 + c];
+                u.proj[4 + c] += view.uniforms.jitterNdc[1] * u.proj[12 + c];
+            }
+        }
         if (s->preview) { std::memset(u.proj,0,sizeof(u.proj)); u.proj[0]=2.0f/800; u.proj[3]=-1;
             u.proj[5]=-2.0f/600; u.proj[7]=1; u.proj[10]=1; u.proj[15]=1; }
         for (int k = 0; k < 4; ++k) u.fogColor[k] = frame->fogColor[k];

@@ -246,6 +246,17 @@ void GameCamera::renderViewUniforms() {
 		stuffToRowMajor(eye->worldToClipGL(), vu.worldToClipGL);
 		extern std::atomic<uint32_t> g_mc2FrameCounter;
 		const uint32_t viewFrame = g_mc2FrameCounter.load(std::memory_order_relaxed);
+		if (mc2::gate::get<"MC2_RENDER_JITTER">()) {
+			const float scale = mc2::gate::get<"MC2_RENDER_SCALE">();
+			const int w = (std::max)(1, int(std::lround(Environment.drawableWidth * scale)));
+			const int h = (std::max)(1, int(std::lround(Environment.drawableHeight * scale)));
+			const uint32_t sample = viewFrame % 8 + 1;
+			vu.jitterNdc[0] = 2.0f * (RenderCore::halton(sample, 2) - 0.5f) / w;
+			vu.jitterNdc[1] = 2.0f * (RenderCore::halton(sample, 3) - 0.5f) / h;
+			RenderCore::applyViewJitter(vu.worldToClipGL, vu.jitterNdc);
+			// All scene feeds and depth reconstruction borrow this render-only copy.
+			gos_SetTerrainMVP(vu.worldToClipGL);
+		}
 		static RenderCore::ViewUniforms previousView{};
 		static uint32_t previousViewFrame = UINT32_MAX;
 		static float previousProjection[16]{};
