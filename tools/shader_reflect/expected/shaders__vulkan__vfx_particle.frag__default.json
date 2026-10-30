@@ -15,6 +15,11 @@
       "location": 2,
       "name": "o_motion",
       "type": "vec2"
+    },
+    {
+      "location": 3,
+      "name": "o_reactive",
+      "type": "float"
     }
   ],
   "shader": "shaders/vulkan/vfx_particle.frag",

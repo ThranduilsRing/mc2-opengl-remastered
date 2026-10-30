@@ -59,6 +59,8 @@ void gosPostProcess::createSceneTargets(int w, int h) {
     require(sharedSceneNormal_ != nullptr,"normal");
     sharedSceneMotion_ = mc2SharedSceneColorCreate(MC2_SHARED_SCENE_MOTION,width_,height_,&reason);
     require(sharedSceneMotion_ != nullptr,"motion");
+    sharedSceneReactive_ = mc2SharedSceneColorCreate(MC2_SHARED_SCENE_REACTIVE,width_,height_,&reason);
+    require(sharedSceneReactive_ != nullptr,"reactive");
     if (RenderWorld::IsObjectIdBufferEnabled()) {
         sharedSceneObjectId_ = mc2SharedSceneColorCreate(MC2_SHARED_SCENE_OBJECT_ID,width_,height_,&reason);
         require(sharedSceneObjectId_ != nullptr,"objectId");
@@ -99,6 +101,7 @@ void gosPostProcess::destroySceneTargets() {
     mc2_vk_impact_decals_destroy();
     mc2SharedSceneColorDestroy(sharedSceneObjectId_); sharedSceneObjectId_=nullptr;
     mc2SharedSceneColorDestroy(sharedSceneMotion_); sharedSceneMotion_=nullptr;
+    mc2SharedSceneColorDestroy(sharedSceneReactive_); sharedSceneReactive_=nullptr;
     mc2SharedSceneColorDestroy(sharedSceneNormal_); sharedSceneNormal_=nullptr;
     mc2SharedSceneColorDestroy(sharedSceneColor_); sharedSceneColor_=nullptr;
     mc2SharedSceneDepthDestroy(sharedSceneDepth_); sharedSceneDepth_=nullptr;

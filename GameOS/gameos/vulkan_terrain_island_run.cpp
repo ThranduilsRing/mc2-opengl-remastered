@@ -327,7 +327,9 @@ static bool record_terrain(TerrainIsland* s, mc2vk::VulkanContext& rctx, VkComma
     if (vkBeginCommandBuffer(cb, &bi) != VK_SUCCESS) return false;
     // Dynamic draws write reprojection corrections over this zero field. The
     // fullscreen camera pass later adds camera motion to every covered surface.
-    if (auto* motion = mc2SharedSceneColorGetResource(MC2_SHARED_SCENE_MOTION)) {
+    for (const auto slot : {MC2_SHARED_SCENE_MOTION, MC2_SHARED_SCENE_REACTIVE}) {
+        auto* motion = mc2SharedSceneColorGetResource(slot);
+        if (!motion) continue;
         VkImageMemoryBarrier mb{VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER};
         mb.srcQueueFamilyIndex = mb.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
         mb.image = motion->image.get(); mb.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};

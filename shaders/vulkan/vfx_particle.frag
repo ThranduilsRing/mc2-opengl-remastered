@@ -19,10 +19,13 @@ layout(location = 2) flat in uint v_flags;   // bit 0 = head sprite, bit 1 = pur
 layout(location = 0) out vec4 o_color;   // shared scene color0
 layout(location = 1) out vec4 o_normal;  // shared scene normal (writemask 0 -> inert)
 layout(location = 2) out vec2 o_motion;
+layout(location = 3) out float o_reactive;
 layout(location = 5) in vec4 v_previousClip;
 layout(location = 6) in vec4 v_currentAtPrevious;
 
 void main() {
+    // Conservative coverage for every surviving transparent/additive fragment.
+    o_reactive = 1.0;
     o_motion = v_previousClip.w > 0.0 && v_currentAtPrevious.w > 0.0
         ? 0.5 * (v_previousClip.xy / v_previousClip.w - v_currentAtPrevious.xy / v_currentAtPrevious.w) : vec2(0.0);
     // Swept tubes advance U per profile beyond 1.0. Clamp only when authored:
