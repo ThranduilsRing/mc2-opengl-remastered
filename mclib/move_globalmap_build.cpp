@@ -543,8 +543,8 @@ long GlobalMap::init (PacketFilePtr packetFile, long whichPacket) {
 				offMapAreas[numOffMapAreas++] = i;
 			closeArea(i);
 		}
-		else
-			openArea(i);
+	// Non-off-map door links already carry their saved costs. Reopening every
+	// area here replaces active costs (including blocked links) with openCost.
 	pathExistsTable = mc2::globalmap::ownZeroed(pathExistsStore, static_cast<size_t>(numAreas) * (static_cast<size_t>(numAreas) / 4 + 1));
 	clearPathExistsTable();
 
