@@ -1,5 +1,5 @@
 cmake_minimum_required (VERSION 3.10)
-project(mc2)
+project(mc2 VERSION 0.5.2)
 
 # Opt-in shared compile cache (scripts/configure_ninja.py --compile-cache). sccache cannot cache a compile that writes the shared
 # compiler PDB (/Zi + /Fd), so the cached tree swaps /Zi for /Z7 (debug info lives in each .obj; the linker still writes mc2.pdb).
