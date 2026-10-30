@@ -18,7 +18,7 @@ layout(location = 8) flat in uint v_atlasLayer;
 layout(location = 9) in vec3 v_shadowWorld;
 layout(location = 0) out vec4 o_color;
 layout(location = 1) out vec4 o_normal;
-layout(location = 2) out vec2 o_motion;
+layout(location = 2) out vec4 o_motion;
 layout(location = 10) in vec4 v_previousClip;
 layout(location = 11) in vec4 v_currentAtPrevious;
 
@@ -47,8 +47,9 @@ vec3 rootMacro() {
     return macro;
 }
 void main() {
-    o_motion = v_previousClip.w > 0.0 && v_currentAtPrevious.w > 0.0
+    vec2 motion = v_previousClip.w > 0.0 && v_currentAtPrevious.w > 0.0
         ? 0.5 * (v_previousClip.xy / v_previousClip.w - v_currentAtPrevious.xy / v_currentAtPrevious.w) : vec2(0.0);
+    o_motion = vec4(motion, 1.0, 0.0);
     vec4 texel = texture(uAtlas, vec3(v_uv, float(v_atlasLayer)));
     if (texel.a < 0.5) discard;
     vec3 macro = rootMacro();

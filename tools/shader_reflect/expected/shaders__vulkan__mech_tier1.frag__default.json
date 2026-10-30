@@ -14,7 +14,7 @@
     {
       "location": 2,
       "name": "oMotionCorrection",
-      "type": "vec2"
+      "type": "vec4"
     }
   ],
   "shader": "shaders/vulkan/mech_tier1.frag",

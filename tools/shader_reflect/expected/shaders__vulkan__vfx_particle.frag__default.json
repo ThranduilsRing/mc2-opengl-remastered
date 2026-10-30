@@ -14,7 +14,7 @@
     {
       "location": 2,
       "name": "o_motion",
-      "type": "vec2"
+      "type": "vec4"
     },
     {
       "location": 3,

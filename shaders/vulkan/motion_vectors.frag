@@ -9,5 +9,8 @@ void main() {
     vec4 oldClip = u.previousFromCurrentClip * vec4(TexCoord * 2.0 - 1.0, depth, 1.0);
     Motion = oldClip.w > 0.0 ? 0.5 * oldClip.xy / oldClip.w + 0.5 - TexCoord : vec2(0.0);
     if (depth == 0.0 || u.previousFromCurrentClip == mat4(1.0)) Motion = vec2(0.0);
-    Motion += texture(corrections, TexCoord).rg;
+    // Transparent surfaces have their own depth; never reproject the terrain
+    // underneath them. B marks a dynamic writer, including a zero-motion one.
+    vec4 dynamicMotion = texture(corrections, TexCoord);
+    if (dynamicMotion.b != 0.0) Motion = dynamicMotion.rg;
 }

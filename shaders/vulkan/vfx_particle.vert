@@ -75,7 +75,7 @@ void main() {
         vec3 world = mc2ToRender(p.position);
         vec3 previousWorld = p.previousValid != 0.0 ? mc2ToRender(p.previousPosition) : world;
         v_previousClip = U.previousWorldToClipGL * vec4(previousWorld, 1.0);
-        v_currentAtPrevious = U.previousWorldToClipGL * vec4(world, 1.0);
+        v_currentAtPrevious = U.worldToClipGL * vec4(world, 1.0);
         gl_Position = U.worldToClipGL * vec4(world, 1.0);
         // Surface flares need depth clearance, but moving their world corners
         // toward the camera enlarges explosions. Preserve authored screen size.
@@ -128,7 +128,7 @@ void main() {
     gl_Position = U.worldToClipGL * vec4(worldPos, 1.0);
     vec3 previousWorld = worldPos + (p.previousValid != 0.0 ? mc2ToRender(p.previousPosition - p.position) : vec3(0.0));
     v_previousClip = U.previousWorldToClipGL * vec4(previousWorld, 1.0);
-    v_currentAtPrevious = U.previousWorldToClipGL * vec4(worldPos, 1.0);
+    v_currentAtPrevious = U.worldToClipGL * vec4(worldPos, 1.0);
 
     vec2 frameOffset = vec2(0.0);
     if (G.atlasColumns > 1u) {

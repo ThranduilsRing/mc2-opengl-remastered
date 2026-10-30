@@ -67,13 +67,14 @@ layout(location = 11) in vec3 vPreviousWorldPos;
 
 layout(location = 0) out vec4 oColor;     // MRT0
 layout(location = 1) out vec4 oGBuffer1;  // MRT1
-layout(location = 2) out vec2 oMotionCorrection;
+layout(location = 2) out vec4 oMotionCorrection;
 
 void main() {
     vec4 previousClip = uFrame.previousWorldToClipGL * vec4(vPreviousWorldPos, 1.0);
-    vec4 currentAtPrevious = uFrame.previousWorldToClipGL * vec4(vWorldPos, 1.0);
-    oMotionCorrection = previousClip.w > 0.0 && currentAtPrevious.w > 0.0
+    vec4 currentAtPrevious = uFrame.worldToClipGL * vec4(vWorldPos, 1.0);
+    vec2 motion = previousClip.w > 0.0 && currentAtPrevious.w > 0.0
         ? 0.5 * (previousClip.xy / previousClip.w - currentAtPrevious.xy / currentAtPrevious.w) : vec2(0.0);
+    oMotionCorrection = vec4(motion, 1.0, 0.0);
     vec3 Nshade = normalize(vNormalGL);
     vec3 rgb;
     if (uFrame.materialReady != 0) {

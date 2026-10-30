@@ -321,7 +321,7 @@ mc2vk::OwnedPipeline make_pipeline(VfxIsland* s, int w, int h, bool additive, bo
                             VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
     cba[1].blendEnable = VK_FALSE;   // shared normal target left untouched
     cba[1].colorWriteMask = vegetation ? cba[0].colorWriteMask : 0;
-    cba[2].colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT;
+    cba[2].colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT;
     cba[3].colorWriteMask = vegetation ? 0 : VK_COLOR_COMPONENT_R_BIT;
     cba[3].blendEnable = VK_TRUE;
     cba[3].srcColorBlendFactor = cba[3].dstColorBlendFactor = VK_BLEND_FACTOR_ONE;

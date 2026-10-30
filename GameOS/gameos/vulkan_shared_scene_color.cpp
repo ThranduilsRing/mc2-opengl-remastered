@@ -76,7 +76,7 @@ const char* slotName(Mc2SharedSceneColorSlot slot) {
 
 VkFormat vkFormatForSlot(Mc2SharedSceneColorSlot slot) {
     if (slot == MC2_SHARED_SCENE_REACTIVE) return VK_FORMAT_R8_UNORM;
-    if (slot == MC2_SHARED_SCENE_MOTION) return VK_FORMAT_R16G16_SFLOAT;
+    if (slot == MC2_SHARED_SCENE_MOTION) return VK_FORMAT_R16G16B16A16_SFLOAT;
     // Scene consumers read RGB only; keep HDR range while halving color traffic.
     if (slot == MC2_SHARED_SCENE_COLOR0 && mc2::options::lowCost()) {
         VkFormatProperties props{};
@@ -102,7 +102,7 @@ const char* debugNameForSlot(Mc2SharedSceneColorSlot slot) {
 
 const char* formatNameForSlot(Mc2SharedSceneColorSlot slot) {
     if (slot == MC2_SHARED_SCENE_REACTIVE) return "R8";
-    if (slot == MC2_SHARED_SCENE_MOTION) return "RG16F";
+    if (slot == MC2_SHARED_SCENE_MOTION) return "RGBA16F";
     if (vkFormatForSlot(slot) == VK_FORMAT_B10G11R11_UFLOAT_PACK32) return "R11G11B10F";
     if (slot == MC2_SHARED_SCENE_NORMAL && mc2::options::lowCost()) return "RGBA8";
     return slot == MC2_SHARED_SCENE_OBJECT_ID ? "R32UI" : "RGBA16F";
