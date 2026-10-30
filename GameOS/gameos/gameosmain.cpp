@@ -1027,6 +1027,7 @@ int main(int argc, char** argv)
     if (mc2vk::engineVulkanContextValid()) mc2vk::getOrCreateEngineVulkanContext().beginFrame();   // frame 1 of the completion tracker
     if (!headless) mc2vk::present_thread::start();
 #endif
+    bool presentJoinPending = false;
     while( !g_exit ) {
         ZoneScopedN("Frame");
         mc2::battlebench::beginFrame();
@@ -1040,8 +1041,11 @@ int main(int argc, char** argv)
         const auto missionFrameStart = traceMissionFrame ? SDL_GetPerformanceCounter() : 0;
 
     mc2vk::present_thread::waitSealed();
-    if (mc2vk::present_thread::enabled()) gos::host::retirePresentHandles(g_mc2RenderFrame);
-    mc2::overlap::joinTail();
+    if (presentJoinPending) {
+        gos::host::retirePresentHandles(g_mc2RenderFrame);
+        mc2::overlap::joinTail();
+        presentJoinPending = false;
+    }
     frameThrottleLogicEvents();
         // Logic may have loaded another mission since the frame began.
         const bool completeMissionFrame = traceMissionFrame && g_missionTraceFrames < 5 && !g_missionReadyTrace;
@@ -1104,13 +1108,12 @@ int main(int argc, char** argv)
         // after the timer FrameEnd; advisory, OFF=zero cost.
         gos_frame_pass_stats::FrameEnd(static_cast<unsigned long>(g_mc2FrameCounter.load(std::memory_order_relaxed)));
 
-    if (mc2vk::present_thread::enabled()) frameFrameCap(s_vsync_active, s_fps_cap_mission, s_fps_cap_menu, start_tick);
+    const bool asyncPresent = mc2vk::present_thread::enabled();
+    if (asyncPresent) frameFrameCap(s_vsync_active, s_fps_cap_mission, s_fps_cap_menu, start_tick);
     frameSwapWindow(win);   // the shared host present also ends the Vulkan frame and advances the handle-slot clock
-#ifdef MC2_VULKAN_ISLAND
-    // The present owner collects GPU scopes before sealing the frame.
-#endif
+    presentJoinPending = asyncPresent;
     if (benchFrameStart != mc2::battlebench::Clock::time_point{}) mc2::battlebench::endFrame(mc2::battlebench::milliseconds(benchFrameStart));
-    if (!mc2vk::present_thread::enabled()) {
+    if (!asyncPresent) {
         frameFrameCap(s_vsync_active, s_fps_cap_mission, s_fps_cap_menu, start_tick);
         mc2::overlap::joinTail();
     }
@@ -1181,7 +1184,7 @@ int main(int argc, char** argv)
 #endif
 
     mc2vk::present_thread::stop();
-    mc2::overlap::joinTail();
+    if (presentJoinPending) mc2::overlap::joinTail();
     // Write validation results if game exited before frame limit
     if (getValidateConfig().enabled) {
         validateWriteResults();
