@@ -18,6 +18,9 @@ import sys
 import time
 import shutil
 import tempfile
+import hashlib
+import threading
+import re
 from concurrent.futures import ThreadPoolExecutor
 
 import console_child
@@ -35,6 +38,110 @@ EXCLUSIVE_PREFIXES = ("capture-before", "capture-after")
 EXCLUSIVE_TTL_S = 1200
 EXCLUSIVE_SECONDS = []
 FAILED_STAGES = []
+ACTIVE_STATE = None
+
+
+def stage_passed(status):
+    return status == "PASS" or status.startswith("REUSED:")
+
+
+class GateState:
+    """Crash-safe stage journal with an OS lock (released even after a crash)."""
+    def __init__(self, path, head, exe, proof, steps, resume=False):
+        self.path, self.head, self.exe = Path(path), head, Path(exe)
+        self.mutex = threading.Lock()
+        self.lock = None
+        self.data = dict(pid=os.getpid(), head=head, artefact_dir=str(proof),
+                         order=[n for n, _, _ in steps], stages={})
+        self.resume = resume
+        self.reused = []
+        self.specs = {n: (c, e) for n, c, e in steps}
+
+    def __enter__(self):
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        self.lock = self.path.with_suffix(".lock").open("a+b")
+        self.lock.seek(0)
+        if os.fstat(self.lock.fileno()).st_size == 0:
+            self.lock.write(b"0")
+            self.lock.flush()
+        self.lock.seek(0)
+        try:
+            if os.name == "nt":
+                import msvcrt
+                msvcrt.locking(self.lock.fileno(), msvcrt.LK_NBLCK, 1)
+            else:
+                import fcntl
+                fcntl.flock(self.lock.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except OSError as exc:
+            self.lock.close()
+            raise RuntimeError(f"gate-state held by a live PID: {self.path}") from exc
+        try:
+            if self.resume and self.path.exists():
+                previous = json.loads(self.path.read_text(encoding="utf-8"))
+                self.data["stages"] = previous.get("stages", {})
+            self.data["exe_sha"] = self.exe_sha()
+            self.write()
+        except BaseException:
+            self.__exit__(None, None, None)
+            raise
+        return self
+
+    def __exit__(self, *exc):
+        self.lock.seek(0)
+        if os.name == "nt":
+            import msvcrt
+            msvcrt.locking(self.lock.fileno(), msvcrt.LK_UNLCK, 1)
+        else:
+            import fcntl
+            fcntl.flock(self.lock.fileno(), fcntl.LOCK_UN)
+        self.lock.close()
+
+    def write(self):
+        pending = self.path.with_suffix(".tmp")
+        pending.write_text(json.dumps(self.data, indent=2) + "\n", encoding="utf-8")
+        pending.replace(self.path)
+
+    def exe_sha(self):
+        if not self.exe.is_file():
+            return None  # missing exe evidence can never be resumed
+        with self.exe.open("rb") as source:
+            return hashlib.file_digest(source, "sha256").hexdigest()
+
+    def signature(self, command, overrides):
+        return hashlib.sha256(json.dumps([command, overrides], sort_keys=True).encode()).hexdigest()
+
+    def reusable(self, name, command, overrides):
+        row = self.data["stages"].get(name, {})
+        sha = self.exe_sha()
+        return (self.resume and sha is not None and row.get("head") == self.head
+                and row.get("exe_sha") == sha and stage_passed(row.get("status", ""))
+                and row.get("signature") == self.signature(*self.specs.get(name, (command, overrides))))
+
+    def record(self, name, command, overrides, status, seconds):
+        with self.mutex:
+            artefact = overrides.get("MC2_SMOKE_ARTIFACT_ROOT", self.data["artefact_dir"])
+            for option in ("--out", "--out-root"):
+                if option in command:
+                    artefact = command[command.index(option) + 1]
+            self.data["stages"][name] = dict(
+                head=self.head, exe_sha=self.exe_sha(), status=status, seconds=seconds,
+                artefact_dir=artefact,
+                signature=self.signature(*self.specs.get(name, (command, overrides))))
+            self.write()
+
+
+@contextmanager
+def gate_journal(path, head, exe, proof, steps, resume, dry_run):
+    global ACTIVE_STATE
+    if dry_run:
+        yield None
+        return
+    with GateState(path, head, exe, proof, steps, resume) as state:
+        ACTIVE_STATE = state
+        try:
+            yield state
+        finally:
+            ACTIVE_STATE = None
 
 
 def plan(jobs, proof_dir=None, capture_before_runs=1, before_dir=None):
@@ -132,6 +239,13 @@ def change_domains(paths):
 
 def affected_plan(steps, paths, full=False):
     domains = change_domains(paths)
+    # Serialization changes need both material modes. Classic-specific asset
+    # routing also needs its own arm; ordinary sim/render changes do not.
+    classic_saves = full or any(any(token in p.replace("\\", "/").lower() for token in (
+        "save", "load", "serializ", "classic", "remastered", "render_options", "bdactor",
+        "building", "appearance", "content_ir", "model_override", "loose_asset", "kit",
+        "material", "texture", "gltf", "content_pipeline", "mc2texcook")) for p in paths
+        if change_domains([p]) & {"engine", "art", "shaders"})
     art = full or bool(domains & {"art"}) or any(
         any(token in p.replace("\\", "/").lower() for token in
             ("kit", "building", "bdactor", "model_override", "loose_asset", "mc2texcook", "content_pipeline", "content_ir",
@@ -153,7 +267,7 @@ def affected_plan(steps, paths, full=False):
         cmd = list(cmd)
         reason = None
         if not full:
-            if (name.startswith("determinism-") and not sim) or (name.startswith("saveload-") and not (sim or "art" in domains)):
+            if (name.startswith("determinism-") and not sim) or (name.startswith("saveload-") and not (sim or "art" in domains or classic_saves)):
                 reason = "diff has no engine/simulation inputs (" + ", ".join(sorted(domains)) + ")"
             elif name not in ("contracts", "pytest", "harnesses") and not game:
                 reason = "docs/tooling-only diff has no runtime inputs"
@@ -185,12 +299,12 @@ def affected_plan(steps, paths, full=False):
         if reason:
             env["MC2_GATE_SKIP_REASON"] = reason
         selected.append((name, cmd, env))
-        if name.startswith("saveload-") and (sim or "art" in domains or full):
+        if name.startswith("saveload-") and (sim or "art" in domains or classic_saves or full):
             env["MC2_OPTIONS_OVERRIDE"] = "RemasteredBuildings=TRUE"
             classic = list(cmd)
             if "--out" in classic:
                 classic[classic.index("--out") + 1] += "-classic"
-            if art:
+            if classic_saves:
                 if not full and "--duration" not in classic:
                     classic += ["--duration", "20"]
                 selected.append((name + "-classic", classic,
@@ -239,7 +353,7 @@ def install_plan(steps, install):
             idx = command.index("--deploy")
             command[idx:idx + 2] = ["--exe", str(install / "mc2.exe")]
         if name == "mods":
-            command += ["--base-install", str(install), "--stage-root", str(install.parent / (install.name + "-mods-stage")), "--duration", "5"]
+            command += ["--base-install", str(install), "--stage-root", str(install.parent / (install.name + "-mods-stage")), "--duration", "15"]
         result.append((name, command, env))
     return result
 
@@ -281,7 +395,41 @@ def stock_copy(install, parent=None):
         print(f"[merge_gate] removed {target}: {size / 2**30:.2f} GiB logical (physical space not measured)", flush=True)
 
 
-def execute_parallel(steps, head, dry_run=False, keep_going=False):
+def farm_stage(command, overrides, runner=None):
+    """Submit one unchanged determinism check, wait, and fetch its evidence."""
+    runner = run_child if runner is None else runner
+    out = Path(command[command.index("--out") + 1])
+    out.parent.mkdir(parents=True, exist_ok=True)
+    remote = list(command)
+    remote[0] = "python"
+    remote[1] = "C:/mc2farm/harness/tools/sim_determinism.py"
+    remote[remote.index("--install") + 1] = "{ROOT}"
+    remote[remote.index("--out") + 1] = "{RESULT}/determinism"
+    remote += ["--ref-exe", "{EXE}"]
+    env = {k: v for k, v in overrides.items() if not k.startswith("MC2_GATE_")}
+    env.update(MC2_SMOKE_ARTIFACT_ROOT="{RESULT}/smokes",
+               MC2_HOST_LEASE_PATH="C:/mc2farm/host_game_lease.json",
+               MC2_DEPLOY_LEASE_PATH="C:/mc2farm/deploy_leases.json",
+               MC2_CHILD_REGISTRY_DIR="C:/mc2farm/children", MC2_HOST_GAME_SLOTS="1",
+               MC2_HARNESS_GPU="any")
+    job = out.parent / (out.name + "-farm-job.json")
+    job.write_text(json.dumps(dict(argv=remote, cwd="C:/mc2farm/harness", timeout=900, env=env)), encoding="utf-8")
+    host = [sys.executable, "tools/farm/host.py"]
+    submitted = runner(host + ["submit", str(job), "--exe", str(ROOT / "build64-ninja/mc2.exe")], cwd=ROOT, env=os.environ.copy())
+    if submitted.returncode:
+        return submitted
+    ids = [line.strip() for line in submitted.stdout.splitlines() if re.fullmatch(r"[0-9a-f]{32}", line.strip())]
+    if len(ids) != 1:
+        raise RuntimeError("farm submit returned no unique job ID")
+    job_id = ids[0]
+    waited = runner(host + ["wait", job_id, "--timeout", "960"], cwd=ROOT, env=os.environ.copy())
+    if "job remains owned" in waited.stdout:
+        return waited  # never delete the payload of a still-running farm job
+    fetched = runner(host + ["fetch", job_id, str(out)], cwd=ROOT, env=os.environ.copy())
+    return subprocess.CompletedProcess(command, waited.returncode or fetched.returncode, waited.stdout + fetched.stdout)
+
+
+def execute_parallel(steps, head, dry_run=False, keep_going=False, farm_determinism=False):
     """Overlap isolated mods/determinism with the stock install chain.
 
     Each harness takes its own FIFO host slot. Never share a batch token between
@@ -289,16 +437,22 @@ def execute_parallel(steps, head, dry_run=False, keep_going=False):
     Before/deploy/after remain ordered, and every child is joined before return.
     """
     if dry_run:
-        print("Coverage plan: two host slots; isolated mods then determinism/saveload overlap stock captures; contracts/harnesses overlap")
+        print("Coverage plan: two host slots; isolated mods then determinism/saveload overlap stock captures; contracts/harnesses overlap"
+              + ("; determinism trio on farm parallel with saveloads" if farm_determinism else ""))
         return execute(steps, head, True)
     if os.environ.get("MC2_HOST_LEASE_BATCH"):
+        if farm_determinism:
+            raise ValueError("farm scheduling requires no inherited host batch reservation")
         print("Coverage plan: inherited batch reservation requires serial execution")
         return execute(steps, head)
     pending = []
     completed = {}
     reused = [s for s in steps if s[2].get("MC2_GATE_REUSE_STAGE")]
     steps = [s for s in steps if s not in reused]
-    with ThreadPoolExecutor(max_workers=2) as pool:
+    farm = [s for s in steps if farm_determinism and s[0].startswith("determinism-")
+            and not s[2].get("MC2_GATE_SKIP_REASON")]
+    steps = [s for s in steps if s not in farm]
+    with ThreadPoolExecutor(max_workers=3 if farm else 2) as pool:
         harness = next((s for s in steps if s[0] == "harnesses" and not s[2].get("MC2_GATE_SKIP_REASON")), None)
         contracts = next((s for s in steps if s[0] == "contracts" and not s[2].get("MC2_GATE_SKIP_REASON")), None)
         harness_future = None
@@ -350,6 +504,11 @@ def execute_parallel(steps, head, dry_run=False, keep_going=False):
             if not keep_going:
                 return result  # do not launch runtime proofs after a failed deploy/offline check
             print("[merge_gate] --keep-going: deploy/pre-stage failure recorded; later stages still run", flush=True)
+        if farm:
+            remote_envs = {tuple(c): e for _, c, e in farm}
+            def farm_runner(command, cwd, env):
+                return farm_stage(command, remote_envs[tuple(command)])
+            pending.append(pool.submit(execute, farm, head, runner=farm_runner, completed=completed))
         if mods:
             copy_context, copy_future = None, None
             if determinism:
@@ -473,17 +632,28 @@ def execute(steps, head, dry_run=False, runner=run_child, completed=None):
     completed = {} if completed is None else completed
     failed = False
     for name, command, overrides in steps:
+        if not dry_run and ACTIVE_STATE and ACTIVE_STATE.reusable(name, command, overrides):
+            status = "REUSED: gate-state HEAD/exe/signature match"
+            ACTIVE_STATE.reused.append(name)
+            completed[name] = status
+            results.append((name, status, 0.0))
+            ACTIVE_STATE.record(name, command, overrides, status, 0.0)
+            continue
         reason = overrides.get("MC2_GATE_SKIP_REASON")
         if reason:
             reused = overrides.get("MC2_GATE_REUSE_STAGE")
             status = "SKIP: " + reason
             if reused:
-                passed = all(completed.get(source) == "PASS" for source in reused.split(","))
+                passed = all(stage_passed(completed.get(source, "")) for source in reused.split(","))
                 status = ("REUSED: " if passed or dry_run else "FAIL reuse: source checks failed; ") + reason
                 failed |= not (passed or dry_run)
             print(f"[merge_gate] {name}: {status}", flush=True)
             results.append((name, status, 0.0))
             completed[name] = status
+            if not dry_run and ACTIVE_STATE:
+                if stage_passed(status):
+                    ACTIVE_STATE.reused.append(name)
+                ACTIVE_STATE.record(name, command, overrides, status, 0.0)
             continue
         status, elapsed = "SKIPPED", 0.0
         if dry_run:
@@ -520,12 +690,14 @@ def execute(steps, head, dry_run=False, runner=run_child, completed=None):
             failed |= status != "PASS"
         results.append((name, status, elapsed))
         completed[name] = status
+        if not dry_run and ACTIVE_STATE:
+            ACTIVE_STATE.record(name, command, overrides, status, elapsed)
     print(f"Merge gate HEAD {head} (deploy tree: build64-ninja)")
     print("| Step | Result | Seconds |\n|---|---|---:|")
     for name, status, elapsed in results:
         print(f"| {name} | {status} | {elapsed:.1f} |")
     for name, status, _ in results:
-        if status != "PASS" and not status.startswith(("DRY-RUN", "SKIP", "REUSED:")):
+        if not stage_passed(status) and not status.startswith(("DRY-RUN", "SKIP")):
             FAILED_STAGES.append((name, status))
     for name, _, overrides in steps:
         if overrides.get("MC2_GATE_COVERAGE"):
@@ -576,6 +748,8 @@ def main(argv=None):
         ap.error("MC2_IN_GATE is set: nested merge gates are forbidden")
     ap.add_argument("--base", help="pre-window commit; absent/stale window record means full coverage")
     ap.add_argument("--full", action="store_true", help="all domains; orchestrator runs at least daily")
+    ap.add_argument("--resume", action="store_true", help="reuse successful stages with matching HEAD and executable SHA")
+    ap.add_argument("--farm-determinism", action="store_true", help="schedule the determinism trio on the farm alongside local save/load checks")
     ap.add_argument("--install", type=Path, help="explicit lane-owned E:/mc2-installs target for a real rehearsal")
     ap.add_argument("--dry-run", action="store_true", help="print commands only; no builds, deploys, or game launches")
     ap.add_argument("--capture-before-runs", type=int, default=1,
@@ -597,7 +771,11 @@ def main(argv=None):
     args = ap.parse_args(argv)
     if args.j < 1:
         ap.error("-j must be positive")
-    proof = args.proofs_dir or Path("E:/mc2-archive-2026-10/proofs/merge-gate") / time.strftime("%Y%m%d-%H%M%S")
+    state_path = ROOT / "build64-ninja/gate-state.json"
+    resumed_proof = None
+    if args.resume and state_path.exists():
+        resumed_proof = Path(json.loads(state_path.read_text(encoding="utf-8"))["artefact_dir"])
+    proof = args.proofs_dir or resumed_proof or Path("E:/mc2-archive-2026-10/proofs/merge-gate") / time.strftime("%Y%m%d-%H%M%S")
     try:
         if args.before_dir:
             validate_before(args.before_dir, args.expect_pre_exe_sha)
@@ -665,22 +843,34 @@ def main(argv=None):
         steps.append((n, c, dict(e, MC2_GATE_SKIP_REASON="operator stage filter; partial gate")))
     log_path = args.log or proof / "gate.log"
     log_path.parent.mkdir(parents=True, exist_ok=True)
-    with log_path.open("w", encoding="utf-8") as log:
-        with redirect_stdout(Tee(sys.stdout, log)), redirect_stderr(Tee(sys.stderr, log)):
-            print(f"[merge_gate] log: {log_path}", flush=True)
-            started = window.get("started", time.time())
-            result = execute_parallel(steps, head, args.dry_run, keep_going=args.keep_going)
-            elapsed = time.time() - started
-            measured_window = bool(window)
-            verdict = ("FAIL" if result else
-                       "PASS" if elapsed <= 1200 and measured_window and not omitted else "NEEDS_REVIEW")
-            print(f"[merge_gate] exclusive host hold total={sum(EXCLUSIVE_SECONDS) / 60:.1f} min over {len(EXCLUSIVE_SECONDS)} stages (limit 20 min)")
-            print(f"[merge_gate] total={elapsed:.1f}s budget=1200s scope={'lane_merge through gate' if measured_window else 'gate only; no verified lane_merge clock'} verdict={verdict}")
-            if FAILED_STAGES:
-                print("[merge_gate] failed stages: " + ", ".join(f"{name} ({status})" for name, status in FAILED_STAGES))
-            if args.full and result == 0 and not args.dry_run:
-                (ROOT / "build64-ninja/last-full-gate.json").write_text(json.dumps(dict(head=head, finished=time.time())))
-            return result if args.dry_run else (0 if verdict == "PASS" else 1)
+    # Acquire before opening the log: a refused duplicate must not truncate it.
+    try:
+        journal = gate_journal(state_path, head, ROOT / "build64-ninja/mc2.exe", proof, steps, args.resume, args.dry_run)
+        journal.__enter__()
+    except (OSError, RuntimeError, ValueError) as exc:
+        print(f"[merge_gate] REFUSED: {exc}")
+        return 1
+    try:
+        with log_path.open("a" if args.resume else "w", encoding="utf-8") as log:
+            with redirect_stdout(Tee(sys.stdout, log)), redirect_stderr(Tee(sys.stderr, log)):
+                print(f"[merge_gate] log: {log_path}", flush=True)
+                started = window.get("started", time.time())
+                scheduling = dict(farm_determinism=True) if args.farm_determinism else {}
+                result = execute_parallel(steps, head, args.dry_run, keep_going=args.keep_going, **scheduling)
+                elapsed = time.time() - started
+                measured_window = bool(window)
+                verdict = ("FAIL" if result else
+                           "PASS" if elapsed <= 1200 and measured_window and not omitted else "NEEDS_REVIEW")
+                print(f"[merge_gate] exclusive host hold total={sum(EXCLUSIVE_SECONDS) / 60:.1f} min over {len(EXCLUSIVE_SECONDS)} stages (limit 20 min)")
+                reused = ",".join(ACTIVE_STATE.reused) if ACTIVE_STATE else ""
+                print(f"[merge_gate] total={elapsed:.1f}s budget=1200s scope={'lane_merge through gate' if measured_window else 'gate only; no verified lane_merge clock'} verdict={verdict} REUSED={reused or 'none'}")
+                if FAILED_STAGES:
+                    print("[merge_gate] failed stages: " + ", ".join(f"{name} ({status})" for name, status in FAILED_STAGES))
+                if args.full and result == 0 and not args.dry_run:
+                    (ROOT / "build64-ninja/last-full-gate.json").write_text(json.dumps(dict(head=head, finished=time.time())))
+                return result if args.dry_run else (0 if verdict == "PASS" else 1)
+    finally:
+        journal.__exit__(None, None, None)
 
 
 if __name__ == "__main__":

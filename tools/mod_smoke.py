@@ -61,6 +61,43 @@ BATTERY = (
     ('MechCommanderOmnitech', 'MechCommanderOmnitech', None),
     ('MCO-Carver5', 'MCO-Carver5', 'MechCommanderOmnitech'),
 )
+# Counts from E:/mc2-installs/mod_smoke-stage/20261029-141617-498123/artifacts.
+# Budgets are per mission; extending coverage does not grant extra warnings.
+WARNING_BUDGET = Path(__file__).with_name('mod_warning_budget.json')
+CAMPAIGNS = {
+    'MCO-Carver5': 'carver V original.fit',
+    'MC2X-REAP3': 'reap3_campaign.fit',
+    'MC2-Exodus': 'exodus.fit',
+}
+
+
+def warning_counts(text: str) -> dict[str, int]:
+    """Count events, including legacy STOP calls that omit the newline."""
+    counts = {}
+    for line in text.splitlines():
+        for event in re.split(r'(?=STOP)', line):
+            match = re.search(r'STOP|\[?FATAL\b|\[CRASH\]|ObjectTypeManager\.|Texture not correct size', event)
+            if not match:
+                continue
+            message = event[match.start():].strip()
+            message = re.sub(r'^STOP\s*:?\s*', '', message)
+            message = re.sub(r'^(?:\[FATAL(?: -?\d+)?\]|FATAL|\[CRASH\])\s*:?\s*', '', message)
+            # A different logger may follow a non-newline STOP on the same line.
+            message = re.split(r'(?<!^)\[(?!FATAL\b|CRASH\])', message)[0]
+            message = re.sub(r'\s+', ' ', message).strip().rstrip('!')
+            message = re.sub(r'logistics: parsed \d+ mech files in \d+ ms$', '', message)
+            message = re.sub(r'(!? Ammo Index is \d+)$', '', message)
+            message = re.sub(r"(ObjectTypeManager\.load: can't create object) PAUSE "
+                             r'ObjectTypeManager\.load: objType NULL post-switch for objTypeNum \d+ '
+                             r'(?:—|â€\u201d|-) substituting stub BattleMechType$', r'\1', message)
+            counts[message] = counts.get(message, 0) + 1
+    return counts
+
+
+def warning_excess(counts: dict[str, int], mod: str) -> dict[str, int]:
+    budget = json.loads(WARNING_BUDGET.read_text(encoding='utf-8')).get(mod, {})
+    return {line: count - budget.get(line, 0) for line, count in counts.items()
+            if count > budget.get(line, 0)}
 
 # Engine-owned loose data that deploy_payload does not enumerate (relative to the
 # base install). Files only count when absent from the stock fast files, so the
@@ -345,18 +382,51 @@ def link_engine(cache: Path, target: Path) -> dict:
     return place_tree(cache, target, link_ok=link_ok, private_loose=True, cached_links=True)
 
 
-def _campaign_stems(layer: Path) -> list[str]:
+def _campaign_stems(layer: Path, campaign: str | None = None) -> list[str]:
     folder = layer / 'data' / 'campaign'
-    if not folder.is_dir():
-        return []
-    files = sorted(folder.glob('*.fit'), key=lambda p: (p.name.lower() != 'campaign.fit', p.name.lower()))
-    for fit in files:
-        text = fit.read_text(encoding='latin-1', errors='replace')
+    texts = {}
+    fst = layer / 'mission.fst'
+    if fst.is_file():
+        sys.path.insert(0, str(ROOT / 'tools' / 'mod_install'))
+        sys.path.insert(0, str(ROOT / 'tools'))
+        import fst_listing
+        from mc2x_import import fst as fst_lib
+        entries = fst_listing.parse_fst(str(fst))
+        with fst.open('rb') as stream:
+            is_lz = stream.read(4) == b'\xaf\xec\xdd\xfa'
+            for entry in entries:
+                key = fst_listing.normalize_key(entry['name'])
+                if key.startswith('data/campaign/') and key.endswith('.fit'):
+                    stream.seek(entry['offset'])
+                    data = stream.read(entry['size'])
+                    texts[Path(key).name] = fst_lib.decompress_entry(
+                        0, entry['size'], entry['realSize'], is_lz, data).decode('latin-1')
+    for fit in folder.glob('*.fit'):
+        texts[fit.name.lower()] = fit.read_text(encoding='latin-1', errors='replace')
+    names = [campaign.lower()] if campaign else sorted(texts, key=lambda n: (n != 'campaign.fit', n))
+    for name in names:
+        text = texts.get(name, '')
         stems = [m.group(1).lower() for m in re.finditer(
             r'^\s*st\s+FileName\s*=\s*"([^"]+)"', text, re.M | re.I)]
         if stems:
             return stems
     return []
+
+
+def pick_missions(layers: list[Path], folder: str, override: str | None = None) -> list[tuple[str, str]]:
+    """Required campaigns cover their first and middle distinct playable entries."""
+    if override or folder not in CAMPAIGNS:
+        return [pick_mission(layers, override)]
+    fits, _ = available_missions(layers)
+    campaign = CAMPAIGNS[folder]
+    for layer in reversed(layers):
+        stems = list(dict.fromkeys(s for s in _campaign_stems(layer, campaign) if s in fits))
+        if stems:
+            if len(stems) < 2:
+                raise ValueError(f'{folder}: campaign {campaign} needs two distinct missions')
+            source = f'campaign:{layer.name}/{campaign}'
+            return [(stems[0], source + ':first'), (stems[len(stems) // 2], source + ':middle')]
+    raise ValueError(f'{folder}: no playable missions in required campaign {campaign}')
 
 
 def _fst_mission_stems(fst: Path) -> tuple[set[str], set[str]]:
@@ -619,8 +689,12 @@ def artifact_log_text(started: float, stem: str, root: Path | None = None) -> st
 def collect_log_text(smoke_output: str) -> str:
     """Smoke stdout plus every engine log run_smoke names or leaves nearby."""
     parts = [smoke_output]
+    seen = set()
     for m in re.finditer(r'([A-Za-z]:[\\/][^\s|"\']+\.(?:log|txt|jsonl))', smoke_output):
         p = Path(m.group(1))
+        if p in seen:
+            continue
+        seen.add(p)
         try:
             if p.is_file() and p.stat().st_size < 64 * 1024 * 1024:
                 parts.append(p.read_text(encoding='utf-8', errors='replace'))
@@ -706,10 +780,17 @@ def run_mod(staged: Path, stem: str, duration: int, timeout: int, ref_exe: Path 
     verdict = next(
         (line.strip() for line in output.splitlines()
          if line.startswith('|') and ('PASS' in line or 'FAIL' in line)), '')
-    text = '\n'.join([collect_log_text(output), artifact_log_text(started, stem, artifacts)])
+    engine_log = artifact_log_text(started, stem, artifacts)
+    text = '\n'.join([collect_log_text(output), engine_log])
     health = analyze_health(text)
+    warnings = warning_counts(engine_log or collect_log_text(output))
+    # The harness can emit its own crash outside the engine log. Do not count
+    # a diagnostic twice just because stdout also echoed the saved engine log.
+    for message, count in warning_counts(output).items():
+        warnings[message] = max(warnings.get(message, 0), count)
     return {'exit': rc, 'fingerprint': fingerprint, 'verdict': verdict,
-            'log': str(log), 'health': health, 'note': failure_note(text)}
+            'log': str(log), 'health': health, 'note': failure_note(text),
+            'warnings': warnings}
 
 
 def failure_note(text: str) -> str:
@@ -723,6 +804,8 @@ def failure_note(text: str) -> str:
 def result_word(row: dict) -> str:
     if row['exit'] != 0:
         return 'FAIL(exit %s)' % row['exit']
+    if row.get('warning_excess'):
+        return 'FAIL(warning budget)'
     h = row['health']
     if not (h['mech_ok'] and h['ai_ok']):
         return 'HEALTH-FAIL'
@@ -732,7 +815,7 @@ def result_word(row: dict) -> str:
 def format_table(rows: list[dict]) -> str:
     head = ('mod', 'mission', 'result', 'health', 'note')
     body = [(r['mod'], r['mission'], result_word(r), health_cell(r['health']),
-             r.get('note', '') if result_word(r) != 'PASS' else '') for r in rows]
+             json.dumps(r['warning_excess']) if r.get('warning_excess') else r.get('note', '')) for r in rows]
     widths = [max(len(str(x[i])) for x in [head] + body) for i in range(5)]
     line = lambda cells: '| ' + ' | '.join(str(c).ljust(w) for c, w in zip(cells, widths)) + ' |'
     return '\n'.join([line(head), line(['-' * w for w in widths])] + [line(b) for b in body])
@@ -756,6 +839,31 @@ def discard_legacy_cooked_cache(persistent):
         shutil.rmtree(cooked)
 
 
+def asset_precheck(exe: Path, staged: Path) -> dict:
+    """Offline table load; bounded separately from the mission timeout."""
+    try:
+        child = console_child.child_kwargs(redirected=True)
+        if os.name == 'nt':
+            child['creationflags'] = (child.get('creationflags', 0) & ~subprocess.BELOW_NORMAL_PRIORITY_CLASS) | subprocess.IDLE_PRIORITY_CLASS
+        proc = subprocess.run([str(exe.resolve()), str(staged.resolve())],
+                              capture_output=True, text=True, timeout=55,
+                              **child)
+        try:
+            report = json.loads(proc.stdout)
+        except ValueError:
+            return {'loaded': 0, 'failures': [f'invalid JSON from asset loader; exit {proc.returncode}'],
+                    'log': proc.stderr[-4096:]}
+        if not isinstance(report, dict) or not isinstance(report.get('failures'), list) or not isinstance(report.get('loaded'), int):
+            raise ValueError('invalid asset-load report')
+        if proc.returncode and not report['failures']:
+            report['failures'].append(f'exit {proc.returncode}')
+        if report['loaded'] <= 0 and not report['failures']:
+            report['failures'].append('no object types loaded')
+        return report
+    except (OSError, ValueError, subprocess.TimeoutExpired) as exc:
+        return {'loaded': 0, 'failures': [str(exc)]}
+
+
 def battery(args) -> int:
     source_root = Path(args.install_root).resolve()
     if source_root.name.lower() == GOLDEN_INSTALL:
@@ -776,8 +884,9 @@ def battery(args) -> int:
         for layer in layers:
             if not layer.is_dir():
                 raise FileNotFoundError(f'mod install not found: {layer}')
-        stem, how = pick_mission(layers, args.mission)
-        plan.append((display, folder, layers, stem, how))
+        picks = pick_missions(layers, folder, args.mission)
+        plan.append((display, folder, layers, picks))
+        print(f'[mod_smoke] {display}: mission plan {picks}', flush=True)
     stages.preflight(stage_root)
     # _cache is persistent payload, never an aged disposable run.
     if not args.keep_stages:
@@ -792,19 +901,38 @@ def battery(args) -> int:
     # A batch token pins one slot. Sharing it across children would bypass isolation.
     workers = 1 if os.environ.get('MC2_HOST_LEASE_BATCH') or args.fail_fast else getattr(args, 'workers', 2)
     def smoke(entry, staged, stats, stage_s):
-        display, folder, layers, stem, how = entry
-        run_started = time.monotonic()
+        display, folder, layers, picks = entry
         timeout = max(args.timeout, 600) if folder == 'MCO-Carver5' else args.timeout
-        result = run_mod(staged, stem, args.duration, timeout, getattr(args, 'ref_exe', None))
-        log = run_root / (folder + '.log')
-        shutil.copy2(staged / 'smoke.log', log)
-        result.update({'mod': display, 'mission': stem, 'mission_source': how,
-                       'staged': str(staged), 'stage_stats': stats, 'log': str(log),
-                       'stage_s': stage_s, 'run_s': time.monotonic() - run_started,
-                       'identity': tree_identity(staged)})
-        print('[mod_smoke]', display, result_word(result), health_cell(result['health']),
-              f"stage={stage_s:.1f}s run={result['run_s']:.1f}s", flush=True)
-        return result
+        results = []
+        precheck = None
+        if getattr(args, 'asset_load_exe', None):
+            precheck = asset_precheck(Path(args.asset_load_exe), staged)
+            (run_root / (folder + '-asset-load.json')).write_text(json.dumps(precheck, indent=2), encoding='utf-8')
+            print(f'[mod_smoke] {display}: asset-load loaded={precheck["loaded"]} failures={len(precheck["failures"])}', flush=True)
+        for index, (stem, how) in enumerate(picks):
+            ensure_loose_mission(layers, staged, stem)
+            run_started = time.monotonic()
+            if precheck and precheck['failures']:
+                result = {'exit': 1, 'health': analyze_health(''), 'asset_load': precheck,
+                          'note': 'asset-load pre-check failed'}
+                (staged / 'smoke.log').write_text(json.dumps(precheck), encoding='utf-8')
+            else:
+                result = run_mod(staged, stem, args.duration, timeout, getattr(args, 'ref_exe', None))
+                if precheck is not None:
+                    result['asset_load'] = precheck
+            result['warning_excess'] = warning_excess(result.get('warnings', {}), folder)
+            log = run_root / (folder + f'-{index}.log')
+            shutil.copy2(staged / 'smoke.log', log)
+            result.update({'mod': display, 'mission': stem, 'mission_source': how,
+                           'staged': str(staged), 'stage_stats': stats, 'log': str(log),
+                           'stage_s': stage_s, 'run_s': time.monotonic() - run_started,
+                           'identity': tree_identity(staged)})
+            print('[mod_smoke]', display, stem, how, result_word(result), health_cell(result['health']),
+                  f"stage={stage_s:.1f}s run={result['run_s']:.1f}s", flush=True)
+            results.append(result)
+            if args.fail_fast and result_word(result) != 'PASS':
+                break
+        return results
     try:
         engine_started = time.monotonic()
         summary = build_engine_cache(cache, build, build64, base_install)
@@ -816,7 +944,8 @@ def battery(args) -> int:
         # Each child acquires its own normal FIFO game-worker lease.
         with ThreadPoolExecutor(max_workers=workers) as pool:
             for entry in plan:
-                display, folder, layers, stem, how = entry
+                display, folder, layers, picks = entry
+                stem, how = picks[0]
                 stage_started = time.monotonic()
                 cached = []
                 for layer in layers:
@@ -835,10 +964,10 @@ def battery(args) -> int:
                 future = pool.submit(smoke, entry, staged, stats, stage_s)
                 futures.append(future)
                 if workers == 1:
-                    result = future.result()
+                    result = future.result()[-1]
                 if args.fail_fast and result_word(result) != 'PASS':
                     break
-            rows = [future.result() for future in futures]
+            rows = [row for future in futures for row in future.result()]
     finally:
         if not args.keep_stages:
             for disposable in [cache, *(run_root / entry[1] for entry in plan)]:
@@ -863,12 +992,14 @@ def main() -> int:
     ap.add_argument('--exe', default=None, help='current mc2.exe')
     ap.add_argument('--ref-exe', type=Path, help='explicit smoke byte-identity reference (default: worktree HEAD)')
     ap.add_argument('--build-dir', default='build64-ninja')
+    ap.add_argument('--asset-load-exe', type=Path,
+                    help='optional mc2_mod_load executable: offline per-mod pre-check (55 s limit)')
     ap.add_argument('--install-root', default=str(DEFAULT_INSTALL_ROOT))
     ap.add_argument('--stage-root', default=str(DEFAULT_BATTERY_ROOT))
     ap.add_argument('--base-install', default=str(DEFAULT_BASE_INSTALL),
                     help='read-only install supplying assets, stock FSTs and configs')
     ap.add_argument('--workers', type=int, choices=(1, 2), default=2)
-    ap.add_argument('--duration', type=int, default=5)
+    ap.add_argument('--duration', type=int, default=15)
     ap.add_argument('--timeout', type=int, default=300)
     ap.add_argument('--fail-fast', action='store_true')
     ap.add_argument('--keep-stages', action='store_true',

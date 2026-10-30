@@ -1,0 +1,21 @@
+{
+  "MC2X-CVE-G": {
+    "Mech Werewolf has ammo for a weapon it is not carrying": 2,
+    "Mech Infantry has ammo for a weapon it is not carrying": 8
+  },
+  "MC2X-REAP3": {
+    "Mover.setMoveType: bad moveType 2": 41,
+    "Mech has ammo for a weapon it is not carrying": 6
+  },
+  "MC2-Exodus": {},
+  "MC2-MagicExpansion": {},
+  "MechCommanderOmnitech": {
+    "ObjectTypeManager.load: can't create object": 8,
+    "[PACKET_OOB] packet=2000 maxPackets=1188 count=1 file=data/objects/object2.pak": 1
+  },
+  "MCO-Carver5": {
+    "Texture not correct size": 100,
+    "ObjectTypeManager.load: can't create object": 8,
+    "[PACKET_OOB] packet=2000 maxPackets=1188 count=1 file=data/objects/object2.pak": 1
+  }
+}
