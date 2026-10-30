@@ -27,6 +27,12 @@ def test_quick_rows_green_and_red():
         return _r(1 if "pytest" in cmd else 0, "dup owner")
     failed = lm.quick_rows(ROOT, runner)
     assert [f[0] for f in failed] == ["test_ownership"] and failed[0][2] == "dup owner"
+
+
+def test_precheck_owns_both_python_suites():
+    commands = {name: command for name, command in lm.POST_BUILD_ROWS}
+    assert commands['scripts_tests'] == ['scripts/run_scripts_tests.py']
+    assert commands['tools_tests'] == ['scripts/run_tools_tests.py']
     assert len(seen) == 2  # both rows ran
 
 
