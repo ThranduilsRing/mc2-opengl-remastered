@@ -513,7 +513,7 @@ uint32_t batcher_getDrawSlotCount();
 
 // Fills *out with per-slot data. Returns false if slot >= getDrawSlotCount() or out==nullptr.
 // pipelineId: RenderCore::PipelineId cast to uint32_t; 1=StaticPropOpaque, 2=StaticPropAlphaTest.
-// instanceCount: previous-frame value (same prior-frame semantics as hasCullRecord);
+// instanceCount: previous-frame value;
 //   0 on frame 1 or if the type had no visible instances last frame.
 // materialIdx: 0xFFFFFFFFu if MC2_MATERIAL_GPU sidecar was not valid at finalizeGeometry().
 bool batcher_getDrawSlotEntry(uint32_t slot, ExtractedStaticPropPacket* out);

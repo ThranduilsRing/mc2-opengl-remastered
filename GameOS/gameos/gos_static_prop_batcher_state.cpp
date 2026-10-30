@@ -431,7 +431,6 @@ std::vector<int32_t> s_typeAlphaClass;
 std::vector<float> s_typeHotColors;
 // v2.1: per-type instance count snapshot from the most recent flush().
 // Keyed by typeID. Cleared in onMapUnload().
-// Same prior-frame semantics as s_recipeHasSubstrateRecord / hasCullRecord:
 //   flush(frame N) snapshots -> extraction(frame N+1) reads -> 0 on frame 1.
 std::unordered_map<uint32_t, uint32_t> s_typeInstanceCountPrevFrame;
 

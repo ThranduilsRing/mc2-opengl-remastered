@@ -202,10 +202,8 @@ bool MissionInterfaceManager::uiCmdProbe(UiCmdCtx& c)
 					extra += b;
 
 					uint32_t tid = 0xFFFFFFFFu, flags = 0;
-					bool hadCull = false;
 					const bool okT = GameAdapters::StaticProp::recipeTypeId(recipe, &tid);
 					const bool okF = GameAdapters::StaticProp::recipeInstanceFlags(recipe, &flags);
-					const bool okC = GameAdapters::StaticProp::recipeHadCullRecord(recipe, &hadCull);
 					// Separate buffer, not shapeName: an earlier draft
 					// formatted the typeID into shapeName via a comma
 					// operator inside this argument list, which clobbered
@@ -215,10 +213,7 @@ bool MissionInterfaceManager::uiCmdProbe(UiCmdCtx& c)
 					// instrument into a liar after one careless edit.
 					char tidBuf[24] = "?";
 					if (okT) mc2::fmt::to_buf(tidBuf, "{:d}", mc2::fmt::as_u32(tid));
-					// hadCullRecord is the PREVIOUS frame's submit receipt
-					// (ExtractRenderSnapshot runs before flush), so a fresh
-					// 0 on frame N does not by itself mean "never drawn".
-					mc2::fmt::to_buf(b, "  submit: typeID={} flags=0x{:02x}(lightsOut={:d} window={:d} spotlight={:d}) cullRecordPrevFrame={}\n", mc2::fmt::safe(tidBuf), mc2::fmt::as_u32(okF ? flags : 0u), mc2::fmt::as_i32(okF ? static_cast<int>((flags & 1u)) : -1), mc2::fmt::as_i32(okF ? static_cast<int>(((flags >> 1) & 1u)) : -1), mc2::fmt::as_i32(okF ? static_cast<int>(((flags >> 2) & 1u)) : -1), mc2::fmt::safe(okC ? (hadCull ? "1" : "0") : "?"));
+					mc2::fmt::to_buf(b, "  submit: typeID={} flags=0x{:02x}(lightsOut={:d} window={:d} spotlight={:d})\n", mc2::fmt::safe(tidBuf), mc2::fmt::as_u32(okF ? flags : 0u), mc2::fmt::as_i32(okF ? static_cast<int>((flags & 1u)) : -1), mc2::fmt::as_i32(okF ? static_cast<int>(((flags >> 1) & 1u)) : -1), mc2::fmt::as_i32(okF ? static_cast<int>(((flags >> 2) & 1u)) : -1));
 					extra += b;
 				}
 				result = "ok";
