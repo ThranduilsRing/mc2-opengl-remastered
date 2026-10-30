@@ -13,6 +13,12 @@ rights under EULA.txt (non-commercial Microsoft assets). Each zip carries
 EULA.txt, license.txt, LICENSES.md and THIRD_PARTY_NOTICES.md. Automated smoke
 proves installation, not permission to redistribute those assets.
 
+Stage every DLL in `scripts/release-dlls.txt` before packaging. Reconcile this
+list with the release binaries' PE imports after toolchain updates. MSVC
+helpers must be app-local even when the build host finds them in System32:
+copy the listed CRT files from the toolchain's x64 Microsoft.VC143.CRT redist
+directory together. The fresh-install gate rejects missing or extra DLLs.
+
 `project(mc2 VERSION ...)` in `CMakeLists.txt` is the semantic release version.
 Use that version for the release tag and folder; the runtime fingerprint
 identifies the exact source commit. Do not infer a version from an old install.
