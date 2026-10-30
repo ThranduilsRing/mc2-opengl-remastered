@@ -54,7 +54,7 @@
    "LG05": 95,
    "LG06": 348,
    "LG07": 0,
-   "LG08": 150,
+   "LG08": 148,
    "LG09": 4,
    "LG10": 9,
    "LG11": 59,
@@ -503,7 +503,7 @@
   },
   "GameOS/gameos/gos_mech_batcher_flush.cpp": {
    "LG05": 1,
-   "LG08": 4
+   "LG08": 2
   },
   "GameOS/gameos/gos_mech_batcher_geometry.cpp": {
    "LG08": 1
@@ -3416,7 +3416,7 @@
    "LG20": 3
   }
  },
- "head": "e174fc7de",
+ "head": "d71770cdf",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
