@@ -296,7 +296,7 @@ struct SimulationPoseRead {
 
 bool Mover::hasWeaponNode(void)
 {
-    if (!mc2::overlap::onSimWorker() && mc2::overlap::jobInFlight())
+    if (!mc2::overlap::onSimWorker() && (simPresentationPass || mc2::overlap::jobInFlight()))
         return committedHasWeaponNode;
     SimulationPoseRead read;
     return appearance && appearance->getLowestWeaponNode() != -1;
@@ -304,7 +304,7 @@ bool Mover::hasWeaponNode(void)
 
 glm::vec3 Mover::getLOSPosition(void)
 {
-    if (!mc2::overlap::onSimWorker() && mc2::overlap::jobInFlight())
+    if (!mc2::overlap::onSimWorker() && (simPresentationPass || mc2::overlap::jobInFlight()))
         return committedLosPosition;
     SimulationPoseRead read;
     float height = 15.0f;
