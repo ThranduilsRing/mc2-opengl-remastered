@@ -28,6 +28,11 @@ include("${CMAKE_CURRENT_LIST_DIR}/../../cmake/Mc2Standalone.cmake")
 get_filename_component(MC2_WORKTREE_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../.." ABSOLUTE)
 
 add_executable(mc2_tests
+    test_present_handoff.cpp
+    ${MC2_WORKTREE_ROOT}/3rdparty/imgui/imgui.cpp
+    ${MC2_WORKTREE_ROOT}/3rdparty/imgui/imgui_draw.cpp
+    ${MC2_WORKTREE_ROOT}/3rdparty/imgui/imgui_tables.cpp
+    ${MC2_WORKTREE_ROOT}/3rdparty/imgui/imgui_widgets.cpp
     test_runtime_observation.cpp
     test_runtime_bridge_protocol.cpp
     ${MC2_WORKTREE_ROOT}/GameOS/gameos/runtime_bridge_protocol.cpp
@@ -258,6 +263,7 @@ if(MSVC)
 endif()
 
 target_include_directories(mc2_tests PRIVATE
+    ${MC2_WORKTREE_ROOT}/3rdparty/imgui
     ${MC2_WORKTREE_ROOT}           # for "RenderCore/RenderPassContract.h" style includes
     ${MC2_WORKTREE_ROOT}/mclib
     ${MC2_WORKTREE_ROOT}/GameOS

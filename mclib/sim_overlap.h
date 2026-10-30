@@ -28,13 +28,18 @@ void setSimulationFrame(uint32_t frame);        // sim worker only, before each 
 // Thread registry. Each long-lived thread names its role once; the job pool's threads stay unregistered (never fail).
 //   Main   = the frame loop thread (input, sound, ABL commit, queue commits).
 //   Sim    = the overlap worker running banked ticks.
-//   Render = GPU entry points (GL/Vulkan/texture/TG_Shape statics). Until a render thread registers, Main owns render.
-enum class Owner : uint8_t { Main, Sim, Render };
+//   Render = GPU mutation, transferred from Main to the P2 worker until the frame is sealed.
+//   Present = WSI after sealing; the worker can block there while Main records the next frame.
+enum class Owner : uint8_t { Main, Sim, Render, Present };
 void registerThread(Owner role);   // call once on the thread; the sim worker registers itself
+// P2 transfers GPU mutation ownership at the sealed-frame boundary; WSI has no game-state access.
+void setRenderWorkerOwns(bool owns);
+void setPresentWorkerRegistered(bool registered);
 // Audit. The first 20 violations print "[SIM_OVERLAP v1] VIOLATION ..."; MC2_SIM_OVERLAP_AUDIT=1 prints and aborts.
 // assertOwner fails when the calling thread is registered and does not own `domain` (Sim is owned by the worker, or by
 // Main while no tick is in flight). requireOwner is the same check but aborts whatever the gate says (GPU resource entries).
 void assertOwner(Owner domain, std::string_view site);
+bool isOwner(Owner domain);
 void requireOwner(Owner domain, std::string_view site);
 void assertSimQuiescent(std::string_view site);     // render side: reads live sim objects, so no tick may be in flight
 inline void assertMainThread(std::string_view site) { assertOwner(Owner::Main, site); }  // sound/ABL/RNG entry points
