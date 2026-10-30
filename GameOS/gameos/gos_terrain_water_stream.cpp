@@ -93,7 +93,8 @@ std::vector<WaterRecipe> g_recipes;
 // Static 16-cell water chunks make the reflection's empty-view test cheap.
 // Only candidate chunks visit recipes, and the first visible triangle wins.
 struct WaterVisibilityChunk {
-    float minX=std::numeric_limits<float>::max(), minY=std::numeric_limits<float>::max();
+    float minX=std::numeric_limits<float>::max();
+    float minY=std::numeric_limits<float>::max();
     float maxX=std::numeric_limits<float>::lowest(), maxY=std::numeric_limits<float>::lowest();
     std::vector<uint32_t> recipes;
 };
@@ -119,8 +120,8 @@ bool UpdateFieldWaterCoverage(float elevation) {
     for (size_t c=0;c<g_waterChunks.size();++c) {
         for (uint32_t id:g_waterChunks[c].recipes) {
             const auto& r=g_recipes[id];
-            const float minX=std::min({r.v0x,r.v1x,r.v2x,r.v3x}), maxX=std::max({r.v0x,r.v1x,r.v2x,r.v3x});
-            const float minY=std::min({r.v0y,r.v1y,r.v2y,r.v3y}), maxY=std::max({r.v0y,r.v1y,r.v2y,r.v3y});
+            const auto [minX,maxX]=std::minmax({r.v0x,r.v1x,r.v2x,r.v3x});
+            const auto [minY,maxY]=std::minmax({r.v0y,r.v1y,r.v2y,r.v3y});
             const float u0=(minX-b[0])/b[2], u1=(maxX-b[0])/b[2];
             const float v0=(b[1]-maxY)/b[3], v1=(b[1]-minY)/b[3];
             auto& box=g_fieldWetBounds[id];
@@ -133,7 +134,8 @@ bool UpdateFieldWaterCoverage(float elevation) {
                 const int y1=std::clamp(int(std::floor(v1*(h.height-1))),0,h.height-2);
                 const float dx=b[2]/float(h.width-1), dy=b[3]/float(h.height-1);
                 wet=false;
-                box={std::numeric_limits<float>::max(),std::numeric_limits<float>::max(),
+                const float emptyMin=std::numeric_limits<float>::max();
+                box={emptyMin,emptyMin,
                      std::numeric_limits<float>::lowest(),std::numeric_limits<float>::lowest()};
                 for (int y=y0;y<=y1;++y) for (int x=x0;x<=x1;++x) {
                     float rows[4][4];
@@ -155,10 +157,15 @@ bool UpdateFieldWaterCoverage(float elevation) {
                     // This avoids inventing wet slivers on a monotone dry slope.
                     if (lo==hi ? lo>=elevation : lo>elevation+0.001f) continue;
                     wet=true;
-                    box[0]=std::min(box[0],std::max(minX,b[0]+x*dx));
-                    box[2]=std::max(box[2],std::min(maxX,b[0]+(x+1)*dx));
-                    box[1]=std::min(box[1],std::max(minY,b[1]-(y+1)*dy));
-                    box[3]=std::max(box[3],std::min(maxY,b[1]-y*dy));
+                    const std::array<float,4> cell={
+                        std::clamp(b[0]+x*dx,minX,maxX),
+                        std::clamp(b[1]-(y+1)*dy,minY,maxY),
+                        std::clamp(b[0]+(x+1)*dx,minX,maxX),
+                        std::clamp(b[1]-y*dy,minY,maxY)};
+                    box[0]=std::min(box[0],cell[0]);
+                    box[2]=std::max(box[2],cell[2]);
+                    box[1]=std::min(box[1],cell[1]);
+                    box[3]=std::max(box[3],cell[3]);
                 }
             }
             g_fieldWetRecipes[id]=uint8_t(wet);
