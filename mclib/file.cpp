@@ -83,6 +83,18 @@ extern char MissingTitleString[];
 constexpr int CLOSED_HANDLE_VALUE = -2;
 //---------------------------------------------------------------------------
 // Global Functions
+std::string LookupArchivePath(std::string_view dataPath)
+{
+	std::string key(dataPath);
+	fst_normalize_loose_key_inplace(key.data());
+	long member = -1;
+	if (auto* archive = FastFileFind(key.c_str(), member)) {
+		archive->closeFast(member);
+		return archive->getFileName();
+	}
+	return {};
+}
+
 long fileExists (const char* fName, long destination_mask)
 {
 	// META-FIX design E (confirmed issue-#8-class bug): this probe passed the

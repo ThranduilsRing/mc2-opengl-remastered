@@ -64,42 +64,6 @@
       "note": "The vehicle light gather. GVAppearance called neither CacheGpuLightData() nor the batcher, so every vehicle rendered with numLights_==0, calc_light took its early-return and returned vec3(1,1,1) -- raw albedo, unlit, day AND night. This is one of the fixes that answers the user's own 'the vehicles look wrong' report, so its delivery is the question, not its correctness. HALF-DATA SHAPE: the commit also adds the night light-pool term to gos_tex_vertex_lighted.frag; a deploy tree carrying the OLD frag has no calcLightPools, the pool contribution silently vanishes, and the gate reports ON."
     },
     {
-      "id": "VEHICLE-LIGHT-GATHER-ALL-LEAVES",
-      "commit": "ccb713ae",
-      "gate": "MC2_VEHICLE_LIT_PATH",
-      "expect_default": "ON",
-      "exe_needle": null,
-      "code_evidence": [
-        {
-          "path": "mclib/msl.h",
-          "needle": "CacheGpuLightDataAllLeaves"
-        },
-        {
-          "path": "mclib/gvactor.cpp",
-          "needle": "gvShape->CacheGpuLightDataAllLeaves();",
-          "alternate_paths": [
-            "mclib/gvactor_render.cpp"
-          ]
-        }
-      ],
-      "data": [
-        {
-          "kind": "file",
-          "path": "shaders/gos_tex_vertex_lighted.frag",
-          "needle": "calcLightPools",
-          "native_backend_needle": "[NO_GL_RUNTIME v1]",
-          "alternatives": [
-            {
-              "kind": "file",
-              "path": "shaders/vulkan/mech_tier1.frag",
-              "needle": "rgb += tex_color.rgb * olp_objectPoolLight("
-            }
-          ]
-        }
-      ],
-      "note": "Separate entry from VEHICLE-LIT-PATH-1 ON PURPOSE, because the two have different delivery: an install can carry the gather call and NOT this follow-up, in which case only the first SHAPE_NODE leaf gets a light row and every other leaf still renders at raw albedo. Its own commit message records that with only CacheGpuLightData(), deterministic A/B poses showed ZERO pixel change -- i.e. the first fix alone was user-invisible. exe_needle is null deliberately: the fix adds no new string literal, so the binary tier cannot speak and source@sha is the strongest available evidence. That is a weaker answer, and it is reported as such rather than upgraded. Split 6532c1ca9 moved the unchanged call to gvactor_render.cpp; both source locations are accepted, with the declaration and call still required at the embedded commit."
-    },
-    {
       "id": "OVERLAY-CEMENT-ADOPT-1",
       "commit": "3ab322a0",
       "gate": "MC2_OVERLAY_CEMENT_ADOPT",

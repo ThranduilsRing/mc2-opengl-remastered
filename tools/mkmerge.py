@@ -5,6 +5,9 @@ import subprocess
 import sys
 from pathlib import Path
 
+sys.path.append(str(Path(__file__).resolve().parents[1] / 'scripts'))
+import console_child
+
 OPS = Path('A:/Games/mc2-ops/briefs')
 ROOT = Path('A:/Games/mc2-main')
 
@@ -20,7 +23,7 @@ def continuation(n, root):
         result = subprocess.run(['git', '-C', str(root), 'log', '--first-parent', '--merges',
                                  '--reverse', '--format=%P %s', f"{window['base']}..{window['head']}"],
                                 check=True, capture_output=True, text=True,
-                                creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))
+                                **console_child.child_kwargs(redirected=True))
         tips = [line.split(' ', 1)[1] for line in result.stdout.splitlines()]
     rows = state.get('stages', {})
     def passed(name):

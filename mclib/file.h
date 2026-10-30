@@ -81,6 +81,8 @@ void ActivateModForMission(const char* missionFitKey);
 void DeactivateMod();
 // Diagnostic: returns owning mod id for a data path, or nullptr if not in mod index.
 const char* LookupModOwner(const char* dataPath);
+// Root archive supplying this normalized member; empty when absent.
+std::string LookupArchivePath(std::string_view dataPath);
 // Winning loose provider for metadata/editing. Base fallback is not editable
 // while a mod is active; dependency files are never the active editable override.
 struct ModFileSource {

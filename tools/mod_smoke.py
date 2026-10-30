@@ -44,6 +44,7 @@ from pathlib import Path
 
 sys.path.append(str(Path(__file__).resolve().parent.parent / "scripts"))
 import console_child  # noqa: E402  (windowless console children)
+from smoke_lib import nofocus  # noqa: E402
 import stage_root as stages  # noqa: E402  (default staging roots on E:, free-space preflight)
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -845,7 +846,7 @@ def asset_precheck(exe: Path, staged: Path) -> dict:
         child = console_child.child_kwargs(redirected=True)
         if os.name == 'nt':
             child['creationflags'] = (child.get('creationflags', 0) & ~subprocess.BELOW_NORMAL_PRIORITY_CLASS) | subprocess.IDLE_PRIORITY_CLASS
-        proc = subprocess.run([str(exe.resolve()), str(staged.resolve())],
+        proc = nofocus.run([str(exe.resolve()), str(staged.resolve())],
                               capture_output=True, text=True, timeout=55,
                               **child)
         try:

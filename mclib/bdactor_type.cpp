@@ -7,7 +7,6 @@
 #include <string_view>
 #include "stock_lamp_definition.h"
 #include "loose_asset_priority.h"
-#include "fastfile.h"
 #include <zlib.h>
 #include <unordered_map>
 
@@ -19,15 +18,12 @@ static bool userBuildingAsset(std::string_view name)
 	const auto* path = storage.c_str();
 	const auto* owner = LookupModOwner(path);
 	if (!owner || std::string_view(owner) == "mc2-industrial-kit") {
-		long member = -1;
-		if (auto* archive = FastFileFind(path, member)) {
-			archive->closeFast(member);
+		if (const auto archiveName = LookupArchivePath(path); !archiveName.empty()) {
 			static std::unordered_map<std::string, bool> userArchives;
-			const std::string archiveName = archive->getFileName();
 			auto [it, inserted] = userArchives.try_emplace(archiveName, false);
 			auto& [archiveKey, isUserArchive] = *it;
 			if (inserted) isUserArchive = userPackedBuildingArchive(archiveName, [](const auto& file) {
-				std::ifstream input(file, std::ios::binary); // path-audit: root FST provenance
+				std::ifstream input(file, std::ios::binary); // path-audit: loose-only root FST container checksum
 				uLong crc = crc32(0, nullptr, 0);
 				char buffer[65536];
 				while (input.read(buffer, sizeof(buffer)) || input.gcount())
