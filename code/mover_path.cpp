@@ -4,6 +4,8 @@
 #include <array>
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include "mover_internal.h"
+#include "Gates/gate.h"
+#include "mc2fmt.h"
 
 
 glm::vec3 Mover::calcOffsetMoveGoal (glm::vec3 target) {
@@ -1246,6 +1248,10 @@ int Mover::calcMovePath (MovePathPtr path,
 									jumpCost,
 									numOffsets,
 									moveParams);
+		if (mc2::gate::get<"MC2_SIM_IDENTITY_TRACE_DETAIL">() && getPartId() == 724)
+			mc2::fmt::print_err("[LOADPATH] t={} start={},{},{} cell={}/{} areas={}/{} door={} final={},{},{} speed={} level={} cost={} jump={} offsets={} params={} setup={}\n",
+				scenarioTime, start.x, start.y, start.z, posCellR, posCellC, thruArea[0], thruArea[1], goalDoor,
+				finalGoal.x, finalGoal.y, finalGoal.z, maxMoveSpeed, moveLevel, clearCost, jumpCost, numOffsets, moveParams, result);
 		if (result == -1) {
 			JumpOnBlocked = false;
 			return(-999);
@@ -1262,6 +1268,8 @@ int Mover::calcMovePath (MovePathPtr path,
 		else
 			result = PathFindMap[SECTOR_PATHMAP]->calcPath(path, goal, goalCell);
 		PathFindMap[SECTOR_PATHMAP]->setMover(0);
+		if (mc2::gate::get<"MC2_SIM_IDENTITY_TRACE_DETAIL">() && getPartId() == 724)
+			mc2::fmt::print_err("[LOADPATH] t={} result={}\n", scenarioTime, result);
 		JumpOnBlocked = false;
 	}
 
