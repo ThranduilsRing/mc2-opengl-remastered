@@ -272,9 +272,6 @@ def affected_plan(steps, paths, full=False):
                 reason = "docs/tooling-only diff has no runtime inputs"
             elif name == "harnesses" and not sim:
                 reason = "diff has no C++ harness inputs"
-        if name == "pytest" and "contracts" in names:
-            env["MC2_GATE_REUSE_STAGE"] = "contracts"
-            reason = "scripts_tests contract row owns these modules; no duplicate execution"
         if name == "validation" and (game or full) and "tier1" in names:
             env["MC2_GATE_REUSE_STAGE"] = "tier1,determinism-mc2_10" if batch_tier else "tier1"
             reason = "tier1 and shared determinism smokes grade Vulkan validation errors/layer activation"
