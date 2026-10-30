@@ -181,6 +181,7 @@ bool ovl_init(TerrainIsland* s, OvlState* o, int w, int h) {
         sci.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
         sci.addressModeU = sci.addressModeV = sci.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
         sci.minLod = 0.0f; sci.maxLod = 16.0f;
+        mc2vk::infra::materialSampler(sci);
         if (!mc2vk::create(o->samp, s->device, [&](auto* h) { return vkCreateSampler(s->device, &sci, nullptr, h); })) return false;
         VkDescriptorSetLayoutBinding b{};
         b.binding = 0; b.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
@@ -278,6 +279,10 @@ bool ovl_init(TerrainIsland* s, OvlState* o, int w, int h) {
             stages[0].stage = VK_SHADER_STAGE_VERTEX_BIT; stages[0].module = o->vert[k].get(); stages[0].pName = "main";
             stages[1].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
             stages[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT; stages[1].module = o->frag[k].get(); stages[1].pName = "main";
+            const int experimentToksvig = mc2::gate::get<"MC2_EXPERIMENT_TEMPORAL_AB">() == 5;
+            const VkSpecializationMapEntry experimentEntry{31, 0, sizeof(int)};
+            const VkSpecializationInfo experimentInfo{1, &experimentEntry, sizeof(int), &experimentToksvig};
+            stages[1].pSpecializationInfo = &experimentInfo;
             VkGraphicsPipelineCreateInfo gp{};
             gp.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
             gp.stageCount = 2; gp.pStages = stages;

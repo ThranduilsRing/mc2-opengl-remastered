@@ -77,7 +77,8 @@ def lean_fixture(src):
     payload = ['mc2.exe', 'runtime.dll', 'shaders_vk/a.spv', 'data/terrain_materials.json', 'mc2.pdb']
     junk = ['debug_state/state.json', 'cache/content-model/temp.mci', 'harness.log',
             'data/textures/123.456.ktx2', 'tools/authoring.exe', 'mods/custom/mod.json']
-    for rel in payload + junk + ['textures.fst', 'data/missions/a.fit', 'options.cfg', 'system.cfg']:
+    for rel in payload + junk + ['textures.fst', 'data/missions/a.fit', 'options.cfg', 'system.cfg',
+                               'prefs.cfg', 'minprefs.cfg']:
         path = src / rel
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(b'fixture')
@@ -102,8 +103,12 @@ def test_lean_projection_is_private_and_has_no_runtime_cache(tmp_path):
     assert not set(junk) & all_rels
     assert 'mc2.pdb' not in all_rels
     assert 'textures.fst' in {r for r, _ in links}
+    assert {'prefs.cfg', 'minprefs.cfg'} <= {r for r, _ in copies}
     iso.build(src, dst, links, copies)
     assert not (src / 'mc2.exe').samefile(dst / 'mc2.exe')
+    for rel in ('prefs.cfg', 'minprefs.cfg'):
+        assert (dst / rel).read_bytes() == (src / rel).read_bytes()
+        assert not (src / rel).samefile(dst / rel)
     assert (src / 'textures.fst').samefile(dst / 'textures.fst')
     assert guard.run_check(str(dst), deep=True)[0] == 'OK'
     assert copied_bytes < iso.plan(src, guard)[3]

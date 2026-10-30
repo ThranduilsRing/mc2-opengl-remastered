@@ -55,7 +55,7 @@ namespace {
 
 // Active owners by slot (for the island to fetch the SAME shared image). Only one
 // gosPostProcess FBO exists, so a flat by-slot registry is sufficient.
-Mc2SharedSceneColor* g_activeBySlot[MC2_SHARED_SCENE_COLOR_SLOT_COUNT] = {nullptr, nullptr, nullptr};
+Mc2SharedSceneColor* g_activeBySlot[MC2_SHARED_SCENE_COLOR_SLOT_COUNT] = {};
 
 void slog(const char* fmt, ...) {
     char buf[512];
@@ -67,12 +67,16 @@ void slog(const char* fmt, ...) {
 }
 
 const char* slotName(Mc2SharedSceneColorSlot slot) {
+    if (slot == MC2_SHARED_SCENE_REACTIVE) return "reactive";
+    if (slot == MC2_SHARED_SCENE_MOTION) return "motion";
     if (slot == MC2_SHARED_SCENE_NORMAL) return "normal(MRT1)";
     if (slot == MC2_SHARED_SCENE_OBJECT_ID) return "objectId(MRT2)";
     return "color(MRT0)";
 }
 
 VkFormat vkFormatForSlot(Mc2SharedSceneColorSlot slot) {
+    if (slot == MC2_SHARED_SCENE_REACTIVE) return VK_FORMAT_R8_UNORM;
+    if (slot == MC2_SHARED_SCENE_MOTION) return VK_FORMAT_R16G16B16A16_SFLOAT;
     // Scene consumers read RGB only; keep HDR range while halving color traffic.
     if (slot == MC2_SHARED_SCENE_COLOR0 && mc2::options::lowCost()) {
         VkFormatProperties props{};
@@ -89,12 +93,16 @@ VkFormat vkFormatForSlot(Mc2SharedSceneColorSlot slot) {
 }
 
 const char* debugNameForSlot(Mc2SharedSceneColorSlot slot) {
+    if (slot == MC2_SHARED_SCENE_REACTIVE) return "shared.scene.reactive";
+    if (slot == MC2_SHARED_SCENE_MOTION) return "shared.scene.motion";
     if (slot == MC2_SHARED_SCENE_NORMAL) return "shared.scene.normal";
     if (slot == MC2_SHARED_SCENE_OBJECT_ID) return "shared.scene.objectId";
     return "shared.scene.color";
 }
 
 const char* formatNameForSlot(Mc2SharedSceneColorSlot slot) {
+    if (slot == MC2_SHARED_SCENE_REACTIVE) return "R8";
+    if (slot == MC2_SHARED_SCENE_MOTION) return "RGBA16F";
     if (vkFormatForSlot(slot) == VK_FORMAT_B10G11R11_UFLOAT_PACK32) return "R11G11B10F";
     if (slot == MC2_SHARED_SCENE_NORMAL && mc2::options::lowCost()) return "RGBA8";
     return slot == MC2_SHARED_SCENE_OBJECT_ID ? "R32UI" : "RGBA16F";
@@ -150,7 +158,7 @@ Mc2SharedSceneColor* mc2SharedSceneColorCreate(Mc2SharedSceneColorSlot slot,
 
     // Every island declares the attachment layout from its first frame, so the image must already be in it; the object-id image, which no island
     // writes, also starts at "no object".
-    if (!mc2vkGiveSharedImageFirstLayout(ctx, c->res, slot == MC2_SHARED_SCENE_OBJECT_ID ? SharedImageStart::ColorAttachmentCleared
+    if (!mc2vkGiveSharedImageFirstLayout(ctx, c->res, (slot == MC2_SHARED_SCENE_OBJECT_ID || slot == MC2_SHARED_SCENE_MOTION || slot == MC2_SHARED_SCENE_REACTIVE) ? SharedImageStart::ColorAttachmentCleared
                                                                                          : SharedImageStart::ColorAttachment)) {
         mc2SharedSceneColorDestroy(c);
         return bail("first_layout_failed");

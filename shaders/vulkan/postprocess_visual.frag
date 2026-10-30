@@ -1,16 +1,18 @@
 // VK-POST-COMPOSITE-NATIVE-1: conservative Visual-mode composite shader.
 // This is the first runtime slice: scene color + exposure + existing visual grade.
 #version 450
+#extension GL_GOOGLE_include_directive : require
 
 layout(location = 0) in vec2 TexCoord;
 layout(location = 0) out vec4 FragColor;
 
 layout(set = 0, binding = 0) uniform sampler2D sceneTex;
 layout(set = 0, binding = 1) uniform usampler2D objectIdTex;
+layout(set = 0, binding = 2) uniform sampler2D motionTex;
 
 layout(push_constant) uniform Params {
     vec4 p0; // exposure, inverse source extent, cubic upscale
-    vec4 p1; // reserved.xyz, casEnabled
+    vec4 p1; // encoded reconstruction, reserved.yz, casEnabled
     vec4 p2; // viewMode, lowLightGain, lowLightTint.r, lowLightTint.g
     vec4 p3; // lowLightTint.b, engineIdxBase, casSharpness, tonemapMode
     vec4 p4; // grade.rgb, vignette strength
@@ -19,8 +21,25 @@ layout(push_constant) uniform Params {
     vec4 p7; // top warmth.rgb, reserved
 } u;
 
+// DEV ONLY: original AMD FSR1 EASU; a separate final pass applies RCAS.
+#define A_GPU 1
+#define A_GLSL 1
+#define FSR_EASU_F 1
+#include "../../3rdparty/fsr1/ffx_a.h"
+#include "../../3rdparty/fsr1/ffx_fsr1.h"
+AF4 FsrEasuRF(AF2 p) { return textureGather(sceneTex,p,0); }
+AF4 FsrEasuGF(AF2 p) { return textureGather(sceneTex,p,1); }
+AF4 FsrEasuBF(AF2 p) { return textureGather(sceneTex,p,2); }
+vec3 experimentEasu(vec2 uv) {
+    vec2 src=vec2(textureSize(sceneTex,0));
+    vec2 dst=u.p6.ww; dst.y=u.p7.w;
+    uvec4 a,b,c,d; FsrEasuCon(a,b,c,d,src.x,src.y,src.x,src.y,dst.x,dst.y);
+    vec3 color; FsrEasuF(color,uvec2(uv*dst),a,b,c,d); return color;
+}
+
 // Profile output is neutral by default. CAS grades each tap consistently.
 vec3 gradeSample(vec3 sampleColor, vec2 uv) {
+    if (u.p1.x != 0.0) return sampleColor;
     vec3 color = sampleColor * u.p0.x;
 
     color *= u.p4.rgb;
@@ -44,6 +63,7 @@ vec3 gradeColor(vec2 uv) { return gradeSample(texture(sceneTex, uv).rgb, uv); }
 // Separable Catmull-Rom reconstruction: merge the two positive middle weights
 // with bilinear filtering, reducing sixteen source texels to nine fetches.
 vec3 upscaleColor(vec2 uv) {
+    if (u.p0.w == 2.0) return experimentEasu(uv);
     vec2 size = vec2(textureSize(sceneTex, 0));
     vec2 p = uv * size - 0.5;
     vec2 base = floor(p), f = p - base;
@@ -150,8 +170,17 @@ float ignTriangle(vec2 p) {
 }
 
 void main() {
+    if (u.p1.z != 0.0) {
+        vec2 motion = texture(motionTex, TexCoord).rg;
+        FragColor = vec4(clamp(vec3(0.5 + motion * 64.0, 0.5), 0.0, 1.0), 1.0);
+        return;
+    }
     vec3 color = (u.p1.w != 0.0) ? casFilter(TexCoord)
                : reconstructedColor(TexCoord);
+    if (u.p1.x != 0.0) {
+        FragColor = vec4(clamp(color, 0.0, 1.0), 1.0);
+        return;
+    }
     color = applyTonemap(color);
     color = clamp(color + ignTriangle(floor(gl_FragCoord.xy)) / 255.0, 0.0, 1.0);
 

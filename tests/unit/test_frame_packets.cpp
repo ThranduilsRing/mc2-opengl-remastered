@@ -115,4 +115,30 @@ TEST_CASE("slot arenas: the first user of a frame resets its slot, later users k
     CHECK(a3.bytesUsed() == 0);
 }
 
+TEST_CASE("Halton scene jitter preserves the unjittered picking projection") {
+    CHECK(halton(1, 2) == 0.5f);
+    CHECK(halton(2, 2) == 0.25f);
+    CHECK(halton(1, 3) == doctest::Approx(1.0f / 3.0f));
+    const float picking[16] = {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1};
+    ViewUniforms vu{};
+    for (int i = 0; i < 16; ++i) vu.worldToClipGL[i] = picking[i];
+    applyViewJitter(vu.worldToClipGL, vu.jitterNdc);
+    for (int i = 0; i < 16; ++i) CHECK(vu.worldToClipGL[i] == picking[i]);
+    for (uint32_t sample = 1; sample <= 8; ++sample) {
+        float render[16];
+        for (int i = 0; i < 16; ++i) render[i] = picking[i];
+        const float jitter[2] = {2.0f * (halton(sample, 2) - 0.5f) / 1920,
+                                 2.0f * (halton(sample, 3) - 0.5f) / 1080};
+        applyViewJitter(render, jitter);
+        CHECK(render[12] == jitter[0]);
+        CHECK(render[13] == jitter[1]);
+        CHECK(picking[12] == 0.0f);
+        CHECK(picking[13] == 0.0f);
+        CHECK(jitter[0] > -1.0f / 1920);
+        CHECK(jitter[0] < 1.0f / 1920);
+        CHECK(jitter[1] > -1.0f / 1080);
+        CHECK(jitter[1] < 1.0f / 1080);
+    }
+}
+
 }  // TEST_SUITE

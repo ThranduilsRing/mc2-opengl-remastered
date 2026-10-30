@@ -244,6 +244,34 @@ void GameCamera::renderViewUniforms() {
 					out[r * 4 + c] = col[c * 4 + r];
 		};
 		stuffToRowMajor(eye->worldToClipGL(), vu.worldToClipGL);
+		extern std::atomic<uint32_t> g_mc2FrameCounter;
+		const uint32_t viewFrame = g_mc2FrameCounter.load(std::memory_order_relaxed);
+		if (mc2::gate::get<"MC2_RENDER_JITTER">() || mc2::gate::get<"MC2_EXPERIMENT_TEMPORAL_AB">() == 3) {
+			const float scale = mc2::gate::get<"MC2_RENDER_SCALE">();
+			const int w = (std::max)(1, int(std::lround(Environment.drawableWidth * scale)));
+			const int h = (std::max)(1, int(std::lround(Environment.drawableHeight * scale)));
+			const uint32_t sample = viewFrame % 8 + 1;
+			vu.jitterNdc[0] = 2.0f * (RenderCore::halton(sample, 2) - 0.5f) / w;
+			vu.jitterNdc[1] = 2.0f * (RenderCore::halton(sample, 3) - 0.5f) / h;
+			RenderCore::applyViewJitter(vu.worldToClipGL, vu.jitterNdc);
+			// All scene feeds and depth reconstruction borrow this render-only copy.
+			glm::mat4 jittered;
+			for (int r = 0; r < 4; ++r)
+				for (int c = 0; c < 4; ++c)
+					jittered[c][r] = vu.worldToClipGL[r * 4 + c];
+			gos_SetWorldToClipGL(jittered);
+		}
+		static RenderCore::ViewUniforms previousView{};
+		static uint32_t previousViewFrame = UINT32_MAX;
+		static float previousProjection[16]{};
+		const bool consecutiveView = previousViewFrame != UINT32_MAX && viewFrame == previousViewFrame + 1;
+		if (viewFrame != previousViewFrame)
+			std::memcpy(previousProjection,
+			    consecutiveView ? previousView.worldToClipGL : vu.worldToClipGL,
+			    sizeof(previousProjection));
+		std::memcpy(vu.previousWorldToClipGL, previousProjection, sizeof(vu.previousWorldToClipGL));
+		previousView = vu;
+		previousViewFrame = viewFrame;
 		stuffToRowMajor(eye->worldToViewGL(), vu.worldToViewGL);
 		const glm::vec3 orig = eye->cameraOriginGL();
 		vu.cameraWorldPos[0] = orig.x;

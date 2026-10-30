@@ -14,7 +14,7 @@ struct VegParamsData {
     vec4 clipRow;     // mvp[3], mvp[7], mvp[11], mvp[15]: clip w of a point
     vec4 cam;         // camera chunk-space x,y,z ; MC2_VEG_MAX_DIST
     vec4 misc;        // fadeStart, pixelScale, max(lightDirZ,0), time
-    vec4 grid;        // mapHalfWU, blockSideWU, 0, 0
+    vec4 grid;        // mapHalfWU, blockSideWU, previous rendered wind time, 0
     uvec4 counts;     // regionCount, instanceCount, blockVisibilityCount, chunkSide
     uvec4 flags;      // force-visible, dispatch grid width, stock trim enabled, visible capacity
 };

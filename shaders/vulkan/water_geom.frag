@@ -28,6 +28,7 @@ layout(location = 4) in PREC vec3  WorldPos;
 
 layout(location = 0) out PREC vec4 FragColor;
 layout(location = 1) out PREC vec4 GBuffer1;
+layout(location = 2) out PREC float Reactive;
 
 // Uniforms (base branch + rung-6.5 reflection). One std140 UBO.
 layout(set = 0, binding = 1, std140) uniform WaterFsParams {
@@ -328,5 +329,6 @@ void main(void)
     // composites onto MainColor (GL_ONE / GL_ONE_MINUS_SRC_ALPHA) == GL's native one-stage
     // col*a + bg*(1-a) blend, bit-exact. (Straight-alpha two-stage double-applied alpha.)
     FragColor = vec4(col * waterA, waterA);
+    Reactive = clamp(waterA, 0.0, 1.0);
     GBuffer1 = rc_gbuffer1_shadowHandled(vec3(0.0,0.0,1.0));
 }

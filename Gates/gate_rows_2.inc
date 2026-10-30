@@ -167,6 +167,8 @@ G("MC2_RENDER_BACKEND", String, "", "unclassified", "", "Legacy selector, read o
 L(Lead0, "MC2_RENDER_CONTRACT_ASSERT", Bool, false, "code", "", "", passthrough),
 L(Presence, "MC2_RENDER_FRAME_DRIVER", Bool, false, "gameos", "", "GAME-EDITOR-RENDER-FRAME-DRIVER-1 (Slice 6): gated A/B adoption of the shared RenderFrameDriver seam.", verified),
 L(Presence, "MC2_RENDER_FRAME_PLAN_TRACE", Bool, false, "gameos", "", "", passthrough | verified),
+G("MC2_RENDER_JITTER", Bool, false, "post", "", "Developer selector: eight-sample Halton (2,3) subpixel scene projection; picking remains unjittered.", passthrough | verified),
+G("MC2_RENDER_MOTION_DEBUG", Bool, false, "post", "", "Developer view: UV motion around neutral gray; does not enable or disable motion generation.", passthrough | verified),
 L(Lead1, "MC2_RENDER_PASS_CONTRACT_ASSERT", Bool, false, "code", "", "", verified),
 L(Lead1, "MC2_RENDER_PASS_CONTRACT_TRACE", Bool, false, "code", "", "", verified),
 // history: docs/gate-history.md#MC2_RENDER_PASS_ORDER

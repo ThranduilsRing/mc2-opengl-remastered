@@ -206,14 +206,14 @@ def test_check_detects_drift_in_every_registered_output(tmp_path, idx):
     assert g.main(["--check", "--root", root]) == 1
 
 
-def test_mech_instance_record_is_64_bytes_with_pinned_offsets():
+def test_mech_instance_record_is_80_bytes_with_pinned_offsets():
     entry = [s for s in g.STRUCTS if s[0].endswith("GpuMechInstance.h")]
     assert entry, "GpuMechInstance must be a gpu_abi struct"
     with open(os.path.join(ROOT, entry[0][0]), encoding="utf-8") as f:
         info = g.parse_source(f.read(), "mech")
     o, al, sz = g.struct_offsets(info["fields"], "std430")
-    assert (al, sz) == (16, 64)
-    assert [x[1] for x in o] == [0, 4, 8, 12, 16, 32, 48, 52, 56, 60]
+    assert (al, sz) == (16, 80)
+    assert [x[1] for x in o] == [0, 4, 8, 12, 16, 32, 48, 52, 56, 60, 64]
 
 
 def test_shader_redeclaring_a_generated_struct_is_rejected(tmp_path):
@@ -341,7 +341,7 @@ def test_ivec4_annotation_needs_int32_quad():
 
 @pytest.mark.parametrize("header,size,block", [
     ("GpuColorFrameUBO.h", 320, "ColorFrameUBO"),   # 256 until the night state, the ambient fill strength, the specular strength, the eye position and the prop light-pool feed joined the block
-    ("GpuMechFrameUBO.h", 224, "MechFrameUBO"),  # R2 mission ambient replaces stacked fills
+    ("GpuMechFrameUBO.h", 288, "MechFrameUBO"),  # N-1 camera matrix after mission ambient
     ("GpuLegacyFrameUBO.h", 80, "LegacyFrameUBO"),
 ])
 def test_vk_frame_ubos_are_registered_with_their_historical_sizes(header, size, block):

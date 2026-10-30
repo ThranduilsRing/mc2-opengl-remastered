@@ -77,7 +77,9 @@ bool init_island(WaterIsland* s, int w, int h) {
     // ---- Render pass: color0 (shared, LOAD scene color, alpha-blend, STORE) +
     // color1 (gbuffer1, CLEAR, STORE local) + depth (LOAD imported, GEQUAL, write). ----
     {
-        VkAttachmentDescription att[3]{};
+        auto* reactive = mc2SharedSceneColorGetResource(MC2_SHARED_SCENE_REACTIVE);
+        if (!reactive) return false;
+        VkAttachmentDescription att[4]{};
         // RUNG 6 tier1: LOAD-preserve pass over the shared scene GBuffer. Water
         // runs after terrain/props/mechs wrote scene depth and must GEQUAL-test
         // against it, exactly like the GL water draw does.
@@ -96,13 +98,14 @@ bool init_island(WaterIsland* s, int w, int h) {
         att[2].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_LOAD; att[2].stencilStoreOp = VK_ATTACHMENT_STORE_OP_STORE;
         att[2].initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
         att[2].finalLayout   = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-        VkAttachmentReference colorRefs[2]{
+        att[3] = att[0]; att[3].format = reactive->format;
+        VkAttachmentReference colorRefs[3]{
             {0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL},
-            {1, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL}};
+            {1, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL}, {3, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL}};
         VkAttachmentReference depthRef{2, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL};
         VkSubpassDescription sub{};
         sub.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-        sub.colorAttachmentCount = 2; sub.pColorAttachments = colorRefs;
+        sub.colorAttachmentCount = 3; sub.pColorAttachments = colorRefs;
         sub.pDepthStencilAttachment = &depthRef;
 
         // Incoming + outgoing external deps — interop cross-frame WAW serialize (SSAO
@@ -131,20 +134,21 @@ bool init_island(WaterIsland* s, int w, int h) {
 
         VkRenderPassCreateInfo rpci{};
         rpci.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-        rpci.attachmentCount = 3; rpci.pAttachments = att;
+        rpci.attachmentCount = 4; rpci.pAttachments = att;
         rpci.subpassCount = 1; rpci.pSubpasses = &sub;
         rpci.dependencyCount = 2; rpci.pDependencies = deps;
         if (!mc2vk::create(s->rpass, s->device, [&](VkRenderPass* h) { return vkCreateRenderPass(s->device, &rpci, nullptr, h); })) {
             vlog("vkCreateRenderPass failed."); return false;
         }
-        VkImageView fbViews[3] = {
+        VkImageView fbViews[4] = {
             s->sColorRes->view.get(),   // shared scene color0 (MRT0)
             s->sNormalRes->view.get(),  // shared scene normal (MRT1)
-            s->sDepthRes->view.get()    // shared scene depth
+            s->sDepthRes->view.get(),   // shared scene depth
+            reactive->view.get()
         };
         VkFramebufferCreateInfo fci{};
         fci.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-        fci.renderPass = s->rpass.get(); fci.attachmentCount = 3; fci.pAttachments = fbViews;
+        fci.renderPass = s->rpass.get(); fci.attachmentCount = 4; fci.pAttachments = fbViews;
         fci.width = static_cast<uint32_t>(w); fci.height = static_cast<uint32_t>(h); fci.layers = 1;
         if (!mc2vk::create(s->fb, s->device, [&](VkFramebuffer* h) { return vkCreateFramebuffer(s->device, &fci, nullptr, h); })) {
             vlog("vkCreateFramebuffer failed."); return false;
@@ -245,7 +249,7 @@ bool init_island(WaterIsland* s, int w, int h) {
         // RUNG 6 tier1 blend: in-place over the LOADed scene color. The FS emits
         // premultiplied (col*a, a), producing the same RGB result as GL's
         // straight-alpha SRC_ALPHA/ONE_MINUS_SRC_ALPHA water pass.
-        VkPipelineColorBlendAttachmentState cba[2]{};
+        VkPipelineColorBlendAttachmentState cba[3]{};
         cba[0].blendEnable = VK_TRUE;
         cba[0].srcColorBlendFactor = VK_BLEND_FACTOR_ONE;
         cba[0].dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
@@ -262,9 +266,13 @@ bool init_island(WaterIsland* s, int w, int h) {
         // Keep normal RGB masked. Water shades its own light, so its alpha marker
         // must prevent the screen resolve from darkening the reflected sky again.
         cba[1].colorWriteMask = VK_COLOR_COMPONENT_A_BIT;
+        cba[2].colorWriteMask = VK_COLOR_COMPONENT_R_BIT;
+        cba[2].blendEnable = VK_TRUE;
+        cba[2].srcColorBlendFactor = cba[2].dstColorBlendFactor = VK_BLEND_FACTOR_ONE;
+        cba[2].colorBlendOp = cba[2].alphaBlendOp = VK_BLEND_OP_MAX;
         VkPipelineColorBlendStateCreateInfo cb{};
         cb.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-        cb.attachmentCount = 2; cb.pAttachments = cba;
+        cb.attachmentCount = 3; cb.pAttachments = cba;
 
         VkViewport vp{0.0f, 0.0f, static_cast<float>(w), static_cast<float>(h), 0.0f, 1.0f};
         VkRect2D scissor{{0, 0}, {static_cast<uint32_t>(w), static_cast<uint32_t>(h)}};

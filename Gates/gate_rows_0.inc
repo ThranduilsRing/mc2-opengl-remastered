@@ -188,6 +188,7 @@ G("MC2_EFFECT_ADMISSION_PREDICATE", Enum, "", "code", "", "", tokens("|legacy|mo
 L(Presence, "MC2_ENGINE_XL", Bool, false, "mech", "", "", verified),
 L(Lead0, "MC2_EQUIPMENT_ADD", Bool, false, "code", "", "", verified),
 G("MC2_EQUIPMENT_DEFINITION_SOURCE", Enum, "legacy", "code", "", "", passthrough | tokens("legacy|generated") | verified),
+G("MC2_EXPERIMENT_TEMPORAL_AB", Int, 0, "dev", "2026-11-06", "DEV ONLY, delete after A/B decision: 0 off, 1 SMAA, 3 TAA, 4 FSR1, 5 AF16. Never a shipping option.", clampRange(0, 5) | passthrough | registry(Trace, "MC2_EXPERIMENT_TEMPORAL_AB", -1, false) | verified),
 // FarBackdropLit (FAR-BACKDROP-LIT-IMPL-1)
 // history: docs/gate-history.md#MC2_FAR_BACKDROP_LIT
 // history: docs/gate-history.md#MC2_FAR_BACKDROP_LIT_FAR

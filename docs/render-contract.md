@@ -18,6 +18,93 @@ Use this file when changing:
 If a proposed change does not fit one of the contract buckets below, the change
 is probably introducing a new bridge state and should be reconsidered.
 
+## Main-view resolution ownership
+
+`MC2_RENDER_SCALE` scales each scene axis with `max(1, lround(display * scale))`.
+Shadow maps, light caches and bake targets have independent resolutions. They are
+not main-view images. Picking and cursor projections use unjittered matrices.
+
+| Pass / target | Resolution owner |
+|---|---|
+| Sky, terrain, props, legacy shapes, skinned mechs | shared scene color/depth, render |
+| MRT1 normals, object IDs | shared scene, render |
+| Water, particles, vegetation, impact decals | shared scene, render |
+| Water reflection | HDRI texture / SH; no main-view reflection or refraction target |
+| Screen shadow/contact/shore resolve | shared scene color/normal/depth, render |
+| Edge and out-of-bounds fog | shared scene color/depth, render |
+| HZB build | render at mip 0; subsequent mips halve, rounded up |
+| Tone mapping / grading | render; encoded intermediate only when scaled |
+| SMAA color copy, edges, weights, neighborhood; FXAA / CMAA2 | render |
+| Scene reconstruction / CAS | display (composite), before UI |
+| HUD, text, ImGui; final swapchain blit | display |
+
+The UI order is enforced by `EnginePresentVk::presentFrame`: its single queue
+submission executes `{compositeCbuf, cbuf}` in that order. The composite command
+buffer finishes scene AA and, when scaled, reconstruction/CAS into `sharedImg`.
+The tail command buffer then calls `recordPendingHudColorProof` (including
+textured HUD/text), followed by `recordPendingImgui`, before the swapchain blit.
+Both UI paths attach to the display-sized `sharedImg`; neither attaches to
+`scaledComposite` or the shared scene images. This order also holds at scale 1.0,
+where reconstruction is skipped. UI must never become input to scene AA or CAS.
+
+Expected extents below are allocation rules, not captured validation evidence.
+`[SCENE_TARGETS]`, `[RENDER_SIZES]` and `[SPATIAL_AA]` report actual runtime extents.
+
+| Display | Scale | Scene / AA / HZB mip 0 / fog / screen resolve | Composite / HUD / ImGui |
+|---|---|---|---|
+| 1920 x 1080 | 1.0 | 1920 x 1080 | 1920 x 1080 |
+| 1920 x 1080 | 0.67 | 1286 x 724 | 1920 x 1080 |
+| 3840 x 2160 | 1.0 | 3840 x 2160 | 3840 x 2160 |
+| 3840 x 2160 | 0.67 | 2573 x 1447 | 3840 x 2160 |
+
+Temporal inputs are always generated at scene resolution: RG16F UV motion
+(previous minus current), plus an R8_UNORM reactive mask cleared each scene.
+Water writes opacity and surviving transparent/additive VFX writes conservative
+coverage, combined with MAX blending. The mask is available through
+`MC2_SHARED_SCENE_REACTIVE`; a consumer must transition it from color-attachment
+layout before sampling. Fixed mission exposure is `gos_GetExposure()` (the same
+linear multiplier as postprocess `p0.x`). No automatic exposure or pre-exposure
+is applied.
+
+`MC2_RENDER_JITTER=1` selects an eight-sample Halton (2,3) offset of less than
+half a render pixel. `ViewUniforms::jitterNdc` carries the clip-space offset;
+main-view render matrices and depth reconstruction include it. Camera matrices
+used for picking, shadow projections and baking retain their original values.
+The default zero offset bypasses projection arithmetic.
+
+Material sampler creation uses `mc2vk::infra::materialSampler` to apply
+`log2(MC2_RENDER_SCALE)` mip bias (zero at native resolution). UI, shadow,
+depth and lookup samplers retain their existing bias. Explicit-LOD reads such
+as the water HDRI reflection keep their authored LOD; the sampler bias affects
+implicit derivative-based material reads.
+
+### Upscale prerequisite validation (2026-10-30)
+
+Proofs live in `E:/mc2-archive-2026-10/proofs/upscale-prereqs/`.
+The compared binaries are baseline `c7ef9a666` and candidate `e843a30c4`.
+The original baseline-versus-baseline runway captures differ by 3,704 pixels;
+this is pre-existing settle/shadow-bake noise, not an upscale regression.
+The close-out captures use trigger frame 900 and 120 settle frames, with
+shadow-bake queue-drain messages checked before readback. Comparisons use the
+baseline repeat noise as their tolerance and require visual inspection.
+
+At 20 seconds, SIMID 03, 10 and 24 pass both repeat equality and their committed
+baselines (`close-simid20-mc2_03`, `recovery-simid20-mc2_10`, `simid20-mc2_24`).
+Explicit `MC2_RENDER_JITTER=0` plus `MC2_RENDER_SCALE=1.0` matches the default
+night captures exactly in all three shoreline views; the day runway control
+differs by 2,329 pixels, within the original baseline noise, and was viewed.
+Fresh baseline repeats (`close-base-a-*`, `close-base-b-*`) have a maximum
+day-view difference of 8,618 pixels. All nine explicit native/jitter-off views
+versus baseline A are within that measured envelope (maximum 8,618); the runway
+is exact. Baseline, default and explicit night captures are pixel-identical.
+The first default day capture has timing outliers beyond that envelope (maximum
+23,147 pixels versus baseline A). Its same-binary, same-settings repeat
+(`close-default-repeat-mc2_01`) is within the envelope in all nine views
+(maximum 8,618), has an exact runway match and differs from explicit native/
+jitter-off by at most 2,230 pixels. No engine change was made between repeats.
+All nine close-out captures have zero Vulkan validation errors. The viewed
+cross-map, runway and shoreline comparisons show no visible scene regression.
+
 ## Modern spine vs legacy dispatch (corrected 2026-06-22 RENDER-CONTRACT-INDEX-1)
 
 This document's Bucket A–D taxonomy is a **coordinate-space / submission-space**

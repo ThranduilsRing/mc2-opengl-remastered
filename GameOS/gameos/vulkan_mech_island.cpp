@@ -1,4 +1,5 @@
 #include "../../RenderCore/TextureService.h"
+#include "../../RenderCore/FramePackets.h"
 // vulkan_mech_island.cpp — VK-P14 MECH TIER-1: the FIRST VK-native SKINNED mech region.
 // =============================================================================
 // Co-writes the GL mech batcher's visible instances IN-PLACE into the SHARED scene
@@ -55,6 +56,7 @@
 #include "vk_texture_residency.h"
 #include "texture_decode.h"              // gos_GetTextureTexels: material texels without a GL readback
 #include "../../RenderCore/gpu_abi/GpuMechFrameUBO.h"  // single-source per-frame UBO
+#include "../../RenderCore/gpu_abi/GpuMechInstance.h"
 #include "visual_tuning_profile.h"
 #include "vk_shared_gbuffer_gate.h"      // VK-P14 GATE-CONSOLIDATION-1 umbrella resolver
 #include "vk_shared_light_feed.h"        // VK-LIGHTFEED-DEDUP-1: shared per-frame LightsData SSBO
@@ -356,6 +358,7 @@ bool make_albedo_sampler(MechIsland* s) {
     if (s->albedoSamp) return true;
     VkSamplerCreateInfo sci{};
     sci.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+    mc2vk::infra::materialSampler(sci);
     sci.magFilter = VK_FILTER_LINEAR; sci.minFilter = VK_FILTER_LINEAR;
     sci.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR; sci.maxLod=VK_LOD_CLAMP_NONE;
     sci.addressModeU = sci.addressModeV = sci.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
@@ -509,7 +512,9 @@ bool init_island(MechIsland* s, int w, int h) {
         VkImageResource* colorRes  = reinterpret_cast<VkImageResource*>(s->colorRes);
         VkImageResource* normalRes = reinterpret_cast<VkImageResource*>(s->normalRes);
         VkImageResource* depthRes  = reinterpret_cast<VkImageResource*>(s->depthRes);
-        VkAttachmentDescription att[3]{};
+        auto* motionRes = mc2SharedSceneColorGetResource(MC2_SHARED_SCENE_MOTION);
+        if (!motionRes) return false;
+        VkAttachmentDescription att[4]{};
         att[0].format = colorRes->format;  att[0].samples = VK_SAMPLE_COUNT_1_BIT;
         att[0].loadOp = VK_ATTACHMENT_LOAD_OP_LOAD; att[0].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
         att[0].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE; att[0].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
@@ -523,12 +528,14 @@ bool init_island(MechIsland* s, int w, int h) {
         att[2].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_LOAD; att[2].stencilStoreOp = VK_ATTACHMENT_STORE_OP_STORE;
         att[2].initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL; att[2].finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
-        VkAttachmentReference colorRefs[2] = {
-            {0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL}, {1, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL} };
+        att[3] = att[0]; att[3].format = motionRes->format;
+        VkAttachmentReference colorRefs[3] = {
+            {0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL}, {1, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL},
+            {3, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL} };
         VkAttachmentReference depthRef{2, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL};
         VkSubpassDescription sub{};
         sub.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-        sub.colorAttachmentCount = 2; sub.pColorAttachments = colorRefs;
+        sub.colorAttachmentCount = 3; sub.pColorAttachments = colorRefs;
         sub.pDepthStencilAttachment = &depthRef;
 
         VkSubpassDependency deps[2]{};
@@ -545,14 +552,14 @@ bool init_island(MechIsland* s, int w, int h) {
 
         VkRenderPassCreateInfo rpci{};
         rpci.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-        rpci.attachmentCount = 3; rpci.pAttachments = att;
+        rpci.attachmentCount = 4; rpci.pAttachments = att;
         rpci.subpassCount = 1; rpci.pSubpasses = &sub;
         rpci.dependencyCount = 2; rpci.pDependencies = deps;
         if (!mc2vk::create(s->rpass, s->device, [&](VkRenderPass* h) { return vkCreateRenderPass(s->device, &rpci, nullptr, h); })) { setFallback("renderpass_failed"); return false; }
-        VkImageView fbViews[3] = { colorRes->view.get(), normalRes->view.get(), depthRes->view.get() };
+        VkImageView fbViews[4] = { colorRes->view.get(), normalRes->view.get(), depthRes->view.get(), motionRes->view.get() };
         VkFramebufferCreateInfo fci{};
         fci.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-        fci.renderPass = s->rpass.get(); fci.attachmentCount = 3; fci.pAttachments = fbViews;
+        fci.renderPass = s->rpass.get(); fci.attachmentCount = 4; fci.pAttachments = fbViews;
         fci.width = static_cast<uint32_t>(w); fci.height = static_cast<uint32_t>(h); fci.layers = 1;
         if (!mc2vk::create(s->fb, s->device, [&](VkFramebuffer* h) { return vkCreateFramebuffer(s->device, &fci, nullptr, h); })) { setFallback("framebuffer_failed"); return false; }
     }
@@ -663,15 +670,15 @@ bool init_island(MechIsland* s, int w, int h) {
         ds.depthTestEnable = VK_TRUE; ds.depthWriteEnable = VK_TRUE;
         ds.depthCompareOp = VK_COMPARE_OP_GREATER_OR_EQUAL;   // reverse-Z, matches GL mech opaque
 
-        VkPipelineColorBlendAttachmentState cba[2]{};
-        for (int k = 0; k < 2; ++k) {
+        VkPipelineColorBlendAttachmentState cba[3]{};
+        for (int k = 0; k < 3; ++k) {
             cba[k].blendEnable = VK_FALSE;
             cba[k].colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
                                     VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
         }
         VkPipelineColorBlendStateCreateInfo cb{};
         cb.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-        cb.attachmentCount = 2; cb.pAttachments = cba;
+        cb.attachmentCount = 3; cb.pAttachments = cba;
 
         VkDynamicState dyn[2] = { VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR };
         VkPipelineDynamicStateCreateInfo dsci{};
@@ -946,7 +953,7 @@ extern "C" int mc2_vk_mech_island_run(int w, int h) {
     // strand it unsignalled. The ring slot belongs to the frame, not to the island's parity, so staging here races nothing.
     mc2vk::VulkanContext& rctx = mc2vk::getOrCreateEngineVulkanContext();
     const VkDeviceSize ringAlign = rctx.frameAlignment();
-    const VkDeviceSize instBytes = static_cast<VkDeviceSize>(feed.instanceCount) * 64ull;
+    const VkDeviceSize instBytes = static_cast<VkDeviceSize>(feed.instanceCount) * sizeof(GpuMechInstance);
     const VkDeviceSize boneBytes = static_cast<VkDeviceSize>((feed.boneCount ? feed.boneCount : 1)) * 64ull;
     const bool nativeLight = feed.lightDataCpu && feed.lightDataCpuBytes >= 3600ull;
     int poolN = (feed.poolLights48 && feed.numPoolLights > 0) ? feed.numPoolLights : 0;
@@ -1015,6 +1022,8 @@ extern "C" int mc2_vk_mech_island_run(int w, int h) {
     // Upload UBO.
     { MechFrameUBO u{};
       std::memcpy(u.worldToClipGL, feed.worldToClipGL, sizeof(u.worldToClipGL));
+      const auto view = RenderCore::framePackets().copyMainView();
+      std::memcpy(u.previousWorldToClipGL, view.uniforms.previousWorldToClipGL, sizeof(u.previousWorldToClipGL));
       u.objectDepthBias = feed.objectDepthBias;
       u.materialReady = (s->wantMaterial && s->materialReady) ? 1 : 0;
       u.lightingReady = s->lightingReady ? 1 : 0;

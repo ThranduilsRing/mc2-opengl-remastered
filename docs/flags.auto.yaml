@@ -3,9 +3,9 @@
 # Where each gate is read, what the smoke runner forwards and what tier1_env_vars.md says are not here: ask
 # tools/repo_intel (env_var, gate_status), which scan the sources.
 generator_version: "3.0.0"
-gate_count: 752
-registry_entry_count: 148
-verified_count: 719
+gate_count: 755
+registry_entry_count: 149
+verified_count: 722
 flags:
   - name: MC2_ABL_ARG_GUARD
     kind: Bool
@@ -1065,6 +1065,17 @@ flags:
     tokens: "legacy|generated"
     smoke_passthrough: true
     verified: true
+  - name: MC2_EXPERIMENT_TEMPORAL_AB
+    kind: Int
+    default: 0
+    rule: Std
+    owner: dev
+    retire_by: 2026-11-06
+    doc: "DEV ONLY, delete after A/B decision: 0 off, 1 SMAA, 3 TAA, 4 FSR1, 5 AF16. Never a shipping option."
+    range: {lo: 0, hi: 5, style: clamp}
+    smoke_passthrough: true
+    verified: true
+    registry: {feature_id: MC2_EXPERIMENT_TEMPORAL_AB, kind: Trace, order: -1, default_on: false}
   - name: MC2_FASTPATH_DROP_LOG
     kind: Bool
     default: false
@@ -3383,6 +3394,22 @@ flags:
     rule: Presence
     owner: gameos
     doc: ""
+    smoke_passthrough: true
+    verified: true
+  - name: MC2_RENDER_JITTER
+    kind: Bool
+    default: false
+    rule: Std
+    owner: post
+    doc: "Developer selector: eight-sample Halton (2,3) subpixel scene projection; picking remains unjittered."
+    smoke_passthrough: true
+    verified: true
+  - name: MC2_RENDER_MOTION_DEBUG
+    kind: Bool
+    default: false
+    rule: Std
+    owner: post
+    doc: "Developer view: UV motion around neutral gray; does not enable or disable motion generation."
     smoke_passthrough: true
     verified: true
   - name: MC2_RENDER_PASS_CONTRACT_ASSERT

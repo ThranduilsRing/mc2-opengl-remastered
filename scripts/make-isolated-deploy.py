@@ -162,7 +162,10 @@ def seed_member(rel, guard, manifest):
         # PDBs are deploy/debug outputs, never runtime seed inputs.
         return not low.endswith('.pdb')
     if '/' not in low:
-        return low.endswith(('.fst', '.pak')) or low in ('options.cfg', 'system.cfg')
+        # Startup reads prefs.cfg unconditionally; minprefs.cfg supplies the
+        # first-run options/orgprefs defaults. Neither is deployed payload.
+        return low.endswith(('.fst', '.pak')) or low in (
+            'options.cfg', 'system.cfg', 'prefs.cfg', 'minprefs.cfg')
     if low.startswith(('cache/', 'crashes/', 'debug_state/', 'saved_bookmarks/', 'mods/')):
         return False
     if low.endswith(('.log', '.tmp', '.bak', '.cookstamp', '.dmp')):

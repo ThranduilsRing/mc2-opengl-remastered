@@ -1,5 +1,6 @@
 // Native HDRI sky submission; the terrain pass draws it behind its depth.
 #include "gos_postprocess_internal.h"
+#include "../../RenderCore/FramePackets.h"
 
 // MC2_HDRI_SKY_AZ_OFFSET is a manual sun-sync trim in DEGREES; every sky path wants it in radians.
 static float hdriAzOffsetRadians()
@@ -14,6 +15,8 @@ void gosPostProcess::renderHdriSkybox(const float* viewMat, const float* projMat
     // mat4 constructor takes column-major order; projMat is already column-major.
     mat4 projMat4;
     memcpy(&projMat4.elem[0][0], projMat, 16 * sizeof(float));
+    const auto view = RenderCore::framePackets().copyMainView();
+    RenderCore::applyViewJitter(&projMat4.elem[0][0], view.uniforms.jitterNdc);
     mat4 invProj = inverseMat4(projMat4);
     float invProjArray[16];
     memcpy(invProjArray, &invProj.elem[0][0], 16 * sizeof(float));

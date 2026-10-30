@@ -10,6 +10,7 @@
 #include "vegetation_cutout.h"
 #include "../../GameAdapters/vegetation_budget.h"
 #include "../../RenderCore/KtxLoader.h"
+#include "../../RenderCore/FramePackets.h"
 #include <optional>
 #include <string>
 #include "gos_postprocess.h"
@@ -275,10 +276,16 @@ void GosVegetation::flush(float lx, float ly, float lz, float lw, float time,
     cp.misc[2]=std::max(lz,0.0f);
     cp.misc[3]=time;
     cp.grid[0]=halfMap; cp.grid[1]=blockSide;
+    const uint64_t windFrame = RenderCore::framePackets().copyMainView().frame;
+    static uint64_t previousWindFrame = UINT64_MAX;
+    static float previousWindTime = 0.0f;
+    cp.grid[2] = previousWindFrame != UINT64_MAX && windFrame == previousWindFrame + 1 ? previousWindTime : time;
     cp.counts[3]=chunkSide>0 ? uint32_t(chunkSide) : 0u;
     cp.flags[0]=force ? 1u : 0u;
     cp.flags[2]=trimCards ? 1u : 0u;
     if (mc2_vk_vfx_vegetation_run(cp,mvp,visibility,pp->getWidth(),pp->getHeight())) {
+        previousWindFrame = windFrame;
+        previousWindTime = time;
         frameDraws=1; ++sessionDraws; reason="submitted";
     } else reason="gpu_declined";
 #else
