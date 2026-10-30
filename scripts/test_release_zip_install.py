@@ -49,6 +49,7 @@ DEFAULT_ZIP_DIR = REPO_ROOT / "release_assets"
 sys.path.insert(0, str(REPO_ROOT / "scripts"))
 import manifest_schema  # noqa: E402  (S12 unified identity block)
 import console_child  # noqa: E402  (stdio-inheriting children keep their output; scripts/console_child.py)
+from smoke_lib import nofocus
 
 # ---------------------------------------------------------------------------
 # Assembly spec
@@ -236,6 +237,30 @@ def run_smoke(exe: Path, mission: str, duration: int) -> int:
     return result.returncode
 
 
+def first_run(install: Path, out_dir: Path) -> None:
+    """Exercise preference creation before smoke mode bypasses normal startup."""
+    (install / "options.cfg").unlink(missing_ok=True)
+    env = os.environ.copy()
+    env.pop("MC2_SMOKE_MODE", None)
+    env["MC2_WINDOW_OFFSCREEN"] = "1"
+    with (out_dir / "first-run.log").open("w", encoding="utf-8") as log_file:
+        proc = nofocus.spawn([str(install / "mc2.exe")], cwd=str(install),
+                             env=env, stdout=log_file, stderr=subprocess.STDOUT)
+        try:
+            rc = proc.wait(timeout=60)
+        finally:
+            if proc.poll() is None:
+                proc.kill()
+                proc.wait()
+    if rc != 0:
+        fail(f"first startup exited {rc}", code=2)
+    if (install / "options.cfg").read_bytes() != (install / "minprefs.cfg").read_bytes():
+        fail("first startup did not copy minprefs.cfg to options.cfg", code=2)
+    text = (out_dir / "first-run.log").read_text(encoding="utf-8", errors="replace")
+    if "[RENDER_BACKEND] FATAL" in text:
+        fail("first startup refused the Vulkan device", code=2)
+
+
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
@@ -243,6 +268,10 @@ def run_smoke(exe: Path, mission: str, duration: int) -> int:
 def main() -> None:
     ap = argparse.ArgumentParser(
         description="Assemble release zips into a temp install and smoke-test it."
+    )
+    ap.add_argument(
+        "--first-run", action="store_true",
+        help="Test normal startup with options.cfg absent before the mission smoke.",
     )
     ap.add_argument(
         "--zip-dir",
@@ -367,7 +396,11 @@ def main() -> None:
             fail("mc2.exe not found in assembled install (should have been caught by verify)")
 
         log(f"running smoke: mission={args.mission} duration={args.duration}s ...")
+        if args.first_run:
+            first_run(tmp_root, out_dir)
         rc = run_smoke(exe, args.mission, args.duration)
+        if any((tmp_root / "crashes").rglob("*.dmp")):
+            rc = 2
         emit_report(report_path, verdict="PASS" if rc == 0 else "FAIL",
                     install=tmp_root, zip_labels=zip_labels,
                     mission=args.mission, file_count=file_count,
