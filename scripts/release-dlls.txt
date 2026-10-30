@@ -1,0 +1,12 @@
+SDL2.dll
+SDL2_mixer.dll
+zlib1.dll
+mc2res_64.dll
+avcodec-61.dll
+avformat-61.dll
+avutil-59.dll
+swresample-5.dll
+swscale-8.dll
+msvcp140.dll
+vcruntime140.dll
+vcruntime140_1.dll

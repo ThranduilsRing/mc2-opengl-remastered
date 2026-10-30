@@ -279,15 +279,21 @@ for moddir in "$REPO"/mods/*/; do
     [ "$modname" = "dist" ] && continue
     cp -r "$moddir" "$STAGE/engine/mods/$modname"
 done
-# Runtime DLLs at the deploy root (SDL2, GLEW, FFmpeg, MSVC redist, etc).
-for f in "$DEPLOY"/*.dll "$DEPLOY"/run-with-log.bat "$DEPLOY"/run-mc2.bat; do
+# Only reviewed runtime DLLs ship. Missing dependencies fail the cut.
+while IFS= read -r dll || [ -n "$dll" ]; do
+    dll="${dll%$'\r'}"
+    [ -f "$DEPLOY/$dll" ] || { echo "[engine] missing runtime: $dll"; exit 1; }
+    cp "$DEPLOY/$dll" "$STAGE/engine/"
+done < "$REPO/scripts/release-dlls.txt"
+for f in "$DEPLOY"/run-with-log.bat "$DEPLOY"/run-mc2.bat; do
     [ -e "$f" ] && cp "$f" "$STAGE/engine/"
 done
 # Idiot-proof docs at the install root. INSTALL.txt covers SmartScreen,
 # VC++ runtime, "don't install under Program Files", and the bat picker.
 # RELEASE_README has the full feature list, known issues, and GH issue
 # triage. license.txt + EULA.txt are required for any public distribution.
-for f in "$DEPLOY"/INSTALL.txt "$DEPLOY"/RELEASE_README.md "$DEPLOY"/license.txt "$DEPLOY"/EULA.txt; do
+cp "$REPO/RELEASE_README.md" "$STAGE/engine/"
+for f in "$DEPLOY"/INSTALL.txt; do
     [ -e "$f" ] && cp "$f" "$STAGE/engine/"
 done
 # Editor splashes at the deploy root (esplash.bmp, tacsplash.bmp).
@@ -297,9 +303,10 @@ done
 # Prefs files at the deploy root. *.cfg glob naturally excludes
 # options.cfg.old (different extension), which is a developer-side backup
 # we don't want to ship.
-for f in "$DEPLOY"/*.cfg; do
-    [ -e "$f" ] && cp "$f" "$STAGE/engine/"
+for cfg in minprefs.cfg orgprefs.cfg system.cfg; do
+    cp "$DEPLOY/$cfg" "$STAGE/engine/"
 done
+cp "$STAGE/engine/minprefs.cfg" "$STAGE/engine/options.cfg"
 rm -f "$OUTDIR/mc2-remastered-engine.zip"
 ( cd "$STAGE/engine" && z "$OUTDIR/mc2-remastered-engine.zip" . ) >/dev/null
 # Sanity: engine zip must contain the cfg files that gate the sniffer
