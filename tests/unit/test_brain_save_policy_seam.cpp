@@ -4,6 +4,8 @@
 #include "save_field_probe.h"
 #include "mech_brain_runtime.h"
 #include "brain_task_queue.h"
+#include "brain_mission_var_store.h"
+#include "warrior.h"
 #include "file.h"
 #include "Gates/gate_cold.h"
 
@@ -11,6 +13,63 @@
 #include <process.h>
 
 void getBrainFixedTickState(uint32_t&, float&, float&);
+void setBrainFixedTickState(uint32_t, float, float);
+
+TEST_CASE("save fields: BRN1 section fixed tick and mission variables") {
+    struct Restore {
+        uint32_t tick;
+        float accum, last;
+        MissionVarStore vars = g_missionVarStore;
+        mc2::brainpolicy::Policy policy = mc2::brainpolicy::current();
+        std::array<MechWarrior*, MAX_WARRIORS> warriors;
+        Restore() {
+            getBrainFixedTickState(tick, accum, last);
+            std::copy(std::begin(MechWarrior::warriorList), std::end(MechWarrior::warriorList), warriors.begin());
+            std::fill(std::begin(MechWarrior::warriorList), std::end(MechWarrior::warriorList), nullptr);
+        }
+        ~Restore() {
+            setBrainFixedTickState(tick, accum, last);
+            g_missionVarStore = vars;
+            mc2::brainpolicy::g_policy = policy;
+            std::copy(warriors.begin(), warriors.end(), std::begin(MechWarrior::warriorList));
+        }
+    } restore;
+    using E = MissionVarEntry;
+    CHECK(save_probe::memberBytes<E>(&E::key, &E::value, &E::lastWriterWID, &E::lastWriteTick) == sizeof(E));
+    using S = MissionVarStore;
+    CHECK(save_probe::memberBytes<S>(&S::entries, &S::count) == sizeof(S));
+    mc2::brainpolicy::g_policy = mc2::brainpolicy::Policy::TechBrain;
+    setBrainFixedTickState(0x01010101, 0.125f, 0.25f);
+    g_missionVarStore = {};
+    g_missionVarStore.count = 2;
+    for (int i = 0; i < 2; ++i) {
+        auto& entry = g_missionVarStore.entries[i];
+        std::memset(entry.key, 'A' + i, 31);
+        std::memset(entry.value, 'a' + i, 31);
+        entry.lastWriterWID = (i + 1) * 0x02020202;
+        entry.lastWriteTick = (i + 1) * 0x03030303;
+    }
+    const auto expected = g_missionVarStore;
+    const auto bytes = mc2::save::saveBrainSection();
+    REQUIRE_FALSE(bytes.empty());
+    setBrainFixedTickState(0, 0, 0);
+    g_missionVarStore = {};
+    REQUIRE(mc2::save::restoreBrainSection(bytes));
+    uint32_t tick = 0;
+    float accum = 0, last = 0;
+    getBrainFixedTickState(tick, accum, last);
+    CHECK(tick == 0x01010101);
+    CHECK(accum == 0.125f);
+    CHECK(last == 0.25f);
+    REQUIRE(g_missionVarStore.count == 2);
+    for (int i = 0; i < 2; ++i) {
+        const auto& entry = g_missionVarStore.entries[i];
+        CHECK(std::strcmp(entry.key, expected.entries[i].key) == 0);
+        CHECK(std::strcmp(entry.value, expected.entries[i].value) == 0);
+        CHECK(entry.lastWriterWID == expected.entries[i].lastWriterWID);
+        CHECK(entry.lastWriteTick == expected.entries[i].lastWriteTick);
+    }
+}
 
 #define BRAIN_SCALARS &T::mode, &T::activeOpordSlot, &T::opordFallbackPolicy, &T::completionFlags, \
     &T::tacticWeights, &T::weightsNormalized, &T::selectedTactic, &T::pendingEventMask, \
