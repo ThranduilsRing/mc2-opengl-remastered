@@ -165,7 +165,7 @@ TEST_CASE("save fields: clock omission catcher rejects a dropped member") {
     using T = CombatClockValue;
     auto sample = save_probe::patterned<T>(&T::ticks, &T::frac);
     SAVE_FIELD_SHAPE(sample, ticks, frac);
-    sample.frac = 0.625; // The clock fraction has a domain restriction.
+    sample.frac = std::bit_cast<double>(0x3fe2020202020202ull); // Valid fraction; every byte is nonzero.
     CHECK(save_probe::memberBytes<T>(&T::ticks, &T::frac) == sizeof(T));
     CHECK(save_probe::roundtrip(sample, [](auto& a, auto& v) { a(v); }, &T::ticks, &T::frac));
     CHECK_FALSE(save_probe::roundtrip(sample, [](auto& a, auto& v) { a(v.ticks); }, &T::ticks, &T::frac));

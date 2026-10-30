@@ -20,7 +20,7 @@ template<class T> bool equal(const T& a, const T& b) {
 }
 template<class T> void pattern(T& value, unsigned char seed) {
     if constexpr (std::is_same_v<T, bool>) value = true;
-    else if constexpr (std::is_floating_point_v<T>) value = T(seed) + T(0.25);
+    else if constexpr (std::is_floating_point_v<T>) std::memset(&value, seed, sizeof(value));
     else if constexpr (std::is_enum_v<T>) value = static_cast<T>(1);
     else if constexpr (std::is_integral_v<T>) std::memset(&value, seed, sizeof(value));
     else if constexpr (std::is_same_v<T, std::string>) value.assign(3, char(seed));
