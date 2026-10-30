@@ -2375,6 +2375,8 @@ bool EnginePresentVk::prepareImguiVulkanFrame() {
     if (!created_ || !impl_)
         return false;
     Impl& s = *impl_;
+    if (!s.imguiVkInited || ImGui::GetIO().Fonts->TexID == 0)
+        present_thread::waitIdle(); // The backend's font upload submits directly to the shared queue.
     if (!ensureImguiVulkan(s))
         return false;
     health_.imgui_vk_ready = true;
