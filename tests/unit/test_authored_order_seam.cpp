@@ -582,6 +582,26 @@ TEST_CASE("AuthoredOrderProduction/BattleMech patrol reverses at endpoints (warr
     }
 }
 
+TEST_CASE("SaveLoad/rebuilt mover lists retain unassigned teams") {
+    SeamWorldResources resources;
+    struct UnassignedMech : BattleMech {
+        UnassignedMech() { teamId = -1; }
+    } mech;
+    struct Objects : GameObjectManager {
+        BattleMechPtr slots[1]{};
+        Objects(BattleMechPtr value) {
+            mechs = slots; slots[0] = value; numMechs = 1; numVehicles = 0;
+            maxMechs = maxVehicles = 0;
+            collisionSystem = nullptr; moverLineOfSightTable = nullptr;
+        }
+        ~Objects() { mechs = nullptr; numMechs = 0; }
+    } objects(&mech);
+    REQUIRE(mech.getTeam() == nullptr);
+    objects.buildMoverLists();
+    REQUIRE(objects.getNumMovers() == 1);
+    CHECK(objects.getMover(0) == &mech);
+}
+
 TEST_CASE("CommandReplay/runtime player movers use the queue and reject reused identities") {
     SeamWorldResources resources;
     struct RuntimeObjects : GameObjectManager {
