@@ -1109,21 +1109,21 @@
       "callers_by_basename": [
         {
           "path": "scripts/tests/test_kit_visibility.py",
-          "line": 143,
+          "line": 171,
           "evidence": "load module",
           "reference": "scripts/check-kit-visibility.py",
           "text": "spec = importlib.util.spec_from_file_location(\"kit_check\", ROOT / \"scripts/check-kit-visibility.py\")"
         },
         {
           "path": "scripts/tests/test_kit_visibility.py",
-          "line": 160,
+          "line": 188,
           "evidence": "load module",
           "reference": "scripts/check-kit-visibility.py",
           "text": "spec = importlib.util.spec_from_file_location(\"kit_check_stale\", ROOT / \"scripts/check-kit-visibility.py\")"
         },
         {
           "path": "scripts/tests/test_kit_visibility.py",
-          "line": 175,
+          "line": 203,
           "evidence": "load module",
           "reference": "scripts/check-kit-visibility.py",
           "text": "spec = importlib.util.spec_from_file_location(\"kit_check_native\", ROOT / \"scripts/check-kit-visibility.py\")"
@@ -3999,7 +3999,7 @@
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 191,
+          "line": 228,
           "evidence": "import_module",
           "reference": "deploy_payload",
           "text": "return importlib.import_module('deploy_payload')"
@@ -4453,7 +4453,7 @@
         },
         {
           "path": "scripts/tests/test_kit_visibility.py",
-          "line": 151,
+          "line": 179,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate"
@@ -5186,7 +5186,7 @@
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 690,
+          "line": 764,
           "evidence": "command",
           "reference": "scripts/run_smoke.py",
           "text": "proc = subprocess.run(cmd, cwd=str(ROOT), capture_output=True,"
@@ -12278,7 +12278,7 @@
         },
         {
           "path": "scripts/tests/test_mod_smoke.py",
-          "line": 294,
+          "line": 433,
           "evidence": "import",
           "reference": "fst",
           "text": "import fst"
@@ -12334,14 +12334,14 @@
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 448,
+          "line": 518,
           "evidence": "import_module",
           "reference": "fst",
           "text": "fst_lib = importlib.import_module('fst')"
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 484,
+          "line": 554,
           "evidence": "import_module",
           "reference": "fst",
           "text": "fst_lib = importlib.import_module('fst')"
@@ -12410,6 +12410,13 @@
           "evidence": "import",
           "reference": "mc2x_import",
           "text": "import mc2x_import"
+        },
+        {
+          "path": "tools/mod_smoke.py",
+          "line": 393,
+          "evidence": "import",
+          "reference": "mc2x_import",
+          "text": "from mc2x_import import fst as fst_lib"
         }
       ]
     },
@@ -12673,28 +12680,35 @@
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 233,
+          "line": 270,
           "evidence": "import",
           "reference": "fst_listing",
           "text": "import fst_listing"
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 364,
+          "line": 392,
           "evidence": "import",
           "reference": "fst_listing",
           "text": "import fst_listing"
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 466,
+          "line": 434,
           "evidence": "import",
           "reference": "fst_listing",
           "text": "import fst_listing"
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 485,
+          "line": 536,
+          "evidence": "import",
+          "reference": "fst_listing",
+          "text": "import fst_listing"
+        },
+        {
+          "path": "tools/mod_smoke.py",
+          "line": 555,
           "evidence": "import",
           "reference": "fst_listing",
           "text": "import fst_listing"
@@ -12815,7 +12829,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/tests/test_mod_smoke.py",
-          "line": 9,
+          "line": 10,
           "evidence": "load module",
           "reference": "tools/mod_smoke.py",
           "text": "_spec = importlib.util.spec_from_file_location(\"mod_smoke\", ROOT / \"tools\" / \"mod_smoke.py\")"
