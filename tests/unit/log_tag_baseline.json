@@ -3759,19 +3759,6 @@
    "count": 1
   },
   {
-   "tag": "GPU_CULL_FROZEN_ORDER_ORACLE",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "S",
-    "placed",
-    "outOfRange",
-    "checked",
-    "posMismatch"
-   ],
-   "count": 1
-  },
-  {
    "tag": "GPU_PARTICLES",
    "ver": 1,
    "stream": "stderr",
@@ -7023,13 +7010,6 @@
     "sunColor",
     "sunFound"
    ],
-   "count": 1
-  },
-  {
-   "tag": "PROP_REINJECT",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [],
    "count": 1
   },
   {
