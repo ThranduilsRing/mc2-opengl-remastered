@@ -193,9 +193,15 @@ TEST_CASE("save fields: global map load retains active door link costs")
 	PacketFile in;
 	REQUIRE(in.open(guard.path.c_str()) == NO_ERR);
 	auto map = std::make_unique<GlobalMap>();
-	REQUIRE(map->init(&in, 0) == 21);
+	REQUIRE(map->init(&in, 0, true) == 21);
 	REQUIRE_FALSE(map->badLoad);
 	CHECK(map->doors_links[0][0][0].cost == 1000);
 	CHECK(map->doors_links[0][1][0].cost == 1000);
 	CHECK(map->doors_links[0][0][0].openCost == 10);
+	// Mission assets still normalize the editor's link costs at initial load.
+	auto fresh = std::make_unique<GlobalMap>();
+	REQUIRE(fresh->init(&in, 0) == 21);
+	REQUIRE_FALSE(fresh->badLoad);
+	CHECK(fresh->doors_links[0][0][0].cost == 10);
+	CHECK(fresh->doors_links[0][1][0].cost == 10);
 }

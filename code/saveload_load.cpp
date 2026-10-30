@@ -136,7 +136,7 @@ void Mission::loadMovement(MissionLoadFrame& f) {
 	{
 		if (loadFile.getPacketSize() != 0)
 		{
-			currentPacket += MOVE_readData(&loadFile, currentPacket);
+			currentPacket += MOVE_readData(&loadFile, currentPacket, true);
 			if (GlobalMoveMap[0]->badLoad)
 				STOP((" Mission.Load: old version of move data In-Mission Save Obsolete."));
 

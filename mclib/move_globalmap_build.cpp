@@ -92,7 +92,7 @@ void GlobalMap::init (long w, long h) {
 
 constexpr int GLOBALMAP_VERSION_NUMBER = 0x022523;	// My 51st birthday:)
 
-long GlobalMap::init (PacketFilePtr packetFile, long whichPacket) {
+long GlobalMap::init (PacketFilePtr packetFile, long whichPacket, bool restoreSavedCosts) {
 
 	long startPacket = whichPacket;
 
@@ -543,8 +543,8 @@ long GlobalMap::init (PacketFilePtr packetFile, long whichPacket) {
 				offMapAreas[numOffMapAreas++] = i;
 			closeArea(i);
 		}
-	// Non-off-map door links already carry their saved costs. Reopening every
-	// area here replaces active costs (including blocked links) with openCost.
+		else if (!restoreSavedCosts)
+			openArea(i);
 	pathExistsTable = mc2::globalmap::ownZeroed(pathExistsStore, static_cast<size_t>(numAreas) * (static_cast<size_t>(numAreas) / 4 + 1));
 	clearPathExistsTable();
 
