@@ -954,10 +954,9 @@ def enumerate_payload(src_root, build_dir, exe_name, pdb_name,
                 p = os.path.join(vk_spv_dir, fn)
                 if os.path.isfile(p):
                     items.append((p, f"shaders/vulkan/{fn}", "shader"))
-    elif require_build:
-        log(f"INFO: no baked Vulkan SPIR-V at {vk_spv_dir or '<no build64 root>'} "
-            "-- skipping (MC2_VULKAN not compiled in this build; Vulkan "
-            "islands will fail-soft to GL in the deployed install)")
+    if require_build and not any(rel.startswith("shaders/vulkan/") and rel.endswith(".spv")
+                                 for _src, rel, _kind in items):
+        fail(f"No baked Vulkan SPIR-V at {vk_spv_dir or '<no build root>'}; build shaders before deploying")
 
     # Deploy the ENTIRE shaders/ tree recursively (every file, all extensions),
     # not an extension allowlist. Shaders #include each other across stages and

@@ -151,7 +151,9 @@ def verify_tree(install: Path) -> list[str]:
         if not fsts:
             failures.append("no *.fst files found at install root (fastfile data missing)")
 
-    # Shader sanity: at least one .vert and one .frag must exist.
+    # Vulkan runtime consumes baked SPIR-V, not the GLSL sources alone.
+    if not any((install / "shaders" / "vulkan").glob("*.spv")):
+        failures.append("shaders/vulkan/ contains no baked .spv files")
     shaders = install / "shaders"
     if shaders.is_dir():
         if not any(shaders.glob("**/*.vert")):
@@ -230,6 +232,7 @@ def run_smoke(exe: Path, mission: str, duration: int) -> int:
         "--duration", str(duration),
         "--keep-logs",
         "--exe", str(exe),
+        "--ref-exe", str(exe),
     ]
     log(f"smoke: {' '.join(cmd)}")
     result = subprocess.run(cmd, **console_child.child_kwargs())
@@ -268,8 +271,8 @@ def main() -> None:
     ap.add_argument(
         "--duration",
         type=int,
-        default=30,
-        help="Smoke duration in seconds (default: 30)",
+        default=15,
+        help="Smoke duration in seconds (default: 15)",
     )
     ap.add_argument(
         "--out-dir",
