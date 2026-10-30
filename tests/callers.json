@@ -3506,7 +3506,7 @@
         },
         {
           "path": "tools/sim_determinism.py",
-          "line": 42,
+          "line": 41,
           "evidence": "import",
           "reference": "console_child",
           "text": "import console_child  # noqa: E402"
