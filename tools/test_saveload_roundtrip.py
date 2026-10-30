@@ -1,11 +1,22 @@
 """saveload_roundtrip: the analysis that compares the simulation after a quickload with the one after the quicksave."""
 import json
+import hashlib
 import os
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import saveload_roundtrip as rt  # noqa: E402
+
+
+def test_archived_legacy_fixture_bytes_match_manifest():
+    from pathlib import Path
+    folder = Path(rt.ROOT) / "tests/fixtures/saves"
+    manifest = json.loads((folder / "manifest.json").read_text())
+    for entry in manifest["fixtures"]:
+        data = (folder / entry["file"]).read_bytes()
+        assert len(data) == entry["bytes"]
+        assert hashlib.sha256(data).hexdigest() == entry["sha256"]
 
 
 def test_selftest_passes():
