@@ -78,5 +78,6 @@ def test_checked_in_v1_fixture_upgrades_to_v2_sections():
     with tempfile.TemporaryDirectory() as td:
         dst = os.path.join(td, "v2.ims")
         sections = mod.upgrade(src, dst)
+        assert all(s[0] != mod.fourcc("WRLD") for s in sections)
         assert [(s[0], s[3]) for s in sections] == [(mod.fourcc("ANIM"), b"\xde\xad\xbe\xef"), (mod.fourcc("ORDQ"), b"\x01\x02\x03")]
         assert mod.load(dst)[1][0][1] == mod.STAMP_V2

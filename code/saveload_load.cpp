@@ -621,7 +621,7 @@ void Mission::loadLogistics(MissionLoadFrame& f) {
 // Restore each known save section, or apply its default when absent (a v1 save, or a v2 save from before the section
 // existed). Defaults equal what a v1 load always reconstructed. B2 (BRN1), B3 (FIX1), M5 (WRLD) and PATH add one entry each.
 static void applySaveSections(std::string_view fileName, const mc2::save::SectionContainer& sections, mc2::sim::TacticalOrderQueue& orderQueue) {
-    turn = 0; // Legacy v1 loads use the same initial turn as the W87 loader.
+    turn = mc2::save::SavedMoverLists{}.turn; // Legacy v1 default, shared with WRLD v1.
     auto reject = [&](std::string_view reason) {
         mc2::fmt::print_err("[SAVE v2] event=reject reason={} file={}\n", reason, fileName);
     };
