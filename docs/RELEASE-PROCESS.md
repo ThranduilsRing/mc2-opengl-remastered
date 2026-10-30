@@ -66,11 +66,9 @@ release" — never listed as shipped until re-verified against the merged tree.
 5. Package: DEPLOY=<release lane> bash scripts/build_release.sh
    -> release_assets/*.zip (engine, gamedata, burnins-4x pt1+pt2, art, tgl,
    movies; the script verifies burnins are 4x and nothing leaked between zips).
-   CAUTION (as of 2026-07-22): build_release.sh predates the launcher — it
-   does NOT copy mc2-launcher.exe or the shipped mods/ tree into the engine
-   zip, and scripts/test_release_zip_install.py does not require them either.
-   Until the script is extended, verify the launcher + mods/ land in the
-   engine zip manually before publishing.
+   Launch mc2.exe directly; the standalone launcher is retired. Example
+   mods come from examples/mods/ and ship outside active mods/ so they
+   cannot alter stock missions. No local deploy mods belong in the release.
 6. Gate: py -3 scripts/test_release_zip_install.py --zip-dir <OUTDIR>
    -> must PASS (exit 0). This is the zips-only install + smoke proof; see
    release-checklist.md for exit codes and why.

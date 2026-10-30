@@ -272,12 +272,13 @@ fi
 # the REPO tree (canonical, reviewed content) — NOT from the deploy's mods/
 # dir, which accumulates local/third-party mods that must never leak into a
 # public zip. mods/dist (packed .mc2mod artifacts) is build output, excluded.
-echo "[engine] staging example mods (repo mods/)"
-mkdir -p "$STAGE/engine/mods"
-for moddir in "$REPO"/mods/*/; do
+echo "[engine] staging examples (examples/mods/) outside active mods/"
+mkdir -p "$STAGE/engine/examples/mods"
+for moddir in "$REPO"/examples/mods/*/; do
+    [ -d "$moddir" ] || continue
     modname="$(basename "$moddir")"
     [ "$modname" = "dist" ] && continue
-    cp -r "$moddir" "$STAGE/engine/mods/$modname"
+    cp -r "$moddir" "$STAGE/engine/examples/mods/$modname"
 done
 # Only reviewed runtime DLLs ship. Missing dependencies fail the cut.
 while IFS= read -r dll || [ -n "$dll" ]; do

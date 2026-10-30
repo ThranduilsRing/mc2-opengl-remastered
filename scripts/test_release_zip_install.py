@@ -82,9 +82,6 @@ REQUIRED_FILES = [
 REQUIRED_DIRS = [
     "shaders",  # shaders/ must be non-empty; engine loads them by relative path
     "data",
-    # MERGE-WAVE-2 (2026-07-22): shipped example mods (documented in the
-    # modding guide); staged from the repo mods/ tree by build_release.sh.
-    "mods",
 ]
 # At least one .fst archive must exist at install root (fastfile data).
 REQUIRED_FST = True
