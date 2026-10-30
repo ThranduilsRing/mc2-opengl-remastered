@@ -682,6 +682,8 @@ static void applySaveSections(std::string_view fileName, const mc2::save::Sectio
 
 // Activate the camera and finalise the static-prop and mech geometry and the GPU cull buffers.
 void Mission::loadActivateAndFinalize() {
+	// Re-arm the script's music clock after teardown stopped it, before resumed ABL can branch on silence.
+	soundSystem->playABLDigitalMusic(missionTuneNum);
 	ObjectManager->snapshotMoverPoses();
 	ObjectManager->extractRenderSnapshots();
 	eye->activate();
