@@ -13,6 +13,7 @@
 #define VMA_DYNAMIC_VULKAN_FUNCTIONS 0
 #include <vk_mem_alloc.h>
 #include "utils/mc2log.h"
+#include "mc2_diag_verbose.h"
 #include <algorithm>
 #include <cstring>
 #include <utility>
@@ -128,7 +129,8 @@ bool TextureResidency::init() {
     flat.pixels={128,128,255,255}; arrayPlaceholder_=upload(flat,false,nullptr,1,true);
     if (!arrayPlaceholder_) return false;
     table_->placeholder(placeholder_);
-    MC2_LOG(Vk, Info, "[VK_TEXTURE_SERVICE v1] capacity={} flights={} placeholder=0 legacy_boundary=P9", capacity_, flights_.size());
+    if (mc2_diag::tagRequested("VK_TEXTURE_SERVICE"))
+        MC2_LOG(Vk, Info, "[VK_TEXTURE_SERVICE v1] capacity={} flights={} placeholder=0 legacy_boundary=P9", capacity_, flights_.size());
     return true;
 }
 

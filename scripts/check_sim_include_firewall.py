@@ -259,7 +259,13 @@ def scan(sources, scope):
             body = INCLUDE.sub(lambda m: blank(m[0]), body)
             for line in body.splitlines():
                 evidence = " ".join(line.split())
-                for token in TOKENS.findall(line):
+                for match in TOKENS.finditer(line):
+                    token = match[0]
+                    # A stored member named time is simulation data, not the
+                    # C wall-clock API. Keep calls and bare function addresses.
+                    if (token == "time" and re.search(r"(?:\.|->)\s*$", line[:match.start()])
+                            and not re.match(r"\s*\(", line[match.end():])):
+                        continue
                     rule = symbol_rule(token)
                     if rule:
                         emit(rule, token, evidence)

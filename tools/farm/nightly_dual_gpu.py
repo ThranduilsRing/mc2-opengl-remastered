@@ -67,6 +67,7 @@ def main():
         artifacts = output / gpu.replace(" ", "-")
         env = dict(os.environ, MC2_VK_DEVICE=gpu, MC2_HARNESS_GPU="any",
                    MC2_VULKAN_VALIDATION="1", MC2_DEBUG_STATE_DUMP="1",
+                   MC2_DIAG_TAGS=",".join(filter(None, (os.environ.get("MC2_DIAG_TAGS"), "VK_CAPABILITY"))),
                    MC2_OPTIONS_OVERRIDE="ShadowQuality=0,SpatialAA=0",
                    MC2_RENDER_SCALE="0.5", MC2_SHADOW_ENABLE="0",
                    MC2_VK_POST_SCREENFX_SHADOW="0", MC2_CLOUD_SHADOW="0",

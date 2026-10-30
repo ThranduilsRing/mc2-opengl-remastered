@@ -96,6 +96,13 @@ def test_comments_literals_and_line_splices():
     assert scan({"Sim/kernel.cpp": 'timeGet\\\nTime();\n'})[0]["rule"] == "wall-clock"
 
 
+def test_stored_time_member_is_data_but_clock_calls_and_addresses_remain_forbidden():
+    assert not scan({"Sim/kernel.cpp": "archive(orders.time, ptr->time);"})
+    for source in ("time(nullptr);", "auto clockSource = &time;",
+                   "device.time();", "device->time();", "std::time(nullptr);"):
+        assert any(f["rule"] == "wall-clock" for f in scan({"Sim/kernel.cpp": source}))
+
+
 def test_inactive_branch_is_conservative_and_header_macro_resolves():
     source = '#define VIEW "camera.h"\n#if 0\n#include VIEW\n#endif\n'
     assert scan({"Sim/kernel.cpp": source})[0]["rule"] == "camera"

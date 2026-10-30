@@ -399,6 +399,7 @@ bool VulkanContext::init(bool wantPresent) {
         const auto& limits = props.properties.limits;
         const auto capacity = (std::min)({4096u, limits.maxPerStageDescriptorSamplers, limits.maxPerStageDescriptorSampledImages,
             limits.maxDescriptorSetSamplers, limits.maxDescriptorSetSampledImages, limits.maxPerStageResources});
+        if (!accepted || mc2_diag::tagRequested("VK_CAPABILITY"))
         std::fprintf(stderr, "[VK_CAPABILITY v1] gpu=\"%s\" driver=\"%s %s\" driver_version=%u vram_mib=%llu low_floor_mib=512 bindless=%u samplers=%u refused=%s\n",
             pick->name.c_str(), driver.driverName, driver.driverInfo, props.properties.driverVersion,
             static_cast<unsigned long long>(localBytes / (1024 * 1024)), capacity, limits.maxPerStageDescriptorSamplers,

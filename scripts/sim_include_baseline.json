@@ -2479,18 +2479,6 @@
       "occurrence": 1
     },
     {
-      "tu": "code/sim_identity.cpp",
-      "file": "code/warrior.h",
-      "chain": [
-        "code/sim_identity.cpp",
-        "code/warrior.h"
-      ],
-      "rule": "wall-clock",
-      "subject": "time",
-      "evidence": "orders.time = time;",
-      "occurrence": 2
-    },
-    {
       "tu": "code/mission_update.cpp",
       "file": "code/mission_update.cpp",
       "chain": [
@@ -3015,34 +3003,6 @@
       "occurrence": 1
     },
     {
-      "tu": "code/mission_update.cpp",
-      "file": "code/tacordr.h",
-      "chain": [
-        "code/mission_update.cpp",
-        "code/mission_internal.h",
-        "code/tacordr.h"
-      ],
-      "rule": "wall-clock",
-      "subject": "time",
-      "evidence": "time = copy.time;",
-      "occurrence": 2
-    },
-    {
-      "tu": "code/sim_identity.cpp",
-      "file": "code/tacordr.h",
-      "chain": [
-        "code/sim_identity.cpp",
-        "code/warrior.h",
-        "code/mech_brain_runtime.h",
-        "code/brain_order_intent.h",
-        "code/tacordr.h"
-      ],
-      "rule": "wall-clock",
-      "subject": "time",
-      "evidence": "time = copy.time;",
-      "occurrence": 2
-    },
-    {
       "tu": "code/sim_identity.cpp",
       "file": "code/warrior.h",
       "chain": [
@@ -3053,18 +3013,6 @@
       "subject": "time",
       "evidence": "time = orders.time;",
       "occurrence": 1
-    },
-    {
-      "tu": "code/sim_identity.cpp",
-      "file": "code/warrior.h",
-      "chain": [
-        "code/sim_identity.cpp",
-        "code/warrior.h"
-      ],
-      "rule": "wall-clock",
-      "subject": "time",
-      "evidence": "time = orders.time;",
-      "occurrence": 2
     },
     {
       "tu": "code/tacordr.cpp",
