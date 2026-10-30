@@ -167,6 +167,7 @@ void Mission::save (const char *saveFileName)
 	writeIdFloatExact(&tempFile, "ActualTime", actualTime);
 	writeIdFloatExact(&tempFile, "RunningTime", runningTime);
 	writeIdFloatExact(&tempFile, "ScenarioTime", scenarioTime);
+	tempFile.writeIdLong("ScenarioTurn", turn);
 	tempFile.writeIdFloat("DropZoneX"							, dropZone.x);
 	tempFile.writeIdFloat("DropZoneY"							, dropZone.y);
 	tempFile.writeIdFloat("DropZoneZ"							, dropZone.z);
@@ -865,6 +866,8 @@ void Mission::loadMissionSettings(MissionLoadFrame& f) {
 	result = missionFile.readIdFloat("ScenarioTime"						, scenarioTime);
 	if (result != NO_ERR)
 		STOP(("ScenarioTime missing from IN-Mission Save"));
+	if (missionFile.readIdLong("ScenarioTurn", turn) != NO_ERR)
+		turn = 2; // Old saves resume beyond the fresh-mission sensor warmup.
 
 	result = missionFile.readIdFloat("DropZoneX"						, dropZone.x);
 	if (result != NO_ERR)

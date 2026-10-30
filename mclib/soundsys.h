@@ -342,11 +342,6 @@ class SoundSystem
 		virtual void update (void);
 		
 		void playABLDigitalMusic (long musicId);
-		void resumeABLMusic (long preferredId) {
-			playABLDigitalMusic(preferredId);
-			for (long id = 0; getCurrentMusicId() < 0 && id < numDMS; ++id)
-				if (digitalMusic[id].loop) playABLDigitalMusic(id);
-		}
 		void stopABLMusic (void);
 		long getCurrentMusicId (void);
 		static double musicSeconds (std::string_view wavPath);

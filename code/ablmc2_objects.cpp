@@ -701,7 +701,7 @@ void execGetSensorsActive (void)
 
 void execGetCurrentMusicId (void) 
 {
-	if (mc2::gate::get<"MC2_SIM_IDENTITY_TRACE_DETAIL">()) mc2::fmt::print_err("[LOADMUSIC] t={:.4f} id={} combat={} sensor={}\n", scenarioTime, soundSystem->getCurrentMusicId(), MechWarrior::anyPlayerInCombat(), SensorSystemManager::enemyInLOS);
+	if (mc2::gate::get<"MC2_SIM_IDENTITY_TRACE_DETAIL">()) mc2::fmt::print_err("[LOADMUSIC] t={:.4f} turn={} id={} combat={} sensor={}\n", scenarioTime, turn, soundSystem->getCurrentMusicId(), MechWarrior::anyPlayerInCombat(), SensorSystemManager::enemyInLOS);
 	ABLi_pushInteger(soundSystem->getCurrentMusicId());
 }
 

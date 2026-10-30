@@ -682,8 +682,13 @@ static void applySaveSections(std::string_view fileName, const mc2::save::Sectio
 
 // Activate the camera and finalise the static-prop and mech geometry and the GPU cull buffers.
 void Mission::loadActivateAndFinalize() {
+	// Contacts are derived from restored movers; rebuild before ABL observes the first resumed sensor pass.
+	const bool enemyInLOS = SensorSystemManager::enemyInLOS;
+	for (long team = 0; team < Team::numTeams; ++team)
+		SensorManager->getTeamSensor(team)->scanBattlefield();
+	SensorSystemManager::enemyInLOS = enemyInLOS;
 	// Re-arm the script's music clock after teardown stopped it, before resumed ABL can branch on silence.
-	soundSystem->resumeABLMusic(missionTuneNum);
+	soundSystem->playABLDigitalMusic(missionTuneNum);
 	ObjectManager->snapshotMoverPoses();
 	ObjectManager->extractRenderSnapshots();
 	eye->activate();
