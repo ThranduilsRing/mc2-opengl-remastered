@@ -356,6 +356,11 @@ def stock_copy(install, parent=None):
     finally:
         if target.parent != parent or not target.name.startswith(prefix):
             raise RuntimeError(f"refusing cleanup outside lane install: {target}")
+        mod_stage = target.with_name(target.name + "-mods-stage")
+        if mod_stage.exists():
+            if mod_stage.resolve().parent != parent:
+                raise RuntimeError(f"refusing cleanup outside lane install: {mod_stage}")
+            shutil.rmtree(mod_stage)
         size = sum(p.stat().st_size for p in target.rglob("*") if p.is_file())
         shutil.rmtree(target)
         print(f"[merge_gate] removed {target}: {size / 2**30:.2f} GiB logical (physical space not measured)", flush=True)
