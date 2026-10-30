@@ -15,8 +15,6 @@
 #include <cstring>
 #include <unordered_set>
 #include <vector>
-#include <map>
-#include <array>
 #include "Gates/gate.h"
 #include "mc2fmt.h"
 
@@ -37,13 +35,6 @@ unsigned long long Batcher::s_trail_spawn_total = 0;
 unsigned long long Batcher::s_trail_head_total  = 0;
 
 struct Batcher::Impl {
-    struct History {
-        uint64_t frame = UINT64_MAX;
-        std::array<float, 3> position{}, previous{};
-        bool valid = false;
-    };
-    std::map<std::pair<uintptr_t, uint32_t>, History> history;
-    uint64_t frame = 0;
     std::vector<GpuParticle> staging;
     std::vector<GroupInfo>   groups;
     unsigned int             budget;
@@ -197,7 +188,7 @@ void Batcher::BeginGroup(uint32_t handle, float u0, float v0, float us, float vs
     impl_->hasOpenGroup = true;
 }
 
-void Batcher::Emit(const GpuParticle& p, const void* source, uint32_t corner) {
+void Batcher::Emit(const GpuParticle& p) {
     if (!is_enabled()) return;
     // Cards carry six authored vertices; charge one particle for the whole quad.
     const unsigned sixths = (p.kind_flags & 64u) ? 1u : 6u;
@@ -211,21 +202,6 @@ void Batcher::Emit(const GpuParticle& p, const void* source, uint32_t corner) {
     }
     impl_->budgetSixths += sixths;
     impl_->staging.push_back(p);
-    if (source) {
-        auto& old = impl_->history[{reinterpret_cast<uintptr_t>(source), corner}];
-        const std::array<float, 3> position{p.position[0], p.position[1], p.position[2]};
-        if (old.frame != impl_->frame) {
-            old.valid = old.frame != UINT64_MAX && old.frame + 1 == impl_->frame;
-            old.previous = old.position;
-            old.position = position;
-            old.frame = impl_->frame;
-        }
-        if (old.valid && old.previous != position) {
-            auto& emitted = impl_->staging.back();
-            std::memcpy(emitted.previousPosition, old.previous.data(), sizeof(emitted.previousPosition));
-            emitted.previousValid = 1.0f;
-        }
-    }
     ++g_emit_total;
 }
 
@@ -284,8 +260,6 @@ void Batcher::ResolveTextures()
 
 void Batcher::Flush() {
     if (!is_enabled()) return;
-    ++impl_->frame;
-    std::erase_if(impl_->history, [this](const auto& entry) { const auto& [id, saved] = entry; return saved.frame + 1 < impl_->frame; });
     ++g_flush_total;
     if (impl_->staging.empty()) {
         impl_->groups.clear();

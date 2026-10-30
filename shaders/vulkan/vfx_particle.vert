@@ -27,7 +27,6 @@ struct Particle {
     vec3  velocity;  uint  kind_flags; // 32 / 44
     float lifetime;  float age;      // 48 / 52
     float size;      uint  atlasIndex; // 56 / 60
-    vec3 previousPosition; float previousValid; // 64 / 76
 };
 layout(std430, set = 0, binding = 1) readonly buffer Particles {
     Particle particles[];
@@ -37,7 +36,6 @@ layout(set = 0, binding = 0, std140) uniform VfxVsParams {
     mat4 worldToClipGL;   // SAME 16 raw floats as GL GL_FALSE upload
     vec4 camRight;        // xyz = GL-world-space camera right (w unused)
     vec4 camUp;           // xyz = GL-world-space camera up    (w unused)
-    mat4 previousWorldToClipGL;
 } U;
 
 // Per-group atlas sub-rect; LOCKSTEP with VfxGroupPush in vulkan_vfx_island.cpp.
@@ -63,8 +61,6 @@ layout(location = 2) flat out uint v_flags;
 
 layout(location = 3) out vec4 v_vegData;
 layout(location = 4) out vec2 v_vegAux;
-layout(location = 5) out vec4 v_previousClip;
-layout(location = 6) out vec4 v_currentAtPrevious;
 void main() {
     v_vegData=vec4(0.0); v_vegAux=vec2(0.0);   // vegetation has its own vertex shader (vfx_vegetation.vert); the fragment shader still reads these
     // Native mesh/ribbon vertices share the 64-byte frame-ring stride.
@@ -73,9 +69,6 @@ void main() {
         // The terrain MVP includes the MC2-to-render conversion. Native
         // gosFX geometry is already in render space, so convert it back first.
         vec3 world = mc2ToRender(p.position);
-        vec3 previousWorld = p.previousValid != 0.0 ? mc2ToRender(p.previousPosition) : world;
-        v_previousClip = U.previousWorldToClipGL * vec4(previousWorld, 1.0);
-        v_currentAtPrevious = U.worldToClipGL * vec4(world, 1.0);
         gl_Position = U.worldToClipGL * vec4(world, 1.0);
         // Surface flares need depth clearance, but moving their world corners
         // toward the camera enlarges explosions. Preserve authored screen size.
@@ -126,9 +119,6 @@ void main() {
                      + U.camUp.xyz    * corner.y;
 
     gl_Position = U.worldToClipGL * vec4(worldPos, 1.0);
-    vec3 previousWorld = worldPos + (p.previousValid != 0.0 ? mc2ToRender(p.previousPosition - p.position) : vec3(0.0));
-    v_previousClip = U.previousWorldToClipGL * vec4(previousWorld, 1.0);
-    v_currentAtPrevious = U.worldToClipGL * vec4(worldPos, 1.0);
 
     vec2 frameOffset = vec2(0.0);
     if (G.atlasColumns > 1u) {

@@ -7,7 +7,7 @@
       "binding": 1,
       "members": [
         {
-          "array_stride": 80,
+          "array_stride": 64,
           "matrix_stride": null,
           "name": "instances",
           "offset": 0,
@@ -24,7 +24,7 @@
           "matrix_stride": null,
           "name": "bones",
           "offset": 0,
-          "type": "_109"
+          "type": "_106"
         }
       ],
       "name": "BoneBuffer"

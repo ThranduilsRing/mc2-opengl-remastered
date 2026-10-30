@@ -10,16 +10,6 @@
       "location": 1,
       "name": "o_normal",
       "type": "vec4"
-    },
-    {
-      "location": 2,
-      "name": "o_motion",
-      "type": "vec4"
-    },
-    {
-      "location": 3,
-      "name": "o_reactive",
-      "type": "float"
     }
   ],
   "shader": "shaders/vulkan/vfx_particle.frag",

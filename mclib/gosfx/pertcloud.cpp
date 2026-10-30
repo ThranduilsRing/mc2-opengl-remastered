@@ -636,7 +636,7 @@ void gosFX::PertCloud::Draw(DrawInfo *info)
                         vertex.color[3] = blend == 3 ? 1.0f : color.alpha;
                         vertex.kind_flags = 8u | 32u | (blend == 2 ? 2u : 0u) |
                             (blend == 4 || blend == 5 ? 512u : 0u);
-                        batcher.Emit(vertex, GetParticle(i), corner);
+                        batcher.Emit(vertex);
                     }
                 }
             }

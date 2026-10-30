@@ -7,7 +7,7 @@
       "binding": 1,
       "members": [
         {
-          "array_stride": 80,
+          "array_stride": 64,
           "matrix_stride": null,
           "name": "particles",
           "offset": 0,
@@ -42,13 +42,6 @@
           "name": "camUp",
           "offset": 80,
           "type": "vec4"
-        },
-        {
-          "array_stride": null,
-          "matrix_stride": 16,
-          "name": "previousWorldToClipGL",
-          "offset": 96,
-          "type": "mat4"
         }
       ],
       "name": "VfxVsParams"

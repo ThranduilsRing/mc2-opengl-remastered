@@ -1,31 +1,24 @@
-"""Temporary owner A/B experiment; delete with MC2_EXPERIMENT_TEMPORAL_AB.
+"""Offline analysis of archived temporal A/B captures; experiment retired.
 
-Run capture, perf, report in that order. Uses only existing background harnesses.
+Report archived evidence; capture and perf launch modes have been retired.
 Camera tracks use 30 rendered frames/second of nominal camera time; simulation
 and foliage are frozen at the same seeded trigger frame in every arm.
 """
 import argparse
 import html
 import json
-import os
 from pathlib import Path
-import re
 import subprocess
 import sys
-import time
 
 import numpy as np
 from PIL import Image, ImageDraw
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path[:0] = [str(ROOT / 'scripts'), str(ROOT / 'tools/perf')]
-import run_visual_capture as capture
 import console_child
-from smoke_lib import host_lease, runner
-from mission_cpu_profile import HostSamples, noise_report
 
 OUT = Path('E:/mc2-archive-2026-10/proofs/temporal-ab')
-INSTALL = Path('E:/mc2-installs/claude-temporal-ab')
 MODES = {'A_smaa': 1, 'C_taa': 3, 'D_fsr1': 4, 'E_spatial': 5}
 MISSIONS = ['mc2_01', 'mc2_10', 'mc2_24']
 
@@ -43,13 +36,6 @@ def track(mission):
             mark.pop('sweep', None)
             marks.append(mark)
     return dict(schema_v=1, mission=mission, bookmarks=marks)
-
-
-def declared(mode, width, height):
-    return {'MC2_EXPERIMENT_TEMPORAL_AB': str(MODES[mode]), 'MC2_RENDER_SCALE': '0.67' if mode == 'D_fsr1' else '1',
-            'MC2_WIDTH': str(width), 'MC2_HEIGHT': str(height), 'MC2_VK_DEVICE': '7900',
-            'MC2_VK_GPU_TIMESTAMPS': '1', 'MC2_VSYNC': '0', 'MC2_FPS_CAP': '0',
-            'MC2_VISUAL_CAPTURE_EXIT_AFTER': '1'}
 
 
 def luminance(rgb):
@@ -119,68 +105,6 @@ def process(directory, mission):
     return result
 
 
-def captures():
-    os.environ.setdefault('MC2_HOST_LEASE_TIMEOUT','1200')
-    for mission in MISSIONS:
-        marks=OUT/f'{mission}-track.json'
-        marks.write_text(json.dumps(track(mission)),encoding='utf-8')
-        for mode in MODES:
-            directory=OUT/mission/mode
-            if (directory/'metrics.json').exists(): continue
-            argv=[sys.executable,str(ROOT/'scripts/run_visual_capture.py'),'--exe',str(INSTALL/'mc2.exe'),
-                  '--mission',mission,'--bookmarks',str(marks),'--out-dir',str(directory),
-                  '--trigger-frame','300','--settle','0','--duration','600','--no-kill']
-            for k,v in declared(mode,1920,1080).items(): argv += ['--env-declare',f'{k}={v}']
-            with (OUT/f'{mission}-{mode}-harness.log').open('w',encoding='utf-8') as log:
-                rc=subprocess.run([sys.executable, *argv[1:]],cwd=ROOT,stdout=log,stderr=subprocess.STDOUT,
-                                  **console_child.child_kwargs(redirected=True)).returncode
-            if rc: raise RuntimeError(f'capture failed {mission}/{mode}: {rc}')
-            result=process(directory,mission)
-            print(f'CAPTURE {mission}/{mode}: consecutive='+str(all(r['consecutive'] for r in result.values())),flush=True)
-
-
-def perf():
-    import psutil
-    for mission in MISSIONS:
-        pose=next(b for b in track(mission)['bookmarks'] if b['name']=='orbit_000')
-        park=','.join(str(x) for x in [*pose['pos'][:2],pose['rot'],pose['proj'],pose['alt']])
-        for mode in MODES:
-            directory=OUT/mission/mode; directory.mkdir(parents=True,exist_ok=True)
-            if (directory/'perf.json').exists(): continue
-            runs=[]
-            for i in range(4):
-                declared_env=declared(mode,3840,2160)
-                declared_env.pop('MC2_VISUAL_CAPTURE_EXIT_AFTER')
-                declared_env['MC2_CAMERA_PARK']=park+'@300'
-                env,_=capture.build_capture_env(OUT/f'{mission}-track.json',directory,300,0,True,declared_env)
-                for key in ['MC2_VISUAL_BOOKMARK_CAPTURE','MC2_VISUAL_CAPTURE_DIR','MC2_VISUAL_CAPTURE_FRAME','MC2_VISUAL_SETTLE']:
-                    env.pop(key,None)
-                start=time.monotonic()
-                with host_lease.exclusive_window(f'temporal A/B {mission}/{mode}/{i}',timeout_s=1200):
-                    waited=time.monotonic()-start
-                    samples=HostSamples(psutil)
-                    with samples:
-                        run=runner.run_one(runner.RunConfig(exe=[str(INSTALL/'mc2.exe')],profile='stock',stem=mission,
-                            duration=15,heartbeat_timeout_load_s=180,heartbeat_timeout_play_s=30,grace_s=240,env_extra=env))
-                    noise=noise_report(samples)
-                (directory/f'perf-{i}.log').write_text(run.stdout_text,encoding='utf-8')
-                lines=[line for line in run.stdout_text.splitlines() if '[VK_GPU_PASSES v1]' in line and 'span_ms=' in line]
-                if any(re.search(r'(?:dropped|overflow)=[1-9]',line) for line in lines):
-                    noise['status']='NOISY'; noise['reasons'].append('GPU timestamp scope drop/overflow')
-                spans=[float(re.search(r'span_ms=([\d.]+)',l)[1]) for l in lines if int(re.search(r'frame=(\d+)',l)[1])>=420]
-                passes={}
-                for line in lines:
-                    if int(re.search(r'frame=(\d+)',line)[1])<420: continue
-                    for name,value in re.findall(r'(VKIsl\.[\w.]+)=([\d.]+)',line): passes.setdefault(name,[]).append(float(value))
-                if run.exit_code or run.killed_by_timeout or not run.verdict.passed or not spans:
-                    raise RuntimeError(f'perf failed: {mission}/{mode}/{i}')
-                runs.append(dict(noise=noise,lease_wait_seconds=waited,game_seconds=run.walltime_s,
-                    mean_ms=float(np.mean(spans)),p95_ms=float(np.percentile(spans,95)),samples=len(spans),
-                    passes={k:float(np.mean(v)) for k,v in passes.items()}))
-                print(f'PERF {mission}/{mode}/{i}: {noise["status"]}',flush=True)
-            (directory/'perf.json').write_text(json.dumps(runs,indent=2),encoding='utf-8')
-
-
 def report():
     sha=subprocess.check_output(['git','rev-parse','HEAD'],cwd=ROOT,text=True,
                                 **console_child.child_kwargs(redirected=True)).strip()
@@ -217,6 +141,6 @@ def report():
 
 if __name__=='__main__':
     parser=argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('phase',choices=['capture','perf','report'])
+    parser.add_argument('phase',choices=['report'])
     args=parser.parse_args(); OUT.mkdir(parents=True,exist_ok=True)
-    {'capture':captures,'perf':perf,'report':report}[args.phase]()
+    report()

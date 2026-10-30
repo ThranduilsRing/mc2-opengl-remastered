@@ -30,6 +30,12 @@ def test_quick_rows_green_and_red():
     assert len(seen) == 2  # both rows ran
 
 
+def test_precheck_owns_both_python_suites():
+    commands = dict(lm.PYTHON_SUITES)
+    assert commands['scripts_tests'] == ['scripts/run_scripts_tests.py']
+    assert commands['tools_tests'] == ['scripts/run_tools_tests.py']
+
+
 def _throwaway_repo(tmp_path):
     import subprocess
 

@@ -2,7 +2,7 @@
 
 Capture/build: `91340950252975bea50a272168e1fc9c591030a8` on
 `claude/temporal-ab`. Report-only continuation; rendering defaults unchanged.
-All experimental modes remain **OFF** (`MC2_EXPERIMENT_TEMPORAL_AB=0`).
+The W88 fixup retired all experimental runtime modes and their gates.
 SMAA remains the current reference behavior.
 
 Evidence: `E:/mc2-archive-2026-10/proofs/temporal-ab/index.html` and
@@ -67,3 +67,5 @@ and viewer build, five selected shader/gate contract rows, four resource-graph
 doctests (47 assertions), default-off day/night smoke, deterministic frame/seed
 identity audit. Continuation reran metric tests (2 passed); documentation uses
 `git diff --check`. No engine code or defaults changed in this continuation.
+The completed experiment's motion attachments were removed in the W88 fixup.
+This decision and archived evidence analysis remain available.

@@ -29,10 +29,9 @@ void mc2PrewarmMissionPipelines();
 
 namespace mc2vk::infra {
 void init(VkDevice device, VkPhysicalDevice physical);
+void materialSampler(VkSamplerCreateInfo& info);
 void shutdown();
 void frame();
-// Material sampling follows scene pixel density; UI, lookup and shadow samplers do not.
-void materialSampler(VkSamplerCreateInfo& info);
 void prewarm(int width, int height);
 void saveCache();
 VkPipelineCache cacheHandle();

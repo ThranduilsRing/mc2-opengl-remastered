@@ -286,7 +286,7 @@ if(MC2_VULKAN)
         # present window + surface + swapchain + the exportable interop image. Uses
         # the interop primitives above, so it is gated on MC2_VULKAN_ISLAND (the TU
         # #if requires BOTH MC2_VULKAN and MC2_VULKAN_ISLAND). No new link libs.
-        list(APPEND SOURCES engine_present_vk.cpp vulkan_spatial_aa.cpp vulkan_motion_vectors.cpp)
+        list(APPEND SOURCES engine_present_vk.cpp vulkan_spatial_aa.cpp)
     endif()
 endif()
 
@@ -400,8 +400,7 @@ if(MC2_VULKAN)
     # vulkan_vfx_island.cpp via load_spv(spv_dir()+"vfx_particle.*.spv").
     set(MC2_VK_SHADER_BASENAMES edge_fog fog_oob hzb_reduce hzb_cull shadow_debug_overlay water_geom shadow_prop shadow_prop_alpha shadow_mech shadow_terrain_static color_prop_tier1 terrain_tier1 terrain_tier1_skirt mech_tier1 mech_depth legacy_shape_tier1 terrain_overlay_tier1 terrain_decal_tier1 hdri_sky cloud_shadow shoreline screen_shadow_csm impact_decal postprocess postprocess_visual hud_color hud_tex vfx_particle)
     set(MC2_VK_SPV_OUTPUTS "")
-    list(APPEND MC2_VK_SHADER_BASENAMES aa_smaa_edges aa_smaa_weights aa_smaa_blend aa_fxaa aa_experiment_taa aa_experiment_rcas)
-    list(APPEND MC2_VK_SHADER_BASENAMES motion_vectors) # RG16F fullscreen reprojection
+    list(APPEND MC2_VK_SHADER_BASENAMES aa_smaa_edges aa_smaa_weights aa_smaa_blend aa_fxaa)
     list(APPEND MC2_VK_SHADER_BASENAMES water_reflection)
     list(APPEND MC2_VK_SHADER_BASENAMES vegetation_cull vegetation_scan vegetation_compact vfx_vegetation)
     list(APPEND MC2_VK_SHADER_BASENAMES shadow_bake_pcss shadow_bake_terrain_march shadow_bake_resolve shadow_bake_bc4)
@@ -415,7 +414,6 @@ if(MC2_VULKAN)
     file(GLOB MC2_VK_SHADER_INCLUDES CONFIGURE_DEPENDS
         "${MC2_VK_SHADER_SRC_DIR}/include/*.glsl"
         "${CMAKE_SOURCE_DIR}/3rdparty/smaa/SMAA.hlsl"
-        "${CMAKE_SOURCE_DIR}/3rdparty/fsr1/*.h"
         "${CMAKE_SOURCE_DIR}/3rdparty/fastnoiselite/FastNoiseLite.glsl"
         "${CMAKE_SOURCE_DIR}/shaders/include/*.hglsl")
     if(MC2_GLSLANG_VALIDATOR OR MC2_GLSLC)

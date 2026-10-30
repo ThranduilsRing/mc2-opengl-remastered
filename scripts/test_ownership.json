@@ -118,6 +118,7 @@
     {"module": "scripts/tests/test_world_order_diff.py", "owners": ["sim_determinism"]},
     {"module": "scripts/tests/test_cook_priority.py", "owners": ["scripts_tests"]},
     {"module": "scripts/tests/test_farm_runner.py", "owners": ["farm_runner"]},
-    {"module": "scripts/tests/test_nightly_dual_gpu.py", "owners": ["scripts_tests"]}
+    {"module": "scripts/tests/test_nightly_dual_gpu.py", "owners": ["scripts_tests"]},
+    {"module": "scripts/tests/test_vfx_no_objectid.py", "owners": ["scripts_tests"]}
   ]
 }

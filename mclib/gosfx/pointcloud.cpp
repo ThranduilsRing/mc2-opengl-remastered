@@ -475,7 +475,7 @@ void gosFX::PointCloud::Draw(DrawInfo *info)
                     vertex.velocity[0] = corner == 1 ? 2.4f : 0.0f;
                     vertex.velocity[1] = corner == 2 ? 2.4f : 0.0f;
                     vertex.kind_flags = 8u | 32u | 128u | (additive ? 2u : 0u);
-                    batcher.Emit(vertex, GetParticle(i), corner);
+                    batcher.Emit(vertex);
                 }
             }
         }

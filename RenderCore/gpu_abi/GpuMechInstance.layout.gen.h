@@ -4,7 +4,7 @@
 #pragma once
 
 static_assert(std::is_trivially_copyable<GpuMechInstance>::value, "GpuMechInstance must be trivially copyable");
-static_assert(sizeof(GpuMechInstance) == 80, "GpuMechInstance size must match std430 GLSL struct");
+static_assert(sizeof(GpuMechInstance) == 64, "GpuMechInstance size must match std430 GLSL struct");
 static_assert(alignof(GpuMechInstance) == 16, "GpuMechInstance alignment");
 static_assert(offsetof(GpuMechInstance, typeLodRecordIndex) == 0, "typeLodRecordIndex offset");
 static_assert(offsetof(GpuMechInstance, baseBoneOffset) == 4, "baseBoneOffset offset");
@@ -16,4 +16,3 @@ static_assert(offsetof(GpuMechInstance, objectIdRaw) == 48, "objectIdRaw offset"
 static_assert(offsetof(GpuMechInstance, materialIdx) == 52, "materialIdx offset");
 static_assert(offsetof(GpuMechInstance, visualDamage01) == 56, "visualDamage01 offset");
 static_assert(offsetof(GpuMechInstance, visualFlags) == 60, "visualFlags offset");
-static_assert(offsetof(GpuMechInstance, previousBoneOffset) == 64, "previousBoneOffset offset");

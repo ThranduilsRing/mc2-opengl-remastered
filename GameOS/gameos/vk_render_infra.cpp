@@ -45,12 +45,6 @@ extern "C" int mc2_vk_impact_decals_prewarm(int,int);
 namespace mc2vk::infra {
 void materialSampler(VkSamplerCreateInfo& info) {
     info.mipLodBias = float(std::log2(mc2::gate::get<"MC2_RENDER_SCALE">()));
-    if (mc2::gate::get<"MC2_EXPERIMENT_TEMPORAL_AB">() == 5) {
-        auto& ctx = getOrCreateEngineVulkanContext();
-        VkPhysicalDeviceProperties props{}; vkGetPhysicalDeviceProperties(ctx.physicalDevice(), &props);
-        info.anisotropyEnable = ctx.featureEnabled("samplerAnisotropy") ? VK_TRUE : VK_FALSE;
-        info.maxAnisotropy = std::min(16.0f, props.limits.maxSamplerAnisotropy);
-    }
 }
 namespace {
 uint64_t hashBytes(const void* data, size_t n) {

@@ -18,5 +18,3 @@ def test_orbit_track_and_mode_defaults():
         assert len(poses)==301
         assert poses[0]['rot']==poses[-1]['rot']
         assert all(p['proj']==20 and p['alt']==400 for p in poses)
-    assert ab.declared('A_smaa',1920,1080)['MC2_RENDER_SCALE']=='1'
-    assert ab.declared('D_fsr1',1920,1080)['MC2_RENDER_SCALE']=='0.67'

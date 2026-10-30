@@ -134,27 +134,22 @@ layout(location = 7) flat out int  vMechSunFound;
 layout(location = 8) out vec3 vTangentGL;           // NORMALS-1 world tangent
 layout(location = 9) flat out uint vImportedMech;   // renderFlags >> 3 & 7
 layout(location = 10) flat out uint vLegacyVehicle; // renderFlags bit 6: ground vehicle, legacy shading
-layout(location = 11) out vec3 vPreviousWorldPos;
 
 void main() {
     GpuMechInstance inst = uInst.instances[gl_InstanceIndex];
 
     // Linear-blend skinning (mech.vert:156-170). Stock weights=(1,0,0,0) => single-bone.
     mat4 boneT = mat4(0.0);
-    mat4 previousBoneT = mat4(0.0);
     for (int bi = 0; bi < 4; ++bi) {
         float w = a_boneWeights[bi];
         if (w > 0.0) {
             GpuMechBone bn = uBones.bones[a_boneIndices[bi] + inst.baseBoneOffset];
             boneT += w * mat4(bn.row0, bn.row1, bn.row2, bn.row3);
-            GpuMechBone previousBone = uBones.bones[a_boneIndices[bi] + inst.previousBoneOffset];
-            previousBoneT += w * mat4(previousBone.row0, previousBone.row1, previousBone.row2, previousBone.row3);
         }
     }
 
     vec4 worldStuff = boneT * vec4(a_position, 1.0);
     vec3 worldMC2 = mc2ToRender(worldStuff.xyz);   // Stuff->MC2 swap
-    vPreviousWorldPos = mc2ToRender((previousBoneT * vec4(a_position, 1.0)).xyz);
     vec3 normalStuff = mat3(boneT) * a_normal;
     vec3 worldNormal = normalize(mc2ToRender(normalStuff));
 

@@ -9,6 +9,10 @@
 #include "team.h"
 #include "Stuff/stuffheaders.hpp"
 #include "content_ir.h"
+#include "msl.h"
+#include "tgl_load_guard.h"
+#include "packet.h"
+#include "save_sections.h"
 
 #include <cstdlib>
 #include <algorithm>
@@ -134,6 +138,37 @@ struct CompileLog {
         return result;
     }
 };
+}
+
+TEST_CASE("SaveLoad/v1 fixture without WRLD retains legacy turn zero") {
+    PacketFile file;
+    REQUIRE(file.open("tests/fixtures/saves/v1_minimal.ims") == NO_ERR);
+    const long packet = file.getNumPackets() - 1;
+    REQUIRE(file.seekPacket(packet) == NO_ERR);
+    REQUIRE(file.getPacketSize() > 0);
+    mc2::save::Bytes bytes(file.getPacketSize());
+    file.readPacket(packet, bytes.data());
+    mc2::save::SectionContainer sections;
+    REQUIRE(mc2::save::upgradeLegacyR2(bytes, sections));
+    CHECK(sections.find(mc2::save::tagWorld) == nullptr);
+    CHECK(mc2::save::SavedMoverLists{}.turn == 0);
+}
+
+TEST_CASE("ContentShape/missing required shape remains visible") {
+    TG_TypeMultiShape shape;
+    bool failed = false;
+    // Inject the missing-file result before any renderer/texture manager exists.
+    CHECK(tglVerifyShapeLoaded(&shape, -1, "missing fixture", "missing-required.ase", &failed));
+    CHECK(failed);
+    REQUIRE(shape.GetNumShapes() == 1);
+    CHECK(shape.GetTypeNode(0)->GetNodeType() == SHAPE_NODE);
+    char texture[64]{};
+    REQUIRE(shape.GetTextureName(0, texture, sizeof(texture)) == NO_ERR);
+    CHECK(std::string(texture) == "mc2_load_placeholder");
+    CHECK(shape.extentRadius > 20.0f);
+    CHECK(shape.minBox.x < shape.maxBox.x);
+    CHECK(shape.minBox.y < shape.maxBox.y);
+    CHECK(shape.minBox.z < shape.maxBox.z);
 }
 
 TEST_CASE("ContentCook/cache publication failure is reported as failure") {
@@ -396,7 +431,7 @@ TEST_CASE("ABLSave/completed orders survive a save: resumed execution equals uni
     const struct { const char* name; std::string bytes; } refused[] = {
         {"truncated section", image.substr(0, image.size() - 2)},
         {"section missing its flag word", image.substr(0, image.size() - 4)},
-        {"section with a word too many", image + std::string(4, '')},
+        {"section with a word too many", image + std::string(4, '\x11')},
         {"legacy tail ending in the mark", legacyImage + mark},
         {"legacy tail of two words ending in the mark", legacyImage + std::string(4, '"') + mark},
     };

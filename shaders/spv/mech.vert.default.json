@@ -6,14 +6,14 @@
   "specializationParams": [],
   "artifact": "mech.vert.default.dbbae7d3.spv",
   "spv_dir": "shaders/spv",
-  "source_sha256": "a09c1ff40f68a215dc2ba7b57a712da9bc49a7f7eb1939073f8761c2fb884dc2",
-  "spirv_sha256": "0012facd6924c8ede5bab3fdc4c35517ffa1145c708abb8a0a41b204b3e37179",
+  "source_sha256": "1d2ed9c9fd521929d8e056b712f0b7facd5ea202850ae5ba6933adfcefc38507",
+  "spirv_sha256": "9b61300de3a0d32eefbc1bfb1890a3854ebf272269aa1d6b5389d4bf2796d4f0",
   "bindings": {
     "ubos": [
       {
-        "type": "_572",
+        "type": "_503",
         "name": "MechFrameUBO",
-        "block_size": 288,
+        "block_size": 224,
         "set": 0,
         "binding": 0
       }
@@ -36,7 +36,7 @@
         "binding": 1
       },
       {
-        "type": "_404",
+        "type": "_403",
         "name": "BoneBuffer",
         "readonly": true,
         "block_size": 0,
@@ -215,10 +215,6 @@
         {
           "name": "visualFlags",
           "type": "uint"
-        },
-        {
-          "name": "previousBoneOffset",
-          "type": "uint"
         }
       ]
     },
@@ -274,11 +270,6 @@
           "name": "visualFlags",
           "type": "uint",
           "offset": 60
-        },
-        {
-          "name": "previousBoneOffset",
-          "type": "uint",
-          "offset": 64
         }
       ]
     },
@@ -295,11 +286,11 @@
             true
           ],
           "offset": 0,
-          "array_stride": 80
+          "array_stride": 64
         }
       ]
     },
-    "_399": {
+    "_398": {
       "name": "GpuMechBone",
       "members": [
         {
@@ -320,7 +311,7 @@
         }
       ]
     },
-    "_402": {
+    "_401": {
       "name": "GpuMechBone",
       "members": [
         {
@@ -345,12 +336,12 @@
         }
       ]
     },
-    "_404": {
+    "_403": {
       "name": "BoneBuffer",
       "members": [
         {
           "name": "bones",
-          "type": "_402",
+          "type": "_401",
           "array": [
             0
           ],
@@ -362,7 +353,7 @@
         }
       ]
     },
-    "_572": {
+    "_503": {
       "name": "MechFrameUBO",
       "members": [
         {
@@ -435,16 +426,10 @@
           "name": "environmentAmbient",
           "type": "vec4",
           "offset": 208
-        },
-        {
-          "name": "previousWorldToClipGL",
-          "type": "mat4",
-          "offset": 224,
-          "matrix_stride": 16
         }
       ]
     },
-    "_595": {
+    "_526": {
       "name": "gl_PerVertex",
       "members": [
         {
@@ -510,10 +495,6 @@
       }
     ],
     "outputs": [
-      {
-        "name": "vPreviousWorldPos",
-        "location": 11
-      },
       {
         "name": "vUv",
         "location": 0
