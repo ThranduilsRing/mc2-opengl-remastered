@@ -15,13 +15,11 @@ campaigns), see [docs/STARTER-GUIDE.md](docs/STARTER-GUIDE.md).
 ## Requirements
 
 - Windows 10 or 11 (64-bit)
-- A Vulkan-capable GPU and current vendor driver. The engine requires Vulkan
-  1.2 plus dynamic rendering, synchronization2, buffer device address, timeline
-  semaphores and descriptor indexing; Vulkan version alone is insufficient.
-  Unsupported devices fail at startup; see `[VK_PROFILE]` and `[RENDER_BACKEND]`
-  in the log. The current error dialog describes this as Vulkan 1.3.
-- Microsoft Visual C++ 2015–2022 Redistributable (x64), installed separately
-  if the runtime is missing. `vulkan-1.dll` comes from the graphics driver.
+- A GPU and current driver supporting Vulkan 1.2, descriptor indexing,
+  timeline semaphores, buffer device address, dynamic rendering and
+  synchronization2. Unsupported devices fail at startup; there is no GL fallback.
+- Microsoft Visual C++ 2015–2022 x64 runtime (app-local runtime DLLs ship
+  with the engine). Install GPU drivers separately; vulkan-1.dll is not bundled.
 - ~6 GB free disk space
 
 ## Install
@@ -43,10 +41,10 @@ The `burnins-4x` zips are technically optional — the game falls back to
 stock-resolution lightmaps inside the FST archives — but terrain colormaps
 look noticeably blurry without them.
 
-The game-data zip contains original Microsoft/FASA assets. Distribution is
-subject to the included license/EULA; the maintainer must confirm redistribution
-rights before publishing. You can import data from an existing MC2/MC2X/MCO
-installation with the CLI below.
+The game-data zip contains stock assets under the accompanying Microsoft
+license terms, including non-commercial restrictions. The maintainer must
+confirm redistribution rights before publishing it. Community campaigns are
+imported from an existing MC2X/MCO install using the CLI below.
 
 **Optional:** Extract `mc2-load-points.zip` (53 KB) into
 `%USERPROFILE%\.mechcommander2\savegame\` (create the folder if it doesn't

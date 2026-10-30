@@ -108,9 +108,15 @@ disk_guard "${TMPDIR:-/tmp}"   8 "release staging tree (mktemp -d)"
 mkdir -p "$OUTDIR"
 
 z() {
-    "$SEVENZIP" a -tzip -mx=7 -bso0 -bsp0 "$@"
-    # Every independently downloadable archive carries the distribution terms.
-    ( cd "$REPO" && "$SEVENZIP" a -tzip -mx=7 -bso0 -bsp0 "$1" license.txt EULA.txt LICENSES.md )
+    # Every independently downloaded asset carries the distribution terms.
+    cp "$REPO/license.txt" "$REPO/EULA.txt" "$REPO/LICENSES.md" \
+       "$REPO/THIRD_PARTY_NOTICES.md" .
+    if [ "$2" = "." ]; then
+        "$SEVENZIP" a -tzip -mx=7 -mmt=1 -bso0 -bsp0 "$@"
+    else
+        "$SEVENZIP" a -tzip -mx=7 -mmt=1 -bso0 -bsp0 "$@" \
+            license.txt EULA.txt LICENSES.md THIRD_PARTY_NOTICES.md
+    fi
 }
 
 # Stage a clean tree we can shape, so we can exclude stock-resolution burnins
@@ -279,19 +285,18 @@ fi
 # the REPO tree (canonical, reviewed content) — NOT from the deploy's mods/
 # dir, which accumulates local/third-party mods that must never leak into a
 # public zip. mods/dist (packed .mc2mod artifacts) is build output, excluded.
-echo "[engine] staging example mods (examples/mods/)"
-mkdir -p "$STAGE/engine/mods"
+echo "[engine] staging examples (examples/mods/) outside active mods/"
+mkdir -p "$STAGE/engine/examples/mods"
 for moddir in "$REPO"/examples/mods/*/; do
-    [ -f "$moddir/mod.json" ] && [ -d "$moddir/data" ] || continue
+    [ -d "$moddir" ] || continue
     modname="$(basename "$moddir")"
-    cp -r "$moddir" "$STAGE/engine/mods/$modname"
+    [ "$modname" = "dist" ] && continue
+    cp -r "$moddir" "$STAGE/engine/examples/mods/$modname"
 done
-# Reviewed runtime DLLs only. The driver supplies Vulkan; users install the
-# x64 VC++ redistributable. Never ship debug DLLs or leftovers from an old deploy.
-while IFS= read -r dll; do
+# Only reviewed runtime DLLs ship. Missing dependencies fail the cut.
+while IFS= read -r dll || [ -n "$dll" ]; do
     dll="${dll%$'\r'}"
-    [ -n "$dll" ] || continue
-    [ -f "$DEPLOY/$dll" ] || { echo "[engine] FAIL: missing $dll"; exit 1; }
+    [ -f "$DEPLOY/$dll" ] || { echo "[engine] missing runtime: $dll"; exit 1; }
     cp "$DEPLOY/$dll" "$STAGE/engine/"
 done < "$REPO/scripts/release-dlls.txt"
 for f in "$DEPLOY"/run-with-log.bat "$DEPLOY"/run-mc2.bat; do
@@ -309,14 +314,14 @@ for f in "$DEPLOY"/esplash.bmp "$DEPLOY"/tacsplash.bmp; do
 done
 # Factory preferences only. First launch creates options.cfg from minprefs.cfg;
 # never distribute the packager's personal settings or harness configurations.
-for cfg in minprefs.cfg orgprefs.cfg system.cfg; do
+for cfg in minprefs.cfg orgprefs.cfg prefs.cfg system.cfg; do
     cp "$DEPLOY/$cfg" "$STAGE/engine/"
 done
 rm -f "$OUTDIR/mc2-remastered-engine.zip"
 ( cd "$STAGE/engine" && z "$OUTDIR/mc2-remastered-engine.zip" . ) >/dev/null
 # Sanity: engine zip must contain the cfg files that gate the sniffer
 # branch. minprefs.cfg is the factory source for first-launch options.cfg.
-for required_cfg in minprefs.cfg orgprefs.cfg system.cfg; do
+for required_cfg in minprefs.cfg orgprefs.cfg prefs.cfg system.cfg; do
     if ! "$SEVENZIP" l "$OUTDIR/mc2-remastered-engine.zip" | grep -q " $required_cfg\$"; then
         echo "[engine] FAIL — $required_cfg missing from engine.zip (sniffer-loop regression)"; exit 1
     fi

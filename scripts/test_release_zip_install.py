@@ -80,6 +80,7 @@ REQUIRED_FILES = [
     "LICENSES.md",
     "minprefs.cfg",   # sniffer self-heal CopyFile source
     "orgprefs.cfg",
+    "prefs.cfg",      # engine preferences are read separately from options.cfg
     "system.cfg",
 ]
 REQUIRED_DIRS = [
@@ -88,6 +89,7 @@ REQUIRED_DIRS = [
 ]
 # At least one .fst archive must exist at install root (fastfile data).
 REQUIRED_FST = True
+REQUIRED_DLLS = (REPO_ROOT / "scripts/release-dlls.txt").read_text().splitlines()
 
 MANIFEST_NAME = "release_install_manifest.csv"
 REPORT_NAME = "release_install_report.json"
@@ -147,7 +149,7 @@ def verify_tree(install: Path) -> list[str]:
         name = path.name.lower()
         if path.is_file() and (".bak" in name or name.startswith(("harness_", "h2prefs"))):
             failures.append(f"developer artifact must not ship: {path.name}")
-        if path.suffix.lower() == ".cfg" and name not in {"minprefs.cfg", "orgprefs.cfg", "system.cfg"}:
+        if path.suffix.lower() == ".cfg" and name not in {"minprefs.cfg", "orgprefs.cfg", "prefs.cfg", "system.cfg"}:
             failures.append(f"non-factory configuration must not ship: {path.name}")
 
     dlls = (REPO_ROOT / "scripts/release-dlls.txt").read_text().splitlines()
@@ -175,7 +177,7 @@ def verify_tree(install: Path) -> list[str]:
         if not fsts:
             failures.append("no *.fst files found at install root (fastfile data missing)")
 
-    # Shader sanity: at least one .vert and one .frag must exist.
+    # Vulkan runtime consumes baked SPIR-V, not the GLSL sources alone.
     shaders = install / "shaders"
     if not any(p.stat().st_size > 0 for p in (shaders / "vulkan").glob("*.spv")):
         failures.append("shaders/vulkan/ contains no non-empty baked .spv files")
@@ -302,6 +304,10 @@ def main() -> None:
         description="Assemble release zips into a temp install and smoke-test it."
     )
     ap.add_argument(
+        "--first-run", action="store_true",
+        help="Test normal startup with options.cfg absent before the mission smoke.",
+    )
+    ap.add_argument(
         "--zip-dir",
         type=Path,
         default=DEFAULT_ZIP_DIR,
@@ -337,7 +343,7 @@ def main() -> None:
     args = ap.parse_args()
 
     zip_dir: Path = args.zip_dir.resolve()
-    out_dir: Path = (args.out_dir or zip_dir).resolve()
+    out_dir: Path = (args.out_dir or Path(os.environ.get("MC2_FARM_RESULT_DIR", zip_dir))).resolve()
 
     if not zip_dir.is_dir():
         fail(f"--zip-dir not found: {zip_dir}")

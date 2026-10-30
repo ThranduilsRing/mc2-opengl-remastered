@@ -955,8 +955,9 @@ def enumerate_payload(src_root, build_dir, exe_name, pdb_name,
                 p = os.path.join(vk_spv_dir, fn)
                 if os.path.isfile(p):
                     items.append((p, f"shaders/vulkan/{fn}", "shader"))
-    if require_build and not any(rel.endswith(".spv") for _, rel, _ in items):
-        fail(f"no baked Vulkan SPIR-V at {vk_spv_dir or '<no build root>'}; build shaders before deploying")
+    if require_build and not any(rel.startswith("shaders/vulkan/") and rel.endswith(".spv")
+                                 for _src, rel, _kind in items):
+        fail(f"No baked Vulkan SPIR-V at {vk_spv_dir or '<no build root>'}; build shaders before deploying")
 
     # Deploy the ENTIRE shaders/ tree recursively (every file, all extensions),
     # not an extension allowlist. Shaders #include each other across stages and

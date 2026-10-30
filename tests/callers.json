@@ -791,7 +791,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/deploy_payload.py",
-          "line": 1970,
+          "line": 1971,
           "evidence": "command",
           "reference": "scripts/check-deploy-hygiene.py",
           "text": "r = subprocess.run([sys.executable, hygiene, target],"
@@ -2213,7 +2213,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1541,
+          "line": 1542,
           "evidence": "command",
           "reference": "scripts/check_sim_include_firewall.py",
           "text": "run_check \"sim_include_firewall\"        \"py -3 -B scripts/tests/test_sim_include_firewall.py && py -3 scripts/check_sim_include_firewall.py\""
@@ -2834,7 +2834,7 @@
         },
         {
           "path": "scripts/tests/test_deploy_build_layout.py",
-          "line": 28,
+          "line": 29,
           "evidence": "import",
           "reference": "scripts.console_child",
           "text": "from scripts import console_child  # noqa: E402"
@@ -3568,6 +3568,13 @@
           "text": "import console_child  # noqa: E402"
         },
         {
+          "path": "tools/temporal_ab.py",
+          "line": 23,
+          "evidence": "import",
+          "reference": "console_child",
+          "text": "import console_child"
+        },
+        {
           "path": "tools/terrain_beautify/cook_markings.py",
           "line": 99,
           "evidence": "import",
@@ -3880,7 +3887,7 @@
         },
         {
           "path": "scripts/tests/test_deploy_build_layout.py",
-          "line": 27,
+          "line": 28,
           "evidence": "import",
           "reference": "scripts.deploy_payload",
           "text": "from scripts import deploy_payload as dp  # noqa: E402"
@@ -4042,7 +4049,7 @@
         },
         {
           "path": "scripts/deploy_payload.py",
-          "line": 1824,
+          "line": 1825,
           "evidence": "import",
           "reference": "exe_fingerprint",
           "text": "from exe_fingerprint import extract, sha_agrees"
@@ -4222,14 +4229,14 @@
       "callers_by_stem": [
         {
           "path": "scripts/deploy_payload.py",
-          "line": 1230,
+          "line": 1231,
           "evidence": "import",
           "reference": "kit_payload",
           "text": "from kit_payload import contained_path"
         },
         {
           "path": "scripts/deploy_payload.py",
-          "line": 1899,
+          "line": 1900,
           "evidence": "import",
           "reference": "kit_payload",
           "text": "import kit_payload"
@@ -5157,7 +5164,7 @@
         },
         {
           "path": "scripts/test_release_zip_install.py",
-          "line": 292,
+          "line": 294,
           "evidence": "command",
           "reference": "scripts/run_smoke.py",
           "text": "result = subprocess.run(cmd, **console_child.child_kwargs())"
@@ -5335,7 +5342,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1538,
+          "line": 1539,
           "evidence": "command",
           "reference": "scripts/run_tools_tests.py",
           "text": "run_check_tri \"kit_art\"                 \"py -3 scripts/run_tools_tests.py --suite art\""
@@ -5412,13 +5419,6 @@
           "evidence": "command",
           "reference": "scripts/run_visual_capture.py",
           "text": "result=subprocess.run(cmd,**console_child.child_kwargs())"
-        },
-        {
-          "path": "tools/temporal_ab.py",
-          "line": 134,
-          "evidence": "command",
-          "reference": "scripts/run_visual_capture.py",
-          "text": "rc=subprocess.run(argv,cwd=ROOT,stdout=log,stderr=subprocess.STDOUT).returncode"
         }
       ],
       "callers_by_stem": [
@@ -8073,7 +8073,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1541,
+          "line": 1542,
           "evidence": "command",
           "reference": "scripts/tests/test_sim_include_firewall.py",
           "text": "run_check \"sim_include_firewall\"        \"py -3 -B scripts/tests/test_sim_include_firewall.py && py -3 scripts/check_sim_include_firewall.py\""
@@ -13233,7 +13233,7 @@
         },
         {
           "path": "tools/temporal_ab.py",
-          "line": 24,
+          "line": 25,
           "evidence": "import",
           "reference": "mission_cpu_profile",
           "text": "from mission_cpu_profile import HostSamples, noise_report"

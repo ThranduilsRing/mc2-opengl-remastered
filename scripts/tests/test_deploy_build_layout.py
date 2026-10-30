@@ -12,6 +12,7 @@ Run:
 from __future__ import annotations
 
 import os
+import pytest
 from contextlib import ExitStack
 import shutil
 import subprocess

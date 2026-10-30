@@ -1,13 +1,17 @@
 # Farm desktop runner
 
-Fresh release install: copy the release archives to `C:/mc2farm/release`, and
-sync `scripts/test_release_zip_install.py` plus `scripts/release-dlls.txt` to
-the harness. Create `C:/mc2farm/tmp`, then submit `tools/farm/release-smoke.json`.
-This extracts only the release zips into an empty temporary directory, checks
-DLLs and SPIR-V, runs normal first launch with smoke mode unset, verifies factory
-preferences, then runs `mc2_01` for 15 s and rejects crash artifacts. The temporary
-install is removed on completion. Fetch the job log and archive `release-proof/`
-with the zips. The existing seed install is never used for this proof.
+Fresh release proof: package with `scripts/build_release.sh`, then prepare a
+data-delta directory containing `release-assets/mc2-remastered-engine.zip`,
+`release-assets/mc2-gamedata.zip`, and the lane's interpreted harness under
+`release-proof/` (the `harness/` entries returned by `host.seed_files`). Run
+`py -3 tools/farm/host.py submit --exe <lane>/build64-ninja/mc2.exe --data-delta <delta> tools/farm/release-smoke.json`.
+The release validator extracts only those zips into an empty temporary directory,
+tests normal first-run preference creation with smoke mode unset, then runs
+mc2_01 for 15 seconds. It rejects missing SPIR-V, missing/unreviewed DLLs and
+crash dumps. `wait` then `fetch` the job: the result includes first-run.log,
+the release manifest/report and the smoke logs. The temporary install is deleted
+by the validator; fetch removes the per-job payload tree. Host temps belong on
+G:; the owner's no-C: rule permits the farm's C:/mc2farm workspace.
 
 The laptop is a separate, serial game slot. SSH is session 0; GPU jobs must run
 through `MC2FarmRunner` in Kaitlyn's logged-in desktop session. All laptop files

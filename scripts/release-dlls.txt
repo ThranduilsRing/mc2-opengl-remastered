@@ -7,3 +7,8 @@ avformat-61.dll
 avutil-59.dll
 swscale-8.dll
 swresample-5.dll
+msvcp140.dll
+msvcp140_1.dll
+msvcp140_atomic_wait.dll
+vcruntime140.dll
+vcruntime140_1.dll

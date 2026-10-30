@@ -8,9 +8,20 @@ and upload.
 
 ## 1. Where the version lives (bump policy)
 
-`project(mc2 VERSION ...)` in `CMakeLists.txt` is the semantic version source.
-Match the release tag to that value; directory names are not version authority.
-The executable's commit fingerprint supplies exact build identity:
+Before publishing game-data assets, the owner must re-confirm redistribution
+rights under EULA.txt (non-commercial Microsoft assets). Each zip carries
+EULA.txt, license.txt, LICENSES.md and THIRD_PARTY_NOTICES.md. Automated smoke
+proves installation, not permission to redistribute those assets.
+
+Stage every DLL in `scripts/release-dlls.txt` before packaging. Reconcile this
+list with the release binaries' PE imports after toolchain updates. MSVC
+helpers must be app-local even when the build host finds them in System32:
+copy the listed CRT files from the toolchain's x64 Microsoft.VC143.CRT redist
+directory together. The fresh-install gate rejects missing or extra DLLs.
+
+`project(mc2 VERSION ...)` in `CMakeLists.txt` is the semantic release version.
+Use that version for the release tag and folder; the runtime fingerprint
+identifies the exact source commit. Do not infer a version from an old install.
 
 | Place | What it carries | Bump action |
 |---|---|---|
@@ -66,13 +77,9 @@ release" — never listed as shipped until re-verified against the merged tree.
 5. Package: DEPLOY=<release lane> bash scripts/build_release.sh
    -> release_assets/*.zip (engine, gamedata, burnins-4x pt1+pt2, art, tgl,
    movies; the script verifies burnins are 4x and nothing leaked between zips).
-   Start mc2.exe directly; the retired mc2-launcher.exe must not ship.
-   Example mods come from examples/mods/ (mod.json plus data/ overlays),
-   never from the deploy's locally installed mods. The in-game picker and
-   tools/mc2_import/import_tool.py replace launcher workflows.
-   Every zip carries license.txt, EULA.txt and LICENSES.md from the repository.
-   Before publishing original game assets, the maintainer must re-confirm
-   redistribution permission; automated checks do not constitute that approval.
+   Launch mc2.exe directly; the standalone launcher is retired. Example
+   mods come from examples/mods/ and ship outside active mods/ so they
+   cannot alter stock missions. No local deploy mods belong in the release.
 6. Gate: py -3 scripts/test_release_zip_install.py --zip-dir <OUTDIR>
    -> must PASS (exit 0). This is the zips-only install + smoke proof; see
    release-checklist.md for exit codes and why.
