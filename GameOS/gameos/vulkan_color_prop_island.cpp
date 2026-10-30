@@ -678,6 +678,7 @@ bool cp_import_authored(ColorPropIsland* s, const Mc2ColorPropMaterialFeed* feed
     mc2vk::getOrCreateEngineVulkanContext().waitIdle("color_prop_authored_materials");
     if (!s->detailSampler) {
         VkSamplerCreateInfo info{VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO};
+        mc2vk::infra::materialSampler(info);
         info.magFilter = info.minFilter = VK_FILTER_LINEAR;
         info.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
         info.addressModeU = info.addressModeV = info.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;

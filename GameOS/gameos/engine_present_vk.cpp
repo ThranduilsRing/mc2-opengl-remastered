@@ -13,8 +13,7 @@
 #include "vk_one_shot.h"
 #include "texture_decode.h"   // gos_GetTextureTexelsByGlName
 #if defined(MC2_VULKAN) && defined(MC2_VULKAN_ISLAND)
-// Win32 surface entrypoints + names are gated behind this macro (matches
-// vulkan_context.cpp / vk_image_resource.h). Define BEFORE volk.h.
+// Define Win32 surface entrypoints before volk.h (vulkan_context.cpp).
 #if defined(_WIN32) && !defined(VK_USE_PLATFORM_WIN32_KHR)
 #define VK_USE_PLATFORM_WIN32_KHR
 #endif
@@ -2084,8 +2083,9 @@ bool EnginePresentVk::renderNativeCompositeVisual(float exposure,
                   static_cast<float>(viewportW), static_cast<float>(viewportH), 0.0f, 1.0f};
     VkRect2D sc{{viewportX, viewportY}, {static_cast<uint32_t>(viewportW), static_cast<uint32_t>(viewportH)}};
     if (scaled) {
-        vp = {0.0f, 0.0f, float(scene->w), float(scene->h), 0.0f, 1.0f};
-        sc = {{0, 0}, {scene->w, scene->h}};
+        vp.x *= float(scene->w) / s.imgW; vp.y *= float(scene->h) / s.imgH;
+        vp.width *= float(scene->w) / s.imgW; vp.height *= float(scene->h) / s.imgH;
+        sc = {{int32_t(vp.x), int32_t(vp.y)}, {uint32_t(vp.width), uint32_t(vp.height)}};
     }
     vkCmdSetViewport(cc, 0, 1, &vp);
     vkCmdSetScissor(cc, 0, 1, &sc);
