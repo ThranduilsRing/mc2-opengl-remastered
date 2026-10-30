@@ -56,6 +56,7 @@
 #include "vk_texture_residency.h"
 #include "texture_decode.h"              // gos_GetTextureTexels: material texels without a GL readback
 #include "../../RenderCore/gpu_abi/GpuMechFrameUBO.h"  // single-source per-frame UBO
+#include "../../RenderCore/gpu_abi/GpuMechInstance.h"
 #include "visual_tuning_profile.h"
 #include "vk_shared_gbuffer_gate.h"      // VK-P14 GATE-CONSOLIDATION-1 umbrella resolver
 #include "vk_shared_light_feed.h"        // VK-LIGHTFEED-DEDUP-1: shared per-frame LightsData SSBO
@@ -952,7 +953,7 @@ extern "C" int mc2_vk_mech_island_run(int w, int h) {
     // strand it unsignalled. The ring slot belongs to the frame, not to the island's parity, so staging here races nothing.
     mc2vk::VulkanContext& rctx = mc2vk::getOrCreateEngineVulkanContext();
     const VkDeviceSize ringAlign = rctx.frameAlignment();
-    const VkDeviceSize instBytes = static_cast<VkDeviceSize>(feed.instanceCount) * 64ull;
+    const VkDeviceSize instBytes = static_cast<VkDeviceSize>(feed.instanceCount) * sizeof(GpuMechInstance);
     const VkDeviceSize boneBytes = static_cast<VkDeviceSize>((feed.boneCount ? feed.boneCount : 1)) * 64ull;
     const bool nativeLight = feed.lightDataCpu && feed.lightDataCpuBytes >= 3600ull;
     int poolN = (feed.poolLights48 && feed.numPoolLights > 0) ? feed.numPoolLights : 0;

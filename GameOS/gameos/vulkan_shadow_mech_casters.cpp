@@ -13,6 +13,7 @@
 #include "vk_depth_caster_pipeline.h"
 #include "vk_island_util.h"
 #include "vulkan_context.h"
+#include "../../RenderCore/gpu_abi/GpuMechInstance.h"
 
 #include <cstring>
 #include <string>
@@ -21,7 +22,7 @@ namespace mc2vk {
 
 namespace {
 
-constexpr uint32_t kMechInstanceBytes = 64;
+constexpr uint32_t kMechInstanceBytes = sizeof(GpuMechInstance);
 constexpr uint32_t kMechBoneBytes = 64;
 
 // A run that points outside the buffers it was staged with would make the GPU read past them; it is dropped with a log line instead.
