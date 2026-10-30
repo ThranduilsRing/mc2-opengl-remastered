@@ -162,7 +162,9 @@ TEST_CASE("ContentShape/missing required shape remains visible") {
     CHECK(failed);
     REQUIRE(shape.GetNumShapes() == 1);
     CHECK(shape.GetTypeNode(0)->GetNodeType() == SHAPE_NODE);
-    CHECK(shape.numTextures == 1);
+    char texture[64]{};
+    REQUIRE(shape.GetTextureName(0, texture, sizeof(texture)) == NO_ERR);
+    CHECK(std::string(texture) == "mc2_load_placeholder");
     CHECK(shape.extentRadius > 20.0f);
     CHECK(shape.minBox.x < shape.maxBox.x);
     CHECK(shape.minBox.y < shape.maxBox.y);
