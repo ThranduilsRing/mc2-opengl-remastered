@@ -9,6 +9,8 @@
 #include "team.h"
 #include "Stuff/stuffheaders.hpp"
 #include "content_ir.h"
+#include "msl.h"
+#include "tgl_load_guard.h"
 
 #include <cstdlib>
 #include <algorithm>
@@ -134,6 +136,21 @@ struct CompileLog {
         return result;
     }
 };
+}
+
+TEST_CASE("ContentShape/missing required shape remains visible") {
+    TG_TypeMultiShape shape;
+    bool failed = false;
+    // Inject the missing-file result before any renderer/texture manager exists.
+    CHECK(tglVerifyShapeLoaded(&shape, -1, "missing fixture", "missing-required.ase", &failed));
+    CHECK(failed);
+    REQUIRE(shape.GetNumShapes() == 1);
+    CHECK(shape.GetTypeNode(0)->GetNodeType() == SHAPE_NODE);
+    CHECK(shape.numTextures == 1);
+    CHECK(shape.extentRadius > 20.0f);
+    CHECK(shape.minBox.x < shape.maxBox.x);
+    CHECK(shape.minBox.y < shape.maxBox.y);
+    CHECK(shape.minBox.z < shape.maxBox.z);
 }
 
 TEST_CASE("ContentCook/cache publication failure is reported as failure") {
