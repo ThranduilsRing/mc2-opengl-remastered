@@ -3379,6 +3379,13 @@
           "text": "import console_child"
         },
         {
+          "path": "tools/mkmerge.py",
+          "line": 9,
+          "evidence": "import",
+          "reference": "console_child",
+          "text": "import console_child"
+        },
+        {
           "path": "tools/mod_smoke.py",
           "line": 46,
           "evidence": "import",
@@ -13819,7 +13826,7 @@
         },
         {
           "path": "tools/test_saveload_roundtrip.py",
-          "line": 8,
+          "line": 9,
           "evidence": "import",
           "reference": "saveload_roundtrip",
           "text": "import saveload_roundtrip as rt  # noqa: E402"
