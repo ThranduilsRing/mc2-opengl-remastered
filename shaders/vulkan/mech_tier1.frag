@@ -61,13 +61,19 @@ layout(location = 7) flat in int  vMechSunFound;
 layout(location = 8) in vec3 vTangentGL;
 layout(location = 9) flat in uint vImportedMech;
 layout(location = 10) flat in uint vLegacyVehicle;
+layout(location = 11) in vec3 vPreviousWorldPos;
 
 #include "include/mech_material_vk.glsl"
 
 layout(location = 0) out vec4 oColor;     // MRT0
 layout(location = 1) out vec4 oGBuffer1;  // MRT1
+layout(location = 2) out vec2 oMotionCorrection;
 
 void main() {
+    vec4 previousClip = uFrame.previousWorldToClipGL * vec4(vPreviousWorldPos, 1.0);
+    vec4 currentAtPrevious = uFrame.previousWorldToClipGL * vec4(vWorldPos, 1.0);
+    oMotionCorrection = previousClip.w > 0.0 && currentAtPrevious.w > 0.0
+        ? 0.5 * (previousClip.xy / previousClip.w - currentAtPrevious.xy / currentAtPrevious.w) : vec2(0.0);
     vec3 Nshade = normalize(vNormalGL);
     vec3 rgb;
     if (uFrame.materialReady != 0) {

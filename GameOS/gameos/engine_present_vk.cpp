@@ -26,9 +26,12 @@
 #include "mc2_diag_verbose.h"
 #include "vk_image_resource.h"
 #include "vulkan_spatial_aa.h"
+#include "vulkan_motion_vectors.h"
 #include "Gates/render_options.h"
 #define MC2_VULKAN_SHARED_SCENE_COLOR_IMPL_ISLAND
 #include "vulkan_shared_scene_color.h"
+#define MC2_VULKAN_SHARED_SCENE_DEPTH_IMPL_ISLAND
+#include "vulkan_shared_scene_depth.h"
 #include "vk_shared_gbuffer_gate.h"
 
 #include "imgui.h"
@@ -139,6 +142,7 @@ struct EnginePresentVk::Impl {
     mc2vk::OwnedFramebuffer scaledCompositeFramebuffer;
     VkDescriptorSet upscaleSet = VK_NULL_HANDLE;
     SpatialAA spatialAA;
+    MotionVectors motionVectors;
     uint32_t        imgW = 0, imgH = 0;
 
     // readback (T5 content verification)
@@ -261,6 +265,7 @@ struct EnginePresentVk::Impl {
     // other member is an owner and follows in reverse declaration order.
     ~Impl() {
         spatialAA.reset();
+        motionVectors.reset();
         scaledCompositeFramebuffer.reset();
         if (dev != VK_NULL_HANDLE) vkImageResourceDestroy(&scaledComposite, dev);
         imguiFramebuffer.reset();
@@ -586,6 +591,10 @@ void destroyCompositeFramebuffer(EnginePresentVk::Impl& s) {
 void destroyShadowDebugFramebuffer(EnginePresentVk::Impl& s) { s.shadowDebugFramebuffer.reset(); }
 
 bool ensureCompositeObjects(EnginePresentVk::Impl& s) {
+    if (!s.ctx) return false;
+    auto* motionDepth = mc2SharedSceneDepthGetResource();
+    auto* motionTarget = mc2SharedSceneColorGetResource(MC2_SHARED_SCENE_MOTION);
+    if (!motionDepth || !motionTarget || !s.motionVectors.prepare(*s.ctx, *motionDepth, *motionTarget)) return false;
     if (s.compositePipe.get() && s.compositeFramebuffer.get()) return true;
     if (s.compositeVkFailed || !s.dev || !s.sharedImg.view || s.imgW == 0 || s.imgH == 0)
         return false;
@@ -668,21 +677,22 @@ bool ensureCompositeObjects(EnginePresentVk::Impl& s) {
             [&](auto* h) { return vkCreateFramebuffer(s.dev, &fb, nullptr, h); })) return false;
     }
     if (!s.compositeDsl) {
-        VkDescriptorSetLayoutBinding b[2]{};
+        VkDescriptorSetLayoutBinding b[3]{};
         b[0].binding = 0;
         b[0].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
         b[0].descriptorCount = 1;
         b[0].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
         b[1] = b[0];
         b[1].binding = 1;
+        b[2] = b[0]; b[2].binding = 2;
         VkDescriptorSetLayoutCreateInfo ci{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO};
-        ci.bindingCount = 2; ci.pBindings = b;
+        ci.bindingCount = 3; ci.pBindings = b;
         if (!mc2vk::create(s.compositeDsl, s.dev, [&](auto* h) { return vkCreateDescriptorSetLayout(s.dev, &ci, nullptr, h); })) {
             s.compositeVkFailed = true; return false;
         }
     }
     if (!s.compositePool) {
-        VkDescriptorPoolSize size{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 4};
+        VkDescriptorPoolSize size{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 6};
         VkDescriptorPoolCreateInfo pci{VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO};
         pci.maxSets = 2; pci.poolSizeCount = 1; pci.pPoolSizes = &size;
         if (!mc2vk::create(s.compositePool, s.dev, [&](auto* h) { return vkCreateDescriptorPool(s.dev, &pci, nullptr, h); })) {
@@ -701,15 +711,18 @@ bool ensureCompositeObjects(EnginePresentVk::Impl& s) {
         }
     }
     VkImageResource* objectId = mc2SharedSceneColorGetResource(MC2_SHARED_SCENE_OBJECT_ID);
-    VkDescriptorImageInfo ii[2]{};
+    VkDescriptorImageInfo ii[3]{};
     ii[0].sampler = s.compositeSampler.get();
     ii[0].imageView = scene->view.get();
     ii[0].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
     ii[1].sampler = s.compositeNearestSampler.get();                 // the shader reads the id with usampler2D: an exact texel, never a blend
     ii[1].imageView = objectId && objectId->view.get() ? objectId->view.get() : scene->view.get();
     ii[1].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-    VkWriteDescriptorSet wr[2]{};
-    for (uint32_t i = 0; i < 2; ++i) {
+    auto* motion = mc2SharedSceneColorGetResource(MC2_SHARED_SCENE_MOTION);
+    if (!motion) return false;
+    ii[2] = {s.compositeNearestSampler.get(), s.motionVectors.view(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
+    VkWriteDescriptorSet wr[3]{};
+    for (uint32_t i = 0; i < 3; ++i) {
         wr[i].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
         wr[i].dstSet = s.compositeSet;
         wr[i].dstBinding = i;
@@ -717,11 +730,11 @@ bool ensureCompositeObjects(EnginePresentVk::Impl& s) {
         wr[i].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
         wr[i].pImageInfo = &ii[i];
     }
-    vkUpdateDescriptorSets(s.dev, 2, wr, 0, nullptr);
+    vkUpdateDescriptorSets(s.dev, 3, wr, 0, nullptr);
     if (s.scaledComposite.image) {
         ii[0].imageView = s.scaledComposite.view.get();
         for (auto& write : wr) write.dstSet = s.upscaleSet;
-        vkUpdateDescriptorSets(s.dev, 2, wr, 0, nullptr);
+        vkUpdateDescriptorSets(s.dev, 3, wr, 0, nullptr);
     }
     plog("[RENDER_SIZES] scene=%ux%u aa=%ux%u composite_hud_imgui=%ux%u",
          scene->w, scene->h, scene->w, scene->h, s.imgW, s.imgH);
@@ -1832,6 +1845,7 @@ uint32_t recordPendingHudColorProof(EnginePresentVk::Impl& s, VkCommandBuffer cb
 bool buildSharedImage(EnginePresentVk::Impl& s, uint32_t w, uint32_t h, std::string& reason) {
     // Tear down prior.
     s.spatialAA.reset();
+    s.motionVectors.reset();
     destroyImguiFramebuffer(s);
     destroyHudColorFramebuffer(s);
     destroyCompositeFramebuffer(s);
@@ -2092,6 +2106,10 @@ bool EnginePresentVk::renderNativeCompositeVisual(float exposure,
     const bool scaled = bool(s.scaledComposite.image);
     const auto& aaOutput = scaled ? s.scaledComposite : s.sharedImg;
     const bool aaReady = s.spatialAA.prepare(*s.ctx, aaOutput, aaMode);
+    auto* motionDepth = mc2SharedSceneDepthGetResource();
+    auto* motionTarget = mc2SharedSceneColorGetResource(MC2_SHARED_SCENE_MOTION);
+    const bool motionReady = motionDepth && motionTarget && s.motionVectors.prepare(*s.ctx, *motionDepth, *motionTarget);
+    if (!motionReady) return false;
     ZoneNamedN(zCompRec, "VKIsl.Present.CompositeRecord", true);   // VK-ISLAND-TRACY-1 (to fn return)
     VkCommandBuffer cc = s.curCompositeCbuf();
     s.compositePending = false;
@@ -2100,6 +2118,8 @@ bool EnginePresentVk::renderNativeCompositeVisual(float exposure,
     bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
     if (vkBeginCommandBuffer(cc, &bi) != VK_SUCCESS)
         return false;
+
+    if (motionReady) s.motionVectors.record(cc, *motionDepth);
 
     barrier(cc, scene->image.get(),
             VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
@@ -2163,6 +2183,7 @@ bool EnginePresentVk::renderNativeCompositeVisual(float exposure,
         output.highlights[0], output.highlights[1], output.highlights[2], 0,
         output.topWarmth[0], output.topWarmth[1], output.topWarmth[2], 0
     };
+    pc[6] = mc2::gate::get<"MC2_RENDER_MOTION_DEBUG">() ? 1.0f : 0.0f;
     vkCmdPushConstants(cc, s.compositeLayout.get(), VK_SHADER_STAGE_FRAGMENT_BIT,
                        0, sizeof(pc), pc);
     vkCmdDraw(cc, 3, 1, 0, 0);
@@ -2708,6 +2729,7 @@ bool EnginePresentVk::presentFrameBody(uint32_t drawableW, uint32_t drawableH,
     }
 
     s.spatialAA.submitted();
+    s.motionVectors.submitted();
     VkPresentInfoKHR pi{VK_STRUCTURE_TYPE_PRESENT_INFO_KHR};
     pi.waitSemaphoreCount = 1;
     pi.pWaitSemaphores    = &imgRenderSem;

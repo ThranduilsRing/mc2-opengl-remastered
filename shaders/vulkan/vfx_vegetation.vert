@@ -9,6 +9,7 @@ layout(set = 0, binding = 0, std140) uniform VfxVsParams {
     mat4 worldToClipGL;   // SAME 16 raw floats as GL GL_FALSE upload
     vec4 camRight;
     vec4 camUp;
+    mat4 previousWorldToClipGL;
 } U;
 
 #include "include/vegetation_structs.glsl"
@@ -26,6 +27,8 @@ layout(location = 6) out vec3 v_worldPos;
 layout(location = 7) flat out vec3 v_rootPos;
 layout(location = 8) flat out uint v_atlasLayer;
 layout(location = 9) out vec3 v_shadowWorld;
+layout(location = 10) out vec4 v_previousClip;
+layout(location = 11) out vec4 v_currentAtPrevious;
 #include "include/vegetation_vk.glsl"
 
 void main() {

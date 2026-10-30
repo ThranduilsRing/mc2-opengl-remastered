@@ -3,9 +3,9 @@
 # Where each gate is read, what the smoke runner forwards and what tier1_env_vars.md says are not here: ask
 # tools/repo_intel (env_var, gate_status), which scan the sources.
 generator_version: "3.0.0"
-gate_count: 759
+gate_count: 760
 registry_entry_count: 150
-verified_count: 721
+verified_count: 722
 flags:
   - name: MC2_ABL_ARG_GUARD
     kind: Bool
@@ -3409,6 +3409,14 @@ flags:
     rule: Presence
     owner: gameos
     doc: ""
+    smoke_passthrough: true
+    verified: true
+  - name: MC2_RENDER_MOTION_DEBUG
+    kind: Bool
+    default: false
+    rule: Std
+    owner: post
+    doc: "Developer view: UV motion around neutral gray; does not enable or disable motion generation."
     smoke_passthrough: true
     verified: true
   - name: MC2_RENDER_PASS_CONTRACT_ASSERT

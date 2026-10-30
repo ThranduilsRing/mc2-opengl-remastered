@@ -7,6 +7,7 @@ layout(location = 0) out vec4 FragColor;
 
 layout(set = 0, binding = 0) uniform sampler2D sceneTex;
 layout(set = 0, binding = 1) uniform usampler2D objectIdTex;
+layout(set = 0, binding = 2) uniform sampler2D motionTex;
 
 layout(push_constant) uniform Params {
     vec4 p0; // exposure, inverse source extent, cubic upscale
@@ -151,6 +152,11 @@ float ignTriangle(vec2 p) {
 }
 
 void main() {
+    if (u.p1.z != 0.0) {
+        vec2 motion = texture(motionTex, TexCoord).rg;
+        FragColor = vec4(clamp(vec3(0.5 + motion * 64.0, 0.5), 0.0, 1.0), 1.0);
+        return;
+    }
     vec3 color = (u.p1.w != 0.0) ? casFilter(TexCoord)
                : reconstructedColor(TexCoord);
     if (u.p1.x != 0.0) {
