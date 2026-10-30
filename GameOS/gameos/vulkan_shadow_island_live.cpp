@@ -1103,16 +1103,13 @@ static void record_local_shadows(ShadowIsland* s) {
     ZoneScopedN("VKIsl.Shadow.LocalLights");
 
     const auto& casterSet = mc2shadow::staticCasterSet();
-    // Refresh static lamp tiles once per drained caster/height burst. The
-    // object generation is published only when that burst's bake submits.
-    const uint64_t generation = s->bake.objectGeneration();
-    if (casterSet.version() != L.leavesVersion || generation != L.leavesGeneration) {
+    // Static lamp tiles refresh once per submitted, drained caster/height burst.
+    if (casterSet.version() != L.leavesVersion || s->bake.objectGeneration() != L.leavesGeneration) {
         casterSet.resolve(L.leaves);
         L.leavesVersion = casterSet.version();
-        L.leavesGeneration = generation;
+        L.leavesGeneration = s->bake.objectGeneration();
         for (auto& k : L.bakedKey) k = 0;
     }
-
     uint32_t bake[kTiles], bakeCount = 0, used[kTiles], usedCount = 0;
     for (uint32_t t = 0; t < kTiles && t < tileCount; ++t) {
         if (!tiles[t].used) continue;
@@ -1121,7 +1118,6 @@ static void record_local_shadows(ShadowIsland* s) {
         if (!tiles[t].mover && tiles[t].key != L.bakedKey[t]) bake[bakeCount++] = t;
     }
     if (usedCount == 0) return;
-
     if (bakeCount > 0) {
         std::vector<GpuStaticPropInstance> staged;
         std::vector<InstRun> runs[kTiles];

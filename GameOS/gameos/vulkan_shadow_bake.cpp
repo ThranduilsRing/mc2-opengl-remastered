@@ -1279,7 +1279,15 @@ void ShadowBake::applyLiveEvent(const std::vector<GpuStaticPropInstance>& before
         if (leaf.typeID >= typeBounds_.size() || !typeBounds_[leaf.typeID].valid) continue;
         bool found = false;
         for (size_t j = 0; j < liveLeaves_.size(); ++j) {
-            if (liveLeaves_[j].typeID != leaf.typeID || std::memcmp(liveLeaves_[j].modelMatrix, leaf.modelMatrix, sizeof(leaf.modelMatrix)) != 0) continue;
+            if (liveLeaves_[j].typeID != leaf.typeID) continue;
+            // Match StaticCasterSet::sameLeaves: registry matrices wobble in
+            // their last bits when rebuilt from the object's float state.
+            bool same = true;
+            for (int k = 0; k < 16; ++k) {
+                const bool translation = (k == 3 || k == 7 || k == 11);
+                if (std::fabs(liveLeaves_[j].modelMatrix[k] - leaf.modelMatrix[k]) > (translation ? 0.75f : 0.01f)) { same = false; break; }
+            }
+            if (!same) continue;
             liveLeaves_[j] = liveLeaves_.back(); liveLeaves_.pop_back();
             liveBoxes_[j] = liveBoxes_.back(); liveBoxes_.pop_back();
             liveTops_[j] = liveTops_.back(); liveTops_.pop_back();
