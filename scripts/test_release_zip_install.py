@@ -161,6 +161,8 @@ def verify_tree(install: Path) -> list[str]:
 
     # Shader sanity: at least one .vert and one .frag must exist.
     shaders = install / "shaders"
+    if not any(p.stat().st_size > 0 for p in (shaders / "vulkan").glob("*.spv")):
+        failures.append("shaders/vulkan/ contains no non-empty baked .spv files")
     if shaders.is_dir():
         if not any(shaders.glob("**/*.vert")):
             failures.append("shaders/ contains no .vert files")
@@ -276,8 +278,8 @@ def main() -> None:
     ap.add_argument(
         "--duration",
         type=int,
-        default=30,
-        help="Smoke duration in seconds (default: 30)",
+        default=15,
+        help="Smoke duration in seconds (default: 15)",
     )
     ap.add_argument(
         "--out-dir",

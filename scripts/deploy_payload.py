@@ -944,9 +944,7 @@ def enumerate_payload(src_root, build_dir, exe_name, pdb_name,
     # Without this, any deployed install hits "cannot open spv" ->
     # vk_device_init_failed for every Vulkan region/island, even though the
     # exe + GL shaders deployed fine (found by VK-REGION-SSAO-1 content pass).
-    # Soft: MC2_VULKAN is an opt-in CMake flag, so most builds never produce
-    # these; only enforce the lockstep hash-match discipline (kind="shader")
-    # for whichever ones ARE present in the build output.
+    # Vulkan is mandatory. A release/deploy without baked shaders cannot run.
     vk_spv_dir = os.path.join(b64, "shaders", "vulkan") if b64 else ""
     if vk_spv_dir and os.path.isdir(vk_spv_dir):
         for fn in sorted(os.listdir(vk_spv_dir)):
@@ -954,10 +952,8 @@ def enumerate_payload(src_root, build_dir, exe_name, pdb_name,
                 p = os.path.join(vk_spv_dir, fn)
                 if os.path.isfile(p):
                     items.append((p, f"shaders/vulkan/{fn}", "shader"))
-    elif require_build:
-        log(f"INFO: no baked Vulkan SPIR-V at {vk_spv_dir or '<no build64 root>'} "
-            "-- skipping (MC2_VULKAN not compiled in this build; Vulkan "
-            "islands will fail-soft to GL in the deployed install)")
+    if require_build and not any(rel.endswith(".spv") for _, rel, _ in items):
+        fail(f"no baked Vulkan SPIR-V at {vk_spv_dir or '<no build root>'}; build shaders before deploying")
 
     # Deploy the ENTIRE shaders/ tree recursively (every file, all extensions),
     # not an extension allowlist. Shaders #include each other across stages and

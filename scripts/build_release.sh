@@ -249,6 +249,9 @@ echo "[engine] staging"
 mkdir -p "$STAGE/engine"
 cp "$DEPLOY/mc2.exe" "$STAGE/engine/"
 cp -r "$DEPLOY/shaders" "$STAGE/engine/"
+if ! find "$STAGE/engine/shaders/vulkan" -name '*.spv' -type f -size +0c -print -quit | grep -q .; then
+    echo "[engine] FAIL: missing baked Vulkan SPIR-V"; exit 1
+fi
 for importer in mc2_import mc2x_import mco_import; do
     mkdir -p "$STAGE/engine/tools"
     cp -r "$REPO/tools/$importer" "$STAGE/engine/tools/"
