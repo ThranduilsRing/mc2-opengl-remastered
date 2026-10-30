@@ -544,6 +544,8 @@ void GameObjectManager::extractRenderSnapshots() {
         proxy.current = mover->getPosition(); proxy.heading = mover->getRotation();
         proxy.animation = *mover->getAppearance()->simulationAnimation();
         proxy.attachments = *mover->getAppearance()->simPose;
+        mover->committedLosPosition = mover->getLOSPosition();
+        mover->committedHasWeaponNode = mover->hasWeaponNode();
         if (proxy.stamp != s_interpStamp) {
             proxy.pos = proxy.current; proxy.rot = proxy.heading;
             proxy.previousAnimation = proxy.animation;
