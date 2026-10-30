@@ -5,6 +5,28 @@
 
 #include <string>
 
+TEST_CASE("save fields: compacted mover pools and registration order round trip") {
+    using namespace mc2::save;
+    const SavedMoverLists expected{{7, 2, 5}, {9, 6, 8}, {2, 9, 7}, {7}, {2, 9}};
+    auto source = expected;
+    SAVE_FIELD_SHAPE(source, mechs, vehicles, movers, friendly, hostile);
+    CHECK(save_probe::memberBytes<SavedMoverLists>(&SavedMoverLists::mechs, &SavedMoverLists::vehicles,
+        &SavedMoverLists::movers, &SavedMoverLists::friendly, &SavedMoverLists::hostile) == sizeof(SavedMoverLists));
+    Archive output;
+    source.serialize(output);
+    REQUIRE(output.good());
+    SavedMoverLists restored;
+    Archive input(output.bytes());
+    restored.serialize(input);
+    REQUIRE(input.finish());
+    CHECK(restored == expected);
+    auto truncated = output.bytes();
+    truncated.pop_back();
+    Archive bad(truncated);
+    restored.serialize(bad);
+    CHECK_FALSE(bad.finish());
+}
+
 namespace {
 using namespace mc2::save;
 
@@ -82,7 +104,7 @@ TEST_CASE("save sections: rejects malformed, newer and unknown required sections
     SectionContainer unknownRequired; unknownRequired.add(fourcc('Z', 'Z', 'Z', 'Z'), 1, true, {7});
     CHECK_FALSE(decodeSections(encoded(unknownRequired), out, &why)); CHECK(why == "unknown_required_section");
 
-    SectionContainer unknownOptional = sample(); unknownOptional.add(tagWorld, 1, false, {7});  // WRLD is reserved: unknown to this build
+    SectionContainer unknownOptional = sample(); unknownOptional.add(tagPath, 1, false, {7});  // PATH is reserved: unknown to this build
     REQUIRE(decodeSections(encoded(unknownOptional), out));
     CHECK(out == SectionContainer{{{tagAnimation, 3, 1, {0xaa}}, {tagOrders, 1, 1, {1, 2}}}});
 

@@ -290,6 +290,24 @@ void Mission::save (const char *saveFileName)
 
     // Save v2: the versioned section container follows the unchanged legacy END packet (save_sections.h).
     mc2::save::SectionContainer sections;
+    {
+        auto handles = [](auto* slots, long count) {
+            std::vector<std::uint32_t> result;
+            result.reserve(count);
+            for (long i = 0; i < count; ++i) result.push_back(ObjectManager->getHandle(slots[i]));
+            return result;
+        };
+        mc2::save::SavedMoverLists lists{
+            handles(ObjectManager->mechs, ObjectManager->maxMechs),
+            handles(ObjectManager->vehicles, ObjectManager->maxVehicles),
+            handles(ObjectManager->moverList, ObjectManager->getNumMovers()),
+            handles(ObjectManager->goodMoverList, ObjectManager->numGoodMovers),
+            handles(ObjectManager->badMoverList, ObjectManager->numBadMovers)};
+        mc2::save::Archive archive;
+        lists.serialize(archive);
+        if (!archive.good()) Fatal(0, "WRLD save section failed");
+        sections.add(mc2::save::tagWorld, 1, true, archive.bytes());
+    }
     sections.add(mc2::save::tagAnimation, 3, true, ObjectManager->saveAnimationState());
     {
         mc2::save::Archive orders;

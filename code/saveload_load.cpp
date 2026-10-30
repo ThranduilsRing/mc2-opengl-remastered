@@ -624,6 +624,43 @@ static void applySaveSections(std::string_view fileName, const mc2::save::Sectio
     auto reject = [&](std::string_view reason) {
         mc2::fmt::print_err("[SAVE v2] event=reject reason={} file={}\n", reason, fileName);
     };
+    if (const auto* world = sections.find(mc2::save::tagWorld)) {
+        mc2::save::Archive archive(world->payload);
+        mc2::save::SavedMoverLists lists;
+        lists.serialize(archive);
+        auto valid = [](const auto& handles, int kind) {
+            std::vector<std::uint8_t> seen(ObjectManager->getMaxObjects() + 1);
+            for (auto handle : handles) {
+                if (!handle || handle > ObjectManager->getMaxObjects() || (kind != 2 && seen[handle])) return false;
+                auto* object = ObjectManager->get(handle);
+                if ((kind == 0 && !dynamic_cast<BattleMechPtr>(object)) ||
+                    (kind == 1 && !dynamic_cast<GroundVehiclePtr>(object)) ||
+                    (kind == 2 && !dynamic_cast<MoverPtr>(object))) return false;
+                seen[handle] = true;
+            }
+            return true;
+        };
+        if (!archive.finish() || lists.mechs.size() != ObjectManager->maxMechs ||
+            lists.vehicles.size() != ObjectManager->maxVehicles ||
+            !valid(lists.mechs, 0) || !valid(lists.vehicles, 1) ||
+            !valid(lists.movers, 2) || !valid(lists.friendly, 2) || !valid(lists.hostile, 2)) {
+            reject("world_section");
+        } else {
+            for (size_t i = 0; i < lists.mechs.size(); ++i)
+                ObjectManager->mechs[i] = static_cast<BattleMechPtr>(ObjectManager->get(lists.mechs[i]));
+            for (size_t i = 0; i < lists.vehicles.size(); ++i)
+                ObjectManager->vehicles[i] = static_cast<GroundVehiclePtr>(ObjectManager->get(lists.vehicles[i]));
+            auto restore = [](auto& slots, long& count, const auto& handles) {
+                count = static_cast<long>(handles.size());
+                for (long i = 0; i < count; ++i)
+                    slots[i] = static_cast<MoverPtr>(ObjectManager->get(handles[i]));
+            };
+            restore(ObjectManager->moverList, ObjectManager->numMovers, lists.movers);
+            restore(ObjectManager->goodMoverList, ObjectManager->numGoodMovers, lists.friendly);
+            restore(ObjectManager->badMoverList, ObjectManager->numBadMovers, lists.hostile);
+            ObjectManager->invalidateSpatialGrid(false);
+        }
+    } // Legacy saves retain the lists reconstructed from their object records.
     if (const auto* anim = sections.find(mc2::save::tagAnimation)) {
         // restoreAnimationState validates before it mutates, so a rejected section leaves default animation state.
         // Dev saves written between de4413807 and f8b4174c3 carry the v3 record layout under version 2, so a failed v2 parse retries as v3.
