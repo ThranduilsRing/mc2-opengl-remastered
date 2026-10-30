@@ -94,6 +94,7 @@ public:
     VkImageView objectView() const { return objectReady_ ? objectView_.get() : VK_NULL_HANDLE; }
     const float* objectMatrix() const { return objectMatrix_.data(); }
     uint64_t objectGeneration() const { return objectReady_ ? objectGeneration_ : 0; }
+    void countLocalTileRebakes(uint32_t count) { localTileRebakes_ += count; }
     const mc2shadow::MaskLayout& layout() const { return layout_; }
 
     // A map boundary (the caller has idled the device): every product and transient goes; the next map bakes afresh.
