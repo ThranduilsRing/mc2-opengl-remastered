@@ -187,41 +187,8 @@ def affected_plan(steps, paths, full=False):
         selected.append((name, cmd, env))
         if name.startswith("saveload-") and (sim or "art" in domains or full):
             env["MC2_OPTIONS_OVERRIDE"] = "RemasteredBuildings=TRUE"
-            classic = list(cmd)
-            if "--out" in classic:
-                classic[classic.index("--out") + 1] += "-classic"
-            if art:
-                if not full and "--duration" not in classic:
-                    classic += ["--duration", "20"]
-                selected.append((name + "-classic", classic,
-                                 dict(env, MC2_OPTIONS_OVERRIDE="RemasteredBuildings=FALSE")))
-    if game or full:
-        # Material mode can affect either renderer path. Preserve day/night A/B in both.
-        clones = []
-        for name, cmd, env in selected:
-            if name not in ("capture-before", "capture-after", "compare-captures"):
-                continue
-            classic = [arg + "-classic" if Path(arg).name in ("before", "after", "ab") else arg for arg in cmd]
-            if name.startswith("capture-"):
-                classic += ["--env-declare", "MC2_OPTIONS_OVERRIDE=RemasteredBuildings=FALSE"]
-            clones.append((name + "-classic", classic, dict(env)))
-        if "capture-before" not in names and "deploy" in names and "capture-after" in names:
-            after = next(c for n, c, _ in selected if n == "capture-after")
-            before_cmd = list(after)
-            before_path = str(Path(after[after.index("--out") + 1]).parent / "before-classic")
-            before_cmd[before_cmd.index("--out") + 1] = before_path
-            before_cmd += ["--env-declare", "MC2_OPTIONS_OVERRIDE=RemasteredBuildings=FALSE"]
-            selected.insert(next(i for i, step in enumerate(selected) if step[0] == "deploy"),
-                            ("capture-before-classic", before_cmd, {}))
-            for i, (n, c, e) in enumerate(clones):
-                if n == "compare-captures-classic":
-                    c[c.index("--compare-only") + 1] = before_path
-        for clone in clones:
-            original = clone[0].removesuffix("-classic")
-            index = next(i for i, step in enumerate(selected) if step[0] == original)
-            selected.insert(index + 1, clone)
     for name, cmd, env in selected:
-        if name.startswith("capture-") and not name.endswith("-classic"):
+        if name.startswith("capture-"):
             cmd += ["--env-declare", "MC2_OPTIONS_OVERRIDE=RemasteredBuildings=TRUE"]
     # Offline failures must appear before taking a game lease or copying payloads.
     offline = {"contracts", "harnesses", "pytest"}
@@ -581,7 +548,7 @@ def main(argv=None):
     ap.add_argument("--capture-before-runs", type=int, default=1,
                     help="pre-deploy capture sweeps; extra runs are compared with the first to measure noise")
     ap.add_argument("--expect-head", help="ref that HEAD must resolve to, e.g. the reviewed merge SHA")
-    ap.add_argument("--stages", nargs="+", help="base-stage groups in execution order; both art modes run together (space or comma separated)")
+    ap.add_argument("--stages", nargs="+", help="base-stage groups in execution order (space or comma separated)")
     ap.add_argument("--skip", nargs="+", help="stage names to omit (space or comma separated)")
     ap.add_argument("--keep-going", action="store_true",
                     help="run every later stage after a failure; the final verdict still fails and lists all failed stages")
@@ -625,17 +592,6 @@ def main(argv=None):
         steps = [(n, c, dict(e, MC2_GATE_BASE="" if args.full else base)) for n, c, e in steps]
     else:
         steps = [(n, c, dict(e, MC2_GATE_BASE="")) for n, c, e in affected_plan(steps, [], True)]
-    if args.before_dir and any(n == "capture-before-classic" for n, _, _ in steps):
-        # Reusing pre-fix evidence must not launch that unsafe executable for the classic arm.
-        classic_before = args.before_dir.with_name(args.before_dir.name + "-classic")
-        try:
-            validate_before(classic_before, args.expect_pre_exe_sha)
-        except ValueError as exc:
-            ap.error(str(exc))
-        steps = [(n, c, e) for n, c, e in steps if n != "capture-before-classic"]
-        for n, c, _ in steps:
-            if n == "compare-captures-classic":
-                c[c.index("--compare-only") + 1] = str(classic_before)
     if window and time.time() - window.get("started", 0) <= 1200:
         reused = []
         for name, command, overrides in steps:

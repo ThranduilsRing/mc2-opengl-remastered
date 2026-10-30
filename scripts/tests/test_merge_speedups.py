@@ -497,12 +497,12 @@ def test_reused_before_evidence_never_launches_old_classic_exe(tmp_path, monkeyp
             "--proofs-dir", str(tmp_path / "proof")]
     assert gate.main(args) == 0
     assert not any(n.startswith("capture-before") for n, _, _ in seen)
-    compare = next(c for n, c, _ in seen if n == "compare-captures-classic")
-    assert compare[compare.index("--compare-only") + 1] == str(classic)
+    assert not any(n.endswith("-classic") for n, _, _ in seen)
+    compare = next(c for n, c, _ in seen if n == "compare-captures")
+    assert compare[compare.index("--compare-only") + 1] == str(before)
     manifest["identity"]["exe"]["sha256"] = "b" * 64
     (classic / "capture_run.json").write_text(json.dumps(manifest))
-    with pytest.raises(SystemExit):
-        gate.main(args)
+    assert gate.main(args) == 0
 
 
 def test_gate_logs_lease_holder_and_age(monkeypatch, capsys):
@@ -647,30 +647,27 @@ def test_tier1_reuses_only_strict_validated_determinism_smokes():
     assert all("--sim-speed" not in c for n, c, _ in full if n.startswith("determinism-") and n != "determinism-mc2_10")   # mc2_10 always runs at 2x (9104ff298)
 
 
-def test_gate_retains_both_art_modes_for_affected_saves_and_captures():
+def test_gate_removes_classic_twins_of_current_checks():
     import merge_gate as gate
     steps = gate.affected_plan(gate.plan(6), ["mclib/bdactor_type.cpp"])
     names = [n for n, _, _ in steps]
-    assert names.index("capture-before-classic") < names.index("deploy")
-    assert names.index("capture-after-classic") > names.index("deploy")
-    assert "compare-captures-classic" in names
+    assert not any(n.endswith("-classic") for n in names)
     captures = {n: c for n, c, _ in steps if n.startswith("capture-")}
-    assert all("MC2_OPTIONS_OVERRIDE=RemasteredBuildings=" + ("FALSE" if n.endswith("-classic") else "TRUE") in c for n, c in captures.items())
+    assert all("MC2_OPTIONS_OVERRIDE=RemasteredBuildings=TRUE" in c for c in captures.values())
     for mission in ("mc2_01", "mc2_03", "mc2_10", "mc2_16", "mc2_24"):
         modes = [(c, e) for n, c, e in steps if n.startswith("saveload-" + mission)]
-        assert len(modes) == 2 and modes[0][0] != modes[1][0]
-        assert {e["MC2_OPTIONS_OVERRIDE"] for _, e in modes} == {"RemasteredBuildings=TRUE", "RemasteredBuildings=FALSE"}
+        assert len(modes) == 1
+        assert modes[0][1]["MC2_OPTIONS_OVERRIDE"] == "RemasteredBuildings=TRUE"
         assert all("--sim-speed" not in c for c, _ in modes)
-        assert modes[1][0][-2:] == ["--duration", "20"]
         assert ("--duration" in modes[0][0]) == (mission not in ("mc2_10", "mc2_24"))
     full = gate.affected_plan(gate.plan(6), ["scripts/merge_gate.py"], full=True)
     assert all("--sim-speed" not in c and "--duration" not in c
                for n, c, _ in full if n.startswith("saveload-"))
 
 
-@pytest.mark.parametrize("paths,count", [(["code/mission.cpp"], 2), (["scripts/kit_payload.py"], 10),
-                                        (["tools/scifi_kit/art/intent.py"], 10), (["unknown/runtime.xyz"], 10),
-                                        (["mclib/content_ir.cpp"], 10)])
+@pytest.mark.parametrize("paths,count", [(["code/mission.cpp"], 2), (["scripts/kit_payload.py"], 5),
+                                        (["tools/scifi_kit/art/intent.py"], 5), (["unknown/runtime.xyz"], 5),
+                                        (["mclib/content_ir.cpp"], 5)])
 def test_gate_save_matrix_tracks_art_path(paths, count):
     import merge_gate as gate
     cases = [(n, e) for n, _, e in gate.affected_plan(gate.plan(6), paths)
@@ -685,7 +682,7 @@ def test_captures_keep_symmetric_env_and_do_not_mutate_gameplay(tmp_path):
     steps = gate.install_plan(gate.affected_plan(gate.plan(6, tmp_path),
         ["scripts/kit_payload.py"]), tmp_path / "install")
     by_name = {n: (c, e) for n, c, e in steps}
-    for suffix in ("", "-classic"):
+    for suffix in ("",):
         before, before_env = by_name["capture-before" + suffix]
         after, after_env = by_name["capture-after" + suffix]
         before = list(before)
@@ -1074,7 +1071,7 @@ def test_art_selection_handles_git_quoted_unicode_paths(tmp_path, monkeypatch):
     assert tt.art_changed(base)
 
 
-def test_gate_without_window_receipt_keeps_full_both_mode_coverage(tmp_path, monkeypatch):
+def test_gate_without_window_receipt_keeps_full_current_coverage(tmp_path, monkeypatch):
     import merge_gate as gate
     monkeypatch.delenv("MC2_IN_GATE", raising=False)
     monkeypatch.setattr(gate, "ROOT", tmp_path)
@@ -1082,7 +1079,7 @@ def test_gate_without_window_receipt_keeps_full_both_mode_coverage(tmp_path, mon
     seen = []
     monkeypatch.setattr(gate, "execute", lambda steps, *a: seen.extend(steps) or 0)
     assert gate.main(["--dry-run", "--proofs-dir", str(tmp_path / "proof")]) == 0
-    assert len([n for n, _, _ in seen if n.startswith("saveload-")]) == 10
+    assert len([n for n, _, _ in seen if n.startswith("saveload-")]) == 5
     assert "capture-before-classic" in {n for n, _, _ in seen}
     assert all("MC2_GATE_SKIP_REASON" not in env for name, _, env in seen
                if name.startswith(("capture-", "saveload-", "determinism-")))
