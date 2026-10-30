@@ -6,8 +6,8 @@
   "specializationParams": [],
   "artifact": "mech.frag.default.dbbae7d3.spv",
   "spv_dir": "shaders/spv",
-  "source_sha256": "318859b5b66fa82d61b0d6220e96d3c5cd7116c5aebb9392d8a7844f17bede76",
-  "spirv_sha256": "bafeb3a2f9cae74a44825ec70212513f1f6b67596ecac4587ac51fe382f96ffd",
+  "source_sha256": "53d551159a02e8ab39f6987a4e8a5f6f0bbb2e4fbe7e968ef8c80425f92771a9",
+  "spirv_sha256": "8e20fabd185c1805190a92637f3f6a37ec826792fa96b60cdfacdc7f832b883f",
   "bindings": {
     "ubos": [
       {
@@ -20,12 +20,12 @@
       {
         "type": "_1112",
         "name": "MechFrameUBO",
-        "block_size": 224,
+        "block_size": 288,
         "set": 0,
         "binding": 0
       },
       {
-        "type": "_1400",
+        "type": "_1456",
         "name": "MoverShadowFrame",
         "block_size": 8336,
         "set": 0,
@@ -58,7 +58,7 @@
         "binding": 13
       },
       {
-        "type": "_1406",
+        "type": "_1462",
         "name": "TerrainCementBuf",
         "readonly": true,
         "block_size": 0,
@@ -917,10 +917,16 @@
           "name": "environmentAmbient",
           "type": "vec4",
           "offset": 208
+        },
+        {
+          "name": "previousWorldToClipGL",
+          "type": "mat4",
+          "offset": 224,
+          "matrix_stride": 16
         }
       ]
     },
-    "_1170": {
+    "_1228": {
       "name": "MechRunPC",
       "members": [
         {
@@ -940,7 +946,7 @@
         }
       ]
     },
-    "_1400": {
+    "_1456": {
       "name": "MoverShadowFrame",
       "members": [
         {
@@ -988,7 +994,7 @@
         }
       ]
     },
-    "_1406": {
+    "_1462": {
       "name": "TerrainCementBuf",
       "members": [
         {
@@ -1017,6 +1023,14 @@
         "location": 8
       },
       {
+        "name": "vPreviousWorldPos",
+        "location": 11
+      },
+      {
+        "name": "vWorldPos",
+        "location": 5
+      },
+      {
         "name": "vNormalGL",
         "location": 1
       },
@@ -1041,10 +1055,6 @@
         "location": 10
       },
       {
-        "name": "vWorldPos",
-        "location": 5
-      },
-      {
         "name": "vMechSunDirGL",
         "location": 6
       },
@@ -1054,6 +1064,10 @@
       }
     ],
     "outputs": [
+      {
+        "name": "oMotionCorrection",
+        "location": 2
+      },
       {
         "name": "oColor",
         "location": 0

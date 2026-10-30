@@ -1,6 +1,6 @@
 {
   "summary": {
-    "glsl_blocks_with_binding": 248,
+    "glsl_blocks_with_binding": 255,
     "native_pairs": 7,
     "fails": 0,
     "warns": 0
@@ -9,6 +9,26 @@
   "warns": [],
   "occupancy": {
     "set0:binding0": [
+      {
+        "side": "glsl",
+        "file": "shaders/vulkan/aa_experiment_rcas.frag",
+        "line": 5,
+        "role": "sceneTex",
+        "std": null,
+        "type": "sampler2D",
+        "source": "shaders/vulkan/aa_experiment_rcas.frag",
+        "branch": {}
+      },
+      {
+        "side": "glsl",
+        "file": "shaders/vulkan/aa_experiment_taa.frag",
+        "line": 5,
+        "role": "sceneTex",
+        "std": null,
+        "type": "sampler2D",
+        "source": "shaders/vulkan/aa_experiment_taa.frag",
+        "branch": {}
+      },
       {
         "side": "glsl",
         "file": "shaders/vulkan/aa_fxaa.frag",
@@ -227,6 +247,16 @@
       },
       {
         "side": "glsl",
+        "file": "shaders/vulkan/motion_vectors.frag",
+        "line": 4,
+        "role": "depthTex",
+        "std": null,
+        "type": "sampler2D",
+        "source": "shaders/vulkan/motion_vectors.frag",
+        "branch": {}
+      },
+      {
+        "side": "glsl",
         "file": "shaders/vulkan/postprocess.frag",
         "line": 9,
         "role": "sceneTex",
@@ -238,7 +268,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/postprocess_visual.frag",
-        "line": 8,
+        "line": 9,
         "role": "sceneTex",
         "std": null,
         "type": "sampler2D",
@@ -467,7 +497,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/vfx_particle.vert",
-        "line": 35,
+        "line": 36,
         "role": "VfxVsParams",
         "std": "std140",
         "type": "uniform",
@@ -496,6 +526,16 @@
       }
     ],
     "set0:binding1": [
+      {
+        "side": "glsl",
+        "file": "shaders/vulkan/aa_experiment_taa.frag",
+        "line": 6,
+        "role": "historyTex",
+        "std": null,
+        "type": "sampler2D",
+        "source": "shaders/vulkan/aa_experiment_taa.frag",
+        "branch": {}
+      },
       {
         "side": "glsl",
         "file": "shaders/vulkan/aa_smaa_blend.frag",
@@ -618,6 +658,16 @@
       },
       {
         "side": "glsl",
+        "file": "shaders/vulkan/motion_vectors.frag",
+        "line": 5,
+        "role": "corrections",
+        "std": null,
+        "type": "sampler2D",
+        "source": "shaders/vulkan/motion_vectors.frag",
+        "branch": {}
+      },
+      {
+        "side": "glsl",
         "file": "shaders/vulkan/postprocess.frag",
         "line": 10,
         "role": "u_objectIdTex",
@@ -629,7 +679,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/postprocess_visual.frag",
-        "line": 9,
+        "line": 10,
         "role": "objectIdTex",
         "std": null,
         "type": "usampler2D",
@@ -775,7 +825,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/vfx_particle.vert",
-        "line": 31,
+        "line": 32,
         "role": "Particles",
         "std": "std430",
         "type": "buffer",
@@ -785,7 +835,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/water_geom.frag",
-        "line": 33,
+        "line": 34,
         "role": "WaterFsParams",
         "std": "std140",
         "type": "uniform",
@@ -807,7 +857,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/color_prop_tier1.frag",
-        "line": 13,
+        "line": 14,
         "role": "uPropNormal",
         "std": null,
         "type": "sampler2DArray",
@@ -839,7 +889,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/color_prop_tier1.frag",
-        "line": 14,
+        "line": 15,
         "role": "uPropOrm",
         "std": null,
         "type": "sampler2DArray",
@@ -887,7 +937,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/color_prop_tier1.frag",
-        "line": 22,
+        "line": 23,
         "role": "PropMaterials",
         "std": "std430",
         "type": "buffer",
@@ -935,7 +985,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/color_prop_tier1.frag",
-        "line": 18,
+        "line": 19,
         "role": "uPropTex",
         "std": null,
         "type": "sampler2D",
@@ -993,7 +1043,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/terrain_tier1.frag",
-        "line": 33,
+        "line": 34,
         "role": "u_shorelineMask",
         "std": null,
         "type": "sampler2D",
@@ -1005,7 +1055,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/terrain_tier1.frag",
-        "line": 26,
+        "line": 27,
         "role": "u_materialWeights",
         "std": null,
         "type": "sampler2D",
@@ -1017,7 +1067,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/terrain_tier1.frag",
-        "line": 25,
+        "line": 26,
         "role": "u_macroGradient",
         "std": null,
         "type": "sampler2D",
@@ -1150,6 +1200,16 @@
     "set0:binding2": [
       {
         "side": "glsl",
+        "file": "shaders/vulkan/aa_experiment_taa.frag",
+        "line": 7,
+        "role": "motionTex",
+        "std": null,
+        "type": "sampler2D",
+        "source": "shaders/vulkan/aa_experiment_taa.frag",
+        "branch": {}
+      },
+      {
+        "side": "glsl",
         "file": "shaders/vulkan/aa_smaa_weights.frag",
         "line": 8,
         "role": "searchTex",
@@ -1216,6 +1276,16 @@
         "std": "std140",
         "type": "uniform",
         "source": "shaders/vulkan/postprocess.frag",
+        "branch": {}
+      },
+      {
+        "side": "glsl",
+        "file": "shaders/vulkan/postprocess_visual.frag",
+        "line": 11,
+        "role": "motionTex",
+        "std": null,
+        "type": "sampler2D",
+        "source": "shaders/vulkan/postprocess_visual.frag",
         "branch": {}
       },
       {
@@ -1363,7 +1433,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/water_geom.frag",
-        "line": 55,
+        "line": 56,
         "role": "u_hdri",
         "std": null,
         "type": "sampler2D",
@@ -1747,7 +1817,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/water_geom.frag",
-        "line": 59,
+        "line": 60,
         "role": "u_shoreHeightTex",
         "std": null,
         "type": "sampler2D",
@@ -1881,7 +1951,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/water_geom.frag",
-        "line": 60,
+        "line": 61,
         "role": "u_shoreMask",
         "std": null,
         "type": "sampler2D",
@@ -2057,7 +2127,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/terrain_tier1.frag",
-        "line": 31,
+        "line": 32,
         "role": "u_matNormalArray",
         "std": null,
         "type": "sampler2DArray",
@@ -2195,7 +2265,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/water_geom.frag",
-        "line": 63,
+        "line": 64,
         "role": "u_staticMask",
         "std": null,
         "type": "sampler2D",
@@ -2369,7 +2439,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/terrain_overlay_tier1.frag",
-        "line": 29,
+        "line": 30,
         "role": "tex1",
         "std": null,
         "type": "sampler2D",
@@ -2680,7 +2750,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/vfx_vegetation.vert",
-        "line": 15,
+        "line": 16,
         "role": "VegInst",
         "std": "std430",
         "type": "buffer",
@@ -2692,7 +2762,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/vfx_vegetation.vert",
-        "line": 16,
+        "line": 17,
         "role": "VegDense",
         "std": "std430",
         "type": "buffer",
@@ -2704,7 +2774,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/vfx_vegetation.vert",
-        "line": 17,
+        "line": 18,
         "role": "VegDrawParams",
         "std": "std140",
         "type": "uniform",
@@ -2839,6 +2909,8 @@
     ]
   },
   "stages": [
+    "shaders/vulkan/aa_experiment_rcas.frag",
+    "shaders/vulkan/aa_experiment_taa.frag",
     "shaders/vulkan/aa_fxaa.frag",
     "shaders/vulkan/aa_smaa_blend.frag",
     "shaders/vulkan/aa_smaa_edges.frag",
@@ -2868,6 +2940,7 @@
     "shaders/vulkan/mech_depth.vert",
     "shaders/vulkan/mech_tier1.frag",
     "shaders/vulkan/mech_tier1.vert",
+    "shaders/vulkan/motion_vectors.frag",
     "shaders/vulkan/postprocess.frag",
     "shaders/vulkan/postprocess.vert",
     "shaders/vulkan/postprocess_visual.frag",

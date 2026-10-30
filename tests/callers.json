@@ -858,7 +858,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/make-isolated-deploy.py",
-          "line": 325,
+          "line": 328,
           "evidence": "command",
           "reference": "scripts/check-disk-space.py",
           "text": "rc = subprocess.run("
@@ -5412,6 +5412,13 @@
           "evidence": "command",
           "reference": "scripts/run_visual_capture.py",
           "text": "result=subprocess.run(cmd,**console_child.child_kwargs())"
+        },
+        {
+          "path": "tools/temporal_ab.py",
+          "line": 134,
+          "evidence": "command",
+          "reference": "scripts/run_visual_capture.py",
+          "text": "rc=subprocess.run(argv,cwd=ROOT,stdout=log,stderr=subprocess.STDOUT).returncode"
         }
       ],
       "callers_by_stem": [
@@ -5449,6 +5456,13 @@
           "evidence": "import",
           "reference": "run_visual_capture",
           "text": "import run_visual_capture as rvc"
+        },
+        {
+          "path": "tools/temporal_ab.py",
+          "line": 22,
+          "evidence": "import",
+          "reference": "run_visual_capture",
+          "text": "import run_visual_capture as capture"
         },
         {
           "path": "tools/visual_verify/capture.py",
@@ -13201,6 +13215,13 @@
           "evidence": "import",
           "reference": "mission_cpu_profile",
           "text": "import mission_cpu_profile"
+        },
+        {
+          "path": "tools/temporal_ab.py",
+          "line": 24,
+          "evidence": "import",
+          "reference": "mission_cpu_profile",
+          "text": "from mission_cpu_profile import HostSamples, noise_report"
         }
       ]
     },
@@ -16301,7 +16322,7 @@
       "callers_by_basename": [
         {
           "path": "GameOS/gameos/CMakeLists.txt",
-          "line": 489,
+          "line": 491,
           "evidence": "cmake command",
           "reference": "${CMAKE_SOURCE_DIR}/tools/shader_offline_build/slang_compile.py",
           "text": "COMMAND \"${Python3_EXECUTABLE}\""
@@ -16690,6 +16711,21 @@
           "evidence": "import",
           "reference": "stress_overlap",
           "text": "import stress_overlap as so"
+        }
+      ]
+    },
+    {
+      "path": "tools/temporal_ab.py",
+      "basename": "temporal_ab.py",
+      "stem": "temporal_ab",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tools/test_temporal_ab.py",
+          "line": 3,
+          "evidence": "import",
+          "reference": "temporal_ab",
+          "text": "import temporal_ab as ab"
         }
       ]
     },
@@ -17602,6 +17638,13 @@
       "path": "tools/test_sim_determinism.py",
       "basename": "test_sim_determinism.py",
       "stem": "test_sim_determinism",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
+      "path": "tools/test_temporal_ab.py",
+      "basename": "test_temporal_ab.py",
+      "stem": "test_temporal_ab",
       "callers_by_basename": [],
       "callers_by_stem": []
     },

@@ -1,0 +1,15 @@
+{
+  "defines": [],
+  "outputs": [
+    {
+      "location": 0,
+      "name": "Motion",
+      "type": "vec2"
+    }
+  ],
+  "shader": "shaders/vulkan/motion_vectors.frag",
+  "ssbos": [],
+  "stage": "frag",
+  "ubos": [],
+  "variant": "default"
+}
