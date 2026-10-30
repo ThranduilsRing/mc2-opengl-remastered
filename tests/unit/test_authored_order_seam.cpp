@@ -11,6 +11,8 @@
 #include "content_ir.h"
 #include "msl.h"
 #include "tgl_load_guard.h"
+#include "packet.h"
+#include "save_sections.h"
 
 #include <cstdlib>
 #include <algorithm>
@@ -136,6 +138,20 @@ struct CompileLog {
         return result;
     }
 };
+}
+
+TEST_CASE("SaveLoad/v1 fixture without WRLD retains legacy turn zero") {
+    PacketFile file;
+    REQUIRE(file.open("tests/fixtures/saves/v1_minimal.ims") == NO_ERR);
+    const long packet = file.getNumPackets() - 1;
+    REQUIRE(file.seekPacket(packet) == NO_ERR);
+    REQUIRE(file.getPacketSize() > 0);
+    mc2::save::Bytes bytes(file.getPacketSize());
+    file.readPacket(packet, bytes.data());
+    mc2::save::SectionContainer sections;
+    REQUIRE(mc2::save::upgradeLegacyR2(bytes, sections));
+    CHECK(sections.find(mc2::save::tagWorld) == nullptr);
+    CHECK(mc2::save::SavedMoverLists{}.turn == 0);
 }
 
 TEST_CASE("ContentShape/missing required shape remains visible") {
