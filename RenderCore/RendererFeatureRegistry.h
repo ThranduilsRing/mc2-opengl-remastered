@@ -450,10 +450,6 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "Direct-fire de-curve: PPC/autocannon/gauss bolts fly STRAIGHT instead of re-tracking the moving target every frame (the janky homing curve).",
     },
     {
-        "MC2_EXPERIMENT_TEMPORAL_AB", "MC2_EXPERIMENT_TEMPORAL_AB", EnvVarKind::Trace, false,
-        "DEV ONLY, delete after A/B decision: 0 off, 1 SMAA, 3 TAA, 4 FSR1, 5 AF16. Never a shipping option.",
-    },
-    {
         "MC2_FEATURE_STATICPROP_MATERIAL_PBR_SLOTS", nullptr, EnvVarKind::Feature, true,
         "Reserved: no effect. Static-prop ORM is fed by the separate authored-material feed; the batcher always uses neutral factors.",
     },

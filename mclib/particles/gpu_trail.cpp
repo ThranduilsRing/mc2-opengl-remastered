@@ -167,10 +167,6 @@ void GpuTrailEmitter::Spawn(GpuTrailKind kind,
         p.position[0] = cur_world.x;
         p.position[1] = cur_world.y;
         p.position[2] = cur_world.z;
-        p.previousPosition[0] = prev_world.x;
-        p.previousPosition[1] = prev_world.y;
-        p.previousPosition[2] = prev_world.z;
-        p.previousValid = 1.0f;
         p.color[0]    = t.head_color[0];
         p.color[1]    = t.head_color[1];
         p.color[2]    = t.head_color[2];

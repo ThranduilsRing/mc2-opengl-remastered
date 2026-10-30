@@ -3,7 +3,6 @@
 // prop_lighting_compat_vk.glsl, owned by the lighting lane.
 #include "../../include/surface_material.hglsl"
 #include "../../include/material_gpu.hglsl"
-layout(constant_id = 31) const bool kExperimentToksvig = false;
 struct PropMaterialGpu {
     MaterialGpu material;
     vec2 uvScale;
@@ -72,13 +71,6 @@ SurfaceMaterial propSurface(int id, vec3 albedo) {
                      : texture(uPropOrm, vec3(uv, float(row.material.metallicRoughnessTex))).rgb;
     s.ao = mix(1.0, orm.r, row.aoStrength);
     s.roughness = clamp(orm.g * row.material.roughnessFactor, 0.3, 1.0);
-    // Derivative estimate of normal variance: Toksvig-style roughness inflation.
-    // BC5 reconstructs unit normals, so mip-vector length alone loses the variance.
-    if (kExperimentToksvig) {
-        vec3 dx=dFdx(s.normal), dy=dFdy(s.normal);
-        float variance=min(0.25, 0.5*(dot(dx,dx)+dot(dy,dy)));
-        s.roughness=pow(min(1.0,pow(s.roughness,4.0)+variance),0.25);
-    }
     s.metallic = clamp(orm.b * row.material.metallicFactor, 0.0, 1.0);
     // Ordinary baked vertex light is a lighting input, not material emission.
     // Window nodes and authored lamp materials supply emitted radiance separately.

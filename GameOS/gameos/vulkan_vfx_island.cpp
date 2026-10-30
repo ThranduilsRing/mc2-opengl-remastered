@@ -17,7 +17,6 @@
 // MC2_VULKAN_ISLAND is defined (same discipline as the other island TUs).
 
 #ifdef MC2_VULKAN_ISLAND
-#include "../../RenderCore/FramePackets.h"
 
 #if defined(_WIN32) && !defined(VK_USE_PLATFORM_WIN32_KHR)
 #define VK_USE_PLATFORM_WIN32_KHR
@@ -110,9 +109,8 @@ struct VfxVsParams {
     float worldToClipGL[16];  // column_major; SAME raw 16 floats as GL GL_FALSE upload   (off 0)
     float camRight[4];        // xyz + pad   (off 64)
     float camUp[4];           // xyz + pad   (off 80)
-    float previousWorldToClipGL[16];
 };
-static_assert(sizeof(VfxVsParams) == 160, "VfxVsParams std140 size (vfx_particle.vert)");
+static_assert(sizeof(VfxVsParams) == 96, "VfxVsParams std140 size (vfx_particle.vert)");
 static_assert(offsetof(VfxVsParams, camRight) == 64 && offsetof(VfxVsParams, camUp) == 80, "VfxVsParams offsets");
 
 // Push constants: the group's atlas sub-rect â€” LOCKSTEP with VfxGroupPush in vfx_particle.vert.
@@ -304,7 +302,7 @@ mc2vk::OwnedPipeline make_pipeline(VfxIsland* s, int w, int h, bool additive, bo
     // color0: straight-alpha (FS emits straight rgb,a; src-alpha factor premults in HW).
     //   alpha    = SRC_ALPHA / ONE_MINUS_SRC_ALPHA  (GL alpha groups)
     //   additive = SRC_ALPHA / ONE                  (GL additive groups)
-    VkPipelineColorBlendAttachmentState cba[4]{};
+    VkPipelineColorBlendAttachmentState cba[2]{};
     cba[0].blendEnable = vegetation ? VK_FALSE : VK_TRUE;
     cba[0].srcColorBlendFactor = oneOne ? VK_BLEND_FACTOR_ONE : VK_BLEND_FACTOR_SRC_ALPHA;
     cba[0].dstColorBlendFactor = additive ? VK_BLEND_FACTOR_ONE : VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
@@ -321,14 +319,9 @@ mc2vk::OwnedPipeline make_pipeline(VfxIsland* s, int w, int h, bool additive, bo
                             VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
     cba[1].blendEnable = VK_FALSE;   // shared normal target left untouched
     cba[1].colorWriteMask = vegetation ? cba[0].colorWriteMask : 0;
-    cba[2].colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT;
-    cba[3].colorWriteMask = vegetation ? 0 : VK_COLOR_COMPONENT_R_BIT;
-    cba[3].blendEnable = VK_TRUE;
-    cba[3].srcColorBlendFactor = cba[3].dstColorBlendFactor = VK_BLEND_FACTOR_ONE;
-    cba[3].colorBlendOp = cba[3].alphaBlendOp = VK_BLEND_OP_MAX;
     VkPipelineColorBlendStateCreateInfo cb{};
     cb.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-    cb.attachmentCount = 4; cb.pAttachments = cba;
+    cb.attachmentCount = 2; cb.pAttachments = cba;
     VkViewport vp{0.0f, 0.0f, static_cast<float>(w), static_cast<float>(h), 0.0f, 1.0f};
     VkRect2D scissor{{0, 0}, {static_cast<uint32_t>(w), static_cast<uint32_t>(h)}};
     VkPipelineViewportStateCreateInfo vps{};
@@ -389,10 +382,7 @@ bool init_island(VfxIsland* s, int w, int h) {
     // Render pass: color0 (LOAD, blend, STORE) + normal (LOAD, STORE, writemask 0) +
     // depth (LOAD, GEQUAL test, NO write, STORE unchanged).
     {
-        auto* motion = mc2SharedSceneColorGetResource(MC2_SHARED_SCENE_MOTION);
-        auto* reactive = mc2SharedSceneColorGetResource(MC2_SHARED_SCENE_REACTIVE);
-        if (!motion || !reactive) return false;
-        VkAttachmentDescription att[5]{};
+        VkAttachmentDescription att[3]{};
         att[0].format = s->sColorRes->format; att[0].samples = VK_SAMPLE_COUNT_1_BIT;
         att[0].loadOp = VK_ATTACHMENT_LOAD_OP_LOAD; att[0].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
         att[0].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE; att[0].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
@@ -408,16 +398,13 @@ bool init_island(VfxIsland* s, int w, int h) {
         att[2].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_LOAD; att[2].stencilStoreOp = VK_ATTACHMENT_STORE_OP_STORE;
         att[2].initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
         att[2].finalLayout   = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-        att[3] = att[0]; att[3].format = motion->format;
-        att[4] = att[0]; att[4].format = reactive->format;
-        VkAttachmentReference colorRefs[4]{
+        VkAttachmentReference colorRefs[2]{
             {0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL},
-            {1, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL}, {3, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL},
-            {4, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL}};
+            {1, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL}};
         VkAttachmentReference depthRef{2, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL};
         VkSubpassDescription sub{};
         sub.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-        sub.colorAttachmentCount = 4; sub.pColorAttachments = colorRefs;
+        sub.colorAttachmentCount = 2; sub.pColorAttachments = colorRefs;
         sub.pDepthStencilAttachment = &depthRef;
         // Incoming external dep â€” order this frame's blend AFTER the upstream opaque/water
         // writes to the shared color+depth (same WAW pattern as the water island). Depth is
@@ -437,14 +424,14 @@ bool init_island(VfxIsland* s, int w, int h) {
                                 VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
         VkRenderPassCreateInfo rpci{};
         rpci.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-        rpci.attachmentCount = 5; rpci.pAttachments = att;
+        rpci.attachmentCount = 3; rpci.pAttachments = att;
         rpci.subpassCount = 1; rpci.pSubpasses = &sub;
         rpci.dependencyCount = 2; rpci.pDependencies = deps;
         if (!mc2vk::create(s->rpass, s->device, [&](VkRenderPass* o) { return vkCreateRenderPass(s->device, &rpci, nullptr, o); })) { vlog("vkCreateRenderPass failed."); return false; }
-        VkImageView fbViews[5] = { s->sColorRes->view.get(), s->sNormalRes->view.get(), s->sDepthRes->view.get(), motion->view.get(), reactive->view.get() };
+        VkImageView fbViews[3] = { s->sColorRes->view.get(), s->sNormalRes->view.get(), s->sDepthRes->view.get() };
         VkFramebufferCreateInfo fci{};
         fci.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-        fci.renderPass = s->rpass.get(); fci.attachmentCount = 5; fci.pAttachments = fbViews;
+        fci.renderPass = s->rpass.get(); fci.attachmentCount = 3; fci.pAttachments = fbViews;
         fci.width = static_cast<uint32_t>(w); fci.height = static_cast<uint32_t>(h); fci.layers = 1;
         if (!mc2vk::create(s->fb, s->device, [&](VkFramebuffer* o) { return vkCreateFramebuffer(s->device, &fci, nullptr, o); })) { vlog("vkCreateFramebuffer failed."); return false; }
     }
@@ -499,7 +486,6 @@ bool init_island(VfxIsland* s, int w, int h) {
         sci.addressModeU = sci.addressModeV = sci.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
         sci.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
         sci.maxLod = VK_LOD_CLAMP_NONE;
-        mc2vk::infra::materialSampler(sci);
         VkPhysicalDeviceProperties vegetationProps{};
         vkGetPhysicalDeviceProperties(s->phys, &vegetationProps);
         sci.anisotropyEnable = mc2vk::profile::featureEnabled(ctx.profile(), "samplerAnisotropy") ? VK_TRUE : VK_FALSE;
@@ -596,8 +582,6 @@ VfxIsland* acquire_island(int w, int h) {
 void fill_frame_params(void* dst, const float* worldToClipGL, const float* camRight, const float* camUp, int w, int h) {
     VfxVsParams up{};
     std::memcpy(up.worldToClipGL, worldToClipGL, sizeof(up.worldToClipGL));
-    const auto view = RenderCore::framePackets().copyMainView();
-    std::memcpy(up.previousWorldToClipGL, view.uniforms.previousWorldToClipGL, sizeof(up.previousWorldToClipGL));
     if (camRight) { up.camRight[0]=camRight[0]; up.camRight[1]=camRight[1]; up.camRight[2]=camRight[2]; }
     if (camUp)    { up.camUp[0]=camUp[0];       up.camUp[1]=camUp[1];       up.camUp[2]=camUp[2]; }
     else          { up.camUp[1]=1.0f; }
@@ -667,7 +651,7 @@ extern "C" int mc2_vk_vfx_island_run(
     const uint32_t par = take_slot(s, slotCtx);
     { ZoneScopedN("VKIsl.Vfx.SlotWait");
     if (!slotCtx.wait(mc2vk::GpuTicket{s->ticket[par], 0}, 5ull * 1000 * 1000 * 1000, "vfx_slot")) { setFallback("slot_timeout"); s->disabled = true; return 0; } }
-    const VkDeviceSize needBytes = static_cast<VkDeviceSize>(particleCount) * 80u;
+    const VkDeviceSize needBytes = static_cast<VkDeviceSize>(particleCount) * 64u;
     const VkDeviceSize partOff = mc2vk::alignUp(sizeof(VfxVsParams), slotCtx.frameAlignment());
     const mc2vk::FrameAlloc span = slotCtx.frameAlloc(partOff + needBytes);
     if (!span) { setFallback("frame_ring_alloc_failed"); s->disabled = true; return 0; }

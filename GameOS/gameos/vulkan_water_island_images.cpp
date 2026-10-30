@@ -72,7 +72,6 @@ bool ensure_hdri(WaterIsland* s, uint64_t hdriGeneration) {
         sci.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
         sci.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
         sci.maxLod = VK_LOD_CLAMP_NONE;
-        mc2vk::infra::materialSampler(sci);
         if (!mc2vk::create(s->hdriSampler, s->device, [&](VkSampler* h) { return vkCreateSampler(s->device, &sci, nullptr, h); })) {
             vlog("hdri: vkCreateSampler failed."); return false;
         }
