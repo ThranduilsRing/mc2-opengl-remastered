@@ -4660,6 +4660,75 @@
    "count": 1
   },
   {
+   "tag": "LOADFIELD",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "t",
+    "time",
+    "next",
+    "new",
+    "type",
+    "goal",
+    "global",
+    "p0",
+    "p1",
+    "wait",
+    "yield",
+    "yieldstate",
+    "laststep",
+    "request",
+    "state",
+    "run",
+    "throttle"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "LOADMUSIC",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "t",
+    "turn",
+    "id",
+    "combat",
+    "sensor"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "LOADPATH",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "t",
+    "result"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "LOADPATH",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "t",
+    "start",
+    "cell",
+    "areas",
+    "door",
+    "final",
+    "speed",
+    "level",
+    "cost",
+    "jump",
+    "offsets",
+    "params",
+    "setup"
+   ],
+   "count": 1
+  },
+  {
    "tag": "LOADRACE",
    "ver": -1,
    "stream": "stderr",
