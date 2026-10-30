@@ -192,7 +192,7 @@
    "LG05": 109,
    "LG06": 514,
    "LG07": 0,
-   "LG08": 45,
+   "LG08": 43,
    "LG09": 2,
    "LG10": 16,
    "LG11": 47,
@@ -2346,8 +2346,7 @@
   },
   "mclib/bdactor_type.cpp": {
    "LG03": 18,
-   "LG06": 2,
-   "LG08": 2
+   "LG06": 2
   },
   "mclib/burnin_jpeg_decode.cpp": {
    "LG17": 1
@@ -3417,7 +3416,7 @@
    "LG20": 3
   }
  },
- "head": "f811bd219",
+ "head": "456e8d865",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
