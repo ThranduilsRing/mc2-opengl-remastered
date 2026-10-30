@@ -164,6 +164,8 @@ void GameObjectManager::preloadTickSpawnTypes (void) {
 	auto preload = [this](long typeNum) {
 		if (typeNum >= 0 && typeNum < objTypeManager->numObjectTypes) objTypeManager->get(typeNum);
 	};
+	// The stock AC/10 effect (18) resolves to bolt type 459 through this table.
+	// Run for every new type manager, including the one rebuilt by quickload.
 	if (weaponEffects)
 		for (long effectId = 0; effectId < weaponEffects->getNumEffects(); effectId++)
 			preload(weaponEffects->GetEffectObjNum(effectId));
