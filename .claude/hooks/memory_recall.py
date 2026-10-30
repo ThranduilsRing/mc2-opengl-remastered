@@ -10,7 +10,7 @@ import sys
 
 MEM_DIR = os.path.expanduser("~/.claude/projects/A--Games-mc2-opengl-src/memory").replace("\\", "/")
 TOP_N = 3
-SKIP_PREFIXES = ('heartbeat', '<task-notification', '[system notification',
+SKIP_PREFIXES = ('heartbeat', '[heartbeat', '<task-notification', '[system notification',
                  '<agent-message', '<command')
 STOP = set("""the a an and or of to in on for with is are was be it this that we you i
 our my me do does did not no yes can should would could just like make from at by as

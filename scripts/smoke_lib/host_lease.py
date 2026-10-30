@@ -86,7 +86,21 @@ def affinity_mask(slot: int) -> int:
     width = cores_per_slot()
     if not 0 <= slot < 6 // max(2, width):
         raise ValueError("slot exceeds the physical game core budget")
+    if not redirected() and sys.platform == 'win32':
+        cores = game_cores()
+        slots = slot_count()
+        start = (slot * len(cores) + slots - 1) // slots
+        end = ((slot + 1) * len(cores) + slots - 1) // slots
+        return sum(1 << c for c in cores[start:end])
     return ((1 << (width * 2)) - 1) << (4 + slot * max(2, width) * 2)
+
+
+def game_cores():
+    """Share the guard's last-four CPU reservation, including for old leases."""
+    count = os.cpu_count() or 0
+    if count < 8:
+        raise RuntimeError('three-way core partition needs at least 8 logical CPUs')
+    return list(range(count - 4, count))
 
 
 @contextmanager
@@ -159,6 +173,9 @@ def apply_affinity(proc) -> None:
     mask = 0
     for rec in records:
         mask |= rec.get("affinity_mask", 3 << (4 + rec.get("slot", 0) * 2))
+    if not redirected() and sys.platform == 'win32':
+        reserved = sum(1 << c for c in game_cores())
+        mask = (mask & reserved) or reserved
     if sys.platform == "win32":
         import ctypes
         from ctypes import wintypes
