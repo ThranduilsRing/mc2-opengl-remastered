@@ -706,10 +706,6 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "GAMEPLAY-DRIVER-1: =1 arms the test-only spawn/teleport verbs on the MC2_UI_COMMAND_FILE channel.",
     },
     {
-        "MC2_TRACE_THIN_CANARY", "MC2_THIN_CANARY", EnvVarKind::Trace, false,
-        "TRACKV: gates Probe-6 thin-record canary readback (per-frame ~80KB glGetBufferSubData x2 + CPU recipeIdx/flags compare, diagnostic for the corrupt-recipeIdx...",
-    },
-    {
         "MC2_TREE_DIAG_TRACE", "MC2_TREE_DIAG_TRACE", EnvVarKind::Trace, false,
         "[DEFAULT-OFF, but the OFF token is UNSET, not '0'.]",
     },
@@ -748,10 +744,6 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
     {
         "MC2_VFX_ORACLE_TUBE", "MC2_VFX_ORACLE_TUBE", EnvVarKind::Feature, true,
         "GOSFX-TUBE-RIBBON-1: route supported gosFX Tube trails (MissileSmoke alpha, PPC additive, polygon) through the swept-quad ribbon oracle submit path instead...",
-    },
-    {
-        "MC2_VFX_ORACLE_TUBE_COVERAGE", "MC2_VFX_ORACLE_TUBE_COVERAGE", EnvVarKind::Trace, false,
-        "GOSFX-TUBE-RIBBON-1: wrap the deferred ribbon draw in a GL_SAMPLES_PASSED occlusion query; logs [VFX_ORACLE_TUBE coverage] ribbons/samples/fbo/sceneDrawBufs...",
     },
     {
         "MC2_TUNE_VIEW_MODE", "MC2_VIEW_MODE", EnvVarKind::Trace, false,

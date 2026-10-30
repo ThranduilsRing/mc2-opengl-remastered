@@ -191,7 +191,6 @@ Present-level transient failures (zero surface extent while minimized, `NATIVE_W
 - `MC2_STATIC_PROP_SNAPSHOT_FILL_DIRTYONLY` — default **ON** (flipped after Tracy proof). STATICPROP-SNAPSHOT-FILL-DIRTYONLY-1 gate.
   - unset/1: on clean `registryGeneration` AND `cullRecordVersion` (vs cached), skip Fill + WriteLoop and `memcpy` the cached rows into the snapshot arena (`Extract.SP.CleanCopy` zone); per-prop diagnostic counters restored from cache. Dirty frames run the legacy path and refresh the cache. First ~10 frames after mission load rebuild while cullVer settles — win is steady-state. **Tracy (user, mc2-win64-water):** `ExtractRenderSnapshot` median 1.68ms→36.7µs (−97%); `Extract.SP.Fill` 1.15ms + `WriteLoop` 159µs → gone, replaced by `CleanCopy` ~15µs.
   - 0: legacy full rebuild every frame (`fillStaticPropSlots` + per-prop WriteLoop) — kill-switch.
-- `MC2_THIN_CANARY=1` — re-enable Probe-6 thin-record canary readback (per-frame ~80KB `glGetBufferSubData` ×2 + CPU recipeIdx/flags compare). Default **OFF**. Diagnostic only; gated 2026-06-03 (was ungated per-frame stall).
 
 ## Shadow tuning
 
@@ -521,31 +520,6 @@ is a no-op. All cost is at mission load; zero per-frame.
 
 **Verify:** runway/airbase poses (day + night). `[RUNWAY_EDGE_BLEND]
 event=edge_mask_baked feathered_solid_tiles=N` on stdout confirms the bake armed.
-
-### MC2_LIGHT_BILLBOARD_TWOSIDED
-
-- `MC2_LIGHT_BILLBOARD_TWOSIDED=1` — opt-in, default **OFF** (reader `mclib/tgl.cpp:107`, whose own comment says "default OFF (AUDIT-TRUTH-1)"; documented as a default-**ON** killswitch until ENV-DROP-CLOSE-1, 2026-07-30). Restores legacy backface culling of beacon/runway edge-light glow cards.
-
-**Default:** on (killswitch)
-
-EDGE-LIGHT-BILLBOARD-CULL-1 (MASTER-FAIL #8). Beacon and runway edge-light glow
-cards (`data/tgl/runwaylight.tgl` + `red/green/bluebeaconlight.tgl`, all sharing
-the `Lightsnflags.tga` atlas, node names `*beaconlight*`) are authored as a single
-flat quad with **no** billboarding. As the RTS camera orbits toward top-down, the
-quad's face normal flips away from the camera and the legacy per-triangle backface
-cull (`TG_Shape::Render`, `mclib/tgl.cpp`) discards it — the light visibly pops out
-by view angle. This gate makes shapes flagged `isLightBillboard` (node name contains
-`beaconlight`) **two-sided**, exactly like the existing `isSpotlight` exemption, so
-the glow stays lit from every orbit angle.
-
-The flag is set once at shape load from the node name, so only beacon/runway lights
-are affected — the flags and the barrels/streetlight props that also draw from the
-`Lightsnflags` atlas keep stock one-sided culling.
-
-**Scope limit (measured):** this gate only reaches cards that take the legacy CPU
-`TG_Shape::Render` path. At runtime the airbase light population renders through
-the GPU static-prop batcher instead, so this gate alone is near-inert. See
-`MC2_LIGHT_BILLBOARD_FACING` below for the GPU-path cure.
 
 ### MC2_LIGHT_BILLBOARD_FACING
 
