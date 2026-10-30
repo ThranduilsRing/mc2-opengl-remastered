@@ -13,6 +13,9 @@ BUDGET = ROOT / "docs/perf-budget.json"
 OUT = Path("E:/mc2-archive-2026-10/proofs/perf-report")
 MISSIONS = {"mc2_01", "mc2_03", "mc2_10", "mc2_24", "battle"}
 METRICS = {"cpu_frame_ms", "draw_screen_ms", "gpu_frame_ms", "mover_tick_ms"}
+CAMERA_MISSIONS = {"mc2_01", "mc2_10", "mc2_24"}
+CAMERA_NAMES = {*(f"low_horizon_{r}" for r in (0, 90, 180, 270)), "cinematic_close",
+                "oblique_default", "wolfman", "topdown", "orbit", "sun_facing_low"}
 
 
 def number(value):
@@ -20,12 +23,12 @@ def number(value):
 
 
 def validate_budget(data):
-    """Validate the version-1 JSON schema without importing any game harness."""
+    """Validate budgets and explicit per-bookmark measurement gaps, without a game."""
     def require(ok, message):
         if not ok:
             raise ValueError(message)
     require(set(data) == {"version", "baseline_source", "metrics", "missions"}, "budget fields")
-    require(type(data["version"]) is int and data["version"] == 1, "budget version")
+    require(type(data["version"]) is int and data["version"] == 2, "budget version")
     require(isinstance(data["baseline_source"], str) and bool(data["baseline_source"]), "baseline source")
     require(set(data["metrics"]) == METRICS, "metric names")
     for name, metric in data["metrics"].items():
@@ -35,17 +38,40 @@ def validate_budget(data):
         require(isinstance(metric["context"], str) and bool(metric["context"]), f"{name}: context")
     require(set(data["missions"]) == MISSIONS, "mission names")
     for name, mission in data["missions"].items():
-        require(set(mission) == {"baseline_status", "baseline"}, f"{name}: fields")
+        require(set(mission) == {"baseline_status", "baseline", "bookmarks"}, f"{name}: fields")
         require(mission["baseline_status"] in ("quiet", "NOISY"), f"{name}: baseline status")
         require(set(mission["baseline"]) == METRICS, f"{name}: baseline metrics")
         require(all(v is None or number(v) for v in mission["baseline"].values()), f"{name}: baseline values")
+        require(set(mission["bookmarks"]) == (CAMERA_NAMES if name in CAMERA_MISSIONS else {"default"}), f"{name}: bookmarks")
+        for mark, values in mission["bookmarks"].items():
+            require(set(values) == METRICS, f"{name}/{mark}: metrics")
+            require(all(v == "unmeasured" or number(v) for v in values.values()), f"{name}/{mark}: values")
+        if name in CAMERA_MISSIONS:
+            document = json.loads((ROOT / f"tests/visual/bookmarks/{name}_camera.json").read_text())
+            require(document["schema_v"] == 1 and document["mission"] == name, f"{name}: bookmark identity")
+            marks = document["bookmarks"]
+            require(len(marks) == len(CAMERA_NAMES) and {b["name"] for b in marks} == CAMERA_NAMES, f"{name}: camera coverage")
+            for mark in marks:
+                require(len(mark["pos"]) == 3 and all(type(v) in (int, float) and math.isfinite(v) for v in mark["pos"]), f"{name}: position")
+                require(-20 <= mark["proj"] <= 88 and 10 <= mark["alt"] <= 6400, f"{name}: camera envelope")
+                require(type(mark["rot"]) in (int, float) and math.isfinite(mark["rot"]), f"{name}: rotation")
+                if mark["name"] == "orbit":
+                    require(mark.get("sweep") == {"degrees": 360, "seconds": 10}, f"{name}: orbit")
 
 
 def measurements(run):
+    if run.get("bookmarks"):
+        samples = {name: measurements(mark) for name, mark in run["bookmarks"].items()}
+        # Missing bookmarks/metrics never disappear behind a measured best view.
+        return {metric: max(values[metric] for values in samples.values()) for metric in METRICS
+                if all(metric in values for values in samples.values())}
     zones = run.get("zones", {})
     frame = zones.get("Frame", {})
     count = frame.get("count")
     values = {}
+    cpu = run.get("cpu_frame", {})
+    if isinstance(cpu, dict) and number(cpu.get("mean_ms")):
+        values["cpu_frame_ms"] = cpu["mean_ms"]
     if number(count) and count > 0:
         for metric, zone in (("cpu_frame_ms", "Frame"), ("draw_screen_ms", "DrawScreen")):
             total = zones.get(zone, {}).get("total_ms")
@@ -59,6 +85,9 @@ def measurements(run):
                          else sample.get("movers") == 200 and sample.get("ticks_per_sample") == 1)
         if valid_context and number(sample.get("value")):
             values[metric] = sample["value"]
+    gpu = run.get("gpu_span", {})
+    if run.get("resolution") == [3840, 2160] and isinstance(gpu, dict) and number(gpu.get("mean_ms")):
+        values["gpu_frame_ms"] = gpu["mean_ms"]
     return values
 
 
@@ -73,6 +102,11 @@ def compare(profile, budget, previous=None):
             quiet = False
         if mission in profile.get("errors", {}):
             quiet = False
+        expected = set(reference["bookmarks"])
+        marks = run.get("bookmarks", {})
+        complete = set(marks) == expected if mission in CAMERA_MISSIONS else True
+        if any(mark.get("pose_matches") is False or mark.get("visual_review") == "rejected" for mark in marks.values()):
+            complete = False
         values = measurements(run)
         old_run = (previous or {}).get("runs", {}).get(mission, {})
         old_values = measurements(old_run)
@@ -82,10 +116,14 @@ def compare(profile, budget, previous=None):
             base = reference["baseline"][metric]
             old = old_values.get(metric)
             status = "INCONCLUSIVE"
-            if quiet and value is not None:
+            if quiet and complete and value is not None:
                 meets = value < policy["goal"] if policy["strict"] else value <= policy["goal"]
                 status = "PASS" if meets else "FAIL"
-            rows[metric] = {"value": value, "goal": policy["goal"], "status": status,
+            worst = max(marks, key=lambda n: measurements(marks[n]).get(metric, -1)) if marks and value is not None else None
+            if mission in CAMERA_MISSIONS:
+                baselines = [mark[metric] for mark in reference["bookmarks"].values()]
+                base = max(baselines) if all(number(v) for v in baselines) else None
+            rows[metric] = {"value": value, "worst_bookmark": worst, "goal": policy["goal"], "status": status,
                             "delta_baseline_ms": value - base if value is not None and base is not None else None,
                             "distance_goal_ms": value - policy["goal"] if value is not None else None,
                             "delta_previous_ms": value - old if value is not None and old is not None else None}
@@ -93,6 +131,7 @@ def compare(profile, budget, previous=None):
         verdict = "INCONCLUSIVE" if not quiet else ("FAIL" if "FAIL" in statuses else
                    "INCONCLUSIVE" if "INCONCLUSIVE" in statuses else "PASS")
         results[mission] = {"status": verdict, "noise": noise, "metrics": rows,
+                            "bookmarks": {n: measurements(m) for n, m in marks.items()},
                             "baseline_status": reference["baseline_status"],
                             "previous_noise": old_run.get("noise", {}).get("status", "missing")}
     return results
@@ -115,7 +154,13 @@ def write_html(path, results, profile, budget, previous=None):
                    f'<p>Current noise: {escape(str(result["noise"]))}<br>Baseline: {result["baseline_status"]}; previous: {escape(str(result["previous_noise"]))}. Deltas involving noise are descriptive only.</p>',
                    '<div class="scroll"><table><tr><th>Metric (ms)</th><th>Value</th><th>Goal</th><th>Δ baseline</th><th>Distance to goal</th><th>Δ previous</th><th>Verdict</th></tr>']
         for metric, row in result["metrics"].items():
-            chunks.append(f'<tr><td>{metric}</td><td>{fmt(row["value"])}</td><td>{row["goal"]}</td><td>{fmt(row["delta_baseline_ms"])}</td><td>{fmt(row["distance_goal_ms"])}</td><td>{fmt(row["delta_previous_ms"])}</td><td>{row["status"]}</td></tr>')
+            chunks.append(f'<tr><td>{metric} ({escape(row["worst_bookmark"] or "unmeasured")})</td><td>{fmt(row["value"])}</td><td>{row["goal"]}</td><td>{fmt(row["delta_baseline_ms"])}</td><td>{fmt(row["distance_goal_ms"])}</td><td>{fmt(row["delta_previous_ms"])}</td><td>{row["status"]}</td></tr>')
+        for name, values in result["bookmarks"].items():
+            mark = profile["runs"][mission]["bookmarks"][name]
+            chunks.append(f'<tr><td>{escape(name)}</td><td colspan="6">{escape(str(values))}; '
+                          f'CPU mean/p95/worst: {escape(str(mark.get("cpu_frame", "unmeasured")))}; '
+                          f'GPU span mean/p95/worst at {escape(str(mark.get("resolution", "unknown")))}: '
+                          f'{escape(str(mark.get("gpu_span", "unmeasured")))}</td></tr>')
         chunks += ['</table></div><h3>Top zones (inclusive ms/frame)</h3><ol>']
         run = profile.get("runs", {}).get(mission, {})
         zones = run.get("zones", {})

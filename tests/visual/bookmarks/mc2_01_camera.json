@@ -1,0 +1,17 @@
+{
+  "schema_v": 1,
+  "mission": "mc2_01",
+  "_note": "Camera envelope, owner correction 2026-10-29. Position provenance: Werewolf player spawn from mc2_01_werewolf.json. Sun azimuth from mission LightDirYaw + 45: 56 degrees. Orbit PNG is the reference start pose; live sweep uses bench_view over 10 seconds. Requested and rendered altitude may differ due to engine clamping.",
+  "bookmarks": [
+    {"name":"low_horizon_0","pos":[2496,-1941,0],"rot":0,"proj":10,"alt":150,"covers":["camera_envelope"]},
+    {"name":"low_horizon_90","pos":[2496,-1941,0],"rot":90,"proj":10,"alt":150,"covers":["camera_envelope"]},
+    {"name":"low_horizon_180","pos":[2496,-1941,0],"rot":180,"proj":10,"alt":150,"covers":["camera_envelope"]},
+    {"name":"low_horizon_270","pos":[2496,-1941,0],"rot":270,"proj":10,"alt":150,"covers":["camera_envelope"]},
+    {"name":"cinematic_close","pos":[2496,-1941,0],"rot":0,"proj":-10,"alt":100,"covers":["mech"]},
+    {"name":"oblique_default","pos":[2496,-1941,0],"rot":0,"proj":35,"alt":1200,"covers":["camera_envelope"]},
+    {"name":"wolfman","pos":[2496,-1941,0],"rot":0,"proj":60,"alt":6000,"covers":["camera_envelope"]},
+    {"name":"topdown","pos":[2496,-1941,0],"rot":0,"proj":88,"alt":3000,"covers":["camera_envelope"]},
+    {"name":"orbit","pos":[2496,-1941,0],"rot":0,"proj":20,"alt":400,"covers":["camera_envelope"],"sweep":{"degrees":360,"seconds":10}},
+    {"name":"sun_facing_low","pos":[2496,-1941,0],"rot":56,"proj":12,"alt":150,"covers":["camera_envelope"]}
+  ]
+}

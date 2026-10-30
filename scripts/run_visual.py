@@ -51,8 +51,12 @@ def validate_schema(doc):
                    for r in regions) != 1:
                 raise ValueError("regions must partition the frame")
     scenes = doc.get("scenes", [])
-    if {s["name"] for s in scenes} != {"day", "night", "base", "battle", "mech"} or len(scenes) != 5:
-        raise ValueError("five fixed scenes required")
+    expected = {"day", "night", "base", "battle", "mech"}
+    for mission in ("mc2_01", "mc2_10", "mc2_24"):
+        camera = json.loads((ROOT / f"tests/visual/bookmarks/{mission}_camera.json").read_text())
+        expected.update(f"{mission}_{b['name']}" for b in camera["bookmarks"])
+    if {s["name"] for s in scenes} != expected or len(scenes) != len(expected):
+        raise ValueError("fixed scenes and camera envelope required")
     for scene in scenes:
         path = ROOT / "tests/visual/bookmarks" / scene["bookmarks"]
         if path.parent != ROOT / "tests/visual/bookmarks":
@@ -60,6 +64,8 @@ def validate_schema(doc):
         bookmark = json.loads(path.read_text(encoding="utf-8"))
         if bookmark["mission"] != scene["mission"] or scene["pose"] not in {b["name"] for b in bookmark["bookmarks"]}:
             raise ValueError("scene mission/pose missing from bookmark")
+        if scene["bookmarks"].endswith("_camera.json") and scene["name"] != f"{scene['mission']}_{scene['pose']}":
+            raise ValueError("camera golden must identify its mission and bookmark")
 
 
 def digest(path):
@@ -68,14 +74,18 @@ def digest(path):
 
 def capture(install, out, doc):
     out.mkdir(parents=True, exist_ok=False)
+    groups = {}
     for scene in doc["scenes"]:
-        dest = out / scene["name"]
+        groups.setdefault(scene["bookmarks"], []).append(scene)
+    for filename, scenes in groups.items():
+        scene = scenes[0]
+        dest = out / Path(filename).stem
         dest.mkdir()
         source = ROOT / "tests/visual/bookmarks" / scene["bookmarks"]
         bookmark = json.loads(source.read_text(encoding="utf-8"))
-        pose = next(b for b in bookmark["bookmarks"] if b["name"] == scene["pose"])
+        poses = [b for b in bookmark["bookmarks"] if b["name"] in {s["pose"] for s in scenes}]
         # The engine requires two poses; duplicate the fixed pose, not the entire sweep.
-        bookmark["bookmarks"] = [pose, dict(pose, name=pose["name"] + "_dup")]
+        bookmark["bookmarks"] = poses if len(poses) > 1 else [poses[0], dict(poses[0], name=poses[0]["name"] + "_dup")]
         fixed = dest / "bookmark.json"
         fixed.write_text(json.dumps(bookmark, indent=2) + "\n", encoding="utf-8")
         command = [sys.executable, str(ROOT / "scripts/run_visual_capture.py"),
@@ -94,6 +104,8 @@ def capture(install, out, doc):
 
 def evidence(directory, scene):
     path = directory / scene["name"] / f"{scene['mission']}_{scene['pose']}.png"
+    if not path.exists():
+        path = directory / Path(scene["bookmarks"]).stem / path.name
     side = json.loads(path.with_suffix(".json").read_text(encoding="utf-8"))
     if side.get("deterministic") is not True or side.get("backend") != "vulkan":
         raise ValueError(f"non-deterministic/non-Vulkan evidence: {path}")
