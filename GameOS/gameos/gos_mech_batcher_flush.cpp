@@ -173,7 +173,6 @@ struct MechFlushFrame {
     std::map<BucketKey, std::vector<uint32_t>> buckets;  // key -> [submitIdx list]
     size_t totalInstances = 0;
     std::vector<uint32_t> actorBoneBase;
-    std::vector<uint32_t> actorPreviousBoneBase;
     std::vector<DrawCall> drawCalls;
     uint32_t drawnCalls = 0;
 
@@ -288,38 +287,13 @@ void MechFlushFrame::buildBuckets() {
 void MechFlushFrame::writeBones() {
     // Step 4: Write the bone feed once per actor; record each actor's boneBase offset.
     actorBoneBase.assign(s_pendingSubmits.size(), 0u);
-    actorPreviousBoneBase.assign(s_pendingSubmits.size(), 0u);
-    struct History {
-        uint32_t frame = 0, type = 0;
-        std::vector<GpuMechBone> bones;
-    };
-    static std::unordered_map<uint32_t, History> history;
-    std::unordered_map<uint32_t, History> nextHistory;
-    extern std::atomic<uint32_t> g_mc2FrameCounter;
-    const uint32_t frame = g_mc2FrameCounter.load(std::memory_order_relaxed);
-    std::erase_if(history, [frame](const auto& entry) { const auto& [id, saved] = entry; return saved.frame + 1 != frame; });
     s_vkMechBoneSnapshot.clear();
-    s_vkMechBoneSnapshot.reserve(totalBones * 2);
+    s_vkMechBoneSnapshot.reserve(totalBones);
     for (uint32_t si = 0; si < static_cast<uint32_t>(s_pendingSubmits.size()); ++si) {
         actorBoneBase[si] = static_cast<uint32_t>(s_vkMechBoneSnapshot.size());
         for (const auto& b : s_pendingSubmits[si].bones)
             s_vkMechBoneSnapshot.push_back(b);
-        const auto& actor = s_pendingSubmits[si];
-        const auto old = history.find(actor.desc.objectIdRaw);
-        const History* previousHistory = nullptr;
-        if (old != history.end()) {
-            const auto& [id, saved] = *old;
-            previousHistory = &saved;
-        }
-        const bool valid = actor.desc.objectIdRaw != 0 && previousHistory &&
-            previousHistory->type == actor.typeLodIdx && previousHistory->bones.size() == actor.bones.size();
-        actorPreviousBoneBase[si] = static_cast<uint32_t>(s_vkMechBoneSnapshot.size());
-        const auto& previous = valid ? previousHistory->bones : actor.bones;
-        s_vkMechBoneSnapshot.insert(s_vkMechBoneSnapshot.end(), previous.begin(), previous.end());
-        if (actor.desc.objectIdRaw != 0)
-            nextHistory[actor.desc.objectIdRaw] = History{frame, actor.typeLodIdx, actor.bones};
     }
-    history.swap(nextHistory);
 }
 
 // Assign each bucket a material-table row; the table grows within a mission.
@@ -391,7 +365,6 @@ void MechFlushFrame::writeInstances() {
             GpuMechInstance inst{};
             inst.typeLodRecordIndex = ps.typeLodIdx;
             inst.baseBoneOffset     = actorBoneBase[si];
-            inst.previousBoneOffset = actorPreviousBoneBase[si];
             inst.lightDataIndex     = d.lightDataIndex;
             inst.renderFlags        = d.renderFlags;
             // BT2018-MECH-MATERIAL-GAMMA-1: tag imported BT mechs (renderFlags bit 3)

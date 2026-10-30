@@ -1,5 +1,5 @@
 // Native triangle input to the VFX island's shared frame ring.
-// The 80-byte record shares the particle SSBO stride; geometry draws use one
+// The 64-byte record shares the particle SSBO stride; geometry draws use one
 // record per vertex rather than the billboard's six procedural vertices.
 #pragma once
 #include <cstdint>
@@ -31,9 +31,7 @@ struct VfxGeometryVertex {
     float pad1{};
     uint32_t flags{};
     float extra[4]{};
-    float previousPosition[3]{};
-    float previousValid{};
 };
-static_assert(sizeof(VfxGeometryVertex) == 80);
+static_assert(sizeof(VfxGeometryVertex) == 64);
 static_assert(offsetof(VfxGeometryVertex, color) == 16 && offsetof(VfxGeometryVertex, uv) == 32);
 static_assert(offsetof(VfxGeometryVertex, flags) == 44 && offsetof(VfxGeometryVertex, extra) == 48);

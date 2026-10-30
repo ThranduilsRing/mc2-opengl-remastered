@@ -33,9 +33,7 @@ enum Mc2SharedSceneColorSlot {
     MC2_SHARED_SCENE_COLOR0 = 0,   // sceneColorTex_  (MRT0 lit color)
     MC2_SHARED_SCENE_NORMAL = 1,   // sceneNormalTex_ (MRT1 GBuffer1 normal)
     MC2_SHARED_SCENE_OBJECT_ID = 2, // sceneObjectIdTex_ (MRT2 R32UI object id)
-    MC2_SHARED_SCENE_MOTION = 3, // dynamic UV motion + validity; final motion is RG16F
-    MC2_SHARED_SCENE_REACTIVE = 4, // R8_UNORM transparency/reactivity, render resolution
-    MC2_SHARED_SCENE_COLOR_SLOT_COUNT = 5
+    MC2_SHARED_SCENE_COLOR_SLOT_COUNT = 3
 };
 
 // Opaque owner of one VK-only image the islands share. Body lives in the .cpp so no

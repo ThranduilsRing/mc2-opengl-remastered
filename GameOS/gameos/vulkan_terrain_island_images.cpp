@@ -92,7 +92,6 @@ bool create_colormap_sampler(TerrainIsland* s) {
     sci.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
     sci.addressModeU = sci.addressModeV = sci.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE; // GL_CLAMP_TO_EDGE
     sci.maxLod = 0.25f;
-    mc2vk::infra::materialSampler(sci);
     return mc2vk::create(s->colormapSamp, s->device, [&](auto* h) { return vkCreateSampler(s->device, &sci, nullptr, h); });
 }
 
@@ -253,7 +252,6 @@ bool create_cement_sampler(TerrainIsland* s) {
     if (s->cementSamp) return true;
     VkSamplerCreateInfo sci{};
     sci.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-    mc2vk::infra::materialSampler(sci);
     sci.magFilter = VK_FILTER_LINEAR; sci.minFilter = VK_FILTER_LINEAR;   // GL_LINEAR
     sci.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
     // ★CEMENT: GL_REPEAT wrap (gos_terrain_indirect.cpp:1291-1292) — cement tiles wrap.
@@ -428,7 +426,6 @@ bool create_matnormal_sampler(TerrainIsland* s) {
     if (s->matNormalSamp) return true;
     VkSamplerCreateInfo sci{};
     sci.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-    mc2vk::infra::materialSampler(sci);
     sci.magFilter = VK_FILTER_LINEAR; sci.minFilter = VK_FILTER_LINEAR;   // GL_LINEAR (mag)
     sci.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
     // GL_REPEAT wrap (gameos_graphics.cpp:2174-2175) — material detail normals tile.
@@ -675,7 +672,6 @@ bool ensure_dummy_concrete_detail(TerrainIsland* s) {
     if (!s->concreteDetailSamp) {
         VkSamplerCreateInfo sci{};
         sci.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-        mc2vk::infra::materialSampler(sci);
         sci.magFilter = VK_FILTER_LINEAR; sci.minFilter = VK_FILTER_LINEAR;
         sci.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
         sci.addressModeU = sci.addressModeV = sci.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
