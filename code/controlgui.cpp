@@ -339,10 +339,15 @@ void ControlGui::addMover (MoverPtr mover)
 		if ( turn > 3 )
 			mover->removeFromUnitGroup( 1 );
 
-		if ( mover->getObjectType()->getObjectTypeClass() == BATTLEMECH_TYPE )
-			forceGroupBar.addMech( mover );
-		else //if ( mover->getSpeed() > 0 ) // don't add guard towers
-			forceGroupBar.addVehicle( mover );
+        // Reinforcements join on the sim worker; icon atlas writes belong to
+        // main after the tick, just like removeMover's roster update.
+        auto link = [this, mover] {
+            if (mover->getObjectType()->getObjectTypeClass() == BATTLEMECH_TYPE)
+                forceGroupBar.addMech(mover);
+            else
+                forceGroupBar.addVehicle(mover);
+        };
+        if (!mc2::tick::defer(mc2::tick::Queue::MoverUi, link)) link();
 	}
 }
 
