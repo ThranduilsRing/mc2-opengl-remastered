@@ -12,12 +12,13 @@
 #include <span>
 #include "objmgr_internal.h"
 #include "saved_objects_check.h"
+#include "object_slot_codec.h"
 #include "watch_list_save_data.h"
 #include "mission_codec.h"
 #include "mc2fmt.h"
 #include "../GameOS/gameos/static_caster_set.h"
 
-// Load tells an object's class from the byte size of its packet, so no two record types may share a size.
+// Legacy saves dispatch by native size; keep that reader unambiguous.
 namespace {
 constexpr bool recordSizesDistinct() {
 	constexpr size_t sizes[] = { sizeof(TerrainObjectData), sizeof(BuildingData), sizeof(TurretData), sizeof(GateData),
@@ -646,7 +647,7 @@ ObjectTypePtr GameObjectManager::savedObjectType (long typeNum, long slot)
 }
 
 //-------------------------------------------------------------------
-std::optional<std::string_view> GameObjectManager::checkSavedObjects (PacketFilePtr file, long* headerPacket, bool saveV2, bool managerValues, bool watchValues)
+std::optional<std::string_view> GameObjectManager::checkSavedObjects (PacketFilePtr file, long* headerPacket, bool saveV2, bool managerValues, bool watchValues, bool objectValues)
 {
 	using namespace mc2_saved_objects;
 	RecordSizes sizes = {};
@@ -710,7 +711,18 @@ std::optional<std::string_view> GameObjectManager::checkSavedObjects (PacketFile
 			verdict = "object_capacity_mismatch";
 			break;
 		}
-		const std::optional<std::string_view> why = checkRun(h, sizes, static_cast<uint32_t>(p), static_cast<uint32_t>(numPackets), sizeAt, watchValues);
+		auto classAt = [&](std::uint32_t packet, std::uint32_t slot) -> std::optional<int> {
+			const auto size = sizeAt(packet);
+			if (size < 8 || size > mc2::save::maxFileBytes) return std::nullopt;
+			mc2::save::Bytes bytes(size);
+			if (file->readPacket(packet, bytes.data()) != size) return std::nullopt;
+			const auto c = mc2::save::objectSlotClass(bytes);
+			if (!c || !mc2::save::validObjectSlot(bytes, *c, slot)) return std::nullopt;
+			return c;
+		};
+		const auto why = objectValues
+			? checkRun(h, sizes, static_cast<uint32_t>(p), static_cast<uint32_t>(numPackets), sizeAt, watchValues, classAt)
+			: checkRun(h, sizes, static_cast<uint32_t>(p), static_cast<uint32_t>(numPackets), sizeAt, watchValues);
 		if (!why) {
 			if (watchValues) {
 				const auto packet = static_cast<int>(p + slotCount(h) + 2);
@@ -727,6 +739,7 @@ std::optional<std::string_view> GameObjectManager::checkSavedObjects (PacketFile
 				*headerPacket = p;
 			verdict = std::nullopt;
 			for (long slot = 0; slot <= slotCount(h); ++slot) {
+				if (objectValues) break; // All tagged payloads, including bolt deadlines, were checked above.
 				const auto packet = static_cast<int>(p + 1 + slot);
 				if (sizeAt(packet) != sizeof(WeaponBoltData)) continue;
 				WeaponBoltData bolt{};
@@ -745,7 +758,7 @@ std::optional<std::string_view> GameObjectManager::checkSavedObjects (PacketFile
 }
 
 //-------------------------------------------------------------------
-long GameObjectManager::Load (PacketFilePtr file, long packetNum, bool managerValues, bool watchValues)
+long GameObjectManager::Load (PacketFilePtr file, long packetNum, bool managerValues, bool watchValues, bool objectValues)
 {
 	ObjectManagerData data{};
 	if (managerValues) {
@@ -882,10 +895,25 @@ long GameObjectManager::Load (PacketFilePtr file, long packetNum, bool managerVa
 		// then init from the savedData.
 		// Next Object.
 
-		//First, get the size of the packet saved.
-		// This will tell me what kind of object it was!
+		// OBJS records dispatch by tag, including lengths that alias a native size.
+		// Files without OBJS retain the old size-based dispatch below.
 		file->seekPacket(packetNum);
 		DWORD packetSize = file->getPacketSize();
+		mc2::save::Bytes slotBytes;
+		std::optional<int> slotClass;
+		if (objectValues && packetSize != 0) {
+			if (packetSize > mc2::save::maxFileBytes) Fatal(0, "Invalid ObjectSlot size");
+			slotBytes.resize(packetSize);
+			if (file->readPacket(packetNum, slotBytes.data()) != packetSize) Fatal(0, "ObjectSlot read failed");
+			slotClass = mc2::save::objectSlotClass(slotBytes);
+			if (!slotClass || !mc2::save::validObjectSlot(slotBytes, *slotClass, static_cast<std::uint32_t>(i)))
+				Fatal(0, "Invalid ObjectSlot record");
+		}
+		auto readData = [&]<class Record, class Data>(Data& value, int c) {
+			if (objectValues) {
+				if (!mc2::save::decodeObjectSlot<Record>(slotBytes, value, c)) Fatal(0, "Invalid ObjectSlot payload");
+			} else file->readPacket(packetNum, reinterpret_cast<MemoryPtr>(&value));
+		};
 		if (packetSize == 0)
 		{
 			//NO Object stored here.
@@ -893,17 +921,17 @@ long GameObjectManager::Load (PacketFilePtr file, long packetNum, bool managerVa
 			// First object in ObjList, for example!!
 			packetNum++;
 		}
-		else if ((packetSize == sizeof(GameObjectData)) ||
-				(packetSize == sizeof(MoverData)))
+		else if (!objectValues && ((packetSize == sizeof(GameObjectData)) ||
+				(packetSize == sizeof(MoverData))))
 		{
 			STOP(("We saved a pure GameObject or Pure Mover in slot %d, packet %d",i,packetNum));
 		}
-		else if (packetSize == sizeof(TerrainObjectData))
+		else if (objectValues ? slotClass == mc2_saved_objects::kTerrain : packetSize == sizeof(TerrainObjectData))
 		{
 			//We have a TerrainObject.
 			// Get its data.
 			TerrainObjectData data{};
-			file->readPacket(packetNum,reinterpret_cast<MemoryPtr>((&data)));
+			readData.operator()<mc2::save::TerrainRecord>(data, mc2_saved_objects::kTerrain);
 			packetNum++;
 
 			TerrainObjectPtr obj = new TerrainObject; 
@@ -936,11 +964,11 @@ long GameObjectManager::Load (PacketFilePtr file, long packetNum, bool managerVa
 
 			curTerrObjNum++;
 		}
-		else if (packetSize == sizeof(BuildingData))
+		else if (objectValues ? slotClass == mc2_saved_objects::kBuilding : packetSize == sizeof(BuildingData))
 		{
 			//We have a Building.
 			BuildingData data{};
-			file->readPacket(packetNum,reinterpret_cast<MemoryPtr>((&data)));
+			readData.operator()<mc2::save::BuildingRecord>(data, mc2_saved_objects::kBuilding);
 			packetNum++;
 
 			BuildingPtr obj = new Building; 
@@ -979,11 +1007,11 @@ long GameObjectManager::Load (PacketFilePtr file, long packetNum, bool managerVa
 			}
 			curBuildingNum++;
 		}
-		else if (packetSize == sizeof(TurretData))
+		else if (objectValues ? slotClass == mc2_saved_objects::kTurret : packetSize == sizeof(TurretData))
 		{
 			//We have a Turret.
 			TurretData data{};
-			file->readPacket(packetNum,reinterpret_cast<MemoryPtr>((&data)));
+			readData.operator()<mc2::save::TurretRecord>(data, mc2_saved_objects::kTurret);
 			packetNum++;
 
 			TurretPtr obj = new Turret; 
@@ -1015,11 +1043,11 @@ long GameObjectManager::Load (PacketFilePtr file, long packetNum, bool managerVa
 			}
 			curTurretNum++;
 		}
-		else if (packetSize == sizeof(GateData))
+		else if (objectValues ? slotClass == mc2_saved_objects::kGate : packetSize == sizeof(GateData))
 		{
 			//We have a Gate.
 			GateData data{};
-			file->readPacket(packetNum,reinterpret_cast<MemoryPtr>((&data)));
+			readData.operator()<mc2::save::GateRecord>(data, mc2_saved_objects::kGate);
 			packetNum++;
 
 			GatePtr obj = new Gate; 
@@ -1051,11 +1079,11 @@ long GameObjectManager::Load (PacketFilePtr file, long packetNum, bool managerVa
 			}
 			curGateNum++;
 		}
-		else if (packetSize == sizeof(ArtilleryData))
+		else if (objectValues ? slotClass == mc2_saved_objects::kArtillery : packetSize == sizeof(ArtilleryData))
 		{
 			//We have an Artillery.
 			ArtilleryData data{};
-			file->readPacket(packetNum,reinterpret_cast<MemoryPtr>((&data)));
+			readData.operator()<mc2::save::ArtilleryRecord>(data, mc2_saved_objects::kArtillery);
 			packetNum++;
 
 			ArtilleryPtr obj = new Artillery; 
@@ -1076,11 +1104,11 @@ long GameObjectManager::Load (PacketFilePtr file, long packetNum, bool managerVa
 			}
 			curArtilleryNum++;
 		}
-		else if (packetSize == sizeof(CarnageData))
+		else if (objectValues ? slotClass == mc2_saved_objects::kCarnage : packetSize == sizeof(CarnageData))
 		{
 			//We have a Carnage.
 			CarnageData data{};
-			file->readPacket(packetNum,reinterpret_cast<MemoryPtr>((&data)));
+			readData.operator()<mc2::save::CarnageRecord>(data, mc2_saved_objects::kCarnage);
 			packetNum++;
 
 			CarnagePtr obj = new Carnage; 
@@ -1101,11 +1129,11 @@ long GameObjectManager::Load (PacketFilePtr file, long packetNum, bool managerVa
 			}
 			curCarnageNum++;
 		}
-		else if (packetSize == sizeof(MechData))
+		else if (objectValues ? slotClass == mc2_saved_objects::kMech : packetSize == sizeof(MechData))
 		{
 			//We have a BattleMech.
 			MechData data{};
-			file->readPacket(packetNum,reinterpret_cast<MemoryPtr>((&data)));
+			readData.operator()<mc2::save::MechRecord>(data, mc2_saved_objects::kMech);
 			packetNum++;
 
 			BattleMechPtr obj = new BattleMech; 
@@ -1126,11 +1154,11 @@ long GameObjectManager::Load (PacketFilePtr file, long packetNum, bool managerVa
 			}
 			curMechNum++;
 		}
-		else if (packetSize == sizeof(GroundVehicleData))
+		else if (objectValues ? slotClass == mc2_saved_objects::kVehicle : packetSize == sizeof(GroundVehicleData))
 		{
 			//We have a groundVehicle.
 			GroundVehicleData data{};
-			file->readPacket(packetNum,reinterpret_cast<MemoryPtr>((&data)));
+			readData.operator()<mc2::save::VehicleRecord>(data, mc2_saved_objects::kVehicle);
 			packetNum++;
 
 			GroundVehiclePtr obj = new GroundVehicle; 
@@ -1151,11 +1179,11 @@ long GameObjectManager::Load (PacketFilePtr file, long packetNum, bool managerVa
 			}
 			curVehicleNum++;
 		}
-		else if (packetSize == sizeof(WeaponBoltData))
+		else if (objectValues ? slotClass == mc2_saved_objects::kBolt : packetSize == sizeof(WeaponBoltData))
 		{
 			//We have a WeaponBolt.
 			WeaponBoltData data{};
-			file->readPacket(packetNum,reinterpret_cast<MemoryPtr>((&data)));
+			readData.operator()<mc2::save::WeaponBoltRecord>(data, mc2_saved_objects::kBolt);
 			packetNum++;
 
 			WeaponBoltPtr obj = new WeaponBolt; 
