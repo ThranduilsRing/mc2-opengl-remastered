@@ -136,7 +136,11 @@ void Mission::loadMovement(MissionLoadFrame& f) {
 	{
 		if (loadFile.getPacketSize() != 0)
 		{
-			currentPacket += MOVE_readData(&loadFile, currentPacket, true);
+			currentPacket += MOVE_readData(&loadFile, currentPacket, true,
+				{.cells = f.sections.find(mc2::save::tagMapCells) != nullptr,
+				 .areas = f.sections.find(mc2::save::tagMapAreas) != nullptr,
+				 .doors = f.sections.find(mc2::save::tagMapDoors) != nullptr,
+				 .links = f.sections.find(mc2::save::tagDoorLinks) != nullptr});
 			if (GlobalMoveMap[0]->badLoad)
 				STOP((" Mission.Load: old version of move data In-Mission Save Obsolete."));
 

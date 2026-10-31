@@ -209,6 +209,7 @@ include_directories(${CMAKE_SOURCE_DIR})
 # blocks around the same bgrTorgb swaps.
 #add_definitions(-DBGR)
 add_library(mclib ${SOURCES})
+target_sources(mclib PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../code/save_archive.cpp)
 mc2_enable_pch(mclib)
 
 # Track D — link Assimp + define ENABLE_ASSIMP_IMPORTER for mclib's TUs.

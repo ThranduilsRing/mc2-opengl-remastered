@@ -105,7 +105,7 @@
  "judged": "first-save-only",
  "resave_present": true,
  "packets": 20000,
- "overall": "e04b1973fa59f477",
+ "overall": "45fad0447a1c9786",
  "resave_identical": false,
  "resave_matches_policy": false,
  "runs": [
@@ -127,8 +127,8 @@
    "data",
    3,
    45,
-   546549,
-   "73ef2657208d1d25"
+   546573,
+   "095bad61358e2567"
   ],
   [
    "ObjectManagerData",
@@ -155,36 +155,36 @@
    "data",
    55,
    256,
-   33474,
-   "07e5fd28e4072727"
+   34614,
+   "00f1f19a016bfb68"
   ],
   [
    "data",
    311,
    256,
-   26004,
-   "e53cecb4297afca4"
+   29076,
+   "f05e93a090cde93a"
   ],
   [
    "data",
    567,
    256,
-   19833,
-   "5bd729ab30c3e2f5"
+   22905,
+   "c4f92134f04d8d5a"
   ],
   [
    "data",
    823,
    256,
-   16530,
-   "841c8dd8348c48bb"
+   19578,
+   "cfdbdd431d43ebf1"
   ],
   [
    "data",
    1079,
    45,
-   186834,
-   "73c76b2fa0e208d6"
+   186846,
+   "400fc518be66f40d"
   ],
   [
    "ObjectManagerData",
@@ -211,57 +211,57 @@
    "data",
    1131,
    256,
-   34241,
-   "4826bdd8c2e0d789"
+   35201,
+   "a27beb0f3e53462d"
   ],
   [
    "data",
    1387,
    256,
-   25322,
-   "b299469ec3212e81"
+   28394,
+   "0651d259ffdabc03"
   ],
   [
    "data",
    1643,
    256,
-   19690,
-   "d276543cac0a136a"
+   22762,
+   "9b2402bebbe3d866"
   ],
   [
    "data",
    1899,
    256,
-   18348,
-   "154d1320cf5abe7c"
+   21420,
+   "817ff3e33a2d6b8c"
   ],
   [
    "data",
    2155,
    256,
-   192419,
-   "2165faa90cf07067"
+   193691,
+   "1efac43c4be6e235"
   ],
   [
    "data",
    2411,
    256,
-   31508,
-   "0d42a8983f74fb0f"
+   34184,
+   "73f8e3c829ca28c0"
   ],
   [
    "data",
    2667,
    256,
-   13750,
-   "2547bf146c4e5d55"
+   16822,
+   "55be1f1d041bf497"
   ],
   [
    "data",
    2923,
    193,
-   52427,
-   "c59674e8f67511ad"
+   54707,
+   "556fe33ef9a4805a"
   ],
   [
    "StaticMechWarriorData",
@@ -638,8 +638,8 @@
    "sections",
    6519,
    1,
-   540739,
-   "997e468c40e186ae"
+   540819,
+   "f86195c1817f19d0"
   ],
   [
    "empty",
@@ -673,29 +673,70 @@
   "problems": []
  },
  "schema_migration": {
-  "packet": "C: OBMH/WATC v1",
-  "source": "E:/mc2-archive-2026-10/proofs/lane9/cxx23-b/migrated-mc2_03.ims",
-  "source_sha256": "e839f4179e4575b7610d488805660cbfa579f5ed4a10003a28c8e58a889ab2d0",
-  "packet_b_masked_digest": "7541eace2bb65f26",
+  "packet": "E: MCEL/GARE/GDOR/GLNK v1",
+  "source": "E:/mc2-archive-2026-10/proofs/lane9/cxx23-c/migrated-mc2_03.ims",
+  "source_sha256": "1b61f64d400c4dc76706b20e5abc04067f72a381981706d0a61942a25ac9cad5",
+  "packet_c_masked_digest": "e04b1973fa59f477",
   "previous_migration": {
-   "packet": "B: CMST/CMDR/TMST/TEAM v1",
-   "source": "E:/mc2-archive-2026-10/proofs/merge88/finish-baseline-mc2_03/save1.ims",
-   "source_sha256": "40f0dd16b7c0ebf7468abb2ae6b3a0dac6db4661ed5ee2dc0f557ef790832d11",
-   "native_masked_digest": "b52cdc7518267173",
+   "packet": "C: OBMH/WATC v1",
+   "source": "E:/mc2-archive-2026-10/proofs/lane9/cxx23-b/migrated-mc2_03.ims",
+   "source_sha256": "e839f4179e4575b7610d488805660cbfa579f5ed4a10003a28c8e58a889ab2d0",
+   "packet_b_masked_digest": "7541eace2bb65f26",
+   "previous_migration": {
+    "packet": "B: CMST/CMDR/TMST/TEAM v1",
+    "source": "E:/mc2-archive-2026-10/proofs/merge88/finish-baseline-mc2_03/save1.ims",
+    "source_sha256": "40f0dd16b7c0ebf7468abb2ae6b3a0dac6db4661ed5ee2dc0f557ef790832d11",
+    "native_masked_digest": "b52cdc7518267173",
+    "changed_runs": [
+     "TeamStaticData",
+     "TeamData",
+     "StaticCommanderData",
+     "CommanderData",
+     "sections"
+    ],
+    "method": "Transform the SHA-verified archived pin: explicit fields, zero inactive group IDs, omit group padding, add required sections. Every unrelated run digest retained exactly; no live-run repin."
+   },
    "changed_runs": [
-    "TeamStaticData",
-    "TeamData",
-    "StaticCommanderData",
-    "CommanderData",
+    "ObjectManagerData",
+    "WatchList",
     "sections"
    ],
-   "method": "Transform the SHA-verified archived pin: explicit fields, zero inactive group IDs, omit group padding, add required sections. Every unrelated run digest retained exactly; no live-run repin."
+   "method": "Transform the verified Packet B pin: prefix all 15 manager int32 fields unchanged, prefix the complete watch array with tag/version/count, add required sections. Every unrelated packet and run retained exactly; mask unchanged; no live-run repin."
   },
-  "changed_runs": [
-   "ObjectManagerData",
-   "WatchList",
-   "sections"
+  "changed_packet_runs": [
+   [
+    7,
+    7
+   ],
+   [
+    19,
+    19
+   ],
+   [
+    216,
+    1076
+   ],
+   [
+    1088,
+    1088
+   ],
+   [
+    1307,
+    2259
+   ],
+   [
+    2271,
+    2271
+   ],
+   [
+    2444,
+    3112
+   ],
+   [
+    6519,
+    6519
+   ]
   ],
-  "method": "Transform the verified Packet B pin: prefix all 15 manager int32 fields unchanged, prefix the complete watch array with tag/version/count, add required sections. Every unrelated packet and run retained exactly; mask unchanged; no live-run repin."
+  "method": "Verified Packet C pin; prefix native navigation fields with tag/version/count and add required sections. All field bytes, unrelated packets and mask ranges unchanged; no live-run repin."
  }
 }

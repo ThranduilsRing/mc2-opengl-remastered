@@ -9,6 +9,8 @@
 #ifndef MOVE_H
 #define MOVE_H
 
+#include "../code/navigation_save_data.h"
+
 //***************************************************************************
 
 //--------------
@@ -310,6 +312,9 @@ inline constexpr unsigned int MAPCELL_BUILD_NOT_SET_MASK = 0x80000000;
 
 struct _MapCell {
 	unsigned int data;
+	// The mover bit is cleared on load and rebuilt by placing restored movers;
+	// tileMineCount and its render dirty state are rebuilt from these cell bits.
+	void serialize(mc2::save::Archive& a) { a(data); }
 
 	unsigned int getTerrain (void) {
 		return((data & MAPCELL_TERRAIN_MASK) >> MAPCELL_TERRAIN_SHIFT);
@@ -603,11 +608,11 @@ class MissionMap {
 
 		void setPassable (long row, long col, char* footPrint, bool passable);
 
-		long init (PacketFile* packetFile, long whichPacket = 0);
+		long init (PacketFile* packetFile, long whichPacket = 0, bool taggedCells = false);
 
 		long initOld (File* mapFile);
 
-		long write (PacketFile* packetFile, long whichPacket = 0);
+		long write (PacketFile* packetFile, long whichPacket = 0, bool taggedCells = false);
 
 		// OOB guards (cd071ca9 pattern): worldToCell (terrain.h) does NOT clamp,
 		// and on oversized maps the MOVE/cell grid (width x height) is smaller than
@@ -1169,6 +1174,9 @@ struct _DoorLink {
 	char					doorSide;
 	int					cost;
 	int					openCost;
+	// Both costs are continuation state. Loading a save must not call openArea
+	// on ordinary areas: that would overwrite the restored link costs.
+	void serialize(mc2::save::Archive& a) { a(doorIndex, doorSide, cost, openCost); }
 }; using DoorLink = _DoorLink;
 
 using DoorLinkPtr = DoorLink*;
@@ -1196,6 +1204,18 @@ struct _GlobalMapDoor {
 	int					g;
 	int					hPrime;
 	int					fPrime;
+	void serialize(mc2::save::Archive& a) {
+		a(row, col, length, open, teamID);
+		for (auto& v : area) a(v);
+		for (auto& v : areaCost) a(v);
+		for (auto& v : direction) a(v);
+		for (auto& v : numLinks) a(v);
+		// Reserved pointer slots are not dereferenced; doors_links views are
+		// rebuilt over the loaded link pool. Search parent/fromAreaIndex/flags/
+		// g/hPrime/fPrime are cleared by write() and reinitialized per search.
+		for (auto& v : links_Legacy32bitPtr) a(v);
+		a(cost, parent, fromAreaIndex, flags, g, hPrime, fPrime);
+	}
 }; using GlobalMapDoor = _GlobalMapDoor;
 
 using GlobalMapDoorPtr = GlobalMapDoor*;
@@ -1241,6 +1261,16 @@ struct _GlobalMapArea {
     // sebi: 64bit fix 
 	//short*					cellsCovered;
 	DWORD                   cellsCovered_Legacy32bitPtr;
+	void serialize(mc2::save::Archive& a) {
+		// Legacy pointer slots are reserved values, never addresses to restore.
+		// areas_doors is rebuilt from DoorInfo runs; cellsCovered starts empty.
+		// ownerWID/teamID/open are reset by write(), then object restoration
+		// re-establishes ownership and open/closed state (and its link costs).
+		a(sectorR, sectorC, doors_Legacy32bitPtr);
+		auto typeValue = static_cast<std::int32_t>(type);
+		a(typeValue, numDoors, ownerWID, teamID, offMap, open, cellsCovered_Legacy32bitPtr);
+		if (a.reading() && a.good()) type = static_cast<AreaType>(typeValue);
+	}
 }; using GlobalMapArea = _GlobalMapArea;
 
 #pragma pack()
@@ -1451,9 +1481,9 @@ class GlobalMap {
 
 		long build (MissionMapCellInfo* mapData);
 
-		long init (PacketFilePtr mapFile, long whichPacket = 0, bool restoreSavedCosts = false);
+		long init (PacketFilePtr mapFile, long whichPacket = 0, bool restoreSavedCosts = false, mc2::save::NavigationFormat format = {});
 
-		long write (PacketFile* packetFile, long whichPacket = 0);
+		long write (PacketFile* packetFile, long whichPacket = 0, mc2::save::NavigationFormat format = {});
 
 		long setTempArea (long row, long col, long cost);
 
@@ -1898,8 +1928,8 @@ void DeleteMapCells (MissionMapCellInfo* mapData);
 
 void MOVE_init (long moveRange);
 void MOVE_buildData (long height, long width, MissionMapCellInfo* mapData, long numSpecialAreas, GameObjectFootPrint* specialAreaFootPrints);
-long MOVE_saveData (PacketFile* packetFile, long whichPacket = 0);
-long MOVE_readData (PacketFile* packetFile, long whichPacket, bool restoreSavedCosts = false);
+long MOVE_saveData (PacketFile* packetFile, long whichPacket = 0, mc2::save::NavigationFormat format = {});
+long MOVE_readData (PacketFile* packetFile, long whichPacket, bool restoreSavedCosts = false, mc2::save::NavigationFormat format = {});
 void MOVE_cleanup (void);
 
 //long BuildAndSaveMoveData (char* fileName, long height, long width, MissionMapCellInfo* mapData);

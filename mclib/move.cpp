@@ -544,7 +544,7 @@ void MOVE_buildData (long height, long width, MissionMapCellInfo* mapData, long 
 	EditorSave = false;
 }
 
-long MOVE_saveData (PacketFile* packetFile, long whichPacket) {
+long MOVE_saveData (PacketFile* packetFile, long whichPacket, mc2::save::NavigationFormat format) {
 
 	if (!GameMap)
 		Fatal(0, " MOVE_SaveData: Cannot initialize GameMap ");
@@ -560,10 +560,10 @@ long MOVE_saveData (PacketFile* packetFile, long whichPacket) {
 	//		if (GameMap->getOffMap(r, c))
 	//			numOffMap++;
 
-	long numMissionMapPackets = GameMap->write(packetFile, whichPacket);
-	long numGlobalMap0Packets = GlobalMoveMap[0]->write(packetFile, whichPacket + numMissionMapPackets);
-	long numGlobalMap1Packets = GlobalMoveMap[1]->write(packetFile, whichPacket + numMissionMapPackets + numGlobalMap0Packets);
-	long numGlobalMap2Packets = GlobalMoveMap[2]->write(packetFile, whichPacket + numMissionMapPackets + numGlobalMap0Packets + numGlobalMap1Packets);
+	long numMissionMapPackets = GameMap->write(packetFile, whichPacket, format.cells);
+	long numGlobalMap0Packets = GlobalMoveMap[0]->write(packetFile, whichPacket + numMissionMapPackets, format);
+	long numGlobalMap1Packets = GlobalMoveMap[1]->write(packetFile, whichPacket + numMissionMapPackets + numGlobalMap0Packets, format);
+	long numGlobalMap2Packets = GlobalMoveMap[2]->write(packetFile, whichPacket + numMissionMapPackets + numGlobalMap0Packets + numGlobalMap1Packets, format);
 
 	long result = packetFile->writePacket(whichPacket + numMissionMapPackets + numGlobalMap0Packets + numGlobalMap1Packets + numGlobalMap2Packets, reinterpret_cast<unsigned char*>(&tempNumSpecialAreas), sizeof(long));
 	if (result <= 0)
@@ -579,11 +579,11 @@ long MOVE_saveData (PacketFile* packetFile, long whichPacket) {
 	return(numMissionMapPackets + numGlobalMap0Packets + numGlobalMap1Packets + numGlobalMap2Packets + 2);
 }
 
-long MOVE_readData (PacketFile* packetFile, long whichPacket, bool restoreSavedCosts) {
+long MOVE_readData (PacketFile* packetFile, long whichPacket, bool restoreSavedCosts, mc2::save::NavigationFormat format) {
 
 	s_gameMapOwner = std::make_unique<MissionMap>();
 	GameMap = s_gameMapOwner.get();
-	long numMissionMapPackets = GameMap->init(packetFile, whichPacket);
+	long numMissionMapPackets = GameMap->init(packetFile, whichPacket, format.cells);
 	if (numMissionMapPackets == 0)
 		Fatal(0, " MOVE_readData: the mission map was rejected; the mission is not loaded ");
 
@@ -593,7 +593,7 @@ long MOVE_readData (PacketFile* packetFile, long whichPacket, bool restoreSavedC
 	s_globalMoveMapOwner[0] = std::make_unique<GlobalMap>();
 	GlobalMoveMap[0] = s_globalMoveMapOwner[0].get();
 	// The mission map reports a small packet count (zero is Fatal above), so this one sum cannot overflow and needs no saturation.
-	long numGlobalMap0Packets = GlobalMoveMap[0]->init(packetFile, whichPacket + numMissionMapPackets, restoreSavedCosts);
+	long numGlobalMap0Packets = GlobalMoveMap[0]->init(packetFile, whichPacket + numMissionMapPackets, restoreSavedCosts, format);
 	long numGlobalMap1Packets = 0;
 	long numGlobalMap2Packets = 0;
 	if (!GlobalMoveMap[0]->badLoad) {
@@ -602,14 +602,14 @@ long MOVE_readData (PacketFile* packetFile, long whichPacket, bool restoreSavedC
 		GlobalMoveMap[1] = s_globalMoveMapOwner[1].get();
 		GlobalMoveMap[1]->hover = true;
 		const long map1Start = mc2::globalmap::advanceCursor(whichPacket + numMissionMapPackets, numGlobalMap0Packets);
-		numGlobalMap1Packets = GlobalMoveMap[1]->init(packetFile, map1Start, restoreSavedCosts);
+		numGlobalMap1Packets = GlobalMoveMap[1]->init(packetFile, map1Start, restoreSavedCosts, format);
 
 		// Let's read the helicoptor move map...
 		s_globalMoveMapOwner[2] = std::make_unique<GlobalMap>();
 		GlobalMoveMap[2] = s_globalMoveMapOwner[2].get();
 		GlobalMoveMap[2]->blank = true;
 		const long map2Start = mc2::globalmap::advanceCursor(map1Start, numGlobalMap1Packets);
-		numGlobalMap2Packets = GlobalMoveMap[2]->init(packetFile, map2Start, restoreSavedCosts);
+		numGlobalMap2Packets = GlobalMoveMap[2]->init(packetFile, map2Start, restoreSavedCosts, format);
 		// Delete the pathExistsTable for this one, since we don't use it...
 		GlobalMoveMap[2]->releasePathExistsTable();
 
@@ -748,7 +748,7 @@ void MissionMap::rebuildTileMineCounts (void) {
 
 constexpr int NUM_MISSIONMAP_PACKETS = 4;
 
-long MissionMap::init (PacketFile* packetFile, long whichPacket) {
+long MissionMap::init (PacketFile* packetFile, long whichPacket, bool taggedCells) {
 
 	// Any rejected packet refuses the whole map (0 packets read): a mission on a stale planet or an all-clear grid plays on a
 	// passable-everywhere map. The first rejection is the only log line.
@@ -764,7 +764,15 @@ long MissionMap::init (PacketFile* packetFile, long whichPacket) {
 		return 0;
 	}
 	init(h, w);
-	if (!mc2::pak::readExact(*packetFile, whichPacket + 3, map.data(), map.size() * sizeof(MapCell), "mission map cell")) {
+	bool cellsRead = false;
+	if (taggedCells) {
+		mc2::save::Bytes bytes(12 + map.size() * sizeof(std::uint32_t));
+		cellsRead = mc2::pak::readExact(*packetFile, whichPacket + 3, bytes.data(), bytes.size(), "mission map values") &&
+			mc2::save::decodeNavigationRecord(bytes, std::span(map), mc2::save::tagMapCells);
+	} else {
+		cellsRead = mc2::pak::readExact(*packetFile, whichPacket + 3, map.data(), map.size() * sizeof(MapCell), "mission map cell");
+	}
+	if (!cellsRead) {
 		std::fill(map.begin(), map.end(), MapCell{});
 		return 0;
 	}
@@ -782,7 +790,7 @@ long MissionMap::init (PacketFile* packetFile, long whichPacket) {
 	return(NUM_MISSIONMAP_PACKETS);
 }
 
-long MissionMap::write (PacketFile* packetFile, long whichPacket) {
+long MissionMap::write (PacketFile* packetFile, long whichPacket, bool taggedCells) {
 
 	// Return number of packets if !packetFile...
 	if (!packetFile)
@@ -797,7 +805,12 @@ long MissionMap::write (PacketFile* packetFile, long whichPacket) {
 	result = packetFile->writePacket(whichPacket++, planet);
 	if (result <= 0)
 		Fatal(result, " MissionMap.write: Unable to write planet packet ");
-	result = packetFile->writePacket(whichPacket++, reinterpret_cast<unsigned char*>(map.data()), static_cast<unsigned int>(map.size() * sizeof(MapCell)));
+	if (taggedCells) {
+		auto bytes = mc2::save::encodeNavigationRecord(std::span(map), mc2::save::tagMapCells);
+		result = packetFile->writePacket(whichPacket++, bytes.data(), static_cast<unsigned int>(bytes.size()));
+	} else {
+		result = packetFile->writePacket(whichPacket++, reinterpret_cast<unsigned char*>(map.data()), static_cast<unsigned int>(map.size() * sizeof(MapCell)));
+	}
 	if (result <= 0)
 		Fatal(result, " MissionMap.write: Unable to write map packet ");
 	return(NUM_MISSIONMAP_PACKETS);
