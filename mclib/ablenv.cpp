@@ -1572,7 +1572,8 @@ void ABLi_loadEnvironment (ABLFile* ablFile, bool malloc, bool values) {
 	mc2::save::AblEnvironmentRecord record;
 	if (values) {
 		record = readAblRecord<mc2::save::AblEnvironmentRecord>(ablFile, mc2::save::tagAblEnvironment);
-		if (record.libraries > MaxLibraries || record.files.size() > MaxModules || record.modules > MaxModules)
+		if (record.libraries > static_cast<uint32_t>(MaxLibraries) ||
+			record.files.size() > static_cast<size_t>(MaxModules) || record.modules > static_cast<uint32_t>(MaxModules))
 			ABL_Fatal(0, "ABL: environment exceeds registry capacity");
 	}
 	long numLibs = values ? static_cast<long>(record.libraries) : ablFile->readInt();
