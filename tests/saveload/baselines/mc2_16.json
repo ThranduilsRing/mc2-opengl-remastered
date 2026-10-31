@@ -18,42 +18,8 @@
   "across_builds": true,
   "classes": {
    "MechWarriorData": {
-    "run": [
-     [
-      2168,
-      2451
-     ],
-     [
-      3164,
-      3447
-     ],
-     [
-      3496,
-      3779
-     ],
-     [
-      10072,
-      14871
-     ],
-     [
-      14920,
-      19719
-     ]
-    ],
-    "build": [
-     [
-      2192,
-      2451
-     ],
-     [
-      3188,
-      3447
-     ],
-     [
-      3520,
-      3779
-     ]
-    ]
+    "run": [],
+    "build": []
    },
    "MechData": {
     "run": [
@@ -104,7 +70,7 @@
  "judged": "first-save-only",
  "resave_present": true,
  "packets": 20000,
- "overall": "59f5127d340e0f5e",
+ "overall": "18d14392c1872eb3",
  "resave_identical": false,
  "resave_matches_policy": false,
  "runs": [
@@ -287,15 +253,15 @@
    "StaticMechWarriorData",
    5703,
    1,
-   40,
-   "0341cc12527659f9"
+   48,
+   "7fde670555827bab"
   ],
   [
    "MechWarriorData",
    5704,
    256,
-   5091456,
-   "7900e760bc25d4fd"
+   4843648,
+   "bf38fd99d10b9644"
   ],
   [
    "TeamStaticData",
@@ -889,8 +855,8 @@
    "sections",
    10701,
    1,
-   870629,
-   "08b8e43b6d975322"
+   870669,
+   "86daa7f06c655463"
   ],
   [
    "empty",
@@ -924,70 +890,123 @@
   "problems": []
  },
  "schema_migration": {
-  "packet": "E: MCEL/GARE/GDOR/GLNK v1",
-  "source": "E:/mc2-archive-2026-10/proofs/lane9/cxx23-c/migrated-mc2_16.ims",
-  "source_sha256": "79056a2b47814e9b71d323c6921b7e96f1d8a96e6fa3881a8b60a9b539146d75",
-  "packet_c_masked_digest": "18d7fb07c241a644",
-  "previous_migration": {
-   "packet": "C: OBMH/WATC v1",
-   "source": "E:/mc2-archive-2026-10/proofs/lane9/cxx23-b/migrated-mc2_16.ims",
-   "source_sha256": "946e6a51d5ed4e38df258215f7863e84aad27d8bb68b337ee5f8d94d4be99f36",
-   "packet_b_masked_digest": "0a39484e5c35dd0f",
-   "previous_migration": {
-    "packet": "B: CMST/CMDR/TMST/TEAM v1",
-    "source": "E:/mc2-archive-2026-10/proofs/merge88/finish-baseline-mc2_16/save1.ims",
-    "source_sha256": "07999200f562985304a1ae5619b640db673ab0656e3d3e6238569462bf631b5b",
-    "native_masked_digest": "65cedfbd72ee20c7",
-    "changed_runs": [
-     "TeamStaticData",
-     "TeamData",
-     "StaticCommanderData",
-     "CommanderData",
-     "sections"
-    ],
-    "method": "Transform the SHA-verified archived pin: explicit fields, zero inactive group IDs, omit group padding, add required sections. Every unrelated run digest retained exactly; no live-run repin."
+  "packet": "D+E: WSTA/WARR and MCEL/GARE/GDOR/GLNK v1",
+  "sources": [
+   {
+    "path": "E:/mc2-archive-2026-10/proofs/lane9/cxx23-c/migrated-mc2_16.ims",
+    "sha256": "79056a2b47814e9b71d323c6921b7e96f1d8a96e6fa3881a8b60a9b539146d75"
    },
-   "changed_runs": [
-    "ObjectManagerData",
-    "WatchList",
-    "sections"
-   ],
-   "method": "Transform the verified Packet B pin: prefix all 15 manager int32 fields unchanged, prefix the complete watch array with tag/version/count, add required sections. Every unrelated packet and run retained exactly; mask unchanged; no live-run repin."
-  },
-  "changed_packet_runs": [
-   [
-    7,
-    7
-   ],
-   [
-    19,
-    19
-   ],
-   [
-    446,
-    2288
-   ],
-   [
-    2300,
-    2300
-   ],
-   [
-    2690,
-    4554
-   ],
-   [
-    4566,
-    4566
-   ],
-   [
-    4799,
-    5699
-   ],
-   [
-    10701,
-    10701
-   ]
+   {
+    "path": "E:/mc2-archive-2026-10/proofs/lane9/cxx23-d/migrated-mc2_16.ims",
+    "sha256": "23d8eafd27a4a2dfc9b723eece0211836094bbff612a2830e6a7272b29fef9e1"
+   },
+   {
+    "path": "E:/mc2-archive-2026-10/proofs/lane4/cxx23-e/migrated-mc2_16.ims",
+    "sha256": "0ef345a74fe6b93bc1b0821311ee250a68faa747069f1d62db4f99c688c6efbd"
+   }
   ],
-  "method": "Verified Packet C pin; prefix native navigation fields with tag/version/count and add required sections. All field bytes, unrelated packets and mask ranges unchanged; no live-run repin."
+  "previous_migration": [
+   {
+    "packet": "D: WSTA/WARR v1",
+    "source": "E:\\mc2-archive-2026-10\\proofs\\lane9\\cxx23-c\\migrated-mc2_16.ims",
+    "source_sha256": "79056a2b47814e9b71d323c6921b7e96f1d8a96e6fa3881a8b60a9b539146d75",
+    "packet_c_masked_digest": "18d7fb07c241a644",
+    "previous_migration": {
+     "packet": "C: OBMH/WATC v1",
+     "source": "E:/mc2-archive-2026-10/proofs/lane9/cxx23-b/migrated-mc2_16.ims",
+     "source_sha256": "946e6a51d5ed4e38df258215f7863e84aad27d8bb68b337ee5f8d94d4be99f36",
+     "packet_b_masked_digest": "0a39484e5c35dd0f",
+     "previous_migration": {
+      "packet": "B: CMST/CMDR/TMST/TEAM v1",
+      "source": "E:/mc2-archive-2026-10/proofs/merge88/finish-baseline-mc2_16/save1.ims",
+      "source_sha256": "07999200f562985304a1ae5619b640db673ab0656e3d3e6238569462bf631b5b",
+      "native_masked_digest": "65cedfbd72ee20c7",
+      "changed_runs": [
+       "TeamStaticData",
+       "TeamData",
+       "StaticCommanderData",
+       "CommanderData",
+       "sections"
+      ],
+      "method": "Transform the SHA-verified archived pin: explicit fields, zero inactive group IDs, omit group padding, add required sections. Every unrelated run digest retained exactly; no live-run repin."
+     },
+     "changed_runs": [
+      "ObjectManagerData",
+      "WatchList",
+      "sections"
+     ],
+     "method": "Transform the verified Packet B pin: prefix all 15 manager int32 fields unchanged, prefix the complete watch array with tag/version/count, add required sections. Every unrelated packet and run retained exactly; mask unchanged; no live-run repin."
+    },
+    "method": "Native Windows ABI pinned; encode every named field, omit padding/markers, canonicalize only documented derived storage. WQT2 suffix and all unrelated packets retained exactly. Pilot mask 10452 -> 0; no live-run repin."
+   },
+   {
+    "packet": "E: MCEL/GARE/GDOR/GLNK v1",
+    "source": "E:/mc2-archive-2026-10/proofs/lane9/cxx23-c/migrated-mc2_16.ims",
+    "source_sha256": "79056a2b47814e9b71d323c6921b7e96f1d8a96e6fa3881a8b60a9b539146d75",
+    "packet_c_masked_digest": "18d7fb07c241a644",
+    "previous_migration": {
+     "packet": "C: OBMH/WATC v1",
+     "source": "E:/mc2-archive-2026-10/proofs/lane9/cxx23-b/migrated-mc2_16.ims",
+     "source_sha256": "946e6a51d5ed4e38df258215f7863e84aad27d8bb68b337ee5f8d94d4be99f36",
+     "packet_b_masked_digest": "0a39484e5c35dd0f",
+     "previous_migration": {
+      "packet": "B: CMST/CMDR/TMST/TEAM v1",
+      "source": "E:/mc2-archive-2026-10/proofs/merge88/finish-baseline-mc2_16/save1.ims",
+      "source_sha256": "07999200f562985304a1ae5619b640db673ab0656e3d3e6238569462bf631b5b",
+      "native_masked_digest": "65cedfbd72ee20c7",
+      "changed_runs": [
+       "TeamStaticData",
+       "TeamData",
+       "StaticCommanderData",
+       "CommanderData",
+       "sections"
+      ],
+      "method": "Transform the SHA-verified archived pin: explicit fields, zero inactive group IDs, omit group padding, add required sections. Every unrelated run digest retained exactly; no live-run repin."
+     },
+     "changed_runs": [
+      "ObjectManagerData",
+      "WatchList",
+      "sections"
+     ],
+     "method": "Transform the verified Packet B pin: prefix all 15 manager int32 fields unchanged, prefix the complete watch array with tag/version/count, add required sections. Every unrelated packet and run retained exactly; mask unchanged; no live-run repin."
+    },
+    "changed_packet_runs": [
+     [
+      7,
+      7
+     ],
+     [
+      19,
+      19
+     ],
+     [
+      446,
+      2288
+     ],
+     [
+      2300,
+      2300
+     ],
+     [
+      2690,
+      4554
+     ],
+     [
+      4566,
+      4566
+     ],
+     [
+      4799,
+      5699
+     ],
+     [
+      10701,
+      10701
+     ]
+    ],
+    "method": "Verified Packet C pin; prefix native navigation fields with tag/version/count and add required sections. All field bytes, unrelated packets and mask ranges unchanged; no live-run repin."
+   }
+  ],
+  "method": "Compose verified D and E migrations of the same Packet C source. Disjoint payload changes, identical shared sections; union 13 fixture sections (existing BRN1 fixture gap unchanged). Pilot mask remains zero; no live-run repin."
  }
 }

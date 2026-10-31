@@ -462,6 +462,7 @@ target_sources(mc2_tests PRIVATE
     test_object_manager_archive.cpp
     test_watch_list_archive.cpp
     test_navigation_archive.cpp
+    test_warrior_archive.cpp
     ${MC2_WORKTREE_ROOT}/code/save_sections.cpp
     test_abl_outarrays.cpp
 )
