@@ -142,3 +142,39 @@ The documentation commits were rebased cleanly onto that landed integration tip;
 Tool slowness: the baseline native unit build/run took 809 s; keep the existing build tree for continuation and request explicit mc2 targets in engine build loops.
 Disk: no install or baseline-executable copy created; temporary analysis script removed from G:/mc2-tmp; 0 GB of installs freed.
 For each S2/S3/S4 commit, append its exact tip, commands, proof paths and failures here. S4 stays inline if any required gate is red.
+
+## Continuation state, 2026-10-31 (live census)
+
+Done: verified clean assignment at `3b0a6a393`; rebuilt mc2 plus mc2_asset_viewer/ui_editor at that HEAD.
+Receipts: `s1-head-build.log` and `s1-companion-build.log` in the existing record-thread proof directory.
+The earlier post-rebase executable embedded `46b16ce8d`, so deploy correctly refused it; no provenance waiver used.
+Baseline exe retained as `s1-baseline.exe` in that proof directory (not another install).
+One lean install created: `E:/mc2-installs/claude-record-thread`; initial deploy cooks missing sidecars and copies kits.
+Initial five-mission attempt did not run: the deploy folder remained leased beyond its 120-second wait.
+Use `run_smoke.py --exe <install>/mc2.exe`, not an absolute directory as `--deploy`.
+
+Archive worst DrawScreen windows (same exact-base profile.json cited above): mc2_24 `low_horizon_0` [720,1086),
+mc2_10 `sun_facing_low` [9351,9826), p95 2.136588 ms. The latter differs from the worst whole-Frame view (`wolfman`).
+Use the DrawScreen criterion for this assignment's item census; retain the whole-Frame measurements separately.
+Added RenderList/HudSnapshot row lengths as per-extraction Tracy plots and armed-only draw payload counts to the
+existing benchmark CPU rows. Counts distinguish CPU fallback leaves, dynamic prop leaf submissions, mech bone
+payloads, particle vertex records and particle-equivalent sixths (six authored card vertices charge one particle).
+These are submissions before GPU culling; mech bones must not be reported as visible leaves. Cached static props
+and exact visible mech leaves still require their native consumer counters before the complete leaf census can close.
+No per-element zones, new flags, standalone harnesses or test infrastructure added.
+
+Transitive ownership audit: terrain draw consumes active terrain blocks/vertices and land's mutable visible caches;
+appearance dispatch retains mutable hierarchy matrices/materials and the CPU fallback reads eye, Camera::HazeFactor,
+useFog, turn and TG light pointers (preview_draw.cpp:197+). GPU mech submission reads the live shape/bone palette and
+per-actor texture handles (gos_mech_batcher_flush.cpp:13+). Dynamic prop submission reads live shape materials and
+appends mutable buckets (gos_static_prop_batcher_submit.cpp:8+). MLR/gosFX recursively combines specification state
+and parent transforms and reads children (effect.cpp:802+); retaining the root Effect cannot freeze these values.
+HUD row vectors contain nested strings/paths/marker appearances and VTOL pointers, beyond the outer vector lengths.
+All remain extraction/ownership obligations for S3, not safe data to move to a thread unchanged.
+
+Next: build/prove the census checkpoint using the existing tree; finish deploy before launching any game.
+Capture mc2_10/24 with mission_cpu_profile.py (live bookmark windows, normal visibility), then extract plot samples
+and frame-row payloads for the worst DrawScreen views and direct/nested DrawScreen child counts from Tracy unwrap.
+Complete cached/native leaf counters if needed. Run audit ON 01/03/10/16/24, farm 10/24 x8, SIMID ON/OFF 20 s,
+save/load, day/night pixel A/B, validation/sync-validation and robust timings; preserve actual failures as failures.
+Only after these receipts close S1: start S2 explicit CPU view values, then packet-key vkLights, each with day/night A/B.

@@ -10,6 +10,7 @@
 #include "tgl_internal.h"
 #include "mc2fmt.h"
 #include "tgl_force_z.h"
+#include "battle_bench_sink.h"
 #include <algorithm>
 #include <span>
 #include <vector>
@@ -203,6 +204,7 @@ void TG_Shape::CpuDraw (const glm::mat4& shapeToWorld, const glm::mat4& worldToS
 	// World mode draws only leaves the hierarchy walk reached this frame (culled actors keep stale matrices).
 	if (world && lastTurnTransformed != static_cast<DWORD>(turn))
 		return;
+	if (mc2::battlebench::output) ++mc2::battlebench::cpuLeaves;
 
 	TG_TypeShapePtr theShape = static_cast<TG_TypeShapePtr>(myType);
 

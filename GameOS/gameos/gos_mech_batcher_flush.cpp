@@ -5,6 +5,7 @@
 #include "gos_mech_batcher_internal.h"
 #include "../../mclib/texture_assets.h"
 #include "mc2fmt.h"
+#include "../../mclib/battle_bench_sink.h"
 #include "ui_texture.h"
 
 // ---------------------------------------------------------------------------
@@ -117,6 +118,7 @@ bool GpuMechBatcher::submitActor(const GpuMechSubmitDesc& desc) {
         }
     }
 
+    if (mc2::battlebench::output) mc2::battlebench::mechBones += ps.bones.size();
     s_pendingSubmits.push_back(std::move(ps));
 
     // [SPOTLIGHT_REAL_TRACE v1] T0.2 (b) — per-instance counter. Fires once
