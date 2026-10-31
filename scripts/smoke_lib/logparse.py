@@ -14,7 +14,7 @@ PERF_RE = re.compile(
     r"p99_ms=(?P<p99>[\d.]+) p1low_fps=(?P<p1l>[\d.]+) peak_ms=(?P<peak>[\d.]+) "
     r"samples=(?P<samples>\d+)"
 )
-TIMING_RE = re.compile(r"\[TIMING v1\] event=(?P<ev>\w+) elapsed_ms=(?P<ms>[\d.]+)")
+TIMING_RE = re.compile(r"\[TIMING v1\] event=(?P<ev>\w+) elapsed_ms=(?P<ms>\d+(?:\.\d+)?)")
 SUMMARY_RE = re.compile(
     r"\[SMOKE v1\] event=summary result=(?P<r>\w+)(?: reason=(?P<reason>\S+))?"
     r"(?: stage=(?P<stage>\S+))?"

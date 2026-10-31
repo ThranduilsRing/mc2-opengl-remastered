@@ -9,6 +9,17 @@ def test_mission_quit_records_runner_wallclock():
     assert s.mission_quit_ms == 53846.1
     assert s.mission_quit_wall_s == 54.2
 
+def test_timing_tolerates_appended_progress_dots():
+    # Progress output can share the timing record's console line.
+    for value, expected in (("22053.5.", 22053.5), ("22053...", 22053.0)):
+        s = parse_log(
+            f"[TIMING v1] event=mission_ready elapsed_ms={value}\n"
+            "MC2 Remastered Crash Report\n"
+        )
+        assert s.mission_ready_ms == expected
+        assert s.crash_handler_hit is True
+
+
 def test_pass_log_counts_zero_faults():
     text = (FIX / "fake_engine_pass.log").read_text()
     # Synthesize per-line wallclocks at 0.1s intervals for this test.
