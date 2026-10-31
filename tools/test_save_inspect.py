@@ -25,6 +25,13 @@ def test_object_manager_and_watch_value_tags():
     assert mod.packet_kind(0, b"WATC\x01\0\0\0" + struct.pack("<I2i", 3, 0, 7)) != "WatchList"
 
 
+def test_warrior_value_tags_have_no_native_noise_mask():
+    assert mod.packet_kind(0, b"WSTA\x01\0\0\0" + bytes(40)) == "StaticMechWarriorData"
+    assert mod.packet_kind(4, b"WARR\x01\0\0\0" + bytes(19000)) == "MechWarriorData"
+    mask = mod.load_mask(os.path.join(HERE, "save_noise_mask.json"))
+    assert mask["MechWarriorData"] == {"run": [], "build": []}
+
+
 def test_record_sizes_match_the_build_time_guard():
     import re
     text = open(os.path.join(HERE, "..", "code", "save_layout_guard.h"), encoding="utf-8").read()
@@ -51,9 +58,8 @@ def test_noise_mask_file_is_well_formed():
     with open(path, encoding="utf-8") as f:
         doc = json.load(f)
     assert doc["known_writer_defects"] and all(isinstance(t, str) and t for t in doc["known_writer_defects"])
-    # The ranges are 0-based inclusive offsets: the 4800-byte MovePath step lists of the pilot record are masked whole, byte 10071 is not.
-    assert mod.masked(mask, "MechWarriorData", 10072, False) and mod.masked(mask, "MechWarriorData", 14871, False)
-    assert not mod.masked(mask, "MechWarriorData", 10071, False) and not mod.masked(mask, "MechWarriorData", 14872, False)
+    # Packet D removed every pilot range, including both old MovePath tails.
+    assert not any(mod.masked(mask, "MechWarriorData", o, True) for o in range(19864))
     # The pilot strings and the numeric pilot state are never masked.
     assert not any(mod.masked(mask, "MechWarriorData", o, True) for o in range(0, 2168))
 

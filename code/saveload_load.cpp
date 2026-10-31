@@ -222,7 +222,9 @@ void Mission::loadWarriorsAndPartsHeader(MissionLoadFrame& f) {
 	// Load all MechWarriors for this mission...
 	MechWarrior::setup();
 
-	currentPacket = MechWarrior::Load( &loadFile, currentPacket, f.sections.find(mc2::save::tagWarriorStatic) != nullptr );
+	currentPacket = MechWarrior::Load( &loadFile, currentPacket,
+		f.sections.find(mc2::save::tagWarriorStatic) != nullptr,
+		f.sections.find(mc2::save::tagWarrior) != nullptr );
 
 	loadProgress = 45.0f;
 

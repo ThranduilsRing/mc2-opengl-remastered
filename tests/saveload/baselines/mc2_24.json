@@ -18,42 +18,8 @@
   "across_builds": true,
   "classes": {
    "MechWarriorData": {
-    "run": [
-     [
-      2168,
-      2451
-     ],
-     [
-      3164,
-      3447
-     ],
-     [
-      3496,
-      3779
-     ],
-     [
-      10072,
-      14871
-     ],
-     [
-      14920,
-      19719
-     ]
-    ],
-    "build": [
-     [
-      2192,
-      2451
-     ],
-     [
-      3188,
-      3447
-     ],
-     [
-      3520,
-      3779
-     ]
-    ]
+    "run": [],
+    "build": []
    },
    "MechData": {
     "run": [
@@ -104,7 +70,7 @@
  "judged": "first-save-only",
  "resave_present": true,
  "packets": 20000,
- "overall": "1709d6a0e6280214",
+ "overall": "a78780b92b87b692",
  "resave_identical": false,
  "resave_matches_policy": false,
  "runs": [
@@ -315,15 +281,15 @@
    "StaticMechWarriorData",
    6759,
    1,
-   40,
-   "8265f22e8e21340c"
+   48,
+   "6b9f9689ee18ef66"
   ],
   [
    "MechWarriorData",
    6760,
    256,
-   5092644,
-   "5e73d7f8879176a4"
+   4844836,
+   "9ec5e99d85d0d887"
   ],
   [
    "TeamStaticData",
@@ -784,8 +750,8 @@
    "sections",
    10313,
    1,
-   575233,
-   "27cd2281f6663222"
+   575273,
+   "d361ada60ae8c809"
   ],
   [
    "empty",
@@ -819,29 +785,36 @@
   "problems": []
  },
  "schema_migration": {
-  "packet": "C: OBMH/WATC v1",
-  "source": "E:/mc2-archive-2026-10/proofs/lane9/cxx23-b/migrated-mc2_24.ims",
-  "source_sha256": "129912e7f565be09b3c2fb56ebc412807ca40567e7bd64a1350cf2c128e09a43",
-  "packet_b_masked_digest": "845d5cb2cd1eccc8",
+  "packet": "D: WSTA/WARR v1",
+  "source": "E:\\mc2-archive-2026-10\\proofs\\lane9\\cxx23-c\\migrated-mc2_24.ims",
+  "source_sha256": "5596c6d365c466cdb810258d6e97928dc5e0bf9d3ba43314d4d9a307841a16dd",
+  "packet_c_masked_digest": "1709d6a0e6280214",
   "previous_migration": {
-   "packet": "B: CMST/CMDR/TMST/TEAM v1",
-   "source": "E:/mc2-archive-2026-10/proofs/merge88/finish-baseline-mc2_24/save1.ims",
-   "source_sha256": "1e6289cf4c9856520889f6260b1f61d7724237247e3cacf513c1cfc30fc3b522",
-   "native_masked_digest": "54a9edd40b049003",
+   "packet": "C: OBMH/WATC v1",
+   "source": "E:/mc2-archive-2026-10/proofs/lane9/cxx23-b/migrated-mc2_24.ims",
+   "source_sha256": "129912e7f565be09b3c2fb56ebc412807ca40567e7bd64a1350cf2c128e09a43",
+   "packet_b_masked_digest": "845d5cb2cd1eccc8",
+   "previous_migration": {
+    "packet": "B: CMST/CMDR/TMST/TEAM v1",
+    "source": "E:/mc2-archive-2026-10/proofs/merge88/finish-baseline-mc2_24/save1.ims",
+    "source_sha256": "1e6289cf4c9856520889f6260b1f61d7724237247e3cacf513c1cfc30fc3b522",
+    "native_masked_digest": "54a9edd40b049003",
+    "changed_runs": [
+     "TeamStaticData",
+     "TeamData",
+     "StaticCommanderData",
+     "CommanderData",
+     "sections"
+    ],
+    "method": "Transform the SHA-verified archived pin: explicit fields, zero inactive group IDs, omit group padding, add required sections. Every unrelated run digest retained exactly; no live-run repin."
+   },
    "changed_runs": [
-    "TeamStaticData",
-    "TeamData",
-    "StaticCommanderData",
-    "CommanderData",
+    "ObjectManagerData",
+    "WatchList",
     "sections"
    ],
-   "method": "Transform the SHA-verified archived pin: explicit fields, zero inactive group IDs, omit group padding, add required sections. Every unrelated run digest retained exactly; no live-run repin."
+   "method": "Transform the verified Packet B pin: prefix all 15 manager int32 fields unchanged, prefix the complete watch array with tag/version/count, add required sections. Every unrelated packet and run retained exactly; mask unchanged; no live-run repin."
   },
-  "changed_runs": [
-   "ObjectManagerData",
-   "WatchList",
-   "sections"
-  ],
-  "method": "Transform the verified Packet B pin: prefix all 15 manager int32 fields unchanged, prefix the complete watch array with tag/version/count, add required sections. Every unrelated packet and run retained exactly; mask unchanged; no live-run repin."
+  "method": "Native Windows ABI pinned; encode every named field, omit padding/markers, canonicalize only documented derived storage. WQT2 suffix and all unrelated packets retained exactly. Pilot mask 10452 -> 0; no live-run repin."
  }
 }

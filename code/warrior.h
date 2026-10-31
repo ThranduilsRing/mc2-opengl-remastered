@@ -1909,10 +1909,10 @@ class MechWarrior {
 		void copyFromData (MechWarriorData &data, bool wideTargets = false);
 
 		void save (PacketFilePtr file, long packetNum); 
-		void load (PacketFilePtr file, long packetNum); 
+		void load (PacketFilePtr file, long packetNum, bool values = false);
 
 		long static Save (PacketFilePtr file, long packetNum);
-		long static Load (PacketFilePtr file, long packetNum, bool staticValues = false);
+		long static Load (PacketFilePtr file, long packetNum, bool staticValues = false, bool values = false);
 };
 
 //---------------------------------------------------------------------------

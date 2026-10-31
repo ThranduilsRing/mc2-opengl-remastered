@@ -3,7 +3,7 @@
 #include "warrior_internal.h"
 #include "mc2fmt.h"
 #include "tacorder_terrain_queue.h"
-#include "warrior_value_codec.h"
+#include "warrior_pilot_codec.h"
 static_assert(MAX_QUEUED_TACORDERS_PER_WARRIOR == 16, "WQT2 target count must match the runtime queue");
 
 
@@ -858,18 +858,15 @@ void MechWarrior::save (PacketFilePtr file, long packetNum)
 			mc2::fmt::print_out("[SAVE v1] event=queue_save pilot={} slot={} target={} cursor={} looping={} locked={} active={}\n",
 				index, i, order.targetWID, tacOrderQueueIndex, tacOrderQueueLooping, tacOrderQueueLocked, static_cast<int>(curTacOrder.code));
 	}
-	mc2::save::Archive archive;
-	archive(targets);
-	if (!archive.good()) Fatal(0, "Invalid queued order save");
-	mc2::save::Bytes bytes(sizeof(warriorData));
-	memcpy(bytes.data(), &warriorData, sizeof(warriorData));
-	bytes.insert(bytes.end(), archive.bytes().begin(), archive.bytes().end());
+	if (!mc2::save::canonicalizeWarrior(warriorData)) Fatal(0, "Invalid warrior value counts");
+	auto bytes = mc2::save::encodeTaggedRecord(mc2::save::WarriorRecord{warriorData, targets}, mc2::save::warriorDataTag);
+	if (bytes.empty()) Fatal(0, "Invalid warrior value record");
 	file->writePacket(packetNum, bytes.data(), static_cast<unsigned int>(bytes.size()), STORAGE_TYPE_ZLIB);
 }
 
 long MechWarrior::Save (PacketFilePtr file, long packetNum)
 {
-	// Saves keep the legacy 256 pilot packets (byte-identical for stock missions); slots above are written only when a
+	// Saves keep the legacy 256 pilot packet positions; slots above are written only when a
 	// pilot there is in use. Old saves load with the extra slots left as setup() made them.
 	long saveCount = std::min<long>(numWarriors, 256);
 	for (long i = saveCount; i < numWarriors; i++)
@@ -900,22 +897,27 @@ long MechWarrior::Save (PacketFilePtr file, long packetNum)
 	return packetNum;
 }
 
-void MechWarrior::load (PacketFilePtr file, long packetNum)
+void MechWarrior::load (PacketFilePtr file, long packetNum, bool values)
 {
 	MechWarriorData warriorData{};
 	file->seekPacket(packetNum);
 	const auto size = file->getPacketSize();
-	if (size < sizeof(warriorData) || size > sizeof(warriorData) + 16 * 1024) Fatal(0, "Invalid warrior packet size");
+	if (size <= 0 || size > sizeof(warriorData) + 16 * 1024) Fatal(0, "Invalid warrior packet size");
 	mc2::save::Bytes bytes(size);
-	file->readPacket(packetNum, bytes.data());
-	memcpy(&warriorData, bytes.data(), sizeof(warriorData));
+	if (file->readPacket(packetNum, bytes.data()) != size) Fatal(0, "Short warrior packet");
+	SavedQueueTargets targets;
+	const bool wide = values || size > sizeof(warriorData);
+	if (values) {
+		if (!mc2::save::decodeWarriorRecord(bytes, warriorData, targets)) Fatal(0, "Invalid warrior value record");
+	} else {
+		if (size < sizeof(warriorData)) Fatal(0, "Invalid legacy warrior packet size");
+		memcpy(&warriorData, bytes.data(), sizeof(warriorData));
+		if (wide && (!mc2::save::decodeRecord(std::span(bytes).subspan(sizeof(warriorData)), targets) ||
+			targets.targets.size() != warriorData.numTacOrdersQueued)) Fatal(0, "Invalid saved queue targets");
+	}
 	if (warriorData.numTacOrdersQueued < 0 || warriorData.numTacOrdersQueued > MAX_QUEUED_TACORDERS_PER_WARRIOR ||
 		warriorData.tacOrderQueueIndex < 0 || (warriorData.numTacOrdersQueued && warriorData.tacOrderQueueIndex >= warriorData.numTacOrdersQueued))
 		Fatal(0, "Invalid saved order queue");
-	SavedQueueTargets targets;
-	const bool wide = size > sizeof(warriorData);
-	if (wide && (!mc2::save::decodeRecord(std::span(bytes).subspan(sizeof(warriorData)), targets) ||
-		targets.targets.size() != warriorData.numTacOrdersQueued)) Fatal(0, "Invalid saved queue targets");
 	init(warriorData, wide);
 	if (wide) {
 		moveOrders.numGlobalSteps = static_cast<short>(targets.globalPath.size());
@@ -938,7 +940,7 @@ void MechWarrior::load (PacketFilePtr file, long packetNum)
 	}
 }
 
-long MechWarrior::Load (PacketFilePtr file, long packetNum, bool staticValues)
+long MechWarrior::Load (PacketFilePtr file, long packetNum, bool staticValues, bool values)
 {
 	StaticMechWarriorData staticData{};
 	file->seekPacket(packetNum);
@@ -977,7 +979,7 @@ long MechWarrior::Load (PacketFilePtr file, long packetNum, bool staticValues)
 
 	for (long i = 0; i < numWarriors; i++)
 	{
-		MechWarrior::warriorList[i]->load(file,packetNum);
+		MechWarrior::warriorList[i]->load(file,packetNum,values);
 		packetNum++;
 
 		//Kind of a hack but Glenn increments numWarriors with each init.
