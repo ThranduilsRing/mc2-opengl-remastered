@@ -42,8 +42,8 @@ FAILS the checker unless it carries `# background-launch: allow <why>`.
 | `tools/campaign_save_roundtrip.py` | 178 | `nofocus.spawn` | offscreen |
 | `tools/menu_oracle.py` | 110 | `nofocus.spawn` | desktop-composite |
 | `tools/mod_smoke.py` | 862 | `nofocus.run` | offscreen |
-| `tools/perf/mission_cpu_profile.py` | 198 | `subprocess.Popen` **raw, allowed:** Tracy console recorder, never an engine. | offscreen |
-| `tools/perf/mission_cpu_profile.py` | 234 | `subprocess.Popen` **raw, allowed:** Tracy CSV console exporter, never an engine. | offscreen |
+| `tools/perf/mission_cpu_profile.py` | 199 | `subprocess.Popen` **raw, allowed:** Tracy console recorder, never an engine. | offscreen |
+| `tools/perf/mission_cpu_profile.py` | 235 | `subprocess.Popen` **raw, allowed:** Tracy CSV console exporter, never an engine. | offscreen |
 | `tools/perf_snapshot.py` | 105 | `nofocus.spawn` | offscreen |
 | `tools/renderdoc/capture.py` | 144 | `nofocus.run` | offscreen |
 | `tools/tracy_capture_compare.py` | 274 | `subprocess.Popen` **raw, allowed:** Tracy recorder console tool, windowless via nofocus.hidden_kwargs. | offscreen |
