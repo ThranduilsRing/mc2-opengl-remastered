@@ -705,9 +705,9 @@ void ABLModule::read (ABLFile* moduleFile, bool values) {
 		record = readAblRecord<mc2::save::AblModuleRecord>(moduleFile, mc2::save::tagAblModule);
 		if (record.handle >= NumModulesRegistered || (!fresh && record.handle != handle))
 			ABL_Fatal(0, "ABL: module handle differs from compiled registry");
+		std::memcpy(name, record.name.c_str(), record.name.size() + 1);
 		if (fresh) {
 			id = NumModules++;
-			std::memcpy(name, record.name.c_str(), record.name.size() + 1);
 			handle = record.handle;
 			staticData = nullptr;
 		}
@@ -814,6 +814,7 @@ void ABLModule::read (ABLFile* moduleFile, bool values) {
 	}
 	
 	if (values) {
+		initCalled = savedInitCalled; // Libraries already exist after recompilation.
 		if (record.orderFlags.size() != orderFlagWords(this))
 			ABL_Fatal(0, "ABL: order count differs from compiled module");
 		for (size_t w = 0; w < record.orderFlags.size(); ++w)

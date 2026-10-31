@@ -515,6 +515,33 @@ TEST_CASE("ABLSave/tagged and legacy arrays rebuild storage from source declarat
     }
 }
 
+TEST_CASE("ABLSave/tagged restore applies initialization and name to an existing instance") {
+    CompileFixture fixture;
+    fixture.sources["resume.abl"] = kResumeModule;
+    const int handle = ABLi_preProcess("resume.abl");
+    REQUIRE(handle >= 0);
+    auto* module = new ABLModule;
+    REQUIRE(module->init(handle) == ABL_NO_ERR);
+    module->setName("kept");
+    module->setInitCalled(true);
+    module->execute();
+    const auto expected = countsOf(*module);
+    const auto image = saveEnvironment("resume.sav", true);
+    module->setName("lost");
+    module->setInitCalled(false);
+    module->getStaticData()[0].integer = 0;
+    fixture.sources["resume.sav"] = image;
+    ABLFile file;
+    REQUIRE(file.open("resume.sav") == 0);
+    ABLi_loadEnvironment(&file, false, true);
+    CHECK(module->getInitCalled());
+    CHECK(std::string(module->getName()) == "kept");
+    CHECK(countsOf(*module).first == expected.first);
+    CHECK(countsOf(*module).flags == expected.flags);
+    file.close();
+    delete module;
+}
+
 TEST_CASE("LogisticsTeardown/the tutorial brain is freed before ABL closes (BUGS row 76)") {
     {
         // The hazard: a module with static data freed after the environment closed reaches the closed-arena fatal.
