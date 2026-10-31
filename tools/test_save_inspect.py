@@ -14,6 +14,17 @@ def test_commander_values_use_tags_before_native_sizes():
     assert mod.packet_kind(0, b"TEAM\x01\0\0\0" + bytes(488)) == "TeamData"
 
 
+def test_object_value_tags_precede_native_sizes():
+    objects = {b"TERR": "TerrainObjectData", b"BLDG": "BuildingData",
+               b"TURR": "TurretData", b"GATE": "GateData",
+               b"ARTY": "ArtilleryData", b"CARN": "CarnageData",
+               b"MECH": "MechData", b"VEHI": "GroundVehicleData",
+               b"BOLT": "WeaponBoltData"}
+    for tag, name in objects.items():
+        # Deliberate collision with native GameObjectData length.
+        assert mod.packet_kind(4, tag + b"\x01\0\0\0" + bytes(344)) == name
+
+
 def test_selftest_passes():
     assert mod.selftest() == 0
 

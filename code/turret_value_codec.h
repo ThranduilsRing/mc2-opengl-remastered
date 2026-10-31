@@ -1,4 +1,4 @@
-// Packet F preparation; native TurretData writes remain active until flip.
+// Turret value fields; native TurretData remains the legacy reader ABI.
 #pragma once
 #include "turret.h"
 #include "terrain_value_codec.h"

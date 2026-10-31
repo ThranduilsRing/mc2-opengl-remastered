@@ -1,4 +1,4 @@
-// Packet F preparation; native WeaponBoltData writes remain active until flip.
+// Bolt value fields; native WeaponBoltData remains the legacy reader ABI.
 #pragma once
 #include "weaponbolt.h"
 #include "object_value_codec.h"

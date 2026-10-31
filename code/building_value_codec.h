@@ -1,4 +1,4 @@
-// Packet F preparation; native BuildingData writes remain active until flip.
+// Building value fields; native BuildingData remains the legacy reader ABI.
 #pragma once
 #include "bldng.h"
 #include "terrain_value_codec.h"

@@ -1,4 +1,4 @@
-// Packet F preparation; native GroundVehicleData writes remain active until flip.
+// Vehicle value fields; native GroundVehicleData remains the legacy reader ABI.
 #pragma once
 #include "gvehicl.h"
 #include "mover_value_codec.h"

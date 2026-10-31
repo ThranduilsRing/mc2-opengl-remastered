@@ -1,4 +1,4 @@
-// Packet F preparation; native GateData writes remain active until flip.
+// Gate value fields; native GateData remains the legacy reader ABI.
 #pragma once
 #include "gate.h"
 #include "terrain_value_codec.h"

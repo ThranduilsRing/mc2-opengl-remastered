@@ -1,5 +1,4 @@
-// Packet F preparation: Save still writes sizeof(CarnageData) until the
-// coordinated ObjectSlot dispatch/preflight/required-section flip.
+// Carnage value fields; native CarnageData remains the legacy reader ABI.
 #pragma once
 #include "carnage.h"
 #include "object_value_codec.h"

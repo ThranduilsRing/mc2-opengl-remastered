@@ -1,4 +1,4 @@
-// Packet F preparation; native ArtilleryData writes remain active until flip.
+// Artillery value fields; native ArtilleryData remains the legacy reader ABI.
 #pragma once
 #include "artlry.h"
 #include "object_value_codec.h"

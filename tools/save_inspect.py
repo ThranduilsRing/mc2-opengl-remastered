@@ -208,6 +208,14 @@ def packet_kind(typ: int, raw: bytes) -> str:
         return "StaticMechWarriorData"
     if raw[:8] == b"WARR\x01\0\0\0" and len(raw) > 8:
         return "MechWarriorData"
+    if len(raw) > 8 and raw[4:8] == b"\x01\0\0\0":
+        objects = {b"TERR": "TerrainObjectData", b"BLDG": "BuildingData",
+                   b"TURR": "TurretData", b"GATE": "GateData",
+                   b"ARTY": "ArtilleryData", b"CARN": "CarnageData",
+                   b"MECH": "MechData", b"VEHI": "GroundVehicleData",
+                   b"BOLT": "WeaponBoltData"}
+        if raw[:4] in objects:
+            return objects[raw[:4]]
     if raw[:8] == b"CMDR\x01\0\0\0" and len(raw) == 1248:
         return "CommanderData"
     if raw[:8] == b"TMST\x01\0\0\0" and len(raw) == 88:

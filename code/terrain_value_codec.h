@@ -1,4 +1,4 @@
-// Packet F inherited terrain fields; native writes remain active until flip.
+// Terrain value fields; native TerrainObjectData remains the legacy reader ABI.
 #pragma once
 #include "terrobj.h"
 #include "object_value_codec.h"

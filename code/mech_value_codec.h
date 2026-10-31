@@ -1,4 +1,4 @@
-// Packet F preparation; native MechData writes remain active until flip.
+// Mech value fields; native MechData remains the legacy reader ABI.
 #pragma once
 #include "mech.h"
 #include "mover_value_codec.h"

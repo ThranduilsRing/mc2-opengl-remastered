@@ -71,7 +71,8 @@ def test_a_save_that_differs_names_its_packet_and_offset(tmp_path):
 
 def test_planted_save_is_judged_against_the_noise_mask_across_builds(tmp_path):
     """resave --plant --mask: a planted save comes from another exe, so run and build ranges both apply; a byte outside them fails."""
-    mask = os.path.join(HERE, "save_noise_mask.json")
+    mask = str(tmp_path / "mask.json")
+    (tmp_path / "mask.json").write_text('{"classes":{"MechWarriorData":{"run":[[10100,10100]],"build":[[2200,2200]]}}}')
     size = 19864                                                  # MechWarriorData
 
     def save(name, offset=None):
@@ -95,7 +96,8 @@ def test_planted_save_is_judged_against_the_noise_mask_across_builds(tmp_path):
 
 def test_first_save_only_records_a_masked_baseline_although_the_resave_leaves_the_mask(tmp_path, monkeypatch, capsys):
     """The quickload is lossy, so a re-save never stays inside the mask; --first-save-only keeps the masked first-save digest recordable and checkable."""
-    mask = os.path.join(HERE, "save_noise_mask.json")
+    mask = str(tmp_path / "mask.json")
+    (tmp_path / "mask.json").write_text('{"classes":{"MechWarriorData":{"run":[[10100,10100]],"build":[]}}}')
 
     def save(name, offset=None):
         record = bytearray(19864)                                     # MechWarriorData
