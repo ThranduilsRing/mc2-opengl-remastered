@@ -59,11 +59,12 @@ inline constexpr std::uint32_t tagObjectManager = fourcc('O', 'B', 'M', 'H');
 inline constexpr std::uint32_t tagWatchList = fourcc('W', 'A', 'T', 'C');
 inline constexpr std::uint32_t tagWarriorStatic = fourcc('W', 'S', 'T', 'A');
 inline constexpr std::uint32_t tagWarrior = fourcc('W', 'A', 'R', 'R');
+inline constexpr std::uint32_t tagObjectSlots = fourcc('O', 'B', 'J', 'S');
 
 // Sections this build reads and the newest payload version of each. A newer version, or an unknown section flagged
 // required, rejects the file before the running mission is torn down; an unknown optional section is skipped.
 struct KnownSection { std::uint32_t tag; std::uint32_t maxVersion; };
-inline constexpr std::array<KnownSection, 10> knownSections{{{tagAnimation, 3}, {tagOrders, 1}, {tagBrain, 2}, {tagWorld, 2}, {tagCommander, 1}, {tagTeam, 1}, {tagObjectManager, 1}, {tagWatchList, 1}, {tagWarriorStatic, 1}, {tagWarrior, 1}}};
+inline constexpr std::array<KnownSection, 11> knownSections{{{tagAnimation, 3}, {tagOrders, 1}, {tagBrain, 2}, {tagWorld, 2}, {tagCommander, 1}, {tagTeam, 1}, {tagObjectManager, 1}, {tagWatchList, 1}, {tagWarriorStatic, 1}, {tagWarrior, 1}, {tagObjectSlots, 1}}};
 
 // Handles retain the compacted pool prefixes, free-slot order and mover-list order.
 // Object records themselves remain in stable handle order for legacy readers.

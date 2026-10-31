@@ -14,6 +14,8 @@
 #define SAVED_OBJECTS_CHECK_H
 
 #include <cstdint>
+#include <cstddef>
+#include <concepts>
 #include <optional>
 #include <string_view>
 
@@ -88,9 +90,9 @@ inline std::optional<int> classOfSize(const RecordSizes& r, uint32_t size)
 // Check the run that follows the header at packet `headerIndex`: slots 0..maxObjects, then the watch
 // table of maxObjects+1 ids. `sizeAt(i)` is the byte size of packet i. -> nothing when the run is
 // sound, else a short reason tag.
-template <class SizeAt>
+template <class SizeAt, class ClassAt = std::nullptr_t>
 inline std::optional<std::string_view> checkRun(const HeaderCounts& h, const RecordSizes& r, uint32_t headerIndex,
-                                               uint32_t numPackets, SizeAt sizeAt, bool watchValues = false)
+                                               uint32_t numPackets, SizeAt sizeAt, bool watchValues = false, ClassAt classAt = nullptr)
 {
 	if (h.elementals != 0 || h.lights != 0)
 		return "unsupported_object_class";
@@ -104,11 +106,15 @@ inline std::optional<std::string_view> checkRun(const HeaderCounts& h, const Rec
 		const uint32_t size = sizeAt(static_cast<uint32_t>(first + i));
 		if (size == 0)
 			continue;
-		if (isBaseRecord(r, size))
-			return "base_record_saved";
-		const std::optional<int> c = classOfSize(r, size);
-		if (!c)
-			return "unknown_record_size";
+		std::optional<int> c;
+		if constexpr (std::same_as<ClassAt, std::nullptr_t>) {
+			if (isBaseRecord(r, size)) return "base_record_saved";
+			c = classOfSize(r, size);
+			if (!c) return "unknown_record_size";
+		} else {
+			c = classAt(static_cast<uint32_t>(first + i), static_cast<uint32_t>(i));
+			if (!c || *c < 0 || *c >= kClassCount) return "invalid_object_slot";
+		}
 		++seen[*c];
 	}
 	for (int c = 0; c < kClassCount; ++c)

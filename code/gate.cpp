@@ -863,13 +863,16 @@ TeamPtr Gate::getTeam (void) {
 
 //***************************************************************************
 #include "save_struct_zero.h"
+#include "gate_value_codec.h"
 void Gate::Save (PacketFilePtr file, long packetNum)
 {
 	MC2_SAVE_STRUCT(GateData, data);
 	CopyTo(&data);
 
 	//PacketNum incremented in ObjectManager!!
-	file->writePacket(packetNum,reinterpret_cast<MemoryPtr>(&data),sizeof(GateData),STORAGE_TYPE_ZLIB);
+	auto bytes = mc2::save::encodeTaggedRecord(mc2::save::GateRecord{data}, mc2::save::gateTag);
+	if (bytes.empty()) Fatal(0, "Invalid gate ObjectSlot");
+	file->writePacket(packetNum, bytes.data(), static_cast<unsigned int>(bytes.size()), STORAGE_TYPE_ZLIB);
 }
 
 //***************************************************************************
