@@ -21,7 +21,7 @@ Main retains SDL/input, UI building, camera and extraction. Validate this agains
 |---|---|---|
 | S1 inventory | Native shape-leaf census DONE at `46a9f82a7`; external receipts still open | Farm repeats and save/load policy/reference mismatch remain open; no further census changes needed |
 | S2 explicit state | DONE, proven engine `6fcde0272` | CPU view values, packet-owned light rows/caches and editor viewport callers; final receipts below. Next S3 |
-| S3 rings/lifetimes | IN PROGRESS: value arenas N=3 proven at `3a856fc82` | RenderList/HUD values, retirement graveyard, Execute(main)/Draw(record), moved-entry owner assertions still open |
+| S3 rings/lifetimes | IN PROGRESS: value arenas N=3 at `3a856fc82`; typed-release CPU graveyard at `c8022b57f`, both proven | RenderList/HUD values, full packet/GPU lifetime integration, Execute(main)/Draw(record), moved-entry owner assertions still open |
 | S4 thread | NOT STARTED | Seal after sim commit, consume sealed packets, retire safely; default ON only with all gates green |
 
 ## S1 source inventory at the base
@@ -420,7 +420,7 @@ All own build/game/proof children have exited; the stalled scout subtree was ter
 Disk: 0 GB freed, no extra install created. Leave only `E:/mc2-installs/claude-record-thread` at engine `3a856fc82`.
 After this docs-only closure, pass that explicit reference for retained binary proof; do not rebuild unchanged code.
 
-## S3 CPU retirement continuation, 2026-10-31 (proof pending)
+## S3 CPU retirement implementation, 2026-10-31 (final proof below)
 
 Implementing the named retirement graveyard as one bounded S3 checkpoint. Three sequence-keyed CPU leases
 hold typed effect/light releases and object destruction until all older readers retire, including out-of-order
@@ -433,3 +433,37 @@ Next: final five ratchets plus buffer_lifetime, all-target checkpoint once, sele
 day/night pixel parity viewed, mc2_10 detailed SIMID 20 s and audit/sync validation zero. Record receipts below.
 Scout failed to return useful output twice (second bounded at 60 s); stopped only the first scout's PID 9552 subtree.
 Used targeted source ranges after its timeout. Budget remains below 150 calls; sole install unchanged.
+
+## S3 typed-release retirement checkpoint proven, 2026-10-31
+
+Tested engine `c8022b57f5acbc10f3961661b7844364356591b8`; local commit only. Main brackets the current
+inline extraction/draw with sequence-keyed admission/retirement. The typed effect/light/object helpers hold
+destruction for every older outstanding CPU lease; generic presentation commands retain their commit timing.
+This is a CPU lifetime checkpoint, not completion of the full S3 graveyard or immutable packet migration.
+Existing Vulkan image retirement remains ticket-bound (`vk_texture_residency.cpp:277,401`); no GPU queue changed.
+All receipts below are under `E:/mc2-archive-2026-10/proofs/record-thread/`.
+
+| Required proof | Receipt |
+|---|---|
+| Shared-header all targets | `s3-retirement-alltargets.log`: all stages PASS, root 63 s, standalone tools 13/5/5 s, doctest build 11 s; reused existing trees, -j6 |
+| Native retirement tests | `s3-retirement-unit.log`: six cases / 54 assertions PASS; ordered tick commit, retained frees, out-of-order completion, all slots reused, reentrant destruction, light world removal/free |
+| Five ratchets / covering row | `s3-retirement-head-contracts.log`: five ratchets plus buffer_lifetime PASS at tested HEAD, no baselines raised; earlier intermediate receipts retained |
+| Verified explicit lane deploy | `s3-retirement-deploy.log`: COMPLETE, verified 3855-row manifest at `c8022b57f5ac`, explicit all-target build dir/root; existing cook-byproduct hygiene advisory only |
+| Day/night pixel parity, viewed | `s3-retirement-pixel-parity.json`: four PNGs byte-identical to `s3-arena-ab/`; both new day/night images viewed. Captures `s3-retirement-ab/`, audit effectively 1, no violations |
+| Detailed mc2_10 SIMID, 20 s | `s3-retirement-simid-detail.log`: 1817 identical common frames; first 800 match the pinned baseline in every digest. Both logs detail=1/audit=1, no violations |
+| Sync validation zero, 20 s | `s3-retirement-sync.log` and `s3-retirement-sync-artifacts/`: PASS; Khronos sync validation engaged, errors=0/warnings=0/content errors=0; audit=1, no violations |
+
+Exact next work: freeze the three ordered RenderList streams into owned draw values, including native geometry,
+material/light indices and their retained light feeds; eliminate virtual dispatch through `RenderView::obj`.
+Freeze HUD marker/VTOL/FX draw payloads and copied UI commands, then attach their storage and retained resources
+to the same packet sequence. Legacy `commitTickQueues` still clears the singleton lists/waypoint holders; it
+must not run concurrently with readers of those lists. The three value arenas still recycle synchronously:
+wire actual record completion back to Main retirement before permitting async readers or slot reuse.
+Split every gosFX family's Execute(Main) from frozen recursive Draw data, and assertOwner at each gos_/vk entry
+actually moved. None moved in this checkpoint. Keep S4 inline until all these ownership obligations pass.
+The full remaining producer migration exceeds a bounded follow-up within this run; stop at this proven checkpoint.
+No farm fallback needed, no startup timeout or lease wait observed in this proof. Game processes total about 2 min.
+All own build/game/scout children exited. PowerShell profile loading was denied and skipped; commands ran without it.
+Avoidable cost: stalled scout calls; use one bounded query, then its permitted targeted-range fallback after timeout.
+Disk: 0 GB freed, no extra install created; leave only `E:/mc2-installs/claude-record-thread` at `c8022b57f`.
+After this docs-only closure use explicit `--ref-commit c8022b57f` for retained binary proof; do not rebuild unchanged code.
