@@ -45,6 +45,62 @@ def stage_passed(status):
     return status == "PASS" or status.startswith("REUSED:")
 
 
+def preflight(head, install, window, steps, seed=Path("E:/mc2-installs/_lean-seed")):
+    """Offline, fail before any lease, copy, build or deployment."""
+    from exe_fingerprint import extract, sha_agrees
+    from mod_smoke import load_known_failures
+    import saveload_roundtrip as saves
+
+    started = time.monotonic()
+    errors = []
+    rebuild = "py -3 scripts/ninja_build.py mc2 mc2_asset_viewer -j " + Path("A:/Games/mc2-ops/JOBS").read_text().strip()
+    for name in ("mc2.exe", "mc2_asset_viewer.exe"):
+        fp = extract(ROOT / "build64-ninja" / name)
+        if not fp.get('present') or fp.get('dirty') or not sha_agrees(fp.get('sha'), head):
+            errors.append(f"{name} fingerprint != clean HEAD {head}; fix: {rebuild}")
+    bookmarks = set()
+    for name, command, env in steps:
+        if name.startswith('capture-') and '--bookmarks' in command and not env.get('MC2_GATE_SKIP_REASON'):
+            bookmarks.update(command[command.index('--bookmarks') + 1].split(','))
+    for target in dict.fromkeys((Path(install), Path(seed))):
+        for bookmark in sorted(bookmarks):
+            path = target / 'saved_bookmarks' / (bookmark + '.json')
+            try:
+                doc = json.loads(path.read_text(encoding='utf-8'))
+                if not doc.get('mission') or len(doc.get('bookmarks', [])) < 2:
+                    raise ValueError('requires mission and at least two camera poses')
+            except (OSError, ValueError, TypeError) as exc:
+                source = ROOT / 'tests/visual/bookmarks' / path.name
+                errors.append(f"camera fixture {path}: {exc}; fix: Copy-Item -LiteralPath '{source}' -Destination '{path}'")
+    for name, command, env in steps:
+        if not name.startswith('saveload-') or env.get('MC2_GATE_SKIP_REASON'):
+            continue
+        mission = command[command.index('--mission') + 1]
+        mask = ROOT / command[command.index('--mask') + 1]
+        try:
+            record = json.loads((ROOT / 'tests/saveload/baselines' / (mission + '.json')).read_text())
+            if (json.dumps(record.get('comparison'), sort_keys=True) != json.dumps(saves.mask_policy(str(mask)), sort_keys=True)
+                    or record.get('judged') not in ('first-save-only', 'first-save-and-resave')
+                    or not record.get('overall') or not record.get('runs')
+                    or not record.get('packets') or record.get('save_at') is None or record.get('load_at') is None):
+                raise ValueError('reference is missing evidence or has stale comparison policy')
+        except (OSError, ValueError, TypeError) as exc:
+            errors.append(f"{mission} first-save reference: {exc}; fix: py -3 tools/saveload_roundtrip.py --baseline --mission {mission} --install {install} --mask tools/save_noise_mask.json --first-save-only")
+    try:
+        entries = load_known_failures()
+        if window is None or window < 1:
+            raise ValueError('current window required; pass --window N to merge_gate.py')
+        expired = [e for e in entries if not e['first_window'] <= window < e['expires_window']]
+        if expired:
+            raise ValueError('expired/not-yet-active entries; renew tools/mod_known_failures.json with an owner note')
+    except (OSError, ValueError, TypeError, KeyError) as exc:
+        errors.append(f"known-failure list: {exc}; fix: edit tools/mod_known_failures.json with owner-approved ceilings and three-window expiry")
+    for error in errors:
+        print('[merge_gate] preflight FAIL: ' + error, flush=True)
+    print(f"[merge_gate] preflight {'FAIL' if errors else 'PASS'} seconds={time.monotonic() - started:.2f}", flush=True)
+    return int(bool(errors))
+
+
 class GateState:
     """Crash-safe stage journal with an OS lock (released even after a crash)."""
     def __init__(self, path, head, exe, proof, steps, resume=False):
@@ -737,6 +793,8 @@ def main(argv=None):
     if "MC2_IN_GATE" in os.environ:
         ap.error("MC2_IN_GATE is set: nested merge gates are forbidden")
     ap.add_argument("--base", help="pre-window commit; absent/stale window record means full coverage")
+    ap.add_argument("--preflight", action="store_true", help="offline input checks only; no leases, copies or launches")
+    ap.add_argument("--window", type=int, help="merge-window number for known-failure expiry")
     ap.add_argument("--full", action="store_true", help="all domains; orchestrator runs at least daily")
     ap.add_argument("--resume", action="store_true", help="reuse successful stages with matching HEAD and executable SHA")
     ap.add_argument("--farm-determinism", action="store_true", help="schedule the determinism trio on the farm alongside local save/load checks")
@@ -761,6 +819,9 @@ def main(argv=None):
     args = ap.parse_args(argv)
     if args.j < 1:
         ap.error("-j must be positive")
+    if args.preflight:
+        return preflight(git('rev-parse', 'HEAD'), args.install or Path('E:/mc2-installs/_lean-seed'),
+                         args.window, plan(args.j))
     state_path = ROOT / "build64-ninja/gate-state.json"
     resumed_proof = None
     if args.resume and state_path.exists():
@@ -778,6 +839,8 @@ def main(argv=None):
     except ValueError as exc:
         ap.error(str(exc))
     head = git("rev-parse", "HEAD")
+    match = re.search(r'merge(\d+)(?:\D|$)', str(proof))
+    window_number = args.window or (int(match[1]) if match else None)
     window = {}
     try:
         window = json.loads((ROOT / "build64-ninja/merge-window.json").read_text())
@@ -821,6 +884,9 @@ def main(argv=None):
     for name, _, env in steps:
         if name == "mods" or name.startswith(("determinism-", "saveload-")):
             env["MC2_SMOKE_ARTIFACT_ROOT"] = str(proof / "smokes" / name)
+    for name, command, _ in steps:
+        if name == 'mods' and window_number:
+            command += ['--window', str(window_number)]
     if args.expect_head and git("rev-parse", args.expect_head + "^{commit}") != head:
         ap.error("HEAD does not match --expect-head")
     if not args.dry_run:
@@ -829,6 +895,10 @@ def main(argv=None):
             ap.error("real merge gates are orchestrator-only in mc2-main on claude/nifty-mendeleev; use --dry-run in lanes")
         if git("status", "--porcelain", "--untracked-files=no"):
             ap.error("commit tracked changes before running the merge gate")
+        if preflight(head, args.install or Path('E:/mc2-installs/_lean-seed'), window_number, steps):
+            return 1
+    else:
+        print('PLAN preflight (offline inputs, clean game/viewer HEAD, fresh save policy, known failures)')
     for n, c, e in omitted:
         steps.append((n, c, dict(e, MC2_GATE_SKIP_REASON="operator stage filter; partial gate")))
     log_path = args.log or proof / "gate.log"

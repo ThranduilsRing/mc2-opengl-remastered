@@ -102,6 +102,45 @@ def warning_excess(counts: dict[str, int], mod: str) -> dict[str, int]:
 
 # Per-mod mission-load budgets, pinned by the content-channel smoke proof.
 CONTENT_BUDGETS = {"MC2X-CVE-G": 2, "MechCommanderOmnitech": 0}
+KNOWN_FAILURES = Path(__file__).with_name('mod_known_failures.json')
+
+
+def load_known_failures(path=KNOWN_FAILURES):
+    entries = json.loads(Path(path).read_text(encoding='utf-8'))
+    for entry in entries:
+        if (not all(entry.get(k) for k in ('mod', 'mission', 'error_class', 'owner_note'))
+                or not isinstance(entry.get('count_ceiling'), int) or entry['count_ceiling'] < 0
+                or not isinstance(entry.get('first_window'), int)
+                or entry.get('expires_window') != entry['first_window'] + 3):
+            raise ValueError(f'invalid known content failure: {entry}')
+    return entries
+
+
+def content_verdict(counts, mod, mission, window, entries):
+    """Expiry is exclusive: an owner acceptance covers exactly three windows."""
+    known, new = {}, {}
+    for kind, count in counts.items():
+        if not count:
+            continue
+        ceiling = max((e['count_ceiling'] for e in entries
+                       if (e['mod'], e['mission'], e['error_class']) == (mod, mission, kind)
+                       and e['first_window'] <= window < e['expires_window']), default=0)
+        (known if count <= ceiling else new)[kind] = count
+    return known, new
+
+
+def content_counts(text):
+    """Use the maximum per class, never count an echoed summary twice."""
+    counts = {}
+    for summary in re.findall(r'\[CONTENT_SUMMARY\]([^\r\n]*)', text):
+        values = dict((k, int(v)) for k, v in re.findall(r'(\w+)=(\d+)', summary))
+        total = values.pop('total', None)
+        if total is None or total != sum(values.values()):
+            counts['unparsed'] = max(counts.get('unparsed', 0), total or 1)
+        else:
+            for kind, count in values.items():
+                counts[kind] = max(counts.get(kind, 0), count)
+    return counts
 
 # Engine-owned loose data that deploy_payload does not enumerate (relative to the
 # base install). Files only count when absent from the stock fast files, so the
@@ -743,7 +782,8 @@ def refresh_layer(layer: Path, target: Path) -> dict:
     return overlay_mod(layer, target, link_ok=same_volume(layer, target), incremental=True)
 
 
-def run_mod(staged: Path, stem: str, duration: int, timeout: int, ref_exe: Path | None = None) -> dict:
+def run_mod(staged: Path, stem: str, duration: int, timeout: int, ref_exe: Path | None = None,
+            window: int = 0, known_failures=()) -> dict:
     # Give the bounded host-lease wait its own allowance in the outer watchdog;
     # a queue wait is not a game hang.
     lease_wait = min(float(os.environ.get('MC2_HOST_LEASE_TIMEOUT') or 1200), 1200)
@@ -756,7 +796,9 @@ def run_mod(staged: Path, stem: str, duration: int, timeout: int, ref_exe: Path 
         '--duration', str(duration),
         '--keep-logs',
         '--wait-timeout', str(lease_wait),
-        '--content-error-budget', str(CONTENT_BUDGETS.get(staged.name, 0)),
+        '--content-error-budget', str(sum(e['count_ceiling'] for e in known_failures
+            if e['mod'] == staged.name and e['mission'] == stem
+            and e['first_window'] <= window < e['expires_window'])),
     ]
     if ref_exe is not None:
         cmd += ['--ref-exe', str(ref_exe)]
@@ -793,6 +835,8 @@ def run_mod(staged: Path, stem: str, duration: int, timeout: int, ref_exe: Path 
     health = analyze_health(text)
     summaries = re.findall(r'\[CONTENT_SUMMARY\].*?total=(\d+)', text)
     content_errors = max(map(int, summaries), default=None)
+    counts = content_counts(engine_log or text)
+    known, new = content_verdict(counts, staged.name, stem, window, known_failures)
     warnings = warning_counts(engine_log or collect_log_text(output))
     # The harness can emit its own crash outside the engine log. Do not count
     # a diagnostic twice just because stdout also echoed the saved engine log.
@@ -801,7 +845,8 @@ def run_mod(staged: Path, stem: str, duration: int, timeout: int, ref_exe: Path 
     return {'exit': rc, 'fingerprint': fingerprint, 'verdict': verdict,
             'log': str(log), 'health': health, 'note': failure_note(text),
             'warnings': warnings,
-            'content_errors': content_errors, 'content_budget': CONTENT_BUDGETS.get(staged.name, 0)}
+            'content_errors': content_errors, 'content_budget': sum(known.values()),
+            'content_known': known, 'content_new': new}
 
 
 def failure_note(text: str) -> str:
@@ -817,6 +862,8 @@ def result_word(row: dict) -> str:
         return 'FAIL(exit %s)' % row['exit']
     if row.get('warning_excess'):
         return 'FAIL(warning budget)'
+    if row.get('content_new'):
+        return 'CONTENT-FAIL(NEW)'
     if row.get('content_errors') is not None and row['content_errors'] > row.get('content_budget', 0):
         return 'CONTENT-FAIL'
     h = row['health']
@@ -879,6 +926,9 @@ def asset_precheck(exe: Path, staged: Path) -> dict:
 
 
 def battery(args) -> int:
+    known_failures = load_known_failures()
+    if not getattr(args, 'window', None):
+        raise ValueError('pass --window N (current merge window) to enforce known-failure expiry')
     source_root = Path(args.install_root).resolve()
     if source_root.name.lower() == GOLDEN_INSTALL:
         raise ValueError(f'refusing golden install: {source_root}')
@@ -931,7 +981,9 @@ def battery(args) -> int:
                           'note': 'asset-load pre-check failed'}
                 (staged / 'smoke.log').write_text(json.dumps(precheck), encoding='utf-8')
             else:
-                result = run_mod(staged, stem, args.duration, timeout, getattr(args, 'ref_exe', None))
+                result = run_mod(staged, stem, args.duration, timeout, getattr(args, 'ref_exe', None),
+                                 args.window, known_failures)
+                print(f"[mod_smoke] {display} {stem} KNOWN={result.get('content_known', {})} NEW={result.get('content_new', {})}", flush=True)
                 if precheck is not None:
                     result['asset_load'] = precheck
             result['warning_excess'] = warning_excess(result.get('warnings', {}), folder)
@@ -1001,6 +1053,7 @@ def battery(args) -> int:
 def main() -> int:
     ap = argparse.ArgumentParser(description='Smoke every supported mod against current mc2.exe')
     ap.add_argument('--battery', action='store_true', help='run all six mods across leased game workers')
+    ap.add_argument('--window', type=int, help='current merge-window number (known failures expire after three windows)')
     ap.add_argument('--mod', default='', help='comma-separated mod name(s)')
     ap.add_argument('--mission', default='', help='mission stem override (needs a single --mod)')
     ap.add_argument('--exe', default=None, help='current mc2.exe')

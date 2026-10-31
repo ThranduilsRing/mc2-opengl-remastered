@@ -596,7 +596,7 @@ def test_single_worker_waits_for_cold_run_and_collects_later_failures(tmp_path, 
     monkeypatch.setattr(ms, 'asset_precheck', precheck)
     args = SimpleNamespace(install_root=source, stage_root=stages, base_install=base,
                            exe=None, build_dir=None, mod='', mission=None, keep_stages=False,
-                           workers=1, fail_fast=False, duration=5, timeout=30)
+                           workers=1, fail_fast=False, duration=5, timeout=30, window=90)
     if asset_mode:
         args.asset_load_exe = base / 'probe.exe'
     assert ms.battery(args) == 1
