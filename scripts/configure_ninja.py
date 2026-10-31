@@ -122,7 +122,7 @@ def configure(root, tree=DEFAULT_TREE, compile_cache=True, cache_pch=False):
             "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON",
             # Precompiled std-library header (cmake/pch/): about 30 % less compile time for gameos, mclib and mc2. Only this dev tree
             # turns it on; the clang-tidy / proof tree (tools/build_all_targets.py) keeps it off because clang cannot read an MSVC .pch.
-            "-DMC2_PCH=ON"] + cache_args(root)
+            "-DMC2_PCH=ON", "-DENABLE_MC2FX=ON", "-DENABLE_MC2FX_PREVIEW=ON"] + cache_args(root)
     env = None
     if compile_cache:
         # sccache does not cache precompiled-header users (/Yu), so the cached tree defaults to PCH off (--cache-pch keeps it).

@@ -48,7 +48,7 @@ FAKES = {
 }
 
 
-@pytest.mark.parametrize("red", [None, "run_scripts_tests.py", "run_tools_tests.py", "ninja_build.py"])
+@pytest.mark.parametrize("red", [None, "run_scripts_tests.py", "run_tools_tests.py", "configure_ninja.py", "ninja_build.py", "mc2fx"])
 def test_precheck_runs_python_suites_and_reuses_lane_build(env, monkeypatch, capsys, red):
     from tools import lane_merge as lm
     repo, _ = env
@@ -60,14 +60,15 @@ def test_precheck_runs_python_suites_and_reuses_lane_build(env, monkeypatch, cap
         if cmd[0] == "git":
             return actual_run(root, cmd, env)
         seen.append((root, cmd))
-        if "scripts/ninja_build.py" in cmd:
+        if any(a in cmd for a in ("scripts/ninja_build.py", "scripts/configure_ninja.py")):
             assert root == str(repo)
         else:
             assert root != str(repo)
         return subprocess.CompletedProcess(cmd, int(any(lm.Path(a).name == red for a in cmd)), "fixture failure")
     monkeypatch.setattr(lm, "run", runner)
     assert lm.main(["--root", str(repo), "--precheck", "HEAD"]) == int(red is not None)
-    assert len(seen) == 9
+    assert len(seen) == 11
+    assert any("mc2fx" in cmd and "mc2fx_preview" in cmd for _, cmd in seen)
     assert all("--tighten" not in cmd for _, cmd in seen)
     assert {label for label, _ in lm.PYTHON_SUITES} == {"scripts_tests", "tools_tests"}
     assert git(repo, "rev-parse", "HEAD") == before
