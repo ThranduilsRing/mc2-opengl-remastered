@@ -6,6 +6,7 @@
 #include <unordered_set>
 #include <cstdint>
 #include <algorithm>
+#include <span>
 #include "mc2fmt.h"
 #include "../../code/render_view.h"
 #include "../../RenderCore/FrameArena.h"
@@ -39,12 +40,12 @@ namespace {
 std::unordered_set<uint64_t> uploaded;
 
 template<class T>
-const T* freezeArray(RenderCore::FrameArena& arena, const T* data, uint32_t count)
+const T* freezeArray(RenderCore::FrameArena& arena, std::span<const T> source)
 {
-    if (!count) return nullptr;
-    auto copy = arena.allocArray<T>(count, "NativeShape");
+    if (source.empty()) return nullptr;
+    auto copy = arena.allocArray<T>(static_cast<uint32_t>(source.size()), "NativeShape");
     if (copy.empty()) std::abort();
-    std::copy_n(data, count, copy.data);
+    std::copy(source.begin(), source.end(), copy.data);
     return copy.data;
 }
 
@@ -137,12 +138,12 @@ bool captureNativeShape(const MidLevelRenderer::DrawScalableShapeInformation& dr
             record.data->needsUpload = upload;
             if (upload) {
                 record.data->upload = up;
-                record.data->upload.positions = freezeArray(*arena, up.positions, up.vertexCount * 3);
-                record.data->upload.uvs = freezeArray(*arena, up.uvs, up.vertexCount * 2);
-                record.data->upload.indices = freezeArray(*arena, up.indices, up.indexCount);
+                record.data->upload.positions = freezeArray(*arena, std::span(up.positions, up.vertexCount * 3));
+                record.data->upload.uvs = freezeArray(*arena, std::span(up.uvs, up.vertexCount * 2));
+                record.data->upload.indices = freezeArray(*arena, std::span(up.indices, up.indexCount));
             }
             if (tail) tail->next = record.data;
-            else frozen.first = record.data;
+            else frozen = {record.data};
             tail = record.data;
         } else {
             gos_vfx_mesh_flush(upload ? &up : nullptr, upload ? 1u : 0u, &inst, 1u);
@@ -166,7 +167,8 @@ bool gosFX::FreezeNativeShape(const MidLevelRenderer::DrawScalableShapeInformati
 
 void gosFX::DrawFrozenNativeShape(const FrozenNativeShape& frozen)
 {
-    for (auto* record = frozen.first; record; record = record->next) {
+    const auto [head] = frozen;
+    for (auto* record = head; record; record = record->next) {
         gos_vfx_mesh_flush(record->needsUpload ? &record->upload : nullptr,
             record->needsUpload ? 1u : 0u, &record->instance, 1u);
         if (record->needsUpload) uploaded.insert(record->instance.meshId);
