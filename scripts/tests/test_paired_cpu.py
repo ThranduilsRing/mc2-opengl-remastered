@@ -81,3 +81,26 @@ def test_mean_is_frame_normalized_and_tail_is_per_event():
     result = tool.comparison([{'a': run, 'b': run}] * 5)['GameLogic']['a']
     assert result['mean_ms'] == .6
     assert result['p95_ms'] == .6
+
+
+def test_failed_deployment_stops_before_more_captures(tmp_path, monkeypatch):
+    source = tmp_path / 'source'
+    (source / 'scripts').mkdir(parents=True)
+    (source / 'scripts/deploy_payload.py').touch()
+    exe = source / 'build/mc2.exe'
+    exe.parent.mkdir()
+    exe.write_bytes(b'arm')
+    calls = []
+    def denied(argv, **kwargs):
+        calls.append(argv)
+        raise tool.subprocess.CalledProcessError(1, argv)
+    monkeypatch.setattr(tool.subprocess, 'run', denied)
+    monkeypatch.setattr(tool.cpu, 'profile', lambda *a: pytest.fail('capture after deploy failure'))
+    args = SimpleNamespace(exe_a=exe, exe_b=exe, install_a=None, install_b=None,
+                           install=tmp_path / 'install', out=tmp_path / 'proof',
+                           missions=['mc2_01', 'mc2_03'], pairs=5, seconds=20)
+    assert tool.run(args, None) == 1
+    assert len(calls) == 1
+    import json
+    report = json.loads((args.out / 'profile.json').read_text())
+    assert len(report['errors']) == 1

@@ -90,6 +90,10 @@ def run(args, psutil):
                 except (Exception, SystemExit) as exc:
                     pair[arm] = {"error": str(exc)}
                     report["errors"].append(f"{mission}/{i + 1}/{arm}: {exc}")
+                    if isinstance(exc, subprocess.CalledProcessError):
+                        (args.out / "profile.json").write_text(json.dumps(report, indent=2), encoding="utf-8")
+                        print(f"{mission} pair {i + 1}: deployment failed; see {args.out / 'deploy.log'}", flush=True)
+                        return 1
                 (args.out / "profile.json").write_text(json.dumps(report, indent=2), encoding="utf-8")
             print(f"{mission} pair {i + 1}: " + ", ".join(f"{a}={pair[a].get('error', 'OK')}" for a in ("a", "b")), flush=True)
         report.setdefault("comparisons", {})[mission] = comparison(pairs)
