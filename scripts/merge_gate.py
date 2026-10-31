@@ -54,7 +54,7 @@ def preflight(head, install, window, steps, seed=Path("E:/mc2-installs/_lean-see
     started = time.monotonic()
     errors = []
     rebuild = "py -3 scripts/ninja_build.py mc2 mc2_asset_viewer -j " + Path("A:/Games/mc2-ops/JOBS").read_text().strip()
-    for name in ("mc2.exe", "mc2_asset_viewer.exe"):
+    for name in ("mc2.exe", "out/tools/asset_viewer/mc2_asset_viewer.exe"):
         fp = extract(ROOT / "build64-ninja" / name)
         if not fp.get('present') or fp.get('dirty') or not sha_agrees(fp.get('sha'), head):
             errors.append(f"{name} fingerprint != clean HEAD {head}; fix: {rebuild}")

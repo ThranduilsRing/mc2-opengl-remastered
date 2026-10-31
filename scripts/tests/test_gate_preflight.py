@@ -38,8 +38,11 @@ def test_committed_save_references_use_current_policy():
 @pytest.mark.parametrize('broken', [None, 'game', 'viewer', 'camera', 'policy', 'expiry'])
 def test_preflight_inputs(tmp_path, monkeypatch, capsys, broken):
     monkeypatch.setattr(gate, 'ROOT', tmp_path)
-    monkeypatch.setattr(exe_fingerprint, 'extract', lambda path: dict(
-        present=True, sha='b' * 40 if path.name == {'game': 'mc2.exe', 'viewer': 'mc2_asset_viewer.exe'}.get(broken) else 'a' * 40, dirty=0))
+    def fingerprint(path):
+        assert path in (tmp_path / 'build64-ninja/mc2.exe',
+                        tmp_path / 'build64-ninja/out/tools/asset_viewer/mc2_asset_viewer.exe')
+        return dict(present=True, sha='b' * 40 if path.name == {'game': 'mc2.exe', 'viewer': 'mc2_asset_viewer.exe'}.get(broken) else 'a' * 40, dirty=0)
+    monkeypatch.setattr(exe_fingerprint, 'extract', fingerprint)
     for folder in ('candidate', 'seed'):
         bookmarks = tmp_path / folder / 'saved_bookmarks'
         bookmarks.mkdir(parents=True)
