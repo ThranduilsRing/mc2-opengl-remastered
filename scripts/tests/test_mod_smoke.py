@@ -18,6 +18,22 @@ def _w(path: Path, text: str = "x") -> Path:
     return path
 
 
+def test_readonly_stage_cleanup(tmp_path):
+    import stat
+    staged = _w(tmp_path / 'stage/readonly.exr')
+    staged.chmod(stat.S_IREAD)
+    ms.shutil.rmtree(staged.parent, onexc=ms.remove_readonly)
+    assert not staged.parent.exists()
+
+
+def test_cleanup_preserves_other_permission_failures(tmp_path):
+    staged = _w(tmp_path / 'writable.exr')
+    failure = PermissionError('locked by another process')
+    with pytest.raises(PermissionError, match='locked by another process'):
+        ms.remove_readonly(os.unlink, staged, failure)
+    assert staged.exists()
+
+
 def test_content_budget_is_enforced_and_visible():
     row = dict(mod="fixture", mission="broken", exit=0,
                health=ms.analyze_health(""), content_errors=2, content_budget=1)

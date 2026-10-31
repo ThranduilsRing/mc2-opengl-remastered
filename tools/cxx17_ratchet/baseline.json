@@ -951,7 +951,7 @@
   "GameOS/include/mc2_verify.h": {
    "LG06": 2
   },
-  "GameOS/include/mc2fmt.h": {
+  "mclib/mc2format.h": {
    "LG06": 1,
    "LG12a": 2
   },

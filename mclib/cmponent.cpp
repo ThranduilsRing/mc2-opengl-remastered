@@ -22,7 +22,7 @@
 #include "platform_str.h"
 
 #include"utilities.h"
-#include "mc2fmt.h"
+#include "mc2format.h"
 //******************************************************************************************
 
 const char* ComponentFormString [] = {

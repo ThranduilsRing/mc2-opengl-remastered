@@ -35,6 +35,7 @@ import json
 import os
 import re
 import shutil
+import stat
 import struct
 import subprocess
 import sys
@@ -165,6 +166,14 @@ def resolve_build(explicit: str | None, build_dir: str) -> tuple[Path, Path]:
 # ---------------------------------------------------------------------------
 # File placement
 # ---------------------------------------------------------------------------
+
+def remove_readonly(function, path, exc):
+    """Retry Windows deletion of a read-only staged payload file; preserve other failures."""
+    if not isinstance(exc, PermissionError) or os.stat(path).st_mode & stat.S_IWRITE:
+        raise exc
+    os.chmod(path, stat.S_IWRITE)
+    function(path)
+
 
 def place_file(source: Path, target: Path, link_ok: bool = True, incremental=False) -> str:
     """Put source at target, replacing whatever is there. Hardlink when the two
@@ -986,7 +995,7 @@ def battery(args) -> int:
         if not args.keep_stages:
             for disposable in [cache, *(run_root / entry[1] for entry in plan)]:
                 if disposable.exists():
-                    shutil.rmtree(disposable)
+                    shutil.rmtree(disposable, onexc=remove_readonly)
             for result in rows:
                 result['staged'] = 'deleted (logs retained)'
         print(f'[mod_smoke] total={time.monotonic() - started:.1f}s workers={workers}', flush=True)

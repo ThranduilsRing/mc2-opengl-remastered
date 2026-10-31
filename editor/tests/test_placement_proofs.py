@@ -776,7 +776,7 @@ int main() {
 #include <string>
 #include <string_view>
 #include <vector>
-#include "GameOS/include/mc2fmt.h"
+#include "mclib/mc2format.h"
 #define gosASSERT(x) assert(x)
 #define PAUSE(x) assert(false)
 constexpr int NO_ERR = 0;
