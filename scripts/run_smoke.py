@@ -1498,6 +1498,9 @@ def main():
 
         duration = args.duration or e.duration or DEFAULT_DURATION_S
         tier = args.tier or "adhoc"
+        # Infantry loads lazily after tick 2404; a short wall-clock tier run
+        # missed its sim-worker render API call even with the audit armed.
+        finale_audit = args.tier == "tier1" and e.stem == "mc2_24"
         # The `resolution` tier runs one stem once per size, so its rows, logs and baseline keys carry the size.
         label = f"{e.stem}@{e.resolution}" if e.resolution else e.stem
         cfg = RunConfig(
@@ -1514,7 +1517,7 @@ def main():
             # manifest (allow_asset_oob analog for registered marker rows).
             marker_overrides=e.marker_overrides,
             show_window=args.show_window,
-            ticks=args.ticks,
+            ticks=max(args.ticks, 2600) if finale_audit else args.ticks,
             headless=args.headless,
             env_extra={
                 "MC2_SMOKE_SEED": "0xC0FFEE",
@@ -1527,6 +1530,7 @@ def main():
                 # G7b overlap audit (dev selector, shipped OFF): ON in tier1 and smoke-lite. It aborts on the first
                 # [SIM_OVERLAP v1] VIOLATION, which the sim_overlap_violation marker bucket turns red.
                 **({"MC2_SIM_OVERLAP_AUDIT": "1"} if args.tier == "tier1" or args.lite else {}),
+                **({"MC2_SMOKE_FIXED_TIMESTEP": "1", "MC2_SIM_SPEED": "4"} if finale_audit else {}),
                 **({"MC2_SIM_SPEED": str(args.sim_speed)} if args.sim_speed else {}),
                 **(render_resolution.tier_size_env(tier, e.resolution) if e.resolution or args.tier == "resolution" or args.show_window
                    else {"MC2_WIDTH": "854", "MC2_HEIGHT": "480"}),

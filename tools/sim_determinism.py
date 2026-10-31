@@ -71,7 +71,7 @@ def observation_error(lines) -> str:
 GATES = {"MC2_SMOKE_FIXED_TIMESTEP": "1", "MC2_SIM_IDENTITY_TRACE": "1"}
 #: Missions whose determinism runs also arm the G7b overlap audit (aborts on the first violation; read-only otherwise, so the SIMID
 #: chain is unchanged).
-OVERLAP_AUDIT_MISSIONS = ("mc2_10",)
+OVERLAP_AUDIT_MISSIONS = ("mc2_01", "mc2_03", "mc2_10", "mc2_16", "mc2_24")
 OVERLAP_VIOLATION = "[SIM_OVERLAP v1] VIOLATION"
 
 

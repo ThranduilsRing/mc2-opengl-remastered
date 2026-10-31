@@ -32,4 +32,4 @@ def test_non_violation_overlap_lines_stay_green():
 def test_determinism_detects_violation():
     assert sim.overlap_violation(CLEAN) == ""
     assert sim.overlap_violation(CLEAN + LINE + "\n").startswith("[SIM_OVERLAP v1] VIOLATION")
-    assert "mc2_10" in sim.OVERLAP_AUDIT_MISSIONS
+    assert {"mc2_01", "mc2_03", "mc2_10", "mc2_16", "mc2_24"} <= set(sim.OVERLAP_AUDIT_MISSIONS)
