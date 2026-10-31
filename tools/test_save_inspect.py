@@ -7,6 +7,11 @@ sys.path.insert(0, HERE)
 import save_inspect as mod  # noqa: E402
 
 
+def test_commander_values_use_tags_before_native_sizes():
+    assert mod.packet_kind(0, b"CMST\x01\0\0\0" + bytes(8)) == "StaticCommanderData"
+    assert mod.packet_kind(0, b"CMDR\x01\0\0\0" + bytes(1240)) == "CommanderData"
+
+
 def test_selftest_passes():
     assert mod.selftest() == 0
 

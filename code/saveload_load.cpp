@@ -457,7 +457,7 @@ void Mission::loadObjectivesCommanders(MissionLoadFrame& f) {
 	// Save Number of Commanders.
 	// Save which number is HOME.
 	// Call save for each commander.
-	currentPacket = Commander::Load( &loadFile, currentPacket );
+	currentPacket = Commander::Load( &loadFile, currentPacket, f.sections.find(mc2::save::tagCommander) != nullptr );
 
 	//---------------------------------------------------------------------------------
 	// If we're not playing multiplayer, make sure all home commander movers have their

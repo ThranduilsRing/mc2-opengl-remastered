@@ -291,6 +291,7 @@ void Mission::save (const char *saveFileName)
 
     // Save v2: the versioned section container follows the unchanged legacy END packet (save_sections.h).
     mc2::save::SectionContainer sections;
+    sections.add(mc2::save::tagCommander, 1, true, {});
     {
         auto handles = [](auto slots) {
             std::vector<std::uint32_t> result;

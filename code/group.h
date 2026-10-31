@@ -63,15 +63,7 @@ struct _GoalMapNode {
 	}
 }; using GoalMapNode = _GoalMapNode;
 
-struct _MoverGroupData
-{
-	long					id;
-	long					numMovers;
-	GameObjectWatchID		moverWIDs[MAX_MOVERGROUP_COUNT];
-	GameObjectWatchID		pointWID;
-	bool					disbandOnNoPoint;
-
-}; using MoverGroupData = _MoverGroupData;
+#include "commander_save_data.h"
 
 class MoverGroup {
 

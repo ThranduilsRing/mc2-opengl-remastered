@@ -197,6 +197,10 @@ def packet_kind(typ: int, raw: bytes) -> str:
         return "empty"
     if raw[:8] == SECTION_MAGIC:
         return "sections"
+    if raw[:8] == b"CMST\x01\0\0\0" and len(raw) == 16:
+        return "StaticCommanderData"
+    if raw[:8] == b"CMDR\x01\0\0\0" and len(raw) == 1248:
+        return "CommanderData"
     if is_text(raw):
         return "text"
     if valid_pilot_suffix(raw):
