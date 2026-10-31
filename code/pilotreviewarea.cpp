@@ -20,6 +20,7 @@ SalvageMechArea.cpp			: Implementation of the SalvageMechArea component.
 #include"platform_windows.h"
 #include"gamesound.h"
 #include "Gates/gate.h"
+#include "mc2fmt.h"
 
 aText*		DeadPilotListItem::s_nameText = nullptr;
 aText*		DeadPilotListItem::s_rankText = nullptr;
@@ -1105,7 +1106,7 @@ void	ActivePilotListItem::init( FitIniFile* file )
 	// last three are missing, remove this
 	for (int i = 0; i < MAX_MEDAL; i++ )
 	{
-		sprintf( name, "MedalIcon%ld", i );
+		mc2::fmt::to_buf( name, "MedalIcon{:d}", mc2::fmt::as_i32(i) );
 		s_medals[i]->init( file, name );
 	}
 
@@ -1114,17 +1115,17 @@ void	ActivePilotListItem::init( FitIniFile* file )
 	for (int i = 0; i < 5; i++ )
 	{
 		s_outline[i] = new aRect;
-		sprintf( buffer, "ActiveDutyBoxRect%ld", i );
+		mc2::fmt::to_buf( buffer, "ActiveDutyBoxRect{:d}", mc2::fmt::as_i32(i) );
 		s_outline[i]->init( file, buffer );
 	}
 
 	for (int i = 0; i < 2; i++ )
 	{
 		s_icons[i] = new aObject;
-		sprintf( buffer, "ActiveDutyBoxSkill%ld", i );
+		mc2::fmt::to_buf( buffer, "ActiveDutyBoxSkill{:d}", mc2::fmt::as_i32(i) );
 		s_icons[i]->init( file, buffer );
 
-		sprintf( buffer, "ActiveDutyBoxSkillMeter%ld", i );
+		mc2::fmt::to_buf( buffer, "ActiveDutyBoxSkillMeter{:d}", mc2::fmt::as_i32(i) );
 		s_attributeMeters[i] = new AttributeMeter();
 		s_attributeMeters[i]->init( file, buffer );
 		s_attributeMeters[i]->setAddedColorMax( 0xffffffff );
@@ -1134,7 +1135,7 @@ void	ActivePilotListItem::init( FitIniFile* file )
 	for (int i = 0; i < 5; i++ )
 	{
 		s_icons[i+3] = new aObject;
-		sprintf( buffer, "ActiveDutyBoxRankIcon%ld", i );
+		mc2::fmt::to_buf( buffer, "ActiveDutyBoxRankIcon{:d}", mc2::fmt::as_i32(i) );
 		s_icons[i+3]->init( file, buffer );
 	}
 
@@ -1267,10 +1268,10 @@ ActivePilotListItem::ActivePilotListItem( LogisticsPilot* pPilot )
 	rankText.setText( rankStr);
 
 	char buffer[32];
-	sprintf( buffer, "%ld", static_cast<long>(pPilot->getGunnery()) );
+	mc2::fmt::to_buf( buffer, "{:d}", mc2::fmt::as_i32(static_cast<long>(pPilot->getGunnery())) );
 	gunneryText.setText( buffer );
 
-	sprintf( buffer, "%ld", static_cast<long>(pPilot->getPiloting()) );
+	mc2::fmt::to_buf( buffer, "{:d}", mc2::fmt::as_i32(static_cast<long>(pPilot->getPiloting())) );
 	pilotingText.setText( buffer );
 
 	for (int i = 0; i < 2; i++ )
@@ -1356,7 +1357,7 @@ void PilotPromotionArea::init( FitIniFile& file )
 	char buffer[32];
 	for ( int i = 0; i < 2; i++ )
 	{
-		sprintf( buffer, "PromoteGadgetLeftSkillMeter%ld", i );
+		mc2::fmt::to_buf( buffer, "PromoteGadgetLeftSkillMeter{:d}", mc2::fmt::as_i32(i) );
 		attributeMeters[i].init( &file, buffer );
 		attributeMeters[i].setAddedColorMax( 0xffffffff );
 		attributeMeters[i].setAddedColorMin( 0xffffffff );
@@ -1512,10 +1513,10 @@ void PilotPromotionArea::setPilot( LogisticsPilot* pPilot, PilotIcon* pIcon )
 	areaLeft.textObjects[3].setText( rankStr );
 	
 	char buffer[32];
-	sprintf( buffer, "%ld", static_cast<long>(pPilot->getGunnery()) );
+	mc2::fmt::to_buf( buffer, "{:d}", mc2::fmt::as_i32(static_cast<long>(pPilot->getGunnery())) );
 	areaLeft.textObjects[4].setText( buffer );
 
-	sprintf( buffer, "%ld", static_cast<long>(pPilot->getPiloting()) );
+	mc2::fmt::to_buf( buffer, "{:d}", mc2::fmt::as_i32(static_cast<long>(pPilot->getPiloting())) );
 	areaLeft.textObjects[5].setText( buffer );
 
 	int specSkills = pPilot->getSpecialtySkillCount();
@@ -1777,7 +1778,7 @@ void			SpecialtyListItem::init( FitIniFile* file )
 	for ( int i =0; i < 4; i++ )
 	{
 		s_skillIcons[i] = new aObject;
-		sprintf( buffer, "SkillTypeIcon%ld", i );
+		mc2::fmt::to_buf( buffer, "SkillTypeIcon{:d}", mc2::fmt::as_i32(i) );
 		s_skillIcons[i]->init( file, buffer );
 	}
 	s_description->init( file, "SkillDescriptionText" );

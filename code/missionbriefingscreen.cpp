@@ -17,6 +17,7 @@
 #include"multplyr.h"
 #include"chatwindow.h"
 #include"gamesound.h"
+#include "mc2fmt.h"
 
 
 constexpr int MAP_INDEX = 32;
@@ -404,9 +405,9 @@ long	MissionBriefingScreen::getMissionTGA( const char* missionName, bool swizzle
 			{
 				{
 					char _cbbuf[256];
-					snprintf(_cbbuf, sizeof(_cbbuf),
-						"[MISSION] skipping thumbnail for '%s': packet3 size=%ld < TGA header",
-						missionName, size);
+					mc2::fmt::to_buf(_cbbuf,
+						"[MISSION] skipping thumbnail for '{}': packet3 size={:d} < TGA header",
+						mc2::fmt::safe(missionName), mc2::fmt::as_i32(size));
 					puts(_cbbuf); fflush(stdout); crashbundle_append(_cbbuf);
 				}
 				return 0;
@@ -424,9 +425,9 @@ long	MissionBriefingScreen::getMissionTGA( const char* missionName, bool swizzle
 			{
 				{
 					char _cbbuf[256];
-					snprintf(_cbbuf, sizeof(_cbbuf),
-						"[MISSION] skipping thumbnail for '%s': invalid dims %ldx%ld",
-						missionName, bmpWidth, bmpHeight);
+					mc2::fmt::to_buf(_cbbuf,
+						"[MISSION] skipping thumbnail for '{}': invalid dims {:d}x{:d}",
+						mc2::fmt::safe(missionName), mc2::fmt::as_i32(bmpWidth), mc2::fmt::as_i32(bmpHeight));
 					puts(_cbbuf); fflush(stdout); crashbundle_append(_cbbuf);
 				}
 				mem.reset();
@@ -635,7 +636,7 @@ void MissionBriefingScreen::begin()
 
 	int RP = LogisticsData::instance->getCBills();
 	char text[32];
-	sprintf( text, "%ld ", RP );
+	mc2::fmt::to_buf( text, "{:d} ", mc2::fmt::as_i32(RP) );
 	textObjects[RP_INDEX].setText( text );
 	setDefsElementText( "game.mcl_mn.text.cbills_text", text );
 
@@ -645,7 +646,7 @@ void MissionBriefingScreen::begin()
 	while( true )
 	{
 		char blockName[32];
-		sprintf( blockName, "Part%ld", i );
+		mc2::fmt::to_buf( blockName, "Part{:d}", mc2::fmt::as_i32(i) );
 		i++;
 		if ( NO_ERR != fitFile.seekBlock( blockName ) )
 			break;

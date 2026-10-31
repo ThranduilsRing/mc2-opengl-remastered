@@ -1,6 +1,24 @@
 <!-- doc-status: current | reviewed:2026-10-11 -->
 # LG14 design note: unscoped enum -> `enum class` + `using enum` (lane 2, tip 90bfbfed9). NO BATCH RUN; waiting for review.
 
+## 2026-10-29 residual packet (claude/cxx23-debt)
+
+The October 11 probe below is historical. Current starting totals are LG13=445,
+LG14=202. This packet converts mover_attack.cpp's five range multipliers to
+constexpr float meter constants. Multiplication by the current worldUnitsPerMeter
+stays at each original use, with identical float operands and parentheses;
+it must not be frozen during static initialization. mc2_verify.cpp's private Mode
+becomes enum class with explicit int representation and unchanged 0/1/2 values;
+its private resolver/cache/locals carry Mode instead of int. No wire enum changes.
+Result: LG13=440, LG14=201; regenerate the baseline with cxx17_ratchet --tighten.
+
+Largest-file triage: rewrite_defines census retains platform_winuser.h's 158
+constants as included-from-c-side. tgl.h's 44 ASE strings are also classified
+included-from-c-side/string-literal-codegen-differs, and tgl.h has pending edits
+in another worktree. Public GameOS enums and warrior content/array-index enums
+retain their existing explicit skip reasons below and in tools/tidy/enum_skip.txt;
+this small private-type packet does not silently change their widths or ordinals.
+
 WHAT was measured: 178 named enums with a body (the 101 anonymous and 101 typedef enums counted at rotation stay: constants / aliases). The token census passes 68; 9 of those are never-touch; the other 59 were PROBED by compile:
 all 59 rewritten at once (`rewrite_text`, scratch `.claude/l2cfg/enum_probe.py`), built in `build64-ninja` AND the all-targets root tree (game, editor, tools, tests; 2 x ~15 min), errors mapped to enums, tree restored (git clean).
 WHY a probe: a scoped enum turns every int use into a compile error and changes nothing else (underlying type stays int / the fixed type), so "does it compile" IS the arithmetic / index / int-API / assignment detector; the objhash proof then confirms the object is unchanged.
