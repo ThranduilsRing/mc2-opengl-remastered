@@ -141,6 +141,22 @@ def test_reopen_preserves_all_journal_keys(journal):
     assert saved['started_signatures'] == {'one': 'sig'}
 
 
+def test_concurrent_records_keep_both_stages_and_started_signatures(journal):
+    from concurrent.futures import ThreadPoolExecutor
+    import threading
+    path, exe = journal
+    barrier = threading.Barrier(2)
+    with gate.GateState(path, 'head', exe, path.parent, []) as state:
+        def record(name):
+            state.started_signatures[name] = 'signature-' + name
+            barrier.wait(timeout=5)
+            state.record(name, [name], {}, 'PASS', 1)
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            list(pool.map(record, ['one', 'two']))
+        assert state.started_signatures == {'one': 'signature-one', 'two': 'signature-two'}
+    assert set(json.loads(path.read_text())['stages']) == {'one', 'two'}
+
+
 @pytest.mark.parametrize('change', ['none', 'head', 'mod', 'base', 'shader', 'proof', 'missing-proof', 'failed', 'ambient', 'candidate', 'during-run', 'stale-report', 'routing', 'engine-proof'])
 def test_mod_receipt_replays_only_identical_inputs_and_retained_proof(journal, monkeypatch, change, capsys):
     import mod_smoke as mods
