@@ -9,6 +9,8 @@
 #ifndef MOVE_H
 #define MOVE_H
 
+#include "../code/navigation_save_data.h"
+
 //***************************************************************************
 
 //--------------
@@ -310,6 +312,7 @@ inline constexpr unsigned int MAPCELL_BUILD_NOT_SET_MASK = 0x80000000;
 
 struct _MapCell {
 	unsigned int data;
+	void serialize(mc2::save::Archive& a) { a(data); }
 
 	unsigned int getTerrain (void) {
 		return((data & MAPCELL_TERRAIN_MASK) >> MAPCELL_TERRAIN_SHIFT);
@@ -603,11 +606,11 @@ class MissionMap {
 
 		void setPassable (long row, long col, char* footPrint, bool passable);
 
-		long init (PacketFile* packetFile, long whichPacket = 0);
+		long init (PacketFile* packetFile, long whichPacket = 0, bool taggedCells = false);
 
 		long initOld (File* mapFile);
 
-		long write (PacketFile* packetFile, long whichPacket = 0);
+		long write (PacketFile* packetFile, long whichPacket = 0, bool taggedCells = false);
 
 		// OOB guards (cd071ca9 pattern): worldToCell (terrain.h) does NOT clamp,
 		// and on oversized maps the MOVE/cell grid (width x height) is smaller than
@@ -1898,8 +1901,8 @@ void DeleteMapCells (MissionMapCellInfo* mapData);
 
 void MOVE_init (long moveRange);
 void MOVE_buildData (long height, long width, MissionMapCellInfo* mapData, long numSpecialAreas, GameObjectFootPrint* specialAreaFootPrints);
-long MOVE_saveData (PacketFile* packetFile, long whichPacket = 0);
-long MOVE_readData (PacketFile* packetFile, long whichPacket, bool restoreSavedCosts = false);
+long MOVE_saveData (PacketFile* packetFile, long whichPacket = 0, mc2::save::NavigationFormat format = {});
+long MOVE_readData (PacketFile* packetFile, long whichPacket, bool restoreSavedCosts = false, mc2::save::NavigationFormat format = {});
 void MOVE_cleanup (void);
 
 //long BuildAndSaveMoveData (char* fileName, long height, long width, MissionMapCellInfo* mapData);
