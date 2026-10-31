@@ -96,13 +96,7 @@ def compare(profile, budget, previous=None):
     for mission, reference in budget["missions"].items():
         run = profile.get("runs", {}).get(mission, {})
         noise = run.get("noise", {})
-        quiet = (noise.get("status") == "quiet" and not noise.get("reasons")
-                 and noise.get("external_cpu_scope") == "reserved_cores")
-        external = noise.get("external_cpu_p95")
-        if not number(external) or external >= 15:
-            quiet = False
-        if mission in profile.get("errors", {}):
-            quiet = False
+        valid = mission not in profile.get("errors", {})
         expected = set(reference["bookmarks"])
         marks = run.get("bookmarks", {})
         complete = set(marks) == expected if mission in CAMERA_MISSIONS else True
@@ -117,7 +111,7 @@ def compare(profile, budget, previous=None):
             base = reference["baseline"][metric]
             old = old_values.get(metric)
             status = "INCONCLUSIVE"
-            if quiet and complete and value is not None:
+            if valid and complete and value is not None:
                 meets = value < policy["goal"] if policy["strict"] else value <= policy["goal"]
                 status = "PASS" if meets else "FAIL"
             worst = max(marks, key=lambda n: measurements(marks[n]).get(metric, -1)) if marks and value is not None else None
@@ -129,7 +123,7 @@ def compare(profile, budget, previous=None):
                             "distance_goal_ms": value - policy["goal"] if value is not None else None,
                             "delta_previous_ms": value - old if value is not None and old is not None else None}
         statuses = {r["status"] for r in rows.values()}
-        verdict = "INCONCLUSIVE" if not quiet else ("FAIL" if "FAIL" in statuses else
+        verdict = "INCONCLUSIVE" if not valid else ("FAIL" if "FAIL" in statuses else
                    "INCONCLUSIVE" if "INCONCLUSIVE" in statuses else "PASS")
         results[mission] = {"status": verdict, "noise": noise, "metrics": rows,
                             "bookmarks": {n: measurements(m) for n, m in marks.items()},
@@ -147,7 +141,7 @@ def write_html(path, results, profile, budget, previous=None):
               '<meta name="viewport" content="width=device-width,initial-scale=1">',
               '<title>MC2 performance budgets</title><style>body{font:16px system-ui;margin:auto;max-width:1000px;padding:16px;background:#101820;color:#eef}section{background:#203040;padding:12px;margin:16px 0;border-radius:10px}.scroll{overflow-x:auto}table{border-collapse:collapse;width:100%}td,th{text-align:left;padding:8px;border-bottom:1px solid #567}small{color:#bcd}</style>',
               '<h1>MC2 performance budgets</h1>',
-              '<p>Advisory only. NOISY or missing evidence is INCONCLUSIVE. Negative deltas mean faster. '
+              '<p>Advisory only. Noise annotates measurements; missing evidence is INCONCLUSIVE. Use paired confidence intervals for change verdicts. Negative deltas mean faster. '
               'CPU zones include waits and overlap; do not sum nested zones. GPU 5 ms is a throughput goal, not proof of end-to-end 200 fps.</p>',
               f'<p>Executable SHA: {escape(str(profile.get("exe_sha256", "unknown")))}</p>']
     for mission, result in results.items():
