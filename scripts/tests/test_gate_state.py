@@ -72,7 +72,7 @@ def test_resume_invalidates_changed_evidence(journal, monkeypatch, change):
     assert result == 0 and not state.reused
 
 
-@pytest.mark.parametrize('change', ['none', 'script', 'policy', 'head', 'failure'])
+@pytest.mark.parametrize('change', ['none', 'script', 'policy', 'head', 'failure', 'ambient'])
 def test_offline_receipt_uses_head_and_input_hashes_without_resume(journal, monkeypatch, change):
     script = journal[0].parent / 'check.py'
     policy = journal[0].parent / 'policy.json'
@@ -85,6 +85,8 @@ def test_offline_receipt_uses_head_and_input_hashes_without_resume(journal, monk
         script.write_text('check v2')
     if change == 'policy':
         policy.write_text('{"ceiling": 1}')
+    if change == 'ambient':
+        monkeypatch.setenv('MC2_OPTIONS_OVERRIDE', 'RemasteredBuildings=FALSE')
     head = 'new head' if change == 'head' else 'head'
     monkeypatch.setattr(gate, 'git', lambda *a: head)
     # Offline proofs do not depend on the game executable's presence or bytes.

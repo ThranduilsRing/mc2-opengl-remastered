@@ -167,7 +167,8 @@ class GateState:
         # HEAD pins clean tracked sources. Also hash file inputs: commands and
         # policy/data receipts can change without a new source commit.
         inputs = {ROOT / 'tools/save_noise_mask.json', ROOT / 'tools/mod_known_failures.json',
-                  ROOT / 'Gates/gate_table.json', ROOT / 'scripts/merge_gate.py'}
+                  ROOT / 'Gates/gate_table.json', ROOT / 'scripts/merge_gate.py',
+                  ROOT / 'build64-ninja/CMakeCache.txt'}
         inputs.update((ROOT / 'tests/saveload/baselines').glob('*.json'))
         inputs.update((ROOT / 'tests/smoke/sim_determinism').glob('*.json'))
         for arg in command:
@@ -185,7 +186,8 @@ class GateState:
                     hashes[str(path)] = hashlib.file_digest(source, 'sha256').hexdigest()
             else:
                 hashes[str(path)] = None
-        return hashlib.sha256(json.dumps([command, overrides, hashes], sort_keys=True).encode()).hexdigest()
+        ambient = {k: v for k, v in os.environ.items() if k.startswith('MC2_') or k == 'PYTHONPATH'}
+        return hashlib.sha256(json.dumps([command, overrides, hashes, ambient], sort_keys=True).encode()).hexdigest()
 
     def reusable(self, name, command, overrides):
         row = self.data["stages"].get(name, {})
