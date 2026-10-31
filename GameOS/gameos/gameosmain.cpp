@@ -11,6 +11,7 @@
 #include "render_frame_driver.h"       // RenderFrameDriver_RenderWorld — Slice 6 shared render seam (gated)
 #include "render_snapshot.h"
 #include "../../code/tick_commit.h"
+#include "../../code/render_view.h"
 #include "draw_packet_emitter.h"       // DrawPacket v0
 #include "gos_static_prop_batcher.h"   // batcher_getSortedPacketCount — explicit, do not rely on transitive
 #include "../../RenderCore/MaterialGpu.h"  // RenderCore::MaterialGpu for g_dpSelProp albedoTex fill
@@ -1068,6 +1069,7 @@ int main(int argc, char** argv)
             mc2::overlap::assertSimQuiescent("ExtractRenderSnapshot");
             snap = ExtractRenderSnapshot(packetSequence);
             mc2::overlap::extractRender();   // G7b K3: game render list + clock (zone ExtractRenderList)
+            mc2::render_view::list().freezeBoltDraws(snap.frameArena);
         }
         mc2_debug_state::maybeWriteRenderState(snap);
     frameEmitDrawPackets(snap);

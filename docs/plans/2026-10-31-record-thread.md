@@ -517,3 +517,23 @@ subsequent commands used no profile. Scout timed out at 25 s and exited; targete
 Avoidable token cost: broad historical plan reads; next continuation should read this tail and named source ranges.
 Disk: 0 GB freed, no extra install created; leave only `E:/mc2-installs/claude-record-thread` at `3b855d8f1`.
 After this docs-only closure use explicit `--ref-commit 3b855d8f1` for retained binary proof; do not rebuild unchanged code.
+
+## Continuation: first frozen draw producer, 2026-10-31 (proof pending)
+
+Additive checkpoint on claude/record-thread after 65eaf8828; S4 stays inline.
+WeaponBolt beam/laser geometry, UVs, type colors/alpha, beam mode and texture handles
+now extract into values in RenderView instead of reusable WeaponBolt rv* members.
+After extraction Main copies visible bolt payloads into the current RenderSnapshot
+arena; the existing CPU sequence retains those bytes through inline recording.
+Inline tools can consume staging values synchronously. FX pointers, live object
+dispatch, camera projection, RenderList/HUD containers and light feeds remain.
+Native test retains a packet across staging destruction and another extraction,
+checks copied geometry/material/texture values, and exercises occupied-slot reuse.
+Offline green: s3-bolt-contracts.log (five ratchets + buffer_lifetime, 6 PASS),
+s3-bolt-alltargets.log plus s3-bolt-root-resume.log (all targets built; root resumed
+after fixing legacy mutable projection inputs), s3-bolt-unit.log (3 cases / 41
+assertions PASS). Logs under E:/mc2-archive-2026-10/proofs/record-thread/.
+Next: commit, refresh executable provenance only, explicit existing lane deploy;
+day/night parity viewed; mc2_10 SIMID 20 s; audit/sync zero.
+Then continue remaining native RenderList/HUD/recursive FX freezing, Execute/Draw
+split and moved-entry owner assertions. No worker dispatch in this checkpoint.

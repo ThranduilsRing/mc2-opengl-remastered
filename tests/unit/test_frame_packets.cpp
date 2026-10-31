@@ -3,8 +3,59 @@
 // the three slot arenas preserve the previous two extractions. No GL, no engine.
 #include "doctest.h"
 #include "FramePackets.h"
+#include "../../code/render_view.h"
 
 using namespace RenderCore;
+
+TEST_CASE("bolt draw packet survives staging mutation and a later extraction") {
+    using namespace mc2::render_view;
+    alignas(16) unsigned char memory[3][2048]{};
+    FrameSlotArenas slots;
+    slots.init(memory[0], memory[1], memory[2], sizeof(memory[0]));
+    REQUIRE(slots.retain(1));
+    RenderList list;
+    list.freezeBoltDraws(slots.begin(1));
+    CHECK(slots.begin(1).stats().usedBytes == 0);
+    list.other.resize(2);
+    auto& source = list.other[1];
+    source.flags = Visible | BoltGeometry;
+    source.bolt.laserVertices[2] = glm::vec3(1, 2, 3);
+    source.bolt.laserSide[3] = glm::vec3(4, 5, 6);
+    source.bolt.startUV = 0.25f;
+    source.bolt.uvRepeat = 2;
+    source.bolt.unitLength = 3;
+    source.bolt.middleRGB = 0x123456;
+    source.bolt.boltAlpha = 127;
+    source.bolt.gosTextureHandle = 91;
+    source.bolt.mcTextureHandle = 92;
+    source.bolt.isBeam = true;
+    list.freezeBoltDraws(slots.begin(1));
+    CHECK(list.other[0].frozenBolt == nullptr);
+    const auto* first = source.frozenBolt;
+    REQUIRE(first);
+    CHECK(first != &source.bolt);
+    source.bolt = {};
+    list.clear();
+    REQUIRE(slots.retain(2));
+    list.other.emplace_back().flags = BoltGeometry;
+    list.freezeBoltDraws(slots.begin(2));
+    CHECK(list.other[0].frozenBolt != first);
+    CHECK(first->laserVertices[2] == glm::vec3(1, 2, 3));
+    CHECK(first->laserSide[3] == glm::vec3(4, 5, 6));
+    CHECK(first->startUV == 0.25f);
+    CHECK(first->uvRepeat == 2);
+    CHECK(first->unitLength == 3);
+    CHECK(first->middleRGB == 0x123456);
+    CHECK(first->boltAlpha == 127);
+    CHECK(first->gosTextureHandle == 91);
+    CHECK(first->mcTextureHandle == 92);
+    CHECK(first->isBeam);
+    CHECK_FALSE(slots.retain(4));
+    CHECK(slots.retire(2));
+    CHECK(slots.retire(1));
+    CHECK(slots.retain(4));
+    CHECK(slots.retire(4));
+}
 
 namespace {
 ViewPacket mainView(float x, uint64_t frame) {
