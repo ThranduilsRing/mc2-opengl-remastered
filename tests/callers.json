@@ -38,7 +38,7 @@
         },
         {
           "path": "scripts/kit_payload.py",
-          "line": 218,
+          "line": 222,
           "evidence": "import",
           "reference": "bootstrap_worktree_build",
           "text": "from bootstrap_worktree_build import find_cmake"
@@ -791,7 +791,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/deploy_payload.py",
-          "line": 1987,
+          "line": 2028,
           "evidence": "command",
           "reference": "scripts/check-deploy-hygiene.py",
           "text": "r = subprocess.run([sys.executable, hygiene, target],"
@@ -858,7 +858,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/make-isolated-deploy.py",
-          "line": 330,
+          "line": 332,
           "evidence": "command",
           "reference": "scripts/check-disk-space.py",
           "text": "rc = subprocess.run("
@@ -2213,7 +2213,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1543,
+          "line": 1546,
           "evidence": "command",
           "reference": "scripts/check_sim_include_firewall.py",
           "text": "run_check \"sim_include_firewall\"        \"py -3 -B scripts/tests/test_sim_include_firewall.py && py -3 scripts/check_sim_include_firewall.py\""
@@ -2315,7 +2315,7 @@
         },
         {
           "path": "scripts/kit_payload.py",
-          "line": 217,
+          "line": 221,
           "evidence": "import",
           "reference": "configure_ninja",
           "text": "import configure_ninja as cn"
@@ -2343,7 +2343,7 @@
         },
         {
           "path": "scripts/tests/test_rule_defaults.py",
-          "line": 74,
+          "line": 82,
           "evidence": "import",
           "reference": "configure_ninja",
           "text": "import configure_ninja"
@@ -2638,7 +2638,7 @@
         },
         {
           "path": "scripts/merge_gate.py",
-          "line": 26,
+          "line": 27,
           "evidence": "import",
           "reference": "console_child",
           "text": "import console_child"
@@ -3879,6 +3879,13 @@
           "text": "from deploy_payload import disk_space_main"
         },
         {
+          "path": "scripts/merge_gate.py",
+          "line": 53,
+          "evidence": "import",
+          "reference": "deploy_payload",
+          "text": "from deploy_payload import verify_published_identity"
+        },
+        {
           "path": "scripts/run_smoke.py",
           "line": 1418,
           "evidence": "import",
@@ -3942,6 +3949,13 @@
           "text": "from scripts import deploy_payload  # noqa: E402"
         },
         {
+          "path": "scripts/tests/test_deploy_seed.py",
+          "line": 11,
+          "evidence": "import",
+          "reference": "deploy_payload",
+          "text": "import deploy_payload as deploy"
+        },
+        {
           "path": "scripts/tests/test_deploy_staleness.py",
           "line": 21,
           "evidence": "import",
@@ -3961,6 +3975,13 @@
           "evidence": "import",
           "reference": "deploy_payload",
           "text": "import deploy_payload as deploy"
+        },
+        {
+          "path": "scripts/tests/test_gate_preflight.py",
+          "line": 49,
+          "evidence": "import",
+          "reference": "deploy_payload",
+          "text": "import deploy_payload"
         },
         {
           "path": "scripts/tests/test_install_hygiene.py",
@@ -4027,7 +4048,7 @@
         },
         {
           "path": "scripts/tests/test_rule_defaults.py",
-          "line": 82,
+          "line": 90,
           "evidence": "import",
           "reference": "deploy_payload",
           "text": "import deploy_payload as dp"
@@ -4055,7 +4076,7 @@
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 283,
+          "line": 307,
           "evidence": "import_module",
           "reference": "deploy_payload",
           "text": "return importlib.import_module('deploy_payload')"
@@ -4077,7 +4098,14 @@
         },
         {
           "path": "scripts/deploy_payload.py",
-          "line": 1841,
+          "line": 1666,
+          "evidence": "import",
+          "reference": "exe_fingerprint",
+          "text": "from exe_fingerprint import extract, sha_agrees"
+        },
+        {
+          "path": "scripts/deploy_payload.py",
+          "line": 1882,
           "evidence": "import",
           "reference": "exe_fingerprint",
           "text": "from exe_fingerprint import extract, sha_agrees"
@@ -4091,7 +4119,7 @@
         },
         {
           "path": "scripts/merge_gate.py",
-          "line": 50,
+          "line": 51,
           "evidence": "import",
           "reference": "exe_fingerprint",
           "text": "from exe_fingerprint import extract, sha_agrees"
@@ -4127,6 +4155,13 @@
         {
           "path": "scripts/smoke_lib/exe_guard.py",
           "line": 160,
+          "evidence": "import",
+          "reference": "exe_fingerprint",
+          "text": "import exe_fingerprint"
+        },
+        {
+          "path": "scripts/tests/test_deploy_seed.py",
+          "line": 100,
           "evidence": "import",
           "reference": "exe_fingerprint",
           "text": "import exe_fingerprint"
@@ -4278,14 +4313,14 @@
         },
         {
           "path": "scripts/deploy_payload.py",
-          "line": 1751,
+          "line": 1792,
           "evidence": "import",
           "reference": "kit_payload",
           "text": "import kit_payload"
         },
         {
           "path": "scripts/deploy_payload.py",
-          "line": 1916,
+          "line": 1957,
           "evidence": "import",
           "reference": "kit_payload",
           "text": "import kit_payload"
@@ -4341,7 +4376,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/merge_gate.py",
-          "line": 430,
+          "line": 521,
           "evidence": "command",
           "reference": "scripts/make-isolated-deploy.py",
           "text": "subprocess.run([sys.executable, str(ROOT / \"scripts/make-isolated-deploy.py\"),"
@@ -5064,7 +5099,7 @@
         },
         {
           "path": "scripts/tests/test_rule_defaults.py",
-          "line": 60,
+          "line": 68,
           "evidence": "import",
           "reference": "run_battle_bench",
           "text": "import run_battle_bench as bench"
@@ -5297,7 +5332,7 @@
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 823,
+          "line": 847,
           "evidence": "command",
           "reference": "scripts/run_smoke.py",
           "text": "proc = subprocess.run(cmd, cwd=str(ROOT), capture_output=True,"
@@ -5412,7 +5447,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1540,
+          "line": 1543,
           "evidence": "command",
           "reference": "scripts/run_tools_tests.py",
           "text": "run_check_tri \"kit_art\"                 \"py -3 scripts/run_tools_tests.py --suite art\""
@@ -8171,7 +8206,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1543,
+          "line": 1546,
           "evidence": "command",
           "reference": "scripts/tests/test_sim_include_firewall.py",
           "text": "run_check \"sim_include_firewall\"        \"py -3 -B scripts/tests/test_sim_include_firewall.py && py -3 scripts/check_sim_include_firewall.py\""
@@ -10477,7 +10512,7 @@
       "callers_by_stem": [
         {
           "path": "tools/cxx17_ratchet/cxx17_ratchet.py",
-          "line": 596,
+          "line": 603,
           "evidence": "import",
           "reference": "test_cxx17_ratchet",
           "text": "import test_cxx17_ratchet as t"
@@ -10932,7 +10967,7 @@
       "callers_by_stem": [
         {
           "path": "scripts/merge_gate.py",
-          "line": 32,
+          "line": 33,
           "evidence": "import",
           "reference": "lane_merge",
           "text": "from lane_merge import git_bash, run_logged  # noqa: E402"
@@ -12538,7 +12573,7 @@
         },
         {
           "path": "scripts/tests/test_mod_smoke.py",
-          "line": 472,
+          "line": 485,
           "evidence": "import",
           "reference": "fst",
           "text": "import fst"
@@ -12594,14 +12629,14 @@
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 573,
+          "line": 597,
           "evidence": "import_module",
           "reference": "fst",
           "text": "fst_lib = importlib.import_module('fst')"
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 609,
+          "line": 633,
           "evidence": "import_module",
           "reference": "fst",
           "text": "fst_lib = importlib.import_module('fst')"
@@ -12673,7 +12708,7 @@
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 448,
+          "line": 472,
           "evidence": "import",
           "reference": "mc2x_import",
           "text": "from mc2x_import import fst as fst_lib"
@@ -12940,35 +12975,35 @@
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 325,
+          "line": 349,
           "evidence": "import",
           "reference": "fst_listing",
           "text": "import fst_listing"
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 447,
+          "line": 471,
           "evidence": "import",
           "reference": "fst_listing",
           "text": "import fst_listing"
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 489,
+          "line": 513,
           "evidence": "import",
           "reference": "fst_listing",
           "text": "import fst_listing"
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 591,
+          "line": 615,
           "evidence": "import",
           "reference": "fst_listing",
           "text": "import fst_listing"
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 610,
+          "line": 634,
           "evidence": "import",
           "reference": "fst_listing",
           "text": "import fst_listing"
@@ -13098,14 +13133,28 @@
       "callers_by_stem": [
         {
           "path": "scripts/merge_gate.py",
-          "line": 51,
+          "line": 52,
           "evidence": "import",
           "reference": "mod_smoke",
           "text": "from mod_smoke import load_known_failures"
         },
         {
+          "path": "scripts/merge_gate.py",
+          "line": 191,
+          "evidence": "import",
+          "reference": "mod_smoke",
+          "text": "import mod_smoke as mods"
+        },
+        {
           "path": "scripts/tests/test_gate_preflight.py",
           "line": 11,
+          "evidence": "import",
+          "reference": "mod_smoke",
+          "text": "import mod_smoke as mods"
+        },
+        {
+          "path": "scripts/tests/test_gate_state.py",
+          "line": 119,
           "evidence": "import",
           "reference": "mod_smoke",
           "text": "import mod_smoke as mods"
@@ -14123,21 +14172,21 @@
       "callers_by_stem": [
         {
           "path": "scripts/merge_gate.py",
-          "line": 52,
+          "line": 54,
           "evidence": "import",
           "reference": "saveload_roundtrip",
           "text": "import saveload_roundtrip as saves"
         },
         {
           "path": "scripts/tests/test_gate_preflight.py",
-          "line": 32,
+          "line": 35,
           "evidence": "import",
           "reference": "saveload_roundtrip",
           "text": "import saveload_roundtrip"
         },
         {
           "path": "scripts/tests/test_gate_preflight.py",
-          "line": 54,
+          "line": 69,
           "evidence": "import",
           "reference": "saveload_roundtrip",
           "text": "import saveload_roundtrip"
@@ -16647,7 +16696,7 @@
         },
         {
           "path": "scripts/tests/test_rule_defaults.py",
-          "line": 55,
+          "line": 63,
           "evidence": "import",
           "reference": "sim_determinism",
           "text": "import sim_determinism"
@@ -18651,7 +18700,7 @@
         },
         {
           "path": "scripts/tests/test_rule_defaults.py",
-          "line": 68,
+          "line": 76,
           "evidence": "import",
           "reference": "tracy_capture_compare",
           "text": "import tracy_capture_compare as t"
@@ -19414,6 +19463,13 @@
         }
       ],
       "callers_by_stem": [
+        {
+          "path": "scripts/tests/test_rule_defaults.py",
+          "line": 56,
+          "evidence": "import",
+          "reference": "tools.visual_verify.capture",
+          "text": "from tools.visual_verify import capture"
+        },
         {
           "path": "tools/visual_verify/test_bless_backend.py",
           "line": 93,
