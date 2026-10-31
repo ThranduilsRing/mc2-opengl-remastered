@@ -5,6 +5,7 @@
 #include "gate_value_codec.h"
 #include "vehicle_value_codec.h"
 #include "building_value_codec.h"
+#include "turret_value_codec.h"
 #include <cctype>
 #include <filesystem>
 #include <fstream>
@@ -158,6 +159,43 @@ template<> inline bool equal(const WeaponShotInfo& a, const WeaponShotInfo& b) {
 
 #define BUILDING_MEMBERS &T::teamId, &T::commanderId, &T::refitBuddyWID, \
     &T::parentId, &T::parent, &T::listID, &T::captureTime, &T::moverInProximity, &T::proximityTimer
+
+#define TURRET_MEMBERS &T::teamId, &T::turretRotation, &T::targetWID, &T::readyTime, \
+    &T::lastFireTime, &T::minRange, &T::maxRange, &T::numFunctionalWeapons, \
+    &T::idleWait, &T::idlePosition, &T::oldPosition, &T::parentId, &T::parent, &T::currentWeaponNode
+
+TEST_CASE("save fields: TurretData inherited census and legacy values") {
+    using T = TurretData;
+    auto sample = save_probe::patterned<T>(BASE_MEMBERS, TERRAIN_MEMBERS, TURRET_MEMBERS);
+    sample.objectClass = TURRET; sample.windowsVisible = 0;
+    sample.numSubAreas0 = sample.numSubAreas1 = MAX_SPECIAL_SUB_AREAS;
+    sample.numCellsCovered = 40; sample.cellsCovered[80] = 0;
+    const auto codec = [](auto& a, auto& v) {
+        mc2::save::TurretRecord record{v}; record.serialize(a);
+        if (a.reading()) v = record.value;
+    };
+    REQUIRE(save_probe::roundtrip(sample, codec, BASE_MEMBERS, TERRAIN_MEMBERS, TURRET_MEMBERS));
+    CHECK_FALSE(save_probe::roundtrip(sample, [](auto& a, auto& v) {
+        mc2::save::TurretRecord record{v}; record.serialize(a);
+        if (a.reading()) { v = record.value; v.readyTime[MAX_TURRET_WEAPONS-1] = 0; }
+    }, BASE_MEMBERS, TERRAIN_MEMBERS, TURRET_MEMBERS));
+    const auto bytes = mc2::save::encodeTaggedRecord(mc2::save::TurretRecord{sample}, mc2::save::turretTag);
+    mc2::save::TurretRecord decoded;
+    REQUIRE(mc2::save::decodeTaggedRecord(bytes, decoded, mc2::save::turretTag));
+    CHECK_FALSE(mc2::save::decodeTaggedRecord(std::span(bytes).first(bytes.size()-1), decoded, mc2::save::turretTag));
+    CHECK_FALSE(mc2::save::decodeTaggedRecord(bytes, decoded, mc2::save::terrainTag));
+    sample.didReveal = true;
+    CHECK(mc2::save::encodeTaggedRecord(mc2::save::TurretRecord{sample}, mc2::save::turretTag) == bytes);
+    decoded.value.didReveal = true;
+    REQUIRE(mc2::save::decodeTaggedRecord(bytes, decoded, mc2::save::turretTag));
+    CHECK_FALSE(decoded.value.didReveal);
+    const auto source = compactSource("code/turret.h");
+    CHECK(source.find("struct_TurretData:publicTerrainObjectData{charteamId;"
+        "floatturretRotation;booldidReveal;GameObjectWatchIDtargetWID;floatreadyTime[MAX_TURRET_WEAPONS];"
+        "floatlastFireTime[MAX_TURRET_WEAPONS];floatminRange;floatmaxRange;int32_tnumFunctionalWeapons;"
+        "floatidleWait;glm::vec3idlePosition;glm::vec3oldPosition;DWORDparentId;"
+        "GameObjectWatchIDparent;int32_tcurrentWeaponNode;};") != std::string::npos);
+}
 
 TEST_CASE("save fields: TerrainObjectData independent inherited census") {
     using T = TerrainObjectData;
