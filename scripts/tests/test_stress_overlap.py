@@ -48,3 +48,24 @@ def test_green_on_matching_prefix_red_on_mismatch_or_violation():
     failed = row("jitter1", lines(400))
     failed["rc"] = 1
     assert "rc=1" in so.judge([row("serial", lines(400)), failed])["runs"][1]["red"]
+
+
+def test_requested_ticks_and_finale_are_required():
+    def finale_row(tag, count, marker=True):
+        return row(tag, lines(count)) | {"mission": "mc2_24", "requested_ticks": 2600, "finale_reached": marker}
+    serial = finale_row("serial", 2600)
+    for count in (1000, 2404, 2599):
+        assert not so.judge([serial, finale_row("jitter1", count)])["green"]
+    assert not so.judge([serial, finale_row("jitter1", 2600, False)])["green"]
+    assert so.judge([serial, finale_row("jitter1", 2600)])["green"]
+    short = row("jitter1", lines(350)) | {"requested_ticks": 600}
+    assert not so.judge([row("serial", lines(600)), short])["green"]
+
+
+def test_finale_marker_must_follow_tick_2404_and_reach_a_later_tick():
+    before = "[SIMID v1] simframe=2404 t=80.132\n"
+    marker = "[CONTENT_COOK] source=data/tgl/infantry.tgl key=abc cache=hit\n"
+    after = "[SIMID v1] simframe=2405 t=80.166\n"
+    assert so.finale_reached(before + marker + after)
+    for log in (before + after, marker + before + after, before + marker):
+        assert not so.finale_reached(log)
