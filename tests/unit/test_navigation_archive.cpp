@@ -1,6 +1,24 @@
 #include "save_field_probe.h"
 #include "move.h"
 
+#define DOOR_MEMBERS &T::row, &T::col, &T::length, &T::open, &T::teamID, &T::area, \
+    &T::areaCost, &T::direction, &T::numLinks, &T::links_Legacy32bitPtr, &T::cost, \
+    &T::parent, &T::fromAreaIndex, &T::flags, &T::g, &T::hPrime, &T::fPrime
+
+TEST_CASE("save fields: map doors independent census") {
+    using T = GlobalMapDoor;
+    auto sample = save_probe::patterned<T>(DOOR_MEMBERS);
+    SAVE_FIELD_SHAPE(sample, row, col, length, open, teamID, area, areaCost, direction,
+        numLinks, links, cost, parent, fromAreaIndex, flags, g, hPrime, fPrime);
+    CHECK(save_probe::memberBytes<T>(DOOR_MEMBERS) == sizeof(T));
+    CHECK(save_probe::roundtrip(sample, [](auto& a, auto& v) { a(v); }, DOOR_MEMBERS));
+    std::array<T, 1> values{sample}, decoded{};
+    auto bytes = mc2::save::encodeNavigationRecord(std::span(values), mc2::save::tagMapDoors);
+    CHECK(bytes.size() == 12 + 57);
+    REQUIRE(mc2::save::decodeNavigationRecord(bytes, std::span(decoded), mc2::save::tagMapDoors));
+    CHECK(std::memcmp(values.data(), decoded.data(), sizeof(T)) == 0);
+}
+
 #define AREA_MEMBERS &T::sectorR, &T::sectorC, &T::doors_Legacy32bitPtr, &T::type, \
     &T::numDoors, &T::ownerWID, &T::teamID, &T::offMap, &T::open, &T::cellsCovered_Legacy32bitPtr
 

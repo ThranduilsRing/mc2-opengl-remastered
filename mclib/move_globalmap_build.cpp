@@ -396,7 +396,11 @@ long GlobalMap::init (PacketFilePtr packetFile, long whichPacket, bool restoreSa
 
 	// Mod-tolerance: grow doors allocation to packet size if the pak uses a
 	// larger door struct than baseline.
-	if (mcoWideSchema) {
+	if (format.doors) {
+		doors = mc2::globalmap::ownZeroed(doorsStore, static_cast<size_t>(numDoors + NUM_DOOR_OFFSETS));
+		doors_links = ownDoorLinkViews(static_cast<size_t>(numDoors + NUM_DOOR_OFFSETS));
+		result = readNavigationPacket(packetFile, whichPacket++, std::span(doors, numDoors + NUM_DOOR_OFFSETS), mc2::save::tagMapDoors);
+	} else if (mcoWideSchema) {
 		// MCO GlobalMapDoor is 73 bytes (8 shorts widened to int; 7 trailing
 		// ints + char/bool fields unchanged; two link pointers skipped). Read
 		// into a temp buffer and widen into the real narrow doors[] array.
@@ -716,7 +720,12 @@ long GlobalMap::write (PacketFilePtr packetFile, long whichPacket, mc2::save::Na
 		doors[i].hPrime = 0;
 		doors[i].fPrime = 0;
 	}
-	result = packetFile->writePacket(whichPacket++, reinterpret_cast<unsigned char*>(doors), sizeof(GlobalMapDoor) * (numDoors + NUM_DOOR_OFFSETS));
+	if (format.doors) {
+		auto bytes = mc2::save::encodeNavigationRecord(std::span(doors, numDoors + NUM_DOOR_OFFSETS), mc2::save::tagMapDoors);
+		result = packetFile->writePacket(whichPacket++, bytes.data(), static_cast<unsigned int>(bytes.size()));
+	} else {
+		result = packetFile->writePacket(whichPacket++, reinterpret_cast<unsigned char*>(doors), sizeof(GlobalMapDoor) * (numDoors + NUM_DOOR_OFFSETS));
+	}
 	for (int i = 0; i < (numDoors + NUM_DOOR_OFFSETS); i++) {
 		doors_links[i][0] = doorLinkSave[i][0];
 		doors_links[i][1] = doorLinkSave[i][1];

@@ -1199,6 +1199,18 @@ struct _GlobalMapDoor {
 	int					g;
 	int					hPrime;
 	int					fPrime;
+	void serialize(mc2::save::Archive& a) {
+		a(row, col, length, open, teamID);
+		for (auto& v : area) a(v);
+		for (auto& v : areaCost) a(v);
+		for (auto& v : direction) a(v);
+		for (auto& v : numLinks) a(v);
+		// Reserved pointer slots are not dereferenced; doors_links views are
+		// rebuilt over the loaded link pool. Search parent/fromAreaIndex/flags/
+		// g/hPrime/fPrime are cleared by write() and reinitialized per search.
+		for (auto& v : links_Legacy32bitPtr) a(v);
+		a(cost, parent, fromAreaIndex, flags, g, hPrime, fPrime);
+	}
 }; using GlobalMapDoor = _GlobalMapDoor;
 
 using GlobalMapDoorPtr = GlobalMapDoor*;

@@ -219,7 +219,7 @@ void Mission::save (const char *saveFileName)
 	DeleteFile(tmpName);
 	free(tmpRAM);
 
-	currentPacket += MOVE_saveData(&saveFile, currentPacket, {.cells = true, .areas = true});
+	currentPacket += MOVE_saveData(&saveFile, currentPacket, {.cells = true, .areas = true, .doors = true});
 
 	loadProgress = 75.0f;
 
@@ -297,6 +297,7 @@ void Mission::save (const char *saveFileName)
     sections.add(mc2::save::tagWatchList, 1, true, {});
     sections.add(mc2::save::tagMapCells, 1, true, {});
     sections.add(mc2::save::tagMapAreas, 1, true, {});
+    sections.add(mc2::save::tagMapDoors, 1, true, {});
     {
         auto handles = [](auto slots) {
             std::vector<std::uint32_t> result;
