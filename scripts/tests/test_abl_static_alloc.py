@@ -22,6 +22,7 @@ def test_static_allocation_refusal_never_reads_null(tmp_path, method):
 #include <cstdlib>
 #include <cstring>
 #include <cstddef>
+#include <new>
 union StackItem { char* address; long integer; };
 using StackItemPtr = StackItem*;
 enum class ABLPool { Stack };
@@ -64,7 +65,10 @@ int main() {
         for (int failure = 1; failure <= 4; ++failure) {
             Module module; File file;
             operation = fatals = reads = 0; failAt = failure;
-            module.run(&file, values);
+            bool refused = false;
+            try { module.run(&file, values); }
+            catch (const std::bad_alloc&) { refused = true; }
+            assert(refused == (failure <= 3));
             assert(fatals == (failure <= 3 ? 1 : 0));
             // A failed first array allocation must not enter either read path.
             if (failure <= 2) assert(reads == 0);
