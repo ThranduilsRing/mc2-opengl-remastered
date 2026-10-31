@@ -278,6 +278,13 @@ struct ColorPropIsland : mc2vk::IslandState {
     mc2vk::ResidentTextureRef albedoTexture;
     bool descriptorsDirty[mc2vk::kMaxFramesInFlight]={};
     std::array<VkImageView,2> boundTextures[mc2vk::kMaxFramesInFlight]{};
+    struct MaskBinding {
+        VkDescriptorSet set = VK_NULL_HANDLE;
+        VkDescriptorBufferInfo info{};
+        uint64_t generation = 0;
+        uint32_t mapGeneration = 0;
+    };
+    MaskBinding boundMask[mc2vk::kMaxFramesInFlight]{};
     mc2vk::OwnedSampler albedoSamp;
     mc2vk::OwnedBuffer  layerBuf;         // per-type int layer SSBO
     mc2vk::ResidentTextureRef albedoOnTexture;
@@ -362,6 +369,7 @@ void write_descriptors(ColorPropIsland* s, int parity = -1) {
     if (parity<0) { for (auto& dirty : s->descriptorsDirty) dirty = true; return; }
     for (int i=parity;i<=parity;++i) {
     s->descriptorsDirty[i]=false;
+    s->boundMask[i] = {};
     if (s->set[i] == VK_NULL_HANDLE) continue;
     // The ring bindings (0 UBO, 1 instances, 4 LightsData) at the frame ring's current buffer; the next frame of this parity re-points them at
     // the buffer its spans live in (ringBound is cleared).
@@ -1759,33 +1767,32 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
         write_descriptors(s,int(par)); s->boundTextures[par]=views;
     }
     void* hzbMask = nullptr;
+    uint64_t hzbMaskGeneration = 0;
     gosPostProcess* pp = getGosPostProcess();
-    const bool hzbCulled = pp && pp->runVkPostHzbNative(feed, s->mapGeneration, &hzbMask);
+    const bool hzbCulled = pp && pp->runVkPostHzbNative(feed, s->mapGeneration, &hzbMask, &hzbMaskGeneration);
     VkDescriptorBufferInfo maskInfo{hzbCulled ? reinterpret_cast<VkBuffer>(hzbMask) : s->hotBuf.get(),0,VK_WHOLE_SIZE};
     VkWriteDescriptorSet maskWrite{VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
     maskWrite.dstSet = s->set[par]; maskWrite.dstBinding = 9; maskWrite.descriptorCount = 1;
     maskWrite.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; maskWrite.pBufferInfo = &maskInfo;
+    auto& boundMask = s->boundMask[par];
+    const bool maskUnchanged = boundMask.set == maskWrite.dstSet &&
+        boundMask.info.buffer == maskInfo.buffer && boundMask.info.offset == maskInfo.offset &&
+        boundMask.info.range == maskInfo.range && boundMask.generation == hzbMaskGeneration &&
+        boundMask.mapGeneration == s->mapGeneration;
     if (TracyIsConnected) {
-        // Observe the exact slot tuple; a full descriptor rewrite invalidates it.
-        struct MaskObservation {
-            VkDescriptorSet set = VK_NULL_HANDLE;
-            VkDescriptorBufferInfo info{};
-            uint32_t generation = 0;
-        };
-        static thread_local MaskObservation previous[mc2vk::kMaxFramesInFlight];
         static thread_local uint64_t calls = 0, unchanged = 0;
-        auto& old = previous[par];
         ++calls;
-        unchanged += !descriptorsRewritten && old.set == maskWrite.dstSet &&
-            old.info.buffer == maskInfo.buffer && old.info.offset == maskInfo.offset &&
-            old.info.range == maskInfo.range && old.generation == s->mapGeneration;
-        old = {maskWrite.dstSet, maskInfo, s->mapGeneration};
+        unchanged += maskUnchanged;
         if (calls % 256 == 0)
-            std::fprintf(stderr, "[DRAWSCREEN_MASK] calls=%llu unchanged=%llu items=%u\n",
-                         static_cast<unsigned long long>(calls), static_cast<unsigned long long>(unchanged), instanceCount);
+            std::fprintf(stderr, "[DRAWSCREEN_MASK] calls=%llu unchanged=%llu writes=%llu items=%u\n",
+                         static_cast<unsigned long long>(calls), static_cast<unsigned long long>(unchanged),
+                         static_cast<unsigned long long>(calls - unchanged), instanceCount);
     }
-    { ZoneScopedN("VKIsl.Props.MaskDescriptorWrite");
-      vkUpdateDescriptorSets(s->device,1,&maskWrite,0,nullptr); }
+    if (!maskUnchanged) {
+        ZoneScopedN("VKIsl.Props.MaskDescriptorWrite");
+        vkUpdateDescriptorSets(s->device,1,&maskWrite,0,nullptr);
+        boundMask = {maskWrite.dstSet, maskInfo, hzbMaskGeneration, s->mapGeneration};
+    }
 
 
     // VK-PROP-AMBIENT-IBL-1 / VK-PROP-LIGHTFEED-NATIVE-1: per-frame copy of the game's

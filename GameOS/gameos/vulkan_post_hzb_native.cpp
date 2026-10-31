@@ -141,6 +141,7 @@ struct gosPostProcess::VkPostHzbNative {
     std::vector<PropBounds> propBounds;
     uint32_t boundsGeneration = UINT32_MAX;
     uint32_t cullCapacity = 0, previousCount = 0;
+    uint64_t visibilityGeneration = 0;
     uint64_t measuredFrames = 0, totalCulled = 0, totalTested = 0;
     mc2vk::OwnedBuffer projected, visibility, instances, localBounds;
     mc2vk::OwnedDescriptorSetLayout cullDsl;
@@ -244,6 +245,9 @@ bool build_prop_cull(gosPostProcess::VkPostHzbNative& state, uint32_t count) {
     if (!make_buffer(s, uint64_t(s->cullCapacity)*sizeof(ProjectedProp), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, s->projected, "hzb.projected") ||
         !make_buffer(s, uint64_t(s->cullCapacity)*sizeof(GpuStaticPropInstance), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, s->instances, "hzb.instances") ||
         !make_buffer(s, uint64_t(s->cullCapacity+1)*sizeof(uint32_t), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, s->visibility, "hzb.visibility")) return false;
+    // A recycled Vulkan handle must not leave consumers bound to the old mask.
+    static uint64_t nextVisibilityGeneration = 0;
+    s->visibilityGeneration = ++nextVisibilityGeneration;
     if (!s->cullDsl) {
         VkDescriptorSetLayoutBinding bindings[5] = {};
         for (uint32_t i = 0; i < 5; ++i) {
@@ -677,11 +681,12 @@ void gosPostProcess::prewarmVkHzb() {
     if(!build_prop_cull(*s,1024)) destroy_state(s);
 }
 
-bool gosPostProcess::runVkPostHzbNative(const Mc2ColorPropFeed& feed, uint32_t generation, void** maskBuffer)
+bool gosPostProcess::runVkPostHzbNative(const Mc2ColorPropFeed& feed, uint32_t generation, void** maskBuffer, uint64_t* maskGeneration)
 {
     g_health.runtimeGate = hzbEnabled_ ? 1 : 0;
     if (maskBuffer) *maskBuffer = nullptr;
-    if (!hzbEnabled_ || !maskBuffer || !feed.instances112 || !feed.count || feed.count > 131072) return false;
+    if (maskGeneration) *maskGeneration = 0;
+    if (!hzbEnabled_ || !maskBuffer || !maskGeneration || !feed.instances112 || !feed.count || feed.count > 131072) return false;
     // Small feeds cannot amortize the pyramid and dispatches. A null mask means
     // the color pass keeps every instance, including after a larger prior frame.
     if (feed.count < 1024) {
@@ -864,6 +869,7 @@ bool gosPostProcess::runVkPostHzbNative(const Mc2ColorPropFeed& feed, uint32_t g
 
     s->previousCount = feed.count;
     *maskBuffer = reinterpret_cast<void*>(s->visibility.get());
+    *maskGeneration = s->visibilityGeneration;
     ++hzbBuildCount_;
     g_health.copyDepthOps = 0;
     g_health.readbackOps = 0;
