@@ -587,7 +587,8 @@ long GameObjectManager::Save (PacketFilePtr file, long packetNum)
 	MC2_SAVE_STRUCT(ObjectManagerData, data);
 	CopyTo(&data);
 
-	file->writePacket(packetNum,reinterpret_cast<MemoryPtr>(&data),sizeof(ObjectManagerData),STORAGE_TYPE_RAW);
+	auto header = mc2::save::encodeTaggedRecord(data, mc2::save::objectManagerTag);
+	file->writePacket(packetNum, header.data(), static_cast<unsigned int>(header.size()), STORAGE_TYPE_RAW);
 	packetNum++;
 
 	for (long i=0;i<=getMaxObjects();i++)
@@ -644,7 +645,7 @@ ObjectTypePtr GameObjectManager::savedObjectType (long typeNum, long slot)
 }
 
 //-------------------------------------------------------------------
-std::optional<std::string_view> GameObjectManager::checkSavedObjects (PacketFilePtr file, long* headerPacket, bool saveV2)
+std::optional<std::string_view> GameObjectManager::checkSavedObjects (PacketFilePtr file, long* headerPacket, bool saveV2, bool managerValues)
 {
 	using namespace mc2_saved_objects;
 	RecordSizes sizes = {};
@@ -669,14 +670,27 @@ std::optional<std::string_view> GameObjectManager::checkSavedObjects (PacketFile
 		return static_cast<uint32_t>(file->getPacketSize());
 	};
 
-	// The header's position depends on how many packets the earlier sections wrote, so look for it by size
-	// and by the run it describes.
+	// Tagged headers are identified by their wire tag; legacy headers retain the native-size probe.
 	std::optional<std::string_view> verdict = "no_object_manager_header";
 	for (long p = 0; p < numPackets; ++p) {
-		if (sizeAt(static_cast<uint32_t>(p)) != sizeof(ObjectManagerData))
-			continue;
 		ObjectManagerData data{};
-		file->readPacket(static_cast<int>(p), reinterpret_cast<MemoryPtr>(&data));
+		const auto size = sizeAt(static_cast<uint32_t>(p));
+		if (managerValues) {
+			if (size < 8 || size > mc2::save::maxFileBytes) continue;
+			mc2::save::Bytes bytes(size);
+			if (file->readPacket(static_cast<int>(p), bytes.data()) != size) continue;
+			mc2::save::Archive probe(bytes);
+			std::uint32_t tag = 0;
+			probe(tag);
+			if (tag != mc2::save::objectManagerTag) continue;
+			if (!mc2::save::decodeTaggedRecord(bytes, data, tag)) {
+				verdict = "invalid_object_manager_header";
+				break;
+			}
+		} else {
+			if (size != sizeof(data)) continue;
+			file->readPacket(static_cast<int>(p), reinterpret_cast<MemoryPtr>(&data));
+		}
 		HeaderCounts h = {};
 		h.byClass[kTerrain] = data.numTerrainObjects;
 		h.byClass[kBuilding] = data.numBuildings;
@@ -715,10 +729,19 @@ std::optional<std::string_view> GameObjectManager::checkSavedObjects (PacketFile
 }
 
 //-------------------------------------------------------------------
-long GameObjectManager::Load (PacketFilePtr file, long packetNum)
+long GameObjectManager::Load (PacketFilePtr file, long packetNum, bool managerValues)
 {
 	ObjectManagerData data{};
-	file->readPacket(packetNum,reinterpret_cast<MemoryPtr>(&data));
+	if (managerValues) {
+		file->seekPacket(packetNum);
+		if (file->getPacketSize() != 68) Fatal(0, "Invalid object manager packet size");
+		mc2::save::Bytes bytes(68);
+		if (file->readPacket(packetNum, bytes.data()) != bytes.size() ||
+			!mc2::save::decodeTaggedRecord(bytes, data, mc2::save::objectManagerTag))
+			Fatal(0, "Invalid object manager value record");
+	} else {
+		file->readPacket(packetNum,reinterpret_cast<MemoryPtr>(&data));
+	}
 	packetNum++;
 
 	CopyFrom(&data);

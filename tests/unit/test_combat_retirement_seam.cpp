@@ -453,13 +453,13 @@ TEST_CASE("CombatRetirementProduction/native loader preserves absolute deadlines
         CHECK(restored.retireDeadlineTick == deadlines[i].tick);
         CHECK(restored.retireDeadlineState == deadlines[i].savedState());
     }
-    REQUIRE_FALSE(GameObjectManager::checkSavedObjects(&resave, nullptr, true));
+    REQUIRE_FALSE(GameObjectManager::checkSavedObjects(&resave, nullptr, true, true));
     objects.objTypeManager = nullptr;
     objects.destroy();
     objects.objTypeManager = world.ownedTypes;
     owner.resetCombatClock();
     owner.restoreCombatClock(*mc2::save::readSavedCombatClock(resave, true));
-    REQUIRE(objects.Load(&resave, 4) == 15);
+    REQUIRE(objects.Load(&resave, 4, true) == 15);
     CHECK(owner.getCombatClock().ticks == continued.ticks);
     CHECK(std::bit_cast<std::uint64_t>(owner.getCombatClock().frac) == std::bit_cast<std::uint64_t>(continued.frac));
     for (int i = 0; i < static_cast<int>(deadlines.size()); ++i) {

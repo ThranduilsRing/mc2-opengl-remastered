@@ -293,6 +293,7 @@ void Mission::save (const char *saveFileName)
     mc2::save::SectionContainer sections;
     sections.add(mc2::save::tagCommander, 1, true, {});
     sections.add(mc2::save::tagTeam, 1, true, {});
+    sections.add(mc2::save::tagObjectManager, 1, true, {});
     {
         auto handles = [](auto slots) {
             std::vector<std::uint32_t> result;
@@ -539,7 +540,8 @@ bool Mission::openSaveFile(MissionLoadFrame& f) {
 	}
 	currentPacket = 2;
 
-	if (const auto why = GameObjectManager::checkSavedObjects(&loadFile, nullptr, f.saveV2)) {
+	if (const auto why = GameObjectManager::checkSavedObjects(&loadFile, nullptr, f.saveV2,
+		f.sections.find(mc2::save::tagObjectManager) != nullptr)) {
 		mc2::fmt::print_err("[SAVE v1] event=reject reason={} file={}\n", *why, mc2::fmt::safe(loadFileName));
 		return true;
 	}
