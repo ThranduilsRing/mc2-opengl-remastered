@@ -427,7 +427,7 @@ def acquire(label: str, *, wait: bool = True, timeout_s: Optional[float] = None,
                                "cwd": os.getcwd(), "argv": sys.argv[:3], "since": time.time()} if guard else _read(slot_path(i))
                         _write_record(slot_path(i), dict(rec, slot=i, exclusive=exclusive,
                                                        cores_per_slot=cores_per_slot(),
-                                                       affinity_mask=0xFFF0 if exclusive else affinity_mask(i)))
+                                                       affinity_mask=sum(affinity_mask(j) for j in range(slot_count())) if exclusive else affinity_mask(i)))
                         allocated.append((slot_path(i), _read(slot_path(i))))
                     if eligible:
                         queue.pop(0)
