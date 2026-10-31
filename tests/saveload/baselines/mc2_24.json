@@ -69,12 +69,7 @@
     "build": []
    },
    "CommanderData": {
-    "run": [
-     [
-      28,
-      1279
-     ]
-    ],
+    "run": [],
     "build": []
    },
    "TerrainObjectData": {
@@ -109,7 +104,7 @@
  "judged": "first-save-only",
  "resave_present": true,
  "packets": 20000,
- "overall": "54a9edd40b049003",
+ "overall": "845d5cb2cd1eccc8",
  "resave_identical": false,
  "resave_matches_policy": false,
  "runs": [
@@ -334,15 +329,15 @@
    "TeamStaticData",
    7016,
    1,
-   80,
-   "5e9256441d3bb375"
+   88,
+   "ed89b6d890fc6117"
   ],
   [
    "TeamData",
    7017,
    3,
-   1464,
-   "e5c86e255e4985b1"
+   1488,
+   "06d65289d2a7058d"
   ],
   [
    "ObjectManagerData",
@@ -761,15 +756,15 @@
    "StaticCommanderData",
    10306,
    1,
-   8,
-   "fafdd44c03daf5f7"
+   16,
+   "de41d82f5ed36b47"
   ],
   [
    "CommanderData",
    10307,
    3,
-   3864,
-   "2cabca13871ead89"
+   3744,
+   "43ffaf1782af6d8d"
   ],
   [
    "text",
@@ -789,8 +784,8 @@
    "sections",
    10313,
    1,
-   575153,
-   "20a8c8f4686217b3"
+   575193,
+   "47f6cf0e490e4b3c"
   ],
   [
    "empty",
@@ -822,5 +817,19 @@
    "data/missions/gaea_peaks_01.pak": "af7be4e2f5a9c1c4"
   },
   "problems": []
+ },
+ "schema_migration": {
+  "packet": "B: CMST/CMDR/TMST/TEAM v1",
+  "source": "E:/mc2-archive-2026-10/proofs/merge88/finish-baseline-mc2_24/save1.ims",
+  "source_sha256": "1e6289cf4c9856520889f6260b1f61d7724237247e3cacf513c1cfc30fc3b522",
+  "native_masked_digest": "54a9edd40b049003",
+  "changed_runs": [
+   "TeamStaticData",
+   "TeamData",
+   "StaticCommanderData",
+   "CommanderData",
+   "sections"
+  ],
+  "method": "Transform the SHA-verified archived pin: explicit fields, zero inactive group IDs, omit group padding, add required sections. Every unrelated run digest retained exactly; no live-run repin."
  }
 }
