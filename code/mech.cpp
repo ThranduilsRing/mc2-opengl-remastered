@@ -819,13 +819,16 @@ void BattleMech::damageLoadedComponents (void)
 }	
 
 #include "save_struct_zero.h"
+#include "mech_value_codec.h"
 void BattleMech::Save (PacketFilePtr file, long packetNum)
 {
 	MC2_SAVE_STRUCT(MechData, data);
 	CopyTo(&data);
 
 	//PacketNum incremented in ObjectManager!!
-	file->writePacket(packetNum,reinterpret_cast<MemoryPtr>(&data),sizeof(MechData),STORAGE_TYPE_ZLIB);
+	auto bytes = mc2::save::encodeTaggedRecord(mc2::save::MechRecord{data}, mc2::save::mechTag);
+	if (bytes.empty()) Fatal(0, "Invalid mech ObjectSlot");
+	file->writePacket(packetNum, bytes.data(), static_cast<unsigned int>(bytes.size()), STORAGE_TYPE_ZLIB);
 }
 
 void BattleMech::CopyTo (MechData *data)
