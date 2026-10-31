@@ -8,7 +8,7 @@
 // v1: static-prop block (identity + transform, observational)
 // v1.1: texArrayLayer/materialIdx wired from per-typeID primary material cache.
 //
-// Arena: module-static ping-pong buffers in BSS, wrapped by
+// Arena: three module-static buffers in BSS, wrapped by
 // RenderCore::FrameArena instances. No per-frame heap allocation.
 
 #include "render_snapshot.h"
@@ -31,9 +31,9 @@
 #include "mc2fmt.h"
 
 // ---------------------------------------------------------------------------
-// Module-static ping-pong arenas (never freed).
-// s_arenaIndex flips each call: the incoming frame resets the idle arena and
-// writes into it; the previous frame's data sits untouched in the other slot.
+// Module-static three-slot arenas (never freed).
+// Each extraction resets its sequence's slot; the previous two extractions'
+// data stays untouched. Consumers still copy synchronously before recycling.
 // FrameArena instances are non-owning wrappers; actual buffers are s_arenaBuffers.
 // ---------------------------------------------------------------------------
 
@@ -63,15 +63,15 @@ static CachedSnapshotCounters s_cachedCounters = {};
 // plus 1 MiB for draw-slot packets, mechs and alignment. The old 1 MiB
 // total overflowed at ~9,500 props. Derive row storage from the actual ABI.
 static constexpr size_t kArenaBytes = 65536u * sizeof(ExtractedStaticProp) + 1024u * 1024u;
-alignas(16) static uint8_t s_arenaBuffers[2][kArenaBytes];
-static RenderCore::FrameSlotArenas s_slotArenas;   // slot = frame % 2; the frame's first user resets the slot's arena
+alignas(16) static uint8_t s_arenaBuffers[RenderCore::FrameSlotArenas::kSlots][kArenaBytes];
+static RenderCore::FrameSlotArenas s_slotArenas;   // slot = extraction sequence % 3
 static bool                        s_arenasInited = false;
 
 // ---------------------------------------------------------------------------
 // v2.3: last-produced snapshot, valid for one full frame.
 // Written by ExtractRenderSnapshot() just before return; read by getLastRenderSnapshot()
 // which is called from flush() in the same frame. The Span pointers inside are backed
-// by the ping-pong arena — valid until the next ExtractRenderSnapshot() call.
+// by the three-slot arena; the latest descriptor is replaced at the next extraction.
 // s_hasLastSnapshot is false until the first extraction completes; getLastRenderSnapshot()
 // returns nullptr before that, so flush() on frame 1 safely gets null and skips snap-cull.
 // ---------------------------------------------------------------------------
@@ -87,8 +87,8 @@ const RenderSnapshot* getLastRenderSnapshot() {
 //
 // Called once per frame between DoGameLogic() and draw_screen().
 // Returns a snapshot whose Span pointers are backed by a module-static
-// ping-pong arena (snap.arena is non-owning).  The snapshot is valid until
-// the next call, at which point the same arena slot is reset and reused.
+// three-slot arena (snap.arena is non-owning). The spans survive two subsequent
+// extractions; the third resets and reuses the same slot.
 // ---------------------------------------------------------------------------
 RenderSnapshot ExtractRenderSnapshot()
 {
@@ -99,10 +99,10 @@ RenderSnapshot ExtractRenderSnapshot()
     snap.arenaOverflow = false;
     // Lazy init on first call (avoids static-init order dependency).
     if (!s_arenasInited) {
-        s_slotArenas.init(s_arenaBuffers[0], s_arenaBuffers[1], kArenaBytes);
+        s_slotArenas.init(s_arenaBuffers[0], s_arenaBuffers[1], s_arenaBuffers[2], kArenaBytes);
         s_arenasInited = true;
     }
-    // The frame's slot arena (frame % 2): reset here, the previous frame's data sits untouched in the other slot.
+    // Reset only this extraction's slot; the previous two slots stay untouched.
     snap.frameArena = s_slotArenas.begin(s_frameIndex);
 
     // -----------------------------------------------------------------------

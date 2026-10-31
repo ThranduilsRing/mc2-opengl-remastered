@@ -1,6 +1,6 @@
 // tests/unit/test_frame_packets.cpp
 // P1 frame packets (RenderCore/FramePackets.h): what a consumer reads is the frame's PUBLISHED view and lighting, it changes only at publish(), and
-// the slot arenas recycle exactly as the old ping-pong did. No GL, no engine.
+// the three slot arenas preserve the previous two extractions. No GL, no engine.
 #include "doctest.h"
 #include "FramePackets.h"
 
@@ -58,7 +58,10 @@ TEST_CASE("the next frame's set replaces the published one only at its publish; 
     CHECK(pub.mainView().uniforms.cameraWorldPos[0] == 1.0f);
     pub.publish();
     CHECK(pub.mainView().uniforms.cameraWorldPos[0] == 2.0f);
-    CHECK(f1.views[0].uniforms.cameraWorldPos[0] == 1.0f);       // still readable (the frame two back is recycled only when frame 3 begins)
+    CHECK(f1.views[0].uniforms.cameraWorldPos[0] == 1.0f);
+    pub.begin(3)->addView(mainView(3.0f, 3));
+    pub.publish();
+    CHECK(f1.views[0].uniforms.cameraWorldPos[0] == 1.0f);       // frame 1 is recycled only when frame 4 begins
 }
 
 TEST_CASE("a second set in the same frame supersedes the first without disturbing it") {
@@ -76,12 +79,12 @@ TEST_CASE("a slot recycled under the published set (a skipped publish) drops it 
     FramePacketPublisher pub;
     pub.begin(1)->addView(mainView(1.0f, 1));
     pub.publish();
-    FramePackets* c = pub.begin(3);                              // slot 1 again: frame 1's arena is reset
+    FramePackets* c = pub.begin(4);                              // slot 1 again: frame 1's arena is reset
     REQUIRE(c);
     CHECK(pub.mainView().id == kInvalidViewId);                  // published_ fell back to the zeroed set, not to reset memory
-    c->addView(mainView(3.0f, 3));
+    c->addView(mainView(4.0f, 4));
     pub.publish();
-    CHECK(pub.mainView().uniforms.cameraWorldPos[0] == 3.0f);
+    CHECK(pub.mainView().uniforms.cameraWorldPos[0] == 4.0f);
 }
 
 TEST_CASE("lighting is carried with the set and a full view list refuses the extra view") {
@@ -98,21 +101,31 @@ TEST_CASE("lighting is carried with the set and a full view list refuses the ext
 }
 
 TEST_CASE("slot arenas: the first user of a frame resets its slot, later users keep bumping, the other slot is untouched") {
-    alignas(16) static uint8_t m0[256], m1[256];
+    alignas(16) static uint8_t m0[256], m1[256], m2[256];
     FrameSlotArenas s;
-    s.init(m0, m1, 256);
+    s.init(m0, m1, m2, 256);
     FrameArena& a1 = s.begin(1);                                 // slot 1
     CHECK(a1.allocArray<uint32_t>(4, "x").size() == 4);
     const size_t used = a1.bytesUsed();
     FrameArena& a1b = s.begin(1);                                // same frame: no reset
     CHECK(&a1 == &a1b);
     CHECK(a1b.bytesUsed() == used);
-    FrameArena& a2 = s.begin(2);                                 // slot 0
+    FrameArena& a2 = s.begin(2);                                 // slot 2
     CHECK(a2.bytesUsed() == 0);
     CHECK(a1.bytesUsed() == used);                               // the other slot is untouched
-    FrameArena& a3 = s.begin(3);                                 // slot 1 again: reset
-    CHECK(&a3 == &a1);
+    FrameArena& a3 = s.begin(3);                                 // slot 0, both earlier slots untouched
+    CHECK(&a3 != &a1);
+    CHECK(&a3 != &a2);
     CHECK(a3.bytesUsed() == 0);
+    CHECK(a1.bytesUsed() == used);
+    CHECK(s.frameOfSlot(1) == 1);
+    CHECK(s.frameOfSlot(2) == 2);
+    CHECK(s.frameOfSlot(0) == 3);
+    FrameArena& a4 = s.begin(4);                                 // slot 1 again: reset
+    CHECK(&a4 == &a1);
+    CHECK(a4.bytesUsed() == 0);
+    CHECK(s.frameOfSlot(1) == 4);
+    CHECK(FrameSlotArenas::slotOf(0x100000001ull) == 2);          // reduce the full sequence before narrowing
 }
 
 }  // TEST_SUITE

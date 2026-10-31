@@ -21,7 +21,7 @@ Main retains SDL/input, UI building, camera and extraction. Validate this agains
 |---|---|---|
 | S1 inventory | Native shape-leaf census DONE at `46a9f82a7`; external receipts still open | Farm repeats and save/load policy/reference mismatch remain open; no further census changes needed |
 | S2 explicit state | DONE, proven engine `6fcde0272` | CPU view values, packet-owned light rows/caches and editor viewport callers; final receipts below. Next S3 |
-| S3 rings/lifetimes | NOT STARTED | Three CPU slots, RenderList/HUD values, retirement graveyard, Execute(main)/Draw(record), moved-entry owner assertions |
+| S3 rings/lifetimes | IN PROGRESS: value arenas N=3; proof pending | RenderList/HUD values, retirement graveyard, Execute(main)/Draw(record), moved-entry owner assertions still open |
 | S4 thread | NOT STARTED | Seal after sim commit, consume sealed packets, retire safely; default ON only with all gates green |
 
 ## S1 source inventory at the base
@@ -379,3 +379,26 @@ S1 external farm-key/save-policy/paired-performance gaps remain as recorded; no 
 The deployed binary stays at `6fcde0272` after this docs-only closure: use that explicit ref for retained
 proof runs; rebuild on the next engine change. No additional verification is needed for unchanged code.
 Disk: 0 GB freed; leave only `E:/mc2-installs/claude-record-thread`. All own build/game/proof children exited.
+
+## S3 first checkpoint, 2026-10-31 (implementation; proof pending)
+
+Expanded the existing value-only FramePackets and RenderSnapshot arenas to three CPU slots, indexed by the
+full 64-bit extraction/render sequence before narrowing. Updated native tests cover preservation through two
+subsequent frames, recycling on the third, skipped publish, repeated same-frame allocations and large sequences.
+The synchronous-copy contract remains explicit: three slots alone do not grant asynchronous reader retention.
+No raw GameObject/TG pointer was added to a packet and no gos_/vk recording entry moved threads in this step.
+Native Vulkan island logging now builds the complete tagged line and emits one fwrite, including HZB's
+512-byte message path, to prevent CRT formatting fragments from splitting concurrent SIMID records.
+
+Proof names use `s3-arena-*` in the existing record-thread proof directory. First lease observation found
+mc2-main mod gate runs occupying the host; complete offline work before submitting runtime proof.
+Offline receipts: `s3-arena-contracts.log` PASS all five ratchets (32 s); `s3-arena-unit.log` PASS
+22 selected native cases / 241 assertions. No ratchet baseline or SIMID parsing policy changed.
+The read-only scout did not return useful output; stopped only its own PID 54828 and descendants.
+Next: five ratchets, selected FramePackets native cases, one all-target shared-header checkpoint, explicit
+lane deploy, day/night pixel-identical captures against s2-lights-ab (view both), detailed mc2_10 20 s SIMID,
+audit ON clean and sync validation zero. Record exact engine commit and receipts after completion.
+Remaining S3 requires frozen RenderList/HUD draw payloads (existing RenderView/HUD still contain live pointers),
+retained light feeds with matching instance indices, retirement-bound graveyard through CPU completion and
+GPU last use, and all FX families' Execute(Main)/frozen Draw split. Do not rotate legacy pointer lists and call
+them immutable packets; no S4 worker integration until these ownership obligations are complete.

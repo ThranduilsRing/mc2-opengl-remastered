@@ -7,8 +7,8 @@
 // v0 mech and light records. Arena capacity follows native prop-row size.
 // v1.1 (2026-05-25): texArrayLayer/materialIdx wired; material cache counters added.
 // FRAMEARENA-L2-1: RenderFrameArena replaced by RenderCore::FrameArena (typed,
-//   stats-tracked, alignment-safe). Ping-pong unchanged: two module-static
-//   buffers in render_snapshot.cpp alternate each frame. Spans valid for one frame.
+//   stats-tracked, alignment-safe). Three module-static buffers in
+//   render_snapshot.cpp rotate by extraction sequence. Spans survive two later extractions.
 
 #pragma once
 
@@ -224,9 +224,9 @@ struct RenderSnapshot {
     // by ExtractRenderSnapshot(). Not part of ok gate.
     TerrainPassFacts terrainPass;
 
-    // L2 frame-lifetime arena. Backed by one of two module-static buffers
-    // in render_snapshot.cpp (ping-pong). FrameArena is non-owning: base_ points
-    // into the module-static buffer; valid until the next ExtractRenderSnapshot().
+    // L2 frame-lifetime arena. Backed by one of three module-static buffers
+    // in render_snapshot.cpp. FrameArena is non-owning: base_ points into the
+    // slot buffer; the third subsequent ExtractRenderSnapshot() recycles it.
     RenderCore::FrameArena frameArena;
     bool arenaOverflow = false;
 };
