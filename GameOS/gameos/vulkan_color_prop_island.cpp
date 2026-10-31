@@ -1,9 +1,6 @@
 // vulkan_color_prop_island.cpp — VK-P11 STATIC-PROP COLOR: the FIRST VK-native COLOR
 // GEOMETRY region rendering REAL static-prop triangle geometry.
-// Renders static props in Vulkan directly into the shared scene GBuffer. The
-// retired Tier-0 side-image/composite proof path has been mechanically removed;
-// this island now owns only the Tier-1 in-place co-write path.
-//
+// Renders static props in Vulkan directly into the shared scene GBuffer.
 // Shape:
 //   - Borrows the shared engine VulkanContext; no private device.
 //   - Uses the shared scene color0/normal/depth exportable images.
@@ -20,6 +17,7 @@
 #endif
 
 #include <span>
+#include "../../mclib/battle_bench_sink.h"
 #include <optional>
 #include <volk.h>
 #include "Gates/gate_cold.h"   // gate::get<>() and str<>()
@@ -1631,6 +1629,9 @@ static bool record_props(const PropRecordIn& in, unsigned long& typeRunsOut) {
                                         0, sizeof(pc), &pc);
                     vkCmdDrawIndexed(cb, pkt.indexCount, instCount,
                                      pkt.firstIndex, static_cast<int32_t>(pkt.baseVertex), i);
+                    // Native color leaves include cached registry replay; count once before GPU HZB/alpha rejection.
+                    if (fringePass == 0 && pkt.indexCount && mc2::battlebench::output)
+                        mc2::battlebench::nativePropLeaves += instCount;
                 }
                 if (fringePass == 0) ++typeRuns;
             }

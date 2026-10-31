@@ -37,6 +37,7 @@
 #endif
 
 #include <volk.h>
+#include "../../mclib/battle_bench_sink.h"
 #include "Gates/gate.h"
 #include "vk_render_pass_timer.h"
 #include "vk_gpu_profile.h"   // VK-GPU-ZONES: MC2_VK_GPU_SCOPE
@@ -859,6 +860,8 @@ static bool record_mech(MechIsland* s, VkCommandBuffer cb, uint32_t par, int w, 
         const MechRunPC pc{run.materialFlags, 0, uint32_t(poolN)};
         vkCmdPushConstants(cb, s->playout.get(), VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(pc), &pc);
         vkCmdDrawIndexed(cb, run.indexCount, run.instanceCount, run.firstIndex, run.baseVertex, run.instanceBase);
+        // Count color packet instances, excluding the duplicate depth prepass and bone palette.
+        if (mc2::battlebench::output) mc2::battlebench::nativeMechLeaves += run.instanceCount;
         ++runs;
     }
 
