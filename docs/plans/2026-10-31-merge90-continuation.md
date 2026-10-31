@@ -27,7 +27,13 @@ W89 day/night montages inspected, no visible differences (MAD rounds to 0.00).
 Seven affected contract/ratchet rows PASS. Initial all-target checkpoint built
 standalone tools and doctests, but RenderCore lacks mclib's include directory;
 use a header-relative formatter include in the GameOS compatibility header.
-Next: rerun failed root build, final dev build/unit formatter, failed gate rows;
+Formatter suite: 16 cases / 48 assertions PASS. Editor campaign fixture PASS.
+Background-launch inventory needs one line-number refresh after mod cleanup;
+child-spawn baseline remains unchanged. All eight merged installs and inactive
+packet-B builds deleted; per-item receipt is cleanup-continuation.json.
+Current final receipts and exact remaining steps are maintained in the proof
+folder's continuation-triage.md and continuation-final.md (when complete).
+Next: finish root/dev builds, failed runtime gate rows;
 deploy v0.4 and owner-test (never launch owner-test), reseed farm when idle;
 delete merged installs and inactive merged build dirs; export merge90-input;
 record receipts/space and report. Owner-only captures skipped while owner away.
