@@ -1,4 +1,5 @@
 {
+  "scripts/tests/test_shadow_bake_init.py": "Pytest-discovered module through the scripts_tests/tools_tests contract row.",
   "scripts/tests/test_paired_cpu.py": "Pytest-discovered by scripts/run_scripts_tests.py through scripts/test_ownership.json.",
   "scripts/tests/test_deploy_seed.py": "Pytest-discovered by scripts/run_scripts_tests.py through scripts/test_ownership.json.",
   "scripts/tests/test_gate_preflight.py": "Pytest-discovered by scripts/run_scripts_tests.py through scripts/test_ownership.json.",
