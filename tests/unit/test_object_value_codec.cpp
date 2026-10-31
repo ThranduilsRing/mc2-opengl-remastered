@@ -29,6 +29,7 @@ void realObjectSlots(int c, const char* name) {
         }
         std::ifstream in(path, std::ios::binary);
         REQUIRE(in.good());
+        bool extendedFixture = false;
         while (in.peek() != std::char_traits<char>::eof()) {
             std::uint32_t slot = 0, length = 0;
             in.read(reinterpret_cast<char*>(&slot), 4);
@@ -50,10 +51,20 @@ void realObjectSlots(int c, const char* name) {
                 << " objectClass=" << value.objectClass << " objectTypeNum=" << value.objectTypeNum
                 << " rule=" << (decoded ? "objectSlotIdentity" : a.error()));
             REQUIRE(decoded);
+            if constexpr (std::same_as<Record, BuildingRecord>) {
+                if (std::string_view(mission) == "cve-metropolitan") {
+                    CHECK(value.objectTypeNum == 125);
+                    extendedFixture |= value.numCellsCovered > 40;
+                    CHECK(record.cells.size() == (value.numCellsCovered > 40 ? value.numCellsCovered * 2 : 0));
+                    MESSAGE("CVE-G type 125 slot=" << slot << " terrain cells="
+                        << static_cast<int>(value.numCellsCovered));
+                }
+            }
             CHECK(objectSlotClass(bytes) == c);
             CHECK(encodeTaggedRecord(record, objectSlotTags[c]) == bytes);
             CHECK(validObjectSlot(bytes, c, slot));
         }
+        if (std::string_view(mission) == "cve-metropolitan") CHECK(extendedFixture);
     }
 }
 }
