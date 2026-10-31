@@ -1,245 +1,190 @@
-# Quiet measurement: main 586327c79 versus W86 c7ef9a666
+# Robust paired CPU measurements, 2026-10-30
 
-**Result: NOISY: three valid pairs were not established for every workload.** Valid pairs: mc2_01=1, mc2_03=1, mc2_10=1, mc2_24=1, battle=0. Timings with fewer than three pairs are provisional; absent accepted timings are withheld.
-Completed CPU sweep attempts: 5/6; evidence exists for 6/6 arms. The forty-minute quiet-host check ran 01:01–01:41 UTC. No relocated-core capture qualified, so the owned controller and remaining game/recorder processes were stopped; normal main deployment completed successfully.
-The third W86 CPU sweep was skipped by the existing game precheck, which reported this lane’s prior GPU game PID 64340. No check was bypassed. That PID was absent at final cleanup. The final main sweep completed mc2_01/03 before the bound stopped the remaining work.
+Engine refs: W86 `c7ef9a666`, main `586327c79`, drawscreen `b409855e4`. The drawscreen executables are rebuilt at tooling-only descendants (host `407088bfc`, laptop stock `ac8486cfc`, laptop battle `409815680`); their engine sources and shaders are unchanged from b409855e4.
 
-Three alternating W86/main pairs were requested; accepted counts and missing work are reported below. CPU and GPU use the RX 7900 XTX; the first accepted stock pair uses logical cores 12–15 (`0xf000`); stock pairs 2–3, the later GPU attempts and 200-mover battle attempts use 8,9,12,13 (`0x3300`). Both masks are verified by the harness. Sampler affinity is recorded; its CPU is subtracted from reserved load only while it is pinned inside that set. The exclusive harness lease covers each measurement. Raw traces and invocation scripts remain outside git.
+Every workload runs five adjacent A/B pairs, in A/B/A/B order, with 20 seconds of gameplay. The first three seconds of Frame events are discarded. Camera poses are fixed across both arms: mc2_01 and mc2_10 sun_facing_low, mc2_24 low_horizon_0; mc2_03 uses the mission view. These are selected heavy views from the earlier sweep, not a new exhaustive camera envelope. Battle adds 128 cloned mechs and two cloned vehicles by main-thread UI commands to mc2_24's 70 stock movers, requires 200 in every world sample, and keeps default simulation overlap. Counts include dead movers.
 
-## Noise policy and evidence
+Timings are elapsed inclusive CPU-zone times, including waits. A mean is the median of capture total scope time divided by Frame count; p95 is the median of capture event p95s, not a pooled event percentile. Min is the median of capture minima and Q1 is the median of capture lower quartiles. For Frame and DrawScreen there is one event per frame; GameLogic can run multiple events per Frame, so its mean/frame can exceed its event p95. Nested scopes must not be summed.
 
-External reserved-core CPU = (sum of reserved-core busy percentages − game CPU − sampler CPU) / 4. Process CPU percentages use one-core units; subtraction is valid because affinity is checked. Intervals with sampler-affinity changes are discarded, and a sampler spanning both sets is rejected. Whole-machine external CPU uses all 16 logical cores and the same exclusions. Both values are sampled every 0.5 seconds during the run. In-game reserved external p95 must be **below 15%**. NOISY captures contribute no accepted timing or paired delta. The first per-process sample primes its counter.
+Delta is the median of paired B-minus-A capture medians. The 90% percentile bootstrap resamples whole pairs (10,000 resamples, fixed seed), never individual correlated frame events. Negative CI = WIN; positive CI = REGRESSION. A CI inside +/-0.02 ms containing zero = NO CHANGE; wider intervals containing zero or fewer than five successful pairs = INCONCLUSIVE. Missing/crashed captures stay errors; noise never excludes a capture.
 
-Proof root: `E:/mc2-archive-2026-10/proofs/quiet-measure2/reserved-core-rerun2/`. W86 and main are deployed through `deploy_payload.py --target game --ninja --require-clean` from their committed checkouts into the single lane install; no executable payload swap is used.
+Host games use reserved logical CPUs 8,9,12,13 (0x3300) and exclusive per-capture leases; tools use Idle priority. Both machines record external reserved-core CPU beside timings. Laptop absolute milliseconds describe its own CPU/GPU and are not interchangeable with host milliseconds. Concurrent host services remain present. Load p95 covers the game-process lifetime, including loading; timed scopes use the live Frame window.
 
-Cockpits are written under `cockpit-pairN-main/`. Their **previous** column is the fresh W86 arm of the same pair; the separately labelled baseline column remains the repository’s legacy budget reference. The paired deltas below use only fresh W86 captures.
+| Comparison | Arm | Executable SHA256 |
+|---|---|---|
+| Host W86/main | A | de8241d4a525ee933a32a618cf304b7a35553d0b4cd0a9e3ea5a2065e499f236 |
+| Host W86/main | B | 84c45090b8a4bb288f9644e7bf0c5caf208de3b10949d3ae95f42ec17156f023 |
+| Host W86/main battle | B | cdf1de494d023001a8bba51ad4083b95cc90f7d4f3d2193c483fadcd6de76d8b |
+| Host main/drawscreen | A | cdf1de494d023001a8bba51ad4083b95cc90f7d4f3d2193c483fadcd6de76d8b |
+| Host main/drawscreen | B | f04e16d7a11ffa50d34976d3b4855a5fa35e68b06f5e13a2d23aaeb4f3a80a43 |
+| Laptop W86/main | A | de8241d4a525ee933a32a618cf304b7a35553d0b4cd0a9e3ea5a2065e499f236 |
+| Laptop W86/main | B | 84c45090b8a4bb288f9644e7bf0c5caf208de3b10949d3ae95f42ec17156f023 |
+| Laptop main/drawscreen | A | 84c45090b8a4bb288f9644e7bf0c5caf208de3b10949d3ae95f42ec17156f023 |
+| Laptop main/drawscreen | B | c7ab0a0e80ff320de9c8de70fdef4d12017dd7493106eb00b1515ca6c5f11b25 |
+| Laptop main/drawscreen battle | B | 00dfa9980340e3e1c693059c021397a71e1329aa48ef19be909b3df7c3a8b668 |
 
-| Build | Executable SHA256 |
-|---|---|
-| W86 c7ef9a666 | de8241d4a525ee933a32a618cf304b7a35553d0b4cd0a9e3ea5a2065e499f236 |
-| Main 586327c79 | 84c45090b8a4bb288f9644e7bf0c5caf208de3b10949d3ae95f42ec17156f023 |
+GPU receipts: Host W86/main: AMD Radeon RX 7900 XTX; Host main/drawscreen: AMD Radeon RX 7900 XTX; Laptop W86/main: NVIDIA GeForce GTX 1050 Ti; Laptop main/drawscreen: NVIDIA GeForce GTX 1050 Ti. All successful captures have clean expected build fingerprints, 1920x1080 receipts and identical render-option sidecars.
 
-| Pair/build | Mission | Whole external p95 % | Reserved external p95 % | Verdict |
-|---|---|---:|---:|---|
-| 1/w86 | mc2_01 | 31.47 | 10.57 | quiet |
-| 1/w86 | mc2_03 | 28.72 | 5.68 | quiet |
-| 1/w86 | mc2_10 | 31.34 | 8.22 | quiet |
-| 1/w86 | mc2_24 | 28.18 | 8.52 | quiet |
-| 1/w86 | battle | unmeasured | unmeasured | corrected 200-mover capture not completed |
-| 1/main | mc2_01 | 31.39 | 7.60 | quiet |
-| 1/main | mc2_03 | 25.37 | 6.55 | quiet |
-| 1/main | mc2_10 | 30.62 | 8.80 | quiet |
-| 1/main | mc2_24 | 34.27 | 13.45 | quiet |
-| 1/main | battle | unmeasured | unmeasured | corrected 200-mover capture not completed |
-| 2/w86 | mc2_01 | 36.62 | 20.53 | NOISY |
-| 2/w86 | mc2_03 | 45.83 | 23.68 | NOISY |
-| 2/w86 | mc2_10 | 38.14 | 20.68 | NOISY |
-| 2/w86 | mc2_24 | 38.46 | 22.88 | NOISY |
-| 2/w86 | battle | 36.44 | 29.42 | FAILED; NOISY |
-| 2/main | mc2_01 | 41.94 | 16.72 | NOISY |
-| 2/main | mc2_03 | 39.96 | 20.57 | NOISY |
-| 2/main | mc2_10 | 35.74 | 19.88 | NOISY |
-| 2/main | mc2_24 | 33.16 | 16.90 | NOISY |
-| 2/main | battle | 38.44 | 33.40 | FAILED; NOISY |
-| 3/w86 | mc2_01 | unmeasured | unmeasured | SKIPPED: precheck reported prior GPU game 64340 |
-| 3/w86 | mc2_03 | unmeasured | unmeasured | SKIPPED: precheck reported prior GPU game 64340 |
-| 3/w86 | mc2_10 | unmeasured | unmeasured | SKIPPED: precheck reported prior GPU game 64340 |
-| 3/w86 | mc2_24 | unmeasured | unmeasured | SKIPPED: precheck reported prior GPU game 64340 |
-| 3/w86 | battle | unmeasured | unmeasured | SKIPPED: precheck reported prior GPU game 64340 |
-| 3/main | mc2_01 | 37.71 | 19.33 | NOISY |
-| 3/main | mc2_03 | 28.97 | 16.15 | NOISY |
-| 3/main | mc2_10 | unmeasured | unmeasured | not completed |
-| 3/main | mc2_24 | unmeasured | unmeasured | not completed |
-| 3/main | battle | unmeasured | unmeasured | not completed |
+## Headline Frame / DrawScreen mean ms
 
-## CPU results
+Each cell is A -> B, Frame / DrawScreen. Full event p95, paired CI and noise follow.
 
-Values are median across accepted captures with [min–max] capture spread, in ms. Frame p95 is the median of each capture’s event p95. Other columns are inclusive elapsed zone time per rendered frame; they include waits, overlap, and 0..N logic ticks per frame. Nested scopes must not be summed. The full-capture table includes the initial frozen PNG verification phase. The CPU profiler retains its existing 60-second camera envelope on mc2_01/10/24 and 20 seconds on mc2_03/battle. Live-window results follow separately.
+| Mission | Host W86/main | Host main/drawscreen | Laptop W86/main | Laptop main/drawscreen |
+|---|---|---|---|---|
+| mc2_01 | 1.290/0.587 -> 1.309/0.616 | 1.336/0.628 -> 1.364/0.643 | 5.834/2.067 -> 5.936/2.259 | 5.977/2.245 -> 5.859/2.195 |
+| mc2_03 | 1.469/0.729 -> 1.458/0.746 | 1.516/0.774 -> 1.507/0.773 | 10.620/3.217 -> 10.567/3.152 | 10.519/3.131 -> 10.522/3.123 |
+| mc2_10 | 2.237/1.067 -> 2.259/1.095 | 3.018/1.333 -> 3.623/1.259 | 20.306/6.751 -> 18.913/6.582 | 18.839/6.573 -> 19.000/6.581 |
+| mc2_24 | 3.974/1.846 -> 4.017/1.887 | 6.712/3.183 -> 6.135/2.901 | 27.929/7.299 -> 27.776/10.986 | 27.794/11.137 -> 27.676/11.046 |
+| battle | 12.496/2.571 -> 11.690/2.761 | 13.696/3.193 -> 12.937/3.052 | 41.954/6.573 -> 41.064/6.896 | 37.591/6.540 -> 35.579/6.455 |
 
-| Mission/build | Accepted N | Frame mean | Frame p95 | GameLogic/frame | DrawScreen/frame | SwapWindow/frame | VK present/frame |
-|---|---:|---:|---:|---:|---:|---:|---:|
-| mc2_01/w86 | 1 | 1.620 | 1.848 | 0.571 | 0.711 | 0.238 | 0.231 |
-| mc2_01/main | 1 | 1.678 | 1.918 | 0.583 | 0.769 | 0.005 | 0.574 |
-| mc2_03/w86 | 1 | 1.517 | 1.886 | 0.555 | 0.758 | 0.184 | 0.151 |
-| mc2_03/main | 1 | 1.511 | 1.814 | 0.566 | 0.785 | 0.005 | 0.325 |
-| mc2_10/w86 | 1 | 2.307 | 3.245 | 1.036 | 1.077 | 0.244 | 0.205 |
-| mc2_10/main | 1 | 2.294 | 3.205 | 1.045 | 1.100 | 0.006 | 0.564 |
-| mc2_24/w86 | 1 | 3.147 | 4.258 | 1.453 | 1.406 | 0.305 | 0.294 |
-| mc2_24/main | 1 | 3.306 | 4.816 | 1.573 | 1.497 | 0.005 | 0.820 |
-| battle/w86 | 0 | unproven | unproven | unproven | unproven | unproven | unproven |
-| battle/main | 0 | unproven | unproven | unproven | unproven | unproven | unproven |
+## Host W86/main
 
-### Live Frame timing used for camera-envelope targets
+| Mission | Scope | A mean/frame / event p95 / min / Q1 ms | B mean/frame / event p95 / min / Q1 ms | Paired event-median delta [90% CI] ms | N / verdict | Reserved external CPU p95 A / B % |
+|---|---|---:|---:|---:|---|---|
+| mc2_01 | Frame | 1.290 / 1.536 / 1.010 / 1.163 | 1.309 / 1.499 / 0.818 / 1.239 | +0.034 [+0.020, +0.047] | 5 / REGRESSION | 5.8-40.7 / 2.9-26.7 |
+| mc2_01 | GameLogic | 0.435 / 0.272 / 0.171 / 0.186 | 0.483 / 0.285 / 0.178 / 0.209 | +0.050 [+0.018, +0.054] | 5 / REGRESSION | 5.8-40.7 / 2.9-26.7 |
+| mc2_01 | DrawScreen | 0.587 / 0.671 / 0.485 / 0.551 | 0.616 / 0.688 / 0.517 / 0.593 | +0.029 [+0.021, +0.039] | 5 / REGRESSION | 5.8-40.7 / 2.9-26.7 |
+| mc2_01 | SwapWindow | 0.184 / 0.254 / 0.132 / 0.147 | 0.005 / 0.006 / 0.003 / 0.005 | -0.152 [-0.160, -0.151] | 5 / WIN | 5.8-40.7 / 2.9-26.7 |
+| mc2_03 | Frame | 1.469 / 1.843 / 1.188 / 1.329 | 1.458 / 1.759 / 1.196 / 1.325 | +0.019 [-0.025, +0.076] | 5 / INCONCLUSIVE | 4.0-7.1 / 3.0-9.7 |
+| mc2_03 | GameLogic | 0.535 / 0.302 / 0.240 / 0.255 | 0.575 / 0.320 / 0.250 / 0.274 | +0.022 [+0.016, +0.032] | 5 / REGRESSION | 4.0-7.1 / 3.0-9.7 |
+| mc2_03 | DrawScreen | 0.729 / 0.885 / 0.625 / 0.679 | 0.746 / 0.917 / 0.648 / 0.699 | +0.020 [+0.014, +0.044] | 5 / REGRESSION | 4.0-7.1 / 3.0-9.7 |
+| mc2_03 | SwapWindow | 0.178 / 0.189 / 0.132 / 0.142 | 0.006 / 0.006 / 0.003 / 0.005 | -0.140 [-0.144, -0.138] | 5 / WIN | 4.0-7.1 / 3.0-9.7 |
+| mc2_10 | Frame | 2.237 / 4.608 / 1.373 / 1.532 | 2.259 / 5.162 / 1.195 / 1.549 | -0.002 [-0.188, +0.059] | 5 / INCONCLUSIVE | 3.9-12.0 / 2.4-16.3 |
+| mc2_10 | GameLogic | 0.933 / 0.828 / 0.305 / 0.323 | 0.962 / 0.833 / 0.319 / 0.344 | +0.022 [-0.001, +0.037] | 5 / INCONCLUSIVE | 3.9-12.0 / 2.4-16.3 |
+| mc2_10 | DrawScreen | 1.067 / 2.487 / 0.657 / 0.697 | 1.095 / 2.225 / 0.677 / 0.721 | +0.022 [-0.067, +0.056] | 5 / INCONCLUSIVE | 3.9-12.0 / 2.4-16.3 |
+| mc2_10 | SwapWindow | 0.266 / 0.940 / 0.134 / 0.146 | 0.006 / 0.006 / 0.003 / 0.005 | -0.146 [-0.146, -0.144] | 5 / WIN | 3.9-12.0 / 2.4-16.3 |
+| mc2_24 | Frame | 3.974 / 4.806 / 3.297 / 3.650 | 4.017 / 4.905 / 2.815 / 3.690 | +0.030 [-0.095, +0.202] | 5 / INCONCLUSIVE | 3.4-20.3 / 7.0-25.9 |
+| mc2_24 | GameLogic | 2.056 / 1.296 / 0.901 / 0.937 | 2.116 / 1.299 / 0.915 / 0.977 | +0.034 [-0.015, +0.089] | 5 / INCONCLUSIVE | 3.4-20.3 / 7.0-25.9 |
+| mc2_24 | DrawScreen | 1.846 / 2.243 / 1.632 / 1.715 | 1.887 / 2.306 / 1.633 / 1.762 | +0.040 [-0.029, +0.133] | 5 / INCONCLUSIVE | 3.4-20.3 / 7.0-25.9 |
+| mc2_24 | SwapWindow | 0.293 / 0.338 / 0.266 / 0.276 | 0.006 / 0.006 / 0.003 / 0.005 | -0.278 [-0.291, -0.269] | 5 / WIN | 3.4-20.3 / 7.0-25.9 |
+| battle | Frame | 12.496 / 30.370 / 4.841 / 6.907 | 11.690 / 30.501 / 4.851 / 7.140 | +0.552 [-1.357, +12.257] | 5 / INCONCLUSIVE | 13.6-59.7 / 2.8-56.2 |
+| battle | GameLogic | 8.371 / 6.211 / 1.780 / 3.189 | 7.785 / 5.715 / 1.764 / 3.191 | +0.060 [-0.560, +3.122] | 5 / INCONCLUSIVE | 13.6-59.7 / 2.8-56.2 |
+| battle | DrawScreen | 2.571 / 3.732 / 1.823 / 2.206 | 2.761 / 3.830 / 1.915 / 2.346 | +0.232 [-0.215, +2.298] | 5 / INCONCLUSIVE | 13.6-59.7 / 2.8-56.2 |
+| battle | SwapWindow | 0.657 / 1.032 / 0.532 / 0.563 | 0.006 / 0.009 / 0.003 / 0.005 | -0.583 [-0.654, -0.553] | 5 / WIN | 13.6-59.7 / 2.8-56.2 |
 
-For each accepted capture, choose the live bookmarked view with the largest Frame mean and report that same view’s event p95. mc2_03 has no frozen camera sweep and uses its complete captured Frame scopes. These are view-specific distributions, not a pooled p95 across views.
+## Host main/drawscreen
 
-| Mission/build | View | Accepted N | Frame mean ms | Frame p95 ms |
-|---|---|---:|---:|---:|
-| mc2_01/w86 | sun_facing_low | 1 | 1.792 | 2.060 |
-| mc2_01/main | sun_facing_low | 1 | 1.794 | 1.986 |
-| mc2_03/w86 | mission | 1 | 1.517 | 1.886 |
-| mc2_03/main | mission | 1 | 1.511 | 1.814 |
-| mc2_10/w86 | sun_facing_low | 1 | 3.505 | 5.393 |
-| mc2_10/main | wolfman | 1 | 3.265 | 3.834 |
-| mc2_24/w86 | low_horizon_180 | 1 | 3.882 | 4.375 |
-| mc2_24/main | low_horizon_0 | 1 | 4.078 | 4.889 |
+| Mission | Scope | A mean/frame / event p95 / min / Q1 ms | B mean/frame / event p95 / min / Q1 ms | Paired event-median delta [90% CI] ms | N / verdict | Reserved external CPU p95 A / B % |
+|---|---|---:|---:|---:|---|---|
+| mc2_01 | Frame | 1.336 / 1.582 / 0.830 / 1.243 | 1.364 / 1.600 / 0.857 / 1.262 | +0.003 [-0.003, +0.074] | 5 / INCONCLUSIVE | 3.8-11.6 / 5.2-15.0 |
+| mc2_01 | GameLogic | 0.499 / 0.293 / 0.178 / 0.215 | 0.514 / 0.311 / 0.178 / 0.220 | +0.001 [+0.000, +0.012] | 5 / REGRESSION | 3.8-11.6 / 5.2-15.0 |
+| mc2_01 | DrawScreen | 0.628 / 0.721 / 0.519 / 0.597 | 0.643 / 0.735 / 0.527 / 0.609 | +0.003 [-0.002, +0.028] | 5 / INCONCLUSIVE | 3.8-11.6 / 5.2-15.0 |
+| mc2_01 | SwapWindow | 0.006 / 0.006 / 0.003 / 0.005 | 0.006 / 0.006 / 0.003 / 0.005 | +0.000 [-0.000, +0.000] | 5 / NO CHANGE | 3.8-11.6 / 5.2-15.0 |
+| mc2_03 | Frame | 1.516 / 1.900 / 1.208 / 1.370 | 1.507 / 1.902 / 1.225 / 1.361 | +0.009 [-0.014, +0.042] | 5 / INCONCLUSIVE | 7.5-35.2 / 6.5-22.7 |
+| mc2_03 | GameLogic | 0.611 / 0.364 / 0.253 / 0.284 | 0.604 / 0.355 / 0.253 / 0.283 | -0.004 [-0.006, +0.006] | 5 / NO CHANGE | 7.5-35.2 / 6.5-22.7 |
+| mc2_03 | DrawScreen | 0.774 / 0.965 / 0.653 / 0.718 | 0.773 / 0.980 / 0.661 / 0.716 | +0.006 [-0.007, +0.046] | 5 / INCONCLUSIVE | 7.5-35.2 / 6.5-22.7 |
+| mc2_03 | SwapWindow | 0.006 / 0.006 / 0.003 / 0.006 | 0.006 / 0.006 / 0.003 / 0.006 | -0.000 [-0.000, +0.000] | 5 / NO CHANGE | 7.5-35.2 / 6.5-22.7 |
+| mc2_10 | Frame | 3.018 / 6.219 / 1.260 / 1.777 | 3.623 / 5.523 / 1.239 / 1.864 | +0.031 [-0.493, +0.803] | 5 / INCONCLUSIVE | 10.2-64.8 / 20.0-56.3 |
+| mc2_10 | GameLogic | 1.494 / 1.943 / 0.336 / 0.402 | 1.303 / 1.514 / 0.330 / 0.420 | +0.001 [-0.195, +0.308] | 5 / INCONCLUSIVE | 10.2-64.8 / 20.0-56.3 |
+| mc2_10 | DrawScreen | 1.333 / 2.939 / 0.707 / 0.842 | 1.259 / 2.495 / 0.706 / 0.861 | +0.021 [-0.181, +0.310] | 5 / INCONCLUSIVE | 10.2-64.8 / 20.0-56.3 |
+| mc2_10 | SwapWindow | 0.008 / 0.009 / 0.003 / 0.006 | 0.007 / 0.008 / 0.003 / 0.006 | -0.000 [-0.000, +0.000] | 5 / NO CHANGE | 10.2-64.8 / 20.0-56.3 |
+| mc2_24 | Frame | 6.712 / 9.848 / 3.603 / 5.575 | 6.135 / 9.290 / 3.513 / 5.012 | -0.501 [-1.844, +0.227] | 5 / INCONCLUSIVE | 40.9-50.4 / 22.1-61.7 |
+| mc2_24 | GameLogic | 4.144 / 3.337 / 1.026 / 1.614 | 3.789 / 3.099 / 0.962 / 1.473 | -0.164 [-0.670, +0.071] | 5 / INCONCLUSIVE | 40.9-50.4 / 22.1-61.7 |
+| mc2_24 | DrawScreen | 3.183 / 4.640 / 1.806 / 2.618 | 2.901 / 4.403 / 1.744 / 2.349 | -0.261 [-0.952, +0.111] | 5 / INCONCLUSIVE | 40.9-50.4 / 22.1-61.7 |
+| mc2_24 | SwapWindow | 0.010 / 0.011 / 0.003 / 0.006 | 0.009 / 0.010 / 0.003 / 0.006 | -0.000 [-0.001, +0.000] | 5 / NO CHANGE | 40.9-50.4 / 22.1-61.7 |
+| battle | Frame | 13.696 / 32.209 / 5.765 / 8.364 | 12.937 / 31.617 / 5.338 / 8.278 | -1.280 [-1.934, +78.259] | 5 / INCONCLUSIVE | 11.0-39.0 / 6.9-80.8 |
+| battle | GameLogic | 9.334 / 6.629 / 2.043 / 3.752 | 8.831 / 6.106 / 2.023 / 3.703 | -0.429 [-0.605, +4.484] | 5 / INCONCLUSIVE | 11.0-39.0 / 6.9-80.8 |
+| battle | DrawScreen | 3.193 / 4.483 / 2.098 / 2.697 | 3.052 / 4.341 / 2.078 / 2.641 | -0.267 [-0.381, +2.291] | 5 / INCONCLUSIVE | 11.0-39.0 / 6.9-80.8 |
+| battle | SwapWindow | 0.007 / 0.011 / 0.004 / 0.006 | 0.007 / 0.011 / 0.004 / 0.006 | -0.000 [-0.001, +0.004] | 5 / NO CHANGE | 11.0-39.0 / 6.9-80.8 |
 
-### Fresh paired full-capture Frame deltas (main − W86)
+## Laptop W86/main
 
-| Mission | Valid pairs | Mean delta ms |
-|---|---:|---:|
-| mc2_01 | 1 | 0.059 |
-| mc2_03 | 1 | -0.006 |
-| mc2_10 | 1 | -0.013 |
-| mc2_24 | 1 | 0.158 |
-| battle | 0 | unproven |
+| Mission | Scope | A mean/frame / event p95 / min / Q1 ms | B mean/frame / event p95 / min / Q1 ms | Paired event-median delta [90% CI] ms | N / verdict | Reserved external CPU p95 A / B % |
+|---|---|---:|---:|---:|---|---|
+| mc2_01 | Frame | 5.834 / 11.703 / 1.865 / 3.777 | 5.936 / 12.313 / 2.306 / 3.640 | +0.063 [-0.139, +0.133] | 5 / INCONCLUSIVE | 15.6-59.1 / 16.0-68.6 |
+| mc2_01 | GameLogic | 2.129 / 1.879 / 0.466 / 0.648 | 2.272 / 2.075 / 0.541 / 0.737 | +0.064 [+0.024, +0.082] | 5 / REGRESSION | 15.6-59.1 / 16.0-68.6 |
+| mc2_01 | DrawScreen | 2.067 / 3.227 / 0.965 / 1.572 | 2.259 / 3.750 / 1.186 / 1.642 | +0.141 [+0.039, +0.679] | 5 / REGRESSION | 15.6-59.1 / 16.0-68.6 |
+| mc2_01 | SwapWindow | 2.387 / 8.266 / 0.121 / 0.221 | 0.011 / 0.021 / 0.006 / 0.008 | -0.496 [-0.508, -0.376] | 5 / WIN | 15.6-59.1 / 16.0-68.6 |
+| mc2_03 | Frame | 10.620 / 20.832 / 4.339 / 6.977 | 10.567 / 30.763 / 3.073 / 4.296 | -3.488 [-3.741, -3.296] | 5 / WIN | 15.7-20.6 / 16.6-18.8 |
+| mc2_03 | GameLogic | 2.628 / 1.758 / 0.889 / 1.142 | 2.880 / 1.863 / 0.905 / 1.265 | +0.151 [+0.144, +0.164] | 5 / REGRESSION | 15.7-20.6 / 16.6-18.8 |
+| mc2_03 | DrawScreen | 3.217 / 5.981 / 1.494 / 2.138 | 3.152 / 5.466 / 1.543 / 2.266 | +0.035 [-0.079, +0.086] | 5 / INCONCLUSIVE | 15.7-20.6 / 16.6-18.8 |
+| mc2_03 | SwapWindow | 5.592 / 16.216 / 0.114 / 0.264 | 0.010 / 0.014 / 0.006 / 0.008 | -3.648 [-3.830, -3.501] | 5 / WIN | 15.7-20.6 / 16.6-18.8 |
+| mc2_10 | Frame | 20.306 / 58.759 / 4.213 / 7.589 | 18.913 / 60.531 / 3.359 / 6.403 | -3.103 [-5.839, -2.832] | 5 / WIN | 14.9-21.6 / 14.1-27.4 |
+| mc2_10 | GameLogic | 5.045 / 6.573 / 0.835 / 1.101 | 5.667 / 6.759 / 0.911 / 1.227 | +0.153 [-0.407, +0.257] | 5 / INCONCLUSIVE | 14.9-21.6 / 14.1-27.4 |
+| mc2_10 | DrawScreen | 6.751 / 31.693 / 1.597 / 3.351 | 6.582 / 18.757 / 1.724 / 3.400 | +0.369 [-0.280, +0.501] | 5 / INCONCLUSIVE | 14.9-21.6 / 14.1-27.4 |
+| mc2_10 | SwapWindow | 10.629 / 43.371 / 0.114 / 0.309 | 0.010 / 0.015 / 0.006 / 0.008 | -4.603 [-7.897, -4.123] | 5 / WIN | 14.9-21.6 / 14.1-27.4 |
+| mc2_24 | Frame | 27.929 / 51.917 / 13.652 / 18.845 | 27.776 / 61.415 / 9.952 / 12.988 | -2.398 [-2.973, -1.154] | 5 / WIN | 14.7-28.5 / 17.4-24.8 |
+| mc2_24 | GameLogic | 10.369 / 7.911 / 3.281 / 4.087 | 10.639 / 7.939 / 3.359 / 4.292 | +0.185 [+0.104, +0.384] | 5 / REGRESSION | 14.7-28.5 / 17.4-24.8 |
+| mc2_24 | DrawScreen | 7.299 / 11.004 / 4.610 / 6.155 | 10.986 / 22.448 / 4.812 / 6.795 | +1.643 [+1.339, +1.706] | 5 / REGRESSION | 14.7-28.5 / 17.4-24.8 |
+| mc2_24 | SwapWindow | 14.728 / 39.973 / 0.262 / 0.675 | 0.011 / 0.021 / 0.006 / 0.007 | -11.245 [-11.392, -10.444] | 5 / WIN | 14.7-28.5 / 17.4-24.8 |
+| battle | Frame | 41.954 / 94.860 / 13.275 / 24.408 | 41.064 / 95.481 / 12.792 / 24.814 | +0.713 [-4.689, +4.132] | 5 / INCONCLUSIVE | 16.2-41.6 / 14.6-44.6 |
+| battle | GameLogic | 18.063 / 12.024 / 4.684 / 7.597 | 17.952 / 11.447 / 5.062 / 7.787 | +0.153 [-0.026, +0.663] | 5 / INCONCLUSIVE | 16.2-41.6 / 14.6-44.6 |
+| battle | DrawScreen | 6.573 / 9.970 / 3.900 / 5.340 | 6.896 / 9.854 / 3.757 / 5.505 | +0.298 [-0.145, +0.731] | 5 / INCONCLUSIVE | 16.2-41.6 / 14.6-44.6 |
+| battle | SwapWindow | 2.131 / 7.112 / 0.615 / 0.819 | 0.010 / 0.026 / 0.007 / 0.008 | -0.925 [-1.031, -0.870] | 5 / WIN | 16.2-41.6 / 14.6-44.6 |
 
-### Individual 200-mover ticks
+## Laptop main/drawscreen
 
-The existing battle command file is preserved instead of being replaced by the camera driver. The run-local invocation uses the existing `MC2_MOVER_FIXTURE=200` mixed mech/vehicle fixture, with the scenario’s separate clone count set to zero. The following uses individual `battlebench::Tick` rows, not `SimOverlap.Tick` batches; a tick is accepted only after world evidence establishes 200 movers and all subsequent world samples remain 200. Mover count includes dead units; this does not prove 200 simultaneously active movers.
-
-The original all-clone attempts hit the 128-new-mech allocation limit and had 198 movers; they are excluded and preserved in the original raw profiles. The corrected first alternating battle pair was planned under `battle200-pair1-{w86,main}/` but was not reached; the resumed sweeps attempted the mixed fixture. Derived cockpit profiles use these corrected runs. Startup ticks before the counter first reaches 200 are excluded.
-
-The W86 mixed-fixture attempt logged `requested=200 base=70 added=130 movers=200` and sim-worker calls to the main-thread-only appearance RNG. Its capture failed before usable world/tick evidence was flushed. The resumed main battle capture also failed. These failures leave the 200-mover tick cost unproven; no engine change was made to address this separate failure.
-
-| Build | Quiet 200-mover N | Tick mean ms | Tick p95 ms | Observed counts (all captures) |
-|---|---:|---:|---:|---|
-| w86 | 0 | unproven | unproven | [None, None, None] |
-| main | 0 | unproven | unproven | [None, None, None] |
-
-## Top ten inclusive CPU zones
-
-Ranked by median total elapsed time per frame in quiet captures. Each cell is mean per-frame ms / event p95 ms. These are overlapping scopes, not independent savings.
-
-### mc2_01
-
-| Zone | W86 mean/p95 | Main mean/p95 |
-|---|---:|---:|
-| Frame | 1.620 / 1.848 | 1.678 / 1.918 |
-| DrawScreen | 0.711 / 0.810 | 0.769 / 0.862 |
-| Camera.UpdateRenderers | 0.619 / 0.710 | 0.675 / 0.761 |
-| UpdateRenderers | 0.615 / 0.706 | 0.672 / 0.757 |
-| UpdateRenderers missionRender | 0.614 / 0.704 | 0.670 / 0.755 |
-| Camera.UpdateRenderers Mission.render | 0.614 / 0.704 | 0.670 / 0.755 |
-| Camera.UpdateRenderers eye.render | 0.588 / 0.674 | 0.640 / 0.725 |
-| GameCamera::render activeScene | 0.585 / 0.671 | 0.637 / 0.721 |
-| GameLogic | 0.571 / 0.340 | 0.583 / 0.364 |
-| VKIsl.Present.Frame | 0.231 / 0.272 | 0.574 / 0.686 |
-
-### mc2_03
-
-| Zone | W86 mean/p95 | Main mean/p95 |
-|---|---:|---:|
-| Frame | 1.517 / 1.886 | 1.511 / 1.814 |
-| DrawScreen | 0.758 / 0.920 | 0.785 / 0.949 |
-| Camera.UpdateRenderers | 0.680 / 0.836 | 0.707 / 0.865 |
-| UpdateRenderers | 0.679 / 0.834 | 0.706 / 0.863 |
-| UpdateRenderers missionRender | 0.677 / 0.833 | 0.704 / 0.862 |
-| Camera.UpdateRenderers Mission.render | 0.677 / 0.833 | 0.704 / 0.862 |
-| Camera.UpdateRenderers eye.render | 0.676 / 0.832 | 0.703 / 0.861 |
-| GameCamera::render activeScene | 0.673 / 0.828 | 0.699 / 0.857 |
-| GameLogic | 0.555 / 0.318 | 0.566 / 0.334 |
-| GameCamera::render textureManagerRenderLists | 0.465 / 0.596 | 0.484 / 0.614 |
-
-### mc2_10
-
-| Zone | W86 mean/p95 | Main mean/p95 |
-|---|---:|---:|
-| Frame | 2.307 / 3.245 | 2.294 / 3.205 |
-| DrawScreen | 1.077 / 1.483 | 1.100 / 1.483 |
-| GameLogic | 1.036 / 0.950 | 1.045 / 0.979 |
-| Camera.UpdateRenderers | 0.990 / 1.397 | 1.013 / 1.396 |
-| UpdateRenderers | 0.987 / 1.396 | 1.010 / 1.394 |
-| UpdateRenderers missionRender | 0.985 / 1.395 | 1.008 / 1.393 |
-| Camera.UpdateRenderers Mission.render | 0.985 / 1.395 | 1.008 / 1.393 |
-| Camera.UpdateRenderers eye.render | 0.971 / 1.393 | 0.993 / 1.391 |
-| GameCamera::render activeScene | 0.969 / 1.390 | 0.990 / 1.388 |
-| GameCamera::render textureManagerRenderLists | 0.674 / 0.907 | 0.692 / 0.903 |
-
-### mc2_24
-
-| Zone | W86 mean/p95 | Main mean/p95 |
-|---|---:|---:|
-| Frame | 3.147 / 4.258 | 3.306 / 4.816 |
-| GameLogic | 1.453 / 1.081 | 1.573 / 1.312 |
-| DrawScreen | 1.406 / 2.013 | 1.497 / 2.220 |
-| Camera.UpdateRenderers | 1.302 / 1.905 | 1.391 / 2.094 |
-| UpdateRenderers | 1.297 / 1.899 | 1.386 / 2.089 |
-| UpdateRenderers missionRender | 1.295 / 1.898 | 1.384 / 2.087 |
-| Camera.UpdateRenderers Mission.render | 1.295 / 1.897 | 1.384 / 2.086 |
-| Camera.UpdateRenderers eye.render | 1.249 / 1.848 | 1.331 / 2.027 |
-| GameCamera::render activeScene | 1.246 / 1.845 | 1.328 / 2.024 |
-| GameCamera::render textureManagerRenderLists | 0.788 / 1.098 | 0.851 / 1.202 |
-
-### battle
-
-| Zone | W86 mean/p95 | Main mean/p95 |
-|---|---:|---:|
-| unproven: no qualified capture | unproven | unproven |
-
-## RX 7900 XTX: 1080p and 4K
-
-GPU span is the VK island timestamp span (present excluded), not end-to-end frame time. FPS comes from complete game PERF windows; it is not the reciprocal of GPU span. GPU aggregates exclude the first 240 frames and use the mission’s default view, rather than the CPU camera envelope. Each capture verifies the device and applies the same reserved-core noise threshold. Accepted counts include the initial GPU sweep on 12–15 and any qualified later captures on 8,9,12,13; all rejected captures remain in the noise ranges. Repetition below three is provisional.
-
-| Mission/resolution/build | Accepted N | GPU span ms | FPS | Whole external p95 median [range] % | Reserved external p95 median [range] % |
-|---|---:|---:|---:|---:|---:|
-| mc2_01/1920/w86 | 1 | 0.707 | 756.300 | 27.294 [25.675–32.369] | 18.250 [5.400–20.100] |
-| mc2_01/1920/main | 1 | 0.733 | 760.500 | 25.288 [25.044–25.531] | 11.125 [5.950–16.300] |
-| mc2_01/3840/w86 | 1 | 1.355 | 629.400 | 32.719 [28.694–56.519] | 16.925 [10.000–29.250] |
-| mc2_01/3840/main | 1 | 1.066 | 626.700 | 28.062 [23.988–32.138] | 11.688 [5.825–17.550] |
-| mc2_10/1920/w86 | 1 | 1.613 | 379.400 | 30.906 [25.119–31.275] | 17.975 [6.450–23.900] |
-| mc2_10/1920/main | 1 | 1.637 | 382.300 | 31.237 [28.956–33.519] | 14.625 [11.575–17.675] |
-| mc2_10/3840/w86 | 0 | unproven | unproven | 36.700 [29.944–39.950] | 19.625 [18.400–22.625] |
-| mc2_10/3840/main | 1 | 2.612 | 347.800 | 29.934 [27.475–32.394] | 13.075 [10.200–15.950] |
+| Mission | Scope | A mean/frame / event p95 / min / Q1 ms | B mean/frame / event p95 / min / Q1 ms | Paired event-median delta [90% CI] ms | N / verdict | Reserved external CPU p95 A / B % |
+|---|---|---:|---:|---:|---|---|
+| mc2_01 | Frame | 5.977 / 12.617 / 2.102 / 3.662 | 5.859 / 12.173 / 2.223 / 3.623 | -0.190 [-0.932, +0.149] | 5 / INCONCLUSIVE | 13.8-59.5 / 12.0-44.8 |
+| mc2_01 | GameLogic | 2.273 / 2.027 / 0.498 / 0.733 | 2.242 / 2.008 / 0.527 / 0.720 | -0.010 [-0.155, +0.046] | 5 / INCONCLUSIVE | 13.8-59.5 / 12.0-44.8 |
+| mc2_01 | DrawScreen | 2.245 / 3.727 / 1.122 / 1.677 | 2.195 / 3.656 / 1.147 / 1.668 | -0.052 [-0.886, +0.025] | 5 / INCONCLUSIVE | 13.8-59.5 / 12.0-44.8 |
+| mc2_01 | SwapWindow | 0.011 / 0.020 / 0.006 / 0.008 | 0.011 / 0.020 / 0.006 / 0.008 | -0.000 [-0.002, +0.000] | 5 / NO CHANGE | 13.8-59.5 / 12.0-44.8 |
+| mc2_03 | Frame | 10.519 / 30.791 / 3.203 / 4.307 | 10.522 / 30.576 / 3.020 / 4.278 | -0.055 [-0.072, +0.049] | 5 / INCONCLUSIVE | 15.6-23.8 / 15.7-25.5 |
+| mc2_03 | GameLogic | 2.903 / 1.866 / 0.938 / 1.272 | 2.872 / 1.850 / 0.923 / 1.258 | -0.023 [-0.040, +0.027] | 5 / INCONCLUSIVE | 15.6-23.8 / 15.7-25.5 |
+| mc2_03 | DrawScreen | 3.131 / 5.443 / 1.545 / 2.262 | 3.123 / 5.499 / 1.567 / 2.243 | -0.032 [-0.050, +0.016] | 5 / INCONCLUSIVE | 15.6-23.8 / 15.7-25.5 |
+| mc2_03 | SwapWindow | 0.010 / 0.014 / 0.006 / 0.008 | 0.010 / 0.014 / 0.006 / 0.008 | -0.000 [-0.000, +0.000] | 5 / NO CHANGE | 15.6-23.8 / 15.7-25.5 |
+| mc2_10 | Frame | 18.839 / 60.738 / 3.208 / 6.242 | 19.000 / 58.965 / 3.285 / 6.120 | -0.192 [-0.468, +0.214] | 5 / INCONCLUSIVE | 14.6-20.5 / 13.1-29.8 |
+| mc2_10 | GameLogic | 5.575 / 6.768 / 0.919 / 1.214 | 5.558 / 6.754 / 0.953 / 1.224 | -0.078 [-0.124, -0.027] | 5 / WIN | 14.6-20.5 / 13.1-29.8 |
+| mc2_10 | DrawScreen | 6.573 / 18.789 / 1.653 / 3.352 | 6.581 / 19.302 / 1.646 / 3.328 | +0.041 [-0.010, +0.231] | 5 / INCONCLUSIVE | 14.6-20.5 / 13.1-29.8 |
+| mc2_10 | SwapWindow | 0.010 / 0.016 / 0.006 / 0.008 | 0.010 / 0.016 / 0.006 / 0.008 | +0.000 [-0.000, +0.000] | 5 / NO CHANGE | 14.6-20.5 / 13.1-29.8 |
+| mc2_24 | Frame | 27.794 / 60.666 / 10.065 / 12.681 | 27.676 / 60.621 / 9.818 / 12.761 | -0.176 [-0.635, +1.151] | 5 / INCONCLUSIVE | 11.5-15.7 / 12.3-14.1 |
+| mc2_24 | GameLogic | 10.487 / 7.820 / 3.462 / 4.240 | 10.486 / 7.847 / 3.361 / 4.262 | +0.007 [-0.043, +0.079] | 5 / INCONCLUSIVE | 11.5-15.7 / 12.3-14.1 |
+| mc2_24 | DrawScreen | 11.137 / 23.153 / 4.809 / 6.691 | 11.046 / 22.571 / 4.761 / 6.710 | -0.012 [-0.127, +0.091] | 5 / INCONCLUSIVE | 11.5-15.7 / 12.3-14.1 |
+| mc2_24 | SwapWindow | 0.009 / 0.021 / 0.006 / 0.007 | 0.009 / 0.021 / 0.006 / 0.007 | +0.000 [-0.000, +0.000] | 5 / NO CHANGE | 11.5-15.7 / 12.3-14.1 |
+| battle | Frame | 37.591 / 76.686 / 12.536 / 24.320 | 35.579 / 77.056 / 12.812 / 23.672 | -1.237 [-3.142, +1.212] | 5 / INCONCLUSIVE | 22.5-34.4 / 21.5-29.0 |
+| battle | GameLogic | 17.379 / 10.993 / 4.912 / 7.713 | 17.084 / 10.730 / 4.674 / 7.615 | -0.181 [-0.559, +0.153] | 5 / INCONCLUSIVE | 22.5-34.4 / 21.5-29.0 |
+| battle | DrawScreen | 6.540 / 9.002 / 3.893 / 5.394 | 6.455 / 9.351 / 3.781 / 5.376 | -0.054 [-0.247, +0.281] | 5 / INCONCLUSIVE | 22.5-34.4 / 21.5-29.0 |
+| battle | SwapWindow | 0.010 / 0.026 / 0.006 / 0.008 | 0.010 / 0.025 / 0.006 / 0.008 | -0.000 [-0.000, +0.001] | 5 / NO CHANGE | 22.5-34.4 / 21.5-29.0 |
 
 ## Ranked remaining target gaps
 
-Rows are independent target gaps and overlap; do not add them. Camera mission gaps use the cockpit’s worst bookmarked view per capture, while the CPU table above describes the full captured mission. Tick has no numeric budget in the brief.
+Drawscreen arm, measured fixed views; Frame budget 1 ms, DrawScreen budget 0.1 ms. Rows overlap and do not add. GPU budgets are not remeasured in this CPU assignment.
 
-| Rank | Target | Budget ms | Over budget ms |
-|---:|---|---:|---:|
-| 1 | mc2_24 Frame (cockpit worst view) | 1 | +3.078 |
-| 2 | mc2_10 Frame (cockpit worst view) | 1 | +2.265 |
-| 3 | mc2_24 DrawScreen (cockpit worst view) | 0.1 | +1.862 |
-| 4 | mc2_10 DrawScreen (cockpit worst view) | 0.1 | +1.468 |
-| 5 | mc2_01 Frame (cockpit worst view) | 1 | +0.794 |
-| 6 | mc2_01 DrawScreen (cockpit worst view) | 0.1 | +0.699 |
-| 7 | mc2_03 DrawScreen (cockpit worst view) | 0.1 | +0.685 |
-| 8 | mc2_03 Frame (cockpit worst view) | 1 | +0.511 |
-| 9 | mc2_10 4K throughput | 5 | -2.125 |
-| 10 | mc2_01 4K throughput | 5 | -3.404 |
+| Rank | Machine | Workload / scope | Mean ms | Budget ms | Gap ms |
+|---:|---|---|---:|---:|---:|
+| 1 | Laptop | battle / Frame | 35.579 | 1 | +34.579 |
+| 2 | Laptop | mc2_24 / Frame | 27.676 | 1 | +26.676 |
+| 3 | Laptop | mc2_10 / Frame | 19.000 | 1 | +18.000 |
+| 4 | Host | battle / Frame | 12.937 | 1 | +11.937 |
+| 5 | Laptop | mc2_24 / DrawScreen | 11.046 | 0.1 | +10.946 |
+| 6 | Laptop | mc2_03 / Frame | 10.522 | 1 | +9.522 |
+| 7 | Laptop | mc2_10 / DrawScreen | 6.581 | 0.1 | +6.481 |
+| 8 | Laptop | battle / DrawScreen | 6.455 | 0.1 | +6.355 |
+| 9 | Host | mc2_24 / Frame | 6.135 | 1 | +5.135 |
+| 10 | Laptop | mc2_01 / Frame | 5.859 | 1 | +4.859 |
+| 11 | Laptop | mc2_03 / DrawScreen | 3.123 | 0.1 | +3.023 |
+| 12 | Host | battle / DrawScreen | 3.052 | 0.1 | +2.952 |
+| 13 | Host | mc2_24 / DrawScreen | 2.901 | 0.1 | +2.801 |
+| 14 | Host | mc2_10 / Frame | 3.623 | 1 | +2.623 |
+| 15 | Laptop | mc2_01 / DrawScreen | 2.195 | 0.1 | +2.095 |
+| 16 | Host | mc2_10 / DrawScreen | 1.259 | 0.1 | +1.159 |
+| 17 | Host | mc2_03 / DrawScreen | 0.773 | 0.1 | +0.673 |
+| 18 | Host | mc2_01 / DrawScreen | 0.643 | 0.1 | +0.543 |
+| 19 | Host | mc2_03 / Frame | 1.507 | 1 | +0.507 |
+| 20 | Host | mc2_01 / Frame | 1.364 | 1 | +0.364 |
 
-## Three cheapest next wins
+## Three largest remaining DrawScreen subtrees
 
-These are three small implementation candidates, not measured promises of savings. No optimization was implemented in this measurement lane. Inclusive zone cost is an upper bound, not the saving from one small change.
+Largest distinct named camera passes, inner textureManagerRenderLists and Render.PostProcess in the heaviest successfully measured drawscreen workload. The activeScene and outer GameCamera::render textureManagerRenderLists wrappers are omitted to avoid ranking nested work twice. Inclusive elapsed ms per Frame, median across successful arm-B captures; these are costs, not promised savings.
 
-1. **Reuse ImGui recording scratch capacity** — `GameOS/gameos/engine_present_vk.cpp:1499–1517`. The recording path builds a per-frame `saved` vector. Reuse per-thread capacity while preserving per-frame clearing and texture-ID restoration. This is a local change with no class-layout or buffer-lifetime change. First-main mc2_24 TailRecord was 0.777 ms/frame, but Submit plus QueuePresent were only 0.089 ms: the 0.688 ms residual is CPU recording/other unscoped work including `finishFrame`, not proof that this allocation accounts for all of it. Savings from scratch reuse remain unmeasured.
-2. **Skip unchanged binding-9 descriptor writes** — `GameOS/gameos/vulkan_color_prop_island.cpp:1747–1752`. Compare the exact descriptor-set slot, buffer, offset and range before `vkUpdateDescriptorSets`; invalidate on HZB buffer/map-generation changes. A rotating mask can eliminate the opportunity. This affects a small part of the measured static-prop recording scope (0.434 ms/frame in first-main mc2_24), not its entire cost.
-3. **Hoist the frame-constant home-team lookup out of the terrain-object loop** — `code/objmgr_misc.cpp:605`. Retain per-object relation/visibility/animation semantics. This is the smallest code change but likely the smallest gain; the full terrain-presentation scope was 0.442 ms/frame in the first main mc2_24 capture. Do not equate that scope with the saving from one lookup.
+| Machine | Workload | Subtree | ms/frame |
+|---|---|---|---:|
+| Host | battle | GameCamera::render particlesFlush | 0.791 |
+| Host | battle | textureManagerRenderLists | 0.755 |
+| Host | battle | GameCamera::render objects | 0.705 |
+| Laptop | mc2_24 | textureManagerRenderLists | 6.928 |
+| Laptop | mc2_24 | GameCamera::render objects | 3.087 |
+| Laptop | mc2_24 | GameCamera::render shadows | 0.288 |
 
-## Defender, host interference, validation and cleanup
+## Evidence and validation
 
-Live `Get-MpPreference` confirms exclusions for `E:/mc2-installs`, `A:/Games/mc2-lane4` and `A:/Games/mc2-main` (therefore their build trees). The script expands the currently existing `A:/Games/mc2-*` directories; it is not a permanent wildcard exclusion for future worktrees. `G:/mc2-tmp` is absent from both the script and live exclusions. Live exclusions also miss existing Ninja build worktrees `mc2-lane10`, `mc2-lane10-baseline`, `mc2-lane8`, `mc2-lane8-baseline`, and `mc2-lane9`. Owner-only elevated command (not run): `Add-MpPreference -ExclusionPath "G:\mc2-tmp","A:\Games\mc2-lane10","A:\Games\mc2-lane10-baseline","A:\Games\mc2-lane8","A:\Games\mc2-lane8-baseline","A:\Games\mc2-lane9"`.
+The earlier MC2_MOVER_FIXTURE=200 path failed during appearance initialization on the simulation worker. Those failed captures remain in the original reports and supply no timings. Every battle number here is from a new five-pair main-thread-spawn sweep; the engine and its default simulation mode were unchanged.
 
-A native Windows CPU trace under an exclusive lease confirms actual reserved-core activity from Plex Transcoder, WmiPrvSE and MsMpEng. `offenders/offenders.etl`, `offenders.csv`, `idle.json` and `attribution.json` preserve processor numbers, sampled thread/process mapping and physical-core topology. The ten-second recording ranked physical cores 8–9 and 12–13 quietest: mean busy CPU 20.77% versus 23.23% on 12–15, including diagnostic recording overhead. These are placement measurements, not profile acceptance numbers. After the first stock pair, `A:/Games/mc2-ops/owner_cores_guard.py` was changed to reserve 8,9,12,13 and assign the other non-desktop cores to tools. The guard was gracefully replaced before the corrected battle pairs, and `core_plan.json` plus affinity `0x3300` verify the applied reservation. Desktop cores 0–1 and all desktop services remain running. The guard configuration lives outside this git checkout.
+Host reruns use the immutable `A:/Games/mc2-lane10-main-base` checkout at 586327c79. Refused live-main/stale-viewer deployments and captures at later main revisions were excluded. Both pinned payloads passed normal deployment checks, including the viewer and VC runtime files. The earlier valid W86/main stock sweep was retained only after auditing all 40 clean build receipts.
 
-Validation: 93 metric, profiler, cockpit and lease unit tests; covering `mission_cpu_profile|perf_budget_schema` contract rows; `git diff --check`. No engine code was changed or rebuilt. W86’s existing clean build was used; missing runtime DLL dependencies were supplied from the verified main build before normal deployment. Both build caches specify RelWithDebInfo and C++23.
+Raw traces, complete profile JSONs (all named zones), host-load samples, invocation logs, and private farm job receipts are under `E:/mc2-archive-2026-10/proofs/perf-robust/`. Farm fetch removes both per-job arm trees. Only `E:/mc2-installs/claude-perf-robust` was created on the host.
 
-Repo preflight verified a clean worktree and the assigned branch/root. Its overall `ok=false` is due to ambiguous deploy/smoke/tier1 command extraction from CLAUDE.md. Those parser-derived commands were not used; the canonical file and explicit assignment were read directly. No check was bypassed.
+No engine cuts or default-OFF gates were added. Stats/job tests and the touched-tool contract rows passed; the five ratchets passed without baseline increases. The shared lane install keeps kit data fixed with the existing --skip-kit deploy option; engine payloads and manifest fingerprints still deploy normally.
 
-Cleanup: one install remains, `E:/mc2-installs/claude-quiet-measure`, restored to main via normal deploy. No extra installs created; disk freed 0 bytes. No push. Game/recorder/exporter processes have finished; the replacement core guard remains active to maintain the requested reservation.
-
-Tool slowness / largest avoidable cost: the existing camera profiler requires 60-second captures and full event export for three missions per arm, and normal deployments reverify large asset sets. A separate future task should bound the profile window to the requested 15–20 seconds without weakening the camera proof.
-
-Actual CPU samples on the original reserved cores (not whole-machine process totals):
-
-| Process | PID | CPU samples on cores 12–15 |
-|---|---:|---:|
-| Plex Transcoder.exe | 68484 | 4038 |
-| Plex Transcoder.exe | 64848 | 3136 |
-| WmiPrvSE.exe | 6904 | 554 |
-| MsMpEng.exe | 48788 | 550 |
-| System | 4 | 393 |
-| claude.exe | 50920 | 158 |
-| firefox.exe | 53324 | 150 |
-| firefox.exe | 27172 | 121 |
+Skipped steps: refused deployments from live main or stale viewer artifacts; these were replaced with normally validated pinned builds. Optional PowerShell profile autoload was skipped after an execution-policy denial. No provenance, lease or runtime check was disabled.
