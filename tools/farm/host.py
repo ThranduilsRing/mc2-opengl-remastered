@@ -24,7 +24,7 @@ import console_child
 def remote(args, script):
     script = "$ProgressPreference='SilentlyContinue'\n" + script  # else CLIXML progress noise on stdout
     encoded = base64.b64encode(script.encode('utf-16le')).decode('ascii')
-    return subprocess.check_output(['ssh', '-i', str(args.key), '-o', 'BatchMode=yes',
+    return subprocess.check_output(['ssh', '-i', str(args.key), '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=10',
                                     args.host, 'powershell -NoProfile -EncodedCommand ' + encoded],
                                    text=True, **console_child.child_kwargs(redirected=True))
 
@@ -108,6 +108,9 @@ def seed_files(install, harness):
             continue
         if rel.parts[0] in ('tools', 'scripts', 'importer', '3rdparty'):
             continue
+        with (install / rel).open('rb') as stream:
+            if hashlib.file_digest(stream, 'sha256').hexdigest() != row['sha256']:
+                raise ValueError(f'install {rel} does not match deployed manifest')
         files['install/' + rel.as_posix()] = install / rel
     # The deploy manifest owns the engine payload, not all stock loose data.
     for folder in ('data', 'assets', 'shaders', 'shaders_vk'):
@@ -121,6 +124,15 @@ def seed_files(install, harness):
     for pattern in ('*.fst', '*.dll', '*.cfg'):
         for path in install.glob(pattern):
             files['install/' + path.name] = path
+    # Pinned recipes come from the deployed tree too; reseeding never re-cooks.
+    from kit_payload import checked_files
+    for name in ('industrial-cook.json', 'vehicle-cook.json'):
+        receipt = install / 'cache/content-model' / name
+        if receipt.is_file():
+            rows = json.loads(receipt.read_text())['files']
+            checked_files(receipt.parent, rows)
+            for path in [receipt, *(receipt.parent / row['path'] for row in rows)]:
+                files['install/' + path.relative_to(install).as_posix()] = path
     files['install/.deployed_manifest.csv'] = manifest
     files['reference/mc2.exe'] = install / 'mc2.exe'
     tracked = subprocess.check_output(['git', '-C', str(harness), 'ls-files',
@@ -165,8 +177,15 @@ print(json.dumps({p.relative_to(root).as_posix(): [p.stat().st_size, p.stat().st
     with tempfile.TemporaryDirectory(prefix='farm-reseed-') as temp:
         archive = Path(temp) / 'seed.tar'
         with tarfile.open(archive, 'w') as tar:
+            digests = {}
             for name, path in changed.items():
                 tar.add(path, arcname=name, recursive=False)
+                with path.open('rb') as stream:
+                    digests[name] = hashlib.file_digest(stream, 'sha256').hexdigest()
+            verification = json.dumps(digests).encode()
+            info = tarfile.TarInfo('reference/seed-files.json')
+            info.size = len(verification)
+            tar.addfile(info, io.BytesIO(verification))
             metadata = json.dumps({'src_commit': exe['src_commit'], 'sha256': exe['sha256']}).encode()
             info = tarfile.TarInfo('reference/seed.json')
             info.size = len(metadata)
@@ -181,6 +200,11 @@ from pathlib import Path
 root = Path('C:/mc2farm')
 with tarfile.open(root / 'seed.upload.tar') as tar:
     tar.extractall(root, filter='data')
+for name, expected in json.loads((root / 'reference/seed-files.json').read_text()).items():
+    path = (root / name).resolve()
+    assert path.is_relative_to(root.resolve()), name
+    with path.open('rb') as stream:
+        assert hashlib.file_digest(stream, 'sha256').hexdigest() == expected, name
 meta = json.loads((root / 'reference/seed.json').read_text())
 for name in ('install/mc2.exe', 'reference/mc2.exe'):
     assert hashlib.sha256((root / name).read_bytes()).hexdigest() == meta['sha256'], name
@@ -226,6 +250,7 @@ def main():
     parser.add_argument('--key', type=Path,
                         default=Path(os.environ.get('HOME', str(Path.home()))) / '.ssh/mc2farm_ed25519')
     sub = parser.add_subparsers(dest='action', required=True)
+    sub.add_parser('queue', help='JSON queue depth including the running job')
     seed = sub.add_parser('reseed')
     seed.add_argument('--install', type=Path, required=True)
     seed.add_argument('--harness', type=Path, required=True)
@@ -236,10 +261,15 @@ def main():
     wait = sub.add_parser('wait')
     wait.add_argument('id')
     wait.add_argument('--timeout', type=float, default=900)
+    wait.add_argument('--queue-timeout', type=float, help='cancel only an unclaimed job after this many seconds')
     fetch = sub.add_parser('fetch')
     fetch.add_argument('id')
     fetch.add_argument('destination', type=Path)
     args = parser.parse_args()
+    if args.action == 'queue':
+        print(remote(args, "$q=@(Get-ChildItem C:/mc2farm/jobs -File | Where-Object { $_.Extension -in '.json','.running' }); "
+                           "@{depth=$q.Count} | ConvertTo-Json -Compress").strip())
+        return
     if args.action == 'reseed':
         reseed(args)
         return
@@ -285,7 +315,8 @@ def main():
                        **console_child.child_kwargs())
         remote(args, CLEAN_PS % {'r': ROOT, 'id': args.id})  # per-job exe tree, if any
         return
-    deadline = time.monotonic() + args.timeout
+    started = time.monotonic()
+    deadline = started + args.timeout
     while time.monotonic() < deadline:
         text = remote(args, f"if (Test-Path C:/mc2farm/results/{args.id}/result.json) "
                             f"{{ Get-Content -Raw C:/mc2farm/results/{args.id}/result.json }}")
@@ -293,6 +324,15 @@ def main():
             result = json.loads(text)
             print(json.dumps(result, indent=2))
             raise SystemExit(0 if result['status'] == 'completed' and result['returncode'] == 0 else 1)
+        if args.queue_timeout is not None and time.monotonic() - started >= args.queue_timeout:
+            # Rename races atomically with the runner's claim. Never cancel a running job.
+            cancelled = remote(args, f"try {{ Move-Item -LiteralPath C:/mc2farm/jobs/{args.id}.json "
+                               f"-Destination C:/mc2farm/jobs/{args.id}.cancelled -ErrorAction Stop; 'queue_timeout' }} catch {{ }}")
+            if 'queue_timeout' in cancelled:
+                remote(args, CLEAN_PS % {'r': ROOT, 'id': args.id})
+                print('queue_timeout: unclaimed job cancelled; safe to repeat locally')
+                raise SystemExit(1)
+            args.queue_timeout = None  # already claimed or completed; never cancel a running job
         time.sleep(3)
     raise SystemExit('wait timed out; job remains owned by the desktop runner')
 

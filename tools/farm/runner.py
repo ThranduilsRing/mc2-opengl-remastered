@@ -66,7 +66,10 @@ def run_job(path, root):
 def poll_once(root):
     for path in sorted((root / 'jobs').glob('*.json')):
         claimed = path.with_suffix('.running')
-        path.replace(claimed)
+        try:
+            path.replace(claimed)
+        except FileNotFoundError:
+            continue  # desktop cancelled this still-pending job after our directory snapshot
         run_job(claimed, root)
 
 

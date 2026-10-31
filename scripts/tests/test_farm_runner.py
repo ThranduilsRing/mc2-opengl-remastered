@@ -9,6 +9,41 @@ from types import SimpleNamespace
 
 import pytest
 
+
+def test_host_queue_and_pending_timeout(monkeypatch, capsys):
+    from tools.farm import host
+    calls = []
+    def remote(args, script):
+        calls.append(script)
+        if args.action == 'queue':
+            return '{"depth":2}'
+        return 'queue_timeout' if 'Move-Item' in script else ''
+    monkeypatch.setattr(host, 'remote', remote)
+    monkeypatch.setattr(sys, 'argv', ['host.py', 'queue'])
+    host.main()
+    assert json.loads(capsys.readouterr().out)['depth'] == 2
+    monkeypatch.setattr(sys, 'argv', ['host.py', 'wait', 'a' * 32, '--timeout', '5', '--queue-timeout', '0'])
+    with pytest.raises(SystemExit) as exited:
+        host.main()
+    assert exited.value.code == 1
+    cancellation = next(s for s in calls if 'Move-Item' in s)
+    assert '.json -Destination' in cancellation and '.cancelled' in cancellation
+    assert '.running' not in cancellation
+    assert 'queue_timeout:' in capsys.readouterr().out
+
+
+def test_cancel_racing_queue_claim_does_not_stop_runner(tmp_path, monkeypatch):
+    from tools.farm import runner
+    pending = tmp_path / 'jobs/pending.json'
+    pending.parent.mkdir()
+    pending.write_text('{}')
+    def cancelled(path, target):
+        path.unlink()
+        raise FileNotFoundError(path)
+    monkeypatch.setattr(Path, 'replace', cancelled)
+    monkeypatch.setattr(runner, 'run_job', lambda *a: pytest.fail('cancelled job launched'))
+    runner.poll_once(tmp_path)
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from scripts import console_child
 from tools.farm.runner import atomic_json, poll_once
@@ -42,6 +77,13 @@ def test_reseed_selection_and_incremental_changes(tmp_path):
     inventory = {name: [p.stat().st_size, p.stat().st_mtime] for name, p in files.items()}
     assert host.changed_files(files, inventory) == {}
     assert host.changed_files(files, {k.upper(): v for k, v in inventory.items()}) == {}
+    recipes = install / 'cache/content-model'; recipes.mkdir(parents=True)
+    model = recipes / 'model-0123456789abcdef.mci'; model.write_bytes(b'pinned')
+    (recipes / 'industrial-cook.json').write_text(json.dumps({'files': [dict(
+        path=model.name, bytes=6, sha256=hashlib.sha256(b'pinned').hexdigest())]}))
+    seeded, _ = host.seed_files(install, harness)
+    assert 'install/cache/content-model/industrial-cook.json' in seeded
+    assert 'install/cache/content-model/model-0123456789abcdef.mci' in seeded
     inventory['install/mc2.exe'][0] += 1
     inventory['install/mission.fst'][1] -= 10
     assert set(host.changed_files(files, inventory)) == {'install/mc2.exe', 'install/mission.fst'}

@@ -33,7 +33,7 @@ if mode == "fail":
     for i in range(6):
         print("line %%d of %%s" %% (i, name))
     sys.exit(1)
-if mode == "tighten":
+if mode == "tighten" and "--tighten" in sys.argv:
     if BASELINE:
         open(BASELINE, "w").write("tightened by " + name + "\\n")
     open("tools/decoy.json", "w").write("decoy " + name + "\\n")
@@ -546,7 +546,7 @@ def _branch(repo, name, rel, content, subject):
     git(repo, "checkout", "-q", "main")
 
 
-def test_batch_merges_each_tip_with_baselines_after_each_and_verifies_once(env, monkeypatch):
+def test_batch_checks_each_tip_and_tightens_once_before_verify(env, monkeypatch):
     repo, tools = env
     for n in "abc":
         _branch(repo, "lane_" + n, f"{n}_lane.cpp", n + "\n", f"lane {n}")
@@ -554,6 +554,12 @@ def test_batch_merges_each_tip_with_baselines_after_each_and_verifies_once(env, 
     commit_all(repo, "main work")
     set_mode(env, "file_size_ratchet.py", "tighten")
     lm = _load_module()
+    checks = []
+    real_ratchets = lm.run_ratchets
+    def ratchets(root, tools_dir, *, tighten=True):
+        checks.append(tighten)
+        return real_ratchets(root, tools_dir, tighten=tighten)
+    monkeypatch.setattr(lm, 'run_ratchets', ratchets)
     verifies = []
     monkeypatch.setattr(lm, "verify_merged", lambda root, mode, runner=None: (verifies.append(mode), ("OK", []))[1])
     rc = lm.main(["--batch", "lane_a", "lane_b", "lane_c", "--root", str(repo), "--tools-dir", str(tools)])
@@ -561,9 +567,29 @@ def test_batch_merges_each_tip_with_baselines_after_each_and_verifies_once(env, 
     assert verifies == ["build"]
     log = git(repo, "log", "--format=%s", "-8").splitlines()
     follow = "merge follow-up: ratchet baselines tightened at merged HEAD"
-    assert log.index(follow) < log.index("merge lane: lane a") and log.index("merge lane: lane b") < log.index(follow)   # right after tip a, before tip b
+    assert log.count(follow) == 1 and log.index(follow) < log.index('merge lane: lane c')
+    assert checks == [False, False, False, True]
     assert [s for s in log if s.startswith("merge lane:")] == ["merge lane: lane c", "merge lane: lane b", "merge lane: lane a"]
     assert all((repo / f"{n}_lane.cpp").exists() for n in "abc")
+
+
+def test_batch_artifacts_and_tightening_share_one_followup(env, monkeypatch):
+    repo, tools = env
+    _branch(repo, 'lane_a', 'a_lane.txt', 'a\n', 'lane a')
+    _branch(repo, 'lane_b', 'b_lane.txt', 'b\n', 'lane b')
+    set_mode(env, 'file_size_ratchet.py', 'tighten')
+    lm = _load_module()
+    generated = []
+    def regenerate(root):
+        generated.append(root)
+        write(repo, 'tests/callers.json', '{"batch": true}\n')
+        return ['tests/callers.json']
+    monkeypatch.setattr(lm, 'regenerate_all', regenerate)
+    monkeypatch.setattr(lm, 'verify_merged', lambda *a: ('OK', []))
+    assert lm.main(['--batch', 'lane_a', 'lane_b', '--root', str(repo), '--tools-dir', str(tools)]) == 0
+    assert len(generated) == 1
+    assert set(git(repo, 'show', '--format=', '--name-only', 'HEAD').splitlines()) == {FSIZE, 'tests/callers.json'}
+    assert git(repo, 'log', '-1', '--format=%s') == lm.FOLLOWUP_SUBJECT
 
 
 def test_batch_dry_run_plans_later_tips_against_the_earlier_ones(env, capsys):
@@ -806,6 +832,12 @@ GENERATED_FILES = ("Gates/gate_table.json", "docs/flags.auto.yaml", "tests/calle
 def test_every_generated_file_has_a_regenerator():
     lm = _load_module()
     assert lm.GENERATED == set().union(*(files for files, _, _ in lm.GENERATED_REGENERATORS))
+
+
+def test_dup_lines_is_checked_without_repinning():
+    lm = _load_module()
+    _, _, args = next(r for r in lm.RATCHETS if r[0] == 'dup_lines')
+    assert '--check' in args and '--tighten' not in args
 
 
 @pytest.mark.parametrize("path,script,args", [

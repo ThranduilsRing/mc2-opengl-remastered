@@ -260,7 +260,7 @@ def main(argv=None) -> int:
                     help="deterministic trigger frame (default 431, the frame the "
                          "verification fleet graded at)")
     ap.add_argument("--settle", type=int, default=30)
-    ap.add_argument("--duration", type=int, default=150,
+    ap.add_argument("--duration", type=int, default=20,
                     help="per-bookmark wall-clock budget in seconds (default 150; "
                          "45 never reached the trigger frame on a slow machine)")
     ap.add_argument("--clean", action="store_true",
