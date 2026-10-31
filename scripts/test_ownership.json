@@ -2,6 +2,7 @@
   "schema_version": 1,
   "aggregate_owner": "scripts_tests",
   "tests": [
+    {"module": "scripts/tests/test_gate_farm.py", "owners": ["gate_farm"]},
     {"module": "scripts/tests/test_paired_cpu.py", "owners": ["scripts_tests"]},
     {"module": "scripts/tests/test_deploy_seed.py", "owners": ["scripts_tests"]},
     {"module": "scripts/tests/test_gate_preflight.py", "owners": ["scripts_tests"]},
