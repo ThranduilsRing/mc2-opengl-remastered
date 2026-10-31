@@ -32,7 +32,7 @@ def test_cosmetic_rng_counts_do_not_split_hashes():
 def test_interleaved_console_lines_keep_every_record():
     # Another thread's line glued after a record, and a record glued after another line.
     text = ("[SIMID v1] simframe=1 rng=5/1/1 animrng=2[SHADOW_BAKE] re-recorded\n"
-            "samples=601[SIMID v1] simframe=2 rng=6/1/1 animrng=2\n")
+            "samples=601[SIMID v1] simframe=2 rng=6/1/1 animrng=2s\n")
     assert so.simid_lines(text) == ["[SIMID v1] simframe=1 rng=5 animrng=2", "[SIMID v1] simframe=2 rng=6 animrng=2"]
 
 
@@ -45,3 +45,6 @@ def test_green_on_matching_prefix_red_on_mismatch_or_violation():
     assert "violation" in v["runs"][1]["red"]
     short = so.judge([row("serial", lines(400)), row("jitter1", lines(10))])
     assert not short["green"]
+    failed = row("jitter1", lines(400))
+    failed["rc"] = 1
+    assert "rc=1" in so.judge([row("serial", lines(400)), failed])["runs"][1]["red"]
