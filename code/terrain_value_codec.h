@@ -33,4 +33,9 @@ inline void terrainObjectFields(Archive& a, TerrainObjectData& v) {
 }
 // Derived: inactive subarea and cell-pair tails -> 0; only the counted entries
 // describe occupancy. Runtime arrays are allocated by TerrainObject::Load.
+inline constexpr auto terrainTag = fourcc('T', 'E', 'R', 'R');
+struct TerrainRecord {
+    TerrainObjectData value{};
+    void serialize(Archive& a) { terrainObjectFields(a, value); }
+};
 }

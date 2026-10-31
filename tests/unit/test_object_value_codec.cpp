@@ -159,6 +159,34 @@ template<> inline bool equal(const WeaponShotInfo& a, const WeaponShotInfo& b) {
 #define BUILDING_MEMBERS &T::teamId, &T::commanderId, &T::refitBuddyWID, \
     &T::parentId, &T::parent, &T::listID, &T::captureTime, &T::moverInProximity, &T::proximityTimer
 
+TEST_CASE("save fields: TerrainObjectData independent inherited census") {
+    using T = TerrainObjectData;
+    auto sample = save_probe::patterned<T>(BASE_MEMBERS, TERRAIN_MEMBERS);
+    sample.objectClass = TERRAINOBJECT; sample.windowsVisible = 0;
+    sample.numSubAreas0 = sample.numSubAreas1 = MAX_SPECIAL_SUB_AREAS;
+    sample.numCellsCovered = 40; sample.cellsCovered[80] = 0;
+    const auto codec = [](auto& a, auto& v) {
+        mc2::save::TerrainRecord record{v}; record.serialize(a);
+        if (a.reading()) v = record.value;
+    };
+    REQUIRE(save_probe::roundtrip(sample, codec, BASE_MEMBERS, TERRAIN_MEMBERS));
+    CHECK_FALSE(save_probe::roundtrip(sample, [](auto& a, auto& v) {
+        mc2::save::TerrainRecord record{v}; record.serialize(a);
+        if (a.reading()) { v = record.value; v.powerSupply = 0; }
+    }, BASE_MEMBERS, TERRAIN_MEMBERS));
+    CHECK_FALSE(save_probe::roundtrip(sample, [](auto& a, auto& v) {
+        mc2::save::TerrainRecord record{v}; record.serialize(a);
+        if (a.reading()) { v = record.value; v.subAreas1[MAX_SPECIAL_SUB_AREAS-1] = 0; }
+    }, BASE_MEMBERS, TERRAIN_MEMBERS));
+    const auto bytes = mc2::save::encodeTaggedRecord(mc2::save::TerrainRecord{sample}, mc2::save::terrainTag);
+    mc2::save::TerrainRecord decoded;
+    REQUIRE(mc2::save::decodeTaggedRecord(bytes, decoded, mc2::save::terrainTag));
+    CHECK_FALSE(mc2::save::decodeTaggedRecord(std::span(bytes).first(bytes.size()-1), decoded, mc2::save::terrainTag));
+    CHECK_FALSE(mc2::save::decodeTaggedRecord(bytes, decoded, mc2::save::gateTag));
+    // This class uses the same complete TerrainObjectData declaration census
+    // and zero-tail/bounds cases as GateData; those tests run in the batch.
+}
+
 TEST_CASE("save fields: BuildingData inherited census and legacy values") {
     using T = BuildingData;
     auto sample = save_probe::patterned<T>(BASE_MEMBERS, TERRAIN_MEMBERS,
