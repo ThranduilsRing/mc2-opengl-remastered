@@ -7,6 +7,24 @@
 #include <optional>
 #include "mc2fmt.h"
 
+namespace mc2::vkLights {
+struct Packet {
+    struct CachedSceneLightTemplate {
+        TG_HWLightsData data;
+        uint32_t actorLightSlot;
+    };
+    struct LightSlotEntry { uint64_t tmpl; uint32_t actorARGB; uint32_t slot; };
+    std::vector<TG_HWLightsData> rows;
+    std::vector<uint64_t> generations;
+    uint64_t revision = 0;
+    uint64_t key = 0;
+    uint32_t count = 0;
+    std::unordered_map<uint64_t, uint32_t> dedup;
+    std::unordered_map<uint64_t, CachedSceneLightTemplate> templates;
+    std::unordered_map<uint64_t, LightSlotEntry> actorSlots;
+};
+}
+
 // PERF FIX 2026-05-07: hash-based dedup map. The previous linear-scan
 // implementation walked all existing entries doing 900-byte memcmp per
 // comparison. Tracy capture (728 trees, default config) showed 8.5 ms
@@ -21,29 +39,19 @@
 // from collisions are correct (same-data → same-result), just waste a
 // UBO slot. Acceptable.
 namespace {
-    std::vector<TG_HWLightsData> lightData_;
-    std::vector<uint64_t> s_lightRowGenerations;
-    uint64_t s_lightDataRevision = 0;
-    uint32_t lightDataStructuresCapacity = 0;
-    uint32_t lightDataStructuresCount = 0;
+    std::shared_ptr<mc2::vkLights::Packet> s_packet = std::make_shared<mc2::vkLights::Packet>();
+    uint64_t s_nextPacketKey = 0;
+    uint64_t s_nextRowGeneration = 0;
+    // Inline recording normally reuses its allocation. Retained feeds freeze
+    // their version: later appends, resets and re-bakes detach before writing.
+    mc2::vkLights::Packet& writablePacket() {
+        if (s_packet.use_count() != 1) s_packet = std::make_shared<mc2::vkLights::Packet>(*s_packet);
+        return *s_packet;
+    }
     bool s_active = false;
-    // FRAME-JOBS-2 precondition: single mutex protecting both dedup maps AND
-    // the lightData_ grow path. One lock covers the whole light-slot allocation
-    // sequence (map lookup -> grow-if-needed -> table write -> map insert) so
-    // the check-then-act is atomic from the callers' perspective.
-    // recursive_mutex: addLightDataStructureWithPerActorColor calls
-    // addLightDataStructure on the same thread while holding this lock.
+    // Serialize packet capture with mutation; recursive for the actor-colour
+    // path's nested addLightDataStructure call.
     static std::recursive_mutex s_lightDataMapMu;
-
-    static std::unordered_map<uint64_t, uint32_t> s_lightDataDedupMap;
-
-    struct CachedSceneLightTemplate {
-        TG_HWLightsData data;
-        uint32_t actorLightSlot;
-    };
-
-    static std::unordered_map<uint64_t, CachedSceneLightTemplate> s_sceneLightTemplateMap;
-    static uint32_t s_sceneLightTemplateFrame = 0xFFFFFFFFu;
 
     static inline uint64_t fnv1a_64_bytes(uint64_t h, const void* data, size_t bytes) {
         const uint8_t* p = static_cast<const uint8_t*>(data);
@@ -112,7 +120,6 @@ namespace {
         const DWORD numLights = TG_Shape::s_numLights;
 
         uint64_t h = 0xcbf29ce484222325ULL;
-        h = fnv1a_64_u32(h, mc2::overlap::simulationFrame(g_mc2FrameCounter));
         h = fnv1a_64_u32(h, numLights);
 
         const uintptr_t listPtr = reinterpret_cast<uintptr_t>(listOfLights);
@@ -223,8 +230,6 @@ namespace {
     // MC2_LIGHTBRIDGE (default ON; =0 restores legacy FNV/memcmp bit-for-
     // bit). Slot cache is per-frame, cleared in resetLightData alongside
     // s_lightDataDedupMap (same frame-start slot-reset invariant).
-    struct LightSlotEntry { uint64_t tmpl; uint32_t actorARGB; uint32_t slot; };
-    static std::unordered_map<uint64_t, LightSlotEntry> s_lightSlotByActorKey;
 
     static bool s_lbRepointInit = false;
     static bool s_lbRepointEnabled = true;          // default ON
@@ -481,13 +486,14 @@ uint32_t mc2::vkLights::addLightDataStructure(TG_HWLightsData* light_data)
     // table write + map insert as a single atomic sequence.
     std::lock_guard<std::recursive_mutex> _lk(s_lightDataMapMu);
 
+    auto& packet = writablePacket();
     const uint64_t hash = fnv1a_64_struct(light_data, sizeof(TG_HWLightsData));
-    auto it = s_lightDataDedupMap.find(hash);
-    if (it != s_lightDataDedupMap.end()) {
+    auto it = packet.dedup.find(hash);
+    if (it != packet.dedup.end()) {
         const uint32_t slot = it->second;
         // Verify with memcmp on hash match (collision safety).
-        if (slot < lightDataStructuresCount &&
-            0 == memcmp(lightData_.data() + slot, light_data, sizeof(TG_HWLightsData))) {
+        if (slot < packet.count &&
+            0 == memcmp(packet.rows.data() + slot, light_data, sizeof(TG_HWLightsData))) {
             ++s_lightSlotDedupHits;   // [LIGHTSLOT v1] content dedup matched an existing slot
             return slot;
         }
@@ -496,18 +502,17 @@ uint32_t mc2::vkLights::addLightDataStructure(TG_HWLightsData* light_data)
         // will continue to find the existing slot via memcmp-verify.
     }
 
-    if(lightDataStructuresCount + 1 >= lightDataStructuresCapacity)
+    if(packet.count + 1 >= packet.rows.size())
     {
-        lightDataStructuresCapacity += 128;
-        lightData_.resize(lightDataStructuresCapacity);
+        packet.rows.resize(packet.rows.size() + 128);
     }
 
-    lightData_[lightDataStructuresCount] = *light_data;
-    s_lightRowGenerations.resize(lightData_.size());
-    s_lightRowGenerations[lightDataStructuresCount] = ++s_lightDataRevision;
-    uint32_t rv = lightDataStructuresCount;
-    lightDataStructuresCount++;
-    s_lightDataDedupMap.emplace(hash, rv);  // O(1) avg insert
+    packet.rows[packet.count] = *light_data;
+    packet.generations.resize(packet.rows.size());
+    packet.generations[packet.count] = packet.revision = ++s_nextRowGeneration;
+    uint32_t rv = packet.count;
+    packet.count++;
+    packet.dedup.emplace(hash, rv);  // O(1) avg insert
     return rv;
 }
 
@@ -516,16 +521,10 @@ uint32_t mc2::vkLights::addLightDataStructureWithPerActorColor(TG_HWLightsData* 
     gosASSERT(light_data);
     mc2::overlap::assertOwner(mc2::overlap::Owner::Render, "vkLights::addLightDataStructureWithPerActorColor");
     LbScope _lb_;  // [LIGHTBRIDGE v1] C5/C6 populate sizing (RAII, all return paths)
-    // FRAME-JOBS-2 precondition: protects s_sceneLightTemplateMap, s_lightSlotByActorKey,
-    // and (via the nested addLightDataStructure call) s_lightDataDedupMap + lightData_ grow.
-    // recursive_mutex allows the nested call to re-acquire on the same thread.
+    // Allocation and all three caches belong to the same packet version.
     std::lock_guard<std::recursive_mutex> _lk(s_lightDataMapMu);
 
-    const auto lightFrame = mc2::overlap::simulationFrame(g_mc2FrameCounter);
-    if (s_sceneLightTemplateFrame != lightFrame) {
-        s_sceneLightTemplateMap.clear();
-        s_sceneLightTemplateFrame = lightFrame;
-    }
+    auto& packet = writablePacket();
 
     const auto actorLightSource = firstActiveLightSourceIndex();
     if (!actorLightSource) {
@@ -536,14 +535,14 @@ uint32_t mc2::vkLights::addLightDataStructureWithPerActorColor(TG_HWLightsData* 
     const DWORD actorColor = TG_Shape::s_listOfLights[*actorLightSource]->GetaRGB();
 
     const uint64_t key = sceneLightTemplateKey(*actorLightSource);
-    auto it = s_sceneLightTemplateMap.find(key);
-    if (it == s_sceneLightTemplateMap.end()) {
+    auto it = packet.templates.find(key);
+    if (it == packet.templates.end()) {
         ++s_lbFrameMiss;  // [LIGHTBRIDGE v1] template miss (GatherLightsParameters runs)
-        CachedSceneLightTemplate entry;
+        Packet::CachedSceneLightTemplate entry;
         GatherLightsParameters(&entry.data);
         decomposeActorLightColor(&entry.data, actorColor);
         entry.actorLightSlot = 0u;
-        it = s_sceneLightTemplateMap.emplace(key, entry).first;
+        it = packet.templates.emplace(key, entry).first;
     } else {
         ++s_lbFrameHit;  // [LIGHTBRIDGE v1] template hit (trailing FNV+memcmp = retirable redundancy)
     }
@@ -570,15 +569,15 @@ uint32_t mc2::vkLights::addLightDataStructureWithPerActorColor(TG_HWLightsData* 
             : 0u;
         const uint64_t combined =
             key ^ (static_cast<uint64_t>(actorARGB) * 0x9E3779B97F4A7C15ULL);
-        auto sit = s_lightSlotByActorKey.find(combined);
-        if (sit != s_lightSlotByActorKey.end() &&
+        auto sit = packet.actorSlots.find(combined);
+        if (sit != packet.actorSlots.end() &&
             sit->second.tmpl == key && sit->second.actorARGB == actorARGB) {
             ++s_lightSlotActorKeyHits;  // [LIGHTSLOT v1] per-actor-color slot-cache hit
             return sit->second.slot;   // no FNV, no memcmp
         }
         const uint32_t slot = addLightDataStructure(light_data);
-        s_lightSlotByActorKey[combined] =
-            LightSlotEntry{ key, actorARGB, slot };
+        packet.actorSlots[combined] =
+            Packet::LightSlotEntry{ key, actorARGB, slot };
         if (!s_lbFirstPopulateLogged) {
             s_lbFirstPopulateLogged = true;
             MC2_DIAG_PUTS("[LIGHTBRIDGE v1] event=first_populate");
@@ -598,6 +597,8 @@ void mc2::vkLights::resetLightData()
     // FRAME-JOBS-2 precondition: lock during map clears and count rebase.
     std::lock_guard<std::recursive_mutex> _lk(s_lightDataMapMu);
 
+    auto& packet = writablePacket();
+    packet.key = ++s_nextPacketKey;
     // [LIGHTBAKE v2] Rebase the DYNAMIC allocator base to S (the static
     // prefix high-water) when the bake is on, so dynamic appends start
     // above [0..S) and addLightDataStructure never returns a slot < S
@@ -605,42 +606,37 @@ void mc2::vkLights::resetLightData()
     // dynamic-only by construction, exactly as before but rebased). With
     // MC2_LIGHTBAKE=0 the persistent table is off -> base 0 (else the
     // dynamic allocator would collide into a non-rebased prefix).
-    lightDataStructuresCount = mc2LightBakeEnabled() ? s_staticLightHighWater : 0;
+    packet.count = mc2LightBakeEnabled() ? s_staticLightHighWater : 0;
     // PERF FIX 2026-05-07: clear the dedup map alongside the count reset.
     // Both must reset together — dynamic slot indices restart from the
     // base (S or 0) each frame, so any stale hash→slot entries from the
     // prior frame are invalid. (Static [0..S) is NEVER cleared here:
     // s_bakedStaticLight + lightData_[0..S) persist across frames; that
     // is the whole point — resetLightData does not memset lightData_.)
-    s_lightDataDedupMap.clear();
-    s_sceneLightTemplateMap.clear();
-    s_lightSlotByActorKey.clear();  // [LIGHTBRIDGE v1] per-frame slot cache
-    s_sceneLightTemplateFrame = 0xFFFFFFFFu;
+    packet.dedup.clear();
+    packet.templates.clear();
+    packet.actorSlots.clear();
 }
 
-// [LIGHTBAKE v2] Persistent static slot writer (member: needs private
-// lightData_/capacity access). Grow lightData_ so [recipeIndex] is
-// addressable (preserving ALL existing contents -- static prefix AND any
-// transient dynamic entries -- via the same realloc+memcpy pattern as
-// the addLightDataStructure grow), mirror the baked constant into the
-// permanent slot, advance S. Called once per recipe at bake / invalidate
-// re-bake -- NOT per frame.
+// Retain the baked prefix in each packet. A re-bake detaches when an older
+// native feed still owns the previous rows, even within the same packet key.
 void mc2::vkLights::bakeStaticLightSlot(int32_t recipeIndex, const TG_HWLightsData& baked)
 {
     if (recipeIndex < 0) return;
+    std::lock_guard<std::recursive_mutex> _lk(s_lightDataMapMu);
+    auto& packet = writablePacket();
     const uint32_t ri = static_cast<uint32_t>(recipeIndex);
-    if (ri + 1 >= lightDataStructuresCapacity)
+    if (ri + 1 >= packet.rows.size())
     {
-        uint32_t newCap = lightDataStructuresCapacity;
+        size_t newCap = packet.rows.size();
         while (ri + 1 >= newCap) newCap += 128;            // +128 chunks, like the dynamic grow
         // The whole old array survives the resize (static prefix is in [0..S);
         // keeping only `count` would drop persisted static slots).
-        lightData_.resize(newCap);
-        lightDataStructuresCapacity = newCap;
+        packet.rows.resize(newCap);
     }
-    lightData_[ri] = baked;                                 // CPU mirror (persists)
-    s_lightRowGenerations.resize(lightData_.size());
-    s_lightRowGenerations[ri] = ++s_lightDataRevision;
+    packet.rows[ri] = baked;
+    packet.generations.resize(packet.rows.size());
+    packet.generations[ri] = packet.revision = ++s_nextRowGeneration;
     // 2A: the per-leaf permanent light index is NOT recipeIndex — it is the
     // owning RANGE's lightDataIndex (all leaves of a multi-leaf range share one
     // light slot, matching legacy flush). That propagation now lives in the
@@ -656,15 +652,16 @@ void mc2::vkLights::bakeStaticLightSlot(int32_t recipeIndex, const TG_HWLightsDa
     // to S keeps same-frame dynamic appends strictly above [0..S). Only
     // skips some low dynamic slots that frame (harmless -- dynamic is
     // per-frame ephemeral, rebuilt from S next resetLightData).
-    if (lightDataStructuresCount < s_staticLightHighWater)
-        lightDataStructuresCount = s_staticLightHighWater;
+    if (packet.count < s_staticLightHighWater)
+        packet.count = s_staticLightHighWater;
 }
 
 mc2::vkLights::LightSlotPeek mc2::vkLights::peekLightSlot(uint32_t idx)
 {
     LightSlotPeek p = {-1, -1, 0.0f, 0.0f, 0.0f};
-    if (idx >= lightDataStructuresCount || idx >= lightData_.size()) return p;
-    const TG_HWLightsData& d = lightData_[idx];
+    const auto& packet = *s_packet;
+    if (idx >= packet.count || idx >= packet.rows.size()) return p;
+    const TG_HWLightsData& d = packet.rows[idx];
     p.numLights = d.numLights_;
     if (d.numLights_ > 0) {
         // light_dir[i].w carries the light type (TG_LIGHT_AMBIENT=0, INFINITE=1,
@@ -681,47 +678,39 @@ mc2::vkLights::LightSlotPeek mc2::vkLights::peekLightSlot(uint32_t idx)
 // [LIGHTBAKE-PROOF v1] read-only full-slot copy for the parity trace.
 bool mc2::vkLights::copyLightSlot(uint32_t idx, TG_HWLightsData& out)
 {
-    if (idx >= lightDataStructuresCount || idx >= lightData_.size()) return false;
-    out = lightData_[idx];
+    const auto& packet = *s_packet;
+    if (idx >= packet.count || idx >= packet.rows.size()) return false;
+    out = packet.rows[idx];
     return true;
 }
 
-// Native light feed: read-only CPU rows, valid for the remainder of the frame.
-const void* mc2::vkLights::getLightDataPtr()
+mc2::vkLights::Feed mc2::vkLights::captureFeed()
 {
-    return lightData_.empty() ? nullptr : lightData_.data();
+    std::lock_guard<std::recursive_mutex> _lk(s_lightDataMapMu);
+    if (!s_active) return {};
+    const auto& packet = *s_packet;
+    return {s_packet, packet.rows.data(), static_cast<uint64_t>(packet.count) * sizeof(TG_HWLightsData),
+            {packet.generations.data(), packet.count}, packet.revision, packet.key};
 }
-
-uint64_t mc2::vkLights::getLightDataBytes()
-{
-    return static_cast<uint64_t>(lightDataStructuresCount) * sizeof(TG_HWLightsData);
-}
-
-std::span<const uint64_t> mc2::vkLights::getLightRowGenerations()
-{
-    return {s_lightRowGenerations.data(), lightDataStructuresCount};
-}
-
-uint64_t mc2::vkLights::getLightDataRevision() { return s_lightDataRevision; }
 
 
 void mc2::vkLights::start()
 {
-    lightDataStructuresCapacity = 128;
-    lightDataStructuresCount = 0;
-    lightData_.assign(lightDataStructuresCapacity, TG_HWLightsData());
-    s_lightRowGenerations.assign(lightDataStructuresCapacity, ++s_lightDataRevision);
+    std::lock_guard<std::recursive_mutex> _lk(s_lightDataMapMu);
+    s_packet = std::make_shared<Packet>();
+    s_packet->key = ++s_nextPacketKey;
+    s_packet->rows.resize(128);
+    s_packet->revision = ++s_nextRowGeneration;
+    s_packet->generations.assign(128, s_packet->revision);
     s_active = true;
 }
 
 void mc2::vkLights::shutdown()
 {
-    std::vector<TG_HWLightsData>().swap(lightData_);
-    std::vector<uint64_t>().swap(s_lightRowGenerations);
-    ++s_lightDataRevision;
-    lightDataStructuresCapacity = lightDataStructuresCount = 0;
+    std::lock_guard<std::recursive_mutex> _lk(s_lightDataMapMu);
+    s_packet = std::make_shared<Packet>();
     s_active = false;
 }
 
 bool mc2::vkLights::active() { return s_active; }
-uint32_t mc2::vkLights::getLightStructCount() { return lightDataStructuresCount; }
+uint32_t mc2::vkLights::getLightStructCount() { return s_packet->count; }

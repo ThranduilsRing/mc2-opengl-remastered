@@ -15,6 +15,7 @@
 #ifdef MC2_VULKAN_ISLAND
 
 #include <cstdint>
+#include "../../mclib/vk_object_lights.h"
 
 namespace mc2tex { struct TextureArrayCpu; }
 namespace RenderCore { struct PropMaterialGpu; struct KtxImage; }
@@ -167,8 +168,7 @@ struct Mc2ColorPropLightFeed {
     // renderLists) is the per-frame lighting feed. VK-PERF-2 cleanup deleted the
     // GL SSBO name/size fields with the audit-gated readback they existed for
     // (MC2_VK_PROP_FEED_AUDIT banked a clean run: 3000 frames, mismatches=0).
-    const void*  lightDataCpu;      // TG_HWLightsData[count] (3600B each) or null
-    uint64_t     lightDataCpuBytes; // count * sizeof(GpuObjectLights)
+    mc2::vkLights::Feed lights;
     float        iblSh[9][3];       // RenderCore::kIblShCoeffs (or current mission's set)
     float        iblShStrength;     // g_iblShStrength if s_iblShEnabled else 0.0
     // The eye's night state: the hot-colour tags (windows, base lights, fixtures) are lit by it.

@@ -86,12 +86,7 @@ extern "C" int mc2_mech_island_get_frame_feed(Mc2MechFrameFeed* out) {
     // Fog colour and the game's CPU LightsData array (the bytes the GL SSBO is uploaded from) for calc_light + fog.
     out->fogColorRGB[0] = out->fogColorRGB[1] = out->fogColorRGB[2] = 0.0f;
     mc2GetSceneFogColorRGB(out->fogColorRGB);
-    out->lightDataCpu = nullptr;
-    out->lightDataCpuBytes = 0;
-    if (mc2::vkLights::active()) {
-        out->lightDataCpu      = mc2::vkLights::getLightDataPtr();
-        out->lightDataCpuBytes = mc2::vkLights::getLightDataBytes();
-    }
+    out->lights = mc2::vkLights::captureFeed();
     // VK-PARITY-MECH-1: default mech FS shading inputs from the GL producers.
     {
         const RenderCore::ViewUniforms vu = RenderCore::framePackets().copyMainView().uniforms;   // by value: readers copy synchronously (FramePackets.h)

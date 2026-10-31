@@ -2,9 +2,21 @@
 // Static rows survive frame resets; dynamic rows and dedup caches reset together.
 #pragma once
 #include <cstdint>
+#include <memory>
 #include <span>
 struct TG_HWLightsData;
 namespace mc2::vkLights {
+struct Packet;
+// Retains the exact CPU version used by a native draw, including its row stamps.
+struct Feed {
+    std::shared_ptr<const Packet> owner;
+    const void* data = nullptr;
+    uint64_t bytes = 0;
+    std::span<const uint64_t> generations;
+    uint64_t revision = 0;
+    uint64_t packetKey = 0;
+};
+Feed captureFeed();
 void start();
 void shutdown();
 bool active();
@@ -36,10 +48,6 @@ bool active();
         // VK-MECH-FEED-NATIVE-1: read-only view of the CPU LightsData array
         // (the byte source of the GL SSBO upload). Defined in vk_object_lights.cpp
         // (needs complete TG_HWLightsData for sizeof).
-        const void* getLightDataPtr();
-        uint64_t    getLightDataBytes();
-        std::span<const uint64_t> getLightRowGenerations();
-        uint64_t getLightDataRevision();
 uint32_t addLightDataStructure(TG_HWLightsData* lightData);
 uint32_t addLightDataStructureWithPerActorColor(TG_HWLightsData* lightData);
 }

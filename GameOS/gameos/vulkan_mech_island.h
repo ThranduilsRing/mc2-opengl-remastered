@@ -26,6 +26,7 @@
 #ifdef MC2_VULKAN_ISLAND
 
 #include <cstdint>
+#include "../../mclib/vk_object_lights.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -79,8 +80,7 @@ struct Mc2MechFrameFeed {
     float        objectDepthBias;    // OBJECT_DEPTH_BIAS
     float        fogColorRGB[3];     // g_scene.fogColor.rgb (mech.frag fog mix source)
     // The game's CPU LightsData array (the bytes the GL SSBO is uploaded from); null before the texture manager exists.
-    const void*  lightDataCpu;       // TG_HWLightsData[count] (3600B each) or null
-    uint64_t     lightDataCpuBytes;  // count * sizeof(GpuObjectLights)
+    mc2::vkLights::Feed lights;
     // VK-PARITY-MECH-1: default mech FS shading inputs, from the SAME producers the
     // GL flush uploads (gpuMechShadingParams / GetObjectLightPoolParams / the
     // RenderCore main-view cameraWorldPos that feeds the GL ViewUniforms UBO).

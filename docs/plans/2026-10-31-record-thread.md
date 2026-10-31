@@ -322,3 +322,16 @@ The earlier mc2_01 pair has no pinned baseline and is excluded. No baseline was 
 All receipts use the existing `E:/mc2-archive-2026-10/proofs/record-thread/` root.
 Next: packet-key light rows, count, generation/revision and three caches; carry the retained version through
 both native feeds and shared upload checks, preserving the baked prefix and same-frame high-water rule.
+
+## S2 packet-key light checkpoint (proof in progress)
+
+Light rows/count, row generations/revision and dedup/template/actor-slot maps now belong to an owned CPU Packet.
+Each beginFrame reset assigns a monotonically increasing packet key, independently of simulationFrame.
+Native mech/prop feeds retain a const packet version and its exact metadata; writes detach if a feed retains
+the prior version. Inline draws normally reuse the allocation. Baked rows survive resets, while re-bakes
+cannot mutate an older feed; dynamic count still advances above a newly baked same-frame prefix.
+SharedLightFeed reads the retained feed's generations/revision and checks its packet key before same-frame reuse.
+No feature gate, GPU ABI change, new harness or three-slot ring introduced; retirement slots remain S3.
+Green pre-build receipt: `s2-lights-contracts.log`, ten covering rows/all five ratchets PASS, whitespace PASS.
+Next: commit-first build_all_targets once (-j6), selected native lighting tests, explicit lane deploy, then
+day/night pixel parity, mc2_10 SIMID 20 s/audit ON and sync validation 0. Stop at that proven S2 checkpoint.

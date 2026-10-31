@@ -20,6 +20,7 @@
 #include <vector>
 
 #include "vk_frame_ring.h"
+#include "../../mclib/vk_object_lights.h"
 
 namespace mc2vk {
 
@@ -33,7 +34,7 @@ public:
     SharedLightFeed& operator=(const SharedLightFeed&) = delete;
 
     // Dirty rows update once per frame slot. Empty means the caller copies privately.
-    FrameAlloc acquire(VulkanContext& ctx, const void* cpuData, uint64_t cpuBytes);
+    FrameAlloc acquire(VulkanContext& ctx, const mc2::vkLights::Feed& feed);
 
     // Called after device idle, before the allocator is released.
     void release() {
@@ -50,6 +51,7 @@ private:
     };
     Slot slots_[mc2vk::kMaxFramesInFlight];
     uint64_t revision_ = 0;
+    uint64_t packetKey_ = 0;
     FrameAlloc    span_;
     uint64_t      frame_ = ~0ull;     // CompletionTracker frame of the last copy attempt
     VkDeviceSize  bytes_ = 0;         // bytes copied for frame_
@@ -62,7 +64,7 @@ private:
 bool mc2vkSharedLightFeedEnabled();
 
 // Acquire this frame's immutable light version, or fall back to a private copy.
-mc2vk::FrameAlloc mc2vkSharedLightFeedAcquire(const void* cpuData, uint64_t cpuBytes);
+mc2vk::FrameAlloc mc2vkSharedLightFeedAcquire(const mc2::vkLights::Feed& feed);
 
 #endif  // MC2_VULKAN_ISLAND
 #endif  // MC2_VK_SHARED_LIGHT_FEED_H

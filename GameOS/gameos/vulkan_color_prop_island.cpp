@@ -1797,8 +1797,8 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
     // fetched fresh each frame in case the mission's SH set changed.
     s->lightingReady = false;
     mc2vk::FrameAlloc lightSpan;
-    const bool nativeLight = haveLightFeed && lightFeed.lightDataCpu &&
-                             lightFeed.lightDataCpuBytes >= 3600ull;
+    const bool nativeLight = haveLightFeed && lightFeed.lights.data &&
+                             lightFeed.lights.bytes >= 3600ull;
     if (s->tier1 && s->wantLighting && nativeLight) {
         // VK-LIGHTFEED-DEDUP-1: try the shared once-per-frame LightsData ring
         // first (ONE copy total across the mech + prop islands instead of twin
@@ -1809,18 +1809,18 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
         // fail-soft (mid-frame light-count growth, ring alloc failure) runs
         // the pre-slice per-island copy below (zone VKIsl.Props.LightFeed)
         // unchanged.
-        const VkDeviceSize lbytes = static_cast<VkDeviceSize>(lightFeed.lightDataCpuBytes);
-        lightSpan = mc2vkSharedLightFeedAcquire(lightFeed.lightDataCpu, lightFeed.lightDataCpuBytes);
+        const VkDeviceSize lbytes = static_cast<VkDeviceSize>(lightFeed.lights.bytes);
+        lightSpan = mc2vkSharedLightFeedAcquire(lightFeed.lights);
         if (lightSpan) {
             // Probe reads the CPU source -- byte-identical to the ring copy
             // (single-threaded copy of the same array this same frame).
-            prop_light_vertex_probe(static_cast<const uint8_t*>(lightFeed.lightDataCpu), lbytes, feed);
+            prop_light_vertex_probe(static_cast<const uint8_t*>(lightFeed.lights.data), lbytes, feed);
             s->lightingReady = true;
         } else {
             ZoneScopedN("VKIsl.Props.LightFeed");   // VK-ISLAND-TRACY-1: per-frame LightsData CPU->VK copy (own-span path)
             lightSpan = rctx.frameAlloc(lbytes);
             if (lightSpan) {
-                std::memcpy(lightSpan.ptr, lightFeed.lightDataCpu, static_cast<size_t>(lbytes));
+                std::memcpy(lightSpan.ptr, lightFeed.lights.data, static_cast<size_t>(lbytes));
                 prop_light_vertex_probe(static_cast<const uint8_t*>(lightSpan.ptr), lbytes, feed);
                 s->lightingReady = true;
             }
@@ -1904,7 +1904,7 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
                     u.lightingReady, haveLightFeed ? 1 : 0, s->tier1 ? 1 : 0,
                     s->wantLighting ? 1 : 0, s->wantMaterial ? 1 : 0, u.materialReady,
                     u.iblShStrength, u.iblSh[0][0], u.iblSh[0][1], u.iblSh[0][2],
-                    static_cast<unsigned long long>(lightFeed.lightDataCpuBytes),
+                    static_cast<unsigned long long>(lightFeed.lights.bytes),
                     u.terrainSunMC2[0], u.terrainSunMC2[1], u.terrainSunMC2[2]);
                 std::fflush(stderr);
             }
