@@ -35,7 +35,7 @@ def paired_delta(a, b):
 def comparison(pairs):
     result = {}
     valid = [p for p in pairs if all(not p[a].get("error") for a in ("a", "b"))]
-    names = set.intersection(*(set(p[a]["zones"]) for p in valid for a in ("a", "b"))) if valid else set()
+    names = set(ZONES) & set.intersection(*(set(p[a]["zones"]) for p in valid for a in ("a", "b"))) if valid else set()
     for name in sorted(names):
         row = paired_delta(*[[p[a]["zones"][name]["median_ms"] for p in valid] for a in ("a", "b")])
         for arm in ("a", "b"):
@@ -83,7 +83,7 @@ def run(args, psutil):
                         with (args.out / "deploy.log").open("a", encoding="utf-8") as log:
                             subprocess.run([sys.executable, str(cpu.ROOT / "scripts/deploy_payload.py"),
                                 str(install), "--target", "game", "--source-root", str(source),
-                                "--build-dir", str(exe.parent), "--allow-new-target"],
+                                "--build-dir", str(exe.parent), "--allow-new-target", "--skip-kit"],
                                 stdout=log, stderr=subprocess.STDOUT, check=True)
                     options = SimpleNamespace(install=install, seconds=args.seconds, short_view=True)
                     pair[arm] = cpu.profile(options, mission, directory, psutil)
