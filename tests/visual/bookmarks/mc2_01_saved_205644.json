@@ -1,7 +1,7 @@
 {
   "schema_v": 1,
   "mission": "mc2_01",
-  "_note": "Saved in-game via Save Camera Bookmark button. Duplicate entry keeps >=2 bookmarks (single-pose files silently fail).",
+  "_note": "Primary saved camera plus a distinct reverse view (single-pose files silently fail).",
   "bookmarks": [
     {
       "name": "saved_205644",
@@ -12,9 +12,9 @@
       "covers": ["terrain", "water", "airbase_overview"]
     },
     {
-      "name": "saved_205644_dup",
+      "name": "saved_205644_reverse",
       "pos": [2453.3330, -1984.0001, 411.1892],
-      "rot": -176.7500,
+      "rot": 3.2500,
       "proj": 12.5000,
       "alt": 2599.0798,
       "covers": ["terrain", "water", "airbase_overview"]

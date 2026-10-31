@@ -1069,18 +1069,23 @@ int main(int argc, char** argv)
             mc2::overlap::assertSimQuiescent("ExtractRenderSnapshot");
             snap = ExtractRenderSnapshot(packetSequence);
             mc2::overlap::extractRender();   // G7b K3: game render list + clock (zone ExtractRenderList)
-            mc2::render_view::list().freezeBoltDraws(snap.frameArena);
+            mc2::render_view::stagingList().freezeBoltDraws(snap.frameArena);
+            snap.draws = mc2::render_view::freezeDrawFrame(packetSequence);
         }
         mc2_debug_state::maybeWriteRenderState(snap);
     frameEmitDrawPackets(snap);
 
         {
+            mc2::render_view::DrawFrameScope drawFrame(*snap.draws, &snap.frameArena);
             mc2::overlap::beginFrameDraw();
             ZoneScopedN("DrawScreen");
             mc2_hitch::HitchScope _hitchRender(mc2_hitch::HitchSpanKind::PhaseRender);
 
             draw_screen();
         }
+        // Release copied containers and marker holders on Main before retiring
+        // their CPU sequence and draining typed resource destruction.
+        snap.draws.reset();
         RetireRenderSnapshot(packetSequence);
         RenderCore::framePackets().retire(packetSequence);
         mc2::tick::retireRenderPacket(packetSequence);

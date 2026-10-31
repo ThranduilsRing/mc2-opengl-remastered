@@ -1,7 +1,72 @@
 [
-  {"mod":"MC2X-CVE-G","mission":"metropolitan","error_class":"ammo","count_ceiling":7,"first_window":92,"expires_window":95,"owner_note":"Owner W92 assignment 2026-10-31 accepts known mod errors; renew unchanged W90 verified ceiling 7 for windows 92-94."},
-  {"mod":"MC2X-REAP3","mission":"reap3m01","error_class":"ammo","count_ceiling":1,"first_window":92,"expires_window":95,"owner_note":"Owner W92 assignment 2026-10-31 accepts known mod errors; renew unchanged W90 verified ammo ceiling 1 for windows 92-94."},
-  {"mod":"MC2X-REAP3","mission":"reap3m01","error_class":"movetype","count_ceiling":1,"first_window":92,"expires_window":95,"owner_note":"Owner W92 assignment 2026-10-31 accepts known mod errors; renew unchanged W90 verified movetype ceiling 1 for windows 92-94."},
-  {"mod":"MC2X-REAP3","mission":"reap3m13","error_class":"movetype","count_ceiling":1,"first_window":92,"expires_window":95,"owner_note":"Owner W92 assignment 2026-10-31 accepts known mod errors; renew unchanged W90 verified movetype ceiling 1 for windows 92-94."},
-  {"mod":"MCO-Carver5","mission":"mc2_01","error_class":"texture","count_ceiling":100,"first_window":92,"expires_window":95,"owner_note":"Owner W92 assignment 2026-10-31 accepts known mod errors; renew unchanged W90 verified texture ceiling 100 for windows 92-94."}
+  {
+    "mod": "MC2X-CVE-G",
+    "mission": "metropolitan",
+    "error_class": "ammo",
+    "count_ceiling": 1,
+    "first_window": 92,
+    "expires_window": 95,
+    "owner_note": "Owner W92 assignment 2026-10-31 accepts known mod errors; renew unchanged W90 verified ceiling 7 for windows 92-94.",
+    "message_sha256": "a15d7cdb76cb8073d52f0db8a31aeebb3fc8608c8f0ab4dda1d327fa7ee818c3"
+  },
+  {
+    "mod": "MC2X-CVE-G",
+    "mission": "metropolitan",
+    "error_class": "ammo",
+    "count_ceiling": 5,
+    "first_window": 92,
+    "expires_window": 95,
+    "owner_note": "Owner W92 assignment 2026-10-31 accepts known mod errors; renew unchanged W90 verified ceiling 7 for windows 92-94.",
+    "message_sha256": "aecdbdfb1e28ff5ffd4a0030941c4c8cee082318d8984fdf4382f048a9889d64"
+  },
+  {
+    "mod": "MC2X-CVE-G",
+    "mission": "metropolitan",
+    "error_class": "ammo",
+    "count_ceiling": 1,
+    "first_window": 92,
+    "expires_window": 95,
+    "owner_note": "Owner W92 assignment 2026-10-31 accepts known mod errors; renew unchanged W90 verified ceiling 7 for windows 92-94.",
+    "message_sha256": "ee2ec49ee23cecd246d5fefef3ad8ab0f5e2e97619b6c328be2b8a97c0ad527d"
+  },
+  {
+    "mod": "MC2X-REAP3",
+    "mission": "reap3m01",
+    "error_class": "ammo",
+    "count_ceiling": 1,
+    "first_window": 92,
+    "expires_window": 95,
+    "owner_note": "Owner W92 assignment 2026-10-31 accepts known mod errors; renew unchanged W90 verified ammo ceiling 1 for windows 92-94.",
+    "message_sha256": "8155d088fd6aee4cf85444eac7833618952542cdf5dabd1f416c6797183cabdb"
+  },
+  {
+    "mod": "MC2X-REAP3",
+    "mission": "reap3m01",
+    "error_class": "movetype",
+    "count_ceiling": 1,
+    "first_window": 92,
+    "expires_window": 95,
+    "owner_note": "Owner W92 assignment 2026-10-31 accepts known mod errors; renew unchanged W90 verified movetype ceiling 1 for windows 92-94.",
+    "message_sha256": "4e6baa1ac60ba4bd24c15e05fa87b13b114e9eb07c746b216845b1ff49af6c9c"
+  },
+  {
+    "mod": "MC2X-REAP3",
+    "mission": "reap3m13",
+    "error_class": "movetype",
+    "count_ceiling": 1,
+    "first_window": 92,
+    "expires_window": 95,
+    "owner_note": "Owner W92 assignment 2026-10-31 accepts known mod errors; renew unchanged W90 verified movetype ceiling 1 for windows 92-94.",
+    "message_sha256": "4e6baa1ac60ba4bd24c15e05fa87b13b114e9eb07c746b216845b1ff49af6c9c"
+  },
+  {
+    "mod": "MCO-Carver5",
+    "mission": "mc2_01",
+    "error_class": "texture",
+    "count_ceiling": 100,
+    "first_window": 92,
+    "expires_window": 95,
+    "owner_note": "Owner W92 assignment 2026-10-31 accepts known mod errors; renew unchanged W90 verified texture ceiling 100 for windows 92-94.",
+    "message_sha256": "8ba82bf52bb08be41dcaa51e8f124fb9ad5e46739e969bd0d060faab6b747ff8"
+  }
 ]

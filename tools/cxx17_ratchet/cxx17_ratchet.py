@@ -509,11 +509,18 @@ def tracked_counts(res):
     return out
 
 
-def make_baseline(res, dirs, tracked=None):
-    return {"version": 2, "head": git_head(), "dirs": dirs,
+def make_baseline(res, dirs, tracked=None, previous=None):
+    result = {"version": 2, "head": git_head(), "dirs": dirs,
             "idioms": {k: v[0] for k, v in IDIOMS.items()},
             "counts": aggregate(res), "files": per_file_counts(res),
             "tracked": {"LG19": tracked or {}}}
+    if previous is not None:
+        def lower(current, old):
+            return {k: lower(v, old.get(k, {})) if isinstance(v, dict)
+                    else min(v, old.get(k, 0)) for k, v in current.items()}
+        for key in ('counts', 'files', 'tracked'):
+            result[key] = lower(result[key], previous.get(key, {}))
+    return result
 
 
 def strict_file_failures(res, base):
@@ -631,7 +638,7 @@ def main(argv=None):
         tracked = tracked_counts(scan_repo(TRACKED_DIRS, a.jobs, source))
         rc = check(res, base, a.samples, use_git_diff=(source == "worktree"), tracked=tracked)
         if rc == 0 and a.tighten:
-            nb = make_baseline(res, dirs, tracked)
+            nb = make_baseline(res, dirs, tracked, previous=base)
             with open(a.baseline, "w", encoding="utf-8", newline="\n") as fh:
                 json.dump(nb, fh, indent=1, sort_keys=True)
                 fh.write("\n")

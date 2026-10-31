@@ -110,6 +110,7 @@ def load_known_failures(path=KNOWN_FAILURES):
         raise ValueError('known failures must be a nonempty list of owner-approved entries')
     for entry in entries:
         if (not all(entry.get(k) for k in ('mod', 'mission', 'error_class', 'owner_note'))
+                or not re.fullmatch(r'[0-9a-f]{64}', entry.get('message_sha256', ''))
                 or not isinstance(entry.get('count_ceiling'), int) or entry['count_ceiling'] < 0
                 or not isinstance(entry.get('first_window'), int)
                 or entry.get('expires_window') != entry['first_window'] + 3):
@@ -120,13 +121,15 @@ def load_known_failures(path=KNOWN_FAILURES):
 def content_verdict(counts, mod, mission, window, entries):
     """Expiry is exclusive: an owner acceptance covers exactly three windows."""
     known, new = {}, {}
-    for kind, count in counts.items():
+    for signature, count in counts.items():
         if not count:
             continue
+        kind, _, message_sha = signature.partition(':')
         ceiling = max((e['count_ceiling'] for e in entries
                        if (e['mod'], e['mission'], e['error_class']) == (mod, mission, kind)
+                       and e.get('message_sha256') == message_sha
                        and e['first_window'] <= window < e['expires_window']), default=0)
-        (known if count <= ceiling else new)[kind] = count
+        (known if count <= ceiling else new)[signature] = count
     return known, new
 
 
@@ -141,6 +144,27 @@ def content_counts(text):
         else:
             for kind, count in values.items():
                 counts[kind] = max(counts.get(kind, 0), count)
+    return counts
+
+
+def content_signatures(text):
+    """Count distinct engine events per class + whitespace-normalized message SHA.
+
+    A summary without matching event evidence is deliberately unaccepted.
+    """
+    counts, seen, classes = {}, set(), {}
+    for kind, path, message in re.findall(r'\[CONTENT\] kind=(\w+) path=(.*?) msg=([^\r\n]*)', text):
+        message = re.sub(r'\s+', ' ', message).strip()
+        event = (kind, path, message)
+        if event in seen:
+            continue
+        seen.add(event)
+        key = kind + ':' + hashlib.sha256(message.encode('utf-8')).hexdigest()
+        counts[key] = counts.get(key, 0) + 1
+        classes[kind] = classes.get(kind, 0) + 1
+    for kind, total in content_counts(text).items():
+        if total > classes.get(kind, 0):
+            counts[kind + ':unparsed'] = total - classes.get(kind, 0)
     return counts
 
 # Engine-owned loose data that deploy_payload does not enumerate (relative to the
@@ -844,7 +868,7 @@ def run_mod(staged: Path, stem: str, duration: int, timeout: int, ref_exe: Path 
     health = analyze_health(text)
     summaries = re.findall(r'\[CONTENT_SUMMARY\].*?total=(\d+)', text)
     content_errors = max(map(int, summaries), default=None)
-    counts = content_counts(engine_log or text)
+    counts = content_signatures(engine_log or text)
     known, new = content_verdict(counts, staged.name, stem, window, known_failures)
     warnings = warning_counts(engine_log or collect_log_text(output))
     # The harness can emit its own crash outside the engine log. Do not count

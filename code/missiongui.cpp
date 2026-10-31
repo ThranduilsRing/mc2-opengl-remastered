@@ -454,7 +454,7 @@ void HandlePlayerOrder (MoverPtr mover, TacticalOrderPtr tacOrder) {
 void MissionInterfaceManager::extractHudSnapshot()
 {
     controlGui.extractHudSnapshot();
-    auto& rows = mc2::render_view::hud().vtols;
+    auto& rows = mc2::render_view::stagingHud().vtols;
     rows.clear();
     for (int i = 0; i < MAX_TEAMS; ++i)
         if (paintingVtol[i] && vTol[i])

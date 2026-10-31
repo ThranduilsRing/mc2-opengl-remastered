@@ -71,8 +71,8 @@ void commitTickQueues() {
     mc2::overlap::assertMainThread("commitTickQueues");
     assert(!mc2::overlap::jobInFlight() && !collecting());
     // G7b K3: the render list holds object pointers; drop it before the deferred frees (the next extract refills it).
-    mc2::render_view::list().clear();
-    mc2::render_view::hud().movers.clear(); // release retained waypoint appearances before mission storage/heap teardown
+    mc2::render_view::stagingList().clear();
+    mc2::render_view::stagingHud().movers.clear(); // release retained waypoint appearances before mission storage/heap teardown
     mc2::textures::commitTickTextures();
     for (auto& queue : queues) {
         // Commands run outside the producer scope, including destructors.

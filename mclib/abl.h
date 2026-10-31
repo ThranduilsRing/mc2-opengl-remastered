@@ -101,9 +101,9 @@ ABLModulePtr ABLi_getModuleInstance (long index);
 
 DebuggerPtr ABLi_getDebugger (void);
 
-void ABLi_saveEnvironment (ABLFile* ablFile);
+void ABLi_saveEnvironment (ABLFile* ablFile, bool values = false);
 
-void ABLi_loadEnvironment (ABLFile* ablFile, bool malloc);
+void ABLi_loadEnvironment (ABLFile* ablFile, bool malloc, bool values = false);
 
 void ABLi_close (void);
 
