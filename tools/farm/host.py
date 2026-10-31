@@ -205,8 +205,10 @@ def payload_archive(exe, destination):
                    if (p / 'scripts/deploy_payload.py').is_file()), None)
     if source is None:
         raise ValueError('--exe must be in its source worktree/build tree')
+    head = deploy.git_head(str(source))
     from contextlib import redirect_stdout
     with redirect_stdout(sys.stderr):
+        deploy.require_head_exe(str(exe), head)
         items = deploy.enumerate_payload(str(source), str(exe.parent), exe.name,
                                          'mc2.pdb', require_build=False)
     hashes = {'mc2.exe': (deploy.sha256_file(str(exe)), exe.stat().st_size)}
@@ -221,8 +223,10 @@ def payload_archive(exe, destination):
                 continue
             archive.write(path, rel)
             hashes[rel] = (deploy.sha256_file(str(path)), path.stat().st_size)
-        deploy.write_manifest(str(destination.parent), hashes, deploy.git_head(str(source)))
+        deploy.write_manifest(str(destination.parent), hashes, head)
         archive.write(destination.parent / deploy.MANIFEST_NAME, deploy.MANIFEST_NAME)
+    if deploy.git_head(str(source)) != head:
+        raise ValueError('source HEAD changed while packaging; use a pinned checkout')
 
 
 def main():

@@ -161,6 +161,7 @@ def test_exe_payload_matches_deploy_and_isolated_from_seed(tmp_path, monkeypatch
         items.append((str(path), rel, kind))
     monkeypatch.setattr(deploy, 'enumerate_payload', lambda *a, **kw: items)
     monkeypatch.setattr(deploy, 'git_head', lambda *a: 'a' * 40)
+    monkeypatch.setattr(deploy, 'require_head_exe', lambda *a: {'sha': 'a' * 40, 'dirty': False})
     archive = tmp_path / 'payload.zip'
     host.payload_archive(exe, archive)
     staged = tmp_path / 'staged'
@@ -217,6 +218,23 @@ def test_host_data_delta_requires_exe(tmp_path, monkeypatch):
     with pytest.raises(SystemExit) as result:
         host.main()
     assert result.value.code == 2
+
+
+def test_payload_rejects_unattributable_exe_before_packaging(tmp_path, monkeypatch):
+    import deploy_payload as deploy
+    (tmp_path / 'scripts').mkdir()
+    (tmp_path / 'scripts/deploy_payload.py').touch()
+    exe = tmp_path / 'build/mc2.exe'
+    exe.parent.mkdir()
+    exe.write_bytes(b'wrong revision')
+    monkeypatch.setattr(deploy, 'git_head', lambda *a: 'a' * 40)
+    def refuse(*args):
+        raise ValueError('embedded sha does not match HEAD')
+    monkeypatch.setattr(deploy, 'require_head_exe', refuse)
+    archive = tmp_path / 'payload.zip'
+    with pytest.raises(ValueError, match='does not match HEAD'):
+        host.payload_archive(exe, archive)
+    assert not archive.exists()
 
 
 def test_perf_job_stages_both_payloads(tmp_path, monkeypatch):
