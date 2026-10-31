@@ -3,6 +3,17 @@
 #include <algorithm>
 
 namespace mc2::save {
+bool SavedMoverLists::sameMoverMembership(const SavedMoverLists& rebuilt) const {
+    auto same = [](auto saved, auto expected) {
+        std::sort(saved.begin(), saved.end());
+        std::sort(expected.begin(), expected.end());
+        return std::adjacent_find(saved.begin(), saved.end()) == saved.end() && saved == expected;
+    };
+    // Neutral/teamless movers belong to neither side. Rebuilt lists encode that
+    // classification; accepting an arbitrary two-way partition would lose it.
+    return same(movers, rebuilt.movers) && same(friendly, rebuilt.friendly) && same(hostile, rebuilt.hostile);
+}
+
 namespace {
 
 bool fail(std::string* why, std::string_view reason) {

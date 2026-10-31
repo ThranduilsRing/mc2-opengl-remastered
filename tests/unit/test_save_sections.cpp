@@ -5,6 +5,25 @@
 
 #include <string>
 
+TEST_CASE("save sections: WRLD requires complete unique classified mover membership") {
+    using mc2::save::SavedMoverLists;
+    const SavedMoverLists rebuilt{{}, {}, {2, 4, 6, 8}, {2}, {4, 6}}; // 8 is neutral.
+    auto saved = rebuilt;
+    saved.movers = {8, 6, 4, 2};
+    saved.hostile = {6, 4};
+    CHECK(saved.sameMoverMembership(rebuilt));
+    SUBCASE("duplicate mover") { saved.movers = {2, 4, 6, 6}; }
+    SUBCASE("missing mover") { saved.movers.pop_back(); }
+    SUBCASE("extra mover") { saved.movers.push_back(10); }
+    SUBCASE("duplicate friendly") { saved.friendly.push_back(2); }
+    SUBCASE("duplicate hostile") { saved.hostile.push_back(4); }
+    SUBCASE("overlapping sides") { saved.friendly.push_back(4); }
+    SUBCASE("missing hostile") { saved.hostile.pop_back(); }
+    SUBCASE("wrong side") { saved.friendly = {4}; saved.hostile = {2, 6}; }
+    SUBCASE("neutral assigned a side") { saved.friendly.push_back(8); }
+    CHECK_FALSE(saved.sameMoverMembership(rebuilt));
+}
+
 TEST_CASE("save fields: compacted mover pools and registration order round trip") {
     using namespace mc2::save;
     const SavedMoverLists expected{{7, 2, 5}, {9, 6, 8}, {2, 9, 7}, {7}, {2, 9}, 1300};
