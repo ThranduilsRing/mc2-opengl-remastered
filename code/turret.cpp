@@ -2250,13 +2250,16 @@ void Turret::updateDebugWindow (GameDebugWindow* debugWindow) {
 
 //***************************************************************************
 #include "save_struct_zero.h"
+#include "turret_value_codec.h"
 void Turret::Save (PacketFilePtr file, long packetNum)
 {
 	MC2_SAVE_STRUCT(TurretData, data);
 	CopyTo(&data);
 
 	//PacketNum incremented in ObjectManager!!
-	file->writePacket(packetNum,reinterpret_cast<MemoryPtr>(&data),sizeof(TurretData),STORAGE_TYPE_ZLIB);
+	auto bytes = mc2::save::encodeTaggedRecord(mc2::save::TurretRecord{data}, mc2::save::turretTag);
+	if (bytes.empty()) Fatal(0, "Invalid turret ObjectSlot");
+	file->writePacket(packetNum, bytes.data(), static_cast<unsigned int>(bytes.size()), STORAGE_TYPE_ZLIB);
 }
 
 //***************************************************************************
