@@ -350,20 +350,20 @@ Counts countsOf(ABLModule& module) {
     return {module.getStaticData()[0].integer, module.getStaticData()[1].integer, module.getOrderCallFlags()[0]};
 }
 
-std::string saveEnvironment(const char* name) {
+std::string saveEnvironment(const char* name, bool values = false) {
     SaveSink sink;
     ABLFile file;
     REQUIRE(file.create(name) == 0);
-    ABLi_saveEnvironment(&file);
+    ABLi_saveEnvironment(&file, values);
     file.close();
     return SaveSink::saved.at(name);
 }
 
-ABLModule* loadEnvironment(CompileFixture& fixture, const std::string& image) {
+ABLModule* loadEnvironment(CompileFixture& fixture, const std::string& image, bool values = false) {
     fixture.sources["resume.sav"] = image;
     ABLFile file;
     REQUIRE(file.open("resume.sav") == 0);
-    ABLi_loadEnvironment(&file, true);
+    ABLi_loadEnvironment(&file, true, values);
     file.close();
     return ModuleInstanceRegistry[0];
 }
@@ -443,6 +443,75 @@ TEST_CASE("ABLSave/completed orders survive a save: resumed execution equals uni
         REQUIRE(module != nullptr);
         CHECK(countsOf(*module).flags == 0);
         delete module;
+    }
+}
+
+TEST_CASE("ABLSave/tagged values restore static variables and completed orders") {
+#if defined(_MSC_VER) && defined(_WIN64)
+    CHECK(sizeof(StackItem) == 8);
+    CHECK(sizeof(ABLStackItem) == 16);
+    CHECK(sizeof(StackFrameHeader) == 32);
+    CHECK(sizeof(ModuleEntry) == 96);
+    CHECK(sizeof(ABLModule) == 88);
+#endif
+    std::string image;
+    Counts expected{};
+    {
+        CompileFixture fixture;
+        fixture.sources["resume.abl"] = kResumeModule;
+        const int handle = ABLi_preProcess("resume.abl");
+        REQUIRE(handle >= 0);
+        auto* module = new ABLModule;
+        REQUIRE(module->init(handle) == ABL_NO_ERR);
+        module->execute();
+        image = saveEnvironment("resume.sav", true);
+        module->execute();
+        expected = countsOf(*module);
+        delete module;
+    }
+    {
+        CompileFixture fixture;
+        fixture.sources["resume.abl"] = kResumeModule;
+        auto* module = loadEnvironment(fixture, image, true);
+        REQUIRE(module != nullptr);
+        module->execute();
+        const auto actual = countsOf(*module);
+        CHECK(actual.first == expected.first);
+        CHECK(actual.second == expected.second);
+        CHECK(actual.flags == expected.flags);
+        delete module;
+    }
+}
+
+TEST_CASE("ABLSave/tagged and legacy arrays rebuild storage from source declarations") {
+    const char* script = "module values;\nvar\neternal integer[3] retained;\n"
+        "static integer[3] local;\ncode\nendmodule.\n";
+    extern StackItem* stack;
+    for (bool values : {false, true}) {
+        std::string image;
+        {
+            CompileFixture fixture;
+            fixture.sources["values.abl"] = script;
+            const int handle = ABLi_preProcess("values.abl");
+            REQUIRE(handle >= 0);
+            auto* module = new ABLModule;
+            REQUIRE(module->init(handle) == ABL_NO_ERR);
+            const int eternal[]{0x12345678, -9, 17}, local[]{23, -71, 99};
+            std::memcpy(stack[0].address, eternal, sizeof(eternal));
+            std::memcpy(module->getStaticData()[0].address, local, sizeof(local));
+            image = saveEnvironment("values.sav", values);
+            delete module;
+        }
+        {
+            CompileFixture fixture;
+            fixture.sources["values.abl"] = script;
+            auto* module = loadEnvironment(fixture, image, values);
+            REQUIRE(module != nullptr);
+            const int eternal[]{0x12345678, -9, 17}, local[]{23, -71, 99};
+            CHECK(std::memcmp(stack[0].address, eternal, sizeof(eternal)) == 0);
+            CHECK(std::memcmp(module->getStaticData()[0].address, local, sizeof(local)) == 0);
+            delete module;
+        }
     }
 }
 
