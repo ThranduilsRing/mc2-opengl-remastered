@@ -518,7 +518,7 @@ Avoidable token cost: broad historical plan reads; next continuation should read
 Disk: 0 GB freed, no extra install created; leave only `E:/mc2-installs/claude-record-thread` at `3b855d8f1`.
 After this docs-only closure use explicit `--ref-commit 3b855d8f1` for retained binary proof; do not rebuild unchanged code.
 
-## Continuation: first frozen draw producer, 2026-10-31 (proof pending)
+## Continuation: first frozen draw producer proven, 2026-10-31
 
 Additive checkpoint on claude/record-thread after 65eaf8828; S4 stays inline.
 WeaponBolt beam/laser geometry, UVs, type colors/alpha, beam mode and texture handles
@@ -533,7 +533,36 @@ Offline green: s3-bolt-contracts.log (five ratchets + buffer_lifetime, 6 PASS),
 s3-bolt-alltargets.log plus s3-bolt-root-resume.log (all targets built; root resumed
 after fixing legacy mutable projection inputs), s3-bolt-unit.log (3 cases / 41
 assertions PASS). Logs under E:/mc2-archive-2026-10/proofs/record-thread/.
-Next: commit, refresh executable provenance only, explicit existing lane deploy;
-day/night parity viewed; mc2_10 SIMID 20 s; audit/sync zero.
+Tested engine: eaede08edc60 (local additive commit). Provenance refreshed for both
+mc2 and its shipped companion viewer; deploy refused the stale viewer until its
+matching build completed. No provenance checks or warnings were waived.
+
+| Required proof | Receipt under the same proof directory |
+|---|---|
+| Five ratchets / covering row at engine HEAD | s3-bolt-head-contracts.log: six PASS, 28 s, no baselines raised |
+| Explicit existing lane deploy | s3-bolt-deploy.log: COMPLETE, verified 3855-row manifest at eaede08edc60 |
+| Day/night parity, viewed | s3-bolt-pixel-parity.json: all four PNGs byte-identical to s3-leases-ab; new day/night images viewed; s3-bolt-ab/{day,night} |
+| mc2_10 detailed SIMID, 20 s | s3-bolt-simid-detail.log: 1870 identical common frames, first 800 match pinned baseline in every digest; both logs detail=1/audit=1 |
+| Sync validation, 20 s | s3-bolt-sync.log and s3-bolt-sync-artifacts/: PASS; Khronos sync layer/messenger engaged, errors=0, warnings=0, content errors=0 |
+
+All five game logs confirm audit=1; none contains an overlap violation. No shadow-bake
+crash occurred. SIMID's first invocation stopped before launch because an explicit
+audit argument duplicated the harness's own keyword; the successful run uses its
+default audit=1. Initial PowerShell profile loading was denied and skipped.
+
+Exact next step: continue native TerrainObject/Building/mover draw values (geometry,
+material/light indices and retained light feeds), replacing RenderView::obj dispatch.
 Then continue remaining native RenderList/HUD/recursive FX freezing, Execute/Draw
 split and moved-entry owner assertions. No worker dispatch in this checkpoint.
+HUD marker/VTOL and copied UI draw commands still require packet ownership; gosFX
+must freeze recursive Draw inputs before Execute can overlap recording. Bolt world
+positions and material values are frozen, but projection, FX objects and texture
+resource ownership still use existing synchronous paths. Keep S4 inline until every
+producer and CPU/GPU resource lifetime obligation is complete. That remaining
+multi-family migration exceeds this bounded proof cycle; resume from this tail.
+All own children exited. Game runs about 2.5 min, lease waits 0 observed. No farm
+fallback or startup timeout. Disk freed 0 GB; sole lane install left at
+E:/mc2-installs/claude-record-thread, engine eaede08edc60. After this docs-only
+closure use --ref-commit eaede08ed for retained binary proof; do not rebuild unchanged
+engine code. Avoidable cost: broad reconnaissance; start the next producer at its
+named render/extract ranges and inspect projection signatures before editing.
