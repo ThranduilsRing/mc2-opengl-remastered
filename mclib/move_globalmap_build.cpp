@@ -500,52 +500,31 @@ long GlobalMap::init (PacketFilePtr packetFile, long whichPacket, bool restoreSa
 	doorLinks = mc2::globalmap::ownZeroed(doorLinksStore, static_cast<size_t>(numDoorLinks));
 	long numLinksRead = 0;
 	bool doorLinkOverflow = false;
-	for (int i = 0; i < (numDoors + NUM_DOOR_OFFSETS); i++) {
-		long numLinks = doors[i].numLinks[0] + NUM_EXTRA_DOOR_LINKS;
-		// Pre-write bounds check: doors[i].numLinks comes from file, so a count out of range or a sum past
-		// numDoorLinks refuses the map.
-		if (!mc2::globalmap::doorLinkCountInRange(doors[i].numLinks[0]) || numLinksRead + numLinks > numDoorLinks) {
-			PAUSE(("GlobalMap.init: doorLinks overflow at door %d/0 (have %d, would need %d) — bailing pre-corruption",
-				i, static_cast<int>(numDoorLinks), static_cast<int>((numLinksRead + numLinks))));
-			doorLinkOverflow = true;
-			break;
+	for (int i = 0; i < (numDoors + NUM_DOOR_OFFSETS) && !doorLinkOverflow; i++) {
+		for (int side = 0; side < 2; ++side) {
+			const long numLinks = doors[i].numLinks[side] + NUM_EXTRA_DOOR_LINKS;
+			// Validate each count before reading into the shared link pool.
+			if (!mc2::globalmap::doorLinkCountInRange(doors[i].numLinks[side]) || numLinksRead + numLinks > numDoorLinks) {
+				PAUSE(("GlobalMap.init: doorLinks overflow at door %d/%d (have %d, would need %d)",
+					i, side, static_cast<int>(numDoorLinks), static_cast<int>(numLinksRead + numLinks)));
+				doorLinkOverflow = true;
+				break;
+			}
+			if (format.links) {
+				result = readNavigationPacket(packetFile, whichPacket++, std::span(&doorLinks[numLinksRead], numLinks), mc2::save::tagDoorLinks, 11);
+			} else if (mcoWideSchema) {
+				result = readDoorLinksMCO(packetFile, whichPacket++, &doorLinks[numLinksRead],
+				                          static_cast<size_t>(numLinks), MCO_DOORLINK_SIZE);
+			} else {
+				result = safeReadPacket(packetFile, whichPacket++, reinterpret_cast<unsigned char*>(&doorLinks[numLinksRead]),
+				                        sizeof(DoorLink) * numLinks, "doorLinks[i][side]");
+			}
+			if (result < 0) { doorLinkOverflow = true; break; }
+			if (result <= 0)
+				Fatal(result, " GlobalMap.init: Unable to read doorLinks packet ");
+			doors_links[i][side] = &doorLinks[numLinksRead];
+			numLinksRead += numLinks;
 		}
-		if (format.links) {
-			result = readNavigationPacket(packetFile, whichPacket++, std::span(&doorLinks[numLinksRead], numLinks), mc2::save::tagDoorLinks, 11);
-		} else if (mcoWideSchema) {
-			result = readDoorLinksMCO(packetFile, whichPacket++, &doorLinks[numLinksRead],
-			                          static_cast<size_t>(numLinks), MCO_DOORLINK_SIZE);
-		} else {
-		result = safeReadPacket(packetFile, whichPacket++, reinterpret_cast<unsigned char*>(&doorLinks[numLinksRead]),
-		                        sizeof(DoorLink) * numLinks, "doorLinks[i][0]");
-		}
-		if (result < 0) { doorLinkOverflow = true; break; }
-		if (result <= 0)
-			Fatal(result, " GlobalMap.init: Unable to write doorLinks packet ");
-		doors_links[i][0] = &doorLinks[numLinksRead];
-		numLinksRead += numLinks;
-
-		numLinks = doors[i].numLinks[1] + NUM_EXTRA_DOOR_LINKS;
-		if (!mc2::globalmap::doorLinkCountInRange(doors[i].numLinks[1]) || numLinksRead + numLinks > numDoorLinks) {
-			PAUSE(("GlobalMap.init: doorLinks overflow at door %d/1 (have %d, would need %d) — bailing pre-corruption",
-				i, static_cast<int>(numDoorLinks), static_cast<int>((numLinksRead + numLinks))));
-			doorLinkOverflow = true;
-			break;
-		}
-		if (format.links) {
-			result = readNavigationPacket(packetFile, whichPacket++, std::span(&doorLinks[numLinksRead], numLinks), mc2::save::tagDoorLinks, 11);
-		} else if (mcoWideSchema) {
-			result = readDoorLinksMCO(packetFile, whichPacket++, &doorLinks[numLinksRead],
-			                          static_cast<size_t>(numLinks), MCO_DOORLINK_SIZE);
-		} else {
-		result = safeReadPacket(packetFile, whichPacket++, reinterpret_cast<unsigned char*>(&doorLinks[numLinksRead]),
-		                        sizeof(DoorLink) * numLinks, "doorLinks[i][1]");
-		}
-		if (result < 0) { doorLinkOverflow = true; break; }
-		if (result <= 0)
-			Fatal(result, " GlobalMap.init: Unable to write doorLinks packet ");
-		doors_links[i][1] = &doorLinks[numLinksRead];
-		numLinksRead += numLinks;
 	}
 	if (doorLinkOverflow) {
 		badLoad = true;
