@@ -20,7 +20,7 @@ Main retains SDL/input, UI building, camera and extraction. Validate this agains
 | Step | Status | Exit requirement / next action |
 |---|---|---|
 | S1 inventory | Native shape-leaf census DONE at `46a9f82a7`; external receipts still open | Farm repeats and save/load policy/reference mismatch remain open; no further census changes needed |
-| S2 explicit state | NOT STARTED | Replace TG_Shape camera/light/fog/viewport statics with value state; packet-key vkLights; prove inline parity in separate commits |
+| S2 explicit state | CPU view values implemented; proof pending | Camera-owned CPU ViewUniforms, value draw/glow arguments, copied CPU lights; packet-key vkLights remains next |
 | S3 rings/lifetimes | NOT STARTED | Three CPU slots, RenderList/HUD values, retirement graveyard, Execute(main)/Draw(record), moved-entry owner assertions |
 | S4 thread | NOT STARTED | Seal after sim commit, consume sealed packets, retire safely; default ON only with all gates green |
 
@@ -284,3 +284,21 @@ for run_smoke/SIMID against the retained deployed engine; rebuild on the next en
 Tool slowness: the read-only scout timed out at 420 s; use a bounded question/timeout next time.
 Disk: no extra install created or removed (0 GB freed); keep only `E:/mc2-installs/claude-record-thread`.
 All own build, profiler, game and reduction children have exited. Finish with a docs-only commit after `git diff --check`.
+
+## S2 CPU view continuation, 2026-10-31
+
+S1 cheap receipt audit: configured farm key `~/.ssh/mc2farm_ed25519` is absent; repeats remain open.
+Offline recheck of retained saves with the committed baseline's mask gets beyond the policy error but fails
+packet 2 text shape (34238 vs 39012 bytes): `s1-policy-recheck.{py,log}` in the proof root. No baseline re-pin.
+Scout bounded at 60 seconds produced no output; direct symbol/call-site reads used instead.
+
+CPU view change: remove TG_Shape camera matrix aliases, viewport/fog/lightning statics. Each Camera owns
+`mc2::tgl::ViewUniforms` (separate GPU ABI); consumers receive values, including preview camera separation,
+camera-valid state, perspective/night/haze and copies of the ambient/infinite light values consumed by CPU draw.
+Deleted terrain's unused camera-position load. CPU drawing no longer installs/restores global light lists.
+GPU light gathering still uses the existing light-list statics; that belongs to the following S2 commit.
+Green static receipt: `s2-view-contracts.log`, ten covering rows including all five ratchets, no baselines raised.
+CRLF-aware whitespace check: `git -c core.whitespace=cr-at-eol diff --cached --check` PASS.
+Next: shared-header build_all_targets once; selected native fallback/light tests; commit-first lane deploy;
+pixel-identical mc2_01/mc2_10 captures against s1-leaf-ab, viewed; SIMID 20 s, overlap audit ON, sync validation 0.
+Only then start the separate packet-key vkLights change. Keep one install `E:/mc2-installs/claude-record-thread`.

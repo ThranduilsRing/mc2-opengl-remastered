@@ -164,42 +164,35 @@ void TG_Shape::ReserveCpuDraw (BYTE alphaValue, bool hud, bool clamped, bool spo
 	}
 }
 
-void TG_MultiShape::PreviewDraw (void)
+void TG_MultiShape::PreviewDraw (mc2::tgl::ViewUniforms view)
 {
-	if (!eye)
+	if (!view.cameraValid)
 		return;
 	BindMaterials();
-	SetLightList(eye->getWorldLights(), eye->getNumLights());
 	for (long i = 0; i < numTG_Shapes; i++)
 	{
 		if (listOfShapes[i].processMe && listOfShapes[i].node)
-			listOfShapes[i].node->CpuDraw(listOfShapes[i].shapeToWorld, listOfShapes[i].worldToShape, alphaValue, false, -1.0f, false, false, false);
+			listOfShapes[i].node->CpuDraw(view, listOfShapes[i].shapeToWorld, listOfShapes[i].worldToShape, alphaValue, false, -1.0f, false, false, false);
 	}
 }
 
-void TG_MultiShape::Render (bool refreshTextures, float forceZ, bool spotlightsOnly)
+void TG_MultiShape::Render (mc2::tgl::ViewUniforms view, bool refreshTextures, float forceZ, bool spotlightsOnly)
 {
-	if (!eye)
+	if (!view.cameraValid)
 		return;
 	BindMaterials();
-	// Light with the world's lights whatever the last update left in the statics, then put them back.
-	TG_LightPtr* const savedLights = TG_Shape::s_listOfLights;
-	const DWORD savedNum = TG_Shape::s_numLights;
-	SetLightList(eye->getWorldLights(), eye->getNumLights());
 	for (long i = 0; i < numTG_Shapes; i++)
 	{
 		if (listOfShapes[i].processMe && listOfShapes[i].node)
-			listOfShapes[i].node->CpuDraw(listOfShapes[i].shapeToWorld, listOfShapes[i].worldToShape, alphaValue, true, forceZ, isHudElement, isClamped, spotlightsOnly);
+			listOfShapes[i].node->CpuDraw(view, listOfShapes[i].shapeToWorld, listOfShapes[i].worldToShape, alphaValue, true, forceZ, isHudElement, isClamped, spotlightsOnly);
 	}
-	TG_Shape::s_listOfLights = savedLights;
-	TG_Shape::s_numLights = savedNum;
 }
 
-void TG_Shape::CpuDraw (const glm::mat4& shapeToWorld, const glm::mat4& worldToShape, BYTE alphaValue, bool world, float forceZ, bool hud, bool clamped, bool spotlightsOnly)
+void TG_Shape::CpuDraw (const mc2::tgl::ViewUniforms& view, const glm::mat4& shapeToWorld, const glm::mat4& worldToShape, BYTE alphaValue, bool world, float forceZ, bool hud, bool clamped, bool spotlightsOnly)
 {
-	if (!renderTGLShapes || !numVertices || !eye || (isSpotlight && !world) || (spotlightsOnly && !isSpotlight))
+	if (!renderTGLShapes || !numVertices || !view.cameraValid || (isSpotlight && !world) || (spotlightsOnly && !isSpotlight))
 		return;
-	if (isSpotlight && !spotlightDrawn(lightsOut, alphaValue))
+	if (isSpotlight && (!view.night || lightsOut || mc2_cone_glow::cone_geom_hidden_by_alpha(alphaValue)))
 		return;
 	// World mode draws only leaves the hierarchy walk reached this frame (culled actors keep stale matrices).
 	if (world && lastTurnTransformed != static_cast<DWORD>(turn))
@@ -208,8 +201,8 @@ void TG_Shape::CpuDraw (const glm::mat4& shapeToWorld, const glm::mat4& worldToS
 
 	TG_TypeShapePtr theShape = static_cast<TG_TypeShapePtr>(myType);
 
-	bool isNight = eye->getIsNight();
-	float nightFactor = eye->getNightFactor();
+	bool isNight = view.night;
+	float nightFactor = view.nightFactor;
 	if (lightsOut)
 	{
 		isNight = false;
@@ -220,24 +213,22 @@ void TG_Shape::CpuDraw (const glm::mat4& shapeToWorld, const glm::mat4& worldToS
 	DWORD redAmb = 0, greenAmb = 0, blueAmb = 0;
 	glm::vec3 lightDir[MAX_LIGHTS_IN_WORLD];
 	// Window and searchlight leaves are not lit by the scene lights (as the old per-vertex kernel).
-	const DWORD numLights = (isSpotlight || isWindow) ? 0 : s_numLights;
+	const DWORD numLights = (isSpotlight || isWindow) ? 0 : static_cast<DWORD>(view.lights.size());
 	for (DWORD i = 0; i < numLights && i < MAX_LIGHTS_IN_WORLD; i++)
 	{
-		if (!s_listOfLights[i] || !s_listOfLights[i]->active)
-			continue;
-		if (s_listOfLights[i]->lightType == TG_LIGHT_AMBIENT)
+		if (view.lights[i].type == TG_LIGHT_AMBIENT)
 		{
-			const DWORD c = s_listOfLights[i]->GetaRGB();
+			const DWORD c = view.lights[i].color;
 			redAmb = (c >> 16) & 0xff; greenAmb = (c >> 8) & 0xff; blueAmb = c & 0xff;
 		}
-		else if (s_listOfLights[i]->lightType == TG_LIGHT_INFINITE)
+		else if (view.lights[i].type == TG_LIGHT_INFINITE)
 		{
-			const glm::mat4 lightToShape = s_listOfLights[i]->lightToWorld * worldToShape;
+			const glm::mat4 lightToShape = view.lights[i].lightToWorld * worldToShape;
 			lightDir[i] = mc2::math::localForwardInWorld(lightToShape);
 		}
 	}
 
-	const glm::mat4 shapeToClip = shapeToWorld * s_worldToClip;
+	const glm::mat4 shapeToClip = shapeToWorld * view.worldToClip;
 	static thread_local std::vector<gos_VERTEX> verts;
 	static thread_local std::vector<Stuff::Vector4D> clips;
 	verts.resize(numVertices);
@@ -248,9 +239,9 @@ void TG_Shape::CpuDraw (const glm::mat4& shapeToWorld, const glm::mat4& worldToS
 	// the darker of the shape's elevation fog and the camera distance haze; the GPU vehicle path does the
 	// same via max(hazeFactor, poseFog_).
 	DWORD worldFog = fogRGB;
-	if (useFog && !isSpotlight)
+	if (view.fogEnabled && !isSpotlight)
 	{
-		const float haze = std::clamp(Camera::HazeFactor, 0.0f, 1.0f);
+		const float haze = std::clamp(view.haze, 0.0f, 1.0f);
 		const DWORD distFog = static_cast<DWORD>(float2long((1.0f - haze) * 255.0f));
 		if (distFog < (worldFog >> 24))
 			worldFog = (worldFog & 0x00ffffff) | (distFog << 24);
@@ -267,7 +258,7 @@ void TG_Shape::CpuDraw (const glm::mat4& shapeToWorld, const glm::mat4& worldToS
 		if (world)
 			clips[j] = xform;
 		gos_VERTEX& v = verts[j];
-		projectClipVertex(xform, eye->usePerspective, viewMulX, viewMulY, viewAddX, viewAddY, v);
+		projectClipVertex(xform, view.perspective, view.viewMulX, view.viewMulY, view.viewAddX, view.viewAddY, v);
 		v.frgb = (world && !isSpotlight) ? worldFog : 0xff000000;
 		if (g_previewCaptureBounds)
 		{
@@ -321,12 +312,12 @@ void TG_Shape::CpuDraw (const glm::mat4& shapeToWorld, const glm::mat4& worldToS
 		const glm::vec3& n = theShape->listOfTypeVertices[j].normal;
 		for (DWORD i = 0; i < numLights && i < MAX_LIGHTS_IN_WORLD; i++)
 		{
-			if (!s_listOfLights[i] || !s_listOfLights[i]->active || s_listOfLights[i]->lightType != TG_LIGHT_INFINITE)
+			if (view.lights[i].type != TG_LIGHT_INFINITE)
 				continue;
 			const float cosine = glm::dot(lightDir[i], n);
 			if (cosine < 0.0f)
 			{
-				const DWORD c = s_listOfLights[i]->GetaRGB();
+				const DWORD c = view.lights[i].color;
 				const float k = fabs(cosine);
 				r += float2long(float((c >> 16) & 0xff) * k);
 				g += float2long(float((c >> 8) & 0xff) * k);
@@ -353,7 +344,7 @@ void TG_Shape::CpuDraw (const glm::mat4& shapeToWorld, const glm::mat4& worldToS
 	const DWORD addFlags = cpuDrawFlags(theShape->alphaTestOn, hud, clamped);
 	const float forcedZ = (forceZ >= 0.0f && forceZ < 1.0f) ? mc2_tgl::forceZClipDepth(forceZ) : -1.0f;
 
-	const glm::vec3 camPosition = s_cameraOrigin ? mc2::math::getTranslation(*s_cameraOrigin) : glm::vec3(0.0f);
+	const glm::vec3 camPosition = view.cameraValid ? mc2::math::getTranslation(view.cameraOrigin) : glm::vec3(0.0f);
 	const glm::vec3 backFacePoint = mc2::math::transformPoint(camPosition, worldToShape);
 	const TG_TinyTexture* textures = materialTextures();
 	DWORD lastTextureUsed = 0xffffffff;
@@ -361,7 +352,7 @@ void TG_Shape::CpuDraw (const glm::mat4& shapeToWorld, const glm::mat4& worldToS
 	auto projectClip = [&](const ClipVertex& cv, gos_VERTEX& v)
 	{
 		const Stuff::Vector4D& xform = cv.clip;
-		projectClipVertex(xform, eye->usePerspective, viewMulX, viewMulY, viewAddX, viewAddY, v);
+		projectClipVertex(xform, view.perspective, view.viewMulX, view.viewMulY, view.viewAddX, view.viewAddY, v);
 		v.u = cv.u; v.v = cv.v; v.argb = cv.argb; v.frgb = cv.frgb;
 	};
 
@@ -391,7 +382,7 @@ void TG_Shape::CpuDraw (const glm::mat4& shapeToWorld, const glm::mat4& worldToS
 			int count = clipPolygon(in, 0, nearClipped);
 			if (count)
 				count = clipPolygon(std::span<const ClipVertex>(nearClipped, count), 1, farClipped);
-			if (count && eye->usePerspective)
+			if (count && view.perspective)
 			{
 				ClipVertex frontClipped[8];
 				count = clipPolygon(std::span<const ClipVertex>(farClipped, count), 2, frontClipped);

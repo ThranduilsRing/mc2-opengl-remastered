@@ -192,7 +192,7 @@ void Mission::initializeStatistics()
 void Mission::initTGLForLogistics()
 {
 	// A mission-ending flash must not carry into logistics.
-	TG_Shape::lighteningLevel = 0;
+	if (eye) eye->tglView.lighteningLevel = 0;
 }
 
 

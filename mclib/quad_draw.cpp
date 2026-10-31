@@ -125,8 +125,6 @@ void TerrainQuad::drawSetup(QuadDrawFrame& f) {
 		maxV = uvData.maxV;
 	}
 
-	glm::vec3 camPosition;
-	camPosition = mc2::math::getTranslation(*TG_Shape::s_cameraOrigin);
 }
 
 // Decide whether the M2 fast path takes this quad and run the path-mix diagnostic.

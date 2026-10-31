@@ -724,7 +724,7 @@ void GameCamera::render (void)
 	screenResolution.y = viewMulY;
 	calculateProjectionConstants();
 
-	TG_Shape::SetViewport(viewMulX,viewMulY,viewAddX,viewAddY);
+	tglView.SetViewport(viewMulX,viewMulY,viewAddX,viewAddY);
 
 	userInput->setViewport(viewMulX,viewMulY,viewAddX,viewAddY);
 

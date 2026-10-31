@@ -395,12 +395,15 @@ class Camera
 	public:
 	
 		std::string missionLightName;
+		mc2::tgl::ViewUniforms tglView;
+		mc2::tgl::ViewUniforms getViewUniforms();
 		bool missionLightApplied = false;
 		float missionGroundScale = 1.0f;
 
 		virtual void init (void)
 		{
 			missionLightName.clear();
+			tglView = {};
 			missionLightApplied = false;
 			missionGroundScale = 1.0f;
 			projectionAngle = 30;

@@ -1098,9 +1098,6 @@ void Mission::destroy (bool initLogistics)
 
 		missionCamera.reset();
 		eye = nullptr;
-		// Camera aliases outlive the camera and must not expose freed matrices during load.
-		TG_Shape::s_cameraOrigin = nullptr;
-		TG_Shape::s_cameraToClip = nullptr;
 	}
 
 	if (PathManager) {

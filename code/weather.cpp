@@ -396,7 +396,7 @@ void Weather::update (void)
 			if (lighteningLevel != 0.0f)
 			{
 				TerrainQuad::lighteningLevel = lightening>>1;
-				TG_Shape::lighteningLevel = lightening>>1; 
+				eye->tglView.lighteningLevel = lightening>>1;
 			}
 		}
 		else

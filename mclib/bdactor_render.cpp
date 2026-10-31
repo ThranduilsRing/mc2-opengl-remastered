@@ -294,13 +294,13 @@ long BldgAppearance::render (long depthFixup)
 		if (!submittedToGpu)
 		{
 			if (appearType->spinMe)
-				bldgShape->Render(false,0.00001f);
+				bldgShape->Render(eye->getViewUniforms(),false,0.00001f);
 			else if (!depthFixup)
-				bldgShape->Render();
+				bldgShape->Render(eye->getViewUniforms());
 			else if (depthFixup > 0)
-				bldgShape->Render(false,0.9999999f);
+				bldgShape->Render(eye->getViewUniforms(),false,0.9999999f);
 			else if (depthFixup < 0)
-				bldgShape->Render(false,0.00001f);
+				bldgShape->Render(eye->getViewUniforms(),false,0.00001f);
 		}
 
 		if (selected & DRAW_BARS)
@@ -638,7 +638,7 @@ long TreeAppearance::render (long depthFixup)
 			}
 		}
 		if (!submittedToGpu)
-			treeShape->Render();
+			treeShape->Render(eye->getViewUniforms());
 
 		if (selected & DRAW_BARS)
 		{

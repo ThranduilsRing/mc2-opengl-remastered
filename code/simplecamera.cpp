@@ -207,7 +207,7 @@ void SimpleCamera::render(long xOffset, long yOffset)
 			screenResolution.y = viewMulY;
 			calculateProjectionConstants();
 		
-			TG_Shape::SetViewport(viewMulX,viewMulY,viewAddX,viewAddY);	
+			tglView.SetViewport(viewMulX,viewMulY,viewAddX,viewAddY);
 
 			globalScaleFactor = getScaleFactor();
 			globalScaleFactor *= viewMulX / Environment.screenWidth;		//Scale Mechs to ScreenRES
@@ -233,21 +233,9 @@ void SimpleCamera::render(long xOffset, long yOffset)
 
 			float z = 1.0;
 			MidLevelRenderer::PerspectiveMode = usePerspective;
-			// PREVIEW-FBO-FIXED-800x600-1 root-cause fix: TG_MultiShape::Render (the
-			// CPU draw pObject->render() below dispatches into) transforms every
-			// shape via the GLOBAL STATIC TG_Shape::s_worldToClip
-			// (msl.cpp:2068 shapeToClip.Multiply(shapeToWorld, TG_Shape::s_worldToClip)),
-			// which is only ever populated by Camera::render() -- the base-class
-			// method every OTHER camera (GameCamera, the main world camera) calls
-			// every frame (camera.cpp:2313 TG_Shape::SetCameraMatrices). SimpleCamera
-			// overrides render() completely and never called it, so the preview mech
-			// was always being transformed with whatever camera matrix the last WORLD
-			// frame left behind (a mission camera, or stale/zero at boot) -- nowhere
-			// near this camera's small offscreen frustum, so nothing ever rasterized
-			// (confirmed via the preview harness: pObject->render() runs with no GL
-			// error, but a full-FBO pixel scan finds zero non-background pixels
-			// anywhere). Set it here, same as the base class does, before drawing.
-			TG_Shape::SetCameraMatrices(&cameraOrigin, &cameraToClip);
+			// SimpleCamera overrides the base render: capture its own projection
+			// before drawing. A preview never changes the mission camera's values.
+			tglView.SetCameraMatrices(cameraOrigin, cameraToClip);
 			if ( mc2::gate::get<"MC2_LOG_PREVIEW">() )
 			{
 				bool f = mc2::log::enabled(mc2::log::Cat::Ui, mc2::log::Level::Info);
@@ -322,8 +310,8 @@ void SimpleCamera::render(long xOffset, long yOffset)
 				// Project with the same panel offset update() centres the shape with.
 				const float offsetX = (bounds[2] + bounds[0] - viewMulX) / 2.f + fudgeX;
 				const float offsetY = (bounds[1] + bounds[3] - viewMulY) / 2.f + fudgeY;
-				TG_Shape::SetViewport(viewMulX,viewMulY,offsetX,offsetY);
-				previewShape->PreviewDraw();
+				tglView.SetViewport(viewMulX,viewMulY,offsetX,offsetY);
+				previewShape->PreviewDraw(getViewUniforms());
 			}
 			else
 				pObject->render();
@@ -460,7 +448,7 @@ long SimpleCamera::update()
 			offsetY += fudgeY; // hack, just to get exactly where Dorje wants it
 		
 
-			TG_Shape::SetViewport(viewMulX,viewMulY, offsetX, offsetY); 
+			tglView.SetViewport(viewMulX,viewMulY, offsetX, offsetY);
 
 		useShadows = 0;
 		oldCam = eye;

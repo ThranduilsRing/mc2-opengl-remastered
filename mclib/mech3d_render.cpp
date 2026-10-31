@@ -1018,11 +1018,11 @@ long Mech3DAppearance::render (long depthFixup)
 		{
 			if (sensorLevel > 1)
 			{
-				sensorSquareShape->Render();
+				sensorSquareShape->Render(eye->getViewUniforms());
 			}
 			else
 			{
-				sensorTriangleShape->Render();
+				sensorTriangleShape->Render(eye->getViewUniforms());
 			}
 		}
 	}
@@ -1031,7 +1031,7 @@ long Mech3DAppearance::render (long depthFixup)
 	{
 		Camera::HazeFactor = rightArmHazeFactor;
 
-		rightArm->Render(true);
+		rightArm->Render(eye->getViewUniforms(),true);
 
 		if (rightArmSmoke)
 		{
@@ -1071,7 +1071,7 @@ long Mech3DAppearance::render (long depthFixup)
 	{
 		Camera::HazeFactor = leftArmHazeFactor;
 
-		leftArm->Render(true);
+		leftArm->Render(eye->getViewUniforms(),true);
 		
 		if (leftArmSmoke)
 		{
