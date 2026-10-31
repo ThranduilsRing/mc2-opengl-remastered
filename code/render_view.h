@@ -1,9 +1,8 @@
 // G7b K3: RenderClock + RenderList/RenderView (G1-lite RenderProxy).
 //
-// Built once per frame at ExtractRenderSnapshot (main thread, no tick in flight), in today's render order: terrain
-// blocks, movers, other. Object render paths read their view instead of the live sim object, so the frame's object
-// draws may overlap the next tick. `obj` stays valid until the next commit (tick frees are deferred, tick_commit.h);
-// render only touches its presentation-owned members (appearance, gosFX effects), which only main writes.
+// Built at ExtractRenderSnapshot (Main, no tick in flight), in terrain/mover/other order. The game loop retains
+// a container copy through DrawScreen; inline tools may read staging synchronously. Legacy object, appearance
+// and FX pointers still require native value extraction before recording can move off Main.
 #pragma once
 
 #include <cstdint>
@@ -129,11 +128,35 @@ struct HudSnapshot {
         return empty;
     }
 };
-HudSnapshot& hud();
+// Extraction/commit write staging; draw accessors read the scoped frame copy.
+HudSnapshot& stagingHud();
+const HudSnapshot& hud();
 void drawHudWaypoints(const HudMover& row);
 void drawHudOverviewPath(const HudMover& row, unsigned long color);
 
-RenderClock& clock();
-RenderList& list();
+RenderClock& stagingClock();
+RenderList& stagingList();
+const RenderClock& clock();
+const RenderList& list();
+
+// Owns container bytes and HUD marker holders. Legacy object/appearance/FX
+// pointers are still borrowed: this is not yet a worker-safe native packet.
+struct FrameDraws {
+    uint64_t sequence = 0;
+    RenderClock clock;
+    RenderList list;
+    HudSnapshot hud;
+};
+std::shared_ptr<const FrameDraws> freezeDrawFrame(uint64_t sequence);
+
+class DrawFrameScope {
+public:
+    explicit DrawFrameScope(const FrameDraws& frame);
+    ~DrawFrameScope();
+    DrawFrameScope(const DrawFrameScope&) = delete;
+    DrawFrameScope& operator=(const DrawFrameScope&) = delete;
+private:
+    const FrameDraws* previous_;
+};
 
 }  // namespace mc2::render_view

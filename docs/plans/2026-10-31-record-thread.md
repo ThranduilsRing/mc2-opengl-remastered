@@ -566,3 +566,28 @@ E:/mc2-installs/claude-record-thread, engine eaede08edc60. After this docs-only
 closure use --ref-commit eaede08ed for retained binary proof; do not rebuild unchanged
 engine code. Avoidable cost: broad reconnaissance; start the next producer at its
 named render/extract ranges and inspect projection signatures before editing.
+
+## S3 retained RenderList/HUD containers, 2026-10-31 (proof pending)
+
+Additive continuation from 0178b2750 during W93. FrameDraws owns copies of the
+three ordered RenderList vectors, render clock, HUD strings/paths/arrays and
+shared waypoint marker holders. RenderSnapshot retains the immutable copy for
+its CPU sequence. DrawFrameScope selects it only during inline DrawScreen;
+const accessors prevent draws from mutating staging through the read API.
+Extraction and commit use separate Main-asserted staging accessors. Main drops
+the copied containers before retiring the arenas and draining typed frees.
+Native unit coverage destroys/reuses staging while retaining the frame, checks
+ordering and deep HUD values, marker ownership, nested scope restoration and
+the synchronous inline-tool fallback. Six covering rows pass (46.87 s), and
+git diff --check is clean. Remaining proof: all-target shared-header build,
+selected FramePackets cases, commit-first lane deploy, day/night pixel parity
+viewed, detailed mc2_10 SIMID 20 s and audit/sync validation zero.
+This freezes containers only: RenderView::obj, appearance/FX and VTOL pointers
+are still borrowed, and the marker shapes remain mutable. No worker dispatch.
+Next native producers remain TerrainObject::extractRenderView/renderView
+(code/terrobj.cpp:1020-1105), Building equivalents (code/bldng.cpp:1079-1157),
+BldgAppearance::render (mclib/bdactor_render.cpp:42-434) and native submissions;
+resolve geometry/material/light indices plus retained feeds before eliminating
+object dispatch. Then freeze marker/VTOL/copied UI and recursive FX inputs,
+split Execute(Main)/Draw(record), add assertions at actually moved entries,
+and connect retirement to actual worker completion. Keep S4 inline meanwhile.

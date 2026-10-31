@@ -468,7 +468,7 @@ extern const char* extractMoverHudStatus(Mover* mover);
 
 void ControlGui::extractHudSnapshot()
 {
-    auto& hud = mc2::render_view::hud();
+    auto& hud = mc2::render_view::stagingHud();
     hud.movers.clear(); hud.roster.clear(); hud.sensors.clear(); hud.coverage.clear(); hud.objectives.clear();
     hud.home = Team::home != nullptr;
     hud.timeLimit = mission ? static_cast<float>(mission->m_timeLimit) : 0;
