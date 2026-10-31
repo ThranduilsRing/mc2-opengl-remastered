@@ -19,7 +19,7 @@ Main retains SDL/input, UI building, camera and extraction. Validate this agains
 
 | Step | Status | Exit requirement / next action |
 |---|---|---|
-| S1 inventory | IN PROGRESS: live row/payload census and runtime receipts below | Finish native visible-leaf census and remaining proof matrix before marking complete |
+| S1 inventory | Native shape-leaf census DONE at `46a9f82a7`; external receipts still open | Farm repeats and save/load policy/reference mismatch remain open; no further census changes needed |
 | S2 explicit state | NOT STARTED | Replace TG_Shape camera/light/fog/viewport statics with value state; packet-key vkLights; prove inline parity in separate commits |
 | S3 rings/lifetimes | NOT STARTED | Three CPU slots, RenderList/HUD values, retirement graveyard, Execute(main)/Draw(record), moved-entry owner assertions |
 | S4 thread | NOT STARTED | Seal after sim commit, consume sealed packets, retire safely; default ON only with all gates green |
@@ -217,3 +217,70 @@ Reuse deployed `91a88988a` with an explicit reference commit after documentation
 Tool slowness: full shared-header checkpoint took ~8 min and repeated Tracy decoding took minutes; reuse these receipts.
 Disk: 0 GB local installs freed; leave only `E:/mc2-installs/claude-record-thread`; no extra local install.
 Own remote farm stage/work removed. Baseline exe and proof-only reductions live in the proof root. No own child left running.
+
+## Continuation checkpoint, 2026-10-31 (native shape leaves)
+
+Assignment unchanged: lane8 / claude/record-thread / base `678380b2a`.
+S2 has not started. Its explicit-state change and independent proof cycle will not fit this run's remaining call allocation.
+
+First code checkpoint `f8f764128`: armed native color draw counters include cached props and native mech/vehicle draws,
+exclude duplicate prop fringe and mech depth passes, and run before GPU HZB/alpha/hidden-bone rejection.
+Source review found that texture groups split one shape into several packets, so this checkpoint measures native
+**material-packet instances**, not unique leaves. Its `native_*_leaves` field names must not be used to claim shape counts.
+Receipt `s1-native-live/20261031T075736.356841Z/s1-census.json`: all 17 counters have one sample per live frame.
+Night wolfman: 334 frames, 2072 prop packet instances / 35 mech packet instances; day low_horizon_0: 185 frames,
+5007 / 20. Day has zero freshly submitted mech bones but still draws the retained native feed: bone submits cannot
+substitute for leaf counts. DrawScreen mean/p95: night 2.119/3.162 ms, day 3.768/5.722 ms, provisional under load.
+Direct children each once/frame: Camera.UpdateRenderers 2.006834/3.582726 ms and Render.PostProcess 0.101735/0.134190 ms.
+Reserved external CPU p95 45.6/50.275%, whole-machine external p95 82.1625/86.58125%; profiler exit 2 = NOISY.
+
+All receipts below are under `E:/mc2-archive-2026-10/proofs/record-thread/`.
+`f8f764128` proof PASS: `s1-native-{head-build,companions,alltargets,unit,contracts}.log`, five
+`s1-native-ratchet-*.log` (no baseline modifications), `s1-native-audit.log` (five missions, audit ON),
+`s1-native-sync.log` (20 s, 0 validation errors/warnings), `s1-native-simid.log` (20 s; 1607 identical frames,
+first 800 baseline frames unchanged). `s1-native-pixel-parity.json`: four PNGs byte-identical to `91a88988a`;
+day/night viewed. Companion executables were rebuilt after deploy correctly rejected stale viewer provenance.
+Two invalid harness invocations were corrected before any pass claim: bookmark arguments require JSON paths;
+SIMID `check` implies baseline checking and already injects overlap audit, so omit `--baseline` and a duplicate audit `--env`.
+
+Correction `46a9f82a7`: prop consumer counts each type-bucket instance once across its material packets;
+mech extraction counts actor/node pairs once using the existing contiguous nodeLocalIndex packet order
+(`gos_mech_batcher_geometry.cpp:190,369`). The mech count is retained with the existing native feed across idle frames,
+reset with its snapshots, and charged only when native color runs record. Counts are CPU-view submitted shape leaves,
+including the mech island's legacy vehicles, before GPU rejection; they are not post-occlusion visible-pixel counts.
+Green offline receipts: `s1-leaf-{build,alltargets,unit,contracts,deploy}.log` and five `s1-leaf-ratchet-*.log`.
+Final live receipt: `s1-leaf-live/20261031T081627.583420Z/{profile.json,s1-census.json}`.
+All 17 counters have exactly one sample per live frame: 426 night / 305 day. Native census gap is closed.
+
+| Per-frame native item | mc2_10 sun_facing_low | mc2_24 low_horizon_180 |
+|---|---|---|
+| Prop shape leaves, including cached registry replay | 1177 | 5109 |
+| Mech/vehicle actor/node leaves | 32..34 | 20 |
+| Freshly submitted mech bone records (not leaves) | 119..128 | 0 |
+| DrawScreen mean / p95 ms | 1.669808 / 2.430974 | 2.310070 / 3.489325 |
+| Camera.UpdateRenderers inclusive ms/frame | 1.578097 | 2.186819 |
+| Render.PostProcess inclusive ms/frame | 0.083509 | 0.092145 |
+
+CPU-view submitted leaves precede GPU rejection; do not reinterpret them as post-occlusion survivors.
+The zero-bone day window still reports 20 native actor/node leaves, proving the retained-feed census is live.
+Timing is provisional/NOISY (profiler exit 2), not a speedup claim: reserved external CPU p95 28.825/24.275%,
+whole-machine external p95 66.1/55.28125%. Direct-child scopes each occur once per frame; nested scopes overlap.
+Final proof PASS: `s1-leaf-audit.log` (all five 15 s missions, audit=1 in all five game logs, zero VIOLATION lines),
+`s1-leaf-simid.log` (20 s, 1654 identical common sim frames, first 800 match baseline in every digest),
+`s1-leaf-sync.log` (20 s, errors=0/warnings=0; Khronos sync validation layer and messenger engaged).
+`s1-leaf-pixel-parity.json`: four PNGs byte-identical to `f8f764128` (transitively identical to `91a88988a`);
+both final day/night PNGs viewed. `s1-leaf-ab/` holds captures; `s1-leaf-{audit,sync}-artifacts/` holds full logs.
+No further build or game verification is needed for this unchanged engine checkpoint.
+
+Open external receipts: farm queue read failed SSH authentication (configured default key absent); no repeat job submitted.
+The inherited save/load comparison-policy/reference mismatch remains unmodified; owning-lane repair is still required.
+Main now contains the quiet-measure document, but its tools/perf tree has no paired_cpu.py; robust paired tooling/CI and
+laptop timings remain unavailable. Do not import an unlanded performance branch or claim a speedup from noisy captures.
+Next after S1 receipts: CPU TG view values passed by value (separate from the 144-byte GPU RenderCore::ViewUniforms ABI),
+including teardown null semantics, preview camera separation, viewport/fog/lightning and copied light values; remove global
+read dependencies rather than hide the old statics behind another singleton. Then packet-key vkLights in a separate commit.
+Build mc2 + mc2_asset_viewer + ui_editor together before deploy. After docs advance HEAD, use explicit `--ref-commit 46a9f82a7`
+for run_smoke/SIMID against the retained deployed engine; rebuild on the next engine change. No provenance waiver.
+Tool slowness: the read-only scout timed out at 420 s; use a bounded question/timeout next time.
+Disk: no extra install created or removed (0 GB freed); keep only `E:/mc2-installs/claude-record-thread`.
+All own build, profiler, game and reduction children have exited. Finish with a docs-only commit after `git diff --check`.
