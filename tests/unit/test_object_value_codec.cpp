@@ -69,7 +69,7 @@ REAL_OBJECT_SLOTS("VEHI", VehicleRecord, GroundVehicleData, kVehicle)
 REAL_OBJECT_SLOTS("BOLT", WeaponBoltRecord, WeaponBoltData, kBolt)
 #undef REAL_OBJECT_SLOTS
 
-TEST_CASE("ObjectSlot tags validate class, handle and payload") {
+TEST_CASE("ObjectSlot tags validate class, handle, payload and required section") {
     using namespace mc2::save;
     using namespace mc2_saved_objects;
     auto check = [&]<class Record, class Data>(int c, ObjectClass objectClass) {
@@ -108,6 +108,17 @@ TEST_CASE("ObjectSlot tags validate class, handle and payload") {
     check.operator()<MechRecord, MechData>(kMech, BATTLEMECH);
     check.operator()<VehicleRecord, GroundVehicleData>(kVehicle, GROUNDVEHICLE);
     check.operator()<WeaponBoltRecord, WeaponBoltData>(kBolt, WEAPONBOLT);
+    SectionContainer sections;
+    sections.add(tagObjectSlots, 1, true, {});
+    Bytes bytes;
+    REQUIRE(encodeSections(sections, bytes));
+    SectionContainer decoded;
+    REQUIRE(decodeSections(bytes, decoded));
+    REQUIRE(decoded.find(tagObjectSlots));
+    CHECK(decoded.find(tagObjectSlots)->flags == sectionRequired);
+    // An older build has no OBJS entry: pin the wire's mandatory flag, which
+    // routes unknown tags to unknown_required_section before teardown.
+    CHECK(bytes[32] == sectionRequired);
 }
 
 namespace {
