@@ -1075,6 +1075,21 @@ void GameObjectManager::render (bool terrain, bool movers, bool other) {
 	if (terrain)
 	{
 		ZoneScopedN("RenderObjects.Terrain");
+        if (TracyIsConnected) {
+            ZoneScopedN("DrawScreenProbe.TerrainViews");
+            static std::vector<mc2::render_view::RenderView> previous;
+            static uint64_t calls = 0, items = 0, unchanged = 0;
+            ++calls; items += rl.terrain.size();
+            const size_t common = std::min(previous.size(), rl.terrain.size());
+            for (size_t i = 0; i < common; ++i) {
+                const auto& a = previous[i]; const auto& b = rl.terrain[i];
+                unchanged += a.obj == b.obj && a.generation == b.generation && a.watchId == b.watchId &&
+                    a.flags == b.flags && a.position == b.position && a.barColor == b.barColor && a.barStatus == b.barStatus;
+            }
+            previous.assign(rl.terrain.begin(), rl.terrain.end());
+            if (calls % 256 == 0)
+                mc2::fmt::print_err("[DRAWSCREEN_TERRAIN_VIEWS] calls={} items={} unchanged={}\n", calls, items, unchanged);
+        }
 		// Cull-cascade consumer (object render). Post-8c source of truth for
 		// objBlockInfo[].active / objVertexActive[] is the cull-merged Step 6
 		// slim reduction loop in mclib/terrain.cpp; the extract walks it.

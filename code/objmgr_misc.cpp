@@ -3,6 +3,7 @@
 #include "objmgr_internal.h"
 #include "sim_world_trace.h"
 #include "impact_presentation.h"
+#include <cstdio>
 
 
 //---------------------------------------------------------------------------
@@ -569,6 +570,9 @@ void GameObjectManager::updateAppearancesOnly( bool terrain, bool movers, bool o
 	if (terrain && renderObjects)
 	{
 		ZoneScopedN("GameLogic.Presentation.Terrain");
+        const bool countHome = TracyIsConnected;
+        uint64_t homeLookups = 0, homeUnchanged = 0;
+        long previousHome = -1;
         updateReadbackSnapshot();
         updateActiveSweep();
 		int frameJobsPrePassCount = 0;
@@ -602,7 +606,13 @@ void GameObjectManager::updateAppearancesOnly( bool terrain, bool movers, bool o
 							pos.z = TerrainRuntime::groundElevation(pos);
 							long drawFlags = objList[objIndex]->drawFlags;
 							int teamID = objList[objIndex]->getTeamId();
-							objList[objIndex]->getAppearance()->setObjectParameters(pos,rot,drawFlags,teamID,Team::getRelation(teamID, Team::home->getId()));
+                            const long homeId = Team::home->getId();
+                            if (countHome) {
+                                homeUnchanged += homeLookups != 0 && homeId == previousHome;
+                                ++homeLookups;
+                                previousHome = homeId;
+                            }
+							objList[objIndex]->getAppearance()->setObjectParameters(pos,rot,drawFlags,teamID,Team::getRelation(teamID, homeId));
 
 							MC2_WORLD_UPDATE("appearance_terrain", objList[objIndex]);
 
@@ -619,6 +629,14 @@ void GameObjectManager::updateAppearancesOnly( bool terrain, bool movers, bool o
 				}
 			}
 		}
+        if (countHome) {
+            static uint64_t calls = 0, lookups = 0, unchanged = 0;
+            ++calls; lookups += homeLookups; unchanged += homeUnchanged;
+            if (calls % 256 == 0)
+                std::fprintf(stderr, "[DRAWSCREEN_HOME] calls=%llu lookups=%llu unchanged=%llu\n",
+                             static_cast<unsigned long long>(calls), static_cast<unsigned long long>(lookups),
+                             static_cast<unsigned long long>(unchanged));
+        }
 	}
 
 	if (movers)
