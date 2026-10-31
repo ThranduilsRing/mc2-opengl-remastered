@@ -57,6 +57,37 @@ def test_content_signatures_reject_replacement_error_in_same_class():
     assert ms.content_signatures(summary) == {'ammo:unparsed': 1}
 
 
+def test_split_ammo_budget_enforces_each_hash(capsys):
+    entries = [e for e in ms.load_known_failures()
+               if e['mod'] == 'MC2X-CVE-G' and e['error_class'] == 'ammo']
+    assert sorted(e['count_ceiling'] for e in entries) == [1, 1, 5]
+    assert sum(e['count_ceiling'] for e in entries) == 7
+    for entry in entries:
+        signature = 'ammo:' + entry['message_sha256']
+        counts = {signature: entry['count_ceiling']}
+        assert ms.content_verdict(counts, entry['mod'], entry['mission'], entry['first_window'], entries) == (counts, {})
+        counts[signature] += 1
+        assert ms.content_verdict(counts, entry['mod'], entry['mission'], entry['first_window'], entries) == ({}, counts)
+        assert f"observed={counts[signature]} ceiling={entry['count_ceiling']}" in capsys.readouterr().out
+        row = dict(exit=0, content_new=counts)
+        assert ms.result_word(row) == 'CONTENT-FAIL(NEW)'
+
+
+@pytest.mark.parametrize('note', [None, '', '   '])
+def test_renewal_requires_owner_note(tmp_path, note):
+    import json
+    entry = dict(ms.load_known_failures()[0])
+    entry.update(first_window=entry['expires_window'], expires_window=entry['expires_window'] + 3)
+    entry['owner_note'] = note
+    ledger = tmp_path / 'renewal.json'
+    ledger.write_text(json.dumps([entry]))
+    with pytest.raises(ValueError, match='invalid known content failure'):
+        ms.load_known_failures(ledger)
+    entry['owner_note'] = 'Owner approves this renewal for three windows'
+    ledger.write_text(json.dumps([entry]))
+    assert ms.load_known_failures(ledger) == [entry]
+
+
 def _campaign(first: str, second: str = "") -> str:
     out = '[Campaign]\nl GroupCount = 2\n[Group0Mission0]\nst FileName = "%s"\n' % first
     if second:

@@ -110,6 +110,7 @@ def load_known_failures(path=KNOWN_FAILURES):
         raise ValueError('known failures must be a nonempty list of owner-approved entries')
     for entry in entries:
         if (not all(entry.get(k) for k in ('mod', 'mission', 'error_class', 'owner_note'))
+                or not isinstance(entry.get('owner_note'), str) or not entry['owner_note'].strip()
                 or not re.fullmatch(r'[0-9a-f]{64}', entry.get('message_sha256', ''))
                 or not isinstance(entry.get('count_ceiling'), int) or entry['count_ceiling'] < 0
                 or not isinstance(entry.get('first_window'), int)
@@ -129,6 +130,7 @@ def content_verdict(counts, mod, mission, window, entries):
                        if (e['mod'], e['mission'], e['error_class']) == (mod, mission, kind)
                        and e.get('message_sha256') == message_sha
                        and e['first_window'] <= window < e['expires_window']), default=0)
+        print(f'[mod_smoke] {mod} {mission} {signature} observed={count} ceiling={ceiling}', flush=True)
         (known if count <= ceiling else new)[signature] = count
     return known, new
 
