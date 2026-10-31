@@ -1690,16 +1690,13 @@ bool TerrainObject::calcAdjacentAreaCell (long moveLevel, long areaID, long& adj
 
 //***************************************************************************
 #include "save_struct_zero.h"
-#include "terrain_value_codec.h"
 void TerrainObject::Save (PacketFilePtr file, long packetNum)
 {
 	MC2_SAVE_STRUCT(TerrainObjectData, data);
 	CopyTo(&data);
 
 	//PacketNum incremented in ObjectManager!!
-	auto bytes = mc2::save::encodeTaggedRecord(mc2::save::TerrainRecord{data}, mc2::save::terrainTag);
-	if (bytes.empty()) Fatal(0, "Invalid terrain ObjectSlot");
-	file->writePacket(packetNum, bytes.data(), static_cast<unsigned int>(bytes.size()), STORAGE_TYPE_ZLIB);
+	file->writePacket(packetNum,reinterpret_cast<MemoryPtr>(&data),sizeof(TerrainObjectData),STORAGE_TYPE_ZLIB);
 }
 
 //***************************************************************************

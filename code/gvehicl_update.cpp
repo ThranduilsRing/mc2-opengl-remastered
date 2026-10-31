@@ -865,16 +865,13 @@ void GroundVehicle::renderView (const mc2::render_view::RenderView& view)
 }
 
 #include "save_struct_zero.h"
-#include "vehicle_value_codec.h"
 void GroundVehicle::Save (PacketFilePtr file, long packetNum)
 {
 	MC2_SAVE_STRUCT(GroundVehicleData, data);
 	CopyTo(&data);
 
 	//PacketNum incremented in ObjectManager!!
-	auto bytes = mc2::save::encodeTaggedRecord(mc2::save::VehicleRecord{data}, mc2::save::vehicleTag);
-	if (bytes.empty()) Fatal(0, "Invalid vehicle ObjectSlot");
-	file->writePacket(packetNum, bytes.data(), static_cast<unsigned int>(bytes.size()), STORAGE_TYPE_ZLIB);
+	file->writePacket(packetNum,reinterpret_cast<MemoryPtr>(&data),sizeof(GroundVehicleData),STORAGE_TYPE_ZLIB);
 }
 
 void GroundVehicle::CopyTo (GroundVehicleData *data)
