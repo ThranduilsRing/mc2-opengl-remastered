@@ -152,7 +152,7 @@ def write_html(path, results, profile, budget, previous=None):
                    f'<p>Current noise: {escape(str(result["noise"].get("status", "missing")))}; {escape(str(result["noise"].get("reasons", [])))}. '
                    f'External CPU p95: reserved cores {fmt(reserved)}%; '
                    f'whole machine {fmt(whole)}%. '
-                   f'<br>Baseline: {result["baseline_status"]}; previous: {escape(str(result["previous_noise"]))}. Deltas involving noise are descriptive only.</p>',
+                   f'<br>Baseline: {result["baseline_status"]}; previous: {escape(str(result["previous_noise"]))}. Use paired confidence intervals to judge changes.</p>',
                    '<div class="scroll"><table><tr><th>Metric (ms)</th><th>Value</th><th>Goal</th><th>Δ baseline</th><th>Distance to goal</th><th>Δ previous</th><th>Verdict</th></tr>']
         for metric, row in result["metrics"].items():
             chunks.append(f'<tr><td>{metric} ({escape(row["worst_bookmark"] or "unmeasured")})</td><td>{fmt(row["value"])}</td><td>{row["goal"]}</td><td>{fmt(row["delta_baseline_ms"])}</td><td>{fmt(row["distance_goal_ms"])}</td><td>{fmt(row["delta_previous_ms"])}</td><td>{row["status"]}</td></tr>')

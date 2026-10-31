@@ -177,6 +177,8 @@ def summarize(reader, frame_range=None, bookmarks=None, warmup_seconds=0):
 def capture_mission(install, mission, seconds, trace, extra_env):
     """Record through mission exit: a connection-time cutoff can capture only loading."""
     env = tracy.game_env("vk", False, 0, None, extra_env)
+    if os.environ.get("MC2_VK_DEVICE"):
+        env.setdefault("MC2_VK_DEVICE", os.environ["MC2_VK_DEVICE"])
     env["MC2_FORCE_ALL_VISIBLE"] = "0"  # profile normal mission visibility, overriding smoke's forced value
     marks = (camera_bookmarks(mission)["bookmarks"]
              if mission in CAMERA_MISSIONS and "MC2_UI_COMMAND_FILE" not in env else [])

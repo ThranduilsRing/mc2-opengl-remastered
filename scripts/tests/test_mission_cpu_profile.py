@@ -138,6 +138,7 @@ def test_runner_does_not_receive_host_knobs_or_wait_for_failed_client(tmp_path, 
     channel = tmp_path / "commands.txt"
     channel.write_text("spawn clone 0 0\n")
     extra = {"MC2_UI_COMMAND_FILE": str(channel)} if battle_commands else {}
+    monkeypatch.setenv("MC2_VK_DEVICE", "NVIDIA")
     monkeypatch.setattr(profile.tracy, "game_env", lambda *a: {"TRACY_PORT": "8086", "MC2_HOST_GAME_SLOTS": "2", **extra})
     monkeypatch.setattr(profile.tracy.render_options_pin, "record", lambda *a: {})
     monkeypatch.setattr(profile.tracy.render_options_pin, "write", lambda *a: None)
@@ -150,6 +151,7 @@ def test_runner_does_not_receive_host_knobs_or_wait_for_failed_client(tmp_path, 
         assert "MC2_HOST_GAME_SLOTS" not in config.env_extra
         assert config.env_extra["TRACY_PORT"] == "8086"
         assert config.env_extra["MC2_FORCE_ALL_VISIBLE"] == "0"
+        assert config.env_extra["MC2_VK_DEVICE"] == "NVIDIA"
         return SimpleNamespace(stdout_text="failed", exit_code=1, killed_by_timeout=False)
     monkeypatch.setattr(profile.runner, "run_one", failed_run)
     assert profile.capture_mission(tmp_path, "mc2_01", 10, tmp_path / "test.tracy", []) == 1
