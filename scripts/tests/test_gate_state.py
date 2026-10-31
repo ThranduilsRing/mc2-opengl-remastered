@@ -53,7 +53,7 @@ def test_stage_persisted_before_next_stage_and_resume_retries_failure(journal, m
     assert "REUSED: gate-state HEAD/exe/signature match" in capsys.readouterr().out
 
 
-@pytest.mark.parametrize("change", ["head", "exe", "missing-exe", "command", "env", "fresh"])
+@pytest.mark.parametrize("change", ["head", "exe", "missing-exe", "command", "env"])
 def test_resume_invalidates_changed_evidence(journal, monkeypatch, change):
     steps = [("one", ["one"], {})]
     runner = lambda *a, **kw: types.SimpleNamespace(returncode=0)
@@ -68,7 +68,7 @@ def test_resume_invalidates_changed_evidence(journal, monkeypatch, change):
         steps = [("one", ["one"], {"AUDIT": "1"})]
     head = "new head" if change == "head" else "head"
     monkeypatch.setattr(gate, "git", lambda *a: head)
-    result, state = run_state(journal, monkeypatch, steps, runner, head, change != "fresh")
+    result, state = run_state(journal, monkeypatch, steps, runner, head)
     assert result == 0 and not state.reused
 
 
@@ -103,15 +103,42 @@ def test_offline_receipt_uses_head_and_input_hashes_without_resume(journal, monk
         assert state.data['stages']['contracts']['seconds'] == 135.4
 
 
-def test_runtime_resume_invalidates_changed_file_input(journal, monkeypatch):
+@pytest.mark.parametrize('change', ['none', 'input', 'manifest', 'ambient'])
+def test_runtime_reuses_only_identical_inputs_without_resume(journal, monkeypatch, change, capsys):
     policy = journal[0].parent / 'policy.json'
     policy.write_text('{}')
-    steps = [('saveload-mc2_03', ['check', '--mask', str(policy)], {})]
+    install = journal[0].parent / 'install'
+    install.mkdir()
+    manifest = install / '.deployed_manifest.csv'
+    manifest.write_text('payload v1')
+    steps = [('saveload-mc2_03', ['check', '--mask', str(policy), '--install', str(install)], {})]
     child = lambda *a, **kw: types.SimpleNamespace(returncode=0)
     run_state(journal, monkeypatch, steps, child)
-    policy.write_text('{"changed": true}')
-    result, state = run_state(journal, monkeypatch, steps, child, resume=True)
-    assert result == 0 and not state.reused
+    if change == 'input':
+        policy.write_text('{"changed": true}')
+    if change == 'manifest':
+        manifest.write_text('payload v2')
+    if change == 'ambient':
+        monkeypatch.setenv('MC2_SIM_OVERLAP_AUDIT', '1')
+    result, state = run_state(journal, monkeypatch, steps, child)
+    assert result == 0 and bool(state.reused) == (change == 'none')
+    if change == 'none':
+        row = state.data['stages']['saveload-mc2_03']
+        assert f"REUSED saveload-mc2_03 sig={row['signature']} from {row['artefact_dir']}" in capsys.readouterr().out
+
+
+def test_reopen_preserves_all_journal_keys(journal):
+    path, exe = journal
+    path.write_text(json.dumps({'stages': {}, 'started_signatures': {'one': 'sig'}}))
+    # The second writer is constructed before the first acquires the OS lock.
+    second = gate.GateState(path, 'head', exe, path.parent, [])
+    with gate.GateState(path, 'head', exe, path.parent, []) as first:
+        first.record('one', ['one'], {}, 'PASS', 1)
+    with second:
+        second.record('two', ['two'], {}, 'PASS', 1)
+    saved = json.loads(path.read_text())
+    assert set(saved['stages']) == {'one', 'two'}
+    assert saved['started_signatures'] == {'one': 'sig'}
 
 
 @pytest.mark.parametrize('change', ['none', 'head', 'mod', 'base', 'shader', 'proof', 'missing-proof', 'failed', 'ambient', 'candidate', 'during-run', 'stale-report', 'routing', 'engine-proof'])
