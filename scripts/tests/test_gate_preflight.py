@@ -17,8 +17,11 @@ import mod_smoke as mods
     (91, {'ammo': 7}, {'ammo': 7}),
 ])
 def test_known_failure_boundaries(window, counts, new):
-    known, actual = mods.content_verdict(counts, 'MC2X-CVE-G', 'metropolitan', window,
-                                       mods.load_known_failures())
+    entries = [dict(mod='MC2X-CVE-G', mission='metropolitan', error_class='ammo',
+                    message_sha256='a' * 64, count_ceiling=7, first_window=92, expires_window=95)]
+    counts = {kind + ':' + 'a' * 64: n for kind, n in counts.items()}
+    new = {kind + ':' + 'a' * 64: n for kind, n in new.items()}
+    known, actual = mods.content_verdict(counts, 'MC2X-CVE-G', 'metropolitan', window, entries)
     assert actual == new
     assert bool(known) == (not new)
 
