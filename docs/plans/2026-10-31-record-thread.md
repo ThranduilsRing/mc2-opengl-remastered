@@ -21,7 +21,7 @@ Main retains SDL/input, UI building, camera and extraction. Validate this agains
 |---|---|---|
 | S1 inventory | Native shape-leaf census DONE at `46a9f82a7`; external receipts still open | Farm repeats and save/load policy/reference mismatch remain open; no further census changes needed |
 | S2 explicit state | DONE, proven engine `6fcde0272` | CPU view values, packet-owned light rows/caches and editor viewport callers; final receipts below. Next S3 |
-| S3 rings/lifetimes | IN PROGRESS: value arenas N=3; proof pending | RenderList/HUD values, retirement graveyard, Execute(main)/Draw(record), moved-entry owner assertions still open |
+| S3 rings/lifetimes | IN PROGRESS: value arenas N=3 proven at `3a856fc82` | RenderList/HUD values, retirement graveyard, Execute(main)/Draw(record), moved-entry owner assertions still open |
 | S4 thread | NOT STARTED | Seal after sim commit, consume sealed packets, retire safely; default ON only with all gates green |
 
 ## S1 source inventory at the base
@@ -380,7 +380,7 @@ The deployed binary stays at `6fcde0272` after this docs-only closure: use that 
 proof runs; rebuild on the next engine change. No additional verification is needed for unchanged code.
 Disk: 0 GB freed; leave only `E:/mc2-installs/claude-record-thread`. All own build/game/proof children exited.
 
-## S3 first checkpoint, 2026-10-31 (implementation; proof pending)
+## S3 first proven checkpoint, 2026-10-31
 
 Expanded the existing value-only FramePackets and RenderSnapshot arenas to three CPU slots, indexed by the
 full 64-bit extraction/render sequence before narrowing. Updated native tests cover preservation through two
@@ -390,15 +390,32 @@ No raw GameObject/TG pointer was added to a packet and no gos_/vk recording entr
 Native Vulkan island logging now builds the complete tagged line and emits one fwrite, including HZB's
 512-byte message path, to prevent CRT formatting fragments from splitting concurrent SIMID records.
 
-Proof names use `s3-arena-*` in the existing record-thread proof directory. First lease observation found
-mc2-main mod gate runs occupying the host; complete offline work before submitting runtime proof.
+Tested engine `3a856fc8206ace2faeb204259cfa59bbad7c9bc9`. Proof names use `s3-arena-*` in
+`E:/mc2-archive-2026-10/proofs/record-thread/`. Offline work completed before runtime proof;
+the harnesses queued behind mc2-main merge checks and another lane's profiler under bounded leases.
 Offline receipts: `s3-arena-contracts.log` PASS all five ratchets (32 s); `s3-arena-unit.log` PASS
 22 selected native cases / 241 assertions. No ratchet baseline or SIMID parsing policy changed.
 The read-only scout did not return useful output; stopped only its own PID 54828 and descendants.
-Next: five ratchets, selected FramePackets native cases, one all-target shared-header checkpoint, explicit
-lane deploy, day/night pixel-identical captures against s2-lights-ab (view both), detailed mc2_10 20 s SIMID,
-audit ON clean and sync validation zero. Record exact engine commit and receipts after completion.
-Remaining S3 requires frozen RenderList/HUD draw payloads (existing RenderView/HUD still contain live pointers),
+Avoidable cost: stalled scout; always pass `--timeout 60` on the next bounded question.
+PowerShell profile loading was denied by the host execution policy; skipped profile loading, all work commands ran without it.
+
+| Required proof | Final receipt |
+|---|---|
+| Shared-header all targets | `s3-arena-alltargets.log`: every stage PASS; root 136 s, standalone tools 7/4/7 s, doctest corpus 4 s. Reused existing trees |
+| Verified deploy | `s3-arena-deploy.log`: manifest `3a856fc8206a`, 3855 payload rows, deploy COMPLETE verified; sole lane install |
+| Day/night pixels, viewed | `s3-arena-pixel-parity.json`: four PNGs/RGBA payloads identical to `s2-lights-ab/`; viewed new day/night PNGs. `s3-arena-ab/` capture logs show audit=1 and no violations |
+| Detailed 20 s mc2_10 SIMID | `s3-arena-simid-detail.log`: 903 identical common frames; first 800 match pinned baseline in every digest. Both game logs confirm detail=1/audit=1, no violations or rejected/interleaved SIMID records |
+| Sync validation zero | `s3-arena-sync.log`: mc2_10 20 s PASS, errors=0/warnings=0/content errors=0. Full `s3-arena-sync-artifacts/` log confirms Khronos sync layer/messenger, audit=1, no violations |
+
+S3 remains incomplete. Next: freeze RenderList/HUD draw payloads (existing RenderView/HUD still contain live pointers),
 retained light feeds with matching instance indices, retirement-bound graveyard through CPU completion and
 GPU last use, and all FX families' Execute(Main)/frozen Draw split. Do not rotate legacy pointer lists and call
 them immutable packets; no S4 worker integration until these ownership obligations are complete.
+Start with `code/render_view.h`, `code/render_view_store.cpp`, `code/objmgr.cpp:1032` and the transitive producer
+inventory above. Preserve the three ordered object streams and HUD draw order; freezing only identity or retaining
+mutable Effect/Appearance objects does not meet the packet contract. Add assertOwner on each entry actually moved.
+The full remaining freeze spans many engine families and will not fit this run's remaining 150-call allowance;
+stop at this independently proven preparatory checkpoint rather than commit a partial pointer-based ring.
+All own build/game/proof children have exited; the stalled scout subtree was terminated. No push.
+Disk: 0 GB freed, no extra install created. Leave only `E:/mc2-installs/claude-record-thread` at engine `3a856fc82`.
+After this docs-only closure, pass that explicit reference for retained binary proof; do not rebuild unchanged code.
