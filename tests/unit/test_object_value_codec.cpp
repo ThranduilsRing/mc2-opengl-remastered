@@ -1,9 +1,22 @@
 #include "save_field_probe.h"
 #include "carnage_value_codec.h"
+#include "artillery_value_codec.h"
 #include <cctype>
 #include <filesystem>
 #include <fstream>
 #include <sstream>
+#include <regex>
+
+namespace {
+std::string compactSource(const char* file) {
+    std::ifstream in(std::filesystem::path(MC2_REPO_ROOT) / file);
+    REQUIRE(in.good());
+    std::stringstream stream; stream << in.rdbuf();
+    auto source = std::regex_replace(stream.str(), std::regex("//[^\n]*"), "");
+    std::erase_if(source, [](unsigned char c) { return std::isspace(c); });
+    return source;
+}
+}
 
 namespace save_probe {
 template<> inline void pattern(Stuff::Vector4D& v, unsigned char seed) {
@@ -20,6 +33,20 @@ template<> inline void pattern(CarnageInfo& v, unsigned char seed) {
 template<> inline bool equal(const CarnageInfo& a, const CarnageInfo& b) {
     // Compare union payload bits, not a float interpretation of reallyVisible.
     return std::memcmp(&a, &b, sizeof(a)) == 0;
+}
+template<> inline void pattern(ArtilleryInfo& v, unsigned char seed) {
+    using T = decltype(v.strike);
+    v.strike = patterned<T>(&T::timeToImpact, &T::timeToLaunch, &T::sensorRange,
+        &T::timeToBlind, &T::sensorSystemIndex, &T::contactUpdate,
+        &T::timeString, &T::explosionOffFlags);
+}
+template<> inline bool equal(const ArtilleryInfo& a, const ArtilleryInfo& b) {
+    const auto& x = a.strike; const auto& y = b.strike;
+    return std::tie(x.timeToImpact, x.timeToLaunch, x.sensorRange, x.timeToBlind,
+        x.sensorSystemIndex, x.contactUpdate, x.explosionOffFlags) ==
+        std::tie(y.timeToImpact, y.timeToLaunch, y.sensorRange, y.timeToBlind,
+        y.sensorSystemIndex, y.contactUpdate, y.explosionOffFlags) &&
+        equal(x.timeString, y.timeString);
 }
 }
 
@@ -95,11 +122,7 @@ TEST_CASE("save fields: CarnageData inherited declaration census") {
     // C++ cannot decompose a class with fields in both base and derived class.
     // Pin the complete leaf/union declarations instead; additions inside old
     // padding must fail this test as well as omissions from the member list.
-    std::ifstream in(std::filesystem::path(MC2_REPO_ROOT) / "code/carnage.h");
-    REQUIRE(in.good());
-    std::stringstream stream; stream << in.rdbuf();
-    auto source = stream.str();
-    std::erase_if(source, [](unsigned char c) { return std::isspace(c); });
+    const auto source = compactSource("code/carnage.h");
     CHECK(source.find("struct_CarnageData:publicGameObjectData{"
         "CarnageEnumTypecarnageType;GameObjectWatchIDownerWID;CarnageInfoinfo;"
         "int32_teffectId;};") != std::string::npos);
@@ -108,5 +131,48 @@ TEST_CASE("save fields: CarnageData inherited declaration census") {
         "floatchunkSize;}explosion;};") != std::string::npos);
 }
 
+#define ARTILLERY_MEMBERS &T::artilleryType, &T::teamId, &T::commanderId, \
+    &T::info, &T::effectId, &T::bombRunStarted, &T::inView, &T::iFacePosition
+
+TEST_CASE("save fields: ArtilleryData independent inherited census") {
+    using T = ArtilleryData;
+    auto sample = save_probe::patterned<T>(BASE_MEMBERS, ARTILLERY_MEMBERS);
+    sample.objectClass = ARTILLERY;
+    sample.windowsVisible = 0;
+    SAVE_FIELD_SHAPE(sample.info.strike, timeToImpact, timeToLaunch,
+        sensorRange, timeToBlind, sensorSystemIndex, contactUpdate,
+        timeString, explosionOffFlags);
+    const auto codec = [](auto& a, auto& v) {
+        mc2::save::ArtilleryRecord record{v}; record.serialize(a);
+        if (a.reading()) v = record.value;
+    };
+    for (char kind = 0; kind < NUM_ARTILLERY_TYPES; ++kind) {
+        sample.artilleryType = kind;
+        REQUIRE(save_probe::roundtrip(sample, codec, BASE_MEMBERS, ARTILLERY_MEMBERS));
+        const auto bytes = mc2::save::encodeTaggedRecord(
+            mc2::save::ArtilleryRecord{sample}, mc2::save::artilleryTag);
+        mc2::save::ArtilleryRecord decoded;
+        REQUIRE(mc2::save::decodeTaggedRecord(bytes, decoded, mc2::save::artilleryTag));
+        CHECK(save_probe::equal(decoded.value.info, sample.info));
+        CHECK_FALSE(mc2::save::decodeTaggedRecord(std::span(bytes).first(bytes.size()-1),
+            decoded, mc2::save::artilleryTag));
+    }
+    CHECK_FALSE(save_probe::roundtrip(sample, [](auto& a, auto& v) {
+        mc2::save::ArtilleryRecord record{v}; record.serialize(a);
+        if (a.reading()) { v = record.value; v.info.strike.explosionOffFlags = 0; }
+    }, BASE_MEMBERS, ARTILLERY_MEMBERS));
+    sample.artilleryType = NUM_ARTILLERY_TYPES;
+    CHECK(mc2::save::encodeTaggedRecord(mc2::save::ArtilleryRecord{sample},
+        mc2::save::artilleryTag).empty());
+    const auto source = compactSource("code/artlry.h");
+    CHECK(source.find("struct_ArtilleryData:publicGameObjectData{charartilleryType;"
+        "charteamId;charcommanderId;ArtilleryInfoinfo;int32_teffectId;"
+        "boolbombRunStarted;boolinView;glm::vec3iFacePosition;};") != std::string::npos);
+    CHECK(source.find("union_ArtilleryInfo{struct{floattimeToImpact;floattimeToLaunch;"
+        "floatsensorRange;floattimeToBlind;shortsensorSystemIndex;floatcontactUpdate;"
+        "chartimeString[5];uint32_texplosionOffFlags;}strike;};") != std::string::npos);
+}
+
+#undef ARTILLERY_MEMBERS
 #undef CARNAGE_MEMBERS
 #undef BASE_MEMBERS
