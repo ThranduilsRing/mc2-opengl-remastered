@@ -4285,7 +4285,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/merge_gate.py",
-          "line": 344,
+          "line": 345,
           "evidence": "command",
           "reference": "scripts/make-isolated-deploy.py",
           "text": "subprocess.run([sys.executable, str(ROOT / \"scripts/make-isolated-deploy.py\"),"
@@ -5445,7 +5445,7 @@
         },
         {
           "path": "scripts/run_smoke.py",
-          "line": 1555,
+          "line": 1559,
           "evidence": "import",
           "reference": "run_visual_capture",
           "text": "from run_visual_capture import smoke_capture"
@@ -6735,6 +6735,13 @@
           "text": "from scripts.smoke_lib import baselines, manifest, nofocus, render_options_pin, render_resolution, report"
         },
         {
+          "path": "scripts/tests/test_gate_farm.py",
+          "line": 22,
+          "evidence": "import",
+          "reference": "scripts.smoke_lib.manifest",
+          "text": "from scripts.smoke_lib.manifest import parse_manifest"
+        },
+        {
           "path": "scripts/tests/test_install_hygiene.py",
           "line": 146,
           "evidence": "import",
@@ -7086,7 +7093,7 @@
       "callers_by_stem": [
         {
           "path": "scripts/run_smoke.py",
-          "line": 1660,
+          "line": 1664,
           "evidence": "import",
           "reference": "scripts.smoke_lib.runtime_bridge",
           "text": "from scripts.smoke_lib.runtime_bridge import RuntimeBridge"
