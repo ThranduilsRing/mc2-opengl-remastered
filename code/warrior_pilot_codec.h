@@ -13,6 +13,18 @@ public:
     template<class... T> void operator()(T&... values) { (field(values), ...); }
     template<class T> requires std::is_arithmetic_v<T>
     void field(T& v) { a(v); }
+    void field(long& v) {
+        if (!a.reading() && (v < INT32_MIN || v > INT32_MAX)) a.reject("warrior_int32");
+        std::int32_t wire = static_cast<std::int32_t>(v);
+        a(wire);
+        if (a.reading() && a.good()) v = wire;
+    }
+    void field(unsigned long& v) {
+        if (!a.reading() && v > UINT32_MAX) a.reject("warrior_uint32");
+        std::uint32_t wire = static_cast<std::uint32_t>(v);
+        a(wire);
+        if (a.reading() && a.good()) v = wire;
+    }
     template<class T> requires std::is_enum_v<T>
     void field(T& v) {
         static_assert(sizeof(T) == 4);
@@ -134,6 +146,7 @@ inline bool canonicalizeWarrior(MechWarriorData& v) {
     };
     auto order = [&](TacticalOrder& t) {
         const int n = t.moveParams.wayPath.numPoints;
+        if (n < 0 || n > MAX_WAYPTS) return false;
         if (!tail(t.moveParams.wayPath.points, n * 3) || !tail(t.moveParams.wayPath.mode, n)) return false;
         // derived lastMoveGoal: no runtime readers; deterministic zero sentinel.
         t.lastMoveGoal = glm::vec3(0);

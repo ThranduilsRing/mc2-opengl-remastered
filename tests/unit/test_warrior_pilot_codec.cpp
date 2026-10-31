@@ -145,4 +145,7 @@ TEST_CASE("save fields: warrior derived tails are deterministic and active pause
     CHECK(same(sample, restored));
     sample.moveOrders.path[0].numStepsWhenNotPaused = 201;
     CHECK_FALSE(mc2::save::canonicalizeWarrior(sample));
+    sample.moveOrders.path[0].numStepsWhenNotPaused = 2;
+    sample.curTacOrder.moveParams.wayPath.numPoints = std::numeric_limits<long>::max();
+    CHECK_FALSE(mc2::save::canonicalizeWarrior(sample));
 }
