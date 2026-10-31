@@ -25,6 +25,7 @@ static const bool s_vehicleLitPath = mc2::gate::get<"MC2_VEHICLE_LIT_PATH">();
 
 long GVAppearance::render (long depthFixup)
 {
+	if (!eye) return 0;
 	TG_MultiShape* drawShape = renderShape ? renderShape.get() : gvShape;
 	const auto visibility = buildVisState();
 	mc2_vis::trace("vehicle-shadow", static_cast<const void*>(this), visibility);

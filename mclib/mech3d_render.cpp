@@ -408,6 +408,7 @@ bool Mech3DAppearance::recalcBounds (void)
 
 long Mech3DAppearance::render (long depthFixup)
 {
+	if (!eye) return 0;
 	// FX_COUNT one-time init: register the shutdown emit from a code path that
 	// is guaranteed to run (a discardable anon-namespace static can be elided
 	// by /OPT:REF). Unconditional init print proves render() runs + flag state.

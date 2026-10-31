@@ -7,6 +7,7 @@
 //-----------------------------------------------------------------------------
 long GenericAppearance::render (long depthFixup)
 {
+	if (!eye) return 0;
 	if (inView)
 	{
 		uint32_t color = SD_BLUE;
