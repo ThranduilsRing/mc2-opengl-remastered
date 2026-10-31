@@ -295,12 +295,9 @@ def change_domains(paths):
 
 def affected_plan(steps, paths, full=False):
     domains = change_domains(paths)
-    # Serialization changes need both material modes. Classic-specific asset
-    # routing also needs its own arm; ordinary sim/render changes do not.
+    # Save paths retain serialization coverage; asset names alone do not imply it.
     classic_saves = full or any(any(token in p.replace("\\", "/").lower() for token in (
-        "save", "load", "serializ", "classic", "remastered", "render_options", "bdactor",
-        "building", "appearance", "content_ir", "model_override", "loose_asset", "kit",
-        "material", "texture", "gltf", "content_pipeline", "mc2texcook")) for p in paths
+        "save", "serializ", "mission_load", "msl_load")) for p in paths
         if change_domains([p]) & {"engine", "art", "shaders"})
     art = full or bool(domains & {"art"}) or any(
         any(token in p.replace("\\", "/").lower() for token in
@@ -447,11 +444,33 @@ def farm_stage(command, overrides, runner=None):
     if len(ids) != 1:
         raise RuntimeError("farm submit returned no unique job ID")
     job_id = ids[0]
-    waited = runner(host + ["wait", job_id, "--timeout", "960"], cwd=ROOT, env=os.environ.copy())
+    waited = runner(host + ["wait", job_id, "--timeout", "2160", "--queue-timeout", "1200"], cwd=ROOT, env=os.environ.copy())
+    if 'queue_timeout:' in waited.stdout:
+        print('[merge_gate] farm queue capped at 20 min; repeating locally', flush=True)
+        return runner(command, cwd=ROOT, env=dict(os.environ, **overrides))
     if "job remains owned" in waited.stdout:
         return waited  # never delete the payload of a still-running farm job
     fetched = runner(host + ["fetch", job_id, str(out)], cwd=ROOT, env=os.environ.copy())
     return subprocess.CompletedProcess(command, waited.returncode or fetched.returncode, waited.stdout + fetched.stdout)
+
+
+def choose_farm(runner=run_child):
+    """Compare one queue snapshot with a conservative host-slot wait estimate."""
+    from smoke_lib import host_lease
+    try:
+        state = host_lease.status()
+        slots = host_lease.slot_count()
+        occupied = len(state['slots'])
+        tickets = json.loads(host_lease.lease_path().with_suffix('.queue.json').read_text()).get('tickets', []) if host_lease.lease_path().with_suffix('.queue.json').exists() else []
+        host_minutes = 15 * ((len(tickets) // slots) + 1) if occupied >= slots or tickets else 0
+        result = runner([sys.executable, 'tools/farm/host.py', 'queue'], cwd=ROOT, env=os.environ.copy())
+        depth = int(json.loads(result.stdout)['depth']) if not result.returncode else -1
+        selected = depth >= 0 and depth * 15 < min(host_minutes, 20)
+        print(f'[merge_gate] farm depth={depth} estimated={depth * 15}min host-slot estimate={host_minutes}min selected={selected}', flush=True)
+        return selected
+    except (OSError, ValueError, KeyError, subprocess.SubprocessError) as exc:
+        print(f'[merge_gate] farm queue unavailable; local determinism: {exc}', flush=True)
+        return False
 
 
 def execute_window(steps, head, dry_run=False, keep_going=False, farm_determinism=False):
@@ -487,7 +506,7 @@ def execute_parallel(steps, head, dry_run=False, keep_going=False, farm_determin
     """
     if dry_run:
         print("Coverage plan: two host slots; isolated mods then determinism/saveload overlap stock captures; contracts/harnesses overlap"
-              + ("; determinism trio on farm parallel with saveloads" if farm_determinism else ""))
+              + ("; non-windowed determinism on farm; mc2_10 remains local" if farm_determinism else ""))
         return execute(steps, head, True)
     if os.environ.get("MC2_HOST_LEASE_BATCH"):
         if farm_determinism:
@@ -499,12 +518,15 @@ def execute_parallel(steps, head, dry_run=False, keep_going=False, farm_determin
     reused = [s for s in steps if s[2].get("MC2_GATE_REUSE_STAGE")]
     steps = [s for s in steps if s not in reused]
     farm = [s for s in steps if farm_determinism and s[0].startswith("determinism-")
+            and s[0] != 'determinism-' + WINDOWED_DETERMINISM
             and not s[2].get("MC2_GATE_SKIP_REASON")]
     steps = [s for s in steps if s not in farm]
     with ThreadPoolExecutor(max_workers=3 if farm else 2) as pool:
         harness = next((s for s in steps if s[0] == "harnesses" and not s[2].get("MC2_GATE_SKIP_REASON")), None)
         contracts = next((s for s in steps if s[0] == "contracts" and not s[2].get("MC2_GATE_SKIP_REASON")), None)
         harness_future = None
+        mods_done = threading.Event()
+        save_lock = threading.Lock()
         def timed_child(command, cwd, env):
             started = time.monotonic()
             result = run_child(command, cwd=cwd, env=env)
@@ -517,6 +539,11 @@ def execute_parallel(steps, head, dry_run=False, keep_going=False, farm_determin
                     dict(os.environ, **harness[2], MC2_IN_GATE="1"))
             if harness_future and command == harness[1]:
                 return harness_future.result()
+            if any(Path(arg).name == 'saveload_roundtrip.py' for arg in command):
+                mods_done.wait()
+                # Both workers still share the user's quicksave filenames.
+                with save_lock:
+                    return run_child(command, cwd=cwd, env=env)
             return run_child(command, cwd=cwd, env=env)
         # The wrapper deliberately leaves leasing to each harness, rather than
         # execute's legacy exclusive reservation for a serial chain.
@@ -539,8 +566,12 @@ def execute_parallel(steps, head, dry_run=False, keep_going=False, farm_determin
         # runs serially ahead of the stock chain, so the order still holds.)
         if any(not s[2].get("MC2_GATE_SKIP_REASON") for s in mods):
             saves = [s for s in stock if s[0].startswith("saveload-")]
-            stock = [s for s in stock if s not in saves]
-            determinism += saves
+            # The stock half follows tier1, and waits for mods in runner.
+            shared = saves[1::2]
+            stock = [s for s in stock if s not in saves or s in shared]
+            determinism += [s for s in saves if s not in shared]
+        else:
+            mods_done.set()
         offline = [s for s in stock if s[0] in ("contracts", "harnesses", "pytest")]
         offline_result = execute(offline, head, runner=runner, completed=completed) if offline else 0
         if offline_result and not keep_going:
@@ -575,6 +606,7 @@ def execute_parallel(steps, head, dry_run=False, keep_going=False, farm_determin
             # stock harness writes to the live install's configs.
             if not copy_future:
                 result |= execute(mods, head, runner=runner, completed=completed)
+                mods_done.set()
             def auxiliary():
                 try:
                     result = 0
@@ -588,12 +620,18 @@ def execute_parallel(steps, head, dry_run=False, keep_going=False, farm_determin
                                     i = command.index(option) + 1
                                     command[i] = command[i].replace(str(install), str(clone)).replace(install.as_posix(), clone.as_posix())
                             remapped.append((n, command, e))
-                        result |= execute(remapped, head, runner=runner, completed=completed)
+                        mod_rows = [s for s in remapped if s[0] == 'mods']
+                        result |= execute(mod_rows, head, runner=runner, completed=completed)
+                        mods_done.set()
+                        rest = [s for s in remapped if s[0] != 'mods']
+                        if rest:
+                            result |= execute(rest, head, runner=runner, completed=completed)
                     return result
                 except (OSError, RuntimeError) as exc:
                     print(f"[merge_gate] stock-copy/determinism FAIL (not waived): {exc}", flush=True)
                     return 1
                 finally:
+                    mods_done.set()
                     if copy_future:
                         try:
                             copy_future.result()
@@ -797,7 +835,7 @@ def main(argv=None):
     ap.add_argument("--window", type=int, help="merge-window number for known-failure expiry")
     ap.add_argument("--full", action="store_true", help="all domains; orchestrator runs at least daily")
     ap.add_argument("--resume", action="store_true", help="reuse successful stages with matching HEAD and executable SHA")
-    ap.add_argument("--farm-determinism", action="store_true", help="schedule the determinism trio on the farm alongside local save/load checks")
+    ap.add_argument("--farm-determinism", action="store_true", help="force non-windowed determinism to farm (default: choose by queue versus host wait)")
     ap.add_argument("--install", type=Path, help="explicit lane-owned E:/mc2-installs target for a real rehearsal")
     ap.add_argument("--dry-run", action="store_true", help="print commands only; no builds, deploys, or game launches")
     ap.add_argument("--capture-before-runs", type=int, default=1,
@@ -915,7 +953,8 @@ def main(argv=None):
             with redirect_stdout(Tee(sys.stdout, log)), redirect_stderr(Tee(sys.stderr, log)):
                 print(f"[merge_gate] log: {log_path}", flush=True)
                 started = window.get("started", time.time())
-                scheduling = dict(farm_determinism=True) if args.farm_determinism else {}
+                use_farm = args.farm_determinism or (not args.dry_run and not os.environ.get('MC2_HOST_LEASE_BATCH') and choose_farm())
+                scheduling = dict(farm_determinism=True) if use_farm else {}
                 execute_gate = execute_parallel if args.install else execute_window
                 result = execute_gate(steps, head, args.dry_run, keep_going=args.keep_going, **scheduling)
                 elapsed = time.time() - started

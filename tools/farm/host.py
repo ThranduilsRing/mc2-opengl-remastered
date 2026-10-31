@@ -24,7 +24,7 @@ import console_child
 def remote(args, script):
     script = "$ProgressPreference='SilentlyContinue'\n" + script  # else CLIXML progress noise on stdout
     encoded = base64.b64encode(script.encode('utf-16le')).decode('ascii')
-    return subprocess.check_output(['ssh', '-i', str(args.key), '-o', 'BatchMode=yes',
+    return subprocess.check_output(['ssh', '-i', str(args.key), '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=10',
                                     args.host, 'powershell -NoProfile -EncodedCommand ' + encoded],
                                    text=True, **console_child.child_kwargs(redirected=True))
 
@@ -226,6 +226,7 @@ def main():
     parser.add_argument('--key', type=Path,
                         default=Path(os.environ.get('HOME', str(Path.home()))) / '.ssh/mc2farm_ed25519')
     sub = parser.add_subparsers(dest='action', required=True)
+    sub.add_parser('queue', help='JSON queue depth including the running job')
     seed = sub.add_parser('reseed')
     seed.add_argument('--install', type=Path, required=True)
     seed.add_argument('--harness', type=Path, required=True)
@@ -236,10 +237,15 @@ def main():
     wait = sub.add_parser('wait')
     wait.add_argument('id')
     wait.add_argument('--timeout', type=float, default=900)
+    wait.add_argument('--queue-timeout', type=float, help='cancel only an unclaimed job after this many seconds')
     fetch = sub.add_parser('fetch')
     fetch.add_argument('id')
     fetch.add_argument('destination', type=Path)
     args = parser.parse_args()
+    if args.action == 'queue':
+        print(remote(args, "$q=@(Get-ChildItem C:/mc2farm/jobs -File | Where-Object { $_.Extension -in '.json','.running' }); "
+                           "@{depth=$q.Count} | ConvertTo-Json -Compress").strip())
+        return
     if args.action == 'reseed':
         reseed(args)
         return
@@ -285,7 +291,8 @@ def main():
                        **console_child.child_kwargs())
         remote(args, CLEAN_PS % {'r': ROOT, 'id': args.id})  # per-job exe tree, if any
         return
-    deadline = time.monotonic() + args.timeout
+    started = time.monotonic()
+    deadline = started + args.timeout
     while time.monotonic() < deadline:
         text = remote(args, f"if (Test-Path C:/mc2farm/results/{args.id}/result.json) "
                             f"{{ Get-Content -Raw C:/mc2farm/results/{args.id}/result.json }}")
@@ -293,6 +300,14 @@ def main():
             result = json.loads(text)
             print(json.dumps(result, indent=2))
             raise SystemExit(0 if result['status'] == 'completed' and result['returncode'] == 0 else 1)
+        if args.queue_timeout is not None and time.monotonic() - started >= args.queue_timeout:
+            # Rename races atomically with the runner's claim. Never cancel a running job.
+            cancelled = remote(args, f"try {{ Move-Item -LiteralPath C:/mc2farm/jobs/{args.id}.json "
+                               f"-Destination C:/mc2farm/jobs/{args.id}.cancelled -ErrorAction Stop; 'queue_timeout' }} catch {{ }}")
+            if 'queue_timeout' in cancelled:
+                remote(args, CLEAN_PS % {'r': ROOT, 'id': args.id})
+                print('queue_timeout: unclaimed job cancelled; safe to repeat locally')
+                raise SystemExit(1)
         time.sleep(3)
     raise SystemExit('wait timed out; job remains owned by the desktop runner')
 

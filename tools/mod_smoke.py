@@ -100,13 +100,13 @@ def warning_excess(counts: dict[str, int], mod: str) -> dict[str, int]:
     return {line: count - budget.get(line, 0) for line, count in counts.items()
             if count > budget.get(line, 0)}
 
-# Per-mod mission-load budgets, pinned by the content-channel smoke proof.
-CONTENT_BUDGETS = {"MC2X-CVE-G": 2, "MechCommanderOmnitech": 0}
 KNOWN_FAILURES = Path(__file__).with_name('mod_known_failures.json')
 
 
 def load_known_failures(path=KNOWN_FAILURES):
     entries = json.loads(Path(path).read_text(encoding='utf-8'))
+    if not isinstance(entries, list) or not entries or not all(isinstance(e, dict) for e in entries):
+        raise ValueError('known failures must be a nonempty list of owner-approved entries')
     for entry in entries:
         if (not all(entry.get(k) for k in ('mod', 'mission', 'error_class', 'owner_note'))
                 or not isinstance(entry.get('count_ceiling'), int) or entry['count_ceiling'] < 0

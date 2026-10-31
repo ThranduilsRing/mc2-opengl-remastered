@@ -9,6 +9,28 @@ from types import SimpleNamespace
 
 import pytest
 
+
+def test_host_queue_and_pending_timeout(monkeypatch, capsys):
+    from tools.farm import host
+    calls = []
+    def remote(args, script):
+        calls.append(script)
+        if args.action == 'queue':
+            return '{"depth":2}'
+        return 'queue_timeout' if 'Move-Item' in script else ''
+    monkeypatch.setattr(host, 'remote', remote)
+    monkeypatch.setattr(sys, 'argv', ['host.py', 'queue'])
+    host.main()
+    assert json.loads(capsys.readouterr().out)['depth'] == 2
+    monkeypatch.setattr(sys, 'argv', ['host.py', 'wait', 'a' * 32, '--timeout', '5', '--queue-timeout', '0'])
+    with pytest.raises(SystemExit) as exited:
+        host.main()
+    assert exited.value.code == 1
+    cancellation = next(s for s in calls if 'Move-Item' in s)
+    assert '.json -Destination' in cancellation and '.cancelled' in cancellation
+    assert '.running' not in cancellation
+    assert 'queue_timeout:' in capsys.readouterr().out
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from scripts import console_child
 from tools.farm.runner import atomic_json, poll_once
