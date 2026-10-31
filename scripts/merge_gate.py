@@ -182,13 +182,14 @@ def plan(jobs, proof_dir=None, capture_before_runs=1, before_dir=None):
         before = str(proof / "before")
         steps = [(name, [str(before_dir) if arg == before else arg for arg in cmd], env)
                  for name, cmd, env in steps if name != "capture-before"]
-    # Determinism rows run HEADLESS to the baseline's tick count (no GPU, no host slot, ~1/10 of the windowed time); mc2_10 stays windowed
-    # as the one guard that the windowed path itself is still deterministic and still agrees with the baseline.
+    # mc2_03 runs headless; mc2_10 and mc2_24 retain the GPU path. The finale
+    # spawns infantry after tick 2404: its audit must cover that lazy shape load.
     for mission in ("mc2_03", "mc2_10", "mc2_24"):
         steps.append(("determinism-" + mission,
                       [py, "tools/sim_determinism.py", "check", mission, "--install", install, "--out", str(proof / ("determinism-" + mission)),
                        # mc2_10 reaches only ~650 of the 800 sim frames in 20 s under load; 2x gets there in half the host time (both runs of a pair share the speed)
-                       *(["--sim-speed", "2"] if mission == WINDOWED_DETERMINISM else ["--headless-both"])], {}))
+                       *(["--sim-speed", "2"] if mission == WINDOWED_DETERMINISM else
+                         (["--sim-speed", "4", "--ticks", "2600"] if mission == "mc2_24" else ["--headless-both"]))], {}))
     for mission in ("mc2_01", "mc2_03", "mc2_10", "mc2_16", "mc2_24"):
         steps.append(("saveload-" + mission,
                       [py, "tools/saveload_roundtrip.py", "check", "--mission", mission,

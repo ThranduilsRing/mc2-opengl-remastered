@@ -56,7 +56,10 @@ _SIMID_RECORD = re.compile(re.escape(SIMID) + r"[^\r\n\[]*")
 
 
 def simid_lines(text: str) -> list[str]:
-    return [_RNG_COUNTS.sub(r" rng=\1", m.group().rstrip()) for m in _SIMID_RECORD.finditer(text)]
+    # animrng is the terminal SIMID field. Another writer's unbracketed suffix
+    # (e.g. the last 's' of a timing line) is not simulation state.
+    return [_RNG_COUNTS.sub(r" rng=\1", re.sub(r"(\banimrng=\d+).*$", r"\1", m.group().rstrip()))
+            for m in _SIMID_RECORD.finditer(text)]
 
 
 def chain(lines: list[str], frames: int) -> str:
@@ -83,7 +86,8 @@ def run_once(args, mission: str, env_extra: dict, tag: str) -> dict:
     env = dict(os.environ, **env_extra)
     t0 = time.monotonic()
     r = subprocess.run([sys.executable, os.path.join(ROOT, "scripts", "run_smoke.py"), "--mission", mission,
-                        "--duration", str(args.duration), *target_args(args), "--keep-logs", "--sim-determinism"],
+                        "--duration", str(args.duration), *target_args(args), "--keep-logs", "--sim-determinism",
+                        *(["--ticks", "2600"] if mission == "mc2_24" else [])],
                        env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, encoding="utf-8",
                        errors="replace", **console_child.child_kwargs(redirected=True))
     arts = [ln.removeprefix("[runner] artifacts: ").strip() for ln in r.stdout.splitlines()
@@ -113,6 +117,8 @@ def judge(rows: list[dict]) -> dict:
     for r in rows:
         h = chain(r["_lines"], frames)
         red = []
+        if r["rc"]:
+            red.append(f"rc={r['rc']}")
         if r["violation"] or r["aborted"]:
             red.append("violation")
         if frames < MIN_FRAMES:

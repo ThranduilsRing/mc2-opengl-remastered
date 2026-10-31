@@ -12,6 +12,20 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import merge_gate as gate
 
 
+def test_finale_keeps_windowed_audit_and_tier1_coverage():
+    steps = gate.affected_plan(gate.plan(6), ['mclib/msl_load.cpp'])
+    command = next(c for n, c, _ in steps if n == 'determinism-mc2_24')
+    assert '--headless-both' not in command
+    assert int(command[command.index('--ticks') + 1]) > 2404
+    assert command[command.index('--sim-speed') + 1] == '4'
+    tier1 = next(c for n, c, _ in steps if n == 'tier1')
+    from scripts.smoke_lib.manifest import parse_manifest
+    missions = {e.stem for e in parse_manifest(gate.ROOT / 'tests/smoke/smoke_missions.txt') if e.tier == 'tier1'}
+    assert 'mc2_24' in missions
+    if '--mission' in tier1:
+        assert 'mc2_24' in [tier1[i + 1] for i, arg in enumerate(tier1) if arg == '--mission']
+
+
 @pytest.mark.parametrize('path,classic', [
     ('code/mission_update.cpp', False), ('RenderCore/vk_sync.cpp', False),
     ('assets/rock.png', False), ('unknown/file.xyz', False),
