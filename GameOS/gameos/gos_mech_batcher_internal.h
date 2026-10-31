@@ -138,6 +138,7 @@ const float* gos_GetMechFixBMVPMat4();
 extern std::vector<GpuMechInstance> s_vkMechInstSnapshot;
 extern std::vector<GpuMechBone>     s_vkMechBoneSnapshot;
 extern std::vector<Mc2MechDrawRun>  s_vkMechRunSnapshot;
+extern uint32_t                     s_vkMechLeafCount;
 extern float                        s_vkMechWorldToClipGL[16];
 extern float                        s_vkMechObjectDepthBias;
 extern bool                         s_vkMechFrameReady;

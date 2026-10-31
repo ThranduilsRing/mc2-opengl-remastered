@@ -28,35 +28,38 @@ bool mc2vkSharedLightFeedEnabled()
     return s_state == 1;
 }
 
-mc2vk::FrameAlloc mc2vkSharedLightFeedAcquire(const void* cpuData, uint64_t cpuBytes)
+mc2vk::FrameAlloc mc2vkSharedLightFeedAcquire(const mc2::vkLights::Feed& feed)
 {
     if (!mc2vkSharedLightFeedEnabled()) return {};
     mc2vk::VulkanContext& ctx = mc2vk::getOrCreateEngineVulkanContext();
     if (!ctx.valid()) return {};
-    return ctx.lightFeed().acquire(ctx, cpuData, cpuBytes);
+    return ctx.lightFeed().acquire(ctx, feed);
 }
 
 namespace mc2vk {
 
-FrameAlloc SharedLightFeed::acquire(VulkanContext& ctx, const void* cpuData, uint64_t cpuBytes)
+FrameAlloc SharedLightFeed::acquire(VulkanContext& ctx, const mc2::vkLights::Feed& feed)
 {
+    const void* cpuData = feed.data;
+    const uint64_t cpuBytes = feed.bytes;
     if (cpuData == nullptr || cpuBytes < 3600ull) return {};
-    const auto generations = mc2::vkLights::getLightRowGenerations();
+    const auto generations = feed.generations;
     constexpr size_t rowBytes = sizeof(GpuObjectLights);
-    if (cpuData != mc2::vkLights::getLightDataPtr() || cpuBytes != generations.size() * rowBytes) return {};
-    const uint64_t revision = mc2::vkLights::getLightDataRevision();
+    if (!feed.owner || cpuBytes != generations.size() * rowBytes) return {};
+    const uint64_t revision = feed.revision;
 
     const uint64_t frame = ctx.tracker().frameNo();
     if (frame == frame_) {
         // Second+ consumer this frame: reuse the already-copied span. If the CPU array GREW between two same-frame island flushes (mid-frame dynamic-light
         // append), fail soft: this caller does its own copy (rare, content-safe; next frame's copy picks up the full array).
-        if (!span_ || static_cast<VkDeviceSize>(cpuBytes) > bytes_ || revision != revision_) { ++fallbacks_; return {}; }
+        if (!span_ || static_cast<VkDeviceSize>(cpuBytes) > bytes_ || revision != revision_ || feed.packetKey != packetKey_) { ++fallbacks_; return {}; }
         ++hits_;
         return span_;
     }
     frame_ = frame;
     span_ = FrameAlloc{};
     revision_ = revision;
+    packetKey_ = feed.packetKey;
 
     {
         ZoneScopedN("VKIsl.Shared.LightFeed");

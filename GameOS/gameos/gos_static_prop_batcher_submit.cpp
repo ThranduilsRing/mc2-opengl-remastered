@@ -3,6 +3,7 @@
 #include <atomic>
 #include "gos_static_prop_batcher_internal.h"
 #include "mc2fmt.h"
+#include "../../mclib/battle_bench_sink.h"
 
 
 bool GpuStaticPropBatcher::submit(TG_Shape* shape,
@@ -114,6 +115,7 @@ bool GpuStaticPropBatcher::submit(TG_Shape* shape,
     }
     bucket.instances.push_back(inst);
     s_lastBuiltBatch.push_back(inst);  // Stage 3.C: batch accumulator
+    if (mc2::battlebench::output) ++mc2::battlebench::propLeaves;
 
     // Native prop color/HZB consume bucket instances directly. These leaves
     // have actorId=0 and are intentionally absent from lagged actor visibility.

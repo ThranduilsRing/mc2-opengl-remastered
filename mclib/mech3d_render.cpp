@@ -408,6 +408,7 @@ bool Mech3DAppearance::recalcBounds (void)
 
 long Mech3DAppearance::render (long depthFixup)
 {
+	if (!eye) return 0;
 	// FX_COUNT one-time init: register the shutdown emit from a code path that
 	// is guaranteed to run (a discardable anon-namespace static can be elided
 	// by /OPT:REF). Unconditional init print proves render() runs + flag state.
@@ -1018,11 +1019,11 @@ long Mech3DAppearance::render (long depthFixup)
 		{
 			if (sensorLevel > 1)
 			{
-				sensorSquareShape->Render();
+				sensorSquareShape->Render(eye->getViewUniforms());
 			}
 			else
 			{
-				sensorTriangleShape->Render();
+				sensorTriangleShape->Render(eye->getViewUniforms());
 			}
 		}
 	}
@@ -1031,7 +1032,7 @@ long Mech3DAppearance::render (long depthFixup)
 	{
 		Camera::HazeFactor = rightArmHazeFactor;
 
-		rightArm->Render(true);
+		rightArm->Render(eye->getViewUniforms(),true);
 
 		if (rightArmSmoke)
 		{
@@ -1071,7 +1072,7 @@ long Mech3DAppearance::render (long depthFixup)
 	{
 		Camera::HazeFactor = leftArmHazeFactor;
 
-		leftArm->Render(true);
+		leftArm->Render(eye->getViewUniforms(),true);
 		
 		if (leftArmSmoke)
 		{

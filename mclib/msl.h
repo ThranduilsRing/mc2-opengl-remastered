@@ -468,7 +468,7 @@ class TG_MultiShape
 		// Track B (widen registry): recipe-build-only variant.
 		// Runs the hierarchy traversal to populate listOfShapes[i].shapeToWorld
 		// per leaf without allocating from TGL vertex/face/color pools and without
-		// requiring TG_Shape::s_cameraOrigin to be non-null. Safe to call during
+		// requiring initialized camera projection values. Safe to call during
 		// Mission::init before the camera is initialized.
 		long TransformMultiShape_BuildRecipe (glm::vec3 *pos, glm::quat *rot);
 		// Simulation-only immutable capture, fork/join, then node-order publish.
@@ -503,11 +503,11 @@ class TG_MultiShape
 		// CPU fallback draw of every leaf the batchers declined (CpuDraw: ambient + infinite lights, queued through the
 		// render submissions); call after a TransformMultiShape_* walk.
 		// spotlightsOnly: just the SpotLight_ cone leaves (a body a batcher already drew).
-		void Render (bool refreshTextures = false, float forceZ = -1.0f, bool spotlightsOnly = false);
+		void Render (mc2::tgl::ViewUniforms view, bool refreshTextures = false, float forceZ = -1.0f, bool spotlightsOnly = false);
 		// Call in the update phase, after the hierarchy walk, for any shape Render may draw: reserves its triangles.
 		void ReserveCpuDraw (bool spotlightsOnly = false);
 		// UI preview (SimpleCamera, preview_draw.cpp): draws every leaf from the hierarchy matrices; call after a TransformMultiShape*.
-		void PreviewDraw (void);
+		void PreviewDraw (mc2::tgl::ViewUniforms view);
 
 		long GetNumShapes (void)
 		{

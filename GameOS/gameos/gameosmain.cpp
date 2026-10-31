@@ -10,6 +10,7 @@
 #include "present_thread.h"
 #include "render_frame_driver.h"       // RenderFrameDriver_RenderWorld — Slice 6 shared render seam (gated)
 #include "render_snapshot.h"
+#include "../../code/tick_commit.h"
 #include "draw_packet_emitter.h"       // DrawPacket v0
 #include "gos_static_prop_batcher.h"   // batcher_getSortedPacketCount — explicit, do not rely on transitive
 #include "../../RenderCore/MaterialGpu.h"  // RenderCore::MaterialGpu for g_dpSelProp albedoTex fill
@@ -1056,6 +1057,7 @@ int main(int argc, char** argv)
             g_exit = true;
 
         if (!headless) {   // headless: the logic half above is the whole frame
+        const auto packetSequence = mc2::tick::retainRenderPacket();
         // RenderSnapshot is a shallow struct — spans are (ptr, count) into the
         // ping-pong arena. Copy is safe: arena is not reset until the next
         // ExtractRenderSnapshot() call. Emit must complete before any second extraction.
@@ -1076,6 +1078,7 @@ int main(int argc, char** argv)
 
             draw_screen();
         }
+        mc2::tick::retireRenderPacket(packetSequence);
 
         // Draw reads only the extracted snapshot. Wait before probes and frame counters touch live state;
         // the battle CPU timer includes any uncovered tick time rather than hiding it behind the frame cap.

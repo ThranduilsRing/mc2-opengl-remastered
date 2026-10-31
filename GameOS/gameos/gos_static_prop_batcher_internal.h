@@ -39,7 +39,7 @@ extern "C" void mc2_vk_color_prop_island_invalidate_geometry();  // vulkan_color
 #include "../../RenderCore/top_level_pass_executor.h" // APPLY-STATE-STATICPROP-1: findTopLevelStateDesc
 #include "../../RenderCore/frame_executor.h"          // PER-PASS-APPLY-COUNTERS-1: ApplyPassId
 #include "gameos.hpp"
-#include "tgl.h"  // TG_Shape::s_worldToClip
+#include "tgl.h"  // TG_MultiShape and light values
 #include "Gates/gate_cold.h"  // typed gate registry: get<>(), isSet<>(), str<>()
 #include <algorithm>
 #include <array>

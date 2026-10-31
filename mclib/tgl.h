@@ -257,6 +257,28 @@ struct _TG_Light
 
 using TG_LightPtr = TG_Light*;
 
+namespace mc2::tgl {
+// CPU projection/lighting values, independent of the GPU ViewUniforms ABI.
+struct ViewLight {
+	uint32_t type, color;
+	glm::mat4 lightToWorld;
+};
+struct ViewUniforms {
+	glm::mat4 cameraOrigin{1.0f}, cameraToClip{1.0f};
+	glm::mat4 worldToCamera{1.0f}, worldToClip{1.0f};
+	bool cameraValid = false;
+	float viewMulX = 0, viewAddX = 0, viewMulY = 0, viewAddY = 0;
+	uint32_t fogColor = 0xffffffff, lighteningLevel = 0;
+	float fogFull = 0, fogStart = 0;
+	bool perspective = false, night = false, fogEnabled = false;
+	float nightFactor = 0, haze = 0;
+	std::vector<ViewLight> lights;
+	void SetCameraMatrices(const glm::mat4& origin, const glm::mat4& toClip);
+	void SetViewport(float mulX, float mulY, float addX, float addY);
+	void SetFog(uint32_t color, float start, float full);
+};
+}
+
 // LIGHT-ABI-WIDEN-STAGE0-1: C++ per-object GPU ABI cap, derived from the single-source
 // record in RenderCore/gpu_abi/GpuObjectLights.h (its generated asserts and
 // lighting.hglsl's ObjectLights come from the same declaration). This is the record
@@ -876,30 +898,16 @@ class TG_Shape
 
 	public:
 		//Matrices used to transform the shapes.
-		static glm::mat4 	*s_cameraOrigin;
-		static glm::mat4			*s_cameraToClip;
-		static glm::mat4			s_worldToClip;
-		static glm::mat4	s_worldToCamera;
 		static TG_LightPtr				*s_listOfLights;		//List passed in a transform time
 		static DWORD					s_numLights;
 
-		static float					viewMulX;
-		static float					viewAddX;
-		static float					viewMulY;
-		static float					viewAddY;
-
-		static DWORD					fogColor;
-		static float					fogFull;
-		static float					fogStart;
-
-		static DWORD					lighteningLevel;
 
 	//-----------------
 	//Member Functions
 	protected:
 		// CPU fallback draw of one leaf (preview_draw.cpp): projects from the hierarchy matrices, lights with the ambient and
 		// infinite lights, and either draws immediately (UI preview) or queues through the render submissions (world).
-		void CpuDraw(const glm::mat4& shapeToWorld, const glm::mat4& worldToShape, BYTE alphaValue, bool world, float forceZ, bool hud, bool clamped, bool spotlightsOnly);
+		void CpuDraw(const mc2::tgl::ViewUniforms& view, const glm::mat4& shapeToWorld, const glm::mat4& worldToShape, BYTE alphaValue, bool world, float forceZ, bool hud, bool clamped, bool spotlightsOnly);
 		// Reserves this leaf's triangles in the render submissions. Must run in the update phase, before any draw fills a
 		// vertex block (a block is sized when first filled, so a later reservation would overrun it).
 		void ReserveCpuDraw(BYTE alphaValue, bool hud, bool clamped, bool spotlightsOnly);
@@ -956,15 +964,6 @@ class TG_Shape
 		// light/glow emitters can apply the SAME predicate as the model draw
 		// instead of emitting for a leaf the renderer already rejected.
 		DWORD GetLastTurnTransformed (void) const { return lastTurnTransformed; }
-
-		//This function sets up the camera Matrices for this TG_Shape to transform
-		//itself with.  These matrices are static and only need to be set once per
-		//render pass if the camera does not change for that pass.
-		static void SetCameraMatrices (glm::mat4 *camOrigin, glm::mat4 *camToClip);
-
-		static void SetViewport (float mulX, float mulY, float addX, float addY);
-
-		static void SetFog (DWORD fRGB, float fStart, float fFull);
 
 		//This function sets the list of lights used by the TransformShape function
 		//to light the shape.

@@ -18,25 +18,10 @@
 
 //-------------------------------------------------------------------------------
 // Statics
-glm::mat4 	*TG_Shape::s_cameraOrigin = nullptr;
-glm::mat4			*TG_Shape::s_cameraToClip = nullptr;
-glm::mat4	TG_Shape::s_worldToCamera;
-glm::mat4			TG_Shape::s_worldToClip;
-
-float					TG_Shape::viewMulX = 0.0;
-float					TG_Shape::viewAddX = 0.0;
-float					TG_Shape::viewMulY = 0.0;
-float					TG_Shape::viewAddY = 0.0;
-
-DWORD					TG_Shape::fogColor = 0xffffffff;
-float					TG_Shape::fogStart = 0.0f;
-float					TG_Shape::fogFull = 0.0f;
-
 TG_LightPtr				*TG_Shape::s_listOfLights = nullptr;
 DWORD					TG_Shape::s_numLights = 0;
 
 
-DWORD					TG_Shape::lighteningLevel = 0;
 
 // Encyclopedia 3D-preview auto-framing: when armed, the software vertex
 // transform accumulates the projected screen-space bounding box of the
@@ -90,23 +75,20 @@ void TG_Shape::Touch() {
 }
 
 //-------------------------------------------------------------------------------
-//This function sets up the camera Matrices for this TG_Shape to transform
-//itself with.  These matrices are static and only need to be set once per
-//render pass if the camera does not change for that pass.
-void TG_Shape::SetCameraMatrices (glm::mat4 *camOrigin, glm::mat4 *camToClip)
+// Each camera owns these values; draw consumers receive a copy.
+void mc2::tgl::ViewUniforms::SetCameraMatrices(const glm::mat4& origin, const glm::mat4& toClip)
 {
-	mc2::overlap::assertOwner(mc2::overlap::Owner::Render, "TG_Shape::SetCameraMatrices");
-	s_cameraOrigin = camOrigin;
-	s_cameraToClip = camToClip;
-
-	s_worldToCamera = glm::inverse((*s_cameraOrigin));
-
-	s_worldToClip = s_worldToCamera * *s_cameraToClip;
+	mc2::overlap::assertOwner(mc2::overlap::Owner::Render, "ViewUniforms::SetCameraMatrices");
+	cameraOrigin = origin;
+	cameraToClip = toClip;
+	cameraValid = true;
+	worldToCamera = glm::inverse(cameraOrigin);
+	worldToClip = worldToCamera * cameraToClip;
 }
 
-void TG_Shape::SetFog (DWORD fRGB, float fStart, float fFull)
+void mc2::tgl::ViewUniforms::SetFog(uint32_t fRGB, float fStart, float fFull)
 {
-	mc2::overlap::assertOwner(mc2::overlap::Owner::Render, "TG_Shape::SetFog");
+	mc2::overlap::assertOwner(mc2::overlap::Owner::Render, "ViewUniforms::SetFog");
 	fogColor = fRGB;
 	fogStart = fStart;
 	fogFull = fFull;
@@ -118,9 +100,9 @@ void TG_Shape::SetFog (DWORD fRGB, float fStart, float fFull)
 	}
 }
 
-void TG_Shape::SetViewport (float mulX, float mulY, float addX, float addY)
+void mc2::tgl::ViewUniforms::SetViewport(float mulX, float mulY, float addX, float addY)
 {
-	mc2::overlap::assertOwner(mc2::overlap::Owner::Render, "TG_Shape::SetViewport");
+	mc2::overlap::assertOwner(mc2::overlap::Owner::Render, "ViewUniforms::SetViewport");
 	viewMulX = mulX;
 	viewMulY = mulY;
 	viewAddX = addX;

@@ -25,6 +25,7 @@ static const bool s_vehicleLitPath = mc2::gate::get<"MC2_VEHICLE_LIT_PATH">();
 
 long GVAppearance::render (long depthFixup)
 {
+	if (!eye) return 0;
 	TG_MultiShape* drawShape = renderShape ? renderShape.get() : gvShape;
 	const auto visibility = buildVisState();
 	mc2_vis::trace("vehicle-shadow", static_cast<const void*>(this), visibility);
@@ -142,11 +143,11 @@ long GVAppearance::render (long depthFixup)
 				// actor's own terrain light colour.
 				eye->setLightColor(0, poseLightRGB_);
 				eye->setLightIntensity(0, 1.0);
-				drawShape->Render(true);
+				drawShape->Render(eye->getViewUniforms(),true);
 			}
 			else if (gpuPose_ && !renderShape && eye->isNight) {
 				// Searchlight cones: no batcher draws them (cone glow adds the beam light, not this geometry).
-				drawShape->Render(true, -1.0f, true);
+				drawShape->Render(eye->getViewUniforms(),true, -1.0f, true);
 			}
 
 			if (selected & DRAW_TEXT)
@@ -335,11 +336,11 @@ long GVAppearance::render (long depthFixup)
 			transformSensorShapes();
 			if (sensorLevel > 1)
 			{
-				sensorCircleShape->Render();
+				sensorCircleShape->Render(eye->getViewUniforms());
 			}
 			else
 			{
-				sensorTriangleShape->Render();
+				sensorTriangleShape->Render(eye->getViewUniforms());
 			}
 		}
 	}
