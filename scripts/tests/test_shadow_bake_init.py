@@ -129,10 +129,16 @@ def test_products_and_transients_publish_atomically(tmp_path):
                       'bool ShadowBake::ensureTransients()'):
         start = engine.index(signature)
         methods.append(engine[start:engine.index('\n}', start) + 2])
+    cache = (ROOT / 'GameOS/gameos/vulkan_shadow_bake_cache.cpp').read_text()
+    start = cache.index('bool ShadowBake::ensureEncoder()')
+    methods.append(cache[start:cache.index('\n}', start) + 2])
     probe = r'''
+#include <algorithm>
 #include <cassert>
 #include <cstdint>
+#include <cstring>
 #include <utility>
+#include <vector>
 #define ZoneScopedN(x)
 static int operation, failAt, live;
 static bool succeed() { return ++operation != failAt; }
@@ -147,6 +153,7 @@ struct Owned {
     void reset() { live -= valid; valid = false; }
     explicit operator bool() const { return valid; }
     int get() const { return valid; }
+    bool upload(const void*, size_t) { return valid && succeed(); }
     template<class... A> bool create(A...) {
         reset(); valid = succeed(); live += valid; return valid;
     }
@@ -162,16 +169,32 @@ enum { VK_IMAGE_USAGE_SAMPLED_BIT = 1, VK_IMAGE_USAGE_TRANSFER_DST_BIT = 2,
        VK_IMAGE_ASPECT_COLOR_BIT = 1, VK_IMAGE_ASPECT_DEPTH_BIT = 2,
        VK_IMAGE_USAGE_STORAGE_BIT = 16, VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO = 1,
        VK_BUFFER_USAGE_STORAGE_BUFFER_BIT = 1, VK_BUFFER_USAGE_TRANSFER_SRC_BIT = 2,
-       VMA_MEMORY_USAGE_AUTO = 1, VK_FORMAT_R16G16B16A16_SFLOAT = 1, VK_FORMAT_R32_SFLOAT = 2 };
+       VMA_MEMORY_USAGE_AUTO = 1, VK_FORMAT_R16G16B16A16_SFLOAT = 1, VK_FORMAT_R32_SFLOAT = 2,
+       VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT = 4, VK_WHOLE_SIZE = -1,
+       VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL = 1, VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET = 1,
+       VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC = 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER = 2,
+       VK_DESCRIPTOR_TYPE_STORAGE_BUFFER = 3 };
+using VkDescriptorSet = int;
+struct VkDescriptorBufferInfo { int buffer; int offset, range; };
+struct VkDescriptorImageInfo { int sampler, view, layout; };
+struct VkWriteDescriptorSet {
+    int sType, dstSet, descriptorCount, descriptorType;
+    uint32_t dstBinding;
+    const VkDescriptorBufferInfo* pBufferInfo;
+    const VkDescriptorImageInfo* pImageInfo;
+};
+static void vkUpdateDescriptorSets(int, int, const VkWriteDescriptorSet*, int, void*) {}
 struct VkBufferCreateInfo { int type; uint64_t size = 0; int usage = 0; };
 struct VmaAllocationCreateInfo { int usage = 0; };
 static constexpr int kMaskFmt = 1, kWorkFmt = 2, kObjectFmt = 3, kWindowFmt = 4;
-static constexpr int kTopLevel = 7, kTileLevels = 8;
+static constexpr int kTopLevel = 7, kTileLevels = 8, kSlice = 256, kSliceSubTile = kTileLevels;
 namespace mc2shadow {
 static constexpr int kSubTileTexels = 32, kRegionTexels = 1024, kTileTexels = 512;
 struct Quality { int windowSide = 512; };
 static Quality shadowQuality() { return {}; }
+static uint64_t bc4ChainBytes(int side, int) { return side * side; }
 }
+static bool makeHostBuffer(Owned& buffer, int, int, uint64_t, int, const char*) { return buffer.create(); }
 static bool makeImage(Owned& image, Owned& view, int, int, int, uint32_t, uint32_t,
                       int, int, const char*) {
     return image.create() && view.create();
@@ -189,10 +212,13 @@ struct ShadowBake {
     OwnedImage maskImage_, topR8_, objectImage_, windowImage_, scratch_[4], tileR8_;
     OwnedImageView maskView_, topR8View_, objectView_, windowView_, scratchView_[4], tileR8View_;
     OwnedFramebuffer objectFb_, windowFb_;
-    Owned objectPass_, windowPass_, staging_;
+    Owned objectPass_, windowPass_, staging_, blockStaging_, bc4Params_, depthRawSampler_;
+    uint64_t tileLevelOff_[kTileLevels] = {};
+    std::vector<uint64_t> topLevelOff_;
+    int bc4TileSet_ = 1, bc4TopSet_ = 2;
     struct Dirty { int side = 0; void reset(int n) { side = n; } } dirty_;
     static int objectMapSize() { return 512; }
-    bool ensureEncoder() { return succeed(); }
+    bool ensureEncoder();
     bool ensureProducts(int);
     bool ensureTransients();
     bool productsComplete() const {
@@ -225,7 +251,7 @@ int main() {
         assert(bake.ensureProducts(8192) && bake.productsComplete() && live == 7);
     }
     assert(live == 0);
-    for (int failure = 1; failure <= 15; ++failure) {
+    for (int failure = 1; failure <= 17; ++failure) {
         ShadowBake bake;
         operation = 0; failAt = failure;
         assert(!bake.ensureTransients());
@@ -233,6 +259,16 @@ int main() {
         else assert(bake.transientsComplete()); // encoder refusal retries separately
         failAt = 0;
         assert(bake.ensureTransients() && bake.transientsComplete());
+    }
+    assert(live == 0);
+    for (int failure = 1; failure <= 3; ++failure) {
+        ShadowBake bake;
+        operation = 0; failAt = failure;
+        assert(!bake.ensureEncoder() && live == 0);
+        failAt = 0;
+        assert(bake.ensureEncoder() && live == 2);
+        int before = operation;
+        assert(bake.ensureEncoder() && operation == before);
     }
     assert(live == 0);
 }
