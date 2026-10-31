@@ -3942,6 +3942,13 @@
           "text": "import deploy_payload as deploy"
         },
         {
+          "path": "scripts/tests/test_farm_runner.py",
+          "line": 266,
+          "evidence": "import",
+          "reference": "deploy_payload",
+          "text": "import deploy_payload as deploy"
+        },
+        {
           "path": "scripts/tests/test_install_hygiene.py",
           "line": 13,
           "evidence": "import",
@@ -4027,7 +4034,7 @@
         },
         {
           "path": "tools/farm/host.py",
-          "line": 220,
+          "line": 225,
           "evidence": "import",
           "reference": "deploy_payload",
           "text": "import deploy_payload as deploy"
@@ -4306,7 +4313,7 @@
         },
         {
           "path": "tools/farm/host.py",
-          "line": 128,
+          "line": 133,
           "evidence": "import",
           "reference": "kit_payload",
           "text": "from kit_payload import checked_files"
@@ -5050,7 +5057,7 @@
         },
         {
           "path": "tools/perf/mission_cpu_profile.py",
-          "line": 26,
+          "line": 27,
           "evidence": "import",
           "reference": "run_battle_bench",
           "text": "import run_battle_bench as battle"
@@ -6565,7 +6572,7 @@
         },
         {
           "path": "scripts/tests/test_host_lease.py",
-          "line": 334,
+          "line": 340,
           "evidence": "command",
           "reference": "scripts.smoke_lib.host_lease",
           "text": "status = subprocess.run([sys.executable, \"-m\", \"scripts.smoke_lib.host_lease\", \"status\"], cwd=str(lane_b), env=env,"
@@ -8007,6 +8014,13 @@
       "path": "scripts/tests/test_omnitech_abl_stack_balance.py",
       "basename": "test_omnitech_abl_stack_balance.py",
       "stem": "test_omnitech_abl_stack_balance",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
+      "path": "scripts/tests/test_paired_cpu.py",
+      "basename": "test_paired_cpu.py",
+      "stem": "test_paired_cpu",
       "callers_by_basename": [],
       "callers_by_stem": []
     },
@@ -10652,7 +10666,7 @@
         },
         {
           "path": "scripts/tests/test_farm_runner.py",
-          "line": 300,
+          "line": 369,
           "evidence": "import",
           "reference": "tools.farm.runner",
           "text": "from tools.farm import runner"
@@ -13324,10 +13338,40 @@
       "callers_by_stem": [
         {
           "path": "tools/perf/budget_check.py",
-          "line": 209,
+          "line": 203,
           "evidence": "import",
           "reference": "mission_cpu_profile",
           "text": "import mission_cpu_profile"
+        },
+        {
+          "path": "tools/perf/paired_cpu.py",
+          "line": 15,
+          "evidence": "import",
+          "reference": "mission_cpu_profile",
+          "text": "import mission_cpu_profile as cpu"
+        }
+      ]
+    },
+    {
+      "path": "tools/perf/paired_cpu.py",
+      "basename": "paired_cpu.py",
+      "stem": "paired_cpu",
+      "callers_by_basename": [
+        {
+          "path": "scripts/tests/test_paired_cpu.py",
+          "line": 11,
+          "evidence": "load module",
+          "reference": "tools/perf/paired_cpu.py",
+          "text": "spec = importlib.util.spec_from_file_location('paired_cpu', PATH)"
+        }
+      ],
+      "callers_by_stem": [
+        {
+          "path": "tools/perf/budget_check.py",
+          "line": 226,
+          "evidence": "import",
+          "reference": "paired_cpu",
+          "text": "import paired_cpu"
         }
       ]
     },
@@ -18600,7 +18644,7 @@
         },
         {
           "path": "tools/perf/mission_cpu_profile.py",
-          "line": 25,
+          "line": 26,
           "evidence": "import",
           "reference": "tracy_capture_compare",
           "text": "import tracy_capture_compare as tracy"
