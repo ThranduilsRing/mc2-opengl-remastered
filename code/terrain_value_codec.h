@@ -1,0 +1,36 @@
+// Packet F inherited terrain fields; native writes remain active until flip.
+#pragma once
+#include "terrobj.h"
+#include "object_value_codec.h"
+
+namespace mc2::save {
+inline void terrainObjectFields(Archive& a, TerrainObjectData& v) {
+    gameObjectFields(a, v);
+    a(v.damage, v.vertexNumber, v.blockNumber, v.pitchAngle, v.fallRate, v.powerSupply);
+    for (auto& cell : v.cellFootprint) a(cell);
+    for (auto& p : v.vectorFootprint) a(p.x, p.y, p.z);
+    a(v.numSubAreas0, v.numSubAreas1);
+    if (!a.good()) return;
+    if (v.numSubAreas0 < 0 || v.numSubAreas0 > MAX_SPECIAL_SUB_AREAS ||
+        v.numSubAreas1 < 0 || v.numSubAreas1 > MAX_SPECIAL_SUB_AREAS) {
+        a.reject("terrain_subareas"); return;
+    }
+    for (int i = 0; i < v.numSubAreas0; ++i) a(v.subAreas0[i]);
+    for (int i = 0; i < v.numSubAreas1; ++i) a(v.subAreas1[i]);
+    a(v.listID, v.numCellsCovered);
+    if (!a.good()) return;
+    // cellsCovered has 81 shorts, but each cell consumes a row/column pair.
+    if (v.numCellsCovered > std::size(v.cellsCovered) / 2) {
+        a.reject("terrain_cells"); return;
+    }
+    const auto count = v.numCellsCovered * 2;
+    for (int i = 0; i < count; ++i) a(v.cellsCovered[i]);
+    if (a.reading()) {
+        std::fill(std::begin(v.subAreas0) + v.numSubAreas0, std::end(v.subAreas0), 0);
+        std::fill(std::begin(v.subAreas1) + v.numSubAreas1, std::end(v.subAreas1), 0);
+        std::fill(std::begin(v.cellsCovered) + count, std::end(v.cellsCovered), 0);
+    }
+}
+// Derived: inactive subarea and cell-pair tails -> 0; only the counted entries
+// describe occupancy. Runtime arrays are allocated by TerrainObject::Load.
+}

@@ -2,6 +2,7 @@
 #include "carnage_value_codec.h"
 #include "artillery_value_codec.h"
 #include "weaponbolt_value_codec.h"
+#include "gate_value_codec.h"
 #include <cctype>
 #include <filesystem>
 #include <fstream>
@@ -72,6 +73,82 @@ template<> inline bool equal(const WeaponShotInfo& a, const WeaponShotInfo& b) {
     &T::explDamage, &T::maxCV, &T::curCV, &T::threatRating, &T::lastFrameTime, \
     &T::blipFrame, &T::numAttackers, &T::drawFlags
 #define CARNAGE_MEMBERS &T::carnageType, &T::ownerWID, &T::info, &T::effectId
+
+#define TERRAIN_MEMBERS &T::damage, &T::vertexNumber, &T::blockNumber, \
+    &T::pitchAngle, &T::fallRate, &T::powerSupply, &T::cellFootprint, \
+    &T::vectorFootprint, &T::numSubAreas0, &T::numSubAreas1, &T::subAreas0, \
+    &T::subAreas1, &T::listID, &T::numCellsCovered, &T::cellsCovered
+#define GATE_MEMBERS &T::teamId, &T::lockedOpen, &T::lockedClose, &T::reasonToOpen, \
+    &T::opened, &T::opening, &T::closed, &T::closing, &T::justDestroyed, \
+    &T::lastMarkedOpen, &T::parentId, &T::parent, &T::buildingDescriptionID
+
+TEST_CASE("save fields: GateData inherited census and legacy values") {
+    using T = GateData;
+    auto sample = save_probe::patterned<T>(BASE_MEMBERS, TERRAIN_MEMBERS, GATE_MEMBERS);
+    sample.objectClass = GATE;
+    sample.windowsVisible = 0;
+    sample.numSubAreas0 = sample.numSubAreas1 = MAX_SPECIAL_SUB_AREAS;
+    sample.numCellsCovered = 40;
+    sample.cellsCovered[80] = 0;
+    const auto codec = [](auto& a, auto& v) {
+        mc2::save::GateRecord record{v}; record.serialize(a);
+        if (a.reading()) v = record.value;
+    };
+    REQUIRE(save_probe::roundtrip(sample, codec, BASE_MEMBERS, TERRAIN_MEMBERS, GATE_MEMBERS));
+    CHECK_FALSE(save_probe::roundtrip(sample, [](auto& a, auto& v) {
+        mc2::save::GateRecord record{v}; record.serialize(a);
+        if (a.reading()) { v = record.value; v.parent = 0; }
+    }, BASE_MEMBERS, TERRAIN_MEMBERS, GATE_MEMBERS));
+    CHECK_FALSE(save_probe::roundtrip(sample, [](auto& a, auto& v) {
+        mc2::save::GateRecord record{v}; record.serialize(a);
+        if (a.reading()) { v = record.value; v.cellsCovered[79] = 0; }
+    }, BASE_MEMBERS, TERRAIN_MEMBERS, GATE_MEMBERS));
+    const auto bytes = mc2::save::encodeTaggedRecord(mc2::save::GateRecord{sample}, mc2::save::gateTag);
+    mc2::save::GateRecord decoded;
+    REQUIRE(mc2::save::decodeTaggedRecord(bytes, decoded, mc2::save::gateTag));
+    CHECK_FALSE(mc2::save::decodeTaggedRecord(std::span(bytes).first(bytes.size()-1), decoded, mc2::save::gateTag));
+    CHECK_FALSE(mc2::save::decodeTaggedRecord(bytes, decoded, mc2::save::artilleryTag));
+    const auto source = compactSource("code/gate.h");
+    CHECK(source.find("struct_GateData:publicTerrainObjectData{charteamId;"
+        "boollockedOpen;boollockedClose;boolreasonToOpen;boolopened;boolopening;"
+        "boolclosed;boolclosing;booljustDestroyed;boollastMarkedOpen;MoverPtrclosestObject;"
+        "DWORDparentId;GameObjectWatchIDparent;longbuildingDescriptionID;longupdatedTurn;};") != std::string::npos);
+    const auto terrain = compactSource("code/terrobj.h");
+    CHECK(terrain.find("struct_TerrainObjectData:publicGameObjectData{floatdamage;"
+        "int32_tvertexNumber;int32_tblockNumber;floatpitchAngle;floatfallRate;"
+        "GameObjectWatchIDpowerSupply;shortcellFootprint[4];glm::vec3vectorFootprint[4];"
+        "shortnumSubAreas0;shortnumSubAreas1;shortsubAreas0[MAX_SPECIAL_SUB_AREAS];"
+        "shortsubAreas1[MAX_SPECIAL_SUB_AREAS];unsignedcharlistID;"
+        "unsignedcharnumCellsCovered;shortcellsCovered[81];};") != std::string::npos);
+}
+
+TEST_CASE("save fields: GateData derived values and terrain bounds") {
+    mc2::save::GateRecord sample;
+    const auto bytes = mc2::save::encodeTaggedRecord(sample, mc2::save::gateTag);
+    REQUIRE_FALSE(bytes.empty());
+    int blocker = 0;
+    // An opaque non-null pointer is never dereferenced or serialized.
+    sample.value.closestObject = reinterpret_cast<MoverPtr>(&blocker);
+    sample.value.updatedTurn = 99;
+    sample.value.subAreas0[0] = sample.value.subAreas1[0] = 15;
+    sample.value.cellsCovered[80] = 12;
+    CHECK(mc2::save::encodeTaggedRecord(sample, mc2::save::gateTag) == bytes);
+    mc2::save::GateRecord decoded = sample;
+    REQUIRE(mc2::save::decodeTaggedRecord(bytes, decoded, mc2::save::gateTag));
+    CHECK(decoded.value.closestObject == nullptr);
+    CHECK(decoded.value.updatedTurn == 0);
+    CHECK(decoded.value.subAreas0[0] == 0);
+    CHECK(decoded.value.subAreas1[0] == 0);
+    CHECK(decoded.value.cellsCovered[80] == 0);
+    sample.value.numCellsCovered = 41;
+    CHECK(mc2::save::encodeTaggedRecord(sample, mc2::save::gateTag).empty());
+    sample.value.numCellsCovered = 0;
+    sample.value.numSubAreas0 = -1;
+    CHECK(mc2::save::encodeTaggedRecord(sample, mc2::save::gateTag).empty());
+    sample.value.numSubAreas0 = 0;
+    sample.value.numSubAreas1 = MAX_SPECIAL_SUB_AREAS + 1;
+    CHECK(mc2::save::encodeTaggedRecord(sample, mc2::save::gateTag).empty());
+}
 
 TEST_CASE("save fields: CarnageData independent base and union census") {
     using T = CarnageData;
