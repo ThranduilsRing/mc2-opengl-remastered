@@ -422,11 +422,18 @@ def profile(args, name, directory, psutil):
     mission = name
     if name == "battle":
         scenario = json.loads(battle.SCENARIO.read_text(encoding="utf-8"))
-        scenario["spawn"]["count"] = 0
+        scenario["spawn"]["count"] = 128
         mission = scenario["mission"]
         channel = battle.prepare(directory, scenario, "day")
+        # mc2_24 starts with 70 movers. Each class has 128 spare pool slots;
+        # UI commands initialize appearances on the main thread, unlike the
+        # simulation-worker MC2_MOVER_FIXTURE path.
+        spawn = scenario["spawn"]
+        x, y = spawn["origin"]
+        y += 16 * spawn["spacing"]
+        vehicles = "".join(f"spawn vehicle {x + i * spawn['spacing']} {y} 0 0 {spawn['pilot']}\n" for i in range(2))
+        channel.write_text(channel.read_text(encoding="utf-8").replace("select all\n", vehicles + "select all\n", 1), encoding="utf-8")
         env = [f"{k}={v}" for k, v in battle.environment(channel, 1920, 1080).items()]
-        env.append("MC2_MOVER_FIXTURE=200")
     short_view = getattr(args, "short_view", True)
     view = None
     if short_view and name in CAMERA_MISSIONS:

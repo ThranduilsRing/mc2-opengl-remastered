@@ -64,8 +64,8 @@ It transfers only files whose size or modification time changed, preserves
 modification times, and reports transferred bytes/decimal GB. It excludes PDBs,
 build trees, untracked harness files and game run outputs; it does not delete
 existing laptop files. Run with the queue idle; do not reseed during a game job.
-Fetch `reference/seed.json` alongside job proofs. This GPU supplies pass/fail
-evidence only; do not report laptop performance numbers.
+Fetch `reference/seed.json` alongside job proofs. Performance uses the paired
+job above; label laptop absolute times separately from host measurements.
 
 Example `smoke.json` (the harness and independent reference executable must
 already have been seeded from the verified merge-gate output):
