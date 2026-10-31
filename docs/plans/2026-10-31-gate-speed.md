@@ -1,5 +1,15 @@
 # Gate speed lane, 2026-10-31
 
+## Group B
+Assignment: mc2-art3 / claude/gate-speed-b, inherited 6d480016d. Budget <=150 calls.
+Plan: batch claim verification, packets 2/5/6/7 with focused tests and individual commits; final five check-only ratchets. Ops edits live in A:/Games/mc2-ops and must be committed there separately.
+Verified reviewer corrections: kit_payload.finish already skips cook on verified manifest/importer/recipe identity; farm reseed already packages an installed tree (no deploy/cook). mission_cpu_profile enforces 60s for a full multi-view/orbit schedule; run_visual_capture already exits upon captures (~15s default). No ETL export in either named profiler/capture path.
+Packet 6: missing-result exit trap, killed/dead-worker watcher emission, <=1.5KB delta + state JSON, bounded gate classification, pending lane-status listing. Six ops tests pass in 0.021s. Real mkmerge --continue 90 correctly refused mismatched journal HEADs; no bypass.
+Packet 7: protected dry-run cleanup for branch/job siblings and labelled result paths, active LANES/budgets checks, ledger suggestion only. Dry-run: 0 dirs. No deletions/install changes.
+Packet 5: default 20s single sun-facing-low view; --full-camera-sweep retains the 60s multi-view/orbit schedule. 19 profiler tests pass in 0.27s. visual_verify capture default 150 ->20s; run_visual_capture already 15s/early-exit. No ETL exporter exists in named paths (claim false); required Tracy statistics export retained. Robust A/B branch is not confirmed merged; no new statistical acceptance claims.
+Packet 2: owner seed helper verifies payload and private mutable inodes, uses cached shared-data hashes, copies across A:/E: volumes; preserves verified kit recipes and avoids recook. Farm includes verified recipes and verifies every transferred file remotely. Existing cook-skip identity preserved (manifest+importer+arguments+recipe hashes, stronger than manifest-only). Tests: 53 PASS 8.51s; after recipe/hash hardening, 22 PASS 3.99s. Fixture timing in G:/mc2-tmp/gate-speed-b-seed-proof.log; not production deployment timing.
+Next: packet commits, contracts + five check-only ratchets; real seed/farm/continuation receipts if inputs permit. This worktree has no built mc2.exe, so cold/warm engine deploy before/after cannot be proven here without a build. Never deploy lane changes to v0.4. Owner-test exists and must remain. Ops repo has pre-existing uncommitted/untracked tools; commit only requested tool paths and preserve unrelated files.
+
 Assignment: A:/Games/mc2-art3, claude/gate-speed-a, base 47631b0b4cefeb9aa21f311a2404a7e64035606b.
 Run budget: <=150 tool calls. Plan: inspect (20), packet 1 (35), packet 3 (25), packet 4 (25), optional packet 8 and final proof (25); reserve 20.
 
