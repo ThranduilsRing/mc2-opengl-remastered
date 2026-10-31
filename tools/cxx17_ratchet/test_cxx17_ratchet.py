@@ -128,6 +128,14 @@ class Idioms(unittest.TestCase):
 
 
 class Check(unittest.TestCase):
+    def test_tighten_never_moves_allowance_to_new_files(self):
+        base = r.make_baseline({'old.cpp': {'LG01': [1, 2]}}, ['code'], {'code': 2})
+        tightened = r.make_baseline({'old.cpp': {'LG01': [1]}, 'new.cpp': {'LG01': [1]}},
+                                    ['code'], {'code': 3, 'newdir': 1}, previous=base)
+        self.assertEqual(tightened['files']['new.cpp']['LG01'], 0)
+        self.assertEqual(tightened['files']['old.cpp']['LG01'], 1)
+        self.assertEqual(tightened['tracked']['LG19'], {'code': 2, 'newdir': 0})
+
     def _res(self, **kw):
         return {"code/a.cpp": {"LG01": list(range(1, kw.get("a", 1) + 1))},
                 "mclib/b.cpp": {"LG01": [1]}}
