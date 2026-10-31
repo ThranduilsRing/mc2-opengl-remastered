@@ -50,7 +50,7 @@ def preflight(head, install, window, steps, seed=Path("E:/mc2-installs/_lean-see
     """Offline, fail before any lease, copy, build or deployment."""
     from exe_fingerprint import extract, sha_agrees
     from mod_smoke import load_known_failures
-    from deploy_payload import verify_published_identity
+    from deploy_payload import verify_published_identity, staleness_report
     import saveload_roundtrip as saves
 
     started = time.monotonic()
@@ -66,7 +66,14 @@ def preflight(head, install, window, steps, seed=Path("E:/mc2-installs/_lean-see
             bookmarks.update(command[command.index('--bookmarks') + 1].split(','))
     for target in dict.fromkeys((Path(install), Path(seed))):
         try:
-            verify_published_identity(target, ROOT, head)
+            if any(n == 'deploy' and not e.get('MC2_GATE_SKIP_REASON') for n, _, e in steps):
+                # Before captures use the published build; the candidate is
+                # checked against HEAD after deployment, before runtime proofs.
+                report = staleness_report(str(target))
+                if not report['has_manifest'] or not report['version_ok'] or report['stale'] or report['missing']:
+                    raise ValueError('published seed bytes differ from its manifest')
+            else:
+                verify_published_identity(target, ROOT, head)
         except (OSError, ValueError, KeyError) as exc:
             errors.append(f"published identity {target}: {exc}; fix: deploy clean HEAD with {rebuild}, then refresh this seed/install")
         for bookmark in sorted(bookmarks):
@@ -917,10 +924,15 @@ def execute(steps, head, dry_run=False, runner=run_child, completed=None):
                     print(f"[merge_gate] exclusive hold {name}: waited {waited:.0f}s, held {held:.0f}s", flush=True)
                 else:
                     result = runner(command, cwd=ROOT, env=dict(os.environ, **overrides, MC2_IN_GATE="1"))
+                if result.returncode == 0 and name in ('deploy', 'publish-v0.4') and 'scripts/deploy_payload.py' in command:
+                    from deploy_payload import verify_published_identity
+                    target = (Path(command[command.index('--allow-new-target') - 1])
+                              if '--allow-new-target' in command else Path('A:/Games/mc2-opengl/mc2-win64-v0.4'))
+                    verify_published_identity(target, ROOT, head)
                 measured = getattr(result, "gate_elapsed", None)
                 scheduler_wait = getattr(result, 'gate_scheduler_wait', 0.0)
                 status = "PASS" if result.returncode == 0 else f"FAIL ({result.returncode})"
-            except (OSError, RuntimeError, subprocess.SubprocessError) as exc:
+            except (OSError, ValueError, RuntimeError, subprocess.SubprocessError) as exc:
                 print(f"[merge_gate] {name}: {exc}", file=sys.stderr)
                 status = "FAIL: " + str(exc).replace("|", "/").replace("\n", " ")
             elapsed = time.monotonic() - started if measured is None else measured
