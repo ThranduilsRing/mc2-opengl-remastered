@@ -300,6 +300,7 @@ void Mission::save (const char *saveFileName)
     sections.add(mc2::save::tagMapAreas, 1, true, {});
     sections.add(mc2::save::tagMapDoors, 1, true, {});
     sections.add(mc2::save::tagDoorLinks, 1, true, {});
+    sections.add(mc2::save::tagObjectSlots, 1, true, {});
     sections.add(mc2::save::tagWarriorStatic, 1, true, {});
     sections.add(mc2::save::tagWarrior, 1, true, {});
     sections.add(mc2::save::tagAblEnvironment, 1, true, {});
@@ -552,7 +553,8 @@ bool Mission::openSaveFile(MissionLoadFrame& f) {
 	long objectPacket = 0;
 	if (const auto why = GameObjectManager::checkSavedObjects(&loadFile, &objectPacket, f.saveV2,
 		f.sections.find(mc2::save::tagObjectManager) != nullptr,
-		f.sections.find(mc2::save::tagWatchList) != nullptr)) {
+		f.sections.find(mc2::save::tagWatchList) != nullptr,
+		f.sections.find(mc2::save::tagObjectSlots) != nullptr)) {
 		mc2::fmt::print_err("[SAVE v1] event=reject reason={} file={}\n", *why, mc2::fmt::safe(loadFileName));
 		return true;
 	}
