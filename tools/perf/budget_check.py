@@ -221,6 +221,20 @@ def main(argv=None):
             profile = json.loads(args.profile.read_text(encoding='utf-8'))
             directory = args.out
             directory.mkdir(parents=True, exist_ok=True)
+        if 'arms' in profile:
+            sys.path.insert(0, str(Path(__file__).resolve().parent))
+            import paired_cpu
+            results = {name: paired_cpu.comparison(pairs) for name, pairs in profile['runs'].items()}
+            rendered = paired_cpu.table(profile)
+            (directory / 'budget.json').write_text(json.dumps(results, indent=2), encoding='utf-8')
+            (directory / 'index.html').write_text('<!doctype html><meta charset="utf-8">'
+                '<meta name="viewport" content="width=device-width,initial-scale=1">'
+                '<title>MC2 paired performance</title><h1>Paired CPU changes</h1>'
+                '<p>Fixed views; noise annotates every pair. These intervals evaluate changes; '
+                'full camera-envelope budgets require their separate coverage.</p><pre>' + escape(rendered) + '</pre>', encoding='utf-8')
+            print(rendered)
+            statuses = {row['verdict'] for rows in results.values() for row in rows.values()}
+            return 1 if profile.get('errors') or 'REGRESSION' in statuses else 2 if not statuses or 'INCONCLUSIVE' in statuses else 0
         results = compare(profile, budget, previous)
         (directory / 'budget.json').write_text(json.dumps(results, indent=2), encoding='utf-8')
         write_html(directory / 'index.html', results, profile, budget, previous)

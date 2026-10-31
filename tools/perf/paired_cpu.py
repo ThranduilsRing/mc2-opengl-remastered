@@ -34,7 +34,7 @@ def paired_delta(a, b):
 
 def comparison(pairs):
     result = {}
-    valid = [p for p in pairs if all(not p[a].get("error") for a in ("a", "b"))]
+    valid = [p for p in pairs if all(a in p and not p[a].get("error") for a in ("a", "b"))]
     names = set(ZONES) & set.intersection(*(set(p[a]["zones"]) for p in valid for a in ("a", "b"))) if valid else set()
     for name in sorted(names):
         row = paired_delta(*[[p[a]["zones"][name]["median_ms"] for p in valid] for a in ("a", "b")])

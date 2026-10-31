@@ -131,6 +131,21 @@ def test_cli_failure_and_invalid_budget(tmp_path):
     assert tool.main(['--budget', str(source), '--validate-schema']) == 3
 
 
+def test_cockpit_accepts_noisy_paired_profiles(tmp_path):
+    zone = {'count': 10, 'total_ms': 10, 'median_ms': 1, 'p95_ms': 2, 'min_ms': .9, 'q25_ms': .95}
+    a = {'zones': {'Frame': zone}, 'noise': {'status': 'NOISY', 'external_cpu_p95': 35}}
+    b = {'zones': {'Frame': dict(zone, total_ms=9, median_ms=.9)}, 'noise': a['noise']}
+    data = {'arms': {}, 'runs': {'mc2_01': [{'a': a, 'b': b}] * 5}, 'errors': []}
+    source = tmp_path / 'paired.json'
+    source.write_text(json.dumps(data))
+    output = tmp_path / 'report'
+    assert tool.main(['--profile', str(source), '--out', str(output)]) == 0
+    html = (output / 'index.html').read_text()
+    assert 'WIN' in html and '35' in html and '90% CI' in html
+    rows = json.loads((output / 'budget.json').read_text())
+    assert rows['mc2_01']['Frame']['pairs'] == 5
+
+
 def test_worst_bookmark_and_missing_coverage(budget):
     run = profile()['runs']['mc2_01']
     run['bookmarks'] = {name: profile(0.1)['runs']['mc2_01'] for name in tool.CAMERA_NAMES}
