@@ -125,15 +125,15 @@ def seed_files(install, harness):
     files['reference/mc2.exe'] = install / 'mc2.exe'
     tracked = subprocess.check_output(['git', '-C', str(harness), 'ls-files',
                                        'scripts', 'tools', 'tests/smoke', 'tests/telemetry/tag-registry.json',
-                                       'Gates', 'system.cfg'], text=True)
+                                       'Gates', 'system.cfg', 'tests/visual/bookmarks'], text=True)
     for name in tracked.splitlines():
         path = Path(name)
-        if ('tests' in path.parts and not name.startswith(('tests/smoke/', 'tests/telemetry/'))):
+        if ('tests' in path.parts and not name.startswith(('tests/smoke/', 'tests/telemetry/', 'tests/visual/bookmarks/'))):
             continue
-        if (name.startswith('scripts/') or name.startswith('tests/smoke/')
+        if (name.startswith('scripts/') or name.startswith(('tests/smoke/', 'tests/visual/bookmarks/'))
                 or name.startswith(('Gates/', 'tests/telemetry/')) or name == 'system.cfg'
                 or (name.startswith('tools/') and (len(path.parts) == 2
-                    or path.parts[1] in ('repo_intel', 'mc2x_import', 'mod_install', 'farm')))):
+                    or path.parts[1] in ('repo_intel', 'mc2x_import', 'mod_install', 'farm', 'perf')))):
             if path.suffix in ('.py', '.json', '.yaml', '.yml', '.csv', '.txt', '.h', '.cfg'):
                 files['harness/' + name] = harness / path
     # The destination is Windows: manifest/glob casing can differ (sdl2.dll).
@@ -232,6 +232,7 @@ def main():
     submit = sub.add_parser('submit')
     submit.add_argument('job', type=Path)
     submit.add_argument('--exe', type=Path, help="run the lane's own exe: job JSON may use {EXE} and {ROOT}")
+    submit.add_argument('--exe-b', type=Path, help="second perf arm; job JSON may use {EXE_B} and {ROOT_B}")
     submit.add_argument('--data-delta', type=Path, help='small dir overlaid on the seeded install (needs --exe)')
     wait = sub.add_parser('wait')
     wait.add_argument('id')
@@ -249,6 +250,8 @@ def main():
         upload = args.job
         if args.data_delta and not args.exe:
             parser.error('--data-delta needs --exe')
+        if args.exe_b and (not args.exe or not args.exe_b.is_file()):
+            parser.error('--exe-b requires --exe and an existing second executable')
         if args.exe:
             if not args.exe.is_file():
                 parser.error(f'--exe not found: {args.exe}')
@@ -267,7 +270,16 @@ def main():
             scp(args, payload, f'{args.host}:{ROOT}/stage/{job_id}/payload.zip')
             remote(args, STAGE_PS % {'r': ROOT, 'id': job_id})
             work = f'{ROOT}/work/{job_id}'
+            if args.exe_b:
+                second_id = job_id + '-b'
+                second_payload = Path(tmpdir.name) / 'payload-b.zip'
+                payload_archive(args.exe_b.resolve(), second_payload)
+                remote(args, f"New-Item -ItemType Directory -Force {ROOT}/stage/{second_id} | Out-Null")
+                scp(args, args.exe_b, f'{args.host}:{ROOT}/stage/{second_id}/mc2.exe')
+                scp(args, second_payload, f'{args.host}:{ROOT}/stage/{second_id}/payload.zip')
+                remote(args, STAGE_PS % {'r': ROOT, 'id': second_id})
             job = substitute(job, {'{EXE}': f'{work}/mc2.exe', '{ROOT}': work,
+                                   '{EXE_B}': f'{work}-b/mc2.exe', '{ROOT_B}': f'{work}-b',
                                    '{RESULT}': f'{ROOT}/results/{job_id}'})
             upload = Path(tmpdir.name) / 'job.json'
             upload.write_text(json.dumps(job, indent=2), encoding='utf-8')
@@ -284,6 +296,9 @@ def main():
                         f'{args.host}:C:/mc2farm/results/{args.id}', str(args.destination)], check=True,
                        **console_child.child_kwargs())
         remote(args, CLEAN_PS % {'r': ROOT, 'id': args.id})  # per-job exe tree, if any
+        # Second arm belongs to the same completed job; it has no separate result.
+        second_cleanup = CLEAN_PS.replace("%(r)s/results/%(id)s/result.json", f"{ROOT}/results/{args.id}/result.json")
+        remote(args, second_cleanup % {'r': ROOT, 'id': args.id + '-b'})
         return
     deadline = time.monotonic() + args.timeout
     while time.monotonic() < deadline:

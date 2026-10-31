@@ -210,6 +210,30 @@ def test_host_data_delta_requires_exe(tmp_path, monkeypatch):
     assert result.value.code == 2
 
 
+def test_perf_job_stages_both_payloads(tmp_path, monkeypatch):
+    path = Path(__file__).resolve().parents[2] / 'tools/farm/perf.json'
+    a, b = tmp_path / 'a.exe', tmp_path / 'b.exe'
+    a.write_bytes(b'a')
+    b.write_bytes(b'b')
+    monkeypatch.setattr(sys, 'argv', ['host', 'submit', str(path), '--exe', str(a), '--exe-b', str(b)])
+    monkeypatch.setattr(host.uuid, 'uuid4', lambda: SimpleNamespace(hex='a' * 32))
+    archives, calls, published = [], [], []
+    monkeypatch.setattr(host, 'payload_archive', lambda exe, dst: (archives.append(exe), dst.write_bytes(b'zip')))
+    monkeypatch.setattr(host, 'remote', lambda args, script: calls.append(script))
+    def upload(args, *paths, **kwargs):
+        if str(paths[-1]).endswith('.upload'):
+            published.append(json.loads(Path(paths[0]).read_text()))
+    monkeypatch.setattr(host, 'scp', upload)
+    host.main()
+    assert archives == [a, b]
+    job = published[0]
+    assert '{ROOT' not in json.dumps(job)
+    assert f"C:/mc2farm/work/{'a' * 32}-b" in job['argv']
+    assert 'paired_cpu.py' in job['argv'][1]
+    assert calls[-1].endswith('.json -ErrorAction Stop')
+    assert sum('Expand-Archive' in script for script in calls) == 2
+
+
 @pytest.mark.parametrize('status,code,expected', [('completed', 0, 0), ('completed', 9, 1), ('interrupted', None, 1)])
 def test_host_wait_propagates_result(monkeypatch, status, code, expected):
     monkeypatch.setattr(sys, 'argv', ['host', 'wait', 'a' * 32])
