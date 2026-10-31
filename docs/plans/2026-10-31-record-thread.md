@@ -2,6 +2,8 @@
 
 Assignment: `A:/Games/mc2-lane8`, `claude/record-thread`, base `586327c7904eabf942d12d5835c72a2d43e2248a`.
 One engine lane; local commits only. Current checkpoint changes documentation only.
+Continuation base: rebased cleanly onto landed integration checkpoint `678380b2a` (includes lane4 `56467c359`).
+Inventory anchors and archived perf numbers below refer to the original assignment base; full-suite receipts also precede the rebase.
 
 ## Delivery and invariants
 
@@ -122,10 +124,12 @@ Report extraction/seal costs separately and track whole Frame to expose that ris
 | Assignment preflight | Clean, correct branch/root/base; parser returns overall false only because canonical deploy/smoke command extraction is ambiguous; commands read directly |
 | Source investigation helper | Read-only scout produced no result before interruption; no helper source changes |
 | Build | PASS baseline Ninja RelWithDebInfo, -j6, exit 0; `E:/mc2-archive-2026-10/proofs/record-thread/s1-build.log` |
+| Post-rebase build | PASS: `py -3 scripts/ninja_build.py mc2 -j6`, exit 0; `s1-rebase-build.log`; no engine modifications in this lane |
 | Native unit suite | PASS: 3585 cases passed, 2 skipped; doctest SUCCESS, harness native stage 809 s including cold build; `s1-unit.log` under the proof directory above. Nine expected-failure assertions are included in doctest's successful verdict |
 | Python harnesses / contracts | PASS: `py -3 tools/build_contract_harnesses.py --run --unit -j6` exit 0; `bash scripts/check-contracts.sh -j6` exit 0; `s1-unit.log` and `s1-contracts.log` under the proof directory above |
 | Five ratchets | PASS: file_size, cxx17 (--jobs 1), dup_lines, axis_swizzle, split_map; exit 0 each; `s1-ratchet-{size,cxx,dup,axis,split}.log`; no baselines modified |
-| Audit ON mc2_01/03/10/16/24 | Pending; known mc2_24 vertex declaration issue belongs to lane4; do not fix here |
+| Post-rebase ratchets | PASS: same five checks, cxx17 --jobs 6; exit 0 each; `s1-rebase-ratchet-{size,cxx,dup,axis,split}.log`; no baselines modified |
+| Audit ON mc2_01/03/10/16/24 | Pending on rebased code; lane4's vertex-declaration prerequisite is included; no local fix made |
 | Farm mc2_10/24 x8 | Pending |
 | SIMID 20 s / save-load | Pending |
 | Day/night pixel-identical A/B | Pending |
@@ -133,8 +137,8 @@ Report extraction/seal costs separately and track whole Frame to expose that ris
 | Robust A/B mean/p95 deltas and CI; laptop absolute ms | Pending; use claude/perf-robust tooling after it lands; user authorizes laptop absolute timings despite older lane-rule restriction |
 
 Next: finish S1 transitive inventory and live worst-view item census, run/record required baseline gates, then commit the completed S1 checkpoint.
-Before S2, check whether lane4 and perf-robust have landed on the integration branch; rebase only onto the landed changes, not unrelated lane work.
-Observed integration tip `678380b2a`: contains lane4 tip `56467c359`; does not contain perf-robust tip `409815680`.
-Rebase the documentation checkpoint onto that landed integration tip before further engine work; rerun proof on the resulting base.
+Before S2, check whether perf-robust has landed; observed integration tip `678380b2a` does not contain perf-robust tip `409815680`.
+The documentation commits were rebased cleanly onto that landed integration tip; rerun complete step proof on the resulting base.
 Tool slowness: the baseline native unit build/run took 809 s; keep the existing build tree for continuation and request explicit mc2 targets in engine build loops.
+Disk: no install or baseline-executable copy created; temporary analysis script removed from G:/mc2-tmp; 0 GB of installs freed.
 For each S2/S3/S4 commit, append its exact tip, commands, proof paths and failures here. S4 stays inline if any required gate is red.
