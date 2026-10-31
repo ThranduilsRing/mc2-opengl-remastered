@@ -2485,6 +2485,18 @@
    "count": 2
   },
   {
+   "tag": "DRAWSCREEN_MASK",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "calls",
+    "unchanged",
+    "writes",
+    "items"
+   ],
+   "count": 1
+  },
+  {
    "tag": "DRAW_CAND",
    "ver": 0,
    "stream": "stderr",

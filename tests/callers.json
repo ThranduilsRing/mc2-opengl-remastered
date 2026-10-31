@@ -2729,14 +2729,14 @@
         },
         {
           "path": "scripts/smoke_lib/host_lease.py",
-          "line": 549,
+          "line": 552,
           "evidence": "import",
           "reference": "scripts.console_child",
           "text": "from scripts import console_child         # type: ignore"
         },
         {
           "path": "scripts/smoke_lib/host_lease.py",
-          "line": 552,
+          "line": 555,
           "evidence": "import",
           "reference": "console_child",
           "text": "import console_child                       # type: ignore"
@@ -6523,7 +6523,7 @@
         },
         {
           "path": "scripts/tests/test_host_lease.py",
-          "line": 331,
+          "line": 334,
           "evidence": "command",
           "reference": "scripts.smoke_lib.host_lease",
           "text": "status = subprocess.run([sys.executable, \"-m\", \"scripts.smoke_lib.host_lease\", \"status\"], cwd=str(lane_b), env=env,"
@@ -13231,7 +13231,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/tests/test_mission_cpu_profile.py",
-          "line": 12,
+          "line": 13,
           "evidence": "load module",
           "reference": "tools/perf/mission_cpu_profile.py",
           "text": "spec = importlib.util.spec_from_file_location(\"mission_cpu_profile\", PATH)"
@@ -13240,7 +13240,7 @@
       "callers_by_stem": [
         {
           "path": "tools/perf/budget_check.py",
-          "line": 202,
+          "line": 209,
           "evidence": "import",
           "reference": "mission_cpu_profile",
           "text": "import mission_cpu_profile"
