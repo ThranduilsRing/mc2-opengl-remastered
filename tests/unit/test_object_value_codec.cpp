@@ -3,6 +3,7 @@
 #include "artillery_value_codec.h"
 #include "weaponbolt_value_codec.h"
 #include "gate_value_codec.h"
+#include "vehicle_value_codec.h"
 #include <cctype>
 #include <filesystem>
 #include <fstream>
@@ -21,6 +22,81 @@ std::string compactSource(const char* file) {
 }
 
 namespace save_probe {
+template<> inline void pattern(CriticalSpace& v, unsigned char seed) {
+    pattern(v.inventoryID, seed); pattern(v.hit, seed);
+}
+template<> inline bool equal(const CriticalSpace& a, const CriticalSpace& b) {
+    return a.inventoryID == b.inventoryID && a.hit == b.hit;
+}
+template<> inline void pattern(BodyLocation& v, unsigned char seed) {
+    pattern(v.CASE, seed); pattern(v.totalSpaces, seed); pattern(v.criticalSpaces, seed);
+    pattern(v.curInternalStructure, seed); pattern(v.hotSpotNumber, seed);
+    pattern(v.maxInternalStructure, seed); pattern(v.damageState, seed);
+}
+template<> inline bool equal(const BodyLocation& a, const BodyLocation& b) {
+    return std::tie(a.CASE, a.totalSpaces, a.curInternalStructure, a.hotSpotNumber,
+        a.maxInternalStructure, a.damageState) == std::tie(b.CASE, b.totalSpaces,
+        b.curInternalStructure, b.hotSpotNumber, b.maxInternalStructure, b.damageState)
+        && equal(a.criticalSpaces, b.criticalSpaces);
+}
+template<> inline void zero(BodyLocation& v) {
+    v.CASE = false; v.totalSpaces = 0;
+    for (auto& c : v.criticalSpaces) { c.inventoryID = 0; c.hit = false; }
+    v.curInternalStructure = 0; v.hotSpotNumber = 0;
+    v.maxInternalStructure = 0; v.damageState = 0;
+}
+template<> inline void pattern(ArmorLocation& v, unsigned char seed) {
+    pattern(v.curArmor, seed); pattern(v.maxArmor, seed);
+}
+template<> inline bool equal(const ArmorLocation& a, const ArmorLocation& b) {
+    return a.curArmor == b.curArmor && a.maxArmor == b.maxArmor;
+}
+template<> inline void pattern(InventoryItem& v, unsigned char seed) {
+    v = patterned<InventoryItem>(&InventoryItem::masterID, &InventoryItem::health,
+        &InventoryItem::disabled, &InventoryItem::facing, &InventoryItem::startAmount,
+        &InventoryItem::amount, &InventoryItem::ammoIndex, &InventoryItem::readyTime,
+        &InventoryItem::bodyLocation, &InventoryItem::effectiveness, &InventoryItem::hardpointId);
+}
+template<> inline bool equal(const InventoryItem& a, const InventoryItem& b) {
+    return std::tie(a.masterID, a.health, a.disabled, a.facing, a.startAmount,
+        a.amount, a.ammoIndex, a.readyTime, a.bodyLocation, a.effectiveness, a.hardpointId)
+        == std::tie(b.masterID, b.health, b.disabled, b.facing, b.startAmount,
+        b.amount, b.ammoIndex, b.readyTime, b.bodyLocation, b.effectiveness, b.hardpointId);
+}
+template<> inline void pattern(AmmoTally& v, unsigned char seed) {
+    pattern(v.masterId, seed); pattern(v.curAmount, seed); pattern(v.maxAmount, seed);
+}
+template<> inline bool equal(const AmmoTally& a, const AmmoTally& b) {
+    return std::tie(a.masterId, a.curAmount, a.maxAmount) == std::tie(b.masterId, b.curAmount, b.maxAmount);
+}
+template<> inline void pattern(MoverControl& v, unsigned char seed) {
+    v.type = CONTROL_AI; v.dataType = CONTROL_DATA_GROUNDVEHICLE;
+    auto& s = v.settings.groundVehicle;
+    pattern(s.throttle, seed); pattern(s.rotate, seed); pattern(s.rotateTurret, seed);
+    pattern(s.gestureGoal, seed); pattern(s.pivot, seed); pattern(s.isWalking, seed);
+}
+template<> inline void zero(MoverControl& v) {
+    v.type = CONTROL_BASE; v.dataType = CONTROL_DATA_BASE; v.settings = {};
+}
+template<> inline bool equal(const MoverControl& a, const MoverControl& b) {
+    if (a.type != b.type || a.dataType != b.dataType) return false;
+    const auto& x = a.settings.groundVehicle; const auto& y = b.settings.groundVehicle;
+    return std::tie(x.throttle, x.rotate, x.rotateTurret, x.gestureGoal, x.pivot, x.isWalking)
+        == std::tie(y.throttle, y.rotate, y.rotateTurret, y.gestureGoal, y.pivot, y.isWalking);
+}
+template<> inline void pattern(MoverDynamics& v, unsigned char seed) {
+    v.type = DYNAMICS_GROUNDVEHICLE;
+    auto& s = v.max.groundVehicle;
+    pattern(s.yawRate, seed); pattern(s.turretYawRate, seed); pattern(s.pivotRate, seed);
+    pattern(s.accel, seed); pattern(s.speed, seed); pattern(s.turretYaw, seed);
+}
+template<> inline void zero(MoverDynamics& v) { v.type = DYNAMICS_BASE; v.max = {}; }
+template<> inline bool equal(const MoverDynamics& a, const MoverDynamics& b) {
+    if (a.type != b.type) return false;
+    const auto& x = a.max.groundVehicle; const auto& y = b.max.groundVehicle;
+    return std::tie(x.yawRate, x.turretYawRate, x.pivotRate, x.accel, x.speed, x.turretYaw)
+        == std::tie(y.yawRate, y.turretYawRate, y.pivotRate, y.accel, y.speed, y.turretYaw);
+}
 template<> inline void pattern(Stuff::Vector4D& v, unsigned char seed) {
     pattern(v.x, seed); pattern(v.y, seed); pattern(v.z, seed); pattern(v.w, seed);
 }
@@ -81,6 +157,182 @@ template<> inline bool equal(const WeaponShotInfo& a, const WeaponShotInfo& b) {
 #define GATE_MEMBERS &T::teamId, &T::lockedOpen, &T::lockedClose, &T::reasonToOpen, \
     &T::opened, &T::opening, &T::closed, &T::closing, &T::justDestroyed, \
     &T::lastMarkedOpen, &T::parentId, &T::parent, &T::buildingDescriptionID
+
+#define MOVER_MEMBERS &T::killed, &T::lost, &T::positionNormal, &T::velocity, &T::name, \
+    &T::chassis, &T::startDisabled, &T::creationTime, &T::moveType, &T::moveLevel, \
+    &T::followRoads, &T::lastMapCell, &T::damageRateTally, &T::damageRateCheckTime, \
+    &T::pilotCheckDamageTally, &T::body, &T::numBodyLocations, &T::fieldedCV, \
+    &T::attackRange, &T::armor, &T::numArmorLocations, &T::longName, &T::inventory, \
+    &T::numOther, &T::numWeapons, &T::numAmmos, &T::ammoTypeTotal, &T::numAmmoTypes, \
+    &T::pilotHandle, &T::cockpit, &T::engine, &T::lifeSupport, &T::sensor, &T::ecm, \
+    &T::probe, &T::jumpJets, &T::nullSignature, &T::maxWeaponEffectiveness, \
+    &T::weaponEffectiveness, &T::minRange, &T::maxRange, &T::optimalRange, \
+    &T::numFunctionalWeapons, &T::numAntiMissileSystems, &T::antiMissileSystem, \
+    &T::engineBlowTime, &T::maxMoveSpeed, &T::shutDownThisFrame, &T::startUpThisFrame, \
+    &T::disableThisFrame, &T::teamId, &T::groupId, &T::squadId, &T::selectionIndex, \
+    &T::teamRosterIndex, &T::commanderId, &T::unitGroup, &T::iconPictureIndex, \
+    &T::suppressionFire, &T::pilotCheckModifier, &T::prevPilotCheckModifier, \
+    &T::prevPilotCheckDelta, &T::prevPilotCheckUpdate, &T::failedPilotingCheck, \
+    &T::lastWeaponEffectivenessCalc, &T::lastOptimalRangeCalc, &T::challengerWID, \
+    &T::lastGesture, &T::control, &T::dynamics, &T::numWeaponHitsHandled, &T::timeLeft, \
+    &T::exploding, &T::withdrawing, &T::yieldTimeLeft, &T::lastValidPosition, \
+    &T::pivotDirection, &T::lastHustleTime, &T::salvageVehicle, &T::markDistanceMoved, \
+    &T::refitBuddyWID, &T::recoverBuddyWID, &T::crashAvoidSelf, &T::crashAvoidPath, \
+    &T::crashBlockSelf, &T::crashBlockPath, &T::crashYieldTime, &T::pathLockLength, \
+    &T::pathLockList, &T::moveCenter, &T::moveRadius, &T::overlayWeightClass, \
+    &T::timeToClearSelection, &T::timeSinceMoving, &T::timeSinceFiredLast, \
+    &T::lastMovingTargetWID, &T::mechSalvage, &T::teleportPosition, &T::debugPage, \
+    &T::pathLocks, &T::isOnGui, &T::conStat, &T::fadeTime, &T::alphaValue, \
+    &T::causeOfDeath, &T::lowestWeaponNodeID, &T::psRed, &T::psBlue, &T::psGreen
+#define VEHICLE_MEMBERS &T::accel, &T::velocityMag, &T::suspension, &T::movementEnabled, \
+    &T::turretEnabled, &T::turretRotation, &T::turretBlownThisFrame, &T::captureable, \
+    &T::deadByCrushed, &T::canRefit, &T::canRecover, &T::refitting, &T::recovering, \
+    &T::mineSweeper, &T::sweepTime, &T::mineLayer, &T::aerospaceSpotter, &T::cellColToMine, \
+    &T::cellRowToMine, &T::notMineYet, &T::battleRating, &T::descID, &T::timeInCurrent, \
+    &T::dVel, &T::dRot, &T::dAcc, &T::dRVel, &T::dRacc, &T::dTime, &T::sensorOK, &T::isVehiclePilot
+
+TEST_CASE("save fields: GroundVehicleData inherited census and legacy values") {
+    using T = GroundVehicleData;
+    auto sample = save_probe::patterned<T>(BASE_MEMBERS, MOVER_MEMBERS, VEHICLE_MEMBERS);
+    sample.objectClass = GROUNDVEHICLE; sample.windowsVisible = 0;
+    const auto codec = [](auto& a, auto& v) {
+        mc2::save::VehicleRecord record{v}; record.serialize(a);
+        if (a.reading()) v = record.value;
+    };
+    REQUIRE(save_probe::roundtrip(sample, codec, BASE_MEMBERS, MOVER_MEMBERS, VEHICLE_MEMBERS));
+    CHECK_FALSE(save_probe::roundtrip(sample, [](auto& a, auto& v) {
+        mc2::save::VehicleRecord record{v}; record.serialize(a);
+        if (a.reading()) { v = record.value; v.sensorOK = false; }
+    }, BASE_MEMBERS, MOVER_MEMBERS, VEHICLE_MEMBERS));
+    CHECK_FALSE(save_probe::roundtrip(sample, [](auto& a, auto& v) {
+        mc2::save::VehicleRecord record{v}; record.serialize(a);
+        if (a.reading()) { v = record.value; v.inventory[0].hardpointId = 0; }
+    }, BASE_MEMBERS, MOVER_MEMBERS, VEHICLE_MEMBERS));
+    SAVE_FIELD_SHAPE(sample.body[0], CASE, totalSpaces, criticalSpaces,
+        curInternalStructure, hotSpotNumber, maxInternalStructure, damageState);
+    SAVE_FIELD_SHAPE(sample.body[0].criticalSpaces[0], inventoryID, hit);
+    SAVE_FIELD_SHAPE(sample.armor[0], curArmor, maxArmor);
+    SAVE_FIELD_SHAPE(sample.inventory[0], masterID, health, disabled, facing,
+        startAmount, amount, ammoIndex, readyTime, bodyLocation, effectiveness, hardpointId);
+    SAVE_FIELD_SHAPE(sample.ammoTypeTotal[0], masterId, curAmount, maxAmount);
+    SAVE_FIELD_SHAPE(sample.control.settings.groundVehicle, throttle, rotate,
+        rotateTurret, gestureGoal, pivot, isWalking);
+    SAVE_FIELD_SHAPE(sample.control.settings.mech, throttle, rotate, facingRotate,
+        rotateTorso, rotateLeftArm, rotateRightArm, gestureGoal, blowLeftArm, blowRightArm, pivot);
+    SAVE_FIELD_SHAPE(sample.control.settings.elemental, rotate);
+    SAVE_FIELD_SHAPE(sample.dynamics.max.groundVehicle, yawRate, turretYawRate,
+        pivotRate, accel, speed, turretYaw);
+    SAVE_FIELD_SHAPE(sample.dynamics.max.mech, torsoYawRate, torsoYaw);
+    SAVE_FIELD_SHAPE(sample.dynamics.max.elemental, yawRate);
+    const auto bytes = mc2::save::encodeTaggedRecord(mc2::save::VehicleRecord{sample}, mc2::save::vehicleTag);
+    mc2::save::VehicleRecord decoded;
+    REQUIRE(mc2::save::decodeTaggedRecord(bytes, decoded, mc2::save::vehicleTag));
+    CHECK_FALSE(mc2::save::decodeTaggedRecord(std::span(bytes).first(bytes.size()-1), decoded, mc2::save::vehicleTag));
+    CHECK_FALSE(mc2::save::decodeTaggedRecord(bytes, decoded, mc2::save::gateTag));
+    CHECK(save_probe::equal(sample.control, decoded.value.control));
+    CHECK(save_probe::equal(sample.dynamics, decoded.value.dynamics));
+    const auto leaf = compactSource("code/gvehicl.h");
+    CHECK(leaf.find("struct_GroundVehicleData:publicMoverData{floataccel;floatvelocityMag;"
+        "floatsuspension;boolmovementEnabled;boolturretEnabled;floatturretRotation;"
+        "boolturretBlownThisFrame;boolcaptureable;booldeadByCrushed;boolcanRefit;"
+        "boolcanRecover;boolrefitting;boolrecovering;boolmineSweeper;floatsweepTime;"
+        "int32_tmineLayer;boolaerospaceSpotter;int32_tcellColToMine;int32_tcellRowToMine;"
+        "boolnotMineYet;int32_tbattleRating;int32_tdescID;floattimeInCurrent;"
+        "glm::vec3dVel;glm::vec3dRot;glm::vec3dAcc;glm::vec3dRVel;glm::vec3dRacc;"
+        "floatdTime;boolsensorOK;boolisVehiclePilot;};") != std::string::npos);
+    const auto base = compactSource("code/mover.h");
+    CHECK(base.find("classMoverControl{public:ControlTypetype;ControlDataTypedataType;"
+        "ControlSettingssettings;public:") != std::string::npos);
+    CHECK(base.find("classMoverDynamics{public:DynamicsTypetype;DynamicsLimitsmax;public:") != std::string::npos);
+    CHECK(base.find("struct_MoverData:publicGameObjectData{boolkilled;boollost;"
+        "glm::vec3positionNormal;glm::vec3velocity;charname[MAXLEN_MOVER_NAME];"
+        "unsignedcharchassis;boolstartDisabled;floatcreationTime;int32_tmoveType;"
+        "int32_tmoveLevel;boolfollowRoads;int32_tlastMapCell[2];floatdamageRateTally;"
+        "floatdamageRateCheckTime;floatpilotCheckDamageTally;BodyLocationbody[MAX_MOVER_BODY_LOCATIONS];"
+        "charnumBodyLocations;int32_tfieldedCV;int32_tattackRange;ArmorLocationarmor[MAX_MOVER_ARMOR_LOCATIONS];"
+        "charnumArmorLocations;charlongName[MAXLEN_MECH_LONGNAME];InventoryIteminventory[MAX_MOVER_INVENTORY_ITEMS];"
+        "unsignedcharnumOther;unsignedcharnumWeapons;unsignedcharnumAmmos;AmmoTallyammoTypeTotal[MAX_AMMO_TYPES];"
+        "charnumAmmoTypes;int32_tpilotHandle;unsignedcharcockpit;unsignedcharengine;unsignedcharlifeSupport;"
+        "unsignedcharsensor;unsignedcharecm;unsignedcharprobe;unsignedcharjumpJets;unsignedcharnullSignature;"
+        "floatmaxWeaponEffectiveness;floatweaponEffectiveness;floatminRange;floatmaxRange;floatoptimalRange;"
+        "int32_tnumFunctionalWeapons;charnumAntiMissileSystems;unsignedcharantiMissileSystem[MAX_ANTI_MISSILE_SYSTEMS];"
+        "floatengineBlowTime;floatmaxMoveSpeed;boolshutDownThisFrame;boolstartUpThisFrame;booldisableThisFrame;"
+        "charteamId;chargroupId;int32_tsquadId;int32_tselectionIndex;int32_tteamRosterIndex;charcommanderId;"
+        "int32_tunitGroup;int32_ticonPictureIndex;boolsuppressionFire;int32_tpilotCheckModifier;"
+        "int32_tprevPilotCheckModifier;int32_tprevPilotCheckDelta;floatprevPilotCheckUpdate;boolfailedPilotingCheck;"
+        "floatlastWeaponEffectivenessCalc;floatlastOptimalRangeCalc;GameObjectWatchIDchallengerWID;charlastGesture;"
+        "MoverControlcontrol;MoverDynamicsdynamics;int32_tnumWeaponHitsHandled;floattimeLeft;boolexploding;"
+        "boolwithdrawing;floatyieldTimeLeft;glm::vec3lastValidPosition;charpivotDirection;floatlastHustleTime;"
+        "boolsalvageVehicle;floatmarkDistanceMoved;GameObjectWatchIDrefitBuddyWID;GameObjectWatchIDrecoverBuddyWID;"
+        "int32_tcrashAvoidSelf;int32_tcrashAvoidPath;int32_tcrashBlockSelf;int32_tcrashBlockPath;floatcrashYieldTime;"
+        "int32_tpathLockLength;int32_tpathLockList[MAX_LOCK_RANGE][2];glm::vec3moveCenter;floatmoveRadius;"
+        "int32_toverlayWeightClass;floattimeToClearSelection;floattimeSinceMoving;floattimeSinceFiredLast;"
+        "GameObjectWatchIDlastMovingTargetWID;boolmechSalvage;glm::vec3teleportPosition;int32_tdebugPage;"
+        "boolpathLocks;boolisOnGui;int32_tconStat;floatfadeTime;BYTEalphaValue;int32_tcauseOfDeath;"
+        "int32_tlowestWeaponNodeID;DWORDpsRed;DWORDpsBlue;DWORDpsGreen;};") != std::string::npos);
+}
+
+// Standalone codec tests do not link mover_chunks.cpp's engine/file readers.
+// None of these file-loading entry points participates in value serialization.
+void MoverDynamics::init() { type = DYNAMICS_BASE; }
+void MoverDynamics::init(CSVFilePtr) { FAIL("unexpected dynamics CSV load"); }
+void MoverDynamics::init(FitIniFilePtr) { FAIL("unexpected dynamics FIT load"); }
+long MoverControl::init(FitIniFilePtr) { FAIL("unexpected control FIT load"); return 0; }
+
+TEST_CASE("save fields: GroundVehicleData control and dynamics union census") {
+    MoverControl control;
+    using S = decltype(control.settings.mech);
+    auto mech = save_probe::patterned<S>(&S::throttle, &S::rotate, &S::facingRotate,
+        &S::rotateTorso, &S::rotateLeftArm, &S::rotateRightArm, &S::gestureGoal,
+        &S::blowLeftArm, &S::blowRightArm, &S::pivot);
+    REQUIRE(save_probe::roundtrip(mech, [](auto& a, auto& s) {
+        MoverControl v; v.type = CONTROL_NET; v.dataType = CONTROL_DATA_MECH;
+        v.settings.mech = s; mc2::save::moverControlFields(a, v);
+        if (a.reading()) s = v.settings.mech;
+    }, &S::throttle, &S::rotate, &S::facingRotate, &S::rotateTorso,
+        &S::rotateLeftArm, &S::rotateRightArm, &S::gestureGoal,
+        &S::blowLeftArm, &S::blowRightArm, &S::pivot));
+    using E = decltype(control.settings.elemental);
+    REQUIRE(save_probe::roundtrip(save_probe::patterned<E>(&E::rotate), [](auto& a, auto& s) {
+        MoverControl v; v.type = CONTROL_PLAYER; v.dataType = CONTROL_DATA_ELEMENTAL;
+        v.settings.elemental = s; mc2::save::moverControlFields(a, v);
+        if (a.reading()) s = v.settings.elemental;
+    }, &E::rotate));
+    MoverDynamics dynamics;
+    using D = decltype(dynamics.max.mech);
+    REQUIRE(save_probe::roundtrip(save_probe::patterned<D>(&D::torsoYawRate, &D::torsoYaw), [](auto& a, auto& s) {
+        MoverDynamics v; v.type = DYNAMICS_MECH; v.max.mech = s;
+        mc2::save::moverDynamicsFields(a, v); if (a.reading()) s = v.max.mech;
+    }, &D::torsoYawRate, &D::torsoYaw));
+    using F = decltype(dynamics.max.elemental);
+    REQUIRE(save_probe::roundtrip(save_probe::patterned<F>(&F::yawRate), [](auto& a, auto& s) {
+        MoverDynamics v; v.type = DYNAMICS_ELEMENTAL; v.max.elemental = s;
+        mc2::save::moverDynamicsFields(a, v); if (a.reading()) s = v.max.elemental;
+    }, &F::yawRate));
+    mc2::save::VehicleRecord sample;
+    const auto bytes = mc2::save::encodeTaggedRecord(sample, mc2::save::vehicleTag);
+    REQUIRE_FALSE(bytes.empty()); // BASE union views have no values.
+    mc2::save::VehicleRecord decoded;
+    REQUIRE(mc2::save::decodeTaggedRecord(bytes, decoded, mc2::save::vehicleTag));
+    CHECK(decoded.value.control.dataType == CONTROL_DATA_BASE);
+    CHECK(decoded.value.dynamics.type == DYNAMICS_BASE);
+    sample.value.control.type = static_cast<ControlType>(-1);
+    CHECK(mc2::save::encodeTaggedRecord(sample, mc2::save::vehicleTag).empty());
+    sample.value.control.type = CONTROL_BASE;
+    sample.value.control.dataType = static_cast<ControlDataType>(99);
+    CHECK(mc2::save::encodeTaggedRecord(sample, mc2::save::vehicleTag).empty());
+    sample.value.control.dataType = CONTROL_DATA_BASE;
+    sample.value.dynamics.type = static_cast<DynamicsType>(99);
+    CHECK(mc2::save::encodeTaggedRecord(sample, mc2::save::vehicleTag).empty());
+    const auto source = compactSource("code/mover.h");
+    CHECK(source.find("unionControlSettings{struct{floatrotate;}elemental;"
+        "struct{charthrottle;floatrotate;floatrotateTurret;chargestureGoal;boolpivot;boolisWalking;}groundVehicle;"
+        "struct{charthrottle;floatrotate;floatfacingRotate;floatrotateTorso;floatrotateLeftArm;"
+        "floatrotateRightArm;chargestureGoal;boolblowLeftArm;boolblowRightArm;boolpivot;}mech;};") != std::string::npos);
+    CHECK(source.find("unionDynamicsLimits{struct{int32_tyawRate;}elemental;"
+        "struct{int32_tyawRate;int32_tturretYawRate;int32_tpivotRate;floataccel;floatspeed;int32_tturretYaw;}groundVehicle;"
+        "struct{int32_ttorsoYawRate;int32_ttorsoYaw;}mech;};") != std::string::npos);
+}
 
 TEST_CASE("save fields: GateData inherited census and legacy values") {
     using T = GateData;
