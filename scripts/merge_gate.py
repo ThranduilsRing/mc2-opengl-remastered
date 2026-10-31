@@ -72,8 +72,11 @@ def preflight(head, install, window, steps, seed=Path("E:/mc2-installs/_lean-see
             path = target / 'saved_bookmarks' / (bookmark + '.json')
             try:
                 doc = json.loads(path.read_text(encoding='utf-8'))
-                if not doc.get('mission') or len(doc.get('bookmarks', [])) < 2:
-                    raise ValueError('requires mission and at least two camera poses')
+                poses = {json.dumps([pose.get(k) for k in ('pos', 'rot', 'proj', 'alt')], sort_keys=True)
+                         for pose in doc.get('bookmarks', [])
+                         if all(k in pose for k in ('pos', 'rot', 'proj', 'alt'))}
+                if not doc.get('mission') or len(poses) < 2:
+                    raise ValueError('requires mission and at least two distinct camera poses')
             except (OSError, ValueError, TypeError) as exc:
                 source = ROOT / 'tests/visual/bookmarks' / path.name
                 errors.append(f"camera fixture {path}: {exc}; fix: New-Item -ItemType Directory -Force '{path.parent}'; Copy-Item -LiteralPath '{source}' -Destination '{path}'")

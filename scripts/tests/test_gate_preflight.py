@@ -35,7 +35,7 @@ def test_committed_save_references_use_current_policy():
         assert json.dumps(json.loads(path.read_text())['comparison'], sort_keys=True) == json.dumps(policy, sort_keys=True)
 
 
-@pytest.mark.parametrize('broken', [None, 'game', 'viewer', 'camera', 'policy', 'expiry', 'seed_identity', 'candidate_identity'])
+@pytest.mark.parametrize('broken', [None, 'game', 'viewer', 'camera', 'duplicate', 'policy', 'expiry', 'seed_identity', 'candidate_identity'])
 def test_preflight_inputs(tmp_path, monkeypatch, capsys, broken):
     monkeypatch.setattr(gate, 'ROOT', tmp_path)
     def fingerprint(path):
@@ -55,7 +55,9 @@ def test_preflight_inputs(tmp_path, monkeypatch, capsys, broken):
         bookmarks = tmp_path / folder / 'saved_bookmarks'
         bookmarks.mkdir(parents=True)
         if broken != 'camera' or folder != 'seed':
-            (bookmarks / 'day.json').write_text(json.dumps(dict(mission='m', bookmarks=[{}, {}])))
+            pose = dict(pos=[1, 2, 3], rot=10, proj=20, alt=30)
+            other = dict(pose, name='renamed', rot=10 if broken == 'duplicate' else 40)
+            (bookmarks / 'day.json').write_text(json.dumps(dict(mission='m', bookmarks=[pose, other])))
     baseline = tmp_path / 'tests/saveload/baselines'
     baseline.mkdir(parents=True)
     (tmp_path / 'mask.json').write_text('{"across_builds": true}')
