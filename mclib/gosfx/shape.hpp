@@ -12,9 +12,16 @@
 #include<mlr/mlr.hpp>
 
 namespace MidLevelRenderer {class MLRShape; class DrawScalableShapeInformation;}
+namespace RenderCore { class FrameArena; }
 
 namespace gosFX
 {
+	struct NativeShapePrimitive;
+	// Every reachable byte belongs to the caller's retained arena, including uploads.
+	struct FrozenNativeShape { const NativeShapePrimitive* first = nullptr; };
+	bool FreezeNativeShape(const MidLevelRenderer::DrawScalableShapeInformation& draw,
+		RenderCore::FrameArena& arena, FrozenNativeShape& frozen);
+	void DrawFrozenNativeShape(const FrozenNativeShape& frozen);
 	bool DrawNativeShape(const MidLevelRenderer::DrawScalableShapeInformation& draw);
 	//############################################################################
 	//########################  Shape__Specification  #############################

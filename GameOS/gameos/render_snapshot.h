@@ -16,6 +16,9 @@
 #include "../RenderCore/Handle.h"
 #include <cstdint>
 #include <cstdlib>
+#include <memory>
+
+namespace mc2::render_view { struct FrameDraws; }
 
 // Span<T> alias: consumers use the unqualified name; type is RenderCore::Span<T>.
 // uint32_t count (was size_t); size()/begin()/end()/empty()/operator[] all present.
@@ -135,6 +138,7 @@ static_assert(sizeof(TerrainPassFacts) == 12,
 
 // Per-frame render snapshot: immutable view of extracted engine state.
 struct RenderSnapshot {
+    std::shared_ptr<const mc2::render_view::FrameDraws> draws;
     // Frame identity
     uint64_t frameIndex = 0;
 

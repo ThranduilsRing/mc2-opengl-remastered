@@ -18,7 +18,7 @@ extern unsigned long scenarioResult;
 void extractRenderFrame(float tickAlpha)
 {
 	ZoneScopedN("ExtractRenderList");
-	auto& clk = mc2::render_view::clock();
+	auto& clk = mc2::render_view::stagingClock();
 	clk.turn = static_cast<int32_t>(turn);
 	clk.scenarioTime = scenarioTime;
 	clk.dt = frameLength;
@@ -26,7 +26,7 @@ void extractRenderFrame(float tickAlpha)
 	clk.missionResult = static_cast<uint32_t>(scenarioResult);
 	clk.missionActive = mission && mission->isActive();
 	clk.alpha = tickAlpha;
-	auto& lists = mc2::render_view::list();
+	auto& lists = mc2::render_view::stagingList();
 	lists.clear();
 	if (eye && eye->active && turn > 1) {
 		if (ObjectManager) ObjectManager->extractRenderList(lists);

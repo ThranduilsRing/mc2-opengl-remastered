@@ -7,6 +7,81 @@
 
 using namespace RenderCore;
 
+TEST_CASE("frame draws own ordered streams and HUD values across staging reuse") {
+    using namespace mc2::render_view;
+    static_assert(std::is_const_v<std::remove_reference_t<decltype(list())>>);
+    static_assert(std::is_const_v<std::remove_reference_t<decltype(hud())>>);
+    static_assert(std::is_const_v<std::remove_reference_t<decltype(mc2::render_view::clock())>>);
+    stagingList().clear();
+    stagingHud() = {};
+    stagingClock().turn = 17;
+    stagingList().terrain.resize(2);
+    stagingList().terrain[0].watchId = 12;
+    stagingList().terrain[1].watchId = 34;
+    stagingList().movers.emplace_back().watchId = 56;
+    stagingList().other.emplace_back().bolt.middleRGB = 0x123456;
+    auto& row = stagingHud().movers.emplace_back();
+    row.name = "retained mover";
+    row.pilotName = "retained pilot";
+    row.waypoints.emplace_back(1, 2, 3);
+    row.overviewPath.emplace_back(4, 5, 6);
+    auto markerOwner = std::make_shared<int>(42);
+    std::weak_ptr<int> markerAlive = markerOwner;
+    row.waypointMarkers.emplace_back(markerOwner, nullptr);
+    markerOwner.reset();
+    stagingHud().roster.push_back(0);
+    stagingHud().objectives.emplace_back().description = "retained objective";
+    stagingHud().vtols.emplace_back().position = glm::vec3(7, 8, 9);
+    auto first = freezeDrawFrame(101);
+    REQUIRE(first->sequence == 101);
+    FrameArena arena;
+    CHECK(drawArena() == nullptr);
+    {
+        DrawFrameScope scope(*first, &arena);
+        CHECK(drawArena() == &arena);
+        // Same operations used by extraction/commit must only affect staging.
+        stagingList().clear();
+        stagingHud() = {};
+        stagingClock().turn = 18;
+        auto second = freezeDrawFrame(102);
+        REQUIRE(second->sequence == 102);
+        CHECK(mc2::render_view::clock().turn == 17);
+        REQUIRE(list().terrain.size() == 2);
+        CHECK(list().terrain[0].watchId == 12);
+        CHECK(list().terrain[1].watchId == 34);
+        REQUIRE(list().movers.size() == 1);
+        CHECK(list().movers[0].watchId == 56);
+        REQUIRE(list().other.size() == 1);
+        CHECK(list().other[0].bolt.middleRGB == 0x123456);
+        REQUIRE(hud().movers.size() == 1);
+        CHECK(hud().movers[0].name == "retained mover");
+        CHECK(hud().movers[0].pilotName == "retained pilot");
+        REQUIRE(hud().movers[0].waypoints.size() == 1);
+        CHECK(hud().movers[0].waypoints[0] == glm::vec3(1, 2, 3));
+        CHECK(hud().movers[0].overviewPath[0] == glm::vec3(4, 5, 6));
+        CHECK(hud().roster[0] == 0);
+        CHECK(hud().objectives[0].description == "retained objective");
+        CHECK(hud().vtols[0].position == glm::vec3(7, 8, 9));
+        CHECK_FALSE(markerAlive.expired());
+        {
+            DrawFrameScope nested(*second);
+            CHECK(drawArena() == nullptr);
+            CHECK(mc2::render_view::clock().turn == 18);
+            CHECK(list().terrain.empty());
+            CHECK(hud().movers.empty());
+        }
+        CHECK(mc2::render_view::clock().turn == 17);
+        CHECK(drawArena() == &arena);
+    }
+    CHECK(drawArena() == nullptr);
+    CHECK(mc2::render_view::clock().turn == 18); // synchronous tool fallback
+    CHECK(list().terrain.empty());
+    CHECK(hud().movers.empty());
+    first.reset();
+    CHECK(markerAlive.expired());
+    stagingClock() = {};
+}
+
 TEST_CASE("bolt draw packet survives staging mutation and a later extraction") {
     using namespace mc2::render_view;
     alignas(16) unsigned char memory[3][2048]{};

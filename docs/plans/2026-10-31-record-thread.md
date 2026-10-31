@@ -566,3 +566,160 @@ E:/mc2-installs/claude-record-thread, engine eaede08edc60. After this docs-only
 closure use --ref-commit eaede08ed for retained binary proof; do not rebuild unchanged
 engine code. Avoidable cost: broad reconnaissance; start the next producer at its
 named render/extract ranges and inspect projection signatures before editing.
+
+## S3 retained RenderList/HUD containers, 2026-10-31 (proof pending)
+
+Additive continuation from 0178b2750 during W93. FrameDraws owns copies of the
+three ordered RenderList vectors, render clock, HUD strings/paths/arrays and
+shared waypoint marker holders. RenderSnapshot retains the immutable copy for
+its CPU sequence. DrawFrameScope selects it only during inline DrawScreen;
+const accessors prevent draws from mutating staging through the read API.
+Extraction and commit use separate Main-asserted staging accessors. Main drops
+the copied containers before retiring the arenas and draining typed frees.
+Native unit coverage destroys/reuses staging while retaining the frame, checks
+ordering and deep HUD values, marker ownership, nested scope restoration and
+the synchronous inline-tool fallback. Six covering rows pass (46.87 s), and
+git diff --check is clean. Remaining proof: all-target shared-header build,
+selected FramePackets cases, commit-first lane deploy, day/night pixel parity
+viewed, detailed mc2_10 SIMID 20 s and audit/sync validation zero.
+This freezes containers only: RenderView::obj, appearance/FX and VTOL pointers
+are still borrowed, and the marker shapes remain mutable. No worker dispatch.
+Next native producers remain TerrainObject::extractRenderView/renderView
+(code/terrobj.cpp:1020-1105), Building equivalents (code/bldng.cpp:1079-1157),
+BldgAppearance::render (mclib/bdactor_render.cpp:42-434) and native submissions;
+resolve geometry/material/light indices plus retained feeds before eliminating
+object dispatch. Then freeze marker/VTOL/copied UI and recursive FX inputs,
+split Execute(Main)/Draw(record), add assertions at actually moved entries,
+and connect retirement to actual worker completion. Keep S4 inline meanwhile.
+
+Offline checkpoint: engine commit f7942b628. All-target root (all/ui_editor/order
+seam) and three companion builds passed; root took 428 s. The initial doctest
+compile failed only on the new test's unqualified clock() versus the CRT clock;
+qualified calls corrected it. Selected frame/bolt/CPU-lifetime tests now pass,
+4 cases / 69 assertions, 17 s (s3-containers-unit.log). No repeated all-target
+build is needed for that test-only correction. Remaining: refresh shipped binary
+provenance after the correction commit, final selected contracts, explicit lane
+deploy, day/night parity, detailed SIMID and audit/sync proof. Build slowness:
+the shared RenderSnapshot/RenderView headers fan out to 254 engine/editor jobs.
+
+## S3 retained container proof closed, 2026-10-31
+
+Proven shipped engine/viewer: a9a8adc00ba0, additive commits after 0178b2750.
+S4 remains inline. This checkpoint owns container bytes and waypoint holders;
+it does not freeze native appearance/FX/VTOL pointees or eliminate obj dispatch.
+All receipts below are under E:/mc2-archive-2026-10/proofs/record-thread/.
+
+| Proof | Receipt |
+|---|---|
+| Shared-header all targets | s3-containers-alltargets.log: root all/ui_editor/order seam and three standalone tools built; 428/6/5/5 s. Initial doctest compile failed on the test-only CRT clock ambiguity, corrected by a9a8adc00; s3-containers-unit.log rebuilds that corpus successfully. No second engine build required |
+| Selected native lifetime cases | s3-containers-unit.log: frame/HUD staging reuse, nested scopes, marker lifetime, bolt and CPU leases; 4 cases / 69 assertions PASS, 17 s |
+| Final five ratchets + buffer_lifetime | s3-containers-head-contracts.log: six PASS, 29.38 s, no baseline raised; whitespace clean |
+| Shipped provenance | s3-containers-provenance.log: only identity TU and mc2/viewer relinks, clean a9a8adc00ba0 |
+| Existing lane deploy | s3-containers-deploy.log: COMPLETE, verified 3855-row manifest; unchanged cook-byproduct hygiene advisory |
+| Day/night pixels, viewed | s3-containers-pixel-parity.json: all four PNGs byte-identical to s3-bolt-ab; both new scenes viewed; s3-containers-ab/{day,night}, each capture exited in ~21 s |
+| Detailed SIMID, mc2_10 20 s | s3-containers-simid-detail.log: 1106 identical common frames, first 800 match pinned baseline in every digest; both game logs confirm TRACE_DETAIL=1 |
+| Sync validation, mc2_10 20 s | s3-containers-sync.log and s3-containers-sync-artifacts/: PASS, errors=0/warnings=0/content errors=0; full log confirms Khronos layer and messenger engaged with preset=sync |
+
+All five game logs confirm effective overlap audit=1; none contains VIOLATION.
+The first receipt scan incorrectly expected a literal audit=1 in capture logs;
+those logs report CONFIG name=MC2_SIM_OVERLAP_AUDIT value=1 instead. No rerun,
+proof gate waiver or game change was needed. No startup timeout/farm fallback.
+Game processes ~3 min, observed lease wait 0 min. All own children exited.
+Initial PowerShell profile loading was policy-denied and skipped; no required
+proof was skipped. Disk freed 0 GB; no extra install created, sole lane install
+left at E:/mc2-installs/claude-record-thread with engine a9a8adc00ba0.
+After this docs-only commit use --ref-commit a9a8adc00 for retained binary proof.
+
+Exact next producer ranges: code/terrobj.cpp:1020-1105 and code/bldng.cpp:1079-1157
+feed mclib/bdactor_render.cpp:42-434; that draw still mutates TG shape highlight,
+queries static eligibility and submits live shapes. Freeze native geometry,
+material/light indices with retained light feeds, then replace RenderView::obj
+dispatch. Marker/VTOL/copied UI and recursive FX Draw values remain next, followed
+by Execute(Main)/Draw(record), moved-entry owner assertions and actual record
+completion before arena/resource retirement. The scoped container copies alone
+do not permit any of those live pointees to overlap an async record worker.
+That multi-family producer migration needs its own bounded implementation/proof
+cycle; resume here without rebuilding this unchanged engine.
+Largest avoidable cost: broad source reading/scouting before the concrete edit;
+bound the next scout with --timeout 25 and keep reads at the producer ranges above.
+
+## S3 rigid FX native shape packets, 2026-10-31 (proof pending)
+
+Additive continuation from 77dda168b, assignment base 0178b2750. Rigid native
+Shape/ShapeCloud/DebrisCloud leaves now have FreezeNativeShape(Main capture)
+and DrawFrozenNativeShape(value replay). Cold-cache positions, UVs and fan
+indices plus ordered submaterial, blend, matrix, scale and color values live
+in the retained snapshot arena. DrawFrameScope binds that arena and restores
+it across nested scopes; standalone tools preserve synchronous submission.
+The existing native mesh test now destroys the source shape, overwrites its
+draw inputs and fills another retained slot before cold/hot packet replay.
+
+This is a leaf boundary only: recursive Effect::Draw still reads live child
+and spec data, and live callers capture/replay immediately inside DrawScreen.
+Texture pool indices still need resource retention/resolution before moving
+replay off Main. Building/TerrainObject appearances, VTOL and copied UI remain
+open at the exact ranges above; no obj dispatch was removed. S4 stays inline.
+Next: finish covering rows, shared-header all-target build and selected
+frame/native-FX tests; commit-first lane deploy and the existing day/night,
+detailed SIMID and audit/sync proofs. Record receipts and commit here, then
+move the native appearance and recursive FX producers to Main extraction.
+
+Offline receipts: s3-native-shape-contracts.log six rows PASS (32.20 s);
+s3-native-shape-unit.log selected frame/bolt/CPU lease and fresh-process FX
+driver PASS, 4 top-level cases / 74 assertions (49 s), rigid-mesh child
+1 case / 37 assertions, existing particle arms all green. The first harness
+invocation rejected a suite name used as a case filter before building;
+corrected to the existing retained CPU case, no test skipped. CRLF-aware
+whitespace check (`git -c core.whitespace=cr-at-eol diff --check`) is clean.
+
+## S3 rigid native FX leaf proof closed, 2026-10-31
+
+Engine commits e47992cf7 and 4bfa5434f; shipped game/viewer 4bfa5434f4c0,
+clean provenance. This bounded checkpoint freezes rigid Shape/ShapeCloud/
+DebrisCloud leaf submissions only, still captured/replayed inline. S4 remains
+inline. The larger native appearance/VTOL/recursive FX migration is unfinished.
+All receipts below are under E:/mc2-archive-2026-10/proofs/record-thread/.
+
+| Proof | Receipt |
+|---|---|
+| Shared-header all targets | s3-native-shape-alltargets.log: game/editor/viewer/root tools, three standalone projects and doctest corpus PASS; root 800 s, companion stages 4-11 s |
+| Final implementation-only correction | s3-native-shape-final-build.log: mc2 + mc2_asset_viewer PASS, 7 s, unchanged shared headers; reused build-alltargets Ninja tree and deployed its output directly |
+| Native lifetime/FX tests | s3-native-shape-final-unit.log: 4 top-level cases / 74 assertions PASS, 16 s; fresh-process rigid mesh 37 assertions and particle/RNG arms PASS |
+| Committed-tree covering rows | s3-native-shape-final-contracts.log: six PASS, 36.60 s, no baseline raised |
+| Existing lane deploy | s3-native-shape-deploy.log: COMPLETE, 3855-row manifest at 4bfa5434f4c0; 203 s; pre-existing cook-byproduct hygiene advisory |
+| Day/night pixels, viewed | s3-native-shape-pixel-parity.json: all four PNGs byte-identical to s3-containers-ab; new day/night images viewed; s3-native-shape-ab/{day,night} |
+| Detailed mc2_10 SIMID, 20 s | s3-native-shape-simid-detail.log: 1260 identical common frames; first 800 match pinned baseline in every digest; both game logs confirm TRACE_DETAIL=1 |
+| Sync validation, mc2_10 20 s | s3-native-shape-sync.log + s3-native-shape-sync-artifacts/: PASS, errors=0/warnings=0/content errors=0; full log confirms Khronos layer and messenger engaged with preset=sync |
+
+All five game logs confirm overlap audit=1 and contain no VIOLATION. Observed
+lease wait 0 min; game harness wall time about 3.5 min. No startup timeout or
+farm fallback. All own build/game/proof children exited. No extra install was
+created: disk freed 0 GB, leave E:/mc2-installs/claude-record-thread only.
+Use --ref-commit 4bfa5434f after this docs-only commit; do not rebuild unchanged
+engine code just to stamp documentation provenance.
+
+Corrections: the first static scan preceded the engine commit, so the ratchet
+still scanned the old committed tree. Its subsequent head scan caught .first
+on our non-pair aggregate and a pointer/count helper. 4bfa5434f uses aggregate
+initialization/structured binding and std::span; headers/layout unchanged.
+Initial SIMID invocation redundantly supplied the harness-owned audit setting
+and failed before launch; corrected to use its built-in mc2_10 audit. Initial
+PowerShell profile loading was policy-denied and skipped; no required proof
+was skipped. One receipt scan had a PowerShell array-construction error; the
+corrected scan checked all five full logs without rerunning games.
+
+Exact next: native appearances still start at code/terrobj.cpp:1020-1105,
+code/bldng.cpp:1079-1157 and mclib/bdactor_render.cpp:42-434. Resolve/copy native
+geometry, materials and light rows with retained light feeds before removing
+RenderView::obj dispatch. For gosFX, Effect::Draw at mclib/gosfx/effect.cpp:802
+still traverses live children/spec/local transforms; attach rigid leaf packets
+to the retained recursive frame root and freeze the remaining particle/tube
+leaves after Main Execute. Then migrate marker/VTOL/copied UI payloads, add
+assertions at actually moved entries, and bind arena/resource retirement to
+actual record completion. Do not enable S4 from this leaf-only checkpoint.
+That multi-family change needs a separate bounded implementation/proof cycle.
+
+Tool slowness: shared-header root build 800 s and deploy 203 s. Largest
+avoidable token cost was broad reconnaissance before choosing the concrete
+leaf edit; resume at the exact producer ranges and APIs above. Run committed-
+tree ratchets after committing so they actually inspect the new code.

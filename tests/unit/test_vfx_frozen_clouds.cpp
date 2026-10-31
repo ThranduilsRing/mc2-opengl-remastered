@@ -18,16 +18,22 @@
 #include "GameOS/gameos/gos_vfx_mesh_bridge.h"
 #include "mlr/mlr_i_pmesh.hpp"
 #include "mlr/mlrshape.hpp"
+#include "RenderCore/FramePackets.h"
+#include "code/render_view.h"
 
 namespace {
 std::vector<GosVfxMeshInstance> meshInstances;
 std::vector<std::vector<uint16_t>> meshIndices;
+std::vector<std::vector<float>> meshPositions, meshUvs;
 }
 extern "C" void gos_vfx_mesh_flush(const GosVfxMeshUpload* uploads, unsigned count,
     const GosVfxMeshInstance* instances, unsigned instanceCount)
 {
-    for (unsigned i = 0; i < count; ++i)
+    for (unsigned i = 0; i < count; ++i) {
         meshIndices.emplace_back(uploads[i].indices, uploads[i].indices + uploads[i].indexCount);
+        meshPositions.emplace_back(uploads[i].positions, uploads[i].positions + uploads[i].vertexCount * 3);
+        meshUvs.emplace_back(uploads[i].uvs, uploads[i].uvs + uploads[i].vertexCount * 2);
+    }
     meshInstances.insert(meshInstances.end(), instances, instances + instanceCount);
 }
 
@@ -552,7 +558,14 @@ TEST_CASE_FIXTURE(FrozenPlatform, "vfx_mesh/submaterials and polygon fans preser
     draw.paintMe = &color;
     const auto frozen = Stuff::Random::GetState();
     meshIndices.clear(); meshInstances.clear();
-    REQUIRE(gosFX::DrawNativeShape(draw));
+    alignas(16) unsigned char memory[3][8192]{};
+    RenderCore::FrameSlotArenas slots;
+    slots.init(memory[0], memory[1], memory[2], sizeof(memory[0]));
+    REQUIRE(slots.retain(1));
+    gosFX::FrozenNativeShape cold;
+    REQUIRE(gosFX::FreezeNativeShape(draw, slots.begin(1), cold));
+    CHECK(meshInstances.empty()); // capture performs no bridge submission
+    gosFX::DrawFrozenNativeShape(cold);
     REQUIRE(meshIndices.size() == 2);
     REQUIRE(meshInstances.size() == 2);
     for (const auto& indices : meshIndices)
@@ -567,11 +580,43 @@ TEST_CASE_FIXTURE(FrozenPlatform, "vfx_mesh/submaterials and polygon fans preser
     CHECK(meshInstances[0].scale == 2.0f);
     CHECK(meshInstances[1].rgba[3] == 0.8f);
     meshIndices.clear(); meshInstances.clear();
-    REQUIRE(gosFX::DrawNativeShape(draw));
+    // The live caller also freezes into the scoped retained sequence.
+    mc2::render_view::FrameDraws frame;
+    const auto before = slots.begin(1).bytesUsed();
+    {
+        mc2::render_view::DrawFrameScope scope(frame, &slots.begin(1));
+        REQUIRE(gosFX::DrawNativeShape(draw));
+    }
+    CHECK(slots.begin(1).bytesUsed() > before);
     CHECK(meshIndices.empty());
     CHECK(meshInstances.size() == 2);
-    CHECK(Stuff::Random::GetState() == frozen);
+    gosFX::FrozenNativeShape hot;
+    REQUIRE(gosFX::FreezeNativeShape(draw, slots.begin(1), hot));
     shape->DetachReference();
+    draw.shape = nullptr;
+    transform = glm::mat4(0.0f); scale = glm::vec3(99.0f); color.alpha = 0.0f;
+    REQUIRE(slots.retain(2));
+    auto later = slots.begin(2).allocArray<unsigned char>(8192, "later frame");
+    std::fill_n(later.data, later.count, 0xcd);
+    CHECK_FALSE(slots.retain(4));
+    meshIndices.clear(); meshInstances.clear(); meshPositions.clear(); meshUvs.clear();
+    gosFX::DrawFrozenNativeShape(cold);
+    REQUIRE(meshIndices.size() == 2);
+    CHECK(meshIndices[0] == std::vector<uint16_t>{0,1,2,0,2,3});
+    CHECK(meshPositions[0] == std::vector<float>{0,0,0,1,0,0,1,1,0,0,1,0});
+    CHECK(meshUvs[0] == std::vector<float>(8, 0.0f));
+    CHECK(meshInstances[0].modelToWorld[12] == 17);
+    CHECK(meshInstances[0].scale == 2.0f);
+    CHECK(meshInstances[1].rgba[3] == 0.8f);
+    meshIndices.clear(); meshInstances.clear();
+    gosFX::DrawFrozenNativeShape(hot);
+    CHECK(meshIndices.empty());
+    REQUIRE(meshInstances.size() == 2);
+    CHECK(meshInstances[0].mlrTexHandle == 11);
+    CHECK(meshInstances[1].blendMode == 0);
+    CHECK(Stuff::Random::GetState() == frozen);
+    CHECK(slots.retire(2));
+    CHECK(slots.retire(1));
 }
 
 TEST_CASE_FIXTURE(FrozenPlatform, "vfx_frozen/CardCloud draw flush and clip leave RNG unchanged")

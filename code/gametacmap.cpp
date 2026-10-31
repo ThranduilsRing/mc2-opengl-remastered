@@ -341,7 +341,7 @@ void GameTacMap::extractHudBlips()
     unsigned long colors[MAX_MOVERS], rings[MAX_MOVERS], ranges[MAX_MOVERS];
     glm::vec3 positions[MAX_MOVERS]; bool selected[MAX_MOVERS];
     const int count = extractBlips(colors, rings, positions, ranges, selected);
-    auto& rows = mc2::render_view::hud().blips;
+    auto& rows = mc2::render_view::stagingHud().blips;
     rows.clear();
     for (int i = 0; i < count; ++i) rows.push_back({positions[i], colors[i], rings[i], ranges[i], selected[i]});
 }
