@@ -1,5 +1,5 @@
 Assignment: A:/Games/mc2-lane9, claude/cxx23-packet-b, base 32f03ddbe.
-Entry aa4c918f2 retained. F10 in progress; no acceptance verdict yet.
+Entry aa4c918f2 retained. F10 acceptance FAIL: 31/32 receipts green.
 Reapplied preserved flip as c52ceb0ff and exact 140bce296 baseline bytes as
 18e59ac01. Roll back those two checkpoints if acceptance is not all green.
 
@@ -8,8 +8,9 @@ array of row/column pairs. The legacy record has only 81 shorts (40 pairs).
 CopyTo checks >=162 cells, then copies count*2 shorts into that fixed array.
 The tagged terrain validator correctly prevented that overread, but Building
 needs a counted dynamic sequence for mod footprints, not a wider fixed ABI.
-Current fix gives BuildingRecord owned overflow cells and passes them through
-the building save/load path; stock tagged bytes and native ABI stay exact.
+Retained codec fix gives BuildingRecord owned overflow cells. The candidate
+runtime bridge was tested, then reverted with the flip after acceptance
+failed; engine save/load sources now exactly equal entry aa4c918f2.
 
 Proof root: E:/mc2-archive-2026-10/proofs/lane9/cxx23-f, f10-*.
 Main c0eba1a0a, SHA256 2747d4e73e8e6d2a110b0b4e9e35b56cebc77129e7a389b4795fba3554e498c7,
@@ -48,9 +49,27 @@ no baseline or mask change. Its game report PASS, 2944 frames, host lease
 wait 0.0s. End-to-end harness took 405s (includes about 80s waiting for the
 save lock): tool slowness, not an engine timeout. Farm queue depth checked
 0; no farm job submitted and no host startup timeout occurred.
-Next f10-accept.py (32 sequential receipts: nine classes, first-save checks,
-eight legacy loads, continuation, SIMID, audit/validation, planted CVE load).
-Next: inspect completion receipt, commit fixture/test assertions if green;
-otherwise revert flip/migration and retain only independently green codec
-work. Remove temporary f10 mod staging; sole permanent lane install remains
-E:/mc2-installs/claude-cxx23-packet-f. No pushes, no other worktree edits.
+Fixture/tests committed as f77c8e1ce. Full sequential acceptance finished:
+four first-save checks, eight legacy loads (601 post-load ticks each), four
+continuations, three SIMID pairs, five overlap audits and five zero-error
+Vulkan validation witnesses PASS. Clean candidate fingerprint 369753936a55.
+Exact failure: CVE main-produced native save quickload logs
+`[SAVE v2] event=reject reason=unknown_required_section` after load_begin.
+Smoke exits 0, but there is no rewind and zero post-load ticks; the required
+60-tick comparison FAILS. f10-accept-result.json is the authoritative FAIL
+receipt (31/32), not the outer monitor's successful process exit.
+Baseline migration reverted in 1c69bcd35; flip and runtime bridge reverted in
+14ef17ee7. Remaining source delta is two private codec headers plus fixture
+and tests; no migration, mask change, runtime cutover or native layout change.
+Temporary mod staging removed: 11,448,138,862 logical bytes. Sole install is
+E:/mc2-installs/claude-cxx23-packet-f (contains rejected candidate 369753936a55,
+not the final branch runtime). All owned jobs ended; host lease waits 0.0s.
+Next: inspect the main-produced save's required-section compatibility with
+this lane before scheduling another CVE quickload. Reapply the preserved
+runtime bridge/flip and exact migration only for a new acceptance attempt.
+Final rollback proof PASS: 58 cases / 2744 assertions, 34s, including all nine
+real class fixtures, extended Building cells and restored loader guard seams.
+Receipt: f10-rollback-unit.log. git diff --check PASS. No pushes or other
+worktree edits. Largest avoidable cost: cold VS unit helper (>5min); use
+--compile-cache to reuse Ninja (34-44s). First-save wrapper slowness: 405s
+and 324s for 01/03; their game runs passed, with about 80s save-lock wait on 01.
