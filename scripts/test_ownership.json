@@ -95,6 +95,7 @@
     {"module": "scripts/tests/test_manifest_schema_check.py", "owners": ["scripts_tests"]},
     {"module": "scripts/tests/test_mission_order_ingress_witness.py", "owners": ["scripts_tests"]},
     {"module": "scripts/tests/test_mod_smoke.py", "owners": ["mod_smoke"]},
+    {"module": "scripts/tests/test_abl_static_alloc.py", "owners": ["abl_static_alloc"]},
     {"module": "scripts/tests/test_module_test_cache.py", "owners": ["scripts_tests"]},
     {"module": "scripts/tests/test_native_executor_health.py", "owners": ["native_scene_targets"]},
     {"module": "scripts/tests/test_native_render_hosts.py", "owners": ["native_render_hosts"]},

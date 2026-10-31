@@ -148,7 +148,7 @@ class GateState:
         try:
             if self.path.exists():
                 previous = json.loads(self.path.read_text(encoding="utf-8"))
-                self.data["stages"] = previous.get("stages", {})
+                self.data = {**previous, **self.data, "stages": previous.get("stages", {})}
             self.data["exe_sha"] = self.exe_sha()
             self.write()
         except BaseException:
@@ -249,7 +249,7 @@ class GateState:
         row = self.data["stages"].get(name, {})
         sha = self.exe_sha()
         offline = name in ('contracts', 'harnesses', 'pytest')
-        if not ((self.resume or offline or name == 'mods') and row.get('head') == self.head
+        if not (row.get('head') == self.head
                 and (offline or sha is not None and row.get('exe_sha') == sha)
                 and stage_passed(row.get('status', ''))):
             return False
@@ -860,6 +860,8 @@ def execute(steps, head, dry_run=False, runner=run_child, completed=None):
             if name == 'mods':
                 row = ACTIVE_STATE.data['stages'][name]
                 status += f" receipt={ACTIVE_STATE.path} input={row['signature']} previous={row['seconds']:.1f}s"
+            row = ACTIVE_STATE.data['stages'][name]
+            print(f"REUSED {name} sig={row['signature']} from {row['artefact_dir']}", flush=True)
             ACTIVE_STATE.reused.append(name)
             completed[name] = status
             results.append((name, status, 0.0))

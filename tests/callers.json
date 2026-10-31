@@ -2213,7 +2213,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1546,
+          "line": 1547,
           "evidence": "command",
           "reference": "scripts/check_sim_include_firewall.py",
           "text": "run_check \"sim_include_firewall\"        \"py -3 -B scripts/tests/test_sim_include_firewall.py && py -3 scripts/check_sim_include_firewall.py\""
@@ -2761,6 +2761,13 @@
           "evidence": "import",
           "reference": "console_child",
           "text": "import console_child  # noqa: E402  (stdio-inheriting children keep their output; scripts/console_child.py)"
+        },
+        {
+          "path": "scripts/tests/test_abl_static_alloc.py",
+          "line": 6,
+          "evidence": "import",
+          "reference": "console_child",
+          "text": "import console_child"
         },
         {
           "path": "scripts/tests/test_axis_swizzle_ratchet.py",
@@ -4076,7 +4083,7 @@
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 307,
+          "line": 309,
           "evidence": "import_module",
           "reference": "deploy_payload",
           "text": "return importlib.import_module('deploy_payload')"
@@ -5332,7 +5339,7 @@
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 847,
+          "line": 849,
           "evidence": "command",
           "reference": "scripts/run_smoke.py",
           "text": "proc = subprocess.run(cmd, cwd=str(ROOT), capture_output=True,"
@@ -5447,7 +5454,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1543,
+          "line": 1544,
           "evidence": "command",
           "reference": "scripts/run_tools_tests.py",
           "text": "run_check_tri \"kit_art\"                 \"py -3 scripts/run_tools_tests.py --suite art\""
@@ -7472,6 +7479,13 @@
       "callers_by_stem": []
     },
     {
+      "path": "scripts/tests/test_abl_static_alloc.py",
+      "basename": "test_abl_static_alloc.py",
+      "stem": "test_abl_static_alloc",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
       "path": "scripts/tests/test_axis_swizzle_ratchet.py",
       "basename": "test_axis_swizzle_ratchet.py",
       "stem": "test_axis_swizzle_ratchet",
@@ -8206,7 +8220,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1546,
+          "line": 1547,
           "evidence": "command",
           "reference": "scripts/tests/test_sim_include_firewall.py",
           "text": "run_check \"sim_include_firewall\"        \"py -3 -B scripts/tests/test_sim_include_firewall.py && py -3 scripts/check_sim_include_firewall.py\""
@@ -12573,7 +12587,7 @@
         },
         {
           "path": "scripts/tests/test_mod_smoke.py",
-          "line": 485,
+          "line": 516,
           "evidence": "import",
           "reference": "fst",
           "text": "import fst"
@@ -12629,14 +12643,14 @@
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 597,
+          "line": 599,
           "evidence": "import_module",
           "reference": "fst",
           "text": "fst_lib = importlib.import_module('fst')"
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 633,
+          "line": 635,
           "evidence": "import_module",
           "reference": "fst",
           "text": "fst_lib = importlib.import_module('fst')"
@@ -12708,7 +12722,7 @@
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 472,
+          "line": 474,
           "evidence": "import",
           "reference": "mc2x_import",
           "text": "from mc2x_import import fst as fst_lib"
@@ -12975,35 +12989,35 @@
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 349,
+          "line": 351,
           "evidence": "import",
           "reference": "fst_listing",
           "text": "import fst_listing"
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 471,
+          "line": 473,
           "evidence": "import",
           "reference": "fst_listing",
           "text": "import fst_listing"
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 513,
+          "line": 515,
           "evidence": "import",
           "reference": "fst_listing",
           "text": "import fst_listing"
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 615,
+          "line": 617,
           "evidence": "import",
           "reference": "fst_listing",
           "text": "import fst_listing"
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 634,
+          "line": 636,
           "evidence": "import",
           "reference": "fst_listing",
           "text": "import fst_listing"
@@ -13154,7 +13168,7 @@
         },
         {
           "path": "scripts/tests/test_gate_state.py",
-          "line": 119,
+          "line": 162,
           "evidence": "import",
           "reference": "mod_smoke",
           "text": "import mod_smoke as mods"

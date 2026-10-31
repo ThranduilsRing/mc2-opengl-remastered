@@ -11,6 +11,7 @@
 #include<stdlib.h>
 #include<string.h>
 #include<cassert>
+#include<new>
 #include<set>
 #include<vector>
 #include"platform_str.h"
@@ -610,15 +611,18 @@ long ABLModule::init (int moduleHandle) {
 			char err[255];
 			mc2::fmt::to_buf(err, "ABL: Unable to AblStackHeap->malloc staticData [Module {:d}]", mc2::fmt::as_i32(id));
 			ABL_Fatal(0, err);
+			throw std::bad_alloc();
 		}
+		std::memset(staticData, 0, sizeof(StackItem) * numStatics);
 		long* sizeList = ModuleRegistry[handle].sizeStaticVars;
 		for (long i = 0; i < numStatics; i++)
 			if (sizeList[i] > 0) {
 				staticData[i].address = static_cast<char*>(ABL_alloc(ABLPool::Stack, sizeList[i]));
-				if (!staticData) {
+				if (!staticData[i].address) {
 					char err[255];
 					mc2::fmt::to_buf(err, "ABL: Unable to AblStackHeap->malloc staticData address [Module {:d}]", mc2::fmt::as_i32(id));
 					ABL_Fatal(0, err);
+					throw std::bad_alloc();
 				}
 				}
 			else
@@ -768,17 +772,20 @@ void ABLModule::read (ABLFile* moduleFile, bool values) {
 				char err[255];
 				mc2::fmt::to_buf(err, "ABL: Unable to AblStackHeap->malloc staticData [Module {:d}]", mc2::fmt::as_i32(id));
 				ABL_Fatal(0, err);
+				throw std::bad_alloc();
 			}
+			std::memset(staticData, 0, sizeof(StackItem) * numStatics);
 		}
 		long* sizeList = ModuleRegistry[handle].sizeStaticVars;
 		for (long i = 0; i < numStatics; i++)
 			if (sizeList[i] > 0) {
 				if (fresh) {
 					staticData[i].address = static_cast<char*>(ABL_alloc(ABLPool::Stack, sizeList[i]));
-					if (!staticData) {
+					if (!staticData[i].address) {
 						char err[255];
 						mc2::fmt::to_buf(err, "ABL: Unable to AblStackHeap->malloc staticData address [Module {:d}]", mc2::fmt::as_i32(id));
 						ABL_Fatal(0, err);
+						throw std::bad_alloc();
 					}
 				}
 				if (values) {

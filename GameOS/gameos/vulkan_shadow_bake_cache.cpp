@@ -39,6 +39,7 @@ uint64_t ShadowBake::contentKey(const ShadowBakeInputs& in, uint64_t casterHash)
 // The BC4 encoder's buffers: one tile's level chain plus the top image's chain, and one parameter slice per level (tile, sub-tile, top).
 bool ShadowBake::ensureEncoder() {
     if (blockStaging_ && bc4Params_) return true;
+    OwnedBuffer blocks, params;
     VkDeviceSize off = 0;
     for (uint32_t m = 0; m < kTileLevels; ++m) { tileLevelOff_[m] = off; off += mc2shadow::bc4ChainBytes(mc2shadow::kTileTexels >> m, 1); }
     topLevelOff_.assign(topMips_, 0);
@@ -48,9 +49,9 @@ bool ShadowBake::ensureEncoder() {
     bci.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
     VmaAllocationCreateInfo aci{};
     aci.usage = VMA_MEMORY_USAGE_AUTO;
-    if (!blockStaging_.create(allocator_, device_, bci, aci, "shadow.bake.blocks")) { blog("block buffer failed."); return false; }
+    if (!blocks.create(allocator_, device_, bci, aci, "shadow.bake.blocks")) { blog("block buffer failed."); return false; }
     const uint32_t slices = 2 * kTileLevels + topMips_;
-    if (!makeHostBuffer(bc4Params_, allocator_, device_, slices * kSlice, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, "shadow.bake.bc4Params")) return false;
+    if (!makeHostBuffer(params, allocator_, device_, slices * kSlice, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, "shadow.bake.bc4Params")) return false;
     std::vector<uint8_t> p(slices * kSlice, 0);
     auto slice = [&](uint32_t i, int32_t side, VkDeviceSize byteOff, int32_t mip) {
         const int32_t v[4] = {side, static_cast<int32_t>(byteOff / 4), mip, 0};
@@ -61,9 +62,9 @@ bool ShadowBake::ensureEncoder() {
         slice(kSliceSubTile + m, static_cast<int32_t>(mc2shadow::kSubTileTexels >> m), tileLevelOff_[m], static_cast<int32_t>(m));
     }
     for (uint32_t k = 0; k < topMips_; ++k) slice(2 * kTileLevels + k, static_cast<int32_t>((std::max)(topSide_ >> k, 1u)), topLevelOff_[k], static_cast<int32_t>(k));
-    if (!bc4Params_.upload(p.data(), p.size())) return false;
-    const VkDescriptorBufferInfo par{bc4Params_.get(), 0, 16};
-    const VkDescriptorBufferInfo out{blockStaging_.get(), 0, VK_WHOLE_SIZE};
+    if (!params.upload(p.data(), p.size())) return false;
+    const VkDescriptorBufferInfo par{params.get(), 0, 16};
+    const VkDescriptorBufferInfo out{blocks.get(), 0, VK_WHOLE_SIZE};
     const VkDescriptorImageInfo tileSrc{depthRawSampler_.get(), tileR8View_ ? tileR8View_.get() : topR8View_.get(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
     const VkDescriptorImageInfo topSrc{depthRawSampler_.get(), topR8View_.get(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
     VkWriteDescriptorSet w[6]{};
@@ -75,6 +76,8 @@ bool ShadowBake::ensureEncoder() {
         w[k * 3 + 2].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; w[k * 3 + 2].pBufferInfo = &out;
     }
     vkUpdateDescriptorSets(device_, 6, w, 0, nullptr);
+    blockStaging_ = std::move(blocks);
+    bc4Params_ = std::move(params);
     return true;
 }
 

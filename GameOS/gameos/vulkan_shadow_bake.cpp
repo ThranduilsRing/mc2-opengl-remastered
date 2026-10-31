@@ -317,65 +317,93 @@ std::optional<ShadowBake::BakeKeys> ShadowBake::inputsReady(const ShadowBakeInpu
 bool ShadowBake::ensureProducts(int maskTexels) {
     ZoneScopedN("ShadowBake.Products");
     if (maskImage_ && maskTexels_ == maskTexels) return true;
+    OwnedImage mask, top, object;
+    OwnedImageView maskView, topView, objectView;
+    OwnedFramebuffer objectFb;
     // A new size happens at a map boundary, after the island's idle; within a map the mask is rebaked in place.
     uint32_t mips = 1;
     while ((maskTexels >> mips) >= 1 && mips < 16) ++mips;
-    if (!makeImage(maskImage_, maskView_, allocator_, device_, kMaskFmt, static_cast<uint32_t>(maskTexels), mips,
+    if (!makeImage(mask, maskView, allocator_, device_, kMaskFmt, static_cast<uint32_t>(maskTexels), mips,
                    VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT, VK_IMAGE_ASPECT_COLOR_BIT, "shadow.bake.mask")) {
         blog("mask image creation failed.");
         return false;
     }
-    maskTexels_ = maskTexels;
-    maskMips_ = mips;
-    maskInitialized_ = false;
     // The coarse top image: mask level kTopLevel (4 texels a sub-tile) and its own mips, the levels whose blocks span more than one sub-tile. Kept with the
     // mask so a later tile rebake (P5) can rebuild the top levels without the rest of the map.
-    topSide_ = static_cast<uint32_t>(maskTexels) >> kTopLevel;
-    topMips_ = mips - kTopLevel;
-    dirty_.reset(maskTexels / mc2shadow::kSubTileTexels);
-    if (!makeImage(topR8_, topR8View_, allocator_, device_, kWorkFmt, topSide_, topMips_,
+    const auto topSide = static_cast<uint32_t>(maskTexels) >> kTopLevel;
+    const auto topMips = mips - kTopLevel;
+    if (!makeImage(top, topView, allocator_, device_, kWorkFmt, topSide, topMips,
                    VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT, VK_IMAGE_ASPECT_COLOR_BIT, "shadow.bake.maskTop")) {
         blog("mask top image creation failed.");
         return false;
     }
-    topInitialized_ = false;
     if (!objectImage_) {
-        if (!makeImage(objectImage_, objectView_, allocator_, device_, kObjectFmt, objectMapSize(), 1,
+        if (!makeImage(object, objectView, allocator_, device_, kObjectFmt, objectMapSize(), 1,
                        VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_ASPECT_DEPTH_BIT, "shadow.bake.objectMap") ||
-            !makeFramebuffer(objectFb_, device_, objectPass_.get(), objectView_.get(), objectMapSize())) {
+            !makeFramebuffer(objectFb, device_, objectPass_.get(), objectView.get(), objectMapSize())) {
             blog("object map creation failed.");
             return false;
         }
+    }
+    // Publish only a complete set; a refused allocation leaves the old size usable.
+    if (object) {
+        objectFb_ = std::move(objectFb);
+        objectView_ = std::move(objectView);
+        objectImage_ = std::move(object);
         objectInitialized_ = false;
     }
+    maskView_ = std::move(maskView);
+    maskImage_ = std::move(mask);
+    topR8View_ = std::move(topView);
+    topR8_ = std::move(top);
+    maskTexels_ = maskTexels;
+    maskMips_ = mips;
+    topSide_ = topSide;
+    topMips_ = topMips;
+    maskInitialized_ = topInitialized_ = false;
+    dirty_.reset(maskTexels / mc2shadow::kSubTileTexels);
     return true;
 }
 
 bool ShadowBake::ensureTransients() {
     ZoneScopedN("ShadowBake.Transients");
     if (!windowImage_) {
-        if (!makeImage(windowImage_, windowView_, allocator_, device_, kWindowFmt, mc2shadow::shadowQuality().windowSide, 1,
+        OwnedImage window, scratch[4], tile;
+        OwnedImageView windowView, scratchView[4], tileView;
+        OwnedFramebuffer windowFb;
+        OwnedBuffer staging;
+        if (!makeImage(window, windowView, allocator_, device_, kWindowFmt, mc2shadow::shadowQuality().windowSide, 1,
                        VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_ASPECT_DEPTH_BIT, "shadow.bake.window") ||
-            !makeFramebuffer(windowFb_, device_, windowPass_.get(), windowView_.get(), mc2shadow::shadowQuality().windowSide)) {
+            !makeFramebuffer(windowFb, device_, windowPass_.get(), windowView.get(), mc2shadow::shadowQuality().windowSide)) {
             blog("caster window creation failed.");
             return false;
         }
         const VkFormat fmts[4] = {VK_FORMAT_R16G16B16A16_SFLOAT, VK_FORMAT_R32_SFLOAT, VK_FORMAT_R16G16B16A16_SFLOAT, VK_FORMAT_R32_SFLOAT};
         const char* names[4] = {"shadow.bake.props", "shadow.bake.terrain", "shadow.bake.blur", "shadow.bake.combined"};
         for (int i = 0; i < 4; ++i)
-            if (!makeImage(scratch_[i], scratchView_[i], allocator_, device_, fmts[i], mc2shadow::kRegionTexels, 1, VK_IMAGE_USAGE_STORAGE_BIT,
+            if (!makeImage(scratch[i], scratchView[i], allocator_, device_, fmts[i], mc2shadow::kRegionTexels, 1, VK_IMAGE_USAGE_STORAGE_BIT,
                            VK_IMAGE_ASPECT_COLOR_BIT, names[i])) { blog("scratch image creation failed."); return false; }
         VkBufferCreateInfo bci{VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO};
         bci.size = static_cast<VkDeviceSize>(mc2shadow::kTileTexels) * mc2shadow::kTileTexels;
         bci.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
         VmaAllocationCreateInfo aci{};
         aci.usage = VMA_MEMORY_USAGE_AUTO;
-        if (!staging_.create(allocator_, device_, bci, aci, "shadow.bake.staging")) { blog("staging buffer failed."); return false; }
-        if (!makeImage(tileR8_, tileR8View_, allocator_, device_, kWorkFmt, mc2shadow::kTileTexels, kTileLevels,
+        if (!staging.create(allocator_, device_, bci, aci, "shadow.bake.staging")) { blog("staging buffer failed."); return false; }
+        if (!makeImage(tile, tileView, allocator_, device_, kWorkFmt, mc2shadow::kTileTexels, kTileLevels,
                        VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT, VK_IMAGE_ASPECT_COLOR_BIT, "shadow.bake.tileLevels")) {
             blog("tile level image creation failed.");
             return false;
         }
+        windowFb_ = std::move(windowFb);
+        windowView_ = std::move(windowView);
+        windowImage_ = std::move(window);
+        for (int i = 0; i < 4; ++i) {
+            scratchView_[i] = std::move(scratchView[i]);
+            scratch_[i] = std::move(scratch[i]);
+        }
+        staging_ = std::move(staging);
+        tileR8View_ = std::move(tileView);
+        tileR8_ = std::move(tile);
     }
     const VkDeviceSize region = static_cast<VkDeviceSize>(mc2shadow::kRegionTexels) * mc2shadow::kRegionTexels;
     transientBytes_ = static_cast<VkDeviceSize>(mc2shadow::shadowQuality().windowSide) * mc2shadow::shadowQuality().windowSide * 4 + region * (8 + 4 + 8 + 4) +
