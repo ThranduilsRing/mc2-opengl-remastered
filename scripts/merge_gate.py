@@ -142,13 +142,14 @@ def preflight(head, install, window, steps, seed=Path("E:/mc2-installs/_lean-see
 
 class GateState:
     """Crash-safe stage journal with an OS lock (released even after a crash)."""
-    def __init__(self, path, head, exe, proof, steps, resume=False):
+    def __init__(self, path, head, exe, proof, steps, resume=False, read_only=False):
         self.path, self.head, self.exe = Path(path), head, Path(exe)
         self.mutex = threading.Lock()
         self.lock = None
         self.data = dict(pid=os.getpid(), head=head, artefact_dir=str(proof),
                          order=[n for n, _, _ in steps], stages={})
         self.resume = resume
+        self.read_only = read_only
         self.reused = []
         self.started_signatures = {}
         self.started_reports = {}
@@ -175,6 +176,9 @@ class GateState:
         try:
             if self.path.exists():
                 previous = json.loads(self.path.read_text(encoding="utf-8"))
+                if self.read_only:
+                    self.data = previous
+                    return self
                 self.data = {**previous, **self.data, "stages": previous.get("stages", {})}
             self.data["exe_sha"] = self.exe_sha()
             self.write()
@@ -1064,7 +1068,7 @@ def main(argv=None):
         state_path = ROOT / 'build64-ninja/gate-state.json'
         if not state_path.is_file():
             ap.error('--clean-output requires an existing gate journal')
-        with GateState(state_path, git('rev-parse', 'HEAD'), ROOT / 'build64-ninja/mc2.exe', args.proofs_dir, [], True) as state:
+        with GateState(state_path, git('rev-parse', 'HEAD'), ROOT / 'build64-ninja/mc2.exe', args.proofs_dir, [], True, read_only=True) as state:
             clean_failed_outputs(state, args.proofs_dir)
     if args.preflight:
         return preflight(git('rev-parse', 'HEAD'), args.install or Path('E:/mc2-installs/_lean-seed'),

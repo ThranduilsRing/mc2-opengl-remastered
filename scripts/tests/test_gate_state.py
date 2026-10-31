@@ -312,6 +312,16 @@ def test_explicit_cleanup_preserves_receipts_and_passing_evidence(journal, kind)
         assert path.read_bytes() == receipt
 
 
+def test_cleanup_lock_does_not_rewrite_journal_metadata(journal):
+    path, exe = journal
+    original = dict(head='old-head', order=['contracts'], stages={})
+    path.write_text(json.dumps(original))
+    receipt = path.read_bytes()
+    with gate.GateState(path, 'new-head', exe, path.parent, [], True, read_only=True) as state:
+        gate.clean_failed_outputs(state, path.parent)
+    assert path.read_bytes() == receipt
+
+
 @pytest.mark.parametrize('change', ['none', 'candidate', 'tampered'])
 def test_cached_deploy_requires_actual_candidate_identity(journal, monkeypatch, change):
     import deploy_payload
