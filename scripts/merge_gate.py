@@ -469,12 +469,19 @@ def farm_stage(command, overrides, runner=None):
     job = out.parent / (out.name + "-farm-job.json")
     job.write_text(json.dumps(dict(argv=remote, cwd="C:/mc2farm/harness", timeout=900, env=env)), encoding="utf-8")
     host = [sys.executable, "tools/farm/host.py"]
-    submitted = runner(host + ["submit", str(job), "--exe", str(ROOT / "build64-ninja/mc2.exe")], cwd=ROOT, env=os.environ.copy())
+    def local(reason):
+        print(f'[merge_gate] farm {reason}; repeating locally', flush=True)
+        return runner(command, cwd=ROOT, env=dict(os.environ, **overrides))
+
+    try:
+        submitted = runner(host + ["submit", str(job), "--exe", str(ROOT / "build64-ninja/mc2.exe")], cwd=ROOT, env=os.environ.copy())
+    except (OSError, subprocess.SubprocessError) as exc:
+        return local(f'submit unavailable: {exc}')
     if submitted.returncode:
-        return submitted
+        return local('submit failed')
     ids = [line.strip() for line in submitted.stdout.splitlines() if re.fullmatch(r"[0-9a-f]{32}", line.strip())]
     if len(ids) != 1:
-        raise RuntimeError("farm submit returned no unique job ID")
+        return local('submit returned no unique job ID')
     job_id = ids[0]
     waited = runner(host + ["wait", job_id, "--timeout", "2160", "--queue-timeout", "1200"], cwd=ROOT, env=os.environ.copy())
     if 'queue_timeout:' in waited.stdout:
@@ -482,7 +489,12 @@ def farm_stage(command, overrides, runner=None):
         return runner(command, cwd=ROOT, env=dict(os.environ, **overrides))
     if "job remains owned" in waited.stdout:
         return waited  # never delete the payload of a still-running farm job
-    fetched = runner(host + ["fetch", job_id, str(out)], cwd=ROOT, env=os.environ.copy())
+    try:
+        fetched = runner(host + ["fetch", job_id, str(out)], cwd=ROOT, env=os.environ.copy())
+    except (OSError, subprocess.SubprocessError) as exc:
+        return local(f'fetch unavailable: {exc}')
+    if fetched.returncode:
+        return local('fetch failed')
     return subprocess.CompletedProcess(command, waited.returncode or fetched.returncode, waited.stdout + fetched.stdout)
 
 
