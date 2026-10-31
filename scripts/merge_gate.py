@@ -21,6 +21,7 @@ import tempfile
 import hashlib
 import threading
 import re
+import math
 from concurrent.futures import ThreadPoolExecutor
 
 import console_child
@@ -72,12 +73,15 @@ def preflight(head, install, window, steps, seed=Path("E:/mc2-installs/_lean-see
             path = target / 'saved_bookmarks' / (bookmark + '.json')
             try:
                 doc = json.loads(path.read_text(encoding='utf-8'))
-                poses = {json.dumps([pose.get(k) for k in ('pos', 'rot', 'proj', 'alt')], sort_keys=True)
-                         for pose in doc.get('bookmarks', [])
-                         if all(k in pose for k in ('pos', 'rot', 'proj', 'alt'))}
+                poses = set()
+                for pose in doc.get('bookmarks', []):
+                    values = tuple(float(v) for v in (*pose['pos'], float(pose['rot']) % 360, pose['proj'], pose['alt']))
+                    if len(values) != 6 or not all(math.isfinite(v) for v in values):
+                        raise ValueError('invalid camera pose')
+                    poses.add(values)
                 if not doc.get('mission') or len(poses) < 2:
                     raise ValueError('requires mission and at least two distinct camera poses')
-            except (OSError, ValueError, TypeError) as exc:
+            except (OSError, ValueError, TypeError, KeyError) as exc:
                 source = ROOT / 'tests/visual/bookmarks' / path.name
                 errors.append(f"camera fixture {path}: {exc}; fix: New-Item -ItemType Directory -Force '{path.parent}'; Copy-Item -LiteralPath '{source}' -Destination '{path}'")
     for name, command, env in steps:
