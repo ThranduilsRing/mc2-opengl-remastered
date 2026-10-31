@@ -107,7 +107,13 @@ void mc2::VkSceneRenderer::renderListsStaticPropRegistryFlush (RenderSubmissions
 	// Render.GpuStaticProps block; runs regardless of tessellation/mech state.
 	{
 		ZoneScopedN("RenderLists.StaticPropRegistryFlush");
-
+        if (TracyIsConnected) {
+            static uint64_t calls = 0, unchanged = 0, previous = ~uint64_t(0);
+            const uint64_t generation = GpuStaticPropRegistry::getRegistryGeneration();
+            ++calls; unchanged += generation == previous; previous = generation;
+            if (calls % 256 == 0)
+                mc2::fmt::print_err("[DRAWSCREEN_REGISTRY] calls={} unchanged={} generation={}\n", calls, unchanged, generation);
+        }
 
 		{
 			GpuStaticPropRegistry::flush();
