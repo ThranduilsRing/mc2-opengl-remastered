@@ -51,7 +51,10 @@ inline bool objectSlotIdentity(const GameObjectData& v, int c, std::uint32_t slo
     case kTurret: return v.objectClass == TURRET;
     case kGate: return v.objectClass == GATE;
     case kArtillery: return v.objectClass == ARTILLERY;
-    case kCarnage: return v.objectClass == FIRE || v.objectClass == EXPLOSION;
+    // Carnage::init(bool, ObjectTypePtr) calls GameObject::init, which leaves
+    // GAMEOBJECT even for typed, active fire/explosion instances. The CARN tag
+    // and CarnageRecord discriminant identify this pool, not objectTypeNum==0.
+    case kCarnage: return v.objectClass == GAMEOBJECT || v.objectClass == FIRE || v.objectClass == EXPLOSION;
     case kMech: return v.objectClass == BATTLEMECH;
     case kVehicle: return v.objectClass == GROUNDVEHICLE;
     case kBolt: return v.objectClass == WEAPONBOLT;

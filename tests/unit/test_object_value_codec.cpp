@@ -14,6 +14,61 @@
 #include <sstream>
 #include <regex>
 
+namespace {
+template<class Record, class Data>
+void realObjectSlots(int c, const char* name) {
+    using namespace mc2::save;
+    for (const char* mission : {"mc2_10", "mc2_24"}) {
+        const auto path = std::filesystem::path(MC2_REPO_ROOT) / "tests/fixtures/saves/object-slots" /
+            (std::string(mission) + "-" + name + ".bin");
+        if (!std::filesystem::exists(path)) {
+            REQUIRE(c == mc2_saved_objects::kGate);
+            continue; // mc2_10 has no gate pool.
+        }
+        std::ifstream in(path, std::ios::binary);
+        REQUIRE(in.good());
+        while (in.peek() != std::char_traits<char>::eof()) {
+            std::uint32_t slot = 0, length = 0;
+            in.read(reinterpret_cast<char*>(&slot), 4);
+            in.read(reinterpret_cast<char*>(&length), 4);
+            REQUIRE(length < 65536);
+            Bytes bytes(length);
+            in.read(reinterpret_cast<char*>(bytes.data()), length);
+            REQUIRE(in.good());
+            Data data{};
+            Record record{data};
+            Archive a(bytes);
+            std::uint32_t tag = 0, version = 0;
+            a(tag, version, record);
+            const auto consumed = length - a.remaining();
+            const bool decoded = a.finish();
+            const auto& value = record.value;
+            INFO(std::string(mission) << " slot=" << slot << " class_tag=" << std::string(name)
+                << " declared_length=" << length << " decoded_length=" << consumed
+                << " objectClass=" << value.objectClass << " objectTypeNum=" << value.objectTypeNum
+                << " rule=" << (decoded ? "objectSlotIdentity" : a.error()));
+            REQUIRE(decoded);
+            CHECK(objectSlotClass(bytes) == c);
+            CHECK(encodeTaggedRecord(record, objectSlotTags[c]) == bytes);
+            CHECK(validObjectSlot(bytes, c, slot));
+        }
+    }
+}
+}
+
+#define REAL_OBJECT_SLOTS(Name, Record, Data, Class) \
+    TEST_CASE("ObjectSlot real saves " Name) { realObjectSlots<mc2::save::Record, Data>(mc2_saved_objects::Class, Name); }
+REAL_OBJECT_SLOTS("TERR", TerrainRecord, TerrainObjectData, kTerrain)
+REAL_OBJECT_SLOTS("BLDG", BuildingRecord, BuildingData, kBuilding)
+REAL_OBJECT_SLOTS("TURR", TurretRecord, TurretData, kTurret)
+REAL_OBJECT_SLOTS("GATE", GateRecord, GateData, kGate)
+REAL_OBJECT_SLOTS("ARTY", ArtilleryRecord, ArtilleryData, kArtillery)
+REAL_OBJECT_SLOTS("CARN", CarnageRecord, CarnageData, kCarnage)
+REAL_OBJECT_SLOTS("MECH", MechRecord, MechData, kMech)
+REAL_OBJECT_SLOTS("VEHI", VehicleRecord, GroundVehicleData, kVehicle)
+REAL_OBJECT_SLOTS("BOLT", WeaponBoltRecord, WeaponBoltData, kBolt)
+#undef REAL_OBJECT_SLOTS
+
 TEST_CASE("ObjectSlot tags validate class, handle, payload and required section") {
     using namespace mc2::save;
     using namespace mc2_saved_objects;
