@@ -5,6 +5,8 @@
     "proof": "E:/mc2-archive-2026-10/proofs/lane7/cxx23-a/golden.log"
   },
   "fixtures": [
+    {"file": "w86-mc2_03.ims", "source": "E:/mc2-archive-2026-10/proofs/merge86/gate/saveload-mc2_03/save1.ims", "bytes": 698457, "sha256": "97966f19cd2332bdfef732401a058fdf137f699c46c69ba0e30c8a88c1b568e1", "team_packet": 3373, "commander_packet": 6513, "verdict": "Packet B production preflight/load/value-cutover test"},
+    {"file": "w87-mc2_03.ims", "source": "E:/mc2-archive-2026-10/proofs/merge87/final-continuation-gate/saveload-mc2_03/save1.ims", "bytes": 698417, "sha256": "f216b877f95d016910ce28ea29d66c581a5d2d6d4cd9cb97f7892d8d391008c1", "team_packet": 3373, "commander_packet": 6513, "verdict": "Packet B production preflight/load/value-cutover test"},
     {"file": "omnitech-testgame.ims", "source": "A:/Games/mc2-opengl/MechCommanderOmnitech/data/savegame/testgame.ims", "bytes": 737671, "sha256": "e030ce007525315d84339cb70d45494ab7f43c101d9d0c0c8bc4b920450defbf", "verdict": "Mission::openSaveFile rejects stamp m00064 before teardown; incompatibleSave=true"},
     {"file": "after_mc2_01.fit", "bytes": 139049, "sha256": "5cee74902d8efd2b75d55c870a6c3f41423fb85360cae6242dfd37bcb6d295a7"},
     {"file": "after_mc2_02.fit", "bytes": 140202, "sha256": "cad3008b3f6ed20718d556c057bb7d159ef468962c6d6e3335ac6b424225cc69"},

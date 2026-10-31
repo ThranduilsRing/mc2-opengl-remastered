@@ -5,6 +5,7 @@
 #include "weaponfx.h"
 #include "heap.h"
 #include "team.h"
+#include "comndr.h"
 #include "mission_load_frame.h"
 #include "combat_clock_archive.h"
 #include "logisticsdialog.h"
@@ -60,6 +61,79 @@ TEST_CASE("save fixtures: shipped legacy mod saves refuse before teardown") {
         auto path = std::format("tests/fixtures/saves/after_mc2_{:02}.fit", index);
         REQUIRE(std::filesystem::is_regular_file(path));
         CHECK_FALSE(isCorrectVersionCampaignSave(path));
+    }
+}
+
+TEST_CASE("save fixtures: W86 W87 commander and team production value cutover") {
+    // These two archived files share the packet positions pinned in manifest.json.
+    // Keep the live static registries isolated even when a REQUIRE aborts the case.
+    struct Registries {
+        decltype(std::to_array(Team::teams)) teams = std::to_array(Team::teams);
+        decltype(std::to_array(Commander::commanders)) commanders = std::to_array(Commander::commanders);
+        Team* homeTeam = Team::home;
+        Commander* homeCommander = Commander::home;
+        long teamCount = Team::numTeams, commanderCount = Commander::numCommanders;
+        decltype(Team::relations) relations;
+        decltype(Team::noPain) noPain;
+        Registries() {
+            std::memcpy(relations, Team::relations, sizeof(relations));
+            std::memcpy(noPain, Team::noPain, sizeof(noPain));
+            std::fill(std::begin(Team::teams), std::end(Team::teams), nullptr);
+            std::fill(std::begin(Commander::commanders), std::end(Commander::commanders), nullptr);
+            Team::numTeams = Commander::numCommanders = 0;
+            Team::home = nullptr; Commander::home = nullptr;
+        }
+        void clear() {
+            for (auto*& commander : Commander::commanders) { delete commander; commander = nullptr; }
+            for (auto*& team : Team::teams) { delete team; team = nullptr; }
+            Team::numTeams = Commander::numCommanders = 0;
+            Team::home = nullptr; Commander::home = nullptr;
+        }
+        ~Registries() {
+            clear();
+            std::copy(teams.begin(), teams.end(), Team::teams);
+            std::copy(commanders.begin(), commanders.end(), Commander::commanders);
+            Team::home = homeTeam; Commander::home = homeCommander;
+            Team::numTeams = teamCount; Commander::numCommanders = commanderCount;
+            std::memcpy(Team::relations, relations, sizeof(relations));
+            std::memcpy(Team::noPain, noPain, sizeof(noPain));
+        }
+    } registries;
+    CombatRetirementSeam::Storage storage;
+    for (const char* fixture : {"w86-mc2_03.ims", "w87-mc2_03.ims"}) {
+        const auto path = std::string("tests/fixtures/saves/") + fixture;
+        REQUIRE_FALSE(CombatRetirementSeam::rejects(storage.owner, path.c_str()));
+        PacketFile legacy;
+        REQUIRE(legacy.open(path.c_str()) == NO_ERR);
+        CHECK(Team::Load(&legacy, 3373) == 3376);
+        CHECK(Commander::Load(&legacy, 6513) == 6516);
+        REQUIRE(Team::home != nullptr);
+        REQUIRE(Commander::home != nullptr);
+        CHECK(Team::numTeams == 2);
+        CHECK(Commander::numCommanders == 2);
+        // Exercise the production >120 roster path as well as every native field.
+        Team::home->rosterSize = 257;
+        for (long i = 0; i < 257; ++i) Team::home->roster[i] = i + 1;
+        const auto temporary = (std::filesystem::temp_directory_path() /
+            std::format("mc2-command-values-{}.pak", _getpid())).string();
+        PacketFile values;
+        REQUIRE(values.create(temporary.c_str()) == NO_ERR);
+        values.reserve(16);
+        const auto teamsEnd = Team::Save(&values, 0);
+        const auto end = Commander::Save(&values, teamsEnd);
+        values.close();
+        registries.clear();
+        REQUIRE(values.open(temporary.c_str()) == NO_ERR);
+        CHECK(Team::Load(&values, 0, true) == teamsEnd);
+        CHECK(Commander::Load(&values, teamsEnd, true) == end);
+        REQUIRE(Team::home != nullptr);
+        CHECK(Team::home->rosterSize == 257);
+        for (long i = 0; i < 257; ++i) CHECK(Team::home->roster[i] == i + 1);
+        REQUIRE(Commander::home != nullptr);
+        CHECK(Commander::home->getTeam() == Team::home);
+        values.close();
+        std::filesystem::remove(temporary);
+        registries.clear();
     }
 }
 

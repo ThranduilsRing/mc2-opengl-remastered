@@ -4,14 +4,13 @@
 #include "save_sections.h"
 
 struct _MoverGroupData {
-    long id;
-    long numMovers;
+    std::int32_t id;
+    std::int32_t numMovers;
     std::int32_t moverWIDs[MAX_MOVERGROUP_COUNT];
     std::int32_t pointWID;
     bool disbandOnNoPoint;
 
     void serialize(mc2::save::Archive& a) {
-        static_assert(sizeof(long) == 4);
         a(id, numMovers);
         for (auto& wid : moverWIDs) a(wid);
         a(pointWID, disbandOnNoPoint);
@@ -21,8 +20,8 @@ struct _MoverGroupData {
 using MoverGroupData = _MoverGroupData;
 
 struct _CommanderData {
-    long id;
-    long teamId;
+    std::int32_t id;
+    std::int32_t teamId;
     MoverGroupData groups[MAX_MOVERGROUPS];
 
     void serialize(mc2::save::Archive& a) {
@@ -33,8 +32,8 @@ struct _CommanderData {
 using CommanderData = _CommanderData;
 
 struct _StaticCommanderData {
-    long numCommanders;
-    long homeCommanderId;
+    std::int32_t numCommanders;
+    std::int32_t homeCommanderId;
     void serialize(mc2::save::Archive& a) { a(numCommanders, homeCommanderId); }
 };
 using StaticCommanderData = _StaticCommanderData;
