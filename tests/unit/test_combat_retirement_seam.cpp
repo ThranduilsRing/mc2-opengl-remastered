@@ -9,7 +9,6 @@
 #include "mission_load_frame.h"
 #include "combat_clock_archive.h"
 #include "watch_list_save_data.h"
-#include "object_slot_codec.h"
 #include "logisticsdialog.h"
 #include <bit>
 #include <array>
@@ -133,34 +132,12 @@ TEST_CASE("save fixtures: W86 W87 commander and team production value cutover") 
                 std::memcpy(watches.indices.data(), bytes.data(), bytes.size());
                 bytes = mc2::save::encodeTaggedRecord(watches, mc2::save::watchListTag);
             }
-            if (packet > header && packet < watch) {
-                auto encode = [&]<class Record, class Data>(int c) {
-                    Data value{};
-                    REQUIRE(bytes.size() == sizeof(value));
-                    std::memcpy(&value, bytes.data(), sizeof(value));
-                    bytes = mc2::save::encodeTaggedRecord(Record{value}, mc2::save::objectSlotTags[c]);
-                    REQUIRE_FALSE(bytes.empty());
-                    CHECK(mc2::save::validObjectSlot(bytes, c, packet - header - 1));
-                };
-                using namespace mc2::save;
-                using namespace mc2_saved_objects;
-                if (size == sizeof(TerrainObjectData)) encode.operator()<TerrainRecord, TerrainObjectData>(kTerrain);
-                else if (size == sizeof(BuildingData)) encode.operator()<BuildingRecord, BuildingData>(kBuilding);
-                else if (size == sizeof(TurretData)) encode.operator()<TurretRecord, TurretData>(kTurret);
-                else if (size == sizeof(GateData)) encode.operator()<GateRecord, GateData>(kGate);
-                else if (size == sizeof(ArtilleryData)) encode.operator()<ArtilleryRecord, ArtilleryData>(kArtillery);
-                else if (size == sizeof(CarnageData)) encode.operator()<CarnageRecord, CarnageData>(kCarnage);
-                else if (size == sizeof(MechData)) encode.operator()<MechRecord, MechData>(kMech);
-                else if (size == sizeof(GroundVehicleData)) encode.operator()<VehicleRecord, GroundVehicleData>(kVehicle);
-                else if (size == sizeof(WeaponBoltData)) encode.operator()<WeaponBoltRecord, WeaponBoltData>(kBolt);
-                else FAIL("unknown archived object record");
-            }
             tagged.writePacket(packet, bytes.data(), static_cast<unsigned int>(bytes.size()), STORAGE_TYPE_ZLIB);
         }
         tagged.close();
         REQUIRE(tagged.open(taggedPath.c_str()) == NO_ERR);
         long found = -1;
-        REQUIRE_FALSE(GameObjectManager::checkSavedObjects(&tagged, &found, true, true, true, true));
+        REQUIRE_FALSE(GameObjectManager::checkSavedObjects(&tagged, &found, true, true, true));
         CHECK(found == header);
         // The native-size probe must refuse a tagged run without its section opt-in.
         CHECK(GameObjectManager::checkSavedObjects(&tagged, nullptr, true).has_value());
@@ -509,21 +486,18 @@ TEST_CASE("CombatRetirementProduction/native loader preserves absolute deadlines
     resave.close();
     REQUIRE(resave.open(resavePath.c_str()) == NO_ERR);
     for (int i = 0; i < static_cast<int>(deadlines.size()); ++i) {
-        resave.seekPacket(6 + i);
-        mc2::save::Bytes bytes(resave.getPacketSize());
-        REQUIRE(resave.readPacket(6 + i, bytes.data()) == bytes.size());
-        const auto restored = mc2::save::decodeWeaponBoltRecord(bytes);
-        REQUIRE(restored);
-        CHECK(restored->retireDeadlineTick == deadlines[i].tick);
-        CHECK(restored->retireDeadlineState == deadlines[i].savedState());
+        WeaponBoltData restored{};
+        REQUIRE(resave.readPacket(6 + i, reinterpret_cast<MemoryPtr>(&restored)) == sizeof(restored));
+        CHECK(restored.retireDeadlineTick == deadlines[i].tick);
+        CHECK(restored.retireDeadlineState == deadlines[i].savedState());
     }
-    REQUIRE_FALSE(GameObjectManager::checkSavedObjects(&resave, nullptr, true, true, true, true));
+    REQUIRE_FALSE(GameObjectManager::checkSavedObjects(&resave, nullptr, true, true, true));
     objects.objTypeManager = nullptr;
     objects.destroy();
     objects.objTypeManager = world.ownedTypes;
     owner.resetCombatClock();
     owner.restoreCombatClock(*mc2::save::readSavedCombatClock(resave, true));
-    REQUIRE(objects.Load(&resave, 4, true, true, true) == 15);
+    REQUIRE(objects.Load(&resave, 4, true, true) == 15);
     CHECK(owner.getCombatClock().ticks == continued.ticks);
     CHECK(std::bit_cast<std::uint64_t>(owner.getCombatClock().frac) == std::bit_cast<std::uint64_t>(continued.frac));
     for (int i = 0; i < static_cast<int>(deadlines.size()); ++i) {

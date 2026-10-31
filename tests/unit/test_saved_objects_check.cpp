@@ -65,27 +65,6 @@ TEST_CASE("saved objects: a sound run passes") {
 	CHECK_FALSE(check(img).has_value());
 }
 
-TEST_CASE("saved objects: tagged classes ignore native sizes and enforce counts") {
-    auto img = makeSave({kTerrain, kMech, kBolt});
-    // Even a length that aliases a forbidden native base record is a tag.
-    for (uint32_t i = 1; i <= 3; ++i)
-        img.packets[img.headerIndex + 1 + i] = sizes().pureObject;
-    auto sizeAt = [&](uint32_t p) { return img.packets[p]; };
-    auto classAt = [](uint32_t, uint32_t slot) -> std::optional<int> {
-        constexpr int classes[]{kTerrain, kMech, kBolt};
-        return classes[slot - 1];
-    };
-    CHECK_FALSE(checkRun(img.counts, sizes(), img.headerIndex,
-        static_cast<uint32_t>(img.packets.size()), sizeAt, false, classAt));
-    ++img.counts.byClass[kMech];
-    --img.counts.byClass[kBolt];
-    CHECK(checkRun(img.counts, sizes(), img.headerIndex,
-        static_cast<uint32_t>(img.packets.size()), sizeAt, false, classAt) == "object_count_mismatch");
-    auto badClass = [](uint32_t, uint32_t) -> std::optional<int> { return std::nullopt; };
-    CHECK(checkRun(img.counts, sizes(), img.headerIndex,
-        static_cast<uint32_t>(img.packets.size()), sizeAt, false, badClass) == "invalid_object_slot");
-}
-
 TEST_CASE("saved objects: an older build's record size is refused, not read") {
 	SaveImage img = makeSave({ kBuilding, kTurret, kTurret, kMech });
 	// The turret record grew between builds: both turret packets now have a size no class owns.

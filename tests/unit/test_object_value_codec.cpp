@@ -7,64 +7,11 @@
 #include "building_value_codec.h"
 #include "turret_value_codec.h"
 #include "mech_value_codec.h"
-#include "object_slot_codec.h"
 #include <cctype>
 #include <filesystem>
 #include <fstream>
 #include <sstream>
 #include <regex>
-
-TEST_CASE("ObjectSlot tags validate class, handle, payload and required section") {
-    using namespace mc2::save;
-    using namespace mc2_saved_objects;
-    auto check = [&]<class Record, class Data>(int c, ObjectClass objectClass) {
-        Data data{};
-        data.handle = 1;
-        data.objectClass = objectClass;
-        data.objectTypeNum = 1;
-        const auto bytes = encodeTaggedRecord(Record{data}, objectSlotTags[c]);
-        REQUIRE_FALSE(bytes.empty());
-        CHECK(objectSlotClass(bytes) == c);
-        CHECK(validObjectSlot(bytes, c, 1));
-        CHECK_FALSE(validObjectSlot(bytes, c, 0));
-        CHECK_FALSE(validObjectSlot(bytes, c, 2));
-        CHECK_FALSE(validObjectSlot(bytes, (c + 1) % kClassCount, 1));
-        CHECK_FALSE(validObjectSlot(std::span(bytes).first(bytes.size() - 1), c, 1));
-        auto bad = bytes;
-        bad[4] = 2;
-        CHECK_FALSE(objectSlotClass(bad));
-        bad = bytes;
-        bad.push_back(0);
-        CHECK_FALSE(validObjectSlot(bad, c, 1));
-        data.objectClass = ELEMENTAL;
-        const auto wrongClass = encodeTaggedRecord(Record{data}, objectSlotTags[c]);
-        CHECK_FALSE(validObjectSlot(wrongClass, c, 1));
-        data.objectTypeNum = 0;
-        data.objectClass = GAMEOBJECT;
-        const auto unused = encodeTaggedRecord(Record{data}, objectSlotTags[c]);
-        CHECK(validObjectSlot(unused, c, 1));
-    };
-    check.operator()<TerrainRecord, TerrainObjectData>(kTerrain, TERRAINOBJECT);
-    check.operator()<BuildingRecord, BuildingData>(kBuilding, BUILDING);
-    check.operator()<TurretRecord, TurretData>(kTurret, TURRET);
-    check.operator()<GateRecord, GateData>(kGate, GATE);
-    check.operator()<ArtilleryRecord, ArtilleryData>(kArtillery, ARTILLERY);
-    check.operator()<CarnageRecord, CarnageData>(kCarnage, FIRE);
-    check.operator()<MechRecord, MechData>(kMech, BATTLEMECH);
-    check.operator()<VehicleRecord, GroundVehicleData>(kVehicle, GROUNDVEHICLE);
-    check.operator()<WeaponBoltRecord, WeaponBoltData>(kBolt, WEAPONBOLT);
-    SectionContainer sections;
-    sections.add(tagObjectSlots, 1, true, {});
-    Bytes bytes;
-    REQUIRE(encodeSections(sections, bytes));
-    SectionContainer decoded;
-    REQUIRE(decodeSections(bytes, decoded));
-    REQUIRE(decoded.find(tagObjectSlots));
-    CHECK(decoded.find(tagObjectSlots)->flags == sectionRequired);
-    // An older build has no OBJS entry: pin the wire's mandatory flag, which
-    // routes unknown tags to unknown_required_section before teardown.
-    CHECK(bytes[32] == sectionRequired);
-}
 
 namespace {
 std::string compactSource(const char* file) {
