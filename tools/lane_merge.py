@@ -8,7 +8,7 @@ the baselines that tightened. Doing it by hand risks sweeping another lane's dir
 staged files into the merge commit.
 
 Usage:
-  py -3 tools/lane_merge.py --precheck <tip>   virtual nifty merge: ratchets, Python suites, callers and mc2 link
+  py -3 tools/lane_merge.py --precheck <tip>   virtual nifty merge: ratchets, Python suites, callers and game/tool links
   py -3 tools/lane_merge.py <sha-or-branch> [--message "..."] [--dry-run]
   py -3 tools/lane_merge.py --batch A B C [--dry-run]   check each tip, tighten/regenerate once after the batch,
                                                         the build + doctest verify (step e) once at the end
@@ -800,15 +800,17 @@ def precheck(root: str, tip: str) -> int:
                 if r.returncode not in ((0, 3) if label == "tools_tests" else (0,)):
                     failed.append(label + ":" + failure_summary(r.stdout).replace("\n", " "))
             build_root = root if tree == lane_tree and not git_out(root, "status", "--porcelain", "--untracked-files=no") else snapshot
-            build_steps = [] if build_root == root else [("configure", py + ["scripts/configure_ninja.py", "--build-dir", "build64-ninja"])]
+            # Refresh warm trees too: older dev configurations omitted the opt-in FX tools.
+            build_steps = [("configure", py + ["scripts/configure_ninja.py", "--build-dir", "build64-ninja"])]
             build_steps += [("link-mc2", py + ["scripts/ninja_build.py", "mc2", "-j", host_jobs()])]
+            build_steps += [("link-tools", py + ["scripts/ninja_build.py", "mc2fx", "mc2fx_preview", "-j", host_jobs()])]
             for label, command in build_steps:
                 r = run(build_root, command, env=verify_env(build_root))
                 if r.returncode:
                     failed.append(label + ":" + failure_summary(r.stdout).replace("\n", " "))
     except (Stop, OSError) as exc:
         failed.append(str(exc).replace("\n", " "))
-    print("PRECHECK " + ("FAIL " + "; ".join(failed) if failed else "PASS conflicts=0 ratchets=5 link=mc2 callers=OK python=OK"))
+    print("PRECHECK " + ("FAIL " + "; ".join(failed) if failed else "PASS conflicts=0 ratchets=5 link=mc2,mc2fx,mc2fx_preview callers=OK python=OK"))
     return int(bool(failed))
 
 
@@ -849,7 +851,7 @@ def pre_gate(root: str, exe: str | None = None) -> int:
 def build_parser() -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("ref", nargs="?", help="lane tip: sha or branch")
-    ap.add_argument("--precheck", metavar="TIP", help="offline virtual nifty merge: ratchets, callers, Python suites, mc2 link")
+    ap.add_argument("--precheck", metavar="TIP", help="offline virtual nifty merge: ratchets, callers, Python suites, game/tool links")
     ap.add_argument("--pre-gate", action="store_true",
                     help="at the merged HEAD run regenerate-all (dry), check-background-launch, gate_gen --check, cxx17 and a no-game headless "
                          "run_smoke row; all run, one PRE-GATE PASS/FAIL line; --root picks the tree")
