@@ -834,6 +834,12 @@ def test_every_generated_file_has_a_regenerator():
     assert lm.GENERATED == set().union(*(files for files, _, _ in lm.GENERATED_REGENERATORS))
 
 
+def test_dup_lines_is_checked_without_repinning():
+    lm = _load_module()
+    _, _, args = next(r for r in lm.RATCHETS if r[0] == 'dup_lines')
+    assert '--check' in args and '--tighten' not in args
+
+
 @pytest.mark.parametrize("path,script,args", [
     ("Gates/gate_table.json", "tools/gate_gen.py", ["--sync-verified"]),
     ("tests/callers.json", "tools/callers.py", []),

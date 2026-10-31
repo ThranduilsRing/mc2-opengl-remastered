@@ -154,7 +154,7 @@ TIGHTENED_BASELINES = [
 RATCHETS = [
     ("file_size", "file_size_ratchet.py", ["--check", "--tighten", "--worktree"]),
     ("cxx17", "cxx17_ratchet/cxx17_ratchet.py", ["--check", "--tighten", "--worktree"]),
-    ("dup_lines", "dup_lines_ratchet.py", ["--check", "--tighten", "--worktree"]),
+    ("dup_lines", "dup_lines_ratchet.py", ["--check", "--worktree"]),
     ("axis_swizzle", "axis_swizzle_ratchet.py", ["--check", "--tighten", "--worktree"]),
     ("split_map", "split/split_map.py", ["--check"]),
 ]

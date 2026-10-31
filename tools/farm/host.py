@@ -308,6 +308,7 @@ def main():
                 remote(args, CLEAN_PS % {'r': ROOT, 'id': args.id})
                 print('queue_timeout: unclaimed job cancelled; safe to repeat locally')
                 raise SystemExit(1)
+            args.queue_timeout = None  # already claimed or completed; never cancel a running job
         time.sleep(3)
     raise SystemExit('wait timed out; job remains owned by the desktop runner')
 

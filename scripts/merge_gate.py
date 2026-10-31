@@ -71,7 +71,7 @@ def preflight(head, install, window, steps, seed=Path("E:/mc2-installs/_lean-see
                     raise ValueError('requires mission and at least two camera poses')
             except (OSError, ValueError, TypeError) as exc:
                 source = ROOT / 'tests/visual/bookmarks' / path.name
-                errors.append(f"camera fixture {path}: {exc}; fix: Copy-Item -LiteralPath '{source}' -Destination '{path}'")
+                errors.append(f"camera fixture {path}: {exc}; fix: New-Item -ItemType Directory -Force '{path.parent}'; Copy-Item -LiteralPath '{source}' -Destination '{path}'")
     for name, command, env in steps:
         if not name.startswith('saveload-') or env.get('MC2_GATE_SKIP_REASON'):
             continue
@@ -329,6 +329,8 @@ def affected_plan(steps, paths, full=False):
         if name == "validation" and (game or full) and "tier1" in names:
             env["MC2_GATE_REUSE_STAGE"] = "tier1,determinism-mc2_10" if batch_tier else "tier1"
             reason = "tier1 and shared determinism smokes grade Vulkan validation errors/layer activation"
+        if name == 'kit-visibility' and not full:
+            reason = 'nightly --full coverage; window reviewer opens day/night montage'
         if name == "tier1":
             env["MC2_VULKAN_VALIDATION"] = "1"
             if batch_tier:

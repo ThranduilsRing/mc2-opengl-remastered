@@ -48,6 +48,16 @@ def test_classic_docs_do_not_schedule_runtime_proofs():
     assert not any(n.endswith('-classic') for n, _, _ in steps)
 
 
+def test_kit_visibility_is_nightly_but_catching_stages_remain():
+    for full in (False, True):
+        steps = gate.affected_plan(gate.plan(6), ['code/mission_update.cpp'], full=full)
+        env = next(e for n, _, e in steps if n == 'kit-visibility')
+        assert bool(env.get('MC2_GATE_SKIP_REASON')) == (not full)
+        for name in ('tier1', 'mods', 'determinism-mc2_03', 'determinism-mc2_10', 'determinism-mc2_24', 'saveload-mc2_01', 'saveload-mc2_10'):
+            assert not next(e for n, _, e in steps if n == name).get('MC2_GATE_SKIP_REASON')
+        assert next(e for n, _, e in steps if n == 'tier1')['MC2_VULKAN_VALIDATION'] == '1'
+
+
 @pytest.mark.parametrize('failure', [None, 'submit', 'wait', 'fetch', 'bad-id'])
 def test_farm_stage_preserves_checks_and_fetches_failures(tmp_path, failure):
     out = tmp_path / 'determinism-mc2_10'

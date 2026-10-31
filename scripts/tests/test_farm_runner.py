@@ -31,6 +31,19 @@ def test_host_queue_and_pending_timeout(monkeypatch, capsys):
     assert '.running' not in cancellation
     assert 'queue_timeout:' in capsys.readouterr().out
 
+
+def test_cancel_racing_queue_claim_does_not_stop_runner(tmp_path, monkeypatch):
+    from tools.farm import runner
+    pending = tmp_path / 'jobs/pending.json'
+    pending.parent.mkdir()
+    pending.write_text('{}')
+    def cancelled(path, target):
+        path.unlink()
+        raise FileNotFoundError(path)
+    monkeypatch.setattr(Path, 'replace', cancelled)
+    monkeypatch.setattr(runner, 'run_job', lambda *a: pytest.fail('cancelled job launched'))
+    runner.poll_once(tmp_path)
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from scripts import console_child
 from tools.farm.runner import atomic_json, poll_once
