@@ -7,6 +7,8 @@
 #include "mc2fmt.h"
 #include "Gates/render_options.h"
 
+extern bool useFog;
+
 
 
 //---------------------------------------------------------------------------
@@ -21,7 +23,7 @@ mc2::tgl::ViewUniforms Camera::getViewUniforms()
 	// The CPU fallback consumes only ambient and infinite lights. Preserve their
 	// order and copy their values before any leaf draws; never retain TG_Light*.
 	for (int32_t i = 0; i < numActiveLights && i < MAX_LIGHTS_IN_WORLD; ++i) {
-		const auto* light = activeLights[i];
+		auto* light = activeLights[i];
 		if (light && light->active && (light->lightType == TG_LIGHT_AMBIENT || light->lightType == TG_LIGHT_INFINITE))
 			view.lights.push_back({light->lightType, light->GetaRGB(), light->lightToWorld});
 	}
