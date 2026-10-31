@@ -36,6 +36,8 @@ ROOT = 'C:/mc2farm'
 STAGE_PS = r"""
 $ErrorActionPreference='Stop'
 $i='%(r)s/install'; $w='%(r)s/work/%(id)s'; $s='%(r)s/stage/%(id)s'
+if (-not [IO.Path]::GetFullPath($w).StartsWith([IO.Path]::GetFullPath('%(r)s/work') + '\', [StringComparison]::OrdinalIgnoreCase)) { throw 'unsafe work path' }
+if (-not [IO.Path]::GetFullPath($s).StartsWith([IO.Path]::GetFullPath('%(r)s/stage') + '\', [StringComparison]::OrdinalIgnoreCase)) { throw 'unsafe stage path' }
 Expand-Archive -LiteralPath "$s/payload.zip" -DestinationPath "$s/delta" -Force
 New-Item -ItemType Directory -Force $w | Out-Null
 foreach ($e in Get-ChildItem $i -Force) {
@@ -52,19 +54,22 @@ if (Test-Path "$s/delta") {
   Copy-Item "$s/delta/*" $w -Recurse -Force
 }
 Move-Item "$s/mc2.exe" "$w/mc2.exe" -Force
-Remove-Item $s -Recurse -Force
+Remove-Item -LiteralPath $s -Recurse -Force
 """
 CLEAN_PS = r"""
 $ErrorActionPreference='SilentlyContinue'
 if (-not (Test-Path '%(r)s/results/%(id)s/result.json')) { exit 0 }  # job not done: leave its tree alone
 $w='%(r)s/work/%(id)s'
+$s='%(r)s/stage/%(id)s'
+if (-not [IO.Path]::GetFullPath($w).StartsWith([IO.Path]::GetFullPath('%(r)s/work') + '\', [StringComparison]::OrdinalIgnoreCase)) { throw 'unsafe work path' }
+if (-not [IO.Path]::GetFullPath($s).StartsWith([IO.Path]::GetFullPath('%(r)s/stage') + '\', [StringComparison]::OrdinalIgnoreCase)) { throw 'unsafe stage path' }
 if (Test-Path $w) {
   foreach ($e in Get-ChildItem $w -Force) {
-    if ($e.PSIsContainer -and ($e.Attributes -band [IO.FileAttributes]::ReparsePoint)) { cmd /c rmdir "$($e.FullName)" | Out-Null }
+    if ($e.PSIsContainer -and ($e.Attributes -band [IO.FileAttributes]::ReparsePoint)) { [IO.Directory]::Delete($e.FullName) }
   }
-  Remove-Item $w -Recurse -Force
+  Remove-Item -LiteralPath $w -Recurse -Force
 }
-Remove-Item '%(r)s/stage/%(id)s' -Recurse -Force -ErrorAction SilentlyContinue
+Remove-Item -LiteralPath $s -Recurse -Force -ErrorAction SilentlyContinue
 exit 0
 """
 

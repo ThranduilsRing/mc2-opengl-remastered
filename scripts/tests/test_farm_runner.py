@@ -183,6 +183,8 @@ def test_exe_payload_matches_deploy_and_isolated_from_seed(tmp_path, monkeypatch
         root = tmp_path / 'farm'
         install = root / 'install'
         (install / 'shaders/include').mkdir(parents=True)
+        (install / 'data').mkdir()
+        (install / 'data/seed.txt').write_text('keep shared data')
         seed = install / entries[0][0]
         seed.write_bytes(b'seed shader')
         stage = root / 'stage/sample'
@@ -197,6 +199,13 @@ def test_exe_payload_matches_deploy_and_isolated_from_seed(tmp_path, monkeypatch
         assert not report['stale'] and not report['missing']
         (work / entries[0][0]).write_bytes(b'job shader')
         assert seed.read_bytes() == b'seed shader'
+        (root / 'results/sample').mkdir(parents=True)
+        (root / 'results/sample/result.json').write_text('{}')
+        subprocess.run(['powershell', '-NoProfile', '-Command',
+                        host.CLEAN_PS % {'r': root.as_posix(), 'id': 'sample'}],
+                       check=True, **console_child.child_kwargs())
+        assert not work.exists()
+        assert (install / 'data/seed.txt').read_text() == 'keep shared data'
 
 
 
