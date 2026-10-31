@@ -1643,16 +1643,13 @@ void Building::setParentId (DWORD pId)
 
 //***************************************************************************
 #include "save_struct_zero.h"
-#include "building_value_codec.h"
 void Building::Save (PacketFilePtr file, long packetNum)
 {
 	MC2_SAVE_STRUCT(BuildingData, data);
 	CopyTo(&data);
 
 	//PacketNum incremented in ObjectManager!!
-	auto bytes = mc2::save::encodeTaggedRecord(mc2::save::BuildingRecord{data}, mc2::save::buildingTag);
-	if (bytes.empty()) Fatal(0, "Invalid building ObjectSlot");
-	file->writePacket(packetNum, bytes.data(), static_cast<unsigned int>(bytes.size()), STORAGE_TYPE_ZLIB);
+	file->writePacket(packetNum,reinterpret_cast<MemoryPtr>(&data),sizeof(BuildingData),STORAGE_TYPE_ZLIB);
 }
 
 //***************************************************************************
