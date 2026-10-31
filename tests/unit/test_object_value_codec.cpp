@@ -6,6 +6,7 @@
 #include "vehicle_value_codec.h"
 #include "building_value_codec.h"
 #include "turret_value_codec.h"
+#include "mech_value_codec.h"
 #include <cctype>
 #include <filesystem>
 #include <fstream>
@@ -23,7 +24,27 @@ std::string compactSource(const char* file) {
 }
 }
 
+#define APPEARANCE_MEMBERS &T::frameNum, &T::mechFrameRate, &T::leftArmOff, \
+    &T::rightArmOff, &T::fallen, &T::forceStop, &T::atTransitionToNextGesture, \
+    &T::inReverse, &T::inJump, &T::jumpSetup, &T::jumpFXSetup, &T::jumpAirborne, \
+    &T::oncePerFrame, &T::lockRotation, &T::velocity, &T::currentStateGoal, \
+    &T::currentGestureId, &T::transitionState, &T::oldStateGoal, &T::hitGestureId, \
+    &T::currentFrame, &T::currentLOD, &T::nodeUsed, &T::nodeRecycle, \
+    &T::jumpDestination, &T::jumpVelocity, &T::baseRootNodeHeight, &T::isSmoking, \
+    &T::isWaking, &T::isDusting, &T::fallDust, &T::isHelicopter
+
 namespace save_probe {
+template<> inline void pattern(MechAppearanceData& v, unsigned char seed) {
+    using T = MechAppearanceData;
+    v = patterned<T>(APPEARANCE_MEMBERS);
+}
+template<> inline bool equal(const MechAppearanceData& a, const MechAppearanceData& b) {
+    using T = MechAppearanceData;
+    const auto same = [&]<class... M>(M... members) {
+        return (save_probe::equal(a.*members, b.*members) && ...);
+    };
+    return same(APPEARANCE_MEMBERS);
+}
 template<> inline void pattern(CriticalSpace& v, unsigned char seed) {
     pattern(v.inventoryID, seed); pattern(v.hit, seed);
 }
@@ -295,6 +316,77 @@ TEST_CASE("save fields: BuildingData inherited census and legacy values") {
     &T::mineSweeper, &T::sweepTime, &T::mineLayer, &T::aerospaceSpotter, &T::cellColToMine, \
     &T::cellRowToMine, &T::notMineYet, &T::battleRating, &T::descID, &T::timeInCurrent, \
     &T::dVel, &T::dRot, &T::dAcc, &T::dRVel, &T::dRacc, &T::dTime, &T::sensorOK, &T::isVehiclePilot
+
+#define MECH_MEMBERS &T::chassisClass, &T::chassisBR, &T::variantID, &T::variantName, \
+    &T::legStatus, &T::torsoStatus, &T::actuator, &T::gyro, &T::sensorOK, \
+    &T::numJumpJets, &T::lastJumpTime, &T::inJump, &T::jumpGoal, &T::centerTorsoBlowTime, \
+    &T::hitFromBehindThisFrame, &T::hitFromFrontThisFrame, &T::leftArmBlownThisFrame, \
+    &T::rightArmBlownThisFrame, &T::torsoRotation, &T::rightArmRotation, &T::leftArmRotation, \
+    &T::fallen, &T::mechRemoved, &T::pivotTurnRate, &T::playedJumpSFX, &T::playedCriticalHit, \
+    &T::maxWeaponDamage, &T::longName, &T::pilotNum, &T::captureable, &T::notMineYet, \
+    &T::descID, &T::sentCrippledMsg, &T::rotateValues, &T::ItemLocationToInvLocation, \
+    &T::damageAfterDisabled, &T::numArmorComponents, &T::cBills, &T::apData
+
+TEST_CASE("save fields: MechData inherited census and legacy values") {
+    using T = MechData;
+    auto sample = save_probe::patterned<T>(BASE_MEMBERS, MOVER_MEMBERS,
+        &MoverData::longName, MECH_MEMBERS);
+    sample.objectClass = BATTLEMECH; sample.windowsVisible = 0;
+    const auto codec = [](auto& a, auto& v) {
+        mc2::save::MechRecord record{v}; record.serialize(a);
+        if (a.reading()) v = record.value;
+    };
+    REQUIRE(save_probe::roundtrip(sample, codec, BASE_MEMBERS, MOVER_MEMBERS,
+        &MoverData::longName, MECH_MEMBERS));
+    CHECK_FALSE(save_probe::roundtrip(sample, [](auto& a, auto& v) {
+        mc2::save::MechRecord record{v}; record.serialize(a);
+        if (a.reading()) { v = record.value; v.apData.nodeRecycle[9] = 0; }
+    }, BASE_MEMBERS, MOVER_MEMBERS, &MoverData::longName, MECH_MEMBERS));
+    CHECK_FALSE(save_probe::roundtrip(sample, [](auto& a, auto& v) {
+        mc2::save::MechRecord record{v}; record.serialize(a);
+        if (a.reading()) { v = record.value; v.MoverData::longName[0] = 0; }
+    }, BASE_MEMBERS, MOVER_MEMBERS, &MoverData::longName, MECH_MEMBERS));
+    SAVE_FIELD_SHAPE(sample.apData, frameNum, mechFrameRate, leftArmOff, rightArmOff,
+        fallen, forceStop, atTransitionToNextGesture, inReverse, inJump, jumpSetup,
+        jumpFXSetup, jumpAirborne, oncePerFrame, lockRotation, inDebugMoveMode,
+        singleStepMode, nextStep, prevStep, velocity, status, sensorLevel,
+        currentStateGoal, currentGestureId, transitionState, oldStateGoal,
+        hitGestureId, currentFrame, currentLOD, nodeUsed, nodeRecycle,
+        jumpDestination, jumpVelocity, baseRootNodeHeight, isSmoking, isWaking,
+        isDusting, fallDust, isHelicopter);
+    const auto bytes = mc2::save::encodeTaggedRecord(mc2::save::MechRecord{sample}, mc2::save::mechTag);
+    mc2::save::MechRecord decoded;
+    REQUIRE(mc2::save::decodeTaggedRecord(bytes, decoded, mc2::save::mechTag));
+    CHECK(save_probe::equal(sample.apData, decoded.value.apData));
+    CHECK(save_probe::equal(sample.MoverData::longName, decoded.value.MoverData::longName));
+    CHECK(save_probe::equal(sample.longName, decoded.value.longName));
+    CHECK_FALSE(mc2::save::decodeTaggedRecord(std::span(bytes).first(bytes.size()-1), decoded, mc2::save::mechTag));
+    CHECK_FALSE(mc2::save::decodeTaggedRecord(bytes, decoded, mc2::save::vehicleTag));
+    sample.damageThisFrame = 123;
+    auto& ap = sample.apData;
+    ap.inDebugMoveMode = ap.singleStepMode = ap.nextStep = ap.prevStep = true;
+    ap.status = ap.sensorLevel = 99;
+    CHECK(mc2::save::encodeTaggedRecord(mc2::save::MechRecord{sample}, mc2::save::mechTag) == bytes);
+    decoded.value = sample;
+    REQUIRE(mc2::save::decodeTaggedRecord(bytes, decoded, mc2::save::mechTag));
+    CHECK(decoded.value.damageThisFrame == 0);
+    const auto& restored = decoded.value.apData;
+    CHECK_FALSE(restored.inDebugMoveMode); CHECK_FALSE(restored.singleStepMode);
+    CHECK_FALSE(restored.nextStep); CHECK_FALSE(restored.prevStep);
+    CHECK(restored.status == 0); CHECK(restored.sensorLevel == 0);
+    const auto source = compactSource("code/mech.h");
+    CHECK(source.find("struct_MechData:publicMoverData{charchassisClass;int32_tchassisBR;"
+        "int32_tvariantID;charvariantName[64];charlegStatus;chartorsoStatus;"
+        "unsignedcharactuator[NUM_ACTUATORS];unsignedchargyro;boolsensorOK;unsignedcharnumJumpJets;"
+        "floatlastJumpTime;boolinJump;glm::vec3jumpGoal;floatcenterTorsoBlowTime;"
+        "boolhitFromBehindThisFrame;boolhitFromFrontThisFrame;boolleftArmBlownThisFrame;"
+        "boolrightArmBlownThisFrame;floattorsoRotation;floatrightArmRotation;floatleftArmRotation;"
+        "boolfallen;boolmechRemoved;floatpivotTurnRate;boolplayedJumpSFX;boolplayedCriticalHit;"
+        "floatmaxWeaponDamage;charlongName[MAXLEN_MECH_LONGNAME];int32_tpilotNum;"
+        "boolcaptureable;boolnotMineYet;int32_tdescID;floatdamageThisFrame;boolsentCrippledMsg;"
+        "floatrotateValues[6];int32_tItemLocationToInvLocation[MAX_MOVER_INVENTORY_ITEMS];"
+        "floatdamageAfterDisabled;int32_tnumArmorComponents;int32_tcBills;MechAppearanceDataapData;};") != std::string::npos);
+}
 
 TEST_CASE("save fields: GroundVehicleData inherited census and legacy values") {
     using T = GroundVehicleData;
