@@ -16,7 +16,24 @@ teamless movers intentionally belong to neither list (objmgr_misc.cpp:18-36).
 
 Green receipts: determinism pytest 24 tests; stress pytest 7 tests;
 saved objects doctest 12 cases/45 assertions; save sections 6 cases/247 assertions.
-Logs: G:/mc2-tmp/w90-{home,world,contracts,seed}.log (contracts/seed in progress).
-Next: resolve checkpoint contracts/ratchets; build mc2 once; deploy own lane install
-E:/mc2-installs/claude-w90-fixups; SIMID 03/10/24, continuation, overlap audit
-01/03/10/16/24 and validation. Keep at most one lane install, no pushes.
+Final receipts: all five ratchets pass without baseline changes; sim_determinism,
+saveload_roundtrip and save_inspect contract rows pass. Gate/stress/audit pytest:
+42 tests pass. This base has no scripts_tests or stress_overlap contract row;
+the existing direct pytest suites cover those scripts, with no added harness.
+RelWithDebInfo mc2 build passes. Shared-header invalidation scheduled 272 Ninja
+actions (~7 minutes): principal tooling cost. A first deploy correctly refused
+the stale asset viewer; building mc2_asset_viewer satisfied that check. Final
+deploy COMPLETE and check-only pass; installed game SHA equals the build.
+
+Live proofs (20-second SIMID budgets): 03/10/24 baseline chains unchanged;
+common frames 1001/5167/2601. mc2_24 result.json records requested=2600,
+tolerance=0, complete=true; the stress parser confirms the infantry marker after
+tick 2404 in both runs. Continuation 03/10/24: 60 post-load frames identical.
+Overlap audit=1 clean on 01/03/10/16/24; windowed Vulkan validation errors=0.
+No new gates, raised baselines, or owned live children. Save backups restored.
+
+Proofs: E:/mc2-archive-2026-10/proofs/w90-fixups. Only verified-*.log and
+smokes-verified/smokes-continuation are valid game receipts; earlier unprefixed
+game logs came from attempts after the refused deploy and do not count.
+Disk: no extra installs created/deleted (0 GB freed); leave only our
+E:/mc2-installs/claude-w90-fixups install. No pushes. Work complete; no next steps.
