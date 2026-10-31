@@ -4,6 +4,7 @@
 #include "weaponbolt_value_codec.h"
 #include "gate_value_codec.h"
 #include "vehicle_value_codec.h"
+#include "building_value_codec.h"
 #include <cctype>
 #include <filesystem>
 #include <fstream>
@@ -154,6 +155,44 @@ template<> inline bool equal(const WeaponShotInfo& a, const WeaponShotInfo& b) {
     &T::pitchAngle, &T::fallRate, &T::powerSupply, &T::cellFootprint, \
     &T::vectorFootprint, &T::numSubAreas0, &T::numSubAreas1, &T::subAreas0, \
     &T::subAreas1, &T::listID, &T::numCellsCovered, &T::cellsCovered
+
+#define BUILDING_MEMBERS &T::teamId, &T::commanderId, &T::refitBuddyWID, \
+    &T::parentId, &T::parent, &T::listID, &T::captureTime, &T::moverInProximity, &T::proximityTimer
+
+TEST_CASE("save fields: BuildingData inherited census and legacy values") {
+    using T = BuildingData;
+    auto sample = save_probe::patterned<T>(BASE_MEMBERS, TERRAIN_MEMBERS,
+        &TerrainObjectData::listID, BUILDING_MEMBERS);
+    sample.objectClass = BUILDING; sample.windowsVisible = 0;
+    sample.numSubAreas0 = sample.numSubAreas1 = MAX_SPECIAL_SUB_AREAS;
+    sample.numCellsCovered = 40; sample.cellsCovered[80] = 0;
+    const auto codec = [](auto& a, auto& v) {
+        mc2::save::BuildingRecord record{v}; record.serialize(a);
+        if (a.reading()) v = record.value;
+    };
+    REQUIRE(save_probe::roundtrip(sample, codec, BASE_MEMBERS, TERRAIN_MEMBERS,
+        &TerrainObjectData::listID, BUILDING_MEMBERS));
+    CHECK_FALSE(save_probe::roundtrip(sample, [](auto& a, auto& v) {
+        mc2::save::BuildingRecord record{v}; record.serialize(a);
+        if (a.reading()) { v = record.value; v.refitBuddyWID = 0; }
+    }, BASE_MEMBERS, TERRAIN_MEMBERS, &TerrainObjectData::listID, BUILDING_MEMBERS));
+    const auto bytes = mc2::save::encodeTaggedRecord(mc2::save::BuildingRecord{sample}, mc2::save::buildingTag);
+    mc2::save::BuildingRecord decoded;
+    REQUIRE(mc2::save::decodeTaggedRecord(bytes, decoded, mc2::save::buildingTag));
+    CHECK(decoded.value.TerrainObjectData::listID == sample.TerrainObjectData::listID);
+    CHECK(decoded.value.listID == sample.listID);
+    CHECK_FALSE(mc2::save::decodeTaggedRecord(std::span(bytes).first(bytes.size()-1), decoded, mc2::save::buildingTag));
+    sample.baseTileId = 77; sample.updatedTurn = 88;
+    CHECK(mc2::save::encodeTaggedRecord(mc2::save::BuildingRecord{sample}, mc2::save::buildingTag) == bytes);
+    decoded.value.baseTileId = 99; decoded.value.updatedTurn = 100;
+    REQUIRE(mc2::save::decodeTaggedRecord(bytes, decoded, mc2::save::buildingTag));
+    CHECK(decoded.value.baseTileId == 0); CHECK(decoded.value.updatedTurn == 0);
+    const auto source = compactSource("code/bldng.h");
+    CHECK(source.find("struct_BuildingData:publicTerrainObjectData{charteamId;"
+        "unsignedcharbaseTileId;charcommanderId;GameObjectWatchIDrefitBuddyWID;DWORDparentId;"
+        "GameObjectWatchIDparent;unsignedcharlistID;floatcaptureTime;boolmoverInProximity;"
+        "floatproximityTimer;int32_tupdatedTurn;};") != std::string::npos);
+}
 #define GATE_MEMBERS &T::teamId, &T::lockedOpen, &T::lockedClose, &T::reasonToOpen, \
     &T::opened, &T::opening, &T::closed, &T::closing, &T::justDestroyed, \
     &T::lastMarkedOpen, &T::parentId, &T::parent, &T::buildingDescriptionID
