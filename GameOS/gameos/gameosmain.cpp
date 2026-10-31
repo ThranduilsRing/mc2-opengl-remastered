@@ -11,6 +11,7 @@
 #include "render_frame_driver.h"       // RenderFrameDriver_RenderWorld — Slice 6 shared render seam (gated)
 #include "render_snapshot.h"
 #include "../../code/tick_commit.h"
+#include "../../code/render_view.h"
 #include "draw_packet_emitter.h"       // DrawPacket v0
 #include "gos_static_prop_batcher.h"   // batcher_getSortedPacketCount — explicit, do not rely on transitive
 #include "../../RenderCore/MaterialGpu.h"  // RenderCore::MaterialGpu for g_dpSelProp albedoTex fill
@@ -126,6 +127,7 @@ static LONG WINAPI mc2_unhandled_exception_filter(EXCEPTION_POINTERS* ep)
 #include "gos_static_prop_killswitch.h"
 #include "gos_static_prop_registry.h"  // Stage 3.C: isEnabled() for [INSTR v1]
 #include "../../RenderWorld/RenderWorld.h"  // M1 Task 14
+#include "../../RenderCore/FramePackets.h"
 #include "../../mclib/render_contract.h"   // Phase 2 assert init
 #include "../../mclib/camera.h"   // CAMERA-PARK-1: extern CameraPtr eye (pose pin fixture)
 #include "asset_scale.h"
@@ -1058,15 +1060,16 @@ int main(int argc, char** argv)
 
         if (!headless) {   // headless: the logic half above is the whole frame
         const auto packetSequence = mc2::tick::retainRenderPacket();
-        // RenderSnapshot is a shallow struct — spans are (ptr, count) into the
-        // ping-pong arena. Copy is safe: arena is not reset until the next
-        // ExtractRenderSnapshot() call. Emit must complete before any second extraction.
+        RenderCore::framePackets().retain(packetSequence);
+        // Value arenas and typed frees share one CPU admission sequence. The
+        // inline consumer retires here; S4 must report worker completion first.
         RenderSnapshot snap;
         {
             ZoneScopedN("ExtractRenderSnapshot");
             mc2::overlap::assertSimQuiescent("ExtractRenderSnapshot");
-            snap = ExtractRenderSnapshot();
+            snap = ExtractRenderSnapshot(packetSequence);
             mc2::overlap::extractRender();   // G7b K3: game render list + clock (zone ExtractRenderList)
+            mc2::render_view::list().freezeBoltDraws(snap.frameArena);
         }
         mc2_debug_state::maybeWriteRenderState(snap);
     frameEmitDrawPackets(snap);
@@ -1078,6 +1081,8 @@ int main(int argc, char** argv)
 
             draw_screen();
         }
+        RetireRenderSnapshot(packetSequence);
+        RenderCore::framePackets().retire(packetSequence);
         mc2::tick::retireRenderPacket(packetSequence);
 
         // Draw reads only the extracted snapshot. Wait before probes and frame counters touch live state;

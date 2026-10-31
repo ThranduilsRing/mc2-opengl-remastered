@@ -29,11 +29,12 @@
 #include <vector>
 #include "Gates/gate.h"
 #include "mc2fmt.h"
+#include "../../mclib/sim_overlap.h"
 
 // ---------------------------------------------------------------------------
 // Module-static three-slot arenas (never freed).
 // Each extraction resets its sequence's slot; the previous two extractions'
-// data stays untouched. Consumers still copy synchronously before recycling.
+// data stays untouched. Explicit CPU leases prevent reuse until record completion.
 // FrameArena instances are non-owning wrappers; actual buffers are s_arenaBuffers.
 // ---------------------------------------------------------------------------
 
@@ -82,6 +83,11 @@ const RenderSnapshot* getLastRenderSnapshot() {
     return s_hasLastSnapshot ? &s_lastSnapshot : nullptr;
 }
 
+void RetireRenderSnapshot(uint64_t packetSequence) {
+    mc2::overlap::assertOwner(mc2::overlap::Owner::Main, "RetireRenderSnapshot");
+    if (!packetSequence || !s_slotArenas.retire(packetSequence)) std::abort();
+}
+
 // ---------------------------------------------------------------------------
 // ExtractRenderSnapshot
 //
@@ -90,8 +96,9 @@ const RenderSnapshot* getLastRenderSnapshot() {
 // three-slot arena (snap.arena is non-owning). The spans survive two subsequent
 // extractions; the third resets and reuses the same slot.
 // ---------------------------------------------------------------------------
-RenderSnapshot ExtractRenderSnapshot()
+RenderSnapshot ExtractRenderSnapshot(uint64_t packetSequence)
 {
+    mc2::overlap::assertOwner(mc2::overlap::Owner::Main, "ExtractRenderSnapshot");
     static uint64_t s_frameIndex = 0;
 
     RenderSnapshot snap;
@@ -102,8 +109,10 @@ RenderSnapshot ExtractRenderSnapshot()
         s_slotArenas.init(s_arenaBuffers[0], s_arenaBuffers[1], s_arenaBuffers[2], kArenaBytes);
         s_arenasInited = true;
     }
-    // Reset only this extraction's slot; the previous two slots stay untouched.
-    snap.frameArena = s_slotArenas.begin(s_frameIndex);
+    // The game loop keys both value arenas and deferred frees by this lease.
+    const auto sequence = packetSequence ? packetSequence : s_frameIndex;
+    if (packetSequence && !s_slotArenas.retain(sequence)) std::abort();
+    snap.frameArena = s_slotArenas.begin(sequence);
 
     // -----------------------------------------------------------------------
     // v0: mech placeholder (legacy zero-size struct; kept for log line compat)

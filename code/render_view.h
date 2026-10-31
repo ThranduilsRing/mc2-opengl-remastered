@@ -15,6 +15,7 @@
 class GameObject;
 class BldgAppearance;
 namespace gosFX { class Effect; }
+namespace RenderCore { class FrameArena; }
 
 namespace mc2::render_view {
 
@@ -35,15 +36,28 @@ inline constexpr uint32_t FireIcon = 1u << 2;      // movers: hold-fire icon
 inline constexpr uint32_t HitTarget = 1u << 3;     // bolts
 inline constexpr uint32_t Timer = 1u << 4;         // artillery: draw the countdown
 inline constexpr uint32_t SeenAtExtract = 1u << 5; // artillery: appearance->canBeSeen() when windowsVisible was stamped
+inline constexpr uint32_t BoltGeometry = 1u << 6; // owns copied native beam/laser draw inputs
 
 // What a mover's render() decided from the sim (contact status vs home, team, isOnGui, status).
 enum class Mode : uint8_t { None, Full, Sensor, SensorText, Fade, Own };
+
+// Copied draw inputs, never aliases into a reusable WeaponBolt or its type.
+struct BoltDraw {
+    glm::vec3 laserVertices[4]{}, laserSide[4]{};
+    float startUV = 0, uvRepeat = 0, unitLength = 0;
+    uint32_t frontRGB = 0, middleRGB = 0, backRGB = 0, midEdgeRGB = 0;
+    uint32_t gosTextureHandle = 0xffffffff, mcTextureHandle = 0xffffffff;
+    uint8_t boltAlpha = 0, edgeAlpha = 0;
+    bool isBeam = false;
+};
 
 struct RenderView {
     GameObject* obj = nullptr;
     // The tick can clear/reuse owner slots; releaseEffect retains these payloads until the join.
     // Bolts: body, muzzle, hit, miss, water miss; carnage: body.
     gosFX::Effect* effects[5]{};
+    BoltDraw bolt;
+    const BoltDraw* frozenBolt = nullptr; // packet arena copy; inline tools may use bolt directly
     glm::vec3 position{0.0f};  // sim position
     glm::vec3 aux[3]{};        // bolts: laser tip, resolved hit point, raw target point
     uint32_t watchId = 0;
@@ -61,6 +75,7 @@ struct RenderView {
 struct RenderList {
     std::vector<RenderView> terrain, movers, other;
     void clear() { terrain.clear(); movers.clear(); other.clear(); }
+    void freezeBoltDraws(RenderCore::FrameArena& arena);
 };
 
 // G7b K4: copied at the render extract; pointers are identity keys only.

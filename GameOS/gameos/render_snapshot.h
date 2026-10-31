@@ -226,7 +226,7 @@ struct RenderSnapshot {
 
     // L2 frame-lifetime arena. Backed by one of three module-static buffers
     // in render_snapshot.cpp. FrameArena is non-owning: base_ points into the
-    // slot buffer; the third subsequent ExtractRenderSnapshot() recycles it.
+    // slot buffer; CPU recording must retire before this slot can recycle.
     RenderCore::FrameArena frameArena;
     bool arenaOverflow = false;
 };
@@ -234,7 +234,10 @@ struct RenderSnapshot {
 // Extraction entry point — implemented in render_snapshot.cpp.
 // Called once per frame between DoGameLogic() and draw_screen().
 // Returns a snapshot backed by a frame-lifetime arena (snap.arena).
-RenderSnapshot ExtractRenderSnapshot();
+// A nonzero sequence retains the arena until RetireRenderSnapshot; zero keeps
+// synchronous inline tool behavior. CPU completion does not replace GPU tickets.
+RenderSnapshot ExtractRenderSnapshot(uint64_t packetSequence = 0);
+void RetireRenderSnapshot(uint64_t packetSequence);
 
 // v2.3: returns a non-owning pointer to the most recently produced snapshot.
 // Valid until the next ExtractRenderSnapshot() call (same frame lifetime as the arena).

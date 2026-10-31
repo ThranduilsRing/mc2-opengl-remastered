@@ -21,7 +21,7 @@ Main retains SDL/input, UI building, camera and extraction. Validate this agains
 |---|---|---|
 | S1 inventory | Native shape-leaf census DONE at `46a9f82a7`; external receipts still open | Farm repeats and save/load policy/reference mismatch remain open; no further census changes needed |
 | S2 explicit state | DONE, proven engine `6fcde0272` | CPU view values, packet-owned light rows/caches and editor viewport callers; final receipts below. Next S3 |
-| S3 rings/lifetimes | IN PROGRESS: value arenas N=3 at `3a856fc82`; typed-release CPU graveyard at `c8022b57f`, both proven | RenderList/HUD values, full packet/GPU lifetime integration, Execute(main)/Draw(record), moved-entry owner assertions still open |
+| S3 rings/lifetimes | IN PROGRESS: value arenas N=3 at `3a856fc82`; typed-release graveyard at `c8022b57f`; CPU arena leases at `3b855d8f1`, all proven | RenderList/HUD values, remaining packet/GPU lifetime integration, Execute(main)/Draw(record), moved-entry owner assertions still open |
 | S4 thread | NOT STARTED | Seal after sim commit, consume sealed packets, retire safely; default ON only with all gates green |
 
 ## S1 source inventory at the base
@@ -467,3 +467,102 @@ All own build/game/scout children exited. PowerShell profile loading was denied 
 Avoidable cost: stalled scout calls; use one bounded query, then its permitted targeted-range fallback after timeout.
 Disk: 0 GB freed, no extra install created; leave only `E:/mc2-installs/claude-record-thread` at `c8022b57f`.
 After this docs-only closure use explicit `--ref-commit c8022b57f` for retained binary proof; do not rebuild unchanged code.
+
+## S3 arena lease integration, 2026-10-31 (proof pending)
+
+This continuation adds commits only during W92; no branch recreation, rebase or history rewrite.
+FrameSlotArenas now holds explicit CPU admission leases and refuses occupied-slot reuse or stale retirement.
+The game loop uses the typed-release packet sequence for both the RenderSnapshot arena and FramePackets
+publisher. Display-frame metadata remains separate. Main releases both value arenas after inline DrawScreen,
+before draining typed destruction; S4 must replace that point with actual worker completion.
+Inline editor/viewer/tool callers keep synchronous frame-keyed behavior. GPU ticket retirement is unchanged.
+Native tests cover occupied-slot rejection, stale/duplicate retirement, out-of-order completion, large sequences,
+repeated display frames, and skipped publication when a leased slot recycles. Owner assertions guard snapshot
+extraction/retirement. The bounded scout timed out after 25 s; used its permitted direct-range fallback.
+Next: five ratchets + buffer_lifetime, one shared-header all-target build, selected FramePackets native tests,
+commit-first explicit lane deploy, day/night byte parity viewed, mc2_10 detailed SIMID 20 s, audit/sync validation 0.
+Remaining S3: immutable RenderList/HUD native draw values with retained light feeds; recursive FX Execute/Main
+and frozen Draw split. Legacy object/appearance/effect pointers still block S4. One existing lane install only.
+
+## S3 CPU arena lease checkpoint proven, 2026-10-31
+
+Tested engine `3b855d8f1d2b773be2526002957fea2e010ee39f`; local additive commit during W92.
+Both existing value arenas now retain the same CPU sequence as the typed-release graveyard. Occupied-slot
+reuse aborts in release builds; stale/duplicate retirement is rejected. FramePackets preserves display-frame
+metadata separately, including repeated display frames. Snapshot admission/retirement assert Main ownership.
+No GPU ticket changed, no legacy pointer lists rotated, and no gos_/vk recording entry moved threads.
+All receipt paths below are relative to `E:/mc2-archive-2026-10/proofs/record-thread/`.
+
+| Required proof | Receipt |
+|---|---|
+| Shared-header all targets | `py -3 tools/build_all_targets.py -j6`: every stage PASS; root 203 s, standalone tools 13/8/11 s, doctest build 15 s; `s3-leases-alltargets.log` |
+| Selected native tests | `py -3 tools/build_contract_harnesses.py --run --unit --unit-only --compile-cache --only 'retained CPU arenas*' --only 'CPU sequence retains*' --only '*published*' --only '*slot arenas*' -j6`: seven cases / 85 assertions PASS; `s3-leases-unit.log` |
+| Five ratchets / covering row | `bash scripts/check-contracts.sh -j6 --rows '^(file_size_ratchet|cxx17_ratchet|dup_lines_ratchet|axis_swizzle_ratchet|split_map|buffer_lifetime)$'`: six PASS, 74.92 s; `s3-leases-contracts.log`; whitespace PASS, no baselines raised |
+| Explicit lane deploy | `s3-leases-deploy.log`: COMPLETE verified, 3855-row manifest at `3b855d8f1d2b`; same explicit all-target build dir/root as previous checkpoint; existing cook-byproduct hygiene advisory only |
+| Day/night pixels, viewed | `s3-leases-pixel-parity.json`: all four PNG and RGBA payloads identical to `s3-retirement-ab/`; both new scenes viewed. Captures `s3-leases-ab/{day,night}/`, saved_mechday/saved_mechnight bookmarks, audit=1 and no violations |
+| mc2_10 detailed SIMID, 20 s | `s3-leases-simid-detail.log`: 1730 identical common frames; all first 800 pinned baseline frames match every digest. Same check command as prior checkpoint with `--ref-commit 3b855d8f1`, `--env MC2_SIM_IDENTITY_TRACE_DETAIL=1`, output `s3-leases-simid-detail/`; both game logs audit=1, no violations |
+| Sync validation zero, 20 s | `s3-leases-sync.log` / `s3-leases-sync-artifacts/`: PASS, errors=0/warnings=0/content errors=0. Full game log confirms Khronos sync layer/messenger engaged, audit=1 and no violations |
+
+Next S3: freeze the three ordered RenderList streams into owned native geometry/material/light-index values
+and retained light feeds, eliminating `RenderView::obj` dispatch (`code/objmgr.cpp:1032`, `code/render_view.h`).
+Freeze HUD copied commands plus marker/VTOL payloads; attach storage/resources to the CPU sequence rather
+than rotating the legacy pointer-bearing vectors. Split every FX family's Execute(Main) from recursive frozen
+Draw data, with assertOwner on each gos_/vk entry actually moved. CPU completion must cover the full record
+worker before Main releases leases; resource destruction must also respect the existing GPU last-use tickets.
+This producer migration spans multiple engine families and exceeds the remaining bounded proof cycle;
+stop at this independent lifetime checkpoint. S4 remains inline until those obligations are complete.
+Game processes ran about 3 minutes; lease waits about 1 minute (day capture and sync run reported contention).
+All own build/game/scout/proof children exited. Initial PowerShell profile loading was denied and skipped;
+subsequent commands used no profile. Scout timed out at 25 s and exited; targeted-range fallback used.
+Avoidable token cost: broad historical plan reads; next continuation should read this tail and named source ranges.
+Disk: 0 GB freed, no extra install created; leave only `E:/mc2-installs/claude-record-thread` at `3b855d8f1`.
+After this docs-only closure use explicit `--ref-commit 3b855d8f1` for retained binary proof; do not rebuild unchanged code.
+
+## Continuation: first frozen draw producer proven, 2026-10-31
+
+Additive checkpoint on claude/record-thread after 65eaf8828; S4 stays inline.
+WeaponBolt beam/laser geometry, UVs, type colors/alpha, beam mode and texture handles
+now extract into values in RenderView instead of reusable WeaponBolt rv* members.
+After extraction Main copies visible bolt payloads into the current RenderSnapshot
+arena; the existing CPU sequence retains those bytes through inline recording.
+Inline tools can consume staging values synchronously. FX pointers, live object
+dispatch, camera projection, RenderList/HUD containers and light feeds remain.
+Native test retains a packet across staging destruction and another extraction,
+checks copied geometry/material/texture values, and exercises occupied-slot reuse.
+Offline green: s3-bolt-contracts.log (five ratchets + buffer_lifetime, 6 PASS),
+s3-bolt-alltargets.log plus s3-bolt-root-resume.log (all targets built; root resumed
+after fixing legacy mutable projection inputs), s3-bolt-unit.log (3 cases / 41
+assertions PASS). Logs under E:/mc2-archive-2026-10/proofs/record-thread/.
+Tested engine: eaede08edc60 (local additive commit). Provenance refreshed for both
+mc2 and its shipped companion viewer; deploy refused the stale viewer until its
+matching build completed. No provenance checks or warnings were waived.
+
+| Required proof | Receipt under the same proof directory |
+|---|---|
+| Five ratchets / covering row at engine HEAD | s3-bolt-head-contracts.log: six PASS, 28 s, no baselines raised |
+| Explicit existing lane deploy | s3-bolt-deploy.log: COMPLETE, verified 3855-row manifest at eaede08edc60 |
+| Day/night parity, viewed | s3-bolt-pixel-parity.json: all four PNGs byte-identical to s3-leases-ab; new day/night images viewed; s3-bolt-ab/{day,night} |
+| mc2_10 detailed SIMID, 20 s | s3-bolt-simid-detail.log: 1870 identical common frames, first 800 match pinned baseline in every digest; both logs detail=1/audit=1 |
+| Sync validation, 20 s | s3-bolt-sync.log and s3-bolt-sync-artifacts/: PASS; Khronos sync layer/messenger engaged, errors=0, warnings=0, content errors=0 |
+
+All five game logs confirm audit=1; none contains an overlap violation. No shadow-bake
+crash occurred. SIMID's first invocation stopped before launch because an explicit
+audit argument duplicated the harness's own keyword; the successful run uses its
+default audit=1. Initial PowerShell profile loading was denied and skipped.
+
+Exact next step: continue native TerrainObject/Building/mover draw values (geometry,
+material/light indices and retained light feeds), replacing RenderView::obj dispatch.
+Then continue remaining native RenderList/HUD/recursive FX freezing, Execute/Draw
+split and moved-entry owner assertions. No worker dispatch in this checkpoint.
+HUD marker/VTOL and copied UI draw commands still require packet ownership; gosFX
+must freeze recursive Draw inputs before Execute can overlap recording. Bolt world
+positions and material values are frozen, but projection, FX objects and texture
+resource ownership still use existing synchronous paths. Keep S4 inline until every
+producer and CPU/GPU resource lifetime obligation is complete. That remaining
+multi-family migration exceeds this bounded proof cycle; resume from this tail.
+All own children exited. Game runs about 2.5 min, lease waits 0 observed. No farm
+fallback or startup timeout. Disk freed 0 GB; sole lane install left at
+E:/mc2-installs/claude-record-thread, engine eaede08edc60. After this docs-only
+closure use --ref-commit eaede08ed for retained binary proof; do not rebuild unchanged
+engine code. Avoidable cost: broad reconnaissance; start the next producer at its
+named render/extract ranges and inspect projection signatures before editing.
