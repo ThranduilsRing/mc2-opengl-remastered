@@ -43,9 +43,21 @@ def test_seed_cold_warm_hash_cache_and_private_mutables(tmp_path, monkeypatch):
     begin = time.monotonic(); kit.seed_install(source, target, cache); warm = time.monotonic() - begin
     assert source / 'data/stock.bin' not in calls
     assert source / 'mc2.exe' in calls and target / 'mc2.exe' in calls
+    assert source / 'shaders/test.frag' in calls and target / 'shaders/test.frag' in calls
     print(f'fixture seed cold={cold:.4f}s warm={warm:.4f}s')
     # A stale cache key must invalidate on changed bytes/mtime, even at the same size.
     (source / 'mc2.exe').write_bytes(b'BAD')
+    with pytest.raises(ValueError, match='manifest mismatch'):
+        kit.seed_install(source, target, cache)
+
+
+def test_seed_rehashes_manifested_bytes_with_preserved_stamp(tmp_path):
+    source = source_tree(tmp_path); target = tmp_path / 'owner'; cache = tmp_path / 'hashes.json'
+    kit.seed_install(source, target, cache)
+    shader = source / 'shaders/test.frag'
+    stamp = shader.stat()
+    shader.write_bytes(b'BROKEN')
+    os.utime(shader, ns=(stamp.st_atime_ns, stamp.st_mtime_ns))
     with pytest.raises(ValueError, match='manifest mismatch'):
         kit.seed_install(source, target, cache)
 
