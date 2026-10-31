@@ -1,5 +1,35 @@
 #include "save_field_probe.h"
 #include "abl_value_archive.h"
+#include <fstream>
+#include <regex>
+
+TEST_CASE("save fields: ABL native union and module census") {
+    const auto root = std::filesystem::path(__FILE__).parent_path().parent_path().parent_path();
+    const auto fields = [&](const char* path, const char* start, const char* end) {
+        std::ifstream file(root / path);
+        REQUIRE(file.good());
+        std::string source((std::istreambuf_iterator<char>(file)), {});
+        const auto first = source.find(start);
+        REQUIRE(first != std::string::npos);
+        const auto last = source.find(end, first + std::strlen(start));
+        REQUIRE(last != std::string::npos);
+        source = source.substr(first + std::strlen(start), last - first - std::strlen(start));
+        source = std::regex_replace(source, std::regex("//[^\\n]*"), "");
+        const std::regex member("\\b([A-Za-z_]\\w*)\\s*(?:\\[[^\\]]*\\])?\\s*;");
+        std::vector<std::string> names;
+        for (std::sregex_iterator i(source.begin(), source.end(), member), endIt; i != endIt; ++i)
+            names.push_back((*i)[1]);
+        return names;
+    };
+    // integer/real/byte: scalar bits; address: derived allocation, never wire data.
+    CHECK(fields("mclib/ablexec.h", "union StackItem {", "};") ==
+        std::vector<std::string>{"integer", "real", "byte", "address"});
+    // Encoded fields plus the derived fields documented in abl_module_archive.h.
+    CHECK(fields("mclib/ablenv.h", "class ABLModule {", "// A2:") ==
+        std::vector<std::string>{"id", "name", "handle", "staticData", "orderCallFlags",
+            "returnVal", "initCalled", "prevState", "state", "watchManager", "breakPointManager",
+            "trace", "step", "traceEntry", "traceExit"});
+}
 
 TEST_CASE("save fields: ABL variable independent census") {
     using T = mc2::save::AblVariableRecord;
