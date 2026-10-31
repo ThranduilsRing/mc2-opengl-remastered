@@ -1,6 +1,7 @@
 #include "save_field_probe.h"
 #include "carnage_value_codec.h"
 #include "artillery_value_codec.h"
+#include "weaponbolt_value_codec.h"
 #include <cctype>
 #include <filesystem>
 #include <fstream>
@@ -47,6 +48,17 @@ template<> inline bool equal(const ArtilleryInfo& a, const ArtilleryInfo& b) {
         std::tie(y.timeToImpact, y.timeToLaunch, y.sensorRange, y.timeToBlind,
         y.sensorSystemIndex, y.contactUpdate, y.explosionOffFlags) &&
         equal(x.timeString, y.timeString);
+}
+template<> inline void pattern(WeaponShotInfo& v, unsigned char seed) {
+    pattern(v.attackerWID, seed); pattern(v.masterId, seed); pattern(v.damage, seed);
+    pattern(v.hitLocation, seed); pattern(v.entryAngle, seed);
+}
+template<> inline void zero(WeaponShotInfo& v) {
+    v.attackerWID = 0; v.masterId = 0; v.damage = 0; v.hitLocation = 0; v.entryAngle = 0;
+}
+template<> inline bool equal(const WeaponShotInfo& a, const WeaponShotInfo& b) {
+    return std::tie(a.attackerWID, a.masterId, a.damage, a.hitLocation, a.entryAngle) ==
+        std::tie(b.attackerWID, b.masterId, b.damage, b.hitLocation, b.entryAngle);
 }
 }
 
@@ -173,6 +185,60 @@ TEST_CASE("save fields: ArtilleryData independent inherited census") {
         "chartimeString[5];uint32_texplosionOffFlags;}strike;};") != std::string::npos);
 }
 
+#define BOLT_MEMBERS &T::ownerWID, &T::hotSpotNumber, &T::targetWID, &T::targetHotSpot, \
+    &T::targetPosition, &T::distanceToTarget, &T::halfDistanceToTarget, &T::weaponShot, \
+    &T::laserPosition, &T::laserVertices, &T::laserSide, &T::effectId, &T::hitTarget, \
+    &T::timeLeft, &T::hsPos, &T::hitLeft, &T::mcTextureHandle, &T::gosTextureHandle, \
+    &T::startUV, &T::goalHeight, &T::retireDeadlineTick, &T::retireDeadlineState
+
+TEST_CASE("save fields: WeaponBoltData independent inherited census") {
+    using T = WeaponBoltData;
+    auto sample = save_probe::patterned<T>(BASE_MEMBERS, BOLT_MEMBERS);
+    sample.objectClass = WEAPONBOLT;
+    sample.windowsVisible = 0;
+    sample.mcTextureHandle = sample.gosTextureHandle = 0; // explicitly derived
+    sample.retireDeadlineState = mc2::combat::SavedDeadlineState::armed;
+    SAVE_FIELD_SHAPE(sample.weaponShot, attackerWID, masterId, damage, hitLocation, entryAngle);
+    const auto codec = [](auto& a, auto& v) {
+        mc2::save::WeaponBoltRecord record{v}; record.serialize(a);
+    };
+    REQUIRE(save_probe::roundtrip(sample, codec, BASE_MEMBERS, BOLT_MEMBERS));
+    auto bytes = mc2::save::encodeTaggedRecord(
+        mc2::save::WeaponBoltRecord{sample}, mc2::save::weaponBoltTag);
+    REQUIRE_FALSE(bytes.empty());
+    auto decoded = mc2::save::decodeWeaponBoltRecord(bytes);
+    REQUIRE(decoded.has_value());
+    CHECK(save_probe::equal(sample.weaponShot, decoded->weaponShot));
+    CHECK_FALSE(mc2::save::decodeWeaponBoltRecord(std::span(bytes).first(bytes.size()-1)));
+    sample.mcTextureHandle = 123; sample.gosTextureHandle = 456;
+    CHECK(mc2::save::encodeTaggedRecord(
+        mc2::save::WeaponBoltRecord{sample}, mc2::save::weaponBoltTag) == bytes);
+    sample.mcTextureHandle = sample.gosTextureHandle = 0;
+    CHECK_FALSE(save_probe::roundtrip(sample, [](auto& a, auto& v) {
+        mc2::save::WeaponBoltRecord record{v}; record.serialize(a);
+        if (a.reading()) v.laserVertices[3].z = 0;
+    }, BASE_MEMBERS, BOLT_MEMBERS));
+    CHECK_FALSE(save_probe::roundtrip(sample, [](auto& a, auto& v) {
+        mc2::save::WeaponBoltRecord record{v}; record.serialize(a);
+        if (a.reading()) v.retireDeadlineTick = 0;
+    }, BASE_MEMBERS, BOLT_MEMBERS));
+    bytes.back() = 255; // unknown SavedDeadlineState
+    CHECK_FALSE(mc2::save::decodeWeaponBoltRecord(bytes));
+    sample.retireDeadlineTick = mc2::combat::invalidTick;
+    CHECK(mc2::save::encodeTaggedRecord(
+        mc2::save::WeaponBoltRecord{sample}, mc2::save::weaponBoltTag).empty());
+    const auto source = compactSource("code/weaponbolt.h");
+    CHECK(source.find("struct_WeaponBoltData:publicGameObjectData{GameObjectWatchIDownerWID;"
+        "int32_thotSpotNumber;GameObjectWatchIDtargetWID;int32_ttargetHotSpot;"
+        "glm::vec3targetPosition;floatdistanceToTarget;floathalfDistanceToTarget;"
+        "WeaponShotInfoweaponShot;glm::vec3laserPosition;glm::vec3laserVertices[4];"
+        "glm::vec3laserSide[4];int32_teffectId;boolhitTarget;floattimeLeft;glm::vec3hsPos;"
+        "floathitLeft;DWORDmcTextureHandle;DWORDgosTextureHandle;floatstartUV;floatgoalHeight;"
+        "std::uint64_tretireDeadlineTick;mc2::combat::SavedDeadlineStateretireDeadlineState;};")
+        != std::string::npos);
+}
+
+#undef BOLT_MEMBERS
 #undef ARTILLERY_MEMBERS
 #undef CARNAGE_MEMBERS
 #undef BASE_MEMBERS

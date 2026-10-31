@@ -3,6 +3,7 @@
 #pragma once
 #include "carnage.h"
 #include "object_value_codec.h"
+#include <ranges>
 
 namespace mc2::save {
 inline constexpr auto carnageTag = fourcc('C', 'A', 'R', 'N');
@@ -12,23 +13,17 @@ struct CarnageRecord {
         auto& v = value;
         gameObjectFields(a, v);
         // Freeze the union discriminant independently of enum representation.
+        constexpr std::array kinds{CARNAGE_NONE, CARNAGE_FIRE, CARNAGE_EXPLOSION};
         std::uint32_t kind = 0;
         if (!a.reading()) {
-            switch (v.carnageType) {
-            case CARNAGE_NONE: kind = 0; break;
-            case CARNAGE_FIRE: kind = 1; break;
-            case CARNAGE_EXPLOSION: kind = 2; break;
-            default: a.reject("carnage_type"); return;
-            }
+            const auto found = std::ranges::find(kinds, v.carnageType);
+            if (found == kinds.end()) { a.reject("carnage_type"); return; }
+            kind = static_cast<std::uint32_t>(found - kinds.begin());
         }
         a(kind, v.ownerWID);
         if (!a.good()) return;
-        switch (kind) {
-        case 0: v.carnageType = CARNAGE_NONE; break;
-        case 1: v.carnageType = CARNAGE_FIRE; break;
-        case 2: v.carnageType = CARNAGE_EXPLOSION; break;
-        default: a.reject("carnage_type"); return;
-        }
+        if (kind >= kinds.size()) { a.reject("carnage_type"); return; }
+        v.carnageType = kinds[kind];
         if (v.carnageType == CARNAGE_FIRE)
             a(v.info.fire.timeToBurn, v.info.fire.radius, v.info.fire.reallyVisible);
         else
