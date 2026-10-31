@@ -96,12 +96,7 @@ def compare(profile, budget, previous=None):
     for mission, reference in budget["missions"].items():
         run = profile.get("runs", {}).get(mission, {})
         noise = run.get("noise", {})
-        quiet = noise.get("status") == "quiet" and not noise.get("reasons")
-        external = noise.get("external_cpu_p95")
-        if number(external) and external > 25:
-            quiet = False
-        if mission in profile.get("errors", {}):
-            quiet = False
+        valid = mission not in profile.get("errors", {})
         expected = set(reference["bookmarks"])
         marks = run.get("bookmarks", {})
         complete = set(marks) == expected if mission in CAMERA_MISSIONS else True
@@ -116,7 +111,7 @@ def compare(profile, budget, previous=None):
             base = reference["baseline"][metric]
             old = old_values.get(metric)
             status = "INCONCLUSIVE"
-            if quiet and complete and value is not None:
+            if valid and complete and value is not None:
                 meets = value < policy["goal"] if policy["strict"] else value <= policy["goal"]
                 status = "PASS" if meets else "FAIL"
             worst = max(marks, key=lambda n: measurements(marks[n]).get(metric, -1)) if marks and value is not None else None
@@ -128,7 +123,7 @@ def compare(profile, budget, previous=None):
                             "distance_goal_ms": value - policy["goal"] if value is not None else None,
                             "delta_previous_ms": value - old if value is not None and old is not None else None}
         statuses = {r["status"] for r in rows.values()}
-        verdict = "INCONCLUSIVE" if not quiet else ("FAIL" if "FAIL" in statuses else
+        verdict = "INCONCLUSIVE" if not valid else ("FAIL" if "FAIL" in statuses else
                    "INCONCLUSIVE" if "INCONCLUSIVE" in statuses else "PASS")
         results[mission] = {"status": verdict, "noise": noise, "metrics": rows,
                             "bookmarks": {n: measurements(m) for n, m in marks.items()},
@@ -146,12 +141,18 @@ def write_html(path, results, profile, budget, previous=None):
               '<meta name="viewport" content="width=device-width,initial-scale=1">',
               '<title>MC2 performance budgets</title><style>body{font:16px system-ui;margin:auto;max-width:1000px;padding:16px;background:#101820;color:#eef}section{background:#203040;padding:12px;margin:16px 0;border-radius:10px}.scroll{overflow-x:auto}table{border-collapse:collapse;width:100%}td,th{text-align:left;padding:8px;border-bottom:1px solid #567}small{color:#bcd}</style>',
               '<h1>MC2 performance budgets</h1>',
-              '<p>Advisory only. NOISY or missing evidence is INCONCLUSIVE. Negative deltas mean faster. '
+              '<p>Advisory only. Noise annotates measurements; missing evidence is INCONCLUSIVE. Use paired confidence intervals for change verdicts. Negative deltas mean faster. '
               'CPU zones include waits and overlap; do not sum nested zones. GPU 5 ms is a throughput goal, not proof of end-to-end 200 fps.</p>',
               f'<p>Executable SHA: {escape(str(profile.get("exe_sha256", "unknown")))}</p>']
     for mission, result in results.items():
+        noise = result['noise']
+        reserved = noise.get('external_cpu_p95') if noise.get('external_cpu_scope') == 'reserved_cores' else None
+        whole = noise.get('whole_machine_external_cpu_p95', noise.get('external_cpu_p95') if reserved is None else None)
         chunks += [f'<section><h2>{mission}: {result["status"]}</h2>',
-                   f'<p>Current noise: {escape(str(result["noise"]))}<br>Baseline: {result["baseline_status"]}; previous: {escape(str(result["previous_noise"]))}. Deltas involving noise are descriptive only.</p>',
+                   f'<p>Current noise: {escape(str(result["noise"].get("status", "missing")))}; {escape(str(result["noise"].get("reasons", [])))}. '
+                   f'External CPU p95: reserved cores {fmt(reserved)}%; '
+                   f'whole machine {fmt(whole)}%. '
+                   f'<br>Baseline: {result["baseline_status"]}; previous: {escape(str(result["previous_noise"]))}. Use paired confidence intervals to judge changes.</p>',
                    '<div class="scroll"><table><tr><th>Metric (ms)</th><th>Value</th><th>Goal</th><th>Δ baseline</th><th>Distance to goal</th><th>Δ previous</th><th>Verdict</th></tr>']
         for metric, row in result["metrics"].items():
             chunks.append(f'<tr><td>{metric} ({escape(row["worst_bookmark"] or "unmeasured")})</td><td>{fmt(row["value"])}</td><td>{row["goal"]}</td><td>{fmt(row["delta_baseline_ms"])}</td><td>{fmt(row["distance_goal_ms"])}</td><td>{fmt(row["delta_previous_ms"])}</td><td>{row["status"]}</td></tr>')
@@ -220,6 +221,20 @@ def main(argv=None):
             profile = json.loads(args.profile.read_text(encoding='utf-8'))
             directory = args.out
             directory.mkdir(parents=True, exist_ok=True)
+        if 'arms' in profile:
+            sys.path.insert(0, str(Path(__file__).resolve().parent))
+            import paired_cpu
+            results = {name: paired_cpu.comparison(pairs) for name, pairs in profile['runs'].items()}
+            rendered = paired_cpu.table(profile)
+            (directory / 'budget.json').write_text(json.dumps(results, indent=2), encoding='utf-8')
+            (directory / 'index.html').write_text('<!doctype html><meta charset="utf-8">'
+                '<meta name="viewport" content="width=device-width,initial-scale=1">'
+                '<title>MC2 paired performance</title><h1>Paired CPU changes</h1>'
+                '<p>Fixed views; noise annotates every pair. These intervals evaluate changes; '
+                'full camera-envelope budgets require their separate coverage.</p><pre>' + escape(rendered) + '</pre>', encoding='utf-8')
+            print(rendered)
+            statuses = {row['verdict'] for rows in results.values() for row in rows.values()}
+            return 1 if profile.get('errors') or 'REGRESSION' in statuses else 2 if not statuses or 'INCONCLUSIVE' in statuses else 0
         results = compare(profile, budget, previous)
         (directory / 'budget.json').write_text(json.dumps(results, indent=2), encoding='utf-8')
         write_html(directory / 'index.html', results, profile, budget, previous)

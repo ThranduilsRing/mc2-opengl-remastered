@@ -136,7 +136,11 @@ void Mission::loadMovement(MissionLoadFrame& f) {
 	{
 		if (loadFile.getPacketSize() != 0)
 		{
-			currentPacket += MOVE_readData(&loadFile, currentPacket, true);
+			currentPacket += MOVE_readData(&loadFile, currentPacket, true,
+				{.cells = f.sections.find(mc2::save::tagMapCells) != nullptr,
+				 .areas = f.sections.find(mc2::save::tagMapAreas) != nullptr,
+				 .doors = f.sections.find(mc2::save::tagMapDoors) != nullptr,
+				 .links = f.sections.find(mc2::save::tagDoorLinks) != nullptr});
 			if (GlobalMoveMap[0]->badLoad)
 				STOP((" Mission.Load: old version of move data In-Mission Save Obsolete."));
 
@@ -636,7 +640,7 @@ static void applySaveSections(std::string_view fileName, const mc2::save::Sectio
         auto valid = [](const auto& handles, int kind) {
             std::vector<std::uint8_t> seen(ObjectManager->getMaxObjects() + 1);
             for (auto handle : handles) {
-                if (!handle || handle > ObjectManager->getMaxObjects() || (kind != 2 && seen[handle])) return false;
+                if (!handle || handle > ObjectManager->getMaxObjects() || seen[handle]) return false;
                 auto* object = ObjectManager->get(handle);
                 if ((kind == 0 && !dynamic_cast<BattleMechPtr>(object)) ||
                     (kind == 1 && !dynamic_cast<GroundVehiclePtr>(object)) ||
@@ -645,9 +649,27 @@ static void applySaveSections(std::string_view fileName, const mc2::save::Sectio
             }
             return true;
         };
-        if (!archive.finish() || lists.mechs.size() != ObjectManager->maxMechs ||
-            lists.vehicles.size() != ObjectManager->maxVehicles ||
-            !valid(lists.mechs, 0) || !valid(lists.vehicles, 1) ||
+        const bool poolsValid = archive.finish() && lists.mechs.size() == ObjectManager->maxMechs &&
+            lists.vehicles.size() == ObjectManager->maxVehicles && valid(lists.mechs, 0) && valid(lists.vehicles, 1) &&
+            ObjectManager->numMechs >= 0 && ObjectManager->numMechs <= lists.mechs.size() &&
+            ObjectManager->numVehicles >= 0 && ObjectManager->numVehicles <= lists.vehicles.size();
+        // Active pool prefixes define complete membership. The reconstructed
+        // pools are in handle order until WRLD restores their saved ordering.
+        mc2::save::SavedMoverLists rebuilt;
+        if (poolsValid) {
+            auto collect = [&](auto pool, size_t active) {
+                for (auto handle : pool.first(active)) {
+                    auto* mover = static_cast<MoverPtr>(ObjectManager->get(handle));
+                    rebuilt.movers.push_back(handle);
+                    if (!mover->getTeam()) continue;
+                    if (mover->getTeam()->isFriendly(Team::home)) rebuilt.friendly.push_back(handle);
+                    else if (mover->getTeam()->isEnemy(Team::home)) rebuilt.hostile.push_back(handle);
+                }
+            };
+            collect(std::span(lists.mechs), ObjectManager->numMechs);
+            collect(std::span(lists.vehicles), ObjectManager->numVehicles);
+        }
+        if (!poolsValid || !lists.sameMoverMembership(rebuilt) ||
             !valid(lists.movers, 2) || !valid(lists.friendly, 2) || !valid(lists.hostile, 2)) {
             reject("world_section");
         } else {

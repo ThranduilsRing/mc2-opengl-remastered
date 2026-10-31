@@ -1,6 +1,41 @@
 <!-- doc-status: current | reviewed:2026-10-11 -->
 # Step 3 LG12b ledger: buffer-format calls that stay on sprintf/snprintf, and why
 
+## Reconciliation at b608a5020 (2026-10-29, claude/cxx23-debt)
+
+The October 11 counts and lane-2 exclusions below are historical, not a current
+retention decision. The starting ratchet totals are LG12a=233, LG12b=353.
+Current source and consumer searches in tools/*.py and scripts take precedence.
+
+Packet 1 converts 187 buffer calls (LG12b=166): cmponent 72, terrtxm 29,
+mpparameterscreen 19, ablenv 18, move_globalmap_path 14, pilotreviewarea 11,
+salvagemecharea 8, artlry 8, optionsarea 4, missionbriefingscreen 4.
+The former lane-2 deferral no longer applies to these files. cmponent emits CSV
+content rather than diagnostics; its columns, ordinals and numeric formats stay
+unchanged. Buffer sites use the header-only mc2::fmt facade because standalone
+mclib tools do not link mc2::log. No simulation or SIMID code is changed.
+
+missionbegin converts 17 stdout calls to mc2::log::event (LG12a=216), retaining
+unversioned SOAK/MENU_CANARY tags, bodies, argument widths, newlines and flushes.
+Consumers include tools/battery.py and tools/campaign_save_roundtrip.py; the
+existing printf corpus generator records the complete before/after text formats.
+
+Retained in reviewed files: mechlopedia's 19, logisticsdialog's 10,
+pilotreviewarea's 9 and mpparameterscreen's 6 resource-supplied printf templates.
+They cannot be passed to std::format without changing the content format.
+The ABL debugger's unknown-capacity output parameters, crash/allocator paths,
+return-value-dependent CRT truncation and binary fingerprint literals remain
+separate retention categories; this packet does not certify every old count.
+mission_update.cpp, brain_special_dispatch.cpp, vk_* and gameos_graphics* are
+excluded from this lane's packets to avoid concurrent ownership conflicts.
+
+The base also has LG08=223 versus its ceiling 221. Replacing the two new pair
+member accesses in bdactor_type.cpp with a structured binding restores 221;
+no ceiling is increased to accommodate the inherited debt.
+Native proof also repairs two stale test expectations inherited from the base:
+an empty observation zone name is now string_view (check empty(), not nullptr),
+and the committed gate table/index contain 759 entries, not the test's old 760.
+
 Written after B3b/B3c (`tools/tidy/printf_buffers.py` run over code/, mclib/, GameOS/, GuiRuntime/, GameAdapters/, RenderCore/ and the editor files the
 per-site trial reached). Regenerate the counts by running `printf_buffers.convert` over the tree (the second result lists every refused call with its reason).
 Ratchet LG12b (code, mclib, GameOS, GuiRuntime, GameAdapters, RenderCore, RenderWorld): 1497 -> see `tools/cxx17_ratchet/baseline.json`.

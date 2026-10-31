@@ -706,6 +706,10 @@ std::optional<std::string_view> GameObjectManager::checkSavedObjects (PacketFile
 		h.lights = data.numLights;
 		if (!plausibleHeader(h))
 			continue;
+		if (data.maxObjects != slotCount(h)) {
+			verdict = "object_capacity_mismatch";
+			break;
+		}
 		const std::optional<std::string_view> why = checkRun(h, sizes, static_cast<uint32_t>(p), static_cast<uint32_t>(numPackets), sizeAt, watchValues);
 		if (!why) {
 			if (watchValues) {

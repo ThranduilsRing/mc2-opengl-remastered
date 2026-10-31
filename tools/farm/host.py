@@ -24,7 +24,7 @@ import console_child
 def remote(args, script):
     script = "$ProgressPreference='SilentlyContinue'\n" + script  # else CLIXML progress noise on stdout
     encoded = base64.b64encode(script.encode('utf-16le')).decode('ascii')
-    return subprocess.check_output(['ssh', '-i', str(args.key), '-o', 'BatchMode=yes',
+    return subprocess.check_output(['ssh', '-i', str(args.key), '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=10',
                                     args.host, 'powershell -NoProfile -EncodedCommand ' + encoded],
                                    text=True, **console_child.child_kwargs(redirected=True))
 
@@ -36,6 +36,8 @@ ROOT = 'C:/mc2farm'
 STAGE_PS = r"""
 $ErrorActionPreference='Stop'
 $i='%(r)s/install'; $w='%(r)s/work/%(id)s'; $s='%(r)s/stage/%(id)s'
+if (-not [IO.Path]::GetFullPath($w).StartsWith([IO.Path]::GetFullPath('%(r)s/work') + '\', [StringComparison]::OrdinalIgnoreCase)) { throw 'unsafe work path' }
+if (-not [IO.Path]::GetFullPath($s).StartsWith([IO.Path]::GetFullPath('%(r)s/stage') + '\', [StringComparison]::OrdinalIgnoreCase)) { throw 'unsafe stage path' }
 Expand-Archive -LiteralPath "$s/payload.zip" -DestinationPath "$s/delta" -Force
 New-Item -ItemType Directory -Force $w | Out-Null
 foreach ($e in Get-ChildItem $i -Force) {
@@ -52,19 +54,22 @@ if (Test-Path "$s/delta") {
   Copy-Item "$s/delta/*" $w -Recurse -Force
 }
 Move-Item "$s/mc2.exe" "$w/mc2.exe" -Force
-Remove-Item $s -Recurse -Force
+Remove-Item -LiteralPath $s -Recurse -Force
 """
 CLEAN_PS = r"""
 $ErrorActionPreference='SilentlyContinue'
 if (-not (Test-Path '%(r)s/results/%(id)s/result.json')) { exit 0 }  # job not done: leave its tree alone
 $w='%(r)s/work/%(id)s'
+$s='%(r)s/stage/%(id)s'
+if (-not [IO.Path]::GetFullPath($w).StartsWith([IO.Path]::GetFullPath('%(r)s/work') + '\', [StringComparison]::OrdinalIgnoreCase)) { throw 'unsafe work path' }
+if (-not [IO.Path]::GetFullPath($s).StartsWith([IO.Path]::GetFullPath('%(r)s/stage') + '\', [StringComparison]::OrdinalIgnoreCase)) { throw 'unsafe stage path' }
 if (Test-Path $w) {
   foreach ($e in Get-ChildItem $w -Force) {
-    if ($e.PSIsContainer -and ($e.Attributes -band [IO.FileAttributes]::ReparsePoint)) { cmd /c rmdir "$($e.FullName)" | Out-Null }
+    if ($e.PSIsContainer -and ($e.Attributes -band [IO.FileAttributes]::ReparsePoint)) { [IO.Directory]::Delete($e.FullName) }
   }
-  Remove-Item $w -Recurse -Force
+  Remove-Item -LiteralPath $w -Recurse -Force
 }
-Remove-Item '%(r)s/stage/%(id)s' -Recurse -Force -ErrorAction SilentlyContinue
+Remove-Item -LiteralPath $s -Recurse -Force -ErrorAction SilentlyContinue
 exit 0
 """
 
@@ -108,6 +113,9 @@ def seed_files(install, harness):
             continue
         if rel.parts[0] in ('tools', 'scripts', 'importer', '3rdparty'):
             continue
+        with (install / rel).open('rb') as stream:
+            if hashlib.file_digest(stream, 'sha256').hexdigest() != row['sha256']:
+                raise ValueError(f'install {rel} does not match deployed manifest')
         files['install/' + rel.as_posix()] = install / rel
     # The deploy manifest owns the engine payload, not all stock loose data.
     for folder in ('data', 'assets', 'shaders', 'shaders_vk'):
@@ -121,19 +129,28 @@ def seed_files(install, harness):
     for pattern in ('*.fst', '*.dll', '*.cfg'):
         for path in install.glob(pattern):
             files['install/' + path.name] = path
+    # Pinned recipes come from the deployed tree too; reseeding never re-cooks.
+    from kit_payload import checked_files
+    for name in ('industrial-cook.json', 'vehicle-cook.json'):
+        receipt = install / 'cache/content-model' / name
+        if receipt.is_file():
+            rows = json.loads(receipt.read_text())['files']
+            checked_files(receipt.parent, rows)
+            for path in [receipt, *(receipt.parent / row['path'] for row in rows)]:
+                files['install/' + path.relative_to(install).as_posix()] = path
     files['install/.deployed_manifest.csv'] = manifest
     files['reference/mc2.exe'] = install / 'mc2.exe'
     tracked = subprocess.check_output(['git', '-C', str(harness), 'ls-files',
                                        'scripts', 'tools', 'tests/smoke', 'tests/telemetry/tag-registry.json',
-                                       'Gates', 'system.cfg'], text=True)
+                                       'Gates', 'system.cfg', 'tests/visual/bookmarks'], text=True)
     for name in tracked.splitlines():
         path = Path(name)
-        if ('tests' in path.parts and not name.startswith(('tests/smoke/', 'tests/telemetry/'))):
+        if ('tests' in path.parts and not name.startswith(('tests/smoke/', 'tests/telemetry/', 'tests/visual/bookmarks/'))):
             continue
-        if (name.startswith('scripts/') or name.startswith('tests/smoke/')
+        if (name.startswith('scripts/') or name.startswith(('tests/smoke/', 'tests/visual/bookmarks/'))
                 or name.startswith(('Gates/', 'tests/telemetry/')) or name == 'system.cfg'
                 or (name.startswith('tools/') and (len(path.parts) == 2
-                    or path.parts[1] in ('repo_intel', 'mc2x_import', 'mod_install', 'farm')))):
+                    or path.parts[1] in ('repo_intel', 'mc2x_import', 'mod_install', 'farm', 'perf')))):
             if path.suffix in ('.py', '.json', '.yaml', '.yml', '.csv', '.txt', '.h', '.cfg'):
                 files['harness/' + name] = harness / path
     # The destination is Windows: manifest/glob casing can differ (sdl2.dll).
@@ -165,8 +182,15 @@ print(json.dumps({p.relative_to(root).as_posix(): [p.stat().st_size, p.stat().st
     with tempfile.TemporaryDirectory(prefix='farm-reseed-') as temp:
         archive = Path(temp) / 'seed.tar'
         with tarfile.open(archive, 'w') as tar:
+            digests = {}
             for name, path in changed.items():
                 tar.add(path, arcname=name, recursive=False)
+                with path.open('rb') as stream:
+                    digests[name] = hashlib.file_digest(stream, 'sha256').hexdigest()
+            verification = json.dumps(digests).encode()
+            info = tarfile.TarInfo('reference/seed-files.json')
+            info.size = len(verification)
+            tar.addfile(info, io.BytesIO(verification))
             metadata = json.dumps({'src_commit': exe['src_commit'], 'sha256': exe['sha256']}).encode()
             info = tarfile.TarInfo('reference/seed.json')
             info.size = len(metadata)
@@ -181,6 +205,11 @@ from pathlib import Path
 root = Path('C:/mc2farm')
 with tarfile.open(root / 'seed.upload.tar') as tar:
     tar.extractall(root, filter='data')
+for name, expected in json.loads((root / 'reference/seed-files.json').read_text()).items():
+    path = (root / name).resolve()
+    assert path.is_relative_to(root.resolve()), name
+    with path.open('rb') as stream:
+        assert hashlib.file_digest(stream, 'sha256').hexdigest() == expected, name
 meta = json.loads((root / 'reference/seed.json').read_text())
 for name in ('install/mc2.exe', 'reference/mc2.exe'):
     assert hashlib.sha256((root / name).read_bytes()).hexdigest() == meta['sha256'], name
@@ -200,8 +229,10 @@ def payload_archive(exe, destination):
                    if (p / 'scripts/deploy_payload.py').is_file()), None)
     if source is None:
         raise ValueError('--exe must be in its source worktree/build tree')
+    head = deploy.git_head(str(source))
     from contextlib import redirect_stdout
     with redirect_stdout(sys.stderr):
+        deploy.require_head_exe(str(exe), head)
         items = deploy.enumerate_payload(str(source), str(exe.parent), exe.name,
                                          'mc2.pdb', require_build=False)
     hashes = {'mc2.exe': (deploy.sha256_file(str(exe)), exe.stat().st_size)}
@@ -216,8 +247,10 @@ def payload_archive(exe, destination):
                 continue
             archive.write(path, rel)
             hashes[rel] = (deploy.sha256_file(str(path)), path.stat().st_size)
-        deploy.write_manifest(str(destination.parent), hashes, deploy.git_head(str(source)))
+        deploy.write_manifest(str(destination.parent), hashes, head)
         archive.write(destination.parent / deploy.MANIFEST_NAME, deploy.MANIFEST_NAME)
+    if deploy.git_head(str(source)) != head:
+        raise ValueError('source HEAD changed while packaging; use a pinned checkout')
 
 
 def main():
@@ -226,20 +259,27 @@ def main():
     parser.add_argument('--key', type=Path,
                         default=Path(os.environ.get('HOME', str(Path.home()))) / '.ssh/mc2farm_ed25519')
     sub = parser.add_subparsers(dest='action', required=True)
+    sub.add_parser('queue', help='JSON queue depth including the running job')
     seed = sub.add_parser('reseed')
     seed.add_argument('--install', type=Path, required=True)
     seed.add_argument('--harness', type=Path, required=True)
     submit = sub.add_parser('submit')
     submit.add_argument('job', type=Path)
     submit.add_argument('--exe', type=Path, help="run the lane's own exe: job JSON may use {EXE} and {ROOT}")
+    submit.add_argument('--exe-b', type=Path, help="second perf arm; job JSON may use {EXE_B} and {ROOT_B}")
     submit.add_argument('--data-delta', type=Path, help='small dir overlaid on the seeded install (needs --exe)')
     wait = sub.add_parser('wait')
     wait.add_argument('id')
     wait.add_argument('--timeout', type=float, default=900)
+    wait.add_argument('--queue-timeout', type=float, help='cancel only an unclaimed job after this many seconds')
     fetch = sub.add_parser('fetch')
     fetch.add_argument('id')
     fetch.add_argument('destination', type=Path)
     args = parser.parse_args()
+    if args.action == 'queue':
+        print(remote(args, "$q=@(Get-ChildItem C:/mc2farm/jobs -File | Where-Object { $_.Extension -in '.json','.running' }); "
+                           "@{depth=$q.Count} | ConvertTo-Json -Compress").strip())
+        return
     if args.action == 'reseed':
         reseed(args)
         return
@@ -249,6 +289,8 @@ def main():
         upload = args.job
         if args.data_delta and not args.exe:
             parser.error('--data-delta needs --exe')
+        if args.exe_b and (not args.exe or not args.exe_b.is_file()):
+            parser.error('--exe-b requires --exe and an existing second executable')
         if args.exe:
             if not args.exe.is_file():
                 parser.error(f'--exe not found: {args.exe}')
@@ -258,6 +300,10 @@ def main():
             payload = Path(tmpdir.name) / 'payload.zip'
             try:
                 payload_archive(args.exe.resolve(), payload)
+                if args.exe_b:
+                    second_id = job_id + '-b'
+                    second_payload = Path(tmpdir.name) / 'payload-b.zip'
+                    payload_archive(args.exe_b.resolve(), second_payload)
             except ValueError as exc:
                 parser.error(str(exc))
             remote(args, f"New-Item -ItemType Directory -Force {ROOT}/stage/{job_id} | Out-Null")
@@ -267,7 +313,13 @@ def main():
             scp(args, payload, f'{args.host}:{ROOT}/stage/{job_id}/payload.zip')
             remote(args, STAGE_PS % {'r': ROOT, 'id': job_id})
             work = f'{ROOT}/work/{job_id}'
+            if args.exe_b:
+                remote(args, f"New-Item -ItemType Directory -Force {ROOT}/stage/{second_id} | Out-Null")
+                scp(args, args.exe_b, f'{args.host}:{ROOT}/stage/{second_id}/mc2.exe')
+                scp(args, second_payload, f'{args.host}:{ROOT}/stage/{second_id}/payload.zip')
+                remote(args, STAGE_PS % {'r': ROOT, 'id': second_id})
             job = substitute(job, {'{EXE}': f'{work}/mc2.exe', '{ROOT}': work,
+                                   '{EXE_B}': f'{work}-b/mc2.exe', '{ROOT_B}': f'{work}-b',
                                    '{RESULT}': f'{ROOT}/results/{job_id}'})
             upload = Path(tmpdir.name) / 'job.json'
             upload.write_text(json.dumps(job, indent=2), encoding='utf-8')
@@ -284,8 +336,12 @@ def main():
                         f'{args.host}:C:/mc2farm/results/{args.id}', str(args.destination)], check=True,
                        **console_child.child_kwargs())
         remote(args, CLEAN_PS % {'r': ROOT, 'id': args.id})  # per-job exe tree, if any
+        # Second arm belongs to the same completed job; it has no separate result.
+        second_cleanup = CLEAN_PS.replace("%(r)s/results/%(id)s/result.json", f"{ROOT}/results/{args.id}/result.json")
+        remote(args, second_cleanup % {'r': ROOT, 'id': args.id + '-b'})
         return
-    deadline = time.monotonic() + args.timeout
+    started = time.monotonic()
+    deadline = started + args.timeout
     while time.monotonic() < deadline:
         text = remote(args, f"if (Test-Path C:/mc2farm/results/{args.id}/result.json) "
                             f"{{ Get-Content -Raw C:/mc2farm/results/{args.id}/result.json }}")
@@ -293,6 +349,15 @@ def main():
             result = json.loads(text)
             print(json.dumps(result, indent=2))
             raise SystemExit(0 if result['status'] == 'completed' and result['returncode'] == 0 else 1)
+        if args.queue_timeout is not None and time.monotonic() - started >= args.queue_timeout:
+            # Rename races atomically with the runner's claim. Never cancel a running job.
+            cancelled = remote(args, f"try {{ Move-Item -LiteralPath C:/mc2farm/jobs/{args.id}.json "
+                               f"-Destination C:/mc2farm/jobs/{args.id}.cancelled -ErrorAction Stop; 'queue_timeout' }} catch {{ }}")
+            if 'queue_timeout' in cancelled:
+                remote(args, CLEAN_PS % {'r': ROOT, 'id': args.id})
+                print('queue_timeout: unclaimed job cancelled; safe to repeat locally')
+                raise SystemExit(1)
+            args.queue_timeout = None  # already claimed or completed; never cancel a running job
         time.sleep(3)
     raise SystemExit('wait timed out; job remains owned by the desktop runner')
 

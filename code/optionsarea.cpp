@@ -50,6 +50,7 @@ CPrefs prefs;
 CPrefs originalSettings;
 
 #include"mission.h"
+#include "mc2fmt.h"
 
 
 constexpr int MSB_TAB0 = 200;
@@ -160,7 +161,7 @@ void OptionsXScreen::init(FitIniFile* file)
 		if ( NO_ERR != tmpFile.open( path ) )
 		{
 			char error[256];
-			sprintf( error, "couldn't open file %s", static_cast<const char*>(path) );
+			mc2::fmt::to_buf( error, "couldn't open file {}", mc2::fmt::safe(static_cast<const char*>(path)) );
 			Assert( 0, 0, error );
 			return;	
 		}
@@ -401,7 +402,7 @@ void OptionsGraphics::init(long xOffset, long yOffset)
 	if ( NO_ERR !=file.open( path ) )
 	{
 		char error[256];
-		sprintf( error, "couldn't open file %s", static_cast<const char*>(path) );
+		mc2::fmt::to_buf( error, "couldn't open file {}", mc2::fmt::safe(static_cast<const char*>(path)) );
 		Assert( 0, 0, error );
 		return;	
 	}
@@ -469,7 +470,7 @@ void OptionsGraphics::init(long xOffset, long yOffset)
 	if ( NO_ERR !=file.open( path ) )
 	{
 		char error[256];
-		sprintf( error, "couldn't open file %s", static_cast<const char*>(path) );
+		mc2::fmt::to_buf( error, "couldn't open file {}", mc2::fmt::safe(static_cast<const char*>(path)) );
 		Assert( 0, 0, error );
 		return;	
 	}
@@ -1764,7 +1765,7 @@ void HotKeyListItem::init()
 	if ( NO_ERR != file.open( path ) )
 	{
 		char error[256];
-		sprintf( error, "couldn't open file %s", static_cast<const char*>(path) );
+		mc2::fmt::to_buf( error, "couldn't open file {}", mc2::fmt::safe(static_cast<const char*>(path)) );
 		Assert( 0, 0, error );
 		return;	
 	}

@@ -22,6 +22,7 @@ MPParameterScreen.cpp			: Implementation of the MPParameterScreen component.
 #include"comndr.h"
 #include"missionbriefingscreen.h"
 #include"chatwindow.h"
+#include "mc2fmt.h"
 
 extern bool quitGame;
 
@@ -176,7 +177,7 @@ void MPParameterScreen::init(FitIniFile* file)
 	if ( NO_ERR != mpFile.open( path ) )
 	{
 		char error[256];
-		sprintf( error, "couldn't open file %s", static_cast<const char*>(path) );
+		mc2::fmt::to_buf( error, "couldn't open file {}", mc2::fmt::safe(static_cast<const char*>(path)) );
 		Assert( 0, 0, error );
 		return;		
 	}
@@ -605,7 +606,7 @@ void MPParameterScreen::setMission( const char* fileName, bool resetData )
 	if ( NO_ERR != missionFile.open( const_cast<char*>(static_cast<const char*>(path)) ) )
 	{
 		char errorStr[256];
-		sprintf( errorStr, "couldn't open file %s", fileName );
+		mc2::fmt::to_buf( errorStr, "couldn't open file {}", mc2::fmt::safe(fileName) );
 		Assert( 0, 0, errorStr );
 		return;
 	}
@@ -1314,13 +1315,13 @@ void MPParameterScreen::update()
 //			cLoadString( IDS_MP_LM_TYPE0 + MPlayer->missionSettings.missionType, tmp2, 127 );
 //			sprintf( text, tmp, tmp2 );
 //			textObjects[7].setText( text );
-			sprintf( text, "%ldk", MPlayer->missionSettings.defaultCBills/1000 );
+			mc2::fmt::to_buf( text, "{:d}k", mc2::fmt::as_i32(MPlayer->missionSettings.defaultCBills/1000) );
 			if ( !edits[1].hasFocus() )
 				edits[1].setEntry( text  );
-			sprintf( text, "%ld", MPlayer->missionSettings.resourcePoints );
+			mc2::fmt::to_buf( text, "{:d}", mc2::fmt::as_i32(MPlayer->missionSettings.resourcePoints) );
 			if ( !edits[3].hasFocus() )
 				edits[3].setEntry( text );
-			sprintf( text, "%.0lf", fabs(MPlayer->missionSettings.timeLimit/60.f) );
+			mc2::fmt::to_buf( text, "{:.0f}", fabs(MPlayer->missionSettings.timeLimit/60.f) );
 			if ( !edits[2].hasFocus() )
 			{
 				if ( MPlayer->missionSettings.timeLimit/60.f <= 0 )
@@ -1328,7 +1329,7 @@ void MPParameterScreen::update()
 				edits[2].setEntry( text );
 			}
 
-			sprintf( text, "%ld", MPlayer->missionSettings.dropWeight );
+			mc2::fmt::to_buf( text, "{:d}", mc2::fmt::as_i32(MPlayer->missionSettings.dropWeight) );
 			if ( !edits[0].hasFocus() )
 				edits[0].setEntry( text );
 
@@ -1655,7 +1656,7 @@ void aPlayerParams::init( FitIniFile* pFile, const char* blockNameParam )
 	// init statics
 	if ( staticName )
 	{
-		sprintf( blockName, "%s%c", staticName, 's' );
+		mc2::fmt::to_buf( blockName, "{}{:c}", mc2::fmt::safe(staticName), mc2::fmt::as_char('s') );
 		if ( NO_ERR == file.seekBlock( blockName ) )
 		{
 			file.readIdLong( "staticCount", staticCount );
@@ -1667,7 +1668,7 @@ void aPlayerParams::init( FitIniFile* pFile, const char* blockNameParam )
 				char blockName[128];
 				for ( int i = 0; i < staticCount; i++ )
 				{
-					sprintf( blockName, "%s%ld", staticName, i );
+					mc2::fmt::to_buf( blockName, "{}{:d}", mc2::fmt::safe(staticName), mc2::fmt::as_i32(i) );
 					statics[i].init( &file, blockName );			
 					addChild(&(statics[i]));
 				}
@@ -1679,7 +1680,7 @@ void aPlayerParams::init( FitIniFile* pFile, const char* blockNameParam )
 	if ( rectName )
 	{
 		// init rects
-		sprintf( blockName, "%s%c", rectName, 's' );
+		mc2::fmt::to_buf( blockName, "{}{:c}", mc2::fmt::safe(rectName), mc2::fmt::as_char('s') );
 		if ( NO_ERR == file.seekBlock( blockName ) )
 		{
 			file.readIdLong( "rectCount", rectCount );
@@ -1690,7 +1691,7 @@ void aPlayerParams::init( FitIniFile* pFile, const char* blockNameParam )
 				char blockName[128];
 				for ( int i = 0; i < rectCount; i++ )
 				{
-					sprintf( blockName, "%s%ld", rectName, i );
+					mc2::fmt::to_buf( blockName, "{}{:d}", mc2::fmt::safe(rectName), mc2::fmt::as_i32(i) );
 					rects[i].init( &file, blockName );
 					addChild(&(rects[i]));
 				}
@@ -1701,7 +1702,7 @@ void aPlayerParams::init( FitIniFile* pFile, const char* blockNameParam )
 	// init texts
 	if ( textName )
 	{
-		sprintf( blockName, "%s%c", textName, 's' );
+		mc2::fmt::to_buf( blockName, "{}{:c}", mc2::fmt::safe(textName), mc2::fmt::as_char('s') );
 		if ( NO_ERR == file.seekBlock( blockName ) )
 		{
 			if ( NO_ERR != file.readIdLong( "TextEntryCount", textCount ) )
@@ -1713,7 +1714,7 @@ void aPlayerParams::init( FitIniFile* pFile, const char* blockNameParam )
 				char blockName[64];
 				for ( int i = 0; i < textCount; i++ )
 				{
-					sprintf( blockName, "%s%ld", textName, i );
+					mc2::fmt::to_buf( blockName, "{}{:d}", mc2::fmt::safe(textName), mc2::fmt::as_i32(i) );
 					textObjects[i].init( &file, blockName );
 					addChild(&(textObjects[i]));
 				}
@@ -1734,7 +1735,7 @@ void aPlayerParams::init( FitIniFile* pFile, const char* blockNameParam )
 		if ( NO_ERR != PNfile.open( path ) )
 		{
 			char error[256];
-			sprintf( error, "couldn't open file %s", path );
+			mc2::fmt::to_buf( error, "couldn't open file {}", mc2::fmt::safe(path) );
 			Assert( 0, 0, error );
 			return;
 		}
@@ -1757,7 +1758,7 @@ void aPlayerParams::init( FitIniFile* pFile, const char* blockNameParam )
 		if ( NO_ERR != PNfile.open( path ) )
 		{
 			char error[256];
-			sprintf( error, "couldn't open file %s", path );
+			mc2::fmt::to_buf( error, "couldn't open file {}", mc2::fmt::safe(path) );
 			Assert( 0, 0, error );
 			return;
 		}
@@ -2030,7 +2031,7 @@ void aPlayerParams::update()
 			MPlayer->sendPlayerUpdate( nullptr, 5, commanderID );
 				
 			char text[256];
-			sprintf(text, "%ld", pInfo->cBills/5000 * (5) ); // need to round to nearest 5000
+			mc2::fmt::to_buf(text, "{:d}", mc2::fmt::as_i32(pInfo->cBills/5000 * (5)) ); // need to round to nearest 5000
 			edit.setEntry( text );
 			MPParameterScreen::resetCheckBoxes();
 		}
@@ -2115,7 +2116,7 @@ void	aPlayerParams::setData( const _MC2Player* data)
 		textObjects[0].setColor( textColor );
 		textObjects[1].setColor( textColor );
 		char text[256];
-		sprintf(text, "%ld", data->cBills/5000 * 5 );
+		mc2::fmt::to_buf(text, "{:d}", mc2::fmt::as_i32(data->cBills/5000 * 5) );
 		if ( !edit.hasFocus() )
 			edit.setEntry( text );
 	}
@@ -2152,7 +2153,7 @@ void	aPlayerParams::setData( const _MC2Player* data)
 			{
 				auto pTmp2 = std::make_unique<aStyle2TextListItem>();
 				char tmpStr[32];
-				sprintf(tmpStr, "%ld", i+1);
+				mc2::fmt::to_buf(tmpStr, "{:d}", mc2::fmt::as_i32(i+1));
 				*pTmp2 = templateItem;
 				pTmp2->setText( tmpStr );
 				pTmp2->resize( teamNumberDropList.width() - 
@@ -2197,7 +2198,7 @@ int aPlayerParams::handleMessage( unsigned long message, unsigned long who )
 				pInfo->cBills += increment;
 				
 				char text[256];
-				sprintf(text, "%ld", pInfo->cBills/5000 * (5) ); // need to round to nearest 5000
+				mc2::fmt::to_buf(text, "{:d}", mc2::fmt::as_i32(pInfo->cBills/5000 * (5)) ); // need to round to nearest 5000
 				edit.setEntry( text );
 				MPParameterScreen::resetCheckBoxes();
 				
@@ -2212,7 +2213,7 @@ int aPlayerParams::handleMessage( unsigned long message, unsigned long who )
 				pInfo->cBills -= increment;
 
 				char text[256];
-				sprintf(text, "%ld", pInfo->cBills/5000 * (5) );
+				mc2::fmt::to_buf(text, "{:d}", mc2::fmt::as_i32(pInfo->cBills/5000 * (5)) );
 				edit.setEntry( text );
 				MPParameterScreen::resetCheckBoxes();
 

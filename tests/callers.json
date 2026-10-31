@@ -38,7 +38,7 @@
         },
         {
           "path": "scripts/kit_payload.py",
-          "line": 109,
+          "line": 218,
           "evidence": "import",
           "reference": "bootstrap_worktree_build",
           "text": "from bootstrap_worktree_build import find_cmake"
@@ -791,7 +791,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/deploy_payload.py",
-          "line": 1972,
+          "line": 1987,
           "evidence": "command",
           "reference": "scripts/check-deploy-hygiene.py",
           "text": "r = subprocess.run([sys.executable, hygiene, target],"
@@ -2213,7 +2213,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1542,
+          "line": 1543,
           "evidence": "command",
           "reference": "scripts/check_sim_include_firewall.py",
           "text": "run_check \"sim_include_firewall\"        \"py -3 -B scripts/tests/test_sim_include_firewall.py && py -3 scripts/check_sim_include_firewall.py\""
@@ -2315,7 +2315,7 @@
         },
         {
           "path": "scripts/kit_payload.py",
-          "line": 108,
+          "line": 217,
           "evidence": "import",
           "reference": "configure_ninja",
           "text": "import configure_ninja as cn"
@@ -2610,7 +2610,7 @@
         },
         {
           "path": "scripts/kit_payload.py",
-          "line": 11,
+          "line": 14,
           "evidence": "import",
           "reference": "console_child",
           "text": "import console_child"
@@ -2729,14 +2729,14 @@
         },
         {
           "path": "scripts/smoke_lib/host_lease.py",
-          "line": 549,
+          "line": 552,
           "evidence": "import",
           "reference": "scripts.console_child",
           "text": "from scripts import console_child         # type: ignore"
         },
         {
           "path": "scripts/smoke_lib/host_lease.py",
-          "line": 552,
+          "line": 555,
           "evidence": "import",
           "reference": "console_child",
           "text": "import console_child                       # type: ignore"
@@ -2862,7 +2862,7 @@
         },
         {
           "path": "scripts/tests/test_farm_runner.py",
-          "line": 13,
+          "line": 48,
           "evidence": "import",
           "reference": "scripts.console_child",
           "text": "from scripts import console_child"
@@ -2950,6 +2950,13 @@
           "evidence": "import",
           "reference": "console_child",
           "text": "import console_child  # noqa: E402"
+        },
+        {
+          "path": "scripts/tests/test_shadow_bake_init.py",
+          "line": 13,
+          "evidence": "import",
+          "reference": "console_child",
+          "text": "import console_child"
         },
         {
           "path": "scripts/tests/test_slang_build.py",
@@ -3324,7 +3331,7 @@
         },
         {
           "path": "tools/lane_merge.py",
-          "line": 58,
+          "line": 60,
           "evidence": "import",
           "reference": "console_child",
           "text": "import console_child  # noqa: E402  (windowless console children without a conhost each)"
@@ -3401,7 +3408,7 @@
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 46,
+          "line": 47,
           "evidence": "import",
           "reference": "console_child",
           "text": "import console_child  # noqa: E402  (windowless console children)"
@@ -3412,6 +3419,13 @@
           "evidence": "import",
           "reference": "console_child",
           "text": "import console_child  # noqa: E402"
+        },
+        {
+          "path": "tools/perf/paired_cpu.py",
+          "line": 16,
+          "evidence": "import",
+          "reference": "console_child",
+          "text": "import console_child"
         },
         {
           "path": "tools/phase/asm_dead_strip.py",
@@ -3936,7 +3950,14 @@
         },
         {
           "path": "scripts/tests/test_farm_runner.py",
-          "line": 142,
+          "line": 184,
+          "evidence": "import",
+          "reference": "deploy_payload",
+          "text": "import deploy_payload as deploy"
+        },
+        {
+          "path": "scripts/tests/test_farm_runner.py",
+          "line": 266,
           "evidence": "import",
           "reference": "deploy_payload",
           "text": "import deploy_payload as deploy"
@@ -4027,14 +4048,14 @@
         },
         {
           "path": "tools/farm/host.py",
-          "line": 196,
+          "line": 225,
           "evidence": "import",
           "reference": "deploy_payload",
           "text": "import deploy_payload as deploy"
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 235,
+          "line": 283,
           "evidence": "import_module",
           "reference": "deploy_payload",
           "text": "return importlib.import_module('deploy_payload')"
@@ -4056,7 +4077,7 @@
         },
         {
           "path": "scripts/deploy_payload.py",
-          "line": 1826,
+          "line": 1841,
           "evidence": "import",
           "reference": "exe_fingerprint",
           "text": "from exe_fingerprint import extract, sha_agrees"
@@ -4067,6 +4088,13 @@
           "evidence": "import",
           "reference": "exe_fingerprint",
           "text": "import exe_fingerprint  # noqa: E402"
+        },
+        {
+          "path": "scripts/merge_gate.py",
+          "line": 50,
+          "evidence": "import",
+          "reference": "exe_fingerprint",
+          "text": "from exe_fingerprint import extract, sha_agrees"
         },
         {
           "path": "scripts/ninja_build.py",
@@ -4111,8 +4139,15 @@
           "text": "from scripts.exe_fingerprint import (  # noqa: E402"
         },
         {
+          "path": "scripts/tests/test_gate_preflight.py",
+          "line": 10,
+          "evidence": "import",
+          "reference": "exe_fingerprint",
+          "text": "import exe_fingerprint"
+        },
+        {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 1167,
+          "line": 1170,
           "evidence": "import",
           "reference": "exe_fingerprint",
           "text": "import exe_fingerprint as fpmod"
@@ -4243,7 +4278,14 @@
         },
         {
           "path": "scripts/deploy_payload.py",
-          "line": 1901,
+          "line": 1751,
+          "evidence": "import",
+          "reference": "kit_payload",
+          "text": "import kit_payload"
+        },
+        {
+          "path": "scripts/deploy_payload.py",
+          "line": 1916,
           "evidence": "import",
           "reference": "kit_payload",
           "text": "import kit_payload"
@@ -4254,6 +4296,13 @@
           "evidence": "import",
           "reference": "kit_payload",
           "text": "import kit_payload"
+        },
+        {
+          "path": "scripts/tests/test_deploy_seed.py",
+          "line": 10,
+          "evidence": "import",
+          "reference": "kit_payload",
+          "text": "import kit_payload as kit"
         },
         {
           "path": "scripts/tests/test_isolated_deploy.py",
@@ -4275,6 +4324,13 @@
           "evidence": "import",
           "reference": "kit_payload",
           "text": "import kit_payload as kit"
+        },
+        {
+          "path": "tools/farm/host.py",
+          "line": 133,
+          "evidence": "import",
+          "reference": "kit_payload",
+          "text": "from kit_payload import checked_files"
         }
       ]
     },
@@ -4285,7 +4341,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/merge_gate.py",
-          "line": 344,
+          "line": 430,
           "evidence": "command",
           "reference": "scripts/make-isolated-deploy.py",
           "text": "subprocess.run([sys.executable, str(ROOT / \"scripts/make-isolated-deploy.py\"),"
@@ -4487,6 +4543,13 @@
           "text": "import merge_gate as gate"
         },
         {
+          "path": "scripts/tests/test_gate_preflight.py",
+          "line": 9,
+          "evidence": "import",
+          "reference": "merge_gate",
+          "text": "import merge_gate as gate"
+        },
+        {
           "path": "scripts/tests/test_gate_state.py",
           "line": 12,
           "evidence": "import",
@@ -4656,98 +4719,98 @@
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 681,
+          "line": 683,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 702,
+          "line": 704,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 711,
+          "line": 713,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 732,
+          "line": 734,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 759,
+          "line": 761,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 826,
+          "line": 828,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 839,
+          "line": 841,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 885,
+          "line": 887,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 907,
+          "line": 909,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 1033,
+          "line": 1036,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 1054,
+          "line": 1057,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 1080,
+          "line": 1083,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 1109,
+          "line": 1112,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 1127,
+          "line": 1130,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
@@ -4841,7 +4904,7 @@
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 1166,
+          "line": 1169,
           "evidence": "import",
           "reference": "ninja_build",
           "text": "import ninja_build as nb"
@@ -5008,7 +5071,7 @@
         },
         {
           "path": "tools/perf/mission_cpu_profile.py",
-          "line": 26,
+          "line": 27,
           "evidence": "import",
           "reference": "run_battle_bench",
           "text": "import run_battle_bench as battle"
@@ -5234,7 +5297,7 @@
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 772,
+          "line": 823,
           "evidence": "command",
           "reference": "scripts/run_smoke.py",
           "text": "proc = subprocess.run(cmd, cwd=str(ROOT), capture_output=True,"
@@ -5349,7 +5412,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1539,
+          "line": 1540,
           "evidence": "command",
           "reference": "scripts/run_tools_tests.py",
           "text": "run_check_tri \"kit_art\"                 \"py -3 scripts/run_tools_tests.py --suite art\""
@@ -5372,7 +5435,7 @@
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 1094,
+          "line": 1097,
           "evidence": "import",
           "reference": "run_tools_tests",
           "text": "import run_tools_tests as tt"
@@ -5445,14 +5508,14 @@
         },
         {
           "path": "scripts/run_smoke.py",
-          "line": 1555,
+          "line": 1559,
           "evidence": "import",
           "reference": "run_visual_capture",
           "text": "from run_visual_capture import smoke_capture"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 796,
+          "line": 798,
           "evidence": "import",
           "reference": "run_visual_capture",
           "text": "import run_visual_capture as capture"
@@ -6523,7 +6586,7 @@
         },
         {
           "path": "scripts/tests/test_host_lease.py",
-          "line": 331,
+          "line": 340,
           "evidence": "command",
           "reference": "scripts.smoke_lib.host_lease",
           "text": "status = subprocess.run([sys.executable, \"-m\", \"scripts.smoke_lib.host_lease\", \"status\"], cwd=str(lane_b), env=env,"
@@ -6733,6 +6796,13 @@
           "evidence": "import",
           "reference": "scripts.smoke_lib.manifest",
           "text": "from scripts.smoke_lib import baselines, manifest, nofocus, render_options_pin, render_resolution, report"
+        },
+        {
+          "path": "scripts/tests/test_gate_farm.py",
+          "line": 22,
+          "evidence": "import",
+          "reference": "scripts.smoke_lib.manifest",
+          "text": "from scripts.smoke_lib.manifest import parse_manifest"
         },
         {
           "path": "scripts/tests/test_install_hygiene.py",
@@ -7086,7 +7156,7 @@
       "callers_by_stem": [
         {
           "path": "scripts/run_smoke.py",
-          "line": 1660,
+          "line": 1664,
           "evidence": "import",
           "reference": "scripts.smoke_lib.runtime_bridge",
           "text": "from scripts.smoke_lib.runtime_bridge import RuntimeBridge"
@@ -7259,7 +7329,7 @@
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 48,
+          "line": 49,
           "evidence": "import",
           "reference": "stage_root",
           "text": "import stage_root as stages  # noqa: E402  (default staging roots on E:, free-space preflight)"
@@ -7633,6 +7703,13 @@
       "callers_by_stem": []
     },
     {
+      "path": "scripts/tests/test_deploy_seed.py",
+      "basename": "test_deploy_seed.py",
+      "stem": "test_deploy_seed",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
       "path": "scripts/tests/test_deploy_staleness.py",
       "basename": "test_deploy_staleness.py",
       "stem": "test_deploy_staleness",
@@ -7699,6 +7776,13 @@
       "path": "scripts/tests/test_gate_farm.py",
       "basename": "test_gate_farm.py",
       "stem": "test_gate_farm",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
+      "path": "scripts/tests/test_gate_preflight.py",
+      "basename": "test_gate_preflight.py",
+      "stem": "test_gate_preflight",
       "callers_by_basename": [],
       "callers_by_stem": []
     },
@@ -7948,6 +8032,13 @@
       "callers_by_stem": []
     },
     {
+      "path": "scripts/tests/test_paired_cpu.py",
+      "basename": "test_paired_cpu.py",
+      "stem": "test_paired_cpu",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
       "path": "scripts/tests/test_parent_watchdog.py",
       "basename": "test_parent_watchdog.py",
       "stem": "test_parent_watchdog",
@@ -8060,6 +8151,13 @@
       "callers_by_stem": []
     },
     {
+      "path": "scripts/tests/test_shadow_bake_init.py",
+      "basename": "test_shadow_bake_init.py",
+      "stem": "test_shadow_bake_init",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
       "path": "scripts/tests/test_sim_determinism_strict.py",
       "basename": "test_sim_determinism_strict.py",
       "stem": "test_sim_determinism_strict",
@@ -8073,7 +8171,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1542,
+          "line": 1543,
           "evidence": "command",
           "reference": "scripts/tests/test_sim_include_firewall.py",
           "text": "run_check \"sim_include_firewall\"        \"py -3 -B scripts/tests/test_sim_include_firewall.py && py -3 scripts/check_sim_include_firewall.py\""
@@ -8253,7 +8351,7 @@
         },
         {
           "path": "tools/lane_merge.py",
-          "line": 60,
+          "line": 62,
           "evidence": "import",
           "reference": "_git_util",
           "text": "import _git_util  # noqa: E402  (shared git helpers)"
@@ -10531,7 +10629,14 @@
       "callers_by_stem": [
         {
           "path": "scripts/tests/test_farm_runner.py",
-          "line": 15,
+          "line": 14,
+          "evidence": "import",
+          "reference": "tools.farm.host",
+          "text": "from tools.farm import host"
+        },
+        {
+          "path": "scripts/tests/test_farm_runner.py",
+          "line": 50,
           "evidence": "import",
           "reference": "tools.farm.host",
           "text": "from tools.farm import host"
@@ -10568,14 +10673,21 @@
       "callers_by_stem": [
         {
           "path": "scripts/tests/test_farm_runner.py",
-          "line": 14,
+          "line": 36,
+          "evidence": "import",
+          "reference": "tools.farm.runner",
+          "text": "from tools.farm import runner"
+        },
+        {
+          "path": "scripts/tests/test_farm_runner.py",
+          "line": 49,
           "evidence": "import",
           "reference": "tools.farm.runner",
           "text": "from tools.farm.runner import atomic_json, poll_once"
         },
         {
           "path": "scripts/tests/test_farm_runner.py",
-          "line": 258,
+          "line": 369,
           "evidence": "import",
           "reference": "tools.farm.runner",
           "text": "from tools.farm import runner"
@@ -12426,7 +12538,7 @@
         },
         {
           "path": "scripts/tests/test_mod_smoke.py",
-          "line": 456,
+          "line": 472,
           "evidence": "import",
           "reference": "fst",
           "text": "import fst"
@@ -12482,14 +12594,14 @@
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 525,
+          "line": 573,
           "evidence": "import_module",
           "reference": "fst",
           "text": "fst_lib = importlib.import_module('fst')"
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 561,
+          "line": 609,
           "evidence": "import_module",
           "reference": "fst",
           "text": "fst_lib = importlib.import_module('fst')"
@@ -12561,7 +12673,7 @@
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 400,
+          "line": 448,
           "evidence": "import",
           "reference": "mc2x_import",
           "text": "from mc2x_import import fst as fst_lib"
@@ -12828,35 +12940,35 @@
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 277,
+          "line": 325,
           "evidence": "import",
           "reference": "fst_listing",
           "text": "import fst_listing"
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 399,
+          "line": 447,
           "evidence": "import",
           "reference": "fst_listing",
           "text": "import fst_listing"
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 441,
+          "line": 489,
           "evidence": "import",
           "reference": "fst_listing",
           "text": "import fst_listing"
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 543,
+          "line": 591,
           "evidence": "import",
           "reference": "fst_listing",
           "text": "import fst_listing"
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 562,
+          "line": 610,
           "evidence": "import",
           "reference": "fst_listing",
           "text": "import fst_listing"
@@ -12984,6 +13096,20 @@
         }
       ],
       "callers_by_stem": [
+        {
+          "path": "scripts/merge_gate.py",
+          "line": 51,
+          "evidence": "import",
+          "reference": "mod_smoke",
+          "text": "from mod_smoke import load_known_failures"
+        },
+        {
+          "path": "scripts/tests/test_gate_preflight.py",
+          "line": 11,
+          "evidence": "import",
+          "reference": "mod_smoke",
+          "text": "import mod_smoke as mods"
+        },
         {
           "path": "tests/smoke/test_mod_smoke_staging.py",
           "line": 8,
@@ -13224,7 +13350,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/tests/test_mission_cpu_profile.py",
-          "line": 12,
+          "line": 13,
           "evidence": "load module",
           "reference": "tools/perf/mission_cpu_profile.py",
           "text": "spec = importlib.util.spec_from_file_location(\"mission_cpu_profile\", PATH)"
@@ -13233,10 +13359,40 @@
       "callers_by_stem": [
         {
           "path": "tools/perf/budget_check.py",
-          "line": 202,
+          "line": 203,
           "evidence": "import",
           "reference": "mission_cpu_profile",
           "text": "import mission_cpu_profile"
+        },
+        {
+          "path": "tools/perf/paired_cpu.py",
+          "line": 15,
+          "evidence": "import",
+          "reference": "mission_cpu_profile",
+          "text": "import mission_cpu_profile as cpu"
+        }
+      ]
+    },
+    {
+      "path": "tools/perf/paired_cpu.py",
+      "basename": "paired_cpu.py",
+      "stem": "paired_cpu",
+      "callers_by_basename": [
+        {
+          "path": "scripts/tests/test_paired_cpu.py",
+          "line": 11,
+          "evidence": "load module",
+          "reference": "tools/perf/paired_cpu.py",
+          "text": "spec = importlib.util.spec_from_file_location('paired_cpu', PATH)"
+        }
+      ],
+      "callers_by_stem": [
+        {
+          "path": "tools/perf/budget_check.py",
+          "line": 226,
+          "evidence": "import",
+          "reference": "paired_cpu",
+          "text": "import paired_cpu"
         }
       ]
     },
@@ -13965,6 +14121,27 @@
         }
       ],
       "callers_by_stem": [
+        {
+          "path": "scripts/merge_gate.py",
+          "line": 52,
+          "evidence": "import",
+          "reference": "saveload_roundtrip",
+          "text": "import saveload_roundtrip as saves"
+        },
+        {
+          "path": "scripts/tests/test_gate_preflight.py",
+          "line": 32,
+          "evidence": "import",
+          "reference": "saveload_roundtrip",
+          "text": "import saveload_roundtrip"
+        },
+        {
+          "path": "scripts/tests/test_gate_preflight.py",
+          "line": 54,
+          "evidence": "import",
+          "reference": "saveload_roundtrip",
+          "text": "import saveload_roundtrip"
+        },
         {
           "path": "scripts/tests/test_ref_passthrough.py",
           "line": 17,
@@ -18488,7 +18665,7 @@
         },
         {
           "path": "tools/perf/mission_cpu_profile.py",
-          "line": 25,
+          "line": 26,
           "evidence": "import",
           "reference": "tracy_capture_compare",
           "text": "import tracy_capture_compare as tracy"

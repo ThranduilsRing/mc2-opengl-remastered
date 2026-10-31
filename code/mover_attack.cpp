@@ -4,11 +4,11 @@
 #include "Gates/gate.h"
 
 
-#define MAX_SHORT_RANGE		(60.0f * worldUnitsPerMeter)
-#define MIN_MEDIUM_RANGE	(31.0f * worldUnitsPerMeter)
-#define MAX_MEDIUM_RANGE	(120.0f * worldUnitsPerMeter)
-#define MIN_LONG_RANGE		(61.0f * worldUnitsPerMeter)
-#define MAX_LONG_RANGE		(180.0f * worldUnitsPerMeter)
+constexpr float MAX_SHORT_RANGE_METERS = 60.0f;
+constexpr float MIN_MEDIUM_RANGE_METERS = 31.0f;
+constexpr float MAX_MEDIUM_RANGE_METERS = 120.0f;
+constexpr float MIN_LONG_RANGE_METERS = 61.0f;
+constexpr float MAX_LONG_RANGE_METERS = 180.0f;
 
 extern float applyDifficultySkill (float chance, bool isPlayer);
 float Mover::calcAttackChance (GameObjectPtr target, long aimLocation, float targetTime, long weaponIndex, float modifiers, long* range, glm::vec3* targetPoint) 
@@ -163,17 +163,17 @@ float Mover::calcAttackChance (GameObjectPtr target, long aimLocation, float tar
 		attackChance += WeaponSpecialistModifier;
 	}
 
-	if ((distanceToTarget <= MAX_SHORT_RANGE) && pilot && pilot->isShortRangeSpecialist())
+	if ((distanceToTarget <= (MAX_SHORT_RANGE_METERS * worldUnitsPerMeter)) && pilot && pilot->isShortRangeSpecialist())
 	{
 		attackChance += 15.0f;
 	}
 	
-	if ((distanceToTarget >= MIN_MEDIUM_RANGE) && (distanceToTarget <= MAX_MEDIUM_RANGE) && pilot && pilot->isMediumRangeSpecialist())
+	if ((distanceToTarget >= (MIN_MEDIUM_RANGE_METERS * worldUnitsPerMeter)) && (distanceToTarget <= (MAX_MEDIUM_RANGE_METERS * worldUnitsPerMeter)) && pilot && pilot->isMediumRangeSpecialist())
 	{
 		attackChance += 15.0f;
 	}
 	
-	if ((distanceToTarget >= MIN_LONG_RANGE) && (distanceToTarget <= MAX_LONG_RANGE) && pilot && pilot->isLongRangeSpecialist())
+	if ((distanceToTarget >= (MIN_LONG_RANGE_METERS * worldUnitsPerMeter)) && (distanceToTarget <= (MAX_LONG_RANGE_METERS * worldUnitsPerMeter)) && pilot && pilot->isLongRangeSpecialist())
 	{
 		attackChance += 15.0f;
 	}

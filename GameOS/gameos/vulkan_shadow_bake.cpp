@@ -1180,11 +1180,15 @@ bool ShadowBake::updateIncremental(VkCommandBuffer cb, uint64_t epoch, const Sha
 // (rewritten only on its own parity's frame, after the island waited that parity's fence).
 bool ShadowBake::ensureIncremental() {
     if (incParams_) return true;
+    // Publish the buffers together, only after every allocation/upload and the
+    // query pool succeeded. Residency refusal must leave the next call cold;
+    // otherwise incParams_ alone skips creation of the remaining resources.
+    OwnedBuffer params, casterUbo, passBuffer, instances;
     incInstanceCap_ = 65536;
-    if (!makeHostBuffer(incParams_, allocator_, device_, kMaxFramesInFlight * kSubTilesPerFrame * kSlice, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, "shadow.bake.dirtyParams") ||
-        !makeHostBuffer(incCasterUbo_, allocator_, device_, kMaxFramesInFlight * kSubTilesPerFrame * kSlice, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, "shadow.bake.dirtyCasterUbo") ||
-        !makeHostBuffer(incPass_, allocator_, device_, 3 * kSlice, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, "shadow.bake.dirtyPass") ||
-        !makeHostBuffer(incInstances_, allocator_, device_, kMaxFramesInFlight * incInstanceCap_ * sizeof(GpuStaticPropInstance), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, "shadow.bake.dirtyInstances")) {
+    if (!makeHostBuffer(params, allocator_, device_, kMaxFramesInFlight * kSubTilesPerFrame * kSlice, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, "shadow.bake.dirtyParams") ||
+        !makeHostBuffer(casterUbo, allocator_, device_, kMaxFramesInFlight * kSubTilesPerFrame * kSlice, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, "shadow.bake.dirtyCasterUbo") ||
+        !makeHostBuffer(passBuffer, allocator_, device_, 3 * kSlice, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, "shadow.bake.dirtyPass") ||
+        !makeHostBuffer(instances, allocator_, device_, kMaxFramesInFlight * incInstanceCap_ * sizeof(GpuStaticPropInstance), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, "shadow.bake.dirtyInstances")) {
         blog("dirty-update buffers failed.");
         return false;
     }
@@ -1193,7 +1197,7 @@ bool ShadowBake::ensureIncremental() {
         const int32_t pass[4]={m,mc2shadow::shadowQuality().level,0,0};
         std::memcpy(pp3.data()+m*kSlice,pass,sizeof(pass));
     }
-    if (!incPass_.upload(pp3.data(), pp3.size())) return false;
+    if (!passBuffer.upload(pp3.data(), pp3.size())) return false;
     if (!incQueries_) {
         VkQueryPoolCreateInfo qci{VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO};
         qci.queryType = VK_QUERY_TYPE_TIMESTAMP;
@@ -1202,6 +1206,10 @@ bool ShadowBake::ensureIncremental() {
     }
     for (auto& gen : incHeightsGen_) gen = 0;
     for (auto& used : incQueryUsed_) used = false;
+    incCasterUbo_ = std::move(casterUbo);
+    incPass_ = std::move(passBuffer);
+    incInstances_ = std::move(instances);
+    incParams_ = std::move(params);
     return true;
 }
 

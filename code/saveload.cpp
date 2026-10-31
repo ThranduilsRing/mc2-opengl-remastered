@@ -1,6 +1,7 @@
 #include "save_archive.h"
 #include "../GameOS/gameos/crash_content.h"
 #include "save_exactness.h"
+#include "saved_objects_check.h"
 #include "save_sections.h"
 #include <span>
 #include "combat_clock_archive.h"
@@ -219,7 +220,7 @@ void Mission::save (const char *saveFileName)
 	DeleteFile(tmpName);
 	free(tmpRAM);
 
-	currentPacket += MOVE_saveData( &saveFile, currentPacket );
+	currentPacket += MOVE_saveData(&saveFile, currentPacket, {.cells = true, .areas = true, .doors = true, .links = true});
 
 	loadProgress = 75.0f;
 
@@ -295,6 +296,10 @@ void Mission::save (const char *saveFileName)
     sections.add(mc2::save::tagTeam, 1, true, {});
     sections.add(mc2::save::tagObjectManager, 1, true, {});
     sections.add(mc2::save::tagWatchList, 1, true, {});
+    sections.add(mc2::save::tagMapCells, 1, true, {});
+    sections.add(mc2::save::tagMapAreas, 1, true, {});
+    sections.add(mc2::save::tagMapDoors, 1, true, {});
+    sections.add(mc2::save::tagDoorLinks, 1, true, {});
     sections.add(mc2::save::tagWarriorStatic, 1, true, {});
     sections.add(mc2::save::tagWarrior, 1, true, {});
     {
@@ -543,10 +548,31 @@ bool Mission::openSaveFile(MissionLoadFrame& f) {
 	}
 	currentPacket = 2;
 
-	if (const auto why = GameObjectManager::checkSavedObjects(&loadFile, nullptr, f.saveV2,
+	long objectPacket = 0;
+	if (const auto why = GameObjectManager::checkSavedObjects(&loadFile, &objectPacket, f.saveV2,
 		f.sections.find(mc2::save::tagObjectManager) != nullptr,
 		f.sections.find(mc2::save::tagWatchList) != nullptr)) {
 		mc2::fmt::print_err("[SAVE v1] event=reject reason={} file={}\n", *why, mc2::fmt::safe(loadFileName));
+		return true;
+	}
+	// Commander packets immediately follow the object slots and watch list.
+	ObjectManagerData objects{};
+	loadFile.seekPacket(objectPacket);
+	mc2::save::Bytes objectBytes(loadFile.getPacketSize());
+	const bool objectRead = loadFile.readPacket(objectPacket, objectBytes.data()) == objectBytes.size();
+	bool objectDecoded = false;
+	if (f.sections.find(mc2::save::tagObjectManager))
+		objectDecoded = objectRead && mc2::save::decodeTaggedRecord(objectBytes, objects, mc2::save::objectManagerTag);
+	else if (objectRead && objectBytes.size() == sizeof(objects)) {
+		memcpy(&objects, objectBytes.data(), sizeof(objects));
+		objectDecoded = true;
+	}
+	const bool homesValid = objectDecoded && mc2_saved_objects::checkHomes(loadFile, objectPacket,
+		objectPacket + objects.maxObjects + 3,
+		f.sections.find(mc2::save::tagTeam) != nullptr, f.sections.find(mc2::save::tagCommander) != nullptr);
+	loadFile.seekPacket(currentPacket);
+	if (!homesValid) {
+		mc2::fmt::print_err("[SAVE v1] event=reject reason=home_identity file={}\n", mc2::fmt::safe(loadFileName));
 		return true;
 	}
 	return false;

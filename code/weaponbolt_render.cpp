@@ -48,7 +48,7 @@ static glm::vec3 boltTargetHotSpot (const glm::vec3& raw, GameObjectWatchID targ
 void WeaponBolt::extractRenderView (mc2::render_view::RenderView& view)
 {
 	GameObject::extractRenderView(view);
-	rvType = static_cast<WeaponBoltTypePtr>(getObjectType());
+	const auto* type = static_cast<WeaponBoltTypePtr>(getObjectType());
 	view.effects[0] = gosEffect.get();
 	view.effects[1] = muzzleEffect.get();
 	view.effects[2] = hitEffect.get();
@@ -71,10 +71,22 @@ void WeaponBolt::extractRenderView (mc2::render_view::RenderView& view)
 	view.value[1] = myOwner ? myOwner->getRotation() : 0.0f;
 	for (int i = 0; i < 4; i++)
 	{
-		rvLaserVertices[i] = laserVertices[i];
-		rvLaserSide[i] = laserSide[i];
+		view.bolt.laserVertices[i] = laserVertices[i];
+		view.bolt.laserSide[i] = laserSide[i];
 	}
-	rvStartUV = startUV;
+	view.bolt.startUV = startUV;
+	view.bolt.uvRepeat = type->uvRepeat;
+	view.bolt.unitLength = type->unitLength;
+	view.bolt.frontRGB = type->frontRGB;
+	view.bolt.middleRGB = type->middleRGB;
+	view.bolt.backRGB = type->backRGB;
+	view.bolt.midEdgeRGB = type->midEdgeRGB;
+	view.bolt.boltAlpha = type->boltAlpha;
+	view.bolt.edgeAlpha = type->edgeAlpha;
+	view.bolt.isBeam = type->isBeam;
+	view.bolt.gosTextureHandle = gosTextureHandle;
+	view.bolt.mcTextureHandle = mcTextureHandle;
+	view.flags |= mc2::render_view::BoltGeometry;
 }
 
 void WeaponBolt::renderView (const mc2::render_view::RenderView& view)
@@ -89,9 +101,14 @@ void WeaponBolt::renderView (const mc2::render_view::RenderView& view)
 		// Extract copies under the member names, so the draw body below reads the view.
 		const glm::vec3 position = view.position;
 		glm::vec3 laserPosition = view.aux[0];
-		glm::vec3 (&laserVertices)[4] = rvLaserVertices;
-		glm::vec3 (&laserSide)[4] = rvLaserSide;
-		const float startUV = rvStartUV;
+		// Legacy projection takes mutable positions; never hand it arena storage.
+		auto draw = view.frozenBolt ? *view.frozenBolt : view.bolt;
+		auto& laserVertices = draw.laserVertices;
+		auto& laserSide = draw.laserSide;
+		const float startUV = draw.startUV;
+		const auto* rvType = &draw;
+		const auto gosTextureHandle = draw.gosTextureHandle;
+		const auto mcTextureHandle = draw.mcTextureHandle;
 		const bool hitTarget = view.has(mc2::render_view::HitTarget);
 
 		gosFX::Effect::DrawInfo drawInfo;

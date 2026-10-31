@@ -71,7 +71,7 @@ def observation_error(lines) -> str:
 GATES = {"MC2_SMOKE_FIXED_TIMESTEP": "1", "MC2_SIM_IDENTITY_TRACE": "1"}
 #: Missions whose determinism runs also arm the G7b overlap audit (aborts on the first violation; read-only otherwise, so the SIMID
 #: chain is unchanged).
-OVERLAP_AUDIT_MISSIONS = ("mc2_10",)
+OVERLAP_AUDIT_MISSIONS = ("mc2_01", "mc2_03", "mc2_10", "mc2_16", "mc2_24")
 OVERLAP_VIOLATION = "[SIM_OVERLAP v1] VIOLATION"
 
 
@@ -751,10 +751,18 @@ def main(argv=None) -> int:
                         headless=args.headless, ticks=args.ticks)
     a, b = load_simid(la), load_simid(lb)
     reached = min(len(a), len(b))
+    # --ticks emits one SIMID per tick: tolerance is zero, including windowed runs.
+    required = max(args.ticks, args.min_frames if getattr(args, "headless_both", False) else 0)
+    os.makedirs(out, exist_ok=True)
+    with open(os.path.join(out, "result.json"), "w", encoding="utf-8") as fh:
+        json.dump({"requested_ticks": args.ticks, "tick_tolerance": 0,
+                   "required_frames": max(needed, required), "frames_a": len(a), "frames_b": len(b),
+                   "complete": reached >= max(needed, required)}, fh, indent=2)
+    needed = max(needed, required)
     if reached < needed:
         print(f"sim_determinism: INCONCLUSIVE (too few frames): {reached} of {needed} sim frames within the requested {args.duration} s budget")
         return 3
-    ok, msg = compare(a, b, args.min_frames, required_length=args.min_frames if getattr(args, "headless_both", False) else 0)
+    ok, msg = compare(a, b, args.min_frames, required_length=required)
     print(("sim_determinism: PASS " if ok else "sim_determinism: FAIL ") + msg)
     if ok and base:
         if not os.path.exists(base):

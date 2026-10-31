@@ -48,6 +48,7 @@ MissionBegin.cpp			: Implementation of the MissionBegin component.
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"   // str<>()
 #include "mc2fmt.h"
+#include "../GameOS/gameos/utils/mc2log.h"
 extern CPrefs prefs;
 
 class MechLabScreen;
@@ -356,9 +357,9 @@ void MissionBegin::begin()
 	// CRASH-SOAK harness marker: report whether a logistics ABL brain was
 	// found+loaded for the current mission. Cheap (one printf at screen
 	// entry); always emitted so it shows up regardless of soak gate.
-	printf("[SOAK] abl logistics brain=%s loaded=%d\n",
+	mc2::log::event<"SOAK", -1>(mc2::log::Stream::Out,"abl logistics brain={} loaded={:d}",
 		brainfile.empty() ? "(none)" : brainfile.c_str(),
-		(logisticsBrain != nullptr) ? 1 : 0);
+		mc2::fmt::as_i32((logisticsBrain != nullptr) ? 1 : 0));
 	fflush(stdout);
 
 	//---------------------------------------------
@@ -475,7 +476,7 @@ void MissionBegin::begin()
 	if ( mc2::gate::get<"MC2_MENU_CANARY_SKIP_INTRO">() )
 	{
 		mainMenu->skipIntro();
-		printf("[MENU_CANARY] skip_intro=1\n");
+		mc2::log::event<"MENU_CANARY", -1>(mc2::log::Stream::Out,"skip_intro=1");
 	}
 	file.close();
 	}
@@ -1137,8 +1138,8 @@ void MissionBegin::updateSoakAutoPurchase() {
 								// (b) buy path: purchase then locate fresh instance
 								if ( ld->purchaseMech( variant ) != 0 )
 								{
-									printf("[SOAK] lance-add slot=%d FAILED purchase variant=%s\n",
-									    slot, variant->getName().c_str());
+									mc2::log::event<"SOAK", -1>(mc2::log::Stream::Out,"lance-add slot={:d} FAILED purchase variant={}",
+									    mc2::fmt::as_i32(slot), variant->getName().c_str());
 									continue;
 								}
 								auto inv = ld->getInventory();
@@ -1150,8 +1151,8 @@ void MissionBegin::updateSoakAutoPurchase() {
 								}
 								if ( !mech )
 								{
-									printf("[SOAK] lance-add slot=%d WARN bought-not-found variant=%s\n",
-									    slot, variant->getName().c_str());
+									mc2::log::event<"SOAK", -1>(mc2::log::Stream::Out,"lance-add slot={:d} WARN bought-not-found variant={}",
+									    mc2::fmt::as_i32(slot), variant->getName().c_str());
 									continue;
 								}
 							}
@@ -1160,15 +1161,15 @@ void MissionBegin::updateSoakAutoPurchase() {
 							LogisticsPilot* pilot = ld->getFirstAvailablePilot();
 							if ( !pilot )
 							{
-								printf("[SOAK] lance-add slot=%d STOPPED no-pilot mech=%s\n",
-								    slot, variant->getName().c_str());
+								mc2::log::event<"SOAK", -1>(mc2::log::Stream::Out,"lance-add slot={:d} STOPPED no-pilot mech={}",
+								    mc2::fmt::as_i32(slot), variant->getName().c_str());
 								break;
 							}
 
 							if ( ld->addMechToForceGroup( mech, slot ) != 0 )
 							{
-								printf("[SOAK] lance-add slot=%d REJECTED addMechToForceGroup mech=%s\n",
-								    slot, variant->getName().c_str());
+								mc2::log::event<"SOAK", -1>(mc2::log::Stream::Out,"lance-add slot={:d} REJECTED addMechToForceGroup mech={}",
+								    mc2::fmt::as_i32(slot), variant->getName().c_str());
 								continue;
 							}
 							mech->setPilot( pilot );
@@ -1179,9 +1180,9 @@ void MissionBegin::updateSoakAutoPurchase() {
 								firstName = variant->getName().c_str();
 							}
 
-							printf("[SOAK] lance-add slot=%d mech=%s tons=%d src=%s\n",
-							    slot, variant->getName().c_str(),
-							    static_cast<int>(variant->getMaxWeight()), src);
+							mc2::log::event<"SOAK", -1>(mc2::log::Stream::Out,"lance-add slot={:d} mech={} tons={:d} src={}",
+							    mc2::fmt::as_i32(slot), variant->getName().c_str(),
+							    mc2::fmt::as_i32(static_cast<int>(variant->getMaxWeight())), mc2::fmt::safe(src));
 							++deployed;
 							if ( src[0] == 's' ) ++fromSalvage; else ++fromBuy;
 						}
@@ -1197,11 +1198,11 @@ void MissionBegin::updateSoakAutoPurchase() {
 									++pilotsAvail;
 						}
 
-						printf("[SOAK] lance-v2 deployed=%d distinct=%d pilots=%d fromSalvage=%d fromBuy=%d salvageCands=%d buyCands=%d missionNum=%u\n",
-						    deployed, deployed, pilotsAvail,
-						    fromSalvage, fromBuy,
-						    nSalvageCands, nCands - nSalvageCands,
-						    s_soakLanceMissionNum);
+						mc2::log::event<"SOAK", -1>(mc2::log::Stream::Out,"lance-v2 deployed={:d} distinct={:d} pilots={:d} fromSalvage={:d} fromBuy={:d} salvageCands={:d} buyCands={:d} missionNum={:d}",
+						    mc2::fmt::as_i32(deployed), mc2::fmt::as_i32(deployed), mc2::fmt::as_i32(pilotsAvail),
+						    mc2::fmt::as_i32(fromSalvage), mc2::fmt::as_i32(fromBuy),
+						    mc2::fmt::as_i32(nSalvageCands), mc2::fmt::as_i32(nCands - nSalvageCands),
+						    mc2::fmt::as_u32(s_soakLanceMissionNum));
 						fflush( stdout );
 					}
 					else
@@ -1267,20 +1268,20 @@ void MissionBegin::updateSoakAutoPurchase() {
 								if ( pilot )
 									bought->setPilot( pilot );
 								ld->setMechToModify( bought );
-								printf("[SOAK] auto-purchase mech=%s tons=%d pilot=%d deployed=slot%d maxDrop=%d pool=%d\n",
-									pick->getName().c_str(), static_cast<int>(pick->getMaxWeight()),
-									pilot ? 1 : 0, slot, maxDrop, n);
+								mc2::log::event<"SOAK", -1>(mc2::log::Stream::Out,"auto-purchase mech={} tons={:d} pilot={:d} deployed=slot{:d} maxDrop={:d} pool={:d}",
+									pick->getName().c_str(), mc2::fmt::as_i32(static_cast<int>(pick->getMaxWeight())),
+									mc2::fmt::as_i32(pilot ? 1 : 0), mc2::fmt::as_i32(slot), mc2::fmt::as_i32(maxDrop), mc2::fmt::as_i32(n));
 							}
 							else
 							{
-								printf("[SOAK] auto-purchase WARN bought-not-found variant=%s\n",
+								mc2::log::event<"SOAK", -1>(mc2::log::Stream::Out,"auto-purchase WARN bought-not-found variant={}",
 									pick->getName().c_str());
 							}
 						}
 						else
 						{
-							printf("[SOAK] auto-purchase FAILED reason=%s pool=%d maxDrop=%d\n",
-								pick ? "purchase-rejected" : "empty-pool", n, maxDrop);
+							mc2::log::event<"SOAK", -1>(mc2::log::Stream::Out,"auto-purchase FAILED reason={} pool={:d} maxDrop={:d}",
+								mc2::fmt::safe(pick ? "purchase-rejected" : "empty-pool"), mc2::fmt::as_i32(n), mc2::fmt::as_i32(maxDrop));
 						}
 						fflush( stdout );
 					}
@@ -1404,8 +1405,8 @@ void MissionBegin::updateSoakScreenWalk(LogisticsScreen* pCurScreen, bool& soakF
 						auto inv = LogisticsData::instance->getInventory();
 						items = static_cast<int>(std::ssize(inv));
 					}
-					printf("[SOAK] screen-check screen=purchase ok=%d items=%d\n",
-						(items > 0) ? 1 : 0, items);
+					mc2::log::event<"SOAK", -1>(mc2::log::Stream::Out,"screen-check screen=purchase ok={:d} items={:d}",
+						mc2::fmt::as_i32((items > 0) ? 1 : 0), mc2::fmt::as_i32(items));
 					fflush(stdout);
 					// Return to [2][1] briefly before going to loadout.
 					if ( screens[curScreenX][curScreenY] )
@@ -1433,7 +1434,7 @@ void MissionBegin::updateSoakScreenWalk(LogisticsScreen* pCurScreen, bool& soakF
 				                   LogisticsData::instance->getMechToModify() != nullptr );
 				if ( !mechReady )
 				{
-					printf("[SOAK] screen-check screen=loadout ok=0 reason=no-mech-selected\n");
+					mc2::log::event<"SOAK", -1>(mc2::log::Stream::Out,"screen-check screen=loadout ok=0 reason=no-mech-selected");
 					fflush(stdout);
 					// Return to [2][1] and mark done; normal advance takes over.
 					if ( screens[curScreenX][curScreenY] )
@@ -1477,8 +1478,8 @@ void MissionBegin::updateSoakScreenWalk(LogisticsScreen* pCurScreen, bool& soakF
 						auto fg = LogisticsData::instance->getForceGroup();
 						items = static_cast<int>(std::ssize(fg));
 					}
-					printf("[SOAK] screen-check screen=loadout ok=%d items=%d\n",
-						(items > 0) ? 1 : 0, items);
+					mc2::log::event<"SOAK", -1>(mc2::log::Stream::Out,"screen-check screen=loadout ok={:d} items={:d}",
+						mc2::fmt::as_i32((items > 0) ? 1 : 0), mc2::fmt::as_i32(items));
 					fflush(stdout);
 					// Return to [2][1] and mark done so normal advance fires.
 					if ( screens[curScreenX][curScreenY] )
@@ -1532,8 +1533,8 @@ void MissionBegin::updateSoakScreenWalk(LogisticsScreen* pCurScreen, bool& soakF
 					s_soakLastAdvX = curScreenX;
 					s_soakLastAdvY = curScreenY;
 					s_soakSettleTimer = 0.0f;
-					printf("[SOAK] parked screen=%d,%d (MC2_SOAK_STOP_AT_BAY)\n",
-						static_cast<int>(curScreenX), static_cast<int>(curScreenY));
+					mc2::log::event<"SOAK", -1>(mc2::log::Stream::Out,"parked screen={:d},{:d} (MC2_SOAK_STOP_AT_BAY)",
+						mc2::fmt::as_i32(static_cast<int>(curScreenX)), mc2::fmt::as_i32(static_cast<int>(curScreenY)));
 					fflush(stdout);
 				}
 				else
@@ -1543,11 +1544,11 @@ void MissionBegin::updateSoakScreenWalk(LogisticsScreen* pCurScreen, bool& soakF
 					s_soakLastAdvX = curScreenX;
 					s_soakLastAdvY = curScreenY;
 					s_soakSettleTimer = 0.0f;
-					printf("[SOAK] advance screen=%d,%d\n", static_cast<int>(curScreenX), static_cast<int>(curScreenY));
+					mc2::log::event<"SOAK", -1>(mc2::log::Stream::Out,"advance screen={:d},{:d}", mc2::fmt::as_i32(static_cast<int>(curScreenX)), mc2::fmt::as_i32(static_cast<int>(curScreenY)));
 					if ( LogisticsData::instance )
-						printf("[SOAK] launch mission=%s stage=%d\n",
+						mc2::log::event<"SOAK", -1>(mc2::log::Stream::Out,"launch mission={} stage={:d}",
 							LogisticsData::instance->getCurrentMission().c_str(),
-							static_cast<int>(LogisticsData::instance->getCurrentMissionNum()));
+							mc2::fmt::as_i32(static_cast<int>(LogisticsData::instance->getCurrentMissionNum())));
 					fflush(stdout);
 				}
 			}

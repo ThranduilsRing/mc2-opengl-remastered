@@ -464,10 +464,10 @@ void BldgAppearance::updateFrameEffects()
 			// Gated on ownerLit, NOT on ->active: a beam whose pool was
 			// suppressed for missing the ground is still a visible volume.
 			if (ownerLit && beamIdx == 0 && fieldLamp)
-				mc2_cone_glow::QueueSearchlightGlow(bldgShape, beamNode,
+				mc2_cone_glow::QueueSearchlightGlow(eye->getViewUniforms(), bldgShape, beamNode,
 					spotlightLights_[k]->GetaRGB(), eye->getNightFactor());
 			else if (ownerLit && beamIdx == 0)   // the glow draws the whole leaf once
-				mc2_cone_glow::QueueConeGlow(bldgShape, spotlightNodeIds_[k],
+				mc2_cone_glow::QueueConeGlow(eye->getViewUniforms(), bldgShape, spotlightNodeIds_[k],
 					spotlightLights_[k]->GetaRGB(), eye->getNightFactor());
 		}
 
@@ -483,7 +483,7 @@ void BldgAppearance::updateFrameEffects()
 		// live inside QueueBeaconGlow. No TG_Light slots are consumed — see
 		// the cone_glow.h contract note.
 		if (eye && eye->isNight && visible && !forceLightsOut)
-			mc2_cone_glow::QueueBeaconGlow(bldgShape, eye->getNightFactor());
+			mc2_cone_glow::QueueBeaconGlow(eye->getViewUniforms(), bldgShape, eye->getNightFactor());
 	}
 
 	if (forceLightsOut)

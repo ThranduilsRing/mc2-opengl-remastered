@@ -41,6 +41,7 @@ uint32_t captureForcedBuildingHighlight()
 
 long BldgAppearance::render (long depthFixup)
 {
+	if (!eye) return 0;
 	// World markers keep world depth and colour, but never enter a caster feed.
 	const bool marker = appearType && mc2WorldMarkerAppearance(appearType->name);
 	if (marker && bldgShape) {
@@ -294,13 +295,13 @@ long BldgAppearance::render (long depthFixup)
 		if (!submittedToGpu)
 		{
 			if (appearType->spinMe)
-				bldgShape->Render(false,0.00001f);
+				bldgShape->Render(eye->getViewUniforms(),false,0.00001f);
 			else if (!depthFixup)
-				bldgShape->Render();
+				bldgShape->Render(eye->getViewUniforms());
 			else if (depthFixup > 0)
-				bldgShape->Render(false,0.9999999f);
+				bldgShape->Render(eye->getViewUniforms(),false,0.9999999f);
 			else if (depthFixup < 0)
-				bldgShape->Render(false,0.00001f);
+				bldgShape->Render(eye->getViewUniforms(),false,0.00001f);
 		}
 
 		if (selected & DRAW_BARS)
@@ -452,6 +453,7 @@ long BldgAppearance::renderShadows (void)
 
 long TreeAppearance::render (long depthFixup)
 {
+	if (!eye) return 0;
 	if (gos_IsModernShadowPathActive() && shadowIsMoving()) GpuStaticPropBatcher::instance().captureMoverShadowShape(static_cast<const Appearance*>(this),treeShape);
 	// Mirror BldgAppearance::render: bypass inView under GPU path — the
 	// GPU clipper decides visibility, and the legacy angular cull has a
@@ -638,7 +640,7 @@ long TreeAppearance::render (long depthFixup)
 			}
 		}
 		if (!submittedToGpu)
-			treeShape->Render();
+			treeShape->Render(eye->getViewUniforms());
 
 		if (selected & DRAW_BARS)
 		{

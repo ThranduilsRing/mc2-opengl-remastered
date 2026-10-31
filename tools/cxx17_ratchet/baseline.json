@@ -61,7 +61,7 @@
    "LG12a": 58,
    "LG12b": 24,
    "LG13": 299,
-   "LG14": 55,
+   "LG14": 54,
    "LG15": 0,
    "LG16": 5,
    "LG17": 68,
@@ -150,9 +150,9 @@
    "LG09": 0,
    "LG10": 4,
    "LG11": 102,
-   "LG12a": 84,
-   "LG12b": 152,
-   "LG13": 22,
+   "LG12a": 67,
+   "LG12b": 98,
+   "LG13": 17,
    "LG14": 93,
    "LG15": 0,
    "LG16": 2,
@@ -197,7 +197,7 @@
    "LG10": 16,
    "LG11": 47,
    "LG12a": 88,
-   "LG12b": 177,
+   "LG12b": 44,
    "LG13": 117,
    "LG14": 52,
    "LG15": 0,
@@ -691,8 +691,7 @@
   "GameOS/gameos/mc2_verify.cpp": {
    "LG06": 6,
    "LG11": 1,
-   "LG12b": 1,
-   "LG14": 1
+   "LG12b": 1
   },
   "GameOS/gameos/mdi_submit.h": {
    "LG06": 1
@@ -1210,8 +1209,7 @@
    "LG14": 1
   },
   "code/artlry.cpp": {
-   "LG03": 1,
-   "LG12b": 8
+   "LG03": 1
   },
   "code/artlry.h": {
    "LG04": 1
@@ -1785,8 +1783,7 @@
   "code/missionbegin.cpp": {
    "LG03": 10,
    "LG06": 2,
-   "LG11": 1,
-   "LG12a": 17
+   "LG11": 1
   },
   "code/missionbegin.h": {
    "LG06": 2
@@ -1796,7 +1793,6 @@
    "LG06": 4,
    "LG11": 1,
    "LG12a": 2,
-   "LG12b": 4,
    "LG18": 2
   },
   "code/missionbriefingscreen.h": {
@@ -1847,9 +1843,6 @@
    "LG14": 8,
    "LG17": 3
   },
-  "code/mover_attack.cpp": {
-   "LG13": 5
-  },
   "code/mover_combat.cpp": {
    "LG06": 1,
    "LG17": 3
@@ -1897,7 +1890,7 @@
    "LG03": 10,
    "LG05": 3,
    "LG06": 8,
-   "LG12b": 25
+   "LG12b": 6
   },
   "code/mpparameterscreen.h": {
    "LG06": 8
@@ -1999,7 +1992,7 @@
    "LG05": 2,
    "LG06": 2,
    "LG12a": 1,
-   "LG12b": 5
+   "LG12b": 1
   },
   "code/optionsarea.h": {
    "LG06": 2
@@ -2015,7 +2008,7 @@
   },
   "code/pilotreviewarea.cpp": {
    "LG03": 83,
-   "LG12b": 20
+   "LG12b": 9
   },
   "code/prefs.cpp": {
    "LG06": 4
@@ -2033,8 +2026,7 @@
   "code/salvagemecharea.cpp": {
    "LG03": 9,
    "LG05": 1,
-   "LG12a": 1,
-   "LG12b": 8
+   "LG12a": 1
   },
   "code/save_archive.cpp": {
    "LG11": 2
@@ -2198,7 +2190,6 @@
    "LG08": 1,
    "LG11": 1,
    "LG12a": 1,
-   "LG12b": 18,
    "LG17": 4,
    "LG18": 2
   },
@@ -2383,8 +2374,7 @@
    "LG06": 8
   },
   "mclib/cmponent.cpp": {
-   "LG06": 2,
-   "LG12b": 72
+   "LG06": 2
   },
   "mclib/cmponent.h": {
    "LG04": 1,
@@ -2930,7 +2920,6 @@
   },
   "mclib/move_globalmap_path.cpp": {
    "LG11": 1,
-   "LG12b": 14,
    "LG16": 3
   },
   "mclib/move_internal.h": {
@@ -3243,7 +3232,6 @@
    "LG06": 4,
    "LG11": 1,
    "LG12a": 2,
-   "LG12b": 29,
    "LG18": 4
   },
   "mclib/terrtxm.h": {
@@ -3416,7 +3404,7 @@
    "LG20": 3
   }
  },
- "head": "001df6881",
+ "head": "8906904e3",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",

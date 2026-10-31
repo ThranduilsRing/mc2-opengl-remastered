@@ -111,7 +111,7 @@ void GlobalMap::setGoalDoor (long goalArea) {
 
 	if ((goalArea < 0) || (goalArea >= numAreas)) {
 		char errMsg[256];
-		sprintf(errMsg, " GlobalMap.setGoalDoor: bad goalArea (%d of %d) ", goalArea, numAreas);
+		mc2::fmt::to_buf(errMsg, " GlobalMap.setGoalDoor: bad goalArea ({:d} of {:d}) ", mc2::fmt::as_i32(goalArea), mc2::fmt::as_i32(numAreas));
 		gosASSERT((goalArea >= 0) && (goalArea < numAreas));
 	}
 
@@ -270,7 +270,7 @@ long GlobalMap::calcPath (long startArea,
 
 	if (logEnabled) {
 		char s[50];
-		sprintf(s, "     start = %d, goal = %d", startArea, goalArea);
+		mc2::fmt::to_buf(s, "     start = {:d}, goal = {:d}", mc2::fmt::as_i32(startArea), mc2::fmt::as_i32(goalArea));
 		log->write(s);
 		if (useClosedAreas)
 			log->write("     USE CLOSED AREAS");
@@ -390,7 +390,7 @@ long GlobalMap::calcPath (long startArea,
 		
 		if (logEnabled) {
 			char s[50];
-			sprintf(s, "     thruArea = %d, bestDoor = %d, numLinks = %d", thruArea, bestDoor, numLinks);
+			mc2::fmt::to_buf(s, "     thruArea = {:d}, bestDoor = {:d}, numLinks = {:d}", mc2::fmt::as_i32(thruArea), mc2::fmt::as_i32(bestDoor), mc2::fmt::as_i32(numLinks));
 			log->write(s);
 		}
 		
@@ -404,7 +404,7 @@ long GlobalMap::calcPath (long startArea,
 
 			if (logEnabled) {
 				char s[50];
-				sprintf(s, "          %02d) succDoor = %d", curLink, succDoor);
+				mc2::fmt::to_buf(s, "          {:02d}) succDoor = {:d}", mc2::fmt::as_i32(curLink), mc2::fmt::as_i32(succDoor));
 				log->write(s);
 			}
 
@@ -426,7 +426,7 @@ long GlobalMap::calcPath (long startArea,
 
 			if (logEnabled) {
 				char s[50];
-				sprintf(s, "                  succDoorCost = %d", succDoorCost);
+				mc2::fmt::to_buf(s, "                  succDoorCost = {:d}", mc2::fmt::as_i32(succDoorCost));
 				log->write(s);
 			}
 
@@ -522,7 +522,7 @@ long GlobalMap::calcPath (long startArea,
 
 		if (logEnabled) {
 			char s[50];
-			sprintf(s, "     PATH FOUND: %d steps", numDoors);
+			mc2::fmt::to_buf(s, "     PATH FOUND: {:d} steps", mc2::fmt::as_i32(numDoors));
 			log->write(s);
 			log->write(" ");
 		}
@@ -627,7 +627,7 @@ void GlobalMap::print (char* fileName) {
 				strcat(outString, "** ");
 			else {
 				char chStr[8];
-				sprintf(chStr, "%02x ", areaMap[row * width + col]);
+				mc2::fmt::to_buf(chStr, "{:02x} ", mc2::fmt::as_u32(areaMap[row * width + col]));
 				strcat(outString, chStr);
 			}
 		}
@@ -688,16 +688,16 @@ bool GlobalMap::toggleLog (void) {
 		if (true) {
 			char s[256];
 			for (long i = 0; i < map->numDoors; i++) {
-				sprintf(s, "door %05d, %s(%d), areas %d & %d", i, map->doors[i].open ? "opened" : "CLOSED", map->doors[i].teamID, map->doors[i].area[0], map->doors[i].area[1]);
+				mc2::fmt::to_buf(s, "door {:05d}, {}({:d}), areas {:d} & {:d}", mc2::fmt::as_i32(i), mc2::fmt::safe(map->doors[i].open ? "opened" : "CLOSED"), mc2::fmt::as_i32(map->doors[i].teamID), mc2::fmt::as_i32(map->doors[i].area[0]), mc2::fmt::as_i32(map->doors[i].area[1]));
 				log->write(s);
 				for (long side = 0; side < 2; side++) {
-					sprintf(s, "     side %d", side);
+					mc2::fmt::to_buf(s, "     side {:d}", mc2::fmt::as_i32(side));
 					log->write(s); 
 					for (long j = 0; j < map->doors[i].numLinks[side]; j++) {
-						sprintf(s, "          link %03d, to door %05d, cost %d",
-							j,
-							map->doors_links[i][side][j].doorIndex,
-							map->doors_links[i][side][j].cost);
+						mc2::fmt::to_buf(s, "          link {:03d}, to door {:05d}, cost {:d}",
+							mc2::fmt::as_i32(j),
+							mc2::fmt::as_i32(map->doors_links[i][side][j].doorIndex),
+							mc2::fmt::as_i32(map->doors_links[i][side][j].cost));
 						log->write(s); 
 					}
 				}
@@ -705,19 +705,19 @@ bool GlobalMap::toggleLog (void) {
 			log->write(" "); 
 
 			for (int i = 0; i < map->numAreas; i++) {
-				sprintf(s, "area %05d, %s(%d)", i, map->areas[i].open ? "opened" : "CLOSED", map->areas[i].teamID);
+				mc2::fmt::to_buf(s, "area {:05d}, {}({:d})", mc2::fmt::as_i32(i), mc2::fmt::safe(map->areas[i].open ? "opened" : "CLOSED"), mc2::fmt::as_i32(map->areas[i].teamID));
 				log->write(s); 
 				if (map->areas[i].ownerWID > 0) {
-					sprintf(s, "     ownerWID is %d", map->areas[i].ownerWID);
+					mc2::fmt::to_buf(s, "     ownerWID is {:d}", mc2::fmt::as_i32(map->areas[i].ownerWID));
 					log->write(s);
 				}
-				sprintf(s, "     %s", typeString[std::to_underlying(map->areas[i].type)]);
+				mc2::fmt::to_buf(s, "     {}", mc2::fmt::safe(typeString[std::to_underlying(map->areas[i].type)]));
 				log->write(s);
 				for (long d = 0; d < map->areas[i].numDoors; d++) {
                     const DoorInfo& di = map->areas_doors[i][d];
-					sprintf(s, "     door %03d is %d (%d:%d & %d) ",
-						d, di.doorIndex, di.doorSide,
-						map->doors[di.doorIndex].area[0], map->doors[di.doorIndex].area[1]);
+					mc2::fmt::to_buf(s, "     door {:03d} is {:d} ({:d}:{:d} & {:d}) ",
+						mc2::fmt::as_i32(d), mc2::fmt::as_i32(di.doorIndex), mc2::fmt::as_i32(di.doorSide),
+						mc2::fmt::as_i32(map->doors[di.doorIndex].area[0]), mc2::fmt::as_i32(map->doors[di.doorIndex].area[1]));
 					log->write(s);
 				}
 				

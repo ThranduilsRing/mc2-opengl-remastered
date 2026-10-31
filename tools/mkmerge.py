@@ -43,7 +43,7 @@ def continuation(n, root):
     lines += [f'Next stage: {next_stage}', 'Open refusals:']
     lines += [f'- {reason}' for reason in refusals] or ['- none']
     lines += [f"Proofs: {state['artefact_dir']}",
-              'Continue in mc2-main with `py -3 scripts/merge_gate.py --resume`; retain the original window clock.',
+              f'First run `py -3 scripts/merge_gate.py --preflight --window {n}`, then continue in mc2-main with `py -3 scripts/merge_gate.py --resume --window {n}`; retain the original window clock.',
               'Do not remerge landed tips or start a second gate. The gate owns its stage leases.']
     return '\n'.join(lines) + '\n'
 
@@ -64,6 +64,7 @@ def main(argv=None, ops=OPS, root=ROOT):
         a, b = text.index('Tips, in order'), text.index('Run every ratchet')
         body = 'Tips, in order:\n' + ''.join(f'{i}. {t}\n' for i, t in enumerate(tips, 1))
         body += 'Merge with `py -3 tools/lane_merge.py --batch ...`; generated-file conflicts are union/regenerate; real code conflicts get minimal resolution, and say how.\n'
+        body += f'Before any gate run: `py -3 scripts/merge_gate.py --preflight --window {n}`. Run the gate with `--window {n}`; rebuild every shipped executable after the last commit if preflight requests it.\n'
         if extra:
             body += extra + '\n'
         body += ('DISK CLEANUP IS PART OF THIS WINDOW (owner 2026-10-26, hard rule): after the gate, for EVERY tip you merged, '

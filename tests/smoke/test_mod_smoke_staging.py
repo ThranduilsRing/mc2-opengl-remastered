@@ -95,6 +95,7 @@ def test_cached_immutable_overlay_preserves_links_and_private_configs(tmp_path):
 
 
 def test_two_workers_cover_all_six_mods_and_carver_budget(tmp_path, monkeypatch):
+    monkeypatch.delenv('MC2_IN_GATE', raising=False)
     import json
     import threading
     from types import SimpleNamespace
@@ -119,7 +120,7 @@ def test_two_workers_cover_all_six_mods_and_carver_budget(tmp_path, monkeypatch)
     rendezvous = threading.Barrier(2)
     seen = {}
     missions = {}
-    def run(stage, stem, duration, timeout, ref):
+    def run(stage, stem, duration, timeout, ref, *extra):
         seen[stage.name] = timeout
         missions.setdefault(stage.name, []).append(stem)
         assert duration == 15
@@ -131,6 +132,7 @@ def test_two_workers_cover_all_six_mods_and_carver_budget(tmp_path, monkeypatch)
     args = SimpleNamespace(install_root=mods, base_install=base, exe=str(build / 'mc2.exe'),
         build_dir='build64-ninja', stage_root=tmp_path / 'stages', mod='', mission='',
         keep_stages=False, workers=2, duration=15, timeout=300, fail_fast=False)
+    args.window = 90
     assert mod_smoke.battery(args) == 0
     assert seen == {folder: 600 if folder == 'MCO-Carver5' else 300
                     for _, folder, _ in mod_smoke.BATTERY}
@@ -193,7 +195,7 @@ def test_battery_isolates_workers_and_cleans_even_on_exception(tmp_path, monkeyp
     monkeypatch.setattr(mod_smoke, "run_mod", run)
     args = SimpleNamespace(install_root=str(mods), stage_root=str(tmp_path / "stages"), base_install=str(base),
                            exe=str(build / "mc2.exe"), build_dir="build64-ninja", mod="", mission="",
-                           keep_stages=False, duration=10, timeout=60, fail_fast=False)
+                           keep_stages=False, duration=10, timeout=60, fail_fast=False, window=90)
     if crash:
         with pytest.raises(OSError, match="fixture launch failure"):
             mod_smoke.battery(args)

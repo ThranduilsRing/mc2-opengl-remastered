@@ -7,9 +7,29 @@
 #include "mc2fmt.h"
 #include "Gates/render_options.h"
 
+extern bool useFog;
+
 
 
 //---------------------------------------------------------------------------
+mc2::tgl::ViewUniforms Camera::getViewUniforms()
+{
+	auto view = tglView;
+	view.perspective = usePerspective;
+	view.night = isNight;
+	view.nightFactor = nightFactor;
+	view.fogEnabled = useFog;
+	view.haze = HazeFactor;
+	// The CPU fallback consumes only ambient and infinite lights. Preserve their
+	// order and copy their values before any leaf draws; never retain TG_Light*.
+	for (int32_t i = 0; i < numActiveLights && i < MAX_LIGHTS_IN_WORLD; ++i) {
+		auto* light = activeLights[i];
+		if (light && light->active && (light->lightType == TG_LIGHT_AMBIENT || light->lightType == TG_LIGHT_INFINITE))
+			view.lights.push_back({light->lightType, light->GetaRGB(), light->lightToWorld});
+	}
+	return view;
+}
+
 void Camera::updateGoalVelocity (void)
 {
 	if (goalVelTime > 0.0)
@@ -401,12 +421,12 @@ long Camera::update (void)
 
 	{
 		// F3 CPU projection cost-baseline: matrix_build site (b) â€”
-		// per-frame TG_Shape::SetCameraMatrices composes s_worldToClip.
+		// Per-camera CPU projection values, copied by each draw producer.
 		::mc2_cpu_proj_cost::Scope _f3_setcam_scope(
 		    ::mc2_cpu_proj_cost::BUCKET_MATRIX_BUILD);
-		TG_Shape::SetCameraMatrices(&cameraOrigin,&cameraToClip);
+		tglView.SetCameraMatrices(cameraOrigin,cameraToClip);
 	}
-	TG_Shape::SetFog(fogColor,fogStart,fogFull);
+	tglView.SetFog(fogColor,fogStart,fogFull);
 
 	active = true;
 
@@ -550,7 +570,7 @@ void Camera::render (void)
 	screenResolution.y = viewMulY;
 	calculateProjectionConstants();
 
-	TG_Shape::SetViewport(viewMulX,viewMulY,viewAddX,viewAddY);
+	tglView.SetViewport(viewMulX,viewMulY,viewAddX,viewAddY);
 
 	userInput->setViewport(viewMulX,viewMulY,viewAddX,viewAddY);
 	

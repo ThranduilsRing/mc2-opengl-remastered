@@ -7,8 +7,8 @@
 // v0 mech and light records. Arena capacity follows native prop-row size.
 // v1.1 (2026-05-25): texArrayLayer/materialIdx wired; material cache counters added.
 // FRAMEARENA-L2-1: RenderFrameArena replaced by RenderCore::FrameArena (typed,
-//   stats-tracked, alignment-safe). Ping-pong unchanged: two module-static
-//   buffers in render_snapshot.cpp alternate each frame. Spans valid for one frame.
+//   stats-tracked, alignment-safe). Three module-static buffers in
+//   render_snapshot.cpp rotate by extraction sequence. Spans survive two later extractions.
 
 #pragma once
 
@@ -224,9 +224,9 @@ struct RenderSnapshot {
     // by ExtractRenderSnapshot(). Not part of ok gate.
     TerrainPassFacts terrainPass;
 
-    // L2 frame-lifetime arena. Backed by one of two module-static buffers
-    // in render_snapshot.cpp (ping-pong). FrameArena is non-owning: base_ points
-    // into the module-static buffer; valid until the next ExtractRenderSnapshot().
+    // L2 frame-lifetime arena. Backed by one of three module-static buffers
+    // in render_snapshot.cpp. FrameArena is non-owning: base_ points into the
+    // slot buffer; CPU recording must retire before this slot can recycle.
     RenderCore::FrameArena frameArena;
     bool arenaOverflow = false;
 };
@@ -234,7 +234,10 @@ struct RenderSnapshot {
 // Extraction entry point — implemented in render_snapshot.cpp.
 // Called once per frame between DoGameLogic() and draw_screen().
 // Returns a snapshot backed by a frame-lifetime arena (snap.arena).
-RenderSnapshot ExtractRenderSnapshot();
+// A nonzero sequence retains the arena until RetireRenderSnapshot; zero keeps
+// synchronous inline tool behavior. CPU completion does not replace GPU tickets.
+RenderSnapshot ExtractRenderSnapshot(uint64_t packetSequence = 0);
+void RetireRenderSnapshot(uint64_t packetSequence);
 
 // v2.3: returns a non-owning pointer to the most recently produced snapshot.
 // Valid until the next ExtractRenderSnapshot() call (same frame lifetime as the arena).

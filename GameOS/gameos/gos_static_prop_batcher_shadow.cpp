@@ -293,12 +293,7 @@ extern "C" int mc2_color_prop_island_get_light_feed(Mc2ColorPropLightFeed* out) 
     // mc2_mech_island_get_frame_feed's lightDataCpu export) — the byte source of
     // the GL SSBO upload. VK-PERF-2 cleanup deleted the GL SSBO name/size export
     // with the audit-gated readback it existed for (clean audit banked).
-    out->lightDataCpu = nullptr;
-    out->lightDataCpuBytes = 0;
-    if (mc2::vkLights::active()) {
-        out->lightDataCpu      = mc2::vkLights::getLightDataPtr();
-        out->lightDataCpuBytes = mc2::vkLights::getLightDataBytes();
-    }
+    out->lights = mc2::vkLights::captureFeed();
     // The L1 record owns day/night coefficients; night strength is already resolved there.
     const auto& environment = visualTuning_environment();
     for (size_t i=0; i<9; ++i)

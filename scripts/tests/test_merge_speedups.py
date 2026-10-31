@@ -666,7 +666,7 @@ def test_tier1_reuses_only_strict_validated_determinism_smokes():
     command, env = by_name["determinism-mc2_10"]
     assert command[-2:] == ["--sim-speed", "2"] and "--headless-both" not in command
     assert env["MC2_VULKAN_VALIDATION"] == env["MC2_MOVER_COHERENCE_AUDIT"] == "1"
-    for mission in ("mc2_03", "mc2_24"):   # headless rows: no GPU, so no validation env and no sim-speed
+    for mission in ("mc2_03",):   # only mc2_03 is headless; finale retains lazy infantry loading
         command, env = by_name["determinism-" + mission]
         assert "--headless-both" in command and "--sim-speed" not in command
         assert "MC2_VULKAN_VALIDATION" not in env
@@ -674,7 +674,9 @@ def test_tier1_reuses_only_strict_validated_determinism_smokes():
     art = gate.affected_plan(gate.plan(6), ["release_assets_src/model.glb"])
     assert "--mission" not in next(c for n, c, _ in art if n == "tier1")
     full = gate.affected_plan(gate.plan(6), ["code/game.cpp"], full=True)
-    assert all("--sim-speed" not in c for n, c, _ in full if n.startswith("determinism-") and n != "determinism-mc2_10")   # mc2_10 always runs at 2x (9104ff298)
+    finale = next(c for n, c, _ in full if n == 'determinism-mc2_24')
+    assert finale[finale.index('--sim-speed') + 1] == '4'
+    assert int(finale[finale.index('--ticks') + 1]) > 2404
 
 
 def test_gate_removes_classic_twins_of_current_checks():
@@ -949,15 +951,16 @@ def test_auxiliary_determinism_uses_copy_while_saves_stay_serial(tmp_path, monke
     steps = [("deploy", ["deploy"], {}),
         ("mods", ["mods", "--base-install", str(install), "--exe", str(install / "mc2.exe")], {}),
         ("determinism-mc2_10", ["det", "--install", str(install)], {}),
-        ("saveload-mc2_01", ["save", "--install", str(install)], {}),
+        ("saveload-mc2_01", ["save", "tools/saveload_roundtrip.py", "--install", str(install)], {}),
         ("kit-visibility", ["kit", "--install", str(install)], {}),
         ("quiet", ["quiet", "--exe", str(install / "mc2.exe")], {})]
     if not with_determinism:
         steps = [s for s in steps if s[0] not in ('determinism-mc2_10', 'kit-visibility', 'quiet')]
     assert gate.execute_parallel(steps, "head") == 0
-    assert calls.index("mods") < calls.index("save") < calls.index("cleaned")
+    assert calls.index("mods") < calls.index("save")
+    assert 'cleaned' in calls
     if with_determinism:
-        assert calls.index("mods") < calls.index("det") < calls.index("kit") < calls.index("quiet") < calls.index("save")
+        assert calls.index("mods") < calls.index("det") < calls.index("kit") < calls.index("quiet") < calls.index("cleaned")
 
 
 @pytest.mark.parametrize("tier,env,expected", [

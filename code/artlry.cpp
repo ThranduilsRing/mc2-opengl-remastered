@@ -67,6 +67,7 @@
 #include"multplyr.h"
 #endif
 #include "../RenderCore/axis_convert.h"
+#include "mc2fmt.h"
 
 //---------------------------------------------------------------------------
 
@@ -483,17 +484,17 @@ long ArtilleryType::init (FilePtr objFile, unsigned long fileSize) {
 		{
 			char explosionId[50];
 
-			sprintf(explosionId,"ExplosionDelay%d",i);
+			mc2::fmt::to_buf(explosionId,"ExplosionDelay{:d}",mc2::fmt::as_i32(i));
 			result = miFile.readIdFloat(explosionId,explosionDelay[i]);
 			if (result != NO_ERR)
 				return(result);
 				
-			sprintf(explosionId,"ExplosionOffsetX%d",i);
+			mc2::fmt::to_buf(explosionId,"ExplosionOffsetX{:d}",mc2::fmt::as_i32(i));
 			result = miFile.readIdFloat(explosionId,explosionOffsetX[i]);
 			if (result != NO_ERR)
 				return(result);
 
-			sprintf(explosionId,"ExplosionOffsetY%d",i);
+			mc2::fmt::to_buf(explosionId,"ExplosionOffsetY{:d}",mc2::fmt::as_i32(i));
 			result = miFile.readIdFloat(explosionId,explosionOffsetY[i]);
 			if (result != NO_ERR)
 				return(result);
@@ -1252,11 +1253,11 @@ void Artillery::renderView (const mc2::render_view::RenderView& view)
 			switch (artilleryType)
 			{
 				case ARTILLERY_LARGE:
-					sprintf(text,"%02.2f",view.value[0]);
+					mc2::fmt::to_buf(text,"{:02.2f}",view.value[0]);
 				break;
 
 				case ARTILLERY_SMALL:
-					sprintf(text,"%02.2f",view.value[0]);
+					mc2::fmt::to_buf(text,"{:02.2f}",view.value[0]);
 				break;
 				
 				case ARTILLERY_SENSOR:
@@ -1442,7 +1443,7 @@ void Artillery::init (bool create, ObjectTypePtr _type)
 				if (!buildingAppearanceType)
 				{
 					char msg[1024];
-					sprintf(msg,"No Building Appearance Named %s",appearName);
+					mc2::fmt::to_buf(msg,"No Building Appearance Named {}",mc2::fmt::safe(appearName));
 					Fatal(0,msg);
 				}
 			}
@@ -1511,7 +1512,7 @@ void Artillery::init (bool create, ObjectTypePtr _type)
 				if (!buildingAppearanceType)
 				{
 					char msg[1024];
-					sprintf(msg,"No Building Appearance Named %s",appearName);
+					mc2::fmt::to_buf(msg,"No Building Appearance Named {}",mc2::fmt::safe(appearName));
 					Fatal(0,msg);
 				}
 			}
@@ -1580,7 +1581,7 @@ void Artillery::init (bool create, ObjectTypePtr _type)
 				if (!buildingAppearanceType)
 				{
 					char msg[1024];
-					sprintf(msg,"No Building Appearance Named %s",appearName);
+					mc2::fmt::to_buf(msg,"No Building Appearance Named {}",mc2::fmt::safe(appearName));
 					Fatal(0,msg);
 				}
 			}

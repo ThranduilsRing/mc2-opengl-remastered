@@ -5,6 +5,7 @@
 #include "gos_mech_batcher_internal.h"
 #include "../../mclib/texture_assets.h"
 #include "mc2fmt.h"
+#include "../../mclib/battle_bench_sink.h"
 #include "ui_texture.h"
 
 // ---------------------------------------------------------------------------
@@ -117,6 +118,7 @@ bool GpuMechBatcher::submitActor(const GpuMechSubmitDesc& desc) {
         }
     }
 
+    if (mc2::battlebench::output) mc2::battlebench::mechBones += ps.bones.size();
     s_pendingSubmits.push_back(std::move(ps));
 
     // [SPOTLIGHT_REAL_TRACE v1] T0.2 (b) — per-instance counter. Fires once
@@ -172,6 +174,7 @@ struct MechFlushFrame {
     size_t totalBones = 0;
     std::map<BucketKey, std::vector<uint32_t>> buckets;  // key -> [submitIdx list]
     size_t totalInstances = 0;
+    uint32_t totalLeaves = 0;
     std::vector<uint32_t> actorBoneBase;
     std::vector<DrawCall> drawCalls;
     uint32_t drawnCalls = 0;
@@ -268,8 +271,14 @@ void MechFlushFrame::buildBuckets() {
     for (uint32_t si = 0; si < static_cast<uint32_t>(s_pendingSubmits.size()); ++si) {
         const PendingSubmit& ps = s_pendingSubmits[si];
         const GpuMechTypeLodRecord& rec = s_typeLodRecords[ps.typeLodIdx];
+        uint32_t lastNode = UINT32_MAX;
         for (uint32_t p = 0; p < rec.packetCount; ++p) {
             const GpuMechPacket& pkt = s_packets[rec.firstPacket + p];
+            // Geometry emits each node's texture packets contiguously; count the shape once per actor.
+            if (pkt.indexCount && pkt.nodeLocalIndex != lastNode) {
+                ++totalLeaves;
+                lastNode = pkt.nodeLocalIndex;
+            }
             BucketKey key;
             key.typeLodIdx       = ps.typeLodIdx;
             key.globalPacketIdx  = rec.firstPacket + p;
@@ -471,6 +480,7 @@ void MechFlushFrame::snapshotFrame() {
     if (mvp) std::memcpy(s_vkMechWorldToClipGL, mvp, sizeof(s_vkMechWorldToClipGL));
     s_vkMechObjectDepthBias = mc2depth::OBJECT_DEPTH_BIAS;   // mclib/terrain_depth_bias.h
     s_vkMechSnapshotGeomGen = s_vkMechGeomGen;
+    s_vkMechLeafCount = totalLeaves;
     s_vkMechFrameReady = (totalInstances > 0 && !s_vkMechRunSnapshot.empty());
     s_vkMechShadowReady = s_vkMechFrameReady;
     static const bool s_shadowEnabled = mc2::gate::get<"MC2_SHADOW_ENABLE">();

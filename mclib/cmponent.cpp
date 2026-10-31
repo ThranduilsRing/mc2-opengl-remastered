@@ -22,6 +22,7 @@
 #include "platform_str.h"
 
 #include"utilities.h"
+#include "mc2format.h"
 //******************************************************************************************
 
 const char* ComponentFormString [] = {
@@ -269,14 +270,14 @@ long MasterComponent::saveEXCEL (FilePtr componentFile, unsigned char masterId, 
 	{
 		//---------------------------------------
 		// Blank undefined line in compbas here.
-		sprintf(dataLine,"0,undefined,undefined,0,0,0,0,0,0,0,0,0,0,0,0,No,No,0,No,0,0,0,0,na,na,na,na,na,na,na,na,na,,,,,");
+		mc2::fmt::to_buf(dataLine,"0,undefined,undefined,0,0,0,0,0,0,0,0,0,0,0,0,No,No,0,No,0,0,0,0,na,na,na,na,na,na,na,na,na,,,,,");
 		componentFile->writeLine(dataLine);
 		return(0);
 	}
 
 	//----------------------------------------------------------
 	// Build the dataline piece by piece
-	sprintf(piece,"%d",masterId);
+	mc2::fmt::to_buf(piece,"{:d}",mc2::fmt::as_i32(masterId));
 	strcpy(dataLine,piece);
 	strcat(dataLine,comma);
 
@@ -291,28 +292,28 @@ long MasterComponent::saveEXCEL (FilePtr componentFile, unsigned char masterId, 
 	strcat(dataLine,ComponentFormString[form]);
 	strcat(dataLine,comma);
 
-	sprintf(piece,"%d",size);
+	mc2::fmt::to_buf(piece,"{:d}",mc2::fmt::as_i32(size));
 	strcat(dataLine,piece);
 	strcat(dataLine,comma);
 
-	sprintf(piece,"1");
+	mc2::fmt::to_buf(piece,"1");
 	strcat(dataLine,piece);
 	strcat(dataLine,comma);
 
-	sprintf(piece,"%3.1f",tonnage);
+	mc2::fmt::to_buf(piece,"{:3.1f}",tonnage);
 	strcat(dataLine,piece);
 	strcat(dataLine,comma);
 
-	sprintf(piece,"%d",resourcePoints);
+	mc2::fmt::to_buf(piece,"{:d}",mc2::fmt::as_i32(resourcePoints));
 	strcat(dataLine,piece);
 	strcat(dataLine,comma);
 
 	for (long location = 0; location < NUM_BODY_LOCATIONS; location++) 
 	{
 		if (criticalSpacesReq[location] == -1)
-			sprintf(piece,"No");
+			mc2::fmt::to_buf(piece,"No");
 		else if (criticalSpacesReq[location] == 0)
-			sprintf(piece,"Yes");
+			mc2::fmt::to_buf(piece,"Yes");
 		else
 			Fatal(criticalSpacesReq[location],"Bad Data");
 
@@ -321,58 +322,58 @@ long MasterComponent::saveEXCEL (FilePtr componentFile, unsigned char masterId, 
 	}
 
 	if (getCanVehicleUse())
-		sprintf(piece,"Yes");
+		mc2::fmt::to_buf(piece,"Yes");
 	else
-		sprintf(piece,"No");
+		mc2::fmt::to_buf(piece,"No");
 
 	strcat(dataLine,piece);
 	strcat(dataLine,comma);
 
 	if (getCanMechUse())
-		sprintf(piece,"Yes");
+		mc2::fmt::to_buf(piece,"Yes");
 	else
-		sprintf(piece,"No");
+		mc2::fmt::to_buf(piece,"No");
 
 	strcat(dataLine,piece);
 	strcat(dataLine,comma);
 
 	if (getClanTechBase() && getISTechBase())
 	{
-		sprintf(piece,"Both");
+		mc2::fmt::to_buf(piece,"Both");
 	}
 	else if (getClanTechBase())
 	{
-		sprintf(piece,"Clan");
+		mc2::fmt::to_buf(piece,"Clan");
 	}
 	else if (getISTechBase())
 	{
-		sprintf(piece,"IS");
+		mc2::fmt::to_buf(piece,"IS");
 	}
 	else
 	{
-		sprintf(piece,"0");
+		mc2::fmt::to_buf(piece,"0");
 	}
 
 	strcat(dataLine,piece);
 	strcat(dataLine,comma);
 
 	if (getCanISUse())
-		sprintf(piece,"Yes");
+		mc2::fmt::to_buf(piece,"Yes");
 	else
-		sprintf(piece,"No");
+		mc2::fmt::to_buf(piece,"No");
 
 	strcat(dataLine,piece);
 	strcat(dataLine,comma);
 
-	sprintf(piece,"0");
+	mc2::fmt::to_buf(piece,"0");
 	strcat(dataLine,piece);
 	strcat(dataLine,comma);
 
-	sprintf(piece,"1");
+	mc2::fmt::to_buf(piece,"1");
 	strcat(dataLine,piece);
 	strcat(dataLine,comma);
 
-	sprintf(piece,"%8.1f",CV);
+	mc2::fmt::to_buf(piece,"{:8.1f}",CV);
 	strcat(dataLine,piece);
 	strcat(dataLine,comma);
 
@@ -389,91 +390,91 @@ long MasterComponent::saveEXCEL (FilePtr componentFile, unsigned char masterId, 
 		default:
 			//----------------------
 			// No additional data...
-			sprintf(piece,"na,na,na,na,na,na,na,na,na,,,,,");
+			mc2::fmt::to_buf(piece,"na,na,na,na,na,na,na,na,na,,,,,");
 			strcat(dataLine,piece);
 			strcat(dataLine,comma);
 			break;
 
 		case COMPONENT_FORM_SENSOR:
-			sprintf(piece,"%4.1f",(stats.sensor.range / baseSensorRange));
+			mc2::fmt::to_buf(piece,"{:4.1f}",(stats.sensor.range / baseSensorRange));
 			strcat(dataLine,piece);
 			strcat(dataLine,comma);
 
-			sprintf(piece,"na,na,na,na,na,na,na,na,,,,,");
+			mc2::fmt::to_buf(piece,"na,na,na,na,na,na,na,na,,,,,");
 			strcat(dataLine,piece);
 			strcat(dataLine,comma);
 			break;
 
 		case COMPONENT_FORM_ECM:
-			sprintf(piece,"%4.1f",stats.ecm.effect);
+			mc2::fmt::to_buf(piece,"{:4.1f}",stats.ecm.effect);
 			strcat(dataLine,piece);
 			strcat(dataLine,comma);
-			sprintf(piece,"%4.1f",stats.ecm.range);
+			mc2::fmt::to_buf(piece,"{:4.1f}",stats.ecm.range);
 			strcat(dataLine,piece);
 			strcat(dataLine,comma);
-			sprintf(piece,"na,na,na,na,na,na,na,,,,,");
+			mc2::fmt::to_buf(piece,"na,na,na,na,na,na,na,,,,,");
 			strcat(dataLine,piece);
 			strcat(dataLine,comma);
 			break;
 
 		case COMPONENT_FORM_JAMMER:
-			sprintf(piece,"%4.1f",stats.jammer.effect);
+			mc2::fmt::to_buf(piece,"{:4.1f}",stats.jammer.effect);
 			strcat(dataLine,piece);
 			strcat(dataLine,comma);
-			sprintf(piece,"na,na,na,na,na,na,na,na,,,,,");
+			mc2::fmt::to_buf(piece,"na,na,na,na,na,na,na,na,,,,,");
 			strcat(dataLine,piece);
 			strcat(dataLine,comma);
 			break;
 
 		case COMPONENT_FORM_PROBE:
-			sprintf(piece,"%4.1f",stats.probe.effect);
+			mc2::fmt::to_buf(piece,"{:4.1f}",stats.probe.effect);
 			strcat(dataLine,piece);
 			strcat(dataLine,comma);
-			sprintf(piece,"na,na,na,na,na,na,na,na,,,,,");
+			mc2::fmt::to_buf(piece,"na,na,na,na,na,na,na,na,,,,,");
 			strcat(dataLine,piece);
 			strcat(dataLine,comma);
 			break;
 
 		case COMPONENT_FORM_ENGINE:
-			sprintf(piece,"%d",0);
+			mc2::fmt::to_buf(piece,"{:d}",mc2::fmt::as_i32(0));
 			strcat(dataLine,piece);
 			strcat(dataLine,comma);
-			sprintf(piece,"na,na,na,na,na,na,na,na,,,,,");
+			mc2::fmt::to_buf(piece,"na,na,na,na,na,na,na,na,,,,,");
 			strcat(dataLine,piece);
 			strcat(dataLine,comma);
 			break;
 
 		case COMPONENT_FORM_HEATSINK:
-			sprintf(piece,"%d",stats.heatsink.dissipation);
+			mc2::fmt::to_buf(piece,"{:d}",mc2::fmt::as_i32(stats.heatsink.dissipation));
 			strcat(dataLine,piece);
 			strcat(dataLine,comma);
-			sprintf(piece,"na,na,na,na,na,na,na,na,,,,,");
+			mc2::fmt::to_buf(piece,"na,na,na,na,na,na,na,na,,,,,");
 			strcat(dataLine,piece);
 			strcat(dataLine,comma);
 			break;
 
 		case COMPONENT_FORM_WEAPON_ENERGY:
-			sprintf(piece,"%4.1f",stats.weapon.damage);
+			mc2::fmt::to_buf(piece,"{:4.1f}",stats.weapon.damage);
 			strcat(dataLine,piece);
 			strcat(dataLine,comma);
 
-			sprintf(piece,"%4.2f",stats.weapon.recycleTime);
+			mc2::fmt::to_buf(piece,"{:4.2f}",stats.weapon.recycleTime);
 			strcat(dataLine,piece);
 			strcat(dataLine,comma);
 
-			sprintf(piece,"%4.1f",stats.weapon.heat);
+			mc2::fmt::to_buf(piece,"{:4.1f}",stats.weapon.heat);
 			strcat(dataLine,piece);
 			strcat(dataLine,comma);
 
-			sprintf(piece,"%d",0);
+			mc2::fmt::to_buf(piece,"{:d}",mc2::fmt::as_i32(0));
 			strcat(dataLine,piece);
 			strcat(dataLine,comma);
 
-			sprintf(piece,"%d",WEAPON_AMMO_NONE);
+			mc2::fmt::to_buf(piece,"{:d}",mc2::fmt::as_i32(WEAPON_AMMO_NONE));
 			strcat(dataLine,piece);
 			strcat(dataLine,comma);
 
-			sprintf(piece,"%s",WeaponRangeString[stats.weapon.range]);
+			mc2::fmt::to_buf(piece,"{}",mc2::fmt::safe(WeaponRangeString[stats.weapon.range]));
 			strcat(dataLine,piece);
 			strcat(dataLine,comma);
 			
@@ -481,41 +482,41 @@ long MasterComponent::saveEXCEL (FilePtr componentFile, unsigned char masterId, 
 			//strcat(dataLine,piece);
 			//strcat(dataLine,comma);
 
-			sprintf(piece,"%d",stats.weapon.specialEffect);
+			mc2::fmt::to_buf(piece,"{:d}",mc2::fmt::as_i32(stats.weapon.specialEffect));
 			strcat(dataLine,piece);
 			strcat(dataLine,comma);
 
-			sprintf(piece,"%d",0);
+			mc2::fmt::to_buf(piece,"{:d}",mc2::fmt::as_i32(0));
 			strcat(dataLine,piece);
 			strcat(dataLine,comma);
 
-			sprintf(piece,"%d",stats.weapon.flags);
+			mc2::fmt::to_buf(piece,"{:d}",mc2::fmt::as_i32(stats.weapon.flags));
 			strcat(dataLine,piece);
 			strcat(dataLine,comma);
 			break;
 
 		case COMPONENT_FORM_WEAPON_BALLISTIC:
-			sprintf(piece,"%4.1f",stats.weapon.damage);
+			mc2::fmt::to_buf(piece,"{:4.1f}",stats.weapon.damage);
 			strcat(dataLine,piece);
 			strcat(dataLine,comma);
 
-			sprintf(piece,"%4.2f",stats.weapon.recycleTime);
+			mc2::fmt::to_buf(piece,"{:4.2f}",stats.weapon.recycleTime);
 			strcat(dataLine,piece);
 			strcat(dataLine,comma);
 
-			sprintf(piece,"%4.1f",stats.weapon.heat);
+			mc2::fmt::to_buf(piece,"{:4.1f}",stats.weapon.heat);
 			strcat(dataLine,piece);
 			strcat(dataLine,comma);
 
-			sprintf(piece,"%d",stats.weapon.ammoAmount);
+			mc2::fmt::to_buf(piece,"{:d}",mc2::fmt::as_i32(stats.weapon.ammoAmount));
 			strcat(dataLine,piece);
 			strcat(dataLine,comma);
 
-			sprintf(piece,"%d",stats.weapon.ammoType);
+			mc2::fmt::to_buf(piece,"{:d}",mc2::fmt::as_i32(stats.weapon.ammoType));
 			strcat(dataLine,piece);
 			strcat(dataLine,comma);
 
-			sprintf(piece,"%s",WeaponRangeString[stats.weapon.range]);
+			mc2::fmt::to_buf(piece,"{}",mc2::fmt::safe(WeaponRangeString[stats.weapon.range]));
 			strcat(dataLine,piece);
 			strcat(dataLine,comma);
 			
@@ -523,37 +524,37 @@ long MasterComponent::saveEXCEL (FilePtr componentFile, unsigned char masterId, 
 //			strcat(dataLine,piece);
 //			strcat(dataLine,comma);
 
-			sprintf(piece,"%d",stats.weapon.specialEffect);
+			mc2::fmt::to_buf(piece,"{:d}",mc2::fmt::as_i32(stats.weapon.specialEffect));
 			strcat(dataLine,piece);
 			strcat(dataLine,comma);
 
-			sprintf(piece,"%d",stats.weapon.flags);
+			mc2::fmt::to_buf(piece,"{:d}",mc2::fmt::as_i32(stats.weapon.flags));
 			strcat(dataLine,piece);
 			strcat(dataLine,comma);
 			break;
 
 		case COMPONENT_FORM_WEAPON_MISSILE:
-			sprintf(piece,"%4.1f",stats.weapon.damage);
+			mc2::fmt::to_buf(piece,"{:4.1f}",stats.weapon.damage);
 			strcat(dataLine,piece);
 			strcat(dataLine,comma);
 
-			sprintf(piece,"%4.2f",stats.weapon.recycleTime);
+			mc2::fmt::to_buf(piece,"{:4.2f}",stats.weapon.recycleTime);
 			strcat(dataLine,piece);
 			strcat(dataLine,comma);
 
-			sprintf(piece,"%4.1f",stats.weapon.heat);
+			mc2::fmt::to_buf(piece,"{:4.1f}",stats.weapon.heat);
 			strcat(dataLine,piece);
 			strcat(dataLine,comma);
 
-			sprintf(piece,"%d",stats.weapon.ammoAmount);
+			mc2::fmt::to_buf(piece,"{:d}",mc2::fmt::as_i32(stats.weapon.ammoAmount));
 			strcat(dataLine,piece);
 			strcat(dataLine,comma);
 
-			sprintf(piece,"%d",stats.weapon.ammoType);
+			mc2::fmt::to_buf(piece,"{:d}",mc2::fmt::as_i32(stats.weapon.ammoType));
 			strcat(dataLine,piece);
 			strcat(dataLine,comma);
 
-			sprintf(piece,"%s",WeaponRangeString[stats.weapon.range]);
+			mc2::fmt::to_buf(piece,"{}",mc2::fmt::safe(WeaponRangeString[stats.weapon.range]));
 			strcat(dataLine,piece);
 			strcat(dataLine,comma);
 			
@@ -561,33 +562,33 @@ long MasterComponent::saveEXCEL (FilePtr componentFile, unsigned char masterId, 
 //			strcat(dataLine,piece);
 //			strcat(dataLine,comma);
 
-			sprintf(piece,"%d",stats.weapon.specialEffect);
+			mc2::fmt::to_buf(piece,"{:d}",mc2::fmt::as_i32(stats.weapon.specialEffect));
 			strcat(dataLine,piece);
 			strcat(dataLine,comma);
 
-			sprintf(piece,"%d",stats.weapon.flags);
+			mc2::fmt::to_buf(piece,"{:d}",mc2::fmt::as_i32(stats.weapon.flags));
 			strcat(dataLine,piece);
 			strcat(dataLine,comma);
 			break;
 
 		case COMPONENT_FORM_AMMO:
-			sprintf(piece,"%d",stats.ammo.ammoPerTon);
+			mc2::fmt::to_buf(piece,"{:d}",mc2::fmt::as_i32(stats.ammo.ammoPerTon));
 			strcat(dataLine,piece);
 			strcat(dataLine,comma);
 
-			sprintf(piece,"%6.1f",stats.ammo.explosiveDamage);
+			mc2::fmt::to_buf(piece,"{:6.1f}",stats.ammo.explosiveDamage);
 			strcat(dataLine,piece);
 			strcat(dataLine,comma);
-			sprintf(piece,"na,na,na,na,na,na,na,,,,,");
+			mc2::fmt::to_buf(piece,"na,na,na,na,na,na,na,,,,,");
 			strcat(dataLine,piece);
 			strcat(dataLine,comma);
 			break;
 
 		case COMPONENT_FORM_JUMPJET:
-			sprintf(piece,"%d",stats.jumpjet.rangeMod);
+			mc2::fmt::to_buf(piece,"{:d}",mc2::fmt::as_i32(stats.jumpjet.rangeMod));
 			strcat(dataLine,piece);
 			strcat(dataLine,comma);
-			sprintf(piece,"na,na,na,na,na,na,na,na,,,,,");
+			mc2::fmt::to_buf(piece,"na,na,na,na,na,na,na,na,,,,,");
 			strcat(dataLine,piece);
 			strcat(dataLine,comma);
 			break;
@@ -696,32 +697,32 @@ long MasterComponent::saveMasterList (const char* fileName, long listSize, float
 	// Comment header so we know who screwed the file up!
 	char dataLine[512];
 
-	sprintf(dataLine,"// <Built by Editor v3.0> Special Component Data,,,,,******REVISED FOR NEW MECH STATS,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,");
+	mc2::fmt::to_buf(dataLine,"// <Built by Editor v3.0> Special Component Data,,,,,******REVISED FOR NEW MECH STATS,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,");
 
 	componentFile.writeLine(dataLine);
 
 	//-----------------------
 	// Special Component Data
-	sprintf(dataLine,"MasterArmActuatorID = %d,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,",armActuatorID);
+	mc2::fmt::to_buf(dataLine,"MasterArmActuatorID = {:d},,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,",mc2::fmt::as_i32(armActuatorID));
 	componentFile.writeLine(dataLine);
 
-	sprintf(dataLine,"MasterLegActuatorID = %d,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,",legActuatorID);
+	mc2::fmt::to_buf(dataLine,"MasterLegActuatorID = {:d},,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,",mc2::fmt::as_i32(legActuatorID));
 	componentFile.writeLine(dataLine);
 
 	//sebi: what is more correct here? always pass155 or actual clanAntiMissileSystemID ?
 	//sprintf(dataLine,"MasterClanAntiMissileSystemID = 115,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,",clanAntiMissileSystemID);
-	sprintf(dataLine,"MasterClanAntiMissileSystemID = 115,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,");
+	mc2::fmt::to_buf(dataLine,"MasterClanAntiMissileSystemID = 115,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,");
 	componentFile.writeLine(dataLine);
 
 	//sebi: same here
 	//sprintf(dataLine,"MasterInnerSphereAntiMissileSystemID = 106,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,",innerSphereAntiMissileSystemID);
-	sprintf(dataLine,"MasterInnerSphereAntiMissileSystemID = 106,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,");
+	mc2::fmt::to_buf(dataLine,"MasterInnerSphereAntiMissileSystemID = 106,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,");
 	componentFile.writeLine(dataLine);
 	
-	sprintf(dataLine,"//,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,Weapon,Effect,Ammo,Flag,1 = streak 2 = inferno");
+	mc2::fmt::to_buf(dataLine,"//,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,Weapon,Effect,Ammo,Flag,1 = streak 2 = inferno");
 	componentFile.writeLine(dataLine);
 
-	sprintf(dataLine,"// Component Table,,abbr,type,crits,?,tons,RP,head,CT,LT,RT,LA,RA,LL,RL,Vehicle?,Fit both?,Side,Fit IS?,art,disable,BR,Damage,Recycle,heat,#miss,miss type,min,short,med,long,Type,Field,Master ID,Fields,4 = LBX 8 = artillery");
+	mc2::fmt::to_buf(dataLine,"// Component Table,,abbr,type,crits,?,tons,RP,head,CT,LT,RT,LA,RA,LL,RL,Vehicle?,Fit both?,Side,Fit IS?,art,disable,BR,Damage,Recycle,heat,#miss,miss type,min,short,med,long,Type,Field,Master ID,Fields,4 = LBX 8 = artillery");
 	componentFile.writeLine(dataLine);
 
 	for (long componentNum = 0; componentNum < listSize; componentNum++) 

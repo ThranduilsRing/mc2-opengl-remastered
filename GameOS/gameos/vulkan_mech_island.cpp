@@ -37,6 +37,7 @@
 #endif
 
 #include <volk.h>
+#include "../../mclib/battle_bench_sink.h"
 #include "Gates/gate.h"
 #include "vk_render_pass_timer.h"
 #include "vk_gpu_profile.h"   // VK-GPU-ZONES: MC2_VK_GPU_SCOPE
@@ -861,6 +862,8 @@ static bool record_mech(MechIsland* s, VkCommandBuffer cb, uint32_t par, int w, 
         vkCmdDrawIndexed(cb, run.indexCount, run.instanceCount, run.firstIndex, run.baseVertex, run.instanceBase);
         ++runs;
     }
+    // The retained feed counts actor/node pairs once, across material packets and idle-frame reuse.
+    if (runs && mc2::battlebench::output) mc2::battlebench::nativeMechLeaves += feed.leafCount;
 
     vkCmdEndRenderPass(cb);
     gpuScope.end();
@@ -949,7 +952,7 @@ extern "C" int mc2_vk_mech_island_run(int w, int h) {
     const VkDeviceSize ringAlign = rctx.frameAlignment();
     const VkDeviceSize instBytes = static_cast<VkDeviceSize>(feed.instanceCount) * 64ull;
     const VkDeviceSize boneBytes = static_cast<VkDeviceSize>((feed.boneCount ? feed.boneCount : 1)) * 64ull;
-    const bool nativeLight = feed.lightDataCpu && feed.lightDataCpuBytes >= 3600ull;
+    const bool nativeLight = feed.lights.data && feed.lights.bytes >= 3600ull;
     int poolN = (feed.poolLights48 && feed.numPoolLights > 0) ? feed.numPoolLights : 0;
     if (poolN > (int)kMaxPoolLights) poolN = static_cast<int>(kMaxPoolLights);
     const size_t poolBytes = std::max(poolN, 1) * sizeof(gos_terrain_lighting::GpuTerrainLight);
@@ -992,11 +995,11 @@ extern "C" int mc2_vk_mech_island_run(int w, int h) {
         // VK-LIGHTFEED-DEDUP-1: the shared once-per-frame LightsData span first (ONE copy total across the mech + prop islands; the copy is zoned
         // VKIsl.Shared.LightFeed inside acquire). Killswitch MC2_VK_LIGHTFEED_DEDUP=0 or any acquire fail-soft (mid-frame light-count growth, ring
         // failure) copies into this island's own span below (zone VKIsl.Mech.LightFeed).
-        lightSpan = mc2vkSharedLightFeedAcquire(feed.lightDataCpu, feed.lightDataCpuBytes);
+        lightSpan = mc2vkSharedLightFeedAcquire(feed.lights);
         if (!lightSpan) {
             ZoneScopedN("VKIsl.Mech.LightFeed");   // VK-ISLAND-TRACY-1: per-frame LightsData CPU->VK copy (own-span path)
-            lightSpan = rctx.frameAlloc(static_cast<VkDeviceSize>(feed.lightDataCpuBytes));
-            if (lightSpan) std::memcpy(lightSpan.ptr, feed.lightDataCpu, static_cast<size_t>(feed.lightDataCpuBytes));
+            lightSpan = rctx.frameAlloc(static_cast<VkDeviceSize>(feed.lights.bytes));
+            if (lightSpan) std::memcpy(lightSpan.ptr, feed.lights.data, static_cast<size_t>(feed.lights.bytes));
         }
         s->lightingReady = static_cast<bool>(lightSpan);
     }

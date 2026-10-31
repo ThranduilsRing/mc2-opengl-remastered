@@ -27,13 +27,14 @@ extern int __cdecl InternalFunctionStop(const char* fmt, ...);
 
 namespace {
 
-enum Mode { MODE_OFF = 0, MODE_LOG = 1, MODE_FATAL = 2 };
+enum class Mode : int { MODE_OFF = 0, MODE_LOG = 1, MODE_FATAL = 2 };
+using enum Mode;
 
 // Cap on full "[VERIFY]" lines emitted per process (log mode) so a hot-loop
 // fire cannot flood stderr/the ring; counting continues past the cap.
 const long kLogLineCap = 64;
 
-int resolve_mode()
+Mode resolve_mode()
 {
     const std::string vText = mc2::gate::str<"MC2_VERIFY_MODE">();   // "" when unset or empty
     const char* v = vText.c_str();
@@ -52,10 +53,10 @@ int resolve_mode()
     return MODE_LOG;
 }
 
-int mode()
+Mode mode()
 {
     // C++11 magic static: resolved once, thread-safe.
-    static const int m = resolve_mode();
+    static const Mode m = resolve_mode();
     return m;
 }
 
@@ -98,7 +99,7 @@ namespace mc2verify {
 
 bool Fail(const char* file, int line, const char* cond, const char* fmt, ...)
 {
-    const int m = mode();
+    const Mode m = mode();
     if (m == MODE_OFF)
         return true; // exactly-legacy: behave as if the check passed
 
@@ -150,7 +151,7 @@ bool Fail(const char* file, int line, const char* cond, const char* fmt, ...)
 
 void MissionSummary(const char* label)
 {
-    const int m = mode();
+    const Mode m = mode();
     if (m == MODE_OFF)
         return; // silent: off mode emits nothing
 

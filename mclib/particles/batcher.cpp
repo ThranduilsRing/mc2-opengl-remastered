@@ -6,6 +6,7 @@
 //===========================================================================//
 
 #include "batcher.h"
+#include "../battle_bench_sink.h"
 #include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
 
 #include <mlr/mlr.hpp>
@@ -202,6 +203,10 @@ void Batcher::Emit(const GpuParticle& p) {
     }
     impl_->budgetSixths += sixths;
     impl_->staging.push_back(p);
+    if (mc2::battlebench::output) {
+        ++mc2::battlebench::particleRecords;
+        mc2::battlebench::particleSixths += sixths;
+    }
     ++g_emit_total;
 }
 

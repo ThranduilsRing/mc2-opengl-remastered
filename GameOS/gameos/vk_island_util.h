@@ -25,18 +25,29 @@ using LogFn = void (*)(const char* fmt, ...);
 
 // "<tag><message>\n" to stderr, flushed. `tag` includes its trailing space.
 inline void vlogv(const char* tag, const char* fmt, va_list ap) {
-    std::fprintf(stderr, "%s", tag);
-    std::vfprintf(stderr, fmt, ap);
-    std::fprintf(stderr, "\n");
+    va_list measure;
+    va_copy(measure, ap);
+    const int count = std::vsnprintf(nullptr, 0, fmt, measure);
+    va_end(measure);
+    if (count < 0) return;
+    std::string line(tag);
+    const size_t prefix = line.size();
+    line.resize(prefix + static_cast<size_t>(count) + 1);
+    std::vsnprintf(line.data() + prefix, static_cast<size_t>(count) + 1, fmt, ap);
+    line.back() = '\n';
+    std::fwrite(line.data(), 1, line.size(), stderr);
     std::fflush(stderr);
 }
 
 // Same line, but the message is formatted into a 512-byte buffer first (truncating),
-// then written with one fprintf -- the native-post TUs' historical behaviour.
+// then written with one fwrite so stderr cannot split a concurrent SIMID record.
 inline void vlogv512(const char* tag, const char* fmt, va_list ap) {
     char buf[512];
     std::vsnprintf(buf, sizeof(buf), fmt, ap);
-    std::fprintf(stderr, "%s%s\n", tag, buf);
+    std::string line(tag);
+    line += buf;
+    line += '\n';
+    std::fwrite(line.data(), 1, line.size(), stderr);
     std::fflush(stderr);
 }
 

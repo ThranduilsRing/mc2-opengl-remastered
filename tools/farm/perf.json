@@ -1,0 +1,17 @@
+{
+  "argv": ["C:/Users/Kaitlyn/AppData/Local/Python/bin/python.exe", "{ROOT}/perf-harness/tools/perf/paired_cpu.py", "--install-a", "{ROOT}", "--install-b", "{ROOT_B}", "--out", "{RESULT}/perf", "--pairs", "5", "--seconds", "20"],
+  "cwd": "C:/mc2farm/harness",
+  "timeout": 7200,
+  "env": {
+    "TMP": "C:/mc2farm/tmp",
+    "TEMP": "C:/mc2farm/tmp",
+    "TMPDIR": "C:/mc2farm/tmp",
+    "TRACY_TOOLS_DIR": "C:/mc2farm",
+    "MC2_HOST_LEASE_PATH": "C:/mc2farm/host_game_lease.json",
+    "MC2_DEPLOY_LEASE_PATH": "C:/mc2farm/deploy_leases.json",
+    "MC2_CHILD_REGISTRY_DIR": "C:/mc2farm/children",
+    "MC2_HOST_GAME_SLOTS": "1",
+    "MC2_HARNESS_GPU": "any",
+    "MC2_VK_DEVICE": "NVIDIA"
+  }
+}

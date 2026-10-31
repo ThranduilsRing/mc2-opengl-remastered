@@ -96,7 +96,10 @@ def affinity_mask(slot: int) -> int:
 
 
 def game_cores():
-    """Share the guard's last-four CPU reservation, including for old leases."""
+    """Use the host's explicit reservation, including for old leases."""
+    plan = Path("A:/Games/mc2-ops/core_plan.json")
+    if plan.is_file():
+        return json.loads(plan.read_text(encoding="utf-8"))["game"]
     count = os.cpu_count() or 0
     if count < 8:
         raise RuntimeError('three-way core partition needs at least 8 logical CPUs')
@@ -424,7 +427,7 @@ def acquire(label: str, *, wait: bool = True, timeout_s: Optional[float] = None,
                                "cwd": os.getcwd(), "argv": sys.argv[:3], "since": time.time()} if guard else _read(slot_path(i))
                         _write_record(slot_path(i), dict(rec, slot=i, exclusive=exclusive,
                                                        cores_per_slot=cores_per_slot(),
-                                                       affinity_mask=0xFFF0 if exclusive else affinity_mask(i)))
+                                                       affinity_mask=sum(affinity_mask(j) for j in range(slot_count())) if exclusive else affinity_mask(i)))
                         allocated.append((slot_path(i), _read(slot_path(i))))
                     if eligible:
                         queue.pop(0)

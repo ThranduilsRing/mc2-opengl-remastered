@@ -1680,6 +1680,8 @@ def main():
                     "Sets defaults only; explicit flags still override.")
     ap.add_argument("--classic-assets", action="store_true",
                     help="deploy without the Remastered building kit (also honors RemasteredBuildings=FALSE)")
+    ap.add_argument('--seed-owner-test', action='store_true',
+                    help='seed owner-test from the verified deployed v0.4 tree; no build or cook')
     ap.add_argument("--source-root", default=repo_root(),
                     help="source worktree root (default: this script's repo)")
     ap.add_argument("--build-dir", default=None,
@@ -1739,6 +1741,19 @@ def main():
                          "run-with-log.bat). Only skips if the target copy "
                          "exists; fresh targets still get the source file.")
     args = ap.parse_args()
+
+    if args.seed_owner_test:
+        source = Path('A:/Games/mc2-opengl/mc2-win64-v0.4')
+        target = Path('E:/mc2-installs/owner-test-2026-10-26')
+        check_locks(str(target), 'mc2.exe', 0)
+        held = take_folder_lease(str(target), 0)
+        try:
+            import kit_payload
+            kit_payload.seed_install(source, target)
+        finally:
+            if held:
+                release_folder_lease(str(target))
+        return
 
     preset = TARGET_PRESETS.get(args.target) if args.target else None
     target_dir = args.target_dir or (preset and preset["target_dir"])

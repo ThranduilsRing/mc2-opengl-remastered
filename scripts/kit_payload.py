@@ -1,11 +1,14 @@
 """Pinned Remastered building payload; binary releases live outside git."""
 import hashlib
+import csv
+import importlib.util
 import json
 import os
 import re
 from pathlib import Path, PureWindowsPath
 import subprocess
 import sys
+import shutil
 from concurrent.futures import ThreadPoolExecutor
 
 import console_child
@@ -13,6 +16,111 @@ import console_child
 KIT_REL = Path("mods/mc2-industrial-kit")
 MANIFEST = Path("data/kit/industrial-kit.json")
 IMPORT_ARGS = ["--no-ground", "--static-prop"]
+
+
+def seed_install(source, target, hash_cache=Path('G:/mc2-tmp/shared-data-sha256.json')):
+    """Refresh an owner-test projection from one deployed tree, without a cook.
+
+    Read-only data can link on the same volume; cross-volume members copy.
+    Written artifacts always get private inodes. Only pinned model recipes carry over.
+    """
+    source, raw_target = Path(source).resolve(), Path(target).absolute()
+    target = raw_target.resolve()
+    if target != raw_target:
+        raise ValueError('seed target must not be a junction/symlink')
+    if source == target or source.is_relative_to(target) or target.is_relative_to(source):
+        raise ValueError('seed source and target overlap')
+    spec = importlib.util.spec_from_file_location('isolated_seed', Path(__file__).with_name('make-isolated-deploy.py'))
+    iso = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(iso)
+    guard = iso._load_guard()
+    try:
+        hashes = json.loads(hash_cache.read_text())
+    except (OSError, ValueError):
+        hashes = {}
+
+    def digest(path):
+        stat = path.stat()
+        key = str(path.resolve())
+        stamp = [stat.st_size, stat.st_mtime_ns]
+        old = hashes.get(key)
+        # Executable bytes are always verified, including a warm seed.
+        if path.suffix.lower() != '.exe' and old and old[:2] == stamp:
+            return old[2]
+        value = sha(path)
+        hashes[key] = [*stamp, value]
+        return value
+
+    with (source / '.deployed_manifest.csv').open(encoding='utf-8-sig', newline='') as stream:
+        if next(csv.reader(stream), [])[:2] != ['manifest_version', 'v1']:
+            raise ValueError('unsupported seed manifest')
+        manifest = {row['relpath'].casefold(): row for row in csv.DictReader(stream)
+                    if not row['relpath'].lower().endswith('.pdb')}
+    if 'mc2.exe' not in manifest:
+        raise ValueError('seed manifest lacks mc2.exe')
+    members = set()
+    for row in manifest.values():
+        path = contained_path(source, row['relpath'])
+        if path.stat().st_size != int(row['bytes']) or digest(path) != row['sha256']:
+            raise ValueError(f'seed manifest mismatch: {path}')
+        members.add(row['relpath'])
+    links, copies, _, _ = iso.plan(source, guard, manifest)
+    members.update(rel for rel, _ in links + copies if rel != '.deployed_manifest.csv')
+    # Reuse only verified content-addressed recipes, not arbitrary writable caches.
+    for name in ('industrial-cook.json', 'vehicle-cook.json'):
+        receipt = source / 'cache/content-model' / name
+        if receipt.is_file():
+            rows = json.loads(receipt.read_text())['files']
+            checked_files(receipt.parent, rows)
+            members.add(receipt.relative_to(source).as_posix())
+            members.update((receipt.parent / row['path']).relative_to(source).as_posix() for row in rows)
+    target.mkdir(parents=True, exist_ok=True)
+    prior = contained_path(target, '.deployed_manifest.csv')
+    if prior.is_file():
+        with prior.open(encoding='utf-8-sig', newline='') as stream:
+            next(stream)
+            retired = list(csv.DictReader(stream))
+        for row in retired:
+            if row['relpath'] not in members and not row['relpath'].lower().endswith('.pdb'):
+                path = contained_path(target, row['relpath'])
+                if path.is_file():
+                    if digest(path) != row['sha256']:
+                        raise ValueError(f'modified retired seed member: {path}')
+                    path.unlink()
+    for rel in sorted(members):
+        src, dst = contained_path(source, rel), contained_path(target, rel)
+        expected = digest(src)
+        if (dst.is_file() and digest(dst) == expected
+                and (guard.classify(rel) == 'data' or dst.stat().st_nlink == 1)):
+            continue
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        temp = dst.with_name(dst.name + f'.seed-{os.getpid()}')
+        try:
+            if guard.classify(rel) == 'data' and iso.same_volume(src, dst):
+                os.link(src, temp)
+            else:
+                shutil.copy2(src, temp)
+            if digest(temp) != expected:
+                raise ValueError(f'seed copy hash mismatch: {rel}')
+            os.replace(temp, dst)
+        finally:
+            temp.unlink(missing_ok=True)
+    # Replace the manifest inode too: an older owner-test may have linked it.
+    manifest_path = contained_path(target, '.deployed_manifest.csv')
+    pending_manifest = target / f'.seed-manifest-{os.getpid()}.csv'
+    fields = ['relpath', 'sha256', 'bytes', 'src_commit', 'timestamp', 'mtime_ns']
+    with pending_manifest.open('w', encoding='utf-8', newline='') as stream:
+        writer = csv.writer(stream)
+        writer.writerow(['manifest_version', 'v1'])
+        writer.writerow(fields)
+        for row in manifest.values():
+            writer.writerow([row.get(key, '') for key in fields])
+    os.replace(pending_manifest, manifest_path)
+    hash_cache.parent.mkdir(parents=True, exist_ok=True)
+    pending = hash_cache.with_suffix(f'.{os.getpid()}.tmp')
+    pending.write_text(json.dumps(hashes), encoding='utf-8')
+    pending.replace(hash_cache)
+    print(f'[deploy_payload] seed verified: {len(members)} files; exe sha={digest(target / "mc2.exe")}; no cook')
 
 
 def reconcile_stock_textures(target_dir, inventory=None, jobs=1):
@@ -57,7 +165,8 @@ def reconcile_stock_textures(target_dir, inventory=None, jobs=1):
 
 
 def sha(path):
-    return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+    with Path(path).open('rb') as stream:
+        return hashlib.file_digest(stream, 'sha256').hexdigest()
 
 
 def contained_path(root, rel):

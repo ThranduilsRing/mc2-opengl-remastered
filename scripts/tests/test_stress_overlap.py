@@ -29,10 +29,18 @@ def test_cosmetic_rng_counts_do_not_split_hashes():
     assert a == b
 
 
+def test_fields_appended_after_animrng_are_compared():
+    prefix = "[SIMID v1] simframe=1 rng=5/1/1 animrng=2"
+    a = so.simid_lines(prefix + " future=123 tail=abc")
+    b = so.simid_lines(prefix + " future=124 tail=abc")
+    assert a[0].endswith("future=123 tail=abc")
+    assert so.chain(a, 1) != so.chain(b, 1)
+
+
 def test_interleaved_console_lines_keep_every_record():
     # Another thread's line glued after a record, and a record glued after another line.
     text = ("[SIMID v1] simframe=1 rng=5/1/1 animrng=2[SHADOW_BAKE] re-recorded\n"
-            "samples=601[SIMID v1] simframe=2 rng=6/1/1 animrng=2\n")
+            "samples=601[SIMID v1] simframe=2 rng=6/1/1 animrng=2s\n")
     assert so.simid_lines(text) == ["[SIMID v1] simframe=1 rng=5 animrng=2", "[SIMID v1] simframe=2 rng=6 animrng=2"]
 
 
@@ -45,3 +53,27 @@ def test_green_on_matching_prefix_red_on_mismatch_or_violation():
     assert "violation" in v["runs"][1]["red"]
     short = so.judge([row("serial", lines(400)), row("jitter1", lines(10))])
     assert not short["green"]
+    failed = row("jitter1", lines(400))
+    failed["rc"] = 1
+    assert "rc=1" in so.judge([row("serial", lines(400)), failed])["runs"][1]["red"]
+
+
+def test_requested_ticks_and_finale_are_required():
+    def finale_row(tag, count, marker=True):
+        return row(tag, lines(count)) | {"mission": "mc2_24", "requested_ticks": 2600, "finale_reached": marker}
+    serial = finale_row("serial", 2600)
+    for count in (1000, 2404, 2599):
+        assert not so.judge([serial, finale_row("jitter1", count)])["green"]
+    assert not so.judge([serial, finale_row("jitter1", 2600, False)])["green"]
+    assert so.judge([serial, finale_row("jitter1", 2600)])["green"]
+    short = row("jitter1", lines(350)) | {"requested_ticks": 600}
+    assert not so.judge([row("serial", lines(600)), short])["green"]
+
+
+def test_finale_marker_must_follow_tick_2404_and_reach_a_later_tick():
+    before = "[SIMID v1] simframe=2404 t=80.132\n"
+    marker = "[CONTENT_COOK] source=data/tgl/infantry.tgl key=abc cache=hit\n"
+    after = "[SIMID v1] simframe=2405 t=80.166\n"
+    assert so.finale_reached(before + marker + after)
+    for log in (before + after, marker + before + after, before + marker):
+        assert not so.finale_reached(log)

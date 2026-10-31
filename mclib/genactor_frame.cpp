@@ -7,6 +7,7 @@
 //-----------------------------------------------------------------------------
 long GenericAppearance::render (long depthFixup)
 {
+	if (!eye) return 0;
 	if (inView)
 	{
 		uint32_t color = SD_BLUE;
@@ -58,9 +59,9 @@ long GenericAppearance::render (long depthFixup)
 			if (!submittedToGpu)
 			{
 				if (depthFixup)
-					genShape->Render(false,0.99999f);	//Sky or something like it.  Push to back!
+					genShape->Render(eye->getViewUniforms(),false,0.99999f);	//Sky or something like it.  Push to back!
 				else
-					genShape->Render();
+					genShape->Render(eye->getViewUniforms());
 			}
 		}
 		else
@@ -366,7 +367,7 @@ long GenericAppearance::update (bool animate)
 		// reverts) and night check all live inside
 		// QueueBeaconGlow, so this is a no-op for every non-beacon prop.
 		if (eye && eye->isNight)
-			mc2_cone_glow::QueueBeaconGlow(genShape, eye->getNightFactor());
+			mc2_cone_glow::QueueBeaconGlow(eye->getViewUniforms(), genShape, eye->getNightFactor());
 	}
 
 	if ((!simPresentationPass || !simulationOwned()) && animate && genFrameRate != 0.0f)

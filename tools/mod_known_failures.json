@@ -1,0 +1,7 @@
+[
+  {"mod":"MC2X-CVE-G","mission":"metropolitan","error_class":"ammo","count_ceiling":7,"first_window":92,"expires_window":95,"owner_note":"Owner W92 assignment 2026-10-31 accepts known mod errors; renew unchanged W90 verified ceiling 7 for windows 92-94."},
+  {"mod":"MC2X-REAP3","mission":"reap3m01","error_class":"ammo","count_ceiling":1,"first_window":92,"expires_window":95,"owner_note":"Owner W92 assignment 2026-10-31 accepts known mod errors; renew unchanged W90 verified ammo ceiling 1 for windows 92-94."},
+  {"mod":"MC2X-REAP3","mission":"reap3m01","error_class":"movetype","count_ceiling":1,"first_window":92,"expires_window":95,"owner_note":"Owner W92 assignment 2026-10-31 accepts known mod errors; renew unchanged W90 verified movetype ceiling 1 for windows 92-94."},
+  {"mod":"MC2X-REAP3","mission":"reap3m13","error_class":"movetype","count_ceiling":1,"first_window":92,"expires_window":95,"owner_note":"Owner W92 assignment 2026-10-31 accepts known mod errors; renew unchanged W90 verified movetype ceiling 1 for windows 92-94."},
+  {"mod":"MCO-Carver5","mission":"mc2_01","error_class":"texture","count_ceiling":100,"first_window":92,"expires_window":95,"owner_note":"Owner W92 assignment 2026-10-31 accepts known mod errors; renew unchanged W90 verified texture ceiling 100 for windows 92-94."}
+]

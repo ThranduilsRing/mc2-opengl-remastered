@@ -73,6 +73,10 @@
       "status": "keep",
       "reason": "Printed once before the first [VRAM v1] line, under the same smoke / MC2_DIAG_VERBOSE guard, and says which rule (luid or most_dedicated) picked the DXGI adapter the VRAM numbers come from; a reader of a VRAM figure on a two-GPU host needs it. No parser consumes it."
     },
+    "STATIC_LIGHT_ROW v1": {
+      "status": "keep",
+      "reason": "FAIL-LOUD invariant already present in W89 (GameOS/gameos/gos_static_prop_registry_flush_range.cpp): reports zero light rows reaching the GPU and their census. Owner W90 ruling requires registering existing source diagnostics rather than silencing them."
+    },
     "WATER_SHORE_EDGE v1": {
       "status": "keep",
       "reason": "FAIL-LOUD by design (mclib/terrain_init.cpp): the unconditional lines report a shore-field sidecar that is missing, mis-sized, non-finite or unreadable; the LOADED lines are MC2_DIAGF. Same policy as TERRAIN_SHORELINE."

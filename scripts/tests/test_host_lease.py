@@ -18,14 +18,17 @@ ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..")
 
 
 @pytest.mark.parametrize('slots', [2, 3])
-def test_real_host_partition_never_assigns_build_or_desktop_cores(monkeypatch, slots):
+@pytest.mark.parametrize('cores', [[12,13,14,15], [8,9,12,13]])
+def test_real_host_partition_never_assigns_build_or_desktop_cores(monkeypatch, slots, cores):
     monkeypatch.setattr(host_lease, 'redirected', lambda: False)
     monkeypatch.setattr(host_lease.sys, 'platform', 'win32')
     monkeypatch.setattr(host_lease.os, 'cpu_count', lambda: 16)
     monkeypatch.setattr(host_lease, 'slot_count', lambda: slots)
+    monkeypatch.setattr(host_lease, 'game_cores', lambda: cores)
     masks = [host_lease.affinity_mask(i) for i in range(slots)]
-    assert sum(masks) == 0xf000
-    assert all(mask and not mask & 0x0fff for mask in masks)
+    reserved=sum(1 << c for c in cores)
+    assert sum(masks) == reserved
+    assert all(mask and not mask & ~reserved for mask in masks)
     assert all(not a & b for i, a in enumerate(masks) for b in masks[i+1:])
 
 
@@ -50,6 +53,12 @@ def test_free_host_takes_the_lease(lease):
     assert json.loads(lease.read_text())["pid"] == os.getpid() and host_lease.holds()
     host_lease.release()
     assert not lease.exists()
+
+
+def test_private_perf_lease_fits_eight_cpu_farm(lease, monkeypatch):
+    monkeypatch.setenv('MC2_HOST_CORES_PER_SLOT', '2')
+    host_lease.acquire('mission CPU perf', exclusive=True, scan=lambda: [], log=lambda m: None)
+    assert json.loads(lease.read_text())['affinity_mask'] == 0xf0
 
 
 @pytest.mark.skipif(sys.platform != "win32", reason="Windows open readers deny replace and unlink")
@@ -524,7 +533,7 @@ def test_affinity_reserves_only_physical_game_cores(monkeypatch):
             host_lease.slot_count()
 
 
-@pytest.mark.parametrize("width,exclusive,expected", [(1, False, 0x30), (1, True, 0xFFF0), (2, False, 0xF0), (2, True, 0xFFF0)])
+@pytest.mark.parametrize("width,exclusive,expected", [(1, False, 0x30), (1, True, 0x30), (2, False, 0xF0), (2, True, 0xF0)])
 def test_slot_affinity_reaches_child_process(lease, monkeypatch, width, exclusive, expected):
     import ctypes
     from ctypes import wintypes

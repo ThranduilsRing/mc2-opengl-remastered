@@ -14,6 +14,7 @@ import hashlib
 import json
 import math
 import os
+from statistics import median
 from pathlib import Path
 import subprocess
 import sys
@@ -35,8 +36,11 @@ CAMERA_MISSIONS = {"mc2_01", "mc2_10", "mc2_24"}
 BOOKMARK_DIR = ROOT / "tests/visual/bookmarks"
 
 
-def camera_bookmarks(mission):
-    return json.loads((BOOKMARK_DIR / f"{mission}_camera.json").read_text(encoding="utf-8"))
+def camera_bookmarks(mission, full_sweep=False):
+    data = json.loads((BOOKMARK_DIR / f"{mission}_camera.json").read_text(encoding="utf-8"))
+    if not full_sweep:
+        data['bookmarks'] = [next(m for m in data['bookmarks'] if m['name'] == 'sun_facing_low')]
+    return data
 
 
 def distribution(values):
@@ -70,6 +74,9 @@ def drive_bookmarks(channel, marks, captures, mission, done, errors):
         # Allow the last readback to drain and the sweep to restore pause state.
         if done.wait(.5):
             return
+        if len(marks) == 1:
+            send(marks[0])
+            return  # Measure this view through mission exit, without a short sentinel interval.
         for mark in marks:
             send(mark)
             if mark["name"] == "orbit":
@@ -91,14 +98,16 @@ def drive_bookmarks(channel, marks, captures, mission, done, errors):
 def bookmark_measurements(directory, marks, log):
     rows = [json.loads(line) for line in (directory / "frames.jsonl").read_text().splitlines()]
     views = [r for r in rows if r["type"] == "view"]
-    expected = len(marks) + 101  # 100 orbit steps and closing sentinel
+    expected = 1 if len(marks) == 1 else sum(101 if m['name'] == 'orbit' else 1 for m in marks) + 1
     if len(views) != expected:
         raise RuntimeError(f"camera schedule incomplete: {len(views)}/{expected} views")
     result, cursor = {}, 0
     gpu_available = "[VK_GPU_PASSES v1]" in log
     for mark in marks:
         steps = 101 if mark["name"] == "orbit" else 1
-        first, end = views[cursor]["frame"], views[cursor + steps]["frame"]
+        first = views[cursor]["frame"]
+        end = (max(r['frame'] for r in rows if r['type'] == 'cpu') + 1 if len(marks) == 1
+               else views[cursor + steps]['frame'])
         cursor += steps
         # Exclude teleport and pipeline latency; retain all frames of the moving orbit.
         start = first + (1 if mark["name"] == "orbit" else 4)
@@ -128,7 +137,7 @@ def p95(values):
     return sorted(values)[max(0, math.ceil(len(values) * .95) - 1)] if values else None
 
 
-def summarize(reader, frame_range=None, bookmarks=None):
+def summarize(reader, frame_range=None, bookmarks=None, warmup_seconds=0):
     """Aggregate real individual events, merging identical names across threads."""
     events = []
     for row in reader:
@@ -141,6 +150,9 @@ def summarize(reader, frame_range=None, bookmarks=None):
             raise ValueError("negative Tracy zone duration")
         events.append((sys.intern(row["name"]), int(row["ns_since_start"]) if row.get("ns_since_start") else None, value))
     frames = sorted((start, duration) for name, start, duration in events if name == "Frame" and start is not None)
+    if frames and warmup_seconds:
+        cutoff = frames[0][0] + warmup_seconds * 1e9
+        frames = [(s, d) for s, d in frames if s >= cutoff]
     def aggregate(window=None):
         selected = frames if window is None else frames[window[0] - 1:window[1] - 1]
         if window is not None and len(selected) != window[1] - window[0]:
@@ -156,6 +168,10 @@ def summarize(reader, frame_range=None, bookmarks=None):
             raise ValueError("Tracy export contains no CPU events")
         return {name: {"count": len(values), "total_ms": sum(values) / 1e6,
                        "p95_ms": p95(values) / 1e6,
+                       **({"median_ms": median(values) / 1e6,
+                           "min_ms": min(values) / 1e6,
+                           "q25_ms": sorted(values)[(len(values) - 1) // 4] / 1e6}
+                          if frames else {}),
                        "worst_ms": max(values) / 1e6} for name, values in durations.items()}
     if bookmarks:
         expected = next(iter(bookmarks.values()))["last_cpu_frame"]
@@ -166,18 +182,24 @@ def summarize(reader, frame_range=None, bookmarks=None):
     return aggregate(frame_range)
 
 
-def capture_mission(install, mission, seconds, trace, extra_env):
+def capture_mission(install, mission, seconds, trace, extra_env, full_sweep=False):
     """Record through mission exit: a connection-time cutoff can capture only loading."""
     env = tracy.game_env("vk", False, 0, None, extra_env)
+    if os.environ.get("MC2_VK_DEVICE"):
+        env.setdefault("MC2_VK_DEVICE", os.environ["MC2_VK_DEVICE"])
     env["MC2_FORCE_ALL_VISIBLE"] = "0"  # profile normal mission visibility, overriding smoke's forced value
-    marks = camera_bookmarks(mission)["bookmarks"] if mission in CAMERA_MISSIONS else []
+    camera = camera_bookmarks(mission, full_sweep) if mission in CAMERA_MISSIONS else {}
+    marks = (camera["bookmarks"]
+             if mission in CAMERA_MISSIONS and "MC2_UI_COMMAND_FILE" not in env else [])
     done, errors = threading.Event(), []
     driver = None
     if marks:
+        bookmark_file = trace.parent / 'camera.json'
+        bookmark_file.write_text(json.dumps(camera), encoding='utf-8')
         channel = trace.parent / "commands.txt"
         channel.write_text(f"bench_output {trace.parent / 'frames.jsonl'}\n", encoding="utf-8")
         env.update({"MC2_TEST_SPAWN": "1", "MC2_UI_COMMAND_FILE": str(channel),
-                    "MC2_VISUAL_BOOKMARK_CAPTURE": str(BOOKMARK_DIR / f"{mission}_camera.json"),
+                    "MC2_VISUAL_BOOKMARK_CAPTURE": str(bookmark_file),
                     "MC2_VISUAL_CAPTURE_DIR": str(trace.parent), "MC2_VISUAL_CAPTURE_FRAME": "120",
                     "MC2_VISUAL_SETTLE": "30", "MC2_VK_GPU_TIMESTAMPS": "1",
                     "MC2_WIDTH": "1920", "MC2_HEIGHT": "1080", "MC2_FPS_CAP": "0", "MC2_VSYNC": "0",
@@ -226,7 +248,7 @@ def capture_mission(install, mission, seconds, trace, extra_env):
             tracy._stop_capture_child(recorder)
 
 
-def export_zones(trace, bookmarks=None):
+def export_zones(trace, bookmarks=None, warmup_seconds=0):
     # Stream all events once: computing p95 from aggregate mean/max is invalid.
     with trace.with_suffix(".export.log").open("w", encoding="utf-8") as log:
         flags = {"creationflags": subprocess.BELOW_NORMAL_PRIORITY_CLASS} if os.name == "nt" else {}
@@ -238,7 +260,7 @@ def export_zones(trace, bookmarks=None):
         timer.start()
         try:
             with child.stdout:
-                zones = summarize(csv.DictReader(child.stdout), bookmarks=bookmarks)
+                zones = summarize(csv.DictReader(child.stdout), bookmarks=bookmarks, warmup_seconds=warmup_seconds)
             if child.wait(timeout=10):
                 raise RuntimeError(f"Tracy export failed; see {log.name}")
             return zones
@@ -267,6 +289,15 @@ def game_processes(psutil, exclude=()):
     return found
 
 
+def external_cpu(per_core, reserved, game_cpu, sampler_cpu=0, sampler_reserved=True):
+    """Process percentages use one-core units; all excluded work must be pinned.
+
+    Games must be inside reserved; sampler affinity must be wholly inside or outside.
+    """
+    return {"whole_machine_external_cpu_percent": max(0, (sum(per_core) - game_cpu - sampler_cpu) / len(per_core)),
+            "external_cpu_percent": max(0, (sum(per_core[c] for c in reserved) - game_cpu - (sampler_cpu if sampler_reserved else 0)) / len(reserved))}
+
+
 class HostSamples:
     """Sample while capture is alive, excluding only this tool's descendants."""
     def __init__(self, psutil):
@@ -279,8 +310,15 @@ class HostSamples:
     def run(self):
         psutil = self.psutil
         parent = psutil.Process()
+        reserved = host_lease.game_cores()
+        original = parent.cpu_affinity()
+        tool_cores = [c for c in original if c not in reserved]
+        if tool_cores:
+            parent.cpu_affinity(tool_cores)
+        sampler_affinity = set(parent.cpu_affinity())
+        parent.cpu_percent()
         known = {}
-        psutil.cpu_percent()
+        psutil.cpu_percent(percpu=True)
         try:
             while not self.stop.wait(.5):
                 children = parent.children(recursive=True)
@@ -289,19 +327,37 @@ class HostSamples:
                 for child in children:
                     try:
                         if child.name().lower() == "mc2.exe":
-                            proc = known.setdefault(child.pid, child)
+                            if child.pid not in known:
+                                child.cpu_percent()
+                                known[child.pid] = child
+                                continue  # prime the process counter before subtraction
+                            proc = known[child.pid]
+                            if not set(proc.cpu_affinity()) <= set(reserved):
+                                raise RuntimeError(f"game {proc.pid} affinity outside reserved cores {reserved}")
                             game_cpu += proc.cpu_percent()
                             games.append({"pid": proc.pid, "priority": proc.nice(),
                                           "affinity": proc.cpu_affinity()})
                     except (psutil.NoSuchProcess, psutil.AccessDenied):
                         continue
-                cpu = psutil.cpu_percent()
-                self.rows.append({"time": time.time(), "host_cpu_percent": cpu,
-                                  "external_cpu_percent": max(0, cpu - game_cpu / (psutil.cpu_count() or 1)),
+                cpu = psutil.cpu_percent(percpu=True)
+                sampler_cpu = parent.cpu_percent()
+                actual_affinity = set(parent.cpu_affinity())
+                if actual_affinity != sampler_affinity:
+                    sampler_affinity = actual_affinity
+                    continue  # the guard moved the sampler; attribution is ambiguous this interval
+                if sampler_affinity & set(reserved) and not sampler_affinity <= set(reserved):
+                    raise RuntimeError("sampler affinity straddles measured reservation")
+                self.rows.append({"time": time.time(), "host_cpu_percent": sum(cpu) / len(cpu),
+                                  "reserved_cores": reserved, "per_core_cpu_percent": cpu,
+                                  "game_cpu_percent_one_core": game_cpu, "sampler_cpu_percent_one_core": sampler_cpu,
+                                  "sampler_affinity": sorted(sampler_affinity),
+                                  **external_cpu(cpu, reserved, game_cpu, sampler_cpu, sampler_affinity <= set(reserved)),
                                   "other_games": game_processes(psutil, {c.pid for c in children}),
                                   "own_games": games})
         except Exception as exc:
             self.error = str(exc)
+        finally:
+            parent.cpu_affinity(original)
 
     def __enter__(self):
         self.thread.start()
@@ -321,17 +377,20 @@ def noise_report(samples):
         reasons.append(samples.error or "no in-game CPU samples")
     if any(row["other_games"] for row in samples.rows):
         reasons.append("other game processes observed")
+    if any(len(row["own_games"]) > 1 for row in samples.rows):
+        reasons.append("multiple owned game processes observed")
     external = p95([row["external_cpu_percent"] for row in active])
-    if external is not None and external > 25:
-        reasons.append("external host CPU p95 exceeds 25%")
+    if external is not None and external >= 15:
+        reasons.append("reserved-core external CPU p95 reaches 15%")
     return {"status": "NOISY" if reasons else "quiet", "reasons": reasons,
             "host_cpu_p95": p95([row["host_cpu_percent"] for row in active]),
-            "external_cpu_p95": external, "samples": samples.rows}
+            "whole_machine_external_cpu_p95": p95([row.get("whole_machine_external_cpu_percent", row["external_cpu_percent"]) for row in active]),
+            "external_cpu_p95": external, "external_cpu_scope": "reserved_cores", "samples": samples.rows}
 
 
 def table(name, zones, noise, top):
     lines = [f"## {name} ({noise['status']})", "",
-             f"Host CPU p95: {noise['host_cpu_p95']}%; external CPU p95: {noise['external_cpu_p95']}%.",
+             f"Host CPU p95: {noise['host_cpu_p95']}%; whole-machine external CPU p95: {noise.get('whole_machine_external_cpu_p95')}%; reserved-core external CPU p95: {noise['external_cpu_p95']}%.",
              "; ".join(noise["reasons"]), "",
              "| rank by total | zone | total ms | event p95 ms | calls | p95 rank |",
              "|---:|---|---:|---:|---:|---:|"]
@@ -374,8 +433,26 @@ def profile(args, name, directory, psutil):
     mission = name
     if name == "battle":
         scenario = json.loads(battle.SCENARIO.read_text(encoding="utf-8"))
+        scenario["spawn"]["count"] = 128
         mission = scenario["mission"]
         channel = battle.prepare(directory, scenario, "day")
+        # mc2_24 starts with 70 movers. Each class has 128 spare pool slots;
+        # UI commands initialize appearances on the main thread, unlike the
+        # simulation-worker MC2_MOVER_FIXTURE path.
+        spawn = scenario["spawn"]
+        x, y = spawn["origin"]
+        y += 16 * spawn["spacing"]
+        vehicles = "".join(f"spawn vehicle {x + i * spawn['spacing']} {y} 0 0 {spawn['pilot']}\n" for i in range(2))
+        channel.write_text(channel.read_text(encoding="utf-8").replace("select all\n", vehicles + "select all\n", 1), encoding="utf-8")
+        env = [f"{k}={v}" for k, v in battle.environment(channel, 1920, 1080).items()]
+    full_sweep = getattr(args, "full_camera_sweep", False)
+    short_view = not full_sweep
+    view = None
+    if short_view and name in CAMERA_MISSIONS:
+        chosen = {"mc2_01": "sun_facing_low", "mc2_10": "sun_facing_low", "mc2_24": "low_horizon_0"}[name]
+        view = next(m for m in camera_bookmarks(name, True)["bookmarks"] if m["name"] == chosen)
+        channel = directory / "commands.txt"
+        channel.write_text(f"bench_output {directory / 'frames.jsonl'}\n{battle.view_command(view)}\n", encoding="utf-8")
         env = [f"{k}={v}" for k, v in battle.environment(channel, 1920, 1080).items()]
     started = time.monotonic()
     # Standard bounded perf lease prevents a second MC2 instance feeding Tracy.
@@ -389,7 +466,7 @@ def profile(args, name, directory, psutil):
         samples = HostSamples(psutil)
         try:
             with samples:
-                rc = capture_mission(args.install, mission, max(args.seconds, 60) if name in CAMERA_MISSIONS else args.seconds, trace, env)
+                rc = capture_mission(args.install, mission, max(args.seconds, 60), trace, env, True) if full_sweep and name in CAMERA_MISSIONS else capture_mission(args.install, mission, args.seconds, trace, env)
         finally:
             noise = noise_report(samples)
             (directory / "host-load.json").write_text(json.dumps(noise, indent=2), encoding="utf-8")
@@ -405,13 +482,21 @@ def profile(args, name, directory, psutil):
         ack = channel.with_suffix(channel.suffix + ".ack")
         if not ack.exists() or "bench_attack -> ok" not in ack.read_text(encoding="utf-8", errors="replace"):
             raise RuntimeError("battle spawn/attack was not acknowledged")
-    bookmarks = bookmark_measurements(directory, camera_bookmarks(name)["bookmarks"], log) if name in CAMERA_MISSIONS else {}
-    zones = export_zones(trace, bookmarks)
+    if short_view and view:
+        ack = channel.with_suffix(".txt.ack").read_text(encoding="utf-8")
+        if f"{battle.view_command(view)} -> ok" not in ack:
+            raise RuntimeError("worst-view command was not acknowledged")
+    if name == "battle":
+        worlds = [r for r in battle.read_frames(directory) if r["type"] == "world"]
+        if not worlds or any(r.get("movers") != 200 for r in worlds):
+            raise RuntimeError("battle world evidence does not establish 200 movers")
+    bookmarks = bookmark_measurements(directory, camera_bookmarks(name, full_sweep)["bookmarks"], log) if name in CAMERA_MISSIONS and not short_view else {}
+    zones = export_zones(trace, bookmarks, warmup_seconds=3 if short_view else 0)
     missing = set(SPLIT.values()) - zones.keys()
     if missing:
         raise RuntimeError(f"missing frame scopes {sorted(missing)}; trace is not a mission profile")
     return {"mission": mission, "noise": noise, "zones": zones, "bookmarks": bookmarks,
-            "duration_seconds": max(args.seconds, 60) if name in CAMERA_MISSIONS else args.seconds,
+            "view": view, "duration_seconds": max(args.seconds, 60) if full_sweep and name in CAMERA_MISSIONS else args.seconds,
             "capture_clock": "wall-clock; review PNGs only, not deterministic goldens" if bookmarks else None,
             "lease_wait_seconds": waited, "game_run_seconds": run_seconds,
             "trace": str(trace)}
@@ -422,6 +507,7 @@ def main(argv=None):
     parser.add_argument("--install", required=True, type=Path)
     parser.add_argument("--missions", nargs="+", choices=DEFAULT_MISSIONS, default=DEFAULT_MISSIONS)
     parser.add_argument("--seconds", type=int, default=20, help="mission gameplay duration, excluding startup")
+    parser.add_argument("--full-camera-sweep", action='store_true', help='all camera views and orbit (at least 60s); default: 20s sun-facing low view')
     parser.add_argument("--top", type=int, default=10)
     parser.add_argument("--out", type=Path, default=OUT)
     args = parser.parse_args(argv)
@@ -465,13 +551,20 @@ def main(argv=None):
             print(rendered, flush=True)
         except (Exception, SystemExit) as exc:
             report["errors"][name] = str(exc)
+            noise_path = directory / name / "host-load.json"
+            noise = (json.loads(noise_path.read_text(encoding="utf-8")) if noise_path.is_file() else
+                     {"status": "NOISY", "reasons": [str(exc)], "host_cpu_p95": None,
+                      "whole_machine_external_cpu_p95": None, "external_cpu_p95": None,
+                      "external_cpu_scope": "reserved_cores", "samples": []})
+            report["runs"][name] = {"noise": noise, "zones": {}, "bookmarks": {}, "error": str(exc),
+                "trace": str(directory / name / f"{name}.tracy")}
             text.append(f"## {name}: FAILED\n\n{exc}")
             print(f"{name}: FAILED: {exc}", file=sys.stderr, flush=True)
         finally:
             (directory / "profile.json").write_text(json.dumps(report, indent=2), encoding="utf-8")
             (directory / "profile.md").write_text("\n\n".join(text) + "\n", encoding="utf-8")
     print(f"Proof: {directory}")
-    return 1 if report["errors"] else (2 if any(r["noise"]["status"] == "NOISY" for r in report["runs"].values()) else 0)
+    return 1 if report["errors"] else 0
 
 
 if __name__ == "__main__":

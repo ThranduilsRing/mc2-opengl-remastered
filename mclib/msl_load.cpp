@@ -116,30 +116,9 @@ long TG_TypeMultiShape::BuildContentIR(mc2::content::Asset&& asset, std::string_
         auto shape = std::make_unique<TG_TypeShape>();
         shape->init();
         shape->InitFromImportedMesh(n.name.c_str(), n.parent.c_str(), n.center, std::move(n.vertices), std::move(n.triangles));
-        // Preserve the stock compatibility draw; imported rigid skins keep their
-        // existing CPU/GPU animation consumers and never acquire a frozen legacy VBO.
-
-	if (asset.legacyBounds && shape->numTypeVertices && shape->numTypeTriangles && shape->numTypeTriangles <= 65535u / 3u) {
-		gosVERTEX_FORMAT_RECORD declaration[] = {
-			{0, 3, false, sizeof(TG_HWTypeVertex), 0, gosVERTEX_ATTRIB_TYPE::FLOAT},
-			{1, 3, false, sizeof(TG_HWTypeVertex), offsetof(TG_HWTypeVertex, normal), gosVERTEX_ATTRIB_TYPE::FLOAT},
-			{2, 4, true, sizeof(TG_HWTypeVertex), offsetof(TG_HWTypeVertex, aRGBLight), gosVERTEX_ATTRIB_TYPE::UNSIGNED_BYTE},
-			{3, 2, false, sizeof(TG_HWTypeVertex), offsetof(TG_HWTypeVertex, u), gosVERTEX_ATTRIB_TYPE::FLOAT}};
-		shape->vdecl_ = gos_CreateVertexDeclaration(declaration, 4);
-		std::vector<TG_HWTypeVertex> vb(shape->numTypeTriangles * 3u);
-		std::vector<uint16_t> ib(shape->numTypeTriangles * 3u);
-		for (DWORD i = 0; i < shape->numTypeTriangles; ++i) {
-			const auto& t = shape->listOfTypeTriangles[i];
-			const float uv[6] = {t.uvdata.u0, t.uvdata.v0, t.uvdata.u1, t.uvdata.v1, t.uvdata.u2, t.uvdata.v2};
-			for (DWORD c = 0; c < 3; ++c) {
-				const auto& v = shape->listOfTypeVertices[t.Vertices[c]];
-				vb[3*i+c] = {v.position, v.normal, v.aRGBLight, uv[2*c], uv[2*c+1]};
-				ib[3*i+c] = static_cast<uint16_t>(3*i+c);
-			}
-		}
-		shape->ib_ = gos_CreateBuffer(gosBUFFER_TYPE::INDEX, gosBUFFER_USAGE::STATIC_DRAW, sizeof(uint16_t), static_cast<uint32_t>(ib.size()), ib.data());
-		shape->vb_ = gos_CreateBuffer(gosBUFFER_TYPE::VERTEX, gosBUFFER_USAGE::STATIC_DRAW, sizeof(TG_HWTypeVertex), static_cast<uint32_t>(vb.size()), vb.data());
-	}
+        // Shape loads also run on the sim worker (damage/LOD swaps). Rendering
+        // consumes the mesh stores; the unused legacy buffers/declaration must
+        // not register render resources here.
         shape->InitContentNode(n.name.c_str(), n.parent.c_str(), n.center, n.relativeCenter);
         adoptTypeNode(static_cast<long>(i), std::move(shape));
     }

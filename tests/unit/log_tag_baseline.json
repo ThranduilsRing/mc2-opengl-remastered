@@ -2485,6 +2485,18 @@
    "count": 2
   },
   {
+   "tag": "DRAWSCREEN_MASK",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "calls",
+    "unchanged",
+    "writes",
+    "items"
+   ],
+   "count": 1
+  },
+  {
    "tag": "DRAW_CAND",
    "ver": 0,
    "stream": "stderr",
@@ -7725,7 +7737,7 @@
     "reason",
     "file"
    ],
-   "count": 3
+   "count": 4
   },
   {
    "tag": "SAVE",

@@ -4,7 +4,7 @@
 // Coordinate frames (canonical MAX<->MC2 swizzle, msl.cpp:1298-1302):
 //   worldMC2.x = -worldMAX.x;  worldMC2.y = worldMAX.z;  worldMC2.z = worldMAX.y
 // TG_ShapeRec::shapeToWorld outputs MAX-frame world positions; the camera
-// statics (TG_Shape::s_worldToClip, viewMul*/viewAdd*) consume MAX-frame world
+// value snapshot (worldToClip, viewMul*/viewAdd*) consumes MAX-frame world
 // directly (legacy: shapeToClip = shapeToWorld * s_worldToClip, msl.cpp:1798).
 //
 // Screen-transform math mirrors MultiTransformShape (tgl.cpp:1918-1950) and the
@@ -600,11 +600,11 @@ void ConfigureBeamLight(TG_Light* light, const NodeBeam& b)
 
 // ---- (B) cone glow ----------------------------------------------------------
 
-void QueueConeGlow(TG_MultiShape* shape, long nodeId,
+void QueueConeGlow(mc2::tgl::ViewUniforms view, TG_MultiShape* shape, long nodeId,
                    unsigned long argb, float nightFactor,
                    bool ownerIsMover)
 {
-    if (!glow_enabled() || !eye) return;
+    if (!glow_enabled() || !view.cameraValid) return;
     if (nightFactor <= 0.001f) return;
 
     const auto node = resolveSpotNode(shape, nodeId);
@@ -686,11 +686,11 @@ void QueueConeGlow(TG_MultiShape* shape, long nodeId,
 
     // Compose shapeToClip exactly like msl.cpp:2068.
     glm::mat4 shapeToClip;
-    shapeToClip = rec->shapeToWorld * TG_Shape::s_worldToClip;
+    shapeToClip = rec->shapeToWorld * view.worldToClip;
 
     const float scalar = rec->node->GetShapeScalarValue();
-    const float viewMulX = TG_Shape::viewMulX, viewAddX = TG_Shape::viewAddX;
-    const float viewMulY = TG_Shape::viewMulY, viewAddY = TG_Shape::viewAddY;
+    const float viewMulX = view.viewMulX, viewAddX = view.viewAddX;
+    const float viewMulY = view.viewMulY, viewAddY = view.viewAddY;
 
     // LIGHT-REALISM-1: overall transparency scalar (gate OFF -> factor 1.0).
     const bool  realism = realism_enabled();
@@ -728,7 +728,7 @@ void QueueConeGlow(TG_MultiShape* shape, long nodeId,
         xf.MultiplyPoint(pos, shapeToClip);
 
         float sx, sy, sz, rhw;
-        if (eye->usePerspective)
+        if (view.perspective)
         {
             rhw = (xf.w != 0.0f) ? (1.0f / xf.w) : 1.0f;
             sx = (xf.x * rhw) * viewMulX + viewAddX;
@@ -792,7 +792,7 @@ void QueueConeGlow(TG_MultiShape* shape, long nodeId,
             auto projectLocal = [&](const glm::vec3& p, float& ox, float& oy) -> bool {
                 Stuff::Vector4D xf;
                 xf.MultiplyPoint(p, shapeToClip);
-                if (eye->usePerspective)
+                if (view.perspective)
                 {
                     if (xf.w == 0.0f) return false;
                     const float r = 1.0f / xf.w;
@@ -947,10 +947,10 @@ DWORD beaconRgbFromName(const char* nodeName)
 
 } // namespace
 
-void QueueBeaconGlow(TG_MultiShape* shape, float nightFactor)
+void QueueBeaconGlow(mc2::tgl::ViewUniforms view, TG_MultiShape* shape, float nightFactor)
 {
     // Default-OFF gate -> byte-identical.
-    if (!realism_enabled() || !glow_enabled() || !shape || !eye) return;
+    if (!realism_enabled() || !glow_enabled() || !shape || !view.cameraValid) return;
     if (nightFactor <= 0.001f) return;
 
     const float peak = realism_beacon_alpha() * nightFactor;
@@ -963,8 +963,8 @@ void QueueBeaconGlow(TG_MultiShape* shape, float nightFactor)
         s_queueTurn = turn;
     }
 
-    const float viewMulX = TG_Shape::viewMulX, viewAddX = TG_Shape::viewAddX;
-    const float viewMulY = TG_Shape::viewMulY, viewAddY = TG_Shape::viewAddY;
+    const float viewMulX = view.viewMulX, viewAddX = view.viewAddX;
+    const float viewMulY = view.viewMulY, viewAddY = view.viewAddY;
 
     // Project the beacon node's OWN origin through the proven QueueConeGlow
     // transform (shapeToClip = shapeToWorld * s_worldToClip, msl.cpp:2068).
@@ -1011,7 +1011,7 @@ void QueueBeaconGlow(TG_MultiShape* shape, float nightFactor)
 
         // Project the node origin exactly the way the cone path does.
         glm::mat4 shapeToClip;
-        shapeToClip = recp->shapeToWorld * TG_Shape::s_worldToClip;
+        shapeToClip = recp->shapeToWorld * view.worldToClip;
 
         glm::vec3 originL; originL.x = originL.y = originL.z = 0.0f;
         Stuff::Vector4D xf;
@@ -1019,7 +1019,7 @@ void QueueBeaconGlow(TG_MultiShape* shape, float nightFactor)
 
         SV c;
         float pixPerWu;
-        if (eye->usePerspective)
+        if (view.perspective)
         {
             const float r = (xf.w != 0.0f) ? (1.0f / xf.w) : 1.0f;
             c.x = (xf.x * r) * viewMulX + viewAddX;
@@ -1097,13 +1097,13 @@ std::optional<NodeBeam> GetSearchlightBeam(TG_MultiShape* shape, long nodeId)
     return NodeBeam{mc2ToRender(origin), glm::normalize(axis), 400.0f, 0.990268f}; // 8 degrees
 }
 
-void QueueSearchlightGlow(TG_MultiShape* shape, long nodeId, unsigned long argb, float nightFactor)
+void QueueSearchlightGlow(mc2::tgl::ViewUniforms view, TG_MultiShape* shape, long nodeId, unsigned long argb, float nightFactor)
 {
-    if (!eye || !glow_enabled() || nightFactor <= 0.0f || !mc2::renderSubmissions().active()) return;
+    if (!view.cameraValid || !glow_enabled() || nightFactor <= 0.0f || !mc2::renderSubmissions().active()) return;
     const TG_ShapeRec* rec = shape ? shape->GetShapeRec(static_cast<int>(nodeId)) : nullptr;
     if (!rec || !rec->node || !rec->processMe) return;
     if (s_queueTurn != turn) { s_tris.clear(); s_queueTurn = turn; }
-    const glm::mat4 clip = rec->shapeToWorld * TG_Shape::s_worldToClip;
+    const glm::mat4 clip = rec->shapeToWorld * view.worldToClip;
     // A faint, feathered shaft. Share the lamp hierarchy with the physical spot light;
     // use the existing additive queue, never the opaque static-prop pass.
     for (int band = 0; band < 8; ++band) {
@@ -1116,13 +1116,13 @@ void QueueSearchlightGlow(TG_MultiShape* shape, long nodeId, unsigned long argb,
                 const float radius = 2.0f + t * 56.0f;
                 const glm::vec3 local(radius * std::cos(angle), radius * std::sin(angle), 8.0f + t * 400.0f);
                 Stuff::Vector4D xf; xf.MultiplyPoint(local, clip);
-                const float rhw = eye->usePerspective && xf.w != 0.0f ? 1.0f / xf.w : 1.0f;
+                const float rhw = view.perspective && xf.w != 0.0f ? 1.0f / xf.w : 1.0f;
                 auto& dst = v[corner];
-                dst.x = (eye->usePerspective ? xf.x * rhw : 1.0f - xf.x) * TG_Shape::viewMulX + TG_Shape::viewAddX;
-                dst.y = (eye->usePerspective ? xf.y * rhw : 1.0f - xf.y) * TG_Shape::viewMulY + TG_Shape::viewAddY;
-                dst.z = eye->usePerspective ? xf.z * rhw : xf.z;
-                dst.rhw = eye->usePerspective ? std::fabs(rhw) : 0.000001f;
-                valid &= dst.z >= 0.0f && dst.z < 1.0f && (!eye->usePerspective || xf.w > 0.0f);
+                dst.x = (view.perspective ? xf.x * rhw : 1.0f - xf.x) * view.viewMulX + view.viewAddX;
+                dst.y = (view.perspective ? xf.y * rhw : 1.0f - xf.y) * view.viewMulY + view.viewAddY;
+                dst.z = view.perspective ? xf.z * rhw : xf.z;
+                dst.rhw = view.perspective ? std::fabs(rhw) : 0.000001f;
+                valid &= dst.z >= 0.0f && dst.z < 1.0f && (!view.perspective || xf.w > 0.0f);
                 const float fade = nightFactor * 0.018f * (1.0f - t) * (1.0f - t);
                 const auto r = static_cast<DWORD>(((argb >> 16) & 255) * fade);
                 const auto g = static_cast<DWORD>(((argb >> 8) & 255) * fade);

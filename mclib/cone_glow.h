@@ -43,6 +43,7 @@
 #include <optional>
 
 class TG_MultiShape;
+namespace mc2::tgl { struct ViewUniforms; }
 
 namespace mc2_cone_glow {
 
@@ -104,7 +105,7 @@ struct NodeBeam {
 int GetNodeBeams(TG_MultiShape* shape, long nodeId, NodeBeam* out, int maxBeams);
 // Field lamp drum: no stock cone leaf; +Z is the lens axis in MAX space.
 std::optional<NodeBeam> GetSearchlightBeam(TG_MultiShape* shape, long nodeId);
-void QueueSearchlightGlow(TG_MultiShape* shape, long nodeId, unsigned long argb, float nightFactor);
+void QueueSearchlightGlow(mc2::tgl::ViewUniforms view, TG_MultiShape* shape, long nodeId, unsigned long argb, float nightFactor);
 
 // LOCAL-LIGHTS-3: turn `light` into the spot light of `beam` (position at the lamp,
 // aim, outer cone widened past the drawn shaft, range past its ground footprint).
@@ -137,7 +138,7 @@ bool SelfLitLeafPose(TG_MultiShape* shape, int leaf, glm::vec3& centerOut, glm::
 // static-prop recipe (GHOST-CONE-RECIPE-SKIP-1) and is not individually
 // transformed on the GPU prop path, so the staleness stamp is meaningless for
 // it — and per the user rule building/static lamp cones may always show.
-void QueueConeGlow(TG_MultiShape* shape, long nodeId,
+void QueueConeGlow(mc2::tgl::ViewUniforms view, TG_MultiShape* shape, long nodeId,
                    unsigned long argb, float nightFactor,
                    bool ownerIsMover = false);
 
@@ -158,7 +159,7 @@ void QueueConeGlow(TG_MultiShape* shape, long nodeId,
 // Gated on MC2_LIGHT_REALISM (default ON since CONE-SPILL-POLICY-1; =0
 // reverts -> no-op). Call from the owner's
 // update path AFTER TransformMultiShape, same contract as QueueConeGlow.
-void QueueBeaconGlow(TG_MultiShape* shape, float nightFactor);
+void QueueBeaconGlow(mc2::tgl::ViewUniforms view, TG_MultiShape* shape, float nightFactor);
 
 // Submit all queued cone triangles into the MC2_ISSPOTLGT vertex batch.
 // Called once per frame from legacy texture manager::renderLists() (top).

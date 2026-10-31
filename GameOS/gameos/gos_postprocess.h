@@ -196,7 +196,7 @@ public:
     struct VkPostScreenFxDeleter { void operator()(VkPostScreenFx*) const; };
     std::unique_ptr<VkPostScreenFx, VkPostScreenFxDeleter> vkPostScreenFx_;
 
-    bool  runVkPostHzbNative(const Mc2ColorPropFeed& feed, uint32_t generation, void** maskBuffer);
+    bool  runVkPostHzbNative(const Mc2ColorPropFeed& feed, uint32_t generation, void** maskBuffer, uint64_t* maskGeneration);
     void  destroyVkPostHzbNative();
     struct VkPostHzbNative;             // defined in vulkan_post_hzb_native.cpp
     // Owner of the state: releases through destroy_state (idles the GPU first), defined next to the state.

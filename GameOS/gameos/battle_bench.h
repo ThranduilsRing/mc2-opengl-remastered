@@ -30,10 +30,21 @@ inline bool arm(std::string_view path) {
     };
     return true;
 }
-inline void beginFrame() { ++frame; ticks = 0; tickMs = 0; }
+inline void beginFrame() {
+    ++frame; ticks = 0; tickMs = 0;
+    cpuLeaves = propLeaves = mechBones = particleRecords = particleSixths = 0;
+    nativePropLeaves = nativeMechLeaves = 0;
+}
 inline void endFrame(double ms) {
     if (output) std::fprintf(output,
-        "{\"type\":\"cpu\",\"frame\":%llu,\"ms\":%.6f,\"ticks\":%u,\"tick_total_ms\":%.6f}\n",
-        static_cast<unsigned long long>(frame), ms, ticks.load(), tickMs.load());
+        "{\"type\":\"cpu\",\"frame\":%llu,\"ms\":%.6f,\"ticks\":%u,\"tick_total_ms\":%.6f,"
+        "\"cpu_leaves\":%llu,\"dynamic_prop_leaves\":%llu,\"mech_bones\":%llu,"
+        "\"particle_records\":%llu,\"particle_sixths\":%llu,"
+        "\"native_prop_leaves\":%llu,\"native_mech_leaves\":%llu}\n",
+        static_cast<unsigned long long>(frame), ms, ticks.load(), tickMs.load(),
+        static_cast<unsigned long long>(cpuLeaves), static_cast<unsigned long long>(propLeaves),
+        static_cast<unsigned long long>(mechBones), static_cast<unsigned long long>(particleRecords),
+        static_cast<unsigned long long>(particleSixths),
+        static_cast<unsigned long long>(nativePropLeaves), static_cast<unsigned long long>(nativeMechLeaves));
 }
 } // namespace mc2::battlebench

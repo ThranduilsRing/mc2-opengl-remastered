@@ -9,6 +9,41 @@ from types import SimpleNamespace
 
 import pytest
 
+
+def test_host_queue_and_pending_timeout(monkeypatch, capsys):
+    from tools.farm import host
+    calls = []
+    def remote(args, script):
+        calls.append(script)
+        if args.action == 'queue':
+            return '{"depth":2}'
+        return 'queue_timeout' if 'Move-Item' in script else ''
+    monkeypatch.setattr(host, 'remote', remote)
+    monkeypatch.setattr(sys, 'argv', ['host.py', 'queue'])
+    host.main()
+    assert json.loads(capsys.readouterr().out)['depth'] == 2
+    monkeypatch.setattr(sys, 'argv', ['host.py', 'wait', 'a' * 32, '--timeout', '5', '--queue-timeout', '0'])
+    with pytest.raises(SystemExit) as exited:
+        host.main()
+    assert exited.value.code == 1
+    cancellation = next(s for s in calls if 'Move-Item' in s)
+    assert '.json -Destination' in cancellation and '.cancelled' in cancellation
+    assert '.running' not in cancellation
+    assert 'queue_timeout:' in capsys.readouterr().out
+
+
+def test_cancel_racing_queue_claim_does_not_stop_runner(tmp_path, monkeypatch):
+    from tools.farm import runner
+    pending = tmp_path / 'jobs/pending.json'
+    pending.parent.mkdir()
+    pending.write_text('{}')
+    def cancelled(path, target):
+        path.unlink()
+        raise FileNotFoundError(path)
+    monkeypatch.setattr(Path, 'replace', cancelled)
+    monkeypatch.setattr(runner, 'run_job', lambda *a: pytest.fail('cancelled job launched'))
+    runner.poll_once(tmp_path)
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from scripts import console_child
 from tools.farm.runner import atomic_json, poll_once
@@ -42,6 +77,13 @@ def test_reseed_selection_and_incremental_changes(tmp_path):
     inventory = {name: [p.stat().st_size, p.stat().st_mtime] for name, p in files.items()}
     assert host.changed_files(files, inventory) == {}
     assert host.changed_files(files, {k.upper(): v for k, v in inventory.items()}) == {}
+    recipes = install / 'cache/content-model'; recipes.mkdir(parents=True)
+    model = recipes / 'model-0123456789abcdef.mci'; model.write_bytes(b'pinned')
+    (recipes / 'industrial-cook.json').write_text(json.dumps({'files': [dict(
+        path=model.name, bytes=6, sha256=hashlib.sha256(b'pinned').hexdigest())]}))
+    seeded, _ = host.seed_files(install, harness)
+    assert 'install/cache/content-model/industrial-cook.json' in seeded
+    assert 'install/cache/content-model/model-0123456789abcdef.mci' in seeded
     inventory['install/mc2.exe'][0] += 1
     inventory['install/mission.fst'][1] -= 10
     assert set(host.changed_files(files, inventory)) == {'install/mc2.exe', 'install/mission.fst'}
@@ -161,6 +203,7 @@ def test_exe_payload_matches_deploy_and_isolated_from_seed(tmp_path, monkeypatch
         items.append((str(path), rel, kind))
     monkeypatch.setattr(deploy, 'enumerate_payload', lambda *a, **kw: items)
     monkeypatch.setattr(deploy, 'git_head', lambda *a: 'a' * 40)
+    monkeypatch.setattr(deploy, 'require_head_exe', lambda *a: {'sha': 'a' * 40, 'dirty': False})
     archive = tmp_path / 'payload.zip'
     host.payload_archive(exe, archive)
     staged = tmp_path / 'staged'
@@ -183,6 +226,8 @@ def test_exe_payload_matches_deploy_and_isolated_from_seed(tmp_path, monkeypatch
         root = tmp_path / 'farm'
         install = root / 'install'
         (install / 'shaders/include').mkdir(parents=True)
+        (install / 'data').mkdir()
+        (install / 'data/seed.txt').write_text('keep shared data')
         seed = install / entries[0][0]
         seed.write_bytes(b'seed shader')
         stage = root / 'stage/sample'
@@ -197,6 +242,13 @@ def test_exe_payload_matches_deploy_and_isolated_from_seed(tmp_path, monkeypatch
         assert not report['stale'] and not report['missing']
         (work / entries[0][0]).write_bytes(b'job shader')
         assert seed.read_bytes() == b'seed shader'
+        (root / 'results/sample').mkdir(parents=True)
+        (root / 'results/sample/result.json').write_text('{}')
+        subprocess.run(['powershell', '-NoProfile', '-Command',
+                        host.CLEAN_PS % {'r': root.as_posix(), 'id': 'sample'}],
+                       check=True, **console_child.child_kwargs())
+        assert not work.exists()
+        assert (install / 'data/seed.txt').read_text() == 'keep shared data'
 
 
 
@@ -205,6 +257,65 @@ def test_host_data_delta_requires_exe(tmp_path, monkeypatch):
     path = tmp_path / 'job.json'
     path.write_text('{"argv": ["x"]}')
     monkeypatch.setattr(sys, 'argv', ['host', 'submit', str(path), '--data-delta', str(tmp_path)])
+    with pytest.raises(SystemExit) as result:
+        host.main()
+    assert result.value.code == 2
+
+
+def test_payload_rejects_unattributable_exe_before_packaging(tmp_path, monkeypatch):
+    import deploy_payload as deploy
+    (tmp_path / 'scripts').mkdir()
+    (tmp_path / 'scripts/deploy_payload.py').touch()
+    exe = tmp_path / 'build/mc2.exe'
+    exe.parent.mkdir()
+    exe.write_bytes(b'wrong revision')
+    monkeypatch.setattr(deploy, 'git_head', lambda *a: 'a' * 40)
+    def refuse(*args):
+        raise ValueError('embedded sha does not match HEAD')
+    monkeypatch.setattr(deploy, 'require_head_exe', refuse)
+    archive = tmp_path / 'payload.zip'
+    with pytest.raises(ValueError, match='does not match HEAD'):
+        host.payload_archive(exe, archive)
+    assert not archive.exists()
+
+
+def test_perf_job_stages_both_payloads(tmp_path, monkeypatch):
+    path = Path(__file__).resolve().parents[2] / 'tools/farm/perf.json'
+    a, b = tmp_path / 'a.exe', tmp_path / 'b.exe'
+    a.write_bytes(b'a')
+    b.write_bytes(b'b')
+    monkeypatch.setattr(sys, 'argv', ['host', 'submit', str(path), '--exe', str(a), '--exe-b', str(b)])
+    monkeypatch.setattr(host.uuid, 'uuid4', lambda: SimpleNamespace(hex='a' * 32))
+    archives, calls, published = [], [], []
+    monkeypatch.setattr(host, 'payload_archive', lambda exe, dst: (archives.append(exe), dst.write_bytes(b'zip')))
+    monkeypatch.setattr(host, 'remote', lambda args, script: calls.append(script))
+    def upload(args, *paths, **kwargs):
+        if str(paths[-1]).endswith('.upload'):
+            published.append(json.loads(Path(paths[0]).read_text()))
+    monkeypatch.setattr(host, 'scp', upload)
+    host.main()
+    assert archives == [a, b]
+    job = published[0]
+    assert '{ROOT' not in json.dumps(job)
+    assert f"C:/mc2farm/work/{'a' * 32}-b" in job['argv']
+    assert 'paired_cpu.py' in job['argv'][1]
+    assert calls[-1].endswith('.json -ErrorAction Stop')
+    assert sum('Expand-Archive' in script for script in calls) == 2
+
+
+def test_bad_second_arm_never_stages_first_arm(tmp_path, monkeypatch):
+    path = Path(__file__).resolve().parents[2] / 'tools/farm/perf.json'
+    a, b = tmp_path / 'a.exe', tmp_path / 'b.exe'
+    a.write_bytes(b'a')
+    b.write_bytes(b'b')
+    monkeypatch.setattr(sys, 'argv', ['host', 'submit', str(path), '--exe', str(a), '--exe-b', str(b)])
+    def package(exe, destination):
+        if exe == b:
+            raise ValueError('second arm has wrong fingerprint')
+        destination.write_bytes(b'valid first arm')
+    monkeypatch.setattr(host, 'payload_archive', package)
+    monkeypatch.setattr(host, 'remote', lambda *a: pytest.fail('remote staging before both arms validate'))
+    monkeypatch.setattr(host, 'scp', lambda *a, **k: pytest.fail('upload before both arms validate'))
     with pytest.raises(SystemExit) as result:
         host.main()
     assert result.value.code == 2

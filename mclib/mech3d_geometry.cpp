@@ -483,7 +483,7 @@ void Mech3DAppearance::updateGeometry (void)
 				// to the SAME owner predicate — shutdown/dead/FoW-hidden
 				// mechs show no cone. MC2_LIGHT_CONE_GLOW=0 kills it.
 				if (spotlightLights_[k]->active && lampCursor.lampIdx == 0)   // the glow draws the whole leaf once
-					mc2_cone_glow::QueueConeGlow(mechShape, spotlightNodeIds_[k],
+					mc2_cone_glow::QueueConeGlow(eye->getViewUniforms(), mechShape, spotlightNodeIds_[k],
 						spotlightLights_[k]->GetaRGB(), eye->getNightFactor(),
 						/*ownerIsMover=*/true);
 			}
