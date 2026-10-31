@@ -95,6 +95,7 @@ def test_cached_immutable_overlay_preserves_links_and_private_configs(tmp_path):
 
 
 def test_two_workers_cover_all_six_mods_and_carver_budget(tmp_path, monkeypatch):
+    monkeypatch.delenv('MC2_IN_GATE', raising=False)
     import json
     import threading
     from types import SimpleNamespace
