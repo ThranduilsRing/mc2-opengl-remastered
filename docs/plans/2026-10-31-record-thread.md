@@ -1,7 +1,7 @@
 # P3 record thread — living plan, 2026-10-31
 
-Assignment: `A:/Games/mc2-lane8`, `claude/record-thread`, base `586327c7904eabf942d12d5835c72a2d43e2248a`.
-One engine lane; local commits only. Current checkpoint changes documentation only.
+Assignment: `A:/Games/mc2-lane8`, `claude/record-thread`, base `678380b2a179d5f4167a8361fa5ef06ae9fb62a7`.
+One engine lane; local commits only. Current checkpoint includes live census instrumentation.
 Continuation base: rebased cleanly onto landed integration checkpoint `678380b2a` (includes lane4 `56467c359`).
 Inventory anchors and archived perf numbers below refer to the original assignment base; full-suite receipts also precede the rebase.
 
@@ -19,7 +19,7 @@ Main retains SDL/input, UI building, camera and extraction. Validate this agains
 
 | Step | Status | Exit requirement / next action |
 |---|---|---|
-| S1 inventory | IN PROGRESS: dependency table and archived timing/count baseline below | Close transitive read inventory, exact packet item census, and proof matrix before marking complete |
+| S1 inventory | IN PROGRESS: live row/payload census and runtime receipts below | Finish native visible-leaf census and remaining proof matrix before marking complete |
 | S2 explicit state | NOT STARTED | Replace TG_Shape camera/light/fog/viewport statics with value state; packet-key vkLights; prove inline parity in separate commits |
 | S3 rings/lifetimes | NOT STARTED | Three CPU slots, RenderList/HUD values, retirement graveyard, Execute(main)/Draw(record), moved-entry owner assertions |
 | S4 thread | NOT STARTED | Seal after sim commit, consume sealed packets, retire safely; default ON only with all gates green |
@@ -110,7 +110,7 @@ No paired CI or new performance gain claimed. User accepts noise; report these n
 
 Calls are zone invocations, not triangle/particle counts. Particle and Effect Execute scopes can overlap; do not add them.
 Full-capture world receipt reports 70 movers/46 mechs, not 70 rendered movers in this view.
-Exact RenderList terrain/mover/other lengths, HUD row counts, visible leaf/particle counts remain unmeasured for the live worst-view window.
+Live RenderList/HUD lengths and submitted payload counts are measured in the continuation below; exact native visible-leaf counts remain open.
 Do not substitute final-frame log counters or frozen screenshot sidecars for that live-window census.
 Tracy zone floor confirmed from CLAUDE.md:88: 100 ns minimum, no per-element hot-loop zones.
 Some existing scopes measure below that floor; add no new scopes there. Use aggregate counts at phase boundaries for the missing census.
@@ -129,18 +129,18 @@ Report extraction/seal costs separately and track whole Frame to expose that ris
 | Python harnesses / contracts | PASS: `py -3 tools/build_contract_harnesses.py --run --unit -j6` exit 0; `bash scripts/check-contracts.sh -j6` exit 0; `s1-unit.log` and `s1-contracts.log` under the proof directory above |
 | Five ratchets | PASS: file_size, cxx17 (--jobs 1), dup_lines, axis_swizzle, split_map; exit 0 each; `s1-ratchet-{size,cxx,dup,axis,split}.log`; no baselines modified |
 | Post-rebase ratchets | PASS: same five checks, cxx17 --jobs 6; exit 0 each; `s1-rebase-ratchet-{size,cxx,dup,axis,split}.log`; no baselines modified |
-| Audit ON mc2_01/03/10/16/24 | Pending on rebased code; lane4's vertex-declaration prerequisite is included; no local fix made |
-| Farm mc2_10/24 x8 | Pending |
-| SIMID 20 s / save-load | Pending |
-| Day/night pixel-identical A/B | Pending |
-| Validation 0 / sync-validation 20 s | Pending; unavailable validation layer is not a pass |
+| Audit ON mc2_01/03/10/16/24 | PASS at `91a88988a`, 15 s each, all five effective configs show audit=1, no violations; `s1-audit-head.log`, full logs in `s1-audit-artifacts/` |
+| Farm mc2_10/24 x8 | UNPROVEN: job remained queued behind another lane for the 1200 s bound; cancelled only our queued job and removed its stage/work tree. `s1-farm-{submit,wait,cancel}.log`; no game run or pass claimed |
+| SIMID 20 s / save-load | SIMID PASS: overlap OFF/ON, audit=1, 857 identical sim frames; committed baseline matches first 800. Save/load baseline check FAIL: comparison policy differs, decoded FIT identical; `s1-{simid,saveload}.log` |
+| Day/night pixel-identical A/B | PASS `3b0a6a393` vs `91a88988a`: RGBA identical day/night, both duplicated poses (4 PNGs); `s1-pixel-parity.json`, `s1-ab-before/`, `s1-ab-after/` |
+| Validation 0 / sync-validation 20 s | PASS mc2_10, 20 s, errors=0 warnings=0; Khronos layer and sync messenger explicitly engaged. `s1-sync-validation.log`, full game log in `s1-sync-artifacts/` |
 | Robust A/B mean/p95 deltas and CI; laptop absolute ms | Pending; use claude/perf-robust tooling after it lands; user authorizes laptop absolute timings despite older lane-rule restriction |
 
 Next: finish S1 transitive inventory and live worst-view item census, run/record required baseline gates, then commit the completed S1 checkpoint.
 Before S2, check whether perf-robust has landed; observed integration tip `678380b2a` does not contain perf-robust tip `409815680`.
 The documentation commits were rebased cleanly onto that landed integration tip; rerun complete step proof on the resulting base.
 Tool slowness: the baseline native unit build/run took 809 s; keep the existing build tree for continuation and request explicit mc2 targets in engine build loops.
-Disk: no install or baseline-executable copy created; temporary analysis script removed from G:/mc2-tmp; 0 GB of installs freed.
+Prior checkpoint disk: no install or baseline copy; this continuation's install is recorded below. No extra install created.
 For each S2/S3/S4 commit, append its exact tip, commands, proof paths and failures here. S4 stays inline if any required gate is red.
 
 ## Continuation state, 2026-10-31 (live census)
@@ -172,9 +172,48 @@ and parent transforms and reads children (effect.cpp:802+); retaining the root E
 HUD row vectors contain nested strings/paths/marker appearances and VTOL pointers, beyond the outer vector lengths.
 All remain extraction/ownership obligations for S3, not safe data to move to a thread unchanged.
 
-Next: build/prove the census checkpoint using the existing tree; finish deploy before launching any game.
-Capture mc2_10/24 with mission_cpu_profile.py (live bookmark windows, normal visibility), then extract plot samples
-and frame-row payloads for the worst DrawScreen views and direct/nested DrawScreen child counts from Tracy unwrap.
-Complete cached/native leaf counters if needed. Run audit ON 01/03/10/16/24, farm 10/24 x8, SIMID ON/OFF 20 s,
-save/load, day/night pixel A/B, validation/sync-validation and robust timings; preserve actual failures as failures.
-Only after these receipts close S1: start S2 explicit CPU view values, then packet-key vkLights, each with day/night A/B.
+Green code checkpoint: `91a88988a` (`perf(render): count live frame payloads`). Targeted mc2/viewer/ui_editor build,
+three covering contract rows (mission_cpu_profile, static_prop_family, particles_no_cpu_projection), and selected
+native vfx_frozen tests PASS: `s1-census-{build,contracts,unit}.log`. All-targets PASS, all three stages, in
+`s1-census-alltargets.log`; root 366 s, standalone tools 43 s, doctest build 91 s. No new tree was requested by hand.
+Deploy PASS: `s1-census-deploy.log` (kits already verified by initial deploy; unchanged kit copies skipped).
+
+Live proof: `s1-live-census/20261031T062935.159332Z/{profile.json,s1-census.json}` under the existing proof root.
+All 15 recorded items have exactly one sample per live frame (407 night, 294 day); not final-frame counters.
+The noisy run's worst DrawScreen views are night sun_facing_low [8480,8887), day low_horizon_180 [1589,1883).
+Day low_horizon_0 remains a reference view [691,987); its separate reduction is `s1-reference-view.json`.
+Reference-view reduction PASS, 296 samples/item: terrain/movers/other 2677/70/0; HUD matches the day column below;
+CPU leaves 0..1, dynamic prop leaves 929, mech bones 0, particle records/sixths 24..174 (4..29 particle-equivalents).
+
+| Per-frame item (min..max; submitted work before GPU occlusion) | mc2_10 sun_facing_low | mc2_24 low_horizon_180 |
+|---|---|---|
+| RenderList terrain / movers / other | 2398 / 48 / 13..16 | 2677 / 70 / 0..8 |
+| HUD movers / roster / sensors / coverage | 48 / 20 / 0 / 5 | 70 / 13 / 0 / 11 |
+| HUD objectives / blips / VTOLs | 6 / 17..18 / 0 | 6 / 13 / 0 |
+| CPU fallback leaves / dynamic prop leaves | 0..6 / 108 | 0..1 / 939 |
+| Mech bone records | 119..128 | 0 |
+| Particle vertex records / budget sixths | 234..798 / 234..798 | 150..504 / 150..504 |
+
+Six budget sixths equal one particle-equivalent: night 39..133, day 25..84; these are not active effect counts.
+Direct DrawScreen children, exactly once per frame: Camera.UpdateRenderers 1.709557/2.307296 ms per frame,
+Render.PostProcess 0.090703/0.100562 ms (night/day). Full nested child invocation census is in s1-census.json.
+Archived exact-base direct children are separately in `s1-archived-census.json` (475 night / 366 day frames).
+Nested inclusive scopes overlap; never sum them. Fresh DrawScreen mean/p95: night 1.809/2.659 ms,
+day low_horizon_180 2.440/3.580 ms; low_horizon_0 2.411/3.527 ms.
+Profiler exit 2 = NOISY, no capture errors: reserved-core external CPU p95 37.9/40.0%, whole-machine 82.1375/83.01875%.
+No speedup or confidence interval claimed. `409815680` is still not in main at `47631b0b4`; robust tooling remains unlanded.
+
+Save/load failure diagnosis: current tools/save_noise_mask.json differs from the stored baseline's frozen comparison
+in MechWarriorData, WeaponBoltData, TerrainObjectData and MechData. No baseline or mask changed; no rerun can fix
+that metadata mismatch without an explicit policy/baseline repair. The harness restored the pre-test save; five backups retained.
+Farm job `8fb477e253a3464f86b95f766c1c670e` never started. Its queue JSON was atomically renamed to .cancelled
+before deleting only that job's checked stage/work directories; another lane's running job was left alone.
+
+Next: complete native visible-leaf census (cached props and native mechs) without treating bones/dynamic submits as visible leaves;
+the current census explicitly does not close that gap. Repair the save/load policy/reference mismatch in its owning lane,
+resubmit 10/24 x8 when the farm queue can serve it, and obtain robust paired CI/laptop timings after tooling lands.
+Then close S1 and start S2 explicit CPU view values followed by packet-key vkLights, pixel-identical day/night per commit.
+Reuse deployed `91a88988a` with an explicit reference commit after documentation advances HEAD; rebuild on the next engine change.
+Tool slowness: full shared-header checkpoint took ~8 min and repeated Tracy decoding took minutes; reuse these receipts.
+Disk: 0 GB local installs freed; leave only `E:/mc2-installs/claude-record-thread`; no extra local install.
+Own remote farm stage/work removed. Baseline exe and proof-only reductions live in the proof root. No own child left running.
