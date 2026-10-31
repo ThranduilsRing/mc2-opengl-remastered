@@ -671,3 +671,55 @@ driver PASS, 4 top-level cases / 74 assertions (49 s), rigid-mesh child
 invocation rejected a suite name used as a case filter before building;
 corrected to the existing retained CPU case, no test skipped. CRLF-aware
 whitespace check (`git -c core.whitespace=cr-at-eol diff --check`) is clean.
+
+## S3 rigid native FX leaf proof closed, 2026-10-31
+
+Engine commits e47992cf7 and 4bfa5434f; shipped game/viewer 4bfa5434f4c0,
+clean provenance. This bounded checkpoint freezes rigid Shape/ShapeCloud/
+DebrisCloud leaf submissions only, still captured/replayed inline. S4 remains
+inline. The larger native appearance/VTOL/recursive FX migration is unfinished.
+All receipts below are under E:/mc2-archive-2026-10/proofs/record-thread/.
+
+| Proof | Receipt |
+|---|---|
+| Shared-header all targets | s3-native-shape-alltargets.log: game/editor/viewer/root tools, three standalone projects and doctest corpus PASS; root 800 s, companion stages 4-11 s |
+| Final implementation-only correction | s3-native-shape-final-build.log: mc2 + mc2_asset_viewer PASS, 7 s, unchanged shared headers; reused build-alltargets Ninja tree and deployed its output directly |
+| Native lifetime/FX tests | s3-native-shape-final-unit.log: 4 top-level cases / 74 assertions PASS, 16 s; fresh-process rigid mesh 37 assertions and particle/RNG arms PASS |
+| Committed-tree covering rows | s3-native-shape-final-contracts.log: six PASS, 36.60 s, no baseline raised |
+| Existing lane deploy | s3-native-shape-deploy.log: COMPLETE, 3855-row manifest at 4bfa5434f4c0; 203 s; pre-existing cook-byproduct hygiene advisory |
+| Day/night pixels, viewed | s3-native-shape-pixel-parity.json: all four PNGs byte-identical to s3-containers-ab; new day/night images viewed; s3-native-shape-ab/{day,night} |
+| Detailed mc2_10 SIMID, 20 s | s3-native-shape-simid-detail.log: 1260 identical common frames; first 800 match pinned baseline in every digest; both game logs confirm TRACE_DETAIL=1 |
+| Sync validation, mc2_10 20 s | s3-native-shape-sync.log + s3-native-shape-sync-artifacts/: PASS, errors=0/warnings=0/content errors=0; full log confirms Khronos layer and messenger engaged with preset=sync |
+
+All five game logs confirm overlap audit=1 and contain no VIOLATION. Observed
+lease wait 0 min; game harness wall time about 3.5 min. No startup timeout or
+farm fallback. All own build/game/proof children exited. No extra install was
+created: disk freed 0 GB, leave E:/mc2-installs/claude-record-thread only.
+Use --ref-commit 4bfa5434f after this docs-only commit; do not rebuild unchanged
+engine code just to stamp documentation provenance.
+
+Corrections: the first static scan preceded the engine commit, so the ratchet
+still scanned the old committed tree. Its subsequent head scan caught .first
+on our non-pair aggregate and a pointer/count helper. 4bfa5434f uses aggregate
+initialization/structured binding and std::span; headers/layout unchanged.
+Initial SIMID invocation redundantly supplied the harness-owned audit setting
+and failed before launch; corrected to use its built-in mc2_10 audit. Initial
+PowerShell profile loading was policy-denied and skipped; no required proof
+was skipped. One receipt scan had a PowerShell array-construction error; the
+corrected scan checked all five full logs without rerunning games.
+
+Exact next: native appearances still start at code/terrobj.cpp:1020-1105,
+code/bldng.cpp:1079-1157 and mclib/bdactor_render.cpp:42-434. Resolve/copy native
+geometry, materials and light rows with retained light feeds before removing
+RenderView::obj dispatch. For gosFX, Effect::Draw at mclib/gosfx/effect.cpp:802
+still traverses live children/spec/local transforms; attach rigid leaf packets
+to the retained recursive frame root and freeze the remaining particle/tube
+leaves after Main Execute. Then migrate marker/VTOL/copied UI payloads, add
+assertions at actually moved entries, and bind arena/resource retirement to
+actual record completion. Do not enable S4 from this leaf-only checkpoint.
+That multi-family change needs a separate bounded implementation/proof cycle.
+
+Tool slowness: shared-header root build 800 s and deploy 203 s. Largest
+avoidable token cost was broad reconnaissance before choosing the concrete
+leaf edit; resume at the exact producer ranges and APIs above. Run committed-
+tree ratchets after committing so they actually inspect the new code.
