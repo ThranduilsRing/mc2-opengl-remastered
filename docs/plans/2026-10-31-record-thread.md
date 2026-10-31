@@ -601,3 +601,44 @@ build is needed for that test-only correction. Remaining: refresh shipped binary
 provenance after the correction commit, final selected contracts, explicit lane
 deploy, day/night parity, detailed SIMID and audit/sync proof. Build slowness:
 the shared RenderSnapshot/RenderView headers fan out to 254 engine/editor jobs.
+
+## S3 retained container proof closed, 2026-10-31
+
+Proven shipped engine/viewer: a9a8adc00ba0, additive commits after 0178b2750.
+S4 remains inline. This checkpoint owns container bytes and waypoint holders;
+it does not freeze native appearance/FX/VTOL pointees or eliminate obj dispatch.
+All receipts below are under E:/mc2-archive-2026-10/proofs/record-thread/.
+
+| Proof | Receipt |
+|---|---|
+| Shared-header all targets | s3-containers-alltargets.log: root all/ui_editor/order seam and three standalone tools built; 428/6/5/5 s. Initial doctest compile failed on the test-only CRT clock ambiguity, corrected by a9a8adc00; s3-containers-unit.log rebuilds that corpus successfully. No second engine build required |
+| Selected native lifetime cases | s3-containers-unit.log: frame/HUD staging reuse, nested scopes, marker lifetime, bolt and CPU leases; 4 cases / 69 assertions PASS, 17 s |
+| Final five ratchets + buffer_lifetime | s3-containers-head-contracts.log: six PASS, 29.38 s, no baseline raised; whitespace clean |
+| Shipped provenance | s3-containers-provenance.log: only identity TU and mc2/viewer relinks, clean a9a8adc00ba0 |
+| Existing lane deploy | s3-containers-deploy.log: COMPLETE, verified 3855-row manifest; unchanged cook-byproduct hygiene advisory |
+| Day/night pixels, viewed | s3-containers-pixel-parity.json: all four PNGs byte-identical to s3-bolt-ab; both new scenes viewed; s3-containers-ab/{day,night}, each capture exited in ~21 s |
+| Detailed SIMID, mc2_10 20 s | s3-containers-simid-detail.log: 1106 identical common frames, first 800 match pinned baseline in every digest; both game logs confirm TRACE_DETAIL=1 |
+| Sync validation, mc2_10 20 s | s3-containers-sync.log and s3-containers-sync-artifacts/: PASS, errors=0/warnings=0/content errors=0; full log confirms Khronos layer and messenger engaged with preset=sync |
+
+All five game logs confirm effective overlap audit=1; none contains VIOLATION.
+The first receipt scan incorrectly expected a literal audit=1 in capture logs;
+those logs report CONFIG name=MC2_SIM_OVERLAP_AUDIT value=1 instead. No rerun,
+proof gate waiver or game change was needed. No startup timeout/farm fallback.
+Game processes ~3 min, observed lease wait 0 min. All own children exited.
+Initial PowerShell profile loading was policy-denied and skipped; no required
+proof was skipped. Disk freed 0 GB; no extra install created, sole lane install
+left at E:/mc2-installs/claude-record-thread with engine a9a8adc00ba0.
+After this docs-only commit use --ref-commit a9a8adc00 for retained binary proof.
+
+Exact next producer ranges: code/terrobj.cpp:1020-1105 and code/bldng.cpp:1079-1157
+feed mclib/bdactor_render.cpp:42-434; that draw still mutates TG shape highlight,
+queries static eligibility and submits live shapes. Freeze native geometry,
+material/light indices with retained light feeds, then replace RenderView::obj
+dispatch. Marker/VTOL/copied UI and recursive FX Draw values remain next, followed
+by Execute(Main)/Draw(record), moved-entry owner assertions and actual record
+completion before arena/resource retirement. The scoped container copies alone
+do not permit any of those live pointees to overlap an async record worker.
+That multi-family producer migration needs its own bounded implementation/proof
+cycle; resume here without rebuilding this unchanged engine.
+Largest avoidable cost: broad source reading/scouting before the concrete edit;
+bound the next scout with --timeout 25 and keep reads at the producer ranges above.
