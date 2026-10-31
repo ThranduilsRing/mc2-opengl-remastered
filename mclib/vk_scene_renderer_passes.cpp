@@ -50,21 +50,6 @@ void mc2::VkSceneRenderer::renderListsDynamicShadowPass (RenderSubmissions& subm
 			movers=registryMovers;
 			set.appendMoverLeaves(movers,g_mc2FrameCounter.load(std::memory_order_relaxed));
 			mc2shadow::moverPropFeed().append(movers,g_mc2FrameCounter.load(std::memory_order_relaxed)); }
-            if (TracyIsConnected) {
-                ZoneScopedN("DrawScreenProbe.ShadowFeed");
-                static std::vector<GpuStaticPropInstance> previous;
-                static uint64_t calls = 0, items = 0, unchanged = 0;
-                static float previousRows[16]{}, previousSun[3]{};
-                ++calls; items += movers.size();
-                if (previous.size() == movers.size() &&
-                    (movers.empty() || std::memcmp(previous.data(), movers.data(), movers.size() * sizeof(GpuStaticPropInstance)) == 0) &&
-                    std::memcmp(previousRows, rows, sizeof(rows)) == 0 && std::memcmp(previousSun, sun, sizeof(sun)) == 0)
-                    unchanged += movers.size();
-                previous = movers;
-                std::memcpy(previousRows, rows, sizeof(rows)); std::memcpy(previousSun, sun, sizeof(sun));
-                if (calls % 256 == 0)
-                    mc2::fmt::print_err("[DRAWSCREEN_SHADOWS] calls={} items={} unchanged={}\n", calls, items, unchanged);
-            }
 			render_contract::executorOwnBeginTopLevel(render_contract::PassIdentity::ShadowCaster,"renderLists_unionMovers");
 			{ ZoneScopedN("DSP.RunMovers"); mc2_vk_shadow_island_run_movers(rows,sun,movers.data(),static_cast<unsigned int>(movers.size())); }
 			render_contract::executorOwnEndTopLevel(render_contract::PassIdentity::ShadowCaster,"renderLists_unionMovers");

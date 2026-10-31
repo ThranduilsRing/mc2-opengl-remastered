@@ -2,7 +2,6 @@
 // Declared in the class headers; shared names in terrain_internal.h.
 #include "terrain_internal.h"
 #include "mc2fmt.h"
-#include <cstring>
 
 
 //---------------------------------------------------------------------------
@@ -267,18 +266,6 @@ void Terrain::flushDrawCommands (void)
 	}
 
 	if (s_blockMeta && s_cmdCount > 0) {
-        if (TracyIsConnected) {
-            ZoneScopedN("DrawScreenProbe.TerrainCommands");
-            static std::vector<TerrainDrawCommand> previous;
-            static uint64_t calls = 0, items = 0, unchanged = 0;
-            ++calls; items += s_cmdCount;
-            if (previous.size() == static_cast<size_t>(s_cmdCount) &&
-                std::memcmp(previous.data(), s_drawCmds, s_cmdCount * sizeof(TerrainDrawCommand)) == 0)
-                unchanged += s_cmdCount;
-            previous.assign(s_drawCmds, s_drawCmds + s_cmdCount);
-            if (calls % 256 == 0)
-                mc2::fmt::print_err("[DRAWSCREEN_TERRAIN_COMMANDS] calls={} items={} unchanged={}\n", calls, items, unchanged);
-        }
 		// [FRAME_PASS_STATS v1] visible terrain chunks = draw-command count
 		// (one cmd per visible block); pulled from the existing aggregate, no
 		// per-block counting. OFF=zero cost (Set* early-returns).

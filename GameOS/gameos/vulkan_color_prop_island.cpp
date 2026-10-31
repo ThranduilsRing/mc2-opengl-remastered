@@ -1697,21 +1697,6 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
     const VkDeviceSize ringAlign = rctx.frameAlignment();
     const uint32_t instanceCount = feed.count;
     const VkDeviceSize instBytes = static_cast<VkDeviceSize>(instanceCount) * sizeof(GpuStaticPropInstance);
-    if (TracyIsConnected) {
-        ZoneScopedN("DrawScreenProbe.PropInstances");
-        static thread_local std::vector<GpuStaticPropInstance> previous;
-        static thread_local uint64_t calls = 0, items = 0, unchanged = 0;
-        ++calls; items += instanceCount;
-        if (previous.size() == instanceCount &&
-            std::memcmp(previous.data(), feed.instances112, static_cast<size_t>(instBytes)) == 0)
-            unchanged += instanceCount;
-        const auto* instances = static_cast<const GpuStaticPropInstance*>(feed.instances112);
-        previous.assign(instances, instances + instanceCount);
-        if (calls % 256 == 0)
-            std::fprintf(stderr, "[DRAWSCREEN_PROPS] calls=%llu items=%llu unchanged=%llu\n",
-                         static_cast<unsigned long long>(calls), static_cast<unsigned long long>(items),
-                         static_cast<unsigned long long>(unchanged));
-    }
     int poolN = (haveLightFeed && lightFeed.poolLights48 && lightFeed.numPoolLights > 0) ? lightFeed.numPoolLights : 0;
     if (poolN > kMaxPoolLights) poolN = kMaxPoolLights;
     const VkDeviceSize instOff = mc2vk::alignUp(sizeof(ColorFrameUBO), ringAlign);
@@ -1762,8 +1747,7 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
         vkUpdateDescriptorSets(s->device,0,nullptr,1,&copy);
     }
     const std::array<VkImageView,2> views{s->albedoTexture.view(),s->albedoOnTexture.view()};
-    const bool descriptorsRewritten = s->descriptorsDirty[par] || s->boundTextures[par]!=views;
-    if (descriptorsRewritten) {
+    if (s->descriptorsDirty[par] || s->boundTextures[par]!=views) {
         write_descriptors(s,int(par)); s->boundTextures[par]=views;
     }
     void* hzbMask = nullptr;

@@ -1497,9 +1497,6 @@ bool recordPendingImgui(EnginePresentVk::Impl& s, VkCommandBuffer cb) {
     // ImDrawData still reads correctly elsewhere. A name with no VK image is skipped at bind time (empty clip rect).
     struct CmdSave { ImDrawCmd* cmd; ImTextureID id; ImVec4 clip; };
     std::vector<CmdSave> saved;
-    ZoneScopedN("VKIsl.Present.ImGuiRecord");
-    const bool countScratch = TracyIsConnected;
-    size_t scratchGrowths = 0;
     {
         imguiTexSweep(s);
         const ImTextureID fontTex = ImGui::GetIO().Fonts->TexID;
@@ -1508,7 +1505,6 @@ bool recordPendingImgui(EnginePresentVk::Impl& s, VkCommandBuffer cb) {
             for (ImDrawCmd& c : drawData->CmdLists[n]->CmdBuffer) {
                 if (c.UserCallback || c.ElemCount == 0 || c.GetTexID() == fontTex)
                     continue;
-                if (countScratch && saved.size() == saved.capacity()) ++scratchGrowths;
                 saved.push_back({&c, c.TextureId, c.ClipRect});
                 const ImTextureID set = imguiTexResolve(s, cb, static_cast<uint64_t>(c.GetTexID()));
                 if (set) {
@@ -1524,18 +1520,6 @@ bool recordPendingImgui(EnginePresentVk::Impl& s, VkCommandBuffer cb) {
             ++s_logged;
             std::fprintf(stderr, "[VK_IMGUI] texture_cmds_skipped=%u (no VK image for the GL texture name)\n", skipped);
         }
-    }
-
-    if (countScratch) {
-        static thread_local uint64_t calls = 0, commands = 0, growths = 0, reusable = 0;
-        static thread_local size_t previousCapacity = 0;
-        ++calls; commands += saved.size(); growths += scratchGrowths;
-        if (saved.size() <= previousCapacity) reusable += scratchGrowths;
-        previousCapacity = std::max(previousCapacity, saved.capacity());
-        if (calls % 256 == 0)
-            std::fprintf(stderr, "[DRAWSCREEN_SCRATCH] calls=%llu commands=%llu growths=%llu reusable_growths=%llu\n",
-                         static_cast<unsigned long long>(calls), static_cast<unsigned long long>(commands),
-                         static_cast<unsigned long long>(growths), static_cast<unsigned long long>(reusable));
     }
 
     VkRenderPassBeginInfo rp{VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO};
