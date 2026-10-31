@@ -149,6 +149,20 @@ def test_check_inconclusive_without_retry(monkeypatch, tmp_path, capsys):
     assert seen == ["20"]
 
 
+@pytest.mark.parametrize("frames", [1000, 2404, 2599, 2600])
+def test_windowed_ticks_require_full_requested_run(monkeypatch, tmp_path, frames):
+    fixture = tmp_path / "truncated.log"
+    fixture.write_text("\n".join(observations() * (frames // 5) + observations()[:frames % 5]))
+    monkeypatch.setattr(sim, "run_mission", lambda *a, **k: (str(fixture), str(fixture)))
+    monkeypatch.setattr(sim, "compare", lambda *a, **k: (True, "same"))
+    out = tmp_path / "out"
+    rc = sim.main(["run", "mc2_24", "--ticks", "2600", "--out", str(out)])
+    assert rc == (0 if frames == 2600 else 3)
+    result = json.loads((out / "result.json").read_text())
+    assert result["requested_ticks"] == result["required_frames"] == 2600
+    assert result["frames_a"] == frames and result["complete"] == (frames == 2600)
+
+
 def test_check_passes_when_requested_window_fills_baseline(monkeypatch, tmp_path):
     rc, seen = run_check(monkeypatch, tmp_path, lambda d: d * 60)
     assert rc == 0 and seen == ["20"]
