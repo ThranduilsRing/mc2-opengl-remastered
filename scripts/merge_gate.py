@@ -468,7 +468,9 @@ def choose_farm(runner=run_child):
         result = runner([sys.executable, 'tools/farm/host.py', 'queue'], cwd=ROOT, env=os.environ.copy())
         queue_lines = result.stdout.strip().splitlines()
         depth = int(json.loads(queue_lines[-1])['depth']) if not result.returncode and queue_lines else -1
-        selected = depth >= 0 and depth * 15 < min(host_minutes, 20)
+        # This snapshot precedes deploy: our own two host chains are not live
+        # yet. An empty farm is useful even when both host slots look idle.
+        selected = depth == 0 or 0 < depth * 15 < min(host_minutes, 20)
         print(f'[merge_gate] farm depth={depth} estimated={depth * 15}min host-slot estimate={host_minutes}min selected={selected}', flush=True)
         return selected
     except (OSError, ValueError, KeyError, subprocess.SubprocessError) as exc:
@@ -543,10 +545,15 @@ def execute_parallel(steps, head, dry_run=False, keep_going=False, farm_determin
             if harness_future and command == harness[1]:
                 return harness_future.result()
             if any(Path(arg).name == 'saveload_roundtrip.py' for arg in command):
+                queued = time.monotonic()
                 mods_done.wait()
                 # Both workers still share the user's quicksave filenames.
                 with save_lock:
-                    return run_child(command, cwd=cwd, env=env)
+                    waited = time.monotonic() - queued
+                    result = timed_child(command, cwd=cwd, env=env)
+                    result.gate_scheduler_wait = waited
+                    print(f'[merge_gate] saveload scheduler wait={waited:.1f}s child={result.gate_elapsed:.1f}s', flush=True)
+                    return result
             return run_child(command, cwd=cwd, env=env)
         # The wrapper deliberately leaves leasing to each harness, rather than
         # execute's legacy exclusive reservation for a serial chain.
@@ -563,17 +570,10 @@ def execute_parallel(steps, head, dry_run=False, keep_going=False, farm_determin
             determinism += [s for s in stock if s[0] in ("kit-visibility", "quiet")
                             and not s[2].get("MC2_GATE_SKIP_REASON")]
             stock = [s for s in stock if s not in determinism]
-        # A mod cold-load starves the save fixture of frames (W83 false reds), so
-        # saveload rows never share a window with the mods battery: they join the
-        # auxiliary worker, which runs mods first. (Without a private clone mods
-        # runs serially ahead of the stock chain, so the order still holds.)
-        if any(not s[2].get("MC2_GATE_SKIP_REASON") for s in mods):
-            saves = [s for s in stock if s[0].startswith("saveload-")]
-            # The stock half follows tier1, and waits for mods in runner.
-            shared = saves[1::2]
-            stock = [s for s in stock if s not in saves or s in shared]
-            determinism += [s for s in saves if s not in shared]
-        else:
+        # All save rows stay on stock, after tier1 and the mods_done barrier.
+        # Splitting them did not parallelize shared quicksave writes; it queued
+        # half the saves behind every determinism row on the other worker.
+        if not any(not s[2].get("MC2_GATE_SKIP_REASON") for s in mods):
             mods_done.set()
         offline = [s for s in stock if s[0] in ("contracts", "harnesses", "pytest")]
         offline_result = execute(offline, head, runner=runner, completed=completed) if offline else 0
