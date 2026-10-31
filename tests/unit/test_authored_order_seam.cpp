@@ -316,7 +316,9 @@ struct SaveSink {
     }
     static long writeByte(void* file, unsigned char byte) { return write(file, &byte, 1); }
     static long writeInt(void* file, int32_t value) {
-        return write(file, reinterpret_cast<unsigned char*>(&value), sizeof(value));
+        // Match File::writeInt: successful typed writes return NO_ERR, not bytes.
+        write(file, reinterpret_cast<unsigned char*>(&value), sizeof(value));
+        return 0;
     }
     static long writeString(void* file, const char* text) {
         return write(file, reinterpret_cast<unsigned char*>(const_cast<char*>(text)), static_cast<long>(std::strlen(text)));

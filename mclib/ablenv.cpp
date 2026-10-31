@@ -51,8 +51,16 @@
 template<class T> static void writeAblRecord(ABLFile* file, T value, uint32_t tag) {
 
 	auto bytes = mc2::save::encodeTaggedRecord(std::move(value), tag);
-	if (bytes.empty() || file->writeInt(static_cast<int32_t>(bytes.size())) != 4 ||
-		file->write(bytes.data(), static_cast<long>(bytes.size())) != bytes.size())
+	if (bytes.empty()) {
+		ABL_Fatal(0, "ABL: invalid value record for writing");
+		return;
+	}
+	// writeInt callbacks return a status, while write returns a byte count.
+	mc2::save::Archive framed;
+	auto size = static_cast<uint32_t>(bytes.size());
+	framed(size);
+	framed.raw(bytes);
+	if (file->write(const_cast<unsigned char*>(framed.bytes().data()), static_cast<long>(framed.bytes().size())) != framed.bytes().size())
 		ABL_Fatal(0, "ABL: unable to write value record");
 }
 
