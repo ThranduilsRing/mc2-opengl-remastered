@@ -3,6 +3,7 @@ import csv
 from contextlib import nullcontext
 import importlib.util
 import io
+import json
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -77,9 +78,27 @@ def test_noise_samples_during_game_and_foreign_games():
     assert profile.noise_report(samples)["status"] == "NOISY"
     row["external_cpu_percent"] = 5
     assert profile.noise_report(samples)["status"] == "quiet"
+    row['own_games'].append({'pid':2})
+    assert 'multiple owned game processes observed' in profile.noise_report(samples)['reasons']
+    row['own_games'].pop()
     row["other_games"] = [{"pid": 22, "name": "mc2.exe"}]
     assert "other game processes observed" in profile.noise_report(samples)["reasons"]
     samples.rows = []
+    assert profile.noise_report(samples)["status"] == "NOISY"
+
+
+def test_noise_uses_reserved_cores_and_excludes_pinned_work():
+    # Busy desktop cores must not reject an otherwise quiet game reservation.
+    result = profile.external_cpu([90] * 12 + [30, 30, 30, 30], [12, 13, 14, 15], 100, 16)
+    assert result["external_cpu_percent"] == 1
+    assert result["whole_machine_external_cpu_percent"] == 67.75
+    outside = profile.external_cpu([90] * 12 + [30] * 4, [12, 13, 14, 15], 100, 16, False)
+    assert outside['external_cpu_percent'] == 5
+    assert outside['whole_machine_external_cpu_percent'] == result['whole_machine_external_cpu_percent']
+    row = {"host_cpu_percent": 75, **result, "own_games": [{"pid": 1}], "other_games": []}
+    samples = SimpleNamespace(rows=[row], error=None)
+    assert profile.noise_report(samples)["status"] == "quiet"
+    row["external_cpu_percent"] = 15
     assert profile.noise_report(samples)["status"] == "NOISY"
 
 
@@ -114,8 +133,12 @@ def test_other_game_refusal_never_launches_capture(tmp_path, monkeypatch):
         profile.profile(SimpleNamespace(install=tmp_path, seconds=10), "mc2_03", tmp_path / "out", None)
 
 
-def test_runner_does_not_receive_host_knobs_or_wait_for_failed_client(tmp_path, monkeypatch):
-    monkeypatch.setattr(profile.tracy, "game_env", lambda *a: {"TRACY_PORT": "8086", "MC2_HOST_GAME_SLOTS": "2"})
+@pytest.mark.parametrize("battle_commands", [False, True])
+def test_runner_does_not_receive_host_knobs_or_wait_for_failed_client(tmp_path, monkeypatch, battle_commands):
+    channel = tmp_path / "commands.txt"
+    channel.write_text("spawn clone 0 0\n")
+    extra = {"MC2_UI_COMMAND_FILE": str(channel)} if battle_commands else {}
+    monkeypatch.setattr(profile.tracy, "game_env", lambda *a: {"TRACY_PORT": "8086", "MC2_HOST_GAME_SLOTS": "2", **extra})
     monkeypatch.setattr(profile.tracy.render_options_pin, "record", lambda *a: {})
     monkeypatch.setattr(profile.tracy.render_options_pin, "write", lambda *a: None)
     monkeypatch.setattr(profile.tracy, "tracy_exe", lambda *a: tmp_path / "recorder.exe")
@@ -130,3 +153,27 @@ def test_runner_does_not_receive_host_knobs_or_wait_for_failed_client(tmp_path, 
         return SimpleNamespace(stdout_text="failed", exit_code=1, killed_by_timeout=False)
     monkeypatch.setattr(profile.runner, "run_one", failed_run)
     assert profile.capture_mission(tmp_path, "mc2_01", 10, tmp_path / "test.tracy", []) == 1
+    if battle_commands:
+        assert channel.read_text() == "spawn clone 0 0\n"
+
+
+@pytest.mark.parametrize('has_samples', [True, False])
+def test_failed_capture_keeps_both_noise_numbers(tmp_path, monkeypatch, has_samples):
+    install = tmp_path / 'install'
+    install.mkdir()
+    (install / 'mc2.exe').write_bytes(b'test')
+    monkeypatch.setattr(profile.tracy, 'tracy_exe', lambda *a: tmp_path / 'recorder.exe')
+    def fail(args, name, directory, psutil):
+        directory.mkdir(parents=True)
+        if has_samples:
+            (directory / 'host-load.json').write_text(json.dumps({
+                'status':'NOISY', 'external_cpu_p95':19, 'whole_machine_external_cpu_p95':41}))
+        raise RuntimeError('capture failed')
+    monkeypatch.setattr(profile, 'profile', fail)
+    out = tmp_path / 'out'
+    assert profile.main(['--install', str(install), '--missions', 'mc2_03', '--out', str(out)]) == 1
+    report = json.loads(next(out.glob('*/profile.json')).read_text())
+    noise = report['runs']['mc2_03']['noise']
+    assert noise['external_cpu_p95'] == (19 if has_samples else None)
+    assert noise['whole_machine_external_cpu_p95'] == (41 if has_samples else None)
+    assert report['errors']['mc2_03'] == 'capture failed'

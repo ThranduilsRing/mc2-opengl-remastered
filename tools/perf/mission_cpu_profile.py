@@ -170,7 +170,8 @@ def capture_mission(install, mission, seconds, trace, extra_env):
     """Record through mission exit: a connection-time cutoff can capture only loading."""
     env = tracy.game_env("vk", False, 0, None, extra_env)
     env["MC2_FORCE_ALL_VISIBLE"] = "0"  # profile normal mission visibility, overriding smoke's forced value
-    marks = camera_bookmarks(mission)["bookmarks"] if mission in CAMERA_MISSIONS else []
+    marks = (camera_bookmarks(mission)["bookmarks"]
+             if mission in CAMERA_MISSIONS and "MC2_UI_COMMAND_FILE" not in env else [])
     done, errors = threading.Event(), []
     driver = None
     if marks:
@@ -267,6 +268,15 @@ def game_processes(psutil, exclude=()):
     return found
 
 
+def external_cpu(per_core, reserved, game_cpu, sampler_cpu=0, sampler_reserved=True):
+    """Process percentages use one-core units; all excluded work must be pinned.
+
+    Games must be inside reserved; sampler affinity must be wholly inside or outside.
+    """
+    return {"whole_machine_external_cpu_percent": max(0, (sum(per_core) - game_cpu - sampler_cpu) / len(per_core)),
+            "external_cpu_percent": max(0, (sum(per_core[c] for c in reserved) - game_cpu - (sampler_cpu if sampler_reserved else 0)) / len(reserved))}
+
+
 class HostSamples:
     """Sample while capture is alive, excluding only this tool's descendants."""
     def __init__(self, psutil):
@@ -279,8 +289,12 @@ class HostSamples:
     def run(self):
         psutil = self.psutil
         parent = psutil.Process()
+        reserved = host_lease.game_cores()
+        parent.cpu_affinity(reserved)
+        sampler_affinity = set(parent.cpu_affinity())
+        parent.cpu_percent()
         known = {}
-        psutil.cpu_percent()
+        psutil.cpu_percent(percpu=True)
         try:
             while not self.stop.wait(.5):
                 children = parent.children(recursive=True)
@@ -289,15 +303,31 @@ class HostSamples:
                 for child in children:
                     try:
                         if child.name().lower() == "mc2.exe":
-                            proc = known.setdefault(child.pid, child)
+                            if child.pid not in known:
+                                child.cpu_percent()
+                                known[child.pid] = child
+                                continue  # prime the process counter before subtraction
+                            proc = known[child.pid]
+                            if not set(proc.cpu_affinity()) <= set(reserved):
+                                raise RuntimeError(f"game {proc.pid} affinity outside reserved cores {reserved}")
                             game_cpu += proc.cpu_percent()
                             games.append({"pid": proc.pid, "priority": proc.nice(),
                                           "affinity": proc.cpu_affinity()})
                     except (psutil.NoSuchProcess, psutil.AccessDenied):
                         continue
-                cpu = psutil.cpu_percent()
-                self.rows.append({"time": time.time(), "host_cpu_percent": cpu,
-                                  "external_cpu_percent": max(0, cpu - game_cpu / (psutil.cpu_count() or 1)),
+                cpu = psutil.cpu_percent(percpu=True)
+                sampler_cpu = parent.cpu_percent()
+                actual_affinity = set(parent.cpu_affinity())
+                if actual_affinity != sampler_affinity:
+                    sampler_affinity = actual_affinity
+                    continue  # the guard moved the sampler; attribution is ambiguous this interval
+                if sampler_affinity & set(reserved) and not sampler_affinity <= set(reserved):
+                    raise RuntimeError("sampler affinity straddles measured reservation")
+                self.rows.append({"time": time.time(), "host_cpu_percent": sum(cpu) / len(cpu),
+                                  "reserved_cores": reserved, "per_core_cpu_percent": cpu,
+                                  "game_cpu_percent_one_core": game_cpu, "sampler_cpu_percent_one_core": sampler_cpu,
+                                  "sampler_affinity": sorted(sampler_affinity),
+                                  **external_cpu(cpu, reserved, game_cpu, sampler_cpu, sampler_affinity <= set(reserved)),
                                   "other_games": game_processes(psutil, {c.pid for c in children}),
                                   "own_games": games})
         except Exception as exc:
@@ -321,17 +351,20 @@ def noise_report(samples):
         reasons.append(samples.error or "no in-game CPU samples")
     if any(row["other_games"] for row in samples.rows):
         reasons.append("other game processes observed")
+    if any(len(row["own_games"]) > 1 for row in samples.rows):
+        reasons.append("multiple owned game processes observed")
     external = p95([row["external_cpu_percent"] for row in active])
-    if external is not None and external > 25:
-        reasons.append("external host CPU p95 exceeds 25%")
+    if external is not None and external >= 15:
+        reasons.append("reserved-core external CPU p95 reaches 15%")
     return {"status": "NOISY" if reasons else "quiet", "reasons": reasons,
             "host_cpu_p95": p95([row["host_cpu_percent"] for row in active]),
-            "external_cpu_p95": external, "samples": samples.rows}
+            "whole_machine_external_cpu_p95": p95([row.get("whole_machine_external_cpu_percent", row["external_cpu_percent"]) for row in active]),
+            "external_cpu_p95": external, "external_cpu_scope": "reserved_cores", "samples": samples.rows}
 
 
 def table(name, zones, noise, top):
     lines = [f"## {name} ({noise['status']})", "",
-             f"Host CPU p95: {noise['host_cpu_p95']}%; external CPU p95: {noise['external_cpu_p95']}%.",
+             f"Host CPU p95: {noise['host_cpu_p95']}%; whole-machine external CPU p95: {noise.get('whole_machine_external_cpu_p95')}%; reserved-core external CPU p95: {noise['external_cpu_p95']}%.",
              "; ".join(noise["reasons"]), "",
              "| rank by total | zone | total ms | event p95 ms | calls | p95 rank |",
              "|---:|---|---:|---:|---:|---:|"]
@@ -465,6 +498,13 @@ def main(argv=None):
             print(rendered, flush=True)
         except (Exception, SystemExit) as exc:
             report["errors"][name] = str(exc)
+            noise_path = directory / name / "host-load.json"
+            noise = (json.loads(noise_path.read_text(encoding="utf-8")) if noise_path.is_file() else
+                     {"status": "NOISY", "reasons": [str(exc)], "host_cpu_p95": None,
+                      "whole_machine_external_cpu_p95": None, "external_cpu_p95": None,
+                      "external_cpu_scope": "reserved_cores", "samples": []})
+            report["runs"][name] = {"noise": noise, "zones": {}, "bookmarks": {}, "error": str(exc),
+                "trace": str(directory / name / f"{name}.tracy")}
             text.append(f"## {name}: FAILED\n\n{exc}")
             print(f"{name}: FAILED: {exc}", file=sys.stderr, flush=True)
         finally:

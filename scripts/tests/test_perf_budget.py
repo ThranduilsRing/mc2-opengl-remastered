@@ -19,7 +19,8 @@ def budget():
 
 
 def profile(value=0.5, noise='quiet'):
-    return {'runs': {'mc2_01': {'noise': {'status': noise, 'reasons': []},
+    return {'runs': {'mc2_01': {'noise': {'status': noise, 'reasons': [], 'external_cpu_scope':'reserved_cores',
+                                       'external_cpu_p95':4, 'whole_machine_external_cpu_p95':30},
                               'zones': {'Frame': {'count': 10, 'total_ms': value * 10, 'p95_ms': value},
                                         'DrawScreen': {'count': 10, 'total_ms': 0.5, 'p95_ms': 0.08}}}}}
 
@@ -84,6 +85,16 @@ def test_strict_goals_deltas_and_missing_metrics(budget):
     assert tool.compare(profile(), budget)['battle']['status'] == 'INCONCLUSIVE'
 
 
+@pytest.mark.parametrize('invalid', [{'external_cpu_scope':None}, {'external_cpu_p95':None}, {'external_cpu_p95':15}])
+def test_only_measured_reserved_load_can_qualify(budget, invalid):
+    run=profile()['runs']['mc2_01']
+    data={'runs':{'mc2_03':run}}
+    run['noise'].update(external_cpu_p95=14.99,whole_machine_external_cpu_p95=90)
+    assert tool.compare(data,budget)['mc2_03']['metrics']['cpu_frame_ms']['status']=='PASS'
+    run['noise'].update(invalid)
+    assert tool.compare(data,budget)['mc2_03']['metrics']['cpu_frame_ms']['status']=='INCONCLUSIVE'
+
+
 def test_supplementary_metrics_require_context(budget):
     data = profile()
     run = data['runs']['mc2_01']
@@ -99,6 +110,7 @@ def test_supplementary_metrics_require_context(budget):
 
 def test_html_and_cli_artifacts(budget, tmp_path):
     data = profile()
+    data['runs']['mc2_01']['noise'].update(external_cpu_p95=4, whole_machine_external_cpu_p95=31)
     data['runs']['mc2_01']['zones']['<script>alert(1)</script>'] = {'count': 5, 'total_ms': 1, 'p95_ms': 0.5}
     source = tmp_path / 'profile.json'
     source.write_text(json.dumps(data), encoding='utf-8')
@@ -107,6 +119,7 @@ def test_html_and_cli_artifacts(budget, tmp_path):
     html = (output / 'index.html').read_text(encoding='utf-8')
     assert 'viewport' in html and 'Δ previous' in html and 'NOISY' in html
     assert '<script>' not in html and '&lt;script&gt;' in html
+    assert 'reserved cores +4.000%' in html and 'whole machine +31.000%' in html
     assert json.loads((output / 'budget.json').read_text())['mc2_01']['metrics']['cpu_frame_ms']['delta_previous_ms'] == 0
 
 

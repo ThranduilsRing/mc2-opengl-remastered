@@ -96,9 +96,10 @@ def compare(profile, budget, previous=None):
     for mission, reference in budget["missions"].items():
         run = profile.get("runs", {}).get(mission, {})
         noise = run.get("noise", {})
-        quiet = noise.get("status") == "quiet" and not noise.get("reasons")
+        quiet = (noise.get("status") == "quiet" and not noise.get("reasons")
+                 and noise.get("external_cpu_scope") == "reserved_cores")
         external = noise.get("external_cpu_p95")
-        if number(external) and external > 25:
+        if not number(external) or external >= 15:
             quiet = False
         if mission in profile.get("errors", {}):
             quiet = False
@@ -150,8 +151,14 @@ def write_html(path, results, profile, budget, previous=None):
               'CPU zones include waits and overlap; do not sum nested zones. GPU 5 ms is a throughput goal, not proof of end-to-end 200 fps.</p>',
               f'<p>Executable SHA: {escape(str(profile.get("exe_sha256", "unknown")))}</p>']
     for mission, result in results.items():
+        noise = result['noise']
+        reserved = noise.get('external_cpu_p95') if noise.get('external_cpu_scope') == 'reserved_cores' else None
+        whole = noise.get('whole_machine_external_cpu_p95', noise.get('external_cpu_p95') if reserved is None else None)
         chunks += [f'<section><h2>{mission}: {result["status"]}</h2>',
-                   f'<p>Current noise: {escape(str(result["noise"]))}<br>Baseline: {result["baseline_status"]}; previous: {escape(str(result["previous_noise"]))}. Deltas involving noise are descriptive only.</p>',
+                   f'<p>Current noise: {escape(str(result["noise"].get("status", "missing")))}; {escape(str(result["noise"].get("reasons", [])))}. '
+                   f'External CPU p95: reserved cores {fmt(reserved)}%; '
+                   f'whole machine {fmt(whole)}%. '
+                   f'<br>Baseline: {result["baseline_status"]}; previous: {escape(str(result["previous_noise"]))}. Deltas involving noise are descriptive only.</p>',
                    '<div class="scroll"><table><tr><th>Metric (ms)</th><th>Value</th><th>Goal</th><th>Δ baseline</th><th>Distance to goal</th><th>Δ previous</th><th>Verdict</th></tr>']
         for metric, row in result["metrics"].items():
             chunks.append(f'<tr><td>{metric} ({escape(row["worst_bookmark"] or "unmeasured")})</td><td>{fmt(row["value"])}</td><td>{row["goal"]}</td><td>{fmt(row["delta_baseline_ms"])}</td><td>{fmt(row["distance_goal_ms"])}</td><td>{fmt(row["delta_previous_ms"])}</td><td>{row["status"]}</td></tr>')
