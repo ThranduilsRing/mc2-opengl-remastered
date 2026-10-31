@@ -1600,16 +1600,13 @@ void Artillery::init (bool create, ObjectTypePtr _type)
 
 //---------------------------------------------------------------------------
 #include "save_struct_zero.h"
-#include "artillery_value_codec.h"
 void Artillery::Save (PacketFilePtr file, long packetNum)
 {
 	MC2_SAVE_STRUCT(ArtilleryData, data);
 	CopyTo(&data);
 
 	//PacketNum incremented in ObjectManager!!
-	auto bytes = mc2::save::encodeTaggedRecord(mc2::save::ArtilleryRecord{data}, mc2::save::artilleryTag);
-	if (bytes.empty()) Fatal(0, "Invalid artillery ObjectSlot");
-	file->writePacket(packetNum, bytes.data(), static_cast<unsigned int>(bytes.size()), STORAGE_TYPE_ZLIB);
+	file->writePacket(packetNum,reinterpret_cast<MemoryPtr>(&data),sizeof(ArtilleryData),STORAGE_TYPE_ZLIB);
 }
 
 //---------------------------------------------------------------------------
