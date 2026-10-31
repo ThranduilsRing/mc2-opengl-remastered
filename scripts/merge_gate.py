@@ -132,7 +132,7 @@ class GateState:
             self.lock.close()
             raise RuntimeError(f"gate-state held by a live PID: {self.path}") from exc
         try:
-            if self.resume and self.path.exists():
+            if self.path.exists():
                 previous = json.loads(self.path.read_text(encoding="utf-8"))
                 self.data["stages"] = previous.get("stages", {})
             self.data["exe_sha"] = self.exe_sha()
@@ -164,16 +164,39 @@ class GateState:
             return hashlib.file_digest(source, "sha256").hexdigest()
 
     def signature(self, command, overrides):
-        return hashlib.sha256(json.dumps([command, overrides], sort_keys=True).encode()).hexdigest()
+        # HEAD pins clean tracked sources. Also hash file inputs: commands and
+        # policy/data receipts can change without a new source commit.
+        inputs = {ROOT / 'tools/save_noise_mask.json', ROOT / 'tools/mod_known_failures.json',
+                  ROOT / 'Gates/gate_table.json', ROOT / 'scripts/merge_gate.py'}
+        inputs.update((ROOT / 'tests/saveload/baselines').glob('*.json'))
+        inputs.update((ROOT / 'tests/smoke/sim_determinism').glob('*.json'))
+        for arg in command:
+            path = Path(arg)
+            if not path.is_absolute():
+                path = ROOT / path
+            if path.is_file():
+                inputs.add(path)
+            elif path.is_dir() and '--install' in command and arg == command[command.index('--install') + 1]:
+                inputs.add(path / '.deployed_manifest.csv')
+        hashes = {}
+        for path in sorted(inputs, key=str):
+            if path.is_file():
+                with path.open('rb') as source:
+                    hashes[str(path)] = hashlib.file_digest(source, 'sha256').hexdigest()
+            else:
+                hashes[str(path)] = None
+        return hashlib.sha256(json.dumps([command, overrides, hashes], sort_keys=True).encode()).hexdigest()
 
     def reusable(self, name, command, overrides):
         row = self.data["stages"].get(name, {})
         sha = self.exe_sha()
-        return (self.resume and sha is not None and row.get("head") == self.head
-                and row.get("exe_sha") == sha and stage_passed(row.get("status", ""))
+        offline = name in ('contracts', 'harnesses', 'pytest')
+        return ((self.resume or offline) and row.get("head") == self.head
+                and (offline or sha is not None and row.get("exe_sha") == sha)
+                and stage_passed(row.get("status", ""))
                 and row.get("signature") == self.signature(*self.specs.get(name, (command, overrides))))
 
-    def record(self, name, command, overrides, status, seconds):
+    def record(self, name, command, overrides, status, seconds, scheduler_wait=0.0):
         with self.mutex:
             artefact = overrides.get("MC2_SMOKE_ARTIFACT_ROOT", self.data["artefact_dir"])
             for option in ("--out", "--out-root"):
@@ -181,7 +204,7 @@ class GateState:
                     artefact = command[command.index(option) + 1]
             self.data["stages"][name] = dict(
                 head=self.head, exe_sha=self.exe_sha(), status=status, seconds=seconds,
-                artefact_dir=artefact,
+                artefact_dir=artefact, scheduler_wait_seconds=scheduler_wait,
                 signature=self.signature(*self.specs.get(name, (command, overrides))))
             self.write()
 
@@ -727,7 +750,7 @@ def execute(steps, head, dry_run=False, runner=run_child, completed=None):
             ACTIVE_STATE.reused.append(name)
             completed[name] = status
             results.append((name, status, 0.0))
-            ACTIVE_STATE.record(name, command, overrides, status, 0.0)
+            # Keep original elapsed time and evidence paths in the receipt.
             continue
         reason = overrides.get("MC2_GATE_SKIP_REASON")
         if reason:
@@ -745,7 +768,7 @@ def execute(steps, head, dry_run=False, runner=run_child, completed=None):
                     ACTIVE_STATE.reused.append(name)
                 ACTIVE_STATE.record(name, command, overrides, status, 0.0)
             continue
-        status, elapsed = "SKIPPED", 0.0
+        status, elapsed, scheduler_wait = "SKIPPED", 0.0, 0.0
         if dry_run:
             print("PLAN " + " ".join(f"{k}={v}" for k, v in overrides.items()) + " " + subprocess.list2cmdline(command))
             status = "DRY-RUN"
@@ -772,6 +795,7 @@ def execute(steps, head, dry_run=False, runner=run_child, completed=None):
                 else:
                     result = runner(command, cwd=ROOT, env=dict(os.environ, **overrides, MC2_IN_GATE="1"))
                 measured = getattr(result, "gate_elapsed", None)
+                scheduler_wait = getattr(result, 'gate_scheduler_wait', 0.0)
                 status = "PASS" if result.returncode == 0 else f"FAIL ({result.returncode})"
             except (OSError, RuntimeError, subprocess.SubprocessError) as exc:
                 print(f"[merge_gate] {name}: {exc}", file=sys.stderr)
@@ -781,7 +805,7 @@ def execute(steps, head, dry_run=False, runner=run_child, completed=None):
         results.append((name, status, elapsed))
         completed[name] = status
         if not dry_run and ACTIVE_STATE:
-            ACTIVE_STATE.record(name, command, overrides, status, elapsed)
+            ACTIVE_STATE.record(name, command, overrides, status, elapsed, scheduler_wait)
     print(f"Merge gate HEAD {head} (deploy tree: build64-ninja)")
     print("| Step | Result | Seconds |\n|---|---|---:|")
     for name, status, elapsed in results:
