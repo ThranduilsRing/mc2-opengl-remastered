@@ -2,6 +2,7 @@
 #include "save_sections.h"
 #include "combat_clock_archive.h"
 #include "save_field_probe.h"
+#include "unit_anim_state.h"
 
 #include <string>
 
@@ -112,6 +113,34 @@ TEST_CASE("save sections: golden wire bytes, sorted and byte-stable") {
     CHECK(back.sections[0].tag == tagAnimation);
     CHECK(back.find(tagOrders)->payload == Bytes{1, 2});
     CHECK(encoded(back) == bytes);
+}
+
+TEST_CASE("save sections: weapon nodes beyond the legacy cap round trip through ANIM") {
+    mc2::sim::UnitAnimState state;
+    for (long i = 0; i < 32; ++i) {
+        state.nodeUsed.push_back(i * 7 + 1);
+        state.nodeRecycle.push_back(static_cast<float>(i) * 0.25f);
+    }
+    Archive write;
+    write(state);
+    REQUIRE(write.good());
+    SectionContainer container;
+    container.add(tagAnimation, 3, true, write.bytes());
+    container.add(tagWeaponNodes, 1, true, {});
+    SectionContainer back;
+    REQUIRE(decodeSections(encoded(container), back));
+    REQUIRE(back.find(tagWeaponNodes));
+    CHECK(back.find(tagWeaponNodes)->flags == sectionRequired);
+    REQUIRE(back.find(tagAnimation));
+    mc2::sim::UnitAnimState restored;
+    Archive read(back.find(tagAnimation)->payload);
+    read(restored);
+    REQUIRE(read.finish());
+    CHECK(restored.nodeUsed == state.nodeUsed);
+    CHECK(restored.nodeRecycle == state.nodeRecycle);
+    Archive canonical;
+    canonical(restored);
+    CHECK(canonical.bytes() == write.bytes());
 }
 
 TEST_CASE("save sections: rejects malformed, newer and unknown required sections") {

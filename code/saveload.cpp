@@ -323,6 +323,14 @@ void Mission::save (const char *saveFileName)
         sections.add(mc2::save::tagWorld, 2, true, archive.bytes());
     }
     sections.add(mc2::save::tagAnimation, 3, true, ObjectManager->saveAnimationState());
+    for (auto* mech : std::span(ObjectManager->mechs, ObjectManager->maxMechs)) {
+        if (!mech || !mech->getExists() || !mech->getAppearance()) continue;
+        const auto animation = mech->getAppearance()->simulationAnimation();
+        if (animation && (animation->nodeUsed.size() > 10 || animation->nodeRecycle.size() > 10)) {
+            sections.add(mc2::save::tagWeaponNodes, 1, true, {});
+            break;
+        }
+    }
     {
         mc2::save::Archive orders;
         orderIngress.queue().serialize(orders);

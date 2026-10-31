@@ -320,10 +320,8 @@ void Mech3DAppearance::copyTo (MechAppearanceData *data)
 	data->currentFrame = unitAnim().currentFrame;
 	data->currentLOD = currentLOD;
 
-	if (mechType->numWeaponNodes > 10)
-		STOP(("Mech Has too many weapon nodes to save %d",mechType->numWeaponNodes));
-
-	// The saved slot is 10 BYTES of a 10-element table (a save-format limit, docs/known_issues.md); a table shorter than the slot must not be over-read.
+	// Keep the legacy 10-byte prefix unchanged. ANIM saves the complete counted
+	// tables; Mission::save requires WNOD for tables beyond the old 10-node cap.
 	memcpy(data->nodeUsed,unitAnim().nodeUsed.data(),std::min<size_t>(10,unitAnim().nodeUsed.size()*sizeof(long)));		 
 	memcpy(data->nodeRecycle,unitAnim().nodeRecycle.data(),std::min<size_t>(10,unitAnim().nodeRecycle.size()*sizeof(float)));
 
