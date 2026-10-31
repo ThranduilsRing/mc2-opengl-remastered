@@ -285,9 +285,9 @@ class TerrainObject : public GameObject {
 
 		virtual void Save (PacketFilePtr file, long packetNum);
 
-		void Load (TerrainObjectData *data, const short* extendedCells = nullptr);
+		void Load (TerrainObjectData *data);
 
-		void CopyTo (TerrainObjectData *data, bool extendedCells = false);
+		void CopyTo (TerrainObjectData *data);
 
 		virtual glm::vec3 getPositionFromHS (long weaponType) 
 		{

@@ -377,9 +377,9 @@ class Building : public TerrainObject
 
 		virtual void Save (PacketFilePtr file, long packetNum);
 
-		void Load (BuildingData *data, const short* extendedCells = nullptr);
+		void Load (BuildingData *data);
 
-		void CopyTo (BuildingData *data, bool extendedCells = false);
+		void CopyTo (BuildingData *data);
 
 };
 

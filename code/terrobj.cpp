@@ -1690,20 +1690,17 @@ bool TerrainObject::calcAdjacentAreaCell (long moveLevel, long areaID, long& adj
 
 //***************************************************************************
 #include "save_struct_zero.h"
-#include "terrain_value_codec.h"
 void TerrainObject::Save (PacketFilePtr file, long packetNum)
 {
 	MC2_SAVE_STRUCT(TerrainObjectData, data);
 	CopyTo(&data);
 
 	//PacketNum incremented in ObjectManager!!
-	auto bytes = mc2::save::encodeTaggedRecord(mc2::save::TerrainRecord{data}, mc2::save::terrainTag);
-	if (bytes.empty()) Fatal(0, "Invalid terrain ObjectSlot");
-	file->writePacket(packetNum, bytes.data(), static_cast<unsigned int>(bytes.size()), STORAGE_TYPE_ZLIB);
+	file->writePacket(packetNum,reinterpret_cast<MemoryPtr>(&data),sizeof(TerrainObjectData),STORAGE_TYPE_ZLIB);
 }
 
 //***************************************************************************
-void TerrainObject::CopyTo (TerrainObjectData *data, bool extendedCells)
+void TerrainObject::CopyTo (TerrainObjectData *data)
 {
 	data->damage = damage;
 	data->vertexNumber = vertexNumber;
@@ -1729,18 +1726,16 @@ void TerrainObject::CopyTo (TerrainObjectData *data, bool extendedCells)
 	data->listID = listID;
 
 	data->numCellsCovered = numCellsCovered;
-	if (!extendedCells && numCellsCovered >= 162)
+	if (numCellsCovered >= 162)
 		STOP(("Object %d covers too many cells in Save/Load!!",getObjectType()->getObjTypeNum()));
 
-	const auto count = extendedCells ? std::min<size_t>(numCellsCovered * 2, std::size(data->cellsCovered))
-	                                : numCellsCovered * 2;
-	if (count) memcpy(data->cellsCovered, cellsCovered, sizeof(short) * count);
+	memcpy(data->cellsCovered,cellsCovered, sizeof(short) * numCellsCovered * 2);
 
 	GameObject::CopyTo(data);
 }
 
 //---------------------------------------------------------------------------
-void TerrainObject::Load (TerrainObjectData *data, const short* extendedCells)
+void TerrainObject::Load (TerrainObjectData *data)
 {
 	GameObject::Load(data); 
 
@@ -1773,8 +1768,7 @@ void TerrainObject::Load (TerrainObjectData *data, const short* extendedCells)
 	if (numCellsCovered)
 	{
 		cellsCovered = static_cast<short*>(std::malloc(sizeof(short) * numCellsCovered * 2));
-		memcpy(cellsCovered, extendedCells ? extendedCells : data->cellsCovered,
-		       sizeof(short) * numCellsCovered * 2);
+		memcpy(cellsCovered, data->cellsCovered,sizeof(short) * numCellsCovered * 2);
 	}
 }
 

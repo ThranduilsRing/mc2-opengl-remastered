@@ -506,15 +506,12 @@ void WeaponBolt::setTargetPosition (glm::vec3 pos)
 
 //***************************************************************************
 #include "save_struct_zero.h"
-#include "weaponbolt_value_codec.h"
 void WeaponBolt::Save (PacketFilePtr file, long packetNum)
 {
 	MC2_SAVE_STRUCT(WeaponBoltData, data);
 	CopyTo(&data);
 
-	auto bytes = mc2::save::encodeTaggedRecord(mc2::save::WeaponBoltRecord{data}, mc2::save::weaponBoltTag);
-	if (bytes.empty()) Fatal(0, "Invalid bolt ObjectSlot");
-	file->writePacket(packetNum, bytes.data(), static_cast<unsigned int>(bytes.size()), STORAGE_TYPE_ZLIB);
+	file->writePacket(packetNum,reinterpret_cast<MemoryPtr>(&data),sizeof(WeaponBoltData),STORAGE_TYPE_ZLIB);
 }
 
 //***************************************************************************
