@@ -96,7 +96,10 @@ def affinity_mask(slot: int) -> int:
 
 
 def game_cores():
-    """Share the guard's last-four CPU reservation, including for old leases."""
+    """Use the host's explicit reservation, including for old leases."""
+    plan = Path("A:/Games/mc2-ops/core_plan.json")
+    if plan.is_file():
+        return json.loads(plan.read_text(encoding="utf-8"))["game"]
     count = os.cpu_count() or 0
     if count < 8:
         raise RuntimeError('three-way core partition needs at least 8 logical CPUs')

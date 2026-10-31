@@ -18,14 +18,17 @@ ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..")
 
 
 @pytest.mark.parametrize('slots', [2, 3])
-def test_real_host_partition_never_assigns_build_or_desktop_cores(monkeypatch, slots):
+@pytest.mark.parametrize('cores', [[12,13,14,15], [8,9,12,13]])
+def test_real_host_partition_never_assigns_build_or_desktop_cores(monkeypatch, slots, cores):
     monkeypatch.setattr(host_lease, 'redirected', lambda: False)
     monkeypatch.setattr(host_lease.sys, 'platform', 'win32')
     monkeypatch.setattr(host_lease.os, 'cpu_count', lambda: 16)
     monkeypatch.setattr(host_lease, 'slot_count', lambda: slots)
+    monkeypatch.setattr(host_lease, 'game_cores', lambda: cores)
     masks = [host_lease.affinity_mask(i) for i in range(slots)]
-    assert sum(masks) == 0xf000
-    assert all(mask and not mask & 0x0fff for mask in masks)
+    reserved=sum(1 << c for c in cores)
+    assert sum(masks) == reserved
+    assert all(mask and not mask & ~reserved for mask in masks)
     assert all(not a & b for i, a in enumerate(masks) for b in masks[i+1:])
 
 
