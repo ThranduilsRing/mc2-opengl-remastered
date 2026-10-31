@@ -35,8 +35,11 @@ CAMERA_MISSIONS = {"mc2_01", "mc2_10", "mc2_24"}
 BOOKMARK_DIR = ROOT / "tests/visual/bookmarks"
 
 
-def camera_bookmarks(mission):
-    return json.loads((BOOKMARK_DIR / f"{mission}_camera.json").read_text(encoding="utf-8"))
+def camera_bookmarks(mission, full_sweep=False):
+    data = json.loads((BOOKMARK_DIR / f"{mission}_camera.json").read_text(encoding="utf-8"))
+    if not full_sweep:
+        data['bookmarks'] = [next(m for m in data['bookmarks'] if m['name'] == 'sun_facing_low')]
+    return data
 
 
 def distribution(values):
@@ -70,6 +73,9 @@ def drive_bookmarks(channel, marks, captures, mission, done, errors):
         # Allow the last readback to drain and the sweep to restore pause state.
         if done.wait(.5):
             return
+        if len(marks) == 1:
+            send(marks[0])
+            return  # Measure this view through mission exit, without a short sentinel interval.
         for mark in marks:
             send(mark)
             if mark["name"] == "orbit":
@@ -91,14 +97,16 @@ def drive_bookmarks(channel, marks, captures, mission, done, errors):
 def bookmark_measurements(directory, marks, log):
     rows = [json.loads(line) for line in (directory / "frames.jsonl").read_text().splitlines()]
     views = [r for r in rows if r["type"] == "view"]
-    expected = len(marks) + 101  # 100 orbit steps and closing sentinel
+    expected = 1 if len(marks) == 1 else sum(101 if m['name'] == 'orbit' else 1 for m in marks) + 1
     if len(views) != expected:
         raise RuntimeError(f"camera schedule incomplete: {len(views)}/{expected} views")
     result, cursor = {}, 0
     gpu_available = "[VK_GPU_PASSES v1]" in log
     for mark in marks:
         steps = 101 if mark["name"] == "orbit" else 1
-        first, end = views[cursor]["frame"], views[cursor + steps]["frame"]
+        first = views[cursor]["frame"]
+        end = (max(r['frame'] for r in rows if r['type'] == 'cpu') + 1 if len(marks) == 1
+               else views[cursor + steps]['frame'])
         cursor += steps
         # Exclude teleport and pipeline latency; retain all frames of the moving orbit.
         start = first + (1 if mark["name"] == "orbit" else 4)
@@ -166,19 +174,22 @@ def summarize(reader, frame_range=None, bookmarks=None):
     return aggregate(frame_range)
 
 
-def capture_mission(install, mission, seconds, trace, extra_env):
+def capture_mission(install, mission, seconds, trace, extra_env, full_sweep=False):
     """Record through mission exit: a connection-time cutoff can capture only loading."""
     env = tracy.game_env("vk", False, 0, None, extra_env)
     env["MC2_FORCE_ALL_VISIBLE"] = "0"  # profile normal mission visibility, overriding smoke's forced value
-    marks = (camera_bookmarks(mission)["bookmarks"]
+    camera = camera_bookmarks(mission, full_sweep) if mission in CAMERA_MISSIONS else {}
+    marks = (camera["bookmarks"]
              if mission in CAMERA_MISSIONS and "MC2_UI_COMMAND_FILE" not in env else [])
     done, errors = threading.Event(), []
     driver = None
     if marks:
+        bookmark_file = trace.parent / 'camera.json'
+        bookmark_file.write_text(json.dumps(camera), encoding='utf-8')
         channel = trace.parent / "commands.txt"
         channel.write_text(f"bench_output {trace.parent / 'frames.jsonl'}\n", encoding="utf-8")
         env.update({"MC2_TEST_SPAWN": "1", "MC2_UI_COMMAND_FILE": str(channel),
-                    "MC2_VISUAL_BOOKMARK_CAPTURE": str(BOOKMARK_DIR / f"{mission}_camera.json"),
+                    "MC2_VISUAL_BOOKMARK_CAPTURE": str(bookmark_file),
                     "MC2_VISUAL_CAPTURE_DIR": str(trace.parent), "MC2_VISUAL_CAPTURE_FRAME": "120",
                     "MC2_VISUAL_SETTLE": "30", "MC2_VK_GPU_TIMESTAMPS": "1",
                     "MC2_WIDTH": "1920", "MC2_HEIGHT": "1080", "MC2_FPS_CAP": "0", "MC2_VSYNC": "0",
@@ -422,7 +433,7 @@ def profile(args, name, directory, psutil):
         samples = HostSamples(psutil)
         try:
             with samples:
-                rc = capture_mission(args.install, mission, max(args.seconds, 60) if name in CAMERA_MISSIONS else args.seconds, trace, env)
+                rc = capture_mission(args.install, mission, max(args.seconds, 60) if args.full_camera_sweep and name in CAMERA_MISSIONS else args.seconds, trace, env, args.full_camera_sweep)
         finally:
             noise = noise_report(samples)
             (directory / "host-load.json").write_text(json.dumps(noise, indent=2), encoding="utf-8")
@@ -438,13 +449,13 @@ def profile(args, name, directory, psutil):
         ack = channel.with_suffix(channel.suffix + ".ack")
         if not ack.exists() or "bench_attack -> ok" not in ack.read_text(encoding="utf-8", errors="replace"):
             raise RuntimeError("battle spawn/attack was not acknowledged")
-    bookmarks = bookmark_measurements(directory, camera_bookmarks(name)["bookmarks"], log) if name in CAMERA_MISSIONS else {}
+    bookmarks = bookmark_measurements(directory, camera_bookmarks(name, args.full_camera_sweep)["bookmarks"], log) if name in CAMERA_MISSIONS else {}
     zones = export_zones(trace, bookmarks)
     missing = set(SPLIT.values()) - zones.keys()
     if missing:
         raise RuntimeError(f"missing frame scopes {sorted(missing)}; trace is not a mission profile")
     return {"mission": mission, "noise": noise, "zones": zones, "bookmarks": bookmarks,
-            "duration_seconds": max(args.seconds, 60) if name in CAMERA_MISSIONS else args.seconds,
+            "duration_seconds": max(args.seconds, 60) if args.full_camera_sweep and name in CAMERA_MISSIONS else args.seconds,
             "capture_clock": "wall-clock; review PNGs only, not deterministic goldens" if bookmarks else None,
             "lease_wait_seconds": waited, "game_run_seconds": run_seconds,
             "trace": str(trace)}
@@ -455,6 +466,7 @@ def main(argv=None):
     parser.add_argument("--install", required=True, type=Path)
     parser.add_argument("--missions", nargs="+", choices=DEFAULT_MISSIONS, default=DEFAULT_MISSIONS)
     parser.add_argument("--seconds", type=int, default=20, help="mission gameplay duration, excluding startup")
+    parser.add_argument("--full-camera-sweep", action='store_true', help='all camera views and orbit (at least 60s); default: 20s sun-facing low view')
     parser.add_argument("--top", type=int, default=10)
     parser.add_argument("--out", type=Path, default=OUT)
     args = parser.parse_args(argv)

@@ -44,6 +44,24 @@ def test_frame_distribution_keeps_worst_hitch():
     assert result == {'mean_ms': 1.49, 'p95_ms': 1, 'worst_ms': 50, 'count': 100}
 
 
+def test_default_camera_is_one_low_sun_view_and_full_sweep_is_explicit():
+    for mission in profile.CAMERA_MISSIONS:
+        marks = profile.camera_bookmarks(mission)['bookmarks']
+        assert [m['name'] for m in marks] == ['sun_facing_low']
+        assert any(m['name'] == 'orbit' for m in profile.camera_bookmarks(mission, True)['bookmarks'])
+
+
+def test_single_view_measurement_extends_through_mission_exit(tmp_path):
+    mark = profile.camera_bookmarks('mc2_01')['bookmarks'][0]
+    rows = [dict(type='view', frame=10)] + [dict(type='cpu', frame=f, ms=f) for f in range(10, 30)]
+    (tmp_path / 'frames.jsonl').write_text('\n'.join(json.dumps(row) for row in rows))
+    pose = {'cap_pos': mark['pos'], 'cap_rot': mark['rot'], 'cap_proj': mark['proj'], 'cap_alt': mark['alt']}
+    (tmp_path / f"{tmp_path.name}_{mark['name']}.json").write_text(json.dumps(pose))
+    measured = profile.bookmark_measurements(tmp_path, [mark], '')[mark['name']]
+    assert measured['frame_range'] == [14, 30]
+    assert measured['cpu_frame']['count'] == 16
+
+
 def test_missing_bookmark_trace_frames_never_use_entire_trace():
     rows = 'name,ns_since_start,ns\nFrame,10,10\nDrawScreen,11,5\n'
     with pytest.raises(ValueError, match='frame range missing'):
