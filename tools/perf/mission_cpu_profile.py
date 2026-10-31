@@ -445,7 +445,8 @@ def profile(args, name, directory, psutil):
         vehicles = "".join(f"spawn vehicle {x + i * spawn['spacing']} {y} 0 0 {spawn['pilot']}\n" for i in range(2))
         channel.write_text(channel.read_text(encoding="utf-8").replace("select all\n", vehicles + "select all\n", 1), encoding="utf-8")
         env = [f"{k}={v}" for k, v in battle.environment(channel, 1920, 1080).items()]
-    short_view = not args.full_camera_sweep
+    full_sweep = getattr(args, "full_camera_sweep", False)
+    short_view = not full_sweep
     view = None
     if short_view and name in CAMERA_MISSIONS:
         chosen = {"mc2_01": "sun_facing_low", "mc2_10": "sun_facing_low", "mc2_24": "low_horizon_0"}[name]
@@ -465,7 +466,7 @@ def profile(args, name, directory, psutil):
         samples = HostSamples(psutil)
         try:
             with samples:
-                rc = capture_mission(args.install, mission, max(args.seconds, 60) if args.full_camera_sweep and name in CAMERA_MISSIONS else args.seconds, trace, env, args.full_camera_sweep)
+                rc = capture_mission(args.install, mission, max(args.seconds, 60), trace, env, True) if full_sweep and name in CAMERA_MISSIONS else capture_mission(args.install, mission, args.seconds, trace, env)
         finally:
             noise = noise_report(samples)
             (directory / "host-load.json").write_text(json.dumps(noise, indent=2), encoding="utf-8")
@@ -489,13 +490,13 @@ def profile(args, name, directory, psutil):
         worlds = [r for r in battle.read_frames(directory) if r["type"] == "world"]
         if not worlds or any(r.get("movers") != 200 for r in worlds):
             raise RuntimeError("battle world evidence does not establish 200 movers")
-    bookmarks = bookmark_measurements(directory, camera_bookmarks(name, args.full_camera_sweep)["bookmarks"], log) if name in CAMERA_MISSIONS and not short_view else {}
+    bookmarks = bookmark_measurements(directory, camera_bookmarks(name, full_sweep)["bookmarks"], log) if name in CAMERA_MISSIONS and not short_view else {}
     zones = export_zones(trace, bookmarks, warmup_seconds=3 if short_view else 0)
     missing = set(SPLIT.values()) - zones.keys()
     if missing:
         raise RuntimeError(f"missing frame scopes {sorted(missing)}; trace is not a mission profile")
     return {"mission": mission, "noise": noise, "zones": zones, "bookmarks": bookmarks,
-            "view": view, "duration_seconds": max(args.seconds, 60) if args.full_camera_sweep and name in CAMERA_MISSIONS else args.seconds,
+            "view": view, "duration_seconds": max(args.seconds, 60) if full_sweep and name in CAMERA_MISSIONS else args.seconds,
             "capture_clock": "wall-clock; review PNGs only, not deterministic goldens" if bookmarks else None,
             "lease_wait_seconds": waited, "game_run_seconds": run_seconds,
             "trace": str(trace)}
