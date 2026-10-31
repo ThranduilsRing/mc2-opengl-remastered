@@ -70,7 +70,7 @@
  "judged": "first-save-only",
  "resave_present": true,
  "packets": 20000,
- "overall": "b7741af7639c804b",
+ "overall": "31236a8e12cdf9e4",
  "resave_identical": false,
  "resave_matches_policy": false,
  "runs": [
@@ -190,8 +190,8 @@
    "data",
    3587,
    25,
-   43832,
-   "cc65aa6836c2844b"
+   56453,
+   "1b58db0c8ec60f48"
   ],
   [
    "StaticMechWarriorData",
@@ -827,8 +827,8 @@
    "sections",
    7095,
    1,
-   557199,
-   "5fd0469715c91aca"
+   557219,
+   "030a3c0ff5293363"
   ],
   [
    "empty",
@@ -862,123 +862,129 @@
   "problems": []
  },
  "schema_migration": {
-  "packet": "D+E: WSTA/WARR and MCEL/GARE/GDOR/GLNK v1",
-  "sources": [
-   {
-    "path": "E:/mc2-archive-2026-10/proofs/lane9/cxx23-c/migrated-mc2_10.ims",
-    "sha256": "0810b653d3402bd26b4a59c22aab05c3bc68b4d95dcfb635fe356f7edc338b5c"
-   },
-   {
-    "path": "E:/mc2-archive-2026-10/proofs/lane9/cxx23-d/migrated-mc2_10.ims",
-    "sha256": "71df4690d2969f458a37198750ec599d019f1dadbcf8899ddef1e5f69b1ceffa"
-   },
-   {
-    "path": "E:/mc2-archive-2026-10/proofs/lane4/cxx23-e/migrated-mc2_10.ims",
-    "sha256": "87214e75a70f484db678d25f37588b2eff382051688f2f0e1fe93c9f01b153b3"
-   }
-  ],
-  "previous_migration": [
-   {
-    "packet": "D: WSTA/WARR v1",
-    "source": "E:\\mc2-archive-2026-10\\proofs\\lane9\\cxx23-c\\migrated-mc2_10.ims",
-    "source_sha256": "0810b653d3402bd26b4a59c22aab05c3bc68b4d95dcfb635fe356f7edc338b5c",
-    "packet_c_masked_digest": "7bae638f8ddfc0e0",
-    "previous_migration": {
-     "packet": "C: OBMH/WATC v1",
-     "source": "E:/mc2-archive-2026-10/proofs/lane9/cxx23-b/migrated-mc2_10.ims",
-     "source_sha256": "ab9d7dae3f22af0673364990944fca3734edcedbac2fa7b5ec0a1c5e8f501820",
-     "packet_b_masked_digest": "33e36efe865df6fe",
+  "packet": "G: ABLE/AMOD/AVAR v1",
+  "previous_migration": {
+   "packet": "D+E: WSTA/WARR and MCEL/GARE/GDOR/GLNK v1",
+   "sources": [
+    {
+     "path": "E:/mc2-archive-2026-10/proofs/lane9/cxx23-c/migrated-mc2_10.ims",
+     "sha256": "0810b653d3402bd26b4a59c22aab05c3bc68b4d95dcfb635fe356f7edc338b5c"
+    },
+    {
+     "path": "E:/mc2-archive-2026-10/proofs/lane9/cxx23-d/migrated-mc2_10.ims",
+     "sha256": "71df4690d2969f458a37198750ec599d019f1dadbcf8899ddef1e5f69b1ceffa"
+    },
+    {
+     "path": "E:/mc2-archive-2026-10/proofs/lane4/cxx23-e/migrated-mc2_10.ims",
+     "sha256": "87214e75a70f484db678d25f37588b2eff382051688f2f0e1fe93c9f01b153b3"
+    }
+   ],
+   "previous_migration": [
+    {
+     "packet": "D: WSTA/WARR v1",
+     "source": "E:\\mc2-archive-2026-10\\proofs\\lane9\\cxx23-c\\migrated-mc2_10.ims",
+     "source_sha256": "0810b653d3402bd26b4a59c22aab05c3bc68b4d95dcfb635fe356f7edc338b5c",
+     "packet_c_masked_digest": "7bae638f8ddfc0e0",
      "previous_migration": {
-      "packet": "B: CMST/CMDR/TMST/TEAM v1",
-      "source": "E:/mc2-archive-2026-10/proofs/merge88/finish-baseline-mc2_10/save1.ims",
-      "source_sha256": "9bb43d31e7fe5174bd5f818144c238ca901615285b7552a13b494c30de3809dd",
-      "native_masked_digest": "534d08b3dfd64060",
+      "packet": "C: OBMH/WATC v1",
+      "source": "E:/mc2-archive-2026-10/proofs/lane9/cxx23-b/migrated-mc2_10.ims",
+      "source_sha256": "ab9d7dae3f22af0673364990944fca3734edcedbac2fa7b5ec0a1c5e8f501820",
+      "packet_b_masked_digest": "33e36efe865df6fe",
+      "previous_migration": {
+       "packet": "B: CMST/CMDR/TMST/TEAM v1",
+       "source": "E:/mc2-archive-2026-10/proofs/merge88/finish-baseline-mc2_10/save1.ims",
+       "source_sha256": "9bb43d31e7fe5174bd5f818144c238ca901615285b7552a13b494c30de3809dd",
+       "native_masked_digest": "534d08b3dfd64060",
+       "changed_runs": [
+        "TeamStaticData",
+        "TeamData",
+        "StaticCommanderData",
+        "CommanderData",
+        "sections"
+       ],
+       "method": "Transform the SHA-verified archived pin: explicit fields, zero inactive group IDs, omit group padding, add required sections. Every unrelated run digest retained exactly; no live-run repin."
+      },
       "changed_runs": [
-       "TeamStaticData",
-       "TeamData",
-       "StaticCommanderData",
-       "CommanderData",
+       "ObjectManagerData",
+       "WatchList",
        "sections"
       ],
-      "method": "Transform the SHA-verified archived pin: explicit fields, zero inactive group IDs, omit group padding, add required sections. Every unrelated run digest retained exactly; no live-run repin."
+      "method": "Transform the verified Packet B pin: prefix all 15 manager int32 fields unchanged, prefix the complete watch array with tag/version/count, add required sections. Every unrelated packet and run retained exactly; mask unchanged; no live-run repin."
      },
-     "changed_runs": [
-      "ObjectManagerData",
-      "WatchList",
-      "sections"
-     ],
-     "method": "Transform the verified Packet B pin: prefix all 15 manager int32 fields unchanged, prefix the complete watch array with tag/version/count, add required sections. Every unrelated packet and run retained exactly; mask unchanged; no live-run repin."
+     "method": "Native Windows ABI pinned; encode every named field, omit padding/markers, canonicalize only documented derived storage. WQT2 suffix and all unrelated packets retained exactly. Pilot mask 10452 -> 0; no live-run repin."
     },
-    "method": "Native Windows ABI pinned; encode every named field, omit padding/markers, canonicalize only documented derived storage. WQT2 suffix and all unrelated packets retained exactly. Pilot mask 10452 -> 0; no live-run repin."
-   },
-   {
-    "packet": "E: MCEL/GARE/GDOR/GLNK v1",
-    "source": "E:/mc2-archive-2026-10/proofs/lane9/cxx23-c/migrated-mc2_10.ims",
-    "source_sha256": "0810b653d3402bd26b4a59c22aab05c3bc68b4d95dcfb635fe356f7edc338b5c",
-    "packet_c_masked_digest": "7bae638f8ddfc0e0",
-    "previous_migration": {
-     "packet": "C: OBMH/WATC v1",
-     "source": "E:/mc2-archive-2026-10/proofs/lane9/cxx23-b/migrated-mc2_10.ims",
-     "source_sha256": "ab9d7dae3f22af0673364990944fca3734edcedbac2fa7b5ec0a1c5e8f501820",
-     "packet_b_masked_digest": "33e36efe865df6fe",
+    {
+     "packet": "E: MCEL/GARE/GDOR/GLNK v1",
+     "source": "E:/mc2-archive-2026-10/proofs/lane9/cxx23-c/migrated-mc2_10.ims",
+     "source_sha256": "0810b653d3402bd26b4a59c22aab05c3bc68b4d95dcfb635fe356f7edc338b5c",
+     "packet_c_masked_digest": "7bae638f8ddfc0e0",
      "previous_migration": {
-      "packet": "B: CMST/CMDR/TMST/TEAM v1",
-      "source": "E:/mc2-archive-2026-10/proofs/merge88/finish-baseline-mc2_10/save1.ims",
-      "source_sha256": "9bb43d31e7fe5174bd5f818144c238ca901615285b7552a13b494c30de3809dd",
-      "native_masked_digest": "534d08b3dfd64060",
+      "packet": "C: OBMH/WATC v1",
+      "source": "E:/mc2-archive-2026-10/proofs/lane9/cxx23-b/migrated-mc2_10.ims",
+      "source_sha256": "ab9d7dae3f22af0673364990944fca3734edcedbac2fa7b5ec0a1c5e8f501820",
+      "packet_b_masked_digest": "33e36efe865df6fe",
+      "previous_migration": {
+       "packet": "B: CMST/CMDR/TMST/TEAM v1",
+       "source": "E:/mc2-archive-2026-10/proofs/merge88/finish-baseline-mc2_10/save1.ims",
+       "source_sha256": "9bb43d31e7fe5174bd5f818144c238ca901615285b7552a13b494c30de3809dd",
+       "native_masked_digest": "534d08b3dfd64060",
+       "changed_runs": [
+        "TeamStaticData",
+        "TeamData",
+        "StaticCommanderData",
+        "CommanderData",
+        "sections"
+       ],
+       "method": "Transform the SHA-verified archived pin: explicit fields, zero inactive group IDs, omit group padding, add required sections. Every unrelated run digest retained exactly; no live-run repin."
+      },
       "changed_runs": [
-       "TeamStaticData",
-       "TeamData",
-       "StaticCommanderData",
-       "CommanderData",
+       "ObjectManagerData",
+       "WatchList",
        "sections"
       ],
-      "method": "Transform the SHA-verified archived pin: explicit fields, zero inactive group IDs, omit group padding, add required sections. Every unrelated run digest retained exactly; no live-run repin."
+      "method": "Transform the verified Packet B pin: prefix all 15 manager int32 fields unchanged, prefix the complete watch array with tag/version/count, add required sections. Every unrelated packet and run retained exactly; mask unchanged; no live-run repin."
      },
-     "changed_runs": [
-      "ObjectManagerData",
-      "WatchList",
-      "sections"
+     "changed_packet_runs": [
+      [
+       7,
+       7
+      ],
+      [
+       19,
+       19
+      ],
+      [
+       267,
+       1223
+      ],
+      [
+       1235,
+       1235
+      ],
+      [
+       1469,
+       2463
+      ],
+      [
+       2475,
+       2475
+      ],
+      [
+       2708,
+       3608
+      ],
+      [
+       7095,
+       7095
+      ]
      ],
-     "method": "Transform the verified Packet B pin: prefix all 15 manager int32 fields unchanged, prefix the complete watch array with tag/version/count, add required sections. Every unrelated packet and run retained exactly; mask unchanged; no live-run repin."
-    },
-    "changed_packet_runs": [
-     [
-      7,
-      7
-     ],
-     [
-      19,
-      19
-     ],
-     [
-      267,
-      1223
-     ],
-     [
-      1235,
-      1235
-     ],
-     [
-      1469,
-      2463
-     ],
-     [
-      2475,
-      2475
-     ],
-     [
-      2708,
-      3608
-     ],
-     [
-      7095,
-      7095
-     ]
-    ],
-    "method": "Verified Packet C pin; prefix native navigation fields with tag/version/count and add required sections. All field bytes, unrelated packets and mask ranges unchanged; no live-run repin."
-   }
-  ],
-  "method": "Compose verified D and E migrations of the same Packet C source. Disjoint payload changes, identical shared sections; union 13 fixture sections (existing BRN1 fixture gap unchanged). Pilot mask remains zero; no live-run repin."
+     "method": "Verified Packet C pin; prefix native navigation fields with tag/version/count and add required sections. All field bytes, unrelated packets and mask ranges unchanged; no live-run repin."
+    }
+   ],
+   "method": "Compose verified D and E migrations of the same Packet C source. Disjoint payload changes, identical shared sections; union 13 fixture sections (existing BRN1 fixture gap unchanged). Pilot mask remains zero; no live-run repin."
+  },
+  "old_digest": "b7741af7639c804b",
+  "abl_packet": 3611,
+  "method": "Verified archived D+E values; live sample supplies only compiled slot extents and counts. All values come from archive, scalar upper arms discarded, state pointers represented by names. ABL packet matches live sample exactly. No mask change or live-value repin."
  }
 }

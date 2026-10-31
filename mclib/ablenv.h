@@ -208,9 +208,9 @@ class ABLModule {
 
 		long init (int moduleHandle);
 		
-		void write (ABLFile* moduleFile);
+		void write (ABLFile* moduleFile, bool values = false);
 		
-		void read (ABLFile* moduleFile);
+		void read (ABLFile* moduleFile, bool values = false);
 
 		int getId (void) {
 			return(id);

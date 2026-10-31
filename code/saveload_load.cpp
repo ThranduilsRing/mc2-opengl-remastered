@@ -191,7 +191,7 @@ void Mission::loadMissionScript(MissionLoadFrame& f) {
 	ablFile.open(dmpName);
 
 #ifdef USE_ABL_LOAD
-	ABLi_loadEnvironment(&ablFile,true);
+	ABLi_loadEnvironment(&ablFile, true, f.sections.find(mc2::save::tagAblEnvironment) != nullptr);
 #endif
 		
 	ablFile.close();
