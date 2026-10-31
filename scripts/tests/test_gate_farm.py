@@ -79,6 +79,10 @@ def test_farm_stage_preserves_checks_and_fetches_failures(tmp_path, failure):
                '--install', 'local', '--out', str(out), '--sim-speed', '2']
     seen = []
     def child(cmd, **kw):
+        if cmd == command:
+            seen.append('local')
+            assert kw['env']['MC2_VULKAN_VALIDATION'] == '1'
+            return SimpleNamespace(returncode=0, stdout='local proof')
         action = cmd[2]
         seen.append(action)
         if action == 'submit':
@@ -93,13 +97,12 @@ def test_farm_stage_preserves_checks_and_fetches_failures(tmp_path, failure):
             assert cmd[-1] == str(gate.ROOT / 'build64-ninja/mc2.exe')
         return SimpleNamespace(returncode=int(action == failure),
                                stdout=('bad id' if failure == 'bad-id' else 'a' * 32) if action == 'submit' else '')
-    if failure == 'bad-id':
-        with pytest.raises(RuntimeError, match='unique job ID'):
-            gate.farm_stage(command, {'MC2_VULKAN_VALIDATION': '1'}, runner=child)
-    else:
-        result = gate.farm_stage(command, {'MC2_VULKAN_VALIDATION': '1', 'MC2_GATE_BASE': 'sha'}, runner=child)
-        assert result.returncode == int(failure is not None)
-    assert seen == (['submit'] if failure in ('submit', 'bad-id') else ['submit', 'wait', 'fetch'])
+    result = gate.farm_stage(command, {'MC2_VULKAN_VALIDATION': '1', 'MC2_GATE_BASE': 'sha'}, runner=child)
+    assert result.returncode == int(failure == 'wait')
+    expected = ['submit'] if failure in ('submit', 'bad-id') else ['submit', 'wait', 'fetch']
+    if failure in ('submit', 'bad-id', 'fetch'):
+        expected.append('local')
+    assert seen == expected
 
 
 @pytest.mark.parametrize('failure', [None, 'farm', 'save'])

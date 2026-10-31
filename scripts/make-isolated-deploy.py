@@ -170,6 +170,8 @@ def seed_member(rel, guard, manifest):
             'options.cfg', 'system.cfg', 'prefs.cfg', 'minprefs.cfg', 'orgprefs.cfg')
     if low.startswith(('cache/', 'crashes/', 'debug_state/', 'saved_bookmarks/', 'mods/')):
         return False
+    if low.startswith('data/') and low.endswith('.cookstamp'):
+        return True  # private mutable receipt paired with the stock cooked texture
     if low.endswith(('.log', '.tmp', '.bak', '.cookstamp', '.dmp')):
         return False
     # Runtime texture caches and authoring tools are writable artifacts; only

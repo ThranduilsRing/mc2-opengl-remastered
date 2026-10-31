@@ -44,6 +44,19 @@ def test_content_budget_is_enforced_and_visible():
     assert "2 / 2" in ms.format_table([row])
 
 
+def test_content_signatures_reject_replacement_error_in_same_class():
+    known_line = '[CONTENT] kind=ammo path=unit msg=orphan ammo 207; zeroing amount'
+    summary = '[CONTENT_SUMMARY] mission=m total=1 ammo=1'
+    counts = ms.content_signatures(known_line + '\n' + known_line + '\n' + summary)
+    signature, = counts
+    entry = dict(mod='mod', mission='m', error_class='ammo', message_sha256=signature.split(':')[1],
+                 count_ceiling=1, first_window=92, expires_window=95)
+    assert ms.content_verdict(counts, 'mod', 'm', 92, [entry]) == (counts, {})
+    changed = ms.content_signatures(known_line.replace('207', '208') + '\n' + summary)
+    assert ms.content_verdict(changed, 'mod', 'm', 92, [entry]) == ({}, changed)
+    assert ms.content_signatures(summary) == {'ammo:unparsed': 1}
+
+
 def _campaign(first: str, second: str = "") -> str:
     out = '[Campaign]\nl GroupCount = 2\n[Group0Mission0]\nst FileName = "%s"\n' % first
     if second:

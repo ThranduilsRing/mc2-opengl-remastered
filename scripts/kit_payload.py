@@ -18,12 +18,15 @@ MANIFEST = Path("data/kit/industrial-kit.json")
 IMPORT_ARGS = ["--no-ground", "--static-prop"]
 
 
-def seed_install(source, target, hash_cache=Path('G:/mc2-tmp/shared-data-sha256.json')):
+def seed_install(source, target, hash_cache=None):
     """Refresh an owner-test projection from one deployed tree, without a cook.
 
     Read-only data can link on the same volume; cross-volume members copy.
     Written artifacts always get private inodes. Only pinned model recipes carry over.
     """
+    if hash_cache is None:
+        lane = hashlib.sha256(str(Path(__file__).resolve().parents[1]).encode()).hexdigest()[:16]
+        hash_cache = Path('G:/mc2-tmp') / f'shared-data-sha256-{lane}.json'
     source, raw_target = Path(source).resolve(), Path(target).absolute()
     target = raw_target.resolve()
     if target != raw_target:
@@ -39,13 +42,13 @@ def seed_install(source, target, hash_cache=Path('G:/mc2-tmp/shared-data-sha256.
     except (OSError, ValueError):
         hashes = {}
 
-    def digest(path):
+    def digest(path, force=False):
         stat = path.stat()
         key = str(path.resolve())
         stamp = [stat.st_size, stat.st_mtime_ns]
         old = hashes.get(key)
         # Executable bytes are always verified, including a warm seed.
-        if path.suffix.lower() != '.exe' and old and old[:2] == stamp:
+        if not force and path.suffix.lower() != '.exe' and old and old[:2] == stamp:
             return old[2]
         value = sha(path)
         hashes[key] = [*stamp, value]
@@ -61,7 +64,7 @@ def seed_install(source, target, hash_cache=Path('G:/mc2-tmp/shared-data-sha256.
     members = set()
     for row in manifest.values():
         path = contained_path(source, row['relpath'])
-        if path.stat().st_size != int(row['bytes']) or digest(path) != row['sha256']:
+        if path.stat().st_size != int(row['bytes']) or digest(path, force=True) != row['sha256']:
             raise ValueError(f'seed manifest mismatch: {path}')
         members.add(row['relpath'])
     links, copies, _, _ = iso.plan(source, guard, manifest)
@@ -84,13 +87,14 @@ def seed_install(source, target, hash_cache=Path('G:/mc2-tmp/shared-data-sha256.
             if row['relpath'] not in members and not row['relpath'].lower().endswith('.pdb'):
                 path = contained_path(target, row['relpath'])
                 if path.is_file():
-                    if digest(path) != row['sha256']:
+                    if digest(path, force=True) != row['sha256']:
                         raise ValueError(f'modified retired seed member: {path}')
                     path.unlink()
     for rel in sorted(members):
         src, dst = contained_path(source, rel), contained_path(target, rel)
-        expected = digest(src)
-        if (dst.is_file() and digest(dst) == expected
+        force = rel.casefold() in manifest or guard.classify(rel) != 'data' or rel == '.deployed_manifest.csv'
+        expected = digest(src, force=force)
+        if (dst.is_file() and digest(dst, force=force) == expected
                 and (guard.classify(rel) == 'data' or dst.stat().st_nlink == 1)):
             continue
         dst.parent.mkdir(parents=True, exist_ok=True)
@@ -100,7 +104,7 @@ def seed_install(source, target, hash_cache=Path('G:/mc2-tmp/shared-data-sha256.
                 os.link(src, temp)
             else:
                 shutil.copy2(src, temp)
-            if digest(temp) != expected:
+            if digest(temp, force=True) != expected:
                 raise ValueError(f'seed copy hash mismatch: {rel}')
             os.replace(temp, dst)
         finally:

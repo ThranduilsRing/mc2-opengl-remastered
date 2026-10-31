@@ -13,7 +13,7 @@ Input: a release install directory containing:
     <install>/mc2.exe
     <install>/saved_bookmarks/*.json   (in-game "Save Camera Bookmark" output)
 
-Each saved-bookmark JSON already carries a duplicate 2nd pose (the engine's
+Each saved-bookmark JSON carries at least two distinct poses (the engine's
 bookmark iterator silently fails on a single-pose file), so every file fires and
 emits <mission>_<name>.png + a JSON sidecar.
 
@@ -106,7 +106,7 @@ def _running_mc2_from(install: Path) -> "list[tuple[int, str]]":
 
 
 def capture_sweep(install: Path, bookmark_files: "list[Path]", out_dir: Path,
-                  frame: int, settle: int, duration: int,
+                  frame: int, settle: int, duration: int | None,
                   det_clock: bool, show_window: bool,
                   logf, declared_env: "dict | None" = None) -> dict:
     exe = install / "mc2.exe"
@@ -260,9 +260,9 @@ def main(argv=None) -> int:
                     help="deterministic trigger frame (default 431, the frame the "
                          "verification fleet graded at)")
     ap.add_argument("--settle", type=int, default=30)
-    ap.add_argument("--duration", type=int, default=20,
-                    help="per-bookmark wall-clock budget in seconds (default 150; "
-                         "45 never reached the trigger frame on a slow machine)")
+    ap.add_argument("--duration", type=int, default=None,
+                    help="per-bookmark timeout in seconds (default: trigger-aware launcher budget; "
+                         "ends early when every PNG and sidecar is complete)")
     ap.add_argument("--clean", action="store_true",
                     help="VISUAL-CAPTURE-CLEAN-1: declare MC2_VISUAL_CAPTURE_CLEAN=1 "
                          "(suppress HUD + movie-mode letterbox/fade on BOTH backends) "

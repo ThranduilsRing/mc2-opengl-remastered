@@ -97,6 +97,9 @@ def test_lean_projection_is_private_and_has_no_runtime_cache(tmp_path):
     iso = lean_tool()
     src, dst = tmp_path / 'source', tmp_path / 'dest'
     payload, junk = lean_fixture(src)
+    stamp = src / 'data/tgl/128/a.tga.cookstamp'
+    stamp.parent.mkdir(parents=True)
+    stamp.write_text('mc2-stock-v1 verified')
     seed = iso.verified_seed(src)
     guard = iso._load_guard()
     links, copies, _, copied_bytes = iso.plan(src, guard, seed)
@@ -107,7 +110,10 @@ def test_lean_projection_is_private_and_has_no_runtime_cache(tmp_path):
     assert 'mc2.pdb' not in all_rels
     assert 'textures.fst' in {r for r, _ in links}
     assert {'prefs.cfg', 'minprefs.cfg', 'orgprefs.cfg'} <= {r for r, _ in copies}
+    assert 'data/tgl/128/a.tga.cookstamp' in {r for r, _ in copies}
     iso.build(src, dst, links, copies)
+    assert (dst / stamp.relative_to(src)).read_bytes() == stamp.read_bytes()
+    assert not stamp.samefile(dst / stamp.relative_to(src))
     iso.write_seed_manifest(dst, seed)
     projected = iso.verified_seed(dst)
     assert set(projected) == set(payload) - {'mc2.pdb', 'mods/deployed/mod.json'}
