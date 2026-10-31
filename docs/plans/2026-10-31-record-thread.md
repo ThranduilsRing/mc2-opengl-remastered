@@ -419,3 +419,17 @@ stop at this independently proven preparatory checkpoint rather than commit a pa
 All own build/game/proof children have exited; the stalled scout subtree was terminated. No push.
 Disk: 0 GB freed, no extra install created. Leave only `E:/mc2-installs/claude-record-thread` at engine `3a856fc82`.
 After this docs-only closure, pass that explicit reference for retained binary proof; do not rebuild unchanged code.
+
+## S3 CPU retirement continuation, 2026-10-31 (proof pending)
+
+Implementing the named retirement graveyard as one bounded S3 checkpoint. Three sequence-keyed CPU leases
+hold typed effect/light releases and object destruction until all older readers retire, including out-of-order
+completion. Main admits/retires packets and drains destructors; existing GPU ticket destruction stays in place.
+The inline path brackets extraction and draw with a lease. This does not freeze mutable RenderList/HUD values,
+retain waypoint appearance vectors across commit, or authorize S4 dispatch. Generic Release queue commands
+(paint, FX creation, appearance RNG) keep their original commit timing; only typed destruction gets held.
+New native tests cover commit while retained, out-of-order retirement, three-slot reuse and reentrant destruction.
+Next: final five ratchets plus buffer_lifetime, all-target checkpoint once, selected tick tests, commit-first deploy,
+day/night pixel parity viewed, mc2_10 detailed SIMID 20 s and audit/sync validation zero. Record receipts below.
+Scout failed to return useful output twice (second bounded at 60 s); stopped only the first scout's PID 9552 subtree.
+Used targeted source ranges after its timeout. Budget remains below 150 calls; sole install unchanged.
