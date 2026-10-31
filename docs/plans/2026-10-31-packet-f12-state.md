@@ -14,3 +14,5 @@ guard pytest PASS (f12-guard-tests.log); native_render_hosts row PASS.
 Warm FX target links PASS in 2.4s (f12-warm-link-monitor.log).
 Precheck configures the FX targets and links both real executables.
 Next: restore flip/migration and run clean-HEAD build/deploy/acceptance.
+Flip restored as 466cb068faee02b2948c927a927f285dc6a25c44; migration restored as a5023a62a5e3ae10d8bf2754794d3ab0323ade26.
+Candidate acceptance pending; f12-build/complete/accept scripts run sequentially.
