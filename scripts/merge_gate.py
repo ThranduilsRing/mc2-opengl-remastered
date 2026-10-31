@@ -49,6 +49,7 @@ def preflight(head, install, window, steps, seed=Path("E:/mc2-installs/_lean-see
     """Offline, fail before any lease, copy, build or deployment."""
     from exe_fingerprint import extract, sha_agrees
     from mod_smoke import load_known_failures
+    from deploy_payload import verify_published_identity
     import saveload_roundtrip as saves
 
     started = time.monotonic()
@@ -63,6 +64,10 @@ def preflight(head, install, window, steps, seed=Path("E:/mc2-installs/_lean-see
         if name.startswith('capture-') and '--bookmarks' in command and not env.get('MC2_GATE_SKIP_REASON'):
             bookmarks.update(command[command.index('--bookmarks') + 1].split(','))
     for target in dict.fromkeys((Path(install), Path(seed))):
+        try:
+            verify_published_identity(target, ROOT, head)
+        except (OSError, ValueError, KeyError) as exc:
+            errors.append(f"published identity {target}: {exc}; fix: deploy clean HEAD with {rebuild}, then refresh this seed/install")
         for bookmark in sorted(bookmarks):
             path = target / 'saved_bookmarks' / (bookmark + '.json')
             try:
