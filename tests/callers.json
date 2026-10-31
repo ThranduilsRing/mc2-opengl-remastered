@@ -3887,21 +3887,21 @@
         },
         {
           "path": "scripts/merge_gate.py",
-          "line": 53,
+          "line": 73,
           "evidence": "import",
           "reference": "deploy_payload",
           "text": "from deploy_payload import verify_published_identity, staleness_report"
         },
         {
           "path": "scripts/merge_gate.py",
-          "line": 280,
+          "line": 300,
           "evidence": "import",
           "reference": "deploy_payload",
           "text": "from deploy_payload import verify_published_identity"
         },
         {
           "path": "scripts/merge_gate.py",
-          "line": 946,
+          "line": 966,
           "evidence": "import",
           "reference": "deploy_payload",
           "text": "from deploy_payload import verify_published_identity"
@@ -4013,7 +4013,7 @@
         },
         {
           "path": "scripts/tests/test_gate_state.py",
-          "line": 294,
+          "line": 317,
           "evidence": "import",
           "reference": "deploy_payload",
           "text": "import deploy_payload"
@@ -4154,7 +4154,7 @@
         },
         {
           "path": "scripts/merge_gate.py",
-          "line": 51,
+          "line": 71,
           "evidence": "import",
           "reference": "exe_fingerprint",
           "text": "from exe_fingerprint import extract, sha_agrees"
@@ -4411,7 +4411,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/merge_gate.py",
-          "line": 539,
+          "line": 559,
           "evidence": "command",
           "reference": "scripts/make-isolated-deploy.py",
           "text": "subprocess.run([sys.executable, str(ROOT / \"scripts/make-isolated-deploy.py\"),"
@@ -13175,14 +13175,14 @@
       "callers_by_stem": [
         {
           "path": "scripts/merge_gate.py",
-          "line": 52,
+          "line": 72,
           "evidence": "import",
           "reference": "mod_smoke",
           "text": "from mod_smoke import load_known_failures"
         },
         {
           "path": "scripts/merge_gate.py",
-          "line": 198,
+          "line": 218,
           "evidence": "import",
           "reference": "mod_smoke",
           "text": "import mod_smoke as mods"
@@ -14214,7 +14214,7 @@
       "callers_by_stem": [
         {
           "path": "scripts/merge_gate.py",
-          "line": 54,
+          "line": 74,
           "evidence": "import",
           "reference": "saveload_roundtrip",
           "text": "import saveload_roundtrip as saves"

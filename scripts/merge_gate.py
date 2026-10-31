@@ -46,6 +46,26 @@ def stage_passed(status):
     return status == "PASS" or status.startswith("REUSED:")
 
 
+def clean_failed_outputs(state, proof):
+    """Explicit preflight cleanup; receipts and passing evidence are retained."""
+    root = Path(proof).resolve()
+    rows = state.data['stages']
+    protected = [Path(row['artefact_dir']).resolve() for row in rows.values()
+                 if stage_passed(row.get('status', '')) and row.get('artefact_dir')]
+    for name, row in rows.items():
+        if not name.startswith('determinism-') or not row.get('status', '').startswith('FAIL'):
+            continue
+        source = Path(row['artefact_dir'])
+        target = source.resolve()
+        if target.parent != root or not target.name.startswith(name) or source.is_symlink() or source.is_junction():
+            raise ValueError(f'refusing output cleanup outside proof root: {target}')
+        if any(p == target or p.is_relative_to(target) for p in protected):
+            raise ValueError(f'refusing cleanup of passing evidence: {target}')
+        if target.exists():
+            shutil.rmtree(target)
+            print(f'[merge_gate] CLEAN failed output {name}: {target}; receipt retained', flush=True)
+
+
 def preflight(head, install, window, steps, seed=Path("E:/mc2-installs/_lean-seed")):
     """Offline, fail before any lease, copy, build or deployment."""
     from exe_fingerprint import extract, sha_agrees
@@ -1015,6 +1035,7 @@ def main(argv=None):
     ap.add_argument("--window", type=int, help="merge-window number for known-failure expiry")
     ap.add_argument("--full", action="store_true", help="all domains; orchestrator runs at least daily")
     ap.add_argument("--resume", action="store_true", help="reuse successful stages with matching HEAD and executable SHA")
+    ap.add_argument("--clean-output", action="store_true", help="with --preflight --resume, remove only failed determinism output; preserve receipts and passing evidence")
     ap.add_argument("--farm-determinism", action="store_true", help="force non-windowed determinism to farm (default: choose by queue versus host wait)")
     ap.add_argument("--install", type=Path, help="explicit lane-owned E:/mc2-installs target for a real rehearsal")
     ap.add_argument("--dry-run", action="store_true", help="print commands only; no builds, deploys, or game launches")
@@ -1037,6 +1058,14 @@ def main(argv=None):
     args = ap.parse_args(argv)
     if args.j < 1:
         ap.error("-j must be positive")
+    if args.clean_output:
+        if not (args.preflight and args.resume and args.proofs_dir):
+            ap.error('--clean-output requires --preflight --resume --proofs-dir')
+        state_path = ROOT / 'build64-ninja/gate-state.json'
+        if not state_path.is_file():
+            ap.error('--clean-output requires an existing gate journal')
+        with GateState(state_path, git('rev-parse', 'HEAD'), ROOT / 'build64-ninja/mc2.exe', args.proofs_dir, [], True) as state:
+            clean_failed_outputs(state, args.proofs_dir)
     if args.preflight:
         return preflight(git('rev-parse', 'HEAD'), args.install or Path('E:/mc2-installs/_lean-seed'),
                          args.window, plan(args.j))

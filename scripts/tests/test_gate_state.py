@@ -289,6 +289,29 @@ def test_determinism_retry_preserves_old_output_and_reuses_new_proof(journal, mo
     assert result == 0 and len(seen) == 1 and state.reused == ['determinism-mc2_10']
 
 
+@pytest.mark.parametrize('kind', ['failed', 'passed', 'outside', 'shared'])
+def test_explicit_cleanup_preserves_receipts_and_passing_evidence(journal, kind):
+    path, exe = journal
+    proof = path.parent / 'proof'
+    output = (path.parent if kind == 'outside' else proof) / 'determinism-mc2_10'
+    (output / 'a').mkdir(parents=True)
+    (output / 'a/engine.log').write_text('retained unless failed')
+    with gate.GateState(path, 'head', exe, proof, []) as state:
+        state.data['stages']['determinism-mc2_10'] = dict(
+            status='PASS' if kind == 'passed' else 'FAIL (1)', artefact_dir=str(output))
+        if kind == 'shared':
+            state.data['stages']['other'] = dict(status='PASS', artefact_dir=str(output / 'a'))
+        state.write()
+        receipt = path.read_bytes()
+        if kind in ('outside', 'shared'):
+            with pytest.raises(ValueError, match='refusing'):
+                gate.clean_failed_outputs(state, proof)
+        else:
+            gate.clean_failed_outputs(state, proof)
+        assert output.exists() == (kind != 'failed')
+        assert path.read_bytes() == receipt
+
+
 @pytest.mark.parametrize('change', ['none', 'candidate', 'tampered'])
 def test_cached_deploy_requires_actual_candidate_identity(journal, monkeypatch, change):
     import deploy_payload
