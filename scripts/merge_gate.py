@@ -274,7 +274,18 @@ class GateState:
                 return False
         else:
             signature = self.signature(*specs)
-        return row.get("signature") == signature
+        if row.get("signature") != signature:
+            return False
+        if name == 'deploy' and 'scripts/deploy_payload.py' in command:
+            from deploy_payload import verify_published_identity
+            target = (Path(command[command.index('--allow-new-target') - 1])
+                      if '--allow-new-target' in command else Path('A:/Games/mc2-opengl/mc2-win64-v0.4'))
+            try:
+                verify_published_identity(target, ROOT, self.head)
+            except (OSError, ValueError, RuntimeError):
+                print(f'[merge_gate] deploy: cached proof requires current payload in {target}', flush=True)
+                return False
+        return True
 
     def record(self, name, command, overrides, status, seconds, scheduler_wait=0.0):
         with self.mutex:
@@ -900,6 +911,13 @@ def execute(steps, head, dry_run=False, runner=run_child, completed=None):
             try:
                 if git("rev-parse", "HEAD") != head:
                     raise RuntimeError("HEAD changed during gate; rerun verification and gate")
+                if name.startswith('determinism-') and '--out' in command:
+                    output_index = command.index('--out') + 1
+                    previous = Path(command[output_index])
+                    if previous.exists():
+                        command = list(command)
+                        command[output_index] = tempfile.mkdtemp(prefix=previous.name + '-', dir=previous.parent)
+                        print(f'[merge_gate] preserved {previous}; fresh output {command[output_index]}', flush=True)
                 print(f"[merge_gate] {name}", flush=True)
                 if ACTIVE_STATE and name == 'mods':
                     try:

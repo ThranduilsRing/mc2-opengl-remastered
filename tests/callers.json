@@ -3894,7 +3894,14 @@
         },
         {
           "path": "scripts/merge_gate.py",
-          "line": 928,
+          "line": 280,
+          "evidence": "import",
+          "reference": "deploy_payload",
+          "text": "from deploy_payload import verify_published_identity"
+        },
+        {
+          "path": "scripts/merge_gate.py",
+          "line": 946,
           "evidence": "import",
           "reference": "deploy_payload",
           "text": "from deploy_payload import verify_published_identity"
@@ -4000,6 +4007,13 @@
         {
           "path": "scripts/tests/test_gate_preflight.py",
           "line": 93,
+          "evidence": "import",
+          "reference": "deploy_payload",
+          "text": "import deploy_payload"
+        },
+        {
+          "path": "scripts/tests/test_gate_state.py",
+          "line": 294,
           "evidence": "import",
           "reference": "deploy_payload",
           "text": "import deploy_payload"
@@ -4397,7 +4411,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/merge_gate.py",
-          "line": 528,
+          "line": 539,
           "evidence": "command",
           "reference": "scripts/make-isolated-deploy.py",
           "text": "subprocess.run([sys.executable, str(ROOT / \"scripts/make-isolated-deploy.py\"),"

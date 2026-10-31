@@ -22,9 +22,9 @@ def journal(tmp_path, monkeypatch):
     return tmp_path / "gate-state.json", exe
 
 
-def run_state(journal, monkeypatch, steps, runner, head="head", resume=False):
+def run_state(journal, monkeypatch, steps, runner, head="head", resume=False, planned=None):
     path, exe = journal
-    with gate.GateState(path, head, exe, path.parent / "proof", steps, resume) as state:
+    with gate.GateState(path, head, exe, path.parent / "proof", steps if planned is None else planned, resume) as state:
         monkeypatch.setattr(gate, "ACTIVE_STATE", state)
         result = gate.execute(steps, head, runner=runner)
     monkeypatch.setattr(gate, "ACTIVE_STATE", None)
@@ -265,3 +265,55 @@ def test_resume_preserves_original_log(tmp_path, monkeypatch):
     monkeypatch.setattr(gate, 'execute_parallel', lambda *a, **kw: 0)
     assert gate.main(['--dry-run', '--resume', '--proofs-dir', str(proof)]) == 0
     assert log.read_text().startswith('original evidence\n')
+
+
+def test_determinism_retry_preserves_old_output_and_reuses_new_proof(journal, monkeypatch):
+    output = journal[0].parent / 'night'
+    (output / 'a').mkdir(parents=True)
+    original = output / 'a' / 'engine.log'
+    original.write_text('previous run')
+    steps = [('determinism-mc2_10', ['tools/sim_determinism.py', 'check', 'mc2_10', '--out', str(output)], {})]
+    seen = []
+    def runner(command, **kwargs):
+        actual = Path(command[command.index('--out') + 1])
+        assert actual != output and not (actual / 'a').exists()
+        (actual / 'a').mkdir()
+        (actual / 'a' / 'engine.log').write_text('new proof')
+        seen.append(actual)
+        return types.SimpleNamespace(returncode=0)
+    result, state = run_state(journal, monkeypatch, steps, runner)
+    assert result == 0 and original.read_text() == 'previous run'
+    assert steps[0][1][-1] == str(output)
+    assert state.data['stages']['determinism-mc2_10']['artefact_dir'] == str(seen[0])
+    result, state = run_state(journal, monkeypatch, steps, runner, resume=True)
+    assert result == 0 and len(seen) == 1 and state.reused == ['determinism-mc2_10']
+
+
+@pytest.mark.parametrize('change', ['none', 'candidate', 'tampered'])
+def test_cached_deploy_requires_actual_candidate_identity(journal, monkeypatch, change):
+    import deploy_payload
+    root = journal[0].parent
+    first, second = root / 'candidate-a', root / 'candidate-b'
+    first.mkdir()
+    second.mkdir()
+    planned = [('deploy', ['scripts/deploy_payload.py', '--target', 'game'], {})]
+    def steps(target):
+        return [('deploy', planned[0][1] + [str(target), '--allow-new-target'], {})]
+    def verify(target, source, head):
+        if not (target / 'identity').is_file():
+            raise ValueError('candidate payload is missing or stale')
+    monkeypatch.setattr(deploy_payload, 'verify_published_identity', verify)
+    seen = []
+    def runner(command, **kwargs):
+        target = Path(command[command.index('--allow-new-target') - 1])
+        (target / 'identity').write_text('current payload')
+        seen.append(target)
+        return types.SimpleNamespace(returncode=0)
+    assert run_state(journal, monkeypatch, steps(first), runner, planned=planned)[0] == 0
+    if change == 'tampered':
+        (first / 'identity').unlink()
+    target = second if change == 'candidate' else first
+    result, state = run_state(journal, monkeypatch, steps(target), runner, planned=planned)
+    assert result == 0 and len(seen) == (1 if change == 'none' else 2)
+    assert state.reused == (['deploy'] if change == 'none' else [])
+    assert (target / 'identity').is_file()
