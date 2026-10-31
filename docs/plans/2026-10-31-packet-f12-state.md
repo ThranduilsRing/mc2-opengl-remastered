@@ -16,3 +16,7 @@ Precheck configures the FX targets and links both real executables.
 Next: restore flip/migration and run clean-HEAD build/deploy/acceptance.
 Flip restored as 466cb068faee02b2948c927a927f285dc6a25c44; migration restored as a5023a62a5e3ae10d8bf2754794d3ab0323ade26.
 Candidate acceptance pending; f12-build/complete/accept scripts run sequentially.
+F12 ACCEPTANCE PASS: candidate 947894009f86875ec16c407ff37a91085153a7b8; 32 receipts.
+Flip retained. Sole install E:/mc2-installs/claude-cxx23-packet-f.
+CVE staging removed: 9403610162 logical bytes.
+Next: orchestrator lane precheck and merge window; no push.
