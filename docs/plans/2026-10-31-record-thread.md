@@ -20,7 +20,7 @@ Main retains SDL/input, UI building, camera and extraction. Validate this agains
 | Step | Status | Exit requirement / next action |
 |---|---|---|
 | S1 inventory | Native shape-leaf census DONE at `46a9f82a7`; external receipts still open | Farm repeats and save/load policy/reference mismatch remain open; no further census changes needed |
-| S2 explicit state | CPU view values implemented; proof pending | Camera-owned CPU ViewUniforms, value draw/glow arguments, copied CPU lights; packet-key vkLights remains next |
+| S2 explicit state | CPU view values PROVEN at `c823bf486`; packet-key lights in progress | CPU-view receipts below; complete the separate packet-key light proof before S3 |
 | S3 rings/lifetimes | NOT STARTED | Three CPU slots, RenderList/HUD values, retirement graveyard, Execute(main)/Draw(record), moved-entry owner assertions |
 | S4 thread | NOT STARTED | Seal after sim commit, consume sealed packets, retire safely; default ON only with all gates green |
 
@@ -302,3 +302,23 @@ CRLF-aware whitespace check: `git -c core.whitespace=cr-at-eol diff --cached --c
 Next: shared-header build_all_targets once; selected native fallback/light tests; commit-first lane deploy;
 pixel-identical mc2_01/mc2_10 captures against s1-leaf-ab, viewed; SIMID 20 s, overlap audit ON, sync validation 0.
 Only then start the separate packet-key vkLights change. Keep one install `E:/mc2-installs/claude-record-thread`.
+
+## S2 CPU view proof closed, 2026-10-31 continuation
+
+Engine commits `5b24b0e3f`, `c4b9e24af`, `c823bf486` are proven. Retained receipts:
+`s2-view-{build-fixed,final-build,alltargets,unit,final-contracts}.log`; selected native light/forceZ/cone
+tests: 34 cases / 4570 assertions PASS; ten covering rows including all five ratchets PASS, no baseline changes.
+The corrected root build and companion builds supersede the initial Camera compile failure.
+`s2-view-deploy-fixed.log` deploys clean `c823bf486` into the sole lane install.
+Day/night `s2-view-ab/` captures were viewed in the preceding run and matched S1; the retained parity script
+was rerun here: all four PNGs and RGBA payloads are identical to `s1-leaf-ab/` (`s2-view-pixel-parity.json`).
+Audit is effectively ON in both capture logs and the sync run, with no VIOLATION lines.
+`s2-view-sync.log` and its full artifacts: 20 s mc2_10 PASS, Khronos sync validation engaged, errors=0/warnings=0.
+Requested fresh pinned fixture: `py -3 tools/sim_determinism.py check mc2_10 --duration 20 --install
+E:/mc2-installs/claude-record-thread --ref-commit c823bf486 --out
+E:/mc2-archive-2026-10/proofs/record-thread/s2-view-simid-final` PASS: 1221 identical common sim frames,
+first 800 match the historical baseline in every digest. Audit is injected by the harness.
+The earlier mc2_01 pair has no pinned baseline and is excluded. No baseline was re-pinned.
+All receipts use the existing `E:/mc2-archive-2026-10/proofs/record-thread/` root.
+Next: packet-key light rows, count, generation/revision and three caches; carry the retained version through
+both native feeds and shared upload checks, preserving the baked prefix and same-frame high-water rule.
