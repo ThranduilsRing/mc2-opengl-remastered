@@ -11,7 +11,7 @@ TEST_CASE("frame draws own ordered streams and HUD values across staging reuse")
     using namespace mc2::render_view;
     static_assert(std::is_const_v<std::remove_reference_t<decltype(list())>>);
     static_assert(std::is_const_v<std::remove_reference_t<decltype(hud())>>);
-    static_assert(std::is_const_v<std::remove_reference_t<decltype(clock())>>);
+    static_assert(std::is_const_v<std::remove_reference_t<decltype(mc2::render_view::clock())>>);
     stagingList().clear();
     stagingHud() = {};
     stagingClock().turn = 17;
@@ -42,7 +42,7 @@ TEST_CASE("frame draws own ordered streams and HUD values across staging reuse")
         stagingClock().turn = 18;
         auto second = freezeDrawFrame(102);
         REQUIRE(second->sequence == 102);
-        CHECK(clock().turn == 17);
+        CHECK(mc2::render_view::clock().turn == 17);
         REQUIRE(list().terrain.size() == 2);
         CHECK(list().terrain[0].watchId == 12);
         CHECK(list().terrain[1].watchId == 34);
@@ -62,13 +62,13 @@ TEST_CASE("frame draws own ordered streams and HUD values across staging reuse")
         CHECK_FALSE(markerAlive.expired());
         {
             DrawFrameScope nested(*second);
-            CHECK(clock().turn == 18);
+            CHECK(mc2::render_view::clock().turn == 18);
             CHECK(list().terrain.empty());
             CHECK(hud().movers.empty());
         }
-        CHECK(clock().turn == 17);
+        CHECK(mc2::render_view::clock().turn == 17);
     }
-    CHECK(clock().turn == 18); // synchronous tool fallback
+    CHECK(mc2::render_view::clock().turn == 18); // synchronous tool fallback
     CHECK(list().terrain.empty());
     CHECK(hud().movers.empty());
     first.reset();

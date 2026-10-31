@@ -591,3 +591,13 @@ resolve geometry/material/light indices plus retained feeds before eliminating
 object dispatch. Then freeze marker/VTOL/copied UI and recursive FX inputs,
 split Execute(Main)/Draw(record), add assertions at actually moved entries,
 and connect retirement to actual worker completion. Keep S4 inline meanwhile.
+
+Offline checkpoint: engine commit f7942b628. All-target root (all/ui_editor/order
+seam) and three companion builds passed; root took 428 s. The initial doctest
+compile failed only on the new test's unqualified clock() versus the CRT clock;
+qualified calls corrected it. Selected frame/bolt/CPU-lifetime tests now pass,
+4 cases / 69 assertions, 17 s (s3-containers-unit.log). No repeated all-target
+build is needed for that test-only correction. Remaining: refresh shipped binary
+provenance after the correction commit, final selected contracts, explicit lane
+deploy, day/night parity, detailed SIMID and audit/sync proof. Build slowness:
+the shared RenderSnapshot/RenderView headers fan out to 254 engine/editor jobs.
