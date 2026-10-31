@@ -392,7 +392,8 @@ void Mission::loadTeamsAndObjects(MissionLoadFrame& f) {
 	// 			Call Save DOWN the heirarchy.
 	//
 	currentPacket = ObjectManager->Load( &loadFile, currentPacket,
-		f.sections.find(mc2::save::tagObjectManager) != nullptr );
+		f.sections.find(mc2::save::tagObjectManager) != nullptr,
+		f.sections.find(mc2::save::tagWatchList) != nullptr );
 
 	{
 		static const bool s_mechRestoreTrace = mc2::gate::get<"MC2_MECH_RESTORE_TRACE">();

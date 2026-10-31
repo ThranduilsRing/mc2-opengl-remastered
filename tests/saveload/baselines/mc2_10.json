@@ -104,7 +104,7 @@
  "judged": "first-save-only",
  "resave_present": true,
  "packets": 20000,
- "overall": "33e36efe865df6fe",
+ "overall": "7bae638f8ddfc0e0",
  "resave_identical": false,
  "resave_matches_policy": false,
  "runs": [
@@ -259,8 +259,8 @@
    "ObjectManagerData",
    3872,
    1,
-   60,
-   "996cfbfa9ade1cf0"
+   68,
+   "1b650e98c2f290a3"
   ],
   [
    "empty",
@@ -823,11 +823,11 @@
    "8479abb789e67015"
   ],
   [
-   "data",
+   "WatchList",
    7087,
    1,
-   12856,
-   "5b99222356b0ea43"
+   12868,
+   "5e3acbabb331f8d2"
   ],
   [
    "StaticCommanderData",
@@ -861,8 +861,8 @@
    "sections",
    7095,
    1,
-   557039,
-   "48b7ef4970a83df7"
+   557079,
+   "6a219f865ea47103"
   ],
   [
    "empty",
@@ -896,17 +896,29 @@
   "problems": []
  },
  "schema_migration": {
-  "packet": "B: CMST/CMDR/TMST/TEAM v1",
-  "source": "E:/mc2-archive-2026-10/proofs/merge88/finish-baseline-mc2_10/save1.ims",
-  "source_sha256": "9bb43d31e7fe5174bd5f818144c238ca901615285b7552a13b494c30de3809dd",
-  "native_masked_digest": "534d08b3dfd64060",
+  "packet": "C: OBMH/WATC v1",
+  "source": "E:/mc2-archive-2026-10/proofs/lane9/cxx23-b/migrated-mc2_10.ims",
+  "source_sha256": "ab9d7dae3f22af0673364990944fca3734edcedbac2fa7b5ec0a1c5e8f501820",
+  "packet_b_masked_digest": "33e36efe865df6fe",
+  "previous_migration": {
+   "packet": "B: CMST/CMDR/TMST/TEAM v1",
+   "source": "E:/mc2-archive-2026-10/proofs/merge88/finish-baseline-mc2_10/save1.ims",
+   "source_sha256": "9bb43d31e7fe5174bd5f818144c238ca901615285b7552a13b494c30de3809dd",
+   "native_masked_digest": "534d08b3dfd64060",
+   "changed_runs": [
+    "TeamStaticData",
+    "TeamData",
+    "StaticCommanderData",
+    "CommanderData",
+    "sections"
+   ],
+   "method": "Transform the SHA-verified archived pin: explicit fields, zero inactive group IDs, omit group padding, add required sections. Every unrelated run digest retained exactly; no live-run repin."
+  },
   "changed_runs": [
-   "TeamStaticData",
-   "TeamData",
-   "StaticCommanderData",
-   "CommanderData",
+   "ObjectManagerData",
+   "WatchList",
    "sections"
   ],
-  "method": "Transform the SHA-verified archived pin: explicit fields, zero inactive group IDs, omit group padding, add required sections. Every unrelated run digest retained exactly; no live-run repin."
+  "method": "Transform the verified Packet B pin: prefix all 15 manager int32 fields unchanged, prefix the complete watch array with tag/version/count, add required sections. Every unrelated packet and run retained exactly; mask unchanged; no live-run repin."
  }
 }

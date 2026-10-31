@@ -199,6 +199,9 @@ def packet_kind(typ: int, raw: bytes) -> str:
         return "sections"
     if raw[:8] == b"OBMH\x01\0\0\0" and len(raw) == 68:
         return "ObjectManagerData"
+    if (raw[:8] == b"WATC\x01\0\0\0" and len(raw) >= 12
+            and len(raw) == 12 + 4 * struct.unpack_from("<I", raw, 8)[0]):
+        return "WatchList"
     if raw[:8] == b"CMST\x01\0\0\0" and len(raw) == 16:
         return "StaticCommanderData"
     if raw[:8] == b"CMDR\x01\0\0\0" and len(raw) == 1248:

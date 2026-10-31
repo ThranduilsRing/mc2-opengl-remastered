@@ -12,6 +12,7 @@
 #include <span>
 #include "objmgr_internal.h"
 #include "saved_objects_check.h"
+#include "watch_list_save_data.h"
 #include "mission_codec.h"
 #include "mc2fmt.h"
 #include "../GameOS/gameos/static_caster_set.h"
@@ -581,8 +582,9 @@ void GameObjectManager::CopyFrom (ObjectManagerData *data)
 #include "save_struct_zero.h"
 long GameObjectManager::Save (PacketFilePtr file, long packetNum)
 {
-	int32_t *watchSave = static_cast<int32_t*>(malloc(sizeof(int32_t) * (getMaxObjects() + 1)));
-	memset(watchSave,0,sizeof(int32_t) * (getMaxObjects() + 1));
+	mc2::save::SavedWatchList watches;
+	watches.indices.resize(getMaxObjects() + 1);
+	auto& watchSave = watches.indices;
 
 	MC2_SAVE_STRUCT(ObjectManagerData, data);
 	CopyTo(&data);
@@ -622,11 +624,10 @@ long GameObjectManager::Save (PacketFilePtr file, long packetNum)
 		}
 	}
 
-	file->writePacket(packetNum,reinterpret_cast<MemoryPtr>(watchSave), sizeof(int32_t) * (getMaxObjects() + 1), STORAGE_TYPE_ZLIB);
+	auto bytes = mc2::save::encodeTaggedRecord(watches, mc2::save::watchListTag);
+	if (bytes.empty()) Fatal(0, "Invalid watch list on save");
+	file->writePacket(packetNum, bytes.data(), static_cast<unsigned int>(bytes.size()), STORAGE_TYPE_ZLIB);
 	packetNum++;
-
-	free(watchSave);
-	watchSave = nullptr;
 
 	return packetNum;
 }
@@ -645,7 +646,7 @@ ObjectTypePtr GameObjectManager::savedObjectType (long typeNum, long slot)
 }
 
 //-------------------------------------------------------------------
-std::optional<std::string_view> GameObjectManager::checkSavedObjects (PacketFilePtr file, long* headerPacket, bool saveV2, bool managerValues)
+std::optional<std::string_view> GameObjectManager::checkSavedObjects (PacketFilePtr file, long* headerPacket, bool saveV2, bool managerValues, bool watchValues)
 {
 	using namespace mc2_saved_objects;
 	RecordSizes sizes = {};
@@ -705,8 +706,19 @@ std::optional<std::string_view> GameObjectManager::checkSavedObjects (PacketFile
 		h.lights = data.numLights;
 		if (!plausibleHeader(h))
 			continue;
-		const std::optional<std::string_view> why = checkRun(h, sizes, static_cast<uint32_t>(p), static_cast<uint32_t>(numPackets), sizeAt);
+		const std::optional<std::string_view> why = checkRun(h, sizes, static_cast<uint32_t>(p), static_cast<uint32_t>(numPackets), sizeAt, watchValues);
 		if (!why) {
+			if (watchValues) {
+				const auto packet = static_cast<int>(p + slotCount(h) + 2);
+				mc2::save::Bytes bytes(sizeAt(packet));
+				mc2::save::SavedWatchList watches;
+				if (file->readPacket(packet, bytes.data()) != bytes.size() ||
+					!mc2::save::decodeTaggedRecord(bytes, watches, mc2::save::watchListTag) ||
+					watches.indices.size() != slotCount(h) + 1) {
+					verdict = "bad_watch_table";
+					break;
+				}
+			}
 			if (headerPacket)
 				*headerPacket = p;
 			verdict = std::nullopt;
@@ -729,7 +741,7 @@ std::optional<std::string_view> GameObjectManager::checkSavedObjects (PacketFile
 }
 
 //-------------------------------------------------------------------
-long GameObjectManager::Load (PacketFilePtr file, long packetNum, bool managerValues)
+long GameObjectManager::Load (PacketFilePtr file, long packetNum, bool managerValues, bool watchValues)
 {
 	ObjectManagerData data{};
 	if (managerValues) {
@@ -1281,10 +1293,20 @@ long GameObjectManager::Load (PacketFilePtr file, long packetNum, bool managerVa
 	GameObject::setInitialize(false);
 
 	//Reload the Object Watchers
-	int32_t *watchSave = static_cast<int32_t*>(malloc(sizeof(int32_t) * (getMaxObjects() + 1)));
-	memset(watchSave,0,sizeof(int32_t) * (getMaxObjects() + 1));
-
-	file->readPacket(packetNum,reinterpret_cast<MemoryPtr>(watchSave));
+	mc2::save::SavedWatchList watches;
+	const auto slots = static_cast<std::size_t>(getMaxObjects() + 1);
+	if (watchValues) {
+		file->seekPacket(packetNum);
+		if (file->getPacketSize() != 12 + slots * 4) Fatal(0, "Invalid watch list packet size");
+		mc2::save::Bytes bytes(file->getPacketSize());
+		if (file->readPacket(packetNum, bytes.data()) != bytes.size() ||
+			!mc2::save::decodeTaggedRecord(bytes, watches, mc2::save::watchListTag) ||
+			watches.indices.size() != slots) Fatal(0, "Invalid watch list value record");
+	} else {
+		watches.indices.resize(slots);
+		file->readPacket(packetNum, reinterpret_cast<MemoryPtr>(watches.indices.data()));
+	}
+	const auto& watchSave = watches.indices;
 	packetNum++;
 
 	//Find the watchID from the watchlist for this object.
@@ -1310,9 +1332,6 @@ long GameObjectManager::Load (PacketFilePtr file, long packetNum, bool managerVa
 		}
 		watchList[j] = objList[_idx];
 	}
-
-	free(watchSave);
-	watchSave = nullptr;
 
 	return packetNum;
 }

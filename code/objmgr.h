@@ -609,11 +609,11 @@ class GameObjectManager {
 		void CopyFrom (ObjectManagerData *data);
 
 		long Save (PacketFilePtr file, long packetNum);
-		long Load (PacketFilePtr file, long packetNum, bool managerValues = false);
+		long Load (PacketFilePtr file, long packetNum, bool managerValues = false, bool watchValues = false);
 
 		// Structural check of the object packets of a save; nothing when sound, else a reason tag. Run before the
 		// running mission is torn down so a bad save is refused instead of crashing the loader.
-		static std::optional<std::string_view> checkSavedObjects (PacketFilePtr file, long* headerPacket = nullptr, bool saveV2 = false, bool managerValues = false);
+		static std::optional<std::string_view> checkSavedObjects (PacketFilePtr file, long* headerPacket = nullptr, bool saveV2 = false, bool managerValues = false, bool watchValues = false);
 		ObjectTypePtr savedObjectType (long typeNum, long slot);
 };
 

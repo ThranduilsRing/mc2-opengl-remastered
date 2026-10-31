@@ -90,7 +90,7 @@ inline std::optional<int> classOfSize(const RecordSizes& r, uint32_t size)
 // sound, else a short reason tag.
 template <class SizeAt>
 inline std::optional<std::string_view> checkRun(const HeaderCounts& h, const RecordSizes& r, uint32_t headerIndex,
-                                               uint32_t numPackets, SizeAt sizeAt)
+                                               uint32_t numPackets, SizeAt sizeAt, bool watchValues = false)
 {
 	if (h.elementals != 0 || h.lights != 0)
 		return "unsupported_object_class";
@@ -115,7 +115,7 @@ inline std::optional<std::string_view> checkRun(const HeaderCounts& h, const Rec
 		if (seen[c] != h.byClass[c])
 			return "object_count_mismatch";
 
-	if (sizeAt(static_cast<uint32_t>(first + slots)) != static_cast<uint32_t>(sizeof(int32_t) * slots))
+	if (sizeAt(static_cast<uint32_t>(first + slots)) != static_cast<uint32_t>(sizeof(int32_t) * slots + (watchValues ? 12 : 0)))
 		return "bad_watch_table";
 	return std::nullopt;
 }

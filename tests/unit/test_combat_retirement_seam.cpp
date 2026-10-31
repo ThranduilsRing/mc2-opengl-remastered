@@ -8,6 +8,7 @@
 #include "comndr.h"
 #include "mission_load_frame.h"
 #include "combat_clock_archive.h"
+#include "watch_list_save_data.h"
 #include "logisticsdialog.h"
 #include <bit>
 #include <array>
@@ -105,6 +106,43 @@ TEST_CASE("save fixtures: W86 W87 commander and team production value cutover") 
         REQUIRE_FALSE(CombatRetirementSeam::rejects(storage.owner, path.c_str()));
         PacketFile legacy;
         REQUIRE(legacy.open(path.c_str()) == NO_ERR);
+        long header = -1;
+        REQUIRE_FALSE(GameObjectManager::checkSavedObjects(&legacy, &header, true));
+        REQUIRE(header > 0);
+        ObjectManagerData manager{};
+        REQUIRE(legacy.readPacket(header, reinterpret_cast<MemoryPtr>(&manager)) == sizeof(manager));
+        const long watch = header + manager.maxObjects + 2;
+        const auto taggedPath = (std::filesystem::temp_directory_path() /
+            std::format("mc2-manager-values-{}.pak", _getpid())).string();
+        PacketFile tagged;
+        REQUIRE(tagged.create(taggedPath.c_str()) == NO_ERR);
+        tagged.reserve(legacy.getNumPackets());
+        for (int packet = 0; packet < legacy.getNumPackets(); ++packet) {
+            legacy.seekPacket(packet);
+            const auto size = legacy.getPacketSize();
+            if (!size) continue;
+            mc2::save::Bytes bytes(size);
+            REQUIRE(legacy.readPacket(packet, bytes.data()) == size);
+            if (packet == header)
+                bytes = mc2::save::encodeTaggedRecord(manager, mc2::save::objectManagerTag);
+            if (packet == watch) {
+                mc2::save::SavedWatchList watches;
+                watches.indices.resize(manager.maxObjects + 1);
+                REQUIRE(bytes.size() == watches.indices.size() * 4);
+                std::memcpy(watches.indices.data(), bytes.data(), bytes.size());
+                bytes = mc2::save::encodeTaggedRecord(watches, mc2::save::watchListTag);
+            }
+            tagged.writePacket(packet, bytes.data(), static_cast<unsigned int>(bytes.size()), STORAGE_TYPE_ZLIB);
+        }
+        tagged.close();
+        REQUIRE(tagged.open(taggedPath.c_str()) == NO_ERR);
+        long found = -1;
+        REQUIRE_FALSE(GameObjectManager::checkSavedObjects(&tagged, &found, true, true, true));
+        CHECK(found == header);
+        // The native-size probe must refuse a tagged run without its section opt-in.
+        CHECK(GameObjectManager::checkSavedObjects(&tagged, nullptr, true).has_value());
+        tagged.close();
+        std::filesystem::remove(taggedPath);
         CHECK(Team::Load(&legacy, 3373) == 3376);
         CHECK(Commander::Load(&legacy, 6513) == 6516);
         REQUIRE(Team::home != nullptr);
@@ -453,13 +491,13 @@ TEST_CASE("CombatRetirementProduction/native loader preserves absolute deadlines
         CHECK(restored.retireDeadlineTick == deadlines[i].tick);
         CHECK(restored.retireDeadlineState == deadlines[i].savedState());
     }
-    REQUIRE_FALSE(GameObjectManager::checkSavedObjects(&resave, nullptr, true, true));
+    REQUIRE_FALSE(GameObjectManager::checkSavedObjects(&resave, nullptr, true, true, true));
     objects.objTypeManager = nullptr;
     objects.destroy();
     objects.objTypeManager = world.ownedTypes;
     owner.resetCombatClock();
     owner.restoreCombatClock(*mc2::save::readSavedCombatClock(resave, true));
-    REQUIRE(objects.Load(&resave, 4, true) == 15);
+    REQUIRE(objects.Load(&resave, 4, true, true) == 15);
     CHECK(owner.getCombatClock().ticks == continued.ticks);
     CHECK(std::bit_cast<std::uint64_t>(owner.getCombatClock().frac) == std::bit_cast<std::uint64_t>(continued.frac));
     for (int i = 0; i < static_cast<int>(deadlines.size()); ++i) {
