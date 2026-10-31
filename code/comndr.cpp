@@ -175,7 +175,8 @@ long Commander::Save (PacketFilePtr file, long packetNum)
 	staticData.numCommanders = numCommanders;
 	staticData.homeCommanderId = home->getId();
 
-	file->writePacket(packetNum,reinterpret_cast<MemoryPtr>(&staticData),sizeof(StaticCommanderData),STORAGE_TYPE_RAW);
+	auto bytes = mc2::save::encodeTaggedRecord(staticData, mc2::save::commanderStaticTag);
+	file->writePacket(packetNum, bytes.data(), static_cast<unsigned int>(bytes.size()), STORAGE_TYPE_RAW);
 	packetNum++;
 
 	for (long i=0;i<numCommanders;i++)
@@ -190,10 +191,16 @@ long Commander::Save (PacketFilePtr file, long packetNum)
 		else
 			data.teamId = Team::home->getId();
 
-		for (long j=0;j<MAX_MOVERGROUPS;j++)
-			commanders[i]->groups[j]->copyTo(data.groups[j]);
+		for (long j=0;j<MAX_MOVERGROUPS;j++) {
+			auto& group = data.groups[j];
+			commanders[i]->groups[j]->copyTo(group);
+			if (group.numMovers < 0 || group.numMovers > MAX_MOVERGROUP_COUNT)
+				Fatal(0, "Invalid commander group count");
+			std::fill(std::begin(group.moverWIDs) + group.numMovers, std::end(group.moverWIDs), 0);
+		}
 
-		file->writePacket(packetNum,reinterpret_cast<MemoryPtr>(&data),sizeof(CommanderData),STORAGE_TYPE_RAW);
+		bytes = mc2::save::encodeTaggedRecord(data, mc2::save::commanderDataTag);
+		file->writePacket(packetNum, bytes.data(), static_cast<unsigned int>(bytes.size()), STORAGE_TYPE_RAW);
 		packetNum++;
 	}
 
@@ -201,10 +208,26 @@ long Commander::Save (PacketFilePtr file, long packetNum)
 }
 
 //---------------------------------------------------------------------------
-long Commander::Load (PacketFilePtr file, long packetNum)
+long Commander::Load (PacketFilePtr file, long packetNum, bool values)
 {
+	auto read = [&](auto& value, std::uint32_t tag) {
+		file->seekPacket(packetNum);
+		const auto size = file->getPacketSize();
+		if (size <= 0 || size > sizeof(CommanderData) + 8) Fatal(0, "Invalid commander packet size");
+		mc2::save::Bytes bytes(size);
+		if (file->readPacket(packetNum, bytes.data()) != size) Fatal(0, "Short commander packet");
+		if (values) {
+			if (!mc2::save::decodeTaggedRecord(bytes, value, tag)) Fatal(0, "Invalid commander value record");
+		} else {
+			if (size != sizeof(value)) Fatal(0, "Invalid legacy commander packet");
+			memcpy(&value, bytes.data(), sizeof(value));
+		}
+	};
 	StaticCommanderData staticData{};
-	file->readPacket(packetNum,reinterpret_cast<MemoryPtr>(&staticData));
+	read(staticData, mc2::save::commanderStaticTag);
+	if (staticData.numCommanders < 1 || staticData.numCommanders > MAX_COMMANDERS ||
+		staticData.homeCommanderId < 0 || staticData.homeCommanderId >= MAX_COMMANDERS)
+		Fatal(0, "Invalid commander header");
 	packetNum++;
 
 	numCommanders = staticData.numCommanders;
@@ -212,7 +235,12 @@ long Commander::Load (PacketFilePtr file, long packetNum)
 	for (long i=0;i<numCommanders;i++)
 	{
 		CommanderData data{};
-		file->readPacket(packetNum,reinterpret_cast<MemoryPtr>(&data));
+		read(data, mc2::save::commanderDataTag);
+		if (data.id < 0 || data.id >= MAX_COMMANDERS || data.teamId < 0 || data.teamId >= MAX_TEAMS)
+			Fatal(0, "Invalid commander identity");
+		for (const auto& group : data.groups)
+			if (group.numMovers < 0 || group.numMovers > MAX_MOVERGROUP_COUNT)
+				Fatal(0, "Invalid commander group");
 		packetNum++;
 
 		commanders[i] = new Commander;

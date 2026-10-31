@@ -373,7 +373,7 @@ void Mission::loadTeamsAndObjects(MissionLoadFrame& f) {
 	// Load Number of Teams
 	// Load which number is HOME
 	// Call Load for each team.
-	currentPacket = Team::Load( &loadFile, currentPacket );
+	currentPacket = Team::Load( &loadFile, currentPacket, f.sections.find(mc2::save::tagTeam) != nullptr );
 
 	//-----------------------------------
 	// Setup the Sensor System Manager...
@@ -391,7 +391,9 @@ void Mission::loadTeamsAndObjects(MissionLoadFrame& f) {
 	//		If NOT NULL, 
 	// 			Call Save DOWN the heirarchy.
 	//
-	currentPacket = ObjectManager->Load( &loadFile, currentPacket );
+	currentPacket = ObjectManager->Load( &loadFile, currentPacket,
+		f.sections.find(mc2::save::tagObjectManager) != nullptr,
+		f.sections.find(mc2::save::tagWatchList) != nullptr );
 
 	{
 		static const bool s_mechRestoreTrace = mc2::gate::get<"MC2_MECH_RESTORE_TRACE">();
@@ -457,7 +459,7 @@ void Mission::loadObjectivesCommanders(MissionLoadFrame& f) {
 	// Save Number of Commanders.
 	// Save which number is HOME.
 	// Call save for each commander.
-	currentPacket = Commander::Load( &loadFile, currentPacket );
+	currentPacket = Commander::Load( &loadFile, currentPacket, f.sections.find(mc2::save::tagCommander) != nullptr );
 
 	//---------------------------------------------------------------------------------
 	// If we're not playing multiplayer, make sure all home commander movers have their

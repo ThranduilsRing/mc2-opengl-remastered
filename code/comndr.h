@@ -42,20 +42,7 @@
 #endif
 
 //---------------------------------------------------------------------------
-struct _CommanderData
-{
-	long					id;
-	long					teamId;
-	MoverGroupData			groups[MAX_MOVERGROUPS];
-
-}; using CommanderData = _CommanderData;
-
-struct _StaticCommanderData
-{
-	long	numCommanders;
-	long	homeCommanderId;
-
-}; using StaticCommanderData = _StaticCommanderData;
+#include "commander_save_data.h"
 
 class Commander {
 
@@ -122,7 +109,7 @@ class Commander {
 		}
 
 		static long Save (PacketFilePtr file, long packetNum);
-		static long Load (PacketFilePtr file, long packetNum);
+		static long Load (PacketFilePtr file, long packetNum, bool values = false);
 };
 
 //***************************************************************************

@@ -69,12 +69,7 @@
     "build": []
    },
    "CommanderData": {
-    "run": [
-     [
-      28,
-      1279
-     ]
-    ],
+    "run": [],
     "build": []
    },
    "TerrainObjectData": {
@@ -109,7 +104,7 @@
  "judged": "first-save-only",
  "resave_present": true,
  "packets": 20000,
- "overall": "50ed53382889cf66",
+ "overall": "5d77e1173a93c3f2",
  "resave_identical": false,
  "resave_matches_policy": false,
  "runs": [
@@ -201,22 +196,22 @@
    "TeamStaticData",
    2163,
    1,
-   80,
-   "76406ab0050a4c77"
+   88,
+   "d66e902b9e0f9c67"
   ],
   [
    "TeamData",
    2164,
    2,
-   976,
-   "2b9fb0b838b72930"
+   992,
+   "9755bee0d3d3535d"
   ],
   [
    "ObjectManagerData",
    2166,
    1,
-   60,
-   "5cf80dfba6a75f08"
+   68,
+   "60fefcba86e18bc5"
   ],
   [
    "empty",
@@ -387,25 +382,25 @@
    "ba71f035193227bf"
   ],
   [
-   "data",
+   "WatchList",
    3733,
    1,
-   6264,
-   "3a7c3c8691b6fa2b"
+   6276,
+   "7fb135020b3b1ae7"
   ],
   [
    "StaticCommanderData",
    3734,
    1,
-   8,
-   "17cae935378238b9"
+   16,
+   "56c6ea5f1af586ce"
   ],
   [
    "CommanderData",
    3735,
    2,
-   2576,
-   "01efaac6bc65c6a0"
+   2496,
+   "2b67de614af88258"
   ],
   [
    "text",
@@ -425,8 +420,8 @@
    "sections",
    3740,
    1,
-   215845,
-   "8c02c8dec2c49230"
+   215925,
+   "d68fbd202460f3bd"
   ],
   [
    "empty",
@@ -458,5 +453,31 @@
    "data/missions/gaea_peaks_01.pak": "af7be4e2f5a9c1c4"
   },
   "problems": []
+ },
+ "schema_migration": {
+  "packet": "C: OBMH/WATC v1",
+  "source": "E:/mc2-archive-2026-10/proofs/lane9/cxx23-b/migrated-mc2_01.ims",
+  "source_sha256": "a5f30eeeaf16300fd92a1805fff5c23591edd321546150d989644a8b8af54f1c",
+  "packet_b_masked_digest": "2bd7b00d5684473b",
+  "previous_migration": {
+   "packet": "B: CMST/CMDR/TMST/TEAM v1",
+   "source": "E:/mc2-archive-2026-10/proofs/merge88/finish-baseline-mc2_01/save1.ims",
+   "source_sha256": "0e8ce0f575c994d15e1c45ace9d89678bc335d5f6ef0c8e505608ad9923715c3",
+   "native_masked_digest": "50ed53382889cf66",
+   "changed_runs": [
+    "TeamStaticData",
+    "TeamData",
+    "StaticCommanderData",
+    "CommanderData",
+    "sections"
+   ],
+   "method": "Transform the SHA-verified archived pin: explicit fields, zero inactive group IDs, omit group padding, add required sections. Every unrelated run digest retained exactly; no live-run repin."
+  },
+  "changed_runs": [
+   "ObjectManagerData",
+   "WatchList",
+   "sections"
+  ],
+  "method": "Transform the verified Packet B pin: prefix all 15 manager int32 fields unchanged, prefix the complete watch array with tag/version/count, add required sections. Every unrelated packet and run retained exactly; mask unchanged; no live-run repin."
  }
 }

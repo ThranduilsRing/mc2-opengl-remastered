@@ -197,6 +197,19 @@ def packet_kind(typ: int, raw: bytes) -> str:
         return "empty"
     if raw[:8] == SECTION_MAGIC:
         return "sections"
+    if raw[:8] == b"OBMH\x01\0\0\0" and len(raw) == 68:
+        return "ObjectManagerData"
+    if (raw[:8] == b"WATC\x01\0\0\0" and len(raw) >= 12
+            and len(raw) == 12 + 4 * struct.unpack_from("<I", raw, 8)[0]):
+        return "WatchList"
+    if raw[:8] == b"CMST\x01\0\0\0" and len(raw) == 16:
+        return "StaticCommanderData"
+    if raw[:8] == b"CMDR\x01\0\0\0" and len(raw) == 1248:
+        return "CommanderData"
+    if raw[:8] == b"TMST\x01\0\0\0" and len(raw) == 88:
+        return "TeamStaticData"
+    if raw[:8] == b"TEAM\x01\0\0\0" and len(raw) >= 496:
+        return "TeamData"
     if is_text(raw):
         return "text"
     if valid_pilot_suffix(raw):

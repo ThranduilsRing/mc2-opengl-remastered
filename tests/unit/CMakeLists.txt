@@ -457,6 +457,10 @@ target_sources(mc2_tests PRIVATE
     ${MC2_WORKTREE_ROOT}/code/save_archive.cpp
     test_save_sections.cpp
     test_save_field_omission.cpp
+    test_commander_archive.cpp
+    test_team_archive.cpp
+    test_object_manager_archive.cpp
+    test_watch_list_archive.cpp
     ${MC2_WORKTREE_ROOT}/code/save_sections.cpp
     test_abl_outarrays.cpp
 )

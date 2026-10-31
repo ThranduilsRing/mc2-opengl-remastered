@@ -7,8 +7,22 @@ sys.path.insert(0, HERE)
 import save_inspect as mod  # noqa: E402
 
 
+def test_commander_values_use_tags_before_native_sizes():
+    assert mod.packet_kind(0, b"CMST\x01\0\0\0" + bytes(8)) == "StaticCommanderData"
+    assert mod.packet_kind(0, b"CMDR\x01\0\0\0" + bytes(1240)) == "CommanderData"
+    assert mod.packet_kind(0, b"TMST\x01\0\0\0" + bytes(80)) == "TeamStaticData"
+    assert mod.packet_kind(0, b"TEAM\x01\0\0\0" + bytes(488)) == "TeamData"
+
+
 def test_selftest_passes():
     assert mod.selftest() == 0
+
+
+def test_object_manager_and_watch_value_tags():
+    import struct
+    assert mod.packet_kind(0, b"OBMH\x01\0\0\0" + bytes(60)) == "ObjectManagerData"
+    assert mod.packet_kind(0, b"WATC\x01\0\0\0" + struct.pack("<I3i", 3, 0, 7, 2)) == "WatchList"
+    assert mod.packet_kind(0, b"WATC\x01\0\0\0" + struct.pack("<I2i", 3, 0, 7)) != "WatchList"
 
 
 def test_record_sizes_match_the_build_time_guard():

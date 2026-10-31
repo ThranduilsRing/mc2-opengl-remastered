@@ -442,7 +442,8 @@ long Team::Save (PacketFilePtr file, long packetNum)
 	memcpy(staticData.relations,relations,sizeof(char) * MAX_TEAMS * MAX_TEAMS);
 	memcpy(staticData.noPain,noPain,sizeof(bool) * MAX_TEAMS);
 
-	file->writePacket(packetNum,reinterpret_cast<MemoryPtr>(&staticData),sizeof(TeamStaticData),STORAGE_TYPE_RAW);
+	auto staticBytes = mc2::save::encodeTaggedRecord(staticData, mc2::save::teamStaticTag);
+	file->writePacket(packetNum, staticBytes.data(), static_cast<unsigned int>(staticBytes.size()), STORAGE_TYPE_RAW);
 	packetNum++;
 
 	for (long i=0;i<numTeams;i++)
@@ -454,8 +455,7 @@ long Team::Save (PacketFilePtr file, long packetNum)
 		const long liveRoster = std::clamp<long>(teams[i]->rosterSize, 0, MAX_MOVERS_PER_TEAM);
 		data.rosterSize = liveRoster;
 		memcpy(data.roster,teams[i]->roster,sizeof(GameObjectWatchID) * std::min<long>(liveRoster, 120));
-		mc2::save::Bytes bytes(sizeof(data));
-		memcpy(bytes.data(), &data, sizeof(data));
+		auto bytes = mc2::save::encodeTaggedRecord(data, mc2::save::teamDataTag);
 		if (liveRoster > 120) {
 			std::vector<uint32_t> roster(teams[i]->roster, teams[i]->roster + liveRoster);
 			mc2::save::Archive archive;
@@ -471,11 +471,21 @@ long Team::Save (PacketFilePtr file, long packetNum)
 }
 
 //---------------------------------------------------------------------------
-long Team::Load (PacketFilePtr file, long packetNum)
+long Team::Load (PacketFilePtr file, long packetNum, bool values)
 {
 	TeamStaticData staticData{};
 
-	file->readPacket(packetNum,reinterpret_cast<MemoryPtr>(&staticData));
+	file->seekPacket(packetNum);
+	const auto staticSize = file->getPacketSize();
+	if (staticSize != (values ? 88 : sizeof(staticData))) Fatal(0, "Invalid team header size");
+	mc2::save::Bytes staticBytes(staticSize);
+	if (file->readPacket(packetNum, staticBytes.data()) != staticSize) Fatal(0, "Short team header");
+	if (values) {
+		if (!mc2::save::decodeTaggedRecord(staticBytes, staticData, mc2::save::teamStaticTag))
+			Fatal(0, "Invalid team header value");
+	} else memcpy(&staticData, staticBytes.data(), sizeof(staticData));
+	if (staticData.numTeams < 1 || staticData.numTeams > MAX_TEAMS ||
+		staticData.homeTeamId < 0 || staticData.homeTeamId >= MAX_TEAMS) Fatal(0, "Invalid team header");
 	packetNum++;
 
 	numTeams = staticData.numTeams;
@@ -487,13 +497,18 @@ long Team::Load (PacketFilePtr file, long packetNum)
 		TeamData data{};
 		file->seekPacket(packetNum);
 		const auto size = file->getPacketSize();
-		if (size < sizeof(data) || size > sizeof(data) + 4 + MAX_MOVERS_PER_TEAM * 4) Fatal(0, "Invalid team packet size");
+		const auto prefix = values ? 496u : sizeof(data);
+		if (size < prefix || size > prefix + 4 + MAX_MOVERS_PER_TEAM * 4) Fatal(0, "Invalid team packet size");
 		mc2::save::Bytes bytes(size);
-		file->readPacket(packetNum, bytes.data());
-		memcpy(&data, bytes.data(), sizeof(data));
+		if (file->readPacket(packetNum, bytes.data()) != size) Fatal(0, "Short team packet");
+		if (values) {
+			if (!mc2::save::decodeTaggedRecord(std::span(bytes).first(prefix), data, mc2::save::teamDataTag))
+				Fatal(0, "Invalid team value record");
+		} else memcpy(&data, bytes.data(), sizeof(data));
+		if (data.id < 0 || data.id >= MAX_TEAMS) Fatal(0, "Invalid team identity");
 		std::vector<uint32_t> roster;
-		if (size > sizeof(data)) {
-			mc2::save::Archive archive(std::span(bytes).subspan(sizeof(data)));
+		if (size > prefix) {
+			mc2::save::Archive archive(std::span(bytes).subspan(prefix));
 			archive.sequence(roster, MAX_MOVERS_PER_TEAM);
 			if (!archive.finish() || roster.size() != data.rosterSize) Fatal(0, "Invalid extended roster");
 		} else if (data.rosterSize > 120) Fatal(0, "Missing extended roster");
