@@ -3414,6 +3414,13 @@
           "text": "import console_child  # noqa: E402"
         },
         {
+          "path": "tools/perf/paired_cpu.py",
+          "line": 16,
+          "evidence": "import",
+          "reference": "console_child",
+          "text": "import console_child"
+        },
+        {
           "path": "tools/phase/asm_dead_strip.py",
           "line": 22,
           "evidence": "import",

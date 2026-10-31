@@ -13,6 +13,7 @@ from types import SimpleNamespace
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import mission_cpu_profile as cpu
+import console_child
 
 ZONES = ("Frame", "GameLogic", "DrawScreen", "SwapWindow")
 
@@ -84,7 +85,8 @@ def run(args, psutil):
                             subprocess.run([sys.executable, str(cpu.ROOT / "scripts/deploy_payload.py"),
                                 str(install), "--target", "game", "--source-root", str(source),
                                 "--build-dir", str(exe.parent), "--allow-new-target", "--skip-kit"],
-                                stdout=log, stderr=subprocess.STDOUT, check=True)
+                                stdout=log, stderr=subprocess.STDOUT, check=True,
+                                **console_child.child_kwargs(redirected=True))
                     options = SimpleNamespace(install=install, seconds=args.seconds, short_view=True)
                     pair[arm] = cpu.profile(options, mission, directory, psutil)
                 except (Exception, SystemExit) as exc:
