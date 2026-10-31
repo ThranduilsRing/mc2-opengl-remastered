@@ -234,6 +234,11 @@ class GateState:
         if base is not None:
             command = [arg.replace(str(base), '{INSTALL}').replace(base.as_posix(), '{INSTALL}') for arg in command]
         ambient = {k: v for k, v in os.environ.items() if k.startswith('MC2_') or k == 'PYTHONPATH'}
+        if mod_battery:
+            overrides = dict(overrides)
+            for env in (overrides, ambient):
+                if 'MC2_SMOKE_ARTIFACT_ROOT' in env:
+                    env['MC2_SMOKE_ARTIFACT_ROOT'] = '{PROOF}/smokes'
         return hashlib.sha256(json.dumps([command, overrides, hashes, ambient], sort_keys=True).encode()).hexdigest()
 
     def reusable(self, name, command, overrides):
@@ -276,8 +281,12 @@ class GateState:
                 report = max(reports, key=lambda p: p.stat().st_mtime_ns) if reports else None
                 if (report and signature and signature == self.started_signatures.get(name)
                         and report not in self.started_reports.get(name, set())):
+                    roots = [report.parent]
+                    if overrides.get('MC2_SMOKE_ARTIFACT_ROOT'):
+                        roots.append(Path(overrides['MC2_SMOKE_ARTIFACT_ROOT']))
                     evidence = {str(p): hashlib.sha256(p.read_bytes()).hexdigest()
-                                for p in report.parent.rglob('*') if p.is_file() and p.suffix in ('.json', '.log')}
+                                for root in roots for p in root.rglob('*')
+                                if p.is_file() and p.suffix in ('.json', '.log')}
             artefact = overrides.get("MC2_SMOKE_ARTIFACT_ROOT", self.data["artefact_dir"])
             for option in ("--out", "--out-root"):
                 if option in command:

@@ -114,7 +114,7 @@ def test_runtime_resume_invalidates_changed_file_input(journal, monkeypatch):
     assert result == 0 and not state.reused
 
 
-@pytest.mark.parametrize('change', ['none', 'head', 'mod', 'base', 'shader', 'proof', 'missing-proof', 'failed', 'ambient', 'candidate', 'during-run', 'stale-report'])
+@pytest.mark.parametrize('change', ['none', 'head', 'mod', 'base', 'shader', 'proof', 'missing-proof', 'failed', 'ambient', 'candidate', 'during-run', 'stale-report', 'routing', 'engine-proof'])
 def test_mod_receipt_replays_only_identical_inputs_and_retained_proof(journal, monkeypatch, change, capsys):
     import mod_smoke as mods
     import shutil
@@ -126,15 +126,18 @@ def test_mod_receipt_replays_only_identical_inputs_and_retained_proof(journal, m
         p.parent.mkdir(parents=True, exist_ok=True); p.write_bytes(b'initial')
     monkeypatch.setattr(mods, 'BATTERY', [('One', 'one', None)])
     monkeypatch.setattr(mods, 'engine_payload_items', lambda *a: [(files[2], 'shaders/vulkan/shader.spv')])
+    output = root / 'artifacts'
     def steps(candidate):
         return [('mods', ['tools/mod_smoke.py', '--base-install', str(candidate), '--install-root', str(mod_root),
-                          '--build-dir', str(build), '--stage-root', str(proof)], {})]
+                          '--build-dir', str(build), '--stage-root', str(proof)], {'MC2_SMOKE_ARTIFACT_ROOT': str(output)})]
     def first(*a, **kw):
         if change == 'during-run':
             files[0].write_text(files[0].read_text() + 'changed')
         (proof / 'run').mkdir(parents=True, exist_ok=True)
         (proof / 'run/battery.json').write_text('[{"exit": 0}]')
         (proof / 'run/engine.log').write_text('PASS')
+        output.mkdir(exist_ok=True)
+        (output / 'mission.log').write_text('engine proof')
         return types.SimpleNamespace(returncode=int(change == 'failed'), gate_elapsed=489.3)
     if change == 'stale-report':
         first()
@@ -150,6 +153,10 @@ def test_mod_receipt_replays_only_identical_inputs_and_retained_proof(journal, m
         (proof / 'run/battery.json').unlink()
     if change == 'ambient':
         monkeypatch.setenv('MC2_OPTIONS_OVERRIDE', 'RemasteredBuildings=FALSE')
+    if change == 'engine-proof':
+        (output / 'mission.log').unlink()
+    if change == 'routing':
+        output = root / 'another-proof-root'
     if change == 'candidate':
         shutil.copytree(base, root / 'another-candidate')
         base = root / 'another-candidate'
@@ -161,7 +168,7 @@ def test_mod_receipt_replays_only_identical_inputs_and_retained_proof(journal, m
     monkeypatch.setattr(gate, 'git', lambda *a: head)
     result, state = run_state(journal, monkeypatch, steps(base), child, head=head)
     assert result == int(change == 'failed')
-    assert bool(state.reused) == (change in ('none', 'candidate'))
+    assert bool(state.reused) == (change in ('none', 'candidate', 'routing'))
     assert bool(seen) == (not state.reused)
     if state.reused:
         assert state.data['stages']['mods']['seconds'] == 489.3
