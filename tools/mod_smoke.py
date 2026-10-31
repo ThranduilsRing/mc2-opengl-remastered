@@ -958,6 +958,10 @@ def battery(args) -> int:
             if not layer.is_dir():
                 raise FileNotFoundError(f'mod install not found: {layer}')
         picks = pick_missions(layers, folder, args.mission)
+        # The merge gate samples one 15s mission per mod. Standalone/nightly
+        # batteries retain the first + middle campaign coverage.
+        if os.environ.get('MC2_IN_GATE') == '1':
+            picks = picks[:1]
         plan.append((display, folder, layers, picks))
         print(f'[mod_smoke] {display}: mission plan {picks}', flush=True)
     stages.preflight(stage_root)
@@ -975,7 +979,8 @@ def battery(args) -> int:
     workers = 1 if os.environ.get('MC2_HOST_LEASE_BATCH') or args.fail_fast else getattr(args, 'workers', 2)
     def smoke(entry, staged, stats, stage_s):
         display, folder, layers, picks = entry
-        timeout = max(args.timeout, 600) if folder == 'MCO-Carver5' else args.timeout
+        timeout = (min(args.timeout, 90) if os.environ.get('MC2_IN_GATE') == '1'
+                   else max(args.timeout, 600) if folder == 'MCO-Carver5' else args.timeout)
         results = []
         precheck = None
         if getattr(args, 'asset_load_exe', None):

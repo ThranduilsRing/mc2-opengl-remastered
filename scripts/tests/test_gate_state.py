@@ -72,6 +72,48 @@ def test_resume_invalidates_changed_evidence(journal, monkeypatch, change):
     assert result == 0 and not state.reused
 
 
+@pytest.mark.parametrize('change', ['none', 'script', 'policy', 'head', 'failure', 'ambient'])
+def test_offline_receipt_uses_head_and_input_hashes_without_resume(journal, monkeypatch, change):
+    script = journal[0].parent / 'check.py'
+    policy = journal[0].parent / 'policy.json'
+    script.write_text('check v1')
+    policy.write_text('{}')
+    steps = [('contracts', [str(script), str(policy)], {})]
+    first = lambda *a, **kw: types.SimpleNamespace(returncode=int(change == 'failure'), gate_elapsed=135.4)
+    run_state(journal, monkeypatch, steps, first)
+    if change == 'script':
+        script.write_text('check v2')
+    if change == 'policy':
+        policy.write_text('{"ceiling": 1}')
+    if change == 'ambient':
+        monkeypatch.setenv('MC2_OPTIONS_OVERRIDE', 'RemasteredBuildings=FALSE')
+    head = 'new head' if change == 'head' else 'head'
+    monkeypatch.setattr(gate, 'git', lambda *a: head)
+    # Offline proofs do not depend on the game executable's presence or bytes.
+    journal[1].unlink()
+    seen = []
+    def child(*a, **kw):
+        seen.append(a)
+        return types.SimpleNamespace(returncode=0)
+    result, state = run_state(journal, monkeypatch, steps, child, head=head)
+    assert result == 0
+    assert bool(seen) == (change != 'none')
+    assert state.reused == (['contracts'] if change == 'none' else [])
+    if change == 'none':
+        assert state.data['stages']['contracts']['seconds'] == 135.4
+
+
+def test_runtime_resume_invalidates_changed_file_input(journal, monkeypatch):
+    policy = journal[0].parent / 'policy.json'
+    policy.write_text('{}')
+    steps = [('saveload-mc2_03', ['check', '--mask', str(policy)], {})]
+    child = lambda *a, **kw: types.SimpleNamespace(returncode=0)
+    run_state(journal, monkeypatch, steps, child)
+    policy.write_text('{"changed": true}')
+    result, state = run_state(journal, monkeypatch, steps, child, resume=True)
+    assert result == 0 and not state.reused
+
+
 def test_dependency_reuse_accepts_resumed_pass_but_not_failed_source(journal, monkeypatch):
     source = ("source", ["source"], {})
     dependent = ("dependent", ["never-run"], {"MC2_GATE_SKIP_REASON": "covered", "MC2_GATE_REUSE_STAGE": "source"})

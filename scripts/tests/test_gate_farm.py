@@ -48,6 +48,20 @@ def test_classic_docs_do_not_schedule_runtime_proofs():
     assert not any(n.endswith('-classic') for n, _, _ in steps)
 
 
+def test_mod_payload_cache_survives_random_candidate_names(tmp_path, monkeypatch):
+    monkeypatch.setattr(gate, 'ROOT', tmp_path / 'lane-c')
+    roots = []
+    for candidate in ('stock-random-one', 'stock-random-two'):
+        steps = gate.install_plan(gate.plan(6), tmp_path / candidate)
+        command = next(c for n, c, _ in steps if n == 'mods')
+        roots.append(command[command.index('--stage-root') + 1])
+    assert roots[0] == roots[1]
+    assert roots[0].endswith('lane-c-mods-stage')
+    monkeypatch.setattr(gate, 'ROOT', tmp_path / 'other-lane')
+    command = next(c for n, c, _ in gate.install_plan(gate.plan(6), tmp_path / 'candidate') if n == 'mods')
+    assert command[command.index('--stage-root') + 1] != roots[0]
+
+
 def test_kit_visibility_is_nightly_but_catching_stages_remain():
     for full in (False, True):
         steps = gate.affected_plan(gate.plan(6), ['code/mission_update.cpp'], full=full)
@@ -118,8 +132,8 @@ def test_farm_trio_overlaps_serial_saves_after_deploy(tmp_path, monkeypatch, fai
     monkeypatch.setattr(gate, 'run_child', local)
     monkeypatch.setattr(gate, 'farm_stage', farm)
     steps = [('deploy', ['deploy'], {}), ('mods', ['mods'], {})]
-    steps += [('determinism-' + m, ['farm-' + m], {}) for m in ('mc2_03', 'mc2_10', 'mc2_24')]
-    steps += [('saveload-mc2_01', ['save', '--install', str(tmp_path / 'install')], {})]
+    steps += [('determinism-' + m, ['farm-' + m, '--install', str(tmp_path / 'install')], {}) for m in ('mc2_03', 'mc2_10', 'mc2_24')]
+    steps += [('saveload-mc2_01', ['save', 'tools/saveload_roundtrip.py', '--install', str(tmp_path / 'install')], {})]
     assert gate.execute_parallel(steps, 'head', farm_determinism=True) == int(failure is not None)
     assert len([c for c in calls if c.startswith('farm-')]) == 3
     # Windowed validation must remain on the host even when the farm is selected.
@@ -141,7 +155,7 @@ def test_farm_queue_timeout_repeats_only_after_pending_job_cancelled(tmp_path):
     assert seen[-1] == command
 
 
-@pytest.mark.parametrize('depth,occupied,expected', [(0, 2, True), (1, 2, False), (2, 2, False), (0, 0, False)])
+@pytest.mark.parametrize('depth,occupied,expected', [(0, 2, True), (1, 2, False), (2, 2, False), (0, 0, True)])
 @pytest.mark.parametrize('prefix', ['', '** WARNING: connection is not using a post-quantum key exchange algorithm.\n'])
 def test_farm_selection_compares_queue_to_host_wait(tmp_path, monkeypatch, depth, occupied, expected, prefix):
     from smoke_lib import host_lease
@@ -151,8 +165,9 @@ def test_farm_selection_compares_queue_to_host_wait(tmp_path, monkeypatch, depth
     assert gate.choose_farm(lambda *a, **kw: SimpleNamespace(returncode=0, stdout=prefix + json.dumps({'depth': depth}))) == expected
 
 
-def test_stock_takes_half_saves_after_tier1_and_mods(tmp_path, monkeypatch):
+def test_stock_takes_all_saves_after_tier1_and_mods(tmp_path, monkeypatch):
     mods_done, tier_done = threading.Event(), threading.Event()
+    saving = threading.Event()
     seen = []
     @contextmanager
     def copy(install):
@@ -162,12 +177,15 @@ def test_stock_takes_half_saves_after_tier1_and_mods(tmp_path, monkeypatch):
             mods_done.set()
         elif command[0] == 'tier1':
             tier_done.set()
+        elif command[0] == 'determinism':
+            assert saving.wait(2), 'saves must overlap the determinism worker'
         elif 'tools/saveload_roundtrip.py' in command:
             assert mods_done.is_set()
             install = command[command.index('--install') + 1]
             if install.endswith('install'):
                 assert tier_done.is_set()
             seen.append(install)
+            saving.set()
         return SimpleNamespace(returncode=0)
     monkeypatch.delenv('MC2_HOST_LEASE_BATCH', raising=False)
     monkeypatch.setattr(gate, 'git', lambda *a: 'head')
@@ -175,7 +193,8 @@ def test_stock_takes_half_saves_after_tier1_and_mods(tmp_path, monkeypatch):
     monkeypatch.setattr(gate, 'stock_copy', copy)
     monkeypatch.setattr(gate, 'run_child', child)
     steps = [('deploy', ['deploy'], {}), ('tier1', ['tier1'], {}), ('mods', ['mods'], {})]
+    steps += [('determinism-mc2_10', ['determinism', '--install', str(tmp_path / 'install')], {})]
     steps += [('saveload-' + str(i), ['python', 'tools/saveload_roundtrip.py', '--install', str(tmp_path / 'install')], {}) for i in range(4)]
     assert gate.execute_parallel(steps, 'head') == 0
-    assert sum(p.endswith('clone') for p in seen) == 2
-    assert sum(p.endswith('install') for p in seen) == 2
+    assert sum(p.endswith('clone') for p in seen) == 0
+    assert sum(p.endswith('install') for p in seen) == 4

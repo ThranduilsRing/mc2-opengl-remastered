@@ -565,7 +565,8 @@ def test_old_cooked_cache_is_discarded_and_not_reused(tmp_path):
 
 
 @pytest.mark.parametrize('asset_mode', [None, 'fail', 'pass'])
-def test_single_worker_waits_for_cold_run_and_collects_later_failures(tmp_path, monkeypatch, asset_mode):
+@pytest.mark.parametrize('in_gate', [False, True])
+def test_single_worker_waits_for_cold_run_and_collects_later_failures(tmp_path, monkeypatch, asset_mode, in_gate):
     from types import SimpleNamespace
     import threading
     source, base, stages = tmp_path / 'source', tmp_path / 'base', tmp_path / 'stages'
@@ -573,9 +574,11 @@ def test_single_worker_waits_for_cold_run_and_collects_later_failures(tmp_path, 
         (source / folder).mkdir(parents=True)
     base.mkdir()
     monkeypatch.delenv('MC2_HOST_LEASE_BATCH', raising=False)
+    monkeypatch.setenv('MC2_IN_GATE', '1' if in_gate else '0')
     monkeypatch.setattr(ms, 'select_mods', lambda _: [('One', 'one', ''), ('Two', 'two', '')])
     monkeypatch.setattr(ms, 'mod_layers', lambda root, folder, _: [root / folder])
     monkeypatch.setattr(ms, 'pick_mission', lambda *a: ('mc2_01', 'fixture'))
+    monkeypatch.setattr(ms, 'pick_missions', lambda *a: [('mc2_01', 'fixture'), ('mc2_02', 'middle')])
     monkeypatch.setattr(ms, 'ensure_loose_mission', lambda *a: False)
     monkeypatch.setattr(ms, 'resolve_build', lambda *a: (base / 'mc2.exe', base))
     monkeypatch.setattr(ms.stages, 'preflight', lambda *a: None)
@@ -598,6 +601,8 @@ def test_single_worker_waits_for_cold_run_and_collects_later_failures(tmp_path, 
         calls.append('stage-' + target.name)
         return {}
     def run(target, *a):
+        assert a[1] == 15
+        assert a[2] == (90 if in_gate else 300)
         if target.name == 'one':
             threading.Event().wait(0.1)
             finished.set()
@@ -612,7 +617,7 @@ def test_single_worker_waits_for_cold_run_and_collects_later_failures(tmp_path, 
     monkeypatch.setattr(ms, 'asset_precheck', precheck)
     args = SimpleNamespace(install_root=source, stage_root=stages, base_install=base,
                            exe=None, build_dir=None, mod='', mission=None, keep_stages=False,
-                           workers=1, fail_fast=False, duration=5, timeout=30, window=90)
+                           workers=1, fail_fast=False, duration=15, timeout=300, window=90)
     if asset_mode:
         args.asset_load_exe = base / 'probe.exe'
     assert ms.battery(args) == 1
@@ -621,7 +626,9 @@ def test_single_worker_waits_for_cold_run_and_collects_later_failures(tmp_path, 
         expected = ['stage-one', 'asset-one', 'stage-two', 'asset-two']
     elif asset_mode == 'pass':
         expected = ['stage-one', 'asset-one', 'run-one', 'stage-two', 'asset-two', 'run-two']
+    if not in_gate:
+        expected = [item for item in expected for _ in range(2 if item.startswith('run-') else 1)]
     assert calls == expected
     import json
     report = next(stages.glob('*/battery.json'))
-    assert len(json.loads(report.read_text())) == 2
+    assert len(json.loads(report.read_text())) == (2 if in_gate else 4)

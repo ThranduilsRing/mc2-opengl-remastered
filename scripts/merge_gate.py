@@ -132,7 +132,7 @@ class GateState:
             self.lock.close()
             raise RuntimeError(f"gate-state held by a live PID: {self.path}") from exc
         try:
-            if self.resume and self.path.exists():
+            if self.path.exists():
                 previous = json.loads(self.path.read_text(encoding="utf-8"))
                 self.data["stages"] = previous.get("stages", {})
             self.data["exe_sha"] = self.exe_sha()
@@ -164,16 +164,41 @@ class GateState:
             return hashlib.file_digest(source, "sha256").hexdigest()
 
     def signature(self, command, overrides):
-        return hashlib.sha256(json.dumps([command, overrides], sort_keys=True).encode()).hexdigest()
+        # HEAD pins clean tracked sources. Also hash file inputs: commands and
+        # policy/data receipts can change without a new source commit.
+        inputs = {ROOT / 'tools/save_noise_mask.json', ROOT / 'tools/mod_known_failures.json',
+                  ROOT / 'Gates/gate_table.json', ROOT / 'scripts/merge_gate.py',
+                  ROOT / 'build64-ninja/CMakeCache.txt'}
+        inputs.update((ROOT / 'tests/saveload/baselines').glob('*.json'))
+        inputs.update((ROOT / 'tests/smoke/sim_determinism').glob('*.json'))
+        for arg in command:
+            path = Path(arg)
+            if not path.is_absolute():
+                path = ROOT / path
+            if path.is_file():
+                inputs.add(path)
+            elif path.is_dir() and '--install' in command and arg == command[command.index('--install') + 1]:
+                inputs.add(path / '.deployed_manifest.csv')
+        hashes = {}
+        for path in sorted(inputs, key=str):
+            if path.is_file():
+                with path.open('rb') as source:
+                    hashes[str(path)] = hashlib.file_digest(source, 'sha256').hexdigest()
+            else:
+                hashes[str(path)] = None
+        ambient = {k: v for k, v in os.environ.items() if k.startswith('MC2_') or k == 'PYTHONPATH'}
+        return hashlib.sha256(json.dumps([command, overrides, hashes, ambient], sort_keys=True).encode()).hexdigest()
 
     def reusable(self, name, command, overrides):
         row = self.data["stages"].get(name, {})
         sha = self.exe_sha()
-        return (self.resume and sha is not None and row.get("head") == self.head
-                and row.get("exe_sha") == sha and stage_passed(row.get("status", ""))
+        offline = name in ('contracts', 'harnesses', 'pytest')
+        return ((self.resume or offline) and row.get("head") == self.head
+                and (offline or sha is not None and row.get("exe_sha") == sha)
+                and stage_passed(row.get("status", ""))
                 and row.get("signature") == self.signature(*self.specs.get(name, (command, overrides))))
 
-    def record(self, name, command, overrides, status, seconds):
+    def record(self, name, command, overrides, status, seconds, scheduler_wait=0.0):
         with self.mutex:
             artefact = overrides.get("MC2_SMOKE_ARTIFACT_ROOT", self.data["artefact_dir"])
             for option in ("--out", "--out-root"):
@@ -181,7 +206,7 @@ class GateState:
                     artefact = command[command.index(option) + 1]
             self.data["stages"][name] = dict(
                 head=self.head, exe_sha=self.exe_sha(), status=status, seconds=seconds,
-                artefact_dir=artefact,
+                artefact_dir=artefact, scheduler_wait_seconds=scheduler_wait,
                 signature=self.signature(*self.specs.get(name, (command, overrides))))
             self.write()
 
@@ -373,7 +398,11 @@ def install_plan(steps, install):
             idx = command.index("--deploy")
             command[idx:idx + 2] = ["--exe", str(install / "mc2.exe")]
         if name == "mods":
-            command += ["--base-install", str(install), "--stage-root", str(install.parent / (install.name + "-mods-stage")), "--duration", "15"]
+            # Candidate names are random and their siblings are deleted at exit.
+            # Keep the existing incremental payload cache across windows, scoped
+            # to this worktree; battery() still removes every disposable install.
+            stage_root = Path('E:/mc2-archive-2026-10/proofs') / (ROOT.name + '-mods-stage')
+            command += ["--base-install", str(install), "--stage-root", str(stage_root), "--duration", "15"]
         result.append((name, command, env))
     return result
 
@@ -469,7 +498,9 @@ def choose_farm(runner=run_child):
         result = runner([sys.executable, 'tools/farm/host.py', 'queue'], cwd=ROOT, env=os.environ.copy())
         queue_lines = result.stdout.strip().splitlines()
         depth = int(json.loads(queue_lines[-1])['depth']) if not result.returncode and queue_lines else -1
-        selected = depth >= 0 and depth * 15 < min(host_minutes, 20)
+        # This snapshot precedes deploy: our own two host chains are not live
+        # yet. An empty farm is useful even when both host slots look idle.
+        selected = depth == 0 or 0 < depth * 15 < min(host_minutes, 20)
         print(f'[merge_gate] farm depth={depth} estimated={depth * 15}min host-slot estimate={host_minutes}min selected={selected}', flush=True)
         return selected
     except (OSError, ValueError, KeyError, subprocess.SubprocessError) as exc:
@@ -544,10 +575,15 @@ def execute_parallel(steps, head, dry_run=False, keep_going=False, farm_determin
             if harness_future and command == harness[1]:
                 return harness_future.result()
             if any(Path(arg).name == 'saveload_roundtrip.py' for arg in command):
+                queued = time.monotonic()
                 mods_done.wait()
                 # Both workers still share the user's quicksave filenames.
                 with save_lock:
-                    return run_child(command, cwd=cwd, env=env)
+                    waited = time.monotonic() - queued
+                    result = timed_child(command, cwd=cwd, env=env)
+                    result.gate_scheduler_wait = waited
+                    print(f'[merge_gate] saveload scheduler wait={waited:.1f}s child={result.gate_elapsed:.1f}s', flush=True)
+                    return result
             return run_child(command, cwd=cwd, env=env)
         # The wrapper deliberately leaves leasing to each harness, rather than
         # execute's legacy exclusive reservation for a serial chain.
@@ -564,17 +600,10 @@ def execute_parallel(steps, head, dry_run=False, keep_going=False, farm_determin
             determinism += [s for s in stock if s[0] in ("kit-visibility", "quiet")
                             and not s[2].get("MC2_GATE_SKIP_REASON")]
             stock = [s for s in stock if s not in determinism]
-        # A mod cold-load starves the save fixture of frames (W83 false reds), so
-        # saveload rows never share a window with the mods battery: they join the
-        # auxiliary worker, which runs mods first. (Without a private clone mods
-        # runs serially ahead of the stock chain, so the order still holds.)
-        if any(not s[2].get("MC2_GATE_SKIP_REASON") for s in mods):
-            saves = [s for s in stock if s[0].startswith("saveload-")]
-            # The stock half follows tier1, and waits for mods in runner.
-            shared = saves[1::2]
-            stock = [s for s in stock if s not in saves or s in shared]
-            determinism += [s for s in saves if s not in shared]
-        else:
+        # All save rows stay on stock, after tier1 and the mods_done barrier.
+        # Splitting them did not parallelize shared quicksave writes; it queued
+        # half the saves behind every determinism row on the other worker.
+        if not any(not s[2].get("MC2_GATE_SKIP_REASON") for s in mods):
             mods_done.set()
         offline = [s for s in stock if s[0] in ("contracts", "harnesses", "pytest")]
         offline_result = execute(offline, head, runner=runner, completed=completed) if offline else 0
@@ -595,8 +624,8 @@ def execute_parallel(steps, head, dry_run=False, keep_going=False, farm_determin
             pending.append(pool.submit(execute, farm, head, runner=farm_runner, completed=completed))
         if mods:
             copy_context, copy_future = None, None
-            if determinism:
-                command = next(c for _, c, _ in determinism if "--install" in c)
+            command = next((c for _, c, _ in determinism + stock if "--install" in c), None)
+            if command:
                 install = Path(command[command.index("--install") + 1]).resolve()
                 copy_context = stock_copy(install)
                 copy_future = pool.submit(copy_context.__enter__)
@@ -728,7 +757,7 @@ def execute(steps, head, dry_run=False, runner=run_child, completed=None):
             ACTIVE_STATE.reused.append(name)
             completed[name] = status
             results.append((name, status, 0.0))
-            ACTIVE_STATE.record(name, command, overrides, status, 0.0)
+            # Keep original elapsed time and evidence paths in the receipt.
             continue
         reason = overrides.get("MC2_GATE_SKIP_REASON")
         if reason:
@@ -746,7 +775,7 @@ def execute(steps, head, dry_run=False, runner=run_child, completed=None):
                     ACTIVE_STATE.reused.append(name)
                 ACTIVE_STATE.record(name, command, overrides, status, 0.0)
             continue
-        status, elapsed = "SKIPPED", 0.0
+        status, elapsed, scheduler_wait = "SKIPPED", 0.0, 0.0
         if dry_run:
             print("PLAN " + " ".join(f"{k}={v}" for k, v in overrides.items()) + " " + subprocess.list2cmdline(command))
             status = "DRY-RUN"
@@ -773,6 +802,7 @@ def execute(steps, head, dry_run=False, runner=run_child, completed=None):
                 else:
                     result = runner(command, cwd=ROOT, env=dict(os.environ, **overrides, MC2_IN_GATE="1"))
                 measured = getattr(result, "gate_elapsed", None)
+                scheduler_wait = getattr(result, 'gate_scheduler_wait', 0.0)
                 status = "PASS" if result.returncode == 0 else f"FAIL ({result.returncode})"
             except (OSError, RuntimeError, subprocess.SubprocessError) as exc:
                 print(f"[merge_gate] {name}: {exc}", file=sys.stderr)
@@ -782,7 +812,7 @@ def execute(steps, head, dry_run=False, runner=run_child, completed=None):
         results.append((name, status, elapsed))
         completed[name] = status
         if not dry_run and ACTIVE_STATE:
-            ACTIVE_STATE.record(name, command, overrides, status, elapsed)
+            ACTIVE_STATE.record(name, command, overrides, status, elapsed, scheduler_wait)
     print(f"Merge gate HEAD {head} (deploy tree: build64-ninja)")
     print("| Step | Result | Seconds |\n|---|---|---:|")
     for name, status, elapsed in results:
