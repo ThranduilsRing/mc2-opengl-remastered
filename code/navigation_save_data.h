@@ -3,6 +3,21 @@
 #include "save_sections.h"
 
 namespace mc2::save {
+// Derived state is deliberately restored by the existing load/search paths:
+// pending move requests: MOVE_init/MovePathManager construction and warrior
+// load clear them; subsequent orders request fresh paths. PathFindMap worker
+// scratch: MOVE_init and MOVE_configurePathFindMaps allocate both contexts.
+// MapCell mover bits: clear then place restored movers; tileMineCount: rescan.
+// areas_doors/doors_links: reconstruct views over decoded info/link pools;
+// areas_cellsCovered: zero on load. Legacy32bitPtr slots remain inert values.
+// ownerWID/teamID/open: save resets area defaults; restored objects apply state.
+// parent/fromAreaIndex/flags/g/hPrime/fPrime: save clears; calcPath reinitializes.
+// pathExistsTable: allocate and clear; offMapAreas/numOffMapAreas: rescan areas.
+// openHeap: reserve after load, clear per search; startCell/goalCell/goalArea/
+// goalSector/useClosedAreas/moverTeamID: set by each search. closes/opens/
+// calcedPathCost: fresh GlobalMap defaults. blank/hover: set per movement level.
+// doorBuildList/specialAreas: construction-only scratch, fresh map starts empty.
+// gate and mover callbacks: rebound by Mission::loadMovement after map restore.
 struct NavigationFormat {
     bool cells = false;
     bool areas = false;

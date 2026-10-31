@@ -1,6 +1,26 @@
 #include "save_field_probe.h"
 #include "move.h"
 
+#define LINK_MEMBERS &T::doorIndex, &T::doorSide, &T::cost, &T::openCost
+
+TEST_CASE("save fields: map links independent census") {
+    using T = DoorLink;
+    auto sample = save_probe::patterned<T>(LINK_MEMBERS);
+    SAVE_FIELD_SHAPE(sample, doorIndex, doorSide, cost, openCost);
+    CHECK(save_probe::memberBytes<T>(LINK_MEMBERS) == sizeof(T));
+    CHECK(save_probe::roundtrip(sample, [](auto& a, auto& v) { a(v); }, LINK_MEMBERS));
+    std::array<T, 1> values{sample}, decoded{};
+    auto bytes = mc2::save::encodeNavigationRecord(std::span(values), mc2::save::tagDoorLinks);
+    CHECK(bytes.size() == 12 + 11);
+    REQUIRE(mc2::save::decodeNavigationRecord(bytes, std::span(decoded), mc2::save::tagDoorLinks));
+    CHECK(std::memcmp(values.data(), decoded.data(), sizeof(T)) == 0);
+    CHECK_FALSE(mc2::save::decodeNavigationRecord(bytes, std::span(decoded), mc2::save::tagMapDoors));
+    bytes[4] = 2;
+    CHECK_FALSE(mc2::save::decodeNavigationRecord(bytes, std::span(decoded), mc2::save::tagDoorLinks));
+    CHECK(decoded[0].cost == sample.cost);
+    CHECK(decoded[0].openCost == sample.openCost);
+}
+
 #define DOOR_MEMBERS &T::row, &T::col, &T::length, &T::open, &T::teamID, &T::area, \
     &T::areaCost, &T::direction, &T::numLinks, &T::links_Legacy32bitPtr, &T::cost, \
     &T::parent, &T::fromAreaIndex, &T::flags, &T::g, &T::hPrime, &T::fPrime

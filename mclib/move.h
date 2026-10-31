@@ -312,6 +312,8 @@ inline constexpr unsigned int MAPCELL_BUILD_NOT_SET_MASK = 0x80000000;
 
 struct _MapCell {
 	unsigned int data;
+	// The mover bit is cleared on load and rebuilt by placing restored movers;
+	// tileMineCount and its render dirty state are rebuilt from these cell bits.
 	void serialize(mc2::save::Archive& a) { a(data); }
 
 	unsigned int getTerrain (void) {
@@ -1172,6 +1174,9 @@ struct _DoorLink {
 	char					doorSide;
 	int					cost;
 	int					openCost;
+	// Both costs are continuation state. Loading a save must not call openArea
+	// on ordinary areas: that would overwrite the restored link costs.
+	void serialize(mc2::save::Archive& a) { a(doorIndex, doorSide, cost, openCost); }
 }; using DoorLink = _DoorLink;
 
 using DoorLinkPtr = DoorLink*;
