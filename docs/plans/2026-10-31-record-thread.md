@@ -20,7 +20,7 @@ Main retains SDL/input, UI building, camera and extraction. Validate this agains
 | Step | Status | Exit requirement / next action |
 |---|---|---|
 | S1 inventory | Native shape-leaf census DONE at `46a9f82a7`; external receipts still open | Farm repeats and save/load policy/reference mismatch remain open; no further census changes needed |
-| S2 explicit state | CPU view values PROVEN at `c823bf486`; packet-key lights in progress | CPU-view receipts below; complete the separate packet-key light proof before S3 |
+| S2 explicit state | DONE, proven engine `6fcde0272` | CPU view values, packet-owned light rows/caches and editor viewport callers; final receipts below. Next S3 |
 | S3 rings/lifetimes | NOT STARTED | Three CPU slots, RenderList/HUD values, retirement graveyard, Execute(main)/Draw(record), moved-entry owner assertions |
 | S4 thread | NOT STARTED | Seal after sim commit, consume sealed packets, retire safely; default ON only with all gates green |
 
@@ -323,7 +323,7 @@ All receipts use the existing `E:/mc2-archive-2026-10/proofs/record-thread/` roo
 Next: packet-key light rows, count, generation/revision and three caches; carry the retained version through
 both native feeds and shared upload checks, preserving the baked prefix and same-frame high-water rule.
 
-## S2 packet-key light checkpoint (proof in progress)
+## S2 packet-key light checkpoint (implementation; final proof below)
 
 Light rows/count, row generations/revision and dedup/template/actor-slot maps now belong to an owned CPU Packet.
 Each beginFrame reset assigns a monotonically increasing packet key, independently of simulationFrame.
@@ -345,3 +345,37 @@ stage, then resume the proof stages. Reuse the existing all-target Ninja payload
 `--build-dir A:/Games/mc2-lane8/build-alltargets --build64-root A:/Games/mc2-lane8/build-alltargets`;
 this keeps deploy's provenance, companion and object-freshness checks active on the tree just built.
 Editor follow-up's covering row plus all five ratchets PASS in `s2-editor-contracts.log`.
+
+## S2 final proven checkpoint, 2026-10-31
+
+Tested engine `6fcde027223c0e4795819b81538b12ed255a0d4f`, including packet-light commit `ed9d6207f`
+and the editor CPU viewport correction. Source/branch stayed clean during proof. Local commits only.
+All receipt names below are relative to `E:/mc2-archive-2026-10/proofs/record-thread/`.
+
+| Required proof | Final receipt |
+|---|---|
+| Shared-header all targets | Standalone tools and doctest corpus PASS in `s2-lights-alltargets.log`; the initially failed editor root is corrected by `py -3 tools/build_all_targets.py --root-only -j6`, PASS in `s2-lights-root-fixed.log` (100 s). No repeat of unchanged standalone stages |
+| Native lighting | `py -3 tools/build_contract_harnesses.py --run --unit --unit-only --compile-cache --only object_light_row_harness -j6`: 30 cases / 844 assertions PASS, `s2-lights-unit.log` |
+| Covering contracts / five ratchets | Ten rows PASS in `s2-lights-contracts.log`; editor follow-up's six rows PASS in `s2-editor-contracts.log`; no baselines raised |
+| Verified lane deploy | `s2-lights-deploy.log`: explicit all-target Ninja build dir/root, source manifest `6fcde027223c`, payload verified; one install only |
+| Day/night parity | `s2-lights-pixel-parity.json`: all four PNGs byte-identical to `s1-leaf-ab/`; both new day/night images viewed. Captures in `s2-lights-ab/`, both audit=1, no VIOLATION lines |
+| Pinned 20 s SIMID | `s2-lights-simid-detail.log`: 1630 identical common frames, first 800 baseline frames match every digest; both game logs have audit=1 and no violations |
+| Sync validation 0 | `s2-lights-sync.log`: mc2_10 20 s PASS, errors=0/warnings=0, content errors=0; full `s2-lights-sync-artifacts/` log confirms Khronos sync layer/messenger and audit=1, no violations; lease wait 14 s |
+
+The first light pair is retained as a FAIL in `s2-lights-simid.log`: HZB stderr split its `tested=` record
+around run b's SIMID frame 312 (`s2-lights-simid/b/mc2_10.log:2962-2963`), leaving `animrng=27=`.
+All preceding digest/RNG fields matched. No parser/filter/mask/baseline was changed to accept this line.
+The harness-prescribed diagnostic rerun used the same `check mc2_10 --duration 20 --install
+E:/mc2-installs/claude-record-thread --ref-commit 6fcde0272` plus
+`--env MC2_SIM_IDENTITY_TRACE_DETAIL=1 --out E:/mc2-archive-2026-10/proofs/record-thread/s2-lights-simid-detail`.
+It passed the full comparison and historical baseline. Avoidable cost: a ~6-minute repeat due to interleaved
+diagnostic records; atomic log writes belong in the logging owner follow-up, not a relaxed comparison.
+
+Next S3: three CPU slots selected by render sequence; retain each light Feed together with its native
+instance light indices. Convert RenderList/HUD and the two-slot render snapshot arena to retained value
+packets, then retirement/graveyard through CPU-record completion and last GPU use. Split FX Execute(Main)
+from frozen Draw data and add moved-entry owner assertions. S4 worker integration remains after S3.
+S1 external farm-key/save-policy/paired-performance gaps remain as recorded; no baseline re-pin or new farm job.
+The deployed binary stays at `6fcde0272` after this docs-only closure: use that explicit ref for retained
+proof runs; rebuild on the next engine change. No additional verification is needed for unchanged code.
+Disk: 0 GB freed; leave only `E:/mc2-installs/claude-record-thread`. All own build/game/proof children exited.
