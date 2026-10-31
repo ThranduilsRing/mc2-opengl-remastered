@@ -56,9 +56,9 @@ _SIMID_RECORD = re.compile(re.escape(SIMID) + r"[^\r\n\[]*")
 
 
 def simid_lines(text: str) -> list[str]:
-    # animrng is the terminal SIMID field. Another writer's unbracketed suffix
-    # (e.g. the last 's' of a timing line) is not simulation state.
-    return [_RNG_COUNTS.sub(r" rng=\1", re.sub(r"(\banimrng=\d+).*$", r"\1", m.group().rstrip()))
+    # Remove only a glued console suffix on the numeric animrng field, keeping
+    # every subsequent field in the record (including future SIMID extensions).
+    return [_RNG_COUNTS.sub(r" rng=\1", re.sub(r"(\banimrng=\d+)[a-zA-Z]+(?=\s|$)", r"\1", m.group().rstrip()))
             for m in _SIMID_RECORD.finditer(text)]
 
 

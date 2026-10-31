@@ -29,6 +29,14 @@ def test_cosmetic_rng_counts_do_not_split_hashes():
     assert a == b
 
 
+def test_fields_appended_after_animrng_are_compared():
+    prefix = "[SIMID v1] simframe=1 rng=5/1/1 animrng=2"
+    a = so.simid_lines(prefix + " future=123 tail=abc")
+    b = so.simid_lines(prefix + " future=124 tail=abc")
+    assert a[0].endswith("future=123 tail=abc")
+    assert so.chain(a, 1) != so.chain(b, 1)
+
+
 def test_interleaved_console_lines_keep_every_record():
     # Another thread's line glued after a record, and a record glued after another line.
     text = ("[SIMID v1] simframe=1 rng=5/1/1 animrng=2[SHADOW_BAKE] re-recorded\n"
