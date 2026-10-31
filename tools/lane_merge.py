@@ -10,7 +10,7 @@ staged files into the merge commit.
 Usage:
   py -3 tools/lane_merge.py --precheck <tip>   virtual nifty merge: ratchets, Python suites, callers and mc2 link
   py -3 tools/lane_merge.py <sha-or-branch> [--message "..."] [--dry-run]
-  py -3 tools/lane_merge.py --batch A B C [--dry-run]   several tips in a row: ratchets regenerated and committed after EACH merge,
+  py -3 tools/lane_merge.py --batch A B C [--dry-run]   check each tip, tighten/regenerate once after the batch,
                                                         the build + doctest verify (step e) once at the end
   --message   merge commit subject (default: "merge lane: <subject of the lane tip>"); with --batch a template with {subject} and {n}
   --trailer   commit trailer line (default $MC2_COMMIT_TRAILER (or $MC2_MERGE_TRAILER), else none)
@@ -35,6 +35,8 @@ build-alltargets/.tidy.lock to clear and retries once); 6 a ratchet failed (merg
 Final line: MERGED <sha> (+<follow-up sha>) files=<n> ratchets=OK/FAIL verify=OK/FAIL/SKIPPED overlap=0
 A --batch run first plans every tip (a tip that would abort refuses the whole batch, exit 5, nothing merged); a ratchet failure mid-batch does not
 stop the batch: every tip is merged, then "BATCH RATCHET REDS" lists all failing ratchets per tip, the build is skipped and it exits 6.
+Each tip runs checks without tightening; a green batch regenerates and tightens once,
+commits all owned outputs together, then builds every shipped executable at that final HEAD.
 Every successful merged batch verifies, including tooling-only tips, so the embedded SHA is HEAD.
 A --batch run prints one such line per merged tip (verify=DEFERRED) and a final one for the last tip carrying the single verify verdict (files = total, batch=<n>).
 """
@@ -568,11 +570,12 @@ def resolve_row_table(root: str, path: str) -> bool:
     return git(root, "add", "-u", "--", path).returncode == 0
 
 
-def run_ratchets(root: str, tools_dir: str) -> list[tuple[str, int, str]]:
+def run_ratchets(root: str, tools_dir: str, *, tighten=True) -> list[tuple[str, int, str]]:
     results = []
     for label, rel, args in RATCHETS:
         script = os.path.join(tools_dir, *rel.split("/"))
-        r = run(root, [sys.executable, "-B", script, *args])
+        selected = args if tighten else [a for a in args if a != '--tighten']
+        r = run(root, [sys.executable, "-B", script, *selected])
         # every ratchet always runs; a failing one reports its whole violation list, not just the last lines (W78: first hit only)
         tail = "\n".join(lines(r.stdout)[-60:] if r.returncode else lines(r.stdout)[-3:])
         results.append((label, r.returncode, tail))
@@ -675,10 +678,10 @@ def verify_merged(root: str, mode: str, runner=None) -> tuple[str, list[tuple[st
     return "OK", results
 
 
-def commit_tightened(root: str, pre_dirty: set[str]) -> str | None:
+def commit_tightened(root: str, pre_dirty: set[str], artifacts=()) -> str | None:
     """Commit exactly the baselines the ratchets tightened; skip any that was already dirty."""
     now_dirty = {p for _, p in status_entries(root)}
-    changed = [p for p in TIGHTENED_BASELINES if p in now_dirty and p not in pre_dirty]
+    changed = sorted({p for p in (*TIGHTENED_BASELINES, *artifacts) if p in now_dirty and p not in pre_dirty})
     skipped = [p for p in TIGHTENED_BASELINES if p in now_dirty and p in pre_dirty]
     if skipped:
         print("lane_merge: baseline already had uncommitted edits, left alone: " + ", ".join(skipped),
@@ -917,12 +920,15 @@ def plan_batch(root: str, args, refs: list[str], resolutions_for) -> bool:
     return would_abort
 
 
-def merge_tip(root: str, tools_dir: str, p: dict, message: str, resolutions: dict) -> tuple[str, str | None, list]:
+def merge_tip(root: str, tools_dir: str, p: dict, message: str, resolutions: dict, *, batch=False) -> tuple[str, str | None, list]:
     """Merge one planned tip, regenerate the ratchets, commit the tightened baselines. -> (merge sha, follow-up sha, failed ratchets)."""
     require_clean_generator_inputs(root)
     pre_dirty = {path for _, path in status_entries(root)}
     do_merge(root, p["sha"], message, lane_files=p["lane_files"], resolutions=resolutions)
     merge_sha = git_out(root, "rev-parse", "--short=9", "HEAD")
+    if batch:
+        results = run_ratchets(root, tools_dir, tighten=False)
+        return merge_sha, None, [(label, rc, tail) for label, rc, tail in results if rc != 0]
     artifacts = regenerate_all(root)
     artifact_follow = None
     if artifacts:
@@ -986,7 +992,7 @@ def main(argv: list[str] | None = None) -> int:
             would_abort = plan_batch(root, args, refs, resolutions_for)
             print("PLAN then: " + ", ".join(label for label, _, _ in RATCHETS)
                   + "; regenerate-all and commit changed artifacts; follow-up commit of tightened baselines only"
-                  + (" (after each tip; verify once at the end)" if batch else ""))
+                  + (" (check each tip; tighten/regenerate/commit/verify once at the end)" if batch else ""))
             print("[dry-run] nothing changed")
             if would_abort:
                 print("lane_merge: the merge would abort on the blocking conflicts above", file=sys.stderr)
@@ -1007,7 +1013,7 @@ def main(argv: list[str] | None = None) -> int:
                            + "\n  ".join(p["overlap"]))
             subject = tip_subject(root, p["sha"])
             message = (render_message(args.message, subject, idx) if batch else args.message) if args.message else f"merge lane: {subject}"
-            merge_sha, follow, failed = merge_tip(root, tools_dir, p, message, resolutions)
+            merge_sha, follow, failed = merge_tip(root, tools_dir, p, message, resolutions, **({'batch': True} if batch else {}))
             merged.append((merge_sha, follow, len(p["lane_files"])))
             tag = f"MERGED {merge_sha}" + (f" (+{follow})" if follow else "") + f" files={len(p['lane_files'])}"
             if failed:
@@ -1022,6 +1028,17 @@ def main(argv: list[str] | None = None) -> int:
                 continue
             if batch and ref != refs[-1]:
                 print(f"{tag} ratchets=OK verify=DEFERRED overlap=0")
+        if batch and merged and not reds:
+            pre_dirty = {path for _, path in status_entries(root)}
+            artifacts = regenerate_all(root)
+            results = run_ratchets(root, tools_dir)
+            failed = [(label, rc, tail) for label, rc, tail in results if rc != 0]
+            if failed:
+                reds.append((refs[-1], failed))
+            else:
+                follow = commit_tightened(root, pre_dirty, artifacts)
+                merge_sha, _, count = merged[-1]
+                merged[-1] = (merge_sha, follow, count)
         if reds:
             stopped = reds[0][0]
             print(f"BATCH RATCHET REDS in {len(reds)} of {len(refs)} tip(s), merged={len(merged)}:")
