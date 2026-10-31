@@ -8,14 +8,16 @@
       "pos": [-2182.9529, -3215.0530, 108.7786],
       "rot": -90.1250,
       "proj": 85.7500,
-      "alt": 4743.5068
+      "alt": 4743.5068,
+      "covers": ["terrain", "water", "night_overview"]
     },
     {
       "name": "saved_204523_dup",
       "pos": [-2182.9529, -3215.0530, 108.7786],
       "rot": -90.1250,
       "proj": 85.7500,
-      "alt": 4743.5068
+      "alt": 4743.5068,
+      "covers": ["terrain", "water", "night_overview"]
     }
   ]
 }

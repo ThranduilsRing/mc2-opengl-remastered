@@ -8,14 +8,16 @@
       "pos": [2453.3330, -1984.0001, 411.1892],
       "rot": -176.7500,
       "proj": 12.5000,
-      "alt": 2599.0798
+      "alt": 2599.0798,
+      "covers": ["terrain", "water", "airbase_overview"]
     },
     {
       "name": "saved_205644_dup",
       "pos": [2453.3330, -1984.0001, 411.1892],
       "rot": -176.7500,
       "proj": 12.5000,
-      "alt": 2599.0798
+      "alt": 2599.0798,
+      "covers": ["terrain", "water", "airbase_overview"]
     }
   ]
 }
