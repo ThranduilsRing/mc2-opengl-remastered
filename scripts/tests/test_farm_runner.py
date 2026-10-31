@@ -261,6 +261,24 @@ def test_perf_job_stages_both_payloads(tmp_path, monkeypatch):
     assert sum('Expand-Archive' in script for script in calls) == 2
 
 
+def test_bad_second_arm_never_stages_first_arm(tmp_path, monkeypatch):
+    path = Path(__file__).resolve().parents[2] / 'tools/farm/perf.json'
+    a, b = tmp_path / 'a.exe', tmp_path / 'b.exe'
+    a.write_bytes(b'a')
+    b.write_bytes(b'b')
+    monkeypatch.setattr(sys, 'argv', ['host', 'submit', str(path), '--exe', str(a), '--exe-b', str(b)])
+    def package(exe, destination):
+        if exe == b:
+            raise ValueError('second arm has wrong fingerprint')
+        destination.write_bytes(b'valid first arm')
+    monkeypatch.setattr(host, 'payload_archive', package)
+    monkeypatch.setattr(host, 'remote', lambda *a: pytest.fail('remote staging before both arms validate'))
+    monkeypatch.setattr(host, 'scp', lambda *a, **k: pytest.fail('upload before both arms validate'))
+    with pytest.raises(SystemExit) as result:
+        host.main()
+    assert result.value.code == 2
+
+
 @pytest.mark.parametrize('status,code,expected', [('completed', 0, 0), ('completed', 9, 1), ('interrupted', None, 1)])
 def test_host_wait_propagates_result(monkeypatch, status, code, expected):
     monkeypatch.setattr(sys, 'argv', ['host', 'wait', 'a' * 32])

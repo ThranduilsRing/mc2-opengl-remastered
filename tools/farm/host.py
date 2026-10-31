@@ -270,6 +270,10 @@ def main():
             payload = Path(tmpdir.name) / 'payload.zip'
             try:
                 payload_archive(args.exe.resolve(), payload)
+                if args.exe_b:
+                    second_id = job_id + '-b'
+                    second_payload = Path(tmpdir.name) / 'payload-b.zip'
+                    payload_archive(args.exe_b.resolve(), second_payload)
             except ValueError as exc:
                 parser.error(str(exc))
             remote(args, f"New-Item -ItemType Directory -Force {ROOT}/stage/{job_id} | Out-Null")
@@ -280,9 +284,6 @@ def main():
             remote(args, STAGE_PS % {'r': ROOT, 'id': job_id})
             work = f'{ROOT}/work/{job_id}'
             if args.exe_b:
-                second_id = job_id + '-b'
-                second_payload = Path(tmpdir.name) / 'payload-b.zip'
-                payload_archive(args.exe_b.resolve(), second_payload)
                 remote(args, f"New-Item -ItemType Directory -Force {ROOT}/stage/{second_id} | Out-Null")
                 scp(args, args.exe_b, f'{args.host}:{ROOT}/stage/{second_id}/mc2.exe')
                 scp(args, second_payload, f'{args.host}:{ROOT}/stage/{second_id}/payload.zip')
