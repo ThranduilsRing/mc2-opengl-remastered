@@ -142,12 +142,13 @@ def test_farm_queue_timeout_repeats_only_after_pending_job_cancelled(tmp_path):
 
 
 @pytest.mark.parametrize('depth,occupied,expected', [(0, 2, True), (1, 2, False), (2, 2, False), (0, 0, False)])
-def test_farm_selection_compares_queue_to_host_wait(tmp_path, monkeypatch, depth, occupied, expected):
+@pytest.mark.parametrize('prefix', ['', '** WARNING: connection is not using a post-quantum key exchange algorithm.\n'])
+def test_farm_selection_compares_queue_to_host_wait(tmp_path, monkeypatch, depth, occupied, expected, prefix):
     from smoke_lib import host_lease
     monkeypatch.setattr(host_lease, 'status', lambda: {'slots': [{}] * occupied})
     monkeypatch.setattr(host_lease, 'slot_count', lambda: 2)
     monkeypatch.setattr(host_lease, 'lease_path', lambda: tmp_path / 'lease.json')
-    assert gate.choose_farm(lambda *a, **kw: SimpleNamespace(returncode=0, stdout=json.dumps({'depth': depth}))) == expected
+    assert gate.choose_farm(lambda *a, **kw: SimpleNamespace(returncode=0, stdout=prefix + json.dumps({'depth': depth}))) == expected
 
 
 def test_stock_takes_half_saves_after_tier1_and_mods(tmp_path, monkeypatch):

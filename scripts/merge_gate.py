@@ -466,7 +466,8 @@ def choose_farm(runner=run_child):
         tickets = json.loads(host_lease.lease_path().with_suffix('.queue.json').read_text()).get('tickets', []) if host_lease.lease_path().with_suffix('.queue.json').exists() else []
         host_minutes = 15 * ((len(tickets) // slots) + 1) if occupied >= slots or tickets else 0
         result = runner([sys.executable, 'tools/farm/host.py', 'queue'], cwd=ROOT, env=os.environ.copy())
-        depth = int(json.loads(result.stdout)['depth']) if not result.returncode else -1
+        queue_lines = result.stdout.strip().splitlines()
+        depth = int(json.loads(queue_lines[-1])['depth']) if not result.returncode and queue_lines else -1
         selected = depth >= 0 and depth * 15 < min(host_minutes, 20)
         print(f'[merge_gate] farm depth={depth} estimated={depth * 15}min host-slot estimate={host_minutes}min selected={selected}', flush=True)
         return selected
