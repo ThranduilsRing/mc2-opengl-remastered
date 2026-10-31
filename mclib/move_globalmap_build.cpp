@@ -6,6 +6,14 @@
 #include "move_internal.h"
 #include "../GameOS/gameos/utils/mc2log.h"
 #include <mdspan>
+#include "packet_exact.h"
+
+template<class T> static int readNavigationPacket(PacketFile* file, long packet,
+                                                 std::span<T> values, std::uint32_t tag) {
+    mc2::save::Bytes bytes(12 + values.size_bytes());
+    return mc2::pak::readExact(*file, packet, bytes.data(), bytes.size(), "navigation values") &&
+        mc2::save::decodeNavigationRecord(bytes, values, tag) ? 1 : -1;
+}
 
 
 // Bounded readPacket helper for GlobalMap::init — refuses to read a packet
@@ -92,7 +100,7 @@ void GlobalMap::init (long w, long h) {
 
 constexpr int GLOBALMAP_VERSION_NUMBER = 0x022523;	// My 51st birthday:)
 
-long GlobalMap::init (PacketFilePtr packetFile, long whichPacket, bool restoreSavedCosts) {
+long GlobalMap::init (PacketFilePtr packetFile, long whichPacket, bool restoreSavedCosts, mc2::save::NavigationFormat format) {
 
 	long startPacket = whichPacket;
 
@@ -238,7 +246,12 @@ long GlobalMap::init (PacketFilePtr packetFile, long whichPacket, bool restoreSa
 
 	// Same mod-tolerance pattern for areas packet. Carver5O may also have
 	// a larger areas struct size per entry (extended mod schema).
-	if (mcoWideSchema) {
+	if (format.areas) {
+		areas = mc2::globalmap::ownZeroed(areasStore, static_cast<size_t>(numAreas));
+		areas_cellsCovered = mc2::globalmap::ownZeroed(areasCellsCoveredStore, static_cast<size_t>(numAreas));
+		areas_doors = mc2::globalmap::ownZeroed(areasDoorsStore, static_cast<size_t>(numAreas));
+		result = readNavigationPacket(packetFile, whichPacket++, std::span(areas, numAreas), mc2::save::tagMapAreas);
+	} else if (mcoWideSchema) {
 		// MCO GlobalMapArea is 31 bytes (shorts widened to int). Read into a
 		// temp buffer at MCO stride and widen field-by-field into the real
 		// narrow MC2 areas[] array.
@@ -591,7 +604,7 @@ long GlobalMap::init (PacketFilePtr packetFile, long whichPacket, bool restoreSa
 	return(whichPacket - startPacket);
 }
 
-long GlobalMap::write (PacketFilePtr packetFile, long whichPacket) {
+long GlobalMap::write (PacketFilePtr packetFile, long whichPacket, mc2::save::NavigationFormat format) {
 
 
 	long numDrInfos = 0;
@@ -649,7 +662,12 @@ long GlobalMap::write (PacketFilePtr packetFile, long whichPacket) {
 		areas[i].teamID = -1;
 		areas[i].open = true;
 	}
-	result = packetFile->writePacket(whichPacket++, reinterpret_cast<unsigned char*>(areas), sizeof(GlobalMapArea) * numAreas);
+	if (format.areas) {
+		auto bytes = mc2::save::encodeNavigationRecord(std::span(areas, numAreas), mc2::save::tagMapAreas);
+		result = packetFile->writePacket(whichPacket++, bytes.data(), static_cast<unsigned int>(bytes.size()));
+	} else {
+		result = packetFile->writePacket(whichPacket++, reinterpret_cast<unsigned char*>(areas), sizeof(GlobalMapArea) * numAreas);
+	}
 	for (int i = 0; i < numAreas; i++) {
 		areas_doors[i] = doorInfoSave[i];
 	}

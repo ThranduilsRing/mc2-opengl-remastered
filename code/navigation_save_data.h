@@ -12,7 +12,7 @@ struct NavigationFormat {
 
 // The already-validated map dimensions/counts bound decoding, including grids
 // larger than Archive's ordinary 65536-element sequence limit.
-template<class T> Bytes encodeNavigationRecord(std::span<T> values, std::uint32_t tag) {
+template<class T, std::size_t N> Bytes encodeNavigationRecord(std::span<T, N> values, std::uint32_t tag) {
     Archive a;
     std::uint32_t version = 1, count = static_cast<std::uint32_t>(values.size());
     if (values.size() > maxFileBytes / sizeof(T)) return {};
@@ -21,8 +21,8 @@ template<class T> Bytes encodeNavigationRecord(std::span<T> values, std::uint32_
     return a.good() ? a.bytes() : Bytes{};
 }
 
-template<class T> bool decodeNavigationRecord(std::span<const std::uint8_t> bytes,
-                                             std::span<T> values, std::uint32_t expected) {
+template<class T, std::size_t N> bool decodeNavigationRecord(std::span<const std::uint8_t> bytes,
+                                             std::span<T, N> values, std::uint32_t expected) {
     Archive a(bytes);
     std::uint32_t tag = 0, version = 0, count = 0;
     a(tag, version, count);

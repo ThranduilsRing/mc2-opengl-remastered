@@ -1,6 +1,22 @@
 #include "save_field_probe.h"
 #include "move.h"
 
+#define AREA_MEMBERS &T::sectorR, &T::sectorC, &T::doors_Legacy32bitPtr, &T::type, \
+    &T::numDoors, &T::ownerWID, &T::teamID, &T::offMap, &T::open, &T::cellsCovered_Legacy32bitPtr
+
+TEST_CASE("save fields: map areas independent census") {
+    using T = GlobalMapArea;
+    auto sample = save_probe::patterned<T>(AREA_MEMBERS);
+    SAVE_FIELD_SHAPE(sample, sectorR, sectorC, doors, type, numDoors, ownerWID, teamID, offMap, open, cells);
+    CHECK(save_probe::memberBytes<T>(AREA_MEMBERS) == sizeof(T));
+    CHECK(save_probe::roundtrip(sample, [](auto& a, auto& v) { a(v); }, AREA_MEMBERS));
+    std::array<T, 1> values{sample}, decoded{};
+    auto bytes = mc2::save::encodeNavigationRecord(std::span(values), mc2::save::tagMapAreas);
+    CHECK(bytes.size() == 12 + 25);
+    REQUIRE(mc2::save::decodeNavigationRecord(bytes, std::span(decoded), mc2::save::tagMapAreas));
+    CHECK(std::memcmp(values.data(), decoded.data(), sizeof(T)) == 0);
+}
+
 TEST_CASE("save fields: map cells independent census") {
     using T = MapCell;
     auto sample = save_probe::patterned<T>(&T::data);

@@ -1244,6 +1244,16 @@ struct _GlobalMapArea {
     // sebi: 64bit fix 
 	//short*					cellsCovered;
 	DWORD                   cellsCovered_Legacy32bitPtr;
+	void serialize(mc2::save::Archive& a) {
+		// Legacy pointer slots are reserved values, never addresses to restore.
+		// areas_doors is rebuilt from DoorInfo runs; cellsCovered starts empty.
+		// ownerWID/teamID/open are reset by write(), then object restoration
+		// re-establishes ownership and open/closed state (and its link costs).
+		a(sectorR, sectorC, doors_Legacy32bitPtr);
+		auto typeValue = static_cast<std::int32_t>(type);
+		a(typeValue, numDoors, ownerWID, teamID, offMap, open, cellsCovered_Legacy32bitPtr);
+		if (a.reading() && a.good()) type = static_cast<AreaType>(typeValue);
+	}
 }; using GlobalMapArea = _GlobalMapArea;
 
 #pragma pack()
@@ -1454,9 +1464,9 @@ class GlobalMap {
 
 		long build (MissionMapCellInfo* mapData);
 
-		long init (PacketFilePtr mapFile, long whichPacket = 0, bool restoreSavedCosts = false);
+		long init (PacketFilePtr mapFile, long whichPacket = 0, bool restoreSavedCosts = false, mc2::save::NavigationFormat format = {});
 
-		long write (PacketFile* packetFile, long whichPacket = 0);
+		long write (PacketFile* packetFile, long whichPacket = 0, mc2::save::NavigationFormat format = {});
 
 		long setTempArea (long row, long col, long cost);
 
