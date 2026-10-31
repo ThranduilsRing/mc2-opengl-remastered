@@ -1661,6 +1661,39 @@ def bootstrap_install(src, target, exe_name, pdb_name):
     os.rename(partial, target)
 
 
+def verify_published_identity(target, source_root, head):
+    """Hash the published exe/shaders against the clean HEAD build, not its own CSV."""
+    from exe_fingerprint import extract, sha_agrees
+    target, source_root = Path(target), Path(source_root)
+    build = source_root / 'build64-ninja'
+    for exe in (build / 'mc2.exe', target / 'mc2.exe'):
+        fp = extract(exe)
+        if not fp.get('present') or fp.get('dirty') or not sha_agrees(fp.get('sha'), head):
+            raise ValueError(f'{exe}: fingerprint != clean HEAD {head}')
+    expected = {'mc2.exe': build / 'mc2.exe'}
+    expected.update({p.relative_to(source_root).as_posix(): p
+                     for p in (source_root / 'shaders').rglob('*')
+                     if p.is_file() and 'fixtures' not in p.relative_to(source_root / 'shaders').parts})
+    baked = list((build / 'shaders/vulkan').glob('*.spv'))
+    if not baked:
+        raise ValueError(f'{build}: missing baked Vulkan shaders')
+    expected.update({'shaders/vulkan/' + p.name: p for p in baked})
+    with (target / '.deployed_manifest.csv').open(encoding='utf-8-sig', newline='') as stream:
+        if next(csv.reader(stream), [])[:2] != ['manifest_version', 'v1']:
+            raise ValueError('unsupported published manifest')
+        rows = {row['relpath']: row for row in csv.DictReader(stream)}
+    for rel, src in expected.items():
+        row = rows.get(rel, {})
+        dst = target / rel
+        if (not sha_agrees(row.get('src_commit'), head) or not dst.is_file()
+                or int(row.get('bytes', -1)) != dst.stat().st_size
+                or sha256_file(str(src)) != row.get('sha256') or sha256_file(str(dst)) != row.get('sha256')):
+            raise ValueError(f'{dst}: published bytes/manifest != HEAD build')
+    deployed_shaders = {p.relative_to(target).as_posix() for p in (target / 'shaders').rglob('*') if p.is_file()}
+    if deployed_shaders != {rel for rel in expected if rel.startswith('shaders/')}:
+        raise ValueError(f'{target}: published shader inventory != HEAD build')
+
+
 def main():
     ap = argparse.ArgumentParser(
         description=__doc__.splitlines()[0],
@@ -1681,7 +1714,9 @@ def main():
     ap.add_argument("--classic-assets", action="store_true",
                     help="deploy without the Remastered building kit (also honors RemasteredBuildings=FALSE)")
     ap.add_argument('--seed-owner-test', action='store_true',
-                    help='seed owner-test from the verified deployed v0.4 tree; no build or cook')
+                    help='seed target_dir from --seed-source after verifying against --source-root HEAD; no build or cook')
+    ap.add_argument('--seed-source', type=Path,
+                    help='published install to verify and copy with --seed-owner-test')
     ap.add_argument("--source-root", default=repo_root(),
                     help="source worktree root (default: this script's repo)")
     ap.add_argument("--build-dir", default=None,
@@ -1743,8 +1778,14 @@ def main():
     args = ap.parse_args()
 
     if args.seed_owner_test:
-        source = Path('A:/Games/mc2-opengl/mc2-win64-v0.4')
-        target = Path('E:/mc2-installs/owner-test-2026-10-26')
+        preset = TARGET_PRESETS.get(args.target) if args.target else None
+        destination = args.target_dir or (preset and preset['target_dir'])
+        if not args.seed_source or not destination:
+            ap.error('--seed-owner-test requires --seed-source INSTALL and target_dir (or --target)')
+        source, target = args.seed_source, Path(destination)
+        head = subprocess.check_output(['git', '-C', args.source_root, 'rev-parse', 'HEAD'],
+                                       text=True, **console_child.child_kwargs(redirected=True)).strip()
+        verify_published_identity(source, args.source_root, head)
         check_locks(str(target), 'mc2.exe', 0)
         held = take_folder_lease(str(target), 0)
         try:

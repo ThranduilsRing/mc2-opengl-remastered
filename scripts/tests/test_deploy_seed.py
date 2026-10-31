@@ -8,6 +8,7 @@ import time
 
 import pytest
 import kit_payload as kit
+import deploy_payload as deploy
 
 
 def source_tree(root):
@@ -92,3 +93,45 @@ def test_seed_refresh_retires_only_unmodified_owned_members(tmp_path):
     (target / name).write_bytes(data)
     kit.seed_install(source, target, cache)
     assert not (target / name).exists()
+
+
+@pytest.mark.parametrize('broken', [None, 'exe', 'shader', 'manifest', 'extra', 'fingerprint'])
+def test_published_identity_checks_head_and_actual_bytes(tmp_path, monkeypatch, broken):
+    import exe_fingerprint
+    source = source_tree(tmp_path)
+    repo = tmp_path / 'repo'
+    for rel, data in {'build64-ninja/mc2.exe': b'EXE', 'shaders/test.frag': b'shader',
+                      'build64-ninja/shaders/vulkan/test.spv': b'SPV'}.items():
+        path = repo / rel; path.parent.mkdir(parents=True, exist_ok=True); path.write_bytes(data)
+    path = source / 'shaders/vulkan/test.spv'; path.parent.mkdir(); path.write_bytes(b'SPV')
+    manifest = source / '.deployed_manifest.csv'
+    manifest.write_text(manifest.read_text().replace('abc', 'a' * 40) +
+                        f'shaders/vulkan/test.spv,{kit.sha(path)},3,{"a" * 40}\n')
+    monkeypatch.setattr(exe_fingerprint, 'extract', lambda p: dict(present=True, dirty=0,
+        sha='b' * 40 if broken == 'fingerprint' and p == source / 'mc2.exe' else 'a' * 40))
+    if broken in ('exe', 'shader'):
+        (source / ('mc2.exe' if broken == 'exe' else 'shaders/test.frag')).write_bytes(b'BAD')
+    if broken == 'manifest':
+        manifest.write_text(manifest.read_text().replace('a' * 40, 'b' * 40))
+    if broken == 'extra':
+        (source / 'shaders/extra.frag').write_bytes(b'old shader')
+    if broken:
+        with pytest.raises(ValueError):
+            deploy.verify_published_identity(source, repo, 'a' * 40)
+    else:
+        deploy.verify_published_identity(source, repo, 'a' * 40)
+
+
+def test_seed_cli_honors_explicit_source_target_and_repo(tmp_path, monkeypatch):
+    import sys
+    source, target, repo = (tmp_path / name for name in ('published', 'lane', 'repo'))
+    seen = []
+    monkeypatch.setattr(sys, 'argv', ['deploy_payload.py', str(target), '--seed-owner-test',
+                                    '--seed-source', str(source), '--source-root', str(repo)])
+    monkeypatch.setattr(deploy.subprocess, 'check_output', lambda cmd, **kw: 'head\n' if str(repo) in cmd else pytest.fail(str(cmd)))
+    monkeypatch.setattr(deploy, 'verify_published_identity', lambda *args: seen.append(('verify', args)))
+    monkeypatch.setattr(deploy, 'check_locks', lambda *args: None)
+    monkeypatch.setattr(deploy, 'take_folder_lease', lambda *args: False)
+    monkeypatch.setattr(kit, 'seed_install', lambda *args: seen.append(('seed', args)))
+    deploy.main()
+    assert seen == [('verify', (source, str(repo), 'head')), ('seed', (source, target))]
