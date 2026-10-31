@@ -5,6 +5,8 @@
 
 #include "gos_postprocess_internal.h"
 #include "mc2fmt.h"
+#include <array>
+#include <bit>
 
 
 
@@ -352,10 +354,30 @@ void gosPostProcess::endScene()
     if (mode==1 && !sceneObjectIdReady()) mode=0;
 #ifdef MC2_VULKAN
     auto& present=mc2vk::getOrCreateEnginePresentVk();
-    if (present.beginNativeComposite()) (void)present.renderNativeCompositeVisual(
+    if (present.beginNativeComposite()) {
+        if (TracyIsConnected) {
+            // Composite arguments only: scene color and depth are fresh inputs.
+            const std::array<uint32_t,14> parameters{
+                std::bit_cast<uint32_t>(exposure_), static_cast<uint32_t>(mode),
+                sceneObjectIdReady() ? static_cast<uint32_t>(RenderWorld::MechHandleIndexBase()) : 0u,
+                std::bit_cast<uint32_t>(lowLightGain_), std::bit_cast<uint32_t>(lowLightTint_[0]),
+                std::bit_cast<uint32_t>(lowLightTint_[1]), std::bit_cast<uint32_t>(lowLightTint_[2]),
+                static_cast<uint32_t>(casEnabled_), std::bit_cast<uint32_t>(casSharpness_),
+                static_cast<uint32_t>(tonemapMode_), static_cast<uint32_t>(x), static_cast<uint32_t>(y),
+                static_cast<uint32_t>(w), static_cast<uint32_t>(h)};
+            static std::array<uint32_t,14> previous{};
+            static uint64_t calls = 0, items = 0, unchanged = 0;
+            ++calls; items += parameters.size();
+            if (calls > 1 && parameters == previous) unchanged += parameters.size();
+            previous = parameters;
+            if (calls % 256 == 0)
+                mc2::fmt::print_err("[DRAWSCREEN_POST_PARAMS] calls={} items={} unchanged={}\n", calls, items, unchanged);
+        }
+        (void)present.renderNativeCompositeVisual(
         exposure_,mode,
         sceneObjectIdReady() ? int(RenderWorld::MechHandleIndexBase()) : 0,
         lowLightGain_,lowLightTint_,casEnabled_,casSharpness_,tonemapMode_,x,y,w,h);
+    }
 #endif
     drawShadowDebugOverlay();
     gos_InvalidateRenderStateCache();
