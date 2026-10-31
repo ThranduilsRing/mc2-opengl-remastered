@@ -1912,7 +1912,7 @@ class MechWarrior {
 		void load (PacketFilePtr file, long packetNum); 
 
 		long static Save (PacketFilePtr file, long packetNum);
-		long static Load (PacketFilePtr file, long packetNum);
+		long static Load (PacketFilePtr file, long packetNum, bool staticValues = false);
 };
 
 //---------------------------------------------------------------------------

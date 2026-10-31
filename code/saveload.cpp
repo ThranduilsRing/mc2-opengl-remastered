@@ -295,6 +295,7 @@ void Mission::save (const char *saveFileName)
     sections.add(mc2::save::tagTeam, 1, true, {});
     sections.add(mc2::save::tagObjectManager, 1, true, {});
     sections.add(mc2::save::tagWatchList, 1, true, {});
+    sections.add(mc2::save::tagWarriorStatic, 1, true, {});
     {
         auto handles = [](auto slots) {
             std::vector<std::uint32_t> result;

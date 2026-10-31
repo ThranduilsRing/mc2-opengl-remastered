@@ -3,6 +3,7 @@
 #include "warrior_internal.h"
 #include "mc2fmt.h"
 #include "tacorder_terrain_queue.h"
+#include "warrior_value_codec.h"
 static_assert(MAX_QUEUED_TACORDERS_PER_WARRIOR == 16, "WQT2 target count must match the runtime queue");
 
 
@@ -885,7 +886,9 @@ long MechWarrior::Save (PacketFilePtr file, long packetNum)
 	staticData.curEventID					= curEventID;
 	staticData.curEventTrigger				= curEventTrigger;
 
-	file->writePacket(packetNum,reinterpret_cast<MemoryPtr>(&staticData),sizeof(StaticMechWarriorData),STORAGE_TYPE_RAW);
+	auto bytes = mc2::save::encodeTaggedRecord(mc2::save::WarriorStaticRecord{staticData}, mc2::save::warriorStaticTag);
+	if (bytes.empty()) Fatal(0, "Invalid static warrior value record");
+	file->writePacket(packetNum, bytes.data(), static_cast<unsigned int>(bytes.size()), STORAGE_TYPE_RAW);
 	packetNum++;
 
 	for (long i = 0; i < saveCount; i++)
@@ -935,10 +938,22 @@ void MechWarrior::load (PacketFilePtr file, long packetNum)
 	}
 }
 
-long MechWarrior::Load (PacketFilePtr file, long packetNum)
+long MechWarrior::Load (PacketFilePtr file, long packetNum, bool staticValues)
 {
 	StaticMechWarriorData staticData{};
-	file->readPacket(packetNum,reinterpret_cast<MemoryPtr>(&staticData));
+	file->seekPacket(packetNum);
+	const auto size = file->getPacketSize();
+	if (size <= 0 || size > sizeof(staticData) + 8) Fatal(0, "Invalid static warrior packet size");
+	mc2::save::Bytes bytes(size);
+	if (file->readPacket(packetNum, bytes.data()) != size) Fatal(0, "Short static warrior packet");
+	if (staticValues) {
+		mc2::save::WarriorStaticRecord record;
+		if (!mc2::save::decodeTaggedRecord(bytes, record, mc2::save::warriorStaticTag)) Fatal(0, "Invalid static warrior value record");
+		staticData = record.value;
+	} else {
+		if (size != sizeof(staticData)) Fatal(0, "Invalid legacy static warrior packet");
+		memcpy(&staticData, bytes.data(), sizeof(staticData));
+	}
 	packetNum++;
 
 	if (staticData.numWarriors < 0 || staticData.numWarriors > MAX_WARRIORS) Fatal(0, "Invalid saved warrior count");
