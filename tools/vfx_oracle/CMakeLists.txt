@@ -9,6 +9,7 @@ add_executable(vfx_lifecycle_tests
     "${MC2_WORKTREE_ROOT}/tools/vfx_oracle/lifecycle_test.cpp"
     "${MC2_WORKTREE_ROOT}/tools/vfx_oracle/lifecycle_platform.cpp"
     "${MC2_WORKTREE_ROOT}/GameOS/gameos/sim_overlap.cpp"
+    "${MC2_WORKTREE_ROOT}/code/render_view_store.cpp"
     ${VFX_LIFECYCLE_SOURCES})
 target_compile_features(vfx_lifecycle_tests PRIVATE cxx_std_23)
 target_compile_definitions(vfx_lifecycle_tests PRIVATE $<$<PLATFORM_ID:Windows>:PLATFORM_WINDOWS> LINUX_BUILD _CRT_SECURE_NO_WARNINGS)

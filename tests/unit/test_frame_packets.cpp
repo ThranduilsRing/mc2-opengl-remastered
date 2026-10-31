@@ -34,8 +34,11 @@ TEST_CASE("frame draws own ordered streams and HUD values across staging reuse")
     stagingHud().vtols.emplace_back().position = glm::vec3(7, 8, 9);
     auto first = freezeDrawFrame(101);
     REQUIRE(first->sequence == 101);
+    FrameArena arena;
+    CHECK(drawArena() == nullptr);
     {
-        DrawFrameScope scope(*first);
+        DrawFrameScope scope(*first, &arena);
+        CHECK(drawArena() == &arena);
         // Same operations used by extraction/commit must only affect staging.
         stagingList().clear();
         stagingHud() = {};
@@ -62,12 +65,15 @@ TEST_CASE("frame draws own ordered streams and HUD values across staging reuse")
         CHECK_FALSE(markerAlive.expired());
         {
             DrawFrameScope nested(*second);
+            CHECK(drawArena() == nullptr);
             CHECK(mc2::render_view::clock().turn == 18);
             CHECK(list().terrain.empty());
             CHECK(hud().movers.empty());
         }
         CHECK(mc2::render_view::clock().turn == 17);
+        CHECK(drawArena() == &arena);
     }
+    CHECK(drawArena() == nullptr);
     CHECK(mc2::render_view::clock().turn == 18); // synchronous tool fallback
     CHECK(list().terrain.empty());
     CHECK(hud().movers.empty());

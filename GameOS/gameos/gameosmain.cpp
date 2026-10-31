@@ -1076,7 +1076,7 @@ int main(int argc, char** argv)
     frameEmitDrawPackets(snap);
 
         {
-            mc2::render_view::DrawFrameScope drawFrame(*snap.draws);
+            mc2::render_view::DrawFrameScope drawFrame(*snap.draws, &snap.frameArena);
             mc2::overlap::beginFrameDraw();
             ZoneScopedN("DrawScreen");
             mc2_hitch::HitchScope _hitchRender(mc2_hitch::HitchSpanKind::PhaseRender);

@@ -12,6 +12,7 @@ RenderClock g_clock;
 RenderList g_list;
 HudSnapshot g_hud;
 thread_local const FrameDraws* g_drawFrame = nullptr;
+thread_local RenderCore::FrameArena* g_drawArena = nullptr;
 }  // namespace
 
 RenderClock& stagingClock() {
@@ -36,10 +37,17 @@ std::shared_ptr<const FrameDraws> freezeDrawFrame(uint64_t sequence) {
     return std::make_shared<const FrameDraws>(FrameDraws{sequence, g_clock, g_list, g_hud});
 }
 
-DrawFrameScope::DrawFrameScope(const FrameDraws& frame) : previous_(g_drawFrame) {
+RenderCore::FrameArena* drawArena() { return g_drawArena; }
+
+DrawFrameScope::DrawFrameScope(const FrameDraws& frame, RenderCore::FrameArena* arena)
+    : previous_(g_drawFrame), previousArena_(g_drawArena) {
     g_drawFrame = &frame;
+    g_drawArena = arena;
 }
-DrawFrameScope::~DrawFrameScope() { g_drawFrame = previous_; }
+DrawFrameScope::~DrawFrameScope() {
+    g_drawFrame = previous_;
+    g_drawArena = previousArena_;
+}
 
 void RenderList::freezeBoltDraws(RenderCore::FrameArena& arena) {
     uint32_t count = 0;

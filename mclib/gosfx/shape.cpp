@@ -7,6 +7,8 @@
 #include <cstdint>
 #include <algorithm>
 #include "mc2fmt.h"
+#include "../../code/render_view.h"
+#include "../../RenderCore/FrameArena.h"
 
 // One-way bridge ABI; keep in sync with gos_vfx_mesh_bridge.h.
 struct GosVfxMeshUpload {
@@ -26,11 +28,33 @@ struct GosVfxMeshInstance {
 extern "C" void gos_vfx_mesh_flush(const GosVfxMeshUpload*, unsigned,
                                    const GosVfxMeshInstance*, unsigned);
 
-bool gosFX::DrawNativeShape(const MidLevelRenderer::DrawScalableShapeInformation& draw)
+struct gosFX::NativeShapePrimitive {
+    GosVfxMeshUpload upload{};
+    GosVfxMeshInstance instance{};
+    bool needsUpload = false;
+    const NativeShapePrimitive* next = nullptr;
+};
+
+namespace {
+std::unordered_set<uint64_t> uploaded;
+
+template<class T>
+const T* freezeArray(RenderCore::FrameArena& arena, const T* data, uint32_t count)
 {
+    if (!count) return nullptr;
+    auto copy = arena.allocArray<T>(count, "NativeShape");
+    if (copy.empty()) std::abort();
+    std::copy_n(data, count, copy.data);
+    return copy.data;
+}
+
+bool captureNativeShape(const MidLevelRenderer::DrawScalableShapeInformation& draw,
+    RenderCore::FrameArena* arena, gosFX::FrozenNativeShape& frozen)
+{
+    frozen = {};
     if (!mc2::particles::Batcher::is_oracle_shape_enabled() || !draw.shape) return false;
-    static std::unordered_set<uint64_t> uploaded;
     // Validate before submitting any primitive: fallback must never double draw.
+    gosFX::NativeShapePrimitive* tail = nullptr;
     for (int p = 0; p < draw.shape->GetNum(); ++p) {
         auto* prim = draw.shape->Find(p);
         if (!prim || !prim->IsDerivedFrom(MidLevelRenderer::MLRIndexedPrimitiveBase::DefaultData)) return false;
@@ -105,15 +129,59 @@ bool gosFX::DrawNativeShape(const MidLevelRenderer::DrawScalableShapeInformation
         }
         GosVfxMeshUpload up{id, positions.data(), uvs.data(),
             triangles.data(), static_cast<uint32_t>(count), static_cast<uint32_t>(triangles.size())};
-        gos_vfx_mesh_flush(upload ? &up : nullptr, upload ? 1u : 0u, &inst, 1u);
+        if (arena) {
+            auto record = arena->allocArray<gosFX::NativeShapePrimitive>(1, "NativeShapePrimitive");
+            if (record.empty()) std::abort();
+            *record.data = {};
+            record.data->instance = inst;
+            record.data->needsUpload = upload;
+            if (upload) {
+                record.data->upload = up;
+                record.data->upload.positions = freezeArray(*arena, up.positions, up.vertexCount * 3);
+                record.data->upload.uvs = freezeArray(*arena, up.uvs, up.vertexCount * 2);
+                record.data->upload.indices = freezeArray(*arena, up.indices, up.indexCount);
+            }
+            if (tail) tail->next = record.data;
+            else frozen.first = record.data;
+            tail = record.data;
+        } else {
+            gos_vfx_mesh_flush(upload ? &up : nullptr, upload ? 1u : 0u, &inst, 1u);
+            if (upload) uploaded.insert(id);
+        }
         if (upload) {
-            uploaded.insert(id);
             if (mc2::particles::Batcher::is_oracle_shape_log_enabled())
                 mc2::fmt::print_err("[VFX_MESH] prim={} vertices={} indices={} tex={} blend={}\n",
                     p, count, up.indexCount, inst.mlrTexHandle, blend);
         }
     }
     return true;
+}
+} // namespace
+
+bool gosFX::FreezeNativeShape(const MidLevelRenderer::DrawScalableShapeInformation& draw,
+    RenderCore::FrameArena& arena, FrozenNativeShape& frozen)
+{
+    return captureNativeShape(draw, &arena, frozen);
+}
+
+void gosFX::DrawFrozenNativeShape(const FrozenNativeShape& frozen)
+{
+    for (auto* record = frozen.first; record; record = record->next) {
+        gos_vfx_mesh_flush(record->needsUpload ? &record->upload : nullptr,
+            record->needsUpload ? 1u : 0u, &record->instance, 1u);
+        if (record->needsUpload) uploaded.insert(record->instance.meshId);
+    }
+}
+
+bool gosFX::DrawNativeShape(const MidLevelRenderer::DrawScalableShapeInformation& draw)
+{
+    FrozenNativeShape frozen;
+    if (auto* arena = mc2::render_view::drawArena()) {
+        if (!FreezeNativeShape(draw, *arena, frozen)) return false;
+        DrawFrozenNativeShape(frozen);
+        return true;
+    }
+    return captureNativeShape(draw, nullptr, frozen);
 }
 
 //==========================================================================//

@@ -148,15 +148,17 @@ struct FrameDraws {
     HudSnapshot hud;
 };
 std::shared_ptr<const FrameDraws> freezeDrawFrame(uint64_t sequence);
+RenderCore::FrameArena* drawArena(); // retained CPU sequence; null for inline tools
 
 class DrawFrameScope {
 public:
-    explicit DrawFrameScope(const FrameDraws& frame);
+    explicit DrawFrameScope(const FrameDraws& frame, RenderCore::FrameArena* arena = nullptr);
     ~DrawFrameScope();
     DrawFrameScope(const DrawFrameScope&) = delete;
     DrawFrameScope& operator=(const DrawFrameScope&) = delete;
 private:
     const FrameDraws* previous_;
+    RenderCore::FrameArena* previousArena_;
 };
 
 }  // namespace mc2::render_view

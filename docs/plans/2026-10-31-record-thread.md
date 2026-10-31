@@ -642,3 +642,32 @@ That multi-family producer migration needs its own bounded implementation/proof
 cycle; resume here without rebuilding this unchanged engine.
 Largest avoidable cost: broad source reading/scouting before the concrete edit;
 bound the next scout with --timeout 25 and keep reads at the producer ranges above.
+
+## S3 rigid FX native shape packets, 2026-10-31 (proof pending)
+
+Additive continuation from 77dda168b, assignment base 0178b2750. Rigid native
+Shape/ShapeCloud/DebrisCloud leaves now have FreezeNativeShape(Main capture)
+and DrawFrozenNativeShape(value replay). Cold-cache positions, UVs and fan
+indices plus ordered submaterial, blend, matrix, scale and color values live
+in the retained snapshot arena. DrawFrameScope binds that arena and restores
+it across nested scopes; standalone tools preserve synchronous submission.
+The existing native mesh test now destroys the source shape, overwrites its
+draw inputs and fills another retained slot before cold/hot packet replay.
+
+This is a leaf boundary only: recursive Effect::Draw still reads live child
+and spec data, and live callers capture/replay immediately inside DrawScreen.
+Texture pool indices still need resource retention/resolution before moving
+replay off Main. Building/TerrainObject appearances, VTOL and copied UI remain
+open at the exact ranges above; no obj dispatch was removed. S4 stays inline.
+Next: finish covering rows, shared-header all-target build and selected
+frame/native-FX tests; commit-first lane deploy and the existing day/night,
+detailed SIMID and audit/sync proofs. Record receipts and commit here, then
+move the native appearance and recursive FX producers to Main extraction.
+
+Offline receipts: s3-native-shape-contracts.log six rows PASS (32.20 s);
+s3-native-shape-unit.log selected frame/bolt/CPU lease and fresh-process FX
+driver PASS, 4 top-level cases / 74 assertions (49 s), rigid-mesh child
+1 case / 37 assertions, existing particle arms all green. The first harness
+invocation rejected a suite name used as a case filter before building;
+corrected to the existing retained CPU case, no test skipped. CRLF-aware
+whitespace check (`git -c core.whitespace=cr-at-eol diff --check`) is clean.
