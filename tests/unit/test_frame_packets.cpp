@@ -128,4 +128,54 @@ TEST_CASE("slot arenas: the first user of a frame resets its slot, later users k
     CHECK(FrameSlotArenas::slotOf(0x100000001ull) == 2);          // reduce the full sequence before narrowing
 }
 
+TEST_CASE("retained CPU arenas reject reuse and stale retirement without changing data") {
+    alignas(16) uint8_t memory[3][256]{};
+    FrameSlotArenas slots;
+    slots.init(memory[0], memory[1], memory[2], 256);
+    const uint64_t first = 0x100000001ull;
+    REQUIRE(slots.retain(first));
+    auto values = slots.begin(first).allocArray<uint32_t>(1, "retained");
+    values[0] = 42;
+    REQUIRE(slots.retain(first + 1));
+    REQUIRE(slots.retain(first + 2));
+    CHECK_FALSE(slots.retain(first + 3));
+    CHECK_FALSE(slots.retire(first + 3));
+    CHECK(values[0] == 42);
+    CHECK(slots.retire(first + 1));
+    CHECK_FALSE(slots.retire(first + 1));
+    CHECK_FALSE(slots.retain(first + 3)); // another slot's completion grants nothing
+    CHECK(slots.retire(first));
+    CHECK(slots.retain(first + 3));
+    CHECK(slots.begin(first + 3).bytesUsed() == 0);
+    CHECK(slots.retire(first + 2));
+    CHECK(slots.retire(first + 3));
+}
+
+TEST_CASE("CPU sequence retains published values independently of display frame") {
+    FramePacketPublisher pub;
+    pub.retain(10);
+    pub.begin(7)->addView(mainView(10.0f, 7));
+    const auto& first = pub.publish();
+    pub.retain(11);
+    pub.begin(7)->addView(mainView(11.0f, 7)); // same display frame, different lease
+    pub.publish();
+    pub.retain(12);
+    pub.begin(8)->addView(mainView(12.0f, 8));
+    pub.publish();
+    CHECK(first.frame == 7);
+    CHECK(first.sequence == 10);
+    CHECK(first.views[0].uniforms.cameraWorldPos[0] == 10.0f);
+    pub.retire(11);
+    pub.retire(10);
+    pub.retain(13);
+    pub.begin(9)->addView(mainView(13.0f, 9));
+    CHECK(pub.published().sequence == 12);
+    pub.publish();
+    pub.retire(12);
+    pub.retire(13);
+    pub.retain(16); // recycles the latest publication, without publishing
+    CHECK(pub.mainView().id == kInvalidViewId);
+    pub.retire(16);
+}
+
 }  // TEST_SUITE

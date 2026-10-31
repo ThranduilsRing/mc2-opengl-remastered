@@ -467,3 +467,19 @@ All own build/game/scout children exited. PowerShell profile loading was denied 
 Avoidable cost: stalled scout calls; use one bounded query, then its permitted targeted-range fallback after timeout.
 Disk: 0 GB freed, no extra install created; leave only `E:/mc2-installs/claude-record-thread` at `c8022b57f`.
 After this docs-only closure use explicit `--ref-commit c8022b57f` for retained binary proof; do not rebuild unchanged code.
+
+## S3 arena lease integration, 2026-10-31 (proof pending)
+
+This continuation adds commits only during W92; no branch recreation, rebase or history rewrite.
+FrameSlotArenas now holds explicit CPU admission leases and refuses occupied-slot reuse or stale retirement.
+The game loop uses the typed-release packet sequence for both the RenderSnapshot arena and FramePackets
+publisher. Display-frame metadata remains separate. Main releases both value arenas after inline DrawScreen,
+before draining typed destruction; S4 must replace that point with actual worker completion.
+Inline editor/viewer/tool callers keep synchronous frame-keyed behavior. GPU ticket retirement is unchanged.
+Native tests cover occupied-slot rejection, stale/duplicate retirement, out-of-order completion, large sequences,
+repeated display frames, and skipped publication when a leased slot recycles. Owner assertions guard snapshot
+extraction/retirement. The bounded scout timed out after 25 s; used its permitted direct-range fallback.
+Next: five ratchets + buffer_lifetime, one shared-header all-target build, selected FramePackets native tests,
+commit-first explicit lane deploy, day/night byte parity viewed, mc2_10 detailed SIMID 20 s, audit/sync validation 0.
+Remaining S3: immutable RenderList/HUD native draw values with retained light feeds; recursive FX Execute/Main
+and frozen Draw split. Legacy object/appearance/effect pointers still block S4. One existing lane install only.
