@@ -23,3 +23,11 @@ reapply 917daf779 and 98d54f460 and repeat clean-HEAD build/acceptance.
 Sole install retained: E:/mc2-installs/claude-cxx23-packet-f, unchanged from
 F10 rejected candidate 369753936. No extra stage/install created; freed 0 B.
 Build output contains rejected ea698ee83, not rollback HEAD; do not deploy.
+Rollback unit receipt: f11-rollback-unit.log, 68/68 cases and 3033/3033
+assertions PASS (30s); helper prints PASS. PowerShell outer command reports
+exit 1 while formatting expected negative-test stderr as NativeCommandError;
+no test failed, and the unchanged tree was not tested again. Runtime/pins/
+mask diff against merge e16169570 is empty ignoring end-of-line whitespace.
+Final diff --check clean. All owned build/monitor/unit/scout children exited.
+Largest avoidable cost: discovering imported tool link debt after the full
+all-target compile. Fix the drawArena link closure upstream before retry.
