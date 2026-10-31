@@ -74,6 +74,7 @@ struct Mc2MechFrameFeed {
     uint32_t     boneCount;
     const Mc2MechDrawRun* runs;
     uint32_t     runCount;
+    uint32_t     leafCount;   // actor/node pairs, retained with the feed when an idle frame reuses it
     float        worldToClipGL[16]; // kAxisSwapMC2toGL * worldToClip (row-major, GL_FALSE)
     float        objectDepthBias;    // OBJECT_DEPTH_BIAS
     float        fogColorRGB[3];     // g_scene.fogColor.rgb (mech.frag fog mix source)

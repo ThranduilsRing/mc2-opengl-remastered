@@ -1588,6 +1588,7 @@ static bool record_props(const PropRecordIn& in, unsigned long& typeRunsOut) {
                 if (mc2vk::gpuprof::active() && canopyRadius < s->hotCpu.size() && s->hotCpu[canopyRadius] > 0.0f)
                     treeTiming.emplace(cb, "VKIsl.Props.Trees", __FILE__, static_cast<uint32_t>(__LINE__));
                 const TypeRun& tr = s->typeRuns[tid];
+                bool counted = false;
                 for (uint32_t p = 0; p < tr.packetCount; ++p) {
                     const uint32_t pk = tr.firstPacket + p;
                     if (pk >= s->packets.size()) break;
@@ -1630,8 +1631,10 @@ static bool record_props(const PropRecordIn& in, unsigned long& typeRunsOut) {
                     vkCmdDrawIndexed(cb, pkt.indexCount, instCount,
                                      pkt.firstIndex, static_cast<int32_t>(pkt.baseVertex), i);
                     // Native color leaves include cached registry replay; count once before GPU HZB/alpha rejection.
-                    if (fringePass == 0 && pkt.indexCount && mc2::battlebench::output)
+                    if (!counted && fringePass == 0 && pkt.indexCount && mc2::battlebench::output) {
                         mc2::battlebench::nativePropLeaves += instCount;
+                        counted = true;
+                    }
                 }
                 if (fringePass == 0) ++typeRuns;
             }

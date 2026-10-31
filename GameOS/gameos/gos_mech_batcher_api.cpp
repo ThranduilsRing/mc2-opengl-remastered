@@ -67,6 +67,7 @@ extern "C" int mc2_mech_island_get_frame_feed(Mc2MechFrameFeed* out) {
     out->boneCount     = static_cast<uint32_t>(s_vkMechBoneSnapshot.size());
     out->runs          = s_vkMechRunSnapshot.data();
     out->runCount      = static_cast<uint32_t>(s_vkMechRunSnapshot.size());
+    out->leafCount     = s_vkMechLeafCount;
     // VK-FLIP-FIELD-BUG4-1: use the LIVE camera MVP, not the flush-time snapshot.
     // s_vkMechWorldToClipGL is captured only inside GpuMechBatcher::flush() (batcher
     // submit path). On frames where the batcher skips its flush (mech instance data
