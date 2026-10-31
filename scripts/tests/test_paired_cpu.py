@@ -72,3 +72,12 @@ def test_runner_interleaves_and_keeps_noisy_pairs(tmp_path, monkeypatch):
 
 def test_failures_are_preserved_not_turned_into_timings():
     assert tool.comparison([{'a': {'error': 'crash'}, 'b': {'zones': {}}}]) == {}
+
+
+def test_mean_is_frame_normalized_and_tail_is_per_event():
+    logic = {'count': 20, 'total_ms': 6, 'median_ms': .3, 'p95_ms': .6, 'min_ms': .1, 'q25_ms': .2}
+    run = {'zones': {'Frame': dict(logic, count=10, total_ms=20), 'GameLogic': logic},
+           'noise': {'external_cpu_p95': 30}}
+    result = tool.comparison([{'a': run, 'b': run}] * 5)['GameLogic']['a']
+    assert result['mean_ms'] == .6
+    assert result['p95_ms'] == .6

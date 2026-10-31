@@ -40,7 +40,7 @@ def comparison(pairs):
         row = paired_delta(*[[p[a]["zones"][name]["median_ms"] for p in valid] for a in ("a", "b")])
         for arm in ("a", "b"):
             rows = [p[arm]["zones"][name] for p in valid]
-            row[arm] = {"mean_ms": median(r["total_ms"] / r["count"] for r in rows),
+            row[arm] = {"mean_ms": median(p[arm]["zones"][name]["total_ms"] / p[arm]["zones"]["Frame"]["count"] for p in valid),
                         **{k: median(r[k] for r in rows) for k in ("median_ms", "p95_ms", "min_ms", "q25_ms")},
                         "reserved_external_cpu_p95": [p[arm]["noise"].get("external_cpu_p95") for p in valid]}
         result[name] = row
@@ -48,7 +48,7 @@ def comparison(pairs):
 
 
 def table(report):
-    lines = ["| Mission | Zone | A mean/p95 ms | B mean/p95 ms | Delta median [90% CI] ms | Verdict | Reserved external CPU p95 A/B % |",
+    lines = ["| Mission | Zone | A mean/frame / event p95 ms | B mean/frame / event p95 ms | Delta median [90% CI] ms | Verdict | Reserved external CPU p95 A/B % |",
              "|---|---|---:|---:|---:|---|---|"]
     for mission, pairs in report["runs"].items():
         for zone, r in comparison(pairs).items():
