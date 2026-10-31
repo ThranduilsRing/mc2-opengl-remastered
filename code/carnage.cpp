@@ -916,16 +916,13 @@ void Carnage::init (bool create, ObjectTypePtr _type)
 
 //---------------------------------------------------------------------------
 #include "save_struct_zero.h"
-#include "carnage_value_codec.h"
 void Carnage::Save (PacketFilePtr file, long packetNum)
 {
 	MC2_SAVE_STRUCT(CarnageData, data);
 	CopyTo(&data);
 
 	//PacketNum incremented in ObjectManager!!
-	auto bytes = mc2::save::encodeTaggedRecord(mc2::save::CarnageRecord{data}, mc2::save::carnageTag);
-	if (bytes.empty()) Fatal(0, "Invalid carnage ObjectSlot");
-	file->writePacket(packetNum, bytes.data(), static_cast<unsigned int>(bytes.size()), STORAGE_TYPE_ZLIB);
+	file->writePacket(packetNum,reinterpret_cast<MemoryPtr>(&data),sizeof(CarnageData),STORAGE_TYPE_ZLIB);
 }
 
 //---------------------------------------------------------------------------
