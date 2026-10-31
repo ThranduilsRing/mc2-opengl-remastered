@@ -24,7 +24,10 @@ Failure triage:
 
 Completed: 123 targeted Python tests PASS; sim firewall PASS; C++ ratchet PASS;
 W89 day/night montages inspected, no visible differences (MAD rounds to 0.00).
-Next: ratchet/failed contract rows, final commit/build, rerun only failed rows;
+Seven affected contract/ratchet rows PASS. Initial all-target checkpoint built
+standalone tools and doctests, but RenderCore lacks mclib's include directory;
+use a header-relative formatter include in the GameOS compatibility header.
+Next: rerun failed root build, final dev build/unit formatter, failed gate rows;
 deploy v0.4 and owner-test (never launch owner-test), reseed farm when idle;
 delete merged installs and inactive merged build dirs; export merge90-input;
 record receipts/space and report. Owner-only captures skipped while owner away.

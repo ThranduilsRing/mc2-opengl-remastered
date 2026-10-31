@@ -1,7 +1,7 @@
 // GameOS formatting compatibility header and platform debugger sink.
 #pragma once
 
-#include "mc2format.h"
+#include "../../mclib/mc2format.h"
 
 namespace mc2::fmt {
 
