@@ -149,9 +149,9 @@ public:
 		// formerly set here. Hoisted to EditorInterface::update() BEFORE
 		// land->geometry() so terrain cull constants are fresh when
 		// consumed. Local viewMulX/Y/AddX/Y are still used below for
-		// TG_Shape::SetViewport and globalScaleFactor.
+		// the CPU view's viewport and globalScaleFactor.
 	
-		TG_Shape::SetViewport(viewMulX,viewMulY,viewAddX,viewAddY);
+		tglView.SetViewport(viewMulX,viewMulY,viewAddX,viewAddY);
 	
 
 		globalScaleFactor = getScaleFactor();
@@ -428,7 +428,7 @@ public:
 			// Re-point it at the SCENE width too -- otherwise objects project into full-window
 			// space while the map renders + mouse live in the centralW space, so the highlight
 			// and placement diverge from the cursor toward the right. (No-op undocked.)
-			TG_Shape::SetViewport(sceneRes.x, sceneRes.y, 0.0f, 0.0f);
+			tglView.SetViewport(sceneRes.x, sceneRes.y, 0.0f, 0.0f);
 			if (userInput)
 				userInput->setViewport(sceneRes.x, sceneRes.y, 0.0f, 0.0f);
 

@@ -305,7 +305,7 @@ Only then start the separate packet-key vkLights change. Keep one install `E:/mc
 
 ## S2 CPU view proof closed, 2026-10-31 continuation
 
-Engine commits `5b24b0e3f`, `c4b9e24af`, `c823bf486` are proven. Retained receipts:
+Game/preview proof for engine commits `5b24b0e3f`, `c4b9e24af`, `c823bf486` is green. Retained receipts:
 `s2-view-{build-fixed,final-build,alltargets,unit,final-contracts}.log`; selected native light/forceZ/cone
 tests: 34 cases / 4570 assertions PASS; ten covering rows including all five ratchets PASS, no baseline changes.
 The corrected root build and companion builds supersede the initial Camera compile failure.
@@ -335,3 +335,13 @@ No feature gate, GPU ABI change, new harness or three-slot ring introduced; reti
 Green pre-build receipt: `s2-lights-contracts.log`, ten covering rows/all five ratchets PASS, whitespace PASS.
 Next: commit-first build_all_targets once (-j6), selected native lighting tests, explicit lane deploy, then
 day/night pixel parity, mc2_10 SIMID 20 s/audit ON and sync validation 0. Stop at that proven S2 checkpoint.
+
+Shared-header checkpoint correction: `s2-lights-alltargets.log` exposed two retained `TG_Shape::SetViewport`
+calls in `editor/EditorCamera.h` from the prior CPU-view step. The previous all-target receipt was not a
+successful complete root build. Both calls now update the editor camera's own `tglView`.
+Standalone tools and doctest corpus built PASS (19/5/5/28 s); root failed after 748 s at the editor call sites.
+The dependent proof shell correctly stopped before tests/deploy/games. Next: finish only the failed root
+stage, then resume the proof stages. Reuse the existing all-target Ninja payload via explicit
+`--build-dir A:/Games/mc2-lane8/build-alltargets --build64-root A:/Games/mc2-lane8/build-alltargets`;
+this keeps deploy's provenance, companion and object-freshness checks active on the tree just built.
+Editor follow-up's covering row plus all five ratchets PASS in `s2-editor-contracts.log`.
