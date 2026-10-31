@@ -395,7 +395,11 @@ def install_plan(steps, install):
             idx = command.index("--deploy")
             command[idx:idx + 2] = ["--exe", str(install / "mc2.exe")]
         if name == "mods":
-            command += ["--base-install", str(install), "--stage-root", str(install.parent / (install.name + "-mods-stage")), "--duration", "15"]
+            # Candidate names are random and their siblings are deleted at exit.
+            # Keep the existing incremental payload cache across windows, scoped
+            # to this worktree; battery() still removes every disposable install.
+            stage_root = Path('E:/mc2-archive-2026-10/proofs') / (ROOT.name + '-mods-stage')
+            command += ["--base-install", str(install), "--stage-root", str(stage_root), "--duration", "15"]
         result.append((name, command, env))
     return result
 
@@ -617,8 +621,8 @@ def execute_parallel(steps, head, dry_run=False, keep_going=False, farm_determin
             pending.append(pool.submit(execute, farm, head, runner=farm_runner, completed=completed))
         if mods:
             copy_context, copy_future = None, None
-            if determinism:
-                command = next(c for _, c, _ in determinism if "--install" in c)
+            command = next((c for _, c, _ in determinism + stock if "--install" in c), None)
+            if command:
                 install = Path(command[command.index("--install") + 1]).resolve()
                 copy_context = stock_copy(install)
                 copy_future = pool.submit(copy_context.__enter__)

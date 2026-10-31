@@ -48,6 +48,20 @@ def test_classic_docs_do_not_schedule_runtime_proofs():
     assert not any(n.endswith('-classic') for n, _, _ in steps)
 
 
+def test_mod_payload_cache_survives_random_candidate_names(tmp_path, monkeypatch):
+    monkeypatch.setattr(gate, 'ROOT', tmp_path / 'lane-c')
+    roots = []
+    for candidate in ('stock-random-one', 'stock-random-two'):
+        steps = gate.install_plan(gate.plan(6), tmp_path / candidate)
+        command = next(c for n, c, _ in steps if n == 'mods')
+        roots.append(command[command.index('--stage-root') + 1])
+    assert roots[0] == roots[1]
+    assert roots[0].endswith('lane-c-mods-stage')
+    monkeypatch.setattr(gate, 'ROOT', tmp_path / 'other-lane')
+    command = next(c for n, c, _ in gate.install_plan(gate.plan(6), tmp_path / 'candidate') if n == 'mods')
+    assert command[command.index('--stage-root') + 1] != roots[0]
+
+
 def test_kit_visibility_is_nightly_but_catching_stages_remain():
     for full in (False, True):
         steps = gate.affected_plan(gate.plan(6), ['code/mission_update.cpp'], full=full)
