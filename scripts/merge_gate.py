@@ -119,6 +119,8 @@ class GateState:
                          order=[n for n, _, _ in steps], stages={})
         self.resume = resume
         self.reused = []
+        self.started_signatures = {}
+        self.started_reports = {}
         self.specs = {n: (c, e) for n, c, e in steps}
 
     def __enter__(self):
@@ -179,6 +181,30 @@ class GateState:
                   ROOT / 'build64-ninja/CMakeCache.txt'}
         inputs.update((ROOT / 'tests/saveload/baselines').glob('*.json'))
         inputs.update((ROOT / 'tests/smoke/sim_determinism').glob('*.json'))
+        mod_battery = any(Path(arg).name == 'mod_smoke.py' for arg in command)
+        base = None
+        if mod_battery:
+            import mod_smoke as mods
+            def option(flag, default):
+                return Path(command[command.index(flag) + 1] if flag in command else default).resolve()
+            base = option('--base-install', mods.DEFAULT_BASE_INSTALL)
+            mod_root = option('--install-root', mods.DEFAULT_INSTALL_ROOT)
+            build = option('--build-dir', ROOT / 'build64-ninja')
+            inputs.update(p for p, _ in mods.engine_payload_items(build, build))
+            inputs.add(mods.WARNING_BUDGET)
+            inputs.add(ROOT / 'system.cfg')
+            for directory in ('scripts', 'tools'):
+                inputs.update((ROOT / directory).rglob('*.py'))
+            # Hash bytes, including cached recipes; size/mtime is never proof.
+            # Candidate directories have random names; key their contents relatively.
+            inputs.update(p for p in base.rglob('*') if p.is_file()
+                          and p.relative_to(base).parts[0] not in ('debug_state', 'crashes', 'logs')
+                          and p.suffix.lower() not in ('.log', '.dmp', '.tmp', '.pdb'))
+            for _, folder, parent in mods.BATTERY:
+                for layer in mods.mod_layers(mod_root, folder, parent):
+                    if not layer.is_dir():
+                        raise FileNotFoundError(f'mod receipt input missing: {layer}')
+                    inputs.update(p for p in layer.rglob('*') if p.is_file())
         for arg in command:
             path = Path(arg)
             if not path.is_absolute():
@@ -189,11 +215,24 @@ class GateState:
                 inputs.add(path / '.deployed_manifest.csv')
         hashes = {}
         for path in sorted(inputs, key=str):
+            key = str(path)
+            if base is not None and path.is_relative_to(base):
+                key = '{INSTALL}/' + path.relative_to(base).as_posix()
             if path.is_file():
+                if base is not None and path == base / '.deployed_manifest.csv':
+                    import csv
+                    with path.open(encoding='utf-8-sig', newline='') as source:
+                        next(source)
+                        rows = [{k: row[k] for k in ('relpath', 'sha256', 'bytes', 'src_commit')}
+                                for row in csv.DictReader(source)]
+                    hashes[key] = hashlib.sha256(json.dumps(sorted(rows, key=lambda r: r['relpath']), sort_keys=True).encode()).hexdigest()
+                    continue
                 with path.open('rb') as source:
-                    hashes[str(path)] = hashlib.file_digest(source, 'sha256').hexdigest()
+                    hashes[key] = hashlib.file_digest(source, 'sha256').hexdigest()
             else:
-                hashes[str(path)] = None
+                hashes[key] = None
+        if base is not None:
+            command = [arg.replace(str(base), '{INSTALL}').replace(base.as_posix(), '{INSTALL}') for arg in command]
         ambient = {k: v for k, v in os.environ.items() if k.startswith('MC2_') or k == 'PYTHONPATH'}
         return hashlib.sha256(json.dumps([command, overrides, hashes, ambient], sort_keys=True).encode()).hexdigest()
 
@@ -201,13 +240,43 @@ class GateState:
         row = self.data["stages"].get(name, {})
         sha = self.exe_sha()
         offline = name in ('contracts', 'harnesses', 'pytest')
-        return ((self.resume or offline) and row.get("head") == self.head
+        specs = (command, overrides) if name == 'mods' else self.specs.get(name, (command, overrides))
+        evidence = row.get('evidence', {})
+        if name == 'mods':
+            if not row.get('signature') or not evidence:
+                return False
+            try:
+                signature = self.signature(*specs)
+                if not all(Path(p).is_file() and hashlib.sha256(Path(p).read_bytes()).hexdigest() == sha
+                           for p, sha in evidence.items()):
+                    return False
+            except (OSError, ValueError, KeyError):
+                return False
+        else:
+            signature = self.signature(*specs)
+        return ((self.resume or offline or name == 'mods') and row.get("head") == self.head
                 and (offline or sha is not None and row.get("exe_sha") == sha)
                 and stage_passed(row.get("status", ""))
-                and row.get("signature") == self.signature(*self.specs.get(name, (command, overrides))))
+                and row.get("signature") == signature)
 
     def record(self, name, command, overrides, status, seconds, scheduler_wait=0.0):
         with self.mutex:
+            specs = (command, overrides) if name == 'mods' else self.specs.get(name, (command, overrides))
+            try:
+                signature = self.signature(*specs)
+            except (OSError, ValueError, KeyError):
+                if name != 'mods':
+                    raise
+                signature = None
+            evidence = {}
+            if name == 'mods' and status == 'PASS' and '--stage-root' in command:
+                stage_root = Path(command[command.index('--stage-root') + 1])
+                reports = list(stage_root.glob('*/battery.json'))
+                report = max(reports, key=lambda p: p.stat().st_mtime_ns) if reports else None
+                if (report and signature and signature == self.started_signatures.get(name)
+                        and report not in self.started_reports.get(name, set())):
+                    evidence = {str(p): hashlib.sha256(p.read_bytes()).hexdigest()
+                                for p in report.parent.rglob('*') if p.is_file() and p.suffix in ('.json', '.log')}
             artefact = overrides.get("MC2_SMOKE_ARTIFACT_ROOT", self.data["artefact_dir"])
             for option in ("--out", "--out-root"):
                 if option in command:
@@ -215,7 +284,7 @@ class GateState:
             self.data["stages"][name] = dict(
                 head=self.head, exe_sha=self.exe_sha(), status=status, seconds=seconds,
                 artefact_dir=artefact, scheduler_wait_seconds=scheduler_wait,
-                signature=self.signature(*self.specs.get(name, (command, overrides))))
+                signature=signature, evidence=evidence)
             self.write()
 
 
@@ -774,6 +843,9 @@ def execute(steps, head, dry_run=False, runner=run_child, completed=None):
     for name, command, overrides in steps:
         if not dry_run and ACTIVE_STATE and ACTIVE_STATE.reusable(name, command, overrides):
             status = "REUSED: gate-state HEAD/exe/signature match"
+            if name == 'mods':
+                row = ACTIVE_STATE.data['stages'][name]
+                status += f" receipt={ACTIVE_STATE.path} input={row['signature']} previous={row['seconds']:.1f}s"
             ACTIVE_STATE.reused.append(name)
             completed[name] = status
             results.append((name, status, 0.0))
@@ -806,6 +878,14 @@ def execute(steps, head, dry_run=False, runner=run_child, completed=None):
                 if git("rev-parse", "HEAD") != head:
                     raise RuntimeError("HEAD changed during gate; rerun verification and gate")
                 print(f"[merge_gate] {name}", flush=True)
+                if ACTIVE_STATE and name == 'mods':
+                    try:
+                        ACTIVE_STATE.started_signatures[name] = ACTIVE_STATE.signature(command, overrides)
+                    except (OSError, ValueError, KeyError):
+                        ACTIVE_STATE.started_signatures[name] = None
+                    if '--stage-root' in command:
+                        stage_root = Path(command[command.index('--stage-root') + 1])
+                        ACTIVE_STATE.started_reports[name] = set(stage_root.glob('*/battery.json'))
                 if overrides.get("MC2_GATE_COVERAGE"):
                     print("[merge_gate] " + overrides["MC2_GATE_COVERAGE"], flush=True)
                 log_lease_holders()

@@ -114,6 +114,60 @@ def test_runtime_resume_invalidates_changed_file_input(journal, monkeypatch):
     assert result == 0 and not state.reused
 
 
+@pytest.mark.parametrize('change', ['none', 'head', 'mod', 'base', 'shader', 'proof', 'missing-proof', 'failed', 'ambient', 'candidate', 'during-run', 'stale-report'])
+def test_mod_receipt_replays_only_identical_inputs_and_retained_proof(journal, monkeypatch, change, capsys):
+    import mod_smoke as mods
+    import shutil
+    root = journal[0].parent
+    monkeypatch.setattr(gate, 'ROOT', root)
+    base, mod_root, build, proof = (root / p for p in ('base', 'mods', 'build', 'proof'))
+    files = [base / 'data/unit.fit', mod_root / 'one/data/mod.fit', build / 'shader.spv']
+    for p in files:
+        p.parent.mkdir(parents=True, exist_ok=True); p.write_bytes(b'initial')
+    monkeypatch.setattr(mods, 'BATTERY', [('One', 'one', None)])
+    monkeypatch.setattr(mods, 'engine_payload_items', lambda *a: [(files[2], 'shaders/vulkan/shader.spv')])
+    def steps(candidate):
+        return [('mods', ['tools/mod_smoke.py', '--base-install', str(candidate), '--install-root', str(mod_root),
+                          '--build-dir', str(build), '--stage-root', str(proof)], {})]
+    def first(*a, **kw):
+        if change == 'during-run':
+            files[0].write_text(files[0].read_text() + 'changed')
+        (proof / 'run').mkdir(parents=True, exist_ok=True)
+        (proof / 'run/battery.json').write_text('[{"exit": 0}]')
+        (proof / 'run/engine.log').write_text('PASS')
+        return types.SimpleNamespace(returncode=int(change == 'failed'), gate_elapsed=489.3)
+    if change == 'stale-report':
+        first()
+    run_state(journal, monkeypatch, steps(base), first)
+    if change in ('mod', 'base', 'shader'):
+        p = files[{'mod': 1, 'base': 0, 'shader': 2}[change]]
+        stamp = p.stat()
+        p.write_bytes(b'changed')
+        os.utime(p, ns=(stamp.st_atime_ns, stamp.st_mtime_ns))
+    if change == 'proof':
+        (proof / 'run/engine.log').write_text('changed evidence')
+    if change == 'missing-proof':
+        (proof / 'run/battery.json').unlink()
+    if change == 'ambient':
+        monkeypatch.setenv('MC2_OPTIONS_OVERRIDE', 'RemasteredBuildings=FALSE')
+    if change == 'candidate':
+        shutil.copytree(base, root / 'another-candidate')
+        base = root / 'another-candidate'
+    seen = []
+    def child(*a, **kw):
+        seen.append(a)
+        return first(*a, **kw)
+    head = 'changed' if change == 'head' else 'head'
+    monkeypatch.setattr(gate, 'git', lambda *a: head)
+    result, state = run_state(journal, monkeypatch, steps(base), child, head=head)
+    assert result == int(change == 'failed')
+    assert bool(state.reused) == (change in ('none', 'candidate'))
+    assert bool(seen) == (not state.reused)
+    if state.reused:
+        assert state.data['stages']['mods']['seconds'] == 489.3
+        assert 'previous=489.3s' in capsys.readouterr().out
+
+
 def test_dependency_reuse_accepts_resumed_pass_but_not_failed_source(journal, monkeypatch):
     source = ("source", ["source"], {})
     dependent = ("dependent", ["never-run"], {"MC2_GATE_SKIP_REASON": "covered", "MC2_GATE_REUSE_STAGE": "source"})
