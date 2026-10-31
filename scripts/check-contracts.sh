@@ -1509,7 +1509,7 @@ run_check "mission_codec_golden"       "MC2_CODEC_REQUIRED=1 py -3 -B -m pytest 
 run_check "farm_runner"                "py -3 -B -m pytest scripts/tests/test_farm_runner.py -q -p no:cacheprovider"
 # Aggregate Python suites run in tools/lane_merge.py --precheck, before the merge window.
 run_check "release_payload"            "py -3 -B -m pytest scripts/tests/test_release_payload.py -q -p no:cacheprovider"
-run_check "mission_cpu_profile"        "py -3 -B -m pytest scripts/tests/test_mission_cpu_profile.py -q -p no:cacheprovider"
+run_check "mission_cpu_profile"        "py -3 -B -m pytest scripts/tests/test_mission_cpu_profile.py scripts/tests/test_paired_cpu.py scripts/tests/test_host_lease.py -q -p no:cacheprovider"
 run_check "runtime_bridge"             "py -3 -B -m pytest scripts/tests/test_runtime_bridge.py scripts/tests/test_runtime_bridge_socket.py -q -p no:cacheprovider"
 run_check "mod_smoke"                  "py -3 -B -m pytest scripts/tests/test_mod_smoke.py scripts/tests/test_stage_root.py tests/smoke/test_mod_smoke_staging.py -q -p no:cacheprovider"
 run_check "content_error_stock"        "py -3 -B -m pytest scripts/tests/test_content_error.py -q -p no:cacheprovider"

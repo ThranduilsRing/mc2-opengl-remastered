@@ -14,6 +14,7 @@ import hashlib
 import json
 import math
 import os
+from statistics import median
 from pathlib import Path
 import subprocess
 import sys
@@ -136,7 +137,7 @@ def p95(values):
     return sorted(values)[max(0, math.ceil(len(values) * .95) - 1)] if values else None
 
 
-def summarize(reader, frame_range=None, bookmarks=None):
+def summarize(reader, frame_range=None, bookmarks=None, warmup_seconds=0):
     """Aggregate real individual events, merging identical names across threads."""
     events = []
     for row in reader:
@@ -149,6 +150,9 @@ def summarize(reader, frame_range=None, bookmarks=None):
             raise ValueError("negative Tracy zone duration")
         events.append((sys.intern(row["name"]), int(row["ns_since_start"]) if row.get("ns_since_start") else None, value))
     frames = sorted((start, duration) for name, start, duration in events if name == "Frame" and start is not None)
+    if frames and warmup_seconds:
+        cutoff = frames[0][0] + warmup_seconds * 1e9
+        frames = [(s, d) for s, d in frames if s >= cutoff]
     def aggregate(window=None):
         selected = frames if window is None else frames[window[0] - 1:window[1] - 1]
         if window is not None and len(selected) != window[1] - window[0]:
@@ -164,6 +168,10 @@ def summarize(reader, frame_range=None, bookmarks=None):
             raise ValueError("Tracy export contains no CPU events")
         return {name: {"count": len(values), "total_ms": sum(values) / 1e6,
                        "p95_ms": p95(values) / 1e6,
+                       **({"median_ms": median(values) / 1e6,
+                           "min_ms": min(values) / 1e6,
+                           "q25_ms": sorted(values)[(len(values) - 1) // 4] / 1e6}
+                          if frames else {}),
                        "worst_ms": max(values) / 1e6} for name, values in durations.items()}
     if bookmarks:
         expected = next(iter(bookmarks.values()))["last_cpu_frame"]
@@ -177,6 +185,8 @@ def summarize(reader, frame_range=None, bookmarks=None):
 def capture_mission(install, mission, seconds, trace, extra_env, full_sweep=False):
     """Record through mission exit: a connection-time cutoff can capture only loading."""
     env = tracy.game_env("vk", False, 0, None, extra_env)
+    if os.environ.get("MC2_VK_DEVICE"):
+        env.setdefault("MC2_VK_DEVICE", os.environ["MC2_VK_DEVICE"])
     env["MC2_FORCE_ALL_VISIBLE"] = "0"  # profile normal mission visibility, overriding smoke's forced value
     camera = camera_bookmarks(mission, full_sweep) if mission in CAMERA_MISSIONS else {}
     marks = (camera["bookmarks"]
@@ -238,7 +248,7 @@ def capture_mission(install, mission, seconds, trace, extra_env, full_sweep=Fals
             tracy._stop_capture_child(recorder)
 
 
-def export_zones(trace, bookmarks=None):
+def export_zones(trace, bookmarks=None, warmup_seconds=0):
     # Stream all events once: computing p95 from aggregate mean/max is invalid.
     with trace.with_suffix(".export.log").open("w", encoding="utf-8") as log:
         flags = {"creationflags": subprocess.BELOW_NORMAL_PRIORITY_CLASS} if os.name == "nt" else {}
@@ -250,7 +260,7 @@ def export_zones(trace, bookmarks=None):
         timer.start()
         try:
             with child.stdout:
-                zones = summarize(csv.DictReader(child.stdout), bookmarks=bookmarks)
+                zones = summarize(csv.DictReader(child.stdout), bookmarks=bookmarks, warmup_seconds=warmup_seconds)
             if child.wait(timeout=10):
                 raise RuntimeError(f"Tracy export failed; see {log.name}")
             return zones
@@ -301,7 +311,10 @@ class HostSamples:
         psutil = self.psutil
         parent = psutil.Process()
         reserved = host_lease.game_cores()
-        parent.cpu_affinity(reserved)
+        original = parent.cpu_affinity()
+        tool_cores = [c for c in original if c not in reserved]
+        if tool_cores:
+            parent.cpu_affinity(tool_cores)
         sampler_affinity = set(parent.cpu_affinity())
         parent.cpu_percent()
         known = {}
@@ -343,6 +356,8 @@ class HostSamples:
                                   "own_games": games})
         except Exception as exc:
             self.error = str(exc)
+        finally:
+            parent.cpu_affinity(original)
 
     def __enter__(self):
         self.thread.start()
@@ -418,8 +433,25 @@ def profile(args, name, directory, psutil):
     mission = name
     if name == "battle":
         scenario = json.loads(battle.SCENARIO.read_text(encoding="utf-8"))
+        scenario["spawn"]["count"] = 128
         mission = scenario["mission"]
         channel = battle.prepare(directory, scenario, "day")
+        # mc2_24 starts with 70 movers. Each class has 128 spare pool slots;
+        # UI commands initialize appearances on the main thread, unlike the
+        # simulation-worker MC2_MOVER_FIXTURE path.
+        spawn = scenario["spawn"]
+        x, y = spawn["origin"]
+        y += 16 * spawn["spacing"]
+        vehicles = "".join(f"spawn vehicle {x + i * spawn['spacing']} {y} 0 0 {spawn['pilot']}\n" for i in range(2))
+        channel.write_text(channel.read_text(encoding="utf-8").replace("select all\n", vehicles + "select all\n", 1), encoding="utf-8")
+        env = [f"{k}={v}" for k, v in battle.environment(channel, 1920, 1080).items()]
+    short_view = not args.full_camera_sweep
+    view = None
+    if short_view and name in CAMERA_MISSIONS:
+        chosen = {"mc2_01": "sun_facing_low", "mc2_10": "sun_facing_low", "mc2_24": "low_horizon_0"}[name]
+        view = next(m for m in camera_bookmarks(name, True)["bookmarks"] if m["name"] == chosen)
+        channel = directory / "commands.txt"
+        channel.write_text(f"bench_output {directory / 'frames.jsonl'}\n{battle.view_command(view)}\n", encoding="utf-8")
         env = [f"{k}={v}" for k, v in battle.environment(channel, 1920, 1080).items()]
     started = time.monotonic()
     # Standard bounded perf lease prevents a second MC2 instance feeding Tracy.
@@ -449,13 +481,21 @@ def profile(args, name, directory, psutil):
         ack = channel.with_suffix(channel.suffix + ".ack")
         if not ack.exists() or "bench_attack -> ok" not in ack.read_text(encoding="utf-8", errors="replace"):
             raise RuntimeError("battle spawn/attack was not acknowledged")
-    bookmarks = bookmark_measurements(directory, camera_bookmarks(name, args.full_camera_sweep)["bookmarks"], log) if name in CAMERA_MISSIONS else {}
-    zones = export_zones(trace, bookmarks)
+    if short_view and view:
+        ack = channel.with_suffix(".txt.ack").read_text(encoding="utf-8")
+        if f"{battle.view_command(view)} -> ok" not in ack:
+            raise RuntimeError("worst-view command was not acknowledged")
+    if name == "battle":
+        worlds = [r for r in battle.read_frames(directory) if r["type"] == "world"]
+        if not worlds or any(r.get("movers") != 200 for r in worlds):
+            raise RuntimeError("battle world evidence does not establish 200 movers")
+    bookmarks = bookmark_measurements(directory, camera_bookmarks(name, args.full_camera_sweep)["bookmarks"], log) if name in CAMERA_MISSIONS and not short_view else {}
+    zones = export_zones(trace, bookmarks, warmup_seconds=3 if short_view else 0)
     missing = set(SPLIT.values()) - zones.keys()
     if missing:
         raise RuntimeError(f"missing frame scopes {sorted(missing)}; trace is not a mission profile")
     return {"mission": mission, "noise": noise, "zones": zones, "bookmarks": bookmarks,
-            "duration_seconds": max(args.seconds, 60) if args.full_camera_sweep and name in CAMERA_MISSIONS else args.seconds,
+            "view": view, "duration_seconds": max(args.seconds, 60) if args.full_camera_sweep and name in CAMERA_MISSIONS else args.seconds,
             "capture_clock": "wall-clock; review PNGs only, not deterministic goldens" if bookmarks else None,
             "lease_wait_seconds": waited, "game_run_seconds": run_seconds,
             "trace": str(trace)}
@@ -523,7 +563,7 @@ def main(argv=None):
             (directory / "profile.json").write_text(json.dumps(report, indent=2), encoding="utf-8")
             (directory / "profile.md").write_text("\n\n".join(text) + "\n", encoding="utf-8")
     print(f"Proof: {directory}")
-    return 1 if report["errors"] else (2 if any(r["noise"]["status"] == "NOISY" for r in report["runs"].values()) else 0)
+    return 1 if report["errors"] else 0
 
 
 if __name__ == "__main__":

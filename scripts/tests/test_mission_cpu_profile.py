@@ -151,11 +151,29 @@ def test_other_game_refusal_never_launches_capture(tmp_path, monkeypatch):
         profile.profile(SimpleNamespace(install=tmp_path, seconds=10), "mc2_03", tmp_path / "out", None)
 
 
+def test_battle_uses_main_thread_spawn_pools(tmp_path, monkeypatch):
+    monkeypatch.setattr(profile.host_lease, 'exclusive_window', lambda *a, **k: nullcontext())
+    monkeypatch.setattr(profile, 'game_processes', lambda *a: [])
+    monkeypatch.setattr(profile, 'HostSamples', lambda *a: nullcontext())
+    monkeypatch.setattr(profile, 'noise_report', lambda *a: {})
+    def inspect(install, mission, seconds, trace, env):
+        assert not any(value.startswith('MC2_MOVER_FIXTURE=') for value in env)
+        commands = (trace.parent / 'commands.txt').read_text().splitlines()
+        assert sum(line.startswith('spawn clone ') for line in commands) == 128
+        assert sum(line.startswith('spawn vehicle ') for line in commands) == 2
+        assert commands.index('select all') > max(i for i, line in enumerate(commands) if line.startswith('spawn '))
+        raise RuntimeError('spawn pools checked')
+    monkeypatch.setattr(profile, 'capture_mission', inspect)
+    with pytest.raises(RuntimeError, match='spawn pools checked'):
+        profile.profile(SimpleNamespace(install=tmp_path, seconds=20), 'battle', tmp_path / 'battle', None)
+
+
 @pytest.mark.parametrize("battle_commands", [False, True])
 def test_runner_does_not_receive_host_knobs_or_wait_for_failed_client(tmp_path, monkeypatch, battle_commands):
     channel = tmp_path / "commands.txt"
     channel.write_text("spawn clone 0 0\n")
     extra = {"MC2_UI_COMMAND_FILE": str(channel)} if battle_commands else {}
+    monkeypatch.setenv("MC2_VK_DEVICE", "NVIDIA")
     monkeypatch.setattr(profile.tracy, "game_env", lambda *a: {"TRACY_PORT": "8086", "MC2_HOST_GAME_SLOTS": "2", **extra})
     monkeypatch.setattr(profile.tracy.render_options_pin, "record", lambda *a: {})
     monkeypatch.setattr(profile.tracy.render_options_pin, "write", lambda *a: None)
@@ -168,6 +186,7 @@ def test_runner_does_not_receive_host_knobs_or_wait_for_failed_client(tmp_path, 
         assert "MC2_HOST_GAME_SLOTS" not in config.env_extra
         assert config.env_extra["TRACY_PORT"] == "8086"
         assert config.env_extra["MC2_FORCE_ALL_VISIBLE"] == "0"
+        assert config.env_extra["MC2_VK_DEVICE"] == "NVIDIA"
         return SimpleNamespace(stdout_text="failed", exit_code=1, killed_by_timeout=False)
     monkeypatch.setattr(profile.runner, "run_one", failed_run)
     assert profile.capture_mission(tmp_path, "mc2_01", 10, tmp_path / "test.tracy", []) == 1

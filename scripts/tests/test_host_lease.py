@@ -55,6 +55,12 @@ def test_free_host_takes_the_lease(lease):
     assert not lease.exists()
 
 
+def test_private_perf_lease_fits_eight_cpu_farm(lease, monkeypatch):
+    monkeypatch.setenv('MC2_HOST_CORES_PER_SLOT', '2')
+    host_lease.acquire('mission CPU perf', exclusive=True, scan=lambda: [], log=lambda m: None)
+    assert json.loads(lease.read_text())['affinity_mask'] == 0xf0
+
+
 @pytest.mark.skipif(sys.platform != "win32", reason="Windows open readers deny replace and unlink")
 @pytest.mark.parametrize("operation", ["replace", "unlink"])
 def test_publication_and_release_survive_an_open_reader(lease, operation):
@@ -527,7 +533,7 @@ def test_affinity_reserves_only_physical_game_cores(monkeypatch):
             host_lease.slot_count()
 
 
-@pytest.mark.parametrize("width,exclusive,expected", [(1, False, 0x30), (1, True, 0xFFF0), (2, False, 0xF0), (2, True, 0xFFF0)])
+@pytest.mark.parametrize("width,exclusive,expected", [(1, False, 0x30), (1, True, 0x30), (2, False, 0xF0), (2, True, 0xF0)])
 def test_slot_affinity_reaches_child_process(lease, monkeypatch, width, exclusive, expected):
     import ctypes
     from ctypes import wintypes

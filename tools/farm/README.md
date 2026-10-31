@@ -1,5 +1,17 @@
 # Farm desktop runner
 
+Paired performance jobs use `host.py submit --exe <arm-A-build>/mc2.exe
+--exe-b <arm-B-build>/mc2.exe --data-delta <delta> tools/farm/perf.json`.
+Place the committed profiling harness under `delta/perf-harness/` (scripts,
+tools/perf, their Python imports, Gates, tests/smoke and tests/visual/bookmarks).
+Both payloads deploy privately on the laptop. The job alternates A/B five times
+per mission with 20-second fixed views, returns raw profile JSONs and Tracy
+captures, and prints the same paired confidence/verdict table as the host.
+Tracy executables and psutil must be installed under C:/mc2farm; this job uses
+the NVIDIA GPU and laptop-local leases. Noise annotates every result.
+Fetch removes both private arm trees. Laptop absolute timings characterize
+that machine; compare host and laptop deltas separately.
+
 Fresh release proof: package with `scripts/build_release.sh`, then prepare a
 data-delta directory containing `release-assets/mc2-remastered-engine.zip`,
 `release-assets/mc2-gamedata.zip`, and the lane's interpreted harness under
@@ -52,8 +64,8 @@ It transfers only files whose size or modification time changed, preserves
 modification times, and reports transferred bytes/decimal GB. It excludes PDBs,
 build trees, untracked harness files and game run outputs; it does not delete
 existing laptop files. Run with the queue idle; do not reseed during a game job.
-Fetch `reference/seed.json` alongside job proofs. This GPU supplies pass/fail
-evidence only; do not report laptop performance numbers.
+Fetch `reference/seed.json` alongside job proofs. Performance uses the paired
+job above; label laptop absolute times separately from host measurements.
 
 Example `smoke.json` (the harness and independent reference executable must
 already have been seeded from the verified merge-gate output):

@@ -50,16 +50,18 @@ def test_schema_rejects_invalid_budget(budget, mutate):
 
 
 @pytest.mark.parametrize('value', [0.01, 100])
-def test_noise_never_passes_or_fails(budget, value):
-    result = tool.compare(profile(value, 'NOISY'), budget)['mc2_01']
-    assert result['status'] == 'INCONCLUSIVE'
-    assert {r['status'] for r in result['metrics'].values()} == {'INCONCLUSIVE'}
+def test_noise_annotates_without_rejecting(budget, value):
+    data = profile(value, 'NOISY')
+    data['runs']['mc2_03'] = data['runs']['mc2_01']
+    result = tool.compare(data, budget)['mc2_03']
+    assert result['metrics']['cpu_frame_ms']['status'] == ('PASS' if value < 1 else 'FAIL')
+    assert result['noise']['status'] == 'NOISY'
 
 
 def test_missing_and_contradictory_noise_are_inconclusive(budget):
     data = profile()
     del data['runs']['mc2_01']['noise']
-    assert tool.compare(data, budget)['mc2_01']['status'] == 'INCONCLUSIVE'
+    assert tool.compare(data, budget)['mc2_01']['status'] == 'INCONCLUSIVE'  # missing camera coverage
     data = profile()
     data['runs']['mc2_01']['noise']['external_cpu_p95'] = 26
     assert tool.compare(data, budget)['mc2_01']['status'] == 'INCONCLUSIVE'
@@ -86,13 +88,13 @@ def test_strict_goals_deltas_and_missing_metrics(budget):
 
 
 @pytest.mark.parametrize('invalid', [{'external_cpu_scope':None}, {'external_cpu_p95':None}, {'external_cpu_p95':15}])
-def test_only_measured_reserved_load_can_qualify(budget, invalid):
+def test_load_never_excludes_measurement(budget, invalid):
     run=profile()['runs']['mc2_01']
     data={'runs':{'mc2_03':run}}
     run['noise'].update(external_cpu_p95=14.99,whole_machine_external_cpu_p95=90)
     assert tool.compare(data,budget)['mc2_03']['metrics']['cpu_frame_ms']['status']=='PASS'
     run['noise'].update(invalid)
-    assert tool.compare(data,budget)['mc2_03']['metrics']['cpu_frame_ms']['status']=='INCONCLUSIVE'
+    assert tool.compare(data,budget)['mc2_03']['metrics']['cpu_frame_ms']['status']=='PASS'
 
 
 def test_supplementary_metrics_require_context(budget):
@@ -127,6 +129,21 @@ def test_cli_failure_and_invalid_budget(tmp_path):
     source = tmp_path / 'bad.json'
     source.write_text('{}')
     assert tool.main(['--budget', str(source), '--validate-schema']) == 3
+
+
+def test_cockpit_accepts_noisy_paired_profiles(tmp_path):
+    zone = {'count': 10, 'total_ms': 10, 'median_ms': 1, 'p95_ms': 2, 'min_ms': .9, 'q25_ms': .95}
+    a = {'zones': {'Frame': zone}, 'noise': {'status': 'NOISY', 'external_cpu_p95': 35}}
+    b = {'zones': {'Frame': dict(zone, total_ms=9, median_ms=.9)}, 'noise': a['noise']}
+    data = {'arms': {}, 'runs': {'mc2_01': [{'a': a, 'b': b}] * 5}, 'errors': []}
+    source = tmp_path / 'paired.json'
+    source.write_text(json.dumps(data))
+    output = tmp_path / 'report'
+    assert tool.main(['--profile', str(source), '--out', str(output)]) == 0
+    html = (output / 'index.html').read_text()
+    assert 'WIN' in html and '35' in html and '90% CI' in html
+    rows = json.loads((output / 'budget.json').read_text())
+    assert rows['mc2_01']['Frame']['pairs'] == 5
 
 
 def test_worst_bookmark_and_missing_coverage(budget):
