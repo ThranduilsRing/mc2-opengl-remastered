@@ -489,6 +489,7 @@ long Team::Load (PacketFilePtr file, long packetNum, bool values)
 	packetNum++;
 
 	numTeams = staticData.numTeams;
+	home = nullptr;
 	memcpy(relations,staticData.relations,sizeof(char) * MAX_TEAMS * MAX_TEAMS);
 	memcpy(noPain,staticData.noPain,sizeof(bool) * MAX_TEAMS);
 
@@ -538,5 +539,6 @@ long Team::Load (PacketFilePtr file, long packetNum, bool values)
 	}
 
 
+	if (!home) Fatal(0, "Missing saved home team");
 	return packetNum;
 }

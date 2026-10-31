@@ -231,6 +231,7 @@ long Commander::Load (PacketFilePtr file, long packetNum, bool values)
 	packetNum++;
 
 	numCommanders = staticData.numCommanders;
+	home = nullptr;
 
 	for (long i=0;i<numCommanders;i++)
 	{
@@ -267,6 +268,7 @@ long Commander::Load (PacketFilePtr file, long packetNum, bool values)
 			home = commanders[i];
 	}
 
+	if (!home) Fatal(0, "Missing saved home commander");
 	return packetNum;
 }
 
