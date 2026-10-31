@@ -31,10 +31,54 @@ RED base: G:/mc2-tmp/shadow-init-before.log (assert, exit 3221226505).
 GREEN: pytest 1 passed (1.10 s), four covering contracts pass (4.42 s).
 
 Private install seeded and deployed at E:/mc2-installs/claude-shadow-crash-fix.
-Base build 3b45512d5 (docs-only delta) complete. Base capture currently running
-through run_visual_capture, output proof/shadow-crash-fix/before-base.
-Next: finish base capture; commit/build/deploy fixed code; run all requested
-proofs above. Initial and audit scout calls timed out/slow; inspect direct ranges.
+Base build 3b45512d5 (docs-only delta), fixed build 74a794055, both complete.
+Fixed exe SHA256: 2102988583a70a28929862acc08c1fb9ccd8def0167f2cc57c2604114a7a0baf.
+Private install also retains mc2-before.exe/.pdb for the base arm (same data).
+Proof root: E:/mc2-archive-2026-10/proofs/shadow-crash-fix.
+Green: targeted mc2 + viewer link; 10 shadow doctests/313 assertions (240 s,
+tool slowness); four covering contract rows; all five ratchets with no changes
+to baselines. SIMID 03/10/24 headless pairs with --duration 20 match committed
+1000/800/1000-frame baseline chains. Receipts copied under proof root/receipts.
+Explicit day (time_of_day 0.25) and night (0.75), base+turret, trigger120 /
+settle30 / duration20: both before/after PNG pairs byte-identical. Day/night
+base images viewed. Sync-layer capture: layer_enabled preset=sync, zero errors
+and zero warnings; resources use existing shadow.bake.* debug-utils names.
+
+Reproduced on base at 1760 MiB after five successful control captures (default,
+explicit day/night, 1870 MiB and 1780 MiB). Before-pressure1760 log:4292 refuses
+dirtyInstances (22,020,096 bytes; live=1,824,365,408, budget=1,845,493,760).
+Crash 2026-10-31_082145_024_57420_393948125 is frame117, read 0x160, same NVIDIA
+driver address as W91. Bundle copied under proof root/crashes. Base rate at the
+identified repro: 1 crash / 1 run; fixed: 0 crashes / 20 consecutive runs.
+The production-method fault-injection regression DOES reproduce the exact
+fourth-allocation failure on base and proves atomic retry on the fixed method.
+after-pressure1760-20: 20 manifests, all captures present, both bookmarks
+byte-stable in all 20 runs (STABILITY PASS). All 20 logs exercise dirty buffer
+refusal. after-pressure1760-sync: sync layer engaged, zero errors/warnings,
+174 dirty allocation failures safely retried. No camera cut was needed: crash frame117 is
+before the first trigger120 pose change; window resize was not exercised.
+Farm job 76f9ec900f434be98a475cfced87adf1: 8x mc2_10/mc2_24, 20 s, fixed exe,
+independent byte-pinned reference. COMPLETE/PASS: all sixteen exit codes zero,
+fetched under farm/76f9ec900f434be98a475cfced87adf1. Remote work tree cleaned by fetch.
+First farm job a3d785fddbc54f1ab1dd885a8383c3e0 ran no games (farm has no lane
+git ref); fetched failure retained. Replacement uses a separate reference copy.
+Initial SIMID 10/24 attempts refused to start while this lane's capture was live;
+sequential retries passed. Initial scouts slow/timed out; direct ranges used.
 Sibling audit: ensureTransients/ensureEncoder/ensureProducts also have partial
 creation sentinels; incremental retirement has hardcoded +2 despite 3 frame
 slots. Audit/fix these separately with focused proof; do not call them fixed yet.
+Local atlas init publishes L.ok only on success, and local instance growth
+returns before recording on allocation refusal. Caster wobble reconciliation
+only rebuilds CPU live arrays; no Vulkan owner is released there.
+
+All requested root-fix acceptance proofs above are green. Separate follow-ups:
+sibling partial-init guards and 3-slot retirement findings above; resize not run
+because first-load allocation refusal reproduced the exact W91 crash before any
+camera cut. No budget increase, disabled bake, image repin or default-OFF gate.
+Disk: sole install E:/mc2-installs/claude-shadow-crash-fix retained (with baseline
+exe/PDB for review); no extra installs created. Removed 261,560,458 bytes of PDB
+type-dump temp data from G:. All local children and farm job completed.
+Tool slowness: targeted doctest build 240 s; scout audit timed out at 420 s.
+Largest avoidable cost: wide PDB type dump (261 MB) and delayed search of the
+pre-crash residency log. Next investigation should search allocation refusals
+before dumping type records; use exact type indexes if a layout is needed.
