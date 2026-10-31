@@ -18,7 +18,9 @@ namespace {
 template<class Record, class Data>
 void realObjectSlots(int c, const char* name) {
     using namespace mc2::save;
-    for (const char* mission : {"mc2_10", "mc2_24"}) {
+    for (const char* mission : {"mc2_10", "mc2_24", "cve-metropolitan"}) {
+        if (std::string_view(mission) == "cve-metropolitan" && c != mc2_saved_objects::kBuilding)
+            continue;
         const auto path = std::filesystem::path(MC2_REPO_ROOT) / "tests/fixtures/saves/object-slots" /
             (std::string(mission) + "-" + name + ".bin");
         if (!std::filesystem::exists(path)) {
@@ -68,6 +70,29 @@ REAL_OBJECT_SLOTS("MECH", MechRecord, MechData, kMech)
 REAL_OBJECT_SLOTS("VEHI", VehicleRecord, GroundVehicleData, kVehicle)
 REAL_OBJECT_SLOTS("BOLT", WeaponBoltRecord, WeaponBoltData, kBolt)
 #undef REAL_OBJECT_SLOTS
+
+TEST_CASE("ObjectSlot buildings preserve counted mod terrain cells") {
+    using namespace mc2::save;
+    BuildingRecord record;
+    record.value.handle = 125;
+    record.value.objectClass = BUILDING;
+    record.value.objectTypeNum = 125;
+    for (int count : {41, 81, 162, 255}) {
+        record.value.numCellsCovered = static_cast<unsigned char>(count);
+        record.cells.resize(count * 2);
+        for (int i = 0; i < count * 2; ++i) record.cells[i] = static_cast<short>(i - 100);
+        const auto bytes = encodeTaggedRecord(record, buildingTag);
+        REQUIRE_FALSE(bytes.empty());
+        CHECK(validObjectSlot(bytes, mc2_saved_objects::kBuilding, 125));
+        BuildingRecord decoded;
+        REQUIRE(decodeTaggedRecord(bytes, decoded, buildingTag));
+        CHECK(decoded.cells == record.cells);
+        CHECK(encodeTaggedRecord(decoded, buildingTag) == bytes);
+        CHECK_FALSE(decodeTaggedRecord(std::span(bytes).first(bytes.size() - 1), decoded, buildingTag));
+        record.cells.pop_back();
+        CHECK(encodeTaggedRecord(record, buildingTag).empty());
+    }
+}
 
 TEST_CASE("ObjectSlot tags validate class, handle, payload and required section") {
     using namespace mc2::save;

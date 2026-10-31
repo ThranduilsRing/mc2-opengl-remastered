@@ -1647,16 +1647,19 @@ void Building::setParentId (DWORD pId)
 void Building::Save (PacketFilePtr file, long packetNum)
 {
 	MC2_SAVE_STRUCT(BuildingData, data);
-	CopyTo(&data);
+	CopyTo(&data, true);
+	mc2::save::BuildingRecord record{data};
+	if (numCellsCovered * 2 > std::size(data.cellsCovered))
+		record.cells.assign(cellsCovered, cellsCovered + numCellsCovered * 2);
 
 	//PacketNum incremented in ObjectManager!!
-	auto bytes = mc2::save::encodeTaggedRecord(mc2::save::BuildingRecord{data}, mc2::save::buildingTag);
+	auto bytes = mc2::save::encodeTaggedRecord(record, mc2::save::buildingTag);
 	if (bytes.empty()) Fatal(0, "Invalid building ObjectSlot");
 	file->writePacket(packetNum, bytes.data(), static_cast<unsigned int>(bytes.size()), STORAGE_TYPE_ZLIB);
 }
 
 //***************************************************************************
-void Building::CopyTo (BuildingData *data)
+void Building::CopyTo (BuildingData *data, bool extendedCells)
 {																	   
 
 	data->teamId = teamId;;
@@ -1672,13 +1675,13 @@ void Building::CopyTo (BuildingData *data)
 	data->proximityTimer = proximityTimer;
 	data->updatedTurn = updatedTurn;
 
-	TerrainObject::CopyTo(data);
+	TerrainObject::CopyTo(data, extendedCells);
 }
 
 //---------------------------------------------------------------------------
-void Building::Load (BuildingData *data)
+void Building::Load (BuildingData *data, const short* extendedCells)
 {
-	TerrainObject::Load(data);
+	TerrainObject::Load(data, extendedCells);
 
 	teamId = data->teamId;
 	baseTileId = 0;

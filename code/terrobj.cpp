@@ -1703,7 +1703,7 @@ void TerrainObject::Save (PacketFilePtr file, long packetNum)
 }
 
 //***************************************************************************
-void TerrainObject::CopyTo (TerrainObjectData *data)
+void TerrainObject::CopyTo (TerrainObjectData *data, bool extendedCells)
 {
 	data->damage = damage;
 	data->vertexNumber = vertexNumber;
@@ -1729,16 +1729,18 @@ void TerrainObject::CopyTo (TerrainObjectData *data)
 	data->listID = listID;
 
 	data->numCellsCovered = numCellsCovered;
-	if (numCellsCovered >= 162)
+	if (!extendedCells && numCellsCovered >= 162)
 		STOP(("Object %d covers too many cells in Save/Load!!",getObjectType()->getObjTypeNum()));
 
-	memcpy(data->cellsCovered,cellsCovered, sizeof(short) * numCellsCovered * 2);
+	const auto count = extendedCells ? std::min<size_t>(numCellsCovered * 2, std::size(data->cellsCovered))
+	                                : numCellsCovered * 2;
+	if (count) memcpy(data->cellsCovered, cellsCovered, sizeof(short) * count);
 
 	GameObject::CopyTo(data);
 }
 
 //---------------------------------------------------------------------------
-void TerrainObject::Load (TerrainObjectData *data)
+void TerrainObject::Load (TerrainObjectData *data, const short* extendedCells)
 {
 	GameObject::Load(data); 
 
@@ -1771,7 +1773,8 @@ void TerrainObject::Load (TerrainObjectData *data)
 	if (numCellsCovered)
 	{
 		cellsCovered = static_cast<short*>(std::malloc(sizeof(short) * numCellsCovered * 2));
-		memcpy(cellsCovered, data->cellsCovered,sizeof(short) * numCellsCovered * 2);
+		memcpy(cellsCovered, extendedCells ? extendedCells : data->cellsCovered,
+		       sizeof(short) * numCellsCovered * 2);
 	}
 }
 

@@ -7,9 +7,10 @@ namespace mc2::save {
 inline constexpr auto buildingTag = fourcc('B', 'L', 'D', 'G');
 struct BuildingRecord {
     BuildingData value{};
+    std::vector<short> cells;
     void serialize(Archive& a) {
         auto& v = value;
-        terrainObjectFields(a, v);
+        terrainObjectFields(a, v, &cells);
         a(v.teamId, v.commanderId, v.refitBuddyWID, v.parentId, v.parent,
           v.listID, v.captureTime, v.moverInProximity, v.proximityTimer);
         if (a.reading()) { v.baseTileId = 0; v.updatedTurn = 0; }

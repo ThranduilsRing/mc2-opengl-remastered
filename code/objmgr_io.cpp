@@ -968,7 +968,12 @@ long GameObjectManager::Load (PacketFilePtr file, long packetNum, bool managerVa
 		{
 			//We have a Building.
 			BuildingData data{};
-			readData.operator()<mc2::save::BuildingRecord>(data, mc2_saved_objects::kBuilding);
+			mc2::save::BuildingRecord record;
+			if (objectValues) {
+				if (!mc2::save::decodeTaggedRecord(slotBytes, record, mc2::save::buildingTag))
+					Fatal(0, "Invalid building ObjectSlot payload");
+				data = record.value;
+			} else file->readPacket(packetNum, reinterpret_cast<MemoryPtr>(&data));
 			packetNum++;
 
 			BuildingPtr obj = new Building; 
@@ -981,7 +986,7 @@ long GameObjectManager::Load (PacketFilePtr file, long packetNum, bool managerVa
 
 				obj->init(true, objType);
 				obj->setExists(true);
-				obj->Load(&data);
+				obj->Load(&data, record.cells.empty() ? nullptr : record.cells.data());
 				obj->setDamage(data.damage);
 				obj->setRotation(data.rotation);
 
