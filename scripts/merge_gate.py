@@ -240,6 +240,10 @@ class GateState:
         row = self.data["stages"].get(name, {})
         sha = self.exe_sha()
         offline = name in ('contracts', 'harnesses', 'pytest')
+        if not ((self.resume or offline or name == 'mods') and row.get('head') == self.head
+                and (offline or sha is not None and row.get('exe_sha') == sha)
+                and stage_passed(row.get('status', ''))):
+            return False
         specs = (command, overrides) if name == 'mods' else self.specs.get(name, (command, overrides))
         evidence = row.get('evidence', {})
         if name == 'mods':
@@ -254,16 +258,13 @@ class GateState:
                 return False
         else:
             signature = self.signature(*specs)
-        return ((self.resume or offline or name == 'mods') and row.get("head") == self.head
-                and (offline or sha is not None and row.get("exe_sha") == sha)
-                and stage_passed(row.get("status", ""))
-                and row.get("signature") == signature)
+        return row.get("signature") == signature
 
     def record(self, name, command, overrides, status, seconds, scheduler_wait=0.0):
         with self.mutex:
             specs = (command, overrides) if name == 'mods' else self.specs.get(name, (command, overrides))
             try:
-                signature = self.signature(*specs)
+                signature = None if name == 'mods' and status != 'PASS' else self.signature(*specs)
             except (OSError, ValueError, KeyError):
                 if name != 'mods':
                     raise
