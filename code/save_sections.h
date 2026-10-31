@@ -18,6 +18,26 @@ constexpr std::uint32_t fourcc(char a, char b, char c, char d) {
            std::uint32_t(std::uint8_t(c)) << 16 | std::uint32_t(std::uint8_t(d)) << 24;
 }
 
+// Tagged value packets stay in their legacy positions; a required section opts
+// the entire file into each new codec before any mission state is destroyed.
+template<class T> Bytes encodeTaggedRecord(T value, std::uint32_t tag) {
+    Archive a;
+    std::uint32_t version = 1;
+    a(tag, version, value);
+    return a.good() ? a.bytes() : Bytes{};
+}
+
+template<class T> bool decodeTaggedRecord(std::span<const std::uint8_t> bytes,
+                                         T& value, std::uint32_t expected) {
+    Archive a(bytes);
+    std::uint32_t tag = 0, version = 0;
+    T staged{};
+    a(tag, version, staged);
+    if (!a.finish() || tag != expected || version != 1) return false;
+    value = std::move(staged);
+    return true;
+}
+
 // Packet-0 stamp of a v2 save. v1 (MC2SAVE.WQT2 / build versionStamp) files still load; old builds refuse v2.
 inline constexpr char saveStampV2[] = "MC2SAVE.V2";
 inline constexpr std::array<std::uint8_t, 8> sectionMagic{'M', 'C', '2', 'S', 'E', 'C', 'T', 'S'};
@@ -34,11 +54,12 @@ inline constexpr std::uint32_t tagFix = fourcc('F', 'I', 'X', '1');
 inline constexpr std::uint32_t tagWorld = fourcc('W', 'R', 'L', 'D');
 inline constexpr std::uint32_t tagPath = fourcc('P', 'A', 'T', 'H');
 inline constexpr std::uint32_t tagCommander = fourcc('C', 'M', 'D', 'R');
+inline constexpr std::uint32_t tagTeam = fourcc('T', 'E', 'A', 'M');
 
 // Sections this build reads and the newest payload version of each. A newer version, or an unknown section flagged
 // required, rejects the file before the running mission is torn down; an unknown optional section is skipped.
 struct KnownSection { std::uint32_t tag; std::uint32_t maxVersion; };
-inline constexpr std::array<KnownSection, 5> knownSections{{{tagAnimation, 3}, {tagOrders, 1}, {tagBrain, 2}, {tagWorld, 2}, {tagCommander, 1}}};
+inline constexpr std::array<KnownSection, 6> knownSections{{{tagAnimation, 3}, {tagOrders, 1}, {tagBrain, 2}, {tagWorld, 2}, {tagCommander, 1}, {tagTeam, 1}}};
 
 // Handles retain the compacted pool prefixes, free-slot order and mover-list order.
 // Object records themselves remain in stable handle order for legacy readers.

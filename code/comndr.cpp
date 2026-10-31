@@ -175,7 +175,7 @@ long Commander::Save (PacketFilePtr file, long packetNum)
 	staticData.numCommanders = numCommanders;
 	staticData.homeCommanderId = home->getId();
 
-	auto bytes = mc2::save::commanderRecord(staticData, mc2::save::commanderStaticTag);
+	auto bytes = mc2::save::encodeTaggedRecord(staticData, mc2::save::commanderStaticTag);
 	file->writePacket(packetNum, bytes.data(), static_cast<unsigned int>(bytes.size()), STORAGE_TYPE_RAW);
 	packetNum++;
 
@@ -199,7 +199,7 @@ long Commander::Save (PacketFilePtr file, long packetNum)
 			std::fill(std::begin(group.moverWIDs) + group.numMovers, std::end(group.moverWIDs), 0);
 		}
 
-		bytes = mc2::save::commanderRecord(data, mc2::save::commanderDataTag);
+		bytes = mc2::save::encodeTaggedRecord(data, mc2::save::commanderDataTag);
 		file->writePacket(packetNum, bytes.data(), static_cast<unsigned int>(bytes.size()), STORAGE_TYPE_RAW);
 		packetNum++;
 	}
@@ -217,7 +217,7 @@ long Commander::Load (PacketFilePtr file, long packetNum, bool values)
 		mc2::save::Bytes bytes(size);
 		if (file->readPacket(packetNum, bytes.data()) != size) Fatal(0, "Short commander packet");
 		if (values) {
-			if (!mc2::save::decodeCommanderRecord(bytes, value, tag)) Fatal(0, "Invalid commander value record");
+			if (!mc2::save::decodeTaggedRecord(bytes, value, tag)) Fatal(0, "Invalid commander value record");
 		} else {
 			if (size != sizeof(value)) Fatal(0, "Invalid legacy commander packet");
 			memcpy(&value, bytes.data(), sizeof(value));

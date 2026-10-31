@@ -46,20 +46,7 @@ struct _SystemTracker {
 }; using SystemTracker = _SystemTracker;
 
 //---------------------------------------------------------------------------
-struct _TeamData
-{
-	long 				id;
-	long 				rosterSize;
-	GameObjectWatchID	roster[120]; // Frozen legacy save prefix.
-}; using TeamData = _TeamData;
-
-struct _TeamStaticData
-{
-	long		numTeams;
-	long		homeTeamId;
-	char		relations[MAX_TEAMS][MAX_TEAMS];
-	bool		noPain[MAX_TEAMS];
-}; using TeamStaticData = _TeamStaticData;
+#include "team_save_data.h"
 
 class Team {
 
@@ -179,7 +166,7 @@ class Team {
 		}
 
 		static long Save (PacketFilePtr file, long packetNum);
-		static long Load (PacketFilePtr file, long packetNum);
+		static long Load (PacketFilePtr file, long packetNum, bool values = false);
 
 		bool isFriendly (TeamPtr team) {
 			if ( !team )

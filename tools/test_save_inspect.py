@@ -10,6 +10,8 @@ import save_inspect as mod  # noqa: E402
 def test_commander_values_use_tags_before_native_sizes():
     assert mod.packet_kind(0, b"CMST\x01\0\0\0" + bytes(8)) == "StaticCommanderData"
     assert mod.packet_kind(0, b"CMDR\x01\0\0\0" + bytes(1240)) == "CommanderData"
+    assert mod.packet_kind(0, b"TMST\x01\0\0\0" + bytes(80)) == "TeamStaticData"
+    assert mod.packet_kind(0, b"TEAM\x01\0\0\0" + bytes(488)) == "TeamData"
 
 
 def test_selftest_passes():

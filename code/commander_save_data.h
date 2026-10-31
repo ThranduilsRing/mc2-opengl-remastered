@@ -43,21 +43,4 @@ namespace mc2::save {
 inline constexpr auto commanderStaticTag = fourcc('C', 'M', 'S', 'T');
 inline constexpr auto commanderDataTag = fourcc('C', 'M', 'D', 'R');
 
-template<class T> Bytes commanderRecord(T value, std::uint32_t tag) {
-    Archive a;
-    std::uint32_t version = 1;
-    a(tag, version, value);
-    return a.good() ? a.bytes() : Bytes{};
-}
-
-template<class T> bool decodeCommanderRecord(std::span<const std::uint8_t> bytes,
-                                             T& value, std::uint32_t expected) {
-    Archive a(bytes);
-    std::uint32_t tag = 0, version = 0;
-    T staged{};
-    a(tag, version, staged);
-    if (!a.finish() || tag != expected || version != 1) return false;
-    value = std::move(staged);
-    return true;
-}
 }

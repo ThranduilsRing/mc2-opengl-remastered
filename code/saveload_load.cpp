@@ -373,7 +373,7 @@ void Mission::loadTeamsAndObjects(MissionLoadFrame& f) {
 	// Load Number of Teams
 	// Load which number is HOME
 	// Call Load for each team.
-	currentPacket = Team::Load( &loadFile, currentPacket );
+	currentPacket = Team::Load( &loadFile, currentPacket, f.sections.find(mc2::save::tagTeam) != nullptr );
 
 	//-----------------------------------
 	// Setup the Sensor System Manager...

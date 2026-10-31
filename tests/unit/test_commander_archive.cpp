@@ -16,14 +16,14 @@ TEST_CASE("save fields: CommanderData independent census") {
     SAVE_FIELD_SHAPE(sample, id, teamId, groups);
     CHECK(save_probe::memberBytes<T>(&T::id, &T::teamId, &T::groups) == sizeof(T));
     CHECK(save_probe::roundtrip(sample, [](auto& a, auto& v) { a(v); }, &T::id, &T::teamId, &T::groups));
-    auto bytes = mc2::save::commanderRecord(sample, mc2::save::commanderDataTag);
+    auto bytes = mc2::save::encodeTaggedRecord(sample, mc2::save::commanderDataTag);
     CHECK(bytes.size() == 1248);
     T decoded{};
-    REQUIRE(mc2::save::decodeCommanderRecord(bytes, decoded, mc2::save::commanderDataTag));
+    REQUIRE(mc2::save::decodeTaggedRecord(bytes, decoded, mc2::save::commanderDataTag));
     CHECK(save_probe::equal(sample.groups, decoded.groups));
-    CHECK_FALSE(mc2::save::decodeCommanderRecord(bytes, decoded, mc2::save::commanderStaticTag));
+    CHECK_FALSE(mc2::save::decodeTaggedRecord(bytes, decoded, mc2::save::commanderStaticTag));
     bytes.pop_back();
-    CHECK_FALSE(mc2::save::decodeCommanderRecord(bytes, decoded, mc2::save::commanderDataTag));
+    CHECK_FALSE(mc2::save::decodeTaggedRecord(bytes, decoded, mc2::save::commanderDataTag));
 }
 
 TEST_CASE("save fields: StaticCommanderData independent census") {
@@ -32,6 +32,6 @@ TEST_CASE("save fields: StaticCommanderData independent census") {
     SAVE_FIELD_SHAPE(sample, numCommanders, homeCommanderId);
     CHECK(save_probe::memberBytes<T>(&T::numCommanders, &T::homeCommanderId) == sizeof(T));
     CHECK(save_probe::roundtrip(sample, [](auto& a, auto& v) { a(v); }, &T::numCommanders, &T::homeCommanderId));
-    const auto bytes = mc2::save::commanderRecord(sample, mc2::save::commanderStaticTag);
+    const auto bytes = mc2::save::encodeTaggedRecord(sample, mc2::save::commanderStaticTag);
     CHECK(bytes == mc2::save::Bytes{'C','M','S','T',1,0,0,0,1,1,1,1,2,2,2,2});
 }

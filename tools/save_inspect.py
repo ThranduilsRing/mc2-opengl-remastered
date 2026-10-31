@@ -201,6 +201,10 @@ def packet_kind(typ: int, raw: bytes) -> str:
         return "StaticCommanderData"
     if raw[:8] == b"CMDR\x01\0\0\0" and len(raw) == 1248:
         return "CommanderData"
+    if raw[:8] == b"TMST\x01\0\0\0" and len(raw) == 88:
+        return "TeamStaticData"
+    if raw[:8] == b"TEAM\x01\0\0\0" and len(raw) >= 496:
+        return "TeamData"
     if is_text(raw):
         return "text"
     if valid_pilot_suffix(raw):
