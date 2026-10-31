@@ -239,7 +239,8 @@ def plan(jobs, proof_dir=None, capture_before_runs=1, before_dir=None):
         steps = [(name, [str(before_dir) if arg == before else arg for arg in cmd], env)
                  for name, cmd, env in steps if name != "capture-before"]
     # mc2_03 runs headless; mc2_10 and mc2_24 retain the GPU path. The finale
-    # spawns infantry after tick 2404: its audit must cover that lazy shape load.
+    # spawns infantry after tick 2404: --ticks is a required SIMID length (zero
+    # tolerance), so the baseline prefix alone cannot satisfy this audit.
     for mission in ("mc2_03", "mc2_10", "mc2_24"):
         steps.append(("determinism-" + mission,
                       [py, "tools/sim_determinism.py", "check", mission, "--install", install, "--out", str(proof / ("determinism-" + mission)),

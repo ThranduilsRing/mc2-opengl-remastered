@@ -10,6 +10,58 @@
 #include <cstdio>
 #include <optional>
 #include <string>
+
+TEST_CASE("saved objects: home identities reject malformed tagged and legacy fixtures") {
+    struct Packets {
+        std::vector<mc2::save::Bytes> data;
+        long cursor = 0;
+        long getNumPackets() const { return static_cast<long>(data.size()); }
+        int seekPacket(long p) { cursor = p; return 0; }
+        size_t getPacketSize() const { return data[cursor].size(); }
+        size_t readPacket(long p, unsigned char* out) {
+            std::memcpy(out, data[p].data(), data[p].size());
+            return data[p].size();
+        }
+    } file;
+    for (bool tagged : {false, true}) {
+        auto bytes = [tagged](auto value, uint32_t tag) {
+            if (tagged) return mc2::save::encodeTaggedRecord(value, tag);
+            const auto* p = reinterpret_cast<const uint8_t*>(&value);
+            return mc2::save::Bytes(p, p + sizeof(value));
+        };
+        TeamStaticData teams{};
+        teams.numTeams = 1;
+        teams.homeTeamId = 6; // Present sparse ID, greater than the loaded count.
+        TeamData team{};
+        team.id = 6;
+        StaticCommanderData commanders{1, 7};
+        CommanderData commander{};
+        commander.id = 7;
+        commander.teamId = 6;
+        auto fixture = [&] {
+            file.data = {bytes(teams, mc2::save::teamStaticTag), bytes(team, mc2::save::teamDataTag), {},
+                         bytes(commanders, mc2::save::commanderStaticTag), bytes(commander, mc2::save::commanderDataTag)};
+        };
+        auto valid = [&] { return mc2_saved_objects::checkHomes(file, 2, 3, tagged, tagged); };
+        fixture();
+        CHECK(valid());
+        teams.homeTeamId = 5;
+        fixture();
+        CHECK_FALSE(valid());
+        teams.homeTeamId = 6;
+        commanders.homeCommanderId = 5;
+        fixture();
+        CHECK_FALSE(valid());
+        commanders.homeCommanderId = 7;
+        commander.teamId = 5;
+        fixture();
+        CHECK_FALSE(valid());
+        commander.teamId = 6;
+        fixture();
+        file.data.back().pop_back();
+        CHECK_FALSE(valid());
+    }
+}
 #include <string_view>
 #include <vector>
 

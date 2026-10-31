@@ -16,8 +16,61 @@
 #include <cstdint>
 #include <optional>
 #include <string_view>
+#include <cstring>
+#include "team_save_data.h"
+#include "commander_save_data.h"
 
 namespace mc2_saved_objects {
+
+// Validate home membership before teardown; sparse legacy IDs remain valid.
+template<class File>
+bool checkHomes(File& file, long objectPacket, long commanderPacket, bool teamValues, bool commanderValues) {
+    auto read = [&]<class T>(long packet, T& value, bool tagged, uint32_t tag, bool prefix = false) {
+        if (packet < 0 || packet >= file.getNumPackets() || file.seekPacket(packet) != 0) return false;
+        const auto size = file.getPacketSize();
+        const auto expected = tagged ? mc2::save::encodeTaggedRecord(T{}, tag).size() : sizeof(T);
+        if (size < expected || (!prefix && size != expected) || size > expected + 4 + 1024 * 4) return false;
+        mc2::save::Bytes bytes(size);
+        if (file.readPacket(packet, bytes.data()) != size) return false;
+        if (tagged) return mc2::save::decodeTaggedRecord(std::span(bytes).first(expected), value, tag);
+        std::memcpy(&value, bytes.data(), sizeof(T));
+        return true;
+    };
+    TeamStaticData teams{};
+    long teamPacket = -1;
+    for (long count = 1; count <= MAX_TEAMS; ++count) {
+        const long candidate = objectPacket - count - 1;
+        if (read(candidate, teams, teamValues, mc2::save::teamStaticTag) && teams.numTeams == count) {
+            teamPacket = candidate;
+            break;
+        }
+    }
+    if (teamPacket < 0 || teams.homeTeamId < 0 || teams.homeTeamId >= MAX_TEAMS) return false;
+    bool homeTeam = false;
+    std::array<bool, MAX_TEAMS> teamIds{};
+    for (long i = 0; i < teams.numTeams; ++i) {
+        TeamData team{};
+        if (!read(teamPacket + 1 + i, team, teamValues, mc2::save::teamDataTag, true) ||
+            team.id < 0 || team.id >= MAX_TEAMS || teamIds[team.id]) return false;
+        teamIds[team.id] = true;
+        homeTeam |= team.id == teams.homeTeamId;
+    }
+    StaticCommanderData commanders{};
+    if (!homeTeam || !read(commanderPacket, commanders, commanderValues, mc2::save::commanderStaticTag) ||
+        commanders.numCommanders < 1 || commanders.numCommanders > MAX_COMMANDERS ||
+        commanders.homeCommanderId < 0 || commanders.homeCommanderId >= MAX_COMMANDERS) return false;
+    bool homeCommander = false;
+    std::array<bool, MAX_COMMANDERS> commanderIds{};
+    for (long i = 0; i < commanders.numCommanders; ++i) {
+        CommanderData commander{};
+        if (!read(commanderPacket + 1 + i, commander, commanderValues, mc2::save::commanderDataTag) ||
+            commander.id < 0 || commander.id >= MAX_COMMANDERS || commanderIds[commander.id] ||
+            commander.teamId < 0 || commander.teamId >= MAX_TEAMS || !teamIds[commander.teamId]) return false;
+        commanderIds[commander.id] = true;
+        homeCommander |= commander.id == commanders.homeCommanderId;
+    }
+    return homeCommander;
+}
 
 // Order matters: the loader tests the sizes in this order and the first match wins.
 constexpr int kTerrain = 0;

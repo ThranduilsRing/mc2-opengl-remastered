@@ -74,6 +74,7 @@ inline constexpr std::array<KnownSection, 14> knownSections{{{tagAnimation, 3}, 
 struct SavedMoverLists {
     std::vector<std::uint32_t> mechs, vehicles, movers, friendly, hostile;
     std::int32_t turn = 0;
+    bool sameMoverMembership(const SavedMoverLists& rebuilt) const;
     void serialize(Archive& archive, std::uint32_t version = 2) {
         archive.sequence(mechs, maxSequenceLength);
         archive.sequence(vehicles, maxSequenceLength);

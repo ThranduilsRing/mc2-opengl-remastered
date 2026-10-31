@@ -56,9 +56,9 @@ _SIMID_RECORD = re.compile(re.escape(SIMID) + r"[^\r\n\[]*")
 
 
 def simid_lines(text: str) -> list[str]:
-    # animrng is the terminal SIMID field. Another writer's unbracketed suffix
-    # (e.g. the last 's' of a timing line) is not simulation state.
-    return [_RNG_COUNTS.sub(r" rng=\1", re.sub(r"(\banimrng=\d+).*$", r"\1", m.group().rstrip()))
+    # Remove only a glued console suffix on the numeric animrng field, keeping
+    # every subsequent field in the record (including future SIMID extensions).
+    return [_RNG_COUNTS.sub(r" rng=\1", re.sub(r"(\banimrng=\d+)[a-zA-Z]+(?=\s|$)", r"\1", m.group().rstrip()))
             for m in _SIMID_RECORD.finditer(text)]
 
 
@@ -85,9 +85,10 @@ def target_args(args) -> list[str]:
 def run_once(args, mission: str, env_extra: dict, tag: str) -> dict:
     env = dict(os.environ, **env_extra)
     t0 = time.monotonic()
+    ticks = 2600 if mission == "mc2_24" else args.duration * 30
     r = subprocess.run([sys.executable, os.path.join(ROOT, "scripts", "run_smoke.py"), "--mission", mission,
                         "--duration", str(args.duration), *target_args(args), "--keep-logs", "--sim-determinism",
-                        *(["--ticks", "2600"] if mission == "mc2_24" else [])],
+                        "--ticks", str(ticks)],
                        env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, encoding="utf-8",
                        errors="replace", **console_child.child_kwargs(redirected=True))
     arts = [ln.removeprefix("[runner] artifacts: ").strip() for ln in r.stdout.splitlines()
@@ -101,12 +102,21 @@ def run_once(args, mission: str, env_extra: dict, tag: str) -> dict:
     lines = simid_lines(log)
     row = {"mission": mission, "tag": tag, "rc": r.returncode, "wall_s": round(time.monotonic() - t0, 1),
            "artifacts": arts[-1] if arts else "", "frames": len(lines), "violation": first_violation(text),
-           "aborted": "abort=1" in text, "_lines": lines}
+           "aborted": "abort=1" in text, "requested_ticks": ticks,
+           "finale_reached": finale_reached(log), "_lines": lines}
     with open(os.path.join(args.out, f"{mission}_{tag}.stdout.txt"), "w", encoding="utf-8") as fh:
         fh.write(r.stdout)
     print(f"[stress_overlap] {mission} {tag}: rc={r.returncode} frames={len(lines)}"
           + (f" RED {row['violation']}" if row["violation"] else ""), flush=True)
     return row
+
+
+def finale_reached(log: str) -> bool:
+    # The stock finale lazily loads infantry between ticks 2404 and 2405.
+    tick = re.search(re.escape(SIMID) + r"2404\s", log)
+    spawn = log.find("source=data/tgl/infantry.tgl ", tick.end()) if tick else -1
+    return spawn >= 0 and any(int(m.group(1)) > 2404 for m in
+                             re.finditer(re.escape(SIMID) + r"(\d+)", log[spawn:]))
 
 
 def judge(rows: list[dict]) -> dict:
@@ -123,6 +133,12 @@ def judge(rows: list[dict]) -> dict:
             red.append("violation")
         if frames < MIN_FRAMES:
             red.append(f"frames<{MIN_FRAMES}")
+        # One SIMID per requested tick; no truncation tolerance.
+        required = max(r.get("requested_ticks", MIN_FRAMES), 2600 if r["mission"] == "mc2_24" else 0)
+        if r["frames"] < required:
+            red.append(f"frames<{required}")
+        if r["mission"] == "mc2_24" and not r.get("finale_reached", False):
+            red.append("finale_not_reached")
         if h != out["serial_hash"]:
             red.append("simid_mismatch")
         out["runs"].append({k: v for k, v in r.items() if not k.startswith("_")} | {"simid_hash": h, "red": red})
