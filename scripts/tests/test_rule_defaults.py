@@ -49,6 +49,14 @@ def test_run_smoke_default_duration_about_15s():
 def test_run_visual_capture_default_duration_about_15s():
     import run_visual_capture as rvc
     assert rvc.default_duration(1, 120, 30) == 15
+    assert rvc.default_duration(2, 431, 30) > 20
+
+
+def test_bookmark_sweep_delegates_trigger_timeout_to_launcher():
+    from tools.visual_verify import capture
+    args = parsed_args(capture, ['--install', 'unused', '--out', 'unused'])
+    assert args.duration is None
+    assert parsed_args(capture, ['--install', 'unused', '--out', 'unused', '--duration', '150']).duration == 150
 
 
 def test_sim_determinism_check_defaults_to_20():
