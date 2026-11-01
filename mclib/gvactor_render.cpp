@@ -3,7 +3,6 @@
 #include <atomic>
 #include "gvactor_internal.h"
 #include "Gates/gate.h"
-#include "prop_light_contract.h"
 #include "../RenderCore/axis_convert.h"
 
 extern std::atomic<uint32_t> g_mc2FrameCounter;
@@ -130,8 +129,7 @@ long GVAppearance::render (long depthFixup)
 				static int s_paintLogs = 0;
 				if (s_paintLogs < 6 && ++s_paintLogs) mc2::fmt::print_err("[VEHICLE_PAINT] {} lod={} team={} paint={:08x}/{:08x}/{:08x}\n", appearType->name, renderLOD, teamId, psRed, psGreen, psBlue);
 				submitted = GpuStaticPropBatcher::instance().submitMultiShape(
-					drawShape, GpuStaticPropPopulation::Generic, appearType->name,
-					mc2::prop_light::packWord(land && eye ? land->getTerrainLight(position) : 1.0f, 0));
+					drawShape, GpuStaticPropPopulation::Generic, appearType->name);
 			}
 			else if (gpuPose_) {
 				// Stock body: node matrices, the light row, paint texture and haze go to the mech batcher.

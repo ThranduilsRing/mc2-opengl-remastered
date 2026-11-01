@@ -243,9 +243,8 @@ long BldgAppearance::render (long depthFixup)
 				// as callerName so [OBJBATCHER v1] event=late_register can
 				// identify which actor class owns the unregistered type.
 				const char* callerName = (appearType ? appearType->name : nullptr);
-				const uint32_t tintByte = mc2::prop_light::packWord(mc2PropSlotI(bldgShape->getCachedGpuLightIndex(), land && eye ? land->getTerrainLight(position) : 1.0f), 0);
 				submittedToGpu = GpuStaticPropBatcher::instance().submitMultiShape(
-					bldgShape, GpuStaticPropPopulation::Building, callerName, tintByte);
+					bldgShape, GpuStaticPropPopulation::Building, callerName);
 				if (submittedToGpu) ++s_diag_dyn_submit;
 				// Slice 2 (object-offload) — Stage 2.B: late-registration
 				// recovery flag. When submitMultiShape failed because a leaf
@@ -593,9 +592,8 @@ long TreeAppearance::render (long depthFixup)
 
 				// Stage 2.C+: see BldgAppearance::render for callerName intent.
 				const char* callerName = (appearType ? appearType->name : nullptr);
-				const uint32_t tintByte = mc2::prop_light::packWord(land && eye ? land->getTerrainLight(position) : 1.0f, mc2::prop_light::kSunOff);
 				submittedToGpu = GpuStaticPropBatcher::instance().submitMultiShape(
-					treeShape, GpuStaticPropPopulation::Tree, callerName, tintByte);
+					treeShape, GpuStaticPropPopulation::Tree, callerName);
 				// Slice 2 (object-offload) — Stage 2.B: see BldgAppearance::render
 				// for full rationale on the late-reg recovery flag.
 				if (!submittedToGpu &&

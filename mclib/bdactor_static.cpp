@@ -2,7 +2,6 @@
 // Declared in the class headers; shared names in bdactor_internal.h.
 #include <atomic>
 #include "bdactor_internal.h"
-#include "gos_static_prop_registry.h"
 #include "../RenderCore/axis_convert.h"
 #include "mc2fmt.h"
 #include "../GameOS/gameos/static_caster_set.h"   // shadow-bake caster events
@@ -206,7 +205,6 @@ void BldgAppearance::registerStatic() {
 	// Build per-leaf recipe batch.
 	// Use public GetNumShapes()/GetShapeRec() — numTG_Shapes/listOfShapes are protected.
 	std::vector<GpuStaticPropInstance> batch;
-	const uint32_t tintByte = mc2::prop_light::packWord(mc2PropSlotI(bldgShape->getCachedGpuLightIndex(), land && eye ? land->getTerrainLight(position) : 1.0f), 0);
 	const int numShapes = static_cast<int>(bldgShape->GetNumShapes());
 	batch.reserve(numShapes);
 	// 2026-05-10 diag: count outcomes for buildings to see why so few reach count>1.
@@ -316,7 +314,6 @@ void BldgAppearance::registerStatic() {
 					mc2::fmt::safe(appearType->name), mc2::fmt::as_i32(i), mc2::fmt::as_ptr(static_cast<void*>(child)), mc2::fmt::safe(child->getNodeName())), fflush(stderr);
 			return;  // unregistered type — abort; first-render fallback covers it
 		}
-		inst.actorTint = tintByte;
 		if (seamProbe)
 			mc2::fmt::print_err("[SEAMPROBE] bldg buildRecipe HIT name={} leaf={:d} child={:016X} node={} typeID={:d}\n",
 				mc2::fmt::safe(appearType->name), mc2::fmt::as_i32(i), mc2::fmt::as_ptr(static_cast<void*>(child)), mc2::fmt::safe(child->getNodeName()), mc2::fmt::as_u32(inst.typeID)), fflush(stderr);
@@ -480,8 +477,6 @@ bool BldgAppearance::prewarmStaticLightBake(Camera* cam)
 	// Bake light into permanent SSBO slot (MISS path: CacheGpuLightData + mc2WriteStaticLightSlot).
 	mc2CacheOrBakeStaticGpuLight(bldgShape, staticReg.registered, staticReg.recipeIndex);
 	staticReg.lightDataIndex = bldgShape->getCachedGpuLightIndex();
-	if (staticReg.lightDataIndex != 0xFFFFFFFFu && staticReg.registered)
-		GpuStaticPropRegistry::staticPropSetActorTint(staticReg.recipeIndex, mc2::prop_light::packWord(mc2PropSlotI(staticReg.lightDataIndex, land && eye ? land->getTerrainLight(position) : 1.0f), 0));
 
 	if (staticReg.lightDataIndex != 0xFFFFFFFFu) {
 		staticReg.hasValidStaticLight = true;

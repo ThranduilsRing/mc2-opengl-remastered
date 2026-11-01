@@ -1,6 +1,5 @@
 #include "static_prop_visible_set.h"
 #include "gos_static_prop_registry_internal.h"
-#include <functional>
 #include <atomic>
 #include "../../mclib/texture_assets.h"
 
@@ -706,21 +705,6 @@ bool staticPropSetAllLeafMatrices(int32_t recipeIndex, const float in[16]) {
         memcpy(s_recipes[rng.first + i].modelMatrix, in, sizeof(float) * 16);
     }
     ++s_registryGeneration;   // force persistent-static store rebuild next flush
-    return true;
-}
-
-// Light contract: once a recipe's light row is baked, its instance word takes that row's I (see mc2PropSlotI).
-bool staticPropSetActorTint(int32_t recipeIndex, uint32_t word) {
-    if (!recipeValid(recipeIndex)) return false;
-    const RecipeRange& rng = s_recipeRanges[static_cast<size_t>(recipeIndex)];
-    const uint32_t firstRecipe = std::invoke(&RecipeRange::first, rng);
-    const uint32_t recipeCount = rng.count;
-    bool changed = false;
-    for (uint32_t i = 0; i < recipeCount; ++i) {
-        auto& r = s_recipes[firstRecipe + i];
-        if (r.actorTint != word) { r.actorTint = word; changed = true; }
-    }
-    if (changed) ++s_registryGeneration;
     return true;
 }
 

@@ -1,9 +1,6 @@
 // BldgAppearance / TreeAppearance: static-actor light bake gate (mc2CacheOrBakeStaticGpuLight) and the cone ground-hit march.
 // Declared in the class headers; shared names in bdactor_internal.h.
 #include <atomic>
-#include <mutex>
-#include <vector>
-#include <algorithm>
 #include "bdactor_internal.h"
 
 // [BAKEORD v1] PROP-BAKE-ORDER-VS-TIME-1 -----------------------------------
@@ -187,13 +184,9 @@
 // report. That is a user call, not an agent call.
 static bool s_lightBakeRebakeDone = false;
 
-static thread_local bool s_lastBakeFresh = false;  // [LIGHT_CONTRACT v1] set by the bake gate: true = real gather, false = shared HIT row
-
 void mc2CacheOrBakeStaticGpuLight(TG_MultiShape* shape,
                                          bool registered, int32_t recipeIndex)
 {
-	s_lastBakeFresh = true;
-	struct SlotIRec { TG_MultiShape* s; ~SlotIRec() { extern void mc2RecordSlotIFwd(TG_MultiShape*); mc2RecordSlotIFwd(s); } } slotIRec{shape};
 	extern bool mc2LightBakeEnabled();
 	extern bool mc2GetBakedStaticLight(int32_t, TG_HWLightsData&);
 	extern void mc2SetBakedStaticLight(int32_t, const TG_HWLightsData&);
@@ -232,7 +225,6 @@ void mc2CacheOrBakeStaticGpuLight(TG_MultiShape* shape,
 	}
 	TG_HWLightsData baked;
 	if (mc2GetBakedStaticLight(recipeIndex, baked)) {
-		s_lastBakeFresh = false;
 		shape->EmitBakedGpuLightData(recipeIndex, baked);    // HIT: recompute retired
 	} else {
 		shape->CacheGpuLightData();                          // MISS: real gather (frame 1 / post-invalidate)
@@ -395,114 +387,4 @@ bool mc2ConeGroundHit (const glm::vec3& apex,
 
 	// Beam ran its full authored length without reaching the surface.
 	return false;
-}
-
-//---------------------------------------------------------------------------
-// [LIGHT_CONTRACT v1] terrain light I that each light-data row was gathered with. The retired
-// shader read the baked row, so a recipe row carries the first baker's I; the contract must
-// reproduce that exactly (per-actor slope-following I would be a look change). I is recovered
-// from the freshly gathered row against the S/A in force at gather time.
-static std::mutex s_slotIMutex;
-static std::vector<float> s_slotI;
-
-void mc2RecordSlotIFwd(TG_MultiShape* shape)
-{
-	if (!shape || !eye || !s_lastBakeFresh) return;
-	const uint32_t idx = shape->getCachedGpuLightIndex();
-	if (idx == 0xFFFFFFFFu || idx > (1u << 22)) return;
-	const TG_HWLightsData* leaf = shape->peekCachedLeafLightData();
-	if (!leaf) return;
-	int found = -1;
-	for (int i = 0; i < leaf->numLights_ && i < kGpuObjectLightsMax; ++i) {
-		const int type = static_cast<int>(leaf->lightDir[i][3]);
-		if (type == 1 || type == 2) { found = i; break; }
-	}
-	float I = -1.0f;
-	if (found >= 0) {
-		int S[3], A[3], F; float D[3];
-		eye->getPropLightContract(S, A, F, D);
-		float lo = -1e9f, hi = 1e9f;
-		for (int k = 0; k < 3; ++k) {
-			if (S[k] <= 0) continue;
-			const int c = static_cast<int>(leaf->lightColor[found][k] * 255.0f + 0.5f);
-			lo = std::max(lo, static_cast<float>(c - A[k]) / S[k]);
-			// A saturated channel (255) only bounds I from below; the row stores the clamped value.
-			if (c < 255) hi = std::min(hi, static_cast<float>(c + 1 - A[k]) / S[k]);
-		}
-		if (lo > -1e8f) I = std::clamp(hi < 1e8f ? 0.5f * (lo + hi) : lo, 0.0f, 1.0f);
-	}
-	std::lock_guard<std::mutex> g(s_slotIMutex);
-	if (s_slotI.size() <= idx) s_slotI.resize(idx + 1, -1.0f);
-	s_slotI[idx] = I;
-}
-
-static std::atomic<unsigned> s_slotIHit{0}, s_slotIFallback{0};
-float mc2PropSlotI(uint32_t lightIndex, float fallbackI)
-{
-	std::lock_guard<std::mutex> g(s_slotIMutex);
-	if (lightIndex < s_slotI.size() && s_slotI[lightIndex] >= 0.0f) { ++s_slotIHit; return s_slotI[lightIndex]; }
-	++s_slotIFallback;
-	return fallbackI;
-}
-
-//---------------------------------------------------------------------------
-// [LIGHT_CONTRACT v1] parity counters: the row's first infinite light colour (what the
-// retired shader row read returned) against contractSun() for the actor.
-static std::atomic<unsigned> s_contractChecks{0}, s_contractMismatch{0};
-// Shared (HIT) rows reuse the first baker's terrain light I: informational delta, ceiling 8 levels.
-static std::atomic<unsigned> s_sharedRows{0}, s_sharedMaxDelta{0}, s_offByOne{0};
-
-void mc2PropLightContractCheck(TG_MultiShape* shape, float terrainLight, uint32_t policy)
-{
-	if (!shape || !eye) return;
-	const TG_HWLightsData* leaf = shape->peekCachedLeafLightData();
-	if (!leaf) return;
-	int S[3], A[3], F; float D[3];
-	eye->getPropLightContract(S, A, F, D);
-	const mc2::prop_light::SunRgb want = mc2::prop_light::contractSun(S, A, F, terrainLight, policy);
-	int found = -1;
-	for (int i = 0; i < leaf->numLights_ && i < kGpuObjectLightsMax; ++i) {
-		const int type = static_cast<int>(leaf->lightDir[i][3]);
-		if (type == 1 || type == 2) { found = i; break; }
-	}
-	const bool fresh = s_lastBakeFresh;
-	s_lastBakeFresh = true;   // consume: direct (non-gate) bakes are fresh
-	if (!fresh) ++s_sharedRows;   // informational: row reused from the recipe bake
-	bool ok;
-	if (!want.sunOn) {
-		ok = (found < 0);
-	} else if (found < 0) {
-		ok = false;
-	} else {
-		unsigned d = 0;
-		for (int k = 0; k < 3; ++k) {
-			const int dk = static_cast<int>(leaf->lightColor[found][k] * 255.0f + 0.5f) - want.c[k];
-			const unsigned ad = static_cast<unsigned>(dk < 0 ? -dk : dk);
-			if (ad > d) d = ad;
-		}
-		ok = (d == 0);
-		if (d > 0) ++s_offByOne;
-		unsigned cur = s_sharedMaxDelta.load();
-		while (d > cur && !s_sharedMaxDelta.compare_exchange_weak(cur, d)) {}
-	}
-	++s_contractChecks;
-	if (!ok) {
-		const unsigned n = ++s_contractMismatch;
-		if (n <= 12) {
-			const float* c = found >= 0 ? leaf->lightColor[found] : nullptr;
-			std::fprintf(stderr, "[LIGHT_CONTRACT v1] mismatch#%u policy=%u I=%.4f want=%d,%d,%d on=%d S=%d,%d,%d A=%d,%d,%d F=%d row=%s%.1f,%.1f,%.1f\n",
-			             n, policy, terrainLight, want.c[0], want.c[1], want.c[2], want.sunOn ? 1 : 0,
-			             S[0], S[1], S[2], A[0], A[1], A[2], F, found >= 0 ? "" : "none ",
-			             c ? c[0] * 255.0f : 0.0f, c ? c[1] * 255.0f : 0.0f, c ? c[2] * 255.0f : 0.0f);
-		}
-	}
-}
-
-void mc2PropLightContractReport(bool final)
-{
-	extern unsigned mc2CameraLightChangedCount();
-	std::fprintf(stderr, "[LIGHT_CONTRACT v1] checks=%u mismatches=%u camera_light_changed=%u shared_row_delta=%u max_delta=%u inexact_rows=%u slotI_hit=%u slotI_fallback=%u%s\n",
-	          s_contractChecks.load(), s_contractMismatch.load(), mc2CameraLightChangedCount(),
-	          s_sharedRows.load(), s_sharedMaxDelta.load(), s_offByOne.load(), s_slotIHit.load(), s_slotIFallback.load(), final ? " final=1" : "");
-	fflush(stderr);
 }

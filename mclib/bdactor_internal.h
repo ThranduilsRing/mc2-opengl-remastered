@@ -5,8 +5,6 @@
 #ifndef BDACTOR_INTERNAL_H
 #define BDACTOR_INTERNAL_H
 
-#include "prop_light_contract.h"
-
 #include <map>    // STATIC-REGISTRY-COVERAGE-RECON-1: top shape names
 #include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
 #include <charconv>
@@ -171,10 +169,6 @@ void lbssRecordTree(bool taken, bool blk_idx);
 bool mc2FrameJobsTouchDiagEnabled();
 void touchEntryDiagRollFrame(uint32_t frame);
 void mc2CacheOrBakeStaticGpuLight(TG_MultiShape* shape, bool registered, int32_t recipeIndex);
-// [LIGHT_CONTRACT v1] parity: the leaf row first infinite light vs contractSun for this actor.
-void mc2PropLightContractCheck(TG_MultiShape* shape, float terrainLight, uint32_t policy);
-void mc2PropLightContractReport(bool final);
-float mc2PropSlotI(uint32_t lightIndex, float fallbackI);   // I the light row was gathered with
 bool mc2ConeGroundHit (const glm::vec3& apex, const glm::vec3& aim, float beamLen, glm::vec3& hitOut);
 bool mc2WorldMarkerAppearance(std::string_view name);
 

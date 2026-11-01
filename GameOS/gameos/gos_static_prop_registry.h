@@ -158,7 +158,6 @@ bool staticPropGetTypeId(int32_t recipeIndex, uint32_t* out);
 // flush. Used by the live cliff mesh-decal ImGui tuning panel. Returns false if
 // recipeIndex is out of range / tombstoned. See gos_static_prop_registry.cpp.
 bool staticPropSetAllLeafMatrices(int32_t recipeIndex, const float in[16]);
-bool staticPropSetActorTint(int32_t recipeIndex, uint32_t word);
 
 // SHADOW-STATIC-BUILDINGS-2: tag a recipe's population (Building/Tree) at
 // registration. Lets the world-fixed static shadow map replay buildings only,

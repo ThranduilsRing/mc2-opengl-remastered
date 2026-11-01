@@ -12,8 +12,7 @@ bool GpuStaticPropBatcher::submit(TG_Shape* shape,
                                   uint32_t fogARGB,
                                   uint32_t flags,
                                   uint32_t lightDataIndex,
-                                  const uint32_t* teamPaint,
-                                  uint32_t actorTint) {
+                                  const uint32_t* teamPaint) {
     if (!shape || !shape->matchesTypeMaterials() || s_fatalRegistrationFailure) return false;
 
     // TG_Shape::myType is a TG_TypeNodePtr; for SHAPE_NODE leaves it's a TG_TypeShape.
@@ -64,7 +63,7 @@ bool GpuStaticPropBatcher::submit(TG_Shape* shape,
     std::memcpy(inst.modelMatrix, &shapeToWorld, 16 * sizeof(float));
     inst.typeID           = typeID;
     // Vulkan uses object light rows and instance tint, not legacy vertex colors.
-    inst.actorTint = actorTint;
+    inst.firstColorOffset = 0u;
     inst.flags            = flags | (type.isOverride ? (1u << 6) : 0u);
     // Slice 2 (object-offload) — Stage 2.C: per-actor dedup-cache index
     // into the LightsData[32] UBO. Same value for every leaf of one
@@ -103,7 +102,7 @@ bool GpuStaticPropBatcher::submit(TG_Shape* shape,
             TREE_DIAG("path=dyn sample=first%d n=%llu pop=%s typeID=%u flags=0x%x lightIdx=%u colOff=%u tx=%.2f ty=%.2f tz=%.2f fog=%.3f,%.3f,%.3f,%.3f hi=%.3f,%.3f,%.3f,%.3f bucketInsts=%zu",
                 kTreeDiagSample, static_cast<unsigned long long>(s_dynSeen),
                 popShortName(s_currentSubmitPop),
-                inst.typeID, inst.flags, inst.lightDataIndex, inst.actorTint,
+                inst.typeID, inst.flags, inst.lightDataIndex, inst.firstColorOffset,
                 // Stuff::Matrix4D translation lives at (3,0)/(3,1)/(3,2) which the
                 // operator()(row,col) maps to entries[(col<<2)+row] = [3]/[7]/[11].
                 // The W-column is at [12]/[13]/[14] which is always (0,0,0) for
@@ -134,8 +133,7 @@ void GpuStaticPropBatcher::recordCpuFallback(GpuStaticPropPopulation pop) {
 
 bool GpuStaticPropBatcher::submitMultiShape(TG_MultiShape* multi,
                                             GpuStaticPropPopulation pop,
-                                            const char* callerName,
-                                            uint32_t actorTint) {
+                                            const char* callerName) {
     initTraceOnce();
     s_lastBuiltBatch.clear();  // Stage 3.C: reset per-call accumulator
     // Clear the late-reg signal at the top of every call so a stale "true"
@@ -526,7 +524,7 @@ bool GpuStaticPropBatcher::submitMultiShape(TG_MultiShape* multi,
         const uint32_t teamPaintU32[3] = {static_cast<uint32_t>(multi->teamPaint[0]), static_cast<uint32_t>(multi->teamPaint[1]), static_cast<uint32_t>(multi->teamPaint[2])};
         if (!submit(child, xform,
                     child->aRGBHighlight, child->fogRGB, flags,
-                    lightDataIndex, multi->teamPaintValid ? teamPaintU32 : nullptr, actorTint)) {
+                    lightDataIndex, multi->teamPaintValid ? teamPaintU32 : nullptr)) {
             // submit() rejected after we passed the registration gate —
             // typically a buffer-full condition. Fall back for this frame
             // to keep the visual self-consistent.

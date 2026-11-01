@@ -29,7 +29,7 @@
 struct alignas(16) GpuStaticPropInstance {
     float    modelMatrix[16];   // @mat4 shape-to-world, row-major (uploaded GL_FALSE)
     uint32_t typeID;
-    uint32_t actorTint;         // light word: I fixed-point | kSunOff | kNeutral (mclib/prop_light_contract.h)
+    uint32_t firstColorOffset;  // into per-frame color SSBO
     uint32_t flags;             // bit 0: lightsOut, bit 1: isWindow, bit 2: isSpotlight
     uint32_t lightDataIndex;    // index into the per-frame light-data UBO populated by
                                 // mc2::vkLights::addLightDataStructure(); writer is

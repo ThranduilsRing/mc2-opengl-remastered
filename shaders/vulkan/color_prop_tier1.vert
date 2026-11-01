@@ -21,7 +21,19 @@ layout(location = 4) in uint a_aRGBLight;
 // Per-frame UBO: generated from RenderCore/gpu_abi/GpuColorFrameUBO.h.
 #include "include/color_frame_ubo_vk.glsl"
 
-// Props use frame sun and SH; local lights come from the fragment pool feed.
+// VK-PROP-AMBIENT-IBL-1: LightsData SSBO (binding 4), verbatim mirror of
+// shaders/include/lighting.hglsl's ObjectLights layout (byte-identical std430/std140
+// per that header's note -- every member is mat4/vec4-array + ivec4 tail). Copied
+// per-frame from the live GL LightsData SSBO (binding 20) by the island. We only need
+// the AMBIENT-type sum here (matches static_prop.vert:414-429's ambientTerm scan) --
+// NOT the full calc_light dispatch; sun color/direction stay the island's existing
+// kSunColor/terrainSunMC2 approximation (out of scope for this fix).
+#include "../include/gpu_abi_object_lights.gen.hglsl"
+#define MAX_LIGHTS_IN_WORLD GPU_ABI_OBJECTLIGHTS_LIGHT_TO_WORLD_LEN
+#define TG_LIGHT_AMBIENT 0
+layout(set = 0, binding = 4, std430) readonly buffer LightsData {
+    ObjectLights light[];
+} lightsData_;
 
 // SH-L2 evaluator -- verbatim port of static_prop.vert::evalShL2 (Ramamoorthi-Hanrahan
 // diffuse-irradiance reconstruction). Raw radiance coefficients are convolved
@@ -70,7 +82,7 @@ flat layout(location = 2) out int  vLayer;    // alpha-OFF albedo array layer (-
 layout(location = 3) out vec3 vArgb;          // encoded vertex multiplier for the legacy art adapter
 flat layout(location = 4) out int  vLayerOn;  // alpha-ON albedo array layer (-1 = none)
 flat layout(location = 5) out vec2 vUvScale;  // FENCE-UVSCALE-1: this packet's uvScaleX/Y
-// StaticPropPbr uses the frame sun (Stuff frame, colour zero = none).
+// Inputs of the StaticPropPbr specular: the surface position (GL world) and the instance's sun light as stored in its ObjectLights row (Stuff frame, colour zero = none).
 layout(location = 6) out vec3 vWorldPos;
 flat layout(location = 7) out vec3 vSunDirStuff;
 flat layout(location = 8) out vec3 vSunColor;
@@ -240,17 +252,25 @@ void main() {
 
     // One environment SH source plus the authored vertex emission.
     const vec3 kSunColor = vec3(0.95, 0.93, 0.86);
-    // Light contract (mclib/prop_light_contract.h): the sun colour is Camera::getLight*(I) from the
-    // frame S/A/F and the actor's terrain light I carried in inst.actorTint; no light-row read.
-    uint lightWord = inst.actorTint;
-    bool sunOff = (lightWord & 0x10000u) != 0u;
-    float propI = ((lightWord & 0x20000u) != 0u) ? 1.0 : float(lightWord & 0xffffu) / 65535.0;
-    vec3 contractC = (propI > 0.0)
-        ? min(max(floor(uFrame.sunColor.rgb * propI + uFrame.ambientColor.rgb), vec3(uFrame.ambientColor.w)), vec3(255.0))
-        : max(uFrame.ambientColor.rgb, vec3(uFrame.ambientColor.w));
-    bool sunFound = (uFrame.lightingReady != 0) && (uFrame.sunColor.w != 0.0) && !sunOff;
-    vec3 sunColorFed = sunFound ? contractC / 255.0 : vec3(0.0);
-    vec3 sunDirFed   = sunFound ? uFrame.specDir.xyz : vec3(0.0);
+    vec3 sunColorFed = vec3(0.0);
+    vec3 sunDirFed   = vec3(0.0);
+    bool sunFound    = false;
+    if (uFrame.lightingReady != 0) {
+        int lightIndex = int(inst.lightDataIndex);
+        ObjectLights ld;
+        ld.numLights = lightsData_.light[lightIndex].numLights;
+        int n = min(ld.numLights.x, MAX_LIGHTS_IN_WORLD);
+        for (int i = 0; i < n; ++i) {
+            int lt = int(lightsData_.light[lightIndex].light_dir[i].w);
+            if (!sunFound && (lt == 1 || lt == 2)) {
+                sunColorFed = lightsData_.light[lightIndex].light_color[i].xyz;
+                sunDirFed = lightsData_.light[lightIndex].light_dir[i].xyz;
+                sunFound = true;
+            }
+        }
+    }
+    // Use the real scanned sun color when the feed is live (GL parity). Only the
+    // fail-soft branch (no feed) falls back to the neutral kSunColor stand-in.
     vec3 sunTerm = (uFrame.lightingReady != 0) ? sunColorFed : kSunColor;
     vMaterialAmbient = vec3(0.0);   // R2: ObjectLights ambient is not summed; the environment SH is the one ambient
     vMaterialSun = sunTerm;

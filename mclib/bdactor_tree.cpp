@@ -500,7 +500,6 @@ long TreeAppearance::update (bool animate)
 				// active -> light table stays U~=K (pre-LOD baseline) flat across LOD count,
 				// never K×M. Drawn geometry still swaps per-LOD via staticReg[lod].recipeIndex.
 				mc2CacheOrBakeStaticGpuLight(treeShape, staticReg[0].registered, staticReg[0].recipeIndex);
-				mc2PropLightContractCheck(treeShape, land ? land->getTerrainLight(position) : 1.0f, mc2::prop_light::kSunOff);
 				// 2026-05-11 per-instance capture (mirror of BldgAppearance::update).
 				const uint32_t _sharedLightSlot = treeShape->getCachedGpuLightIndex();
 				staticReg[0].lightDataIndex = _sharedLightSlot;
@@ -563,7 +562,6 @@ long TreeAppearance::update (bool animate)
 			// TREE-OVERRIDE-LOD-MVP K×M FIX (2026-06-03): bake keyed on LOD0, share slot
 			// to active LOD (see gpuEligible branch above for rationale).
 			mc2CacheOrBakeStaticGpuLight(treeShape, staticReg[0].registered, staticReg[0].recipeIndex);
-			mc2PropLightContractCheck(treeShape, land ? land->getTerrainLight(position) : 1.0f, mc2::prop_light::kSunOff);
 			// 2026-05-11 per-instance capture (mirror of gpuEligible branch).
 			const uint32_t _sharedLightSlot = treeShape->getCachedGpuLightIndex();
 			staticReg[0].lightDataIndex = _sharedLightSlot;

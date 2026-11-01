@@ -219,7 +219,6 @@ void TreeAppearance::registerStatic() {
 		lodShape->TransformMultiShape_BuildRecipe(&xlatPosition, &rot);
 
 		std::vector<GpuStaticPropInstance> batch;
-		const uint32_t tintByte = mc2::prop_light::packWord(land && eye ? land->getTerrainLight(position) : 1.0f, mc2::prop_light::kSunOff);
 		const int numShapes = static_cast<int>(lodShape->GetNumShapes());
 		batch.reserve(numShapes);
 		int t_diag_total=0,t_diag_skip_pm=0,t_diag_skip_h=0,t_diag_skip_unreg=0,t_diag_added=0;
@@ -258,7 +257,6 @@ void TreeAppearance::registerStatic() {
 				lodMiss = true;
 				break;
 			}
-			inst.actorTint = tintByte;
 			if (seamProbe)
 				mc2::fmt::print_err("[SEAMPROBE] tree buildRecipe HIT name={} lod={:d} leaf={:d} child={:016X} node={} typeID={:d}\n",
 					mc2::fmt::safe(appearType->name), mc2::fmt::as_i32(lod), mc2::fmt::as_i32(i), mc2::fmt::as_ptr(static_cast<void*>(child)), mc2::fmt::safe(child->getNodeName()), mc2::fmt::as_u32(inst.typeID)), fflush(stderr);

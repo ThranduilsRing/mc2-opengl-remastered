@@ -44,9 +44,6 @@ struct ColorFrameUBO {
     // Night light pools on props: the knobs of the GL static_prop.frag pool term (GetObjectLightPoolParams).
     float   poolF[4];           // @vec4 moverDim, moverScale, objScale, -
     int32_t poolI[4];           // @ivec4 numPoolLights (0 = term off), soft, moverMax, compress
-    float   sunColor[4];        // @vec4 contract S: camera lightRed/Green/Blue (0..255); .w = published
-    float   ambientColor[4];    // @vec4 contract A: camera ambientRed/Green/Blue (0..255); .w = F night floor
-    float   specDir[4];         // @vec4 Dspec: worldLights[0] localForwardInWorld (Stuff frame), as the row carried it
 };
 
 #include "GpuColorFrameUBO.layout.gen.h"

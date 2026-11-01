@@ -78,7 +78,8 @@ void GpuStaticPropBatcher::submitCachedInstance(const GpuStaticPropInstance& ins
     // Diagnostic counters (submitted_instances_by_pop etc.) are NOT incremented
     // for registry-injected instances — they measure the dynamic compute path.
     GpuStaticPropInstance updated = inst;
-    // Preserve the recipe's light-independent actor tint during replay.
+    // firstColorOffset is an ABI field no shader reads.
+    updated.firstColorOffset = 0u;
     {
         // MC2_TREE_DIAG_TRACE diagnostic. Same format as submit() so a grep
         // diff (`grep "[TREE_DIAG]" log | sort`) lines up dyn-vs-static fields.
@@ -99,7 +100,7 @@ void GpuStaticPropBatcher::submitCachedInstance(const GpuStaticPropInstance& ins
             ++s_staticPrinted;
             TREE_DIAG("path=stat sample=first%d n=%llu typeID=%u flags=0x%x lightIdx=%u colOff=%u tx=%.2f ty=%.2f tz=%.2f fog=%.3f,%.3f,%.3f,%.3f hi=%.3f,%.3f,%.3f,%.3f bucketInsts=%zu",
                 kTreeDiagSample, static_cast<unsigned long long>(s_staticSeen),
-                updated.typeID, updated.flags, updated.lightDataIndex, updated.actorTint,
+                updated.typeID, updated.flags, updated.lightDataIndex, updated.firstColorOffset,
                 // Same offset fix as submit() — translation at [3]/[7]/[11], not [12..14].
                 updated.modelMatrix[3], updated.modelMatrix[7], updated.modelMatrix[11],
                 updated.fogRGB[0], updated.fogRGB[1], updated.fogRGB[2], updated.fogRGB[3],
@@ -137,7 +138,8 @@ void GpuStaticPropBatcher::clearPersistentStatic() {
 
 // Append a contiguous run of recipes (one registry range) into the persistent
 // static store, grouped by typeID. Called ONLY on a dirty generation (rare), so
-// per-element push_back is fine. Actor tint is stored verbatim with the recipe.
+// per-element push_back is fine. firstColorOffset is irrelevant (static carries 0
+// colors, no shader reads it) — stored verbatim.
 void GpuStaticPropBatcher::appendPersistentStaticRange(const GpuStaticPropInstance* arr,
                                                        uint32_t count) {
     if (!arr || count == 0u) return;
@@ -175,7 +177,7 @@ bool GpuStaticPropBatcher::buildRecipeFromShape(
     GpuStaticPropInstance inst{};
     std::memcpy(inst.modelMatrix, &shapeToWorld, 16 * sizeof(float));
     inst.typeID           = it->second;
-    inst.actorTint = 0x0002ffffu;        // kNeutral|I=1 until the appearance supplies its light word
+    inst.firstColorOffset = 0u;          // placeholder; submitCachedInstance patches per-frame
     inst.flags            = flags;
     inst.lightDataIndex   = 0xFFFFFFFFu; // sentinel; flush() patches per-frame
     inst.aRGBHighlight[0] = ((highlightARGB >> 16) & 0xFF) / 255.0f;

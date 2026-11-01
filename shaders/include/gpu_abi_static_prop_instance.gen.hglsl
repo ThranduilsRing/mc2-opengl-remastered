@@ -7,7 +7,7 @@
 struct GpuStaticPropInstance {
     mat4  modelMatrix;  // off 0
     uint  typeID;  // off 64
-    uint  actorTint;  // off 68
+    uint  firstColorOffset;  // off 68
     uint  flags;  // off 72
     uint  lightDataIndex;  // off 76
     vec4  aRGBHighlight;  // off 80
