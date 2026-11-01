@@ -3894,14 +3894,14 @@
         },
         {
           "path": "scripts/merge_gate.py",
-          "line": 300,
+          "line": 304,
           "evidence": "import",
           "reference": "deploy_payload",
           "text": "from deploy_payload import verify_published_identity"
         },
         {
           "path": "scripts/merge_gate.py",
-          "line": 966,
+          "line": 970,
           "evidence": "import",
           "reference": "deploy_payload",
           "text": "from deploy_payload import verify_published_identity"
@@ -4013,7 +4013,7 @@
         },
         {
           "path": "scripts/tests/test_gate_state.py",
-          "line": 317,
+          "line": 327,
           "evidence": "import",
           "reference": "deploy_payload",
           "text": "import deploy_payload"
@@ -4411,7 +4411,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/merge_gate.py",
-          "line": 559,
+          "line": 563,
           "evidence": "command",
           "reference": "scripts/make-isolated-deploy.py",
           "text": "subprocess.run([sys.executable, str(ROOT / \"scripts/make-isolated-deploy.py\"),"
@@ -13182,7 +13182,7 @@
         },
         {
           "path": "scripts/merge_gate.py",
-          "line": 218,
+          "line": 222,
           "evidence": "import",
           "reference": "mod_smoke",
           "text": "import mod_smoke as mods"
