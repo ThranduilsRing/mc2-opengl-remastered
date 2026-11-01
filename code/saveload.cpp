@@ -300,7 +300,7 @@ void Mission::save (const char *saveFileName)
     sections.add(mc2::save::tagMapAreas, 1, true, {});
     sections.add(mc2::save::tagMapDoors, 1, true, {});
     sections.add(mc2::save::tagDoorLinks, 1, true, {});
-    sections.add(mc2::save::tagObjectSlots, 1, true, {});
+    sections.add(mc2::save::tagObjectSlots, mc2::save::objectSlotsVersion, true, {});
     sections.add(mc2::save::tagWarriorStatic, 1, true, {});
     sections.add(mc2::save::tagWarrior, 1, true, {});
     sections.add(mc2::save::tagAblEnvironment, 1, true, {});

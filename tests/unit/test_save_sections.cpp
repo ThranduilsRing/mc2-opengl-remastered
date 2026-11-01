@@ -159,6 +159,12 @@ TEST_CASE("save sections: rejects malformed, newer and unknown required sections
     SectionContainer newer; newer.add(tagAnimation, 4, true, {});
     CHECK_FALSE(decodeSections(encoded(newer), out, &why)); CHECK(why == "section_version");
 
+    SectionContainer terrain; terrain.add(tagObjectSlots, objectSlotsVersion, true, {});
+    REQUIRE(decodeSections(encoded(terrain), out, &why));
+    CHECK(out.find(tagObjectSlots)->version == 2);
+    SectionContainer futureTerrain; futureTerrain.add(tagObjectSlots, objectSlotsVersion + 1, true, {});
+    CHECK_FALSE(decodeSections(encoded(futureTerrain), out, &why)); CHECK(why == "section_version");
+
     SectionContainer unknownRequired; unknownRequired.add(fourcc('Z', 'Z', 'Z', 'Z'), 1, true, {7});
     CHECK_FALSE(decodeSections(encoded(unknownRequired), out, &why)); CHECK(why == "unknown_required_section");
 

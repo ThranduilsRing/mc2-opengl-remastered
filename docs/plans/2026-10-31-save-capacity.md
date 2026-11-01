@@ -1,5 +1,26 @@
 # Save capacity — 2026-10-31
 
+## Continuation after W95
+- Rebased onto e5cf6ba9c; preserved main's packet F code and both OBJS/WNOD registrations.
+- Rebase build PASS (mc2 + mc2_asset_viewer, -j6). Old reader preserved in proof root.
+- Root cause: native coverage has 81 shorts (40 complete coordinate pairs), not 162 cells.
+  Main already has counted BuildingRecord coverage; TerrainRecord remains fixed.
+- Implemented counted TerrainRecord writer/reader, safe CopyTo bound, required OBJS v2.
+- Unit PASS: 58 cases / 3063 assertions (56s), covering 0/40/41/81/161/162/255 cells,
+  malformed/truncated counts, real ObjectSlot fixtures, and section version rejection.
+- Selected contracts PASS: 8/8 save and ratchet rows; axis scan took 51s.
+- Next: commit, one all-target checkpoint, explicit copy-install deploy, stock then
+  CVE-G Metropolitan quicksave/quickload + 60 contiguous identical SIMID ticks,
+  actual new save refusal with the preserved older reader.
+- Automatic approval review rejected deleting/reseeding E:/mc2-installs/save-capacity
+  with only "blocked by policy". Do not retry that reset by another mechanism.
+  A separate fresh copy avoids deleting that existing tree; report skipped cleanup.
+- Fresh byte-copy install: E:/mc2-installs/save-capacity-copy (11.603 GiB copied).
+  Seed verification PASS; subsequent projection cleanup was also blocked by policy.
+  Thus inherited seed writable artifacts remain; do not claim lean/clean staging.
+- git diff --check flags CR on the changed line in already-CRLF saveload.cpp;
+  no whitespace policy override used.
+
 Assignment: A:/Games/mc2-lane4, claude/save-capacity, base c0eba1a0ac1c197594447ea1517e0c208b77d64f.
 Budget: <=150 tool calls; batch discovery, reproduce, smallest eligible fix,
 one build/test pass per change, requested runtime proofs, local pathspec commits.

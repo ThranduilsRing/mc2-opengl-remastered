@@ -105,6 +105,35 @@ TEST_CASE("ObjectSlot buildings preserve counted mod terrain cells") {
     }
 }
 
+TEST_CASE("ObjectSlot terrain preserves coverage across the legacy pair boundary") {
+    using namespace mc2::save;
+    for (int count : {0, 40, 41, 81, 161, 162, 255}) {
+        TerrainRecord record;
+        record.value.handle = 1;
+        record.value.objectClass = TERRAINOBJECT;
+        record.value.objectTypeNum = 125;
+        record.value.numCellsCovered = static_cast<unsigned char>(count);
+        std::vector<short> expected(count * 2);
+        for (int i = 0; i < count * 2; ++i) expected[i] = static_cast<short>(i - 200);
+        if (count > 40) record.cells = expected;
+        else std::copy(expected.begin(), expected.end(), record.value.cellsCovered);
+        const auto bytes = encodeTaggedRecord(record, terrainTag);
+        REQUIRE_FALSE(bytes.empty());
+        CHECK(validObjectSlot(bytes, mc2_saved_objects::kTerrain, 1));
+        TerrainRecord decoded;
+        REQUIRE(decodeTaggedRecord(bytes, decoded, terrainTag));
+        CHECK(decoded.value.numCellsCovered == count);
+        const auto* cells = count > 40 ? decoded.cells.data() : decoded.value.cellsCovered;
+        CHECK(std::equal(expected.begin(), expected.end(), cells));
+        CHECK(encodeTaggedRecord(decoded, terrainTag) == bytes);
+        CHECK_FALSE(decodeTaggedRecord(std::span(bytes).first(bytes.size() - 1), decoded, terrainTag));
+        if (count > 40) {
+            record.cells.pop_back();
+            CHECK(encodeTaggedRecord(record, terrainTag).empty());
+        }
+    }
+}
+
 TEST_CASE("ObjectSlot tags validate class, handle, payload and required section") {
     using namespace mc2::save;
     using namespace mc2_saved_objects;

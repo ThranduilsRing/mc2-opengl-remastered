@@ -931,7 +931,12 @@ long GameObjectManager::Load (PacketFilePtr file, long packetNum, bool managerVa
 			//We have a TerrainObject.
 			// Get its data.
 			TerrainObjectData data{};
-			readData.operator()<mc2::save::TerrainRecord>(data, mc2_saved_objects::kTerrain);
+			mc2::save::TerrainRecord record;
+			if (objectValues) {
+				if (!mc2::save::decodeTaggedRecord(slotBytes, record, mc2::save::terrainTag))
+					Fatal(0, "Invalid terrain ObjectSlot payload");
+				data = record.value;
+			} else file->readPacket(packetNum, reinterpret_cast<MemoryPtr>(&data));
 			packetNum++;
 
 			TerrainObjectPtr obj = new TerrainObject; 
@@ -944,7 +949,7 @@ long GameObjectManager::Load (PacketFilePtr file, long packetNum, bool managerVa
 
 				obj->init(true, objType);
 				obj->setExists(true);
-				obj->Load(&data);
+				obj->Load(&data, record.cells.empty() ? nullptr : record.cells.data());
 				obj->setDamage(data.damage);
 				obj->setRotation(data.rotation);
 

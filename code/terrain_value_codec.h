@@ -21,8 +21,8 @@ inline void terrainObjectFields(Archive& a, TerrainObjectData& v,
     a(v.listID, v.numCellsCovered);
     if (!a.good()) return;
     const auto count = v.numCellsCovered * 2;
-    // The legacy ABI holds only 40 pairs. Buildings can have larger mod
-    // footprints; their tagged record owns the complete counted sequence.
+    // The legacy ABI holds only 40 pairs. Tagged terrain/building records
+    // own the complete counted sequence for larger mod footprints.
     if (count > std::size(v.cellsCovered)) {
         if (!extendedCells) { a.reject("terrain_cells"); return; }
         if (a.reading()) {
@@ -49,6 +49,7 @@ inline void terrainObjectFields(Archive& a, TerrainObjectData& v,
 inline constexpr auto terrainTag = fourcc('T', 'E', 'R', 'R');
 struct TerrainRecord {
     TerrainObjectData value{};
-    void serialize(Archive& a) { terrainObjectFields(a, value); }
+    std::vector<short> cells;
+    void serialize(Archive& a) { terrainObjectFields(a, value, &cells); }
 };
 }
