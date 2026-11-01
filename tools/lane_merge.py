@@ -792,7 +792,10 @@ def precheck(root: str, tip: str) -> int:
             py = [sys.executable, "-B"]
             steps = [(label, py + [os.path.join("tools", script), *[a for a in args if a != "--tighten"]])
                      for label, script, args in RATCHETS]
-            steps += [("callers", py + ["tools/callers.py", "--check"])]
+            # A virtual merge can shift caller locations without conflicting in JSON.
+            # Refresh that generated input, then retain the strict wiring check.
+            steps += [("callers-refresh", py + ["tools/callers.py"]),
+                      ("callers", py + ["tools/callers.py", "--check"])]
             steps += [(label, py + args) for label, args in PYTHON_SUITES]
             for label, command in steps:
                 r = run(snapshot, command, env=verify_env(snapshot))

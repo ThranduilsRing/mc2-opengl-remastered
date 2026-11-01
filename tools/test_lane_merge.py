@@ -48,7 +48,7 @@ FAKES = {
 }
 
 
-@pytest.mark.parametrize("red", [None, "run_scripts_tests.py", "run_tools_tests.py", "configure_ninja.py", "ninja_build.py", "mc2fx"])
+@pytest.mark.parametrize("red", [None, "callers.py", "run_scripts_tests.py", "run_tools_tests.py", "configure_ninja.py", "ninja_build.py", "mc2fx"])
 def test_precheck_runs_python_suites_and_reuses_lane_build(env, monkeypatch, capsys, red):
     from tools import lane_merge as lm
     repo, _ = env
@@ -70,7 +70,10 @@ def test_precheck_runs_python_suites_and_reuses_lane_build(env, monkeypatch, cap
         return subprocess.CompletedProcess(cmd, int(any(lm.Path(a).name == red for a in cmd)), "fixture failure")
     monkeypatch.setattr(lm, "run", runner)
     assert lm.main(["--root", str(repo), "--precheck", "HEAD"]) == int(red is not None)
-    assert len(seen) == 11
+    assert len(seen) == 12
+    caller_commands = [cmd for _, cmd in seen if "tools/callers.py" in cmd]
+    assert caller_commands == [[sys.executable, "-B", "tools/callers.py"],
+                               [sys.executable, "-B", "tools/callers.py", "--check"]]
     assert any("mc2fx" in cmd and "mc2fx_preview" in cmd for _, cmd in seen)
     assert all("--tighten" not in cmd for _, cmd in seen)
     assert {label for label, _ in lm.PYTHON_SUITES} == {"scripts_tests", "tools_tests"}

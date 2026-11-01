@@ -66,7 +66,7 @@
         },
         {
           "path": "tools/lane_merge.py",
-          "line": 805,
+          "line": 808,
           "evidence": "import",
           "reference": "bootstrap_worktree_build",
           "text": "from bootstrap_worktree_build import ensure_deps"
@@ -11079,7 +11079,7 @@
         },
         {
           "path": "tools/test_lane_merge.py",
-          "line": 337,
+          "line": 340,
           "evidence": "import",
           "reference": "lane_merge",
           "text": "import lane_merge as lm  # noqa: E402"
