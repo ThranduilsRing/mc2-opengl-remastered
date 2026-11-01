@@ -522,7 +522,7 @@ void mc2PropLightContractCheck(TG_MultiShape* shape, float terrainLight, uint32_
 			if (ad > d) d = ad;
 		}
 		ok = (d == 0);
-		if (rowEpoch != 0 && rowEpoch < epoch) {
+		if ((rowEpoch != 0 && rowEpoch < epoch) || (policy & mc2::prop_light::kLatchStale)) {
 			// Row predates the last light change: informational stale row, not a parity failure.
 			const unsigned n = ++s_staleRows;
 			unsigned cur = s_staleMaxDelta.load();

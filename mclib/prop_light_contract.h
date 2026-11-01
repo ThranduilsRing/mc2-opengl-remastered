@@ -20,6 +20,7 @@ namespace mc2::prop_light {
 
 constexpr uint32_t kIMask   = 0xffffu;
 constexpr uint32_t kSunOff  = 1u << 16;
+constexpr uint32_t kLatchStale = 1u << 17;  // check-only: the actor latched its light before the last camera light change
 constexpr uint32_t kNeutral = 1u << 17;
 
 constexpr uint32_t packWord(float I, uint32_t policy) {

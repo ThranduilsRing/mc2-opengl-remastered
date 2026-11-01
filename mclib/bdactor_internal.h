@@ -172,6 +172,7 @@ bool mc2FrameJobsTouchDiagEnabled();
 void touchEntryDiagRollFrame(uint32_t frame);
 void mc2CacheOrBakeStaticGpuLight(TG_MultiShape* shape, bool registered, int32_t recipeIndex);
 // [LIGHT_CONTRACT v1] parity: the leaf row first infinite light vs contractSun for this actor.
+unsigned mc2CameraLightChangedCount();
 void mc2PropLightContractCheck(TG_MultiShape* shape, float terrainLight, uint32_t policy);
 void mc2PropLightContractReport(bool final);
 float mc2PropSlotI(uint32_t lightIndex, float fallbackI);   // I the light row was gathered with
