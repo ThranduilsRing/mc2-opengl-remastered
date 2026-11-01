@@ -27,3 +27,13 @@ mad 0.66-1.14), and the contract build vs that nifty build is identical to run-t
 
 Systematic effect e5cf6ba9c -> nifty: whole buildings about 3 percent brighter (mc2_01 up to 5.8 percent), not caused by this lane.
 One extra fix: vehicle (gvactor_render) static-prop submit now passes the per-actor terrain I (the old row carried it); no pixel change.
+
+## W96 saveload-mc2_10 red (2026-11-02): row-stale after a mission reload
+
+Evidence (merge96 gate, saveload-mc2_10 log): mismatches=0 until the quickload (log line [SAVELOAD] op=load_slotMission), then
+mismatch#1.. at TerrainLOD frame=4 after the load: want=32 (live S=37 A=25, I=0.213) vs row=101. slotI_fallback doubled 554->1108.
+Cause found in code: mission unload (mc2ClearAllBakedStaticLight) clears the bake map, but the one-shot rebake-on-ready
+(s_lightBakeRebakeDone, function-static s_readyFrame) stays latched from the first mission, so rows gathered during the load, before
+night lighting was applied, are never rebaked. s_slotI (per light index terrain I) also survived the unload.
+Fix (this branch): mission reset re-arms the rebake and clears s_slotI; the parity check is stale-aware (rows gathered in an earlier
+S/A epoch are counted as stale_rows/stale_max/stale_last_frame, informational; fresh rows stay strict).
