@@ -223,7 +223,7 @@ void MissionInterfaceManager::updateVTol()
 							else
 								newPilotName = const_cast<char*>(LogisticsData::instance->getBestPilot( mechToRecover[vtolNum]->tonnage ));
 
-							mission->tradeMover(mechToRecover[vtolNum], Commander::commanders[vtolNum]->getTeam()->getId(), vtolNum, newPilotName, "pbrain");
+							mission->tradeMover(mechToRecover[vtolNum], Commander::commanders[vtolNum]->getTeam() ? Commander::commanders[vtolNum]->getTeam()->getId() : -1, vtolNum, newPilotName, "pbrain");
 							mechRecovered[vtolNum] = true;
 							mechToRecover[vtolNum]->getPilot()->orderPowerUp(true, ORDER_ORIGIN_SELF);
 							if (MPlayer)

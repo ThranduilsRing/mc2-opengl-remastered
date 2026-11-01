@@ -91,6 +91,7 @@ extern "C" void mc2_vfx_pass_end();
 #include "impact_presentation.h"
 #include "render_view.h"
 #include "sim_tick_clock.h"
+#include "camera_start_pick.h"
 
 namespace {
 // Marks the quads drawn inside a scope as exempt from the HUD batch's bottom-band shrink, then restores the previous state.
@@ -1122,19 +1123,9 @@ long GameCamera::activate (void)
 	//---------------------------------------------------------
 	// Camera always starts pointing at first mover in lists
 	// CANNOT be infinite because we don't allow missions without at least 1 player mech!!
-	MoverPtr firstMover = nullptr;
-	if (ObjectManager->getNumMovers() > 0) {
-		long i = 0;
-		firstMover = ObjectManager->getMover(i);
-		while (firstMover && ((firstMover->getCommander()->getId() != Commander::home->getId()) || !firstMover->isOnGUI()))
-		{
-			i++;
-			if (i == ObjectManager->getNumMovers())
-				break;
-			firstMover = ObjectManager->getMover(i); 
-		}
-	}
-	
+	MoverPtr firstMover = pickCameraStartMover<Mover>(ObjectManager->getNumMovers(), Commander::home->getId(),
+		[](long idx) { return ObjectManager->getMover(idx); });
+
 	if (firstMover)
 	{
 		glm::vec3 newPosition(firstMover->getPosition());
