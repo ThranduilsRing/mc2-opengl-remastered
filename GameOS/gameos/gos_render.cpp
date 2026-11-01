@@ -13,6 +13,7 @@
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"   // raw<>()
 #include "mc2fmt.h"
+#include "diagnostic_trace.h"
 
 // FIXME: think how to make it better when different parts need window
 SDL_Window* g_sdl_window = nullptr;
@@ -189,6 +190,7 @@ void apply_os_cursor_policy(std::string_view why, bool focused)
     }
     const bool hide = focused && !mc2::gate::get<"MC2_OS_CURSOR">();
     SDL_ShowCursor(hide ? SDL_DISABLE : SDL_ENABLE);
+    if (!mc2_diag::tagRequested("CURSOR")) return;
     MC2_LOG(Ui, Info, "[CURSOR] os_cursor event={} focused={:d} visible={:d} os_cursor_gate={:d}",
         mc2::fmt::safe(std::string(why).c_str()), mc2::fmt::as_i32(focused ? 1 : 0),
         mc2::fmt::as_i32(SDL_ShowCursor(SDL_QUERY) == SDL_ENABLE ? 1 : 0),

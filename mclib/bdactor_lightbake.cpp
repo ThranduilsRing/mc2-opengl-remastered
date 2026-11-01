@@ -5,6 +5,7 @@
 #include <vector>
 #include <algorithm>
 #include "bdactor_internal.h"
+#include "diagnostic_trace.h"
 
 // [BAKEORD v1] PROP-BAKE-ORDER-VS-TIME-1 -----------------------------------
 // PROP-RECIPE-BAKE-1 measured that among SUNLIT props the orientation-free
@@ -528,7 +529,7 @@ void mc2PropLightContractCheck(TG_MultiShape* shape, float terrainLight, uint32_
 			unsigned cur = s_staleMaxDelta.load();
 			while (d > cur && !s_staleMaxDelta.compare_exchange_weak(cur, d)) {}
 			s_staleLastFrame = static_cast<unsigned>(g_mc2FrameCounter.load(std::memory_order_relaxed));
-			if (n <= 6 && d > 0)
+			if (n <= 6 && d > 0 && mc2_diag::tagRequested("LIGHT_CONTRACT"))
 				std::fprintf(stderr, "[LIGHT_CONTRACT v1] stale#%u frame=%u bake_frame=%u row_epoch=%u epoch=%u delta=%u\n",
 				             n, s_staleLastFrame.load(), rowFrame, rowEpoch, epoch, d);
 			return;
@@ -540,7 +541,7 @@ void mc2PropLightContractCheck(TG_MultiShape* shape, float terrainLight, uint32_
 	++s_contractChecks;
 	if (!ok) {
 		const unsigned n = ++s_contractMismatch;
-		if (n <= 12) {
+		if (n <= 12 && mc2_diag::tagRequested("LIGHT_CONTRACT")) {
 			const float* c = found >= 0 ? leaf->lightColor[found] : nullptr;
 			std::fprintf(stderr, "[LIGHT_CONTRACT v1] mismatch#%u diag idx=%u slots=%zu row_epoch=%u epoch=%u fresh=%d frame=%u\n",
 			             n, shape->getCachedGpuLightIndex(), s_slotEpoch.size(), rowEpoch, epoch, fresh ? 1 : 0,
@@ -555,6 +556,7 @@ void mc2PropLightContractCheck(TG_MultiShape* shape, float terrainLight, uint32_
 
 void mc2PropLightContractReport(bool final)
 {
+	if (!mc2_diag::tagRequested("LIGHT_CONTRACT")) return;
 	extern unsigned mc2CameraLightChangedCount();
 	std::fprintf(stderr, "[LIGHT_CONTRACT v1] checks=%u mismatches=%u camera_light_changed=%u shared_row_delta=%u max_delta=%u inexact_rows=%u slotI_hit=%u slotI_fallback=%u stale_rows=%u stale_max=%u stale_last_frame=%u%s\n",
 	          s_contractChecks.load(), s_contractMismatch.load(), mc2CameraLightChangedCount(),

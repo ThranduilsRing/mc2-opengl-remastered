@@ -129,7 +129,7 @@ PRESENCE_RULES: tuple = (
       for stem in ("mc2_01", "mc2_10")),
     # Colour-prop light contract (W1): the bake-time parity check must have run (checks > 0) with no mismatch.
     *(PresenceRule(stem, re.compile(r"\[LIGHT_CONTRACT v1\] checks=[1-9][0-9]* mismatches=0\b"), "light_contract_unchecked",
-                   "no [LIGHT_CONTRACT v1] checks>0 mismatches=0 line: the prop light parity check never ran or never passed")
+                   "no [LIGHT_CONTRACT v1] checks>0 mismatches=0 line: the prop light parity check never ran or never passed", diag_tag="LIGHT_CONTRACT")
       for stem in ("mc2_01", "mc2_10")),
 )
 
