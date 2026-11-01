@@ -182,7 +182,7 @@ void set_mouse_grab(bool grabbed)
 // when the window loses focus the OS cursor is restored. Re-asserted on every window
 // event that can disturb it (focus, enter, size/fullscreen) and logged so the state
 // is provable from the log.
-void apply_os_cursor_policy(const char* why, bool focused)
+void apply_os_cursor_policy(std::string_view why, bool focused)
 {
     if (gos_UnattendedRunRequested() || !g_sdl_window) {
         return;
@@ -190,7 +190,7 @@ void apply_os_cursor_policy(const char* why, bool focused)
     const bool hide = focused && !mc2::gate::get<"MC2_OS_CURSOR">();
     SDL_ShowCursor(hide ? SDL_DISABLE : SDL_ENABLE);
     MC2_LOG(Ui, Info, "[CURSOR] os_cursor event={} focused={:d} visible={:d} os_cursor_gate={:d}",
-        mc2::fmt::safe(why), mc2::fmt::as_i32(focused ? 1 : 0),
+        mc2::fmt::safe(std::string(why).c_str()), mc2::fmt::as_i32(focused ? 1 : 0),
         mc2::fmt::as_i32(SDL_ShowCursor(SDL_QUERY) == SDL_ENABLE ? 1 : 0),
         mc2::fmt::as_i32(mc2::gate::get<"MC2_OS_CURSOR">() ? 1 : 0));
 }
