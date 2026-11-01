@@ -127,6 +127,17 @@ namespace GuiRuntime {
     // The callback fires once and is then discarded.
     void RegisterPostImGuiRender(std::function<void()> fn);
 
+    // CURSOR-TOPMOST-1: one-shot callback run at the very end of Render(), after every
+    // panel and the foreground flank pads, just before ImGui::Render(). It paints the
+    // game cursor into ImGui::GetForegroundDrawList() so it is the LAST 2D draw (the
+    // legacy HUD batch flushes before ImGui, and post-ImGui GL callbacks never run
+    // under Vulkan). Return true if a software cursor was drawn (ImGui's own arrow is
+    // then suppressed). Discarded after the frame.
+    void RegisterForegroundCursor(std::function<bool()> fn);
+
+    // True between NewFrame and Render: the ImGui pass will run this frame.
+    bool FrameActive();
+
     // True when the editor force-docks all panels into the right column each launch
     // (MC2_EDITOR_AUTODOCK != 0). Panel windows must then SKIP SetNextWindowPos before
     // Begin -- an explicit next-window-pos pulls the window out of the dock and floats it.

@@ -84,6 +84,7 @@ void                get_window_size         (RenderWindowHandle rw_handle, int* 
 void                get_drawable_size       (RenderWindowHandle rw_handle, int* width, int* height);
 void                set_mouse_grab          (bool grabbed);
 void                refresh_mouse_grab      ();
+void                apply_os_cursor_policy  (const char* why, bool focused);
 void                destroy_window          (RenderWindowHandle rw_handle);
 bool                set_window_fullscreen   (RenderWindowHandle rw_handle, bool fullscreen);
 // NOFOCUS-HARDEN-1: true when MC2_WINDOW_OFFSCREEN is set -- the window is

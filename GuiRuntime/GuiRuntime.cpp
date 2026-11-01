@@ -28,6 +28,7 @@ bool g_imguiInitialized = false;
 static ImGuiContext* s_imguiContext = nullptr;
 
 static std::vector<std::function<void()>> s_postRenderFns;
+static std::vector<std::function<bool()>> s_foregroundCursorFns;
 
 namespace gui_runtime_detail {
 
@@ -646,7 +647,11 @@ void GuiRuntime::Render() {
 
     // Vulkan cannot composite the legacy post-ImGui GL cursor callback.
     // Draw above opaque menu windows through the same renderer as the UI.
-    ImGui::GetIO().MouseDrawCursor = (ImGui::GetIO().MouseDrawCursor || ImGui::GetIO().WantCaptureMouse)
+    bool gameCursorDrawn = false;
+    for (auto& fn : s_foregroundCursorFns) gameCursorDrawn = fn() || gameCursorDrawn;
+    s_foregroundCursorFns.clear();
+    ImGui::GetIO().MouseDrawCursor = !gameCursorDrawn
+        && (ImGui::GetIO().MouseDrawCursor || ImGui::GetIO().WantCaptureMouse)
         && !mc2::gate::get<"MC2_OS_CURSOR">();
     if (ImGui::GetIO().MouseDrawCursor && gos_NoUserPresentRequested()
         && mc2::gate::get<"MC2_VK_PICK_PROBE">()
@@ -679,6 +684,16 @@ void GuiRuntime::Render() {
     // The post-ImGui callbacks (cursor re-draw) are GL draws into a buffer the Vulkan present never shows; drop them so the list cannot
     // grow one entry per frame (they were never run under Vulkan either).
     s_postRenderFns.clear();
+}
+
+void GuiRuntime::RegisterForegroundCursor(std::function<bool()> fn)
+{
+    s_foregroundCursorFns.push_back(std::move(fn));
+}
+
+bool GuiRuntime::FrameActive()
+{
+    return g_imguiInitialized && s_frameActive;
 }
 
 void GuiRuntime::RegisterPostImGuiRender(std::function<void()> fn)

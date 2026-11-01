@@ -423,6 +423,7 @@ void process_events( void ) {
                     }
                 }
                 graphics::refresh_mouse_grab();
+                graphics::apply_os_cursor_policy("resize", !g_focus_lost);
                 MC2_LOG(Core, Debug, "resize event: w: {:f} h:{:f}", w, h);
                 break;
             }
@@ -446,11 +447,16 @@ void process_events( void ) {
                 // survives arbitrarily many focus events. Do not add a second
                 // copy of the policy here.
                 graphics::set_mouse_grab(true);
+                graphics::apply_os_cursor_policy("focus_gained", true);
                 g_focus_lost = false;
+                break;
+            case SDL_WINDOWEVENT_ENTER:
+                graphics::apply_os_cursor_policy("enter", !g_focus_lost);
                 break;
             case SDL_WINDOWEVENT_FOCUS_LOST:
                 // Release grab so Alt-Tab and other windows behave cleanly.
                 graphics::set_mouse_grab(false);
+                graphics::apply_os_cursor_policy("focus_lost", false);
                 g_focus_lost = true;
                 break;
             }
