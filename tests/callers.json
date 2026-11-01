@@ -5839,7 +5839,7 @@
         },
         {
           "path": "scripts/smoke_lib/gates.py",
-          "line": 8,
+          "line": 10,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from . import vk_validation"
@@ -6521,6 +6521,13 @@
           "text": "from scripts.smoke_lib import gates, logparse"
         },
         {
+          "path": "scripts/tests/test_perf_counters.py",
+          "line": 10,
+          "evidence": "import",
+          "reference": "scripts.smoke_lib.gates",
+          "text": "from scripts.smoke_lib.gates import GateConfig, evaluate, load_perf_ceilings  # noqa: E402"
+        },
+        {
           "path": "scripts/tests/test_sim_overlap_audit_gate.py",
           "line": 8,
           "evidence": "import",
@@ -6714,7 +6721,7 @@
         },
         {
           "path": "scripts/smoke_lib/gates.py",
-          "line": 9,
+          "line": 11,
           "evidence": "import",
           "reference": "scripts.smoke_lib.logparse",
           "text": "from .logparse import MARKER_BUCKETS, PRESENCE_RULES, LogSummary"
@@ -6746,6 +6753,13 @@
           "evidence": "import",
           "reference": "scripts.smoke_lib.logparse",
           "text": "from scripts.smoke_lib import gates, logparse"
+        },
+        {
+          "path": "scripts/tests/test_perf_counters.py",
+          "line": 11,
+          "evidence": "import",
+          "reference": "scripts.smoke_lib.logparse",
+          "text": "from scripts.smoke_lib.logparse import LogSummary, PerfRow, parse_log, parse_perf_counters  # noqa: E402"
         },
         {
           "path": "scripts/tests/test_sim_overlap_audit_gate.py",
@@ -7277,7 +7291,7 @@
       "callers_by_stem": [
         {
           "path": "scripts/smoke_lib/gates.py",
-          "line": 8,
+          "line": 10,
           "evidence": "import",
           "reference": "scripts.smoke_lib.vk_validation",
           "text": "from . import vk_validation"
@@ -8133,6 +8147,13 @@
       "path": "scripts/tests/test_perf_budget.py",
       "basename": "test_perf_budget.py",
       "stem": "test_perf_budget",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
+      "path": "scripts/tests/test_perf_counters.py",
+      "basename": "test_perf_counters.py",
+      "stem": "test_perf_counters",
       "callers_by_basename": [],
       "callers_by_stem": []
     },
@@ -13433,6 +13454,21 @@
         }
       ],
       "callers_by_stem": []
+    },
+    {
+      "path": "tools/perf/main_busy.py",
+      "basename": "main_busy.py",
+      "stem": "main_busy",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "scripts/tests/test_perf_counters.py",
+          "line": 12,
+          "evidence": "import",
+          "reference": "main_busy",
+          "text": "import main_busy  # noqa: E402"
+        }
+      ]
     },
     {
       "path": "tools/perf/mission_cpu_profile.py",

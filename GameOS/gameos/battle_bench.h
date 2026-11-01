@@ -37,7 +37,8 @@ inline void emitPerfCounters() {
     char line[1024];
     int len = std::snprintf(line, sizeof line, "[PERF_COUNTERS v1] frames=%llu", static_cast<unsigned long long>(n));
     for (unsigned f = 0; f < FieldCount && len > 0 && len < static_cast<int>(sizeof line); ++f) {
-        const bool ns = f == WaitSealedNs || f == WaitSimNs || f == WaitGpuMainNs;
+        const auto fe = static_cast<Field>(f);
+        const bool ns = fe == WaitSealedNs || fe == WaitSimNs || fe == WaitGpuMainNs;
         const double mean = static_cast<double>(tot[f].load()) / static_cast<double>(n) / (ns ? 1.0e6 : 1.0);
         std::string name = kFieldNames[f];
         if (ns) { name.resize(name.size() - 2); name += "ms"; }
@@ -45,7 +46,7 @@ inline void emitPerfCounters() {
     }
     if (len > 0 && len < static_cast<int>(sizeof line))
         std::snprintf(line + len, sizeof line - len, " first_vk_wait_site=%s first_vk_wait_ms_into_frame=%.4f",
-                      *firstVkWaitSite ? firstVkWaitSite : "none", firstVkWaitMs);
+                      firstVkWaitSite.empty() ? "none" : firstVkWaitSite.data(), firstVkWaitMs);
     std::fprintf(stderr, "%s\n", line);
     std::fflush(stderr);
 }
@@ -64,7 +65,7 @@ inline void beginFrame() {
     cpuLeaves = propLeaves = mechBones = particleRecords = particleSixths = 0;
     nativePropLeaves = nativeMechLeaves = 0;
 }
-inline unsigned long long u(Field f) { return static_cast<unsigned long long>(cur[f].load()); }
+inline unsigned long long u(Field f) { return static_cast<unsigned long long>(cur[std::to_underlying(f)].load()); }
 inline void endFrame(double ms) {
     if (output) std::fprintf(output,
         "{\"type\":\"cpu\",\"frame\":%llu,\"ms\":%.6f,\"ticks\":%u,\"tick_total_ms\":%.6f,"
@@ -81,8 +82,8 @@ inline void endFrame(double ms) {
         static_cast<unsigned long long>(mechBones), static_cast<unsigned long long>(particleRecords),
         static_cast<unsigned long long>(particleSixths),
         static_cast<unsigned long long>(nativePropLeaves), static_cast<unsigned long long>(nativeMechLeaves),
-        cur[WaitSealedNs].load() / 1.0e6, cur[WaitSimNs].load() / 1.0e6, cur[WaitGpuMainNs].load() / 1.0e6,
-        *firstVkWaitSite ? firstVkWaitSite : "none", firstVkWaitMs,
+        cur[std::to_underlying(WaitSealedNs)].load() / 1.0e6, cur[std::to_underlying(WaitSimNs)].load() / 1.0e6, cur[std::to_underlying(WaitGpuMainNs)].load() / 1.0e6,
+        firstVkWaitSite.empty() ? "none" : firstVkWaitSite.data(), firstVkWaitMs,
         u(ExtractBytes), u(HeapAllocs),
         u(DrawProps), u(DrawTerrain), u(DrawWater), u(DrawMech), u(DrawLegacy), u(DrawSky), u(DrawVfx), u(DrawShadow),
         u(WalkVisited), u(WalkRecalc), u(WalkGround), u(WalkTouch), u(WalkUpdate));

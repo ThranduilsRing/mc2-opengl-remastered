@@ -782,7 +782,7 @@ void mc2BenchWalk(GameObjectManager& om, int rounds)
 {
 	using Clk = std::chrono::steady_clock;
 	mc2::overlap::waitWorker();
-	enum { Recalc, Ground, SetParams, Touch, Update, SetVis, Extract, StepCount };
+	constexpr int Recalc = 0, Ground = 1, SetParams = 2, Touch = 3, Update = 4, SetVis = 5, Extract = 6, StepCount = 7;
 	static const char* const names[StepCount] = {"recalcBounds", "groundElevation", "setObjectParameters", "touch", "update", "setVisibility", "extract_render_list"};
 	uint64_t ns[StepCount] = {}, calls[StepCount] = {};
 	double timerNs = 0.0;

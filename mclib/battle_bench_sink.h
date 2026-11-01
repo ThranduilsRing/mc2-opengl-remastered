@@ -3,6 +3,7 @@
 #include <cstdio>
 #include <atomic>
 #include <cstdint>
+#include <utility>
 
 namespace mc2::battlebench {
 inline FILE* output = nullptr;
@@ -25,13 +26,15 @@ struct Tick {
 
 // [PERF_COUNTERS v1]: per-frame counters, always on (relaxed atomic adds; no env gate, no behaviour change).
 // `cur` holds this frame; beginFrame folds it into `tot` (see battle_bench.h). Wait fields are nanoseconds, main thread only.
-enum Field : unsigned {
+enum class Field : unsigned {
     DrawProps, DrawTerrain, DrawWater, DrawMech, DrawLegacy, DrawSky, DrawVfx, DrawShadow,
     WaitSealedNs, WaitSimNs, WaitGpuMainNs,
     ExtractBytes, HeapAllocs,
     WalkVisited, WalkRecalc, WalkGround, WalkTouch, WalkUpdate,
-    FieldCount
+    NumFields
 };
+using enum Field;
+inline constexpr unsigned FieldCount = static_cast<unsigned>(Field::NumFields);
 inline constexpr const char* kFieldNames[FieldCount] = {
     "draws.props", "draws.terrain", "draws.water", "draws.mech", "draws.legacy", "draws.sky", "draws.vfx", "draws.shadow",
     "wait_sealed_ns", "wait_sim_ns", "wait_gpu_main_ns",
@@ -41,7 +44,7 @@ inline std::atomic<uint64_t> cur[FieldCount]{};
 inline std::atomic<uint64_t> tot[FieldCount]{};
 inline std::atomic<uint64_t> totFrames{0};
 inline thread_local bool onMainThread = false;   // set by beginFrame (called on main)
-inline void add(Field f, uint64_t n = 1) { cur[f].fetch_add(n, std::memory_order_relaxed); }
+inline void add(Field f, uint64_t n = 1) { cur[std::to_underlying(f)].fetch_add(n, std::memory_order_relaxed); }
 // Movers alive and moving or firing, for the bench `world` row; written by the bench fixture.
 inline int activeMovers = 0;
 } // namespace mc2::battlebench

@@ -1,6 +1,7 @@
 // Main-thread wait timing for [PERF_COUNTERS v1]. Render/platform side only: sim code must not include this (wall-clock firewall).
 #pragma once
 #include <chrono>
+#include <string_view>
 #include "battle_bench_sink.h"
 
 namespace mc2::battlebench {
@@ -17,9 +18,9 @@ struct WaitScope {
 };
 // First blocking vk-context/present wait of the frame: caller label and ms since beginFrame (main thread only).
 inline std::chrono::steady_clock::time_point frameStart{};
-inline const char* firstVkWaitSite = "";
+inline std::string_view firstVkWaitSite = "";
 inline double firstVkWaitMs = -1.0;
-inline void noteVkWait(const char* site, std::chrono::steady_clock::time_point began) {
+inline void noteVkWait(std::string_view site, std::chrono::steady_clock::time_point began) {
     if (!onMainThread || firstVkWaitMs >= 0.0) return;
     firstVkWaitSite = site;
     firstVkWaitMs = std::chrono::duration<double, std::milli>(began - frameStart).count();
