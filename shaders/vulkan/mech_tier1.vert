@@ -124,7 +124,7 @@ vec3 calc_light(int idx, vec3 normal, vec3 wpos, vec3 base_light, int sunAxisMc2
     if (fillMode >= 1 && !legacyVehicle) {
         // Hemispheric fill sized from the sun: shade side ~40% of the sun-facing side, sky above, ground bounce below (render space: y = up).
         float up = clamp(normal.y * 0.5 + 0.5, 0.0, 1.0);
-        vec3 fill = sunLc * 0.45 * mix(0.6, 1.0, up);
+        vec3 fill = sunLc * 0.60 * mix(0.65, 1.0, up);
         final += max(fill - base_light, vec3(0.0));
     }
     return final + ambient;
