@@ -1694,10 +1694,13 @@ bool TerrainObject::calcAdjacentAreaCell (long moveLevel, long areaID, long& adj
 void TerrainObject::Save (PacketFilePtr file, long packetNum)
 {
 	MC2_SAVE_STRUCT(TerrainObjectData, data);
-	CopyTo(&data);
+	CopyTo(&data, true);
+	mc2::save::TerrainRecord record{data};
+	if (numCellsCovered * 2 > std::size(data.cellsCovered))
+		record.cells.assign(cellsCovered, cellsCovered + numCellsCovered * 2);
 
 	//PacketNum incremented in ObjectManager!!
-	auto bytes = mc2::save::encodeTaggedRecord(mc2::save::TerrainRecord{data}, mc2::save::terrainTag);
+	auto bytes = mc2::save::encodeTaggedRecord(record, mc2::save::terrainTag);
 	if (bytes.empty()) Fatal(0, "Invalid terrain ObjectSlot");
 	file->writePacket(packetNum, bytes.data(), static_cast<unsigned int>(bytes.size()), STORAGE_TYPE_ZLIB);
 }
@@ -1729,11 +1732,10 @@ void TerrainObject::CopyTo (TerrainObjectData *data, bool extendedCells)
 	data->listID = listID;
 
 	data->numCellsCovered = numCellsCovered;
-	if (!extendedCells && numCellsCovered >= 162)
+	if (!extendedCells && numCellsCovered * 2 > std::size(data->cellsCovered))
 		STOP(("Object %d covers too many cells in Save/Load!!",getObjectType()->getObjTypeNum()));
 
-	const auto count = extendedCells ? std::min<size_t>(numCellsCovered * 2, std::size(data->cellsCovered))
-	                                : numCellsCovered * 2;
+	const auto count = std::min<size_t>(numCellsCovered * 2, std::size(data->cellsCovered));
 	if (count) memcpy(data->cellsCovered, cellsCovered, sizeof(short) * count);
 
 	GameObject::CopyTo(data);
@@ -1770,6 +1772,8 @@ void TerrainObject::Load (TerrainObjectData *data, const short* extendedCells)
 	listID = data->listID;
 
 	numCellsCovered = data->numCellsCovered;
+	if (!extendedCells && numCellsCovered * 2 > std::size(data->cellsCovered))
+		Fatal(0, "Invalid legacy terrain coverage");
 	if (numCellsCovered)
 	{
 		cellsCovered = static_cast<short*>(std::malloc(sizeof(short) * numCellsCovered * 2));
