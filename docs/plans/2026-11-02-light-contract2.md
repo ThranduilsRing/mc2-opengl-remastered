@@ -37,3 +37,19 @@ Cause found in code: mission unload (mc2ClearAllBakedStaticLight) clears the bak
 night lighting was applied, are never rebaked. s_slotI (per light index terrain I) also survived the unload.
 Fix (this branch): mission reset re-arms the rebake and clears s_slotI; the parity check is stale-aware (rows gathered in an earlier
 S/A epoch are counted as stale_rows/stale_max/stale_last_frame, informational; fresh rows stay strict).
+
+## Correction: true cause of the saveload red (final)
+
+The rebake re-arm and slot-I reset (earlier commit) were real but not sufficient. The remaining
+mismatches came from the per-actor `fogLightSet` latch in BldgAppearance::update: `lightRGB` is
+computed once from the live camera light the first time the actor is in view and never recomputed.
+After a mission load, buildings latch while the camera still holds the previous (day) light; the
+night S,A are published later. The baked row (101) is therefore faithful to what the engine always
+rendered (the latched lightRGB); the contract's want (62) is computed from the later live S,A.
+Old build behaves the same (latch is unchanged code), so this is not a regression.
+
+Fix (check only, no look change): BldgAppearance records `lightLatchStamp =
+mc2CameraLightChangedCount()` at latch; the parity check receives `kLatchStale` when the stamp is
+older than the current count and counts the row as stale (stale_rows / stale_max), not a mismatch.
+Fresh rows stay strict. Result saveload mc2_10: mismatches=0, stale_last_frame=1399 (stops advancing).
+Making the buildings actually re-latch on a light change would be a look fix; owner decision.

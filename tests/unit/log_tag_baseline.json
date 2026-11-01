@@ -4474,6 +4474,16 @@
    "count": 1
   },
   {
+   "tag": "LIGHTBAKE",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "frame"
+   ],
+   "count": 1
+  },
+  {
    "tag": "LIGHTBRIDGE",
    "ver": 1,
    "stream": "buffer",
@@ -4588,7 +4598,37 @@
     "max_delta",
     "inexact_rows",
     "slotI_hit",
-    "slotI_fallback"
+    "slotI_fallback",
+    "stale_rows",
+    "stale_max",
+    "stale_last_frame"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "LIGHT_CONTRACT",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "frame",
+    "bake_frame",
+    "row_epoch",
+    "epoch",
+    "delta"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "LIGHT_CONTRACT",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "idx",
+    "slots",
+    "row_epoch",
+    "epoch",
+    "fresh",
+    "frame"
    ],
    "count": 1
   },
