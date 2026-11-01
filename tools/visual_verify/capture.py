@@ -271,6 +271,11 @@ def main(argv=None) -> int:
     ap.add_argument("--no-fixed-clock", action="store_true",
                     help="disable the deterministic clock (captures NOT byte-stable)")
     ap.add_argument("--show-window", action="store_true")
+    ap.add_argument("--focus", metavar="mech[:N]", default=None,
+                    help="MC2_CAPTURE_FOCUS: move every bookmark pose onto the Nth live "
+                         "player-team mech (default 0); the bookmark still supplies rot/proj.")
+    ap.add_argument("--focus-zoom", type=float, default=None, metavar="ALT",
+                    help="camera altitude with --focus (default 200 = mech at about a fifth of the frame)")
     ap.add_argument("--env-declare", "--env", dest="env_declare", action="append",
                     default=[], metavar="MC2_KEY=VALUE",
                     help="VK-VISUAL-CAPTURE-1: opt a MC2_* var into the capture "
@@ -334,6 +339,7 @@ def main(argv=None) -> int:
     if args.clean:
         args.env_declare.append("MC2_VISUAL_CAPTURE_CLEAN=1")
     try:
+        args.env_declare = list(args.env_declare) + env_pin.focus_declarations(args.focus, args.focus_zoom)
         declared_env = env_pin.parse_declarations(args.env_declare)
     except ValueError as e:
         print(f"[vv-capture] ERROR {e}", file=sys.stderr)

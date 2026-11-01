@@ -4560,6 +4560,20 @@
           "text": "import mc2_env_pin as env_pin  # noqa: E402"
         },
         {
+          "path": "scripts/tests/test_capture_focus.py",
+          "line": 10,
+          "evidence": "import",
+          "reference": "mc2_env_pin",
+          "text": "import mc2_env_pin as env_pin  # noqa: E402"
+        },
+        {
+          "path": "tools/visual_verify/ab.py",
+          "line": 28,
+          "evidence": "import",
+          "reference": "mc2_env_pin",
+          "text": "import mc2_env_pin as env_pin  # noqa: E402"
+        },
+        {
           "path": "tools/visual_verify/capture.py",
           "line": 58,
           "evidence": "import",
@@ -7636,6 +7650,13 @@
       "path": "scripts/tests/test_build_tokens.py",
       "basename": "test_build_tokens.py",
       "stem": "test_build_tokens",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
+      "path": "scripts/tests/test_capture_focus.py",
+      "basename": "test_capture_focus.py",
+      "stem": "test_capture_focus",
       "callers_by_basename": [],
       "callers_by_stem": []
     },
@@ -19662,7 +19683,7 @@
         },
         {
           "path": "tools/visual_verify/ab.py",
-          "line": 42,
+          "line": 43,
           "evidence": "command",
           "reference": "tools/visual_verify/capture.py",
           "text": "rc = subprocess.call(cmd, env=dict(os.environ, MC2_CURSOR_NO_PARK=\"1\"))"

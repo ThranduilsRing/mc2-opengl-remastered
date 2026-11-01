@@ -50,6 +50,7 @@
 #include "combat_sim_hash.h"
 #include "vtol_simulation.h"
 #include "weather.h"
+#include "team.h"
 #include "../mclib/abl.h"
 #include "../mclib/mathfunc.h"
 #include "../mclib/appear.h"
@@ -403,4 +404,28 @@ extern "C" void mc2SimIdentityTraceFrame(double scenarioTimeNow, long simFrame) 
 		}
 	}
 	fflush(stdout);
+}
+
+// MC2_CAPTURE_FOCUS: find the nth live player-team mech so a bookmark capture can
+// frame it. READ-ONLY (getters only); runs once per capture pose, never in the sim.
+// Returns 1 and fills xyz[3] on success, 0 when there is no such mech.
+extern "C" int mc2CaptureFocusMech(int n, float* xyz)
+{
+	if (!ObjectManager || !xyz || n < 0 || !Team::home)
+		return 0;
+	const long total = ObjectManager->getNumMovers();
+	int seen = 0;
+	for (long i = 0; i < total; ++i) {
+		MoverPtr mover = ObjectManager->getMover(i);
+		if (!mover || !mover->isMech() || mover->isDisabled() || mover->isDestroyed())
+			continue;
+		if (mover->getTeamId() != Team::home->getId())
+			continue;
+		if (seen++ != n)
+			continue;
+		const glm::vec3 pos = mover->getPosition();
+		xyz[0] = pos.x; xyz[1] = pos.y; xyz[2] = pos.z;
+		return 1;
+	}
+	return 0;
 }

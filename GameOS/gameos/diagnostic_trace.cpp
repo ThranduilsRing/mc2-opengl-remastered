@@ -37,6 +37,7 @@ const std::unordered_set<std::string>& knownTags() {
         "BUILD",
         "DEVICE",
         "SHADER_COMPILE",
+        "CAPTURE_FOCUS",
         "LOGISTICS",
         "FRAME_JOBS",
         "CURSOR_TARGET",
