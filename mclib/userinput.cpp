@@ -593,6 +593,14 @@ void UserInput::render (void)						//Last thing rendered.  Draws Mouse.
 			// HUD-inverse transform belongs only on the click-reception side.
 			long mouseX = getRawMouseX();
 			long mouseY = getRawMouseY();
+			{	// TEST hook: MC2_TEST_CURSOR_PIX=x,y pins the software cursor at a physical pixel (capture proofs).
+				static int s_tx = -2, s_ty = -2;
+				if (s_tx == -2) {
+					s_tx = s_ty = -1;
+					if (const char* e = getenv("MC2_TEST_CURSOR_PIX")) { int a = -1, c = -1; if (sscanf(e, "%d,%d", &a, &c) == 2) { s_tx = a; s_ty = c; } }
+				}
+				if (s_tx >= 0) { mouseX = s_tx; mouseY = s_ty; }
+			}
 
 			mouseX -= cursors->getMouseHSX( mouseState );
 			mouseY -= cursors->getMouseHSY( mouseState );
