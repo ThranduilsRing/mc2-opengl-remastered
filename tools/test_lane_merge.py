@@ -62,6 +62,9 @@ def test_precheck_runs_python_suites_and_reuses_lane_build(env, monkeypatch, cap
         seen.append((root, cmd))
         if any(a in cmd for a in ("scripts/ninja_build.py", "scripts/configure_ninja.py")):
             assert root == str(repo)
+            if "scripts/ninja_build.py" in cmd:
+                assert "-j" not in cmd
+                assert "-j" + lm.host_jobs() in cmd
         else:
             assert root != str(repo)
         return subprocess.CompletedProcess(cmd, int(any(lm.Path(a).name == red for a in cmd)), "fixture failure")

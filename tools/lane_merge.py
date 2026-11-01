@@ -806,8 +806,8 @@ def precheck(root: str, tip: str) -> int:
                 ensure_deps(snapshot, os.path.abspath(root))
             # Refresh warm trees too: older dev configurations omitted the opt-in FX tools.
             build_steps = [("configure", py + ["scripts/configure_ninja.py", "--build-dir", "build64-ninja"])]
-            build_steps += [("link-mc2", py + ["scripts/ninja_build.py", "mc2", "-j", host_jobs()])]
-            build_steps += [("link-tools", py + ["scripts/ninja_build.py", "mc2fx", "mc2fx_preview", "-j", host_jobs()])]
+            build_steps += [("link-mc2", py + ["scripts/ninja_build.py", "mc2", "-j" + host_jobs()])]
+            build_steps += [("link-tools", py + ["scripts/ninja_build.py", "mc2fx", "mc2fx_preview", "-j" + host_jobs()])]
             for label, command in build_steps:
                 r = run(build_root, command, env=verify_env(build_root))
                 if r.returncode:

@@ -65,6 +65,13 @@
           "text": "from bootstrap_worktree_build import cache_args"
         },
         {
+          "path": "tools/lane_merge.py",
+          "line": 805,
+          "evidence": "import",
+          "reference": "bootstrap_worktree_build",
+          "text": "from bootstrap_worktree_build import ensure_deps"
+        },
+        {
           "path": "tools/reload_leak.py",
           "line": 52,
           "evidence": "import",
@@ -6063,7 +6070,7 @@
         },
         {
           "path": "tests/smoke/test_marker_buckets.py",
-          "line": 185,
+          "line": 189,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from scripts.smoke_lib import render_options_pin"
@@ -6564,14 +6571,14 @@
         },
         {
           "path": "tests/smoke/test_marker_buckets.py",
-          "line": 147,
+          "line": 149,
           "evidence": "import",
           "reference": "scripts.smoke_lib.gates",
           "text": "from scripts.smoke_lib.gates import GateConfig, evaluate"
         },
         {
           "path": "tests/smoke/test_marker_buckets.py",
-          "line": 184,
+          "line": 188,
           "evidence": "import",
           "reference": "scripts.smoke_lib.gates",
           "text": "from scripts.smoke_lib.gates import GateConfig, evaluate"
@@ -7047,7 +7054,7 @@
         },
         {
           "path": "tests/smoke/test_marker_buckets.py",
-          "line": 185,
+          "line": 189,
           "evidence": "import",
           "reference": "scripts.smoke_lib.render_options_pin",
           "text": "from scripts.smoke_lib import render_options_pin"
@@ -11072,7 +11079,7 @@
         },
         {
           "path": "tools/test_lane_merge.py",
-          "line": 334,
+          "line": 337,
           "evidence": "import",
           "reference": "lane_merge",
           "text": "import lane_merge as lm  # noqa: E402"
