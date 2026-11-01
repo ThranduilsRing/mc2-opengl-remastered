@@ -9,6 +9,7 @@ MechCommander 2 engine port: modern GL renderer transitioning to Vulkan, PBR ter
 - **Deploy:** lanes deploy ONLY to their own `E:/mc2-installs/<branch>` with an explicit target. The merge gate's deploy to v0.4 (mc2-main's default target, orchestrator only) is the ONLY exception to the lane rule "NEVER deploy to v0.4".
 - **Model/effort:** Sonnet coding = medium; merges with heavy conflicts, reviews and root-causing = high; Sol = medium; Opus case by case; avoid Haiku for build loops.
 - **Game runs** default to about 15 s; benches use `--acceptance` only in the orchestrator's quiet window.
+- **GPU performance work needs an RGP capture.** Any change claimed to help GPU time (draws, culling, shaders, barriers, uploads) is proven with a Radeon GPU Profiler capture (`.rgp`) before and after, taken at the corner-pinned full zoom-out worst-case pose (mc2_01 `cross_map_view`, mc2_03 `scout_*`, mc2_10/24 `wolfman`) and at the default pose, not only an fps/CPU A/B. Suite: `C:/Users/Joe/Downloads/RadeonDeveloperToolSuite-2026-02-02-1757` (Radeon Developer Service headless + Panel, see `tools/host_inventory.py`). Attach the `.rgp` paths to the lane report; capture tooling is `rgp_capture.py` once it lands.
 - **Basics over process.** A check red on nifty for more than a week gets fixed or deleted.
 - **Features ship ON or not at all.** An `MC2_*` gate is a temporary kill-switch, not a parking spot. No new default-OFF feature gates (count legacy ones from `docs/flags.auto.yaml`).
 - **Vulkan is the destination backend.** GL becomes removable once VK is complete.
