@@ -136,7 +136,7 @@ void CallArtillery (long commanderID, long strikeType, glm::vec3 strikeLoc, long
 		
 		//-----------------------------------------------------------
 		// alignment only really matters for sensor & camera strikes.
-		artilleryStrike->setTeamId(Commander::commanders[commanderID]->getTeam()->getId(), true);
+		artilleryStrike->setTeamId(Commander::commanders[commanderID]->getTeam() ? Commander::commanders[commanderID]->getTeam()->getId() : -1, true);
 		artilleryStrike->setCommanderId(commanderID);
 	
 		//-----------------------------------------------------------
