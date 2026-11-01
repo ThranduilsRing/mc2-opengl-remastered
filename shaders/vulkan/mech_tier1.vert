@@ -76,7 +76,7 @@ bool GetFalloff(float len, vec3 fd, out float falloff) {
 #define MC2_ENVIRONMENT_AMBIENT
 //PORT-BEGIN:calc_light
 vec3 calc_light(int idx, vec3 normal, vec3 wpos, vec3 base_light, int sunAxisMc2Fix, bool legacyVehicle) {
-    const int fillMode = uFrame.miscI.y;   // MC2_MECH_FILL dev knob (0 = original look)
+    const int fillMode = legacyVehicle ? 0 : uFrame.miscI.y;   // MC2_MECH_FILL; ground vehicles keep the original look
     vec3 sunLc = vec3(0.0);
     // Keep only the count local: copying the matrix arrays creates private indexed storage.
     ObjectLights ld;
@@ -169,19 +169,20 @@ void main() {
 
     // Per-vertex lighting — mech.vert:204-235 (u_lightingMode=1, lightsOut branch).
     // Render space is y-up; the original look weighted by .z (a sideways axis). MC2_MECH_FILL>=1 uses the real up axis.
-    float ambUp = (uFrame.miscI.y >= 1) ? worldNormal.y : worldNormal.z;
+    // Ground vehicles keep their legacy lighting: the row's ambient and sun, no environment ambient; point and spot lights apply (stock vehicles were lit by them).
+    bool legacyVehicle = (inst.renderFlags & MECH_RENDER_FLAG_LEGACY_VEHICLE) != 0u;
+    bool mechFill = !legacyVehicle && uFrame.miscI.y >= 1;   // MC2_MECH_FILL applies to mechs only
+    float ambUp = mechFill ? worldNormal.y : worldNormal.z;
     vec3 environmentAmbient = uFrame.environmentAmbient.rgb
         * mix(0.5, 1.0, clamp(ambUp * 0.5 + 0.5, 0.0, 1.0));
     const uint  kRenderFlagLightsOut = 0x2u;
     bool lightsOut = (inst.renderFlags & kRenderFlagLightsOut) != 0u;
-    // Ground vehicles keep their legacy lighting: the row's ambient and sun, no environment ambient; point and spot lights apply (stock vehicles were lit by them).
-    bool legacyVehicle = (inst.renderFlags & MECH_RENDER_FLAG_LEGACY_VEHICLE) != 0u;
     vec3 baseLight;
     if (lightsOut) {
         baseLight = environmentAmbient;
     } else if (uFrame.lightingReady != 0) {
         vec3 base = legacyVehicle ? vec3(0.0) : environmentAmbient;
-        vec3 litRGB = calc_light(int(inst.lightDataIndex), worldNormal, worldMC2, base, uFrame.sunAxisMc2Fix, legacyVehicle);
+        vec3 litRGB = calc_light(int(inst.lightDataIndex), worldNormal, worldMC2, base, (uFrame.sunAxisMc2Fix != 0 || mechFill) ? 1 : 0, legacyVehicle);
         baseLight = clamp(litRGB + inst.aRGBHighlight.rgb * inst.aRGBHighlight.a, 0.0, 1.0);
     } else {
         // LightsData not yet copied — mirror mech.vert's Slice-A passthrough (flat white).

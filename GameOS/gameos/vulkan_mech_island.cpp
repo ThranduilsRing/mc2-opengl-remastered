@@ -1023,8 +1023,8 @@ extern "C" int mc2_vk_mech_island_run(int w, int h) {
       u.materialReady = (s->wantMaterial && s->materialReady) ? 1 : 0;
       u.lightingReady = s->lightingReady ? 1 : 0;
       static const int mechFill = mc2::gate::get<"MC2_MECH_FILL">();   // ships ON at 2; 0 = original look for A/B
-      // The swapped sun axis is the one terrain, props, shadows and the mech specular use; fill modes apply it to the diffuse too.
-      u.sunAxisMc2Fix = (mc2::options::current().sunAxisFix || mechFill >= 1) ? 1 : 0;
+      // The shader applies the swapped sun axis to mech diffuse itself when the fill is on; ground vehicles keep the option's value.
+      u.sunAxisMc2Fix = mc2::options::current().sunAxisFix ? 1 : 0;   // same option the GL mech flush reads
       u.fogColorRGB[0] = feed.fogColorRGB[0];
       u.fogColorRGB[1] = feed.fogColorRGB[1];
       u.fogColorRGB[2] = feed.fogColorRGB[2];
