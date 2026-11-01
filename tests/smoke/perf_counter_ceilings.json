@@ -1,0 +1,36 @@
+{
+ "mc2_01": {
+  "draws.legacy": 0.5,
+  "draws.mech": 47.89,
+  "draws.props": 93.41,
+  "draws.shadow": 44.07,
+  "draws.sky": 1.75,
+  "draws.terrain": 29.38,
+  "draws.vfx": 0.5,
+  "draws.water": 1.75,
+  "extract.bytes": 369237.0,
+  "heap_allocs": 10.49,
+  "walk.ground": 221.54,
+  "walk.recalc": 221.54,
+  "walk.touch": 116.19,
+  "walk.update": 105.86,
+  "walk.visited": 1250.5
+ },
+ "mc2_10": {
+  "draws.legacy": 1.28,
+  "draws.mech": 19.96,
+  "draws.props": 154.83,
+  "draws.shadow": 143.73,
+  "draws.sky": 1.75,
+  "draws.terrain": 41.89,
+  "draws.vfx": 2.48,
+  "draws.water": 1.75,
+  "extract.bytes": 938102.04,
+  "heap_allocs": 10.59,
+  "walk.ground": 278.22,
+  "walk.recalc": 278.22,
+  "walk.touch": 273.84,
+  "walk.update": 79.56,
+  "walk.visited": 3243.8
+ }
+}
