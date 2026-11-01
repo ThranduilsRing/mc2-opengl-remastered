@@ -139,6 +139,9 @@ TEST_CASE("ObjectSlot tags validate class, handle, payload and required section"
     using namespace mc2_saved_objects;
     auto check = [&]<class Record, class Data>(int c, ObjectClass objectClass) {
         Data data{};
+        // Vector4D's default constructor leaves its archived components uninitialized.
+        data.screenPos = Stuff::Vector4D(0, 0, 0, 0);
+        INFO("object slot class=" << c);
         data.handle = 1;
         data.objectClass = objectClass;
         data.objectTypeNum = 1;
