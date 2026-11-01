@@ -9,9 +9,28 @@
 - Unit PASS: 58 cases / 3063 assertions (56s), covering 0/40/41/81/161/162/255 cells,
   malformed/truncated counts, real ObjectSlot fixtures, and section version rejection.
 - Selected contracts PASS: 8/8 save and ratchet rows; axis scan took 51s.
-- Next: commit, one all-target checkpoint, explicit copy-install deploy, stock then
-  CVE-G Metropolitan quicksave/quickload + 60 contiguous identical SIMID ticks,
-  actual new save refusal with the preserved older reader.
+- Implementation committed: 3c36d6734. All-target checkpoint PASS (root 709s,
+  standalone projects 20s, doctest/seam build 3s); normal shipping build PASS.
+- All-target direct deploy refused missing msvcp140.dll; normal build64-ninja
+  deploy PASS with require-clean and normal provenance. Exe SHA256:
+  ea4fe4e5b33e5fa583eb10bcbce65bab5f055f162d5caf1b2fc8cbf133c94057.
+- Host domain PASS: Metropolitan and stock 01/03 quicksave/load/resave at 1800/1900,
+  201 ticks after load, 60 contiguous identical SIMID ticks. No capacity aborts.
+- Late stock 10 diverges +23 (RNG counter only); 24 diverges +39 (mover 725).
+  No claim these are pre-existing or caused by this fix. Original failures retained.
+- Older reader refuses the actual new stock 03 save with section_version before
+  teardown, no crash, then continues 753 ticks. MC2_MECH_RESTORE_TRACE=1 witnessed.
+- Headless wrappers remain red for expected GPU/vegetation/heartbeat observations;
+  engine save/load witnesses and SIMID comparison are distinct from wrapper verdicts.
+- Farm PASS 4/4: job dc673bf0826e425eab7f4e994244b90a, stock 01/03/10/24,
+  standard requested fixture points 1000/1400, each 60 contiguous identical SIMID
+  ticks. Actual restored ticks 1000/1448/1140/1000 (movie deferrals); post-load
+  windows 601/153/461/601 ticks. CLI exits all 0, job returncode 0; fetched and
+  private farm tree cleaned. Receipt: farm-continuation/<job>/stock/receipts.json.
+- Capacity implementation and requested domain proofs complete; no blanket smoke
+  claim: late 10/24 probes remain divergent and host headless wrappers remain red.
+  Follow-up: compare those late failures against a verified baseline before any
+  attribution or simulation fix; resolve approval blocks for install cleanup.
 - Automatic approval review rejected deleting/reseeding E:/mc2-installs/save-capacity
   with only "blocked by policy". Do not retry that reset by another mechanism.
   A separate fresh copy avoids deleting that existing tree; report skipped cleanup.
@@ -20,6 +39,13 @@
   Thus inherited seed writable artifacts remain; do not claim lean/clean staging.
 - git diff --check flags CR on the changed line in already-CRLF saveload.cpp;
   no whitespace policy override used.
+- Removed our hash-matched testgame_resave.ims fixture (1,466,976 bytes); original
+  quicksave restored by guarded backups. Install cleanup freed no measured space.
+  Installs left: E:/mc2-installs/save-capacity and E:/mc2-installs/save-capacity-copy.
+- Tool slowness / avoidable cost: direct all-target deployment lacks staged CRT;
+  recovery forced another 266-step shipping build. Stage runtime CRT in that tree.
+
+## Prior run (historical; terrain exclusion superseded)
 
 Assignment: A:/Games/mc2-lane4, claude/save-capacity, base c0eba1a0ac1c197594447ea1517e0c208b77d64f.
 Budget: <=150 tool calls; batch discovery, reproduce, smallest eligible fix,
