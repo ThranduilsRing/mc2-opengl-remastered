@@ -9,6 +9,7 @@ sys.path.insert(0, os.path.join(ROOT, "scripts"))
 
 from tools import lane_merge as lm  # noqa: E402
 from tools import ungated_log_tags as ult  # noqa: E402
+import console_child  # noqa: E402
 import merge_gate as gate  # noqa: E402
 from smoke_lib.gates import GateConfig, evaluate  # noqa: E402
 from test_perf_counters import _ready  # noqa: E402
@@ -51,7 +52,7 @@ def test_baseline_names_are_the_quiet_check_allowlist():
 
 def test_compiled_inputs_changed_takes_an_end_ref(tmp_path):
     def git(*a):
-        subprocess.run(["git", "-C", str(tmp_path), "-c", "user.name=t", "-c", "user.email=t@t", *a], check=True, capture_output=True)
+        subprocess.run(["git", "-C", str(tmp_path), "-c", "user.name=t", "-c", "user.email=t@t", *a], check=True, capture_output=True, **console_child.child_kwargs(redirected=True))
     git("init", "-q", "-b", "main")
     (tmp_path / "a.md").write_text("a")
     git("add", "."); git("commit", "-q", "-m", "base")

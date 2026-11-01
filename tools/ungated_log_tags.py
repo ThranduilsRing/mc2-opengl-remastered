@@ -20,6 +20,10 @@ import json
 import re
 import subprocess
 import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
+import console_child  # noqa: E402
 
 GUARD_WINDOW = 8
 BASELINE_PATH = "tests/contract/default_build_quiet_baseline.json"
@@ -71,7 +75,8 @@ def check_diff(diff: str, allowed: set[str]) -> list[str]:
 
 
 def git(*args: str) -> str:
-    return subprocess.run(["git", *args], capture_output=True, text=True, encoding="utf-8", errors="replace").stdout
+    return subprocess.run(["git", *args], capture_output=True, text=True, encoding="utf-8", errors="replace",
+                          **console_child.child_kwargs(redirected=True)).stdout
 
 
 def main(argv=None) -> int:

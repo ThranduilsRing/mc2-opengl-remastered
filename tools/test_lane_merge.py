@@ -56,6 +56,8 @@ def precheck_fixture(lm, repo, monkeypatch, red, tree=None):
     def runner(root, cmd, env=None):
         if cmd[0] == "git":
             return actual_run(root, cmd, env)
+        if any(lm.Path(c).name == "ungated_log_tags.py" for c in cmd):
+            return subprocess.CompletedProcess(cmd, 0, "")   # git-only stage, not part of the clone chains
         seen.append((str(root), cmd))
         return subprocess.CompletedProcess(cmd, int(any(lm.Path(a).name == red for a in cmd)), "fixture failure")
     monkeypatch.setattr(lm, "run", runner)
