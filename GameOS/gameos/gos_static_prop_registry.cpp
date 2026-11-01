@@ -708,6 +708,18 @@ bool staticPropSetAllLeafMatrices(int32_t recipeIndex, const float in[16]) {
     return true;
 }
 
+// Light contract: once a recipe's light row is baked, its instance word takes that row's I (see mc2PropSlotI).
+bool staticPropSetActorTint(int32_t recipeIndex, uint32_t word) {
+    if (!recipeValid(recipeIndex)) return false;
+    const RecipeRange& rng = s_recipeRanges[static_cast<size_t>(recipeIndex)];
+    bool changed = false;
+    for (uint32_t i = 0; i < rng.count; ++i) {
+        if (s_recipes[rng.first + i].actorTint != word) { s_recipes[rng.first + i].actorTint = word; changed = true; }
+    }
+    if (changed) ++s_registryGeneration;
+    return true;
+}
+
 // SHADOW-STATIC-BUILDINGS-2: tag a recipe's population at registration time.
 void setRecipePopulation(int32_t recipeIndex, GpuStaticPropPopulation pop) {
     const uint8_t p = static_cast<uint8_t>(pop);
