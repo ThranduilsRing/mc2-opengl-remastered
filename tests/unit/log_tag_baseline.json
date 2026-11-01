@@ -1945,6 +1945,17 @@
    "count": 1
   },
   {
+   "tag": "CAPTURE_FOCUS",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "found",
+    "pos",
+    "zoom"
+   ],
+   "count": 1
+  },
+  {
    "tag": "CAPTURE_HIGHLIGHT",
    "ver": 1,
    "stream": "stderr",
@@ -11714,6 +11725,7 @@
   "ORDER_LIVENESS_SUMMARY",
   "PERF",
   "PERF_COUNTERS",
+  "PERF_COUNTER_WARN",
   "REPLAY_DIVERGED",
   "RESOLUTION",
   "RGBA",

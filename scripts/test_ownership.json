@@ -30,6 +30,7 @@
     {"module": "scripts/tests/test_rule_defaults.py", "owners": ["scripts_tests"]},
     {"module": "scripts/tests/test_battle_bench.py", "owners": ["scripts_tests"]},
     {"module": "scripts/tests/test_perf_counters.py", "owners": ["scripts_tests"]},
+    {"module": "scripts/tests/test_capture_focus.py", "owners": ["scripts_tests"]},
     {"module": "scripts/tests/test_ab_vk_only.py", "owners": ["scripts_tests"]},
     {"module": "scripts/tests/test_legacy_env.py", "owners": ["scripts_tests"]},
     {"module": "scripts/tests/test_per_test_timeout.py", "owners": ["scripts_tests"]},
