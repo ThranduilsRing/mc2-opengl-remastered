@@ -1,5 +1,6 @@
 #include "static_prop_visible_set.h"
 #include "gos_static_prop_registry_internal.h"
+#include <functional>
 #include <atomic>
 #include "../../mclib/texture_assets.h"
 
@@ -712,9 +713,12 @@ bool staticPropSetAllLeafMatrices(int32_t recipeIndex, const float in[16]) {
 bool staticPropSetActorTint(int32_t recipeIndex, uint32_t word) {
     if (!recipeValid(recipeIndex)) return false;
     const RecipeRange& rng = s_recipeRanges[static_cast<size_t>(recipeIndex)];
+    const uint32_t firstRecipe = std::invoke(&RecipeRange::first, rng);
+    const uint32_t recipeCount = rng.count;
     bool changed = false;
-    for (uint32_t i = 0; i < rng.count; ++i) {
-        if (s_recipes[rng.first + i].actorTint != word) { s_recipes[rng.first + i].actorTint = word; changed = true; }
+    for (uint32_t i = 0; i < recipeCount; ++i) {
+        auto& r = s_recipes[firstRecipe + i];
+        if (r.actorTint != word) { r.actorTint = word; changed = true; }
     }
     if (changed) ++s_registryGeneration;
     return true;
