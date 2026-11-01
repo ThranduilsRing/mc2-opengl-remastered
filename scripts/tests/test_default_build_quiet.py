@@ -78,3 +78,22 @@ def test_fresh_smoke_flag_requires_exe(monkeypatch):
     monkeypatch.setattr(sys, "argv", ["quiet", "--fresh-smoke"])
     monkeypatch.setattr(quiet.subprocess, "run", lambda *a, **k: pytest.fail("subprocess spawned"))
     assert quiet.main() == 1
+
+
+@pytest.mark.parametrize("commit,dirty,current", [
+    ("a" * 12, False, True), ("b" * 12, False, False),
+    ("a" * 12, True, False), ("", False, False), (None, False, False),
+])
+def test_offline_sample_requires_current_clean_binary(tmp_path, monkeypatch, commit, dirty, current):
+    run = tmp_path / "sample"
+    run.mkdir()
+    (run / "manifest.json").write_text(json.dumps({
+        "env_gates": {}, "missions": ["mc2_10"], "git_head": "a" * 40,
+        "identity": {"binary_provenance": {"commit": commit, "dirty": dirty}},
+    }))
+    (run / "mc2_10.log").write_text("[NEW_SPAM v1]")
+    monkeypatch.setattr(quiet, "ARTIFACT_ROOT", tmp_path)
+    monkeypatch.setattr(quiet.subprocess, "check_output", lambda *a, **kw: "a" * 40 + "\n")
+    monkeypatch.setattr(quiet, "load_baseline", lambda: {"tags": {}})
+    monkeypatch.setattr(sys, "argv", ["quiet"])
+    assert quiet.main() == (1 if current else 0)

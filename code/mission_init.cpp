@@ -651,7 +651,15 @@ void Mission::initTeamsAndCommanders(long loadType, glm::vec3* dropZoneList, cha
 						"Mission::init: commandersToLoad[%ld] names uninitialized commander %ld / team %ld",
 						i, ctlCommander, ctlTeam))
 				{
-					mc2::content::error(mc2::content::Kind::MissionData, missionFileName, "invalid commander/team entry; skipped");
+					mc2::content::error(mc2::content::Kind::MissionData, missionFileName, "invalid commander/team entry; falling back to home team");
+					// mc10 load crash: the logistics table is identity {i,i,i}, so
+					// a mission with fewer teams than commanders named a null team
+					// and left the commander team-less; later code dereferences
+					// Commander::team. Fall back to the home team (as quickstart's
+					// {2,0,2} table does) so no commander is left without a team.
+					if ((ctlCommander > -1) && (ctlCommander < MAX_COMMANDERS) &&
+						(Commander::commanders[ctlCommander] != nullptr) && (Commander::commanders[ctlCommander]->getTeam() == nullptr))
+						Commander::commanders[ctlCommander]->setTeam(Team::home);
 					continue;
 				}
 				Commander::commanders[ctlCommander]->setTeam(Team::teams[ctlTeam]);

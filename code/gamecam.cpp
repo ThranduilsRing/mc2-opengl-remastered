@@ -83,6 +83,7 @@ extern "C" void mc2_vfx_pass_end();
 
 #include <cmath>
 #include <cstdlib>
+#include <algorithm>
 #include "../RenderCore/SceneLighting.h"  // SCENE-LIGHTING-STATE-1 canonical mirror
 #include "../GameOS/gameos/utils/terrain_daylight.h"  // TERRAIN-AMBIENT-FLOOR-2 daylight gate (pure)
 #include "../GameOS/gameos/gos_postprocess.h"  // VK-GL-LOST-DRAWS tags
@@ -91,6 +92,7 @@ extern "C" void mc2_vfx_pass_end();
 #include "impact_presentation.h"
 #include "render_view.h"
 #include "sim_tick_clock.h"
+#include "camera_start_pick.h"
 
 namespace {
 // Marks the quads drawn inside a scope as exempt from the HUD batch's bottom-band shrink, then restores the previous state.
@@ -383,6 +385,9 @@ void GameCamera::renderVanishProbe() {
 }
 
 // Push the camera position, light direction, flat light, night state and daylight level to the terrain.
+static unsigned g_cameraLightChanged = 0;
+unsigned mc2CameraLightChangedCount() { return g_cameraLightChanged; }
+
 void GameCamera::renderTerrainSceneState() {
 	// Camera position in MC2 world space for TCS distance LOD
 	glm::vec3 camOrig = getCameraOrigin();
@@ -420,6 +425,24 @@ void GameCamera::renderTerrainSceneState() {
 		gos_SetNightState(resolved.night,resolved.nightFactor);
 		extern void gos_SetTerrainDaylightLevel(float);
 		gos_SetTerrainDaylightLevel(resolved.daylightLevel);
+	}
+
+	// Prop light contract (prop_light_contract.h): S/A/F/Dspec for the colour-prop shader, plus the
+	// [LIGHT_CONTRACT v1] report and the camera_light_changed counter (S or A differs from the first frame).
+	{
+		int S[3], A[3], F; float D[3];
+		getPropLightContract(S, A, F, D);
+		float Sf[3] = {float(S[0]), float(S[1]), float(S[2])}, Af[3] = {float(A[0]), float(A[1]), float(A[2])};
+		extern void gos_SetPropLightContract(const float*, const float*, float, const float*);
+		gos_SetPropLightContract(Sf, Af, float(F), D);
+		static int s_first[6]; static bool s_haveFirst = false; static unsigned s_frames = 0;
+		const int now[6] = {S[0], S[1], S[2], A[0], A[1], A[2]};
+		if (!s_haveFirst) { std::copy_n(now, 6, s_first); s_haveFirst = true; }
+		else if (!std::equal(now, now + 6, s_first)) ++g_cameraLightChanged;
+		extern void mc2PropLightContractReport(bool);
+		static const bool s_registered = (std::atexit([] { mc2PropLightContractReport(true); }), true);
+		(void)s_registered;
+		if (++s_frames % 300u == 0u) mc2PropLightContractReport(false);
 	}
 
 	// SCENE-LIGHTING-STATE-1: mirror + parity trace (gated, self-throttled, no-op default).
@@ -1122,19 +1145,9 @@ long GameCamera::activate (void)
 	//---------------------------------------------------------
 	// Camera always starts pointing at first mover in lists
 	// CANNOT be infinite because we don't allow missions without at least 1 player mech!!
-	MoverPtr firstMover = nullptr;
-	if (ObjectManager->getNumMovers() > 0) {
-		long i = 0;
-		firstMover = ObjectManager->getMover(i);
-		while (firstMover && ((firstMover->getCommander()->getId() != Commander::home->getId()) || !firstMover->isOnGUI()))
-		{
-			i++;
-			if (i == ObjectManager->getNumMovers())
-				break;
-			firstMover = ObjectManager->getMover(i); 
-		}
-	}
-	
+	MoverPtr firstMover = pickCameraStartMover<Mover>(ObjectManager->getNumMovers(), Commander::home->getId(),
+		[](long idx) { return ObjectManager->getMover(idx); });
+
 	if (firstMover)
 	{
 		glm::vec3 newPosition(firstMover->getPosition());

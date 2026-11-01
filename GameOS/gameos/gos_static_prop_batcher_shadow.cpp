@@ -287,6 +287,14 @@ extern "C" int mc2_color_prop_island_get_material_feed(Mc2ColorPropMaterialFeed*
 // VK-PROP-AMBIENT-IBL-1: real ObjectLights ambient + IBL-SH feed. GL-owner accessors
 // (this runs in GL context, mirrors mc2_mech_island_get_frame_feed's setup at
 // gos_mech_batcher.cpp:2910-2915).
+// Light contract (prop_light_contract.h): camera S/A/F and the sun direction as the row carried it,
+// published once per frame by GameCamera::renderTerrainSceneState.
+static struct { float S[3], A[3], D[3]; float F; bool published; } g_propContract{};
+void gos_SetPropLightContract(const float* S, const float* A, float F, const float* D) {
+    std::copy_n(S, 3, g_propContract.S); std::copy_n(A, 3, g_propContract.A);
+    std::copy_n(D, 3, g_propContract.D); g_propContract.F = F; g_propContract.published = true;
+}
+
 extern "C" int mc2_color_prop_island_get_light_feed(Mc2ColorPropLightFeed* out) {
     if (!out) return 0;
     // VK-PROP-LIGHTFEED-NATIVE-1: native CPU feed (mech item-9 pattern, mirrors
@@ -296,6 +304,12 @@ extern "C" int mc2_color_prop_island_get_light_feed(Mc2ColorPropLightFeed* out) 
     out->lights = mc2::vkLights::captureFeed();
     // The L1 record owns day/night coefficients; night strength is already resolved there.
     const auto& environment = visualTuning_environment();
+    std::copy_n(g_propContract.S, 3, out->sunColor);
+    out->sunColor[3] = g_propContract.published ? 1.0f : 0.0f;
+    std::copy_n(g_propContract.A, 3, out->ambientColor);
+    out->ambientColor[3] = g_propContract.F;
+    std::copy_n(g_propContract.D, 3, out->specDir);
+    out->specDir[3] = 0.0f;
     for (size_t i=0; i<9; ++i)
         std::copy_n(environment.sky.diffuseSh[i].data(),3,out->iblSh[i]);
     // Retain the existing option and profile strength, applied once.

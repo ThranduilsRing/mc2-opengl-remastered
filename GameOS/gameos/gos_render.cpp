@@ -13,6 +13,7 @@
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"   // raw<>()
 #include "mc2fmt.h"
+#include "diagnostic_trace.h"
 
 // FIXME: think how to make it better when different parts need window
 SDL_Window* g_sdl_window = nullptr;
@@ -175,6 +176,25 @@ void set_mouse_grab(bool grabbed)
 {
     g_mouse_grabbed = grabbed;
     apply_mouse_grab(g_sdl_window, grabbed);
+}
+
+// CURSOR-TOPMOST-1: single owner of the OS-cursor visibility policy. Over the game
+// window the OS arrow is hidden (the game draws its own sprite) unless MC2_OS_CURSOR;
+// when the window loses focus the OS cursor is restored. Re-asserted on every window
+// event that can disturb it (focus, enter, size/fullscreen) and logged so the state
+// is provable from the log.
+void apply_os_cursor_policy(std::string_view why, bool focused)
+{
+    if (gos_UnattendedRunRequested() || !g_sdl_window) {
+        return;
+    }
+    const bool hide = focused && !mc2::gate::get<"MC2_OS_CURSOR">();
+    SDL_ShowCursor(hide ? SDL_DISABLE : SDL_ENABLE);
+    if (!mc2_diag::tagRequested("CURSOR")) return;
+    MC2_LOG(Ui, Info, "[CURSOR] os_cursor event={} focused={:d} visible={:d} os_cursor_gate={:d}",
+        mc2::fmt::safe(std::string(why).c_str()), mc2::fmt::as_i32(focused ? 1 : 0),
+        mc2::fmt::as_i32(SDL_ShowCursor(SDL_QUERY) == SDL_ENABLE ? 1 : 0),
+        mc2::fmt::as_i32(mc2::gate::get<"MC2_OS_CURSOR">() ? 1 : 0));
 }
 
 void refresh_mouse_grab()
@@ -605,6 +625,7 @@ bool resize_window(RenderWindowHandle rw_handle, int width, int height)
     apply_offscreen_position(rw->window_);
     if (rw->window_ == g_sdl_window) {
         refresh_mouse_grab();
+        apply_os_cursor_policy("window_mode", (SDL_GetWindowFlags(g_sdl_window) & SDL_WINDOW_INPUT_FOCUS) != 0);
     }
 
     return true;
@@ -636,6 +657,7 @@ bool set_window_fullscreen(RenderWindowHandle rw_handle, bool fullscreen)
 
     if (rw->window_ == g_sdl_window) {
         refresh_mouse_grab();
+        apply_os_cursor_policy("window_mode", (SDL_GetWindowFlags(g_sdl_window) & SDL_WINDOW_INPUT_FOCUS) != 0);
     }
 
     return true;

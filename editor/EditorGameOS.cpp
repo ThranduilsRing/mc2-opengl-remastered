@@ -227,6 +227,9 @@ extern "C" void mc2_hzb_dump_camera_view(void)
 // The shared inspector requires this bookmark symbol, but the game camera
 // implementation is not linked into the editor. An empty path suppresses
 // the bookmark result in the inspector.
+// The gameplay camera's diagnostic counter is likewise absent in the editor.
+unsigned mc2CameraLightChangedCount() { return 0; }
+
 extern "C" void mc2_save_camera_bookmark(char* outPath, int outPathLen)
 {
     if (outPath && outPathLen > 0)
