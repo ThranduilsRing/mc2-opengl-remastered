@@ -204,6 +204,11 @@ def known_gate_names() -> "frozenset | None":
     return _GATE_NAMES
 
 
+# GameOS/gameos/diagnostic_trace.cpp kDefaultTags (what MC2_DIAG_TAGS unset means) and the tags a runner-owned run adds on top.
+QUIET_TAG_DEFAULTS = "GPU_CULL,LIGHTBAKE_PROOF,ANIM_GATE,TerrainLOD_prod,CONFIG,BUILD,DEVICE,SHADER_COMPILE"
+RUNNER_DIAG_TAGS = ("PERF_COUNTERS", "CULL_PARITY")
+
+
 def unregistered_ambient(environ: dict, env_extra: "dict | None" = None) -> dict:
     """Ambient MC2_* variables that are not gates: {name: value}.
 
@@ -231,6 +236,8 @@ class RunConfig:
     grace_s: int                        # walltime cap = duration + grace
     env_extra: dict
     allow_asset_oob: bool = False
+    # Default-build quiet sample: leave the runner-added diag tags (PERF_COUNTERS, CULL_PARITY) off so the log is what a shipping build prints.
+    quiet_default: bool = False
     content_error_budget: int = 0
     # META-FIX INFRA-3: per-mission marker-bucket downgrades (bucket -> True).
     marker_overrides: dict = field(default_factory=dict)
@@ -278,6 +285,11 @@ def run_one(cfg: RunConfig) -> RunResult:
     for _k in POPPED_ENV:
         env.pop(_k, None)
     env.update(cfg.env_extra)
+    # [PERF_COUNTERS v1] / [CULL_PARITY v1] print only with their diag tag (docs/plans/2026-11-02-quiet-tags.md). MC2_DIAG_TAGS replaces the engine's
+    # default list, so restate it. Every runner-owned run (smoke, bench, census, profilers) turns the tags on; a quiet sample does not.
+    if not (cfg.quiet_default or os.environ.get("MC2_SMOKE_QUIET_DEFAULT") == "1"):
+        _tags = env.get("MC2_DIAG_TAGS") or QUIET_TAG_DEFAULTS
+        env["MC2_DIAG_TAGS"] = _tags + "".join(f",{t}" for t in RUNNER_DIAG_TAGS if t not in _tags)
     _legacy_dropped = filter_legacy_env(env)
     if _legacy_dropped:
         print("[runner] [LEGACY-ENV] not known to the older exe's gate table, not forwarded: " + ", ".join(_legacy_dropped), file=sys.stderr)
@@ -370,6 +382,7 @@ def run_one(cfg: RunConfig) -> RunResult:
         marker_overrides=cfg.marker_overrides,
         validation_requested=vk_validation.requested(env),
         stem=cfg.stem,
+        diag_tags=frozenset(t.strip() for t in env.get("MC2_DIAG_TAGS", "").split(",") if t.strip()),
         vegetation_expected=vegetation_expected,
         content_error_budget=cfg.content_error_budget,
     )

@@ -95,13 +95,14 @@ class PresenceRule:
     pattern: "re.Pattern[str]"
     bucket: str                          # verdict bucket when the line never appeared
     why: str
+    diag_tag: str = ""                   # the line only prints when this MC2_DIAG_TAGS tag is on (see docs/plans/2026-11-02-quiet-tags.md)
 
 
 PRESENCE_RULES: tuple = (
     # [PERF_COUNTERS v1]: the per-frame counter line (draws, waits, walk) prints on the first frame and every 300 frames; a vanished line means
     # the counter plumbing is gone and the perf ceilings below it would silently grade nothing.
     *(PresenceRule(stem, re.compile(r"\[PERF_COUNTERS v1\] frames="), "perf_counters_missing",
-                   "no [PERF_COUNTERS v1] line: the per-frame counter log is gone")
+                   "no [PERF_COUNTERS v1] line: the per-frame counter log is gone", diag_tag="PERF_COUNTERS")
       for stem in ("mc2_01", "mc2_03", "mc2_10", "mc2_17", "mc2_24")),
     # The in-mission video surface: mc2_10 requests its briefing movies through the ABL play-video call, and the request is
     # logged before the frame-rate check, so the line appears whether or not the movie decodes. A vanished request line
@@ -124,7 +125,7 @@ PRESENCE_RULES: tuple = (
     # HZB cull parity (vulkan_post_hzb_native.cpp): the GPU keep mask is compared with the CPU reference on one frame in 64 and the totals print
     # every 600 runs and at exit. The line prints with engaged=0 when the pass never reached 1024 candidates; a vanished line means the check is gone.
     *(PresenceRule(stem, re.compile(r"\[CULL_PARITY v1\] engaged="), "cull_parity_missing",
-                   "no [CULL_PARITY v1] line: the HZB GPU/CPU cull parity check is gone")
+                   "no [CULL_PARITY v1] line: the HZB GPU/CPU cull parity check is gone", diag_tag="CULL_PARITY")
       for stem in ("mc2_01", "mc2_10")),
 )
 

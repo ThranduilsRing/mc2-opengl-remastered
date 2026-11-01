@@ -1556,6 +1556,8 @@ def main():
                                  MC2_REGFLUSH_GUARD2="1", MC2_CAM_SMOOTH_TEST="1")
         if args.quiet_sample and e.stem != args.quiet_sample:
             cfg.env_extra.update(MC2_VULKAN_VALIDATION="1", MC2_DEBUG_STATE_DUMP="1", MC2_DIAG_TAGS="CONFIG,BUILD,DEVICE")
+        # The runner adds the PERF_COUNTERS / CULL_PARITY diag tags (smoke_lib/runner.py); the default-build quiet sample mission keeps them off.
+        cfg.quiet_default = bool(args.quiet_sample) and e.stem == args.quiet_sample
         if args.capture_bookmark:
             from run_visual_capture import smoke_capture
             cfg.env_extra.update(smoke_capture(args.capture_bookmark, e.stem, args.capture_out))

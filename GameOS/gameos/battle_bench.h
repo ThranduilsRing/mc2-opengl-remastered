@@ -7,6 +7,7 @@
 #include <string>
 #include <string_view>
 #include "../../mclib/battle_bench_wait.h"
+#include "diagnostic_trace.h"
 
 namespace mc2::battlebench {
 using Clock = std::chrono::steady_clock;
@@ -34,6 +35,7 @@ inline bool arm(std::string_view path) {
 inline void emitPerfCounters() {
     const uint64_t n = totFrames.load();
     if (!n) return;
+    if (!mc2_diag::tagRequested("PERF_COUNTERS")) return;   // quiet by default; counters above are still collected (MC2_DIAG_TAGS=PERF_COUNTERS prints)
     char line[2048];
     int len = std::snprintf(line, sizeof line, "[PERF_COUNTERS v1] frames=%llu", static_cast<unsigned long long>(n));
     for (unsigned f = 0; f < FieldCount && len > 0 && len < static_cast<int>(sizeof line); ++f) {
