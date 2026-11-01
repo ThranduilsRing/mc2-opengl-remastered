@@ -43,7 +43,15 @@ ACTIVE_STATE = None
 
 
 def stage_passed(status):
-    return status == "PASS" or status.startswith("REUSED:")
+    return status == "PASS" or status.startswith(("REUSED:", "PASS (perf_counter-only WARN"))
+
+
+def perf_warn_status(output):
+    """'PASS (perf_counter-only WARN: ...)' when a green child printed [PERF_COUNTER_WARN] lines (scripts/run_smoke.py), else 'PASS'.
+
+    A perf_counter-only smoke verdict (no pixel/SIMID/save/validation/content bucket) never fails a row; the numbers ride in the status."""
+    notes = [l.split("[PERF_COUNTER_WARN]", 1)[1].strip() for l in (output or "").splitlines() if "[PERF_COUNTER_WARN]" in l]
+    return "PASS (perf_counter-only WARN: " + "; ".join(dict.fromkeys(notes)).replace("|", "/") + ")" if notes else "PASS"
 
 
 def clean_failed_outputs(state, proof):
@@ -973,12 +981,12 @@ def execute(steps, head, dry_run=False, runner=run_child, completed=None):
                     verify_published_identity(target, ROOT, head)
                 measured = getattr(result, "gate_elapsed", None)
                 scheduler_wait = getattr(result, 'gate_scheduler_wait', 0.0)
-                status = "PASS" if result.returncode == 0 else f"FAIL ({result.returncode})"
+                status = perf_warn_status(getattr(result, "stdout", "")) if result.returncode == 0 else f"FAIL ({result.returncode})"
             except (OSError, ValueError, RuntimeError, subprocess.SubprocessError) as exc:
                 print(f"[merge_gate] {name}: {exc}", file=sys.stderr)
                 status = "FAIL: " + str(exc).replace("|", "/").replace("\n", " ")
             elapsed = time.monotonic() - started if measured is None else measured
-            failed |= status != "PASS"
+            failed |= not stage_passed(status)
         results.append((name, status, elapsed))
         completed[name] = status
         if not dry_run and ACTIVE_STATE:

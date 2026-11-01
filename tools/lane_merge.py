@@ -203,7 +203,7 @@ def run_logged(root, cmd, env=None, log_path=None):
 
 def failure_line(line):
     """Keep pytest/doctest names and source locations even before a long tail."""
-    return bool(re.search(r"FAILED|FAIL:|ERROR|VIOLATION|test case:|TEST CASE:|\.(?:py|cpp|h)[:(]\d+", line))
+    return bool(re.search(r"FAILED|FAIL:|ERROR|VIOLATION|PERF_COUNTER_WARN|test case:|TEST CASE:|\.(?:py|cpp|h)[:(]\d+", line))
 
 
 def failure_summary(output):
@@ -317,8 +317,8 @@ def render_message(template: str, subject: str, n: int) -> str:
 COMPILED_INPUTS = re.compile(r"\.(cpp|h|hpp|inc|c|glsl|hglsl|frag|vert|comp|slang|rc|def|ini|in|manifest)$|CMakeLists|\.cmake$|(^|/)cmake/|(^|/)Gates/|(^|/)shaders/|(^|/)scripts/(gen|generate|configure)[^/]*\.py$")
 
 
-def compiled_inputs_changed(root: str, pre: str) -> bool:
-    r = git(root, "diff", "--name-only", pre, "HEAD")
+def compiled_inputs_changed(root: str, pre: str, post: str = "HEAD") -> bool:
+    r = git(root, "diff", "--name-only", pre, post)
     return r.returncode != 0 or any(COMPILED_INPUTS.search(p) for p in lines(r.stdout))
 
 
@@ -843,12 +843,13 @@ def ensure_precheck_tree(root: str, tree: str, commit: str) -> None:
             raise Stop(5, "warm tree checkout failed: " + failure_summary(r.stdout + r.stderr))
 
 
-def precheck(root: str, tip: str, with_link: bool = False) -> int:
+def precheck(root: str, tip: str, with_link: bool | None = None) -> int:
     """Grade the virtual nifty merge, including Python suites, without merging it.
 
     Fast path (default, minutes): conflict check, 5 ratchets, callers refresh+check and Python suites in a
     disposable shared clone outside the main worktree. --with-link instead runs everything in the persistent
-    warm tree (PRECHECK_TREE, exclusive lock) and adds an incremental configure + link of mc2, mc2fx, mc2fx_preview."""
+    warm tree (PRECHECK_TREE, exclusive lock) and adds an incremental configure + link of mc2, mc2fx, mc2fx_preview.
+    with_link=None (default) turns the link on when the tip changes compiled inputs (compiled_inputs_changed); False (--no-link) opts out."""
     failed = []
     timings = []
     started = time.monotonic()
@@ -884,6 +885,10 @@ def precheck(root: str, tip: str, with_link: bool = False) -> int:
                 raise Stop(5, "cannot create virtual commit")
             return commit
         commit = timed("virtual-merge", virtual)
+        base_ref = git_out(root, "rev-parse", "claude/nifty-mendeleev^{commit}")
+        if with_link is None:
+            with_link = compiled_inputs_changed(root, base_ref, commit)
+            print(f"precheck: link {'ON' if with_link else 'off'} (compiled inputs {'changed' if with_link else 'unchanged'}; --no-link/--with-link override)", flush=True)
         py = [sys.executable, "-B"]
         steps = [(label, py + [os.path.join("tools", script), *[a for a in args if a != "--tighten"]])
                  for label, script, args in RATCHETS]
@@ -892,6 +897,9 @@ def precheck(root: str, tip: str, with_link: bool = False) -> int:
         steps += [("callers-refresh", py + ["tools/callers.py"]),
                   ("callers", py + ["tools/callers.py", "--check"])]
         steps += [(label, py + args) for label, args in PYTHON_SUITES]
+
+        tag_step = ("ungated_tags", py + [os.path.join(root, "tools", "ungated_log_tags.py"), "--base", base_ref, "--head", commit])
+        stage(tag_step[0], root, tag_step[1])
 
         def run_steps(workdir):
             for label, command in steps:
@@ -976,6 +984,7 @@ def build_parser() -> argparse.ArgumentParser:
     ap.add_argument("--with-link", action="store_true",
                     help="with --precheck: also link mc2, mc2fx, mc2fx_preview incrementally in the warm tree "
                          "($MC2_PRECHECK_TREE, default E:/mc2-installs/_precheck/tree; first use is a one-time cold build)")
+    ap.add_argument("--no-link", action="store_true", help="with --precheck: skip the link even when the tip changes compiled inputs")
     ap.add_argument("--pre-gate", action="store_true",
                     help="at the merged HEAD run regenerate-all (dry), check-background-launch, gate_gen --check, cxx17 and a no-game headless "
                          "run_smoke row; all run, one PRE-GATE PASS/FAIL line; --root picks the tree")
@@ -1074,7 +1083,7 @@ def main(argv: list[str] | None = None) -> int:
     ap = build_parser()
     args = ap.parse_args(argv)
     if args.precheck:
-        return precheck(args.root, args.precheck, args.with_link)
+        return precheck(args.root, args.precheck, True if args.with_link else False if args.no_link else None)
     if args.pre_gate:
         return pre_gate(args.root, args.exe)
     if not args.regenerate_all and bool(args.ref) == bool(args.batch):
