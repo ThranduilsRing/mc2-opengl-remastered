@@ -389,6 +389,9 @@ def run_mission(mission: str, duration: str, out: str, extra_env: dict | None = 
         if os.path.exists(log_path):
             with open(log_path, encoding="utf-8", errors="replace") as fh:
                 log_text = fh.read()
+        for warn_line in r.stdout.splitlines():
+            if "[PERF_COUNTER_WARN]" in warn_line:
+                print(warn_line.strip(), flush=True)   # perf_counter-only: shown in the gate row status, never a failure
         text = r.stdout + "\n" + log_text
         violation = overlap_violation(text)
         if violation:

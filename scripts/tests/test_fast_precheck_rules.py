@@ -135,3 +135,27 @@ def test_gate_execute_passes_a_perf_warn_row():
     gate.FAILED_STAGES.clear()
     rc = gate.execute([("smoke", ["x"], {})], head, runner=lambda c, cwd, env: R())
     assert rc == 0 and not gate.FAILED_STAGES
+
+
+def test_farm_key_ignores_the_resume_out_swap(tmp_path):
+    original = ["py", "tools/sim_determinism.py", "check", "mc2_10", "--out", "E:/x/determinism-mc2_10", "--seed", "1"]
+    envs = {gate.farm_key(original): {"K": "V"}}
+    swapped = list(original)
+    swapped[swapped.index("--out") + 1] = str(tmp_path / "determinism-mc2_10-abc123")   # what execute() does when the previous --out exists
+    assert envs[gate.farm_key(swapped)] == {"K": "V"}
+    assert gate.farm_key(["a", "b"]) == ("a", "b")
+
+
+def test_gate_execute_resume_with_farm_runner_does_not_keyerror(tmp_path):
+    out = tmp_path / "determinism-mc2_10"
+    out.mkdir()   # previous output exists => execute() rewrites --out
+    command = ["py", "tools/sim_determinism.py", "check", "mc2_10", "--out", str(out)]
+    remote = {gate.farm_key(command): {}}
+    calls = []
+
+    def farm_runner(c, cwd, env):
+        calls.append(remote[gate.farm_key(c)])
+        return type("R", (), {"returncode": 0, "stdout": ""})()
+    head = gate.git("rev-parse", "HEAD")
+    gate.FAILED_STAGES.clear()
+    assert gate.execute([("determinism-mc2_10", command, {})], head, runner=farm_runner) == 0 and calls

@@ -46,6 +46,15 @@ def stage_passed(status):
     return status == "PASS" or status.startswith(("REUSED:", "PASS (perf_counter-only WARN"))
 
 
+def farm_key(command):
+    """Command identity for the farm runner table; execute() swaps the --out value for a fresh directory on resume, so the key leaves it out."""
+    command = list(command)
+    if "--out" in command:
+        i = command.index("--out") + 1
+        del command[i:i + 1]
+    return tuple(command)
+
+
 def perf_warn_status(output):
     """'PASS (perf_counter-only WARN: ...)' when a green child printed [PERF_COUNTER_WARN] lines (scripts/run_smoke.py), else 'PASS'.
 
@@ -771,9 +780,9 @@ def execute_parallel(steps, head, dry_run=False, keep_going=False, farm_determin
                 return result  # do not launch runtime proofs after a failed deploy/offline check
             print("[merge_gate] --keep-going: deploy/pre-stage failure recorded; later stages still run", flush=True)
         if farm:
-            remote_envs = {tuple(c): e for _, c, e in farm}
+            remote_envs = {farm_key(c): e for _, c, e in farm}
             def farm_runner(command, cwd, env):
-                return farm_stage(command, remote_envs[tuple(command)])
+                return farm_stage(command, remote_envs[farm_key(command)])
             pending.append(pool.submit(execute, farm, head, runner=farm_runner, completed=completed))
         if mods:
             copy_context, copy_future = None, None
