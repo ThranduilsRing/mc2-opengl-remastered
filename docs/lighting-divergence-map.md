@@ -364,3 +364,5 @@ Terrain burnin already contains ambient; its extra cool floor is removed.
 Night SH is an analytic hemisphere from mission ambient at quarter strength,
 not the DaySkyHDRI coefficients. The census now pins zero fixed fill colors;
 its remaining scalar-floor witness is water's unchanged SKY_AMBIENT.
+
+**2026-11-02 (light-contract2):** `color_prop_tier1.vert` no longer scans ObjectLights or dispatches on light type; the prop sun term is the camera contract `contractSun(S, A, F, I)` (mclib/prop_light_contract.h), so its `light_type_dispatch` row is retired. INTENTIONAL.

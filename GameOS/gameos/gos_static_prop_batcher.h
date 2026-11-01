@@ -199,7 +199,8 @@ public:
                               uint32_t fogARGB,
                               uint32_t flags,
                               uint32_t lightDataIndex,
-                              const uint32_t* teamPaint = nullptr);
+                              const uint32_t* teamPaint = nullptr,
+                              uint32_t actorTint = 0x0002ffffu /*kNeutral|I=1: prop_light_contract.h*/);
 
     // Iterate a multishape's children and submit each SHAPE_NODE leaf using
     // the child's own listOfShapes[i].shapeToWorld. Per-child highlight/fog/
@@ -222,7 +223,8 @@ public:
     // type so the allowlist / registration walk can be repaired.
     [[nodiscard]] bool submitMultiShape(TG_MultiShape* multi,
                                         GpuStaticPropPopulation pop,
-                                        const char* callerName = nullptr);
+                                        const char* callerName = nullptr,
+                                        uint32_t actorTint = 0x0002ffffu /*kNeutral|I=1: prop_light_contract.h*/);
 
     // Slice 2 (object-offload): cheap, side-effect-free eligibility query.
     // Returns true iff every leaf SHAPE_NODE under `multi` is currently

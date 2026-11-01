@@ -616,6 +616,7 @@ long BldgAppearance::update (bool animate)
 			}
 
 			fogLightSet = true;
+				lightLatchStamp = mc2CameraLightChangedCount();
 
 		}
 
@@ -682,6 +683,7 @@ long BldgAppearance::update (bool animate)
 			// actors have overwritten worldLights[0]->aRGB for their positions.
 			{
 				mc2CacheOrBakeStaticGpuLight(bldgShape, staticReg.registered, staticReg.recipeIndex);
+				mc2PropLightContractCheck(bldgShape, mc2PropSlotI(bldgShape->getCachedGpuLightIndex(), land ? land->getTerrainLight(position) : 1.0f), (lightLatchStamp != mc2CameraLightChangedCount()) ? mc2::prop_light::kLatchStale : 0u);
 				// 2026-05-11 per-instance capture: snapshot the multi's just-written
 				// cache slot for THIS actor before sibling actors of the same
 				// multi-type overwrite it. Ferried to RecipeRange via markVisible().
@@ -722,6 +724,7 @@ long BldgAppearance::update (bool animate)
 			// already runs unconditionally in submitMultiShape; here we
 			// just hoist its effect to be visible to render() this frame.
 			mc2CacheOrBakeStaticGpuLight(bldgShape, staticReg.registered, staticReg.recipeIndex);
+			mc2PropLightContractCheck(bldgShape, mc2PropSlotI(bldgShape->getCachedGpuLightIndex(), land ? land->getTerrainLight(position) : 1.0f), (lightLatchStamp != mc2CameraLightChangedCount()) ? mc2::prop_light::kLatchStale : 0u);
 			// 2026-05-11 per-instance capture: see gpuEligible branch above.
 			staticReg.lightDataIndex = bldgShape->getCachedGpuLightIndex();
 			needsFullBakeNextFrame = false;
