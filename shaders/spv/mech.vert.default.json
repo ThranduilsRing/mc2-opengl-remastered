@@ -6,12 +6,12 @@
   "specializationParams": [],
   "artifact": "mech.vert.default.dbbae7d3.spv",
   "spv_dir": "shaders/spv",
-  "source_sha256": "1d2ed9c9fd521929d8e056b712f0b7facd5ea202850ae5ba6933adfcefc38507",
-  "spirv_sha256": "9b61300de3a0d32eefbc1bfb1890a3854ebf272269aa1d6b5389d4bf2796d4f0",
+  "source_sha256": "60a2acc148951e5a2317696c4519e42f178a19627e1e63ca92981534328c67af",
+  "spirv_sha256": "55668e5a17c879c9bd646b8db426e27d49cc550fbb96c287b42b6ecf648a7f5e",
   "bindings": {
     "ubos": [
       {
-        "type": "_503",
+        "type": "_78",
         "name": "MechFrameUBO",
         "block_size": 224,
         "set": 0,
@@ -20,7 +20,7 @@
     ],
     "ssbos": [
       {
-        "type": "_90",
+        "type": "_100",
         "name": "LightsData",
         "readonly": true,
         "block_size": 0,
@@ -28,7 +28,7 @@
         "binding": 4
       },
       {
-        "type": "_365",
+        "type": "_420",
         "name": "InstanceBuffer",
         "readonly": true,
         "block_size": 0,
@@ -36,7 +36,7 @@
         "binding": 1
       },
       {
-        "type": "_403",
+        "type": "_458",
         "name": "BoneBuffer",
         "readonly": true,
         "block_size": 0,
@@ -48,312 +48,7 @@
     "images": []
   },
   "types": {
-    "_80": {
-      "name": "ObjectLights",
-      "members": [
-        {
-          "name": "light_to_world",
-          "type": "mat4",
-          "array": [
-            32
-          ],
-          "array_size_is_literal": [
-            true
-          ]
-        },
-        {
-          "name": "light_dir",
-          "type": "vec4",
-          "array": [
-            32
-          ],
-          "array_size_is_literal": [
-            true
-          ]
-        },
-        {
-          "name": "light_color",
-          "type": "vec4",
-          "array": [
-            32
-          ],
-          "array_size_is_literal": [
-            true
-          ]
-        },
-        {
-          "name": "light_falloff",
-          "type": "vec4",
-          "array": [
-            32
-          ],
-          "array_size_is_literal": [
-            true
-          ]
-        },
-        {
-          "name": "numLights",
-          "type": "ivec4"
-        }
-      ]
-    },
-    "_88": {
-      "name": "ObjectLights",
-      "members": [
-        {
-          "name": "light_to_world",
-          "type": "mat4",
-          "array": [
-            32
-          ],
-          "array_size_is_literal": [
-            true
-          ],
-          "offset": 0,
-          "array_stride": 64,
-          "matrix_stride": 16
-        },
-        {
-          "name": "light_dir",
-          "type": "vec4",
-          "array": [
-            32
-          ],
-          "array_size_is_literal": [
-            true
-          ],
-          "offset": 2048,
-          "array_stride": 16
-        },
-        {
-          "name": "light_color",
-          "type": "vec4",
-          "array": [
-            32
-          ],
-          "array_size_is_literal": [
-            true
-          ],
-          "offset": 2560,
-          "array_stride": 16
-        },
-        {
-          "name": "light_falloff",
-          "type": "vec4",
-          "array": [
-            32
-          ],
-          "array_size_is_literal": [
-            true
-          ],
-          "offset": 3072,
-          "array_stride": 16
-        },
-        {
-          "name": "numLights",
-          "type": "ivec4",
-          "offset": 3584
-        }
-      ]
-    },
-    "_90": {
-      "name": "LightsData",
-      "members": [
-        {
-          "name": "light",
-          "type": "_88",
-          "array": [
-            0
-          ],
-          "array_size_is_literal": [
-            true
-          ],
-          "offset": 0,
-          "array_stride": 3600
-        }
-      ]
-    },
-    "_360": {
-      "name": "GpuMechInstance",
-      "members": [
-        {
-          "name": "typeLodRecordIndex",
-          "type": "uint"
-        },
-        {
-          "name": "baseBoneOffset",
-          "type": "uint"
-        },
-        {
-          "name": "lightDataIndex",
-          "type": "uint"
-        },
-        {
-          "name": "renderFlags",
-          "type": "uint"
-        },
-        {
-          "name": "aRGBHighlight",
-          "type": "vec4"
-        },
-        {
-          "name": "fogRGB",
-          "type": "vec4"
-        },
-        {
-          "name": "objectIdRaw",
-          "type": "uint"
-        },
-        {
-          "name": "materialIdx",
-          "type": "uint"
-        },
-        {
-          "name": "visualDamage01",
-          "type": "float"
-        },
-        {
-          "name": "visualFlags",
-          "type": "uint"
-        }
-      ]
-    },
-    "_363": {
-      "name": "GpuMechInstance",
-      "members": [
-        {
-          "name": "typeLodRecordIndex",
-          "type": "uint",
-          "offset": 0
-        },
-        {
-          "name": "baseBoneOffset",
-          "type": "uint",
-          "offset": 4
-        },
-        {
-          "name": "lightDataIndex",
-          "type": "uint",
-          "offset": 8
-        },
-        {
-          "name": "renderFlags",
-          "type": "uint",
-          "offset": 12
-        },
-        {
-          "name": "aRGBHighlight",
-          "type": "vec4",
-          "offset": 16
-        },
-        {
-          "name": "fogRGB",
-          "type": "vec4",
-          "offset": 32
-        },
-        {
-          "name": "objectIdRaw",
-          "type": "uint",
-          "offset": 48
-        },
-        {
-          "name": "materialIdx",
-          "type": "uint",
-          "offset": 52
-        },
-        {
-          "name": "visualDamage01",
-          "type": "float",
-          "offset": 56
-        },
-        {
-          "name": "visualFlags",
-          "type": "uint",
-          "offset": 60
-        }
-      ]
-    },
-    "_365": {
-      "name": "InstanceBuffer",
-      "members": [
-        {
-          "name": "instances",
-          "type": "_363",
-          "array": [
-            0
-          ],
-          "array_size_is_literal": [
-            true
-          ],
-          "offset": 0,
-          "array_stride": 64
-        }
-      ]
-    },
-    "_398": {
-      "name": "GpuMechBone",
-      "members": [
-        {
-          "name": "row0",
-          "type": "vec4"
-        },
-        {
-          "name": "row1",
-          "type": "vec4"
-        },
-        {
-          "name": "row2",
-          "type": "vec4"
-        },
-        {
-          "name": "row3",
-          "type": "vec4"
-        }
-      ]
-    },
-    "_401": {
-      "name": "GpuMechBone",
-      "members": [
-        {
-          "name": "row0",
-          "type": "vec4",
-          "offset": 0
-        },
-        {
-          "name": "row1",
-          "type": "vec4",
-          "offset": 16
-        },
-        {
-          "name": "row2",
-          "type": "vec4",
-          "offset": 32
-        },
-        {
-          "name": "row3",
-          "type": "vec4",
-          "offset": 48
-        }
-      ]
-    },
-    "_403": {
-      "name": "BoneBuffer",
-      "members": [
-        {
-          "name": "bones",
-          "type": "_401",
-          "array": [
-            0
-          ],
-          "array_size_is_literal": [
-            true
-          ],
-          "offset": 0,
-          "array_stride": 64
-        }
-      ]
-    },
-    "_503": {
+    "_78": {
       "name": "MechFrameUBO",
       "members": [
         {
@@ -429,7 +124,312 @@
         }
       ]
     },
-    "_526": {
+    "_90": {
+      "name": "ObjectLights",
+      "members": [
+        {
+          "name": "light_to_world",
+          "type": "mat4",
+          "array": [
+            32
+          ],
+          "array_size_is_literal": [
+            true
+          ]
+        },
+        {
+          "name": "light_dir",
+          "type": "vec4",
+          "array": [
+            32
+          ],
+          "array_size_is_literal": [
+            true
+          ]
+        },
+        {
+          "name": "light_color",
+          "type": "vec4",
+          "array": [
+            32
+          ],
+          "array_size_is_literal": [
+            true
+          ]
+        },
+        {
+          "name": "light_falloff",
+          "type": "vec4",
+          "array": [
+            32
+          ],
+          "array_size_is_literal": [
+            true
+          ]
+        },
+        {
+          "name": "numLights",
+          "type": "ivec4"
+        }
+      ]
+    },
+    "_98": {
+      "name": "ObjectLights",
+      "members": [
+        {
+          "name": "light_to_world",
+          "type": "mat4",
+          "array": [
+            32
+          ],
+          "array_size_is_literal": [
+            true
+          ],
+          "offset": 0,
+          "array_stride": 64,
+          "matrix_stride": 16
+        },
+        {
+          "name": "light_dir",
+          "type": "vec4",
+          "array": [
+            32
+          ],
+          "array_size_is_literal": [
+            true
+          ],
+          "offset": 2048,
+          "array_stride": 16
+        },
+        {
+          "name": "light_color",
+          "type": "vec4",
+          "array": [
+            32
+          ],
+          "array_size_is_literal": [
+            true
+          ],
+          "offset": 2560,
+          "array_stride": 16
+        },
+        {
+          "name": "light_falloff",
+          "type": "vec4",
+          "array": [
+            32
+          ],
+          "array_size_is_literal": [
+            true
+          ],
+          "offset": 3072,
+          "array_stride": 16
+        },
+        {
+          "name": "numLights",
+          "type": "ivec4",
+          "offset": 3584
+        }
+      ]
+    },
+    "_100": {
+      "name": "LightsData",
+      "members": [
+        {
+          "name": "light",
+          "type": "_98",
+          "array": [
+            0
+          ],
+          "array_size_is_literal": [
+            true
+          ],
+          "offset": 0,
+          "array_stride": 3600
+        }
+      ]
+    },
+    "_415": {
+      "name": "GpuMechInstance",
+      "members": [
+        {
+          "name": "typeLodRecordIndex",
+          "type": "uint"
+        },
+        {
+          "name": "baseBoneOffset",
+          "type": "uint"
+        },
+        {
+          "name": "lightDataIndex",
+          "type": "uint"
+        },
+        {
+          "name": "renderFlags",
+          "type": "uint"
+        },
+        {
+          "name": "aRGBHighlight",
+          "type": "vec4"
+        },
+        {
+          "name": "fogRGB",
+          "type": "vec4"
+        },
+        {
+          "name": "objectIdRaw",
+          "type": "uint"
+        },
+        {
+          "name": "materialIdx",
+          "type": "uint"
+        },
+        {
+          "name": "visualDamage01",
+          "type": "float"
+        },
+        {
+          "name": "visualFlags",
+          "type": "uint"
+        }
+      ]
+    },
+    "_418": {
+      "name": "GpuMechInstance",
+      "members": [
+        {
+          "name": "typeLodRecordIndex",
+          "type": "uint",
+          "offset": 0
+        },
+        {
+          "name": "baseBoneOffset",
+          "type": "uint",
+          "offset": 4
+        },
+        {
+          "name": "lightDataIndex",
+          "type": "uint",
+          "offset": 8
+        },
+        {
+          "name": "renderFlags",
+          "type": "uint",
+          "offset": 12
+        },
+        {
+          "name": "aRGBHighlight",
+          "type": "vec4",
+          "offset": 16
+        },
+        {
+          "name": "fogRGB",
+          "type": "vec4",
+          "offset": 32
+        },
+        {
+          "name": "objectIdRaw",
+          "type": "uint",
+          "offset": 48
+        },
+        {
+          "name": "materialIdx",
+          "type": "uint",
+          "offset": 52
+        },
+        {
+          "name": "visualDamage01",
+          "type": "float",
+          "offset": 56
+        },
+        {
+          "name": "visualFlags",
+          "type": "uint",
+          "offset": 60
+        }
+      ]
+    },
+    "_420": {
+      "name": "InstanceBuffer",
+      "members": [
+        {
+          "name": "instances",
+          "type": "_418",
+          "array": [
+            0
+          ],
+          "array_size_is_literal": [
+            true
+          ],
+          "offset": 0,
+          "array_stride": 64
+        }
+      ]
+    },
+    "_453": {
+      "name": "GpuMechBone",
+      "members": [
+        {
+          "name": "row0",
+          "type": "vec4"
+        },
+        {
+          "name": "row1",
+          "type": "vec4"
+        },
+        {
+          "name": "row2",
+          "type": "vec4"
+        },
+        {
+          "name": "row3",
+          "type": "vec4"
+        }
+      ]
+    },
+    "_456": {
+      "name": "GpuMechBone",
+      "members": [
+        {
+          "name": "row0",
+          "type": "vec4",
+          "offset": 0
+        },
+        {
+          "name": "row1",
+          "type": "vec4",
+          "offset": 16
+        },
+        {
+          "name": "row2",
+          "type": "vec4",
+          "offset": 32
+        },
+        {
+          "name": "row3",
+          "type": "vec4",
+          "offset": 48
+        }
+      ]
+    },
+    "_458": {
+      "name": "BoneBuffer",
+      "members": [
+        {
+          "name": "bones",
+          "type": "_456",
+          "array": [
+            0
+          ],
+          "array_size_is_literal": [
+            true
+          ],
+          "offset": 0,
+          "array_stride": 64
+        }
+      ]
+    },
+    "_578": {
       "name": "gl_PerVertex",
       "members": [
         {

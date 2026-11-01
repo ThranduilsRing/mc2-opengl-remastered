@@ -3,9 +3,9 @@
 # Where each gate is read, what the smoke runner forwards and what tier1_env_vars.md says are not here: ask
 # tools/repo_intel (env_var, gate_status), which scan the sources.
 generator_version: "3.0.0"
-gate_count: 753
+gate_count: 754
 registry_entry_count: 150
-verified_count: 720
+verified_count: 721
 flags:
   - name: MC2_ABL_ARG_GUARD
     kind: Bool
@@ -2445,6 +2445,14 @@ flags:
     rule: Presence
     owner: mech
     doc: ""
+    verified: true
+  - name: MC2_MECH_FILL
+    kind: Int
+    default: 2
+    rule: Prefix
+    owner: mech
+    doc: "Mech lighting strength, ships ON at 2. Dev A/B override: 0 = original look, 1 = shared swapped sun + sun-sized fill, 2 = plus wrapped N.L and fresnel rim."
+    range: {lo: 0, hi: 2, style: clamp}
     verified: true
   - name: MC2_MECH_GLASS_LUMA_THRESH
     kind: Float

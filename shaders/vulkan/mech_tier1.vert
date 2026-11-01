@@ -76,6 +76,8 @@ bool GetFalloff(float len, vec3 fd, out float falloff) {
 #define MC2_ENVIRONMENT_AMBIENT
 //PORT-BEGIN:calc_light
 vec3 calc_light(int idx, vec3 normal, vec3 wpos, vec3 base_light, int sunAxisMc2Fix, bool legacyVehicle) {
+    const int fillMode = uFrame.miscI.y;   // MC2_MECH_FILL dev knob (0 = original look)
+    vec3 sunLc = vec3(0.0);
     // Keep only the count local: copying the matrix arrays creates private indexed storage.
     ObjectLights ld;
     ld.numLights = uLights.light[idx].numLights;
@@ -90,8 +92,10 @@ vec3 calc_light(int idx, vec3 normal, vec3 wpos, vec3 base_light, int sunAxisMc2
             if (legacyVehicle) ambient += lc;   // the light row's own ambient, not the environment's
         } else if (lt == TG_LIGHT_INFINITE) {
             vec3 sd = (sunAxisMc2Fix != 0) ? mc2ToRender(uLights.light[idx].light_dir[i].xyz) : uLights.light[idx].light_dir[i].xyz;
-            float ndl = clamp(dot(normal, -sd), 0.0, 1.0);
+            float ndlRaw = dot(normal, -sd);
+            float ndl = (fillMode >= 2) ? clamp((ndlRaw + 0.25) / 1.25, 0.0, 1.0) : clamp(ndlRaw, 0.0, 1.0);
             final += ndl * lc;
+            sunLc = max(sunLc, lc);
         } else if (lt == TG_LIGHT_INFINITEWITHFALLOFF) {
             vec3 lp = uLights.light[idx].light_to_world[i][3].xyz;
             float d = length(wpos - lp); float f;
@@ -116,6 +120,12 @@ vec3 calc_light(int idx, vec3 normal, vec3 wpos, vec3 base_light, int sunAxisMc2
             }
         }
         // TG_LIGHT_TERRAIN: ignored (spec R2, matches GL calc_light).
+    }
+    if (fillMode >= 1 && !legacyVehicle) {
+        // Hemispheric fill sized from the sun: shade side ~40% of the sun-facing side, sky above, ground bounce below (render space: y = up).
+        float up = clamp(normal.y * 0.5 + 0.5, 0.0, 1.0);
+        vec3 fill = sunLc * 0.60 * mix(0.65, 1.0, up);
+        final += max(fill - base_light, vec3(0.0));
     }
     return final + ambient;
 }
@@ -158,8 +168,10 @@ void main() {
     gl_Position = clip;
 
     // Per-vertex lighting — mech.vert:204-235 (u_lightingMode=1, lightsOut branch).
+    // Render space is y-up; the original look weighted by .z (a sideways axis). MC2_MECH_FILL>=1 uses the real up axis.
+    float ambUp = (uFrame.miscI.y >= 1) ? worldNormal.y : worldNormal.z;
     vec3 environmentAmbient = uFrame.environmentAmbient.rgb
-        * mix(0.5, 1.0, clamp(worldNormal.z * 0.5 + 0.5, 0.0, 1.0));
+        * mix(0.5, 1.0, clamp(ambUp * 0.5 + 0.5, 0.0, 1.0));
     const uint  kRenderFlagLightsOut = 0x2u;
     bool lightsOut = (inst.renderFlags & kRenderFlagLightsOut) != 0u;
     // Ground vehicles keep their legacy lighting: the row's ambient and sun, no environment ambient; point and spot lights apply (stock vehicles were lit by them).
