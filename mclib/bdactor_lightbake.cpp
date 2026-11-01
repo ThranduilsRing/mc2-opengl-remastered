@@ -225,6 +225,8 @@ void mc2CacheOrBakeStaticGpuLight(TG_MultiShape* shape,
 				extern void mc2InvalidateBakedStaticLightCache();
 				mc2InvalidateBakedStaticLightCache();
 				s_rebakeDone = true;
+				std::fprintf(stderr, "[LIGHTBAKE v1] event=rebake_on_ready frame=%u
+", static_cast<unsigned>(g_mc2FrameCounter.load(std::memory_order_relaxed)));
 				MC2_DIAGF("[LIGHTBAKE v1] event=rebake_on_ready frame=%u\n",
 				       static_cast<unsigned>(g_mc2FrameCounter.load(std::memory_order_relaxed)));
 				fflush(stdout);
@@ -541,6 +543,10 @@ void mc2PropLightContractCheck(TG_MultiShape* shape, float terrainLight, uint32_
 		const unsigned n = ++s_contractMismatch;
 		if (n <= 12) {
 			const float* c = found >= 0 ? leaf->lightColor[found] : nullptr;
+			std::fprintf(stderr, "[LIGHT_CONTRACT v1] mismatch#%u diag idx=%u slots=%zu row_epoch=%u epoch=%u fresh=%d frame=%u
+",
+			             n, shape->getCachedGpuLightIndex(), s_slotEpoch.size(), rowEpoch, epoch, fresh ? 1 : 0,
+			             static_cast<unsigned>(g_mc2FrameCounter.load(std::memory_order_relaxed)));
 			std::fprintf(stderr, "[LIGHT_CONTRACT v1] mismatch#%u policy=%u I=%.4f want=%d,%d,%d on=%d S=%d,%d,%d A=%d,%d,%d F=%d row=%s%.1f,%.1f,%.1f\n",
 			             n, policy, terrainLight, want.c[0], want.c[1], want.c[2], want.sunOn ? 1 : 0,
 			             S[0], S[1], S[2], A[0], A[1], A[2], F, found >= 0 ? "" : "none ",
