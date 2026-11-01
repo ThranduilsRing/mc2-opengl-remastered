@@ -27,3 +27,12 @@ Mover::getCommanderId() against the home id, no commander deref. Test: tests/uni
 The lrm20/clanlrm20 shape lines are a separate content issue and not the crash cause.
 Other sites with the same unguarded `getCommander()->getId()` pattern (not crash sites here, not changed):
 logistics_begin.cpp:264, controlgui*.cpp, forcegroupbar.cpp, missiongui_*.cpp.
+
+## Before/after on the real-logistics headless path
+
+Driver: scripts/mechbay_preview_harness.py launch --walk --frame -5 (campaign, soak autowin, owner cheat env). mc2_01 is auto-won, logistics is walked, mc2_02 launches through the {i,i,i} commander table.
+
+- Owner exe e5cf6ba9c: 0xC0000005 in Mission::update (GameCamera::activate inlined), RVA 0x1f13ac, right after the mc2_02 launch.
+- Tip with the camera fix only: crashed earlier, at mc2_01 mission end, in MissionInterfaceManager::extractHudSnapshot (s_instance never cleared when the mission deleted the manager; render extraction read the freed object). Fixed in 7e094363b.
+- Next: MechWarrior::getMovePath through PlaceStationaryMovers with a pilotless mover (null getPilot()). Fixed in 2c55f816a.
+- Final tip: mc2_01 autowin, mc2_02 launched and played to its autowin, logistics resumed; 33601 frames, no crash.
