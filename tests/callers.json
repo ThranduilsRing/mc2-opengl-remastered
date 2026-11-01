@@ -5304,7 +5304,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-default-build-quiet.py",
-          "line": 169,
+          "line": 170,
           "evidence": "command",
           "reference": "scripts/run_smoke.py",
           "text": "result = subprocess.run(command, cwd=ROOT, env=env, **console_child.child_kwargs())"
@@ -5592,7 +5592,7 @@
         },
         {
           "path": "scripts/run_smoke.py",
-          "line": 1560,
+          "line": 1562,
           "evidence": "import",
           "reference": "run_visual_capture",
           "text": "from run_visual_capture import smoke_capture"
@@ -5972,7 +5972,7 @@
         },
         {
           "path": "scripts/smoke_lib/runner.py",
-          "line": 362,
+          "line": 374,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from . import render_options_pin"
@@ -7047,7 +7047,7 @@
         },
         {
           "path": "scripts/smoke_lib/runner.py",
-          "line": 362,
+          "line": 374,
           "evidence": "import",
           "reference": "scripts.smoke_lib.render_options_pin",
           "text": "from . import render_options_pin"
@@ -7254,7 +7254,7 @@
       "callers_by_stem": [
         {
           "path": "scripts/run_smoke.py",
-          "line": 1665,
+          "line": 1667,
           "evidence": "import",
           "reference": "scripts.smoke_lib.runtime_bridge",
           "text": "from scripts.smoke_lib.runtime_bridge import RuntimeBridge"
