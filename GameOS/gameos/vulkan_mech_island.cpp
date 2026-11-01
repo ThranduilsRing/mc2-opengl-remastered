@@ -1022,7 +1022,9 @@ extern "C" int mc2_vk_mech_island_run(int w, int h) {
       u.objectDepthBias = feed.objectDepthBias;
       u.materialReady = (s->wantMaterial && s->materialReady) ? 1 : 0;
       u.lightingReady = s->lightingReady ? 1 : 0;
-      u.sunAxisMc2Fix = mc2::options::current().sunAxisFix ? 1 : 0;   // same option the GL mech flush reads
+      static const int mechFill = [] { const char* e = std::getenv("MC2_MECH_FILL"); return e ? std::clamp(std::atoi(e), 0, 2) : 0; }();   // dev-only capture knob (0 = original look)
+      // The swapped sun axis is the one terrain, props, shadows and the mech specular use; fill modes apply it to the diffuse too.
+      u.sunAxisMc2Fix = (mc2::options::current().sunAxisFix || mechFill >= 1) ? 1 : 0;
       u.fogColorRGB[0] = feed.fogColorRGB[0];
       u.fogColorRGB[1] = feed.fogColorRGB[1];
       u.fogColorRGB[2] = feed.fogColorRGB[2];
@@ -1039,6 +1041,7 @@ extern "C" int mc2_vk_mech_island_run(int w, int h) {
       u.poolI[0] = poolN;             u.poolI[1] = feed.poolSoft;
       u.poolI[2] = feed.poolMoverMax; u.poolI[3] = feed.poolCompress;
       u.miscI[0] = feed.specDebugMask;
+      u.miscI[1] = mechFill;
       const auto& ambient = visualTuning_environment().sky.hemisphereSky;
       for (size_t c=0; c<3; ++c)
           u.environmentAmbient[c] = ambient[c] * visualTuning_environment().unitAmbientScale;
