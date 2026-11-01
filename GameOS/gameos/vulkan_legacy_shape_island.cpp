@@ -50,7 +50,7 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <tracy/Tracy.hpp>
-#include "../../mclib/battle_bench_sink.h"
+#include "../../mclib/battle_bench_wait.h"
 
 const float* gos_GetProj2ScreenMat4();             // gosRenderer::projection_ (row-major, GL_TRUE)
 

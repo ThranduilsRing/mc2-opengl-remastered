@@ -3,7 +3,7 @@
 #include "vulkan_context.h"
 #include "vk_texture_residency.h"
 #include "../../mclib/sim_overlap.h"
-#include "../../mclib/battle_bench_sink.h"
+#include "../../mclib/battle_bench_wait.h"
 #include "Gates/gate.h"
 #include <chrono>
 #include <condition_variable>

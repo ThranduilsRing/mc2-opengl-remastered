@@ -10,7 +10,7 @@
 #include "vulkan_mover_shadow.h"
 void gos_GetTerrainChunkGridInfo(int* mapSide, float* halfMap);
 #include "mc2_diag_verbose.h"
-#include "../../mclib/battle_bench_sink.h"
+#include "../../mclib/battle_bench_wait.h"
 
 #ifdef MC2_VULKAN_ISLAND
 

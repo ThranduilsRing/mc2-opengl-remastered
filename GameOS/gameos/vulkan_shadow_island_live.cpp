@@ -48,7 +48,7 @@
 #include <string>
 #include <chrono>
 #include <algorithm>
-#include "../../mclib/battle_bench_sink.h"
+#include "../../mclib/battle_bench_wait.h"
 
 // ---------------------------------------------------------------------------
 // Health snapshot (mirrors the water island's) — read by debug_state_dump.cpp.

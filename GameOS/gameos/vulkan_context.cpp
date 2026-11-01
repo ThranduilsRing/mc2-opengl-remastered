@@ -56,7 +56,7 @@
 #include <cstring>
 #include <memory>
 #include <vector>
-#include "../../mclib/battle_bench_sink.h"
+#include "../../mclib/battle_bench_wait.h"
 
 namespace mc2vk {
 

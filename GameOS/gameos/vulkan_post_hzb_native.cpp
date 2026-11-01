@@ -44,7 +44,7 @@ using mc2hzb::ProjectedProp;
 #include <string>
 #include <vector>
 #include <new>
-#include "../../mclib/battle_bench_sink.h"
+#include "../../mclib/battle_bench_wait.h"
 
 namespace {
 

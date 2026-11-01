@@ -4,7 +4,7 @@
 #include "vulkan_mover_shadow.h"
 #include "vk_gpu_profile.h"   // VK-GPU-ZONES: MC2_VK_GPU_SCOPE
 #include "texture_decode.h"   // gos_GetTextureTexels
-#include "../../mclib/battle_bench_sink.h"
+#include "../../mclib/battle_bench_wait.h"
 
 #ifdef MC2_VULKAN_ISLAND
 

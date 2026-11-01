@@ -38,7 +38,7 @@
 #include <utility>
 #include <functional>
 #include <tracy/Tracy.hpp>
-#include "../../mclib/battle_bench_sink.h"
+#include "../../mclib/battle_bench_wait.h"
 
 namespace {
 

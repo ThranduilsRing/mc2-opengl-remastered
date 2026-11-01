@@ -84,7 +84,7 @@
 #include <string>
 #include <string_view>
 #include <vector>
-#include "../../mclib/battle_bench_sink.h"
+#include "../../mclib/battle_bench_wait.h"
 
 extern void gos_GetTerrainLightDir(float* x, float* y, float* z);
 float mc2NightLightFactor();   // mclib/camera.cpp: 0 day/evening .. 1 full night

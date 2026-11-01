@@ -6,7 +6,7 @@
 #include <cstdint>
 #include <string>
 #include <string_view>
-#include "../../mclib/battle_bench_sink.h"
+#include "../../mclib/battle_bench_wait.h"
 
 namespace mc2::battlebench {
 using Clock = std::chrono::steady_clock;

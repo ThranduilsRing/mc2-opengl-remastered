@@ -67,7 +67,7 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
-#include "../../mclib/battle_bench_sink.h"
+#include "../../mclib/battle_bench_wait.h"
 
 namespace {
 
