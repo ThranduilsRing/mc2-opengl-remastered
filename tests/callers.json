@@ -66,7 +66,7 @@
         },
         {
           "path": "tools/lane_merge.py",
-          "line": 808,
+          "line": 838,
           "evidence": "import",
           "reference": "bootstrap_worktree_build",
           "text": "from bootstrap_worktree_build import ensure_deps"
@@ -84,6 +84,13 @@
           "evidence": "import",
           "reference": "bootstrap_worktree_build",
           "text": "import bootstrap_worktree_build as bootstrap"
+        },
+        {
+          "path": "tools/test_lane_merge.py",
+          "line": 65,
+          "evidence": "import",
+          "reference": "bootstrap_worktree_build",
+          "text": "import bootstrap_worktree_build as bwb"
         }
       ]
     },
@@ -2882,6 +2889,13 @@
           "text": "from scripts import console_child"
         },
         {
+          "path": "scripts/tests/test_fast_precheck_rules.py",
+          "line": 12,
+          "evidence": "import",
+          "reference": "console_child",
+          "text": "import console_child  # noqa: E402"
+        },
+        {
           "path": "scripts/tests/test_file_size_ratchet.py",
           "line": 16,
           "evidence": "import",
@@ -3345,7 +3359,7 @@
         },
         {
           "path": "tools/lane_merge.py",
-          "line": 60,
+          "line": 65,
           "evidence": "import",
           "reference": "console_child",
           "text": "import console_child  # noqa: E402  (windowless console children without a conhost each)"
@@ -3736,6 +3750,13 @@
           "text": "import console_child  # noqa: E402  (windowless console children)"
         },
         {
+          "path": "tools/ungated_log_tags.py",
+          "line": 26,
+          "evidence": "import",
+          "reference": "console_child",
+          "text": "import console_child  # noqa: E402"
+        },
+        {
           "path": "tools/unit_converter/test_equipment_converter.py",
           "line": 23,
           "evidence": "import",
@@ -3894,21 +3915,21 @@
         },
         {
           "path": "scripts/merge_gate.py",
-          "line": 73,
+          "line": 81,
           "evidence": "import",
           "reference": "deploy_payload",
           "text": "from deploy_payload import verify_published_identity, staleness_report"
         },
         {
           "path": "scripts/merge_gate.py",
-          "line": 304,
+          "line": 312,
           "evidence": "import",
           "reference": "deploy_payload",
           "text": "from deploy_payload import verify_published_identity"
         },
         {
           "path": "scripts/merge_gate.py",
-          "line": 970,
+          "line": 978,
           "evidence": "import",
           "reference": "deploy_payload",
           "text": "from deploy_payload import verify_published_identity"
@@ -4161,7 +4182,7 @@
         },
         {
           "path": "scripts/merge_gate.py",
-          "line": 71,
+          "line": 79,
           "evidence": "import",
           "reference": "exe_fingerprint",
           "text": "from exe_fingerprint import extract, sha_agrees"
@@ -4418,7 +4439,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/merge_gate.py",
-          "line": 563,
+          "line": 571,
           "evidence": "command",
           "reference": "scripts/make-isolated-deploy.py",
           "text": "subprocess.run([sys.executable, str(ROOT / \"scripts/make-isolated-deploy.py\"),"
@@ -4612,6 +4633,13 @@
       "stem": "merge_gate",
       "callers_by_basename": [],
       "callers_by_stem": [
+        {
+          "path": "scripts/tests/test_fast_precheck_rules.py",
+          "line": 13,
+          "evidence": "import",
+          "reference": "merge_gate",
+          "text": "import merge_gate as gate  # noqa: E402"
+        },
         {
           "path": "scripts/tests/test_gate_farm.py",
           "line": 12,
@@ -7850,6 +7878,13 @@
       "callers_by_stem": []
     },
     {
+      "path": "scripts/tests/test_fast_precheck_rules.py",
+      "basename": "test_fast_precheck_rules.py",
+      "stem": "test_fast_precheck_rules",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
       "path": "scripts/tests/test_file_size_ratchet.py",
       "basename": "test_file_size_ratchet.py",
       "stem": "test_file_size_ratchet",
@@ -8169,7 +8204,15 @@
       "basename": "test_perf_counters.py",
       "stem": "test_perf_counters",
       "callers_by_basename": [],
-      "callers_by_stem": []
+      "callers_by_stem": [
+        {
+          "path": "scripts/tests/test_fast_precheck_rules.py",
+          "line": 15,
+          "evidence": "import",
+          "reference": "test_perf_counters",
+          "text": "from test_perf_counters import _ready  # noqa: E402"
+        }
+      ]
     },
     {
       "path": "scripts/tests/test_phase_tools.py",
@@ -8463,7 +8506,7 @@
         },
         {
           "path": "tools/lane_merge.py",
-          "line": 62,
+          "line": 67,
           "evidence": "import",
           "reference": "_git_util",
           "text": "import _git_util  # noqa: E402  (shared git helpers)"
@@ -11064,6 +11107,13 @@
           "text": "from tools import callers, lane_merge"
         },
         {
+          "path": "scripts/tests/test_fast_precheck_rules.py",
+          "line": 10,
+          "evidence": "import",
+          "reference": "tools.lane_merge",
+          "text": "from tools import lane_merge as lm  # noqa: E402"
+        },
+        {
           "path": "scripts/tests/test_merge_speedups.py",
           "line": 12,
           "evidence": "import",
@@ -11072,14 +11122,35 @@
         },
         {
           "path": "tools/test_lane_merge.py",
-          "line": 53,
+          "line": 77,
           "evidence": "import",
           "reference": "tools.lane_merge",
           "text": "from tools import lane_merge as lm"
         },
         {
           "path": "tools/test_lane_merge.py",
-          "line": 340,
+          "line": 100,
+          "evidence": "import",
+          "reference": "tools.lane_merge",
+          "text": "from tools import lane_merge as lm"
+        },
+        {
+          "path": "tools/test_lane_merge.py",
+          "line": 122,
+          "evidence": "import",
+          "reference": "tools.lane_merge",
+          "text": "from tools import lane_merge as lm"
+        },
+        {
+          "path": "tools/test_lane_merge.py",
+          "line": 133,
+          "evidence": "import",
+          "reference": "tools.lane_merge",
+          "text": "from tools import lane_merge as lm"
+        },
+        {
+          "path": "tools/test_lane_merge.py",
+          "line": 401,
           "evidence": "import",
           "reference": "lane_merge",
           "text": "import lane_merge as lm  # noqa: E402"
@@ -13210,14 +13281,14 @@
       "callers_by_stem": [
         {
           "path": "scripts/merge_gate.py",
-          "line": 72,
+          "line": 80,
           "evidence": "import",
           "reference": "mod_smoke",
           "text": "from mod_smoke import load_known_failures"
         },
         {
           "path": "scripts/merge_gate.py",
-          "line": 222,
+          "line": 230,
           "evidence": "import",
           "reference": "mod_smoke",
           "text": "import mod_smoke as mods"
@@ -14292,7 +14363,7 @@
       "callers_by_stem": [
         {
           "path": "scripts/merge_gate.py",
-          "line": 74,
+          "line": 82,
           "evidence": "import",
           "reference": "saveload_roundtrip",
           "text": "import saveload_roundtrip as saves"
@@ -18847,6 +18918,21 @@
       "stem": "ui_art_reconstruct",
       "callers_by_basename": [],
       "callers_by_stem": []
+    },
+    {
+      "path": "tools/ungated_log_tags.py",
+      "basename": "ungated_log_tags.py",
+      "stem": "ungated_log_tags",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "scripts/tests/test_fast_precheck_rules.py",
+          "line": 11,
+          "evidence": "import",
+          "reference": "tools.ungated_log_tags",
+          "text": "from tools import ungated_log_tags as ult  # noqa: E402"
+        }
+      ]
     },
     {
       "path": "tools/unit_converter/__init__.py",
