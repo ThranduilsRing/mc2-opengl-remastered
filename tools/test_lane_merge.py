@@ -48,38 +48,97 @@ FAKES = {
 }
 
 
-@pytest.mark.parametrize("red", [None, "callers.py", "run_scripts_tests.py", "run_tools_tests.py", "configure_ninja.py", "ninja_build.py", "mc2fx"])
-def test_precheck_runs_python_suites_and_reuses_lane_build(env, monkeypatch, capsys, red):
-    from tools import lane_merge as lm
-    repo, _ = env
+def precheck_fixture(lm, repo, monkeypatch, red, tree=None):
     git(repo, "branch", "claude/nifty-mendeleev")
-    before = git(repo, "rev-parse", "HEAD")
     actual_run = lm.run
     seen = []
+
     def runner(root, cmd, env=None):
         if cmd[0] == "git":
             return actual_run(root, cmd, env)
-        seen.append((root, cmd))
-        if any(a in cmd for a in ("scripts/ninja_build.py", "scripts/configure_ninja.py")):
-            assert root == str(repo)
-            if "scripts/ninja_build.py" in cmd:
-                assert "-j" not in cmd
-                assert "-j" + lm.host_jobs() in cmd
-        else:
-            assert root != str(repo)
+        seen.append((str(root), cmd))
         return subprocess.CompletedProcess(cmd, int(any(lm.Path(a).name == red for a in cmd)), "fixture failure")
     monkeypatch.setattr(lm, "run", runner)
+    if tree is not None:
+        import bootstrap_worktree_build as bwb
+        monkeypatch.setattr(bwb, "ensure_deps", lambda *a: None)
+        monkeypatch.setattr(lm, "PRECHECK_TREE", str(tree))
+    return seen
+
+
+def is_native(cmd):
+    return any(a in cmd for a in ("scripts/ninja_build.py", "scripts/configure_ninja.py"))
+
+
+@pytest.mark.parametrize("red", [None, "callers.py", "run_scripts_tests.py", "run_tools_tests.py"])
+def test_precheck_fast_path_has_no_native_build_and_no_scratch_in_root(env, monkeypatch, capsys, red):
+    from tools import lane_merge as lm
+    repo, _ = env
+    before = git(repo, "rev-parse", "HEAD")
+    seen = precheck_fixture(lm, repo, monkeypatch, red)
     assert lm.main(["--root", str(repo), "--precheck", "HEAD"]) == int(red is not None)
-    assert len(seen) == 12
+    assert len(seen) == 9     # 5 ratchets + callers refresh + callers --check + 2 suites
+    assert not any(is_native(cmd) for _, cmd in seen)
+    assert all(not lm._inside(root, str(repo)) for root, _ in seen)   # scratch is never inside the main worktree
     caller_commands = [cmd for _, cmd in seen if "tools/callers.py" in cmd]
     assert caller_commands == [[sys.executable, "-B", "tools/callers.py"],
                                [sys.executable, "-B", "tools/callers.py", "--check"]]
-    assert any("mc2fx" in cmd and "mc2fx_preview" in cmd for _, cmd in seen)
     assert all("--tighten" not in cmd for _, cmd in seen)
     assert {label for label, _ in lm.PYTHON_SUITES} == {"scripts_tests", "tools_tests"}
     assert git(repo, "rev-parse", "HEAD") == before
     assert not git(repo, "status", "--porcelain")
-    assert ("PRECHECK FAIL" if red else "PRECHECK PASS") in capsys.readouterr().out
+    out = capsys.readouterr().out
+    assert "precheck timing (s): virtual-merge=" in out and "clone-checkout=" in out and "TOTAL=" in out
+    assert "scripts_tests: " in out and "s)" in out
+    assert ("PRECHECK FAIL" if red else "PRECHECK PASS conflicts=0 ratchets=5 link=skipped") in out
+
+
+@pytest.mark.parametrize("red", [None, "configure_ninja.py", "ninja_build.py", "mc2fx"])
+def test_precheck_with_link_uses_warm_tree_outside_root(env, monkeypatch, capsys, tmp_path, red):
+    from tools import lane_merge as lm
+    repo, _ = env
+    tree = tmp_path / "warm" / "tree"
+    seen = precheck_fixture(lm, repo, monkeypatch, red, tree)
+    assert lm.main(["--root", str(repo), "--precheck", "HEAD", "--with-link"]) == int(red is not None)
+    assert len(seen) == 12
+    assert all(root == str(tree) for root, _ in seen)
+    assert not lm._inside(str(tree), str(repo))
+    for _, cmd in seen:
+        if "scripts/ninja_build.py" in cmd:
+            assert "-j" + lm.host_jobs() in cmd
+    assert any("mc2fx" in cmd and "mc2fx_preview" in cmd for _, cmd in seen)
+    assert (tree / ".git").exists()
+    # second run reuses the existing tree (checkout, not worktree add)
+    seen.clear()
+    lm.main(["--root", str(repo), "--precheck", "HEAD", "--with-link"])
+    assert seen and all(root == str(tree) for root, _ in seen)
+    out = capsys.readouterr().out
+    assert "link-mc2=" in out and "tree-checkout=" in out
+
+
+def test_precheck_refuses_tree_or_scratch_inside_root(env, monkeypatch):
+    from tools import lane_merge as lm
+    repo, _ = env
+    with pytest.raises(lm.Stop):
+        lm.ensure_precheck_tree(str(repo), str(repo / "sub" / "tree"), "HEAD")
+    monkeypatch.setattr(lm.tempfile, "gettempdir", lambda: str(repo / "tmp"))
+    monkeypatch.setattr(lm.os.path, "isdir", lambda p: False)
+    with pytest.raises(lm.Stop):
+        lm.precheck_scratch_base(str(repo))
+
+
+def test_tree_lock_is_exclusive(tmp_path):
+    from tools import lane_merge as lm
+    path = str(tmp_path / "x.lock")
+    sleeps = []
+    t = [0.0]
+    with lm.TreeLock(path):
+        with pytest.raises(lm.Stop):
+            with lm.TreeLock(path, wait_s=10, sleep=lambda s: (sleeps.append(s), t.__setitem__(0, t[0] + 5)), clock=lambda: t[0]):
+                pass
+        assert sleeps
+    with lm.TreeLock(path):   # released after the holder exits
+        pass
 
 
 def git(cwd, *args, check=True):

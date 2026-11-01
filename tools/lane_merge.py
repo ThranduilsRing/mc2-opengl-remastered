@@ -8,7 +8,12 @@ the baselines that tightened. Doing it by hand risks sweeping another lane's dir
 staged files into the merge commit.
 
 Usage:
-  py -3 tools/lane_merge.py --precheck <tip>   virtual nifty merge: ratchets, Python suites, callers and game/tool links
+  py -3 tools/lane_merge.py --precheck <tip> [--with-link]
+      fast early filter (minutes): virtual nifty merge conflicts, 5 ratchets, callers refresh+check, Python suites,
+      per-stage seconds table; runs in a disposable clone under G:/mc2-tmp, never inside the main worktree.
+      No native build: --batch --verify full and the gate still build everything. --with-link additionally links
+      mc2, mc2fx, mc2fx_preview incrementally in a persistent warm worktree ($MC2_PRECHECK_TREE, default
+      E:/mc2-installs/_precheck/tree, exclusive lock; the first run is a one-time cold build).
   py -3 tools/lane_merge.py <sha-or-branch> [--message "..."] [--dry-run]
   py -3 tools/lane_merge.py --batch A B C [--dry-run]   check each tip, tighten/regenerate once after the batch,
                                                         the build + doctest verify (step e) once at the end
@@ -767,57 +772,151 @@ PYTHON_SUITES = [
 ]
 
 
-def precheck(root: str, tip: str) -> int:
-    """Grade the virtual nifty merge, including Python suites, without merging it."""
-    failed = []
+PRECHECK_TREE = os.environ.get("MC2_PRECHECK_TREE", "E:/mc2-installs/_precheck/tree")
+
+
+def _inside(path: str, root: str) -> bool:
+    path, root = os.path.abspath(path), os.path.abspath(root)
     try:
-        base = git_out(root, "rev-parse", "claude/nifty-mendeleev^{commit}")
-        sha = git_out(root, "rev-parse", tip + "^{commit}")
-        tree, conflicts = virtual_merge(root, sha, base)
-        if tree is None or conflicts is None:
-            raise Stop(5, "merge-tree unavailable")
-        if conflicts:
-            raise Stop(5, "conflicts=" + ",".join(conflicts))
-        commit = sha if base == sha else virtual_head(root, base, sha, tree)
-        if not commit:
-            raise Stop(5, "cannot create virtual commit")
-        # Reuse the lane's warm build when it already contains the virtual result.
-        lane_tree = git_out(root, "rev-parse", "HEAD^{tree}")
-        with tempfile.TemporaryDirectory(prefix="lane-precheck-", dir=os.path.abspath(root)) as scratch:
-            snapshot = os.path.join(scratch, "tree")
-            r = run(root, ["git", "clone", "--quiet", "--shared", "--no-checkout", os.path.abspath(root), snapshot])
-            if r.returncode:
-                raise Stop(5, "clone failed: " + failure_summary(r.stdout))
-            git_out(snapshot, "checkout", "--quiet", "--detach", commit)
-            py = [sys.executable, "-B"]
-            steps = [(label, py + [os.path.join("tools", script), *[a for a in args if a != "--tighten"]])
-                     for label, script, args in RATCHETS]
-            # A virtual merge can shift caller locations without conflicting in JSON.
-            # Refresh that generated input, then retain the strict wiring check.
-            steps += [("callers-refresh", py + ["tools/callers.py"]),
-                      ("callers", py + ["tools/callers.py", "--check"])]
-            steps += [(label, py + args) for label, args in PYTHON_SUITES]
+        return os.path.commonpath([path, root]) == root
+    except ValueError:   # different drives
+        return False
+
+
+def precheck_scratch_base(root: str) -> str | None:
+    """Scratch parent for the fast path: G:/mc2-tmp (lane-rules), else the OS temp dir. Never inside the main worktree."""
+    base = "G:/mc2-tmp" if os.path.isdir("G:/mc2-tmp") else None
+    if _inside(base or tempfile.gettempdir(), root):
+        raise Stop(5, f"precheck scratch {base or tempfile.gettempdir()} is inside {root}")
+    return base
+
+
+class TreeLock:
+    """Exclusive OS file lock (the OS drops it if the holder dies); two prechecks never share the warm tree."""
+    def __init__(self, path, wait_s=3600, sleep=time.sleep, clock=time.monotonic):
+        self.path, self.wait_s, self.sleep, self.clock, self.fh = path, wait_s, sleep, clock, None
+
+    def _try(self):
+        if os.name == "nt":
+            import msvcrt
+            msvcrt.locking(self.fh.fileno(), msvcrt.LK_NBLCK, 1)
+        else:
+            import fcntl
+            fcntl.flock(self.fh, fcntl.LOCK_EX | fcntl.LOCK_NB)
+
+    def __enter__(self):
+        os.makedirs(os.path.dirname(os.path.abspath(self.path)), exist_ok=True)
+        self.fh = open(self.path, "a+")
+        deadline = self.clock() + self.wait_s
+        announced = False
+        while True:
+            try:
+                self._try()
+                return self
+            except OSError:
+                if self.clock() >= deadline:
+                    self.fh.close()
+                    raise Stop(5, "precheck tree busy: lock " + self.path + " held past wait")
+                if not announced:
+                    print("precheck: warm tree busy (another --with-link run); waiting", flush=True)
+                    announced = True
+                self.sleep(5)
+
+    def __exit__(self, *exc):
+        self.fh.close()   # closing drops the OS lock
+
+
+def ensure_precheck_tree(root: str, tree: str, commit: str) -> None:
+    """Create the persistent warm worktree once (detached, outside the main worktree), then park it on `commit`."""
+    if _inside(tree, root):
+        raise Stop(5, f"warm precheck tree {tree} is inside {root}")
+    if not os.path.exists(os.path.join(tree, ".git")):
+        os.makedirs(os.path.dirname(os.path.abspath(tree)), exist_ok=True)
+        r = git(root, "worktree", "add", "--detach", "--force", os.path.abspath(tree), commit)
+        if r.returncode:
+            raise Stop(5, "cannot create warm tree: " + failure_summary(r.stdout + r.stderr))
+        from bootstrap_worktree_build import ensure_deps
+        ensure_deps(os.path.abspath(tree), os.path.abspath(root))
+    else:
+        r = git(tree, "checkout", "--quiet", "-f", "--detach", commit)
+        if r.returncode:
+            raise Stop(5, "warm tree checkout failed: " + failure_summary(r.stdout + r.stderr))
+
+
+def precheck(root: str, tip: str, with_link: bool = False) -> int:
+    """Grade the virtual nifty merge, including Python suites, without merging it.
+
+    Fast path (default, minutes): conflict check, 5 ratchets, callers refresh+check and Python suites in a
+    disposable shared clone outside the main worktree. --with-link instead runs everything in the persistent
+    warm tree (PRECHECK_TREE, exclusive lock) and adds an incremental configure + link of mc2, mc2fx, mc2fx_preview."""
+    failed = []
+    timings = []
+
+    def timed(label, fn):
+        t0 = time.monotonic()
+        try:
+            return fn()
+        finally:
+            timings.append((label, time.monotonic() - t0))
+
+    def stage(label, workdir, command, ok=(0,)):
+        r = timed(label, lambda: run(workdir, command, env=verify_env(workdir)))
+        word = "KNOWN" if r.returncode == 3 and 3 in ok else "PASS" if r.returncode == 0 else "FAIL"
+        print(f"precheck: {label}: {word} ({timings[-1][1]:.0f}s)", flush=True)
+        if r.returncode not in ok:
+            failed.append(label + ":" + failure_summary(r.stdout).replace("\n", " "))
+
+    try:
+        def virtual():
+            base = git_out(root, "rev-parse", "claude/nifty-mendeleev^{commit}")
+            sha = git_out(root, "rev-parse", tip + "^{commit}")
+            tree, conflicts = virtual_merge(root, sha, base)
+            if tree is None or conflicts is None:
+                raise Stop(5, "merge-tree unavailable")
+            if conflicts:
+                raise Stop(5, "conflicts=" + ",".join(conflicts))
+            commit = sha if base == sha else virtual_head(root, base, sha, tree)
+            if not commit:
+                raise Stop(5, "cannot create virtual commit")
+            return commit
+        commit = timed("virtual-merge", virtual)
+        py = [sys.executable, "-B"]
+        steps = [(label, py + [os.path.join("tools", script), *[a for a in args if a != "--tighten"]])
+                 for label, script, args in RATCHETS]
+        # A virtual merge can shift caller locations without conflicting in JSON.
+        # Refresh that generated input, then retain the strict wiring check.
+        steps += [("callers-refresh", py + ["tools/callers.py"]),
+                  ("callers", py + ["tools/callers.py", "--check"])]
+        steps += [(label, py + args) for label, args in PYTHON_SUITES]
+
+        def run_steps(workdir):
             for label, command in steps:
-                r = run(snapshot, command, env=verify_env(snapshot))
-                print(f"precheck: {label}: " + ("KNOWN" if label == "tools_tests" and r.returncode == 3 else "PASS" if r.returncode == 0 else "FAIL"), flush=True)
-                if r.returncode not in ((0, 3) if label == "tools_tests" else (0,)):
-                    failed.append(label + ":" + failure_summary(r.stdout).replace("\n", " "))
-            build_root = root if tree == lane_tree and not git_out(root, "status", "--porcelain", "--untracked-files=no") else snapshot
-            # Git clones omit the ignored binary dependencies needed by configure.
-            if build_root == snapshot:
-                from bootstrap_worktree_build import ensure_deps
-                ensure_deps(snapshot, os.path.abspath(root))
-            # Refresh warm trees too: older dev configurations omitted the opt-in FX tools.
-            build_steps = [("configure", py + ["scripts/configure_ninja.py", "--build-dir", "build64-ninja"])]
-            build_steps += [("link-mc2", py + ["scripts/ninja_build.py", "mc2", "-j" + host_jobs()])]
-            build_steps += [("link-tools", py + ["scripts/ninja_build.py", "mc2fx", "mc2fx_preview", "-j" + host_jobs()])]
-            for label, command in build_steps:
-                r = run(build_root, command, env=verify_env(build_root))
-                if r.returncode:
-                    failed.append(label + ":" + failure_summary(r.stdout).replace("\n", " "))
+                stage(label, workdir, command, (0, 3) if label == "tools_tests" else (0,))
+
+        if with_link:
+            with TreeLock(PRECHECK_TREE + ".lock"):
+                timed("tree-checkout", lambda: ensure_precheck_tree(root, PRECHECK_TREE, commit))
+                run_steps(PRECHECK_TREE)
+                stage("configure", PRECHECK_TREE, py + ["scripts/configure_ninja.py", "--build-dir", "build64-ninja"])
+                stage("link-mc2", PRECHECK_TREE, py + ["scripts/ninja_build.py", "mc2", "-j" + host_jobs()])
+                stage("link-tools", PRECHECK_TREE, py + ["scripts/ninja_build.py", "mc2fx", "mc2fx_preview", "-j" + host_jobs()])
+        else:
+            with tempfile.TemporaryDirectory(prefix="lane-precheck-", dir=precheck_scratch_base(root)) as scratch:
+                snapshot = os.path.join(scratch, "tree")
+
+                def checkout():
+                    r = run(root, ["git", "clone", "--quiet", "--shared", "--no-checkout", os.path.abspath(root), snapshot])
+                    if r.returncode:
+                        raise Stop(5, "clone failed: " + failure_summary(r.stdout))
+                    git_out(snapshot, "checkout", "--quiet", "--detach", commit)
+                timed("clone-checkout", checkout)
+                run_steps(snapshot)
     except (Stop, OSError) as exc:
         failed.append(str(exc).replace("\n", " "))
-    print("PRECHECK " + ("FAIL " + "; ".join(failed) if failed else "PASS conflicts=0 ratchets=5 link=mc2,mc2fx,mc2fx_preview callers=OK python=OK"))
+    print("precheck timing (s): " + "  ".join(f"{label}={secs:.0f}" for label, secs in timings)
+          + f"  TOTAL={sum(s for _, s in timings):.0f}", flush=True)
+    link = "link=mc2,mc2fx,mc2fx_preview" if with_link else "link=skipped(batch --verify full and the gate build)"
+    print("PRECHECK " + ("FAIL " + "; ".join(failed) if failed else f"PASS conflicts=0 ratchets=5 {link} callers=OK python=OK"))
     return int(bool(failed))
 
 
@@ -858,7 +957,10 @@ def pre_gate(root: str, exe: str | None = None) -> int:
 def build_parser() -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("ref", nargs="?", help="lane tip: sha or branch")
-    ap.add_argument("--precheck", metavar="TIP", help="offline virtual nifty merge: ratchets, callers, Python suites, game/tool links")
+    ap.add_argument("--precheck", metavar="TIP", help="offline virtual nifty merge: conflicts, ratchets, callers, Python suites (fast, no native build; --with-link adds links)")
+    ap.add_argument("--with-link", action="store_true",
+                    help="with --precheck: also link mc2, mc2fx, mc2fx_preview incrementally in the warm tree "
+                         "($MC2_PRECHECK_TREE, default E:/mc2-installs/_precheck/tree; first use is a one-time cold build)")
     ap.add_argument("--pre-gate", action="store_true",
                     help="at the merged HEAD run regenerate-all (dry), check-background-launch, gate_gen --check, cxx17 and a no-game headless "
                          "run_smoke row; all run, one PRE-GATE PASS/FAIL line; --root picks the tree")
@@ -957,7 +1059,7 @@ def main(argv: list[str] | None = None) -> int:
     ap = build_parser()
     args = ap.parse_args(argv)
     if args.precheck:
-        return precheck(args.root, args.precheck)
+        return precheck(args.root, args.precheck, args.with_link)
     if args.pre_gate:
         return pre_gate(args.root, args.exe)
     if not args.regenerate_all and bool(args.ref) == bool(args.batch):
