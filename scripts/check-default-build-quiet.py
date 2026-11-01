@@ -41,7 +41,7 @@ USAGE
   py -3 scripts/check-default-build-quiet.py --update-baseline   # re-seed (review the diff!)
 
 Exit 0 = no new tags, 1 = new unconditional diagnostic output found.
-OFFLINE BY DEFAULT: with no flags this grades existing default-env smoke logs, or
+OFFLINE BY DEFAULT: with no flags this grades current-HEAD clean default-env smoke logs, or
 SKIPs ("no fresh smoke log; graded at merge gate"). It never launches the game, so
 the ordinary check-contracts row stays offline. Only --fresh-smoke launches one, and
 it requires the explicit --exe (scripts/merge_gate.py passes the gate's install).
@@ -112,12 +112,23 @@ def tags_in_log(path: Path) -> set[str]:
 def newest_smoke_logs() -> list[Path]:
     if not ARTIFACT_ROOT.is_dir():
         return []
+    head = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True,
+                                   **console_child.child_kwargs(redirected=True)).strip()
     runs = sorted((d for d in ARTIFACT_ROOT.iterdir() if d.is_dir()),
                   key=lambda d: d.stat().st_mtime, reverse=True)
     for run in runs:
         # Only a run taken with no output-affecting
         # MC2_* env can be graded against the default-build baseline.
         if not is_default_env_run(run):
+            continue
+        # Grade the binary that ran, rather than the source checkout recorded by its runner.
+        try:
+            manifest = json.loads((run / "manifest.json").read_text(encoding="utf-8"))
+            provenance = manifest.get("identity", {}).get("binary_provenance", {})
+            commit = provenance.get("commit") or ""
+            if len(commit) < 7 or not head.startswith(commit) or provenance.get("dirty") is not False:
+                continue
+        except (OSError, ValueError):
             continue
         logs = console_logs(run)
         if logs:

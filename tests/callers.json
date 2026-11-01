@@ -5304,7 +5304,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-default-build-quiet.py",
-          "line": 170,
+          "line": 181,
           "evidence": "command",
           "reference": "scripts/run_smoke.py",
           "text": "result = subprocess.run(command, cwd=ROOT, env=env, **console_child.child_kwargs())"
