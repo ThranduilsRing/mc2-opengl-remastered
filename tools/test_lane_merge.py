@@ -88,7 +88,7 @@ def test_precheck_fast_path_has_no_native_build_and_no_scratch_in_root(env, monk
     assert git(repo, "rev-parse", "HEAD") == before
     assert not git(repo, "status", "--porcelain")
     out = capsys.readouterr().out
-    assert "precheck timing (s): virtual-merge=" in out and "clone-checkout=" in out and "TOTAL=" in out
+    assert "precheck timing (s): virtual-merge=" in out and "clone0=" in out and "WALL=" in out
     assert "scripts_tests: " in out and "s)" in out
     assert ("PRECHECK FAIL" if red else "PRECHECK PASS conflicts=0 ratchets=5 link=skipped") in out
 
