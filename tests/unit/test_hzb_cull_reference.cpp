@@ -1,0 +1,236 @@
+// tests/unit/test_hzb_cull_reference.cpp
+// Pins the CPU reference of shaders/vulkan/hzb_cull.comp (RenderCore/hzb_prop_bounds.h: project_prop + hzb_hidden)
+// on synthetic reverse-Z pyramids. Every case states the expected keep bit (keep = drawn, hidden = culled).
+// The runtime [CULL_PARITY v1] check compares the GPU mask with this same reference, so these cases are its oracle.
+#include "doctest.h"
+
+#include "hzb_prop_bounds.h"
+
+#include <algorithm>
+#include <cstdint>
+#include <cstring>
+#include <vector>
+
+namespace {
+
+constexpr int W = 64, H = 64, LEVELS = 7;   // 64,32,16,8,4,2,1
+
+struct Pyramid {
+    std::vector<std::vector<float>> lv;
+    std::vector<int> w, h;
+    // reduce: true = MIN (correct for reverse-Z), false = MAX (the historical over-cull bug)
+    explicit Pyramid(float fill, bool minReduce = true) {
+        w.push_back(W); h.push_back(H);
+        lv.emplace_back(size_t(W) * H, fill);
+        reduceFrom(minReduce);
+    }
+    void set(int x, int y, float v) { lv[0][size_t(y) * W + x] = v; }
+    void reduceFrom(bool minReduce = true) {
+        lv.resize(1); w.resize(1); h.resize(1);
+        for (int l = 1; l < LEVELS; ++l) {
+            const int pw = w.back(), ph = h.back();
+            const int nw = (std::max)(1, (pw + 1) / 2), nh = (std::max)(1, (ph + 1) / 2);
+            std::vector<float> next(size_t(nw) * nh);
+            const auto& prev = lv.back();
+            for (int y = 0; y < nh; ++y)
+                for (int x = 0; x < nw; ++x) {
+                    float v = minReduce ? 1.0f : 0.0f;
+                    for (int dy = 0; dy < 2; ++dy)
+                        for (int dx = 0; dx < 2; ++dx) {
+                            const float t = prev[size_t((std::min)(2 * y + dy, ph - 1)) * pw + (std::min)(2 * x + dx, pw - 1)];
+                            v = minReduce ? (std::min)(v, t) : (std::max)(v, t);
+                        }
+                    next[size_t(y) * nw + x] = v;
+                }
+            lv.push_back(std::move(next)); w.push_back(nw); h.push_back(nh);
+        }
+    }
+    float fetch(int l, int x, int y) const { return lv[size_t(l)][size_t(y) * w[size_t(l)] + x]; }
+};
+
+// Column-major GL matrix: clip.x = rx, clip.y = ry, clip.w = 1, clip.z = 0.5 + 0.01 * rz (nearest ~0.5).
+struct Mat { float m[16]; };
+Mat flatMatrix() {
+    Mat r{}; r.m[0] = 1; r.m[5] = 1; r.m[15] = 1; r.m[2 * 4 + 2] = 0.01f; r.m[3 * 4 + 2] = 0.5f; return r;
+}
+
+GpuStaticPropInstance identityInstance() {
+    GpuStaticPropInstance i{};
+    i.modelMatrix[0] = i.modelMatrix[5] = i.modelMatrix[10] = i.modelMatrix[15] = 1;
+    return i;
+}
+
+// A box in MC2 (stuff) space; render = (-x, z, y), so NDC x = -mc2.x, NDC y = mc2.z.
+// ndcX/ndcY give the NDC half-extent rectangle; depth is fixed by mc2.y (render z).
+mc2hzb::PropBounds boxNdc(float ndcX0, float ndcX1, float ndcY0, float ndcY1, float rz0 = 0, float rz1 = 0) {
+    mc2hzb::PropBounds b{};
+    b.lo[0] = -ndcX1; b.hi[0] = -ndcX0;
+    b.lo[1] = rz0;    b.hi[1] = rz1;
+    b.lo[2] = ndcY0;  b.hi[2] = ndcY1;
+    b.valid = true;
+    return b;
+}
+
+mc2hzb::ProjectedProp project(const mc2hzb::PropBounds& b, const Mat& m = flatMatrix(), float bias = 0) {
+    const auto inst = identityInstance();
+    const mc2hzb::PropBounds bounds[1] = {b};
+    return mc2hzb::project_prop(inst, m.m, bias, bounds, W, H, LEVELS);
+}
+
+bool hidden(const mc2hzb::ProjectedProp& p, const Pyramid& py) {
+    return mc2hzb::hzb_hidden(p, W, H, [&](int l, int x, int y) { return py.fetch(l, x, y); });
+}
+
+// NDC box covering exactly `px` window pixels starting near the screen centre (pixel (32,32)): 2 NDC units == 64 px.
+mc2hzb::PropBounds boxPixels(float px) {
+    const float n = px / 32.0f;
+    return boxNdc(0.0f, n, 0.0f, n);
+}
+
+} // namespace
+
+TEST_CASE("hzb ref: fully visible keeps (sky = 0 everywhere)") {
+    Pyramid py(0.0f);
+    const auto p = project(boxPixels(6.0f));
+    CHECK(p.keep == 0);                 // reached the pyramid test
+    CHECK_FALSE(hidden(p, py));         // expected keep=1
+}
+
+TEST_CASE("hzb ref: fully occluded culls (wall closer than the prop everywhere)") {
+    Pyramid py(0.9f);
+    const auto p = project(boxPixels(6.0f));
+    CHECK(p.nearest == doctest::Approx(0.5f));
+    CHECK(hidden(p, py));               // expected keep=0
+}
+
+TEST_CASE("hzb ref: prop closer than the wall stays visible") {
+    Pyramid py(0.3f);
+    const auto p = project(boxPixels(6.0f));
+    CHECK_FALSE(hidden(p, py));         // 0.5 >= 0.3 - eps, expected keep=1
+}
+
+TEST_CASE("hzb ref: straddling the near plane keeps the whole object") {
+    Pyramid py(0.9f);
+    Mat m = flatMatrix();
+    m.m[2 * 4 + 3] = 1.0f; m.m[3 * 4 + 3] = 0.0f;   // clip.w = rz: bounds from rz -1..1 cross w <= 0
+    const auto p = project(boxNdc(0, 0.1f, 0, 0.1f, -1.0f, 1.0f), m);
+    CHECK(p.keep == 1);
+    CHECK_FALSE(hidden(p, py));         // expected keep=1 even against a full occluder
+}
+
+TEST_CASE("hzb ref: depth past the near plane (z >= 1) or behind far (z < 0) keeps") {
+    Pyramid py(0.9f);
+    CHECK(project(boxNdc(0, 0.1f, 0, 0.1f, 60.0f, 60.0f)).keep == 1);   // 0.5 + 0.6 >= 1
+    CHECK(project(boxNdc(0, 0.1f, 0, 0.1f, -60.0f, -60.0f)).keep == 1); // 0.5 - 0.6 < 0
+}
+
+TEST_CASE("hzb ref: partly or fully off screen keeps (never an undersized clipped footprint)") {
+    Pyramid py(0.9f);
+    CHECK(project(boxNdc(0.5f, 1.5f, 0, 0.2f)).keep == 1);              // crosses x = 1
+    CHECK(project(boxNdc(-1.0f, -0.5f, 0, 0.2f)).keep == 1);            // touches x = -1 (<= -1)
+    CHECK(hidden(project(boxNdc(0.5f, 1.5f, 0, 0.2f)), py) == false);
+}
+
+TEST_CASE("hzb ref: no bounds / invalid type keeps") {
+    const auto inst = identityInstance();
+    const Mat m = flatMatrix();
+    mc2hzb::PropBounds invalid{};
+    const mc2hzb::PropBounds bounds[1] = {invalid};
+    CHECK(mc2hzb::project_prop(inst, m.m, 0, bounds, W, H, LEVELS).keep == 1);
+    auto oob = identityInstance(); oob.typeID = 5;
+    CHECK(mc2hzb::project_prop(oob, m.m, 0, bounds, W, H, LEVELS).keep == 1);
+}
+
+TEST_CASE("hzb ref: mip selection at footprint boundaries") {
+    // pixels are floor(x0)-1 .. ceil(x1)+1, so a box of N px grows by up to 2 plus rounding; assert lod = ceil(log2(extent)).
+    struct Row { float px; uint32_t lod; };
+    for (const Row& r : {Row{0.0f, 0}, Row{1.0f, 2}, Row{2.0f, 2}, Row{5.0f, 3}, Row{13.0f, 4}, Row{29.0f, 5}}) {
+        const auto p = project(boxPixels(r.px));
+        const float extent = (std::max)(p.pixels[2] - p.pixels[0], p.pixels[3] - p.pixels[1]);
+        uint32_t expect = 0;
+        while (expect + 1 < uint32_t(LEVELS) && float(1u << expect) < extent) ++expect;
+        CAPTURE(r.px); CAPTURE(extent);
+        CHECK(p.lod == expect);
+        CHECK(p.lod >= r.lod);   // footprint margin can only raise the level
+    }
+    // Exactly a power of two stays at that level; one more pixel moves up.
+    mc2hzb::ProjectedProp q{}; q.keep = 0;
+    q.pixels[0] = 8; q.pixels[1] = 8; q.pixels[2] = 12; q.pixels[3] = 12; q.nearest = 0.5f;   // extent 4 -> lod 2
+    {
+        Pyramid py(0.0f);
+        q.lod = 2;
+        CHECK_FALSE(hidden(q, py));
+        Pyramid wall(0.9f);
+        CHECK(hidden(q, wall));          // footprint (8..12)/4 = 2..3 inside the 16x16 level
+    }
+}
+
+TEST_CASE("hzb ref: a one-texel hole inside the footprint keeps (MIN pyramid carries it to every mip)") {
+    for (float px : {1.0f, 2.0f, 5.0f, 13.0f, 29.0f}) {
+        Pyramid py(0.9f);
+        const auto p = project(boxPixels(px));
+        // hole in the centre of the footprint at base resolution
+        py.set(33, 33, 0.0f);
+        py.reduceFrom();
+        CAPTURE(px);
+        CHECK_FALSE(hidden(p, py));      // expected keep=1
+    }
+}
+
+TEST_CASE("hzb ref: tiny objects (sub-pixel to a few pixels)") {
+    Pyramid wall(0.9f);
+    Pyramid sky(0.0f);
+    for (float px : {0.0f, 0.2f, 1.0f, 3.0f}) {
+        const auto p = project(boxPixels(px));
+        CAPTURE(px);
+        CHECK(p.keep == 0);
+        CHECK(hidden(p, wall));          // expected keep=0
+        CHECK_FALSE(hidden(p, sky));     // expected keep=1
+    }
+    // A hole far outside a tiny footprint must not rescue it: the per-object LOD reads only its own texels.
+    Pyramid py(0.9f);
+    py.set(5, 5, 0.0f);
+    py.reduceFrom();
+    CHECK(hidden(project(boxPixels(1.0f)), py));
+}
+
+TEST_CASE("hzb ref: regression MAX-vs-MIN reduction (historical over-cull)") {
+    // Half the footprint is occluded (0.9), half is open sky (0.0). The farthest occluder is 0: the prop is visible.
+    auto build = [](bool minReduce) {
+        Pyramid py(0.0f, minReduce);
+        for (int y = 0; y < H; ++y) for (int x = 0; x < 34; ++x) py.set(x, y, 0.9f);
+        py.reduceFrom(minReduce);
+        return py;
+    };
+    const auto p = project(boxPixels(13.0f));   // straddles the x = 34 boundary at lod 4
+    CHECK(p.lod >= 1);
+    CHECK_FALSE(hidden(p, build(true)));        // correct MIN: expected keep=1
+    CHECK(hidden(p, build(false)));             // a MAX pyramid would cull it: the bug this test forbids
+}
+
+TEST_CASE("hzb ref: regression fixed-Lmin (per-object LOD must follow footprint size)") {
+    // The lod must grow with the footprint; one fixed level for every object was the second historical bug.
+    uint32_t last = 0; bool grew = false;
+    for (float px : {1.0f, 5.0f, 13.0f, 29.0f}) {
+        const auto p = project(boxPixels(px));
+        CHECK(p.lod >= last);
+        if (p.lod > last) grew = true;
+        last = p.lod;
+    }
+    CHECK(grew);
+    CHECK(last >= 4);
+    // Large footprint with an occluder covering only its left half: must keep, whatever coarse level is available.
+    Pyramid py(0.0f);
+    for (int y = 0; y < H; ++y) for (int x = 0; x < 32; ++x) py.set(x, y, 0.9f);
+    py.reduceFrom();
+    CHECK_FALSE(hidden(project(boxPixels(29.0f)), py));
+}
+
+TEST_CASE("hzb ref: depth bias moves nearest, margin is 2e-5") {
+    Pyramid py(0.5f);
+    const auto at = project(boxPixels(6.0f), flatMatrix(), 0.0f);
+    CHECK_FALSE(hidden(at, py));                                 // 0.5 < 0.5 - 2e-5 is false
+    const auto far = project(boxPixels(6.0f), flatMatrix(), -0.1f);
+    CHECK(far.nearest == doctest::Approx(0.4f));
+    CHECK(hidden(far, py));                                      // 0.4 < 0.5 - 2e-5
+}

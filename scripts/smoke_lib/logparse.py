@@ -116,6 +116,11 @@ PRESENCE_RULES: tuple = (
     *(PresenceRule(stem, re.compile(r"\[VEG_GPU\] visible survivors=[1-9][0-9]{2,}"), "vegetation_visible_missing",
                    "no [VEG_GPU] visible survivors>=100 line: the vegetation cull drew (almost) nothing")
       for stem in ("mc2_01", "mc2_03", "mc2_10", "mc2_17", "mc2_24")),
+    # HZB cull parity (vulkan_post_hzb_native.cpp): the GPU keep mask is compared with the CPU reference on one frame in 64 and the totals print
+    # every 600 runs and at exit. The line prints with engaged=0 when the pass never reached 1024 candidates; a vanished line means the check is gone.
+    *(PresenceRule(stem, re.compile(r"\[CULL_PARITY v1\] engaged="), "cull_parity_missing",
+                   "no [CULL_PARITY v1] line: the HZB GPU/CPU cull parity check is gone")
+      for stem in ("mc2_01", "mc2_10")),
 )
 
 MARKER_BUCKETS: tuple = (
@@ -173,6 +178,9 @@ MARKER_BUCKETS: tuple = (
     # determinism run; audit mode aborts on the first one). Emitter: GameOS/gameos/sim_overlap.cpp violation(). Never downgraded.
     MarkerBucket(re.compile(r"\[SIM_OVERLAP v1\] VIOLATION\b"),
                  "sim_overlap_violation", "red", None),
+    # A GPU cull that hides a prop the CPU reference keeps is a real over-cull bug. false_keeps (GPU keeps what the CPU culls) is advisory and unflagged.
+    MarkerBucket(re.compile(r"\[CULL_PARITY v1\] .*\bfalse_culls=[1-9]"),
+                 "cull_parity_false_cull", "red", None),
 )
 
 
