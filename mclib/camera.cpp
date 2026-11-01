@@ -552,6 +552,14 @@ long Camera::init (FitIniFilePtr cameraFile )
 //---------------------------------------------------------------------------
 void Camera::destroy (void)
 {
+    // Shapes borrow the camera's light list across transforms. Quickload may
+    // gather off-screen mech lights before any new camera transform runs.
+    if (TG_Shape::s_listOfLights == activeLights || TG_Shape::s_listOfLights == worldLights ||
+        TG_Shape::s_listOfLights == terrainLights)
+    {
+        TG_Shape::s_listOfLights = nullptr;
+        TG_Shape::s_numLights = 0;
+    }
     mc2_spotlight_diag::reset(this);
 	if (worldLights)
 	{
