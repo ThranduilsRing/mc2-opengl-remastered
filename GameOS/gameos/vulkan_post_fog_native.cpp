@@ -73,6 +73,7 @@
 #include <chrono>
 #include <string>
 #include <vector>
+#include "../../mclib/battle_bench_sink.h"
 
 namespace {
 
@@ -531,7 +532,7 @@ bool gosPostProcess::runVkPostFogNative()
     auto& frame = s->frames[mc2vk::getOrCreateEngineVulkanContext().frameContext().slot];
     // Wait only when reusing this slot, before host writes and command-buffer reset.
     {
-        ZoneScopedN("VKIsl.Post.FogSlotWait");
+        ZoneScopedN("VKIsl.Post.FogSlotWait"); mc2::battlebench::WaitScope gpuWait1(mc2::battlebench::WaitGpuMainNs);
         const std::chrono::steady_clock::time_point tWait0 = std::chrono::steady_clock::now();
         if (!mc2vk::getOrCreateEngineVulkanContext().wait(mc2vk::GpuTicket{frame.ticket, 0}, 5ull * 1000 * 1000 * 1000, "post_prev_submit")) {
             setFallback("fence_timeout"); s->disabled = true; return false;

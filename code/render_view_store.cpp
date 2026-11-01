@@ -4,6 +4,7 @@
 #include "../RenderCore/FrameArena.h"
 #include "../mclib/sim_overlap.h"
 #include <cstdlib>
+#include "../mclib/battle_bench_sink.h"
 
 namespace mc2::render_view {
 
@@ -34,6 +35,16 @@ const HudSnapshot& hud() { return g_drawFrame ? g_drawFrame->hud : g_hud; }
 std::shared_ptr<const FrameDraws> freezeDrawFrame(uint64_t sequence) {
     mc2::overlap::assertMainThread("freezeDrawFrame");
     if (!sequence) std::abort();
+    {   // [PERF_COUNTERS v1] element storage copied by the extract, and an allocation count (one per non-empty vector + the shared block)
+        namespace bb = mc2::battlebench;
+        const auto& h = g_hud;
+        bb::add(bb::ExtractBytes, (g_list.terrain.size() + g_list.movers.size() + g_list.other.size()) * sizeof(RenderView)
+            + h.movers.size() * sizeof(HudMover) + h.roster.size() * sizeof(size_t) + (h.sensors.size() + h.coverage.size()) * sizeof(HudSensor)
+            + h.objectives.size() * sizeof(HudObjective) + h.blips.size() * sizeof(HudBlip) + h.vtols.size() * sizeof(HudVtol));
+        bb::add(bb::HeapAllocs, 1 + (g_list.terrain.empty() ? 0 : 1) + (g_list.movers.empty() ? 0 : 1) + (g_list.other.empty() ? 0 : 1)
+            + (h.movers.empty() ? 0 : 1) + (h.roster.empty() ? 0 : 1) + (h.sensors.empty() ? 0 : 1) + (h.coverage.empty() ? 0 : 1)
+            + (h.objectives.empty() ? 0 : 1) + (h.blips.empty() ? 0 : 1) + (h.vtols.empty() ? 0 : 1));
+    }
     return std::make_shared<const FrameDraws>(FrameDraws{sequence, g_clock, g_list, g_hud});
 }
 

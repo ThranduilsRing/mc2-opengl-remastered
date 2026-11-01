@@ -40,6 +40,7 @@
 #include <atomic>
 #include <cstdint>
 #include <memory>
+#include <source_location>
 #include <mutex>
 #include <string>
 #include <string_view>
@@ -289,10 +290,10 @@ inline void nameObjectAt(VkDevice device, Handle handle, std::string_view name, 
 // on every call. The first call does NOT auto-init -- call init() explicitly at
 // engine init (gameosmain) so init order + fail-soft coercion are controlled by
 // the caller. Never returns null.
-VulkanContext& getOrCreateEngineVulkanContext();
+VulkanContext& getOrCreateEngineVulkanContext(std::source_location site = std::source_location::current());
 
 // Convenience: true if the engine context has been born and holds a live device.
-bool engineVulkanContextValid();
+bool engineVulkanContextValid(std::source_location site = std::source_location::current());
 
 // Submits on the shared engine context's graphics queue through the completion tracker (VulkanContext::submit). The only way an engine TU submits.
 inline VkResult submitGraphics(const VkSubmitInfo& si, VkFence fence) { return getOrCreateEngineVulkanContext().submit(si, fence); }

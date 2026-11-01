@@ -836,7 +836,7 @@ static bool record_mech(MechIsland* s, VkCommandBuffer cb, uint32_t par, int w, 
         }
         const MechRunPC pc{run.materialFlags,0,0};
         vkCmdPushConstants(cb,s->playout.get(),VK_SHADER_STAGE_FRAGMENT_BIT,0,sizeof(pc),&pc);
-        vkCmdDrawIndexed(cb,run.indexCount,run.instanceCount,run.firstIndex,run.baseVertex,run.instanceBase);
+        mc2::battlebench::add(mc2::battlebench::DrawMech), vkCmdDrawIndexed(cb,run.indexCount,run.instanceCount,run.firstIndex,run.baseVertex,run.instanceBase);
     }
     mc2vk::infra::bind(cb,VK_PIPELINE_BIND_POINT_GRAPHICS,s->pipe.get());
     const auto groundSet = s->groundLighting.set(par);
@@ -859,7 +859,7 @@ static bool record_mech(MechIsland* s, VkCommandBuffer cb, uint32_t par, int w, 
         // VK-PARITY-MECH-1: per-run ALPHA_TEST flag (mech.frag u_materialFlags).
         const MechRunPC pc{run.materialFlags, 0, uint32_t(poolN)};
         vkCmdPushConstants(cb, s->playout.get(), VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(pc), &pc);
-        vkCmdDrawIndexed(cb, run.indexCount, run.instanceCount, run.firstIndex, run.baseVertex, run.instanceBase);
+        mc2::battlebench::add(mc2::battlebench::DrawMech), vkCmdDrawIndexed(cb, run.indexCount, run.instanceCount, run.firstIndex, run.baseVertex, run.instanceBase);
         ++runs;
     }
     // The retained feed counts actor/node pairs once, across material packets and idle-frame reuse.
@@ -969,7 +969,7 @@ extern "C" int mc2_vk_mech_island_run(int w, int h) {
     // mech submission must retire before its commands/descriptors change.
     const clk::time_point tFence0 = clk::now();
     const uint32_t par = rctx.frameContext().slot;
-    { ZoneScopedN("VKIsl.Mech.FenceWait");
+    { ZoneScopedN("VKIsl.Mech.FenceWait"); mc2::battlebench::WaitScope gpuWait1(mc2::battlebench::WaitGpuMainNs);
       if (!rctx.wait(s->submitted[par], 5000000000ull, "mech submission slot")) {
           setFallback("submission_slot_timeout"); s->disabled = true; return 0;
       } }
@@ -1077,7 +1077,7 @@ extern "C" int mc2_vk_mech_island_run(int w, int h) {
     timerGuard.submitted();
 
     if (!mechFenceDeferEnabled()) {
-        ZoneScopedN("VKIsl.Mech.InlineFenceWait");   // VK-ISLAND-TRACY-1: killswitch-only inline retire
+        ZoneScopedN("VKIsl.Mech.InlineFenceWait"); mc2::battlebench::WaitScope gpuWait2(mc2::battlebench::WaitGpuMainNs);   // VK-ISLAND-TRACY-1: killswitch-only inline retire
         const clk::time_point tInline0 = clk::now();
         if (!rctx.wait(s->submitted[par], 5000000000ull, "mech inline retire")) {
             setFallback("fence_timeout"); s->disabled = true; return 0;

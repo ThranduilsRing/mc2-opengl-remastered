@@ -40,7 +40,7 @@ inline void mc2BattleBenchObserve() {
     }
     if (scenarioTime < nextSample) return;
     nextSample = scenarioTime + 0.5f;
-    int alive = 0, mechs = 0;
+    int alive = 0, mechs = 0, active = 0;   // active = alive and moving (speed > 0); "firing" is not exposed on the mover
     const auto count = [&](GameObjectPtr o) {
         if (o && o->isDestroyed()) destroyed.insert(o->getPartId());
     };
@@ -48,10 +48,11 @@ inline void mc2BattleBenchObserve() {
         auto* m = ObjectManager->getMover(i); count(m);
         if (m && m->getExists() && !m->isDestroyed() && !m->isDisabled()) ++alive;
         if (m && m->getObjectClass() == BATTLEMECH) ++mechs;
+        if (m && m->getExists() && !m->isDestroyed() && !m->isDisabled() && m->getSpeed() > 0.0f) ++active;
     }
     for (long i = 0; i < ObjectManager->getNumBuildings(); ++i) count(ObjectManager->getBuilding(i));
     for (long i = 0; i < ObjectManager->getNumTurrets(); ++i) count(ObjectManager->getTurret(i));
     for (long i = 0; i < ObjectManager->getNumTerrainObjects(); ++i) count(ObjectManager->getTerrainObject(i));
-    std::fprintf(output, "{\"type\":\"world\",\"frame\":%llu,\"sim_s\":%.6f,\"movers\":%ld,\"units_alive\":%d,\"mechs\":%d,\"destroyed\":%zu}\n",
-        static_cast<unsigned long long>(frame), double(scenarioTime), ObjectManager->getNumMovers(), alive, mechs, destroyed.size());
+    std::fprintf(output, "{\"type\":\"world\",\"frame\":%llu,\"sim_s\":%.6f,\"movers\":%ld,\"units_alive\":%d,\"mechs\":%d,\"active\":%d,\"destroyed\":%zu}\n",
+        static_cast<unsigned long long>(frame), double(scenarioTime), ObjectManager->getNumMovers(), alive, mechs, active, destroyed.size());
 }

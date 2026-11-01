@@ -38,6 +38,7 @@
 #include <utility>
 #include <functional>
 #include <tracy/Tracy.hpp>
+#include "../../mclib/battle_bench_sink.h"
 
 namespace {
 
@@ -433,7 +434,7 @@ extern "C" int mc2_vk_sky_island_run(int w, int h) {
     // fence ring this replaces flipped per island call, so every island waited on a submit made earlier in the SAME frame.
     mc2vk::VulkanContext& rctx = mc2vk::getOrCreateEngineVulkanContext();
     const uint32_t par = rctx.frameContext().slot;
-    { ZoneScopedN("VKIsl.Sky.FenceWait");
+    { ZoneScopedN("VKIsl.Sky.FenceWait"); mc2::battlebench::WaitScope gpuWait1(mc2::battlebench::WaitGpuMainNs);
       if (!vk_island_util::waitStrike(s->waitStrikes, s->disabled, rctx.wait(s->submitted[par], 5000000000ull, "sky submission slot"), "VK_SKY")) { setFallback("submission_slot_timeout"); vlog("LOUD: submission slot wait timed out (5 s); skipping this frame, will retry next frame."); return 0; } }
 
     VkCommandBuffer cb = s->cbuf[par];
@@ -457,7 +458,7 @@ extern "C" int mc2_vk_sky_island_run(int w, int h) {
     for (int i = 0; i < 3; ++i) { pc.rotC0[i] = p.rot[i]; pc.rotC1[i] = p.rot[3 + i]; pc.rotC2[i] = p.rot[6 + i]; }
     pc.skyYaw = p.yaw;
     vkCmdPushConstants(cb, s->playout.get(), VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(pc), &pc);
-    vkCmdDraw(cb, 3, 1, 0, 0);
+    mc2::battlebench::add(mc2::battlebench::DrawSky), vkCmdDraw(cb, 3, 1, 0, 0);
     vkCmdEndRenderPass(cb);
     gpuScope.end();
     if (vkEndCommandBuffer(cb) != VK_SUCCESS) { setFallback("record_failed"); s->disabled = true; return 0; }

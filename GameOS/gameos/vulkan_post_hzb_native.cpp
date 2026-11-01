@@ -44,6 +44,7 @@ using mc2hzb::ProjectedProp;
 #include <string>
 #include <vector>
 #include <new>
+#include "../../mclib/battle_bench_sink.h"
 
 namespace {
 
@@ -708,6 +709,7 @@ bool gosPostProcess::runVkPostHzbNative(const Mc2ColorPropFeed& feed, uint32_t g
     // normally already complete) replaces the fence the pass used to wait inline right after every submit.
     {
         const std::chrono::steady_clock::time_point tWait0 = std::chrono::steady_clock::now();
+        mc2::battlebench::WaitScope gpuWait(mc2::battlebench::WaitGpuMainNs);
         if (!mc2vk::getOrCreateEngineVulkanContext().wait(mc2vk::GpuTicket{s->ticket, 0}, 5ull * 1000 * 1000 * 1000, "post_prev_submit")) {
             setFallback("fence_timeout"); s->disabled = true; return false;
         }

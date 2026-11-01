@@ -10,6 +10,7 @@
 #include "vulkan_mover_shadow.h"
 void gos_GetTerrainChunkGridInfo(int* mapSide, float* halfMap);
 #include "mc2_diag_verbose.h"
+#include "../../mclib/battle_bench_sink.h"
 
 #ifdef MC2_VULKAN_ISLAND
 
@@ -215,7 +216,7 @@ extern "C" int mc2_vk_water_island_run(
     const clk::time_point tFence0 = clk::now();
     // GPU-FRONTIER-1: engine frame slot + this island's own previous submit (see the sky island); no shared scene-color fence ring.
     const uint32_t par = slotCtx.frameContext().slot;
-    { ZoneScopedN("VKIsl.Water.FenceWait");   // VK-ISLAND-TRACY-1: deferred retire of the slot
+    { ZoneScopedN("VKIsl.Water.FenceWait"); mc2::battlebench::WaitScope gpuWait1(mc2::battlebench::WaitGpuMainNs);   // VK-ISLAND-TRACY-1: deferred retire of the slot
       if (!vk_island_util::waitStrike(s->waitStrikes, s->disabled, slotCtx.wait(s->submitted[par], 5000000000ull, "water submission slot"), "VK_WATER")) { setFallback("submission_slot_timeout"); vlog("LOUD: submission slot wait timed out (5 s); skipping this frame, will retry next frame."); return 0; } }
     us_fence_wait = usSince(tFence0);
     const auto ground = mc2_vk_ground_lighting_frame();
@@ -366,7 +367,7 @@ extern "C" int mc2_vk_water_island_run(
         vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 0, 1, &s->set[par], 2, uboOffsets);
         const auto groundSet = s->groundLighting.set(par);
         vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 1, 1, &groundSet, 4, ground->offsets.data());
-        vkCmdDrawIndirect(cb, s->native->drawArgs(par), 0, 1, 16);
+        mc2::battlebench::add(mc2::battlebench::DrawWater), vkCmdDrawIndirect(cb, s->native->drawArgs(par), 0, 1, 16);
         vkCmdEndRenderPass(cb);
         gpuScope.end();
         vk_render_pass_timer::End(cb, gos_render_pass_timer::Pass_Water);
@@ -402,7 +403,7 @@ extern "C" int mc2_vk_water_island_run(
         // buffers' entry barriers cover earlier submission-order work).
         // Killswitch MC2_VK_WATER_FENCE_DEFER=0 restores the inline wait.
         if (!waterFenceDeferEnabled()) {
-            ZoneScopedN("VKIsl.Water.InlineFenceWait");   // VK-ISLAND-TRACY-1: killswitch-only inline retire
+            ZoneScopedN("VKIsl.Water.InlineFenceWait"); mc2::battlebench::WaitScope gpuWait2(mc2::battlebench::WaitGpuMainNs);   // VK-ISLAND-TRACY-1: killswitch-only inline retire
             const clk::time_point tInline0 = clk::now();
             if (!slotCtx.wait(s->submitted[par], 5000000000ull, "water inline retire")) {
                 setFallback("fence_timeout"); s->disabled = true; return 0;

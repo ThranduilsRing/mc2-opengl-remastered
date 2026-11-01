@@ -50,6 +50,7 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <tracy/Tracy.hpp>
+#include "../../mclib/battle_bench_sink.h"
 
 const float* gos_GetProj2ScreenMat4();             // gosRenderer::projection_ (row-major, GL_TRUE)
 
@@ -530,7 +531,7 @@ extern "C" int mc2_vk_legacy_shape_island_run(int w, int h, const Mc2LegacyMlrFr
     // render-pass dependencies still order the shared attachment accesses.
     const uint32_t par = s->nextSlot;
     {
-        ZoneScopedN("VKIsl.Legacy.FenceWait");
+        ZoneScopedN("VKIsl.Legacy.FenceWait"); mc2::battlebench::WaitScope gpuWait1(mc2::battlebench::WaitGpuMainNs);
         if (!rctx.wait(s->submitted[par], 5000000000ull, "legacy submission slot")) {
             setFallback("submission_slot_timeout"); s->disabled = true; return 0;
         }
@@ -608,7 +609,7 @@ extern "C" int mc2_vk_legacy_shape_island_run(int w, int h, const Mc2LegacyMlrFr
                                 (pass == MC2_LEGACY_PASS_ADD ? 2u : 0u) |
                                 (pass == MC2_LEGACY_PASS_SOLID ? 4u : 0u);
         vkCmdPushConstants(cb, s->playout.get(), VK_SHADER_STAGE_FRAGMENT_BIT, 0, 4, &pflags);
-        vkCmdDraw(cb, r.d->vertexCount, 1, static_cast<uint32_t>((r.byteOff / kVertexStride)), 0);
+        mc2::battlebench::add(mc2::battlebench::DrawLegacy), vkCmdDraw(cb, r.d->vertexCount, 1, static_cast<uint32_t>((r.byteOff / kVertexStride)), 0);
         ++drawn; verts += r.d->vertexCount;
     }
     vkCmdEndRenderPass(cb);

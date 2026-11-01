@@ -67,6 +67,7 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include "../../mclib/battle_bench_sink.h"
 
 namespace {
 
@@ -650,7 +651,7 @@ extern "C" int mc2_vk_vfx_island_run(
     // Per-frame data goes into the engine frame ring: frame constants (UBO) then the whole particle array (64B/record), one span. The parity slot's last
     // submit must have completed before its command buffer and set are reused: a timeline ticket, not an island fence.
     const uint32_t par = take_slot(s, slotCtx);
-    { ZoneScopedN("VKIsl.Vfx.SlotWait");
+    { ZoneScopedN("VKIsl.Vfx.SlotWait"); mc2::battlebench::WaitScope gpuWait1(mc2::battlebench::WaitGpuMainNs);
     if (!slotCtx.wait(mc2vk::GpuTicket{s->ticket[par], 0}, 5ull * 1000 * 1000 * 1000, "vfx_slot")) { setFallback("slot_timeout"); s->disabled = true; return 0; } }
     const VkDeviceSize needBytes = static_cast<VkDeviceSize>(particleCount) * 64u;
     const VkDeviceSize partOff = mc2vk::alignUp(sizeof(VfxVsParams), slotCtx.frameAlignment());
@@ -714,7 +715,7 @@ extern "C" int mc2_vk_vfx_island_run(
         vkCmdPushConstants(cb, s->playout.get(), VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(push), &push);
         {
             const uint32_t expansion = d.atlasColumns == kVfxGeometryAtlas ? 1u : 6u;
-            vkCmdDraw(cb, d.count * expansion, 1, d.start * expansion, 0);
+            mc2::battlebench::add(mc2::battlebench::DrawVfx), vkCmdDraw(cb, d.count * expansion, 1, d.start * expansion, 0);
             ++groupsDrawn;
         }
         if (d.atlasColumns == kVfxGeometryAtlas) {

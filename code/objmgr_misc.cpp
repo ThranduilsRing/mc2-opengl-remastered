@@ -2,6 +2,8 @@
 // Declared in the class headers; shared names in objmgr_internal.h.
 #include "objmgr_internal.h"
 #include "sim_world_trace.h"
+#include "../mclib/battle_bench_sink.h"
+#include "../mclib/sim_overlap.h"
 #include "impact_presentation.h"
 
 
@@ -573,6 +575,7 @@ void GameObjectManager::updateAppearancesOnly( bool terrain, bool movers, bool o
         updateActiveSweep();
 		int frameJobsPrePassCount = 0;
 		updateFrameJobsPrepass(frameJobsPrePassCount);
+		uint64_t walkVisited = 0, walkRecalc = 0, walkGround = 0, walkTouch = 0, walkUpdate = 0;   // [PERF_COUNTERS v1] plain locals, folded once below
 		for (long terrainBlock = 0; terrainBlock < Terrain::numObjBlocks; terrainBlock++)
 		{
 			// Cull-cascade consumer (object collect). Post-8c source of truth for
@@ -594,8 +597,10 @@ void GameObjectManager::updateAppearancesOnly( bool terrain, bool movers, bool o
 						if (objList[objIndex]->getObjectClass() == TERRAINOBJECT)
 							static_cast<TerrainObject*>(objList[objIndex])->applyAppearancePush();
 						objList[objIndex]->getAppearance()->flushSimEvents();
+						++walkVisited;
 						if (objList[objIndex]->getAppearance()->recalcBounds())
 						{
+							++walkRecalc; ++walkGround;
 							// Must force here as well.
 							glm::vec3 pos = objList[objIndex]->getPosition();
 							float rot = objList[objIndex]->getRotation();
@@ -610,15 +615,18 @@ void GameObjectManager::updateAppearancesOnly( bool terrain, bool movers, bool o
                             appearance->presentAnimation(*appearance->simulationAnimation());
                             appearance->presentEffects();
                             if (appearance->IsStaticNow() && !objList[objIndex]->getFlag(OBJECT_FLAG_FALLING))
-                                appearance->touch();
+                                { appearance->touch(); ++walkTouch; }
                             else
-                                appearance->update(false);
+                                { appearance->update(false); ++walkUpdate; }
 							objList[objIndex]->getAppearance()->setVisibility(true, true);	
 						}
 					}
 				}
 			}
 		}
+		namespace bb = mc2::battlebench;
+		bb::add(bb::WalkVisited, walkVisited); bb::add(bb::WalkRecalc, walkRecalc); bb::add(bb::WalkGround, walkGround);
+		bb::add(bb::WalkTouch, walkTouch); bb::add(bb::WalkUpdate, walkUpdate);
 	}
 
 	if (movers)
@@ -762,4 +770,60 @@ void GameObjectManager::updateAppearancesOnly( bool terrain, bool movers, bool o
 			}
 		}
 	}
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+// [WALK_BENCH v1] dev command `bench_walk N` (code/missiongui_uicmd_fixture.cpp): repeats the terrain presentation
+// loop N times on the frozen world (`bench_freeze on`) with one timer per step. Steps timed: recalcBounds,
+// groundElevation, setObjectParameters, touch, update, setVisibility, plus the full render-list extract. The
+// renderView walk needs a live DrawFrameScope and is not run here (reported as skipped). ns_per_call has the
+// measured empty-timer cost subtracted.
+void mc2BenchWalk(GameObjectManager& om, int rounds)
+{
+	using Clk = std::chrono::steady_clock;
+	mc2::overlap::waitWorker();
+	enum { Recalc, Ground, SetParams, Touch, Update, SetVis, Extract, StepCount };
+	static const char* const names[StepCount] = {"recalcBounds", "groundElevation", "setObjectParameters", "touch", "update", "setVisibility", "extract_render_list"};
+	uint64_t ns[StepCount] = {}, calls[StepCount] = {};
+	double timerNs = 0.0;
+	{
+		const int n = 200000; const auto a = Clk::now(); uint64_t sink = 0;
+		for (int i = 0; i < n; ++i) { const auto t0 = Clk::now(); sink += static_cast<uint64_t>((Clk::now() - t0).count()); }
+		timerNs = static_cast<double>(std::chrono::duration_cast<std::chrono::nanoseconds>(Clk::now() - a).count()) / n;
+		if (sink == 1) timerNs += 0.0;
+	}
+	const auto tick = [&](int step, Clk::time_point t0) { ns[step] += static_cast<uint64_t>(std::chrono::duration_cast<std::chrono::nanoseconds>(Clk::now() - t0).count()); ++calls[step]; };
+	uint64_t visited = 0;
+	for (int r = 0; r < rounds; ++r) {
+		for (long terrainBlock = 0; terrainBlock < Terrain::numObjBlocks; terrainBlock++) {
+			if (!Terrain::objBlockInfo[terrainBlock].active) continue;
+			long numObjs = Terrain::objBlockInfo[terrainBlock].numObjects;
+			long objIndex = Terrain::objBlockInfo[terrainBlock].firstHandle;
+			for (long terrainObj = 0; terrainObj < numObjs; terrainObj++, objIndex++) {
+				GameObjectPtr o = om.objList[objIndex];
+				if (!(o && Terrain::objVertexActive[o->getVertexNum()] && o->getExists())) continue;
+				++visited;
+				auto* appearance = o->getAppearance();
+				auto t0 = Clk::now();
+				const bool inView = appearance->recalcBounds();
+				tick(Recalc, t0);
+				if (!inView) continue;
+				glm::vec3 pos = o->getPosition();
+				const float rot = o->getRotation();
+				t0 = Clk::now(); pos.z = TerrainRuntime::groundElevation(pos); tick(Ground, t0);
+				const long drawFlags = o->drawFlags; const int teamID = o->getTeamId();
+				t0 = Clk::now(); appearance->setObjectParameters(pos, rot, drawFlags, teamID, Team::getRelation(teamID, Team::home->getId())); tick(SetParams, t0);
+				if (appearance->IsStaticNow() && !o->getFlag(OBJECT_FLAG_FALLING)) { t0 = Clk::now(); appearance->touch(); tick(Touch, t0); }
+				else { t0 = Clk::now(); appearance->update(false); tick(Update, t0); }
+				t0 = Clk::now(); appearance->setVisibility(true, true); tick(SetVis, t0);
+			}
+		}
+		const auto t0 = Clk::now(); mc2::overlap::extractRender(); tick(Extract, t0);
+	}
+	std::fprintf(stderr, "[WALK_BENCH v1] rounds=%d visited=%llu timer_ns=%.1f renderView_walk=skipped\n", rounds, static_cast<unsigned long long>(visited), timerNs);
+	for (int i = 0; i < StepCount; ++i) {
+		const double perCall = calls[i] ? std::max(0.0, static_cast<double>(ns[i]) / static_cast<double>(calls[i]) - timerNs) : 0.0;
+		std::fprintf(stderr, "[WALK_BENCH v1] step=%s calls=%llu ns_per_call=%.1f total_ms=%.3f\n", names[i], static_cast<unsigned long long>(calls[i]), perCall, static_cast<double>(ns[i]) / 1.0e6);
+	}
+	std::fflush(stderr);
 }
