@@ -1,6 +1,6 @@
 {
   "summary": {
-    "glsl_blocks_with_binding": 253,
+    "glsl_blocks_with_binding": 254,
     "native_pairs": 7,
     "fails": 0,
     "warns": 0
@@ -539,7 +539,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/color_prop_tier1.vert",
-        "line": 51,
+        "line": 63,
         "role": "Instances",
         "std": "std430",
         "type": "buffer",
@@ -1201,7 +1201,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/color_prop_tier1.vert",
-        "line": 57,
+        "line": 69,
         "role": "TypeAlbedoLayer",
         "std": "std430",
         "type": "buffer",
@@ -1798,6 +1798,16 @@
     "set0:binding4": [
       {
         "side": "glsl",
+        "file": "shaders/vulkan/color_prop_tier1.vert",
+        "line": 34,
+        "role": "LightsData",
+        "std": "std430",
+        "type": "buffer",
+        "source": "shaders/vulkan/color_prop_tier1.vert",
+        "branch": {}
+      },
+      {
+        "side": "glsl",
         "file": "shaders/vulkan/hzb_cull.comp",
         "line": 13,
         "role": "TypeBounds",
@@ -1923,7 +1933,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/color_prop_tier1.vert",
-        "line": 63,
+        "line": 75,
         "role": "TypeAlbedoLayerOn",
         "std": "std430",
         "type": "buffer",
@@ -2139,7 +2149,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/color_prop_tier1.vert",
-        "line": 90,
+        "line": 102,
         "role": "TypeHotColors",
         "std": "std430",
         "type": "buffer",
@@ -2315,7 +2325,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/color_prop_tier1.vert",
-        "line": 127,
+        "line": 139,
         "role": "HzbVisibility",
         "std": "std430",
         "type": "buffer",

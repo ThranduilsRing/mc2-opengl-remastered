@@ -30,6 +30,19 @@
       "name": "TypeAlbedoLayer"
     },
     {
+      "binding": 4,
+      "members": [
+        {
+          "array_stride": 3600,
+          "matrix_stride": null,
+          "name": "light",
+          "offset": 0,
+          "type": "_978"
+        }
+      ],
+      "name": "LightsData"
+    },
+    {
       "binding": 5,
       "members": [
         {
@@ -206,27 +219,6 @@
           "name": "poolI",
           "offset": 304,
           "type": "ivec4"
-        },
-        {
-          "array_stride": null,
-          "matrix_stride": null,
-          "name": "sunColor",
-          "offset": 320,
-          "type": "vec4"
-        },
-        {
-          "array_stride": null,
-          "matrix_stride": null,
-          "name": "ambientColor",
-          "offset": 336,
-          "type": "vec4"
-        },
-        {
-          "array_stride": null,
-          "matrix_stride": null,
-          "name": "specDir",
-          "offset": 352,
-          "type": "vec4"
         }
       ],
       "name": "ColorFrameUBO"
