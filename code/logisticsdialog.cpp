@@ -1519,7 +1519,7 @@ std::string LogisticsVariantDialog::entryText()
 	return edits[0].entry();
 }
 
-void LogisticsVariantDialog::setEntryText( const std::string& text )
+void LogisticsVariantDialog::setEntryText( std::string text )
 {
 	if ( hasDefsEditBox() )
 		setDefsEditText( kSvVariantEditKey, text );
