@@ -8,6 +8,10 @@
 #include "render_resource_owners.h"
 #include "Gates/gate.h"
 #include "mc2fmt.h"
+#ifdef MC2_IMGUI
+#include "imgui.h"
+#include "ui_texture.h"
+#endif
 #ifdef MC2_ALLOC_STATS
 #include "artlry.h"
 #endif
@@ -81,19 +85,39 @@ void __stdcall UpdateRenderers()
 			ZoneScopedN("UpdateRenderers uiRender");
 			gos_SetRenderState( gos_State_Filter, gos_FilterNone );
 			gos_SetRenderState( gos_State_IsHUD, 1 );
-			userInput->render();
+			// CURSOR-TOPMOST-1: when the ImGui pass will run this frame, the cursor is painted
+			// by it (foreground draw list = last 2D draw); the HUD-batch copy would sit
+			// under every ImGui HUD panel, so skip it.
+#ifdef MC2_IMGUI
+			if (!GuiRuntime::FrameActive())
+#endif
+				userInput->render();
 			gos_SetRenderState( gos_State_IsHUD, 0 );
 #ifdef MC2_IMGUI
-			// CURSOR-ON-TOP-OF-IMGUI-1: the custom MC2 cursor sprite drawn just
-			// above is part of the normal HUD batch, which flushes BEFORE
-			// GuiRuntime::Render() (the ui-phase1 defs/ImGui pages draw later,
-			// same frame) -- so the cursor was hidden behind every ImGui panel
-			// (Main Screen, Mission pages, popups). Re-draw it again as a
-			// post-ImGui callback (same mechanism SimpleCamera preview panels
-			// use) so it composites on top instead. Cheap: one extra sprite
-			// draw per frame, only fires if GuiRuntime actually rendered a
-			// frame (no-op otherwise).
-			GuiRuntime::RegisterPostImGuiRender( []() { userInput->renderForImGuiOverlay(); } );
+			// CURSOR-TOPMOST-1 (supersedes CURSOR-ON-TOP-OF-IMGUI-1, whose post-ImGui
+			// GL callback never ran under Vulkan): the HUD batch flushes BEFORE
+			// GuiRuntime::Render(), so the cursor sprite sat under every ImGui
+			// panel. Paint it into the ImGui foreground list instead.
+			if ( GuiRuntime::FrameActive() )
+			GuiRuntime::RegisterForegroundCursor( []() -> bool {
+				gos_VERTEX q[4];
+				unsigned long tex = 0;
+				if ( !userInput || !userInput->captureCursorQuad( q, tex ) || !tex || tex == 0xffffffff )
+					return false;
+				const uint64_t glTex = gos_GetUiTextureId( tex );
+				if ( !glTex )
+					return false;
+				// Same space as the old HUD-batch copy: raw physical pixels, sprite px size.
+				const float s = 1.0f;
+				const DWORD c = q[0].argb;
+				ImGui::GetForegroundDrawList()->AddImage(
+					static_cast<ImTextureID>( static_cast<intptr_t>( glTex ) ),
+					ImVec2( q[0].x, q[0].y ),
+					ImVec2( q[0].x + ( q[2].x - q[0].x ) * s, q[0].y + ( q[2].y - q[0].y ) * s ),
+					ImVec2( q[0].u, q[0].v ), ImVec2( q[2].u, q[2].v ),
+					IM_COL32( ( c >> 16 ) & 0xff, ( c >> 8 ) & 0xff, c & 0xff, ( c >> 24 ) & 0xff ) );
+				return true;
+			} );
 #endif
 		}
 

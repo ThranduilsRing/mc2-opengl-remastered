@@ -2,6 +2,7 @@
 #define GAMEOS_GRAPHICS_H
 
 #include <SDL2/SDL.h>
+#include <string_view>
 
 // SMOKE-NO-CURSOR-STEAL-1: true when this process must NOT touch the OS cursor
 // (no SDL_WarpMouseInWindow, no window mouse-grab, no Win32 ClipCursor).
@@ -84,6 +85,7 @@ void                get_window_size         (RenderWindowHandle rw_handle, int* 
 void                get_drawable_size       (RenderWindowHandle rw_handle, int* width, int* height);
 void                set_mouse_grab          (bool grabbed);
 void                refresh_mouse_grab      ();
+void                apply_os_cursor_policy  (std::string_view why, bool focused);
 void                destroy_window          (RenderWindowHandle rw_handle);
 bool                set_window_fullscreen   (RenderWindowHandle rw_handle, bool fullscreen);
 // NOFOCUS-HARDEN-1: true when MC2_WINDOW_OFFSCREEN is set -- the window is
