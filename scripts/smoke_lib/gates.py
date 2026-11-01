@@ -15,8 +15,10 @@ PERF_CEILINGS_PATH = Path(__file__).resolve().parents[2] / "tests" / "smoke" / "
 
 
 def load_perf_ceilings(path: Path = PERF_CEILINGS_PATH) -> dict:
-    """{stem: {counter: ceiling}}. Ceilings are observed x 1.25 from a smoke-lite run, on the count-type means only (draws, extract, heap, walk);
-    the wait_* timings are reported but not gated (too noisy at smoke-lite length). A missing or unreadable file means no ceilings."""
+    """{stem: {counter: ceiling}}. W96 count ceilings are observed maxima x2
+    (draws, extract, heap). Walk counters vary with run length and host load;
+    walk and wait timings remain reported without ceilings. Ratchets are separate.
+    A missing or unreadable file means no ceilings."""
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, ValueError):
