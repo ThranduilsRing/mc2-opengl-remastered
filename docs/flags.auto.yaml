@@ -2448,10 +2448,10 @@ flags:
     verified: true
   - name: MC2_MECH_FILL
     kind: Int
-    default: 0
+    default: 2
     rule: Prefix
     owner: mech
-    doc: "Dev capture knob: mech lighting A/B (0 = original, 1 = swapped diffuse sun + sun-sized fill, 2 = plus wrap and rim)."
+    doc: "Mech lighting strength, ships ON at 2. Dev A/B override: 0 = original look, 1 = shared swapped sun + sun-sized fill, 2 = plus wrapped N.L and fresnel rim."
     range: {lo: 0, hi: 2, style: clamp}
     verified: true
   - name: MC2_MECH_GLASS_LUMA_THRESH
