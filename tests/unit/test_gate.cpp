@@ -12,6 +12,7 @@
 #include <stdexcept>
 
 #include "Gates/gate.h"
+#include "diagnostic_trace.h"
 #include "Gates/gate_cold.h"
 #include "Gates/gate_parse.h"
 #include "Gates/gate_row.h"
@@ -1899,4 +1900,32 @@ TEST_CASE("spatial AA defaults on and all four modes round-trip through options.
     CHECK(mo::setFromText(loaded, option, "4") == mo::Verdict::OutOfRange);
     CHECK(mo::setFromText(loaded, option, "-1") == mo::Verdict::OutOfRange);
     CHECK(loaded.spatialAA == 1);
+}
+
+// mc2_diag::tagRequested parses a set MC2_DIAG_TAGS through function-local tag sets, and atexit summaries (perf counters, LIGHT_CONTRACT) call it
+// during teardown. The sets must outlive static destruction: the probe below is registered before the first parse, so it runs after a
+// destructible static built by that parse would be gone (the old crash at exit).
+namespace {
+void diagTagsExitProbe() {
+    EnvVar env("MC2_DIAG_TAGS");
+    env.set("CONFIG");
+    gate::invalidate("MC2_DIAG_TAGS");
+    if (!mc2_diag::tagRequested("CONFIG") || mc2_diag::tagRequested("NOT_REQUESTED")) std::_Exit(3);
+}
+}  // namespace
+
+TEST_CASE("tagRequested parses MC2_DIAG_TAGS and stays valid at atexit") {
+    std::atexit(diagTagsExitProbe);
+    EnvVar env("MC2_DIAG_TAGS");
+    env.set(" CONFIG , LIGHT_CONTRACT");
+    gate::invalidate("MC2_DIAG_TAGS");
+    CHECK(mc2_diag::tagRequested("CONFIG"));
+    CHECK(mc2_diag::tagRequested("LIGHT_CONTRACT"));
+    CHECK_FALSE(mc2_diag::tagRequested("BUILD"));
+    env.set("*");
+    gate::invalidate("MC2_DIAG_TAGS");
+    CHECK(mc2_diag::tagRequested("BUILD"));
+    env.set("none");
+    gate::invalidate("MC2_DIAG_TAGS");
+    CHECK_FALSE(mc2_diag::tagRequested("CONFIG"));
 }
