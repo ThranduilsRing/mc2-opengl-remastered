@@ -250,6 +250,8 @@ protected:
 
 		void	initVariantList();
 		void	initTranscript();
+		std::string entryText();
+		void	setEntryText( const std::string& text );
 
 
 		aAnimTextListItem templateItem;

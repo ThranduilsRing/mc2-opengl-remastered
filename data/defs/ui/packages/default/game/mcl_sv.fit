@@ -441,7 +441,7 @@ GuiRect {
     legacyColor = 0xff000000
     outline = "FALSE"
     filled = true
-    fillColorArgb = "0x00000000"
+    fillColorArgb = "0xff000000"
     borderColorArgb = "0x00000000"
     colorArgb = "0xffffffff"
 }
@@ -498,7 +498,7 @@ GuiList {
     itemPressedColorArgb = "0xffc66600"
     itemDisabledColorArgb = "0xff6b6b6b"
     itemSelectedColorArgb = "0xff000000"
-    fillColorArgb = "0x00000000"
+    fillColorArgb = "0xff000000"
     borderColorArgb = "0x00000000"
 }
 
@@ -543,7 +543,7 @@ GuiRect {
     legacyColor = 0xff000000
     outline = "FALSE"
     filled = true
-    fillColorArgb = "0x00000000"
+    fillColorArgb = "0xff000000"
     borderColorArgb = "0x00000000"
     colorArgb = "0xffffffff"
 }
@@ -566,7 +566,7 @@ GuiRect {
     legacyColor = 0xff000000
     outline = "FALSE"
     filled = true
-    fillColorArgb = "0x00000000"
+    fillColorArgb = "0xff000000"
     borderColorArgb = "0x00000000"
     colorArgb = "0xffffffff"
 }
@@ -589,7 +589,7 @@ GuiRect {
     legacyColor = 0xff000000
     outline = "FALSE"
     filled = true
-    fillColorArgb = "0x00000000"
+    fillColorArgb = "0xff000000"
     borderColorArgb = "0x00000000"
     colorArgb = "0xffffffff"
 }
@@ -612,7 +612,7 @@ GuiRect {
     legacyColor = 0xff000000
     outline = "FALSE"
     filled = true
-    fillColorArgb = "0x00000000"
+    fillColorArgb = "0xff000000"
     borderColorArgb = "0x00000000"
     colorArgb = "0xffffffff"
 }
@@ -635,7 +635,7 @@ GuiRect {
     legacyColor = 0xff000000
     outline = "FALSE"
     filled = true
-    fillColorArgb = "0x00000000"
+    fillColorArgb = "0xff000000"
     borderColorArgb = "0x00000000"
     colorArgb = "0xffffffff"
 }
@@ -1354,7 +1354,7 @@ GuiEditBox {
     textRect = "192,211,195,21"
     textRectMode = "control_rect_fallback"
     textLegacyId = 27000
-    visible = false
+    visible = true
     textKey = "legacy.mc2res.27000"
     visibleText = " "
     textLegacySymbol = "IDS_STRING_FIRST_LOGISTICS"
@@ -1372,6 +1372,12 @@ GuiEditBox {
     colorArgb = "0xffc66600"
     legacyColor = 0xffc66600
     legacyAlignment = 0
+    cursorColorArgb = "0xffc66600"
+    highlightColorArgb = "0xffc66600"
+    selectedColorArgb = "0xff000000"
+    outlineColorArgb = "0xffffffff"
+    fillColorArgb = "0xcc0a0a18"
+    borderColorArgb = "0xff4d3300"
 }
 
 GuiAnimation {
