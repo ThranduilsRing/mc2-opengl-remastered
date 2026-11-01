@@ -42,6 +42,9 @@ GameObjectManager* ObjectManager = nullptr;
 // code/gameplay_pick.cpp:202 -> void RunGameplayPickSelfTest()
 void RunGameplayPickSelfTest() {}
 
+// No gameplay camera runs in offline data tools (code/gamecam.cpp).
+unsigned mc2CameraLightChangedCount() { return 0; }
+
 // ---------------------------------------------------------------------------
 // Inert definitions for game-layer entry points referenced by gameos.lib /
 // mclib.lib (debug_state_dump, gos_visual_capture, mech3d, gvactor). They live
