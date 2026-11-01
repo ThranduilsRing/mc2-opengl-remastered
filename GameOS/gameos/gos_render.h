@@ -2,6 +2,7 @@
 #define GAMEOS_GRAPHICS_H
 
 #include <SDL2/SDL.h>
+#include <string_view>
 
 // SMOKE-NO-CURSOR-STEAL-1: true when this process must NOT touch the OS cursor
 // (no SDL_WarpMouseInWindow, no window mouse-grab, no Win32 ClipCursor).
