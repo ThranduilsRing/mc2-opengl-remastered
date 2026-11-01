@@ -53,6 +53,7 @@ class Verdict:
     passed: bool
     buckets: List[str] = field(default_factory=list)
     details: List[str] = field(default_factory=list)
+    warnings: List[str] = field(default_factory=list)   # perf_counter-only reds: recorded, never failing
 
 
 def evaluate(s: LogSummary, cfg: GateConfig, *,
@@ -170,5 +171,11 @@ def evaluate(s: LogSummary, cfg: GateConfig, *,
             buckets.append("heartbeat_freeze_play")
             details.append(f"last play heartbeat at {last:.1f}s wallclock")
 
+    # A run whose ONLY red is perf_counter (no pixel/SIMID/save/validation/content bucket) is a PASS with a recorded warning (owner rule
+    # 2026-11-01: perf_counter-only reds are not gate failures). Every other bucket stays strict.
+    warnings: List[str] = []
+    if buckets == ["perf_counter"]:
+        warnings = [d for d in details if d.startswith("perf counters over ceiling")]
+        buckets, details = [], [d for d in details if d not in warnings]
     passed = not buckets and s.smoke_summary_result == "pass" and exit_code == 0
-    return Verdict(passed=passed, buckets=buckets, details=details)
+    return Verdict(passed=passed, buckets=buckets, details=details, warnings=warnings)

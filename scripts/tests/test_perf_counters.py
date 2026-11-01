@@ -49,9 +49,10 @@ def test_ceiling_bucket_fires_only_over_limit():
     s.presence_counts = {"perf_counters_missing": 1}
     s.perf_counters = {"draws.props": 12.5, "draws.terrain": 3.0}
     v = evaluate(s, cfg, exit_code=0, walltime_s=31)
-    assert "perf_counter" in v.buckets and any("draws.props" in d for d in v.details)
+    # perf_counter-only is a recorded warning, not a red bucket (owner rule 2026-11-01)
+    assert v.passed and not v.buckets and any("draws.props" in w for w in v.warnings)
     s.perf_counters["draws.props"] = 9.0
-    assert "perf_counter" not in evaluate(s, cfg, exit_code=0, walltime_s=31).buckets
+    assert not evaluate(s, cfg, exit_code=0, walltime_s=31).warnings
 
 
 def test_shipped_ceilings_file_is_well_formed():

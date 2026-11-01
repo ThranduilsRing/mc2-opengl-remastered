@@ -1745,6 +1745,8 @@ def main():
         # The options the engine saw: the exe's options.cfg plus the MC2_OPTIONS_OVERRIDE of this run's environment (the runner passes the
         # ambient environment through and applies cfg.env_extra last).
         _options = render_options_pin.record(Path(args.exe).resolve().parent, {**os.environ, **cfg.env_extra})
+        for _pw in result.verdict.warnings:
+            print(f"[runner] [PERF_COUNTER_WARN] {label}: {_pw}", file=sys.stderr)
         rows.append(report.Row(stem=label, verdict=result.verdict,
                                summary=result.summary, destroys_delta=delta or 0,
                                render_options=_options["values"]))
