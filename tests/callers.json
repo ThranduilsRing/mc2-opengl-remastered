@@ -5140,6 +5140,13 @@
           "text": "import run_battle_bench as bench"
         },
         {
+          "path": "tools/perf/_census_run.py",
+          "line": 7,
+          "evidence": "import",
+          "reference": "run_battle_bench",
+          "text": "import run_battle_bench as battle"
+        },
+        {
           "path": "tools/perf/mission_cpu_profile.py",
           "line": 27,
           "evidence": "import",
@@ -13434,6 +13441,20 @@
       ]
     },
     {
+      "path": "tools/perf/_census_analyze.py",
+      "basename": "_census_analyze.py",
+      "stem": "_census_analyze",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
+      "path": "tools/perf/_census_run.py",
+      "basename": "_census_run.py",
+      "stem": "_census_run",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
       "path": "tools/perf/budget_check.py",
       "basename": "budget_check.py",
       "stem": "budget_check",
@@ -13467,6 +13488,13 @@
           "evidence": "import",
           "reference": "main_busy",
           "text": "import main_busy  # noqa: E402"
+        },
+        {
+          "path": "tools/perf/_census_analyze.py",
+          "line": 4,
+          "evidence": "import",
+          "reference": "main_busy",
+          "text": "import main_busy as mb"
         }
       ]
     },
@@ -13484,6 +13512,13 @@
         }
       ],
       "callers_by_stem": [
+        {
+          "path": "tools/perf/_census_run.py",
+          "line": 6,
+          "evidence": "import",
+          "reference": "mission_cpu_profile",
+          "text": "import mission_cpu_profile as mcp"
+        },
         {
           "path": "tools/perf/budget_check.py",
           "line": 203,
