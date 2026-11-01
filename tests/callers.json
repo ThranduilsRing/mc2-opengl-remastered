@@ -2889,6 +2889,13 @@
           "text": "from scripts import console_child"
         },
         {
+          "path": "scripts/tests/test_fast_precheck_rules.py",
+          "line": 12,
+          "evidence": "import",
+          "reference": "console_child",
+          "text": "import console_child  # noqa: E402"
+        },
+        {
           "path": "scripts/tests/test_file_size_ratchet.py",
           "line": 16,
           "evidence": "import",
@@ -3741,6 +3748,13 @@
           "evidence": "import",
           "reference": "console_child",
           "text": "import console_child  # noqa: E402  (windowless console children)"
+        },
+        {
+          "path": "tools/ungated_log_tags.py",
+          "line": 26,
+          "evidence": "import",
+          "reference": "console_child",
+          "text": "import console_child  # noqa: E402"
         },
         {
           "path": "tools/unit_converter/test_equipment_converter.py",
@@ -4621,7 +4635,7 @@
       "callers_by_stem": [
         {
           "path": "scripts/tests/test_fast_precheck_rules.py",
-          "line": 12,
+          "line": 13,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate  # noqa: E402"
@@ -8193,7 +8207,7 @@
       "callers_by_stem": [
         {
           "path": "scripts/tests/test_fast_precheck_rules.py",
-          "line": 14,
+          "line": 15,
           "evidence": "import",
           "reference": "test_perf_counters",
           "text": "from test_perf_counters import _ready  # noqa: E402"
