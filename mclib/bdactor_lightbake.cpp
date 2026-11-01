@@ -226,7 +226,8 @@ void mc2CacheOrBakeStaticGpuLight(TG_MultiShape* shape,
 				extern void mc2InvalidateBakedStaticLightCache();
 				mc2InvalidateBakedStaticLightCache();
 				s_rebakeDone = true;
-				std::fprintf(stderr, "[LIGHTBAKE v1] event=rebake_on_ready frame=%u\n", static_cast<unsigned>(g_mc2FrameCounter.load(std::memory_order_relaxed)));
+				if (mc2_diag::tagRequested("LIGHTBAKE"))
+					std::fprintf(stderr, "[LIGHTBAKE v1] event=rebake_on_ready frame=%u\n", static_cast<unsigned>(g_mc2FrameCounter.load(std::memory_order_relaxed)));
 				MC2_DIAGF("[LIGHTBAKE v1] event=rebake_on_ready frame=%u\n",
 				       static_cast<unsigned>(g_mc2FrameCounter.load(std::memory_order_relaxed)));
 				fflush(stdout);

@@ -206,7 +206,7 @@ def known_gate_names() -> "frozenset | None":
 
 # GameOS/gameos/diagnostic_trace.cpp kDefaultTags (what MC2_DIAG_TAGS unset means) and the tags a runner-owned run adds on top.
 QUIET_TAG_DEFAULTS = "GPU_CULL,LIGHTBAKE_PROOF,ANIM_GATE,TerrainLOD_prod,CONFIG,BUILD,DEVICE,SHADER_COMPILE"
-RUNNER_DIAG_TAGS = ("PERF_COUNTERS", "CULL_PARITY", "LIGHT_CONTRACT", "CURSOR")
+RUNNER_DIAG_TAGS = ("PERF_COUNTERS", "CULL_PARITY", "LIGHT_CONTRACT", "CURSOR", "LIGHTBAKE")
 
 
 def unregistered_ambient(environ: dict, env_extra: "dict | None" = None) -> dict:
