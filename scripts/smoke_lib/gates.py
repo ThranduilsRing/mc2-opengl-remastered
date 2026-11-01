@@ -2,11 +2,26 @@
 """Fault-gate evaluator. Maps LogSummary -> pass/fail + bucket list."""
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import List, Optional
 
 from . import vk_validation
 from .logparse import MARKER_BUCKETS, PRESENCE_RULES, LogSummary
+
+
+PERF_CEILINGS_PATH = Path(__file__).resolve().parents[2] / "tests" / "smoke" / "perf_counter_ceilings.json"
+
+
+def load_perf_ceilings(path: Path = PERF_CEILINGS_PATH) -> dict:
+    """{stem: {counter: ceiling}}. Ceilings are observed x 1.25 from a smoke-lite run, on the count-type means only (draws, extract, heap, walk);
+    the wait_* timings are reported but not gated (too noisy at smoke-lite length). A missing or unreadable file means no ceilings."""
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+    return {k: v for k, v in data.items() if isinstance(v, dict)}
 
 
 @dataclass
@@ -25,6 +40,8 @@ class GateConfig:
     stem: str = ""
     vegetation_expected: bool = True  # Low/Potato retain only stock objects.
     content_error_budget: Optional[int] = 0
+    # {stem: {counter: ceiling}} for the perf_counter bucket; None loads tests/smoke/perf_counter_ceilings.json.
+    perf_ceilings: Optional[dict] = None
 
 
 @dataclass
@@ -107,6 +124,16 @@ def evaluate(s: LogSummary, cfg: GateConfig, *,
         if rule.stem == cfg.stem and s.mission_ready_ms is not None and s.presence_counts.get(rule.bucket, 0) == 0:
             buckets.append(rule.bucket)
             details.append(rule.why)
+
+    # perf_counter bucket: a run-mean counter above its ceiling (tests/smoke/perf_counter_ceilings.json). Only judged when the line printed (its
+    # absence is the perf_counters_missing presence rule above).
+    ceilings = (cfg.perf_ceilings if cfg.perf_ceilings is not None else load_perf_ceilings()).get(cfg.stem, {})
+    if ceilings and s.perf_counters:
+        over = [f"{name}={s.perf_counters[name]:.4g}>{limit:.4g}" for name, limit in sorted(ceilings.items())
+                if name in s.perf_counters and s.perf_counters[name] > limit]
+        if over:
+            buckets.append("perf_counter")
+            details.append("perf counters over ceiling: " + ", ".join(over))
 
     # A requested validation layer that never came up leaves nothing to grade: red, not clean. Errors the layer did report are already the
     # `vk_validation_error` marker bucket above.

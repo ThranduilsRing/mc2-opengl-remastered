@@ -98,6 +98,11 @@ class PresenceRule:
 
 
 PRESENCE_RULES: tuple = (
+    # [PERF_COUNTERS v1]: the per-frame counter line (draws, waits, walk) prints on the first frame and every 300 frames; a vanished line means
+    # the counter plumbing is gone and the perf ceilings below it would silently grade nothing.
+    *(PresenceRule(stem, re.compile(r"\[PERF_COUNTERS v1\] frames="), "perf_counters_missing",
+                   "no [PERF_COUNTERS v1] line: the per-frame counter log is gone")
+      for stem in ("mc2_01", "mc2_03", "mc2_10", "mc2_17", "mc2_24")),
     # The in-mission video surface: mc2_10 requests its briefing movies through the ABL play-video call, and the request is
     # logged before the frame-rate check, so the line appears whether or not the movie decodes. A vanished request line
     # means the in-mission video path is gone and the cinematic can disappear silently.
@@ -240,6 +245,19 @@ class LogSummary:
     vk_validation: list = field(default_factory=list)
     # Per PRESENCE_RULES row (keyed by its bucket): how many lines matched. The gate applies the rows of the mission under test.
     presence_counts: dict = field(default_factory=dict)
+    # The LAST `[PERF_COUNTERS v1]` line of the run as {field: mean per frame} (run-so-far means; wait_* in ms), plus `frames`. Empty when none printed.
+    perf_counters: dict = field(default_factory=dict)
+
+
+def parse_perf_counters(line: str) -> dict:
+    """`[PERF_COUNTERS v1] frames=N draws.props=.. wait_sealed_ms=.. first_vk_wait_site=<label> ...` -> {name: float}; non-numeric values are skipped."""
+    out: dict = {}
+    for key, value in re.findall(r"([A-Za-z_][\w.]*)=(\S+)", line.split("[PERF_COUNTERS v1]", 1)[-1]):
+        try:
+            out[key] = float(value)
+        except ValueError:
+            pass
+    return out
 
 
 def parse_log(text: str,
@@ -264,6 +282,8 @@ def parse_log(text: str,
         for record in re.finditer(r"\[SIMID v1\] simframe=[^\r\n\[]*", line):
             simid.update(record.group().rstrip().encode("utf-8", "replace"))
             s.simid_frames += 1
+        if "[PERF_COUNTERS v1]" in line:
+            s.perf_counters = parse_perf_counters(line)
         if "[VRAM v1]" in line:
             s.vram.extend(vram.parse(line))
         if "[VK_PROFILE v1]" in line:
