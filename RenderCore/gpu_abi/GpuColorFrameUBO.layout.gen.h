@@ -4,7 +4,7 @@
 #pragma once
 
 static_assert(std::is_trivially_copyable<ColorFrameUBO>::value, "ColorFrameUBO must be trivially copyable");
-static_assert(sizeof(ColorFrameUBO) == 320, "ColorFrameUBO size must match std140 GLSL struct");
+static_assert(sizeof(ColorFrameUBO) == 368, "ColorFrameUBO size must match std140 GLSL struct");
 static_assert(offsetof(ColorFrameUBO, worldToClipGL) == 0, "worldToClipGL offset");
 static_assert(offsetof(ColorFrameUBO, objectDepthBias) == 64, "objectDepthBias offset");
 static_assert(offsetof(ColorFrameUBO, instBase) == 68, "instBase offset");
@@ -23,3 +23,6 @@ static_assert(offsetof(ColorFrameUBO, pbrV1RoughnessOverride) == 268, "pbrV1Roug
 static_assert(offsetof(ColorFrameUBO, cameraWorldPos) == 272, "cameraWorldPos offset");
 static_assert(offsetof(ColorFrameUBO, poolF) == 288, "poolF offset");
 static_assert(offsetof(ColorFrameUBO, poolI) == 304, "poolI offset");
+static_assert(offsetof(ColorFrameUBO, sunColor) == 320, "sunColor offset");
+static_assert(offsetof(ColorFrameUBO, ambientColor) == 336, "ambientColor offset");
+static_assert(offsetof(ColorFrameUBO, specDir) == 352, "specDir offset");

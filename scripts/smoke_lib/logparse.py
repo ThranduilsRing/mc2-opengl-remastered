@@ -126,9 +126,19 @@ PRESENCE_RULES: tuple = (
     *(PresenceRule(stem, re.compile(r"\[CULL_PARITY v1\] engaged="), "cull_parity_missing",
                    "no [CULL_PARITY v1] line: the HZB GPU/CPU cull parity check is gone")
       for stem in ("mc2_01", "mc2_10")),
+    # Colour-prop light contract (W1): the bake-time parity check must have run (checks > 0) with no mismatch.
+    *(PresenceRule(stem, re.compile(r"\[LIGHT_CONTRACT v1\] checks=[1-9][0-9]* mismatches=0\b"), "light_contract_unchecked",
+                   "no [LIGHT_CONTRACT v1] checks>0 mismatches=0 line: the prop light parity check never ran or never passed")
+      for stem in ("mc2_01", "mc2_10")),
 )
 
 MARKER_BUCKETS: tuple = (
+    # Colour-prop light contract (W1): any row that disagrees with contractSun is a look change.
+    MarkerBucket(re.compile(r"\[LIGHT_CONTRACT v1\] checks=\d+ mismatches=[1-9]"),
+                 "light_contract_mismatch", "red", None),
+    # Contract must reproduce the retired baked row exactly: any max_delta above 0 is a divergence.
+    MarkerBucket(re.compile(r"\[LIGHT_CONTRACT v1\] .* max_delta=(?:[9]|[1-9][0-9]+)\b"),
+                 "light_contract_shared_delta", "red", None),
     # Stock tier1 baseline must be clean; missing textures are install failures.
     MarkerBucket(re.compile(r"\[SPLATTING\] FAILED\b"),
                  "splatting_failed", "red", None),
