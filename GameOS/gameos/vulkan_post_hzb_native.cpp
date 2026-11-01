@@ -42,6 +42,7 @@ using mc2hzb::ProjectedProp;
 #include <cstring>
 #include <chrono>
 #include <string>
+#include <string_view>
 #include <vector>
 #include <new>
 #include "../../mclib/battle_bench_wait.h"
@@ -203,11 +204,11 @@ ParityStats g_parity;
 constexpr uint64_t kParityEvery = 64;       // check one frame in 64
 constexpr uint32_t kParitySamples = 4096;   // instances compared per check (strided); keeps the CPU cost far below 0.02 ms/frame
 
-void parity_log(const char* tag) {
+void parity_log(std::string_view tag) {
     vlog("[CULL_PARITY v1] engaged=%d checks=%llu tested=%llu false_culls=%llu false_keeps=%llu runs=%llu%s",
          g_parity.checks ? 1 : 0, static_cast<unsigned long long>(g_parity.checks), static_cast<unsigned long long>(g_parity.tested),
          static_cast<unsigned long long>(g_parity.falseCulls), static_cast<unsigned long long>(g_parity.falseKeeps),
-         static_cast<unsigned long long>(g_parity.runs), tag);
+         static_cast<unsigned long long>(g_parity.runs), tag.data());
 }
 
 // Compares the GPU keep mask of the pending check frame with the CPU reference on the same bounds and the same pyramid copy.
