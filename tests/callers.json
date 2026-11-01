@@ -5592,7 +5592,7 @@
         },
         {
           "path": "scripts/run_smoke.py",
-          "line": 1562,
+          "line": 1564,
           "evidence": "import",
           "reference": "run_visual_capture",
           "text": "from run_visual_capture import smoke_capture"
@@ -7254,7 +7254,7 @@
       "callers_by_stem": [
         {
           "path": "scripts/run_smoke.py",
-          "line": 1667,
+          "line": 1669,
           "evidence": "import",
           "reference": "scripts.smoke_lib.runtime_bridge",
           "text": "from scripts.smoke_lib.runtime_bridge import RuntimeBridge"
