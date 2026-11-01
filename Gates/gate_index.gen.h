@@ -10,7 +10,7 @@
 
 namespace mc2::gate::detail {
 
-inline constexpr std::size_t kGateCount = 753;
+inline constexpr std::size_t kGateCount = 755;
 
 inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_ABL_ARG_GUARD", Kind::Bool, Rule::Lead1, {}},
@@ -75,6 +75,8 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_CAMERA_SMOOTH", Kind::Float, Rule::Prefix, {}},
     {"MC2_CAMERA_SMOOTH_TRACE", Kind::Bool, Rule::Lead1, {}},
     {"MC2_CAM_SMOOTH_TEST", Kind::Bool, Rule::Lead1, {}},
+    {"MC2_CAPTURE_FOCUS", Kind::String, Rule::Std, {}},
+    {"MC2_CAPTURE_FOCUS_ZOOM", Kind::Float, Rule::Prefix, {}},
     {"MC2_CAPTURE_FORCE_BUILDING_HIGHLIGHT", Kind::String, Rule::Std, {}},
     {"MC2_CEMENT_ATLAS_DUMP", Kind::String, Rule::Std, {}},
     {"MC2_CEMENT_ATLAS_SEAM_FIX", Kind::Bool, Rule::Lead0Kill, {}},

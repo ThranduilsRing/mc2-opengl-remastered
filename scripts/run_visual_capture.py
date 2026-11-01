@@ -784,6 +784,11 @@ def main() -> int:
                          "Requires >=1 stable bookmark + engine fired.")
     # CAPTURE-ENV-PIN-1: the ONLY sanctioned way to deviate from the shipped
     # MC2_* configuration. Everything else in the ambient shell is scrubbed.
+    ap.add_argument("--focus", metavar="mech[:N]", default=None,
+                    help="MC2_CAPTURE_FOCUS: move every bookmark pose onto the Nth live "
+                         "player-team mech (default 0); the bookmark still supplies rot/proj.")
+    ap.add_argument("--focus-zoom", type=float, default=None, metavar="ALT",
+                    help="camera altitude with --focus (default 200 = mech at about a fifth of the frame)")
     ap.add_argument("--env-declare", action="append", default=[],
                     metavar="MC2_KEY=VALUE",
                     help="explicitly opt this MC2_* var into the capture "
@@ -823,6 +828,7 @@ def main() -> int:
     det_clock = not args.no_fixed_clock
 
     try:
+        args.env_declare = list(args.env_declare) + env_pin.focus_declarations(args.focus, args.focus_zoom)
         declared_env = env_pin.parse_declarations(args.env_declare)
     except ValueError as e:
         print(f"[viscap] ERROR {e}", file=sys.stderr)

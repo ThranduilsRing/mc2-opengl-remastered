@@ -61,6 +61,7 @@
 
 #include "render_backend_select.h"
 #include "build_identity.h"  // Stable build identity declarations
+#include "diagnostic_trace.h"
 
 // Game Camera global `eye` + hard-set API (setPosition/setRotation). Use the
 // explicit mclib path: the GameOS-local "utils/camera.h" is a different GL
@@ -86,6 +87,8 @@ extern "C" {
     void mc2VisualCaptureSetPaused(int paused);
     // Restore the exact pre-sweep pause flag pair captured above.
     void mc2VisualCaptureRestorePauseState(int packed);
+    // MC2_CAPTURE_FOCUS: nth live player-team mech position (code/sim_identity.cpp).
+    int  mc2CaptureFocusMech(int n, float* xyz);
 }
 
 // SIM-IDENTITY-HASH-1: per-capture world-state hash. Dependency-free prototype
@@ -251,6 +254,18 @@ glm::vec3 g_renderedPos{0, 0, 0};
 float g_renderedProj = 0.0f;
 float g_renderedRot  = 0.0f;
 float g_renderedAlt  = 0.0f;
+// MC2_CAPTURE_FOCUS=mech[:N]: capture/dev knob. Read once; unset => off (one bool test per pose).
+// The sim is frozen during the sweep so the resolved mover position is stable.
+struct FocusState {
+    bool parsed = false;
+    bool requested = false;
+    int  index = 0;
+    float zoom = 200.0f;
+    bool found = false;
+    float pos[3] = {0, 0, 0};
+    bool logged = false;
+} g_focus;
+
 
 struct VkCaptureReq { bool pending = false; std::string png; int w = 0, h = 0; unsigned long long frame = 0; unsigned heldFrames = 0; };
 // A requested bookmark capture is delivered by a later present readback. The sweep holds the camera on that bookmark until it is delivered (or this
@@ -313,6 +328,11 @@ void write_sidecar(const std::string& jsonPath, std::string_view mission,
     mc2::fmt::to_buf(num, "  \"cap_proj\": {:.3f},\n", g_renderedProj); buf += num;
     mc2::fmt::to_buf(num, "  \"cap_rot\": {:.3f},\n", g_renderedRot); buf += num;
     mc2::fmt::to_buf(num, "  \"cap_alt\": {:.3f},\n", g_renderedAlt); buf += num;
+    if (g_focus.requested) {
+        char fnum[256];
+        // Focus target + resolved position (found=false: no live player mech, pose left as bookmarked).
+        mc2::fmt::to_buf(fnum, "  \"focus\": {{\"target\": \"mech:{:d}\", \"found\": {}, \"pos\": [{:.3f}, {:.3f}, {:.3f}], \"zoom\": {:.1f}}},\n", mc2::fmt::as_i32(g_focus.index), mc2::fmt::safe(g_focus.found ? "true" : "false"), g_focus.pos[0], g_focus.pos[1], g_focus.pos[2], g_focus.zoom); buf += fnum;
+    }
     // The render options the engine ran with (options.cfg plus MC2_OPTIONS_OVERRIDE): two captures are only comparable when these match.
     buf += "  \"render_options\": "; buf += mc2::options::toJson(mc2::options::current()); buf += ",\n";
     buf += "  \"gate_env\": [";
@@ -558,8 +578,38 @@ void parse_replay_cfg() {
     mc2::fmt::print_err("[VISUAL_CAPTURE v1.5] bookmark-replay init path={} settle={:d} triggerFrame={:d} dir={}\n", mc2::fmt::safe(g_replay.path), mc2::fmt::as_i32(g_replay.settleFrames), mc2::fmt::as_i32(g_replay.triggerFrame), g_replay.dir.c_str());
 }
 
-void apply_bookmark(const Bookmark& b) {
+void parse_focus() {
+    if (g_focus.parsed) return;
+    g_focus.parsed = true;
+    if (!mc2::gate::isSet<"MC2_CAPTURE_FOCUS">()) return;
+    const std::string spec = mc2::gate::str<"MC2_CAPTURE_FOCUS">();
+    if (spec.compare(0, 4, "mech") != 0) return;
+    if (spec.size() > 4) {
+        if (spec[4] != ':') return;
+        g_focus.index = std::atoi(spec.c_str() + 5);
+        if (g_focus.index < 0) g_focus.index = 0;
+    }
+    g_focus.zoom = static_cast<float>(mc2::gate::get<"MC2_CAPTURE_FOCUS_ZOOM">());
+    g_focus.requested = true;
+}
+
+void apply_bookmark(const Bookmark& b0) {
     if (!eye) return;
+    parse_focus();
+    Bookmark b = b0;
+    if (g_focus.requested) {
+        char fnum[256];
+        g_focus.found = mc2CaptureFocusMech(g_focus.index, g_focus.pos) != 0;
+        if (g_focus.found) {
+            b.pos[0] = g_focus.pos[0]; b.pos[1] = g_focus.pos[1]; b.pos[2] = g_focus.pos[2];
+            b.hasPos = true;
+            b.alt = g_focus.zoom;
+        }
+        if (!g_focus.logged && mc2_diag::tagRequested("CAPTURE_FOCUS")) {
+            g_focus.logged = true;
+            mc2::fmt::print_err("[CAPTURE_FOCUS v1] mech:{:d} found={:d} pos={:.1f},{:.1f},{:.1f} zoom={:.1f}\n", mc2::fmt::as_i32(g_focus.index), mc2::fmt::as_i32(g_focus.found ? 1 : 0), g_focus.pos[0], g_focus.pos[1], g_focus.pos[2], g_focus.zoom);
+        }
+    }
     if (b.hasPos) {
         glm::vec3 p;
         p.x = b.pos[0]; p.y = b.pos[1]; p.z = b.pos[2];

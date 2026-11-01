@@ -62,6 +62,7 @@ int  mc2FreezeMoversActive() { return 0; }
 int  mc2VisualCaptureGetPauseState() { return -1; }  // -1 = no mission interface
 void mc2VisualCaptureSetPaused(int) {}
 void mc2VisualCaptureRestorePauseState(int) {}
+int  mc2CaptureFocusMech(int, float*) { return 0; }
 int  mc2SimIdentityWriteJson(char* buf, int cap, double, long)
 {
     if (buf && cap > 0) buf[0] = '\0';
