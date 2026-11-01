@@ -59,6 +59,7 @@ add_executable(mc2_tests
     test_shadow_mover_fit.cpp
     test_static_caster_set.cpp
     ../../GameOS/gameos/static_caster_set.cpp
+    ${MC2_WORKTREE_ROOT}/GameOS/gameos/diagnostic_trace.cpp
     test_gate.cpp           # GATE-REGISTRY-G1A: truthiness matrix, slot cache, [CONFIG v1] dump
     test_tactical_overview.cpp   # TACTICAL-OVERVIEW-1: blend-state pure logic
     test_xform_convention.cpp    # XFORM-CONVENTION-HARNESS-1: clip-space convention lock

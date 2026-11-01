@@ -6,8 +6,8 @@ Problem: `scripts/check-default-build-quiet.py --fresh-smoke` fails when a `[TAG
 ## Pattern (apply it to any new always-printing diagnostic tag)
 
 1. Engine: print only when the tag is requested. `#include "diagnostic_trace.h"` (GameOS/gameos) and guard the print with
-   `if (!mc2_diag::tagRequested("MY_TAG")) return;`. `tagRequested` reads MC2_DIAG_TAGS from the environment, needs no init and works at
-   atexit/teardown. Keep the counters themselves collected as before; only the print is gated. No new feature gate, no registry entry.
+   `if (!mc2_diag::tagRequested("MY_TAG")) return;`. `tagRequested` reads MC2_DIAG_TAGS from the environment, needs no init and is safe at
+   atexit/teardown: the tag sets it parses against (knownTags, defaultWhitelist) are immortal heap objects, never destroyed, so a call after static destruction is valid (unit test: tests/unit/test_diag_tags.cpp). Keep the counters themselves collected as before; only the print is gated. No new feature gate, no registry entry.
    (Use `mc2_diag::tagEnabled` only for JSONL events written through the trace file.)
 2. Runner: add the tag to `RUNNER_DIAG_TAGS` in `scripts/smoke_lib/runner.py`. Every runner-owned game launch (run_smoke, run_battle_bench,
    tools/perf census, mission_cpu_profile, main_busy) goes through `run_one`, which appends these tags to MC2_DIAG_TAGS (restating the engine's

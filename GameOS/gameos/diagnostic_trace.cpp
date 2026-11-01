@@ -11,6 +11,7 @@
 #include <cstring>
 #include <filesystem>
 #include <iterator>
+#include <memory>
 #include <mutex>
 #include <set>
 #include <string>
@@ -25,7 +26,8 @@ namespace {
 // Sessions querying get_diagnostic_events() with an unknown tag receive an error.
 // Add new tags here as diagnostic sites are migrated from stderr.
 const std::unordered_set<std::string>& knownTags() {
-    static const std::unordered_set<std::string> tags = {
+    // Immortal (leaked on purpose): tagRequested() -> parseTagsEnv() calls this from atexit handlers, after a destructible static would be gone.
+    static const auto* tags = std::make_unique<std::unordered_set<std::string>>(std::initializer_list<std::string>{
         "GPU_CULL",
         "LIGHTBAKE_PROOF",
         "ANIM_GATE",
@@ -51,8 +53,8 @@ const std::unordered_set<std::string>& knownTags() {
         "VK_SHUTDOWN", // VK shutdown-order trace: one line per island retire and per image-owner destroy ([VK_ENGINE_CONTEXT] / [VK_IMAGE_RESOURCE]). Opt-in.
         "RNG",      // DETERMINISTIC-RNG-1: per gos_rand() result (compile-gated by MC2_RNG_TRACE). Opt-in.
         "VFX_COMBAT", // VFX combat-event trace the VFX oracle (Sol G3) reads to line effects up with weapon fire. Opt-in.
-    };
-    return tags;
+    }).release();
+    return *tags;
 }
 
 // Default tag whitelist (used when MC2_DIAG_TAGS is unset). A constant array, so tagRequested() can read it from the destructors of other static-duration
@@ -69,8 +71,8 @@ constexpr std::string_view kDefaultTags[] = {
 };
 
 const std::unordered_set<std::string>& defaultWhitelist() {
-    static const std::unordered_set<std::string> tags(std::begin(kDefaultTags), std::end(kDefaultTags));
-    return tags;
+    static const auto* tags = std::make_unique<std::unordered_set<std::string>>(std::begin(kDefaultTags), std::end(kDefaultTags)).release();   // immortal, see knownTags()
+    return *tags;
 }
 
 struct DiagState {
