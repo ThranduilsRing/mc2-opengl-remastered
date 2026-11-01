@@ -54,6 +54,6 @@ def test_focus_tag_is_runner_owned():
                                   "tools/visual_verify/capture.py",
                                   "tools/visual_verify/ab.py"])
 def test_cli_exposes_flags(tool):
-    out = subprocess.run([sys.executable, "-B", str(ROOT / tool), "--help"],
+    out = subprocess.run([sys.executable, "-B", str(ROOT / tool), "--help"],  # background-launch: allow --help only, no engine or window
                          capture_output=True, text=True, timeout=60)
     assert "--focus-zoom" in out.stdout and "--focus " in out.stdout.replace("--focus  ", "--focus ")
