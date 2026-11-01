@@ -186,6 +186,7 @@
 // darken props on mc2_10, which is the opposite direction to the user's standing
 // report. That is a user call, not an agent call.
 static bool s_lightBakeRebakeDone = false;
+static uint32_t s_lightBakeReadyFrame = 0;
 
 static thread_local bool s_lastBakeFresh = false;  // [LIGHT_CONTRACT v1] set by the bake gate: true = real gather, false = shared HIT row
 
@@ -216,7 +217,7 @@ void mc2CacheOrBakeStaticGpuLight(TG_MultiShape* shape,
 	{
 		static const bool s_rebakeOnReady = mc2::gate::get<"MC2_LIGHTBAKE_REBAKE_ON_READY">();
 		bool&            s_rebakeDone = s_lightBakeRebakeDone;  // [BAKEORD v1] file-scope
-		static uint32_t s_readyFrame  = 0;
+		uint32_t&        s_readyFrame = s_lightBakeReadyFrame;  // file-scope: re-armed per mission
 		if (s_rebakeOnReady && !s_rebakeDone && SmokeMode::missionHasStarted()) {
 			if (s_readyFrame == 0) {
 				s_readyFrame = g_mc2FrameCounter.load(std::memory_order_relaxed) ? g_mc2FrameCounter.load(std::memory_order_relaxed) : 1;
@@ -404,6 +405,20 @@ bool mc2ConeGroundHit (const glm::vec3& apex,
 // from the freshly gathered row against the S/A in force at gather time.
 static std::mutex s_slotIMutex;
 static std::vector<float> s_slotI;
+static std::vector<unsigned> s_slotEpoch;      // light-environment epoch each row was gathered in
+static std::vector<unsigned> s_slotBakeFrame;  // frame counter at gather
+
+// Light-environment epoch: bumps whenever the published sun/ambient (S,A) differs from the previous query.
+// A row gathered in an older epoch is STALE (predates the last light change), not a contract mismatch.
+static unsigned lightEnvEpoch(const int S[3], const int A[3])
+{
+	static std::mutex m; static int last[6]; static bool have = false; static unsigned epoch = 1;
+	std::lock_guard<std::mutex> g(m);
+	const int now[6] = {S[0], S[1], S[2], A[0], A[1], A[2]};
+	if (!have) { std::copy_n(now, 6, last); have = true; }
+	else if (!std::equal(now, now + 6, last)) { std::copy_n(now, 6, last); ++epoch; }
+	return epoch;
+}
 
 void mc2RecordSlotIFwd(TG_MultiShape* shape)
 {
@@ -418,9 +433,10 @@ void mc2RecordSlotIFwd(TG_MultiShape* shape)
 		if (type == 1 || type == 2) { found = i; break; }
 	}
 	float I = -1.0f;
+	int S[3], A[3], F; float D[3];
+	eye->getPropLightContract(S, A, F, D);
+	const unsigned epoch = lightEnvEpoch(S, A);
 	if (found >= 0) {
-		int S[3], A[3], F; float D[3];
-		eye->getPropLightContract(S, A, F, D);
 		float lo = -1e9f, hi = 1e9f;
 		for (int k = 0; k < 3; ++k) {
 			if (S[k] <= 0) continue;
@@ -432,8 +448,23 @@ void mc2RecordSlotIFwd(TG_MultiShape* shape)
 		if (lo > -1e8f) I = std::clamp(hi < 1e8f ? 0.5f * (lo + hi) : lo, 0.0f, 1.0f);
 	}
 	std::lock_guard<std::mutex> g(s_slotIMutex);
-	if (s_slotI.size() <= idx) s_slotI.resize(idx + 1, -1.0f);
+	if (s_slotI.size() <= idx) { s_slotI.resize(idx + 1, -1.0f); s_slotEpoch.resize(idx + 1, 0u); s_slotBakeFrame.resize(idx + 1, 0u); }
 	s_slotI[idx] = I;
+	s_slotEpoch[idx] = epoch;
+	s_slotBakeFrame[idx] = static_cast<unsigned>(g_mc2FrameCounter.load(std::memory_order_relaxed));
+}
+
+// Mission unload (mc2ClearAllBakedStaticLight): light indices and recipe rows restart, so drop the I/epoch
+// side tables and re-arm the one-shot rebake-on-ready, otherwise a mission loaded from a save keeps rows
+// baked before its night lighting was applied (the row-stale case the parity check reports as stale_rows).
+void mc2OnMissionLightBakeReset()
+{
+	{
+		std::lock_guard<std::mutex> g(s_slotIMutex);
+		s_slotI.clear(); s_slotEpoch.clear(); s_slotBakeFrame.clear();
+	}
+	s_lightBakeRebakeDone = false;
+	s_lightBakeReadyFrame = 0;
 }
 
 static std::atomic<unsigned> s_slotIHit{0}, s_slotIFallback{0};
@@ -451,6 +482,8 @@ float mc2PropSlotI(uint32_t lightIndex, float fallbackI)
 static std::atomic<unsigned> s_contractChecks{0}, s_contractMismatch{0};
 // Shared (HIT) rows reuse the first baker's terrain light I: informational delta, ceiling 8 levels.
 static std::atomic<unsigned> s_sharedRows{0}, s_sharedMaxDelta{0}, s_offByOne{0};
+// Stale rows (gathered before the last S/A change): informational, converge after the rebake.
+static std::atomic<unsigned> s_staleRows{0}, s_staleMaxDelta{0}, s_staleLastFrame{0};
 
 void mc2PropLightContractCheck(TG_MultiShape* shape, float terrainLight, uint32_t policy)
 {
@@ -460,6 +493,13 @@ void mc2PropLightContractCheck(TG_MultiShape* shape, float terrainLight, uint32_
 	int S[3], A[3], F; float D[3];
 	eye->getPropLightContract(S, A, F, D);
 	const mc2::prop_light::SunRgb want = mc2::prop_light::contractSun(S, A, F, terrainLight, policy);
+	const unsigned epoch = lightEnvEpoch(S, A);
+	unsigned rowEpoch = 0, rowFrame = 0;
+	{
+		const uint32_t idx = shape->getCachedGpuLightIndex();
+		std::lock_guard<std::mutex> g(s_slotIMutex);
+		if (idx < s_slotEpoch.size()) { rowEpoch = s_slotEpoch[idx]; rowFrame = s_slotBakeFrame[idx]; }
+	}
 	int found = -1;
 	for (int i = 0; i < leaf->numLights_ && i < kGpuObjectLightsMax; ++i) {
 		const int type = static_cast<int>(leaf->lightDir[i][3]);
@@ -481,6 +521,17 @@ void mc2PropLightContractCheck(TG_MultiShape* shape, float terrainLight, uint32_
 			if (ad > d) d = ad;
 		}
 		ok = (d == 0);
+		if (rowEpoch != 0 && rowEpoch < epoch) {
+			// Row predates the last light change: informational stale row, not a parity failure.
+			const unsigned n = ++s_staleRows;
+			unsigned cur = s_staleMaxDelta.load();
+			while (d > cur && !s_staleMaxDelta.compare_exchange_weak(cur, d)) {}
+			s_staleLastFrame = static_cast<unsigned>(g_mc2FrameCounter.load(std::memory_order_relaxed));
+			if (n <= 6 && d > 0)
+				std::fprintf(stderr, "[LIGHT_CONTRACT v1] stale#%u frame=%u bake_frame=%u row_epoch=%u epoch=%u delta=%u\n",
+				             n, s_staleLastFrame.load(), rowFrame, rowEpoch, epoch, d);
+			return;
+		}
 		if (d > 0) ++s_offByOne;
 		unsigned cur = s_sharedMaxDelta.load();
 		while (d > cur && !s_sharedMaxDelta.compare_exchange_weak(cur, d)) {}
@@ -501,8 +552,9 @@ void mc2PropLightContractCheck(TG_MultiShape* shape, float terrainLight, uint32_
 void mc2PropLightContractReport(bool final)
 {
 	extern unsigned mc2CameraLightChangedCount();
-	std::fprintf(stderr, "[LIGHT_CONTRACT v1] checks=%u mismatches=%u camera_light_changed=%u shared_row_delta=%u max_delta=%u inexact_rows=%u slotI_hit=%u slotI_fallback=%u%s\n",
+	std::fprintf(stderr, "[LIGHT_CONTRACT v1] checks=%u mismatches=%u camera_light_changed=%u shared_row_delta=%u max_delta=%u inexact_rows=%u slotI_hit=%u slotI_fallback=%u stale_rows=%u stale_max=%u stale_last_frame=%u%s\n",
 	          s_contractChecks.load(), s_contractMismatch.load(), mc2CameraLightChangedCount(),
-	          s_sharedRows.load(), s_sharedMaxDelta.load(), s_offByOne.load(), s_slotIHit.load(), s_slotIFallback.load(), final ? " final=1" : "");
+	          s_sharedRows.load(), s_sharedMaxDelta.load(), s_offByOne.load(), s_slotIHit.load(), s_slotIFallback.load(),
+	          s_staleRows.load(), s_staleMaxDelta.load(), s_staleLastFrame.load(), final ? " final=1" : "");
 	fflush(stderr);
 }
