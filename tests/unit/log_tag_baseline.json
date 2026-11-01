@@ -2276,6 +2276,18 @@
    "ver": -1,
    "stream": "log",
    "keys": [
+    "event",
+    "focused",
+    "visible",
+    "os_cursor_gate"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "CURSOR",
+   "ver": -1,
+   "stream": "log",
+   "keys": [
     "f",
     "drawMouse",
     "mouseState",
@@ -11594,6 +11606,7 @@
   "CONTENT_SUMMARY",
   "CRASH",
   "CRASHBUNDLE",
+  "CULL_PARITY",
   "DEPLOY_COHERENCE",
   "DEPLOY_FINGERPRINT",
   "DEPLOY_GUARD",
