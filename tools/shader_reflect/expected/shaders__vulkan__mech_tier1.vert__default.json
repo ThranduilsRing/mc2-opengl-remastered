@@ -11,7 +11,7 @@
           "matrix_stride": null,
           "name": "instances",
           "offset": 0,
-          "type": "_418"
+          "type": "_363"
         }
       ],
       "name": "InstanceBuffer"
@@ -24,7 +24,7 @@
           "matrix_stride": null,
           "name": "bones",
           "offset": 0,
-          "type": "_482"
+          "type": "_427"
         }
       ],
       "name": "BoneBuffer"
@@ -37,7 +37,7 @@
           "matrix_stride": null,
           "name": "light",
           "offset": 0,
-          "type": "_98"
+          "type": "_88"
         }
       ],
       "name": "LightsData"
