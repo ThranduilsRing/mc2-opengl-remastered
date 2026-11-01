@@ -4577,6 +4577,38 @@
    "count": 1
   },
   {
+   "tag": "LIGHT_CONTRACT",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "checks",
+    "mismatches",
+    "camera_light_changed",
+    "shared_row_delta",
+    "max_delta",
+    "inexact_rows",
+    "slotI_hit",
+    "slotI_fallback"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "LIGHT_CONTRACT",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "policy",
+    "I",
+    "want",
+    "on",
+    "S",
+    "A",
+    "F",
+    "row"
+   ],
+   "count": 1
+  },
+  {
    "tag": "LIGHT_COST_SPLIT",
    "ver": 1,
    "stream": "stderr",
@@ -11594,6 +11626,7 @@
   "CONTENT_SUMMARY",
   "CRASH",
   "CRASHBUNDLE",
+  "CULL_PARITY",
   "DEPLOY_COHERENCE",
   "DEPLOY_FINGERPRINT",
   "DEPLOY_GUARD",
@@ -11617,6 +11650,7 @@
   "HEARTBEAT",
   "INSTR",
   "ISO_DEPLOY",
+  "LIGHT_CONTRACT",
   "LINK_GUARD",
   "MARAUDER",
   "MISSION_OBJECTIVES",

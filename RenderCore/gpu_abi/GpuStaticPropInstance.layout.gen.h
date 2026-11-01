@@ -8,7 +8,7 @@ static_assert(sizeof(GpuStaticPropInstance) == 112, "GpuStaticPropInstance size 
 static_assert(alignof(GpuStaticPropInstance) == 16, "GpuStaticPropInstance alignment");
 static_assert(offsetof(GpuStaticPropInstance, modelMatrix) == 0, "modelMatrix offset");
 static_assert(offsetof(GpuStaticPropInstance, typeID) == 64, "typeID offset");
-static_assert(offsetof(GpuStaticPropInstance, firstColorOffset) == 68, "firstColorOffset offset");
+static_assert(offsetof(GpuStaticPropInstance, actorTint) == 68, "actorTint offset");
 static_assert(offsetof(GpuStaticPropInstance, flags) == 72, "flags offset");
 static_assert(offsetof(GpuStaticPropInstance, lightDataIndex) == 76, "lightDataIndex offset");
 static_assert(offsetof(GpuStaticPropInstance, aRGBHighlight) == 80, "aRGBHighlight offset");
