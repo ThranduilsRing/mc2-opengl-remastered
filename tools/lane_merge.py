@@ -800,10 +800,14 @@ def precheck(root: str, tip: str) -> int:
                 if r.returncode not in ((0, 3) if label == "tools_tests" else (0,)):
                     failed.append(label + ":" + failure_summary(r.stdout).replace("\n", " "))
             build_root = root if tree == lane_tree and not git_out(root, "status", "--porcelain", "--untracked-files=no") else snapshot
+            # Git clones omit the ignored binary dependencies needed by configure.
+            if build_root == snapshot:
+                from bootstrap_worktree_build import ensure_deps
+                ensure_deps(snapshot, os.path.abspath(root))
             # Refresh warm trees too: older dev configurations omitted the opt-in FX tools.
             build_steps = [("configure", py + ["scripts/configure_ninja.py", "--build-dir", "build64-ninja"])]
-            build_steps += [("link-mc2", py + ["scripts/ninja_build.py", "mc2", "-j", host_jobs()])]
-            build_steps += [("link-tools", py + ["scripts/ninja_build.py", "mc2fx", "mc2fx_preview", "-j", host_jobs()])]
+            build_steps += [("link-mc2", py + ["scripts/ninja_build.py", "mc2", "-j" + host_jobs()])]
+            build_steps += [("link-tools", py + ["scripts/ninja_build.py", "mc2fx", "mc2fx_preview", "-j" + host_jobs()])]
             for label, command in build_steps:
                 r = run(build_root, command, env=verify_env(build_root))
                 if r.returncode:

@@ -56,6 +56,7 @@
 #include <cstring>
 #include <memory>
 #include <vector>
+#include "../../mclib/battle_bench_wait.h"
 
 namespace mc2vk {
 
@@ -693,7 +694,7 @@ void VulkanContext::beginFrame() {
     // incomplete (device lost) the slot keeps its head, so the CPU never overwrites bytes the GPU may still read.
     bool slotFree = true;
     if (f > framesInFlight_) {
-        ZoneScopedN("VKContext.RingWait");
+        ZoneScopedN("VKContext.RingWait"); mc2::battlebench::WaitScope gpuWait1(mc2::battlebench::WaitGpuMainNs);
         const GpuTicket t = tracker_.frameTicket(f - framesInFlight_);
         if (!wait(t, 5ull * 1000 * 1000 * 1000, "frame_ring_slot")) {
             waitIdle("frame_ring_slot_timeout");
@@ -854,14 +855,14 @@ void setObjectName(VkDevice device, VkObjectType type, uint64_t handle, std::str
     vkSetDebugUtilsObjectNameEXT(device, &info);
 }
 
-VulkanContext& getOrCreateEngineVulkanContext() {
-    present_thread::waitSealed();
+VulkanContext& getOrCreateEngineVulkanContext(std::source_location site) {
+    present_thread::waitSealed(site);
     mc2::overlap::assertOwner(mc2::overlap::Owner::Render, "getOrCreateEngineVulkanContext");
     return engineContext();
 }
 
-bool engineVulkanContextValid() {
-    present_thread::waitSealed();
+bool engineVulkanContextValid(std::source_location site) {
+    present_thread::waitSealed(site);
     return engineContext().valid();
 }
 

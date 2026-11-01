@@ -120,6 +120,8 @@ extern "C" void mc2FreezeMoversSet(int on, long atFrame)
 extern "C" long mc2FreezeMoversArmedAt()   { return s_freezeMoversAt; }
 extern "C" long mc2FreezeMoversEngagedAt() { return s_freezeMoversEngaged; }
 
+void mc2BenchWalk(GameObjectManager& om, int rounds);   // code/objmgr_misc.cpp
+
 // Test-only fixtures and determinism verbs (spawn, teleport, freeze_movers, set_light, animate). Returns true when a verb of this group matched.
 bool MissionInterfaceManager::uiCmdFixture(UiCmdCtx& c)
 {
@@ -191,6 +193,22 @@ bool MissionInterfaceManager::uiCmdFixture(UiCmdCtx& c)
 	if (line == "bench_attack") {
 		if (mc2::gate::get<"MC2_TEST_SPAWN">()) { mc2::battlebench::attack = true; result = "ok"; }
 		else result = "blocked";
+		return true;
+	}
+	if (line.rfind("bench_freeze ", 0) == 0) {   // freeze the sim tick (existing freeze_movers path) and pin the camera
+		const std::string arg = line.substr(13);
+		if (!mc2::gate::get<"MC2_TEST_SPAWN">() || (arg != "on" && arg != "off")) result = "blocked";
+		else {
+			mc2FreezeMoversSet(arg == "on" ? 1 : 0, -1);
+			if (arg == "on" && eye) eye->freezeScriptedCameraForCapture();
+			result = "ok";
+		}
+		return true;
+	}
+	if (line.rfind("bench_walk ", 0) == 0) {     // prints [WALK_BENCH v1] lines to stderr
+		int n = 0;
+		if (!mc2::gate::get<"MC2_TEST_SPAWN">() || !ObjectManager || sscanf(line.c_str() + 11, "%d", &n) != 1 || n < 1) result = "blocked";
+		else { mc2BenchWalk(*ObjectManager, n); result = "ok"; }
 		return true;
 	}
 	if (line.rfind("bench_view ", 0) == 0) {

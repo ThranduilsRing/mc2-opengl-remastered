@@ -50,4 +50,23 @@ inline ProjectedProp project_prop(const GpuStaticPropInstance& inst, const float
     return out;
 }
 
+// CPU reference of the per-instance mip test in shaders/vulkan/hzb_cull.comp (same constants, same clamps).
+// `fetch(level, x, y)` returns the reverse-Z HZB texel (a MIN reduction: the farthest occluder in the footprint).
+// Level n is the n-th halving (rounded up) of baseW x baseH. Returns true when the prop is occluded (GPU keep bit 0).
+template <class Fetch>
+inline bool hzb_hidden(const ProjectedProp& p, int baseW, int baseH, Fetch&& fetch) {
+    if (p.keep != 0) return false;
+    int lw = baseW, lh = baseH;
+    for (uint32_t l = 0; l < p.lod; ++l) { lw = (std::max)(1, (lw + 1) / 2); lh = (std::max)(1, (lh + 1) / 2); }
+    const float scale = float(1u << p.lod);
+    const int x0 = (std::clamp)(int(std::floor(p.pixels[0] / scale)), 0, lw - 1);
+    const int y0 = (std::clamp)(int(std::floor(p.pixels[1] / scale)), 0, lh - 1);
+    const int x1 = (std::clamp)(int(std::floor(p.pixels[2] / scale)), 0, lw - 1);
+    const int y1 = (std::clamp)(int(std::floor(p.pixels[3] / scale)), 0, lh - 1);
+    float farthest = 1.0f;
+    for (int y = y0; y <= y1; ++y)
+        for (int x = x0; x <= x1; ++x) farthest = (std::min)(farthest, fetch(int(p.lod), x, y));
+    return p.nearest < farthest - 0.00002f;
+}
+
 } // namespace mc2hzb

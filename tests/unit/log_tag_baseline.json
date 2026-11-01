@@ -6574,6 +6574,15 @@
    "count": 1
   },
   {
+   "tag": "PERF_COUNTERS",
+   "ver": 1,
+   "stream": "buffer",
+   "keys": [
+    "frames"
+   ],
+   "count": 1
+  },
+  {
    "tag": "PHOTO",
    "ver": -1,
    "stream": "stdout",
@@ -11255,6 +11264,30 @@
    "count": 1
   },
   {
+   "tag": "WALK_BENCH",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "rounds",
+    "visited",
+    "timer_ns",
+    "renderView_walk"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "WALK_BENCH",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "step",
+    "calls",
+    "ns_per_call",
+    "total_ms"
+   ],
+   "count": 1
+  },
+  {
    "tag": "WATCHDOG",
    "ver": -1,
    "stream": "buffer",
@@ -11594,6 +11627,7 @@
   "MOVER_FIXTURE",
   "ORDER_LIVENESS_SUMMARY",
   "PERF",
+  "PERF_COUNTERS",
   "REPLAY_DIVERGED",
   "RESOLUTION",
   "RGBA",

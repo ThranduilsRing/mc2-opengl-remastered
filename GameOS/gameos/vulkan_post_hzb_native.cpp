@@ -42,8 +42,11 @@ using mc2hzb::ProjectedProp;
 #include <cstring>
 #include <chrono>
 #include <string>
+#include <string_view>
 #include <vector>
 #include <new>
+#include "../../mclib/battle_bench_wait.h"
+#include <tracy/Tracy.hpp>
 
 namespace {
 
@@ -150,6 +153,20 @@ struct gosPostProcess::VkPostHzbNative {
     mc2vk::OwnedPipelineLayout cullLayout;
     mc2vk::OwnedPipeline cullPipe;
     std::vector<VkDescriptorSet> cullSets;
+    // [CULL_PARITY v1] counter-only check: a sampled subset of one frame's instances, with the matrix/bias/bounds that produced the GPU mask, compared
+    // with the CPU reference once that frame's mask is readable (next run, after the ticket wait; never an extra wait). Mips are copied on check frames only.
+    struct ParityPending {
+        bool valid = false;
+        uint64_t generation = 0;
+        int w = 0, h = 0, mips = 0;
+        float worldToClip[16] = {};
+        float bias = 0;
+        std::vector<uint32_t> ids;
+        std::vector<GpuStaticPropInstance> inst;
+        std::vector<PropBounds> bounds;
+    } parity;
+    mc2vk::OwnedBuffer parityMips;
+    VkDeviceSize parityMipBytes = 0;
     uint64_t ticket = 0;   // timeline value of this pass's last submit (0 = never): waited at the NEXT run, not inline after the submit
 };
 
@@ -179,6 +196,56 @@ void destroy_state(gosPostProcess::VkPostHzbNative* s) {
     const bool disabled = s->disabled;
     *s = gosPostProcess::VkPostHzbNative{};
     s->disabled = disabled;
+}
+
+// [CULL_PARITY v1] process-wide totals (survive a resize reset of the state).
+struct ParityStats { uint64_t runs = 0, checks = 0, tested = 0, falseCulls = 0, falseKeeps = 0, loggedFalseCulls = 0; };
+ParityStats g_parity;
+constexpr uint64_t kParityEvery = 64;       // check one frame in 64
+constexpr uint32_t kParitySamples = 4096;   // instances compared per check (strided); keeps the CPU cost far below 0.02 ms/frame
+
+void parity_log(std::string_view tag) {
+    vlog("[CULL_PARITY v1] engaged=%d checks=%llu tested=%llu false_culls=%llu false_keeps=%llu runs=%llu%s",
+         g_parity.checks ? 1 : 0, static_cast<unsigned long long>(g_parity.checks), static_cast<unsigned long long>(g_parity.tested),
+         static_cast<unsigned long long>(g_parity.falseCulls), static_cast<unsigned long long>(g_parity.falseKeeps),
+         static_cast<unsigned long long>(g_parity.runs), tag.data());
+}
+
+// Compares the GPU keep mask of the pending check frame with the CPU reference on the same bounds and the same pyramid copy.
+void parity_check(gosPostProcess::VkPostHzbNative* s) {
+    auto& pc = s->parity;
+    if (!pc.valid) return;
+    pc.valid = false;
+    if (pc.generation != s->visibilityGeneration || pc.w != s->width || pc.h != s->height || pc.mips != s->mipCount || !s->parityMips) return;
+    ZoneScopedN("HZB.ParityCheck");
+    vmaInvalidateAllocation(s->allocator, s->visibility.allocation(), 0, VK_WHOLE_SIZE);
+    vmaInvalidateAllocation(s->allocator, s->parityMips.allocation(), 0, VK_WHOLE_SIZE);
+    const uint32_t* vis = static_cast<const uint32_t*>(s->visibility.map());
+    const float* mips = static_cast<const float*>(s->parityMips.map());
+    if (vis && mips) {
+        std::vector<size_t> offset(static_cast<size_t>(s->mipCount));
+        size_t at = 0;
+        for (int l = 0; l < s->mipCount; ++l) { offset[static_cast<size_t>(l)] = at; at += size_t(s->levels[static_cast<size_t>(l)].w) * size_t(s->levels[static_cast<size_t>(l)].h); }
+        const auto fetch = [&](int l, int x, int y) { return mips[offset[static_cast<size_t>(l)] + size_t(y) * size_t(s->levels[static_cast<size_t>(l)].w) + size_t(x)]; };
+        ++g_parity.checks;
+        for (size_t i = 0; i < pc.ids.size(); ++i) {
+            const auto p = mc2hzb::project_prop(pc.inst[i], pc.worldToClip, pc.bias, pc.bounds, pc.w, pc.h, pc.mips);
+            const bool cpuHidden = mc2hzb::hzb_hidden(p, pc.w, pc.h, fetch);
+            const bool gpuHidden = vis[1u + pc.ids[i]] == 0u;
+            ++g_parity.tested;
+            if (gpuHidden && !cpuHidden) {
+                ++g_parity.falseCulls;
+                if (g_parity.loggedFalseCulls++ < 8)
+                    vlog("[CULL_PARITY v1] FALSE_CULL runs=%llu id=%u type=%u keep=%u lod=%u nearest=%.6f pixels=%.1f,%.1f,%.1f,%.1f",
+                         static_cast<unsigned long long>(g_parity.runs), pc.ids[i], pc.inst[i].typeID, p.keep, p.lod, p.nearest,
+                         p.pixels[0], p.pixels[1], p.pixels[2], p.pixels[3]);
+            } else if (!gpuHidden && cpuHidden) {
+                ++g_parity.falseKeeps;
+            }
+        }
+    }
+    if (mips) s->parityMips.unmap();
+    if (vis) s->visibility.unmap();
 }
 
 // Geometry is cached per map; all eight corners of the actual local mesh AABB
@@ -419,7 +486,7 @@ bool build_state(gosPostProcess::VkPostHzbNative* s, int w, int h, int mipCount)
             ici.arrayLayers = 1;
             ici.samples = VK_SAMPLE_COUNT_1_BIT;
             ici.tiling = VK_IMAGE_TILING_OPTIMAL;
-            ici.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+            ici.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
             ici.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
             VmaAllocationCreateInfo aci{};
             aci.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
@@ -708,6 +775,7 @@ bool gosPostProcess::runVkPostHzbNative(const Mc2ColorPropFeed& feed, uint32_t g
     // normally already complete) replaces the fence the pass used to wait inline right after every submit.
     {
         const std::chrono::steady_clock::time_point tWait0 = std::chrono::steady_clock::now();
+        mc2::battlebench::WaitScope gpuWait(mc2::battlebench::WaitGpuMainNs);
         if (!mc2vk::getOrCreateEngineVulkanContext().wait(mc2vk::GpuTicket{s->ticket, 0}, 5ull * 1000 * 1000 * 1000, "post_prev_submit")) {
             setFallback("fence_timeout"); s->disabled = true; return false;
         }
@@ -745,9 +813,28 @@ bool gosPostProcess::runVkPostHzbNative(const Mc2ColorPropFeed& feed, uint32_t g
                     static_cast<unsigned long long>(s->totalTested), static_cast<unsigned long long>(s->totalCulled), static_cast<unsigned long long>(s->measuredFrames));
         }
     }
+    parity_check(s);   // the previous check frame's mask is readable now (ticket waited above)
     if (!s->instances.upload(feed.instances112, uint64_t(feed.count)*sizeof(GpuStaticPropInstance))) {
         setFallback("instances_upload_failed"); s->disabled = true; return false;
     }
+
+    // Check frame: one in kParityEvery. Needs a host-readable copy of every pyramid level (recorded below, after the cull).
+    const bool parityFrame = (g_parity.runs++ % kParityEvery) == 0;
+    bool parityRecord = false;
+    VkDeviceSize parityOffset[64] = {};
+    if (parityFrame && s->mipCount <= 64) {
+        VkDeviceSize bytes = 0;
+        for (int l = 0; l < s->mipCount; ++l) {
+            parityOffset[l] = bytes;
+            bytes += VkDeviceSize(s->levels[static_cast<size_t>(l)].w) * VkDeviceSize(s->levels[static_cast<size_t>(l)].h) * sizeof(float);
+        }
+        if (!s->parityMips || s->parityMipBytes < bytes) {
+            s->parityMips.reset();
+            s->parityMipBytes = make_buffer(s, bytes, VK_BUFFER_USAGE_TRANSFER_DST_BIT, s->parityMips, "hzb.parity_mips") ? bytes : 0;
+        }
+        parityRecord = s->parityMipBytes >= bytes && s->parityMipBytes != 0;
+    }
+    if ((g_parity.runs % 600) == 1) parity_log("");
 
     ++g_health.attempted;
     using clk = std::chrono::steady_clock;
@@ -843,6 +930,27 @@ bool gosPostProcess::runVkPostHzbNative(const Mc2ColorPropFeed& feed, uint32_t g
     memoryBarrier(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,VK_PIPELINE_STAGE_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_HOST_BIT,
                   VK_ACCESS_SHADER_WRITE_BIT,VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_HOST_READ_BIT);
 
+    if (parityRecord) {
+        // Pyramid levels to a host-readable buffer (check frames only), then back to the sampled layout.
+        for (int l = 0; l < s->mipCount; ++l)
+            barrier(s->levels[static_cast<size_t>(l)].image.get(), VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                    VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_ACCESS_SHADER_READ_BIT, VK_ACCESS_TRANSFER_READ_BIT,
+                    VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
+        for (int l = 0; l < s->mipCount; ++l) {
+            const auto& lv = s->levels[static_cast<size_t>(l)];
+            VkBufferImageCopy region{};
+            region.bufferOffset = parityOffset[l];
+            region.imageSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
+            region.imageExtent = {static_cast<uint32_t>(lv.w), static_cast<uint32_t>(lv.h), 1};
+            vkCmdCopyImageToBuffer(cb, lv.image.get(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, s->parityMips.get(), 1, &region);
+        }
+        for (int l = 0; l < s->mipCount; ++l)
+            barrier(s->levels[static_cast<size_t>(l)].image.get(), VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_ACCESS_TRANSFER_READ_BIT, VK_ACCESS_SHADER_READ_BIT,
+                    VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT);
+        memoryBarrier(VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_HOST_BIT, VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_HOST_READ_BIT);
+    }
+
     barrier(s->depthRes->image.get(), VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT,
             VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
             VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
@@ -867,6 +975,22 @@ bool gosPostProcess::runVkPostHzbNative(const Mc2ColorPropFeed& feed, uint32_t g
         return false;
     }
 
+    if (parityRecord) {
+        ZoneScopedN("HZB.ParityCheck");
+        auto& pc = s->parity;
+        const uint32_t stride = (std::max)(1u, feed.count / kParitySamples);
+        pc.ids.clear(); pc.inst.clear();
+        for (uint32_t i = uint32_t(g_parity.checks % stride); i < feed.count; i += stride) {
+            pc.ids.push_back(i);
+            pc.inst.push_back(static_cast<const GpuStaticPropInstance*>(feed.instances112)[i]);
+        }
+        std::memcpy(pc.worldToClip, feed.worldToClipGL, sizeof(pc.worldToClip));
+        pc.bias = feed.objectDepthBias;
+        pc.bounds = s->propBounds;
+        pc.generation = s->visibilityGeneration;
+        pc.w = width_; pc.h = height_; pc.mips = s->mipCount;
+        pc.valid = true;
+    }
     s->previousCount = feed.count;
     *maskBuffer = reinterpret_cast<void*>(s->visibility.get());
     *maskGeneration = s->visibilityGeneration;
@@ -894,6 +1018,7 @@ void gosPostProcess::destroyVkPostHzbNative()
              g_health.waitSamples ? g_health.waitUsAccum / static_cast<double>(g_health.waitSamples) : 0.0,
              g_health.waitSamples);
     }
+    if (g_health.runtimeGate) parity_log(" final=1");
     if (!vkPostHzbNative_) return;
     vkPostHzbNative_.reset();
 }

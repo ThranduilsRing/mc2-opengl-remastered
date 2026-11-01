@@ -84,6 +84,7 @@
 #include <string>
 #include <string_view>
 #include <vector>
+#include "../../mclib/battle_bench_wait.h"
 
 extern void gos_GetTerrainLightDir(float* x, float* y, float* z);
 float mc2NightLightFactor();   // mclib/camera.cpp: 0 day/evening .. 1 full night
@@ -685,7 +686,7 @@ bool gosPostProcess::runVkPostScreenShadowStaticNative()
     auto& frame = s->frames[mc2vk::getOrCreateEngineVulkanContext().frameContext().slot];
     // Retire this frame slot before rewriting its descriptors/UBO or command buffer.
     {
-        ZoneScopedN("VKIsl.Post.ShadowSlotWait");
+        ZoneScopedN("VKIsl.Post.ShadowSlotWait"); mc2::battlebench::WaitScope gpuWait1(mc2::battlebench::WaitGpuMainNs);
         const std::chrono::steady_clock::time_point tWait0 = std::chrono::steady_clock::now();
         if (!mc2vk::getOrCreateEngineVulkanContext().wait(mc2vk::GpuTicket{frame.ticket[0], 0}, 5ull * 1000 * 1000 * 1000, "post_prev_submit")) {
             setFallback("fence_timeout"); s->disabled = true; return false;
@@ -868,7 +869,7 @@ unsigned gosPostProcess::runVkPostScreenFxNative()
     auto& frame = s->frames[mc2vk::getOrCreateEngineVulkanContext().frameContext().slot];
     // Retire this frame slot; the other slot may still be executing on the GPU.
     {
-        ZoneScopedN("VKIsl.Post.ScreenFxSlotWait");
+        ZoneScopedN("VKIsl.Post.ScreenFxSlotWait"); mc2::battlebench::WaitScope gpuWait2(mc2::battlebench::WaitGpuMainNs);
         const std::chrono::steady_clock::time_point tWait0 = std::chrono::steady_clock::now();
         if (!mc2vk::getOrCreateEngineVulkanContext().wait(mc2vk::GpuTicket{frame.ticket[1], 0}, 5ull * 1000 * 1000 * 1000, "post_prev_submit")) {
             setFallback("fence_timeout"); s->disabled = true; return 0;

@@ -1,0 +1,26 @@
+{
+ "mc2_01": {
+  "draws.legacy": 0.8,
+  "draws.mech": 76.624,
+  "draws.props": 201.7656,
+  "draws.shadow": 70.512,
+  "draws.sky": 2.8,
+  "draws.terrain": 47.008,
+  "draws.vfx": 0.8,
+  "draws.water": 2.8,
+  "extract.bytes": 590779.2,
+  "heap_allocs": 16.784
+ },
+ "mc2_10": {
+  "draws.legacy": 2.048,
+  "draws.mech": 31.936,
+  "draws.props": 334.4328,
+  "draws.shadow": 229.968,
+  "draws.sky": 2.8,
+  "draws.terrain": 67.024,
+  "draws.vfx": 3.968,
+  "draws.water": 2.8,
+  "extract.bytes": 1500963.264,
+  "heap_allocs": 16.944
+ }
+}

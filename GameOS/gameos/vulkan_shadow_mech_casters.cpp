@@ -16,6 +16,7 @@
 
 #include <cstring>
 #include <string>
+#include "../../mclib/battle_bench_sink.h"
 
 namespace mc2vk {
 
@@ -207,7 +208,7 @@ void ShadowMechCasters::record(VkCommandBuffer cb, uint32_t parity, uint32_t ubo
     vkCmdBindVertexBuffers(cb, 0, 1, &vertexBuf, &offset);
     vkCmdBindIndexBuffer(cb, ibo_.get(), 0, VK_INDEX_TYPE_UINT32);
     for (const Mc2MechDrawRun& r : runs_)
-        vkCmdDrawIndexed(cb, r.indexCount, r.instanceCount, r.firstIndex, r.baseVertex, r.instanceBase);
+        mc2::battlebench::add(mc2::battlebench::DrawShadow), vkCmdDrawIndexed(cb, r.indexCount, r.instanceCount, r.firstIndex, r.baseVertex, r.instanceBase);
 }
 
 }  // namespace mc2vk

@@ -9,6 +9,7 @@
 #include "Gates/render_options.h"
 #include <algorithm>
 #include <numeric>
+#include "../../mclib/battle_bench_wait.h"
 
 #ifdef MC2_VULKAN_ISLAND
 
@@ -377,7 +378,7 @@ static bool record_terrain(TerrainIsland* s, mc2vk::VulkanContext& rctx, VkComma
         VkDeviceSize vboOff = 0;
         { const VkBuffer vb = d.pm->vbo.get(); vkCmdBindVertexBuffers(cb, 0, 1, &vb, &vboOff); }
         vkCmdBindIndexBuffer(cb, d.pm->ibo.get(), 0, VK_INDEX_TYPE_UINT16);
-        vkCmdDrawIndexed(cb, d.pm->indexCount, 1, 0, 0, 0);
+        mc2::battlebench::add(mc2::battlebench::DrawTerrain), vkCmdDrawIndexed(cb, d.pm->indexCount, 1, 0, 0, 0);
         ++drawnOut;
         if (d.sm) {
             mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->skirtPipe.get());
@@ -387,7 +388,7 @@ static bool record_terrain(TerrainIsland* s, mc2vk::VulkanContext& rctx, VkComma
             for (int e = 0; e < 4; ++e) {
                 if (((d.skirtMask >> e) & 1u) == 0u) continue;
                 if (d.sm->edgeCount[e] == 0) continue;
-                vkCmdDrawIndexed(cb, d.sm->edgeCount[e], 1, d.sm->edgeOffset[e], 0, 0);
+                mc2::battlebench::add(mc2::battlebench::DrawTerrain), vkCmdDrawIndexed(cb, d.sm->edgeCount[e], 1, d.sm->edgeOffset[e], 0, 0);
                 ++skirtDrawnOut;
             }
         }
@@ -499,7 +500,7 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
     const uint32_t par = rctx.frameContext().slot;
     // Both submits signal the graphics timeline: the later ticket covers the earlier one, including repeated calls in this frame.
     const auto slotTicket = mc2vk::GpuTicket::both(s->submitted[par], s->ovlSubmitted[par]);
-    { ZoneScopedN("VKIsl.Terrain.FenceWait");   // VK-ISLAND-TRACY-1: deferred retire of the slot
+    { ZoneScopedN("VKIsl.Terrain.FenceWait"); mc2::battlebench::WaitScope gpuWait1(mc2::battlebench::WaitGpuMainNs);   // VK-ISLAND-TRACY-1: deferred retire of the slot
       if (!vk_island_util::waitStrike(s->waitStrikes, s->disabled,
               rctx.wait(slotTicket, 5000000000ull, "terrain submission slot"), "VK_TERRAIN_ISLAND")) {
           setFallback("submission_slot_timeout"); vlog("[VK_TERRAIN_ISLAND] LOUD: submission slot wait timed out (5 s); skipping this frame, will retry next frame."); return 0;
@@ -604,7 +605,7 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
     // order + their command buffers' entry barriers).
     // Killswitch MC2_VK_TERRAIN_FENCE_DEFER=0 restores the inline wait.
     if (!terrainFenceDeferEnabled()) {
-        ZoneScopedN("VKIsl.Terrain.InlineFenceWait");   // VK-ISLAND-TRACY-1: killswitch-only inline retire
+        ZoneScopedN("VKIsl.Terrain.InlineFenceWait"); mc2::battlebench::WaitScope gpuWait2(mc2::battlebench::WaitGpuMainNs);   // VK-ISLAND-TRACY-1: killswitch-only inline retire
         const clk::time_point tInline0 = clk::now();
         if (!rctx.wait(s->submitted[par], 5000000000ull, "terrain inline retire")) {
             setFallback("fence_timeout"); s->disabled = true; return 0;

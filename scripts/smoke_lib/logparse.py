@@ -98,6 +98,11 @@ class PresenceRule:
 
 
 PRESENCE_RULES: tuple = (
+    # [PERF_COUNTERS v1]: the per-frame counter line (draws, waits, walk) prints on the first frame and every 300 frames; a vanished line means
+    # the counter plumbing is gone and the perf ceilings below it would silently grade nothing.
+    *(PresenceRule(stem, re.compile(r"\[PERF_COUNTERS v1\] frames="), "perf_counters_missing",
+                   "no [PERF_COUNTERS v1] line: the per-frame counter log is gone")
+      for stem in ("mc2_01", "mc2_03", "mc2_10", "mc2_17", "mc2_24")),
     # The in-mission video surface: mc2_10 requests its briefing movies through the ABL play-video call, and the request is
     # logged before the frame-rate check, so the line appears whether or not the movie decodes. A vanished request line
     # means the in-mission video path is gone and the cinematic can disappear silently.
@@ -116,6 +121,11 @@ PRESENCE_RULES: tuple = (
     *(PresenceRule(stem, re.compile(r"\[VEG_GPU\] visible survivors=[1-9][0-9]{2,}"), "vegetation_visible_missing",
                    "no [VEG_GPU] visible survivors>=100 line: the vegetation cull drew (almost) nothing")
       for stem in ("mc2_01", "mc2_03", "mc2_10", "mc2_17", "mc2_24")),
+    # HZB cull parity (vulkan_post_hzb_native.cpp): the GPU keep mask is compared with the CPU reference on one frame in 64 and the totals print
+    # every 600 runs and at exit. The line prints with engaged=0 when the pass never reached 1024 candidates; a vanished line means the check is gone.
+    *(PresenceRule(stem, re.compile(r"\[CULL_PARITY v1\] engaged="), "cull_parity_missing",
+                   "no [CULL_PARITY v1] line: the HZB GPU/CPU cull parity check is gone")
+      for stem in ("mc2_01", "mc2_10")),
 )
 
 MARKER_BUCKETS: tuple = (
@@ -173,6 +183,9 @@ MARKER_BUCKETS: tuple = (
     # determinism run; audit mode aborts on the first one). Emitter: GameOS/gameos/sim_overlap.cpp violation(). Never downgraded.
     MarkerBucket(re.compile(r"\[SIM_OVERLAP v1\] VIOLATION\b"),
                  "sim_overlap_violation", "red", None),
+    # A GPU cull that hides a prop the CPU reference keeps is a real over-cull bug. false_keeps (GPU keeps what the CPU culls) is advisory and unflagged.
+    MarkerBucket(re.compile(r"\[CULL_PARITY v1\] .*\bfalse_culls=[1-9]"),
+                 "cull_parity_false_cull", "red", None),
 )
 
 
@@ -240,6 +253,19 @@ class LogSummary:
     vk_validation: list = field(default_factory=list)
     # Per PRESENCE_RULES row (keyed by its bucket): how many lines matched. The gate applies the rows of the mission under test.
     presence_counts: dict = field(default_factory=dict)
+    # The LAST `[PERF_COUNTERS v1]` line of the run as {field: mean per frame} (run-so-far means; wait_* in ms), plus `frames`. Empty when none printed.
+    perf_counters: dict = field(default_factory=dict)
+
+
+def parse_perf_counters(line: str) -> dict:
+    """`[PERF_COUNTERS v1] frames=N draws.props=.. wait_sealed_ms=.. first_vk_wait_site=<label> ...` -> {name: float}; non-numeric values are skipped."""
+    out: dict = {}
+    for key, value in re.findall(r"([A-Za-z_][\w.]*)=(\S+)", line.split("[PERF_COUNTERS v1]", 1)[-1]):
+        try:
+            out[key] = float(value)
+        except ValueError:
+            pass
+    return out
 
 
 def parse_log(text: str,
@@ -264,6 +290,8 @@ def parse_log(text: str,
         for record in re.finditer(r"\[SIMID v1\] simframe=[^\r\n\[]*", line):
             simid.update(record.group().rstrip().encode("utf-8", "replace"))
             s.simid_frames += 1
+        if "[PERF_COUNTERS v1]" in line:
+            s.perf_counters = parse_perf_counters(line)
         if "[VRAM v1]" in line:
             s.vram.extend(vram.parse(line))
         if "[VK_PROFILE v1]" in line:

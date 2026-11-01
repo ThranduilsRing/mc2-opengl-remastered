@@ -1043,10 +1043,17 @@ int main(int argc, char** argv)
         const bool traceMissionFrame = g_mc2HitchEnabled && g_missionTraceFrames < 5;
         const auto missionFrameStart = traceMissionFrame ? SDL_GetPerformanceCounter() : 0;
 
-    mc2vk::present_thread::waitSealed();
+    {
+        ZoneScopedN("Frame.WaitSealed");
+        mc2vk::present_thread::waitSealed();   // charges mc2::battlebench::WaitSealedNs inside
+    }
     if (presentJoinPending) {
         gos::host::retirePresentHandles(g_mc2RenderFrame);
-        mc2::overlap::joinTail();
+        {
+            ZoneScopedN("Frame.WaitWorker");
+            mc2::battlebench::WaitScope waitSim(mc2::battlebench::WaitSimNs);
+            mc2::overlap::joinTail();
+        }
         presentJoinPending = false;
     }
     frameThrottleLogicEvents();
@@ -1093,7 +1100,11 @@ int main(int argc, char** argv)
         // Draw reads only the extracted snapshot. Wait before probes and frame counters touch live state;
         // the battle CPU timer includes any uncovered tick time rather than hiding it behind the frame cap.
         // Resource queues still commit after present, when this frame's GPU references have been submitted.
-        mc2::overlap::waitWorker();
+        {
+            ZoneScopedN("Frame.WaitWorker");
+            mc2::battlebench::WaitScope waitSim(mc2::battlebench::WaitSimNs);
+            mc2::overlap::waitWorker();
+        }
 
         {
             // Bump the canonical frame counter.

@@ -2,6 +2,7 @@
 #include <algorithm>
 #include "engine_present_vk.h"
 #include "present_thread.h"
+#include "../../mclib/battle_bench_wait.h"
 #include "../../mclib/sim_overlap.h"
 #include "visual_tuning_profile.h"
 #include "Gates/gate.h"
@@ -244,6 +245,7 @@ namespace {
 
 bool waitCompositeSlot(EnginePresentVk::Impl& s, EnginePresentHealth& health) {
     ZoneScopedN("VKIsl.Present.CompositeWait");
+    mc2::battlebench::NsScope benchWait(mc2::battlebench::PresCompositeWaitNs, 1);
     const auto start = std::chrono::steady_clock::now();
     const VkFence fence = s.curInFlight().get();
     const VkResult result = vkWaitForFences(s.dev, 1, &fence, VK_TRUE, 5ull * 1000 * 1000 * 1000);
@@ -2382,8 +2384,11 @@ void EnginePresentVk::finishFrame() {
     s.compositePending = false;
     presentImageVkOwned_ = false;
     health_.validation_errors = s.ctx->health().validationErrors;
-    gpuprof::frameEnd();
-    s.ctx->frameBoundary();
+    ZoneScopedN("VKIsl.Present.Tail.Finish");
+    { ZoneScopedN("VKIsl.Present.Tail.Finish.Collect"); mc2::battlebench::NsScope ns(mc2::battlebench::PresCollectNs);
+      gpuprof::frameEnd(); }
+    { ZoneScopedN("VKIsl.Present.Tail.Finish.Boundary"); mc2::battlebench::NsScope ns(mc2::battlebench::PresBoundaryNs);
+      s.ctx->frameBoundary(); }
     if (present_thread::onWorker() && !waitCompositeSlot(s, health_)) present_thread::requestInline();
     s.frameFinished = true;
     if (present_thread::onWorker() && (health_.present_frames % 300) == 1) logHealth();
@@ -2480,6 +2485,7 @@ bool EnginePresentVk::presentFrameBody(uint32_t drawableW, uint32_t drawableH,
     uint32_t imageIndex = 0;
     VkResult r;
     { ZoneScopedN("VKIsl.Present.Acquire");   // VK-ISLAND-TRACY-1: vkAcquireNextImageKHR (can block on WSI)
+      mc2::battlebench::NsScope benchAcquire(mc2::battlebench::PresAcquireNs, 0);
       r = vkAcquireNextImageKHR(s.dev, s.swapchain.get(), UINT64_MAX, s.curAcquireSem().get(), VK_NULL_HANDLE, &imageIndex); }
     if (r == VK_ERROR_OUT_OF_DATE_KHR) {
         // Rebuild for the current drawable; minimized windows retry next frame.
@@ -2502,6 +2508,7 @@ bool EnginePresentVk::presentFrameBody(uint32_t drawableW, uint32_t drawableH,
 
     VkImage scImg = s.scImages[imageIndex];
     ZoneNamedN(zTailRec, "VKIsl.Present.TailRecord", true);   // VK-ISLAND-TRACY-1: overlay/HUD/ImGui + blit record (to fn return)
+    mc2::battlebench::NsScope benchTail(mc2::battlebench::PresTailNs);
     vkResetCommandBuffer(s.curCbuf(), 0);
     VkCommandBufferBeginInfo bi{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
     bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
@@ -2560,9 +2567,10 @@ bool EnginePresentVk::presentFrameBody(uint32_t drawableW, uint32_t drawableH,
         uint32_t hudColorDraws = 0;
         uint32_t hudTexturedDraws = 0;
         uint32_t hudTextureUploads = 0;
-        if (uint32_t hudDraws = recordPendingHudColorProof(s, s.curCbuf(), &hudColorDraws,
-                                                           &hudTexturedDraws,
-                                                           &hudTextureUploads)) {
+        uint32_t hudDraws = 0;
+        { ZoneScopedN("VKIsl.Present.Tail.Hud"); mc2::battlebench::NsScope benchHud(mc2::battlebench::PresTailHudNs);
+          hudDraws = recordPendingHudColorProof(s, s.curCbuf(), &hudColorDraws, &hudTexturedDraws, &hudTextureUploads); }
+        if (hudDraws) {
             health_.hud_vk_draws_last = hudDraws;
             ++health_.hud_vk_consumed_frames;
             health_.hud_vk_color_draws_last = hudColorDraws;
@@ -2573,10 +2581,16 @@ bool EnginePresentVk::presentFrameBody(uint32_t drawableW, uint32_t drawableH,
                 ++health_.hud_vk_textured_frames;
             health_.hud_vk_texture_uploads += hudTextureUploads;
         }
-        if (recordPendingImgui(s, s.curCbuf()))
+        bool imguiDrawn = false;
+        { ZoneScopedN("VKIsl.Present.Tail.ImGui"); mc2::battlebench::NsScope benchImgui(mc2::battlebench::PresTailImguiNs);
+          imguiDrawn = recordPendingImgui(s, s.curCbuf()); }
+        if (imguiDrawn)
             ++health_.imgui_vk_frames;
     }
 
+    {   // Tail.Blit: barriers + blit + vkEndCommandBuffer
+    ZoneScopedN("VKIsl.Present.Tail.Blit");
+    mc2::battlebench::NsScope benchBlit(mc2::battlebench::PresTailBlitNs);
     // The composite's color writes precede the swapchain blit.
     barrier(s.curCbuf(), s.sharedImg.image.get(),
             VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
@@ -2613,6 +2627,7 @@ bool EnginePresentVk::presentFrameBody(uint32_t drawableW, uint32_t drawableH,
             VK_ACCESS_TRANSFER_READ_BIT, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
             VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
     vkEndCommandBuffer(s.curCbuf());
+    }
 
     // Submit the composite and tail together, ordered after acquire. Reset the slot fence only for a real submit.
     VkSemaphore imgRenderSem = s.renderSems[imageIndex].get();
@@ -2630,6 +2645,7 @@ bool EnginePresentVk::presentFrameBody(uint32_t drawableW, uint32_t drawableH,
     { const VkFence inFlightFence = s.curInFlight().get(); vkResetFences(s.dev, 1, &inFlightFence); }
     s.compositePending = false;   // consumed by this submit (success or fail-soft)
     { ZoneScopedN("VKIsl.Present.Submit");   // VK-ISLAND-TRACY-1: THE single present-path vkQueueSubmit
+      mc2::battlebench::NsScope benchSubmit(mc2::battlebench::PresTailSubmitNs);
       r = mc2vk::submitGraphics(si, s.curInFlight().get()); }  // drives acquire/present cadence
     if (r != VK_SUCCESS) {
         // The fence is now unsignaled with no submit to signal it; returning false
@@ -2659,6 +2675,7 @@ bool EnginePresentVk::presentFrameBody(uint32_t drawableW, uint32_t drawableH,
     if (present_thread::onWorker()) finishFrame();
     // Main may now record frame N+1. Only the queue and immutable WSI handles are touched here.
     { ZoneScopedN("VKIsl.Present.QueuePresent");
+      mc2::battlebench::NsScope benchPresent(mc2::battlebench::PresQueuePresentNs);
       s.lastWsiResult = s.ctx->present(s.presentQ, pi); }
     return true;
 }

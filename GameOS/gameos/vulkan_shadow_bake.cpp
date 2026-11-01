@@ -35,6 +35,7 @@
 #include <string>
 #include <string_view>
 #include <thread>
+#include "../../mclib/battle_bench_sink.h"
 
 extern void gos_GetTerrainLightDir(float* x, float* y, float* z);
 extern void gos_GetTerrainChunkGridInfo(int* mapSide, float* halfMap);
@@ -465,7 +466,7 @@ void ShadowBake::drawRuns(VkCommandBuffer cb, const ShadowBakeInputs& in, std::s
                 mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, opaque);
                 alphaBound = false;
             }
-            vkCmdDrawIndexed(cb, pkt.indexCount, run.count, pkt.firstIndex, static_cast<int32_t>(pkt.baseVertex), run.firstInstance);
+            mc2::battlebench::add(mc2::battlebench::DrawShadow), vkCmdDrawIndexed(cb, pkt.indexCount, run.count, pkt.firstIndex, static_cast<int32_t>(pkt.baseVertex), run.firstInstance);
         }
     }
 }
@@ -1464,7 +1465,7 @@ bool ShadowBake::recordObjectMap(VkCommandBuffer cb, const ShadowBakeInputs& in,
     const VkBuffer tv = terrainVbo_.get();
     vkCmdBindVertexBuffers(cb, 0, 1, &tv, &zero);
     vkCmdBindIndexBuffer(cb, terrainIbo_.get(), 0, VK_INDEX_TYPE_UINT32);
-    vkCmdDrawIndexed(cb, terrainIndexCount_, 1, 0, 0, 0);
+    mc2::battlebench::add(mc2::battlebench::DrawShadow), vkCmdDrawIndexed(cb, terrainIndexCount_, 1, 0, 0, 0);
     if (!objectRuns_.empty()) {
         vkCmdSetDepthBias(cb, 2.0f, 0.0f, 1.0f);
         mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, objectOpaque_.get());

@@ -1529,7 +1529,8 @@ def main():
                 **({"MC2_MOVER_COHERENCE_AUDIT": "1"} if args.tier and e.stem != args.quiet_sample else {}),
                 # G7b overlap audit (dev selector, shipped OFF): ON in tier1 and smoke-lite. It aborts on the first
                 # [SIM_OVERLAP v1] VIOLATION, which the sim_overlap_violation marker bucket turns red.
-                **({"MC2_SIM_OVERLAP_AUDIT": "1"} if args.tier == "tier1" or args.lite else {}),
+                # A caller-set level (2 = render-owns fence, 3..52 = jitter) wins, so a lane can run the stronger audit.
+                **({"MC2_SIM_OVERLAP_AUDIT": os.environ.get("MC2_SIM_OVERLAP_AUDIT") or "1"} if args.tier == "tier1" or args.lite else {}),
                 **({"MC2_SMOKE_FIXED_TIMESTEP": "1", "MC2_SIM_SPEED": "4"} if finale_audit else {}),
                 **({"MC2_SIM_SPEED": str(args.sim_speed)} if args.sim_speed else {}),
                 **(render_resolution.tier_size_env(tier, e.resolution) if e.resolution or args.tier == "resolution" or args.show_window

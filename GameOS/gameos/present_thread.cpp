@@ -3,6 +3,7 @@
 #include "vulkan_context.h"
 #include "vk_texture_residency.h"
 #include "../../mclib/sim_overlap.h"
+#include "../../mclib/battle_bench_wait.h"
 #include "Gates/gate.h"
 #include <chrono>
 #include <condition_variable>
@@ -88,9 +89,12 @@ void start() {
 }
 bool enabled() { return running; }
 bool onWorker() { return isWorker; }
-void waitSealed() {
+void waitSealed(std::source_location site) {
     if (!running || isWorker) return;
     std::unique_lock lock(mutex);
+    const auto began = std::chrono::steady_clock::now();
+    if (!sealed) mc2::battlebench::noteVkWait(site.function_name(), began);
+    mc2::battlebench::WaitScope timed(mc2::battlebench::WaitSealedNs);
     if (!changed.wait_for(lock, std::chrono::seconds(5), [] { return sealed; })) {
         std::fprintf(stderr, "[PRESENT_THREAD] STALL >5s; inline rollback after owner quiescence\n");
         rollback = true;

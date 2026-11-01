@@ -17,7 +17,7 @@
 #endif
 
 #include <span>
-#include "../../mclib/battle_bench_sink.h"
+#include "../../mclib/battle_bench_wait.h"
 #include <optional>
 #include <volk.h>
 #include "Gates/gate_cold.h"   // gate::get<>() and str<>()
@@ -1628,7 +1628,7 @@ static bool record_props(const PropRecordIn& in, unsigned long& typeRunsOut) {
                                      static_cast<int32_t>(pkt.baseVertex), instCount, i);
                     vkCmdPushConstants(cb, s->playout.get(), VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
                                         0, sizeof(pc), &pc);
-                    vkCmdDrawIndexed(cb, pkt.indexCount, instCount,
+                    mc2::battlebench::add(mc2::battlebench::DrawProps), vkCmdDrawIndexed(cb, pkt.indexCount, instCount,
                                      pkt.firstIndex, static_cast<int32_t>(pkt.baseVertex), i);
                     // Native color leaves include cached registry replay; count once before GPU HZB/alpha rejection.
                     if (!counted && fringePass == 0 && pkt.indexCount && mc2::battlebench::output) {
@@ -1711,7 +1711,7 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
     const clk::time_point tFence0 = clk::now();
     const uint32_t par = rctx.frameContext().slot;
     {
-        ZoneScopedN("VKIsl.Props.FenceWait");
+        ZoneScopedN("VKIsl.Props.FenceWait"); mc2::battlebench::WaitScope gpuWait1(mc2::battlebench::WaitGpuMainNs);
         if (!vk_island_util::waitStrike(s->waitStrikes, s->disabled, rctx.wait(s->submitted[par], 5000000000ull, "prop submission slot"), "VK_PROP")) {
             setFallback("submission_slot_timeout"); vlog("LOUD: submission slot wait timed out (5 s); skipping this frame, will retry next frame."); return 0;
         }
@@ -1965,7 +1965,7 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
 
         // Killswitch MC2_VK_PROP_FENCE_DEFER=0 restores inline retirement.
         if (!propFenceDeferEnabled()) {
-            ZoneScopedN("VKIsl.Props.InlineFenceWait");   // VK-ISLAND-TRACY-1: killswitch-only inline retire
+            ZoneScopedN("VKIsl.Props.InlineFenceWait"); mc2::battlebench::WaitScope gpuWait2(mc2::battlebench::WaitGpuMainNs);   // VK-ISLAND-TRACY-1: killswitch-only inline retire
             const clk::time_point tInline0 = clk::now();
             if (!rctx.wait(s->submitted[par], 5000000000ull, "prop inline retire")) {
                 setFallback("fence_timeout"); s->disabled = true; return 0;
@@ -2039,7 +2039,7 @@ extern "C" void mc2_vk_color_prop_island_late_fringe() {
     vkCmdBindIndexBuffer(cb,s->ibo.get(),0,VK_INDEX_TYPE_UINT32);
     for (const auto& draw : draws) {
         vkCmdPushConstants(cb,s->playout.get(),VK_SHADER_STAGE_VERTEX_BIT|VK_SHADER_STAGE_FRAGMENT_BIT,0,sizeof(draw.pc),draw.pc);
-        vkCmdDrawIndexed(cb,draw.indexCount,draw.instanceCount,draw.firstIndex,draw.baseVertex,draw.firstInstance);
+        mc2::battlebench::add(mc2::battlebench::DrawProps), vkCmdDrawIndexed(cb,draw.indexCount,draw.instanceCount,draw.firstIndex,draw.baseVertex,draw.firstInstance);
     }
     vkCmdEndRenderPass(cb);
     if (vkEndCommandBuffer(cb) != VK_SUCCESS) { s->disabled = true; return; }
