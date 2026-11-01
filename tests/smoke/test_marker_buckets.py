@@ -129,7 +129,9 @@ def test_the_in_mission_video_floor_is_an_absence_rule_for_mc2_10():
     play += VEG_OK   # the vegetation floor also applies to mc2_10
 
     def run(stem, text):
-        s = parse_log(text)
+        s = parse_log(text + "[PERF_COUNTERS v1] frames=300 draws.props=12.5 draws.terrain=3\n"
+                      "[CULL_PARITY v1] engaged=1 mismatches=0\n"
+                      "[LIGHT_CONTRACT v1] checks=300 mismatches=0 max_delta=0\n")
         s.content_summaries = 1
         s.instr_banner_seen = s.smoke_banner_seen = s.mission_resolve_seen = True
         s.smoke_summary_result, s.mission_ready_ms, s.heartbeats_play, s.last_heartbeat_wall_s_play = "pass", 5000.0, 30, 30.5
@@ -147,7 +149,9 @@ def test_the_vegetation_floor_is_an_absence_rule_for_the_large_tier1_maps():
     from scripts.smoke_lib.gates import GateConfig, evaluate
 
     def run(stem, text):
-        s = parse_log(text)
+        s = parse_log(text + "[PERF_COUNTERS v1] frames=300 draws.props=12.5 draws.terrain=3\n"
+                      "[CULL_PARITY v1] engaged=1 mismatches=0\n"
+                      "[LIGHT_CONTRACT v1] checks=300 mismatches=0 max_delta=0\n")
         s.content_summaries = 1
         s.instr_banner_seen = s.smoke_banner_seen = s.mission_resolve_seen = True
         s.smoke_summary_result, s.mission_ready_ms, s.heartbeats_play, s.last_heartbeat_wall_s_play = "pass", 5000.0, 30, 30.5
