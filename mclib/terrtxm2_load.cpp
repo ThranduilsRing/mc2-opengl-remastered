@@ -757,7 +757,7 @@ long TerrainColorMap::init (char *fileName)
 			}
 			const bool used = all && fields->setMaterialNormals(cooked);
 			if (!used) fields->setMaterialNormals({});
-			mc2::fmt::print_out("[SPLATTING] cooked detail normals: {}\n", used ? "BC7 sidecars" : "absent, TGA import");
+			mc2::fmt::print_out("[SPLATTING] cooked detail normals: {}\n", used ? "cooked sidecars" : "absent, TGA import");
 		}
 
 		// Retain CPU copy of matNormal2 alpha for terrain elevation displacement

@@ -477,8 +477,8 @@ void import_matnormal(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
             s->matNormalReady = true;
             s->matNormalVersionImported = 0;   // a later map without the cooked layers imports its slot textures again
             write_descriptors(s);
-            vlog("VK-TERRAIN-DETAIL: imported the cooked detail-normal array %ux%u x%u layers, %d mips (BC7).",
-                 side, side, cooked.layers, cooked.image->mipCount);
+            vlog("VK-TERRAIN-DETAIL: imported the cooked detail-normal array %ux%u x%u layers, %d mips (vkFormat %u).",
+                 side, side, cooked.layers, cooked.image->mipCount, cooked.image->vkFormat);
             return;
         }
         if (!cookedTried)

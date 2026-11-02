@@ -216,6 +216,31 @@ TEST_CASE("terrain fields: cooked detail-normal layers compose level-major and r
     CHECK_FALSE(static_cast<bool>(store.materialNormals().image));
 }
 
+TEST_CASE("terrain fields: lossless RGBA8 detail-normal layers compose level-major and never mix with BC7") {
+    mc2terrain::TerrainFieldStore store;
+    const auto rgba = [](int side, uint8_t fill) {
+        RenderCore::KtxImage l;
+        l.width = l.height = side; l.vkFormat = 37;
+        for (int s = side; ; s = std::max(1, s / 2)) {
+            l.mipByteOffsets.push_back(l.pixels.size());
+            l.pixels.insert(l.pixels.end(), size_t(s) * size_t(s) * 4u, fill);
+            ++l.mipCount;
+            if (s == 1) break;
+        }
+        return l;
+    };
+    const RenderCore::KtxImage layers[] = {rgba(4, 1), rgba(4, 2)};
+    REQUIRE(store.setMaterialNormals(layers));
+    const auto& array = store.materialNormals();
+    CHECK(array.image->vkFormat == 37); CHECK_FALSE(array.image->isCompressed);
+    CHECK(array.image->mipCount == 3);   // 4, 2, 1
+    REQUIRE(array.image->mipByteOffsets == std::vector<uint64_t>{0, 128, 160});
+    CHECK(array.image->pixels.size() == 168);
+    CHECK(array.image->pixels[0] == 1); CHECK(array.image->pixels[64] == 2); CHECK(array.image->pixels[128] == 1); CHECK(array.image->pixels[136] == 2);
+    const RenderCore::KtxImage mixed[] = {rgba(4, 1), bc7Layer(4, 1)};
+    CHECK_FALSE(store.setMaterialNormals(mixed));
+}
+
 TEST_CASE("terrain fields: a one-plane cement write keeps the road-art plane") {
     mc2terrain::TerrainFieldStore store;
     const uint32_t two[] = {1, 2, 3, 4, 0x80010007u, 0x80010008u, 0, 0x80010009u};   // 2 x 2 map, 2 planes

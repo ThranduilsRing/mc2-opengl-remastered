@@ -1124,11 +1124,11 @@ def enumerate_payload(src_root, build_dir, exe_name, pdb_name,
 # ---------------------------------------------------------------------------
 
 
-# The detail-normal layers terrain_tier1.frag samples get BC7 mip-complete sidecars next to the deployed TGAs, cooked in the
-# target from the verified TGAs (generated, about 5.6 MB each, never in git). Soft: without them the engine imports the TGAs.
+# The detail-normal layers terrain_tier1.frag samples get lossless RGBA8 mip-complete sidecars next to the deployed TGAs, cooked in the
+# target from the verified TGAs (generated, about 22 MB each, never in git). Soft: without them the engine imports the TGAs.
 ENGINE_NORMAL_COOK = Path(__file__).resolve().parents[1] / "tools" / "mc2texcook" / "cook_terrain_layers.py"
-# Bump when the cooked texels change meaning; the stamp in the target forces one recook. 2 = RGBA normal order (1 was TGA B, G, R).
-ENGINE_NORMAL_COOK_VERSION = "2"
+# Bump when the cooked texels change meaning; the stamp in the target forces one recook. 2 = RGBA normal order (1 was TGA B, G, R). 3 = lossless RGBA8 + box mips (2 was BC7).
+ENGINE_NORMAL_COOK_VERSION = "3"
 
 
 def ensure_engine_normal_cooks(target_dir, cooker=subprocess.run):
@@ -1143,7 +1143,7 @@ def ensure_engine_normal_cooks(target_dir, cooker=subprocess.run):
              os.path.getmtime(os.path.join(tex, f"mat{i}_normal.ktx2")) < os.path.getmtime(os.path.join(tex, f"mat{i}_normal.tga"))]
     if not stale:
         return
-    log(f"detail-normal sidecars absent or stale for layers {stale}: cooking them (about 40 s)")
+    log(f"detail-normal sidecars absent or stale for layers {stale}: cooking them (a few seconds)")
     try:
         r = cooker([sys.executable, str(ENGINE_NORMAL_COOK), "--engine-normals", tex] + ([] if current else ["--force"]),
                    capture_output=True, text=True, timeout=900, env=dict(os.environ, OMP_NUM_THREADS="1"), **console_child.child_kwargs(redirected=True))
