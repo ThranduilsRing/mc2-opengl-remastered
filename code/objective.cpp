@@ -285,8 +285,8 @@ static bool MoverIsDeadOrDisabled(const long pMoverWID)
 	if (pMover->isDisabled() || pMover->isDestroyed()) {
 		retval = true;
 	} else {
-		assert(pMover->getPilot());
-		long wstatus = pMover->getPilot()->getStatus();
+		// A mover with no pilot (torn down at mission end) counts as gone.
+		long wstatus = pMover->getPilot() ? pMover->getPilot()->getStatus() : WARRIOR_STATUS_DEAD;
 		if ((WARRIOR_STATUS_DEAD == wstatus)
 			|| (WARRIOR_STATUS_EJECTED == wstatus)) {
 			retval = true;
