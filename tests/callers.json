@@ -3994,14 +3994,14 @@
         },
         {
           "path": "scripts/merge_gate.py",
-          "line": 678,
+          "line": 679,
           "evidence": "import",
           "reference": "deploy_payload",
           "text": "from deploy_payload import ensure_engine_normal_cooks"
         },
         {
           "path": "scripts/merge_gate.py",
-          "line": 1041,
+          "line": 1095,
           "evidence": "import",
           "reference": "deploy_payload",
           "text": "from deploy_payload import verify_published_identity"
@@ -4765,6 +4765,13 @@
         {
           "path": "scripts/tests/test_gate_farm.py",
           "line": 12,
+          "evidence": "import",
+          "reference": "merge_gate",
+          "text": "import merge_gate as gate"
+        },
+        {
+          "path": "scripts/tests/test_gate_keep_candidate.py",
+          "line": 8,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
@@ -8094,6 +8101,13 @@
       "path": "scripts/tests/test_gate_farm.py",
       "basename": "test_gate_farm.py",
       "stem": "test_gate_farm",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
+      "path": "scripts/tests/test_gate_keep_candidate.py",
+      "basename": "test_gate_keep_candidate.py",
+      "stem": "test_gate_keep_candidate",
       "callers_by_basename": [],
       "callers_by_stem": []
     },
