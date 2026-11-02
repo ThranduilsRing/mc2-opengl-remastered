@@ -309,7 +309,7 @@ long TerrainTextures::init (const char *fileName, const char *baseName)
 			types[i].maskData = static_cast<MemoryPtr *>(std::malloc(sizeof(MemoryPtr) * MC_MASK_NUM * MC_MAX_MIP_LEVELS));
 			gosASSERT(types[i].maskData != nullptr);
 			
-			memset(types[i].maskData,0,sizeof(MemoryPtr) * MC_MASK_NUM);
+			memset(types[i].maskData,0,sizeof(MemoryPtr) * MC_MASK_NUM * MC_MAX_MIP_LEVELS);
 
 			long terrainTextureIndex = initTexture(i);
 			types[i].baseTXMIndex = terrainTextureIndex;
@@ -671,8 +671,19 @@ long TerrainTextures::initTexture (long typeNum)
 		{
 			File tgaFile;
 			result = tgaFile.open(fileName);
-			gosASSERT(result == NO_ERR);
-	
+			if (result != NO_ERR)
+			{
+				// A mod may ship a terrain type without every MIP TGA. gosASSERT is a no-op in
+				// release, so the read/seek below hit an invalid fd and fast-failed (MCO a_0_1).
+				// Leave textureData[j] null (consumers tolerate it) and still register the GPU
+				// texture, which falls back to the placeholder.
+				mc2::content::error(mc2::content::Kind::Texture, static_cast<const char*>(fileName), "missing terrain tga; skipping CPU copy");
+				result = loadTextureMemory(fileName,mipSize);
+				if (j==0)
+					txmResult = result;
+				continue;
+			}
+
 			struct TGAFileHeader header;
 	
 			tgaFile.read(reinterpret_cast<MemoryPtr>(&header),sizeof(TGAFileHeader));
@@ -748,11 +759,13 @@ void TerrainTextures::initMask (long typeNum)
 
 			File tgaFile;
 
-#ifdef _DEBUG
-			long result =
-#endif
-			tgaFile.open(fileName);
-			gosASSERT(result == NO_ERR);
+			// A mod may omit mask TGAs; gosASSERT is a no-op in release, so loadTGAMask used to read an
+			// empty buffer (heap overflow, MCO a_jship_2). Leave maskData null; combineTxm skips it.
+			if (tgaFile.open(fileName) != NO_ERR)
+			{
+				mc2::content::error(mc2::content::Kind::Texture, static_cast<const char*>(fileName), "missing mask tga; skipping CPU copy");
+				continue;
+			}
 
 			MemoryPtr ourRAM = static_cast<MemoryPtr>(std::malloc(mipSize * mipSize * sizeof(BYTE)));
 			gosASSERT(ourRAM != nullptr);
@@ -856,7 +869,14 @@ long TerrainTextures::initOverlay (long overlayNum, long txmNum, char *txmName)
 			File tgaFile;
 
 			result = tgaFile.open(chosenName);
-			gosASSERT(result == NO_ERR);
+			if (result != NO_ERR)
+			{
+				mc2::content::error(mc2::content::Kind::Texture, static_cast<const char*>(chosenName), "missing overlay tga; skipping CPU copy");
+				result = loadOverlayMemory(chosenName);
+				if (j==0)
+					txmResult = result;
+				continue;
+			}
 
 			if (hiresEdge > 0)
 			{
