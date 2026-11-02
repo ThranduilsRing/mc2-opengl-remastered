@@ -236,7 +236,7 @@ TEST_CASE("terrain fields: lossless RGBA8 detail-normal layers compose level-maj
     CHECK(array.image->mipCount == 3);   // 4, 2, 1
     REQUIRE(array.image->mipByteOffsets == std::vector<uint64_t>{0, 128, 160});
     CHECK(array.image->pixels.size() == 168);
-    CHECK(array.image->pixels[0] == 1); CHECK(array.image->pixels[64] == 2); CHECK(array.image->pixels[128] == 1); CHECK(array.image->pixels[136] == 2);
+    CHECK(array.image->pixels[0] == 1); CHECK(array.image->pixels[64] == 2); CHECK(array.image->pixels[128] == 1); CHECK(array.image->pixels[136] == 1); CHECK(array.image->pixels[144] == 2);
     const RenderCore::KtxImage mixed[] = {rgba(4, 1), bc7Layer(4, 1)};
     CHECK_FALSE(store.setMaterialNormals(mixed));
 }
