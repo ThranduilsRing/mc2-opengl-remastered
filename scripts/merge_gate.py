@@ -677,6 +677,9 @@ def stage_published(install, published=PUBLISHED):
     # capture-after reads the sidecars, a real pixel difference (W100: MAD 0.40 / 0.14 with an identical rendering path).
     from deploy_payload import ensure_engine_normal_cooks
     ensure_engine_normal_cooks(str(install))
+    absent = [n for n in [f"mat{i}_normal.ktx2" for i in range(6)] + ["engine_normals.cookver"] if not (textures / n).is_file()]
+    if absent:  # ensure_engine_normal_cooks only logs a WARN on failure; a candidate without them gives a false pixel diff
+        raise RuntimeError(f"stage_published: detail-normal cook left {', '.join(absent)} missing in {textures}")
 
 
 def execute_window(steps, head, dry_run=False, keep_going=False, farm_determinism=False):
@@ -716,12 +719,18 @@ def mad_flags(output, declared=(), expected=()):
         cells = [c.strip() for c in line.split("|")]
         if len(cells) < 2 or cells[0] in declared:
             continue
+        if cells[0] == "bookmark":
+            continue  # table header
         try:
-            seen.add(cells[0])
-            if float(cells[1]) > MAD_LIMIT:
-                bad.append(f"{cells[0]}={cells[1]}")
+            mad = float(cells[1])
         except ValueError:
+            mad = float("nan")
+        if math.isnan(mad):
+            bad.append(f"{cells[0]}=non-numeric MAD '{cells[1][:20]}'")  # a nan/n-a row is never a pass
             continue
+        seen.add(cells[0])
+        if mad > MAD_LIMIT:
+            bad.append(f"{cells[0]}={cells[1]}")
     bad.extend(f"{name}=no compare row" for name in expected if name not in seen)
     return bad
 
