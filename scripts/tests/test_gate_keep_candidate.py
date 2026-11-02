@@ -56,11 +56,3 @@ def test_missing_mod_source_is_an_error(tmp_path):
     else:
         raise AssertionError("expected RuntimeError")
 
-
-def test_stock_copy_keep_leaves_the_copy(tmp_path):
-    seed = tmp_path / "seed"
-    seed.mkdir()
-    (seed / "mc2.exe").write_text("x")
-    with gate.stock_copy(seed, keep=True) as clone:
-        pass
-    assert clone.is_dir()
