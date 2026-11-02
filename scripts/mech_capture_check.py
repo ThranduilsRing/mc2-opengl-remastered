@@ -17,7 +17,8 @@ import json
 import sys
 from pathlib import Path
 
-MIN_ENERGY = 4.0
+# Calibrated on live mc2_01 captures at MC2_CAPTURE_FOCUS_ZOOM=500: real mechs 3.9-4.4, bare ground 1.1-2.1.
+MIN_ENERGY = 3.0
 REF_RATIO = 1.5
 CENTER_FRAC = 0.3
 
@@ -73,7 +74,7 @@ def collect(capture_dir, empty_ref=None):
         row = {"id": fw.get("id"), "name": fw.get("name"), "team": fw.get("team"),
                "index": fw.get("index"), "total": fw.get("total"), "png": str(png)}
         if fw.get("id", -1) < 0 or not (doc.get("focus") or {}).get("found", True):
-            row.update(passed=False, energy=0.0, why="no mech at this index")
+            continue   # surplus bookmark beyond the live mech count: not a mech, not a failure
         elif not png.exists():
             row.update(passed=False, energy=0.0, why="png missing")
         else:

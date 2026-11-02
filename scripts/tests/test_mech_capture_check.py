@@ -50,5 +50,5 @@ def test_collect_and_sheet(tmp_path):
     (tmp_path / "other.json").write_text("{}")
     _ground().save(tmp_path / "ref.png")
     rows = m.collect(tmp_path, tmp_path / "ref.png")
-    assert [r["passed"] for r in rows] == [True, False, False]
+    assert [r["passed"] for r in rows] == [True, False]   # surplus index is skipped
     assert m.contact_sheet(rows, tmp_path / "sheet.png") and (tmp_path / "sheet.png").exists()
