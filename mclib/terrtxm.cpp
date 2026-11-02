@@ -677,7 +677,7 @@ long TerrainTextures::initTexture (long typeNum)
 				// release, so the read/seek below hit an invalid fd and fast-failed (MCO a_0_1).
 				// Leave textureData[j] null (consumers tolerate it) and still register the GPU
 				// texture, which falls back to the placeholder.
-				std::fprintf(stderr, "[TERRAIN_TXM] missing terrain tga, skipping CPU copy: %s\n", static_cast<const char*>(fileName));
+				mc2::content::error(mc2::content::Kind::Texture, static_cast<const char*>(fileName), "missing terrain tga; skipping CPU copy");
 				result = loadTextureMemory(fileName,mipSize);
 				if (j==0)
 					txmResult = result;
@@ -763,7 +763,7 @@ void TerrainTextures::initMask (long typeNum)
 			// empty buffer (heap overflow, MCO a_jship_2). Leave maskData null; combineTxm skips it.
 			if (tgaFile.open(fileName) != NO_ERR)
 			{
-				std::fprintf(stderr, "[TERRAIN_TXM] missing mask tga, skipping: %s\n", static_cast<const char*>(fileName));
+				mc2::content::error(mc2::content::Kind::Texture, static_cast<const char*>(fileName), "missing mask tga; skipping CPU copy");
 				continue;
 			}
 
@@ -871,7 +871,7 @@ long TerrainTextures::initOverlay (long overlayNum, long txmNum, char *txmName)
 			result = tgaFile.open(chosenName);
 			if (result != NO_ERR)
 			{
-				std::fprintf(stderr, "[TERRAIN_TXM] missing overlay tga, skipping CPU copy: %s\n", static_cast<const char*>(chosenName));
+				mc2::content::error(mc2::content::Kind::Texture, static_cast<const char*>(chosenName), "missing overlay tga; skipping CPU copy");
 				result = loadOverlayMemory(chosenName);
 				if (j==0)
 					txmResult = result;
