@@ -204,7 +204,7 @@
         },
         {
           "path": "scripts/sweep_campaign.py",
-          "line": 159,
+          "line": 147,
           "evidence": "import",
           "reference": "campaign_liveness",
           "text": "import campaign_liveness"
@@ -5340,7 +5340,7 @@
         },
         {
           "path": "tools/perf/rgp_capture.py",
-          "line": 52,
+          "line": 55,
           "evidence": "import",
           "reference": "run_battle_bench",
           "text": "import run_battle_bench as battle"
