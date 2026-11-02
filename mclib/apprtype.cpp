@@ -47,6 +47,20 @@
 // static Globals
 AppearanceTypeListPtr appearanceTypeList = nullptr;
 
+unsigned currentAppearanceRegistryGeneration (void)
+{
+	return appearanceTypeList ? appearanceTypeList->generation() : 0u;
+}
+
+// Release one use of a type, but only on the registry the holder was created from. A holder that outlives its
+// mission must not touch the next registry (stale or reused address).
+long releaseAppearanceType (unsigned gen, AppearanceTypePtr which)
+{
+	if (!appearanceTypeList || gen == 0u || gen != appearanceTypeList->generation())
+		return(-1);
+	return appearanceTypeList->removeAppearance(which);
+}
+
 //---------------------------------------------------------------------------
 // MC2_LOAD_RACE_TRACE: gated, one-shot mission-load residency-race diagnostics.
 // Default-OFF; produces zero output unless the gate is set. These globals are

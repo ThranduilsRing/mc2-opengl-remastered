@@ -25,6 +25,8 @@
 #include<stuff/stuff.hpp>
 #include "unit_anim_state.h"
 #include "presentation_phase.h"
+
+unsigned currentAppearanceRegistryGeneration (void); // apprtype.cpp
 // Forward declaration for prewarmStaticLightBake parameter.
 class Camera;
 //---------------------------------------------------------------------------
@@ -70,6 +72,8 @@ class Appearance
     DWORD pendingFlashColor_ = 0;
     bool hasPendingStatus_ = false, hasPendingFlash_ = false;
 public:
+    // Generation of the type registry that issued this holder's appearance type (stamped by init(tree)); 0 = none.
+    unsigned registryGeneration = 0;
     bool simulationOwned() const { return simulationOwned_; }
     mc2::sim::UnitAnimState& unitAnim() { return simPresentationPass ? renderAnim_ : *simAnim_; }
     const mc2::sim::UnitAnimState& unitAnim() const { return simPresentationPass ? renderAnim_ : *simAnim_; }
@@ -194,6 +198,8 @@ public:
 
 		virtual void init (AppearanceTypePtr tree = nullptr, GameObjectPtr obj = nullptr)
 		{
+			if (tree)
+				registryGeneration = currentAppearanceRegistryGeneration();
 			simulationOwned_ = obj != nullptr;
 			inView = FALSE;
 			// alpha-Stage 1 v3 §5 Stage 1 init zero-init contract
