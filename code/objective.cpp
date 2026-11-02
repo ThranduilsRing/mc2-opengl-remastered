@@ -285,8 +285,10 @@ static bool MoverIsDeadOrDisabled(const long pMoverWID)
 	if (pMover->isDisabled() || pMover->isDestroyed()) {
 		retval = true;
 	} else {
-		// A mover with no pilot (torn down at mission end) counts as gone.
-		long wstatus = pMover->getPilot() ? pMover->getPilot()->getStatus() : WARRIOR_STATUS_DEAD;
+		// A mover with no pilot (team -1 placeholder movers exist from t=0 on stock missions) has not been
+		// destroyed: it must not count toward a destroy objective. Read the pilot once, null-safe.
+		MechWarriorPtr pPilot = pMover->getPilot();
+		long wstatus = pPilot ? pPilot->getStatus() : WARRIOR_STATUS_NORMAL;
 		if ((WARRIOR_STATUS_DEAD == wstatus)
 			|| (WARRIOR_STATUS_EJECTED == wstatus)) {
 			retval = true;
@@ -303,8 +305,10 @@ static bool MoverIsDeadOrDisabled(const MoverPtr pMover)
 	if (pMover->isDisabled() || pMover->isDestroyed()) {
 		retval = true;
 	} else {
-		assert(pMover->getPilot());
-		long wstatus = pMover->getPilot()->getStatus();
+		// A mover with no pilot (team -1 placeholder movers exist from t=0 on stock missions) has not been
+		// destroyed: it must not count toward a destroy objective. Read the pilot once, null-safe.
+		MechWarriorPtr pPilot = pMover->getPilot();
+		long wstatus = pPilot ? pPilot->getStatus() : WARRIOR_STATUS_NORMAL;
 		if ((WARRIOR_STATUS_DEAD == wstatus)
 			|| (WARRIOR_STATUS_EJECTED == wstatus)) {
 			retval = true;
@@ -319,8 +323,10 @@ static bool MoverIsDeadOrDisabledOrFled(const MoverPtr pMover) {
 	if (pMover->isDisabled() || pMover->isDestroyed()) {
 		retval = true;
 	} else {
-		assert(pMover->getPilot());
-		long wstatus = pMover->getPilot()->getStatus();
+		// A mover with no pilot (team -1 placeholder movers exist from t=0 on stock missions) has not been
+		// destroyed: it must not count toward a destroy objective. Read the pilot once, null-safe.
+		MechWarriorPtr pPilot = pMover->getPilot();
+		long wstatus = pPilot ? pPilot->getStatus() : WARRIOR_STATUS_NORMAL;
 		if ((WARRIOR_STATUS_DEAD == wstatus)
 			|| (WARRIOR_STATUS_EJECTED == wstatus)) {
 			retval = true;

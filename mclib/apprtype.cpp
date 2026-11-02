@@ -322,8 +322,11 @@ AppearanceTypePtr AppearanceTypeList::getAppearance (unsigned long apprNum, cons
 //---------------------------------------------------------------------------
 long AppearanceTypeList::removeAppearance (AppearanceTypePtr which)
 {
+	// A null type (failed load) has nothing to release; a null registry slot must never match.
+	if (!which)
+		return(-1);
 	auto found = std::find_if(types.begin(), types.end(),
-		[which](const std::unique_ptr<AppearanceType>& known) { return known.get() == which; });
+		[which](const std::unique_ptr<AppearanceType>& known) { return known && known.get() == which; });
 	if (found == types.end())
 		return(-1);
 

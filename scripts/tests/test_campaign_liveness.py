@@ -63,3 +63,8 @@ def test_ai_on_without_moving():
 def test_garbage_lines_ignored():
     assert cl.parse_mover_line("[MOVER v2] id=notanumber") is None
     assert cl.parse_log("nothing here\n[SOAK] autowin mission=x\n") == []
+
+
+def test_far_idle_enemy_is_dormant_not_failure():
+    txt = log([(0.0, [mover(1, 0, 0), mover(2, 1, 5000.0)]), (30.0, [mover(1, 0, 0), mover(2, 1, 5000.0)])])
+    assert cl.analyse(txt)[0]["summary"]["verdict"] == "dormant_unprovoked"

@@ -775,5 +775,6 @@ void TreeAppearance::destroy (void)
 		treeShape = nullptr;
 	}
 
-	appearanceTypeList->removeAppearance(appearType);
+	if (appearanceTypeList) // null once the mission tore its registry down (late holders, e.g. render-view copies)
+		appearanceTypeList->removeAppearance(appearType);
 }
