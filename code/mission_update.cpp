@@ -14,6 +14,8 @@
 #include <array>
 #include "move_recon_stats.h"
 #include <utility>
+#include <string>
+#include "../GameOS/gameos/gos_dev_shell.h"
 #include "../GameOS/gameos/utils/mc2log.h"
 
 // FREEZE-MOVERS-1: ONE predicate for "the simulation tick is suspended".
@@ -681,6 +683,16 @@ void Mission::updateSoakAutoWin() {
 		// Re-arm for each new mission: scenarioTime resets to 0 on start().
 		if (scenarioTime < winAfter)
 			s_soakWinEmitted = false;
+		// scripts/sweep_campaign.py --shots (MC2_SHOT_RESULTS + MC2_DEV_SHELL): one mission-start screenshot per mission.
+		{
+			static const bool s_shotStart = mc2::gate::get<"MC2_SHOT_RESULTS">();
+			static bool s_startShot = false;
+			if (scenarioTime < 0.5f) s_startShot = false;
+			if (s_shotStart && !s_startShot && scenarioTime > 1.5f && scenarioTime < winAfter) {
+				s_startShot = true;
+				gos_dev_shell::scheduleScreenshot((std::string("mission_start_") + missionFileName).c_str());
+			}
+		}
 		if (!s_soakWinEmitted && scenarioTime > winAfter)
 		{
 			scenarioResult = mis_PLAYER_WIN_BIG;

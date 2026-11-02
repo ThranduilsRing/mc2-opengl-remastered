@@ -20,7 +20,7 @@ MissionResults.cpp			: Implementation of the MissionResults component.
 #include"../GuiRuntime/GuiRuntime.h"   // GetDisplaySize (MECH-ICON-BLANK-1 gui bridge)
 #include"../GameOS/gameos/gos_dev_shell.h"   // RESULTS-CAPTURE-1
 #include <cstdlib>
-#include <cstdlib>
+#include <string>
 #include "Gates/gate.h"
 #include "mc2fmt.h"
 
@@ -256,9 +256,12 @@ void MissionResults::render()
 		{
 			static const bool s_shotResults = mc2::gate::get<"MC2_SHOT_RESULTS">();
 			static int s_salvageFrames = 0;
+			static const void* s_salvageSeen = nullptr;   // per screen instance, so a campaign walk shoots every mission
+			static int s_salvageShots = 0;
+			if ( s_salvageSeen != pSalvageScreen.get() ) { s_salvageSeen = pSalvageScreen.get(); s_salvageFrames = 0; }
 			if ( s_shotResults && s_salvageFrames >= 0 && ++s_salvageFrames == 30 )
 			{
-				gos_dev_shell::scheduleScreenshot( "results_salvage" );
+				gos_dev_shell::scheduleScreenshot( ("results_salvage_" + std::to_string( ++s_salvageShots )).c_str() );
 				s_salvageFrames = -1;
 			}
 		}
@@ -278,9 +281,12 @@ void MissionResults::render()
 		{
 			static const bool s_shotResults = mc2::gate::get<"MC2_SHOT_RESULTS">();
 			static int s_promoteFrames = 0;
+			static const void* s_promoteSeen = nullptr;
+			static int s_promoteShots = 0;
+			if ( s_promoteSeen != pPilotScreen.get() ) { s_promoteSeen = pPilotScreen.get(); s_promoteFrames = 0; }
 			if ( s_shotResults && s_promoteFrames >= 0 && ++s_promoteFrames == 30 )
 			{
-				gos_dev_shell::scheduleScreenshot( "results_promote" );
+				gos_dev_shell::scheduleScreenshot( ("results_promote_" + std::to_string( ++s_promoteShots )).c_str() );
 				s_promoteFrames = -1;
 			}
 		}

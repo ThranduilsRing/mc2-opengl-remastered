@@ -435,7 +435,7 @@ Gates found in source but missing from check-env-registry.sh (retired in G8; the
 - `MC2_PREVIEW_FBO_SCALE=<1..8>` — camera-preview FBO supersample factor (default **4** = 3200x2400).
 - `MC2_PREVIEW_NOCULL=1` — panel-preview force-disable `GL_CULL_FACE` (FBO winding-order debug).
 - `MC2_LEGACY_LOAD_BANNER=1` — restore the retired world-floating blue load banner overlay.
-- `MC2_SHOT_RESULTS=1` — RESULTS-CAPTURE-1: deterministic AAR screenshots of results screens after 30 settled frames (pairs with `MC2_DEV_SHELL=1`).
+- `MC2_SHOT_RESULTS=1` — RESULTS-CAPTURE-1: deterministic AAR screenshots of results screens after 30 settled frames (pairs with `MC2_DEV_SHELL=1`); every mission's salvage/promotion screen plus one mission-start shot under `MC2_SOAK_AUTOWIN` (`scripts/sweep_campaign.py stock --shots --out DIR`).
 - `MC2_SOAK_STOP_AT_BAY=1` — soak harness parks at the mech bay instead of auto-advancing (requires `MC2_SOAK_AUTOWIN`).
 - `MC2_DRAW_PACKET_V3=1` — static-prop DrawPacket v3 candidate→`RenderCore::DrawPacket[]` ABI promotion (no dispatch; legacy flush unchanged).
 - `MC2_STATIC_C1B_DRAW=1` — re-enable the (architecturally buggy) C1b GPU indirect instance count for the per-type legacy static-prop draw loop.

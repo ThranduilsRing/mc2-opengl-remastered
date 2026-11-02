@@ -1,7 +1,11 @@
 #!/usr/bin/env python3
 """SWEEP-RUNNER-1: resolver-driven cheat-mode campaign sweep with structured emit.
 
-Usage: py -3 scripts/sweep_campaign.py <campaign_folder> [secs=300] [deploy_dir]
+Usage: py -3 scripts/sweep_campaign.py <campaign_folder|stock> [secs=300] [deploy_dir] [--shots] [--salvage] [--out DIR]
+  stock    = the stock campaign (fit "campaign", no mod); the resolver is skipped.
+  --shots  = MC2_SHOT_RESULTS + MC2_DEV_SHELL: mission-start, salvage and pilot-promotion screenshots per mission, copied to --out.
+  --salvage= MC2_SOAK_SALVAGE_TRADEMOVER (real mid-mission salvage-craft flow).
+  --out    = copy stdout/stderr/screenshots and write sweep_summary.json (+ per-mission [SOAK] counts) there.
 
 Resolves launch config via resolve_campaign_config.py (no folder-name guessing),
 runs the cheat-mode soak with MC2_BRIDGE_MOVER_STATE=1, then emits:
@@ -10,7 +14,7 @@ runs the cheat-mode soak with MC2_BRIDGE_MOVER_STATE=1, then emits:
 and appends one line to <deploy>/crash_catalog.jsonl.
 Kills ONLY the process it launched. Never touches a concurrent mc2.exe.
 """
-import json, os, re, subprocess, sys, time, glob
+import json, os, re, shutil, subprocess, sys, time, glob
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -31,10 +35,21 @@ def newest_crash(deploy):
     return dirs[-1] if dirs else None
 
 def main():
-    name = sys.argv[1]
-    secs = int(sys.argv[2]) if len(sys.argv) > 2 else 300
-    deploy = sys.argv[3] if len(sys.argv) > 3 else DEFAULT_DEPLOY
-    cfg = resolve(deploy, name)
+    args = sys.argv[1:]
+    flags = {a for a in args if a in ("--shots", "--salvage")}
+    out_dir = None
+    if "--out" in args:
+        i = args.index("--out")
+        out_dir = args[i + 1]
+        del args[i:i + 2]
+    args = [a for a in args if a not in flags]
+    name = args[0]
+    secs = int(args[1]) if len(args) > 1 else 300
+    deploy = args[2] if len(args) > 2 else DEFAULT_DEPLOY
+    if name == "stock":
+        cfg = {"active_mod": "", "mc2_mod_deps_string": "", "fit": "campaign", "expected_missions": None}
+    else:
+        cfg = resolve(deploy, name)
     exe = os.path.join(deploy, "mc2.exe")
     tag = re.sub(r"[^A-Za-z0-9]", "_", name)[:20]
     outp = os.path.join(deploy, f"sweep_{tag}_out.txt")
@@ -43,8 +58,9 @@ def main():
     env = os.environ.copy()
     for k in ("MC2_ACTIVE_MOD", "MC2_MOD_DEPS", "MC2_BOOT_TO_BAY"):
         env.pop(k, None)
-    env["MC2_ACTIVE_MOD"] = cfg["active_mod"]
-    env["MC2_MOD_DEPS"]   = cfg["mc2_mod_deps_string"]
+    if cfg["active_mod"]:
+        env["MC2_ACTIVE_MOD"] = cfg["active_mod"]
+        env["MC2_MOD_DEPS"]   = cfg["mc2_mod_deps_string"]
     env["MC2_BOOT_TO_BAY"] = cfg["fit"]
     env.update({
         "MC2_SOAK_AUTOWIN": "1", "MC2_SOAK_WIN_AFTER_SEC": "3",
@@ -58,7 +74,13 @@ def main():
         # pins the RNG seed) and would alter what this soak actually exercises.
         "MC2_NO_CURSOR_GRAB": "1",
     })
+    if "--salvage" in flags:
+        env["MC2_SOAK_SALVAGE_TRADEMOVER"] = "1"
+    if "--shots" in flags:
+        env.update({"MC2_SHOT_RESULTS": "1", "MC2_DEV_SHELL": "1", "MC2_NO_LAUNCHER": "1"})
     crash_before = newest_crash(deploy)
+    shot_dir = os.path.join(deploy, "dev_shell_out")
+    t0 = time.time()
     with open(outp, "w") as fo, open(errp, "w") as fe:
         p = nofocus.spawn([exe], cwd=deploy, stdout=fo, stderr=fe, env=env)
         try:
@@ -67,6 +89,7 @@ def main():
         except subprocess.TimeoutExpired:
             p.kill(); exited = False
 
+    wall = time.time() - t0
     out = Path(outp).read_text(errors="replace")
     err = Path(errp).read_text(errors="replace")
     missions = len(re.findall(r"\[SOAK\] autowin mission=", out))
@@ -95,6 +118,23 @@ def main():
         "result": {"missions_completed": missions, "status": status,
                    "crash_site": crash_site, "hp_summary": hp_summary},
     }
+    summary["result"]["wall_seconds"] = round(wall, 1)
+    summary["result"]["soak_counts"] = {k: len(re.findall(r"\[SOAK\] " + k, out)) for k in
+        ("autowin mission=", "results dismiss screen=salvage", "results dismiss screen=pilot", "salvage-check",
+         "salvage-in-loadbay", "salvage-trademover", "pilot-promote", "kill-enemy")}
+    summary["result"]["promotions_ok"] = len(re.findall(r"\[SOAK\] pilot-promote .*ok=1", out))
+    summary["result"]["autowin_missions"] = re.findall(r"\[SOAK\] autowin mission=(\S+)", out)
+    if out_dir:
+        os.makedirs(out_dir, exist_ok=True)
+        copied = []
+        for s_ in glob.glob(os.path.join(shot_dir, "*.tga")):
+            if os.path.getmtime(s_) >= t0:
+                shutil.copy2(s_, out_dir)
+                copied.append(os.path.join(out_dir, os.path.basename(s_)))
+        summary["result"]["screenshots"] = sorted(copied)
+        for f in (outp, errp):
+            shutil.copy2(f, out_dir)
+        Path(out_dir, "sweep_summary.json").write_text(json.dumps(summary, indent=2))
     print(json.dumps(summary, indent=2))
     with open(os.path.join(deploy, "crash_catalog.jsonl"), "a") as cat:
         cat.write(json.dumps(summary) + "\n")
