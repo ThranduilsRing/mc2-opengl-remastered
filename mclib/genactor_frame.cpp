@@ -469,7 +469,8 @@ void GenericAppearance::destroy (void)
 		genShape = nullptr;
 	}
 
-	appearanceTypeList->removeAppearance(appearType);
+	if (appearanceTypeList) // null once the mission tore its registry down (late holders, e.g. render-view copies)
+		appearanceTypeList->removeAppearance(appearType);
 }
 
 inline constexpr float HEIGHT_THRESHOLD = 10.0f;

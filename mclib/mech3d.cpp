@@ -281,7 +281,8 @@ void Mech3DAppearance::destroy (void)
 		sensorTriangleShape = nullptr;	
 	}
 	
-	appearanceTypeList->removeAppearance(mechType);
+	if (appearanceTypeList) // null once the mission tore its registry down (late holders, e.g. render-view copies)
+		appearanceTypeList->removeAppearance(mechType);
 
 	if (InEditor)
 	{

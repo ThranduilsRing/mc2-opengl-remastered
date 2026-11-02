@@ -772,7 +772,8 @@ void BldgAppearance::destroy (void)
 		activity1.reset();
 	}
 
-	appearanceTypeList->removeAppearance(appearType);
+	if (appearanceTypeList) // null once the mission tore its registry down (late holders, e.g. render-view copies)
+		appearanceTypeList->removeAppearance(appearType);
 }
 
 void BldgAppearance::clearSpotlights()
