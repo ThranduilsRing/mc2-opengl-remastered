@@ -71,7 +71,7 @@ def main():
         "MC2_SOAK_AUTO_PURCHASE": "1", "MC2_SOAK_KILL_ENEMY": "1",
         "MC2_SOAK_PILOT_PROMOTE": "1", "MC2_SOAK_CHECK_SCREENS": "1",
         "MC2_SOAK_LANCE_RANDOM": "1", "MC2_BRIDGE_MOVER_STATE": "1",
-        "MC2_DEBUG_STATE_DUMP": "1", "MC2_DIAG_TAGS": "LOGISTICS",
+        "MC2_DEBUG_STATE_DUMP": "1", "MC2_DIAG_TAGS": os.environ.get("MC2_DIAG_TAGS", "LOGISTICS"),
         # VERIFY-INTEGRITY-3: engine-side cursor release (commit f0c07b87).
         # NOT MC2_SMOKE_MODE -- that changes game behaviour (skips movies,
         # pins the RNG seed) and would alter what this soak actually exercises.
