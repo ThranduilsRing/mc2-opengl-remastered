@@ -458,6 +458,7 @@ int mc2CaptureFocusMechEx(int n, int sel, float* xyz, int* id, int* team, char* 
 		xyz[0] = pos.x; xyz[1] = pos.y; xyz[2] = pos.z;
 		if (id) *id = static_cast<int>(mover->getPartId());
 		if (team) *team = static_cast<int>(mover->getTeamId());
+			if (contact) *contact = home ? 0 : (mover->conStat == CONTACT_VISUAL ? 1 : (ShowMovers ? 3 : 2));
 		if (name) {
 			const char* nm = mover->getName();
 			size_t j = 0;

@@ -17,8 +17,8 @@ import json
 import sys
 from pathlib import Path
 
-# Calibrated on live mc2_01 captures at MC2_CAPTURE_FOCUS_ZOOM=500: real mechs 3.9-4.4, bare ground 1.1-2.1.
-MIN_ENERGY = 3.0
+# Calibrated on live mc2_01 captures at MC2_CAPTURE_FOCUS_ZOOM=500: player mechs 3.8-4.4, enemy Urbanmechs 2.7-2.9 (viewed), bare ground 1.1-2.1.
+MIN_ENERGY = 2.5
 REF_RATIO = 1.5
 CENTER_FRAC = 0.3
 
