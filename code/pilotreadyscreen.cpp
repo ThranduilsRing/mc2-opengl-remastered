@@ -780,8 +780,53 @@ void PilotReadyScreen::putBackPilot( LogisticsPilot* pPilot )
 
 }
 
+// PILOTREADY-MECH-INFO-OVERLAP-1: the pilot panel is a v2 defs page drawn on the
+// ImGui layer, which sits above the gos black "cover up pilot stuff" rect, so
+// with a mech selected the pilot icons, borders, placement rects (magenta
+// placeholders), name and skill texts bled through the mech info panel. Hide
+// the pilot-panel widgets of the defs page while a mech is selected.
+static void pilotPanelDefsVisibility( LogisticsScreen* scr, bool show )
+{
+	static const char* const images[] = {
+		"pilot_info_targeting_icon", "pilot_info_piloting_icon", "pilot_info_kills_icon",
+		"small_border_piece_for_medals", "small_right_border_piece_for_medals",
+		"mid_size_mid_border_piece_for_medals", "large_size_bottom_border_piece_for_medals",
+		"left_vertical_line_1", "left_vertical_line_2", "right_vertical_line_1", "right_vertical_line_2",
+		"left_vertical_line_for_spec_skills", "right_vertical_line_for_spec_skills",
+		"small_bottom_border_piece_for_spec_skills", "small_top_border_piece_for_spec_skills",
+		"this_rect_defines_the_placement", "corner_left_of_pilot_name", "corner_right_of_pilot_name",
+		"corner_right_top_of_spec_skills", "corner_right_bottom_of_spec_skills",
+		"corner_right_bottom_of_pilot_pic", "corner_left_bottom_of_pilot_pic",
+		"green", "regular", "veteran", "elite", "ace" };
+	static const char* const rectsAndMeters[] = {
+		"rect.pilot_name", "rect.pilot_specialty",
+		"rect.help_rect_for_currently_selected_pilot_name_and_pic",
+		"rect.help_rect_for_gunnery_box", "rect.help_rect_for_piloting_skill_box",
+		"rect.help_rect_for_kills_box", "rect.help_rect_for_ranks_box",
+		"meter.for_targeting", "meter.for_piloting",
+		"rect.placement_for_pilot_s_first_specialty_skill", "rect.placement_for_pilot_s_second_specialty_skill",
+		"rect.placement_for_pilot_s_third_specialty_skill", "rect.placement_for_pilot_s_fourth_specialty_skill",
+		"rect.placement_for_pilot_s_first_medal", "rect.placement_for_pilot_s_second_medal",
+		"rect.placement_for_pilot_s_third_medal", "rect.placement_for_pilot_s_fourth_medal",
+		"rect.placement_for_pilot_s_fifth_medal", "rect.placement_for_pilot_s_sixth_medal",
+		"rect.placement_for_pilot_s_seventh_medal", "rect.placement_for_pilot_s_eighth_medal",
+		"rect.placement_for_pilot_s_ninth_medal", "rect.placement_for_pilot_s_tenth_medal",
+		"rect.placement_for_pilot_s_eleventh_medal", "rect.placement_for_pilot_s_twelfth_medal",
+		"rect.placement_for_pilot_s_thirteenth_medal" };
+	for ( const char* k : images )
+		scr->setDefsElementVisible( std::string( "game.mcl_pr_layout.image." ) + k, show );
+	for ( const char* k : rectsAndMeters )
+		scr->setDefsElementVisible( std::string( "game.mcl_pr_layout." ) + k, show );
+}
+
 void PilotReadyScreen::setPilot( LogisticsPilot* pPilot )
 {
+	if ( mechSelected )
+	{
+		// leaving mech view: restore the pilot panel and force a full refresh
+		pilotPanelDefsVisibility( this, true );
+		pCurPilot = nullptr;
+	}
 	mechSelected = 0;
 	if ( pPilot != pCurPilot )
 	{
@@ -923,5 +968,11 @@ void PilotReadyScreen::setPilot( LogisticsPilot* pPilot )
 void PilotReadyScreen::setMech( LogisticsMech* pMech )
 {
 	mechSelected = true;
+	pilotPanelDefsVisibility( this, false );
+	static const char* const texts[] = { "pilot_info_rank", "pilot_info_targeting_number",
+		"pilot_info_piloting_number", "pilot_info_kills_number", "pilot_name_header",
+		"special_skill_1", "special_skill_2", "special_skill_3", "special_skill_4" };
+	for ( const char* k : texts )
+		setDefsElementText( std::string( "game.mcl_pr_layout.text." ) + k, "" );
 	mechDisplay.setMech( pMech, 0 );
 }

@@ -52,6 +52,14 @@ static const char* const kSvActionBtnKey =
     "game.mcl_sm.button.save_button_this_should_say_load_for_load_mission_dialog";
 static const char* const kSvInfoKey =
     "game.mcl_sm.text.info_for_saved_game_goes_in_here";
+// Keys for the v2 mcl_sv.fit page (LogisticsVariantDialog: mech-lab variant save).
+static const char* const kSvVariantEditKey =
+    "game.mcl_sv.editbox.editable_text_for_saved_game_name_goes_here";
+static const char* const kSvVariantListKey = "game.mcl_sv.list.game_list";
+static const char* const kSvVariantTitleKey =
+    "game.mcl_sv.text.main_header_text_save_variant";
+static const char* const kSvVariantPromptKey =
+    "game.mcl_sv.text.text_above_saved_variant_list_reads_variant_list";
 static const char* const kSvMapKey =
     "game.mcl_sm.image.this_static_defines_the_area_that_the_tac_map_should_go_into";
 
@@ -1490,6 +1498,35 @@ LogisticsVariantDialog::~LogisticsVariantDialog()
 	gameListBox.destroy();
 }
 
+// The variant name lives in the v2 page edit box when the page has one (the
+// legacy aEdit is not drawn by the page), else in the legacy edits[0].
+std::string LogisticsVariantDialog::entryText()
+{
+	std::string s;
+	if ( hasDefsEditBox() && getDefsEditText( kSvVariantEditKey, s ) )
+	{
+		std::string out;
+		for ( char c : s )
+		{
+			// same rules as the legacy edit: no path/format characters, 14 max
+			if ( std::strchr( "\\/:*'.,<>?\"|%", c ) || static_cast<unsigned char>(c) < 32 )
+				continue;
+			if ( out.size() < 14 )
+				out += c;
+		}
+		return out;
+	}
+	return edits[0].entry();
+}
+
+void LogisticsVariantDialog::setEntryText( std::string text )
+{
+	if ( hasDefsEditBox() )
+		setDefsEditText( kSvVariantEditKey, text );
+	else
+		edits[0].setEntry( text );
+}
+
 //-------------------------------------------------------------------------------------------------
 
 int LogisticsVariantDialog::init( FitIniFile& file )
@@ -1526,7 +1563,11 @@ void LogisticsVariantDialog::begin()
 {
 	edits[0].allowIME( false );
 	edits[0].setFocus(true);
-	edits[0].setEntry( "" );
+	setEntryText( "" );
+	if ( hasDefsEditBox() )
+		requestDefsEditFocus( kSvVariantEditKey );
+	setDefsElementText( kSvVariantTitleKey, "SAVE VARIANT" );
+	setDefsElementText( kSvVariantPromptKey, "ENTER VARIANT NAME" );
 
 
 	initVariantList();
@@ -1549,6 +1590,8 @@ void LogisticsVariantDialog::beginTranscript()
 {
 	edits[0].allowIME( true );
 	edits[0].setFocus(true);
+	if ( hasDefsEditBox() )
+		requestDefsEditFocus( kSvVariantEditKey );
 	status = RUNNING;
 	bPromptOverwrite = 0;
 	bDeletePrompt = 0;
@@ -1596,7 +1639,7 @@ void LogisticsVariantDialog::initTranscript()
 		} while (FindNextFile(searchHandle,&findResult) != 0);
 	}
 
-	edits[0].setEntry( "" );
+	setEntryText( "" );
 
 }
 void LogisticsVariantDialog::initVariantList()
@@ -1629,7 +1672,7 @@ void LogisticsVariantDialog::initVariantList()
 			else if ( !bValid )
 			{
 				pEntry->select();
-				edits[0].setEntry( (static_cast<aTextListItem*>(pEntry))->getText() );
+				setEntryText( (static_cast<aTextListItem*>(pEntry))->getText() );
 				selectedName = mc2::str::from_c( ( (static_cast<aTextListItem*>(pEntry))->getText() ) );
 				bValid = true;
 
@@ -1687,10 +1730,10 @@ void LogisticsVariantDialog::update()
 			{
 				LogisticsData::instance->removeVariant( selectedName.c_str() );
 				initVariantList();
-				selectedName = edits[0].entry();
+				selectedName = entryText();
 			}
 			bDeletePrompt = 0;
-			edits[0].setEntry( "" );	
+			setEntryText( "" );	
 		}
 		else if ( NO == LogisticsOKDialog::instance()->getStatus() )
 		{
@@ -1706,6 +1749,23 @@ void LogisticsVariantDialog::update()
 	
 	gameListBox.update();
 
+	// v2 page list: a click on a row selects it and copies the name to the edit box
+	if ( hasDefsUiPage() )
+	{
+		const int defsItem = getDefsListSelection( kSvVariantListKey );
+		if ( defsItem >= 0 && defsItem < gameListBox.GetItemCount() &&
+			 defsItem != gameListBox.GetSelectedItem() )
+		{
+			gameListBox.SelectItem( defsItem );
+			const std::string text = mc2::str::from_c( (static_cast<aTextListItem*>(gameListBox.GetItem( defsItem )))->getText() );
+			if ( bTranscript || LogisticsData::instance->canReplaceVariant( text.c_str() ) || LogisticsData::instance->canDeleteVariant( text.c_str() ) )
+			{
+				setEntryText( text );
+				selectedName = text;
+			}
+		}
+	}
+
 	if ( userInput->isLeftClick()  )
 	{
 		if ( gameListBox.pointInside( userInput->getMouseX(), userInput->getMouseY() ) )
@@ -1720,7 +1780,7 @@ void LogisticsVariantDialog::update()
 				}
 				gameListBox.GetItem( item )->setColor( edits[0].getHighlightColor() );
 				const std::string text = mc2::str::from_c( (static_cast<aTextListItem*>(gameListBox.GetItem( item )))->getText() );
-				edits[0].setEntry( text );
+				setEntryText( text );
 				selectedName = text;
 			}
 		}
@@ -1734,7 +1794,7 @@ void LogisticsVariantDialog::update()
 		}
 	}
 
-	std::string text = edits[0].entry();
+	std::string text = entryText();
 	if ( ( !bTranscript && !LogisticsData::instance->canReplaceVariant( text.c_str() ) ) || text.empty() )
 	{
 		buttons[2].disable( 1 );	
@@ -1832,8 +1892,8 @@ void LogisticsVariantDialog::render()
 			const char* text = textItem ? textItem->getText() : nullptr;
 			items.push_back( text ? text : "" );
 		}
-		setDefsListItems( "game.mcl_sm.list.game_list", items );
-		setDefsListSelection( "game.mcl_sm.list.game_list", static_cast<int>(gameListBox.GetSelectedItem()) );
+		setDefsListItems( kSvVariantListKey, items );
+		setDefsListSelection( kSvVariantListKey, static_cast<int>(gameListBox.GetSelectedItem()) );
 	}
 	else
 	{
@@ -1855,7 +1915,7 @@ int	LogisticsVariantDialog::handleMessage ( unsigned long what, unsigned long wh
 	
 	if ( YES == who )
 	{
-		 selectedName = edits[0].entry();
+		 selectedName = entryText();
 		 bool bFound = 0;
 
 		 // look and see if you are overwriting anything here...
@@ -1893,7 +1953,7 @@ int	LogisticsVariantDialog::handleMessage ( unsigned long what, unsigned long wh
 	}
 	if ( DELETE_BUTTON == who )
 	{
-		selectedName = edits[0].entry();
+		selectedName = entryText();
 		char str[256];
 		cLoadString( IDS_DIALOG_DELETE_PROMPT, str, 255 );
 		char promptString[256];
@@ -1961,8 +2021,8 @@ void LogisticsAcceptVariantDialog::update()
 			initVariantList();
 			bDeletePrompt = 0;
 
-			selectedName = edits[0].entry();
-			edits[0].setEntry( "" );
+			selectedName = entryText();
+			setEntryText( "" );
 		
 		}
 		else if ( NO == LogisticsOKDialog::instance()->getStatus() )
@@ -1988,7 +2048,7 @@ void LogisticsAcceptVariantDialog::update()
 				}
 				gameListBox.GetItem( item )->setColor( edits[0].getHighlightColor() );
 				const std::string text = mc2::str::from_c( (static_cast<aTextListItem*>(gameListBox.GetItem( item )))->getText() );
-				edits[0].setEntry( text );
+				setEntryText( text );
 				selectedName = text;
 			}
 		}
@@ -2002,7 +2062,7 @@ void LogisticsAcceptVariantDialog::update()
 		}
 	}
 
-	std::string text = edits[0].entry();
+	std::string text = entryText();
 	if ( !LogisticsData::instance->canReplaceVariant( text.c_str() ) )
 	{
 		buttons[1].disable( 1 );	
