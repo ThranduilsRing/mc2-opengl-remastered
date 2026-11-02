@@ -151,11 +151,38 @@ def stage_install(install: Path, exe: Path, dest: Path) -> Path:
     return dest
 
 
+def seed_install(install, bookmarks, reference=DEFAULT_INSTALL):
+    """A fresh lane install lacks saved_bookmarks/<bm>.json and data/textures/*.burnin.*: copy what is missing from the reference
+    install (as the gate's stage step does); exit naming what is still missing so a capture never runs on the wrong data."""
+    install, reference = Path(install), Path(reference)
+    missing = []
+    for bm in [b.strip() for b in bookmarks.split(",") if b.strip()]:
+        dst = install / "saved_bookmarks" / (bm + ".json")
+        src = reference / "saved_bookmarks" / (bm + ".json")
+        if not dst.is_file() and src.is_file():
+            dst.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(src, dst)
+        if not dst.is_file():
+            missing.append(f"{dst} (not in reference {reference} either)")
+    textures = install / "data" / "textures"
+    for src in (reference / "data" / "textures").glob("*.burnin.*"):
+        if not (textures / src.name).exists():
+            textures.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(src, textures / src.name)
+    if not any(textures.glob("*.burnin.*")):
+        missing.append(f"{textures}/*.burnin.* (reference {reference} has none)")
+    if missing:
+        sys.exit("ab.py: install is missing required capture data:\n  " + "\n  ".join(missing)
+                 + "\n  fix: use --install DIR to name a reference install that has them, or copy them in.")
+
+
 def resolve_installs(a, out: Path):
     """-> (install_a, install_b) from --install-a/--install-b or --exe-a/--exe-b (+ --install); exits on a bad combination."""
     if a.install_a or a.install_b:
         if not (a.install_a and a.install_b) or a.exe_a or a.exe_b:
             sys.exit("use --install-a with --install-b, or --exe-a with --exe-b, not a mix")
+        for d in (a.install_a, a.install_b):
+            seed_install(d, a.bookmarks or "", a.install)
         return a.install_a, a.install_b
     if a.exe_a and a.exe_b:
         for e in (a.exe_a, a.exe_b):

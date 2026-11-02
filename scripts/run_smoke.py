@@ -849,7 +849,7 @@ def main():
             _lane = args.deploy or _deploy_lease._WALK_LANES[0]
             if _lane in _names:
                 _pre_exe = str(Path(_names[_lane]) / "mc2.exe")
-        if _pre_exe is not None and Path(_pre_exe).exists():
+        if _pre_exe is not None and Path(_pre_exe).is_file():
             _exe_verdict = _exe_guard.check_exe(_pre_exe, purpose="smoke")
             print(_exe_verdict.banner(), file=sys.stderr, flush=True)
             if not _exe_verdict.ok:
@@ -859,14 +859,15 @@ def main():
     # Validate every argument BEFORE the host-lease wait (a bad --deploy/--exe/--mission used
     # to fail only after up to an hour in the queue).
     if not args.verify_only:
-        if args.deploy and _lease_available and args.deploy not in dict(_deploy_lease.DEPLOY_FOLDERS):
+        if args.deploy and re.search(r"[\\/:]", args.deploy) or (args.deploy and _lease_available and args.deploy not in dict(_deploy_lease.DEPLOY_FOLDERS)):
             print(f"[runner] ERROR: --deploy takes only a short name "
-                  f"({', '.join(n for n, _ in _deploy_lease.DEPLOY_FOLDERS)}), got '{args.deploy}'. "
+                  f"({', '.join(n for n, _ in (_deploy_lease.DEPLOY_FOLDERS if _lease_available else ()))}), got '{args.deploy}'. "
                   f"For a lane install such as E:/mc2-installs/<branch> pass --exe <path>/mc2.exe.",
                   file=sys.stderr)
             sys.exit(2)
         if args.exe is not None and not Path(args.exe).is_file():
-            print(f"[runner] ERROR: --exe {args.exe} is not a file (expected <install>/mc2.exe).",
+            hint = (f" It is a directory: pass --exe {Path(args.exe) / 'mc2.exe'}." if Path(args.exe).is_dir() else "")
+            print(f"[runner] ERROR: --exe {args.exe} is not a file (expected <install>/mc2.exe).{hint}",
                   file=sys.stderr)
             sys.exit(2)
         if args.mission and not args.menu_canary:

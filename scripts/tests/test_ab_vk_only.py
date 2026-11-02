@@ -50,3 +50,22 @@ def test_rejects_mixed_and_missing(tmp_path):
         ab.main(["--bookmarks", "x", "--install-a", "p", "--exe-b", "q", "--out-root", str(tmp_path)])
     with pytest.raises(SystemExit):
         ab.main(["--bookmarks", "x", "--out-root", str(tmp_path)])
+
+
+def test_seed_install_copies_from_reference_and_fails_clearly(tmp_path):
+    ref, inst = tmp_path / "ref", tmp_path / "inst"
+    (ref / "saved_bookmarks").mkdir(parents=True)
+    (ref / "data/textures").mkdir(parents=True)
+    (ref / "saved_bookmarks/bm1.json").write_text("{}")
+    (ref / "data/textures/x.burnin.dds").write_text("t")
+    inst.mkdir()
+    ab.seed_install(inst, "bm1", ref)
+    assert (inst / "saved_bookmarks/bm1.json").is_file() and (inst / "data/textures/x.burnin.dds").is_file()
+    with pytest.raises(SystemExit) as e:
+        ab.seed_install(inst, "bm1,nope", ref)
+    assert "nope.json" in str(e.value)
+    (inst / "data/textures/x.burnin.dds").unlink()
+    (ref / "data/textures/x.burnin.dds").unlink()
+    with pytest.raises(SystemExit) as e:
+        ab.seed_install(inst, "bm1", ref)
+    assert "burnin" in str(e.value)
