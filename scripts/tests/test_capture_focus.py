@@ -20,12 +20,17 @@ def test_mech_default_and_indexed():
     assert env_pin.focus_declarations("mech:3") == ["MC2_CAPTURE_FOCUS=mech:3"]
 
 
+@pytest.mark.parametrize("walk", ["mech:home", "mech:enemy", "mech:all"])
+def test_walk_modes(walk):
+    assert env_pin.focus_declarations(walk) == ["MC2_CAPTURE_FOCUS=" + walk]
+
+
 def test_zoom_is_declared():
     assert env_pin.focus_declarations("mech:1", 350.0) == [
         "MC2_CAPTURE_FOCUS=mech:1", "MC2_CAPTURE_FOCUS_ZOOM=350"]
 
 
-@pytest.mark.parametrize("bad", ["building", "mech:", "mech:x", "mech:-1", "Mech"])
+@pytest.mark.parametrize("bad", ["building", "mech:", "mech:x", "mech:-1", "Mech", "mech:both", "mech:All"])
 def test_bad_target_rejected(bad):
     with pytest.raises(ValueError):
         env_pin.focus_declarations(bad)
