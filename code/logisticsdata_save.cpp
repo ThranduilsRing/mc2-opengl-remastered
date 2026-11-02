@@ -1,5 +1,6 @@
 // LogisticsData: removeMechsInForceGroup, pilot ranking, save / load, setMissionCompleted and the mech / pilot / variant lookups.
 // Declared in the class headers; shared names in logisticsdata_internal.h.
+#include "pilot_pick.h"
 #include "logisticsdata_internal.h"
 #include "content_error.h"
 #include "mc2fmt.h"
@@ -86,11 +87,12 @@ const char*	LogisticsData::getBestPilot( long mechWeight )
 	}
 
 	// Out of pilots (all used/unavailable). Release builds used to write through a null pPilots[0] here.
-	// Reuse the best candidate if there was one, else any pilot in the pool, else report none; callers must cope with nullptr.
-	LogisticsPilot* fallback = (count > 0) ? pPilots[0] : (pilots.empty() ? nullptr : &(*pilots.begin()));
+	// Reuse the best filtered candidate (available, not in a live mech) if there was one; else report none.
+	// Never hand back a pilot that failed the filters (that would put one pilot in two mechs); callers must cope with nullptr.
+	LogisticsPilot* fallback = pickOutOfPoolPilot<LogisticsPilot>(std::span<LogisticsPilot* const>(pPilots, static_cast<size_t>(count)));
 	if (!fallback)
 	{
-		mc2::content::error(mc2::content::Kind::MissionData, "pilots", "getBestPilot: pilot pool is empty");
+		mc2::content::error(mc2::content::Kind::MissionData, "pilots", "getBestPilot: no available pilot not already in a mech");
 		return nullptr;
 	}
 	fallback->setUsed( true );

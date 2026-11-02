@@ -331,7 +331,17 @@ void MissionInterfaceManager::beginVtol (long supportID, long commanderID, glm::
 						STOP(("MissionGUI.beginvtol: null target PASSED IN."));
 					char* newPilotName = const_cast<char*>(LogisticsData::instance->getBestPilot( salvageTarget->tonnage ));
 					if (!newPilotName)
+					{
+						// No pilot available: unwind the queued recovery (refund the RP, release the buttons).
+						if (MPlayer->isServer())
+						{
+							glm::vec3 refundPos;
+							MPlayer->sendReinforcement(10000, 0, "noname", commanderID, refundPos, 6);
+						}
+						if (commanderID == MPlayer->commanderID)
+							controlGui.unPressAllVehicleButtons();
 						return;
+					}
 					if (vehicleID[commanderID] != 147)
 						STOP(("missiongui.beginvtol: bad vehicleID"));
 					MPlayer->sendReinforcement(vehicleID[commanderID], salvageTarget->netRosterIndex, newPilotName, commanderID, vPos[commanderID], 3);
