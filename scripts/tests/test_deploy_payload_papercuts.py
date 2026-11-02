@@ -1,6 +1,7 @@
 """deploy_payload: a fresh Ninja tree is seeded with its runtime DLLs from real sources; --target names the right flag."""
 import subprocess
 import sys
+import pytest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -16,8 +17,11 @@ def test_seed_build_dlls_from_3rdparty_and_redist(tmp_path):
     build = tmp_path / "build"
     build.mkdir()
     copied = dp.seed_build_dlls(str(build), str(ROOT))
-    assert "glew32.dll" in copied
-    assert (build / "glew32.dll").is_file()
+    expect = [n for n in ("glew32.dll", "vcruntime140.dll") if any((Path(d) / n).is_file() for d in dp.dll_source_dirs(str(ROOT)))]
+    if not expect:
+        pytest.skip("no DLL source dirs here (3rdparty/lib is git-ignored; a bare clone has none)")
+    assert set(expect) <= set(copied)
+    assert all((build / n).is_file() for n in expect)
     assert dp.seed_build_dlls(str(build), str(ROOT)) == []  # idempotent
 
 
