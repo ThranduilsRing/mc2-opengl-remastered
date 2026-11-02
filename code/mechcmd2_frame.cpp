@@ -142,11 +142,13 @@ void __stdcall UpdateRenderers()
 						const float kx = disp.x / dw, ky = disp.y / dh;
 						const float expX = ( bx + userInput->normMouseX() * bw ) * kx;
 						const float expY = ( by + userInput->normMouseY() * bh ) * ky;
-						std::fprintf( stderr, "[CURSOR] draw logical=%dx%d logicalPos=(%.1f,%.1f) quad0=(%.1f,%.1f) mapped=(%.1f,%.1f) expect=(%.1f,%.1f) display=%.0fx%.0f scale=%.3f ok=%d\n",
+						char js[384];
+						std::snprintf( js, sizeof js, "{\"logical\":\"%dx%d\",\"logicalPos\":[%.1f,%.1f],\"quad0\":[%.1f,%.1f],\"mapped\":[%.1f,%.1f],\"expect\":[%.1f,%.1f],\"display\":\"%.0fx%.0f\",\"scale\":%.3f,\"ok\":%d}",
 							static_cast<int>( userInput->logicalW() ), static_cast<int>( userInput->logicalH() ),
 							userInput->realMouseX(), userInput->realMouseY(), p0.x, p0.y, mapX, mapY, expX, expY,
 							disp.x, disp.y, m.sx,
 							( std::fabs( mapX - expX ) <= 2.0f && std::fabs( mapY - expY ) <= 2.0f ) ? 1 : 0 );
+						mc2_diag::writeEvent( "CURSOR", 1, 0, js );
 					}
 				}
 				return true;
