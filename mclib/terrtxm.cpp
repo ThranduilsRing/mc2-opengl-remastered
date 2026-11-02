@@ -869,7 +869,14 @@ long TerrainTextures::initOverlay (long overlayNum, long txmNum, char *txmName)
 			File tgaFile;
 
 			result = tgaFile.open(chosenName);
-			gosASSERT(result == NO_ERR);
+			if (result != NO_ERR)
+			{
+				std::fprintf(stderr, "[TERRAIN_TXM] missing overlay tga, skipping CPU copy: %s\n", static_cast<const char*>(chosenName));
+				result = loadOverlayMemory(chosenName);
+				if (j==0)
+					txmResult = result;
+				continue;
+			}
 
 			if (hiresEdge > 0)
 			{
