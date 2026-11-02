@@ -19,7 +19,9 @@ constexpr GpuResidencyPolicy gpuResidencyPolicy(int quality) {
     // fit that allocation while all resources still share the 512 MiB low ceiling.
     if (quality == 0) return {512 * gpuMiB, 128 * gpuMiB, 0, 2048, 2048};
     if (quality == 1) return {1024 * gpuMiB, 128 * gpuMiB, 32 * gpuMiB, 4096, 4096};
-    return {2048 * gpuMiB, 256 * gpuMiB, vegetationResidentCeiling, 16384, 4096};
+    // q2 is bounded by the device (gpuBudget of the device-local heap), not by a fixed 2 GiB: 4K render targets, the shadow
+    // bake and mech/light feeds exceeded 2 GiB on 24 GiB cards and were refused. 8 GiB is the sanity ceiling.
+    return {8192 * gpuMiB, 256 * gpuMiB, vegetationResidentCeiling, 16384, 4096};
 }
 constexpr uint64_t gpuBudget(uint64_t available, uint64_t ceiling) {
     const uint64_t margin = (std::max)(32 * gpuMiB, available / 10);

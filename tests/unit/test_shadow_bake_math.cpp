@@ -22,7 +22,7 @@ TEST_CASE("GPU residency: physical headroom, preset ceiling and overlap admissio
     CHECK(gpuResidencyPolicy(0).textureUpload >= 96*gpuMiB); // HD 630 frame ring, including flight copies
     CHECK(gpuResidencyPolicy(0).vegetation==0);
     CHECK(gpuResidencyPolicy(1).total==1024*gpuMiB);
-    CHECK(gpuResidencyPolicy(2).total==2048*gpuMiB);
+    CHECK(gpuResidencyPolicy(2).total==8192*gpuMiB);
     CHECK(gpuFits(512,400,80,32));
     CHECK_FALSE(gpuFits(512,400,80,33));
     CHECK_FALSE(gpuFits(512,513,0,1));

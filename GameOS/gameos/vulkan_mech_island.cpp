@@ -747,7 +747,8 @@ bool upload_geometry_once(MechIsland* s) {
     // A failed copy leaves both buffers empty, so the next frame's retry starts from nothing instead of drawing unfilled buffers.
     if (!s->vbo.createFilled(s->allocator, s->device, feed.vboCpu, feed.vboBytes, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, "mech.vbo") ||
         !s->ibo.createFilled(s->allocator, s->device, feed.iboCpu, feed.iboBytes, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, "mech.ibo")) {
-        vlog("mech geometry upload failed (buffer creation or map); retrying next frame.");
+        static bool s_logged = false;
+        if (!s_logged) { s_logged = true; vlog("mech geometry upload failed (buffer creation or map); retrying each frame, logged once."); }
         s->vbo.reset();
         s->ibo.reset();
         return false;
