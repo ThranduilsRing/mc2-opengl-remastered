@@ -6,14 +6,17 @@ How: RadeonDeveloperService (RDS, port 27300) + Radeon Developer Panel (minimize
 feature to the AMD driver with Auto capture mode = Frame; the engine launches off-screen through the harness runner and the
 driver writes the .rgp itself at --frame. No hotkey and no input injection (a global hotkey would hit the owner's foreground
 window). The Panel's Profiling output_path/frame index are set in its preset for the run and restored afterwards.
+Uses the tray RadeonDeveloperService.exe, NOT RadeonDeveloperServiceCLI.exe: the CLI logs "Failed to query AMD driver service name"
+on this host, so the driver never connects mc2.exe and no .rgp is written. rds.log/panel.log are copied to --out as evidence.
 Exits 2 if no .rgp appears. Only processes this script started are killed.
 """
-import argparse, json, os, socket, subprocess, sys, threading, time
+import argparse, json, os, shutil, socket, subprocess, sys, threading, time
 from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 sys.path[:0] = [str(ROOT / "tools"), str(ROOT / "scripts")]
 SUITE = Path("C:/Users/Joe/Downloads/RadeonDeveloperToolSuite-2026-02-02-1757")
 PRESETS = Path(os.environ["APPDATA"]) / "RadeonDeveloperPanel" / "presets.json"
+PANEL_LOG = PRESETS.with_name("log.txt")
 
 
 def port_open(port=27300):
@@ -58,9 +61,10 @@ def main():
     try:
         hidden = subprocess.STARTUPINFO(); hidden.dwFlags = 1; hidden.wShowWindow = 7   # SW_SHOWMINNOACTIVE
         if not port_open():
+            rds_log = open(a.out / "rds.log", "wb")
             # background-launch: allow RDS console service, never an engine.
-            children.append(subprocess.Popen([str(SUITE / "RadeonDeveloperServiceCLI.exe"), "--port", "27300"], cwd=SUITE,
-                                             creationflags=0x08000000))
+            children.append(subprocess.Popen([str(SUITE / "RadeonDeveloperService.exe")], cwd=SUITE,
+                                             stdout=rds_log, stderr=subprocess.STDOUT, creationflags=0x08000000))
             time.sleep(2)
         # background-launch: allow minimized no-activate profiler panel, never an engine.
         children.append(subprocess.Popen([str(SUITE / "RadeonDeveloperPanel.exe"), "--connect", "localhost"], cwd=SUITE, startupinfo=hidden))
@@ -81,6 +85,7 @@ def main():
             res = runner.run_one(runner.RunConfig(exe=[str(a.exe)], profile="stock", stem=a.mission, duration=int(a.settle) + 25,
                 heartbeat_timeout_load_s=180, heartbeat_timeout_play_s=60, grace_s=150, env_extra=env, show_window=True))
         (a.out / "engine.log").write_text(res.stdout_text, encoding="utf-8")
+        shutil.copy(PANEL_LOG, a.out / "panel.log")   # evidence: does the Panel list an mc2.exe client?
         new = sorted(set(p.name for p in a.out.glob("*.rgp")) - before)
         print("hotkey sent:", bool(fired), "new rgp:", new)
         return 0 if new else 2
