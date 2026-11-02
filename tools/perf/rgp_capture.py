@@ -61,8 +61,8 @@ def main():
     try:
         hidden = subprocess.STARTUPINFO(); hidden.dwFlags = 1; hidden.wShowWindow = 7   # SW_SHOWMINNOACTIVE
         if not port_open():
-            # background-launch: allow RDS console service, never an engine.
             rds_log = open(a.out / "rds.log", "wb")
+            # background-launch: allow RDS console service, never an engine.
             children.append(subprocess.Popen([str(SUITE / "RadeonDeveloperService.exe")], cwd=SUITE,
                                              stdout=rds_log, stderr=subprocess.STDOUT, creationflags=0x08000000))
             time.sleep(2)

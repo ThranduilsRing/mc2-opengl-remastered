@@ -47,8 +47,8 @@ FAILS the checker unless it carries `# background-launch: allow <why>`.
 | `tools/mod_smoke.py` | 944 | `nofocus.run` | offscreen |
 | `tools/perf/mission_cpu_profile.py` | 223 | `subprocess.Popen` **raw, allowed:** Tracy console recorder, never an engine. | offscreen |
 | `tools/perf/mission_cpu_profile.py` | 259 | `subprocess.Popen` **raw, allowed:** Tracy CSV console exporter, never an engine. | offscreen |
-| `tools/perf/rgp_capture.py` | 62 | `subprocess.Popen` **raw, allowed:** RDS console service, never an engine. | offscreen |
-| `tools/perf/rgp_capture.py` | 66 | `subprocess.Popen` **raw, allowed:** minimized no-activate profiler panel, never an engine. | offscreen |
+| `tools/perf/rgp_capture.py` | 66 | `subprocess.Popen` **raw, allowed:** RDS console service, never an engine. | offscreen |
+| `tools/perf/rgp_capture.py` | 70 | `subprocess.Popen` **raw, allowed:** minimized no-activate profiler panel, never an engine. | offscreen |
 | `tools/perf_snapshot.py` | 105 | `nofocus.spawn` | offscreen |
 | `tools/renderdoc/capture.py` | 144 | `nofocus.run` | offscreen |
 | `tools/tracy_capture_compare.py` | 274 | `subprocess.Popen` **raw, allowed:** Tracy recorder console tool, windowless via nofocus.hidden_kwargs. | offscreen |
