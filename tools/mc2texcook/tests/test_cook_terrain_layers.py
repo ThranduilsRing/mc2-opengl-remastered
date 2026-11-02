@@ -369,26 +369,36 @@ class TestEngineNormalCook(unittest.TestCase):
             open(os.path.join(self.tmpdir, f'mat{slot}_normal.ktx2'), 'wb').close()
         os.remove(os.path.join(self.tmpdir, 'mat5_normal.tga'))
         calls = []
-        original = pbr.cook_png_to_bc7
-        pbr.cook_png_to_bc7 = lambda *a, **k: calls.append(a) or False
+        original = ctl.write_rgba8_ktx2
+        ctl.write_rgba8_ktx2 = lambda *a, **k: calls.append(a)
         try:
-            results = ctl.cook_engine_normals(self.tmpdir, ktx_exe='unused')
+            results = ctl.cook_engine_normals(self.tmpdir)
         finally:
-            pbr.cook_png_to_bc7 = original
+            ctl.write_rgba8_ktx2 = original
         self.assertEqual(calls, [])          # every existing sidecar is newer than its source
         self.assertEqual([ok for _, ok in results], [True] * 5 + [False])
 
-    @unittest.skipUnless(os.path.exists(pbr.DEFAULT_KTX_EXE), 'ktx.exe not available in this environment')
-    def test_cook_writes_mip_complete_bc7(self):
+    def test_cook_is_lossless_rgba8_with_the_engine_box_mips(self):
+        import struct
+        import numpy as np
+        from PIL import Image
+        rng = np.random.default_rng(7)
+        texels = rng.integers(0, 256, (8, 8, 4), dtype=np.uint8)
         for slot in range(6):
-            self._tga(f'mat{slot}_normal.tga', 'RGBA', (128, 128, 255, 255))
-        results = ctl.cook_engine_normals(self.tmpdir, ktx_exe=pbr.DEFAULT_KTX_EXE)
+            Image.fromarray(texels, 'RGBA').save(os.path.join(self.tmpdir, f'mat{slot}_normal.tga'))
+        results = ctl.cook_engine_normals(self.tmpdir)
         self.assertTrue(all(ok for _, ok in results))
         with open(results[0][0], 'rb') as f:
-            header = f.read(48)
-        import struct
-        vk_format, _, width, height, _, layers, faces, levels = struct.unpack_from('<8I', header, 12)
-        self.assertEqual((vk_format, width, height, levels), (145, 4, 4, 3))   # BC7 UNORM, 4 -> 2 -> 1
+            data = f.read()
+        vk_format, type_size, width, height, _, layers, faces, levels, supercompression = struct.unpack_from('<9I', data, 12)
+        self.assertEqual((vk_format, type_size, width, height, faces, levels, supercompression), (37, 1, 8, 8, 1, 4, 0))
+        # Level 0 is the TGA texel for texel; each next level is the (a+b+c+d+2)/4 box of the one above (no renormalisation).
+        expect = ctl.box_mips(texels)
+        for lvl in range(levels):
+            offset, length, _ = struct.unpack_from('<3Q', data, 80 + 24 * lvl)
+            self.assertEqual(data[offset:offset + length], expect[lvl].tobytes())
+        t = texels.astype(np.uint32)
+        self.assertEqual(expect[1][0, 0].tolist(), [(int(t[0, 0, c]) + int(t[0, 1, c]) + int(t[1, 0, c]) + int(t[1, 1, c]) + 2) // 4 for c in range(4)])
 
 
 if __name__ == '__main__':

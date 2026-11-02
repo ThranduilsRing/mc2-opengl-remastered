@@ -173,9 +173,16 @@ bool TerrainFieldStore::setMaterialNormals(std::span<const RenderCore::KtxImage>
     const auto& first = layers.front();
     int fullChain = 1;
     for (int edge = first.width; edge > 1; edge >>= 1) ++fullChain;
-    const auto levelBytes = [](int side, int level) { const size_t b = size_t((std::max(1, side >> level) + 3) / 4); return b * b * 16u; };
+    // BC7 (16-byte 4x4 blocks) or lossless RGBA8 (4 bytes a texel); every layer shares slot 0's format.
+    const bool rgba8 = first.vkFormat == ColormapAtlas::kRgba8;
+    const auto levelBytes = [rgba8](int side, int level) {
+        const size_t e = size_t(std::max(1, side >> level));
+        if (rgba8) return e * e * 4u;
+        const size_t b = (e + 3) / 4; return b * b * 16u;
+    };
     for (const auto& l : layers) {
-        bool ok = l.isCompressed && l.vkFormat == ColormapAtlas::kBc7Unorm && l.blockSizeBytes == 16 && l.width > 0 &&
+        bool ok = l.vkFormat == first.vkFormat && (rgba8 ? (!l.isCompressed && l.blockSizeBytes == 0)
+                                                         : (l.isCompressed && l.vkFormat == ColormapAtlas::kBc7Unorm && l.blockSizeBytes == 16)) && l.width > 0 &&
                   l.width == l.height && l.width == first.width && l.width <= kMaxSide && l.mipCount == fullChain &&
                   l.mipByteOffsets.size() == size_t(fullChain);
         size_t offset = 0;
@@ -191,7 +198,7 @@ bool TerrainFieldStore::setMaterialNormals(std::span<const RenderCore::KtxImage>
     }
     auto array = std::make_shared<RenderCore::KtxImage>();
     array->width = array->height = first.width;
-    array->vkFormat = ColormapAtlas::kBc7Unorm; array->isCompressed = true; array->blockSizeBytes = 16;
+    array->vkFormat = first.vkFormat; array->isCompressed = !rgba8; array->blockSizeBytes = rgba8 ? 0 : 16;
     array->mipCount = fullChain;
     for (int level = 0; level < fullChain; ++level) {
         array->mipByteOffsets.push_back(array->pixels.size());
