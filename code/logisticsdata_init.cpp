@@ -134,11 +134,8 @@ void LogisticsData::initComponents()
 
 	
 	File componentFile;
-#ifdef _DEBUG
-	int result = 
-#endif
-		componentFile.open( componentPath );
-	gosASSERT( result == NO_ERR );
+	if ( componentFile.open( componentPath ) != NO_ERR )
+		STOP(( "LogisticsData::initComponents: unable to open %s", componentPath ));
 
 	auto data = std::make_unique_for_overwrite<BYTE[]>(componentFile.getLength());
 
