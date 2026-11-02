@@ -190,6 +190,57 @@
       "callers_by_stem": []
     },
     {
+      "path": "scripts/campaign_liveness.py",
+      "basename": "campaign_liveness.py",
+      "stem": "campaign_liveness",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "scripts/campaign_roster.py",
+          "line": 30,
+          "evidence": "import",
+          "reference": "campaign_liveness",
+          "text": "import campaign_liveness as cl  # noqa: E402"
+        },
+        {
+          "path": "scripts/sweep_campaign.py",
+          "line": 131,
+          "evidence": "import",
+          "reference": "campaign_liveness",
+          "text": "import campaign_liveness"
+        },
+        {
+          "path": "scripts/tests/test_campaign_liveness.py",
+          "line": 7,
+          "evidence": "import",
+          "reference": "campaign_liveness",
+          "text": "import campaign_liveness as cl  # noqa: E402"
+        },
+        {
+          "path": "scripts/tests/test_campaign_roster.py",
+          "line": 6,
+          "evidence": "import",
+          "reference": "campaign_liveness",
+          "text": "import campaign_liveness as cl  # noqa: E402"
+        }
+      ]
+    },
+    {
+      "path": "scripts/campaign_roster.py",
+      "basename": "campaign_roster.py",
+      "stem": "campaign_roster",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "scripts/tests/test_campaign_roster.py",
+          "line": 7,
+          "evidence": "import",
+          "reference": "campaign_roster",
+          "text": "import campaign_roster as cr  # noqa: E402"
+        }
+      ]
+    },
+    {
       "path": "scripts/capture_vfx_oracle.py",
       "basename": "capture_vfx_oracle.py",
       "stem": "capture_vfx_oracle",
@@ -3929,7 +3980,7 @@
         },
         {
           "path": "scripts/merge_gate.py",
-          "line": 987,
+          "line": 1019,
           "evidence": "import",
           "reference": "deploy_payload",
           "text": "from deploy_payload import verify_published_identity"
@@ -4245,7 +4296,7 @@
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 1170,
+          "line": 1166,
           "evidence": "import",
           "reference": "exe_fingerprint",
           "text": "import exe_fingerprint as fpmod"
@@ -4620,6 +4671,21 @@
       "callers_by_stem": []
     },
     {
+      "path": "scripts/mech_capture_check.py",
+      "basename": "mech_capture_check.py",
+      "stem": "mech_capture_check",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "scripts/tests/test_mech_capture_check.py",
+          "line": 10,
+          "evidence": "import",
+          "reference": "mech_capture_check",
+          "text": "import mech_capture_check as m  # noqa: E402"
+        }
+      ]
+    },
+    {
       "path": "scripts/mech_shot.py",
       "basename": "mech_shot.py",
       "stem": "mech_shot",
@@ -4789,147 +4855,147 @@
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 538,
+          "line": 534,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 549,
+          "line": 545,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 611,
+          "line": 607,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 623,
+          "line": 619,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 634,
+          "line": 630,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 644,
+          "line": 640,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 661,
+          "line": 657,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 683,
+          "line": 679,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 704,
+          "line": 700,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 713,
+          "line": 709,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 734,
+          "line": 730,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 761,
+          "line": 757,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 828,
+          "line": 824,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 841,
+          "line": 837,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 887,
+          "line": 883,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 909,
+          "line": 905,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 1036,
+          "line": 1032,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 1057,
+          "line": 1053,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 1083,
+          "line": 1079,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 1112,
+          "line": 1108,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 1130,
+          "line": 1126,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
@@ -5023,7 +5089,7 @@
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 1169,
+          "line": 1165,
           "evidence": "import",
           "reference": "ninja_build",
           "text": "import ninja_build as nb"
@@ -5139,7 +5205,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/sweep_campaign.py",
-          "line": 24,
+          "line": 28,
           "evidence": "command",
           "reference": "scripts/resolve_campaign_config.py",
           "text": "out = subprocess.run([sys.executable, str(HERE / \"resolve_campaign_config.py\"), deploy, name],"
@@ -5196,8 +5262,22 @@
           "text": "import run_battle_bench as battle"
         },
         {
+          "path": "tools/perf/_census_v3.py",
+          "line": 14,
+          "evidence": "import",
+          "reference": "run_battle_bench",
+          "text": "import run_battle_bench as battle"
+        },
+        {
           "path": "tools/perf/mission_cpu_profile.py",
           "line": 27,
+          "evidence": "import",
+          "reference": "run_battle_bench",
+          "text": "import run_battle_bench as battle"
+        },
+        {
+          "path": "tools/perf/rgp_capture.py",
+          "line": 52,
           "evidence": "import",
           "reference": "run_battle_bench",
           "text": "import run_battle_bench as battle"
@@ -5554,14 +5634,14 @@
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 653,
+          "line": 649,
           "evidence": "import",
           "reference": "run_tools_tests",
           "text": "import run_tools_tests as tt"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 1097,
+          "line": 1093,
           "evidence": "import",
           "reference": "run_tools_tests",
           "text": "import run_tools_tests as tt"
@@ -5641,7 +5721,7 @@
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 798,
+          "line": 794,
           "evidence": "import",
           "reference": "run_visual_capture",
           "text": "import run_visual_capture as capture"
@@ -7654,6 +7734,20 @@
       "callers_by_stem": []
     },
     {
+      "path": "scripts/tests/test_campaign_liveness.py",
+      "basename": "test_campaign_liveness.py",
+      "stem": "test_campaign_liveness",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
+      "path": "scripts/tests/test_campaign_roster.py",
+      "basename": "test_campaign_roster.py",
+      "stem": "test_campaign_roster",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
       "path": "scripts/tests/test_capture_focus.py",
       "basename": "test_capture_focus.py",
       "stem": "test_capture_focus",
@@ -8088,6 +8182,13 @@
       "callers_by_stem": []
     },
     {
+      "path": "scripts/tests/test_mech_capture_check.py",
+      "basename": "test_mech_capture_check.py",
+      "stem": "test_mech_capture_check",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
       "path": "scripts/tests/test_merge_speedups.py",
       "basename": "test_merge_speedups.py",
       "stem": "test_merge_speedups",
@@ -8274,6 +8375,13 @@
       "path": "scripts/tests/test_repin_stale.py",
       "basename": "test_repin_stale.py",
       "stem": "test_repin_stale",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
+      "path": "scripts/tests/test_rgp_capture.py",
+      "basename": "test_rgp_capture.py",
+      "stem": "test_rgp_capture",
       "callers_by_basename": [],
       "callers_by_stem": []
     },
@@ -13554,6 +13662,13 @@
       "callers_by_stem": []
     },
     {
+      "path": "tools/perf/_census_v3.py",
+      "basename": "_census_v3.py",
+      "stem": "_census_v3",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
       "path": "tools/perf/budget_check.py",
       "basename": "budget_check.py",
       "stem": "budget_check",
@@ -13654,6 +13769,21 @@
           "evidence": "import",
           "reference": "paired_cpu",
           "text": "import paired_cpu"
+        }
+      ]
+    },
+    {
+      "path": "tools/perf/rgp_capture.py",
+      "basename": "rgp_capture.py",
+      "stem": "rgp_capture",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "scripts/tests/test_rgp_capture.py",
+          "line": 5,
+          "evidence": "import",
+          "reference": "rgp_capture",
+          "text": "import rgp_capture"
         }
       ]
     },
