@@ -409,14 +409,10 @@ def plan(jobs, proof_dir=None, capture_before_runs=1, before_dir=None):
                                      str(proof / f"noise-{run}")], {}),
         ])
     steps[1:1] = noise
-    # The candidate install is fresh, so its first launch is cold (TGA detail normals, uncached colormap/mod caches) while every later
-    # launch reads the warm caches (BC7 sidecars, origin=cache): W100 scored a false MAD 0.40/0.14 against a same-install A/B of 0.0.
-    # One throwaway launch with the published exe fills the caches so capture-before and capture-after read the same inputs.
-    steps.insert(0, ("capture-before-warmup", capture + ["--out", str(proof / "warmup")], {}))
     if before_dir is not None:
         before = str(proof / "before")
         steps = [(name, [str(before_dir) if arg == before else arg for arg in cmd], env)
-                 for name, cmd, env in steps if name not in ("capture-before", "capture-before-warmup")]
+                 for name, cmd, env in steps if name != "capture-before"]
     # mc2_03 runs headless; mc2_10 and mc2_24 retain the GPU path. The finale
     # spawns infantry after tick 2404: --ticks is a required SIMID length (zero
     # tolerance), so the baseline prefix alone cannot satisfy this audit.
@@ -677,6 +673,10 @@ def stage_published(install, published=PUBLISHED):
     for src in (published / "data" / "textures").glob("*.burnin.*"):
         if not (textures / src.name).exists():
             shutil.copy2(src, textures / src.name)
+    # The deploy row cooks the BC7 detail-normal sidecars into the target; without them capture-before imports the TGAs and
+    # capture-after reads the sidecars, a real pixel difference (W100: MAD 0.40 / 0.14 with an identical rendering path).
+    from deploy_payload import ensure_engine_normal_cooks
+    ensure_engine_normal_cooks(str(install))
 
 
 def execute_window(steps, head, dry_run=False, keep_going=False, farm_determinism=False):
