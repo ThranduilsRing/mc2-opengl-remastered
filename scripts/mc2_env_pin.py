@@ -237,7 +237,7 @@ def build_pinned_env(
     return env, record
 
 
-FOCUS_RE = re.compile(r"^mech(:(\d+|home|enemy|all))?$")
+FOCUS_RE = re.compile(r"^mech(:(\d+|home|enemy|all)(,fog)?)?$")  # ",fog": walk without the ShowMovers override (enemies labelled fogged)
 
 
 def focus_declarations(focus: str | None, zoom: float | None = None) -> list[str]:
@@ -250,7 +250,7 @@ def focus_declarations(focus: str | None, zoom: float | None = None) -> list[str
             raise ValueError("--focus-zoom requires --focus")
         return []
     if not FOCUS_RE.match(focus):
-        raise ValueError(f"--focus must be mech, mech:N, mech:home, mech:enemy or mech:all, got {focus!r}")
+        raise ValueError(f"--focus must be mech, mech:N, mech:home, mech:enemy or mech:all (all|enemy|home accept a ,fog suffix: walk without the ShowMovers override), got {focus!r}")
     out = [f"MC2_CAPTURE_FOCUS={focus}"]
     if zoom is not None:
         if not 20.0 <= zoom <= 6000.0:
