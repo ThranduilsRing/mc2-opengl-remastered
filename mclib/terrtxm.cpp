@@ -671,8 +671,19 @@ long TerrainTextures::initTexture (long typeNum)
 		{
 			File tgaFile;
 			result = tgaFile.open(fileName);
-			gosASSERT(result == NO_ERR);
-	
+			if (result != NO_ERR)
+			{
+				// A mod may ship a terrain type without every MIP TGA. gosASSERT is a no-op in
+				// release, so the read/seek below hit an invalid fd and fast-failed (MCO a_0_1).
+				// Leave textureData[j] null (consumers tolerate it) and still register the GPU
+				// texture, which falls back to the placeholder.
+				std::fprintf(stderr, "[TERRAIN_TXM] missing terrain tga, skipping CPU copy: %s\n", static_cast<const char*>(fileName));
+				result = loadTextureMemory(fileName,mipSize);
+				if (j==0)
+					txmResult = result;
+				continue;
+			}
+
 			struct TGAFileHeader header;
 	
 			tgaFile.read(reinterpret_cast<MemoryPtr>(&header),sizeof(TGAFileHeader));

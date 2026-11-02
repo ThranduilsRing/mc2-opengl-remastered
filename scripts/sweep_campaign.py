@@ -126,6 +126,7 @@ def main():
                    "crash_site": crash_site, "hp_summary": hp_summary},
     }
     summary["result"]["wall_seconds"] = round(wall, 1)
+    summary["result"]["exit_code"] = p.returncode
     summary["result"]["soak_counts"] = {k: len(re.findall(r"\[SOAK\] " + k, out)) for k in
         ("autowin mission=", "results dismiss screen=salvage", "results dismiss screen=pilot", "salvage-check",
          "salvage-in-loadbay", "salvage-trademover", "pilot-promote", "kill-enemy")}
