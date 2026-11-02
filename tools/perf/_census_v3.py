@@ -19,8 +19,8 @@ OUT = Path("E:/mc2-archive-2026-10/proofs/census3")
 BK = ROOT / "tests/visual/bookmarks"
 POSES = [("mc2_01", "cross_map_view", "mc2_01"), ("mc2_03", "scout_1", "mc2_03_camera"),
          ("mc2_03", "scout_2", "mc2_03_camera"), ("mc2_03", "scout_3", "mc2_03_camera"),
-         ("mc2_03", "scout_4", "mc2_03_camera"), ("mc2_10", "wolfman", "mc2_10_camera"),
-         ("mc2_24", "wolfman", "mc2_24_camera"), ("mc2_17", "corner_far", "mc2_17_camera")]
+         ("mc2_03", "scout_4", "mc2_03_camera"), ("mc2_10", "wolfman", "mc2_10_camera"), ("mc2_10", "corner_far", "mc2_10_camera"),
+         ("mc2_24", "wolfman", "mc2_24_camera"), ("mc2_24", "corner_far", "mc2_24_camera"), ("mc2_17", "corner_far", "mc2_17_camera")]
 RES = {"1080": (1920, 1080), "2160": (3840, 2160)}
 
 
@@ -58,6 +58,8 @@ def run(mission, name, d, cmds, seconds, w, h, ts, late_cmds=()):
     (d / "engine.log").write_text(res.stdout_text, encoding="utf-8")
     ok = res.exit_code == 0 and not res.killed_by_timeout and res.verdict.passed
     print(f"{d.name} ok={ok}", flush=True)
+    if not ok:
+        print("  why: exit", res.exit_code, "timeout", res.killed_by_timeout, "verdict", str(res.verdict)[:600], flush=True)
 
 
 def load(d):
