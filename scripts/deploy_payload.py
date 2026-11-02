@@ -44,6 +44,7 @@ import atexit
 import csv
 import ctypes
 import datetime
+import glob
 import hashlib
 import json
 import os
@@ -1520,6 +1521,8 @@ def check_install_complete(target, exe_name, build_dir, fix=True):
                 todo |= _pe_imports(tool)
     except RuntimeError as e:
         return [str(e)]
+    if fix:
+        seed_build_dlls(build_dir, repo_root())
     seen, missing = set(), []
     while todo:
         n = todo.pop()
@@ -1694,6 +1697,14 @@ def verify_published_identity(target, source_root, head):
         raise ValueError(f'{target}: published shader inventory != HEAD build')
 
 
+def _target_preset(value):
+    if value not in TARGET_PRESETS:
+        hint = (f" '{value}' looks like a directory: pass it as the positional target_dir "
+                f"(deploy_payload.py {value} --ninja ... [--allow-new-target]), not as --target." if re.search(r"[\\/:]", value) else "")
+        raise argparse.ArgumentTypeError(f"--target takes a preset name ({', '.join(sorted(TARGET_PRESETS))}).{hint}")
+    return value
+
+
 def main():
     ap = argparse.ArgumentParser(
         description=__doc__.splitlines()[0],
@@ -1707,7 +1718,7 @@ def main():
                     help="deploy target dir (e.g. "
                     "A:/Games/mc2-opengl/mc2-win64-v0.4); optional when "
                     "--target preset is given (and then overrides the preset dir)")
-    ap.add_argument("--target", choices=sorted(TARGET_PRESETS),
+    ap.add_argument("--target", type=_target_preset,
                     help="canned target preset: 'game' (v0.4, mc2.exe) or "
                     "'editor' (dev v0.4, Mission Editor.exe, EditRel build dir). "
                     "Sets defaults only; explicit flags still override.")
@@ -1931,7 +1942,39 @@ def viewer_payload(build_dir, build64_root, head):
     return items
 
 
+def dll_source_dirs(src_root):
+    """Real homes of the runtime DLLs a fresh Ninja tree lacks: the repo's 3rdparty/lib/x64 (glew32, SDL2, zlib1), the ffmpeg
+    bin dir, and the Visual Studio redist CRT (msvcp140*, vcruntime140*). No other worktree is consulted."""
+    dirs = [os.path.join(src_root, "3rdparty", "lib", "x64"),
+            os.path.join(src_root, "3rdparty", "ffmpeg-lgpl-win64", "bin")]
+    pf = os.environ.get("ProgramFiles(x86)", "C:/Program Files (x86)")
+    for edition in ("BuildTools", "Community", "Professional", "Enterprise"):
+        base = os.path.join(pf, "Microsoft Visual Studio", "2022", edition, "VC", "Redist", "MSVC")
+        for ver in sorted(glob.glob(os.path.join(base, "*")), reverse=True):
+            dirs.extend(glob.glob(os.path.join(ver, "x64", "Microsoft.VC*.CRT")))
+    return [d for d in dirs if os.path.isdir(d)]
+
+
+def seed_build_dlls(build_dir, src_root, names=None):
+    """Copy any runtime DLL missing from build_dir out of dll_source_dirs (a fresh Ninja tree has none of them); returns the copied names."""
+    if sys.platform != "win32":
+        return []
+    copied = []
+    for name in (list(RUNTIME_DLLS) + ["glew32.dll"] if names is None else names):
+        dst = os.path.join(build_dir, name)
+        if os.path.isfile(dst):
+            continue
+        src = next((os.path.join(d, name) for d in dll_source_dirs(src_root) if os.path.isfile(os.path.join(d, name))), None)
+        if src:
+            shutil.copy2(src, dst)
+            copied.append(name)
+    if copied:
+        log(f"seeded build dir {build_dir} with {', '.join(copied)} from 3rdparty/redist")
+    return copied
+
+
 def run_deploy(args, src_root, build_dir, target, exe_name, pdb_name):
+    seed_build_dlls(build_dir, src_root)
     check_exe_fresh(os.path.join(build_dir, exe_name), build_dir, args.allow_stale_exe,
                     build64_root=args.build64_root)
 

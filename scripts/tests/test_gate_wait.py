@@ -20,3 +20,11 @@ def test_timeout_is_a_fail(tmp_path, capsys):
     log = str(tmp_path / "t.log")
     assert gate_wait.main(["--log", log, "--timeout", "1", "--", sys.executable, "-c", "import time; time.sleep(30)"]) == 1
     assert capsys.readouterr().out.startswith("FAIL rc=124 ")
+
+
+def test_bare_bash_resolves_to_git_bash_not_wsl():
+    if os.name != "nt":
+        return
+    cmd = gate_wait.resolve_cmd(["bash", "-c", "true"])
+    assert cmd[1:] == ["-c", "true"] and "system32" not in cmd[0].lower().replace("\\", "/")
+    assert gate_wait.resolve_cmd(["py", "-3"]) == ["py", "-3"]

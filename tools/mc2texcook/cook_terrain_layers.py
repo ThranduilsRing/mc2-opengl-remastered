@@ -292,7 +292,7 @@ def main():
     parser.add_argument('--ktx-exe', default=pbr.DEFAULT_KTX_EXE,
                         help=f'Path to ktx.exe (default: {pbr.DEFAULT_KTX_EXE})')
     parser.add_argument('--engine-normals', metavar='TEXTURES_DIR', default=None,
-                        help='Cook the sampled matN_normal.tga layers in TEXTURES_DIR to BC7 mip-complete matN_normal.ktx2 '
+                        help='Cook the sampled matN_normal.tga layers in TEXTURES_DIR to lossless RGBA8 mip-complete matN_normal.ktx2 '
                              'sidecars (into --out-dir, default TEXTURES_DIR) and exit.')
     args = parser.parse_args()
 

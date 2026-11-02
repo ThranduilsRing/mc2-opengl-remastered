@@ -169,6 +169,12 @@ def test_mad_flags_only_undeclared_views_over_limit():
     assert gate.mad_flags(out, {'mc2_01_saved_205644'}) == []
 
 
+def test_mad_flags_nan_and_non_numeric_rows_are_flagged():
+    assert gate.mad_flags('a | nan | 0\n', expected=('a',))
+    assert any('a=' in f for f in gate.mad_flags('a | n/a | 0\nb | 0.00 | 0\n', expected=('a', 'b')))
+    assert gate.mad_flags('b | 0.00 | 0\n', expected=('a', 'b')) == ['a=no compare row']
+
+
 def test_mad_flags_fail_closed_on_missing_capture():
     ok = 'a | 0.00 | 0\nb | 0.00 | 0\n'
     assert gate.mad_flags(ok, expected=('a', 'b')) == []

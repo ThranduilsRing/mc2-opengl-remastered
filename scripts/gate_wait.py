@@ -17,7 +17,17 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import console_child  # noqa: E402
 
 
+def resolve_cmd(cmd):
+    """A bare bash/sh from a Python child on Windows is the WSL launcher (no `py` inside): use Git's bash."""
+    if cmd and os.name == "nt" and os.path.basename(cmd[0]).lower() in ("bash", "bash.exe", "sh", "sh.exe"):
+        sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "tools"))
+        from lane_merge import git_bash
+        return [git_bash()] + list(cmd[1:])
+    return cmd
+
+
 def wait(cmd, log, timeout=None):
+    cmd = resolve_cmd(cmd)
     started = time.time()
     with open(log, "wb") as fh:
         p = subprocess.Popen(cmd, stdout=fh, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL, **console_child.child_kwargs(redirected=True))

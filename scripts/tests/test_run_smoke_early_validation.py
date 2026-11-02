@@ -41,3 +41,8 @@ def test_cold_cache_grace_applies_once_per_deployed_exe(tmp_path):
     assert run_smoke.cold_cache_extra_grace(exe) == 0
     exe.write_bytes(b"redeployed")
     assert run_smoke.cold_cache_extra_grace(exe) == run_smoke.COLD_CACHE_EXTRA_GRACE_S
+
+
+def test_exe_directory_names_the_exe_path(tmp_path):
+    r = _run("--mission", "mc2_01", "--exe", str(tmp_path), "--no-wait")
+    assert r.returncode == 2 and "mc2.exe" in r.stderr and "directory" in r.stderr

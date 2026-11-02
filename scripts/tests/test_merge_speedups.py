@@ -538,9 +538,28 @@ def test_stage_published_cooks_detail_normals_like_the_deploy_row(monkeypatch, t
     inst.mkdir()
     (pub / "mc2.exe").write_bytes(b"x")
     cooked = []
-    monkeypatch.setattr(deploy_payload, "ensure_engine_normal_cooks", lambda target: cooked.append(target))
+    from pathlib import Path
+
+    def fake_cook(target):
+        cooked.append(target)
+        tex = Path(target) / "data" / "textures"
+        for n in [f"mat{i}_normal.ktx2" for i in range(6)] + ["engine_normals.cookver"]:
+            (tex / n).write_bytes(b"k")
+    monkeypatch.setattr(deploy_payload, "ensure_engine_normal_cooks", fake_cook)
     gate.stage_published(inst, pub)
     assert cooked == [str(inst)]
+
+
+def test_stage_published_fails_when_the_cook_leaves_sidecars_missing(monkeypatch, tmp_path):
+    import merge_gate as gate
+    import deploy_payload
+    pub, inst = tmp_path / "pub", tmp_path / "inst"
+    (pub / "data" / "textures").mkdir(parents=True)
+    inst.mkdir()
+    (pub / "mc2.exe").write_bytes(b"x")
+    monkeypatch.setattr(deploy_payload, "ensure_engine_normal_cooks", lambda target: None)  # the cook only WARNs on failure
+    with pytest.raises(RuntimeError, match="mat0_normal.ktx2"):
+        gate.stage_published(inst, pub)
 
 
 def test_gate_logs_lease_holder_and_age(monkeypatch, capsys):
