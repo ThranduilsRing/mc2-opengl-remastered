@@ -924,7 +924,8 @@ void Mission::initInterface(MissionInitFrame& f) {
 	
 	FitIniFile missionLoader;
 	result = missionLoader.open(missionScreenName);
-	gosASSERT(result == NO_ERR);
+	if (result != NO_ERR)
+		STOP(("Unable to open mission screen layout %s", static_cast<const char*>(missionScreenName)));
 	
 	missionInterface->init(&missionLoader);
 	missionInterface->initMechs();

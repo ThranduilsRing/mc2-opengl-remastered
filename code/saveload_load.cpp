@@ -78,7 +78,8 @@ void Mission::loadTerrain(MissionLoadFrame& f) {
 	terrainFileName.init( missionPath, missionFileName, ".pak" ); 
 
 	result = pakFile.open( terrainFileName );
-	gosASSERT( result == NO_ERR );
+	if ( result != NO_ERR )
+		STOP(( "Mission::loadTerrain: unable to open terrain pak %s", static_cast<const char*>(terrainFileName) ));
 
 	// Mission::load can run mid-frame (quickload), after Terrain::geometry armed the per-frame
 	// tex_resolve memo; Mission::destroy released the terrain nodes, so drop the stale handles
@@ -531,7 +532,8 @@ void Mission::loadInterface(MissionLoadFrame& f) {
 	
 	FitIniFile missionLoader;
 	result = missionLoader.open(missionScreenName);
-	gosASSERT(result == NO_ERR);
+	if (result != NO_ERR)
+		STOP(("Unable to open mission screen layout %s", static_cast<const char*>(missionScreenName)));
 	
 	missionInterface->init(&missionLoader);
 	missionInterface->initMechs();

@@ -85,6 +85,17 @@ def main():
         env["MC2_SOAK_SALVAGE_TRADEMOVER"] = "1"
     if "--shots" in flags:
         env.update({"MC2_SHOT_RESULTS": "1", "MC2_DEV_SHELL": "1", "MC2_NO_LAUNCHER": "1"})
+    # A converted retail mod (MCO) ships only 256-res terrain tiles and relies on its own prefs.cfg
+    # (TerrainTextureRes = 256). The install prefs say 64, so every tile/mask would be a placeholder.
+    prefs_path = os.path.join(deploy, "prefs.cfg")
+    prefs_orig = None
+    if cfg["active_mod"] and os.path.isfile(prefs_path):
+        tex = os.path.join(deploy, "mods", cfg["active_mod"], "data", "textures")
+        if os.path.isdir(os.path.join(tex, "256")) and not os.path.isdir(os.path.join(tex, "64")):
+            prefs_orig = Path(prefs_path).read_bytes()
+            txt = prefs_orig.decode("latin-1")
+            txt2 = re.sub(r"(TerrainTextureRes\s*=\s*)\d+", r"\g<1>256", txt)
+            Path(prefs_path).write_bytes(txt2.encode("latin-1"))
     crash_before = newest_crash(deploy)
     shot_dir = os.path.join(deploy, "dev_shell_out")
     t0 = time.time()
@@ -95,6 +106,9 @@ def main():
             exited = True
         except subprocess.TimeoutExpired:
             p.kill(); exited = False
+        finally:
+            if prefs_orig is not None:
+                Path(prefs_path).write_bytes(prefs_orig)
 
     wall = time.time() - t0
     out = Path(outp).read_text(errors="replace")
@@ -127,6 +141,7 @@ def main():
     }
     summary["result"]["wall_seconds"] = round(wall, 1)
     summary["result"]["exit_code"] = p.returncode
+    summary["result"]["missing_tga"] = len(re.findall(r"missing (?:terrain|mask|overlay) tga", err))
     summary["result"]["soak_counts"] = {k: len(re.findall(r"\[SOAK\] " + k, out)) for k in
         ("autowin mission=", "results dismiss screen=salvage", "results dismiss screen=pilot", "salvage-check",
          "salvage-in-loadbay", "salvage-trademover", "pilot-promote", "kill-enemy")}
