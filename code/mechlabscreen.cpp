@@ -402,6 +402,19 @@ void MechLabScreen::end()
 }
 void MechLabScreen::update()
 {
+	// Headless proof hook (MC2_SOAK_CHECK_SCREENS walk): open the SAVE VARIANT
+	// dialog once on the first mech lab update so the -5 capture shows it.
+	{
+		static const bool s_soakCheck = mc2::gate::get<"MC2_SOAK_CHECK_SCREENS">();
+		static bool s_dlgFired = false;
+		if ( s_soakCheck && !s_dlgFired && !bSaveDlg && saveDlg )
+		{
+			s_dlgFired = true;
+			pCurDialog = saveDlg.get();
+			pCurDialog->begin();
+			bSaveDlg = true;
+		}
+	}
 	// Mirror the legacy weapon-info / mech-name / cost / heat+armor-limit text
 	// objects into the defs page each frame (they're set across many branches of
 	// setComponent/update*, and the defs page suppresses the legacy textObjects).
