@@ -204,7 +204,7 @@
         },
         {
           "path": "scripts/sweep_campaign.py",
-          "line": 131,
+          "line": 135,
           "evidence": "import",
           "reference": "campaign_liveness",
           "text": "import campaign_liveness"
@@ -5226,7 +5226,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/sweep_campaign.py",
-          "line": 28,
+          "line": 27,
           "evidence": "command",
           "reference": "scripts/resolve_campaign_config.py",
           "text": "out = subprocess.run([sys.executable, str(HERE / \"resolve_campaign_config.py\"), deploy, name],"
