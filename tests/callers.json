@@ -204,7 +204,7 @@
         },
         {
           "path": "scripts/sweep_campaign.py",
-          "line": 136,
+          "line": 159,
           "evidence": "import",
           "reference": "campaign_liveness",
           "text": "import campaign_liveness"
