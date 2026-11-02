@@ -461,6 +461,7 @@ void scheduleScreenshot(const char* name)
 {
     if (!shellEnabled() || !name || !name[0]) return;
     if (!s_pendingShotPath.empty()) return;
+    CreateDirectoryA("dev_shell_out", nullptr);  // ok if it already exists
     s_pendingShotPath = sanitizeShotName(name, 0);
 }
 
