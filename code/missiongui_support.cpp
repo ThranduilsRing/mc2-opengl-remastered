@@ -521,7 +521,7 @@ bool MissionInterfaceManager::canRepair( GameObject* pMover )
 	for (long i = 0; i < pTeam->getRosterSize(); i++)
 	{
 		Mover* pTmpMover = static_cast<Mover*>(pTeam->getMover( i ));
-		if ( pTmpMover->isSelected() && pTmpMover->getCommander()->getId() == Commander::home->getId() )
+		if ( pTmpMover->isSelected() && commanderIsHome(pTmpMover->getCommander()) )
 		{
 			if ( !watchID )
 				watchID = pTmpMover->getWatchID();
@@ -561,7 +561,7 @@ bool MissionInterfaceManager::canRepairBay( GameObject* bay)
 		for (long i = 0; i < pTeam->getRosterSize(); i++)
 		{
 			Mover* pMover = static_cast<Mover*>(pTeam->getMover( i ));
-			if ( pMover->isSelected() && pMover->needsRefit() && pMover->getCommander()->getId() == Commander::home->getId() )
+			if ( pMover->isSelected() && pMover->needsRefit() && commanderIsHome(pMover->getCommander()) )
 			{
 				return true;
 			}

@@ -530,6 +530,19 @@ def test_window_never_publishes_to_v04(monkeypatch, tmp_path, failure):
     assert next(c for n, c, _ in checked if n == "deploy")[-2:] == [str(tmp_path), "--allow-new-target"]
 
 
+def test_stage_published_cooks_detail_normals_like_the_deploy_row(monkeypatch, tmp_path):
+    import merge_gate as gate
+    import deploy_payload
+    pub, inst = tmp_path / "pub", tmp_path / "inst"
+    (pub / "data" / "textures").mkdir(parents=True)
+    inst.mkdir()
+    (pub / "mc2.exe").write_bytes(b"x")
+    cooked = []
+    monkeypatch.setattr(deploy_payload, "ensure_engine_normal_cooks", lambda target: cooked.append(target))
+    gate.stage_published(inst, pub)
+    assert cooked == [str(inst)]
+
+
 def test_gate_logs_lease_holder_and_age(monkeypatch, capsys):
     import merge_gate as gate
     from smoke_lib import host_lease

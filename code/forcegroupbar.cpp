@@ -571,7 +571,7 @@ void ForceGroupBar::update( )
 		for ( int i = 0; i < pTeam->rosterSize; ++i )
 		{
 			Mover* pMover = static_cast<Mover*>(pTeam->getMover( i ));
-			if (pMover->getCommander()->getId() == Commander::home->getId())
+			if (commanderIsHome(pMover->getCommander()))
 			{
 				pMover->setSelected( false );
 			}
@@ -624,7 +624,7 @@ void ForceGroupBar::update( )
 							for ( int j = 0; j < pTeam->rosterSize; ++j )
 							{
 								Mover* pMover = static_cast<Mover*>(pTeam->getMover( j ));
-								if (pMover->getCommander()->getId() == Commander::home->getId())
+								if (commanderIsHome(pMover->getCommander()))
 								{
 									pMover->setSelected( false );
 								}

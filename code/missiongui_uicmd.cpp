@@ -325,7 +325,7 @@ bool MissionInterfaceManager::uiCmdWorld(UiCmdCtx& c)
 				Mover* m = static_cast<Mover*>(pTeam->getMover(i));
 				if (!m) continue;
 				const bool mine = m->isOnGUI() && !m->isDisabled() &&
-					m->getCommander()->getId() == homeCmdr;
+					commanderIdIs(m->getCommander(), homeCmdr);
 				m->setSelected(mine);
 				if (mine) n++;
 			}
@@ -348,7 +348,7 @@ bool MissionInterfaceManager::uiCmdWorld(UiCmdCtx& c)
 				if (!m) continue;
 				bool hit = false;
 				if (m->isOnGUI() && !m->isDisabled() &&
-					m->getCommander()->getId() == homeCmdr) {
+					commanderIdIs(m->getCommander(), homeCmdr)) {
 					std::string hay = byClass
 						? std::string(getObjectClassName(m->getObjectClass()))
 						: std::string(m->getName() ? m->getName() : "");
@@ -373,7 +373,7 @@ bool MissionInterfaceManager::uiCmdWorld(UiCmdCtx& c)
 				GameObjectPtr obj = ObjectManager->findByPartId(pid);
 				if (!obj || !obj->isMover()) {
 					result = "blocked"; note = "no such mover";
-				} else if ((static_cast<Mover*>(obj))->getCommander()->getId() != homeCmdr) {
+				} else if (!commanderIdIs((static_cast<Mover*>(obj))->getCommander(), homeCmdr)) {
 					result = "blocked"; note = "not a player unit";
 				} else {
 					for (long i = 0; i < pTeam->getRosterSize(); i++) {
@@ -432,7 +432,7 @@ bool MissionInterfaceManager::uiCmdWorld(UiCmdCtx& c)
 			long sel = 0;
 			for (long i = 0; pTeam && i < pTeam->getRosterSize(); i++) {
 				Mover* m = static_cast<Mover*>(pTeam->getMover(i));
-				if (m && m->isSelected() && m->getCommander()->getId() == homeCmdr) sel++;
+				if (m && m->isSelected() && commanderIdIs(m->getCommander(), homeCmdr)) sel++;
 			}
 			if (!sel) {
 				result = "blocked"; note = "no player unit selected (use select)";
@@ -467,7 +467,7 @@ bool MissionInterfaceManager::uiCmdWorld(UiCmdCtx& c)
 				long sel = 0;
 				for (long i = 0; pTeam && i < pTeam->getRosterSize(); i++) {
 					Mover* m = static_cast<Mover*>(pTeam->getMover(i));
-					if (!(m && m->isSelected() && m->getCommander()->getId() == homeCmdr))
+					if (!(m && m->isSelected() && commanderIdIs(m->getCommander(), homeCmdr)))
 						continue;
 					TacticalOrder tacOrder;
 					tacOrder.init(ORDER_ORIGIN_PLAYER, TACTICAL_ORDER_ATTACK_OBJECT);
@@ -508,7 +508,7 @@ bool MissionInterfaceManager::uiCmdWorld(UiCmdCtx& c)
 		long sel = 0;
 		for (long i = 0; pTeam && i < pTeam->getRosterSize(); i++) {
 			Mover* m = static_cast<Mover*>(pTeam->getMover(i));
-			if (!(m && m->isSelected() && m->getCommander()->getId() == homeCmdr))
+			if (!(m && m->isSelected() && commanderIdIs(m->getCommander(), homeCmdr)))
 				continue;
 			TacticalOrder tacOrder;
 			tacOrder.init(ORDER_ORIGIN_PLAYER, code);
@@ -601,7 +601,7 @@ bool MissionInterfaceManager::uiCmdWorld(UiCmdCtx& c)
 		long n = 0;
 		for (long i = 0; pTeam && i < pTeam->getRosterSize(); i++) {
 			Mover* m = static_cast<Mover*>(pTeam->getMover(i));
-			if (!(m && m->isSelected() && m->getCommander()->getId() == homeCmdr))
+			if (!(m && m->isSelected() && commanderIdIs(m->getCommander(), homeCmdr)))
 				continue;
 			glm::vec3 p = m->getPosition();
 			char b[224];

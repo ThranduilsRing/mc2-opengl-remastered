@@ -213,14 +213,14 @@ int MissionInterfaceManager::teleport() {
 		long numMovers = 0;
 		for (long i = 0; i < pTeam->getRosterSize(); i++) {
 			Mover* mover = pTeam->getMover(i);
-			if (mover->isSelected() && mover->getCommander()->getId() == Commander::home->getId())
+			if (mover->isSelected() && commanderIsHome(mover->getCommander()))
 				numMovers++;
 		}
 		MoverGroup::calcMoveGoals(wPos, numMovers, moveGoals);
 		numMovers = 0;
 		for (int i = 0; i < pTeam->getRosterSize(); i++) {
 			Mover* mover = static_cast<Mover*>(pTeam->getMover( i ));
-			if (mover->isSelected() && mover->getCommander()->getId() == Commander::home->getId() )
+			if (mover->isSelected() && commanderIsHome(mover->getCommander()) )
 				(static_cast<MoverPtr>(mover))->setTeleportPosition(moveGoals[numMovers++]);
 		}
 		lastTime = gos_GetElapsedTime();
@@ -270,12 +270,12 @@ int MissionInterfaceManager::goalPlan() {
 		long numMovers = 0;
 		for (long i = 0; i < pTeam->getRosterSize(); i++) {
 			Mover* mover = pTeam->getMover(i);
-			if (mover->isSelected() && mover->getCommander()->getId() == Commander::home->getId())
+			if (mover->isSelected() && commanderIsHome(mover->getCommander()))
 				numMovers++;
 		}
 		for (int i = 0; i < pTeam->getRosterSize(); i++) {
 			Mover* mover = static_cast<Mover*>(pTeam->getMover( i ));
-			if (mover->isSelected() && mover ->getCommander()->getId() == Commander::home->getId()) {
+			if (mover->isSelected() && commanderIsHome(mover->getCommander())) {
 				(static_cast<MoverPtr>(mover))->getPilot()->setUseGoalPlan(!(static_cast<MoverPtr>(mover))->getPilot()->getUseGoalPlan());
 				(static_cast<MoverPtr>(mover))->getPilot()->setMainGoal(GOAL_ACTION_NONE, nullptr, nullptr, -1.0);
 			}
@@ -490,7 +490,7 @@ bool MissionInterfaceManager::selectionIsHelicopters( )
    	for (long i=0;i<pTeam->getRosterSize();i++)
    	{
 		Mover* pMover = static_cast<Mover*>(pTeam->getMover( i ));
-   		if ( pMover->isSelected() && pMover->getCommander()->getId() == Commander::home->getId() )
+   		if ( pMover->isSelected() && commanderIsHome(pMover->getCommander()) )
    		{
 			if ( pMover->getMoveType() != MOVETYPE_AIR )
 			{
@@ -738,7 +738,7 @@ void MissionInterfaceManager::doGuardTower()
 	for (long i = 0; i < Team::home->getRosterSize(); i++)
 	{
 		Mover* pMover = Team::home->getMover( i );
-		if ( pMover->isSelected() && pMover->getCommander()->getId() == Commander::home->getId())
+		if ( pMover->isSelected() && commanderIsHome(pMover->getCommander()))
 		{
 			pMover->suppressionFire = true;
 		}

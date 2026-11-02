@@ -367,7 +367,7 @@ bool MissionInterfaceManager::uiCmdFixture(UiCmdCtx& c)
 					Team* pTeam = Team::home;
 					for (long i = 0; pTeam && i < pTeam->getRosterSize(); i++) {
 						Mover* m = static_cast<Mover*>(pTeam->getMover(i));
-						if (m && m->getCommander()->getId() == homeCmdr &&
+						if (m && commanderIdIs(m->getCommander(), homeCmdr) &&
 							m->getObjectClass() == wantCls) { tmpl = m; break; }
 					}
 					if (!tmpl && ObjectManager) {

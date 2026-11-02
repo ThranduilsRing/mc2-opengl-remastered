@@ -484,7 +484,7 @@ void ControlGui::extractHudSnapshot()
         row.object = m; row.position = m->getPosition();
         row.active = m->getExists() && !m->isDestroyed() && !m->isDisabled();
         row.friendly = m->getTeamId() == Team::home->id;
-        row.own = m->getCommander() && m->getCommander()->getId() == Commander::home->getId();
+        row.own = m->getCommander() && commanderIsHome(m->getCommander());
         row.neutral = m->getTeam() && m->getTeam()->isNeutral(Team::home);
         row.selected = m->getSelected(); row.onGui = m->isOnGUI();
         row.shutdown = m->getStatus() == OBJECT_STATUS_SHUTDOWN;

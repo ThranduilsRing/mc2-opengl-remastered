@@ -460,7 +460,8 @@ long GroundVehicle::update (void)
 				{
 					timeInCurrent = 0.0f;
 					
-					CallArtillery (getCommander()->getId(), ARTILLERY_LARGE, curTarget->getPosition(), StrikeTimeToImpact, false);
+					if (getCommander())
+						CallArtillery (getCommander()->getId(), ARTILLERY_LARGE, curTarget->getPosition(), StrikeTimeToImpact, false);
 				}
 			}
 		}

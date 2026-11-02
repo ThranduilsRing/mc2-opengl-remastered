@@ -261,7 +261,7 @@ int _stdcall Logistics::beginMission(void*, int, void*[])
 				for (int i = pTeam->getRosterSize() - 1; i > -1; i-- )
 				{
 					Mover* pMover = static_cast<Mover*>(pTeam->getMover( i ));
-					if ( pMover && pMover->getCommander()->getId() == Commander::home->getId() )
+					if ( pMover && commanderIsHome(pMover->getCommander()) )
 					{
 						LogisticsPilot* pPilot = LogisticsData::instance->getPilot( pMover->getPilot()->getName() );
 						if ( pPilot )
