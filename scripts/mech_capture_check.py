@@ -17,8 +17,8 @@ import json
 import sys
 from pathlib import Path
 
-# Calibrated on live mc2_01 captures at MC2_CAPTURE_FOCUS_ZOOM=500: real mechs 3.9-4.4, bare ground 1.1-2.1.
-MIN_ENERGY = 3.0
+# Calibrated on live mc2_01 captures at MC2_CAPTURE_FOCUS_ZOOM=500: player mechs 3.8-4.4, enemy Urbanmechs 2.7-2.9 (viewed), bare ground 1.1-2.1.
+MIN_ENERGY = 2.5
 REF_RATIO = 1.5
 CENTER_FRAC = 0.3
 
@@ -72,13 +72,16 @@ def collect(capture_dir, empty_ref=None):
             continue
         png = js.with_suffix(".png")
         row = {"id": fw.get("id"), "name": fw.get("name"), "team": fw.get("team"),
-               "index": fw.get("index"), "total": fw.get("total"), "png": str(png)}
+               "index": fw.get("index"), "total": fw.get("total"), "png": str(png),
+               "contact": fw.get("contact", "n/a")}
         if fw.get("id", -1) < 0 or not (doc.get("focus") or {}).get("found", True):
             continue   # surplus bookmark beyond the live mech count: not a mech, not a failure
         elif not png.exists():
             row.update(passed=False, energy=0.0, why="png missing")
         else:
             row.update(pixel_check(Image.open(png), ref), why="")
+            if row["contact"] == "fogged":   # enemy hidden by the stock fog gate: the frame cannot show it
+                row.update(passed=False, why="fogged")
         rows.append(row)
     return rows
 
@@ -98,7 +101,7 @@ def contact_sheet(rows, out, cols=4, thumb=240):
         im = im.crop(((w - s) // 2, (h - s) // 2, (w + s) // 2, (h + s) // 2)).resize((thumb, thumb))
         x, y = (i % cols) * thumb, (i // cols) * (thumb + 16)
         sheet.paste(im, (x, y + 16))
-        dr.text((x + 2, y + 2), f"{'OK ' if r['passed'] else 'FAIL '}{r['name']} t{r['team']}",
+        dr.text((x + 2, y + 2), f"{'OK ' if r['passed'] else ('FOGGED ' if r.get('why') == 'fogged' else 'FAIL ')}{r['name']} t{r['team']}",
                 fill=(0, 255, 0) if r["passed"] else (255, 60, 60))
     sheet.save(out)
     return True
