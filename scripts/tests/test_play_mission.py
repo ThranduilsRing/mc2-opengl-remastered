@@ -28,7 +28,7 @@ def test_driver_uses_headless_harness_and_requested_budget(monkeypatch, capsys):
         assert "run_smoke.py" in cmd[1]
         assert "--headless" in cmd
         assert cmd[cmd.index("--ticks") + 1] == "1860"
-        assert cmd[cmd.index("--sim-speed") + 1] == "4"
+        assert cmd[cmd.index("--sim-speed") + 1] == "1"
         assert cmd[cmd.index("--duration") + 1] == "90"
         assert kwargs["env"]["MC2_PLAY_MISSION_SECONDS"] == "60"
         assert kwargs["env"]["MC2_RNG_SEED"] == "42"

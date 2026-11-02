@@ -37,7 +37,7 @@ def main():
     args = sys.argv[1:]
     flags = {a for a in args if a in ("--shots", "--salvage", "--liveness", "--allow-owner-install")}
     out_dir = None
-    sim_speed = 4
+    sim_speed = 1   # headless already runs uncapped; sim-speed only helps windowed runs
     if "--sim-speed" in args:
         i = args.index("--sim-speed")
         sim_speed = int(args[i + 1])
