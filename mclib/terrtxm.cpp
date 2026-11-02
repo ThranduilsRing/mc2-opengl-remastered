@@ -295,6 +295,56 @@ long TerrainTextures::init (const char *fileName, const char *baseName)
 	}
 
 	//-------------------------------------------------------------
+	// Resolution fallback (mods): a mod may ship its terrain tiles only at a resolution other than the
+	// TerrainTextureRes pref (MCO ships 256 only; prefs default to 64). Every consumer (combineTxm blend,
+	// terrain atlas slots) assumes ONE edge, TERRAIN_TXM_SIZE, so slot sizes cannot mix per file: pick the
+	// single edge that has the most of this mod's base tiles, ties to the preferred size, then the larger.
+	// Larger is preferred over smaller so TGA quality is never downscaled. Stock always keeps its pref
+	// (it has the most hits at the preferred size, or none anywhere). One probe per type, load time only.
+	{
+		static const int kEdges[] = { 16, 32, 64, 128, 256, 512, 1024 };
+		auto hitsAt = [&](int edge) {
+			int hits = 0;
+			for (int i=0;i<numTypes;i++)
+			{
+				if (!types[i].terrainName || (i && types[i].terrainId == types[0].terrainId))
+					continue;
+				char probePath[512];
+				mc2::fmt::to_buf(probePath,"{}{:d}" PATH_SEPARATOR "",mc2::fmt::safe(texturePath),mc2::fmt::as_i32(edge));
+				FullPathFileName probeName;
+				probeName.init(probePath,types[i].terrainName,".tga");
+				File probe;
+				if (probe.open(probeName) == NO_ERR)
+				{
+					probe.close();
+					++hits;
+				}
+			}
+			return hits;
+		};
+		int bestEdge = TERRAIN_TXM_SIZE;
+		int bestHits = hitsAt(TERRAIN_TXM_SIZE);
+		for (int edge : kEdges)
+		{
+			if (edge == TERRAIN_TXM_SIZE)
+				continue;
+			const int hits = hitsAt(edge);
+			if (hits > bestHits || (hits == bestHits && hits > 0 && bestEdge != TERRAIN_TXM_SIZE))
+			{
+				bestHits = hits;
+				bestEdge = edge;
+			}
+		}
+		if (bestEdge != TERRAIN_TXM_SIZE && bestHits > 0)
+		{
+			char note[160];
+			mc2::fmt::to_buf(note,"terrain tiles missing at TerrainTextureRes={:d}; using {:d} for this mod",mc2::fmt::as_i32(TERRAIN_TXM_SIZE),mc2::fmt::as_i32(bestEdge));
+			mc2::content::error(mc2::content::Kind::Texture, static_cast<const char*>(texturePath), static_cast<const char*>(note));
+			TERRAIN_TXM_SIZE = bestEdge;
+		}
+	}
+
+	//-------------------------------------------------------------
 	// Now preload the masks and base texture data
 	// Assume as per art lead on 4/1/99 only one txm and 14 masks.
 	for (int i=0;i<numTypes;i++)
