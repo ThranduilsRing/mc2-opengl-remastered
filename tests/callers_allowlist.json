@@ -1,4 +1,6 @@
 {
+  "scripts/tests/test_rgp_capture.py": "Pytest-discovered by scripts/run_scripts_tests.py through scripts/test_ownership.json.",
+  "tools/perf/_census_v3.py": "Operator-run census driver (python tools/perf/_census_v3.py run|walk|battle|analyze); documented in docs/perf/2026-11-02-census-v3.md.",
   "scripts/tests/test_perf_counters.py": "Pytest-discovered by scripts/run_scripts_tests.py through scripts/test_ownership.json.",
   "scripts/tests/test_capture_focus.py": "Pytest-discovered by scripts/run_scripts_tests.py through scripts/test_ownership.json.",
   "scripts/tests/test_abl_static_alloc.py": "Executed by the abl_static_alloc contract row through pytest; pytest dispatch is not a direct executable call.",
