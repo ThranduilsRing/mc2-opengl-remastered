@@ -23,7 +23,7 @@ def parse_report(text):
     return verdict, rows
 
 
-def run_mission(mission, install, seconds, batch=False, invulnerable=False):
+def run_mission(mission, install, seconds, batch=False, invulnerable=False, sim_speed=4):
     env = dict(os.environ, MC2_PLAY_MISSION="1",
                MC2_PLAY_MISSION_SKIP_CINEMATICS="1", MC2_PLAY_MISSION_SECONDS=str(seconds),
                MC2_RNG_SEED="42", MC2_SMOKE_SEED="42", MC2_DETERMINISTIC_RNG="1",
@@ -35,7 +35,7 @@ def run_mission(mission, install, seconds, batch=False, invulnerable=False):
     # The harness owns install leasing, process priority, timeouts and cleanup.
     cmd = [sys.executable, str(ROOT / "scripts/run_smoke.py"), "--exe",
            str(Path(install) / "mc2.exe"), "--mission", mission,
-           "--headless", "--ticks", str((seconds + 2) * 30),
+           "--headless", "--ticks", str((seconds + 2) * 30 // sim_speed + 1), "--sim-speed", str(sim_speed),
            "--duration", str(seconds + 30), "--keep-logs", "--wait-timeout", "1200"]
     sys.path.insert(0, str(ROOT / "scripts"))
     import console_child
@@ -73,6 +73,7 @@ def main(argv=None):
     missions.add_argument("--batch", nargs="+", help="mission names, space or comma separated; duplicates repeat runs")
     ap.add_argument("--install", default=DEFAULT_INSTALL)
     ap.add_argument("--minutes", type=float, default=5)
+    ap.add_argument("--sim-speed", type=int, choices=(1, 2, 3, 4), default=4, help="fixed 1/30 s sim steps per drawn frame (1 = old behaviour)")
     ap.add_argument("--invulnerable", action="store_true", help="keep the player alive (tests objective completion, not brain skill)")
     args = ap.parse_args(argv)
     if args.minutes <= 0 or not args.minutes < float("inf"):
@@ -81,7 +82,7 @@ def main(argv=None):
     if not names:
         ap.error("--batch must contain at least one mission")
     seconds = max(1, round(args.minutes * 60))
-    passed = sum(run_mission(name, args.install, seconds, bool(args.batch), **({"invulnerable": True} if args.invulnerable else {})) for name in names)
+    passed = sum(run_mission(name, args.install, seconds, bool(args.batch), **({"invulnerable": True} if args.invulnerable else {}), **({"sim_speed": args.sim_speed} if args.sim_speed != 4 else {})) for name in names)
     if args.batch:
         print(f"[MISSION_BATCH v1] passed={passed} failed={len(names) - passed} total={len(names)}", flush=True)
     return 0 if passed == len(names) else 1

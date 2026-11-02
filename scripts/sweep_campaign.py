@@ -37,6 +37,11 @@ def main():
     args = sys.argv[1:]
     flags = {a for a in args if a in ("--shots", "--salvage", "--liveness", "--allow-owner-install")}
     out_dir = None
+    sim_speed = 4
+    if "--sim-speed" in args:
+        i = args.index("--sim-speed")
+        sim_speed = int(args[i + 1])
+        del args[i:i + 2]
     if "--out" in args:
         i = args.index("--out")
         out_dir = args[i + 1]
@@ -61,6 +66,9 @@ def main():
     env = os.environ.copy()
     for k in ("MC2_ACTIVE_MOD", "MC2_MOD_DEPS", "MC2_BOOT_TO_BAY"):
         env.pop(k, None)
+    if sim_speed > 1:   # N fixed 1/30 s steps per drawn frame (needs the fixed-step clock)
+        env["MC2_SMOKE_FIXED_TIMESTEP"] = "1"
+        env["MC2_SIM_SPEED"] = str(sim_speed)
     if cfg["active_mod"]:
         env["MC2_ACTIVE_MOD"] = cfg["active_mod"]
         env["MC2_MOD_DEPS"]   = cfg["mc2_mod_deps_string"]
