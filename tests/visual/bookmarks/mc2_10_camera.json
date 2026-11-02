@@ -12,7 +12,6 @@
     {"name":"wolfman","pos":[-2880,2752,0],"rot":0,"proj":60,"alt":6000,"covers":["camera_envelope"]},
     {"name":"topdown","pos":[-2880,2752,0],"rot":0,"proj":88,"alt":3000,"covers":["camera_envelope"]},
     {"name":"orbit","pos":[-2880,2752,0],"rot":0,"proj":20,"alt":400,"covers":["camera_envelope"],"sweep":{"degrees":360,"seconds":10}},
-    {"name":"sun_facing_low","pos":[-2880,2752,0],"rot":73.75,"proj":12,"alt":150,"covers":["camera_envelope"]},
-    {"name":"corner_far","pos":[-6400,-6400,0],"rot":134.875,"proj":14.875,"alt":5775.7979,"covers":["camera_envelope"]}
+    {"name":"sun_facing_low","pos":[-2880,2752,0],"rot":73.75,"proj":12,"alt":150,"covers":["camera_envelope"]}
   ]
 }

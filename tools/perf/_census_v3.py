@@ -19,8 +19,8 @@ OUT = Path("E:/mc2-archive-2026-10/proofs/census3")
 BK = ROOT / "tests/visual/bookmarks"
 POSES = [("mc2_01", "cross_map_view", "mc2_01"), ("mc2_03", "scout_1", "mc2_03_camera"),
          ("mc2_03", "scout_2", "mc2_03_camera"), ("mc2_03", "scout_3", "mc2_03_camera"),
-         ("mc2_03", "scout_4", "mc2_03_camera"), ("mc2_10", "wolfman", "mc2_10_camera"), ("mc2_10", "corner_far", "mc2_10_camera"),
-         ("mc2_24", "wolfman", "mc2_24_camera"), ("mc2_24", "corner_far", "mc2_24_camera"), ("mc2_17", "corner_far", "mc2_17_camera")]
+         ("mc2_03", "scout_4", "mc2_03_camera"), ("mc2_10", "wolfman", "mc2_10_camera"), ("mc2_10", "corner_far", "mc2_10_corner"),
+         ("mc2_24", "wolfman", "mc2_24_camera"), ("mc2_24", "corner_far", "mc2_24_corner"), ("mc2_17", "corner_far", "mc2_17_camera")]
 RES = {"1080": (1920, 1080), "2160": (3840, 2160)}
 
 
