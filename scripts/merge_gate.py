@@ -92,7 +92,7 @@ def preflight(head, install, window, steps, seed=Path("E:/mc2-installs/_lean-see
 
     started = time.monotonic()
     errors = []
-    rebuild = "py -3 scripts/ninja_build.py mc2 mc2_asset_viewer -j " + Path("A:/Games/mc2-ops/JOBS").read_text().strip()
+    rebuild = "py -3 scripts/ninja_build.py mc2 mc2_asset_viewer -j" + Path("A:/Games/mc2-ops/JOBS").read_text().strip()
     for name in ("mc2.exe", "out/tools/asset_viewer/mc2_asset_viewer.exe"):
         fp = extract(ROOT / "build64-ninja" / name)
         if not fp.get('present') or fp.get('dirty') or not sha_agrees(fp.get('sha'), head):
@@ -567,7 +567,7 @@ def run_child(command, cwd, env):
 
 
 @contextmanager
-def stock_copy(install, parent=None):
+def stock_copy(install, parent=None, keep=False):
     """Share read-only data and copy mutable outputs with the isolation guard."""
     install = Path(install).resolve()
     # Lane rehearsals live on E:; hardlinks require the install's volume.
@@ -587,16 +587,17 @@ def stock_copy(install, parent=None):
         print(f"| stock-copy | PASS | {time.monotonic() - started:.1f} |", flush=True)
         yield target
     finally:
-        if target.parent != parent or not target.name.startswith(prefix):
-            raise RuntimeError(f"refusing cleanup outside lane install: {target}")
-        mod_stage = target.with_name(target.name + "-mods-stage")
-        if mod_stage.exists():
-            if mod_stage.resolve().parent != parent:
-                raise RuntimeError(f"refusing cleanup outside lane install: {mod_stage}")
-            shutil.rmtree(mod_stage)
-        size = sum(p.stat().st_size for p in target.rglob("*") if p.is_file())
-        shutil.rmtree(target)
-        print(f"[merge_gate] removed {target}: {size / 2**30:.2f} GiB logical (physical space not measured)", flush=True)
+        if not keep:  # keep: the caller moves it to the candidate path (keep_stock_copy)
+            if target.parent != parent or not target.name.startswith(prefix):
+                raise RuntimeError(f"refusing cleanup outside lane install: {target}")
+            mod_stage = target.with_name(target.name + "-mods-stage")
+            if mod_stage.exists():
+                if mod_stage.resolve().parent != parent:
+                    raise RuntimeError(f"refusing cleanup outside lane install: {mod_stage}")
+                shutil.rmtree(mod_stage)
+            size = sum(p.stat().st_size for p in target.rglob("*") if p.is_file())
+            shutil.rmtree(target)
+            print(f"[merge_gate] removed {target}: {size / 2**30:.2f} GiB logical (physical space not measured)", flush=True)
 
 
 # Queue depth does not prove a live worker (W98/W99 lost 20 min per row to an unclaimed job): the farm is opt-in
@@ -682,13 +683,57 @@ def stage_published(install, published=PUBLISHED):
         raise RuntimeError(f"stage_published: detail-normal cook left {', '.join(absent)} missing in {textures}")
 
 
-def execute_window(steps, head, dry_run=False, keep_going=False, farm_determinism=False):
+CANDIDATE = Path("E:/mc2-installs/merge-gate-candidate")
+CANDIDATE_MARK = "build64-ninja/kept-candidate.json"
+# Campaign mods the kept candidate carries so sweep_campaign resolves MCO (hardlinked, same volume; never from an owner install).
+CANDIDATE_MODS = ("MechCommanderOmnitech", "mco-compat")
+CANDIDATE_MODS_SOURCE = Path(os.environ.get("MC2_GATE_MODS_SOURCE", "E:/mc2-installs/lane4/mods"))
+
+
+def _link_or_copy(src, dst):
+    try:
+        os.link(src, dst)
+    except OSError:
+        shutil.copy2(src, dst)
+
+
+def stage_candidate_mods(install, source=None, names=CANDIDATE_MODS):
+    """Hardlink the campaign mods into <install>/mods (copy only if the volumes differ). A missing source is an error."""
+    source, mods = Path(source or CANDIDATE_MODS_SOURCE), Path(install) / "mods"
+    for name in names:
+        if not (source / name).is_dir():
+            raise RuntimeError(f"keep-candidate: mod {name} missing under {source}")
+        shutil.rmtree(mods / name, ignore_errors=True)
+        shutil.copytree(source / name, mods / name, copy_function=_link_or_copy)
+    return [str(mods / n) for n in names]
+
+
+def drop_candidate(candidate=None, root=None):
+    """Remove the kept candidate install and its record."""
+    candidate = Path(candidate or CANDIDATE)
+    shutil.rmtree(candidate, ignore_errors=True)
+    (Path(root or ROOT) / CANDIDATE_MARK).unlink(missing_ok=True)
+    print(f"[merge_gate] candidate dropped: {candidate}", flush=True)
+
+
+def keep_stock_copy(install, head, candidate=None, root=None):
+    """Stage campaign mods on the kept stock copy, move it to the fixed candidate path and record it."""
+    candidate = Path(candidate or CANDIDATE)
+    stage_candidate_mods(install)
+    if candidate.exists():
+        shutil.rmtree(candidate)
+    os.replace(install, candidate)
+    (Path(root or ROOT) / CANDIDATE_MARK).write_text(json.dumps(dict(path=str(candidate), head=head, created=time.time())))
+    return candidate
+
+
+def execute_window(steps, head, dry_run=False, keep_going=False, farm_determinism=False, keep_candidate=False):
     """Prove a private candidate. Publishing to v0.4 is a separate step (--publish) that runs after the montage has been viewed."""
     deploy = next((s for s in steps if s[0] == "deploy"), None)
     scheduling = dict(farm_determinism=True) if farm_determinism else {}
     if not deploy or deploy[2].get("MC2_GATE_SKIP_REASON"):
         return execute_parallel(steps, head, dry_run, keep_going, **scheduling)
-    candidate = Path("E:/mc2-installs/merge-gate-candidate")
+    candidate = CANDIDATE
     def prove(install):
         # capture-before and capture-after both run on the candidate: before with the published exe, after with the new one.
         if not dry_run:
@@ -696,8 +741,14 @@ def execute_window(steps, head, dry_run=False, keep_going=False, farm_determinis
         return execute_parallel(install_plan(steps, install), head, dry_run, keep_going, **scheduling)
     if dry_run:
         return prove(candidate)
-    with stock_copy(Path("E:/mc2-installs/_lean-seed")) as install:
-        return prove(install)
+    with stock_copy(Path("E:/mc2-installs/_lean-seed"), **(dict(keep=True) if keep_candidate else {})) as install:
+        try:
+            return prove(install)
+        finally:
+            if keep_candidate:
+                kept = keep_stock_copy(install, head)
+                print(f"[merge_gate] CANDIDATE_KEPT path={kept} head={head[:12]} (walks: sweep_campaign stock|MechCommanderOmnitech <secs> {kept}; "
+                      "remove with --drop-candidate)", flush=True)
 
 
 GREEN_MARK = "build64-ninja/last-green-gate.json"
@@ -745,7 +796,10 @@ def publish(head, dry_run=False):
         print(f"[merge_gate] publish-v0.4: refused; no complete green gate recorded for HEAD {head[:12]} ({GREEN_MARK})")
         return 1
     deploy = next(s for s in plan(1) if s[0] == "deploy")
-    return execute([("publish-v0.4", deploy[1], {})], head, dry_run)
+    rc = execute([("publish-v0.4", deploy[1], {})], head, dry_run)
+    if rc == 0 and not dry_run:
+        drop_candidate()
+    return rc
 
 
 def execute_parallel(steps, head, dry_run=False, keep_going=False, farm_determinism=False):
@@ -1117,6 +1171,8 @@ def main(argv=None):
     ap.add_argument("--clean-output", action="store_true", help="with --preflight --resume, remove only failed determinism output; preserve receipts and passing evidence")
     ap.add_argument("--farm-determinism", action="store_true", help="offer determinism to the farm; a job no live worker claims within the probe window runs locally (default: local)")
     ap.add_argument("--publish", action="store_true", help="after viewing the montage: deploy the verified build to v0.4 (needs a complete green gate for HEAD)")
+    ap.add_argument("--keep-candidate", action="store_true", help="leave the deployed candidate (with MechCommanderOmnitech + mco-compat mods) at E:/mc2-installs/merge-gate-candidate for campaign walks; --publish or --drop-candidate removes it")
+    ap.add_argument("--drop-candidate", action="store_true", help="remove the kept candidate install and exit")
     ap.add_argument("--declared-view", action="append", default=[], help="bookmark whose pixels are expected to change; exempt from the MAD > 0.05 flag")
     ap.add_argument("--install", type=Path, help="explicit lane-owned E:/mc2-installs target for a real rehearsal")
     ap.add_argument("--dry-run", action="store_true", help="print commands only; no builds, deploys, or game launches")
@@ -1141,6 +1197,9 @@ def main(argv=None):
         ap.error("-j must be positive")
     global DECLARED_VIEWS
     DECLARED_VIEWS = set(args.declared_view)
+    if args.drop_candidate:
+        drop_candidate()
+        return 0
     if args.publish:
         return publish(git('rev-parse', 'HEAD'), args.dry_run)
     if args.clean_output:
@@ -1251,6 +1310,8 @@ def main(argv=None):
                 started = window.get("started", time.time())
                 scheduling = dict(farm_determinism=True) if args.farm_determinism else {}
                 execute_gate = execute_parallel if args.install else execute_window
+                if args.keep_candidate and not args.install:
+                    scheduling["keep_candidate"] = True
                 result = execute_gate(steps, head, args.dry_run, keep_going=args.keep_going, **scheduling)
                 elapsed = time.time() - started
                 # Verdict rc: 0 every row green, 1 a red row, 2 partial gate (skipped rows). The clock is information only.
@@ -1267,7 +1328,8 @@ def main(argv=None):
                 if verdict != "PASS" and not args.dry_run and not args.install:
                     (ROOT / GREEN_MARK).unlink(missing_ok=True)  # a red or partial rerun at the same HEAD must not leave an older green
                 if verdict == "PASS" and not args.dry_run and not args.install:
-                    (ROOT / GREEN_MARK).write_text(json.dumps(dict(head=head, finished=time.time())))
+                    (ROOT / GREEN_MARK).write_text(json.dumps(dict(head=head, finished=time.time(),
+                                                                        candidate=str(CANDIDATE) if args.keep_candidate else None)))
                     print("[merge_gate] gate green and complete: view the day and night montages, then `py -3 scripts/merge_gate.py --publish` (v0.4 is NOT published yet)")
                 return result if args.dry_run else {"PASS": 0, "FAIL": 1, "PARTIAL": 2}[verdict]
     finally:
