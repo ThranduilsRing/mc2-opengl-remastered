@@ -392,7 +392,7 @@ bool MechIcon::init( long whichIndex )
     DWORD* const dest = page.pTexture + rect.y * page.Width + rect.x;
     if (!mechicon_package_hud::blit(unit, unitIconX, unitIconY, false, dest, page.Width, int(unitIconX), int(unitIconY)))
         unit_icons::blit(hudSheet(false), whichIndex, false, reinterpret_cast<uint32_t*>(dest),
-                         page.Width, int(unitIconX), int(unitIconY), unit ? unit->getObjectType()->getAppearanceTypeName() : "");
+                         page.Width, int(unitIconX), int(unitIconY), (unit && unit->getObjectType()) ? unit->getObjectType()->getAppearanceTypeName() : "");
     gos_UnLockTexture(handle);
 
 	for ( int i = 0; i < 5; ++i )

@@ -429,3 +429,39 @@ extern "C" int mc2CaptureFocusMech(int n, float* xyz)
 	}
 	return 0;
 }
+
+// Walk variant for the all-mech campaign capture (MC2_CAPTURE_FOCUS=mech:all|enemy|home).
+// Same read-only rules as above; counts every live mech matching the team selector.
+extern "C" int mc2CaptureFocusMechEx(int n, int sel, float* xyz, int* id, int* team, char* name, int* total)
+{
+	if (total) *total = 0;
+	if (!ObjectManager || !xyz || n < 0 || !Team::home)
+		return 0;
+	const long count = ObjectManager->getNumMovers();
+	int seen = 0, hit = 0;
+	for (long i = 0; i < count; ++i) {
+		MoverPtr mover = ObjectManager->getMover(i);
+		if (!mover || !mover->isMech() || mover->isDisabled() || mover->isDestroyed())
+			continue;
+		const bool home = mover->getTeamId() == Team::home->getId();
+		if ((sel == 0 && !home) || (sel == 1 && home))
+			continue;
+		++seen;
+		if (seen - 1 != n)
+			continue;
+		const glm::vec3 pos = mover->getPosition();
+		xyz[0] = pos.x; xyz[1] = pos.y; xyz[2] = pos.z;
+		if (id) *id = static_cast<int>(mover->getPartId());
+		if (team) *team = static_cast<int>(mover->getTeamId());
+		if (name) {
+			const char* nm = mover->getName();
+			size_t j = 0;
+			for (; nm && nm[j] && j < 63; ++j)
+				name[j] = (nm[j] == ' ' || nm[j] == '"' || nm[j] == 92) ? '_' : nm[j];
+			name[j] = 0;
+		}
+		hit = 1;
+	}
+	if (total) *total = seen;
+	return hit;
+}

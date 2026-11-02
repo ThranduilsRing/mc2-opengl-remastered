@@ -3,6 +3,7 @@
 // any socket-layer failure logs once and the game continues; a malformed
 // request gets an error reply; an oversized request drops the connection.
 
+#include <filesystem>
 #include "gos_dev_shell.h"
 
 #ifdef _WIN32
@@ -461,6 +462,7 @@ void scheduleScreenshot(const char* name)
 {
     if (!shellEnabled() || !name || !name[0]) return;
     if (!s_pendingShotPath.empty()) return;
+    { std::error_code ec; std::filesystem::create_directory("dev_shell_out", ec); }
     s_pendingShotPath = sanitizeShotName(name, 0);
 }
 

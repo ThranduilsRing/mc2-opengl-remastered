@@ -31,6 +31,10 @@ void mc2SimIdentityTraceFrame(double scenarioTimeNow, long simFrame);
 // MC2_CAPTURE_FOCUS: position of the nth live player-team mech (capture/dev only).
 // Returns 1 and fills xyz[3], or 0 when there is none.
 int mc2CaptureFocusMech(int n, float* xyz);
+// Walk variant: nth live mech on team selector sel (0 = player team, 1 = every other team,
+// 2 = any team), in object-manager order. Fills xyz[3], *id (part id), *team and name (>= 64
+// chars); *total gets the number of live mechs matching sel. Returns 1 or 0.
+int mc2CaptureFocusMechEx(int n, int sel, float* xyz, int* id, int* team, char* name, int* total);
 
 #ifdef __cplusplus
 }
