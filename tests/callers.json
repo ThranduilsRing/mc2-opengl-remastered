@@ -204,7 +204,7 @@
         },
         {
           "path": "scripts/sweep_campaign.py",
-          "line": 135,
+          "line": 136,
           "evidence": "import",
           "reference": "campaign_liveness",
           "text": "import campaign_liveness"
@@ -3543,7 +3543,7 @@
         },
         {
           "path": "tools/play_mission.py",
-          "line": 38,
+          "line": 41,
           "evidence": "import",
           "reference": "console_child",
           "text": "import console_child"
@@ -5566,7 +5566,7 @@
         },
         {
           "path": "tools/play_mission.py",
-          "line": 39,
+          "line": 42,
           "evidence": "command",
           "reference": "scripts/run_smoke.py",
           "text": "result = subprocess.run(cmd, cwd=ROOT, env=env, stdout=subprocess.PIPE,"
