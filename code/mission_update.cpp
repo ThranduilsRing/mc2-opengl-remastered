@@ -15,7 +15,7 @@
 #include "move_recon_stats.h"
 #include <utility>
 #include <string>
-#include "../GameOS/gameos/gos_dev_shell.h"
+#include "mission_shot.h"
 #include "../GameOS/gameos/utils/mc2log.h"
 
 // FREEZE-MOVERS-1: ONE predicate for "the simulation tick is suspended".
@@ -690,7 +690,7 @@ void Mission::updateSoakAutoWin() {
 			if (scenarioTime < 0.5f) s_startShot = false;
 			if (s_shotStart && !s_startShot && scenarioTime > 1.5f && scenarioTime < winAfter) {
 				s_startShot = true;
-				gos_dev_shell::scheduleScreenshot((std::string("mission_start_") + missionFileName).c_str());
+				mc2MissionStartShot(missionFileName);
 			}
 		}
 		if (!s_soakWinEmitted && scenarioTime > winAfter)

@@ -55,6 +55,7 @@
 #include "../mclib/mathfunc.h"
 #include "../mclib/appear.h"
 #include "../mclib/sim_identity.h"
+#include "sim_identity.h"   // C-linkage declaration of mc2CaptureFocusMechEx (definition below is not a new extern shim)
 #include "../mclib/sim_trace.h"
 #include "../mclib/appearance_rng.h"
 #include "Gates/gate.h"
@@ -432,7 +433,7 @@ extern "C" int mc2CaptureFocusMech(int n, float* xyz)
 
 // Walk variant for the all-mech campaign capture (MC2_CAPTURE_FOCUS=mech:all|enemy|home).
 // Same read-only rules as above; counts every live mech matching the team selector.
-extern "C" int mc2CaptureFocusMechEx(int n, int sel, float* xyz, int* id, int* team, char* name, int* total)
+int mc2CaptureFocusMechEx(int n, int sel, float* xyz, int* id, int* team, char* name, int* total)
 {
 	if (total) *total = 0;
 	if (!ObjectManager || !xyz || n < 0 || !Team::home)

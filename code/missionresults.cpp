@@ -23,6 +23,12 @@ MissionResults.cpp			: Implementation of the MissionResults component.
 #include <string>
 #include "Gates/gate.h"
 #include "mc2fmt.h"
+#include "mission_shot.h"
+
+void mc2MissionStartShot(std::string_view missionName)
+{
+	gos_dev_shell::scheduleScreenshot((std::string("mission_start_") + std::string(missionName)).c_str());
+}
 
 bool MissionResults::FirstTimeResults = true;
 MissionResults::MissionResults()

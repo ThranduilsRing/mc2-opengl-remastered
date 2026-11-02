@@ -499,7 +499,7 @@ flags:
     default: ""
     rule: Std
     owner: gameos
-    doc: "Dev capture knob (read when a bookmark capture applies a pose): mech[:N] moves every bookmark pose onto the Nth live player-team mech (default 0); mech:home|enemy|all walks instead (bookmark k frames the kth live mech of that team set, sidecar focus_walk names it); unset = off."
+    doc: "Dev capture knob (read when a bookmark capture applies a pose): mech[:N] moves every bookmark pose onto the Nth live player-team mech (default 0); unset = off."
     smoke_passthrough: true
     verified: true
   - name: MC2_CAPTURE_FOCUS_ZOOM

@@ -1,6 +1,7 @@
 {
   "schema_v": 1,
   "mission": "mc2_17",
+  "_shared_poses_reason": "census corner_far is a deliberate map-independent camera-envelope pose (corner-pinned full zoom-out) shared by mc2_10, mc2_17 and mc2_24",
   "_note": "Census v3 worst-case pose: corner-pinned full zoom-out like mc2_01 cross_map_view, scaled to the larger mc2_17 map (477 height samples, +-7552 half extent; target 85 percent of the way to the NW corner).",
   "bookmarks": [
     {"name":"corner_far","pos":[-6400,-6400,0],"rot":134.875,"proj":14.875,"alt":5775.7979,"covers":["camera_envelope"]}
