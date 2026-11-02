@@ -433,7 +433,7 @@ extern "C" int mc2CaptureFocusMech(int n, float* xyz)
 }
 
 extern bool ShowMovers;
-extern "C" void mc2CaptureFocusSetShowMovers(int on) { ShowMovers = on != 0; }
+void mc2CaptureFocusSetShowMovers(int on) { ShowMovers = on != 0; }
 
 // Walk variant for the all-mech campaign capture (MC2_CAPTURE_FOCUS=mech:all|enemy|home).
 // Same read-only rules as above; counts every live mech matching the team selector.
