@@ -52,6 +52,7 @@ scrubbing those would break process launch on Windows.
 from __future__ import annotations
 
 import os
+import re
 from typing import Any, Mapping
 
 PREFIX = "MC2_"
@@ -234,6 +235,28 @@ def build_pinned_env(
         "clean_shell": not still_scrubbed,
     }
     return env, record
+
+
+FOCUS_RE = re.compile(r"^mech(:\d+)?$")
+
+
+def focus_declarations(focus: str | None, zoom: float | None = None) -> list[str]:
+    """--focus mech[:N] / --focus-zoom Z -> the MC2_CAPTURE_FOCUS[_ZOOM] declarations.
+
+    Empty when focus is unset (zoom alone is rejected: it would be silently inert).
+    """
+    if not focus:
+        if zoom is not None:
+            raise ValueError("--focus-zoom requires --focus")
+        return []
+    if not FOCUS_RE.match(focus):
+        raise ValueError(f"--focus must be mech or mech:N, got {focus!r}")
+    out = [f"MC2_CAPTURE_FOCUS={focus}"]
+    if zoom is not None:
+        if not 20.0 <= zoom <= 6000.0:
+            raise ValueError(f"--focus-zoom must be in [20, 6000], got {zoom}")
+        out.append(f"MC2_CAPTURE_FOCUS_ZOOM={zoom:g}")
+    return out
 
 
 def parse_declarations(pairs: list[str] | None) -> dict[str, str]:

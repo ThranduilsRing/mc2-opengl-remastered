@@ -419,6 +419,10 @@ class UserInput
 		// outside the rendered bottom band / when the HUD scale is inactive.
 		long getMouseHudX (void) { float x = mouseXPosition * viewMulX, y = mouseYPosition * viewMulY; gos_HudInverseMousePoint(x, y); return float2long(x); }
 		long getMouseHudY (void) { float x = mouseXPosition * viewMulX, y = mouseYPosition * viewMulY; gos_HudInverseMousePoint(x, y); return float2long(y); }
+		float logicalW (void)    { return viewMulX; }   // logical 2D space size (cursor mapping)
+		float logicalH (void)    { return viewMulY; }
+		float normMouseX (void)  { return mouseXPosition; }
+		float normMouseY (void)  { return mouseYPosition; }
 		float realMouseX (void)  { return mouseXPosition * viewMulX; }
 		float realMouseY (void)  { return mouseYPosition * viewMulY; }
 
@@ -659,12 +663,11 @@ class UserInput
 		void update (void);
 		
 		void render (void);						//Last thing rendered.  Draws Mouse.
-		// UI-ASPECT-ANCHOR-1: the post-ImGui z-order re-draw of the cursor
-		// (CURSOR-ON-TOP-OF-IMGUI-1) runs AFTER flushHUDBatch, so it misses
-		// the menu 16:9 canvas vertex remap and drew a second cursor at the
-		// un-remapped position. This wrapper applies the same canvas
-		// transform to the cursor position for that one invocation.
-		void renderForImGuiOverlay (void);
+		// CURSOR-TOPMOST-1: fills the current software-cursor sprite quad (raw
+		// physical pixels, 4 gos_VERTEX with UVs) and its gos texture id WITHOUT
+		// submitting a draw, so the ImGui foreground list (last 2D draw) can paint
+		// the cursor above every ImGui HUD panel. false: no software cursor wanted.
+		bool captureCursorQuad (gos_VERTEX quad[4], unsigned long& gosTex);
 };
 
 extern UserInput *userInput;

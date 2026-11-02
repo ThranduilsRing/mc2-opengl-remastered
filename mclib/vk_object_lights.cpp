@@ -394,6 +394,8 @@ void mc2ClearAllBakedStaticLight()
     // recipeIndex restarts at 0 against a fresh prefix.
     s_bakedStaticLight.clear();
     s_staticLightHighWater = 0;
+    extern void mc2OnMissionLightBakeReset();
+    mc2OnMissionLightBakeReset();
 }
 
 // [G1-STATIC-EAGER-LIGHT v1] Probe helper: returns true when lightData_[recipeIndex]

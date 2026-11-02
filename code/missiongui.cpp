@@ -57,6 +57,9 @@ MissionInterfaceManager::MissionInterfaceManager (void)
 MissionInterfaceManager::~MissionInterfaceManager (void)
 {
 	destroy();
+	// extractRenderFrame() reads instance() after the mission deletes this object; a stale pointer is a use-after-free.
+	if (s_instance == this)
+		s_instance = nullptr;
 }
 
 float MissionInterfaceManager::pauseWndVelocity = -50.f;

@@ -42,6 +42,9 @@ GameObjectManager* ObjectManager = nullptr;
 // code/gameplay_pick.cpp:202 -> void RunGameplayPickSelfTest()
 void RunGameplayPickSelfTest() {}
 
+// No gameplay camera runs in offline data tools (code/gamecam.cpp).
+unsigned mc2CameraLightChangedCount() { return 0; }
+
 // ---------------------------------------------------------------------------
 // Inert definitions for game-layer entry points referenced by gameos.lib /
 // mclib.lib (debug_state_dump, gos_visual_capture, mech3d, gvactor). They live
@@ -59,6 +62,7 @@ int  mc2FreezeMoversActive() { return 0; }
 int  mc2VisualCaptureGetPauseState() { return -1; }  // -1 = no mission interface
 void mc2VisualCaptureSetPaused(int) {}
 void mc2VisualCaptureRestorePauseState(int) {}
+int  mc2CaptureFocusMech(int, float*) { return 0; }
 int  mc2SimIdentityWriteJson(char* buf, int cap, double, long)
 {
     if (buf && cap > 0) buf[0] = '\0';

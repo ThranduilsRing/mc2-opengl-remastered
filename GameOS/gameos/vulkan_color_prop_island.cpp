@@ -1863,6 +1863,9 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
         // ObjectLights ambientTerm sum; iblShStrength==0.0 short-circuits evalShL2
         // exactly like the GL guard (byte-identical when the feature/env is off).
         if (haveLightFeed) {
+            std::copy_n(lightFeed.sunColor, 4, u.sunColor);
+            std::copy_n(lightFeed.ambientColor, 4, u.ambientColor);
+            std::copy_n(lightFeed.specDir, 4, u.specDir);
             for (int i = 0; i < 9; ++i) {
                 u.iblSh[i][0] = lightFeed.iblSh[i][0];
                 u.iblSh[i][1] = lightFeed.iblSh[i][1];

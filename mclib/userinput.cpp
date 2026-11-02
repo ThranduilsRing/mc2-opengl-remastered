@@ -527,13 +527,29 @@ void UserInput::setMouseScale (float scaleFactor)
 }
 
 //---------------------------------------------------------------------------
-// UI-ASPECT-ANCHOR-1: see header note on renderForImGuiOverlay().
-static bool s_cursorCanvasOverlayDraw = false;
-void UserInput::renderForImGuiOverlay (void)
+// CURSOR-TOPMOST-1: see header note on captureCursorQuad().
+static gos_VERTEX* s_cursorCaptureQuad = nullptr;
+static unsigned long s_cursorCaptureTex = 0;
+static bool s_cursorCaptured = false;
+static void emitCursorSprite (StaticInfo& ci)
 {
-	s_cursorCanvasOverlayDraw = true;
+	if (s_cursorCaptureQuad)
+	{
+		memcpy(s_cursorCaptureQuad, ci.location, 4 * sizeof(gos_VERTEX));
+		s_cursorCaptureTex = mc2::textures::sourceId( ci.textureHandle );
+		s_cursorCaptured = true;
+	}
+	else
+		ci.render();
+}
+bool UserInput::captureCursorQuad (gos_VERTEX quad[4], unsigned long& gosTex)
+{
+	s_cursorCaptureQuad = quad;
+	s_cursorCaptured = false;
 	render();
-	s_cursorCanvasOverlayDraw = false;
+	s_cursorCaptureQuad = nullptr;
+	gosTex = s_cursorCaptureTex;
+	return s_cursorCaptured;
 }
 
 //---------------------------------------------------------------------------
@@ -571,29 +587,12 @@ void UserInput::render (void)						//Last thing rendered.  Draws Mouse.
 	{
 		if (drawMouse && mouseState != -1)
 		{
-			gos_SetHudScaleExempt(true);   // cursor sprite never shrunk by the HUD-fit scale
+			if (!s_cursorCaptureQuad)
+				gos_SetHudScaleExempt(true);   // cursor sprite never shrunk by the HUD-fit scale
 				// Cursor renders at raw physical pixel position, not HUD-logical coords.
 			// HUD-inverse transform belongs only on the click-reception side.
 			long mouseX = getRawMouseX();
 			long mouseY = getRawMouseY();
-
-			// UI-ASPECT-ANCHOR-1: post-ImGui invocation runs after the HUD
-			// batch flush, so apply the menu 16:9 canvas remap here (the
-			// in-batch copy gets it from flushHUDBatch). Same math as the
-			// flush: logical' = logical * bw/dw + logicalW * bx/dw.
-			if ( s_cursorCanvasOverlayDraw )
-			{
-				int bx = 0, by = 0, bw = 0, bh = 0;
-				if ( gos_ComputeUiCanvasBox( Environment.drawableWidth, Environment.drawableHeight,
-				                             &bx, &by, &bw, &bh ) )
-				{
-					const float dw = static_cast<float>(Environment.drawableWidth);
-					const float dh = static_cast<float>(Environment.drawableHeight);
-					mouseX = static_cast<long>((mouseX * (static_cast<float>(bw) / dw) + Environment.screenWidth  * (static_cast<float>(bx) / dw)));
-					mouseY = static_cast<long>((mouseY * (static_cast<float>(bh) / dh) + Environment.screenHeight * (static_cast<float>(by) / dh)));
-				}
-			}
-
 			mouseX -= cursors->getMouseHSX( mouseState );
 			mouseY -= cursors->getMouseHSY( mouseState );
 	
@@ -617,7 +616,7 @@ void UserInput::render (void)						//Last thing rendered.  Draws Mouse.
 				float newV2 = newV + (cursors->cursorInfos[mouseState].height() + .1)/cursors->cursorInfos[mouseState].textureWidth;
 	
 				cursors->cursorInfos[mouseState].setNewUVs( newU, newV, newU2, newV2 );
-				cursors->cursorInfos[mouseState].render();
+				emitCursorSprite( cursors->cursorInfos[mouseState] );
 				cursors->cursorInfos[mouseState].u = oldU;
 				cursors->cursorInfos[mouseState].v = oldV;
 
@@ -625,7 +624,7 @@ void UserInput::render (void)						//Last thing rendered.  Draws Mouse.
 
 			}
 			else
-				cursors->cursorInfos[mouseState].render();
+				emitCursorSprite( cursors->cursorInfos[mouseState] );
 		}
 	}
 }	

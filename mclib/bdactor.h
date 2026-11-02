@@ -345,6 +345,7 @@ class BldgAppearance : public ObjectAppearance
 		void releaseBldgShape();
 		
 		bool										fogLightSet;
+		unsigned									lightLatchStamp = 0xFFFFFFFFu;	// mc2CameraLightChangedCount() when fogLightSet latched
 		DWORD										lightRGB;
 		DWORD										fogRGB;
 

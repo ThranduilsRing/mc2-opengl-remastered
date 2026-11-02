@@ -28,6 +28,10 @@ int mc2SimIdentityWriteJson(char* buf, int cap,
 // same place scenarioTime advances.
 void mc2SimIdentityTraceFrame(double scenarioTimeNow, long simFrame);
 
+// MC2_CAPTURE_FOCUS: position of the nth live player-team mech (capture/dev only).
+// Returns 1 and fills xyz[3], or 0 when there is none.
+int mc2CaptureFocusMech(int n, float* xyz);
+
 #ifdef __cplusplus
 }
 #endif

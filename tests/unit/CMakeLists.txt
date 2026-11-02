@@ -29,6 +29,7 @@ get_filename_component(MC2_WORKTREE_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../.." ABS
 
 add_executable(mc2_tests
     test_present_handoff.cpp
+    test_cursor_map.cpp     # CURSOR-SCALE-1: logical 2D space -> ImGui display mapping of the software cursor
     ${MC2_WORKTREE_ROOT}/3rdparty/imgui/imgui.cpp
     ${MC2_WORKTREE_ROOT}/3rdparty/imgui/imgui_draw.cpp
     ${MC2_WORKTREE_ROOT}/3rdparty/imgui/imgui_tables.cpp
@@ -48,15 +49,18 @@ add_executable(mc2_tests
     test_argb_pack.cpp
     test_mover_los_epoch.cpp
     test_screen_pick.cpp
+    test_camera_start_pick.cpp
     test_quality_presets.cpp
     test_rendercore.cpp     # RENDERCORE-UNIT-TESTS-1: GL-free substrate invariants
     test_frame_arena.cpp    # FRAME-ARENA-1: FrameArena typed L2 allocator invariants
     test_depth_hzb.cpp      # HZB-DEPTH-CONVENTION-TESTS-1: reverse-Z / HZB reduction contract
     test_hzb_cull_reference.cpp  # CPU reference of hzb_cull.comp (RenderCore/hzb_prop_bounds.h): keep-bit cases
+    test_prop_light_contract.cpp
     test_shadow_bake_math.cpp  # the static shadow bake's mask layout, reach, footprint and caster-window math (header-only, no Vulkan)
     test_shadow_mover_fit.cpp
     test_static_caster_set.cpp
     ../../GameOS/gameos/static_caster_set.cpp
+    ${MC2_WORKTREE_ROOT}/GameOS/gameos/diagnostic_trace.cpp
     test_gate.cpp           # GATE-REGISTRY-G1A: truthiness matrix, slot cache, [CONFIG v1] dump
     test_tactical_overview.cpp   # TACTICAL-OVERVIEW-1: blend-state pure logic
     test_xform_convention.cpp    # XFORM-CONVENTION-HARNESS-1: clip-space convention lock

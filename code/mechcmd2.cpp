@@ -1143,6 +1143,17 @@ void __stdcall InitializeGameEngine()
 #endif
 			logistics->setLogisticsState(log_STARTMISSIONFROMCMDLINE);
 			char commandersToLoad[MAX_MC_PLAYERS][3] = {{0, 0, 0}, {1, 1, 1}, {2, 0, 2}, {3, 3, 3}, {4, 4, 4}, {5, 5, 5}, {6, 6, 6}, {7, 7, 7}};
+#ifdef _WIN32
+			// Test hook (mc10 load crash repro): use the logistics identity table
+			// {i,i,i} with entry 0 = -1, exactly as logistics_begin.cpp builds it.
+			for (int arg = 1; arg < __argc; ++arg) {
+				if (std::strcmp(__argv[arg], "--identity-commanders") == 0) {
+					for (int i = 0; i < MAX_MC_PLAYERS; ++i)
+						commandersToLoad[i][0] = commandersToLoad[i][1] = commandersToLoad[i][2] = static_cast<char>(i);
+					commandersToLoad[0][0] = commandersToLoad[0][1] = commandersToLoad[0][2] = -1;
+				}
+			}
+#endif
 			mission->init(missionName, MISSION_LOAD_SP_QUICKSTART, 0, nullptr, commandersToLoad, 2);
 			eye->activate();
 			eye->update();

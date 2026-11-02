@@ -25,6 +25,7 @@ from PIL import Image
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts"))
 # OWNER RULE: no window for any child process (hidden_kwargs: CREATE_NO_WINDOW + SW_HIDE).
 from smoke_lib import nofocus  # noqa: E402
+import mc2_env_pin as env_pin  # noqa: E402
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[1]
@@ -173,6 +174,11 @@ def main(argv=None):
     ap.add_argument("--exe-a", metavar="EXE")
     ap.add_argument("--exe-b", metavar="EXE")
     ap.add_argument("--install", default=DEFAULT_INSTALL, help="data/DLL source for --exe-a/--exe-b")
+    ap.add_argument("--focus", metavar="mech[:N]", default=None,
+                    help="MC2_CAPTURE_FOCUS: move every bookmark pose onto the Nth live "
+                         "player-team mech (default 0); the bookmark still supplies rot/proj.")
+    ap.add_argument("--focus-zoom", type=float, default=None, metavar="ALT",
+                    help="camera altitude with --focus (default 200 = mech at about a fifth of the frame)")
     ap.add_argument("--env", action="append", default=[], metavar="K=V", help="extra env for both captures")
     ap.add_argument("--crop", action="append", default=[], help="x0,y0,x1,y1 fractions")
     ap.add_argument("--out-root")
@@ -192,7 +198,7 @@ def main(argv=None):
         sys.exit("--bookmarks required")
     out.mkdir(parents=True, exist_ok=True)
     ia, ib = resolve_installs(a, out)
-    env = ["MC2_RENDER_BACKEND=vulkan", "MC2_VK_SHARED_GBUFFER=1"] + a.env
+    env = ["MC2_RENDER_BACKEND=vulkan", "MC2_VK_SHARED_GBUFFER=1"] + a.env + env_pin.focus_declarations(a.focus, a.focus_zoom)
     run_capture(ia, a.bookmarks, out / "a", env)
     run_capture(ib, a.bookmarks, out / "b", env)
     compare(out / "a", out / "b", out / "cmp", crops, [s.strip() for s in a.bookmarks.split(",")])

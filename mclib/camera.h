@@ -1622,6 +1622,8 @@ class Camera
 		void rotateLightUp(float amount);
 		void rotateLightDown(float amount);
 
+		// Prop light contract inputs (prop_light_contract.h): S, A, night floor F, Dspec = worldLight 0 direction.
+		void getPropLightContract (int S[3], int A[3], int &F, float D[3]);
 		unsigned char getLightRed (float intensity);
 		unsigned char getLightGreen (float intensity);
 		unsigned char getLightBlue (float intensity);

@@ -163,6 +163,9 @@ int mc2_color_prop_island_get_material_feed(Mc2ColorPropMaterialFeed* out);
 // constant the island approximates locally) -- only the ObjectLights AMBIENT-type
 // sum and the SH-L2 fill are real data now.
 struct Mc2ColorPropLightFeed {
+    float        sunColor[4];       // contract S (0..255), .w = published (prop_light_contract.h)
+    float        ambientColor[4];   // contract A (0..255), .w = F night floor
+    float        specDir[4];        // Dspec: worldLights[0] direction as the row carried it
     // VK-PROP-LIGHTFEED-NATIVE-1 (mech item-9 pattern): the CPU LightsData array
     // (mc2::textures::ready() lightData_, the byte source of the GL SSBO upload at
     // renderLists) is the per-frame lighting feed. VK-PERF-2 cleanup deleted the

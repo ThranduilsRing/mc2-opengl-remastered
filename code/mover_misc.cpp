@@ -212,7 +212,7 @@ void PlaceStationaryMovers (MoveMap* map) {
 	
 				if ((cellRow != map->startR) || (cellCol != map->startC)) {
 					if ((map->map[cellRow * map->maxWidth + cellCol].flags & MOVEFLAG_GOAL) == 0) {
-						MovePathPtr path = mover->getPilot()->getMovePath();
+						MovePathPtr path = mover->getPilot() ? mover->getPilot()->getMovePath() : nullptr; // a pilotless mover has no path
 						if (path && (path->numSteps == 0)) {
 							map->map[cellRow * map->maxWidth + cellCol].setFlag(MOVEFLAG_MOVER_HERE);
 #ifdef USE_OVERLAYS

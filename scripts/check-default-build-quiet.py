@@ -41,7 +41,7 @@ USAGE
   py -3 scripts/check-default-build-quiet.py --update-baseline   # re-seed (review the diff!)
 
 Exit 0 = no new tags, 1 = new unconditional diagnostic output found.
-OFFLINE BY DEFAULT: with no flags this grades existing default-env smoke logs, or
+OFFLINE BY DEFAULT: with no flags this grades current-HEAD clean default-env smoke logs, or
 SKIPs ("no fresh smoke log; graded at merge gate"). It never launches the game, so
 the ordinary check-contracts row stays offline. Only --fresh-smoke launches one, and
 it requires the explicit --exe (scripts/merge_gate.py passes the gate's install).
@@ -77,7 +77,7 @@ DIAG_ENV_HINTS = ("MC2_DIAG_TAGS", "_DIAG", "_TRACE", "_PROBE", "MC2_DEBUG_")
 
 # env_gates keys that do NOT change what the engine prints, so a run carrying
 # only these is still a valid default-build sample.
-BENIGN_ENV = ("MC2_SMOKE_REQUIRE_FINGERPRINT", "MC2_SMOKE_ARTIFACT_ROOT", "MC2_HOST_LEASE_BATCH")
+BENIGN_ENV = ("MC2_SMOKE_REQUIRE_FINGERPRINT", "MC2_SMOKE_ARTIFACT_ROOT", "MC2_HOST_LEASE_BATCH", "MC2_SMOKE_QUIET_DEFAULT")
 
 
 def is_default_env_run(run_dir: Path) -> bool:
@@ -112,12 +112,23 @@ def tags_in_log(path: Path) -> set[str]:
 def newest_smoke_logs() -> list[Path]:
     if not ARTIFACT_ROOT.is_dir():
         return []
+    head = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True,
+                                   **console_child.child_kwargs(redirected=True)).strip()
     runs = sorted((d for d in ARTIFACT_ROOT.iterdir() if d.is_dir()),
                   key=lambda d: d.stat().st_mtime, reverse=True)
     for run in runs:
         # Only a run taken with no output-affecting
         # MC2_* env can be graded against the default-build baseline.
         if not is_default_env_run(run):
+            continue
+        # Grade the binary that ran, rather than the source checkout recorded by its runner.
+        try:
+            manifest = json.loads((run / "manifest.json").read_text(encoding="utf-8"))
+            provenance = manifest.get("identity", {}).get("binary_provenance", {})
+            commit = provenance.get("commit") or ""
+            if len(commit) < 7 or not head.startswith(commit) or provenance.get("dirty") is not False:
+                continue
+        except (OSError, ValueError):
             continue
         logs = console_logs(run)
         if logs:
@@ -163,6 +174,7 @@ def fresh_smoke_logs(exe):
     if os.environ.get("MC2_HOST_LEASE_BATCH"):
         env["MC2_HOST_LEASE_BATCH"] = os.environ["MC2_HOST_LEASE_BATCH"]
     env["MC2_SMOKE_ARTIFACT_ROOT"] = str(run_root)
+    env["MC2_SMOKE_QUIET_DEFAULT"] = "1"   # run_smoke must not add the PERF_COUNTERS / CULL_PARITY diag tags to this sample
     command = [sys.executable, str(ROOT / "scripts/run_smoke.py"), "--mission", "mc2_10",
                "--duration", "15", "--keep-logs"]
     command += ["--exe", str(exe)]

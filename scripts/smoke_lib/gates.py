@@ -40,6 +40,8 @@ class GateConfig:
     validation_requested: bool = False
     # The smoke mission under test: selects the PRESENCE_RULES rows that apply.
     stem: str = ""
+    # MC2_DIAG_TAGS the child ran with; None = unknown, every tag-gated presence rule applies. A rule with a diag_tag is skipped when its tag is off.
+    diag_tags: Optional[frozenset] = None
     vegetation_expected: bool = True  # Low/Potato retain only stock objects.
     content_error_budget: Optional[int] = 0
     # {stem: {counter: ceiling}} for the perf_counter bucket; None loads tests/smoke/perf_counter_ceilings.json.
@@ -51,6 +53,7 @@ class Verdict:
     passed: bool
     buckets: List[str] = field(default_factory=list)
     details: List[str] = field(default_factory=list)
+    warnings: List[str] = field(default_factory=list)   # perf_counter-only reds: recorded, never failing
 
 
 def evaluate(s: LogSummary, cfg: GateConfig, *,
@@ -123,6 +126,8 @@ def evaluate(s: LogSummary, cfg: GateConfig, *,
     for rule in PRESENCE_RULES:
         if rule.bucket.startswith("vegetation_") and not cfg.vegetation_expected:
             continue
+        if rule.diag_tag and cfg.diag_tags is not None and "*" not in cfg.diag_tags and rule.diag_tag not in cfg.diag_tags:
+            continue
         if rule.stem == cfg.stem and s.mission_ready_ms is not None and s.presence_counts.get(rule.bucket, 0) == 0:
             buckets.append(rule.bucket)
             details.append(rule.why)
@@ -166,5 +171,11 @@ def evaluate(s: LogSummary, cfg: GateConfig, *,
             buckets.append("heartbeat_freeze_play")
             details.append(f"last play heartbeat at {last:.1f}s wallclock")
 
+    # A run whose ONLY red is perf_counter (no pixel/SIMID/save/validation/content bucket) is a PASS with a recorded warning (owner rule
+    # 2026-11-01: perf_counter-only reds are not gate failures). Every other bucket stays strict.
+    warnings: List[str] = []
+    if buckets == ["perf_counter"]:
+        warnings = [d for d in details if d.startswith("perf counters over ceiling")]
+        buckets, details = [], [d for d in details if d not in warnings]
     passed = not buckets and s.smoke_summary_result == "pass" and exit_code == 0
-    return Verdict(passed=passed, buckets=buckets, details=details)
+    return Verdict(passed=passed, buckets=buckets, details=details, warnings=warnings)

@@ -85,6 +85,8 @@ G("MC2_CAMERA_PARK", String, "", "gameos", "", "CAMERA-PARK-1 (ported from vk br
 P("MC2_CAMERA_SMOOTH", Float, 100.0, "code", "", "", passthrough | clampRange(0.0, 2000.0) | verified),
 L(Lead1, "MC2_CAMERA_SMOOTH_TRACE", Bool, false, "code", "", "", passthrough | verified),
 L(Lead1, "MC2_CAM_SMOOTH_TEST", Bool, false, "code", "", "", passthrough | verified),
+G("MC2_CAPTURE_FOCUS", String, "", "gameos", "", "Dev capture knob (read when a bookmark capture applies a pose): mech[:N] moves every bookmark pose onto the Nth live player-team mech (default 0); unset = off.", passthrough | verified),
+P("MC2_CAPTURE_FOCUS_ZOOM", Float, 200.0, "gameos", "", "Camera altitude used with MC2_CAPTURE_FOCUS (default 200 frames a mech at about a fifth of the frame).", passthrough | clampRange(20.0, 6000.0) | verified),
 G("MC2_CAPTURE_FORCE_BUILDING_HIGHLIGHT", String, "", "props", "", "CAPTURE-ONLY (parity row 28): hex ARGB forced as every building's highlight; read only while MC2_VISUAL_BOOKMARK_CAPTURE arms the replay.", passthrough | verified),
 // history: docs/gate-history.md#MC2_CEMENT_ATLAS_DUMP
 G("MC2_CEMENT_ATLAS_DUMP", String, "", "terrain", "", "CEMENT-ATLAS-CELL-2: dump the assembled cement/road overlay atlas so cell art can be inspected directly -- which cells actually carry painted markings is an...", passthrough | registry(Trace, "MC2_TRACE_CEMENT_ATLAS_DUMP", -1, false) | verified),

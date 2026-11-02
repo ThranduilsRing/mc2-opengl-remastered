@@ -590,6 +590,8 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--tier", choices=["tier1", "tier2", "tier3", "resolution"])
     ap.add_argument("--mission", action="append", default=[])
+    ap.add_argument("--identity-commanders", action="store_true",
+                    help="launch with the logistics identity commandersToLoad table (mc10 load crash repro)")
     ap.add_argument("--objective-logistics", action="store_true",
                     help="initialize and settle logistics for the objectives_e6e fixtures")
     ap.add_argument("--allow-any-mission", action="store_true",
@@ -1504,7 +1506,7 @@ def main():
         # The `resolution` tier runs one stem once per size, so its rows, logs and baseline keys carry the size.
         label = f"{e.stem}@{e.resolution}" if e.resolution else e.stem
         cfg = RunConfig(
-            exe=[args.exe] + (["--objective-logistics"] if args.objective_logistics else []),
+            exe=[args.exe] + (["--objective-logistics"] if args.objective_logistics else []) + (["--identity-commanders"] if args.identity_commanders else []),
             profile=e.profile or args.profile,
             stem=e.stem,
             duration=duration,
@@ -1556,6 +1558,8 @@ def main():
                                  MC2_REGFLUSH_GUARD2="1", MC2_CAM_SMOOTH_TEST="1")
         if args.quiet_sample and e.stem != args.quiet_sample:
             cfg.env_extra.update(MC2_VULKAN_VALIDATION="1", MC2_DEBUG_STATE_DUMP="1", MC2_DIAG_TAGS="CONFIG,BUILD,DEVICE")
+        # The runner adds the PERF_COUNTERS / CULL_PARITY diag tags (smoke_lib/runner.py); the default-build quiet sample mission keeps them off.
+        cfg.quiet_default = bool(args.quiet_sample) and e.stem == args.quiet_sample
         if args.capture_bookmark:
             from run_visual_capture import smoke_capture
             cfg.env_extra.update(smoke_capture(args.capture_bookmark, e.stem, args.capture_out))
@@ -1741,6 +1745,8 @@ def main():
         # The options the engine saw: the exe's options.cfg plus the MC2_OPTIONS_OVERRIDE of this run's environment (the runner passes the
         # ambient environment through and applies cfg.env_extra last).
         _options = render_options_pin.record(Path(args.exe).resolve().parent, {**os.environ, **cfg.env_extra})
+        for _pw in result.verdict.warnings:
+            print(f"[runner] [PERF_COUNTER_WARN] {label}: {_pw}", file=sys.stderr)
         rows.append(report.Row(stem=label, verdict=result.verdict,
                                summary=result.summary, destroys_delta=delta or 0,
                                render_options=_options["values"]))

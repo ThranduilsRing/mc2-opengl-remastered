@@ -1490,6 +1490,17 @@
       "occurrence": 1
     },
     {
+      "tu": "code/sim_identity.cpp",
+      "file": "code/sim_identity.cpp",
+      "chain": [
+        "code/sim_identity.cpp"
+      ],
+      "rule": "extern-shim",
+      "subject": "extern callable",
+      "evidence": "extern int mc2CaptureFocusMech(int n, float* xyz) {",
+      "occurrence": 1
+    },
+    {
       "tu": "code/mission_update.cpp",
       "file": "code/mission_internal.h",
       "chain": [

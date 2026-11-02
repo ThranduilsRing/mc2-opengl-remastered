@@ -191,7 +191,7 @@ MoverPtr BringInReinforcement (long vehicleID, long rosterIndex, long commanderI
 	data.objNumber = vehicleID;
 	data.position = pos;
 	data.rotation = 0;
-	data.teamID = Commander::commanders[commanderID]->team->getId();
+	data.teamID = Commander::commanders[commanderID]->team ? Commander::commanders[commanderID]->team->getId() : -1;
 	data.commanderID = commanderID;
 	data.active = 1;
 	data.exists = exists;

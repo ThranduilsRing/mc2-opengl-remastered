@@ -130,3 +130,8 @@ one build/test pass per change, requested runtime proofs, local pathspec commits
   aborts. Object-owner lane must replace its fixed coverage representation with
   counted coordinate pairs, add loader support and an old-reader required tag,
   test >old cell count, then run metropolitan +60 and the deferred mod trials.
+
+## W96 first-save RED root cause (2026-11-01)
+- Cause (a-variant, but avoidable): 3c36d6734 stamped the OBJS section version 2 on EVERY save. The section container is one packet, so the 1-byte version change alone changed the packet digest (same length). Proof: patching the OBJS version byte 2->1 in the gate's saved save1.ims for mc2_01/03/16/24 reproduces the pinned baseline digests exactly (e.g. mc2_03 1d90195eddf49288).
+- Fix: saveload.cpp writes OBJS v1 unless some terrain object has numCellsCovered*2 > legacy buffer; only then v2 (W95 refuses it). Stock saves are byte-identical to W95 and readable by it. No baseline changed.
+- Quiet-tag red (CULL_PARITY/LIGHT_CONTRACT/PERF_COUNTERS) came from the reverted light candidate, not this lane.

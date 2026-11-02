@@ -8,6 +8,14 @@
 #include "render_resource_owners.h"
 #include "Gates/gate.h"
 #include "mc2fmt.h"
+#ifdef MC2_IMGUI
+#include "imgui.h"
+#include "ui_texture.h"
+#include "RenderCore/CursorMap.h"
+#include "diagnostic_trace.h"
+#include <cmath>
+#include <cstdio>
+#endif
 #ifdef MC2_ALLOC_STATS
 #include "artlry.h"
 #endif
@@ -81,19 +89,70 @@ void __stdcall UpdateRenderers()
 			ZoneScopedN("UpdateRenderers uiRender");
 			gos_SetRenderState( gos_State_Filter, gos_FilterNone );
 			gos_SetRenderState( gos_State_IsHUD, 1 );
-			userInput->render();
+			// CURSOR-TOPMOST-1: when the ImGui pass will run this frame, the cursor is painted
+			// by it (foreground draw list = last 2D draw); the HUD-batch copy would sit
+			// under every ImGui HUD panel, so skip it.
+#ifdef MC2_IMGUI
+			if (!GuiRuntime::FrameActive())
+#endif
+				userInput->render();
 			gos_SetRenderState( gos_State_IsHUD, 0 );
 #ifdef MC2_IMGUI
-			// CURSOR-ON-TOP-OF-IMGUI-1: the custom MC2 cursor sprite drawn just
-			// above is part of the normal HUD batch, which flushes BEFORE
-			// GuiRuntime::Render() (the ui-phase1 defs/ImGui pages draw later,
-			// same frame) -- so the cursor was hidden behind every ImGui panel
-			// (Main Screen, Mission pages, popups). Re-draw it again as a
-			// post-ImGui callback (same mechanism SimpleCamera preview panels
-			// use) so it composites on top instead. Cheap: one extra sprite
-			// draw per frame, only fires if GuiRuntime actually rendered a
-			// frame (no-op otherwise).
-			GuiRuntime::RegisterPostImGuiRender( []() { userInput->renderForImGuiOverlay(); } );
+			// CURSOR-TOPMOST-1 (supersedes CURSOR-ON-TOP-OF-IMGUI-1, whose post-ImGui
+			// GL callback never ran under Vulkan): the HUD batch flushes BEFORE
+			// GuiRuntime::Render(), so the cursor sprite sat under every ImGui
+			// panel. Paint it into the ImGui foreground list instead.
+			if ( GuiRuntime::FrameActive() )
+			GuiRuntime::RegisterForegroundCursor( []() -> bool {
+				gos_VERTEX q[4];
+				unsigned long tex = 0;
+				if ( !userInput || !userInput->captureCursorQuad( q, tex ) || !tex || tex == 0xffffffff )
+					return false;
+				const uint64_t glTex = gos_GetUiTextureId( tex );
+				if ( !glTex )
+					return false;
+				// q[] is in the logical 2D space (800x600 on menus, window size in a
+				// mission), exactly like the old HUD-batch copy. Map it to ImGui display
+				// space the way flushHUDBatch maps it to the drawable: UI canvas box
+				// (menus only), then drawable -> display. Sprite size scales the same way.
+				const ImVec2 disp = ImGui::GetIO().DisplaySize;
+				const float dw = static_cast<float>( Environment.drawableWidth );
+				const float dh = static_cast<float>( Environment.drawableHeight );
+				int bx = 0, by = 0, bw = 0, bh = 0;
+				gos_ComputeUiCanvasBox( Environment.drawableWidth, Environment.drawableHeight, &bx, &by, &bw, &bh );
+				const mc2::CursorMap m = mc2::makeCursorMap( userInput->logicalW(), userInput->logicalH(),
+					static_cast<float>( bx ), static_cast<float>( by ), static_cast<float>( bw ), static_cast<float>( bh ),
+					dw, dh, disp.x, disp.y );
+				const ImVec2 p0( m.x( q[0].x ), m.y( q[0].y ) );
+				const ImVec2 p1( m.x( q[2].x ), m.y( q[2].y ) );
+				const DWORD c = q[0].argb;
+				ImGui::GetForegroundDrawList()->AddImage(
+					static_cast<ImTextureID>( static_cast<intptr_t>( glTex ) ),
+					p0, p1,
+					ImVec2( q[0].u, q[0].v ), ImVec2( q[2].u, q[2].v ),
+					IM_COL32( ( c >> 16 ) & 0xff, ( c >> 8 ) & 0xff, c & 0xff, ( c >> 24 ) & 0xff ) );
+				if ( mc2_diag::tagRequested( "CURSOR" ) )
+				{
+					static int s_n = 0;
+					if ( ( s_n++ % 30 ) == 0 )
+					{
+						// mapped = display-space image of the logical pointer; expect = pointer
+						// as a fraction of the canvas, in display px (must agree within 2 px).
+						const float mapX = m.x( userInput->realMouseX() ), mapY = m.y( userInput->realMouseY() );
+						const float kx = disp.x / dw, ky = disp.y / dh;
+						const float expX = ( bx + userInput->normMouseX() * bw ) * kx;
+						const float expY = ( by + userInput->normMouseY() * bh ) * ky;
+						char js[384];
+						std::snprintf( js, sizeof js, "{\"logical\":\"%dx%d\",\"logicalPos\":[%.1f,%.1f],\"quad0\":[%.1f,%.1f],\"mapped\":[%.1f,%.1f],\"expect\":[%.1f,%.1f],\"display\":\"%.0fx%.0f\",\"scale\":%.3f,\"ok\":%d}",
+							static_cast<int>( userInput->logicalW() ), static_cast<int>( userInput->logicalH() ),
+							userInput->realMouseX(), userInput->realMouseY(), p0.x, p0.y, mapX, mapY, expX, expY,
+							disp.x, disp.y, m.sx,
+							( std::fabs( mapX - expX ) <= 2.0f && std::fabs( mapY - expY ) <= 2.0f ) ? 1 : 0 );
+						mc2_diag::writeEvent( "CURSOR", 1, 0, js );
+					}
+				}
+				return true;
+			} );
 #endif
 		}
 
