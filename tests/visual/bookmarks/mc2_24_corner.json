@@ -1,0 +1,1 @@
+{"schema_v":1,"mission":"mc2_24","_note":"Census corner pose, same as mc2_17 corner_far. Kept apart from <mission>_camera.json, whose bookmark set is pinned by tools/perf/budget_check.py and scripts/run_visual.py.","bookmarks":[{"name":"corner_far","pos":[-6400,-6400,0],"rot":134.875,"proj":14.875,"alt":5775.7979,"covers":["camera_envelope"]}]}

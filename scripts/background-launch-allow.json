@@ -34,6 +34,7 @@
   "direct_spawn": {
     "scripts/run_visual.py": "Starts only the Python run_visual_capture.py harness with --no-kill and console_child; that harness owns the offscreen game launch, host lease and own-PID cleanup.",
     "tools/perf/mission_cpu_profile.py": "Launches only Tracy capture/export console tools directly; the engine launches through smoke_lib.runner and nofocus.",
+    "tools/perf/rgp_capture.py": "Launches only the Radeon Developer Service and a minimized non-activating Radeon Developer Panel (both terminated at exit); the engine launches through smoke_lib.runner and nofocus.",
     "tools/play_mission.py": "Launches scripts/run_smoke.py under sys.executable with console_child; the smoke harness owns the offscreen engine launch.",
     "scripts/run_battle_bench.py": "--baseline-exe re-invokes this same script as a python child (program is sys.executable); the game itself is launched only inside the child through the existing bench path.",
     "tools/repin_stale.py": "runs repo baseline tools (saveload_roundtrip, run_smoke) and git queries from a command list; the game is launched by those tools through their own offscreen path.",

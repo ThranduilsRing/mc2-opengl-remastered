@@ -1,0 +1,11 @@
+{
+  "schema_v": 1,
+  "mission": "mc2_03",
+  "_note": "Census v3 worst-case poses: the corner-pinned full zoom-out of mc2_01 cross_map_view (target on the map corner at +-5376, yaw looking across the map, pitch 14.875, alt 5775.8) repeated at the four corners. Yaw is clockwise from north (-y): NW 134.875 is the user-authored mc2_01 value.",
+  "bookmarks": [
+    {"name":"scout_1","pos":[-5376,-5376,0],"rot":134.875,"proj":14.875,"alt":5775.7979,"covers":["camera_envelope"]},
+    {"name":"scout_2","pos":[5376,-5376,0],"rot":224.875,"proj":14.875,"alt":5775.7979,"covers":["camera_envelope"]},
+    {"name":"scout_3","pos":[5376,5376,0],"rot":314.875,"proj":14.875,"alt":5775.7979,"covers":["camera_envelope"]},
+    {"name":"scout_4","pos":[-5376,5376,0],"rot":44.875,"proj":14.875,"alt":5775.7979,"covers":["camera_envelope"]}
+  ]
+}

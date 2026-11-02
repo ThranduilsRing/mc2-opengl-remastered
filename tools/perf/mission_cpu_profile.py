@@ -36,10 +36,13 @@ CAMERA_MISSIONS = {"mc2_01", "mc2_10", "mc2_24"}
 BOOKMARK_DIR = ROOT / "tests/visual/bookmarks"
 
 
+POSE = 'sun_facing_low'  # --pose overrides the single-view default
+
+
 def camera_bookmarks(mission, full_sweep=False):
     data = json.loads((BOOKMARK_DIR / f"{mission}_camera.json").read_text(encoding="utf-8"))
     if not full_sweep:
-        data['bookmarks'] = [next(m for m in data['bookmarks'] if m['name'] == 'sun_facing_low')]
+        data['bookmarks'] = [next(m for m in data['bookmarks'] if m['name'] == POSE)]
     return data
 
 
@@ -508,9 +511,12 @@ def main(argv=None):
     parser.add_argument("--missions", nargs="+", choices=DEFAULT_MISSIONS, default=DEFAULT_MISSIONS)
     parser.add_argument("--seconds", type=int, default=20, help="mission gameplay duration, excluding startup")
     parser.add_argument("--full-camera-sweep", action='store_true', help='all camera views and orbit (at least 60s); default: 20s sun-facing low view')
+    parser.add_argument("--pose", default="sun_facing_low", help="bookmark name for the single-view run (e.g. wolfman)")
     parser.add_argument("--top", type=int, default=10)
     parser.add_argument("--out", type=Path, default=OUT)
     args = parser.parse_args(argv)
+    global POSE
+    POSE = args.pose
     if args.seconds <= 0 or args.top <= 0:
         parser.error("--seconds and --top must be positive")
     if "MC2_SMOKE_FIXED_TIMESTEP" in os.environ:
