@@ -127,6 +127,9 @@ def main():
          "salvage-in-loadbay", "salvage-trademover", "pilot-promote", "kill-enemy")}
     summary["result"]["promotions_ok"] = len(re.findall(r"\[SOAK\] pilot-promote .*ok=1", out))
     summary["result"]["autowin_missions"] = re.findall(r"\[SOAK\] autowin mission=(\S+)", out)
+    if "--liveness" in flags:
+        import campaign_liveness
+        summary["result"]["liveness"] = [r["summary"] for r in campaign_liveness.analyse(out)]
     if out_dir:
         os.makedirs(out_dir, exist_ok=True)
         copied = []
