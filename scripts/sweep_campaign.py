@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """SWEEP-RUNNER-1: resolver-driven cheat-mode campaign sweep with structured emit.
 
-Usage: py -3 scripts/sweep_campaign.py <campaign_folder|stock> [secs=300] [deploy_dir] [--shots] [--salvage] [--out DIR]
+Usage: py -3 scripts/sweep_campaign.py <campaign_folder|stock> [secs=300] [deploy_dir] [--shots] [--salvage] [--liveness] [--out DIR]
   stock    = the stock campaign (fit "campaign", no mod); the resolver is skipped.
   --shots  = MC2_SHOT_RESULTS + MC2_DEV_SHELL: mission-start, salvage and pilot-promotion screenshots per mission, copied to --out.
   --salvage= MC2_SOAK_SALVAGE_TRADEMOVER (real mid-mission salvage-craft flow).
@@ -36,7 +36,7 @@ def newest_crash(deploy):
 
 def main():
     args = sys.argv[1:]
-    flags = {a for a in args if a in ("--shots", "--salvage")}
+    flags = {a for a in args if a in ("--shots", "--salvage", "--liveness")}
     out_dir = None
     if "--out" in args:
         i = args.index("--out")
@@ -74,6 +74,9 @@ def main():
         # pins the RNG seed) and would alter what this soak actually exercises.
         "MC2_NO_CURSOR_GRAB": "1",
     })
+    if "--liveness" in flags:   # AI/movement sample: enemies alive, 40 s before auto-win (default walk kills them at 3 s)
+        env["MC2_SOAK_WIN_AFTER_SEC"] = "40"
+        env.pop("MC2_SOAK_KILL_ENEMY", None)
     if "--salvage" in flags:
         env["MC2_SOAK_SALVAGE_TRADEMOVER"] = "1"
     if "--shots" in flags:
