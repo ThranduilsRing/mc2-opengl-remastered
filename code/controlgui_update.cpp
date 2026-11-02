@@ -243,7 +243,7 @@ void ControlGui::update( bool bPaused, bool bLOS )
 	{
 		Mover* pMover = static_cast<Mover*>(pTeam->getMover( i ));
 		
-		if ( pMover->isSelected() && pMover->getCommander()->getId() == Commander::home->getId() )
+		if ( pMover->isSelected() && commanderIsHome(pMover->getCommander()) )
 		{
 		//	if ( !isSelectingebject() )
 			{
@@ -588,7 +588,7 @@ void ControlGui::handleClick( int ID )
 		for (long i = 0; i < Team::home->getRosterSize(); i++)
 		{
 			Mover* pMover = static_cast<Mover*>(Team::home->getMover( i ));
-			if ( pMover->isSelected() && pMover->isGuardTower() && pMover->getCommander()->getId() == Commander::home->getId())
+			if ( pMover->isSelected() && pMover->isGuardTower() && commanderIsHome(pMover->getCommander()))
 			{
 				pMover->suppressionFire = bPress;
 				if (!bPress && MPlayer && !MPlayer->isServer())
@@ -632,7 +632,7 @@ void ControlGui::doStop()
 	for (long i = 0; i < pTeam->getRosterSize(); i++)
 	{
 		Mover* pMover = static_cast<Mover*>(pTeam->getMover( i ));
-		if ( pMover->isSelected() && pMover->getCommander()->getId() == Commander::home->getId() )
+		if ( pMover->isSelected() && commanderIsHome(pMover->getCommander()) )
 		{
 			tacOrder.attackParams.range = static_cast<FireRangeType>(pMover->attackRange);
 			tacOrder.pack(nullptr, nullptr);

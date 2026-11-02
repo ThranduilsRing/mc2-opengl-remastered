@@ -525,7 +525,7 @@ void ControlGui::setVehicleCommand( bool bSet )
 			for ( int i = 0; i < pTeam->getRosterSize(); ++i )
 			{
 				Mover* pMover = static_cast<Mover*>(pTeam->getMover( i ));
-				if ( pMover->getCommander()->getId() != Commander::home->getId() )
+				if ( !commanderIsHome(pMover->getCommander()) )
 					continue;
 				bool bGuardTower = ( pMover->maxMoveSpeed ? 0 : 1 );
 				if ( bGuardTower )

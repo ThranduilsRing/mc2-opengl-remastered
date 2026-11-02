@@ -433,7 +433,7 @@ void MissionInterfaceManager::update (void)
 					for ( long i = 0; i < pTeam->getRosterSize(); i++ )
 					{
 						Mover* m = static_cast<Mover*>(pTeam->getMover( i ));
-						if ( m && m->isOnGUI() && m->getCommander()->getId() == Commander::home->getId() )
+						if ( m && m->isOnGUI() && commanderIsHome(m->getCommander()) )
 							m->setSelected( 0 );
 					}
 				(static_cast<Mover*>(hit->unit))->setSelected( 1 );
@@ -476,7 +476,7 @@ void MissionInterfaceManager::update (void)
 					{
 						Mover* pMover = static_cast<Mover*>(pTeam->getMover( i ));
 						if ( pMover && pMover->isSelected()
-							&& pMover->getCommander()->getId() == Commander::home->getId()
+							&& commanderIsHome(pMover->getCommander())
 							&& pMover->getExists() && !pMover->isDestroyed() && !pMover->isDisabled() )
 							flMovers[nm++] = pMover;
 					}
@@ -1006,7 +1006,7 @@ void MissionInterfaceManager::update (void)
 	for (long i=0;i<pTeam->getRosterSize();i++)
 	{
 		Mover* pMover = static_cast<Mover*>(pTeam->getMover( i ));
-		if ( pMover->isSelected() && pMover->getCommander()->getId() == Commander::home->getId()  )
+		if ( pMover->isSelected() && commanderIsHome(pMover->getCommander())  )
 		{
 			if ( pMover->maxMoveSpeed )
 			{
@@ -1070,7 +1070,7 @@ void MissionInterfaceManager::update (void)
 		{
 			Mover* pMover = static_cast<Mover*>(Team::home->getMover( i ));
 			MechWarrior* pilot = pMover->getPilot();
-			if ( pilot && pMover->getCommander()->getId() == Commander::home->getId())
+			if ( pilot && commanderIsHome(pMover->getCommander()))
 			{
 				GameObject* pTmpTarget = pilot->getCurrentTarget( );
 				if ( pTmpTarget && (i < MAX_ICONS))	//Must check this because old test maps have more then 16 movers on them!!

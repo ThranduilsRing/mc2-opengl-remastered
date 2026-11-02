@@ -82,7 +82,7 @@ void MissionInterfaceManager::doAttack()
 		for (long i = 0; i < Team::home->getRosterSize(); i++)
 		{
 			Mover* pMover = static_cast<Mover*>(Team::home->getMover( i ));
-			if ( pMover->isSelected() && pMover->getCommander()->getId() == Commander::home->getId() )
+			if ( pMover->isSelected() && commanderIsHome(pMover->getCommander()) )
 			{
 				if ((pMover->getObjectClass() == BATTLEMECH) && 
 					(pMover->getMoveType() == MOVETYPE_GROUND))
@@ -119,7 +119,7 @@ void MissionInterfaceManager::doAttack()
 	for (long i = 0; i < pTeam->getRosterSize(); i++)
 	{
 		Mover* pMover = static_cast<Mover*>(pTeam->getMover( i ));
-		if ( pMover->isSelected() && pMover->getCommander()->getId() == Commander::home->getId())
+		if ( pMover->isSelected() && commanderIsHome(pMover->getCommander()))
 		{
 			tacOrder.attackParams.range = static_cast<FireRangeType>(pMover->attackRange);
 			if (pMover->attackRange == FIRERANGE_CURRENT)
@@ -319,7 +319,7 @@ int MissionInterfaceManager::selectVisible()
 	for (long i=0;i<pTeam->getRosterSize();i++)
 	{
 		Mover* pMover = static_cast<Mover*>(pTeam->getMover( i ));
-		if (pMover->getCommander()->getId() == Commander::home->getId())
+		if (commanderIsHome(pMover->getCommander()))
 		{
 			pMover->setSelected( false );
 		}
@@ -695,7 +695,7 @@ bool MissionInterfaceManager::anySelectedWithoutAreaEffect (void)
 	for (long i = 0; i < pTeam->getRosterSize(); i++)
 	{
 		Mover* pMover = static_cast<Mover*>(pTeam->getMover( i ));
-		if ( pMover->isSelected() && pMover->hasNonAreaWeapon() && pMover->getCommander()->getId() == Commander::home->getId())
+		if ( pMover->isSelected() && pMover->hasNonAreaWeapon() && commanderIsHome(pMover->getCommander()))
 		   	return true;
 	}
 
@@ -712,7 +712,7 @@ int MissionInterfaceManager::handleOrders( TacticalOrder& order)
 	if (order.code == TACTICAL_ORDER_JUMPTO_POINT) {
 		for (long i = 0; i < pTeam->getRosterSize(); i++) {
 			Mover* pMover = pTeam->getMover(i);
-			if (pMover->isSelected() && pMover->getCommander()->getId() == Commander::home->getId())
+			if (pMover->isSelected() && commanderIsHome(pMover->getCommander()))
 				numMovers++;
 		}
 		MoverGroup::calcJumpGoals(order.getWayPoint(0), numMovers, moveGoals, nullptr);
@@ -721,7 +721,7 @@ int MissionInterfaceManager::handleOrders( TacticalOrder& order)
 	else if (order.code == TACTICAL_ORDER_MOVETO_POINT) {
 		for (long i = 0; i < pTeam->getRosterSize(); i++) {
 			Mover* pMover = pTeam->getMover(i);
-			if (pMover->isSelected() && pMover->getCommander()->getId() == Commander::home->getId())
+			if (pMover->isSelected() && commanderIsHome(pMover->getCommander()))
 				numMovers++;
 		}
 		MoverGroup::calcMoveGoals(order.getWayPoint(0), numMovers, moveGoals);
@@ -732,7 +732,7 @@ int MissionInterfaceManager::handleOrders( TacticalOrder& order)
 	for (long i = 0; i < pTeam->getRosterSize(); i++)
 	{
 		Mover* pMover = static_cast<Mover*>(pTeam->getMover( i ));
-		if ( pMover->isSelected() && pMover->getCommander()->getId() == Commander::home->getId() )
+		if ( pMover->isSelected() && commanderIsHome(pMover->getCommander()) )
 		{
 			if (isMoveOrder ) {
 				order.setWayPoint(0, moveGoals[numMovers++]);
@@ -1097,7 +1097,7 @@ bool MissionInterfaceManager::makePatrolPath()
 	for (long i=0;i<pTeam->getRosterSize();i++)
 	{
 		Mover* pMover = static_cast<Mover*>(pTeam->getMover( i ));
-		if ( pMover->isSelected() && pMover->getPilot()->getNumTacOrdersQueued() && pMover->getCommander()->getId() == Commander::home->getId() )
+		if ( pMover->isSelected() && pMover->getPilot()->getNumTacOrdersQueued() && commanderIsHome(pMover->getCommander()) )
 		{
 			if ( pMover->isCloseToFirstTacOrder( wPos ) )
 			{
@@ -1174,7 +1174,7 @@ void MissionInterfaceManager::selectForceGroup( int forceGroup, bool deselect )
 		for (long i=0;i<pTeam->getRosterSize();i++)
 		{
 			Mover* pMover = static_cast<Mover*>(pTeam->getMover( i ));
-			if (pMover && pMover->isOnGUI() && (pMover->getCommander()->getId() == Commander::home->getId()))
+			if (pMover && pMover->isOnGUI() && (commanderIsHome(pMover->getCommander())))
 			{
 				pMover->setSelected( 0 );
 			}
@@ -1185,7 +1185,7 @@ void MissionInterfaceManager::selectForceGroup( int forceGroup, bool deselect )
 		for (long i=0;i<pTeam->getRosterSize();i++)
 		{
 			Mover* pMover = static_cast<Mover*>(pTeam->getMover( i ));
-			if (pMover && pMover->isInUnitGroup( forceGroup ) && !pMover->isDisabled() && !pMover->isSelected() && pMover->isOnGUI() && (pMover->getCommander()->getId() == Commander::home->getId()))
+			if (pMover && pMover->isInUnitGroup( forceGroup ) && !pMover->isDisabled() && !pMover->isSelected() && pMover->isOnGUI() && (commanderIsHome(pMover->getCommander())))
 			{
 				bAllSelected = false;
 			}
@@ -1195,7 +1195,7 @@ void MissionInterfaceManager::selectForceGroup( int forceGroup, bool deselect )
 	for (long i=0;i<pTeam->getRosterSize();i++)
 	{
 		Mover* pMover = static_cast<Mover*>(pTeam->getMover( i ));
-		if (pMover && pMover->isInUnitGroup( forceGroup ) && !pMover->isDisabled() && pMover->isOnGUI() && (pMover->getCommander()->getId() == Commander::home->getId()))
+		if (pMover && pMover->isInUnitGroup( forceGroup ) && !pMover->isDisabled() && pMover->isOnGUI() && (commanderIsHome(pMover->getCommander())))
 			pMover->setSelected( !bAllSelected );
 	}
 }
@@ -1206,7 +1206,7 @@ void MissionInterfaceManager::makeForceGroup( int forceGroup )
 	for (int i=0;i<pTeam->getRosterSize();i++)
 	{
 		Mover* pMover = static_cast<Mover*>(pTeam->getMover( i ));
-		if (pMover && (pMover->getCommander()->getId() == Commander::home->getId()))
+		if (pMover && (commanderIsHome(pMover->getCommander())))
 		{
 			if ( pMover->isInUnitGroup( forceGroup ) )
 				pMover->removeFromUnitGroup( forceGroup );
@@ -1216,7 +1216,7 @@ void MissionInterfaceManager::makeForceGroup( int forceGroup )
 	for (int i=0;i<pTeam->getRosterSize();i++)
 	{
 		Mover* pMover = static_cast<Mover*>(pTeam->getMover( i ));
-		if (pMover && (pMover->getCommander()->getId() == Commander::home->getId()))
+		if (pMover && (commanderIsHome(pMover->getCommander())))
 		{
 			if (pMover->isSelected() )
 				pMover->addToUnitGroup( forceGroup );

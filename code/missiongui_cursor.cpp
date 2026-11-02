@@ -191,7 +191,7 @@ bool MissionInterfaceManager::canJump()
 	while ((i<pTeam->getRosterSize()))
 	{
 		Mover* pMover = static_cast<Mover*>(pTeam->getMover( i ));
-		if ( pMover->isSelected() && pMover->getCommander()->getId() == Commander::home->getId() )
+		if ( pMover->isSelected() && commanderIsHome(pMover->getCommander()) )
 		{
 			if ( !pMover->canJump() )
 			{
@@ -226,7 +226,7 @@ bool MissionInterfaceManager::canJumpToWPos()
 		while ((i<pTeam->getRosterSize()))
 		{
 			Mover* pMover = static_cast<Mover*>(pTeam->getMover( i ));
-			if ( pMover->isSelected() && pMover->getCommander()->getId() == Commander::home->getId() )
+			if ( pMover->isSelected() && commanderIsHome(pMover->getCommander()) )
 			{
 				if ( pMover->canJump() )
 				{
@@ -507,7 +507,7 @@ long MissionInterfaceManager::makeTargetCursor( bool lineOfSight, long moverCoun
 		for ( int i = 0; i < Team::home->getRosterSize(); i++ )
 		{
 			Mover* pMvr = Team::home->getMover( i );
-			if ( pMvr->isSelected() && pMvr->getCommander()->getId() == Commander::home->getId() )
+			if ( pMvr->isSelected() && commanderIsHome(pMvr->getCommander()) )
 			{
 				if ((pMvr->getObjectClass() == BATTLEMECH) &&
 					(pMvr->getMoveType() == MOVETYPE_GROUND))
@@ -877,7 +877,7 @@ long MissionInterfaceManager::calcRotation()
 	for (long i = 0; i < Team::home->getRosterSize(); i++)
 	{
 		Mover* pMover = Team::home->getMover( i );
-		if ( pMover->isSelected() && pMover->getCommander()->getId() == Commander::home->getId() )
+		if ( pMover->isSelected() && commanderIsHome(pMover->getCommander()) )
 		{
 			pos.x += pMover->getPosition().x;
 			pos.y += pMover->getPosition().y;

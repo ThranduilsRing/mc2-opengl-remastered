@@ -769,8 +769,6 @@ void execRequestHelp (void) {
 				abl_arg_guard_log("execRequestHelp", "commander");
 			else if (_cmdr)
 				commanderID = _cmdr->getId();
-			else
-				commanderID = CurWarrior->getCommander()->getId();
 		}
 		long numFriendlies = getMoversWithinRadius(friendlies, friendlyPos, friendlyRadius, CurWarrior->getTeam()->getId(), commanderID, false, true, priority > 0);
 
@@ -808,8 +806,6 @@ void execRequestTarget (void) {
 				abl_arg_guard_log("execRequestTarget", "commander");
 			else if (_cmdr)
 				commanderID = _cmdr->getId();
-			else
-				commanderID = CurWarrior->getCommander()->getId();
 		}
 		long numFriendlies = getMoversWithinRadius(friendlies, friendlyPos, radius, CurWarrior->getTeam()->getId(), commanderID, false, true, true);
 		long numEnemies = getMoversWithinRadius(enemies, friendlyPos, radius, CurWarrior->getTeam()->getId(), -1,true, true, true);

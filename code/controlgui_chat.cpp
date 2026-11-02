@@ -157,7 +157,7 @@ void	ControlGui::toggleHoldPosition()
 	else {
 		for (long i = 0; i < Team::home->getRosterSize(); i++) {
 			Mover* pMover = Team::home->getMover( i );
-			if ( pMover->isSelected() && pMover->getCommander()->getId() == Commander::home->getId() )
+			if ( pMover->isSelected() && commanderIsHome(pMover->getCommander()) )
 			{
 				if (pMover->getPilot()->getCurTacOrder()->code != TACTICAL_ORDER_NONE) {
 					pMover->getPilot()->getCurTacOrder()->attackParams.range = static_cast<FireRangeType>(pMover->attackRange);

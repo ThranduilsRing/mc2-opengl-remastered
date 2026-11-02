@@ -112,6 +112,16 @@ class Commander {
 		static long Load (PacketFilePtr file, long packetNum, bool values = false);
 };
 
+// Null-safe commander checks: Mover::getCommander() is null for an unfilled slot (the mc2_10 launch crash class), and Commander::home
+// is null before the mission assigns it. Use these instead of getCommander()->getId().
+inline bool commanderIdIs (CommanderPtr c, long id) {
+	return c && c->getId() == id;
+}
+
+inline bool commanderIsHome (CommanderPtr c) {
+	return c && Commander::home && c->getId() == Commander::home->getId();
+}
+
 //***************************************************************************
 
 #endif

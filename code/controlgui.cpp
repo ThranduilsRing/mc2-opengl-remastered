@@ -373,7 +373,7 @@ void ControlGui::initMechs()
 		Mover* pMover = pTeam->getMover( i );
 		if (pMover && pMover->getExists() && pMover->isOnGUI())
 		{
-			if (pMover->getCommander()->getId() == Commander::home->getId())
+			if (commanderIsHome(pMover->getCommander()))
 			{
 				pMover->setSelected( 1 );
 		
@@ -457,7 +457,7 @@ void ControlGui::setRange( int Range )
 	for ( int i = 0; i < pTeam->getRosterSize(); ++i )
 	{
 		Mover* pMover = pTeam->getMover( i );
-		if ( pMover->isSelected() && pMover->getCommander()->getId() == Commander::home->getId() )
+		if ( pMover->isSelected() && commanderIsHome(pMover->getCommander()) )
 		{
 			pMover->attackRange = Range;
 			// only want to apply to future order
@@ -474,7 +474,7 @@ int		ControlGui::getCurrentRange()
 	for ( int i = 0; i < pTeam->getRosterSize(); ++i )
 	{
 		Mover* pMover = pTeam->getMover( i );
-		if ( pMover->isSelected() && pMover->getCommander()->getId() == Commander::home->getId() )
+		if ( pMover->isSelected() && commanderIsHome(pMover->getCommander()) )
 		{
 			if ( range != -1 && range != pMover->attackRange )
 			{

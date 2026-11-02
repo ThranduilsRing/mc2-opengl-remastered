@@ -299,7 +299,7 @@ void MissionInterfaceManager::drawWayPointPaths()
    	for (long i=0;i<pTeam->getRosterSize();i++)
    	{
 		Mover* pMover = static_cast<Mover*>(pTeam->getMover( i ));
-   		if ( pMover->isSelected() && pMover->getCommander()->getId() == Commander::home->getId() )
+   		if ( pMover->isSelected() && commanderIsHome(pMover->getCommander()) )
    		{
    			pMover->updateDrawWaypointPath();
    		}
@@ -486,7 +486,7 @@ void MissionInterfaceManager::updateOldStyle( bool shiftDn, bool altDn, bool ctr
 					for (long i=0;i<pTeam->getRosterSize();i++)
 					{
 						Mover* pMover = static_cast<Mover*>(pTeam->getMover( i ));
-						if (pMover == target && pMover->isSelected() && pMover->getCommander()->getId() == Commander::home->getId())
+						if (pMover == target && pMover->isSelected() && commanderIsHome(pMover->getCommander()))
 							alreadyThere = true;
 					}
 					
@@ -520,7 +520,7 @@ void MissionInterfaceManager::updateOldStyle( bool shiftDn, bool altDn, bool ctr
 					for (long i=0;i<pTeam->getRosterSize();i++)
 					{
 						Mover* pMover = static_cast<Mover*>(pTeam->getMover( i ));
-						if (pMover->getCommander()->getId() == Commander::home->getId())
+						if (commanderIsHome(pMover->getCommander()))
 						{
 							// M1.6 Q6 RESOLVED: clear-others setSelected(false)
 							// loop MUST NOT set the gate.
@@ -889,7 +889,7 @@ void MissionInterfaceManager::updateAOEStyle(bool shiftDn, bool altDn, bool ctrl
 					for (long i=0;i<pTeam->getRosterSize();i++)
 					{
 						Mover* pMover = static_cast<Mover*>(pTeam->getMover( i ));
-						if (pMover == target && pMover->isSelected() && pMover->getCommander()->getId() == Commander::home->getId() )
+						if (pMover == target && pMover->isSelected() && commanderIsHome(pMover->getCommander()) )
 							alreadyThere = true;
 					}
 					
@@ -911,7 +911,7 @@ void MissionInterfaceManager::updateAOEStyle(bool shiftDn, bool altDn, bool ctrl
 					for (long i=0;i<pTeam->getRosterSize();i++)
 					{
 						Mover* pMover = static_cast<Mover*>(pTeam->getMover( i ));
-						if (pMover->getCommander()->getId() == Commander::home->getId())
+						if (commanderIsHome(pMover->getCommander()))
 						{
 							// M1.6 Q6 RESOLVED: clear-others setSelected(false)
 							// loop MUST NOT set the gate.
@@ -1071,7 +1071,7 @@ void MissionInterfaceManager::updateWaypoints (void)
    		for (long i=0;i<pTeam->getRosterSize();i++)
    		{
 			Mover* pMover = static_cast<Mover*>(pTeam->getMover( i ));
-   			if ( pMover->isSelected() && pMover->getCommander()->getId() == Commander::home->getId() )
+   			if ( pMover->isSelected() && commanderIsHome(pMover->getCommander()) )
    			{
    				pMover->updateDrawWaypointPath();
    			}
@@ -1107,7 +1107,7 @@ int MissionInterfaceManager::update( bool leftClickedClick, bool rightClickedCli
 		for (long i = 0; i < pTeam->getRosterSize(); i++)
 		{
 			Mover* pMover = static_cast<Mover*>(pTeam->getMover( i ));
-			if ( pMover->isSelected() && !pMover->getPilot()->getExecutingTacOrderQueue() && pMover->getCommander()->getId() == Commander::home->getId() )
+			if ( pMover->isSelected() && !pMover->getPilot()->getExecutingTacOrderQueue() && commanderIsHome(pMover->getCommander()) )
 			{
 				if (MPlayer && !MPlayer->isServer()) {
 					TacticalOrder tacOrder;

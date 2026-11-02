@@ -169,6 +169,14 @@ def test_mad_flags_only_undeclared_views_over_limit():
     assert gate.mad_flags(out, {'mc2_01_saved_205644'}) == []
 
 
+def test_mad_flags_fail_closed_on_missing_capture():
+    ok = 'a | 0.00 | 0\nb | 0.00 | 0\n'
+    assert gate.mad_flags(ok, expected=('a', 'b')) == []
+    assert gate.mad_flags('a | 0.00 | 0\n', expected=('a', 'b')) == ['b=no compare row']
+    assert gate.mad_flags('[ab] b: missing png (a=x b=None)\na | 0.00 | 0\n', expected=('a',))
+    assert gate.mad_flags('[ab] WARNING a: image size mismatch A=(1, 1) B=(2, 2)\na | 0.00 | 0\n')
+
+
 def test_publish_refuses_without_green_mark(tmp_path, monkeypatch):
     monkeypatch.setattr(gate, 'ROOT', tmp_path)
     assert gate.publish('abc123') == 1

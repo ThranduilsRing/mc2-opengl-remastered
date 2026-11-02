@@ -409,10 +409,14 @@ def plan(jobs, proof_dir=None, capture_before_runs=1, before_dir=None):
                                      str(proof / f"noise-{run}")], {}),
         ])
     steps[1:1] = noise
+    # The candidate install is fresh, so its first launch is cold (TGA detail normals, uncached colormap/mod caches) while every later
+    # launch reads the warm caches (BC7 sidecars, origin=cache): W100 scored a false MAD 0.40/0.14 against a same-install A/B of 0.0.
+    # One throwaway launch with the published exe fills the caches so capture-before and capture-after read the same inputs.
+    steps.insert(0, ("capture-before-warmup", capture + ["--out", str(proof / "warmup")], {}))
     if before_dir is not None:
         before = str(proof / "before")
         steps = [(name, [str(before_dir) if arg == before else arg for arg in cmd], env)
-                 for name, cmd, env in steps if name != "capture-before"]
+                 for name, cmd, env in steps if name not in ("capture-before", "capture-before-warmup")]
     # mc2_03 runs headless; mc2_10 and mc2_24 retain the GPU path. The finale
     # spawns infantry after tick 2404: --ticks is a required SIMID length (zero
     # tolerance), so the baseline prefix alone cannot satisfy this audit.
@@ -698,18 +702,27 @@ MAD_LIMIT = 0.05
 DECLARED_VIEWS = set()
 
 
-def mad_flags(output, declared=()):
-    """Bookmarks in ab.py --compare-only output ('name | MAD | ...') whose MAD exceeds MAD_LIMIT and are not declared views."""
-    bad = []
+COMPARE_BOOKMARKS = ("mc2_01_saved_205644", "mc2_10_saved_204523")
+
+
+def mad_flags(output, declared=(), expected=()):
+    """Bookmarks in ab.py --compare-only output ('name | MAD | ...') whose MAD exceeds MAD_LIMIT and are not declared views.
+    Fail closed: an expected bookmark with no row (crashed capture), a 'missing png' line, or a size mismatch is a flag too."""
+    bad, seen = [], set()
     for line in (output or "").splitlines():
+        if "missing png" in line or "size mismatch" in line:
+            bad.append(line.strip().replace("[ab] ", "")[:80])
+            continue
         cells = [c.strip() for c in line.split("|")]
         if len(cells) < 2 or cells[0] in declared:
             continue
         try:
+            seen.add(cells[0])
             if float(cells[1]) > MAD_LIMIT:
                 bad.append(f"{cells[0]}={cells[1]}")
         except ValueError:
             continue
+    bad.extend(f"{name}=no compare row" for name in expected if name not in seen)
     return bad
 
 
@@ -1024,9 +1037,9 @@ def execute(steps, head, dry_run=False, runner=run_child, completed=None):
                 scheduler_wait = getattr(result, 'gate_scheduler_wait', 0.0)
                 status = perf_warn_status(getattr(result, "stdout", "")) if result.returncode == 0 else f"FAIL ({result.returncode})"
                 if result.returncode == 0 and name.startswith("compare-captures"):
-                    moved = mad_flags(getattr(result, "stdout", ""), DECLARED_VIEWS)
+                    moved = mad_flags(getattr(result, "stdout", ""), DECLARED_VIEWS, COMPARE_BOOKMARKS if name == "compare-captures" else ())
                     if moved:
-                        status = "FAIL: MAD > %s on undeclared view(s) %s" % (MAD_LIMIT, ", ".join(moved))
+                        status = "FAIL: MAD > %s or missing/mismatched capture on undeclared view(s) %s" % (MAD_LIMIT, ", ".join(moved))
             except (OSError, ValueError, RuntimeError, subprocess.SubprocessError) as exc:
                 print(f"[merge_gate] {name}: {exc}", file=sys.stderr)
                 status = "FAIL: " + str(exc).replace("|", "/").replace("\n", " ")
@@ -1137,6 +1150,8 @@ def main(argv=None):
     if args.resume and state_path.exists():
         resumed_proof = Path(json.loads(state_path.read_text(encoding="utf-8"))["artefact_dir"])
     proof = args.proofs_dir or resumed_proof or Path("E:/mc2-archive-2026-10/proofs/merge-gate") / time.strftime("%Y%m%d-%H%M%S")
+    if not args.dry_run and not args.install:
+        (ROOT / GREEN_MARK).unlink(missing_ok=True)  # cleared at start too, so a crashed run cannot publish an older green
     try:
         if args.before_dir:
             validate_before(args.before_dir, args.expect_pre_exe_sha)
@@ -1240,6 +1255,8 @@ def main(argv=None):
                     print("[merge_gate] failed stages: " + ", ".join(f"{name} ({status})" for name, status in FAILED_STAGES))
                 if args.full and result == 0 and not args.dry_run:
                     (ROOT / "build64-ninja/last-full-gate.json").write_text(json.dumps(dict(head=head, finished=time.time())))
+                if verdict != "PASS" and not args.dry_run and not args.install:
+                    (ROOT / GREEN_MARK).unlink(missing_ok=True)  # a red or partial rerun at the same HEAD must not leave an older green
                 if verdict == "PASS" and not args.dry_run and not args.install:
                     (ROOT / GREEN_MARK).write_text(json.dumps(dict(head=head, finished=time.time())))
                     print("[merge_gate] gate green and complete: view the day and night montages, then `py -3 scripts/merge_gate.py --publish` (v0.4 is NOT published yet)")
