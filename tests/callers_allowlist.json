@@ -1,6 +1,9 @@
 {
   "scripts/tests/test_perf_counters.py": "Pytest-discovered by scripts/run_scripts_tests.py through scripts/test_ownership.json.",
   "scripts/tests/test_capture_focus.py": "Pytest-discovered by scripts/run_scripts_tests.py through scripts/test_ownership.json.",
+  "scripts/tests/test_campaign_liveness.py": "Pytest-discovered by scripts/run_scripts_tests.py through scripts/test_ownership.json.",
+  "scripts/tests/test_campaign_roster.py": "Pytest-discovered by scripts/run_scripts_tests.py through scripts/test_ownership.json.",
+  "scripts/tests/test_mech_capture_check.py": "Pytest-discovered by scripts/run_scripts_tests.py through scripts/test_ownership.json.",
   "scripts/tests/test_abl_static_alloc.py": "Executed by the abl_static_alloc contract row through pytest; pytest dispatch is not a direct executable call.",
   "scripts/tests/test_shadow_bake_init.py": "Pytest-discovered module through the scripts_tests/tools_tests contract row.",
   "scripts/tests/test_paired_cpu.py": "Pytest-discovered by scripts/run_scripts_tests.py through scripts/test_ownership.json.",

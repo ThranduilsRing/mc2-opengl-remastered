@@ -451,13 +451,13 @@ extern "C" int mc2CaptureFocusMechEx(int n, int sel, float* xyz, int* id, int* t
 			continue;
 		const glm::vec3 pos = mover->getPosition();
 		xyz[0] = pos.x; xyz[1] = pos.y; xyz[2] = pos.z;
-		if (id) *id = (int)mover->getPartId();
-		if (team) *team = (int)mover->getTeamId();
+		if (id) *id = static_cast<int>(mover->getPartId());
+		if (team) *team = static_cast<int>(mover->getTeamId());
 		if (name) {
 			const char* nm = mover->getName();
 			size_t j = 0;
 			for (; nm && nm[j] && j < 63; ++j)
-				name[j] = (nm[j] == ' ' || nm[j] == '"' || nm[j] == '\\') ? '_' : nm[j];
+				name[j] = (nm[j] == ' ' || nm[j] == '"' || nm[j] == 92) ? '_' : nm[j];
 			name[j] = 0;
 		}
 		hit = 1;
