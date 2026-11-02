@@ -309,7 +309,7 @@ long TerrainTextures::init (const char *fileName, const char *baseName)
 			types[i].maskData = static_cast<MemoryPtr *>(std::malloc(sizeof(MemoryPtr) * MC_MASK_NUM * MC_MAX_MIP_LEVELS));
 			gosASSERT(types[i].maskData != nullptr);
 			
-			memset(types[i].maskData,0,sizeof(MemoryPtr) * MC_MASK_NUM);
+			memset(types[i].maskData,0,sizeof(MemoryPtr) * MC_MASK_NUM * MC_MAX_MIP_LEVELS);
 
 			long terrainTextureIndex = initTexture(i);
 			types[i].baseTXMIndex = terrainTextureIndex;
@@ -759,11 +759,13 @@ void TerrainTextures::initMask (long typeNum)
 
 			File tgaFile;
 
-#ifdef _DEBUG
-			long result =
-#endif
-			tgaFile.open(fileName);
-			gosASSERT(result == NO_ERR);
+			// A mod may omit mask TGAs; gosASSERT is a no-op in release, so loadTGAMask used to read an
+			// empty buffer (heap overflow, MCO a_jship_2). Leave maskData null; combineTxm skips it.
+			if (tgaFile.open(fileName) != NO_ERR)
+			{
+				std::fprintf(stderr, "[TERRAIN_TXM] missing mask tga, skipping: %s\n", static_cast<const char*>(fileName));
+				continue;
+			}
 
 			MemoryPtr ourRAM = static_cast<MemoryPtr>(std::malloc(mipSize * mipSize * sizeof(BYTE)));
 			gosASSERT(ourRAM != nullptr);
