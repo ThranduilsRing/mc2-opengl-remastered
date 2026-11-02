@@ -50,7 +50,9 @@
 // deliberately NOT ANDed in — consulting them would leave this module dead on
 // arrival. Setting either legacy gate to 1 arms its own job independently;
 // setting either to 0 does NOT disable this module. MC2_FORCE_ALL_VISIBLE=1
-// (a diagnostic, default ON only under the smoke runner) disarms everything.
+// (a diagnostic, default ON only under the smoke runner) disarms this module only: it
+// writes appearance alpha, sensorLevel and visibility, and never reaches the fog-of-war
+// render gate in BattleMech/GroundVehicle::extractRenderView (CONTACT_VISUAL or ShowMovers).
 //---------------------------------------------------------------------------
 #ifndef VIS_SEMANTICS_H
 #define VIS_SEMANTICS_H

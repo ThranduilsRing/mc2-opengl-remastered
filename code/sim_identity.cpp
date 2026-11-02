@@ -44,6 +44,7 @@
 #include "save_archive.h"
 #include "objmgr.h"
 #include "mover.h"
+#include "dcontact.h"
 #include "warrior.h"
 #include "bldng.h"
 #include "turret.h"
@@ -431,9 +432,12 @@ extern "C" int mc2CaptureFocusMech(int n, float* xyz)
 	return 0;
 }
 
+extern bool ShowMovers;
+extern "C" void mc2CaptureFocusSetShowMovers(int on) { ShowMovers = on != 0; }
+
 // Walk variant for the all-mech campaign capture (MC2_CAPTURE_FOCUS=mech:all|enemy|home).
 // Same read-only rules as above; counts every live mech matching the team selector.
-int mc2CaptureFocusMechEx(int n, int sel, float* xyz, int* id, int* team, char* name, int* total)
+int mc2CaptureFocusMechEx(int n, int sel, float* xyz, int* id, int* team, char* name, int* total, int* contact)
 {
 	if (total) *total = 0;
 	if (!ObjectManager || !xyz || n < 0 || !Team::home)

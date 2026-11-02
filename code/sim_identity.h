@@ -33,8 +33,13 @@ void mc2SimIdentityTraceFrame(double scenarioTimeNow, long simFrame);
 int mc2CaptureFocusMech(int n, float* xyz);
 // Walk variant: nth live mech on team selector sel (0 = player team, 1 = every other team,
 // 2 = any team), in object-manager order. Fills xyz[3], *id (part id), *team and name (>= 64
-// chars); *total gets the number of live mechs matching sel. Returns 1 or 0.
-int mc2CaptureFocusMechEx(int n, int sel, float* xyz, int* id, int* team, char* name, int* total);
+// chars); *total gets the number of live mechs matching sel.
+// *contact: 0 = player team, 1 = enemy at CONTACT_VISUAL, 2 = enemy fogged (not drawn by the
+// stock gate), 3 = enemy fogged but drawn because ShowMovers is set. Returns 1 or 0.
+int mc2CaptureFocusMechEx(int n, int sel, float* xyz, int* id, int* team, char* name, int* total, int* contact);
+// MC2_CAPTURE_FOCUS walk only: set the stock ShowMovers switch (the -show movers equivalent) so
+// fogged enemies are drawn. Tool-only; never called by interactive play or the smoke runner.
+void mc2CaptureFocusSetShowMovers(int on);
 
 #ifdef __cplusplus
 }

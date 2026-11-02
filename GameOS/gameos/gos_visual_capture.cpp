@@ -89,7 +89,8 @@ extern "C" {
     void mc2VisualCaptureRestorePauseState(int packed);
     // MC2_CAPTURE_FOCUS: nth live player-team mech position (code/sim_identity.cpp).
     int  mc2CaptureFocusMech(int n, float* xyz);
-    int  mc2CaptureFocusMechEx(int n, int sel, float* xyz, int* id, int* team, char* name, int* total);
+    int  mc2CaptureFocusMechEx(int n, int sel, float* xyz, int* id, int* team, char* name, int* total, int* contact);
+    void mc2CaptureFocusSetShowMovers(int on);
 }
 
 // SIM-IDENTITY-HASH-1: per-capture world-state hash. Dependency-free prototype
@@ -266,7 +267,8 @@ struct FocusState {
     float pos[3] = {0, 0, 0};
     bool logged = false;
     int  walk = -1;          // -1 = single mech:N; 0 = player team, 1 = other teams, 2 = any (mech:home|enemy|all walk: bookmark k frames mech k)
-    int  id = -1, team = -1, total = 0;
+    int  id = -1, team = -1, total = 0, contact = 0;
+    bool fog = false;        // "mech:all,fog": walk WITHOUT the ShowMovers override, so fogged enemies are labelled and not drawn
     char name[64] = {0};
 } g_focus;
 
@@ -337,7 +339,7 @@ void write_sidecar(const std::string& jsonPath, std::string_view mission,
         // Focus target + resolved position (found=false: no live player mech, pose left as bookmarked).
         mc2::fmt::to_buf(fnum, "  \"focus\": {{\"target\": \"mech:{:d}\", \"found\": {}, \"pos\": [{:.3f}, {:.3f}, {:.3f}], \"zoom\": {:.1f}}},\n", mc2::fmt::as_i32(g_focus.index), mc2::fmt::safe(g_focus.found ? "true" : "false"), g_focus.pos[0], g_focus.pos[1], g_focus.pos[2], g_focus.zoom); buf += fnum;
         if (g_focus.walk >= 0) {
-            mc2::fmt::to_buf(fnum, "  \"focus_walk\": {{\"mode\": \"{}\", \"index\": {:d}, \"total\": {:d}, \"id\": {:d}, \"team\": {:d}, \"name\": \"{}\"}},\n", mc2::fmt::safe(g_focus.walk == 0 ? "home" : g_focus.walk == 1 ? "enemy" : "all"), mc2::fmt::as_i32(g_focus.index), mc2::fmt::as_i32(g_focus.total), mc2::fmt::as_i32(g_focus.id), mc2::fmt::as_i32(g_focus.team), mc2::fmt::safe(g_focus.name)); buf += fnum;
+            mc2::fmt::to_buf(fnum, "  \"focus_walk\": {{\"mode\": \"{}\", \"index\": {:d}, \"total\": {:d}, \"id\": {:d}, \"team\": {:d}, \"contact\": \"{}\", \"name\": \"{}\"}},\n", mc2::fmt::safe(g_focus.walk == 0 ? "home" : g_focus.walk == 1 ? "enemy" : "all"), mc2::fmt::as_i32(g_focus.index), mc2::fmt::as_i32(g_focus.total), mc2::fmt::as_i32(g_focus.id), mc2::fmt::as_i32(g_focus.team), mc2::fmt::safe(g_focus.contact == 0 ? "home" : g_focus.contact == 1 ? "visual" : g_focus.contact == 2 ? "fogged" : "override"), mc2::fmt::safe(g_focus.name)); buf += fnum;
         }
     }
     // The render options the engine ran with (options.cfg plus MC2_OPTIONS_OVERRIDE): two captures are only comparable when these match.
@@ -593,7 +595,9 @@ void parse_focus() {
     if (spec.compare(0, 4, "mech") != 0) return;
     if (spec.size() > 4) {
         if (spec[4] != ':') return;
-        const char* arg = spec.c_str() + 5;
+        std::string argStr = spec.substr(5);
+        if (argStr.size() > 4 && argStr.compare(argStr.size() - 4, 4, ",fog") == 0) { g_focus.fog = true; argStr.resize(argStr.size() - 4); }
+        const char* arg = argStr.c_str();
         if (!std::strcmp(arg, "home")) g_focus.walk = 0;
         else if (!std::strcmp(arg, "enemy")) g_focus.walk = 1;
         else if (!std::strcmp(arg, "all")) g_focus.walk = 2;
@@ -604,6 +608,9 @@ void parse_focus() {
     }
     g_focus.zoom = static_cast<float>(mc2::gate::get<"MC2_CAPTURE_FOCUS_ZOOM">());
     g_focus.requested = true;
+    // The walk frames enemies, which the stock fog-of-war render gate hides unless ShowMovers is set
+    // (MC2_FORCE_ALL_VISIBLE does not reach that gate). Capture tool only; ",fog" opts out.
+    if (g_focus.walk >= 0) mc2CaptureFocusSetShowMovers(g_focus.fog ? 0 : 1);
 }
 
 void apply_bookmark(const Bookmark& b0) {
@@ -615,7 +622,7 @@ void apply_bookmark(const Bookmark& b0) {
         if (g_focus.walk >= 0) {
             g_focus.index = static_cast<int>(g_replay.idx);
             g_focus.name[0] = 0; g_focus.id = -1; g_focus.team = -1;
-            g_focus.found = mc2CaptureFocusMechEx(g_focus.index, g_focus.walk, g_focus.pos, &g_focus.id, &g_focus.team, g_focus.name, &g_focus.total) != 0;
+            g_focus.found = mc2CaptureFocusMechEx(g_focus.index, g_focus.walk, g_focus.pos, &g_focus.id, &g_focus.team, g_focus.name, &g_focus.total, &g_focus.contact) != 0;
         } else {
             g_focus.found = mc2CaptureFocusMech(g_focus.index, g_focus.pos) != 0;
         }
