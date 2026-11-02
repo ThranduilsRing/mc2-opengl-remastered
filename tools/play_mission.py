@@ -35,7 +35,7 @@ def run_mission(mission, install, seconds, batch=False, invulnerable=False, sim_
     # The harness owns install leasing, process priority, timeouts and cleanup.
     cmd = [sys.executable, str(ROOT / "scripts/run_smoke.py"), "--exe",
            str(Path(install) / "mc2.exe"), "--mission", mission,
-           "--headless", "--ticks", str((seconds + 2) * 30 // sim_speed + 1), "--sim-speed", str(sim_speed),
+           "--headless", "--ticks", str((seconds + 2) * 30), "--sim-speed", str(sim_speed),
            "--duration", str(seconds + 30), "--keep-logs", "--wait-timeout", "1200"]
     sys.path.insert(0, str(ROOT / "scripts"))
     import console_child
