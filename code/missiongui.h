@@ -166,6 +166,7 @@ public:
 		gosFX::EffectPtr				recoveryBeam[MAX_TEAMS];
 		gosFX::EffectPtr				dustCloud[MAX_TEAMS];
 		bool						mechRecovered[MAX_TEAMS];
+		bool						mechRecoverSkipped[MAX_TEAMS];	//no pilot to trade in: Karnov leaves, mech untouched, RP refunded
 		bool						vehicleDropped[MAX_TEAMS];
 		MoverPtr					mechToRecover[MAX_TEAMS];
 		

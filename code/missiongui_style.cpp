@@ -174,6 +174,7 @@ void MissionInterfaceManager::updateVTol()
 					//Needs to STAY false, probably in MPlayer too because
 					// If the mech we are about to recover gets destroyed, we need to abort!!
 					// Probably in Multiplayer now its possible to recover even if destroyed!
+					mechRecoverSkipped[vtolNum] = false;
 					if (!MPlayer)
 						mechRecovered[vtolNum] = false;		//Need to know when mech is done so Karnov can fly away.
 
@@ -184,7 +185,7 @@ void MissionInterfaceManager::updateVTol()
 					//Actually the Karnov Deploy Sound Effect!
 					soundSystem->playDigitalSample(RADAR_HUM,vTol[vtolNum]->position,false);
 				}
-				else if ((vTol[vtolNum]->getCurrentGestureId() == 0) && !mechRecovered[vtolNum] && mechToRecover[vtolNum] && !mechToRecover[vtolNum]->isDestroyed())
+				else if ((vTol[vtolNum]->getCurrentGestureId() == 0) && !mechRecovered[vtolNum] && !mechRecoverSkipped[vtolNum] && mechToRecover[vtolNum] && !mechToRecover[vtolNum]->isDestroyed())
 				{
 					if (scenarioTime > vTolTime[vtolNum] + Mover::recoverTime)
 					{
@@ -230,14 +231,14 @@ void MissionInterfaceManager::updateVTol()
 								mechToRecover[vtolNum]->getPilot()->orderPowerUp(true, ORDER_ORIGIN_SELF);
 							}
 							else
-								mechRecovered[vtolNum] = true;
+								mechRecoverSkipped[vtolNum] = true;	//no pilot: leave the mech as stock would; mechRecovered stays false so the RP is refunded
 
 							if (MPlayer)
 								MPlayer->reinforcements[vtolNum][1] = -1;
 						}
 					}
 				}
-				else if ((vTol[vtolNum]->getCurrentGestureId() == 0) && (mechRecovered[vtolNum] || (mechToRecover[vtolNum] && mechToRecover[vtolNum]->isDestroyed())) && (!vTol[vtolNum]->getInTransition()))
+				else if ((vTol[vtolNum]->getCurrentGestureId() == 0) && (mechRecovered[vtolNum] || mechRecoverSkipped[vtolNum] || (mechToRecover[vtolNum] && mechToRecover[vtolNum]->isDestroyed())) && (!vTol[vtolNum]->getInTransition()))
 				{
 					setVtolSimulationGesture(*vTol[vtolNum], 2);	//Fly Away!!
 				}

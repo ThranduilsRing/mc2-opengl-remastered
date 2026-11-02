@@ -41,6 +41,8 @@ def main():
     if "--sim-speed" in args:
         i = args.index("--sim-speed")
         sim_speed = int(args[i + 1])
+        if not 1 <= sim_speed <= 4:
+            sys.exit('sweep_campaign: --sim-speed must be 1-4 (got %d)' % sim_speed)
         del args[i:i + 2]
     if "--out" in args:
         i = args.index("--out")

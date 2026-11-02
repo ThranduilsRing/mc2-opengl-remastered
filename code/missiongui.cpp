@@ -241,6 +241,7 @@ void MissionInterfaceManager::init (void)
 		dustCloud[i] = nullptr;
 		recoveryBeam[i] = nullptr;
 		mechRecovered[i] = false;
+		mechRecoverSkipped[i] = false;
 		mechToRecover[i] = nullptr;
 		vehicleID[i] = 0;
 	}
