@@ -732,8 +732,7 @@ void GVAppearance::destroy (void)
 		activity.reset();
 	}
 
-	if (appearanceTypeList) // null once the mission tore its registry down (late holders, e.g. render-view copies)
-		appearanceTypeList->removeAppearance(appearType);
+	releaseAppearanceType(registryGeneration, appearType); // skipped when the registry that issued appearType is gone
 }
 
 void GVAppearance::startWaterWake (void)

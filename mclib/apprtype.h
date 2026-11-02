@@ -131,10 +131,16 @@ class AppearanceTypeList
 		// The registry owns every type, in load order. Users hold non-owning pointers that stay valid until removeAppearance drops
 		// the last user or the registry is destroyed. destroy() releases the types before anything else they depend on.
 		std::vector<std::unique_ptr<AppearanceType>>	types;
+		static inline unsigned							s_generationCounter = 0;
+		unsigned										generation_ = ++s_generationCounter;
 
 	//Member Functions
 	//----------------
 	public:
+
+		// Identity of this registry instance; never reused within a process. A holder stamps it at creation and releases its type
+		// only while the same registry is current (a freed type's address can be reused by the next mission's registry).
+		unsigned generation (void) const { return generation_; }
 
 		AppearanceTypePtr getAppearance (unsigned long apprNum, const char * apprFile);
 		
@@ -153,5 +159,10 @@ class AppearanceTypeList
 };
 
 extern AppearanceTypeListPtr appearanceTypeList;
+
+// Generation of the current registry, 0 when there is none.
+unsigned currentAppearanceRegistryGeneration (void);
+// Release one user of 'which' iff 'gen' is the current registry's generation; a holder that outlived its mission's registry skips (-1).
+long releaseAppearanceType (unsigned gen, AppearanceTypePtr which);
 //---------------------------------------------------------------------------
 #endif

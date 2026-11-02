@@ -437,13 +437,20 @@ static bool areCloseEnough(float f1, float f2)
 	return retval;
 }
 
+// Stock missions spawn unassigned placeholder movers (team -1, no pilot, not existing, empty name) from t=0
+// (measured on mc2_02..mc2_24, 1-8 per mission). They are neither alive enemies nor kills: an objective that waits
+// for them to die can never be satisfied. Skip them rather than count them either way.
+static bool MoverCanBeObjectiveTarget(const MoverPtr pMover) {
+	return pMover->getTeamId() >= 0;
+}
+
 objective_status_type CDestroyAllEnemyUnits::Status() {
 	long numMovers = ObjectManager->getNumMovers();
 	long i;
 	for (i = 0; i < numMovers; i+= 1) {
 		MoverPtr pMover = ObjectManager->getMover(i);
 		assert(pMover);
-		if (pMover->getTeamId() != Alignment())
+		if (pMover->getTeamId() != Alignment() && MoverCanBeObjectiveTarget(pMover))
 			if (!(MoverIsDeadOrDisabled(pMover) || MoverIsCaptured(pMover, Alignment()))) {
 				return OS_UNDETERMINED;
 		}
@@ -467,7 +474,7 @@ objective_status_type CDestroyNumberOfEnemyUnits::Status() {
 	for (i = 0; i < numMovers; i+= 1) {
 		MoverPtr pMover = ObjectManager->getMover(i);
 		assert(pMover);
-		if (pMover->getTeamId() != Alignment())
+		if (pMover->getTeamId() != Alignment() && MoverCanBeObjectiveTarget(pMover))
 			if (MoverIsDeadOrDisabled(pMover) || MoverIsCaptured(pMover, Alignment())) {
 				numDestroyed += 1;
 			}
@@ -575,7 +582,7 @@ objective_status_type CCaptureOrDestroyAllEnemyUnits::Status() {
 	for (i = 0; i < numMovers; i+= 1) {
 		MoverPtr pMover = ObjectManager->getMover(i);
 		assert(pMover);
-		if (pMover->getTeamId() != Alignment())
+		if (pMover->getTeamId() != Alignment() && MoverCanBeObjectiveTarget(pMover))
 			if (!MoverIsDeadOrDisabled(pMover)) {
 				if (!MoverIsCaptured(pMover, Alignment())) { /*Is this necessary? When a mover is captured, is it no longer returned as a "BadMover"? */
 					return OS_UNDETERMINED;
@@ -592,7 +599,7 @@ objective_status_type CCaptureOrDestroyNumberOfEnemyUnits::Status() {
 	for (i = 0; i < numMovers; i+= 1) {
 		MoverPtr pMover = ObjectManager->getMover(i);
 		assert(pMover);
-		if (pMover->getTeamId() != Alignment())
+		if (pMover->getTeamId() != Alignment() && MoverCanBeObjectiveTarget(pMover))
 			if (MoverIsDeadOrDisabled(pMover) || MoverIsCaptured(pMover, Alignment())/*redundant?*/) {
 				numCapturedOrDestroyed += 1;
 			}
@@ -707,7 +714,7 @@ objective_status_type CDeadOrFledAllEnemyUnits::Status() {
 	for (i = 0; i < numMovers; i+= 1) {
 		MoverPtr pMover = ObjectManager->getMover(i);
 		assert(pMover);
-		if (!MoverIsDeadOrDisabledOrFled(pMover)) {
+		if (MoverCanBeObjectiveTarget(pMover) && !MoverIsDeadOrDisabledOrFled(pMover)) {
 			return OS_UNDETERMINED;
 		}
 	}
@@ -721,7 +728,7 @@ objective_status_type CDeadOrFledNumberOfEnemyUnits::Status() {
 	for (i = 0; i < numMovers; i+= 1) {
 		MoverPtr pMover = ObjectManager->getMover(i);
 		assert(pMover);
-		if (MoverIsDeadOrDisabledOrFled(pMover)) {
+		if (MoverCanBeObjectiveTarget(pMover) && MoverIsDeadOrDisabledOrFled(pMover)) {
 			numDeadOrFled += 1;
 		}
 	}
