@@ -412,6 +412,7 @@ void MechLabScreen::update()
 			s_dlgFired = true;
 			pCurDialog = saveDlg.get();
 			pCurDialog->begin();
+			pCurDialog->getEnterAnim().end();	// settled pose: the -5 capture only sees 5 frames
 			bSaveDlg = true;
 		}
 	}
