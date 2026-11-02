@@ -159,3 +159,12 @@ def test_gate_execute_resume_with_farm_runner_does_not_keyerror(tmp_path):
     head = gate.git("rev-parse", "HEAD")
     gate.FAILED_STAGES.clear()
     assert gate.execute([("determinism-mc2_10", command, {})], head, runner=farm_runner) == 0 and calls
+
+
+def test_print_err_is_a_print_site():
+    assert len(ult.check_diff(_diff('    mc2::fmt::print_err("[NEWTAG v1] event=x\n");'), set())) == 1
+
+
+def test_bad_git_range_fails_instead_of_passing(capsys):
+    assert ult.main(["--base", "no-such-ref-xyz", "--head", "HEAD"]) == 1
+    assert "FAIL" in capsys.readouterr().out
