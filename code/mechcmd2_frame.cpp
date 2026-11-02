@@ -11,6 +11,10 @@
 #ifdef MC2_IMGUI
 #include "imgui.h"
 #include "ui_texture.h"
+#include "RenderCore/CursorMap.h"
+#include "diagnostic_trace.h"
+#include <cmath>
+#include <cstdio>
 #endif
 #ifdef MC2_ALLOC_STATS
 #include "artlry.h"
@@ -107,15 +111,44 @@ void __stdcall UpdateRenderers()
 				const uint64_t glTex = gos_GetUiTextureId( tex );
 				if ( !glTex )
 					return false;
-				// Same space as the old HUD-batch copy: raw physical pixels, sprite px size.
-				const float s = 1.0f;
+				// q[] is in the logical 2D space (800x600 on menus, window size in a
+				// mission), exactly like the old HUD-batch copy. Map it to ImGui display
+				// space the way flushHUDBatch maps it to the drawable: UI canvas box
+				// (menus only), then drawable -> display. Sprite size scales the same way.
+				const ImVec2 disp = ImGui::GetIO().DisplaySize;
+				const float dw = static_cast<float>( Environment.drawableWidth );
+				const float dh = static_cast<float>( Environment.drawableHeight );
+				int bx = 0, by = 0, bw = 0, bh = 0;
+				gos_ComputeUiCanvasBox( Environment.drawableWidth, Environment.drawableHeight, &bx, &by, &bw, &bh );
+				const mc2::CursorMap m = mc2::makeCursorMap( userInput->logicalW(), userInput->logicalH(),
+					static_cast<float>( bx ), static_cast<float>( by ), static_cast<float>( bw ), static_cast<float>( bh ),
+					dw, dh, disp.x, disp.y );
+				const ImVec2 p0( m.x( q[0].x ), m.y( q[0].y ) );
+				const ImVec2 p1( m.x( q[2].x ), m.y( q[2].y ) );
 				const DWORD c = q[0].argb;
 				ImGui::GetForegroundDrawList()->AddImage(
 					static_cast<ImTextureID>( static_cast<intptr_t>( glTex ) ),
-					ImVec2( q[0].x, q[0].y ),
-					ImVec2( q[0].x + ( q[2].x - q[0].x ) * s, q[0].y + ( q[2].y - q[0].y ) * s ),
+					p0, p1,
 					ImVec2( q[0].u, q[0].v ), ImVec2( q[2].u, q[2].v ),
 					IM_COL32( ( c >> 16 ) & 0xff, ( c >> 8 ) & 0xff, c & 0xff, ( c >> 24 ) & 0xff ) );
+				if ( mc2_diag::tagRequested( "CURSOR" ) )
+				{
+					static int s_n = 0;
+					if ( ( s_n++ % 30 ) == 0 )
+					{
+						// mapped = display-space image of the logical pointer; expect = pointer
+						// as a fraction of the canvas, in display px (must agree within 2 px).
+						const float mapX = m.x( userInput->realMouseX() ), mapY = m.y( userInput->realMouseY() );
+						const float kx = disp.x / dw, ky = disp.y / dh;
+						const float expX = ( bx + userInput->normMouseX() * bw ) * kx;
+						const float expY = ( by + userInput->normMouseY() * bh ) * ky;
+						std::fprintf( stderr, "[CURSOR] draw logical=%dx%d logicalPos=(%.1f,%.1f) quad0=(%.1f,%.1f) mapped=(%.1f,%.1f) expect=(%.1f,%.1f) display=%.0fx%.0f scale=%.3f ok=%d\n",
+							static_cast<int>( userInput->logicalW() ), static_cast<int>( userInput->logicalH() ),
+							userInput->realMouseX(), userInput->realMouseY(), p0.x, p0.y, mapX, mapY, expX, expY,
+							disp.x, disp.y, m.sx,
+							( std::fabs( mapX - expX ) <= 2.0f && std::fabs( mapY - expY ) <= 2.0f ) ? 1 : 0 );
+					}
+				}
 				return true;
 			} );
 #endif

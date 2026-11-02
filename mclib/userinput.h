@@ -419,6 +419,10 @@ class UserInput
 		// outside the rendered bottom band / when the HUD scale is inactive.
 		long getMouseHudX (void) { float x = mouseXPosition * viewMulX, y = mouseYPosition * viewMulY; gos_HudInverseMousePoint(x, y); return float2long(x); }
 		long getMouseHudY (void) { float x = mouseXPosition * viewMulX, y = mouseYPosition * viewMulY; gos_HudInverseMousePoint(x, y); return float2long(y); }
+		float logicalW (void)    { return viewMulX; }   // logical 2D space size (cursor mapping)
+		float logicalH (void)    { return viewMulY; }
+		float normMouseX (void)  { return mouseXPosition; }
+		float normMouseY (void)  { return mouseYPosition; }
 		float realMouseX (void)  { return mouseXPosition * viewMulX; }
 		float realMouseY (void)  { return mouseYPosition * viewMulY; }
 
