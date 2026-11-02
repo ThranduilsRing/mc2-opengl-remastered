@@ -27,6 +27,7 @@
 #include <sstream>
 #include <string_view>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 #include <utility>
 
@@ -71,6 +72,7 @@ struct State {
     std::array<uint64_t,7> current{}, peaks{};
     uint64_t live=0,peak=0,raw=0,budget=0,denied=0,pending=0,physicalBudget=0;
     uint32_t imageEdge=0;
+    std::unordered_set<std::string> refusedLogged;
     uint64_t deferredBytes=0;
     uint64_t prewarmCreations=0; std::vector<double> firstFrames; bool measureFrames=false, firstFrameStarted=false;
     std::chrono::steady_clock::time_point previousFrame;
@@ -237,7 +239,8 @@ Admission::Admission(uint64_t bytes,std::string_view name) {
     if(bytes && RenderCore::gpuFits(s.budget,s.live,s.pending,bytes)) { s.pending+=bytes; bytes_=bytes; }
     else {
         ++s.denied;
-        std::fprintf(stderr,"[VK_RESIDENCY v1] refused=%.*s bytes=%llu live=%llu pending=%llu budget=%llu fallback=%s\n",
+        const auto [loggedIt,firstRefusal]=s.refusedLogged.insert(std::string(name)); // once per resource name; the count stays in denials
+        if(firstRefusal) std::fprintf(stderr,"[VK_RESIDENCY v1] refused=%.*s bytes=%llu live=%llu pending=%llu budget=%llu fallback=%s\n",
             int(name.size()),name.data(),bytes,s.live,s.pending,s.budget,fallbacks[category(name)]);
     }
 }
