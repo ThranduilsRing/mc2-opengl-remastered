@@ -150,7 +150,7 @@ def test_farm_queue_timeout_repeats_only_after_pending_job_cancelled(tmp_path):
         if len(seen) == 1:
             return SimpleNamespace(returncode=0, stdout='a' * 32)
         if len(seen) == 2:
-            assert command[-2:] == ['--queue-timeout', '1200']
+            assert command[-2:] == ['--queue-timeout', str(gate.FARM_CLAIM_SECONDS)]
             return SimpleNamespace(returncode=1, stdout='queue_timeout: unclaimed job cancelled')
         return SimpleNamespace(returncode=0, stdout='local PASS')
     command = ['python', 'tools/sim_determinism.py', 'check', 'mc2_03', '--install', 'local', '--out', str(tmp_path / 'out')]
@@ -158,14 +158,20 @@ def test_farm_queue_timeout_repeats_only_after_pending_job_cancelled(tmp_path):
     assert seen[-1] == command
 
 
-@pytest.mark.parametrize('depth,occupied,expected', [(0, 2, True), (1, 2, False), (2, 2, False), (0, 0, True)])
-@pytest.mark.parametrize('prefix', ['', '** WARNING: connection is not using a post-quantum key exchange algorithm.\n'])
-def test_farm_selection_compares_queue_to_host_wait(tmp_path, monkeypatch, depth, occupied, expected, prefix):
-    from smoke_lib import host_lease
-    monkeypatch.setattr(host_lease, 'status', lambda: {'slots': [{}] * occupied})
-    monkeypatch.setattr(host_lease, 'slot_count', lambda: 2)
-    monkeypatch.setattr(host_lease, 'lease_path', lambda: tmp_path / 'lease.json')
-    assert gate.choose_farm(lambda *a, **kw: SimpleNamespace(returncode=0, stdout=prefix + json.dumps({'depth': depth}))) == expected
+def test_farm_is_opt_in_and_claim_probe_is_short():
+    assert not hasattr(gate, 'choose_farm')
+    assert gate.FARM_CLAIM_SECONDS <= 180
+
+
+def test_mad_flags_only_undeclared_views_over_limit():
+    out = 'mc2_01_saved_205644 | 1.40 | 5\nmc2_10_saved_204523 | 0.02 | 0\nbookmark | MAD | x\n'
+    assert gate.mad_flags(out) == ['mc2_01_saved_205644=1.40']
+    assert gate.mad_flags(out, {'mc2_01_saved_205644'}) == []
+
+
+def test_publish_refuses_without_green_mark(tmp_path, monkeypatch):
+    monkeypatch.setattr(gate, 'ROOT', tmp_path)
+    assert gate.publish('abc123') == 1
 
 
 def test_stock_takes_all_saves_after_tier1_and_mods(tmp_path, monkeypatch):

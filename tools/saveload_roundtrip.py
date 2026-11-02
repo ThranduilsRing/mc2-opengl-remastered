@@ -340,6 +340,9 @@ def run_fixture(mission: str, save_at: int, load_at: int, deploy: bool, out: str
                            **console_child.child_kwargs(redirected=True))
         with open(os.path.join(dest, "runner.txt"), "w", encoding="utf-8") as fh:
             fh.write(r.stdout)
+        for line in r.stdout.splitlines():  # forward the perf WARN so the gate row shows it (merge_gate.perf_warn_status)
+            if "[PERF_COUNTER_WARN]" in line:
+                print(line.strip(), flush=True)
         arts = [line.removeprefix("[runner] artifacts: ").strip() for line in r.stdout.splitlines() if line.startswith("[runner] artifacts: ")]
         if not arts or not os.path.exists(os.path.join(arts[-1], mission + ".log")):
             sys.exit("saveload_roundtrip: the smoke run produced no log:\n" + "\n".join(r.stdout.splitlines()[-8:]))

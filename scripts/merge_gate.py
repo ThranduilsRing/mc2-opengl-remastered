@@ -416,7 +416,7 @@ def plan(jobs, proof_dir=None, capture_before_runs=1, before_dir=None):
     # mc2_03 runs headless; mc2_10 and mc2_24 retain the GPU path. The finale
     # spawns infantry after tick 2404: --ticks is a required SIMID length (zero
     # tolerance), so the baseline prefix alone cannot satisfy this audit.
-    for mission in ("mc2_03", "mc2_10", "mc2_24"):
+    for mission in ("mc2_03", "mc2_10", "mc2_16", "mc2_24"):
         steps.append(("determinism-" + mission,
                       [py, "tools/sim_determinism.py", "check", mission, "--install", install, "--out", str(proof / ("determinism-" + mission)),
                        # mc2_10 reaches only ~650 of the 800 sim frames in 20 s under load; 2x gets there in half the host time (both runs of a pair share the speed)
@@ -599,6 +599,11 @@ def stock_copy(install, parent=None):
         print(f"[merge_gate] removed {target}: {size / 2**30:.2f} GiB logical (physical space not measured)", flush=True)
 
 
+# Queue depth does not prove a live worker (W98/W99 lost 20 min per row to an unclaimed job): the farm is opt-in
+# (--farm-determinism) and a job nobody claims within this window is cancelled and run locally.
+FARM_CLAIM_SECONDS = 120
+
+
 def farm_stage(command, overrides, runner=None):
     """Submit one unchanged determinism check, wait, and fetch its evidence."""
     runner = run_child if runner is None else runner
@@ -633,9 +638,9 @@ def farm_stage(command, overrides, runner=None):
     if len(ids) != 1:
         return local('submit returned no unique job ID')
     job_id = ids[0]
-    waited = runner(host + ["wait", job_id, "--timeout", "2160", "--queue-timeout", "1200"], cwd=ROOT, env=os.environ.copy())
+    waited = runner(host + ["wait", job_id, "--timeout", "2160", "--queue-timeout", str(FARM_CLAIM_SECONDS)], cwd=ROOT, env=os.environ.copy())
     if 'queue_timeout:' in waited.stdout:
-        print('[merge_gate] farm queue capped at 20 min; repeating locally', flush=True)
+        print(f'[merge_gate] farm: no worker claimed the job in {FARM_CLAIM_SECONDS}s; repeating locally', flush=True)
         return runner(command, cwd=ROOT, env=dict(os.environ, **overrides))
     if "job remains owned" in waited.stdout:
         return waited  # never delete the payload of a still-running farm job
@@ -648,50 +653,77 @@ def farm_stage(command, overrides, runner=None):
     return subprocess.CompletedProcess(command, waited.returncode or fetched.returncode, waited.stdout + fetched.stdout)
 
 
-def choose_farm(runner=run_child):
-    """Compare one queue snapshot with a conservative host-slot wait estimate."""
-    from smoke_lib import host_lease
-    try:
-        state = host_lease.status()
-        slots = host_lease.slot_count()
-        occupied = len(state['slots'])
-        tickets = json.loads(host_lease.lease_path().with_suffix('.queue.json').read_text()).get('tickets', []) if host_lease.lease_path().with_suffix('.queue.json').exists() else []
-        host_minutes = 15 * ((len(tickets) // slots) + 1) if occupied >= slots or tickets else 0
-        result = runner([sys.executable, 'tools/farm/host.py', 'queue'], cwd=ROOT, env=os.environ.copy())
-        queue_lines = result.stdout.strip().splitlines()
-        depth = int(json.loads(queue_lines[-1])['depth']) if not result.returncode and queue_lines else -1
-        # This snapshot precedes deploy: our own two host chains are not live
-        # yet. An empty farm is useful even when both host slots look idle.
-        selected = depth == 0 or 0 < depth * 15 < min(host_minutes, 20)
-        print(f'[merge_gate] farm depth={depth} estimated={depth * 15}min host-slot estimate={host_minutes}min selected={selected}', flush=True)
-        return selected
-    except (OSError, ValueError, KeyError, subprocess.SubprocessError) as exc:
-        print(f'[merge_gate] farm queue unavailable; local determinism: {exc}', flush=True)
-        return False
+PUBLISHED = Path("A:/Games/mc2-opengl/mc2-win64-v0.4")
+
+
+def stage_published(install, published=PUBLISHED):
+    """Make the private candidate the pixel row's single install.
+
+    The lean seed has no data/textures/*.burnin.* (W99: before ran on v0.4 with the 6144 burn-in colormap, after on the seed with 1536,
+    a constant false MAD of 1.4/0.9). Give the candidate the burn-in files so every row exercises the path the owner plays, and put the
+    published exe and shaders on it so capture-before runs the OLD build on the SAME data; the deploy row then replaces them."""
+    install, published = Path(install), Path(published)
+    shutil.copy2(published / "mc2.exe", install / "mc2.exe")
+    for name in ("shaders", "shaders_vk"):
+        if (published / name).is_dir():
+            shutil.rmtree(install / name, ignore_errors=True)
+            shutil.copytree(published / name, install / name)
+    textures = install / "data" / "textures"
+    textures.mkdir(parents=True, exist_ok=True)
+    for src in (published / "data" / "textures").glob("*.burnin.*"):
+        if not (textures / src.name).exists():
+            shutil.copy2(src, textures / src.name)
 
 
 def execute_window(steps, head, dry_run=False, keep_going=False, farm_determinism=False):
-    """Prove a private candidate before publishing the verified build to v0.4."""
+    """Prove a private candidate. Publishing to v0.4 is a separate step (--publish) that runs after the montage has been viewed."""
     deploy = next((s for s in steps if s[0] == "deploy"), None)
-    tier1 = next((s for s in steps if s[0] == "tier1" and not s[2].get("MC2_GATE_SKIP_REASON")), None)
     scheduling = dict(farm_determinism=True) if farm_determinism else {}
     if not deploy or deploy[2].get("MC2_GATE_SKIP_REASON"):
         return execute_parallel(steps, head, dry_run, keep_going, **scheduling)
     candidate = Path("E:/mc2-installs/merge-gate-candidate")
     def prove(install):
-        staged = install_plan(steps, install)
-        # Before evidence belongs to the currently published executable.
-        staged = [original if original[0].startswith("capture-before") else private
-                  for original, private in zip(steps, staged)]
-        result = execute_parallel(staged, head, dry_run, keep_going, **scheduling)
-        if result or not tier1:
-            print("[merge_gate] publish-v0.4: withheld (candidate failed or tier1 not run)", flush=True)
-            return result
-        return execute([("publish-v0.4", deploy[1], {})], head, dry_run)
+        # capture-before and capture-after both run on the candidate: before with the published exe, after with the new one.
+        if not dry_run:
+            stage_published(install)
+        return execute_parallel(install_plan(steps, install), head, dry_run, keep_going, **scheduling)
     if dry_run:
         return prove(candidate)
     with stock_copy(Path("E:/mc2-installs/_lean-seed")) as install:
         return prove(install)
+
+
+GREEN_MARK = "build64-ninja/last-green-gate.json"
+MAD_LIMIT = 0.05
+DECLARED_VIEWS = set()
+
+
+def mad_flags(output, declared=()):
+    """Bookmarks in ab.py --compare-only output ('name | MAD | ...') whose MAD exceeds MAD_LIMIT and are not declared views."""
+    bad = []
+    for line in (output or "").splitlines():
+        cells = [c.strip() for c in line.split("|")]
+        if len(cells) < 2 or cells[0] in declared:
+            continue
+        try:
+            if float(cells[1]) > MAD_LIMIT:
+                bad.append(f"{cells[0]}={cells[1]}")
+        except ValueError:
+            continue
+    return bad
+
+
+def publish(head, dry_run=False):
+    """Deploy the verified build to v0.4, only for a HEAD whose gate was green and complete (run after viewing the montage)."""
+    try:
+        mark = json.loads((ROOT / GREEN_MARK).read_text())
+    except (OSError, ValueError):
+        mark = {}
+    if mark.get("head") != head and not dry_run:
+        print(f"[merge_gate] publish-v0.4: refused; no complete green gate recorded for HEAD {head[:12]} ({GREEN_MARK})")
+        return 1
+    deploy = next(s for s in plan(1) if s[0] == "deploy")
+    return execute([("publish-v0.4", deploy[1], {})], head, dry_run)
 
 
 def execute_parallel(steps, head, dry_run=False, keep_going=False, farm_determinism=False):
@@ -991,6 +1023,10 @@ def execute(steps, head, dry_run=False, runner=run_child, completed=None):
                 measured = getattr(result, "gate_elapsed", None)
                 scheduler_wait = getattr(result, 'gate_scheduler_wait', 0.0)
                 status = perf_warn_status(getattr(result, "stdout", "")) if result.returncode == 0 else f"FAIL ({result.returncode})"
+                if result.returncode == 0 and name.startswith("compare-captures"):
+                    moved = mad_flags(getattr(result, "stdout", ""), DECLARED_VIEWS)
+                    if moved:
+                        status = "FAIL: MAD > %s on undeclared view(s) %s" % (MAD_LIMIT, ", ".join(moved))
             except (OSError, ValueError, RuntimeError, subprocess.SubprocessError) as exc:
                 print(f"[merge_gate] {name}: {exc}", file=sys.stderr)
                 status = "FAIL: " + str(exc).replace("|", "/").replace("\n", " ")
@@ -1057,7 +1093,9 @@ def main(argv=None):
     ap.add_argument("--full", action="store_true", help="all domains; orchestrator runs at least daily")
     ap.add_argument("--resume", action="store_true", help="reuse successful stages with matching HEAD and executable SHA")
     ap.add_argument("--clean-output", action="store_true", help="with --preflight --resume, remove only failed determinism output; preserve receipts and passing evidence")
-    ap.add_argument("--farm-determinism", action="store_true", help="force non-windowed determinism to farm (default: choose by queue versus host wait)")
+    ap.add_argument("--farm-determinism", action="store_true", help="offer determinism to the farm; a job no live worker claims within the probe window runs locally (default: local)")
+    ap.add_argument("--publish", action="store_true", help="after viewing the montage: deploy the verified build to v0.4 (needs a complete green gate for HEAD)")
+    ap.add_argument("--declared-view", action="append", default=[], help="bookmark whose pixels are expected to change; exempt from the MAD > 0.05 flag")
     ap.add_argument("--install", type=Path, help="explicit lane-owned E:/mc2-installs target for a real rehearsal")
     ap.add_argument("--dry-run", action="store_true", help="print commands only; no builds, deploys, or game launches")
     ap.add_argument("--capture-before-runs", type=int, default=1,
@@ -1079,6 +1117,10 @@ def main(argv=None):
     args = ap.parse_args(argv)
     if args.j < 1:
         ap.error("-j must be positive")
+    global DECLARED_VIEWS
+    DECLARED_VIEWS = set(args.declared_view)
+    if args.publish:
+        return publish(git('rev-parse', 'HEAD'), args.dry_run)
     if args.clean_output:
         if not (args.preflight and args.resume and args.proofs_dir):
             ap.error('--clean-output requires --preflight --resume --proofs-dir')
@@ -1183,22 +1225,25 @@ def main(argv=None):
             with redirect_stdout(Tee(sys.stdout, log)), redirect_stderr(Tee(sys.stderr, log)):
                 print(f"[merge_gate] log: {log_path}", flush=True)
                 started = window.get("started", time.time())
-                use_farm = args.farm_determinism or (not args.dry_run and not os.environ.get('MC2_HOST_LEASE_BATCH') and choose_farm())
-                scheduling = dict(farm_determinism=True) if use_farm else {}
+                scheduling = dict(farm_determinism=True) if args.farm_determinism else {}
                 execute_gate = execute_parallel if args.install else execute_window
                 result = execute_gate(steps, head, args.dry_run, keep_going=args.keep_going, **scheduling)
                 elapsed = time.time() - started
-                measured_window = bool(window)
-                verdict = ("FAIL" if result else
-                           "PASS" if elapsed <= 1200 and measured_window and not omitted else "NEEDS_REVIEW")
+                # Verdict rc: 0 every row green, 1 a red row, 2 partial gate (skipped rows). The clock is information only.
+                skipped = [n for n, _, e in steps if e.get("MC2_GATE_SKIP_REASON") and not e.get("MC2_GATE_REUSE_STAGE")]
+                verdict = "FAIL" if result else ("PARTIAL" if skipped else "PASS")
                 print(f"[merge_gate] exclusive host hold total={sum(EXCLUSIVE_SECONDS) / 60:.1f} min over {len(EXCLUSIVE_SECONDS)} stages (limit 20 min)")
                 reused = ",".join(ACTIVE_STATE.reused) if ACTIVE_STATE else ""
-                print(f"[merge_gate] total={elapsed:.1f}s budget=1200s scope={'lane_merge through gate' if measured_window else 'gate only; no verified lane_merge clock'} verdict={verdict} REUSED={reused or 'none'}")
+                print(f"[merge_gate] clock: {elapsed / 60:.1f} min {'since lane_merge start' if window else 'gate only'} (window box 120 min, cap 180; info only) verdict={verdict} REUSED={reused or 'none'}"
+                      + (f" SKIPPED={','.join(skipped)}" if skipped else ""))
                 if FAILED_STAGES:
                     print("[merge_gate] failed stages: " + ", ".join(f"{name} ({status})" for name, status in FAILED_STAGES))
                 if args.full and result == 0 and not args.dry_run:
                     (ROOT / "build64-ninja/last-full-gate.json").write_text(json.dumps(dict(head=head, finished=time.time())))
-                return result if args.dry_run else (0 if verdict == "PASS" else 1)
+                if verdict == "PASS" and not args.dry_run and not args.install:
+                    (ROOT / GREEN_MARK).write_text(json.dumps(dict(head=head, finished=time.time())))
+                    print("[merge_gate] gate green and complete: view the day and night montages, then `py -3 scripts/merge_gate.py --publish` (v0.4 is NOT published yet)")
+                return result if args.dry_run else {"PASS": 0, "FAIL": 1, "PARTIAL": 2}[verdict]
     finally:
         journal.__exit__(None, None, None)
 

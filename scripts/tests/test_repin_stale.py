@@ -36,3 +36,10 @@ def test_repin_commands(tmp_path):
 def test_real_repo_scans():
     rows = rs.scan()
     assert rows and all(r["kind"] in ("determinism", "saveload") for r in rows)
+
+
+def test_repin_keeps_unknown_keys(tmp_path):
+    f = tmp_path / "mc2_03.json"
+    f.write_text(json.dumps({"mission": "mc2_03", "sha": "new"}))
+    rs.keep_unknown_keys({"path": str(f), "data": {"mission": "mc2_03", "sha": "old", "schema_migration": {"v": 2}}})
+    assert json.loads(f.read_text()) == {"mission": "mc2_03", "sha": "new", "schema_migration": {"v": 2}}

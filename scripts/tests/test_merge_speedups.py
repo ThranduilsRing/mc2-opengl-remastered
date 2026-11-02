@@ -239,7 +239,7 @@ def test_gate_plan_uses_verified_ninja_and_required_checks():
     mods = next(cmd for name, cmd, _ in steps if name == "mods")
     assert "--fail-fast" not in mods
     assert mods[mods.index("--workers") + 1] == "2"
-    assert len(steps) == 19
+    assert len(steps) == 20
     quiet = next(cmd for name, cmd, _ in steps if name == "quiet")
     assert quiet[-3:-1] == ["--fresh-smoke", "--exe"] and quiet[-1].endswith("mc2-win64-v0.4/mc2.exe")
     by_name = {name: (cmd, env) for name, cmd, env in steps}
@@ -510,28 +510,24 @@ def test_reused_before_evidence_never_launches_old_classic_exe(tmp_path, monkeyp
     assert gate.main(args) == 0
 
 
-@pytest.mark.parametrize("failure,omit_tier1,skip_tier1", [(False, False, False), (True, False, False), (False, True, False), (False, False, True)])
-def test_publish_requires_successful_candidate_and_tier1(monkeypatch, tmp_path, failure, omit_tier1, skip_tier1):
+@pytest.mark.parametrize("failure", [False, True])
+def test_window_never_publishes_to_v04(monkeypatch, tmp_path, failure):
     from contextlib import contextmanager
     import merge_gate as gate
     @contextmanager
     def candidate(*args):
         yield tmp_path
     monkeypatch.setattr(gate, "stock_copy", candidate)
+    staged = []
+    monkeypatch.setattr(gate, "stage_published", lambda install: staged.append(install))
     checked, published = [], []
-    monkeypatch.setattr(gate, "execute_parallel", lambda steps, *a: checked.extend(steps) or int(failure))
-    monkeypatch.setattr(gate, "execute", lambda steps, *a: published.extend(steps) or 0)
-    steps = gate.plan(6)
-    if omit_tier1:
-        steps = [s for s in steps if s[0] != "tier1"]
-    if skip_tier1:
-        steps = [(n, c, dict(e, MC2_GATE_SKIP_REASON="filtered") if n == "tier1" else e) for n, c, e in steps]
-    assert gate.execute_window(steps, "head", keep_going=True) == int(failure)
-    assert bool(published) == (not failure and not omit_tier1 and not skip_tier1)
+    monkeypatch.setattr(gate, "execute_parallel", lambda steps, *a, **k: checked.extend(steps) or int(failure))
+    monkeypatch.setattr(gate, "execute", lambda steps, *a, **k: published.extend(steps) or 0)
+    assert gate.execute_window(gate.plan(6), "head", keep_going=True) == int(failure)
+    assert not published and staged == [tmp_path]
+    before = next(c for n, c, _ in checked if n == "capture-before")
+    assert str(tmp_path).replace("\\", "/") in " ".join(before).replace("\\", "/")
     assert next(c for n, c, _ in checked if n == "deploy")[-2:] == [str(tmp_path), "--allow-new-target"]
-    if published:
-        assert published[0][0] == "publish-v0.4"
-        assert str(tmp_path) not in published[0][1]
 
 
 def test_gate_logs_lease_holder_and_age(monkeypatch, capsys):

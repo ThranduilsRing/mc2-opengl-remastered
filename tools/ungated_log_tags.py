@@ -28,7 +28,7 @@ import console_child  # noqa: E402
 GUARD_WINDOW = 8
 BASELINE_PATH = "tests/contract/default_build_quiet_baseline.json"
 SOURCE = re.compile(r"\.(cpp|h|hpp|inc|c)$")
-PRINT = re.compile(r"\b(?:std::)?(?:fprintf|printf|puts|fputs)\s*\(|\bMC2_LOG\w*\s*\(|\bstd::c(?:err|out)\b")
+PRINT = re.compile(r"\b(?:std::)?(?:fprintf|printf|puts|fputs)\s*\(|\bMC2_LOG\w*\s*\(|\bmc2::fmt::print_err\s*\(|\bstd::c(?:err|out)\b")
 TAG = re.compile(r"\[([A-Z][A-Z0-9_]{2,})(?:\s+v\d+)?\]")
 GUARD = re.compile(r"tagRequested|diag_tag|tagEnabled|MC2_DIAG_VERBOSE")
 HUNK = re.compile(r"^@@ -\d+(?:,\d+)? \+(\d+)")
@@ -75,8 +75,11 @@ def check_diff(diff: str, allowed: set[str]) -> list[str]:
 
 
 def git(*args: str) -> str:
-    return subprocess.run(["git", *args], capture_output=True, text=True, encoding="utf-8", errors="replace",
-                          **console_child.child_kwargs(redirected=True)).stdout
+    r = subprocess.run(["git", *args], capture_output=True, text=True, encoding="utf-8", errors="replace",
+                       **console_child.child_kwargs(redirected=True))
+    if r.returncode != 0:
+        raise RuntimeError(f"git {' '.join(args[:2])} failed rc={r.returncode}: {r.stderr.strip()[:200]}")
+    return r.stdout
 
 
 def main(argv=None) -> int:
@@ -84,8 +87,12 @@ def main(argv=None) -> int:
     ap.add_argument("--base", required=True)
     ap.add_argument("--head", required=True)
     a = ap.parse_args(argv)
-    diff = git("diff", f"-U{GUARD_WINDOW}", "--no-color", a.base, a.head, "--", "*.cpp", "*.h", "*.hpp", "*.inc", "*.c")
-    bad = check_diff(diff, allowed_names(git("show", f"{a.head}:{BASELINE_PATH}")))
+    try:
+        diff = git("diff", f"-U{GUARD_WINDOW}", "--no-color", a.base, a.head, "--", "*.cpp", "*.h", "*.hpp", "*.inc", "*.c")
+        bad = check_diff(diff, allowed_names(git("show", f"{a.head}:{BASELINE_PATH}")))
+    except RuntimeError as exc:
+        print(f"ungated_log_tags: FAIL (cannot read the diff: {exc})")
+        return 1
     for b in bad:
         print("UNGATED LOG TAG " + b + " (guard with mc2_diag::tagRequested or list it in " + BASELINE_PATH + ")")
     print(f"ungated_log_tags: {'FAIL ' + str(len(bad)) if bad else 'PASS'}")

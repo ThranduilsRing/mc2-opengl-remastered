@@ -82,7 +82,23 @@ def repin(row: dict, install: str, det_duration: int, tmp: str) -> bool:
         print("  " + " ".join(cmd[2:]))
         if subprocess.call(cmd, cwd=ROOT) != 0:  # background-launch: allow runs the repo baseline tools (saveload_roundtrip/run_smoke) printed above
             return False
+    keep_unknown_keys(row)
     return True
+
+
+def keep_unknown_keys(row: dict) -> None:
+    """A re-pin rewrites the file from scratch; restore top-level keys the old file had (e.g. schema_migration) that the new one lacks."""
+    try:
+        with open(row["path"], encoding="utf-8") as fh:
+            new = json.load(fh)
+    except (OSError, ValueError):
+        return
+    lost = {k: v for k, v in (row.get("data") or {}).items() if k not in new}
+    if isinstance(new, dict) and lost:
+        new.update(lost)
+        with open(row["path"], "w", encoding="utf-8") as fh:
+            json.dump(new, fh, indent=2)
+            fh.write("\n")
 
 
 def main(argv: list[str] | None = None) -> int:
