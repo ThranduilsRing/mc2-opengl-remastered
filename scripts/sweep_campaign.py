@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """SWEEP-RUNNER-1: resolver-driven cheat-mode campaign sweep with structured emit.
 
-Usage: py -3 scripts/sweep_campaign.py <campaign_folder|stock> [secs=300] [deploy_dir] [--shots] [--salvage] [--liveness] [--out DIR]
+Usage: py -3 scripts/sweep_campaign.py <campaign_folder|stock> [secs=300] <deploy_dir> [--shots] [--salvage] [--liveness] [--out DIR]
   stock    = the stock campaign (fit "campaign", no mod); the resolver is skipped.
+  deploy_dir is REQUIRED; the owner v0.4 / owner-test installs are refused unless --allow-owner-install.
   --shots  = MC2_SHOT_RESULTS + MC2_DEV_SHELL: mission-start, salvage and pilot-promotion screenshots per mission, copied to --out.
   --salvage= MC2_SOAK_SALVAGE_TRADEMOVER (real mid-mission salvage-craft flow).
   --out    = copy stdout/stderr/screenshots and write sweep_summary.json (+ per-mission [SOAK] counts) there.
@@ -21,8 +22,6 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 # MC2_SMOKE_MODE + MC2_NO_CURSOR_GRAB (set below) stop the game grabbing the pointer; nofocus.spawn refuses an exe too old to honour them.
 from smoke_lib import nofocus  # noqa: E402
-# Computer-agnostic: override with MC2_DEPLOY_DIR env; literal is a last-resort dev fallback.
-DEFAULT_DEPLOY = os.environ.get("MC2_DEPLOY_DIR", r"A:/Games/mc2-opengl/mc2-win64-v0.4")
 
 def resolve(deploy, name):
     out = subprocess.run([sys.executable, str(HERE / "resolve_campaign_config.py"), deploy, name],
@@ -36,7 +35,7 @@ def newest_crash(deploy):
 
 def main():
     args = sys.argv[1:]
-    flags = {a for a in args if a in ("--shots", "--salvage", "--liveness")}
+    flags = {a for a in args if a in ("--shots", "--salvage", "--liveness", "--allow-owner-install")}
     out_dir = None
     if "--out" in args:
         i = args.index("--out")
@@ -45,7 +44,11 @@ def main():
     args = [a for a in args if a not in flags]
     name = args[0]
     secs = int(args[1]) if len(args) > 1 else 300
-    deploy = args[2] if len(args) > 2 else DEFAULT_DEPLOY
+    if len(args) < 3:
+        sys.exit("sweep_campaign: deploy_dir is required (use your own E:/mc2-installs/<lane>); there is no default install")
+    deploy = args[2]
+    if re.search(r"mc2-win64-v0\.4|owner-test", deploy.replace("\\", "/")) and "--allow-owner-install" not in flags:
+        sys.exit("sweep_campaign: refusing the owner install %s (pass --allow-owner-install to override)" % deploy)
     if name == "stock":
         cfg = {"active_mod": "", "mc2_mod_deps_string": "", "fit": "campaign", "expected_missions": None}
     else:
@@ -77,6 +80,7 @@ def main():
     if "--liveness" in flags:   # AI/movement sample: enemies alive, 40 s before auto-win (default walk kills them at 3 s)
         env["MC2_SOAK_WIN_AFTER_SEC"] = "40"
         env.pop("MC2_SOAK_KILL_ENEMY", None)
+        env["MC2_FIXTURE_ORDER_LIVENESS"] = "1"   # player advance: attack order at 0.2, move at 0.5 of the window, so idle enemies get provoked
     if "--salvage" in flags:
         env["MC2_SOAK_SALVAGE_TRADEMOVER"] = "1"
     if "--shots" in flags:

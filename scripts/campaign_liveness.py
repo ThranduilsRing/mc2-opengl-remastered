@@ -23,6 +23,7 @@ LINE_RE = re.compile(r"^\[MOVER v2\] (?P<kv>.*)$")
 AUTOWIN_RE = re.compile(r"^\[SOAK\] autowin mission=(?P<m>\S+)")
 KV_RE = re.compile(r"(\w+)=(\S+)")
 
+ENGAGE_DIST = 400.0   # metres; closer than this and idle enemies are a real AI failure
 MOVE_THRESHOLD = 20.0     # world units; a guard shuffling in place does not count as movement
 HP_NEAR_ZERO = 0.05
 
@@ -123,6 +124,16 @@ def analyse_segment(seg, home_team=0):
             "hp_near_zero_at_start": tr["first_hp"] <= HP_NEAR_ZERO,
             "targeted": tr["targeted"], "orders": sorted(tr["orders"]),
         })
+    # Closest approach of any home mover to any enemy in the same sample: an enemy that never saw the player
+    # (scripted dormant until triggered) is not an AI failure.
+    min_d = None
+    for smp in seg["samples"]:
+        hm = [m["pos"] for m in smp["movers"] if m["team"] == home_team]
+        em = [m["pos"] for m in smp["movers"] if m["team"] != home_team]
+        for h in hm:
+            for e in em:
+                d = _dist(h, e)
+                min_d = d if min_d is None else min(min_d, d)
     enemies = [t for t in out if t["enemy"]]
     sustained = [t for t in enemies if t["last_t"] - t["first_t"] >= 10.0]
     summary = {
@@ -132,6 +143,7 @@ def analyse_segment(seg, home_team=0):
         "movers": len(out), "enemies": len(enemies),
         "enemies_moved": sum(t["moved"] for t in enemies),
         "enemies_ai_on": sum(t["ai_on"] for t in enemies),
+        "min_home_enemy_dist": None if min_d is None else round(min_d, 1),
         "enemies_hp_near_zero_at_start": [t["id"] for t in enemies if t["hp_near_zero_at_start"]],
     }
     # Verdict: needs a real observation window, at least one enemy acting, none dead on arrival.
@@ -141,6 +153,8 @@ def analyse_segment(seg, home_team=0):
         summary["verdict"] = "window_too_short"
     elif summary["enemies_hp_near_zero_at_start"]:
         summary["verdict"] = "fail_hp_near_zero"
+    elif summary["enemies_ai_on"] == 0 and (min_d is None or min_d > ENGAGE_DIST):
+        summary["verdict"] = "dormant_unprovoked"   # nobody came within ENGAGE_DIST: scripted-idle, not a failure
     elif summary["enemies_ai_on"] == 0:
         summary["verdict"] = "fail_no_ai"
     else:
