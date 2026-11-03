@@ -1210,7 +1210,6 @@ void MissionBegin::updateSoakAutoPurchase() {
 						// Original single-mech path (MC2_SOAK_LANCE_RANDOM not set).
 						// Prefer HEAVIEST mech within drop-weight cap; fall back to lightest.
 						int cap = ( maxDrop > 0 ) ? maxDrop : 0x7fffffff;
-						if ( const char* sw = std::getenv( "MC2_SCRATCH_BUY_W" ) ) cap = std::atoi( sw );	// SCRATCH, remove before final
 						LogisticsVariant* pick      = nullptr;
 						int               pickW     = -1;
 						LogisticsVariant* lightest  = nullptr;

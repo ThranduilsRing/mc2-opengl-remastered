@@ -338,8 +338,8 @@ void SimpleCamera::render(long xOffset, long yOffset)
 					drawn_[0] = g_previewBoundsMinX; drawn_[1] = g_previewBoundsMinY;
 					drawn_[2] = g_previewBoundsMaxX; drawn_[3] = g_previewBoundsMaxY;
 					haveDrawn_ = true;
-					if ( fitIters_ > 0 && ( fitIters_ % 10 == 0 || fitIters_ == 1 ) )
-						MC2_LOG(Ui, Info, "[MECHLAB3D] fit iter={} drawn=[{:.0f},{:.0f},{:.0f},{:.0f}] rect=[{:.0f},{:.0f},{:.0f},{:.0f}] fov={:.1f} sharedAlt={:.0f} camAlt={:.0f} fudge=({:.0f},{:.0f})", fitIters_, drawn_[0], drawn_[1], drawn_[2], drawn_[3], bounds[0], bounds[1], bounds[2], bounds[3], framedFov_, AltitudeTight, cameraAltitude, fudgeX, fudgeY);
+					if ( fitIters_ == 1 )
+						MC2_LOG(Ui, Info, "[MECHLAB3D] fit done iter={} drawn=[{:.0f},{:.0f},{:.0f},{:.0f}] rect=[{:.0f},{:.0f},{:.0f},{:.0f}] fov={:.1f} sharedAlt={:.0f} camAlt={:.0f} fudge=({:.0f},{:.0f})", fitIters_, drawn_[0], drawn_[1], drawn_[2], drawn_[3], bounds[0], bounds[1], bounds[2], bounds[3], framedFov_, AltitudeTight, cameraAltitude, fudgeX, fudgeY);
 				}
 			}
 			else
