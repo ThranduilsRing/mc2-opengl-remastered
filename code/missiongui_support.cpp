@@ -27,15 +27,8 @@ void releaseMissionSupportPreloads()
 	supportPreloadMs = supportPreloadWorstMs = 0;
 }
 
-void updateMissionSupportPreloads()
+static void runSupportPreloadStep()
 {
-	// Keep the first playable frame free of warming. File/appearance registries
-	// are main-thread owned: do one archive, sample or actor on each later frame.
-	if (supportPreloadStep < 0) {
-		supportPreloadStep = 0;
-		supportPreloadStart = std::chrono::steady_clock::now();
-		return;
-	}
 	if (supportPreloadStep >= 20) return;
 	ZoneScopedN("Mission.SupportPreloadStep");
 	const auto start = std::chrono::steady_clock::now();
@@ -119,6 +112,27 @@ void updateMissionSupportPreloads()
 		mc2::fmt::print_out("[SUPPORT_PRELOAD] appearances={} ms={:.3f} worst_step_ms={:.3f} playable_ms={:.3f}\n",
 			supportPreloads.size(), supportPreloadMs, supportPreloadWorstMs,
 			std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - supportPreloadStart).count());
+}
+
+// Behind the loading screen: file/appearance registries are main-thread owned and the steps are IO-bound (one cold step was 501 ms inside
+// gameplay), so the whole palette is warmed at the end of mission init, where a stall is invisible. Same permission gating as the steps use.
+void preloadMissionSupportAtLoad()
+{
+	releaseMissionSupportPreloads();
+	supportPreloadStep = 0;
+	supportPreloadStart = std::chrono::steady_clock::now();
+	while (supportPreloadStep < 20) runSupportPreloadStep();
+}
+
+// Fallback for a mission whose load path did not warm the palette: one step per later frame, after the first playable frame.
+void updateMissionSupportPreloads()
+{
+	if (supportPreloadStep < 0) {
+		supportPreloadStep = 0;
+		supportPreloadStart = std::chrono::steady_clock::now();
+		return;
+	}
+	runSupportPreloadStep();
 }
 
 
