@@ -1,6 +1,7 @@
 // BldgAppearance / TreeAppearance: BldgAppearance static registry: eligibility, registerStatic, touch*, rebake gates, invalidate, destroy.
 // Declared in the class headers; shared names in bdactor_internal.h.
 #include <atomic>
+extern uint32_t mc2LightSlotBakedHighWater();
 #include "bdactor_internal.h"
 #include "gos_static_prop_registry.h"
 #include "../RenderCore/axis_convert.h"
@@ -535,6 +536,7 @@ void BldgAppearance::touch()
 			staticReg.recipeIndex >= 0 &&
 			staticReg.hasValidStaticLight &&
 			staticReg.lightDataIndex != 0xFFFFFFFFu &&
+			staticReg.lightDataIndex < mc2LightSlotBakedHighWater() &&  // dynamic slots (>= S) die at the next resetLightData
 			staticReg.lastLightEnvGen == currentLightEnvGen &&
 			!needsFullBakeNextFrame;
 		recordStableLightSkipDiag(
@@ -643,6 +645,7 @@ void BldgAppearance::touchSerialCommit()
 		staticReg.recipeIndex >= 0 &&
 		staticReg.hasValidStaticLight &&
 		staticReg.lightDataIndex != 0xFFFFFFFFu &&
+		staticReg.lightDataIndex < mc2LightSlotBakedHighWater() &&  // dynamic slots (>= S) die at the next resetLightData
 		staticReg.lastLightEnvGen == currentLightEnvGen &&
 		!needsFullBakeNextFrame;
 	recordStableLightSkipDiag(

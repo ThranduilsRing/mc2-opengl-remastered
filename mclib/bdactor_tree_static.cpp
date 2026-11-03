@@ -1,6 +1,7 @@
 // BldgAppearance / TreeAppearance: TreeAppearance static registry: touch*, registerStatic, prewarm.
 // Declared in the class headers; shared names in bdactor_internal.h.
 #include <atomic>
+extern uint32_t mc2LightSlotBakedHighWater();
 #include "bdactor_internal.h"
 #include "../RenderCore/axis_convert.h"
 #include "mc2fmt.h"
@@ -43,7 +44,8 @@ void TreeAppearance::touch()
 		// Gate: mc2StableLightSkipTouchEnabled() (default ON => touch skip preserves registry liveness).
 		{
 			const bool treeRegistered = (staticReg[activeLOD].registered && staticReg[activeLOD].recipeIndex >= 0);
-			const bool treeIdxValid   = (staticReg[activeLOD].lightDataIndex != 0xFFFFFFFFu);
+			const bool treeIdxValid   = (staticReg[activeLOD].lightDataIndex != 0xFFFFFFFFu) &&
+				staticReg[activeLOD].lightDataIndex < mc2LightSlotBakedHighWater();  // dynamic slots die at the next resetLightData
 			const bool treeEligible   = treeRegistered && treeIdxValid && !needsFullBakeNextFrame;
 			if (mc2StableLightSkipTouchEnabled() && mc2LightbridgeStableSkipEnabled() && treeEligible) {
 				lbssRecordTree(/*skipTaken=*/true, /*blk_idx=*/false);
