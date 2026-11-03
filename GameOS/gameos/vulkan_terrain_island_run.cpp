@@ -561,6 +561,13 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
         return da < db || (da == db && a < b);
     });
 
+    // TERRAIN-HIRES-NEAR-DIAG: diagonal-fitted mode-1 meshes are keyed to one bake; a rebake (rare) drops them.
+    const bool diagLive = feed.visualHeightCpu && feed.visualSide > 1 && s->visualHeightReady
+        && static_cast<uint64_t>(feed.visualHeightBytes) >= static_cast<uint64_t>(feed.visualSide) * feed.visualSide * sizeof(float);
+    if (diagLive && s->diagPatchVersion != feed.visualHeightVersion) {
+        if (!s->diagPatchCache.empty()) { mc2vk::getOrCreateEngineVulkanContext().waitIdle("terrain_diag_patch_rebake"); s->diagPatchCache.clear(); }
+        s->diagPatchVersion = feed.visualHeightVersion;
+    }
     std::vector<TerrainDraw> draws;
     draws.reserve(patchCount);
     for (uint32_t i : drawOrder) {
@@ -572,7 +579,9 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
         if (mode == 1 && (pr.lodStep != 1 || pr.quadCountX * 4 + 1 > 255 || pr.quadCountY * 4 + 1 > 255)) mode = 2;
         const int32_t meshQX = mode == 1 ? pr.quadCountX * 4 : pr.quadCountX;
         const int32_t meshQY = mode == 1 ? pr.quadCountY * 4 : pr.quadCountY;
-        const PatchMesh* pm = getOrBuildPatch(s, meshQX, meshQY, pr.lodStep);
+        const PatchMesh* pm = (mode == 1 && diagLive)
+            ? getOrBuildPatch(s, meshQX, meshQY, pr.lodStep, feed.visualHeightCpu, feed.visualSide, pr.blockOriginX, pr.blockOriginY)
+            : getOrBuildPatch(s, meshQX, meshQY, pr.lodStep);
         if (!pm || pm->indexCount == 0) continue;
         TerrainDraw d{};
         d.patch = TerrainPatchConstants{pr.blockOriginX, pr.blockOriginY, pr.quadCountX, pr.quadCountY,

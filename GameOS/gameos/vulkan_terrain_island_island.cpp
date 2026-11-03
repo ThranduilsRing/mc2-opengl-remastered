@@ -30,13 +30,28 @@ bool make_buffer(TerrainIsland* s, mc2vk::OwnedBuffer& out, VkDeviceSize size, V
 // two-triangles-per-quad split is the FIXED (TL-BR) diagonal (checkerDiag is a
 // separate default-off feature not ported to the probe), matching getOrBuildPatch()'s
 // bottomRight default.
-const PatchMesh* getOrBuildPatch(TerrainIsland* s, int qcX, int qcY, int lodStep) {
+// TERRAIN-HIRES-NEAR-DIAG: with `fine` (the 4x bake, fineSide wide; origin = block origin in coarse cells, mesh offsets in
+// fine units) each quad splits along the diagonal whose corner heights differ less, so cliff edges that run against TL-BR no
+// longer saw-tooth. Only the interior diagonal moves: every quad edge, hence every stitched or skirted chunk border, is unchanged.
+const PatchMesh* getOrBuildPatch(TerrainIsland* s, int qcX, int qcY, int lodStep,
+                                 const float* fine, int fineSide, int originX, int originY) {
     if (lodStep <= 0) lodStep = 1;
     const uint32_t key = (static_cast<uint32_t>((qcX & 0xFFFF))) | ((static_cast<uint32_t>((qcY & 0xFFFF))) << 16)
                         ^ (static_cast<uint32_t>((lodStep & 0xFF)) << 24);
-    auto it = s->patchCache.find(key);
-    if (it != s->patchCache.end()) return &it->second;
+    const uint64_t dkey = (static_cast<uint64_t>(key)) ^ (static_cast<uint64_t>(originX & 0xFFFF) << 32) ^ (static_cast<uint64_t>(originY & 0xFFFF) << 48);
+    auto& cache = s->patchCache;
+    if (fine) {
+        auto dit = s->diagPatchCache.find(dkey);
+        if (dit != s->diagPatchCache.end()) return &dit->second;
+    } else {
+        auto it = cache.find(key);
+        if (it != cache.end()) return &it->second;
+    }
     if (qcX <= 0 || qcY <= 0) return nullptr;
+    auto fineH = [&](int lx, int ly) {
+        const int fx = std::clamp(originX * 4 + lx, 0, fineSide - 1), fy = std::clamp(originY * 4 + ly, 0, fineSide - 1);
+        return fine[static_cast<size_t>(fx) + static_cast<size_t>(fy) * static_cast<size_t>(fineSide)];
+    };
 
     // Sample positions: 0, lodStep, 2*lodStep, ... up to qc (mirrors GL
     // makeSamplePositions(quadCount, lodStep)). nx/ny = number of grid POINTS.
@@ -54,8 +69,8 @@ const PatchMesh* getOrBuildPatch(TerrainIsland* s, int qcX, int qcY, int lodStep
         for (int xx = 0; xx < nx; ++xx)
             verts.push_back({static_cast<int16_t>(xs[xx]), static_cast<int16_t>(ys[yy])});
 
-    // Indices: two CCW triangles per quad, FIXED TL-BR diagonal (== getOrBuildPatch
-    // bottomRight default): {TL,BL,BR} + {TL,BR,TR}.
+    // Indices: two CCW triangles per quad, TL-BR diagonal (== getOrBuildPatch
+    // bottomRight default): {TL,BL,BR} + {TL,BR,TR}; with `fine`, per quad the flatter diagonal.
     std::vector<uint16_t> indices;
     const int W = nx;
     for (int j = 0; j < ny - 1; ++j) {
@@ -64,7 +79,10 @@ const PatchMesh* getOrBuildPatch(TerrainIsland* s, int qcX, int qcY, int lodStep
             uint16_t tr = static_cast<uint16_t>((j * W + i + 1));
             uint16_t bl = static_cast<uint16_t>(((j + 1) * W + i));
             uint16_t br = static_cast<uint16_t>(((j + 1) * W + i + 1));
-            indices.insert(indices.end(), {tl, bl, br, tl, br, tr});
+            if (fine && std::fabs(fineH(xs[i + 1], ys[j]) - fineH(xs[i], ys[j + 1])) < std::fabs(fineH(xs[i], ys[j]) - fineH(xs[i + 1], ys[j + 1])))
+                indices.insert(indices.end(), {tl, bl, tr, bl, br, tr});   // TR-BL diagonal, same CCW winding
+            else
+                indices.insert(indices.end(), {tl, bl, br, tl, br, tr});
         }
     }
 
@@ -81,7 +99,8 @@ const PatchMesh* getOrBuildPatch(TerrainIsland* s, int qcX, int qcY, int lodStep
       if (vmaMapMemory(s->allocator, pm.ibo.allocation(), &p) == VK_SUCCESS) {
           std::memcpy(p, indices.data(), static_cast<size_t>(iboBytes)); vmaUnmapMemory(s->allocator, pm.ibo.allocation()); } }
 
-    auto res = s->patchCache.emplace(key, std::move(pm));
+    if (fine) return &s->diagPatchCache.emplace(dkey, std::move(pm)).first->second;
+    auto res = cache.emplace(key, std::move(pm));
     return &res.first->second;
 }
 
