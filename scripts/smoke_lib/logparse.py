@@ -198,7 +198,7 @@ MARKER_BUCKETS: tuple = (
     MarkerBucket(re.compile(r"\[CULL_PARITY v1\] .*\bfalse_culls=[1-9]"),
                  "cull_parity_false_cull", "red", None),
     # A static-prop light row past the uploaded light table (gos_static_prop_registry_flush_range.cpp flushLightRowDiag): the GPU reads a zero row.
-    MarkerBucket(re.compile(r"\[STATIC_LIGHT_ROW v1\] event=zero_row_reached_gpu class=out_of_range"),
+    MarkerBucket(re.compile(r"\[STATIC_LIGHT_ROW v1\] event=zero_row_reached_gpu class=out_of_range"),
                  "static_light_row_out_of_range", "red", None),
 )
 
