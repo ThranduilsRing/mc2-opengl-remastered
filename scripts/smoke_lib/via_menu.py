@@ -49,6 +49,10 @@ def apply_via_menu_env(env: dict, campaign: str = STOCK_CAMPAIGN, skip_intro: bo
     env["MC2_BOOT_TO_BAY"] = campaign
     env["MC2_LOG"] = "1"                 # without it stdout goes to NUL and no marker survives
     env["MC2_NO_CURSOR_GRAB"] = "1"
+    # [FIRST60 v1] prints only when tagged; an explicit MC2_DIAG_TAGS list replaces the default whitelist, so keep the defaults
+    tags = env.get("MC2_DIAG_TAGS") or "GPU_CULL,LIGHTBAKE_PROOF,ANIM_GATE,TerrainLOD_prod,CONFIG,BUILD,DEVICE,SHADER_COMPILE"
+    if tags not in ("*",) and "FIRST60" not in tags.split(","):
+        env["MC2_DIAG_TAGS"] = tags + ",FIRST60"
     env.pop("MC2_MENU_CANARY_SKIP_INTRO", None)   # videos play unless the caller opts out
     if skip_intro:
         env["MC2_MENU_CANARY_SKIP_INTRO"] = "1"
