@@ -3,17 +3,52 @@
 // Declared in the class headers; shared names in controlgui_internal.h.
 #include "controlgui_internal.h"
 #include "mc2fmt.h"
+#include "pilot_pick.h"
+#include "../GameOS/gameos/gos_dev_shell.h"
+#include "Gates/gate.h"
 #include <utility>
 
 
 void ControlGui::updateVehicleTab(int mouseX, int mouseY, bool bLOS )
 {
+	// Harness only (scripts/sweep_campaign.py --shots = MC2_SHOT_RESULTS + MC2_DEV_SHELL): once per run,
+	// open this tab, hover the recovery button with the pilot pool treated as empty and screenshot it.
+	// Never fires without the gate; no pilot or mouse state is changed.
+	bool harnessNoPilots = false;
+	{
+		static const bool s_shot = mc2::gate::get<"MC2_SHOT_RESULTS">();
+		static int s_frame = 0;
+		if ( s_shot && s_frame < 400 )
+		{
+			++s_frame;
+			if ( s_frame == 200 )
+				handleClick( VEHICLE_TAB );
+			if ( s_frame >= 205 )
+			{
+				for ( int i = 0; i < LAST_VEHICLE; i++ )
+				{
+					if ( vehicleButtons[i].ID == RECOVERY_TEAM )
+					{
+						mouseX = ( vehicleButtons[i].location[0].x + vehicleButtons[i].location[2].x ) / 2;
+						mouseY = ( vehicleButtons[i].location[0].y + vehicleButtons[i].location[1].y ) / 2;
+					}
+				}
+				harnessNoPilots = true;
+			}
+			if ( s_frame == 212 )
+				gos_dev_shell::scheduleScreenshot( "no_pilot_tooltip" );
+		}
+	}
+
 	// slice C site 6: "is the vehicle tab active" comes from the registry
 	// under the gate; the legacy PRESSED-bit poll otherwise. Hoisted — button
 	// state cannot change inside this loop.
 	const bool vehicleTabActive = hudTabsGateOn() && hudTabRegistry.activeTab()
 		? ( hudTabRegistry.activeTab()->buttonCommand == VEHICLE_TAB )
 		: ( ( getButton( VEHICLE_TAB )->state & ControlButton::PRESSED ) != 0 );
+
+	// One lookup per frame, reused for the hover text and the greyout below.
+	const bool noPilots = harnessNoPilots || ( LogisticsData::instance && !LogisticsData::instance->gotPilotsLeft() );
 
 	for ( int i = LAST_VEHICLE - 1; i > -1 ; i-- )
 	{
@@ -33,6 +68,11 @@ void ControlGui::updateVehicleTab(int mouseX, int mouseY, bool bLOS )
 			{
 				helpTextHeaderID = vehicleData[i].helpTextHeader;
 				helpTextID = vehicleData[i].helpTextID;
+				if ( vehicleButtons[i].ID == RECOVERY_TEAM && noPilots )
+				{
+					helpTextHeaderID = 0;
+					helpTextID = recoveryHelpTextId( noPilots, helpTextID, IDS_NO_PILOT_AVAILABLE );
+				}
 				
 				if ( vehicleButtons[i].ID == STOP_VEHICLE )
 				{
@@ -96,7 +136,7 @@ void ControlGui::updateVehicleTab(int mouseX, int mouseY, bool bLOS )
 		getButton( GUARD_TOWER )->disable( true );
 	}
 
-	if ( LogisticsData::instance && !LogisticsData::instance->gotPilotsLeft() )
+	if ( noPilots )
 		getButton( RECOVERY_TEAM )->disable( true );
 
 

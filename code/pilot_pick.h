@@ -7,3 +7,10 @@ inline P* pickOutOfPoolPilot(std::span<P* const> filtered)
 {
 	return filtered.empty() ? nullptr : filtered.front();
 }
+
+// Hover text for the recovery button: the "No pilot available" id replaces the
+// normal help text while the pool has no eligible pilot (the button is greyed).
+inline int recoveryHelpTextId(bool noPilots, int normalId, int noPilotId)
+{
+	return noPilots ? noPilotId : normalId;
+}

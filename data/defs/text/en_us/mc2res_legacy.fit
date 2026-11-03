@@ -43940,3 +43940,14 @@ String {
     category = "logistics"
     sourceFile = "data/defs/text/en_us/logistics.fit"
 }
+
+String {
+    key = "legacy.mc2res.48100"
+    text = "No pilot available"
+    legacyId = 48100
+    legacySymbol = "IDS_NO_PILOT_AVAILABLE"
+    source = "mc2res"
+    sourceKey = "unclassified.recover.no_pilot"
+    category = "units"
+    sourceFile = "data/defs/text/en_us/units.fit"
+}

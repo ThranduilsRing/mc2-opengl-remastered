@@ -29,3 +29,9 @@ TEST_CASE("one filtered pilot (used flag only) is reused")
     FakePilot* filtered[1] = { &only };
     CHECK(pickOutOfPoolPilot<FakePilot>(std::span<FakePilot* const>(filtered, 1)) == &only);
 }
+
+TEST_CASE("recovery button hover text: no-pilot id only when the pool is empty")
+{
+	CHECK(recoveryHelpTextId(true, 45120, 48100) == 48100);
+	CHECK(recoveryHelpTextId(false, 45120, 48100) == 45120);
+}
