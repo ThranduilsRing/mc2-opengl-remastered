@@ -88,6 +88,16 @@ except Exception:
 # 0.4 / 0.4c / 0.4d-rc1 / 0.5.0 / 0.5-testing.
 ARTIFACT_ROOT = Path(os.environ.get("MC2_SMOKE_ARTIFACT_ROOT", ROOT / "tests" / "smoke" / "artifacts"))
 MANIFEST_PATH = ROOT / "tests" / "smoke" / "smoke_missions.txt"
+
+
+def _mission_dirs(exe):
+    """data/missions of the install, plus the active mod's (MC2_ACTIVE_MOD) for --allow-any-mission."""
+    base = Path(exe).resolve().parent
+    dirs = [base / "data" / "missions"]
+    mod = os.environ.get("MC2_ACTIVE_MOD")
+    if mod:
+        dirs.append(base / "mods" / mod / "data" / "missions")
+    return dirs
 BASELINE_PATH = ROOT / "tests" / "smoke" / "baselines.json"
 DEFAULT_MENU_SCRIPT = ROOT / "tests" / "smoke" / "menu_canary_first_mission.txt"
 GAME_AUTO = ROOT / "scripts" / "game_auto.py"
@@ -878,9 +888,9 @@ def main():
                     _early_exe = str(Path(dict(_deploy_lease.DEPLOY_FOLDERS).get(
                         args.deploy or _deploy_lease._WALK_LANES[0], "")) / "mc2.exe")
                 if _early_exe:
-                    _md = Path(_early_exe).resolve().parent / "data" / "missions"
+                    _mds = _mission_dirs(_early_exe)
                     _early_unknown = [s for s in _early_unknown
-                                      if not ((_md / f"{s}.fit").is_file() or (_md / f"{s}.pak").is_file())]
+                                      if not any((d / f"{s}.fit").is_file() or (d / f"{s}.pak").is_file() for d in _mds)]
             if _early_unknown:
                 print(f"[runner] ERROR: unknown mission name(s) {', '.join(_early_unknown)} "
                       f"not found in {MANIFEST_PATH}"
@@ -1317,11 +1327,13 @@ def main():
                 # data/missions dir. This exists so non-tier missions (e.g.
                 # freshly-baked terrain-gen output like gaea_mountain_01) can
                 # be smoke-tested without adding them to the curated manifest.
-                missions_dir = Path(args.exe).resolve().parent / "data" / "missions"
                 still_unknown = []
                 for stem in unknown:
-                    fit_path = missions_dir / f"{stem}.fit"
-                    pak_path = missions_dir / f"{stem}.pak"
+                    fit_path = pak_path = None
+                    for missions_dir in _mission_dirs(args.exe):
+                        fit_path, pak_path = missions_dir / f"{stem}.fit", missions_dir / f"{stem}.pak"
+                        if fit_path.is_file() or pak_path.is_file():
+                            break
                     if fit_path.is_file() or pak_path.is_file():
                         print(f"[runner] WARNING: --allow-any-mission auto-accepting "
                               f"'{stem}' (not in {MANIFEST_PATH}, but found at "

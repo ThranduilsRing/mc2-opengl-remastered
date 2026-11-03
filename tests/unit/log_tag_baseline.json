@@ -5598,6 +5598,17 @@
    "count": 1
   },
   {
+   "tag": "MISSION_GOTO",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "mech",
+    "from",
+    "to"
+   ],
+   "count": 1
+  },
+  {
    "tag": "MISSION_LIGHT",
    "ver": 1,
    "stream": "stderr",
