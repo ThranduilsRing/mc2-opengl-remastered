@@ -53,3 +53,10 @@ def test_out_params_are_checked_reference_specs():
     assert regs["gettargetrelativeposition"][1] == "ivv"
     assert regs["hasorderfromplayer"][1] == ""
     assert regs["scanareacapture"][1:3] == ("*", "i")
+
+
+def test_mc2xplay_extension_builtins_are_registered():
+    # mc2xplay.abl (mc2x-compat) uses these; an undefined identifier fails the whole brain ("brain ABL failed to load").
+    regs = {r[0]: r for r in _omnitech_regs()}
+    assert regs["autoscan"][1:3] == ("", "b")
+    assert regs["automedicalwithinradius"][1:3] == ("i*", "")
