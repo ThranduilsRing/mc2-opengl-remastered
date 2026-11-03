@@ -312,9 +312,7 @@ LogisticsVehicle*	LogisticsData::getVehicle( const char* pName )
 int LogisticsData::addBuilding( long fitID, PacketFile& objectFile, float scale )
 {
 	// Mod buildings.csv rows (MCO) carry FitIDs past a mod-sized object2.pak; skip them without the PACKET_OOB STOP.
-	if ( fitID < 0 || fitID >= objectFile.getNumPackets() )
-		return -1;
-	if ( NO_ERR != objectFile.seekPacket(fitID) )
+	if ( fitID < 0 || fitID >= objectFile.getNumPackets() || NO_ERR != objectFile.seekPacket(fitID) )
 		return -1;
 
 	int fileSize = objectFile.getPacketSize();
