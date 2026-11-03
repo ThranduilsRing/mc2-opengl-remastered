@@ -242,7 +242,6 @@ long Mission::addMover (MoverInitData* moverSpec) {
 	{
 		ZoneScopedN("Mission.AddMover.Brain");
 		long moduleHandle = ABLi_preProcess(brainFullFileName, &numErrors, &numLinesProcessed);
-		if (moduleHandle < 0 || numErrors != 0) mc2::content::error(mc2::content::Kind::MissionData, static_cast<const char*>(brainFullFileName), moduleHandle < 0 ? "brain ABL failed to load; unit has no brain (idle)" : "brain ABL compiled with errors; unit brain unusable");
 		pilot->setBrain(moduleHandle);
 	}
 

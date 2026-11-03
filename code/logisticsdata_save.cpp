@@ -44,21 +44,6 @@ void LogisticsData::removeMechsInForceGroup()
 	}
 }
 
-#ifndef VIEWER
-// Fills out[] with the pilots that are available and not already in a live mech (SP and MP alike); returns the count.
-static int collectPoolPilots(std::deque<LogisticsPilot>& all, LogisticsPilot** out)
-{
-	int n = 0;
-	for ( auto iter = all.begin(); iter != all.end(); ++iter )
-	{
-		const char *nameCheck = (*iter).getName().c_str();
-		if ( poolEligible(*iter, [nameCheck](LogisticsPilot&) { return MechWarrior::warriorInUse(const_cast<char *>(nameCheck)); }) )
-			out[n++] = &(*iter);
-	}
-	return n;
-}
-#endif
-
 const char*	LogisticsData::getBestPilot( long mechWeight )
 {
 	ensureMechBayDataLoaded("getBestPilot");
@@ -68,7 +53,12 @@ const char*	LogisticsData::getBestPilot( long mechWeight )
 
 	int counter = 0;
 #ifndef VIEWER
-		counter = collectPoolPilots(pilots, pPilots);
+	for ( auto iter = pilots.begin(); iter != pilots.end(); ++iter )
+		{
+			const char *nameCheck = (*iter).getName().c_str();
+			if ( (*iter).isAvailable() && (MPlayer || !MechWarrior::warriorInUse(const_cast<char *>(nameCheck))) )
+				pPilots[counter++] = &(*iter);
+		}
 #endif
 
 	long count = counter;
@@ -123,7 +113,12 @@ bool		LogisticsData::gotPilotsLeft()
 
 	#ifndef VIEWER
 
-		counter = collectPoolPilots(pilots, pPilots);
+	for ( auto iter = pilots.begin(); iter != pilots.end(); ++iter )
+		{
+			const char *nameCheck = (*iter).getName().c_str();
+			if ( (*iter).isAvailable() && ( MPlayer || !MechWarrior::warriorInUse(const_cast<char *>(nameCheck))) )
+				pPilots[counter++] = &(*iter);
+		}
 
 	#endif
 	long count = counter;
