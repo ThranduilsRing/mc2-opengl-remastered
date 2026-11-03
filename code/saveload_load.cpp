@@ -266,6 +266,7 @@ void Mission::loadParts(MissionLoadFrame& f) {
 		memset(parts,0,sizeof(Part) * (numParts + 1));
 
 		int i;
+		bool shiftedLegacyParts = false;
 
 		for (i = 1; i < numParts + 1; i++)
 		{
@@ -281,6 +282,25 @@ void Mission::loadParts(MissionLoadFrame& f) {
 			// Find out what kind of object this is.
 			result = missionFile.readIdULong("ObjectNumber",parts[i].objNumber);
 			gosASSERT(result == NO_ERR);
+
+			//------------------------------------------------------------------
+			// The part's physical incarnation and squad. Saves written before Mission::Save wrote parts[1..N] carry a blank
+			// Part1 and every later part shifted by one; those WIDs would name the wrong objects, so they stay 0 as before.
+			{
+				int savedWID = 0;
+				char savedSquad = 0;
+				const bool haveWID = (missionFile.readIdInt("ObjectWID", savedWID) == NO_ERR);
+				const bool haveSquad = (missionFile.readIdChar("SquadId", savedSquad) == NO_ERR);
+				if (i == 1)
+					shiftedLegacyParts = !haveWID || (savedWID == 0 && parts[i].objNumber == 0);
+				if (!shiftedLegacyParts)
+				{
+					if (haveWID)
+						parts[i].objectWID = savedWID;
+					if (haveSquad)
+						parts[i].squadId = savedSquad;
+				}
+			}
 
 			//-------------------------------------------------
 			// Read in the data needed to control the object...
