@@ -363,6 +363,28 @@ void MechLabScreen::begin()
 			mechCamera.setMech( mc2::str::file_stem( pVariant->getFileName() ).c_str(), prefs.baseColor, prefs.highlightColor, prefs.highlightColor );
 			if ( mechCamera.hasObject() && pVariant->getChassis() )
 				mechCamera.setScale( pVariant->getChassis()->getScale() );
+			if ( mechCamera.hasObject() )
+			{
+				// SCRATCH tuning knob (remove before final): k,yaw,pitch,fx,fy,fillP,fillY,rimP,rimY
+				static float t[9] = { 100.f, -35.f, 30.f, 5.f, 10.f, 20.f, 0.f, 20.f, 180.f };
+				static bool tRead = false;
+				if ( !tRead )
+				{
+					tRead = true;
+					if ( const char* e = std::getenv( "MC2_MECHLAB_TUNE" ) )
+					{
+						int n = 0;
+						for ( const char* p = e; *p && n < 9; n++ )
+						{
+							t[n] = static_cast<float>( std::atof( p ) );
+							while ( *p && *p != ',' ) p++;
+							if ( *p == ',' ) p++;
+						}
+					}
+				}
+				mechCamera.setFramedPose( t[0], t[1], t[2], t[3], t[4] );
+				mechCamera.setFramedLights( true, t[5], t[6], t[7], t[8] );
+			}
 		}
 
 
@@ -991,6 +1013,8 @@ void MechLabScreen::render(int xOffset, int yOffset)
 			x = minX;
 			for ( int i = 0; i < pVariant->getComponentAreaWidth(); i++ )
 			{
+				// 3D mech behind: cell art faint so the mech reads through the grid.
+				payloadIcon.setColor( gridBridge ? 0x38ffffff : 0xffffffff );
 				payloadIcon.render( x + xOffset, y + yOffset );
 				x += payloadIcon.width();	
 			}

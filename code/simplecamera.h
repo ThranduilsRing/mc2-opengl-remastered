@@ -52,6 +52,14 @@ public:
 	void drawPreviewToPanel( float panelX, float panelY, float panelW, float panelH ) const;
 
 	bool hasObject() const { return pObject != nullptr; }
+	// Mech-lab framing: fitK scales the shape to K/boundsRadius (every mech the same size on screen);
+	// yaw is degrees off the camera axis, pitch the view angle, fx/fy shift the mech in the rect.
+	void setFramedPose( float fitK, float yaw, float pitch, float fx, float fy )
+	{ fitK_ = fitK; fitRadius_ = 0.f; framedPitch_ = pitch; fudgeX = fx; fudgeY = fy; rotation = yaw; framed_ = true; applyYaw_ = true; }
+	// Extra fill/rim infinite lights (degrees pitch, yaw) on top of the camera's key light.
+	void setFramedLights( bool on, float fillPitch, float fillYaw, float rimPitch, float rimYaw )
+	{ framedLights_ = on; framedLightPitch_[0] = fillPitch; framedLightYaw_[0] = fillYaw; framedLightPitch_[1] = rimPitch; framedLightYaw_[1] = rimYaw; }
+	float framedLightPitch_[2] = {}, framedLightYaw_[2] = {};
 	void setScale( float newScale );
 	void setRotation( float rotation );
 	void zoomIn( float howMuch ); // scale for things that can't 
@@ -92,6 +100,8 @@ private:
 	bool				bIsInMission;
 	float				shapeScale;
 	bool				drawOffscreen_ = false;   // PREVIEW-FBO-FIXED-800x600-1
+	float				fitK_ = 0.f, fitRadius_ = 0.f, framedPitch_ = 0.f;
+	bool				framed_ = false, applyYaw_ = false, framedLights_ = false;
 
     bool                bContextNotSet;
 

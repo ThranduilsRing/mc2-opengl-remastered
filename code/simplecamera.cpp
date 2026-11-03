@@ -311,7 +311,20 @@ void SimpleCamera::render(long xOffset, long yOffset)
 				const float offsetX = (bounds[2] + bounds[0] - viewMulX) / 2.f + fudgeX;
 				const float offsetY = (bounds[1] + bounds[3] - viewMulY) / 2.f + fudgeY;
 				tglView.SetViewport(viewMulX,viewMulY,offsetX,offsetY);
-				previewShape->PreviewDraw(getViewUniforms());
+				auto view = getViewUniforms();
+				if ( framedLights_ )
+				{
+					// Fill (cool, low, from the opposite side of the key) and rim (from behind, above).
+					auto addLight = [&view]( float pitchDeg, float yawDeg, DWORD argb ) {
+						glm::mat4 m;
+						mc2::math::buildTranslation( m, glm::vec3( 0.0f, 0.0f, 0.0f ) );
+						mc2::math::buildRotation( m, mc2::math::Euler( pitchDeg * DEGREES_TO_RADS, yawDeg * DEGREES_TO_RADS, 0.0f ) );
+						view.lights.push_back( { TG_LIGHT_INFINITE, argb, m } );
+					};
+					addLight( framedLightPitch_[0], framedLightYaw_[0], 0xff5a6a80 );
+					addLight( framedLightPitch_[1], framedLightYaw_[1], 0xffa0a8b8 );
+				}
+				previewShape->PreviewDraw(view);
 			}
 			else
 				pObject->render();
@@ -455,10 +468,24 @@ long SimpleCamera::update()
 		eye = this;
 		Camera::update();
 
+		if ( framed_ )
+			projectionAngle = framedPitch_;
 		ZoomTight();
-		
+
 		pObject->recalcBounds();
-		pObject->scale(shapeScale);
+		if ( fitK_ > 0.f )
+		{
+			if ( fitRadius_ <= 0.f )
+			{
+				fitRadius_ = pObject->getRadius();
+				MC2_LOG(Ui, Info, "[MECHLAB3D] fit radius={:.2f} k={:.2f} chassisScale={:.3f}", fitRadius_, fitK_, shapeScale);
+			}
+			pObject->scale( fitRadius_ > 0.f ? fitK_ / fitRadius_ : shapeScale );
+		}
+		else
+			pObject->scale(shapeScale);
+		if ( applyYaw_ )
+			pObject->rotation = this->rotation;
 
 		// we don't want to center around the feet
 		glm::vec3 mechPos = pObject->getRootNodeCenter();
