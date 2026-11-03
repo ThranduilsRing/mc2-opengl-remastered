@@ -2050,6 +2050,17 @@
    "count": 3
   },
   {
+   "tag": "COMMANDER_TEAM",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "commander",
+    "logistics_team",
+    "part_team"
+   ],
+   "count": 1
+  },
+  {
    "tag": "CONE_AIM_DIAG",
    "ver": 1,
    "stream": "stderr",
