@@ -72,6 +72,7 @@ template<int K> struct LcsScope {
 } // namespace
 
 extern bool g_previewCaptureBounds;
+extern bool g_previewBoundsOnly;
 extern float g_previewBoundsMinX;
 extern float g_previewBoundsMaxX;
 extern float g_previewBoundsMinY;

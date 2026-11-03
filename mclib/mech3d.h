@@ -589,6 +589,8 @@ class Mech3DAppearance: public ObjectAppearance
 		virtual long render (long depthFixup = 0);
 		// UI preview (SimpleCamera): sets the paint scheme and highlight, returns the shape for TG_MultiShape::PreviewDraw.
 		TG_MultiShape* previewShape (void);
+		// Mech lab: stages this actor through the GPU mech batcher (light row 0, no fog). False = keep the CPU draw.
+		bool submitPreviewGpu (void);
 		virtual long renderShadows (void);
 
 		virtual void updateFootprints (void);

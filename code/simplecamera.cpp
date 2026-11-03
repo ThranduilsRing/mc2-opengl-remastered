@@ -4,6 +4,9 @@
 #include "Gates/preferences_legacy.h"
 #include "../GameOS/gameos/ui_texture.h"
 #include "../GameOS/gameos/vulkan_legacy_shape_island.h"
+#include "../GameOS/gameos/vulkan_mech_island.h"
+#include "../GameOS/gameos/gos_mech_batcher.h"
+#include "../GameOS/gameos/gos_postprocess.h"
 /*************************************************************************************************\
 SimpleCamera.cpp	: Implementation of the SimpleCamera component.
 //---------------------------------------------------------------------------//
@@ -30,7 +33,55 @@ SimpleCamera.cpp	: Implementation of the SimpleCamera component.
 
 // Screen-space extents of the last PreviewDraw (mclib/tgl.cpp, filled in preview_draw.cpp).
 extern bool g_previewCaptureBounds;
+extern bool g_previewBoundsOnly;
 extern float g_previewBoundsMinX, g_previewBoundsMaxX, g_previewBoundsMinY, g_previewBoundsMaxY;
+extern std::atomic<uint32_t> g_mc2FrameCounter;
+void ProbeGatherLightsForList(TG_LightPtr* lights, unsigned long nLights, TG_HWLightsData* out);
+
+#ifdef MC2_VULKAN_ISLAND
+// Mech lab: the in-game GPU mech material path into the panel (vulkan_mech_island.cpp, preview pass). One GPU
+// panel mech per frame (the batcher snapshot holds one flush); a second camera that frame keeps its CPU draw.
+// Returns true when a request was posted; the CPU draw may still be needed until the island reports a draw.
+static bool postMechPreviewGpu( Camera& cam, Mech3DAppearance* mech, float vpX, float vpY, float vpW, float vpH )
+{
+	static uint32_t s_lastFrame = 0xffffffffu;
+	const uint32_t frame = g_mc2FrameCounter.load( std::memory_order_relaxed );
+	if ( frame == s_lastFrame || !mc2_vk_mech_preview_usable() )
+		return false;
+	if ( !mech->submitPreviewGpu() )
+		return false;
+	GpuMechBatcher::instance().flush();
+	s_lastFrame = frame;
+
+	static TG_HWLightsData s_row;	// the lab actor's single light row (lightDataIndex 0)
+	ProbeGatherLightsForList( cam.getWorldLights(), static_cast<unsigned long>( cam.getNumLights() ), &s_row );
+	Mc2MechPreviewRequest q{};
+	const glm::mat4 m = cam.worldToClipGL();	// column-major; the island takes row-major (GL_FALSE), as gamecam.cpp packs it
+	const float* col = &m[0][0];
+	for ( int r = 0; r < 4; ++r )
+		for ( int c = 0; c < 4; ++c )
+			q.worldToClipGL[r * 4 + c] = col[c * 4 + r];
+	const glm::vec3 eye = cam.cameraOriginGL();
+	q.cameraWorldPos[0] = eye.x; q.cameraWorldPos[1] = eye.y; q.cameraWorldPos[2] = eye.z; q.cameraWorldPos[3] = 1.0f;
+	q.lights = &s_row;
+	q.lightBytes = sizeof( s_row );
+	q.vpX = static_cast<int>( lroundf( vpX ) ); q.vpY = static_cast<int>( lroundf( vpY ) );
+	q.vpW = static_cast<int>( lroundf( vpW ) ); q.vpH = static_cast<int>( lroundf( vpH ) );
+	q.exposure = 1.0f;
+	if ( gosPostProcess* pp = getGosPostProcess() )
+	{
+		q.sceneW = pp->getWidth();
+		q.sceneH = pp->getHeight();
+	}
+	if ( q.sceneW <= 0 || q.sceneH <= 0 )
+	{
+		q.sceneW = Environment.screenWidth;
+		q.sceneH = Environment.screenHeight;
+	}
+	mc2_vk_mech_preview_request( &q );
+	return true;
+}
+#endif
 
 extern bool drawOldWay;
 extern bool useFog;
@@ -303,8 +354,13 @@ void SimpleCamera::render(long xOffset, long yOffset)
 				drawOldWay = true;
 			// Mechs, vehicles and components draw through TG_MultiShape::PreviewDraw (preview_draw.cpp).
 			TG_MultiShape* previewShape = nullptr;
+			Mech3DAppearance* labMech = nullptr;	// worldless panel mech: candidate for the GPU material path
 			if ( auto* mech = dynamic_cast<Mech3DAppearance*>(pObject.get()) )
+			{
 				previewShape = mech->previewShape();
+				if ( isPanelPreview && mission == nullptr )
+					labMech = mech;
+			}
 			else if ( auto* bldg = dynamic_cast<BldgAppearance*>(pObject.get()) )
 				previewShape = bldg->previewShape();
 			else if ( auto* gv = dynamic_cast<GVAppearance*>(pObject.get()) )
@@ -331,7 +387,15 @@ void SimpleCamera::render(long xOffset, long yOffset)
 					g_previewBoundsMinX = g_previewBoundsMinY = 1e9f;
 					g_previewBoundsMaxX = g_previewBoundsMaxY = -1e9f;
 				}
+				bool gpuDraws = false;
+#ifdef MC2_VULKAN_ISLAND
+				if ( labMech && postMechPreviewGpu( *this, labMech, offsetX, offsetY, viewMulX, viewMulY ) )
+					gpuDraws = mc2_vk_mech_preview_drew_last() != 0;
+#endif
+				// With the GPU path drawing, PreviewDraw only projects (the framing bounds below).
+				g_previewBoundsOnly = gpuDraws;
 				previewShape->PreviewDraw(view);
+				g_previewBoundsOnly = false;
 				if ( framed_ )
 				{
 					g_previewCaptureBounds = false;

@@ -31,6 +31,7 @@ DWORD					TG_Shape::s_numLights = 0;
 // [UI-PHASE1] carried from mc2r_ui_phase1 (base->theirs hunk @tgl.cpp:90-105);
 // consumed by code/simplecamera.cpp + code/mechlopedia.cpp (Mechlopedia/Mechbay preview).
 bool  g_previewCaptureBounds = false;
+bool  g_previewBoundsOnly = false;	// PreviewDraw projects (bounds) but emits no triangles (mech lab GPU path)
 float g_previewBoundsMinX =  1e9f;
 float g_previewBoundsMaxX = -1e9f;
 float g_previewBoundsMinY =  1e9f;

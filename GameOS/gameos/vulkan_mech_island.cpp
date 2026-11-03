@@ -1212,10 +1212,13 @@ bool record_mech_preview(MechIsland* s, VkCommandBuffer cb, const Mc2MechFrameFe
     MC2_VK_GPU_SCOPE(gpuScope, cb, "VKIsl.MechPreview");
     vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
     const auto& q = g_previewReq;
-    const int x0 = std::clamp(q.vpX, 0, w - 1), y0 = std::clamp(q.vpY, 0, h - 1);
-    const int x1 = std::clamp(q.vpX + q.vpW, x0 + 1, w), y1 = std::clamp(q.vpY + q.vpH, y0 + 1, h);
+    // The request rect is in screen pixels (y down); the preview target stores rows bottom-up (GL texture
+    // convention, drawPreviewToPanel flips v), so the panel's top edge sits at row h - vpY.
+    const int vy = h - q.vpY - q.vpH;
+    const int x0 = std::clamp(q.vpX, 0, w - 1), y0 = std::clamp(vy, 0, h - 1);
+    const int x1 = std::clamp(q.vpX + q.vpW, x0 + 1, w), y1 = std::clamp(vy + q.vpH, y0 + 1, h);
     // The viewport is the full panel rect (it may hang off the target); the scissor clips it to the target.
-    VkViewport vp{float(q.vpX), float(q.vpY), float(q.vpW), float(q.vpH), 0.0f, 1.0f};
+    VkViewport vp{float(q.vpX), float(vy), float(q.vpW), float(q.vpH), 0.0f, 1.0f};
     VkRect2D scissor{{x0, y0}, {uint32_t(x1 - x0), uint32_t(y1 - y0)}};
     vkCmdSetViewport(cb, 0, 1, &vp);
     vkCmdSetScissor(cb, 0, 1, &scissor);
@@ -1251,7 +1254,18 @@ extern "C" void mc2_vk_mech_preview_request(const Mc2MechPreviewRequest* r) {
 
 extern "C" int mc2_vk_mech_preview_usable(void) { return (g_previewUnusable || g_mechSessionDeclined) ? 0 : 1; }
 
+namespace { bool g_previewDrewLast = false; }
+extern "C" int mc2_vk_mech_preview_drew_last(void) { return g_previewDrewLast ? 1 : 0; }
+
+static int mech_preview_flush_impl(void* colorView, void* normalView, void* depthView, int w, int h);
 extern "C" int mc2_vk_mech_preview_flush(void* colorView, void* normalView, void* depthView, int w, int h) {
+    if (!g_previewPending) return 0;
+    const int drew = mech_preview_flush_impl(colorView, normalView, depthView, w, h);
+    g_previewDrewLast = drew != 0;
+    return drew;
+}
+
+static int mech_preview_flush_impl(void* colorView, void* normalView, void* depthView, int w, int h) {
     if (!g_previewPending) return 0;
     g_previewPending = false;
     if (g_previewUnusable || g_mechSessionDeclined || !colorView || !normalView || !depthView || w <= 0 || h <= 0) return 0;
