@@ -14,7 +14,8 @@ using namespace mc2shadow;
 
 TEST_CASE("GPU residency: physical headroom, preset ceiling and overlap admission") {
     using namespace RenderCore;
-    CHECK(gpuBudget(512*gpuMiB,512*gpuMiB)==256*gpuMiB);   // 256 MiB absolute margin
+    CHECK(gpuBudget(512*gpuMiB,512*gpuMiB)==384*gpuMiB);   // 256 MiB margin, capped at a quarter of a 512 MiB heap (128 MiB)
+    CHECK(gpuBudget(2048*gpuMiB,UINT64_MAX)==1792*gpuMiB);  // 256 MiB absolute margin
     CHECK(gpuBudget(256*gpuMiB,512*gpuMiB)==192*gpuMiB);   // margin capped at a quarter of a small heap
     CHECK(gpuBudget(16*gpuMiB,512*gpuMiB)==12*gpuMiB);
     CHECK(gpuBudget(24*1024*gpuMiB,UINT64_MAX)==24*1024*gpuMiB-24*1024*gpuMiB/10); // large heaps keep 10%
