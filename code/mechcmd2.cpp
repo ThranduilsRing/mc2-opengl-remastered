@@ -10,6 +10,7 @@
 //===========================================================================//
 
 #include "mechcmd2_internal.h"
+#include "startup_preload.h"
 #include "render_resource_owners.h"
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"   // str<>()
@@ -579,6 +580,9 @@ void __stdcall InitializeGameEngine()
 			// MC2Strings may have already fired Load() before this point (with
 			// an empty mod index); LoadModFits() bypasses the one-shot guard.
 			MC2Strings::LoadModFits();
+			// Warm the OS file cache for the archives and mod files while init, the intro and the menu run.
+			if (!justStartMission)
+				startStartupPreload();
 
 			long result = systemFile.seekBlock("UseMusic");
 			if (result == NO_ERR)
