@@ -280,6 +280,7 @@ namespace {
     // so dynamic appends never collide into [0..S).
     static std::unordered_map<int32_t, TG_HWLightsData> s_bakedStaticLight;
     static uint32_t                                      s_staticLightHighWater = 0;
+    static std::atomic<uint32_t>                         s_lightResetEpoch{1};
     // [LIGHTSLOT v1] diagnostic-only counters (Task 0 cardinality gate). Pure
     // counting, no behavior change. Read via mc2LightSlot* accessors below.
     static uint64_t s_lightSlotDedupHits = 0;   // addLightDataStructure FNV+memcmp matches
@@ -479,6 +480,7 @@ void mc2WriteStaticLightSlot(int32_t recipeIndex, const TG_HWLightsData& baked)
 // [LIGHTSLOT v1] Task 0 cardinality-gate accessors (diagnostic only).
 // B = permanent baked static slots (high-water); H components = dedup +
 // actor-key cache hits; U-source = total live light-table count.
+uint32_t mc2LightResetEpoch()           { return s_lightResetEpoch.load(std::memory_order_relaxed); }
 uint32_t mc2LightSlotBakedHighWater()   { return s_staticLightHighWater; }
 uint64_t mc2LightSlotDedupHits()         { return s_lightSlotDedupHits; }
 uint64_t mc2LightSlotActorKeyHits()      { return s_lightSlotActorKeyHits; }
@@ -605,6 +607,7 @@ void mc2::vkLights::resetLightData()
 
     auto& packet = writablePacket();
     packet.key = ++s_nextPacketKey;
+    s_lightResetEpoch.fetch_add(1, std::memory_order_relaxed);
     // [LIGHTBAKE v2] Rebase the DYNAMIC allocator base to S (the static
     // prefix high-water) when the bake is on, so dynamic appends start
     // above [0..S) and addLightDataStructure never returns a slot < S

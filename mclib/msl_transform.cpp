@@ -245,6 +245,7 @@ void TG_MultiShape::CacheGpuLightData()
 
     if (firstShapeNodeLeaf != nullptr) {
         cachedGpuLightIndex_ = firstShapeNodeLeaf->GatherGpuObjectLightDataOnly();
+        cachedLightEpoch_    = mc2LightResetEpoch();
         cachedFrame_         = mc2::overlap::simulationFrame(g_mc2FrameCounter);
     }
 }
@@ -269,6 +270,7 @@ void TG_MultiShape::CacheGpuLightDataAllLeaves()
         if (first) {
             first = false;
             cachedGpuLightIndex_ = idx;
+            cachedLightEpoch_    = mc2LightResetEpoch();
             cachedFrame_         = mc2::overlap::simulationFrame(g_mc2FrameCounter);
         }
     }
@@ -316,7 +318,19 @@ void TG_MultiShape::EmitBakedGpuLightData(int32_t recipeIndex, const TG_HWLights
     // -> ~0 for the static class (the ~1840 calls/~1ms/frame survivor).
     (void)baked;  // identity is recipeIndex; the struct already persists in the slot
     cachedGpuLightIndex_ = static_cast<uint32_t>(recipeIndex);
+    cachedLightEpoch_    = mc2LightResetEpoch();
     cachedFrame_         = mc2::overlap::simulationFrame(g_mc2FrameCounter);
+}
+
+extern uint32_t mc2LightResetEpoch();
+extern uint32_t mc2LightSlotBakedHighWater();
+// A dynamic light slot (index >= S) is valid only for the resetLightData epoch it was minted in.
+// A static slot (< S) is permanent. Anything else names a rebased/foreign row (zero_row_reached_gpu).
+bool TG_MultiShape::cachedLightIndexStale() const
+{
+    if (cachedGpuLightIndex_ == 0xFFFFFFFFu) return false;
+    if (cachedGpuLightIndex_ < mc2LightSlotBakedHighWater()) return false;
+    return cachedLightEpoch_ != mc2LightResetEpoch();
 }
 
 void TG_MultiShape::ResubmitCachedGpuLightData()
@@ -337,7 +351,8 @@ void TG_MultiShape::ResubmitCachedGpuLightData()
     extern bool mc2LightBridgeRepointEnabled();
     if (mc2LightBridgeRepointEnabled() &&
         cachedFrame_ == mc2::overlap::simulationFrame(g_mc2FrameCounter) &&
-        cachedGpuLightIndex_ != 0xFFFFFFFFu) {
+        cachedGpuLightIndex_ != 0xFFFFFFFFu &&
+        !cachedLightIndexStale()) {
         static bool s_c6Logged = false;
         if (!s_c6Logged) {
             s_c6Logged = true;
@@ -360,6 +375,7 @@ void TG_MultiShape::ResubmitCachedGpuLightData()
 
     if (firstShapeNodeLeaf != nullptr) {
         cachedGpuLightIndex_ = firstShapeNodeLeaf->ResubmitCachedLightData();
+        cachedLightEpoch_    = mc2LightResetEpoch();
         cachedFrame_         = mc2::overlap::simulationFrame(g_mc2FrameCounter);
     }
 }
