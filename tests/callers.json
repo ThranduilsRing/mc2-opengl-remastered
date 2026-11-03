@@ -66,7 +66,7 @@
         },
         {
           "path": "tools/lane_merge.py",
-          "line": 838,
+          "line": 942,
           "evidence": "import",
           "reference": "bootstrap_worktree_build",
           "text": "from bootstrap_worktree_build import ensure_deps"
@@ -87,7 +87,7 @@
         },
         {
           "path": "tools/test_lane_merge.py",
-          "line": 65,
+          "line": 66,
           "evidence": "import",
           "reference": "bootstrap_worktree_build",
           "text": "import bootstrap_worktree_build as bwb"
@@ -3774,7 +3774,7 @@
         },
         {
           "path": "tools/test_lane_merge.py",
-          "line": 14,
+          "line": 15,
           "evidence": "import",
           "reference": "console_child",
           "text": "import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)"
@@ -4008,7 +4008,7 @@
         },
         {
           "path": "scripts/merge_gate.py",
-          "line": 1104,
+          "line": 1119,
           "evidence": "import",
           "reference": "deploy_payload",
           "text": "from deploy_payload import verify_published_identity"
@@ -4356,6 +4356,13 @@
           "evidence": "import",
           "reference": "exe_fingerprint",
           "text": "import exe_fingerprint as ef"
+        },
+        {
+          "path": "tools/lane_merge.py",
+          "line": 701,
+          "evidence": "import",
+          "reference": "exe_fingerprint",
+          "text": "from exe_fingerprint import extract, sha_agrees"
         }
       ]
     },
@@ -11398,35 +11405,35 @@
         },
         {
           "path": "tools/test_lane_merge.py",
-          "line": 77,
+          "line": 78,
           "evidence": "import",
           "reference": "tools.lane_merge",
           "text": "from tools import lane_merge as lm"
         },
         {
           "path": "tools/test_lane_merge.py",
-          "line": 100,
+          "line": 101,
           "evidence": "import",
           "reference": "tools.lane_merge",
           "text": "from tools import lane_merge as lm"
         },
         {
           "path": "tools/test_lane_merge.py",
-          "line": 122,
+          "line": 123,
           "evidence": "import",
           "reference": "tools.lane_merge",
           "text": "from tools import lane_merge as lm"
         },
         {
           "path": "tools/test_lane_merge.py",
-          "line": 133,
+          "line": 134,
           "evidence": "import",
           "reference": "tools.lane_merge",
           "text": "from tools import lane_merge as lm"
         },
         {
           "path": "tools/test_lane_merge.py",
-          "line": 401,
+          "line": 402,
           "evidence": "import",
           "reference": "lane_merge",
           "text": "import lane_merge as lm  # noqa: E402"
