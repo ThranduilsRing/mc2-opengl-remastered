@@ -122,7 +122,7 @@ extern "C" int mc2_vk_water_island_prewarm(int w,int h) {
     const auto capacity = WaterStream::GetNativeCapacity();
     if (!capacity) return 0;
     // The first feed's visibility test builds the shore-field wet tables; do it here, with the field mode the feed will use.
-    if (gos_WaterShoreMode() == 3 && s->shHReal && s->shHSdf) WaterStream::PrewarmShoreFieldCoverage();
+    if (gos_WaterShoreMode() == 3 && s->shHSourceReal && s->shHSdf) WaterStream::PrewarmShoreFieldCoverage();
     gos_terrain_lighting::VkProducerSnapshot light{};
     light.numVertices = capacity->vertices;
     mc2vk::WaterCullFrame water{};
