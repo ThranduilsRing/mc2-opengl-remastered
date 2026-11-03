@@ -1,6 +1,6 @@
 // LOD-chunk terrain: shared height/type/cement inputs, Init and Destroy and the
 // shared sampler/uniform plumbing. Draw, upload, VK feed, patch cache, material albedo and the tuning caches live in
-// gos_terrain_lod_chunk_{draw,upload,feed,patch,matalbedo,gates}.cpp; what they share is gos_terrain_lod_chunk_internal.h.
+// gos_terrain_lod_chunk_{draw,upload,feed,patch,gates}.cpp; what they share is gos_terrain_lod_chunk_internal.h.
 
 #include "gos_terrain_lod_chunk_internal.h"
 #include "mc2fmt.h"
