@@ -5,6 +5,7 @@
 #include <cstdio>
 #include "logisticsdata_internal.h"
 #include "mc2fmt.h"
+#include "content_error.h"
 #include "../GameOS/gameos/diagnostic_trace.h"
 #include "package_chassis.h"
 #include "../GameOS/gameos/utils/mc2log.h"
@@ -389,7 +390,7 @@ void LogisticsData::initVariants()
 				{
 					// File Name cell >= 256 chars: copyString leaves csvName unterminated. Skip the row.
 					csvName[sizeof( csvName ) - 1] = '\0';
-					std::fprintf( stderr, "[CONTENT] kind=csv path=%s msg=File Name over %d chars, row %d skipped\n", "Buildings.csv", (int)sizeof( csvName ) - 1, (int)i );
+					mc2::content::error( mc2::content::Kind::MissionData, "Buildings.csv", "File Name cell over 255 chars, row skipped" );
 					i++;
 					continue;
 				}
@@ -410,7 +411,7 @@ void LogisticsData::initVariants()
 				{
 					// File Name cell >= 256 chars: copyString leaves csvName unterminated. Skip the row.
 					csvName[sizeof( csvName ) - 1] = '\0';
-					std::fprintf( stderr, "[CONTENT] kind=csv path=%s msg=File Name over %d chars, row %d skipped\n", "Buildings.csv", (int)sizeof( csvName ) - 1, (int)i );
+					mc2::content::error( mc2::content::Kind::MissionData, "Buildings.csv", "File Name cell over 255 chars, row skipped" );
 					i++;
 					continue;
 				}

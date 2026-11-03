@@ -27,6 +27,7 @@
 
 from __future__ import annotations
 
+import _winapi
 import argparse
 import csv
 import datetime as dt
@@ -899,7 +900,7 @@ def link_mod_layers(staged: Path, layers) -> None:
     for layer in layers:
         dest = mods / layer.name
         if not dest.exists():
-            subprocess.run(['cmd', '/c', 'mklink', '/J', str(dest), str(layer)], capture_output=True, check=False)
+            _winapi.CreateJunction(str(layer), str(dest))
 
 
 def front_end_walk(staged: Path, folder: str, secs: int = FRONT_END_SECS, layers=()) -> dict:
