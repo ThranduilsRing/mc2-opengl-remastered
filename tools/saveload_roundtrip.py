@@ -29,6 +29,7 @@ import subprocess
 import sys
 import tempfile
 
+RUN_TIMEOUT: float | None = None  # wall seconds for the run_smoke child (resave --timeout); None waits as before
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.abspath(os.path.join(HERE, ".."))
 sys.path.insert(0, HERE)
@@ -337,7 +338,7 @@ def run_fixture(mission: str, save_at: int, load_at: int, deploy: bool, out: str
                             *smoke_target(install, ref_exe, ref_commit), "--keep-logs", *speed_args(sim_speed),
                             # headless: no window or GPU; the run ends on a tick budget past the quickload and its re-save
                             *(["--headless", "--ticks", str(headless_ticks)] if headless else [])], env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, errors="replace",
-                           **console_child.child_kwargs(redirected=True))
+                           timeout=RUN_TIMEOUT, **console_child.child_kwargs(redirected=True))
         with open(os.path.join(dest, "runner.txt"), "w", encoding="utf-8") as fh:
             fh.write(r.stdout)
         for line in r.stdout.splitlines():  # forward the perf WARN so the gate row shows it (merge_gate.perf_warn_status)
@@ -670,8 +671,13 @@ def cmd_fixture(args) -> int:
         print(f"saveload_roundtrip {args.cmd}: FAIL\n" + refusal)
         return 1
     speed = args.sim_speed or (base or {}).get("sim_speed", 1)
-    dest, first, second, fp, rc = run_fixture(args.mission, args.save_at, args.load_at, args.deploy, args.out, args.duration, args.plant,
-                                             args.install, args.save_dir, args.ref_exe, args.ref_commit, sim_speed=speed, headless=args.headless)
+    try:
+        dest, first, second, fp, rc = run_fixture(args.mission, args.save_at, args.load_at, args.deploy, args.out, args.duration, args.plant,
+                                                 args.install, args.save_dir, args.ref_exe, args.ref_commit, sim_speed=speed, headless=args.headless)
+    except subprocess.TimeoutExpired as e:
+        tail = (e.stdout or "")[-600:] if isinstance(e.stdout, str) else ""
+        print(f"saveload_roundtrip: the run exceeded --timeout {RUN_TIMEOUT:g}s and was stopped\n{tail}")
+        return 1
     ok, lines = fixture_verdict(first, second, args.mask, rc)
     print(f"files kept in {dest}")
     if args.cmd == "resave":
@@ -725,6 +731,7 @@ def main(argv=None) -> int:
         p.add_argument("--load-at", type=int, help=f"fixed tick of the quickload (check: the baseline's; else {DEFAULT_LOAD_AT})")
         p.add_argument("--duration", type=int, default=28)
         p.add_argument("--deploy", action="store_true")
+        p.add_argument("--timeout", type=float, help="wall seconds for the whole run_smoke child (lease wait included); a hung run dies with an error")
         p.add_argument("--out", help="keep save1.ims, save2.ims and the run here (default: a temporary directory)")
         p.add_argument("--plant", help="resave: put this save where the quickload reads it instead of writing one; requires --save-at 0 "
                                         "(the engine writes no re-save after a planted load)")
@@ -756,6 +763,8 @@ def main(argv=None) -> int:
     a.add_argument("--frames", type=int, default=60)
     sub.add_parser("selftest")
     args = ap.parse_args(argv)
+    global RUN_TIMEOUT
+    RUN_TIMEOUT = getattr(args, "timeout", None)
     if args.cmd == "selftest":
         return selftest()
     if args.cmd in ("resave", "baseline", "check"):
