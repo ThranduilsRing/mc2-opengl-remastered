@@ -3162,6 +3162,7 @@ flags:
     rule: Std
     owner: code
     doc: "Dev-only: order the home lance to world position x,y during a mission test."
+    smoke_passthrough: true
     verified: true
   - name: MC2_PLAY_MISSION_INVULNERABLE
     kind: Bool

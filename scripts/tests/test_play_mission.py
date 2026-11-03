@@ -58,3 +58,24 @@ def test_harness_failure_overrides_engine_pass(monkeypatch, capsys):
     text = capsys.readouterr().out
     assert "verdict=ERROR" in text
     assert "passed=0 failed=1 total=1" in text
+
+
+def test_goto_and_mod_flags_set_env_and_allow_any_mission(monkeypatch):
+    def run(cmd, **kwargs):
+        env = kwargs["env"]
+        assert env["MC2_PLAY_MISSION_GOTO"] == "1706,5560"
+        assert (env["MC2_ACTIVE_MOD"], env["MC2_MOD_DEPS"], env["MC2_BOOT_TO_BAY"]) == ("MC2X-DEE", "mc2x-compat", "campaign")
+        assert "--allow-any-mission" in cmd
+        return type("Result", (), {"returncode": 0, "stdout": "[MISSION_VERDICT v1] verdict=PASS passed=1\n"})()
+    monkeypatch.setattr(driver.subprocess, "run", run)
+    assert driver.main(["--mission", "basindrylands", "--goto", "1706,5560", "--mod", "MC2X-DEE:mc2x-compat:campaign"]) == 0
+
+
+def test_no_goto_or_mod_leaves_run_unchanged(monkeypatch):
+    def run(cmd, **kwargs):
+        assert "MC2_PLAY_MISSION_GOTO" not in kwargs["env"] or kwargs["env"]["MC2_PLAY_MISSION_GOTO"] == __import__("os").environ.get("MC2_PLAY_MISSION_GOTO")
+        assert "--allow-any-mission" not in cmd
+        return type("Result", (), {"returncode": 0, "stdout": "[MISSION_VERDICT v1] verdict=PASS passed=1\n"})()
+    monkeypatch.setattr(driver.subprocess, "run", run)
+    monkeypatch.delenv("MC2_PLAY_MISSION_GOTO", raising=False)
+    assert driver.main(["--mission", "mc2_01"]) == 0

@@ -92,7 +92,7 @@ def main(argv=None):
     if not names:
         ap.error("--batch must contain at least one mission")
     seconds = max(1, round(args.minutes * 60))
-    passed = sum(run_mission(name, args.install, seconds, bool(args.batch), **({"invulnerable": True} if args.invulnerable else {}), **({"sim_speed": args.sim_speed} if args.sim_speed != 1 else {}), goto=args.goto, mod=args.mod) for name in names)
+    passed = sum(run_mission(name, args.install, seconds, bool(args.batch), **({"invulnerable": True} if args.invulnerable else {}), **({"sim_speed": args.sim_speed} if args.sim_speed != 1 else {}), **({"goto": args.goto} if args.goto else {}), **({"mod": args.mod} if args.mod else {})) for name in names)
     if args.batch:
         print(f"[MISSION_BATCH v1] passed={passed} failed={len(names) - passed} total={len(names)}", flush=True)
     return 0 if passed == len(names) else 1

@@ -98,13 +98,13 @@ void Mission::updateMissionTest(bool report) {
             Team::noPain[Team::home->getId()] = true;
         if (mc2::gate::get<"MC2_PLAY_MISSION_SKIP_CINEMATICS">() && eye && eye->inMovieMode)
             eye->forceMovieToEnd();
-        // Dev-only: send the home lance to a world position ("x,y"), re-ordered every ~5 s until it is near.
+        // Dev-only: send the home lance to a world position ("x,y"), re-ordered every ~30 s until it is near.
         // Used to settle "do the enemies react when the player is inside their radius".
         const std::string gotoSpec = mc2::gate::str<"MC2_PLAY_MISSION_GOTO">();
         static int gotoTick = 0;
         float gx = 0.0f, gy = 0.0f;
         if (!gotoSpec.empty() && eye && !eye->inMovieMode && std::sscanf(gotoSpec.c_str(), "%f,%f", &gx, &gy) == 2 &&
-            (gotoTick++ % 150) == 0) {
+            (gotoTick++ % 900) == 0) {
             for (int mi = 0; mi < ObjectManager->numMechs; ++mi) {
                 BattleMech* pM = ObjectManager->getMech(mi);
                 if (!pM || pM->isDisabled() || pM->isDestroyed() || pM->getTeamId() != Team::home->id) continue;
