@@ -2192,6 +2192,22 @@
   {
    "tag": "CONTENT",
    "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "kind",
+    "path",
+    "msg",
+    "statics",
+    "rects",
+    "buttons",
+    "texts",
+    "edits"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "CONTENT",
+   "ver": -1,
    "stream": "stdout",
    "keys": [
     "active",
