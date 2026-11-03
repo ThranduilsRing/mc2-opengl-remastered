@@ -142,7 +142,7 @@ int mc2_vk_mech_island_run(int w, int h);
 // The lab stages its actor through the batcher (submitActor + flush builds the feed),
 // then posts a request; the preview dispatch (vulkan_legacy_shape_island.cpp) runs
 // the flush right after its own pass so the mech LOADs over the panel backdrop.
-typedef struct Mc2MechPreviewRequest {
+struct Mc2MechPreviewRequest {
     float worldToClipGL[16];   // same convention as Mc2MechFrameFeed::worldToClipGL (MC2 world -> preview clip, reverse-Z)
     float cameraWorldPos[4];   // GL world (same as Mc2MechFrameFeed::cameraWorldPos)
     const void* lights;        // GpuObjectLights rows (the lab actor submits lightDataIndex 0)
@@ -150,7 +150,7 @@ typedef struct Mc2MechPreviewRequest {
     int vpX, vpY, vpW, vpH;    // projection rect in the panel's 800x600 logical space (y down), = the CPU path's viewMul/offset
     float exposure;            // linear scale before the panel tonemap
     int sceneW, sceneH;        // shared scene target size (island init / world-run size match)
-} Mc2MechPreviewRequest;
+};
 // Posts (r != NULL) or cancels (NULL) the pending panel draw. The request is consumed by the next flush.
 void mc2_vk_mech_preview_request(const Mc2MechPreviewRequest* r);
 // Records + submits the pending panel draw into the preview target views (VkImageView handles).

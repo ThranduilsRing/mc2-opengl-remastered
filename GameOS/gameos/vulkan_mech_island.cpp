@@ -77,6 +77,7 @@
 #include <cstdint>
 #include <vector>
 #include <string>
+#include <string_view>
 #include <chrono>
 #include <map>
 #include <tuple>
@@ -1191,15 +1192,15 @@ bool g_previewUnusable = false;   // latched: a preview init/record failure keep
 Mc2MechPreviewRequest g_previewReq{};
 
 // First occurrence of each transient skip reason (the lab then keeps its CPU draw that frame).
-int previewSkip(const char* why) {
+int previewSkip(std::string_view why) {   // callers pass string literals
     static const char* s_last = nullptr;
-    if (why != s_last) { s_last = why; vlog("mech-lab preview skipped this frame (%s) -- CPU mech draw stays on.", why); }
+    if (why.data() != s_last) { s_last = why.data(); vlog("mech-lab preview skipped this frame (%.*s) -- CPU mech draw stays on.", int(why.size()), why.data()); }
     return 0;
 }
 
-int previewFail(const char* why) {
+int previewFail(std::string_view why) {
     g_previewUnusable = true;
-    vlog("mech-lab preview disabled (%s) -- the lab keeps the CPU mech draw.", why);
+    vlog("mech-lab preview disabled (%.*s) -- the lab keeps the CPU mech draw.", int(why.size()), why.data());
     return 0;
 }
 
