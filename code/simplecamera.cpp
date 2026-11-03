@@ -659,7 +659,17 @@ void SimpleCamera::setMech(const char* fileName, long baseColor, long highlight1
 	else
 		appearanceType = static_cast<Mech3DAppearanceType*>(appearanceTypeList->getAppearance( MECH_TYPE << 24, static_cast<char*>(NoPathFileName) ));
 
-	pObject = std::make_unique<Mech3DAppearance>();	
+	// A mod chassis with no tgl ini (or an empty base shape) leaves no object, so
+	// hasObject() stays false and the mech lab keeps its silhouette statics.
+	if ( !appearanceType || appearanceType->baseShapeLoadFailed )
+	{
+		if ( appearanceType )
+			appearanceTypeList->removeAppearance( appearanceType );
+		this->popContext();
+		return;
+	}
+
+	pObject = std::make_unique<Mech3DAppearance>();
 	pObject->init( appearanceType );
 	pObject->setGestureGoal(2);
 	pObject->resetPaintScheme( highlight1, highlight2, baseColor );
