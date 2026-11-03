@@ -79,6 +79,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 # OWNER RULE: the engine is launched through nofocus.spawn ONLY (background launch).
 from smoke_lib import host_lease, nofocus  # noqa: E402
 from smoke_lib import render_options_pin, render_resolution  # noqa: E402
+from smoke_lib import via_menu  # noqa: E402  (--via-menu: the player's boot path)
 import perf_baseline_report  # noqa: E402  (GPU memory of a trace: the VRAM plot and the [VRAM v1] log lines)
 
 DEFAULT_TRACY_DIR = Path("C:/Users/Joe/Downloads/TracyProfiler")
@@ -174,7 +175,7 @@ def vary_list(text) -> "list[str]":
     return [k.strip() for k in (text or "").split(",") if k.strip()]
 
 
-def game_env(arm: str, fixed_timestep: bool, fps_cap, pose, extra_env) -> dict:
+def game_env(arm: str, fixed_timestep: bool, fps_cap, pose, extra_env, via_menu_boot: bool = False) -> dict:
     """The environment the game runs under for a trace: the shell's, minus stray backend variables, plus the harness's settings, the pinned
     drawable size, the arm, and the caller's --env entries (which win). A function of its inputs so the pin is testable without an engine."""
     if arm not in ARMS:
@@ -232,6 +233,9 @@ def game_env(arm: str, fixed_timestep: bool, fps_cap, pose, extra_env) -> dict:
         env.update(VK_ENV)
         print("NOTE: VK arm -- keep the game window visible/non-minimized or VK "
               "fail-softs to GL and you profile the wrong present path.")
+    if via_menu_boot:
+        # The player's path: no smoke mode (so no fixed timestep and no --mission), the main menu starts the stock campaign itself.
+        via_menu.apply_via_menu_env(env)
     for kv in (extra_env or []):
         k, sep, v = kv.partition("=")
         if not sep:
@@ -243,7 +247,7 @@ def game_env(arm: str, fixed_timestep: bool, fps_cap, pose, extra_env) -> dict:
 
 def capture_trace(install: Path, arm: str, mission: str, seconds: int, out: Path,
                   extra_env=None, pose=None, fixed_timestep=True, fps_cap=None,
-                  show_window: bool = True, ticks: int = 0) -> int:
+                  show_window: bool = True, ticks: int = 0, via_menu_boot: bool = False) -> int:
     """Record one trace under the host lease; retain a caller's existing lease.
 
     Free timestep and an uncapped FPS limit measure renderer throughput.
@@ -257,7 +261,9 @@ def capture_trace(install: Path, arm: str, mission: str, seconds: int, out: Path
     out.parent.mkdir(parents=True, exist_ok=True)
     cap_exe = tracy_exe("tracy-capture.exe")
 
-    env = game_env(arm, fixed_timestep, fps_cap, pose, extra_env)   # before the recorder starts: a refused --env must leave nothing running
+    if via_menu_boot and ticks:
+        sys.exit("ERROR: --via-menu cannot be combined with --ticks (the tick budget is a smoke-mode exit)")
+    env = game_env(arm, fixed_timestep, fps_cap, pose, extra_env, via_menu_boot)   # before the recorder starts: a refused --env must leave nothing running
 
     with ExitStack() as cleanup:
         # The recorder must share the game's host lease so another lane cannot feed it a trace.
@@ -287,6 +293,8 @@ def capture_trace(install: Path, arm: str, mission: str, seconds: int, out: Path
                     "--duration", str(duration)]
         if ticks:
             game_cmd += ["--headless", "--ticks", str(ticks)]
+        if via_menu_boot:
+            game_cmd = via_menu.game_argv(game)   # no --mission/--duration: the recorder window (--seconds, which must cover menu + load) ends the run
         game_log = out.with_suffix(".game.log")
         game_lf = cleanup.enter_context(open(game_log, "w", encoding="utf-8", errors="replace"))
 
@@ -308,6 +316,12 @@ def capture_trace(install: Path, arm: str, mission: str, seconds: int, out: Path
               f"duration={duration}s fixed_ts={fixed_timestep} fps_cap={fps_cap} pose={pose}")
 
         rc = 0
+        if via_menu_boot:
+            try:
+                recorder.wait(timeout=seconds + 90)
+            except subprocess.TimeoutExpired:
+                rc = 1
+            _stop_capture_child(gp)   # the game has no auto-quit outside smoke mode: end OUR spawned pid once the recording is over
         try:
             gp.wait(timeout=duration + 90)
         except subprocess.TimeoutExpired:
@@ -363,7 +377,7 @@ def cmd_capture(args: argparse.Namespace) -> int:
         Path(args.install), args.arm, args.mission, args.seconds,
         Path(args.output), extra_env=args.env, pose=args.pose,
         fixed_timestep=not args.free_timestep, fps_cap=args.fps_cap,
-        show_window=args.show_window, ticks=args.ticks,
+        show_window=args.show_window, ticks=args.ticks, via_menu_boot=args.via_menu,
     )
     if rc == 0:
         out = Path(args.output)
@@ -951,6 +965,9 @@ def main() -> int:
     c.add_argument("--arm", choices=list(ARMS), default="vk")
     c.add_argument("--mission", default="mc2_01")
     c.add_argument("--seconds", type=int, default=15, help="Tracy recording window (default 15)")
+    c.add_argument("--via-menu", action="store_true",
+                   help="launch as a player does (boot, main menu, stock campaign, mission; no smoke mode, no --mission, no fixed timestep). "
+                        "--seconds must cover menu + mission load (use 90+); the trace includes the front end. [VIA_MENU v1]/[FIRST60 v1] lines are in the .game.log")
     c.add_argument("--ticks", type=int, default=0, help="capture this many headless sim ticks, including mission load; no recorder wall-clock cutoff")
     c.add_argument("--csv", action="store_true", help="also write the full per-zone csvexport table next to the trace (default: top-10 summary only)")
     c.add_argument("-o", "--output", required=True, help="output .tracy path")

@@ -364,7 +364,7 @@ Present-level transient failures (zero surface extent while minimized, `NATIVE_W
 
 ## Front-end direct boot (pre-existing capture harness; pairs with dev shell)
 
-- `MC2_BOOT_TO_BAY=<campaign fit basename>` (e.g. `campaign`) — auto-start that campaign from the main menu, no clicks. Note: campaign mission 1 skips logistics (goes straight to mission); pair with `MC2_BOOT_TO_MISSION`.
+- `MC2_BOOT_TO_BAY=<campaign fit basename>` (e.g. `campaign`) — auto-start that campaign from the main menu, no clicks. Note: campaign mission 1 skips logistics (goes straight to mission); pair with `MC2_BOOT_TO_MISSION`. The boot waits for the main-menu intro movie, and the campaign pre-video / briefing videos play, unless `MC2_MENU_CANARY_SKIP_INTRO=1` (every headless harness sets it; `run_smoke.py --via-menu` leaves it unset so videos are paid like a player, `--skip-intro` opts out).
 - `MC2_BOOT_TO_MISSION=<mission FileName>` (e.g. `mc2_03`) — jump to that mission's logistics stage.
 - `MC2_BOOT_TO_SCREEN=purchase|bay|loadout|launch` — which logistics grid cell to land on (default bay).
 - Verified combo for GUI iteration: `MC2_DEV_SHELL=1 MC2_NO_LAUNCHER=1 MC2_BOOT_TO_BAY=campaign MC2_BOOT_TO_MISSION=mc2_03 MC2_BOOT_TO_SCREEN=bay` then `mc2_cmd.py screenshot --source backbuffer`.

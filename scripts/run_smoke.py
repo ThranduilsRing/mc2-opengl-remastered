@@ -612,6 +612,16 @@ def main():
                          "auto-accepted stem. Default (no flag) behavior is "
                          "unchanged: unknown stems still hard-error (exit 2).")
     ap.add_argument("--menu-canary", action="store_true")
+    ap.add_argument("--via-menu", action="store_true",
+                    help="start the game as a player does: boot, main menu, campaign, mission (the real front end, MC2_BOOT_TO_BAY; no --mission, no smoke mode). "
+                         "Reports time-to-menu, mission-load ms and the first-60-frame stats in summary.json. Stock campaign mission 1 (mc2_01); one run. See smoke_lib/via_menu.py")
+    ap.add_argument("--skip-intro", action="store_true", help="with --via-menu: skip the intro movie and front-end videos (MC2_MENU_CANARY_SKIP_INTRO); they play by default")
+    ap.add_argument("--via-bay", metavar="MISSION", default="",
+                    help="with --via-menu: boot that mission's logistics at the mech bay and walk bay -> pilot ready -> launch (e.g. mc2_03; "
+                         "stock mission 1 has no bay stage)")
+    ap.add_argument("--cold-cache", action="store_true",
+                    help="evict the install's files from the Windows file cache before launch (standby-list purge when elevated; else reads MC2_COLD_EVICT_GB of unrelated files). "
+                         "A before/after read probe proves it; the result is in the summary")
     ap.add_argument("--with-menu-canary", action="store_true")
     ap.add_argument("--menu-script", default=str(DEFAULT_MENU_SCRIPT))
     ap.add_argument("--menu-settle", type=int, default=5)
@@ -1317,6 +1327,28 @@ def main():
         sys.exit(_run_menu_canary(Path(args.exe), Path(args.menu_script),
                                   artifact_dir, args.keep_logs, args.menu_settle))
 
+    cold_result = None
+    if args.cold_cache:
+        from smoke_lib import cold_cache as _cold
+        _inst = Path(args.exe).resolve().parent
+        print(f"[runner] --cold-cache: evicting {_inst} from the file cache", flush=True)
+        cold_result = _cold.make_cold(_inst, evict_roots=[Path("C:/Windows"), Path("C:/Program Files"), Path("C:/Program Files (x86)")]).as_dict()
+        print(f"[runner] cold-cache: {json.dumps(cold_result)}", flush=True)
+    if args.via_menu:
+        if args.tier or args.mission or args.lite or args.menu_canary or args.with_menu_canary:
+            ap.error("--via-menu runs the stock campaign front end once; it cannot be combined with --tier/--mission/--lite/--menu-canary")
+        from smoke_lib import via_menu as _via
+        timestamp = dt.datetime.now().strftime("%Y-%m-%dT%H-%M-%S-%f") + f"-{os.getpid()}"
+        artifact_dir = ARTIFACT_ROOT / timestamp
+        summary = _via.run_via_menu(Path(args.exe), artifact_dir, timeout_s=float(args.duration or 300), skip_intro=args.skip_intro, bay_mission=args.via_bay)
+        if cold_result is not None:
+            summary["cold_cache"] = cold_result
+        (artifact_dir / "summary.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
+        _f = summary["first60"]
+        print(f"[via-menu] {summary['result'].upper()} {summary['reason']} time_to_menu_s={summary['time_to_menu_s']} "
+              f"time_to_campaign_start_s={summary['time_to_campaign_start_s']} mission_load_ms={summary['mission_load_ms']} first60 avg_ms={_f.get('avg')} p99_ms={_f.get('p99')} max_ms={_f.get('max')} "
+              f"cold={'yes' if cold_result and cold_result['ok'] else 'no'} artifacts={artifact_dir}", flush=True)
+        sys.exit(0 if summary["result"] == "pass" else 1)
     entries = manifest.parse_manifest(MANIFEST_PATH)
     if args.mission:
         selected, unknown = select_missions(entries, args.mission)
