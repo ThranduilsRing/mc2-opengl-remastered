@@ -315,6 +315,16 @@ void LogisticsData::initPilots()
 	}
 }
 
+// Reads the "File Name" cell; false (row to skip) when it is >= 256 chars, since copyString then leaves the buffer unterminated.
+static bool readCsvFileName( CSVFile& f, int row, char* out, size_t cap )
+{
+	if ( f.readString( row, 1, out, cap ) != -2 )
+		return true;
+	out[cap - 1] = '\0';
+	mc2::content::error( mc2::content::Kind::MissionData, "Buildings.csv", "File Name cell over 255 chars, row skipped" );
+	return false;
+}
+
 void LogisticsData::initVariants()
 {
 	char variantPath[256];
@@ -386,15 +396,8 @@ void LogisticsData::initVariants()
 			{
 				variantFile.readLong( i, 5, fitID );
 				char csvName[256] = "";
-				if ( variantFile.readString( i, 1, csvName, sizeof( csvName ) ) == -2 )
-				{
-					// File Name cell >= 256 chars: copyString leaves csvName unterminated. Skip the row.
-					csvName[sizeof( csvName ) - 1] = '\0';
-					mc2::content::error( mc2::content::Kind::MissionData, "Buildings.csv", "File Name cell over 255 chars, row skipped" );
-					i++;
-					continue;
-				}
-				addVehicle( fitID, pakFile, scale, nameID, csvName );
+				if ( readCsvFileName( variantFile, i, csvName, sizeof( csvName ) ) )
+					addVehicle( fitID, pakFile, scale, nameID, csvName );
 			}
 			i++;
 			continue;
@@ -407,15 +410,8 @@ void LogisticsData::initVariants()
 			{
 				variantFile.readLong( i, 5, fitID );
 				char csvName[256] = "";
-				if ( variantFile.readString( i, 1, csvName, sizeof( csvName ) ) == -2 )
-				{
-					// File Name cell >= 256 chars: copyString leaves csvName unterminated. Skip the row.
-					csvName[sizeof( csvName ) - 1] = '\0';
-					mc2::content::error( mc2::content::Kind::MissionData, "Buildings.csv", "File Name cell over 255 chars, row skipped" );
-					i++;
-					continue;
-				}
-				addBuilding( fitID, pakFile, scale, csvName );
+				if ( readCsvFileName( variantFile, i, csvName, sizeof( csvName ) ) )
+					addBuilding( fitID, pakFile, scale, csvName );
 			}
 			
 			i++;
