@@ -70,6 +70,9 @@ import _git_util  # noqa: E402  (shared git helpers)
 TRAILER = os.environ.get("MC2_COMMIT_TRAILER") or os.environ.get("MC2_MERGE_TRAILER", "")
 FOLLOWUP_SUBJECT = "merge follow-up: ratchet baselines tightened at merged HEAD"
 ARTIFACT_SUBJECT = "merge follow-up: regenerated artifacts"
+DERIVED_SUBJECT = "merge follow-up: regenerated derived inventories (gate floor, log tag baseline) and tightened ratchet baselines"
+LOG_TAG_BASELINE = "tests/unit/log_tag_baseline.json"
+RETIRED_NAMES = "Gates/retired_names.json"
 
 # Explicit output scopes: never stage unrelated work or compiler scratch files.
 ARTIFACTS = [
@@ -683,6 +686,70 @@ def verify_merged(root: str, mode: str, runner=None) -> tuple[str, list[tuple[st
     return "OK", results
 
 
+def log_tag_loosened(old: dict, new: dict) -> list[str]:
+    """Why `new` is not a pure extension of the frozen census `old` (empty = only additions, safe to accept).
+
+    An emitter that vanished, lost count, or changed keys/version/stream is a harness-visible regression a re-freeze would hide."""
+    def table(doc):
+        return {(r["tag"], r["ver"], r["stream"], tuple(r["keys"])): r["count"] for r in doc.get("emitters", [])}
+    a, b = table(old), table(new)
+    why = [f"emitter {k[0]} v{k[1]} stream={k[2]} keys={','.join(k[3])}: count {n} -> {b.get(k, 0)}"
+           for k, n in sorted(a.items()) if b.get(k, 0) < n]
+    for key in ("consumed_tags", "plain_tags"):
+        why += [f"{key}: {t} no longer listed" for t in sorted(set(old.get(key, [])) - set(new.get(key, [])))]
+    return why
+
+
+def gate_floor_loosened(old_names: set[str], new_names: set[str], retired: set[str]) -> list[str]:
+    """Gates that left the table without being listed as retired: a lower floor would hide losing them."""
+    return sorted(old_names - new_names - retired)
+
+
+def _git_json(root: str, rev: str, path: str):
+    r = git(root, "show", f"{rev}:{path}")
+    if r.returncode:
+        return None
+    try:
+        return json.loads(r.stdout)
+    except ValueError:
+        return None
+
+
+def gate_names(path: Path):
+    try:
+        return {g["name"] for g in json.loads(path.read_text(encoding="utf-8"))["gates"]}
+    except (OSError, KeyError, TypeError, ValueError):
+        return None
+
+
+def regenerate_derived(root: str, base: str) -> list[str]:
+    """Batch-end regeneration of the derived inventories that used to need a hand follow-up.
+
+    Tighten-only: the log tag census may only gain emitters and the gate population floor may only follow additions
+    (or retirements listed in Gates/retired_names.json). Anything else restores the file and stops the window (exit 6)."""
+    changed = list(regenerate_all(root))
+    live = Path(root) / LOG_TAG_BASELINE
+    old = _git_json(root, "HEAD", LOG_TAG_BASELINE)
+    if old is not None and live.is_file():
+        bad = log_tag_loosened(old, json.loads(live.read_text(encoding="utf-8")))
+        if bad:
+            git(root, "checkout", "--", LOG_TAG_BASELINE)
+            raise Stop(6, "log tag census loosened by the merge (not auto-accepted; fix the lane or re-freeze by hand):\n  "
+                       + "\n  ".join(bad))
+    names_now, table_old = gate_names(Path(root) / "Gates" / "gate_table.json"), _git_json(root, base, "Gates/gate_table.json")
+    if names_now is not None and table_old is not None:
+        retired = _git_json(root, "HEAD", RETIRED_NAMES) or []
+        if isinstance(retired, dict):
+            retired = retired.get("names") or list(retired)
+        lost = gate_floor_loosened({g["name"] for g in table_old["gates"]}, names_now, set(retired))
+        if lost:
+            raise Stop(6, "gate table lost gates that are not in " + RETIRED_NAMES + " (population floor not lowered):\n  "
+                       + "\n  ".join(lost))
+        if sync_test_gate_floor(root):
+            changed.append(TEST_GATE)
+    return sorted(set(changed))
+
+
 def commit_tightened(root: str, pre_dirty: set[str], artifacts=()) -> str | None:
     """Commit exactly the baselines the ratchets tightened; skip any that was already dirty."""
     now_dirty = {p for _, p in status_entries(root)}
@@ -694,7 +761,8 @@ def commit_tightened(root: str, pre_dirty: set[str], artifacts=()) -> str | None
     if not changed:
         return None
     try:
-        return _git_util.commit_paths(root, changed, FOLLOWUP_SUBJECT, TRAILER or None)
+        derived = {TEST_GATE, LOG_TAG_BASELINE} & set(changed)
+        return _git_util.commit_paths(root, changed, DERIVED_SUBJECT if derived else FOLLOWUP_SUBJECT, TRAILER or None)
     except _git_util.GitError as e:
         raise Stop(5, "follow-up commit failed: " + str(e))
 
@@ -1165,7 +1233,7 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"{tag} ratchets=OK verify=DEFERRED overlap=0")
         if batch and merged and not reds:
             pre_dirty = {path for _, path in status_entries(root)}
-            artifacts = regenerate_all(root)
+            artifacts = regenerate_derived(root, window_base)
             results = run_ratchets(root, tools_dir)
             failed = [(label, rc, tail) for label, rc, tail in results if rc != 0]
             if failed:

@@ -3,6 +3,7 @@
 Run:
   py -3 -B -m pytest tools/test_lane_merge.py -q -p no:cacheprovider
 """
+import json
 import os
 import subprocess
 import sys
@@ -1051,3 +1052,91 @@ def test_floor_sync_preserves_crlf(tmp_path):
     (tmp_path / "tests/unit/test_gate.cpp").write_bytes(b'TEST_CASE("x") {\r\n    REQUIRE(n == 1);\r\n}\r\n')
     assert lm.sync_test_gate_floor(str(tmp_path))
     assert (tmp_path / "tests/unit/test_gate.cpp").read_bytes() == b'TEST_CASE("x") {\r\n    REQUIRE(n == 9);\r\n}\r\n'
+
+
+# ---- batch-end derived inventories: tighten-only (gate floor, log tag census) ----
+
+LOGTAGS = "tests/unit/log_tag_baseline.json"
+
+
+def _tags(*rows, consumed=()):
+    return {"emitters": [{"tag": t, "ver": v, "stream": "stderr", "keys": ["a"], "count": n} for t, v, n in rows],
+            "consumed_tags": list(consumed), "plain_tags": []}
+
+
+def test_log_tag_census_accepts_additions_only():
+    lm = _load_module()
+    old = _tags(("A", 1, 2), consumed=["A"])
+    assert lm.log_tag_loosened(old, _tags(("A", 1, 2), ("B", 1, 1), consumed=["A", "B"])) == []
+    assert lm.log_tag_loosened(old, _tags(("A", 1, 3), consumed=["A"])) == []
+
+
+def test_log_tag_census_loosening_is_reported():
+    lm = _load_module()
+    old = _tags(("A", 1, 2), ("B", 1, 1), consumed=["A"])
+    assert any("B v1" in w for w in lm.log_tag_loosened(old, _tags(("A", 1, 2))))
+    assert any("A v1" in w for w in lm.log_tag_loosened(old, _tags(("A", 1, 1), ("B", 1, 1))))
+    assert any("consumed_tags" in w for w in lm.log_tag_loosened(old, _tags(("A", 1, 2), ("B", 1, 1))))
+
+
+def test_gate_floor_loosening_needs_retirement():
+    lm = _load_module()
+    assert lm.gate_floor_loosened({"A", "B"}, {"A", "B", "C"}, set()) == []
+    assert lm.gate_floor_loosened({"A", "B"}, {"A"}, {"B"}) == []
+    assert lm.gate_floor_loosened({"A", "B"}, {"A"}, set()) == ["B"]
+
+
+def _gate_table(names):
+    rows = ", ".join('{"name": "%s"}' % n for n in names)
+    return '{"count": %d, "gates": [%s]}\n' % (len(names), rows)
+
+
+def _gate_repo(env, names, floor):
+    repo, _ = env
+    write(repo, "Gates/gate_table.json", _gate_table(names))
+    write(repo, "Gates/retired_names.json", '["OLD"]\n')
+    write(repo, "tests/unit/test_gate.cpp", "    REQUIRE(n == %d);   // floor\n" % floor)
+    write(repo, LOGTAGS, json.dumps(_tags(("A", 1, 1))))
+    commit_all(repo, "gates")
+
+
+def _derived_batch(env, monkeypatch, lane_edits, regen):
+    repo, tools = env
+    git(repo, "checkout", "-q", "-b", "lane_g", "main")
+    for rel, content in lane_edits.items():
+        write(repo, rel, content)
+    commit_all(repo, "lane gates")
+    git(repo, "checkout", "-q", "main")
+    lm = _load_module()
+    monkeypatch.setattr(lm, "regenerate_all", lambda root: regen(repo) or [])
+    monkeypatch.setattr(lm, "verify_merged", lambda *a: ("OK", []))
+    return lm, lm.main(["--batch", "lane_g", "--root", str(repo), "--tools-dir", str(tools)])
+
+
+def test_batch_derived_inventories_commit_once_and_only_tighten(env, monkeypatch):
+    _gate_repo(env, ["A", "B"], 2)
+    repo, _ = env
+    lm, rc = _derived_batch(env, monkeypatch, {"Gates/gate_table.json": _gate_table(["A", "B", "C"])},
+                            lambda r: (write(r, LOGTAGS, json.dumps(_tags(("A", 1, 1), ("NEW", 1, 1)))), [LOGTAGS])[1])
+    assert rc == 0
+    assert git(repo, "log", "-1", "--format=%s") == lm.DERIVED_SUBJECT
+    assert set(git(repo, "show", "--format=", "--name-only", "HEAD").splitlines()) == {"tests/unit/test_gate.cpp", LOGTAGS}
+    assert "REQUIRE(n == 3);" in (repo / "tests/unit/test_gate.cpp").read_text(encoding="utf-8")
+
+
+def test_batch_fails_loudly_when_a_gate_is_lost_without_retirement(env, monkeypatch, capsys):
+    _gate_repo(env, ["A", "B"], 2)
+    repo, _ = env
+    lm, rc = _derived_batch(env, monkeypatch, {"Gates/gate_table.json": _gate_table(["A"])}, lambda r: None)
+    assert rc == 6
+    assert "not in Gates/retired_names.json" in capsys.readouterr().err
+    assert "REQUIRE(n == 2);" in (repo / "tests/unit/test_gate.cpp").read_text(encoding="utf-8")
+
+
+def test_batch_fails_loudly_and_restores_a_loosened_log_tag_census(env, monkeypatch, capsys):
+    _gate_repo(env, ["A"], 1)
+    repo, _ = env
+    lm, rc = _derived_batch(env, monkeypatch, {"x.txt": "x\n"}, lambda r: write(r, LOGTAGS, json.dumps(_tags())))
+    assert rc == 6
+    assert "log tag census loosened" in capsys.readouterr().err
+    assert json.loads((repo / LOGTAGS).read_text(encoding="utf-8")) == _tags(("A", 1, 1))
