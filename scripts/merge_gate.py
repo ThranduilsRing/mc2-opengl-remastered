@@ -687,7 +687,11 @@ CANDIDATE = Path("E:/mc2-installs/merge-gate-candidate")
 CANDIDATE_MARK = "build64-ninja/kept-candidate.json"
 # Campaign mods the kept candidate carries so sweep_campaign resolves MCO (hardlinked, same volume; never from an owner install).
 CANDIDATE_MODS = ("MechCommanderOmnitech", "mco-compat")
-CANDIDATE_MODS_SOURCE = Path(os.environ.get("MC2_GATE_MODS_SOURCE", "E:/mc2-installs/lane4/mods"))
+# Persistent source that lane cleanup never touches (E:/mc2-ref is reference storage, not a lane folder). Must hold one folder per name
+# in CANDIDATE_MODS, each with data/. Missing source fails the keep step loudly (CANDIDATE_ERROR); the gate verdict is unaffected.
+CANDIDATE_MODS_SOURCE = Path(os.environ.get("MC2_GATE_MODS_SOURCE", "E:/mc2-ref/campaign-mods"))
+CANDIDATE_SEED = Path("E:/mc2-installs/_lean-seed")
+CANDIDATE_ERRORS = []
 
 
 def _link_or_copy(src, dst):
@@ -741,14 +745,19 @@ def execute_window(steps, head, dry_run=False, keep_going=False, farm_determinis
         return execute_parallel(install_plan(steps, install), head, dry_run, keep_going, **scheduling)
     if dry_run:
         return prove(candidate)
-    with stock_copy(Path("E:/mc2-installs/_lean-seed"), **(dict(keep=True) if keep_candidate else {})) as install:
+    with stock_copy(CANDIDATE_SEED, **(dict(keep=True) if keep_candidate else {})) as install:
         try:
             return prove(install)
         finally:
             if keep_candidate:
-                kept = keep_stock_copy(install, head)
-                print(f"[merge_gate] CANDIDATE_KEPT path={kept} head={head[:12]} (walks: sweep_campaign stock|MechCommanderOmnitech <secs> {kept}; "
-                      "remove with --drop-candidate)", flush=True)
+                try:
+                    kept = keep_stock_copy(install, head)
+                except Exception as exc:  # never mask the gate verdict; main() reports this after it
+                    shutil.rmtree(install, ignore_errors=True)  # keep=True skipped stock_copy's cleanup
+                    CANDIDATE_ERRORS.append(f"{type(exc).__name__}: {exc}")
+                else:
+                    print(f"[merge_gate] CANDIDATE_KEPT path={kept} head={head[:12]} (walks: sweep_campaign stock|MechCommanderOmnitech <secs> {kept}; "
+                          "remove with --drop-candidate)", flush=True)
 
 
 GREEN_MARK = "build64-ninja/last-green-gate.json"
@@ -1160,6 +1169,7 @@ class Tee:
 
 def main(argv=None):
     FAILED_STAGES.clear()
+    CANDIDATE_ERRORS.clear()
     ap = argparse.ArgumentParser(description=__doc__)
     if "MC2_IN_GATE" in os.environ:
         ap.error("MC2_IN_GATE is set: nested merge gates are forbidden")
@@ -1321,6 +1331,8 @@ def main(argv=None):
                 reused = ",".join(ACTIVE_STATE.reused) if ACTIVE_STATE else ""
                 print(f"[merge_gate] clock: {elapsed / 60:.1f} min {'since lane_merge start' if window else 'gate only'} (window box 120 min, cap 180; info only) verdict={verdict} REUSED={reused or 'none'}"
                       + (f" SKIPPED={','.join(skipped)}" if skipped else ""))
+                for err in CANDIDATE_ERRORS:
+                    print(f"[merge_gate] CANDIDATE_ERROR (after verdict={verdict}; the gate result above is unaffected, no candidate kept): {err}")
                 if FAILED_STAGES:
                     print("[merge_gate] failed stages: " + ", ".join(f"{name} ({status})" for name, status in FAILED_STAGES))
                 if args.full and result == 0 and not args.dry_run:
@@ -1329,7 +1341,7 @@ def main(argv=None):
                     (ROOT / GREEN_MARK).unlink(missing_ok=True)  # a red or partial rerun at the same HEAD must not leave an older green
                 if verdict == "PASS" and not args.dry_run and not args.install:
                     (ROOT / GREEN_MARK).write_text(json.dumps(dict(head=head, finished=time.time(),
-                                                                        candidate=str(CANDIDATE) if args.keep_candidate else None)))
+                                                                        candidate=str(CANDIDATE) if args.keep_candidate and not CANDIDATE_ERRORS else None)))
                     print("[merge_gate] gate green and complete: view the day and night montages, then `py -3 scripts/merge_gate.py --publish` (v0.4 is NOT published yet)")
                 return result if args.dry_run else {"PASS": 0, "FAIL": 1, "PARTIAL": 2}[verdict]
     finally:
