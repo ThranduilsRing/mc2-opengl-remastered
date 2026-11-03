@@ -2190,6 +2190,33 @@
    "count": 1
   },
   {
+   "tag": "CONTENT",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "active",
+    "files_with_lower_layer",
+    "differing",
+    "identical",
+    "printed",
+    "partial",
+    "unscanned_keys",
+    "scan_ms"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "CONTENT",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "path",
+    "winner",
+    "losers"
+   ],
+   "count": 1
+  },
+  {
    "tag": "CONTENT_COOK",
    "ver": -1,
    "stream": "stderr",
