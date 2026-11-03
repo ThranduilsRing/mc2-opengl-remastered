@@ -288,9 +288,9 @@ void Mission::loadParts(MissionLoadFrame& f) {
 			// Part1 and every later part shifted by one; those WIDs would name the wrong objects, so they stay 0 as before.
 			{
 				int savedWID = 0;
-				char savedSquad = 0;
+				long savedSquad = 0;
 				const bool haveWID = (missionFile.readIdInt("ObjectWID", savedWID) == NO_ERR);
-				const bool haveSquad = (missionFile.readIdChar("SquadId", savedSquad) == NO_ERR);
+				const bool haveSquad = (missionFile.readIdLong("SquadId", savedSquad) == NO_ERR);
 				if (i == 1)
 					shiftedLegacyParts = !haveWID || (savedWID == 0 && parts[i].objNumber == 0);
 				if (!shiftedLegacyParts)
@@ -298,7 +298,7 @@ void Mission::loadParts(MissionLoadFrame& f) {
 					if (haveWID)
 						parts[i].objectWID = savedWID;
 					if (haveSquad)
-						parts[i].squadId = savedSquad;
+						parts[i].squadId = static_cast<char>(savedSquad);
 				}
 			}
 
