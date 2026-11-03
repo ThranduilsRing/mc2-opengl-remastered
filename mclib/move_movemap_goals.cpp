@@ -304,14 +304,34 @@ inline long MoveMap::markEscapeGoals (glm::vec3 finalGoal) {
 	// For each tile, mark its cells as valid goals if:
 	//		1) the tile's areaId == the areaId of the finalGoal
 	//		2) OR, if a LR path exists between the tile and the finalGoal tile
+	// getPathCost(curArea, finalGoalArea) is a global-map A* and depends only on the area pair, so
+	// it is evaluated once per distinct area in the window instead of once per cell (a 61x61 window
+	// is a few areas; this was the 12-48 ms spike in escape-path requests). Results are identical.
+	constexpr int kAreaCache = 64;
+	int cachedArea[kAreaCache];
+	bool cachedValid[kAreaCache];
+	int numCached = 0;
 	int cellIndex = 0;
 	for (int row = 0; row < height; row++)
 		for (int col = 0; col < width; col++) {
 			if (GameMap->inBounds(ULr + row, ULc + col)) {
 				int curArea = GlobalMoveMap[moveLevel]->calcArea(ULr + row, ULc + col);
-				int confidence;
-				int numLRSteps = GlobalMoveMap[moveLevel]->getPathCost(curArea, finalGoalArea, false, confidence, true);
-				bool validGoal = (numLRSteps > 0);
+				bool validGoal;
+				int slot = 0;
+				while ((slot < numCached) && (cachedArea[slot] != curArea))
+					slot++;
+				if (slot < numCached)
+					validGoal = cachedValid[slot];
+				else {
+					int confidence;
+					int numLRSteps = GlobalMoveMap[moveLevel]->getPathCost(curArea, finalGoalArea, false, confidence, true);
+					validGoal = (numLRSteps > 0);
+					if (numCached < kAreaCache) {
+						cachedArea[numCached] = curArea;
+						cachedValid[numCached] = validGoal;
+						numCached++;
+					}
+				}
 				if (validGoal)
 					map[cellIndex].setFlag(MOVEFLAG_GOAL);
 			}
