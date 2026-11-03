@@ -1382,6 +1382,31 @@ inline bool isCementType (DWORD type)
 }
 
 //---------------------------------------------------------------------------
+// Transition cache file name. The cache is keyed by terrain-type/overlay ids only, so a mod that forces another tile edge
+// (MCO ships 256 only) used to overwrite the 64 file a stock run reads, and the next stock run reported "invalid transition
+// cache". The legacy name (also what the shipped textures.fst holds) stays the 64 edge; every other edge gets its own file.
+static void txmCacheName (char (&out)[256], DWORD typeInfo, DWORD overlayInfo)
+{
+	if (TERRAIN_TXM_SIZE == 64)
+		mc2::fmt::to_buf(out,"{:08d}.{:08d}.txm",mc2::fmt::as_i32(typeInfo),mc2::fmt::as_i32(overlayInfo));
+	else
+		mc2::fmt::to_buf(out,"{:08d}.{:08d}.r{:d}.txm",mc2::fmt::as_i32(typeInfo),mc2::fmt::as_i32(overlayInfo),mc2::fmt::as_i32(TERRAIN_TXM_SIZE));
+}
+
+// True when `bytes` is a well-formed cache written for another tile edge (a stale file from before the name carried the edge).
+// That is a plain miss, not corruption: the caller regenerates and rewrites it without a content error.
+static bool txmCacheIsOtherEdge (const std::vector<unsigned char>& bytes, long wantedEdge)
+{
+	constexpr size_t kMaxEdge = 1024;
+	std::vector<unsigned char> big(kMaxEdge * kMaxEdge * sizeof(DWORD));
+	const size_t got = LZDecomp(big.data(),const_cast<unsigned char*>(bytes.data()),bytes.size(),big.size());
+	for (size_t edge = 16; edge <= kMaxEdge; edge <<= 1)
+		if (got == edge * edge * sizeof(DWORD))
+			return static_cast<long>(edge) != wantedEdge;
+	return false;
+}
+
+//---------------------------------------------------------------------------
 long TerrainTextures::createTransition (DWORD typeInfo, DWORD overlayInfo)
 {
 	long result = -1;
@@ -1416,7 +1441,7 @@ long TerrainTextures::createTransition (DWORD typeInfo, DWORD overlayInfo)
 		if (quickLoad)
 		{
 			char nameData[256];
-			mc2::fmt::to_buf(nameData,"{:08d}.{:08d}.txm",mc2::fmt::as_i32(typeInfo),mc2::fmt::as_i32(overlayInfo));
+			txmCacheName(nameData,typeInfo,overlayInfo);
 
 			FullPathFileName testPath;
 			testPath.init(texturePath,nameData,"");
@@ -1431,7 +1456,7 @@ long TerrainTextures::createTransition (DWORD typeInfo, DWORD overlayInfo)
 
 				std::vector<unsigned char> lzBuffer(mipSize * mipSize * sizeof(DWORD));
 				long bufferSize = cacheRead ? static_cast<long>(LZDecomp(lzBuffer.data(),fileRAM.data(),fileRAM.size(),mipSize * mipSize * sizeof(DWORD))) : -1;
-				if (!cacheRead || bufferSize != (mipSize * mipSize * sizeof(DWORD)))
+				if ((!cacheRead || bufferSize != (mipSize * mipSize * sizeof(DWORD))) && !(cacheRead && txmCacheIsOtherEdge(fileRAM,mipSize)))
 					mc2::content::error(mc2::content::Kind::Texture, static_cast<const char*>(testPath), "invalid transition cache; regenerating");
 
 				txmFile.close();
@@ -1621,7 +1646,7 @@ long TerrainTextures::createTransition (DWORD typeInfo, DWORD overlayInfo)
 			// for all of the textures...
 			//
 			char nameData[256];
-			mc2::fmt::to_buf(nameData,"{:08d}.{:08d}.txm",mc2::fmt::as_i32(typeInfo),mc2::fmt::as_i32(overlayInfo));
+			txmCacheName(nameData,typeInfo,overlayInfo);
 
 			FullPathFileName testPath;
 			testPath.init(texturePath,nameData,"");
