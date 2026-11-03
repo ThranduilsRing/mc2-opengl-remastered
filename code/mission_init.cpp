@@ -577,6 +577,8 @@ void Mission::initTeamsAndCommanders(long loadType, glm::vec3* dropZoneList, cha
 						partName, static_cast<int>(commanderID), MAX_COMMANDERS - 1))
 					commanderID = MAX_COMMANDERS - 1;
 
+				if ((commanderID >= 0) && (commanderID < 8) && (teamID >= 0) && (f.commanderPartTeam[commanderID] < 0))
+					f.commanderPartTeam[commanderID] = teamID;
 				if (commanderID > maxCommanderID)
 					maxCommanderID = commanderID;
 				if (teamID > maxTeamID)
@@ -651,7 +653,20 @@ void Mission::initTeamsAndCommanders(long loadType, glm::vec3* dropZoneList, cha
 						"Mission::init: commandersToLoad[%ld] names uninitialized commander %ld / team %ld",
 						i, ctlCommander, ctlTeam))
 				{
-					mc2::content::error(mc2::content::Kind::MissionData, missionFileName, "invalid commander/team entry; falling back to home team");
+					// The logistics table is identity {i,i,i}, so a mission whose commander i has
+					// no team i (e.g. MCO: CommanderId 2 / TeamId 0 ally parts, two teams) lands
+					// here. That is valid data: use the team the commander's own parts declare.
+					// Only a commander with no usable parts team is a content error.
+					const bool ctlCmdOk = (ctlCommander > -1) && (ctlCommander < MAX_COMMANDERS) &&
+						(Commander::commanders[ctlCommander] != nullptr);
+					const long partTeam = (ctlCmdOk && (ctlCommander < 8)) ? f.commanderPartTeam[ctlCommander] : -1;
+					if (ctlCmdOk && (partTeam > -1) && (partTeam < MAX_TEAMS) && (Team::teams[partTeam] != nullptr)) {
+						if (Commander::commanders[ctlCommander]->getTeam() == nullptr)
+							Commander::commanders[ctlCommander]->setTeam(Team::teams[partTeam]);
+						continue;
+					}
+					mc2::content::error(mc2::content::Kind::MissionData, missionFileName,
+						"commandersToLoad entry has no usable team and the commander has no part naming one; falling back to home team");
 					// mc10 load crash: the logistics table is identity {i,i,i}, so
 					// a mission with fewer teams than commanders named a null team
 					// and left the commander team-less; later code dereferences

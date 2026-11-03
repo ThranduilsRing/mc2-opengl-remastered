@@ -22,6 +22,10 @@ struct MissionInitFrame {
 	FullPathFileName missionFileName;
 	long maxTeamID;
 	long maxCommanderID;
+	// First [PartN] TeamId seen per CommanderId (-1 = no part). Lets initCommanders give a
+	// commander the logistics table cannot place (identity {i,i,i} names team i, which may not
+	// exist) the team its own parts declare, instead of guessing the home team.
+	signed char commanderPartTeam[8] = {-1, -1, -1, -1, -1, -1, -1, -1};
 	PacketFile pakFile;
 	long numErrors;
 	long numLinesProcessed;
