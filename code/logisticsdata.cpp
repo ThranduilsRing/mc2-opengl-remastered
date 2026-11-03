@@ -309,19 +309,19 @@ LogisticsVehicle*	LogisticsData::getVehicle( const char* pName )
 	return nullptr;
 }
 
-int LogisticsData::addBuilding( long fitID, PacketFile& objectFile, float scale )
+int LogisticsData::addBuilding( long fitID, PacketFile& objectFile, float scale, std::string_view csvName )
 {
-	if ( NO_ERR != objectFile.seekPacket(fitID) )
+	// Mod buildings.csv rows (MCO) carry FitIDs past a mod-sized object2.pak; take their definition from the loose
+	// data/objects/<File Name>.fit instead (same CSV-chassis path as ObjectTypeManager and addVehicle).
+	FitIniFile file;
+	const bool inPak = fitID >= 0 && fitID < objectFile.getNumPackets();
+	if ( inPak ? ( NO_ERR != objectFile.seekPacket(fitID) || !objectFile.getPacketSize() || NO_ERR != file.open(&objectFile, objectFile.getPacketSize()) )
+	           : !openLooseChassisFit( file, csvName ) )
 		return -1;
 
-	int fileSize = objectFile.getPacketSize();
-
-	if ( fileSize )
 	{
 		Building bldg;
 
-		FitIniFile file;
-		file.open(&objectFile, fileSize);
 		if ( NO_ERR != file.seekBlock( "ObjectType" ) )
 			gosASSERT( 0 );
 

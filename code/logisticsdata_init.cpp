@@ -4,6 +4,7 @@
 #include <memory>
 #include "logisticsdata_internal.h"
 #include "mc2fmt.h"
+#include "../GameOS/gameos/diagnostic_trace.h"
 #include "package_chassis.h"
 #include "../GameOS/gameos/utils/mc2log.h"
 
@@ -382,7 +383,9 @@ void LogisticsData::initVariants()
 			if ( scale )
 			{
 				variantFile.readLong( i, 5, fitID );
-				addVehicle( fitID, pakFile, scale, nameID );
+				char csvName[256] = "";
+				variantFile.readString( i, 1, csvName, 256 );
+				addVehicle( fitID, pakFile, scale, nameID, csvName );
 			}
 			i++;
 			continue;
@@ -394,7 +397,9 @@ void LogisticsData::initVariants()
 			if ( NO_ERR == variantFile.readFloat( i, 11, scale ) && scale )
 			{
 				variantFile.readLong( i, 5, fitID );
-				addBuilding( fitID, pakFile, scale );
+				char csvName[256] = "";
+				variantFile.readString( i, 1, csvName, 256 );
+				addBuilding( fitID, pakFile, scale, csvName );
 			}
 			
 			i++;
@@ -437,6 +442,8 @@ void LogisticsData::initVariants()
 		i++;
 
 	}
+
+	do { if (mc2::gate::get<"MC2_LOG_LOGISTICS">() && mc2_diag::tagRequested("LOGISTICS")) MC2_LOG(Ui, Info, "[LOGISTICS] initVariants: vehicles={:d} buildings={:d} object2.pak packets={:d}", mc2::fmt::as_i32(static_cast<int>(std::ssize(vehicles))), mc2::fmt::as_i32(static_cast<int>(std::ssize(buildings))), mc2::fmt::as_i32(static_cast<int>(pakFile.getNumPackets()))); } while (0);
 
 	// BT2018-FIRST-CLASS P3: package chassis (mods with the package_chassis capability) append
 	// after every buildings.csv row, so stock chassis keep their ids and order. Their fitID is
@@ -518,25 +525,37 @@ void LogisticsData::initVariants()
 	}
 }
 
-void LogisticsData::addVehicle( long fitID, PacketFile& objectFile, float scale, long nameID )
+void LogisticsData::addVehicle( long fitID, PacketFile& objectFile, float scale, long nameID, std::string_view csvName )
 {
-	if ( NO_ERR != objectFile.seekPacket(fitID) )
+	// MCO buildings.csv VEHICLE rows use FitIDs (2000+) past the mod's object2.pak; like ObjectTypeManager, take
+	// their definition from the loose data/objects/<File Name>.fit named by the CSV row instead of the pak packet.
+	FitIniFile file;
+	if ( fitID >= 0 && fitID < objectFile.getNumPackets() )
+	{
+		if ( NO_ERR != objectFile.seekPacket(fitID) )
+			return;
+		const int fileSize = objectFile.getPacketSize();
+		if ( !fileSize || NO_ERR != file.open(&objectFile, fileSize) )
+			return;
+	}
+	else if ( !openLooseChassisFit( file, csvName ) )
 		return;
 
-	int fileSize = objectFile.getPacketSize();
+	LogisticsVehicle* pVehicle = new LogisticsVehicle;
+	pVehicle->init( file );
+	pVehicle->setScale( scale );
+	if ( nameID ) pVehicle->setNameID( nameID );
+	vehicles.push_back( pVehicle );
+}
 
-	if ( fileSize )
-	{
-		LogisticsVehicle* pVehicle = new LogisticsVehicle;
-
-		FitIniFile file;
-		 file.open(&objectFile, fileSize);
-
-		pVehicle->init( file );
-		pVehicle->setScale( scale );
-			if ( nameID ) pVehicle->setNameID( nameID );
-		vehicles.push_back( pVehicle );
-	}
+bool LogisticsData::openLooseChassisFit( FitIniFile& file, std::string_view csvName ) const
+{
+	if ( csvName.empty() )
+		return false;
+	char path[1024];
+	mc2::fmt::to_buf(path, "{}{}.fit", mc2::fmt::safe(static_cast<const char*>(objectPath)), mc2::fmt::safe(std::string(csvName).c_str()));
+	S_strlwr( path );
+	return NO_ERR == file.open( path );
 }
 
 

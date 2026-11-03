@@ -5068,6 +5068,17 @@
   {
    "tag": "LOGISTICS",
    "ver": -1,
+   "stream": "log",
+   "keys": [
+    "vehicles",
+    "buildings",
+    "packets"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "LOGISTICS",
+   "ver": -1,
    "stream": "stdout",
    "keys": [],
    "count": 2
