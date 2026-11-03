@@ -99,6 +99,7 @@ f DropZoneZ = 0.000000
 
 [Parts]
 ul NumParts = 51
+ul PartsFormat = 2
 
 [Part1]
 l ObjectWID = 1
