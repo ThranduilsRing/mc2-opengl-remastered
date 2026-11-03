@@ -32,6 +32,8 @@ size_t              g_frameIdx = 0;
 size_t              g_frameCount = 0;   // monotonic
 size_t              g_frameMsCap = 8192;
 bool                g_firstFrameSeen = false;
+double              g_simSeconds = 0.0;
+bool                g_simExtendLogged = false;
 uint32_t            g_fixedSimFrame = 0;     // S9D: sim-frames where fixed step advanced
 
 double elapsedMsSince(uint64_t t0) {
@@ -258,7 +260,26 @@ bool shouldQuit() {
         return true;
     }
     double ms = elapsedMsSince(g_missionReadyT);
-    return ms >= static_cast<double>(g_state.durationSec) * 1000.0;
+    const double wallMs = static_cast<double>(g_state.durationSec) * 1000.0;
+    if (ms < wallMs) return false;
+    // The run is bounded by wall time, but mission scripts key off sim time (mc2_10 plays its
+    // intro video at 5 s of sim). A host stall inside the window starves the sim and the
+    // script event never fires, which is not an engine fault. Hold the quit until the sim has
+    // covered kMinSimSeconds, bounded by a 3x wall cap so a hung sim still ends the run.
+    constexpr double kMinSimSeconds = 10.0;
+    if (g_simSeconds < kMinSimSeconds && ms < wallMs * 3.0) {
+        if (!g_simExtendLogged) {
+            g_simExtendLogged = true;
+            mc2::fmt::print_out("[SMOKE v1] event=sim_extend sim_s={:.2f} need_s={:.1f}\n", g_simSeconds, kMinSimSeconds);
+            std::fflush(stdout);
+        }
+        return false;
+    }
+    return true;
+}
+
+void onSimTick(double scenarioTimeSeconds) {
+    g_simSeconds = scenarioTimeSeconds;
 }
 
 void markMissionReady() {

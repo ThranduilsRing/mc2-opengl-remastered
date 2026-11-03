@@ -303,6 +303,7 @@ void Mission::updateTickClock(bool advanceTime) {
 		if (SmokeMode::fixedTimestepEnabled())
 			SmokeMode::fixedTimestepOnSimFrame(static_cast<double>(scenarioTime));
 	}
+	SmokeMode::onSimTick(static_cast<double>(scenarioTime));
 	simClockTraceTick(scenarioTime);
 	resumeTickAudio();
 	actualTime = scenarioTime;
