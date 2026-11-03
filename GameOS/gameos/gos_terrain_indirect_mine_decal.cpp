@@ -458,7 +458,18 @@ void BuildDecalStaticVBOFromInputs(bool overlayMetadata) {
             const DWORD slot = Terrain::mapData->getTexture(tileR, tileC) & 0xffffu;
             const uint16_t artLayer = slot < MC_MAX_TERRAIN_TXMS && g_cementAlphaLayerMapReady
                 ? g_cementAlphaLayerIndexBySlot[slot] : 0xffffu;
-            if (artLayer != 0xffffu && !gos_TerrainLodChunk_OverlaySidecarLoaded()) {
+            // OVERLAY-TILE-HIRES-2: a road tile whose own overlay art is larger than the
+            // base tile edge must not ride the cooked cement-atlas layer: that layer is the
+            // slot's combineOverlayTxm bake, which resamples the overlay down to
+            // TERRAIN_TXM_SIZE (64 px stock), so the hires file would never reach the screen.
+            // Such tiles take the overlay decal path below and sample the hires texture.
+            bool overlayHiresArt = false;
+            if (MC2_OverlayTileHiresSize() > 0) {
+                DWORD hw = 0, hh = 0;
+                if (mc2::textures::logicalSize(overlayHandle, hw, hh))
+                    overlayHiresArt = static_cast<int>(hw * mc2::textures::uvScale(overlayHandle)) > TERRAIN_TXM_SIZE;
+            }
+            if (artLayer != 0xffffu && !overlayHiresArt && !gos_TerrainLodChunk_OverlaySidecarLoaded()) {
                 static const bool adopt = !mc2::options::current().stockOverlayConcrete;
                 surfaceWords[plane + static_cast<size_t>(tileR) * mapSide + tileC] =
                     0x80000000u | (adopt ? 0x00010000u : 0u) | artLayer;
