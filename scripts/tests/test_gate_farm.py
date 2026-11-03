@@ -167,6 +167,7 @@ def test_mad_flags_only_undeclared_views_over_limit():
     out = 'mc2_01_saved_205644 | 1.40 | 5\nmc2_10_saved_204523 | 0.02 | 0\nbookmark | MAD | x\n'
     assert gate.mad_flags(out) == ['mc2_01_saved_205644=1.40']
     assert gate.mad_flags(out, {'mc2_01_saved_205644'}) == []
+    assert gate.mad_flags(out, {'mc2_01_saved_205644'}, expected=('mc2_01_saved_205644', 'mc2_10_saved_204523')) == []
 
 
 def test_mad_flags_nan_and_non_numeric_rows_are_flagged():

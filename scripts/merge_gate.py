@@ -791,7 +791,10 @@ def mad_flags(output, declared=(), expected=()):
             bad.append(line.strip().replace("[ab] ", "")[:80])
             continue
         cells = [c.strip() for c in line.split("|")]
-        if len(cells) < 2 or cells[0] in declared:
+        if len(cells) < 2:
+            continue
+        if cells[0] in declared:
+            seen.add(cells[0])  # a declared view still needs its row (fail closed on a crashed capture), only its MAD is exempt
             continue
         if cells[0] == "bookmark":
             continue  # table header
