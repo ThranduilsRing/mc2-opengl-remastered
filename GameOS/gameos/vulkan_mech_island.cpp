@@ -1219,13 +1219,16 @@ bool record_mech_preview(MechIsland* s, VkCommandBuffer cb, const Mc2MechFrameFe
     MC2_VK_GPU_SCOPE(gpuScope, cb, "VKIsl.MechPreview");
     vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
     const auto& q = g_previewReq;
-    // The request rect is in screen pixels (y down); the preview target stores rows bottom-up (GL texture
-    // convention, drawPreviewToPanel flips v), so the panel's top edge sits at row h - vpY.
-    const int vy = h - q.vpY - q.vpH;
-    const int x0 = std::clamp(q.vpX, 0, w - 1), y0 = std::clamp(vy, 0, h - 1);
-    const int x1 = std::clamp(q.vpX + q.vpW, x0 + 1, w), y1 = std::clamp(vy + q.vpH, y0 + 1, h);
+    // The request rect is in the panel's fixed 800x600 logical space (y down), the space the legacy preview pass
+    // projects with (vulkan_legacy_shape_island.cpp, proj 2/800 and -2/600); the target is that space scaled to w x h
+    // and stores rows bottom-up (drawPreviewToPanel flips v), so the rect's top edge sits at row h - vpY * sy.
+    const float sx = float(w) / 800.0f, sy = float(h) / 600.0f;
+    const float fx = float(q.vpX) * sx, fw = float(q.vpW) * sx, fh = float(q.vpH) * sy;
+    const float fy = float(h) - float(q.vpY + q.vpH) * sy;
+    const int x0 = std::clamp(int(fx), 0, w - 1), y0 = std::clamp(int(fy), 0, h - 1);
+    const int x1 = std::clamp(int(fx + fw + 0.5f), x0 + 1, w), y1 = std::clamp(int(fy + fh + 0.5f), y0 + 1, h);
     // The viewport is the full panel rect (it may hang off the target); the scissor clips it to the target.
-    VkViewport vp{float(q.vpX), float(vy), float(q.vpW), float(q.vpH), 0.0f, 1.0f};
+    VkViewport vp{fx, fy, fw, fh, 0.0f, 1.0f};
     VkRect2D scissor{{x0, y0}, {uint32_t(x1 - x0), uint32_t(y1 - y0)}};
     vkCmdSetViewport(cb, 0, 1, &vp);
     vkCmdSetScissor(cb, 0, 1, &scissor);

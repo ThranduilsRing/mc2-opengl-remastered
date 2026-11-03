@@ -147,7 +147,7 @@ typedef struct Mc2MechPreviewRequest {
     float cameraWorldPos[4];   // GL world (same as Mc2MechFrameFeed::cameraWorldPos)
     const void* lights;        // GpuObjectLights rows (the lab actor submits lightDataIndex 0)
     uint64_t lightBytes;
-    int vpX, vpY, vpW, vpH;    // projection rect in preview-target screen pixels (y down), = the CPU path's viewMul/offset
+    int vpX, vpY, vpW, vpH;    // projection rect in the panel's 800x600 logical space (y down), = the CPU path's viewMul/offset
     float exposure;            // linear scale before the panel tonemap
     int sceneW, sceneH;        // shared scene target size (island init / world-run size match)
 } Mc2MechPreviewRequest;
