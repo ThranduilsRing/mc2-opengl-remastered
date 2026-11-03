@@ -83,29 +83,31 @@ struct ScriptPlayer {
         }
         fclose(f);
     }
-    static bool key_of(const char* name, int* sc) {
-        const int v = static_cast<int>(SDL_GetScancodeFromName(name));
+    static bool key_of(std::string_view name, int* sc) {
+        const std::string z(name);
+        const int v = static_cast<int>(SDL_GetScancodeFromName(z.c_str()));
         if (v <= 0 || v >= 512) return false;
         *sc = v;
         return true;
     }
-    void exec(const std::string& line) {
+    void exec(std::string_view lineView) {
+        const std::string line(lineView);
         char verb[32] = {}, a[96] = {}, b[96] = {}, c[32] = {};
         const int n = sscanf(line.c_str(), "%31s %95s %95s %31s", verb, a, b, c);
         const std::string v = verb;
         auto push_front = [&](std::initializer_list<std::string> l) { q.insert(q.begin(), l.begin(), l.end()); };
-        auto btn_idx = [](const char* s) { return (s[0] == 'r' || s[0] == 'R') ? 1 : 0; };
+        auto btn_idx = [](char c0) { return (c0 == 'r' || c0 == 'R') ? 1 : 0; };
         mc2::fmt::print_out("[INPUT_SCRIPT v1] frame={:d} cmd={}\n", mc2::fmt::as_i32(static_cast<int>(frame)), mc2::fmt::safe(line.c_str()));
         if (v == "wait" && n >= 2) waitFrames = atoi(a);
         else if (v == "move" && n >= 3) { nx = static_cast<float>(atof(a)) / 800.f; ny = static_cast<float>(atof(b)) / 600.f; mouseSet = true; }
-        else if (v == "down") btn[n >= 2 ? btn_idx(a) : 0] = true;
-        else if (v == "up") btn[n >= 2 ? btn_idx(a) : 0] = false;
+        else if (v == "down") btn[n >= 2 ? btn_idx(a[0]) : 0] = true;
+        else if (v == "up") btn[n >= 2 ? btn_idx(a[0]) : 0] = false;
         else if (v == "click" && n >= 3) {
             const std::string bn = n >= 4 ? c : "l";
             push_front({std::string("move ") + a + " " + b, "wait 4", "down " + bn, "wait 4", "up " + bn, "wait 4"});
         }
-        else if (v == "keydown" && n >= 2) { int sc; if (key_of(line.c_str() + line.find(' ') + 1, &sc)) keys[sc] = true; }
-        else if (v == "keyup" && n >= 2) { int sc; if (key_of(line.c_str() + line.find(' ') + 1, &sc)) keys[sc] = false; }
+        else if (v == "keydown" && n >= 2) { int sc; if (key_of(std::string_view(line).substr(line.find(' ') + 1), &sc)) keys[sc] = true; }
+        else if (v == "keyup" && n >= 2) { int sc; if (key_of(std::string_view(line).substr(line.find(' ') + 1), &sc)) keys[sc] = false; }
         else if (v == "key" && n >= 2) {
             const std::string name = line.substr(line.find(' ') + 1);
             push_front({"keydown " + name, "wait 4", "keyup " + name, "wait 4"});

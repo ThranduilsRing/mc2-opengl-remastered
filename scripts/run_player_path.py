@@ -41,7 +41,22 @@ SCEN_DIR = ROOT / "tests" / "player_path"
 DEFAULT_PROOFS = Path("E:/mc2-archive-2026-10/proofs/player-path")
 STRIP_ENV = via_menu.STRIP_ENV + ("MC2_BOOT_TO_BAY", "MC2_BOOT_VIDEO", "MC2_MENU_CANARY_SKIP_INTRO", "MC2_INPUT_SCRIPT")
 DEFAULT_FORBID = [r"^CRASH:", r"MC2 Remastered Crash Report", r"requireOwner"]
-SAVE_DIR = Path.home() / ".mechcommander2" / "savegame"
+REAL_SAVE_DIR = Path.home() / ".mechcommander2" / "savegame"   # the player's saves: a run must never write here
+
+
+def real_saves_snapshot() -> dict:
+    return {f.name: (f.stat().st_mtime_ns, f.stat().st_size) for f in REAL_SAVE_DIR.glob("*")} if REAL_SAVE_DIR.is_dir() else {}
+
+
+def require_save_redirect(env: dict, out: Path) -> Path:
+    """MC2_SAVE_DIR must point inside this run's evidence dir (never the player's savegame folder), or the run is refused."""
+    d = env.get("MC2_SAVE_DIR", "")
+    if not d:
+        raise SystemExit("[PLAYER_PATH] REFUSED: MC2_SAVE_DIR is not set (the run would write the player's saves)")
+    dp, op = Path(d).resolve(), out.resolve()
+    if dp == REAL_SAVE_DIR.resolve() or op not in dp.parents:
+        raise SystemExit(f"[PLAYER_PATH] REFUSED: MC2_SAVE_DIR={d} is not a per-run directory under {out}")
+    return dp
 
 
 def diff_fraction(a: Path, b: Path) -> float:
@@ -103,14 +118,20 @@ def run_scenario(exe: Path, sc: dict, out: Path, extra_env: dict, show_window: b
     out.mkdir(parents=True, exist_ok=True)
     script = out / "input.script"
     script.write_text("# player-path input script (appended by run_player_path.py)\n", encoding="utf-8")
+    if "MC2_SAVE_DIR" in extra_env:
+        raise SystemExit("[PLAYER_PATH] REFUSED: --env MC2_SAVE_DIR is owned by the harness")
+    SAVE_DIR = out / "savegame"
+    SAVE_DIR.mkdir(parents=True, exist_ok=True)
+    real_before = real_saves_snapshot()
     for s in sc["setup"]:
         if s[0] == "save" and len(s) == 3:
-            SAVE_DIR.mkdir(parents=True, exist_ok=True)
             src = ROOT / "tests" / "player_path" / "fixtures" / s[1]
             for f in src.parent.glob(src.name + ".*") if not src.exists() else [src]:
                 shutil.copy2(f, SAVE_DIR / (s[2] + f.suffix if src.suffix == "" else s[2] + ".fit"))
     lease = via_menu.lease_check()
     env = build_env(extra_env, script)
+    env["MC2_SAVE_DIR"] = str(SAVE_DIR)
+    require_save_redirect(env, out)
     t0 = time.perf_counter()
     proc = nofocus.spawn(via_menu.game_argv(exe), stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1,
                          errors="replace", cwd=str(exe.resolve().parent), env=env, show_window=show_window)
@@ -191,6 +212,12 @@ def run_scenario(exe: Path, sc: dict, out: Path, extra_env: dict, show_window: b
     problems = [fail] if fail else []
     if rc is not None and rc != 0 and not done:
         problems.append(f"exit code {rc} (0x{rc & 0xFFFFFFFF:08X})")
+    for m in re.finditer(r"\[SAVELOAD\] op=\S+ file=(\S+)", text):
+        fp = Path(m.group(1).replace("//", "/"))
+        if SAVE_DIR.resolve() not in fp.resolve().parents:
+            problems.append(f"save redirect not active: [SAVELOAD] wrote {fp} outside {SAVE_DIR}")
+    if real_saves_snapshot() != real_before:
+        problems.append(f"the player's savegame folder {REAL_SAVE_DIR} changed during the run (save redirect broken)")
     for rx in sc["expect"]:
         if not re.search(rx, text, re.M):
             problems.append(f"missing expected /{rx}/")

@@ -37,3 +37,15 @@ def test_env_strips_smoke_and_boot_shortcuts(monkeypatch, tmp_path):
 
 def test_refuses_owner_install(capsys):
     assert pp.main(["--install", "E:/mc2-installs/owner-test-2026-10-26"]) == 2
+
+
+def test_save_redirect_is_required_and_per_run(tmp_path):
+    import pytest
+    with pytest.raises(SystemExit):
+        pp.require_save_redirect({}, tmp_path)
+    with pytest.raises(SystemExit):
+        pp.require_save_redirect({"MC2_SAVE_DIR": str(pp.REAL_SAVE_DIR)}, tmp_path)
+    with pytest.raises(SystemExit):
+        pp.require_save_redirect({"MC2_SAVE_DIR": str(tmp_path.parent)}, tmp_path)
+    ok = tmp_path / "savegame"
+    assert pp.require_save_redirect({"MC2_SAVE_DIR": str(ok)}, tmp_path) == ok.resolve()
