@@ -363,8 +363,6 @@ void MechLabScreen::begin()
 			mechCamera.setMech( mc2::str::file_stem( pVariant->getFileName() ).c_str(), prefs.baseColor, prefs.highlightColor, prefs.highlightColor );
 			if ( mechCamera.hasObject() && pVariant->getChassis() )
 				mechCamera.setScale( pVariant->getChassis()->getScale() );
-			if ( mechCamera.hasObject() )
-				mechCamera.zoomIn( 1.5f );	// fill the lab panel (default framing is sized for the small bay tile)
 		}
 
 
