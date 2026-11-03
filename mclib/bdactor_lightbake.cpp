@@ -200,6 +200,7 @@ void mc2CacheOrBakeStaticGpuLight(TG_MultiShape* shape,
 	extern bool mc2GetBakedStaticLight(int32_t, TG_HWLightsData&);
 	extern void mc2SetBakedStaticLight(int32_t, const TG_HWLightsData&);
 	extern void mc2WriteStaticLightSlot(int32_t, const TG_HWLightsData&);  // [LIGHTBAKE v2]
+	extern bool mc2IsBakedStaticLightPresent(int32_t);
 	if (!shape) return;
 	if (!mc2LightBakeEnabled() || !registered || recipeIndex < 0) {
 		shape->CacheGpuLightData();                  // unchanged D2/legacy path
@@ -306,6 +307,8 @@ void mc2CacheOrBakeStaticGpuLight(TG_MultiShape* shape,
 					          sun[0], sun[1], sun[2]);
 				}
 			}
+			// Slot write skipped (light feed inactive): keep the per-frame dynamic index CacheGpuLightData just produced.
+			if (!mc2IsBakedStaticLightPresent(recipeIndex)) return;
 			shape->EmitBakedGpuLightData(recipeIndex, *leaf);
 		}
 	}
