@@ -1,16 +1,17 @@
 #pragma once
 // Out-of-pool pilot choice for LogisticsData::getBestPilot (pure, header-only so a doctest covers it).
 // `filtered` holds only pilots that passed isAvailable() and !warriorInUse(); never fall back past the filter.
+#include <optional>
 #include <span>
 // First candidate that is available and not already flying a mech (applies the filter in MP too, where the
-// pool listing is not pre-filtered by warriorInUse); nullptr when none qualifies.
+// pool listing is not pre-filtered by warriorInUse); nullopt when none qualifies.
 template <class P, class InUse>
-inline P* pickOutOfPoolPilot(std::span<P* const> candidates, InUse inUse)
+inline std::optional<P*> pickOutOfPoolPilot(std::span<P* const> candidates, InUse inUse)
 {
 	for (P* p : candidates)
 		if (p && p->isAvailable() && !inUse(p))
 			return p;
-	return nullptr;
+	return std::nullopt;
 }
 
 // Hover text for the recovery button: the "No pilot available" id replaces the

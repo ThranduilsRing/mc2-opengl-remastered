@@ -7,7 +7,7 @@ namespace {
 struct FakePilot { bool available; bool inUse; bool isAvailable() const { return available; } };
 FakePilot* pick(FakePilot** v, size_t n)
 {
-    return pickOutOfPoolPilot<FakePilot>(std::span<FakePilot* const>(v, n), [](FakePilot* p) { return p->inUse; });
+    return pickOutOfPoolPilot<FakePilot>(std::span<FakePilot* const>(v, n), [](FakePilot* p) { return p->inUse; }).value_or(nullptr);
 }
 }
 
