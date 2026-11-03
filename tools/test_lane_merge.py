@@ -80,7 +80,7 @@ def test_precheck_fast_path_has_no_native_build_and_no_scratch_in_root(env, monk
     before = git(repo, "rev-parse", "HEAD")
     seen = precheck_fixture(lm, repo, monkeypatch, red)
     assert lm.main(["--root", str(repo), "--precheck", "HEAD"]) == int(red is not None)
-    assert len(seen) == 9     # 5 ratchets + callers refresh + callers --check + 2 suites
+    assert len(seen) == 11    # 5 ratchets + callers refresh + callers --check + 2 early rows + 2 suites
     assert not any(is_native(cmd) for _, cmd in seen)
     assert all(not lm._inside(root, str(repo)) for root, _ in seen)   # scratch is never inside the main worktree
     caller_commands = [cmd for _, cmd in seen if "tools/callers.py" in cmd]
@@ -103,7 +103,7 @@ def test_precheck_with_link_uses_warm_tree_outside_root(env, monkeypatch, capsys
     tree = tmp_path / "warm" / "tree"
     seen = precheck_fixture(lm, repo, monkeypatch, red, tree)
     assert lm.main(["--root", str(repo), "--precheck", "HEAD", "--with-link"]) == int(red is not None)
-    assert len(seen) == 12
+    assert len(seen) == 14
     assert all(root == str(tree) for root, _ in seen)
     assert not lm._inside(str(tree), str(repo))
     for _, cmd in seen:
@@ -1140,3 +1140,85 @@ def test_batch_fails_loudly_and_restores_a_loosened_log_tag_census(env, monkeypa
     assert rc == 6
     assert "log tag census loosened" in capsys.readouterr().err
     assert json.loads((repo / LOGTAGS).read_text(encoding="utf-8")) == _tags(("A", 1, 1))
+
+
+# ---- early contract rows + exe fingerprint guard (W109 lessons) ----
+
+def test_early_rows_are_the_contract_commands():
+    lm = _load_module()
+    assert dict((l, (s, a)) for l, s, a in lm.EARLY_ROWS) == {
+        "sim_include_firewall": ("scripts/check_sim_include_firewall.py", []),
+        "log_tag_census": ("tools/log_tag_census.py", ["--check"])}
+
+
+def test_precheck_runs_the_early_rows(env, monkeypatch):
+    repo, _ = env
+    lm = _load_module()
+    seen = precheck_fixture(lm, repo, monkeypatch, "check_sim_include_firewall.py")
+    assert lm.main(["--root", str(repo), "--precheck", "HEAD"]) == 1     # the firewall row is red -> precheck is red
+    names = [lm.Path(a).name for _, cmd in seen for a in cmd]
+    assert "check_sim_include_firewall.py" in names
+    assert any(cmd[-2:] == ["tools/log_tag_census.py", "--check"] for _, cmd in seen)
+
+
+def test_pre_gate_runs_the_early_rows(env, monkeypatch, capsys):
+    repo, _ = env
+    lm = _load_module()
+    cmds = []
+    monkeypatch.setattr(lm, "regenerate_all", lambda root, dry_run=False: [])
+    monkeypatch.setattr(lm, "exe_matches_head", lambda root, tree="build64-ninja": None)
+
+    def runner(root, cmd, env=None):
+        cmds.append(cmd)
+        return subprocess.CompletedProcess(cmd, int(any("log_tag_census" in str(c) for c in cmd)), "tag census red")
+    monkeypatch.setattr(lm, "run", runner)
+    assert lm.pre_gate(str(repo), exe=str(repo / "no.exe")) == 1
+    out = capsys.readouterr().out
+    assert "pre-gate: sim_include_firewall: OK" in out
+    assert "pre-gate: log_tag_census: FAIL" in out
+    assert "PRE-GATE FAIL: log_tag_census" in out
+
+
+def test_pre_gate_fails_on_a_stale_exe_fingerprint(env, monkeypatch, capsys):
+    repo, _ = env
+    lm = _load_module()
+    exe = repo / "build64-ninja" / "mc2.exe"
+    exe.parent.mkdir()
+    exe.write_bytes(b"x")
+    monkeypatch.setattr(lm, "regenerate_all", lambda root, dry_run=False: [])
+    monkeypatch.setattr(lm, "exe_matches_head", lambda root, tree="build64-ninja": False)
+    monkeypatch.setattr(lm, "run", lambda root, cmd, env=None: subprocess.CompletedProcess(cmd, 0, ""))
+    assert lm.pre_gate(str(repo), exe=str(exe)) == 1
+    assert "PRE-GATE FAIL: exe-fingerprint" in capsys.readouterr().out
+
+
+def test_rebuild_if_head_moved_skips_a_matching_or_missing_exe(env):
+    repo, _ = env
+    lm = _load_module()
+    for state in (True, None):
+        ran = []
+        ok, _ = lm.rebuild_if_head_moved(str(repo), check=lambda r, state=state: state,
+                                         runner=lambda *a, **k: ran.append(a))
+        assert ok and not ran
+
+
+def test_rebuild_if_head_moved_rebuilds_then_accepts(env):
+    repo, _ = env
+    lm = _load_module()
+    states = iter([False, True])
+    ran = []
+    ok, msg = lm.rebuild_if_head_moved(str(repo), check=lambda r: next(states),
+                                       runner=lambda root, cmd, env=None: ran.append(cmd) or subprocess.CompletedProcess(cmd, 0, ""))
+    assert ok and not msg
+    assert len(ran) == 1 and ran[0][1].replace("\\", "/").endswith("scripts/ninja_build.py")
+
+
+def test_rebuild_if_head_moved_fails_loudly(env):
+    repo, _ = env
+    lm = _load_module()
+    ok, msg = lm.rebuild_if_head_moved(str(repo), check=lambda r: False,
+                                       runner=lambda root, cmd, env=None: subprocess.CompletedProcess(cmd, 1, "link error"))
+    assert not ok and "rebuild before the gate failed" in msg
+    ok, msg = lm.rebuild_if_head_moved(str(repo), check=lambda r: False,
+                                       runner=lambda root, cmd, env=None: subprocess.CompletedProcess(cmd, 0, ""))
+    assert not ok and "still differs" in msg
