@@ -8,6 +8,7 @@
 #include "mc2fmt.h"
 #include "vulkan_shadow_island_live.h"   // the bake mask
 #include "vulkan_mover_shadow.h"
+#include "gos_terrain_lod_chunk.h"   // gos_WaterShoreMode
 void gos_GetTerrainChunkGridInfo(int* mapSide, float* halfMap);
 #include "mc2_diag_verbose.h"
 #include "../../mclib/battle_bench_wait.h"
@@ -120,6 +121,8 @@ extern "C" int mc2_vk_water_island_prewarm(int w,int h) {
     ZoneScopedN("VKIsl.Water.WarmDispatch");
     const auto capacity = WaterStream::GetNativeCapacity();
     if (!capacity) return 0;
+    // The first feed's visibility test builds the shore-field wet tables; do it here, with the field mode the feed will use.
+    if (gos_WaterShoreMode() == 3 && s->shHReal && s->shHSdf) WaterStream::PrewarmShoreFieldCoverage();
     gos_terrain_lighting::VkProducerSnapshot light{};
     light.numVertices = capacity->vertices;
     mc2vk::WaterCullFrame water{};

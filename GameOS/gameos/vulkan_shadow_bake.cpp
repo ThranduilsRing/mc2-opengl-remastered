@@ -215,6 +215,11 @@ bool ShadowBake::prewarmProducts() {
     return true;
 }
 
+bool ShadowBake::prewarmTypeBounds(const ShadowBakeInputs& in) {
+    if (!inited_ || !typeBounds_.empty() || in.vbo == VK_NULL_HANDLE) return true;
+    return computeTypeBounds(in);
+}
+
 void ShadowBake::releaseTransients() {
     ZoneScopedN("ShadowBake.ReleaseTransients");
     windowFb_.reset(); windowView_.reset(); windowImage_.reset();

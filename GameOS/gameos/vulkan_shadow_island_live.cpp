@@ -1287,7 +1287,19 @@ extern "C" int mc2_vk_shadow_island_prewarm(int,int) {
     auto* s=parkedIsland();
     upload_geometry_once(s);
     refresh_alpha_casters(s);
-    return s->bake.prewarmProducts() ? 1 : 0;
+    if (!s->bake.prewarmProducts()) return 0;
+    if (s->geomUploaded) {
+        // Same type table record_bake feeds the first bake; the boxes depend only on the uploaded geometry.
+        std::vector<uint32_t> firstPacket(s->typeRuns.size()), packetCount(s->typeRuns.size());
+        for (size_t t = 0; t < s->typeRuns.size(); ++t) { firstPacket[t] = s->typeRuns[t].firstPacket; packetCount[t] = s->typeRuns[t].packetCount; }
+        mc2vk::ShadowBakeInputs in;
+        in.vbo = s->vbo.get();
+        in.packets = s->packets;
+        in.typeFirstPacket = firstPacket;
+        in.typePacketCount = packetCount;
+        if (!s->bake.prewarmTypeBounds(in)) return 0;
+    }
+    return 1;
 }
 
 bool mc2vk::bindMoverShadowDescriptors(VkDevice device, VkDescriptorSet set) {

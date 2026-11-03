@@ -23,6 +23,7 @@ extern int gos_WaterShoreMode();
 #include "gos_terrain_indirect.h"        // IsFrameSolidArmed()
 #include "terrain_field_store.h"
 #include "gos_terrain_lod_chunk.h"
+#include <tracy/Tracy.hpp>
 #include <cassert>
 
 // WATER-BIAS-LINEARIZE-1 (gameos.hpp): FAST-water bias mode (0 = proportional
@@ -451,6 +452,12 @@ std::optional<NativeCapacity> GetNativeCapacity() {
     const float threshold = Terrain::waterElevation + EffShoreExt(MapData::alphaDepth) + 64.0f;
     const uint32_t n=BuildWaterChunks(side,threshold);
     return NativeCapacity{side * side, n + n / 8u + 4096u};
+}
+
+void PrewarmShoreFieldCoverage() {
+    if (!NativeInputSourceReady()) return;
+    ZoneScopedN("Water.PrewarmShoreFieldCoverage");
+    UpdateFieldWaterCoverage(Terrain::waterElevation);
 }
 
 bool NativeWaterInFrustum(const VkNativeInputs& f, bool shoreFieldActive) {
