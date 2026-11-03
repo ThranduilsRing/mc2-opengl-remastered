@@ -524,6 +524,7 @@ void initABL (void) {
 	ABLi_addFunction("removemoverfromplayer",false, "iii", nullptr, execRemoveMoverFromPlayer);
 	ABLi_addFunction("setbrain",             false, "iC",  nullptr, execSetBrainFixed);
 	ABLi_addFunction("setbrainnew",          false, "iC",  nullptr, execSetBrainNew);
+	ABLi_addFunction("setpartid",            false, "ii",  nullptr, execSetPartId);
 	ABLi_addFunction("destroymechbodylocation", false, "ii", nullptr, execDestroyMechBodyLocation);
 	ABLi_addFunction("damagemecharmor",      false, "i",   nullptr, execDamageMechArmor);
 	ABLi_addFunction("setmechgesture",       false, "ii",  nullptr, execSetMechGesture);

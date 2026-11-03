@@ -267,6 +267,20 @@ void execSetBrainFixed (void) {
 	}
 }
 
+void execSetPartId (void) {
+
+	//MC2X "setpartId" (reap3m6attackdep333x.abl): give a unit a new part id so later scripts can address it (setBrain(3330, ...)).
+	//		PARAMS: integer partId, integer newPartId
+	//		Returns: nothing. An unknown part id is a no-op.
+
+	long partId = ABLi_popInteger();
+	long newPartId = ABLi_popInteger();
+
+	GameObjectPtr obj = (partId == -1) ? CurObject : getObject(partId);
+	if (obj)
+		ObjectManager->forcePartId(obj, newPartId);
+}
+
 void execSetBrainNew (void) {
 
 	//Alias of setbrain (Omnitech).

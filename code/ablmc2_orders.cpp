@@ -453,7 +453,11 @@ void execCorePowerPart (void) {
 	long result = 1;
 	GameObjectPtr obj = getObject(partId);
 	if (obj && obj->isMover() && static_cast<MoverPtr>(obj)->getPilot())
+	{
 		result = static_cast<MoverPtr>(obj)->getPilot()->corePower(up);
+		if (mc2_diag::tagRequested("ABL_NEWPOWER_PART"))
+			mc2::fmt::print_err("[ABL_NEWPOWER_PART] partId={} up={} result={} status={}\n", partId, up ? 1 : 0, result, static_cast<long>(static_cast<MoverPtr>(obj)->getStatus()));
+	}
 	else
 		{ if (mc2_diag::tagRequested("ABL_NEWPOWER_PART")) mc2::fmt::print_err("[ABL_NEWPOWER_PART] partId={} not a live mover, ignored\n", partId); }
 
