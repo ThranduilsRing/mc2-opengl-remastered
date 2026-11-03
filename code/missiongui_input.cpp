@@ -105,7 +105,7 @@ void MissionInterfaceManager::Load (FitIniFilePtr file)
 			}
 			else						//IS a recovery vehicle.  DO NOT create VTOL, use KARNOV instead.  NO Vehicle created either
 			{
-				mechRecovered[commanderID] = false;	//Need to know when mech is done so Karnov can fly away.
+				mechRecovered[commanderID] = false;	mechRecoverSkipped[commanderID] = false;	//Need to know when mech is done so Karnov can fly away.
 
 				if (!dustCloud[commanderID] && prefs.useNonWeaponEffects)
 				{
@@ -211,6 +211,7 @@ void MissionInterfaceManager::Load (FitIniFilePtr file)
 
 		vehicleDropped[commanderID] = false;
 		mechRecovered[commanderID] = false;
+		mechRecoverSkipped[commanderID] = false;
 		if (file->seekBlock("R2VTOLAnimation") == NO_ERR) {
 			long version = 0, serial = 0, reinforcementWID = 0;
 			file->readIdLong("Version", version);

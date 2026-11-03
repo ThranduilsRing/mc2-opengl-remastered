@@ -87,9 +87,10 @@ const char*	LogisticsData::getBestPilot( long mechWeight )
 	}
 
 	// Out of pilots (all used/unavailable). Release builds used to write through a null pPilots[0] here.
-	// Reuse the best filtered candidate (available, not in a live mech) if there was one; else report none.
+	// Reuse the best candidate (available, not in a live mech; checked here for MP too, whose pool listing is unfiltered) if there was one; else report none.
 	// Never hand back a pilot that failed the filters (that would put one pilot in two mechs); callers must cope with nullptr.
-	LogisticsPilot* fallback = pickOutOfPoolPilot<LogisticsPilot>(std::span<LogisticsPilot* const>(pPilots, static_cast<size_t>(count)));
+	LogisticsPilot* fallback = pickOutOfPoolPilot<LogisticsPilot>(std::span<LogisticsPilot* const>(pPilots, static_cast<size_t>(count)),
+		[](LogisticsPilot* p) { return MechWarrior::warriorInUse(const_cast<char*>(p->getName().c_str())); });
 	if (!fallback)
 	{
 		mc2::content::error(mc2::content::Kind::MissionData, "pilots", "getBestPilot: no available pilot not already in a mech");
