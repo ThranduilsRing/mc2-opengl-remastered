@@ -3,6 +3,8 @@
 // its path vector and a private read buffer.
 #include "startup_preload.h"
 
+#include "diagnostic_trace.h"
+
 #include "../mclib/fastfile.h"
 #include "../mclib/ffile.h"
 #include "../mclib/file.h"
@@ -11,6 +13,7 @@
 #include <cstdio>
 #include <cstring>
 #include <string>
+#include <string_view>
 #include <thread>
 #include <utility>
 #include <vector>
@@ -34,14 +37,19 @@ struct Entry {
 std::thread g_worker;
 std::atomic<bool> g_stop{false};
 
+void addModFile(std::string_view key, std::vector<Entry>& out)
+{
+	if (key.starts_with("data/movies/") || key.starts_with("data/sound") || key.starts_with("data/music"))
+		return;
+	const std::string_view abs = LookupModAbsolutePath(key) ? std::string_view(LookupModAbsolutePath(key)) : std::string_view();
+	if (!abs.empty())
+		out.push_back({std::string(abs), true});
+}
+
+// ModFitCallback ABI is fixed (absPath is const char*); forward straight into the string_view helper.
 void collectModFile(const char* key, void* user)
 {
-	auto* out = static_cast<std::vector<Entry>*>(user);
-	if (std::strncmp(key, "data/movies/", 12) == 0 || std::strncmp(key, "data/sound", 10) == 0
-		|| std::strncmp(key, "data/music", 10) == 0)
-		return;
-	if (const char* abs = LookupModAbsolutePath(key))
-		out->push_back({abs, true});
+	addModFile(std::string_view(key), *static_cast<std::vector<Entry>*>(user));
 }
 
 #ifdef _WIN32
@@ -78,6 +86,7 @@ void runPlan(std::vector<Entry> plan)
 		++files;
 	}
 	const double ms = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count();
+	if (mc2_diag::tagRequested("STARTUP_PRELOAD"))
 	std::printf("[STARTUP_PRELOAD] done files=%zu mb=%.1f mod_mb=%.1f ms=%.0f%s\n", files,
 		static_cast<double>(bytes) / (1024.0 * 1024.0), static_cast<double>(modBytes) / (1024.0 * 1024.0), ms,
 		g_stop.load() ? " (stopped)" : "");
@@ -101,6 +110,7 @@ void startStartupPreload()
 	const size_t archives = plan.size();
 	// Then every mod-winning data file (the worker applies the mod size budget).
 	EnumerateModFiles("data/", &collectModFile, &plan);
+	if (mc2_diag::tagRequested("STARTUP_PRELOAD"))
 	std::printf("[STARTUP_PRELOAD] start archives=%zu mod_files=%zu\n", archives, plan.size() - archives);
 	std::fflush(stdout);
 	g_worker = std::thread(runPlan, std::move(plan));
