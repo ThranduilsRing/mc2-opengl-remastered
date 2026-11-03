@@ -414,6 +414,13 @@ void SimpleCamera::render(long xOffset, long yOffset)
 					drawn_[0] = g_previewBoundsMinX; drawn_[1] = g_previewBoundsMinY;
 					drawn_[2] = g_previewBoundsMaxX; drawn_[3] = g_previewBoundsMaxY;
 					haveDrawn_ = true;
+					static bool s_boundsLogged = false;
+					if ( gpuDraws && !s_boundsLogged )
+					{
+						s_boundsLogged = true;
+						fprintf( stderr, "[MECHLAB_GPU] CPU silhouette bounds under the GPU draw: %.1f,%.1f .. %.1f,%.1f (800x600 logical)\n",
+							drawn_[0], drawn_[1], drawn_[2], drawn_[3] );
+					}
 				}
 			}
 			else
