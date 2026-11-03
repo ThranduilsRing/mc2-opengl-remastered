@@ -124,7 +124,7 @@ def compare(gl_dir: Path, vk_dir: Path, out: Path, crops, bookmarks=None):
     hdr = "bookmark | MAD | %>24" + "".join(f" | crop{i}" for i in range(len(crops)))
     print(hdr)
     for r in rows:
-        print(f"{r['bookmark']} | {r['mad']:.2f} | {r['pct_diff_gt24']:.2f}"
+        print(f"{r['bookmark']} | {r['mad']:.4f} | {r['pct_diff_gt24']:.2f}"
               + "".join(f" | {c['mad']:.2f}" for c in r["crops"]))
     (out / "summary.json").write_text(json.dumps(
         {"gl": str(gl_dir), "vk": str(vk_dir), "threshold": THRESH, "rows": rows}, indent=2))

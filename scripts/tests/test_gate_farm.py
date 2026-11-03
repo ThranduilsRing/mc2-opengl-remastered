@@ -221,3 +221,11 @@ def test_stock_takes_all_saves_after_tier1_and_mods(tmp_path, monkeypatch):
     assert gate.execute_parallel(steps, 'head') == 0
     assert sum(p.endswith('clone') for p in seen) == 0
     assert sum(p.endswith('install') for p in seen) == 4
+
+
+def test_mad_flags_compares_the_raw_value_not_the_rounded_print(tmp_path):
+    (tmp_path / 'summary.json').write_text('{"rows": [{"bookmark": "a", "mad": 0.0539}]}')
+    out = 'bookmark | MAD | %>24\na | 0.05 | 0\n[ab] wrote ' + str(tmp_path) + '\n'
+    assert gate.mad_flags(out) == ['a=0.05']                  # 0.0539 > 0.05 although the table prints 0.05
+    assert gate.mad_flags('a | 0.05 | 0\n') == []             # no summary.json: the printed value still decides
+    assert gate.mad_flags('a | 0.0539 | 0\n') == ['a=0.0539']  # ab.py now prints 4 decimals
