@@ -363,6 +363,8 @@ void MechLabScreen::begin()
 			mechCamera.setMech( mc2::str::file_stem( pVariant->getFileName() ).c_str(), prefs.baseColor, prefs.highlightColor, prefs.highlightColor );
 			if ( mechCamera.hasObject() && pVariant->getChassis() )
 				mechCamera.setScale( pVariant->getChassis()->getScale() );
+			if ( mechCamera.hasObject() )
+				mechCamera.zoomIn( 2.2f );	// fill the lab panel (default framing is sized for the small bay tile)
 		}
 
 
@@ -969,6 +971,12 @@ void MechLabScreen::render(int xOffset, int yOffset)
 		statics[i].move( -xOffset, -yOffset );
 	}
 
+	// MECHLAB-3D-1: the 3D mech is an ImGui image (opaque FBO); the grid must be drawn on
+	// the same layer afterwards or the image buries it.
+	const bool gridBridge = mechCamera.hasObject();
+	if ( gridBridge )
+		aObject::beginGuiBridge( tbSx, tbSy, tbOx, tbOy );
+
 	// figure where components go
 	if ( pVariant )
 	{
@@ -1041,6 +1049,9 @@ void MechLabScreen::render(int xOffset, int yOffset)
 		else
 			pSelectedComponent = nullptr;
 	}
+
+	if ( gridBridge )
+		aObject::endGuiBridge();
 
 	aObject::beginTextBridge( tbSx, tbSy, 1.3f, tbOx, tbOy );
 	variantList.move( xOffset, yOffset );
