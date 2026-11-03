@@ -6,6 +6,8 @@
 #include "mission_internal.h"
 #include "command_replay.h"
 #include "mission_init_frame.h"
+#include "mission_commander_team.h"
+#include "../GameOS/gameos/diagnostic_trace.h"
 #include <new>
 
 
@@ -577,8 +579,7 @@ void Mission::initTeamsAndCommanders(long loadType, glm::vec3* dropZoneList, cha
 						partName, static_cast<int>(commanderID), MAX_COMMANDERS - 1))
 					commanderID = MAX_COMMANDERS - 1;
 
-				if ((commanderID >= 0) && (commanderID < 8) && (teamID >= 0) && (f.commanderPartTeam[commanderID] < 0))
-					f.commanderPartTeam[commanderID] = teamID;
+				mission_commander_team::notePartTeam(f.commanderPartTeam, commanderID, teamID);
 				if (commanderID > maxCommanderID)
 					maxCommanderID = commanderID;
 				if (teamID > maxTeamID)
@@ -659,8 +660,12 @@ void Mission::initTeamsAndCommanders(long loadType, glm::vec3* dropZoneList, cha
 					// Only a commander with no usable parts team is a content error.
 					const bool ctlCmdOk = (ctlCommander > -1) && (ctlCommander < MAX_COMMANDERS) &&
 						(Commander::commanders[ctlCommander] != nullptr);
-					const long partTeam = (ctlCmdOk && (ctlCommander < 8)) ? f.commanderPartTeam[ctlCommander] : -1;
-					if (ctlCmdOk && (partTeam > -1) && (partTeam < MAX_TEAMS) && (Team::teams[partTeam] != nullptr)) {
+					const long partTeam = mission_commander_team::resolvePartTeam(f.commanderPartTeam, ctlCommander, ctlCmdOk, MAX_TEAMS,
+						[](long t) { return Team::teams[t] != nullptr; });
+					if (partTeam > -1) {
+						if (mc2_diag::tagRequested("COMMANDER_TEAM"))
+							mc2::fmt::print_out("[COMMANDER_TEAM v1] commander={:d} logistics_team={:d} part_team={:d}\n", mc2::fmt::as_i32(ctlCommander),
+								mc2::fmt::as_i32(ctlTeam), mc2::fmt::as_i32(partTeam));
 						if (Commander::commanders[ctlCommander]->getTeam() == nullptr)
 							Commander::commanders[ctlCommander]->setTeam(Team::teams[partTeam]);
 						continue;
