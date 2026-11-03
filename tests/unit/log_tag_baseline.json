@@ -9318,6 +9318,16 @@
    "count": 1
   },
   {
+   "tag": "SUPPORT_PRELOAD_LATE",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "late_types",
+    "rebuild_ms"
+   ],
+   "count": 1
+  },
+  {
    "tag": "TACMAP",
    "ver": -1,
    "stream": "stdout",

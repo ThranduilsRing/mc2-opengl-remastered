@@ -29,6 +29,7 @@ const std::unordered_set<std::string>& knownTags() {
     // Immortal (leaked on purpose): tagRequested() -> parseTagsEnv() calls this from atexit handlers, after a destructible static would be gone.
     static const auto* tags = std::make_unique<std::unordered_set<std::string>>(std::initializer_list<std::string>{
         "ABL_NEWPOWER_PART",
+        "SUPPORT_PRELOAD_LATE", // late mech-class types registered by the support warm and the shared-buffer rebuild that absorbs them. Opt-in.
         "GPU_CULL",
         "LIGHTBAKE_PROOF",
         "ANIM_GATE",
