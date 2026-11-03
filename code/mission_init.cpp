@@ -985,6 +985,7 @@ void Mission::initMissionScript(MissionInitFrame& f) {
 	MCTimeMissionABLLoad=x1-x;
 #endif
 }
+extern void preloadMissionSupportAtLoad();
 // Mission load sequence. Each phase is a member helper declared in mission.h, run in the original order; the
 // shared locals live in MissionInitFrame. The Tracy zone and the missionFileName char-array reset stay here.
 void Mission::init (const char *missionName, long loadType, long dropZoneID, glm::vec3* dropZoneList, char commandersToLoad[8][3], long numMoversPerCommander)
@@ -1041,5 +1042,8 @@ initPartsHeader(f);
 	initInterface(f);
 initLabTimingAndClose();
 	initFinalizeGeometry();
+	// After the static-prop geometry is finalized: a type registered before it (the VTOL, Karnov) joins the batch and changes how other props shade.
+	// Registered after, it takes the CPU-fallback path exactly as when it was first loaded in gameplay. Still behind the loading screen.
+	preloadMissionSupportAtLoad();
 	mc2::content::reportMission(missionName);
 }
