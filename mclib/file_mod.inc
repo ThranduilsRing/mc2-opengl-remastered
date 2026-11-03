@@ -776,11 +776,17 @@ static void ScanModDuplicateContent(const char* absRoot, const std::string& acti
     const auto t0 = GetTickCount64();
     size_t scanned = 0, conflicts = 0, identical = 0, printed = 0;
     const size_t printCap = logFileResolve ? static_cast<size_t>(-1) : 200;
+    // Startup guard: the scan stops after 2000 ms (unlimited when MC2_LOG_FILE_RESOLVE is
+    // set, for full-count audits) and the summary reports partial=1 unscanned_keys=N.
+    const unsigned long long budgetMs = logFileResolve ? 0ull : 2000ull;
+    size_t unscanned = 0;
+    bool partial = false;
     std::vector<std::string> keys;
     keys.reserve(g_modIndex.size());
     for (const auto& kv : g_modIndex) keys.push_back(kv.first);
     std::sort(keys.begin(), keys.end());
     for (const std::string& key : keys) {
+        if (partial || (budgetMs && GetTickCount64() - t0 > budgetMs)) { partial = true; ++unscanned; continue; }
         const ModFileEntry& win = g_modIndex.at(key);
         std::vector<std::pair<std::string, std::string>> losers;   // layer label, path
         if (auto sit = g_shadowedBy.find(key); sit != g_shadowedBy.end()) {
@@ -813,8 +819,8 @@ static void ScanModDuplicateContent(const char* absRoot, const std::string& acti
             printf("[CONTENT] mod-dup path=%s winner=%s losers=%s\n", key.c_str(), win.modId.c_str(), differing.c_str());
         }
     }
-    printf("[CONTENT] mod-dup summary: active='%s' files_with_lower_layer=%zu differing=%zu identical=%zu printed=%zu scan_ms=%llu\n",
-           activeId.c_str(), scanned, conflicts, identical, printed, static_cast<unsigned long long>(GetTickCount64() - t0));
+    printf("[CONTENT] mod-dup summary: active='%s' files_with_lower_layer=%zu differing=%zu identical=%zu printed=%zu partial=%d unscanned_keys=%zu scan_ms=%llu\n",
+           activeId.c_str(), scanned, conflicts, identical, printed, partial ? 1 : 0, unscanned, static_cast<unsigned long long>(GetTickCount64() - t0));
     fflush(stdout);
 }
 
