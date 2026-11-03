@@ -98,6 +98,27 @@ void Mission::updateMissionTest(bool report) {
             Team::noPain[Team::home->getId()] = true;
         if (mc2::gate::get<"MC2_PLAY_MISSION_SKIP_CINEMATICS">() && eye && eye->inMovieMode)
             eye->forceMovieToEnd();
+        // Dev-only: send the home lance to a world position ("x,y"), re-ordered every ~5 s until it is near.
+        // Used to settle "do the enemies react when the player is inside their radius".
+        const std::string gotoSpec = mc2::gate::str<"MC2_PLAY_MISSION_GOTO">();
+        static int gotoTick = 0;
+        float gx = 0.0f, gy = 0.0f;
+        if (!gotoSpec.empty() && eye && !eye->inMovieMode && std::sscanf(gotoSpec.c_str(), "%f,%f", &gx, &gy) == 2 &&
+            (gotoTick++ % 150) == 0) {
+            for (int mi = 0; mi < ObjectManager->numMechs; ++mi) {
+                BattleMech* pM = ObjectManager->getMech(mi);
+                if (!pM || pM->isDisabled() || pM->isDestroyed() || pM->getTeamId() != Team::home->id) continue;
+                MechWarriorPtr pilot = pM->getPilot();
+                if (!pilot) continue;
+                glm::vec3 goal(gx, gy, 0.0f);
+                goal.z = land->getTerrainElevation(goal);
+                const glm::vec3 pos = pM->getPosition();
+                if (std::hypot(pos.x - gx, pos.y - gy) < 60.0f) continue;
+                pilot->orderMoveToPoint(false, true, ORDER_ORIGIN_COMMANDER, goal, -1, TACORDER_PARAM_RUN);
+                mc2::fmt::print_err("[MISSION_GOTO v1] mech={} from={:.0f},{:.0f} to={:.0f},{:.0f}\n",
+                    mi, pos.x, pos.y, gx, gy);
+            }
+        }
         return;
     }
 

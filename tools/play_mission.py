@@ -23,7 +23,7 @@ def parse_report(text):
     return verdict, rows
 
 
-def run_mission(mission, install, seconds, batch=False, invulnerable=False, sim_speed=1):
+def run_mission(mission, install, seconds, batch=False, invulnerable=False, sim_speed=1, goto=None, mod=None):
     env = dict(os.environ, MC2_PLAY_MISSION="1",
                MC2_PLAY_MISSION_SKIP_CINEMATICS="1", MC2_PLAY_MISSION_SECONDS=str(seconds),
                MC2_RNG_SEED="42", MC2_SMOKE_SEED="42", MC2_DETERMINISTIC_RNG="1",
@@ -32,11 +32,18 @@ def run_mission(mission, install, seconds, batch=False, invulnerable=False, sim_
     if invulnerable:
         env["MC2_PLAY_MISSION_INVULNERABLE"] = "1"
         env["MC2_BRIDGE_MOVER_STATE"] = "1"
+    if goto:
+        env["MC2_PLAY_MISSION_GOTO"] = goto
+    if mod:  # "NAME:deps:boot" -> explicit mod mission without touching smoke_missions.txt
+        name, deps, boot = (mod.split(":") + ["", ""])[:3]
+        env.update(MC2_ACTIVE_MOD=name, MC2_MOD_DEPS=deps, MC2_BOOT_TO_BAY=boot)
     # The harness owns install leasing, process priority, timeouts and cleanup.
     cmd = [sys.executable, str(ROOT / "scripts/run_smoke.py"), "--exe",
            str(Path(install) / "mc2.exe"), "--mission", mission,
            "--headless", "--ticks", str((seconds + 2) * 30), "--sim-speed", str(sim_speed),
            "--duration", str(seconds + 30), "--keep-logs", "--wait-timeout", "1200"]
+    if mod:
+        cmd.append("--allow-any-mission")
     sys.path.insert(0, str(ROOT / "scripts"))
     import console_child
     result = subprocess.run(cmd, cwd=ROOT, env=env, stdout=subprocess.PIPE,
@@ -76,6 +83,8 @@ def main(argv=None):
     # headless already runs uncapped; sim-speed only helps windowed runs
     ap.add_argument("--sim-speed", type=int, choices=(1, 2, 3, 4), default=1, help="fixed 1/30 s sim steps per drawn frame (1 = old behaviour)")
     ap.add_argument("--invulnerable", action="store_true", help="keep the player alive (tests objective completion, not brain skill)")
+    ap.add_argument("--goto", metavar="X,Y", help="order the player lance to this world position (dev gate MC2_PLAY_MISSION_GOTO)")
+    ap.add_argument("--mod", metavar="NAME:DEPS:BOOT", help="run an explicit mod mission, e.g. MC2X-DEE:mc2x-compat:campaign (bypasses the allow-list, which stays unchanged)")
     args = ap.parse_args(argv)
     if args.minutes <= 0 or not args.minutes < float("inf"):
         ap.error("--minutes must be finite and positive")
@@ -83,7 +92,7 @@ def main(argv=None):
     if not names:
         ap.error("--batch must contain at least one mission")
     seconds = max(1, round(args.minutes * 60))
-    passed = sum(run_mission(name, args.install, seconds, bool(args.batch), **({"invulnerable": True} if args.invulnerable else {}), **({"sim_speed": args.sim_speed} if args.sim_speed != 1 else {})) for name in names)
+    passed = sum(run_mission(name, args.install, seconds, bool(args.batch), **({"invulnerable": True} if args.invulnerable else {}), **({"sim_speed": args.sim_speed} if args.sim_speed != 1 else {}), goto=args.goto, mod=args.mod) for name in names)
     if args.batch:
         print(f"[MISSION_BATCH v1] passed={passed} failed={len(names) - passed} total={len(names)}", flush=True)
     return 0 if passed == len(names) else 1

@@ -127,6 +127,7 @@ L(Presence, "MC2_PICK_BEHIND_LEGACY", Bool, false, "code", "", "INPUT-CURSOR-OFF
 L(Presence, "MC2_PICK_CAP_TRACE", Bool, false, "code", "", "", passthrough | verified),
 G("MC2_PLAYTEST_EXE", String, "", "editor", "", "", verified),
 G("MC2_PLAY_MISSION", Bool, false, "code", "", "Dev-only scripted mission commander and objective verdict reporting.", passthrough | verified),
+G("MC2_PLAY_MISSION_GOTO", String, "", "code", "", "Dev-only: order the home lance to world position x,y during a mission test.", verified),
 G("MC2_PLAY_MISSION_INVULNERABLE", Bool, false, "code", "", "Dev-only home-team damage immunity for mission tests.", passthrough | verified),
 G("MC2_PLAY_MISSION_SECONDS", Int, 300, "code", "", "Dev-only mission test simulation timeout in seconds.", passthrough | verified),
 G("MC2_PLAY_MISSION_SKIP_CINEMATICS", Bool, false, "code", "", "Dev-only mission test cinematic skip; direct mission harness skips briefing.", passthrough | verified),
