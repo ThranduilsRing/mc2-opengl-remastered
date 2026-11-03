@@ -1,4 +1,5 @@
 #include "mission_internal.h"
+#include "../GameOS/gameos/diagnostic_trace.h"
 // Dev mission test: reports cached objective states and submits normal player orders.
 #include "player_unit_intent.h"
 #include "brain_special_dispatch.h"
@@ -115,7 +116,7 @@ void Mission::updateMissionTest(bool report) {
                 const glm::vec3 pos = pM->getPosition();
                 if (std::hypot(pos.x - gx, pos.y - gy) < 60.0f) continue;
                 pilot->orderMoveToPoint(false, true, ORDER_ORIGIN_COMMANDER, goal, -1, TACORDER_PARAM_RUN);
-                mc2::fmt::print_err("[MISSION_GOTO v1] mech={} from={:.0f},{:.0f} to={:.0f},{:.0f}\n",
+                if (mc2_diag::tagRequested("MISSION_GOTO")) mc2::fmt::print_err("[MISSION_GOTO v1] mech={} from={:.0f},{:.0f} to={:.0f},{:.0f}\n",
                     mi, pos.x, pos.y, gx, gy);
             }
         }
