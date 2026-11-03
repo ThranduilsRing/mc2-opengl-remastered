@@ -364,7 +364,7 @@ void MechLabScreen::begin()
 			if ( mechCamera.hasObject() && pVariant->getChassis() )
 				mechCamera.setScale( pVariant->getChassis()->getScale() );
 			if ( mechCamera.hasObject() )
-				mechCamera.zoomIn( 2.2f );	// fill the lab panel (default framing is sized for the small bay tile)
+				mechCamera.zoomIn( 1.5f );	// fill the lab panel (default framing is sized for the small bay tile)
 		}
 
 
