@@ -127,7 +127,7 @@
   {
    "tag": "ABL_NEWPOWER_PART",
    "ver": -1,
-   "stream": "stdout",
+   "stream": "stderr",
    "keys": [
     "partId"
    ],

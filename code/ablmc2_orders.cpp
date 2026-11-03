@@ -2,6 +2,7 @@
 // Declared in ablmc2_internal.h; registered, in order, by initABL in ablmc2.cpp.
 #include "ablmc2_internal.h"
 #include "abl_script_events.h"
+#include "../GameOS/gameos/diagnostic_trace.h"
 #include <algorithm>
 #include <iterator>
 #include <span>
@@ -454,7 +455,7 @@ void execCorePowerPart (void) {
 	if (obj && obj->isMover() && static_cast<MoverPtr>(obj)->getPilot())
 		result = static_cast<MoverPtr>(obj)->getPilot()->corePower(up);
 	else
-		printf("[ABL_NEWPOWER_PART] partId=%ld not a live mover, ignored\n", partId);
+		{ if (mc2_diag::tagRequested("ABL_NEWPOWER_PART")) mc2::fmt::print_err("[ABL_NEWPOWER_PART] partId={} not a live mover, ignored\n", partId); }
 
 	ABLi_pushInteger(result);
 }
