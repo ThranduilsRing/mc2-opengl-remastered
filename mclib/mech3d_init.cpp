@@ -382,8 +382,13 @@ void Mech3DAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 		// but has no usable base-LOD shape (missing .ini / TGLData / .ase). Skip
 		// shape build; mechShape stays NULL and the render path renders nothing.
 		// One-time warn so the missing asset is visible in logs (not silent).
+		// Not a failure: the Mech3DAppearance constructor calls init() with no type and
+		// no owner (every construction, e.g. each BattleMech::init), and the real init
+		// follows. That placeholder pass has nothing to load, so it is skipped quietly;
+		// a null type WITH an owner (getAppearance failed) still warns.
+		const bool placeholderInit = (mechType == nullptr && obj == nullptr);
 		static bool s_warnedMissingMechShape = false;
-		if (!s_warnedMissingMechShape)
+		if (!placeholderInit && !s_warnedMissingMechShape)
 		{
 			s_warnedMissingMechShape = true;
 			std::printf("[MECH_LOAD] WARN: mech appearance has no base shape "
@@ -398,7 +403,7 @@ void Mech3DAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 		extern bool g_loadRaceTrace;
 		extern long g_loadRaceMechDegrade;
 		extern long g_loadRaceMechDegradeReal;
-		if (g_loadRaceTrace)
+		if (g_loadRaceTrace && !placeholderInit)
 		{
 			g_loadRaceMechDegrade++;
 			if (obj) g_loadRaceMechDegradeReal++;
