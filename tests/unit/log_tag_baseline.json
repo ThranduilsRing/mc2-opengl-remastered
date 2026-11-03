@@ -9157,6 +9157,28 @@
    "count": 1
   },
   {
+   "tag": "STARTUP_PRELOAD",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "archives",
+    "mod_files"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "STARTUP_PRELOAD",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "files",
+    "mb",
+    "mod_mb",
+    "ms"
+   ],
+   "count": 1
+  },
+  {
    "tag": "STATIC_LIGHT_ROW",
    "ver": 1,
    "stream": "stderr",
