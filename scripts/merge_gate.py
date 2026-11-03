@@ -762,7 +762,8 @@ def execute_window(steps, head, dry_run=False, keep_going=False, farm_determinis
 
 GREEN_MARK = "build64-ninja/last-green-gate.json"
 MAD_LIMIT = 0.05
-DECLARED_VIEWS = set()
+DECLARED_VIEWS = {}
+DECLARED_MAD_BOUND = 0.5
 
 
 COMPARE_BOOKMARKS = ("mc2_01_saved_205644", "mc2_10_saved_204523")
@@ -781,9 +782,21 @@ def raw_mads(output):
     return raw
 
 
+def parse_declared_views(items):
+    """['name', 'name=maxMAD'] -> {name: bound}; a bare name gets DECLARED_MAD_BOUND."""
+    out = {}
+    for item in items or ():
+        name, sep, bound = item.partition("=")
+        out[name.strip()] = float(bound) if sep else DECLARED_MAD_BOUND
+    return out
+
+
 def mad_flags(output, declared=(), expected=()):
-    """Bookmarks in ab.py --compare-only output ('name | MAD | ...') whose MAD exceeds MAD_LIMIT and are not declared views.
+    """Bookmarks in ab.py --compare-only output ('name | MAD | ...') whose MAD exceeds MAD_LIMIT, or, for a declared view, its declared bound.
+    declared is {name: maxMAD} (a plain set/list means DECLARED_MAD_BOUND each). A declared view still needs a row (when expected) with a numeric MAD under its bound.
     Fail closed: an expected bookmark with no row (crashed capture), a 'missing png' line, or a size mismatch is a flag too."""
+    if not isinstance(declared, dict):
+        declared = {name: DECLARED_MAD_BOUND for name in declared}
     bad, seen = [], set()
     raw = raw_mads(output)
     for line in (output or "").splitlines():
@@ -793,9 +806,6 @@ def mad_flags(output, declared=(), expected=()):
         cells = [c.strip() for c in line.split("|")]
         if len(cells) < 2:
             continue
-        if cells[0] in declared:
-            seen.add(cells[0])  # a declared view still needs its row (fail closed on a crashed capture), only its MAD is exempt
-            continue
         if cells[0] == "bookmark":
             continue  # table header
         try:
@@ -803,12 +813,13 @@ def mad_flags(output, declared=(), expected=()):
         except ValueError:
             mad = float("nan")
         if math.isnan(mad):
-            bad.append(f"{cells[0]}=non-numeric MAD '{cells[1][:20]}'")  # a nan/n-a row is never a pass
+            bad.append(f"{cells[0]}=non-numeric MAD '{cells[1][:20]}'")  # a nan/n-a row is never a pass, declared or not
             continue
         seen.add(cells[0])
-        mad = raw.get(cells[0], mad)   # compare the unrounded value: a printed 0.05 can be a real 0.0539
-        if mad > MAD_LIMIT:
-            bad.append(f"{cells[0]}={cells[1]}")
+        mad = max(mad, raw.get(cells[0], mad))   # the unrounded value can only raise the printed one: a printed 0.05 can be a real 0.0539
+        limit = declared.get(cells[0], MAD_LIMIT)
+        if mad > limit:
+            bad.append(f"{cells[0]}={cells[1]}" + (f" (declared bound {limit})" if cells[0] in declared else ""))
     bad.extend(f"{name}=no compare row" for name in expected if name not in seen)
     return bad
 
@@ -1201,7 +1212,7 @@ def main(argv=None):
     ap.add_argument("--publish", action="store_true", help="after viewing the montage: deploy the verified build to v0.4 (needs a complete green gate for HEAD)")
     ap.add_argument("--keep-candidate", action="store_true", help="leave the deployed candidate (with MechCommanderOmnitech + mco-compat mods) at E:/mc2-installs/merge-gate-candidate for campaign walks; --publish or --drop-candidate removes it")
     ap.add_argument("--drop-candidate", action="store_true", help="remove the kept candidate install and exit")
-    ap.add_argument("--declared-view", action="append", default=[], help="bookmark whose pixels are expected to change; exempt from the MAD > 0.05 flag")
+    ap.add_argument("--declared-view", action="append", default=[], help="NAME[=maxMAD]: bookmark whose pixels are expected to change; flagged only above maxMAD (default 0.5) and still needs a numeric row")
     ap.add_argument("--install", type=Path, help="explicit lane-owned E:/mc2-installs target for a real rehearsal")
     ap.add_argument("--dry-run", action="store_true", help="print commands only; no builds, deploys, or game launches")
     ap.add_argument("--capture-before-runs", type=int, default=1,
@@ -1224,7 +1235,7 @@ def main(argv=None):
     if args.j < 1:
         ap.error("-j must be positive")
     global DECLARED_VIEWS
-    DECLARED_VIEWS = set(args.declared_view)
+    DECLARED_VIEWS = parse_declared_views(args.declared_view)
     if args.drop_candidate:
         drop_candidate()
         return 0
