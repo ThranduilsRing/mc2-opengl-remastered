@@ -888,7 +888,7 @@ def run_mod(staged: Path, stem: str, duration: int, timeout: int, ref_exe: Path 
 # straight into a mission and never builds the briefing / mech lab / mech bay screens, which is how
 # MCO's short layouts crashed the front end unseen. This bounded walk boots the campaign front end.
 FRONT_END_MODS = ('MechCommanderOmnitech', 'MCO-Carver5')
-FRONT_END_SECS = 60
+FRONT_END_SECS = 150
 
 
 def front_end_walk(staged: Path, folder: str, secs: int = FRONT_END_SECS) -> dict:
