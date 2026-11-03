@@ -9,7 +9,6 @@
 #include "render_resource_owners.h"
 #include "mc2fmt.h"
 
-extern void preloadMissionSupportAtLoad();
 #include "content_error.h"
 
 // Read the warrior count and set up the brain-load counters.
@@ -932,7 +931,6 @@ void Mission::initInterface(MissionInitFrame& f) {
 	
 	missionInterface->init(&missionLoader);
 	missionInterface->initMechs();
-	preloadMissionSupportAtLoad();
 	missionLoader.close();
 
 	// MISSION-START-HOVER-TARGET-LIFETIME-1: this MissionInterfaceManager is freshly
