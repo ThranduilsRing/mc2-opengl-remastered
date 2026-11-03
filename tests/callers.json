@@ -4001,7 +4001,7 @@
         },
         {
           "path": "scripts/merge_gate.py",
-          "line": 1095,
+          "line": 1104,
           "evidence": "import",
           "reference": "deploy_payload",
           "text": "from deploy_payload import verify_published_identity"
@@ -4771,7 +4771,7 @@
         },
         {
           "path": "scripts/tests/test_gate_keep_candidate.py",
-          "line": 8,
+          "line": 10,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
