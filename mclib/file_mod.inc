@@ -393,8 +393,8 @@ static std::optional<int> LoadModIndexCache(
             const size_t n = strlen(dataDir);
             bool same = path.size() >= n;
             for (size_t i = 0; same && i < n; ++i) {
-                char a = path[i] == '\' ? '/' : (char)tolower((unsigned char)path[i]);
-                char b = dataDir[i] == '\' ? '/' : (char)tolower((unsigned char)dataDir[i]);
+                char a = path[i] == '\\' ? '/' : (char)tolower((unsigned char)path[i]);
+                char b = dataDir[i] == '\\' ? '/' : (char)tolower((unsigned char)dataDir[i]);
                 same = a == b;
             }
             if (!same) { fclose(f); return std::nullopt; }
