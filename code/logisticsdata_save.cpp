@@ -44,100 +44,36 @@ void LogisticsData::removeMechsInForceGroup()
 	}
 }
 
-#ifndef VIEWER
-// Fills out[] with the pilots that are available and not already in a live mech (SP and MP alike); returns the count.
-static int collectPoolPilots(std::deque<LogisticsPilot>& all, LogisticsPilot** out)
+// A pilot already flying a live mech (by name). VIEWER builds never see the pool.
+static bool pilotInLiveMech(LogisticsPilot& p)
 {
-	int n = 0;
-	for ( auto iter = all.begin(); iter != all.end(); ++iter )
-	{
-		const char *nameCheck = (*iter).getName().c_str();
-		if ( poolEligible(*iter, [nameCheck](LogisticsPilot&) { return MechWarrior::warriorInUse(const_cast<char *>(nameCheck)); }) )
-			out[n++] = &(*iter);
-	}
-	return n;
-}
+#ifndef VIEWER
+	return MechWarrior::warriorInUse(const_cast<char*>(p.getName().c_str()));
+#else
+	(void)p;
+	return true;
 #endif
+}
 
 const char*	LogisticsData::getBestPilot( long mechWeight )
 {
 	ensureMechBayDataLoaded("getBestPilot");
 
-	LogisticsPilot** pPilots = static_cast<LogisticsPilot**>(_alloca( pilots.size() * sizeof( LogisticsPilot*) ));
-	memset( pPilots, 0, pilots.size() * sizeof( LogisticsPilot*) );
-
-	int counter = 0;
-#ifndef VIEWER
-		counter = collectPoolPilots(pilots, pPilots);
-#endif
-
-	long count = counter;
-
-	for ( int i = 1; i < count; ++i )
-	{
-		LogisticsPilot* cur = pPilots[i];
-		for ( int j = 0; j < i; ++j )
-		{
-			if ( comparePilots( cur, pPilots[j], mechWeight ) > 0 && j != i )
-			{
-				pPilots[i] = pPilots[j];
-				pPilots[j] = cur;
-				break;
-			}
-		}
-	}
-
-	for (int i = 0; i < count; i++ )
-	{
-		if ( pPilots[i]->isAvailable() && !pPilots[i]->isUsed() )
-		{
-			pPilots[i]->setUsed( 1 );
-			return pPilots[i]->getFileName().c_str();   // the pilots list outlives the caller's use
-		}
-	}
-
-	// Out of pilots (all used/unavailable). Release builds used to write through a null pPilots[0] here.
-	// Reuse the best candidate (available, not in a live mech; checked here for MP too, whose pool listing is unfiltered) if there was one; else report none.
-	// Never hand back a pilot that failed the filters (that would put one pilot in two mechs); callers must cope with nullptr.
-	const auto pick = pickOutOfPoolPilot<LogisticsPilot>(std::span<LogisticsPilot* const>(pPilots, static_cast<size_t>(count)),
-		[](LogisticsPilot* p) { return MechWarrior::warriorInUse(const_cast<char*>(p->getName().c_str())); });
-	if (!pick)
+	// Selection lives in pilot_pick.h (selectPoolPilot) so the unit tier runs the same code.
+	LogisticsPilot* chosen = selectPoolPilot<LogisticsPilot>(pilots, pilotInLiveMech,
+		[this, mechWeight](LogisticsPilot* a, LogisticsPilot* b) { return comparePilots(a, b, mechWeight); });
+	if (!chosen)
 	{
 		mc2::content::error(mc2::content::Kind::MissionData, "pilots", "getBestPilot: no available pilot not already in a mech");
 		return nullptr;
 	}
-	LogisticsPilot* fallback = *pick;
-	fallback->setUsed( true );
-	return fallback->getFileName().c_str();
-
+	return chosen->getFileName().c_str();   // the pilots list outlives the caller's use
 }
 
 bool		LogisticsData::gotPilotsLeft()
 {
 	ensureMechBayDataLoaded("gotPilotsLeft");
-
-	LogisticsPilot** pPilots = static_cast<LogisticsPilot**>(_alloca( pilots.size() * sizeof( LogisticsPilot*) ));
-	memset( pPilots, 0, pilots.size() * sizeof( LogisticsPilot*) );
-
-	int counter = 0;
-
-	#ifndef VIEWER
-
-		counter = collectPoolPilots(pilots, pPilots);
-
-	#endif
-	long count = counter;
-
-	for ( int i = 0; i < count; i++ )
-	{
-		if ( pPilots[i]->isAvailable() && !pPilots[i]->isUsed() )
-		{
-			return 1;
-		}
-	}
-
-	return 0;
-
+	return poolHasUnusedPilot<LogisticsPilot>(pilots, pilotInLiveMech);
 }
 
 int LogisticsData::comparePilots( LogisticsPilot* p1, LogisticsPilot* p2, long weight )

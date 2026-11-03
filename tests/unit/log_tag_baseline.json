@@ -125,6 +125,27 @@
    "count": 1
   },
   {
+   "tag": "ABL_NEWPOWER_PART",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "partId"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "ABL_NEWPOWER_PART",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "partId",
+    "up",
+    "result",
+    "status"
+   ],
+   "count": 1
+  },
+  {
    "tag": "ABL_ORDER_FLAGS_BAD",
    "ver": -1,
    "stream": "log",

@@ -53,3 +53,64 @@ TEST_CASE("primary pool filter excludes in-use pilots regardless of MP (no MPlay
 	CHECK_FALSE(poolEligible(dead, inUse));
 	CHECK(poolEligible(ok, inUse));
 }
+
+// ---- the real selection (selectPoolPilot / poolHasUnusedPilot: the code getBestPilot and gotPilotsLeft run) ----
+#include <deque>
+namespace {
+struct Pilot {
+	int rank; bool available; bool inMech; bool used = false;
+	bool isAvailable() const { return available; }
+	bool isUsed() const { return used; }
+	void setUsed(bool u) { used = u; }
+};
+auto inMechOf = [](Pilot& p) { return p.inMech; };
+auto byRank = [](Pilot* a, Pilot* b) { return a->rank - b->rank; };
+Pilot* choose(std::deque<Pilot>& pool) { return selectPoolPilot<Pilot>(pool, inMechOf, byRank); }
+}
+
+TEST_CASE("selectPoolPilot: best-ranked eligible pilot wins and is marked used")
+{
+	std::deque<Pilot> pool{ {1, true, false}, {9, true, false}, {5, true, false} };
+	Pilot* p = choose(pool);
+	REQUIRE(p != nullptr);
+	CHECK(p->rank == 9);
+	CHECK(p->used);
+}
+
+TEST_CASE("selectPoolPilot: pilots in a mech or unavailable are never chosen")
+{
+	std::deque<Pilot> pool{ {9, true, true}, {8, false, false}, {2, true, false} };
+	Pilot* p = choose(pool);
+	REQUIRE(p != nullptr);
+	CHECK(p->rank == 2);
+}
+
+TEST_CASE("selectPoolPilot: all used -> an eligible pilot is reused; none eligible -> nullptr")
+{
+	std::deque<Pilot> pool{ {3, true, false, true}, {4, true, false, true} };
+	CHECK(choose(pool) != nullptr);
+	std::deque<Pilot> none{ {3, true, true}, {4, false, false} };
+	CHECK(choose(none) == nullptr);
+	std::deque<Pilot> empty;
+	CHECK(choose(empty) == nullptr);
+}
+
+TEST_CASE("poolHasUnusedPilot agrees with selectPoolPilot (gotPilotsLeft)")
+{
+	std::deque<Pilot> pool{ {3, true, false}, {4, true, true} };
+	CHECK(poolHasUnusedPilot<Pilot>(pool, inMechOf));
+	choose(pool);   // hands out the one eligible pilot
+	CHECK_FALSE(poolHasUnusedPilot<Pilot>(pool, inMechOf));
+	std::deque<Pilot> busy{ {3, true, true} };
+	CHECK_FALSE(poolHasUnusedPilot<Pilot>(busy, inMechOf));
+}
+
+TEST_CASE("MP shape: two mechs, one pilot -> the second mech gets none (MPlayer is not consulted)")
+{
+	std::deque<Pilot> pool{ {7, true, false} };
+	Pilot* first = choose(pool);
+	REQUIRE(first != nullptr);
+	first->inMech = true;                 // the first mech is now live and flies that pilot
+	CHECK(choose(pool) == nullptr);       // no unused pilot, and the reuse path refuses an in-mech pilot
+	CHECK_FALSE(poolHasUnusedPilot<Pilot>(pool, inMechOf));
+}

@@ -2,6 +2,7 @@
 // Declared in ablmc2_internal.h; registered, in order, by initABL in ablmc2.cpp.
 #include "ablmc2_internal.h"
 #include "abl_script_events.h"
+#include "../GameOS/gameos/diagnostic_trace.h"
 #include <algorithm>
 #include <iterator>
 #include <span>
@@ -431,6 +432,34 @@ void execCorePower (void) {
 	long result = 0;
 	if (CurWarrior)
 		result = CurWarrior->corePower(up);
+
+	ABLi_pushInteger(result);
+}
+
+void execCorePowerPart (void) {
+
+	//	newpower(partId, up) from a mission script (REAP3): power the mover with that part id up or down.
+	//		PARAMS: integer partId, boolean up
+	//		RETURN: integer. An unknown part id or non-mover is a logged no-op.
+
+	long partId = ABLi_popInteger();
+	bool up = ABLi_popBoolean();
+
+	if (ABLi_getSkipOrder()) {
+		ABLi_pushInteger(1);
+		return;
+	}
+
+	long result = 1;
+	GameObjectPtr obj = getObject(partId);
+	if (obj && obj->isMover() && static_cast<MoverPtr>(obj)->getPilot())
+	{
+		result = static_cast<MoverPtr>(obj)->getPilot()->corePower(up);
+		if (mc2_diag::tagRequested("ABL_NEWPOWER_PART"))
+			mc2::fmt::print_err("[ABL_NEWPOWER_PART] partId={} up={} result={} status={}\n", partId, up ? 1 : 0, result, static_cast<long>(static_cast<MoverPtr>(obj)->getStatus()));
+	}
+	else
+		{ if (mc2_diag::tagRequested("ABL_NEWPOWER_PART")) mc2::fmt::print_err("[ABL_NEWPOWER_PART] partId={} not a live mover, ignored\n", partId); }
 
 	ABLi_pushInteger(result);
 }

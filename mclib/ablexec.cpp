@@ -136,6 +136,20 @@ void crunchToken (void) {
 
 //***************************************************************************
 
+char* LastNodeCrunchSlot = nullptr;
+
+char* lastCrunchedNodeSlot (void) {
+
+	return(Crunch ? LastNodeCrunchSlot : nullptr);
+}
+
+void patchCrunchedNode (char* slot, SymTableNodePtr nodePtr) {
+
+	// Re-point a node pointer crunchSymTableNodePtr emitted earlier (a routine call's id) at another routine.
+	if (Crunch && slot)
+		putCode(slot, nodePtr);
+}
+
 void crunchSymTableNodePtr (SymTableNodePtr nodePtr) {
 
 	if (!Crunch)
@@ -144,6 +158,7 @@ void crunchSymTableNodePtr (SymTableNodePtr nodePtr) {
 	if (codeBufferPtr >= (codeBuffer + MaxCodeBufferSize - 100))
 		syntaxError(ABL_ERR_SYNTAX_CODE_SEGMENT_OVERFLOW);
 	else {
+		LastNodeCrunchSlot = codeBufferPtr;
 		putCode(codeBufferPtr, nodePtr);
 		codeBufferPtr += sizeof(SymTableNodePtr);
 	}

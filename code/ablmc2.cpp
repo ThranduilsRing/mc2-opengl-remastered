@@ -407,6 +407,7 @@ void initABL (void) {
 	ABLi_addFunction("newmoveto", true, "Ri", "i", execCoreMoveTo);
 	ABLi_addFunction("newmovetoobject", true, "ii", "i", execCoreMoveToObject);
 	ABLi_addFunction("newpower", true, "b", "i", execCorePower);
+	ABLi_addFunction("newpower_part", true, "ib", "i", execCorePowerPart);
 	ABLi_addFunction("newattack", true, "ii", "i", execCoreAttack);
 	ABLi_addFunction("newcapture", true, "ii", "i", execCoreCapture);
 	ABLi_addFunction("newscan", true, "ii", "i", execCoreScan);
@@ -523,6 +524,7 @@ void initABL (void) {
 	ABLi_addFunction("removemoverfromplayer",false, "iii", nullptr, execRemoveMoverFromPlayer);
 	ABLi_addFunction("setbrain",             false, "iC",  nullptr, execSetBrainFixed);
 	ABLi_addFunction("setbrainnew",          false, "iC",  nullptr, execSetBrainNew);
+	ABLi_addFunction("setpartid",            false, "ii",  nullptr, execSetPartId);
 	ABLi_addFunction("destroymechbodylocation", false, "ii", nullptr, execDestroyMechBodyLocation);
 	ABLi_addFunction("damagemecharmor",      false, "i",   nullptr, execDamageMechArmor);
 	ABLi_addFunction("setmechgesture",       false, "ii",  nullptr, execSetMechGesture);
