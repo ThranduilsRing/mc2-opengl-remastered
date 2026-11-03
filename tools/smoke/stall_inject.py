@@ -1,10 +1,10 @@
 """Host-stall injector for the mc2_10 intro-video floor proof.
 
-Runs scripts/run_smoke.py --mission mc2_10 N times. Once the game process loads the (delay-loaded) FFmpeg DLL, i.e.
-the intro video is starting, it suspends the process for --stall seconds, then resumes it. The sim-time quit passes
+Runs scripts/run_smoke.py --mission mc2_10 N times. Once the game's first debug-state dump appears (trigger=state, i.e.
+the mission is playable; trigger=dll waits for the delay-loaded FFmpeg DLL), it suspends the process for --stall seconds, then resumes it. The sim-time quit passes
 with the stall; a wall-clock quit fails with video_floor_missing.
 
-The runner only writes the game log at the end of a run, so the trigger is the process module list, not the log.
+The runner only writes the game log at the end of a run, so the trigger is a live signal, not the log.
 
 usage: py -3 tools/smoke/stall_inject.py --exe EXE [-n 3] [--tag old|new] [--stall 11] [--delay 1.0]
 Results append to tests/smoke/artifacts/stall_<tag>.txt (one line per run); exit 1 if any run was never stalled.
@@ -21,6 +21,16 @@ import psutil
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 TRIGGER_DLL = "avcodec"
+
+
+STATE = os.path.join(ROOT, "tests", "smoke", "artifacts")
+
+
+def _state_mtime(install):
+    try:
+        return os.path.getmtime(os.path.join(install, "debug_state", "latest_render_state.json"))
+    except OSError:
+        return 0.0
 
 
 def _loaded(pid):
@@ -48,10 +58,12 @@ def main():
     ap.add_argument("--stall", type=float, default=11.0)
     ap.add_argument("--delay", type=float, default=1.0)
     ap.add_argument("--mission", default="mc2_10")
+    ap.add_argument("--trigger", choices=("state", "dll"), default="state")
     a = ap.parse_args()
     exe = os.path.abspath(a.exe)
     name = os.path.basename(exe).lower()
-    env = dict(os.environ, MC2_SMOKE_REQUIRE_FINGERPRINT="0")
+    env = dict(os.environ, MC2_SMOKE_REQUIRE_FINGERPRINT="0", MC2_DEBUG_STATE_DUMP="1")
+    install = os.path.dirname(exe)
     outf = os.path.join(ROOT, "tests", "smoke", "artifacts", "stall_" + a.tag + ".txt")
     all_stalled = True
     for i in range(1, a.n + 1):
@@ -61,12 +73,19 @@ def main():
         stalled = False
         while p.poll() is None and time.time() - t0 < 400 and not stalled:
             time.sleep(0.25)
-            for pr in psutil.process_iter(["name"]):
-                if (pr.info["name"] or "").lower() == name and _loaded(pr.pid):
-                    time.sleep(a.delay)
-                    _suspend(pr.pid, a.stall)
-                    stalled = True
-                    break
+            if a.trigger == "state":
+                hit = _state_mtime(install) > t0
+            else:
+                hit = any((pr.info["name"] or "").lower() == name and _loaded(pr.pid)
+                          for pr in psutil.process_iter(["name"]))
+            if hit:
+                for pr in psutil.process_iter(["name"]):
+                    if (pr.info["name"] or "").lower() == name:
+                        print("trigger %s at age %.1fs" % (a.trigger, time.time() - t0), flush=True)
+                        time.sleep(a.delay)
+                        _suspend(pr.pid, a.stall)
+                        stalled = True
+                        break
         out = p.communicate()[0]
         m = re.search(r"artifacts: (.*)", out)
         d = m.group(1).strip() if m else ""
