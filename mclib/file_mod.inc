@@ -739,6 +739,91 @@ void EnumerateModFitFiles(const char* keyPrefix, ModFitCallback cb, void* userDa
         cb(h.second.c_str(), userData);
 }
 
+// Mod duplicate-content scan (informational; never changes which file wins).
+// For every indexed key that a lower layer (another mod / scratch / the loose stock
+// file in the install) also provides, compare the bytes of winner and loser and report
+// the pair once if they differ. Stock is probed as the loose file at the install-relative
+// key only: files that exist solely inside a FastFile archive are not compared.
+// Lines are "[CONTENT] mod-dup ..." (no "kind=", so mod_smoke's content-error scrape
+// does not count them) and one "[CONTENT] mod-dup summary" line.
+static bool ModFilesEqualBytes(const std::string& a, const std::string& b) {
+    FILE* fa = fopen(a.c_str(), "rb");
+    FILE* fb = fopen(b.c_str(), "rb");
+    bool equal = fa && fb;
+    if (equal) {
+        static char bufA[65536], bufB[65536];
+        for (;;) {
+            const size_t na = fread(bufA, 1, sizeof(bufA), fa);
+            const size_t nb = fread(bufB, 1, sizeof(bufB), fb);
+            if (na != nb || memcmp(bufA, bufB, na) != 0) { equal = false; break; }
+            if (na == 0) break;
+        }
+    }
+    if (fa) fclose(fa);
+    if (fb) fclose(fb);
+    return equal;
+}
+
+static bool ModFileSize(const std::string& path, unsigned long long& size) {
+    WIN32_FILE_ATTRIBUTE_DATA d;
+    if (!GetFileAttributesExA(path.c_str(), GetFileExInfoStandard, &d) || (d.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY))
+        return false;
+    size = (static_cast<unsigned long long>(d.nFileSizeHigh) << 32) | d.nFileSizeLow;
+    return true;
+}
+
+static void ScanModDuplicateContent(const char* absRoot, const std::string& activeId) {
+    const auto t0 = GetTickCount64();
+    size_t scanned = 0, conflicts = 0, identical = 0, printed = 0;
+    const size_t printCap = logFileResolve ? static_cast<size_t>(-1) : 200;
+    // Startup guard: the scan stops after 200 ms (unlimited when MC2_LOG_FILE_RESOLVE is
+    // set, for full-count audits) and the summary reports partial=1 unscanned_keys=N.
+    const unsigned long long budgetMs = logFileResolve ? 0ull : 200ull;
+    size_t unscanned = 0;
+    bool partial = false;
+    std::vector<std::string> keys;
+    keys.reserve(g_modIndex.size());
+    for (const auto& kv : g_modIndex) keys.push_back(kv.first);
+    std::sort(keys.begin(), keys.end());
+    for (const std::string& key : keys) {
+        if (partial || (budgetMs && GetTickCount64() - t0 > budgetMs)) { partial = true; ++unscanned; continue; }
+        const ModFileEntry& win = g_modIndex.at(key);
+        std::vector<std::pair<std::string, std::string>> losers;   // layer label, path
+        if (auto sit = g_shadowedBy.find(key); sit != g_shadowedBy.end()) {
+            for (const std::string& id : sit->second) {
+                const size_t h = id.rfind("#scratch");
+                std::string path = h != std::string::npos
+                    ? std::string(absRoot) + id.substr(0, h) + "/.scratch/" + key
+                    : std::string(absRoot) + id + "/" + key;
+                losers.emplace_back(id, std::move(path));
+            }
+        }
+        unsigned long long sz = 0;
+        if (ModFileSize(key, sz)) losers.emplace_back("stock", key);
+        if (losers.empty()) continue;
+        ++scanned;
+        unsigned long long winSize = 0;
+        if (!ModFileSize(win.path, winSize)) continue;
+        std::string differing;
+        for (const auto& [layer, path] : losers) {
+            unsigned long long loserSize = 0;
+            if (!ModFileSize(path, loserSize)) continue;
+            if (loserSize == winSize && ModFilesEqualBytes(win.path, path)) continue;
+            if (!differing.empty()) differing += ",";
+            differing += layer;
+        }
+        if (differing.empty()) { ++identical; continue; }
+        ++conflicts;
+        if (printed < printCap) {
+            ++printed;
+            printf("[CONTENT] mod-dup path=%s winner=%s losers=%s\n", key.c_str(), win.modId.c_str(), differing.c_str());
+        }
+    }
+    printf("[CONTENT] mod-dup summary: active='%s' files_with_lower_layer=%zu differing=%zu identical=%zu printed=%zu partial=%d unscanned_keys=%zu scan_ms=%llu\n",
+           activeId.c_str(), scanned, conflicts, identical, printed, partial ? 1 : 0, unscanned, static_cast<unsigned long long>(GetTickCount64() - t0));
+    fflush(stdout);
+}
+
 void InitModSearchPaths(const char* modsRoot) {
     g_modIndex.clear();
     g_modPriority.clear();
@@ -1017,6 +1102,8 @@ void InitModSearchPaths(const char* modsRoot) {
             printf("[mod] conflict: %s\n", line.c_str());
         fflush(stdout);
     }
+
+    ScanModDuplicateContent(absRoot, modId);
 
     printf("[mod] ready: active='%s' total=%zu files\n", envMod, g_modIndex.size());
     fflush(stdout);
