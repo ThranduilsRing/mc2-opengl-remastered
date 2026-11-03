@@ -1190,6 +1190,13 @@ bool g_previewPending = false;
 bool g_previewUnusable = false;   // latched: a preview init/record failure keeps the lab on its CPU mech draw
 Mc2MechPreviewRequest g_previewReq{};
 
+// First occurrence of each transient skip reason (the lab then keeps its CPU draw that frame).
+int previewSkip(const char* why) {
+    static const char* s_last = nullptr;
+    if (why != s_last) { s_last = why; vlog("mech-lab preview skipped this frame (%s) -- CPU mech draw stays on.", why); }
+    return 0;
+}
+
 int previewFail(const char* why) {
     g_previewUnusable = true;
     vlog("mech-lab preview disabled (%s) -- the lab keeps the CPU mech draw.", why);
@@ -1268,11 +1275,12 @@ extern "C" int mc2_vk_mech_preview_flush(void* colorView, void* normalView, void
 static int mech_preview_flush_impl(void* colorView, void* normalView, void* depthView, int w, int h) {
     if (!g_previewPending) return 0;
     g_previewPending = false;
-    if (g_previewUnusable || g_mechSessionDeclined || !colorView || !normalView || !depthView || w <= 0 || h <= 0) return 0;
+    if (g_previewUnusable || g_mechSessionDeclined) return 0;
+    if (!colorView || !normalView || !depthView || w <= 0 || h <= 0) return previewSkip("no_preview_target");
     ZoneScopedN("VK-mech-preview");
     const Mc2MechPreviewRequest& q = g_previewReq;
     Mc2MechFrameFeed feed{};
-    if (!mc2_mech_island_get_frame_feed(&feed) || !feed.instances64 || !feed.instanceCount || !feed.runs || !feed.runCount) return 0;
+    if (!mc2_mech_island_get_frame_feed(&feed) || !feed.instances64 || !feed.instanceCount || !feed.runs || !feed.runCount) return previewSkip("no_frame_feed");
 
     mc2vk::VulkanContext& rctx = mc2vk::getOrCreateEngineVulkanContext();
     if (const MechIsland* parked = parkedIsland(); parked && (parked->w != q.sceneW || parked->h != q.sceneH))
@@ -1282,14 +1290,14 @@ static int mech_preview_flush_impl(void* colorView, void* normalView, void* dept
         if (!init_island(fresh.get(), q.sceneW, q.sceneH)) {
             rctx.waitIdle("mech_preview_init_failure");
             // A build-phase failure is permanent; a readiness gate (context / shared GBuffer) retries next frame.
-            return g_mechInitReachedBuild ? previewFail(g_health.fallbackReason) : 0;
+            return g_mechInitReachedBuild ? previewFail(g_health.fallbackReason) : previewSkip("island_not_ready");
         }
         islandSlot() = std::move(fresh);
     }
     MechIsland* s = parkedIsland();
-    if (s->disabled || !s->inited) return 0;
+    if (s->disabled || !s->inited) return previewSkip("island_disabled");
     if (!s->previewReady) return previewFail("preview_variant_missing");
-    if (!upload_geometry_once(s) || !ensure_dummy_scheme(s)) return 0;
+    if (!upload_geometry_once(s) || !ensure_dummy_scheme(s)) return previewSkip("geometry_upload");
 
     const VkDeviceSize ringAlign = rctx.frameAlignment();
     const VkDeviceSize instBytes = VkDeviceSize(feed.instanceCount) * 64ull;
@@ -1298,7 +1306,7 @@ static int mech_preview_flush_impl(void* colorView, void* normalView, void* dept
     const VkDeviceSize boneOff = mc2vk::alignUp(instOff + instBytes, ringAlign);
     const VkDeviceSize poolOff = mc2vk::alignUp(boneOff + boneBytes, ringAlign);
     const mc2vk::FrameAlloc mainSpan = rctx.frameAlloc(poolOff + sizeof(gos_terrain_lighting::GpuTerrainLight));
-    if (!mainSpan) return 0;
+    if (!mainSpan) return previewSkip("frame_alloc");
     uint8_t* const mainPtr = static_cast<uint8_t*>(mainSpan.ptr);
     const uint32_t par = rctx.frameContext().slot;
     if (!rctx.wait(s->submitted[par], 5000000000ull, "mech preview slot")) return previewFail("slot_timeout");

@@ -49,7 +49,11 @@ static bool postMechPreviewGpu( Camera& cam, Mech3DAppearance* mech, float vpX, 
 	if ( frame == s_lastFrame || !mc2_vk_mech_preview_usable() )
 		return false;
 	if ( !mech->submitPreviewGpu() )
+	{
+		static bool s_logged = false;
+		if ( !s_logged ) { s_logged = true; fprintf( stderr, "[MECHLAB_GPU] submitPreviewGpu declined (batcher not finalized or no shape) -- CPU mech draw stays on.\n" ); }
 		return false;
+	}
 	GpuMechBatcher::instance().flush();
 	s_lastFrame = frame;
 
@@ -79,6 +83,12 @@ static bool postMechPreviewGpu( Camera& cam, Mech3DAppearance* mech, float vpX, 
 		q.sceneH = Environment.screenHeight;
 	}
 	mc2_vk_mech_preview_request( &q );
+	static bool s_posted = false;
+	if ( !s_posted )
+	{
+		s_posted = true;
+		fprintf( stderr, "[MECHLAB_GPU] first panel request: rect=%d,%d %dx%d scene=%dx%d\n", q.vpX, q.vpY, q.vpW, q.vpH, q.sceneW, q.sceneH );
+	}
 	return true;
 }
 #endif
