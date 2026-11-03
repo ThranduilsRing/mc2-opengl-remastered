@@ -340,9 +340,6 @@ extern "C" void mc2GetSceneFogColorRGB(float out[3]) { out[0]=s_vkSceneFogRGB[0]
 bool mc2GetBakedStaticLight(int32_t recipeIndex, TG_HWLightsData& out)
 {
     if (recipeIndex < 0) return false;
-    // A map entry only counts once its permanent slot is inside the uploaded prefix [0..S): the entry is set before the
-    // slot write, and the write is skipped while the light feed is inactive, which left lightIdx == tableCount (OOB zero row).
-    if (static_cast<uint32_t>(recipeIndex) >= s_staticLightHighWater) return false;
     auto it = s_bakedStaticLight.find(recipeIndex);
     if (it == s_bakedStaticLight.end()) return false;
     out = it->second;
@@ -355,7 +352,6 @@ bool mc2GetBakedStaticLight(int32_t recipeIndex, TG_HWLightsData& out)
 bool mc2IsBakedStaticLightPresent(int32_t recipeIndex)
 {
     if (recipeIndex < 0) return false;
-    if (static_cast<uint32_t>(recipeIndex) >= s_staticLightHighWater) return false;  // slot not written yet (see mc2GetBakedStaticLight)
     return s_bakedStaticLight.count(recipeIndex) != 0;
 }
 
