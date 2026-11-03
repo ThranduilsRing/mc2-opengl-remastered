@@ -791,7 +791,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/run_smoke.py",
-          "line": 1130,
+          "line": 1140,
           "evidence": "command",
           "reference": "scripts/check-deploy-coherence.py",
           "text": "_coh = subprocess.run("
@@ -893,7 +893,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/run_smoke.py",
-          "line": 1064,
+          "line": 1074,
           "evidence": "command",
           "reference": "scripts/check-deploy-target.py",
           "text": "_g = subprocess.run(_gcmd, capture_output=True, text=True, timeout=60, **nofocus.hidden_kwargs())"
@@ -2263,7 +2263,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/run_smoke.py",
-          "line": 1148,
+          "line": 1158,
           "evidence": "command",
           "reference": "scripts/check_shader_bom.py",
           "text": "_bom = subprocess.run("
@@ -3543,7 +3543,7 @@
         },
         {
           "path": "tools/play_mission.py",
-          "line": 41,
+          "line": 48,
           "evidence": "import",
           "reference": "console_child",
           "text": "import console_child"
@@ -3564,7 +3564,7 @@
         },
         {
           "path": "tools/saveload_roundtrip.py",
-          "line": 36,
+          "line": 37,
           "evidence": "import",
           "reference": "console_child",
           "text": "import console_child  # noqa: E402"
@@ -3957,7 +3957,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/run_smoke.py",
-          "line": 1006,
+          "line": 1016,
           "evidence": "command",
           "reference": "scripts/deploy_payload.py",
           "text": "_v = subprocess.run(cmd, capture_output=True, text=True, timeout=300, **nofocus.hidden_kwargs())"
@@ -4008,7 +4008,7 @@
         },
         {
           "path": "scripts/run_smoke.py",
-          "line": 1421,
+          "line": 1433,
           "evidence": "import",
           "reference": "scripts.deploy_payload",
           "text": "from scripts import deploy_payload as _dp"
@@ -4359,7 +4359,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/run_smoke.py",
-          "line": 403,
+          "line": 413,
           "evidence": "command",
           "reference": "scripts/game_auto.py",
           "text": "auto = subprocess.run("
@@ -5573,7 +5573,7 @@
         },
         {
           "path": "tools/play_mission.py",
-          "line": 42,
+          "line": 49,
           "evidence": "command",
           "reference": "scripts/run_smoke.py",
           "text": "result = subprocess.run(cmd, cwd=ROOT, env=env, stdout=subprocess.PIPE,"
@@ -5777,7 +5777,7 @@
         },
         {
           "path": "scripts/run_smoke.py",
-          "line": 1565,
+          "line": 1577,
           "evidence": "import",
           "reference": "run_visual_capture",
           "text": "from run_visual_capture import smoke_capture"
@@ -5947,42 +5947,42 @@
         },
         {
           "path": "scripts/run_smoke.py",
-          "line": 230,
+          "line": 240,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from scripts.smoke_lib import child_registry"
         },
         {
           "path": "scripts/run_smoke.py",
-          "line": 834,
+          "line": 844,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from scripts.smoke_lib import deploy_lease as _deploy_lease"
         },
         {
           "path": "scripts/run_smoke.py",
-          "line": 895,
+          "line": 905,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from scripts.smoke_lib import host_lease as _host_lease"
         },
         {
           "path": "scripts/run_smoke.py",
-          "line": 908,
+          "line": 918,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from scripts.smoke_lib import host_load as _host_load"
         },
         {
           "path": "scripts/run_smoke.py",
-          "line": 1093,
+          "line": 1103,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from scripts.smoke_lib import preflight_cache as _pfcache"
         },
         {
           "path": "scripts/run_smoke.py",
-          "line": 1279,
+          "line": 1289,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from scripts.smoke_lib import child_registry as _children"
@@ -6413,14 +6413,14 @@
       "callers_by_stem": [
         {
           "path": "scripts/run_smoke.py",
-          "line": 230,
+          "line": 240,
           "evidence": "import",
           "reference": "scripts.smoke_lib.child_registry",
           "text": "from scripts.smoke_lib import child_registry"
         },
         {
           "path": "scripts/run_smoke.py",
-          "line": 1279,
+          "line": 1289,
           "evidence": "import",
           "reference": "scripts.smoke_lib.child_registry",
           "text": "from scripts.smoke_lib import child_registry as _children"
@@ -6542,7 +6542,7 @@
         },
         {
           "path": "scripts/run_smoke.py",
-          "line": 834,
+          "line": 844,
           "evidence": "import",
           "reference": "scripts.smoke_lib.deploy_lease",
           "text": "from scripts.smoke_lib import deploy_lease as _deploy_lease"
@@ -6813,7 +6813,7 @@
       "callers_by_stem": [
         {
           "path": "scripts/run_smoke.py",
-          "line": 895,
+          "line": 905,
           "evidence": "import",
           "reference": "scripts.smoke_lib.host_lease",
           "text": "from scripts.smoke_lib import host_lease as _host_lease"
@@ -6884,7 +6884,7 @@
       "callers_by_stem": [
         {
           "path": "scripts/run_smoke.py",
-          "line": 908,
+          "line": 918,
           "evidence": "import",
           "reference": "scripts.smoke_lib.host_load",
           "text": "from scripts.smoke_lib import host_load as _host_load"
@@ -7196,7 +7196,7 @@
       "callers_by_stem": [
         {
           "path": "scripts/run_smoke.py",
-          "line": 1093,
+          "line": 1103,
           "evidence": "import",
           "reference": "scripts.smoke_lib.preflight_cache",
           "text": "from scripts.smoke_lib import preflight_cache as _pfcache"
@@ -7439,7 +7439,7 @@
       "callers_by_stem": [
         {
           "path": "scripts/run_smoke.py",
-          "line": 1670,
+          "line": 1682,
           "evidence": "import",
           "reference": "scripts.smoke_lib.runtime_bridge",
           "text": "from scripts.smoke_lib.runtime_bridge import RuntimeBridge"
@@ -14517,7 +14517,7 @@
         },
         {
           "path": "tools/saveload_roundtrip.py",
-          "line": 37,
+          "line": 38,
           "evidence": "import",
           "reference": "save_inspect",
           "text": "import save_inspect as si  # noqa: E402"
@@ -14561,7 +14561,7 @@
         },
         {
           "path": "tools/saveload_roundtrip.py",
-          "line": 38,
+          "line": 39,
           "evidence": "import",
           "reference": "savegame_backup",
           "text": "import savegame_backup  # noqa: E402"
@@ -17157,7 +17157,7 @@
         },
         {
           "path": "tools/saveload_roundtrip.py",
-          "line": 39,
+          "line": 40,
           "evidence": "import",
           "reference": "sim_determinism",
           "text": "import sim_determinism as sd  # noqa: E402"
