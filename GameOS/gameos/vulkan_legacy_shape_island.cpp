@@ -33,6 +33,7 @@
 #include "vk_gpu_profile.h"   // VK-GPU-ZONES: MC2_VK_GPU_SCOPE
 #include "vk_texture_residency.h"
 #include "vulkan_legacy_shape_island.h"
+#include "vulkan_mech_island.h"   // mech-lab panel: mc2_vk_mech_preview_flush
 #include "../../RenderCore/gpu_abi/GpuLegacyFrameUBO.h"  // single-source per-frame UBO
 #include "vk_shared_gbuffer_gate.h"
 #define MC2_VULKAN_SHARED_SCENE_COLOR_IMPL_ISLAND
@@ -624,7 +625,13 @@ extern "C" int mc2_vk_legacy_shape_island_run(int w, int h, const Mc2LegacyMlrFr
     s->submitted[par] = rctx.tracker().now();
     s->nextSlot = (par + 1) % kSubmissionSlots;
 
-    if (s->preview) { s->previewPublished=true; s->previewTicket=rctx.tracker().now(); }
+    if (s->preview) {
+        // The lab's GPU mech (the in-game material path) LOADs over this pass in the same target. Its submit follows
+        // ours on the queue, so the reuse ticket taken after it covers both.
+        (void)mc2_vk_mech_preview_flush(rctx.textures().view(s->previewColor.get()),s->previewNormalView.get(),
+                                        s->previewDepthView.get(),w,h);
+        s->previewPublished=true; s->previewTicket=rctx.tracker().now();
+    }
     g_health.nodesDrawn += drawn;
     g_health.vertsDrawn += verts;
     ++g_health.usedVulkan;

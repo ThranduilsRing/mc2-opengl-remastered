@@ -38,16 +38,23 @@ layout(set = 0, binding = 6) uniform sampler2D uMechAo;   // AO-1 (imported; GL 
 layout(set = 0, binding = 7) uniform sampler2D uMechNrm;  // NORMALS-1 (imported; GL unit 7)
 
 #define PREC highp
+// MECH_PREVIEW (mech_preview.frag.spv, baked from this source with -DMECH_PREVIEW=1): the
+// mech-lab panel pass. No terrain set 1 (no light pools, no ground grid), and the HDR
+// result is exposed and tonemapped in-shader because the RGBA8 panel target gets no post.
+#ifndef MECH_PREVIEW
 #define TERRAIN_RESOURCE_SET 1
 #define TERRAIN_OBJECT_RECEIVER 1
 #include "include/terrain_frame_vk.glsl"
+#endif
 layout(push_constant) uniform MechRunPC {
     uint materialFlags;    // bit0 = ALPHA_TEST (mech.frag ALPHA_TEST_BIT)
     uint poolFirst;
     uint poolCount;
 } uRun;
+#ifndef MECH_PREVIEW
 #define MC2_OBJECT_TERRAIN_GRID 1
 #include "../include/object_light_pool.hglsl"
+#endif
 #include "../include/mech_shading.hglsl"
 
 layout(location = 0) in vec2 vUv;
@@ -104,11 +111,13 @@ void main() {
             }
         }
 
+#ifndef MECH_PREVIEW
         if (uFrame.poolI.x > 0 && vLegacyVehicle == 0u)
             rgb += tex_color.rgb * olp_objectPoolLight(vWorldPos, uFrame.poolI.x, uFrame.poolI.y,
                                                        uFrame.poolF.x, uFrame.poolF.y,
                                                        uFrame.poolI.z, uFrame.poolI.w,
                                                        uFrame.poolF.z);
+#endif
 
         // Per-actor haze fog (mech.frag:404).
         rgb = mix(rgb, vFog.rgb, vFog.a);
@@ -116,6 +125,12 @@ void main() {
         // FLAT silhouette fill — the axis-swap / skinning proof (distinct hue vs props).
         rgb = vec3(0.75, 0.45, 0.25) * (0.6 + 0.4 * vUv.y);
     }
+#ifdef MECH_PREVIEW
+    // Panel exposure (fogColorRGB.w; the world pass leaves it 0) + a Reinhard shoulder so
+    // the spec sheen rolls off instead of clipping on the 8-bit panel target.
+    rgb *= max(uFrame.fogColorRGB.w, 0.0);
+    rgb = rgb / (1.0 + max(max(rgb.r, rgb.g), rgb.b) * 0.35);
+#endif
     oColor = vec4(rgb, 1.0);
 
     // GBuffer1: MC2/GL-world shading normal, a=0.0 (screen-shadow-eligible).
