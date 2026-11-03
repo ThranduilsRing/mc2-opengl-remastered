@@ -138,11 +138,16 @@ void crunchToken (void) {
 
 char* LastNodeCrunchSlot = nullptr;
 
-void patchLastCrunchedNode (SymTableNodePtr nodePtr) {
+char* lastCrunchedNodeSlot (void) {
 
-	// Re-point the node pointer crunchSymTableNodePtr emitted last (a routine call's id) at another routine.
-	if (Crunch && LastNodeCrunchSlot)
-		putCode(LastNodeCrunchSlot, nodePtr);
+	return(Crunch ? LastNodeCrunchSlot : nullptr);
+}
+
+void patchCrunchedNode (char* slot, SymTableNodePtr nodePtr) {
+
+	// Re-point a node pointer crunchSymTableNodePtr emitted earlier (a routine call's id) at another routine.
+	if (Crunch && slot)
+		putCode(slot, nodePtr);
 }
 
 void crunchSymTableNodePtr (SymTableNodePtr nodePtr) {

@@ -157,6 +157,8 @@ TypePtr stdGetStateHandle (void) {
 // that form compiles to the hidden routine newpower_part, so the one-argument brain form is untouched.
 static TypePtr partFormPowerCall (SymTableNodePtr partRoutine) {
 
+	// The routine's own node pointer was crunched just before this call; the arguments crunch more node pointers after it.
+	char* routineSlot = lastCrunchedNodeSlot();
 	if (curToken == TKN_LPAREN)
 		getToken();
 	else
@@ -168,7 +170,7 @@ static TypePtr partFormPowerCall (SymTableNodePtr partRoutine) {
 		getToken();
 		if (expression() != BooleanTypePtr)
 			syntaxError(ABL_ERR_SYNTAX_INCOMPATIBLE_TYPES);
-		patchLastCrunchedNode(partRoutine);
+		patchCrunchedNode(routineSlot, partRoutine);
 	}
 	else if (first != BooleanTypePtr)
 		syntaxError(ABL_ERR_SYNTAX_INCOMPATIBLE_TYPES);

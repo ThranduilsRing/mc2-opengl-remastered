@@ -78,4 +78,5 @@ def test_newpower_part_form_dispatch_contract():
     assert len(POP.findall(body)) == 2 and "ABLi_pushInteger" in body
     std = (CODE.parent / "mclib" / "ablstd.cpp").read_text(encoding="utf-8", errors="ignore")
     assert "partFormPowerCall" in std and '"newpower_part"' in std
-    assert "patchLastCrunchedNode(partRoutine)" in std
+    assert "patchCrunchedNode(routineSlot, partRoutine)" in std
+    assert std.index("lastCrunchedNodeSlot()") < std.index("expression()", std.index("partFormPowerCall"))
