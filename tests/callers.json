@@ -3073,6 +3073,13 @@
           "text": "import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)"
         },
         {
+          "path": "scripts/video_decode_smoke.py",
+          "line": 19,
+          "evidence": "import",
+          "reference": "console_child",
+          "text": "import console_child  # noqa: E402"
+        },
+        {
           "path": "scripts/vk_shader_reload.py",
           "line": 15,
           "evidence": "import",
@@ -4008,7 +4015,7 @@
         },
         {
           "path": "scripts/merge_gate.py",
-          "line": 1133,
+          "line": 1136,
           "evidence": "import",
           "reference": "deploy_payload",
           "text": "from deploy_payload import verify_published_identity"
@@ -5545,10 +5552,10 @@
         },
         {
           "path": "scripts/video_decode_smoke.py",
-          "line": 39,
+          "line": 42,
           "evidence": "command",
           "reference": "scripts/run_smoke.py",
-          "text": "proc = subprocess.run(cmd, cwd=ROOT, env=env, capture_output=True, text=True, errors=\"replace\")"
+          "text": "proc = subprocess.run(cmd, cwd=ROOT, env=env, capture_output=True, text=True, errors=\"replace\","
         },
         {
           "path": "tools/abl_refparam_check.py",
