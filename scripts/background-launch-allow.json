@@ -32,6 +32,7 @@
     "tools/tracy_capture_compare.py": "engine launcher through nofocus.spawn/run (vetted by exe_guard); launch-site audit 2026-10-10"
   },
   "direct_spawn": {
+    "scripts/video_decode_smoke.py": "Launches only scripts/run_smoke.py under sys.executable with console_child; the smoke harness owns the offscreen engine launch.",
     "scripts/run_visual.py": "Starts only the Python run_visual_capture.py harness with --no-kill and console_child; that harness owns the offscreen game launch, host lease and own-PID cleanup.",
     "tools/perf/mission_cpu_profile.py": "Launches only Tracy capture/export console tools directly; the engine launches through smoke_lib.runner and nofocus.",
     "tools/perf/rgp_capture.py": "Launches only the Radeon Developer Service and a minimized non-activating Radeon Developer Panel (both terminated at exit); the engine launches through smoke_lib.runner and nofocus.",

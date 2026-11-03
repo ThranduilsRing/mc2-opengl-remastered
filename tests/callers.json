@@ -5544,6 +5544,13 @@
           "text": "proc = subprocess.Popen([sys.executable, str(ROOT / \"scripts\" / \"run_smoke.py\"), *smoke_args],"
         },
         {
+          "path": "scripts/video_decode_smoke.py",
+          "line": 39,
+          "evidence": "command",
+          "reference": "scripts/run_smoke.py",
+          "text": "proc = subprocess.run(cmd, cwd=ROOT, env=env, capture_output=True, text=True, errors=\"replace\")"
+        },
+        {
           "path": "tools/abl_refparam_check.py",
           "line": 39,
           "evidence": "command",
@@ -8689,6 +8696,13 @@
       "callers_by_stem": []
     },
     {
+      "path": "scripts/tests/test_video_decode_smoke.py",
+      "basename": "test_video_decode_smoke.py",
+      "stem": "test_video_decode_smoke",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
       "path": "scripts/tests/test_vk_offline_proofs.py",
       "basename": "test_vk_offline_proofs.py",
       "stem": "test_vk_offline_proofs",
@@ -8730,6 +8744,21 @@
       "stem": "verify_campaign_assets",
       "callers_by_basename": [],
       "callers_by_stem": []
+    },
+    {
+      "path": "scripts/video_decode_smoke.py",
+      "basename": "video_decode_smoke.py",
+      "stem": "video_decode_smoke",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "scripts/tests/test_video_decode_smoke.py",
+          "line": 6,
+          "evidence": "import",
+          "reference": "video_decode_smoke",
+          "text": "import video_decode_smoke as v  # noqa: E402"
+        }
+      ]
     },
     {
       "path": "scripts/visual_diff.py",

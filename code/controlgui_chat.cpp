@@ -3,9 +3,11 @@
 #include "controlgui_internal.h"
 #include "../GameOS/gameos/utils/mc2log.h"
 
+#include <string>
 #include <string_view>
 #include <utility>
 #include "mc2str.h"
+#include "tick_commit.h"
 
 
 void ControlGui::beginPause()
@@ -68,6 +70,16 @@ void ControlGui::switchTabs(int direction)
 
 void ControlGui::playMovie( const char* fileName )
 {
+	// The sim worker (ABL playVideo, objective CPlayBIK) must not open the decoder: video_open creates a gos texture,
+	// which is Render-owner only (sim_overlap requireOwner). Defer the whole request to the main thread at the overlap
+	// join (commitTickQueues). The sim never reads moviePlaying, so only the start moves, by at most the rest of the tick.
+	if (mc2::tick::collecting())
+	{
+		std::string name( fileName ? fileName : "" );
+		if (mc2::tick::defer( mc2::tick::Queue::MoverUi, [this, name = std::move( name )] { playMovie( name.c_str() ); } ))
+			return;
+	}
+
 	if (moviePlaying)
 	{
 		objectiveObservationSink("movie", "gui", "busy", fileName);

@@ -316,6 +316,7 @@ flags:
     rule: Lead0
     owner: code
     doc: "VIDEO-CAPTURE fixture: =1 overrides the smoke-mode movie skip in MC2Movie::init so in-mission comm videos (mc2_01 V1A.bik ~frame 1600) play under..."
+    smoke_passthrough: true
     verified: true
     registry: {feature_id: MC2_TRACE_BOOT_VIDEO, kind: Trace, order: -1, default_on: false}
   - name: MC2_BRAIN_FIXED_TICK
