@@ -777,11 +777,13 @@ long MissionMap::init (PacketFile* packetFile, long whichPacket, bool taggedCell
 		return 0;
 	}
 
-	for (long r = 0; r < height; r++)
-		for (long c = 0; c < width; c++) {
-			GameMap->setMover(r, c, false);
-		}
-
+	// Tagged cells come from a save whose movers also restore lastMapCell, so the saved mover flags are exact (a corpse can keep its flag); untagged data may hold stale ones.
+	if (!taggedCells)
+		for (long r = 0; r < height; r++)
+			for (long c = 0; c < width; c++) {
+				GameMap->setMover(r, c, false);
+			}
+	
 	// readPacket() writes raw cell bytes into `map` and bypasses setMine(), so
 	// the incremental tileMineCount maintenance never fired. Rebuild from the
 	// loaded cell contents.
