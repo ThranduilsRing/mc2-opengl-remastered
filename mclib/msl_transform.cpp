@@ -1,8 +1,6 @@
 // Multi shape layer: the node-hierarchy walk (TransformMultiShape_BuildRecipe / _HierarchyOnly) and the GPU light-data cache.
 // Declared in the class headers; shared names in msl_internal.h.
 #include <atomic>
-extern uint32_t mc2LightResetEpoch();
-extern uint32_t mc2LightSlotBakedHighWater();
 #include "msl_internal.h"
 #include "sim_overlap.h"
 //-------------------------------------------------------------------------------
@@ -324,6 +322,8 @@ void TG_MultiShape::EmitBakedGpuLightData(int32_t recipeIndex, const TG_HWLights
     cachedFrame_         = mc2::overlap::simulationFrame(g_mc2FrameCounter);
 }
 
+extern uint32_t mc2LightResetEpoch();
+extern uint32_t mc2LightSlotBakedHighWater();
 // A dynamic light slot (index >= S) is valid only for the resetLightData epoch it was minted in.
 // A static slot (< S) is permanent. Anything else names a rebased/foreign row (zero_row_reached_gpu).
 bool TG_MultiShape::cachedLightIndexStale() const
