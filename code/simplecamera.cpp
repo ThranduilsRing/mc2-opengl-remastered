@@ -52,11 +52,7 @@ static bool postMechPreviewGpu( Camera& cam, Mech3DAppearance* mech, float vpX, 
 	const bool freshSession = s_lastFrame == 0xffffffffu || frame != s_lastFrame + 1;
 	s_lastFrame = frame;
 	if ( !mech->submitPreviewGpu( freshSession ) )
-	{
-		static bool s_logged = false;
-		if ( !s_logged ) { s_logged = true; fprintf( stderr, "[MECHLAB_GPU] submitPreviewGpu declined (batcher not finalized or no shape) -- CPU mech draw stays on.\n" ); }
-		return false;
-	}
+		return false;	// batcher not finalized or no shape: the CPU mech draw stays on
 	GpuMechBatcher::instance().flush();
 
 	static TG_HWLightsData s_row;	// the lab actor's single light row (lightDataIndex 0)
@@ -85,12 +81,6 @@ static bool postMechPreviewGpu( Camera& cam, Mech3DAppearance* mech, float vpX, 
 		q.sceneH = Environment.screenHeight;
 	}
 	mc2_vk_mech_preview_request( &q );
-	static bool s_posted = false;
-	if ( !s_posted )
-	{
-		s_posted = true;
-		fprintf( stderr, "[MECHLAB_GPU] first panel request: rect=%d,%d %dx%d scene=%dx%d\n", q.vpX, q.vpY, q.vpW, q.vpH, q.sceneW, q.sceneH );
-	}
 	return true;
 }
 #endif
@@ -414,13 +404,6 @@ void SimpleCamera::render(long xOffset, long yOffset)
 					drawn_[0] = g_previewBoundsMinX; drawn_[1] = g_previewBoundsMinY;
 					drawn_[2] = g_previewBoundsMaxX; drawn_[3] = g_previewBoundsMaxY;
 					haveDrawn_ = true;
-					static bool s_boundsLogged = false;
-					if ( gpuDraws && !s_boundsLogged )
-					{
-						s_boundsLogged = true;
-						fprintf( stderr, "[MECHLAB_GPU] CPU silhouette bounds under the GPU draw: %.1f,%.1f .. %.1f,%.1f (800x600 logical)\n",
-							drawn_[0], drawn_[1], drawn_[2], drawn_[3] );
-					}
 				}
 			}
 			else
