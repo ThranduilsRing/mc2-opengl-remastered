@@ -28,6 +28,10 @@ SimpleCamera.cpp	: Implementation of the SimpleCamera component.
 #include "Gates/gate.h"
 #include "mc2fmt.h"
 
+// Screen-space extents of the last PreviewDraw (mclib/tgl.cpp, filled in preview_draw.cpp).
+extern bool g_previewCaptureBounds;
+extern float g_previewBoundsMinX, g_previewBoundsMaxX, g_previewBoundsMinY, g_previewBoundsMaxY;
+
 extern bool drawOldWay;
 extern bool useFog;
 
@@ -324,7 +328,20 @@ void SimpleCamera::render(long xOffset, long yOffset)
 					addLight( framedLightPitch_[0], framedLightYaw_[0], 0xff5a6a80 );
 					addLight( framedLightPitch_[1], framedLightYaw_[1], 0xffa0a8b8 );
 				}
+				if ( framed_ )
+				{
+					g_previewCaptureBounds = true;
+					g_previewBoundsMinX = g_previewBoundsMinY = 1e9f;
+					g_previewBoundsMaxX = g_previewBoundsMaxY = -1e9f;
+				}
 				previewShape->PreviewDraw(view);
+				if ( framed_ )
+				{
+					g_previewCaptureBounds = false;
+					static int s_diag = 0;
+					if ( s_diag++ % 60 == 0 )
+						MC2_LOG(Ui, Info, "[MECHLAB3D] diag drawn=[{:.0f},{:.0f},{:.0f},{:.0f}] rect=[{:.0f},{:.0f},{:.0f},{:.0f}] AltitudeTight(static)={:.0f} camAlt={:.0f} fitK={:.0f} radius={:.2f} rot={:.0f}", g_previewBoundsMinX, g_previewBoundsMinY, g_previewBoundsMaxX, g_previewBoundsMaxY, bounds[0], bounds[1], bounds[2], bounds[3], AltitudeTight, cameraAltitude, fitK_, fitRadius_, rotation);
+				}
 			}
 			else
 				pObject->render();
