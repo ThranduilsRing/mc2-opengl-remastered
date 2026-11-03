@@ -11,6 +11,7 @@ Scenario files live in tests/player_path/<name>.pp, one line each:
   #! timeout 600            hard wall-clock limit for the whole scenario (seconds)
   #! expect <regex>         a log line that must appear (all must)
   #! forbid <regex>         a log line that must NOT appear
+  #! differ A B FRAC        captures {out}/A.tga and {out}/B.tga must differ in at least FRAC of sampled bytes (proves the camera moved, e.g. the intro pan)
   await <regex> [seconds]   harness-side: wait until a log line matches (default 120 s), then continue
   setup save <src> <name>   harness-side: copy a fixture save into the profile savegame folder before launch
   <anything else>           forwarded to the engine script player (wait N | move X Y | click X Y [l|r] | key NAME | shot PATH | mark TEXT ...)
@@ -43,8 +44,21 @@ DEFAULT_FORBID = [r"^CRASH:", r"MC2 Remastered Crash Report", r"requireOwner"]
 SAVE_DIR = Path.home() / ".mechcommander2" / "savegame"
 
 
+def diff_fraction(a: Path, b: Path) -> float:
+    """Fraction of sampled bytes that differ between two same-size TGA captures (header skipped); -1.0 when a file is missing or the sizes differ."""
+    try:
+        da, db = a.read_bytes()[18:], b.read_bytes()[18:]
+    except OSError:
+        return -1.0
+    if len(da) != len(db) or not da:
+        return -1.0
+    step = 97
+    n = len(da[::step])
+    return sum(1 for x, y in zip(da[::step], db[::step]) if abs(x - y) > 8) / n
+
+
 def parse_scenario(path: Path) -> dict:
-    sc = {"name": path.stem, "timeout": 600.0, "expect": [], "forbid": list(DEFAULT_FORBID), "steps": [], "setup": []}
+    sc = {"name": path.stem, "timeout": 600.0, "expect": [], "forbid": list(DEFAULT_FORBID), "differ": [], "steps": [], "setup": []}
     for raw in path.read_text(encoding="utf-8").splitlines():
         line = raw.strip()
         if not line:
@@ -57,6 +71,9 @@ def parse_scenario(path: Path) -> dict:
                 sc["expect"].append(val.strip())
             elif key == "forbid":
                 sc["forbid"].append(val.strip())
+            elif key == "differ":
+                a, b, frac = val.split()
+                sc["differ"].append((a, b, float(frac)))
             continue
         if line.startswith("#"):
             continue
@@ -181,6 +198,10 @@ def run_scenario(exe: Path, sc: dict, out: Path, extra_env: dict, show_window: b
         mm = re.search(rx, text, re.M)
         if mm:
             problems.append(f"forbidden /{rx}/ matched: {mm.group(0)[:100]}")
+    for a, b, frac in sc["differ"]:
+        got = diff_fraction(out / f"{a}.tga", out / f"{b}.tga")
+        if got < frac:
+            problems.append(f"captures {a} vs {b} differ {got:.3f} < {frac} (camera did not move / capture missing)")
     shots = sorted(str(p) for p in out.glob("*.tga")) + sorted(str(p) for p in out.glob("*.png"))
     res = {"scenario": sc["name"], "result": "FAIL" if problems else "PASS", "problems": problems, "wall_s": round(time.perf_counter() - t0, 1),
            "exit_code": rc, "lease": lease, "videos_opened": [m.group(1) for m in re.finditer(r"\[VIDEO\] init: opened (\S+)", text)],
