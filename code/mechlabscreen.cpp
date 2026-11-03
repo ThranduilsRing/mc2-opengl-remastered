@@ -19,6 +19,7 @@ MechLabScreen.cpp			: Implementation of the MechLabScreen component.
 #include"logisticsdialog.h"
 #include<malloc.h>
 #include"gamesound.h"
+#include "../GameOS/gameos/vulkan_legacy_shape_island.h"
 
 // Interactive cheat gate
 // The launcher writes these into launcher_env.json, which main() applies after static initialization, so they
@@ -194,6 +195,8 @@ int MechLabScreen::init( FitIniFile& file )
 	variantList.setHelpID( IDS_HELP_MC_VARIANT_DROP_DOWN_LIST_BOX );
 
 	camera.init( rects[4].left(), rects[4].top(), rects[4].right(), rects[4].bottom() );
+	// MECHLAB-3D-1: Static50-53 (mcl_mc.fit) tile one rect, x25 y116 w315 h347.
+	mechCamera.init( 25.f, 116.f, 340.f, 463.f );
 
 	getButton( COMPONENT_FORM_WEAPON_ENERGY )->setPressFX( LOG_VIDEOBUTTONS );
 	getButton( COMPONENT_FORM_WEAPON_BALLISTIC )->setPressFX( LOG_VIDEOBUTTONS );
@@ -354,6 +357,14 @@ void MechLabScreen::begin()
 
 		statics[50].setTexture( path );
 
+		// MECHLAB-3D-1: pose the real model; a chassis with no model keeps the silhouette statics.
+		if ( !mc2::gate::get<"MC2_MECHLAB_3D_OFF">() )
+		{
+			mechCamera.setMech( mc2::str::file_stem( pVariant->getFileName() ).c_str(), prefs.baseColor, prefs.highlightColor, prefs.highlightColor );
+			if ( mechCamera.hasObject() && pVariant->getChassis() )
+				mechCamera.setScale( pVariant->getChassis()->getScale() );
+		}
+
 
 		for (int i = COMPONENT_FORM_WEAPON_ENERGY; i < COMPONENT_FORM_JUMPJET + 1; i++ )
 		{
@@ -398,6 +409,7 @@ void MechLabScreen::begin()
 void MechLabScreen::end()
 {
 	camera.setMech( nullptr );
+	mechCamera.setMech( nullptr );
 	pVariant = nullptr;
 }
 void MechLabScreen::update()
@@ -505,6 +517,7 @@ void MechLabScreen::update()
 
 	
 	camera.update();
+	mechCamera.update();
 
 	int oldSel = componentListBox.GetSelectedItem(); // need to check this before we update the list box
 
@@ -913,8 +926,28 @@ void MechLabScreen::render(int xOffset, int yOffset)
 		// (fixed 800x600, matches camera.bounds[]/init() unscaled legacy math
 		// unchanged) and composite via the same tbSx/tbSy real-resolution ratio
 		// already used for this screen's text bridge.
+		// MECHLAB-3D-1: both cameras share ONE preview texture that clears per pass;
+		// hold the pass so the mech and the component render into the same batch.
+		const bool mech3d = mechCamera.hasObject();
+#ifdef MC2_VULKAN_ISLAND
+		mc2_vk_preview_hold( 1 );
+#endif
+		if ( mech3d )
+		{
+			mechCamera.setPreviewOffscreen( true );
+			mechCamera.render();
+		}
 		camera.setPreviewOffscreen( true );
 		camera.render();
+#ifdef MC2_VULKAN_ISLAND
+		mc2_vk_preview_hold( -1 );
+#endif
+		// Backdrop hook (later phase): a mech bay backdrop would be drawn here, before the mech.
+		if ( mech3d )
+			mechCamera.drawPreviewToPanel(
+				mechCamera.bounds[0] * tbSx + tbOx, mechCamera.bounds[1] * tbSy + tbOy,
+				(mechCamera.bounds[2] - mechCamera.bounds[0]) * tbSx,
+				(mechCamera.bounds[3] - mechCamera.bounds[1]) * tbSy );
 		camera.drawPreviewToPanel(
 			camera.bounds[0] * tbSx + tbOx, camera.bounds[1] * tbSy + tbOy,
 			(camera.bounds[2] - camera.bounds[0]) * tbSx,
@@ -929,7 +962,7 @@ void MechLabScreen::render(int xOffset, int yOffset)
 	// Mech paperdoll background: the defs page suppresses these legacy statics, so
 	// draw them explicitly here -- on the GameOS layer, BEFORE the component slots
 	// below, so the paperdoll sits BEHIND the slots (not covering them).
-	for ( int i = 50; i < 54; i++ )
+	for ( int i = 50; i < 54 && !mechCamera.hasObject(); i++ )
 	{
 		statics[i].move( xOffset, yOffset );
 		statics[i].render();

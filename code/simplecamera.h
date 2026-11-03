@@ -51,6 +51,7 @@ public:
 	// screen pixels). No-op if setPreviewOffscreen(true) wasn't set.
 	void drawPreviewToPanel( float panelX, float panelY, float panelW, float panelH ) const;
 
+	bool hasObject() const { return pObject != nullptr; }
 	void setScale( float newScale );
 	void setRotation( float rotation );
 	void zoomIn( float howMuch ); // scale for things that can't 

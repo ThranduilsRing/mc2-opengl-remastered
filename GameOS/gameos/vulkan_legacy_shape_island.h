@@ -70,6 +70,7 @@ int mc2_vk_preview_active();
 void mc2_vk_preview_begin(int width, int height);
 void mc2_vk_preview_capture(const Mc2LegacyMlrDraw* draw);
 void mc2_vk_preview_end();
+void mc2_vk_preview_hold(int delta); // +1 starts a batch (end() defers its pass), -1 releases and runs it
 uint64_t mc2_vk_preview_texture();
 
 // True when the island owns the legacy solid loop this session (renderLists then
