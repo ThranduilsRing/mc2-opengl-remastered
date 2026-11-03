@@ -98,6 +98,22 @@ MissionBriefingScreen::~MissionBriefingScreen()
 void MissionBriefingScreen::init( FitIniFile* file )
 {
 	LogisticsScreen::init( *file, "Static", "Text", "Rect", "Button" );
+	// MCO ships a 4-static briefing layout (map, video, objective icons, camera cover) where
+	// stock has 36 and this screen indexes the last four as 32..35. Re-seat the short array at
+	// the tail of a stock-sized one so every statics[] index below stays in range.
+	{
+		constexpr int kStockStatics = 36;
+		const int have = static_cast<int>(staticCount);
+		if ( statics && have > 0 && have < kStockStatics )
+		{
+			aObject* padded = new aObject[kStockStatics];
+			for ( int i = 0; i < have; i++ )
+				padded[kStockStatics - have + i] = statics[i];
+			delete [] statics;
+			statics = padded;
+			staticCount = kStockStatics;
+		}
+	}
 	defsHelpTextKey = "game.mcl_mn.text.help_text";
 	for ( int i= 0; i < buttonCount; i++ )
 		buttons[i].setMessageOnRelease();
