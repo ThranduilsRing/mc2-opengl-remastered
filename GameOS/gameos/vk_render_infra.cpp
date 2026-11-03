@@ -140,17 +140,17 @@ void init(VkDevice device, VkPhysicalDevice physical) {
     if(memoryBudget) memory.pNext=&mb;
     vkGetPhysicalDeviceMemoryProperties2(physical,&memory);
     const auto& mp=memory.memoryProperties; uint64_t available=0;
-    for(uint32_t i=0;i<mp.memoryHeapCount;++i) if(mp.memoryHeaps[i].flags&VK_MEMORY_HEAP_DEVICE_LOCAL_BIT) {
-        const auto heap=memoryBudget ? std::min(mp.memoryHeaps[i].size,mb.heapBudget[i]) : mp.memoryHeaps[i].size;
-        available+=heap>mb.heapUsage[i] ? heap-mb.heapUsage[i] : 0;
-    }
+    // Unified memory: integrated/virtual device, or a single heap that is both the device and the host heap.
+    const bool uma=p.deviceType==VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU || p.deviceType==VK_PHYSICAL_DEVICE_TYPE_CPU || mp.memoryHeapCount==1;
+    for(uint32_t i=0;i<mp.memoryHeapCount;++i) if(mp.memoryHeaps[i].flags&VK_MEMORY_HEAP_DEVICE_LOCAL_BIT)
+        available+=RenderCore::gpuHeapAvailable(mp.memoryHeaps[i].size,memoryBudget?mb.heapBudget[i]:0,memoryBudget?mb.heapUsage[i]:0,memoryBudget,uma);
     s.physicalBudget=RenderCore::gpuBudget(available,UINT64_MAX);
     s.budget=std::min(s.physicalBudget,RenderCore::gpuResidencyPolicy(mc2::options::current().shadowQuality).total);
     // Diagnostic clamp only: it cannot raise either the physical or preset budget.
     const int mbOverride=mc2::gate::get<"MC2_GPU_BUDGET_MB">();
     if(mbOverride>0) s.budget=std::min(s.budget,uint64_t(mbOverride)*MiB);
     if (mc2::gate::get<"MC2_DIAG_VERBOSE">()) std::fprintf(stderr,"[VK_RESIDENCY v1] budget_bytes=%llu physical_bytes=%llu source=%s safety_bytes=%llu quality=%d maxImageDimension2D=%u\n",
-        s.budget,s.physicalBudget,memoryBudget?"VK_EXT_memory_budget":"heap_sizes",available-s.physicalBudget,mc2::options::current().shadowQuality,s.imageEdge);
+        s.budget,s.physicalBudget,memoryBudget?(uma?"VK_EXT_memory_budget+uma":"VK_EXT_memory_budget"):(uma?"heap_half+uma":"heap_half"),available-s.physicalBudget,mc2::options::current().shadowQuality,s.imageEdge);
     std::error_code ec; std::filesystem::create_directories("cache/vulkan",ec);
     char key[160]{}; size_t at=std::snprintf(key,sizeof(key),"%08x-%08x-%08x-",p.vendorID,p.deviceID,p.driverVersion);
     for(auto b:p.pipelineCacheUUID) at+=std::snprintf(key+at,sizeof(key)-at,"%02x",b);

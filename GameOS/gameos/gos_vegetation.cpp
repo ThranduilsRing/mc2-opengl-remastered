@@ -185,7 +185,7 @@ uint32_t GosVegetation::populationCapacity(uint32_t requested, float mapSpan) {
         const uint64_t regions = uint64_t(mid) < regionBound ? uint64_t(mid) : regionBound;
         if (mc2veg::State::strideFor(mid, regions) == 1) lo = mid; else hi = mid - 1;
     }
-    if (lo < cap) mc2::fmt::print_err("[VK_RESIDENCY v1] vegetation placement capped {:d}->{:d}\n", mc2::fmt::as_u32(cap), mc2::fmt::as_u32(lo));
+    if (lo < cap) mc2::fmt::print_err("[VK_RESIDENCY v1] vegetation capacity sized to fit the largest whole population (no thinning): requested_max={:d} capacity={:d}\n", mc2::fmt::as_u32(cap), mc2::fmt::as_u32(lo));
     return lo;
 #else
     return 0;

@@ -10870,7 +10870,7 @@
    "ver": 1,
    "stream": "stderr",
    "keys": [],
-   "count": 2
+   "count": 1
   },
   {
    "tag": "VK_RESIDENCY",
@@ -11036,6 +11036,16 @@
    "stream": "stderr",
    "keys": [
     "refused_count"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_RESIDENCY",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "requested_max",
+    "capacity"
    ],
    "count": 1
   },

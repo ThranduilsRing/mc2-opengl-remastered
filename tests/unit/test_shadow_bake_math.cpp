@@ -14,9 +14,21 @@ using namespace mc2shadow;
 
 TEST_CASE("GPU residency: physical headroom, preset ceiling and overlap admission") {
     using namespace RenderCore;
-    CHECK(gpuBudget(512*gpuMiB,512*gpuMiB)==512*gpuMiB-512*gpuMiB/10);
-    CHECK(gpuBudget(256*gpuMiB,512*gpuMiB)==224*gpuMiB);
-    CHECK(gpuBudget(16*gpuMiB,512*gpuMiB)==0);
+    CHECK(gpuBudget(512*gpuMiB,512*gpuMiB)==256*gpuMiB);   // 256 MiB absolute margin
+    CHECK(gpuBudget(256*gpuMiB,512*gpuMiB)==192*gpuMiB);   // margin capped at a quarter of a small heap
+    CHECK(gpuBudget(16*gpuMiB,512*gpuMiB)==12*gpuMiB);
+    CHECK(gpuBudget(24*1024*gpuMiB,UINT64_MAX)==24*1024*gpuMiB-24*1024*gpuMiB/10); // large heaps keep 10%
+    // Device-local heap availability: discrete 4/6/8 GiB with and without VK_EXT_memory_budget, and UMA.
+    for (uint64_t g : {4ull, 6ull, 8ull}) {
+        const uint64_t heap = g*1024*gpuMiB;
+        CHECK(gpuHeapAvailable(heap, 0, 0, false, false)==heap/2);                    // no extension: heap/2
+        CHECK(gpuBudget(gpuHeapAvailable(heap, 0, 0, false, false), UINT64_MAX) < heap/2);
+        CHECK(gpuHeapAvailable(heap, heap-heap/8, heap/8, true, false)==heap-heap/4); // extension: budget minus usage
+        CHECK(gpuHeapAvailable(heap, heap, 0, false, true)==heap/4);                  // UMA caps further
+        CHECK(gpuHeapAvailable(heap, heap, 0, true, true)==heap/4);
+    }
+    CHECK(gpuHeapAvailable(4096*gpuMiB, 1024*gpuMiB, 2048*gpuMiB, true, false)==0);   // over-committed
+    CHECK(gpuBudget(gpuHeapAvailable(4096*gpuMiB, 0, 0, false, false), 8192*gpuMiB) + 0 >= 1536*gpuMiB); // 4 GiB card still gets >=1.5 GiB
     CHECK(gpuBudget(24*1024*gpuMiB,512*gpuMiB)==512*gpuMiB);
     CHECK(gpuResidencyPolicy(0).total==512*gpuMiB);
     CHECK(gpuResidencyPolicy(0).textureUpload >= 96*gpuMiB); // HD 630 frame ring, including flight copies

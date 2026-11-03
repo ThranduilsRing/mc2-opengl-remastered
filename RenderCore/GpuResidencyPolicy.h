@@ -24,8 +24,18 @@ constexpr GpuResidencyPolicy gpuResidencyPolicy(int quality) {
     return {8192 * gpuMiB, 256 * gpuMiB, vegetationResidentCeiling, 16384, 4096};
 }
 constexpr uint64_t gpuBudget(uint64_t available, uint64_t ceiling) {
-    const uint64_t margin = (std::max)(32 * gpuMiB, available / 10);
+    // Absolute slack for other processes/driver: 10%, at least 256 MiB, never more than a quarter of a small heap.
+    const uint64_t margin = (std::min)((std::max)(256 * gpuMiB, available / 10), available / 4);
     return (std::min)(ceiling, available > margin ? available - margin : 0);
+}
+// Bytes of the device-local heap the ledger may plan against. With VK_EXT_memory_budget the driver's live budget/usage is
+// authoritative. Without it nothing says what other apps hold, so assume half the heap. A unified-memory device (iGPU: the
+// "device" heap is system RAM) is further capped to a quarter of that heap.
+constexpr uint64_t gpuHeapAvailable(uint64_t size, uint64_t budget, uint64_t usage, bool haveBudgetExt, bool uma) {
+    const uint64_t cap = haveBudgetExt ? (std::min)(size, budget) : size / 2;
+    uint64_t avail = cap > usage ? cap - usage : 0;
+    if (uma) avail = (std::min)(avail, size / 4);
+    return avail;
 }
 // Device-resident bytes of a vegetation population (the model above). The upload also holds a transient staging copy of the
 // instances and regions (vegetationStagingBytes).
