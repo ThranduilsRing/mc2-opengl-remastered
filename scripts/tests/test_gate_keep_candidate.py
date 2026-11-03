@@ -4,6 +4,8 @@ import os
 from pathlib import Path
 import sys
 
+import pytest
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import merge_gate as gate
 
@@ -16,10 +18,51 @@ def _mods_source(tmp_path):
     return src
 
 
-def test_flags_parse_and_default_off():
-    ap_src = Path(gate.__file__).read_text(encoding="utf-8")
-    assert '"--keep-candidate"' in ap_src and '"--drop-candidate"' in ap_src
-    assert "ninja_build.py mc2 mc2_asset_viewer -j\" +" in ap_src  # -jN, not '-j N'
+def test_flags_parse_through_argparse(monkeypatch):
+    dropped, published = [], []
+    monkeypatch.setattr(gate, "drop_candidate", lambda *a, **k: dropped.append(1))
+    monkeypatch.setattr(gate, "publish", lambda head, dry: published.append(dry) or 0)
+    assert gate.main(["--drop-candidate"]) == 0 and dropped == [1]
+    assert gate.main(["--keep-candidate", "--publish", "--dry-run"]) == 0 and published == [True]
+    with pytest.raises(SystemExit):
+        gate.main(["--keep-candidate=yes"])  # store_true takes no value
+
+
+def _window(monkeypatch, tmp_path, mods_source):
+    """Drive execute_window's keep path against a fake seed/candidate; returns the fake seed-stock clone."""
+    seed = tmp_path / "stock-clone"
+    seed.mkdir()
+    (seed / "mc2.exe").write_text("exe")
+    from contextlib import contextmanager
+
+    @contextmanager
+    def fake_stock_copy(install, parent=None, keep=False):
+        assert keep is True
+        yield seed
+    root = tmp_path / "root"
+    (root / "build64-ninja").mkdir(parents=True)
+    monkeypatch.setattr(gate, "ROOT", root)
+    monkeypatch.setattr(gate, "CANDIDATE", tmp_path / "cand")
+    monkeypatch.setattr(gate, "CANDIDATE_MODS_SOURCE", mods_source)
+    monkeypatch.setattr(gate, "stock_copy", fake_stock_copy)
+    monkeypatch.setattr(gate, "stage_published", lambda install: None)
+    monkeypatch.setattr(gate, "execute_parallel", lambda steps, *a, **k: 1)  # a red verdict must survive
+    gate.CANDIDATE_ERRORS.clear()
+    return seed
+
+
+def test_execute_window_keeps_candidate_even_on_red(monkeypatch, tmp_path):
+    seed = _window(monkeypatch, tmp_path, _mods_source(tmp_path))
+    assert gate.execute_window(gate.plan(6), "h" * 40, keep_candidate=True) == 1
+    assert (tmp_path / "cand" / "mods" / "mco-compat" / "data" / "x.fit").is_file() and not seed.exists()
+    assert not gate.CANDIDATE_ERRORS
+
+
+def test_staging_failure_cleans_copy_and_never_masks_verdict(monkeypatch, tmp_path):
+    seed = _window(monkeypatch, tmp_path, tmp_path / "missing-source")
+    assert gate.execute_window(gate.plan(6), "h" * 40, keep_candidate=True) == 1  # verdict preserved, no raise
+    assert not seed.exists() and not (tmp_path / "cand").exists()
+    assert len(gate.CANDIDATE_ERRORS) == 1 and "MechCommanderOmnitech" in gate.CANDIDATE_ERRORS[0]
 
 
 def test_keep_stock_copy_stages_linked_mods_and_records(tmp_path):
