@@ -267,6 +267,8 @@ void Mission::loadParts(MissionLoadFrame& f) {
 
 		int i;
 		bool shiftedLegacyParts = false;
+		unsigned long partsFormat = 0;
+		const bool haveFormatTag = (missionFile.seekBlock("Parts") == NO_ERR) && (missionFile.readIdULong("PartsFormat", partsFormat) == NO_ERR);
 
 		for (i = 1; i < numParts + 1; i++)
 		{
@@ -292,7 +294,7 @@ void Mission::loadParts(MissionLoadFrame& f) {
 				const bool haveWID = (missionFile.readIdInt("ObjectWID", savedWID) == NO_ERR);
 				const bool haveSquad = (missionFile.readIdLong("SquadId", savedSquad) == NO_ERR);
 				if (i == 1)
-					shiftedLegacyParts = !haveWID || (savedWID == 0 && parts[i].objNumber == 0);
+					shiftedLegacyParts = mc2::save::partsAreShiftedLegacy(haveFormatTag, haveWID, savedWID, parts[i].objNumber);
 				if (!shiftedLegacyParts)
 				{
 					if (haveWID)

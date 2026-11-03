@@ -122,4 +122,16 @@ bool decodeSections(std::span<const std::uint8_t> bytes, SectionContainer& outpu
 bool upgradeLegacyR2(std::span<const std::uint8_t> r2, SectionContainer& output, std::string* why = nullptr);
 inline constexpr std::uint32_t legacyR2Tag = 0x4E413252u;
 
+// Parts block format. A save writes PartsFormat after NumParts so the loader never has to guess. Saves without the key are
+// either older (blank Part1, every later part shifted by one) or written between the Parts 1..N fix and this key; for those the
+// content heuristic stays: a first part with no WID key, or WID 0 and ObjectNumber 0, is the legacy blank slot.
+inline constexpr unsigned long kPartsFormatCurrent = 2;
+
+constexpr bool partsAreShiftedLegacy(bool haveFormatTag, bool haveFirstWid, int firstWid, unsigned long firstObjectNumber) noexcept
+{
+    if (haveFormatTag)
+        return false;
+    return !haveFirstWid || (firstWid == 0 && firstObjectNumber == 0);
+}
+
 } // namespace mc2::save
