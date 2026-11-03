@@ -742,6 +742,12 @@ void Mission::loadActivateAndFinalize() {
 	SensorSystemManager::enemyInLOS = enemyInLOS;
 	// Re-arm the script's music clock after teardown stopped it, before resumed ABL can branch on silence.
 	soundSystem->playABLDigitalMusic(missionTuneNum);
+	// MissionMap::read clears every saved mover flag; each mover re-marks the cell it held when saved.
+	for (long m = 0; m < ObjectManager->getNumMovers(); ++m) {
+		MoverPtr mover = ObjectManager->getMover(m);
+		if (mover && mover->lastMapCell[0] != -1)
+			GameMap->setMover(mover->lastMapCell[0], mover->lastMapCell[1], true);
+	}
 	ObjectManager->snapshotMoverPoses();
 	ObjectManager->extractRenderSnapshots();
 	// activate() re-centres on the first mover; a resumed game keeps the camera it was saved with.
