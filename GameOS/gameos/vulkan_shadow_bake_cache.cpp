@@ -11,19 +11,29 @@ using namespace shadow_bake_detail;
 
 // The content key of a mask (P4 disk cache): everything the bake reads, by content, not by process-local versions. The heights, the caster set (handles,
 // damage, transforms), the static-prop geometry and its alpha cut-outs, the sun, the water, the layout and the art and evaluator constants.
+bool ShadowBake::geometryHash(const ShadowBakeInputs& in, uint64_t& out) {
+    if (geomHashValid_ && in.vbo != VK_NULL_HANDLE) { out = geomHash_; return true; }
+    const void* vb = nullptr;
+    const void* ib = nullptr;
+    uint64_t vbBytes = 0, ibBytes = 0;
+    if (in.vbo == VK_NULL_HANDLE || !mc2_static_prop_geometry_cpu(&vb, &vbBytes, &ib, &ibBytes) || !vb || !ib) return false;
+    uint64_t g = mc2shadow::hashWords(vb, static_cast<size_t>(vbBytes));
+    g = mc2shadow::hashWords(ib, static_cast<size_t>(ibBytes), g);
+    g = mc2shadow::fnv1a(in.packets.data(), in.packets.size_bytes(), g);
+    geomHash_ = mc2shadow::fnv1a(in.typeFirstPacket.data(), in.typeFirstPacket.size_bytes(), g);
+    geomHashValid_ = true;
+    out = geomHash_;
+    return true;
+}
+
 uint64_t ShadowBake::contentKey(const ShadowBakeInputs& in, uint64_t casterHash) {
     // Each input hashed on its own first, so a key that differs between two runs says which input moved ([SHADOW_BAKE] key parts).
     keyParts_ = {};
     keyParts_[0] = mc2shadow::hashWords(heights_.data(), heights_.size() * sizeof(float));
     keyParts_[1] = casterHash;
-    const void* vb = nullptr;
-    const void* ib = nullptr;
-    uint64_t vbBytes = 0, ibBytes = 0;
-    if (in.vbo != VK_NULL_HANDLE && mc2_static_prop_geometry_cpu(&vb, &vbBytes, &ib, &ibBytes) && vb && ib) {
-        uint64_t g = mc2shadow::hashWords(vb, static_cast<size_t>(vbBytes));
-        g = mc2shadow::hashWords(ib, static_cast<size_t>(ibBytes), g);
-        g = mc2shadow::fnv1a(in.packets.data(), in.packets.size_bytes(), g);
-        keyParts_[2] = mc2shadow::fnv1a(in.typeFirstPacket.data(), in.typeFirstPacket.size_bytes(), g);
+    uint64_t geom = 0;
+    if (geometryHash(in, geom)) {
+        keyParts_[2] = geom;
         if (in.alphaReady) keyParts_[3] = mc2shadow::fnv1a(in.packetAlpha.data(), in.packetAlpha.size_bytes());
     }
     const float scalars[13] = {sun_.x, sun_.y, sun_.z, waterZ_, halfMap_, static_cast<float>(mapSide_), static_cast<float>(layout_.texels),

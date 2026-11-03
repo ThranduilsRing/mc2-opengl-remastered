@@ -217,6 +217,9 @@ bool ShadowBake::prewarmProducts() {
 
 bool ShadowBake::prewarmTypeBounds(const ShadowBakeInputs& in) {
     if (!inited_ || !typeBounds_.empty() || in.vbo == VK_NULL_HANDLE) return true;
+    uint64_t geom = 0;
+    ZoneScopedN("ShadowBake.PrewarmGeomHash");
+    (void)geometryHash(in, geom);
     return computeTypeBounds(in);
 }
 
@@ -250,6 +253,7 @@ void ShadowBake::invalidate() {
     terrainIndexCount_ = 0;
     objectHeightVersion_ = ~0ull;
     typeBounds_.clear();
+    geomHashValid_ = false;
     maskTexels_ = 0; maskMips_ = 0;
     maskInitialized_ = objectInitialized_ = false;
     maskReady_ = objectReady_ = false;
