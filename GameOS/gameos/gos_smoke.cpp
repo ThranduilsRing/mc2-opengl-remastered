@@ -151,6 +151,26 @@ void emitTiming(const char* eventName) {
 }
 
 void samplePerf(double frameMs) {
+    // First 60 frames after mission_ready, every run (smoke mode or not): one [FIRST60 v1] line, so a via-menu run reports the frames a
+    // player sees first. Printed once; stdout is live only under MC2_LOG, as for every other line.
+    {
+        static constexpr int kN = 60;
+        static double s_ms[kN];
+        static int s_n = 0;
+        if (g_missionReadyT && s_n < kN) {
+            s_ms[s_n++] = frameMs;
+            if (s_n == kN) {
+                std::vector<double> sorted(s_ms, s_ms + kN);
+                std::sort(sorted.begin(), sorted.end());
+                double sum = 0.0;
+                for (double v : sorted) sum += v;
+                mc2::fmt::print_out("[FIRST60 v1] n={:d} avg_ms={:.2f} p50_ms={:.2f} p99_ms={:.2f} max_ms={:.2f} first_ms={:.2f}
+",
+                    mc2::fmt::as_i32(kN), sum / kN, sorted[kN / 2], sorted[kN - 2], sorted[kN - 1], s_ms[0]);
+                std::fflush(stdout);
+            }
+        }
+    }
     if (!g_state.enabled) return;
     if (!g_firstFrameSeen) {
         g_firstFrameSeen = true;
