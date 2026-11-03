@@ -662,6 +662,10 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "TACTICAL-ARC-OVERLAY-MVP-1: world-space range ring + facing line on each SELECTED mover, drawn in-scene by the debug renderer just before its flush...",
     },
     {
+        "MC2_TERRAIN_CLIFF_ROCK", "MC2_TERRAIN_CLIFF_ROCK", EnvVarKind::Feature, true,
+        "TERRAIN-CLIFF-ROCK: CC0 photoscan rock (albedo, normal, roughness, AO) on steep VK terrain faces, tinted to the mission palette; 0 = base look.",
+    },
+    {
         "MC2_TERRAIN_CONTROLMAP", "MC2_TERRAIN_CONTROLMAP", EnvVarKind::Feature, false,
         "TERRAIN-CONTROLMAP-SAMPLE-1: load an authored per-mission RGBA control-map sidecar (data/missions/<stem>.beauty/control_map.png, vertex-resolution) that...",
     },

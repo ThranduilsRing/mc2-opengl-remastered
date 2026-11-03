@@ -9,6 +9,7 @@
 #include <array>
 #include <filesystem>
 #include "../../RenderCore/KtxLoader.h"
+#include "Gates/gate_cold.h"
 #include "terrain_surface_cook.h"
 #include "Gates/render_options.h"
 #include "../../3rdparty/glm/glm/gtc/packing.hpp"
@@ -703,22 +704,37 @@ void import_concrete_detail(TerrainIsland* s) {
     static const char* const kFiles[2] = {"data/terrain_layers/concrete_detail_pad.ktx2", "data/terrain_layers/concrete_detail_road.ktx2"};
     std::vector<uint8_t> px;
     int w = 0, h = 0;
-    for (const char* f : kFiles) {
+    auto appendLayer = [&](const char* f) {
         RenderCore::KtxImage img;
         std::vector<uint8_t> rgba;
         int lw = 0, lh = 0;
         if (!RenderCore::ktxLoadRgba8(f, img) || !img.isCompressed || !RenderCore::ktxDecodeBc7ToRgba8(img, 0, rgba, &lw, &lh) ||
-            lw <= 0 || lh <= 0 || (w != 0 && (lw != w || lh != h))) {
+            lw <= 0 || lh <= 0 || (w != 0 && (lw != w || lh != h)))
+            return false;
+        w = lw; h = lh;
+        px.insert(px.end(), rgba.begin(), rgba.end());
+        return true;
+    };
+    for (const char* f : kFiles) {
+        if (!appendLayer(f)) {
             vlog("CONCRETE-DETAIL: %s missing or unusable; concrete/road keep the base look.", f);
             return;
         }
-        w = lw; h = lh;
-        px.insert(px.end(), rgba.begin(), rgba.end());
     }
-    auto tex = mc2vk::getOrCreateEngineVulkanContext().textures().acquirePixels(uint32_t(w), uint32_t(h), VK_FORMAT_R8G8B8A8_UNORM, px.data(), px.size(), true, 2, true);
+    // TERRAIN-CLIFF-ROCK: the cliff rock set (albedo ratio + height, normal + roughness + AO) rides the same array as layers 2/3.
+    static const char* const kRock[2] = {"data/terrain_layers/cliff_rock_ah.ktx2", "data/terrain_layers/cliff_rock_nra.ktx2"};
+    const size_t concreteBytes = px.size();
+    const bool rock = mc2::gate::get<"MC2_TERRAIN_CLIFF_ROCK">() && appendLayer(kRock[0]) && appendLayer(kRock[1]);
+    if (!rock) {
+        px.resize(concreteBytes);
+        vlog("CLIFF-ROCK: rock set absent, unusable or switched off; steep faces keep the base look.");
+    }
+    const uint32_t layers = rock ? 4u : 2u;
+    auto tex = mc2vk::getOrCreateEngineVulkanContext().textures().acquirePixels(uint32_t(w), uint32_t(h), VK_FORMAT_R8G8B8A8_UNORM, px.data(), px.size(), true, layers, true);
     if (tex) {
         s->concreteDetailPending = std::move(tex);
-        vlog("CONCRETE-DETAIL: imported pad + road detail array %dx%d x2 layers.", w, h);
+        s->cliffRockPresent = rock;
+        vlog("CONCRETE-DETAIL: imported pad + road%s detail array %dx%d x%u layers.", rock ? " + cliff rock" : "", w, h, layers);
     }
 }
 

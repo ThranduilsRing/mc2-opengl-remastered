@@ -216,6 +216,7 @@ void fill_frame_ubo(TerrainIsland* s, const Mc2TerrainTier1Feed& feed,
     u.detailReady    = !s->matNormalReady ? 0 : (s->matNormalLayers > 5u ? 2 : 1);
     u.nfhStrength    = feed.nfhStrength;
     u.concreteDetail = (detail && s->concreteDetailReady && feed.lightingEnabled && feed.detailEnabled) ? 1 : 0;
+    if (u.concreteDetail && s->cliffRockPresent) u.concreteDetail |= 2;   // TERRAIN-CLIFF-ROCK (bit 2: rock layers 2/3 bound)
     u.concreteDetailStrength = 0.15f;   // normal gain over the cooked 2K sets; tuned in a viewed RTS-zoom montage
     u.detailTiling   = feed.detailTiling;
     u.detailStrength = feed.detailStrength;

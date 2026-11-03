@@ -230,6 +230,51 @@ void mv_cliffMaterial(vec3 macroN, vec3 planeLod, inout vec3 N, inout vec3 baseC
     baseColor *= mix(1.0, 0.62 + 0.38 * disp, cb);
 }
 
+// TERRAIN-CLIFF-ROCK: CC0 photoscan rock (albedo ratio + height, normal + roughness + AO; u_concreteDetail layers 2/3, cooked by
+// tools/mc2texcook/cook_cliff_rock.py) on steep macro faces. The colormap smears vertically there, so the face colour becomes a
+// palette tone (colormap taps around the face, pulled toward the mission's rock tint) times the scan's albedo ratio: MC2's colours,
+// real rock structure. Height-blended into the slope transition. `wpDx`/`wpDy` = screen derivatives of the world position (uniform flow).
+const float CR_TS = 320.0;   // world units per rock repeat
+void crApply(vec3 macroN, vec3 wpDx, vec3 wpDy, inout vec3 N, inout vec3 baseColor) {
+    float cb = smoothstep(0.85, 0.55, abs(macroN.z));
+    if (cb <= 0.01) return;
+    vec3 wp = v_worldPos;
+    vec3 w = abs(macroN); w *= w; w *= w; w /= (w.x + w.y + w.z + 1e-5);
+    float texN = float(textureSize(u_concreteDetail, 0).x);
+    vec3 ah = vec3(0.0); float h = 0.0; vec3 tilt = vec3(0.0); float ao = 0.0;
+    for (int i = 0; i < 3; ++i) {
+        float wi = w[i];
+        if (wi < 0.05) continue;
+        // X plane: (y, -z); Y plane: (x, -z); Z plane: (x, -y). Image rows run top-down, so v = -up keeps the scan upright.
+        vec2 uv  = (i == 0 ? vec2(wp.y, -wp.z) : i == 1 ? vec2(wp.x, -wp.z) : vec2(wp.x, -wp.y)) / CR_TS;
+        vec2 du  = (i == 0 ? wpDx.yz : i == 1 ? wpDx.xz : wpDx.xy) / CR_TS;
+        vec2 dv  = (i == 0 ? wpDy.yz : i == 1 ? wpDy.xz : wpDy.xy) / CR_TS;
+        float lod = max(0.0, 0.5 * log2(max(max(dot(du, du), dot(dv, dv)), 1e-12)) + log2(texN));
+        vec4 a = textureLod(u_concreteDetail, vec3(uv, 2.0), lod);
+        vec4 b = textureLod(u_concreteDetail, vec3(uv, 3.0), lod);
+        vec2 t = vec2(b.x * 2.0 - 1.0, b.y * 2.0 - 1.0);   // GL normal: +y = image up = world up (or north on the Z plane)
+        tilt += (i == 0 ? vec3(0.0, t.x, t.y) : i == 1 ? vec3(t.x, 0.0, t.y) : vec3(t.x, t.y, 0.0)) * wi;
+        ah += a.rgb * wi; h += a.a * wi; ao += b.w * wi;
+    }
+    float wsum = w.x * step(0.05, w.x) + w.y * step(0.05, w.y) + w.z * step(0.05, w.z);
+    ah /= max(wsum, 1e-4); h /= max(wsum, 1e-4); ao /= max(wsum, 1e-4); tilt /= max(wsum, 1e-4);
+    float m = clamp((cb - 0.5 + (h - 0.5) * 0.6) * 3.0 + 0.5, 0.0, 1.0);
+    if (m <= 0.0) return;
+    // Palette tone: four colormap taps ~160 wu around the face average out the vertical smear.
+    vec3 tone = baseColor;
+    if (uT.colormapReady != 0) {
+        vec2 c = vec2((wp.x - uT.atlasTopLeftX) * uT.atlasOneOverWorldUnits, (uT.atlasTopLeftY - wp.y) * uT.atlasOneOverWorldUnits);
+        float o = 160.0 * uT.atlasOneOverWorldUnits;
+        tone = 0.25 * (textureLod(u_colormap, c + vec2(o, o), 0.0).rgb + textureLod(u_colormap, c + vec2(-o, o), 0.0).rgb
+                     + textureLod(u_colormap, c + vec2(o, -o), 0.0).rgb + textureLod(u_colormap, c + vec2(-o, -o), 0.0).rgb);
+    }
+    float tl = dot(tone, vec3(0.299, 0.587, 0.114));
+    tone = mix(mix(vec3(tl), tone, 0.6), vec3(uT.tintRockR, uT.tintRockG, uT.tintRockB) * (tl / max(dot(vec3(uT.tintRockR, uT.tintRockG, uT.tintRockB), vec3(0.299, 0.587, 0.114)), 0.05)), 0.3) * 0.85;
+    vec3 rock = tone * (ah * 2.0) * mix(1.0, ao, 0.8);
+    baseColor = mix(baseColor, rock, m);
+    N = normalize(mix(N, normalize(macroN + tilt), m));
+}
+
 // --- GL detail-normal accumulation (terrain_lod_chunk.frag chunkDetailNormal,
 // :341-419). NOW PORTED (this sub-slice): per-layer weighted tangent-space normals
 // (rock /3 boost, grass, dirt, ★concrete, snow) + ★per-layer fwidth sub-pixel fades
@@ -520,6 +565,7 @@ void main() {
             vec3 pert = macroPert + vec3(dN.xy * uT.detailStrength, 0.0);
             N = normalize(pert);
             if (uT.detailReady >= 2) mv_cliffMaterial(baseN, cliffLod, N, baseColor);
+            if ((uT.concreteDetail & 2) != 0) crApply(baseN, cliffDx * MATV_CLIFF_TS, cliffDy * MATV_CLIFF_TS, N, baseColor);
             dbgBaseN = baseN; dbgDN = dN;                        // CSM-BLACKOUT-RECON-1 taps
         }
         // Evaluate the ratio after material sampling so its inputs do not stay

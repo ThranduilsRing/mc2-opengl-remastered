@@ -1,0 +1,32 @@
+{
+  "_note": "TERRAIN-CLIFF-ROCK source sets cooked by cook_cliff_rock.py into data/terrain_layers/cliff_rock_*.ktx2. CC0 only. The Megascans *_raw.glb files (sieoz, ulujfanga, veqnci0db) are NOT used (licence pending).",
+  "sets": {
+    "marble": {
+      "asset": "Marble Cliff 01 (marble_cliff_01)",
+      "author": "Poly Haven",
+      "licence": "CC0 1.0",
+      "licence_url": "https://polyhaven.com/license",
+      "source_url": "https://polyhaven.com/a/marble_cliff_01",
+      "files": ["marble_cliff_01_2k.gltf.zip (diff, nor_gl, arm)", "marble_cliff_01_disp_4k.png"],
+      "local": "C:/Users/Joe/Downloads/GameAsset/Terrain"
+    },
+    "riverbed": {
+      "asset": "Dry Riverbed Rock (dry_riverbed_rock)",
+      "author": "Poly Haven",
+      "licence": "CC0 1.0",
+      "licence_url": "https://polyhaven.com/license",
+      "source_url": "https://polyhaven.com/a/dry_riverbed_rock",
+      "files": ["dry_riverbed_rock_2k.blend.zip (diff, nor_gl exr, rough exr, disp)"],
+      "local": "C:/Users/Joe/Downloads/GameAsset/Terrain"
+    },
+    "rocks05": {
+      "asset": "Rocks Ground 05 (rocks_ground_05)",
+      "author": "Poly Haven",
+      "licence": "CC0 1.0",
+      "licence_url": "https://polyhaven.com/license",
+      "source_url": "https://polyhaven.com/a/rocks_ground_05",
+      "files": ["rocks_ground_05_4k.blend.zip (diff, nor_gl exr, rough, disp)"],
+      "local": "C:/Users/Joe/Downloads/GameAsset/Terrain"
+    }
+  }
+}

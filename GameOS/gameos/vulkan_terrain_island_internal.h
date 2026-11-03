@@ -277,6 +277,7 @@ struct TerrainIsland : mc2vk::IslandState {
     mc2vk::OwnedSampler     concreteDetailSamp;
     bool          concreteDetailReady = false;
     bool          concreteDetailTried = false;
+    bool          cliffRockPresent = false;     // TERRAIN-CLIFF-ROCK: layers 2/3 of the concrete detail array hold the rock set
     mc2vk::ResidentTextureRef concreteDetailPending;   // uploading; swapped in (and bound) only once the residency service reports it ready
 
     // Per-patch dynamic UBO (one 512B slot per LOD0 patch this frame; 512 is a multiple
