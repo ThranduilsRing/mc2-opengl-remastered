@@ -130,6 +130,18 @@ TEST_CASE("readString past the last record returns 1 (the initVariants break con
 	csv.close();
 }
 
+TEST_CASE("readString into a too-small buffer returns -2 (initVariants skips the row)")
+{
+	// logisticsdata_init.cpp checks for -2 on the File Name cell: copyString leaves the
+	// buffer unterminated on overflow, so the caller must not read it.
+	CSVFile csv;
+	const std::string path = fixturePath("buildings_smoke.csv");
+	REQUIRE(csv.open(path.c_str()) == NO_ERR);
+	char tiny[4] = {0};
+	CHECK(csv.readString(4, 4, tiny, sizeof(tiny)) == -2);	// "BUILDING" > 4
+	csv.close();
+}
+
 TEST_CASE("empty cells read back as zero without error")
 {
 	// Row 4 (depot) leaves Armor/Heat/Speed/Tonnage/Pilot blank. The numeric

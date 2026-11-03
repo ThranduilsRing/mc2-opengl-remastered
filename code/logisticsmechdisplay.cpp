@@ -124,6 +124,7 @@ int	LogisticsMechDisplay::init( )
 		return 0;
 	}
 
+	setLayoutNeeds( { "mcl_mechinfo.fit", 11, 17, 0, 0, 8, false } ); // stock element counts; see LayoutNeeds
 	LogisticsScreen::init( file, "Static", "Text", "Rect", "Button" );
 	
 	mechCamera.init( rects[1].left(), rects[2].top(),

@@ -143,7 +143,7 @@ void BattleMech::init (bool create, ObjectTypePtr _type) {
 	long appearanceType = (MECH_TYPE << 24);
 
 	AppearanceTypePtr mechAppearanceType = appearanceTypeList->getAppearance(appearanceType,appearanceName);
-	if (!mechAppearanceType)
+	if (!mechAppearanceType || mechAppearanceType->baseShapeLoadFailed)
 	{
 		// This mech probably is not done.  Use the MADCAT
 		mechAppearanceType = appearanceTypeList->getAppearance(appearanceType,"MADCAT");

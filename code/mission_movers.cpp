@@ -272,7 +272,16 @@ typedef struct _MoverInitData {
 		objType = ObjectManager->getObjectType(moverSpec->objNumber);
 	if (objType) {
 		if (!objType->getAppearanceTypeName() && moverSpec->csvFileName[0])
-			objType->setAppearanceTypeName(moverSpec->csvFileName);
+		{
+			// csvFileName is the unit's csv FILE name ("firestarter.csv"); the appearance lookup wants the bare
+			// stem (data/tgl/firestarter.ini), so strip any directory and extension before back-filling.
+			std::string stem = std::string(moverSpec->csvFileName);
+			const size_t slash = stem.find_last_of("/\\");
+			if (slash != std::string::npos) stem.erase(0, slash + 1);
+			const size_t dot = stem.find_last_of('.');
+			if (dot != std::string::npos && dot > 0) stem.erase(dot);
+			objType->setAppearanceTypeName(stem.c_str());
+		}
 		MoverPtr mover = nullptr;
 		switch (objType->getObjectTypeClass()) {
 			case BATTLEMECH_TYPE:

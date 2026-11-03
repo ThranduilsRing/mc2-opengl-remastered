@@ -16,6 +16,8 @@ LogisticsScreen.cpp			: Implementation of the LogisticsScreen component.
 #include"UiDefs.h"
 #include "../GuiRuntime/GuiRuntime.h"
 #include "../GameOS/gameos/gos_profiler.h"
+#include <cstdio>
+#include <algorithm>
 
 extern long helpTextID;
 extern long helpTextHeaderID;
@@ -105,7 +107,8 @@ void LogisticsScreen::init( FitIniFile& file, const char* staticName, const char
 {
 	ZoneScopedN("LogisticsScreen::init");
 	clear();
-	
+	long fitStatics = 0, fitRects = 0, fitButtons = 0, fitTexts = 0, fitEdits = 0;
+
 	char blockName[256];
 
 	// init statics
@@ -116,12 +119,15 @@ void LogisticsScreen::init( FitIniFile& file, const char* staticName, const char
 		if ( NO_ERR == file.seekBlock( blockName ) )
 		{
 			file.readIdLong( "staticCount", staticCount );
+			fitStatics = staticCount;
 
-			if ( staticCount )
+			if ( staticCount || layoutNeeds.statics )
 			{
+				const long alloc = std::max( staticCount, layoutNeeds.statics );
+				const long shift = layoutNeeds.staticsAtTail ? alloc - staticCount : 0;
 				{
 					ZoneScopedN("LogisticsScreen::init statics alloc");
-					statics = new aObject[staticCount];
+					statics = new aObject[alloc];
 				}
 
 				char blockName[128];
@@ -129,9 +135,9 @@ void LogisticsScreen::init( FitIniFile& file, const char* staticName, const char
 				{
 					ZoneScopedN("LogisticsScreen::init static");
 					sprintf( blockName, "%s%d", staticName, i );
-					statics[i].init( &file, blockName );			
+					statics[shift + i].init( &file, blockName );
 				}
-				
+				staticCount = alloc;
 			}
 		}
 	}
@@ -144,15 +150,18 @@ void LogisticsScreen::init( FitIniFile& file, const char* staticName, const char
 		if ( NO_ERR == file.seekBlock( blockName ) )
 		{
 			file.readIdLong( "rectCount", rectCount );
-			if ( rectCount )
+			fitRects = rectCount;
+			if ( rectCount || layoutNeeds.rects )
 			{
+				const long fitN = rectCount;
+				rectCount = std::max( rectCount, layoutNeeds.rects );
 				{
 					ZoneScopedN("LogisticsScreen::init rects alloc");
 					rects = new aRect[rectCount];
 				}
 
 				char blockName[128];
-				for ( int i = 0; i < rectCount; i++ )
+				for ( int i = 0; i < fitN; i++ )
 				{
 					ZoneScopedN("LogisticsScreen::init rect");
 					sprintf( blockName, "%s%d", rectName, i );
@@ -171,15 +180,19 @@ void LogisticsScreen::init( FitIniFile& file, const char* staticName, const char
 		if ( NO_ERR == file.seekBlock( blockName ) )
 		{
 			file.readIdLong( "buttonCount", buttonCount );
+			fitButtons = buttonCount;
 
-			if ( buttonCount )
+			if ( buttonCount || layoutNeeds.buttons )
 			{
 				char blockName[128];
+				const long fitN = buttonCount;
+				// Padding buttons are never addChild'ed or given IDs.
+				buttonCount = std::max( buttonCount, layoutNeeds.buttons );
 				{
 					ZoneScopedN("LogisticsScreen::init buttons alloc");
 					buttons = new aAnimButton[buttonCount];
 				}
-				for ( int i = 0; i < buttonCount; i++ )
+				for ( int i = 0; i < fitN; i++ )
 				{
 					ZoneScopedN("LogisticsScreen::init button");
 					sprintf( blockName,"%s%d", buttonName, i );
@@ -201,14 +214,17 @@ void LogisticsScreen::init( FitIniFile& file, const char* staticName, const char
 			if ( NO_ERR != file.readIdLong( "TextEntryCount", textCount ) )
 				file.readIdLong( "TextCount", textCount );
 
-			if ( textCount )
+			fitTexts = textCount;
+			if ( textCount || layoutNeeds.texts )
 			{
+				const long fitN = textCount;
+				textCount = std::max( textCount, layoutNeeds.texts );
 				{
 					ZoneScopedN("LogisticsScreen::init texts alloc");
 					textObjects = new aText[textCount];
 				}
 				char blockName[64];
-				for ( int i = 0; i < textCount; i++ )
+				for ( int i = 0; i < fitN; i++ )
 				{
 					ZoneScopedN("LogisticsScreen::init text");
 					sprintf( blockName, "%s%d", textName, i );
@@ -228,14 +244,17 @@ void LogisticsScreen::init( FitIniFile& file, const char* staticName, const char
 			if ( NO_ERR != file.readIdLong( "EditCount", editCount ) )
 				file.readIdLong( "EditCount", editCount );
 
-			if ( editCount )
+			fitEdits = editCount;
+			if ( editCount || layoutNeeds.edits )
 			{
+				const long fitN = editCount;
+				editCount = std::max( editCount, layoutNeeds.edits );
 				{
 					ZoneScopedN("LogisticsScreen::init edits alloc");
 					edits = new aEdit[editCount];
 				}
 				char blockName[64];
-				for ( int i = 0; i < editCount; i++ )
+				for ( int i = 0; i < fitN; i++ )
 				{
 					ZoneScopedN("LogisticsScreen::init edit");
 					sprintf( blockName, "%s%d", editName, i );
@@ -244,6 +263,18 @@ void LogisticsScreen::init( FitIniFile& file, const char* staticName, const char
 				
 			}
 		}
+	}
+
+	if ( layoutNeeds.screen
+		&& ( ( fitStatics && fitStatics < layoutNeeds.statics ) || ( fitRects && fitRects < layoutNeeds.rects )
+			|| ( fitButtons && fitButtons < layoutNeeds.buttons ) || ( fitTexts && fitTexts < layoutNeeds.texts )
+			|| ( fitEdits && fitEdits < layoutNeeds.edits ) ) )
+	{
+		// Warn-level: the screen runs on inert padding. Not counted by the smoke content budget.
+		std::fprintf( stderr, "[CONTENT] kind=layout path=%s msg=short FIT padded to stock size (have/need) statics=%ld/%ld rects=%ld/%ld buttons=%ld/%ld texts=%ld/%ld edits=%ld/%ld%s\n",
+			layoutNeeds.screen, fitStatics, layoutNeeds.statics, fitRects, layoutNeeds.rects,
+			fitButtons, layoutNeeds.buttons, fitTexts, layoutNeeds.texts, fitEdits, layoutNeeds.edits,
+			layoutNeeds.staticsAtTail ? " statics_at_tail=1" : "" );
 	}
 
 	if ( animObjectName )

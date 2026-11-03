@@ -104,6 +104,7 @@ int MechLabScreen::init( FitIniFile& file )
 
 	ComponentListItem::init( file );
 
+	setLayoutNeeds( { "mcl_mc.fit", 56, 23, 9, 0, 17, false } ); // stock element counts; see LayoutNeeds
 	LogisticsScreen::init( file, "Static", "Text", "Rect", "Button" );
 	defsHelpTextKey = "game.mcl_mc.text.help_text";
 

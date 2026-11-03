@@ -27,6 +27,7 @@
 
 from __future__ import annotations
 
+import _winapi
 import argparse
 import csv
 import datetime as dt
@@ -884,6 +885,47 @@ def run_mod(staged: Path, stem: str, duration: int, timeout: int, ref_exe: Path 
             'content_known': known, 'content_new': new}
 
 
+# Mods whose legacy logistics layouts (mcl_*.fit) differ from stock. mod_smoke's mission run boots
+# straight into a mission and never builds the briefing / mech lab / mech bay screens, which is how
+# MCO's short layouts crashed the front end unseen. This bounded walk boots the campaign front end.
+FRONT_END_MODS = ('MechCommanderOmnitech', 'MCO-Carver5')
+FRONT_END_SECS = 150
+
+
+def link_mod_layers(staged: Path, layers) -> None:
+    """The walk resolves its campaign from <install>/mods/<name>/mod.json; a staged mission install carries the
+    mod overlaid on its root instead, so junction the mod layers (cached copies) in under mods/."""
+    mods = staged / 'mods'
+    mods.mkdir(exist_ok=True)
+    for layer in layers:
+        dest = mods / layer.name
+        if not dest.exists():
+            _winapi.CreateJunction(str(layer), str(dest))
+
+
+def front_end_walk(staged: Path, folder: str, secs: int = FRONT_END_SECS, layers=()) -> dict:
+    """scripts/sweep_campaign.py walk (MC2_BOOT_TO_BAY): front end, briefing, mech lab/bay, pilot ready,
+    mission launch, autowin. Passes when a mission was launched and completed with no crash."""
+    link_mod_layers(staged, layers)
+    cmd = [sys.executable, str(ROOT / 'scripts' / 'sweep_campaign.py'), folder, str(secs), str(staged)]
+    print('[mod_smoke] front-end walk:', ' '.join(cmd), flush=True)
+    try:
+        proc = subprocess.run(cmd, cwd=str(ROOT), capture_output=True, text=True, timeout=secs + 120,
+                              **console_child.child_kwargs(redirected=True))
+        text = proc.stdout or ""
+        start = text.find("{")
+        summary = json.loads(text[start:]) if start >= 0 else {}
+    except (subprocess.TimeoutExpired, ValueError) as exc:
+        return {'exit': 1, 'front_end': True, 'note': f'front-end walk failed to report: {exc}',
+                'health': analyze_health("")}
+    res = summary.get('result', {})
+    ok = res.get('status') != 'crash' and res.get('missions_completed', 0) >= 1
+    site = res.get('crash_site') or {}
+    note = "" if ok else (site.get('frame00') or f"status={res.get('status')} missions={res.get('missions_completed', 0)}")
+    return {'exit': 0 if ok else 1, 'front_end': True, 'note': note[:110],
+            'missions_completed': res.get('missions_completed', 0), 'health': analyze_health("")}
+
+
 def failure_note(text: str) -> str:
     """First engine-side fatal line (STOP / FATAL / CRASH / VERIFY), trimmed."""
     for line in text.splitlines():
@@ -893,6 +935,8 @@ def failure_note(text: str) -> str:
 
 
 def result_word(row: dict) -> str:
+    if row.get('front_end'):
+        return 'PASS' if row['exit'] == 0 else 'FAIL(front-end)'
     if row['exit'] != 0:
         return 'FAIL(exit %s)' % row['exit']
     if row.get('warning_excess'):
@@ -1038,6 +1082,13 @@ def battery(args) -> int:
             results.append(result)
             if args.fail_fast and result_word(result) != 'PASS':
                 break
+        if (folder in FRONT_END_MODS and getattr(args, 'front_end', True)
+                and not (args.fail_fast and results and result_word(results[-1]) != 'PASS')):
+            fe = front_end_walk(staged, folder, layers=layers)
+            fe.update({'mod': display, 'mission': 'front-end walk', 'mission_source': 'sweep_campaign',
+                       'staged': str(staged), 'log': str(staged / 'smoke.log'), 'warning_excess': {}})
+            print('[mod_smoke]', display, 'front-end', result_word(fe), fe.get('note', ""), flush=True)
+            results.append(fe)
         return results
     try:
         engine_started = time.monotonic()
@@ -1109,6 +1160,8 @@ def main() -> int:
     ap.add_argument('--duration', type=int, default=15)
     ap.add_argument('--timeout', type=int, default=300)
     ap.add_argument('--fail-fast', action='store_true')
+    ap.add_argument('--no-front-end', dest='front_end', action='store_false',
+                    help='skip the bounded front-end walk (briefing, mech lab/bay, launch) run for MCO and MCO-Carver5')
     ap.add_argument('--keep-stages', action='store_true',
                     help='keep every staged install (default: delete a stage after a PASS)')
     args = ap.parse_args()
