@@ -1110,6 +1110,8 @@ long GameObjectManager::Load (PacketFilePtr file, long packetNum, bool managerVa
 			}
 			else
 			{
+				// An unused pool slot keeps its saved stamp: the constructor stamps scenarioTime, so a re-save would differ.
+				obj->info.strike.contactUpdate = data.info.strike.contactUpdate;
 				MC2_DESTROY(obj, "load_empty_slot");
 			}
 			curArtilleryNum++;

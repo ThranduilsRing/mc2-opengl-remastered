@@ -175,8 +175,10 @@ void Mission::save (const char *saveFileName)
 	tempFile.writeBlock("Parts");
 	tempFile.writeIdULong("NumParts",numParts);
 
-	for (long i=0;i<numParts;i++)
-		parts[i].Save(&tempFile,i);
+	// parts[] is 1-based (parts[0] is the NULL id) and Mission::loadParts reads Part1..PartN into parts[1..N], so write parts[1..N]
+	// as Part1..PartN; the old 0..N-1 loop saved the blank slot as Part1 and dropped the last part, shifting every WID on a reload.
+	for (long i=1;i<=numParts;i++)
+		parts[i].Save(&tempFile,i-1);
 
 	loadProgress = 35.0f;
 
