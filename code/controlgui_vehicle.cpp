@@ -3,6 +3,9 @@
 // Declared in the class headers; shared names in controlgui_internal.h.
 #include "controlgui_internal.h"
 #include "mc2fmt.h"
+#include "pilot_pick.h"
+#include "gameos_resource.hpp"
+#include "Gates/gate.h"
 #include <utility>
 
 
@@ -14,6 +17,9 @@ void ControlGui::updateVehicleTab(int mouseX, int mouseY, bool bLOS )
 	const bool vehicleTabActive = hudTabsGateOn() && hudTabRegistry.activeTab()
 		? ( hudTabRegistry.activeTab()->buttonCommand == VEHICLE_TAB )
 		: ( ( getButton( VEHICLE_TAB )->state & ControlButton::PRESSED ) != 0 );
+
+	// One lookup per frame, reused for the hover text and the greyout below.
+	const bool noPilots = LogisticsData::instance && !LogisticsData::instance->gotPilotsLeft();
 
 	for ( int i = LAST_VEHICLE - 1; i > -1 ; i-- )
 	{
@@ -33,6 +39,11 @@ void ControlGui::updateVehicleTab(int mouseX, int mouseY, bool bLOS )
 			{
 				helpTextHeaderID = vehicleData[i].helpTextHeader;
 				helpTextID = vehicleData[i].helpTextID;
+				if ( vehicleButtons[i].ID == RECOVERY_TEAM && noPilots )
+				{
+					helpTextHeaderID = 0;
+					helpTextID = recoveryHelpTextId( noPilots, helpTextID, IDS_NO_PILOT_AVAILABLE );
+				}
 				
 				if ( vehicleButtons[i].ID == STOP_VEHICLE )
 				{
@@ -96,7 +107,7 @@ void ControlGui::updateVehicleTab(int mouseX, int mouseY, bool bLOS )
 		getButton( GUARD_TOWER )->disable( true );
 	}
 
-	if ( LogisticsData::instance && !LogisticsData::instance->gotPilotsLeft() )
+	if ( noPilots )
 		getButton( RECOVERY_TEAM )->disable( true );
 
 
@@ -412,6 +423,12 @@ void ControlGui::renderHelpText()
 		if ( addHelpText )
 		{
 			strncpy( buffer, addHelpText, 1023 );
+			buffer[1023] = 0;
+		}
+		else if ( helpTextID == IDS_NO_PILOT_AVAILABLE && !gos_ResourceStringLength( gosResourceHandle, helpTextID ) )
+		{
+			// Mod string tables may lack the new id: fall back to the English literal.
+			strncpy( buffer, "No pilot available", 1023 );
 			buffer[1023] = 0;
 		}
 		else

@@ -357,7 +357,8 @@ void MissionInterfaceManager::beginVtol (long supportID, long commanderID, glm::
 				mechToRecover[commanderID] = MPlayer->moverRoster[MPlayer->reinforcements[commanderID][1]];
 			else
 				mechToRecover[commanderID] = salvageTarget;
-			mechRecovered[commanderID] = false;	//Need to know when mech is done so Karnov can fly away.
+			mechRecovered[commanderID] = false;
+			mechRecoverSkipped[commanderID] = false;	//Need to know when mech is done so Karnov can fly away.
 			
 			if (!dustCloud[commanderID] && prefs.useNonWeaponEffects)
 			{

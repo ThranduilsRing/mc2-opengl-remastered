@@ -3,29 +3,44 @@
 #include <span>
 #include "../../code/pilot_pick.h"
 
-namespace { struct FakePilot { bool available; bool inUse; }; }
-
-TEST_CASE("one-pilot pool, pilot already in a mech: filtered list empty -> nullptr")
+namespace {
+struct FakePilot { bool available; bool inUse; bool isAvailable() const { return available; } };
+FakePilot* pick(FakePilot** v, size_t n)
 {
-    FakePilot only{ true, true };   // filtered out by warriorInUse
-    FakePilot* filtered[1] = { nullptr };
-    long count = 0;
-    if (only.available && !only.inUse) filtered[count++] = &only;
-    CHECK(pickOutOfPoolPilot<FakePilot>(std::span<FakePilot* const>(filtered, count)) == nullptr);
+    return pickOutOfPoolPilot<FakePilot>(std::span<FakePilot* const>(v, n), [](FakePilot* p) { return p->inUse; }).value_or(nullptr);
+}
 }
 
-TEST_CASE("one-pilot pool, pilot dead: filtered list empty -> nullptr")
+TEST_CASE("pilot already in a mech is never returned (MP pools are not pre-filtered)")
+{
+    FakePilot only{ true, true };
+    FakePilot* v[1] = { &only };
+    CHECK(pick(v, 1) == nullptr);
+}
+
+TEST_CASE("dead pilot is never returned")
 {
     FakePilot only{ false, false };
-    FakePilot* filtered[1] = { nullptr };
-    long count = 0;
-    if (only.available && !only.inUse) filtered[count++] = &only;
-    CHECK(pickOutOfPoolPilot<FakePilot>(std::span<FakePilot* const>(filtered, count)) == nullptr);
+    FakePilot* v[1] = { &only };
+    CHECK(pick(v, 1) == nullptr);
 }
 
-TEST_CASE("one filtered pilot (used flag only) is reused")
+TEST_CASE("empty pool -> nullptr")
 {
-    FakePilot only{ true, false };
-    FakePilot* filtered[1] = { &only };
-    CHECK(pickOutOfPoolPilot<FakePilot>(std::span<FakePilot* const>(filtered, 1)) == &only);
+    CHECK(pick(nullptr, 0) == nullptr);
+}
+
+TEST_CASE("mix of in-use, dead and available: first available, not-in-use pilot wins")
+{
+    FakePilot inMech{ true, true }, dead{ false, false }, deadInMech{ false, true }, ok1{ true, false }, ok2{ true, false };
+    FakePilot* v[5] = { &inMech, &dead, &deadInMech, &ok1, &ok2 };
+    CHECK(pick(v, 5) == &ok1);
+    FakePilot* w[3] = { &inMech, &dead, &deadInMech };
+    CHECK(pick(w, 3) == nullptr);
+}
+
+TEST_CASE("recovery button hover text: no-pilot id only when the pool is empty")
+{
+	CHECK(recoveryHelpTextId(true, 45120, 48100) == 48100);
+	CHECK(recoveryHelpTextId(false, 45120, 48100) == 45120);
 }
