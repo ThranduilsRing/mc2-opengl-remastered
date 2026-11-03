@@ -1186,7 +1186,7 @@ def test_pre_gate_runs_every_step_and_prints_one_verdict(monkeypatch, capsys, tm
     monkeypatch.setattr(lm, "run", fake_run)
     assert lm.pre_gate(str(tmp_path), str(exe)) == 1
     out = capsys.readouterr().out
-    assert ran == ["check-background-launch.py", "gate_gen.py", "cxx17_ratchet.py", "run_smoke.py"]  # a red step does not stop the rest
+    assert ran == ["check-background-launch.py", "gate_gen.py", "cxx17_ratchet.py", "check_sim_include_firewall.py", "log_tag_census.py", "run_smoke.py"]  # a red step does not stop the rest
     assert out.strip().splitlines()[-1] == "PRE-GATE FAIL: gate_gen"
     monkeypatch.setattr(lm, "run", lambda root, cmd, env=None: _r(0))
     assert lm.pre_gate(str(tmp_path), str(tmp_path / "none.exe")) == 0
