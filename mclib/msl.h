@@ -359,8 +359,6 @@ class TG_MultiShape
 		// whose content was filled by a different actor this frame.
 		// Sentinel UINT32_MAX = never cached.
 		uint32_t				cachedFrame_;
-		// resetLightData epoch the cached index was minted in (dynamic slots die at the next reset).
-		uint32_t				cachedLightEpoch_ = 0;
 
 	//-----------------
 	//Member Functions
@@ -414,7 +412,6 @@ class TG_MultiShape
 		// UINT32_MAX by falling through to the dynamic submit path.
 		uint32_t getCachedGpuLightIndex() const { return cachedGpuLightIndex_; }
 		uint32_t getCachedFrame()        const { return cachedFrame_; }
-		bool     cachedLightIndexStale() const;
 		void     setCachedFrame(uint32_t f)    { cachedFrame_ = f; }
 
 		//This function sets the list of lights used by the TransformShape function
