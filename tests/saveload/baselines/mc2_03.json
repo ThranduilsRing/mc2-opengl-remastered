@@ -1,947 +1,621 @@
 {
-  "mission": "mc2_03",
-  "save_at": 1300,
-  "load_at": 1400,
-  "gates": {
-    "MC2_SMOKE_FIXED_TIMESTEP": "1",
-    "MC2_SIM_IDENTITY_TRACE": "1",
-    "MC2_SMOKE_FREEZE_ANIM": "1",
-    "MC2_BOOT_QUICKSAVE_AT": "1300",
-    "MC2_BOOT_QUICKLOAD_AT": "1400"
-  },
-  "exe": {
-    "sha": "2000c6389b10",
-    "dirty": 0
-  },
-  "comparison": {
-    "mode": "zero-masked-bytes-v1",
-    "across_builds": true,
-    "classes": {
-      "MechWarriorData": {
-        "run": [],
-        "build": []
-      },
-      "MechData": {
-        "run": [],
-        "build": []
-      },
-      "GroundVehicleData": {
-        "run": [],
-        "build": []
-      },
-      "CommanderData": {
-        "run": [],
-        "build": []
-      },
-      "TerrainObjectData": {
-        "run": [],
-        "build": []
-      },
-      "GateData": {
-        "run": [],
-        "build": []
-      },
-      "WeaponBoltData": {
-        "run": [],
-        "build": []
-      }
-    }
-  },
-  "mask": "tools/save_noise_mask.json",
-  "judged": "first-save-only",
-  "resave_present": true,
-  "packets": 20000,
-  "overall": "da539bb964a2ef94",
-  "resave_identical": false,
-  "resave_matches_policy": false,
-  "runs": [
-    [
-      "data",
-      0,
-      2,
-      38,
-      "0f41e3f48edcae68"
-    ],
-    [
-      "text",
-      2,
-      1,
-      30516,
-      "c792b868339aea1c"
-    ],
-    [
-      "data",
-      3,
-      45,
-      546573,
-      "095bad61358e2567"
-    ],
-    [
-      "ObjectManagerData",
-      48,
-      1,
-      60,
-      "fcd6e2deb4c70ca2"
-    ],
-    [
-      "data",
-      49,
-      5,
-      66,
-      "ea67ad39f0a93f21"
-    ],
-    [
-      "ObjectManagerData",
-      54,
-      1,
-      60,
-      "878d052d2d98c2d6"
-    ],
-    [
-      "data",
-      55,
-      256,
-      34614,
-      "00f1f19a016bfb68"
-    ],
-    [
-      "data",
-      311,
-      256,
-      29076,
-      "f05e93a090cde93a"
-    ],
-    [
-      "data",
-      567,
-      256,
-      22905,
-      "c4f92134f04d8d5a"
-    ],
-    [
-      "data",
-      823,
-      256,
-      19578,
-      "cfdbdd431d43ebf1"
-    ],
-    [
-      "data",
-      1079,
-      45,
-      186846,
-      "400fc518be66f40d"
-    ],
-    [
-      "ObjectManagerData",
-      1124,
-      1,
-      60,
-      "dc5626391cbe1f6f"
-    ],
-    [
-      "data",
-      1125,
-      5,
-      66,
-      "9257368572360d63"
-    ],
-    [
-      "ObjectManagerData",
-      1130,
-      1,
-      60,
-      "ab4a80469b19e60f"
-    ],
-    [
-      "data",
-      1131,
-      256,
-      35201,
-      "a27beb0f3e53462d"
-    ],
-    [
-      "data",
-      1387,
-      256,
-      28394,
-      "0651d259ffdabc03"
-    ],
-    [
-      "data",
-      1643,
-      256,
-      22762,
-      "9b2402bebbe3d866"
-    ],
-    [
-      "data",
-      1899,
-      256,
-      21420,
-      "817ff3e33a2d6b8c"
-    ],
-    [
-      "data",
-      2155,
-      256,
-      193691,
-      "1efac43c4be6e235"
-    ],
-    [
-      "data",
-      2411,
-      256,
-      34184,
-      "73f8e3c829ca28c0"
-    ],
-    [
-      "data",
-      2667,
-      256,
-      16822,
-      "55be1f1d041bf497"
-    ],
-    [
-      "data",
-      2923,
-      193,
-      65519,
-      "1797b525dbbb6346"
-    ],
-    [
-      "StaticMechWarriorData",
-      3116,
-      1,
-      48,
-      "6b9f9689ee18ef66"
-    ],
-    [
-      "MechWarriorData",
-      3117,
-      256,
-      4843540,
-      "ea541bdd3b982868"
-    ],
-    [
-      "TeamStaticData",
-      3373,
-      1,
-      88,
-      "d66e902b9e0f9c67"
-    ],
-    [
-      "TeamData",
-      3374,
-      2,
-      992,
-      "92dc95b7891caa80"
-    ],
-    [
-      "ObjectManagerData",
-      3376,
-      1,
-      68,
-      "aa9d73dcc5f9c91a"
-    ],
-    [
-      "empty",
-      3377,
-      1,
-      0,
-      "df3f619804a92fdb"
-    ],
-    [
-      "MechData",
-      3378,
-      147,
-      522771,
-      "b917157b0d3c035a"
-    ],
-    [
-      "GroundVehicleData",
-      3525,
-      147,
-      442419,
-      "1b88b1be329318e1"
-    ],
-    [
-      "TerrainObjectData",
-      3672,
-      128,
-      58496,
-      "225bcd0636a52756"
-    ],
-    [
-      "BuildingData",
-      3800,
-      19,
-      9287,
-      "cbde9962594cc899"
-    ],
-    [
-      "TurretData",
-      3819,
-      1,
-      550,
-      "65ad56731cbcf3a7"
-    ],
-    [
-      "BuildingData",
-      3820,
-      1,
-      481,
-      "d13dfbca8d2925a9"
-    ],
-    [
-      "TerrainObjectData",
-      3821,
-      123,
-      56211,
-      "43f64cd796841be7"
-    ],
-    [
-      "BuildingData",
-      3944,
-      23,
-      11267,
-      "a14e1eb667dcf78b"
-    ],
-    [
-      "TerrainObjectData",
-      3967,
-      17,
-      7769,
-      "b02bb33c55528a11"
-    ],
-    [
-      "BuildingData",
-      3984,
-      3,
-      1443,
-      "47325dc1bee442a5"
-    ],
-    [
-      "TerrainObjectData",
-      3987,
-      92,
-      42044,
-      "f7132a37fecbf92f"
-    ],
-    [
-      "BuildingData",
-      4079,
-      9,
-      4429,
-      "b0ece2324dca99d3"
-    ],
-    [
-      "GateData",
-      4088,
-      1,
-      495,
-      "765bba896e188ed2"
-    ],
-    [
-      "TerrainObjectData",
-      4089,
-      1,
-      457,
-      "2f320e1359a57ca3"
-    ],
-    [
-      "TurretData",
-      4090,
-      5,
-      2750,
-      "9c921dec45a8f293"
-    ],
-    [
-      "TerrainObjectData",
-      4095,
-      60,
-      27420,
-      "8994ce223801568e"
-    ],
-    [
-      "BuildingData",
-      4155,
-      17,
-      8321,
-      "82bedf6c3e6e16f5"
-    ],
-    [
-      "TerrainObjectData",
-      4172,
-      141,
-      64437,
-      "f13c0d386a9d8cee"
-    ],
-    [
-      "BuildingData",
-      4313,
-      63,
-      30303,
-      "5aee2a20b1befea4"
-    ],
-    [
-      "TerrainObjectData",
-      4376,
-      228,
-      104196,
-      "a9aee486248da8e6"
-    ],
-    [
-      "TurretData",
-      4604,
-      1,
-      550,
-      "c934770fa9b68035"
-    ],
-    [
-      "BuildingData",
-      4605,
-      1,
-      481,
-      "e73b9c61660afb2b"
-    ],
-    [
-      "TerrainObjectData",
-      4606,
-      43,
-      19651,
-      "65cbe0a721c32cd7"
-    ],
-    [
-      "BuildingData",
-      4649,
-      1,
-      481,
-      "bc1a396c9401bb93"
-    ],
-    [
-      "TerrainObjectData",
-      4650,
-      133,
-      60781,
-      "8aa620ec13b04e21"
-    ],
-    [
-      "BuildingData",
-      4783,
-      29,
-      13969,
-      "15c6039395b01332"
-    ],
-    [
-      "TerrainObjectData",
-      4812,
-      247,
-      112879,
-      "582bd1c953b5e002"
-    ],
-    [
-      "TurretData",
-      5059,
-      2,
-      1100,
-      "e91a7140f255d47e"
-    ],
-    [
-      "TerrainObjectData",
-      5061,
-      2,
-      914,
-      "df628e4d8fa5dcb1"
-    ],
-    [
-      "BuildingData",
-      5063,
-      47,
-      22607,
-      "eadf89b9d51e3c80"
-    ],
-    [
-      "TerrainObjectData",
-      5110,
-      149,
-      68093,
-      "a37811b1cc846845"
-    ],
-    [
-      "TurretData",
-      5259,
-      2,
-      1100,
-      "4fd4794769e65126"
-    ],
-    [
-      "TerrainObjectData",
-      5261,
-      175,
-      79975,
-      "33b4dd01a9105132"
-    ],
-    [
-      "BuildingData",
-      5436,
-      5,
-      2449,
-      "b23230c3334254d2"
-    ],
-    [
-      "TerrainObjectData",
-      5441,
-      256,
-      116992,
-      "cfa2c8d67df74de6"
-    ],
-    [
-      "TerrainObjectData",
-      5697,
-      256,
-      116992,
-      "43614872b4cddb4c"
-    ],
-    [
-      "TerrainObjectData",
-      5953,
-      195,
-      89115,
-      "efe65c08d3d610e8"
-    ],
-    [
-      "BuildingData",
-      6148,
-      1,
-      481,
-      "e8a751ae5ca72940"
-    ],
-    [
-      "TerrainObjectData",
-      6149,
-      83,
-      37931,
-      "a1301e15c2886c5c"
-    ],
-    [
-      "WeaponBoltData",
-      6232,
-      100,
-      57700,
-      "bcf15a802acd1fb2"
-    ],
-    [
-      "CarnageData",
-      6332,
-      50,
-      19750,
-      "7025225a43c5a5b2"
-    ],
-    [
-      "ArtilleryData",
-      6382,
-      130,
-      54990,
-      "ea5d4f0f4d0b928c"
-    ],
-    [
-      "WatchList",
-      6512,
-      1,
-      12552,
-      "f435905f74f43420"
-    ],
-    [
-      "StaticCommanderData",
-      6513,
-      1,
-      16,
-      "56c6ea5f1af586ce"
-    ],
-    [
-      "CommanderData",
-      6514,
-      2,
-      2496,
-      "6f9bc96a08782b1f"
-    ],
-    [
-      "text",
-      6516,
-      1,
-      67828,
-      "52bb728f60e16f40"
-    ],
-    [
-      "data",
-      6517,
-      2,
-      8,
-      "e815bbb0774dd30f"
-    ],
-    [
-      "sections",
-      6519,
-      1,
-      540899,
-      "1d90195eddf49288"
-    ],
-    [
-      "empty",
-      6520,
-      13480,
-      0,
-      "f0694617d2c38f00"
-    ]
-  ],
-  "about": "digest of the quicksave a round-trip fixture writes; tools/saveload_roundtrip.py --baseline / --check",
-  "sim_speed": 2,
-  "data_fingerprint": {
-    "digest": "631bc626ca376941",
-    "inputs": [
-      "mission.fst",
-      "tgl.fst",
-      "effect.fst",
-      "misc.fst",
-      "camera.fst",
-      "data/tgl/",
-      "data/objects/",
-      "data/effects/",
-      "data/missions/",
-      "data/warriors/"
-    ],
-    "stock_digest": "8703ccf15c7c117f",
-    "overlay": {
-      "data/missions/gaea_peaks_01.fit": "aa24a7b6e35ae2b2",
-      "data/missions/gaea_peaks_01.pak": "af7be4e2f5a9c1c4"
-    },
-    "problems": []
-  },
-  "note": "pinned with MC2_SIM_OVERLAP on; overlap shifts the cosmetic RNG order / save tick by one",
-  "schema_migration": {
-    "packet": "F+G: ObjectSlot v1 and ABLE/AMOD/AVAR v1",
-    "previous_migration": {
-      "packet": "G: ABLE/AMOD/AVAR v1",
-      "previous_migration": {
-        "packet": "D+E: WSTA/WARR and MCEL/GARE/GDOR/GLNK v1",
-        "sources": [
-          {
-            "path": "E:/mc2-archive-2026-10/proofs/lane9/cxx23-c/migrated-mc2_03.ims",
-            "sha256": "1b61f64d400c4dc76706b20e5abc04067f72a381981706d0a61942a25ac9cad5"
-          },
-          {
-            "path": "E:/mc2-archive-2026-10/proofs/lane9/cxx23-d/migrated-mc2_03.ims",
-            "sha256": "7f48ea9f199800bc219aa425fcb485c5918a518c13b95f169dabae0f0f3193c8"
-          },
-          {
-            "path": "E:/mc2-archive-2026-10/proofs/lane4/cxx23-e/migrated-mc2_03.ims",
-            "sha256": "565f4d491cdf24e19274a6ce1a9597a96cc5ab80f4e53abf2a48cbfddbebb1e4"
-          }
-        ],
-        "previous_migration": [
-          {
-            "packet": "D: WSTA/WARR v1",
-            "source": "E:\\mc2-archive-2026-10\\proofs\\lane9\\cxx23-c\\migrated-mc2_03.ims",
-            "source_sha256": "1b61f64d400c4dc76706b20e5abc04067f72a381981706d0a61942a25ac9cad5",
-            "packet_c_masked_digest": "e04b1973fa59f477",
-            "previous_migration": {
-              "packet": "C: OBMH/WATC v1",
-              "source": "E:/mc2-archive-2026-10/proofs/lane9/cxx23-b/migrated-mc2_03.ims",
-              "source_sha256": "e839f4179e4575b7610d488805660cbfa579f5ed4a10003a28c8e58a889ab2d0",
-              "packet_b_masked_digest": "7541eace2bb65f26",
-              "previous_migration": {
-                "packet": "B: CMST/CMDR/TMST/TEAM v1",
-                "source": "E:/mc2-archive-2026-10/proofs/merge88/finish-baseline-mc2_03/save1.ims",
-                "source_sha256": "40f0dd16b7c0ebf7468abb2ae6b3a0dac6db4661ed5ee2dc0f557ef790832d11",
-                "native_masked_digest": "b52cdc7518267173",
-                "changed_runs": [
-                  "TeamStaticData",
-                  "TeamData",
-                  "StaticCommanderData",
-                  "CommanderData",
-                  "sections"
-                ],
-                "method": "Transform the SHA-verified archived pin: explicit fields, zero inactive group IDs, omit group padding, add required sections. Every unrelated run digest retained exactly; no live-run repin."
-              },
-              "changed_runs": [
-                "ObjectManagerData",
-                "WatchList",
-                "sections"
-              ],
-              "method": "Transform the verified Packet B pin: prefix all 15 manager int32 fields unchanged, prefix the complete watch array with tag/version/count, add required sections. Every unrelated packet and run retained exactly; mask unchanged; no live-run repin."
-            },
-            "method": "Native Windows ABI pinned; encode every named field, omit padding/markers, canonicalize only documented derived storage. WQT2 suffix and all unrelated packets retained exactly. Pilot mask 10452 -> 0; no live-run repin."
-          },
-          {
-            "packet": "E: MCEL/GARE/GDOR/GLNK v1",
-            "source": "E:/mc2-archive-2026-10/proofs/lane9/cxx23-c/migrated-mc2_03.ims",
-            "source_sha256": "1b61f64d400c4dc76706b20e5abc04067f72a381981706d0a61942a25ac9cad5",
-            "packet_c_masked_digest": "e04b1973fa59f477",
-            "previous_migration": {
-              "packet": "C: OBMH/WATC v1",
-              "source": "E:/mc2-archive-2026-10/proofs/lane9/cxx23-b/migrated-mc2_03.ims",
-              "source_sha256": "e839f4179e4575b7610d488805660cbfa579f5ed4a10003a28c8e58a889ab2d0",
-              "packet_b_masked_digest": "7541eace2bb65f26",
-              "previous_migration": {
-                "packet": "B: CMST/CMDR/TMST/TEAM v1",
-                "source": "E:/mc2-archive-2026-10/proofs/merge88/finish-baseline-mc2_03/save1.ims",
-                "source_sha256": "40f0dd16b7c0ebf7468abb2ae6b3a0dac6db4661ed5ee2dc0f557ef790832d11",
-                "native_masked_digest": "b52cdc7518267173",
-                "changed_runs": [
-                  "TeamStaticData",
-                  "TeamData",
-                  "StaticCommanderData",
-                  "CommanderData",
-                  "sections"
-                ],
-                "method": "Transform the SHA-verified archived pin: explicit fields, zero inactive group IDs, omit group padding, add required sections. Every unrelated run digest retained exactly; no live-run repin."
-              },
-              "changed_runs": [
-                "ObjectManagerData",
-                "WatchList",
-                "sections"
-              ],
-              "method": "Transform the verified Packet B pin: prefix all 15 manager int32 fields unchanged, prefix the complete watch array with tag/version/count, add required sections. Every unrelated packet and run retained exactly; mask unchanged; no live-run repin."
-            },
-            "changed_packet_runs": [
-              [
-                7,
-                7
-              ],
-              [
-                19,
-                19
-              ],
-              [
-                216,
-                1076
-              ],
-              [
-                1088,
-                1088
-              ],
-              [
-                1307,
-                2259
-              ],
-              [
-                2271,
-                2271
-              ],
-              [
-                2444,
-                3112
-              ],
-              [
-                6519,
-                6519
-              ]
-            ],
-            "method": "Verified Packet C pin; prefix native navigation fields with tag/version/count and add required sections. All field bytes, unrelated packets and mask ranges unchanged; no live-run repin."
-          }
-        ],
-        "method": "Compose verified D and E migrations of the same Packet C source. Disjoint payload changes, identical shared sections; union 13 fixture sections (existing BRN1 fixture gap unchanged). Pilot mask remains zero; no live-run repin."
-      },
-      "old_digest": "c2efb6fabde38c0f",
-      "abl_packet": 3115,
-      "method": "Verified archived D+E values; live sample supplies only compiled slot extents and counts. All values come from archive, scalar upper arms discarded, state pointers represented by names. ABL packet matches live sample exactly. No mask change or live-value repin."
-    },
-    "object_migration": {
-      "packet": "F: ObjectSlot v1 + required OBJS",
-      "source": "E:/mc2-archive-2026-10/proofs/lane9/cxx23-f/f9-firstsave-mc2_03/save1.ims",
-      "source_sha256": "91611f9c015a807bbb9114e36a0179dd6c69d796faa2277502d887279310a0b9",
-      "previous_masked_digest": "c2efb6fabde38c0f",
-      "previous_migration": {
-        "packet": "D+E: WSTA/WARR and MCEL/GARE/GDOR/GLNK v1",
-        "sources": [
-          {
-            "path": "E:/mc2-archive-2026-10/proofs/lane9/cxx23-c/migrated-mc2_03.ims",
-            "sha256": "1b61f64d400c4dc76706b20e5abc04067f72a381981706d0a61942a25ac9cad5"
-          },
-          {
-            "path": "E:/mc2-archive-2026-10/proofs/lane9/cxx23-d/migrated-mc2_03.ims",
-            "sha256": "7f48ea9f199800bc219aa425fcb485c5918a518c13b95f169dabae0f0f3193c8"
-          },
-          {
-            "path": "E:/mc2-archive-2026-10/proofs/lane4/cxx23-e/migrated-mc2_03.ims",
-            "sha256": "565f4d491cdf24e19274a6ce1a9597a96cc5ab80f4e53abf2a48cbfddbebb1e4"
-          }
-        ],
-        "previous_migration": [
-          {
-            "packet": "D: WSTA/WARR v1",
-            "source": "E:\\mc2-archive-2026-10\\proofs\\lane9\\cxx23-c\\migrated-mc2_03.ims",
-            "source_sha256": "1b61f64d400c4dc76706b20e5abc04067f72a381981706d0a61942a25ac9cad5",
-            "packet_c_masked_digest": "e04b1973fa59f477",
-            "previous_migration": {
-              "packet": "C: OBMH/WATC v1",
-              "source": "E:/mc2-archive-2026-10/proofs/lane9/cxx23-b/migrated-mc2_03.ims",
-              "source_sha256": "e839f4179e4575b7610d488805660cbfa579f5ed4a10003a28c8e58a889ab2d0",
-              "packet_b_masked_digest": "7541eace2bb65f26",
-              "previous_migration": {
-                "packet": "B: CMST/CMDR/TMST/TEAM v1",
-                "source": "E:/mc2-archive-2026-10/proofs/merge88/finish-baseline-mc2_03/save1.ims",
-                "source_sha256": "40f0dd16b7c0ebf7468abb2ae6b3a0dac6db4661ed5ee2dc0f557ef790832d11",
-                "native_masked_digest": "b52cdc7518267173",
-                "changed_runs": [
-                  "TeamStaticData",
-                  "TeamData",
-                  "StaticCommanderData",
-                  "CommanderData",
-                  "sections"
-                ],
-                "method": "Transform the SHA-verified archived pin: explicit fields, zero inactive group IDs, omit group padding, add required sections. Every unrelated run digest retained exactly; no live-run repin."
-              },
-              "changed_runs": [
-                "ObjectManagerData",
-                "WatchList",
-                "sections"
-              ],
-              "method": "Transform the verified Packet B pin: prefix all 15 manager int32 fields unchanged, prefix the complete watch array with tag/version/count, add required sections. Every unrelated packet and run retained exactly; mask unchanged; no live-run repin."
-            },
-            "method": "Native Windows ABI pinned; encode every named field, omit padding/markers, canonicalize only documented derived storage. WQT2 suffix and all unrelated packets retained exactly. Pilot mask 10452 -> 0; no live-run repin."
-          },
-          {
-            "packet": "E: MCEL/GARE/GDOR/GLNK v1",
-            "source": "E:/mc2-archive-2026-10/proofs/lane9/cxx23-c/migrated-mc2_03.ims",
-            "source_sha256": "1b61f64d400c4dc76706b20e5abc04067f72a381981706d0a61942a25ac9cad5",
-            "packet_c_masked_digest": "e04b1973fa59f477",
-            "previous_migration": {
-              "packet": "C: OBMH/WATC v1",
-              "source": "E:/mc2-archive-2026-10/proofs/lane9/cxx23-b/migrated-mc2_03.ims",
-              "source_sha256": "e839f4179e4575b7610d488805660cbfa579f5ed4a10003a28c8e58a889ab2d0",
-              "packet_b_masked_digest": "7541eace2bb65f26",
-              "previous_migration": {
-                "packet": "B: CMST/CMDR/TMST/TEAM v1",
-                "source": "E:/mc2-archive-2026-10/proofs/merge88/finish-baseline-mc2_03/save1.ims",
-                "source_sha256": "40f0dd16b7c0ebf7468abb2ae6b3a0dac6db4661ed5ee2dc0f557ef790832d11",
-                "native_masked_digest": "b52cdc7518267173",
-                "changed_runs": [
-                  "TeamStaticData",
-                  "TeamData",
-                  "StaticCommanderData",
-                  "CommanderData",
-                  "sections"
-                ],
-                "method": "Transform the SHA-verified archived pin: explicit fields, zero inactive group IDs, omit group padding, add required sections. Every unrelated run digest retained exactly; no live-run repin."
-              },
-              "changed_runs": [
-                "ObjectManagerData",
-                "WatchList",
-                "sections"
-              ],
-              "method": "Transform the verified Packet B pin: prefix all 15 manager int32 fields unchanged, prefix the complete watch array with tag/version/count, add required sections. Every unrelated packet and run retained exactly; mask unchanged; no live-run repin."
-            },
-            "changed_packet_runs": [
-              [
-                7,
-                7
-              ],
-              [
-                19,
-                19
-              ],
-              [
-                216,
-                1076
-              ],
-              [
-                1088,
-                1088
-              ],
-              [
-                1307,
-                2259
-              ],
-              [
-                2271,
-                2271
-              ],
-              [
-                2444,
-                3112
-              ],
-              [
-                6519,
-                6519
-              ]
-            ],
-            "method": "Verified Packet C pin; prefix native navigation fields with tag/version/count and add required sections. All field bytes, unrelated packets and mask ranges unchanged; no live-run repin."
-          }
-        ],
-        "method": "Compose verified D and E migrations of the same Packet C source. Disjoint payload changes, identical shared sections; union 13 fixture sections (existing BRN1 fixture gap unchanged). Pilot mask remains zero; no live-run repin."
-      },
-      "object_records": {
-        "MechData": {
-          "records": 147,
-          "old_bytes": 586824,
-          "new_bytes": 522771,
-          "different_bytes": 114584
-        },
-        "GroundVehicleData": {
-          "records": 147,
-          "old_bytes": 503328,
-          "new_bytes": 442419,
-          "different_bytes": 91180
-        },
-        "TerrainObjectData": {
-          "records": 2329,
-          "old_bytes": 1676880,
-          "new_bytes": 1064353,
-          "different_bytes": 758045
-        },
-        "BuildingData": {
-          "records": 219,
-          "old_bytes": 165564,
-          "new_bytes": 105999,
-          "different_bytes": 86567
-        },
-        "TurretData": {
-          "records": 11,
-          "old_bytes": 9020,
-          "new_bytes": 6050,
-          "different_bytes": 4656
-        },
-        "GateData": {
-          "records": 1,
-          "old_bytes": 760,
-          "new_bytes": 495,
-          "different_bytes": 375
-        },
-        "WeaponBoltData": {
-          "records": 100,
-          "old_bytes": 60000,
-          "new_bytes": 57700,
-          "different_bytes": 5300
-        },
-        "CarnageData": {
-          "records": 50,
-          "old_bytes": 19800,
-          "new_bytes": 19750,
-          "different_bytes": 1550
-        },
-        "ArtilleryData": {
-          "records": 130,
-          "old_bytes": 56160,
-          "new_bytes": 54990,
-          "different_bytes": 6368
-        }
-      },
-      "sections": {
-        "added": "OBJS",
-        "version": 1,
-        "flags": 1,
-        "payload_bytes": 0,
-        "container_added_bytes": 20
-      },
-      "legacy_load_receipt": "E:/mc2-archive-2026-10/proofs/lane9/cxx23-f/f9-gather-result.json",
-      "method": "Verified D+E pin, encoded each native object with production value codecs and decoded/reencoded it; exact match to clean flipped first-save. Every unrelated packet, FIT text and existing section identical. W87/W90 same-mission loads continue 60+ ticks. Object run masks 30 -> 0; build 0 -> 0; no mask or other baseline widened."
-    },
-    "g_source": "E:\\mc2-archive-2026-10\\proofs\\lane10\\cxx23-g\\migrated-mc2_03.ims",
-    "g_source_sha256": "a41ae1f9e295f1bc3235a4ed81a7d85263a7ec9484f8dc2ddef3e0f7411f5499",
-    "previous_masked_digest": "db953e1b80da271d",
-    "object_packets": 3134,
-    "method": "Compose independently digest-verified G archive and F migration. Replace only object packets and union required sections; preserve G ABL payload and every unrelated byte. No live repin or SIMID change. Object masks 30 -> 0; build 0 -> 0."
+ "mission": "mc2_03",
+ "save_at": 1300,
+ "load_at": 1400,
+ "gates": {
+  "MC2_SMOKE_FIXED_TIMESTEP": "1",
+  "MC2_SIM_IDENTITY_TRACE": "1",
+  "MC2_SMOKE_FREEZE_ANIM": "1",
+  "MC2_BOOT_QUICKSAVE_AT": "1300",
+  "MC2_BOOT_QUICKLOAD_AT": "1400"
+ },
+ "exe": {
+  "sha": "4feeec45a5ef",
+  "dirty": 0
+ },
+ "comparison": {
+  "mode": "zero-masked-bytes-v1",
+  "across_builds": true,
+  "classes": {
+   "MechWarriorData": {
+    "run": [],
+    "build": []
+   },
+   "MechData": {
+    "run": [],
+    "build": []
+   },
+   "GroundVehicleData": {
+    "run": [],
+    "build": []
+   },
+   "CommanderData": {
+    "run": [],
+    "build": []
+   },
+   "TerrainObjectData": {
+    "run": [],
+    "build": []
+   },
+   "GateData": {
+    "run": [],
+    "build": []
+   },
+   "WeaponBoltData": {
+    "run": [],
+    "build": []
+   }
   }
+ },
+ "mask": "tools/save_noise_mask.json",
+ "judged": "first-save-and-resave",
+ "resave_present": true,
+ "packets": 20000,
+ "overall": "1e47be2948a9db4f",
+ "resave_identical": true,
+ "resave_matches_policy": true,
+ "runs": [
+  [
+   "data",
+   0,
+   2,
+   38,
+   "0f41e3f48edcae68"
+  ],
+  [
+   "text",
+   2,
+   1,
+   30561,
+   "d57b44170a6988b9"
+  ],
+  [
+   "data",
+   3,
+   45,
+   546573,
+   "095bad61358e2567"
+  ],
+  [
+   "ObjectManagerData",
+   48,
+   1,
+   60,
+   "fcd6e2deb4c70ca2"
+  ],
+  [
+   "data",
+   49,
+   5,
+   66,
+   "ea67ad39f0a93f21"
+  ],
+  [
+   "ObjectManagerData",
+   54,
+   1,
+   60,
+   "878d052d2d98c2d6"
+  ],
+  [
+   "data",
+   55,
+   256,
+   34614,
+   "00f1f19a016bfb68"
+  ],
+  [
+   "data",
+   311,
+   256,
+   29076,
+   "f05e93a090cde93a"
+  ],
+  [
+   "data",
+   567,
+   256,
+   22905,
+   "c4f92134f04d8d5a"
+  ],
+  [
+   "data",
+   823,
+   256,
+   19578,
+   "cfdbdd431d43ebf1"
+  ],
+  [
+   "data",
+   1079,
+   45,
+   186846,
+   "400fc518be66f40d"
+  ],
+  [
+   "ObjectManagerData",
+   1124,
+   1,
+   60,
+   "dc5626391cbe1f6f"
+  ],
+  [
+   "data",
+   1125,
+   5,
+   66,
+   "9257368572360d63"
+  ],
+  [
+   "ObjectManagerData",
+   1130,
+   1,
+   60,
+   "ab4a80469b19e60f"
+  ],
+  [
+   "data",
+   1131,
+   256,
+   35201,
+   "a27beb0f3e53462d"
+  ],
+  [
+   "data",
+   1387,
+   256,
+   28394,
+   "0651d259ffdabc03"
+  ],
+  [
+   "data",
+   1643,
+   256,
+   22762,
+   "9b2402bebbe3d866"
+  ],
+  [
+   "data",
+   1899,
+   256,
+   21420,
+   "817ff3e33a2d6b8c"
+  ],
+  [
+   "data",
+   2155,
+   256,
+   193691,
+   "1efac43c4be6e235"
+  ],
+  [
+   "data",
+   2411,
+   256,
+   34184,
+   "73f8e3c829ca28c0"
+  ],
+  [
+   "data",
+   2667,
+   256,
+   16822,
+   "55be1f1d041bf497"
+  ],
+  [
+   "data",
+   2923,
+   193,
+   65519,
+   "1797b525dbbb6346"
+  ],
+  [
+   "StaticMechWarriorData",
+   3116,
+   1,
+   48,
+   "6b9f9689ee18ef66"
+  ],
+  [
+   "MechWarriorData",
+   3117,
+   256,
+   4843540,
+   "ea541bdd3b982868"
+  ],
+  [
+   "TeamStaticData",
+   3373,
+   1,
+   88,
+   "d66e902b9e0f9c67"
+  ],
+  [
+   "TeamData",
+   3374,
+   2,
+   992,
+   "92dc95b7891caa80"
+  ],
+  [
+   "ObjectManagerData",
+   3376,
+   1,
+   68,
+   "aa9d73dcc5f9c91a"
+  ],
+  [
+   "empty",
+   3377,
+   1,
+   0,
+   "df3f619804a92fdb"
+  ],
+  [
+   "MechData",
+   3378,
+   147,
+   522771,
+   "b917157b0d3c035a"
+  ],
+  [
+   "GroundVehicleData",
+   3525,
+   147,
+   442419,
+   "1b88b1be329318e1"
+  ],
+  [
+   "TerrainObjectData",
+   3672,
+   128,
+   58496,
+   "225bcd0636a52756"
+  ],
+  [
+   "BuildingData",
+   3800,
+   19,
+   9287,
+   "cbde9962594cc899"
+  ],
+  [
+   "TurretData",
+   3819,
+   1,
+   550,
+   "65ad56731cbcf3a7"
+  ],
+  [
+   "BuildingData",
+   3820,
+   1,
+   481,
+   "d13dfbca8d2925a9"
+  ],
+  [
+   "TerrainObjectData",
+   3821,
+   123,
+   56211,
+   "43f64cd796841be7"
+  ],
+  [
+   "BuildingData",
+   3944,
+   23,
+   11267,
+   "a14e1eb667dcf78b"
+  ],
+  [
+   "TerrainObjectData",
+   3967,
+   17,
+   7769,
+   "b02bb33c55528a11"
+  ],
+  [
+   "BuildingData",
+   3984,
+   3,
+   1443,
+   "47325dc1bee442a5"
+  ],
+  [
+   "TerrainObjectData",
+   3987,
+   92,
+   42044,
+   "f7132a37fecbf92f"
+  ],
+  [
+   "BuildingData",
+   4079,
+   9,
+   4429,
+   "b0ece2324dca99d3"
+  ],
+  [
+   "GateData",
+   4088,
+   1,
+   495,
+   "765bba896e188ed2"
+  ],
+  [
+   "TerrainObjectData",
+   4089,
+   1,
+   457,
+   "2f320e1359a57ca3"
+  ],
+  [
+   "TurretData",
+   4090,
+   5,
+   2750,
+   "9c921dec45a8f293"
+  ],
+  [
+   "TerrainObjectData",
+   4095,
+   60,
+   27420,
+   "8994ce223801568e"
+  ],
+  [
+   "BuildingData",
+   4155,
+   17,
+   8321,
+   "82bedf6c3e6e16f5"
+  ],
+  [
+   "TerrainObjectData",
+   4172,
+   141,
+   64437,
+   "f13c0d386a9d8cee"
+  ],
+  [
+   "BuildingData",
+   4313,
+   63,
+   30303,
+   "5aee2a20b1befea4"
+  ],
+  [
+   "TerrainObjectData",
+   4376,
+   228,
+   104196,
+   "a9aee486248da8e6"
+  ],
+  [
+   "TurretData",
+   4604,
+   1,
+   550,
+   "c934770fa9b68035"
+  ],
+  [
+   "BuildingData",
+   4605,
+   1,
+   481,
+   "e73b9c61660afb2b"
+  ],
+  [
+   "TerrainObjectData",
+   4606,
+   43,
+   19651,
+   "65cbe0a721c32cd7"
+  ],
+  [
+   "BuildingData",
+   4649,
+   1,
+   481,
+   "bc1a396c9401bb93"
+  ],
+  [
+   "TerrainObjectData",
+   4650,
+   133,
+   60781,
+   "8aa620ec13b04e21"
+  ],
+  [
+   "BuildingData",
+   4783,
+   29,
+   13969,
+   "15c6039395b01332"
+  ],
+  [
+   "TerrainObjectData",
+   4812,
+   247,
+   112879,
+   "582bd1c953b5e002"
+  ],
+  [
+   "TurretData",
+   5059,
+   2,
+   1100,
+   "e91a7140f255d47e"
+  ],
+  [
+   "TerrainObjectData",
+   5061,
+   2,
+   914,
+   "df628e4d8fa5dcb1"
+  ],
+  [
+   "BuildingData",
+   5063,
+   47,
+   22607,
+   "eadf89b9d51e3c80"
+  ],
+  [
+   "TerrainObjectData",
+   5110,
+   149,
+   68093,
+   "a37811b1cc846845"
+  ],
+  [
+   "TurretData",
+   5259,
+   2,
+   1100,
+   "4fd4794769e65126"
+  ],
+  [
+   "TerrainObjectData",
+   5261,
+   175,
+   79975,
+   "33b4dd01a9105132"
+  ],
+  [
+   "BuildingData",
+   5436,
+   5,
+   2449,
+   "b23230c3334254d2"
+  ],
+  [
+   "TerrainObjectData",
+   5441,
+   256,
+   116992,
+   "cfa2c8d67df74de6"
+  ],
+  [
+   "TerrainObjectData",
+   5697,
+   256,
+   116992,
+   "43614872b4cddb4c"
+  ],
+  [
+   "TerrainObjectData",
+   5953,
+   195,
+   89115,
+   "efe65c08d3d610e8"
+  ],
+  [
+   "BuildingData",
+   6148,
+   1,
+   481,
+   "e8a751ae5ca72940"
+  ],
+  [
+   "TerrainObjectData",
+   6149,
+   83,
+   37931,
+   "a1301e15c2886c5c"
+  ],
+  [
+   "WeaponBoltData",
+   6232,
+   100,
+   57700,
+   "bcf15a802acd1fb2"
+  ],
+  [
+   "CarnageData",
+   6332,
+   50,
+   19750,
+   "7025225a43c5a5b2"
+  ],
+  [
+   "ArtilleryData",
+   6382,
+   130,
+   54990,
+   "ea5d4f0f4d0b928c"
+  ],
+  [
+   "WatchList",
+   6512,
+   1,
+   12552,
+   "f435905f74f43420"
+  ],
+  [
+   "StaticCommanderData",
+   6513,
+   1,
+   16,
+   "56c6ea5f1af586ce"
+  ],
+  [
+   "CommanderData",
+   6514,
+   2,
+   2496,
+   "6f9bc96a08782b1f"
+  ],
+  [
+   "text",
+   6516,
+   1,
+   67828,
+   "52bb728f60e16f40"
+  ],
+  [
+   "data",
+   6517,
+   2,
+   8,
+   "e815bbb0774dd30f"
+  ],
+  [
+   "sections",
+   6519,
+   1,
+   540899,
+   "1d90195eddf49288"
+  ],
+  [
+   "empty",
+   6520,
+   13480,
+   0,
+   "f0694617d2c38f00"
+  ]
+ ],
+ "about": "digest of the quicksave a round-trip fixture writes; tools/saveload_roundtrip.py --baseline / --check",
+ "sim_speed": 2,
+ "data_fingerprint": {
+  "digest": "631bc626ca376941",
+  "inputs": [
+   "mission.fst",
+   "tgl.fst",
+   "effect.fst",
+   "misc.fst",
+   "camera.fst",
+   "data/tgl/",
+   "data/objects/",
+   "data/effects/",
+   "data/missions/",
+   "data/warriors/"
+  ],
+  "stock_digest": "8703ccf15c7c117f",
+  "overlay": {
+   "data/missions/gaea_peaks_01.fit": "aa24a7b6e35ae2b2",
+   "data/missions/gaea_peaks_01.pak": "af7be4e2f5a9c1c4"
+  },
+  "problems": []
+ }
 }

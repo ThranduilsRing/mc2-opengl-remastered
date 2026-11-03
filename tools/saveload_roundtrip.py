@@ -636,7 +636,7 @@ def fill_from_previous(args, prev: dict | None) -> None:
     if comp.get("mode") == "zero-masked-bytes-v1" and "judged" not in prev:
         raise ValueError("previous baseline does not record whether it was first-save-only; pass --mask <path> "
                          "and --first-save-only if that was the original judgement")
-    if prev.get("judged") == "first-save-only":
+    if prev.get("judged") == "first-save-only" and not getattr(args, "judge_resave", False):
         args.first_save_only = True
 
 
@@ -741,6 +741,8 @@ def main(argv=None) -> int:
         sd.add_ref_args(p)
         add_speed_arg(p)
         p.add_argument("--headless", action="store_true", help="run the fixture headless (no window, GPU or audio; --ticks past the load): the save bytes must match the windowed baseline")
+        p.add_argument("--judge-resave", action="store_true",
+                       help="baseline over a first-save-only baseline: judge the re-save too (the re-save is exact now), instead of inheriting first-save-only")
         p.add_argument("--first-save-only", action="store_true",
                        help="baseline/check with --mask: judge only the first save against the baseline and do not fail because the re-save leaves the mask "
                             "(the quickload is lossy: any save and its re-save differ in about 1159 of 20000 packets, so the re-save gate cannot pass); "

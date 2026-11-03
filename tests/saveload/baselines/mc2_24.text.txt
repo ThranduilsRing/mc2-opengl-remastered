@@ -101,33 +101,6 @@ f DropZoneZ = 0.000000
 ul NumParts = 70
 
 [Part1]
-l ObjectWID = 0
-ul ObjectNumber = 0
-ul BaseColor = 0
-ul HighlightColor1 = 0
-ul HighlightColor2 = 0
-l Active = 0
-l Exists = 0
-b Destroyed = FALSE
-f PositionX = 0.000000
-f PositionY = 0.000000
-f PositionZ = 0.000000
-f Velocity = 0.000000
-f Rotation = 0.000000
-l GestureId = 0
-c Alignment = 0
-c TeamId = 0
-l CommanderId = 0
-l SquadId = 0
-c MyIcon = 0
-ul ControlType = 0
-ul ControlDataType = 0
-st ObjectProfile = ""
-ul Pilot = 0
-b Captureable = FALSE
-ul VariantNum = 0
-
-[Part2]
 l ObjectWID = 1
 ul ObjectNumber = 52
 ul BaseColor = -16711936
@@ -154,7 +127,7 @@ ul Pilot = 1
 b Captureable = FALSE
 ul VariantNum = 0
 
-[Part3]
+[Part2]
 l ObjectWID = 2
 ul ObjectNumber = 52
 ul BaseColor = -16711936
@@ -181,7 +154,7 @@ ul Pilot = 2
 b Captureable = FALSE
 ul VariantNum = 0
 
-[Part4]
+[Part3]
 l ObjectWID = 3
 ul ObjectNumber = 52
 ul BaseColor = -16711936
@@ -208,7 +181,7 @@ ul Pilot = 3
 b Captureable = FALSE
 ul VariantNum = 0
 
-[Part5]
+[Part4]
 l ObjectWID = 4
 ul ObjectNumber = 15
 ul BaseColor = -16711936
@@ -235,7 +208,7 @@ ul Pilot = 4
 b Captureable = FALSE
 ul VariantNum = 0
 
-[Part6]
+[Part5]
 l ObjectWID = 5
 ul ObjectNumber = 875
 ul BaseColor = -16711936
@@ -262,7 +235,7 @@ ul Pilot = 5
 b Captureable = FALSE
 ul VariantNum = 0
 
-[Part7]
+[Part6]
 l ObjectWID = 6
 ul ObjectNumber = 875
 ul BaseColor = -16711936
@@ -289,7 +262,7 @@ ul Pilot = 6
 b Captureable = FALSE
 ul VariantNum = 0
 
-[Part8]
+[Part7]
 l ObjectWID = 14
 ul ObjectNumber = 49
 ul BaseColor = -1
@@ -316,7 +289,7 @@ ul Pilot = 7
 b Captureable = FALSE
 ul VariantNum = 0
 
-[Part9]
+[Part8]
 l ObjectWID = 15
 ul ObjectNumber = 49
 ul BaseColor = -1
@@ -343,7 +316,7 @@ ul Pilot = 8
 b Captureable = FALSE
 ul VariantNum = 0
 
-[Part10]
+[Part9]
 l ObjectWID = 16
 ul ObjectNumber = 878
 ul BaseColor = -1
@@ -370,7 +343,7 @@ ul Pilot = 9
 b Captureable = FALSE
 ul VariantNum = 1
 
-[Part11]
+[Part10]
 l ObjectWID = 17
 ul ObjectNumber = 49
 ul BaseColor = -1
@@ -397,7 +370,7 @@ ul Pilot = 10
 b Captureable = FALSE
 ul VariantNum = 0
 
-[Part12]
+[Part11]
 l ObjectWID = 18
 ul ObjectNumber = 51
 ul BaseColor = -1
@@ -424,7 +397,7 @@ ul Pilot = 11
 b Captureable = FALSE
 ul VariantNum = 2
 
-[Part13]
+[Part12]
 l ObjectWID = 19
 ul ObjectNumber = 49
 ul BaseColor = -1
@@ -451,7 +424,7 @@ ul Pilot = 12
 b Captureable = FALSE
 ul VariantNum = 0
 
-[Part14]
+[Part13]
 l ObjectWID = 20
 ul ObjectNumber = 200
 ul BaseColor = -1
@@ -478,7 +451,7 @@ ul Pilot = 13
 b Captureable = FALSE
 ul VariantNum = 0
 
-[Part15]
+[Part14]
 l ObjectWID = 21
 ul ObjectNumber = 200
 ul BaseColor = -1
@@ -505,7 +478,7 @@ ul Pilot = 14
 b Captureable = FALSE
 ul VariantNum = 0
 
-[Part16]
+[Part15]
 l ObjectWID = 22
 ul ObjectNumber = 144
 ul BaseColor = -1
@@ -532,7 +505,7 @@ ul Pilot = 15
 b Captureable = FALSE
 ul VariantNum = 0
 
-[Part17]
+[Part16]
 l ObjectWID = 23
 ul ObjectNumber = 144
 ul BaseColor = -1
@@ -559,7 +532,7 @@ ul Pilot = 16
 b Captureable = FALSE
 ul VariantNum = 0
 
-[Part18]
+[Part17]
 l ObjectWID = 24
 ul ObjectNumber = 144
 ul BaseColor = -1
@@ -586,7 +559,7 @@ ul Pilot = 17
 b Captureable = FALSE
 ul VariantNum = 0
 
-[Part19]
+[Part18]
 l ObjectWID = 25
 ul ObjectNumber = 144
 ul BaseColor = -1
@@ -613,7 +586,7 @@ ul Pilot = 18
 b Captureable = FALSE
 ul VariantNum = 0
 
-[Part20]
+[Part19]
 l ObjectWID = 26
 ul ObjectNumber = 144
 ul BaseColor = -1
@@ -640,7 +613,7 @@ ul Pilot = 19
 b Captureable = FALSE
 ul VariantNum = 0
 
-[Part21]
+[Part20]
 l ObjectWID = 27
 ul ObjectNumber = 45
 ul BaseColor = -1
@@ -667,7 +640,7 @@ ul Pilot = 20
 b Captureable = FALSE
 ul VariantNum = 0
 
-[Part22]
+[Part21]
 l ObjectWID = 28
 ul ObjectNumber = 45
 ul BaseColor = -1
@@ -694,7 +667,7 @@ ul Pilot = 21
 b Captureable = FALSE
 ul VariantNum = 0
 
-[Part23]
+[Part22]
 l ObjectWID = 29
 ul ObjectNumber = 45
 ul BaseColor = -1
@@ -721,7 +694,7 @@ ul Pilot = 22
 b Captureable = FALSE
 ul VariantNum = 0
 
-[Part24]
+[Part23]
 l ObjectWID = 30
 ul ObjectNumber = 45
 ul BaseColor = -1
@@ -748,7 +721,7 @@ ul Pilot = 23
 b Captureable = FALSE
 ul VariantNum = 0
 
-[Part25]
+[Part24]
 l ObjectWID = 31
 ul ObjectNumber = 874
 ul BaseColor = -16760704
@@ -775,7 +748,7 @@ ul Pilot = 24
 b Captureable = FALSE
 ul VariantNum = 0
 
-[Part26]
+[Part25]
 l ObjectWID = 32
 ul ObjectNumber = 874
 ul BaseColor = -16760704
@@ -802,7 +775,7 @@ ul Pilot = 25
 b Captureable = FALSE
 ul VariantNum = 0
 
-[Part27]
+[Part26]
 l ObjectWID = 33
 ul ObjectNumber = 874
 ul BaseColor = -16760704
@@ -829,7 +802,7 @@ ul Pilot = 26
 b Captureable = FALSE
 ul VariantNum = 0
 
-[Part28]
+[Part27]
 l ObjectWID = 34
 ul ObjectNumber = 874
 ul BaseColor = -16760704
@@ -856,7 +829,7 @@ ul Pilot = 27
 b Captureable = FALSE
 ul VariantNum = 0
 
-[Part29]
+[Part28]
 l ObjectWID = 35
 ul ObjectNumber = 16
 ul BaseColor = -1
@@ -883,7 +856,7 @@ ul Pilot = 28
 b Captureable = FALSE
 ul VariantNum = 0
 
-[Part30]
+[Part29]
 l ObjectWID = 36
 ul ObjectNumber = 16
 ul BaseColor = -1
@@ -910,7 +883,7 @@ ul Pilot = 29
 b Captureable = FALSE
 ul VariantNum = 0
 
-[Part31]
+[Part30]
 l ObjectWID = 37
 ul ObjectNumber = 16
 ul BaseColor = -1
@@ -937,7 +910,7 @@ ul Pilot = 30
 b Captureable = FALSE
 ul VariantNum = 0
 
-[Part32]
+[Part31]
 l ObjectWID = 38
 ul ObjectNumber = 16
 ul BaseColor = -1
@@ -964,7 +937,7 @@ ul Pilot = 31
 b Captureable = FALSE
 ul VariantNum = 0
 
-[Part33]
+[Part32]
 l ObjectWID = 39
 ul ObjectNumber = 16
 ul BaseColor = -1
@@ -991,7 +964,7 @@ ul Pilot = 32
 b Captureable = FALSE
 ul VariantNum = 0
 
-[Part34]
+[Part33]
 l ObjectWID = 40
 ul ObjectNumber = 16
 ul BaseColor = -1
@@ -1018,7 +991,7 @@ ul Pilot = 33
 b Captureable = FALSE
 ul VariantNum = 0
 
-[Part35]
+[Part34]
 l ObjectWID = 41
 ul ObjectNumber = 16
 ul BaseColor = -1
@@ -1045,7 +1018,7 @@ ul Pilot = 34
 b Captureable = FALSE
 ul VariantNum = 0
 
-[Part36]
+[Part35]
 l ObjectWID = 42
 ul ObjectNumber = 16
 ul BaseColor = -1
@@ -1072,7 +1045,7 @@ ul Pilot = 35
 b Captureable = FALSE
 ul VariantNum = 0
 
-[Part37]
+[Part36]
 l ObjectWID = 43
 ul ObjectNumber = 242
 ul BaseColor = -79310
@@ -1099,7 +1072,7 @@ ul Pilot = 36
 b Captureable = FALSE
 ul VariantNum = 0
 
-[Part38]
+[Part37]
 l ObjectWID = 44
 ul ObjectNumber = 242
 ul BaseColor = -79310
@@ -1126,7 +1099,7 @@ ul Pilot = 37
 b Captureable = FALSE
 ul VariantNum = 0
 
-[Part39]
+[Part38]
 l ObjectWID = 45
 ul ObjectNumber = 242
 ul BaseColor = -79310
@@ -1153,7 +1126,7 @@ ul Pilot = 38
 b Captureable = FALSE
 ul VariantNum = 0
 
-[Part40]
+[Part39]
 l ObjectWID = 46
 ul ObjectNumber = 242
 ul BaseColor = -79310
@@ -1180,7 +1153,7 @@ ul Pilot = 39
 b Captureable = FALSE
 ul VariantNum = 0
 
-[Part41]
+[Part40]
 l ObjectWID = 47
 ul ObjectNumber = 242
 ul BaseColor = -79310
@@ -1207,7 +1180,7 @@ ul Pilot = 40
 b Captureable = FALSE
 ul VariantNum = 0
 
-[Part42]
+[Part41]
 l ObjectWID = 48
 ul ObjectNumber = 242
 ul BaseColor = -79310
@@ -1234,7 +1207,7 @@ ul Pilot = 41
 b Captureable = FALSE
 ul VariantNum = 0
 
-[Part43]
+[Part42]
 l ObjectWID = 49
 ul ObjectNumber = 242
 ul BaseColor = -79310
@@ -1261,7 +1234,7 @@ ul Pilot = 42
 b Captureable = FALSE
 ul VariantNum = 0
 
-[Part44]
+[Part43]
 l ObjectWID = 50
 ul ObjectNumber = 242
 ul BaseColor = -79310
@@ -1288,7 +1261,7 @@ ul Pilot = 43
 b Captureable = FALSE
 ul VariantNum = 0
 
-[Part45]
+[Part44]
 l ObjectWID = 51
 ul ObjectNumber = 121
 ul BaseColor = -1
@@ -1315,7 +1288,7 @@ ul Pilot = 44
 b Captureable = FALSE
 ul VariantNum = 0
 
-[Part46]
+[Part45]
 l ObjectWID = 52
 ul ObjectNumber = 121
 ul BaseColor = -1
@@ -1342,7 +1315,7 @@ ul Pilot = 45
 b Captureable = FALSE
 ul VariantNum = 0
 
-[Part47]
+[Part46]
 l ObjectWID = 53
 ul ObjectNumber = 878
 ul BaseColor = -1
@@ -1369,7 +1342,7 @@ ul Pilot = 46
 b Captureable = FALSE
 ul VariantNum = 0
 
-[Part48]
+[Part47]
 l ObjectWID = 54
 ul ObjectNumber = 878
 ul BaseColor = -1
@@ -1396,7 +1369,7 @@ ul Pilot = 47
 b Captureable = FALSE
 ul VariantNum = 0
 
-[Part49]
+[Part48]
 l ObjectWID = 55
 ul ObjectNumber = 58
 ul BaseColor = -12363385
@@ -1423,7 +1396,7 @@ ul Pilot = 48
 b Captureable = FALSE
 ul VariantNum = 0
 
-[Part50]
+[Part49]
 l ObjectWID = 56
 ul ObjectNumber = 58
 ul BaseColor = -12363385
@@ -1450,7 +1423,7 @@ ul Pilot = 49
 b Captureable = FALSE
 ul VariantNum = 0
 
-[Part51]
+[Part50]
 l ObjectWID = 57
 ul ObjectNumber = 874
 ul BaseColor = -79310
@@ -1477,7 +1450,7 @@ ul Pilot = 50
 b Captureable = FALSE
 ul VariantNum = 0
 
-[Part52]
+[Part51]
 l ObjectWID = 58
 ul ObjectNumber = 47
 ul BaseColor = -79310
@@ -1504,7 +1477,7 @@ ul Pilot = 51
 b Captureable = FALSE
 ul VariantNum = 0
 
-[Part53]
+[Part52]
 l ObjectWID = 59
 ul ObjectNumber = 874
 ul BaseColor = -79310
@@ -1531,7 +1504,7 @@ ul Pilot = 52
 b Captureable = FALSE
 ul VariantNum = 0
 
-[Part54]
+[Part53]
 l ObjectWID = 60
 ul ObjectNumber = 47
 ul BaseColor = -79310
@@ -1558,7 +1531,7 @@ ul Pilot = 53
 b Captureable = FALSE
 ul VariantNum = 0
 
-[Part55]
+[Part54]
 l ObjectWID = 61
 ul ObjectNumber = 47
 ul BaseColor = -1
@@ -1585,7 +1558,7 @@ ul Pilot = 54
 b Captureable = FALSE
 ul VariantNum = 0
 
-[Part56]
+[Part55]
 l ObjectWID = 62
 ul ObjectNumber = 47
 ul BaseColor = -1
@@ -1612,7 +1585,7 @@ ul Pilot = 55
 b Captureable = FALSE
 ul VariantNum = 0
 
-[Part57]
+[Part56]
 l ObjectWID = 63
 ul ObjectNumber = 874
 ul BaseColor = -1
@@ -1639,7 +1612,7 @@ ul Pilot = 56
 b Captureable = FALSE
 ul VariantNum = 0
 
-[Part58]
+[Part57]
 l ObjectWID = 64
 ul ObjectNumber = 874
 ul BaseColor = -1
@@ -1666,7 +1639,7 @@ ul Pilot = 57
 b Captureable = FALSE
 ul VariantNum = 0
 
-[Part59]
+[Part58]
 l ObjectWID = 65
 ul ObjectNumber = 148
 ul BaseColor = -16760704
@@ -1693,7 +1666,7 @@ ul Pilot = 58
 b Captureable = FALSE
 ul VariantNum = 0
 
-[Part60]
+[Part59]
 l ObjectWID = 66
 ul ObjectNumber = 148
 ul BaseColor = -16760704
@@ -1720,7 +1693,7 @@ ul Pilot = 59
 b Captureable = FALSE
 ul VariantNum = 0
 
-[Part61]
+[Part60]
 l ObjectWID = 67
 ul ObjectNumber = 148
 ul BaseColor = -16760704
@@ -1747,7 +1720,7 @@ ul Pilot = 60
 b Captureable = FALSE
 ul VariantNum = 0
 
-[Part62]
+[Part61]
 l ObjectWID = 68
 ul ObjectNumber = 148
 ul BaseColor = -16760704
@@ -1774,7 +1747,7 @@ ul Pilot = 61
 b Captureable = FALSE
 ul VariantNum = 0
 
-[Part63]
+[Part62]
 l ObjectWID = 69
 ul ObjectNumber = 219
 ul BaseColor = 16777215
@@ -1801,7 +1774,7 @@ ul Pilot = 62
 b Captureable = FALSE
 ul VariantNum = 0
 
-[Part64]
+[Part63]
 l ObjectWID = 70
 ul ObjectNumber = 878
 ul BaseColor = -1
@@ -1828,7 +1801,7 @@ ul Pilot = 63
 b Captureable = FALSE
 ul VariantNum = 0
 
-[Part65]
+[Part64]
 l ObjectWID = 7
 ul ObjectNumber = 50
 ul BaseColor = -32768
@@ -1855,7 +1828,7 @@ ul Pilot = 64
 b Captureable = FALSE
 ul VariantNum = 0
 
-[Part66]
+[Part65]
 l ObjectWID = 8
 ul ObjectNumber = 246
 ul BaseColor = -32768
@@ -1882,7 +1855,7 @@ ul Pilot = 65
 b Captureable = FALSE
 ul VariantNum = 0
 
-[Part67]
+[Part66]
 l ObjectWID = 9
 ul ObjectNumber = 246
 ul BaseColor = -32768
@@ -1909,7 +1882,7 @@ ul Pilot = 66
 b Captureable = FALSE
 ul VariantNum = 0
 
-[Part68]
+[Part67]
 l ObjectWID = 10
 ul ObjectNumber = 246
 ul BaseColor = -32768
@@ -1936,7 +1909,7 @@ ul Pilot = 67
 b Captureable = FALSE
 ul VariantNum = 0
 
-[Part69]
+[Part68]
 l ObjectWID = 11
 ul ObjectNumber = 50
 ul BaseColor = -32768
@@ -1963,7 +1936,7 @@ ul Pilot = 68
 b Captureable = FALSE
 ul VariantNum = 0
 
-[Part70]
+[Part69]
 l ObjectWID = 12
 ul ObjectNumber = 548
 ul BaseColor = -32768
@@ -1987,6 +1960,33 @@ ul ControlType = 2
 ul ControlDataType = 2
 st ObjectProfile = "pv20500"
 ul Pilot = 69
+b Captureable = FALSE
+ul VariantNum = 0
+
+[Part70]
+l ObjectWID = 13
+ul ObjectNumber = 548
+ul BaseColor = -32768
+ul HighlightColor1 = -1
+ul HighlightColor2 = -1
+l Active = 1
+l Exists = 1
+b Destroyed = FALSE
+f PositionX = 6549.333984
+f PositionY = 4927.999512
+f PositionZ = -1.000000
+f Velocity = 0.000000
+f Rotation = -90.000000
+l GestureId = 2
+c Alignment = 0
+c TeamId = 0
+l CommanderId = 2
+l SquadId = 120
+c MyIcon = 0
+ul ControlType = 2
+ul ControlDataType = 2
+st ObjectProfile = "pv20500"
+ul Pilot = 70
 b Captureable = FALSE
 ul VariantNum = 0
 
