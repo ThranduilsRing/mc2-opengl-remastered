@@ -552,8 +552,9 @@ void LoadScreen::render( int x, int y )
 	//ignoring animation information...
 	LogisticsScreen::render();
 
-	int curX = animObjects[0].animInfo.getXDelta();
-	int curY = animObjects[0].animInfo.getYDelta();
+	// MCO's mcl_loadingscreen.fit has no AnimObjects: animObjects is null, so no slide offset.
+	int curX = animObjectsCount ? (int)animObjects[0].animInfo.getXDelta() : 0;
+	int curY = animObjectsCount ? (int)animObjects[0].animInfo.getYDelta() : 0;
 	text.move( x + curX, y + curY );
 	text.render( );
 	text.move( -x - curX, -y - curY);
