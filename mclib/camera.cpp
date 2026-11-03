@@ -372,9 +372,20 @@ long Camera::init (FitIniFilePtr cameraFile )
 	{
 		// A save's camera block already carries the scaled colours (Camera::save marks it).
 		bool profileApplied = false;
-		if (cameraFile->readIdBoolean("NightProfileApplied", profileApplied) != NO_ERR)
+		const bool fromSave = cameraFile->readIdBoolean("NightProfileApplied", profileApplied) == NO_ERR;
+		if (!fromSave)
 			profileApplied = false;
 		applyMissionLightProfile(*this, profileApplied);
+		// The day/night branch above reset the live colours to the day set; a save holds the colours in force when it was written.
+		if (fromSave)
+		{
+			cameraFile->readIdUChar("LightRed", lightRed);
+			cameraFile->readIdUChar("LightGreen", lightGreen);
+			cameraFile->readIdUChar("LightBlue", lightBlue);
+			cameraFile->readIdUChar("AmbientRed", ambientRed);
+			cameraFile->readIdUChar("AmbientGreen", ambientGreen);
+			cameraFile->readIdUChar("AmbientBlue", ambientBlue);
+		}
 	}
 
 	result = cameraFile->readIdFloat("NewScale",newScaleFactor);
