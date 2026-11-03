@@ -3491,6 +3491,20 @@
    "count": 1
   },
   {
+   "tag": "FIRST60",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "n",
+    "avg_ms",
+    "p50_ms",
+    "p99_ms",
+    "max_ms",
+    "first_ms"
+   ],
+   "count": 1
+  },
+  {
    "tag": "FONT_FALLBACK",
    "ver": 1,
    "stream": "log",
@@ -10072,6 +10086,15 @@
    "count": 1
   },
   {
+   "tag": "VIA_MENU",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "event"
+   ],
+   "count": 1
+  },
+  {
    "tag": "VIDEO",
    "ver": -1,
    "stream": "stdout",
@@ -11767,6 +11790,7 @@
   "EDITOR_PANEL_OPERATION",
   "EDITOR_SHELL",
   "ESMOKE",
+  "FIRST60",
   "GLP",
   "GPUPROPS",
   "HEARTBEAT",
@@ -11775,6 +11799,7 @@
   "LIGHT_CONTRACT",
   "LINK_GUARD",
   "MARAUDER",
+  "MISSION",
   "MISSION_OBJECTIVES",
   "MISSION_VERDICT",
   "MOD_HEALTH",
@@ -11810,6 +11835,7 @@
   "VERIFY",
   "VFX_",
   "VFX_BIRTH",
+  "VIA_MENU",
   "VIDEO",
   "VISUAL_CAPTURE",
   "VK_CAPABILITY",
