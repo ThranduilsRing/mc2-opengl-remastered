@@ -123,3 +123,12 @@ void stopStartupPreload()
 	if (g_worker.joinable())
 		g_worker.join();
 }
+
+namespace {
+// Exit paths that skip TerminateGameEngine (STOP/fatal, exit()) would destroy a joinable g_worker and
+// call std::terminate. Declared after g_worker, so this guard is destroyed first; the worker checks
+// g_stop every 1 MiB chunk, so the join is short.
+struct PreloadExitGuard {
+	~PreloadExitGuard() { stopStartupPreload(); }
+} g_preloadExitGuard;
+} // namespace
