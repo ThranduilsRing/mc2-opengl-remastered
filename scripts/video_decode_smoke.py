@@ -15,6 +15,9 @@ import subprocess
 import sys
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import console_child  # noqa: E402
+
 ROOT = Path(__file__).resolve().parents[1]
 MISSIONS = ("mc2_01", "mc2_02")
 VIOLATION = re.compile(r"\[SIM_OVERLAP v1\] VIOLATION")
@@ -36,7 +39,8 @@ def run_mission(exe: str, mission: str, duration: int) -> tuple[bool, str]:
     env.pop("MC2_SIM_OVERLAP", None)   # default ON is the point
     cmd = [sys.executable, str(ROOT / "scripts" / "run_smoke.py"), "--mission", mission, "--duration", str(duration),
            "--keep-logs", "--exe", exe]
-    proc = subprocess.run(cmd, cwd=ROOT, env=env, capture_output=True, text=True, errors="replace")
+    proc = subprocess.run(cmd, cwd=ROOT, env=env, capture_output=True, text=True, errors="replace",
+                          **console_child.child_kwargs(redirected=True))
     text = proc.stdout + "\n" + proc.stderr
     m = re.search(r"\[runner\] artifacts: (.+)", text)
     if m:
