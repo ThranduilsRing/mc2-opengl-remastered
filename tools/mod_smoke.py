@@ -891,9 +891,21 @@ FRONT_END_MODS = ('MechCommanderOmnitech', 'MCO-Carver5')
 FRONT_END_SECS = 150
 
 
-def front_end_walk(staged: Path, folder: str, secs: int = FRONT_END_SECS) -> dict:
+def link_mod_layers(staged: Path, layers) -> None:
+    """The walk resolves its campaign from <install>/mods/<name>/mod.json; a staged mission install carries the
+    mod overlaid on its root instead, so junction the mod layers (cached copies) in under mods/."""
+    mods = staged / 'mods'
+    mods.mkdir(exist_ok=True)
+    for layer in layers:
+        dest = mods / layer.name
+        if not dest.exists():
+            subprocess.run(['cmd', '/c', 'mklink', '/J', str(dest), str(layer)], capture_output=True, check=False)
+
+
+def front_end_walk(staged: Path, folder: str, secs: int = FRONT_END_SECS, layers=()) -> dict:
     """scripts/sweep_campaign.py walk (MC2_BOOT_TO_BAY): front end, briefing, mech lab/bay, pilot ready,
     mission launch, autowin. Passes when a mission was launched and completed with no crash."""
+    link_mod_layers(staged, layers)
     cmd = [sys.executable, str(ROOT / 'scripts' / 'sweep_campaign.py'), folder, str(secs), str(staged)]
     print('[mod_smoke] front-end walk:', ' '.join(cmd), flush=True)
     try:
@@ -1071,7 +1083,7 @@ def battery(args) -> int:
                 break
         if (folder in FRONT_END_MODS and getattr(args, 'front_end', True)
                 and not (args.fail_fast and results and result_word(results[-1]) != 'PASS')):
-            fe = front_end_walk(staged, folder)
+            fe = front_end_walk(staged, folder, layers=layers)
             fe.update({'mod': display, 'mission': 'front-end walk', 'mission_source': 'sweep_campaign',
                        'staged': str(staged), 'log': str(staged / 'smoke.log'), 'warning_excess': {}})
             print('[mod_smoke]', display, 'front-end', result_word(fe), fe.get('note', ""), flush=True)
