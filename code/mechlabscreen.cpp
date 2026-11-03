@@ -24,6 +24,7 @@ MechLabScreen.cpp			: Implementation of the MechLabScreen component.
 // Interactive cheat gate
 // The launcher writes these into launcher_env.json, which main() applies after static initialization, so they
 // are read at first use rather than in a namespace-scope initializer.
+static unsigned s_scratchCellA = 56;	// SCRATCH, remove before final
 static bool cheatInfiniteMoney() { static const bool on = mc2::gate::get<"MC2_CHEAT_INFINITE_MONEY">(); return on; }
 #include"chatwindow.h"
 #include"multplyr.h"
@@ -366,7 +367,7 @@ void MechLabScreen::begin()
 			if ( mechCamera.hasObject() )
 			{
 				// SCRATCH tuning knob (remove before final): k,yaw,pitch,fx,fy,fillP,fillY,rimP,rimY
-				static float t[9] = { 100.f, -35.f, 30.f, 5.f, 10.f, 20.f, 0.f, 20.f, 180.f };
+				static float t[10] = { 100.f, -35.f, 30.f, 5.f, 10.f, 20.f, 0.f, 20.f, 180.f, 56.f };
 				static bool tRead = false;
 				if ( !tRead )
 				{
@@ -374,7 +375,7 @@ void MechLabScreen::begin()
 					if ( const char* e = std::getenv( "MC2_MECHLAB_TUNE" ) )
 					{
 						int n = 0;
-						for ( const char* p = e; *p && n < 9; n++ )
+						for ( const char* p = e; *p && n < 10; n++ )
 						{
 							t[n] = static_cast<float>( std::atof( p ) );
 							while ( *p && *p != ',' ) p++;
@@ -383,7 +384,7 @@ void MechLabScreen::begin()
 					}
 				}
 				mechCamera.setFramedPose( t[0], t[1], t[2], t[3], t[4] );
-				mechCamera.setFramedLights( true, t[5], t[6], t[7], t[8] );
+				mechCamera.setFramedLights( true, t[5], t[6], t[7], t[8] ); s_scratchCellA = static_cast<unsigned>( t[9] );
 			}
 		}
 
@@ -1014,7 +1015,7 @@ void MechLabScreen::render(int xOffset, int yOffset)
 			for ( int i = 0; i < pVariant->getComponentAreaWidth(); i++ )
 			{
 				// 3D mech behind: cell art faint so the mech reads through the grid.
-				payloadIcon.setColor( gridBridge ? 0x38ffffff : 0xffffffff );
+				payloadIcon.setColor( gridBridge ? ( ( s_scratchCellA << 24 ) | 0xffffffu ) : 0xffffffff );
 				payloadIcon.render( x + xOffset, y + yOffset );
 				x += payloadIcon.width();	
 			}
