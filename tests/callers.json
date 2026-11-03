@@ -1759,7 +1759,7 @@
       "callers_by_basename": [
         {
           "path": "CMakeLists.txt",
-          "line": 914,
+          "line": 915,
           "evidence": "cmake command",
           "reference": "${CMAKE_SOURCE_DIR}/scripts/check-shader-schema.sh",
           "text": "COMMAND ${BASH_EXECUTABLE} ${CMAKE_SOURCE_DIR}/scripts/check-shader-schema.sh"
@@ -3494,7 +3494,7 @@
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 47,
+          "line": 48,
           "evidence": "import",
           "reference": "console_child",
           "text": "import console_child  # noqa: E402  (windowless console children)"
@@ -4239,7 +4239,7 @@
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 309,
+          "line": 310,
           "evidence": "import_module",
           "reference": "deploy_payload",
           "text": "return importlib.import_module('deploy_payload')"
@@ -4775,6 +4775,13 @@
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate  # noqa: E402"
+        },
+        {
+          "path": "scripts/tests/test_gate_farm.py",
+          "line": 12,
+          "evidence": "import",
+          "reference": "merge_gate",
+          "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_gate_keep_candidate.py",
@@ -5573,7 +5580,7 @@
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 849,
+          "line": 850,
           "evidence": "command",
           "reference": "scripts/run_smoke.py",
           "text": "proc = subprocess.run(cmd, cwd=str(ROOT), capture_output=True,"
@@ -6185,7 +6192,7 @@
         },
         {
           "path": "scripts/smoke_lib/via_menu.py",
-          "line": 132,
+          "line": 136,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from . import host_lease"
@@ -6876,7 +6883,7 @@
         },
         {
           "path": "scripts/smoke_lib/via_menu.py",
-          "line": 132,
+          "line": 136,
           "evidence": "import",
           "reference": "scripts.smoke_lib.host_lease",
           "text": "from . import host_lease"
@@ -7121,6 +7128,13 @@
           "evidence": "import",
           "reference": "scripts.smoke_lib.manifest",
           "text": "from scripts.smoke_lib import baselines, manifest, nofocus, render_options_pin, render_resolution, report"
+        },
+        {
+          "path": "scripts/tests/test_gate_farm.py",
+          "line": 22,
+          "evidence": "import",
+          "reference": "scripts.smoke_lib.manifest",
+          "text": "from scripts.smoke_lib.manifest import parse_manifest"
         },
         {
           "path": "scripts/tests/test_install_hygiene.py",
@@ -7661,7 +7675,7 @@
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 49,
+          "line": 50,
           "evidence": "import",
           "reference": "stage_root",
           "text": "import stage_root as stages  # noqa: E402  (default staging roots on E:, free-space preflight)"
@@ -7700,7 +7714,15 @@
       "path": "scripts/sweep_campaign.py",
       "basename": "sweep_campaign.py",
       "stem": "sweep_campaign",
-      "callers_by_basename": [],
+      "callers_by_basename": [
+        {
+          "path": "tools/mod_smoke.py",
+          "line": 913,
+          "evidence": "command",
+          "reference": "scripts/sweep_campaign.py",
+          "text": "proc = subprocess.run(cmd, cwd=str(ROOT), capture_output=True, text=True, timeout=secs + 120,"
+        }
+      ],
       "callers_by_stem": []
     },
     {
@@ -13046,14 +13068,14 @@
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 599,
+          "line": 600,
           "evidence": "import_module",
           "reference": "fst",
           "text": "fst_lib = importlib.import_module('fst')"
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 635,
+          "line": 636,
           "evidence": "import_module",
           "reference": "fst",
           "text": "fst_lib = importlib.import_module('fst')"
@@ -13125,7 +13147,7 @@
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 474,
+          "line": 475,
           "evidence": "import",
           "reference": "mc2x_import",
           "text": "from mc2x_import import fst as fst_lib"
@@ -13392,35 +13414,35 @@
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 351,
+          "line": 352,
           "evidence": "import",
           "reference": "fst_listing",
           "text": "import fst_listing"
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 473,
+          "line": 474,
           "evidence": "import",
           "reference": "fst_listing",
           "text": "import fst_listing"
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 515,
+          "line": 516,
           "evidence": "import",
           "reference": "fst_listing",
           "text": "import fst_listing"
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 617,
+          "line": 618,
           "evidence": "import",
           "reference": "fst_listing",
           "text": "import fst_listing"
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 636,
+          "line": 637,
           "evidence": "import",
           "reference": "fst_listing",
           "text": "import fst_listing"
@@ -17117,7 +17139,7 @@
       "callers_by_basename": [
         {
           "path": "CMakeLists.txt",
-          "line": 892,
+          "line": 893,
           "evidence": "cmake command",
           "reference": "${CMAKE_SOURCE_DIR}/tools/shader_reflect/reflect.py",
           "text": "COMMAND ${Python3_EXECUTABLE}"
