@@ -219,7 +219,7 @@ private:
     uint64_t cacheLoadKey_ = 0, cacheLoadInputKey_ = 0;   // inputKey: the mask key the content key was computed for
     uint64_t contentKey_ = 0, shaderContentHash_ = 0;
     uint64_t geomHash_ = 0; bool geomHashValid_ = false;   // mission-static prop geometry hash (key part 2), filled at prewarm
-    bool geometryHash(const ShadowBakeInputs& in, uint64_t& out);
+    std::optional<uint64_t> geometryHash(const ShadowBakeInputs& in);
     std::array<uint64_t, 6> keyParts_{};   // heights, casters, geometry, alpha cut-outs, scalars, versions
     bool warm_ = false, readbackPending_ = false;
     double warmReadMs_ = 0.0;

@@ -217,9 +217,8 @@ bool ShadowBake::prewarmProducts() {
 
 bool ShadowBake::prewarmTypeBounds(const ShadowBakeInputs& in) {
     if (!inited_ || !typeBounds_.empty() || in.vbo == VK_NULL_HANDLE) return true;
-    uint64_t geom = 0;
     ZoneScopedN("ShadowBake.PrewarmGeomHash");
-    (void)geometryHash(in, geom);
+    (void)geometryHash(in);
     return computeTypeBounds(in);
 }
 
