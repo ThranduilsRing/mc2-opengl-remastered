@@ -244,3 +244,10 @@ def test_mad_flags_declared_view_needs_a_numeric_row_under_its_bound():
     assert gate.mad_flags('a | 0.60 | 0\n', {'a': 0.5}) == ['a=0.60 (declared bound 0.5)']   # declared-over-bound
     assert gate.mad_flags('a | 0.40 | 0\n', {'a'}) == []   # a bare set gets the default 0.5
     assert gate.parse_declared_views(['a', 'b=1.5']) == {'a': 0.5, 'b': 1.5}
+
+
+def test_declared_view_bad_bound_is_an_argparse_error(capsys):
+    with pytest.raises(SystemExit) as exc:
+        gate.main(['--declared-view', 'a=high'])
+    assert exc.value.code == 2
+    assert 'not a number' in capsys.readouterr().err
