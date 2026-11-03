@@ -100,7 +100,7 @@ void main() {
     // keep the ported lines textually identical to the GL source.
     if (uP.visualMode == 2) {
         int u_visualSide = uT.visualSide;
-        float u_visualDisplaceFar = uT.visualDisplaceFar;
+        float u_visualDisplaceFar = uT.visualDisplaceFar * hiresEdgeW(mapX * 4, mapY * 4);  // TERRAIN-HIRES-NEAR-1 map-border fade
         float hv;
         int fxV, fyV;
         int  Sc2 = 0, along2 = 0; bool alongX2 = true;

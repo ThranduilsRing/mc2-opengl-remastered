@@ -89,7 +89,7 @@ void main() {
     // for a displaced block's skirt. Same VERBATIM non-stitched core as the main VS.
     if (uP.visualMode == 2 && isSkirtFlag == 0) {
         int u_visualSide = uT.visualSide;
-        float u_visualDisplaceFar = uT.visualDisplaceFar;
+        float u_visualDisplaceFar = uT.visualDisplaceFar * hiresEdgeW(mapX * 4, mapY * 4);  // TERRAIN-HIRES-NEAR-1 map-border fade
         float hv;
         int fxV, fyV;
         int  Sc2 = 0, along2 = 0; bool alongX2 = true;

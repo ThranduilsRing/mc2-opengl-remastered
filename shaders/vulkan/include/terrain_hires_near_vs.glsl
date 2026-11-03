@@ -10,6 +10,16 @@
 
 float hiresBlendW() { return clamp(uT.visualDisplaceFar, 0.0, 1.0); }
 
+// Map-border fade (fine coords): the bake's border rows do not follow the coarse map's
+// edge falloff, so the outermost 2 coarse cells ramp back to the coarse surface and the
+// border row is exactly coarse (no wall at the map edge). Mode-2 bands use the same
+// weight at their vertices, so corners shared with LOD0 still match.
+float hiresEdgeW(int fx, int fy) {
+    int maxF = (uT.mapSide - 1) * 4;
+    int d = min(min(fx, fy), min(maxF - fx, maxF - fy));
+    return clamp(float(d) * 0.125, 0.0, 1.0);
+}
+
 float hiresFineAt(int fx, int fy) {
     fx = clamp(fx, 0, uT.visualSide - 1);
     fy = clamp(fy, 0, uT.visualSide - 1);
@@ -20,7 +30,7 @@ float hiresFineAt(int fx, int fy) {
 float hiresCornerH(int cx, int cy) {
     cx = clamp(cx, 0, uT.mapSide - 1);
     cy = clamp(cy, 0, uT.mapSide - 1);
-    return mix(sampleH(cx, cy), hiresFineAt(cx * 4, cy * 4), hiresBlendW());
+    return mix(sampleH(cx, cy), hiresFineAt(cx * 4, cy * 4), hiresBlendW() * hiresEdgeW(cx * 4, cy * 4));
 }
 
 float hiresNearHeight(ivec2 lo, bool stitch, out int fx, out int fy) {
@@ -58,7 +68,7 @@ float hiresNearHeight(ivec2 lo, bool stitch, out int fx, out int fy) {
     float h01 = sampleH(cx, cy + 1), h11 = sampleH(cx + 1, cy + 1);
     float hc = (v >= u) ? h00 + (h11 - h01) * u + (h01 - h00) * v
                         : h00 + (h10 - h00) * u + (h11 - h10) * v;
-    return mix(hc, hiresFineAt(fx, fy), hiresBlendW());
+    return mix(hc, hiresFineAt(fx, fy), hiresBlendW() * hiresEdgeW(fx, fy));
 }
 
 // Clip position of a mode-1 vertex; `drop` pulls skirt bottoms below the surface.
