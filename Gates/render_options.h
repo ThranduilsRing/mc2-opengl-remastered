@@ -56,6 +56,9 @@ struct RenderOptions {
     // 2 full (256 decals).
     int impactDecals = 2;
 
+    // Texture quality tier (docs/texture-tiers-overlay-pbr-design.md): -1 Auto (by device VRAM, resolved by textureTier()), 0 Low (stock
+    // resolution), 1 Medium, 2 High, 3 Ultra.
+    int textureQuality = -1;
     bool operator==(const RenderOptions&) const = default;
 };
 
@@ -98,6 +101,7 @@ inline constexpr Option kOptions[] = {
     detail::boolOpt ("VfxLitParticles",               &RenderOptions::vfxLitParticles),
     detail::longOpt ("ImpactDecals",                  &RenderOptions::impactDecals, 0, 2),
     detail::boolOpt ("StockOverlayConcrete",          &RenderOptions::stockOverlayConcrete),
+    detail::longOpt ("TextureQuality",                &RenderOptions::textureQuality, -1, 3),
 };
 
 inline constexpr std::size_t kOptionCount = sizeof(kOptions) / sizeof(kOptions[0]);
@@ -245,6 +249,19 @@ inline const RenderOptions& current(std::source_location where = std::source_loc
     }
     return g_current;
 }
+// Device-local VRAM the renderer planned against (bytes), published once by the Vulkan device init; 0 = unknown (no device yet).
+inline unsigned long long g_deviceVramBytes = 0;
+// Resolved texture tier 0 Low .. 3 Ultra. Auto (-1) picks by VRAM; unknown VRAM or <= 512 MB is Low (the potato floor: stock resolution, no
+// overlay normal maps). Pure function of the option and g_deviceVramBytes so the harness can test it.
+inline int resolveTextureTier(int option, unsigned long long vramBytes) {
+    if (option >= 0 && option <= 3) return option;
+    const unsigned long long mib = vramBytes >> 20;
+    if (mib <= 512) return 0;
+    if (mib < 2048) return 1;
+    if (mib < 6144) return 2;
+    return 3;
+}
+inline int textureTier() { return resolveTextureTier(current().textureQuality, g_deviceVramBytes); }
 // Legacy launcher Low used ShadowQuality=0. Keep that preset on the lean path too.
 inline bool lowCost() { return current().baseQuality < 2 || current().shadowQuality == 0; }
 inline bool          g_publishChanged = false;

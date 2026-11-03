@@ -47,6 +47,7 @@
 
 #include"platform_windows.h"
 #include "Gates/gate.h"
+#include "Gates/render_options.h"
 #include "mc2_diag_verbose.h"
 #include "mc2fmt.h"
 #include "Gates/gate_cold.h"
@@ -72,32 +73,18 @@ int TERRAIN_TXM_SIZE = 64;
 // one-shot warning (never crash on a bad env var).
 int MC2_OverlayTileHiresSize (void)
 {
-	static int s_size = -1;
-	if (s_size < 0)
+	// TEXTURE-TIER: the largest overlay tile edge the player's texture tier allows (Gates/render_options.h textureTier()):
+	// Low = stock (0, legacy path), Medium 128, High 256, Ultra 1024. initOverlay() walks the ladder from this edge down per
+	// file, so a 512 or 1024 set is picked up without any env var. MC2_OVERLAY_TILE_HIRES=0 stays as the kill-switch.
+	static int s_off = -1;
+	if (s_off < 0)
 	{
-		s_size = 0;
 		const std::string hiresStr = mc2::gate::str<"MC2_OVERLAY_TILE_HIRES">();
-		const char* v = hiresStr.c_str();
-		if (v[0] && !(v[0] == '0' && v[1] == 0))
-		{
-			long req = (v[0] == '1' && v[1] == 0) ? 256 : atol(v);
-			const bool pow2 = (req > 0) && ((req & (req - 1)) == 0);
-			if (pow2 && req >= 128 && req <= 1024)
-			{
-				s_size = static_cast<int>(req);
-				if (mc2DiagVerbose()) {
-					mc2::fmt::print_out("[OVERLAY_TILE_HIRES v1] enabled tileEdge={} dir={}Overlays (per-file fallback to {}Overlays)\n",
-						s_size, s_size, TERRAIN_TXM_SIZE);
-				}
-			}
-			else
-			{
-				printf("[OVERLAY_TILE_HIRES v1] IGNORED MC2_OVERLAY_TILE_HIRES='%s' (want 1 or pow2 in [128,1024]) -- legacy 64px path\n", v);
-			}
-			fflush(stdout);
-		}
+		s_off = (hiresStr == "0") ? 1 : 0;
 	}
-	return s_size;
+	if (s_off) return 0;
+	static const int kTierEdge[4] = { 0, 128, 256, 1024 };
+	return kTierEdge[mc2::options::textureTier()];
 }
 
 constexpr int MAX_MASK_NUM = 14;
@@ -892,15 +879,19 @@ long TerrainTextures::initOverlay (long overlayNum, long txmNum, char *txmName)
 		bool useHires = false;
 		if (hiresEdge > 0)
 		{
-			char hiresPath[512];
-			mc2::fmt::to_buf(hiresPath,"{}{:d}Overlays" PATH_SEPARATOR "",mc2::fmt::safe(texturePath),mc2::fmt::as_i32(hiresEdge));
-			hiresName.init(hiresPath,tmpy,".tga");
-
-			File probe;
-			if (probe.open(hiresName) == NO_ERR)
+			// Ladder: tier max edge down to the first power of two above the base edge; first file present wins.
+			for (int edge = hiresEdge; edge >= 128 && edge > TERRAIN_TXM_SIZE && !useHires; edge >>= 1)
 			{
-				useHires = true;
-				probe.close();
+				char hiresPath[512];
+				mc2::fmt::to_buf(hiresPath,"{}{:d}Overlays" PATH_SEPARATOR "",mc2::fmt::safe(texturePath),mc2::fmt::as_i32(edge));
+				hiresName.init(hiresPath,tmpy,".tga");
+
+				File probe;
+				if (probe.open(hiresName) == NO_ERR)
+				{
+					useHires = true;
+					probe.close();
+				}
 			}
 		}
 		const char* chosenName = useHires ? static_cast<const char*>(hiresName) : static_cast<const char*>(fileName);

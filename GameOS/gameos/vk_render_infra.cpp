@@ -197,6 +197,8 @@ void init(VkDevice device, VkPhysicalDevice physical) {
     for(uint32_t i=0;i<mp.memoryHeapCount;++i) if(mp.memoryHeaps[i].flags&VK_MEMORY_HEAP_DEVICE_LOCAL_BIT)
         available+=RenderCore::gpuHeapAvailable(mp.memoryHeaps[i].size,memoryBudget?mb.heapBudget[i]:0,memoryBudget?mb.heapUsage[i]:0,memoryBudget,uma);
     s.physicalBudget=RenderCore::gpuBudget(available,UINT64_MAX);
+    mc2::options::g_deviceVramBytes=available;   // texture tier Auto (Gates/render_options.h)
+    std::fprintf(stderr,"[TEXTURE_TIER] vram_mib=%llu option=%d tier=%d\n",(unsigned long long)(available>>20),mc2::options::current().textureQuality,mc2::options::textureTier());
     s.budget=std::min(s.physicalBudget,RenderCore::gpuResidencyPolicy(mc2::options::current().shadowQuality).total);
     // Diagnostic clamp only: it cannot raise either the physical or preset budget.
     const int mbOverride=mc2::gate::get<"MC2_GPU_BUDGET_MB">();
