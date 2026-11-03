@@ -3,6 +3,8 @@
 #include <algorithm>
 #include "gos_mech_batcher_internal.h"
 #include "mc2fmt.h"
+#include "diagnostic_trace.h"
+#include <chrono>
 
 
 // ---------------------------------------------------------------------------
@@ -475,7 +477,11 @@ void GpuMechBatcher::finalizePending() {
     s_lateStagedCount   = 0;
     s_pendingLateTypes  = false;
     s_geometryFinalized = false;   // re-open the guard so finalizeGeometry runs
+    const auto rebuildT0 = std::chrono::steady_clock::now();
     finalizeGeometry();            // rebuilds VBO/IBO/VAO from full retained staging
+    if (mc2_diag::tagRequested("SUPPORT_PRELOAD_LATE"))
+        mc2::fmt::print_out("[SUPPORT_PRELOAD_LATE v1] late_types={:d} rebuild_ms={:.3f}\n", mc2::fmt::as_u32(lateAdded),
+            std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - rebuildT0).count());
 
     // The rebuild above repopulates s_packets with new indices/order, so the feed snapshots (run firstIndex values
     // of the old set) are stale: the geometry generation bump already makes the feeds decline them until the next
