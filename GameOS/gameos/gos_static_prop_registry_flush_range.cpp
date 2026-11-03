@@ -195,7 +195,9 @@ void flushLightRowDiag(uint64_t s_diag_flush_calls, uint32_t regIdx, RecipeRange
         }
         if (zlrClass != static_light_row::kHealthy) {
             s_zlr_instances += rng.count;
-            if (!s_zlr_firstShown) {
+            // Quiet by default (W106): the counters above are always collected; MC2_DIAG_TAGS=STATIC_LIGHT_ROW prints the lines.
+            static const bool s_zlr_print = mc2_diag::tagRequested("STATIC_LIGHT_ROW");
+            if (s_zlr_print && !s_zlr_firstShown) {
                 s_zlr_firstShown = true;
                 mc2::fmt::print_err("[STATIC_LIGHT_ROW v1] event=zero_row_reached_gpu class={} regIdx={:d} typeID={:d} leaves={:d} lightIdx={:d} numLights={:d} tableCount={:d} rngLightIdx={:d} multiCache={:d}\n", mc2::fmt::safe(static_light_row::className(zlrClass)), mc2::fmt::as_u32(regIdx), mc2::fmt::as_u32(s_recipes[rng.first].typeID), mc2::fmt::as_u32(rng.count), mc2::fmt::as_u32(freshLightIdx), mc2::fmt::as_i32(zlrNumLights), mc2::fmt::as_u32(mc2::vkLights::active() ? mc2::vkLights::getLightStructCount() : 0u), mc2::fmt::as_u32(rng.lightDataIndex), mc2::fmt::as_u32(rng.multi()->getCachedGpuLightIndex()));
                 fflush(stderr);
@@ -204,7 +206,8 @@ void flushLightRowDiag(uint64_t s_diag_flush_calls, uint32_t regIdx, RecipeRange
         // Periodic census on the same cadence as the other flush summaries so
         // a run that never trips the first-hit line still reports a clean 0.
         // 2026-10-05: census only once something has been counted (default build stays quiet).
-        if ((s_diag_flush_calls % 300) == 0 &&
+        static const bool s_zlr_censusPrint = mc2_diag::tagRequested("STATIC_LIGHT_ROW");
+        if (s_zlr_censusPrint && (s_diag_flush_calls % 300) == 0 &&
             (s_zlr_sentinel | s_zlr_outOfRange | s_zlr_emptyRow | s_zlr_instances) != 0) {
             mc2::fmt::print_err("[STATIC_LIGHT_ROW v1] event=census frame={:d} sentinel={:d} out_of_range={:d} empty_row={:d} bad_leaves={:d}\n", mc2::fmt::as_u64(static_cast<unsigned long long>(s_diag_flush_calls)), mc2::fmt::as_u64(static_cast<unsigned long long>(s_zlr_sentinel)), mc2::fmt::as_u64(static_cast<unsigned long long>(s_zlr_outOfRange)), mc2::fmt::as_u64(static_cast<unsigned long long>(s_zlr_emptyRow)), mc2::fmt::as_u64(static_cast<unsigned long long>(s_zlr_instances)));
             fflush(stderr);

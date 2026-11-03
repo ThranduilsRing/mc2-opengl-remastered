@@ -8745,6 +8745,17 @@
    "stream": "stdout",
    "keys": [
     "event",
+    "sim_s",
+    "need_s"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SMOKE",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "event",
     "stem",
     "source"
    ],

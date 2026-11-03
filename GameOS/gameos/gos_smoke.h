@@ -51,6 +51,9 @@ double fixedClockSeconds();
 // No-op when the flag is off.
 void fixedTimestepOnSimFrame(double scenarioTimeSeconds);
 
+// Reports the mission sim clock every tick it advances; shouldQuit() waits for enough sim time.
+void onSimTick(double scenarioTimeSeconds);
+
 // Parse argv and env. Call exactly once, before GetGameOSEnvironment.
 // On any fatal parse error (e.g. --mission absent when MC2_SMOKE_MODE=1),
 // prints "[SMOKE v1] event=summary result=fail reason=argv_error ..." and exits 2.
