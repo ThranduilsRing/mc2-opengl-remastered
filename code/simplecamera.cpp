@@ -339,7 +339,7 @@ void SimpleCamera::render(long xOffset, long yOffset)
 					drawn_[2] = g_previewBoundsMaxX; drawn_[3] = g_previewBoundsMaxY;
 					haveDrawn_ = true;
 					if ( fitIters_ > 0 && ( fitIters_ % 10 == 0 || fitIters_ == 1 ) )
-						MC2_LOG(Ui, Info, "[MECHLAB3D] fit iter={} drawn=[{:.0f},{:.0f},{:.0f},{:.0f}] rect=[{:.0f},{:.0f},{:.0f},{:.0f}] alt={:.0f} sharedAlt={:.0f} camAlt={:.0f} fudge=({:.0f},{:.0f})", fitIters_, drawn_[0], drawn_[1], drawn_[2], drawn_[3], bounds[0], bounds[1], bounds[2], bounds[3], framedAlt_, AltitudeTight, cameraAltitude, fudgeX, fudgeY);
+						MC2_LOG(Ui, Info, "[MECHLAB3D] fit iter={} drawn=[{:.0f},{:.0f},{:.0f},{:.0f}] rect=[{:.0f},{:.0f},{:.0f},{:.0f}] fov={:.1f} sharedAlt={:.0f} camAlt={:.0f} fudge=({:.0f},{:.0f})", fitIters_, drawn_[0], drawn_[1], drawn_[2], drawn_[3], bounds[0], bounds[1], bounds[2], bounds[3], framedFov_, AltitudeTight, cameraAltitude, fudgeX, fudgeY);
 				}
 			}
 			else
@@ -495,8 +495,10 @@ long SimpleCamera::update()
 				const float w = drawn_[2] - drawn_[0], h = drawn_[3] - drawn_[1];
 				if ( w > 1.f && h > 1.f )
 				{
-					// Size ~ 1/distance; then centre across and put the feet a little above the bottom edge.
-					framedAlt_ *= std::clamp( std::max( h / ( fillFrac_ * rh ), w / ( 0.94f * rw ) ), 0.5f, 2.f );
+					// Size ~ 1/tan(fov/2) at a fixed distance (a long lens: moving the camera in distorts the
+					// model and pushes it into the near plane); then centre across, feet just above the bottom edge.
+					const float s = std::clamp( std::max( h / ( fillFrac_ * rh ), w / ( 0.94f * rw ) ), 0.5f, 2.f );
+					framedFov_ = 2.f * std::atan( std::tan( framedFov_ * 0.5f * DEGREES_TO_RADS ) * s ) / DEGREES_TO_RADS;
 					fudgeX += ( bounds[0] + bounds[2] ) * 0.5f - ( drawn_[0] + drawn_[2] ) * 0.5f;
 					fudgeY += bounds[3] - rh * ( 1.f - fillFrac_ ) * 0.35f - drawn_[3];
 				}
@@ -505,6 +507,8 @@ long SimpleCamera::update()
 			AltitudeTight = framedAlt_;
 			ZoomTight();
 			AltitudeTight = sharedAlt;
+			camera_fov = framedFov_;
+			cosHalfFOV = std::cos( camera_fov * DEGREES_TO_RADS );
 		}
 		else
 			ZoomTight();
