@@ -74,8 +74,8 @@ void ControlGui::playMovie( const char* fileName )
 		return;
 	}
 
-	// Briefing videos must not block a boot-to-purchase capture.
-	if ( mc2::gate::isNonEmpty<"MC2_BOOT_TO_BAY">() )
+	// Briefing videos must not block a boot-to-purchase capture (--via-menu runs leave MC2_MENU_CANARY_SKIP_INTRO unset and play them).
+	if ( mc2::gate::isNonEmpty<"MC2_BOOT_TO_BAY">() && mc2::gate::get<"MC2_MENU_CANARY_SKIP_INTRO">() )
 	{
 		MC2_EVENT(Core, "VIDEO", 1, "event=skip name={} reason=boot_to_bay", mc2::str::from_c( fileName ));
 		objectiveObservationSink("movie", "gui", "boot_to_bay", fileName);

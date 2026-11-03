@@ -615,7 +615,10 @@ def main():
     ap.add_argument("--via-menu", action="store_true",
                     help="start the game as a player does: boot, main menu, campaign, mission (the real front end, MC2_BOOT_TO_BAY; no --mission, no smoke mode). "
                          "Reports time-to-menu, mission-load ms and the first-60-frame stats in summary.json. Stock campaign mission 1 (mc2_01); one run. See smoke_lib/via_menu.py")
-    ap.add_argument("--skip-intro", action="store_true", help="with --via-menu: also set MC2_MENU_CANARY_SKIP_INTRO (the front-end boot already skips the intro movie)")
+    ap.add_argument("--skip-intro", action="store_true", help="with --via-menu: skip the intro movie and front-end videos (MC2_MENU_CANARY_SKIP_INTRO); they play by default")
+    ap.add_argument("--via-bay", metavar="MISSION", default="",
+                    help="with --via-menu: boot that mission's logistics at the mech bay and walk bay -> pilot ready -> launch (e.g. mc2_03; "
+                         "stock mission 1 has no bay stage)")
     ap.add_argument("--cold-cache", action="store_true",
                     help="evict the install's files from the Windows file cache before launch (standby-list purge when elevated; else reads MC2_COLD_EVICT_GB of unrelated files). "
                          "A before/after read probe proves it; the result is in the summary")
@@ -1337,13 +1340,13 @@ def main():
         from smoke_lib import via_menu as _via
         timestamp = dt.datetime.now().strftime("%Y-%m-%dT%H-%M-%S-%f") + f"-{os.getpid()}"
         artifact_dir = ARTIFACT_ROOT / timestamp
-        summary = _via.run_via_menu(Path(args.exe), artifact_dir, timeout_s=float(args.duration or 150), skip_intro=args.skip_intro)
+        summary = _via.run_via_menu(Path(args.exe), artifact_dir, timeout_s=float(args.duration or 300), skip_intro=args.skip_intro, bay_mission=args.via_bay)
         if cold_result is not None:
             summary["cold_cache"] = cold_result
         (artifact_dir / "summary.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
         _f = summary["first60"]
         print(f"[via-menu] {summary['result'].upper()} {summary['reason']} time_to_menu_s={summary['time_to_menu_s']} "
-              f"mission_load_ms={summary['mission_load_ms']} first60 avg_ms={_f.get('avg')} p99_ms={_f.get('p99')} max_ms={_f.get('max')} "
+              f"time_to_campaign_start_s={summary['time_to_campaign_start_s']} mission_load_ms={summary['mission_load_ms']} first60 avg_ms={_f.get('avg')} p99_ms={_f.get('p99')} max_ms={_f.get('max')} "
               f"cold={'yes' if cold_result and cold_result['ok'] else 'no'} artifacts={artifact_dir}", flush=True)
         sys.exit(0 if summary["result"] == "pass" else 1)
     entries = manifest.parse_manifest(MANIFEST_PATH)

@@ -456,7 +456,9 @@ void MainMenu::update()
 		static bool s_bootToBayFired = false;
 		const std::string bootCampText = mc2::gate::str<"MC2_BOOT_TO_BAY">();   // "" when unset or empty
 		const char* bootCamp = bootCampText.c_str();
-		if ( !s_bootToBayFired && bootCamp[0] && LogisticsData::instance )
+		// The intro movie plays first unless it was skipped (MC2_MENU_CANARY_SKIP_INTRO, which MissionBegin honours by dropping it):
+		// a --via-menu run must pay it like a player; the headless harnesses all set the skip.
+		if ( !s_bootToBayFired && bootCamp[0] && LogisticsData::instance && !introMovie )
 		{
 			s_bootToBayFired = true;
 			LogisticsData::instance->startNewCampaign( bootCamp );

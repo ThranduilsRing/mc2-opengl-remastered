@@ -3500,7 +3500,8 @@
     "p50_ms",
     "p99_ms",
     "max_ms",
-    "first_ms"
+    "first_ms",
+    "load_frame_ms"
    ],
    "count": 1
   },

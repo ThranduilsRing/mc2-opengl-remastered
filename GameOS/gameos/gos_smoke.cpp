@@ -157,15 +157,21 @@ void samplePerf(double frameMs) {
         static constexpr int kN = 60;
         static double s_ms[kN];
         static int s_n = 0;
-        if (g_missionReadyT && s_n < kN) {
+        static double s_loadFrameMs = 0.0;
+        static bool s_loadFrameSeen = false;
+        if (g_missionReadyT && !s_loadFrameSeen) {
+            // The frame that was running when mission_ready fired contains the whole mission load; it is reported apart, not in the window.
+            s_loadFrameSeen = true;
+            s_loadFrameMs = frameMs;
+        } else if (g_missionReadyT && s_n < kN) {
             s_ms[s_n++] = frameMs;
             if (s_n == kN) {
                 std::vector<double> sorted(s_ms, s_ms + kN);
                 std::sort(sorted.begin(), sorted.end());
                 double sum = 0.0;
                 for (double v : sorted) sum += v;
-                mc2::fmt::print_out("[FIRST60 v1] n={:d} avg_ms={:.2f} p50_ms={:.2f} p99_ms={:.2f} max_ms={:.2f} first_ms={:.2f}\n",
-                    mc2::fmt::as_i32(kN), sum / kN, sorted[kN / 2], sorted[kN - 2], sorted[kN - 1], s_ms[0]);
+                mc2::fmt::print_out("[FIRST60 v1] n={:d} avg_ms={:.2f} p50_ms={:.2f} p99_ms={:.2f} max_ms={:.2f} first_ms={:.2f} load_frame_ms={:.2f}\n",
+                    mc2::fmt::as_i32(kN), sum / kN, sorted[kN / 2], sorted[kN - 2], sorted[kN - 1], s_ms[0], s_loadFrameMs);
                 std::fflush(stdout);
             }
         }

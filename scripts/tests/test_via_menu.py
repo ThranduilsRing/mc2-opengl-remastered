@@ -18,8 +18,17 @@ def test_via_menu_env_drops_smoke_mode_and_boots_the_campaign():
     assert "MC2_SMOKE_MODE" not in env and "MC2_SMOKE_FIXED_TIMESTEP" not in env and "MC2_BOOT_TO_MISSION" not in env
     assert env["MC2_BOOT_TO_BAY"] == "campaign" and env["MC2_LOG"] == "1" and env["MC2_NO_CURSOR_GRAB"] == "1" and env["KEEP"] == "1"
     assert "MC2_MENU_CANARY_SKIP_INTRO" not in env
+    env["MC2_MENU_CANARY_SKIP_INTRO"] = "1"
+    via_menu.apply_via_menu_env(env)
+    assert "MC2_MENU_CANARY_SKIP_INTRO" not in env   # videos play by default, even if the caller's env skipped them
     via_menu.apply_via_menu_env(env, skip_intro=True)
     assert env["MC2_MENU_CANARY_SKIP_INTRO"] == "1"
+
+
+def test_bay_mission_walks_the_front_end():
+    env = via_menu.apply_via_menu_env({}, bay_mission="mc2_03")
+    assert env["MC2_BOOT_TO_MISSION"] == "mc2_03" and env["MC2_BOOT_TO_SCREEN"] == "bay" and env["MC2_SOAK_AUTO_PURCHASE"] == "1"
+    assert int(env["MC2_SOAK_WIN_AFTER_SEC"]) > 3600
 
 
 def test_game_argv_has_no_mission_or_smoke_args():
@@ -30,10 +39,11 @@ def test_game_argv_has_no_mission_or_smoke_args():
 LOG = [
     (0.4, "[TIME] t=  0.40s  phase=window_created"),
     (3.25, "[VIA_MENU v1] event=main_menu"),
-    (3.30, "[VIDEO] event=skip name=intro reason=boot_to_bay"),
+    (3.30, "[VIDEO] init: opened A:/x/data/movies/msft.bik (640x480, fps=30.00, audio=1)"),
+    (3.60, "[VIDEO v1] event=pre_video site=campaign_start name=none"),
     (4.00, "[MISSION] t=  0.00s  phase=mission_load_start"),
     (11.50, "[MISSION] t=  7.31s  phase=terrain_ready"),
-    (12.10, "[FIRST60 v1] n=60 avg_ms=8.10 p50_ms=7.90 p99_ms=15.20 max_ms=22.00 first_ms=30.00"),
+    (12.10, "[FIRST60 v1] n=60 avg_ms=8.10 p50_ms=7.90 p99_ms=15.20 max_ms=22.00 first_ms=9.00 load_frame_ms=7300.00"),
 ]
 
 
@@ -42,8 +52,10 @@ def test_parse_stamped_reads_menu_load_and_first60():
     assert st.time_to_menu_s == 3.25
     assert st.mission_load_ms == 7310.0
     assert st.time_to_first60_s == 12.1
-    assert st.first60 == {"n": 60, "avg": 8.1, "p50": 7.9, "p99": 15.2, "max": 22.0, "first": 30.0}
-    assert st.video_skips == 1 and st.complete() and not st.crashed
+    assert st.first60 == {"n": 60, "avg": 8.1, "p50": 7.9, "p99": 15.2, "max": 22.0, "first": 9.0}
+    assert st.load_frame_ms == 7300.0 and st.time_to_campaign_start_s == 3.6
+    assert st.videos_opened == ["A:/x/data/movies/msft.bik"] and st.mission_load_wall_ms is None
+    assert st.video_skips == 0 and st.complete() and not st.crashed
 
 
 def test_parse_stamped_incomplete_without_first60_and_flags_crash():
