@@ -4008,7 +4008,7 @@
         },
         {
           "path": "scripts/merge_gate.py",
-          "line": 1119,
+          "line": 1122,
           "evidence": "import",
           "reference": "deploy_payload",
           "text": "from deploy_payload import verify_published_identity"
