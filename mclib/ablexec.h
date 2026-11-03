@@ -147,6 +147,7 @@ TypePtr execVariable (void);
 
 void crunchToken (void);
 void crunchSymTableNodePtr (SymTableNodePtr nodePtr);
+void patchLastCrunchedNode (SymTableNodePtr nodePtr);
 void crunchStatementMarker (void);
 void uncrunchStatementMarker (void);
 char* crunchAddressMarker (Address address);

@@ -60,3 +60,22 @@ def test_mc2xplay_extension_builtins_are_registered():
     regs = {r[0]: r for r in _omnitech_regs()}
     assert regs["autoscan"][1:3] == ("", "b")
     assert regs["automedicalwithinradius"][1:3] == ("i*", "")
+
+
+def test_newpower_part_form_dispatch_contract():
+    # REAP3 mission scripts call newpower(partId, bool); the 1-arg brain form must stay "b". The 2-arg form is the hidden routine
+    # newpower_part ("ib", pops partId then up), picked by the compiler on arity in mclib/ablstd.cpp (partFormPowerCall).
+    all_regs = {}
+    text = (CODE / "ablmc2.cpp").read_text(encoding="utf-8", errors="ignore")
+    for r in REG.findall(text):
+        all_regs[r[0]] = r
+    assert all_regs["newpower"][1:3] == ("b", "i")
+    assert all_regs["corepower"][1:3] == ("b", "i")
+    assert all_regs["newpower_part"][1:3] == ("ib", "i")
+    body = _body((CODE / "ablmc2_orders.cpp").read_text(encoding="utf-8", errors="ignore"), "execCorePowerPart")
+    assert body is not None
+    assert body.index("ABLi_popInteger") < body.index("ABLi_popBoolean")
+    assert len(POP.findall(body)) == 2 and "ABLi_pushInteger" in body
+    std = (CODE.parent / "mclib" / "ablstd.cpp").read_text(encoding="utf-8", errors="ignore")
+    assert "partFormPowerCall" in std and '"newpower_part"' in std
+    assert "patchLastCrunchedNode(partRoutine)" in std

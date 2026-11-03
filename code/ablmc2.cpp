@@ -407,6 +407,7 @@ void initABL (void) {
 	ABLi_addFunction("newmoveto", true, "Ri", "i", execCoreMoveTo);
 	ABLi_addFunction("newmovetoobject", true, "ii", "i", execCoreMoveToObject);
 	ABLi_addFunction("newpower", true, "b", "i", execCorePower);
+	ABLi_addFunction("newpower_part", true, "ib", "i", execCorePowerPart);
 	ABLi_addFunction("newattack", true, "ii", "i", execCoreAttack);
 	ABLi_addFunction("newcapture", true, "ii", "i", execCoreCapture);
 	ABLi_addFunction("newscan", true, "ii", "i", execCoreScan);

@@ -397,6 +397,7 @@ void execConvertCoords (void);
 void execCoreMoveTo (void);
 void execCoreMoveToObject (void);
 void execCorePower (void);
+void execCorePowerPart (void);
 void execCoreAttack (void);
 void execCoreCapture (void);
 void execCoreScan (void);

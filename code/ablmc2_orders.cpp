@@ -435,6 +435,30 @@ void execCorePower (void) {
 	ABLi_pushInteger(result);
 }
 
+void execCorePowerPart (void) {
+
+	//	newpower(partId, up) from a mission script (REAP3): power the mover with that part id up or down.
+	//		PARAMS: integer partId, boolean up
+	//		RETURN: integer. An unknown part id or non-mover is a logged no-op.
+
+	long partId = ABLi_popInteger();
+	bool up = ABLi_popBoolean();
+
+	if (ABLi_getSkipOrder()) {
+		ABLi_pushInteger(1);
+		return;
+	}
+
+	long result = 1;
+	GameObjectPtr obj = getObject(partId);
+	if (obj && obj->isMover() && static_cast<MoverPtr>(obj)->getPilot())
+		result = static_cast<MoverPtr>(obj)->getPilot()->corePower(up);
+	else
+		printf("[ABL_NEWPOWER_PART] partId=%ld not a live mover, ignored\n", partId);
+
+	ABLi_pushInteger(result);
+}
+
 void execCoreAttack (void) {
 
 	long objectID = ABLi_popInteger();

@@ -153,6 +153,29 @@ TypePtr stdGetStateHandle (void) {
 
 //***************************************************************************
 
+// newpower/corepower take one boolean (the calling warrior). Mission scripts (MC2X REAP3) also call newpower(partId, bool);
+// that form compiles to the hidden routine newpower_part, so the one-argument brain form is untouched.
+static TypePtr partFormPowerCall (SymTableNodePtr partRoutine) {
+
+	if (curToken == TKN_LPAREN)
+		getToken();
+	else
+		syntaxError(ABL_ERR_SYNTAX_WRONG_NUMBER_OF_PARAMS);
+	TypePtr first = expression();
+	if (curToken == TKN_COMMA) {
+		if (first != IntegerTypePtr)
+			syntaxError(ABL_ERR_SYNTAX_INCOMPATIBLE_TYPES);
+		getToken();
+		if (expression() != BooleanTypePtr)
+			syntaxError(ABL_ERR_SYNTAX_INCOMPATIBLE_TYPES);
+		patchLastCrunchedNode(partRoutine);
+	}
+	else if (first != BooleanTypePtr)
+		syntaxError(ABL_ERR_SYNTAX_INCOMPATIBLE_TYPES);
+	ifTokenGetElseError(TKN_RPAREN, ABL_ERR_SYNTAX_MISSING_RPAREN);
+	return(IntegerTypePtr);
+}
+
 TypePtr standardRoutineCall (SymTableNodePtr routineIdPtr) {
 
 	RoutineKey routineKey = routineIdPtr->defn.info.routine.key;
@@ -172,6 +195,11 @@ TypePtr standardRoutineCall (SymTableNodePtr routineIdPtr) {
 		default:
 			if (key >= NumStandardFunctions)
 				syntaxError(ABL_ERR_SYNTAX_UNEXPECTED_TOKEN);
+			if (!strcmp(routineIdPtr->name, "newpower") || !strcmp(routineIdPtr->name, "corepower")) {
+				SymTableNodePtr partRoutine = searchSymTableDisplay("newpower_part");
+				if (partRoutine)
+					return(partFormPowerCall(partRoutine));
+			}
 			if (numParams == 0) {
 				if (curToken == TKN_LPAREN)
 					syntaxError(ABL_ERR_SYNTAX_WRONG_NUMBER_OF_PARAMS);
