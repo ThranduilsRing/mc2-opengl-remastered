@@ -70,7 +70,7 @@ def classify(m: dict, cmap: Image.Image, size: int, p: dict) -> np.ndarray:
     cls[slope_s >= p["cliff"]] = 2
     cls[beach] = 1
     cls[ov & (slope_s < p["steep"])] = 4
-    cls[foot] = 5
+    cls[foot & ~np.isin(cls, (1, 2, 3))] = 5  # prop boxes never replace shore / cliff / steep
     cls[water] = 0
     return cls, slope_s, rgb
 
@@ -79,13 +79,14 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("mission")
     ap.add_argument("--out", required=True)
+    ap.add_argument("--install", help="game install dir (colormap); else $MC2_INSTALL")
     ap.add_argument("--size", type=int, default=1024)
     ap.add_argument("--cliff", type=float, default=38.0, help="deg, cliff / rock face")
     ap.add_argument("--steep", type=float, default=24.0, help="deg, steep rocky slope")
     a = ap.parse_args()
     res = E.resolve_missions_dir(None, [a.mission])
     m = E.load_mission(a.mission, res.dir)
-    cm = E.find_colormap(a.mission)
+    cm = E.find_colormap(a.mission, E.install_dir(a.install))
     cmap = Image.open(cm).convert("RGB").resize((a.size, a.size), Image.LANCZOS)
     p = {"cliff": a.cliff, "steep": a.steep, "edge_wu": 256.0, "beach_h": 30.0, "green": 0.02,
          "jungle_lum": 0.28, "foot_wu": 96.0}
@@ -100,11 +101,16 @@ def main() -> int:
     # legend strip
     leg = Image.new("RGB", (a.size, 24 * len(CLASSES) + 8), (24, 24, 24))
     dr = ImageDraw.Draw(leg)
-    tot = cls.size
+    land = max(int((cls != 0).sum()), 1)
+    stats_map = {}
     stats = {}
     for k, (i, n, c, d) in enumerate(CLASSES):
-        pct = 100.0 * (cls == i).sum() / tot
+        cnt = int((cls == i).sum())
+        pct = 100.0 * cnt / land  # percent of LAND (water class 0 reports its share of the whole map)
+        if i == 0:
+            pct = 100.0 * cnt / cls.size
         stats[n] = round(pct, 2)
+        stats_map[n] = round(100.0 * cnt / cls.size, 2)
         dr.rectangle([6, 8 + 24 * k, 26, 24 + 24 * k], fill=c)
         dr.text((34, 10 + 24 * k), f"{i} {n}  {pct:.1f}%  - {d}", fill=(235, 235, 235))
     sheet = Image.new("RGB", (a.size, a.size + leg.height))
@@ -112,7 +118,7 @@ def main() -> int:
     sheet.paste(leg, (0, a.size))
     sheet.save(out / f"{a.mission}_class.png")
     (out / f"{a.mission}_legend.json").write_text(json.dumps(
-        {"params": p, "classes": [{"id": i, "name": n, "rgb": c, "mimics": d, "pct": stats[n]}
+        {"pct_basis": "land (class 0 water: whole map)", "land_fraction": round(land / cls.size, 4), "params": p, "classes": [{"id": i, "name": n, "rgb": c, "mimics": d, "pct_land": stats[n], "pct_map": stats_map[n]}
                                   for i, n, c, d in CLASSES]}, indent=2))
     print(json.dumps(stats, indent=1))
     return 0

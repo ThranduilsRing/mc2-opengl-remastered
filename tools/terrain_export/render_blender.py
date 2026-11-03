@@ -27,7 +27,11 @@ ap.add_argument("--scale", type=float, default=0.1)
 ap.add_argument("--hide-props", action="store_true")
 ap.add_argument("--sun-pitch", type=float, default=50.0)
 ap.add_argument("--sun-yaw", type=float, default=11.0)
-ap.add_argument("--cycles-device", default="OPTIX")
+ap.add_argument("--cam-bookmark", type=float, nargs=6, metavar=("X", "Y", "Z", "ROT", "PROJ", "ALT"),
+                help="game bookmark camera: focus pos.x pos.y cameraShiftZ, rot(yaw deg), proj(pitch deg), alt(range wu); "
+                     "FOV is the game's 40 deg HORIZONTAL (sensor_fit HORIZONTAL); use --res = capture aspect")
+ap.add_argument("--yaw-sign", type=float, default=-1.0, help="debug: sign on sin(yaw) in the eye offset")
+ap.add_argument("--cycles-device", default="OPTIX", help="unused: always OPTIX with CPU fallback")
 a = ap.parse_args(argv)
 
 bpy.ops.wm.read_factory_settings(use_empty=True)
@@ -67,19 +71,32 @@ sun.rotation_euler = (math.pi / 2 - el, 0, -yaw + math.pi)
 cam = bpy.data.objects.new("cam", bpy.data.cameras.new("cam"))
 sc.collection.objects.link(cam)
 sc.camera = cam
-cam.data.angle = math.radians(a.fov)
+cam.data.sensor_fit = "HORIZONTAL"
+cam.data.angle = math.radians(40.0 if a.cam_bookmark else a.fov)
 cam.data.clip_end = 100000
 # terrain height under target (raycast down) for the look-at point
 tx, ty = a.target[0] * S, a.target[1] * S
 hit = sc.ray_cast(bpy.context.view_layer.depsgraph, Vector((tx, ty, 5000)), Vector((0, 0, -1)))
 tz = hit[1].z if hit[0] else 0.0
+if a.cam_bookmark:
+    fx, fy, fz, rot, proj, alt = a.cam_bookmark
+    yaw, pit = math.radians(rot), math.radians(proj)
+    ln = alt * math.cos(pit)
+    # engine: eye = focus - polarToVector; world y is north, x east
+    ex = fx + a.yaw_sign * ln * math.sin(yaw)
+    ey = fy + ln * math.cos(yaw)
+    ez = fz + alt * math.sin(pit)
+    cam.location = Vector((ex * S, ey * S, ez * S))
+    cam.rotation_euler = (Vector((fx * S, fy * S, fz * S)) - cam.location).to_track_quat("-Z", "Y").to_euler()
+    print("CAM eye_wu", ex, ey, ez, "focus_wu", fx, fy, fz)
 hd = math.radians(a.look_deg)
 fwd = Vector((math.sin(hd), math.cos(hd), 0))
 d = a.dist * S
 p = math.radians(a.pitch)
-cam.location = Vector((tx, ty, tz)) - fwd * d * math.cos(p) + Vector((0, 0, d * math.sin(p)))
-dirv = Vector((tx, ty, tz)) - cam.location
-cam.rotation_euler = dirv.to_track_quat("-Z", "Y").to_euler()
+if not a.cam_bookmark:
+    cam.location = Vector((tx, ty, tz)) - fwd * d * math.cos(p) + Vector((0, 0, d * math.sin(p)))
+    dirv = Vector((tx, ty, tz)) - cam.location
+    cam.rotation_euler = dirv.to_track_quat("-Z", "Y").to_euler()
 
 sc.render.engine = "CYCLES"
 sc.cycles.samples = a.samples

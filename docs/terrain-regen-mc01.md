@@ -30,22 +30,26 @@ Run it at BELOW_NORMAL (see lane-rules); `G:/mc2-tmp/rend.ps1`-style launcher is
 colormap colour + object footprints). Output `mc2_01_class.png` (map plus legend), `mc2_01_class_id.png` (ids),
 `mc2_01_legend.json`.
 
-| id | class | what it mimics | share of map |
+| id | class | what it mimics | share of LAND |
 | --- | --- | --- | --- |
-| 0 | water | open water | 76.7% |
-| 1 | beach / water edge | sand, shoreline band (stair-stepped today) | 5.2% |
-| 2 | cliff / rock face (slope >= 38 deg) | vertical rock; the replacement target | 1.0% |
-| 3 | steep rocky slope (>= 24 deg) | scree, broken rock | 1.0% |
-| 4 | road / concrete | runway, pads (overlay tiles) | 0.2% |
-| 5 | structure footprint | buildings, props (96 wu radius, deliberately generous) | 7.1% |
-| 6 | dirt / bare ground | trails | 0.6% |
-| 7 | grass | open grass | 5.3% |
-| 8 | jungle / forest floor | dark vegetation | 2.9% |
+| 0 | water | open water | 76.7% of the whole map (land = 23.3%) |
+| 1 | beach / water edge | sand, shoreline band (stair-stepped today) | 28.3% |
+| 2 | cliff / rock face (slope >= 38 deg) | vertical rock; the replacement target | 4.5% |
+| 3 | steep rocky slope (>= 24 deg) | scree, broken rock | 5.1% |
+| 4 | road / concrete | runway, pads (overlay tiles) | 0.7% |
+| 5 | structure footprint | buildings, props (96 wu box, deliberately generous; no longer overwrites classes 1-3) | 23.5% |
+| 6 | dirt / bare ground | trails | 2.6% |
+| 7 | grass | open grass | 22.6% |
+| 8 | jungle / forest floor | dark vegetation | 12.6% |
 | 9 | other | unclassified | 0.0% |
 
+(Correction 2026-11-03: the first version reported shares of the whole 1024^2 map and let the prop-footprint class
+overwrite cliff and shore cells, so the cliff share read 1.0% and the structure share 7.1%. `mc2_01_legend.json` now
+carries both `pct_land` and `pct_map`; the whole-map figures are the old column times land fraction 0.233.)
+
 Reading the map: the cliff class (2) is a thin rim, mostly the south and west coasts of the three big islands, plus a few
-rock stacks. That is about 1% of the map, so a cliff regeneration is a handful of strips, not a whole-map job. Most of
-the map is water, and the beach band (class 1) is where the visible stair-stepping lives.
+rock stacks. That is about 4.5% of the land (about 1% of the whole map), so a cliff regeneration is a handful of strips, not a
+whole-map job. Most of the map is water, and the beach band (class 1, 28% of land) is where the visible stair-stepping lives.
 
 ## 3. Options, ranked
 
@@ -89,7 +93,10 @@ class map as masks. Effort: medium per map; quality high; risk follows (A) or (E
 Cost of changing the gameplay heightmap, split by route.
 
 **E1: same grid, new values** (100x100 at 128 wu, edited heights only; keeps map extent and vertex layout).
-- Re-derive: everything that is computed from heights at load: movemap/pathing cost and passability, slope-based
+- REVIEW CORRECTION (2026-11-03): navigation, passability and LOS data are NOT all recomputed from heights at load. They
+  are baked into the mission file (pak) and stored in saves, so changing heights means regenerating that baked data and
+  invalidating or migrating old saves. Cost is medium-high, not "cheap and safe".
+- Re-derive: movemap/pathing cost and passability, slope-based
   blocking, LOS/visibility height tests, building and unit z-snap (objects store x,y and snap z from terrain at load, so
   they follow automatically; verify nothing stores a baked z), overlays/decals (tile flags are per-vertex and stay valid
   because the grid is the same), water elevation (constant 350 in the .fit; shorelines move because the intersection with
@@ -114,7 +121,7 @@ Cost of changing the gameplay heightmap, split by route.
 - Everything in E1, plus: the vertex count change touches the terrain pak layout, the quad/tile/overlay indexing, movemap
   (cell size is tied to the 128 wu vertex/tile pitch), LOD chunking, SSBO layout, minimap, fog-of-war/visibility maps,
   overlay and decal tiles (a tile is a 128 wu cell today), save compatibility (any save with terrain-indexed data), and
-  the editor. This is an engine-wide change touching most of the 42 height readers; it is not mission-local. Effort: very
+  the editor. This is an engine-wide change touching most of the height readers (the earlier "42" count was not verified); it is not mission-local. Effort: very
   high; determinism baselines for every mission that shares the code path may change unless gated per mission.
 - Not recommended until E1 and (A)/(B) show the visible gain is worth it.
 
@@ -145,8 +152,8 @@ only, check before shipping; PolyHaven is CC0 and safe); (4) whether old mc2_01 
 ## 5. Way back into the game
 
 - Heightfield relief (A): new visual heightfield in the beauty sidecar (`mc2_01.beauty/`, loaded by the existing sidecar
-  path; the mod VFS lets a mod ship its own). Renderer reads it through the SSBO vertex Z (binding 23) on the existing
-  LOD-chunk grid, so the first step needs no new renderer path (higher-res visual height, then shader displacement).
+  path; the mod VFS lets a mod ship its own). Renderer reads it through the SSBO vertex Z on the existing
+  LOD-chunk grid (the fine bake is GL binding 26 / VK set 0 binding 10, not 23), so the first step needs no new renderer path (higher-res visual height, then shader displacement).
 - Cliff meshes (B): `asset_class:building` mcassets plus a packet-1 writer (objects), placed from the analyzer mask.
   Beauty sidecars carry the overlay/shoreline masks (`overlay_v2.png`, `shoreline_mask.png`) and the blend decals at the
   rock/terrain seam.
@@ -155,9 +162,61 @@ only, check before shipping; PolyHaven is CC0 and safe); (4) whether old mc2_01 
 
 ## 6. Prototype
 
-See the images in the proofs dir (`blender_plain.png`, `blender_normalmap.png`, `proto_original.png`, `proto_fresh.png`).
+See the images in the proofs dir (old unmatched `blender_plain.png`, `blender_normalmap.png`, `proto_original.png`, `proto_fresh.png`).
 `prototype_cliff.py` builds a visual-only patch (about 1800 wu square, 24 verts per sim cell, 113k verts) on the south tip
 of the north island: base = smooth bicubic of the sim heights blended to the exact triangle surface at the border, relief =
 ridged fbm plus strata weighted by a slope-derived cliff mask that is 0 on the border (silhouette and seam unchanged), and a
 baked albedo that blends the colormap with a procedural rock colour. It is a stand-in for the Megascans mesh (B): it
 shows the pipeline and the silhouette-pinned approach, not final art quality.
+
+## 7. Review corrections and matched proof (2026-11-03)
+
+Opus review of this lane (G:/mc2-tmp/review-terrain-regen-mc01.md) found the following; status of each.
+
+**What the engine already has** (so (A) is not greenfield):
+- A reauth visual height sidecar, `<mission>.beauty/visual_height_4x.r32` (4x the sim grid), and a gameplay/visual height
+  split in `terrain_runtime.h` (about lines 36-57). `MC2_TERRAIN_VISUAL_DISPLACE` exists and is default OFF.
+- A hi-res fine bake (GL binding 26 / VK set 0 binding 10). The Vulkan LOD path displaces only the far LOD bands, not
+  LOD0 (`gos_terrain_lod_chunk_draw.cpp` about line 58). So the hi-res height is NOT drawn up close today.
+
+**Near-terrain gap (the real work for (A))**: the close-up LOD0 terrain is still the 128 wu sim grid (plus shader
+tricks: detail normals, POM, triplanar cliff relief). An up-close hi-res Vulkan terrain path does not exist. It was
+deliberately NOT started in this lane; it waits for the owner. Likewise no gameplay height change was made.
+
+**Export now matches the render**:
+- Triangle diagonal: the Vulkan renderer uses a fixed TL-BR split (`vulkan_terrain_island_island.cpp` 56-66:
+  {tl,bl,br},{tl,br,tr}). The old export used TR-BL. The sim (`mapdata.cpp` 1185-1224, `getTerrainElevation`) uses a
+  per-quad checkerboard (BOTTOMRIGHT/BOTTOMLEFT by parity), which is a third thing: sim and render already disagree
+  by up to one diagonal's worth of height on odd quads. The export follows the RENDER (TL-BR); `prototype_cliff.py`
+  `tri_height` follows too.
+- Variants (`<m>_<variant>.glb`): `baked` (burnin colormap, flat), `as_rendered` (colormap with approximate tint and
+  cliff darkening), `hires_nmap` (reauth hi-res normal map; labelled honestly: the game does NOT draw this at LOD0 up
+  close today, it shows what an up-close hi-res terrain could look like). The old `_plain` / `_normalmap` names are gone.
+- `as_rendered` approximates only: material tint blend (rock/grass/dirt tints from `terrain_materials.json`, class by a
+  colour heuristic), cliff desaturate/darken on macro slope (`terrain_tier1.frag` 425-476), mean break-up (x0.98).
+  MISSING: the real per-texel cooked material weights, snow and cement, world-space break-up noise, detail normals, POM
+  and triplanar cliff relief, the shore SDF / smoothed coastline and foam, water shading, lighting/shadows, fog, props
+  (hidden; the game draws trees and buildings, Blender shows nothing or red boxes).
+- Install paths: no hard-coded v0.4 any more. Pass `--install DIR` (or set `MC2_INSTALL`) to export, classify and prototype.
+
+**Camera-matched proof**: `tools/terrain_export/render_matched.py` reads the capture sidecars written by
+`run_visual_capture.py` (cap_pos = focus point incl. cameraShiftZ, cap_rot yaw, cap_proj pitch, cap_alt range), derives the
+eye as focus -+ range*(cos(pitch)*(sin/cos yaw)), +range*sin(pitch) up, 40 deg HORIZONTAL FOV (game `camera_fov`),
+sensor-fit horizontal, aspect of the non-black band of the letterboxed capture (1920x756 of 1920x1080); the capture is
+stretched, not cropped, so the aspect match is exact. The yaw sign was fixed by trying `--yaw-sign`; -1 reproduces the
+game framing (cliff_side_on). Eye terrain clamping (AltitudeMinimum) is not modelled. Output:
+`E:/mc2-archive-2026-10/proofs/terrain-regen-mc01/matched/{as_rendered,baked,hires_nmap}/matched_<bookmark>.png`
+(top in-game, bottom Blender) for all 9 mc2_01 bookmarks, including the coastal cliffs `cliff_side_on` and
+`cliff_wall_sideon`.
+
+**Honest reading of the proof**: silhouettes and cliff placement match. The game cliff is smoother and darker (shader
+tint, detail normals, deep-water look, shoreline foam and shadowed face) while the Blender versions show the colormap
+streaks stretched down the steep face (the baked 4096 colormap is smeared over vertical cells; the game hides this with
+its cliff blend). That stretching is exactly the cliff-face quality problem (A)/(B) must fix, and it is visible in both.
+
+**GPU performance**: any later claim that a hi-res terrain helps or costs GPU time needs the RGP capture protocol in
+CLAUDE.md (corner-pinned worst-case and default pose); nothing here makes a GPU claim.
+
+**Owner ruling (2026-11-03, via orchestrator)**: steps 2 and 3 approved, with a save converter for old mc2_01 saves and
+CC0-only cliff meshes. The Megascans-named GLBs under `GameAsset/Terrain/` are NOT to be used. Rulings:
+memory `process/decision-owner-terrain-rework-go-2026-11-03.md`. This lane stops at step 1 (matched export and proof).

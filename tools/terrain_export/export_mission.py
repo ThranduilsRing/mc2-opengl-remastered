@@ -71,19 +71,28 @@ def load_mission(mission: str, missions_dir: Path):
             "water_elev": water_elev, "objects": objs}
 
 
-def find_colormap(mission: str) -> Path | None:
-    for p in (f"A:/Games/mc2-opengl/mc2-win64-v0.4/data/textures/{mission}.burnin.jpg",
-              f"A:/Games/mc2-opengl/mc2srcdata-fresh/textures/{mission}.burnin.tga"):
-        if Path(p).is_file():
-            return Path(p)
+def install_dir(arg: str | None) -> Path:
+    """Game install that holds data/textures and data/missions/<m>.beauty: --install, else $MC2_INSTALL."""
+    import os
+    v = arg or os.environ.get("MC2_INSTALL")
+    if not v:
+        raise SystemExit("no install: pass --install DIR or set MC2_INSTALL (any install with data/textures)")
+    return Path(v)
+
+
+def find_colormap(mission: str, install: Path) -> Path | None:
+    for ext in ("jpg", "tga"):
+        p = install / "data" / "textures" / f"{mission}.burnin.{ext}"
+        if p.is_file():
+            return p
     return None
 
 
-def visual_height(mission: str, elev: np.ndarray, size: int) -> np.ndarray:
+def visual_height(mission: str, elev: np.ndarray, size: int, install: Path) -> np.ndarray:
     """size x size float height for normal baking (beauty visual height if present)."""
     from scipy.ndimage import zoom
     side = elev.shape[0]
-    p = Path(f"A:/Games/mc2-opengl/mc2-win64-v0.4/data/missions/{mission}.beauty/visual_height_4x.r32")
+    p = install / "data" / "missions" / f"{mission}.beauty" / "visual_height_4x.r32"
     h = None
     if p.is_file():
         v = (side - 1) * 4 + 1
@@ -104,6 +113,50 @@ def bake_normal_map(h: np.ndarray, extent_wu: float) -> Image.Image:
     inv = 1.0 / np.sqrt(nx * nx + ny * ny + nz * nz)
     rgb = np.stack([nx * inv, ny * inv, nz * inv], -1) * 0.5 + 0.5
     return Image.fromarray((rgb * 255 + 0.5).astype(np.uint8), "RGB")
+
+
+def _smoothstep(e0, e1, x):
+    t = np.clip((x - e0) / (e1 - e0), 0.0, 1.0)
+    return t * t * (3 - 2 * t)
+
+
+def material_tints(install: Path | None) -> dict:
+    """rock/grass/dirt tints from data/terrain_materials.json (install, else repo copy)."""
+    cands = ([install / "data" / "terrain_materials.json"] if install else []) + \
+        [Path(__file__).resolve().parents[2] / "data" / "terrain_materials.json"]
+    for p in cands:
+        if p.is_file():
+            j = json.loads(p.read_text())
+            return {k: np.array([j[f"{k}_tint_{c}"] for c in "rgb"]) for k in ("rock", "grass", "dirt")}
+    return {"rock": np.array([.36, .37, .40]), "grass": np.array([.35, .42, .25]), "dirt": np.array([.48, .42, .33])}
+
+
+def as_rendered_colormap(cmap: Image.Image, elev: np.ndarray, tints: dict) -> Image.Image:
+    """APPROXIMATE the Vulkan terrain_tier1.frag colour stage on the baked colormap:
+    material tint blend (strength mix(.18,.50,smoothstep(.1,.6,luma))), cliff desaturate/darken on
+    macro slope (cliffBlend=smoothstep(.85,.55,|nz|), blend*0.7), mean break-up (x0.98).
+    NOT modelled: per-texel cooked material weights (grass/dirt/rock chosen by a colour heuristic here),
+    snow/cement, detail normals, POM/triplanar relief, shore SDF / smoothed coastline, lighting."""
+    from scipy.ndimage import zoom
+    rgb = np.asarray(cmap, dtype=np.float64) / 255.0
+    n = rgb.shape[0]
+    h = zoom(elev, n / elev.shape[0], order=1, mode="nearest")
+    gy, gx = np.gradient(h, WU * elev.shape[0] / n)
+    nz = 1.0 / np.sqrt(1.0 + gx * gx + gy * gy)
+    r, g, b = rgb[..., 0], rgb[..., 1], rgb[..., 2]
+    luma = rgb @ np.array([.299, .587, .114])
+    wg = _smoothstep(-0.02, 0.06, g - r) * _smoothstep(0.22, 0.40, luma)
+    wd = _smoothstep(-0.02, 0.06, r - g) * _smoothstep(0.22, 0.45, luma) * (1 - wg)
+    wr = np.clip(1 - wg - wd, 0, 1)
+    mt = wr[..., None] * tints["rock"] + wg[..., None] * tints["grass"] + wd[..., None] * tints["dirt"]
+    ts = (0.18 + (0.50 - 0.18) * _smoothstep(0.1, 0.6, luma))[..., None]
+    out = rgb * (1 - ts) + mt * ts
+    cb = _smoothstep(0.85, 0.55, nz)[..., None]
+    l2 = (out @ np.array([.299, .587, .114]))[..., None]
+    cliff = (l2 * 0.4 + tints["rock"] * 0.6) * 0.8
+    out = out * (1 - cb * 0.7) + cliff * (cb * 0.7)
+    out *= 0.98
+    return Image.fromarray((np.clip(out, 0, 1) * 255 + 0.5).astype(np.uint8), "RGB")
 
 
 # --- minimal GLB writer ------------------------------------------------------
@@ -202,11 +255,20 @@ def terrain_arrays(elev: np.ndarray, scale: float):
     uv = uv.reshape(-1, 2).astype("<f4")
     ii = np.arange(side * side).reshape(side, side)
     a, b, cc, d = ii[:-1, :-1], ii[:-1, 1:], ii[1:, :-1], ii[1:, 1:]
-    idx = np.stack([a, cc, b, b, cc, d], -1).reshape(-1).astype("<u4")  # CCW seen from +Y
+    # The Vulkan renderer's fixed TL-BR diagonal (vulkan_terrain_island_island.cpp:56-66): {tl,bl,br},{tl,br,tr}.
+    # a=tl b=tr cc=bl d=br.  (The sim's getTerrainElevation uses a per-quad checkerboard, mapdata.cpp:1185.)
+    idx = np.stack([a, cc, d, a, d, b], -1).reshape(-1).astype("<u4")  # CCW seen from +Y
     return pos, nrm, uv, idx
 
 
-def build(m: dict, mission: str, out: Path, scale: float, with_normals: bool,
+VARIANTS = {
+    "baked": "burnin colormap only, flat geometry",
+    "as_rendered": "colormap with approximated tint + cliff darkening (see as_rendered_colormap)",
+    "hires_nmap": "baked colormap + reauth hi-res normal map; the game does NOT draw this at LOD0 up close today",
+}
+
+
+def build(m: dict, mission: str, out: Path, scale: float, variant: str,
           cmap: Image.Image | None, nmap: Image.Image | None, elev_water: float):
     g = Glb()
     side, elev = m["side"], m["elev"]
@@ -215,9 +277,9 @@ def build(m: dict, mission: str, out: Path, scale: float, with_normals: bool,
              "pbrMetallicRoughness": {"metallicFactor": 0.0, "roughnessFactor": 0.95}}
     if cmap is not None:
         mat_t["pbrMetallicRoughness"]["baseColorTexture"] = {"index": g.image(cmap, "JPEG")}
-    if with_normals and nmap is not None:
+    mat_t["name"] = f"terrain_{variant}"
+    if variant == "hires_nmap" and nmap is not None:
         mat_t["normalTexture"] = {"index": g.image(nmap, "PNG"), "scale": 1.0}
-        mat_t["name"] = "terrain_colormap_normalmap"
     g.d["materials"].append(mat_t)
     pos, nrm, uv, idx = terrain_arrays(elev, scale)
     g.node("terrain", g.mesh("terrain", pos, idx, nrm, uv, 0))
@@ -241,8 +303,7 @@ def build(m: dict, mission: str, out: Path, scale: float, with_normals: bool,
     for ot, x, y, z, rot in m["objects"]:
         g.node(f"obj_{ot}", bmesh, t=(x * scale, z * scale, -y * scale), s=(sz, sz, sz),
                extras={"type": ot, "rot_deg": rot})
-    suffix = "normalmap" if with_normals else "plain"
-    p = out / f"{mission}_{suffix}.glb"
+    p = out / f"{mission}_{variant}.glb"
     g.write(p)
     return p
 
@@ -255,6 +316,7 @@ def main() -> int:
     ap.add_argument("--scale", type=float, default=0.1)
     ap.add_argument("--normal-size", type=int, default=2048)
     ap.add_argument("--color-size", type=int, default=4096, help="downscale colormap (0 = native)")
+    ap.add_argument("--install", help="game install dir (data/textures, data/missions/*.beauty); else $MC2_INSTALL")
     ap.add_argument("--allow-nonstock", action="store_true")
     a = ap.parse_args()
     try:
@@ -266,20 +328,26 @@ def main() -> int:
     out.mkdir(parents=True, exist_ok=True)
     m = load_mission(a.mission, res.dir)
     side, elev = m["side"], m["elev"]
-    cm = find_colormap(a.mission)
+    inst = install_dir(a.install)
+    cm = find_colormap(a.mission, inst)
     cmap = None
     if cm:
         cmap = Image.open(cm).convert("RGB")
         if a.color_size and cmap.width > a.color_size:
             cmap = cmap.resize((a.color_size, a.color_size), Image.LANCZOS)
-    nmap = bake_normal_map(visual_height(a.mission, elev, a.normal_size), side * WU)
+    nmap = bake_normal_map(visual_height(a.mission, elev, a.normal_size, inst), side * WU)
     nmap.save(out / f"{a.mission}_normal.png")
     elev.astype("<f4").tofile(out / f"{a.mission}_height.r32")
-    paths = [build(m, a.mission, out, a.scale, w, cmap, nmap, m["water_elev"]) for w in (False, True)]
+    paths = []
+    for v in VARIANTS:
+        cv = cmap
+        if v == "as_rendered" and cmap is not None:
+            cv = as_rendered_colormap(cmap, elev, material_tints(inst))
+        paths.append(build(m, a.mission, out, a.scale, v, cv, nmap, m["water_elev"]))
     meta = {"mission": a.mission, "side": side, "wu_per_vertex": WU, "scale": a.scale,
             "extent_wu": side * WU, "min_corner_wu": [-side * WU / 2, side * WU / 2],
             "water_elevation": m["water_elev"], "elev_min": float(elev.min()), "elev_max": float(elev.max()),
-            "objects": len(m["objects"]), "colormap": str(cm), "stock_verified": res.verified,
+            "objects": len(m["objects"]), "colormap": str(cm), "diagonal": "TL-BR (render)", "variants": VARIANTS, "stock_verified": res.verified,
             "files": [str(p) for p in paths]}
     (out / f"{a.mission}_export.json").write_text(json.dumps(meta, indent=2))
     print(json.dumps(meta, indent=2))

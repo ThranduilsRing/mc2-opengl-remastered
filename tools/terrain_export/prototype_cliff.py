@@ -45,14 +45,14 @@ def fbm(shape, seed, octaves=6, base=4, ridged=False):
 
 
 def tri_height(elev, fr, fc):
-    """height of the exported triangle surface at fractional (row, col) grid coords (diagonal b-cc)."""
+    """height of the exported triangle surface at fractional (row, col) grid coords (render diagonal TL-BR)."""
     r0 = np.clip(np.floor(fr).astype(int), 0, elev.shape[0] - 2)
     c0 = np.clip(np.floor(fc).astype(int), 0, elev.shape[1] - 2)
     v, u = fr - r0, fc - c0
     h00, h01, h10, h11 = elev[r0, c0], elev[r0, c0 + 1], elev[r0 + 1, c0], elev[r0 + 1, c0 + 1]
-    lo = h00 + u * (h01 - h00) + v * (h10 - h00)
-    hi = h11 + (1 - u) * (h10 - h11) + (1 - v) * (h01 - h11)
-    return np.where(u + v <= 1, lo, hi)
+    ur = h00 + u * (h01 - h00) + v * (h11 - h01)   # tl,tr,br (u > v)
+    ll = h00 + v * (h10 - h00) + u * (h11 - h10)   # tl,bl,br (u <= v)
+    return np.where(u > v, ur, ll)
 
 
 def smooth(x, a, b):
@@ -64,6 +64,7 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("mission")
     ap.add_argument("--out", required=True)
+    ap.add_argument("--install", help="game install dir (colormap); else $MC2_INSTALL")
     ap.add_argument("--c0", type=int, default=41)
     ap.add_argument("--r0", type=int, default=38)
     ap.add_argument("--n", type=int, default=14, help="patch size in sim cells")
@@ -111,9 +112,9 @@ def main() -> int:
     uv = np.stack([(fc - a.c0) / n, (fr - a.r0) / n], -1).reshape(-1, 2).astype("<f4")
     ii = np.arange(N * N).reshape(N, N)
     A_, B_, C_, D_ = ii[:-1, :-1], ii[:-1, 1:], ii[1:, :-1], ii[1:, 1:]
-    idx = np.stack([A_, C_, B_, B_, C_, D_], -1).reshape(-1).astype("<u4")
+    idx = np.stack([A_, C_, D_, A_, D_, B_], -1).reshape(-1).astype("<u4")
     # --- patch albedo: colormap crop blended with procedural rock on the cliff mask
-    cm = Image.open(E.find_colormap(a.mission)).convert("RGB")
+    cm = Image.open(E.find_colormap(a.mission, E.install_dir(a.install))).convert("RGB")
     ext = side * WU
     cw = cm.width
     box = (int(a.c0 / side * cw), int(a.r0 / side * cw), int((a.c0 + n) / side * cw), int((a.r0 + n) / side * cw))
