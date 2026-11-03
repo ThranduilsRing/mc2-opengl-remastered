@@ -8576,6 +8576,13 @@
       "callers_by_stem": []
     },
     {
+      "path": "scripts/tests/test_terrain_export.py",
+      "basename": "test_terrain_export.py",
+      "stem": "test_terrain_export",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
       "path": "scripts/tests/test_terrain_feed_compare.py",
       "basename": "test_terrain_feed_compare.py",
       "stem": "test_terrain_feed_compare",
@@ -12643,6 +12650,13 @@
           "evidence": "import",
           "reference": "stock_missions",
           "text": "from stock_missions import (  # noqa: E402"
+        },
+        {
+          "path": "tools/terrain_export/export_mission.py",
+          "line": 41,
+          "evidence": "import",
+          "reference": "stock_missions",
+          "text": "from stock_missions import StockDataError, resolve_missions_dir  # noqa: E402"
         }
       ]
     },
@@ -17663,6 +17677,13 @@
           "evidence": "import",
           "reference": "mission_terrain_analyzer",
           "text": "from mission_terrain_analyzer import label_components"
+        },
+        {
+          "path": "tools/terrain_export/export_mission.py",
+          "line": 40,
+          "evidence": "import",
+          "reference": "mission_terrain_analyzer",
+          "text": "import mission_terrain_analyzer as A  # noqa: E402"
         }
       ]
     },
@@ -17978,6 +17999,87 @@
           "evidence": "import",
           "reference": "visual_heightfield",
           "text": "from visual_heightfield import _fine_mask"
+        }
+      ]
+    },
+    {
+      "path": "tools/terrain_export/classify_terrain.py",
+      "basename": "classify_terrain.py",
+      "stem": "classify_terrain",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "scripts/tests/test_terrain_export.py",
+          "line": 12,
+          "evidence": "import",
+          "reference": "classify_terrain",
+          "text": "import classify_terrain as C  # noqa: E402"
+        }
+      ]
+    },
+    {
+      "path": "tools/terrain_export/export_mission.py",
+      "basename": "export_mission.py",
+      "stem": "export_mission",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "scripts/tests/test_terrain_export.py",
+          "line": 13,
+          "evidence": "import",
+          "reference": "export_mission",
+          "text": "import export_mission as E  # noqa: E402"
+        },
+        {
+          "path": "tools/terrain_export/classify_terrain.py",
+          "line": 22,
+          "evidence": "import",
+          "reference": "export_mission",
+          "text": "import export_mission as E  # noqa: E402"
+        },
+        {
+          "path": "tools/terrain_export/prototype_cliff.py",
+          "line": 23,
+          "evidence": "import",
+          "reference": "export_mission",
+          "text": "import export_mission as E  # noqa: E402"
+        }
+      ]
+    },
+    {
+      "path": "tools/terrain_export/prototype_cliff.py",
+      "basename": "prototype_cliff.py",
+      "stem": "prototype_cliff",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "scripts/tests/test_terrain_export.py",
+          "line": 14,
+          "evidence": "import",
+          "reference": "prototype_cliff",
+          "text": "import prototype_cliff as P  # noqa: E402"
+        }
+      ]
+    },
+    {
+      "path": "tools/terrain_export/render_blender.py",
+      "basename": "render_blender.py",
+      "stem": "render_blender",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
+      "path": "tools/terrain_export/render_matched.py",
+      "basename": "render_matched.py",
+      "stem": "render_matched",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "scripts/tests/test_terrain_export.py",
+          "line": 15,
+          "evidence": "import",
+          "reference": "render_matched",
+          "text": "import render_matched as R  # noqa: E402"
         }
       ]
     },

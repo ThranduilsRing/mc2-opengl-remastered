@@ -49,9 +49,32 @@ const float MATV_WU_PER_TILE  = 768.0;  // MAT_WORLD_UNITS_PER_TILE (terrain_lod
 
 // Central difference commutes with bilinear interpolation; normalize after filtering.
 // Call at the point of use: hoisting the result to the top of main() kept it live across the whole shader and cost ~15% at 4K.
+// TERRAIN-HIRES-NEAR-1: the 4x visual-height bake (same SSBO the VS displaces with).
+layout(set = 0, binding = 10, std430) readonly buffer TerrainVisualHeightBuf {
+    float heightsFine[];
+};
+float mv_fineH(ivec2 p) {
+    p = clamp(p, ivec2(0), ivec2(uT.visualSide - 1));
+    return heightsFine[p.x + p.y * uT.visualSide];
+}
+vec2 mv_fineGrad(ivec2 p) {
+    return vec2(-(mv_fineH(p + ivec2(1, 0)) - mv_fineH(p - ivec2(1, 0))),
+                  mv_fineH(p + ivec2(0, 1)) - mv_fineH(p - ivec2(0, 1))) / 64.0;
+}
+
 vec3 mv_smoothTerrainNormal(vec2 worldXY) {
     vec2 cell = vec2(worldXY.x + uT.halfMap, uT.halfMap - worldXY.y) / 128.0;
     vec2 gradient = textureLod(u_macroGradient, (cell + 1.5) / float(uT.mapSide + 2), 0.0).rg;
+    // TERRAIN-HIRES-NEAR-1: with the 4x bake live, shade from the bake's own gradient
+    // (central differences at 32 wu, bilinear between fine vertices), same convention.
+    if (uT.visualMode != 0) {
+        vec2  fc = vec2(worldXY.x + uT.halfMap, uT.halfMap - worldXY.y) / 32.0;
+        ivec2 i0 = ivec2(floor(fc));
+        vec2  f  = fc - vec2(i0);
+        vec2 gF = mix(mix(mv_fineGrad(i0), mv_fineGrad(i0 + ivec2(1, 0)), f.x),
+                      mix(mv_fineGrad(i0 + ivec2(0, 1)), mv_fineGrad(i0 + ivec2(1, 1)), f.x), f.y);
+        gradient = mix(gradient, gF, clamp(uT.visualDisplaceFar, 0.0, 1.0));
+    }
     return normalize(vec3(gradient, 1.0));
 }
 

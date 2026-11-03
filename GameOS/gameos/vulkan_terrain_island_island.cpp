@@ -544,9 +544,10 @@ bool init_island(TerrainIsland* s, int w, int h) {
         // VK-TERRAIN-CSM-NEAR-1: binding 8 = near-cascade array sampler2DArrayShadow (FS);
         // binding 9 = full-map cascade sampler2DShadow (FS).
         // VK-TERRAIN-VISUALDISPLACE-FAR-1: binding 10 = visual-height fine-bake SSBO (VS,
-        // both main + skirt verts read it for the mode-2 Z-swap).
+        // both main + skirt verts read it for the mode-1/2 displacement; TERRAIN-HIRES-NEAR-1:
+        // the frag reads it too, for the fine shading normal).
         b[6].binding = 10; b[6].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-        b[6].descriptorCount = 1; b[6].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+        b[6].descriptorCount = 1; b[6].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
         // VK-PARITY-TERRAIN-2: bindings 11/12/13 = light pool / grid header / grid index SSBOs (FS).
         for (int k = 11; k <= 13; ++k) {
             auto& binding = b[k - 4];

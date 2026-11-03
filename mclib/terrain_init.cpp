@@ -930,6 +930,24 @@ void Terrain::lodVisualHeight(TerrainLodInitFrame& lf) {
 								}
 							}
 						}
+						// TERRAIN-HIRES-NEAR-1 mod guard: the bake is drawn by default now, so a
+						// bake that does not belong to this mission's gameplay heights (a mod that
+						// reshapes the terrain under a stock-named .beauty sidecar) must not draw.
+						// Stock bakes move their coarse corners by ~2 wu on average; reject when
+						// the mean corner offset exceeds 16 wu (terrain stays undisplaced).
+						double cornerSum = 0.0;
+						size_t cornerCnt = 0;
+						for (int cy = 0; cy < mapSide && cy * 4 < V; ++cy)
+							for (int cx = 0; cx < mapSide && cx * 4 < V; ++cx, ++cornerCnt)
+								cornerSum += fabs(static_cast<double>(vh[static_cast<size_t>(cx) * 4 + static_cast<size_t>(cy) * 4 * V])
+								                  - static_cast<double>(elev[static_cast<size_t>(cx) + static_cast<size_t>(cy) * mapSide]));
+						const double cornerMean = cornerCnt ? cornerSum / static_cast<double>(cornerCnt) : 0.0;
+						if (cornerMean > 16.0)
+						{
+							mc2::fmt::print_out("[VISUAL_HEIGHT v1] REJECTED path={} mean corner offset {:.1f}wu > 16wu: bake does not match this terrain (mod?); drawing undisplaced\n", mc2::fmt::safe(vhPath), cornerMean);
+							fflush(stdout);
+						}
+						else
 						gos_TerrainLodChunk_UploadVisualHeightFull(
 							vh.data(), V,
 							vmips.empty() ? nullptr : vmips.data(),

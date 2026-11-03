@@ -1546,6 +1546,12 @@ TERRAIN-SHADOW-GUARD-1: the TERRAIN-side twin of SHADOW-SUNCLAMP-1, and the one 
 
 TCS/TES terrain tessellation (gameos_graphics.cpp). Default-ON kill-switch (ISSUE-34): MC2_TERRAIN_TESS=0 skips the gos_terrain material load (same engine state as a TCS/TES compile failure) for headless A/B of the no-tess config. Shadow builds + blob-shadow suppression key on gos_IsModernShadowPathActive(), not tess.
 
+## MC2_TERRAIN_VISUAL_DISPLACE
+
+> historical registry text; defaults here are NOT current (see `Gates/gate_table.cpp`)
+
+TERRAIN-HIRES-NEAR-1 (2026-11-03): flipped default-ON as a temporary kill-switch. Vulkan terrain draws the visual_height_4x.r32 bake at every LOD: LOD0 chunks at 4x vertex density (mode 1), coarser bands Z-swapped (mode 2), shading normal from the bake. Absorbs and retires MC2_VK_TERRAIN_VISUALDISPLACE_FAR. =0 restores the undisplaced coarse terrain.
+
 ## MC2_TERRAIN_VISUAL_DISPLACE_OBJFADE
 
 > historical registry text; defaults here are NOT current (see `Gates/gate_table.cpp`)

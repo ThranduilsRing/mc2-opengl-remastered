@@ -149,7 +149,8 @@
     "tools/visual_verify/capture_ab.py": "python wrapper that starts tools/visual_verify/capture.py (lease, background-only); the engine launch downstream goes through nofocus.spawn",
     "tools/visual_verify/quickload_cement_check.py": "runs scripts/run_visual_capture.py under the current interpreter (the harness owns the game launch, lease and window policy; this file never starts the exe) through console_child.child_kwargs; merged from the cement quickload fix 2026-10-17",
     "tools/visual_verify/vk_replay.py": "runs tools/visual_verify/capture.py (the engine goes through nofocus.spawn and the host lease there) with the GFXReconstruct layer in the environment, and gfxrecon-replay.exe --wsi headless (no window, no game) under the host lease; children use console_child.child_kwargs",
-    "tools/witness_smoke.py": "python wrapper that starts the harness (run_smoke / run_visual_capture); the engine launch downstream goes through nofocus.spawn"
+    "tools/witness_smoke.py": "python wrapper that starts the harness (run_smoke / run_visual_capture); the engine launch downstream goes through nofocus.spawn",
+    "tools/terrain_export/render_matched.py": "Starts only headless Blender (-b, CREATE_NO_WINDOW, stdout to DEVNULL) for offline proof renders; never launches the game."
   },
   "input_injection": {
     "scripts/game_auto.py": "synthetic-input driver; keys, chords and clicks gated by keys_allowed()/allow_foreground()",

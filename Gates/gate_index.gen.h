@@ -10,7 +10,7 @@
 
 namespace mc2::gate::detail {
 
-inline constexpr std::size_t kGateCount = 755;
+inline constexpr std::size_t kGateCount = 754;
 
 inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_ABL_ARG_GUARD", Kind::Bool, Rule::Lead1, {}},
@@ -627,7 +627,7 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_TERRAIN_SOLID_WINDOW_PARITY", Kind::Bool, Rule::Exact1, {}},
     {"MC2_TERRAIN_TESS", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_TERRAIN_TILE_CENSUS", Kind::Bool, Rule::Lead0, {}},
-    {"MC2_TERRAIN_VISUAL_DISPLACE", Kind::Bool, Rule::Lead0, {}},
+    {"MC2_TERRAIN_VISUAL_DISPLACE", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_TERRAIN_VISUAL_DISPLACE_FAR", Kind::Float, Rule::Prefix, {}},
     {"MC2_TERRAIN_VISUAL_DISPLACE_OBJFADE", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_TERRAIN_VISUAL_DISPLACE_OBJFADE_RADIUS", Kind::Float, Rule::Prefix, {}},
@@ -731,7 +731,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_VK_TERRAIN_COPY_STATS", Kind::Bool, Rule::Presence, {}},
     {"MC2_VK_TERRAIN_FENCE_DEFER", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_VK_TERRAIN_PERF", Kind::Bool, Rule::Lead1, {}},
-    {"MC2_VK_TERRAIN_VISUALDISPLACE_FAR", Kind::Bool, Rule::Exact1, {}},
     {"MC2_VK_VFX_TRACE", Kind::Bool, Rule::Lead0, {}},
     {"MC2_VK_WATER_FENCE_DEFER", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_VK_WATER_PERF", Kind::Bool, Rule::Lead1, {}},

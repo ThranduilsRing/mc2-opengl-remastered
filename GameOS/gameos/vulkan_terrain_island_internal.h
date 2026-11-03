@@ -369,7 +369,6 @@ bool terrainFenceDeferEnabled();
 bool terrainPerfGateRequested();
 bool terrainAllLodsRequested();
 bool terrainSkirtsRequested();
-bool terrainVisualDisplaceFarRequested();
 std::string spv_dir();
 mc2vk::OwnedShaderModule load_spv(VkDevice device, std::string_view path);
 bool make_buffer(TerrainIsland* s, mc2vk::OwnedBuffer& out, VkDeviceSize size, VkBufferUsageFlags usage, bool hostVisible,

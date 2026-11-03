@@ -15,7 +15,7 @@ from PIL import Image, ImageDraw
 
 HERE = Path(__file__).resolve().parent
 BLENDER = "C:/Program Files/Blender Foundation/Blender 5.1/blender.exe"
-BELOW_NORMAL = 0x00004000
+BELOW_NORMAL = 0x00004000 | 0x08000000  # BELOW_NORMAL_PRIORITY_CLASS | CREATE_NO_WINDOW
 
 
 def letterbox_band(im: Image.Image) -> tuple[int, int]:
@@ -55,7 +55,7 @@ def main() -> int:
         bl = out / f"blender_{label}.png"
         cmd = [a.blender, "-b", "--python", str(HERE / "render_blender.py"), "--", "--glb", a.glb, "--out", str(bl),
                "--res", str(w), str(h), "--samples", str(a.samples), "--cam-bookmark", *cam_args(side), *a.extra]
-        subprocess.run(cmd, check=True, creationflags=BELOW_NORMAL, stdout=subprocess.DEVNULL)
+        subprocess.run(cmd, check=True, creationflags=BELOW_NORMAL, stdout=subprocess.DEVNULL)  # background-launch: allow headless blender -b, CREATE_NO_WINDOW in BELOW_NORMAL
         g = game.crop((0, r0, game.width, r1)).resize((w, h), Image.LANCZOS)
         b = Image.open(bl).convert("RGB")
         m = Image.new("RGB", (w, h * 2 + 28), (20, 20, 20))

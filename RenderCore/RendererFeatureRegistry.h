@@ -690,6 +690,10 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "TERRAIN-OVERLAY-V2-PARITY-1: override the overlay_v2 sidecar path (default data/missions/<stem>.beauty/overlay_v2.png).",
     },
     {
+        "MC2_TERRAIN_VISUAL_DISPLACE", "MC2_TERRAIN_VISUAL_DISPLACE", EnvVarKind::Feature, true,
+        "TERRAIN-HIRES-NEAR-1: draw the 4x visual height bake on VK terrain at every LOD (LOD0 at 4x density); no bake = unchanged.",
+    },
+    {
         "MC2_TERRAIN_VISUAL_DISPLACE_OBJFADE", "MC2_TERRAIN_VISUAL_DISPLACE_OBJFADE", EnvVarKind::Feature, true,
         "TERRAIN-VISUAL-HEIGHT-SAMPLE-1: when visual terrain displacement is on, fade object grounding across the displaced-vs-gameplay height delta so props/units...",
     },

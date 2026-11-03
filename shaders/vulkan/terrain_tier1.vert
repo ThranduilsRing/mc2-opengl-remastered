@@ -49,7 +49,16 @@ float sampleH(int mx, int my) {
     return uH.heights[mx + my * uT.mapSide];
 }
 
+#include "include/terrain_hires_near_vs.glsl"
+
 void main() {
+    // TERRAIN-HIRES-NEAR-1: LOD0 chunk at the 4x bake density (fine-unit local offsets).
+    if (uP.visualMode == 1) {
+        vec3 wp;
+        gl_Position = hiresNearClip(localOffset, true, 0.0, wp);
+        v_worldPos = wp;
+        return;
+    }
     int mapX = clamp(uP.blockOriginX + localOffset.x, 0, uT.mapSide - 1);
     int mapY = clamp(uP.blockOriginY + localOffset.y, 0, uT.mapSide - 1);
     float h  = sampleH(mapX, mapY);

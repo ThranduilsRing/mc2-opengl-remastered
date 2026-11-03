@@ -259,15 +259,6 @@ int mc2_vk_terrain_all_lods_enabled();
 // -> GL keeps drawing all skirts (today's shipped rung-3 state), byte-identical.
 int mc2_vk_terrain_skirts_enabled();
 
-// VK-TERRAIN-VISUALDISPLACE-FAR-1 (rung 5): true when the far-band visual-displace
-// sub-gate (MC2_VK_TERRAIN_VISUALDISPLACE_FAR, requires MC2_VK_TERRAIN_ALL_LODS) is
-// armed. When true the GL capture predicate RELAXES the visualDisplaceActive
-// exclusion for mode-2 (lodStep>1, non-stitched) patches: the island captures them
-// with visualMode=2 and Z-swaps their heights from the fine bake exactly like GL's
-// terrain_lod_chunk.vert mode-2 branch. Mode-1 (LOD0 4x topology) and stitched
-// patches stay GL-owned. An explicit opt-in (an Exact1 row: only "1" arms it;
-// unset -> OFF regardless of umbrella state). Default-OFF -> capture unchanged.
-int mc2_vk_terrain_visualdisplace_far_enabled();
 
 // FAIL-SOFT ready predicate. True only when the gate is on AND the island is in a state
 // where run() is expected to co-write this frame's LOD0 patches (born, inited, not

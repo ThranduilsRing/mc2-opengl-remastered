@@ -224,7 +224,7 @@ extern "C" int mc2_terrain_tier1_get_load_feed(Mc2TerrainTier1Feed* out)
     out->visualHeightVersion = 0;
     out->visualSide          = 0;
     out->visualDisplaceFar   = 0.0f;
-    if (mc2_vk_terrain_visualdisplace_far_enabled() && terrainVisualDisplaceGateOn()
+    if (terrainVisualDisplaceGateOn()
         && s_visualSide > 0 && fields->visualSide() == s_visualSide) {
         // The fine bake only (the mip maxes that follow it are a GL-path geomorph input).
         out->visualHeightCpu     = fields->visualHeight().data();
