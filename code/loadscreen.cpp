@@ -452,7 +452,8 @@ void LoadScreen::init(FitIniFile& file, DWORD neverFlush)
 	outAnims[4].init( &file, "" );
 
 
-	text.init( &file, "AnimObject18" );
+	// Stock keeps the "LOADING" text in AnimObject18; MCO ships it as Text0 and has no AnimObjects.
+	text.init( &file, NO_ERR == file.seekBlock( "AnimObject18" ) ? "AnimObject18" : "Text0" );
 	
 
 	if ( animObjectsCount )
