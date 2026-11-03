@@ -47,7 +47,8 @@ void addModFile(std::string_view key, std::vector<Entry>& out)
 }
 
 // ModFitCallback ABI is fixed (absPath is const char*); forward straight into the string_view helper.
-void collectModFile(const char* key, void* user)
+template <class KeyPtr>
+void collectModFile(KeyPtr key, void* user)
 {
 	addModFile(std::string_view(key), *static_cast<std::vector<Entry>*>(user));
 }
@@ -64,7 +65,7 @@ void runPlan(std::vector<Entry> plan)
 	for (const Entry& e : plan) {
 		if (g_stop.load(std::memory_order_relaxed))
 			break;
-		HANDLE h = CreateFileA(e.path.c_str(), GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+		HANDLE h = CreateFileA(e.path.c_str(), GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, // path-audit: loose-only (VFS-resolved paths; OS cache warm only)
 			nullptr, OPEN_EXISTING, FILE_FLAG_SEQUENTIAL_SCAN, nullptr);
 		if (h == INVALID_HANDLE_VALUE)
 			continue;
@@ -109,7 +110,7 @@ void startStartupPreload()
 			plan.push_back({fastFiles[i]->getFileName(), false});
 	const size_t archives = plan.size();
 	// Then every mod-winning data file (the worker applies the mod size budget).
-	EnumerateModFiles("data/", &collectModFile, &plan);
+	EnumerateModFiles("data/", &collectModFile<const char*>, &plan);
 	if (mc2_diag::tagRequested("STARTUP_PRELOAD"))
 	std::printf("[STARTUP_PRELOAD] start archives=%zu mod_files=%zu\n", archives, plan.size() - archives);
 	std::fflush(stdout);
