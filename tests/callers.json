@@ -3633,6 +3633,13 @@
           "text": "import console_child  # noqa: E402  (windowless console children)"
         },
         {
+          "path": "tools/smoke/stall_inject.py",
+          "line": 24,
+          "evidence": "import",
+          "reference": "console_child",
+          "text": "from console_child import child_kwargs  # noqa: E402"
+        },
+        {
           "path": "tools/sound_smoke.py",
           "line": 24,
           "evidence": "import",
@@ -5584,6 +5591,13 @@
           "evidence": "command",
           "reference": "scripts/run_smoke.py",
           "text": "proc = subprocess.run(cmd, cwd=str(ROOT), env=env, capture_output=True,"
+        },
+        {
+          "path": "tools/smoke/stall_inject.py",
+          "line": 73,
+          "evidence": "command",
+          "reference": "scripts/run_smoke.py",
+          "text": "p = subprocess.Popen([sys.executable, \"scripts/run_smoke.py\", \"--mission\", a.mission, \"--keep-logs\", \"--exe\", exe],"
         },
         {
           "path": "tools/sound_smoke.py",
@@ -17189,6 +17203,13 @@
       "path": "tools/sim_trace_diff.py",
       "basename": "sim_trace_diff.py",
       "stem": "sim_trace_diff",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
+      "path": "tools/smoke/stall_inject.py",
+      "basename": "stall_inject.py",
+      "stem": "stall_inject",
       "callers_by_basename": [],
       "callers_by_stem": []
     },

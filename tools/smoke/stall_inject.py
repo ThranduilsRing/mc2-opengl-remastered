@@ -20,6 +20,9 @@ import time
 import psutil
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+sys.path.insert(0, os.path.join(ROOT, "scripts"))
+from console_child import child_kwargs  # noqa: E402
+
 TRIGGER_DLL = "avcodec"
 
 
@@ -68,7 +71,8 @@ def main():
     all_stalled = True
     for i in range(1, a.n + 1):
         p = subprocess.Popen([sys.executable, "scripts/run_smoke.py", "--mission", a.mission, "--keep-logs", "--exe", exe],
-                             cwd=ROOT, env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+                             cwd=ROOT, env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
+                             **child_kwargs(redirected=True))
         t0 = time.time()
         stalled = False
         while p.poll() is None and time.time() - t0 < 400 and not stalled:
