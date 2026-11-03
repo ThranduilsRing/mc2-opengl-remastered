@@ -858,9 +858,15 @@ def selftest() -> int:
             if fired != should_fire:
                 fails.append(name)
 
+    # The "wrong dir" is a tiny temp dir, NOT the repo root: source_index() walks the whole dir, and a
+    # 140k-file worktree took minutes under parallel precheck load (the old flake).
+    _wrong_td = tempfile.TemporaryDirectory()
+    wrong = Path(_wrong_td.name)
+    (wrong / "readme.txt").write_text("not stock\n", encoding="utf-8")
+
     # The resolver must REFUSE a wrong dir rather than return it.
     try:
-        sm.resolve_missions_dir(explicit=Path(td) if False else Path(ROOT),
+        sm.resolve_missions_dir(explicit=wrong,
                                 missions=["mc2_17"], quiet=True)
         print("  [BAD] resolver accepted a non-mission directory")
         fails.append("resolver refusal")
@@ -869,7 +875,7 @@ def selftest() -> int:
 
     # ... but must return it when --allow-nonstock is explicit.
     try:
-        r = sm.resolve_missions_dir(explicit=Path(ROOT), missions=["mc2_17"],
+        r = sm.resolve_missions_dir(explicit=wrong, missions=["mc2_17"],
                                     allow_nonstock=True, quiet=True)
         ok = (not r.verified)
         print(f"  [{'OK ' if ok else 'BAD'}] --allow-nonstock returns "
@@ -883,14 +889,14 @@ def selftest() -> int:
     # Same two properties for the corpus resolver.
     for cname in sorted(sc.CORPORA):
         try:
-            sc.resolve(cname, explicit=Path(ROOT), names=["compbas.csv"]
+            sc.resolve(cname, explicit=wrong, names=["compbas.csv"]
                        if cname == "objects" else None, quiet=True)
             print(f"  [BAD] {cname} resolver accepted the repo root")
             fails.append(f"{cname} resolver refusal")
         except sc.StockDataError:
             print(f"  [OK ] {cname} resolver refuses an unverifiable dir")
     try:
-        r = sc.resolve("objects", explicit=Path(ROOT), names=["compbas.csv"],
+        r = sc.resolve("objects", explicit=wrong, names=["compbas.csv"],
                        allow_nonstock=True, quiet=True)
         ok = not r.verified
         print(f"  [{'OK ' if ok else 'BAD'}] corpus --allow-nonstock returns "
@@ -910,6 +916,7 @@ def selftest() -> int:
     except sc.StockDataError:
         print("  [OK ] corpus resolver refuses a non-shipped member name")
 
+    _wrong_td.cleanup()
     if fails:
         print(f"[stock-data] SELFTEST FAIL: {', '.join(fails)}")
         return 2
