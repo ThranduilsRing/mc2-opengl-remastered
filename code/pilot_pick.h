@@ -14,6 +14,13 @@ inline std::optional<P*> pickOutOfPoolPilot(std::span<P* const> candidates, InUs
 	return std::nullopt;
 }
 
+// Primary pool predicate for getBestPilot/gotPilotsLeft: available and not already in a live mech, in SP and MP alike.
+template <class P, class InUse>
+inline bool poolEligible(P& p, InUse inUse)
+{
+	return p.isAvailable() && !inUse(p);
+}
+
 // Hover text for the recovery button: the "No pilot available" id replaces the
 // normal help text while the pool has no eligible pilot (the button is greyed).
 inline int recoveryHelpTextId(bool noPilots, int normalId, int noPilotId)
