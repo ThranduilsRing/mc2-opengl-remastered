@@ -776,9 +776,9 @@ static void ScanModDuplicateContent(const char* absRoot, const std::string& acti
     const auto t0 = GetTickCount64();
     size_t scanned = 0, conflicts = 0, identical = 0, printed = 0;
     const size_t printCap = logFileResolve ? static_cast<size_t>(-1) : 200;
-    // Startup guard: the scan stops after 2000 ms (unlimited when MC2_LOG_FILE_RESOLVE is
+    // Startup guard: the scan stops after 200 ms (unlimited when MC2_LOG_FILE_RESOLVE is
     // set, for full-count audits) and the summary reports partial=1 unscanned_keys=N.
-    const unsigned long long budgetMs = logFileResolve ? 0ull : 2000ull;
+    const unsigned long long budgetMs = logFileResolve ? 0ull : 200ull;
     size_t unscanned = 0;
     bool partial = false;
     std::vector<std::string> keys;
