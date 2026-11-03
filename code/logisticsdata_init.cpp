@@ -388,9 +388,8 @@ void LogisticsData::initVariants()
 				if ( variantFile.readString( i, 1, csvName, sizeof( csvName ) ) == -2 )
 				{
 					// File Name cell >= 256 chars: copyString leaves csvName unterminated. Skip the row.
-					csvName[sizeof( csvName ) - 1] = ' ';
-					std::fprintf( stderr, "[CONTENT] kind=csv path=%s msg=File Name over %d chars, row %d skipped
-", "Buildings.csv", (int)sizeof( csvName ) - 1, (int)i );
+					csvName[sizeof( csvName ) - 1] = '\0';
+					std::fprintf( stderr, "[CONTENT] kind=csv path=%s msg=File Name over %d chars, row %d skipped\n", "Buildings.csv", (int)sizeof( csvName ) - 1, (int)i );
 					i++;
 					continue;
 				}
@@ -410,9 +409,8 @@ void LogisticsData::initVariants()
 				if ( variantFile.readString( i, 1, csvName, sizeof( csvName ) ) == -2 )
 				{
 					// File Name cell >= 256 chars: copyString leaves csvName unterminated. Skip the row.
-					csvName[sizeof( csvName ) - 1] = ' ';
-					std::fprintf( stderr, "[CONTENT] kind=csv path=%s msg=File Name over %d chars, row %d skipped
-", "Buildings.csv", (int)sizeof( csvName ) - 1, (int)i );
+					csvName[sizeof( csvName ) - 1] = '\0';
+					std::fprintf( stderr, "[CONTENT] kind=csv path=%s msg=File Name over %d chars, row %d skipped\n", "Buildings.csv", (int)sizeof( csvName ) - 1, (int)i );
 					i++;
 					continue;
 				}
