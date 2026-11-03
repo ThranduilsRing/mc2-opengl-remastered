@@ -28,6 +28,10 @@ SimpleCamera.cpp	: Implementation of the SimpleCamera component.
 #include "Gates/gate.h"
 #include "mc2fmt.h"
 
+// Screen-space extents of the last PreviewDraw (mclib/tgl.cpp, filled in preview_draw.cpp).
+extern bool g_previewCaptureBounds;
+extern float g_previewBoundsMinX, g_previewBoundsMaxX, g_previewBoundsMinY, g_previewBoundsMaxY;
+
 extern bool drawOldWay;
 extern bool useFog;
 
@@ -311,7 +315,30 @@ void SimpleCamera::render(long xOffset, long yOffset)
 				const float offsetX = (bounds[2] + bounds[0] - viewMulX) / 2.f + fudgeX;
 				const float offsetY = (bounds[1] + bounds[3] - viewMulY) / 2.f + fudgeY;
 				tglView.SetViewport(viewMulX,viewMulY,offsetX,offsetY);
-				previewShape->PreviewDraw(getViewUniforms());
+				auto view = getViewUniforms();
+				if ( framed_ )
+				{
+					// Fill (cool, low, from the opposite side of the key) and rim (from behind, above).
+					auto addLight = [&view]( float pitchDeg, float yawDeg, DWORD argb ) {
+						glm::mat4 m;
+						mc2::math::buildTranslation( m, glm::vec3( 0.0f, 0.0f, 0.0f ) );
+						mc2::math::buildRotation( m, mc2::math::Euler( pitchDeg * DEGREES_TO_RADS, yawDeg * DEGREES_TO_RADS, 0.0f ) );
+						view.lights.push_back( { TG_LIGHT_INFINITE, argb, m } );
+					};
+					addLight( 20.f, 0.f, 0xff5a6a80 );
+					addLight( 20.f, 180.f, 0xffa0a8b8 );
+					g_previewCaptureBounds = true;
+					g_previewBoundsMinX = g_previewBoundsMinY = 1e9f;
+					g_previewBoundsMaxX = g_previewBoundsMaxY = -1e9f;
+				}
+				previewShape->PreviewDraw(view);
+				if ( framed_ )
+				{
+					g_previewCaptureBounds = false;
+					drawn_[0] = g_previewBoundsMinX; drawn_[1] = g_previewBoundsMinY;
+					drawn_[2] = g_previewBoundsMaxX; drawn_[3] = g_previewBoundsMaxY;
+					haveDrawn_ = true;
+				}
 			}
 			else
 				pObject->render();
@@ -455,10 +482,39 @@ long SimpleCamera::update()
 		eye = this;
 		Camera::update();
 
-		ZoomTight();
-		
+		if ( framed_ )
+		{
+			projectionAngle = framedPitch_;
+			if ( haveDrawn_ && fitIters_ > 0 )
+			{
+				haveDrawn_ = false;
+				--fitIters_;
+				const float rw = bounds[2] - bounds[0], rh = bounds[3] - bounds[1];
+				const float w = drawn_[2] - drawn_[0], h = drawn_[3] - drawn_[1];
+				if ( w > 1.f && h > 1.f )
+				{
+					// Size ~ 1/tan(fov/2) at a fixed distance (a long lens: moving the camera in distorts the
+					// model and pushes it into the near plane); then centre across, feet just above the bottom edge.
+					const float s = std::clamp( std::max( h / ( fillFrac_ * rh ), w / ( 0.94f * rw ) ), 0.5f, 2.f );
+					framedFov_ = 2.f * std::atan( std::tan( framedFov_ * 0.5f * DEGREES_TO_RADS ) * s ) / DEGREES_TO_RADS;
+					fudgeX += ( bounds[0] + bounds[2] ) * 0.5f - ( drawn_[0] + drawn_[2] ) * 0.5f;
+					fudgeY += bounds[3] - rh * ( 1.f - fillFrac_ ) * 0.35f - drawn_[3];
+				}
+			}
+			const float sharedAlt = AltitudeTight;
+			AltitudeTight = framedAlt_;
+			ZoomTight();
+			AltitudeTight = sharedAlt;
+			camera_fov = framedFov_;
+			cosHalfFOV = std::cos( camera_fov * DEGREES_TO_RADS );
+		}
+		else
+			ZoomTight();
+
 		pObject->recalcBounds();
 		pObject->scale(shapeScale);
+		if ( framed_ )
+			pObject->rotation = this->rotation;
 
 		// we don't want to center around the feet
 		glm::vec3 mechPos = pObject->getRootNodeCenter();

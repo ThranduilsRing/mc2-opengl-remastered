@@ -51,6 +51,14 @@ public:
 	// screen pixels). No-op if setPreviewOffscreen(true) wasn't set.
 	void drawPreviewToPanel( float panelX, float panelY, float panelW, float panelH ) const;
 
+	bool hasObject() const { return pObject != nullptr; }
+	// Mech-lab framing: the model fills fillFrac of the rect height with its feet near the bottom, turned yaw
+	// degrees and seen from pitch degrees, lit by key + fill + rim. Distance and offset converge over a few
+	// frames from the drawn screen bounds. Mech3DAppearance has no scale(), so size comes from a narrower
+	// field of view at a fixed camera distance, which this camera keeps itself: Camera::AltitudeTight is static and a second camera on the
+	// same screen (the component picture) rewrites it.
+	void setFramedPose( float fillFrac, float yaw, float pitch )
+	{ fillFrac_ = fillFrac; framedPitch_ = pitch; rotation = yaw; framed_ = true; framedFov_ = 40.f; fudgeX = fudgeY = 0.f; fitIters_ = 40; haveDrawn_ = false; }
 	void setScale( float newScale );
 	void setRotation( float rotation );
 	void zoomIn( float howMuch ); // scale for things that can't 
@@ -91,6 +99,10 @@ private:
 	bool				bIsInMission;
 	float				shapeScale;
 	bool				drawOffscreen_ = false;   // PREVIEW-FBO-FIXED-800x600-1
+	float				fillFrac_ = 0.f, framedPitch_ = 0.f, framedAlt_ = 650.f, framedFov_ = 40.f;
+	float				drawn_[4] = {};	// last PreviewDraw screen extents (framed only)
+	int					fitIters_ = 0;
+	bool				framed_ = false, haveDrawn_ = false;
 
     bool                bContextNotSet;
 
