@@ -48,14 +48,16 @@ static bool postMechPreviewGpu( Camera& cam, Mech3DAppearance* mech, float vpX, 
 	const uint32_t frame = g_mc2FrameCounter.load( std::memory_order_relaxed );
 	if ( frame == s_lastFrame || !mc2_vk_mech_preview_usable() )
 		return false;
-	if ( !mech->submitPreviewGpu() )
+	// A gap in panel frames is a new lab visit: the batcher still holds the last mission's (freed) types.
+	const bool freshSession = s_lastFrame == 0xffffffffu || frame != s_lastFrame + 1;
+	s_lastFrame = frame;
+	if ( !mech->submitPreviewGpu( freshSession ) )
 	{
 		static bool s_logged = false;
 		if ( !s_logged ) { s_logged = true; fprintf( stderr, "[MECHLAB_GPU] submitPreviewGpu declined (batcher not finalized or no shape) -- CPU mech draw stays on.\n" ); }
 		return false;
 	}
 	GpuMechBatcher::instance().flush();
-	s_lastFrame = frame;
 
 	static TG_HWLightsData s_row;	// the lab actor's single light row (lightDataIndex 0)
 	ProbeGatherLightsForList( cam.getWorldLights(), static_cast<unsigned long>( cam.getNumLights() ), &s_row );
@@ -368,7 +370,7 @@ void SimpleCamera::render(long xOffset, long yOffset)
 			if ( auto* mech = dynamic_cast<Mech3DAppearance*>(pObject.get()) )
 			{
 				previewShape = mech->previewShape();
-				if ( isPanelPreview && mission == nullptr )
+				if ( isPanelPreview && ( mission == nullptr || !mission->isActive() ) )
 					labMech = mech;
 			}
 			else if ( auto* bldg = dynamic_cast<BldgAppearance*>(pObject.get()) )
