@@ -117,6 +117,7 @@ L(Lead1, "MC2_IMGUI_DEMO", Bool, false, "code", "", "", verified),
 // history: docs/gate-history.md#MC2_IMGUI_INSPECTOR
 L(Lead0Kill, "MC2_IMGUI_INSPECTOR", Bool, true, "code", "", "ImGui inspector panel (GuiRuntime/EditorInspector.cpp).", registry(Feature, "MC2_FEATURE_IMGUI_INSPECTOR", 7, true) | verified),
 G("MC2_IMPORTER_DIR", String, "", "unclassified", "", ""),
+G("MC2_INPUT_SCRIPT", String, "", "code", "", "Player-path harness only: file of scripted input commands (click/key/wait) fed into the engine input state; inert when unset.", passthrough | verified),
 L(Presence, "MC2_INVIEW_CONFLATION_TRACE", Bool, false, "code", "", "alpha-Stage 1 ?5 Stage 0: candidate-predicate disagreement probe.", passthrough | verified),
 L(Presence, "MC2_JUMPJETS_ALL", Bool, false, "code", "", "", verified),
 L(Presence, "MC2_LAUNCHED", Bool, false, "gameos", "", "", verified),

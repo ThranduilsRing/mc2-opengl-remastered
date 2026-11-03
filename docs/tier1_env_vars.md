@@ -13,6 +13,10 @@
 5. Document it here in `docs/tier1_env_vars.md`: default value, polarity, one-line effect.
 6. Prove gate-ON vs gate-OFF smoke: `py -3 scripts/run_smoke.py --tier tier1 --duration 30 --keep-logs`
 
+## Player-path harness input (PLAYER-PATH-1)
+
+- `MC2_INPUT_SCRIPT=<file>` — scripted input player for `scripts/run_player_path.py` (`tests/player_path/*.pp`). **Default: unset = inert** (one cached string test per frame). Set, the engine tails the file every frame and feeds mouse position/buttons and keys into the SAME state `gos_GetMouseInfo` / `gos_GetKeyStatus` / `gos_GetKey` report (`GameOS/gameos/gos_input.cpp` `ScriptPlayer`, `gameos_input.cpp` `gos_GetMouseInfo`), so the real GUI hit-testing and button handlers run. No OS input (no SendInput, cursor or focus), so it works unfocused, minimised or parked off-screen. Commands: `wait N`, `move X Y`, `down/up [l|r]`, `click X Y [l|r]` (800x600 canvas pixels), `key NAME`, `keydown/keyup NAME` (SDL key names), `shot PATH.tga` (Vulkan present readback), `mark TEXT`; each logs `[INPUT_SCRIPT v1] frame=N cmd=...`. Used with NO `MC2_SMOKE_MODE` and NO `MC2_BOOT_TO_*` shortcut, so movies decode and the front end is real.
+
 ## Live data-contract guards (MC2-VERIFY-LIVE-1)
 
 - `MC2_VERIFY_MODE` — mode for the live `MC2_VERIFY` guard family (`docs/verify-primitive.md`). `log` (**default**): shadow-log `[VERIFY]` lines to stderr + crash-bundle ring, continue; `[VERIFY] mission-end fires=N` counter at Mission::destroy. `fatal`: STOP with message + crash bundle + hard terminate (exit 0xE0564631). `off`: exactly-legacy (silent, guarded degradations skipped). Smoke-allowlisted.

@@ -393,6 +393,9 @@ def plan(jobs, proof_dir=None, capture_before_runs=1, before_dir=None):
         ("harnesses", [py, "tools/build_contract_harnesses.py", "--run", "--unit", "-j", str(jobs)], {}),
         ("tier1", [py, "scripts/run_smoke.py", "--tier", "tier1", "--keep-logs", "--deploy", "0.4"],
          {"MC2_DEBUG_STATE_DUMP": "1", "MC2_DIAG_TAGS": "CONFIG,BUILD,DEVICE"}),
+        # What a player does: scripted menu input (MC2_INPUT_SCRIPT) -> New Campaign mission 1 past the first comm video, and Load Game.
+        # Real video decode and the real front end; every other smoke boots --mission under SmokeMode and skips both.
+        ("player-path", [py, "scripts/run_player_path.py", "--install", install, "--out", str(proof / "player-path")], {}),
         ("kit-visibility", [py, "scripts/check-kit-visibility.py", "--install", install,
                             "--out", str(proof / "kit-visibility")], {}),
         # The ordinary contracts row is offline; fresh default-build quiet grading launches the game, so it lives here with the gate's exe.
@@ -882,7 +885,7 @@ def execute_parallel(steps, head, dry_run=False, keep_going=False, farm_determin
                     dict(os.environ, **harness[2], MC2_IN_GATE="1"))
             if harness_future and command == harness[1]:
                 return harness_future.result()
-            if any(Path(arg).name == 'saveload_roundtrip.py' for arg in command):
+            if any(Path(arg).name in ('saveload_roundtrip.py', 'run_player_path.py') for arg in command):
                 queued = time.monotonic()
                 mods_done.wait()
                 # Both workers still share the user's quicksave filenames.

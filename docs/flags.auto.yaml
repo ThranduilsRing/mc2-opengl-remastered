@@ -3,9 +3,9 @@
 # Where each gate is read, what the smoke runner forwards and what tier1_env_vars.md says are not here: ask
 # tools/repo_intel (env_var, gate_status), which scan the sources.
 generator_version: "3.0.0"
-gate_count: 756
+gate_count: 757
 registry_entry_count: 148
-verified_count: 724
+verified_count: 725
 flags:
   - name: MC2_ABL_ARG_GUARD
     kind: Bool
@@ -1858,6 +1858,14 @@ flags:
     rule: Std
     owner: unclassified
     doc: ""
+  - name: MC2_INPUT_SCRIPT
+    kind: String
+    default: ""
+    rule: Std
+    owner: code
+    doc: "Player-path harness only: file of scripted input commands (click/key/wait) fed into the engine input state; inert when unset."
+    smoke_passthrough: true
+    verified: true
   - name: MC2_INVIEW_CONFLATION_TRACE
     kind: Bool
     default: false
