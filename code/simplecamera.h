@@ -52,14 +52,13 @@ public:
 	void drawPreviewToPanel( float panelX, float panelY, float panelW, float panelH ) const;
 
 	bool hasObject() const { return pObject != nullptr; }
-	// Mech-lab framing: fitK scales the shape to K/boundsRadius (every mech the same size on screen);
-	// yaw is degrees off the camera axis, pitch the view angle, fx/fy shift the mech in the rect.
-	void setFramedPose( float fitK, float yaw, float pitch, float fx, float fy )
-	{ fitK_ = fitK; fitRadius_ = 0.f; framedPitch_ = pitch; fudgeX = fx; fudgeY = fy; rotation = yaw; framed_ = true; applyYaw_ = true; }
-	// Extra fill/rim infinite lights (degrees pitch, yaw) on top of the camera's key light.
-	void setFramedLights( bool on, float fillPitch, float fillYaw, float rimPitch, float rimYaw )
-	{ framedLights_ = on; framedLightPitch_[0] = fillPitch; framedLightYaw_[0] = fillYaw; framedLightPitch_[1] = rimPitch; framedLightYaw_[1] = rimYaw; }
-	float framedLightPitch_[2] = {}, framedLightYaw_[2] = {};
+	// Mech-lab framing: the model fills fillFrac of the rect height with its feet near the bottom, turned yaw
+	// degrees and seen from pitch degrees, lit by key + fill + rim. Distance and offset converge over a few
+	// frames from the drawn screen bounds. Mech3DAppearance has no scale(), so size comes from the camera
+	// distance, which this camera keeps itself: Camera::AltitudeTight is static and a second camera on the
+	// same screen (the component picture) rewrites it.
+	void setFramedPose( float fillFrac, float yaw, float pitch )
+	{ fillFrac_ = fillFrac; framedPitch_ = pitch; rotation = yaw; framed_ = true; framedAlt_ = 650.f; fudgeX = fudgeY = 0.f; fitIters_ = 40; haveDrawn_ = false; }
 	void setScale( float newScale );
 	void setRotation( float rotation );
 	void zoomIn( float howMuch ); // scale for things that can't 
@@ -100,8 +99,10 @@ private:
 	bool				bIsInMission;
 	float				shapeScale;
 	bool				drawOffscreen_ = false;   // PREVIEW-FBO-FIXED-800x600-1
-	float				fitK_ = 0.f, fitRadius_ = 0.f, framedPitch_ = 0.f;
-	bool				framed_ = false, applyYaw_ = false, framedLights_ = false;
+	float				fillFrac_ = 0.f, framedPitch_ = 0.f, framedAlt_ = 650.f;
+	float				drawn_[4] = {};	// last PreviewDraw screen extents (framed only)
+	int					fitIters_ = 0;
+	bool				framed_ = false, haveDrawn_ = false;
 
     bool                bContextNotSet;
 

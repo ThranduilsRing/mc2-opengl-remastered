@@ -316,7 +316,7 @@ void SimpleCamera::render(long xOffset, long yOffset)
 				const float offsetY = (bounds[1] + bounds[3] - viewMulY) / 2.f + fudgeY;
 				tglView.SetViewport(viewMulX,viewMulY,offsetX,offsetY);
 				auto view = getViewUniforms();
-				if ( framedLights_ )
+				if ( framed_ )
 				{
 					// Fill (cool, low, from the opposite side of the key) and rim (from behind, above).
 					auto addLight = [&view]( float pitchDeg, float yawDeg, DWORD argb ) {
@@ -325,11 +325,8 @@ void SimpleCamera::render(long xOffset, long yOffset)
 						mc2::math::buildRotation( m, mc2::math::Euler( pitchDeg * DEGREES_TO_RADS, yawDeg * DEGREES_TO_RADS, 0.0f ) );
 						view.lights.push_back( { TG_LIGHT_INFINITE, argb, m } );
 					};
-					addLight( framedLightPitch_[0], framedLightYaw_[0], 0xff5a6a80 );
-					addLight( framedLightPitch_[1], framedLightYaw_[1], 0xffa0a8b8 );
-				}
-				if ( framed_ )
-				{
+					addLight( 20.f, 0.f, 0xff5a6a80 );
+					addLight( 20.f, 180.f, 0xffa0a8b8 );
 					g_previewCaptureBounds = true;
 					g_previewBoundsMinX = g_previewBoundsMinY = 1e9f;
 					g_previewBoundsMaxX = g_previewBoundsMaxY = -1e9f;
@@ -338,9 +335,11 @@ void SimpleCamera::render(long xOffset, long yOffset)
 				if ( framed_ )
 				{
 					g_previewCaptureBounds = false;
-					static int s_diag = 0;
-					if ( s_diag++ % 60 == 0 )
-						MC2_LOG(Ui, Info, "[MECHLAB3D] diag drawn=[{:.0f},{:.0f},{:.0f},{:.0f}] rect=[{:.0f},{:.0f},{:.0f},{:.0f}] AltitudeTight(static)={:.0f} camAlt={:.0f} fitK={:.0f} radius={:.2f} rot={:.0f}", g_previewBoundsMinX, g_previewBoundsMinY, g_previewBoundsMaxX, g_previewBoundsMaxY, bounds[0], bounds[1], bounds[2], bounds[3], AltitudeTight, cameraAltitude, fitK_, fitRadius_, rotation);
+					drawn_[0] = g_previewBoundsMinX; drawn_[1] = g_previewBoundsMinY;
+					drawn_[2] = g_previewBoundsMaxX; drawn_[3] = g_previewBoundsMaxY;
+					haveDrawn_ = true;
+					if ( fitIters_ > 0 && ( fitIters_ % 10 == 0 || fitIters_ == 1 ) )
+						MC2_LOG(Ui, Info, "[MECHLAB3D] fit iter={} drawn=[{:.0f},{:.0f},{:.0f},{:.0f}] rect=[{:.0f},{:.0f},{:.0f},{:.0f}] alt={:.0f} sharedAlt={:.0f} camAlt={:.0f} fudge=({:.0f},{:.0f})", fitIters_, drawn_[0], drawn_[1], drawn_[2], drawn_[3], bounds[0], bounds[1], bounds[2], bounds[3], framedAlt_, AltitudeTight, cameraAltitude, fudgeX, fudgeY);
 				}
 			}
 			else
@@ -486,22 +485,33 @@ long SimpleCamera::update()
 		Camera::update();
 
 		if ( framed_ )
-			projectionAngle = framedPitch_;
-		ZoomTight();
-
-		pObject->recalcBounds();
-		if ( fitK_ > 0.f )
 		{
-			if ( fitRadius_ <= 0.f )
+			projectionAngle = framedPitch_;
+			if ( haveDrawn_ && fitIters_ > 0 )
 			{
-				fitRadius_ = pObject->getRadius();
-				MC2_LOG(Ui, Info, "[MECHLAB3D] fit radius={:.2f} k={:.2f} chassisScale={:.3f}", fitRadius_, fitK_, shapeScale);
+				haveDrawn_ = false;
+				--fitIters_;
+				const float rw = bounds[2] - bounds[0], rh = bounds[3] - bounds[1];
+				const float w = drawn_[2] - drawn_[0], h = drawn_[3] - drawn_[1];
+				if ( w > 1.f && h > 1.f )
+				{
+					// Size ~ 1/distance; then centre across and put the feet a little above the bottom edge.
+					framedAlt_ *= std::clamp( std::max( h / ( fillFrac_ * rh ), w / ( 0.94f * rw ) ), 0.5f, 2.f );
+					fudgeX += ( bounds[0] + bounds[2] ) * 0.5f - ( drawn_[0] + drawn_[2] ) * 0.5f;
+					fudgeY += bounds[3] - rh * ( 1.f - fillFrac_ ) * 0.35f - drawn_[3];
+				}
 			}
-			pObject->scale( fitRadius_ > 0.f ? fitK_ / fitRadius_ : shapeScale );
+			const float sharedAlt = AltitudeTight;
+			AltitudeTight = framedAlt_;
+			ZoomTight();
+			AltitudeTight = sharedAlt;
 		}
 		else
-			pObject->scale(shapeScale);
-		if ( applyYaw_ )
+			ZoomTight();
+
+		pObject->recalcBounds();
+		pObject->scale(shapeScale);
+		if ( framed_ )
 			pObject->rotation = this->rotation;
 
 		// we don't want to center around the feet
