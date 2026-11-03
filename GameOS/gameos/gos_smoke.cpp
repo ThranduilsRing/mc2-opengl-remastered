@@ -164,8 +164,7 @@ void samplePerf(double frameMs) {
                 std::sort(sorted.begin(), sorted.end());
                 double sum = 0.0;
                 for (double v : sorted) sum += v;
-                mc2::fmt::print_out("[FIRST60 v1] n={:d} avg_ms={:.2f} p50_ms={:.2f} p99_ms={:.2f} max_ms={:.2f} first_ms={:.2f}
-",
+                mc2::fmt::print_out("[FIRST60 v1] n={:d} avg_ms={:.2f} p50_ms={:.2f} p99_ms={:.2f} max_ms={:.2f} first_ms={:.2f}\n",
                     mc2::fmt::as_i32(kN), sum / kN, sorted[kN / 2], sorted[kN - 2], sorted[kN - 1], s_ms[0]);
                 std::fflush(stdout);
             }

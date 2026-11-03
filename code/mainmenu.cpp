@@ -437,8 +437,7 @@ void MainMenu::update()
 {
 	{	// via-menu timing marker (scripts/run_smoke.py --via-menu reads its wallclock stamp): the first time the main menu runs
 		static bool s_menuMarked = false;
-		if ( !s_menuMarked ) { s_menuMarked = true; mc2::fmt::print_out("[VIA_MENU v1] event=main_menu
-"); }
+		if ( !s_menuMarked ) { s_menuMarked = true; mc2::fmt::print_out("[VIA_MENU v1] event=main_menu\n"); }
 	}
     const auto pickedCampaign = PlayerFrontEnd::takeCampaignStart();
     if (!pickedCampaign.empty() && LogisticsData::instance) {
