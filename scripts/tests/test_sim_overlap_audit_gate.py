@@ -33,3 +33,12 @@ def test_determinism_detects_violation():
     assert sim.overlap_violation(CLEAN) == ""
     assert sim.overlap_violation(CLEAN + LINE + "\n").startswith("[SIM_OVERLAP v1] VIOLATION")
     assert {"mc2_01", "mc2_03", "mc2_10", "mc2_16", "mc2_24"} <= set(sim.OVERLAP_AUDIT_MISSIONS)
+
+
+def test_static_light_row_out_of_range_is_a_red_marker():
+    bad = ("[STATIC_LIGHT_ROW v1] event=zero_row_reached_gpu class=out_of_range regIdx=7 typeID=3 leaves=1 "
+           "lightIdx=2618 numLights=2 tableCount=2618 rngLightIdx=2618 multiCache=2618")
+    hits = [b for b in logparse.MARKER_BUCKETS if b.pattern.search(bad)]
+    assert [(h.bucket, h.severity) for h in hits] == [("static_light_row_out_of_range", "red")]
+    assert not [b for b in logparse.MARKER_BUCKETS
+                if b.pattern.search("[STATIC_LIGHT_ROW v1] event=census flushes=300 out_of_range=0")]
