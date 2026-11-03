@@ -49,7 +49,10 @@ void main() {
     // TERRAIN-HIRES-NEAR-1: LOD0 skirt strip on the 4x bake mesh (see terrain_tier1.vert).
     if (uP.visualMode == 1) {
         vec3 wp;
-        gl_Position = hiresNearClip(localOffset, isSkirtFlag == 0, float(isSkirtFlag) * uP.skirtDepth, wp);
+        // Mode-1 edges are stitched to the shared corner heights, so the skirt only backstops
+        // sub-texel cracks; the full coarse-range drop showed as a striped wall under the
+        // near cull edge at cross_map_view (fine-height normals light the vertical face).
+        gl_Position = hiresNearClip(localOffset, isSkirtFlag == 0, float(isSkirtFlag) * min(uP.skirtDepth, 32.0), wp);
         v_worldPos = wp;
         return;
     }
