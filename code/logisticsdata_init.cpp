@@ -520,6 +520,10 @@ void LogisticsData::initVariants()
 
 void LogisticsData::addVehicle( long fitID, PacketFile& objectFile, float scale, long nameID )
 {
+	// MCO buildings.csv VEHICLE rows use FitIDs (2000+) past the mod's object2.pak; their chassis come from the
+	// CSV, so skip them without the PACKET_OOB STOP (seekPacket would fail anyway).
+	if ( fitID < 0 || fitID >= objectFile.getNumPackets() )
+		return;
 	if ( NO_ERR != objectFile.seekPacket(fitID) )
 		return;
 
