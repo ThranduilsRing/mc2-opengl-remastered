@@ -17,6 +17,10 @@
       "status": "keep",
       "reason": "Gates/gate.cpp dumpConfig: ONE summary line per start (set/nondefault/unregistered/badvalue counts) plus a line per env-set gate and each warning. The smoke runner forces MC2_CONFIG_STRICT=1 and reads these lines to prove which configuration was measured; per-row lines for unset gates only print under MC2_CONFIG_DUMP=all."
     },
+    "FIRST60 v1": {
+      "status": "keep",
+      "reason": "scripts/smoke_lib/via_menu.py parses it (FIRST60_RE, time_to_first60) to report the first 60 post-mission_ready frames of a via-menu run; printed once per run from GameOS/gameos/gos_smoke.cpp samplePerf."
+    },
     "INSTR v1": {
       "status": "keep",
       "reason": "scripts/whatran.py and smoke_lib/gates.py parse the 'enabled:' banner to record which gates were armed for a run. smoke_lib/gates.py reports '[INSTR v1] banner absent' as a failure."
