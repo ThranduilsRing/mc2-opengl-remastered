@@ -65,19 +65,31 @@ py -3 tools/play_mission.py --mission <mcomission> --mod MechCommanderOmnitech::
 Escort timing, don't-destroy, stealth, scripted ABL-timer objectives: the bot
 does not drive them; they surface as PENDING/TIMEOUT.
 
-## Results (2026-11-03, invulnerable, 5 min budget, lane7 install)
+## Results (2026-11-03, invulnerable, lane7 install)
 
-| Mission | Verdict | Objectives | Enemies reacted / damaged / destroyed |
-|---|---|---|---|
-| mc2_01 | PASS (202 s) | 6/6 primary | 26 / 20 / 17 of 26 |
-| mc2_02 | TIMEOUT | 5 pass, 1 pending | 33 / 28 / 23 of 42 |
-| mc2_04 | TIMEOUT | 2 pass, 2 pending | 41 / 34 / 29 of 68 |
-| mc2_05 | TIMEOUT | 1 pass, 5 pending | 17 / 10 / 10 of 41 |
-| MCO a_0_1 | ERROR | engine STOP "Unable to open Mission File" on load | n/a |
+| Mission | Budget | Verdict | Objectives | Enemies reacted / damaged / destroyed |
+|---|---|---|---|---|
+| mc2_01 | 5 min | PASS (202 s) | 6/6 primary | 26 / 20 / 17 of 26 |
+| mc2_02 | 15 min | TIMEOUT | 5 pass, 1 pending (50011, primary, visible, at -2752,2837) | 33 / 28 / 23 of 42 |
+| mc2_04 | 15 min | TIMEOUT | 3 pass, 1 primary pending (50021) + hidden fit:5 | 54 / 47 / 36 of 68 |
+| mc2_05 | 15 min | TIMEOUT | 1 pass, 5 pending (50023-50027, visible) | 17 / 10 / 9 of 41 |
+| MCO a_0_1 | 5 min | TIMEOUT | 1 pass, rest pending (fit:3 hidden) | 7 / 4 / 0 of 11 |
+| MCO a_0_2 | 10 min | TIMEOUT | 0 pass, 7 pending | 8 / 8 / 1 of 9 |
 
-TIMEOUT means no failed objective, only unfinished ones at the time budget; a longer `--minutes` may finish them.
-The MCO load failure is a `--mod` / mission-path argument problem (tried `MechCommanderOmnitech::campaign` and
-`MechCommanderOmnitech:mco-compat:campaign`); not diagnosed further.
+TIMEOUT means no failed objective, only unfinished ones at the budget.
+
+Why the rest stay pending (15 min does not help): the pending stock objectives are visible and non-timer, so the
+bot is the limit, not the clock. Over a whole run the bot keeps one fixed goal target (mc2_02 id 173, mc2_05
+id 166), its orders show `rejected>0` or issue with no path (`pgoal=0 pstep=0/0`), most home units sit idle and
+the target stays at full hp. Pending hidden objectives (fit:N, no position) are scripted triggers the bot never
+drives. Not fixed: needs a retarget/unstick pass in `producePlayerIntent`, larger than a small driver addition.
+
+## MCO load failure (fixed)
+
+`Unable to open Mission File` came from a stale `mods/<mod>/.modindex-cache` copied by deploy from another
+install: it matched the file-count + mtime signature but held that install's absolute paths, so every mod
+`_open` failed silently. `LoadModIndexCache` (mclib/file_mod.inc) now rejects a cache whose first path is not
+under the current data dir and rebuilds it. `--mod NAME:DEPS:BOOT` arguments were correct.
 
 ## Dev gates (documented here; registered in Gates/gate_rows_2.inc)
 
