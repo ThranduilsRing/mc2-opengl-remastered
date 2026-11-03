@@ -43,3 +43,10 @@ def test_repin_keeps_unknown_keys(tmp_path):
     f.write_text(json.dumps({"mission": "mc2_03", "sha": "new"}))
     rs.keep_unknown_keys({"path": str(f), "data": {"mission": "mc2_03", "sha": "old", "schema_migration": {"v": 2}}})
     assert json.loads(f.read_text()) == {"mission": "mc2_03", "sha": "new", "schema_migration": {"v": 2}}
+
+
+def test_commits_behind_counts_first_parent_only(monkeypatch):
+    seen = []
+    monkeypatch.setattr(rs, "git", lambda *a: seen.append(a) or ("commit" if a[0] == "cat-file" else "7"))
+    assert rs.commits_behind("abc") == 7
+    assert "--first-parent" in seen[-1] and seen[-1][-1] == "abc..HEAD"

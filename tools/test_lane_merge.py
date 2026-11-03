@@ -3,6 +3,7 @@
 Run:
   py -3 -B -m pytest tools/test_lane_merge.py -q -p no:cacheprovider
 """
+import json
 import os
 import subprocess
 import sys
@@ -79,7 +80,7 @@ def test_precheck_fast_path_has_no_native_build_and_no_scratch_in_root(env, monk
     before = git(repo, "rev-parse", "HEAD")
     seen = precheck_fixture(lm, repo, monkeypatch, red)
     assert lm.main(["--root", str(repo), "--precheck", "HEAD"]) == int(red is not None)
-    assert len(seen) == 9     # 5 ratchets + callers refresh + callers --check + 2 suites
+    assert len(seen) == 11    # 5 ratchets + callers refresh + callers --check + 2 early rows + 2 suites
     assert not any(is_native(cmd) for _, cmd in seen)
     assert all(not lm._inside(root, str(repo)) for root, _ in seen)   # scratch is never inside the main worktree
     caller_commands = [cmd for _, cmd in seen if "tools/callers.py" in cmd]
@@ -102,7 +103,7 @@ def test_precheck_with_link_uses_warm_tree_outside_root(env, monkeypatch, capsys
     tree = tmp_path / "warm" / "tree"
     seen = precheck_fixture(lm, repo, monkeypatch, red, tree)
     assert lm.main(["--root", str(repo), "--precheck", "HEAD", "--with-link"]) == int(red is not None)
-    assert len(seen) == 12
+    assert len(seen) == 14
     assert all(root == str(tree) for root, _ in seen)
     assert not lm._inside(str(tree), str(repo))
     for _, cmd in seen:
@@ -1051,3 +1052,173 @@ def test_floor_sync_preserves_crlf(tmp_path):
     (tmp_path / "tests/unit/test_gate.cpp").write_bytes(b'TEST_CASE("x") {\r\n    REQUIRE(n == 1);\r\n}\r\n')
     assert lm.sync_test_gate_floor(str(tmp_path))
     assert (tmp_path / "tests/unit/test_gate.cpp").read_bytes() == b'TEST_CASE("x") {\r\n    REQUIRE(n == 9);\r\n}\r\n'
+
+
+# ---- batch-end derived inventories: tighten-only (gate floor, log tag census) ----
+
+LOGTAGS = "tests/unit/log_tag_baseline.json"
+
+
+def _tags(*rows, consumed=()):
+    return {"emitters": [{"tag": t, "ver": v, "stream": "stderr", "keys": ["a"], "count": n} for t, v, n in rows],
+            "consumed_tags": list(consumed), "plain_tags": []}
+
+
+def test_log_tag_census_accepts_additions_only():
+    lm = _load_module()
+    old = _tags(("A", 1, 2), consumed=["A"])
+    assert lm.log_tag_loosened(old, _tags(("A", 1, 2), ("B", 1, 1), consumed=["A", "B"])) == []
+    assert lm.log_tag_loosened(old, _tags(("A", 1, 3), consumed=["A"])) == []
+
+
+def test_log_tag_census_loosening_is_reported():
+    lm = _load_module()
+    old = _tags(("A", 1, 2), ("B", 1, 1), consumed=["A"])
+    assert any("B v1" in w for w in lm.log_tag_loosened(old, _tags(("A", 1, 2))))
+    assert any("A v1" in w for w in lm.log_tag_loosened(old, _tags(("A", 1, 1), ("B", 1, 1))))
+    assert any("consumed_tags" in w for w in lm.log_tag_loosened(old, _tags(("A", 1, 2), ("B", 1, 1))))
+
+
+def test_gate_floor_loosening_needs_retirement():
+    lm = _load_module()
+    assert lm.gate_floor_loosened({"A", "B"}, {"A", "B", "C"}, set()) == []
+    assert lm.gate_floor_loosened({"A", "B"}, {"A"}, {"B"}) == []
+    assert lm.gate_floor_loosened({"A", "B"}, {"A"}, set()) == ["B"]
+
+
+def _gate_table(names):
+    rows = ", ".join('{"name": "%s"}' % n for n in names)
+    return '{"count": %d, "gates": [%s]}\n' % (len(names), rows)
+
+
+def _gate_repo(env, names, floor):
+    repo, _ = env
+    write(repo, "Gates/gate_table.json", _gate_table(names))
+    write(repo, "Gates/retired_names.json", '["OLD"]\n')
+    write(repo, "tests/unit/test_gate.cpp", "    REQUIRE(n == %d);   // floor\n" % floor)
+    write(repo, LOGTAGS, json.dumps(_tags(("A", 1, 1))))
+    commit_all(repo, "gates")
+
+
+def _derived_batch(env, monkeypatch, lane_edits, regen):
+    repo, tools = env
+    git(repo, "checkout", "-q", "-b", "lane_g", "main")
+    for rel, content in lane_edits.items():
+        write(repo, rel, content)
+    commit_all(repo, "lane gates")
+    git(repo, "checkout", "-q", "main")
+    lm = _load_module()
+    monkeypatch.setattr(lm, "regenerate_all", lambda root: regen(repo) or [])
+    monkeypatch.setattr(lm, "verify_merged", lambda *a: ("OK", []))
+    return lm, lm.main(["--batch", "lane_g", "--root", str(repo), "--tools-dir", str(tools)])
+
+
+def test_batch_derived_inventories_commit_once_and_only_tighten(env, monkeypatch):
+    _gate_repo(env, ["A", "B"], 2)
+    repo, _ = env
+    lm, rc = _derived_batch(env, monkeypatch, {"Gates/gate_table.json": _gate_table(["A", "B", "C"])},
+                            lambda r: (write(r, LOGTAGS, json.dumps(_tags(("A", 1, 1), ("NEW", 1, 1)))), [LOGTAGS])[1])
+    assert rc == 0
+    assert git(repo, "log", "-1", "--format=%s") == lm.DERIVED_SUBJECT
+    assert set(git(repo, "show", "--format=", "--name-only", "HEAD").splitlines()) == {"tests/unit/test_gate.cpp", LOGTAGS}
+    assert "REQUIRE(n == 3);" in (repo / "tests/unit/test_gate.cpp").read_text(encoding="utf-8")
+
+
+def test_batch_fails_loudly_when_a_gate_is_lost_without_retirement(env, monkeypatch, capsys):
+    _gate_repo(env, ["A", "B"], 2)
+    repo, _ = env
+    lm, rc = _derived_batch(env, monkeypatch, {"Gates/gate_table.json": _gate_table(["A"])}, lambda r: None)
+    assert rc == 6
+    assert "not in Gates/retired_names.json" in capsys.readouterr().err
+    assert "REQUIRE(n == 2);" in (repo / "tests/unit/test_gate.cpp").read_text(encoding="utf-8")
+
+
+def test_batch_fails_loudly_and_restores_a_loosened_log_tag_census(env, monkeypatch, capsys):
+    _gate_repo(env, ["A"], 1)
+    repo, _ = env
+    lm, rc = _derived_batch(env, monkeypatch, {"x.txt": "x\n"}, lambda r: write(r, LOGTAGS, json.dumps(_tags())))
+    assert rc == 6
+    assert "log tag census loosened" in capsys.readouterr().err
+    assert json.loads((repo / LOGTAGS).read_text(encoding="utf-8")) == _tags(("A", 1, 1))
+
+
+# ---- early contract rows + exe fingerprint guard (W109 lessons) ----
+
+def test_early_rows_are_the_contract_commands():
+    lm = _load_module()
+    assert dict((l, (s, a)) for l, s, a in lm.EARLY_ROWS) == {
+        "sim_include_firewall": ("scripts/check_sim_include_firewall.py", []),
+        "log_tag_census": ("tools/log_tag_census.py", ["--check"])}
+
+
+def test_precheck_runs_the_early_rows(env, monkeypatch):
+    repo, _ = env
+    lm = _load_module()
+    seen = precheck_fixture(lm, repo, monkeypatch, "check_sim_include_firewall.py")
+    assert lm.main(["--root", str(repo), "--precheck", "HEAD"]) == 1     # the firewall row is red -> precheck is red
+    names = [lm.Path(a).name for _, cmd in seen for a in cmd]
+    assert "check_sim_include_firewall.py" in names
+    assert any(cmd[-2:] == ["tools/log_tag_census.py", "--check"] for _, cmd in seen)
+
+
+def test_pre_gate_runs_the_early_rows(env, monkeypatch, capsys):
+    repo, _ = env
+    lm = _load_module()
+    cmds = []
+    monkeypatch.setattr(lm, "regenerate_all", lambda root, dry_run=False: [])
+    monkeypatch.setattr(lm, "exe_matches_head", lambda root, tree="build64-ninja": None)
+
+    def runner(root, cmd, env=None):
+        cmds.append(cmd)
+        return subprocess.CompletedProcess(cmd, int(any("log_tag_census" in str(c) for c in cmd)), "tag census red")
+    monkeypatch.setattr(lm, "run", runner)
+    assert lm.pre_gate(str(repo), exe=str(repo / "no.exe")) == 1
+    out = capsys.readouterr().out
+    assert "pre-gate: sim_include_firewall: OK" in out
+    assert "pre-gate: log_tag_census: FAIL" in out
+    assert "PRE-GATE FAIL: log_tag_census" in out
+
+
+def test_pre_gate_fails_on_a_stale_exe_fingerprint(env, monkeypatch, capsys):
+    repo, _ = env
+    lm = _load_module()
+    exe = repo / "build64-ninja" / "mc2.exe"
+    exe.parent.mkdir()
+    exe.write_bytes(b"x")
+    monkeypatch.setattr(lm, "regenerate_all", lambda root, dry_run=False: [])
+    monkeypatch.setattr(lm, "exe_matches_head", lambda root, tree="build64-ninja": False)
+    monkeypatch.setattr(lm, "run", lambda root, cmd, env=None: subprocess.CompletedProcess(cmd, 0, ""))
+    assert lm.pre_gate(str(repo), exe=str(exe)) == 1
+    assert "PRE-GATE FAIL: exe-fingerprint" in capsys.readouterr().out
+
+
+def test_rebuild_if_head_moved_skips_a_matching_or_missing_exe(env):
+    repo, _ = env
+    lm = _load_module()
+    for state in (True, None):
+        ran = []
+        ok, _ = lm.rebuild_if_head_moved(str(repo), check=lambda r, state=state: state,
+                                         runner=lambda *a, **k: ran.append(a))
+        assert ok and not ran
+
+
+def test_rebuild_if_head_moved_rebuilds_then_accepts(env):
+    repo, _ = env
+    lm = _load_module()
+    states = iter([False, True])
+    ran = []
+    ok, msg = lm.rebuild_if_head_moved(str(repo), check=lambda r: next(states),
+                                       runner=lambda root, cmd, env=None: ran.append(cmd) or subprocess.CompletedProcess(cmd, 0, ""))
+    assert ok and not msg
+    assert len(ran) == 1 and ran[0][1].replace("\\", "/").endswith("scripts/ninja_build.py")
+
+
+def test_rebuild_if_head_moved_fails_loudly(env):
+    repo, _ = env
+    lm = _load_module()
+    ok, msg = lm.rebuild_if_head_moved(str(repo), check=lambda r: False,
+                                       runner=lambda root, cmd, env=None: subprocess.CompletedProcess(cmd, 1, "link error"))
+    assert not ok and "rebuild before the gate failed" in msg
+    ok, msg = lm.rebuild_if_head_moved(str(repo), check=lambda r: False,
+                                       runner=lambda root, cmd, env=None: subprocess.CompletedProcess(cmd, 0, ""))
+    assert not ok and "still differs" in msg

@@ -768,10 +768,24 @@ DECLARED_VIEWS = set()
 COMPARE_BOOKMARKS = ("mc2_01_saved_205644", "mc2_10_saved_204523")
 
 
+def raw_mads(output):
+    """{bookmark: unrounded MAD} from the summary.json that ab.py names on its '[ab] wrote <dir>' line (the printed table is rounded)."""
+    raw = {}
+    for line in (output or "").splitlines():
+        if line.startswith("[ab] wrote "):
+            try:
+                rows = json.loads((Path(line[len("[ab] wrote "):].strip()) / "summary.json").read_text()).get("rows", [])
+                raw.update({r["bookmark"]: float(r["mad"]) for r in rows})
+            except (OSError, ValueError, KeyError, TypeError):
+                pass
+    return raw
+
+
 def mad_flags(output, declared=(), expected=()):
     """Bookmarks in ab.py --compare-only output ('name | MAD | ...') whose MAD exceeds MAD_LIMIT and are not declared views.
     Fail closed: an expected bookmark with no row (crashed capture), a 'missing png' line, or a size mismatch is a flag too."""
     bad, seen = [], set()
+    raw = raw_mads(output)
     for line in (output or "").splitlines():
         if "missing png" in line or "size mismatch" in line:
             bad.append(line.strip().replace("[ab] ", "")[:80])
@@ -789,6 +803,7 @@ def mad_flags(output, declared=(), expected=()):
             bad.append(f"{cells[0]}=non-numeric MAD '{cells[1][:20]}'")  # a nan/n-a row is never a pass
             continue
         seen.add(cells[0])
+        mad = raw.get(cells[0], mad)   # compare the unrounded value: a printed 0.05 can be a real 0.0539
         if mad > MAD_LIMIT:
             bad.append(f"{cells[0]}={cells[1]}")
     bad.extend(f"{name}=no compare row" for name in expected if name not in seen)
