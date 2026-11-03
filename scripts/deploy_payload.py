@@ -135,7 +135,7 @@ GAME_DATA_PAYLOAD = [
 
 # TERRAIN-MATERIAL-TEXTURES-1: per-layer BC7 sRGB albedo KTX2s read off
 # "data/terrain_layers/<channel>_albedo.ktx2" by the LOD-chunk albedo-array
-# loader (gos_terrain_lod_chunk.cpp) when MC2_TERRAIN_MATERIAL_TEXTURES=1.
+# loader (none today: the GL consumer was retired; a Vulkan one is on the backlog).
 # Loose cooked sidecars (gitignored; regenerate via
 # tools/mc2texcook/cook_terrain_layers.py -- must be mip-complete BC7 sRGB).
 # OPTIONAL at deploy time: a missing layer file only logs and skips (the

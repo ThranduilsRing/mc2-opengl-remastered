@@ -10,7 +10,7 @@
 
 namespace mc2::gate::detail {
 
-inline constexpr std::size_t kGateCount = 756;
+inline constexpr std::size_t kGateCount = 754;
 
 inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_ABL_ARG_GUARD", Kind::Bool, Rule::Lead1, {}},
@@ -601,8 +601,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_TERRAIN_MASK_DISPATCH_WATER", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_TERRAIN_MATERIAL_LIB", Kind::Bool, Rule::Lead0, {}},
     {"MC2_TERRAIN_MATERIAL_LIB_FILE", Kind::String, Rule::Std, {}},
-    {"MC2_TERRAIN_MATERIAL_TEXTURES", Kind::Bool, Rule::Lead0, {}},
-    {"MC2_TERRAIN_MATERIAL_TEXTURES_STRENGTH", Kind::Float, Rule::Prefix, {}},
     {"MC2_TERRAIN_MINE_AB", Kind::Bool, Rule::Presence, {}},
     {"MC2_TERRAIN_NORMAL_ARRAY", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_TERRAIN_OVERLAY_V2", Kind::Bool, Rule::Lead0, {}},

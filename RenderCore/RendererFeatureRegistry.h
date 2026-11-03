@@ -678,14 +678,6 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "LOD-chunk terrain renderer (mclib/terrain.cpp/terrain.h), the primary tessellation-free terrain path.",
     },
     {
-        "MC2_FEATURE_TERRAIN_MATERIAL_TEXTURES", "MC2_TERRAIN_MATERIAL_TEXTURES", EnvVarKind::Feature, false,
-        "TERRAIN-MATERIAL-TEXTURES-1: 6-layer BC7 sRGB GL_TEXTURE_2D_ARRAY albedo (rock/grass/dirt/concrete/snow/cliff from...",
-    },
-    {
-        "MC2_TUNE_TERRAIN_MATERIAL_TEXTURES_STRENGTH", "MC2_TERRAIN_MATERIAL_TEXTURES_STRENGTH", EnvVarKind::Trace, false,
-        "TERRAIN-MATERIAL-TEXTURES-1 knob: albedo mix strength override (float, clamped 0..1).",
-    },
-    {
         "MC2_TERRAIN_OVERLAY_V2", "MC2_TERRAIN_OVERLAY_V2", EnvVarKind::Feature, false,
         "TERRAIN-OVERLAY-V2-PARITY-1: composite an authored world-XY-bounded cement/pad/runway overlay sidecar (data/missions/<stem>.beauty/overlay_v2.png...",
     },

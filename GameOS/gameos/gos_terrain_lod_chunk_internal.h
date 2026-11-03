@@ -170,7 +170,6 @@ extern const float kTglcMoverContactShadow;
 extern const float kTglcMacroVariation;
 extern const bool kTglcEdgeFeather;
 extern const float kTglcEdgeFeatherStr;
-extern const bool  kTglcMatAlbedo;
 extern int    s_visualSide;
 extern int    s_visualMipFloats;
 extern int s_visualDampSide;
@@ -182,7 +181,6 @@ extern float  s_halfMap;
 extern float  s_overlayBounds[4];
 extern float  s_shorelineBounds[4];
 extern float  s_waterShoreHeightBounds[4];
-extern float s_matAlbedoStrengthJson;
 const float* mc2_chunkDetailAntiTileYZW();
 #ifdef MC2_VULKAN_ISLAND
 bool terrainVisualDisplaceGateOn();

@@ -81,7 +81,6 @@ set(SOURCES ${SOURCES}
     gos_terrain_lighting.cpp
     gos_terrain_lod_chunk.cpp
     gos_terrain_lod_chunk_gates.cpp
-    gos_terrain_lod_chunk_matalbedo.cpp
     gos_terrain_lod_chunk_feed.cpp
     gos_terrain_lod_chunk_draw.cpp
     gos_terrain_lod_chunk_upload.cpp

@@ -33,7 +33,6 @@ import cook_terrain_layers as ctl    # noqa: E402
 MANIFEST_PATH = _TOOLS_DIR / 'terrain_layer_manifest.json'
 _REPO_ROOT = _TOOLS_DIR.parent.parent
 FRAG_HEADER_PATH = _REPO_ROOT / 'shaders' / 'include' / 'terrain_mat_layers.hglsl'
-LOADER_CPP_PATH = _REPO_ROOT / 'GameOS' / 'gameos' / 'gos_terrain_lod_chunk_matalbedo.cpp'
 
 KTX2_MAGIC = b"\xabKTX 20\xbb\r\n\x1a\n"
 REQUIRED_CHANNELS = ('rock', 'grass', 'dirt', 'concrete', 'snow', 'cliff')
@@ -135,49 +134,12 @@ class TestChannelLayerIndexAgreement(unittest.TestCase):
             out[m.group(1)] = int(m.group(2))
         return out
 
-    def _parse_loader_channel_names(self):
-        """Extract the kMatAlbedoChannelNames[] string list order from the loader."""
-        import re
-        text = LOADER_CPP_PATH.read_text(encoding='utf-8')
-        m = re.search(r'kMatAlbedoChannelNames\[kMatAlbedoLayerCount\]\s*=\s*\{(.*?)\}',
-                      text, re.DOTALL)
-        self.assertIsNotNone(m, 'could not find kMatAlbedoChannelNames[] in loader')
-        return [s for s in re.findall(r'"([^"]+)"', m.group(1))]
-
-    def _parse_loader_expected_layers(self):
-        """The native-facing channel lookup returns its name-table index directly."""
-        import re
-        text = LOADER_CPP_PATH.read_text(encoding='utf-8')
-        count = re.search(r'kMatAlbedoLayerCount\s*=\s*(\d+)\s*;', text)
-        self.assertIsNotNone(count)
-        names = self._parse_loader_channel_names()
-        self.assertEqual(int(count.group(1)), len(names))
-        body = re.search(r'int gos_GetTerrainMatAlbedoLayerIndex\([^)]*\)\s*\{(.*?)\n\}',
-                         text, re.DOTALL)
-        self.assertIsNotNone(body)
-        self.assertRegex(body.group(1), r'for\s*\(int i = 0; i < kMatAlbedoLayerCount; \+\+i\)')
-        self.assertRegex(body.group(1), r'if \(strcmp\(channelName, kMatAlbedoChannelNames\[i\]\) == 0\) return i;')
-        return list(range(len(names)))
-
     def test_frag_constants_match_canonical(self):
         frag = self._parse_frag_mat_layers()
         for channel, const_name, idx in CANONICAL_LAYER_ORDER:
             self.assertIn(const_name, frag, f'frag header missing {const_name}')
             self.assertEqual(frag[const_name], idx,
                              f'{const_name} = {frag[const_name]} in frag header, expected {idx}')
-
-    def test_loader_channel_name_order_matches_canonical(self):
-        names = self._parse_loader_channel_names()
-        expected = [c for c, _, _ in CANONICAL_LAYER_ORDER]
-        self.assertEqual(names, expected,
-                         f'loader kMatAlbedoChannelNames order {names} != canonical {expected}')
-
-    def test_loader_expected_layer_table_is_identity(self):
-        # Each channel's array index must equal its frag MAT_LAYER constant, which
-        # (canonically) equals its position. kMatAlbedoExpectedLayer[i] must == i.
-        expected_layers = self._parse_loader_expected_layers()
-        self.assertEqual(expected_layers, [idx for _, _, idx in CANONICAL_LAYER_ORDER],
-                         f'loader kMatAlbedoExpectedLayer {expected_layers} disagrees with canonical')
 
     def test_manifest_order_matches_canonical(self):
         # The manifest layers dict preserves insertion order (json + py3.7+); the

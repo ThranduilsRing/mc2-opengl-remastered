@@ -51,9 +51,6 @@ extern const float kTglcMacroVariation    = []() {
 // Killswitch: MC2_TERRAIN_EDGE_FEATHER=0.
 extern const bool kTglcEdgeFeather = mc2::gate::get<"MC2_TERRAIN_EDGE_FEATHER">();
 extern const float kTglcEdgeFeatherStr    = mc2::gate::get<"MC2_TERRAIN_EDGE_FEATHER_STRENGTH">();
-// TERRAIN-MATERIAL-TEXTURES-1: per-layer PBR albedo array gate (default OFF ->
-// u_useMatAlbedo uploads 0 -> frag composition verbatim -> byte-identical).
-extern const bool  kTglcMatAlbedo         = mc2::gate::get<"MC2_TERRAIN_MATERIAL_TEXTURES">();
 
 TerrainShorelineKnobs gos_TerrainShorelineKnobs() {
     TerrainShorelineKnobs k;

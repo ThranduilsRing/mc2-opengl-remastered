@@ -150,7 +150,7 @@ L(Lead0, "MC2_TERRAIN_CLIFF_SHADOW_FLOOR", Bool, false, "terrain", "", "", verif
 // matNormalArray layer 5 (MAT_LAYER_MARBLE_CLIFF, mat5_normal.tga: rgb=normal,
 // a=marble_cliff-derived displacement) projected from world axes so vertical
 // faces stop showing the stretched top-down splat and read as real rock relief.
-// DECOUPLED from the WIP albedo gate MC2_TERRAIN_MATERIAL_TEXTURES: the normal
+// Independent of any albedo path: the normal
 // array is the always-loaded legacy terrain normal array, so this needs no
 // albedo path. Default OFF -> uploads useTriplanarCliff=0 -> frag block no-op
 // (byte-identical).
@@ -204,14 +204,6 @@ L(Lead0Kill, "MC2_TERRAIN_MASK_DISPATCH_SOLID", Bool, true, "terrain", "", ""),
 L(Lead0Kill, "MC2_TERRAIN_MASK_DISPATCH_WATER", Bool, true, "terrain", "", ""),
 L(Lead0, "MC2_TERRAIN_MATERIAL_LIB", Bool, false, "terrain", "", "", passthrough | verified),
 G("MC2_TERRAIN_MATERIAL_LIB_FILE", String, "", "terrain", "", "", passthrough | verified),  // default not derivable from the tree
-// TERRAIN-MATERIAL-TEXTURES-1: per-layer PBR albedo textures on the LIVE
-// LOD-chunk terrain path (gos_terrain_lod_chunk.cpp lazy loader + binder,
-// terrain_lod_chunk.frag u_useMatAlbedo branch). Gate OFF -> u_useMatAlbedo
-// uploads 0 -> the colormap-tint composition runs VERBATIM (byte-identical).
-// history: docs/gate-history.md#MC2_TERRAIN_MATERIAL_TEXTURES
-L(Lead0, "MC2_TERRAIN_MATERIAL_TEXTURES", Bool, false, "terrain", "", "TERRAIN-MATERIAL-TEXTURES-1: 6-layer BC7 sRGB GL_TEXTURE_2D_ARRAY albedo (rock/grass/dirt/concrete/snow/cliff from...", passthrough | registry(Feature, "MC2_FEATURE_TERRAIN_MATERIAL_TEXTURES", -1, false) | verified),
-// history: docs/gate-history.md#MC2_TERRAIN_MATERIAL_TEXTURES_STRENGTH
-P("MC2_TERRAIN_MATERIAL_TEXTURES_STRENGTH", Float, -1.0, "terrain", "", "TERRAIN-MATERIAL-TEXTURES-1 knob: albedo mix strength override (float, clamped 0..1).", passthrough | clampRange(0.0, 1.0) | registry(Trace, "MC2_TUNE_TERRAIN_MATERIAL_TEXTURES_STRENGTH", -1, false)),
 L(Presence, "MC2_TERRAIN_MINE_AB", Bool, false, "terrain", "", "", verified),
 L(Lead0Kill, "MC2_TERRAIN_NORMAL_ARRAY", Bool, true, "gameos", "", "", verified),
 // TERRAIN-OVERLAY-V2-PARITY-1: authored cement/pad/runway overlay sidecar.

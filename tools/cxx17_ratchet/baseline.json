@@ -630,10 +630,6 @@
   "GameOS/gameos/gos_terrain_lod_chunk.h": {
    "LG17": 2
   },
-  "GameOS/gameos/gos_terrain_lod_chunk_matalbedo.cpp": {
-   "LG05": 2,
-   "LG06": 3
-  },
   "GameOS/gameos/gos_terrain_lod_chunk_upload.cpp": {
    "LG17": 2
   },

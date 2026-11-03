@@ -87,7 +87,6 @@ Split commit: `f0521b300`.
 | `gos_terrain_lod_chunk_draw.cpp` | Native terrain patch capture and submission; GL scene draws have no present consumer. |
 | `gos_terrain_lod_chunk_feed.cpp` | gos_terrain_lod_chunk: VK tier-1 terrain frame feed (mc2_terrain_tier1_get_frame_feed) and its version counters. |
 | `gos_terrain_lod_chunk_gates.cpp` | gos_terrain_lod_chunk: eager tuning caches (kTglc*) the draw path and the light-pool uploads read, and the GlStateGuard kill-switch. |
-| `gos_terrain_lod_chunk_matalbedo.cpp` | gos_terrain_lod_chunk: terrain material albedo texture array: setters from terrain_material_lib.cpp and the lazy BC7 array load. |
 | `gos_terrain_lod_chunk_upload.cpp` | gos_terrain_lod_chunk: heightfield, visual-damp, control-map, overlay/shoreline sidecar and cement-word uploads, and the terrain light/ambient accessors. |
 | `gos_terrain_lod_chunk_internal.h` | shared include bundle, extern globals and declarations of the pieces |
 
