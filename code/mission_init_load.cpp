@@ -8,6 +8,7 @@
 #include "mission_init_frame.h"
 #include "render_resource_owners.h"
 #include "mc2fmt.h"
+#include "content_error.h"
 
 // Read the warrior count and set up the brain-load counters.
 void Mission::initWarriorsHeader(MissionInitFrame& f) {
@@ -129,7 +130,7 @@ void Mission::loadWarriors(MissionInitFrame& f) {
 					soakBrainsLoaded++;
 				else
 				{
-					soakBrainsFailed++;
+					{ soakBrainsFailed++; mc2::content::error(mc2::content::Kind::MissionData, static_cast<const char*>(brainFileName), moduleHandle < 0 ? "brain ABL failed to load; unit has no brain (idle)" : "brain ABL compiled with errors; unit brain unusable"); }
 				}
 
 #ifdef _DEBUG

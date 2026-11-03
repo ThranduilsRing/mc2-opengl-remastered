@@ -483,6 +483,8 @@ void execHirePilot (void);
 void execAddNewPilot (void);
 void execAddNewPilotToPlayer (void);
 void execAutoRepairWithinRadius (void);
+void execAutoMedicalWithinRadius (void);
+void execAutoScan (void);
 void execScanAreaCapture (void);
 void execScanAreaRepair (void);
 void execSetCampaignGlobalVar (void);

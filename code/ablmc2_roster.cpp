@@ -663,6 +663,28 @@ void execAutoRepairWithinRadius (void) {
 	omniTrace("autorepairwithinradius (stub)");
 }
 
+void execAutoMedicalWithinRadius (void) {
+
+	//Heal friendlies within radius (MC2X mc2xplay.abl). Safe stub, same contract as autorepairwithinradius.
+	//		PARAMS: integer partId, real radius
+	//		Returns: nothing
+
+	long partId = ABLi_popInteger();
+	float radius = ABLi_popIntegerReal();
+	(void)partId; (void)radius;
+	omniTrace("automedicalwithinradius (stub)");
+}
+
+void execAutoScan (void) {
+
+	//MC2X "autoscan" player-brain option (mc2xplay.abl: gates the wolfman auto-repair/capture scan loop).
+	//		PARAMS: none
+	//		Returns: bool. false = loop off, so the brain just FireAtWill's, which is the stock behaviour.
+
+	omniTrace("autoscan (stub)");
+	ABLi_pushBoolean(false);
+}
+
 void execScanAreaCapture (void) {
 
 	//Area-scan for capturable objects (Omnitech). Safe stub.

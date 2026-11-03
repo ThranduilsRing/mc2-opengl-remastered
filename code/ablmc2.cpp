@@ -550,6 +550,8 @@ void initABL (void) {
 	ABLi_addFunction("addnewpilot",          false, "iCC", nullptr, execAddNewPilot);
 	ABLi_addFunction("addnewpilottoplayer",  false, "iCC", nullptr, execAddNewPilotToPlayer);
 	ABLi_addFunction("autorepairwithinradius", false, "i*", nullptr, execAutoRepairWithinRadius);
+	ABLi_addFunction("automedicalwithinradius", false, "i*", nullptr, execAutoMedicalWithinRadius);
+	ABLi_addFunction("autoscan",             false, nullptr, "b",  execAutoScan);
 	ABLi_addFunction("scanareacapture",      false, "*",   "i", execScanAreaCapture);
 	ABLi_addFunction("scanarearepair",       false, "*",   nullptr, execScanAreaRepair);
 	ABLi_addFunction("setcampaignglobalvar", false, "ii",  nullptr, execSetCampaignGlobalVar);
