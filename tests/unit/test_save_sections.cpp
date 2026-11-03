@@ -300,3 +300,18 @@ TEST_CASE("save sections: V2 clock and legacy clock preserve the packet cursor")
     CHECK_FALSE(readSavedCombatClock(file, true));
     CHECK(file.cursor == 2);
 }
+
+TEST_CASE("save parts: an explicit PartsFormat tag makes legacy detection unambiguous") {
+    using mc2::save::partsAreShiftedLegacy;
+    // New save whose Part1 is an omitted alternative (ObjectNumber 0, WID 0): the tag keeps it non-legacy, so WID/SquadId/Variant load.
+    CHECK_FALSE(partsAreShiftedLegacy(true, true, 0, 0));
+    CHECK_FALSE(partsAreShiftedLegacy(true, true, 41, 7));
+    CHECK_FALSE(partsAreShiftedLegacy(true, false, 0, 0));
+    // Untagged legacy save: blank Part1 (no WID key, or WID 0 with ObjectNumber 0) means every part is shifted.
+    CHECK(partsAreShiftedLegacy(false, false, 0, 0));
+    CHECK(partsAreShiftedLegacy(false, true, 0, 0));
+    // Untagged save from the Parts 1..N era with a real Part1 still loads its WIDs.
+    CHECK_FALSE(partsAreShiftedLegacy(false, true, 41, 7));
+    CHECK_FALSE(partsAreShiftedLegacy(false, true, 0, 7));
+    CHECK(mc2::save::kPartsFormatCurrent == 2);
+}
