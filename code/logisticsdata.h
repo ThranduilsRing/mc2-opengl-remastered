@@ -8,6 +8,7 @@ LogisticsData.h			: Interface for the LogisticsData component.  This thing holds
 //===========================================================================//
 \*************************************************************************************************/
 
+#include <string_view>
 #include"stuff/stuff.hpp"
 #include <string>
 #include <vector>
@@ -302,8 +303,9 @@ private:
 	bool m_phaseAComplete = false;
 	bool m_phaseBComplete = false;
 
-	void addVehicle( long fitID, PacketFile& objectFile, float scale, long nameID = 0 );
-	int  addBuilding( long fitID, PacketFile& objectFile, float scale );
+	void addVehicle( long fitID, PacketFile& objectFile, float scale, long nameID = 0, std::string_view csvName = {} );
+	bool openLooseChassisFit( FitIniFile& file, std::string_view csvName ) const;
+	int  addBuilding( long fitID, PacketFile& objectFile, float scale, std::string_view csvName = {} );
 	void removeDeadWeight();
 	void clearVariants();
 
