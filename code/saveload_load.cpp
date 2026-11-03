@@ -744,7 +744,10 @@ void Mission::loadActivateAndFinalize() {
 	soundSystem->playABLDigitalMusic(missionTuneNum);
 	ObjectManager->snapshotMoverPoses();
 	ObjectManager->extractRenderSnapshots();
+	// activate() re-centres on the first mover; a resumed game keeps the camera it was saved with.
+	const glm::vec3 savedCameraPosition = eye->getPosition();
 	eye->activate();
+	eye->setPosition(savedCameraPosition,false);
 	eye->update();
 	loadProgress = 100.f;
 
