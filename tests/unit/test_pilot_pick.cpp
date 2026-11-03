@@ -44,3 +44,12 @@ TEST_CASE("recovery button hover text: no-pilot id only when the pool is empty")
 	CHECK(recoveryHelpTextId(true, 45120, 48100) == 48100);
 	CHECK(recoveryHelpTextId(false, 45120, 48100) == 45120);
 }
+
+TEST_CASE("primary pool filter excludes in-use pilots regardless of MP (no MPlayer bypass)")
+{
+	FakePilot inMech{ true, true }, dead{ false, false }, ok{ true, false };
+	auto inUse = [](FakePilot& p) { return p.inUse; };
+	CHECK_FALSE(poolEligible(inMech, inUse));
+	CHECK_FALSE(poolEligible(dead, inUse));
+	CHECK(poolEligible(ok, inUse));
+}
