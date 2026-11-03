@@ -79,6 +79,8 @@ public:
     // `alphaDsl` is the island's set-1 layout (the alpha-ON array). False, logged, when a shader or object cannot be made; the island then runs without.
     bool init(VkDevice device, VmaAllocator allocator, VkPhysicalDevice phys, VkDescriptorSetLayout alphaDsl, std::string_view spvDir);
     bool prewarmProducts();
+    // Load barrier: the static-prop type boxes (a CPU walk of the prop geometry) that the first bake would otherwise compute inside a gameplay frame.
+    bool prewarmTypeBounds(const ShadowBakeInputs& in);
 
     // Called once per frame after the island opened the frame's recording. Retires a submitted bake (timings, transients) and records a new one into `cb`
     // when the inputs are ready and differ from the last bake's. True when it recorded (the caller counts a pass and submits).
@@ -216,6 +218,8 @@ private:
     std::future<CacheLoad> cacheLoad_;
     uint64_t cacheLoadKey_ = 0, cacheLoadInputKey_ = 0;   // inputKey: the mask key the content key was computed for
     uint64_t contentKey_ = 0, shaderContentHash_ = 0;
+    uint64_t geomHash_ = 0; bool geomHashValid_ = false;   // mission-static prop geometry hash (key part 2), filled at prewarm
+    std::optional<uint64_t> geometryHash(const ShadowBakeInputs& in);
     std::array<uint64_t, 6> keyParts_{};   // heights, casters, geometry, alpha cut-outs, scalars, versions
     bool warm_ = false, readbackPending_ = false;
     double warmReadMs_ = 0.0;

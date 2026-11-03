@@ -890,24 +890,21 @@ static bool mover_shadows_enabled() {
     return !mc2::options::lowCost() && enabled && pp && pp->shadowsEnabled_;
 }
 
+// Geometry half of the bake inputs, shared by record_bake and the prewarm.
+static void fill_bake_geometry(ShadowIsland* s, mc2vk::ShadowBakeInputs& in, std::vector<uint32_t>& fp, std::vector<uint32_t>& pc) {
+    fp.resize(s->typeRuns.size()); pc.resize(s->typeRuns.size());
+    for (size_t t = 0; t < fp.size(); ++t) { fp[t] = s->typeRuns[t].firstPacket; pc[t] = s->typeRuns[t].packetCount; }
+    in.vbo = s->vbo.get(); in.ibo = s->ibo.get(); in.packets = s->packets; in.typeFirstPacket = fp; in.typePacketCount = pc;
+}
+
 // The static shadow bake: retires a finished bake and records the next one when its inputs are ready and differ from the last. Like the static map it
 // counts as a pass, so its frame is submitted even when every other pass declines.
 static void record_bake(ShadowIsland* s) {
-
     mc2vk::ShadowBakeInputs in;
     std::vector<uint32_t> firstPacket, packetCount;
     if (s->geomUploaded) {
-        firstPacket.resize(s->typeRuns.size());
-        packetCount.resize(s->typeRuns.size());
-        for (size_t t = 0; t < s->typeRuns.size(); ++t) { firstPacket[t] = s->typeRuns[t].firstPacket; packetCount[t] = s->typeRuns[t].packetCount; }
-        in.vbo = s->vbo.get();
-        in.ibo = s->ibo.get();
-        in.packets = s->packets;
-        in.typeFirstPacket = firstPacket;
-        in.typePacketCount = packetCount;
-        in.packetAlpha = s->packetAlpha;
-        in.alphaSet = s->alphaSet;
-        in.alphaReady = s->alphaReady;
+        fill_bake_geometry(s, in, firstPacket, packetCount);
+        in.packetAlpha = s->packetAlpha; in.alphaSet = s->alphaSet; in.alphaReady = s->alphaReady;
         in.alphaContentHash = mc2_color_prop_island_alpha_content_hash();
     }
     if (!in.alphaReady) {
@@ -1287,7 +1284,10 @@ extern "C" int mc2_vk_shadow_island_prewarm(int,int) {
     auto* s=parkedIsland();
     upload_geometry_once(s);
     refresh_alpha_casters(s);
-    return s->bake.prewarmProducts() ? 1 : 0;
+    if (!s->bake.prewarmProducts()) return 0;
+    if (!s->geomUploaded) return 1;
+    std::vector<uint32_t> fp, pc; mc2vk::ShadowBakeInputs in; fill_bake_geometry(s, in, fp, pc);   // type boxes depend only on the uploaded geometry
+    return s->bake.prewarmTypeBounds(in) ? 1 : 0;
 }
 
 bool mc2vk::bindMoverShadowDescriptors(VkDevice device, VkDescriptorSet set) {
