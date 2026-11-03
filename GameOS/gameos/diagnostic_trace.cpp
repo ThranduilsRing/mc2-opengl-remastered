@@ -37,6 +37,7 @@ const std::unordered_set<std::string>& knownTags() {
         "TERRAIN_SOLID_AB",
         "CONFIG",
         "ENV",
+        "FIRST60",  // [FIRST60 v1]: frame-time summary of the first 60 frames after mission_ready (gos_smoke.cpp). Opt-in; scripts/smoke_lib/via_menu.py sets it.
         "BUILD",
         "DEVICE",
         "SHADER_COMPILE",

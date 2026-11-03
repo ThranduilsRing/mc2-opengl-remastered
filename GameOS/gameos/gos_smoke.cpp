@@ -18,6 +18,7 @@
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"   // str<>()
 #include "mc2fmt.h"
+#include "diagnostic_trace.h"
 
 namespace {
 SmokeMode::State g_state;
@@ -153,7 +154,7 @@ void emitTiming(const char* eventName) {
 }
 
 void samplePerf(double frameMs) {
-    // First 60 frames after mission_ready, every run (smoke mode or not): one [FIRST60 v1] line, so a via-menu run reports the frames a
+    // First 60 frames after mission_ready, every run (smoke mode or not): one [FIRST60 v1] line (only under MC2_DIAG_TAGS=FIRST60; via_menu.py sets it), so a via-menu run reports the frames a
     // player sees first. Printed once; stdout is live only under MC2_LOG, as for every other line.
     {
         static constexpr int kN = 60;
@@ -167,7 +168,7 @@ void samplePerf(double frameMs) {
             s_loadFrameMs = frameMs;
         } else if (g_missionReadyT && s_n < kN) {
             s_ms[s_n++] = frameMs;
-            if (s_n == kN) {
+            if (s_n == kN && mc2_diag::tagRequested("FIRST60")) {
                 std::vector<double> sorted(s_ms, s_ms + kN);
                 std::sort(sorted.begin(), sorted.end());
                 double sum = 0.0;
