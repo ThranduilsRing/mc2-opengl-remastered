@@ -104,22 +104,8 @@ int MechLabScreen::init( FitIniFile& file )
 
 	ComponentListItem::init( file );
 
+	setLayoutNeeds( { "mcl_mc.fit", 56, 23, 9, 0, 17, false } ); // stock element counts; see LayoutNeeds
 	LogisticsScreen::init( file, "Static", "Text", "Rect", "Button" );
-	// Mod layouts (MCO) ship a legacy mcl_mc.fit with far fewer statics than stock;
-	// the code indexes stock slots (up to 55). Pad with inert objects at the end.
-	{
-		constexpr int kStockStatics = 56;
-		const int have = static_cast<int>(staticCount);
-		if ( statics && have > 0 && have < kStockStatics )
-		{
-			aObject* padded = new aObject[kStockStatics];
-			for ( int i = 0; i < have; i++ )
-				padded[i] = statics[i];
-			delete [] statics;
-			statics = padded;
-			staticCount = kStockStatics;
-		}
-	}
 	defsHelpTextKey = "game.mcl_mc.text.help_text";
 
 	componentListBox.init( rects[2].left(), rects[2].top(),

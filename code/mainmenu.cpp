@@ -106,6 +106,7 @@ int MainMenu::init( FitIniFile& file )
 	file.seekBlock("Tunes");
 	file.readIdLong("TuneId",tuneId);
 
+	setLayoutNeeds( { "mcl_mm.fit", 14, 3, 10, 0, 2, false } ); // stock element counts; see LayoutNeeds
 	LogisticsScreen::init( file, "Static", "Text", "Rect", "Button", nullptr, "AnimObject" );
 
 	FullPathFileName name;

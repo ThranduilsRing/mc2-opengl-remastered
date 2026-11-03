@@ -187,6 +187,20 @@ class LogisticsScreen : public aObject
 
 
 	
+	// Stock element counts a screen's code indexes into. A mod FIT with fewer
+	// elements (MCO ships legacy layouts) is padded with inert objects up to
+	// these sizes so hard-coded indices stay in range. Set before init().
+	struct LayoutNeeds
+	{
+		const char*	screen = nullptr;	// for the [CONTENT] kind=layout line
+		long statics = 0, rects = 0, buttons = 0, edits = 0, texts = 0;
+		// true: the mod's statics are the TAIL of the stock set (static N -> stock
+		// need-have+N); false: they keep their indices, padding goes at the end.
+		bool staticsAtTail = false;
+	};
+	void setLayoutNeeds( const LayoutNeeds& n ) { layoutNeeds = n; }
+	LayoutNeeds			layoutNeeds;
+
 	aObject*			statics;
 	aRect*				rects;
 	long				rectCount;
