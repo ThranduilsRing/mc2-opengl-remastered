@@ -8652,6 +8652,18 @@
    "ver": -1,
    "stream": "stderr",
    "keys": [
+    "steps",
+    "submits",
+    "ready",
+    "ms"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SHADOW_BAKE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
     "upload",
     "object_map",
     "cpu_ms"

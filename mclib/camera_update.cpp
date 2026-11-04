@@ -138,6 +138,34 @@ void Camera::updateGoalPosition (glm::vec3 &pos)
 }
 
 //---------------------------------------------------------------------------
+// The sun direction from lightYaw / lightPitch (see the MC2_SUN_ELEVATION_FIX note in Camera::update). Also read at mission load, before the first
+// update, so the load-time shadow bake keys on the same sun as frame 0.
+glm::vec3 Camera::sunDirection (void) const
+{
+	static const bool s_sunElevationFix = mc2::options::current().sunElevationFix;
+
+	const float sunAzimuthRad = (lightYaw + 45.0f) * DEGREES_TO_RADS;
+	const float sunPitchRad   = lightPitch * DEGREES_TO_RADS;
+	const float sunCosPitch   = cos(sunPitchRad);
+
+	glm::vec3 d;
+	if (s_sunElevationFix && sunCosPitch >= -1e-6f)
+	{
+		// True spherical direction at the AUTHORED elevation. Already unit
+		// length, so the Normalize below is a no-op rather than a correction.
+		d.x = sunCosPitch * cos(sunAzimuthRad);
+		d.y = sunCosPitch * sin(sunAzimuthRad);
+		d.z = sin(sunPitchRad);
+	}
+	else
+	{
+		d.x = cos(sunAzimuthRad);
+		d.y = sin(sunAzimuthRad);
+		d.z = sin(sunPitchRad);
+	}
+	return glm::normalize(d);
+}
+
 long Camera::update (void)
 {
 	//---------------------------------------------------------
@@ -222,28 +250,7 @@ long Camera::update (void)
 	// of the registry's stated OFF, reported as a DISAGREEMENT. The behaviour was
 	// right and the idiom was unreadable, which is exactly how the four gate-
 	// default defects found today survived. Do not "simplify" this back.
-	static const bool s_sunElevationFix = mc2::options::current().sunElevationFix;
-
-	const float sunAzimuthRad = (lightYaw + 45.0f) * DEGREES_TO_RADS;
-	const float sunPitchRad   = lightPitch * DEGREES_TO_RADS;
-	const float sunCosPitch   = cos(sunPitchRad);
-
-	if (s_sunElevationFix && sunCosPitch >= -1e-6f)
-	{
-		// True spherical direction at the AUTHORED elevation. Already unit
-		// length, so the Normalize below is a no-op rather than a correction.
-		lightDirection.x = sunCosPitch * cos(sunAzimuthRad);
-		lightDirection.y = sunCosPitch * sin(sunAzimuthRad);
-		lightDirection.z = sin(sunPitchRad);
-	}
-	else
-	{
-		lightDirection.x = cos(sunAzimuthRad);
-		lightDirection.y = sin(sunAzimuthRad);
-		lightDirection.z = sin(sunPitchRad);
-	}
-
-	lightDirection = glm::normalize(lightDirection);
+	lightDirection = sunDirection();
 
 	//If we are not transitioning, we need to set the night/day flags and factors.
 	//If we ARE transitioning, they have already been set in updateDaylight!

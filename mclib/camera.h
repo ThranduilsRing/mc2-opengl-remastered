@@ -1323,6 +1323,7 @@ class Camera
 		void updateDaylight (bool bInitialize = false);
 		
 		virtual long update (void);
+		glm::vec3 sunDirection (void) const;
 		virtual void render (void);
 
 		virtual long activate (void);
