@@ -59,6 +59,7 @@ class Idioms(unittest.TestCase):
         self.assertEqual(n("void load(const char* name, int a);\n", "LG06"), 1)
         self.assertEqual(n("void load(const std::string& name);\n", "LG06"), 1)
         self.assertEqual(n("void load(std::string_view name);\nconst char* g = x;\n", "LG06"), 0)
+        self.assertEqual(n("void load(mc2::czstring name, int a);\n", "LG06"), 0)
 
     def test_lg07(self):
         self.assertEqual(n("template<class T, class = std::enable_if_t<X<T>>> void f();\n", "LG07"), 1)

@@ -20,6 +20,7 @@
 // parsers RAW-SCAN the mission.fit text. PURE: no engine headers, no globals, no I/O.
 // Unit-tested in isolation (tools/brain_missionfit_oporbd_test).
 
+#include "mc2_czstring.h"
 #include <cstdint>
 
 static constexpr int kMissionFitMaxWaypoints = 8;
@@ -37,7 +38,7 @@ struct MissionFitOpord {
     MissionFitWaypoint waypoints[kMissionFitMaxWaypoints];
 };
 
-int parseMissionFitOpords(const char* text, MissionFitOpord* out, int maxOut);
+int parseMissionFitOpords(mc2::czstring text, MissionFitOpord* out, int maxOut);
 
 // ---------------------------------------------------------------------------------------------
 // BRAIN-FULL-PARSE-1: the full declarative Brain{} block.
@@ -84,7 +85,7 @@ struct MissionFitBrain {
 // Parse all [WarriorN] inline Brain{} blocks. Writes one MissionFitBrain per warrior that has a
 // Brain{} block, into out[0..maxOut). Absent fields take the sentinels above (so the consumer can
 // tell "set to false" from "not present"). Returns the number of records written (>=0).
-int parseMissionFitBrains(const char* text, MissionFitBrain* out, int maxOut);
+int parseMissionFitBrains(mc2::czstring text, MissionFitBrain* out, int maxOut);
 
 // ---------------------------------------------------------------------------------------------
 // BRAIN-PATROL-VIEWER-BRIDGE-1: pure position-match, shared by the editor's declarative-brain

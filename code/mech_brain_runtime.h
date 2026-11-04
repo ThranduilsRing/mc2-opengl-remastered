@@ -10,6 +10,7 @@
 // Gate: MC2_BRAIN_DISPATCH_VAR=1 (requires MC2_BRAIN_DISPATCH=1).
 // Fixed-cap array of VarEntry (cap 32). Mission-ephemeral. NOT serialized.
 
+#include "mc2_czstring.h"
 #include <cstdint>
 #include "brain_special_dispatch.h"
 #include "brain_order_intent.h"
@@ -36,7 +37,7 @@ struct VarStore {
     int      count = 0;
 
     // Returns pointer to existing entry matching key+scope, or nullptr.
-    VarEntry* find(const char* k, VarScope sc) {
+    VarEntry* find(mc2::czstring k, VarScope sc) {
         for (int i = 0; i < count; ++i)
             if (entries[i].scope == sc && std::strncmp(entries[i].key, k, 31) == 0)
                 return &entries[i];
@@ -44,7 +45,7 @@ struct VarStore {
     }
 
     // Returns const pointer (read-only lookup).
-    const VarEntry* find(const char* k, VarScope sc) const {
+    const VarEntry* find(mc2::czstring k, VarScope sc) const {
         for (int i = 0; i < count; ++i)
             if (entries[i].scope == sc && std::strncmp(entries[i].key, k, 31) == 0)
                 return &entries[i];
@@ -52,7 +53,7 @@ struct VarStore {
     }
 
     // Returns false if cap reached (soft-fail; caller emits trace).
-    bool set(const char* k, const char* v, VarScope sc) {
+    bool set(mc2::czstring k, mc2::czstring v, VarScope sc) {
         VarEntry* e = find(k, sc);
         if (e) {
             // Overwrite existing.
@@ -70,7 +71,7 @@ struct VarStore {
     }
 
     // Returns stored value string, or "0" if not found.
-    const char* get(const char* k, VarScope sc) const {
+    const char* get(mc2::czstring k, VarScope sc) const {
         const VarEntry* e = find(k, sc);
         return e ? e->value : "0";
     }

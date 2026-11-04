@@ -20,6 +20,7 @@
 // Per-unit keys (Unit scope) remain in VarStore (mech_brain_runtime.h), unchanged.
 
 #pragma once
+#include "mc2_czstring.h"
 #include <cstdint>
 #include <cstring>
 
@@ -48,14 +49,14 @@ struct MissionVarStore {
     }
 
     // Linear-scan find by key. Returns pointer or nullptr.
-    MissionVarEntry* find(const char* k) {
+    MissionVarEntry* find(mc2::czstring k) {
         for (int i = 0; i < count; ++i)
             if (std::strncmp(entries[i].key, k, 31) == 0)
                 return &entries[i];
         return nullptr;
     }
 
-    const MissionVarEntry* find(const char* k) const {
+    const MissionVarEntry* find(mc2::czstring k) const {
         for (int i = 0; i < count; ++i)
             if (std::strncmp(entries[i].key, k, 31) == 0)
                 return &entries[i];
@@ -63,7 +64,7 @@ struct MissionVarStore {
     }
 
     // Returns current value string for key, or "0" if not found.
-    const char* get(const char* k) const {
+    const char* get(mc2::czstring k) const {
         const MissionVarEntry* e = find(k);
         return e ? e->value : "0";
     }
@@ -75,7 +76,7 @@ struct MissionVarStore {
     // [BRAIN_VAR_MISSION_CONFLICT]. Returns true (key exists, no cap issue) but the
     // caller is responsible for checking and skipping the actual write.
     // outConflict: set to true if caller should skip write + emit conflict trace.
-    bool trySet(const char* k, const char* v, int writerWID, uint32_t tick, bool* outConflict) {
+    bool trySet(mc2::czstring k, mc2::czstring v, int writerWID, uint32_t tick, bool* outConflict) {
         *outConflict = false;
         MissionVarEntry* e = find(k);
         if (e) {
