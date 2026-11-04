@@ -104,6 +104,7 @@
     {"module": "scripts/tests/test_include_guards_unique.py", "owners": ["scripts_tests"]},
     {"module": "scripts/tests/test_install_hygiene.py", "owners": ["scripts_tests"]},
     {"module": "scripts/tests/test_lane_names.py", "owners": ["scripts_tests"]},
+    {"module": "scripts/tests/test_lease_lock_order.py", "owners": ["scripts_tests"]},
     {"module": "scripts/tests/test_lighting_divergence.py", "owners": ["scripts_tests"]},
     {"module": "scripts/tests/test_manifest_schema_check.py", "owners": ["scripts_tests"]},
     {"module": "scripts/tests/test_mission_order_ingress_witness.py", "owners": ["scripts_tests"]},

@@ -149,6 +149,7 @@
   "scripts/tests/test_include_guards_unique.py": "Pytest-discovered module through scripts/check-contracts.sh:1516 (scripts_tests); the executable command names the directory.",
   "scripts/tests/test_install_hygiene.py": "Pytest-discovered module through scripts/check-contracts.sh (scripts_tests); the executable command names the directory.",
   "scripts/tests/test_lane_names.py": "Pytest-discovered module through scripts/check-contracts.sh:1516 (scripts_tests); the executable command names the directory.",
+  "scripts/tests/test_lease_lock_order.py": "Pytest-discovered module through scripts/check-contracts.sh:1516 (scripts_tests); the executable command names the directory.",
   "scripts/tests/test_lighting_divergence.py": "Pytest module discovered by scripts/run_scripts_tests.py through the scripts_tests contract row; discovery supplies the filenames at run time.",
   "scripts/tests/test_manifest_schema_check.py": "Pytest-discovered module through the scripts_tests board row.",
   "scripts/tests/test_mission_order_ingress_witness.py": "Pytest-discovered module through the scripts_tests board row.",
