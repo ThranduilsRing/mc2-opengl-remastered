@@ -1,4 +1,5 @@
 #pragma once
+#include "mc2_czstring.h"
 #include <cstdint>
 #include <vector>
 
@@ -52,7 +53,7 @@ void drawSphereApproxWorld(Vec3 center, float radius, int rings, int segments, u
 
 // Reserved: world-space text label. No-op in M1/M2.
 // Future spec: billboard projected from 'pos' to screen, rendered in flushScreenPrims.
-void drawTextWorld(Vec3 pos, const char* text, uint32_t rgba);
+void drawTextWorld(Vec3 pos, mc2::czstring text, uint32_t rgba);
 
 // Freeze the primitives collected this frame together with the scene view-projection. Call once per frame after the
 // scene has set its matrices. No-op when no render context exists.

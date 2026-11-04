@@ -1,4 +1,5 @@
 // GameOS/gameos/asset_scale.cpp
+#include "mc2_czstring.h"
 #include "asset_scale.h"
 #include <string_view>
 
@@ -48,7 +49,7 @@ void log(const char* fmt, ...) {
     va_end(ap);
 }
 
-std::string canonicalize(const char* raw) {
+std::string canonicalize(mc2::czstring raw) {
     if (!raw) return std::string();
     std::string s(raw);
     // backslash -> forward
@@ -121,7 +122,7 @@ bool parseLine(std::string_view raw, std::string& path,
     return true;
 }
 
-void loadManifest(const char* manifestPath) {
+void loadManifest(mc2::czstring manifestPath) {
     State& st = state();
     FILE* f = std::fopen(manifestPath, "rb");
     if (!f) {
@@ -173,7 +174,7 @@ void firstUnknownWarning(State& st, const std::string& canon) {
     }
 }
 
-void firstOobWarning(State& st, const std::string& canon, const char* tag,
+void firstOobWarning(State& st, const std::string& canon, mc2::czstring tag,
                      uint32_t aw, uint32_t ah, uint32_t nw, uint32_t nh,
                      int sx, int sy, int sw, int sh,
                      int cx, int cy, int cw, int ch) {
@@ -299,11 +300,11 @@ void runSelfTests() {
 
 } // anonymous namespace
 
-AssetKey key(const char* rawPath) {
+AssetKey key(mc2::czstring rawPath) {
     return AssetKey(canonicalize(rawPath));
 }
 
-void init(const char* manifestPath) {
+void init(mc2::czstring manifestPath) {
     State& st = state();
     if (st.inited) return;
     st.inited = true;

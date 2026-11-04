@@ -1,3 +1,4 @@
+#include "mc2_czstring.h"
 #include "vk_render_infra.h"
 // gos_crashbundle.cpp
 // See gos_crashbundle.h. Implementation notes:
@@ -111,7 +112,7 @@ static char  g_crash_txtA[MAX_PATH];
 // ---------------------------------------------------------------------------
 // Helpers (safe during normal runtime)
 // ---------------------------------------------------------------------------
-extern "C" void crashbundle_append(const char* line)
+extern "C" void crashbundle_append(mc2::czstring line)
 {
     if (!line) return;
     size_t n = strlen(line);
@@ -152,7 +153,7 @@ static void sbuff(char* dst, size_t cap, size_t* pos, const char* fmt, ...)
     if (n > 0) *pos += static_cast<size_t>(n);
 }
 
-static BOOL write_file_all(const char* path, const void* data, DWORD len)
+static BOOL write_file_all(mc2::czstring path, const void* data, DWORD len)
 {
     HANDLE h = CreateFileA(path, GENERIC_WRITE, 0, nullptr,
                            CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
@@ -404,7 +405,7 @@ enum {
 static const char* dialog_crash_txt_path = nullptr;
 static const WCHAR* dialog_folder_path   = nullptr;
 
-static void copy_file_to_clipboard(const char* path)
+static void copy_file_to_clipboard(mc2::czstring path)
 {
     HANDLE h = CreateFileA(path, GENERIC_READ, FILE_SHARE_READ, nullptr,
                            OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
@@ -507,7 +508,7 @@ static BYTE* write_wstr(BYTE* p, const WCHAR* s)
     return p + 2;
 }
 
-static void show_crash_dialog(const char* crash_txt_path,
+static void show_crash_dialog(mc2::czstring crash_txt_path,
                               const WCHAR* folder_path_w,
                               const char* folder_path_a)
 {

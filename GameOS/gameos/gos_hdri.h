@@ -2,12 +2,13 @@
 #define GAMEOS_GOS_HDRI_H
 
 
+#include "mc2_czstring.h"
 #include <cstdint>
 #include <utility>
 #include <vector>
 
 // Retain decoded HDRI bytes and the authored sun azimuth; no context or GPU object is required.
-bool decodeHdriSource(const char* path, float* outSunAzGL, bool* outSunValid, struct HdriCpuImage* outCpu);
+bool decodeHdriSource(mc2::czstring path, float* outSunAzGL, bool* outSunValid, struct HdriCpuImage* outCpu);
 
 // The decoded HDRI as supplied to native residency, mip 0 first.
 struct HdriCpuImage {

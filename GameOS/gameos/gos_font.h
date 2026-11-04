@@ -1,5 +1,6 @@
 #ifndef GOS_FONT_H
 #define GOS_FONT_H
+#include "mc2_czstring.h"
 
 #include <cstdint>
 #include <memory>
@@ -50,13 +51,13 @@ struct gosD3FAtlas {
     int      height;
 };
 
-bool gos_load_glyphs(const char* glyphFile, gosGlyphInfo& gi);
+bool gos_load_glyphs(mc2::czstring glyphFile, gosGlyphInfo& gi);
 
 // Loads a retail .d3f font (v1 or v4). On success, fills `gi` with
 // per-glyph metrics + global ascent/line_skip derived via alpha-scan,
 // and hands the embedded 8-bit alpha atlas back through `atlas`.
 // Returns false (without allocating) if the file is missing or has an
 // unrecognized signature.
-bool gos_load_d3f(const char* d3fFile, gosGlyphInfo& gi, gosD3FAtlas& atlas);
+bool gos_load_d3f(mc2::czstring d3fFile, gosGlyphInfo& gi, gosD3FAtlas& atlas);
 
 #endif // GOS_FONT_H

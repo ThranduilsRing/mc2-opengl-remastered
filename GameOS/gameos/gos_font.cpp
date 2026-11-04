@@ -1,3 +1,4 @@
+#include "mc2_czstring.h"
 #include <algorithm>
 #include<inttypes.h>
 #include <stdio.h>
@@ -11,7 +12,7 @@
 #include "utils/mc2log.h"
 #include "mc2fmt.h"
 
-bool gos_load_glyphs(const char* glyphFile, gosGlyphInfo& gi)
+bool gos_load_glyphs(mc2::czstring glyphFile, gosGlyphInfo& gi)
 {
     FILE* glyph_info = fopen(glyphFile, "rb");
     if(!glyph_info) {
@@ -390,7 +391,7 @@ bool parse_v1(FILE* f, gosGlyphInfo& gi, gosD3FAtlas& atlas)
 
 } // anonymous namespace
 
-bool gos_load_d3f(const char* d3fFile, gosGlyphInfo& gi, gosD3FAtlas& atlas)
+bool gos_load_d3f(mc2::czstring d3fFile, gosGlyphInfo& gi, gosD3FAtlas& atlas)
 {
     atlas.pixels.reset();
     atlas.width = atlas.height = 0;
