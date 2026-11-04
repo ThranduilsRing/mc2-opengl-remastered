@@ -3,9 +3,9 @@
 # Where each gate is read, what the smoke runner forwards and what tier1_env_vars.md says are not here: ask
 # tools/repo_intel (env_var, gate_status), which scan the sources.
 generator_version: "3.0.0"
-gate_count: 756
+gate_count: 757
 registry_entry_count: 148
-verified_count: 724
+verified_count: 725
 flags:
   - name: MC2_ABL_ARG_GUARD
     kind: Bool
@@ -3894,6 +3894,15 @@ flags:
     rule: Presence
     owner: code
     doc: ""
+    smoke_passthrough: true
+    verified: true
+  - name: MC2_SOAK_AUTOWIN_COUNTDOWN
+    kind: Bool
+    default: false
+    rule: Presence
+    owner: code
+    doc: "With MC2_SOAK_AUTOWIN: end the mission through the normal results countdown (resultsDone on the sim worker) instead of the instant WIN_BIG."
+    smoke_passthrough: true
     verified: true
   - name: MC2_SOAK_AUTO_PURCHASE
     kind: Bool
@@ -3953,6 +3962,7 @@ flags:
     owner: code
     doc: "Seconds of scenario time before the soak autowin fires; negative clamps to 0."
     range: {lo: 0, hi: 3.4e+38, style: clamp}
+    smoke_passthrough: true
     verified: true
   - name: MC2_SPOTLIGHT_DIRECTION_FIX
     kind: Enum

@@ -131,8 +131,10 @@ bool ControlGui::resultsDone()
 {
 	if( ( renderStatusInfo && objectiveTime > Team::home->objectives.Count() + 4 ) )
 	{
-		// need to empty out force group bar now...
-		forceGroupBar.removeAll();
+		// need to empty out force group bar now... (icons may own a live pilot
+		// video; ForceGroupBar::render reads them on Main, so commit on Main)
+		if (!mc2::tick::defer(mc2::tick::Queue::MoverUi, [this] { forceGroupBar.removeAll(); }))
+			forceGroupBar.removeAll();
 		return true;
 	}
 
@@ -238,6 +240,11 @@ void ControlGui::eatChatKey()
 
 void ControlGui::setChatText( const char* playerName, const char* message, unsigned long color, unsigned long chatColor )
 {
+	if (mc2::tick::defer(mc2::tick::Queue::MoverUi,
+			[this, name = std::string(playerName), msg = std::string(message), color, chatColor] {
+				setChatText(name.c_str(), msg.c_str(), color, chatColor);
+			}))
+		return;
     int i = 0;
 	for (; i < MAX_CHAT_COUNT - 1; i++ )
 	{
