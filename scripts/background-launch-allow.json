@@ -1,6 +1,7 @@
 {
   "_about": "Hand-maintained. check-background-launch.py RULE 14/15 fail on a launcher, injector or blanket kill that is not listed here, and on a listed entry that no longer does it. --write never edits this file.",
   "nofocus_callers": {
+    "scripts/run_player_path.py": "Player-path harness: launches the real front end through nofocus.spawn (no OS input, no focus, no mouse; scripted input is read inside the engine from MC2_INPUT_SCRIPT), holds the smoke lease, and redirects saves with MC2_SAVE_DIR.",
     "scripts/tests/test_abl_static_alloc.py": "Runs the compiled ABL allocation fault-injection fixture through nofocus.run; no engine window is launched.",
     "scripts/tests/test_shadow_bake_init.py": "Runs the compiled shadow allocation fault-injection fixture through nofocus.run; compiler launches remain hidden console tools.",
     "tools/mod_smoke.py": "Offline mod asset-load fixture runs through nofocus.run with hidden console and offscreen environment; mission launches remain inside run_smoke.",
