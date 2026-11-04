@@ -29,7 +29,7 @@ namespace {
 // translation, which MC2 wants (the game positions the mech in the world).
 // Set MC2_MECH_ANIM_ROTATION_ONLY=0 to apply raw channels (old behaviour).
 bool rotationOnlyEnabled() {
-    return mc2::gate::get<"MC2_MECH_ANIM_ROTATION_ONLY">();  // default ON; only explicit "0" disables
+    return true;  // default ON; only explicit "0" disables
 }
 
 // DIAGNOSTIC (default OFF): MC2_MECH_IMPORT_FORCE_POSE forces a single known static
@@ -38,7 +38,7 @@ bool rotationOnlyEnabled() {
 // clip/time dependence, so it fires even when clip playback is broken.
 //   =1 -> j_LThigh +90deg about local X    =2 -> +90 about local Y    =3 -> +90 about local Z
 int forcePoseMode() {
-    return mc2::gate::get<"MC2_MECH_IMPORT_FORCE_POSE">();
+    return 0;
 }
 std::string forcePoseBone() {
     return mc2::gate::str<"MC2_MECH_IMPORT_FORCE_BONE">();   // row default j_LThigh
@@ -198,7 +198,7 @@ bool EvaluateClipGpuBones(const aiScene* scene,
         if (outDurTicks) *outDurTicks = 1.0;
         return true;
     }
-    const bool clipDiag = mc2::gate::get<"MC2_MECH_IMPORT_CLIP_DIAG">();
+    const bool clipDiag = false;
     const aiAnimation* anim = nullptr;
     for (unsigned a = 0; a < scene->mNumAnimations; ++a)
         if (clip == scene->mAnimations[a]->mName.C_Str()) { anim = scene->mAnimations[a]; break; }

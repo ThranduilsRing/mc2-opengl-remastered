@@ -26,11 +26,11 @@ void LoadOverrideRenderShapeTextures(TG_TypeMultiShape* shape);
 
 // C3: env-gated lifecycle routing killswitch (same env var as objmgr.cpp).
 // MC2_GPU_CULL_LIFECYCLE=1 enables GPU visibility-based node-position early-outs.
-const bool s_gpuCullLifecycle = mc2::gate::get<"MC2_GPU_CULL_LIFECYCLE">();
+const bool s_gpuCullLifecycle = false;
 
 
 // MC2_GPU_CULL_LIFECYCLE_TRACE=1: verbose per-actor lifecycle boundary prints.
-static const bool s_lcTraceGV = mc2::gate::get<"MC2_GPU_CULL_LIFECYCLE_TRACE">();
+static const bool s_lcTraceGV = false;
 static uint32_t s_lcSkipCountGV = 0u;
 #define LCGV_TRACE(fmt, ...) \
     do { if (s_lcTraceGV) { printf("[GPU_CULL_LIFECYCLE v1] gvactor " fmt "\n", ##__VA_ARGS__); fflush(stdout); } } while(0)
@@ -46,7 +46,7 @@ static bool textureOrKtxSidecarExists(const char* tgaPath)
 {
 	if (fileExists(tgaPath))
 		return true;
-	const bool ktxPrimary = (mc2::gate::get<"MC2_TEXMGR_KTX_PRIMARY">() != 0);   // default mode 1
+	const bool ktxPrimary = (1 != 0);   // default mode 1
 	if (!ktxPrimary)
 		return false;
 	char ktx[1024];

@@ -217,7 +217,7 @@ long BldgAppearance::render (long depthFixup)
 					}
 				}
 			}
-			static const bool s_bldgDiagTrace = mc2::gate::get<"MC2_BLDG_DIAG_TRACE">();
+			static const bool s_bldgDiagTrace = false;
 			if (s_bldgDiagTrace && (s_diag_render_calls % 600) == 0) {
 				mc2::fmt::print_err("[BLDG_DIAG v1] event=summary calls={:d} staticNow={:d} notreg={:d} notelig={:d} other={:d} lightidxUM={:d} markVis={:d} dynSubmit={:d}\n", mc2::fmt::as_u64(static_cast<unsigned long long>(s_diag_render_calls)), mc2::fmt::as_u64(static_cast<unsigned long long>(s_diag_static_now_true)), mc2::fmt::as_u64(static_cast<unsigned long long>(s_diag_static_now_false_reg)), mc2::fmt::as_u64(static_cast<unsigned long long>(s_diag_static_now_false_eligible)), mc2::fmt::as_u64(static_cast<unsigned long long>(s_diag_static_now_false_other)), mc2::fmt::as_u64(static_cast<unsigned long long>(s_diag_lightidx_uintmax)), mc2::fmt::as_u64(static_cast<unsigned long long>(s_diag_markVisible)), mc2::fmt::as_u64(static_cast<unsigned long long>(s_diag_dyn_submit)));
 				fflush(stderr);

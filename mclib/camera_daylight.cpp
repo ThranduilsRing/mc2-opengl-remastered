@@ -503,7 +503,7 @@ void Camera::updateLetterboxAndFade (void)
 // T1.15 [SPOT_DIAG v1] file-scope state for the camera-overwrite probe.
 // First-seen-per-slot is always-on (one stderr line per unique slot index seen
 // here); per-summary is env-gated every 600 frames.
-static const bool s_spotDiagCamEnabled = mc2::gate::get<"MC2_SPOT_DIAG">();
+static const bool s_spotDiagCamEnabled = false;
 static std::vector<bool> s_spotDiagCamSeenSlot;  // sized to MAX_LIGHTS_IN_WORLD lazily
 static unsigned long s_spotDiagCamFrames        = 0;
 static unsigned long s_spotDiagCamPointSeen     = 0;  // window: distinct POINT slots seen

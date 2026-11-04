@@ -241,7 +241,7 @@ void Camera::setOrthogonal(void)
 		// near and far planes: under reverse-Z near must map to NDC z=1 and
 		// far to NDC z=0. NDC z = (FF*z_cam + B) / z_cam, with FF and B the
 		// just-written cameraToClip terms.
-		static const bool s_rzTrace = mc2::gate::get<"MC2_REVERSE_Z_TRACE">();
+		static const bool s_rzTrace = false;
 		if (s_rzTrace) {
 			static int s_rzBuild = 0;
 			++s_rzBuild;
@@ -266,7 +266,7 @@ void Camera::setOrthogonal(void)
 		// drawable). When those aspects differ, geometry is stretched in X by
 		// (vpAspect/projAspect) and the water FS screen-space derivatives
 		// (dFdx/dFdy) go anisotropic. stretchX != 1.0 => mismatch present.
-		static const bool s_waAspect = mc2::gate::get<"MC2_WATER_ASPECT_DIAG">();
+		static const bool s_waAspect = false;
 		if (s_waAspect) {
 			const float projAspect = static_cast<float>(Environment.screenWidth) /
 			                         static_cast<float>((Environment.screenHeight ? Environment.screenHeight : 1));
@@ -437,7 +437,7 @@ void Camera::setCameraOrigin (void)
 			actualPosition.z = translation.y - ELEVATION_BUFFER;
 
 			// [HZB_CAM v1] one-shot diagnostic (env-gated, at most once per second)
-			if (mc2::gate::get<"MC2_HZB_FORCE_HORIZON">())
+			if (false)
 			{
 				static double s_hzbCamLastPrint = -999.0;
 				double nowSec = static_cast<double>(clock()) / CLOCKS_PER_SEC;

@@ -305,7 +305,7 @@ long Mech3DAppearance::update (bool animate)
 					// same g_mc2FrameCounter == double advance. Map touched only when
 					// MC2_ANIM_CADENCE_GUARD set; events under MC2_DIAG_TAGS=ANIM_CADENCE.
 					{
-						static const bool s_animCadGuard = mc2::gate::get<"MC2_ANIM_CADENCE_GUARD">();
+						static const bool s_animCadGuard = false;
 						if (s_animCadGuard)
 						{
 							static std::unordered_map<void*, uint32_t> s_lastAdvanceFrame;

@@ -1201,7 +1201,7 @@ void gosFX::Tube::Draw(DrawInfo *info)
 		// run oracle ON vs OFF and compare to test whether enabling the oracle
 		// changes profile growth (execution interaction) vs pure rendering diff.
 		{
-			static const bool s_tpOn = mc2::gate::get<"MC2_TUBE_PROFILE_LOG">();
+			static const bool s_tpOn = false;
 			if (s_tpOn) {
 				static std::map<std::string,int> s_maxBySpec;
 				const char* nm = static_cast<const char*>(spec->m_name);

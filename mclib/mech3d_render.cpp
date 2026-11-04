@@ -28,7 +28,7 @@ extern "C" uint64_t consumeAndResetMlrMechDraws() {
 }
 
 // MC2_MECH_LOD_TRACE=1: per-actor LOD-swap boundary print.
-static const bool s_mechLodTrace = mc2::gate::get<"MC2_MECH_LOD_TRACE">();
+static const bool s_mechLodTrace = false;
 
 // MECH-LIGHTROW-FRESHNESS-1 counters. These are the UNCAPPED truth; the stderr
 // lines below are capped/one-shot, so nobody should ever count log lines.
@@ -59,7 +59,7 @@ extern "C" void consumeAndResetMechLightRowCounters(uint64_t* staleOut,
 // Mech3DAppearance::render() effect sites. Default OFF, zero behavior change.
 // Counts draw attempts (control reaching the site); emits a [FX_COUNT v1]
 // summary line every 9000 ticks. Agent-checkable oracle for effect counts.
-static const bool s_fxCountLog = mc2::gate::get<"MC2_FX_COUNT_LOG">();
+static const bool s_fxCountLog = false;
 namespace {
 	enum class FxSite {
 		FX_RDUST=0, FX_LDUST, FX_JUMP, FX_LBOOM, FX_RBOOM,
@@ -434,7 +434,7 @@ long Mech3DAppearance::render (long depthFixup)
 		// (Cohort B — broken appearance type with mechShape==NULL early-outs here,
 		// before both GPU submit and CPU fallback). Gated by MC2_MECH_RESTORE_TRACE.
 		{
-			static const bool s_mrtNull = mc2::gate::get<"MC2_MECH_RESTORE_TRACE">();
+			static const bool s_mrtNull = false;
 			static int s_nullEmits = 0;
 			if (s_mrtNull && s_nullEmits < 20000) {
 				++s_nullEmits;
@@ -768,7 +768,7 @@ long Mech3DAppearance::render (long depthFixup)
 			// invisible-from-savegame signature is gpuMechSubmitted=0
 			// cullSkip=0 finalized=0 for every actor of one type.
 			{
-				static const bool s_mechRestoreTrace = mc2::gate::get<"MC2_MECH_RESTORE_TRACE">();
+				static const bool s_mechRestoreTrace = false;
 				static int s_mechRestoreEmits = 0;
 				// DIAG (GPU-MECH-EQUIV recon): emit EVERY submitted=0 actor on a
 				// separate generous cap (the mech-bay preview consumes the 2000

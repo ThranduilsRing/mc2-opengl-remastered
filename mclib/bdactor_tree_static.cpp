@@ -290,7 +290,7 @@ void TreeAppearance::registerStatic() {
 			++t_diag_added;
 		}
 		{
-			static const bool s_trace = mc2::gate::get<"MC2_TREE_REG_TRACE">();
+			static const bool s_trace = false;
 			static int s_treeRegLogged = 0;
 			if (s_trace && s_treeRegLogged < 80) {
 				++s_treeRegLogged;
