@@ -1,3 +1,4 @@
+#include "mc2_czstring.h"
 #include "icon_registry.h"
 #include "asystem.h"
 #include "file.h"
@@ -101,7 +102,7 @@ void layoutSheet(std::string layout, std::string block) {
     addSheet(path, static_cast<int>(w), static_cast<int>(h));
 }
 
-void collect(const char* key, void* data) {
+void collect(mc2::czstring key, void* data) {
     auto path = canonical(key);
     if ((path.ends_with(".tga") || path.ends_with(".png")) && path.starts_with("data/art/mechicons/"))
         static_cast<std::set<std::string>*>(data)->insert(std::move(path));

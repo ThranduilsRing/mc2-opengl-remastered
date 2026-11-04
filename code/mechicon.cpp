@@ -1,3 +1,4 @@
+#include "mc2_czstring.h"
 #include "render_view.h"
 #include "../RenderCore/TextureService.h"
 #include "../GameOS/gameos/ui_texture.h"
@@ -690,7 +691,7 @@ void MechIcon::doDraw( char* newDamage, char* oldDamage, unsigned long handle, u
 
 }
 
-bool IsDbcsString(const char* pszString)
+bool IsDbcsString(mc2::czstring pszString)
 {
 	if (pszString) {
 		while (*pszString) {

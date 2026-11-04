@@ -1,5 +1,6 @@
 // Game main: debug windows, dialog setup/teardown and their rendering.
 // Declared in the class headers; shared names in mechcmd2_internal.h.
+#include "mc2_czstring.h"
 #include "mechcmd2_internal.h"
 #include "mc2fmt.h"
 
@@ -170,7 +171,7 @@ void DEBUGWINS_display (bool* windowsOpen) {
 }
 
 
-void DEBUGWINS_print (const char* s, long window) {
+void DEBUGWINS_print (mc2::czstring s, long window) {
 
 	DebugWindow[window]->print(s);
 }

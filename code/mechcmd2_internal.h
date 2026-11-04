@@ -1,3 +1,4 @@
+#include "mc2_czstring.h"
 #include "effect_resources.h"
 #include "Gates/preferences_legacy.h"
 // Shared surface of the game-main translation units (mechcmd2*.cpp).
@@ -210,7 +211,7 @@ extern Stuff::MemoryStream *effectStream;
 extern MidLevelRenderer::MLRClipper * theClipper;
 char* __stdcall GetGameInformation();
 void __stdcall InitializeGameEngine();
-void DEBUGWINS_print (const char* s, long window = 0);
+void DEBUGWINS_print (mc2::czstring s, long window = 0);
 
 // Free functions defined in the split pieces.
 void DEBUGWINS_init (void);

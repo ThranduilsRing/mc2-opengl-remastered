@@ -10,6 +10,7 @@
 
 #ifndef MOVER_H
 #define MOVER_H
+#include "mc2_czstring.h"
 #include "dradio.h"
 #include "unit_anim_state.h"
 
@@ -1283,7 +1284,7 @@ public:
 
 		virtual void setPilotHandle (long _pilotHandle);
 
-		virtual void loadPilot (const char* pilotFileName, const char* brainFileName, LogisticsPilot *lPilot);
+		virtual void loadPilot (mc2::czstring pilotFileName, mc2::czstring brainFileName, LogisticsPilot *lPilot);
 
 		virtual void setCommanderId (long _commanderId);
 
@@ -1319,7 +1320,7 @@ public:
 //			return(netPlayerId);
 //		}
 
-		void setNetPlayerName(const char *name) {
+		void setNetPlayerName(mc2::czstring name) {
             strncpy(netPlayerName,name,255);
 		}
 
@@ -1735,7 +1736,7 @@ public:
 		// validateLoadoutHardpointJoins(). Logs modder-readable findings; changes NO
 		// runtime state and NO visual mount (inventory[].facing / getWeaponNode still
 		// own that -- slice 4). Stock -> nothing gathered -> silent. Defined in mover.cpp.
-		void validateLoadoutHardpointJoins (const char* unitLabel) const;
+		void validateLoadoutHardpointJoins (mc2::czstring unitLabel) const;
 
 		virtual bool canJump (void) {
 			if (mc2UnitProfileDataEnabled()) return canPerform(UnitAction::Jump);

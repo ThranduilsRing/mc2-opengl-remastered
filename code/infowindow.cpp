@@ -1,3 +1,4 @@
+#include "mc2_czstring.h"
 #include "render_view.h"
 #include <algorithm>
 #include "Gates/preferences_legacy.h"
@@ -363,7 +364,7 @@ void InfoWindow::setUnit(Mover* pNewMover)
 	}
 }
 
-void InfoWindow::drawName( const char* name )
+void InfoWindow::drawName( mc2::czstring name )
 {
 	GUI_RECT rect = { NAMELEFT, NAMETOP, NAMERIGHT, SCROLLTOP};
 	drawRect( rect, 0xff000000 );
@@ -590,7 +591,7 @@ void InfoWindow::renderImGui()
 			ImDrawList* cdl = ImGui::GetWindowDrawList();
 			// legacy row wrap width: COMPONENTLEFT .. SCROLLLEFT
 			const float wrapW = static_cast<float>(( SCROLLLEFT - COMPONENTLEFT )) * sx;
-			auto BitmapRow = [&]( const char* text, ImU32 col ){
+			auto BitmapRow = [&]( mc2::czstring text, ImU32 col ){
 				const ImVec2 cur = ImGui::GetCursorScreenPos();
 				const float h = HudFont::DrawWrapped( cdl, rowFont,
 					cur.x, cur.y, wrapW, col, text, sx, sy );

@@ -1,4 +1,5 @@
 // Mover: tactical orders, weapon helpers, weapon-fire/critical-hit/radio chunk queues, contacts and weapon queries.
+#include "mc2_czstring.h"
 #include "content_error.h"
 #include <cstdio>
 // Declared in mover.h; shared names in mover_internal.h.
@@ -216,7 +217,7 @@ void Mover::setPilotHandle (long _pilotHandle) {
 	}
 }
 
-void Mover::loadPilot (const char* pilotFileName, const char* brainFileName, LogisticsPilot *lPilot) {
+void Mover::loadPilot (mc2::czstring pilotFileName, mc2::czstring brainFileName, LogisticsPilot *lPilot) {
 
 	if (pilot) {
 		MechWarrior::freeWarrior(pilot);

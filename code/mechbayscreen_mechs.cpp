@@ -1,5 +1,6 @@
 // MechBayScreen: mech selection, removal, setMech, drag handling and the deployment-team helpers.
 // Declared in the class headers; shared names in mechbayscreen_internal.h.
+#include "mc2_czstring.h"
 #include "mechbayscreen_internal.h"
 #include "mc2fmt.h"
 #include "mc2str.h"
@@ -13,7 +14,7 @@
 // occluded by its frame art.  (Local copy of the same helper in mechlopedia.cpp,
 // which lives in an anonymous namespace and so isn't linkable across TUs.)
 namespace {
-void syncWeaponLoadout( LogisticsScreen* screen, ComponentListBox& box, const char* listKey )
+void syncWeaponLoadout( LogisticsScreen* screen, ComponentListBox& box, mc2::czstring listKey )
 {
 	std::vector<std::string>  items;
 	std::vector<unsigned int> colors;
