@@ -4288,6 +4288,7 @@ flags:
     default: true
     rule: Lead0Kill
     owner: terrain
+    retire_by: 2026-11-24
     doc: "TERRAIN-CLIFF-ROCK: CC0 photoscan rock (albedo, normal, roughness, AO) on steep VK terrain faces, tinted to the mission palette; 0 = base look."
     verified: true
     registry: {feature_id: MC2_TERRAIN_CLIFF_ROCK, kind: Feature, order: -1, default_on: true}

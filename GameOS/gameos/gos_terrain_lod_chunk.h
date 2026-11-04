@@ -86,6 +86,9 @@ void gos_TerrainLodChunk_UploadVisualHeightFull(const float* visualHeights, int 
                                                 const float* mipMaxes = nullptr,
                                                 int mipFloats = 0);
 
+// Drop the visual bake, its side and the damp maps (every Terrain::lodVisualHeight entry).
+void gos_TerrainLodChunk_ClearVisualHeight();
+
 // TERRAIN-REAUTH-UNPIN-1 Half B: near-object displacement fade (the objfade
 // safety). Static damp map (float[side*side] row-major, 0 = displacement OFF on
 // object footprints .. 1 = full displacement) uploaded once per mission load to

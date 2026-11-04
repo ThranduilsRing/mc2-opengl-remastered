@@ -57,6 +57,7 @@ add_executable(mc2_tests
     test_depth_hzb.cpp      # HZB-DEPTH-CONVENTION-TESTS-1: reverse-Z / HZB reduction contract
     test_hzb_cull_reference.cpp  # CPU reference of hzb_cull.comp (RenderCore/hzb_prop_bounds.h): keep-bit cases
     test_prop_light_contract.cpp
+    test_height_sig.cpp  # gameplay_height.sig hash equals the Python writer's test vector (header-only)
     test_shadow_bake_math.cpp  # the static shadow bake's mask layout, reach, footprint and caster-window math (header-only, no Vulkan)
     test_shadow_mover_fit.cpp
     test_static_caster_set.cpp

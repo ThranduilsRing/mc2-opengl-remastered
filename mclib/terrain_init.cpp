@@ -11,6 +11,7 @@
 #include <span>
 #include <vector>
 #include "../GameOS/gameos/terrain_field_store.h"
+#include "../GameOS/gameos/height_sig.h"
 
 
 //---------------------------------------------------------------------------
@@ -19,6 +20,55 @@ struct TerrainLodInitFrame {
 	std::vector<float> elev;
 	std::vector<float> ttype;
 };
+
+// TERRAIN-BEAUTY-SIG-1: one gameplay-height signature verdict per mission load. <beauty>/gameplay_height.sig =
+// "<mapSide> <fnv1a64 hex>" over (mapSide u32, then mapSide^2 float32 elevations). 0 no sig file, 1 match, 2 mismatch.
+// A mismatch means the <stem>.beauty sidecars belong to different terrain (a mod under a stock stem): the
+// displacement bake, the shoreline mask, the shore field and the water-shore height read all skip.
+namespace {
+struct BeautySigVerdict {
+	int state = 0;
+	char got[96] = "";
+	char want[96] = "";
+};
+BeautySigVerdict s_beautySig;
+
+BeautySigVerdict computeBeautySig(const char* terrainName, int mapSide, const std::vector<float>& elev)
+{
+	BeautySigVerdict v;
+	if (mapSide < 2 || elev.size() != static_cast<size_t>(mapSide) * static_cast<size_t>(mapSide)) return v;
+	std::string sigPath;
+	if (mc2::gate::isSet<"MC2_TERRAIN_VISUAL_HEIGHT_FILE">())
+	{
+		const std::filesystem::path vhFile(mc2::gate::str<"MC2_TERRAIN_VISUAL_HEIGHT_FILE">());
+		if (!vhFile.has_parent_path()) return v;
+		sigPath = std::filesystem::path(vhFile).replace_filename("gameplay_height.sig").string();
+	}
+	else
+	{
+		std::string stem = terrainName ? terrainName : "";
+		const auto slash = stem.find_last_of("/\\");
+		if (slash != std::string::npos) stem.erase(0, slash + 1);
+		if (const auto dot = stem.find_last_of('.'); dot != std::string::npos) stem.erase(dot);
+		sigPath = "data/missions/" + stem + ".beauty/gameplay_height.sig";
+	}
+	if (FILE* sg = fopen(sigPath.c_str(), "rb"))   // path-audit: loose-only (sidecar beside the beauty bake)
+	{
+		char line[96] = "";
+		if (fgets(line, sizeof(line), sg))
+		{
+			size_t ll = strlen(line);
+			while (ll && (line[ll - 1] == '\n' || line[ll - 1] == '\r' || line[ll - 1] == ' ')) line[--ll] = '\0';
+			const std::string want = mc2terrain::gameplayHeightSig(mapSide, elev.data(), elev.size());
+			strncpy(v.want, want.c_str(), sizeof(v.want) - 1);
+			strncpy(v.got, line, sizeof(v.got) - 1);
+			v.state = (strcmp(v.got, v.want) == 0) ? 1 : 2;
+		}
+		fclose(sg);
+	}
+	return v;
+}
+}  // namespace
 
 
 // Derive the map extents and block counts from the vertex count.
@@ -461,6 +511,10 @@ void Terrain::lodOverlayV2() {
 
 // LOD chunk: load the shoreline-mask sidecar when its gate is on.
 void Terrain::lodShorelineMask() {
+	if (s_beautySig.state == 2) {
+		mc2::fmt::print_out("[SHORELINE v1] REJECTED: gameplay height signature mismatch; shoreline_mask sidecar not loaded\n");
+		return;
+	}
 	// TERRAIN-SHORELINE-V3: terrain-side wet/foam band. The gate is
 	// default ON (SHORELINE-SMOOTHING-REVISIT-1); this comment claimed
 	// OFF until SHORELINE-GLOW-1. As of V3 the band's PLACEMENT is computed in
@@ -670,6 +724,10 @@ bool loadShoreField(const char* stem, int mapSide, std::vector<float>& out, int&
 
 // LOD chunk: build the water-shore edge data when the shore mode asks for it.
 void Terrain::lodWaterShore() {
+	if (s_beautySig.state == 2) {
+		mc2::fmt::print_out("[WATER_SHORE_EDGE v1] REJECTED: gameplay height signature mismatch; shore_field and visual_height reads skipped\n");
+		return;
+	}
 	// WATER-SHORE-EDGE-1: per-fragment water shore edge (mode 2, the
 	// default -- gos_WaterShoreMode()). Loads the SAME hi-res
 	// visual_height_4x.r32 sidecar the chunk-mesh displacement uses
@@ -768,6 +826,7 @@ void Terrain::lodWaterShore() {
 void Terrain::lodVisualHeight(TerrainLodInitFrame& lf) {
 	auto& elev = lf.elev;
 	TerrainRuntime::setCpuVisualHeight(nullptr, 0);
+	gos_TerrainLodChunk_ClearVisualHeight();   // a rejected or missing bake must not draw the previous mission's relief
 	// TERRAIN-VISUAL-HEIGHT-SAMPLE-1 Stage 1 (loader, log-only). Gate
 	// MC2_TERRAIN_VISUAL_HEIGHT default-OFF -> no load, no SSBO
 	// (byte-identical). Loads the 4x VISUAL heightfield bake into SSBO
@@ -952,35 +1011,9 @@ void Terrain::lodVisualHeight(TerrainLodInitFrame& lf) {
 						// then mapSide^2 float32 elevations). Present: apply only on an exact match
 						// (a mod that edits one plateau passes the mean test above, not this).
 						// Absent (mod-shipped sidecar): the legacy mean guard still applies.
-						int sigState = 0; // 0 none, 1 match, 2 mismatch
-						char sigGot[96] = "", sigWant[96] = "";
-						{
-							const std::filesystem::path vhFile(vhPath);
-							if (vhFile.has_parent_path())
-							{
-								const std::string sigPath = std::filesystem::path(vhFile).replace_filename("gameplay_height.sig").string();
-								if (FILE* sg = fopen(sigPath.c_str(), "rb"))   // path-audit: loose-only (sidecar beside the beauty bake)
-								{
-									char line[96] = "";
-									if (fgets(line, sizeof(line), sg))
-									{
-										size_t ll = strlen(line);
-										while (ll && (line[ll - 1] == '\n' || line[ll - 1] == '\r' || line[ll - 1] == ' ')) line[--ll] = '\0';
-										uint64_t h = 0xcbf29ce484222325ull;
-										auto mix = [&h](std::span<const unsigned char> bytes) {
-											for (unsigned char b : bytes) { h ^= b; h *= 0x100000001b3ull; }
-										};
-										const uint32_t sideU = static_cast<uint32_t>(mapSide);
-										mix({reinterpret_cast<const unsigned char*>(&sideU), sizeof(sideU)});
-										mix({reinterpret_cast<const unsigned char*>(elev.data()), elev.size() * sizeof(float)});
-										*std::format_to_n(sigWant, sizeof(sigWant) - 1, "{} {:016x}", mapSide, h).out = '\0';
-										strncpy(sigGot, line, sizeof(sigGot) - 1);
-										sigState = (strcmp(sigGot, sigWant) == 0) ? 1 : 2;
-									}
-									fclose(sg);
-								}
-							}
-						}
+						const int sigState = s_beautySig.state;
+						const char* const sigGot = s_beautySig.got;
+						const char* const sigWant = s_beautySig.want;
 						if (sigState == 1)
 						{
 							mc2::fmt::print_out("[VISUAL_HEIGHT v1] SIG OK path={} gameplay height signature '{}' matches; bake applied\n", mc2::fmt::safe(vhPath), mc2::fmt::safe(sigWant));
@@ -1241,6 +1274,7 @@ long Terrain::init( unsigned long verticesPerMapSide, PacketFile* pakFile, unsig
 		{
 			TerrainLodInitFrame lf;
 			lodHeightUpload(lf);
+			s_beautySig = computeBeautySig(terrainName, static_cast<int>(realVerticesMapSide), lf.elev);
 			lodControlMap();
 			lodOverlayV2();
 			lodShorelineMask();

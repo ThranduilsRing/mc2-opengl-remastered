@@ -54,6 +54,7 @@ public:
     bool setHeight(const float* elevations, int mapSide);
     bool setCementWords(const uint32_t* words, int count);
     bool setVisualHeight(const float* fine, int side, const float* mipMaxes, int mipFloats);
+    void clearVisualHeight();   // mission change: a missing or rejected bake must not leave the previous one
 
     // A (quadCountX + 1) x (quadCountY + 1) row-major block at (originX, originY). Rejected (with a log line) unless it fits
     // the stored map of the same side.

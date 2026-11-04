@@ -28,6 +28,14 @@ void gos_TerrainLodChunk_UploadVisualHeightFull(const float* visualHeights, int 
     s_visualSide = V; s_visualMipFloats = mipFloats;
 }
 
+void gos_TerrainLodChunk_ClearVisualHeight()
+{
+    if (auto* store = gos_TerrainFieldStore()) store->clearVisualHeight();
+    s_visualSide = s_visualMipFloats = s_visualDampSide = 0;
+    s_visualDampStatic.clear(); s_visualDampCombined.clear();
+    s_visualDampHadMovers = false;
+}
+
 // TERRAIN-REAUTH-UNPIN-1 Half B: static (buildings) object-proximity damp map.
 // Reached only when the upstream gates passed (mclib/terrain.cpp). Keeps a CPU
 // copy so per-frame mover stamps can min-combine without re-reading the GPU.

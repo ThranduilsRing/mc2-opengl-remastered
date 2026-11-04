@@ -600,14 +600,9 @@ bool ShadowBake::readHeightGrid() {
     const auto* store = gos_TerrainFieldStore();
     if (!store) return false;
     const int coarseSide = store->mapSide();
-    const int visualSide = store->visualSide();
-    const size_t visualFine = size_t(visualSide) * size_t(visualSide);
-    const bool visual = visualSide == (coarseSide - 1) * 4 + 1 && store->visualHeight().size() >= visualFine;
-    const int sourceSide = visual ? visualSide : coarseSide;
-    // The store keeps mip maxima after the fine grid; only the fine grid is the surface (the whole vector failed the size check).
-    const std::span<const float> source = visual ? std::span<const float>(store->visualHeight()).first(visualFine)
-                                                 : std::span<const float>(store->height());
-    heights_ = mc2shadow::maskHeightGrid(source, sourceSide, layout_.texels);
+    const bool visual = !store->visualHeight().empty() && store->visualSide() == (coarseSide - 1) * 4 + 1;
+    const int sourceSide = visual ? store->visualSide() : coarseSide;
+    heights_ = mc2shadow::maskHeightGrid(visual ? store->visualHeight() : store->height(), sourceSide, layout_.texels);
     if (heights_.empty()) return false;
     heightSide_ = (std::min)(sourceSide, layout_.texels + 1);
     heightSpacing_ = float(coarseSide - 1) * mc2shadow::kWorldUnitsPerVertex / float(heightSide_ - 1);
