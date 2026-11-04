@@ -942,7 +942,56 @@ void Terrain::lodVisualHeight(TerrainLodInitFrame& lf) {
 								cornerSum += fabs(static_cast<double>(vh[static_cast<size_t>(cx) * 4 + static_cast<size_t>(cy) * 4 * V])
 								                  - static_cast<double>(elev[static_cast<size_t>(cx) + static_cast<size_t>(cy) * mapSide]));
 						const double cornerMean = cornerCnt ? cornerSum / static_cast<double>(cornerCnt) : 0.0;
-						if (cornerMean > 16.0)
+						// TERRAIN-BEAUTY-SIG-1: exact binding of the bake to the gameplay grid.
+						// <beauty>/gameplay_height.sig = "<mapSide> <fnv1a64 hex>" over (mapSide u32,
+						// then mapSide^2 float32 elevations). Present: apply only on an exact match
+						// (a mod that edits one plateau passes the mean test above, not this).
+						// Absent (mod-shipped sidecar): the legacy mean guard still applies.
+						int sigState = 0; // 0 none, 1 match, 2 mismatch
+						char sigGot[96] = "", sigWant[96] = "";
+						{
+							char sigPath[620];
+							strncpy(sigPath, vhPath, sizeof(sigPath) - 32);
+							sigPath[sizeof(sigPath) - 32] = '\0';
+							char* sb = strrchr(sigPath, '\\');
+							char* sf = strrchr(sigPath, '/');
+							char* sSlash = (sf > sb) ? sf : sb;
+							if (sSlash)
+							{
+								strcpy(sSlash + 1, "gameplay_height.sig");
+								if (FILE* sg = fopen(sigPath, "rb"))
+								{
+									char line[96] = "";
+									if (fgets(line, sizeof(line), sg))
+									{
+										size_t ll = strlen(line);
+										while (ll && (line[ll - 1] == '\n' || line[ll - 1] == '\r' || line[ll - 1] == ' ')) line[--ll] = '\0';
+										uint64_t h = 0xcbf29ce484222325ull;
+										auto mix = [&h](const unsigned char* p, size_t n) {
+											for (size_t i = 0; i < n; ++i) { h ^= p[i]; h *= 0x100000001b3ull; }
+										};
+										const uint32_t sideU = static_cast<uint32_t>(mapSide);
+										mix(reinterpret_cast<const unsigned char*>(&sideU), sizeof(sideU));
+										mix(reinterpret_cast<const unsigned char*>(elev.data()), elev.size() * sizeof(float));
+										snprintf(sigWant, sizeof(sigWant), "%d %016llx", mapSide, static_cast<unsigned long long>(h));
+										strncpy(sigGot, line, sizeof(sigGot) - 1);
+										sigState = (strcmp(sigGot, sigWant) == 0) ? 1 : 2;
+									}
+									fclose(sg);
+								}
+							}
+						}
+						if (sigState == 1)
+						{
+							mc2::fmt::print_out("[VISUAL_HEIGHT v1] SIG OK path={} gameplay height signature '{}' matches; bake applied\n", mc2::fmt::safe(vhPath), mc2::fmt::safe(sigWant));
+							fflush(stdout);
+						}
+						if (sigState == 2)
+						{
+							mc2::fmt::print_out("[VISUAL_HEIGHT v1] REJECTED path={} gameplay height signature mismatch (sidecar '{}' vs loaded '{}'): bake does not belong to this terrain (mod?); drawing undisplaced\n", mc2::fmt::safe(vhPath), mc2::fmt::safe(sigGot), mc2::fmt::safe(sigWant));
+							fflush(stdout);
+						}
+						else if (sigState == 0 && cornerMean > 16.0)
 						{
 							mc2::fmt::print_out("[VISUAL_HEIGHT v1] REJECTED path={} mean corner offset {:.1f}wu > 16wu: bake does not match this terrain (mod?); drawing undisplaced\n", mc2::fmt::safe(vhPath), cornerMean);
 							fflush(stdout);
