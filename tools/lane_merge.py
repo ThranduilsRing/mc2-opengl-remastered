@@ -65,6 +65,7 @@ sys.path.append(os.path.join(HERE, "..", "scripts"))
 import console_child  # noqa: E402  (windowless console children without a conhost each)
 sys.path.insert(0, HERE)
 import _git_util  # noqa: E402  (shared git helpers)
+from lane_sim_rows import SIM_ROWS, default_sim_install, run_sim_rows, sim_rows_satisfied, sim_sensitive_paths, tip_changed_paths  # noqa: E402,F401
 
 #: Commit trailer line(s): --trailer or $MC2_COMMIT_TRAILER (or $MC2_MERGE_TRAILER); none by default (the merging model names itself).
 TRAILER = os.environ.get("MC2_COMMIT_TRAILER") or os.environ.get("MC2_MERGE_TRAILER", "")
@@ -1037,15 +1038,19 @@ PRECHECK_RECEIPTS = os.environ.get("MC2_PRECHECK_RECEIPTS", "A:/Games/mc2-ops/pr
 
 
 def receipt_path(sha: str) -> str:
+    if not re.fullmatch(r"[0-9a-f]{40}", sha or ""):   # a mocked or truncated rev-parse must never forge a receipt file
+        raise ValueError(f"precheck receipt needs a full 40-hex commit SHA, got {sha!r}")
     return os.path.join(PRECHECK_RECEIPTS, sha + ".json")
 
 
-def write_receipt(root: str, tip: str, with_link, verdict: str) -> None:
-    """A green `--precheck` leaves a receipt for that exact tip SHA; `--batch` refuses a tip without one."""
+def write_receipt(root: str, tip: str, with_link, verdict: str, sim_rows: dict | None = None) -> None:
+    """A green `--precheck` leaves a receipt for that exact tip SHA (`--batch` refuses one without); sim_rows = {required, override, paths, install, rows}."""
     sha = git_out(root, "rev-parse", tip + "^{commit}")
     os.makedirs(PRECHECK_RECEIPTS, exist_ok=True)
     body = {"tip": sha, "base_head": git_out(root, "rev-parse", "HEAD"), "base_tree": git_out(root, "rev-parse", "HEAD^{tree}"),
             "verdict": verdict, "link": bool(with_link), "when": time.time()}
+    if sim_rows is not None:
+        body["sim_rows"] = sim_rows
     tmp = receipt_path(sha) + ".tmp"
     with open(tmp, "w", encoding="utf-8") as f:
         json.dump(body, f)
@@ -1058,7 +1063,8 @@ def missing_receipts(root: str, refs: list[str]) -> list[str]:
         sha = git_out(root, "rev-parse", ref + "^{commit}")
         try:
             with open(receipt_path(sha), encoding="utf-8") as f:
-                ok = json.load(f).get("verdict") == "PASS"
+                receipt = json.load(f)
+            ok = receipt.get("verdict") == "PASS" and sim_rows_satisfied(root, sha, receipt)
         except (OSError, ValueError):
             ok = False
         if not ok:
@@ -1066,7 +1072,8 @@ def missing_receipts(root: str, refs: list[str]) -> list[str]:
     return out
 
 
-def precheck(root: str, tip: str, with_link: bool | None = None) -> int:
+def precheck(root: str, tip: str, with_link: bool | None = None, sim_rows: bool = True, sim_install: str | None = None,
+             sim_runner=None, sim_quiet=None) -> int:
     """Grade the virtual nifty merge, including Python suites, without merging it.
 
     Checks (minutes): conflict check, 5 ratchets, callers refresh+check and Python suites in disposable shared
@@ -1169,13 +1176,27 @@ def precheck(root: str, tip: str, with_link: bool | None = None) -> int:
                         failed.append(str(exc).replace("\n", " "))
     except (Stop, OSError) as exc:
         failed.append(str(exc).replace("\n", " "))
+    sim = {"required": False, "override": not sim_rows, "paths": [], "install": None, "rows": {}}
+    try:
+        sim["paths"] = sim_sensitive_paths(tip_changed_paths(root, tip))
+        sim["required"] = bool(sim["paths"])
+    except (Stop, OSError, KeyError, ValueError, RuntimeError) as exc:
+        failed.append("sim-rows: cannot classify the tip's paths: " + str(exc).replace("\n", " "))
+    if sim["required"] and not sim_rows:
+        print(f"precheck: sim rows SKIPPED by --no-sim-rows ({len(sim['paths'])} sim/save-sensitive path(s); recorded in the receipt)", flush=True)
+    elif sim["required"] and not failed:   # a red earlier stage already fails the precheck; spare the game runs
+        sim["install"] = sim_install or default_sim_install(root)
+        print(f"precheck: sim/save-sensitive paths ({', '.join(sim['paths'][:3])}...): running {', '.join(SIM_ROWS)} on {sim['install']}", flush=True)
+        sim["rows"] = timed("sim-rows", lambda: run_sim_rows(root, git_out(root, "rev-parse", tip + "^{commit}"), sim["install"], runner=sim_runner, quiet=sim_quiet))
+        failed += [f"sim-row {row}: {v}" for row, v in sim["rows"].items() if v != "PASS"]
+        print("\n".join(f"precheck: {row}: {v}" for row, v in sim["rows"].items()), flush=True)
     print("precheck timing (s): " + "  ".join(f"{label}={secs:.0f}" for label, secs in timings)
           + f"  WALL={time.monotonic() - started:.0f}", flush=True)
     link = "link=mc2,mc2fx,mc2fx_preview" if with_link else "link=skipped(batch --verify full and the gate build)"
     print("PRECHECK " + ("FAIL " + "; ".join(failed) if failed else f"PASS conflicts=0 ratchets=5 {link} callers=OK python=OK"))
     if not failed:
         try:
-            write_receipt(root, tip, with_link, "PASS")
+            write_receipt(root, tip, with_link, "PASS", sim)
         except (OSError, Stop) as exc:
             print(f"precheck: receipt not written ({exc}); --batch will refuse this tip")
     return int(bool(failed))
@@ -1229,6 +1250,8 @@ def build_parser() -> argparse.ArgumentParser:
                          "($MC2_PRECHECK_TREE, default E:/mc2-installs/_precheck/tree; first use is a one-time cold build)")
     ap.add_argument("--no-receipt-check", action="store_true", help="--batch: merge tips without a green --precheck receipt (owner override; tests)")
     ap.add_argument("--no-link", action="store_true", help="with --precheck: skip the link even when the tip changes compiled inputs")
+    ap.add_argument("--no-sim-rows", action="store_true", help="with --precheck: skip the saveload/determinism rows a sim-sensitive tip requires (recorded in the receipt)")
+    ap.add_argument("--sim-install", help="with --precheck: install holding the tip's exe for the sim rows (default E:/mc2-installs/<laneN>)")
     ap.add_argument("--pre-gate", action="store_true",
                     help="at the merged HEAD run regenerate-all (dry), check-background-launch, gate_gen --check, cxx17 and a no-game headless "
                          "run_smoke row; all run, one PRE-GATE PASS/FAIL line; --root picks the tree")
@@ -1329,7 +1352,8 @@ def main(argv: list[str] | None = None) -> int:
     if args.lint:
         return lint(args.root, args.lint)
     if args.precheck:
-        return precheck(args.root, args.precheck, True if args.with_link else False if args.no_link else None)
+        return precheck(args.root, args.precheck, True if args.with_link else False if args.no_link else None,
+                        not args.no_sim_rows, args.sim_install)
     if args.pre_gate:
         return pre_gate(args.root, args.exe)
     if not args.regenerate_all and bool(args.ref) == bool(args.batch):

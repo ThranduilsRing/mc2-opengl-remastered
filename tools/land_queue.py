@@ -35,7 +35,10 @@ TAIL = 600
 
 EX_BUSY = 75   # tree or queue busy / infra failure: nothing was judged, retry later
 INFRA_RCS = (3, 4)   # lane_merge: MERGE_HEAD present, staged files in the way
-INFRA_TEXT = ("tree busy", "REFUSED", "PARTIAL")
+# Structured markers only: the tools' own anchored lines. Free text in a child's output ("Vulkan device profile REFUSED",
+# "BATCH REFUSED: a tip would abort") is a real red and must never be filed as infra.
+INFRA_MARKER = re.compile(r"^(?:lane_merge: precheck tree busy|\[merge_gate\] (?:REFUSED:|preflight FAIL)|"
+                          r"\[merge_gate\] clock: .* verdict=PARTIAL)", re.M)
 
 
 class Busy(Exception):
@@ -146,7 +149,7 @@ def submit(path, branch, sha, wait_s=30):
 
 
 def is_infra(rc, out):
-    return rc in INFRA_RCS or any(t in out for t in INFRA_TEXT)
+    return rc in INFRA_RCS or bool(INFRA_MARKER.search(out))
 
 
 def nifty_problem(root, runner):
@@ -263,9 +266,9 @@ def classify_gate(rc, out):
         return "green", []
     m = re.search(r"\[merge_gate\] failed stages: (.+)", out)
     stages = [x.split(" (")[0].strip() for x in m.group(1).split(", ")] if m else []
-    if "REFUSED" in out or "preflight FAIL" in out or (rc == 2 and "usage:" in out):
+    if re.search(r"^\[merge_gate\] (?:REFUSED:|preflight FAIL)", out, re.M) or (rc == 2 and re.search(r"^usage:", out, re.M)):
         return "infra", stages
-    if rc == 2 or "PARTIAL" in out:
+    if rc == 2:   # merge_gate's verdict rc for a partial gate
         return "partial", stages
     return ("runtime", stages) if stages else ("infra", stages)
 
