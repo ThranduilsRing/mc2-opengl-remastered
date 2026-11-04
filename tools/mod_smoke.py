@@ -121,14 +121,16 @@ def load_known_failures(path=KNOWN_FAILURES):
 
 
 def content_verdict(counts, mod, mission, window, entries):
-    """Expiry is exclusive: an owner acceptance covers exactly three windows."""
+    """Expiry is exclusive: an owner acceptance covers exactly three windows. A row applies to its mod on any mission
+    (a --mission override must not turn a known error into a NEW one) unless it sets "mission_only": true."""
     known, new = {}, {}
     for signature, count in counts.items():
         if not count:
             continue
         kind, _, message_sha = signature.partition(':')
         ceiling = max((e['count_ceiling'] for e in entries
-                       if (e['mod'], e['mission'], e['error_class']) == (mod, mission, kind)
+                       if (e['mod'], e['error_class']) == (mod, kind)
+                       and (e['mission'] == mission or not e.get('mission_only'))
                        and e.get('message_sha256') == message_sha
                        and e['first_window'] <= window < e['expires_window']), default=0)
         print(f'[mod_smoke] {mod} {mission} {signature} observed={count} ceiling={ceiling}', flush=True)

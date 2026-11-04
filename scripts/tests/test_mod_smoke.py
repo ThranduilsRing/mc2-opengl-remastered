@@ -676,3 +676,16 @@ def test_single_worker_waits_for_cold_run_and_collects_later_failures(tmp_path, 
     import json
     report = next(stages.glob('*/battery.json'))
     assert len(json.loads(report.read_text())) == (2 if in_gate else 4)
+
+
+def test_known_rows_apply_on_a_mission_override_unless_mission_only():
+    line = "[CONTENT] kind=ammo path=unit msg=orphan ammo 207; zeroing amount"
+    counts = ms.content_signatures(line + "\n[CONTENT_SUMMARY] mission=other total=1 ammo=1")
+    sig, = counts
+    row = dict(mod="mod", mission="default_m", error_class="ammo", message_sha256=sig.split(":")[1],
+               count_ceiling=1, first_window=92, expires_window=95)
+    assert ms.content_verdict(counts, "mod", "other", 92, [row]) == (counts, {})              # --mission override
+    assert ms.content_verdict(counts, "mod", "other", 92, [dict(row, mission_only=True)]) == ({}, counts)
+    assert ms.content_verdict(counts, "mod", "default_m", 92, [dict(row, mission_only=True)]) == (counts, {})
+    assert ms.content_verdict(counts, "other_mod", "other", 92, [row]) == ({}, counts)         # still keyed to the mod
+
